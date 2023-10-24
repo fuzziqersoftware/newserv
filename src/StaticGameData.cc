@@ -214,10 +214,6 @@ const string& name_for_section_id(uint8_t section_id) {
   }
 }
 
-u16string u16name_for_section_id(uint8_t section_id) {
-  return decode_sjis(name_for_section_id(section_id));
-}
-
 uint8_t section_id_for_name(const string& name) {
   string lower_name = tolower(name);
   try {
@@ -235,10 +231,6 @@ uint8_t section_id_for_name(const string& name) {
   return 0xFF;
 }
 
-uint8_t section_id_for_name(const u16string& name) {
-  return section_id_for_name(encode_sjis(name));
-}
-
 const string& name_for_event(uint8_t event) {
   if (event < lobby_event_to_name.size()) {
     return lobby_event_to_name[event];
@@ -246,10 +238,6 @@ const string& name_for_event(uint8_t event) {
     static const string ret = "<Unknown lobby event>";
     return ret;
   }
-}
-
-u16string u16name_for_event(uint8_t event) {
-  return decode_sjis(name_for_event(event));
 }
 
 uint8_t event_for_name(const string& name) {
@@ -268,10 +256,6 @@ uint8_t event_for_name(const string& name) {
   return 0xFF;
 }
 
-uint8_t event_for_name(const u16string& name) {
-  return event_for_name(encode_sjis(name));
-}
-
 const string& name_for_lobby_type(uint8_t type) {
   try {
     return lobby_type_to_name.at(type);
@@ -279,10 +263,6 @@ const string& name_for_lobby_type(uint8_t type) {
     static const string ret = "<Unknown lobby type>";
     return ret;
   }
-}
-
-u16string u16name_for_lobby_type(uint8_t type) {
-  return decode_sjis(name_for_lobby_type(type));
 }
 
 uint8_t lobby_type_for_name(const string& name) {
@@ -301,10 +281,6 @@ uint8_t lobby_type_for_name(const string& name) {
   return 0x80;
 }
 
-uint8_t lobby_type_for_name(const u16string& name) {
-  return lobby_type_for_name(encode_sjis(name));
-}
-
 const string& name_for_npc(uint8_t npc) {
   try {
     return npc_id_to_name.at(npc);
@@ -312,10 +288,6 @@ const string& name_for_npc(uint8_t npc) {
     static const string ret = "<Unknown NPC>";
     return ret;
   }
-}
-
-u16string u16name_for_npc(uint8_t npc) {
-  return decode_sjis(name_for_npc(npc));
 }
 
 uint8_t npc_for_name(const string& name) {
@@ -332,10 +304,6 @@ uint8_t npc_for_name(const string& name) {
   } catch (const out_of_range&) {
   }
   return 0xFF;
-}
-
-uint8_t npc_for_name(const u16string& name) {
-  return npc_for_name(encode_sjis(name));
 }
 
 const char* name_for_char_class(uint8_t cls) {
@@ -555,10 +523,6 @@ const string& name_for_technique(uint8_t tech) {
   }
 }
 
-u16string u16name_for_technique(uint8_t tech) {
-  return decode_sjis(name_for_technique(tech));
-}
-
 uint8_t technique_for_name(const string& name) {
   try {
     return name_to_tech_id.at(name);
@@ -573,10 +537,6 @@ uint8_t technique_for_name(const string& name) {
   } catch (const out_of_range&) {
   }
   return 0xFF;
-}
-
-uint8_t technique_for_name(const u16string& name) {
-  return technique_for_name(encode_sjis(name));
 }
 
 const vector<const char*> name_for_mag_color({

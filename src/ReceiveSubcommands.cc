@@ -144,7 +144,7 @@ static void on_forward_sync_joining_player_state(shared_ptr<Client> c, uint8_t c
   }
 
   if (c->options.debug) {
-    string decompressed = bc0_decompress(cmd.data, cmd.compressed_size);
+    string decompressed = bc0_decompress(reinterpret_cast<const char*>(data) + sizeof(cmd), cmd.compressed_size);
     c->log.info("Decompressed sync data (%" PRIX32 " -> %zX bytes; expected %" PRIX32 "):",
         cmd.compressed_size.load(), decompressed.size(), cmd.decompressed_size.load());
     print_data(stderr, decompressed);
@@ -191,7 +191,7 @@ static void on_sync_joining_player_item_state(shared_ptr<Client> c, uint8_t comm
         throw runtime_error("compressed end offset is beyond end of command");
       }
 
-      string decompressed = bc0_decompress(cmd.data, cmd.compressed_size);
+      string decompressed = bc0_decompress(reinterpret_cast<const char*>(data) + sizeof(cmd), cmd.compressed_size);
       if (c->options.debug) {
         c->log.info("Decompressed item sync data (%" PRIX32 " -> %zX bytes; expected %" PRIX32 "):",
             cmd.compressed_size.load(), decompressed.size(), cmd.decompressed_size.load());
@@ -216,12 +216,14 @@ static void on_sync_joining_player_item_state(shared_ptr<Client> c, uint8_t comm
             "decompressed 6x6D data (0x%zX bytes) is too short for all items (0x%zX bytes)",
             decompressed.size(), required_size));
       }
+      auto* floor_items = reinterpret_cast<G_SyncItemState_6x6D_Decompressed::FloorItem*>(
+          decompressed.data() + sizeof(G_SyncItemState_6x6D_Decompressed));
 
       for (size_t z = 0; z < num_floor_items; z++) {
         // NOTE: If we use this codepath for non-V3 in the future, we'll need to
         // change this hardcoded version. This only works because GC's mag
         // encoding/decoding is symmetric (encode and decode do the same thing).
-        decompressed_cmd->items[z].item_data.decode_if_mag(GameVersion::GC);
+        floor_items[z].item_data.decode_if_mag(GameVersion::GC);
       }
 
       string out_compressed_data = bc0_compress(decompressed);
@@ -408,18 +410,18 @@ static void on_send_guild_card(shared_ptr<Client> c, uint8_t command, uint8_t fl
   switch (c->version()) {
     case GameVersion::DC: {
       const auto& cmd = check_size_t<G_SendGuildCard_DC_6x06>(data, size);
-      c->game_data.player(true, false)->guild_card_description = cmd.description;
+      c->game_data.player(true, false)->guild_card_description.encode(cmd.guild_card.description.decode(c->language()), c->language());
       break;
     }
     case GameVersion::PC: {
       const auto& cmd = check_size_t<G_SendGuildCard_PC_6x06>(data, size);
-      c->game_data.player(true, false)->guild_card_description = cmd.description;
+      c->game_data.player(true, false)->guild_card_description = cmd.guild_card.description;
       break;
     }
     case GameVersion::GC:
     case GameVersion::XB: {
       const auto& cmd = check_size_t<G_SendGuildCard_V3_6x06>(data, size);
-      c->game_data.player(true, false)->guild_card_description = cmd.description;
+      c->game_data.player(true, false)->guild_card_description.encode(cmd.guild_card.description.decode(c->language()), c->language());
       break;
     }
     case GameVersion::BB:
@@ -496,7 +498,7 @@ static void on_word_select_t(shared_ptr<Client> c, uint8_t command, uint8_t, con
         }
 
       } catch (const exception& e) {
-        string name = encode_sjis(c->game_data.player()->disp.name);
+        string name = c->game_data.player()->disp.name.decode(c->language());
         lc->log.warning("Untranslatable Word Select message: %s", e.what());
         send_text_message_printf(lc, "$C4Untranslatable Word\nSelect message from\n%s", name.c_str());
       }
@@ -523,8 +525,8 @@ static void on_set_player_visibility(shared_ptr<Client> c, uint8_t command, uint
       send_arrow_update(l);
     }
     if (!l->is_game() && (l->flags & Lobby::Flag::IS_OVERFLOW)) {
-      send_message_box(c, u"$C6All lobbies are full.\n\n$C7You are in a private lobby. You can use the\nteleporter to join other lobbies if there is space\navailable.");
-      send_lobby_message_box(c, u"");
+      send_message_box(c, "$C6All lobbies are full.\n\n$C7You are in a private lobby. You can use the\nteleporter to join other lobbies if there is space\navailable.");
+      send_lobby_message_box(c, "");
     }
   }
 }
@@ -632,7 +634,7 @@ static void on_switch_state_changed(shared_ptr<Client> c, uint8_t command, uint8
         (c->last_switch_enabled_command.header.subcommand == 0x05)) {
       c->log.info("[Switch assist] Replaying previous enable command");
       if (c->options.debug) {
-        send_text_message(c, u"$C5Switch assist");
+        send_text_message(c, "$C5Switch assist");
       }
       forward_subcommand(c, command, flag, &c->last_switch_enabled_command, sizeof(c->last_switch_enabled_command));
       send_command_t(c, command, flag, c->last_switch_enabled_command);
@@ -1278,12 +1280,14 @@ static void on_entity_drop_item_request(shared_ptr<Client> c, uint8_t command, u
     return;
   }
 
+  if (!(l->flags & Lobby::Flag::DROPS_ENABLED)) {
+    return;
+  }
+
   // If there is no item creator (that is, the game is BB or has server rare
   // tables disabled), then forward the request to the leader
   if (!l->item_creator) {
-    if (l->flags & Lobby::Flag::DROPS_ENABLED) {
-      forward_subcommand(c, command, flag, data, size);
-    }
+    forward_subcommand(c, command, flag, data, size);
     return;
   }
 
@@ -1531,7 +1535,7 @@ static void on_enemy_killed_bb(shared_ptr<Client> c, uint8_t command, uint8_t fl
     throw runtime_error("game does not have a map loaded");
   }
   if (cmd.enemy_id >= l->map->enemies.size()) {
-    send_text_message(c, u"$C6Missing enemy killed");
+    send_text_message(c, "$C6Missing enemy killed");
     return;
   }
 

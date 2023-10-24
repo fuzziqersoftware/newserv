@@ -16,6 +16,7 @@ struct Channel {
   bool is_virtual_connection;
 
   GameVersion version;
+  uint8_t language;
   std::shared_ptr<PSOEncryption> crypt_in;
   std::shared_ptr<PSOEncryption> crypt_out;
 
@@ -39,6 +40,7 @@ struct Channel {
   // Creates an unconnected channel
   Channel(
       GameVersion version,
+      uint8_t language,
       on_command_received_t on_command_received,
       on_error_t on_error,
       void* context_obj,
@@ -49,6 +51,7 @@ struct Channel {
   Channel(
       struct bufferevent* bev,
       GameVersion version,
+      uint8_t language,
       on_command_received_t on_command_received,
       on_error_t on_error,
       void* context_obj,

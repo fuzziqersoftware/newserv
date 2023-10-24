@@ -660,7 +660,7 @@ I 40992 2023-05-26 10:53:41 - [Commands] Sending to C-2 (Tali) (version=DC comma
 I 40992 2023-05-26 10:53:42 - [Commands] Received from C-2 (Tali) (version=DC command=8A flag=00)
 0000 | 8A 00 04 00                                     |
 I 40992 2023-05-26 10:53:42 - [Commands] Sending to C-2 (Tali) (version=DC command=8A flag=00)
-0000 | 8A 00 0C 00 09 45 41 41 41 41 00 00             |      EAAAA
+0000 | 8A 00 0C 00 41 41 41 41 00 00 00 00             |     AAAA
 I 40992 2023-05-26 10:53:53 - [Commands] Received from C-2 (Tali) (version=DC command=60 flag=00)
 0000 | 60 00 1C 00 3F 06 00 00 00 00 00 C0 00 00 00 00 | `   ?
 0010 | CE FE 64 43 00 00 00 00 B8 FF 7D 43             |   dC      }C

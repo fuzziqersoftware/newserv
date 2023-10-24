@@ -49,7 +49,7 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   std::string config_filename;
   bool is_replay;
 
-  std::u16string name;
+  std::string name;
   std::unordered_map<std::string, std::shared_ptr<PortConfiguration>> name_to_port_config;
   std::unordered_map<uint16_t, std::shared_ptr<PortConfiguration>> number_to_port_config;
   std::string username;
@@ -125,7 +125,7 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
 
   std::shared_ptr<const Menu> information_menu_v2;
   std::shared_ptr<const Menu> information_menu_v3;
-  std::shared_ptr<std::vector<std::u16string>> information_contents;
+  std::shared_ptr<std::vector<std::string>> information_contents;
   std::shared_ptr<const Menu> redirect_destinations_menu_dc;
   std::shared_ptr<const Menu> redirect_destinations_menu_pc;
   std::shared_ptr<const Menu> redirect_destinations_menu_gc;
@@ -144,9 +144,9 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   std::vector<std::pair<std::string, uint16_t>> proxy_destinations_xb;
   std::pair<std::string, uint16_t> proxy_destination_patch;
   std::pair<std::string, uint16_t> proxy_destination_bb;
-  std::u16string welcome_message;
-  std::u16string pc_patch_server_message;
-  std::u16string bb_patch_server_message;
+  std::string welcome_message;
+  std::string pc_patch_server_message;
+  std::string bb_patch_server_message;
 
   std::unordered_map<Channel*, std::shared_ptr<Client>> channel_to_client;
   std::map<int64_t, std::shared_ptr<Lobby>> id_to_lobby;
@@ -192,7 +192,7 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   void remove_lobby(uint32_t lobby_id);
 
   std::shared_ptr<Client> find_client(
-      const std::u16string* identifier = nullptr,
+      const std::string* identifier = nullptr,
       uint64_t serial_number = 0,
       std::shared_ptr<Lobby> l = nullptr);
 

@@ -32,9 +32,9 @@ struct PSOQuestHeaderDC { // Same format for DC v1 and v2
   /* 0010 */ uint8_t is_download;
   /* 0011 */ uint8_t unknown1;
   /* 0012 */ le_uint16_t quest_number; // 0xFFFF for challenge quests
-  /* 0014 */ ptext<char, 0x20> name;
-  /* 0034 */ ptext<char, 0x80> short_description;
-  /* 00B4 */ ptext<char, 0x120> long_description;
+  /* 0014 */ pstring<TextEncoding::MARKED, 0x20> name;
+  /* 0034 */ pstring<TextEncoding::MARKED, 0x80> short_description;
+  /* 00B4 */ pstring<TextEncoding::MARKED, 0x120> long_description;
   /* 01D4 */
 } __attribute__((packed));
 
@@ -46,9 +46,9 @@ struct PSOQuestHeaderPC {
   /* 0010 */ uint8_t is_download;
   /* 0011 */ uint8_t unknown1;
   /* 0012 */ le_uint16_t quest_number; // 0xFFFF for challenge quests
-  /* 0014 */ ptext<char16_t, 0x20> name;
-  /* 0054 */ ptext<char16_t, 0x80> short_description;
-  /* 0154 */ ptext<char16_t, 0x120> long_description;
+  /* 0014 */ pstring<TextEncoding::UTF16, 0x20> name;
+  /* 0054 */ pstring<TextEncoding::UTF16, 0x80> short_description;
+  /* 0154 */ pstring<TextEncoding::UTF16, 0x120> long_description;
   /* 0394 */
 } __attribute__((packed));
 
@@ -63,9 +63,9 @@ struct PSOQuestHeaderGC {
   /* 0011 */ uint8_t unknown1;
   /* 0012 */ uint8_t quest_number;
   /* 0013 */ uint8_t episode; // 1 = Ep2. Apparently some quests have 0xFF here, which means ep1 (?)
-  /* 0014 */ ptext<char, 0x20> name;
-  /* 0034 */ ptext<char, 0x80> short_description;
-  /* 00B4 */ ptext<char, 0x120> long_description;
+  /* 0014 */ pstring<TextEncoding::MARKED, 0x20> name;
+  /* 0034 */ pstring<TextEncoding::MARKED, 0x80> short_description;
+  /* 00B4 */ pstring<TextEncoding::MARKED, 0x120> long_description;
   /* 01D4 */
 } __attribute__((packed));
 
@@ -80,10 +80,11 @@ struct PSOQuestHeaderBB {
   /* 0015 */ uint8_t max_players;
   /* 0016 */ uint8_t joinable_in_progress;
   /* 0017 */ uint8_t unknown;
-  /* 0018 */ ptext<char16_t, 0x20> name;
-  /* 0058 */ ptext<char16_t, 0x80> short_description;
-  /* 0158 */ ptext<char16_t, 0x120> long_description;
+  /* 0018 */ pstring<TextEncoding::UTF16, 0x20> name;
+  /* 0058 */ pstring<TextEncoding::UTF16, 0x80> short_description;
+  /* 0158 */ pstring<TextEncoding::UTF16, 0x120> long_description;
   /* 0398 */
 } __attribute__((packed));
 
-std::string disassemble_quest_script(const void* data, size_t size, QuestScriptVersion version);
+std::string disassemble_quest_script(
+    const void* data, size_t size, QuestScriptVersion version, uint8_t language);

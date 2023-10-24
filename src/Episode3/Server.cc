@@ -228,8 +228,8 @@ void Server::send_6xB4x46() const {
   }
 
   G_ServerVersionStrings_GC_Ep3_6xB4x46 cmd46;
-  cmd46.version_signature = VERSION_SIGNATURE;
-  cmd46.date_str1 = format_time(this->options.card_index->definitions_mtime() * 1000000);
+  cmd46.version_signature.encode(VERSION_SIGNATURE, 1);
+  cmd46.date_str1.encode(format_time(this->options.card_index->definitions_mtime() * 1000000), 1);
   string date_str2 = string_printf(
       "Lobby:%08" PRIX32 " Random:%08" PRIX32 "+%08" PRIX32,
       l->lobby_id,
@@ -238,7 +238,7 @@ void Server::send_6xB4x46() const {
   if (this->last_chosen_map) {
     date_str2 += string_printf(" Map:%08" PRIX32, this->last_chosen_map->map_number);
   }
-  cmd46.date_str2 = date_str2;
+  cmd46.date_str2.encode(date_str2, 1);
   this->send(cmd46);
 }
 
@@ -255,7 +255,7 @@ string Server::prepare_6xB6x41_map_definition(
   return std::move(w.str());
 }
 
-void Server::send_commands_for_joining_spectator(Channel& c, uint8_t language, bool is_trial) const {
+void Server::send_commands_for_joining_spectator(Channel& ch, bool is_trial) const {
   bool should_send_state = true;
   if (this->setup_phase == SetupPhase::REGISTRATION) {
     // If registration is still in progress, we only need to send the map data
@@ -267,38 +267,38 @@ void Server::send_commands_for_joining_spectator(Channel& c, uint8_t language, b
   }
 
   if (this->last_chosen_map) {
-    string data = this->prepare_6xB6x41_map_definition(this->last_chosen_map, language, is_trial);
-    this->log().info("Sending %c version of map %08" PRIX32, char_for_language_code(language), this->last_chosen_map->map_number);
-    c.send(0x6C, 0x00, data);
+    string data = this->prepare_6xB6x41_map_definition(this->last_chosen_map, ch.language, is_trial);
+    this->log().info("Sending %c version of map %08" PRIX32, char_for_language_code(ch.language), this->last_chosen_map->map_number);
+    ch.send(0x6C, 0x00, data);
   }
 
   if (should_send_state) {
-    c.send(0xC9, 0x00, this->prepare_6xB4x03());
+    ch.send(0xC9, 0x00, this->prepare_6xB4x03());
     for (uint8_t client_id = 0; client_id < 4; client_id++) {
       auto ps = this->player_states[client_id];
       if (ps) {
-        c.send(0xC9, 0x00, ps->prepare_6xB4x02());
-        c.send(0xC9, 0x00, ps->prepare_6xB4x04());
+        ch.send(0xC9, 0x00, ps->prepare_6xB4x02());
+        ch.send(0xC9, 0x00, ps->prepare_6xB4x04());
       }
     }
     {
       G_UpdateMap_GC_Ep3_6xB4x05 cmd_05;
       cmd_05.state = *this->map_and_rules;
-      this->send(cmd_05);
+      ch.send(0xC9, 0x00, cmd_05);
     }
     // TODO: Sega does something like this; do we have to do this too?
     // for (uint8_t client_id = 0; client_id < 4; client_id++) {
     //   (send 6xB4x4E, 6xB4x4C, 6xB4x4D for each set card)
     //   (send 6xB4x4F for client_id)
     // }
-    c.send(0xC9, 0x00, this->prepare_6xB4x07_decks_update());
+    ch.send(0xC9, 0x00, this->prepare_6xB4x07_decks_update());
     // TODO: Sega sends 6xB4x05 here again; why? Is that necessary? They also
     // send 6xB4x02 again for each player after that (but not 6xB4x04)
-    c.send(0xC9, 0x00, this->prepare_6xB4x1C_names_update());
-    c.send(0xC9, 0x00, this->prepare_6xB4x50_trap_tile_locations());
+    ch.send(0xC9, 0x00, this->prepare_6xB4x1C_names_update());
+    ch.send(0xC9, 0x00, this->prepare_6xB4x50_trap_tile_locations());
     {
       G_LoadCurrentEnvironment_GC_Ep3_6xB4x3B cmd_3B;
-      c.send(0xC9, 0x00, &cmd_3B, sizeof(cmd_3B));
+      ch.send(0xC9, 0x00, &cmd_3B, sizeof(cmd_3B));
     }
   }
 }
@@ -310,8 +310,7 @@ __attribute__((format(printf, 2, 3))) void Server::send_debug_message_printf(con
     va_start(va, fmt);
     std::string buf = string_vprintf(fmt, va);
     va_end(va);
-    std::u16string decoded = decode_sjis(buf);
-    send_text_message(l, decoded.c_str());
+    send_text_message(l, buf);
   }
 }
 
@@ -322,8 +321,7 @@ __attribute__((format(printf, 2, 3))) void Server::send_info_message_printf(cons
     va_start(va, fmt);
     std::string buf = string_vprintf(fmt, va);
     va_end(va);
-    std::u16string decoded = decode_sjis(buf);
-    send_text_message(l, decoded.c_str());
+    send_text_message(l, buf);
   }
 }
 
@@ -2317,8 +2315,7 @@ void Server::handle_CAx40_map_list_request(shared_ptr<Client> sender_c, const st
     throw runtime_error("lobby is deleted");
   }
 
-  const auto& list_data = this->options.map_index->get_compressed_list(
-      l->count_clients(), sender_c->language);
+  const auto& list_data = this->options.map_index->get_compressed_list(l->count_clients(), sender_c->language());
 
   StringWriter w;
   uint32_t subcommand_size = (list_data.size() + sizeof(G_MapList_GC_Ep3_6xB6x40) + 3) & (~3);
@@ -2347,15 +2344,15 @@ void Server::send_6xB6x41_to_all_clients() const {
     if (!c) {
       return;
     }
-    if (map_commands_by_language.size() <= c->language) {
-      map_commands_by_language.resize(c->language + 1);
+    if (map_commands_by_language.size() <= c->language()) {
+      map_commands_by_language.resize(c->language() + 1);
     }
-    if (map_commands_by_language[c->language].empty()) {
-      map_commands_by_language[c->language] = this->prepare_6xB6x41_map_definition(
-          this->last_chosen_map, c->language, l->flags & Lobby::Flag::IS_EP3_TRIAL);
+    if (map_commands_by_language[c->language()].empty()) {
+      map_commands_by_language[c->language()] = this->prepare_6xB6x41_map_definition(
+          this->last_chosen_map, c->language(), l->flags & Lobby::Flag::IS_EP3_TRIAL);
     }
-    this->log().info("Sending %c version of map %08" PRIX32, char_for_language_code(c->language), this->last_chosen_map->map_number);
-    send_command(c, 0x6C, 0x00, map_commands_by_language[c->language]);
+    this->log().info("Sending %c version of map %08" PRIX32, char_for_language_code(c->language()), this->last_chosen_map->map_number);
+    send_command(c, 0x6C, 0x00, map_commands_by_language[c->language()]);
   };
   for (const auto& c : l->clients) {
     send_to_client(c);

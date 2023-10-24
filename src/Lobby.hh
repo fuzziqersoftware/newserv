@@ -80,8 +80,8 @@ struct Lobby : public std::enable_shared_from_this<Lobby> {
   GameMode mode;
   uint8_t difficulty; // 0-3
   uint16_t exp_multiplier;
-  std::u16string password;
-  std::u16string name;
+  std::string password;
+  std::string name;
   // This seed is also sent to the client for rare enemy generation
   uint32_t random_seed;
   std::shared_ptr<PSOLFGEncryption> random_crypt;
@@ -154,7 +154,7 @@ struct Lobby : public std::enable_shared_from_this<Lobby> {
       ssize_t required_client_id = -1);
 
   std::shared_ptr<Client> find_client(
-      const std::u16string* identifier = nullptr,
+      const std::string* identifier = nullptr,
       uint64_t serial_number = 0);
 
   void add_item(const ItemData& item, uint8_t area, float x, float z);

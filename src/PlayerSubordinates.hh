@@ -102,7 +102,7 @@ struct PlayerBank {
 struct PlayerDispDataBB;
 
 struct PlayerVisualConfig {
-  /* 00 */ ptext<char, 0x10> name;
+  /* 00 */ pstring<TextEncoding::ASCII, 0x10> name;
   /* 10 */ parray<uint8_t, 8> unknown_a2;
   /* 18 */ le_uint32_t name_color = 0x00000000; // ARGB
   /* 1C */ uint8_t extra_model = 0;
@@ -149,7 +149,7 @@ struct PlayerDispDataDCPCV3 {
   /* BC */ parray<uint8_t, 0x14> technique_levels_v1;
   /* D0 */
   void enforce_lobby_join_limits(GameVersion target_version);
-  PlayerDispDataBB to_bb() const;
+  PlayerDispDataBB to_bb(uint8_t to_language, uint8_t from_language) const;
 } __attribute__((packed));
 
 struct PlayerDispDataBBPreview {
@@ -158,7 +158,7 @@ struct PlayerDispDataBBPreview {
   // The name field in this structure is used for the player's Guild Card
   // number, apparently (possibly because it's a char array and this is BB)
   /* 08 */ PlayerVisualConfig visual;
-  /* 58 */ ptext<char16_t, 0x10> name;
+  /* 58 */ pstring<TextEncoding::UTF16, 0x10> name;
   /* 78 */ uint32_t play_time = 0;
   /* 7C */
 } __attribute__((packed));
@@ -167,7 +167,7 @@ struct PlayerDispDataBBPreview {
 struct PlayerDispDataBB {
   /* 0000 */ PlayerStats stats;
   /* 0024 */ PlayerVisualConfig visual;
-  /* 0074 */ ptext<char16_t, 0x0C> name;
+  /* 0074 */ pstring<TextEncoding::UTF16, 0x0C> name;
   /* 008C */ le_uint32_t play_time = 0;
   /* 0090 */ uint32_t unknown_a3 = 0;
   /* 0094 */ parray<uint8_t, 0xE8> config;
@@ -175,18 +175,31 @@ struct PlayerDispDataBB {
   /* 0190 */
 
   void enforce_lobby_join_limits(GameVersion target_version);
-  PlayerDispDataDCPCV3 to_dcpcv3() const;
+  PlayerDispDataDCPCV3 to_dcpcv3(uint8_t to_language, uint8_t from_language) const;
   PlayerDispDataBBPreview to_preview() const;
   void apply_preview(const PlayerDispDataBBPreview&);
   void apply_dressing_room(const PlayerDispDataBBPreview&);
+} __attribute__((packed));
+
+struct GuildCardDC {
+  /* 00 */ le_uint32_t player_tag = 0;
+  /* 04 */ le_uint32_t guild_card_number = 0;
+  /* 08 */ pstring<TextEncoding::ASCII, 0x18> name;
+  /* 20 */ pstring<TextEncoding::MARKED, 0x48> description;
+  /* 68 */ parray<uint8_t, 0x11> unused2;
+  /* 79 */ uint8_t present = 0;
+  /* 7A */ uint8_t language = 0;
+  /* 7B */ uint8_t section_id = 0;
+  /* 7C */ uint8_t char_class = 0;
+  /* 7D */
 } __attribute__((packed));
 
 struct GuildCardPC {
   /* 00 */ le_uint32_t player_tag = 0;
   /* 04 */ le_uint32_t guild_card_number = 0;
   // TODO: Is the length of the name field correct here?
-  /* 08 */ ptext<char16_t, 0x18> name;
-  /* 38 */ ptext<char16_t, 0x5A> description;
+  /* 08 */ pstring<TextEncoding::UTF16, 0x18> name;
+  /* 38 */ pstring<TextEncoding::UTF16, 0x5A> description;
   /* EC */ uint8_t present = 0;
   /* ED */ uint8_t language = 0;
   /* EE */ uint8_t section_id = 0;
@@ -199,8 +212,8 @@ struct GuildCardPC {
 struct GuildCardV3 {
   /* 00 */ le_uint32_t player_tag = 0;
   /* 04 */ le_uint32_t guild_card_number = 0;
-  /* 08 */ ptext<char, 0x18> name;
-  /* 20 */ ptext<char, 0x6C> description;
+  /* 08 */ pstring<TextEncoding::ASCII, 0x18> name;
+  /* 20 */ pstring<TextEncoding::MARKED, 0x6C> description;
   /* 8C */ uint8_t present = 0;
   /* 8D */ uint8_t language = 0;
   /* 8E */ uint8_t section_id = 0;
@@ -208,12 +221,11 @@ struct GuildCardV3 {
   /* 90 */
 } __attribute__((packed));
 
-// BB guild card format
 struct GuildCardBB {
   /* 0000 */ le_uint32_t guild_card_number = 0;
-  /* 0004 */ ptext<char16_t, 0x18> name;
-  /* 0034 */ ptext<char16_t, 0x10> team_name;
-  /* 0054 */ ptext<char16_t, 0x58> description;
+  /* 0004 */ pstring<TextEncoding::UTF16, 0x18> name;
+  /* 0034 */ pstring<TextEncoding::UTF16, 0x10> team_name;
+  /* 0054 */ pstring<TextEncoding::UTF16, 0x58> description;
   /* 0104 */ uint8_t present = 0;
   /* 0105 */ uint8_t language = 0;
   /* 0106 */ uint8_t section_id = 0;
@@ -226,7 +238,7 @@ struct GuildCardBB {
 // an entry in the BB guild card file
 struct GuildCardEntryBB {
   GuildCardBB data;
-  ptext<char16_t, 0x58> comment;
+  pstring<TextEncoding::UTF16, 0x58> comment;
   parray<uint8_t, 0x4> unknown_a1;
 
   void clear();
@@ -251,7 +263,7 @@ struct KeyAndTeamConfigBB {
   le_uint64_t team_info = 0; // 02C0
   le_uint16_t team_privilege_level = 0; // 02C8
   le_uint16_t reserved = 0; // 02CA
-  ptext<char16_t, 0x0010> team_name; // 02CC
+  pstring<TextEncoding::UTF16, 0x0010> team_name; // 02CC
   parray<uint8_t, 0x0800> team_flag; // 02EC
   le_uint32_t team_rewards = 0; // 0AEC
 } __attribute__((packed));
@@ -266,7 +278,7 @@ struct PlayerLobbyDataPC {
   // nonzero on all other versions too.
   be_uint32_t ip_address = 0x7F000001;
   le_uint32_t client_id = 0;
-  ptext<char16_t, 0x10> name;
+  pstring<TextEncoding::UTF16, 0x10> name;
 
   void clear();
 } __attribute__((packed));
@@ -276,7 +288,7 @@ struct PlayerLobbyDataDCGC {
   le_uint32_t guild_card = 0;
   be_uint32_t ip_address = 0x7F000001;
   le_uint32_t client_id = 0;
-  ptext<char, 0x10> name;
+  pstring<TextEncoding::ASCII, 0x10> name;
 
   void clear();
 } __attribute__((packed));
@@ -298,7 +310,7 @@ struct PlayerLobbyDataXB {
   le_uint32_t guild_card = 0;
   XBNetworkLocation netloc;
   le_uint32_t client_id = 0;
-  ptext<char, 0x10> name;
+  pstring<TextEncoding::ASCII, 0x10> name;
 
   void clear();
 } __attribute__((packed));
@@ -311,34 +323,32 @@ struct PlayerLobbyDataBB {
   be_uint32_t ip_address = 0x7F000001;
   parray<uint8_t, 0x10> unknown_a1;
   le_uint32_t client_id = 0;
-  ptext<char16_t, 0x10> name;
+  pstring<TextEncoding::UTF16, 0x10> name;
   le_uint32_t unknown_a2 = 0;
 
   void clear();
 } __attribute__((packed));
 
-template <bool IsWideChar>
+template <TextEncoding UnencryptedEncoding, TextEncoding EncryptedEncoding>
 struct PlayerRecordsDCPC_Challenge {
-  using CharT = typename std::conditional<IsWideChar, char16_t, char>::type;
-
   /* 00 */ le_uint16_t title_color = 0x7FFF;
   /* 02 */ parray<uint8_t, 2> unknown_u0;
-  /* 04 */ ptext<CharT, 0x0C> rank_title; // Encrypted; see decrypt_challenge_rank_text
+  /* 04 */ pstring<EncryptedEncoding, 0x0C> rank_title;
   /* 10 */ parray<le_uint32_t, 9> times_ep1_online; // Encrypted; see decrypt_challenge_time. TODO: This might be offline times
   /* 34 */ le_uint16_t unknown_g3 = 0;
   /* 36 */ le_uint16_t grave_deaths = 0;
   /* 38 */ parray<le_uint32_t, 5> grave_coords_time;
-  /* 4C */ ptext<CharT, 0x14> grave_team;
-  /* 60 */ ptext<CharT, 0x18> grave_message;
+  /* 4C */ pstring<UnencryptedEncoding, 0x14> grave_team;
+  /* 60 */ pstring<UnencryptedEncoding, 0x18> grave_message;
   /* 78 */ parray<le_uint32_t, 9> times_ep1_offline; // Encrypted; see decrypt_challenge_time. TODO: This might be online times
   /* 9C */ parray<uint8_t, 4> unknown_l4;
   /* A0 */
 } __attribute__((packed));
 
-struct PlayerRecordsDC_Challenge : PlayerRecordsDCPC_Challenge<false> {
+struct PlayerRecordsDC_Challenge : PlayerRecordsDCPC_Challenge<TextEncoding::CHALLENGE8, TextEncoding::ASCII> {
 } __attribute__((packed));
 
-struct PlayerRecordsPC_Challenge : PlayerRecordsDCPC_Challenge<true> {
+struct PlayerRecordsPC_Challenge : PlayerRecordsDCPC_Challenge<TextEncoding::CHALLENGE16, TextEncoding::UTF16> {
 } __attribute__((packed));
 
 template <bool IsBigEndian>
@@ -358,22 +368,21 @@ struct PlayerRecordsV3_Challenge {
     /* 64:80 */ U16T grave_deaths = 0;
     /* 66:82 */ parray<uint8_t, 2> unknown_u4;
     /* 68:84 */ parray<U32T, 5> grave_coords_time;
-    /* 7C:98 */ ptext<char, 0x14> grave_team;
-    /* 90:AC */ ptext<char, 0x20> grave_message;
+    /* 7C:98 */ pstring<TextEncoding::ASCII, 0x14> grave_team;
+    /* 90:AC */ pstring<TextEncoding::ASCII, 0x20> grave_message;
     /* B0:CC */ parray<uint8_t, 4> unknown_m5;
     /* B4:D0 */ parray<U32T, 9> unknown_t6;
     /* D8:F4 */
   } __attribute__((packed));
   /* 0000:001C */ Stats stats;
   // On Episode 3, there are special cases that apply to this field - if the
-  // text ends with certain strings (after decrypt_challenge_rank_text), the
-  // player will have particle effects emanate from their character in the
-  // lobby every 2 seconds. These effects are:
+  // text ends with certain strings, the player will have particle effects
+  // emanate from their character in the lobby every 2 seconds. The effects are:
   //   Ends with ":GOD" => blue circle
   //   Ends with ":KING" => white particles
   //   Ends with ":LORD" => rising yellow sparkles
   //   Ends with ":CHAMP" => green circle
-  /* 00D8:00F4 */ ptext<char, 0x0C> rank_title;
+  /* 00D8:00F4 */ pstring<TextEncoding::CHALLENGE8, 0x0C> rank_title;
   /* 00E4:0100 */ parray<uint8_t, 0x1C> unknown_l7;
   /* 0100:011C */
 } __attribute__((packed));
@@ -388,11 +397,11 @@ struct PlayerRecordsBB_Challenge {
   /* 0064 */ le_uint16_t grave_deaths = 0;
   /* 0066 */ parray<uint8_t, 2> unknown_u4;
   /* 0068 */ parray<le_uint32_t, 5> grave_coords_time;
-  /* 007C */ ptext<char16_t, 0x14> grave_team;
-  /* 00A4 */ ptext<char16_t, 0x20> grave_message;
+  /* 007C */ pstring<TextEncoding::UTF16, 0x14> grave_team;
+  /* 00A4 */ pstring<TextEncoding::UTF16, 0x20> grave_message;
   /* 00E4 */ parray<uint8_t, 4> unknown_m5;
   /* 00E8 */ parray<le_uint32_t, 9> unknown_t6;
-  /* 010C */ ptext<char16_t, 0x0C> rank_title; // Encrypted; see decrypt_challenge_rank_text
+  /* 010C */ pstring<TextEncoding::UTF16, 0x0C> rank_title; // Encrypted; see decrypt_challenge_rank_text
   /* 0124 */ parray<uint8_t, 0x1C> unknown_l7;
   /* 0140 */
 
@@ -432,32 +441,32 @@ struct ChoiceSearchConfig {
 } __attribute__((packed));
 
 template <typename DestT, typename SrcT = DestT>
-DestT convert_player_disp_data(const SrcT&) {
+DestT convert_player_disp_data(const SrcT&, uint8_t, uint8_t) {
   static_assert(always_false<DestT, SrcT>::v,
-      "unspecialized strcpy_t should never be called");
+      "unspecialized convert_player_disp_data should never be called");
 }
 
 template <>
 inline PlayerDispDataDCPCV3 convert_player_disp_data<PlayerDispDataDCPCV3>(
-    const PlayerDispDataDCPCV3& src) {
+    const PlayerDispDataDCPCV3& src, uint8_t, uint8_t) {
   return src;
 }
 
 template <>
 inline PlayerDispDataDCPCV3 convert_player_disp_data<PlayerDispDataDCPCV3, PlayerDispDataBB>(
-    const PlayerDispDataBB& src) {
-  return src.to_dcpcv3();
+    const PlayerDispDataBB& src, uint8_t to_language, uint8_t from_language) {
+  return src.to_dcpcv3(to_language, from_language);
 }
 
 template <>
 inline PlayerDispDataBB convert_player_disp_data<PlayerDispDataBB, PlayerDispDataDCPCV3>(
-    const PlayerDispDataDCPCV3& src) {
-  return src.to_bb();
+    const PlayerDispDataDCPCV3& src, uint8_t to_language, uint8_t from_language) {
+  return src.to_bb(to_language, from_language);
 }
 
 template <>
 inline PlayerDispDataBB convert_player_disp_data<PlayerDispDataBB>(
-    const PlayerDispDataBB& src) {
+    const PlayerDispDataBB& src, uint8_t, uint8_t) {
   return src;
 }
 

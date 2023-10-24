@@ -358,7 +358,7 @@ bool CardSpecial::apply_defense_condition(
         defense_state, defender_card, dice_roll, defender_cond->card_ref,
         defender_cond->condition_giver_card_ref);
 
-    string expr = orig_eff->expr;
+    string expr = orig_eff->expr.decode();
     int16_t expr_value = this->evaluate_effect_expr(astats, expr.c_str(), dice_roll);
     this->execute_effect(
         *defender_cond, defender_card, expr_value, defender_cond->value,
@@ -1397,9 +1397,9 @@ bool CardSpecial::evaluate_effect_arg2_condition(
           if (ce->def.effects[cond_index].type == ConditionType::NONE) {
             break;
           }
-          uint8_t arg2_command = ce->def.effects[cond_index].arg2[0];
+          uint8_t arg2_command = ce->def.effects[cond_index].arg2.at(0);
           if ((arg2_command == 'c') || (arg2_command == 'C')) {
-            uint8_t other_ch1 = ce->def.effects[cond_index].arg2[1] - 0x30;
+            uint8_t other_ch1 = ce->def.effects[cond_index].arg2.at(1) - 0x30;
             if ((other_ch1 > 9)) {
               return false;
             }
@@ -2007,8 +2007,9 @@ bool CardSpecial::execute_effect(
 
     case ConditionType::BONUS_FROM_LEADER:
       if (unknown_p7 & 1) {
-        clamped_unknown_p5 = this->count_cards_with_card_id_except_card_ref(expr_value, 0xFFFF) + (card->action_chain).chain.ap_effect_bonus;
-        (card->action_chain).chain.ap_effect_bonus = clamp<int16_t>(clamped_unknown_p5, -99, 99);
+        size_t leader_count = this->count_cards_with_card_id_except_card_ref(expr_value, 0xFFFF);
+        card->action_chain.chain.ap_effect_bonus = clamp<int16_t>(
+            leader_count + card->action_chain.chain.ap_effect_bonus, -99, 99);
       }
       return true;
 
@@ -3192,12 +3193,16 @@ bool CardSpecial::is_card_targeted_by_condition(
     }
     if (cond.remaining_turns == 102) {
       if (sc_card && ((sc_card == card) || !(sc_card->card_flags & 2))) {
+        string arg3_s = ce->def.effects[cond.card_definition_effect_index].arg3.decode();
+        if (arg3_s.size() < 1) {
+          throw runtime_error("card definition arg3 is missing");
+        }
         auto target_cards = this->get_targeted_cards_for_condition(
             cond.card_ref,
             cond.card_definition_effect_index,
             cond.condition_giver_card_ref,
             as,
-            atoi(&ce->def.effects[cond.card_definition_effect_index].arg3[1]),
+            atoi(arg3_s.c_str() + 1),
             0);
         for (auto c : target_cards) {
           if (c == card) {
@@ -3686,7 +3691,11 @@ void CardSpecial::evaluate_and_apply_effects(
       continue;
     }
 
-    int16_t arg3_value = atoi(&card_effect.arg3[1]);
+    string arg3_s = card_effect.arg3.decode();
+    if (arg3_s.size() < 1) {
+      throw runtime_error("card effect arg3 is missing");
+    }
+    int16_t arg3_value = atoi(arg3_s.c_str() + 1);
     effect_log.debug("arg3_value=%hd", arg3_value);
     auto targeted_cards = this->get_targeted_cards_for_condition(
         set_card_ref, def_effect_index, sc_card_ref, as, arg3_value, 1);
@@ -3701,7 +3710,7 @@ void CardSpecial::evaluate_and_apply_effects(
       size_t count = 0;
       for (size_t z = 0; z < targeted_cards.size(); z++) {
         dice_roll.value_used_in_expr = false;
-        string arg2_text = card_effect.arg2;
+        string arg2_text = card_effect.arg2.decode();
         if (this->evaluate_effect_arg2_condition(
                 as, targeted_cards[z], arg2_text.c_str(), dice_roll,
                 set_card_ref, sc_card_ref, random_percent, when)) {
@@ -3731,7 +3740,7 @@ void CardSpecial::evaluate_and_apply_effects(
     for (size_t z = 0; z < targeted_cards.size(); z++) {
       auto target_log = effect_log.sub(string_printf("(target:@%04hX) ", targeted_cards[z]->get_card_ref()));
       dice_roll.value_used_in_expr = false;
-      string arg2_str = card_effect.arg2;
+      string arg2_str = card_effect.arg2.decode();
       target_log.debug("arg2_str = %s", arg2_str.c_str());
       if (all_targets_matched ||
           this->evaluate_effect_arg2_condition(
@@ -3739,7 +3748,7 @@ void CardSpecial::evaluate_and_apply_effects(
         target_log.debug("arg2 condition passed");
         auto env_stats = this->compute_attack_env_stats(
             as, targeted_cards[z], dice_roll, set_card_ref, sc_card_ref);
-        string expr_str = card_effect.expr;
+        string expr_str = card_effect.expr.decode();
         int16_t value = this->evaluate_effect_expr(env_stats, expr_str.c_str(), dice_roll);
         target_log.debug("expr = %s, value = %hd", expr_str.c_str(), value);
 

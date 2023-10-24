@@ -11,171 +11,283 @@
 
 using namespace std;
 
-int char16ncmp(const char16_t* s1, const char16_t* s2, size_t count) {
-  size_t x;
-  for (x = 0; x < count && s1[x] != 0 && s2[x] != 0; x++) {
-    if (s1[x] < s2[x]) {
-      return -1;
-    } else if (s1[x] > s2[x]) {
-      return 1;
+// A third case is when inbuf is NULL or *inbuf is NULL, and outbuf is NULL or *outbuf is NULL. In this case, the iconv function sets cd’s conversion state to the initial state.
+
+const iconv_t TextTranscoder::INVALID_IC = (iconv_t)(-1);
+const size_t TextTranscoder::FAILURE_RESULT = static_cast<size_t>(-1);
+
+TextTranscoder::TextTranscoder(const char* to, const char* from)
+    : ic(iconv_open(to, from)) {
+  if (ic == this->INVALID_IC) {
+    string error_str = string_for_error(errno);
+    throw runtime_error(string_printf("failed to initialize %s -> %s text converter: %s", from, to, error_str.c_str()));
+  }
+}
+
+TextTranscoder::TextTranscoder(TextTranscoder&& other) : ic(other.ic) {
+  other.ic = this->INVALID_IC;
+}
+
+TextTranscoder& TextTranscoder::operator=(TextTranscoder&& other) {
+  this->ic = other.ic;
+  other.ic = this->INVALID_IC;
+  return *this;
+}
+
+TextTranscoder::~TextTranscoder() {
+  iconv_close(this->ic);
+}
+
+TextTranscoder::Result TextTranscoder::operator()(
+    void* dest, size_t dest_size, const void* src, size_t src_bytes, bool truncate_oversize_result) {
+  // Clear any conversion state left over from the previous call
+  iconv(this->ic, nullptr, nullptr, nullptr, nullptr);
+
+  void* orig_dest = dest;
+  const void* orig_src = src;
+  size_t ret = iconv(
+      this->ic,
+      reinterpret_cast<char**>(const_cast<void**>(&src)),
+      &src_bytes,
+      reinterpret_cast<char**>(&dest),
+      &dest_size);
+
+  size_t bytes_read = reinterpret_cast<const char*>(src) - reinterpret_cast<const char*>(orig_src);
+  if (ret == this->FAILURE_RESULT) {
+    switch (errno) {
+      case EILSEQ:
+        throw runtime_error(string_printf("untranslatable character at position 0x%zX", bytes_read));
+      case EINVAL:
+        throw runtime_error(string_printf("incomplete multibyte sequence at position 0x%zX", bytes_read));
+      case E2BIG:
+        if (!truncate_oversize_result) {
+          throw runtime_error("string does not fit in buffer");
+        } else {
+          break;
+        }
+      default:
+        throw runtime_error("transcoding failed: " + string_for_error(errno));
     }
   }
-  if (s1[x] < s2[x]) {
-    return -1;
-  } else if (s1[x] > s2[x]) {
-    return 1;
-  }
-  return 0;
+
+  size_t bytes_written = reinterpret_cast<char*>(dest) - reinterpret_cast<char*>(orig_dest);
+  return Result{
+      .bytes_read = bytes_read,
+      .bytes_written = bytes_written,
+  };
 }
 
-static vector<char16_t> unicode_to_sjis_table_data;
-static vector<char16_t> sjis_to_unicode_table_data;
+string TextTranscoder::operator()(const void* src, size_t src_size) {
+  // Clear any conversion state left over from the previous call
+  iconv(this->ic, nullptr, nullptr, nullptr, nullptr);
 
-static void load_sjis_tables() {
-  unicode_to_sjis_table_data.resize(0x10000, 0);
-  sjis_to_unicode_table_data.resize(0x10000, 0);
-
-  // TODO: this is inefficient; it makes multiple copies of the string
-  auto file_contents = load_file("system/sjis-table.ini");
-  auto lines = split(file_contents, '\n');
-  for (auto line : lines) {
-    auto tokens = split(line, '\t');
-    if (tokens.size() < 2) {
-      continue;
+  const void* orig_src = src;
+  deque<string> blocks;
+  while (src_size > 0) {
+    // Assume 2x input size on average, but always alocate at least 4 bytes
+    string& block = blocks.emplace_back(max<size_t>((src_size << 2), 4), '\0');
+    char* dest = block.data();
+    size_t dest_size = block.size();
+    size_t ret = iconv(
+        this->ic,
+        reinterpret_cast<char**>(const_cast<void**>(&src)),
+        &src_size,
+        reinterpret_cast<char**>(&dest),
+        &dest_size);
+    block.resize(block.size() - dest_size);
+    if (block.size() == 0) {
+      // This should never happen because no character should be more than 4
+      // bytes long in any known encoding
+      throw runtime_error("block size too small for conversion");
     }
-    char16_t sjis_char = stoul(tokens[0], nullptr, 0);
-    char16_t unicode_char = stoul(tokens[1], nullptr, 0);
 
-    unicode_to_sjis_table_data[unicode_char] = sjis_char;
-    sjis_to_unicode_table_data[sjis_char] = unicode_char;
+    size_t bytes_read = reinterpret_cast<const char*>(src) - reinterpret_cast<const char*>(orig_src);
+    if (ret == this->FAILURE_RESULT) {
+      switch (errno) {
+        case EILSEQ:
+          throw runtime_error(string_printf("untranslatable character at position %zu", bytes_read));
+        case EINVAL:
+          throw runtime_error(string_printf("incomplete multibyte sequence at position %zu", bytes_read));
+        case E2BIG:
+          break;
+        default:
+          throw runtime_error("transcoding failed: " + string_for_error(errno));
+      }
+    }
+  }
+
+  return join(blocks, "");
+}
+
+string TextTranscoder::operator()(const string& data) {
+  return this->operator()(data.data(), data.size());
+}
+
+TextTranscoder tt_8859_to_utf8("UTF-8", "ISO-8859-1");
+TextTranscoder tt_utf8_to_8859("ISO-8859-1", "UTF-8");
+TextTranscoder tt_sjis_to_utf8("UTF-8", "SHIFT_JIS");
+TextTranscoder tt_utf8_to_sjis("SHIFT_JIS", "UTF-8");
+TextTranscoder tt_utf16_to_utf8("UTF-8", "UTF-16LE");
+TextTranscoder tt_utf8_to_utf16("UTF-16LE", "UTF-8");
+TextTranscoder tt_ascii_to_utf8("UTF-8", "ASCII");
+TextTranscoder tt_utf8_to_ascii("ASCII", "UTF-8");
+
+std::string tt_encode_marked_optional(const std::string& utf8, uint8_t default_language, bool is_utf16) {
+  if (is_utf16) {
+    return tt_utf8_to_utf16(utf8);
+  } else {
+    if (default_language) {
+      try {
+        return tt_utf8_to_8859(utf8);
+      } catch (const exception& e) {
+        return "\tJ" + tt_utf8_to_sjis(utf8);
+      }
+    } else {
+      try {
+        return tt_utf8_to_sjis(utf8);
+      } catch (const exception& e) {
+        return "\tE" + tt_utf8_to_8859(utf8);
+      }
+    }
   }
 }
 
-static const vector<char16_t>& sjis_to_unicode_table() {
-  if (sjis_to_unicode_table_data.empty()) {
-    load_sjis_tables();
+std::string tt_encode_marked(const std::string& utf8, uint8_t default_language, bool is_utf16) {
+  if (is_utf16) {
+    return tt_utf8_to_utf16((default_language ? "\tE" : "\tJ") + utf8);
+  } else {
+    if (default_language) {
+      try {
+        return "\tE" + tt_utf8_to_8859(utf8);
+      } catch (const exception& e) {
+        return "\tJ" + tt_utf8_to_sjis(utf8);
+      }
+    } else {
+      try {
+        return "\tJ" + tt_utf8_to_sjis(utf8);
+      } catch (const exception& e) {
+        return "\tE" + tt_utf8_to_8859(utf8);
+      }
+    }
   }
-  return sjis_to_unicode_table_data;
 }
 
-static const vector<char16_t>& unicode_to_sjis_table() {
-  if (unicode_to_sjis_table_data.empty()) {
-    load_sjis_tables();
+std::string tt_decode_marked(const std::string& data, uint8_t default_language, bool is_utf16) {
+  if (is_utf16) {
+    string ret = tt_utf16_to_utf8(data);
+    if (ret.size() >= 2 && ret[0] == '\t' && (ret[1] == 'E' || ret[1] == 'J')) {
+      ret = ret.substr(2);
+    }
+    return ret;
+  } else {
+    if (data.size() >= 2 && data[0] == '\t') {
+      if (data[1] == 'J') {
+        return tt_sjis_to_utf8(data.substr(2));
+      } else if (data[1] == 'E') {
+        return tt_8859_to_utf8(data.substr(2));
+      }
+    }
+    return default_language ? tt_8859_to_utf8(data) : tt_sjis_to_utf8(data);
   }
-  return unicode_to_sjis_table_data;
 }
 
-std::string encode_sjis(const char16_t* src, size_t src_count) {
-  const auto& table = unicode_to_sjis_table();
+string add_language_marker(const string& s, char marker) {
+  if ((s.size() >= 2) && (s[0] == '\t') && (s[1] != 'C')) {
+    return s;
+  }
 
-  const char16_t* src_end = src + src_count;
   string ret;
-  while ((src != src_end) && *src) {
-    uint16_t ch = *(src++);
-    uint16_t translated_c = table[ch];
-    if (translated_c == 0) {
-      throw runtime_error("untranslatable unicode character");
-    } else if (translated_c & 0xFF00) {
-      ret.push_back((translated_c >> 8) & 0xFF);
-      ret.push_back(translated_c & 0xFF);
-    } else {
-      ret.push_back(translated_c & 0xFF);
-    }
-  };
+  ret.push_back('\t');
+  ret.push_back(marker);
+  ret += s;
   return ret;
 }
 
-size_t encode_sjis(
-    char* dest,
-    size_t dest_count,
-    const char16_t* src,
-    size_t src_count,
-    bool allow_skip_terminator) {
-  const auto& table = unicode_to_sjis_table();
-
-  if (dest_count == 0) {
-    throw logic_error("cannot encode into zero-length buffer");
+string remove_language_marker(const string& s) {
+  if ((s.size() < 2) || (s[0] != '\t') || (s[1] == 'C')) {
+    return s;
   }
+  return s.substr(2);
+}
 
-  const char* dest_start = dest;
-  const char16_t* src_end = src + src_count;
-  const char* dest_end = dest + (allow_skip_terminator ? dest_count : (dest_count - 1));
-  while ((dest != dest_end) && (src != src_end) && *src) {
-    uint16_t ch = *(src++);
-    uint16_t translated_c = table[ch];
-    if (translated_c == 0) {
-      throw runtime_error("untranslatable unicode character");
-    } else if (translated_c & 0xFF00) {
-      *(dest++) = (translated_c >> 8) & 0xFF;
-      // If the second byte of this character would cause the null to overrun
-      // the buffer, erase the first byte instead and return early
-      if (dest == dest_end) {
-        *(dest - 1) = 0;
+void replace_char_inplace(char* a, char f, char r) {
+  while (*a) {
+    if (*a == f) {
+      *a = r;
+    }
+    a++;
+  }
+}
+
+size_t add_color_inplace(char* a, size_t max_chars) {
+  char* d = a;
+  char* orig_d = d;
+
+  for (size_t x = 0; (x < max_chars) && *a; x++) {
+    if (*a == '$') {
+      *(d++) = '\t';
+    } else if (*a == '#') {
+      *(d++) = '\n';
+    } else if (*a == '%') {
+      a++;
+      x++;
+      if (*a == 's') {
+        *(d++) = '$';
+      } else if (*a == '%') {
+        *(d++) = '%';
+      } else if (*a == 'n') {
+        *(d++) = '#';
+      } else if (*a == '\0') {
+        break;
       } else {
-        *(dest++) = translated_c & 0xFF;
+        *(d++) = *a;
       }
     } else {
-      *(dest++) = translated_c & 0xFF;
+      *(d++) = *a;
     }
+    a++;
   }
-  if (!allow_skip_terminator || (dest != dest_end)) {
-    *dest = 0;
-    dest++;
-  }
-  return dest - dest_start;
+  *d = 0;
+  // TODO: we should clear the chars after the null if the new string is shorter
+  // than the original
+
+  return d - orig_d;
 }
 
-std::u16string decode_sjis(const char* src, size_t src_count) {
-  const auto& table = sjis_to_unicode_table();
-
-  const char* src_end = src + src_count;
-  u16string ret;
-  while ((src != src_end) && *src) {
-    uint16_t src_char = *(src++);
-    if (src_char & 0x80) {
-      if (src == src_end) {
-        throw runtime_error("incomplete extended character");
-      }
-      src_char = (src_char << 8) | static_cast<uint8_t>(*(src++));
-      if ((src_char & 0xFF) == 0) {
-        throw runtime_error("incomplete extended character");
-      }
-    }
-    ret.push_back(table[src_char]);
-  };
-  return ret;
+void add_color_inplace(string& s) {
+  s.resize(add_color_inplace(s.data(), s.size()));
 }
 
-size_t decode_sjis(
-    char16_t* dest,
-    size_t dest_count,
-    const char* src,
-    size_t src_count,
-    bool allow_skip_terminator) {
-  const auto& table = sjis_to_unicode_table();
-
-  if (dest_count == 0) {
-    throw logic_error("cannot decode into zero-length buffer");
-  }
-
-  const char16_t* dest_start = dest;
-  const char* src_end = src + src_count;
-  const char16_t* dest_end = dest + (allow_skip_terminator ? dest_count : (dest_count - 1));
-  while ((dest != dest_end) && (src != src_end) && *src) {
-    uint16_t src_char = *(src++);
-    if (src_char & 0x80) {
-      if (src == src_end) {
-        throw runtime_error("incomplete extended character");
+void add_color(StringWriter& w, const char* src, size_t max_input_chars) {
+  for (size_t x = 0; (x < max_input_chars) && *src; x++) {
+    if (*src == '$') {
+      w.put<char>('\t');
+    } else if (*src == '#') {
+      w.put<char>('\n');
+    } else if (*src == '%') {
+      src++;
+      x++;
+      if (*src == 's') {
+        w.put<char>('$');
+      } else if (*src == '%') {
+        w.put<char>('%');
+      } else if (*src == 'n') {
+        w.put<char>('#');
+      } else if (*src == '\0') {
+        break;
+      } else {
+        w.put<char>(*src);
       }
-      src_char = (src_char << 8) | static_cast<uint8_t>(*(src++));
-      if ((src_char & 0xFF) == 0) {
-        throw runtime_error("incomplete extended character");
-      }
+    } else {
+      w.put<char>(*src);
     }
-    *(dest++) = table[src_char];
-  };
-  if (!allow_skip_terminator || (dest != dest_end)) {
-    *(dest++) = 0;
+    src++;
   }
-  return dest - dest_start;
+  w.put<char>(0);
+}
+
+std::string add_color(const std::string& s) {
+  StringWriter w;
+  add_color(w, s.data(), s.size());
+  return std::move(w.str());
 }

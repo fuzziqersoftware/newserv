@@ -82,11 +82,11 @@ string License::str() const {
 }
 
 struct BinaryLicense {
-  ptext<char, 0x14> username; // BB username (max. 16 chars; should technically be Unicode)
-  ptext<char, 0x14> bb_password; // BB password (max. 16 chars)
+  pstring<TextEncoding::ASCII, 0x14> username; // BB username (max. 16 chars; should technically be Unicode)
+  pstring<TextEncoding::ASCII, 0x14> bb_password; // BB password (max. 16 chars)
   uint32_t serial_number; // PC/GC serial number. MUST BE PRESENT FOR BB LICENSES TOO; this is also the player's guild card number.
-  ptext<char, 0x10> access_key; // PC/GC access key. (to log in using PC on a GC license, just enter the first 8 characters of the GC access key)
-  ptext<char, 0x0C> gc_password; // GC password
+  pstring<TextEncoding::ASCII, 0x10> access_key; // PC/GC access key. (to log in using PC on a GC license, just enter the first 8 characters of the GC access key)
+  pstring<TextEncoding::ASCII, 0x0C> gc_password; // GC password
   uint32_t privileges; // privilege level
   uint64_t ban_end_time; // end time of ban (zero = not banned)
 } __attribute__((packed));
@@ -107,10 +107,10 @@ LicenseIndex::LicenseIndex() {
       } catch (const missing_license&) {
         License license;
         license.serial_number = bin_license.serial_number;
-        license.access_key = bin_license.access_key;
-        license.gc_password = bin_license.gc_password;
-        license.bb_username = bin_license.username;
-        license.bb_password = bin_license.bb_password;
+        license.access_key = bin_license.access_key.decode();
+        license.gc_password = bin_license.gc_password.decode();
+        license.bb_username = bin_license.username.decode();
+        license.bb_password = bin_license.bb_password.decode();
         license.flags = bin_license.privileges;
         license.ban_end_time = bin_license.ban_end_time;
         license.ep3_current_meseta = 0;

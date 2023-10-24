@@ -150,7 +150,6 @@ struct Client : public std::enable_shared_from_this<Client> {
 
   // Lobby/positioning
   ClientOptions options;
-  uint8_t language;
   float x;
   float z;
   uint32_t area;
@@ -194,6 +193,9 @@ struct Client : public std::enable_shared_from_this<Client> {
 
   inline GameVersion version() const {
     return this->channel.version;
+  }
+  inline uint8_t language() const {
+    return this->channel.language;
   }
   QuestScriptVersion quest_version() const;
 

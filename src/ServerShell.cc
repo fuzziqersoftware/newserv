@@ -467,8 +467,7 @@ Proxy session commands:\n\
     this->state->ep3_menu_song = stoul(command_args, nullptr, 0);
 
   } else if (command_name == "announce") {
-    u16string message16 = decode_sjis(command_args);
-    send_text_message(this->state, message16.c_str());
+    send_text_message(this->state, command_args);
 
   } else if (command_name == "create-tournament") {
     string name = get_quoted_string(command_args);
@@ -664,8 +663,9 @@ Proxy session commands:\n\
       const auto& player = session->lobby_players[z];
       if (player.guild_card_number) {
         auto secid_name = name_for_section_id(player.section_id);
-        fprintf(stderr, "  %zu: %" PRIu32 " => %s (%s, %s)\n",
+        fprintf(stderr, "  %zu: %" PRIu32 " => %s (%c, %s, %s)\n",
             z, player.guild_card_number, player.name.c_str(),
+            char_for_language_code(player.language),
             name_for_char_class(player.char_class), secid_name.c_str());
       } else {
         fprintf(stderr, "  %zu: (no player)\n", z);
@@ -676,14 +676,8 @@ Proxy session commands:\n\
     auto session = this->get_proxy_session(session_name);
     bool is_dchat = (command_name == "dchat");
 
-    if (!is_dchat && (session->version == GameVersion::PC || session->version == GameVersion::BB)) {
-      u16string data(4, u'\0');
-      data.push_back(u'\x09');
-      data.push_back(u'E');
-      data += decode_sjis(command_args);
-      data.push_back(u'\0');
-      data.resize((data.size() + 1) & (~1));
-      session->server_channel.send(0x06, 0x00, data.data(), data.size() * sizeof(char16_t));
+    if (!is_dchat && (session->version() == GameVersion::PC || session->version() == GameVersion::BB)) {
+      send_chat_message_from_client(session->server_channel, command_args, 0);
     } else {
       string data(8, '\0');
       data.push_back('\x09');
@@ -700,7 +694,7 @@ Proxy session commands:\n\
 
   } else if ((command_name == "wc") || (command_name == "wchat")) {
     auto session = this->get_proxy_session(session_name);
-    if ((session->version != GameVersion::GC) ||
+    if ((session->version() != GameVersion::GC) ||
         !(session->newserv_client_config.cfg.flags & Client::Flag::IS_EPISODE_3)) {
       throw runtime_error("wchat can only be used on Episode 3");
     }
@@ -758,8 +752,8 @@ Proxy session commands:\n\
       session->options.override_lobby_event = -1;
     } else {
       session->options.override_lobby_event = event_for_name(command_args);
-      if ((session->version != GameVersion::DC) &&
-          (session->version != GameVersion::PC) && (!((session->version == GameVersion::GC) && (session->newserv_client_config.cfg.flags & Client::Flag::IS_GC_TRIAL_EDITION)))) {
+      if ((session->version() != GameVersion::DC) &&
+          (session->version() != GameVersion::PC) && (!((session->version() == GameVersion::GC) && (session->newserv_client_config.cfg.flags & Client::Flag::IS_GC_TRIAL_EDITION)))) {
         session->client_channel.send(0xDA, session->options.override_lobby_event);
       }
     }
@@ -811,7 +805,7 @@ Proxy session commands:\n\
   } else if ((command_name == "create-item") || (command_name == "set-next-item")) {
     auto session = this->get_proxy_session(session_name);
 
-    if (session->version == GameVersion::BB) {
+    if (session->version() == GameVersion::BB) {
       throw runtime_error("proxy session is BB");
     }
     if (!session->is_in_game) {
@@ -828,14 +822,14 @@ Proxy session commands:\n\
       session->next_drop_item = item;
 
       string name = session->next_drop_item.name(true);
-      send_text_message(session->client_channel, u"$C7Next drop:\n" + decode_sjis(name));
+      send_text_message(session->client_channel, "$C7Next drop:\n" + name);
 
     } else {
       send_drop_stacked_item(session->client_channel, item, session->area, session->x, session->z);
       send_drop_stacked_item(session->server_channel, item, session->area, session->x, session->z);
 
       string name = item.name(true);
-      send_text_message(session->client_channel, u"$C7Item created:\n" + decode_sjis(name));
+      send_text_message(session->client_channel, "$C7Item created:\n" + name);
     }
 
   } else if (command_name == "close-idle-sessions") {

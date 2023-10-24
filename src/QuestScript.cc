@@ -78,19 +78,6 @@ static string format_and_indent_data(const void* data, size_t size, uint64_t sta
   return ret;
 }
 
-static string dasm_u16string(const char16_t* data, size_t size) {
-  try {
-    return format_data_string(encode_sjis(data, size));
-  } catch (const runtime_error& e) {
-    return "/* undecodable */ " + format_data_string(data, size * sizeof(char16_t));
-  }
-}
-
-template <size_t Size>
-static string dasm_u16string(const parray<char16_t, Size>& data) {
-  return dasm_u16string(data.data(), data.size());
-}
-
 struct ResistData {
   le_int16_t evp_bonus;
   le_uint16_t unknown_a1;
@@ -867,7 +854,7 @@ opcodes_for_version(QuestScriptVersion v) {
   return index;
 }
 
-std::string disassemble_quest_script(const void* data, size_t size, QuestScriptVersion version) {
+std::string disassemble_quest_script(const void* data, size_t size, QuestScriptVersion version, uint8_t language) {
   StringReader r(data, size);
   deque<string> lines;
 
@@ -885,9 +872,9 @@ std::string disassemble_quest_script(const void* data, size_t size, QuestScriptV
       if (header.is_download) {
         lines.emplace_back(string_printf(".is_download_quest"));
       }
-      lines.emplace_back(".name " + format_data_string(header.name.data(), header.name.len()));
-      lines.emplace_back(".short_desc " + format_data_string(header.short_description.data(), header.short_description.len()));
-      lines.emplace_back(".long_desc " + format_data_string(header.long_description.data(), header.long_description.len()));
+      lines.emplace_back(".name " + JSON(header.name.decode(language)).serialize());
+      lines.emplace_back(".short_desc " + JSON(header.short_description.decode(language)).serialize());
+      lines.emplace_back(".long_desc " + JSON(header.long_description.decode(language)).serialize());
       break;
     }
     case QuestScriptVersion::PC_V2: {
@@ -899,9 +886,9 @@ std::string disassemble_quest_script(const void* data, size_t size, QuestScriptV
       if (header.is_download) {
         lines.emplace_back(string_printf(".is_download_quest"));
       }
-      lines.emplace_back(".name " + dasm_u16string(header.name));
-      lines.emplace_back(".short_desc " + dasm_u16string(header.short_description));
-      lines.emplace_back(".long_desc " + dasm_u16string(header.long_description));
+      lines.emplace_back(".name " + JSON(header.name.decode(language)).serialize());
+      lines.emplace_back(".short_desc " + JSON(header.short_description.decode(language)).serialize());
+      lines.emplace_back(".long_desc " + JSON(header.long_description.decode(language)).serialize());
       break;
     }
     case QuestScriptVersion::GC_NTE:
@@ -916,9 +903,9 @@ std::string disassemble_quest_script(const void* data, size_t size, QuestScriptV
         lines.emplace_back(string_printf(".is_download_quest"));
       }
       lines.emplace_back(string_printf(".episode %hhu", header.episode));
-      lines.emplace_back(".name " + format_data_string(header.name.data(), header.name.len()));
-      lines.emplace_back(".short_desc " + format_data_string(header.short_description.data(), header.short_description.len()));
-      lines.emplace_back(".long_desc " + format_data_string(header.long_description.data(), header.long_description.len()));
+      lines.emplace_back(".name " + JSON(header.name.decode(language)).serialize());
+      lines.emplace_back(".short_desc " + JSON(header.short_description.decode(language)).serialize());
+      lines.emplace_back(".long_desc " + JSON(header.long_description.decode(language)).serialize());
       break;
     }
     case QuestScriptVersion::BB_V4: {
@@ -932,9 +919,9 @@ std::string disassemble_quest_script(const void* data, size_t size, QuestScriptV
       if (header.joinable_in_progress) {
         lines.emplace_back(".joinable_in_progress");
       }
-      lines.emplace_back(".name " + dasm_u16string(header.name));
-      lines.emplace_back(".short_desc " + dasm_u16string(header.short_description));
-      lines.emplace_back(".long_desc " + dasm_u16string(header.long_description));
+      lines.emplace_back(".name " + JSON(header.name.decode(language)).serialize());
+      lines.emplace_back(".short_desc " + JSON(header.short_description.decode(language)).serialize());
+      lines.emplace_back(".long_desc " + JSON(header.long_description.decode(language)).serialize());
       break;
     }
     default:
@@ -1168,20 +1155,20 @@ std::string disassemble_quest_script(const void* data, size_t size, QuestScriptV
                 }
                 case Type::CSTRING:
                   if (use_wstrs) {
-                    u16string s;
-                    for (char16_t ch = cmd_r.get_u16l(); ch; ch = cmd_r.get_u16l()) {
-                      s.push_back(ch);
+                    StringWriter w;
+                    for (uint16_t ch = cmd_r.get_u16l(); ch; ch = cmd_r.get_u16l()) {
+                      w.put_u16l(ch);
                     }
                     if (def->flags & F_PASS) {
-                      arg_stack_values.emplace_back(encode_sjis(s));
+                      arg_stack_values.emplace_back(tt_utf16_to_utf8(w.str()));
                     }
-                    dasm_arg = dasm_u16string(s.data(), s.size());
+                    dasm_arg = JSON(w.str()).serialize();
                   } else {
                     string s = cmd_r.get_cstr();
                     if (def->flags & F_PASS) {
                       arg_stack_values.emplace_back(s);
                     }
-                    dasm_arg = format_data_string(s);
+                    dasm_arg = JSON(s).serialize();
                   }
                   break;
                 default:
@@ -1383,21 +1370,20 @@ std::string disassemble_quest_script(const void* data, size_t size, QuestScriptV
     }
     if (l->has_data_type(Arg::DataType::CSTRING)) {
       lines.emplace_back(string_printf("  // As C string (0x%zX bytes)", size));
-      string data;
+      string str_data = cmd_r.pread(l->offset, size);
+      strip_trailing_zeroes(str_data);
       if (use_wstrs) {
-        u16string wdata(reinterpret_cast<const char16_t*>(cmd_r.pgetv(l->offset, size)), size >> 1);
-        strip_trailing_zeroes(wdata);
-        data = encode_sjis(wdata);
-      } else {
-        data = cmd_r.pread(l->offset, size);
-        strip_trailing_zeroes(data);
+        if (str_data.size() & 1) {
+          str_data.push_back(0);
+        }
+        str_data = tt_utf16_to_utf8(str_data);
       }
-      string formatted = format_data_string(data);
+      string formatted = format_data_string(str_data);
       lines.emplace_back(string_printf("  %04" PRIX32 "  %s", l->offset, formatted.c_str()));
     }
     print_as_struct.template operator()<Arg::DataType::PLAYER_VISUAL_CONFIG, PlayerVisualConfig>([&](const PlayerVisualConfig& visual) -> void {
       lines.emplace_back("  // As PlayerVisualConfig");
-      string name = format_data_string(visual.name);
+      string name = format_data_string(visual.name.decode(language));
       lines.emplace_back(string_printf("  %04zX  name                 %s", l->offset + offsetof(PlayerVisualConfig, name), name.c_str()));
       lines.emplace_back(string_printf("  %04zX  name_color           %08" PRIX32, l->offset + offsetof(PlayerVisualConfig, name_color), visual.name_color.load()));
       string a2_str = format_data_string(visual.unknown_a2.data(), sizeof(visual.unknown_a2));

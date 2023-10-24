@@ -26,7 +26,7 @@ static uint32_t encode_argb8888(uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
 
 struct GVMFileEntry {
   be_uint16_t file_num;
-  ptext<char, 28> name;
+  pstring<TextEncoding::ASCII, 0x1C> name;
   parray<be_uint32_t, 2> unknown_a1;
 } __attribute__((packed));
 
@@ -78,7 +78,7 @@ string encode_gvm(const Image& img, GVRDataFormat data_format) {
   w.put<GVMFileHeader>({.magic = 0x47564D48, .header_size = 0x48, .flags = 0x010F, .num_files = 1});
   GVMFileEntry file_entry;
   file_entry.file_num = 0;
-  file_entry.name = "img";
+  file_entry.name.encode("img", 1);
   file_entry.unknown_a1.clear(0);
   w.put(file_entry);
   w.extend_to(0x50, 0x00);

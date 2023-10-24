@@ -16,7 +16,7 @@ Tournament::PlayerEntry::PlayerEntry(uint32_t serial_number, const string& playe
 Tournament::PlayerEntry::PlayerEntry(shared_ptr<Client> c)
     : serial_number(c->license->serial_number),
       client(c),
-      player_name(encode_sjis(c->game_data.player()->disp.name)) {}
+      player_name(c->game_data.player()->disp.name.decode(c->language())) {}
 
 Tournament::PlayerEntry::PlayerEntry(
     shared_ptr<const COMDeckDefinition> com_deck)
@@ -743,7 +743,7 @@ void Tournament::print_bracket(FILE* stream) const {
   fprintf(stream, "Tournament \"%s\"\n", this->name.c_str());
   auto en_vm = this->map->version(1);
   if (en_vm) {
-    string map_name = en_vm->map->name;
+    string map_name = en_vm->map->name.decode(en_vm->language);
     fprintf(stream, "  Map: %08" PRIX32 " (%s)\n", this->map->map_number, map_name.c_str());
   } else {
     fprintf(stream, "  Map: %08" PRIX32 "\n", this->map->map_number);

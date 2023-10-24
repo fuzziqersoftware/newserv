@@ -8,20 +8,21 @@
 
 using namespace std;
 
-vector<u16string> parse_unicode_text_set(const string& prs_data) {
+vector<string> parse_unicode_text_set(const string& prs_data) {
   string data = prs_decompress(prs_data);
   StringReader r(data);
   r.skip(4);
   uint32_t count = r.get_u32l();
 
-  vector<u16string> ret;
+  vector<string> ret;
   while (ret.size() < count) {
-    ret.emplace_back(&r.pget<char16_t>(r.get_u32l()));
+    u16string s(&r.pget<char16_t>(r.get_u32l()));
+    ret.emplace_back(tt_utf16_to_utf8(s.data(), s.size() * 2));
   }
   return ret;
 }
 
-string serialize_unicode_text_set(const vector<u16string>& strings) {
+string serialize_unicode_text_set(const vector<string>& strings) {
   StringWriter w;
   w.put_u32l(strings.size());
   size_t string_offset = (strings.size() * 4) + 4; // Header size
@@ -30,8 +31,9 @@ string serialize_unicode_text_set(const vector<u16string>& strings) {
     string_offset = (((s.size() + 1) << 1) + 3) & (~3);
   }
   for (const auto& s : strings) {
-    u16string uni_s = decode_sjis(s);
-    w.write(uni_s.c_str(), (uni_s.size() + 1) * 2);
+    string s_utf16 = tt_utf8_to_utf16(s);
+    w.write(s_utf16.data(), s_utf16.size());
+    w.put_u16(0);
     while (w.size() & 3) {
       w.put_u8(0);
     }

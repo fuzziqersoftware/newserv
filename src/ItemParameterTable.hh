@@ -19,6 +19,8 @@ public:
   } __attribute__((packed));
 
   struct ItemBase {
+    // id specifies several things; notably, it doubles as the index of the
+    // item's name in the text archive (e.g. TextEnglish) collection 0.
     le_uint32_t id;
     le_uint16_t type;
     le_uint16_t skin;

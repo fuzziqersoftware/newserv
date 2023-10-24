@@ -305,7 +305,7 @@ void DeckState::print(FILE* stream, std::shared_ptr<const CardIndex> card_index)
       }
     }
     if (ce) {
-      string name = ce->def.en_name;
+      string name = ce->def.en_name.decode(1);
       fprintf(stream, "  (%02zu) index=%02hhX ref=@%04hX card_id=#%04hX \"%s\" %s\n",
           z, e.deck_index, this->card_refs[z], e.card_id, name.c_str(), name_for_card_state(e.state));
     } else {

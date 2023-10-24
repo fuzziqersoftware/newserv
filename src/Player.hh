@@ -36,12 +36,12 @@ struct SavedPlayerDataBB { // .nsc file format
   /* 0008 */ parray<uint8_t, 0x20> unused;
   /* 0028 */ PlayerRecords_Battle<false> battle_records;
   /* 0040 */ PlayerDispDataBBPreview preview;
-  /* 00BC */ ptext<char16_t, 0x00AC> auto_reply;
+  /* 00BC */ pstring<TextEncoding::UTF16, 0x00AC> auto_reply;
   /* 0214 */ PlayerBank bank;
   /* 14DC */ PlayerRecordsBB_Challenge challenge_records;
   /* 161C */ PlayerDispDataBB disp;
-  /* 17AC */ ptext<char16_t, 0x0058> guild_card_description;
-  /* 185C */ ptext<char16_t, 0x00AC> info_board;
+  /* 17AC */ pstring<TextEncoding::UTF16, 0x0058> guild_card_description;
+  /* 185C */ pstring<TextEncoding::UTF16, 0x00AC> info_board;
   /* 19B4 */ PlayerInventory inventory;
   /* 1D00 */ parray<uint8_t, 0x0208> quest_data1;
   /* 1F08 */ parray<le_uint32_t, 0x0016> quest_data2;
@@ -80,7 +80,7 @@ enum AccountFlag {
 };
 
 struct SavedAccountDataBB { // .nsa file format
-  ptext<char, 0x40> signature;
+  pstring<TextEncoding::ASCII, 0x40> signature;
   parray<le_uint32_t, 0x001E> blocked_senders;
   GuildCardFileBB guild_cards;
   KeyAndTeamConfigBB key_config;
@@ -88,7 +88,7 @@ struct SavedAccountDataBB { // .nsa file format
   le_uint32_t option_flags;
   parray<uint8_t, 0x0A40> shortcuts;
   parray<uint8_t, 0x04E0> symbol_chats;
-  ptext<char16_t, 0x0010> team_name;
+  pstring<TextEncoding::UTF16, 0x0010> team_name;
 } __attribute__((packed));
 
 class ClientGameData {

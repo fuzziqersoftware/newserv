@@ -57,9 +57,7 @@ public:
     uint32_t remote_ip_crc;
     bool enable_remote_ip_crc_patch;
 
-    GameVersion version;
     uint32_t sub_version;
-    uint8_t language;
     std::string character_name;
     std::string hardware_id; // Only used for DC sessions
     std::string login_command_bb;
@@ -79,6 +77,7 @@ public:
     struct LobbyPlayer {
       uint32_t guild_card_number = 0;
       std::string name;
+      uint8_t language;
       uint8_t section_id = 0;
       uint8_t char_class = 0;
     };
@@ -138,11 +137,17 @@ public:
     std::shared_ptr<ProxyServer> require_server() const;
     std::shared_ptr<ServerState> require_server_state() const;
 
+    inline GameVersion version() const {
+      return this->client_channel.version;
+    }
+    inline uint8_t language() const {
+      return this->client_channel.language;
+    }
+
     void resume(
         Channel&& client_channel,
         std::shared_ptr<PSOBBMultiKeyDetectorEncryption> detector_crypt,
         uint32_t sub_version,
-        uint8_t language,
         const std::string& character_name,
         const std::string& hardware_id);
     void resume(

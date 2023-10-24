@@ -191,11 +191,11 @@ void Lobby::add_client(shared_ptr<Client> c, ssize_t required_client_id) {
     PlayerLobbyDataDCGC lobby_data;
     lobby_data.player_tag = 0x00010000;
     lobby_data.guild_card = c->license->serial_number;
-    lobby_data.name = encode_sjis(p->disp.name);
+    lobby_data.name.encode(p->disp.name.decode(c->language()), c->language());
     this->battle_record->add_player(
         lobby_data,
         p->inventory,
-        p->disp.to_dcpcv3(),
+        p->disp.to_dcpcv3(c->language(), c->language()),
         c->game_data.ep3_config ? (c->game_data.ep3_config->online_clv_exp / 100) : 0);
   }
 
@@ -276,18 +276,18 @@ void Lobby::move_client_to_lobby(
   dest_lobby->add_client(c, required_client_id);
 }
 
-shared_ptr<Client> Lobby::find_client(
-    const u16string* identifier, uint64_t serial_number) {
+shared_ptr<Client> Lobby::find_client(const string* identifier, uint64_t serial_number) {
   for (size_t x = 0; x < this->max_clients; x++) {
-    if (!this->clients[x]) {
+    auto lc = this->clients[x];
+    if (!lc) {
       continue;
     }
-    if (serial_number && this->clients[x]->license &&
-        (this->clients[x]->license->serial_number == serial_number)) {
-      return this->clients[x];
+    if (serial_number && lc->license &&
+        (lc->license->serial_number == serial_number)) {
+      return lc;
     }
-    if (identifier && (this->clients[x]->game_data.player()->disp.name == *identifier)) {
-      return this->clients[x];
+    if (identifier && (lc->game_data.player()->disp.name.eq(*identifier, lc->language()))) {
+      return lc;
     }
   }
 

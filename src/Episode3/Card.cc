@@ -166,10 +166,12 @@ ssize_t Card::apply_abnormal_condition(
   cond.value8 = value + existing_cond_value;
   cond.random_percent = random_percent;
 
-  switch (eff.arg1[0]) {
-    case 'a':
-      cond.a_arg_value = atoi(&eff.arg1[1]);
+  switch (eff.arg1.at(0)) {
+    case 'a': {
+      string s = eff.arg1.decode();
+      cond.a_arg_value = atoi(s.c_str() + 1);
       break;
+    }
     case 'e':
       cond.remaining_turns = 99;
       break;
@@ -179,8 +181,10 @@ ssize_t Card::apply_abnormal_condition(
     case 'r':
       cond.remaining_turns = 102;
       break;
-    case 't':
-      cond.remaining_turns = atoi(&eff.arg1[1]);
+    case 't': {
+      string s = eff.arg1.decode();
+      cond.remaining_turns = atoi(s.c_str() + 1);
+    }
   }
 
   string cond_str = cond.str();

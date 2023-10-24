@@ -22,7 +22,7 @@ struct NameEntry {
 } __attribute__((packed));
 
 struct DeckEntry {
-  ptext<char, 0x10> name;
+  pstring<TextEncoding::SJIS, 0x10> name;
   le_uint32_t team_id;
   parray<le_uint16_t, 31> card_ids;
   // If the following flag is not set to 3, then the God Whim assist effect can

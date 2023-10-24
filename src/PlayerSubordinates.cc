@@ -134,29 +134,38 @@ void PlayerDispDataDCPCV3::enforce_lobby_join_limits(GameVersion target_version)
 
   this->visual.compute_name_color_checksum();
   this->visual.class_flags = class_flags_for_class(this->visual.char_class);
+
+  if (this->visual.name.at(0) == '\t' && (this->visual.name.at(1) == 'J' || this->visual.name.at(1) == 'E')) {
+    this->visual.name.encode(this->visual.name.decode().substr(2));
+  }
 }
 
-void PlayerDispDataBB::enforce_lobby_join_limits(GameVersion) {
+void PlayerDispDataBB::enforce_lobby_join_limits(GameVersion version) {
+  if (version != GameVersion::BB) {
+    throw logic_error("PlayerDispDataBB being sent to non-BB client");
+  }
   this->play_time = 0;
+  if (this->name.at(0) != '\t' || (this->name.at(1) != 'E' && this->name.at(1) != 'J')) {
+    this->name.encode("\tJ" + this->name.decode());
+  }
 }
 
-PlayerDispDataBB PlayerDispDataDCPCV3::to_bb() const {
+PlayerDispDataBB PlayerDispDataDCPCV3::to_bb(uint8_t to_language, uint8_t from_language) const {
   PlayerDispDataBB bb;
   bb.stats = this->stats;
   bb.visual = this->visual;
-  bb.visual.name = "         0";
-  bb.name = this->visual.name;
+  bb.visual.name.encode("         0");
+  bb.name.encode(this->visual.name.decode(from_language), to_language);
   bb.config = this->config;
   bb.technique_levels_v1 = this->technique_levels_v1;
   return bb;
 }
 
-PlayerDispDataDCPCV3 PlayerDispDataBB::to_dcpcv3() const {
+PlayerDispDataDCPCV3 PlayerDispDataBB::to_dcpcv3(uint8_t to_language, uint8_t from_language) const {
   PlayerDispDataDCPCV3 ret;
   ret.stats = this->stats;
   ret.visual = this->visual;
-  ret.visual.name = this->name;
-  remove_language_marker_inplace(ret.visual.name);
+  ret.visual.name.encode(this->name.decode(from_language), to_language);
   ret.config = this->config;
   ret.technique_levels_v1 = this->technique_levels_v1;
   return ret;
@@ -203,9 +212,9 @@ void PlayerDispDataBB::apply_dressing_room(const PlayerDispDataBBPreview& pre) {
 
 void GuildCardBB::clear() {
   this->guild_card_number = 0;
-  this->name.clear(0);
-  this->team_name.clear(0);
-  this->description.clear(0);
+  this->name.clear();
+  this->team_name.clear();
+  this->description.clear();
   this->present = 0;
   this->language = 0;
   this->section_id = 0;
@@ -240,7 +249,7 @@ void PlayerLobbyDataPC::clear() {
   this->guild_card = 0;
   this->ip_address = 0;
   this->client_id = 0;
-  ptext<char16_t, 0x10> name;
+  this->name.clear();
 }
 
 void PlayerLobbyDataDCGC::clear() {
@@ -248,7 +257,7 @@ void PlayerLobbyDataDCGC::clear() {
   this->guild_card = 0;
   this->ip_address = 0;
   this->client_id = 0;
-  ptext<char, 0x10> name;
+  this->name.clear();
 }
 
 void XBNetworkLocation::clear() {
@@ -266,7 +275,7 @@ void PlayerLobbyDataXB::clear() {
   this->guild_card = 0;
   this->netloc.clear();
   this->client_id = 0;
-  this->name.clear(0);
+  this->name.clear();
 }
 
 void PlayerLobbyDataBB::clear() {
@@ -275,7 +284,7 @@ void PlayerLobbyDataBB::clear() {
   this->ip_address = 0;
   this->unknown_a1.clear(0);
   this->client_id = 0;
-  this->name.clear(0);
+  this->name.clear();
   this->unknown_a2 = 0;
 }
 
@@ -289,11 +298,11 @@ PlayerRecordsBB_Challenge::PlayerRecordsBB_Challenge(const PlayerRecordsDC_Chall
       grave_deaths(rec.grave_deaths),
       unknown_u4(0),
       grave_coords_time(rec.grave_coords_time),
-      grave_team(rec.grave_team),
-      grave_message(rec.grave_message),
+      grave_team(rec.grave_team.decode(), 1),
+      grave_message(rec.grave_message.decode(), 1),
       unknown_m5(0),
       unknown_t6(0),
-      rank_title(encrypt_challenge_rank_text(decode_sjis(decrypt_challenge_rank_text(rec.rank_title)))),
+      rank_title(rec.rank_title.decode(), 1),
       unknown_l7(0) {}
 
 PlayerRecordsBB_Challenge::PlayerRecordsBB_Challenge(const PlayerRecordsPC_Challenge& rec)
@@ -306,8 +315,8 @@ PlayerRecordsBB_Challenge::PlayerRecordsBB_Challenge(const PlayerRecordsPC_Chall
       grave_deaths(rec.grave_deaths),
       unknown_u4(0),
       grave_coords_time(rec.grave_coords_time),
-      grave_team(rec.grave_team),
-      grave_message(rec.grave_message),
+      grave_team(rec.grave_team.decode(), 1),
+      grave_message(rec.grave_message.decode(), 1),
       unknown_m5(0),
       unknown_t6(0),
       rank_title(rec.rank_title),
@@ -323,24 +332,24 @@ PlayerRecordsBB_Challenge::PlayerRecordsBB_Challenge(const PlayerRecordsV3_Chall
       grave_deaths(rec.stats.grave_deaths),
       unknown_u4(rec.stats.unknown_u4),
       grave_coords_time(rec.stats.grave_coords_time),
-      grave_team(rec.stats.grave_team),
-      grave_message(rec.stats.grave_message),
+      grave_team(rec.stats.grave_team.decode(), 1),
+      grave_message(rec.stats.grave_message.decode(), 1),
       unknown_m5(rec.stats.unknown_m5),
       unknown_t6(rec.stats.unknown_t6),
-      rank_title(encrypt_challenge_rank_text(decode_sjis(decrypt_challenge_rank_text(rec.rank_title)))),
+      rank_title(rec.rank_title.decode(), 1),
       unknown_l7(rec.unknown_l7) {}
 
 PlayerRecordsBB_Challenge::operator PlayerRecordsDC_Challenge() const {
   PlayerRecordsDC_Challenge ret;
   ret.title_color = this->title_color;
   ret.unknown_u0 = this->unknown_u0;
-  ret.rank_title = encrypt_challenge_rank_text(encode_sjis(decrypt_challenge_rank_text(this->rank_title)));
+  ret.rank_title.encode(this->rank_title.decode());
   ret.times_ep1_online = this->times_ep1_online;
   ret.unknown_g3 = 0;
   ret.grave_deaths = this->grave_deaths;
   ret.grave_coords_time = this->grave_coords_time;
-  ret.grave_team = this->grave_team;
-  ret.grave_message = this->grave_message;
+  ret.grave_team.encode(this->grave_team.decode());
+  ret.grave_message.encode(this->grave_message.decode());
   ret.times_ep1_offline = this->times_ep1_offline;
   ret.unknown_l4.clear(0);
   return ret;
@@ -355,8 +364,8 @@ PlayerRecordsBB_Challenge::operator PlayerRecordsPC_Challenge() const {
   ret.unknown_g3 = 0;
   ret.grave_deaths = this->grave_deaths;
   ret.grave_coords_time = this->grave_coords_time;
-  ret.grave_team = this->grave_team;
-  ret.grave_message = this->grave_message;
+  ret.grave_team.encode(this->grave_team.decode());
+  ret.grave_message.encode(this->grave_message.decode());
   ret.times_ep1_offline = this->times_ep1_offline;
   ret.unknown_l4.clear(0);
   return ret;
@@ -373,11 +382,11 @@ PlayerRecordsBB_Challenge::operator PlayerRecordsV3_Challenge<false>() const {
   ret.stats.grave_deaths = this->grave_deaths;
   ret.stats.unknown_u4 = this->unknown_u4;
   ret.stats.grave_coords_time = this->grave_coords_time;
-  ret.stats.grave_team = this->grave_team;
-  ret.stats.grave_message = this->grave_message;
+  ret.stats.grave_team.encode(this->grave_team.decode());
+  ret.stats.grave_message.encode(this->grave_message.decode());
   ret.stats.unknown_m5 = this->unknown_m5;
   ret.stats.unknown_t6 = this->unknown_t6;
-  ret.rank_title = encrypt_challenge_rank_text(encode_sjis(decrypt_challenge_rank_text(this->rank_title)));
+  ret.rank_title.encode(this->rank_title.decode());
   ret.unknown_l7 = this->unknown_l7;
   return ret;
 }

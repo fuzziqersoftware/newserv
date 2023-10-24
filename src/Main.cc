@@ -312,7 +312,6 @@ enum class Behavior {
   DECODE_QUEST_FILE,
   ENCODE_QST,
   DISASSEMBLE_QUEST_SCRIPT,
-  DECODE_SJIS,
   EXTRACT_AFS,
   EXTRACT_GSL,
   EXTRACT_BML,
@@ -368,7 +367,6 @@ static bool behavior_takes_input_filename(Behavior b) {
       (b == Behavior::DECODE_QUEST_FILE) ||
       (b == Behavior::ENCODE_QST) ||
       (b == Behavior::DISASSEMBLE_QUEST_SCRIPT) ||
-      (b == Behavior::DECODE_SJIS) ||
       (b == Behavior::FORMAT_RARE_ITEM_SET) ||
       (b == Behavior::CONVERT_ITEMRT_REL_TO_JSON) ||
       (b == Behavior::CONVERT_ITEMRT_GSL_TO_JSON) ||
@@ -415,7 +413,6 @@ static bool behavior_takes_output_filename(Behavior b) {
       (b == Behavior::CONVERT_ITEMRT_REL_TO_JSON) ||
       (b == Behavior::CONVERT_ITEMRT_GSL_TO_JSON) ||
       (b == Behavior::CONVERT_ITEMRT_AFS_TO_JSON) ||
-      (b == Behavior::DECODE_SJIS) ||
       (b == Behavior::EXTRACT_AFS) ||
       (b == Behavior::EXTRACT_GSL) ||
       (b == Behavior::EXTRACT_BML) ||
@@ -611,8 +608,6 @@ int main(int argc, char** argv) {
           behavior = Behavior::FIND_DECRYPTION_SEED;
         } else if (!strcmp(argv[x], "salvage-gci")) {
           behavior = Behavior::SALVAGE_GCI;
-        } else if (!strcmp(argv[x], "decode-sjis")) {
-          behavior = Behavior::DECODE_SJIS;
         } else if (!strcmp(argv[x], "decode-gci")) {
           behavior = Behavior::DECODE_QUEST_FILE;
           quest_file_type = QuestFileFormat::BIN_DAT_GCI;
@@ -1000,10 +995,12 @@ int main(int argc, char** argv) {
     case Behavior::ENCRYPT_CHALLENGE_DATA:
     case Behavior::DECRYPT_CHALLENGE_DATA: {
       string data = read_input_data();
-      string result = (behavior == Behavior::DECRYPT_CHALLENGE_DATA)
-          ? decrypt_challenge_rank_text(data)
-          : encrypt_challenge_rank_text(data);
-      write_output_data(result.data(), result.size());
+      if (behavior == Behavior::DECRYPT_CHALLENGE_DATA) {
+        decrypt_challenge_rank_text_t<uint8_t>(data.data(), data.size());
+      } else {
+        encrypt_challenge_rank_text_t<uint8_t>(data.data(), data.size());
+      }
+      write_output_data(data.data(), data.size());
       break;
     }
 
@@ -1414,15 +1411,8 @@ int main(int argc, char** argv) {
       if (!expect_decompressed) {
         data = prs_decompress(data);
       }
-      string result = disassemble_quest_script(data.data(), data.size(), cli_quest_version);
+      string result = disassemble_quest_script(data.data(), data.size(), cli_quest_version, 1);
       write_output_data(result.data(), result.size());
-      break;
-    }
-
-    case Behavior::DECODE_SJIS: {
-      string data = read_input_data();
-      auto decoded = decode_sjis(data);
-      write_output_data(decoded.data(), decoded.size() * sizeof(decoded[0]));
       break;
     }
 
@@ -1516,8 +1506,8 @@ int main(int argc, char** argv) {
     case Behavior::DECODE_UNICODE_TEXT_SET: {
       auto strings = parse_unicode_text_set(read_input_data());
       JSON j = JSON::list();
-      for (const u16string& s : strings) {
-        j.emplace_back(encode_sjis(s));
+      for (const string& s : strings) {
+        j.emplace_back(s);
       }
       string out_data = j.serialize(JSON::SerializeOption::FORMAT);
       write_output_data(out_data.data(), out_data.size());
@@ -1525,9 +1515,9 @@ int main(int argc, char** argv) {
     }
     case Behavior::ENCODE_UNICODE_TEXT_SET: {
       auto json = JSON::parse(read_input_data());
-      vector<u16string> strings;
+      vector<string> strings;
       for (const auto& s_json : json.as_list()) {
-        strings.emplace_back(decode_sjis(s_json->as_string()));
+        strings.emplace_back(s_json->as_string());
       }
       string encoded = serialize_unicode_text_set(strings);
       write_output_data(encoded.data(), encoded.size());
@@ -1982,7 +1972,7 @@ int main(int argc, char** argv) {
           if (!vms[language]) {
             continue;
           }
-          string s = vms[language]->map->str(&card_index);
+          string s = vms[language]->map->str(&card_index, language);
           fprintf(stdout, "(%c) %s\n", char_for_language_code(language), s.c_str());
         }
       }

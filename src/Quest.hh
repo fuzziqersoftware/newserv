@@ -37,8 +37,8 @@ struct QuestCategoryIndex {
     uint8_t flags;
     char type;
     std::string short_token;
-    std::u16string name;
-    std::u16string description;
+    std::string name;
+    std::string description;
 
     explicit Category(uint32_t category_id, const JSON& json);
 
@@ -58,12 +58,12 @@ struct VersionedQuest {
   uint32_t category_id;
   Episode episode;
   bool joinable;
-  std::u16string name;
+  std::string name;
   QuestScriptVersion version;
   uint8_t language;
   bool is_dlq_encoded;
-  std::u16string short_description;
-  std::u16string long_description;
+  std::string short_description;
+  std::string long_description;
   std::shared_ptr<const std::string> bin_contents;
   std::shared_ptr<const std::string> dat_contents;
   std::shared_ptr<const BattleRules> battle_rules;
@@ -105,7 +105,7 @@ public:
   uint32_t category_id;
   Episode episode;
   bool joinable;
-  std::u16string name;
+  std::string name;
   std::shared_ptr<const BattleRules> battle_rules;
   ssize_t challenge_template_index;
   std::map<uint16_t, std::shared_ptr<const VersionedQuest>> versions;
@@ -147,7 +147,7 @@ std::pair<std::string, std::string> decode_qst_data(const std::string& data);
 std::string encode_qst_file(
     const std::string& bin_data,
     const std::string& dat_data,
-    const std::u16string& name,
+    const std::string& name,
     uint32_t quest_number,
     QuestScriptVersion version,
     bool is_dlq_encoded);

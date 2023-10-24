@@ -702,11 +702,11 @@ string CardDefinition::Stat::str() const {
 bool CardDefinition::Effect::is_empty() const {
   return (this->effect_num == 0 &&
       this->type == ConditionType::NONE &&
-      this->expr.is_filled_with(0) &&
+      this->expr.empty() &&
       this->when == 0 &&
-      this->arg1.is_filled_with(0) &&
-      this->arg2.is_filled_with(0) &&
-      this->arg3.is_filled_with(0) &&
+      this->arg1.empty() &&
+      this->arg2.empty() &&
+      this->arg3.empty() &&
       this->apply_criterion == CriterionCode::NONE &&
       this->name_index == 0);
 }
@@ -781,12 +781,12 @@ string CardDefinition::Effect::str(const char* separator, const TextArchive* tex
     tokens.emplace_back(std::move(cmd_str));
   }
   if (!this->expr.empty()) {
-    tokens.emplace_back("expr=" + string(this->expr));
+    tokens.emplace_back("expr=" + this->expr.decode());
   }
   tokens.emplace_back(string_printf("when=%02hhX", this->when));
-  tokens.emplace_back("arg1=" + this->str_for_arg(this->arg1));
-  tokens.emplace_back("arg2=" + this->str_for_arg(this->arg2));
-  tokens.emplace_back("arg3=" + this->str_for_arg(this->arg3));
+  tokens.emplace_back("arg1=" + this->str_for_arg(this->arg1.decode()));
+  tokens.emplace_back("arg2=" + this->str_for_arg(this->arg2.decode()));
+  tokens.emplace_back("arg3=" + this->str_for_arg(this->arg3.decode()));
   {
     uint8_t type = static_cast<uint8_t>(this->apply_criterion);
     string cond_str = string_printf("cond=%02hhX", type);
@@ -1118,6 +1118,7 @@ string CardDefinition::str(bool single_line, const TextArchive* text_archive) co
     }
   }
 
+  string en_name_s = this->en_name.decode();
   if (single_line) {
     string range_str = string_for_range(this->range);
     return string_printf(
@@ -1126,7 +1127,7 @@ string CardDefinition::str(bool single_line, const TextArchive* text_archive) co
         "cannot_attack=%s cannot_drop=%s hp=%s ap=%s tp=%s mv=%s left=%s right=%s "
         "top=%s class=%s assist_ai_params=[target=%s priority=%hhu effect=%hhu] drop_rates=[%s, %s] effects=[%s]]",
         this->card_id.load(),
-        this->en_name.data(),
+        en_name_s.c_str(),
         type_str.c_str(),
         criterion_str.c_str(),
         rank_str.c_str(),
@@ -1192,7 +1193,7 @@ Card: %04" PRIX32 " \"%s\"\n\
     %s\n\
   Effects:%s",
         this->card_id.load(),
-        this->en_name.data(),
+        en_name_s.c_str(),
         type_str.c_str(),
         card_class_str.c_str(),
         criterion_str.c_str(),
@@ -1635,7 +1636,7 @@ string MapDefinition::CameraSpec::str() const {
       this->unknown_a2[1].load(), this->unknown_a2[2].load());
 }
 
-string MapDefinition::str(const CardIndex* card_index) const {
+string MapDefinition::str(const CardIndex* card_index, uint8_t language) const {
   deque<string> lines;
   auto add_map = [&](const parray<parray<uint8_t, 0x10>, 0x10>& tiles) {
     for (size_t y = 0; y < this->height; y++) {
@@ -1691,14 +1692,14 @@ string MapDefinition::str(const CardIndex* card_index) const {
       "  a5[0x70:0x74]: %02hhX %02hhX %02hhX %02hhX",
       this->unknown_a5[0x70], this->unknown_a5[0x71], this->unknown_a5[0x72], this->unknown_a5[0x73]));
   lines.emplace_back("  default_rules: " + this->default_rules.str());
-  lines.emplace_back("  name: " + format_data_string(this->name));
-  lines.emplace_back("  location_name: " + format_data_string(this->location_name));
-  lines.emplace_back("  quest_name: " + format_data_string(this->quest_name));
-  lines.emplace_back("  description: " + format_data_string(this->description));
+  lines.emplace_back("  name: " + format_data_string(this->name.decode(language)));
+  lines.emplace_back("  location_name: " + format_data_string(this->location_name.decode(language)));
+  lines.emplace_back("  quest_name: " + format_data_string(this->quest_name.decode(language)));
+  lines.emplace_back("  description: " + format_data_string(this->description.decode(language)));
   lines.emplace_back(string_printf("  map_xy: %hu %hu", this->map_x.load(), this->map_y.load()));
   for (size_t z = 0; z < 3; z++) {
     lines.emplace_back(string_printf("  npc_chars[%zu]:", z));
-    lines.emplace_back("    name: " + format_data_string(this->npc_ai_params[z].name));
+    lines.emplace_back("    name: " + format_data_string(this->npc_ai_params[z].name.decode(language)));
     lines.emplace_back(string_printf(
         "    ai_params: (a1: %04hX %04hX, is_arkz: %02hhX, a2: %02hX %02hX %02hX)",
         this->npc_ai_params[z].unknown_a1[0].load(), this->npc_ai_params[z].unknown_a1[1].load(),
@@ -1719,7 +1720,7 @@ string MapDefinition::str(const CardIndex* card_index) const {
         this->npc_ai_params[z].params[0x7A].load(), this->npc_ai_params[z].params[0x7B].load(),
         this->npc_ai_params[z].params[0x7C].load(), this->npc_ai_params[z].params[0x7D].load()));
     lines.emplace_back(string_printf("  npc_decks[%zu]:", z));
-    lines.emplace_back("    name: " + format_data_string(this->npc_decks[z].name));
+    lines.emplace_back("    name: " + format_data_string(this->npc_decks[z].name.decode(language)));
     for (size_t w = 0; w < 0x20; w++) {
       uint16_t card_id = this->npc_decks[z].card_ids[w];
       shared_ptr<const CardIndex::CardEntry> entry;
@@ -1730,7 +1731,7 @@ string MapDefinition::str(const CardIndex* card_index) const {
         }
       }
       if (entry) {
-        string name = entry->def.en_name;
+        string name = entry->def.en_name.decode(language);
         lines.emplace_back(string_printf("    cards[%02zu]: %04hX (%s)", w, card_id, name.c_str()));
       } else {
         lines.emplace_back(string_printf("    cards[%02zu]: %04hX", w, card_id));
@@ -1744,8 +1745,8 @@ string MapDefinition::str(const CardIndex* card_index) const {
       lines.emplace_back(string_printf("  npc_dialogue[%zu][%zu] (when: %04hX, chance: %hu%%):",
           z, x, set.when.load(), set.percent_chance.load()));
       for (size_t w = 0; w < 4; w++) {
-        if (set.strings[w][0] != 0 && static_cast<uint8_t>(set.strings[w][0]) != 0xFF) {
-          string escaped = format_data_string(set.strings[w]);
+        if (!set.strings[w].empty() && set.strings[w].at(0) != 0xFF) {
+          string escaped = format_data_string(set.strings[w].decode(language));
           lines.emplace_back(string_printf("    strings[%zu]: %s", w, escaped.c_str()));
         }
       }
@@ -1754,14 +1755,14 @@ string MapDefinition::str(const CardIndex* card_index) const {
   lines.emplace_back("  a7: " + format_data_string(this->unknown_a7.data(), this->unknown_a7.bytes()));
   lines.emplace_back(string_printf("  npc_ai_params_entry_index: [%08" PRIX32 ", %08" PRIX32 ", %08" PRIX32 "]",
       this->npc_ai_params_entry_index[0].load(), this->npc_ai_params_entry_index[1].load(), this->npc_ai_params_entry_index[2].load()));
-  if (this->before_message[0]) {
-    lines.emplace_back("  before_message: " + format_data_string(this->before_message));
+  if (!this->before_message.empty()) {
+    lines.emplace_back("  before_message: " + format_data_string(this->before_message.decode(language)));
   }
-  if (this->after_message[0]) {
-    lines.emplace_back("  after_message: " + format_data_string(this->after_message));
+  if (!this->after_message.empty()) {
+    lines.emplace_back("  after_message: " + format_data_string(this->after_message.decode(language)));
   }
-  if (this->dispatch_message[0]) {
-    lines.emplace_back("  dispatch_message: " + format_data_string(this->dispatch_message));
+  if (!this->dispatch_message.empty()) {
+    lines.emplace_back("  dispatch_message: " + format_data_string(this->dispatch_message.decode(language)));
   }
   for (size_t z = 0; z < 0x10; z++) {
     uint16_t card_id = this->reward_card_ids[z];
@@ -1773,7 +1774,7 @@ string MapDefinition::str(const CardIndex* card_index) const {
       }
     }
     if (entry) {
-      string name = entry->def.en_name;
+      string name = entry->def.en_name.decode(language);
       lines.emplace_back(string_printf("  reward_cards[%02zu]: %04hX (%s)", z, card_id, name.c_str()));
     } else {
       lines.emplace_back(string_printf("  reward_cards[%02zu]: %04hX", z, card_id));
@@ -1955,7 +1956,7 @@ MapDefinitionTrial::operator MapDefinition() const {
       ret.dialogue_sets[z][x].percent_chance = 0xFFFF;
       for (size_t w = 0; w < 4; w++) {
         ret.dialogue_sets[z][x].strings[w].clear(0xFF);
-        ret.dialogue_sets[z][x].strings[w][0] = 0x00;
+        ret.dialogue_sets[z][x].strings[w].set_byte(0, 0);
       }
     }
   }
@@ -1972,7 +1973,7 @@ MapDefinitionTrial::operator MapDefinition() const {
   // guess and fill in the field appropriately here.
   size_t num_npc_decks = 0;
   for (size_t z = 0; z < ret.npc_decks.size(); z++) {
-    if (ret.npc_decks[z].name[0]) {
+    if (!ret.npc_decks[z].name.empty()) {
       num_npc_decks++;
     }
   }
@@ -2270,7 +2271,7 @@ CardIndex::CardIndex(
 
       // Some cards intentionally have the same name, so we just leave them
       // unindexed (they can still be looked up by ID, of course)
-      string name = entry->def.en_name;
+      string name = entry->def.en_name.decode(1);
       this->card_definitions_by_name.emplace(name, entry);
       this->card_definitions_by_name_normalized.emplace(this->normalize_card_name(name), entry);
 
@@ -2510,7 +2511,7 @@ MapIndex::MapIndex(const string& directory) {
         throw runtime_error("unknown map file format");
       }
 
-      string name = format_data_string(vm->map->name);
+      string name = format_data_string(vm->map->name.decode(vm->language));
       auto map_it = this->maps.find(vm->map->map_number);
       if (map_it == this->maps.end()) {
         map_it = this->maps.emplace(vm->map->map_number, new Map(vm)).first;
@@ -2529,7 +2530,7 @@ MapIndex::MapIndex(const string& directory) {
             vm->map->is_quest() ? "quest" : "free",
             name.c_str());
       }
-      this->maps_by_name.emplace(vm->map->name, map_it->second);
+      this->maps_by_name.emplace(vm->map->name.decode(vm->language), map_it->second);
 
     } catch (const exception& e) {
       static_game_data_log.warning("Failed to index Episode 3 map %s: %s",
@@ -2579,16 +2580,16 @@ const string& MapIndex::get_compressed_list(size_t num_players, uint8_t language
       e.modification_tiles = vm->map->modification_tiles;
 
       e.name_offset = strings_w.size();
-      strings_w.write(vm->map->name.data(), vm->map->name.len());
+      strings_w.write(vm->map->name.data, vm->map->name.used_bytes_8());
       strings_w.put_u8(0);
       e.location_name_offset = strings_w.size();
-      strings_w.write(vm->map->location_name.data(), vm->map->location_name.len());
+      strings_w.write(vm->map->location_name.data, vm->map->location_name.used_bytes_8());
       strings_w.put_u8(0);
       e.quest_name_offset = strings_w.size();
-      strings_w.write(vm->map->quest_name.data(), vm->map->quest_name.len());
+      strings_w.write(vm->map->quest_name.data, vm->map->quest_name.used_bytes_8());
       strings_w.put_u8(0);
       e.description_offset = strings_w.size();
-      strings_w.write(vm->map->description.data(), vm->map->description.len());
+      strings_w.write(vm->map->description.data, vm->map->description.used_bytes_8());
       strings_w.put_u8(0);
       e.map_category = vm->map->map_category;
 

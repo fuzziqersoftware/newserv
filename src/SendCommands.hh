@@ -174,47 +174,48 @@ void send_complete_player_bb(std::shared_ptr<Client> c);
 void send_enter_directory_patch(std::shared_ptr<Client> c, const std::string& dir);
 void send_patch_file(std::shared_ptr<Client> c, std::shared_ptr<PatchFileIndex::File> f);
 
-void send_message_box(std::shared_ptr<Client> c, const std::u16string& text);
+void send_message_box(std::shared_ptr<Client> c, const std::string& text);
 void send_ep3_timed_message_box(Channel& ch, uint32_t frames, const std::string& text);
-void send_lobby_name(std::shared_ptr<Client> c, const std::u16string& text);
-void send_quest_info(std::shared_ptr<Client> c, const std::u16string& text,
+void send_lobby_name(std::shared_ptr<Client> c, const std::string& text);
+void send_quest_info(std::shared_ptr<Client> c, const std::string& text,
     bool is_download_quest);
-void send_lobby_message_box(std::shared_ptr<Client> c, const std::u16string& text);
-void send_ship_info(std::shared_ptr<Client> c, const std::u16string& text);
-void send_ship_info(Channel& ch, const std::u16string& text);
-void send_text_message(Channel& ch, const std::u16string& text);
-void send_text_message(std::shared_ptr<Client> c, const std::u16string& text);
-void send_text_message(std::shared_ptr<Lobby> l, const std::u16string& text);
-void send_text_message(std::shared_ptr<ServerState> s, const std::u16string& text);
+void send_lobby_message_box(std::shared_ptr<Client> c, const std::string& text);
+void send_ship_info(std::shared_ptr<Client> c, const std::string& text);
+void send_ship_info(Channel& ch, const std::string& text);
+void send_text_message(Channel& ch, const std::string& text);
+void send_text_message(std::shared_ptr<Client> c, const std::string& text);
+void send_text_message(std::shared_ptr<Lobby> l, const std::string& text);
+void send_text_message(std::shared_ptr<ServerState> s, const std::string& text);
 
-std::u16string prepare_chat_message(
+std::string prepare_chat_data(
     GameVersion version,
-    const std::u16string& from_name,
-    const std::u16string& text,
+    uint8_t language,
+    const std::string& from_name,
+    const std::string& text,
     char private_flags);
-void send_chat_message(
+void send_chat_message_from_client(
     Channel& ch,
-    const std::u16string& text,
+    const std::string& text,
     char private_flags);
-void send_chat_message(
+void send_prepared_chat_message(
     std::shared_ptr<Client> c,
     uint32_t from_guild_card_number,
-    const std::u16string& prepared_data);
-void send_chat_message(
+    const std::string& prepared_data);
+void send_prepared_chat_message(
     std::shared_ptr<Lobby> l,
     uint32_t from_guild_card_number,
-    const std::u16string& prepared_data);
+    const std::string& prepared_data);
 void send_chat_message(
     std::shared_ptr<Client> c,
     uint32_t from_guild_card_number,
-    const std::u16string& from_name,
-    const std::u16string& text,
+    const std::string& from_name,
+    const std::string& text,
     char private_flags);
 void send_simple_mail(
     std::shared_ptr<Client> c,
     uint32_t from_serial_number,
-    const std::u16string& from_name,
-    const std::u16string& text);
+    const std::string& from_name,
+    const std::string& text);
 
 template <typename TargetT>
 __attribute__((format(printf, 2, 3))) void send_text_message_printf(
@@ -223,8 +224,7 @@ __attribute__((format(printf, 2, 3))) void send_text_message_printf(
   va_start(va, format);
   std::string buf = string_vprintf(format, va);
   va_end(va);
-  std::u16string decoded = decode_sjis(buf);
-  return send_text_message(t, decoded.c_str());
+  return send_text_message(t, buf.c_str());
 }
 
 __attribute__((format(printf, 2, 3))) void send_ep3_text_message_printf(
@@ -240,9 +240,10 @@ void send_card_search_result(
 void send_guild_card(
     Channel& ch,
     uint32_t guild_card_number,
-    const std::u16string& name,
-    const std::u16string& team_name,
-    const std::u16string& description,
+    const std::string& name,
+    const std::string& team_name,
+    const std::string& description,
+    uint8_t language,
     uint8_t section_id,
     uint8_t char_class);
 void send_guild_card(std::shared_ptr<Client> c, std::shared_ptr<Client> source);

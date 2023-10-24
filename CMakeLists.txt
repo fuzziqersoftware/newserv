@@ -33,6 +33,7 @@ set (LIBEVENT_LIBRARIES
         ${LIBEVENT_CORE})
 
 find_package(phosg REQUIRED)
+find_package(Iconv REQUIRED)
 find_package(resource_file QUIET)
 
 
@@ -109,8 +110,8 @@ add_executable(newserv
     src/Version.cc
     src/WordSelectTable.cc
 )
-target_include_directories(newserv PUBLIC ${LIBEVENT_INCLUDE_DIR})
-target_link_libraries(newserv phosg ${LIBEVENT_LIBRARIES} pthread)
+target_include_directories(newserv PUBLIC ${LIBEVENT_INCLUDE_DIR} ${Iconv_INCLUDE_DIRS})
+target_link_libraries(newserv phosg ${LIBEVENT_LIBRARIES} ${Iconv_LIBRARIES} pthread)
 
 if(resource_file_FOUND)
     target_compile_definitions(newserv PUBLIC HAVE_RESOURCE_FILE)

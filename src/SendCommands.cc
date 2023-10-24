@@ -140,12 +140,10 @@ prepare_server_init_contents_console(
     uint32_t server_key, uint32_t client_key, uint8_t flags) {
   bool initial_connection = (flags & SendServerInitFlag::IS_INITIAL_CONNECTION);
   S_ServerInitWithAfterMessage_DC_PC_V3_02_17_91_9B<0xB4> cmd;
-  cmd.basic_cmd.copyright = initial_connection
-      ? dc_port_map_copyright
-      : dc_lobby_server_copyright;
+  cmd.basic_cmd.copyright.encode(initial_connection ? dc_port_map_copyright : dc_lobby_server_copyright);
   cmd.basic_cmd.server_key = server_key;
   cmd.basic_cmd.client_key = client_key;
-  cmd.after_message = anti_copyright;
+  cmd.after_message.encode(anti_copyright);
   return cmd;
 }
 
@@ -185,10 +183,10 @@ prepare_server_init_contents_bb(
     uint8_t flags) {
   bool use_secondary_message = (flags & SendServerInitFlag::USE_SECONDARY_MESSAGE);
   S_ServerInitWithAfterMessage_BB_03_9B<0xB4> cmd;
-  cmd.basic_cmd.copyright = use_secondary_message ? bb_pm_server_copyright : bb_game_server_copyright;
+  cmd.basic_cmd.copyright.encode(use_secondary_message ? bb_pm_server_copyright : bb_game_server_copyright);
   cmd.basic_cmd.server_key = server_key;
   cmd.basic_cmd.client_key = client_key;
-  cmd.after_message = anti_copyright;
+  cmd.after_message.encode(anti_copyright);
   return cmd;
 }
 
@@ -219,7 +217,7 @@ void send_server_init_patch(shared_ptr<Client> c) {
   uint32_t client_key = random_object<uint32_t>();
 
   S_ServerInit_Patch_02 cmd;
-  cmd.copyright = patch_server_copyright;
+  cmd.copyright.encode(patch_server_copyright);
   cmd.server_key = server_key;
   cmd.client_key = client_key;
   send_command_t(c, 0x02, 0x00, cmd);
@@ -267,29 +265,29 @@ void send_quest_open_file_t(
   switch (type) {
     case QuestFileType::ONLINE:
       command_num = 0x44;
-      cmd.name = "PSO/" + quest_name;
+      cmd.name.encode("PSO/" + quest_name);
       cmd.type = 0;
       break;
     case QuestFileType::GBA_DEMO:
       command_num = 0xA6;
-      cmd.name = "GBA Demo";
+      cmd.name.encode("GBA Demo");
       cmd.type = 2;
       break;
     case QuestFileType::DOWNLOAD:
       command_num = 0xA6;
-      cmd.name = "PSO/" + quest_name;
+      cmd.name.encode("PSO/" + quest_name);
       cmd.type = 0;
       break;
     case QuestFileType::EPISODE_3:
       command_num = 0xA6;
-      cmd.name = "PSO/" + quest_name;
+      cmd.name.encode("PSO/" + quest_name);
       cmd.type = 3;
       break;
     default:
       throw logic_error("invalid quest file type");
   }
   cmd.file_size = file_size;
-  cmd.filename = filename.c_str();
+  cmd.filename.encode(filename);
   send_command_t(c, command_num, 0x00, cmd);
 }
 
@@ -307,7 +305,7 @@ void send_quest_buffer_overflow(shared_ptr<Client> c) {
       c, "BufferOverflow", filename, 0x18, QuestFileType::EPISODE_3);
 
   S_WriteFile_13_A7 cmd;
-  cmd.filename = filename;
+  cmd.filename.encode(filename);
   memcpy(cmd.data.data(), fn->code.data(), fn->code.size());
   if (fn->code.size() < 0x400) {
     memset(&cmd.data[fn->code.size()], 0, 0x400 - fn->code.size());
@@ -546,7 +544,7 @@ void send_stream_file_index_bb(shared_ptr<Client> c) {
     le_uint32_t size;
     le_uint32_t checksum; // crc32 of file data
     le_uint32_t offset; // offset in stream (== sum of all previous files' sizes)
-    ptext<char, 0x40> filename;
+    pstring<TextEncoding::ASCII, 0x40> filename;
   };
 
   vector<S_StreamFileIndexEntry_BB_01EB> entries;
@@ -569,7 +567,7 @@ void send_stream_file_index_bb(shared_ptr<Client> c) {
       e.checksum = bb_stream_files_cache.get_obj<uint32_t>(key + ".crc32", compute_checksum).obj;
     }
     e.offset = offset;
-    e.filename = filename;
+    e.filename.encode(filename);
     offset += e.size;
   }
   send_command_vt(c, 0x01EB, entries.size(), entries);
@@ -655,12 +653,12 @@ void send_complete_player_bb(shared_ptr<Client> c) {
 // patch functions
 
 void send_enter_directory_patch(shared_ptr<Client> c, const string& dir) {
-  S_EnterDirectory_Patch_09 cmd = {dir};
+  S_EnterDirectory_Patch_09 cmd = {{dir, 1}};
   send_command_t(c, 0x09, 0x00, cmd);
 }
 
 void send_patch_file(shared_ptr<Client> c, shared_ptr<PatchFileIndex::File> f) {
-  S_OpenFile_Patch_06 open_cmd = {0, f->size, f->name};
+  S_OpenFile_Patch_06 open_cmd = {0, f->size, {f->name, 1}};
   send_command_t(c, 0x06, 0x00, open_cmd);
 
   for (size_t x = 0; x < f->chunk_crcs.size(); x++) {
@@ -681,45 +679,34 @@ void send_patch_file(shared_ptr<Client> c, shared_ptr<PatchFileIndex::File> f) {
 ////////////////////////////////////////////////////////////////////////////////
 // message functions
 
-void send_text(Channel& ch, StringWriter& w, uint16_t command,
-    const u16string& text, bool should_add_color) {
-  if ((ch.version == GameVersion::DC) ||
-      (ch.version == GameVersion::GC) ||
-      (ch.version == GameVersion::XB)) {
-    string data = encode_sjis(text);
-    if (should_add_color) {
-      add_color(w, data.c_str(), data.size());
-    } else {
-      w.write(data);
-    }
-    w.put_u8(0);
-  } else {
-    if (should_add_color) {
-      add_color(w, text.c_str(), text.size());
-    } else {
-      w.write(text.data(), text.size() * sizeof(char16_t));
-    }
+void send_text(Channel& ch, StringWriter& w, uint16_t command, const string& text, bool should_add_color) {
+  bool is_w = (ch.version == GameVersion::PC || ch.version == GameVersion::BB || ch.version == GameVersion::PATCH);
+
+  w.write(tt_encode_marked_optional(should_add_color ? add_color(text) : text, ch.language, is_w));
+  if (is_w) {
     w.put_u16(0);
+  } else {
+    w.put_u8(0);
   }
+
   while (w.str().size() & 3) {
     w.put_u8(0);
   }
   ch.send(command, 0x00, w.str());
 }
 
-void send_text(Channel& ch, uint16_t command, const u16string& text, bool should_add_color) {
+void send_text(Channel& ch, uint16_t command, const string& text, bool should_add_color) {
   StringWriter w;
   send_text(ch, w, command, text, should_add_color);
 }
 
-void send_header_text(Channel& ch, uint16_t command,
-    uint32_t guild_card_number, const u16string& text, bool should_add_color) {
+void send_header_text(Channel& ch, uint16_t command, uint32_t guild_card_number, const string& text, bool should_add_color) {
   StringWriter w;
   w.put(SC_TextHeader_01_06_11_B0_EE({0, guild_card_number}));
   send_text(ch, w, command, text, should_add_color);
 }
 
-void send_message_box(shared_ptr<Client> c, const u16string& text) {
+void send_message_box(shared_ptr<Client> c, const string& text) {
   uint16_t command;
   switch (c->version()) {
     case GameVersion::PATCH:
@@ -741,9 +728,10 @@ void send_message_box(shared_ptr<Client> c, const u16string& text) {
 }
 
 void send_ep3_timed_message_box(Channel& ch, uint32_t frames, const string& message) {
+  string encoded = tt_encode_marked(message, ch.language, false);
   StringWriter w;
   w.put<S_TimedMessageBoxHeader_GC_Ep3_EA>({frames});
-  add_color(w, message.data(), message.size());
+  w.write(encoded);
   w.put_u8(0);
   while (w.size() & 3) {
     w.put_u8(0);
@@ -751,36 +739,35 @@ void send_ep3_timed_message_box(Channel& ch, uint32_t frames, const string& mess
   ch.send(0xEA, 0x00, w.str());
 }
 
-void send_lobby_name(shared_ptr<Client> c, const u16string& text) {
+void send_lobby_name(shared_ptr<Client> c, const string& text) {
   send_text(c->channel, 0x8A, text, false);
 }
 
-void send_quest_info(shared_ptr<Client> c, const u16string& text,
-    bool is_download_quest) {
+void send_quest_info(shared_ptr<Client> c, const string& text, bool is_download_quest) {
   send_text(c->channel, is_download_quest ? 0xA5 : 0xA3, text, true);
 }
 
-void send_lobby_message_box(shared_ptr<Client> c, const u16string& text) {
+void send_lobby_message_box(shared_ptr<Client> c, const string& text) {
   send_header_text(c->channel, 0x01, 0, text, true);
 }
 
-void send_ship_info(shared_ptr<Client> c, const u16string& text) {
+void send_ship_info(shared_ptr<Client> c, const string& text) {
   send_header_text(c->channel, 0x11, 0, text, true);
 }
 
-void send_ship_info(Channel& ch, const u16string& text) {
+void send_ship_info(Channel& ch, const string& text) {
   send_header_text(ch, 0x11, 0, text, true);
 }
 
-void send_text_message(Channel& ch, const u16string& text) {
+void send_text_message(Channel& ch, const string& text) {
   send_header_text(ch, 0xB0, 0, text, true);
 }
 
-void send_text_message(shared_ptr<Client> c, const u16string& text) {
+void send_text_message(shared_ptr<Client> c, const string& text) {
   send_header_text(c->channel, 0xB0, 0, text, true);
 }
 
-void send_text_message(shared_ptr<Lobby> l, const u16string& text) {
+void send_text_message(shared_ptr<Lobby> l, const string& text) {
   for (size_t x = 0; x < l->max_clients; x++) {
     if (l->clients[x]) {
       send_text_message(l->clients[x], text);
@@ -788,7 +775,7 @@ void send_text_message(shared_ptr<Lobby> l, const u16string& text) {
   }
 }
 
-void send_text_message(shared_ptr<ServerState> s, const u16string& text) {
+void send_text_message(shared_ptr<ServerState> s, const string& text) {
   // TODO: We should have a collection of all clients (even those not in any
   // lobby) and use that instead here
   for (auto& l : s->all_lobbies()) {
@@ -796,48 +783,52 @@ void send_text_message(shared_ptr<ServerState> s, const u16string& text) {
   }
 }
 
-__attribute__((format(printf, 2, 3))) void send_ep3_text_message_printf(
-    shared_ptr<ServerState> s, const char* format, ...) {
+__attribute__((format(printf, 2, 3))) void send_ep3_text_message_printf(shared_ptr<ServerState> s, const char* format, ...) {
   va_list va;
   va_start(va, format);
   string buf = string_vprintf(format, va);
   va_end(va);
-  u16string decoded = decode_sjis(buf);
   for (auto& it : s->id_to_lobby) {
     for (auto& c : it.second->clients) {
       if (c && (c->flags & Client::Flag::IS_EPISODE_3)) {
-        send_text_message(c, decoded);
+        send_text_message(c, buf);
       }
     }
   }
 }
 
-u16string prepare_chat_message(
-    GameVersion version,
-    const u16string& from_name,
-    const u16string& text,
-    char private_flags) {
-  u16string data;
-  if (version == GameVersion::BB) {
-    data.append(u"\tJ");
+string prepare_chat_data(GameVersion version, uint8_t language, const string& from_name, const string& text, char private_flags) {
+  string data;
+  if ((version == GameVersion::BB) || (version == GameVersion::PC)) {
+    if (version == GameVersion::BB) {
+      data.append("\tJ");
+    }
+    data.append(from_name);
+    data.append(1, '\t');
+    if (private_flags) {
+      data.append(1, static_cast<uint16_t>(private_flags));
+    }
+    data.append(language ? "\tE" : "\tJ");
+    data.append(text);
+    return tt_utf8_to_utf16(data);
+  } else {
+    data.append(from_name);
+    data.append(1, '\t');
+    if (private_flags) {
+      data.append(1, static_cast<uint16_t>(private_flags));
+    }
+    data.append(tt_encode_marked(text, language, false));
+    return data;
   }
-  data.append(remove_language_marker(from_name));
-  data.append(1, u'\t');
-  if (private_flags) {
-    data.append(1, static_cast<uint16_t>(private_flags));
-  }
-  data.append(u"\tJ");
-  data.append(text);
-  return data;
 }
 
-void send_chat_message(Channel& ch, const u16string& text, char private_flags) {
+void send_chat_message_from_client(Channel& ch, const string& text, char private_flags) {
   if (private_flags != 0) {
     if (ch.version != GameVersion::GC) {
       throw runtime_error("nonzero private_flags in non-GC chat message");
     }
-    u16string effective_text;
-    effective_text.push_back(static_cast<char16_t>(private_flags));
+    string effective_text;
+    effective_text.push_back(private_flags);
     effective_text += text;
     send_header_text(ch, 0x06, 0, effective_text, false);
   } else {
@@ -845,68 +836,63 @@ void send_chat_message(Channel& ch, const u16string& text, char private_flags) {
   }
 }
 
-void send_chat_message(shared_ptr<Client> c, uint32_t from_guild_card_number,
-    const u16string& prepared_data) {
-  send_header_text(c->channel, 0x06, from_guild_card_number, prepared_data, false);
+void send_prepared_chat_message(shared_ptr<Client> c, uint32_t from_guild_card_number, const string& prepared_data) {
+  StringWriter w;
+  w.put(SC_TextHeader_01_06_11_B0_EE{0, from_guild_card_number});
+  w.write(prepared_data);
+  w.put_u8(0);
+  if ((c->version() == GameVersion::BB) || (c->version() == GameVersion::PC)) {
+    w.put_u8(0);
+  }
+  while (w.size() & 3) {
+    w.put_u8(0);
+  }
+  send_command(c, 0x06, 0x00, w.str());
 }
 
-void send_chat_message(shared_ptr<Lobby> l, uint32_t from_guild_card_number,
-    const u16string& prepared_data) {
+void send_prepared_chat_message(shared_ptr<Lobby> l, uint32_t from_guild_card_number, const string& prepared_data) {
   for (auto c : l->clients) {
     if (c) {
-      send_header_text(c->channel, 0x06, from_guild_card_number, prepared_data, false);
+      send_prepared_chat_message(c, from_guild_card_number, prepared_data);
     }
   }
 }
 
-void send_chat_message(shared_ptr<Client> c, uint32_t from_guild_card_number,
-    const u16string& from_name, const u16string& text, char private_flags) {
-  auto data = prepare_chat_message(c->version(), from_name, text, private_flags);
-  send_chat_message(c, from_guild_card_number, data);
+void send_chat_message(shared_ptr<Client> c, uint32_t from_guild_card_number, const string& from_name, const string& text, char private_flags) {
+  send_prepared_chat_message(c, from_guild_card_number, prepare_chat_data(c->version(), c->language(), from_name, text, private_flags));
 }
 
 template <typename CmdT>
-void send_simple_mail_t(
-    shared_ptr<Client> c,
-    uint32_t from_guild_card_number,
-    const u16string& from_name,
-    const u16string& text) {
+void send_simple_mail_t(shared_ptr<Client> c, uint32_t from_guild_card_number, const string& from_name, const string& text) {
   CmdT cmd;
   cmd.player_tag = 0x00010000;
   cmd.from_guild_card_number = from_guild_card_number;
-  cmd.from_name = from_name;
+  cmd.from_name.encode(from_name, c->language());
   cmd.to_guild_card_number = c->license->serial_number;
-  cmd.text = text;
+  cmd.text.encode(text, c->language());
   send_command_t(c, 0x81, 0x00, cmd);
 }
 
-void send_simple_mail_bb(
-    shared_ptr<Client> c,
-    uint32_t from_guild_card_number,
-    const u16string& from_name,
-    const u16string& text) {
+void send_simple_mail_bb(shared_ptr<Client> c, uint32_t from_guild_card_number, const string& from_name, const string& text) {
   SC_SimpleMail_BB_81 cmd;
   cmd.player_tag = 0x00010000;
   cmd.from_guild_card_number = from_guild_card_number;
-  cmd.from_name = from_name;
+  cmd.from_name.encode(from_name, c->language());
   cmd.to_guild_card_number = c->license->serial_number;
-  cmd.received_date = decode_sjis(format_time(now()));
-  cmd.text = text;
+  cmd.received_date.encode(format_time(now()), c->language());
+  cmd.text.encode(text, c->language());
   send_command_t(c, 0x81, 0x00, cmd);
 }
 
-void send_simple_mail(shared_ptr<Client> c, uint32_t from_guild_card_number,
-    const u16string& from_name, const u16string& text) {
+void send_simple_mail(shared_ptr<Client> c, uint32_t from_guild_card_number, const string& from_name, const string& text) {
   switch (c->version()) {
     case GameVersion::DC:
     case GameVersion::GC:
     case GameVersion::XB:
-      send_simple_mail_t<SC_SimpleMail_DC_V3_81>(
-          c, from_guild_card_number, from_name, text);
+      send_simple_mail_t<SC_SimpleMail_DC_V3_81>(c, from_guild_card_number, from_name, text);
       break;
     case GameVersion::PC:
-      send_simple_mail_t<SC_SimpleMail_PC_81>(
-          c, from_guild_card_number, from_name, text);
+      send_simple_mail_t<SC_SimpleMail_PC_81>(c, from_guild_card_number, from_name, text);
       break;
     case GameVersion::BB:
       send_simple_mail_bb(c, from_guild_card_number, from_name, text);
@@ -919,9 +905,9 @@ void send_simple_mail(shared_ptr<Client> c, uint32_t from_guild_card_number,
 ////////////////////////////////////////////////////////////////////////////////
 // info board
 
-template <typename CharT>
+template <TextEncoding NameEncoding, TextEncoding MessageEncoding>
 void send_info_board_t(shared_ptr<Client> c) {
-  vector<S_InfoBoardEntry_D8<CharT>> entries;
+  vector<S_InfoBoardEntry_D8<NameEncoding, MessageEncoding>> entries;
   auto l = c->require_lobby();
   for (const auto& other_c : l->clients) {
     if (!other_c.get()) {
@@ -929,9 +915,8 @@ void send_info_board_t(shared_ptr<Client> c) {
     }
     auto other_p = other_c->game_data.player(true, false);
     auto& e = entries.emplace_back();
-    e.name = other_p->disp.name;
-    e.message = other_p->info_board;
-    add_color_inplace(e.message);
+    e.name.encode(other_p->disp.name.decode(other_p->inventory.language), c->language());
+    e.message.encode(add_color(other_p->info_board.decode(other_p->inventory.language)), c->language());
   }
   send_command_vt(c, 0xD8, entries.size(), entries);
 }
@@ -940,13 +925,15 @@ void send_info_board(shared_ptr<Client> c) {
   if (c->version() == GameVersion::PC ||
       c->version() == GameVersion::PATCH ||
       c->version() == GameVersion::BB) {
-    send_info_board_t<char16_t>(c);
+    send_info_board_t<TextEncoding::UTF16, TextEncoding::UTF16>(c);
+  } else if (c->language()) {
+    send_info_board_t<TextEncoding::ASCII, TextEncoding::ISO8859>(c);
   } else {
-    send_info_board_t<char>(c);
+    send_info_board_t<TextEncoding::ASCII, TextEncoding::SJIS>(c);
   }
 }
 
-template <typename CommandHeaderT, typename CharT>
+template <typename CommandHeaderT, TextEncoding Encoding>
 void send_card_search_result_t(
     shared_ptr<Client> c,
     shared_ptr<Client> result,
@@ -954,7 +941,7 @@ void send_card_search_result_t(
   auto s = c->require_server_state();
   const auto& port_name = version_to_lobby_port_name.at(static_cast<size_t>(c->version()));
 
-  S_GuildCardSearchResult<CommandHeaderT, CharT> cmd;
+  S_GuildCardSearchResult<CommandHeaderT, Encoding> cmd;
   cmd.player_tag = 0x00010000;
   cmd.searcher_guild_card_number = c->license->serial_number;
   cmd.result_guild_card_number = result->license->serial_number;
@@ -965,23 +952,19 @@ void send_card_search_result_t(
   cmd.reconnect_command.port = s->name_to_port_config.at(port_name)->port;
   cmd.reconnect_command.unused = 0;
 
-  auto encoded_server_name = encode_sjis(s->name);
   string location_string;
   if (result_lobby->is_game()) {
-    string encoded_lobby_name = encode_sjis(result_lobby->name);
-    location_string = string_printf("%s,BLOCK01,%s",
-        encoded_lobby_name.c_str(), encoded_server_name.c_str());
+    location_string = string_printf("%s,BLOCK01,%s", result_lobby->name.c_str(), s->name.c_str());
   } else if (result_lobby->is_ep3()) {
-    location_string = string_printf("BLOCK01-C%02" PRIu32 ",BLOCK01,%s",
-        result_lobby->lobby_id - 15, encoded_server_name.c_str());
+    location_string = string_printf("BLOCK01-C%02" PRIu32 ",BLOCK01,%s", result_lobby->lobby_id - 15, s->name.c_str());
   } else {
-    location_string = string_printf("BLOCK01-%02" PRIu32 ",BLOCK01,%s",
-        result_lobby->lobby_id, encoded_server_name.c_str());
+    location_string = string_printf("BLOCK01-%02" PRIu32 ",BLOCK01,%s", result_lobby->lobby_id, s->name.c_str());
   }
-  cmd.location_string = location_string;
+  cmd.location_string.encode(location_string, c->language());
   cmd.extension.lobby_refs[0].menu_id = MenuID::LOBBY;
   cmd.extension.lobby_refs[0].item_id = result_lobby->lobby_id;
-  cmd.extension.player_name = result->game_data.player(true, false)->disp.name;
+  auto rp = result->game_data.player(true, false);
+  cmd.extension.player_name.encode(rp->disp.name.decode(rp->inventory.language), c->language());
 
   send_command_t(c, 0x41, 0x00, cmd);
 }
@@ -993,11 +976,11 @@ void send_card_search_result(
   if ((c->version() == GameVersion::DC) ||
       (c->version() == GameVersion::GC) ||
       (c->version() == GameVersion::XB)) {
-    send_card_search_result_t<PSOCommandHeaderDCV3, char>(c, result, result_lobby);
+    send_card_search_result_t<PSOCommandHeaderDCV3, TextEncoding::SJIS>(c, result, result_lobby);
   } else if (c->version() == GameVersion::PC) {
-    send_card_search_result_t<PSOCommandHeaderPC, char16_t>(c, result, result_lobby);
+    send_card_search_result_t<PSOCommandHeaderPC, TextEncoding::UTF16>(c, result, result_lobby);
   } else if (c->version() == GameVersion::BB) {
-    send_card_search_result_t<PSOCommandHeaderBB, char16_t>(c, result, result_lobby);
+    send_card_search_result_t<PSOCommandHeaderBB, TextEncoding::UTF16>(c, result, result_lobby);
   } else {
     throw logic_error("unimplemented versioned command");
   }
@@ -1007,72 +990,78 @@ template <typename CmdT>
 void send_guild_card_dc_pc_v3_t(
     Channel& ch,
     uint32_t guild_card_number,
-    const u16string& name,
-    const u16string& description,
+    const string& name,
+    const string& description,
+    uint8_t language,
     uint8_t section_id,
     uint8_t char_class) {
   CmdT cmd;
   cmd.header.subcommand = 0x06;
   cmd.header.size = sizeof(CmdT) / 4;
   cmd.header.unused = 0x0000;
-  cmd.player_tag = 0x00010000;
-  cmd.guild_card_number = guild_card_number;
-  cmd.name = name;
-  remove_language_marker_inplace(cmd.name);
-  cmd.description = description;
-  cmd.present = 1;
-  cmd.present2 = 1;
-  cmd.section_id = section_id;
-  cmd.char_class = char_class;
+  cmd.guild_card.player_tag = 0x00010000;
+  cmd.guild_card.guild_card_number = guild_card_number;
+  cmd.guild_card.name.encode(name, ch.language);
+  cmd.guild_card.description.encode(description, ch.language);
+  cmd.guild_card.present = 1;
+  cmd.guild_card.language = language;
+  cmd.guild_card.section_id = section_id;
+  cmd.guild_card.char_class = char_class;
   ch.send(0x60, 0x00, &cmd, sizeof(cmd));
 }
 
 static void send_guild_card_bb(
     Channel& ch,
     uint32_t guild_card_number,
-    const u16string& name,
-    const u16string& team_name,
-    const u16string& description,
+    const string& name,
+    const string& team_name,
+    const string& description,
+    uint8_t language,
     uint8_t section_id,
     uint8_t char_class) {
   G_SendGuildCard_BB_6x06 cmd;
   cmd.header.subcommand = 0x06;
   cmd.header.size = sizeof(cmd) / 4;
   cmd.header.unused = 0x0000;
-  cmd.guild_card_number = guild_card_number;
-  cmd.name = remove_language_marker(name);
-  cmd.team_name = remove_language_marker(team_name);
-  cmd.description = description;
-  cmd.present = 1;
-  cmd.present2 = 1;
-  cmd.section_id = section_id;
-  cmd.char_class = char_class;
+  cmd.guild_card.guild_card_number = guild_card_number;
+  cmd.guild_card.name.encode(name, ch.language);
+  cmd.guild_card.team_name.encode(team_name, ch.language);
+  cmd.guild_card.description.encode(description, ch.language);
+  cmd.guild_card.present = 1;
+  cmd.guild_card.language = language;
+  cmd.guild_card.section_id = section_id;
+  cmd.guild_card.char_class = char_class;
   ch.send(0x60, 0x00, &cmd, sizeof(cmd));
 }
 
 void send_guild_card(
     Channel& ch,
     uint32_t guild_card_number,
-    const u16string& name,
-    const u16string& team_name,
-    const u16string& description,
+    const string& name,
+    const string& team_name,
+    const string& description,
+    uint8_t language,
     uint8_t section_id,
     uint8_t char_class) {
-  if (ch.version == GameVersion::DC) {
-    send_guild_card_dc_pc_v3_t<G_SendGuildCard_DC_6x06>(
-        ch, guild_card_number, name, description, section_id, char_class);
-  } else if (ch.version == GameVersion::PC) {
-    send_guild_card_dc_pc_v3_t<G_SendGuildCard_PC_6x06>(
-        ch, guild_card_number, name, description, section_id, char_class);
-  } else if ((ch.version == GameVersion::GC) ||
-      (ch.version == GameVersion::XB)) {
-    send_guild_card_dc_pc_v3_t<G_SendGuildCard_V3_6x06>(
-        ch, guild_card_number, name, description, section_id, char_class);
-  } else if (ch.version == GameVersion::BB) {
-    send_guild_card_bb(
-        ch, guild_card_number, name, team_name, description, section_id, char_class);
-  } else {
-    throw logic_error("unimplemented versioned command");
+  switch (ch.version) {
+    case GameVersion::DC:
+      send_guild_card_dc_pc_v3_t<G_SendGuildCard_DC_6x06>(
+          ch, guild_card_number, name, description, language, section_id, char_class);
+      break;
+    case GameVersion::PC:
+      send_guild_card_dc_pc_v3_t<G_SendGuildCard_PC_6x06>(
+          ch, guild_card_number, name, description, language, section_id, char_class);
+      break;
+    case GameVersion::GC:
+    case GameVersion::XB:
+      send_guild_card_dc_pc_v3_t<G_SendGuildCard_V3_6x06>(
+          ch, guild_card_number, name, description, language, section_id, char_class);
+      break;
+    case GameVersion::BB:
+      send_guild_card_bb(ch, guild_card_number, name, team_name, description, language, section_id, char_class);
+      break;
+    default:
+      throw logic_error("unimplemented versioned command");
   }
 }
 
@@ -1083,13 +1072,13 @@ void send_guild_card(shared_ptr<Client> c, shared_ptr<Client> source) {
 
   auto source_p = source->game_data.player(true, false);
   uint32_t guild_card_number = source->license->serial_number;
-  u16string name = source_p->disp.name;
-  u16string description = source_p->guild_card_description;
+  uint8_t language = source_p->inventory.language;
+  string name = source_p->disp.name.decode(language);
+  string description = source_p->guild_card_description.decode(language);
   uint8_t section_id = source_p->disp.visual.section_id;
   uint8_t char_class = source_p->disp.visual.char_class;
 
-  send_guild_card(
-      c->channel, guild_card_number, name, u"", description, section_id, char_class);
+  send_guild_card(c->channel, guild_card_number, name, "", description, language, section_id, char_class);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1103,7 +1092,7 @@ void send_menu_t(shared_ptr<Client> c, shared_ptr<const Menu> menu, bool is_info
     e.menu_id = menu->menu_id;
     e.item_id = 0xFFFFFFFF;
     e.flags = 0x0004;
-    e.text = menu->name;
+    e.text.encode(menu->name, c->language());
   }
 
   for (const auto& item : menu->items) {
@@ -1151,7 +1140,7 @@ void send_menu_t(shared_ptr<Client> c, shared_ptr<const Menu> menu, bool is_info
       e.menu_id = menu->menu_id;
       e.item_id = item.item_id;
       e.flags = (c->version() == GameVersion::BB) ? 0x0004 : 0x0F04;
-      e.text = item.name;
+      e.text.encode(item.name, c->language());
     }
   }
 
@@ -1169,21 +1158,21 @@ void send_menu(shared_ptr<Client> c, shared_ptr<const Menu> menu, bool is_info_m
   }
 }
 
-template <typename CharT>
+template <TextEncoding Encoding>
 void send_game_menu_t(
     shared_ptr<Client> c,
     bool is_spectator_team_list,
     bool show_tournaments_only) {
   auto s = c->require_server_state();
 
-  vector<S_GameMenuEntry<CharT>> entries;
+  vector<S_GameMenuEntry<Encoding>> entries;
   {
     auto& e = entries.emplace_back();
     e.menu_id = MenuID::GAME;
     e.game_id = 0x00000000;
     e.difficulty_tag = 0x00;
     e.num_players = 0x00;
-    e.name = s->name;
+    e.name.encode(s->name, c->language());
     e.episode = 0x00;
     e.flags = 0x04;
   }
@@ -1251,7 +1240,7 @@ void send_game_menu_t(
           throw logic_error("invalid game mode");
       }
     }
-    e.name = l->name;
+    e.name.encode(l->name, c->language());
   }
 
   send_command_vt(c, is_spectator_team_list ? 0xE6 : 0x08, entries.size() - 1, entries);
@@ -1264,9 +1253,9 @@ void send_game_menu(
   if ((c->version() == GameVersion::DC) ||
       (c->version() == GameVersion::GC) ||
       (c->version() == GameVersion::XB)) {
-    send_game_menu_t<char>(c, is_spectator_team_list, show_tournaments_only);
+    send_game_menu_t<TextEncoding::SJIS>(c, is_spectator_team_list, show_tournaments_only);
   } else {
-    send_game_menu_t<char16_t>(c, is_spectator_team_list, show_tournaments_only);
+    send_game_menu_t<TextEncoding::UTF16>(c, is_spectator_team_list, show_tournaments_only);
   }
 }
 
@@ -1279,7 +1268,7 @@ void send_quest_menu_t(
   auto v = c->quest_version();
   vector<EntryT> entries;
   for (const auto& quest : quests) {
-    auto vq = quest->version(v, c->language);
+    auto vq = quest->version(v, c->language());
     if (!vq) {
       continue;
     }
@@ -1287,9 +1276,8 @@ void send_quest_menu_t(
     auto& e = entries.emplace_back();
     e.menu_id = menu_id;
     e.item_id = quest->quest_number;
-    e.name = vq->name;
-    e.short_description = vq->short_description;
-    add_color_inplace(e.short_description);
+    e.name.encode(vq->name, c->language());
+    e.short_description.encode(add_color(vq->short_description), c->language());
   }
   send_command_vt(c, is_download_menu ? 0xA4 : 0xA2, entries.size(), entries);
 }
@@ -1309,9 +1297,8 @@ void send_quest_menu_t(
     auto& e = entries.emplace_back();
     e.menu_id = menu_id;
     e.item_id = category.category_id;
-    e.name = category.name;
-    e.short_description = category.description;
-    add_color_inplace(e.short_description);
+    e.name.encode(category.name, c->language());
+    e.short_description.encode(add_color(category.description), c->language());
   }
   send_command_vt(c, is_download_menu ? 0xA4 : 0xA2, entries.size(), entries);
 }
@@ -1446,19 +1433,16 @@ static void send_join_spectator_team(shared_ptr<Client> c, shared_ptr<Lobby> l) 
       p.lobby_data.player_tag = 0x00010000;
       p.lobby_data.guild_card = wc->license->serial_number;
       p.lobby_data.client_id = wc->lobby_client_id;
-      p.lobby_data.name = wc_p->disp.name;
-      remove_language_marker_inplace(p.lobby_data.name);
+      p.lobby_data.name.encode(wc_p->disp.name.decode(wc_p->inventory.language), c->language());
       p.inventory = wc_p->inventory;
       p.inventory.encode_mags(c->version());
-      p.disp = wc_p->disp.to_dcpcv3();
-      remove_language_marker_inplace(p.disp.visual.name);
+      p.disp = wc_p->disp.to_dcpcv3(c->language(), p.inventory.language);
       p.disp.enforce_lobby_join_limits(c->version());
 
       auto& e = cmd.entries[z];
       e.player_tag = 0x00010000;
       e.guild_card_number = wc->license->serial_number;
-      e.name = wc_p->disp.name;
-      remove_language_marker_inplace(e.name);
+      e.name.encode(wc_p->disp.name.decode(wc_p->inventory.language), c->language());
       e.present = 1;
       e.level = wc->game_data.ep3_config
           ? (wc->game_data.ep3_config->online_clv_exp / 100)
@@ -1488,18 +1472,15 @@ static void send_join_spectator_team(shared_ptr<Client> c, shared_ptr<Lobby> l) 
       }
       auto& p = cmd.players[client_id];
       p.lobby_data = entry.lobby_data;
-      remove_language_marker_inplace(p.lobby_data.name);
       p.inventory = entry.inventory;
       p.inventory.encode_mags(c->version());
       p.disp = entry.disp;
-      remove_language_marker_inplace(p.disp.visual.name);
       p.disp.enforce_lobby_join_limits(c->version());
 
       auto& e = cmd.entries[client_id];
       e.player_tag = 0x00010000;
       e.guild_card_number = entry.lobby_data.guild_card;
       e.name = entry.disp.visual.name;
-      remove_language_marker_inplace(e.name);
       e.present = 1;
       e.level = entry.level.load();
       e.name_color = entry.disp.visual.name_color;
@@ -1520,17 +1501,14 @@ static void send_join_spectator_team(shared_ptr<Client> c, shared_ptr<Lobby> l) 
       cmd_p.lobby_data.player_tag = 0x00010000;
       cmd_p.lobby_data.guild_card = other_c->license->serial_number;
       cmd_p.lobby_data.client_id = other_c->lobby_client_id;
-      cmd_p.lobby_data.name = other_p->disp.name;
-      remove_language_marker_inplace(cmd_p.lobby_data.name);
+      cmd_p.lobby_data.name.encode(other_p->disp.name.decode(other_p->inventory.language), c->language());
       cmd_p.inventory = other_p->inventory;
-      cmd_p.disp = other_p->disp.to_dcpcv3();
-      remove_language_marker_inplace(cmd_p.disp.visual.name);
+      cmd_p.disp = other_p->disp.to_dcpcv3(c->language(), cmd_p.inventory.language);
       cmd_p.disp.enforce_lobby_join_limits(c->version());
 
       cmd_e.player_tag = 0x00010000;
       cmd_e.guild_card_number = other_c->license->serial_number;
-      cmd_e.name = other_p->disp.name;
-      remove_language_marker_inplace(cmd_e.name);
+      cmd_e.name = cmd_p.lobby_data.name;
       cmd_e.present = 1;
       cmd_e.level = other_c->game_data.ep3_config
           ? (other_c->game_data.ep3_config->online_clv_exp / 100)
@@ -1540,7 +1518,7 @@ static void send_join_spectator_team(shared_ptr<Client> c, shared_ptr<Lobby> l) 
       player_count++;
     }
   }
-  cmd.spectator_team_name = encode_sjis(l->name);
+  cmd.spectator_team_name.encode(l->name, c->language());
 
   send_command_t(c, 0xE8, player_count, cmd);
 }
@@ -1554,11 +1532,12 @@ void send_join_game(shared_ptr<Client> c, shared_ptr<Lobby> l) {
   auto populate_lobby_data = [&](auto& cmd) -> size_t {
     size_t player_count = 0;
     for (size_t x = 0; x < 4; x++) {
-      if (l->clients[x]) {
+      auto lc = l->clients[x];
+      if (lc) {
         cmd.lobby_data[x].player_tag = 0x00010000;
-        cmd.lobby_data[x].guild_card = l->clients[x]->license->serial_number;
-        cmd.lobby_data[x].client_id = l->clients[x]->lobby_client_id;
-        cmd.lobby_data[x].name = l->clients[x]->game_data.player()->disp.name;
+        cmd.lobby_data[x].guild_card = lc->license->serial_number;
+        cmd.lobby_data[x].client_id = lc->lobby_client_id;
+        cmd.lobby_data[x].name.encode(lc->game_data.player()->disp.name.decode(lc->language()), c->language());
         player_count++;
       } else {
         cmd.lobby_data[x].clear();
@@ -1631,7 +1610,7 @@ void send_join_game(shared_ptr<Client> c, shared_ptr<Lobby> l) {
             auto other_p = l->clients[x]->game_data.player();
             cmd.players_ep3[x].inventory = other_p->inventory;
             cmd.players_ep3[x].inventory.encode_mags(c->version());
-            cmd.players_ep3[x].disp = convert_player_disp_data<PlayerDispDataDCPCV3>(other_p->disp);
+            cmd.players_ep3[x].disp = convert_player_disp_data<PlayerDispDataDCPCV3>(other_p->disp, c->language(), other_p->inventory.language);
             cmd.players_ep3[x].disp.enforce_lobby_join_limits(c->version());
           }
         }
@@ -1666,8 +1645,7 @@ void send_join_game(shared_ptr<Client> c, shared_ptr<Lobby> l) {
 }
 
 template <typename LobbyDataT, typename DispDataT, typename RecordsT, bool UseLanguageMarkerInName>
-void send_join_lobby_t(shared_ptr<Client> c, shared_ptr<Lobby> l,
-    shared_ptr<Client> joining_client = nullptr) {
+void send_join_lobby_t(shared_ptr<Client> c, shared_ptr<Lobby> l, shared_ptr<Client> joining_client = nullptr) {
   uint8_t command;
   if (l->is_game()) {
     if (joining_client) {
@@ -1739,14 +1717,14 @@ void send_join_lobby_t(shared_ptr<Client> c, shared_ptr<Lobby> l,
     e.lobby_data.player_tag = 0x00010000;
     e.lobby_data.guild_card = lc->license->serial_number;
     e.lobby_data.client_id = lc->lobby_client_id;
-    e.lobby_data.name = lp->disp.name;
-    remove_language_marker_inplace(e.lobby_data.name);
     if (UseLanguageMarkerInName) {
-      add_language_marker_inplace(e.lobby_data.name, 'J');
+      e.lobby_data.name.encode("\tJ" + lp->disp.name.decode(lp->inventory.language), c->language());
+    } else {
+      e.lobby_data.name.encode(lp->disp.name.decode(lp->inventory.language), c->language());
     }
     e.inventory = lp->inventory;
     e.inventory.encode_mags(c->version());
-    e.disp = convert_player_disp_data<DispDataT>(lp->disp);
+    e.disp = convert_player_disp_data<DispDataT>(lp->disp, c->language(), lp->inventory.language);
     e.disp.enforce_lobby_join_limits(c->version());
   }
 
@@ -1789,10 +1767,10 @@ void send_join_lobby_dc_nte(shared_ptr<Client> c, shared_ptr<Lobby> l,
     e.lobby_data.player_tag = 0x00010000;
     e.lobby_data.guild_card = lc->license->serial_number;
     e.lobby_data.client_id = lc->lobby_client_id;
-    e.lobby_data.name = lp->disp.name;
+    e.lobby_data.name.encode(lp->disp.name.decode(lp->inventory.language), c->language());
     e.inventory = lp->inventory;
     e.inventory.encode_mags(c->version());
-    e.disp = convert_player_disp_data<PlayerDispDataDCPCV3>(lp->disp);
+    e.disp = convert_player_disp_data<PlayerDispDataDCPCV3>(lp->disp, c->language(), lp->inventory.language);
     e.disp.enforce_lobby_join_limits(c->version());
   }
 
@@ -2244,7 +2222,7 @@ void send_ep3_rank_update(shared_ptr<Client> c) {
   auto s = c->require_server_state();
   uint32_t current_meseta = s->ep3_infinite_meseta ? 1000000 : c->license->ep3_current_meseta;
   uint32_t total_meseta_earned = s->ep3_infinite_meseta ? 1000000 : c->license->ep3_total_meseta_earned;
-  S_RankUpdate_GC_Ep3_B7 cmd = {0, "\0\0\0\0\0\0\0\0\0\0\0", current_meseta, total_meseta_earned, 0xFFFFFFFF};
+  S_RankUpdate_GC_Ep3_B7 cmd = {0, {}, current_meseta, total_meseta_earned, 0xFFFFFFFF};
   send_command_t(c, 0xB7, 0x00, cmd);
 }
 
@@ -2295,17 +2273,17 @@ void send_ep3_confirm_tournament_entry(
   S_ConfirmTournamentEntry_GC_Ep3_CC cmd;
   if (tourn) {
     auto s = c->require_server_state();
-    cmd.tournament_name = tourn->get_name();
-    cmd.server_name = encode_sjis(s->name);
+    cmd.tournament_name.encode(tourn->get_name(), c->language());
+    cmd.server_name.encode(s->name, c->language());
     // TODO: Fill this in appropriately when we support scheduled start times
-    cmd.start_time = "Unknown";
+    cmd.start_time.encode("Unknown", c->language());
     auto& teams = tourn->all_teams();
     cmd.num_teams = min<size_t>(teams.size(), 0x20);
     cmd.players_per_team = (tourn->get_flags() & Episode3::Tournament::Flag::IS_2V2) ? 2 : 1;
     for (size_t z = 0; z < min<size_t>(teams.size(), 0x20); z++) {
       cmd.team_entries[z].win_count = teams[z]->num_rounds_cleared;
       cmd.team_entries[z].is_active = teams[z]->is_active;
-      cmd.team_entries[z].name = teams[z]->name;
+      cmd.team_entries[z].name.encode(teams[z]->name, c->language());
     }
   }
   send_command_t(c, 0xCC, tourn ? 0x01 : 0x00, cmd);
@@ -2339,7 +2317,7 @@ void send_ep3_tournament_list(
         ? 0x00
         : 0x05;
     // TODO: Fill in cmd.start_time here when we implement scheduled starts.
-    entry.name = tourn->get_name();
+    entry.name.encode(tourn->get_name(), c->language());
     const auto& teams = tourn->all_teams();
     for (auto team : teams) {
       if (!team->name.empty()) {
@@ -2379,7 +2357,7 @@ void send_ep3_tournament_entry_list(
     } else {
       entry.state = 2;
     }
-    entry.name = team->name;
+    entry.name.encode(team->name, c->language());
     z++;
   }
   send_command_t(c, is_for_spectator_team_create ? 0xE7 : 0xE2, z, cmd);
@@ -2389,14 +2367,15 @@ void send_ep3_tournament_details(
     shared_ptr<Client> c,
     shared_ptr<const Episode3::Tournament> tourn) {
   S_TournamentGameDetails_GC_Ep3_E3 cmd;
-  cmd.name = tourn->get_name();
-  cmd.map_name = tourn->get_map()->version(c->language)->map->name;
+  auto vm = tourn->get_map()->version(c->language());
+  cmd.name.encode(tourn->get_name(), c->language());
+  cmd.map_name.encode(vm->map->name.decode(vm->language), c->language());
   cmd.rules = tourn->get_rules();
   const auto& teams = tourn->all_teams();
   for (size_t z = 0; z < min<size_t>(teams.size(), 0x20); z++) {
     cmd.bracket_entries[z].win_count = teams[z]->num_rounds_cleared;
     cmd.bracket_entries[z].is_active = teams[z]->is_active ? 1 : 0;
-    cmd.bracket_entries[z].team_name = teams[z]->name;
+    cmd.bracket_entries[z].team_name.encode(teams[z]->name, c->language());
   }
   cmd.num_bracket_entries = teams.size();
   cmd.players_per_team = (tourn->get_flags() & Episode3::Tournament::Flag::IS_2V2) ? 2 : 1;
@@ -2429,9 +2408,10 @@ void send_ep3_game_details(shared_ptr<Client> c, shared_ptr<Lobby> l) {
 
   if (tourn) {
     S_TournamentGameDetails_GC_Ep3_E3 cmd;
-    cmd.name = encode_sjis(l->name);
+    cmd.name.encode(l->name, c->language());
 
-    cmd.map_name = tourn->get_map()->version(c->language)->map->name;
+    auto vm = tourn->get_map()->version(c->language());
+    cmd.map_name.encode(vm->map->name.decode(vm->language), c->language());
     cmd.rules = tourn->get_rules();
 
     const auto& teams = tourn->all_teams();
@@ -2439,7 +2419,7 @@ void send_ep3_game_details(shared_ptr<Client> c, shared_ptr<Lobby> l) {
       auto& entry = cmd.bracket_entries[z];
       entry.win_count = teams[z]->num_rounds_cleared;
       entry.is_active = teams[z]->is_active ? 1 : 0;
-      entry.team_name = teams[z]->name;
+      entry.team_name.encode(teams[z]->name, c->language());
     }
     cmd.num_bracket_entries = teams.size();
     cmd.players_per_team = (tourn->get_flags() & Episode3::Tournament::Flag::IS_2V2) ? 2 : 1;
@@ -2447,22 +2427,22 @@ void send_ep3_game_details(shared_ptr<Client> c, shared_ptr<Lobby> l) {
     if (primary_lobby) {
       auto serial_number_to_client = primary_lobby->clients_by_serial_number();
       auto describe_team = [&](S_TournamentGameDetails_GC_Ep3_E3::TeamEntry& team_entry, shared_ptr<const Episode3::Tournament::Team> team) -> void {
-        team_entry.team_name = team->name;
+        team_entry.team_name.encode(team->name, c->language());
         for (size_t z = 0; z < team->players.size(); z++) {
           auto& entry = team_entry.players[z];
           const auto& player = team->players[z];
           if (player.is_human()) {
             try {
-              auto c = serial_number_to_client.at(player.serial_number);
-              entry.name = c->game_data.player()->disp.name;
-              entry.description = ep3_description_for_client(c);
+              auto other_c = serial_number_to_client.at(player.serial_number);
+              entry.name.encode(other_c->game_data.player()->disp.name.decode(other_c->language()), c->language());
+              entry.description.encode(ep3_description_for_client(other_c), c->language());
             } catch (const out_of_range&) {
-              entry.name = player.player_name;
-              entry.description = "(Not connected)";
+              entry.name.encode(player.player_name, c->language());
+              entry.description.encode("(Not connected)", c->language());
             }
           } else {
-            entry.name = player.com_deck->player_name;
-            entry.description = "Deck: " + player.com_deck->deck_name;
+            entry.name.encode(player.com_deck->player_name, c->language());
+            entry.description.encode("Deck: " + player.com_deck->deck_name, c->language());
           }
         }
       };
@@ -2475,8 +2455,8 @@ void send_ep3_game_details(shared_ptr<Client> c, shared_ptr<Lobby> l) {
       for (auto spec_c : l->clients) {
         if (spec_c) {
           auto& entry = cmd.spectator_entries[cmd.num_spectators++];
-          entry.name = encode_sjis(spec_c->game_data.player()->disp.name);
-          entry.description = ep3_description_for_client(spec_c);
+          entry.name.encode(spec_c->game_data.player()->disp.name.decode(spec_c->language()), c->language());
+          entry.description.encode(ep3_description_for_client(spec_c), c->language());
         }
       }
       flag = 0x05;
@@ -2487,13 +2467,13 @@ void send_ep3_game_details(shared_ptr<Client> c, shared_ptr<Lobby> l) {
 
   } else {
     S_GameInformation_GC_Ep3_E1 cmd;
-    cmd.game_name = encode_sjis(l->name);
+    cmd.game_name.encode(l->name, c->language());
     if (primary_lobby) {
       size_t num_players = 0;
       for (const auto& opp_c : primary_lobby->clients) {
         if (opp_c) {
-          cmd.player_entries[num_players].name = opp_c->game_data.player()->disp.name;
-          cmd.player_entries[num_players].description = ep3_description_for_client(opp_c);
+          cmd.player_entries[num_players].name.encode(opp_c->game_data.player()->disp.name.decode(opp_c->language()), c->language());
+          cmd.player_entries[num_players].description.encode(ep3_description_for_client(opp_c), c->language());
           num_players++;
         }
       }
@@ -2505,8 +2485,8 @@ void send_ep3_game_details(shared_ptr<Client> c, shared_ptr<Lobby> l) {
       for (auto spec_c : l->clients) {
         if (spec_c) {
           auto& entry = cmd.spectator_entries[num_spectators++];
-          entry.name = encode_sjis(spec_c->game_data.player()->disp.name);
-          entry.description = ep3_description_for_client(spec_c);
+          entry.name.encode(spec_c->game_data.player()->disp.name.decode(spec_c->language()), c->language());
+          entry.description.encode(ep3_description_for_client(spec_c), c->language());
         }
       }
 
@@ -2552,8 +2532,8 @@ void send_ep3_set_tournament_player_decks(shared_ptr<Client> c) {
 
   for (size_t z = 0; z < 4; z++) {
     auto& entry = cmd.entries[z];
-    entry.player_name.clear(0);
-    entry.deck_name.clear(0);
+    entry.player_name.clear();
+    entry.deck_name.clear();
     entry.unknown_a1.clear(0);
     entry.card_ids.clear(0);
     entry.client_id = z;
@@ -2565,14 +2545,14 @@ void send_ep3_set_tournament_player_decks(shared_ptr<Client> c) {
       const auto& player = team->players[z];
       if (player.is_human()) {
         entry.type = 1; // Human
-        entry.player_name = player.player_name;
+        entry.player_name.encode(player.player_name, c->language());
         if (player.serial_number == c->license->serial_number) {
           cmd.player_slot = base_index + z;
         }
       } else {
         entry.type = 2; // COM
-        entry.player_name = player.com_deck->player_name;
-        entry.deck_name = player.com_deck->deck_name;
+        entry.player_name.encode(player.com_deck->player_name, c->language());
+        entry.deck_name.encode(player.com_deck->deck_name, c->language());
         entry.card_ids = player.com_deck->card_ids;
       }
       entry.unknown_a2 = 6;
@@ -2606,41 +2586,48 @@ void send_ep3_tournament_match_result(shared_ptr<Lobby> l, uint32_t meseta_rewar
 
   auto serial_number_to_client = l->clients_by_serial_number();
 
-  auto write_player_names = [&](G_TournamentMatchResult_GC_Ep3_6xB4x51::NamesEntry& entry, shared_ptr<const Episode3::Tournament::Team> team) -> void {
-    for (size_t z = 0; z < team->players.size(); z++) {
-      const auto& player = team->players[z];
-      if (player.is_human()) {
-        try {
-          entry.player_names[z] = serial_number_to_client.at(player.serial_number)->game_data.player()->disp.name;
-        } catch (const out_of_range&) {
-          entry.player_names[z] = player.player_name;
-        }
-      } else {
-        entry.player_names[z] = player.com_deck->player_name;
-      }
+  for (const auto& lc : l->clients) {
+    if (!lc) {
+      continue;
     }
-  };
+    auto write_player_names = [&](G_TournamentMatchResult_GC_Ep3_6xB4x51::NamesEntry& entry, shared_ptr<const Episode3::Tournament::Team> team) -> void {
+      for (size_t z = 0; z < team->players.size(); z++) {
+        const auto& player = team->players[z];
+        if (player.is_human()) {
+          try {
+            auto pc = serial_number_to_client.at(player.serial_number);
+            entry.player_names[z].encode(pc->game_data.player()->disp.name.decode(pc->language()), lc->language());
+          } catch (const out_of_range&) {
+            entry.player_names[z].encode(player.player_name, lc->language());
+          }
+        } else {
+          entry.player_names[z].encode(player.com_deck->player_name, lc->language());
+        }
+      }
+    };
 
-  G_TournamentMatchResult_GC_Ep3_6xB4x51 cmd;
-  cmd.match_description = (match == tourn->get_final_match())
-      ? string_printf("(%s) Final match", tourn->get_name().c_str())
-      : string_printf("(%s) Round %zu", tourn->get_name().c_str(), match->round_num);
-  cmd.names_entries[0].team_name = match->preceding_a->winner_team->name;
-  write_player_names(cmd.names_entries[0], match->preceding_a->winner_team);
-  cmd.names_entries[1].team_name = match->preceding_b->winner_team->name;
-  write_player_names(cmd.names_entries[1], match->preceding_b->winner_team);
-  // The value 6 here causes the client to show the "Congratulations" text
-  // instead of "On to the next round"
-  cmd.round_num = (match == tourn->get_final_match()) ? 6 : match->round_num;
-  cmd.num_players_per_team = match->preceding_a->winner_team->max_players;
-  cmd.winner_team_id = (match->preceding_b->winner_team == match->winner_team);
-  cmd.meseta_amount = meseta_reward;
-  cmd.meseta_reward_text = "You got %s meseta!";
-  if (!(s->ep3_behavior_flags & Episode3::BehaviorFlag::DISABLE_MASKING)) {
-    uint8_t mask_key = (random_object<uint32_t>() % 0xFF) + 1;
-    set_mask_for_ep3_game_command(&cmd, sizeof(cmd), mask_key);
+    G_TournamentMatchResult_GC_Ep3_6xB4x51 cmd;
+    cmd.match_description.encode((match == tourn->get_final_match())
+            ? string_printf("(%s) Final match", tourn->get_name().c_str())
+            : string_printf("(%s) Round %zu", tourn->get_name().c_str(), match->round_num),
+        lc->language());
+    cmd.names_entries[0].team_name.encode(match->preceding_a->winner_team->name, lc->language());
+    write_player_names(cmd.names_entries[0], match->preceding_a->winner_team);
+    cmd.names_entries[1].team_name.encode(match->preceding_b->winner_team->name, lc->language());
+    write_player_names(cmd.names_entries[1], match->preceding_b->winner_team);
+    // The value 6 here causes the client to show the "Congratulations" text
+    // instead of "On to the next round"
+    cmd.round_num = (match == tourn->get_final_match()) ? 6 : match->round_num;
+    cmd.num_players_per_team = match->preceding_a->winner_team->max_players;
+    cmd.winner_team_id = (match->preceding_b->winner_team == match->winner_team);
+    cmd.meseta_amount = meseta_reward;
+    cmd.meseta_reward_text.encode("You got %s meseta!", 1);
+    if (!(s->ep3_behavior_flags & Episode3::BehaviorFlag::DISABLE_MASKING)) {
+      uint8_t mask_key = (random_object<uint32_t>() % 0xFF) + 1;
+      set_mask_for_ep3_game_command(&cmd, sizeof(cmd), mask_key);
+    }
+    send_command_t(lc, 0xC9, 0x00, cmd);
   }
-  send_command_t(l, 0xC9, 0x00, cmd);
 
   if (s->ep3_behavior_flags & Episode3::BehaviorFlag::ENABLE_STATUS_MESSAGES) {
     send_text_message_printf(l, "$C5TOURN/%" PRIX32 "/%zu WIN %c",
@@ -2688,7 +2675,7 @@ void send_ep3_update_game_metadata(shared_ptr<Lobby> l) {
             l->tournament_match->round_num, tourn->get_name().c_str());
       }
     } else {
-      text = "Viewing battle in game " + encode_sjis(l->name);
+      text = "Viewing battle in game " + l->name;
     }
     add_color_inplace(text);
     for (auto watcher_l : l->watcher_lobbies) {
@@ -2699,7 +2686,7 @@ void send_ep3_update_game_metadata(shared_ptr<Lobby> l) {
       }
       cmd.total_spectators = total_spectators;
       cmd.text_size = text.size();
-      cmd.text = text;
+      cmd.text.encode(text, 1);
       if (!(s->ep3_behavior_flags & Episode3::BehaviorFlag::DISABLE_MASKING)) {
         uint8_t mask_key = (random_object<uint32_t>() % 0xFF) + 1;
         set_mask_for_ep3_game_command(&cmd, sizeof(cmd), mask_key);
@@ -2759,7 +2746,7 @@ void send_quest_file_chunk(
   }
 
   S_WriteFile_13_A7 cmd;
-  cmd.filename = filename;
+  cmd.filename.encode(filename);
   memcpy(cmd.data.data(), data, size);
   if (size < 0x400) {
     memset(&cmd.data[size], 0, 0x400 - size);

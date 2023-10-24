@@ -26,9 +26,9 @@ struct ShuffleTables {
 };
 
 struct PSOVMSFileHeader {
-  /* 0000 */ ptext<char, 0x10> short_desc;
-  /* 0010 */ ptext<char, 0x20> long_desc;
-  /* 0030 */ ptext<char, 0x10> creator_id;
+  /* 0000 */ pstring<TextEncoding::SJIS, 0x10> short_desc;
+  /* 0010 */ pstring<TextEncoding::SJIS, 0x20> long_desc;
+  /* 0030 */ pstring<TextEncoding::SJIS, 0x10> creator_id;
   /* 0040 */ le_uint16_t num_icons;
   /* 0042 */ le_uint16_t animation_speed;
   /* 0044 */ le_uint16_t eyecatch_type;
@@ -54,7 +54,7 @@ struct PSOGCIFileHeader {
   // There is a structure for this part of the header, but we don't use it.
   /* 0006 */ uint8_t unused;
   /* 0007 */ uint8_t image_flags;
-  /* 0008 */ ptext<char, 0x20> internal_file_name;
+  /* 0008 */ pstring<TextEncoding::SJIS, 0x20> internal_file_name;
   /* 0028 */ be_uint32_t modification_time;
   /* 002C */ be_uint32_t image_data_offset;
   /* 0030 */ be_uint16_t icon_formats;
@@ -67,9 +67,9 @@ struct PSOGCIFileHeader {
   /* 003C */ be_uint32_t comment_offset;
   // GCI header ends here (and memcard file data begins here)
   // game_name is e.g. "PSO EPISODE I & II" or "PSO EPISODE III"
-  /* 0040 */ ptext<char, 0x1C> game_name;
+  /* 0040 */ pstring<TextEncoding::SJIS, 0x1C> game_name;
   /* 005C */ be_uint32_t embedded_seed; // Used in some of Ralf's quest packs
-  /* 0060 */ ptext<char, 0x20> file_name;
+  /* 0060 */ pstring<TextEncoding::SJIS, 0x20> file_name;
   /* 0080 */ parray<uint8_t, 0x1800> banner;
   /* 1880 */ parray<uint8_t, 0x800> icon;
   // data_size specifies the number of bytes remaining in the file. In all cases
@@ -119,7 +119,7 @@ struct PSOGCEp3SystemFile {
 
 struct PSOGCSaveFileSymbolChatEntry {
   /* 00 */ be_uint32_t present;
-  /* 04 */ ptext<char, 0x18> name;
+  /* 04 */ pstring<TextEncoding::SJIS, 0x18> name;
   /* 1C */ be_uint16_t unused;
   /* 1E */ uint8_t flags;
   /* 1F */ uint8_t face_spec;
@@ -140,7 +140,7 @@ struct PSOGCSaveFileSymbolChatEntry {
 
 struct PSOPCSaveFileSymbolChatEntry {
   /* 00 */ le_uint32_t present;
-  /* 04 */ ptext<char16_t, 0x18> name;
+  /* 04 */ pstring<TextEncoding::UTF16, 0x18> name;
   /* 34 */ uint8_t face_spec;
   /* 35 */ uint8_t flags;
   /* 36 */ be_uint16_t unused;
@@ -212,8 +212,8 @@ struct PSOGCCharacterFile {
     /* 192C:1510 */ GuildCardV3 guild_card;
     /* 19BC:15A0 */ parray<PSOGCSaveFileSymbolChatEntry, 12> symbol_chats;
     /* 1DDC:19C0 */ parray<PSOGCSaveFileChatShortcutEntry, 20> chat_shortcuts;
-    /* 246C:2050 */ ptext<char, 0xAC> auto_reply;
-    /* 2518:20FC */ ptext<char, 0xAC> info_board;
+    /* 246C:2050 */ pstring<TextEncoding::SJIS, 0xAC> auto_reply;
+    /* 2518:20FC */ pstring<TextEncoding::SJIS, 0xAC> info_board;
     /* 25C4:21A8 */ PlayerRecords_Battle<true> battle_records;
     /* 25DC:21C0 */ parray<uint8_t, 4> unknown_a2;
     /* 25E0:21C4 */ PlayerRecordsV3_Challenge<true> challenge_records;
@@ -228,9 +228,9 @@ struct PSOGCCharacterFile {
     /* 2798:237C */
   } __attribute__((packed));
   /* 00004 */ parray<Character, 7> characters;
-  /* 1152C */ ptext<char, 0x10> serial_number; // As %08X (not decimal)
-  /* 1153C */ ptext<char, 0x10> access_key;
-  /* 1154C */ ptext<char, 0x10> password;
+  /* 1152C */ pstring<TextEncoding::ASCII, 0x10> serial_number; // As %08X (not decimal)
+  /* 1153C */ pstring<TextEncoding::ASCII, 0x10> access_key;
+  /* 1154C */ pstring<TextEncoding::ASCII, 0x10> password;
   /* 1155C */ be_uint64_t bgm_test_songs_unlocked;
   /* 11564 */ be_uint32_t save_count;
   /* 11568 */ be_uint32_t round2_seed;
@@ -269,8 +269,8 @@ struct PSOGCEp3CharacterFile {
     /* 08CC:04B0 */ GuildCardV3 guild_card;
     /* 095C:0540 */ parray<PSOGCSaveFileSymbolChatEntry, 12> symbol_chats;
     /* 0D7C:0960 */ parray<PSOGCSaveFileChatShortcutEntry, 20> chat_shortcuts;
-    /* 140C:0FF0 */ ptext<char, 0xAC> auto_reply;
-    /* 14B8:109C */ ptext<char, 0xAC> info_board;
+    /* 140C:0FF0 */ pstring<TextEncoding::SJIS, 0xAC> auto_reply;
+    /* 14B8:109C */ pstring<TextEncoding::SJIS, 0xAC> info_board;
     // In this struct, place_counts[0] is win_count and [1] is loss_count
     /* 1564:1148 */ PlayerRecords_Battle<true> battle_records;
     /* 157C:1160 */ parray<uint8_t, 4> unknown_a10;
@@ -282,9 +282,9 @@ struct PSOGCEp3CharacterFile {
     /* 39B4:3598 */
   } __attribute__((packed));
   /* 00004 */ parray<Character, 7> characters;
-  /* 193F0 */ ptext<char, 0x10> serial_number; // As %08X (not decimal)
-  /* 19400 */ ptext<char, 0x10> access_key; // As 12 ASCII characters (decimal)
-  /* 19410 */ ptext<char, 0x10> password;
+  /* 193F0 */ pstring<TextEncoding::ASCII, 0x10> serial_number; // As %08X (not decimal)
+  /* 19400 */ pstring<TextEncoding::ASCII, 0x10> access_key; // As 12 ASCII characters (decimal)
+  /* 19410 */ pstring<TextEncoding::ASCII, 0x10> password;
   // In Episode 3, this field still exists, but is unused since BGM test was
   // removed from the options menu in favor of the jukebox. The jukebox is
   // accessible online only, and which songs are available there is controlled
@@ -313,8 +313,8 @@ struct PSOGCGuildCardFile {
     // except for 32-bit fields, which are big-endian here.
     /* 0000 */ be_uint32_t player_tag; // == 0x00000001 (not 0x00010000)
     /* 0004 */ be_uint32_t guild_card_number;
-    /* 0008 */ ptext<char, 0x18> name;
-    /* 0020 */ ptext<char, 0x6C> description;
+    /* 0008 */ pstring<TextEncoding::SJIS, 0x18> name;
+    /* 0020 */ pstring<TextEncoding::SJIS, 0x6C> description;
     /* 008C */ uint8_t present;
     /* 008D */ uint8_t language;
     /* 008E */ uint8_t section_id;
@@ -327,7 +327,7 @@ struct PSOGCGuildCardFile {
     /* 0091 */ uint8_t unknown_a2;
     /* 0092 */ uint8_t unknown_a3;
     /* 0093 */ uint8_t unknown_a4;
-    /* 0094 */ ptext<char, 0x6C> comment;
+    /* 0094 */ pstring<TextEncoding::SJIS, 0x6C> comment;
     /* 0100 */
   } __attribute__((packed));
   /* 00C4 */ parray<GuildCardEntry, 0xD2> entries;
@@ -349,7 +349,7 @@ struct PSOGCSnapshotFile {
   /* 1800A */ be_int16_t max_players;
   /* 1800C */ parray<be_uint32_t, 12> players_present;
   /* 1803C */ parray<be_uint32_t, 12> player_levels;
-  /* 1806C */ parray<ptext<char, 0x18>, 12> player_names;
+  /* 1806C */ parray<pstring<TextEncoding::SJIS, 0x18>, 12> player_names;
   /* 1818C */
 
   bool checksum_correct() const;
@@ -592,8 +592,8 @@ struct PSOPCCharacterFile { // PSO______SYS and PSO______SYD
       /* 123C */ parray<uint8_t, 0xAA0> unknown_a3;
       /* 1CDC */ parray<le_uint16_t, 20> tech_menu_shortcut_entries;
       /* 1D04 */ parray<uint8_t, 0x2C> unknown_a4;
-      /* 1D30 */ ptext<char, 0x10> serial_number; // As %08X (not decimal)
-      /* 1D40 */ ptext<char, 0x10> access_key; // As decimal
+      /* 1D30 */ pstring<TextEncoding::ASCII, 0x10> serial_number; // As %08X (not decimal)
+      /* 1D40 */ pstring<TextEncoding::ASCII, 0x10> access_key; // As decimal
       /* 1D50 */ le_uint32_t round2_seed;
       /* 1D54 */
     } __attribute__((packed));

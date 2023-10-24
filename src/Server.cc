@@ -295,7 +295,6 @@ vector<shared_ptr<Client>> Server::get_clients_by_identifier(const string& ident
     serial_number_hex = stoul(ident, nullptr, 16);
   } catch (const invalid_argument&) {
   }
-  u16string u16name = decode_sjis(ident);
 
   // TODO: It's kind of not great that we do a linear search here, but this is
   // only used in the shell, so it should be pretty rare.
@@ -316,7 +315,7 @@ vector<shared_ptr<Client>> Server::get_clients_by_identifier(const string& ident
     }
 
     auto p = c->game_data.player(false, false);
-    if (p && p->disp.name == u16name) {
+    if (p && p->disp.name.eq(ident, p->inventory.language)) {
       results.emplace_back(std::move(c));
       continue;
     }

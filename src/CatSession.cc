@@ -40,6 +40,7 @@ CatSession::CatSession(
       log("[CatSession] ", proxy_server_log.min_level),
       channel(
           version,
+          1,
           CatSession::dispatch_on_channel_input,
           CatSession::dispatch_on_channel_error,
           this,

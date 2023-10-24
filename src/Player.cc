@@ -138,7 +138,7 @@ shared_ptr<SavedAccountDataBB> ClientGameData::account(bool allow_load) {
   if (!this->account_data.get() && allow_load) {
     if (this->bb_username.empty()) {
       this->account_data.reset(new SavedAccountDataBB());
-      this->account_data->signature = ACCOUNT_FILE_SIGNATURE;
+      this->account_data->signature.encode(ACCOUNT_FILE_SIGNATURE);
     } else {
       this->load_account_data();
     }
@@ -223,7 +223,7 @@ void ClientGameData::load_account_data() {
   try {
     data.reset(new SavedAccountDataBB(
         player_files_cache.get_obj_or_load<SavedAccountDataBB>(filename).obj));
-    if (data->signature != ACCOUNT_FILE_SIGNATURE) {
+    if (!data->signature.eq(ACCOUNT_FILE_SIGNATURE)) {
       throw runtime_error("account data header is incorrect");
     }
     player_data_log.info("Loaded account data file %s", filename.c_str());
@@ -236,7 +236,7 @@ void ClientGameData::load_account_data() {
         player_files_cache.get_obj_or_load<SavedAccountDataBB>(
                               "system/players/default.nsa")
             .obj));
-    if (data->signature != ACCOUNT_FILE_SIGNATURE) {
+    if (!data->signature.eq(ACCOUNT_FILE_SIGNATURE)) {
       throw runtime_error("default account data header is incorrect");
     }
     player_data_log.info("Loaded default account data file");

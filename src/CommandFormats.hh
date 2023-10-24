@@ -19,9 +19,13 @@
 
 // For the unfamiliar, the le_uint and be_uint types (from phosg/Encoding.hh)
 // are the same as normal uint types, but are explicitly little-endian or
-// big-endian. The parray and ptext types (from Text.hh) are the same as
-// standard arrays, but have various safety and convenience features so we don't
-// have to use easy-to-mess-up functions like memset/memcpy and strncpy.
+// big-endian. The parray type (from Text.hh) is the same as a standard array,
+// but has various safety and convenience features so we don't have to use
+// easy-to-mess-up functions like memset/memcpy and strncpy. The pstring types
+// (also from Text.hh) are like std::strings, but have an explicit encoding.
+// They can be implicitly converted to and from std::strings, and will encode
+// or decode their specified encoding when doing so. (The default encoding is
+// UTF-8 everywhere in the server code.)
 
 // Struct names are like [S|C|SC]_CommandName_[Versions]_Numbers
 // S/C denotes who sends the command (S = server, C = client, SC = both)
@@ -179,7 +183,7 @@ struct ClientConfigBB {
 // "Patch Server. Copyright SonicTeam, LTD. 2001"
 
 struct S_ServerInit_Patch_02 {
-  ptext<char, 0x40> copyright;
+  pstring<TextEncoding::ASCII, 0x40> copyright;
   le_uint32_t server_key = 0; // Key for commands sent by server
   le_uint32_t client_key = 0; // Key for commands sent by client
   // The client rejects the command if it's larger than this size, so we can't
@@ -201,9 +205,9 @@ struct S_ServerInit_Patch_02 {
 
 struct C_Login_Patch_04 {
   parray<le_uint32_t, 3> unused;
-  ptext<char, 0x10> username;
-  ptext<char, 0x10> password;
-  ptext<char, 0x40> email;
+  pstring<TextEncoding::ASCII, 0x10> username;
+  pstring<TextEncoding::ASCII, 0x10> password;
+  pstring<TextEncoding::ASCII, 0x40> email;
 } __packed__;
 
 // 05 (S->C): Disconnect
@@ -216,7 +220,7 @@ struct C_Login_Patch_04 {
 struct S_OpenFile_Patch_06 {
   le_uint32_t unknown_a1 = 0;
   le_uint32_t size = 0;
-  ptext<char, 0x30> filename;
+  pstring<TextEncoding::ASCII, 0x30> filename;
 } __packed__;
 
 // 07 (S->C): Write file
@@ -246,7 +250,7 @@ struct S_CloseCurrentFile_Patch_08 {
 // 09 (S->C): Enter directory
 
 struct S_EnterDirectory_Patch_09 {
-  ptext<char, 0x40> name;
+  pstring<TextEncoding::ASCII, 0x40> name;
 } __packed__;
 
 // 0A (S->C): Exit directory
@@ -259,7 +263,7 @@ struct S_EnterDirectory_Patch_09 {
 
 struct S_FileChecksumRequest_Patch_0C {
   le_uint32_t request_id = 0;
-  ptext<char, 0x20> filename;
+  pstring<TextEncoding::ASCII, 0x20> filename;
 } __packed__;
 
 // 0D (S->C): End of file checksum requests
@@ -338,7 +342,7 @@ struct S_Reconnect_Patch_14 : S_Reconnect<be_uint16_t> {
 struct SC_TextHeader_01_06_11_B0_EE {
   le_uint32_t unused = 0;
   le_uint32_t guild_card_number = 0;
-  // Text immediately follows here (char[] on DC/V3, char16_t[] on PC/BB)
+  // Text immediately follows here
 } __packed__;
 
 // 02 (S->C): Start encryption (except on BB)
@@ -359,7 +363,7 @@ struct SC_TextHeader_01_06_11_B0_EE {
 // those versions that don't run on the DreamCast.)
 
 struct S_ServerInitDefault_DC_PC_V3_02_17_91_9B {
-  ptext<char, 0x40> copyright;
+  pstring<TextEncoding::ASCII, 0x40> copyright;
   le_uint32_t server_key = 0; // Key for data sent by server
   le_uint32_t client_key = 0; // Key for data sent by client
 } __packed__;
@@ -369,7 +373,7 @@ struct S_ServerInitWithAfterMessage_DC_PC_V3_02_17_91_9B {
   S_ServerInitDefault_DC_PC_V3_02_17_91_9B basic_cmd;
   // This field is not part of SEGA's implementation; the client ignores it.
   // newserv sends a message here disavowing the preceding copyright notice.
-  ptext<char, AfterBytes> after_message;
+  pstring<TextEncoding::ASCII, AfterBytes> after_message;
 } __packed__;
 
 // 03 (C->S): Legacy register (non-BB)
@@ -385,8 +389,8 @@ struct C_LegacyLogin_PC_V3_03 {
   // as the corresponding fields in 9D/9E. (Even though serial_number and
   // serial_number2 have the same contents in 9E, they do not come from the same
   // field on the client's connection context object.)
-  ptext<char, 0x10> serial_number2;
-  ptext<char, 0x10> access_key2;
+  pstring<TextEncoding::ASCII, 0x10> serial_number2;
+  pstring<TextEncoding::ASCII, 0x10> access_key2;
 } __packed__;
 
 // 03 (S->C): Legacy register result (non-BB)
@@ -409,7 +413,7 @@ struct C_LegacyLogin_PC_V3_03 {
 // "Phantasy Star Online Blue Burst Game Server. Copyright 1999-2004 SONICTEAM."
 
 struct S_ServerInitDefault_BB_03_9B {
-  ptext<char, 0x60> copyright;
+  pstring<TextEncoding::ASCII, 0x60> copyright;
   parray<uint8_t, 0x30> server_key;
   parray<uint8_t, 0x30> client_key;
 } __packed__;
@@ -418,7 +422,7 @@ template <size_t AfterBytes>
 struct S_ServerInitWithAfterMessage_BB_03_9B {
   S_ServerInitDefault_BB_03_9B basic_cmd;
   // As in 02, this field is not part of SEGA's implementation.
-  ptext<char, AfterBytes> after_message;
+  pstring<TextEncoding::ASCII, AfterBytes> after_message;
 } __packed__;
 
 // 04 (C->S): Legacy login
@@ -435,14 +439,14 @@ struct C_LegacyLogin_PC_V3_04 {
   uint8_t is_extended = 0;
   uint8_t language = 0;
   le_uint16_t unknown_a2 = 0;
-  ptext<char, 0x10> serial_number;
-  ptext<char, 0x10> access_key;
+  pstring<TextEncoding::ASCII, 0x10> serial_number;
+  pstring<TextEncoding::ASCII, 0x10> access_key;
 } __packed__;
 
 struct C_LegacyLogin_BB_04 {
   parray<le_uint32_t, 3> unknown_a1;
-  ptext<char, 0x10> username;
-  ptext<char, 0x10> password;
+  pstring<TextEncoding::ASCII, 0x10> username;
+  pstring<TextEncoding::ASCII, 0x10> password;
 } __packed__;
 
 // 04 (S->C): Set guild card number and update client config ("security data")
@@ -508,13 +512,12 @@ struct S_UpdateClientConfig_BB_04 : S_UpdateClientConfig<ClientConfigBB> {
 
 // 06: Chat
 // Internal name: RcvChat and SndChat
-// Server->client format is same as 01 command. The maximum size of the message
-// is 0x200 bytes.
-// Client->server format is very similar; we include a zero-length array in this
-// struct to make parsing easier.
+// Server->client format is the same as the 01 command; guild_card_number
+// is unused and set to zero. The maximum size of the message is 0x200 bytes.
+// Client->server format is the same as the 01 command also.
 // When sent by the client, the text field includes only the message. When sent
 // by the server, the text field includes the origin player's name, followed by
-// a tab character, followed by the message.
+// a tab character (\x09), followed by the message.
 // During Episode 3 battles, the first byte of an inbound 06 command's message
 // is interpreted differently. It should be treated as a bit field, with the low
 // 4 bits intended as masks for who can see the message. If the low bit (1) is
@@ -525,14 +528,6 @@ struct S_UpdateClientConfig_BB_04 : S_UpdateClientConfig<ClientConfigBB> {
 // that the field is always a valid ASCII character and also never terminates
 // the chat string accidentally.) We call this byte private_flags in the places
 // where newserv uses it.
-
-struct C_Chat_06 {
-  parray<le_uint32_t, 2> unused;
-  union {
-    char dcv3[0];
-    char16_t pcbb[0];
-  } __packed__ text;
-} __packed__;
 
 // 07 (S->C): Ship select menu
 // Internal name: RcvDirList
@@ -547,16 +542,16 @@ struct C_Chat_06 {
 // Command is a list of these; header.flag is the entry count. The first entry
 // is not included in the count and does not appear on the client. The text of
 // the first entry becomes the ship name when the client joins a lobby.
-template <typename CharT, int EntryLength>
+template <TextEncoding Encoding, size_t Chars>
 struct S_MenuEntry {
   le_uint32_t menu_id = 0;
   le_uint32_t item_id = 0;
   le_uint16_t flags = 0x0F04; // Should be this value, apparently
-  ptext<CharT, EntryLength> text;
+  pstring<Encoding, Chars> text;
 } __packed__;
-struct S_MenuEntry_PC_BB_07_1F : S_MenuEntry<char16_t, 0x11> {
+struct S_MenuEntry_PC_BB_07_1F : S_MenuEntry<TextEncoding::UTF16, 0x11> {
 } __packed__;
-struct S_MenuEntry_DC_V3_07_1F : S_MenuEntry<char, 0x12> {
+struct S_MenuEntry_DC_V3_07_1F : S_MenuEntry<TextEncoding::MARKED, 0x12> {
 } __packed__;
 
 // 08 (C->S): Request game list
@@ -569,7 +564,7 @@ struct S_MenuEntry_DC_V3_07_1F : S_MenuEntry<char, 0x12> {
 
 // Command is a list of these; header.flag is the entry count. The first entry
 // is not included in the count and does not appear on the client.
-template <typename CharT>
+template <TextEncoding Encoding>
 struct S_GameMenuEntry {
   le_uint32_t menu_id = 0;
   le_uint32_t game_id = 0;
@@ -577,7 +572,7 @@ struct S_GameMenuEntry {
   // difficulty + 0x22 (so 0x25 means Ultimate, for example)
   uint8_t difficulty_tag = 0;
   uint8_t num_players = 0;
-  ptext<CharT, 0x10> name;
+  pstring<Encoding, 0x10> name;
   // The episode field is used differently by different versions:
   // - On DCv1, PC, and GC Episode 3, the value is ignored.
   // - On DCv2, 1 means v1 players can't join the game, and 0 means they can.
@@ -593,9 +588,9 @@ struct S_GameMenuEntry {
   // 20 = Is challenge mode
   uint8_t flags = 0;
 } __packed__;
-struct S_GameMenuEntry_PC_BB_08 : S_GameMenuEntry<char16_t> {
+struct S_GameMenuEntry_PC_BB_08 : S_GameMenuEntry<TextEncoding::UTF16> {
 } __packed__;
-struct S_GameMenuEntry_DC_V3_08_Ep3_E6 : S_GameMenuEntry<char> {
+struct S_GameMenuEntry_DC_V3_08_Ep3_E6 : S_GameMenuEntry<TextEncoding::MARKED> {
 } __packed__;
 
 // 09 (C->S): Menu item info request
@@ -634,7 +629,7 @@ struct C_MenuItemInfoRequest_09 {
 // command does not softlock, but instead does nothing because the 0E
 // second-phase handler is missing.
 
-template <typename CharT>
+template <TextEncoding Encoding>
 struct SC_MeetUserExtension {
   struct LobbyReference {
     le_uint32_t menu_id = 0;
@@ -642,14 +637,14 @@ struct SC_MeetUserExtension {
   } __packed__;
   parray<LobbyReference, 8> lobby_refs;
   le_uint32_t unknown_a2 = 0;
-  ptext<CharT, 0x20> player_name;
+  pstring<Encoding, 0x20> player_name;
 } __packed__;
 
 struct S_LegacyJoinGame_PC_0E {
   struct LobbyData {
     le_uint32_t player_tag;
     le_uint32_t guild_card_number;
-    parray<uint8_t, 0x10> name;
+    pstring<TextEncoding::ASCII, 0x10> name;
   } __packed__;
   parray<LobbyData, 4> lobby_data;
   parray<uint8_t, 0x20> unknown_a3;
@@ -657,7 +652,7 @@ struct S_LegacyJoinGame_PC_0E {
 
 struct S_LegacyJoinGame_GC_0E {
   parray<PlayerLobbyDataDCGC, 4> lobby_data;
-  SC_MeetUserExtension<char> meet_user_extension;
+  SC_MeetUserExtension<TextEncoding::MARKED> meet_user_extension;
   parray<uint8_t, 4> unknown_a3;
 } __packed__;
 
@@ -665,10 +660,10 @@ struct S_LegacyJoinGame_XB_0E {
   struct LobbyData {
     le_uint32_t player_tag;
     le_uint32_t guild_card_number;
-    parray<uint8_t, 0x18> name;
+    pstring<TextEncoding::ASCII, 0x18> name;
   } __packed__;
   parray<LobbyData, 4> lobby_data;
-  SC_MeetUserExtension<char> meet_user_extension;
+  SC_MeetUserExtension<TextEncoding::MARKED> meet_user_extension;
   parray<uint8_t, 4> unknown_a3;
 } __packed__;
 
@@ -689,35 +684,35 @@ struct C_MenuSelection_10_Flag00 {
   le_uint32_t item_id = 0;
 } __packed__;
 
-template <typename CharT>
+template <TextEncoding Encoding>
 struct C_MenuSelection_10_Flag01 {
   C_MenuSelection_10_Flag00 basic_cmd;
-  ptext<CharT, 0x10> unknown_a1;
+  pstring<Encoding, 0x10> unknown_a1;
 } __packed__;
-struct C_MenuSelection_DC_V3_10_Flag01 : C_MenuSelection_10_Flag01<char> {
+struct C_MenuSelection_DC_V3_10_Flag01 : C_MenuSelection_10_Flag01<TextEncoding::MARKED> {
 } __packed__;
-struct C_MenuSelection_PC_BB_10_Flag01 : C_MenuSelection_10_Flag01<char16_t> {
+struct C_MenuSelection_PC_BB_10_Flag01 : C_MenuSelection_10_Flag01<TextEncoding::UTF16> {
 } __packed__;
 
-template <typename CharT>
+template <TextEncoding Encoding>
 struct C_MenuSelection_10_Flag02 {
   C_MenuSelection_10_Flag00 basic_cmd;
-  ptext<CharT, 0x10> password;
+  pstring<Encoding, 0x10> password;
 } __packed__;
-struct C_MenuSelection_DC_V3_10_Flag02 : C_MenuSelection_10_Flag02<char> {
+struct C_MenuSelection_DC_V3_10_Flag02 : C_MenuSelection_10_Flag02<TextEncoding::MARKED> {
 } __packed__;
-struct C_MenuSelection_PC_BB_10_Flag02 : C_MenuSelection_10_Flag02<char16_t> {
+struct C_MenuSelection_PC_BB_10_Flag02 : C_MenuSelection_10_Flag02<TextEncoding::UTF16> {
 } __packed__;
 
-template <typename CharT>
+template <TextEncoding Encoding>
 struct C_MenuSelection_10_Flag03 {
   C_MenuSelection_10_Flag00 basic_cmd;
-  ptext<CharT, 0x10> unknown_a1;
-  ptext<CharT, 0x10> password;
+  pstring<Encoding, 0x10> unknown_a1;
+  pstring<Encoding, 0x10> password;
 } __packed__;
-struct C_MenuSelection_DC_V3_10_Flag03 : C_MenuSelection_10_Flag03<char> {
+struct C_MenuSelection_DC_V3_10_Flag03 : C_MenuSelection_10_Flag03<TextEncoding::MARKED> {
 } __packed__;
-struct C_MenuSelection_PC_BB_10_Flag03 : C_MenuSelection_10_Flag03<char16_t> {
+struct C_MenuSelection_PC_BB_10_Flag03 : C_MenuSelection_10_Flag03<TextEncoding::UTF16> {
 } __packed__;
 
 // 11 (S->C): Ship info
@@ -744,7 +739,7 @@ struct C_MenuSelection_PC_BB_10_Flag03 : C_MenuSelection_10_Flag03<char16_t> {
 
 // header.flag = file chunk index (start offset / 0x400)
 struct S_WriteFile_13_A7 {
-  ptext<char, 0x10> filename;
+  pstring<TextEncoding::ASCII, 0x10> filename;
   parray<uint8_t, 0x400> data;
   le_uint32_t data_size = 0;
 } __packed__;
@@ -755,7 +750,7 @@ struct S_WriteFile_13_A7 {
 
 // header.flag = file chunk index (same as in the 13/A7 sent by the server)
 struct C_WriteFileConfirmation_V3_BB_13_A7 {
-  ptext<char, 0x10> filename;
+  pstring<TextEncoding::ASCII, 0x10> filename;
 } __packed__;
 
 // 14 (S->C): Valid but ignored (all versions)
@@ -818,11 +813,11 @@ struct S_ReconnectSplit_19 {
 // Internal name: RcvText
 // On V3, client will sometimes respond with a D6 command (see D6 for more
 // information).
-// Contents are plain text (char on DC/V3, char16_t on PC/BB). There must be at
-// least one null character ('\0') before the end of the command data.
-// There is a bug in V3 (and possibly all versions) where if this command is
-// sent after the client has joined a lobby, the chat log window contents will
-// appear in the message box, prepended to the message text from the command.
+// Contents are plain text. There must be at least one null character ('\0')
+// before the end of the command data. There is a bug in V3 (and possibly all
+// versions) where if this command is sent after the client has joined a lobby,
+// the chat log window contents will appear in the message box, prepended to
+// the message text from the command.
 // The maximum length of the message is 0x400 bytes. This is the only
 // difference between this command and the D5 command.
 
@@ -950,7 +945,7 @@ struct C_GuildCardSearch_40 {
 // 41 (S->C): Guild card search result
 // Internal name: RcvUserAns
 
-template <typename HeaderT, typename CharT>
+template <typename HeaderT, TextEncoding Encoding>
 struct S_GuildCardSearchResult {
   le_uint32_t player_tag = 0x00010000;
   le_uint32_t searcher_guild_card_number = 0;
@@ -961,21 +956,21 @@ struct S_GuildCardSearchResult {
   // player is not in a game, GAME-NAME should be the lobby name - for standard
   // lobbies this is "BLOCK<blocknum>-<lobbynum>"; for CARD lobbies this is
   // "BLOCK<blocknum>-C<lobbynum>".
-  ptext<CharT, 0x44> location_string;
+  pstring<Encoding, 0x44> location_string;
   // If the player chooses to meet the user, this extension data is sent in the
   // login command (9D/9E) after connecting to the server designated in
   // reconnect_command. When processing the 9D/9E, newserv uses only the
-  // lobby_id field within, but it fills in all fields when sengind a 41.
-  SC_MeetUserExtension<CharT> extension;
+  // lobby_id field within, but it fills in all fields when sending a 41.
+  SC_MeetUserExtension<Encoding> extension;
 } __packed__;
 struct S_GuildCardSearchResult_PC_41
-    : S_GuildCardSearchResult<PSOCommandHeaderPC, char16_t> {
+    : S_GuildCardSearchResult<PSOCommandHeaderPC, TextEncoding::UTF16> {
 } __packed__;
 struct S_GuildCardSearchResult_DC_V3_41
-    : S_GuildCardSearchResult<PSOCommandHeaderDCV3, char> {
+    : S_GuildCardSearchResult<PSOCommandHeaderDCV3, TextEncoding::MARKED> {
 } __packed__;
 struct S_GuildCardSearchResult_BB_41
-    : S_GuildCardSearchResult<PSOCommandHeaderBB, char16_t> {
+    : S_GuildCardSearchResult<PSOCommandHeaderBB, TextEncoding::UTF16> {
 } __packed__;
 
 // 42: Invalid command
@@ -992,7 +987,7 @@ struct S_GuildCardSearchResult_BB_41
 // though it doesn't make sense for an XB client to receive such a file.
 
 struct S_OpenFile_DC_44_A6 {
-  ptext<char, 0x22> name; // Should begin with "PSO/"
+  pstring<TextEncoding::MARKED, 0x22> name; // Should begin with "PSO/"
   // The type field is only used for download quests (A6); it is ignored for
   // online quests (44). The following values are valid for A6:
   //   0 = download quest (client expects .bin and .dat files)
@@ -1005,14 +1000,14 @@ struct S_OpenFile_DC_44_A6 {
   // but I haven't verified this. Generally the server should send all files for
   // a given piece of content with the same type in each file's A6 command.
   uint8_t type = 0;
-  ptext<char, 0x11> filename;
+  pstring<TextEncoding::ASCII, 0x11> filename;
   le_uint32_t file_size = 0;
 } __packed__;
 
 struct S_OpenFile_PC_GC_44_A6 {
-  ptext<char, 0x22> name; // Should begin with "PSO/"
+  pstring<TextEncoding::MARKED, 0x22> name; // Should begin with "PSO/"
   le_uint16_t type = 0;
-  ptext<char, 0x10> filename;
+  pstring<TextEncoding::ASCII, 0x10> filename;
   le_uint32_t file_size = 0;
 } __packed__;
 
@@ -1026,9 +1021,9 @@ struct S_OpenFile_XB_44_A6 : S_OpenFile_PC_GC_44_A6 {
 struct S_OpenFile_BB_44_A6 {
   parray<uint8_t, 0x22> unused;
   le_uint16_t type = 0;
-  ptext<char, 0x10> filename;
+  pstring<TextEncoding::ASCII, 0x10> filename;
   le_uint32_t file_size = 0;
-  ptext<char, 0x18> name;
+  pstring<TextEncoding::MARKED, 0x18> name;
 } __packed__;
 
 // 44 (C->S): Confirm open file (V3/BB)
@@ -1038,7 +1033,7 @@ struct S_OpenFile_BB_44_A6 {
 // whatever the server sent in its header.flag field. Also quest numbers can be
 // > 0xFF so the flag is essentially meaningless)
 struct C_OpenFileConfirmation_44_A6 {
-  ptext<char, 0x10> filename;
+  pstring<TextEncoding::ASCII, 0x10> filename;
 } __packed__;
 
 // 45: Invalid command
@@ -1144,7 +1139,7 @@ struct C_CharacterData_PC_61_98 {
   // The auto-reply message can be up to 0x200 characters. If it's shorter than
   // that, the client truncates the command after the first null value (rounded
   // up to the next 4-byte boundary).
-  /* 05A4 */ char16_t auto_reply[0];
+  /* 05A4 */ // uint16_t auto_reply[...EOF];
 } __attribute__((packed));
 
 struct C_CharacterData_V3_61_98 {
@@ -1152,13 +1147,13 @@ struct C_CharacterData_V3_61_98 {
   /* 034C */ PlayerDispDataDCPCV3 disp;
   /* 041C */ PlayerRecordsEntry_V3 records;
   /* 0538 */ ChoiceSearchConfig<le_uint16_t> choice_search_config;
-  /* 0550 */ ptext<char, 0xAC> info_board;
+  /* 0550 */ pstring<TextEncoding::MARKED, 0xAC> info_board;
   /* 05FC */ parray<le_uint32_t, 0x1E> blocked_senders;
   /* 0674 */ le_uint32_t auto_reply_enabled;
   // The auto-reply message can be up to 0x200 bytes. If it's shorter than that,
   // the client truncates the command after the first zero byte (rounded up to
   // the next 4-byte boundary).
-  /* 0678 */ char auto_reply[0];
+  /* 0678 */ // char auto_reply[...EOF];
 } __attribute__((packed));
 
 struct C_CharacterData_GC_Ep3_61_98 {
@@ -1166,10 +1161,10 @@ struct C_CharacterData_GC_Ep3_61_98 {
   /* 034C */ PlayerDispDataDCPCV3 disp;
   /* 041C */ PlayerRecordsEntry_V3 records;
   /* 0538 */ ChoiceSearchConfig<le_uint16_t> choice_search_config;
-  /* 0550 */ ptext<char, 0xAC> info_board;
+  /* 0550 */ pstring<TextEncoding::MARKED, 0xAC> info_board;
   /* 05FC */ parray<le_uint32_t, 0x1E> blocked_senders;
   /* 0674 */ le_uint32_t auto_reply_enabled;
-  /* 0678 */ ptext<char, 0xAC> auto_reply;
+  /* 0678 */ pstring<TextEncoding::MARKED, 0xAC> auto_reply;
   /* 0724 */ Episode3::PlayerConfig ep3_config;
   /* 2A74 */
 } __attribute__((packed));
@@ -1179,12 +1174,12 @@ struct C_CharacterData_BB_61_98 {
   /* 034C */ PlayerDispDataBB disp;
   /* 04DC */ PlayerRecordsEntry_BB records;
   /* 0638 */ ChoiceSearchConfig<le_uint16_t> choice_search_config;
-  /* 0650 */ ptext<char16_t, 0xAC> info_board;
+  /* 0650 */ pstring<TextEncoding::UTF16, 0xAC> info_board;
   /* 07A8 */ parray<le_uint32_t, 0x1E> blocked_senders;
   /* 0820 */ le_uint32_t auto_reply_enabled;
   // Like on V3, the client truncates the command if the auto reply message is
   // shorter than 0x200 bytes.
-  /* 082C */ char16_t auto_reply[0];
+  /* 082C */ // uint16_t auto_reply[...EOF];
 } __attribute__((packed));
 
 // 62: Target command
@@ -1451,29 +1446,29 @@ struct S_GenerateID_DC_PC_V3_80 {
 // contains uninitialized memory when the client sends this command. newserv
 // clears the uninitialized data for security reasons before forwarding.
 
-template <typename CharT>
+template <TextEncoding Encoding>
 struct SC_SimpleMail_81 {
   // If player_tag and from_guild_card_number are zero, the message cannot be
   // replied to.
   le_uint32_t player_tag = 0x00010000;
   le_uint32_t from_guild_card_number = 0;
-  ptext<CharT, 0x10> from_name;
+  pstring<Encoding, 0x10> from_name;
   le_uint32_t to_guild_card_number = 0;
-  ptext<CharT, 0x200> text;
+  pstring<Encoding, 0x200> text;
 } __packed__;
 
-struct SC_SimpleMail_PC_81 : SC_SimpleMail_81<char16_t> {
+struct SC_SimpleMail_PC_81 : SC_SimpleMail_81<TextEncoding::UTF16> {
 } __packed__;
-struct SC_SimpleMail_DC_V3_81 : SC_SimpleMail_81<char> {
+struct SC_SimpleMail_DC_V3_81 : SC_SimpleMail_81<TextEncoding::MARKED> {
 } __packed__;
 
 struct SC_SimpleMail_BB_81 {
   le_uint32_t player_tag = 0x00010000;
   le_uint32_t from_guild_card_number = 0;
-  ptext<char16_t, 0x10> from_name;
+  pstring<TextEncoding::UTF16, 0x10> from_name;
   le_uint32_t to_guild_card_number = 0;
-  ptext<char16_t, 0x14> received_date;
-  ptext<char16_t, 0x200> text;
+  pstring<TextEncoding::UTF16, 0x14> received_date;
+  pstring<TextEncoding::UTF16, 0x200> text;
 } __packed__;
 
 // 82: Invalid command
@@ -1517,8 +1512,8 @@ struct C_LobbySelection_84 {
 // The server should respond with an 88 command.
 
 struct C_Login_DCNTE_88 {
-  ptext<char, 0x11> serial_number;
-  ptext<char, 0x11> access_key;
+  pstring<TextEncoding::ASCII, 0x11> serial_number;
+  pstring<TextEncoding::ASCII, 0x11> access_key;
 } __packed__;
 
 // 88 (S->C): License check result (DC NTE only)
@@ -1567,12 +1562,12 @@ struct S_ArrowUpdateEntry_88 {
 // The server should respond with an 8A command.
 
 struct C_ConnectionInfo_DCNTE_8A {
-  ptext<char, 0x08> hardware_id;
+  pstring<TextEncoding::ASCII, 0x08> hardware_id;
   le_uint32_t sub_version = 0x20;
   le_uint32_t unknown_a1 = 0;
-  ptext<char, 0x30> username;
-  ptext<char, 0x30> password;
-  ptext<char, 0x30> email_address; // From Sylverant documentation
+  pstring<TextEncoding::ASCII, 0x30> username;
+  pstring<TextEncoding::ASCII, 0x30> password;
+  pstring<TextEncoding::ASCII, 0x30> email_address; // From Sylverant documentation
 } __packed__;
 
 // 8A (S->C): Connection information result (DC NTE only)
@@ -1583,11 +1578,11 @@ struct C_ConnectionInfo_DCNTE_8A {
 // No arguments
 
 // 8A (S->C): Lobby/game name (except DC NTE)
-// Contents is a string (char16_t on PC/BB, char on DC/V3) containing the lobby
-// or game name. The client generally only sends this immediately after joining
-// a game, but Sega's servers also replied to it if it was sent in a lobby. They
-// would return a string like "LOBBY01" in that case even though this would
-// never be used under normal circumstances.
+// Contents is a string containing the lobby or game name. The client generally
+// only sends this immediately after joining a game, but Sega's servers also
+// replied to it if it was sent in a lobby. They would return a string like
+// "LOBBY01" in that case even though this would never be used under normal
+// circumstances.
 
 // 8B: Log in (DC NTE only)
 
@@ -1599,16 +1594,16 @@ struct C_Login_DCNTE_8B {
   uint8_t is_extended = 0;
   uint8_t language = 0;
   parray<uint8_t, 2> unused1;
-  ptext<char, 0x11> serial_number;
-  ptext<char, 0x11> access_key;
-  ptext<char, 0x30> username;
-  ptext<char, 0x30> password;
-  ptext<char, 0x10> name;
+  pstring<TextEncoding::ASCII, 0x11> serial_number;
+  pstring<TextEncoding::ASCII, 0x11> access_key;
+  pstring<TextEncoding::ASCII, 0x30> username;
+  pstring<TextEncoding::ASCII, 0x30> password;
+  pstring<TextEncoding::ASCII, 0x10> name;
   parray<uint8_t, 2> unused;
 } __packed__;
 
 struct C_LoginExtended_DCNTE_8B : C_Login_DCNTE_8B {
-  SC_MeetUserExtension<char> extension;
+  SC_MeetUserExtension<TextEncoding::MARKED> extension;
 } __packed__;
 
 // 8C: Invalid command
@@ -1630,8 +1625,8 @@ struct C_LoginExtended_DCNTE_8B : C_Login_DCNTE_8B {
 // will be blank (all zeroes).
 
 struct C_LoginV1_DC_PC_V3_90 {
-  ptext<char, 0x11> serial_number;
-  ptext<char, 0x11> access_key;
+  pstring<TextEncoding::ASCII, 0x11> serial_number;
+  pstring<TextEncoding::ASCII, 0x11> access_key;
   // Note: There is a bug in the Japanese and prototype versions of DCv1 that
   // cause the client to send this command despite its size not being a
   // multiple of 4. This is fixed in later versions, so we handle both cases in
@@ -1659,9 +1654,9 @@ struct C_RegisterV1_DC_92 {
   uint8_t is_extended = 0; // TODO: This is a guess
   uint8_t language = 0; // TODO: This is a guess; verify it
   parray<uint8_t, 2> unknown_a3;
-  ptext<char, 0x10> hardware_id;
+  pstring<TextEncoding::ASCII, 0x10> hardware_id;
   parray<uint8_t, 0x50> unused1;
-  ptext<char, 0x20> email; // According to Sylverant documentation
+  pstring<TextEncoding::ASCII, 0x20> email; // According to Sylverant documentation
   parray<uint8_t, 0x10> unused2;
 } __packed__;
 
@@ -1680,16 +1675,16 @@ struct C_LoginV1_DC_93 {
   uint8_t is_extended = 0;
   uint8_t language = 0;
   parray<uint8_t, 2> unused1;
-  ptext<char, 0x11> serial_number;
-  ptext<char, 0x11> access_key;
-  ptext<char, 0x30> hardware_id;
-  ptext<char, 0x30> unknown_a3;
-  ptext<char, 0x10> name;
+  pstring<TextEncoding::ASCII, 0x11> serial_number;
+  pstring<TextEncoding::ASCII, 0x11> access_key;
+  pstring<TextEncoding::ASCII, 0x30> hardware_id;
+  pstring<TextEncoding::ASCII, 0x30> unknown_a3;
+  pstring<TextEncoding::ASCII, 0x10> name;
   parray<uint8_t, 2> unused2;
 } __packed__;
 
 struct C_LoginExtendedV1_DC_93 : C_LoginV1_DC_93 {
-  SC_MeetUserExtension<char> extension;
+  SC_MeetUserExtension<TextEncoding::MARKED> extension;
 } __packed__;
 
 // 93 (C->S): Log in (BB)
@@ -1697,10 +1692,10 @@ struct C_LoginExtendedV1_DC_93 : C_LoginV1_DC_93 {
 struct C_Login_BB_93 {
   le_uint32_t player_tag = 0x00010000;
   le_uint32_t guild_card_number = 0;
-  ptext<char, 0x08> unused;
+  pstring<TextEncoding::ASCII, 0x08> unused;
   le_uint32_t team_id = 0;
-  ptext<char, 0x30> username;
-  ptext<char, 0x30> password;
+  pstring<TextEncoding::ASCII, 0x30> username;
+  pstring<TextEncoding::ASCII, 0x30> password;
 
   // These fields map to the same fields in SC_MeetUserExtension. There is no
   // equivalent of the name field from that structure on BB (though newserv
@@ -1717,7 +1712,7 @@ struct C_Login_BB_93 {
   union VariableLengthSection {
     union ClientConfigFields {
       ClientConfigBB cfg;
-      ptext<char, 0x28> version_string;
+      pstring<TextEncoding::ASCII, 0x28> version_string;
       parray<le_uint32_t, 10> as_u32;
     } __packed__;
 
@@ -1793,16 +1788,16 @@ struct C_CharSaveInfo_DCv2_PC_V3_BB_96 {
 // Not used on DCv1 - that version uses 90 instead.
 
 struct C_Login_DC_PC_V3_9A {
-  ptext<char, 0x10> v1_serial_number;
-  ptext<char, 0x10> v1_access_key;
-  ptext<char, 0x10> serial_number;
-  ptext<char, 0x10> access_key;
+  pstring<TextEncoding::ASCII, 0x10> v1_serial_number;
+  pstring<TextEncoding::ASCII, 0x10> v1_access_key;
+  pstring<TextEncoding::ASCII, 0x10> serial_number;
+  pstring<TextEncoding::ASCII, 0x10> access_key;
   le_uint32_t player_tag = 0x00010000;
   le_uint32_t guild_card_number = 0;
   le_uint32_t sub_version = 0;
-  ptext<char, 0x30> serial_number2; // On DCv2, this is the hardware ID
-  ptext<char, 0x30> access_key2;
-  ptext<char, 0x30> email_address;
+  pstring<TextEncoding::ASCII, 0x30> serial_number2; // On DCv2, this is the hardware ID
+  pstring<TextEncoding::ASCII, 0x30> access_key2;
+  pstring<TextEncoding::ASCII, 0x30> email_address;
 } __packed__;
 
 // 9A (S->C): License verification result
@@ -1851,9 +1846,9 @@ struct C_Register_DC_PC_V3_9C {
   uint8_t unused1 = 0;
   uint8_t language = 0;
   parray<uint8_t, 2> unused2;
-  ptext<char, 0x30> serial_number; // On XB, this is the XBL gamertag
-  ptext<char, 0x30> access_key; // On XB, this is the XBL user ID
-  ptext<char, 0x30> password; // On XB, this contains "xbox-pso"
+  pstring<TextEncoding::ASCII, 0x30> serial_number; // On XB, this is the XBL gamertag
+  pstring<TextEncoding::ASCII, 0x30> access_key; // On XB, this is the XBL user ID
+  pstring<TextEncoding::ASCII, 0x30> password; // On XB, this contains "xbox-pso"
 } __packed__;
 
 struct C_Register_BB_9C {
@@ -1861,9 +1856,9 @@ struct C_Register_BB_9C {
   uint8_t unused1 = 0;
   uint8_t language = 0;
   parray<uint8_t, 2> unused2;
-  ptext<char, 0x30> username;
-  ptext<char, 0x30> password;
-  ptext<char, 0x30> game_tag; // "psopc2" on BB
+  pstring<TextEncoding::ASCII, 0x30> username;
+  pstring<TextEncoding::ASCII, 0x30> password;
+  pstring<TextEncoding::ASCII, 0x30> game_tag; // "psopc2" on BB
 } __packed__;
 
 // 9C (S->C): Register result
@@ -1891,19 +1886,19 @@ struct C_Login_DC_PC_GC_9D {
   uint8_t is_extended = 0; // If 1, structure has extended format
   uint8_t language = 0; // 0 = JP, 1 = EN, 2 = DE, 3 = FR, 4 = ES
   parray<uint8_t, 0x2> unused3; // Always zeroes
-  ptext<char, 0x10> v1_serial_number;
-  ptext<char, 0x10> v1_access_key;
-  ptext<char, 0x10> serial_number; // On XB, this is the XBL gamertag
-  ptext<char, 0x10> access_key; // On XB, this is the XBL user ID
-  ptext<char, 0x30> serial_number2; // On XB, this is the XBL gamertag
-  ptext<char, 0x30> access_key2; // On XB, this is the XBL user ID
-  ptext<char, 0x10> name;
+  pstring<TextEncoding::ASCII, 0x10> v1_serial_number;
+  pstring<TextEncoding::ASCII, 0x10> v1_access_key;
+  pstring<TextEncoding::ASCII, 0x10> serial_number; // On XB, this is the XBL gamertag
+  pstring<TextEncoding::ASCII, 0x10> access_key; // On XB, this is the XBL user ID
+  pstring<TextEncoding::ASCII, 0x30> serial_number2; // On XB, this is the XBL gamertag
+  pstring<TextEncoding::ASCII, 0x30> access_key2; // On XB, this is the XBL user ID
+  pstring<TextEncoding::ASCII, 0x10> name;
 } __packed__;
 struct C_LoginExtended_DC_GC_9D : C_Login_DC_PC_GC_9D {
-  SC_MeetUserExtension<char> extension;
+  SC_MeetUserExtension<TextEncoding::MARKED> extension;
 } __packed__;
 struct C_LoginExtended_PC_9D : C_Login_DC_PC_GC_9D {
-  SC_MeetUserExtension<char16_t> extension;
+  SC_MeetUserExtension<TextEncoding::UTF16> extension;
 } __packed__;
 
 // 9E (C->S): Log in with client config (V3/BB)
@@ -1920,7 +1915,7 @@ struct C_Login_GC_9E : C_Login_DC_PC_GC_9D {
   } __packed__ client_config;
 } __packed__;
 struct C_LoginExtended_GC_9E : C_Login_GC_9E {
-  SC_MeetUserExtension<char> extension;
+  SC_MeetUserExtension<TextEncoding::MARKED> extension;
 } __packed__;
 
 struct C_Login_XB_9E : C_Login_GC_9E {
@@ -1928,7 +1923,7 @@ struct C_Login_XB_9E : C_Login_GC_9E {
   parray<le_uint32_t, 6> unknown_a1;
 } __packed__;
 struct C_LoginExtended_XB_9E : C_Login_XB_9E {
-  SC_MeetUserExtension<char> extension;
+  SC_MeetUserExtension<TextEncoding::MARKED> extension;
 } __packed__;
 
 struct C_LoginExtended_BB_9E {
@@ -1937,15 +1932,15 @@ struct C_LoginExtended_BB_9E {
   le_uint32_t sub_version = 0;
   le_uint32_t unknown_a1 = 0;
   le_uint32_t unknown_a2 = 0;
-  ptext<char, 0x10> unknown_a3; // Always blank?
-  ptext<char, 0x10> unknown_a4; // == "?"
-  ptext<char, 0x10> unknown_a5; // Always blank?
-  ptext<char, 0x10> unknown_a6; // Always blank?
-  ptext<char, 0x30> username;
-  ptext<char, 0x30> password;
-  ptext<char, 0x10> guild_card_number_str;
+  pstring<TextEncoding::ASCII, 0x10> unknown_a3; // Always blank?
+  pstring<TextEncoding::ASCII, 0x10> unknown_a4; // == "?"
+  pstring<TextEncoding::ASCII, 0x10> unknown_a5; // Always blank?
+  pstring<TextEncoding::ASCII, 0x10> unknown_a6; // Always blank?
+  pstring<TextEncoding::ASCII, 0x30> username;
+  pstring<TextEncoding::ASCII, 0x30> password;
+  pstring<TextEncoding::ASCII, 0x10> guild_card_number_str;
   parray<le_uint32_t, 10> unknown_a7;
-  SC_MeetUserExtension<char16_t> extension;
+  SC_MeetUserExtension<TextEncoding::UTF16> extension;
 } __packed__;
 
 // 9F (S->C): Request client config / security data (V3/BB)
@@ -1989,20 +1984,20 @@ struct C_ChangeShipOrBlock_A0_A1 {
 // should send another quest menu (if a category was chosen), or send the quest
 // data with 44/13 commands; for A9, the server does not need to respond.
 
-template <typename CharT, size_t ShortDescLength>
+template <TextEncoding Encoding, size_t ShortDescLength>
 struct S_QuestMenuEntry {
   le_uint32_t menu_id = 0;
   le_uint32_t item_id = 0;
-  ptext<CharT, 0x20> name;
-  ptext<CharT, ShortDescLength> short_description;
+  pstring<Encoding, 0x20> name;
+  pstring<Encoding, ShortDescLength> short_description;
 } __packed__;
-struct S_QuestMenuEntry_PC_A2_A4 : S_QuestMenuEntry<char16_t, 0x70> {
+struct S_QuestMenuEntry_PC_A2_A4 : S_QuestMenuEntry<TextEncoding::UTF16, 0x70> {
 } __packed__;
-struct S_QuestMenuEntry_DC_GC_A2_A4 : S_QuestMenuEntry<char, 0x70> {
+struct S_QuestMenuEntry_DC_GC_A2_A4 : S_QuestMenuEntry<TextEncoding::MARKED, 0x70> {
 } __packed__;
-struct S_QuestMenuEntry_XB_A2_A4 : S_QuestMenuEntry<char, 0x80> {
+struct S_QuestMenuEntry_XB_A2_A4 : S_QuestMenuEntry<TextEncoding::MARKED, 0x80> {
 } __packed__;
-struct S_QuestMenuEntry_BB_A2_A4 : S_QuestMenuEntry<char16_t, 0x7A> {
+struct S_QuestMenuEntry_BB_A2_A4 : S_QuestMenuEntry<TextEncoding::UTF16, 0x7A> {
 } __packed__;
 
 // A3 (S->C): Quest information
@@ -2207,7 +2202,7 @@ struct S_RankUpdate_GC_Ep3_B7 {
   // truncated to 11 characters. If rank is zero, the client uses rank_text
   // without modifying it.
   le_uint32_t rank = 0;
-  ptext<char, 0x0C> rank_text; // Encrypted (with encrypt_challenge_rank_text)
+  pstring<TextEncoding::CHALLENGE8, 0x0C> rank_text;
   le_uint32_t current_meseta = 0;
   le_uint32_t total_meseta_earned = 0;
   le_uint32_t unlocked_jukebox_songs = 0xFFFFFFFF;
@@ -2334,17 +2329,17 @@ struct S_MesetaTransaction_GC_Ep3_BA {
 // header.flag is the number of valid match entries.
 
 struct S_TournamentMatchInformation_GC_Ep3_BB {
-  ptext<char, 0x20> tournament_name;
+  pstring<TextEncoding::MARKED, 0x20> tournament_name;
   struct TeamEntry {
     le_uint16_t win_count = 0;
     le_uint16_t is_active = 0;
-    ptext<char, 0x20> name;
+    pstring<TextEncoding::MARKED, 0x20> name;
   } __packed__;
   parray<TeamEntry, 0x20> team_entries;
   le_uint16_t num_teams = 0;
   le_uint16_t unknown_a3 = 0; // Probably actually unused
   struct MatchEntry {
-    ptext<char, 0x20> name;
+    pstring<TextEncoding::MARKED, 0x20> name;
     uint8_t locked = 0;
     uint8_t count = 0;
     uint8_t max_count = 0;
@@ -2367,19 +2362,19 @@ struct S_TournamentMatchInformation_GC_Ep3_BB {
 // Internal name: RcvChoiceList
 
 // Command is a list of these; header.flag is the entry count (incl. top-level).
-template <typename ItemIDT, typename CharT>
+template <typename ItemIDT, TextEncoding Encoding>
 struct S_ChoiceSearchEntry {
   // Category IDs are nonzero; if the high byte of the ID is nonzero then the
   // category can be set by the user at any time; otherwise it can't.
   ItemIDT parent_category_id = 0; // 0 for top-level categories
   ItemIDT category_id = 0;
-  ptext<CharT, 0x1C> text;
+  pstring<Encoding, 0x1C> text;
 } __packed__;
-struct S_ChoiceSearchEntry_DC_C0 : S_ChoiceSearchEntry<le_uint32_t, char> {
+struct S_ChoiceSearchEntry_DC_C0 : S_ChoiceSearchEntry<le_uint32_t, TextEncoding::MARKED> {
 } __packed__;
-struct S_ChoiceSearchEntry_V3_C0 : S_ChoiceSearchEntry<le_uint16_t, char> {
+struct S_ChoiceSearchEntry_V3_C0 : S_ChoiceSearchEntry<le_uint16_t, TextEncoding::MARKED> {
 } __packed__;
-struct S_ChoiceSearchEntry_PC_BB_C0 : S_ChoiceSearchEntry<le_uint16_t, char16_t> {
+struct S_ChoiceSearchEntry_PC_BB_C0 : S_ChoiceSearchEntry<le_uint16_t, TextEncoding::UTF16> {
 } __packed__;
 
 // Top-level categories are things like "Level", "Class", etc.
@@ -2398,18 +2393,18 @@ struct S_ChoiceSearchEntry_PC_BB_C0 : S_ChoiceSearchEntry<le_uint16_t, char16_t>
 // C1 (C->S): Create game (DCv2 and later versions)
 // Internal name: SndCreateGame
 
-template <typename CharT>
+template <TextEncoding Encoding>
 struct C_CreateGame_DCNTE {
   // menu_id and item_id are only used for the E7 (create spectator team) form
   // of this command
   le_uint32_t menu_id;
   le_uint32_t item_id;
-  ptext<CharT, 0x10> name;
-  ptext<CharT, 0x10> password;
+  pstring<Encoding, 0x10> name;
+  pstring<Encoding, 0x10> password;
 } __packed__;
 
-template <typename CharT>
-struct C_CreateGame : C_CreateGame_DCNTE<CharT> {
+template <TextEncoding Encoding>
+struct C_CreateGame : C_CreateGame_DCNTE<Encoding> {
   uint8_t difficulty = 0; // 0-3 (always 0 on Episode 3)
   uint8_t battle_mode = 0; // 0 or 1 (always 0 on Episode 3)
   // Note: Episode 3 uses the challenge mode flag for view battle permissions.
@@ -2420,12 +2415,12 @@ struct C_CreateGame : C_CreateGame_DCNTE<CharT> {
   // players; if set to 1, it's v2-only.
   uint8_t episode = 0; // 1-4 on V3+ (3 on Episode 3); unused on DC/PC
 } __packed__;
-struct C_CreateGame_DC_V3_0C_C1_Ep3_EC : C_CreateGame<char> {
+struct C_CreateGame_DC_V3_0C_C1_Ep3_EC : C_CreateGame<TextEncoding::MARKED> {
 } __packed__;
-struct C_CreateGame_PC_C1 : C_CreateGame<char16_t> {
+struct C_CreateGame_PC_C1 : C_CreateGame<TextEncoding::UTF16> {
 } __packed__;
 
-struct C_CreateGame_BB_C1 : C_CreateGame<char16_t> {
+struct C_CreateGame_BB_C1 : C_CreateGame<TextEncoding::UTF16> {
   uint8_t solo_mode = 0;
   parray<uint8_t, 3> unused2;
 } __packed__;
@@ -2451,12 +2446,12 @@ struct C_ChoiceSearchSelections_PC_V3_BB_C2_C3 : ChoiceSearchConfig<le_uint16_t>
 // Command is a list of these; header.flag is the entry count
 struct S_ChoiceSearchResultEntry_V3_C4 {
   le_uint32_t guild_card_number = 0;
-  ptext<char, 0x10> name; // No language marker, as usual on V3
-  ptext<char, 0x20> info_string; // Usually something like "<class> Lvl <level>"
+  pstring<TextEncoding::ASCII, 0x10> name; // No language marker, as usual on V3
+  pstring<TextEncoding::MARKED, 0x20> info_string; // Usually something like "<class> Lvl <level>"
   // Format is stricter here; this is "LOBBYNAME,BLOCKNUM,SHIPNAME"
   // If target is in game, for example, "Game Name,BLOCK01,Alexandria"
   // If target is in lobby, for example, "BLOCK01-1,BLOCK01,Alexandria"
-  ptext<char, 0x34> locator_string;
+  pstring<TextEncoding::MARKED, 0x34> locator_string;
   // Server IP and port for "meet user" option
   le_uint32_t server_ip = 0;
   le_uint16_t server_port = 0;
@@ -2533,17 +2528,17 @@ struct C_SetBlockedSenders_BB_C6 : C_SetBlockedSenders_C6<28> {
 // disabled and the Status item has only two panes.
 
 struct S_ConfirmTournamentEntry_GC_Ep3_CC {
-  ptext<char, 0x40> tournament_name;
+  pstring<TextEncoding::MARKED, 0x40> tournament_name;
   le_uint16_t num_teams = 0;
   le_uint16_t players_per_team = 0;
   le_uint16_t unknown_a2 = 0;
   le_uint16_t unknown_a3 = 0;
-  ptext<char, 0x20> server_name;
-  ptext<char, 0x20> start_time; // e.g. "15:09:30" or "13:03 PST"
+  pstring<TextEncoding::MARKED, 0x20> server_name;
+  pstring<TextEncoding::MARKED, 0x20> start_time; // e.g. "15:09:30" or "13:03 PST"
   struct TeamEntry {
     le_uint16_t win_count = 0;
     le_uint16_t is_active = 0;
-    ptext<char, 0x20> name;
+    pstring<TextEncoding::MARKED, 0x20> name;
   } __packed__;
   parray<TeamEntry, 0x20> team_entries;
 } __packed__;
@@ -2628,7 +2623,7 @@ struct SC_TradeItems_D0_D3 { // D0 when sent by client, D3 when sent by server
 // client.
 
 struct C_GBAGameRequest_V3_D7 {
-  ptext<char, 0x10> filename;
+  pstring<TextEncoding::MARKED, 0x10> filename;
 } __packed__;
 
 // D7 (S->C): GBA file not found (V3/BB)
@@ -2648,14 +2643,14 @@ struct C_GBAGameRequest_V3_D7 {
 
 // Command is a list of these; header.flag is the entry count. There should be
 // one entry for each player in the current lobby/game.
-template <typename CharT>
+template <TextEncoding NameEncoding, TextEncoding MessageEncoding>
 struct S_InfoBoardEntry_D8 {
-  ptext<CharT, 0x10> name;
-  ptext<CharT, 0xAC> message;
+  pstring<NameEncoding, 0x10> name;
+  pstring<MessageEncoding, 0xAC> message;
 } __packed__;
-struct S_InfoBoardEntry_BB_D8 : S_InfoBoardEntry_D8<char16_t> {
+struct S_InfoBoardEntry_BB_D8 : S_InfoBoardEntry_D8<TextEncoding::UTF16, TextEncoding::UTF16> {
 } __packed__;
-struct S_InfoBoardEntry_V3_D8 : S_InfoBoardEntry_D8<char> {
+struct S_InfoBoardEntry_V3_D8 : S_InfoBoardEntry_D8<TextEncoding::ASCII, TextEncoding::MARKED> {
 } __packed__;
 
 // D9 (C->S): Write info board (V3/BB)
@@ -2670,28 +2665,28 @@ struct S_InfoBoardEntry_V3_D8 : S_InfoBoardEntry_D8<char> {
 // Server should respond with a 9A command.
 
 struct C_VerifyLicense_V3_DB {
-  ptext<char, 0x20> unused;
-  ptext<char, 0x10> serial_number; // On XB, this is the XBL gamertag
-  ptext<char, 0x10> access_key; // On XB, this is the XBL user ID
-  ptext<char, 0x08> unused2;
+  pstring<TextEncoding::ASCII, 0x20> unused;
+  pstring<TextEncoding::ASCII, 0x10> serial_number; // On XB, this is the XBL gamertag
+  pstring<TextEncoding::ASCII, 0x10> access_key; // On XB, this is the XBL user ID
+  pstring<TextEncoding::ASCII, 0x08> unused2;
   le_uint32_t sub_version = 0;
-  ptext<char, 0x30> serial_number2; // On XB, this is the XBL gamertag
-  ptext<char, 0x30> access_key2; // On XB, this is the XBL user ID
-  ptext<char, 0x30> password; // On XB, this contains "xbox-pso"
+  pstring<TextEncoding::ASCII, 0x30> serial_number2; // On XB, this is the XBL gamertag
+  pstring<TextEncoding::ASCII, 0x30> access_key2; // On XB, this is the XBL user ID
+  pstring<TextEncoding::ASCII, 0x30> password; // On XB, this contains "xbox-pso"
 } __packed__;
 
 // Note: This login pathway generally isn't used on BB (and isn't supported at
 // all during the data server phase). All current servers use 03/93 instead.
 struct C_VerifyLicense_BB_DB {
   // Note: These four fields are likely the same as those used in BB's 9E
-  ptext<char, 0x10> unknown_a3; // Always blank?
-  ptext<char, 0x10> unknown_a4; // == "?"
-  ptext<char, 0x10> unknown_a5; // Always blank?
-  ptext<char, 0x10> unknown_a6; // Always blank?
+  pstring<TextEncoding::ASCII, 0x10> unknown_a3; // Always blank?
+  pstring<TextEncoding::ASCII, 0x10> unknown_a4; // == "?"
+  pstring<TextEncoding::ASCII, 0x10> unknown_a5; // Always blank?
+  pstring<TextEncoding::ASCII, 0x10> unknown_a6; // Always blank?
   le_uint32_t sub_version = 0;
-  ptext<char, 0x30> username;
-  ptext<char, 0x30> password;
-  ptext<char, 0x30> game_tag; // "psopc2"
+  pstring<TextEncoding::ASCII, 0x30> username;
+  pstring<TextEncoding::ASCII, 0x30> password;
+  pstring<TextEncoding::ASCII, 0x30> game_tag; // "psopc2"
 } __packed__;
 
 // DC: Player menu state (Episode 3)
@@ -2757,7 +2752,7 @@ struct C_Unknown_BB_04DF {
 
 struct C_Unknown_BB_05DF {
   le_uint32_t unknown_a1 = 0;
-  ptext<char16_t, 0x0C> unknown_a2;
+  pstring<TextEncoding::UTF16, 0x0C> unknown_a2;
 } __packed__;
 
 struct C_Unknown_BB_06DF {
@@ -2801,7 +2796,7 @@ struct S_TournamentList_GC_Ep3_E0 {
     uint8_t state = 0;
     uint8_t unknown_a2 = 0;
     le_uint32_t start_time = 0; // In seconds since Unix epoch
-    ptext<char, 0x20> name;
+    pstring<TextEncoding::MARKED, 0x20> name;
     le_uint16_t num_teams = 0;
     le_uint16_t max_teams = 0;
     le_uint16_t unknown_a3 = 0;
@@ -2822,13 +2817,13 @@ struct S_TournamentList_GC_Ep3_E0 {
 // flag value means.
 
 struct S_GameInformation_GC_Ep3_E1 {
-  /* 0004 */ ptext<char, 0x20> game_name;
+  /* 0004 */ pstring<TextEncoding::MARKED, 0x20> game_name;
   struct PlayerEntry {
-    ptext<char, 0x10> name; // From disp.name
-    ptext<char, 0x20> description; // Usually something like "FOmarl CLv30 J"
+    pstring<TextEncoding::ASCII, 0x10> name; // From disp.name
+    pstring<TextEncoding::MARKED, 0x20> description; // Usually something like "FOmarl CLv30 J"
   } __packed__;
   /* 0024 */ parray<PlayerEntry, 4> player_entries;
-  /* 00E4 */ ptext<char, 0x20> map_name;
+  /* 00E4 */ pstring<TextEncoding::MARKED, 0x20> map_name;
   /* 0104 */ Episode3::Rules rules;
   /* 0118 */ parray<PlayerEntry, 8> spectator_entries;
   /* 0298 */
@@ -2890,7 +2885,7 @@ struct S_TournamentEntryList_GC_Ep3_E2 {
     // but cannot be selected at all (the menu cursor simply skips over it).
     uint8_t state = 0;
     uint8_t unknown_a2 = 0;
-    ptext<char, 0x20> name;
+    pstring<TextEncoding::MARKED, 0x20> name;
   } __packed__;
   parray<Entry, 0x20> entries;
 } __packed__;
@@ -2922,15 +2917,15 @@ struct S_TournamentEntryList_GC_Ep3_E2 {
 
 struct S_TournamentGameDetails_GC_Ep3_E3 {
   // These fields are used only if the Rules pane is shown
-  /* 0004 */ ptext<char, 0x20> name;
-  /* 0024 */ ptext<char, 0x20> map_name;
+  /* 0004 */ pstring<TextEncoding::MARKED, 0x20> name;
+  /* 0024 */ pstring<TextEncoding::MARKED, 0x20> map_name;
   /* 0044 */ Episode3::Rules rules;
 
   // This field is used only if the bracket pane is shown
   struct BracketEntry {
     le_uint16_t win_count = 0;
     le_uint16_t is_active = 0;
-    ptext<char, 0x18> team_name;
+    pstring<TextEncoding::MARKED, 0x18> team_name;
     parray<uint8_t, 8> unused;
   } __packed__;
   /* 0058 */ parray<BracketEntry, 0x20> bracket_entries;
@@ -2939,11 +2934,11 @@ struct S_TournamentGameDetails_GC_Ep3_E3 {
   // is 2, all fields are shown; if player_per_team is 1, team_name and
   // players[1] is ignored (only players[0] is shown).
   struct PlayerEntry {
-    ptext<char, 0x10> name;
-    ptext<char, 0x20> description; // Usually something like "RAmarl CLv24 E"
+    pstring<TextEncoding::ASCII, 0x10> name;
+    pstring<TextEncoding::MARKED, 0x20> description; // Usually something like "RAmarl CLv24 E"
   } __packed__;
   struct TeamEntry {
-    ptext<char, 0x10> team_name;
+    pstring<TextEncoding::MARKED, 0x10> team_name;
     parray<PlayerEntry, 2> players;
   } __packed__;
   /* 04D8 */ parray<TeamEntry, 2> team_entries;
@@ -3058,8 +3053,8 @@ struct S_ClientInit_BB_00E6 {
 struct C_CreateSpectatorTeam_GC_Ep3_E7 {
   le_uint32_t menu_id = 0;
   le_uint32_t item_id = 0;
-  ptext<char, 0x10> name;
-  ptext<char, 0x10> password;
+  pstring<TextEncoding::ASCII, 0x10> name;
+  pstring<TextEncoding::MARKED, 0x10> password;
   le_uint32_t unused = 0;
 } __packed__;
 
@@ -3083,8 +3078,8 @@ struct SC_SyncCharacterSaveFile_BB_00E7 {
   /* 1AC8 */ le_uint32_t unknown_a3;
   /* 1ACC */ parray<uint8_t, 0x04E0> symbol_chats; // account
   /* 1FAC */ parray<uint8_t, 0x0A40> shortcuts; // account
-  /* 29EC */ ptext<char16_t, 0x00AC> auto_reply; // player
-  /* 2B44 */ ptext<char16_t, 0x00AC> info_board; // player
+  /* 29EC */ pstring<TextEncoding::UTF16, 0x00AC> auto_reply; // player
+  /* 2B44 */ pstring<TextEncoding::UTF16, 0x00AC> info_board; // player
   /* 2C9C */ PlayerRecords_Battle<false> battle_records;
   /* 2CB4 */ parray<uint8_t, 4> unknown_a4;
   /* 2CB8 */ PlayerRecordsBB_Challenge challenge_records;
@@ -3128,8 +3123,8 @@ struct S_JoinSpectatorTeam_GC_Ep3_E8 {
     // for, but the client also completely ignores it.
     /* 00 */ le_uint32_t player_tag = 0;
     /* 04 */ le_uint32_t guild_card_number = 0;
-    /* 08 */ ptext<char, 0x10> name;
-    /* 18 */ ptext<char, 0x10> unused1;
+    /* 08 */ pstring<TextEncoding::ASCII, 0x10> name;
+    /* 18 */ pstring<TextEncoding::CHALLENGE8, 0x10> unused1;
     /* 28 */ uint8_t present = 0;
     /* 29 */ uint8_t unused2 = 0;
     /* 2A */ le_uint16_t level = 0;
@@ -3142,7 +3137,7 @@ struct S_JoinSpectatorTeam_GC_Ep3_E8 {
   // battle - they appear in the first positions. Presumably the first 4 are
   // always for battlers, and the last 8 are always for spectators.
   /* 1184 */ parray<SpectatorEntry, 12> entries;
-  /* 1424 */ ptext<char, 0x20> spectator_team_name;
+  /* 1424 */ pstring<TextEncoding::MARKED, 0x20> spectator_team_name;
   // This field doesn't appear to be actually used by the game, but some servers
   // send it anyway (and the game ignores it)
   /* 1444 */ parray<PlayerEntry, 8> spectator_players;
@@ -3199,7 +3194,7 @@ struct C_DeleteGuildCard_BB_05E8_08E8 {
 
 struct C_WriteGuildCardComment_BB_09E8 {
   le_uint32_t guild_card_number = 0;
-  ptext<char16_t, 0x58> comment;
+  pstring<TextEncoding::UTF16, 0x58> comment;
 } __packed__;
 
 // 0AE8 (C->S): Set guild card position in list
@@ -3234,7 +3229,7 @@ struct S_TimedMessageBoxHeader_GC_Ep3_EA {
 // 01EA (C->S): Create team
 
 struct C_CreateTeam_BB_01EA {
-  ptext<char16_t, 0x10> name;
+  pstring<TextEncoding::UTF16, 0x10> name;
 } __packed__;
 
 // 02EA (S->C): Unknown
@@ -3258,10 +3253,10 @@ struct C_AddOrRemoveTeamMember_BB_03EA_05EA {
 // 07EA: Team chat
 
 struct SC_TeamChat_BB_07EA {
-  parray<char16_t, 0x20> sender_name;
+  pstring<TextEncoding::UTF16, 0x20> sender_name;
   // It seems there are no real limits on the message length, other than the
   // overall command length limit of 0x7C00 bytes.
-  char16_t message[0];
+  // Text follows here
 } __packed__;
 
 // 08EA (C->S): Team admin
@@ -3277,16 +3272,17 @@ struct S_Unknown_BB_09EA {
     le_uint32_t value;
     le_uint32_t color; // 0x10 or 0x20 = green, 0x30 = blue, 0x40 = red, anything else = white
     le_uint32_t unknown_a1;
-    parray<char16_t, 0x10> message;
+    pstring<TextEncoding::UTF16, 0x10> message;
   } __packed__;
-  Entry entries[0]; // [entry_count] actually
+  // Variable-length field:
+  // Entry entries[entry_count];
 } __packed__;
 
 // 0CEA (S->C): Unknown
 
 struct S_Unknown_BB_0CEA {
   parray<uint8_t, 0x20> unknown_a1;
-  char16_t unknown_a2[0];
+  // Text follows here
 } __packed__;
 
 // 0DEA (C->S): Unknown
@@ -3296,7 +3292,7 @@ struct S_Unknown_BB_0CEA {
 
 struct S_Unknown_BB_0EEA {
   parray<uint8_t, 0x10> unused;
-  char16_t unknown_a2[0];
+  // Text follows here
 } __packed__;
 
 // 0EEA (S->C): Unknown
@@ -3331,7 +3327,7 @@ struct S_TeamMembershipInformation_BB_12EA {
   le_uint32_t unknown_a4;
   le_uint32_t privilege_level;
   le_uint32_t unknown_a6;
-  parray<char16_t, 0x10> team_name;
+  pstring<TextEncoding::UTF16, 0x10> team_name;
 } __packed__;
 
 // 13EA: Unknown
@@ -3343,10 +3339,10 @@ struct S_Unknown_BB_13EA_15EA_Entry {
   le_uint32_t unknown_a3;
   le_uint32_t unknown_a4;
   le_uint32_t privilege_level;
-  parray<char16_t, 0x10> team_name;
+  pstring<TextEncoding::UTF16, 0x10> team_name;
   le_uint32_t guild_card_number2;
   le_uint32_t lobby_client_id;
-  parray<char16_t, 0x10> player_name;
+  pstring<TextEncoding::UTF16, 0x10> player_name;
   parray<uint8_t, 0x800> team_flag;
 } __packed__;
 
@@ -3381,7 +3377,7 @@ struct S_Unknown_BB_13EA_15EA_Entry {
 // header.flag is used, but it's unknown what the value means.
 
 struct C_Unknown_BB_1EEA {
-  ptext<char16_t, 0x10> unknown_a1;
+  pstring<TextEncoding::UTF16, 0x10> unknown_a1;
 } __packed__;
 
 // 1FEA (S->C): Unknown
@@ -3408,7 +3404,7 @@ struct S_StreamFileIndexEntry_BB_01EB {
   le_uint32_t size = 0;
   le_uint32_t checksum = 0; // CRC32 of file data
   le_uint32_t offset = 0; // offset in stream (== sum of all previous files' sizes)
-  ptext<char, 0x40> filename;
+  pstring<TextEncoding::ASCII, 0x40> filename;
 } __packed__;
 
 // 02EB (S->C): Send stream file chunk (BB)
@@ -3533,7 +3529,7 @@ struct S_StartCardAuction_GC_Ep3_EF {
 // client, so newserv's proxy unconditionally blocks this command.
 
 struct S_SetShutdownCommand_BB_01EF {
-  ptext<char, 0x200> command;
+  pstring<TextEncoding::ASCII, 0x200> command;
 } __packed__;
 
 // F0 (S->C): Force update player lobby data (BB)
@@ -3675,38 +3671,25 @@ struct G_SwitchStateChanged_6x05 {
 
 // 6x06: Send guild card
 
-template <typename CharT, size_t UnusedLength>
-struct G_SendGuildCard_DC_PC_V3 {
+struct G_SendGuildCard_DC_6x06 {
   G_UnusedHeader header;
-  le_uint32_t player_tag;
-  le_uint32_t guild_card_number;
-  ptext<CharT, 0x18> name;
-  ptext<CharT, 0x48> description;
-  parray<uint8_t, UnusedLength> unused2;
-  uint8_t present;
-  uint8_t present2;
-  uint8_t section_id;
-  uint8_t char_class;
+  GuildCardDC guild_card;
+  parray<uint8_t, 3> unused;
 } __packed__;
 
-struct G_SendGuildCard_DC_6x06 : G_SendGuildCard_DC_PC_V3<char, 0x11> {
-  parray<uint8_t, 3> unused3;
+struct G_SendGuildCard_PC_6x06 {
+  G_UnusedHeader header;
+  GuildCardPC guild_card;
 } __packed__;
-struct G_SendGuildCard_PC_6x06 : G_SendGuildCard_DC_PC_V3<char16_t, 0x24> {
-} __packed__;
-struct G_SendGuildCard_V3_6x06 : G_SendGuildCard_DC_PC_V3<char, 0x24> {
+
+struct G_SendGuildCard_V3_6x06 {
+  G_UnusedHeader header;
+  GuildCardV3 guild_card;
 } __packed__;
 
 struct G_SendGuildCard_BB_6x06 {
   G_UnusedHeader header;
-  le_uint32_t guild_card_number;
-  ptext<char16_t, 0x18> name;
-  ptext<char16_t, 0x10> team_name;
-  ptext<char16_t, 0x58> description;
-  uint8_t present;
-  uint8_t present2;
-  uint8_t section_id;
-  uint8_t char_class;
+  GuildCardBB guild_card;
 } __packed__;
 
 // 6x07: Symbol chat
@@ -4467,7 +4450,7 @@ struct G_SyncGameStateHeader_6x6B_6x6C_6x6D_6x6E {
   G_ExtendedHeader<G_UnusedHeader> header;
   le_uint32_t decompressed_size;
   le_uint32_t compressed_size; // Must be <= subcommand_size - 0x10
-  uint8_t data[0]; // BC0-compressed data follows here (see bc0_decompress)
+  // BC0-compressed data follows here (see bc0_decompress)
 } __packed__;
 
 // Decompressed format is a list of these
@@ -4521,7 +4504,8 @@ struct G_SyncItemState_6x6D_Decompressed {
     le_uint16_t drop_number;
     ItemData item_data;
   } __packed__;
-  FloorItem items[0]; // sum(floor_item_count_per_area) of them, actually
+  // Variable-length field:
+  // FloorItem items[sum(floor_item_count_per_area)];
 } __packed__;
 
 // 6x6E: Sync flag state (used while loading into game)
@@ -6122,7 +6106,7 @@ struct G_SetDeckInBattleSetupMenu_GC_Ep3_6xB5x2F {
   parray<uint8_t, 4> unknown_a1;
 
   parray<uint8_t, 0x18> unknown_a2;
-  ptext<uint8_t, 0x10> deck_name;
+  pstring<TextEncoding::MARKED, 0x10> deck_name;
   parray<uint8_t, 0x0E> unknown_a3;
   le_uint16_t unknown_a4 = 0;
   parray<le_uint32_t, 0x1F> card_ids;
@@ -6278,8 +6262,8 @@ struct G_SetTournamentPlayerDecks_GC_Ep3_6xB4x3D {
   Episode3::Rules rules;
   struct Entry {
     uint8_t type = 0; // 0 = no player, 1 = human, 2 = COM
-    ptext<char, 0x10> player_name;
-    ptext<char, 0x10> deck_name; // Only be used for COM players
+    pstring<TextEncoding::MARKED, 0x10> player_name;
+    pstring<TextEncoding::MARKED, 0x10> deck_name; // Only be used for COM players
     parray<uint8_t, 5> unknown_a1;
     parray<le_uint16_t, 0x1F> card_ids; // Can be blank for human players
     uint8_t client_id = 0; // Unused for COMs
@@ -6411,12 +6395,12 @@ struct G_ServerVersionStrings_GC_Ep3_6xB4x46 {
   // Presumably if any logs exist from before 7 March 2007, they would have a
   // different date_str1, but the unchanged version_signature likely means that
   // Sega never made any code changes on the server side.
-  ptext<char, 0x40> version_signature;
-  ptext<char, 0x40> date_str1; // Probably card definitions revision date
+  pstring<TextEncoding::MARKED, 0x40> version_signature;
+  pstring<TextEncoding::MARKED, 0x40> date_str1; // Probably card definitions revision date
   // In Sega's implementation, it seems this field is blank when starting a
   // battle, and contains the current time (in the format "YYYY/MM/DD hh:mm:ss")
   // when ending a battle. This may have been used for identifying debug logs.
-  ptext<char, 0x40> date_str2;
+  pstring<TextEncoding::MARKED, 0x40> date_str2;
   // It seems Sega used to send 0 here when starting a battle, and 0x04157580
   // when ending a battle. Since the field is unused by the client, it's not
   // clear what that value means, if anything. This behavior may be another
@@ -6569,10 +6553,10 @@ struct G_SetTrapTileLocations_GC_Ep3_6xB4x50 {
 
 struct G_TournamentMatchResult_GC_Ep3_6xB4x51 {
   G_CardBattleCommandHeader header = {0xB4, sizeof(G_TournamentMatchResult_GC_Ep3_6xB4x51) / 4, 0, 0x51, 0, 0, 0};
-  ptext<char, 0x40> match_description;
+  pstring<TextEncoding::MARKED, 0x40> match_description;
   struct NamesEntry {
-    ptext<char, 0x20> team_name;
-    parray<ptext<char, 0x10>, 2> player_names;
+    pstring<TextEncoding::MARKED, 0x20> team_name;
+    parray<pstring<TextEncoding::MARKED, 0x10>, 2> player_names;
   } __packed__;
   parray<NamesEntry, 2> names_entries;
   le_uint16_t unused1 = 0;
@@ -6586,7 +6570,7 @@ struct G_TournamentMatchResult_GC_Ep3_6xB4x51 {
   // This field apparently is supposed to contain a %s token (as for printf)
   // which is replaced with meseta_amount. The results screen animates this text
   // counting up from 0 to meseta_amount.
-  ptext<char, 0x20> meseta_reward_text;
+  pstring<TextEncoding::MARKED, 0x20> meseta_reward_text;
 } __packed__;
 
 // 6xB4x52: Set game metadata
@@ -6617,7 +6601,7 @@ struct G_SetGameMetadata_GC_Ep3_6xB4x52 {
   // If text_size is not zero, the text is shown in the top bar instead of the
   // usual message ("Viewing Battle", "Time left: XX:XX", and the like).
   le_uint16_t text_size = 0;
-  ptext<char, 0x100> text;
+  pstring<TextEncoding::MARKED, 0x100> text;
 } __packed__;
 
 // 6xB4x53: Reject battle start request

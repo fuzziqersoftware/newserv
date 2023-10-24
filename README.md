@@ -88,8 +88,8 @@ There is a fairly recent macOS ARM64 release on the newserv GitHub repository. Y
 There is a fairly recent Windows release on the newserv GitHub repository also. It's built with Cygwin, and all the necessary DLL files should be included. That said, I've only tested it on my own machine and there is no CI for Windows builds like there is for macOS and Linux, so if it doesn't work for you, please open a GitHub issue to let me know.
 
 If you're not using a release from the GitHub repository, do this to build newserv:
-1. If you're on Windows, install Cygwin. While doing so, install the `cmake`, `gcc-core`, `gcc-g++`, `git`, `libevent2.1_7`, `make`, and `zlib` packages. Do the rest of these steps inside a Cygwin shell (not a Windows cmd shell or PowerShell).
-2. Make sure you have CMake and libevent installed. (On macOS, `brew install cmake libevent`; on most Linuxes, `sudo apt-get install cmake libevent-dev`; on Windows, you already did this in step 1.)
+1. If you're on Windows, install Cygwin. While doing so, install the `cmake`, `gcc-core`, `gcc-g++`, `git`, `libevent2.1_7`, `make`, `libiconv`, and `zlib` packages. Do the rest of these steps inside a Cygwin shell (not a Windows cmd shell or PowerShell).
+2. Make sure you have CMake, libevent, and libiconv installed. (On macOS, `brew install cmake libevent libiconv`; on most Linuxes, `sudo apt-get install cmake libevent-dev`; on Windows, you already did this in step 1.)
 3. Build and install phosg (https://github.com/fuzziqersoftware/phosg).
 4. Optionally, install resource_dasm (https://github.com/fuzziqersoftware/resource_dasm). This will enable newserv to send memory patches and load DOL files on PSO GC clients. PSO GC clients can play PSO normally on newserv without this.
 5. Run `cmake . && make` in the newserv directory.
@@ -395,7 +395,6 @@ newserv has many CLI options, which can be used to access functionality other th
 * Convert a PSO GC or Episode 3 snapshot file to a BMP image (`decode-gci-snapshot`)
 * Find the likely round1 or round2 seed for a corrupt save file (`salvage-gci`)
 * Run a brute-force search for a decryption seed (`find-decryption-seed`)
-* Decode Shift-JIS text to UTF-16 (`decode-sjis`)
 * Convert quests in .gci, .vms, .dlq, or .qst format to .bin/.dat format (`decode-gci`, `decode-vms`, `decode-dlq`, `decode-qst`)
 * Convert quests in .bin/.dat to .qst format (`encode-qst`)
 * Convert text archives (e.g. TextEnglish.pr2) to JSON and vice versa (`decode-text-archive`, `encode-text-archive`)

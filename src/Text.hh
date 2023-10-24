@@ -1,5 +1,6 @@
 #pragma once
 
+#include <iconv.h>
 #include <inttypes.h>
 #include <stddef.h>
 #include <string.h>
@@ -9,179 +10,46 @@
 #include <stdexcept>
 #include <string>
 
-// (1a) Conversion functions
+// Conversion functions
 
-// These return the number of characters written, including the terminating null
-// character. In the case of encode_sjis, two-byte characters count as two
-// characters, so the returned number is the number of bytes written.
-// allow_skip_terminator means no null byte will be written if dest_count
-// characters are written to the output. If this argument is false, a null
-// terminator is always written, even if the string is truncated.
-size_t encode_sjis(
-    char* dest, size_t dest_count,
-    const char16_t* src, size_t src_count,
-    bool allow_skip_terminator = false);
-size_t decode_sjis(
-    char16_t* dest, size_t dest_count,
-    const char* src, size_t src_count,
-    bool allow_skip_terminator = false);
+class TextTranscoder {
+public:
+  TextTranscoder(const char* to, const char* from);
+  TextTranscoder(const TextTranscoder&) = delete;
+  TextTranscoder(TextTranscoder&&);
+  TextTranscoder& operator=(const TextTranscoder&) = delete;
+  TextTranscoder& operator=(TextTranscoder&&);
+  ~TextTranscoder();
 
-std::string encode_sjis(const char16_t* source, size_t src_count);
-std::u16string decode_sjis(const char* source, size_t src_count);
+  struct Result {
+    size_t bytes_read;
+    size_t bytes_written;
+  };
+  Result operator()(void* dest, size_t dest_size, const void* src, size_t src_bytes, bool truncate_oversize_result);
 
-inline std::string encode_sjis(const std::u16string& s) {
-  return encode_sjis(s.data(), s.size());
-}
+  std::string operator()(const void* src, size_t src_bytes);
+  std::string operator()(const std::string& data);
 
-inline std::u16string decode_sjis(const std::string& s) {
-  return decode_sjis(s.data(), s.size());
-}
+private:
+  static const iconv_t INVALID_IC;
+  static const size_t FAILURE_RESULT;
+  iconv_t ic;
+};
 
-// These functions exist so that decode_sjis and encode_sjis can be
-// indiscriminately used within templates that use different char types.
-inline const std::string& encode_sjis(const std::string& s) { return s; }
-inline const std::u16string& decode_sjis(const std::u16string& s) { return s; }
+extern TextTranscoder tt_8859_to_utf8;
+extern TextTranscoder tt_utf8_to_8859;
+extern TextTranscoder tt_sjis_to_utf8;
+extern TextTranscoder tt_utf8_to_sjis;
+extern TextTranscoder tt_utf16_to_utf8;
+extern TextTranscoder tt_utf8_to_utf16;
+extern TextTranscoder tt_ascii_to_utf8;
+extern TextTranscoder tt_utf8_to_ascii;
 
-// (1b) Type-independent utility functions
+std::string tt_encode_marked_optional(const std::string& utf8, uint8_t default_language, bool is_utf16);
+std::string tt_encode_marked(const std::string& utf8, uint8_t default_language, bool is_utf16);
+std::string tt_decode_marked(const std::string& data, uint8_t default_language, bool is_utf16);
 
-template <typename T>
-size_t text_strlen_t(const T* s) {
-  size_t ret = 0;
-  for (; s[ret] != 0; ret++) {
-  }
-  return ret;
-}
-
-template <typename T>
-size_t text_strnlen_t(const T* s, size_t count) {
-  size_t ret = 0;
-  for (; (ret < count) && (s[ret] != 0); ret++) {
-  }
-  return ret;
-}
-
-template <typename T>
-size_t text_streq_t(const T* a, const T* b) {
-  for (;;) {
-    if (*a != *b) {
-      return false;
-    }
-    if (*a == 0) {
-      return true;
-    }
-    a++;
-    b++;
-  }
-}
-
-template <typename T>
-size_t text_strneq_t(const T* a, const T* b, size_t count) {
-  for (; count; count--) {
-    if (*a != *b) {
-      return false;
-    }
-    if (*a == 0) {
-      return true;
-    }
-    a++;
-    b++;
-  }
-  return true;
-}
-
-template <typename T>
-size_t text_strncpy_t(T* dest, const T* src, size_t count) {
-  size_t x;
-  for (x = 0; x < count && src[x] != 0; x++) {
-    dest[x] = src[x];
-  }
-  if (x < count) {
-    dest[x++] = 0;
-  }
-  return x;
-}
-
-// Like strncpy, but *always* null-terminates the string, even if it has to
-// truncate it.
-template <typename T>
-size_t text_strnzcpy_t(T* dest, const T* src, size_t count) {
-  size_t x;
-  for (x = 0; x < count - 1 && src[x] != 0; x++) {
-    dest[x] = src[x];
-  }
-  dest[x++] = 0;
-  return x;
-}
-
-// (2) Type conversion functions
-
-template <typename DestT, typename SrcT = DestT>
-size_t text_strncpy_t(DestT*, size_t, const SrcT*, size_t) {
-  static_assert(always_false<DestT, SrcT>::v,
-      "unspecialized text_strncpy_t should never be called");
-  return 0;
-}
-
-template <>
-inline size_t text_strncpy_t<char>(
-    char* dest, size_t dest_count, const char* src, size_t src_count) {
-  size_t count = std::min<size_t>(dest_count, src_count);
-  return text_strncpy_t(dest, src, count);
-}
-
-template <>
-inline size_t text_strncpy_t<char, char16_t>(
-    char* dest, size_t dest_count, const char16_t* src, size_t src_count) {
-  return encode_sjis(dest, dest_count, src, src_count, true);
-}
-
-template <>
-inline size_t text_strncpy_t<char16_t, char>(
-    char16_t* dest, size_t dest_count, const char* src, size_t src_count) {
-  return decode_sjis(dest, dest_count, src, src_count, true);
-}
-
-template <>
-inline size_t text_strncpy_t<char16_t>(
-    char16_t* dest, size_t dest_count, const char16_t* src, size_t src_count) {
-  size_t count = std::min<size_t>(dest_count, src_count);
-  return text_strncpy_t(dest, src, count);
-}
-
-template <typename DestT, typename SrcT = DestT>
-size_t text_strnzcpy_t(DestT*, size_t, const SrcT*, size_t) {
-  static_assert(always_false<DestT, SrcT>::v,
-      "unspecialized text_strnzcpy_t should never be called");
-  return 0;
-}
-
-template <>
-inline size_t text_strnzcpy_t<char>(
-    char* dest, size_t dest_count, const char* src, size_t src_count) {
-  size_t count = std::min<size_t>(dest_count, src_count);
-  return text_strnzcpy_t(dest, src, count);
-}
-
-template <>
-inline size_t text_strnzcpy_t<char, char16_t>(
-    char* dest, size_t dest_count, const char16_t* src, size_t src_count) {
-  return encode_sjis(dest, dest_count, src, src_count);
-}
-
-template <>
-inline size_t text_strnzcpy_t<char16_t, char>(
-    char16_t* dest, size_t dest_count, const char* src, size_t src_count) {
-  return decode_sjis(dest, dest_count, src, src_count);
-}
-
-template <>
-inline size_t text_strnzcpy_t<char16_t>(
-    char16_t* dest, size_t dest_count, const char16_t* src, size_t src_count) {
-  size_t count = std::min<size_t>(dest_count, src_count);
-  return text_strnzcpy_t(dest, src, count);
-}
-
-// (3) Packed text objects for use in protocol structs
+// Packed array object for use in protocol structs
 
 template <typename ItemT, size_t Count>
 struct parray {
@@ -357,325 +225,299 @@ struct parray {
   }
 } __attribute__((packed));
 
-template <typename CharT, size_t Count>
-struct ptext : parray<CharT, Count> {
-  ptext() {
-    this->clear(0);
-  }
-  ptext(const ptext& other) : parray<CharT, Count>(other) {}
-  ptext(ptext&& s) = delete;
+// Packed text objects for use in protocol structs
 
-  template <typename OtherCharT>
-  ptext(const OtherCharT* s) {
-    if (!s) {
-      throw std::logic_error("attempted to assign nullptr to ptext");
+enum class TextEncoding {
+  UTF8,
+  UTF16,
+  SJIS,
+  ISO8859,
+  ASCII,
+  MARKED,
+  CHALLENGE8, // MARKED but with challenge encryption on top
+  CHALLENGE16, // UTF16 but with challenge encryption on top
+};
+
+template <typename CharT>
+void encrypt_challenge_rank_text_t(void* vdata, size_t count) {
+  CharT* data = reinterpret_cast<CharT*>(vdata);
+  CharT prev = 0;
+  for (CharT* p = data; p != data + count; p++) {
+    CharT ch = *p;
+    if (ch == 0) {
+      break;
     }
-    this->operator=(s);
+    *p = ((ch - prev) ^ 0x7F) & 0xFF;
+    prev = ch;
   }
-  template <typename OtherCharT>
-  ptext(const OtherCharT* s, size_t count) {
-    if (!s) {
-      throw std::logic_error("attempted to assign nullptr to ptext");
+}
+
+template <typename CharT>
+void decrypt_challenge_rank_text_t(void* vdata, size_t count) {
+  CharT* data = reinterpret_cast<CharT*>(vdata);
+  for (CharT* p = data; p != data + count; p++) {
+    if (*p == 0) {
+      break;
     }
-    this->assign(s, count);
+    if (p == data) {
+      *p ^= 0x7F;
+    } else {
+      *p = ((*p ^ 0x7F) + *(p - 1)) & 0xFF;
+    }
   }
-  template <typename OtherCharT>
-  ptext(const std::basic_string<OtherCharT>& s) {
-    this->operator=(s);
+}
+
+// This struct does not inherit from parray, even though it's semantically
+// similar, because we want to enforce that the correct encoding is used.
+template <
+    TextEncoding Encoding,
+    size_t Chars,
+    size_t BytesPerChar = (((Encoding == TextEncoding::UTF16) || (Encoding == TextEncoding::CHALLENGE16)) ? 2 : 1)>
+struct pstring {
+  static constexpr size_t Bytes = Chars * BytesPerChar;
+
+  static constexpr size_t bytes() {
+    return Bytes;
   }
-  template <typename OtherCharT, size_t OtherCount>
-  ptext(const ptext<OtherCharT, OtherCount>& s) {
-    this->operator=(s);
+  static constexpr size_t chars() {
+    return Chars;
   }
 
-  size_t len() const {
-    return text_strnlen_t(this->items, Count);
+  uint8_t data[Bytes];
+
+  pstring() {
+    memset(this->data, 0, Bytes);
   }
+  pstring(const pstring<Encoding, Chars, BytesPerChar>& other) {
+    memcpy(this->data, other.data, Bytes);
+  }
+  pstring(const std::string& s, uint8_t language) {
+    this->encode(s, language);
+  }
+  pstring(pstring<Encoding, Chars, BytesPerChar>&& other) = delete;
 
-  // Q: Why is there no c_str() here?
-  // A: Because the contents of a ptext don't have to be null-terminated.
-
-  ptext& operator=(const ptext& s) {
-    memcpy(this->items, s.items, sizeof(CharT) * Count);
+  pstring<Encoding, Chars, BytesPerChar>& operator=(const pstring<Encoding, Chars, BytesPerChar>& other) {
+    memcpy(this->data, other.data, Bytes);
     return *this;
   }
-  ptext& operator=(ptext&& s) = delete;
-
-  template <typename OtherCharT>
-  ptext& operator=(const OtherCharT* s) {
-    if (!s) {
-      throw std::logic_error("attempted to assign nullptr to ptext");
-    }
-    size_t chars_written = text_strncpy_t(this->items, Count, s, Count);
-    this->clear_after(chars_written);
+  template <size_t OtherChars>
+  pstring<Encoding, Chars, BytesPerChar>& operator=(const pstring<Encoding, OtherChars, BytesPerChar>& other) {
+    size_t end_offset = std::min<size_t>(Bytes, pstring<Encoding, OtherChars, BytesPerChar>::Bytes);
+    memcpy(this->data, other.data, end_offset);
+    this->clear_after(end_offset);
     return *this;
   }
-  template <typename OtherCharT>
-  ptext& assign(const OtherCharT* s, size_t s_count) {
-    if (!s) {
-      throw std::logic_error("attempted to assign nullptr to ptext");
+  pstring<Encoding, Chars, BytesPerChar>& operator=(pstring<Encoding, Chars, BytesPerChar>&& s) = delete;
+
+  void encode(const std::string& s, uint8_t client_language = 1) {
+    try {
+      switch (Encoding) {
+        case TextEncoding::CHALLENGE8:
+        case TextEncoding::ASCII: {
+          auto ret = tt_utf8_to_ascii(this->data, Bytes, s.data(), s.size(), true);
+          this->clear_after(ret.bytes_written);
+          if (Encoding == TextEncoding::CHALLENGE8) {
+            encrypt_challenge_rank_text_t<le_uint16_t>(this->data, Bytes);
+          }
+          break;
+        }
+        case TextEncoding::ISO8859: {
+          auto ret = tt_utf8_to_8859(this->data, Bytes, s.data(), s.size(), true);
+          this->clear_after(ret.bytes_written);
+          break;
+        }
+        case TextEncoding::SJIS: {
+          auto ret = tt_utf8_to_sjis(this->data, Bytes, s.data(), s.size(), true);
+          this->clear_after(ret.bytes_written);
+          break;
+        }
+        case TextEncoding::UTF16: {
+          auto ret = tt_utf8_to_utf16(this->data, Bytes, s.data(), s.size(), true);
+          this->clear_after(ret.bytes_written);
+          break;
+        }
+        case TextEncoding::UTF8:
+          memcpy(this->data, s.data(), std::min<size_t>(s.size(), Bytes));
+          this->clear_after(s.size());
+          break;
+        case TextEncoding::CHALLENGE16: {
+          auto ret = tt_utf8_to_utf16(this->data, Bytes, s.data(), s.size(), true);
+          encrypt_challenge_rank_text_t<le_uint16_t>(this->data, ret.bytes_written / 2);
+          this->clear_after(ret.bytes_written);
+          break;
+        }
+        case TextEncoding::MARKED: {
+          if (client_language == 0) {
+            try {
+              auto ret = tt_utf8_to_sjis(this->data, Bytes, s.data(), s.size(), true);
+              this->clear_after(ret.bytes_written);
+            } catch (const std::runtime_error&) {
+              this->data[0] = '\t';
+              this->data[1] = 'E';
+              auto ret = tt_utf8_to_8859(this->data + 2, Bytes - 2, s.data(), s.size(), true);
+              this->clear_after(ret.bytes_written + 2);
+            }
+          } else {
+            try {
+              auto ret = tt_utf8_to_8859(this->data, Bytes, s.data(), s.size(), true);
+              this->clear_after(ret.bytes_written);
+            } catch (const std::runtime_error&) {
+              this->data[0] = '\t';
+              this->data[1] = 'J';
+              auto ret = tt_utf8_to_sjis(this->data + 2, Bytes - 2, s.data(), s.size(), true);
+              this->clear_after(ret.bytes_written + 2);
+            }
+          }
+          break;
+        }
+        default:
+          throw std::logic_error("unknown text encoding");
+      }
+    } catch (const std::runtime_error& e) {
+      log_warning("Unencodable text: %s", e.what());
+      if (Bytes >= 3) {
+        this->data[0] = '<';
+        this->data[1] = '?';
+        this->data[2] = '>';
+        this->clear_after(3);
+      } else if (Bytes >= 1) {
+        this->data[0] = '?';
+        this->clear_after(1);
+      }
     }
-    size_t chars_written = text_strncpy_t(this->items, Count, s, s_count);
-    this->clear_after(chars_written);
-    return *this;
-  }
-  template <typename OtherCharT>
-  ptext& operator=(const std::basic_string<OtherCharT>& s) {
-    size_t chars_written = text_strncpy_t(this->items, Count, s.c_str(), s.size());
-    this->clear_after(chars_written);
-    return *this;
-  }
-  template <typename OtherCharT, size_t OtherCount>
-  ptext& operator=(const ptext<OtherCharT, OtherCount>& s) {
-    size_t chars_written = text_strncpy_t(this->items, Count, s.items, OtherCount);
-    this->clear_after(chars_written);
-    return *this;
   }
 
-  template <typename OtherCharT>
-  bool operator==(const OtherCharT* s) const {
-    if (!s) {
-      throw std::logic_error("attempted to compare ptext to nullptr");
+  std::string decode(uint8_t client_language = 1) const {
+    try {
+      switch (Encoding) {
+        case TextEncoding::CHALLENGE8: {
+          std::string decrypted(reinterpret_cast<const char*>(this->data), this->used_bytes_8());
+          decrypt_challenge_rank_text_t<uint8_t>(decrypted.data(), decrypted.size());
+          return tt_ascii_to_utf8(decrypted.data(), decrypted.size());
+        }
+        case TextEncoding::ASCII:
+          return tt_ascii_to_utf8(this->data, this->used_bytes_8());
+        case TextEncoding::ISO8859:
+          return tt_8859_to_utf8(this->data, this->used_bytes_8());
+        case TextEncoding::SJIS:
+          return tt_sjis_to_utf8(this->data, this->used_bytes_8());
+        case TextEncoding::UTF16:
+          return tt_utf16_to_utf8(this->data, this->used_bytes_16());
+        case TextEncoding::UTF8:
+          return std::string(reinterpret_cast<const char*>(&this->data[0]), this->used_bytes_8());
+        case TextEncoding::CHALLENGE16: {
+          std::string decrypted(reinterpret_cast<const char*>(&this->data[0]), this->used_bytes_8());
+          decrypt_challenge_rank_text_t<le_uint16_t>(decrypted.data(), decrypted.size());
+          return tt_utf16_to_utf8(decrypted.data(), decrypted.size());
+        }
+        case TextEncoding::MARKED: {
+          size_t offset = 0;
+          if (this->data[0] == '\t') {
+            if (this->data[1] == 'J') {
+              client_language = 0;
+              offset = 2;
+            } else {
+              client_language = 1;
+              offset = 2;
+            }
+          }
+          return client_language
+              ? tt_8859_to_utf8(&this->data[offset], this->used_bytes_8() - offset)
+              : tt_sjis_to_utf8(&this->data[offset], this->used_bytes_8() - offset);
+        }
+        default:
+          throw std::logic_error("unknown text encoding");
+      }
+    } catch (const std::runtime_error& e) {
+      log_warning("Undecodable text: %s", e.what());
+      return "<?>";
     }
-    return text_strneq_t(this->items, s, Count);
-  }
-  template <typename OtherCharT>
-  bool operator==(const std::basic_string<OtherCharT>& s) const {
-    return text_strneq_t(this->items, s.c_str(), Count);
-  }
-  template <typename OtherCharT, size_t OtherCount>
-  bool operator==(const ptext<OtherCharT, OtherCount>& s) const {
-    return text_strneq_t(this->items, s.items, std::min<size_t>(Count, OtherCount));
-  }
-  template <typename OtherCharT>
-  bool operator!=(const OtherCharT* s) const {
-    if (!s) {
-      throw std::logic_error("attempted to compare ptext to nullptr");
-    }
-    return !this->operator==(s);
-  }
-  template <typename OtherCharT>
-  bool operator!=(const std::basic_string<OtherCharT>& s) const {
-    return !this->operator==(s);
-  }
-  template <typename OtherCharT, size_t OtherCount>
-  bool operator!=(const ptext<OtherCharT, OtherCount>& s) const {
-    return !this->operator==(s);
   }
 
-  template <typename OtherCharT>
-  bool eq_n(const OtherCharT* s, size_t count) const {
-    if (!s) {
-      throw std::logic_error("attempted to compare ptext to nullptr");
-    }
-    return text_strneq_t(this->items, s, count);
+  bool operator==(const pstring<Encoding, Chars, BytesPerChar>& other) const {
+    return (memcmp(this->data, other.data, Bytes) == 0);
   }
-  template <typename OtherCharT>
-  bool eq_n(const std::basic_string<OtherCharT>& s, size_t count) const {
-    return text_strneq_t(this->items, s.c_str(), count);
-  }
-  template <typename OtherCharT, size_t OtherCount>
-  bool eq_n(const ptext<OtherCharT, OtherCount>& s, size_t count) const {
-    return text_strneq_t(this->items, s.items, count);
+  bool operator!=(const pstring<Encoding, Chars, BytesPerChar>& other) const {
+    return (memcmp(this->data, other.data, Bytes) != 0);
   }
 
-  operator std::basic_string<CharT>() const {
-    return std::basic_string<CharT>(this->items, this->len());
+  bool eq(const std::string& other, uint8_t language = 1) const {
+    return this->decode(language) == other;
+  }
+
+  size_t used_bytes_8() const {
+    size_t size = 0;
+    for (size = 0; size < Bytes; size++) {
+      if (!this->data[size]) {
+        return size;
+      }
+    }
+    return Bytes;
+  }
+
+  size_t used_bytes_16() const {
+    if (Bytes & 1) {
+      throw std::logic_error("used_bytes_16 must not be called on an odd-length pstring");
+    }
+    for (size_t z = 0; z < Bytes; z += 2) {
+      if (!this->data[z] && !this->data[z + 1]) {
+        return z;
+      }
+    }
+    return Bytes;
   }
 
   bool empty() const {
-    return (this->items[0] == 0);
+    for (size_t z = 0; z < BytesPerChar; z++) {
+      if (this->data[z] != 0) {
+        return false;
+      }
+    }
+    return true;
   }
+
+  void clear(uint8_t v = 0) {
+    memset(this->data, v, Chars * BytesPerChar);
+  }
+
+  void clear_after(size_t pos, uint8_t v = 0) {
+    for (pos *= BytesPerChar; pos < Chars * BytesPerChar; pos++) {
+      this->data[pos] = v;
+    }
+  }
+
+  void set_byte(size_t pos, uint8_t v) {
+    if (pos >= Bytes) {
+      throw std::out_of_range("pstring byte offset out of range");
+    }
+    this->data[pos] = v;
+  }
+
+  void assign_raw(const void* data, size_t size) {
+    memcpy(this->data, data, std::min<size_t>(size, Bytes));
+    this->clear_after(size);
+  }
+  void assign_raw(const std::string& data) {
+    this->assign_raw(data.data(), data.size());
+  }
+
+  uint8_t at(size_t pos) const {
+    if (pos >= Bytes) {
+      throw std::out_of_range("pstring index out of range");
+    }
+    return this->data[pos];
+  }
+
+  // Note: The contents of a pstring do not have to be null-terminated, so there
+  // is no .c_str() function.
 } __attribute__((packed));
 
-// (4) Markers and character replacement
+// Helper functions
 
-template <typename CharT>
-std::basic_string<CharT> add_language_marker(
-    const std::basic_string<CharT>& s, CharT marker) {
-  if ((s.size() >= 2) && (s[0] == '\t') && (s[1] != 'C')) {
-    return s;
-  }
+void replace_char_inplace(char* a, char f, char r);
 
-  std::basic_string<CharT> ret;
-  ret.push_back('\t');
-  ret.push_back(marker);
-  ret += s;
-  return ret;
-}
+void add_color(StringWriter& w, const char* src, size_t max_input_chars);
+std::string add_color(const std::string& s);
 
-template <typename CharT, size_t Count>
-std::basic_string<CharT> add_language_marker(
-    const ptext<CharT, Count>& s, CharT marker) {
-  if ((s.items[0] == '\t') && (s.items[1] != 'C')) {
-    return s;
-  }
-
-  std::basic_string<CharT> ret;
-  ret.push_back('\t');
-  ret.push_back(marker);
-  ret += s;
-  return ret;
-}
-
-template <typename CharT, size_t Count>
-void add_language_marker_inplace(ptext<CharT, Count>& s, char16_t marker) {
-  static_assert(Count >= 2, "cannot use add_language_marker_inplace on ptext with fewer than 2 characters");
-
-  if ((s.items[0] == '\t') && (s.items[1] != 'C')) {
-    return;
-  }
-
-  size_t end_offset = std::min<size_t>(s.len() + 2, Count);
-  for (size_t z = end_offset; z > 2; z--) {
-    s[z - 1] = s[z - 3];
-  }
-  s[0] = '\t';
-  s[1] = marker;
-}
-
-template <typename CharT>
-const CharT* remove_language_marker(const CharT* s) {
-  if ((s[0] != '\t') || (s[1] == 'C')) {
-    return s;
-  }
-  return s + 2;
-}
-
-template <typename CharT, size_t Count>
-std::basic_string<CharT> remove_language_marker(const ptext<CharT, Count>& s) {
-  if ((s.items[0] != '\t') || (s.items[1] == L'C')) {
-    return s;
-  }
-  return &s.items[2];
-}
-
-template <typename CharT>
-std::basic_string<CharT> remove_language_marker(
-    const std::basic_string<CharT>& s) {
-  if ((s.size() < 2) || (s[0] != L'\t') || (s[1] == L'C')) {
-    return s;
-  }
-  return s.substr(2);
-}
-
-template <typename CharT, size_t Count>
-void remove_language_marker_inplace(ptext<CharT, Count>& a) {
-  if ((a.items[0] == '\t') && (a.items[1] != 'C')) {
-    text_strnzcpy_t(a.items, Count, &a.items[2], Count);
-    a.items[text_strlen_t(a.items) + 1] = 0;
-  }
-}
-
-template <typename T>
-void replace_char_inplace(T* a, T f, T r) {
-  while (*a) {
-    if (*a == f) {
-      *a = r;
-    }
-    a++;
-  }
-}
-
-template <typename T>
-size_t add_color_inplace(T* a, size_t max_chars) {
-  T* d = a;
-  T* orig_d = d;
-
-  for (size_t x = 0; (x < max_chars) && *a; x++) {
-    if (*a == '$') {
-      *(d++) = '\t';
-    } else if (*a == '#') {
-      *(d++) = '\n';
-    } else if (*a == '%') {
-      a++;
-      x++;
-      if (*a == 's') {
-        *(d++) = '$';
-      } else if (*a == '%') {
-        *(d++) = '%';
-      } else if (*a == 'n') {
-        *(d++) = '#';
-      } else if (*a == '\0') {
-        break;
-      } else {
-        *(d++) = *a;
-      }
-    } else {
-      *(d++) = *a;
-    }
-    a++;
-  }
-  *d = 0;
-  // TODO: we should clear the chars after the null if the new string is shorter
-  // than the original
-
-  return d - orig_d;
-}
-
-template <typename T>
-void add_color_inplace(std::basic_string<T>& s) {
-  size_t new_size = add_color_inplace(s.data(), s.size());
-  s.resize(new_size);
-}
-
-template <typename T>
-void add_color(StringWriter& w, const T* src, size_t max_input_chars) {
-  for (size_t x = 0; (x < max_input_chars) && *src; x++) {
-    if (*src == '$') {
-      w.put<T>('\t');
-    } else if (*src == '#') {
-      w.put<T>('\n');
-    } else if (*src == '%') {
-      src++;
-      x++;
-      if (*src == 's') {
-        w.put<T>('$');
-      } else if (*src == '%') {
-        w.put<T>('%');
-      } else if (*src == 'n') {
-        w.put<T>('#');
-      } else if (*src == '\0') {
-        break;
-      } else {
-        w.put<T>(*src);
-      }
-    } else {
-      w.put<T>(*src);
-    }
-    src++;
-  }
-  w.put<T>(0);
-}
-
-template <typename CharT, size_t Count>
-void add_color_inplace(ptext<CharT, Count>& t) {
-  size_t sx = 0;
-  size_t dx = 0;
-  for (; (sx < Count - 1) && t.items[sx]; sx++) {
-    if (t.items[sx] == '$') {
-      t.items[dx] = '\t';
-    } else if (t.items[sx] == '#') {
-      t.items[dx] = '\n';
-    } else if (t.items[sx] == '%') {
-      sx++;
-      if ((sx == Count - 1) || (t.items[sx] == '\0')) {
-        break;
-      } else if (t.items[sx] == 's') {
-        t.items[dx] = '$';
-      } else if (t.items[sx] == '%') {
-        t.items[dx] = '%';
-      } else if (t.items[sx] == 'n') {
-        t.items[dx] = '#';
-      } else {
-        t.items[dx] = t.items[sx];
-      }
-    } else {
-      t.items[dx] = t.items[sx];
-    }
-    dx++;
-  }
-  for (; dx < Count; dx++) {
-    t.items[dx] = 0;
-  }
-}
+size_t add_color_inplace(char* a, size_t max_chars);
+void add_color_inplace(std::string& s);

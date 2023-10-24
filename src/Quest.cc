@@ -26,8 +26,8 @@ QuestCategoryIndex::Category::Category(uint32_t category_id, const JSON& json)
   this->flags = json.get_int(0);
   this->type = json.get_string(1).at(0);
   this->short_token = json.get_string(2);
-  this->name = decode_sjis(json.get_string(3));
-  this->description = decode_sjis(json.get_string(4));
+  this->name = json.get_string(3);
+  this->description = json.get_string(4);
 }
 
 bool QuestCategoryIndex::Category::matches_flags(uint8_t request) const {
@@ -252,9 +252,9 @@ VersionedQuest::VersionedQuest(
       if (this->quest_number == 0xFFFFFFFF) {
         this->quest_number = header->quest_number;
       }
-      this->name = decode_sjis(header->name);
-      this->short_description = decode_sjis(header->short_description);
-      this->long_description = decode_sjis(header->long_description);
+      this->name = header->name.decode(this->language);
+      this->short_description = header->short_description.decode(this->language);
+      this->long_description = header->long_description.decode(this->language);
       break;
     }
 
@@ -268,9 +268,9 @@ VersionedQuest::VersionedQuest(
       if (this->quest_number == 0xFFFFFFFF) {
         this->quest_number = header->quest_number;
       }
-      this->name = header->name;
-      this->short_description = header->short_description;
-      this->long_description = header->long_description;
+      this->name = header->name.decode(this->language);
+      this->short_description = header->short_description.decode(this->language);
+      this->long_description = header->long_description.decode(this->language);
       break;
     }
 
@@ -291,9 +291,9 @@ VersionedQuest::VersionedQuest(
       if (this->quest_number == 0xFFFFFFFF) {
         this->quest_number = map->map_number;
       }
-      this->name = decode_sjis(map->name);
-      this->short_description = decode_sjis(map->quest_name);
-      this->long_description = decode_sjis(map->description);
+      this->name = map->name.decode(this->language);
+      this->short_description = map->quest_name.decode(this->language);
+      this->long_description = map->description.decode(this->language);
       break;
     }
 
@@ -309,9 +309,9 @@ VersionedQuest::VersionedQuest(
       if (this->quest_number == 0xFFFFFFFF) {
         this->quest_number = header->quest_number;
       }
-      this->name = decode_sjis(header->name);
-      this->short_description = decode_sjis(header->short_description);
-      this->long_description = decode_sjis(header->long_description);
+      this->name = header->name.decode(this->language);
+      this->short_description = header->short_description.decode(this->language);
+      this->long_description = header->long_description.decode(this->language);
       break;
     }
 
@@ -337,9 +337,9 @@ VersionedQuest::VersionedQuest(
       if (this->quest_number == 0xFFFFFFFF) {
         this->quest_number = header->quest_number;
       }
-      this->name = header->name;
-      this->short_description = header->short_description;
-      this->long_description = header->long_description;
+      this->name = header->name.decode(this->language);
+      this->short_description = header->short_description.decode(this->language);
+      this->long_description = header->long_description.decode(this->language);
       break;
     }
 
@@ -675,8 +675,8 @@ QuestIndex::QuestIndex(
       shared_ptr<VersionedQuest> vq(new VersionedQuest(
           quest_number, category_id, version, language, bin_contents, dat_contents, battle_rules, challenge_template_index));
 
-      string ascii_name = format_data_string(encode_sjis(vq->name));
-      auto category_name = encode_sjis(this->category_index->at(vq->category_id).name);
+      string ascii_name = format_data_string(vq->name);
+      auto category_name = this->category_index->at(vq->category_id).name;
 
       string dat_str = dat_filename.empty() ? "" : (" with layout " + dat_filename);
       string battle_rules_str = battle_rules ? (" with battle rules from " + json_filename) : "";
@@ -1029,7 +1029,7 @@ static pair<string, string> decode_qst_data_t(const string& data) {
         throw runtime_error("qst open file command has incorrect size");
       }
       const auto& cmd = r.get<OpenFileT>();
-      string internal_filename = cmd.filename;
+      string internal_filename = cmd.filename.decode();
 
       if (ends_with(internal_filename, ".bin")) {
         if (internal_bin_filename.empty()) {
@@ -1059,7 +1059,7 @@ static pair<string, string> decode_qst_data_t(const string& data) {
         throw runtime_error("qst write file command has incorrect size");
       }
       const auto& cmd = r.get<S_WriteFile_13_A7>();
-      string filename = cmd.filename;
+      string filename = cmd.filename.decode();
 
       string* dest = nullptr;
       if (filename == internal_bin_filename) {
@@ -1134,11 +1134,11 @@ void add_command_header(
 }
 
 template <typename HeaderT, typename CmdT>
-void add_open_file_command(StringWriter& w, const std::u16string& name, const std::string& filename, size_t file_size, bool is_download) {
+void add_open_file_command(StringWriter& w, const std::string& name, const std::string& filename, size_t file_size, bool is_download) {
   add_command_header<HeaderT>(w, is_download ? 0xA6 : 0x44, 0x00, sizeof(CmdT));
   CmdT cmd;
-  cmd.name = "PSO/" + encode_sjis(name);
-  cmd.filename = filename;
+  cmd.name.assign_raw("PSO/" + name);
+  cmd.filename.encode(filename);
   cmd.type = 0;
   cmd.file_size = file_size;
   // TODO: It'd be nice to have something like w.emplace(...) to avoid copying
@@ -1157,7 +1157,7 @@ void add_write_file_commands(
     size_t chunk_size = min<size_t>(data.size() - z, 0x400);
     add_command_header<HeaderT>(w, is_download ? 0xA7 : 0x13, z >> 10, sizeof(S_WriteFile_13_A7));
     S_WriteFile_13_A7 cmd;
-    cmd.filename = filename;
+    cmd.filename.encode(filename);
     memcpy(cmd.data.data(), &data[z], chunk_size);
     cmd.data_size = chunk_size;
     w.put(cmd);
@@ -1173,7 +1173,7 @@ void add_write_file_commands(
 string encode_qst_file(
     const string& bin_data,
     const string& dat_data,
-    const u16string& name,
+    const string& name,
     uint32_t quest_number,
     QuestScriptVersion version,
     bool is_dlq_encoded) {

@@ -54,7 +54,7 @@ void ServerState::init() {
   vector<shared_ptr<Lobby>> ep3_only_lobbies;
 
   for (size_t x = 0; x < 20; x++) {
-    auto lobby_name = decode_sjis(string_printf("LOBBY%zu", x + 1));
+    auto lobby_name = string_printf("LOBBY%zu", x + 1);
     bool v2_and_later_only = (x > 9);
     bool is_ep3_only = (x > 14);
 
@@ -151,7 +151,7 @@ void ServerState::add_client_to_available_lobby(shared_ptr<Client> c) {
     added_to_lobby = this->create_lobby();
     added_to_lobby->flags |= Lobby::Flag::PUBLIC | Lobby::Flag::IS_OVERFLOW;
     added_to_lobby->block = 100;
-    added_to_lobby->name = u"Overflow";
+    added_to_lobby->name = "Overflow";
     added_to_lobby->max_clients = 12;
     added_to_lobby->event = this->pre_lobby_event;
     added_to_lobby->add_client(c);
@@ -279,12 +279,10 @@ void ServerState::remove_lobby(uint32_t lobby_id) {
   this->id_to_lobby.erase(lobby_it);
 }
 
-shared_ptr<Client> ServerState::find_client(const std::u16string* identifier,
-    uint64_t serial_number, shared_ptr<Lobby> l) {
-
+shared_ptr<Client> ServerState::find_client(const std::string* identifier, uint64_t serial_number, shared_ptr<Lobby> l) {
   if ((serial_number == 0) && identifier) {
     try {
-      serial_number = stoull(encode_sjis(*identifier), nullptr, 0);
+      serial_number = stoull(*identifier, nullptr, 0);
     } catch (const exception&) {
     }
   }
@@ -521,7 +519,7 @@ static vector<PortConfiguration> parse_port_configuration(const JSON& json) {
 void ServerState::parse_config(const JSON& json, bool is_reload) {
   config_log.info("Parsing configuration");
 
-  this->name = decode_sjis(json.at("ServerName").as_string());
+  this->name = json.at("ServerName").as_string();
 
   if (!is_reload) {
     try {
@@ -743,22 +741,22 @@ void ServerState::parse_config(const JSON& json, bool is_reload) {
 
   config_log.info("Creating menus");
 
-  shared_ptr<Menu> information_menu_v2(new Menu(MenuID::INFORMATION, u"Information"));
-  shared_ptr<Menu> information_menu_v3(new Menu(MenuID::INFORMATION, u"Information"));
-  shared_ptr<vector<u16string>> information_contents(new vector<u16string>());
+  shared_ptr<Menu> information_menu_v2(new Menu(MenuID::INFORMATION, "Information"));
+  shared_ptr<Menu> information_menu_v3(new Menu(MenuID::INFORMATION, "Information"));
+  shared_ptr<vector<string>> information_contents(new vector<string>());
 
-  information_menu_v2->items.emplace_back(InformationMenuItemID::GO_BACK, u"Go back",
-      u"Return to the\nmain menu", MenuItem::Flag::INVISIBLE_IN_INFO_MENU);
-  information_menu_v3->items.emplace_back(InformationMenuItemID::GO_BACK, u"Go back",
-      u"Return to the\nmain menu", MenuItem::Flag::INVISIBLE_IN_INFO_MENU);
+  information_menu_v2->items.emplace_back(InformationMenuItemID::GO_BACK, "Go back",
+      "Return to the\nmain menu", MenuItem::Flag::INVISIBLE_IN_INFO_MENU);
+  information_menu_v3->items.emplace_back(InformationMenuItemID::GO_BACK, "Go back",
+      "Return to the\nmain menu", MenuItem::Flag::INVISIBLE_IN_INFO_MENU);
   {
     uint32_t item_id = 0;
     for (const auto& item : json.at("InformationMenuContents").as_list()) {
-      u16string name = decode_sjis(item->get_string(0));
-      u16string short_desc = decode_sjis(item->get_string(1));
+      string name = item->get_string(0);
+      string short_desc = item->get_string(1);
       information_menu_v2->items.emplace_back(item_id, name, short_desc, 0);
       information_menu_v3->items.emplace_back(item_id, name, short_desc, MenuItem::Flag::REQUIRES_MESSAGE_BOXES);
-      information_contents->emplace_back(decode_sjis(item->get_string(2)));
+      information_contents->emplace_back(item->get_string(2));
       item_id++;
     }
   }
@@ -767,7 +765,7 @@ void ServerState::parse_config(const JSON& json, bool is_reload) {
   this->information_contents = information_contents;
 
   auto generate_redirect_destinations_menu = [&](vector<pair<string, uint16_t>>& ret_pds, const char* key) -> shared_ptr<const Menu> {
-    shared_ptr<Menu> ret(new Menu(MenuID::REDIRECT_DESTINATIONS, u"Other servers"));
+    shared_ptr<Menu> ret(new Menu(MenuID::REDIRECT_DESTINATIONS, "Other servers"));
     ret_pds.clear();
 
     try {
@@ -776,13 +774,13 @@ void ServerState::parse_config(const JSON& json, bool is_reload) {
         sorted_jsons.emplace(it.first, *it.second);
       }
 
-      ret->items.emplace_back(RedirectDestinationsMenuItemID::GO_BACK, u"Go back", u"Return to the\nmain menu", 0);
+      ret->items.emplace_back(RedirectDestinationsMenuItemID::GO_BACK, "Go back", "Return to the\nmain menu", 0);
 
       uint32_t item_id = 0;
       for (const auto& item : sorted_jsons) {
         const string& netloc_str = item.second.as_string();
         const string& description = "$C7Remote server:\n$C6" + netloc_str;
-        ret->items.emplace_back(item_id, decode_sjis(item.first), decode_sjis(description), 0);
+        ret->items.emplace_back(item_id, item.first, description, 0);
         ret_pds.emplace_back(parse_netloc(netloc_str));
         item_id++;
       }
@@ -797,7 +795,7 @@ void ServerState::parse_config(const JSON& json, bool is_reload) {
   this->redirect_destinations_menu_xb = generate_redirect_destinations_menu(this->redirect_destinations_xb, "RedirectDestinations-XB");
 
   auto generate_proxy_destinations_menu = [&](vector<pair<string, uint16_t>>& ret_pds, const char* key) -> shared_ptr<const Menu> {
-    shared_ptr<Menu> ret(new Menu(MenuID::PROXY_DESTINATIONS, u"Proxy server"));
+    shared_ptr<Menu> ret(new Menu(MenuID::PROXY_DESTINATIONS, "Proxy server"));
     ret_pds.clear();
 
     try {
@@ -806,16 +804,14 @@ void ServerState::parse_config(const JSON& json, bool is_reload) {
         sorted_jsons.emplace(it.first, *it.second);
       }
 
-      ret->items.emplace_back(ProxyDestinationsMenuItemID::GO_BACK, u"Go back",
-          u"Return to the\nmain menu", 0);
-      ret->items.emplace_back(ProxyDestinationsMenuItemID::OPTIONS, u"Options",
-          u"Set proxy session\noptions", 0);
+      ret->items.emplace_back(ProxyDestinationsMenuItemID::GO_BACK, "Go back", "Return to the\nmain menu", 0);
+      ret->items.emplace_back(ProxyDestinationsMenuItemID::OPTIONS, "Options", "Set proxy session\noptions", 0);
 
       uint32_t item_id = 0;
       for (const auto& item : sorted_jsons) {
         const string& netloc_str = item.second.as_string();
         const string& description = "$C7Remote server:\n$C6" + netloc_str;
-        ret->items.emplace_back(item_id, decode_sjis(item.first), decode_sjis(description), 0);
+        ret->items.emplace_back(item_id, item.first, description, 0);
         ret_pds.emplace_back(parse_netloc(netloc_str));
         item_id++;
       }
@@ -856,9 +852,9 @@ void ServerState::parse_config(const JSON& json, bool is_reload) {
     this->proxy_destination_bb.second = 0;
   }
 
-  this->welcome_message = decode_sjis(json.get_string("WelcomeMessage", ""));
-  this->pc_patch_server_message = decode_sjis(json.get_string("PCPatchServerMessage", ""));
-  this->bb_patch_server_message = decode_sjis(json.get_string("BBPatchServerMessage", ""));
+  this->welcome_message = json.get_string("WelcomeMessage", "");
+  this->pc_patch_server_message = json.get_string("PCPatchServerMessage", "");
+  this->bb_patch_server_message = json.get_string("BBPatchServerMessage", "");
 }
 
 void ServerState::load_bb_private_keys() {

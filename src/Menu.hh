@@ -106,22 +106,20 @@ struct MenuItem {
   };
 
   uint32_t item_id;
-  std::u16string name;
-  std::u16string description;
-  std::function<std::u16string()> get_description;
+  std::string name;
+  std::string description;
+  std::function<std::string()> get_description;
   uint32_t flags;
 
-  MenuItem(uint32_t item_id, const std::u16string& name,
-      const std::u16string& description, uint32_t flags);
-  MenuItem(uint32_t item_id, const std::u16string& name,
-      std::function<std::u16string()> get_description, uint32_t flags);
+  MenuItem(uint32_t item_id, const std::string& name, const std::string& description, uint32_t flags);
+  MenuItem(uint32_t item_id, const std::string& name, std::function<std::string()> get_description, uint32_t flags);
 };
 
 struct Menu {
   uint32_t menu_id;
-  std::u16string name;
+  std::string name;
   std::vector<MenuItem> items;
 
   Menu() = delete;
-  Menu(uint32_t menu_id, const std::u16string& name);
+  Menu(uint32_t menu_id, const std::string& name);
 };

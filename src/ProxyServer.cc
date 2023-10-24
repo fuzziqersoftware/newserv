@@ -152,7 +152,7 @@ void ProxyServer::on_client_connect(
     auto ses = emplace_ret.first->second;
     ses->log.info("Opened linked session");
 
-    Channel ch(bev, version, nullptr, nullptr, ses.get(), "", TerminalFormat::FG_YELLOW, TerminalFormat::FG_GREEN);
+    Channel ch(bev, version, 1, nullptr, nullptr, ses.get(), "", TerminalFormat::FG_YELLOW, TerminalFormat::FG_GREEN);
     ses->resume(std::move(ch));
 
     // If no default destination exists, or the client is not a patch client,
@@ -229,6 +229,7 @@ ProxyServer::UnlinkedSession::UnlinkedSession(
       channel(
           bev,
           version,
+          1,
           ProxyServer::UnlinkedSession::on_input,
           ProxyServer::UnlinkedSession::on_error,
           this,
@@ -260,7 +261,6 @@ void ProxyServer::UnlinkedSession::on_input(Channel& ch, uint16_t command, uint3
   bool should_close_unlinked_session = false;
   shared_ptr<License> license;
   uint32_t sub_version = 0;
-  uint8_t language = 1; // Default = English
   string character_name;
   ClientConfigBB client_config;
   string login_command_bb;
@@ -272,20 +272,18 @@ void ProxyServer::UnlinkedSession::on_input(Channel& ch, uint16_t command, uint3
       // anything else, disconnect
       if (command == 0x93) {
         const auto& cmd = check_size_t<C_LoginV1_DC_93>(data);
-        license = s->license_index->verify_v1_v2(
-            stoul(cmd.serial_number, nullptr, 16), cmd.access_key);
+        license = s->license_index->verify_v1_v2(stoul(cmd.serial_number.decode(), nullptr, 16), cmd.access_key.decode());
         sub_version = cmd.sub_version;
-        language = cmd.language;
-        character_name = cmd.name;
-        hardware_id = cmd.hardware_id;
+        ses->channel.language = cmd.language;
+        character_name = cmd.name.decode(ses->channel.language);
+        hardware_id = cmd.hardware_id.decode();
         client_config.cfg.flags |= Client::Flag::IS_DC_V1;
       } else if (command == 0x9D) {
         const auto& cmd = check_size_t<C_Login_DC_PC_GC_9D>(data, sizeof(C_LoginExtended_DC_GC_9D));
-        license = s->license_index->verify_v1_v2(
-            stoul(cmd.serial_number, nullptr, 16), cmd.access_key);
+        license = s->license_index->verify_v1_v2(stoul(cmd.serial_number.decode(), nullptr, 16), cmd.access_key.decode());
         sub_version = cmd.sub_version;
-        language = cmd.language;
-        character_name = cmd.name;
+        ses->channel.language = cmd.language;
+        character_name = cmd.name.decode(ses->channel.language);
       } else {
         throw runtime_error("command is not 93 or 9D");
       }
@@ -297,11 +295,10 @@ void ProxyServer::UnlinkedSession::on_input(Channel& ch, uint16_t command, uint3
         throw runtime_error("command is not 9D");
       }
       const auto& cmd = check_size_t<C_Login_DC_PC_GC_9D>(data, sizeof(C_LoginExtended_PC_9D));
-      license = s->license_index->verify_v1_v2(
-          stoul(cmd.serial_number, nullptr, 16), cmd.access_key);
+      license = s->license_index->verify_v1_v2(stoul(cmd.serial_number.decode(), nullptr, 16), cmd.access_key.decode());
       sub_version = cmd.sub_version;
-      language = cmd.language;
-      character_name = cmd.name;
+      ses->channel.language = cmd.language;
+      character_name = cmd.name.decode(ses->channel.language);
 
     } else if (ses->version == GameVersion::GC) {
       // We should only get a 9E while the session is unlinked; if we get
@@ -311,11 +308,10 @@ void ProxyServer::UnlinkedSession::on_input(Channel& ch, uint16_t command, uint3
         throw runtime_error("command is not 9E");
       }
       const auto& cmd = check_size_t<C_Login_GC_9E>(data, sizeof(C_LoginExtended_GC_9E));
-      license = s->license_index->verify_gc(
-          stoul(cmd.serial_number, nullptr, 16), cmd.access_key);
+      license = s->license_index->verify_gc(stoul(cmd.serial_number.decode(), nullptr, 16), cmd.access_key.decode());
       sub_version = cmd.sub_version;
-      language = cmd.language;
-      character_name = cmd.name;
+      ses->channel.language = cmd.language;
+      character_name = cmd.name.decode(ses->channel.language);
       client_config.cfg = cmd.client_config.cfg;
 
     } else if (ses->version == GameVersion::XB) {
@@ -329,16 +325,15 @@ void ProxyServer::UnlinkedSession::on_input(Channel& ch, uint16_t command, uint3
       }
       const auto& cmd = check_size_t<C_Login_BB_93>(data);
       try {
-        license = s->license_index->verify_bb(
-            cmd.username, cmd.password);
+        license = s->license_index->verify_bb(cmd.username.decode(), cmd.password.decode());
       } catch (const LicenseIndex::missing_license&) {
         if (!s->allow_unregistered_users) {
           throw;
         }
         shared_ptr<License> l(new License());
-        l->serial_number = fnv1a32(cmd.username) & 0x7FFFFFFF;
-        l->bb_username = cmd.username;
-        l->bb_password = cmd.password;
+        l->serial_number = fnv1a32(cmd.username.decode()) & 0x7FFFFFFF;
+        l->bb_username = cmd.username.decode();
+        l->bb_password = cmd.password.decode();
         s->license_index->add(l);
         license = l;
         string l_str = l->str();
@@ -392,7 +387,7 @@ void ProxyServer::UnlinkedSession::on_input(Channel& ch, uint16_t command, uint3
 
     if (linked_ses.get()) {
       server->id_to_session.emplace(license->serial_number, linked_ses);
-      if (linked_ses->version != ses->version) {
+      if (linked_ses->version() != ses->version) {
         linked_ses->log.error("Linked session has different game version");
       } else {
         // Resume the linked session using the unlinked session
@@ -407,7 +402,6 @@ void ProxyServer::UnlinkedSession::on_input(Channel& ch, uint16_t command, uint3
                 std::move(ses->channel),
                 ses->detector_crypt,
                 sub_version,
-                language,
                 character_name,
                 hardware_id);
           }
@@ -449,6 +443,7 @@ ProxyServer::LinkedSession::LinkedSession(
       license(nullptr),
       client_channel(
           version,
+          1,
           nullptr,
           nullptr,
           this,
@@ -457,6 +452,7 @@ ProxyServer::LinkedSession::LinkedSession(
           TerminalFormat::FG_GREEN),
       server_channel(
           version,
+          1,
           nullptr,
           nullptr,
           this,
@@ -467,9 +463,7 @@ ProxyServer::LinkedSession::LinkedSession(
       disconnect_action(DisconnectAction::LONG_TIMEOUT),
       remote_ip_crc(0),
       enable_remote_ip_crc_patch(false),
-      version(version),
       sub_version(0), // This is set during resume()
-      language(1), // Default = English. This is also set during resume()
       remote_guild_card_number(-1),
       next_item_id(0x0F000000),
       lobby_players(12),
@@ -537,11 +531,9 @@ void ProxyServer::LinkedSession::resume(
     Channel&& client_channel,
     shared_ptr<PSOBBMultiKeyDetectorEncryption> detector_crypt,
     uint32_t sub_version,
-    uint8_t language,
     const string& character_name,
     const string& hardware_id) {
   this->sub_version = sub_version;
-  this->language = language;
   this->character_name = character_name;
   this->hardware_id = hardware_id;
   this->resume_inner(std::move(client_channel), detector_crypt);
@@ -557,7 +549,6 @@ void ProxyServer::LinkedSession::resume(
 
 void ProxyServer::LinkedSession::resume(Channel&& client_channel) {
   this->sub_version = 0;
-  this->language = 1;
   this->character_name.clear();
   this->resume_inner(std::move(client_channel), nullptr);
 }
@@ -578,6 +569,7 @@ void ProxyServer::LinkedSession::resume_inner(
       ProxyServer::LinkedSession::on_error,
       this,
       string_printf("LinkedSession:%08" PRIX64 ":client", this->id));
+  this->server_channel.language = this->client_channel.language;
 
   this->detector_crypt = detector_crypt;
   this->server_channel.disconnect();
@@ -648,9 +640,9 @@ void ProxyServer::LinkedSession::on_error(Channel& ch, short events) {
     ses->log.info("%s channel connected", is_server_stream ? "Server" : "Client");
 
     if (is_server_stream && (ses->options.override_lobby_event >= 0) &&
-        (((ses->version == GameVersion::GC) && !(ses->newserv_client_config.cfg.flags & Client::Flag::IS_GC_TRIAL_EDITION)) ||
-            (ses->version == GameVersion::XB) ||
-            (ses->version == GameVersion::BB))) {
+        (((ses->version() == GameVersion::GC) && !(ses->newserv_client_config.cfg.flags & Client::Flag::IS_GC_TRIAL_EDITION)) ||
+            (ses->version() == GameVersion::XB) ||
+            (ses->version() == GameVersion::BB))) {
       ses->client_channel.send(0xDA, ses->options.override_lobby_event);
     }
   }
@@ -687,7 +679,7 @@ void ProxyServer::LinkedSession::send_to_game_server(const char* error_message) 
   }
   // On BB, do nothing - we can't return to the game server since the remote
   // server likely sent different game data than what newserv would have sent
-  if (this->version == GameVersion::BB) {
+  if (this->version() == GameVersion::BB) {
     this->disconnect();
     return;
   }
@@ -704,13 +696,12 @@ void ProxyServer::LinkedSession::send_to_game_server(const char* error_message) 
   }
 
   auto s = this->require_server_state();
-  string encoded_name = encode_sjis(s->name);
   if (this->is_in_game) {
-    send_ship_info(this->client_channel, decode_sjis(string_printf("You cannot return\nto $C6%s$C7\nwhile in a game.\n\n%s", encoded_name.c_str(), error_message ? error_message : "")));
+    send_ship_info(this->client_channel, string_printf("You cannot return\nto $C6%s$C7\nwhile in a game.\n\n%s", s->name.c_str(), error_message ? error_message : ""));
     this->disconnect();
 
   } else {
-    send_ship_info(this->client_channel, decode_sjis(string_printf("You\'ve returned to\n\tC6%s$C7\n\n%s", encoded_name.c_str(), error_message ? error_message : "")));
+    send_ship_info(this->client_channel, string_printf("You\'ve returned to\n\tC6%s$C7\n\n%s", s->name.c_str(), error_message ? error_message : ""));
 
     // Restore newserv_client_config, so the login server gets the client flags
     S_UpdateClientConfig_DC_PC_V3_04 update_client_config_cmd;
@@ -719,8 +710,7 @@ void ProxyServer::LinkedSession::send_to_game_server(const char* error_message) 
     update_client_config_cmd.cfg = this->newserv_client_config.cfg;
     this->client_channel.send(0x04, 0x00, &update_client_config_cmd, sizeof(update_client_config_cmd));
 
-    const auto& port_name = version_to_login_port_name.at(static_cast<size_t>(
-        this->version));
+    const auto& port_name = version_to_login_port_name.at(static_cast<size_t>(this->version()));
 
     S_Reconnect_19 reconnect_cmd = {{0, s->name_to_port_config.at(port_name)->port, 0}};
 

@@ -932,63 +932,6 @@ uint16_t decrypt_challenge_time(uint32_t value) {
       : ((mask ^ value) & 0xFFFF);
 }
 
-template <typename StringT, bool IsEncrypt>
-StringT crypt_challenge_rank_text(const void* src, size_t count) {
-  if (count == 0) {
-    return StringT();
-  }
-
-  StringT ret;
-  StringReader r(src, count * sizeof(typename StringT::value_type));
-  typename StringT::value_type prev = 0;
-  while (!r.eof()) {
-    typename StringT::value_type ch = r.get<typename StringT::value_type>();
-    if (ch == 0) {
-      break;
-    }
-    if (ret.empty()) {
-      ret.push_back(ch ^ 0x7F);
-    } else {
-      ret.push_back((IsEncrypt ? ((ch - prev) ^ 0x7F) : ((ch ^ 0x7F) + ret.back())) & 0xFF);
-    }
-    prev = ch;
-  }
-
-  return ret;
-}
-
-string encrypt_challenge_rank_text(const char* src, size_t count) {
-  return crypt_challenge_rank_text<string, true>(src, count);
-}
-
-string decrypt_challenge_rank_text(const char* src, size_t count) {
-  return crypt_challenge_rank_text<string, false>(src, count);
-}
-
-u16string encrypt_challenge_rank_text(const char16_t* src, size_t count) {
-  return crypt_challenge_rank_text<u16string, true>(src, count);
-}
-
-u16string decrypt_challenge_rank_text(const char16_t* src, size_t count) {
-  return crypt_challenge_rank_text<u16string, false>(src, count);
-}
-
-std::string decrypt_challenge_rank_text(const std::string& data) {
-  return decrypt_challenge_rank_text(data.data(), data.size());
-}
-
-std::string encrypt_challenge_rank_text(const std::string& data) {
-  return encrypt_challenge_rank_text(data.data(), data.size());
-}
-
-std::u16string decrypt_challenge_rank_text(const std::u16string& data) {
-  return decrypt_challenge_rank_text(data.data(), data.size());
-}
-
-std::u16string encrypt_challenge_rank_text(const std::u16string& data) {
-  return encrypt_challenge_rank_text(data.data(), data.size());
-}
-
 string decrypt_v2_registry_value(const void* data, size_t size) {
   string ret(reinterpret_cast<const char*>(data), size);
   PSOV2Encryption crypt(0x66);

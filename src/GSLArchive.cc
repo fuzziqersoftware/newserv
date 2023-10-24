@@ -12,7 +12,7 @@ template <bool IsBigEndian>
 struct GSLHeaderEntry {
   using U32T = typename std::conditional<IsBigEndian, be_uint32_t, le_uint32_t>::type;
 
-  ptext<char, 0x20> filename;
+  pstring<TextEncoding::ASCII, 0x20> filename;
   U32T offset; // In pages, so actual offset is this * 0x800
   U32T size;
   uint64_t unused;
@@ -24,14 +24,14 @@ void GSLArchive::load_t() {
   uint64_t min_data_offset = 0xFFFFFFFFFFFFFFFF;
   while (r.where() < min_data_offset) {
     const auto& entry = r.get<GSLHeaderEntry<IsBigEndian>>();
-    if (entry.filename.len() == 0) {
+    if (entry.filename.empty()) {
       break;
     }
     uint64_t offset = static_cast<uint64_t>(entry.offset) * 0x800;
     if (offset + entry.size > this->data->size()) {
       throw runtime_error("GSL entry extends beyond end of data");
     }
-    this->entries.emplace(entry.filename, Entry{offset, entry.size});
+    this->entries.emplace(entry.filename.decode(), Entry{offset, entry.size});
   }
 }
 

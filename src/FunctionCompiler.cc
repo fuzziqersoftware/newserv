@@ -236,13 +236,12 @@ FunctionCodeIndex::FunctionCodeIndex(const string& directory) {
 shared_ptr<const Menu> FunctionCodeIndex::patch_menu(uint32_t specific_version) const {
   auto suffix = string_printf("-%08" PRIX32, specific_version);
 
-  shared_ptr<Menu> ret(new Menu(MenuID::PATCHES, u"Patches"));
-  ret->items.emplace_back(PatchesMenuItemID::GO_BACK, u"Go back", u"Return to the\nmain menu", 0);
+  shared_ptr<Menu> ret(new Menu(MenuID::PATCHES, "Patches"));
+  ret->items.emplace_back(PatchesMenuItemID::GO_BACK, "Go back", "Return to the\nmain menu", 0);
   for (const auto& it : this->name_and_specific_version_to_patch_function) {
     const auto& fn = it.second;
     if (!fn->hide_from_patches_menu && ends_with(it.first, suffix)) {
-      ret->items.emplace_back(fn->menu_item_id, decode_sjis(fn->patch_name), u"",
-          MenuItem::Flag::REQUIRES_SEND_FUNCTION_CALL);
+      ret->items.emplace_back(fn->menu_item_id, fn->patch_name, "", MenuItem::Flag::REQUIRES_SEND_FUNCTION_CALL);
     }
   }
   return ret;
@@ -267,9 +266,9 @@ DOLFileIndex::DOLFileIndex(const string& directory) {
     return;
   }
 
-  shared_ptr<Menu> menu(new Menu(MenuID::PROGRAMS, u"Programs"));
+  shared_ptr<Menu> menu(new Menu(MenuID::PROGRAMS, "Programs"));
   this->menu = menu;
-  menu->items.emplace_back(ProgramsMenuItemID::GO_BACK, u"Go back", u"Return to the\nmain menu", 0);
+  menu->items.emplace_back(ProgramsMenuItemID::GO_BACK, "Go back", "Return to the\nmain menu", 0);
 
   uint32_t next_menu_item_id = 0;
   for (const auto& filename : list_directory_sorted(directory)) {
@@ -326,8 +325,7 @@ DOLFileIndex::DOLFileIndex(const string& directory) {
       this->name_to_file.emplace(dol->name, dol);
       this->item_id_to_file.emplace_back(dol);
 
-      menu->items.emplace_back(dol->menu_item_id, decode_sjis(dol->name),
-          decode_sjis(description), MenuItem::Flag::REQUIRES_SEND_FUNCTION_CALL);
+      menu->items.emplace_back(dol->menu_item_id, dol->name, description, MenuItem::Flag::REQUIRES_SEND_FUNCTION_CALL);
 
     } catch (const exception& e) {
       function_compiler_log.warning("Failed to load DOL file %s: %s", filename.c_str(), e.what());

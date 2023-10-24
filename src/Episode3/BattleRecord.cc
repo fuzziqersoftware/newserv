@@ -354,7 +354,7 @@ void BattleRecordPlayer::schedule_events() {
             send_command(l, 0xC9, 0x00, ev.data);
             break;
           case BattleRecord::Event::Type::CHAT_MESSAGE:
-            send_chat_message(l, ev.guild_card_number, decode_sjis(ev.data));
+            send_prepared_chat_message(l, ev.guild_card_number, ev.data);
             break;
         }
         this->event_it++;

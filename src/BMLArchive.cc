@@ -21,7 +21,7 @@ template <bool IsBigEndian>
 struct BMLHeaderEntry {
   using U32T = typename std::conditional<IsBigEndian, be_uint32_t, le_uint32_t>::type;
 
-  ptext<char, 0x20> filename;
+  pstring<TextEncoding::ASCII, 0x20> filename;
   U32T compressed_size;
   parray<uint8_t, 0x04> unknown_a1;
   U32T decompressed_size;
@@ -52,7 +52,7 @@ void BMLArchive::load_t() {
     size_t gvm_offset = offset;
     offset = (offset + entry.compressed_gvm_size + 0x1F) & (~0x1F);
 
-    this->entries.emplace(entry.filename, Entry{data_offset, entry.compressed_size, gvm_offset, entry.compressed_gvm_size});
+    this->entries.emplace(entry.filename.decode(), Entry{data_offset, entry.compressed_size, gvm_offset, entry.compressed_gvm_size});
   }
 }
 

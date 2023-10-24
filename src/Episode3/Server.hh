@@ -112,7 +112,7 @@ public:
     this->send(&cmd, cmd.header.size * 4);
   }
   void send(const void* data, size_t size) const;
-  void send_commands_for_joining_spectator(Channel& ch, uint8_t language, bool is_trial) const;
+  void send_commands_for_joining_spectator(Channel& ch, bool is_trial) const;
 
   void force_battle_result(uint8_t surrendered_client_id, bool set_winner);
   void force_destroy_field_character(uint8_t client_id, size_t set_index);

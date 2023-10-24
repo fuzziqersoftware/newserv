@@ -24,6 +24,7 @@ static void flush_and_free_bufferevent(struct bufferevent* bev) {
 
 Channel::Channel(
     GameVersion version,
+    uint8_t language,
     on_command_received_t on_command_received,
     on_error_t on_error,
     void* context_obj,
@@ -32,6 +33,7 @@ Channel::Channel(
     TerminalFormat terminal_recv_color)
     : bev(nullptr, flush_and_free_bufferevent),
       version(version),
+      language(language),
       name(name),
       terminal_send_color(terminal_send_color),
       terminal_recv_color(terminal_recv_color),
@@ -43,6 +45,7 @@ Channel::Channel(
 Channel::Channel(
     struct bufferevent* bev,
     GameVersion version,
+    uint8_t language,
     on_command_received_t on_command_received,
     on_error_t on_error,
     void* context_obj,
@@ -51,6 +54,7 @@ Channel::Channel(
     TerminalFormat terminal_recv_color)
     : bev(nullptr, flush_and_free_bufferevent),
       version(version),
+      language(language),
       name(name),
       terminal_send_color(terminal_send_color),
       terminal_recv_color(terminal_recv_color),
@@ -71,6 +75,7 @@ void Channel::replace_with(
   this->remote_addr = other.remote_addr;
   this->is_virtual_connection = other.is_virtual_connection;
   this->version = other.version;
+  this->language = other.language;
   this->crypt_in = other.crypt_in;
   this->crypt_out = other.crypt_out;
   this->name = name;
