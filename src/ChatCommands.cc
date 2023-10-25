@@ -467,19 +467,6 @@ static void server_command_cheat(shared_ptr<Client> c, const std::string&) {
 
   l->flags ^= Lobby::Flag::CHEATS_ENABLED;
   send_text_message_printf(l, "Cheat mode %s", (l->flags & Lobby::Flag::CHEATS_ENABLED) ? "enabled" : "disabled");
-
-  // If cheat mode was disabled, turn off all the cheat features that were on
-  if (!(l->flags & Lobby::Flag::CHEATS_ENABLED)) {
-    for (size_t x = 0; x < l->max_clients; x++) {
-      auto c = l->clients[x];
-      if (!c) {
-        continue;
-      }
-      c->options.infinite_hp = false;
-      c->options.infinite_tp = false;
-      c->options.switch_assist = false;
-    }
-  }
 }
 
 static void server_command_lobby_event(shared_ptr<Client> c, const std::string& args) {
