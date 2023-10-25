@@ -4317,7 +4317,7 @@ struct G_Unknown_6x5C {
 struct G_DropStackedItem_DC_6x5D {
   G_ClientIDHeader header;
   le_uint16_t area;
-  le_uint16_t unused2;
+  le_uint16_t unknown_a2; // Corresponds to FloorItem::unknown_a2
   le_float x;
   le_float z;
   ItemData item_data;
@@ -4336,16 +4336,23 @@ struct G_BuyShopItem_6x5E {
 
 // 6x5F: Drop item from box/enemy
 
-struct G_DropItem_DC_6x5F {
-  G_UnusedHeader header;
+struct FloorItem {
   uint8_t area;
   uint8_t from_enemy;
-  le_uint16_t request_id; // < 0x0B50 if from_enemy != 0; otherwise < 0x0BA0
+  le_uint16_t entity_id; // < 0x0B50 if from_enemy != 0; otherwise < 0x0BA0
   le_float x;
   le_float z;
-  le_uint16_t unknown_a1;
   le_uint16_t unknown_a2;
-  ItemData item_data;
+  // The drop number is scoped to the area and increments by 1 each time an
+  // item is dropped. The last item dropped in each area has drop_number equal
+  // to total_items_dropped_per_area[area - 1] - 1.
+  le_uint16_t drop_number;
+  ItemData item;
+} __packed__;
+
+struct G_DropItem_DC_6x5F {
+  G_UnusedHeader header;
+  FloorItem item;
 } __packed__;
 
 struct G_DropItem_PC_V3_BB_6x5F : G_DropItem_DC_6x5F {
@@ -4492,18 +4499,6 @@ struct G_SyncItemState_6x6D_Decompressed {
   // the client fills in all 12 of these with reasonable values.
   parray<le_uint32_t, 12> next_item_id_per_player;
   parray<le_uint32_t, 15> floor_item_count_per_area;
-  struct FloorItem {
-    le_uint16_t area;
-    le_uint16_t unknown_a1;
-    le_float x;
-    le_float z;
-    le_uint16_t unknown_a2;
-    // The drop number is scoped to the area and increments by 1 each time an
-    // item is dropped. The last item dropped in each area has drop_number equal
-    // to total_items_dropped_per_area[area - 1] - 1.
-    le_uint16_t drop_number;
-    ItemData item_data;
-  } __packed__;
   // Variable-length field:
   // FloorItem items[sum(floor_item_count_per_area)];
 } __packed__;

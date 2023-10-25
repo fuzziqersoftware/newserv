@@ -210,14 +210,13 @@ static void on_sync_joining_player_item_state(shared_ptr<Client> c, uint8_t comm
         num_floor_items += decompressed_cmd->floor_item_count_per_area[z];
       }
 
-      size_t required_size = sizeof(G_SyncItemState_6x6D_Decompressed) + num_floor_items * sizeof(G_SyncItemState_6x6D_Decompressed::FloorItem);
+      size_t required_size = sizeof(G_SyncItemState_6x6D_Decompressed) + num_floor_items * sizeof(FloorItem);
       if (decompressed.size() < required_size) {
         throw runtime_error(string_printf(
             "decompressed 6x6D data (0x%zX bytes) is too short for all items (0x%zX bytes)",
             decompressed.size(), required_size));
       }
-      auto* floor_items = reinterpret_cast<G_SyncItemState_6x6D_Decompressed::FloorItem*>(
-          decompressed.data() + sizeof(G_SyncItemState_6x6D_Decompressed));
+      auto* floor_items = reinterpret_cast<FloorItem*>(decompressed.data() + sizeof(G_SyncItemState_6x6D_Decompressed));
 
       for (size_t z = 0; z < num_floor_items; z++) {
         // NOTE: If we use this codepath for non-V3 in the future, we'll need to
@@ -900,6 +899,12 @@ static void on_buy_shop_item(shared_ptr<Client> c, uint8_t command, uint8_t flag
 
 template <typename CmdT>
 static void on_box_or_enemy_item_drop_t(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
+  // I'm lazy and this should never happen for item commands (since all players
+  // need to stay in sync)
+  if (command_is_private(command)) {
+    throw runtime_error("item subcommand sent via private command");
+  }
+
   const auto& cmd = check_size_t<CmdT>(data, size);
 
   auto l = c->require_lobby();
@@ -911,22 +916,30 @@ static void on_box_or_enemy_item_drop_t(shared_ptr<Client> c, uint8_t command, u
   }
 
   if (l->flags & Lobby::Flag::ITEM_TRACKING_ENABLED) {
-    {
-      ItemData item = cmd.item_data;
-      item.decode_if_mag(c->version());
-      l->add_item(item, cmd.area, cmd.x, cmd.z);
-    }
+    ItemData item = cmd.item.item;
+    item.decode_if_mag(c->version());
+    l->add_item(item, cmd.item.area, cmd.item.x, cmd.item.z);
 
-    auto name = cmd.item_data.name(false);
+    auto name = item.name(false);
     l->log.info("Leader created ground item %08" PRIX32 " (%s) at %hhu:(%g, %g)",
-        cmd.item_data.id.load(), name.c_str(), cmd.area, cmd.x.load(), cmd.z.load());
+        item.id.load(), name.c_str(), cmd.item.area, cmd.item.x.load(), cmd.item.z.load());
     if (c->options.debug) {
-      string name = cmd.item_data.name(true);
-      send_text_message_printf(c, "$C5DROP %08" PRIX32 "\n%s", cmd.item_data.id.load(), name.c_str());
+      string name = item.name(true);
+      send_text_message_printf(c, "$C5DROP %08" PRIX32 "\n%s", item.id.load(), name.c_str());
     }
   }
 
-  forward_subcommand_with_mag_transcode_t(c, command, flag, cmd);
+  for (auto& lc : l->clients) {
+    if (!lc || lc == c) {
+      continue;
+    }
+    CmdT out_cmd = cmd;
+    if (c->version() != lc->version()) {
+      out_cmd.item.item.decode_if_mag(c->version());
+      out_cmd.item.item.encode_if_mag(lc->version());
+    }
+    send_command_t(lc, command, flag, out_cmd);
+  }
 }
 
 static void on_box_or_enemy_item_drop(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {

@@ -2009,8 +2009,8 @@ void send_set_player_visibility(shared_ptr<Lobby> l, shared_ptr<Client> c,
 void send_drop_item(Channel& ch, const ItemData& item,
     bool from_enemy, uint8_t area, float x, float z, uint16_t entity_id) {
   G_DropItem_PC_V3_BB_6x5F cmd = {
-      {{0x5F, 0x0B, 0x0000}, area, from_enemy, entity_id, x, z, 0, 0, item}, 0};
-  cmd.item_data.encode_if_mag(ch.version);
+      {{0x5F, 0x0B, 0x0000}, {area, from_enemy, entity_id, x, z, 0, 0, item}}, 0};
+  cmd.item.item.encode_if_mag(ch.version);
   ch.send(0x60, 0x00, &cmd, sizeof(cmd));
 }
 
