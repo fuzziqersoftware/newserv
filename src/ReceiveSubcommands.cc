@@ -222,7 +222,7 @@ static void on_sync_joining_player_item_state(shared_ptr<Client> c, uint8_t comm
         // NOTE: If we use this codepath for non-V3 in the future, we'll need to
         // change this hardcoded version. This only works because GC's mag
         // encoding/decoding is symmetric (encode and decode do the same thing).
-        floor_items[z].item_data.decode_if_mag(GameVersion::GC);
+        floor_items[z].item.decode_if_mag(GameVersion::GC);
       }
 
       string out_compressed_data = bc0_compress(decompressed);
@@ -689,8 +689,7 @@ static void on_player_drop_item(shared_ptr<Client> c, uint8_t command, uint8_t f
 
     auto name = item.name(false);
     l->log.info("Player %hu dropped item %08" PRIX32 " (%s) at %hu:(%g, %g)",
-        cmd.header.client_id.load(), cmd.item_id.load(), name.c_str(),
-        cmd.area.load(), cmd.x.load(), cmd.z.load());
+        cmd.header.client_id.load(), cmd.item_id.load(), name.c_str(), cmd.area.load(), cmd.x.load(), cmd.z.load());
     if (c->options.debug) {
       string name = item.name(true);
       send_text_message_printf(c, "$C5DROP %08" PRIX32 "\n%s",
@@ -740,18 +739,16 @@ static void on_create_inventory_item_t(shared_ptr<Client> c, uint8_t command, ui
   auto l = c->require_lobby();
   if (l->flags & Lobby::Flag::ITEM_TRACKING_ENABLED) {
     auto p = c->game_data.player();
-    {
-      ItemData item = cmd.item_data;
-      item.decode_if_mag(c->version());
-      p->add_item(item);
-    }
+    ItemData item = cmd.item_data;
+    item.decode_if_mag(c->version());
+    l->on_item_id_generated_externally(c->lobby_client_id, item.id);
+    p->add_item(item);
 
-    auto name = cmd.item_data.name(false);
-    l->log.info("Player %hu created inventory item %08" PRIX32 " (%s)",
-        cmd.header.client_id.load(), cmd.item_data.id.load(), name.c_str());
+    auto name = item.name(false);
+    l->log.info("Player %hu created inventory item %08" PRIX32 " (%s)", c->lobby_client_id, item.id.load(), name.c_str());
     if (c->options.debug) {
-      string name = cmd.item_data.name(true);
-      send_text_message_printf(c, "$C5CREATE %08" PRIX32 "\n%s", cmd.item_data.id.load(), name.c_str());
+      string name = item.name(true);
+      send_text_message_printf(c, "$C5CREATE %08" PRIX32 "\n%s", item.id.load(), name.c_str());
     }
     p->print_inventory(stderr);
   }
@@ -785,19 +782,18 @@ static void on_drop_partial_stack_t(shared_ptr<Client> c, uint8_t command, uint8
   if (l->flags & Lobby::Flag::ITEM_TRACKING_ENABLED) {
     // TODO: Should we delete anything from the inventory here? Does the client
     // send an appropriate 6x29 alongside this?
-    {
-      ItemData item = cmd.item_data;
-      item.decode_if_mag(c->version());
-      l->add_item(item, cmd.area, cmd.x, cmd.z);
-    }
+    ItemData item = cmd.item_data;
+    item.decode_if_mag(c->version());
+    l->on_item_id_generated_externally(c->lobby_client_id, item.id);
+    l->add_item(item, cmd.area, cmd.x, cmd.z);
 
-    auto name = cmd.item_data.name(false);
-    l->log.info("Player %hu split stack to create ground item %08" PRIX32 " (%s) at %hu:(%g, %g)",
-        cmd.header.client_id.load(), cmd.item_data.id.load(), name.c_str(),
+    auto name = item.name(false);
+    l->log.info("Player %hu split stack to create floor item %08" PRIX32 " (%s) at %hu:(%g, %g)",
+        cmd.header.client_id.load(), item.id.load(), name.c_str(),
         cmd.area.load(), cmd.x.load(), cmd.z.load());
     if (c->options.debug) {
-      string name = cmd.item_data.name(true);
-      send_text_message_printf(c, "$C5SPLIT %08" PRIX32 "\n%s", cmd.item_data.id.load(), name.c_str());
+      string name = item.name(true);
+      send_text_message_printf(c, "$C5SPLIT %08" PRIX32 "\n%s", item.id.load(), name.c_str());
     }
     c->game_data.player()->print_inventory(stderr);
   }
@@ -831,8 +827,9 @@ static void on_drop_partial_stack_bb(shared_ptr<Client> c, uint8_t command, uint
     auto p = c->game_data.player();
     auto item = p->remove_item(cmd.item_id, cmd.amount, c->version() != GameVersion::BB);
 
-    // if a stack was split, the original item still exists, so the dropped item
-    // needs a new ID. remove_item signals this by returning an item with id=-1
+    // If a stack was split, the original item still exists, so the dropped item
+    // needs a new ID. remove_item signals this by returning an item with an ID
+    // of 0xFFFFFFFF.
     if (item.id == 0xFFFFFFFF) {
       item.id = l->generate_item_id(c->lobby_client_id);
     }
@@ -876,19 +873,18 @@ static void on_buy_shop_item(shared_ptr<Client> c, uint8_t command, uint8_t flag
 
   if (l->flags & Lobby::Flag::ITEM_TRACKING_ENABLED) {
     auto p = c->game_data.player();
-    {
-      ItemData item = cmd.item_data;
-      item.decode_if_mag(c->version());
-      p->add_item(item);
-    }
+    ItemData item = cmd.item_data;
+    item.decode_if_mag(c->version());
+    l->on_item_id_generated_externally(c->lobby_client_id, item.id);
+    p->add_item(item);
 
-    size_t price = s->item_parameter_table->price_for_item(cmd.item_data);
-    auto name = cmd.item_data.name(false);
+    size_t price = s->item_parameter_table->price_for_item(item);
+    auto name = item.name(false);
     l->log.info("Player %hu bought item %08" PRIX32 " (%s) from shop (%zu Meseta)",
-        cmd.header.client_id.load(), cmd.item_data.id.load(), name.c_str(), price);
+        cmd.header.client_id.load(), item.id.load(), name.c_str(), price);
     if (c->options.debug) {
-      string name = cmd.item_data.name(true);
-      send_text_message_printf(c, "$C5BUY %08" PRIX32 "\n%s", cmd.item_data.id.load(), name.c_str());
+      string name = item.name(true);
+      send_text_message_printf(c, "$C5BUY %08" PRIX32 "\n%s", item.id.load(), name.c_str());
     }
     p->remove_meseta(price, c->version() != GameVersion::BB);
     p->print_inventory(stderr);
@@ -918,11 +914,12 @@ static void on_box_or_enemy_item_drop_t(shared_ptr<Client> c, uint8_t command, u
   if (l->flags & Lobby::Flag::ITEM_TRACKING_ENABLED) {
     ItemData item = cmd.item.item;
     item.decode_if_mag(c->version());
+    l->on_item_id_generated_externally(c->lobby_client_id, item.id);
     l->add_item(item, cmd.item.area, cmd.item.x, cmd.item.z);
 
     auto name = item.name(false);
-    l->log.info("Leader created ground item %08" PRIX32 " (%s) at %hhu:(%g, %g)",
-        item.id.load(), name.c_str(), cmd.item.area, cmd.item.x.load(), cmd.item.z.load());
+    l->log.info("Player %hhu (leader) created floor item %08" PRIX32 " (%s) at %hhu:(%g, %g)",
+        l->leader_id, item.id.load(), name.c_str(), cmd.item.area, cmd.item.x.load(), cmd.item.z.load());
     if (c->options.debug) {
       string name = item.name(true);
       send_text_message_printf(c, "$C5DROP %08" PRIX32 "\n%s", item.id.load(), name.c_str());
@@ -1006,7 +1003,7 @@ static void on_pick_up_item_request(shared_ptr<Client> c, uint8_t command, uint8
     p->add_item(item);
 
     auto name = item.name(false);
-    l->log.info("Player %hu picked up %08" PRIX32 " (%s)",
+    l->log.info("Player %hu picked up (BB) %08" PRIX32 " (%s)",
         cmd.header.client_id.load(), cmd.item_id.load(), name.c_str());
     if (c->options.debug) {
       string name = item.name(true);
@@ -1070,8 +1067,8 @@ static void on_use_item(
     }
     player_use_item(c, index);
 
-    l->log.info("Player used item %hu:%08" PRIX32 " (%s)",
-        cmd.header.client_id.load(), cmd.item_id.load(), name.c_str());
+    l->log.info("Player %hhu used item %hu:%08" PRIX32 " (%s)",
+        c->lobby_client_id, cmd.header.client_id.load(), cmd.item_id.load(), name.c_str());
     if (c->options.debug) {
       send_text_message_printf(c, "$C5USE %08" PRIX32 "\n%s",
           cmd.item_id.load(), colored_name.c_str());
@@ -1120,8 +1117,8 @@ static void on_feed_mag(
       p->remove_item(cmd.fed_item_id, 1, false);
     }
 
-    l->log.info("Player fed item %hu:%08" PRIX32 " (%s) to mag %hu:%08" PRIX32 " (%s)",
-        cmd.header.client_id.load(), cmd.fed_item_id.load(), fed_name.c_str(),
+    l->log.info("Player %hhu fed item %hu:%08" PRIX32 " (%s) to mag %hu:%08" PRIX32 " (%s)",
+        c->lobby_client_id, cmd.header.client_id.load(), cmd.fed_item_id.load(), fed_name.c_str(),
         cmd.header.client_id.load(), cmd.mag_item_id.load(), mag_name.c_str());
     if (c->options.debug) {
       send_text_message_printf(c, "$C5FEED %08" PRIX32 "\n%s\n...TO %08" PRIX32 "\n%s",
@@ -1658,8 +1655,8 @@ static void on_destroy_inventory_item(shared_ptr<Client> c, uint8_t command, uin
     auto p = c->game_data.player();
     auto item = p->remove_item(cmd.item_id, cmd.amount, c->version() != GameVersion::BB);
     auto name = item.name(false);
-    l->log.info("Inventory item %hu:%08" PRIX32 " destroyed (%s)",
-        cmd.header.client_id.load(), cmd.item_id.load(), name.c_str());
+    l->log.info("Player %hhu destroyed inventory item %hu:%08" PRIX32 " (%s)",
+        c->lobby_client_id, cmd.header.client_id.load(), cmd.item_id.load(), name.c_str());
     if (c->options.debug) {
       string name = item.name(true);
       send_text_message_printf(c, "$C5DESTROY %08" PRIX32 "\n%s",
@@ -1681,8 +1678,8 @@ static void on_destroy_ground_item(shared_ptr<Client> c, uint8_t command, uint8_
   if (l->flags & Lobby::Flag::ITEM_TRACKING_ENABLED) {
     auto item = l->remove_item(cmd.item_id);
     auto name = item.name(false);
-    l->log.info("Ground item %08" PRIX32 " destroyed (%s)", cmd.item_id.load(),
-        name.c_str());
+    l->log.info("Player %hhu destroyed floor item %08" PRIX32 " (%s)",
+        c->lobby_client_id, cmd.item_id.load(), name.c_str());
     if (c->options.debug) {
       string name = item.name(true);
       send_text_message_printf(c, "$C5DESTROY/GND %08" PRIX32 "\n%s",
@@ -1763,7 +1760,7 @@ static void on_sell_item_at_shop_bb(shared_ptr<Client> c, uint8_t command, uint8
     p->add_meseta(price);
 
     auto name = item.name(false);
-    l->log.info("Inventory item %hu:%08" PRIX32 " (%s) destroyed via sale (%zu Meseta)",
+    l->log.info("Player %hhu sold inventory item %08" PRIX32 " (%s) for %zu Meseta",
         c->lobby_client_id, cmd.item_id.load(), name.c_str(), price);
     p->print_inventory(stderr);
     if (c->options.debug) {
@@ -1802,7 +1799,7 @@ static void on_buy_shop_item_bb(shared_ptr<Client> c, uint8_t, uint8_t, const vo
     send_create_inventory_item(c, item);
 
     auto name = item.name(false);
-    l->log.info("Inventory item %hu:%08" PRIX32 " created via purchase (%s) for %zu meseta",
+    l->log.info("Player %hhu purchased item %08" PRIX32 " (%s) for %zu meseta",
         c->lobby_client_id, cmd.inventory_item_id.load(), name.c_str(), price);
     p->print_inventory(stderr);
     if (c->options.debug) {

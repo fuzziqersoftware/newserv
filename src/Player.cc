@@ -485,6 +485,6 @@ void SavedPlayerDataBB::print_inventory(FILE* stream) const {
     const auto& item = this->inventory.items[x];
     auto name = item.data.name(false);
     auto hex = item.data.hex();
-    fprintf(stream, "[PlayerInventory]   %zu: %s (%s)\n", x, hex.c_str(), name.c_str());
+    fprintf(stream, "[PlayerInventory]   %2zu: %s (%s)\n", x, hex.c_str(), name.c_str());
   }
 }

@@ -332,6 +332,20 @@ uint32_t Lobby::generate_item_id(uint8_t client_id) {
   return this->next_game_item_id++;
 }
 
+void Lobby::on_item_id_generated_externally(uint8_t client_id, uint32_t item_id) {
+  if (this->base_version == GameVersion::BB) {
+    throw logic_error("BB games cannot have externally-generated item IDs");
+  }
+  if ((item_id > 0x00010000) && (item_id < 0x02010000)) {
+    uint16_t item_client_id = (item_id >> 21) & 0x7FF;
+    if (item_client_id != client_id) {
+      throw runtime_error("externally-generated item ID does not match expected client ID");
+    }
+    uint32_t& next_item_id = this->next_item_id.at(client_id);
+    next_item_id = std::max<uint32_t>(next_item_id, item_id + 1);
+  }
+}
+
 unordered_map<uint32_t, shared_ptr<Client>> Lobby::clients_by_serial_number() const {
   unordered_map<uint32_t, shared_ptr<Client>> ret;
   for (auto c : this->clients) {
