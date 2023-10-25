@@ -1,0 +1,29 @@
+SCHTSERV Drop Tables Data EP1/EP2/EP4
+
+The Item files included in this folder are the final ones I've created for 
+Schtserv with the latest revision update October 31st 2022, these files includes
+the revised Drop Rate data for all the enemies in the game across all Difficulties
+and Episodes, including the special items added in the final PSOBB official patch 
+(1.25.13) which affects some of the Episode 1 and Episode 2 Bosses drops in Very Hard 
+and Ultimate and specially a mostly complete official implementation of the Episode 4
+bosses and enemies for all Section ID's.
+
+However, as I'm not sure if the implementation of the rare drop logic from this
+server vs the one we had on Schtserv will allow a simple file replace without breaking
+anything, I'm leaving the raw files here for whoever wants to properly implement them 
+over here.
+
+By using these files you will ensure you have a PSOBB experience as close as possible
+to the original game, at least on the rare item drop side of things which is a big part 
+of the main game loop regardless.
+
+Links to the Tables on the Schtserv Wiki for reference:
+https://bbwiki.schtserv.com/index.php/Drops-ep1
+https://bbwiki.schtserv.com/index.php/Drops-ep2
+https://bbwiki.schtserv.com/index.php/Drops-ep4
+
+P.D: It might still be necessary to verify the PMT file for normal item drops in the 
+Episode 4 areas, Shops and Challenge Mode
+
+
+
