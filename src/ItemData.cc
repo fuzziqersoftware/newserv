@@ -1888,7 +1888,7 @@ string ItemData::name(bool include_color_codes) const {
       }
 
     } else { // Not S-rank (extended name bits not set)
-      parray<uint8_t, 5> percentages(0);
+      parray<int8_t, 5> percentages(0);
       for (size_t x = 0; x < 3; x++) {
         uint8_t which = this->data1[6 + 2 * x];
         uint8_t value = this->data1[7 + 2 * x];
@@ -1902,7 +1902,7 @@ string ItemData::name(bool include_color_codes) const {
         }
       }
       if (!percentages.is_filled_with(0)) {
-        ret_tokens.emplace_back(string_printf("%hhu/%hhu/%hhu/%hhu/%hhu",
+        ret_tokens.emplace_back(string_printf("%hhd/%hhd/%hhd/%hhd/%hhd",
             percentages[0], percentages[1], percentages[2], percentages[3], percentages[4]));
       }
     }
