@@ -43,36 +43,56 @@ void player_use_item(shared_ptr<Client> c, size_t item_index) {
 
   } else if ((item_identifier & 0xFFFF00) == 0x030B00) { // Material
     auto p = c->game_data.player();
+    bool track_non_hp_tp_materials = (c->version() != GameVersion::DC) && (c->version() != GameVersion::PC);
+
     using Type = SavedPlayerDataBB::MaterialType;
+    Type type;
     switch (item.data.data1[2]) {
       case 0: // Power Material
-        p->set_material_usage(Type::POWER, p->get_material_usage(Type::POWER) + 1);
+        type = Type::POWER;
         p->disp.stats.char_stats.atp += 2;
         break;
       case 1: // Mind Material
-        p->set_material_usage(Type::MIND, p->get_material_usage(Type::MIND) + 1);
+        type = Type::MIND;
         p->disp.stats.char_stats.mst += 2;
         break;
       case 2: // Evade Material
-        p->set_material_usage(Type::EVADE, p->get_material_usage(Type::EVADE) + 1);
+        type = Type::EVADE;
         p->disp.stats.char_stats.evp += 2;
         break;
       case 3: // HP Material
-        p->set_material_usage(Type::HP, p->get_material_usage(Type::HP) + 1);
+        type = Type::HP;
         break;
       case 4: // TP Material
-        p->set_material_usage(Type::TP, p->get_material_usage(Type::TP) + 1);
+        type = Type::TP;
         break;
       case 5: // Def Material
-        p->set_material_usage(Type::DEF, p->get_material_usage(Type::DEF) + 1);
+        type = Type::DEF;
         p->disp.stats.char_stats.dfp += 2;
         break;
-      case 6: // Luck Material
-        p->set_material_usage(Type::LUCK, p->get_material_usage(Type::LUCK) + 1);
-        p->disp.stats.char_stats.lck += 2;
+      case 6: // Hit Material (v1/v2) or Luck Material (v3/v4)
+        type = Type::LUCK;
+        if (c->version() == GameVersion::DC || c->version() == GameVersion::PC) {
+          // Hit material doesn't exist on v3/v4, but we'll ignore type anyway
+          // in this case because track_non_hp_tp_materials is false
+          p->disp.stats.char_stats.ata += 2;
+        } else {
+          p->disp.stats.char_stats.lck += 2;
+        }
+        break;
+      case 7: // Luck Material (v1/v2)
+        type = Type::LUCK;
+        if (c->version() == GameVersion::DC || c->version() == GameVersion::PC) {
+          p->disp.stats.char_stats.lck += 2;
+        } else {
+          throw runtime_error("unknown material used");
+        }
         break;
       default:
         throw runtime_error("unknown material used");
+    }
+    if (!track_non_hp_tp_materials || (type == Type::HP) || (type == Type::TP)) {
+      p->set_material_usage(type, p->get_material_usage(type) + 1);
     }
 
   } else if ((item_identifier & 0xFFFF00) == 0x030F00) { // AddSlot
