@@ -1692,14 +1692,14 @@ string MapDefinition::str(const CardIndex* card_index, uint8_t language) const {
       "  a5[0x70:0x74]: %02hhX %02hhX %02hhX %02hhX",
       this->unknown_a5[0x70], this->unknown_a5[0x71], this->unknown_a5[0x72], this->unknown_a5[0x73]));
   lines.emplace_back("  default_rules: " + this->default_rules.str());
-  lines.emplace_back("  name: " + format_data_string(this->name.decode(language)));
-  lines.emplace_back("  location_name: " + format_data_string(this->location_name.decode(language)));
-  lines.emplace_back("  quest_name: " + format_data_string(this->quest_name.decode(language)));
-  lines.emplace_back("  description: " + format_data_string(this->description.decode(language)));
+  lines.emplace_back("  name: " + this->name.decode(language));
+  lines.emplace_back("  location_name: " + this->location_name.decode(language));
+  lines.emplace_back("  quest_name: " + this->quest_name.decode(language));
+  lines.emplace_back("  description: " + this->description.decode(language));
   lines.emplace_back(string_printf("  map_xy: %hu %hu", this->map_x.load(), this->map_y.load()));
   for (size_t z = 0; z < 3; z++) {
     lines.emplace_back(string_printf("  npc_chars[%zu]:", z));
-    lines.emplace_back("    name: " + format_data_string(this->npc_ai_params[z].name.decode(language)));
+    lines.emplace_back("    name: " + this->npc_ai_params[z].name.decode(language));
     lines.emplace_back(string_printf(
         "    ai_params: (a1: %04hX %04hX, is_arkz: %02hhX, a2: %02hX %02hX %02hX)",
         this->npc_ai_params[z].unknown_a1[0].load(), this->npc_ai_params[z].unknown_a1[1].load(),
@@ -1720,7 +1720,7 @@ string MapDefinition::str(const CardIndex* card_index, uint8_t language) const {
         this->npc_ai_params[z].params[0x7A].load(), this->npc_ai_params[z].params[0x7B].load(),
         this->npc_ai_params[z].params[0x7C].load(), this->npc_ai_params[z].params[0x7D].load()));
     lines.emplace_back(string_printf("  npc_decks[%zu]:", z));
-    lines.emplace_back("    name: " + format_data_string(this->npc_decks[z].name.decode(language)));
+    lines.emplace_back("    name: " + this->npc_decks[z].name.decode(language));
     for (size_t w = 0; w < 0x20; w++) {
       uint16_t card_id = this->npc_decks[z].card_ids[w];
       shared_ptr<const CardIndex::CardEntry> entry;
@@ -1746,8 +1746,8 @@ string MapDefinition::str(const CardIndex* card_index, uint8_t language) const {
           z, x, set.when.load(), set.percent_chance.load()));
       for (size_t w = 0; w < 4; w++) {
         if (!set.strings[w].empty() && set.strings[w].at(0) != 0xFF) {
-          string escaped = format_data_string(set.strings[w].decode(language));
-          lines.emplace_back(string_printf("    strings[%zu]: %s", w, escaped.c_str()));
+          string s = set.strings[w].decode(language);
+          lines.emplace_back(string_printf("    strings[%zu]: %s", w, s.c_str()));
         }
       }
     }
@@ -1756,13 +1756,13 @@ string MapDefinition::str(const CardIndex* card_index, uint8_t language) const {
   lines.emplace_back(string_printf("  npc_ai_params_entry_index: [%08" PRIX32 ", %08" PRIX32 ", %08" PRIX32 "]",
       this->npc_ai_params_entry_index[0].load(), this->npc_ai_params_entry_index[1].load(), this->npc_ai_params_entry_index[2].load()));
   if (!this->before_message.empty()) {
-    lines.emplace_back("  before_message: " + format_data_string(this->before_message.decode(language)));
+    lines.emplace_back("  before_message: " + this->before_message.decode(language));
   }
   if (!this->after_message.empty()) {
-    lines.emplace_back("  after_message: " + format_data_string(this->after_message.decode(language)));
+    lines.emplace_back("  after_message: " + this->after_message.decode(language));
   }
   if (!this->dispatch_message.empty()) {
-    lines.emplace_back("  dispatch_message: " + format_data_string(this->dispatch_message.decode(language)));
+    lines.emplace_back("  dispatch_message: " + this->dispatch_message.decode(language));
   }
   for (size_t z = 0; z < 0x10; z++) {
     uint16_t card_id = this->reward_card_ids[z];
@@ -2511,7 +2511,7 @@ MapIndex::MapIndex(const string& directory) {
         throw runtime_error("unknown map file format");
       }
 
-      string name = format_data_string(vm->map->name.decode(vm->language));
+      string name = vm->map->name.decode(vm->language);
       auto map_it = this->maps.find(vm->map->map_number);
       if (map_it == this->maps.end()) {
         map_it = this->maps.emplace(vm->map->map_number, new Map(vm)).first;

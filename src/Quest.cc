@@ -675,7 +675,6 @@ QuestIndex::QuestIndex(
       shared_ptr<VersionedQuest> vq(new VersionedQuest(
           quest_number, category_id, version, language, bin_contents, dat_contents, battle_rules, challenge_template_index));
 
-      string ascii_name = format_data_string(vq->name);
       auto category_name = this->category_index->at(vq->category_id).name;
 
       string dat_str = dat_filename.empty() ? "" : (" with layout " + dat_filename);
@@ -684,23 +683,23 @@ QuestIndex::QuestIndex(
       auto q_it = this->quests_by_number.find(vq->quest_number);
       if (q_it != this->quests_by_number.end()) {
         q_it->second->add_version(vq);
-        static_game_data_log.info("(%s) Added %s %c version of quest %" PRIu32 " %s%s%s%s",
+        static_game_data_log.info("(%s) Added %s %c version of quest %" PRIu32 " (%s)%s%s%s",
             bin_filename.c_str(),
             name_for_enum(vq->version),
             char_for_language_code(vq->language),
             vq->quest_number,
-            ascii_name.c_str(),
+            vq->name.c_str(),
             dat_str.c_str(),
             battle_rules_str.c_str(),
             challenge_template_str.c_str());
       } else {
         this->quests_by_number.emplace(vq->quest_number, new Quest(vq));
-        static_game_data_log.info("(%s) Created %s %c quest %" PRIu32 " %s (%s, %s (%" PRIu32 "), %s)%s%s%s",
+        static_game_data_log.info("(%s) Created %s %c quest %" PRIu32 " (%s) (%s, %s (%" PRIu32 "), %s)%s%s%s",
             bin_filename.c_str(),
             name_for_enum(vq->version),
             char_for_language_code(vq->language),
             vq->quest_number,
-            ascii_name.c_str(),
+            vq->name.c_str(),
             name_for_episode(vq->episode),
             category_name.c_str(),
             vq->category_id,
