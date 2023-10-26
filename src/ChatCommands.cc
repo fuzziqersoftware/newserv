@@ -70,11 +70,14 @@ static void check_is_ep3(shared_ptr<Client> c, bool is_ep3) {
   }
 }
 
-static void check_cheats_enabled(shared_ptr<ServerState> s, shared_ptr<Lobby> l = nullptr) {
-  if (s->cheat_mode_behavior == ServerState::CheatModeBehavior::OFF) {
-    throw precondition_failed("$C6Cheats are disabled.");
+static void check_cheats_enabled(shared_ptr<Lobby> l) {
+  if (!(l->flags & Lobby::Flag::CHEATS_ENABLED)) {
+    throw precondition_failed("$C6This command can\nonly be used in\ncheat mode.");
   }
-  if (l && !(l->flags & Lobby::Flag::CHEATS_ENABLED)) {
+}
+
+static void check_proxy_cheats_enabled(shared_ptr<ServerState> s) {
+  if (s->cheat_mode_behavior != ServerState::BehaviorSwitch::OFF) {
     throw precondition_failed("$C6This command can\nonly be used in\ncheat mode.");
   }
 }
@@ -97,17 +100,26 @@ static void server_command_lobby_info(shared_ptr<Client> c, const std::string&) 
 
   } else {
     if (l->is_game()) {
-      lines.emplace_back(string_printf("Game ID: $C6%08X$C7", l->lobby_id));
-
       if (!l->is_ep3()) {
         if (l->max_level == 0xFFFFFFFF) {
-          lines.emplace_back(string_printf("Levels: $C6%d+$C7", l->min_level + 1));
+          lines.emplace_back(string_printf("$C6%08X$C7 L$C6%d+$C7", l->lobby_id, l->min_level + 1));
         } else {
-          lines.emplace_back(string_printf("Levels: $C6%d-%d$C7", l->min_level + 1, l->max_level + 1));
+          lines.emplace_back(string_printf("$C6%08X$C7 L$C6%d-%d$C7", l->lobby_id, l->min_level + 1, l->max_level + 1));
         }
-
         lines.emplace_back(string_printf("$C7Section ID: $C6%s$C7", name_for_section_id(l->section_id).c_str()));
-        lines.emplace_back(string_printf("$C7Cheat mode: $C6%s$C7", (l->flags & Lobby::Flag::CHEATS_ENABLED) ? "on" : "off"));
+
+        if (l->flags & Lobby::Flag::DROPS_ENABLED) {
+          if (l->item_creator) {
+            lines.emplace_back("Server item table");
+          } else {
+            lines.emplace_back("Client item table");
+          }
+        } else {
+          lines.emplace_back("No item drops");
+        }
+        if (l->flags & Lobby::Flag::CHEATS_ENABLED) {
+          lines.emplace_back("Cheats enabled");
+        }
 
       } else {
         lines.emplace_back(string_printf("$C7State seed: $C6%08X$C7", l->random_seed));
@@ -459,14 +471,12 @@ static void server_command_cheat(shared_ptr<Client> c, const std::string&) {
   auto l = c->require_lobby();
   check_is_game(l, true);
   check_is_leader(l, c);
-
-  if (s->cheat_mode_behavior == ServerState::CheatModeBehavior::OFF) {
-    send_text_message(c, "$C6Cheat mode cannot\nbe enabled on this\nserver");
-    return;
+  if (l->flags & Lobby::Flag::CANNOT_CHANGE_CHEAT_MODE) {
+    send_text_message(c, "$C6Cheat mode cannot\nbe changed on this\nserver");
+  } else {
+    l->flags ^= Lobby::Flag::CHEATS_ENABLED;
+    send_text_message_printf(l, "Cheat mode %s", (l->flags & Lobby::Flag::CHEATS_ENABLED) ? "enabled" : "disabled");
   }
-
-  l->flags ^= Lobby::Flag::CHEATS_ENABLED;
-  send_text_message_printf(l, "Cheat mode %s", (l->flags & Lobby::Flag::CHEATS_ENABLED) ? "enabled" : "disabled");
 }
 
 static void server_command_lobby_event(shared_ptr<Client> c, const std::string& args) {
@@ -1016,7 +1026,7 @@ static void server_command_warp(shared_ptr<Client> c, const std::string& args, b
   auto s = c->require_server_state();
   auto l = c->require_lobby();
   check_is_game(l, true);
-  check_cheats_enabled(s, l);
+  check_cheats_enabled(l);
 
   uint32_t area = stoul(args, nullptr, 0);
   if (c->area == area) {
@@ -1048,7 +1058,7 @@ static void server_command_warpall(shared_ptr<Client> c, const std::string& args
 
 static void proxy_command_warp(shared_ptr<ProxyServer::LinkedSession> ses, const std::string& args, bool is_warpall) {
   auto s = ses->require_server_state();
-  check_cheats_enabled(s);
+  check_proxy_cheats_enabled(s);
   if (!ses->is_in_game) {
     send_text_message(ses->client_channel, "$C6You must be in a\ngame to use this\ncommand");
     return;
@@ -1073,7 +1083,7 @@ static void server_command_next(shared_ptr<Client> c, const std::string&) {
   auto s = c->require_server_state();
   auto l = c->require_lobby();
   check_is_game(l, true);
-  check_cheats_enabled(s, l);
+  check_cheats_enabled(l);
 
   size_t limit = area_limit_for_episode(l->episode);
   if (limit == 0) {
@@ -1084,7 +1094,7 @@ static void server_command_next(shared_ptr<Client> c, const std::string&) {
 
 static void proxy_command_next(shared_ptr<ProxyServer::LinkedSession> ses, const std::string&) {
   auto s = ses->require_server_state();
-  check_cheats_enabled(s);
+  check_proxy_cheats_enabled(s);
   if (!ses->is_in_game) {
     send_text_message(ses->client_channel, "$C6You must be in a\ngame to use this\ncommand");
     return;
@@ -1149,7 +1159,7 @@ static void server_command_infinite_hp(shared_ptr<Client> c, const std::string&)
   auto s = c->require_server_state();
   auto l = c->require_lobby();
   check_is_game(l, true);
-  check_cheats_enabled(s, l);
+  check_cheats_enabled(l);
 
   c->options.infinite_hp = !c->options.infinite_hp;
   send_text_message_printf(c, "$C6Infinite HP %s", c->options.infinite_hp ? "enabled" : "disabled");
@@ -1157,7 +1167,7 @@ static void server_command_infinite_hp(shared_ptr<Client> c, const std::string&)
 
 static void proxy_command_infinite_hp(shared_ptr<ProxyServer::LinkedSession> ses, const std::string&) {
   auto s = ses->require_server_state();
-  check_cheats_enabled(s);
+  check_proxy_cheats_enabled(s);
   ses->options.infinite_hp = !ses->options.infinite_hp;
   send_text_message_printf(ses->client_channel, "$C6Infinite HP %s", ses->options.infinite_hp ? "enabled" : "disabled");
 }
@@ -1166,7 +1176,7 @@ static void server_command_infinite_tp(shared_ptr<Client> c, const std::string&)
   auto s = c->require_server_state();
   auto l = c->require_lobby();
   check_is_game(l, true);
-  check_cheats_enabled(s, l);
+  check_cheats_enabled(l);
 
   c->options.infinite_tp = !c->options.infinite_tp;
   send_text_message_printf(c, "$C6Infinite TP %s",
@@ -1175,7 +1185,7 @@ static void server_command_infinite_tp(shared_ptr<Client> c, const std::string&)
 
 static void proxy_command_infinite_tp(shared_ptr<ProxyServer::LinkedSession> ses, const std::string&) {
   auto s = ses->require_server_state();
-  check_cheats_enabled(s);
+  check_proxy_cheats_enabled(s);
   ses->options.infinite_tp = !ses->options.infinite_tp;
   send_text_message_printf(ses->client_channel, "$C6Infinite TP %s",
       ses->options.infinite_tp ? "enabled" : "disabled");
@@ -1185,7 +1195,7 @@ static void server_command_switch_assist(shared_ptr<Client> c, const std::string
   auto s = c->require_server_state();
   auto l = c->require_lobby();
   check_is_game(l, true);
-  check_cheats_enabled(s, l);
+  check_cheats_enabled(l);
 
   c->options.switch_assist = !c->options.switch_assist;
   send_text_message_printf(c, "$C6Switch assist %s",
@@ -1194,7 +1204,7 @@ static void server_command_switch_assist(shared_ptr<Client> c, const std::string
 
 static void proxy_command_switch_assist(shared_ptr<ProxyServer::LinkedSession> ses, const std::string&) {
   auto s = ses->require_server_state();
-  check_cheats_enabled(s);
+  check_proxy_cheats_enabled(s);
   ses->options.switch_assist = !ses->options.switch_assist;
   send_text_message_printf(ses->client_channel, "$C6Switch assist %s",
       ses->options.switch_assist ? "enabled" : "disabled");
@@ -1204,22 +1214,31 @@ static void server_command_drop(shared_ptr<Client> c, const std::string&) {
   auto l = c->require_lobby();
   check_is_game(l, true);
   check_is_leader(l, c);
-  l->flags ^= Lobby::Flag::DROPS_ENABLED;
-  send_text_message_printf(l, "Drops %s", (l->flags & Lobby::Flag::DROPS_ENABLED) ? "enabled" : "disabled");
+  if (l->flags & Lobby::Flag::CANNOT_CHANGE_DROPS_ENABLED) {
+    send_text_message(c, "Drop mode cannot\nbe changed on this\nserver");
+  } else {
+    l->flags ^= Lobby::Flag::DROPS_ENABLED;
+    send_text_message_printf(l, "Drops %s", (l->flags & Lobby::Flag::DROPS_ENABLED) ? "enabled" : "disabled");
+  }
 }
 
-static void server_command_raretable(shared_ptr<Client> c, const std::string&) {
+static void server_command_itemtable(shared_ptr<Client> c, const std::string&) {
+  auto s = c->require_server_state();
   auto l = c->require_lobby();
   check_is_game(l, true);
   check_is_leader(l, c);
-  if (l->base_version == GameVersion::BB) {
-    send_text_message_printf(c, "Cannot use client\nrare table on BB");
+  if (l->flags & Lobby::Flag::CANNOT_CHANGE_ITEM_TABLE) {
+    send_text_message(c, "Cannot switch item\ntables on this\nserver");
+  } else if (l->base_version == GameVersion::BB) {
+    send_text_message(c, "Cannot use client\nitem table on BB");
+  } else if (!(l->flags & Lobby::Flag::ITEM_TRACKING_ENABLED)) {
+    send_text_message(c, "Cannot use server\nitem tables if item\ntracking is off");
   } else if (l->item_creator) {
     l->item_creator.reset();
-    send_text_message_printf(l, "Game switched to\nclient rare tables");
+    send_text_message(l, "Game switched to\nclient item tables");
   } else {
     l->create_item_creator();
-    send_text_message_printf(l, "Game switched to\nserver rare tables");
+    send_text_message(l, "Game switched to\nserver item tables");
   }
 }
 
@@ -1227,7 +1246,7 @@ static void server_command_item(shared_ptr<Client> c, const std::string& args) {
   auto s = c->require_server_state();
   auto l = c->require_lobby();
   check_is_game(l, true);
-  check_cheats_enabled(s, l);
+  check_cheats_enabled(l);
 
   ItemData item(args);
   item.id = l->generate_item_id(c->lobby_client_id);
@@ -1241,7 +1260,7 @@ static void server_command_item(shared_ptr<Client> c, const std::string& args) {
 
 static void proxy_command_item(shared_ptr<ProxyServer::LinkedSession> ses, const std::string& args) {
   auto s = ses->require_server_state();
-  check_cheats_enabled(s);
+  check_proxy_cheats_enabled(s);
   if (ses->version() == GameVersion::BB) {
     send_text_message(ses->client_channel, "$C6This command cannot\nbe used on the proxy\nserver in BB games");
     return;
@@ -1380,7 +1399,7 @@ static void server_command_ep3_unset_field_character(shared_ptr<Client> c, const
   auto l = c->require_lobby();
   check_is_game(l, true);
   check_is_ep3(c, true);
-  check_cheats_enabled(s, l);
+  check_cheats_enabled(l);
 
   if (l->episode != Episode::EP3) {
     throw logic_error("non-Ep3 client in Ep3 game");
@@ -1534,6 +1553,7 @@ static const unordered_map<string, ChatCommandDefinition> chat_commands({
     {"$inftime", {server_command_ep3_infinite_time, nullptr}},
     {"$inftp", {server_command_infinite_tp, proxy_command_infinite_tp}},
     {"$item", {server_command_item, proxy_command_item}},
+    {"$itemtable", {server_command_itemtable, nullptr}},
     {"$i", {server_command_item, proxy_command_item}},
     {"$kick", {server_command_kick, nullptr}},
     {"$li", {server_command_lobby_info, proxy_command_lobby_info}},
@@ -1549,7 +1569,6 @@ static const unordered_map<string, ChatCommandDefinition> chat_commands({
     {"$persist", {server_command_persist, nullptr}},
     {"$playrec", {server_command_playrec, nullptr}},
     {"$rand", {server_command_rand, proxy_command_rand}},
-    {"$raretable", {server_command_raretable, nullptr}},
     {"$saverec", {server_command_saverec, nullptr}},
     {"$sc", {server_command_send_client, proxy_command_send_client}},
     {"$secid", {server_command_secid, proxy_command_secid}},

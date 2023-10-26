@@ -37,9 +37,11 @@ struct Lobby : public std::enable_shared_from_this<Lobby> {
     IS_SPECTATOR_TEAM = 0x00002000, // episode must be EP3 also
     SPECTATORS_FORBIDDEN = 0x00004000,
     START_BATTLE_PLAYER_IMMEDIATELY = 0x00008000,
-    DROPS_ENABLED = 0x00010000, // Does not affect BB
-    IS_EP3_TRIAL = 0x00020000,
-    USE_SERVER_RARE_TABLE = 0x00040000, // Does not affect BB
+    IS_EP3_TRIAL = 0x00010000,
+    DROPS_ENABLED = 0x00020000,
+    CANNOT_CHANGE_DROPS_ENABLED = 0x00040000,
+    CANNOT_CHANGE_ITEM_TABLE = 0x00080000,
+    CANNOT_CHANGE_CHEAT_MODE = 0x00100000,
 
     // Flags used only for lobbies
     PUBLIC = 0x01000000,

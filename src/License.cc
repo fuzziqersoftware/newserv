@@ -167,6 +167,9 @@ void LicenseIndex::remove(uint32_t serial_number) {
 }
 
 shared_ptr<License> LicenseIndex::verify_v1_v2(uint32_t serial_number, const string& access_key) const {
+  if (serial_number == 0) {
+    throw no_username();
+  }
   try {
     auto& license = this->serial_number_to_license.at(serial_number);
     if (license->access_key.compare(0, 8, access_key) != 0) {
@@ -182,6 +185,9 @@ shared_ptr<License> LicenseIndex::verify_v1_v2(uint32_t serial_number, const str
 }
 
 shared_ptr<License> LicenseIndex::verify_gc(uint32_t serial_number, const string& access_key) const {
+  if (serial_number == 0) {
+    throw no_username();
+  }
   try {
     auto& license = this->serial_number_to_license.at(serial_number);
     if (license->access_key != access_key) {
@@ -197,6 +203,9 @@ shared_ptr<License> LicenseIndex::verify_gc(uint32_t serial_number, const string
 }
 
 shared_ptr<License> LicenseIndex::verify_gc(uint32_t serial_number, const string& access_key, const string& password) const {
+  if (serial_number == 0) {
+    throw no_username();
+  }
   try {
     auto& license = this->serial_number_to_license.at(serial_number);
     if (license->access_key != access_key) {
@@ -215,6 +224,9 @@ shared_ptr<License> LicenseIndex::verify_gc(uint32_t serial_number, const string
 }
 
 shared_ptr<License> LicenseIndex::verify_bb(const string& username, const string& password) const {
+  if (username.empty() || password.empty()) {
+    throw no_username();
+  }
   try {
     auto& license = this->bb_username_to_license.at(username);
     if (license->bb_password != password) {

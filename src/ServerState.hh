@@ -40,11 +40,19 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
     ALWAYS,
     NEVER,
   };
-  enum class CheatModeBehavior {
+  enum class BehaviorSwitch {
     OFF = 0,
     OFF_BY_DEFAULT,
     ON_BY_DEFAULT,
+    ON,
   };
+
+  static inline bool behavior_enabled(BehaviorSwitch b) {
+    return (b == BehaviorSwitch::ON_BY_DEFAULT) || (b == BehaviorSwitch::ON);
+  }
+  static inline bool behavior_can_be_overridden(BehaviorSwitch b) {
+    return (b == BehaviorSwitch::OFF_BY_DEFAULT) || (b == BehaviorSwitch::ON_BY_DEFAULT);
+  }
 
   std::string config_filename;
   bool is_replay;
@@ -61,7 +69,8 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   bool allow_dc_pc_games;
   bool allow_gc_xb_games;
   bool item_tracking_enabled;
-  bool drops_enabled;
+  BehaviorSwitch enable_drops_behavior;
+  BehaviorSwitch use_server_item_tables_behavior;
   bool ep3_send_function_call_enabled;
   bool catch_handler_exceptions;
   bool ep3_infinite_meseta;
@@ -71,7 +80,7 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   bool ep3_jukebox_is_free;
   uint32_t ep3_behavior_flags;
   RunShellBehavior run_shell_behavior;
-  CheatModeBehavior cheat_mode_behavior;
+  BehaviorSwitch cheat_mode_behavior;
   std::vector<std::shared_ptr<const PSOBBEncryption::KeyFile>> bb_private_keys;
   std::shared_ptr<const FunctionCodeIndex> function_code_index;
   std::shared_ptr<const PatchFileIndex> pc_patch_file_index;

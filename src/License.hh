@@ -54,16 +54,18 @@ struct License {
 
 class LicenseIndex {
 public:
+  class no_username : public std::invalid_argument {
+  public:
+    no_username() : invalid_argument("serial number is zero or username is missing") {}
+  };
   class incorrect_password : public std::invalid_argument {
   public:
     incorrect_password() : invalid_argument("incorrect password") {}
   };
-
   class incorrect_access_key : public std::invalid_argument {
   public:
     incorrect_access_key() : invalid_argument("incorrect access key") {}
   };
-
   class missing_license : public std::invalid_argument {
   public:
     missing_license() : invalid_argument("missing license") {}

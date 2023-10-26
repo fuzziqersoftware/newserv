@@ -27,7 +27,8 @@ ServerState::ServerState(const char* config_filename, bool is_replay)
       allow_dc_pc_games(false),
       allow_gc_xb_games(true),
       item_tracking_enabled(true),
-      drops_enabled(true),
+      enable_drops_behavior(BehaviorSwitch::ON_BY_DEFAULT),
+      use_server_item_tables_behavior(BehaviorSwitch::OFF_BY_DEFAULT),
       ep3_send_function_call_enabled(false),
       catch_handler_exceptions(true),
       ep3_infinite_meseta(false),
@@ -37,7 +38,7 @@ ServerState::ServerState(const char* config_filename, bool is_replay)
       ep3_jukebox_is_free(false),
       ep3_behavior_flags(0),
       run_shell_behavior(RunShellBehavior::DEFAULT),
-      cheat_mode_behavior(CheatModeBehavior::OFF_BY_DEFAULT),
+      cheat_mode_behavior(BehaviorSwitch::OFF_BY_DEFAULT),
       ep3_card_auction_points(0),
       ep3_card_auction_min_size(0),
       ep3_card_auction_max_size(0),
@@ -519,6 +520,25 @@ static vector<PortConfiguration> parse_port_configuration(const JSON& json) {
 void ServerState::parse_config(const JSON& json, bool is_reload) {
   config_log.info("Parsing configuration");
 
+  auto parse_behavior_switch = [&](const string& json_key, BehaviorSwitch default_value) -> ServerState::BehaviorSwitch {
+    try {
+      string behavior = json.get_string(json_key);
+      if (behavior == "Off") {
+        return ServerState::BehaviorSwitch::OFF;
+      } else if (behavior == "OffByDefault") {
+        return ServerState::BehaviorSwitch::OFF_BY_DEFAULT;
+      } else if (behavior == "OnByDefault") {
+        return ServerState::BehaviorSwitch::ON_BY_DEFAULT;
+      } else if (behavior == "On") {
+        return ServerState::BehaviorSwitch::ON;
+      } else {
+        throw runtime_error("invalid value for " + json_key);
+      }
+    } catch (const out_of_range&) {
+      return default_value;
+    }
+  };
+
   this->name = json.at("ServerName").as_string();
 
   if (!is_reload) {
@@ -577,7 +597,9 @@ void ServerState::parse_config(const JSON& json, bool is_reload) {
   this->ip_stack_debug = json.get_bool("IPStackDebug", this->ip_stack_debug);
   this->allow_unregistered_users = json.get_bool("AllowUnregisteredUsers", this->allow_unregistered_users);
   this->item_tracking_enabled = json.get_bool("EnableItemTracking", this->item_tracking_enabled);
-  this->drops_enabled = json.get_bool("EnableDrops", this->drops_enabled);
+  this->enable_drops_behavior = parse_behavior_switch("ItemDropMode", this->enable_drops_behavior);
+  this->use_server_item_tables_behavior = parse_behavior_switch("UseServerItemTables", this->use_server_item_tables_behavior);
+  this->cheat_mode_behavior = parse_behavior_switch("CheatModeBehavior", this->cheat_mode_behavior);
   this->ep3_send_function_call_enabled = json.get_bool("EnableEpisode3SendFunctionCall", this->ep3_send_function_call_enabled);
   this->catch_handler_exceptions = json.get_bool("CatchHandlerExceptions", this->catch_handler_exceptions);
 
@@ -699,20 +721,6 @@ void ServerState::parse_config(const JSON& json, bool is_reload) {
           : ServerState::RunShellBehavior::NEVER;
     } catch (const out_of_range&) {
     }
-  }
-
-  try {
-    const string& behavior = json.at("CheatModeBehavior").as_string();
-    if (behavior == "Off") {
-      this->cheat_mode_behavior = CheatModeBehavior::OFF;
-    } else if (behavior == "OffByDefault") {
-      this->cheat_mode_behavior = CheatModeBehavior::OFF_BY_DEFAULT;
-    } else if (behavior == "OnByDefault") {
-      this->cheat_mode_behavior = CheatModeBehavior::ON_BY_DEFAULT;
-    } else {
-      throw runtime_error("invalid value for CheatModeBehavior");
-    }
-  } catch (const out_of_range&) {
   }
 
   this->allow_dc_pc_games = json.get_bool("AllowDCPCGames", this->allow_dc_pc_games);

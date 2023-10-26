@@ -1293,9 +1293,6 @@ static void on_entity_drop_item_request(shared_ptr<Client> c, uint8_t command, u
   if (!(l->flags & Lobby::Flag::DROPS_ENABLED)) {
     return;
   }
-
-  // If there is no item creator (that is, the game is BB or has server rare
-  // tables disabled), then forward the request to the leader
   if (!l->item_creator) {
     forward_subcommand(c, command, flag, data, size);
     return;

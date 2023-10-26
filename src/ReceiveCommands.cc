@@ -50,7 +50,7 @@ static shared_ptr<const Menu> proxy_options_menu_for_client(shared_ptr<const Cli
       "Player notifs", "Show a message\nwhen other players\njoin or leave");
   add_option(ProxyOptionsMenuItemID::BLOCK_PINGS, c->options.suppress_client_pings,
       "Block pings", "Block ping commands\nsent by the client");
-  if (s->cheat_mode_behavior != ServerState::CheatModeBehavior::OFF) {
+  if (s->cheat_mode_behavior != ServerState::BehaviorSwitch::OFF) {
     if (!(c->flags & Client::Flag::IS_EPISODE_3)) {
       add_option(ProxyOptionsMenuItemID::INFINITE_HP, c->options.infinite_hp,
           "Infinite HP", "Enable automatic HP\nrestoration when\nyou are hit by an\nenemy or trap\n\nCannot revive you\nfrom one-hit kills");
@@ -359,6 +359,11 @@ static void on_DB_V3(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
     c->set_license(l);
     send_command(c, 0x9A, 0x02);
 
+  } catch (const LicenseIndex::no_username& e) {
+    send_command(c, 0x9A, 0x03);
+    c->should_disconnect = true;
+    return;
+
   } catch (const LicenseIndex::incorrect_access_key& e) {
     send_command(c, 0x9A, 0x03);
     c->should_disconnect = true;
@@ -401,6 +406,11 @@ static void on_88_DCNTE(shared_ptr<Client> c, uint16_t, uint32_t, string& data) 
     c->set_license(l);
     send_command(c, 0x88, 0x00);
 
+  } catch (const LicenseIndex::no_username& e) {
+    send_message_box(c, "Incorrect serial number");
+    c->should_disconnect = true;
+    return;
+
   } catch (const LicenseIndex::incorrect_access_key& e) {
     send_message_box(c, "Incorrect access key");
     c->should_disconnect = true;
@@ -435,6 +445,11 @@ static void on_8B_DCNTE(shared_ptr<Client> c, uint16_t, uint32_t, string& data) 
   try {
     shared_ptr<License> l = s->license_index->verify_v1_v2(serial_number, cmd.access_key.decode());
     c->set_license(l);
+
+  } catch (const LicenseIndex::no_username& e) {
+    send_message_box(c, "Incorrect serial number");
+    c->should_disconnect = true;
+    return;
 
   } catch (const LicenseIndex::incorrect_access_key& e) {
     send_message_box(c, "Incorrect access key");
@@ -482,6 +497,11 @@ static void on_90_DC(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
     c->set_license(l);
     send_command(c, 0x90, 0x02);
 
+  } catch (const LicenseIndex::no_username& e) {
+    send_command(c, 0x90, 0x03);
+    c->should_disconnect = true;
+    return;
+
   } catch (const LicenseIndex::incorrect_access_key& e) {
     send_command(c, 0x90, 0x03);
     c->should_disconnect = true;
@@ -524,6 +544,11 @@ static void on_93_DC(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
   try {
     shared_ptr<License> l = s->license_index->verify_v1_v2(serial_number, cmd.access_key.decode());
     c->set_license(l);
+
+  } catch (const LicenseIndex::no_username& e) {
+    send_message_box(c, "Incorrect serial number");
+    c->should_disconnect = true;
+    return;
 
   } catch (const LicenseIndex::incorrect_access_key& e) {
     send_message_box(c, "Incorrect access key");
@@ -595,6 +620,11 @@ static void on_9A(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
     c->set_license(l);
     send_command(c, 0x9A, 0x02);
 
+  } catch (const LicenseIndex::no_username& e) {
+    send_command(c, 0x9A, 0x03);
+    c->should_disconnect = true;
+    return;
+
   } catch (const LicenseIndex::incorrect_access_key& e) {
     send_command(c, 0x9A, 0x03);
     c->should_disconnect = true;
@@ -655,6 +685,11 @@ static void on_9C(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
     }
     c->set_license(l);
     send_command(c, 0x9C, 0x01);
+
+  } catch (const LicenseIndex::no_username& e) {
+    send_message_box(c, "Incorrect serial number");
+    c->should_disconnect = true;
+    return;
 
   } catch (const LicenseIndex::incorrect_password& e) {
     send_command(c, 0x9C, 0x00);
@@ -774,6 +809,11 @@ static void on_9D_9E(shared_ptr<Client> c, uint16_t command, uint32_t, string& d
     }
     c->set_license(l);
 
+  } catch (const LicenseIndex::no_username& e) {
+    send_command(c, 0x04, 0x03);
+    c->should_disconnect = true;
+    return;
+
   } catch (const LicenseIndex::incorrect_access_key& e) {
     send_command(c, 0x04, 0x03);
     c->should_disconnect = true;
@@ -830,14 +870,19 @@ static void on_93_BB(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
     auto l = s->license_index->verify_bb(cmd.username.decode(), cmd.password.decode());
     c->set_license(l);
 
+  } catch (const LicenseIndex::no_username& e) {
+    send_message_box(c, "Username is missing");
+    c->should_disconnect = true;
+    return;
+
   } catch (const LicenseIndex::incorrect_password& e) {
-    send_message_box(c, string_printf("Login failed: %s", e.what()));
+    send_message_box(c, "Incorrect login password");
     c->should_disconnect = true;
     return;
 
   } catch (const LicenseIndex::missing_license& e) {
     if (!s->allow_unregistered_users) {
-      send_message_box(c, string_printf("Login failed: %s", e.what()));
+      send_message_box(c, "You are not registered on this server");
       c->should_disconnect = true;
       return;
     } else {
@@ -3336,18 +3381,29 @@ shared_ptr<Lobby> create_game_generic(
 
   // Only disable drops if the config flag is set and are playing regular
   // multi-mode. Drops are still enabled for battle and challenge modes.
-  bool drops_enabled = (s->drops_enabled || (mode != GameMode::NORMAL));
+  bool drops_enabled = s->behavior_enabled(s->enable_drops_behavior) || (mode != GameMode::NORMAL);
+  bool use_server_item_table = item_tracking_enabled && s->behavior_enabled(s->use_server_item_tables_behavior);
+  bool cheat_mode_enabled = s->behavior_enabled(s->cheat_mode_behavior);
 
-  bool is_ep3_trial = (c->version() == GameVersion::GC) && (c->flags & Client::Flag::IS_EPISODE_3) && (c->flags & Client::Flag::IS_EP3_TRIAL_EDITION);
+  bool cannot_change_cheat_mode = !s->behavior_can_be_overridden(s->cheat_mode_behavior);
+  bool cannot_change_item_table = !item_tracking_enabled || !s->behavior_can_be_overridden(s->use_server_item_tables_behavior);
+  bool cannot_change_drops_enabled = !s->behavior_can_be_overridden(s->enable_drops_behavior);
+
+  bool is_ep3_trial = (c->version() == GameVersion::GC) &&
+      (c->flags & Client::Flag::IS_EPISODE_3) &&
+      (c->flags & Client::Flag::IS_EP3_TRIAL_EDITION);
 
   shared_ptr<Lobby> game = s->create_lobby();
   game->name = name;
   game->flags = flags |
       Lobby::Flag::GAME |
+      (is_ep3_trial ? Lobby::Flag::IS_EP3_TRIAL : 0) |
       (item_tracking_enabled ? Lobby::Flag::ITEM_TRACKING_ENABLED : 0) |
       (drops_enabled ? Lobby::Flag::DROPS_ENABLED : 0) |
-      (is_ep3_trial ? Lobby::Flag::IS_EP3_TRIAL : 0) |
-      ((s->cheat_mode_behavior == ServerState::CheatModeBehavior::ON_BY_DEFAULT) ? Lobby::Flag::CHEATS_ENABLED : 0);
+      (cheat_mode_enabled ? Lobby::Flag::CHEATS_ENABLED : 0) |
+      (cannot_change_drops_enabled ? Lobby::Flag::CANNOT_CHANGE_DROPS_ENABLED : 0) |
+      (cannot_change_item_table ? Lobby::Flag::CANNOT_CHANGE_ITEM_TABLE : 0) |
+      (cannot_change_cheat_mode ? Lobby::Flag::CANNOT_CHANGE_CHEAT_MODE : 0);
   game->password = password;
 
   game->base_version = c->version();
@@ -3412,10 +3468,15 @@ shared_ptr<Lobby> create_game_generic(
     game->battle_player = battle_player;
     battle_player->set_lobby(game);
   }
-  if ((game->base_version == GameVersion::BB) || (c->use_server_rare_tables)) {
-    // TODO: Use appropriate restrictions here if in battle mode
+
+  for (size_t x = 0; x < 4; x++) {
+    game->next_item_id[x] = (0x00200000 * x) + 0x00010000;
+  }
+  game->next_game_item_id = 0x00810000;
+  if ((game->base_version == GameVersion::BB) || use_server_item_table) {
     game->create_item_creator();
   }
+
   game->event = Lobby::game_event_for_lobby_event(current_lobby->event);
   game->block = 0xFF;
   game->max_clients = (game->flags & Lobby::Flag::IS_SPECTATOR_TEAM) ? 12 : 4;
@@ -3436,11 +3497,6 @@ shared_ptr<Lobby> create_game_generic(
   }
 
   if (game->base_version == GameVersion::BB) {
-    for (size_t x = 0; x < 4; x++) {
-      game->next_item_id[x] = (0x00200000 * x) + 0x00010000;
-    }
-    game->next_game_item_id = 0x00810000;
-
     game->map.reset(new Map());
     for (size_t area = 0; area < 0x10; area++) {
       c->log.info("[Map/%zu] Using variations %" PRIX32 ", %" PRIX32,
