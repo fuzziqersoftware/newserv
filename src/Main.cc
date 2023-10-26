@@ -249,6 +249,10 @@ The actions are:\n\
   encode-text-archive [INPUT-FILENAME [OUTPUT-FILENAME]]\n\
     Decode a text archive (e.g. TextEnglish.pr2) to JSON for easy editing, or\n\
     encode a JSON file to a text archive.\n\
+  decode-unicode-text-set [INPUT-FILENAME [OUTPUT-FILENAME]]\n\
+  encode-unicode-text-set [INPUT-FILENAME [OUTPUT-FILENAME]]\n\
+    Decode a Unicode text set (e.g. unitxt_e.prs) to JSON for easy editing, or\n\
+    encode a JSON file to a Unicode text set.\n\
   format-rare-item-set [--json] [INPUT-FILENAME]\n\
     Print the contents of a rare item table in a human-readable format. If\n\
     --json is given, the input is parsed as a JSON rare item set (see\n\
@@ -1504,10 +1508,13 @@ int main(int argc, char** argv) {
       break;
     }
     case Behavior::DECODE_UNICODE_TEXT_SET: {
-      auto strings = parse_unicode_text_set(read_input_data());
+      auto collections = parse_unicode_text_set(read_input_data());
       JSON j = JSON::list();
-      for (const string& s : strings) {
-        j.emplace_back(s);
+      for (const auto& collection : collections) {
+        JSON& coll_j = j.emplace_back(JSON::list());
+        for (const auto& s : collection) {
+          coll_j.emplace_back(s);
+        }
       }
       string out_data = j.serialize(JSON::SerializeOption::FORMAT);
       write_output_data(out_data.data(), out_data.size());
@@ -1515,11 +1522,14 @@ int main(int argc, char** argv) {
     }
     case Behavior::ENCODE_UNICODE_TEXT_SET: {
       auto json = JSON::parse(read_input_data());
-      vector<string> strings;
-      for (const auto& s_json : json.as_list()) {
-        strings.emplace_back(s_json->as_string());
+      vector<vector<string>> collections;
+      for (const auto& coll_json : json.as_list()) {
+        auto& collection = collections.emplace_back();
+        for (const auto& s_json : coll_json->as_list()) {
+          collection.emplace_back(std::move(s_json->as_string()));
+        }
       }
-      string encoded = serialize_unicode_text_set(strings);
+      string encoded = serialize_unicode_text_set(collections);
       write_output_data(encoded.data(), encoded.size());
       break;
     }
