@@ -76,9 +76,15 @@ static void check_cheats_enabled(shared_ptr<Lobby> l) {
   }
 }
 
-static void check_proxy_cheats_enabled(shared_ptr<ServerState> s) {
+static void check_cheats_allowed(shared_ptr<ServerState> s) {
+  if (s->cheat_mode_behavior == ServerState::BehaviorSwitch::OFF) {
+    throw precondition_failed("$C6Cheats are disabled\non this server.");
+  }
+}
+
+static void check_proxy_cheats_allowed(shared_ptr<ServerState> s) {
   if (s->cheat_mode_behavior != ServerState::BehaviorSwitch::OFF) {
-    throw precondition_failed("$C6This command can\nonly be used in\ncheat mode.");
+    throw precondition_failed("$C6Cheats are disabled\non this proxy.");
   }
 }
 
@@ -642,6 +648,7 @@ static void server_command_meseta(shared_ptr<Client> c, const std::string& args)
 static void server_command_secid(shared_ptr<Client> c, const std::string& args) {
   auto l = c->require_lobby();
   check_is_game(l, false);
+  check_cheats_allowed(c->require_server_state());
 
   if (!args[0]) {
     c->options.override_section_id = -1;
@@ -659,6 +666,7 @@ static void server_command_secid(shared_ptr<Client> c, const std::string& args) 
 }
 
 static void proxy_command_secid(shared_ptr<ProxyServer::LinkedSession> ses, const std::string& args) {
+  check_cheats_allowed(ses->require_server_state());
   if (!args[0]) {
     ses->options.override_section_id = -1;
     send_text_message(ses->client_channel, "$C6Override section ID\nremoved");
@@ -675,8 +683,10 @@ static void proxy_command_secid(shared_ptr<ProxyServer::LinkedSession> ses, cons
 }
 
 static void server_command_rand(shared_ptr<Client> c, const std::string& args) {
+  auto s = c->require_server_state();
   auto l = c->require_lobby();
   check_is_game(l, false);
+  check_cheats_allowed(s);
 
   if (!args[0]) {
     c->options.override_random_seed = -1;
@@ -688,6 +698,7 @@ static void server_command_rand(shared_ptr<Client> c, const std::string& args) {
 }
 
 static void proxy_command_rand(shared_ptr<ProxyServer::LinkedSession> ses, const std::string& args) {
+  check_proxy_cheats_allowed(ses->require_server_state());
   if (!args[0]) {
     ses->options.override_random_seed = -1;
     send_text_message(ses->client_channel, "$C6Override seed\nremoved");
@@ -751,7 +762,7 @@ static void server_command_min_level(shared_ptr<Client> c, const std::string& ar
   check_is_leader(l, c);
 
   l->min_level = stoull(args) - 1;
-  send_text_message_printf(l, "$C6Minimum level set to %" PRIu32, l->min_level + 1);
+  send_text_message_printf(l, "$C6Minimum level set\nto %" PRIu32, l->min_level + 1);
 }
 
 static void server_command_max_level(shared_ptr<Client> c, const std::string& args) {
@@ -765,9 +776,9 @@ static void server_command_max_level(shared_ptr<Client> c, const std::string& ar
   }
 
   if (l->max_level == 0xFFFFFFFF) {
-    send_text_message(l, "$C6Maximum level set to unlimited");
+    send_text_message(l, "$C6Maximum level set\nto unlimited");
   } else {
-    send_text_message_printf(l, "$C6Maximum level set to %" PRIu32, l->max_level + 1);
+    send_text_message_printf(l, "$C6Maximum level set\nto %" PRIu32, l->max_level + 1);
   }
 }
 
@@ -779,6 +790,11 @@ static void server_command_edit(shared_ptr<Client> c, const std::string& args) {
   auto l = c->require_lobby();
   check_is_game(l, false);
   check_version(c, GameVersion::BB);
+
+  if (s->cheat_mode_behavior == ServerState::BehaviorSwitch::OFF) {
+    send_text_message(l, "$C6Cheats are disabled on\nthis server");
+    return;
+  }
 
   string encoded_args = tolower(args);
   vector<string> tokens = split(encoded_args, ' ');
@@ -1058,7 +1074,7 @@ static void server_command_warpall(shared_ptr<Client> c, const std::string& args
 
 static void proxy_command_warp(shared_ptr<ProxyServer::LinkedSession> ses, const std::string& args, bool is_warpall) {
   auto s = ses->require_server_state();
-  check_proxy_cheats_enabled(s);
+  check_proxy_cheats_allowed(s);
   if (!ses->is_in_game) {
     send_text_message(ses->client_channel, "$C6You must be in a\ngame to use this\ncommand");
     return;
@@ -1094,7 +1110,7 @@ static void server_command_next(shared_ptr<Client> c, const std::string&) {
 
 static void proxy_command_next(shared_ptr<ProxyServer::LinkedSession> ses, const std::string&) {
   auto s = ses->require_server_state();
-  check_proxy_cheats_enabled(s);
+  check_proxy_cheats_allowed(s);
   if (!ses->is_in_game) {
     send_text_message(ses->client_channel, "$C6You must be in a\ngame to use this\ncommand");
     return;
@@ -1167,7 +1183,7 @@ static void server_command_infinite_hp(shared_ptr<Client> c, const std::string&)
 
 static void proxy_command_infinite_hp(shared_ptr<ProxyServer::LinkedSession> ses, const std::string&) {
   auto s = ses->require_server_state();
-  check_proxy_cheats_enabled(s);
+  check_proxy_cheats_allowed(s);
   ses->options.infinite_hp = !ses->options.infinite_hp;
   send_text_message_printf(ses->client_channel, "$C6Infinite HP %s", ses->options.infinite_hp ? "enabled" : "disabled");
 }
@@ -1185,7 +1201,7 @@ static void server_command_infinite_tp(shared_ptr<Client> c, const std::string&)
 
 static void proxy_command_infinite_tp(shared_ptr<ProxyServer::LinkedSession> ses, const std::string&) {
   auto s = ses->require_server_state();
-  check_proxy_cheats_enabled(s);
+  check_proxy_cheats_allowed(s);
   ses->options.infinite_tp = !ses->options.infinite_tp;
   send_text_message_printf(ses->client_channel, "$C6Infinite TP %s",
       ses->options.infinite_tp ? "enabled" : "disabled");
@@ -1204,7 +1220,7 @@ static void server_command_switch_assist(shared_ptr<Client> c, const std::string
 
 static void proxy_command_switch_assist(shared_ptr<ProxyServer::LinkedSession> ses, const std::string&) {
   auto s = ses->require_server_state();
-  check_proxy_cheats_enabled(s);
+  check_proxy_cheats_allowed(s);
   ses->options.switch_assist = !ses->options.switch_assist;
   send_text_message_printf(ses->client_channel, "$C6Switch assist %s",
       ses->options.switch_assist ? "enabled" : "disabled");
@@ -1260,7 +1276,7 @@ static void server_command_item(shared_ptr<Client> c, const std::string& args) {
 
 static void proxy_command_item(shared_ptr<ProxyServer::LinkedSession> ses, const std::string& args) {
   auto s = ses->require_server_state();
-  check_proxy_cheats_enabled(s);
+  check_proxy_cheats_allowed(s);
   if (ses->version() == GameVersion::BB) {
     send_text_message(ses->client_channel, "$C6This command cannot\nbe used on the proxy\nserver in BB games");
     return;
