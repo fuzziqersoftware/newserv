@@ -336,7 +336,10 @@ void Lobby::on_item_id_generated_externally(uint8_t client_id, uint32_t item_id)
   if (this->base_version == GameVersion::BB) {
     throw logic_error("BB games cannot have externally-generated item IDs");
   }
-  if ((item_id > 0x00010000) && (item_id < 0x02010000)) {
+  // Note: The client checks for the range (0x00010000, 0x02010000) here, but
+  // server-side item drop logic uses 0x00810000 as its base ID, so we restrict
+  // the range further here.
+  if ((item_id > 0x00010000) && (item_id < 0x00810000)) {
     uint16_t item_client_id = (item_id >> 21) & 0x7FF;
     if (item_client_id != client_id) {
       throw runtime_error("externally-generated item ID does not match expected client ID");
