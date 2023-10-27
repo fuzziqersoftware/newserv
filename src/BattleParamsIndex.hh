@@ -15,14 +15,14 @@
 class BattleParamsIndex {
 public:
   struct Entry {
-    le_uint16_t atp; // attack power
-    le_uint16_t psv; // perseverance (intelligence?)
-    le_uint16_t evp; // evasion
-    le_uint16_t hp; // hit points
-    le_uint16_t dfp; // defense
-    le_uint16_t ata; // accuracy
-    le_uint16_t lck; // luck
-    le_uint16_t esp; // ???
+    le_uint16_t atp;
+    le_uint16_t psv; // Perseverance (intelligence?)
+    le_uint16_t evp;
+    le_uint16_t hp;
+    le_uint16_t dfp;
+    le_uint16_t ata;
+    le_uint16_t lck;
+    le_uint16_t esp; // Unknown
     parray<uint8_t, 0x0C> unknown_a1;
     le_uint32_t experience;
     le_uint32_t difficulty;

@@ -65,6 +65,21 @@ public:
     uint8_t on_low_hp;
     uint8_t on_death;
     uint8_t on_boss;
+    // These flags control how likely each effect is to activate. First, the
+    // game computes step_synchro as follows:
+    //   if synchro in [0, 30], step_synchro = 0
+    //   if synchro in [31, 60], step_synchro = 15
+    //   if synchro in [61, 80], step_synchro = 25
+    //   if synchro in [81, 100], step_synchro = 30
+    //   if synchro in [101, 120], step_synchro = 35
+    // Then, the percent chance of the effect occurring upon its trigger (e.g.
+    // entering a boss arena) is:
+    //   flag == 0 => activation
+    //   flag == 1 => activation + step_synchro
+    //   flag == 2 => step_synchro
+    //   flag == 3 => activation - 10
+    //   flag == 4 => step_synchro - 10
+    //   anything else => 0 (effect never occurs)
     uint8_t on_pb_full_flag;
     uint8_t on_low_hp_flag;
     uint8_t on_death_flag;

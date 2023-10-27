@@ -4376,12 +4376,12 @@ struct G_StandardDropItemRequest_PC_V3_BB_6x60 : G_StandardDropItemRequest_DC_6x
   le_float unknown_a2;
 } __packed__;
 
-// 6x61: Feed MAG
+// 6x61: Activate MAG effect
 
-struct G_FeedMAG_6x61 {
+struct G_ActivateMagEffect_6x61 {
   G_UnusedHeader header;
   le_uint32_t mag_item_id;
-  le_uint32_t fed_item_id;
+  le_uint32_t effect_number;
 } __packed__;
 
 // 6x62: Unknown
