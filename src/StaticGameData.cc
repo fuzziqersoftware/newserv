@@ -332,9 +332,9 @@ const char* abbreviation_for_char_class(uint8_t cls) {
   static const array<const char*, 12> names = {
       "HUmr",
       "HUnl",
-      "HUcs",
+      "HUct",
       "RAmr",
-      "RAcs",
+      "RAct",
       "RAcl",
       "FOml",
       "FOnm",
