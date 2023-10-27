@@ -49,14 +49,13 @@ private:
   GameMode mode;
   uint8_t difficulty;
   uint8_t section_id;
-  std::shared_ptr<const CommonItemSet> common_item_set;
   std::shared_ptr<const RareItemSet> rare_item_set;
   std::shared_ptr<const ArmorRandomSet> armor_random_set;
   std::shared_ptr<const ToolRandomSet> tool_random_set;
   std::shared_ptr<const WeaponRandomSet> weapon_random_set;
   std::shared_ptr<const TekkerAdjustmentSet> tekker_adjustment_set;
   std::shared_ptr<const ItemParameterTable> item_parameter_table;
-  const CommonItemSet::Table<true>* pt;
+  std::shared_ptr<const CommonItemSet::Table> pt;
   std::shared_ptr<const BattleRules> restrictions;
 
   parray<uint8_t, 0x88> unit_weights_table1;
@@ -78,14 +77,14 @@ private:
 
   template <size_t NumRanges>
   uint32_t choose_meseta_amount(
-      const parray<CommonItemSet::Range<be_uint16_t>, NumRanges> ranges,
+      const parray<CommonItemSet::Table::Range<uint16_t>, NumRanges> ranges,
       size_t table_index);
 
   bool should_allow_meseta_drops() const;
 
-  ItemData check_rare_spec_and_create_rare_enemy_item(uint32_t enemy_type);
+  ItemData check_rare_spec_and_create_rare_enemy_item(uint32_t enemy_type, uint8_t area_norm);
   ItemData check_rare_specs_and_create_rare_box_item(uint8_t area_norm);
-  ItemData check_rate_and_create_rare_item(const RareItemSet::ExpandedDrop& drop);
+  ItemData check_rate_and_create_rare_item(const RareItemSet::ExpandedDrop& drop, uint8_t area_norm);
 
   void generate_rare_weapon_bonuses(ItemData& item, uint32_t random_sample);
   void deduplicate_weapon_bonuses(ItemData& item) const;

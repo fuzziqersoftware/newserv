@@ -968,13 +968,16 @@ void ServerState::load_item_tables() {
     this->rare_item_sets.emplace("rare-table-v4", new RELRareItemSet(data));
   }
 
-  // Note: These files don't exist in BB, so we use the GC versions of them
+  config_log.info("Loading v2 common item table");
+  shared_ptr<string> ct_data_v2(new string(load_file("system/item-tables/ItemCT-v2.afs")));
+  shared_ptr<string> pt_data_v2(new string(load_file("system/item-tables/ItemPT-v2.afs")));
+  this->common_item_set_v2.reset(new AFSV2CommonItemSet(pt_data_v2, ct_data_v2));
+  config_log.info("Loading v3 common item table");
+  shared_ptr<string> pt_data_v3(new string(load_file("system/item-tables/ItemPT-gc.gsl")));
+  this->common_item_set_v3.reset(new GSLV3CommonItemSet(pt_data_v3, true));
+  // Note: The ItemPT files don't exist in BB, so we use the GC versions of them
   // instead. This doesn't include Episode 4 of course, so we use Episode 1
   // parameters for Episode 4 implicitly.
-  config_log.info("Loading common item table");
-  shared_ptr<string> pt_data(new string(load_file(
-      "system/item-tables/ItemPT-gc.gsl")));
-  this->common_item_set.reset(new CommonItemSet(pt_data));
 
   config_log.info("Loading armor table");
   shared_ptr<string> armor_data(new string(load_file(
