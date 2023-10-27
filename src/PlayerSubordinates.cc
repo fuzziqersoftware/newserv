@@ -562,6 +562,7 @@ size_t PlayerInventory::remove_all_items_of_type(uint8_t data1_0, int16_t data1_
     if (!should_delete) {
       if (read_offset != write_offset) {
         this->items[write_offset].present = this->items[read_offset].present;
+        this->items[write_offset].unknown_a1 = this->items[read_offset].unknown_a1;
         this->items[write_offset].flags = this->items[read_offset].flags;
         this->items[write_offset].data = this->items[read_offset].data;
       }
@@ -809,6 +810,7 @@ const ChallengeTemplateDefinition& get_challenge_template_definition(uint32_t cl
   static auto make_template_item = +[](bool equipped, uint64_t first_data, uint64_t second_data = 0) -> PlayerInventoryItem {
     PlayerInventoryItem ret = {
         .present = 1,
+        .unknown_a1 = 0,
         .extension_data1 = 0,
         .extension_data2 = 0,
         .flags = (equipped ? 8 : 0),

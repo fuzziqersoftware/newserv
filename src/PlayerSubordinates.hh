@@ -43,7 +43,8 @@ extern FileContentsCache player_files_cache;
 //       Unknown. These are not an array, but do appear to be related.
 
 struct PlayerInventoryItem {
-  /* 00 */ le_uint16_t present = 0;
+  /* 00 */ uint8_t present = 0;
+  /* 01 */ uint8_t unknown_a1 = 0;
   // See note above about these fields
   /* 02 */ uint8_t extension_data1 = 0;
   /* 03 */ uint8_t extension_data2 = 0;
