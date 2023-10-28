@@ -1667,8 +1667,6 @@ string MapDefinition::str(const CardIndex* card_index, uint8_t language) const {
     for (size_t w = 0; w < 2; w++) {
       lines.emplace_back(string_printf("  camera zone %zu (team %c):", z, w ? 'A' : 'B'));
       add_map(this->camera_zone_maps[w][z]);
-    }
-    for (size_t w = 0; w < 2; w++) {
       lines.emplace_back("    " + this->camera_zone_specs[w][z].str());
     }
   }
