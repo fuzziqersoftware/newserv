@@ -66,7 +66,7 @@ void Lobby::create_item_creator() {
       s->tool_random_set,
       s->weapon_random_sets.at(this->difficulty),
       s->tekker_adjustment_set,
-      s->item_parameter_table,
+      s->item_parameter_table_for_version(this->base_version),
       this->episode,
       (this->mode == GameMode::SOLO) ? GameMode::NORMAL : this->mode,
       this->difficulty,
@@ -180,13 +180,14 @@ void Lobby::add_client(shared_ptr<Client> c, ssize_t required_client_id) {
   // If the lobby is a game and item tracking is enabled, assign the inventory's
   // item IDs
   if (this->is_game() && (this->flags & Lobby::Flag::ITEM_TRACKING_ENABLED)) {
+    auto s = this->require_server_state();
     auto p = c->game_data.player();
     auto& inv = p->inventory;
     size_t count = min<uint8_t>(inv.num_items, 30);
     for (size_t x = 0; x < count; x++) {
       inv.items[x].data.id = this->generate_item_id(c->lobby_client_id);
     }
-    p->print_inventory(stderr);
+    p->print_inventory(stderr, c->version(), s->item_name_index);
   }
 
   // If the lobby is recording a battle record, add the player join event

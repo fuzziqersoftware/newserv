@@ -1551,20 +1551,25 @@ int main(int argc, char** argv) {
     }
 
     case Behavior::FORMAT_RARE_ITEM_SET: {
+      auto name_index = make_shared<ItemNameIndex>(
+          JSON::parse(load_file("system/item-tables/names-v2.json")),
+          JSON::parse(load_file("system/item-tables/names-v3.json")),
+          JSON::parse(load_file("system/item-tables/names-v4.json")));
+
       shared_ptr<string> data(new string(read_input_data()));
       shared_ptr<RareItemSet> rs;
       if (json) {
-        rs.reset(new JSONRareItemSet(JSON::parse(read_input_data())));
+        rs.reset(new JSONRareItemSet(JSON::parse(read_input_data()), cli_version, name_index));
       } else {
         rs.reset(new RELRareItemSet(data));
       }
 
-      auto format_drop = +[](const RareItemSet::ExpandedDrop& r) -> string {
+      auto format_drop = [&](const RareItemSet::ExpandedDrop& r) -> string {
         ItemData item;
         item.data1[0] = r.item_code[0];
         item.data1[1] = r.item_code[1];
         item.data1[2] = r.item_code[2];
-        string name = item.name(false);
+        string name = name_index->describe_item(cli_version, item);
 
         auto frac = reduce_fraction<uint64_t>(r.probability, 0x100000000);
         return string_printf(
@@ -1631,6 +1636,11 @@ int main(int argc, char** argv) {
     case Behavior::CONVERT_ITEMRT_REL_TO_JSON:
     case Behavior::CONVERT_ITEMRT_GSL_TO_JSON:
     case Behavior::CONVERT_ITEMRT_AFS_TO_JSON: {
+      auto name_index = make_shared<ItemNameIndex>(
+          JSON::parse(load_file("system/item-tables/names-v2.json")),
+          JSON::parse(load_file("system/item-tables/names-v3.json")),
+          JSON::parse(load_file("system/item-tables/names-v4.json")));
+
       shared_ptr<string> data(new string(read_input_data()));
       unique_ptr<RareItemSet> rs;
       if (behavior == Behavior::CONVERT_ITEMRT_GSL_TO_JSON) {
@@ -1693,7 +1703,7 @@ int main(int argc, char** argv) {
                   data.data1[0] = spec.item_code[0];
                   data.data1[1] = spec.item_code[1];
                   data.data1[2] = spec.item_code[2];
-                  id_json = data.name(false);
+                  id_json = name_index->describe_item(cli_version, data);
                 } else {
                   id_json = primary_identifier;
                 }
@@ -1723,7 +1733,7 @@ int main(int argc, char** argv) {
                   data.data1[0] = spec.item_code[0];
                   data.data1[1] = spec.item_code[1];
                   data.data1[2] = spec.item_code[2];
-                  id_json = data.name(false);
+                  id_json = name_index->describe_item(cli_version, data);
                 } else {
                   id_json = primary_identifier;
                 }
@@ -1759,6 +1769,11 @@ int main(int argc, char** argv) {
     }
 
     case Behavior::DESCRIBE_ITEM: {
+      auto name_index = make_shared<ItemNameIndex>(
+          JSON::parse(load_file("system/item-tables/names-v2.json")),
+          JSON::parse(load_file("system/item-tables/names-v3.json")),
+          JSON::parse(load_file("system/item-tables/names-v4.json")));
+
       string data = parse_data_string(input_filename);
 
       ItemData item;
@@ -1771,14 +1786,19 @@ int main(int argc, char** argv) {
         }
       }
 
-      string desc = item.name(false);
+      string desc = name_index->describe_item(cli_version, item);
       log_info("Item: %s", desc.c_str());
       break;
     }
 
     case Behavior::ENCODE_ITEM: {
-      ItemData item(input_filename, false);
-      string desc = item.name(false);
+      auto name_index = make_shared<ItemNameIndex>(
+          JSON::parse(load_file("system/item-tables/names-v2.json")),
+          JSON::parse(load_file("system/item-tables/names-v3.json")),
+          JSON::parse(load_file("system/item-tables/names-v4.json")));
+
+      ItemData item = name_index->parse_item_description(cli_version, input_filename);
+      string desc = name_index->describe_item(cli_version, item);
       log_info("Data: %02hhX%02hhX%02hhX%02hhX %02hhX%02hhX%02hhX%02hhX %02hhX%02hhX%02hhX%02hhX -------- %02hhX%02hhX%02hhX%02hhX",
           item.data1[0], item.data1[1], item.data1[2], item.data1[3],
           item.data1[4], item.data1[5], item.data1[6], item.data1[7],

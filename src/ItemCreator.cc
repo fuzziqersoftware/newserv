@@ -614,8 +614,8 @@ uint8_t ItemCreator::generate_tech_disk_level(uint32_t tech_num, uint32_t area_n
   return range.min;
 }
 
-void ItemCreator::generate_common_tool_type(uint8_t tool_class, ItemData& item) const {
-  auto data = this->item_parameter_table->find_tool_by_class(tool_class);
+void ItemCreator::generate_common_tool_type(uint8_t id, ItemData& item) const {
+  auto data = this->item_parameter_table->find_tool_by_id(id);
   item.data1[0] = 0x03;
   item.data1[1] = data.first;
   item.data1[2] = data.second;

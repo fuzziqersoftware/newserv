@@ -1148,8 +1148,9 @@ static void server_command_what(shared_ptr<Client> c, const std::string&) {
     if (nearest_item_id == 0xFFFFFFFF) {
       send_text_message(c, "$C4No items are near you");
     } else {
+      auto s = c->require_server_state();
       const auto& item = l->item_id_to_floor_item.at(nearest_item_id);
-      string name = item.data.name(true);
+      string name = s->describe_item(c->version(), item.data, true);
       send_text_message(c, name);
     }
   }
@@ -1264,13 +1265,13 @@ static void server_command_item(shared_ptr<Client> c, const std::string& args) {
   check_is_game(l, true);
   check_cheats_enabled(l);
 
-  ItemData item(args);
+  ItemData item = s->item_name_index->parse_item_description(c->version(), args);
   item.id = l->generate_item_id(c->lobby_client_id);
 
   l->add_item(item, c->area, c->x, c->z);
   send_drop_stacked_item(l, item, c->area, c->x, c->z);
 
-  string name = item.name(true);
+  string name = s->describe_item(c->version(), item, true);
   send_text_message(c, "$C7Item created:\n" + name);
 }
 
@@ -1292,20 +1293,20 @@ static void proxy_command_item(shared_ptr<ProxyServer::LinkedSession> ses, const
 
   bool set_drop = (!args.empty() && (args[0] == '!'));
 
-  ItemData item(set_drop ? args.substr(1) : args);
+  ItemData item = s->item_name_index->parse_item_description(ses->version(), (set_drop ? args.substr(1) : args));
   item.id = random_object<uint32_t>();
 
   if (set_drop) {
     ses->next_drop_item = item;
 
-    string name = ses->next_drop_item.name(true);
+    string name = s->describe_item(ses->version(), item, true);
     send_text_message(ses->client_channel, "$C7Next drop:\n" + name);
 
   } else {
     send_drop_stacked_item(ses->client_channel, item, ses->area, ses->x, ses->z);
     send_drop_stacked_item(ses->server_channel, item, ses->area, ses->x, ses->z);
 
-    string name = item.name(true);
+    string name = s->describe_item(ses->version(), item, true);
     send_text_message(ses->client_channel, "$C7Item created:\n" + name);
   }
 }

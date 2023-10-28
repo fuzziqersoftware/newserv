@@ -2145,11 +2145,11 @@ static void on_10(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
           if (vq->battle_rules) {
             lc->game_data.create_battle_overlay(vq->battle_rules, s->level_table);
             lc->log.info("Created battle overlay");
-            lc->game_data.player()->print_inventory(stderr);
+            lc->game_data.player()->print_inventory(stderr, c->version(), s->item_name_index);
           } else if (vq->challenge_template_index >= 0) {
             lc->game_data.create_challenge_overlay(vq->challenge_template_index, s->level_table);
             lc->log.info("Created challenge overlay");
-            lc->game_data.player()->print_inventory(stderr);
+            lc->game_data.player()->print_inventory(stderr, c->version(), s->item_name_index);
           }
 
           // If an overlay was created, item IDs need to be assigned

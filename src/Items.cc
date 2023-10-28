@@ -24,7 +24,8 @@ void player_use_item(shared_ptr<Client> c, size_t item_index) {
     // Nothing to do (it should be deleted)
 
   } else if (item_identifier == 0x030200) { // Technique disk
-    uint8_t max_level = s->item_parameter_table->get_max_tech_level(player->disp.visual.char_class, item.data.data1[4]);
+    auto item_parameter_table = s->item_parameter_table_for_version(c->version());
+    uint8_t max_level = item_parameter_table->get_max_tech_level(player->disp.visual.char_class, item.data.data1[4]);
     if (item.data.data1[2] > max_level) {
       throw runtime_error("technique level too high");
     }
@@ -35,7 +36,8 @@ void player_use_item(shared_ptr<Client> c, size_t item_index) {
       throw runtime_error("incorrect grinder value");
     }
     auto& weapon = player->inventory.items[player->inventory.find_equipped_weapon()];
-    auto weapon_def = s->item_parameter_table->get_weapon(weapon.data.data1[1], weapon.data.data1[2]);
+    auto item_parameter_table = s->item_parameter_table_for_version(c->version());
+    auto weapon_def = item_parameter_table->get_weapon(weapon.data.data1[1], weapon.data.data1[2]);
     if (weapon.data.data1[3] >= weapon_def.max_grind) {
       throw runtime_error("weapon already at maximum grind");
     }
@@ -159,7 +161,8 @@ void player_use_item(shared_ptr<Client> c, size_t item_index) {
 
   } else if ((item_identifier & 0xFFFF00) == 0x031500) {
     // Christmas Present, etc. - use unwrap_table + probabilities therein
-    auto table = s->item_parameter_table->get_event_items(item.data.data1[2]);
+    auto item_parameter_table = s->item_parameter_table_for_version(c->version());
+    auto table = item_parameter_table->get_event_items(item.data.data1[2]);
     size_t sum = 0;
     for (size_t z = 0; z < table.second; z++) {
       sum += table.first[z].probability;
@@ -197,8 +200,8 @@ void player_use_item(shared_ptr<Client> c, size_t item_index) {
         continue;
       }
       try {
-        const auto& combo = s->item_parameter_table->get_item_combination(
-            item.data, inv_item.data);
+        auto item_parameter_table = s->item_parameter_table_for_version(c->version());
+        const auto& combo = item_parameter_table->get_item_combination(item.data, inv_item.data);
         if (combo.char_class != 0xFF && combo.char_class != player->disp.visual.char_class) {
           throw runtime_error("item combination requires specific char_class");
         }
@@ -269,8 +272,9 @@ void player_feed_mag(std::shared_ptr<Client> c, size_t mag_item_index, size_t fe
   auto& mag_item = player->inventory.items[mag_item_index];
 
   size_t result_index = result_index_for_fed_item.at(fed_item.data.primary_identifier());
-  const auto& mag_def = s->item_parameter_table->get_mag(mag_item.data.data1[1]);
-  const auto& feed_result = s->item_parameter_table->get_mag_feed_result(mag_def.feed_table, result_index);
+  auto item_parameter_table = s->item_parameter_table_for_version(c->version());
+  const auto& mag_def = item_parameter_table->get_mag(mag_item.data.data1[1]);
+  const auto& feed_result = item_parameter_table->get_mag_feed_result(mag_def.feed_table, result_index);
 
   auto update_stat = +[](ItemData& data, size_t which, int8_t delta) -> void {
     uint16_t existing_stat = data.data1w[which] % 100;
@@ -477,7 +481,8 @@ void player_feed_mag(std::shared_ptr<Client> c, size_t mag_item_index, size_t fe
 
   // If the mag has evolved, add its new photon blast
   if (mag_number != mag_item.data.data1[1]) {
-    const auto& new_mag_def = s->item_parameter_table->get_mag(mag_item.data.data1[1]);
+    auto item_parameter_table = s->item_parameter_table_for_version(c->version());
+    const auto& new_mag_def = item_parameter_table->get_mag(mag_item.data.data1[1]);
     mag_item.data.add_mag_photon_blast(new_mag_def.photon_blast);
   }
 }

@@ -10,8 +10,10 @@
 
 #include "AFSArchive.hh"
 #include "GSLArchive.hh"
+#include "ItemNameIndex.hh"
 #include "StaticGameData.hh"
 #include "Text.hh"
+#include "Version.hh"
 
 class RareItemSet {
 public:
@@ -109,7 +111,7 @@ private:
 
 class JSONRareItemSet : public RareItemSet {
 public:
-  explicit JSONRareItemSet(const JSON& json);
+  explicit JSONRareItemSet(const JSON& json, GameVersion version, std::shared_ptr<const ItemNameIndex> name_index = nullptr);
   virtual ~JSONRareItemSet() = default;
 
   virtual std::vector<ExpandedDrop> get_enemy_specs(GameMode mode, Episode episode, uint8_t difficulty, uint8_t secid, uint8_t rt_index) const;

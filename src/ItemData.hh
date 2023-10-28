@@ -101,11 +101,8 @@ struct ItemData { // 0x14 bytes
   } __attribute__((packed));
 
   ItemData();
-  explicit ItemData(const std::string& orig_description, bool allow_raw_data = true);
   ItemData(const ItemData& other);
   ItemData& operator=(const ItemData& other);
-
-  void parse(const std::string& desc, bool skip_specials);
 
   bool operator==(const ItemData& other) const;
   bool operator!=(const ItemData& other) const;
@@ -113,7 +110,6 @@ struct ItemData { // 0x14 bytes
   void clear();
 
   std::string hex() const;
-  std::string name(bool include_color_codes) const;
   uint32_t primary_identifier() const;
 
   bool is_wrapped() const;

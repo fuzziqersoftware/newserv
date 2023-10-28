@@ -398,6 +398,28 @@ const vector<pair<string, uint16_t>>& ServerState::redirect_destinations_for_ver
   }
 }
 
+std::shared_ptr<const ItemParameterTable> ServerState::item_parameter_table_for_version(GameVersion version) const {
+  switch (version) {
+    case GameVersion::DC:
+    case GameVersion::PC:
+      return this->item_parameter_table_v2;
+    case GameVersion::GC:
+    case GameVersion::XB:
+      return this->item_parameter_table_v3;
+    case GameVersion::BB:
+      return this->item_parameter_table_v4;
+    default:
+      throw out_of_range("no item parameter table exists for this version");
+  }
+}
+
+std::string ServerState::describe_item(GameVersion version, const ItemData& item, bool include_color_codes) const {
+  return this->item_name_index->describe_item(
+      version,
+      item,
+      include_color_codes ? this->item_parameter_table_for_version(version) : nullptr);
+}
+
 void ServerState::set_port_configuration(
     const vector<PortConfiguration>& port_configs) {
   this->name_to_port_config.clear();
@@ -926,6 +948,12 @@ void ServerState::load_word_select_table() {
 }
 
 void ServerState::load_item_tables() {
+  config_log.info("Loading item name index");
+  this->item_name_index.reset(new ItemNameIndex(
+      JSON::parse(load_file("system/item-tables/names-v2.json")),
+      JSON::parse(load_file("system/item-tables/names-v3.json")),
+      JSON::parse(load_file("system/item-tables/names-v4.json"))));
+
   config_log.info("Loading rare item sets");
   for (const auto& filename : list_directory_sorted("system/item-tables")) {
     if (!starts_with(filename, "rare-table-")) {
@@ -936,9 +964,15 @@ void ServerState::load_item_tables() {
     size_t ext_offset = filename.rfind('.');
     string basename = (ext_offset == string::npos) ? filename : filename.substr(0, ext_offset);
 
-    if (ends_with(filename, ".json")) {
-      config_log.info("Loading JSON rare item table %s", filename.c_str());
-      this->rare_item_sets.emplace(basename, new JSONRareItemSet(JSON::parse(load_file(path))));
+    if (ends_with(filename, "-v2.json")) {
+      config_log.info("Loading v2 JSON rare item table %s", filename.c_str());
+      this->rare_item_sets.emplace(basename, new JSONRareItemSet(JSON::parse(load_file(path)), GameVersion::PC, this->item_name_index));
+    } else if (ends_with(filename, "-v3.json")) {
+      config_log.info("Loading v3 JSON rare item table %s", filename.c_str());
+      this->rare_item_sets.emplace(basename, new JSONRareItemSet(JSON::parse(load_file(path)), GameVersion::GC, this->item_name_index));
+    } else if (ends_with(filename, "-v4.json")) {
+      config_log.info("Loading v4 JSON rare item table %s", filename.c_str());
+      this->rare_item_sets.emplace(basename, new JSONRareItemSet(JSON::parse(load_file(path)), GameVersion::BB, this->item_name_index));
 
     } else if (ends_with(filename, ".afs")) {
       config_log.info("Loading AFS rare item table %s", filename.c_str());
@@ -1006,10 +1040,13 @@ void ServerState::load_item_tables() {
       "system/item-tables/JudgeItem-gc.rel")));
   this->tekker_adjustment_set.reset(new TekkerAdjustmentSet(tekker_data));
 
-  config_log.info("Loading item definition table");
-  shared_ptr<string> pmt_data(new string(prs_decompress(load_file(
-      "system/item-tables/ItemPMT-bb.prs"))));
-  this->item_parameter_table.reset(new ItemParameterTable(pmt_data));
+  config_log.info("Loading item definition tables");
+  shared_ptr<string> pmt_data_v2(new string(prs_decompress(load_file("system/item-tables/ItemPMT-v2.prs"))));
+  this->item_parameter_table_v2.reset(new ItemParameterTable(pmt_data_v2, ItemParameterTable::Version::V2));
+  shared_ptr<string> pmt_data_v3(new string(prs_decompress(load_file("system/item-tables/ItemPMT-gc.prs"))));
+  this->item_parameter_table_v3.reset(new ItemParameterTable(pmt_data_v3, ItemParameterTable::Version::V3));
+  shared_ptr<string> pmt_data_v4(new string(prs_decompress(load_file("system/item-tables/ItemPMT-bb.prs"))));
+  this->item_parameter_table_v4.reset(new ItemParameterTable(pmt_data_v4, ItemParameterTable::Version::V4));
 
   config_log.info("Loading mag evolution table");
   shared_ptr<string> mag_data(new string(prs_decompress(load_file(

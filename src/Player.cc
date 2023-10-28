@@ -482,12 +482,12 @@ void SavedPlayerDataBB::clear_all_material_usage() {
   }
 }
 
-void SavedPlayerDataBB::print_inventory(FILE* stream) const {
+void SavedPlayerDataBB::print_inventory(FILE* stream, GameVersion version, shared_ptr<const ItemNameIndex> name_index) const {
   fprintf(stream, "[PlayerInventory] Meseta: %" PRIu32 "\n", this->disp.stats.meseta.load());
   fprintf(stream, "[PlayerInventory] %hhu items\n", this->inventory.num_items);
   for (size_t x = 0; x < this->inventory.num_items; x++) {
     const auto& item = this->inventory.items[x];
-    auto name = item.data.name(false);
+    auto name = name_index->describe_item(version, item.data);
     auto hex = item.data.hex();
     fprintf(stream, "[PlayerInventory]   %2zu: %s (%s)\n", x, hex.c_str(), name.c_str());
   }

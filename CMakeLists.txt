@@ -73,6 +73,7 @@ add_executable(newserv
     src/IPStackSimulator.cc
     src/ItemCreator.cc
     src/ItemData.cc
+    src/ItemNameIndex.cc
     src/ItemParameterTable.cc
     src/Items.cc
     src/LevelTable.cc

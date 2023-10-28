@@ -15,6 +15,7 @@
 #include "Episode3/Tournament.hh"
 #include "FunctionCompiler.hh"
 #include "GSLArchive.hh"
+#include "ItemNameIndex.hh"
 #include "ItemParameterTable.hh"
 #include "LevelTable.hh"
 #include "License.hh"
@@ -106,8 +107,11 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   std::shared_ptr<const ToolRandomSet> tool_random_set;
   std::array<std::shared_ptr<const WeaponRandomSet>, 4> weapon_random_sets;
   std::shared_ptr<const TekkerAdjustmentSet> tekker_adjustment_set;
-  std::shared_ptr<const ItemParameterTable> item_parameter_table;
+  std::shared_ptr<const ItemParameterTable> item_parameter_table_v2;
+  std::shared_ptr<const ItemParameterTable> item_parameter_table_v3;
+  std::shared_ptr<const ItemParameterTable> item_parameter_table_v4;
   std::shared_ptr<const MagEvolutionTable> mag_evolution_table;
+  std::shared_ptr<const ItemNameIndex> item_name_index;
   std::shared_ptr<const WordSelectTable> word_select_table;
 
   std::shared_ptr<Episode3::TournamentIndex> ep3_tournament_index;
@@ -213,6 +217,9 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   const std::vector<std::pair<std::string, uint16_t>>& redirect_destinations_for_version(GameVersion version) const;
   std::shared_ptr<const Menu> proxy_destinations_menu_for_version(GameVersion version) const;
   const std::vector<std::pair<std::string, uint16_t>>& proxy_destinations_for_version(GameVersion version) const;
+
+  std::shared_ptr<const ItemParameterTable> item_parameter_table_for_version(GameVersion version) const;
+  std::string describe_item(GameVersion version, const ItemData& item, bool include_color_codes) const;
 
   std::shared_ptr<const QuestIndex> quest_index_for_client(std::shared_ptr<Client> c) const;
 

@@ -11,6 +11,7 @@
 
 #include "Episode3/DataIndexes.hh"
 #include "ItemCreator.hh"
+#include "ItemNameIndex.hh"
 #include "LevelTable.hh"
 #include "PlayerSubordinates.hh"
 #include "Text.hh"
@@ -72,7 +73,7 @@ struct SavedPlayerDataBB { // .nsc file format
   void set_material_usage(MaterialType which, uint8_t usage);
   void clear_all_material_usage();
 
-  void print_inventory(FILE* stream) const;
+  void print_inventory(FILE* stream, GameVersion version, std::shared_ptr<const ItemNameIndex> name_index) const;
 } __attribute__((packed));
 
 enum AccountFlag {

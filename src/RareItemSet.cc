@@ -222,7 +222,7 @@ const RELRareItemSet::Table& RELRareItemSet::get_table(
   return tables[(ep_index * 10 * 4) + (difficulty * 10) + secid];
 }
 
-JSONRareItemSet::JSONRareItemSet(const JSON& json) {
+JSONRareItemSet::JSONRareItemSet(const JSON& json, GameVersion version, shared_ptr<const ItemNameIndex> name_index) {
   for (const auto& mode_it : json.as_dict()) {
     static const unordered_map<string, GameMode> mode_keys(
         {{"Normal", GameMode::NORMAL}, {"Battle", GameMode::BATTLE}, {"Challenge", GameMode::CHALLENGE}, {"Solo", GameMode::SOLO}});
@@ -285,7 +285,10 @@ JSONRareItemSet::JSONRareItemSet(const JSON& json) {
                 d.item_code[1] = (item_code >> 8) & 0xFF;
                 d.item_code[2] = item_code & 0xFF;
               } else if (item_desc.is_string()) {
-                ItemData data(item_desc.as_string());
+                if (!name_index) {
+                  throw runtime_error("item name index is not available");
+                }
+                ItemData data = name_index->parse_item_description(version, item_desc.as_string());
                 d.item_code[0] = data.data1[0];
                 d.item_code[1] = data.data1[1];
                 d.item_code[2] = data.data1[2];
