@@ -39,7 +39,7 @@ ItemNameIndex::ItemNameIndex(JSON&& v2_names, JSON&& v3_names, JSON&& v4_names) 
 
 static const char* s_rank_name_characters = "\0ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_";
 
-static constexpr array<const char*, 0x29> name_for_weapon_special = {
+static const array<const char*, 0x29> name_for_weapon_special = {
     nullptr,
     "Draw",
     "Drain",
