@@ -7,7 +7,6 @@
 - Implement choice search
 - Write a simple status API
 - Implement per-game logging
-- Add default values in all command structures (like we use for Episode 3 battle commands)
 - Check for RCE potential in 6x6B-6x6E commands
 - Build an exception-handling abstraction in ChatCommands that shows formatted error messages in all cases
 - Make reloading happen on separate threads so compression doesn't block active clients
@@ -16,6 +15,9 @@
 - Figure out what causes the corruption message on PC proxy sessions and fix it
 - Enable item tracking in battle/challenge games (everything should already be set up for it to work)
 - Rewrite REL-based parsers so they don't assume any fixed offsets
+- Make $edit for DC/PC and attempt to repro disconnect issue with higher-level char
+- Look into double item drop from boxes in server drop mode
+- Handle DC NTE broadcast commands (see Sylverant subcmd_dcnte_handle_bcast)
 
 ## Episode 3
 

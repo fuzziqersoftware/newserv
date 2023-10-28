@@ -517,10 +517,9 @@ void send_guild_card_chunk_bb(shared_ptr<Client> c, size_t chunk_index) {
 
   cmd.unknown = 0;
   cmd.chunk_index = chunk_index;
-  memcpy(
-      cmd.data,
+  cmd.data.assign_range(
       reinterpret_cast<const uint8_t*>(&c->game_data.account()->guild_cards) + chunk_offset,
-      data_size);
+      data_size, 0);
 
   send_command(c, 0x02DC, 0x00000000, &cmd, sizeof(cmd) - sizeof(cmd.data) + data_size);
 }
@@ -597,7 +596,7 @@ void send_stream_file_chunk_bb(shared_ptr<Client> c, uint32_t chunk_index) {
     throw runtime_error("client requested chunk beyond end of stream file");
   }
   size_t bytes = min<size_t>(contents->size() - offset, sizeof(chunk_cmd.data));
-  memcpy(chunk_cmd.data, contents->data() + offset, bytes);
+  chunk_cmd.data.assign_range(reinterpret_cast<const uint8_t*>(contents->data() + offset), bytes, 0);
 
   size_t cmd_size = offsetof(S_StreamFileChunk_BB_02EB, data) + bytes;
   cmd_size = (cmd_size + 3) & ~3;
