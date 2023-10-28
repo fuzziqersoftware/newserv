@@ -1107,7 +1107,7 @@ static void on_feed_mag(
     size_t fed_index = p->inventory.find_item(cmd.fed_item_id);
     string mag_name, mag_colored_name, fed_name, fed_colored_name;
     {
-      // Note: We do this weird scoping thing because player_use_item will
+      // Note: We do this weird scoping thing because player_feed_mag will
       // likely delete the item, which will break the reference here.
       const auto& fed_item = p->inventory.items[fed_index].data;
       fed_name = s->describe_item(c->version(), fed_item, false);

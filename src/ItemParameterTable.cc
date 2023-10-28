@@ -151,7 +151,7 @@ const ItemParameterTable::ArmorOrShieldV4& ItemParameterTable::get_armor_or_shie
     }
     return ret;
   } catch (const std::out_of_range&) {
-    if (data1_2 <= parsed_vec.size()) {
+    if (data1_2 >= parsed_vec.size()) {
       parsed_vec.resize(data1_2 + 1);
     }
     auto& def_v4 = parsed_vec[data1_2];
@@ -230,7 +230,7 @@ const ItemParameterTable::UnitV4& ItemParameterTable::get_unit(uint8_t data1_2) 
     }
     return ret;
   } catch (const std::out_of_range&) {
-    if (data1_2 <= this->parsed_units.size()) {
+    if (data1_2 >= this->parsed_units.size()) {
       this->parsed_units.resize(data1_2 + 1);
     }
     auto& def_v4 = this->parsed_units[data1_2];
@@ -283,7 +283,7 @@ const ItemParameterTable::MagV4& ItemParameterTable::get_mag(uint8_t data1_1) co
     }
     return ret;
   } catch (const std::out_of_range&) {
-    if (data1_1 <= this->parsed_mags.size()) {
+    if (data1_1 >= this->parsed_mags.size()) {
       this->parsed_mags.resize(data1_1 + 1);
     }
     auto& def_v4 = this->parsed_mags[data1_1];
@@ -527,8 +527,8 @@ const ItemParameterTable::Special<false>& ItemParameterTable::get_special(uint8_
   if (this->offsets_v2) {
     return this->r.pget<Special<false>>(this->offsets_v2->special_data_table + sizeof(Special<false>) * special);
   } else if (this->offsets_v3) {
-    if ((this->parsed_specials.size() <= special) || (this->parsed_specials[special].type != 0xFFFF)) {
-      if (this->parsed_specials.size() <= special) {
+    if ((special >= this->parsed_specials.size()) || (this->parsed_specials[special].type != 0xFFFF)) {
+      if (special >= this->parsed_specials.size()) {
         this->parsed_specials.resize(special + 1);
       }
       const auto& sp_be = this->r.pget<Special<true>>(this->offsets_v3->special_data_table + sizeof(Special<true>) * special);

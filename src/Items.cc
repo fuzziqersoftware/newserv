@@ -481,7 +481,6 @@ void player_feed_mag(std::shared_ptr<Client> c, size_t mag_item_index, size_t fe
 
   // If the mag has evolved, add its new photon blast
   if (mag_number != mag_item.data.data1[1]) {
-    auto item_parameter_table = s->item_parameter_table_for_version(c->version());
     const auto& new_mag_def = item_parameter_table->get_mag(mag_item.data.data1[1]);
     mag_item.data.add_mag_photon_blast(new_mag_def.photon_blast);
   }
