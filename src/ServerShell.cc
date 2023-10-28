@@ -336,7 +336,7 @@ Proxy session commands:\n\
         l->serial_number = stoul(token.substr(7));
 
       } else if (starts_with(token, "flags=")) {
-        string mask = token.substr(11);
+        string mask = token.substr(6);
         if (mask == "normal") {
           l->flags = 0;
         } else if (mask == "mod") {
