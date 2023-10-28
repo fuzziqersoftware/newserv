@@ -39,49 +39,51 @@ ItemNameIndex::ItemNameIndex(JSON&& v2_names, JSON&& v3_names, JSON&& v4_names) 
 
 static const char* s_rank_name_characters = "\0ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_";
 
+// clang-format off
 static const array<const char*, 0x29> name_for_weapon_special = {
     nullptr,
-    "Draw",
-    "Drain",
-    "Fill",
-    "Gush",
-    "Heart",
-    "Mind",
-    "Soul",
-    "Geist",
-    "Master\'s",
-    "Lord\'s",
-    "King\'s",
-    "Charge",
-    "Spirit",
-    "Berserk",
-    "Ice",
-    "Frost",
-    "Freeze",
-    "Blizzard",
-    "Bind",
-    "Hold",
-    "Seize",
-    "Arrest",
-    "Heat",
-    "Fire",
-    "Flame",
-    "Burning",
-    "Shock",
-    "Thunder",
-    "Storm",
-    "Tempest",
-    "Dim",
-    "Shadow",
-    "Dark",
-    "Hell",
-    "Panic",
-    "Riot",
-    "Havoc",
-    "Chaos",
-    "Devil\'s",
-    "Demon\'s",
+    "Draw",      // Type: 0001, amount: 0005
+    "Drain",     // Type: 0001, amount: 0009
+    "Fill",      // Type: 0001, amount: 000D
+    "Gush",      // Type: 0001, amount: 0011
+    "Heart",     // Type: 0002, amount: 0003
+    "Mind",      // Type: 0002, amount: 0004
+    "Soul",      // Type: 0002, amount: 0005
+    "Geist",     // Type: 0002, amount: 0006
+    "Master\'s", // Type: 0003, amount: 0008
+    "Lord\'s",   // Type: 0003, amount: 000A
+    "King\'s",   // Type: 0003, amount: 000C
+    "Charge",    // Type: 0004, amount: 0064
+    "Spirit",    // Type: 0005, amount: 0064
+    "Berserk",   // Type: 0006, amount: 0064
+    "Ice",       // Type: 0007, amount: 0020
+    "Frost",     // Type: 0007, amount: 0030
+    "Freeze",    // Type: 0007, amount: 0040
+    "Blizzard",  // Type: 0007, amount: 0050
+    "Bind",      // Type: 0008, amount: 0020
+    "Hold",      // Type: 0008, amount: 0030
+    "Seize",     // Type: 0008, amount: 0040
+    "Arrest",    // Type: 0008, amount: 0050
+    "Heat",      // Type: 0009, amount: 0001
+    "Fire",      // Type: 0009, amount: 0002
+    "Flame",     // Type: 0009, amount: 0003
+    "Burning",   // Type: 0009, amount: 0004
+    "Shock",     // Type: 000A, amount: 0001
+    "Thunder",   // Type: 000A, amount: 0002
+    "Storm",     // Type: 000A, amount: 0003
+    "Tempest",   // Type: 000A, amount: 0004
+    "Dim",       // Type: 000B, amount: 0030
+    "Shadow",    // Type: 000B, amount: 0042
+    "Dark",      // Type: 000B, amount: 004E
+    "Hell",      // Type: 000B, amount: 005D
+    "Panic",     // Type: 000C, amount: 001D
+    "Riot",      // Type: 000C, amount: 002C
+    "Havoc",     // Type: 000C, amount: 003C
+    "Chaos",     // Type: 000C, amount: 004C
+    "Devil\'s",  // Type: 000D, amount: 0032
+    "Demon\'s",  // Type: 000D, amount: 0019
 };
+// clang-format on
 
 const array<const char*, 0x11> name_for_s_rank_special = {
     nullptr,
