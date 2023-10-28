@@ -521,3 +521,5 @@ std::string add_color(const std::string& s);
 
 size_t add_color_inplace(char* a, size_t max_chars);
 void add_color_inplace(std::string& s);
+
+std::string strip_color(const std::string& s);

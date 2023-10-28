@@ -132,7 +132,7 @@ TextTranscoder tt_utf8_to_utf16("UTF-16LE", "UTF-8");
 TextTranscoder tt_ascii_to_utf8("UTF-8", "ASCII");
 TextTranscoder tt_utf8_to_ascii("ASCII", "UTF-8");
 
-std::string tt_encode_marked_optional(const std::string& utf8, uint8_t default_language, bool is_utf16) {
+string tt_encode_marked_optional(const string& utf8, uint8_t default_language, bool is_utf16) {
   if (is_utf16) {
     return tt_utf8_to_utf16(utf8);
   } else {
@@ -152,7 +152,7 @@ std::string tt_encode_marked_optional(const std::string& utf8, uint8_t default_l
   }
 }
 
-std::string tt_encode_marked(const std::string& utf8, uint8_t default_language, bool is_utf16) {
+string tt_encode_marked(const string& utf8, uint8_t default_language, bool is_utf16) {
   if (is_utf16) {
     return tt_utf8_to_utf16((default_language ? "\tE" : "\tJ") + utf8);
   } else {
@@ -172,7 +172,7 @@ std::string tt_encode_marked(const std::string& utf8, uint8_t default_language, 
   }
 }
 
-std::string tt_decode_marked(const std::string& data, uint8_t default_language, bool is_utf16) {
+string tt_decode_marked(const string& data, uint8_t default_language, bool is_utf16) {
   if (is_utf16) {
     string ret = tt_utf16_to_utf8(data);
     if (ret.size() >= 2 && ret[0] == '\t' && (ret[1] == 'E' || ret[1] == 'J')) {
@@ -286,8 +286,21 @@ void add_color(StringWriter& w, const char* src, size_t max_input_chars) {
   w.put<char>(0);
 }
 
-std::string add_color(const std::string& s) {
+string add_color(const string& s) {
   StringWriter w;
   add_color(w, s.data(), s.size());
   return std::move(w.str());
+}
+
+string strip_color(const string& s) {
+  string ret;
+  for (size_t r = 0; r < s.size(); r++) {
+    if ((s[r] == '$' || s[r] == '\t') &&
+        (s[r + 1] == 'C') && (((s[r + 2] >= '0') && (s[r + 2] <= '9')) || (s[r + 2] == 'G') || (s[r + 2] == 'a'))) {
+      r += 2;
+    } else {
+      ret.push_back(s[r]);
+    }
+  }
+  return ret;
 }

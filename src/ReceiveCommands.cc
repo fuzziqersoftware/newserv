@@ -2860,7 +2860,14 @@ static void on_06(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
   }
 
   if (l->battle_record && l->battle_record->battle_in_progress()) {
-    auto prepared_message = prepare_chat_data(c->version(), c->language(), p->disp.name.decode(c->language()), text, private_flags);
+    auto prepared_message = prepare_chat_data(
+        c->version(),
+        c->flags & Client::Flag::IS_DC_TRIAL_EDITION,
+        c->language(),
+        c->lobby_client_id,
+        p->disp.name.decode(c->language()),
+        text,
+        private_flags);
     l->battle_record->add_chat_message(c->license->serial_number, std::move(prepared_message));
   }
 }

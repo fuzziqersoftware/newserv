@@ -679,10 +679,32 @@ void send_patch_file(shared_ptr<Client> c, shared_ptr<PatchFileIndex::File> f) {
 ////////////////////////////////////////////////////////////////////////////////
 // message functions
 
-void send_text(Channel& ch, StringWriter& w, uint16_t command, const string& text, bool should_add_color) {
+enum class ColorMode {
+  NONE,
+  ADD,
+  STRIP,
+};
+
+static void send_text(
+    Channel& ch,
+    StringWriter& w,
+    uint16_t command,
+    const string& text,
+    ColorMode color_mode) {
   bool is_w = (ch.version == GameVersion::PC || ch.version == GameVersion::BB || ch.version == GameVersion::PATCH);
 
-  w.write(tt_encode_marked_optional(should_add_color ? add_color(text) : text, ch.language, is_w));
+  switch (color_mode) {
+    case ColorMode::NONE:
+      w.write(tt_encode_marked_optional(text, ch.language, is_w));
+      break;
+    case ColorMode::ADD:
+      w.write(tt_encode_marked_optional(add_color(text), ch.language, is_w));
+      break;
+    case ColorMode::STRIP:
+      w.write(tt_encode_marked_optional(strip_color(text), ch.language, is_w));
+      break;
+  }
+
   if (is_w) {
     w.put_u16(0);
   } else {
@@ -695,15 +717,15 @@ void send_text(Channel& ch, StringWriter& w, uint16_t command, const string& tex
   ch.send(command, 0x00, w.str());
 }
 
-void send_text(Channel& ch, uint16_t command, const string& text, bool should_add_color) {
+static void send_text(Channel& ch, uint16_t command, const string& text, ColorMode color_mode) {
   StringWriter w;
-  send_text(ch, w, command, text, should_add_color);
+  send_text(ch, w, command, text, color_mode);
 }
 
-void send_header_text(Channel& ch, uint16_t command, uint32_t guild_card_number, const string& text, bool should_add_color) {
+static void send_header_text(Channel& ch, uint16_t command, uint32_t guild_card_number, const string& text, ColorMode color_mode) {
   StringWriter w;
   w.put(SC_TextHeader_01_06_11_B0_EE({0, guild_card_number}));
-  send_text(ch, w, command, text, should_add_color);
+  send_text(ch, w, command, text, color_mode);
 }
 
 void send_message_box(shared_ptr<Client> c, const string& text) {
@@ -724,7 +746,7 @@ void send_message_box(shared_ptr<Client> c, const string& text) {
     default:
       throw logic_error("invalid game version");
   }
-  send_text(c->channel, command, text, true);
+  send_text(c->channel, command, text, (c->flags & Client::Flag::IS_DC_TRIAL_EDITION) ? ColorMode::STRIP : ColorMode::ADD);
 }
 
 void send_ep3_timed_message_box(Channel& ch, uint32_t frames, const string& message) {
@@ -740,31 +762,35 @@ void send_ep3_timed_message_box(Channel& ch, uint32_t frames, const string& mess
 }
 
 void send_lobby_name(shared_ptr<Client> c, const string& text) {
-  send_text(c->channel, 0x8A, text, false);
+  send_text(c->channel, 0x8A, text, ColorMode::NONE);
 }
 
 void send_quest_info(shared_ptr<Client> c, const string& text, bool is_download_quest) {
-  send_text(c->channel, is_download_quest ? 0xA5 : 0xA3, text, true);
+  send_text(
+      c->channel, is_download_quest ? 0xA5 : 0xA3, text,
+      (c->flags & Client::Flag::IS_DC_TRIAL_EDITION) ? ColorMode::STRIP : ColorMode::ADD);
 }
 
 void send_lobby_message_box(shared_ptr<Client> c, const string& text) {
-  send_header_text(c->channel, 0x01, 0, text, true);
+  send_header_text(c->channel, 0x01, 0, text, (c->flags & Client::Flag::IS_DC_TRIAL_EDITION) ? ColorMode::STRIP : ColorMode::ADD);
 }
 
 void send_ship_info(shared_ptr<Client> c, const string& text) {
-  send_header_text(c->channel, 0x11, 0, text, true);
+  send_header_text(c->channel, 0x11, 0, text, (c->flags & Client::Flag::IS_DC_TRIAL_EDITION) ? ColorMode::STRIP : ColorMode::ADD);
 }
 
 void send_ship_info(Channel& ch, const string& text) {
-  send_header_text(ch, 0x11, 0, text, true);
+  send_header_text(ch, 0x11, 0, text, ColorMode::ADD);
 }
 
 void send_text_message(Channel& ch, const string& text) {
-  send_header_text(ch, 0xB0, 0, text, true);
+  send_header_text(ch, 0xB0, 0, text, ColorMode::ADD);
 }
 
 void send_text_message(shared_ptr<Client> c, const string& text) {
-  send_header_text(c->channel, 0xB0, 0, text, true);
+  if (!(c->flags & Client::Flag::IS_DC_TRIAL_EDITION)) {
+    send_header_text(c->channel, 0xB0, 0, text, ColorMode::ADD);
+  }
 }
 
 void send_text_message(shared_ptr<Lobby> l, const string& text) {
@@ -797,26 +823,37 @@ __attribute__((format(printf, 2, 3))) void send_ep3_text_message_printf(shared_p
   }
 }
 
-string prepare_chat_data(GameVersion version, uint8_t language, const string& from_name, const string& text, char private_flags) {
+string prepare_chat_data(
+    GameVersion version,
+    bool is_nte,
+    uint8_t language,
+    uint8_t from_client_id,
+    const string& from_name,
+    const string& text,
+    char private_flags) {
   string data;
-  if ((version == GameVersion::BB) || (version == GameVersion::PC)) {
-    if (version == GameVersion::BB) {
-      data.append("\tJ");
-    }
-    data.append(from_name);
+
+  if (version == GameVersion::BB) {
+    data.append("\tJ");
+  }
+  data.append(from_name);
+  if (is_nte) {
+    data.append(string_printf(">%X", from_client_id));
+  } else {
     data.append(1, '\t');
-    if (private_flags) {
-      data.append(1, static_cast<uint16_t>(private_flags));
-    }
+  }
+  if (private_flags) {
+    data.append(1, static_cast<uint16_t>(private_flags));
+  }
+
+  if ((version == GameVersion::BB) || (version == GameVersion::PC)) {
     data.append(language ? "\tE" : "\tJ");
     data.append(text);
     return tt_utf8_to_utf16(data);
+  } else if (is_nte) {
+    data.append(tt_utf8_to_sjis(text));
+    return data;
   } else {
-    data.append(from_name);
-    data.append(1, '\t');
-    if (private_flags) {
-      data.append(1, static_cast<uint16_t>(private_flags));
-    }
     data.append(tt_encode_marked(text, language, false));
     return data;
   }
@@ -830,9 +867,9 @@ void send_chat_message_from_client(Channel& ch, const string& text, char private
     string effective_text;
     effective_text.push_back(private_flags);
     effective_text += text;
-    send_header_text(ch, 0x06, 0, effective_text, false);
+    send_header_text(ch, 0x06, 0, effective_text, ColorMode::NONE);
   } else {
-    send_header_text(ch, 0x06, 0, text, false);
+    send_header_text(ch, 0x06, 0, text, ColorMode::NONE);
   }
 }
 
@@ -859,7 +896,15 @@ void send_prepared_chat_message(shared_ptr<Lobby> l, uint32_t from_guild_card_nu
 }
 
 void send_chat_message(shared_ptr<Client> c, uint32_t from_guild_card_number, const string& from_name, const string& text, char private_flags) {
-  send_prepared_chat_message(c, from_guild_card_number, prepare_chat_data(c->version(), c->language(), from_name, text, private_flags));
+  string prepared_data = prepare_chat_data(
+      c->version(),
+      c->flags & Client::Flag::IS_DC_TRIAL_EDITION,
+      c->language(),
+      c->lobby_client_id,
+      from_name,
+      text,
+      private_flags);
+  send_prepared_chat_message(c, from_guild_card_number, prepared_data);
 }
 
 template <typename CmdT>
