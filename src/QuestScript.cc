@@ -12,11 +12,16 @@
 #include <unordered_map>
 #include <vector>
 
+#include "BattleParamsIndex.hh"
 #include "CommandFormats.hh"
 #include "Compression.hh"
 #include "StaticGameData.hh"
 
 using namespace std;
+
+using AttackData = BattleParamsIndex::AttackData;
+using ResistData = BattleParamsIndex::ResistData;
+using MovementData = BattleParamsIndex::MovementData;
 
 template <>
 const char* name_for_enum<QuestScriptVersion>(QuestScriptVersion v) {
@@ -77,44 +82,6 @@ static string format_and_indent_data(const void* data, size_t size, uint64_t sta
   strip_trailing_whitespace(ret);
   return ret;
 }
-
-struct ResistData {
-  le_int16_t evp_bonus;
-  le_uint16_t unknown_a1;
-  le_uint16_t unknown_a2;
-  le_uint16_t unknown_a3;
-  le_uint16_t unknown_a4;
-  le_uint16_t unknown_a5;
-  le_uint32_t unknown_a6;
-  le_uint32_t unknown_a7;
-  le_uint32_t unknown_a8;
-  le_uint32_t unknown_a9;
-  le_int32_t dfp_bonus;
-} __attribute__((packed));
-
-struct AttackData {
-  le_int16_t unknown_a1;
-  le_int16_t unknown_a2;
-  le_uint16_t unknown_a3;
-  le_uint16_t unknown_a4;
-  le_float unknown_a5;
-  le_uint32_t unknown_a6;
-  le_float unknown_a7;
-  le_uint16_t unknown_a8;
-  le_uint16_t unknown_a9;
-  le_uint16_t unknown_a10;
-  le_uint16_t unknown_a11;
-  le_uint32_t unknown_a12;
-  le_uint32_t unknown_a13;
-  le_uint32_t unknown_a14;
-  le_uint32_t unknown_a15;
-  le_uint32_t unknown_a16;
-} __attribute__((packed));
-
-struct MovementData {
-  parray<le_float, 6> unknown_a1;
-  parray<le_float, 6> unknown_a2;
-} __attribute__((packed));
 
 struct UnknownF8F2Entry {
   parray<le_float, 4> unknown_a1;
@@ -1425,11 +1392,11 @@ std::string disassemble_quest_script(const void* data, size_t size, QuestScriptV
     print_as_struct.template operator()<Arg::DataType::RESIST_DATA, ResistData>([&](const ResistData& resist) -> void {
       lines.emplace_back("  // As ResistData");
       lines.emplace_back(string_printf("  %04zX  evp_bonus            %04hX /* %hu */", l->offset + offsetof(ResistData, evp_bonus), resist.evp_bonus.load(), resist.evp_bonus.load()));
-      lines.emplace_back(string_printf("  %04zX  a1                   %04hX /* %hu */", l->offset + offsetof(ResistData, unknown_a1), resist.unknown_a1.load(), resist.unknown_a1.load()));
-      lines.emplace_back(string_printf("  %04zX  a2                   %04hX /* %hu */", l->offset + offsetof(ResistData, unknown_a2), resist.unknown_a2.load(), resist.unknown_a2.load()));
-      lines.emplace_back(string_printf("  %04zX  a3                   %04hX /* %hu */", l->offset + offsetof(ResistData, unknown_a3), resist.unknown_a3.load(), resist.unknown_a3.load()));
-      lines.emplace_back(string_printf("  %04zX  a4                   %04hX /* %hu */", l->offset + offsetof(ResistData, unknown_a4), resist.unknown_a4.load(), resist.unknown_a4.load()));
-      lines.emplace_back(string_printf("  %04zX  a5                   %04hX /* %hu */", l->offset + offsetof(ResistData, unknown_a5), resist.unknown_a5.load(), resist.unknown_a5.load()));
+      lines.emplace_back(string_printf("  %04zX  efr                  %04hX /* %hu */", l->offset + offsetof(ResistData, efr), resist.efr.load(), resist.efr.load()));
+      lines.emplace_back(string_printf("  %04zX  eic                  %04hX /* %hu */", l->offset + offsetof(ResistData, eic), resist.eic.load(), resist.eic.load()));
+      lines.emplace_back(string_printf("  %04zX  eth                  %04hX /* %hu */", l->offset + offsetof(ResistData, eth), resist.eth.load(), resist.eth.load()));
+      lines.emplace_back(string_printf("  %04zX  elt                  %04hX /* %hu */", l->offset + offsetof(ResistData, elt), resist.elt.load(), resist.elt.load()));
+      lines.emplace_back(string_printf("  %04zX  edk                  %04hX /* %hu */", l->offset + offsetof(ResistData, edk), resist.edk.load(), resist.edk.load()));
       lines.emplace_back(string_printf("  %04zX  a6                   %08" PRIX32 " /* %" PRIu32 " */", l->offset + offsetof(ResistData, unknown_a6), resist.unknown_a6.load(), resist.unknown_a6.load()));
       lines.emplace_back(string_printf("  %04zX  a7                   %08" PRIX32 " /* %" PRIu32 " */", l->offset + offsetof(ResistData, unknown_a7), resist.unknown_a7.load(), resist.unknown_a7.load()));
       lines.emplace_back(string_printf("  %04zX  a8                   %08" PRIX32 " /* %" PRIu32 " */", l->offset + offsetof(ResistData, unknown_a8), resist.unknown_a8.load(), resist.unknown_a8.load()));
@@ -1442,9 +1409,9 @@ std::string disassemble_quest_script(const void* data, size_t size, QuestScriptV
       lines.emplace_back(string_printf("  %04zX  a2                   %04hX /* %hd */", l->offset + offsetof(AttackData, unknown_a2), attack.unknown_a2.load(), attack.unknown_a2.load()));
       lines.emplace_back(string_printf("  %04zX  a3                   %04hX /* %hu */", l->offset + offsetof(AttackData, unknown_a3), attack.unknown_a3.load(), attack.unknown_a3.load()));
       lines.emplace_back(string_printf("  %04zX  a4                   %04hX /* %hu */", l->offset + offsetof(AttackData, unknown_a4), attack.unknown_a4.load(), attack.unknown_a4.load()));
-      lines.emplace_back(string_printf("  %04zX  a5                   %08" PRIX32 " /* %g */", l->offset + offsetof(AttackData, unknown_a5), attack.unknown_a5.load_raw(), attack.unknown_a5.load()));
-      lines.emplace_back(string_printf("  %04zX  a6                   %08" PRIX32 " /* %" PRIu32 " */", l->offset + offsetof(AttackData, unknown_a6), attack.unknown_a6.load(), attack.unknown_a6.load()));
-      lines.emplace_back(string_printf("  %04zX  a7                   %08" PRIX32 " /* %g */", l->offset + offsetof(AttackData, unknown_a7), attack.unknown_a7.load_raw(), attack.unknown_a7.load()));
+      lines.emplace_back(string_printf("  %04zX  distance_x           %08" PRIX32 " /* %g */", l->offset + offsetof(AttackData, distance_x), attack.distance_x.load_raw(), attack.distance_x.load()));
+      lines.emplace_back(string_printf("  %04zX  angle_x              %08" PRIX32 " /* %g */", l->offset + offsetof(AttackData, angle_x), attack.angle_x.load_raw(), attack.angle_x.load()));
+      lines.emplace_back(string_printf("  %04zX  distance_y           %08" PRIX32 " /* %g */", l->offset + offsetof(AttackData, distance_y), attack.distance_y.load_raw(), attack.distance_y.load()));
       lines.emplace_back(string_printf("  %04zX  a8                   %04hX /* %hu */", l->offset + offsetof(AttackData, unknown_a8), attack.unknown_a8.load(), attack.unknown_a8.load()));
       lines.emplace_back(string_printf("  %04zX  a9                   %04hX /* %hu */", l->offset + offsetof(AttackData, unknown_a9), attack.unknown_a9.load(), attack.unknown_a9.load()));
       lines.emplace_back(string_printf("  %04zX  a10                  %04hX /* %hu */", l->offset + offsetof(AttackData, unknown_a10), attack.unknown_a10.load(), attack.unknown_a10.load()));
@@ -1457,16 +1424,18 @@ std::string disassemble_quest_script(const void* data, size_t size, QuestScriptV
     });
     print_as_struct.template operator()<Arg::DataType::MOVEMENT_DATA, MovementData>([&](const MovementData& movement) -> void {
       lines.emplace_back("  // As MovementData");
-      for (size_t z = 0; z < 6; z++) {
-        size_t offset = l->offset + z * sizeof(movement.unknown_a1[0]);
-        lines.emplace_back(string_printf("  %04zX  a1[%zu]        %08" PRIX32 " /* %g */",
-            offset, z, movement.unknown_a1[z].load_raw(), movement.unknown_a1[z].load()));
-      }
-      for (size_t z = 0; z < 6; z++) {
-        size_t offset = l->offset + sizeof(movement.unknown_a1) + z * sizeof(movement.unknown_a2[0]);
-        lines.emplace_back(string_printf("  %04zX  a2[%zu]        %08" PRIX32 " /* %g */",
-            offset, z, movement.unknown_a2[z].load_raw(), movement.unknown_a2[z].load()));
-      }
+      lines.emplace_back(string_printf("  %04zX  idle_move_speed      %08" PRIX32 " /* %g */", l->offset + offsetof(MovementData, idle_move_speed), movement.idle_move_speed.load_raw(), movement.idle_move_speed.load()));
+      lines.emplace_back(string_printf("  %04zX  idle_animation_speed %08" PRIX32 " /* %g */", l->offset + offsetof(MovementData, idle_animation_speed), movement.idle_animation_speed.load_raw(), movement.idle_animation_speed.load()));
+      lines.emplace_back(string_printf("  %04zX  move_speed           %08" PRIX32 " /* %g */", l->offset + offsetof(MovementData, move_speed), movement.move_speed.load_raw(), movement.move_speed.load()));
+      lines.emplace_back(string_printf("  %04zX  animation_speed      %08" PRIX32 " /* %g */", l->offset + offsetof(MovementData, animation_speed), movement.animation_speed.load_raw(), movement.animation_speed.load()));
+      lines.emplace_back(string_printf("  %04zX  a1                   %08" PRIX32 " /* %g */", l->offset + offsetof(MovementData, unknown_a1), movement.unknown_a1.load_raw(), movement.unknown_a1.load()));
+      lines.emplace_back(string_printf("  %04zX  a2                   %08" PRIX32 " /* %g */", l->offset + offsetof(MovementData, unknown_a2), movement.unknown_a2.load_raw(), movement.unknown_a2.load()));
+      lines.emplace_back(string_printf("  %04zX  a3                   %08" PRIX32 " /* %" PRIu32 " */", l->offset + offsetof(MovementData, unknown_a3), movement.unknown_a3.load(), movement.unknown_a3.load()));
+      lines.emplace_back(string_printf("  %04zX  a4                   %08" PRIX32 " /* %" PRIu32 " */", l->offset + offsetof(MovementData, unknown_a4), movement.unknown_a4.load(), movement.unknown_a4.load()));
+      lines.emplace_back(string_printf("  %04zX  a5                   %08" PRIX32 " /* %" PRIu32 " */", l->offset + offsetof(MovementData, unknown_a5), movement.unknown_a5.load(), movement.unknown_a5.load()));
+      lines.emplace_back(string_printf("  %04zX  a6                   %08" PRIX32 " /* %" PRIu32 " */", l->offset + offsetof(MovementData, unknown_a6), movement.unknown_a6.load(), movement.unknown_a6.load()));
+      lines.emplace_back(string_printf("  %04zX  a7                   %08" PRIX32 " /* %" PRIu32 " */", l->offset + offsetof(MovementData, unknown_a7), movement.unknown_a7.load(), movement.unknown_a7.load()));
+      lines.emplace_back(string_printf("  %04zX  a8                   %08" PRIX32 " /* %" PRIu32 " */", l->offset + offsetof(MovementData, unknown_a8), movement.unknown_a8.load(), movement.unknown_a8.load()));
     });
     if (l->has_data_type(Arg::DataType::IMAGE_DATA)) {
       const void* data = cmd_r.pgetv(l->offset, size);

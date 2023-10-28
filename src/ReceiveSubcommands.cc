@@ -1521,8 +1521,10 @@ static void on_steal_exp_bb(shared_ptr<Client> c, uint8_t, uint8_t, const void* 
 
   if (special >= 0x09 && special <= 0x0B) {
     // Master's = 8, Lord's = 10, King's = 12
+    uint32_t bp_index = battle_param_index_for_enemy_type(l->episode, enemy.type);
+    const auto& bp_table = s->battle_params->get_table(l->mode == GameMode::SOLO, l->episode);
     uint32_t percent = 8 + ((special - 9) << 1) + (char_class_is_android(p->disp.visual.char_class) ? 30 : 0);
-    uint32_t enemy_exp = s->battle_params->get(l->mode == GameMode::SOLO, l->episode, l->difficulty, enemy.type).experience;
+    uint32_t enemy_exp = bp_table.physical_data[l->difficulty][bp_index].experience;
     uint32_t stolen_exp = min<uint32_t>((enemy_exp * percent) / 100, 80);
     if (c->options.debug) {
       send_text_message_printf(c, "$C5+%" PRIu32 " E-%hX %s",
@@ -1567,7 +1569,9 @@ static void on_enemy_killed_bb(shared_ptr<Client> c, uint8_t command, uint8_t fl
 
   uint32_t experience = 0xFFFFFFFF;
   try {
-    experience = s->battle_params->get(l->mode == GameMode::SOLO, l->episode, l->difficulty, e.type).experience * l->exp_multiplier;
+    const auto& bp_table = s->battle_params->get_table(l->mode == GameMode::SOLO, l->episode);
+    uint32_t bp_index = battle_param_index_for_enemy_type(l->episode, e.type);
+    experience = bp_table.physical_data[l->difficulty][bp_index].experience * l->exp_multiplier;
   } catch (const exception& e) {
     if (c->options.debug) {
       send_text_message_printf(c, "$C5E-%hX __MISSING__\n%s", cmd.enemy_id.load(), e.what());

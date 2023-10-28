@@ -9,10 +9,9 @@
 
 using namespace std;
 
-string BattleParamsIndex::Entry::str() const {
-  string a1str = format_data_string(this->unknown_a1.data(), this->unknown_a1.bytes());
+string BattleParamsIndex::PhysicalData::str() const {
   return string_printf(
-      "BattleParamsEntry[ATP=%hu PSV=%hu EVP=%hu HP=%hu DFP=%hu ATA=%hu LCK=%hu ESP=%hu a1=%s EXP=%" PRIu32 " diff=%" PRIu32 "]",
+      "PhysicalData[ATP=%hu PSV=%hu EVP=%hu HP=%hu DFP=%hu ATA=%hu LCK=%hu ESP=%hu a1=[%g, %g] a2=%" PRIu32 " EXP=%" PRIu32 " diff=%" PRIu32 "]",
       this->atp.load(),
       this->psv.load(),
       this->evp.load(),
@@ -21,16 +20,17 @@ string BattleParamsIndex::Entry::str() const {
       this->ata.load(),
       this->lck.load(),
       this->esp.load(),
-      a1str.c_str(),
+      this->unknown_a1[0].load(),
+      this->unknown_a1[1].load(),
+      this->unknown_a2.load(),
       this->experience.load(),
       this->difficulty.load());
 }
 
 void BattleParamsIndex::Table::print(FILE* stream) const {
-  auto print_entry = +[](FILE* stream, const Entry& e) {
-    string a1str = format_data_string(e.unknown_a1.data(), e.unknown_a1.bytes());
+  auto print_entry = +[](FILE* stream, const PhysicalData& e) {
     fprintf(stream,
-        "%5hu %5hu %5hu %5hu %5hu %5hu %5hu %5hu %s %5" PRIu32 " %5" PRIu32,
+        "%5hu %5hu %5hu %5hu %5hu %5hu %5hu %5hu %5" PRIu32 " %5" PRIu32,
         e.atp.load(),
         e.psv.load(),
         e.evp.load(),
@@ -39,17 +39,16 @@ void BattleParamsIndex::Table::print(FILE* stream) const {
         e.ata.load(),
         e.lck.load(),
         e.esp.load(),
-        a1str.c_str(),
         e.experience.load(),
         e.difficulty.load());
   };
 
   for (size_t diff = 0; diff < 4; diff++) {
-    fprintf(stream, "%c ZZ   ATP   PSV   EVP    HP   DFP   ATA   LCK   ESP                       A1   EXP  DIFF\n",
+    fprintf(stream, "%c ZZ   ATP   PSV   EVP    HP   DFP   ATA   LCK   ESP   EXP  DIFF\n",
         abbreviation_for_difficulty(diff));
     for (size_t z = 0; z < 0x60; z++) {
       fprintf(stream, "  %02zX ", z);
-      print_entry(stream, this->difficulty[diff][z]);
+      print_entry(stream, this->physical_data[diff][z]);
       fputc('\n', stream);
     }
   }
@@ -82,20 +81,7 @@ BattleParamsIndex::BattleParamsIndex(
   }
 }
 
-const BattleParamsIndex::Entry& BattleParamsIndex::get(
-    bool solo, Episode episode, uint8_t difficulty, EnemyType type) const {
-  return this->get(solo, episode, difficulty, battle_param_index_for_enemy_type(episode, type));
-}
-
-const BattleParamsIndex::Entry& BattleParamsIndex::get(
-    bool solo, Episode episode, uint8_t difficulty, size_t index) const {
-  if (difficulty > 4) {
-    throw invalid_argument("incorrect difficulty");
-  }
-  if (index >= 0x60) {
-    throw invalid_argument("incorrect monster type");
-  }
-
+const BattleParamsIndex::Table& BattleParamsIndex::get_table(bool solo, Episode episode) const {
   uint8_t ep_index;
   switch (episode) {
     case Episode::EP1:
@@ -111,5 +97,5 @@ const BattleParamsIndex::Entry& BattleParamsIndex::get(
       throw invalid_argument("invalid episode");
   }
 
-  return this->files[!!solo][ep_index].table->difficulty[difficulty][index];
+  return *this->files[!!solo][ep_index].table;
 }
