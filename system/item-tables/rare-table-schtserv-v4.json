@@ -1,20 +1,8 @@
 {
-  // This file is the Blue Burst rare item table. It specifies where each rare
-  // item can be found, and how likely it is to be found from each source.
-
-  // The overall data structure is:
-  // {GameMode: {Episode: {Difficulty: {SectionID: {Where: [RareSpec, ...]}}}}}
-  // Most of the keys should be self-explanatory. `Where` can be an enemy type
-  // (which matches the EnemyType enum), or "Box-" suffixed with an area name.
-  // RareSpec entries are lists of 2 items of the form [Probability, ItemDesc].
-  // Probability may be a 32-bit integer specifying the relative frequency of
-  // finding the item, out of 2^32 (so 0x80000000 means a 50% chance), or it may
-  // be a fraction represented as a string (e.g. "3/32"). ItemDesc may be a
-  // textual description of the item, or it may be an integer specifying the
-  // 3-byte item code (in this case, the item code may be specified in hex, like
-  // 0x009D00). Keep in mind that only the first 3 bytes of the item code are
-  // used, so weapon grinds and attributes, etc. will be ignored when specifying
-  // items as strings.
+  // Rare table for PSO BB from Schtserv.
+  // See rare-table-v4.json for a description of how this file works.
+  // This file is not used by default. To use this rare table, simply rename it
+  // to rare-table-v4.json.
   "Normal": {
     "Episode1": {
       "Hard": {
@@ -61,7 +49,7 @@
             ["13/4096", 0x000B03]
           ],
           "CANADINE": [["1/128", 0x000A04]],
-          "CANADINE_GROUP": [["1/128", 0x000A04]],
+          "CANADINE_GROUP": [],
           "CANANE": [["7/256", 0x000B04]],
           "CHAOS_BRINGER": [["1/64", 0x002C00]],
           "CHAOS_SORCERER": [["7/256", 0x000B04]],
@@ -137,7 +125,7 @@
             ["7/8192", 0x030E18]
           ],
           "CANADINE": [["1/128", 0x000605]],
-          "CANADINE_GROUP": [["1/128", 0x000605]],
+          "CANADINE_GROUP": [],
           "CANANE": [["7/256", 0x000705]],
           "CHAOS_BRINGER": [["1/64", 0x002C00]],
           "CHAOS_SORCERER": [["7/256", 0x000705]],
@@ -224,7 +212,7 @@
             ["7/8192", 0x030E18]
           ],
           "CANADINE": [["1/128", 0x000A04]],
-          "CANADINE_GROUP": [["1/128", 0x000A04]],
+          "CANADINE_GROUP": [],
           "CANANE": [["7/256", 0x000305]],
           "CHAOS_BRINGER": [["1/64", 0x002C00]],
           "CHAOS_SORCERER": [["7/256", 0x000305]],
@@ -316,7 +304,7 @@
             ["3/2048", 0x030E24]
           ],
           "CANADINE": [["1/128", 0x000A04]],
-          "CANADINE_GROUP": [["1/128", 0x000A04]],
+          "CANADINE_GROUP": [],
           "CANANE": [["7/256", 0x000C04]],
           "CHAOS_BRINGER": [["1/64", 0x002C00]],
           "CHAOS_SORCERER": [["7/256", 0x000C04]],
@@ -397,7 +385,7 @@
             ["7/8192", 0x030E18]
           ],
           "CANADINE": [["1/128", 0x000A04]],
-          "CANADINE_GROUP": [["1/128", 0x000A04]],
+          "CANADINE_GROUP": [],
           "CANANE": [["7/256", 0x000805]],
           "CHAOS_BRINGER": [["1/64", 0x002C00]],
           "CHAOS_SORCERER": [["7/256", 0x000305]],
@@ -483,7 +471,7 @@
             ["7/8192", 0x01024B]
           ],
           "CANADINE": [["1/128", 0x000605]],
-          "CANADINE_GROUP": [["1/128", 0x000605]],
+          "CANADINE_GROUP": [],
           "CANANE": [["7/256", 0x000505]],
           "CHAOS_BRINGER": [["1/64", 0x000506]],
           "CHAOS_SORCERER": [["7/256", 0x000905]],
@@ -563,7 +551,7 @@
             ["7/8192", 0x01024B]
           ],
           "CANADINE": [["1/128", 0x000105]],
-          "CANADINE_GROUP": [["1/128", 0x000105]],
+          "CANADINE_GROUP": [],
           "CANANE": [["7/256", 0x000705]],
           "CHAOS_BRINGER": [["1/64", 0x000F00]],
           "CHAOS_SORCERER": [["7/256", 0x000205]],
@@ -642,7 +630,7 @@
             ["13/2147483648", 0x030E1A]
           ],
           "CANADINE": [["1/128", 0x000605]],
-          "CANADINE_GROUP": [["1/128", 0x000605]],
+          "CANADINE_GROUP": [],
           "CANANE": [["7/256", 0x000405]],
           "CHAOS_BRINGER": [["1/64", 0x001003]],
           "CHAOS_SORCERER": [["7/256", 0x000905]],
@@ -727,7 +715,7 @@
             ["7/8192", 0x01024B]
           ],
           "CANADINE": [["1/128", 0x000605]],
-          "CANADINE_GROUP": [["1/128", 0x000605]],
+          "CANADINE_GROUP": [],
           "CANANE": [["7/256", 0x030A00]],
           "CHAOS_BRINGER": [["1/64", 0x000506]],
           "CHAOS_SORCERER": [["7/256", 0x000505]],
@@ -805,7 +793,7 @@
           ],
           "Box-Ruins3": [["7/8192", 0x030E24]],
           "CANADINE": [["1/128", 0x000A04]],
-          "CANADINE_GROUP": [["1/128", 0x000A04]],
+          "CANADINE_GROUP": [],
           "CANANE": [["7/256", 0x000C04]],
           "CHAOS_BRINGER": [["1/64", 0x006800]],
           "CHAOS_SORCERER": [["7/256", 0x000905]],
@@ -872,7 +860,7 @@
             ["13/16384", 0x000B02]
           ],
           "CANADINE": [["9/16384", 0x01024E]],
-          "CANADINE_GROUP": [["9/16384", 0x01024E]],
+          "CANADINE_GROUP": [],
           "CANANE": [["9/16", 0x030002]],
           "CHAOS_BRINGER": [["9/16", 0x030002]],
           "CHAOS_SORCERER": [["9/16", 0x030300]],
@@ -934,7 +922,7 @@
             ["7/8192", 0x030E24]
           ],
           "CANADINE": [["9/16384", 0x01024D]],
-          "CANADINE_GROUP": [["9/16384", 0x01024D]],
+          "CANADINE_GROUP": [],
           "CANANE": [["11/8192", 0x030A00]],
           "CHAOS_BRINGER": [["9/16", 0x030002]],
           "CHAOS_SORCERER": [["7/8", 0x030B02]],
@@ -1002,7 +990,7 @@
             ["7/8192", 0x030E24]
           ],
           "CANADINE": [["9/16384", 0x01024E]],
-          "CANADINE_GROUP": [["9/16384", 0x01024E]],
+          "CANADINE_GROUP": [],
           "CANANE": [["9/16", 0x030300]],
           "CHAOS_BRINGER": [["9/16", 0x030002]],
           "CHAOS_SORCERER": [["9/16", 0x030002]],
@@ -1076,7 +1064,7 @@
             ["7/8192", 0x030E24]
           ],
           "CANADINE": [["9/16384", 0x01024E]],
-          "CANADINE_GROUP": [["9/16384", 0x01024E]],
+          "CANADINE_GROUP": [],
           "CANANE": [["9/16", 0x030300]],
           "CHAOS_BRINGER": [["9/16", 0x030002]],
           "CHAOS_SORCERER": [["9/16", 0x030002]],
@@ -1141,7 +1129,7 @@
             ["13/16384", 0x000303]
           ],
           "CANADINE": [["9/16384", 0x01024E]],
-          "CANADINE_GROUP": [["9/16384", 0x01024E]],
+          "CANADINE_GROUP": [],
           "CANANE": [["9/16", 0x030300]],
           "CHAOS_BRINGER": [["9/16", 0x030300]],
           "CHAOS_SORCERER": [["9/16", 0x030002]],
@@ -1205,7 +1193,7 @@
             ["7/8192", 0x030E24]
           ],
           "CANADINE": [["9/16384", 0x01024E]],
-          "CANADINE_GROUP": [["9/16384", 0x01024E]],
+          "CANADINE_GROUP": [],
           "CANANE": [["9/16", 0x030300]],
           "CHAOS_BRINGER": [["9/16", 0x030002]],
           "CHAOS_SORCERER": [["9/16", 0x030002]],
@@ -1328,7 +1316,7 @@
             ["13/16384", 0x000403]
           ],
           "CANADINE": [["9/16384", 0x01024C]],
-          "CANADINE_GROUP": [["9/16384", 0x01024C]],
+          "CANADINE_GROUP": [],
           "CANANE": [["9/16", 0x030002]],
           "CHAOS_BRINGER": [["9/16", 0x030002]],
           "CHAOS_SORCERER": [["9/16", 0x030B01]],
@@ -1441,7 +1429,7 @@
           "Box-Ruins2": [["7/8192", 0x030E25]],
           "Box-Ruins3": [["7/8192", 0x030E24]],
           "CANADINE": [["9/16384", 0x01024E]],
-          "CANADINE_GROUP": [["9/16384", 0x01024E]],
+          "CANADINE_GROUP": [],
           "CANANE": [["9/16", 0x030300]],
           "CHAOS_BRINGER": [["9/16", 0x030002]],
           "CHAOS_SORCERER": [["9/16", 0x030002]],
@@ -1527,17 +1515,17 @@
             ["11/4096", 0x000A06]
           ],
           "CANADINE": [["1/64", 0x000B06]],
-          "CANADINE_GROUP": [["1/64", 0x000B06]],
+          "CANADINE_GROUP": [],
           "CANANE": [["1/1024", 0x010216]],
           "CHAOS_BRINGER": [["1/1024", 0x010134]],
           "CHAOS_SORCERER": [["13/4096", 0x030D00]],
           "CLAW": [["1/64", 0x000407]],
           "DARK_BELRA": [["13/131072", 0x030E0A]],
-          "DARK_FALZ_2": [["1/64", 0x010232]],
-          "DARK_FALZ_3": [["1/64", 0x010232]],
+          "DARK_FALZ_2": [["1/64", 0x01028F]],
+          "DARK_FALZ_3": [],
           "DARK_GUNNER": [["13/4096", 0x004100]],
           "DELSABER": [["13/4096", 0x009400]],
-          "DE_ROL_LE": [["13/64", 0x000B06]],
+          "DE_ROL_LE": [["7/256", 0x000408]],
           "DIMENIAN": [["1/64", 0x009002]],
           "DRAGON": [["7/256", 0x001300]],
           "DUBCHIC": [["1/64", 0x008901]],
@@ -1566,7 +1554,7 @@
           "SINOW_BEAT": [["13/4096", 0x030E08]],
           "SINOW_GOLD": [["13/131072", 0x001F00]],
           "SO_DIMENIAN": [["13/4096", 0x009200]],
-          "VOL_OPT_2": [["13/64", 0x000407]]
+          "VOL_OPT_2": [["7/256", 0x00070B]]
         },
         "Greennill": {
           "AL_RAPPY": [["1/2", 0x010129]],
@@ -1618,19 +1606,19 @@
             ["7/8192", 0x030E24]
           ],
           "CANADINE": [["1/64", 0x000707]],
-          "CANADINE_GROUP": [["1/64", 0x000707]],
+          "CANADINE_GROUP": [],
           "CANANE": [["1/1024", 0x01022B]],
           "CHAOS_BRINGER": [["13/4096", 0x030D04]],
           "CHAOS_SORCERER": [["5/524288", 0x001D00]],
           "CLAW": [["1/64", 0x000307]],
           "DARK_BELRA": [["13/4096", 0x030D0B]],
           "DARK_FALZ_2": [["1/64", 0x010231]],
-          "DARK_FALZ_3": [["1/64", 0x010231]],
+          "DARK_FALZ_3": [],
           "DARK_GUNNER": [["13/4096", 0x004C00]],
           "DELSABER": [["13/131072", 0x001001]],
           "DE_ROL_LE": [["7/256", 0x001300]],
           "DIMENIAN": [["13/4096", 0x008B02]],
-          "DRAGON": [["13/64", 0x000707]],
+          "DRAGON": [["7/256", 0x00070A]],
           "DUBCHIC": [["1/512", 0x01031F]],
           "EVIL_SHARK": [["1/64", 0x000707]],
           "GARANZ": [["13/4096", 0x030D0A]],
@@ -1709,17 +1697,17 @@
             ["11/4096", 0x000A06]
           ],
           "CANADINE": [["1/64", 0x000207]],
-          "CANADINE_GROUP": [["1/64", 0x000207]],
+          "CANADINE_GROUP": [],
           "CANANE": [["13/4096", 0x008902]],
           "CHAOS_BRINGER": [["13/131072", 0x005A00]],
           "CHAOS_SORCERER": [["13/4096", 0x030D00]],
           "CLAW": [["1/64", 0x000D01]],
           "DARK_BELRA": [["13/4096", 0x009200]],
-          "DARK_FALZ_2": [["1/64", 0x010231]],
-          "DARK_FALZ_3": [["1/64", 0x010231]],
+          "DARK_FALZ_2": [["1/64", 0x01028F]],
+          "DARK_FALZ_3": [],
           "DARK_GUNNER": [["13/4096", 0x009400]],
           "DELSABER": [["5/1024", 0x030D05]],
-          "DE_ROL_LE": [["13/64", 0x000207]],
+          "DE_ROL_LE": [["7/256", 0x030D15]],
           "DIMENIAN": [["1/64", 0x000307]],
           "DRAGON": [["7/256", 0x030D07]],
           "DUBCHIC": [["13/131072", 0x009307]],
@@ -1748,7 +1736,7 @@
           "SINOW_BEAT": [["1/64", 0x000307]],
           "SINOW_GOLD": [["13/131072", 0x001F00]],
           "SO_DIMENIAN": [["1/512", 0x010340]],
-          "VOL_OPT_2": [["13/64", 0x000307]]
+          "VOL_OPT_2": [["7/256", 0x000308]]
         },
         "Pinkal": {
           "AL_RAPPY": [["3/64", 0x001001]],
@@ -1806,19 +1794,19 @@
             ["11/4096", 0x000A06]
           ],
           "CANADINE": [["1/64", 0x000C06]],
-          "CANADINE_GROUP": [["1/64", 0x000C06]],
+          "CANADINE_GROUP": [],
           "CANANE": [["1/1024", 0x010134]],
           "CHAOS_BRINGER": [["13/4096", 0x030D04]],
           "CHAOS_SORCERER": [["13/4096", 0x030D00]],
           "CLAW": [["13/4096", 0x000D01]],
           "DARK_BELRA": [["13/4096", 0x009200]],
           "DARK_FALZ_2": [["1/64", 0x010231]],
-          "DARK_FALZ_3": [["1/64", 0x010231]],
+          "DARK_FALZ_3": [],
           "DARK_GUNNER": [["13/4096", 0x009400]],
           "DELSABER": [["5/1024", 0x030D05]],
           "DE_ROL_LE": [["7/256", 0x001300]],
           "DIMENIAN": [["1/64", 0x000C06]],
-          "DRAGON": [["13/64", 0x000C06]],
+          "DRAGON": [["7/256", 0x01035E]],
           "DUBCHIC": [["13/4096", 0x030E08]],
           "EVIL_SHARK": [["1/64", 0x000C06]],
           "GARANZ": [["1/64", 0x008C01]],
@@ -1895,19 +1883,19 @@
             ["11/4096", 0x000A06]
           ],
           "CANADINE": [["1/1024", 0x01022B]],
-          "CANADINE_GROUP": [["1/1024", 0x01022B]],
+          "CANADINE_GROUP": [],
           "CANANE": [["13/4096", 0x006C00]],
           "CHAOS_BRINGER": [["13/4096", 0x030D04]],
           "CHAOS_SORCERER": [["13/131072", 0x030E0A]],
           "CLAW": [["1/64", 0x008C01]],
           "DARK_BELRA": [["13/4096", 0x030D0B]],
           "DARK_FALZ_2": [["1/64", 0x010232]],
-          "DARK_FALZ_3": [["1/64", 0x010232]],
+          "DARK_FALZ_3": [],
           "DARK_GUNNER": [["1/1024", 0x010216]],
           "DELSABER": [["5/1024", 0x030D05]],
-          "DE_ROL_LE": [["13/64", 0x000307]],
+          "DE_ROL_LE": [["7/256", 0x008B03]],
           "DIMENIAN": [["13/4096", 0x009200]],
-          "DRAGON": [["13/64", 0x000807]],
+          "DRAGON": [["7/256", 0x01035D]],
           "DUBCHIC": [["1/512", 0x010335]],
           "EVIL_SHARK": [["1/64", 0x000D01]],
           "GARANZ": [["13/4096", 0x030D0A]],
@@ -1990,19 +1978,19 @@
             ["7/8192", 0x030E24]
           ],
           "CANADINE": [["1/64", 0x009005]],
-          "CANADINE_GROUP": [["1/64", 0x009005]],
+          "CANADINE_GROUP": [],
           "CANANE": [["13/4096", 0x030E08]],
           "CHAOS_BRINGER": [["13/4096", 0x001200]],
           "CHAOS_SORCERER": [["5/524288", 0x001D00]],
           "CLAW": [["13/4096", 0x010117]],
           "DARK_BELRA": [["13/4096", 0x002E00]],
           "DARK_FALZ_2": [["1/64", 0x010227]],
-          "DARK_FALZ_3": [["1/64", 0x010227]],
+          "DARK_FALZ_3": [],
           "DARK_GUNNER": [["1/512", 0x010134]],
           "DELSABER": [["5/1024", 0x030D05]],
-          "DE_ROL_LE": [["13/64", 0x000507]],
+          "DE_ROL_LE": [["7/256", 0x030D15]],
           "DIMENIAN": [["1/64", 0x000507]],
-          "DRAGON": [["13/64", 0x000507]],
+          "DRAGON": [["7/256", 0x000B07]],
           "DUBCHIC": [["1/512", 0x01012B]],
           "EVIL_SHARK": [["1/64", 0x008B01]],
           "GARANZ": [["13/4096", 0x008B02]],
@@ -2081,17 +2069,17 @@
             ["11/4096", 0x000A06]
           ],
           "CANADINE": [["1/64", 0x000207]],
-          "CANADINE_GROUP": [["1/64", 0x000207]],
+          "CANADINE_GROUP": [],
           "CANANE": [["13/4096", 0x008902]],
           "CHAOS_BRINGER": [["13/4096", 0x002E00]],
           "CHAOS_SORCERER": [["5/524288", 0x001D00]],
           "CLAW": [["1/64", 0x000D01]],
           "DARK_BELRA": [["1/1024", 0x010133]],
           "DARK_FALZ_2": [["1/64", 0x010227]],
-          "DARK_FALZ_3": [["1/64", 0x010227]],
+          "DARK_FALZ_3": [],
           "DARK_GUNNER": [["13/131072", 0x009302]],
           "DELSABER": [["5/1024", 0x030D05]],
-          "DE_ROL_LE": [["13/64", 0x000207]],
+          "DE_ROL_LE": [["7/256", 0x002001]],
           "DIMENIAN": [["1/64", 0x000207]],
           "DRAGON": [["7/256", 0x030D07]],
           "DUBCHIC": [["1/64", 0x000707]],
@@ -2120,7 +2108,7 @@
           "SINOW_BEAT": [["1/1024", 0x01012B]],
           "SINOW_GOLD": [["13/4096", 0x030D06]],
           "SO_DIMENIAN": [["13/131072", 0x001F00]],
-          "VOL_OPT_2": [["13/64", 0x000707]]
+          "VOL_OPT_2": [["7/256", 0x000709]]
         },
         "Viridia": {
           "AL_RAPPY": [["1/2", 0x008B02]],
@@ -2170,19 +2158,19 @@
             ["11/4096", 0x000A06]
           ],
           "CANADINE": [["13/131072", 0x009300]],
-          "CANADINE_GROUP": [["13/131072", 0x009300]],
+          "CANADINE_GROUP": [],
           "CANANE": [["5/1024", 0x010226]],
           "CHAOS_BRINGER": [["13/4096", 0x030D04]],
           "CHAOS_SORCERER": [["13/131072", 0x001F00]],
           "CLAW": [["1/64", 0x000D01]],
           "DARK_BELRA": [["13/4096", 0x030D0B]],
           "DARK_FALZ_2": [["1/64", 0x010227]],
-          "DARK_FALZ_3": [["1/64", 0x010227]],
+          "DARK_FALZ_3": [],
           "DARK_GUNNER": [["1/1024", 0x01012B]],
           "DELSABER": [["5/1024", 0x030D05]],
-          "DE_ROL_LE": [["13/64", 0x000407]],
+          "DE_ROL_LE": [["7/256", 0x001402]],
           "DIMENIAN": [["1/64", 0x000407]],
-          "DRAGON": [["13/64", 0x000907]],
+          "DRAGON": [["7/256", 0x00070A]],
           "DUBCHIC": [["1/512", 0x010340]],
           "EVIL_SHARK": [["1/64", 0x000407]],
           "GARANZ": [["13/4096", 0x030D0A]],
@@ -2257,17 +2245,17 @@
             ["11/4096", 0x000A06]
           ],
           "CANADINE": [["13/131072", 0x009309]],
-          "CANADINE_GROUP": [["13/131072", 0x009309]],
+          "CANADINE_GROUP": [],
           "CANANE": [["13/4096", 0x008902]],
           "CHAOS_BRINGER": [["1/512", 0x010232]],
           "CHAOS_SORCERER": [["13/131072", 0x004200]],
           "CLAW": [["1/512", 0x010332]],
           "DARK_BELRA": [["13/4096", 0x030D0B]],
           "DARK_FALZ_2": [["7/256", 0x010227]],
-          "DARK_FALZ_3": [["7/256", 0x010227]],
+          "DARK_FALZ_3": [],
           "DARK_GUNNER": [["13/4096", 0x004100]],
           "DELSABER": [["13/4096", 0x009400]],
-          "DE_ROL_LE": [["13/64", 0x000507]],
+          "DE_ROL_LE": [["7/256", 0x01035F]],
           "DIMENIAN": [["13/4096", 0x002E00]],
           "DRAGON": [["7/256", 0x030D07]],
           "DUBCHIC": [["13/4096", 0x001400]],
@@ -2347,14 +2335,14 @@
             ["7/8192", 0x030E24]
           ],
           "CANADINE": [["13/131072", 0x008D00]],
-          "CANADINE_GROUP": [["13/131072", 0x008D00]],
+          "CANADINE_GROUP": [],
           "CANANE": [["13/4096", 0x030E08]],
           "CHAOS_BRINGER": [["13/4096", 0x030D04]],
           "CHAOS_SORCERER": [["13/4096", 0x030D00]],
           "CLAW": [["1/64", 0x009007]],
           "DARK_BELRA": [["13/4096", 0x030D0B]],
           "DARK_FALZ_2": [["1/64", 0x010232]],
-          "DARK_FALZ_3": [["1/64", 0x010232]],
+          "DARK_FALZ_3": [],
           "DARK_GUNNER": [["13/4096", 0x009200]],
           "DELSABER": [["1/64", 0x030D03]],
           "DE_ROL_LE": [["7/256", 0x001300]],
@@ -2386,7 +2374,7 @@
           "SINOW_BEAT": [["1/1024", 0x01022B]],
           "SINOW_GOLD": [["13/4096", 0x030D06]],
           "SO_DIMENIAN": [["13/4096", 0x002E00]],
-          "VOL_OPT_2": [["13/64", 0x000807]]
+          "VOL_OPT_2": [["7/256", 0x010299]]
         }
       },
       "VeryHard": {
@@ -2440,7 +2428,7 @@
             ["7/8192", 0x01024B]
           ],
           "CANADINE": [["1/128", 0x000B05]],
-          "CANADINE_GROUP": [["1/128", 0x000B05]],
+          "CANADINE_GROUP": [],
           "CANANE": [["1/128", 0x010223]],
           "CHAOS_BRINGER": [["7/256", 0x000407]],
           "CHAOS_SORCERER": [["7/256", 0x008C01]],
@@ -2526,7 +2514,7 @@
             ["7/8192", 0x030F00]
           ],
           "CANADINE": [["1/128", 0x000706]],
-          "CANADINE_GROUP": [["1/128", 0x000706]],
+          "CANADINE_GROUP": [],
           "CANANE": [["1/128", 0x010223]],
           "CHAOS_BRINGER": [["7/256", 0x030500]],
           "CHAOS_SORCERER": [["7/256", 0x008C00]],
@@ -2534,7 +2522,7 @@
           "DARK_BELRA": [["1/64", 0x000706]],
           "DARK_GUNNER": [["1/128", 0x01011E]],
           "DELSABER": [["1/64", 0x030D03]],
-          "DE_ROL_LE": [["3/32", 0x008C01]],
+          "DE_ROL_LE": [["7/512", 0x030D15]],
           "DIMENIAN": [["1/128", 0x000706]],
           "DRAGON": [["3/32", 0x008901]],
           "DUBCHIC": [["1/64", 0x01030B]],
@@ -2614,7 +2602,7 @@
             ["13/4096", 0x000A05]
           ],
           "CANADINE": [["1/128", 0x000306]],
-          "CANADINE_GROUP": [["1/128", 0x000306]],
+          "CANADINE_GROUP": [],
           "CANANE": [["1/128", 0x010223]],
           "CHAOS_BRINGER": [["7/256", 0x000307]],
           "CHAOS_SORCERER": [["7/256", 0x008C01]],
@@ -2700,7 +2688,7 @@
             ["13/4096", 0x000606]
           ],
           "CANADINE": [["1/128", 0x000C05]],
-          "CANADINE_GROUP": [["1/128", 0x000C05]],
+          "CANADINE_GROUP": [],
           "CANANE": [["1/128", 0x010223]],
           "CHAOS_BRINGER": [["7/256", 0x000C06]],
           "CHAOS_SORCERER": [["7/256", 0x008C01]],
@@ -2708,7 +2696,7 @@
           "DARK_BELRA": [["1/64", 0x000A05]],
           "DARK_GUNNER": [["1/128", 0x010226]],
           "DELSABER": [["1/64", 0x030D03]],
-          "DE_ROL_LE": [["3/32", 0x008C01]],
+          "DE_ROL_LE": [["7/512", 0x030D15]],
           "DIMENIAN": [["1/128", 0x000406]],
           "DRAGON": [["3/32", 0x008901]],
           "DUBCHIC": [["1/64", 0x010338]],
@@ -2786,7 +2774,7 @@
             ["13/4096", 0x000A05]
           ],
           "CANADINE": [["1/128", 0x000806]],
-          "CANADINE_GROUP": [["1/128", 0x000806]],
+          "CANADINE_GROUP": [],
           "CANANE": [["1/128", 0x010223]],
           "CHAOS_BRINGER": [["7/256", 0x000807]],
           "CHAOS_SORCERER": [["7/256", 0x008C00]],
@@ -2794,7 +2782,7 @@
           "DARK_BELRA": [["1/64", 0x000A05]],
           "DARK_GUNNER": [["1/128", 0x01011D]],
           "DELSABER": [["1/64", 0x030D05]],
-          "DE_ROL_LE": [["3/32", 0x008C01]],
+          "DE_ROL_LE": [["7/512", 0x030D15]],
           "DIMENIAN": [["1/128", 0x000306]],
           "DRAGON": [["3/32", 0x008901]],
           "DUBCHIC": [["1/64", 0x01030B]],
@@ -2872,7 +2860,7 @@
             ["7/8192", 0x030E25]
           ],
           "CANADINE": [["1/128", 0x000506]],
-          "CANADINE_GROUP": [["1/128", 0x000506]],
+          "CANADINE_GROUP": [],
           "CANANE": [["1/128", 0x010223]],
           "CHAOS_BRINGER": [["7/256", 0x000506]],
           "CHAOS_SORCERER": [["7/256", 0x008C00]],
@@ -2880,7 +2868,7 @@
           "DARK_BELRA": [["1/64", 0x010226]],
           "DARK_GUNNER": [["1/128", 0x010128]],
           "DELSABER": [["1/64", 0x030D05]],
-          "DE_ROL_LE": [["3/32", 0x008C01]],
+          "DE_ROL_LE": [["7/512", 0x030D15]],
           "DIMENIAN": [["1/128", 0x000906]],
           "DRAGON": [["3/32", 0x008901]],
           "DUBCHIC": [["1/64", 0x010343]],
@@ -2956,7 +2944,7 @@
             ["7/8192", 0x030F00]
           ],
           "CANADINE": [["1/128", 0x000705]],
-          "CANADINE_GROUP": [["1/128", 0x000705]],
+          "CANADINE_GROUP": [],
           "CANANE": [["1/128", 0x010226]],
           "CHAOS_BRINGER": [["7/256", 0x000207]],
           "CHAOS_SORCERER": [["7/256", 0x008C00]],
@@ -2964,7 +2952,7 @@
           "DARK_BELRA": [["1/64", 0x030B00]],
           "DARK_GUNNER": [["1/128", 0x01011D]],
           "DELSABER": [["1/64", 0x030D03]],
-          "DE_ROL_LE": [["3/32", 0x008C01]],
+          "DE_ROL_LE": [["7/512", 0x030D15]],
           "DIMENIAN": [["1/128", 0x000706]],
           "DRAGON": [["3/32", 0x008901]],
           "DUBCHIC": [["1/64", 0x01030B]],
@@ -3042,7 +3030,7 @@
             ["13/4096", 0x000A05]
           ],
           "CANADINE": [["1/128", 0x000405]],
-          "CANADINE_GROUP": [["1/128", 0x000405]],
+          "CANADINE_GROUP": [],
           "CANANE": [["1/1024", 0x010134]],
           "CHAOS_BRINGER": [["7/256", 0x000907]],
           "CHAOS_SORCERER": [["7/256", 0x008C00]],
@@ -3128,7 +3116,7 @@
             ["7/8192", 0x01024B]
           ],
           "CANADINE": [["1/128", 0x000506]],
-          "CANADINE_GROUP": [["1/128", 0x000506]],
+          "CANADINE_GROUP": [],
           "CANANE": [["1/128", 0x010221]],
           "CHAOS_BRINGER": [["7/256", 0x000506]],
           "CHAOS_SORCERER": [["7/256", 0x008C00]],
@@ -3220,7 +3208,7 @@
             ["13/4096", 0x000505]
           ],
           "CANADINE": [["1/128", 0x000806]],
-          "CANADINE_GROUP": [["1/128", 0x000806]],
+          "CANADINE_GROUP": [],
           "CANANE": [["1/128", 0x010223]],
           "CHAOS_BRINGER": [["7/256", 0x000B05]],
           "CHAOS_SORCERER": [["7/256", 0x008C00]],
@@ -4841,7 +4829,7 @@
       "Ultimate": {
         "Bluefull": {
           "BARBAROUS_WOLF": [["13/4096", 0x002600]],
-          "BARBA_RAY": [["13/64", 0x000407]],
+          "BARBA_RAY": [["7/256", 0x030D15]],
           "Box-CentralControlArea": [
             ["13/8192", 0x000407],
             ["7/4096", 0x000B05],
@@ -4897,7 +4885,7 @@
           "DOLMOLM": [["13/4096", 0x005601]],
           "DUBCHIC": [["1/64", 0x000B06]],
           "EGG_RAPPY": [["7/8", 0x031501]],
-          "EPSILON": [["13/4096", 0x001006]],
+          "EPSILON": [["13/4096", 0x030D14]],
           "GAL_GRYPHON": [["7/256", 0x030D12]],
           "GARANZ": [["1/64", 0x010222]],
           "GEE": [["1/64", 0x000B06]],
@@ -4939,7 +4927,7 @@
         },
         "Greennill": {
           "BARBAROUS_WOLF": [["1/512", 0x010335]],
-          "BARBA_RAY": [["13/64", 0x000E01]],
+          "BARBA_RAY": [["7/256", 0x01035F]],
           "Box-CentralControlArea": [
             ["13/8192", 0x000707],
             ["7/4096", 0x000306],
@@ -4993,7 +4981,7 @@
           "DOLMOLM": [["1/64", 0x000307]],
           "DUBCHIC": [["1/64", 0x000707]],
           "EGG_RAPPY": [["7/8", 0x031501]],
-          "EPSILON": [["13/4096", 0x006600]],
+          "EPSILON": [["1/64", 0x030D14]],
           "GAL_GRYPHON": [["7/256", 0x030D12]],
           "GARANZ": [["13/4096", 0x004E00]],
           "GEE": [["1/512", 0x010344]],
@@ -5018,7 +5006,7 @@
           "MORFOS": [["13/131072", 0x001F00]],
           "MOTHMANT": [["13/4096", 0x000707]],
           "NAR_LILY": [["7/8", 0x010225]],
-          "OLGA_FLOW_2": [["1/64", 0x030E01]],
+          "OLGA_FLOW_2": [["1/64", 0x031809]],
           "PAN_ARMS": [["13/4096", 0x030E0C]],
           "POISON_LILY": [["1/64", 0x000707]],
           "RAG_RAPPY": [["13/4096", 0x002600]],
@@ -5035,7 +5023,7 @@
         },
         "Oran": {
           "BARBAROUS_WOLF": [["13/4096", 0x002700]],
-          "BARBA_RAY": [["13/64", 0x008B02]],
+          "BARBA_RAY": [["7/256", 0x01035E]],
           "Box-CentralControlArea": [
             ["13/8192", 0x000307],
             ["7/4096", 0x000206],
@@ -5098,7 +5086,7 @@
           "GIBBLES": [["13/131072", 0x001D00]],
           "GILLCHIC": [["13/4096", 0x002300]],
           "GI_GUE": [["13/4096", 0x030D0C]],
-          "GOL_DRAGON": [["13/64", 0x000207]],
+          "GOL_DRAGON": [["7/256", 0x000C07]],
           "GRASS_ASSASSIN": [["13/4096", 0x004600]],
           "HALLO_RAPPY": [["7/8", 0x031502]],
           "HIDOOM": [["13/4096", 0x006A00]],
@@ -5132,7 +5120,7 @@
         },
         "Pinkal": {
           "BARBAROUS_WOLF": [["1/512", 0x010320]],
-          "BARBA_RAY": [["13/64", 0x008902]],
+          "BARBA_RAY": [["7/256", 0x030D15]],
           "Box-CentralControlArea": [
             ["13/8192", 0x000C06],
             ["7/4096", 0x000406],
@@ -5195,7 +5183,7 @@
           "DUBCHIC": [["1/64", 0x000C06]],
           "EGG_RAPPY": [["7/8", 0x031501]],
           "EPSILON": [["13/4096", 0x009800]],
-          "GAL_GRYPHON": [["7/256", 0x030D12]],
+          "GAL_GRYPHON": [["7/256", 0x01035D]],
           "GARANZ": [["13/4096", 0x030E0C]],
           "GEE": [["1/64", 0x000407]],
           "GIBBLES": [["13/4096", 0x003B00]],
@@ -5219,7 +5207,7 @@
           "MORFOS": [["1/1024", 0x010228]],
           "MOTHMANT": [["13/4096", 0x000C06]],
           "NAR_LILY": [["1/2", 0x005000]],
-          "OLGA_FLOW_2": [["1/64", 0x030E01]],
+          "OLGA_FLOW_2": [["1/64", 0x031809]],
           "PAN_ARMS": [["1/64", 0x000C06]],
           "POISON_LILY": [["1/64", 0x000C06]],
           "RAG_RAPPY": [["13/4096", 0x002300]],
@@ -5236,7 +5224,7 @@
         },
         "Purplenum": {
           "BARBAROUS_WOLF": [["1/512", 0x01030F]],
-          "BARBA_RAY": [["13/64", 0x000807]],
+          "BARBA_RAY": [["7/256", 0x01035E]],
           "Box-CentralControlArea": [
             ["13/8192", 0x000807],
             ["7/4096", 0x000306],
@@ -5297,7 +5285,7 @@
           "GIBBLES": [["13/4096", 0x010320]],
           "GILLCHIC": [["1/64", 0x000807]],
           "GI_GUE": [["13/4096", 0x030D0C]],
-          "GOL_DRAGON": [["7/256", 0x006D00]],
+          "GOL_DRAGON": [["7/256", 0x008B03]],
           "GRASS_ASSASSIN": [["13/4096", 0x006C00]],
           "HALLO_RAPPY": [["7/8", 0x031502]],
           "HIDOOM": [["13/4096", 0x006A00]],
@@ -5413,7 +5401,7 @@
           "MORFOS": [["13/4096", 0x01011D]],
           "MOTHMANT": [["13/4096", 0x000507]],
           "NAR_LILY": [["1/2", 0x005000]],
-          "OLGA_FLOW_2": [["1/64", 0x030E01]],
+          "OLGA_FLOW_2": [["1/64", 0x031809]],
           "PAN_ARMS": [["13/4096", 0x010116]],
           "POISON_LILY": [["13/4096", 0x002000]],
           "RAG_RAPPY": [["13/4096", 0x002600]],
@@ -5429,7 +5417,7 @@
         },
         "Skyly": {
           "BARBAROUS_WOLF": [["13/4096", 0x002000]],
-          "BARBA_RAY": [["13/64", 0x000E02]],
+          "BARBA_RAY": [["7/256", 0x000E02]],
           "Box-CentralControlArea": [
             ["13/8192", 0x000207],
             ["7/4096", 0x000706],
@@ -5510,7 +5498,7 @@
           "MORFOS": [["13/4096", 0x005E00]],
           "MOTHMANT": [["13/4096", 0x000707]],
           "NAR_LILY": [["1/2", 0x010222]],
-          "OLGA_FLOW_2": [["1/64", 0x030E01]],
+          "OLGA_FLOW_2": [["1/64", 0x031809]],
           "PAN_ARMS": [["1/64", 0x002300]],
           "POISON_LILY": [["1/64", 0x000707]],
           "RAG_RAPPY": [["1/64", 0x000707]],
@@ -5527,7 +5515,7 @@
         },
         "Viridia": {
           "BARBAROUS_WOLF": [["13/4096", 0x010224]],
-          "BARBA_RAY": [["13/64", 0x000907]],
+          "BARBA_RAY": [["7/256", 0x001402]],
           "Box-CentralControlArea": [
             ["13/8192", 0x000907],
             ["7/4096", 0x000406],
@@ -5589,8 +5577,8 @@
           "DOLMOLM": [["1/64", 0x000D01]],
           "DUBCHIC": [["7/256", 0x000407]],
           "EGG_RAPPY": [["7/8", 0x031501]],
-          "EPSILON": [["1/64", 0x000907]],
-          "GAL_GRYPHON": [["7/256", 0x008B02]],
+          "EPSILON": [["1/64", 0x030D14]],
+          "GAL_GRYPHON": [["7/256", 0x010299]],
           "GARANZ": [["13/4096", 0x004E00]],
           "GEE": [["13/4096", 0x005601]],
           "GIBBLES": [["13/131072", 0x003A00]],
@@ -5631,7 +5619,7 @@
         },
         "Whitill": {
           "BARBAROUS_WOLF": [["1/64", 0x000807]],
-          "BARBA_RAY": [["13/64", 0x000507]],
+          "BARBA_RAY": [["7/256", 0x01035D]],
           "Box-CentralControlArea": [
             ["13/8192", 0x000507],
             ["7/4096", 0x000806],
@@ -5686,13 +5674,13 @@
           "DUBCHIC": [["1/64", 0x000507]],
           "EGG_RAPPY": [["7/8", 0x031501]],
           "EPSILON": [["13/4096", 0x009800]],
-          "GAL_GRYPHON": [["7/256", 0x030D12]],
+          "GAL_GRYPHON": [["7/256", 0x01035E]],
           "GARANZ": [["13/4096", 0x004900]],
           "GEE": [["1/64", 0x000507]],
           "GIBBLES": [["13/131072", 0x001F00]],
           "GILLCHIC": [["1/64", 0x000807]],
           "GI_GUE": [["13/4096", 0x030D0C]],
-          "GOL_DRAGON": [["13/64", 0x008902]],
+          "GOL_DRAGON": [["7/256", 0x000D03]],
           "GRASS_ASSASSIN": [["13/4096", 0x002700]],
           "HALLO_RAPPY": [["7/8", 0x031502]],
           "HIDOOM": [["13/4096", 0x006A00]],
@@ -5710,7 +5698,7 @@
           "MORFOS": [["13/4096", 0x004000]],
           "MOTHMANT": [["13/4096", 0x000807]],
           "NAR_LILY": [["1/2", 0x010342]],
-          "OLGA_FLOW_2": [["1/64", 0x030E01]],
+          "OLGA_FLOW_2": [["1/64", 0x031809]],
           "PAN_ARMS": [["7/256", 0x000507]],
           "POISON_LILY": [["1/64", 0x000507]],
           "RAG_RAPPY": [["13/131072", 0x009008]],
@@ -5780,14 +5768,14 @@
           "DOLMOLM": [["1/64", 0x000807]],
           "DUBCHIC": [["7/256", 0x000207]],
           "EGG_RAPPY": [["7/8", 0x031501]],
-          "EPSILON": [["1/64", 0x000A06]],
-          "GAL_GRYPHON": [["7/256", 0x030D12]],
+          "EPSILON": [["1/64", 0x030D14]],
+          "GAL_GRYPHON": [["7/256", 0x000108]],
           "GARANZ": [["13/4096", 0x030E0C]],
           "GEE": [["1/64", 0x008C01]],
           "GIBBLES": [["13/131072", 0x001F00]],
           "GILLCHIC": [["1/64", 0x000407]],
           "GI_GUE": [["13/4096", 0x030D0C]],
-          "GOL_DRAGON": [["7/32", 0x000207]],
+          "GOL_DRAGON": [["7/256", 0x01035D]],
           "GRASS_ASSASSIN": [["13/4096", 0x004900]],
           "HALLO_RAPPY": [["7/8", 0x031502]],
           "HIDOOM": [["13/4096", 0x006A00]],
