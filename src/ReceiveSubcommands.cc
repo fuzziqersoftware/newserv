@@ -1511,27 +1511,35 @@ static void on_steal_exp_bb(shared_ptr<Client> c, uint8_t, uint8_t, const void* 
   const auto& inventory = p->inventory;
   const auto& weapon = inventory.items[inventory.find_equipped_weapon()];
 
-  uint8_t special = 0;
+  auto item_parameter_table = s->item_parameter_table_for_version(c->version());
+
+  uint8_t special_id = 0;
   if (((weapon.data.data1[1] < 0x0A) && (weapon.data.data1[2] < 0x05)) ||
       ((weapon.data.data1[1] < 0x0D) && (weapon.data.data1[2] < 0x04))) {
-    special = weapon.data.data1[4] & 0x3F;
+    special_id = weapon.data.data1[4] & 0x3F;
   } else {
-    special = s->item_parameter_table_for_version(c->version())->get_weapon(weapon.data.data1[1], weapon.data.data1[2]).special;
+    special_id = item_parameter_table->get_weapon(weapon.data.data1[1], weapon.data.data1[2]).special;
   }
 
-  if (special >= 0x09 && special <= 0x0B) {
-    // Master's = 8, Lord's = 10, King's = 12
-    uint32_t bp_index = battle_param_index_for_enemy_type(l->episode, enemy.type);
-    const auto& bp_table = s->battle_params->get_table(l->mode == GameMode::SOLO, l->episode);
-    uint32_t percent = 8 + ((special - 9) << 1) + (char_class_is_android(p->disp.visual.char_class) ? 30 : 0);
-    uint32_t enemy_exp = bp_table.stats[l->difficulty][bp_index].experience;
-    uint32_t stolen_exp = min<uint32_t>((enemy_exp * percent) / 100, 80);
-    if (c->options.debug) {
-      send_text_message_printf(c, "$C5+%" PRIu32 " E-%hX %s",
-          stolen_exp, cmd.enemy_id.load(), name_for_enum(enemy.type));
-    }
-    add_player_exp(c, stolen_exp);
+  const auto& special = item_parameter_table->get_special(special_id);
+  if (special.type != 3) { // Master's/Lord's/King's
+    return;
   }
+
+  const auto& bp_table = s->battle_params->get_table(l->mode == GameMode::SOLO, l->episode);
+  uint32_t bp_index = battle_param_index_for_enemy_type(l->episode, enemy.type);
+  uint32_t enemy_exp = bp_table.stats[l->difficulty][bp_index].experience;
+
+  // Note: The original code checks if special.type is 9, 10, or 11, and skips
+  // applying the android bonus if so. We don't do anything for those special
+  // types, so we don't check for that here.
+  uint32_t percent = special.amount + (char_class_is_android(p->disp.visual.char_class) ? 30 : 0);
+  uint32_t stolen_exp = min<uint32_t>((enemy_exp * percent) / 100, (l->difficulty + 1) * 20);
+  if (c->options.debug) {
+    send_text_message_printf(c, "$C5+%" PRIu32 " E-%hX %s",
+        stolen_exp, cmd.enemy_id.load(), name_for_enum(enemy.type));
+  }
+  add_player_exp(c, stolen_exp);
 }
 
 static void on_enemy_killed_bb(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
