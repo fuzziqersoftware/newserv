@@ -19,6 +19,7 @@ public:
       std::shared_ptr<const WeaponRandomSet> weapon_random_set,
       std::shared_ptr<const TekkerAdjustmentSet> tekker_adjustment_set,
       std::shared_ptr<const ItemParameterTable> item_parameter_table,
+      GameVersion version,
       Episode episode,
       GameMode mode,
       uint8_t difficulty,
@@ -45,6 +46,7 @@ public:
 
 private:
   PrefixedLogger log;
+  GameVersion version;
   Episode episode;
   GameMode mode;
   uint8_t difficulty;
@@ -58,12 +60,16 @@ private:
   std::shared_ptr<const CommonItemSet::Table> pt;
   std::shared_ptr<const BattleRules> restrictions;
 
-  parray<uint8_t, 0x88> unit_weights_table1;
+  std::vector<uint8_t> unit_weights_table1;
   parray<int8_t, 0x0D> unit_weights_table2;
 
   // Note: The original implementation uses 17 different random states for some
   // reason. We forego that and use only one for simplicity.
   PSOV2Encryption random_crypt;
+
+  inline bool is_v3() const {
+    return (this->version != GameVersion::DC) && (this->version != GameVersion::PC);
+  }
 
   bool are_rare_drops_allowed() const;
   uint8_t normalize_area_number(uint8_t area) const;

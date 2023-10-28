@@ -67,6 +67,7 @@ void Lobby::create_item_creator() {
       s->weapon_random_sets.at(this->difficulty),
       s->tekker_adjustment_set,
       s->item_parameter_table_for_version(this->base_version),
+      this->base_version,
       this->episode,
       (this->mode == GameMode::SOLO) ? GameMode::NORMAL : this->mode,
       this->difficulty,

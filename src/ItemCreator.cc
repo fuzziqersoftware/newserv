@@ -16,6 +16,7 @@ ItemCreator::ItemCreator(
     shared_ptr<const WeaponRandomSet> weapon_random_set,
     shared_ptr<const TekkerAdjustmentSet> tekker_adjustment_set,
     shared_ptr<const ItemParameterTable> item_parameter_table,
+    GameVersion version,
     Episode episode,
     GameMode mode,
     uint8_t difficulty,
@@ -23,6 +24,7 @@ ItemCreator::ItemCreator(
     uint32_t random_seed,
     shared_ptr<const BattleRules> restrictions)
     : log("[ItemCreator] "),
+      version(version),
       episode(episode),
       mode(mode),
       difficulty(difficulty),
@@ -35,7 +37,9 @@ ItemCreator::ItemCreator(
       item_parameter_table(item_parameter_table),
       pt(common_item_set->get_table(this->episode, this->mode, this->difficulty, this->section_id)),
       restrictions(restrictions),
-      random_crypt(random_seed) {}
+      random_crypt(random_seed) {
+  this->generate_unit_weights_tables();
+}
 
 bool ItemCreator::are_rare_drops_allowed() const {
   // Note: The client has an additional check here, which appears to be a subtle
@@ -420,7 +424,7 @@ void ItemCreator::set_tool_item_amount_to_1(ItemData& item) const {
 }
 
 void ItemCreator::clear_tool_item_if_invalid(ItemData& item) {
-  if ((item.data1[1] == 2) &&
+  if ((item.data1[1] == 0x02) &&
       ((item.data1[2] > 0x1D) || (item.data1[4] > 0x12))) {
     item.clear();
   }
@@ -591,7 +595,7 @@ void ItemCreator::generate_common_tool_variances(uint32_t area_norm, ItemData& i
   item.clear();
 
   uint8_t tool_class = this->get_rand_from_weighted_tables_2d_vertical(this->pt->tool_class_prob_table(), area_norm);
-  if (tool_class == 0x1A) {
+  if (this->is_v3() && (tool_class == 0x1A)) {
     tool_class = 0x73;
   }
 
@@ -699,7 +703,7 @@ uint8_t ItemCreator::choose_weapon_special(uint8_t det) {
     static const uint8_t maxes[4] = {8, 10, 11, 11};
     uint8_t det2 = this->rand_int(maxes[det]);
     size_t index = 0;
-    for (size_t z = 1; z < 0x29; z++) {
+    for (size_t z = 1; z < this->item_parameter_table->num_specials; z++) {
       if (det + 1 == this->item_parameter_table->get_special_stars(z)) {
         if (index == det2) {
           return z;
@@ -716,18 +720,38 @@ void ItemCreator::generate_unit_weights_tables() {
   // Note: This part of the function was originally in a different function,
   // since it had another callsite. Unlike the original code, we generate these
   // tables only once at construction time, so we've inlined the function here.
+
+  size_t star_base_index;
+  switch (this->version) {
+    case GameVersion::DC:
+    case GameVersion::PC:
+      star_base_index = 0x1D1;
+      this->unit_weights_table1.resize(0x84);
+      break;
+    case GameVersion::GC:
+    case GameVersion::XB:
+      star_base_index = 0x2AF;
+      this->unit_weights_table1.resize(0x88);
+      break;
+    case GameVersion::BB:
+      star_base_index = 0x37D;
+      this->unit_weights_table1.resize(0x88);
+      break;
+    default:
+      throw logic_error("invalid game version");
+  }
+
   size_t z;
   for (z = 0; z < 0x10; z++) {
-    uint8_t v = this->item_parameter_table->get_item_stars(z + 0x37D);
-    this->unit_weights_table1[(z * 5) + 0] = v - 1;
-    this->unit_weights_table1[(z * 5) + 1] = v - 1;
-    this->unit_weights_table1[(z * 5) + 2] = v;
-    this->unit_weights_table1[(z * 5) + 3] = v + 1;
-    this->unit_weights_table1[(z * 5) + 4] = v + 1;
+    uint8_t v = this->item_parameter_table->get_item_stars(z + star_base_index);
+    this->unit_weights_table1.at((z * 5) + 0) = v - 1;
+    this->unit_weights_table1.at((z * 5) + 1) = v - 1;
+    this->unit_weights_table1.at((z * 5) + 2) = v;
+    this->unit_weights_table1.at((z * 5) + 3) = v + 1;
+    this->unit_weights_table1.at((z * 5) + 4) = v + 1;
   }
-  for (; z < 0x48; z++) {
-    this->unit_weights_table1[z + 0x50] =
-        this->item_parameter_table->get_item_stars(z + 0x37D);
+  for (; z < (this->unit_weights_table1.size() - 0x40); z++) {
+    this->unit_weights_table1.at(z + 0x40) = this->item_parameter_table->get_item_stars(z + star_base_index);
   }
   // Note: Inlining ends here
 

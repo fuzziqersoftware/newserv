@@ -334,6 +334,15 @@ public:
 
   size_t price_for_item(const ItemData& item) const;
 
+  size_t num_weapon_classes;
+  size_t num_tool_classes;
+  size_t item_stars_first_id;
+  size_t item_stars_last_id;
+  size_t special_stars_begin_index;
+  size_t num_specials;
+  size_t first_rare_mag_index;
+  size_t star_value_table_size;
+
 private:
   struct TableOffsetsV2 {
     // TODO: Is weapon count 0x89 or 0x8A? It could be that the last entry in
@@ -412,15 +421,6 @@ private:
   float get_sale_divisor_t(uint32_t weapon_table_offset, uint32_t non_weapon_table_offset, uint8_t data1_0, uint8_t data1_1) const;
   template <bool IsBigEndian>
   std::pair<const ItemParameterTable::EventItem*, size_t> get_event_items_t(uint32_t base_offset, uint8_t event_number) const;
-
-  size_t num_weapon_classes;
-  size_t num_tool_classes;
-  size_t item_stars_first_id;
-  size_t item_stars_last_id;
-  size_t special_stars_begin_index;
-  size_t num_specials;
-  size_t first_rare_mag_index;
-  size_t star_value_table_size;
 };
 
 class MagEvolutionTable {
