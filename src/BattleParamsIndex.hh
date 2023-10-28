@@ -10,6 +10,7 @@
 #include <vector>
 
 #include "EnemyType.hh"
+#include "LevelTable.hh"
 #include "StaticGameData.hh"
 #include "Text.hh"
 
@@ -17,28 +18,10 @@ class BattleParamsIndex {
 public:
   // These files are little-endian, even on PSO GC.
 
-  struct PhysicalData {
-    /* 00 */ le_uint16_t atp;
-    /* 02 */ le_uint16_t psv; // Perseverance (intelligence?)
-    /* 04 */ le_uint16_t evp;
-    /* 06 */ le_uint16_t hp;
-    /* 08 */ le_uint16_t dfp;
-    /* 0A */ le_uint16_t ata;
-    /* 0C */ le_uint16_t lck;
-    /* 0E */ le_uint16_t esp; // Unknown
-    /* 10 */ parray<le_float, 2> unknown_a1;
-    /* 18 */ le_uint32_t unknown_a2;
-    /* 1C */ le_uint32_t experience;
-    /* 20 */ le_uint32_t difficulty;
-    /* 24 */
-
-    std::string str() const;
-  } __attribute__((packed));
-
   struct AttackData {
     /* 00 */ le_int16_t unknown_a1;
-    /* 02 */ le_int16_t unknown_a2;
-    /* 04 */ le_uint16_t unknown_a3;
+    /* 02 */ le_int16_t atp;
+    /* 04 */ le_int16_t ata_bonus;
     /* 06 */ le_uint16_t unknown_a4;
     /* 08 */ le_float distance_x;
     /* 0C */ le_float angle_x;
@@ -87,7 +70,7 @@ public:
   } __attribute__((packed));
 
   struct Table {
-    /* 0000 */ parray<parray<PhysicalData, 0x60>, 4> physical_data;
+    /* 0000 */ parray<parray<PlayerStats, 0x60>, 4> stats;
     /* 3600 */ parray<parray<AttackData, 0x60>, 4> attack_data;
     /* 7E00 */ parray<parray<ResistData, 0x60>, 4> resist_data;
     /* AE00 */ parray<parray<MovementData, 0x60>, 4> movement_data;

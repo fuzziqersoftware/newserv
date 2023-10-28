@@ -1406,8 +1406,8 @@ std::string disassemble_quest_script(const void* data, size_t size, QuestScriptV
     print_as_struct.template operator()<Arg::DataType::ATTACK_DATA, AttackData>([&](const AttackData& attack) -> void {
       lines.emplace_back("  // As AttackData");
       lines.emplace_back(string_printf("  %04zX  a1                   %04hX /* %hd */", l->offset + offsetof(AttackData, unknown_a1), attack.unknown_a1.load(), attack.unknown_a1.load()));
-      lines.emplace_back(string_printf("  %04zX  a2                   %04hX /* %hd */", l->offset + offsetof(AttackData, unknown_a2), attack.unknown_a2.load(), attack.unknown_a2.load()));
-      lines.emplace_back(string_printf("  %04zX  a3                   %04hX /* %hu */", l->offset + offsetof(AttackData, unknown_a3), attack.unknown_a3.load(), attack.unknown_a3.load()));
+      lines.emplace_back(string_printf("  %04zX  atp                  %04hX /* %hd */", l->offset + offsetof(AttackData, atp), attack.atp.load(), attack.atp.load()));
+      lines.emplace_back(string_printf("  %04zX  ata_bonus            %04hX /* %hd */", l->offset + offsetof(AttackData, ata_bonus), attack.ata_bonus.load(), attack.ata_bonus.load()));
       lines.emplace_back(string_printf("  %04zX  a4                   %04hX /* %hu */", l->offset + offsetof(AttackData, unknown_a4), attack.unknown_a4.load(), attack.unknown_a4.load()));
       lines.emplace_back(string_printf("  %04zX  distance_x           %08" PRIX32 " /* %g */", l->offset + offsetof(AttackData, distance_x), attack.distance_x.load_raw(), attack.distance_x.load()));
       lines.emplace_back(string_printf("  %04zX  angle_x              %08" PRIX32 " /* %g */", l->offset + offsetof(AttackData, angle_x), attack.angle_x.load_raw(), attack.angle_x.load()));

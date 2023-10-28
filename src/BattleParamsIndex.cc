@@ -9,38 +9,20 @@
 
 using namespace std;
 
-string BattleParamsIndex::PhysicalData::str() const {
-  return string_printf(
-      "PhysicalData[ATP=%hu PSV=%hu EVP=%hu HP=%hu DFP=%hu ATA=%hu LCK=%hu ESP=%hu a1=[%g, %g] a2=%" PRIu32 " EXP=%" PRIu32 " diff=%" PRIu32 "]",
-      this->atp.load(),
-      this->psv.load(),
-      this->evp.load(),
-      this->hp.load(),
-      this->dfp.load(),
-      this->ata.load(),
-      this->lck.load(),
-      this->esp.load(),
-      this->unknown_a1[0].load(),
-      this->unknown_a1[1].load(),
-      this->unknown_a2.load(),
-      this->experience.load(),
-      this->difficulty.load());
-}
-
 void BattleParamsIndex::Table::print(FILE* stream) const {
-  auto print_entry = +[](FILE* stream, const PhysicalData& e) {
+  auto print_entry = +[](FILE* stream, const PlayerStats& e) {
     fprintf(stream,
         "%5hu %5hu %5hu %5hu %5hu %5hu %5hu %5hu %5" PRIu32 " %5" PRIu32,
-        e.atp.load(),
-        e.psv.load(),
-        e.evp.load(),
-        e.hp.load(),
-        e.dfp.load(),
-        e.ata.load(),
-        e.lck.load(),
-        e.esp.load(),
+        e.char_stats.atp.load(),
+        e.char_stats.mst.load(),
+        e.char_stats.evp.load(),
+        e.char_stats.hp.load(),
+        e.char_stats.dfp.load(),
+        e.char_stats.ata.load(),
+        e.char_stats.lck.load(),
+        e.unknown_a1.load(),
         e.experience.load(),
-        e.difficulty.load());
+        e.meseta.load());
   };
 
   for (size_t diff = 0; diff < 4; diff++) {
@@ -48,7 +30,7 @@ void BattleParamsIndex::Table::print(FILE* stream) const {
         abbreviation_for_difficulty(diff));
     for (size_t z = 0; z < 0x60; z++) {
       fprintf(stream, "  %02zX ", z);
-      print_entry(stream, this->physical_data[diff][z]);
+      print_entry(stream, this->stats[diff][z]);
       fputc('\n', stream);
     }
   }
