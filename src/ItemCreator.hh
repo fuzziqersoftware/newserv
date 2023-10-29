@@ -28,9 +28,11 @@ public:
       std::shared_ptr<const BattleRules> restrictions = nullptr);
   ~ItemCreator() = default;
 
-  ItemData on_monster_item_drop(uint32_t enemy_type, uint8_t area);
-  ItemData on_box_item_drop(uint8_t area);
-  ItemData on_specialized_box_item_drop(uint32_t def0, uint32_t def1, uint32_t def2);
+  void clear_destroyed_entities();
+
+  ItemData on_monster_item_drop(uint16_t entity_id, uint32_t enemy_type, uint8_t area);
+  ItemData on_box_item_drop(uint16_t entity_id, uint8_t area);
+  ItemData on_specialized_box_item_drop(uint16_t entity_id, uint32_t def0, uint32_t def1, uint32_t def2);
 
   std::vector<ItemData> generate_armor_shop_contents(size_t player_level);
   std::vector<ItemData> generate_tool_shop_contents(size_t player_level);
@@ -66,6 +68,8 @@ private:
   // Note: The original implementation uses 17 different random states for some
   // reason. We forego that and use only one for simplicity.
   PSOV2Encryption random_crypt;
+  std::unordered_set<uint16_t> destroyed_monsters;
+  std::unordered_set<uint16_t> destroyed_boxes;
 
   inline bool is_v3() const {
     return (this->version != GameVersion::DC) && (this->version != GameVersion::PC);

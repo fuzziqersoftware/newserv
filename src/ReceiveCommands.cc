@@ -2568,6 +2568,9 @@ static void on_AC_V3_BB(shared_ptr<Client> c, uint16_t, uint32_t, string& data) 
         l->quest) {
       auto dat_contents = prs_decompress(*l->quest->version(QuestScriptVersion::BB_V4, c->language())->dat_contents);
       l->map->clear();
+      if (l->item_creator) {
+        l->item_creator->clear_destroyed_entities();
+      }
       l->map->add_enemies_from_quest_data(l->episode, l->difficulty, l->event, dat_contents.data(), dat_contents.size());
       c->log.info("Replaced enemies list with quest layout (%zu entries)",
           l->map->enemies.size());

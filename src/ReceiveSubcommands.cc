@@ -1310,9 +1310,14 @@ static void on_entity_drop_item_request(shared_ptr<Client> c, uint8_t command, u
   G_SpecializableItemDropRequest_6xA2 cmd;
   if (size == sizeof(G_SpecializableItemDropRequest_6xA2)) {
     cmd = check_size_t<G_SpecializableItemDropRequest_6xA2>(data, size);
+    if (cmd.header.subcommand != 0xA2) {
+      throw runtime_error("item drop request has specializable size but non-specializable command");
+    }
   } else {
-    const auto& in_cmd = check_size_t<G_StandardDropItemRequest_DC_6x60>(
-        data, size, 0xFFFF);
+    const auto& in_cmd = check_size_t<G_StandardDropItemRequest_DC_6x60>(data, size, 0xFFFF);
+    if (in_cmd.header.subcommand != 0x60) {
+      throw runtime_error("item drop request has non-specializable size but specializable command");
+    }
     cmd.entity_id = in_cmd.entity_id;
     cmd.area = in_cmd.area;
     cmd.rt_index = in_cmd.rt_index;
@@ -1324,9 +1329,9 @@ static void on_entity_drop_item_request(shared_ptr<Client> c, uint8_t command, u
   ItemData item;
   if (cmd.rt_index == 0x30) {
     if (cmd.ignore_def) {
-      item = l->item_creator->on_box_item_drop(cmd.area);
+      item = l->item_creator->on_box_item_drop(cmd.entity_id, cmd.area);
     } else {
-      item = l->item_creator->on_specialized_box_item_drop(cmd.def[0], cmd.def[1], cmd.def[2]);
+      item = l->item_creator->on_specialized_box_item_drop(cmd.entity_id, cmd.def[0], cmd.def[1], cmd.def[2]);
     }
   } else {
     if (l->map) {
@@ -1337,7 +1342,7 @@ static void on_entity_drop_item_request(shared_ptr<Client> c, uint8_t command, u
             cmd.rt_index, expected_rt_index);
       }
     }
-    item = l->item_creator->on_monster_item_drop(cmd.rt_index, cmd.area);
+    item = l->item_creator->on_monster_item_drop(cmd.entity_id, cmd.rt_index, cmd.area);
   }
   item.id = l->generate_item_id(0xFF);
 
@@ -1860,6 +1865,9 @@ static void on_battle_restart_bb(shared_ptr<Client> c, uint8_t, uint8_t, const v
       }
     }
     l->map->clear();
+    if (l->item_creator) {
+      l->item_creator->clear_destroyed_entities();
+    }
   }
 }
 
