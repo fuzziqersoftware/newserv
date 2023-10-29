@@ -335,6 +335,7 @@ void ProxyServer::UnlinkedSession::on_input(Channel& ch, uint16_t command, uint3
         l->bb_username = cmd.username.decode();
         l->bb_password = cmd.password.decode();
         s->license_index->add(l);
+        l->save();
         license = l;
         string l_str = l->str();
         ses->log.info("Created license %s", l_str.c_str());

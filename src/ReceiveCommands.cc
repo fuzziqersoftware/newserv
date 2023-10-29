@@ -384,6 +384,9 @@ static void on_DB_V3(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
       l->access_key = cmd.access_key.decode();
       l->gc_password = cmd.password.decode();
       s->license_index->add(l);
+      if (!s->is_replay) {
+        l->save();
+      }
       c->set_license(l);
       string l_str = l->str();
       c->log.info("Created license %s", l_str.c_str());
@@ -424,6 +427,9 @@ static void on_88_DCNTE(shared_ptr<Client> c, uint16_t, uint32_t, string& data) 
       l->serial_number = serial_number;
       l->access_key = cmd.access_key.decode();
       s->license_index->add(l);
+      if (!s->is_replay) {
+        l->save();
+      }
       c->set_license(l);
       string l_str = l->str();
       c->log.info("Created license %s", l_str.c_str());
@@ -464,6 +470,9 @@ static void on_8B_DCNTE(shared_ptr<Client> c, uint16_t, uint32_t, string& data) 
       l->serial_number = serial_number;
       l->access_key = cmd.access_key.decode();
       s->license_index->add(l);
+      if (!s->is_replay) {
+        l->save();
+      }
       c->set_license(l);
       string l_str = l->str();
       c->log.info("Created license %s", l_str.c_str());
@@ -515,6 +524,9 @@ static void on_90_DC(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
       l->serial_number = serial_number;
       l->access_key = cmd.access_key.decode();
       s->license_index->add(l);
+      if (!s->is_replay) {
+        l->save();
+      }
       c->set_license(l);
       string l_str = l->str();
       c->log.info("Created license %s", l_str.c_str());
@@ -565,6 +577,9 @@ static void on_93_DC(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
       l->serial_number = serial_number;
       l->access_key = cmd.access_key.decode();
       s->license_index->add(l);
+      if (!s->is_replay) {
+        l->save();
+      }
       c->set_license(l);
       string l_str = l->str();
       c->log.info("Created license %s", l_str.c_str());
@@ -649,6 +664,9 @@ static void on_9A(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
       l->serial_number = serial_number;
       l->access_key = cmd.access_key.decode();
       s->license_index->add(l);
+      if (!s->is_replay) {
+        l->save();
+      }
       c->set_license(l);
       string l_str = l->str();
       c->log.info("Created license %s", l_str.c_str());
@@ -709,6 +727,9 @@ static void on_9C(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
         l->gc_password = cmd.password.decode();
       }
       s->license_index->add(l);
+      if (!s->is_replay) {
+        l->save();
+      }
       c->set_license(l);
       string l_str = l->str();
       c->log.info("Created license %s", l_str.c_str());
@@ -839,6 +860,9 @@ static void on_9D_9E(shared_ptr<Client> c, uint16_t command, uint32_t, string& d
       l->serial_number = serial_number;
       l->access_key = base_cmd->access_key.decode();
       s->license_index->add(l);
+      if (!s->is_replay) {
+        l->save();
+      }
       c->set_license(l);
       string l_str = l->str();
       c->log.info("Created license %s", l_str.c_str());
@@ -891,6 +915,9 @@ static void on_93_BB(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
       l->bb_username = cmd.username.decode();
       l->bb_password = cmd.password.decode();
       s->license_index->add(l);
+      if (!s->is_replay) {
+        l->save();
+      }
       c->set_license(l);
       string l_str = l->str();
       c->log.info("Created license %s", l_str.c_str());
@@ -995,7 +1022,9 @@ static void on_BA_Ep3(shared_ptr<Client> c, uint16_t command, uint32_t, string& 
       throw runtime_error("meseta overdraft not allowed");
     }
     c->license->ep3_current_meseta -= in_cmd.value;
-    c->license->save();
+    if (!s->is_replay) {
+      c->license->save();
+    }
     current_meseta = c->license->ep3_current_meseta;
     total_meseta_earned = c->license->ep3_total_meseta_earned;
   }
@@ -1451,7 +1480,9 @@ static void on_CA_Ep3(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
         if (winner_c) {
           winner_c->license->ep3_current_meseta += meseta_reward;
           winner_c->license->ep3_total_meseta_earned += meseta_reward;
-          winner_c->license->save();
+          if (!s->is_replay) {
+            winner_c->license->save();
+          }
           send_ep3_rank_update(winner_c);
         }
       }
@@ -4052,6 +4083,9 @@ static void on_04_P(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
       l->bb_username = cmd.username.decode();
       l->bb_password = cmd.password.decode();
       s->license_index->add(l);
+      if (!s->is_replay) {
+        l->save();
+      }
       c->set_license(l);
       string l_str = l->str();
       c->log.info("Created license %s", l_str.c_str());
