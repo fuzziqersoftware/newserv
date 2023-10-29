@@ -160,7 +160,7 @@ void send_pc_console_split_reconnect(
     uint16_t console_port);
 
 void send_client_init_bb(std::shared_ptr<Client> c, uint32_t error);
-void send_team_and_key_config_bb(std::shared_ptr<Client> c);
+void send_system_file_bb(std::shared_ptr<Client> c);
 void send_player_preview_bb(std::shared_ptr<Client> c, uint8_t player_index,
     const PlayerDispDataBBPreview* preview);
 void send_accept_client_checksum_bb(std::shared_ptr<Client> c);

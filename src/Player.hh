@@ -14,6 +14,7 @@
 #include "ItemNameIndex.hh"
 #include "LevelTable.hh"
 #include "PlayerSubordinates.hh"
+#include "SaveFileFormats.hh"
 #include "Text.hh"
 #include "Version.hh"
 
@@ -83,8 +84,8 @@ enum AccountFlag {
 struct SavedAccountDataBB { // .nsa file format
   pstring<TextEncoding::ASCII, 0x40> signature;
   parray<le_uint32_t, 0x001E> blocked_senders;
-  GuildCardFileBB guild_cards;
-  KeyAndTeamConfigBB key_config;
+  PSOBBGuildCardFile guild_card_file;
+  PSOBBSystemFile system_file;
   le_uint32_t newserv_flags;
   le_uint32_t option_flags;
   parray<uint8_t, 0x0A40> shortcuts;

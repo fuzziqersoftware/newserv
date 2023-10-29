@@ -10,8 +10,9 @@
 #include <phosg/Strings.hh>
 #include <string>
 
+#include "Episode3/DataIndexes.hh"
 #include "PSOEncryption.hh"
-#include "Player.hh"
+#include "PlayerSubordinates.hh"
 #include "Text.hh"
 
 struct ShuffleTables {
@@ -115,6 +116,52 @@ struct PSOGCEp3SystemFile {
   /* 011D */ parray<uint8_t, 11> unknown_a2;
   /* 0128 */ be_uint32_t unknown_a3;
   /* 012C */
+} __attribute__((packed));
+
+struct PSOBBSystemFileBase {
+  /* 0000 */ be_uint32_t checksum = 0;
+  /* 0004 */ be_int16_t music_volume = -50;
+  /* 0006 */ int8_t sound_volume = 0;
+  /* 0007 */ uint8_t language = 0;
+  /* 0008 */ be_uint32_t server_time_delta_frames = 1728000;
+  /* 000C */ be_uint16_t udp_behavior = 0; // 0 = auto, 1 = on, 2 = off
+  /* 000E */ be_uint16_t surround_sound_enabled = 0;
+  /* 0010 */ parray<uint8_t, 0x0100> event_flags;
+  /* 0110 */ le_uint32_t creation_timestamp = 0;
+  /* 0114 */
+} __attribute__((packed));
+
+struct PSOBBSystemFile {
+  /* 0000 */ PSOBBSystemFileBase base;
+  /* 0114 */ parray<uint8_t, 0x016C> key_config;
+  /* 0280 */ parray<uint8_t, 0x0038> joystick_config;
+  /* 02B8 */ le_uint32_t guild_card_number = 0;
+  /* 02BC */ le_uint32_t team_id = 0;
+  /* 02C0 */ le_uint64_t team_info = 0;
+  /* 02C8 */ le_uint16_t team_privilege_level = 0;
+  /* 02CA */ le_uint16_t reserved = 0;
+  /* 02CC */ pstring<TextEncoding::UTF16, 0x0010> team_name;
+  /* 02EC */ parray<uint8_t, 0x0800> team_flag;
+  /* 0AEC */ le_uint32_t team_rewards = 0;
+  /* 0AF0 */
+} __attribute__((packed));
+
+struct PSOBBGuildCardFile {
+  struct Entry {
+    /* 0000 */ GuildCardBB data;
+    /* 0108 */ pstring<TextEncoding::UTF16, 0x58> comment;
+    /* 01B8 */ parray<uint8_t, 0x4> unknown_a1;
+    /* 01BC */
+
+    void clear();
+  } __attribute__((packed));
+
+  PSOBBSystemFileBase system_file;
+  parray<GuildCardBB, 0x1C> blocked;
+  parray<uint8_t, 0x180> unknown_a2;
+  parray<Entry, 0x69> entries;
+
+  uint32_t checksum() const;
 } __attribute__((packed));
 
 struct PSOGCSaveFileSymbolChatEntry {

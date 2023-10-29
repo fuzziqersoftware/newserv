@@ -11,6 +11,7 @@
 #include "Episode3/PlayerStateSubordinates.hh"
 #include "PSOProtocol.hh"
 #include "Player.hh"
+#include "SaveFileFormats.hh"
 #include "Text.hh"
 
 #define __packed__ __attribute__((packed))
@@ -2428,7 +2429,7 @@ struct C_CreateGame_BB_C1 : C_CreateGame<TextEncoding::UTF16> {
 // C2 (C->S): Set choice search parameters (DCv2 and later versions)
 // Internal name: PutChoiceList
 // Server does not respond.
-// The ChoiceSearchConfig structure is defined in Player.hh.
+// The ChoiceSearchConfig structure is defined in PlayerSubordinates.hh.
 
 struct C_ChoiceSearchSelections_DC_C2_C3 : ChoiceSearchConfig<le_uint32_t> {
 } __packed__;
@@ -2890,8 +2891,8 @@ struct S_TournamentEntryList_GC_Ep3_E2 {
   parray<Entry, 0x20> entries;
 } __packed__;
 
-// E2 (S->C): Team and key config (BB)
-// See KeyAndTeamConfigBB in Player.hh for format
+// E2 (S->C): Set system file contents (BB)
+// See PSOBBSystemFile in SaveFileFormats.hh for format
 
 // E3 (S->C): Game or tournament info (Episode 3)
 // The header.flag argument determines which fields are valid (and which panes
@@ -3042,7 +3043,9 @@ struct S_ClientInit_BB_00E6 {
   le_uint32_t guild_card_number = 0;
   le_uint32_t team_id = 0;
   ClientConfigBB cfg;
-  le_uint32_t caps = 0x00000102;
+  uint8_t can_create_team = 1;
+  uint8_t episode_4_unlocked = 1;
+  parray<uint8_t, 2> unused;
 } __packed__;
 
 // E7 (C->S): Create spectator team (Episode 3)
@@ -3086,7 +3089,7 @@ struct SC_SyncCharacterSaveFile_BB_00E7 {
   /* 2DF8 */ parray<uint8_t, 0x0028> tech_menu_config; // player
   /* 2E20 */ parray<uint8_t, 0x002C> unknown_a6;
   /* 2E4C */ parray<le_uint32_t, 0x0016> quest_data2; // player
-  /* 2EA4 */ KeyAndTeamConfigBB key_config; // account
+  /* 2EA4 */ PSOBBSystemFile system_file; // account
   /* 3994 */
 } __attribute__((packed));
 
@@ -3171,7 +3174,7 @@ struct S_GuildCardChecksumResponse_BB_02E8 {
 // Server should send the guild card file data using DC commands.
 
 // 04E8 (C->S): Add guild card
-// Format is GuildCardBB (see Player.hh)
+// Format is GuildCardBB (see PlayerSubordinates.hh)
 
 // 05E8 (C->S): Delete guild card
 
@@ -3182,10 +3185,10 @@ struct C_DeleteGuildCard_BB_05E8_08E8 {
 // 06E8 (C->S): Update (overwrite) guild card
 // Note: This command is also sent when the player writes a comment on their own
 // guild card.
-// Format is GuildCardBB (see Player.hh)
+// Format is GuildCardBB (see PlayerSubordinates.hh)
 
 // 07E8 (C->S): Add blocked user
-// Format is GuildCardBB (see Player.hh)
+// Format is GuildCardBB (see PlayerSubordinates.hh)
 
 // 08E8 (C->S): Delete blocked user
 // Same format as 05E8.
@@ -3444,19 +3447,33 @@ struct C_LeaveCharacterSelect_BB_00EC {
 // disbanded because the target game ends.
 
 // ED (C->S): Update account data (BB)
-// There are several subcommands (noted in the union below) that each update a
+// There are several subcommands (noted in the structs below) that each update a
 // specific kind of account data.
 // TODO: Actually define these structures and don't just treat them as raw data
 
-union C_UpdateAccountData_BB_ED {
-  le_uint32_t option = 0; // 01ED
-  parray<uint8_t, 0x4E0> symbol_chats; // 02ED
-  parray<uint8_t, 0xA40> chat_shortcuts; // 03ED
-  parray<uint8_t, 0x16C> key_config; // 04ED
-  parray<uint8_t, 0x38> pad_config; // 05ED
-  parray<uint8_t, 0x28> tech_menu; // 06ED
-  parray<uint8_t, 0xE8> customize; // 07ED
-  parray<uint8_t, 0x140> challenge_battle_config; // 08ED
+struct C_UpdateAccountOptionFlags_BB_01ED {
+  le_uint32_t option_flags = 0;
+} __packed__;
+struct C_UpdateAccountSymbolChats_BB_02ED {
+  parray<uint8_t, 0x4E0> symbol_chats;
+} __packed__;
+struct C_UpdateAccountChatShortcuts_BB_03ED {
+  parray<uint8_t, 0xA40> chat_shortcuts;
+} __packed__;
+struct C_UpdateAccountKeyConfig_BB_04ED {
+  parray<uint8_t, 0x16C> key_config;
+} __packed__;
+struct C_UpdateAccountPadConfig_BB_05ED {
+  parray<uint8_t, 0x38> pad_config;
+} __packed__;
+struct C_UpdateAccountTechMenu_BB_06ED {
+  parray<uint8_t, 0x28> tech_menu;
+} __packed__;
+struct C_UpdateAccountCustomizeMenu_BB_07ED {
+  parray<uint8_t, 0xE8> customize;
+} __packed__;
+struct C_UpdateAccountChallengeAndBattleConfig_BB_08ED {
+  parray<uint8_t, 0x140> challenge_battle_config;
 } __packed__;
 
 // EE: Trade cards (Episode 3)
@@ -3533,8 +3550,9 @@ struct S_SetShutdownCommand_BB_01EF {
 } __packed__;
 
 // F0 (S->C): Force update player lobby data (BB)
-// Format is PlayerLobbyDataBB (in Player.hh). This command overwrites the lobby
-// data for the player given by .client_id without reloading the game or lobby.
+// Format is PlayerLobbyDataBB (in PlayerSubordinates.hh). This command
+// overwrites the lobby data for the player given by .client_id without
+// reloading the game or lobby.
 
 // F1: Invalid command
 // F2: Invalid command

@@ -180,3 +180,12 @@ Image PSOGCSnapshotFile::decode_image() const {
   }
   return ret;
 }
+
+void PSOBBGuildCardFile::Entry::clear() {
+  this->data.clear();
+  this->unknown_a1.clear(0);
+}
+
+uint32_t PSOBBGuildCardFile::checksum() const {
+  return crc32(this, sizeof(*this));
+}

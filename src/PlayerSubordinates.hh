@@ -236,39 +236,6 @@ struct GuildCardBB {
   void clear();
 } __attribute__((packed));
 
-// an entry in the BB guild card file
-struct GuildCardEntryBB {
-  GuildCardBB data;
-  pstring<TextEncoding::UTF16, 0x58> comment;
-  parray<uint8_t, 0x4> unknown_a1;
-
-  void clear();
-} __attribute__((packed));
-
-// the format of the BB guild card file
-struct GuildCardFileBB {
-  parray<uint8_t, 0x114> unknown_a1;
-  GuildCardBB blocked[0x1C];
-  parray<uint8_t, 0x180> unknown_a2;
-  GuildCardEntryBB entries[0x69];
-
-  uint32_t checksum() const;
-} __attribute__((packed));
-
-struct KeyAndTeamConfigBB {
-  parray<uint8_t, 0x0114> unknown_a1; // 0000
-  parray<uint8_t, 0x016C> key_config; // 0114
-  parray<uint8_t, 0x0038> joystick_config; // 0280
-  le_uint32_t guild_card_number = 0; // 02B8
-  le_uint32_t team_id = 0; // 02BC
-  le_uint64_t team_info = 0; // 02C0
-  le_uint16_t team_privilege_level = 0; // 02C8
-  le_uint16_t reserved = 0; // 02CA
-  pstring<TextEncoding::UTF16, 0x0010> team_name; // 02CC
-  parray<uint8_t, 0x0800> team_flag; // 02EC
-  le_uint32_t team_rewards = 0; // 0AEC
-} __attribute__((packed));
-
 struct PlayerLobbyDataPC {
   le_uint32_t player_tag = 0;
   le_uint32_t guild_card = 0;

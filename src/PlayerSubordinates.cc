@@ -221,15 +221,6 @@ void GuildCardBB::clear() {
   this->char_class = 0;
 }
 
-void GuildCardEntryBB::clear() {
-  this->data.clear();
-  this->unknown_a1.clear(0);
-}
-
-uint32_t GuildCardFileBB::checksum() const {
-  return crc32(this, sizeof(*this));
-}
-
 void PlayerBank::load(const string& filename) {
   *this = player_files_cache.get_obj_or_load<PlayerBank>(filename).obj;
   for (uint32_t x = 0; x < this->num_items; x++) {

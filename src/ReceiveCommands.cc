@@ -2905,7 +2905,7 @@ static void on_06(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
 
 static void on_00E0_BB(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
   check_size_v(data.size(), 0);
-  send_team_and_key_config_bb(c);
+  send_system_file_bb(c);
   c->game_data.account()->newserv_flags &= ~AccountFlag::IN_DRESSING_ROOM;
   c->log.info("Cleared dressing room flag for account");
 }
@@ -2941,12 +2941,12 @@ static void on_00E3_BB(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
 }
 
 static void on_00E8_BB(shared_ptr<Client> c, uint16_t command, uint32_t, string& data) {
-  constexpr size_t max_count = sizeof(GuildCardFileBB::entries) / sizeof(GuildCardEntryBB);
-  constexpr size_t max_blocked = sizeof(GuildCardFileBB::blocked) / sizeof(GuildCardBB);
+  constexpr size_t max_count = sizeof(PSOBBGuildCardFile::entries) / sizeof(PSOBBGuildCardFile::Entry);
+  constexpr size_t max_blocked = sizeof(PSOBBGuildCardFile::blocked) / sizeof(GuildCardBB);
   switch (command) {
     case 0x01E8: { // Check guild card file checksum
       const auto& cmd = check_size_t<C_GuildCardChecksum_01E8>(data);
-      uint32_t checksum = c->game_data.account()->guild_cards.checksum();
+      uint32_t checksum = c->game_data.account()->guild_card_file.checksum();
       c->log.info("(Guild card file) Server checksum = %08" PRIX32 ", client checksum = %08" PRIX32,
           checksum, cmd.checksum.load());
       S_GuildCardChecksumResponse_BB_02E8 response = {
@@ -2960,7 +2960,7 @@ static void on_00E8_BB(shared_ptr<Client> c, uint16_t command, uint32_t, string&
       break;
     case 0x04E8: { // Add guild card
       auto& new_gc = check_size_t<GuildCardBB>(data);
-      auto& gcf = c->game_data.account()->guild_cards;
+      auto& gcf = c->game_data.account()->guild_card_file;
       for (size_t z = 0; z < max_count; z++) {
         if (!gcf.entries[z].data.present) {
           gcf.entries[z].data = new_gc;
@@ -2974,7 +2974,7 @@ static void on_00E8_BB(shared_ptr<Client> c, uint16_t command, uint32_t, string&
     }
     case 0x05E8: { // Delete guild card
       auto& cmd = check_size_t<C_DeleteGuildCard_BB_05E8_08E8>(data);
-      auto& gcf = c->game_data.account()->guild_cards;
+      auto& gcf = c->game_data.account()->guild_card_file;
       for (size_t z = 0; z < max_count; z++) {
         if (gcf.entries[z].data.guild_card_number == cmd.guild_card_number) {
           c->log.info("Deleted guild card %" PRIu32 " at position %zu",
@@ -2990,7 +2990,7 @@ static void on_00E8_BB(shared_ptr<Client> c, uint16_t command, uint32_t, string&
     }
     case 0x06E8: { // Update guild card
       auto& new_gc = check_size_t<GuildCardBB>(data);
-      auto& gcf = c->game_data.account()->guild_cards;
+      auto& gcf = c->game_data.account()->guild_card_file;
       for (size_t z = 0; z < max_count; z++) {
         if (gcf.entries[z].data.guild_card_number == new_gc.guild_card_number) {
           gcf.entries[z].data = new_gc;
@@ -3002,7 +3002,7 @@ static void on_00E8_BB(shared_ptr<Client> c, uint16_t command, uint32_t, string&
     }
     case 0x07E8: { // Add blocked user
       auto& new_gc = check_size_t<GuildCardBB>(data);
-      auto& gcf = c->game_data.account()->guild_cards;
+      auto& gcf = c->game_data.account()->guild_card_file;
       for (size_t z = 0; z < max_blocked; z++) {
         if (!gcf.blocked[z].present) {
           gcf.blocked[z] = new_gc;
@@ -3017,7 +3017,7 @@ static void on_00E8_BB(shared_ptr<Client> c, uint16_t command, uint32_t, string&
     }
     case 0x08E8: { // Delete blocked user
       auto& cmd = check_size_t<C_DeleteGuildCard_BB_05E8_08E8>(data);
-      auto& gcf = c->game_data.account()->guild_cards;
+      auto& gcf = c->game_data.account()->guild_card_file;
       for (size_t z = 0; z < max_blocked; z++) {
         if (gcf.blocked[z].guild_card_number == cmd.guild_card_number) {
           c->log.info("Deleted blocked guild card %" PRIu32 " at position %zu",
@@ -3035,7 +3035,7 @@ static void on_00E8_BB(shared_ptr<Client> c, uint16_t command, uint32_t, string&
     }
     case 0x09E8: { // Write comment
       auto& cmd = check_size_t<C_WriteGuildCardComment_BB_09E8>(data);
-      auto& gcf = c->game_data.account()->guild_cards;
+      auto& gcf = c->game_data.account()->guild_card_file;
       for (size_t z = 0; z < max_count; z++) {
         if (gcf.entries[z].data.guild_card_number == cmd.guild_card_number) {
           gcf.entries[z].comment = cmd.comment;
@@ -3048,7 +3048,7 @@ static void on_00E8_BB(shared_ptr<Client> c, uint16_t command, uint32_t, string&
     }
     case 0x0AE8: { // Move guild card in list
       auto& cmd = check_size_t<C_MoveGuildCard_BB_0AE8>(data);
-      auto& gcf = c->game_data.account()->guild_cards;
+      auto& gcf = c->game_data.account()->guild_card_file;
       if (cmd.position >= max_count) {
         throw invalid_argument("invalid new position");
       }
@@ -3157,37 +3157,47 @@ static void on_00E5_BB(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
 }
 
 static void on_xxED_BB(shared_ptr<Client> c, uint16_t command, uint32_t, string& data) {
-  const auto* cmd = reinterpret_cast<const C_UpdateAccountData_BB_ED*>(data.data());
-
   switch (command) {
-    case 0x01ED:
-      check_size_v(data.size(), sizeof(cmd->option));
-      c->game_data.account()->option_flags = cmd->option;
+    case 0x01ED: {
+      const auto& cmd = check_size_t<C_UpdateAccountOptionFlags_BB_01ED>(data);
+      c->game_data.account()->option_flags = cmd.option_flags;
       break;
-    case 0x02ED:
-      check_size_v(data.size(), sizeof(cmd->symbol_chats));
-      c->game_data.account()->symbol_chats = cmd->symbol_chats;
+    }
+    case 0x02ED: {
+      const auto& cmd = check_size_t<C_UpdateAccountSymbolChats_BB_02ED>(data);
+      c->game_data.account()->symbol_chats = cmd.symbol_chats;
       break;
-    case 0x03ED:
-      check_size_v(data.size(), sizeof(cmd->chat_shortcuts));
-      c->game_data.account()->shortcuts = cmd->chat_shortcuts;
+    }
+    case 0x03ED: {
+      const auto& cmd = check_size_t<C_UpdateAccountChatShortcuts_BB_03ED>(data);
+      c->game_data.account()->shortcuts = cmd.chat_shortcuts;
       break;
-    case 0x04ED:
-      check_size_v(data.size(), sizeof(cmd->key_config));
-      c->game_data.account()->key_config.key_config = cmd->key_config;
+    }
+    case 0x04ED: {
+      const auto& cmd = check_size_t<C_UpdateAccountKeyConfig_BB_04ED>(data);
+      c->game_data.account()->system_file.key_config = cmd.key_config;
       break;
-    case 0x05ED:
-      check_size_v(data.size(), sizeof(cmd->pad_config));
-      c->game_data.account()->key_config.joystick_config = cmd->pad_config;
+    }
+    case 0x05ED: {
+      const auto& cmd = check_size_t<C_UpdateAccountPadConfig_BB_05ED>(data);
+      c->game_data.account()->system_file.joystick_config = cmd.pad_config;
       break;
-    case 0x06ED:
-      check_size_v(data.size(), sizeof(cmd->tech_menu));
-      c->game_data.player()->tech_menu_config = cmd->tech_menu;
+    }
+    case 0x06ED: {
+      const auto& cmd = check_size_t<C_UpdateAccountTechMenu_BB_06ED>(data);
+      c->game_data.player()->tech_menu_config = cmd.tech_menu;
       break;
-    case 0x07ED:
-      check_size_v(data.size(), sizeof(cmd->customize));
-      c->game_data.player()->disp.config = cmd->customize;
+    }
+    case 0x07ED: {
+      const auto& cmd = check_size_t<C_UpdateAccountCustomizeMenu_BB_07ED>(data);
+      c->game_data.player()->disp.config = cmd.customize;
       break;
+    }
+    case 0x08ED: {
+      check_size_t<C_UpdateAccountChallengeAndBattleConfig_BB_08ED>(data);
+      // TODO: Save this data appropriately
+      break;
+    }
     default:
       throw invalid_argument("unknown account command");
   }
@@ -3208,10 +3218,8 @@ static void on_00E7_BB(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
 }
 
 static void on_00E2_BB(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
-  // Some clients have only a uint32_t at the end for team rewards
-  auto& cmd = check_size_t<KeyAndTeamConfigBB>(data,
-      sizeof(KeyAndTeamConfigBB) - 4, sizeof(KeyAndTeamConfigBB));
-  c->game_data.account()->key_config = cmd;
+  auto& cmd = check_size_t<PSOBBSystemFile>(data);
+  c->game_data.account()->system_file = cmd;
 }
 
 static void on_89(shared_ptr<Client> c, uint16_t, uint32_t flag, string& data) {

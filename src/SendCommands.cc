@@ -476,12 +476,13 @@ void send_client_init_bb(shared_ptr<Client> c, uint32_t error) {
   cmd.guild_card_number = c->license->serial_number;
   cmd.team_id = static_cast<uint32_t>(random_object<uint32_t>());
   cmd.cfg = c->export_config_bb();
-  cmd.caps = 0x00000102;
+  cmd.can_create_team = 1;
+  cmd.episode_4_unlocked = 1;
   send_command_t(c, 0x00E6, 0x00000000, cmd);
 }
 
-void send_team_and_key_config_bb(shared_ptr<Client> c) {
-  send_command_t(c, 0x00E2, 0x00000000, c->game_data.account()->key_config);
+void send_system_file_bb(shared_ptr<Client> c) {
+  send_command_t(c, 0x00E2, 0x00000000, c->game_data.account()->system_file);
 }
 
 void send_player_preview_bb(shared_ptr<Client> c, uint8_t player_index,
@@ -499,26 +500,24 @@ void send_player_preview_bb(shared_ptr<Client> c, uint8_t player_index,
 }
 
 void send_guild_card_header_bb(shared_ptr<Client> c) {
-  uint32_t checksum = c->game_data.account()->guild_cards.checksum();
-  S_GuildCardHeader_BB_01DC cmd = {1, sizeof(GuildCardFileBB), checksum};
+  uint32_t checksum = c->game_data.account()->guild_card_file.checksum();
+  S_GuildCardHeader_BB_01DC cmd = {1, sizeof(PSOBBGuildCardFile), checksum};
   send_command_t(c, 0x01DC, 0x00000000, cmd);
 }
 
 void send_guild_card_chunk_bb(shared_ptr<Client> c, size_t chunk_index) {
   size_t chunk_offset = chunk_index * 0x6800;
-  if (chunk_offset >= sizeof(GuildCardFileBB)) {
+  if (chunk_offset >= sizeof(PSOBBGuildCardFile)) {
     throw logic_error("attempted to send chunk beyond end of guild card file");
   }
 
   S_GuildCardFileChunk_02DC cmd;
 
-  size_t data_size = min<size_t>(
-      sizeof(GuildCardFileBB) - chunk_offset, sizeof(cmd.data));
-
+  size_t data_size = min<size_t>(sizeof(PSOBBGuildCardFile) - chunk_offset, sizeof(cmd.data));
   cmd.unknown = 0;
   cmd.chunk_index = chunk_index;
   cmd.data.assign_range(
-      reinterpret_cast<const uint8_t*>(&c->game_data.account()->guild_cards) + chunk_offset,
+      reinterpret_cast<const uint8_t*>(&c->game_data.account()->guild_card_file) + chunk_offset,
       data_size, 0);
 
   send_command(c, 0x02DC, 0x00000000, &cmd, sizeof(cmd) - sizeof(cmd.data) + data_size);
@@ -643,7 +642,7 @@ void send_complete_player_bb(shared_ptr<Client> c) {
   cmd.tech_menu_config = player->tech_menu_config;
   cmd.unknown_a6.clear(0);
   cmd.quest_data2 = player->quest_data2;
-  cmd.key_config = account->key_config;
+  cmd.system_file = account->system_file;
 
   send_command_t(c, 0x00E7, 0x00000000, cmd);
 }
