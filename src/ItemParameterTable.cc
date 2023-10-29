@@ -554,8 +554,6 @@ uint8_t ItemParameterTable::get_max_tech_level(uint8_t char_class, uint8_t tech_
   if (this->offsets_v2) {
     if ((tech_num == 14) || (tech_num == 17)) { // Ryuker or Reverser
       return 0;
-    } else if (tech_num == 16) { // Anti
-      return 7;
     } else {
       return ((char_class == 6) || (char_class == 7) || (char_class == 8) || (char_class == 10)) ? 29 : 14;
     }
