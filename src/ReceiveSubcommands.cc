@@ -991,15 +991,19 @@ static void on_pick_up_item(shared_ptr<Client> c, uint8_t command, uint8_t flag,
 }
 
 static void on_pick_up_item_request(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
-  // This is handled by the server on BB, and by the leader on other versions
+  auto& cmd = check_size_t<G_PickUpItemRequest_6x5A>(data, size);
+
   auto l = c->require_lobby();
+  if (!l->is_game() || (cmd.header.client_id != c->lobby_client_id)) {
+    return;
+  }
+
+  // This is handled by the server on BB, and by the leader on other versions.
+  // However, there appears to be a bug in v2 that causes the leader to
+  // sometimes allow players to pick up items that someone else has already
+  // picked up. To account for this, we discard requests to pick up items that
+  // don't exist instead of disconnecting the client.
   if (l->base_version == GameVersion::BB) {
-    auto& cmd = check_size_t<G_PickUpItemRequest_6x5A>(data, size);
-
-    if (!l->is_game() || (cmd.header.client_id != c->lobby_client_id)) {
-      return;
-    }
-
     if (!(l->flags & Lobby::Flag::ITEM_TRACKING_ENABLED)) {
       throw logic_error("item tracking not enabled in BB game");
     }
@@ -1020,6 +1024,10 @@ static void on_pick_up_item_request(shared_ptr<Client> c, uint8_t command, uint8
     p->print_inventory(stderr, c->version(), s->item_name_index);
 
     send_pick_up_item(c, cmd.item_id, cmd.area);
+
+  } else if ((l->flags & Lobby::Flag::ITEM_TRACKING_ENABLED) && !l->item_exists(cmd.item_id)) {
+    l->log.warning("Player %hu requests to pick up %08" PRIX32 ", but the item does not exist; dropping command",
+        cmd.header.client_id.load(), cmd.item_id.load());
 
   } else {
     forward_subcommand(c, command, flag, data, size);

@@ -313,6 +313,10 @@ uint8_t Lobby::game_event_for_lobby_event(uint8_t lobby_event) {
   return lobby_event;
 }
 
+bool Lobby::item_exists(uint32_t item_id) const {
+  return this->item_id_to_floor_item.count(item_id);
+}
+
 void Lobby::add_item(const ItemData& data, uint8_t area, float x, float z) {
   auto& fi = this->item_id_to_floor_item[data.id];
   fi.data = data;

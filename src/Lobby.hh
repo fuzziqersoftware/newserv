@@ -159,9 +159,9 @@ struct Lobby : public std::enable_shared_from_this<Lobby> {
       const std::string* identifier = nullptr,
       uint64_t serial_number = 0);
 
+  bool item_exists(uint32_t item_id) const;
   void add_item(const ItemData& item, uint8_t area, float x, float z);
   ItemData remove_item(uint32_t item_id);
-  size_t find_item(uint32_t item_id);
   uint32_t generate_item_id(uint8_t client_id);
   void on_item_id_generated_externally(uint8_t client_id, uint32_t item_id);
 
