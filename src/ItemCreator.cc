@@ -410,10 +410,23 @@ void ItemCreator::set_item_kill_count_if_unsealable(ItemData& item) const {
 }
 
 void ItemCreator::set_item_unidentified_flag_if_not_challenge(ItemData& item) const {
-  if ((this->mode != GameMode::CHALLENGE) &&
-      (item.data1[0] == 0x00) &&
-      (this->item_parameter_table->is_item_rare(item) || (item.data1[4] != 0))) {
-    item.data1[4] |= 0x80;
+  if (this->mode == GameMode::CHALLENGE) {
+    return;
+  }
+  if (item.data1[0] != 0x00) {
+    return;
+  }
+  // On V3, all rare weapons and weapons with specials are untekked when
+  // created; on V2, only rares that are not in the standard item classes are
+  // untekked when created.
+  if (this->is_v3()) {
+    if (this->item_parameter_table->is_item_rare(item) || (item.data1[4] != 0)) {
+      item.data1[4] |= 0x80;
+    }
+  } else {
+    if (this->item_parameter_table->is_item_rare(item) ? (item.data1[1] > 0x0C) : (item.data1[4] != 0)) {
+      item.data1[4] |= 0x80;
+    }
   }
 }
 
