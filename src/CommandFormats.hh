@@ -3308,7 +3308,10 @@ struct S_TeamMembershipInformation_BB_12EA {
   le_uint32_t team_id = 0;
   le_uint32_t unknown_a4 = 0;
   le_uint32_t privilege_level = 0;
-  le_uint32_t unknown_a6 = 0;
+  uint8_t unknown_a6 = 0;
+  uint8_t unknown_a7 = 0;
+  uint8_t unknown_a8 = 0;
+  uint8_t unknown_a9 = 0;
   pstring<TextEncoding::UTF16, 0x10> team_name;
 } __packed__;
 
@@ -3352,8 +3355,8 @@ struct S_Unknown_BB_13EA_15EA_Entry {
 // 1CEA: Ranking information
 // No arguments when sent by the client.
 
-// 1DEA (S->C): Unknown
-// No arguments except header.flag.
+// 1DEA (S->C): Update team rewards bitmask
+// header.flag specifies the new rewards bitmask.
 
 // 1EEA (C->S): Unknown
 // header.flag is used, but it's unknown what the value means.

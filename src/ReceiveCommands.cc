@@ -125,11 +125,6 @@ static void send_proxy_destinations_menu(shared_ptr<Client> c) {
   send_menu(c, s->proxy_destinations_menu_for_version(c->version()));
 }
 
-static void send_redirect_destinations_menu(shared_ptr<Client> c) {
-  auto s = c->require_server_state();
-  send_menu(c, s->redirect_destinations_menu_for_version(c->version()));
-}
-
 static bool send_enable_send_function_call_if_applicable(shared_ptr<Client> c) {
   auto s = c->require_server_state();
   if (function_compiler_available() && c->config.check_flag(Client::Flag::USE_OVERFLOW_FOR_SEND_FUNCTION_CALL)) {
@@ -227,22 +222,6 @@ static void send_main_menu(shared_ptr<Client> c) {
       MenuItem::Flag::INVISIBLE_ON_BB;
   main_menu->items.emplace_back(MainMenuItemID::PROXY_DESTINATIONS, "Proxy server",
       "Connect to another\nserver through the\nproxy", proxy_destinations_menu_item_flags);
-
-  // If the client is on a virtual connection, redirecting will not work
-  // properly (they'll just be reconencted to newserv), so hide the option
-  if (!c->channel.is_virtual_connection) {
-    uint32_t redirect_destinations_menu_item_flags =
-        // DCNTE doesn't support multiple ship select menus without changing
-        // servers (via a 19 command) apparently :(
-        MenuItem::Flag::INVISIBLE_ON_DCNTE |
-        (s->redirect_destinations_dc.empty() ? MenuItem::Flag::INVISIBLE_ON_DC : 0) |
-        (s->redirect_destinations_pc.empty() ? MenuItem::Flag::INVISIBLE_ON_PC : 0) |
-        (s->redirect_destinations_gc.empty() ? MenuItem::Flag::INVISIBLE_ON_GC : 0) |
-        (s->redirect_destinations_xb.empty() ? MenuItem::Flag::INVISIBLE_ON_XB : 0) |
-        MenuItem::Flag::INVISIBLE_ON_BB;
-    main_menu->items.emplace_back(MainMenuItemID::REDIRECT_DESTINATIONS, "Other servers",
-        "Connect to another\nserver directly", redirect_destinations_menu_item_flags);
-  }
 
   main_menu->items.emplace_back(MainMenuItemID::DOWNLOAD_QUESTS, "Download quests",
       "Download quests", MenuItem::Flag::INVISIBLE_ON_DCNTE | MenuItem::Flag::INVISIBLE_ON_BB);
@@ -1796,10 +1775,6 @@ static void on_10(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
           send_proxy_destinations_menu(c);
           break;
 
-        case MainMenuItemID::REDIRECT_DESTINATIONS:
-          send_redirect_destinations_menu(c);
-          break;
-
         case MainMenuItemID::DOWNLOAD_QUESTS: {
           auto s = c->require_server_state();
           if (c->config.check_flag(Client::Flag::IS_EPISODE_3)) {
@@ -1993,36 +1968,6 @@ static void on_10(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
             send_update_client_config(c);
             send_client_to_proxy_server(c);
           }
-        }
-      }
-      break;
-    }
-
-    case MenuID::REDIRECT_DESTINATIONS: {
-      if (item_id == RedirectDestinationsMenuItemID::GO_BACK) {
-        send_main_menu(c);
-
-      } else if (item_id == RedirectDestinationsMenuItemID::OPTIONS) {
-        send_menu(c, proxy_options_menu_for_client(c));
-
-      } else {
-        auto s = c->require_server_state();
-        const pair<string, uint16_t>* dest = nullptr;
-        try {
-          dest = &s->redirect_destinations_for_version(c->version()).at(item_id);
-        } catch (const out_of_range&) {
-        }
-
-        if (!dest) {
-          send_message_box(c, "$C6No such destination exists.");
-          c->should_disconnect = true;
-        } else {
-          // Clear Check Tactics menu so client won't see newserv tournament
-          // state while logically on another server
-          if (c->config.check_flag(Client::Flag::IS_EPISODE_3) && !c->config.check_flag(Client::Flag::IS_EP3_TRIAL_EDITION)) {
-            send_ep3_confirm_tournament_entry(c, nullptr);
-          }
-          send_reconnect(c, resolve_ipv4(dest->first), dest->second);
         }
       }
       break;

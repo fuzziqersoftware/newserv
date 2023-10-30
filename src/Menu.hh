@@ -20,7 +20,6 @@ constexpr uint32_t GAME = 0x44000044;
 constexpr uint32_t QUEST = 0x55000055;
 constexpr uint32_t QUEST_FILTER = 0x66000066;
 constexpr uint32_t PROXY_DESTINATIONS = 0x77000077;
-constexpr uint32_t REDIRECT_DESTINATIONS = 0x78000078;
 constexpr uint32_t PROGRAMS = 0x88000088;
 constexpr uint32_t PATCHES = 0x99000099;
 constexpr uint32_t PROXY_OPTIONS = 0xAA0000AA;
@@ -34,7 +33,6 @@ constexpr uint32_t GO_TO_LOBBY = 0x11222211;
 constexpr uint32_t INFORMATION = 0x11333311;
 constexpr uint32_t DOWNLOAD_QUESTS = 0x11444411;
 constexpr uint32_t PROXY_DESTINATIONS = 0x11555511;
-constexpr uint32_t REDIRECT_DESTINATIONS = 0x11565611;
 constexpr uint32_t PATCHES = 0x11666611;
 constexpr uint32_t PROGRAMS = 0x11777711;
 constexpr uint32_t DISCONNECT = 0x11888811;
@@ -49,11 +47,6 @@ namespace ProxyDestinationsMenuItemID {
 constexpr uint32_t GO_BACK = 0x77FFFF77;
 constexpr uint32_t OPTIONS = 0x77EEEE77;
 } // namespace ProxyDestinationsMenuItemID
-
-namespace RedirectDestinationsMenuItemID {
-constexpr uint32_t GO_BACK = 0x78FFFF78;
-constexpr uint32_t OPTIONS = 0x78EEEE78;
-} // namespace RedirectDestinationsMenuItemID
 
 namespace ProgramsMenuItemID {
 constexpr uint32_t GO_BACK = 0x88FFFF88;

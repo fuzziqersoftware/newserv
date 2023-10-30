@@ -141,14 +141,6 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   std::shared_ptr<const Menu> information_menu_v3;
   std::shared_ptr<std::vector<std::string>> information_contents_v2;
   std::shared_ptr<std::vector<std::string>> information_contents_v3;
-  std::shared_ptr<const Menu> redirect_destinations_menu_dc;
-  std::shared_ptr<const Menu> redirect_destinations_menu_pc;
-  std::shared_ptr<const Menu> redirect_destinations_menu_gc;
-  std::shared_ptr<const Menu> redirect_destinations_menu_xb;
-  std::vector<std::pair<std::string, uint16_t>> redirect_destinations_dc;
-  std::vector<std::pair<std::string, uint16_t>> redirect_destinations_pc;
-  std::vector<std::pair<std::string, uint16_t>> redirect_destinations_gc;
-  std::vector<std::pair<std::string, uint16_t>> redirect_destinations_xb;
   std::shared_ptr<const Menu> proxy_destinations_menu_dc;
   std::shared_ptr<const Menu> proxy_destinations_menu_pc;
   std::shared_ptr<const Menu> proxy_destinations_menu_gc;
@@ -214,8 +206,6 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   uint32_t connect_address_for_client(std::shared_ptr<Client> c) const;
 
   std::shared_ptr<const Menu> information_menu_for_version(GameVersion version) const;
-  std::shared_ptr<const Menu> redirect_destinations_menu_for_version(GameVersion version) const;
-  const std::vector<std::pair<std::string, uint16_t>>& redirect_destinations_for_version(GameVersion version) const;
   std::shared_ptr<const Menu> proxy_destinations_menu_for_version(GameVersion version) const;
   const std::vector<std::pair<std::string, uint16_t>>& proxy_destinations_for_version(GameVersion version) const;
 
