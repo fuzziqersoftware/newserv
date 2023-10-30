@@ -702,8 +702,8 @@ void Tournament::send_all_state_updates() const {
       // with this instance of the tournament - an intervening shell command
       // `reload ep3` could have changed the client's linkage
       if (c &&
-          (c->flags & Client::Flag::IS_EPISODE_3) &&
-          !(c->flags & Client::Flag::IS_EP3_TRIAL_EDITION) &&
+          c->config.check_flag(Client::Flag::IS_EPISODE_3) &&
+          !c->config.check_flag(Client::Flag::IS_EP3_TRIAL_EDITION) &&
           (c->ep3_tournament_team.lock() == team)) {
         send_ep3_confirm_tournament_entry(c, this->shared_from_this());
       }
@@ -716,8 +716,8 @@ void Tournament::send_all_state_updates_on_deletion() const {
     for (const auto& player : team->players) {
       auto c = player.client.lock();
       if (c &&
-          (c->flags & Client::Flag::IS_EPISODE_3) &&
-          !(c->flags & Client::Flag::IS_EP3_TRIAL_EDITION) &&
+          c->config.check_flag(Client::Flag::IS_EPISODE_3) &&
+          !c->config.check_flag(Client::Flag::IS_EP3_TRIAL_EDITION) &&
           (c->ep3_tournament_team.lock() == team)) {
         send_ep3_confirm_tournament_entry(c, nullptr);
       }
@@ -916,7 +916,7 @@ shared_ptr<Tournament::Team> TournamentIndex::team_for_serial_number(uint32_t se
 }
 
 void TournamentIndex::link_client(shared_ptr<Client> c) {
-  if (!(c->flags & Client::Flag::IS_EPISODE_3)) {
+  if (!c->config.check_flag(Client::Flag::IS_EPISODE_3)) {
     return;
   }
 
@@ -927,7 +927,7 @@ void TournamentIndex::link_client(shared_ptr<Client> c) {
       if (player.serial_number == c->license->serial_number) {
         c->ep3_tournament_team = team;
         player.client = c;
-        if (!(c->flags & Client::Flag::IS_EP3_TRIAL_EDITION)) {
+        if (!c->config.check_flag(Client::Flag::IS_EP3_TRIAL_EDITION)) {
           send_ep3_confirm_tournament_entry(c, tourn);
         }
         return;
@@ -936,7 +936,7 @@ void TournamentIndex::link_client(shared_ptr<Client> c) {
     throw logic_error("tournament team found for player, but player not found on team");
   } else {
     c->ep3_tournament_team.reset();
-    if (!(c->flags & Client::Flag::IS_EP3_TRIAL_EDITION)) {
+    if (!c->config.check_flag(Client::Flag::IS_EP3_TRIAL_EDITION)) {
       send_ep3_confirm_tournament_entry(c, nullptr);
     }
   }

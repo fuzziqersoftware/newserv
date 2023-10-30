@@ -238,7 +238,7 @@ struct GuildCardBB {
 
 struct PlayerLobbyDataPC {
   le_uint32_t player_tag = 0;
-  le_uint32_t guild_card = 0;
+  le_uint32_t guild_card_number = 0;
   // There's a strange behavior (bug? "feature"?) in Episode 3 where the start
   // button does nothing in the lobby (hence you can't "quit game") if the
   // client's IP address is zero. So, we fill it in with a fake nonzero value to
@@ -253,7 +253,7 @@ struct PlayerLobbyDataPC {
 
 struct PlayerLobbyDataDCGC {
   le_uint32_t player_tag = 0;
-  le_uint32_t guild_card = 0;
+  le_uint32_t guild_card_number = 0;
   be_uint32_t ip_address = 0x7F000001;
   le_uint32_t client_id = 0;
   pstring<TextEncoding::ASCII, 0x10> name;
@@ -275,7 +275,7 @@ struct XBNetworkLocation {
 
 struct PlayerLobbyDataXB {
   le_uint32_t player_tag = 0;
-  le_uint32_t guild_card = 0;
+  le_uint32_t guild_card_number = 0;
   XBNetworkLocation netloc;
   le_uint32_t client_id = 0;
   pstring<TextEncoding::ASCII, 0x10> name;
@@ -284,15 +284,17 @@ struct PlayerLobbyDataXB {
 } __attribute__((packed));
 
 struct PlayerLobbyDataBB {
-  le_uint32_t player_tag = 0;
-  le_uint32_t guild_card = 0;
-  // This field is a guess; the official builds didn't use this, but all other
-  // versions have it
-  be_uint32_t ip_address = 0x7F000001;
-  parray<uint8_t, 0x10> unknown_a1;
-  le_uint32_t client_id = 0;
-  pstring<TextEncoding::UTF16, 0x10> name;
-  le_uint32_t unknown_a2 = 0;
+  /* 00 */ le_uint32_t player_tag = 0;
+  /* 04 */ le_uint32_t guild_card_number = 0;
+  /* 08 */ le_uint32_t team_guild_card_number = 0;
+  /* 0C */ le_uint32_t team_id = 0;
+  /* 10 */ parray<uint8_t, 0x0C> unknown_a1;
+  /* 1C */ le_uint32_t client_id = 0;
+  /* 20 */ pstring<TextEncoding::UTF16, 0x10> name;
+  // If this field is zero, the "Press F1 for help" prompt appears in the corner
+  // of the screen in the lobby and on Pioneer 2.
+  /* 40 */ le_uint32_t hide_help_prompt = 1;
+  /* 44  */
 
   void clear();
 } __attribute__((packed));

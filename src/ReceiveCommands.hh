@@ -12,7 +12,6 @@ std::shared_ptr<Lobby> create_game_generic(
     Episode episode = Episode::EP1,
     GameMode mode = GameMode::NORMAL,
     uint8_t difficulty = 0,
-    uint32_t flags = 0,
     bool allow_v1 = false,
     std::shared_ptr<Lobby> watched_lobby = nullptr,
     std::shared_ptr<Episode3::BattleRecordPlayer> battle_player = nullptr);

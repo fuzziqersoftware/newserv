@@ -262,7 +262,7 @@ void ProxyServer::UnlinkedSession::on_input(Channel& ch, uint16_t command, uint3
   shared_ptr<License> license;
   uint32_t sub_version = 0;
   string character_name;
-  ClientConfigBB client_config;
+  Client::Config config;
   string login_command_bb;
   string hardware_id;
 
@@ -277,7 +277,7 @@ void ProxyServer::UnlinkedSession::on_input(Channel& ch, uint16_t command, uint3
         ses->channel.language = cmd.language;
         character_name = cmd.name.decode(ses->channel.language);
         hardware_id = cmd.hardware_id.decode();
-        client_config.cfg.flags |= Client::Flag::IS_DC_V1;
+        config.set_flag(Client::Flag::IS_DC_V1);
       } else if (command == 0x9D) {
         const auto& cmd = check_size_t<C_Login_DC_PC_GC_9D>(data, sizeof(C_LoginExtended_DC_GC_9D));
         license = s->license_index->verify_v1_v2(stoul(cmd.serial_number.decode(), nullptr, 16), cmd.access_key.decode());
@@ -312,7 +312,7 @@ void ProxyServer::UnlinkedSession::on_input(Channel& ch, uint16_t command, uint3
       sub_version = cmd.sub_version;
       ses->channel.language = cmd.language;
       character_name = cmd.name.decode(ses->channel.language);
-      client_config.cfg = cmd.client_config.cfg;
+      config.parse_from(cmd.client_config);
 
     } else if (ses->version == GameVersion::XB) {
       throw runtime_error("xbox licenses are not implemented");
@@ -373,13 +373,11 @@ void ProxyServer::UnlinkedSession::on_input(Channel& ch, uint16_t command, uint3
       // If there's no open session for this license, then there must be a valid
       // destination somewhere - either in the client config or in the unlinked
       // session
-      if (client_config.cfg.magic == CLIENT_CONFIG_MAGIC) {
-        linked_ses.reset(new LinkedSession(
-            server, ses->local_port, ses->version, license, client_config));
+      if (config.proxy_destination_address != 0) {
+        linked_ses.reset(new LinkedSession(server, ses->local_port, ses->version, license, config));
         linked_ses->log.info("Opened licensed session for unlinked session based on client config");
       } else if (ses->next_destination.ss_family == AF_INET) {
-        linked_ses.reset(new LinkedSession(
-            server, ses->local_port, ses->version, license, ses->next_destination));
+        linked_ses.reset(new LinkedSession(server, ses->local_port, ses->version, license, ses->next_destination));
         linked_ses->log.info("Opened licensed session for unlinked session based on unlinked default destination");
       } else {
         ses->log.error("Cannot open linked session: no valid destination in client config or unlinked session");
@@ -484,15 +482,15 @@ ProxyServer::LinkedSession::LinkedSession(
     uint16_t local_port,
     GameVersion version,
     shared_ptr<License> license,
-    const ClientConfigBB& newserv_client_config)
+    const Client::Config& config)
     : LinkedSession(server, license->serial_number, local_port, version) {
   this->license = license;
-  this->newserv_client_config = newserv_client_config;
+  this->config = config;
   memset(&this->next_destination, 0, sizeof(this->next_destination));
   struct sockaddr_in* dest_sin = reinterpret_cast<struct sockaddr_in*>(&this->next_destination);
   dest_sin->sin_family = AF_INET;
-  dest_sin->sin_port = htons(this->newserv_client_config.cfg.proxy_destination_port);
-  dest_sin->sin_addr.s_addr = htonl(this->newserv_client_config.cfg.proxy_destination_address);
+  dest_sin->sin_port = htons(this->config.proxy_destination_port);
+  dest_sin->sin_addr.s_addr = htonl(this->config.proxy_destination_address);
 }
 
 ProxyServer::LinkedSession::LinkedSession(
@@ -640,11 +638,11 @@ void ProxyServer::LinkedSession::on_error(Channel& ch, short events) {
   if (events & BEV_EVENT_CONNECTED) {
     ses->log.info("%s channel connected", is_server_stream ? "Server" : "Client");
 
-    if (is_server_stream && (ses->options.override_lobby_event >= 0) &&
-        (((ses->version() == GameVersion::GC) && !(ses->newserv_client_config.cfg.flags & Client::Flag::IS_GC_TRIAL_EDITION)) ||
+    if (is_server_stream && (ses->config.override_lobby_event != 0xFF) &&
+        (((ses->version() == GameVersion::GC) && !(ses->config.check_flag(Client::Flag::IS_GC_TRIAL_EDITION))) ||
             (ses->version() == GameVersion::XB) ||
             (ses->version() == GameVersion::BB))) {
-      ses->client_channel.send(0xDA, ses->options.override_lobby_event);
+      ses->client_channel.send(0xDA, ses->config.override_lobby_event);
     }
   }
   if (events & BEV_EVENT_ERROR) {
@@ -705,11 +703,13 @@ void ProxyServer::LinkedSession::send_to_game_server(const char* error_message) 
     send_ship_info(this->client_channel, string_printf("You\'ve returned to\n\tC6%s$C7\n\n%s", s->name.c_str(), error_message ? error_message : ""));
 
     // Restore newserv_client_config, so the login server gets the client flags
-    S_UpdateClientConfig_DC_PC_V3_04 update_client_config_cmd;
-    update_client_config_cmd.player_tag = 0x00010000;
-    update_client_config_cmd.guild_card_number = this->license->serial_number;
-    update_client_config_cmd.cfg = this->newserv_client_config.cfg;
-    this->client_channel.send(0x04, 0x00, &update_client_config_cmd, sizeof(update_client_config_cmd));
+    if (this->version() == GameVersion::GC || this->version() == GameVersion::XB) {
+      S_UpdateClientConfig_V3_04 update_client_config_cmd;
+      update_client_config_cmd.player_tag = 0x00010000;
+      update_client_config_cmd.guild_card_number = this->license->serial_number;
+      this->config.serialize_into(update_client_config_cmd.client_config);
+      this->client_channel.send(0x04, 0x00, &update_client_config_cmd, sizeof(update_client_config_cmd));
+    }
 
     const auto& port_name = version_to_login_port_name.at(static_cast<size_t>(this->version()));
 
@@ -817,9 +817,9 @@ shared_ptr<ProxyServer::LinkedSession> ProxyServer::get_session_by_name(
 
 shared_ptr<ProxyServer::LinkedSession> ProxyServer::create_licensed_session(
     shared_ptr<License> l, uint16_t local_port, GameVersion version,
-    const ClientConfigBB& newserv_client_config) {
+    const Client::Config& config) {
   shared_ptr<LinkedSession> session(new LinkedSession(
-      this->shared_from_this(), local_port, version, l, newserv_client_config));
+      this->shared_from_this(), local_port, version, l, config));
   auto emplace_ret = this->id_to_session.emplace(session->id, session);
   if (!emplace_ret.second) {
     throw runtime_error("session already exists for this license");

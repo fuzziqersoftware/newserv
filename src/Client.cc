@@ -17,31 +17,119 @@
 
 using namespace std;
 
-const uint64_t CLIENT_CONFIG_MAGIC = 0x492A890E82AC9839;
+const uint64_t CLIENT_CONFIG_MAGIC = 0x8399AC32;
 
 static atomic<uint64_t> next_id(1);
 
-ClientOptions::ClientOptions()
-    : switch_assist(false),
-      infinite_hp(false),
-      infinite_tp(false),
-      debug(false),
-      override_section_id(-1),
-      override_lobby_event(-1),
-      override_lobby_number(-1),
-      override_random_seed(-1),
-      save_files(false),
-      enable_chat_commands(true),
-      enable_chat_filter(true),
-      enable_player_notifications(false),
-      suppress_client_pings(false),
-      suppress_remote_login(false),
-      zero_remote_guild_card(false),
-      ep3_infinite_meseta(false),
-      ep3_infinite_time(false),
-      red_name(false),
-      blank_name(false),
-      function_call_return_value(-1) {}
+void Client::Config::set_flags_for_version(GameVersion version, int64_t sub_version) {
+  this->set_flag(Flag::PROXY_CHAT_COMMANDS_ENABLED);
+  this->set_flag(Flag::PROXY_CHAT_FILTER_ENABLED);
+
+  switch (sub_version) {
+    case -1: // Initial check (before sub_version recognition)
+      switch (version) {
+        case GameVersion::DC:
+          this->set_flag(Flag::NO_D6);
+          this->set_flag(Flag::SEND_FUNCTION_CALL_NO_CACHE_PATCH);
+          break;
+        case GameVersion::GC:
+          break;
+        case GameVersion::XB:
+          this->set_flag(Flag::SEND_FUNCTION_CALL_NO_CACHE_PATCH);
+          break;
+        case GameVersion::PC:
+          this->set_flag(Flag::NO_D6);
+          this->set_flag(Flag::SEND_FUNCTION_CALL_CHECKSUM_ONLY);
+          this->set_flag(Flag::SEND_FUNCTION_CALL_NO_CACHE_PATCH);
+          break;
+        case GameVersion::PATCH:
+          this->set_flag(Flag::NO_D6);
+          this->set_flag(Flag::NO_SEND_FUNCTION_CALL);
+          break;
+        case GameVersion::BB:
+          this->set_flag(Flag::NO_D6);
+          this->set_flag(Flag::SAVE_ENABLED);
+          this->set_flag(Flag::SEND_FUNCTION_CALL_NO_CACHE_PATCH);
+          break;
+        default:
+          throw logic_error("invalid game version");
+      }
+      break;
+
+    case 0x20: // DCNTE, possibly also DCv1 JP
+    case 0x21: // DCv1 US
+      this->set_flag(Flag::IS_DC_V1);
+      this->set_flag(Flag::NO_D6);
+      this->set_flag(Flag::NO_SEND_FUNCTION_CALL);
+      // In the case of DCNTE, the IS_DC_TRIAL_EDITION flag is already set when
+      // we get here
+      break;
+    case 0x23: // DCv1 EU
+      this->set_flag(Flag::IS_DC_V1);
+      this->set_flag(Flag::NO_D6);
+      this->set_flag(Flag::NO_SEND_FUNCTION_CALL);
+      break;
+    case 0x25: // DCv2 JP
+    case 0x26: // DCv2 US
+    case 0x28: // DCv2 EU
+      this->set_flag(Flag::NO_D6);
+      this->set_flag(Flag::SEND_FUNCTION_CALL_NO_CACHE_PATCH);
+      break;
+    case 0x29: // PC
+      this->set_flag(Flag::NO_D6);
+      this->set_flag(Flag::SEND_FUNCTION_CALL_CHECKSUM_ONLY);
+      this->set_flag(Flag::SEND_FUNCTION_CALL_NO_CACHE_PATCH);
+      break;
+    case 0x30: // GC Ep1&2 GameJam demo, GC Ep1&2 JP v1.02, at least one version of PSO XB
+    case 0x31: // GC Ep1&2 US v1.00, GC US v1.01, GC EU v1.00, GC JP v1.00
+    case 0x34: // GC Ep1&2 JP v1.03
+      // In the case of GC Trial Edition, the IS_GC_TRIAL_EDITION flag is
+      // already set when we get here (because the client has used V2 encryption
+      // instead of V3)
+      break;
+    case 0x32: // GC Ep1&2 EU 50Hz
+    case 0x33: // GC Ep1&2 EU 60Hz
+      this->set_flag(Flag::NO_D6_AFTER_LOBBY);
+      break;
+    case 0x35: // GC Ep1&2 JP v1.04 (Plus)
+      this->set_flag(Flag::NO_D6_AFTER_LOBBY);
+      this->set_flag(Flag::ENCRYPTED_SEND_FUNCTION_CALL);
+      this->set_flag(Flag::SEND_FUNCTION_CALL_NO_CACHE_PATCH);
+      break;
+    case 0x36: // GC Ep1&2 US v1.02 (Plus)
+    case 0x39: // GC Ep1&2 JP v1.05 (Plus)
+      this->set_flag(Flag::NO_D6_AFTER_LOBBY);
+      this->set_flag(Flag::NO_SEND_FUNCTION_CALL);
+      break;
+    case 0x40: // GC Ep3 JP and Trial Edition
+               // sub_version can't be used to tell JP final and Trial Edition apart; we
+               // instead look at header.flag in the 61 command.
+      this->set_flag(Flag::NO_D6_AFTER_LOBBY);
+      this->set_flag(Flag::IS_EPISODE_3);
+      this->set_flag(Flag::ENCRYPTED_SEND_FUNCTION_CALL);
+      this->set_flag(Flag::SEND_FUNCTION_CALL_NO_CACHE_PATCH);
+      break;
+    case 0x42: // Also GC Ep3 JP?
+      this->set_flag(Flag::NO_D6_AFTER_LOBBY);
+      this->set_flag(Flag::IS_EPISODE_3);
+      this->set_flag(Flag::ENCRYPTED_SEND_FUNCTION_CALL);
+      this->set_flag(Flag::SEND_FUNCTION_CALL_NO_CACHE_PATCH);
+      break;
+    case 0x41: // GC Ep3 US
+      this->set_flag(Flag::NO_D6_AFTER_LOBBY);
+      this->set_flag(Flag::IS_EPISODE_3);
+      this->set_flag(Flag::USE_OVERFLOW_FOR_SEND_FUNCTION_CALL);
+      this->set_flag(Flag::SEND_FUNCTION_CALL_NO_CACHE_PATCH);
+      break;
+    case 0x43: // GC Ep3 EU
+      this->set_flag(Flag::NO_D6_AFTER_LOBBY);
+      this->set_flag(Flag::IS_EPISODE_3);
+      this->set_flag(Flag::NO_SEND_FUNCTION_CALL);
+      break;
+    default:
+      throw runtime_error(string_printf("unknown sub_version %" PRIX64, sub_version));
+  }
+}
 
 Client::Client(
     shared_ptr<Server> server,
@@ -51,16 +139,12 @@ Client::Client(
     : server(server),
       id(next_id++),
       log(string_printf("[C-%" PRIX64 "] ", this->id), client_log.min_level),
-      bb_game_state(0),
-      flags(flags_for_version(version, -1)),
-      specific_version(default_specific_version_for_version(version, -1)),
       channel(bev, version, 1, nullptr, nullptr, this, string_printf("C-%" PRIX64, this->id), TerminalFormat::FG_YELLOW, TerminalFormat::FG_GREEN),
       server_behavior(server_behavior),
       should_disconnect(false),
       should_send_to_lobby_server(false),
       should_send_to_proxy_server(false),
-      proxy_destination_address(0),
-      proxy_destination_port(0),
+      bb_connection_phase(0xFF),
       x(0.0f),
       z(0.0f),
       area(0),
@@ -89,6 +173,10 @@ Client::Client(
       can_chat(true),
       pending_bb_save_player_index(0),
       dol_base_addr(0) {
+
+  this->config.set_flags_for_version(version, -1);
+  this->config.specific_version = default_specific_version_for_version(version, -1);
+
   this->last_switch_enabled_command.header.subcommand = 0;
   memset(&this->next_connection_addr, 0, sizeof(this->next_connection_addr));
 
@@ -122,9 +210,9 @@ void Client::reschedule_ping_and_timeout_events() {
 QuestScriptVersion Client::quest_version() const {
   switch (this->version()) {
     case GameVersion::DC:
-      if (this->flags & Flag::IS_DC_TRIAL_EDITION) {
+      if (this->config.check_flag(Flag::IS_DC_TRIAL_EDITION)) {
         return QuestScriptVersion::DC_NTE;
-      } else if (this->flags & Flag::IS_DC_V1) {
+      } else if (this->config.check_flag(Flag::IS_DC_V1)) {
         return QuestScriptVersion::DC_V1;
       } else {
         return QuestScriptVersion::DC_V2;
@@ -132,9 +220,9 @@ QuestScriptVersion Client::quest_version() const {
     case GameVersion::PC:
       return QuestScriptVersion::PC_V2;
     case GameVersion::GC:
-      if (this->flags & Flag::IS_GC_TRIAL_EDITION) {
+      if (this->config.check_flag(Flag::IS_GC_TRIAL_EDITION)) {
         return QuestScriptVersion::GC_NTE;
-      } else if (this->flags & Flag::IS_EPISODE_3) {
+      } else if (this->config.check_flag(Flag::IS_EPISODE_3)) {
         return QuestScriptVersion::GC_EP3;
       } else {
         return QuestScriptVersion::GC_V3;
@@ -170,42 +258,6 @@ shared_ptr<Lobby> Client::require_lobby() const {
     throw runtime_error("client not in any lobby");
   }
   return l;
-}
-
-ClientConfig Client::export_config() const {
-  ClientConfig cc;
-  cc.magic = CLIENT_CONFIG_MAGIC;
-  cc.flags = this->flags;
-  cc.specific_version = this->specific_version;
-  cc.proxy_destination_address = this->proxy_destination_address;
-  cc.proxy_destination_port = this->proxy_destination_port;
-  cc.unused.clear(0xFF);
-  return cc;
-}
-
-ClientConfigBB Client::export_config_bb() const {
-  ClientConfigBB cc;
-  cc.cfg = this->export_config();
-  cc.bb_game_state = this->bb_game_state;
-  cc.bb_player_index = this->game_data.bb_player_index;
-  cc.unused.clear(0xFF);
-  return cc;
-}
-
-void Client::import_config(const ClientConfig& cc) {
-  if (cc.magic != CLIENT_CONFIG_MAGIC) {
-    throw invalid_argument("invalid client config");
-  }
-  this->flags = cc.flags;
-  this->specific_version = cc.specific_version;
-  this->proxy_destination_address = cc.proxy_destination_address;
-  this->proxy_destination_port = cc.proxy_destination_port;
-}
-
-void Client::import_config(const ClientConfigBB& cc) {
-  this->import_config(cc.cfg);
-  this->bb_game_state = cc.bb_game_state;
-  this->game_data.bb_player_index = cc.bb_player_index;
 }
 
 void Client::dispatch_save_game_data(evutil_socket_t, short, void* ctx) {

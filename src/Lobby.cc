@@ -29,7 +29,7 @@ Lobby::Lobby(shared_ptr<ServerState> s, uint32_t id)
       block(0),
       leader_id(0),
       max_clients(12),
-      flags(0) {
+      enabled_flags(0) {
   for (size_t x = 0; x < 12; x++) {
     this->next_item_id[x] = 0x00010000 + 0x00200000 * x;
   }
@@ -83,7 +83,7 @@ void Lobby::create_ep3_server() {
     this->log.info("Recreating Episode 3 server state");
   }
   auto tourn = this->tournament_match ? this->tournament_match->tournament.lock() : nullptr;
-  bool is_trial = (this->flags & Lobby::Flag::IS_EP3_TRIAL);
+  bool is_trial = this->check_flag(Lobby::Flag::IS_EP3_TRIAL);
   Episode3::Server::Options options = {
       .card_index = is_trial ? s->ep3_card_index_trial : s->ep3_card_index,
       .map_index = s->ep3_map_index,
@@ -111,10 +111,13 @@ void Lobby::reassign_leader_on_client_departure(size_t leaving_client_index) {
 
 bool Lobby::any_client_loading() const {
   for (size_t x = 0; x < this->max_clients; x++) {
-    if (!this->clients[x].get()) {
+    auto lc = this->clients[x];
+    if (!lc.get()) {
       continue;
     }
-    if (this->clients[x]->flags & (Client::Flag::LOADING | Client::Flag::LOADING_QUEST | Client::Flag::LOADING_RUNNING_QUEST)) {
+    if (lc->config.check_flag(Client::Flag::LOADING) ||
+        lc->config.check_flag(Client::Flag::LOADING_QUEST) ||
+        lc->config.check_flag(Client::Flag::LOADING_RUNNING_JOINABLE_QUEST)) {
       return true;
     }
   }
@@ -133,7 +136,7 @@ size_t Lobby::count_clients() const {
 
 void Lobby::add_client(shared_ptr<Client> c, ssize_t required_client_id) {
   ssize_t index;
-  ssize_t min_client_id = (this->flags & Lobby::Flag::IS_SPECTATOR_TEAM) ? 4 : 0;
+  ssize_t min_client_id = this->check_flag(Lobby::Flag::IS_SPECTATOR_TEAM) ? 4 : 0;
 
   if (required_client_id >= 0) {
     if (this->clients[required_client_id].get()) {
@@ -142,7 +145,7 @@ void Lobby::add_client(shared_ptr<Client> c, ssize_t required_client_id) {
     this->clients[required_client_id] = c;
     index = required_client_id;
 
-  } else if (c->options.debug) {
+  } else if (c->config.check_flag(Client::Flag::DEBUG_ENABLED)) {
     for (index = max_clients - 1; index >= min_client_id; index--) {
       if (!this->clients[index].get()) {
         this->clients[index] = c;
@@ -180,7 +183,7 @@ void Lobby::add_client(shared_ptr<Client> c, ssize_t required_client_id) {
 
   // If the lobby is a game and item tracking is enabled, assign the inventory's
   // item IDs
-  if (this->is_game() && (this->flags & Lobby::Flag::ITEM_TRACKING_ENABLED)) {
+  if (this->is_game() && this->check_flag(Lobby::Flag::ITEM_TRACKING_ENABLED)) {
     auto s = this->require_server_state();
     auto p = c->game_data.player();
     auto& inv = p->inventory;
@@ -196,7 +199,7 @@ void Lobby::add_client(shared_ptr<Client> c, ssize_t required_client_id) {
     auto p = c->game_data.player();
     PlayerLobbyDataDCGC lobby_data;
     lobby_data.player_tag = 0x00010000;
-    lobby_data.guild_card = c->license->serial_number;
+    lobby_data.guild_card_number = c->license->serial_number;
     lobby_data.name.encode(p->disp.name.decode(c->language()), c->language());
     this->battle_record->add_player(
         lobby_data,
@@ -207,7 +210,7 @@ void Lobby::add_client(shared_ptr<Client> c, ssize_t required_client_id) {
 
   // Send spectator count notifications if needed
   if (this->is_game() && this->is_ep3()) {
-    if (this->flags & Lobby::Flag::IS_SPECTATOR_TEAM) {
+    if (this->check_flag(Lobby::Flag::IS_SPECTATOR_TEAM)) {
       auto watched_l = this->watched_lobby.lock();
       if (watched_l) {
         send_ep3_update_game_metadata(watched_l);
@@ -247,7 +250,7 @@ void Lobby::remove_client(shared_ptr<Client> c) {
 
   // If the lobby is Episode 3, update the appropriate spectator counts
   if (this->is_game() && this->is_ep3()) {
-    if (this->flags & Lobby::Flag::IS_SPECTATOR_TEAM) {
+    if (this->check_flag(Lobby::Flag::IS_SPECTATOR_TEAM)) {
       auto watched_l = this->watched_lobby.lock();
       if (watched_l) {
         send_ep3_update_game_metadata(watched_l);
@@ -271,7 +274,7 @@ void Lobby::move_client_to_lobby(
       throw out_of_range("required slot is in use");
     }
   } else {
-    ssize_t min_client_id = (this->flags & Lobby::Flag::IS_SPECTATOR_TEAM) ? 4 : 0;
+    ssize_t min_client_id = this->check_flag(Lobby::Flag::IS_SPECTATOR_TEAM) ? 4 : 0;
     size_t available_slots = dest_lobby->max_clients - min_client_id;
     if (dest_lobby->count_clients() >= available_slots) {
       throw out_of_range("no space left in lobby");

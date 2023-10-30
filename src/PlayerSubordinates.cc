@@ -237,7 +237,7 @@ void PlayerBank::save(const string& filename, bool save_to_filesystem) const {
 
 void PlayerLobbyDataPC::clear() {
   this->player_tag = 0;
-  this->guild_card = 0;
+  this->guild_card_number = 0;
   this->ip_address = 0;
   this->client_id = 0;
   this->name.clear();
@@ -245,7 +245,7 @@ void PlayerLobbyDataPC::clear() {
 
 void PlayerLobbyDataDCGC::clear() {
   this->player_tag = 0;
-  this->guild_card = 0;
+  this->guild_card_number = 0;
   this->ip_address = 0;
   this->client_id = 0;
   this->name.clear();
@@ -263,7 +263,7 @@ void XBNetworkLocation::clear() {
 
 void PlayerLobbyDataXB::clear() {
   this->player_tag = 0;
-  this->guild_card = 0;
+  this->guild_card_number = 0;
   this->netloc.clear();
   this->client_id = 0;
   this->name.clear();
@@ -271,12 +271,13 @@ void PlayerLobbyDataXB::clear() {
 
 void PlayerLobbyDataBB::clear() {
   this->player_tag = 0;
-  this->guild_card = 0;
-  this->ip_address = 0;
+  this->guild_card_number = 0;
+  this->team_guild_card_number = 0;
+  this->team_id = 0;
   this->unknown_a1.clear(0);
   this->client_id = 0;
   this->name.clear();
-  this->unknown_a2 = 0;
+  this->hide_help_prompt = 0;
 }
 
 PlayerRecordsBB_Challenge::PlayerRecordsBB_Challenge(const PlayerRecordsDC_Challenge& rec)

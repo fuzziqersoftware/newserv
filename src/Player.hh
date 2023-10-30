@@ -86,7 +86,7 @@ struct SavedAccountDataBB { // .nsa file format
   parray<le_uint32_t, 0x001E> blocked_senders;
   PSOBBGuildCardFile guild_card_file;
   PSOBBSystemFile system_file;
-  le_uint32_t newserv_flags;
+  le_uint32_t unused;
   le_uint32_t option_flags;
   parray<uint8_t, 0x0A40> shortcuts;
   parray<uint8_t, 0x04E0> symbol_chats;

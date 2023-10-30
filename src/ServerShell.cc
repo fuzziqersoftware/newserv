@@ -45,6 +45,16 @@ static void set_boolean(bool* target, const string& args) {
   }
 }
 
+static void set_flag(Client::Config& config, Client::Flag flag, const string& args) {
+  if (args == "on") {
+    config.set_flag(flag);
+  } else if (args == "off") {
+    config.clear_flag(flag);
+  } else {
+    throw invalid_argument("argument must be \"on\" or \"off\"");
+  }
+}
+
 static string get_quoted_string(string& s) {
   string ret;
   char end_char = (s.at(0) == '\"') ? '\"' : ' ';
@@ -346,7 +356,7 @@ Proxy session commands:\n\
         } else if (mask == "root") {
           l->flags = License::Flag::ROOT;
         } else {
-          l->flags = stoul(mask);
+          l->flags = stoul(mask, nullptr, 16);
         }
 
       } else {
@@ -403,7 +413,7 @@ Proxy session commands:\n\
           l->serial_number = stoul(token.substr(7));
 
         } else if (starts_with(token, "flags=")) {
-          string mask = token.substr(11);
+          string mask = token.substr(6);
           if (mask == "normal") {
             l->flags = 0;
           } else if (mask == "mod") {
@@ -413,7 +423,7 @@ Proxy session commands:\n\
           } else if (mask == "root") {
             l->flags = License::Flag::ROOT;
           } else {
-            l->flags = stoul(mask);
+            l->flags = stoul(mask, nullptr, 16);
           }
 
         } else {
@@ -695,7 +705,7 @@ Proxy session commands:\n\
   } else if ((command_name == "wc") || (command_name == "wchat")) {
     auto session = this->get_proxy_session(session_name);
     if ((session->version() != GameVersion::GC) ||
-        !(session->newserv_client_config.cfg.flags & Client::Flag::IS_EPISODE_3)) {
+        !session->config.check_flag(Client::Flag::IS_EPISODE_3)) {
       throw runtime_error("wchat can only be used on Episode 3");
     }
     string data(8, '\0');
@@ -741,29 +751,30 @@ Proxy session commands:\n\
   } else if (command_name == "set-override-section-id") {
     auto session = this->get_proxy_session(session_name);
     if (command_args.empty()) {
-      session->options.override_section_id = -1;
+      session->config.override_section_id = 0xFF;
     } else {
-      session->options.override_section_id = section_id_for_name(command_args);
+      session->config.override_section_id = section_id_for_name(command_args);
     }
 
   } else if (command_name == "set-override-event") {
     auto session = this->get_proxy_session(session_name);
     if (command_args.empty()) {
-      session->options.override_lobby_event = -1;
+      session->config.override_lobby_event = 0xFF;
     } else {
-      session->options.override_lobby_event = event_for_name(command_args);
+      session->config.override_lobby_event = event_for_name(command_args);
       if ((session->version() != GameVersion::DC) &&
-          (session->version() != GameVersion::PC) && (!((session->version() == GameVersion::GC) && (session->newserv_client_config.cfg.flags & Client::Flag::IS_GC_TRIAL_EDITION)))) {
-        session->client_channel.send(0xDA, session->options.override_lobby_event);
+          (session->version() != GameVersion::PC) &&
+          !((session->version() == GameVersion::GC) && session->config.check_flag(Client::Flag::IS_GC_TRIAL_EDITION))) {
+        session->client_channel.send(0xDA, session->config.override_lobby_event);
       }
     }
 
   } else if (command_name == "set-override-lobby-number") {
     auto session = this->get_proxy_session(session_name);
     if (command_args.empty()) {
-      session->options.override_lobby_number = -1;
+      session->config.override_lobby_number = 0x80;
     } else {
-      session->options.override_lobby_number = lobby_type_for_name(command_args);
+      session->config.override_lobby_number = lobby_type_for_name(command_args);
     }
 
   } else if (command_name == "set-challenge-rank-title") {
@@ -776,31 +787,27 @@ Proxy session commands:\n\
 
   } else if (command_name == "set-chat-filter") {
     auto session = this->get_proxy_session(session_name);
-    set_boolean(&session->options.enable_chat_filter, command_args);
+    set_flag(session->config, Client::Flag::PROXY_CHAT_FILTER_ENABLED, command_args);
 
   } else if (command_name == "set-infinite-hp") {
     auto session = this->get_proxy_session(session_name);
-    set_boolean(&session->options.infinite_hp, command_args);
+    set_flag(session->config, Client::Flag::INFINITE_HP_ENABLED, command_args);
 
   } else if (command_name == "set-infinite-tp") {
     auto session = this->get_proxy_session(session_name);
-    set_boolean(&session->options.infinite_tp, command_args);
+    set_flag(session->config, Client::Flag::INFINITE_TP_ENABLED, command_args);
 
   } else if (command_name == "set-switch-assist") {
     auto session = this->get_proxy_session(session_name);
-    set_boolean(&session->options.switch_assist, command_args);
+    set_flag(session->config, Client::Flag::SWITCH_ASSIST_ENABLED, command_args);
 
   } else if (command_name == "set-save-files" && this->state->proxy_allow_save_files) {
     auto session = this->get_proxy_session(session_name);
-    set_boolean(&session->options.save_files, command_args);
+    set_flag(session->config, Client::Flag::PROXY_SAVE_FILES, command_args);
 
   } else if (command_name == "set-block-function-calls") {
     auto session = this->get_proxy_session(session_name);
-    if (command_args.empty()) {
-      session->options.function_call_return_value = -1;
-    } else {
-      session->options.function_call_return_value = stoul(command_args);
-    }
+    set_flag(session->config, Client::Flag::PROXY_BLOCK_FUNCTION_CALLS, command_args);
 
   } else if ((command_name == "create-item") || (command_name == "set-next-item")) {
     auto session = this->get_proxy_session(session_name);

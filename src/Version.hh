@@ -28,7 +28,6 @@ extern const std::vector<std::string> version_to_login_port_name;
 extern const std::vector<std::string> version_to_lobby_port_name;
 extern const std::vector<std::string> version_to_proxy_port_name;
 
-uint32_t flags_for_version(GameVersion version, int64_t sub_version);
 const char* name_for_version(GameVersion version);
 GameVersion version_for_name(const char* name);
 

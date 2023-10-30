@@ -60,11 +60,12 @@ void ServerState::init() {
     bool is_ep3_only = (x > 14);
 
     shared_ptr<Lobby> l = this->create_lobby();
-    l->flags |=
-        Lobby::Flag::PUBLIC |
-        Lobby::Flag::DEFAULT |
-        Lobby::Flag::PERSISTENT |
-        (v2_and_later_only ? Lobby::Flag::V2_AND_LATER : 0);
+    l->set_flag(Lobby::Flag::PUBLIC);
+    l->set_flag(Lobby::Flag::DEFAULT);
+    l->set_flag(Lobby::Flag::PERSISTENT);
+    if (v2_and_later_only) {
+      l->set_flag(Lobby::Flag::V2_AND_LATER);
+    }
     l->block = x + 1;
     l->name = lobby_name;
     l->max_clients = 12;
@@ -122,8 +123,8 @@ void ServerState::add_client_to_available_lobby(shared_ptr<Client> c) {
       auto l = this->find_lobby(c->preferred_lobby_id);
       if (l &&
           !l->is_game() &&
-          (l->flags & Lobby::Flag::PUBLIC) &&
-          ((c->flags & Client::Flag::IS_EPISODE_3) || (l->episode != Episode::EP3))) {
+          l->check_flag(Lobby::Flag::PUBLIC) &&
+          (c->config.check_flag(Client::Flag::IS_EPISODE_3) || (l->episode != Episode::EP3))) {
         l->add_client(c);
         added_to_lobby = l;
       }
@@ -133,9 +134,9 @@ void ServerState::add_client_to_available_lobby(shared_ptr<Client> c) {
 
   if (!added_to_lobby.get()) {
     const auto* search_order = &this->public_lobby_search_order_non_v1;
-    if (c->flags & Client::Flag::IS_DC_V1) {
+    if (c->config.check_flag(Client::Flag::IS_DC_V1)) {
       search_order = &this->public_lobby_search_order_v1;
-    } else if (c->flags & Client::Flag::IS_EPISODE_3) {
+    } else if (c->config.check_flag(Client::Flag::IS_EPISODE_3)) {
       search_order = &this->public_lobby_search_order_ep3;
     }
     for (const auto& l : *search_order) {
@@ -150,7 +151,8 @@ void ServerState::add_client_to_available_lobby(shared_ptr<Client> c) {
 
   if (!added_to_lobby) {
     added_to_lobby = this->create_lobby();
-    added_to_lobby->flags |= Lobby::Flag::PUBLIC | Lobby::Flag::IS_OVERFLOW;
+    added_to_lobby->set_flag(Lobby::Flag::PUBLIC);
+    added_to_lobby->set_flag(Lobby::Flag::IS_OVERFLOW);
     added_to_lobby->block = 100;
     added_to_lobby->name = "Overflow";
     added_to_lobby->max_clients = 12;
@@ -166,7 +168,7 @@ void ServerState::remove_client_from_lobby(shared_ptr<Client> c) {
   auto l = c->lobby.lock();
   if (l) {
     l->remove_client(c);
-    if (!(l->flags & Lobby::Flag::PERSISTENT) && (l->count_clients() == 0)) {
+    if (!l->check_flag(Lobby::Flag::PERSISTENT) && (l->count_clients() == 0)) {
       this->remove_lobby(l->lobby_id);
     } else {
       send_player_leave_notification(l, c->lobby_client_id);
@@ -193,7 +195,7 @@ bool ServerState::change_client_lobby(
   }
 
   if (current_lobby) {
-    if (!(current_lobby->flags & Lobby::Flag::PERSISTENT) && (current_lobby->count_clients() == 0)) {
+    if (!current_lobby->check_flag(Lobby::Flag::PERSISTENT) && (current_lobby->count_clients() == 0)) {
       this->remove_lobby(current_lobby->lobby_id);
     } else {
       send_player_leave_notification(current_lobby, old_lobby_client_id);
@@ -263,7 +265,7 @@ void ServerState::remove_lobby(uint32_t lobby_id) {
     throw logic_error("attempted to delete lobby with clients in it");
   }
 
-  if (l->flags & Lobby::Flag::IS_SPECTATOR_TEAM) {
+  if (l->check_flag(Lobby::Flag::IS_SPECTATOR_TEAM)) {
     auto primary_l = l->watched_lobby.lock();
     if (primary_l) {
       primary_l->log.info("Unlinking watcher lobby %" PRIX32, l->lobby_id);
@@ -1153,7 +1155,7 @@ shared_ptr<const vector<string>> ServerState::information_contents_for_client(sh
 }
 
 shared_ptr<const QuestIndex> ServerState::quest_index_for_client(shared_ptr<const Client> c) const {
-  return (c->flags & Client::Flag::IS_EPISODE_3)
+  return c->config.check_flag(Client::Flag::IS_EPISODE_3)
       ? this->ep3_download_quest_index
       : this->default_quest_index;
 }

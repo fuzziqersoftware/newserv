@@ -24,7 +24,7 @@
 struct ServerState;
 
 struct Lobby : public std::enable_shared_from_this<Lobby> {
-  enum Flag {
+  enum class Flag {
     GAME = 0x00000001,
     PERSISTENT = 0x00000002,
 
@@ -113,7 +113,7 @@ struct Lobby : public std::enable_shared_from_this<Lobby> {
   uint8_t block;
   uint8_t leader_id;
   uint8_t max_clients;
-  uint32_t flags;
+  uint32_t enabled_flags;
   std::shared_ptr<const Quest> quest;
   std::array<std::shared_ptr<Client>, 12> clients;
   // Keys in this map are client_id
@@ -125,18 +125,31 @@ struct Lobby : public std::enable_shared_from_this<Lobby> {
   Lobby& operator=(const Lobby&) = delete;
   Lobby& operator=(Lobby&&) = delete;
 
+  [[nodiscard]] inline bool check_flag(Flag flag) const {
+    return !!(this->enabled_flags & static_cast<uint32_t>(flag));
+  }
+  inline void set_flag(Flag flag) {
+    this->enabled_flags |= static_cast<uint32_t>(flag);
+  }
+  inline void clear_flag(Flag flag) {
+    this->enabled_flags &= (~static_cast<uint32_t>(flag));
+  }
+  inline void toggle_flag(Flag flag) {
+    this->enabled_flags ^= static_cast<uint32_t>(flag);
+  }
+
   std::shared_ptr<ServerState> require_server_state() const;
   void create_item_creator();
   void create_ep3_server();
 
-  inline bool is_game() const {
-    return this->flags & Flag::GAME;
+  [[nodiscard]] inline bool is_game() const {
+    return this->check_flag(Flag::GAME);
   }
-  inline bool is_ep3() const {
+  [[nodiscard]] inline bool is_ep3() const {
     return this->episode == Episode::EP3;
   }
 
-  inline bool version_is_allowed(QuestScriptVersion v) const {
+  [[nodiscard]] inline bool version_is_allowed(QuestScriptVersion v) const {
     return this->allowed_versions & (1 << static_cast<size_t>(v));
   }
   inline void allow_version(QuestScriptVersion v) {

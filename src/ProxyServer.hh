@@ -62,12 +62,11 @@ public:
     std::string hardware_id; // Only used for DC sessions
     std::string login_command_bb;
 
-    ClientOptions options;
     uint32_t challenge_rank_color_override;
     std::string challenge_rank_title_override;
     int64_t remote_guild_card_number;
     parray<uint8_t, 0x20> remote_client_config_data;
-    ClientConfigBB newserv_client_config;
+    Client::Config config;
     // A null handler in here means to forward the response to the remote server
     std::deque<std::function<void(uint32_t return_value, uint32_t checksum)>> function_call_return_handler_queue;
     G_SwitchStateChanged_6x05 last_switch_enabled_command;
@@ -120,7 +119,7 @@ public:
         uint16_t local_port,
         GameVersion version,
         std::shared_ptr<License> license,
-        const ClientConfigBB& newserv_client_config);
+        const Client::Config& config);
     LinkedSession(
         std::shared_ptr<ProxyServer> server,
         uint16_t local_port,
@@ -179,7 +178,7 @@ public:
       std::shared_ptr<License> l,
       uint16_t local_port,
       GameVersion version,
-      const ClientConfigBB& newserv_client_config);
+      const Client::Config& config);
   void delete_session(uint64_t id);
   void delete_session(struct bufferevent* bev);
 

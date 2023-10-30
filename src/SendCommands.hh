@@ -136,7 +136,7 @@ void send_quest_buffer_overflow(std::shared_ptr<Client> c);
 void prepare_client_for_patches(std::shared_ptr<Client> c, std::function<void()> on_complete);
 void send_function_call(
     Channel& ch,
-    uint64_t client_flags,
+    const Client::Config& client_config,
     std::shared_ptr<CompiledFunctionCode> code,
     const std::unordered_map<std::string, uint32_t>& label_writes = {},
     const std::string& suffix = "",

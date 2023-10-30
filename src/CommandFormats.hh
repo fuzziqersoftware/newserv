@@ -88,44 +88,6 @@
 // - - $r: Right arrow
 // - - $u: Up arrow
 
-// This is the format of newserv's security data, which we call the client
-// config. This data is opaque to the client, so this structure is not
-// technically part of the PSO protocol. Because it is opaque to the client, we
-// can use the server's native-endian types instead of being explicit as we do
-// for all the other structs in this file.
-enum ClientStateBB : uint8_t {
-  // Initial connection; server will redirect client to another port
-  INITIAL_LOGIN = 0x00,
-  // Second connection; server will send client game data and account data
-  DOWNLOAD_DATA = 0x01,
-  // Third connection; client will show the choose character menu
-  CHOOSE_PLAYER = 0x02,
-  // Fourth connection; used for saving characters only. If you do not create a
-  // character, the server sets this state during the third connection so this
-  // connection is effectively skipped.
-  SAVE_PLAYER = 0x03,
-  // Fifth connection; redirects client to login server
-  SHIP_SELECT = 0x04,
-  // All other connections
-  IN_GAME = 0x05,
-};
-
-struct ClientConfig {
-  uint64_t magic = 0;
-  uint32_t flags = 0;
-  uint32_t specific_version = 0;
-  uint32_t proxy_destination_address = 0;
-  uint16_t proxy_destination_port = 0;
-  parray<uint8_t, 0x0A> unused;
-} __packed__;
-
-struct ClientConfigBB {
-  ClientConfig cfg;
-  uint8_t bb_game_state = 0;
-  uint8_t bb_player_index = 0;
-  parray<uint8_t, 0x06> unused;
-} __packed__;
-
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 // PATCH SERVER COMMANDS ///////////////////////////////////////////////////////
@@ -478,8 +440,7 @@ struct C_LegacyLogin_BB_04 {
 // config set by the E6 command (and returned in the 93 command). In most cases,
 // E6 should be used for BB clients instead of 04.
 
-template <typename ClientConfigT>
-struct S_UpdateClientConfig {
+struct S_UpdateClientConfig_DC_PC_04 {
   // Note: What we call player_tag here is actually three fields: two uint8_ts
   // followed by a le_uint16_t. It's unknown what the uint8_t fields are for
   // (they seem to always be zero), but the le_uint16_t is likely a boolean
@@ -489,16 +450,20 @@ struct S_UpdateClientConfig {
   // player is present and zero when none is present.
   le_uint32_t player_tag = 0x00010000;
   le_uint32_t guild_card_number = 0;
-  // The ClientConfig structure describes how newserv uses this command; other
-  // servers do not use the same format for the following 0x20 or 0x28 bytes (or
-  // may not use it at all). The cfg field is opaque to the client; it will send
-  // back the contents verbatim in its next 9E command (or on request via 9F).
-  ClientConfigT cfg;
 } __packed__;
 
-struct S_UpdateClientConfig_DC_PC_V3_04 : S_UpdateClientConfig<ClientConfig> {
+struct S_UpdateClientConfig_V3_04 {
+  le_uint32_t player_tag = 0x00010000;
+  le_uint32_t guild_card_number = 0;
+  // This field is opaque to the client; it will send back the contents verbatim
+  // in its next 9E command (or on request via 9F).
+  parray<uint8_t, 0x20> client_config;
 } __packed__;
-struct S_UpdateClientConfig_BB_04 : S_UpdateClientConfig<ClientConfigBB> {
+
+struct S_UpdateClientConfig_BB_04 {
+  le_uint32_t player_tag = 0x00010000;
+  le_uint32_t guild_card_number = 0;
+  parray<uint8_t, 0x28> client_config;
 } __packed__;
 
 // 05: Disconnect
@@ -530,7 +495,7 @@ struct S_UpdateClientConfig_BB_04 : S_UpdateClientConfig<ClientConfigBB> {
 // the chat string accidentally.) We call this byte private_flags in the places
 // where newserv uses it.
 
-// 07 (S->C): Ship select menu
+// 07 (S->C): Ship or block select menu
 // Internal name: RcvDirList
 // This command triggers a general form of blocking menu, which was used for
 // both the ship select and block select menus by Sega (and all other private
@@ -539,6 +504,8 @@ struct S_UpdateClientConfig_BB_04 : S_UpdateClientConfig<ClientConfigBB> {
 // there was a separate command to send the block list, but it was scrapped.
 // Perhaps this was used for command A1, which is identical to 07 and A0 in all
 // versions of PSO (except DC NTE).
+// The menu is titles "Ship Select" unless the first menu item begins with the
+// text "BLOCK" (all caps), in which case it is titled "Block Select".
 
 // Command is a list of these; header.flag is the entry count. The first entry
 // is not included in the count and does not appear on the client. The text of
@@ -860,17 +827,20 @@ struct S_ReconnectSplit_19 {
 // 21: GameGuard control (old versions of BB)
 // Format unknown
 
-// 22: GameGuard check (BB)
+// 0022: GameGuard check (BB)
 
 // Command 0022 is a 16-byte challenge (sent in the data field) using the
 // following structure.
 
-struct SC_GameCardCheck_BB_0022 {
+struct SC_GameGuardCheck_BB_0022 {
   parray<le_uint32_t, 4> data;
 } __packed__;
 
-// Command 0122 uses a 4-byte challenge sent in the header.flag field instead.
-// This version of the command has no other arguments.
+// 0122 (C->S): Time deviation (BB)
+// This command is sent when the client executes a quest opcode 5D (gettime) and
+// the returned timestamp is before the previous timestamp returned, but not by
+// too much - it seems the game only considers deltas between 3 seconds and 30
+// minutes suspicious for these purposes.
 
 // 23 (S->C): Momoka Item Exchange result (BB)
 // Sent in response to a 6xD9 command from the client.
@@ -1693,7 +1663,18 @@ struct C_LoginExtendedV1_DC_93 : C_LoginV1_DC_93 {
 struct C_Login_BB_93 {
   le_uint32_t player_tag = 0x00010000;
   le_uint32_t guild_card_number = 0;
-  pstring<TextEncoding::ASCII, 0x08> unused;
+  le_uint32_t sub_version = 0;
+  uint8_t language;
+  uint8_t character_slot;
+  // Values for connection_phase:
+  // 00 - initial connection (client will request system file, characters, etc.)
+  // 01 - choose character
+  // 02 - create character
+  // 03 - apply updates from dressing room
+  // 04 - login server
+  // 05 - lobby server (and beyond)
+  uint8_t connection_phase;
+  uint8_t client_code;
   le_uint32_t team_id = 0;
   pstring<TextEncoding::ASCII, 0x30> username;
   pstring<TextEncoding::ASCII, 0x30> password;
@@ -1711,16 +1692,10 @@ struct C_Login_BB_93 {
   // the client config starts 8 bytes earlier on those versions and the entire
   // command is 8 bytes shorter, hence this odd-looking union.
   union VariableLengthSection {
-    union ClientConfigFields {
-      ClientConfigBB cfg;
-      pstring<TextEncoding::ASCII, 0x28> version_string;
-      parray<le_uint32_t, 10> as_u32;
-    } __packed__;
-
-    ClientConfigFields old_clients_cfg;
+    parray<uint8_t, 0x28> old_client_config;
     struct NewFormat {
       parray<le_uint32_t, 2> hardware_info;
-      ClientConfigFields cfg;
+      parray<uint8_t, 0x28> client_config;
     } __packed__ new_clients;
   } __packed__ var;
 } __packed__;
@@ -1909,11 +1884,7 @@ struct C_LoginExtended_PC_9D : C_Login_DC_PC_GC_9D {
 // header.flag is 1 if the client has UDP disabled.
 
 struct C_Login_GC_9E : C_Login_DC_PC_GC_9D {
-  union ClientConfigFields {
-    ClientConfig cfg;
-    parray<uint8_t, 0x20> data;
-    ClientConfigFields() : data() {}
-  } __packed__ client_config;
+  parray<uint8_t, 0x20> client_config;
 } __packed__;
 struct C_LoginExtended_GC_9E : C_Login_GC_9E {
   SC_MeetUserExtension<TextEncoding::MARKED> extension;
@@ -1951,10 +1922,16 @@ struct C_LoginExtended_BB_9E {
 
 // 9F (C->S): Client config / security data response (V3/BB)
 // The data is opaque to the client, as described at the top of this file.
-// If newserv ever sent a 9F command (it currently does not), the response
-// format here would be ClientConfig (0x20 bytes) on V3, or ClientConfigBB (0x28
-// bytes) on BB. However, on BB, this returns the client config that was set by
-// a preceding 04 command, not the config set by a preceding E6 command.
+// If newserv ever sent a 9F command (it currently does not). On BB, this
+// command does not work during the data server phase.
+
+struct C_ClientConfig_V3_9F {
+  parray<uint8_t, 0x20> data;
+} __packed__;
+
+struct C_ClientConfig_BB_9F {
+  parray<uint8_t, 0x28> data;
+} __packed__;
 
 // A0 (C->S): Change ship
 // Internal name: SndShipList
@@ -2806,7 +2783,7 @@ struct S_TournamentList_GC_Ep3_E0 {
   parray<Entry, 0x20> entries;
 } __packed__;
 
-// E0 (C->S): Request team and key config (BB)
+// E0 (C->S): Request system file (BB)
 // No arguments. The server should respond with an E1 or E2 command.
 
 // E1 (S->C): Game information (Episode 3)
@@ -2830,10 +2807,10 @@ struct S_GameInformation_GC_Ep3_E1 {
   /* 0298 */
 } __packed__;
 
-// E1 (S->C): Team and key config missing? (BB)
+// E1 (S->C): Create system file (BB)
 // This seems to take the place of 00E2 in certain cases. Perhaps it was used
-// when a client hadn't logged in before and didn't have a team or key config,
-// so the client should use appropriate defaults.
+// when a client hadn't logged in before and didn't have a system file, so the
+// client should use appropriate defaults.
 
 struct S_TeamAndKeyConfigMissing_00E1_BB {
   // If success is not equal to 1, the client shows a message saying "Forced
@@ -3033,16 +3010,16 @@ struct C_JoinSpectatorTeam_GC_Ep3_E6_Flag01 {
 // Same format as 08 command.
 
 // E6 (S->C): Set guild card number and update client config (BB)
-// BB clients have multiple client configs. This command sets the client config
-// that is returned by the 93 commands, but does not affect the client config
-// set by the 04 command (and returned in the 9E and 9F commands).
+// This command sets the player's guild card number. During the data server
+// phase, it also sets the client config and enabled features (these fields are
+// ignored during the game server phase).
 
 struct S_ClientInit_BB_00E6 {
-  le_uint32_t error = 0;
+  le_uint32_t error_code = 0;
   le_uint32_t player_tag = 0x00010000;
   le_uint32_t guild_card_number = 0;
   le_uint32_t team_id = 0;
-  ClientConfigBB cfg;
+  parray<uint8_t, 0x28> client_config;
   uint8_t can_create_team = 1;
   uint8_t episode_4_unlocked = 1;
   parray<uint8_t, 2> unused;
@@ -3325,7 +3302,7 @@ struct C_PromoteTeamMember_BB_11EA {
 
 struct S_TeamMembershipInformation_BB_12EA {
   le_uint32_t unknown_a1 = 0; // Command is ignored unless this is 0
-  le_uint32_t guild_card_number = 0;
+  le_uint32_t guild_card_number = 0; // Team membership ID?
   le_uint32_t team_id = 0;
   le_uint32_t unknown_a4 = 0;
   le_uint32_t privilege_level = 0;
