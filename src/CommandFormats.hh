@@ -301,6 +301,8 @@ struct S_Reconnect_Patch_14 : S_Reconnect<be_uint16_t> {
 // player why they can't do something (e.g. join a full game).
 // This format is shared by multiple commands; for all of them except 06 (S->C),
 // the guild_card_number field is unused and should be 0.
+// On BB, this command may be sent as 0001 or 0101; in the latter case, the
+// message box appears in the lower-left corner instead.
 
 struct SC_TextHeader_01_06_11_B0_EE {
   le_uint32_t unused = 0;
@@ -3490,7 +3492,8 @@ struct S_CardTradeComplete_GC_Ep3_EE_FlagD4 {
 
 // EE (S->C): Scrolling message (BB)
 // Same format as 01. The message appears at the top of the screen and slowly
-// scrolls to the left.
+// scrolls to the left. The maximum length of the message is 0x400 bytes (0x200
+// UTF-16 characters).
 
 // EF (C->S): Join card auction (Episode 3)
 // When a card auction is ready to begin, the leader sends this command to

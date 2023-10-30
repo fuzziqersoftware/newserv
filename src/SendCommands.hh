@@ -179,7 +179,7 @@ void send_ep3_timed_message_box(Channel& ch, uint32_t frames, const std::string&
 void send_lobby_name(std::shared_ptr<Client> c, const std::string& text);
 void send_quest_info(std::shared_ptr<Client> c, const std::string& text,
     bool is_download_quest);
-void send_lobby_message_box(std::shared_ptr<Client> c, const std::string& text);
+void send_lobby_message_box(std::shared_ptr<Client> c, const std::string& text, bool left_side_on_bb = false);
 void send_ship_info(std::shared_ptr<Client> c, const std::string& text);
 void send_ship_info(Channel& ch, const std::string& text);
 void send_text_message(Channel& ch, const std::string& text);

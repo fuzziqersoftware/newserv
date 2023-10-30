@@ -789,8 +789,9 @@ void send_quest_info(shared_ptr<Client> c, const string& text, bool is_download_
       c->config.check_flag(Client::Flag::IS_DC_TRIAL_EDITION) ? ColorMode::STRIP : ColorMode::ADD);
 }
 
-void send_lobby_message_box(shared_ptr<Client> c, const string& text) {
-  send_header_text(c->channel, 0x01, 0, text, c->config.check_flag(Client::Flag::IS_DC_TRIAL_EDITION) ? ColorMode::STRIP : ColorMode::ADD);
+void send_lobby_message_box(shared_ptr<Client> c, const string& text, bool left_side_on_bb) {
+  uint16_t command = (left_side_on_bb && (c->version() == GameVersion::BB)) ? 0x0101 : 0x0001;
+  send_header_text(c->channel, command, 0, text, c->config.check_flag(Client::Flag::IS_DC_TRIAL_EDITION) ? ColorMode::STRIP : ColorMode::ADD);
 }
 
 void send_ship_info(shared_ptr<Client> c, const string& text) {
