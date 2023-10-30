@@ -2178,7 +2178,7 @@ static void on_10(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
             lc->log.info("Created battle overlay");
             lc->game_data.player()->print_inventory(stderr, c->version(), s->item_name_index);
           } else if (vq->challenge_template_index >= 0) {
-            lc->game_data.create_challenge_overlay(vq->challenge_template_index, s->level_table);
+            lc->game_data.create_challenge_overlay(lc->version(), vq->challenge_template_index, s->level_table);
             lc->log.info("Created challenge overlay");
             lc->game_data.player()->print_inventory(stderr, c->version(), s->item_name_index);
           }

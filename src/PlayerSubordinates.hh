@@ -563,4 +563,4 @@ struct ChallengeTemplateDefinition {
   std::vector<TechLevel> tech_levels;
 };
 
-const ChallengeTemplateDefinition& get_challenge_template_definition(uint32_t class_flags, size_t index);
+const ChallengeTemplateDefinition& get_challenge_template_definition(GameVersion version, uint32_t class_flags, size_t index);

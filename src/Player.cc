@@ -92,8 +92,9 @@ void ClientGameData::create_battle_overlay(shared_ptr<const BattleRules> rules, 
   }
 }
 
-void ClientGameData::create_challenge_overlay(size_t template_index, shared_ptr<const LevelTable> level_table) {
-  const auto& tpl = get_challenge_template_definition(this->player(true, false)->disp.visual.class_flags, template_index);
+void ClientGameData::create_challenge_overlay(GameVersion version, size_t template_index, shared_ptr<const LevelTable> level_table) {
+  const auto& tpl = get_challenge_template_definition(
+      version, this->player(true, false)->disp.visual.class_flags, template_index);
 
   this->overlay_player_data.reset(new SavedPlayerDataBB(*this->player(true, false)));
   auto overlay = this->overlay_player_data;
