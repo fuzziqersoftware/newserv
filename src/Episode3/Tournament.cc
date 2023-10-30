@@ -318,7 +318,7 @@ Tournament::Tournament(
     const Rules& rules,
     size_t num_teams,
     uint8_t flags)
-    : log(string_printf("[Tournament/%s] ", name.c_str())),
+    : log(string_printf("[Tournament:%s] ", name.c_str())),
       map_index(map_index),
       com_deck_index(com_deck_index),
       name(name),
@@ -343,7 +343,7 @@ Tournament::Tournament(
     shared_ptr<const MapIndex> map_index,
     shared_ptr<const COMDeckIndex> com_deck_index,
     const JSON& json)
-    : log(string_printf("[Tournament/%s] ", json.get_string("name").c_str())),
+    : log(string_printf("[Tournament:%s] ", json.get_string("name").c_str())),
       map_index(map_index),
       com_deck_index(com_deck_index),
       source_json(json),

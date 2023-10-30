@@ -404,7 +404,7 @@ pair<uint8_t, uint8_t> ItemParameterTable::find_tool_by_id_t(uint32_t tool_table
       }
     }
   }
-  throw runtime_error("invalid tool class");
+  throw runtime_error(string_printf("invalid tool class %08" PRIX32, item_id));
 }
 
 pair<uint8_t, uint8_t> ItemParameterTable::find_tool_by_id(uint32_t item_id) const {

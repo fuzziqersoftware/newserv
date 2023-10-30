@@ -12,7 +12,7 @@ using namespace std;
 
 Lobby::Lobby(shared_ptr<ServerState> s, uint32_t id)
     : server_state(s),
-      log(string_printf("[Lobby/%" PRIX32 "] ", id), lobby_log.min_level),
+      log(string_printf("[Lobby:%" PRIX32 "] ", id), lobby_log.min_level),
       lobby_id(id),
       min_level(0),
       max_level(0xFFFFFFFF),

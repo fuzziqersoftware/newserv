@@ -37,7 +37,7 @@ CatSession::CatSession(
     GameVersion version,
     shared_ptr<const PSOBBEncryption::KeyFile> bb_key_file)
     : Shell(base),
-      log("[CatSession] ", proxy_server_log.min_level),
+      log(string_printf("[CatSession:%s] ", name_for_version(version)), proxy_server_log.min_level),
       channel(
           version,
           1,
