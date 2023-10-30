@@ -139,7 +139,8 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
 
   std::shared_ptr<const Menu> information_menu_v2;
   std::shared_ptr<const Menu> information_menu_v3;
-  std::shared_ptr<std::vector<std::string>> information_contents;
+  std::shared_ptr<std::vector<std::string>> information_contents_v2;
+  std::shared_ptr<std::vector<std::string>> information_contents_v3;
   std::shared_ptr<const Menu> redirect_destinations_menu_dc;
   std::shared_ptr<const Menu> redirect_destinations_menu_pc;
   std::shared_ptr<const Menu> redirect_destinations_menu_gc;
@@ -221,7 +222,8 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   std::shared_ptr<const ItemParameterTable> item_parameter_table_for_version(GameVersion version) const;
   std::string describe_item(GameVersion version, const ItemData& item, bool include_color_codes) const;
 
-  std::shared_ptr<const QuestIndex> quest_index_for_client(std::shared_ptr<Client> c) const;
+  std::shared_ptr<const std::vector<std::string>> information_contents_for_client(std::shared_ptr<const Client> c) const;
+  std::shared_ptr<const QuestIndex> quest_index_for_client(std::shared_ptr<const Client> c) const;
 
   void set_port_configuration(const std::vector<PortConfiguration>& port_configs);
 

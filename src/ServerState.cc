@@ -773,26 +773,41 @@ void ServerState::parse_config(const JSON& json, bool is_reload) {
 
   shared_ptr<Menu> information_menu_v2(new Menu(MenuID::INFORMATION, "Information"));
   shared_ptr<Menu> information_menu_v3(new Menu(MenuID::INFORMATION, "Information"));
-  shared_ptr<vector<string>> information_contents(new vector<string>());
+  shared_ptr<vector<string>> information_contents_v2(new vector<string>());
+  shared_ptr<vector<string>> information_contents_v3(new vector<string>());
 
   information_menu_v2->items.emplace_back(InformationMenuItemID::GO_BACK, "Go back",
       "Return to the\nmain menu", MenuItem::Flag::INVISIBLE_IN_INFO_MENU);
   information_menu_v3->items.emplace_back(InformationMenuItemID::GO_BACK, "Go back",
       "Return to the\nmain menu", MenuItem::Flag::INVISIBLE_IN_INFO_MENU);
   {
+    auto blank_json = JSON::list();
+    const JSON& default_json = json.get("InformationMenuContents", blank_json);
+    const JSON& v2_json = json.get("InformationMenuContentsV1V2", default_json);
+    const JSON& v3_json = json.get("InformationMenuContentsV3", default_json);
+
     uint32_t item_id = 0;
-    for (const auto& item : json.at("InformationMenuContents").as_list()) {
+    for (const auto& item : v2_json.as_list()) {
       string name = item->get_string(0);
       string short_desc = item->get_string(1);
       information_menu_v2->items.emplace_back(item_id, name, short_desc, 0);
+      information_contents_v2->emplace_back(item->get_string(2));
+      item_id++;
+    }
+
+    item_id = 0;
+    for (const auto& item : v3_json.as_list()) {
+      string name = item->get_string(0);
+      string short_desc = item->get_string(1);
       information_menu_v3->items.emplace_back(item_id, name, short_desc, MenuItem::Flag::REQUIRES_MESSAGE_BOXES);
-      information_contents->emplace_back(item->get_string(2));
+      information_contents_v3->emplace_back(item->get_string(2));
       item_id++;
     }
   }
   this->information_menu_v2 = information_menu_v2;
   this->information_menu_v3 = information_menu_v3;
-  this->information_contents = information_contents;
+  this->information_contents_v2 = information_contents_v2;
+  this->information_contents_v3 = information_contents_v3;
 
   auto generate_redirect_destinations_menu = [&](vector<pair<string, uint16_t>>& ret_pds, const char* key) -> shared_ptr<const Menu> {
     shared_ptr<Menu> ret(new Menu(MenuID::REDIRECT_DESTINATIONS, "Other servers"));
@@ -1131,7 +1146,13 @@ void ServerState::load_dol_files() {
   this->dol_file_index.reset(new DOLFileIndex("system/dol"));
 }
 
-shared_ptr<const QuestIndex> ServerState::quest_index_for_client(shared_ptr<Client> c) const {
+shared_ptr<const vector<string>> ServerState::information_contents_for_client(shared_ptr<const Client> c) const {
+  return ((c->version() == GameVersion::DC) || (c->version() == GameVersion::PC))
+      ? this->information_contents_v2
+      : this->information_contents_v3;
+}
+
+shared_ptr<const QuestIndex> ServerState::quest_index_for_client(shared_ptr<const Client> c) const {
   return (c->flags & Client::Flag::IS_EPISODE_3)
       ? this->ep3_download_quest_index
       : this->default_quest_index;

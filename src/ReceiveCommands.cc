@@ -1892,7 +1892,8 @@ static void on_10(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
 
       } else {
         try {
-          send_message_box(c, c->require_server_state()->information_contents->at(item_id).c_str());
+          auto contents = c->require_server_state()->information_contents_for_client(c);
+          send_message_box(c, contents->at(item_id).c_str());
         } catch (const out_of_range&) {
           send_message_box(c, "$C6No such information exists.");
         }

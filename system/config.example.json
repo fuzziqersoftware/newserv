@@ -250,7 +250,11 @@
   // Information menu contents. Each entry is a list containing [title,
   // short description, full contents]. In the short description and full
   // contents, you can use PSO escape codes with the $ character (for example,
-  // $Cx for colors).
+  // $Cx for colors). You can show different information menus to V1/V2 clients
+  // and V3 clients; to do so, copy InformationMenuContents to
+  // InformationMenuContentsV1V2 and InformationMenuContentsV3 and edit them as
+  // needed. (If either the V1V2 or V3 version of the information menu is not
+  // defined, this default version is used instead.)
   "InformationMenuContents": [
     ["Lobby commands", "Show commands used\nin the lobby", "These commands can be used in the lobby.\n\n$C6%sli$C7: Show basic information about the lobby\n$C6%sarrow <color-id>$C7: Change your lobby arrow color\n$C6%sln [name]$C7: Change the lobby type (for you only)\n$C6%sexit$C7: Leave the current game or lobby\n$C6%spatch <name>$C7: Run a patch on your client\n\n$C8Episode 3 only:$C7\n$C6%ssong <song-id>$C7: Play a jukebox song"],
     ["Game commands", "Show commands used\nin games", "These commands can be used to customize games.\n\n$C8Before starting a game:$C7\n$C6%ssecid <section-id>$C7: Set your override section ID\n$C6%srand <seed>$C7: Set your override random seed\n\n$C8When in a game:$C7\n$C6%sli$C7: Show basic information about the game\n$C6%swhat$C7: Describe the nearest item on the ground\n$C6%smaxlevel <level>$C7: Set maximum level to join\n$C6%sminlevel <level>$C7: Set minimum level to join\n$C6%spassword [password]$C7: Lock or unlock the game"],
