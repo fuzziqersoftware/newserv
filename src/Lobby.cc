@@ -72,7 +72,8 @@ void Lobby::create_item_creator() {
       (this->mode == GameMode::SOLO) ? GameMode::NORMAL : this->mode,
       this->difficulty,
       this->section_id,
-      this->random_seed));
+      this->random_seed,
+      this->quest ? this->quest->battle_rules : nullptr));
 }
 
 void Lobby::create_ep3_server() {
