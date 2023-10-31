@@ -45,3 +45,4 @@
     - 6xE0
     - 6xE1: Gallon's Plan quest
 - Implement teams
+- Implement story progress flags for unlocking quests
