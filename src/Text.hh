@@ -145,6 +145,10 @@ struct parray {
     return *reinterpret_cast<const parray<ItemT, SubCount>*>(&this->items[offset]);
   }
 
+  std::string as_string() const {
+    return std::string(reinterpret_cast<const char*>(this->data()), sizeof(ItemT) * Count);
+  }
+
   void assign_range(const ItemT* new_items, size_t count = Count, size_t start_offset = 0) {
     for (size_t x = start_offset; (x < Count) && (x < start_offset + count); x++) {
       this->items[x] = new_items[x];

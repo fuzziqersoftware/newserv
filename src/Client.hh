@@ -39,6 +39,7 @@ struct Client : public std::enable_shared_from_this<Client> {
     IS_BB_PATCH                         = 0x0000000000000080,
     NO_D6_AFTER_LOBBY                   = 0x0000000000000100,
     NO_D6                               = 0x0000000000000200,
+    FORCE_ENGLISH_LANGUAGE_BB           = 0x0000000000000400,
 
     // Flags describing the behavior for send_function_call
     NO_SEND_FUNCTION_CALL               = 0x0000000000001000,

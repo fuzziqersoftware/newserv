@@ -630,6 +630,9 @@ void send_approve_player_choice_bb(shared_ptr<Client> c) {
 void send_complete_player_bb(shared_ptr<Client> c) {
   auto account = c->game_data.account();
   auto player = c->game_data.player(true, false);
+  if (c->config.check_flag(Client::Flag::FORCE_ENGLISH_LANGUAGE_BB)) {
+    player->inventory.language = 1;
+  }
 
   SC_SyncCharacterSaveFile_BB_00E7 cmd;
   cmd.inventory = player->inventory;

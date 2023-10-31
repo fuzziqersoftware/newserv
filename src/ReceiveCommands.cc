@@ -875,9 +875,7 @@ static void on_93_BB(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
   }
 
   c->config.set_flags_for_version(c->version(), -1);
-  // Note: We ignore cmd.language in this case because there are many patched
-  // clients out there that use the Japanese codebase but English data files
-  // (and hence are inaccurately reported as Japanese here).
+  c->channel.language = cmd.language;
 
   try {
     auto l = s->license_index->verify_bb(cmd.username.decode(), cmd.password.decode());
@@ -920,8 +918,22 @@ static void on_93_BB(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
       c->config.parse_from(cmd.var.new_clients.client_config);
     }
   } catch (const invalid_argument&) {
-  }
+    string version_string = is_old_format
+        ? cmd.var.old_client_config.as_string()
+        : cmd.var.new_clients.client_config.as_string();
+    print_data(stderr, version_string);
+    strip_trailing_zeroes(version_string);
 
+    // Note: Tethealla PSOBB is actually Japanese PSOBB, but with most of the
+    // files replaced with English text/graphics/etc. For this reason, it still
+    // reports its language as Japanese, so we have to account for that
+    // manually here.
+    if (starts_with(version_string, "TethVer")) {
+      c->log.info("Client is TethVer subtype; forcing English language");
+      c->config.set_flag(Client::Flag::FORCE_ENGLISH_LANGUAGE_BB);
+    }
+  }
+  c->channel.language = c->config.check_flag(Client::Flag::FORCE_ENGLISH_LANGUAGE_BB) ? 1 : cmd.language;
   c->bb_connection_phase = cmd.connection_phase;
   c->game_data.bb_player_index = cmd.character_slot;
 
