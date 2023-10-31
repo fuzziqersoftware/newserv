@@ -1,29 +1,38 @@
-SCHTSERV Drop Tables Data EP1/EP2/EP4
+PSOBB Support files, notes and resources
 
-The Item files included in this folder are the final ones I've created for 
-Schtserv with the latest revision update October 31st 2022, these files includes
-the revised Drop Rate data for all the enemies in the game across all Difficulties
-and Episodes, including the special items added in the final PSOBB official patch 
-(1.25.13) which affects some of the Episode 1 and Episode 2 Bosses drops in Very Hard 
-and Ultimate and specially a mostly complete official implementation of the Episode 4
-bosses and enemies for all Section ID's.
+--------------------------------------------------------------------------------
+CLIENT LOCALIZATION
 
-However, as I'm not sure if the implementation of the rare drop logic from this
-server vs the one we had on Schtserv will allow a simple file replace without breaking
-anything, I'm leaving the raw files here for whoever wants to properly implement them 
-over here.
+By default PSOBB loads everything in Japanese so it requires some extra files
+to properly implement the English localization from SOA, these files are offered
+here inside the usbb-resources folder for your convenience.
 
-By using these files you will ensure you have a PSOBB experience as close as possible
-to the original game, at least on the rare item drop side of things which is a big part 
-of the main game loop regardless.
+To use them you just need to drag and drop all its contents into your client's 
+data folder. Then if the client's internal lang flag is set correctly to English 
+will load all the correct texts from these files.
 
-Links to the Tables on the Schtserv Wiki for reference:
+In case you want to play in Japanese, just use the default Tethealla client and 
+delete all the files including _e or _eng in the names and then the game will 
+default everything to its original Japanese language.
+
+Just in case, there's the jpbb-resources folder with the latest localization 
+changes made on the official JPBB for an extra backup.
+
+---------------------------------------------------------------------------------
+PSOBB EP1,2,4 ORIGINAL VANILLA DROP TABLES/RATES
+
+Included in the vanilla-tables folder I placed the original files I created for the
+Schtserv vanilla for backup purposes as they are already implemented into the main
+newserv logic. 
+
+These tables will offer you the experience as close as possible to the original SEGA
+servers for PSOBB JP up to the latest patch before the servers shutdown, so besides a 
+fully functional Episode IV experience, the tables also include the latest special items
+which where added to some Episode 1 and Episode 2 in Ultimate for certain section ID's
+
+Vanilla Tables and rates are the same ones as the Schtserv Wiki for reference:
 https://bbwiki.schtserv.com/index.php/Drops-ep1
 https://bbwiki.schtserv.com/index.php/Drops-ep2
 https://bbwiki.schtserv.com/index.php/Drops-ep4
-
-P.D: It might still be necessary to verify the PMT file for normal item drops in the 
-Episode 4 areas, Shops and Challenge Mode
-
 
 
