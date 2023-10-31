@@ -34,7 +34,6 @@
 - Find any remaining mismatches in enemy IDs / experience
 - Support EXP multipliers
 - Sale prices for non-rare weapons with specials are computed incorrectly when buying/selling at shops
-- Replace enemy list, game episode, etc. with quest data when loading a quest
 - Implement trade window
 - Fix some edge cases on the BB proxy server (e.g. Change Ship)
 - Implement less-common subcommands
@@ -45,4 +44,4 @@
     - 6xDE: Good Luck quest
     - 6xE0
     - 6xE1: Gallon's Plan quest
-- Implement team commands
+- Implement teams

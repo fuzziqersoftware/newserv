@@ -3215,7 +3215,8 @@ struct C_CreateTeam_BB_01EA {
 } __packed__;
 
 // 02EA (S->C): Unknown
-// This command behaves exactly like 1FEA.
+// header.flag must be in the range [0, 6]. If it isn't, the command is ignored.
+// No other arguments.
 
 // 03EA (C->S): Add team member
 
@@ -3274,10 +3275,8 @@ struct S_Unknown_BB_0CEA {
 
 struct S_Unknown_BB_0EEA {
   parray<uint8_t, 0x10> unused;
-  // Text follows here
+  pstring<TextEncoding::UTF16, 0x10> team_name;
 } __packed__;
-
-// 0EEA (S->C): Unknown
 
 // 0FEA (C->S): Set team flag
 // The client also accepts this command but completely ignores it.
@@ -3315,10 +3314,10 @@ struct S_TeamMembershipInformation_BB_12EA {
   pstring<TextEncoding::UTF16, 0x10> team_name;
 } __packed__;
 
-// 13EA: Unknown
+// 13EA: Team info for lobby players
 // header.flag specifies the number of entries.
 
-struct S_Unknown_BB_13EA_15EA_Entry {
+struct S_TeamInfoForPlayer_BB_13EA_15EA_Entry {
   le_uint32_t guild_card_number = 0;
   le_uint32_t team_id = 0;
   le_uint32_t unknown_a3 = 0;
@@ -3343,9 +3342,25 @@ struct S_Unknown_BB_13EA_15EA_Entry {
 
 // 18EA: Membership information
 // No arguments (C->S)
+// TODO: Document S->C format
+
+struct S_TeamMembershipInformation_BB_18EA {
+  parray<uint8_t, 0x0C> unknown_a1;
+  le_uint32_t unknown_a2 = 1;
+  le_uint32_t unknown_a3 = 1;
+  le_uint32_t privilege_level = 0;
+  le_uint32_t guild_card_number;
+  pstring<TextEncoding::UTF16, 0x10> player_name;
+  le_uint32_t unknown_a4 = 0;
+  le_uint32_t unknown_a5 = 2;
+} __packed__;
 
 // 19EA: Privilege list
 // No arguments (C->S)
+
+struct S_TeamPrivilegeList_BB_19EA {
+  le_uint32_t unknown_a1 = 0;
+} __packed__;
 
 // 1AEA: Unknown
 
@@ -3366,8 +3381,7 @@ struct C_Unknown_BB_1EEA {
 } __packed__;
 
 // 1FEA (S->C): Unknown
-// header.flag must be in the range [0, 6]. If it isn't, the command is ignored.
-// No other arguments.
+// This command behaves exactly like 02EA.
 
 // 20EA: Unknown
 // header.flag is used, but no other arguments

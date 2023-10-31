@@ -831,7 +831,9 @@ static void server_command_edit(shared_ptr<Client> c, const std::string& args) {
     } else if (tokens.at(0) == "exp") {
       p->disp.stats.experience = stoul(tokens.at(1));
     } else if (tokens.at(0) == "level") {
-      p->disp.stats.level = stoul(tokens.at(1)) - 1;
+      uint32_t level = stoul(tokens.at(1)) - 1;
+      p->disp.stats.reset_to_base(p->disp.visual.char_class, s->level_table);
+      p->disp.stats.advance_to_level(p->disp.visual.char_class, level, s->level_table);
     } else if (tokens.at(0) == "namecolor") {
       uint32_t new_color;
       sscanf(tokens.at(1).c_str(), "%8X", &new_color);

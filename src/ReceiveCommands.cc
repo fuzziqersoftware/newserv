@@ -3934,7 +3934,6 @@ static void on_EF_Ep3(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
 }
 
 static void on_xxEA_BB(shared_ptr<Client> c, uint16_t command, uint32_t, string&) {
-
   // TODO: Implement teams. This command has a very large number of subcommands
   // (up to 20EA!).
   if (command == 0x01EA) {
