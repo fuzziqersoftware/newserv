@@ -12,10 +12,10 @@ using namespace std;
 template <>
 const char* name_for_enum<EnemyType>(EnemyType type) {
   switch (type) {
-    case EnemyType::NONE:
-      return "NONE";
     case EnemyType::UNKNOWN:
       return "UNKNOWN";
+    case EnemyType::NONE:
+      return "NONE";
     case EnemyType::AL_RAPPY:
       return "AL_RAPPY";
     case EnemyType::ASTARK:
@@ -60,6 +60,8 @@ const char* name_for_enum<EnemyType>(EnemyType type) {
       return "DARK_GUNNER";
     case EnemyType::DARVANT:
       return "DARVANT";
+    case EnemyType::DARVANT_ULTIMATE:
+      return "DARVANT_ULTIMATE";
     case EnemyType::DE_ROL_LE:
       return "DE_ROL_LE";
     case EnemyType::DE_ROL_LE_BODY:
@@ -260,6 +262,8 @@ const char* name_for_enum<EnemyType>(EnemyType type) {
       return "ZU";
     case EnemyType::ZU_ALT:
       return "ZU_ALT";
+    case EnemyType::MAX_ENEMY_TYPE:
+      return "MAX_ENEMY_TYPE";
     default:
       throw logic_error("invalid enemy type");
   }
@@ -268,8 +272,8 @@ const char* name_for_enum<EnemyType>(EnemyType type) {
 template <>
 EnemyType enum_for_name<EnemyType>(const char* name) {
   static const unordered_map<string, EnemyType> names({
-      {"NONE", EnemyType::NONE},
       {"UNKNOWN", EnemyType::UNKNOWN},
+      {"NONE", EnemyType::NONE},
       {"AL_RAPPY", EnemyType::AL_RAPPY},
       {"ASTARK", EnemyType::ASTARK},
       {"BA_BOOTA", EnemyType::BA_BOOTA},
@@ -393,6 +397,7 @@ EnemyType enum_for_name<EnemyType>(const char* name) {
       {"ZOL_GIBBON", EnemyType::ZOL_GIBBON},
       {"ZU", EnemyType::ZU},
       {"ZU_ALT", EnemyType::ZU_ALT},
+      {"MAX_ENEMY_TYPE", EnemyType::MAX_ENEMY_TYPE},
   });
   return names.at(name);
 }
