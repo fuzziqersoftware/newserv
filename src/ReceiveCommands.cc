@@ -3654,7 +3654,7 @@ static void on_8A(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
   }
 }
 
-static void on_6F(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
+static void on_6F(shared_ptr<Client> c, uint16_t command, uint32_t, string& data) {
   check_size_v(data.size(), 0);
 
   auto l = c->require_lobby();
@@ -3668,11 +3668,10 @@ static void on_6F(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
     send_set_exp_multiplier(l);
   }
   send_server_time(c);
-  // Only get player info again on BB, since on other versions the returned info
-  // only includes items that would be saved if the client disconnects
-  // unexpectedly (that is, only equipped items are included).
-  if (c->version() == GameVersion::BB) {
-    send_get_player_info(c);
+
+  // BB sends 016F when the client is done loading a quest. In that case, we
+  // shouldn't send the quest to them again!
+  if (command == 0x006F && c->version() == GameVersion::BB) {
     if (l->check_flag(Lobby::Flag::JOINABLE_QUEST_IN_PROGRESS)) {
       if (!l->quest) {
         throw runtime_error("JOINABLE_QUEST_IN_PROGRESS is set, but lobby has no quest");

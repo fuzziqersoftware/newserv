@@ -1364,11 +1364,13 @@ struct S_LeaveLobby_66_69_Ep3_E9 {
 
 // 6E: Invalid command
 
-// 6F (C->S): Set game status
+// 6F (C->S): Done loading
 // Internal name: SndBurstEnd
 // This command is sent when a player is done loading and other players can then
-// join the game. On BB, this command is sent as 016F if a quest is in progress
-// and the game should not be joined by anyone else.
+// join the game. On BB, this command is sent a 006F after loading into a game,
+// or as 016F after loading a joinable quest. (This means when a BB client joins
+// a game with a quest in progress, they will send 006F when they're ready to
+// receive the quest files, and 016F when they're actually ready to play.)
 
 // 70: Invalid command
 // 71: Invalid command
