@@ -1,13 +1,14 @@
-PSOBB Support files, notes and resources
+PSOBB SUPPORT FILES, NOTES & RESOURCES
 
 --------------------------------------------------------------------------------
 CLIENT LOCALIZATION
 
 By default PSOBB loads everything in Japanese so it requires some extra files
 to properly implement the English localization from SOA, these files are offered
-here inside the usbb-resources folder for your convenience.
+here inside the usbb-resources folder for your convenience they are the same ones
+from the old official USBB client
 
-To use them you just need to drag and drop all its contents into your client's 
+To use them, you just need to drag and drop all its contents into your client's 
 data folder. Then if the client's internal lang flag is set correctly to English 
 will load all the correct texts from these files.
 
