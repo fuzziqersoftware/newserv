@@ -74,3 +74,34 @@ StringReader GSLArchive::get_reader(const string& name) const {
     throw out_of_range("GSL does not contain file: " + name);
   }
 }
+
+string GSLArchive::generate(const unordered_map<string, string>& files, bool big_endian) {
+  return big_endian ? GSLArchive::generate_t<true>(files) : GSLArchive::generate_t<false>(files);
+}
+
+template <bool IsBigEndian>
+string GSLArchive::generate_t(const unordered_map<string, string>& files) {
+  StringWriter w;
+
+  // Make sure there's enough space for a blank header entry before any file's
+  // data pages begin
+  uint32_t data_start_offset = ((sizeof(GSLHeaderEntry<IsBigEndian>) * (files.size() + 1)) + 0x7FF) & (~0x7FF);
+  uint32_t data_offset = data_start_offset;
+  for (const auto& file : files) {
+    GSLHeaderEntry<IsBigEndian> entry;
+    entry.filename.encode(file.first);
+    entry.offset = data_offset >> 11;
+    entry.size = file.second.size();
+    entry.unused = 0;
+    w.put(entry);
+    data_offset = (data_offset + file.second.size() + 0x7FF) & (~0x7FF);
+  }
+  w.extend_to(data_start_offset);
+
+  for (const auto& file : files) {
+    w.write(file.second);
+    w.extend_to((w.size() + 0x7FF) & (~0x7FF));
+  }
+
+  return std::move(w.str());
+}

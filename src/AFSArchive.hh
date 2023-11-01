@@ -25,7 +25,12 @@ public:
   std::string get_copy(size_t index) const;
   StringReader get_reader(size_t index) const;
 
+  static std::string generate(const std::vector<std::string>& files, bool big_endian);
+
 private:
+  template <bool IsBigEndian>
+  static std::string generate_t(const std::vector<std::string>& files);
+
   std::shared_ptr<const std::string> data;
   std::vector<Entry> entries;
 };

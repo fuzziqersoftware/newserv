@@ -1,6 +1,7 @@
 #include "RareItemSet.hh"
 
 #include <phosg/Filesystem.hh>
+#include <phosg/Math.hh>
 #include <phosg/Random.hh>
 
 #include "BattleParamsIndex.hh"
@@ -9,7 +10,33 @@
 
 using namespace std;
 
-uint32_t RareItemSet::PackedDrop::expand_rate(uint8_t pc) {
+string RareItemSet::ExpandedDrop::str() const {
+  auto frac = reduce_fraction<uint64_t>(this->probability, 0x100000000);
+  return string_printf(
+      "(%08" PRIX32 " => %" PRIu64 "/%" PRIu64 ") %02hhX%02hhX%02hhX",
+      this->probability, frac.first, frac.second, this->item_code[0], this->item_code[1], this->item_code[2]);
+}
+
+string RareItemSet::ExpandedDrop::str(GameVersion version, shared_ptr<const ItemNameIndex> name_index) const {
+  ItemData item;
+  item.data1[0] = this->item_code[0];
+  item.data1[1] = this->item_code[1];
+  item.data1[2] = this->item_code[2];
+
+  string ret = this->str();
+  ret += " (";
+  ret += name_index->describe_item(version, item);
+  ret += ")";
+  return ret;
+}
+
+uint32_t RareItemSet::expand_rate(uint8_t pc) {
+  // pc = bits SSSSS VVV
+  //   S = shift + 4 (so actual shift is 0-27)
+  //   V = value - 7 (so actual value is 7-14)
+  // take the bits 00000000 00000000 00000000 00000010
+  // shift left by shift (0-27)
+  // multiply by value
   int8_t shift = ((pc >> 3) & 0x1F) - 4;
   if (shift < 0) {
     shift = 0;
@@ -17,93 +44,202 @@ uint32_t RareItemSet::PackedDrop::expand_rate(uint8_t pc) {
   return ((2 << shift) * ((pc & 7) + 7));
 }
 
-RareItemSet::ExpandedDrop::ExpandedDrop() : probability(0) {
-  this->item_code[0] = 0;
-  this->item_code[1] = 0;
-  this->item_code[2] = 0;
-}
-
-RareItemSet::ExpandedDrop::ExpandedDrop(const PackedDrop& d)
-    : probability(PackedDrop::expand_rate(d.probability)) {
-  this->item_code[0] = d.item_code[0];
-  this->item_code[1] = d.item_code[1];
-  this->item_code[2] = d.item_code[2];
-}
-
-std::vector<RareItemSet::ExpandedDrop> GSLRareItemSet::Table::get_enemy_specs(uint8_t rt_index) const {
-  vector<ExpandedDrop> ret;
-  if (this->monster_rares[rt_index].item_code[0] != 0 ||
-      this->monster_rares[rt_index].item_code[1] != 0 ||
-      this->monster_rares[rt_index].item_code[2] != 0) {
-    ret.emplace_back(this->monster_rares[rt_index]);
-  }
-  return ret;
-}
-
-std::vector<RareItemSet::ExpandedDrop> GSLRareItemSet::Table::get_box_specs(uint8_t area) const {
-  vector<ExpandedDrop> ret;
-  for (size_t z = 0; z < 0x1E; z++) {
-    if (this->box_areas[z] == area) {
-      ret.emplace_back(this->box_rares[z]);
+uint8_t RareItemSet::compress_rate(uint32_t probability) {
+  // I'm too lazy to figure out the reverse bitwise math, so we just compute all
+  // the expansions and take the closest one
+  static std::map<uint32_t, uint8_t> inverse_map;
+  if (inverse_map.empty()) {
+    for (size_t z = 0; z < 0x100; z++) {
+      inverse_map.emplace(RareItemSet::expand_rate(z), z);
     }
   }
+
+  auto it = inverse_map.lower_bound(probability);
+  if (it == inverse_map.end()) {
+    // The expanded probability is less likely than the least likely value
+    return inverse_map.rbegin()->second;
+  } else if (it->first == probability) {
+    // The expanded probability is exactly equal to this entry
+    return it->second;
+  } else if (it == inverse_map.begin()) {
+    // The expanded probability more likely than the most likely value
+    return it->second;
+  } else {
+    // The expanded probability is between two entries; choose the closer one
+    auto prev_it = it;
+    prev_it--;
+    int32_t prev_diff = static_cast<int32_t>(prev_it->first - probability);
+    int32_t next_diff = static_cast<int32_t>(it->first - probability);
+    return (prev_diff < next_diff) ? prev_it->second : it->second;
+  }
+}
+
+RareItemSet::ParsedRELData::PackedDrop::PackedDrop(const ExpandedDrop& exp)
+    : probability(RareItemSet::compress_rate(exp.probability)),
+      item_code(exp.item_code) {}
+
+RareItemSet::ExpandedDrop RareItemSet::ParsedRELData::PackedDrop::expand() const {
+  return ExpandedDrop{
+      .probability = RareItemSet::expand_rate(this->probability),
+      .item_code = this->item_code,
+  };
+}
+
+template <bool IsBigEndian>
+void RareItemSet::ParsedRELData::parse_t(StringReader r) {
+  using U32T = typename std::conditional<IsBigEndian, be_uint32_t, le_uint32_t>::type;
+
+  uint32_t root_offset = r.pget<U32T>(r.size() - 0x10);
+  const auto& root = r.pget<Offsets<IsBigEndian>>(root_offset);
+
+  StringReader monsters_r = r.sub(root.monster_rares_offset);
+  for (size_t z = 0; z < 0x65; z++) {
+    const auto& d = monsters_r.get<PackedDrop>();
+    this->monster_rares.emplace_back(d.expand());
+  }
+
+  StringReader box_areas_r = r.sub(root.box_areas_offset, root.box_count * sizeof(uint8_t));
+  StringReader box_drops_r = r.sub(root.box_rares_offset, root.box_count * sizeof(PackedDrop));
+  for (size_t z = 0; z < root.box_count; z++) {
+    uint8_t area = box_areas_r.get_u8();
+    const auto& drop = box_drops_r.get<PackedDrop>();
+    if (!drop.item_code.is_filled_with(0)) {
+      auto& box_rare = this->box_rares.emplace_back();
+      box_rare.area = area;
+      box_rare.drop = drop.expand();
+    }
+  }
+}
+
+template <bool IsBigEndian>
+std::string RareItemSet::ParsedRELData::serialize_t() const {
+  using U32T = typename std::conditional<IsBigEndian, be_uint32_t, le_uint32_t>::type;
+  using U16T = typename std::conditional<IsBigEndian, be_uint16_t, le_uint16_t>::type;
+
+  static const PackedDrop empty_drop;
+
+  Offsets<IsBigEndian> root;
+  root.box_count = this->box_rares.size();
+
+  StringWriter w;
+  root.monster_rares_offset = w.size();
+  for (const auto& drop : this->monster_rares) {
+    w.put(PackedDrop(drop));
+  }
+  while (w.size() < root.monster_rares_offset + 0x65 * sizeof(PackedDrop)) {
+    w.put(empty_drop);
+  }
+  root.box_areas_offset = w.size();
+  for (const auto& drop : this->box_rares) {
+    w.put_u8(drop.area);
+  }
+  root.box_rares_offset = w.size();
+  for (const auto& drop : this->box_rares) {
+    w.put(PackedDrop(drop.drop));
+  }
+  while (w.size() & 3) {
+    w.put_u8(0);
+  }
+  uint32_t root_offset = w.size();
+  w.put(root);
+  while (w.size() & 0x1F) {
+    w.put_u8(0);
+  }
+  uint32_t relocations_offset = w.size();
+  w.put<U16T>(root_offset >> 2);
+  w.put<U16T>(2);
+  w.put<U16T>(1);
+  while (w.size() & 0x1F) {
+    w.put_u8(0);
+  }
+  w.put<U32T>(relocations_offset);
+  w.put<U32T>(3); // num_relocations
+  w.put<U32T>(1); // TODO: What is this used for?
+  w.put<U32T>(0);
+  w.put<U32T>(root_offset);
+  w.put<U32T>(0);
+  w.put<U32T>(0);
+  w.put<U32T>(0);
+  return std::move(w.str());
+}
+
+RareItemSet::ParsedRELData::ParsedRELData(StringReader r, bool big_endian) {
+  if (big_endian) {
+    this->parse_t<true>(r);
+  } else {
+    this->parse_t<false>(r);
+  }
+}
+
+RareItemSet::ParsedRELData::ParsedRELData(const SpecCollection& collection) {
+  for (const auto& specs : collection.rt_index_to_specs) {
+    ExpandedDrop effective_spec;
+    for (const auto& spec : specs) {
+      if (effective_spec.item_code.is_filled_with(0)) {
+        effective_spec = spec;
+      } else if ((effective_spec.probability != spec.probability) ||
+          (effective_spec.item_code != spec.item_code)) {
+        throw runtime_error("monster spec cannot be converted to ItemRT format");
+      }
+    }
+    if (!effective_spec.item_code.is_filled_with(0)) {
+      this->monster_rares.emplace_back(specs.empty() ? ExpandedDrop() : specs[0]);
+    }
+  }
+
+  if (collection.box_area_to_specs.size() > 0xFF) {
+    throw runtime_error("area value too high");
+  }
+  for (uint8_t area = 0; area < collection.box_area_to_specs.size(); area++) {
+    for (const auto& spec : collection.box_area_to_specs[area]) {
+      this->box_rares.emplace_back(BoxRare{.area = area, .drop = spec});
+    }
+  }
+}
+
+std::string RareItemSet::ParsedRELData::serialize(bool big_endian) const {
+  if (big_endian) {
+    return this->serialize_t<true>();
+  } else {
+    return this->serialize_t<false>();
+  }
+}
+
+RareItemSet::SpecCollection RareItemSet::ParsedRELData::as_collection() const {
+  SpecCollection ret;
+  for (size_t z = 0; z < this->monster_rares.size(); z++) {
+    const auto& drop = this->monster_rares[z];
+    if (drop.item_code.is_filled_with(0)) {
+      continue;
+    }
+    if (z >= ret.rt_index_to_specs.size()) {
+      ret.rt_index_to_specs.resize(z + 1);
+    }
+    ret.rt_index_to_specs[z].emplace_back(drop);
+  }
+  for (const auto& drop : this->box_rares) {
+    if (drop.drop.item_code.is_filled_with(0)) {
+      continue;
+    }
+    if (drop.area >= ret.box_area_to_specs.size()) {
+      ret.box_area_to_specs.resize(drop.area + 1);
+    }
+    ret.box_area_to_specs[drop.area].emplace_back(drop.drop);
+  }
   return ret;
 }
 
-uint16_t RareItemSet::key_for_params(GameMode mode, Episode episode, uint8_t difficulty, uint8_t secid) {
-  if (difficulty > 3) {
-    throw logic_error("incorrect difficulty");
-  }
-  if (secid > 10) {
-    throw logic_error("incorrect section id");
-  }
-
-  uint16_t key = ((difficulty & 3) << 4) | (secid & 0x0F);
-  switch (mode) {
-    case GameMode::NORMAL:
-      break;
-    case GameMode::BATTLE:
-      key |= 0x0040;
-      break;
-    case GameMode::CHALLENGE:
-      key |= 0x0080;
-      break;
-    case GameMode::SOLO:
-      key |= 0x00C0;
-      break;
-    default:
-      throw logic_error("invalid episode in RareItemSet");
-  }
-  switch (episode) {
-    case Episode::EP1:
-      break;
-    case Episode::EP2:
-      key |= 0x0100;
-      break;
-    case Episode::EP4:
-      key |= 0x0200;
-      break;
-    default:
-      throw logic_error("invalid episode in RareItemSet");
-  }
-  return key;
-}
-
-AFSRareItemSet::AFSRareItemSet(shared_ptr<const string> data)
-    : afs(data) {
+RareItemSet::RareItemSet(const AFSArchive& afs) {
   const array<GameMode, 4> modes = {GameMode::NORMAL, GameMode::BATTLE, GameMode::CHALLENGE, GameMode::SOLO};
   for (GameMode mode : modes) {
     for (size_t difficulty = 0; difficulty < 4; difficulty++) {
       for (size_t section_id = 0; section_id < 10; section_id++) {
         try {
           size_t index = difficulty * 10 + section_id;
-          auto entry = this->afs.get(index);
-          if (entry.second < sizeof(Table)) {
-            throw runtime_error(string_printf("table %zu is too small", index));
-          }
-          this->tables.emplace(
+          ParsedRELData rel(afs.get_reader(index), false);
+          this->collections.emplace(
               this->key_for_params(mode, Episode::EP1, difficulty, section_id),
-              reinterpret_cast<const Table*>(entry.first));
+              rel.as_collection());
         } catch (const out_of_range&) {
         }
       }
@@ -111,45 +247,27 @@ AFSRareItemSet::AFSRareItemSet(shared_ptr<const string> data)
   }
 }
 
-std::vector<RareItemSet::ExpandedDrop> AFSRareItemSet::get_enemy_specs(
-    GameMode mode, Episode episode, uint8_t difficulty, uint8_t secid, uint8_t rt_index) const {
-  try {
-    return this->tables.at(this->key_for_params(mode, episode, difficulty, secid))->get_enemy_specs(rt_index);
-  } catch (const out_of_range&) {
-    return {};
-  }
+string RareItemSet::gsl_entry_name_for_table(GameMode mode, Episode episode, uint8_t difficulty, uint8_t section_id) {
+  return string_printf("ItemRT%s%s%c%1hhu.rel",
+      ((mode == GameMode::CHALLENGE) ? "c" : ""),
+      ((episode == Episode::EP2) ? "l" : ""),
+      tolower(abbreviation_for_difficulty(difficulty)), // One of "nhvu"
+      section_id);
 }
 
-std::vector<RareItemSet::ExpandedDrop> AFSRareItemSet::get_box_specs(
-    GameMode mode, Episode episode, uint8_t difficulty, uint8_t secid, uint8_t area) const {
-  try {
-    return this->tables.at(this->key_for_params(mode, episode, difficulty, secid))->get_box_specs(area);
-  } catch (const out_of_range&) {
-    return {};
-  }
-}
-
-GSLRareItemSet::GSLRareItemSet(shared_ptr<const string> data, bool is_big_endian)
-    : gsl(data, is_big_endian) {
+RareItemSet::RareItemSet(const GSLArchive& gsl, bool is_big_endian) {
   const array<Episode, 2> episodes = {Episode::EP1, Episode::EP2};
   const array<GameMode, 4> modes = {GameMode::NORMAL, GameMode::BATTLE, GameMode::CHALLENGE, GameMode::SOLO};
   for (GameMode mode : modes) {
     for (Episode episode : episodes) {
       for (size_t difficulty = 0; difficulty < 4; difficulty++) {
         for (size_t section_id = 0; section_id < 10; section_id++) {
-          string filename = string_printf("ItemRT%s%s%c%1zu.rel",
-              ((mode == GameMode::CHALLENGE) ? "c" : ""),
-              ((episode == Episode::EP2) ? "l" : ""),
-              tolower(abbreviation_for_difficulty(difficulty)), // One of "nhvu"
-              section_id);
           try {
-            auto entry = this->gsl.get(filename);
-            if (entry.second < sizeof(Table)) {
-              throw runtime_error(string_printf("table %s is too small", filename.c_str()));
-            }
-            this->tables.emplace(
+            string filename = this->gsl_entry_name_for_table(mode, episode, difficulty, section_id);
+            ParsedRELData rel(gsl.get_reader(filename), is_big_endian);
+            this->collections.emplace(
                 this->key_for_params(mode, episode, difficulty, section_id),
-                reinterpret_cast<const Table*>(entry.first));
+                rel.as_collection());
           } catch (const out_of_range&) {
           }
         }
@@ -158,71 +276,27 @@ GSLRareItemSet::GSLRareItemSet(shared_ptr<const string> data, bool is_big_endian
   }
 }
 
-std::vector<RareItemSet::ExpandedDrop> GSLRareItemSet::get_enemy_specs(
-    GameMode mode, Episode episode, uint8_t difficulty, uint8_t secid, uint8_t rt_index) const {
-  try {
-    return this->tables.at(this->key_for_params(mode, episode, difficulty, secid))->get_enemy_specs(rt_index);
-  } catch (const out_of_range&) {
-    return {};
+RareItemSet::RareItemSet(const string& rel_data, bool is_big_endian) {
+  // Tables are 0x280 bytes in size in this format, laid out sequentially
+  StringReader r(rel_data);
+  array<Episode, 3> episodes = {Episode::EP1, Episode::EP2, Episode::EP4};
+  for (size_t ep_index = 0; ep_index < episodes.size(); ep_index++) {
+    for (size_t difficulty = 0; difficulty < 4; difficulty++) {
+      for (size_t section_id = 0; section_id < 10; section_id++) {
+        try {
+          size_t index = (ep_index * 40) + difficulty * 10 + section_id;
+          ParsedRELData rel(r.sub(0x280 * index, 0x280), is_big_endian);
+          this->collections.emplace(
+              this->key_for_params(GameMode::NORMAL, episodes[ep_index], difficulty, section_id),
+              rel.as_collection());
+        } catch (const out_of_range&) {
+        }
+      }
+    }
   }
 }
 
-std::vector<RareItemSet::ExpandedDrop> GSLRareItemSet::get_box_specs(
-    GameMode mode, Episode episode, uint8_t difficulty, uint8_t secid, uint8_t area) const {
-  try {
-    return this->tables.at(this->key_for_params(mode, episode, difficulty, secid))->get_box_specs(area);
-  } catch (const out_of_range&) {
-    return {};
-  }
-}
-
-RELRareItemSet::RELRareItemSet(shared_ptr<const string> data) : data(data) {
-  if (this->data->size() != sizeof(Table) * 10 * 4 * 3) {
-    throw runtime_error("data file size is incorrect");
-  }
-}
-
-std::vector<RareItemSet::ExpandedDrop> RELRareItemSet::get_enemy_specs(
-    GameMode mode, Episode episode, uint8_t difficulty, uint8_t secid, uint8_t rt_index) const {
-  return this->get_table(mode, episode, difficulty, secid).get_enemy_specs(rt_index);
-}
-
-std::vector<RareItemSet::ExpandedDrop> RELRareItemSet::get_box_specs(
-    GameMode mode, Episode episode, uint8_t difficulty, uint8_t secid, uint8_t area) const {
-  return this->get_table(mode, episode, difficulty, secid).get_box_specs(area);
-}
-
-const RELRareItemSet::Table& RELRareItemSet::get_table(
-    GameMode mode, Episode episode, uint8_t difficulty, uint8_t secid) const {
-  (void)mode; // TODO: Shouldn't we check for challenge mode somewhere?
-
-  if (difficulty > 3) {
-    throw logic_error("incorrect difficulty");
-  }
-  if (secid > 10) {
-    throw logic_error("incorrect section id");
-  }
-
-  size_t ep_index;
-  switch (episode) {
-    case Episode::EP1:
-      ep_index = 0;
-      break;
-    case Episode::EP2:
-      ep_index = 1;
-      break;
-    case Episode::EP4:
-      ep_index = 2;
-      break;
-    default:
-      throw invalid_argument("incorrect episode");
-  }
-
-  const auto* tables = reinterpret_cast<const Table*>(this->data->data());
-  return tables[(ep_index * 10 * 4) + (difficulty * 10) + secid];
-}
-
-JSONRareItemSet::JSONRareItemSet(const JSON& json, GameVersion version, shared_ptr<const ItemNameIndex> name_index) {
+RareItemSet::RareItemSet(const JSON& json, GameVersion version, shared_ptr<const ItemNameIndex> name_index) {
   for (const auto& mode_it : json.as_dict()) {
     static const unordered_map<string, GameMode> mode_keys(
         {{"Normal", GameMode::NORMAL}, {"Battle", GameMode::BATTLE}, {"Challenge", GameMode::CHALLENGE}, {"Solo", GameMode::SOLO}});
@@ -303,22 +377,259 @@ JSONRareItemSet::JSONRareItemSet(const JSON& json, GameVersion version, shared_p
   }
 }
 
-std::vector<RareItemSet::ExpandedDrop> JSONRareItemSet::get_enemy_specs(
+std::string RareItemSet::serialize_afs() const {
+  vector<string> files;
+  for (uint8_t difficulty = 0; difficulty < 4; difficulty++) {
+    for (uint8_t section_id = 0; section_id < 10; section_id++) {
+      ParsedRELData rel(this->get_collection(GameMode::NORMAL, Episode::EP1, difficulty, section_id));
+      files.emplace_back(rel.serialize(false));
+    }
+  }
+  return AFSArchive::generate(files, false);
+}
+
+std::string RareItemSet::serialize_gsl(bool big_endian) const {
+  unordered_map<string, string> files;
+
+  static const std::array<Episode, 2> episodes = {Episode::EP1, Episode::EP2};
+  for (Episode episode : episodes) {
+    for (uint8_t difficulty = 0; difficulty < 4; difficulty++) {
+      for (uint8_t section_id = 0; section_id < 10; section_id++) {
+        try {
+          string filename = this->gsl_entry_name_for_table(GameMode::NORMAL, episode, difficulty, section_id);
+          ParsedRELData rel(this->get_collection(GameMode::NORMAL, episode, difficulty, section_id));
+          files.emplace(filename, rel.serialize(big_endian));
+        } catch (const out_of_range&) {
+          // Collection does not exist; skip it
+        }
+      }
+    }
+  }
+
+  for (uint8_t difficulty = 0; difficulty < 4; difficulty++) {
+    for (uint8_t section_id = 0; section_id < 10; section_id++) {
+      try {
+        string filename = this->gsl_entry_name_for_table(GameMode::CHALLENGE, Episode::EP1, difficulty, section_id);
+        ParsedRELData rel(this->get_collection(GameMode::CHALLENGE, Episode::EP1, difficulty, section_id));
+        files.emplace(filename, rel.serialize(big_endian));
+      } catch (const out_of_range&) {
+        // Collection does not exist; skip it
+      }
+    }
+  }
+  return GSLArchive::generate(files, big_endian);
+}
+
+std::string RareItemSet::serialize_json(GameVersion version, shared_ptr<const ItemNameIndex> name_index) const {
+  auto modes_dict = JSON::dict();
+  static const array<GameMode, 4> modes = {GameMode::NORMAL, GameMode::BATTLE, GameMode::CHALLENGE, GameMode::SOLO};
+  for (const auto& mode : modes) {
+    auto episodes_dict = JSON::dict();
+    static const array<Episode, 3> episodes = {Episode::EP1, Episode::EP2, Episode::EP4};
+    for (const auto& episode : episodes) {
+      auto difficulty_dict = JSON::dict();
+      for (uint8_t difficulty = 0; difficulty < 4; difficulty++) {
+        auto section_id_dict = JSON::dict();
+        for (uint8_t section_id = 0; section_id < 10; section_id++) {
+          auto collection_dict = JSON::dict();
+          for (size_t rt_index = 0; rt_index < 0x80; rt_index++) {
+            const auto& enemy_types = enemy_types_for_rare_table_index(episode, rt_index);
+            if (enemy_types.empty()) {
+              continue;
+            }
+
+            for (const auto& spec : this->get_enemy_specs(GameMode::NORMAL, episode, difficulty, section_id, rt_index)) {
+              uint32_t primary_identifier = (spec.item_code[0] << 16) | (spec.item_code[1] << 8) | spec.item_code[2];
+              if (primary_identifier == 0) {
+                continue;
+              }
+
+              auto frac = reduce_fraction<uint64_t>(spec.probability, 0x100000000);
+              auto spec_json = JSON::list({string_printf("%" PRIu64 "/%" PRIu64, frac.first, frac.second), primary_identifier});
+              if (name_index) {
+                ItemData data;
+                data.data1[0] = spec.item_code[0];
+                data.data1[1] = spec.item_code[1];
+                data.data1[2] = spec.item_code[2];
+                spec_json.emplace_back(name_index->describe_item(version, data));
+              }
+              for (const auto& enemy_type : enemy_types) {
+                if (enemy_type_valid_for_episode(episode, enemy_type)) {
+                  JSON this_spec_json = spec_json;
+                  collection_dict.emplace(name_for_enum(enemy_type), JSON::list()).first->second->emplace_back(std::move(this_spec_json));
+                }
+              }
+            }
+          }
+
+          for (size_t area = 0; area < 0x12; area++) {
+            auto area_list = JSON::list();
+
+            for (const auto& spec : this->get_box_specs(GameMode::NORMAL, episode, difficulty, section_id, area)) {
+              uint32_t primary_identifier = (spec.item_code[0] << 16) | (spec.item_code[1] << 8) | spec.item_code[2];
+              if (primary_identifier == 0) {
+                continue;
+              }
+
+              auto frac = reduce_fraction<uint64_t>(spec.probability, 0x100000000);
+              area_list.emplace_back(JSON::list({string_printf("%" PRIu64 "/%" PRIu64, frac.first, frac.second), std::move(primary_identifier)}));
+              if (name_index) {
+                ItemData data;
+                data.data1[0] = spec.item_code[0];
+                data.data1[1] = spec.item_code[1];
+                data.data1[2] = spec.item_code[2];
+                area_list.back().emplace_back(name_index->describe_item(version, data));
+              }
+            }
+
+            if (!area_list.empty()) {
+              collection_dict.emplace(
+                  string_printf("Box-%s", name_for_area(episode, area)),
+                  std::move(area_list));
+            }
+          }
+
+          if (!collection_dict.empty()) {
+            section_id_dict.emplace(name_for_section_id(section_id), std::move(collection_dict));
+          }
+        }
+        difficulty_dict.emplace(token_name_for_difficulty(difficulty), std::move(section_id_dict));
+      }
+      episodes_dict.emplace(token_name_for_episode(episode), std::move(difficulty_dict));
+    }
+    modes_dict.emplace(name_for_mode(mode), std::move(episodes_dict));
+  }
+
+  return modes_dict.serialize(JSON::SerializeOption::FORMAT | JSON::SerializeOption::HEX_INTEGERS | JSON::SerializeOption::SORT_DICT_KEYS);
+}
+
+void RareItemSet::print_collection(
+    FILE* stream,
+    GameVersion version,
+    GameMode mode,
+    Episode episode,
+    uint8_t difficulty,
+    uint8_t section_id,
+    shared_ptr<const ItemNameIndex> name_index) const {
+  const SpecCollection* collection;
+  try {
+    collection = &this->get_collection(mode, episode, difficulty, section_id);
+  } catch (const out_of_range&) {
+    return;
+  }
+
+  string secid_name = name_for_section_id(section_id);
+  fprintf(stream, "%s %s %s %s\n",
+      name_for_mode(mode),
+      name_for_episode(episode),
+      name_for_difficulty(difficulty),
+      secid_name.c_str());
+
+  fprintf(stream, "  Monster rares:\n");
+  for (size_t z = 0; z < collection->rt_index_to_specs.size(); z++) {
+    string enemy_types_str;
+    const auto& enemy_types = enemy_types_for_rare_table_index(episode, z);
+    for (EnemyType enemy_type : enemy_types) {
+      enemy_types_str += name_for_enum(enemy_type);
+      enemy_types_str.push_back(',');
+    }
+    if (!enemy_types_str.empty()) {
+      enemy_types_str.resize(enemy_types_str.size() - 1);
+    }
+
+    for (const auto& spec : collection->rt_index_to_specs[z]) {
+      string s = name_index ? spec.str(version, name_index) : spec.str();
+      fprintf(stream, "    %02zX: %s (%s)\n", z, s.c_str(), enemy_types_str.c_str());
+    }
+  }
+
+  fprintf(stream, "  Box rares:\n");
+  for (size_t area = 0; area < collection->box_area_to_specs.size(); area++) {
+    for (const auto& spec : collection->box_area_to_specs[area]) {
+      string s = name_index ? spec.str(version, name_index) : spec.str();
+      fprintf(stream, "    (area %02zX) %s\n", area, s.c_str());
+    }
+  }
+}
+
+void RareItemSet::print_all_collections(
+    FILE* stream, GameVersion version, std::shared_ptr<const ItemNameIndex> name_index) const {
+  static const array<GameMode, 4> modes = {GameMode::NORMAL, GameMode::BATTLE, GameMode::CHALLENGE, GameMode::SOLO};
+  static const array<Episode, 3> episodes = {Episode::EP1, Episode::EP2, Episode::EP4};
+  for (GameMode mode : modes) {
+    for (Episode episode : episodes) {
+      for (uint8_t difficulty = 0; difficulty < 4; difficulty++) {
+        for (uint8_t section_id = 0; section_id < 10; section_id++) {
+          try {
+            this->print_collection(stream, version, mode, episode, difficulty, section_id, name_index);
+          } catch (const out_of_range& e) {
+          }
+        }
+      }
+    }
+  }
+}
+
+std::vector<RareItemSet::ExpandedDrop> RareItemSet::get_enemy_specs(
     GameMode mode, Episode episode, uint8_t difficulty, uint8_t secid, uint8_t rt_index) const {
   try {
-    return this->collections.at(this->key_for_params(mode, episode, difficulty, secid)).rt_index_to_specs.at(rt_index);
+    return this->get_collection(mode, episode, difficulty, secid).rt_index_to_specs.at(rt_index);
   } catch (const out_of_range&) {
     static const std::vector<ExpandedDrop> empty_vector;
     return empty_vector;
   }
 }
 
-std::vector<RareItemSet::ExpandedDrop> JSONRareItemSet::get_box_specs(
+std::vector<RareItemSet::ExpandedDrop> RareItemSet::get_box_specs(
     GameMode mode, Episode episode, uint8_t difficulty, uint8_t secid, uint8_t area) const {
   try {
-    return this->collections.at(this->key_for_params(mode, episode, difficulty, secid)).box_area_to_specs.at(area);
+    return this->get_collection(mode, episode, difficulty, secid).box_area_to_specs.at(area);
   } catch (const out_of_range&) {
     static const std::vector<ExpandedDrop> empty_vector;
     return empty_vector;
   }
+}
+
+const RareItemSet::SpecCollection& RareItemSet::get_collection(
+    GameMode mode, Episode episode, uint8_t difficulty, uint8_t secid) const {
+  return this->collections.at(this->key_for_params(mode, episode, difficulty, secid));
+}
+
+uint16_t RareItemSet::key_for_params(GameMode mode, Episode episode, uint8_t difficulty, uint8_t secid) {
+  if (difficulty > 3) {
+    throw logic_error("incorrect difficulty");
+  }
+  if (secid > 10) {
+    throw logic_error("incorrect section id");
+  }
+
+  uint16_t key = ((difficulty & 3) << 4) | (secid & 0x0F);
+  switch (mode) {
+    case GameMode::NORMAL:
+      break;
+    case GameMode::BATTLE:
+      key |= 0x0040;
+      break;
+    case GameMode::CHALLENGE:
+      key |= 0x0080;
+      break;
+    case GameMode::SOLO:
+      key |= 0x00C0;
+      break;
+    default:
+      throw logic_error("invalid episode in RareItemSet");
+  }
+  switch (episode) {
+    case Episode::EP1:
+      break;
+    case Episode::EP2:
+      key |= 0x0100;
+      break;
+    case Episode::EP4:
+      key |= 0x0200;
+      break;
+    default:
+      throw logic_error("invalid episode in RareItemSet");
+  }
+  return key;
 }

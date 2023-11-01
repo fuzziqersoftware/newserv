@@ -17,111 +17,92 @@
 
 class RareItemSet {
 public:
-  struct PackedDrop {
-    uint8_t probability;
-    uint8_t item_code[3];
-
-    static uint32_t expand_rate(uint8_t pc);
-  } __attribute__((packed));
-
   struct ExpandedDrop {
-    uint32_t probability;
-    uint8_t item_code[3];
+    uint32_t probability = 0;
+    parray<uint8_t, 3> item_code;
 
-    ExpandedDrop();
-    explicit ExpandedDrop(const PackedDrop&);
+    std::string str() const;
+    std::string str(GameVersion version, std::shared_ptr<const ItemNameIndex> name_index) const;
   };
 
-  struct Table {
-    // 0x280 in size; describes one difficulty, section ID, and episode
-    // TODO: It looks like this structure can actually vary. In PSOGC, these all
-    // appear to be the same size/format, but that's probably not strictly
-    // required to be the case.
-    /* 0000 */ parray<PackedDrop, 0x65> monster_rares;
-    /* 0194 */ parray<uint8_t, 0x1E> box_areas;
-    /* 01B2 */ parray<PackedDrop, 0x1E> box_rares;
-    /* 022A */ parray<uint8_t, 2> unknown_a1;
-    /* 022C */ be_uint32_t monster_rares_offset; // == 0x0000
-    /* 0230 */ be_uint32_t box_count; // == 0x1E
-    /* 0234 */ be_uint32_t box_areas_offset; // == 0x0194
-    /* 0238 */ be_uint32_t box_rares_offset; // == 0x01B2
-    /* 023C */ be_uint32_t unused_offset1;
-    /* 0240 */ parray<be_uint16_t, 0x10> unknown_a2;
-    /* 0260 */ be_uint32_t unknown_a2_offset;
-    /* 0264 */ be_uint32_t unknown_a2_count;
-    /* 0268 */ be_uint32_t unknown_a3;
-    /* 026C */ be_uint32_t unknown_a4;
-    /* 0270 */ be_uint32_t offset_table_offset; // == 0x022C
-    /* 0274 */ parray<be_uint32_t, 3> unknown_a5;
-    /* 0280 */
+  RareItemSet();
+  RareItemSet(const AFSArchive& afs);
+  RareItemSet(const GSLArchive& gsl, bool is_big_endian);
+  RareItemSet(const std::string& rel, bool is_big_endian);
+  RareItemSet(const JSON& json, GameVersion version, std::shared_ptr<const ItemNameIndex> name_index = nullptr);
+  ~RareItemSet() = default;
 
-    std::vector<ExpandedDrop> get_enemy_specs(uint8_t rt_index) const;
-    std::vector<ExpandedDrop> get_box_specs(uint8_t area) const;
-  } __attribute__((packed));
+  std::vector<ExpandedDrop> get_enemy_specs(GameMode mode, Episode episode, uint8_t difficulty, uint8_t secid, uint8_t rt_index) const;
+  std::vector<ExpandedDrop> get_box_specs(GameMode mode, Episode episode, uint8_t difficulty, uint8_t secid, uint8_t area) const;
 
-  virtual ~RareItemSet() = default;
+  std::string serialize_afs() const;
+  std::string serialize_gsl(bool big_endian) const;
+  std::string serialize_json(GameVersion version, std::shared_ptr<const ItemNameIndex> name_index = nullptr) const;
 
-  virtual std::vector<ExpandedDrop> get_enemy_specs(GameMode mode, Episode episode, uint8_t difficulty, uint8_t secid, uint8_t rt_index) const = 0;
-  virtual std::vector<ExpandedDrop> get_box_specs(GameMode mode, Episode episode, uint8_t difficulty, uint8_t secid, uint8_t area) const = 0;
+  void print_collection(
+      FILE* stream,
+      GameVersion version,
+      GameMode mode,
+      Episode episode,
+      uint8_t difficulty,
+      uint8_t section_id,
+      std::shared_ptr<const ItemNameIndex> name_index = nullptr) const;
+  void print_all_collections(FILE* stream, GameVersion version, std::shared_ptr<const ItemNameIndex> name_index = nullptr) const;
 
 protected:
-  RareItemSet() = default;
-
-  static uint16_t key_for_params(GameMode mode, Episode episode, uint8_t difficulty, uint8_t secid);
-};
-
-class AFSRareItemSet : public RareItemSet {
-public:
-  AFSRareItemSet(std::shared_ptr<const std::string> data);
-  virtual ~AFSRareItemSet() = default;
-  virtual std::vector<ExpandedDrop> get_enemy_specs(GameMode mode, Episode episode, uint8_t difficulty, uint8_t secid, uint8_t rt_index) const;
-  virtual std::vector<ExpandedDrop> get_box_specs(GameMode mode, Episode episode, uint8_t difficulty, uint8_t secid, uint8_t area) const;
-
-private:
-  std::unordered_map<uint16_t, const Table*> tables;
-
-  AFSArchive afs;
-};
-
-class GSLRareItemSet : public RareItemSet {
-public:
-  GSLRareItemSet(std::shared_ptr<const std::string> data, bool is_big_endian);
-  virtual ~GSLRareItemSet() = default;
-  virtual std::vector<ExpandedDrop> get_enemy_specs(GameMode mode, Episode episode, uint8_t difficulty, uint8_t secid, uint8_t rt_index) const;
-  virtual std::vector<ExpandedDrop> get_box_specs(GameMode mode, Episode episode, uint8_t difficulty, uint8_t secid, uint8_t area) const;
-
-private:
-  std::unordered_map<uint16_t, const Table*> tables;
-
-  GSLArchive gsl;
-};
-
-class RELRareItemSet : public RareItemSet {
-public:
-  RELRareItemSet(std::shared_ptr<const std::string> data);
-  virtual ~RELRareItemSet() = default;
-  virtual std::vector<ExpandedDrop> get_enemy_specs(GameMode mode, Episode episode, uint8_t difficulty, uint8_t secid, uint8_t rt_index) const;
-  virtual std::vector<ExpandedDrop> get_box_specs(GameMode mode, Episode episode, uint8_t difficulty, uint8_t secid, uint8_t area) const;
-
-private:
-  std::shared_ptr<const std::string> data;
-
-  const Table& get_table(GameMode mode, Episode episode, uint8_t difficulty, uint8_t secid) const;
-};
-
-class JSONRareItemSet : public RareItemSet {
-public:
-  explicit JSONRareItemSet(const JSON& json, GameVersion version, std::shared_ptr<const ItemNameIndex> name_index = nullptr);
-  virtual ~JSONRareItemSet() = default;
-
-  virtual std::vector<ExpandedDrop> get_enemy_specs(GameMode mode, Episode episode, uint8_t difficulty, uint8_t secid, uint8_t rt_index) const;
-  virtual std::vector<ExpandedDrop> get_box_specs(GameMode mode, Episode episode, uint8_t difficulty, uint8_t secid, uint8_t area) const;
-
-private:
   struct SpecCollection {
     std::vector<std::vector<ExpandedDrop>> rt_index_to_specs;
     std::vector<std::vector<ExpandedDrop>> box_area_to_specs;
   };
 
+  struct ParsedRELData {
+    struct PackedDrop {
+      uint8_t probability = 0;
+      parray<uint8_t, 3> item_code;
+
+      PackedDrop() = default;
+      explicit PackedDrop(const ExpandedDrop&);
+      ExpandedDrop expand() const;
+    } __attribute__((packed));
+
+    template <bool IsBigEndian>
+    struct Offsets {
+      using U32T = typename std::conditional<IsBigEndian, be_uint32_t, le_uint32_t>::type;
+      /* 00 */ U32T monster_rares_offset; // -> parray<PackedDrop, 0x65>
+      /* 04 */ U32T box_count; // Usually 30 (0x1E)
+      /* 08 */ U32T box_areas_offset; // -> parray<uint8_t, 0x1E>
+      /* 0C */ U32T box_rares_offset; // -> parray<PackedDrop, 0x1E>
+      /* 10 */
+    } __attribute__((packed));
+
+    struct BoxRare {
+      uint8_t area;
+      ExpandedDrop drop;
+    };
+
+    std::vector<ExpandedDrop> monster_rares;
+    std::vector<BoxRare> box_rares;
+
+    ParsedRELData() = default;
+    ParsedRELData(StringReader r, bool big_endian);
+    explicit ParsedRELData(const SpecCollection& collection);
+    std::string serialize(bool big_endian) const;
+
+    template <bool IsBigEndian>
+    void parse_t(StringReader r);
+    template <bool IsBigEndian>
+    std::string serialize_t() const;
+
+    SpecCollection as_collection() const;
+  };
+
   std::unordered_map<uint16_t, SpecCollection> collections;
+
+  const SpecCollection& get_collection(GameMode mode, Episode episode, uint8_t difficulty, uint8_t secid) const;
+
+  static std::string gsl_entry_name_for_table(GameMode mode, Episode episode, uint8_t difficulty, uint8_t section_id);
+  static uint16_t key_for_params(GameMode mode, Episode episode, uint8_t difficulty, uint8_t secid);
+
+  static uint32_t expand_rate(uint8_t pc);
+  static uint8_t compress_rate(uint32_t probability);
 };

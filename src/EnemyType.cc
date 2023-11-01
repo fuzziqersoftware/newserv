@@ -1053,3 +1053,35 @@ uint8_t rare_table_index_for_enemy_type(EnemyType enemy_type) {
       throw runtime_error(string_printf("%s does not have a rare table entry", name_for_enum(enemy_type)));
   }
 }
+
+const vector<EnemyType>& enemy_types_for_rare_table_index(Episode episode, uint8_t rt_index) {
+  const auto& generate_table = +[](Episode episode) -> vector<vector<EnemyType>> {
+    vector<vector<EnemyType>> ret;
+    for (size_t z = 0; z < static_cast<size_t>(EnemyType::MAX_ENEMY_TYPE); z++) {
+      EnemyType t = static_cast<EnemyType>(z);
+      try {
+        uint8_t rt_index = rare_table_index_for_enemy_type(t);
+        if (enemy_type_valid_for_episode(episode, t)) {
+          if (rt_index >= ret.size()) {
+            ret.resize(rt_index + 1);
+          }
+          ret[rt_index].emplace_back(t);
+        }
+      } catch (const exception&) {
+      }
+    }
+    return ret;
+  };
+
+  static array<vector<vector<EnemyType>>, 5> data;
+  auto& ret = data.at(static_cast<size_t>(episode));
+  if (ret.empty()) {
+    ret = generate_table(episode);
+  }
+  try {
+    return ret.at(rt_index);
+  } catch (const out_of_range&) {
+    static const vector<EnemyType> empty_vec;
+    return empty_vec;
+  }
+}

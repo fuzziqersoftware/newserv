@@ -9,7 +9,7 @@
 
 using namespace std;
 
-AFSArchive::AFSArchive(std::shared_ptr<const std::string> data)
+AFSArchive::AFSArchive(shared_ptr<const string> data)
     : data(data) {
   struct FileHeader {
     be_uint32_t magic;
@@ -23,7 +23,7 @@ AFSArchive::AFSArchive(std::shared_ptr<const std::string> data)
 
   StringReader r(*this->data);
   const auto& header = r.get<FileHeader>();
-  if (header.magic != 0x41465300) {
+  if (header.magic != 0x41465300) { // 'AFS\0'
     throw runtime_error("file is not an AFS archive");
   }
 
@@ -33,7 +33,7 @@ AFSArchive::AFSArchive(std::shared_ptr<const std::string> data)
   }
 }
 
-std::pair<const void*, size_t> AFSArchive::get(size_t index) const {
+pair<const void*, size_t> AFSArchive::get(size_t index) const {
   const auto& entry = this->entries.at(index);
   if (entry.offset > this->data->size()) {
     throw out_of_range("entry begins beyond end of archive");
@@ -45,7 +45,7 @@ std::pair<const void*, size_t> AFSArchive::get(size_t index) const {
   return make_pair(this->data->data() + entry.offset, entry.size);
 }
 
-std::string AFSArchive::get_copy(size_t index) const {
+string AFSArchive::get_copy(size_t index) const {
   auto ret = this->get(index);
   return string(reinterpret_cast<const char*>(ret.first), ret.second);
 }
@@ -53,4 +53,34 @@ std::string AFSArchive::get_copy(size_t index) const {
 StringReader AFSArchive::get_reader(size_t index) const {
   auto ret = this->get(index);
   return StringReader(ret.first, ret.second);
+}
+
+string AFSArchive::generate(const vector<string>& files, bool big_endian) {
+  return big_endian ? AFSArchive::generate_t<true>(files) : AFSArchive::generate_t<false>(files);
+}
+
+template <bool IsBigEndian>
+string AFSArchive::generate_t(const vector<string>& files) {
+  using U32T = typename std::conditional<IsBigEndian, be_uint32_t, le_uint32_t>::type;
+
+  StringWriter w;
+  w.put_u32b(0x41465300); // 'AFS\0'
+  w.put<U32T>(files.size());
+
+  // It seems entries are aligned to 0x800-byte boundaries, and the file's
+  // header is always 0x80000 (!) bytes, most of which is unused
+  uint32_t data_offset = 0x80000;
+  for (const auto& file : files) {
+    w.put<U32T>(data_offset);
+    w.put<U32T>(file.size());
+    data_offset = (data_offset + file.size() + 0x7FF) & (~0x7FF);
+  }
+
+  w.extend_to(0x80000);
+  for (const auto& file : files) {
+    w.write(file);
+    w.extend_to((w.size() + 0x7FF) & (~0x7FF));
+  }
+
+  return std::move(w.str());
 }

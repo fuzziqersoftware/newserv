@@ -923,40 +923,38 @@ void ServerState::load_item_tables() {
 
     if (ends_with(filename, "-v2.json")) {
       config_log.info("Loading v2 JSON rare item table %s", filename.c_str());
-      this->rare_item_sets.emplace(basename, new JSONRareItemSet(JSON::parse(load_file(path)), GameVersion::PC, this->item_name_index));
+      this->rare_item_sets.emplace(basename, new RareItemSet(JSON::parse(load_file(path)), GameVersion::PC, this->item_name_index));
     } else if (ends_with(filename, "-v3.json")) {
       config_log.info("Loading v3 JSON rare item table %s", filename.c_str());
-      this->rare_item_sets.emplace(basename, new JSONRareItemSet(JSON::parse(load_file(path)), GameVersion::GC, this->item_name_index));
+      this->rare_item_sets.emplace(basename, new RareItemSet(JSON::parse(load_file(path)), GameVersion::GC, this->item_name_index));
     } else if (ends_with(filename, "-v4.json")) {
       config_log.info("Loading v4 JSON rare item table %s", filename.c_str());
-      this->rare_item_sets.emplace(basename, new JSONRareItemSet(JSON::parse(load_file(path)), GameVersion::BB, this->item_name_index));
+      this->rare_item_sets.emplace(basename, new RareItemSet(JSON::parse(load_file(path)), GameVersion::BB, this->item_name_index));
 
     } else if (ends_with(filename, ".afs")) {
       config_log.info("Loading AFS rare item table %s", filename.c_str());
       shared_ptr<string> data(new string(load_file(path)));
-      this->rare_item_sets.emplace(basename, new AFSRareItemSet(data));
+      this->rare_item_sets.emplace(basename, new RareItemSet(AFSArchive(data)));
 
     } else if (ends_with(filename, ".gsl")) {
       config_log.info("Loading GSL rare item table %s", filename.c_str());
       shared_ptr<string> data(new string(load_file(path)));
-      this->rare_item_sets.emplace(basename, new GSLRareItemSet(data, false));
+      this->rare_item_sets.emplace(basename, new RareItemSet(GSLArchive(data, false), false));
 
     } else if (ends_with(filename, ".gslb")) {
       config_log.info("Loading GSL rare item table %s", filename.c_str());
       shared_ptr<string> data(new string(load_file(path)));
-      this->rare_item_sets.emplace(basename, new GSLRareItemSet(data, true));
+      this->rare_item_sets.emplace(basename, new RareItemSet(GSLArchive(data, true), true));
 
-    } else if (ends_with(filename, ".reg")) {
+    } else if (ends_with(filename, ".rel")) {
       config_log.info("Loading REL rare item table %s", filename.c_str());
-      shared_ptr<string> data(new string(load_file(path)));
-      this->rare_item_sets.emplace(basename, new RELRareItemSet(data));
+      this->rare_item_sets.emplace(basename, new RareItemSet(load_file(path), true));
     }
   }
 
   if (!this->rare_item_sets.count("rare-table-v4")) {
     config_log.info("rare-table-v4 rare item set is not available; loading from BB data");
-    shared_ptr<string> data(new string(load_file("system/blueburst/ItemRT.rel")));
-    this->rare_item_sets.emplace("rare-table-v4", new RELRareItemSet(data));
+    this->rare_item_sets.emplace("rare-table-v4", new RareItemSet(load_file("system/blueburst/ItemRT.rel"), true));
   }
 
   config_log.info("Loading v2 common item table");
