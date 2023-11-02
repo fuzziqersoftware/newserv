@@ -1074,7 +1074,8 @@ static pair<string, string> decode_qst_data_t(const string& data) {
       } else if (filename == internal_dat_filename) {
         dest = &dat_contents;
       } else {
-        throw runtime_error("qst contains write commnd for non-open file");
+        throw runtime_error(string_printf("qst contains write command for non-open file \"%s\" (open files are \"%s\" and \"%s\")",
+            filename.c_str(), internal_bin_filename.c_str(), internal_dat_filename.c_str()));
       }
 
       if (cmd.data_size > 0x400) {
@@ -1122,7 +1123,15 @@ pair<string, string> decode_qst_data(const string& data) {
   } else if ((signature & 0xFFFFFF00) == 0x3C004400 || (signature & 0xFFFFFF00) == 0x3C00A600) {
     return decode_qst_data_t<PSOCommandHeaderPC, S_OpenFile_PC_GC_44_A6>(data);
   } else if ((signature & 0xFF00FFFF) == 0x44003C00 || (signature & 0xFF00FFFF) == 0xA6003C00) {
-    return decode_qst_data_t<PSOCommandHeaderDCV3, S_OpenFile_PC_GC_44_A6>(data);
+    // In PSO DC, the type field is only one byte, but in V3 it's two bytes and
+    // the filename was shifted over by one byte. To detect this, we check if
+    // the V3 type field has a reasonable value, and if not, we assume the file
+    // is for PSO DC.
+    if (r.pget_u32l(sizeof(PSOCommandHeaderDCV3) + offsetof(S_OpenFile_PC_GC_44_A6, type)) > 3) {
+      return decode_qst_data_t<PSOCommandHeaderDCV3, S_OpenFile_DC_44_A6>(data);
+    } else {
+      return decode_qst_data_t<PSOCommandHeaderDCV3, S_OpenFile_PC_GC_44_A6>(data);
+    }
   } else if ((signature & 0xFF00FFFF) == 0x44005400 || (signature & 0xFF00FFFF) == 0xA6005400) {
     return decode_qst_data_t<PSOCommandHeaderDCV3, S_OpenFile_XB_44_A6>(data);
   } else {
