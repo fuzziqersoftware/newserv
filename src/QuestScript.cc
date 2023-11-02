@@ -836,9 +836,7 @@ std::string disassemble_quest_script(const void* data, size_t size, QuestScriptV
       code_offset = header.code_offset;
       function_table_offset = header.function_table_offset;
       lines.emplace_back(string_printf(".quest_num %hu", header.quest_number.load()));
-      if (header.is_download) {
-        lines.emplace_back(string_printf(".is_download_quest"));
-      }
+      lines.emplace_back(string_printf(".language %hhu", header.language));
       lines.emplace_back(".name " + JSON(header.name.decode(language)).serialize());
       lines.emplace_back(".short_desc " + JSON(header.short_description.decode(language)).serialize());
       lines.emplace_back(".long_desc " + JSON(header.long_description.decode(language)).serialize());
@@ -850,9 +848,7 @@ std::string disassemble_quest_script(const void* data, size_t size, QuestScriptV
       code_offset = header.code_offset;
       function_table_offset = header.function_table_offset;
       lines.emplace_back(string_printf(".quest_num %hu", header.quest_number.load()));
-      if (header.is_download) {
-        lines.emplace_back(string_printf(".is_download_quest"));
-      }
+      lines.emplace_back(string_printf(".language %hhu", header.language));
       lines.emplace_back(".name " + JSON(header.name.decode(language)).serialize());
       lines.emplace_back(".short_desc " + JSON(header.short_description.decode(language)).serialize());
       lines.emplace_back(".long_desc " + JSON(header.long_description.decode(language)).serialize());
@@ -866,9 +862,7 @@ std::string disassemble_quest_script(const void* data, size_t size, QuestScriptV
       code_offset = header.code_offset;
       function_table_offset = header.function_table_offset;
       lines.emplace_back(string_printf(".quest_num %hhu", header.quest_number));
-      if (header.is_download) {
-        lines.emplace_back(string_printf(".is_download_quest"));
-      }
+      lines.emplace_back(string_printf(".language %hhu", header.language));
       lines.emplace_back(string_printf(".episode %hhu", header.episode));
       lines.emplace_back(".name " + JSON(header.name.decode(language)).serialize());
       lines.emplace_back(".short_desc " + JSON(header.short_description.decode(language)).serialize());

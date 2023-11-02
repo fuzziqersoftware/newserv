@@ -29,7 +29,7 @@ struct PSOQuestHeaderDC { // Same format for DC v1 and v2
   /* 0004 */ le_uint32_t function_table_offset;
   /* 0008 */ le_uint32_t size;
   /* 000C */ le_uint32_t unused;
-  /* 0010 */ uint8_t is_download;
+  /* 0010 */ uint8_t language;
   /* 0011 */ uint8_t unknown1;
   /* 0012 */ le_uint16_t quest_number; // 0xFFFF for challenge quests
   /* 0014 */ pstring<TextEncoding::MARKED, 0x20> name;
@@ -43,7 +43,7 @@ struct PSOQuestHeaderPC {
   /* 0004 */ le_uint32_t function_table_offset;
   /* 0008 */ le_uint32_t size;
   /* 000C */ le_uint32_t unused;
-  /* 0010 */ uint8_t is_download;
+  /* 0010 */ uint8_t language;
   /* 0011 */ uint8_t unknown1;
   /* 0012 */ le_uint16_t quest_number; // 0xFFFF for challenge quests
   /* 0014 */ pstring<TextEncoding::UTF16, 0x20> name;
@@ -59,7 +59,7 @@ struct PSOQuestHeaderGC {
   /* 0004 */ le_uint32_t function_table_offset;
   /* 0008 */ le_uint32_t size;
   /* 000C */ le_uint32_t unused;
-  /* 0010 */ uint8_t is_download;
+  /* 0010 */ uint8_t language;
   /* 0011 */ uint8_t unknown1;
   /* 0012 */ uint8_t quest_number;
   /* 0013 */ uint8_t episode; // 1 = Ep2. Apparently some quests have 0xFF here, which means ep1 (?)

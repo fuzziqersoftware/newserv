@@ -773,7 +773,7 @@ string encode_download_quest_data(const string& compressed_data, size_t decompre
   return data;
 }
 
-shared_ptr<VersionedQuest> VersionedQuest::create_download_quest() const {
+shared_ptr<VersionedQuest> VersionedQuest::create_download_quest(uint8_t override_language) const {
   // The download flag needs to be set in the bin header, or else the client
   // will ignore it when scanning for download quests in an offline game. To set
   // this flag, we need to decompress the quest's .bin file, set the flag, then
@@ -795,13 +795,17 @@ shared_ptr<VersionedQuest> VersionedQuest::create_download_quest() const {
       if (decompressed_bin.size() < sizeof(PSOQuestHeaderDC)) {
         throw runtime_error("bin file is too small for header");
       }
-      reinterpret_cast<PSOQuestHeaderDC*>(data_ptr)->is_download = 0x01;
+      if (override_language != 0xFF) {
+        reinterpret_cast<PSOQuestHeaderDC*>(data_ptr)->language = override_language;
+      }
       break;
     case QuestScriptVersion::PC_V2:
       if (decompressed_bin.size() < sizeof(PSOQuestHeaderPC)) {
         throw runtime_error("bin file is too small for header");
       }
-      reinterpret_cast<PSOQuestHeaderPC*>(data_ptr)->is_download = 0x01;
+      if (override_language != 0xFF) {
+        reinterpret_cast<PSOQuestHeaderPC*>(data_ptr)->language = override_language;
+      }
       break;
     case QuestScriptVersion::GC_NTE:
     case QuestScriptVersion::GC_V3:
@@ -809,7 +813,9 @@ shared_ptr<VersionedQuest> VersionedQuest::create_download_quest() const {
       if (decompressed_bin.size() < sizeof(PSOQuestHeaderGC)) {
         throw runtime_error("bin file is too small for header");
       }
-      reinterpret_cast<PSOQuestHeaderGC*>(data_ptr)->is_download = 0x01;
+      if (override_language != 0xFF) {
+        reinterpret_cast<PSOQuestHeaderGC*>(data_ptr)->language = override_language;
+      }
       break;
     case QuestScriptVersion::BB_V4:
       throw invalid_argument("PSOBB does not support download quests");

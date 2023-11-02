@@ -82,7 +82,7 @@ struct VersionedQuest {
   std::string bin_filename() const;
   std::string dat_filename() const;
 
-  std::shared_ptr<VersionedQuest> create_download_quest() const;
+  std::shared_ptr<VersionedQuest> create_download_quest(uint8_t override_language = 0xFF) const;
   std::string encode_qst() const;
 };
 

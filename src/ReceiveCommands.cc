@@ -2173,7 +2173,7 @@ static void on_10(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
         if (vq->version == QuestScriptVersion::GC_EP3) {
           send_open_quest_file(c, q->name, vq->bin_filename(), vq->bin_contents, QuestFileType::EPISODE_3);
         } else {
-          vq = vq->create_download_quest();
+          vq = vq->create_download_quest(c->language());
           send_open_quest_file(c, q->name, vq->bin_filename(), vq->bin_contents, QuestFileType::DOWNLOAD);
           send_open_quest_file(c, q->name, vq->dat_filename(), vq->dat_contents, QuestFileType::DOWNLOAD);
         }
