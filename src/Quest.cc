@@ -733,7 +733,9 @@ shared_ptr<const string> QuestIndex::get_gba(const string& name) const {
 vector<shared_ptr<const Quest>> QuestIndex::filter(uint32_t category_id, QuestScriptVersion version, uint8_t language) const {
   vector<shared_ptr<const Quest>> ret;
   for (auto it : this->quests_by_number) {
-    if (it.second->category_id == category_id && it.second->has_version(version, language)) {
+    // Show English quests, and quests that exist in the player's language
+    if ((it.second->category_id == category_id) &&
+        (it.second->has_version(version, language) || it.second->has_version(version, 1))) {
       ret.emplace_back(it.second);
     }
   }
