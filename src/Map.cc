@@ -71,9 +71,9 @@ struct ObjectEntry {
   /* 1C */ le_uint32_t x_angle;
   /* 20 */ le_uint32_t y_angle;
   /* 24 */ le_uint32_t z_angle;
-  /* 28 */ le_uint32_t unknown_a4;
-  /* 2C */ le_uint32_t unknown_a5;
-  /* 30 */ le_uint32_t unknown_a6;
+  /* 28 */ le_float unknown_a4;
+  /* 2C */ le_float unknown_a5;
+  /* 30 */ le_float unknown_a6;
   /* 34 */ le_uint32_t unknown_a7;
   /* 38 */ le_uint32_t unknown_a8;
   /* 3C */ le_uint32_t unknown_a9;
@@ -81,18 +81,31 @@ struct ObjectEntry {
   /* 44 */
 
   string str() const {
-    return string_printf("ObjectEntry(base_type=%hX, a1=%hX, a2=%" PRIX32 ", id=%hX, group=%hX, section=%hX, a3=%hX, x=%g, y=%g, z=%g, x_angle=%" PRIX32 ", y_angle=%" PRIX32 ", z_angle=%" PRIX32 ", a3=%" PRIX32 ", a4=%" PRIX32 ", a5=%" PRIX32 ", a6=%" PRIX32 ", a7=%" PRIX32 ", a8=%" PRIX32 ", a9=%" PRIX32 ")",
+    return string_printf("ObjectEntry(base_type=%hX, a1=%hX, a2=%" PRIX32 ", id=%hX, group=%hX, section=%hX, a3=%hX, x=%g, y=%g, z=%g, x_angle=%" PRIX32 ", y_angle=%" PRIX32 ", z_angle=%" PRIX32 ", a4=%g, a5=%g, a6=%g, a7=%" PRIX32 ", a8=%" PRIX32 ", a9=%" PRIX32 ", a9=%" PRIX32 ")",
         this->base_type.load(), this->unknown_a1.load(), this->unknown_a2.load(), this->id.load(), this->group.load(),
         this->section.load(), this->unknown_a3.load(), this->x.load(), this->y.load(), this->z.load(), this->x_angle.load(),
-        this->y_angle.load(), this->z_angle.load(), this->unknown_a3.load(), this->unknown_a4.load(),
-        this->unknown_a5.load(), this->unknown_a6.load(), this->unknown_a7.load(), this->unknown_a8.load(),
-        this->unknown_a9.load());
+        this->y_angle.load(), this->z_angle.load(), this->unknown_a4.load(), this->unknown_a5.load(), this->unknown_a6.load(),
+        this->unknown_a7.load(), this->unknown_a8.load(), this->unknown_a9.load(), this->unknown_a9.load());
   }
 } __attribute__((packed));
 
 void Map::clear() {
   this->enemies.clear();
   this->rare_enemy_indexes.clear();
+}
+
+void Map::add_objects_from_map_data(const void* data, size_t size) {
+  const auto* map = reinterpret_cast<const ObjectEntry*>(data);
+  size_t entry_count = size / sizeof(ObjectEntry);
+  if (size != entry_count * sizeof(ObjectEntry)) {
+    throw runtime_error("data size is not a multiple of entry size");
+  }
+
+  for (size_t y = 0; y < entry_count; y++) {
+    const auto& e = map[y];
+    string hex = format_data_string(&e, sizeof(e));
+    fprintf(stderr, "[%04zX] %s\n", y, hex.c_str());
+  }
 }
 
 void Map::add_enemies_from_map_data(
@@ -487,7 +500,7 @@ struct DATSectionHeader {
   le_uint32_t data_size;
 } __attribute__((packed));
 
-void Map::add_enemies_from_quest_data(
+void Map::add_enemies_and_objects_from_quest_data(
     Episode episode,
     uint8_t difficulty,
     uint8_t event,
@@ -502,11 +515,19 @@ void Map::add_enemies_from_quest_data(
     if (header.section_size < sizeof(header)) {
       throw runtime_error(string_printf("quest layout has invalid section header at offset 0x%zX", r.where() - sizeof(header)));
     }
-    if (header.type == 2) {
+
+    if (header.type == 1) {
+      if (header.data_size % sizeof(ObjectEntry)) {
+        throw runtime_error("quest layout object section size is not a multiple of object entry size");
+      }
+      this->add_objects_from_map_data(r.getv(header.data_size), header.data_size);
+
+    } else if (header.type == 2) {
       if (header.data_size % sizeof(EnemyEntry)) {
         throw runtime_error("quest layout enemy section size is not a multiple of enemy entry size");
       }
       this->add_enemies_from_map_data(episode, difficulty, event, r.getv(header.data_size), header.data_size);
+
     } else {
       r.skip(header.section_size - sizeof(header));
     }
@@ -756,7 +777,7 @@ void generate_variations(
 }
 
 vector<string> map_filenames_for_variation(
-    Episode episode, bool is_solo, uint8_t area, uint32_t var1, uint32_t var2) {
+    Episode episode, bool is_solo, uint8_t area, uint32_t var1, uint32_t var2, bool is_enemies) {
   // Map filenames are like map_<name_token>[_VV][_VV][_off]<e|o>[_s].dat
   //   name_token comes from AreaMapFileIndex
   //   _VV are the values from the variation<1|2>_values vector (in contrast to
@@ -785,13 +806,21 @@ vector<string> map_filenames_for_variation(
     filename += string_printf("_%02" PRIX32, a->variation2_values.at(var2));
   }
 
+  // Try both _off<e|o>.dat and <e|o>_s.dat suffixes first before falling back
+  // to non-solo version
   vector<string> ret;
-  if (is_solo) {
-    // Try both _offe.dat and e_s.dat suffixes first before falling back to
-    // non-solo version
-    ret.emplace_back(filename + "_offe.dat");
-    ret.emplace_back(filename + "e_s.dat");
+  if (is_enemies) {
+    if (is_solo) {
+      ret.emplace_back(filename + "_offe.dat");
+      ret.emplace_back(filename + "e_s.dat");
+    }
+    ret.emplace_back(filename + "e.dat");
+  } else {
+    if (is_solo) {
+      ret.emplace_back(filename + "_offo.dat");
+      ret.emplace_back(filename + "o_s.dat");
+    }
+    ret.emplace_back(filename + "o.dat");
   }
-  ret.emplace_back(filename + "e.dat");
   return ret;
 }

@@ -1320,12 +1320,12 @@ static void on_entity_drop_item_request(shared_ptr<Client> c, uint8_t command, u
   if (size == sizeof(G_SpecializableItemDropRequest_6xA2)) {
     cmd = check_size_t<G_SpecializableItemDropRequest_6xA2>(data, size);
     if (cmd.header.subcommand != 0xA2) {
-      throw runtime_error("item drop request has specializable size but non-specializable command");
+      throw runtime_error("item drop request has incorrect subcommand");
     }
-  } else {
-    const auto& in_cmd = check_size_t<G_StandardDropItemRequest_DC_6x60>(data, size, 0xFFFF);
+  } else if (size == sizeof(G_StandardDropItemRequest_PC_V3_BB_6x60)) {
+    const auto& in_cmd = check_size_t<G_StandardDropItemRequest_PC_V3_BB_6x60>(data, size);
     if (in_cmd.header.subcommand != 0x60) {
-      throw runtime_error("item drop request has non-specializable size but specializable command");
+      throw runtime_error("item drop request has incorrect subcommand");
     }
     cmd.entity_id = in_cmd.entity_id;
     cmd.area = in_cmd.area;
@@ -1333,12 +1333,25 @@ static void on_entity_drop_item_request(shared_ptr<Client> c, uint8_t command, u
     cmd.x = in_cmd.x;
     cmd.z = in_cmd.z;
     cmd.ignore_def = true;
+    cmd.effective_area = in_cmd.effective_area;
+  } else {
+    const auto& in_cmd = check_size_t<G_StandardDropItemRequest_DC_6x60>(data, size);
+    if (in_cmd.header.subcommand != 0x60) {
+      throw runtime_error("item drop request has incorrect subcommand");
+    }
+    cmd.entity_id = in_cmd.entity_id;
+    cmd.area = in_cmd.area;
+    cmd.rt_index = in_cmd.rt_index;
+    cmd.x = in_cmd.x;
+    cmd.z = in_cmd.z;
+    cmd.ignore_def = true;
+    cmd.effective_area = in_cmd.area;
   }
 
   ItemData item;
   if (cmd.rt_index == 0x30) {
     if (cmd.ignore_def) {
-      item = l->item_creator->on_box_item_drop(cmd.entity_id, cmd.area);
+      item = l->item_creator->on_box_item_drop(cmd.entity_id, cmd.effective_area);
     } else {
       item = l->item_creator->on_specialized_box_item_drop(cmd.entity_id, cmd.def[0], cmd.def[1], cmd.def[2]);
     }
@@ -1351,7 +1364,7 @@ static void on_entity_drop_item_request(shared_ptr<Client> c, uint8_t command, u
             cmd.rt_index, expected_rt_index);
       }
     }
-    item = l->item_creator->on_monster_item_drop(cmd.entity_id, cmd.rt_index, cmd.area);
+    item = l->item_creator->on_monster_item_drop(cmd.entity_id, cmd.rt_index, cmd.effective_area);
   }
   item.id = l->generate_item_id(0xFF);
 
@@ -1429,8 +1442,8 @@ static void on_set_quest_flag(shared_ptr<Client> c, uint8_t command, uint8_t fla
                 2,
                 0,
             },
-            0xE0AEDC01,
-        };
+            0x01,
+            {}};
         send_command_t(c, 0x62, l->leader_id, req);
       }
     }

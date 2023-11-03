@@ -2516,7 +2516,7 @@ static void on_AC_V3_BB(shared_ptr<Client> c, uint16_t, uint32_t, string& data) 
       auto vq = l->quest->version(QuestScriptVersion::BB_V4, c->language());
       auto dat_contents = prs_decompress(*vq->dat_contents);
       l->map->clear();
-      l->map->add_enemies_from_quest_data(l->episode, l->difficulty, l->event, dat_contents.data(), dat_contents.size());
+      l->map->add_enemies_and_objects_from_quest_data(l->episode, l->difficulty, l->event, dat_contents.data(), dat_contents.size());
       c->log.info("Replaced enemies list with quest layout (%zu entries)",
           l->map->enemies.size());
       for (size_t z = 0; z < l->map->enemies.size(); z++) {
@@ -3472,43 +3472,44 @@ shared_ptr<Lobby> create_game_generic(
     for (size_t area = 0; area < 0x10; area++) {
       c->log.info("[Map/%zu] Using variations %" PRIX32 ", %" PRIX32,
           area, game->variations[area * 2].load(), game->variations[area * 2 + 1].load());
-      auto filenames = map_filenames_for_variation(
+
+      auto enemy_filenames = map_filenames_for_variation(
           game->episode,
           is_solo,
           area,
           game->variations[area * 2],
-          game->variations[area * 2 + 1]);
-
-      if (filenames.empty()) {
-        c->log.info("[Map/%zu] No file to load", area);
-        continue;
-      }
-      bool any_map_loaded = false;
-      for (const string& filename : filenames) {
-        try {
-          auto map_data = s->load_bb_file(filename, "", "map/" + filename);
-          size_t start_offset = game->map->enemies.size();
-          game->map->add_enemies_from_map_data(
-              game->episode, game->difficulty, game->event, map_data->data(), map_data->size());
-          size_t entries_loaded = game->map->enemies.size() - start_offset;
-          c->log.info("[Map/%zu] Loaded %s (%zu entries)",
-              area, filename.c_str(), entries_loaded);
-          for (size_t z = start_offset; z < game->map->enemies.size(); z++) {
-            string e_str = game->map->enemies[z].str();
-            static_game_data_log.info("(Entry %zX) %s", z, e_str.c_str());
+          game->variations[area * 2 + 1],
+          true);
+      if (enemy_filenames.empty()) {
+        c->log.info("[Map/%zu:e] No file to load", area);
+      } else {
+        bool any_map_loaded = false;
+        for (const string& filename : enemy_filenames) {
+          try {
+            auto map_data = s->load_bb_file(filename, "", "map/" + filename);
+            size_t start_offset = game->map->enemies.size();
+            game->map->add_enemies_from_map_data(
+                game->episode, game->difficulty, game->event, map_data->data(), map_data->size());
+            size_t entries_loaded = game->map->enemies.size() - start_offset;
+            c->log.info("[Map/%zu:e] Loaded %s (%zu entries)",
+                area, filename.c_str(), entries_loaded);
+            for (size_t z = start_offset; z < game->map->enemies.size(); z++) {
+              string e_str = game->map->enemies[z].str();
+              static_game_data_log.info("(Entry %zX) %s", z, e_str.c_str());
+            }
+            any_map_loaded = true;
+            break;
+          } catch (const exception& e) {
+            c->log.info("[Map/%zu:e] Failed to load %s: %s", area, filename.c_str(), e.what());
           }
-          any_map_loaded = true;
-          break;
-        } catch (const exception& e) {
-          c->log.info("[Map/%zu] Failed to load %s: %s", area, filename.c_str(), e.what());
         }
-      }
-      if (!any_map_loaded) {
-        throw runtime_error(string_printf("no maps loaded for area %zu", area));
+        if (!any_map_loaded) {
+          throw runtime_error(string_printf("no enemy maps loaded for area %zu", area));
+        }
       }
     }
 
-    c->log.info("Loaded maps contain %zu entries overall (%zu as rares)",
+    c->log.info("Loaded maps contain %zu enemy entries overall (%zu as rares)",
         game->map->enemies.size(), game->map->rare_enemy_indexes.size());
   }
   return game;

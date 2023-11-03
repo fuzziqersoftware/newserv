@@ -4393,7 +4393,8 @@ struct G_StandardDropItemRequest_DC_6x60 {
 } __packed__;
 
 struct G_StandardDropItemRequest_PC_V3_BB_6x60 : G_StandardDropItemRequest_DC_6x60 {
-  le_float unknown_a2 = 0.0f;
+  uint8_t effective_area = 0;
+  parray<uint8_t, 3> unused;
 } __packed__;
 
 // 6x61: Activate MAG effect

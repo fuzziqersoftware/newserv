@@ -47,6 +47,7 @@ struct Map {
   std::vector<size_t> rare_enemy_indexes;
 
   void clear();
+  void add_objects_from_map_data(const void* data, size_t size);
   void add_enemies_from_map_data(
       Episode episode,
       uint8_t difficulty,
@@ -54,7 +55,7 @@ struct Map {
       const void* data,
       size_t size,
       const RareEnemyRates* rare_rates = nullptr);
-  void add_enemies_from_quest_data(
+  void add_enemies_and_objects_from_quest_data(
       Episode episode,
       uint8_t difficulty,
       uint8_t event,
@@ -97,5 +98,5 @@ void generate_variations(
     Episode episode,
     bool is_solo);
 std::vector<std::string> map_filenames_for_variation(
-    Episode episode, bool is_solo, uint8_t area, uint32_t var1, uint32_t var2);
+    Episode episode, bool is_solo, uint8_t area, uint32_t var1, uint32_t var2, bool is_enemies);
 void load_map_files();
