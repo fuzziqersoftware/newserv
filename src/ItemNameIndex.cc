@@ -250,7 +250,7 @@ std::string ItemNameIndex::describe_item(
     // For armors, add the slots, unit modifiers, and/or DEF/EVP bonuses
   } else if (item.data1[0] == 0x01) {
     if (item.data1[1] == 0x03) { // Units
-      uint16_t modifier = (item.data1[8] << 8) | item.data1[7];
+      uint16_t modifier = item.data1w[3];
       if (modifier == 0x0001 || modifier == 0x0002) {
         ret_tokens.back().append("+");
       } else if (modifier == 0x0003 || modifier == 0x0004) {
