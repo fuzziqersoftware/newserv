@@ -192,6 +192,7 @@ void Lobby::add_client(shared_ptr<Client> c, ssize_t required_client_id) {
     for (size_t x = 0; x < count; x++) {
       inv.items[x].data.id = this->generate_item_id(c->lobby_client_id);
     }
+    this->log.info("Assigned item IDs for joining player %zd", index);
     p->print_inventory(stderr, c->version(), s->item_name_index);
   }
 

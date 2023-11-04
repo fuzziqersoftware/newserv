@@ -1303,6 +1303,7 @@ static void on_sort_inventory_bb(shared_ptr<Client> c, uint8_t, uint8_t, const v
 // EXP/Drop Item commands
 
 static void on_entity_drop_item_request(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
+  auto s = c->require_server_state();
   auto l = c->require_lobby();
   if (!l->is_game()) {
     return;
@@ -1351,11 +1352,15 @@ static void on_entity_drop_item_request(shared_ptr<Client> c, uint8_t command, u
   ItemData item;
   if (cmd.rt_index == 0x30) {
     if (cmd.ignore_def) {
+      l->log.info("Creating item from box %04hX (area %02hX)", cmd.entity_id.load(), cmd.effective_area);
       item = l->item_creator->on_box_item_drop(cmd.entity_id, cmd.effective_area);
     } else {
+      l->log.info("Creating item from box %04hX (area %02hX; specialized with %08" PRIX32 " %08" PRIX32 " %08" PRIX32 ")",
+          cmd.entity_id.load(), cmd.effective_area, cmd.def[0].load(), cmd.def[1].load(), cmd.def[2].load());
       item = l->item_creator->on_specialized_box_item_drop(cmd.entity_id, cmd.def[0], cmd.def[1], cmd.def[2]);
     }
   } else {
+    l->log.info("Creating item from enemy %04hX (area %02hX)", cmd.entity_id.load(), cmd.effective_area);
     if (l->map) {
       const auto& enemy = l->map->enemies.at(cmd.entity_id);
       uint32_t expected_rt_index = rare_table_index_for_enemy_type(enemy.type);
@@ -1366,12 +1371,19 @@ static void on_entity_drop_item_request(shared_ptr<Client> c, uint8_t command, u
     }
     item = l->item_creator->on_monster_item_drop(cmd.entity_id, cmd.rt_index, cmd.effective_area);
   }
-  item.id = l->generate_item_id(0xFF);
 
-  if (l->check_flag(Lobby::Flag::ITEM_TRACKING_ENABLED)) {
-    l->add_item(item, cmd.area, cmd.x, cmd.z);
+  if (item.empty()) {
+    l->log.info("No item was created");
+  } else {
+    item.id = l->generate_item_id(0xFF);
+    string name = s->item_name_index->describe_item(l->base_version, item);
+    l->log.info("Box %04hX (area %02hX) created item %s", cmd.entity_id.load(), cmd.effective_area, name.c_str());
+    l->log.info("Creating item %08" PRIX32 " at %02hhX:%g,%g", item.id.load(), cmd.area, cmd.x.load(), cmd.z.load());
+    if (l->check_flag(Lobby::Flag::ITEM_TRACKING_ENABLED)) {
+      l->add_item(item, cmd.area, cmd.x, cmd.z);
+    }
+    send_drop_item(l, item, cmd.rt_index != 0x30, cmd.area, cmd.x, cmd.z, cmd.entity_id);
   }
-  send_drop_item(l, item, cmd.rt_index != 0x30, cmd.area, cmd.x, cmd.z, cmd.entity_id);
 }
 
 static void on_set_quest_flag(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
