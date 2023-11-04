@@ -743,7 +743,7 @@ static void on_create_inventory_item_t(shared_ptr<Client> c, uint8_t command, ui
     auto p = c->game_data.player();
     ItemData item = cmd.item_data;
     item.decode_if_mag(c->version());
-    l->on_item_id_generated_externally(c->lobby_client_id, item.id);
+    l->on_item_id_generated_externally(item.id);
     p->add_item(item);
 
     auto s = c->require_server_state();
@@ -787,7 +787,7 @@ static void on_drop_partial_stack_t(shared_ptr<Client> c, uint8_t command, uint8
     // send an appropriate 6x29 alongside this?
     ItemData item = cmd.item_data;
     item.decode_if_mag(c->version());
-    l->on_item_id_generated_externally(c->lobby_client_id, item.id);
+    l->on_item_id_generated_externally(item.id);
     l->add_item(item, cmd.area, cmd.x, cmd.z);
 
     auto s = c->require_server_state();
@@ -880,7 +880,7 @@ static void on_buy_shop_item(shared_ptr<Client> c, uint8_t command, uint8_t flag
     auto p = c->game_data.player();
     ItemData item = cmd.item_data;
     item.decode_if_mag(c->version());
-    l->on_item_id_generated_externally(c->lobby_client_id, item.id);
+    l->on_item_id_generated_externally(item.id);
     p->add_item(item);
 
     size_t price = s->item_parameter_table_for_version(c->version())->price_for_item(item);
@@ -919,7 +919,7 @@ static void on_box_or_enemy_item_drop_t(shared_ptr<Client> c, uint8_t command, u
   if (l->check_flag(Lobby::Flag::ITEM_TRACKING_ENABLED)) {
     ItemData item = cmd.item.item;
     item.decode_if_mag(c->version());
-    l->on_item_id_generated_externally(c->lobby_client_id, item.id);
+    l->on_item_id_generated_externally(item.id);
     l->add_item(item, cmd.item.area, cmd.item.x, cmd.item.z);
 
     auto s = c->require_server_state();
