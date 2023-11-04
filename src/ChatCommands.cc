@@ -1210,7 +1210,7 @@ static void server_command_infinite_tp(shared_ptr<Client> c, const std::string&)
   check_cheats_enabled(l);
 
   c->config.toggle_flag(Client::Flag::INFINITE_TP_ENABLED);
-  send_text_message_printf(c, "$C6Infinite TP %s", c->config.check_flag(Client::Flag::INFINITE_HP_ENABLED) ? "enabled" : "disabled");
+  send_text_message_printf(c, "$C6Infinite TP %s", c->config.check_flag(Client::Flag::INFINITE_TP_ENABLED) ? "enabled" : "disabled");
 }
 
 static void proxy_command_infinite_tp(shared_ptr<ProxyServer::LinkedSession> ses, const std::string&) {
@@ -1218,7 +1218,7 @@ static void proxy_command_infinite_tp(shared_ptr<ProxyServer::LinkedSession> ses
   check_proxy_cheats_allowed(s);
   ses->config.toggle_flag(Client::Flag::INFINITE_TP_ENABLED);
   send_text_message_printf(ses->client_channel, "$C6Infinite TP %s",
-      ses->config.check_flag(Client::Flag::INFINITE_HP_ENABLED) ? "enabled" : "disabled");
+      ses->config.check_flag(Client::Flag::INFINITE_TP_ENABLED) ? "enabled" : "disabled");
 }
 
 static void server_command_switch_assist(shared_ptr<Client> c, const std::string&) {
