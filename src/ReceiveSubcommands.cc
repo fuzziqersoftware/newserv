@@ -973,11 +973,44 @@ static void on_pick_up_item(shared_ptr<Client> c, uint8_t command, uint8_t flag,
   }
 
   if (l->check_flag(Lobby::Flag::ITEM_TRACKING_ENABLED)) {
-    auto effective_p = effective_c->game_data.player();
-    auto item = l->remove_item(cmd.item_id);
-    effective_p->add_item(item);
-
     auto s = c->require_server_state();
+    auto effective_p = effective_c->game_data.player();
+
+    // It seems the client just plays it fast and loose with these commands.
+    // There can be multiple 6x5A (request to pick up item) commands in flight,
+    // and the leader will respond to *all* of them with 6x59 (pick up item),
+    // even if the item can't be picked up by the time the command is processed
+    // (e.g. if the player's inventory has become full due to a previous pick up
+    // request). In the case of a full inventory, the client is expected to just
+    // ignore the command; in the case of the floor item not existing, however,
+    // the client behaves strangely and eventually  disconnects, so we let
+    // l->remove_item throw in that case instead to fail faster.
+
+    // This might be a legitimate bug in the client: the logic for determining
+    // if an item can be picked up also applies to Meseta, and forbids the
+    // pickup if the client has 999999 on hand. However, some actions that
+    // affect Meseta aren't sent to other players (e.g. depositing it in the
+    // bank), so the game could get into a state where some players see a client
+    // as able to pick up a Meseta item and some see a client as unable to do
+    // so. The downstream result of this desynchronization is that if the
+    // affected player tries to pick up some Meseta, some clients will not allow
+    // the pickup and will not delete the floor item, so if someone else tries
+    // to pick it up again, they will disconnect.
+
+    auto item = l->remove_item(cmd.item_id);
+    try {
+      effective_p->add_item(item);
+    } catch (const out_of_range& e) {
+      auto name = s->describe_item(c->version(), item, false);
+      l->log.warning("Player %hu attempted to pick up %08" PRIX32 " (%s) but cannot (%s); ignoring command",
+          cmd.header.client_id.load(), cmd.item_id.load(), name.c_str(), e.what());
+      if (c->config.check_flag(Client::Flag::DEBUG_ENABLED)) {
+        auto name = s->describe_item(c->version(), item, true);
+        send_text_message_printf(c, "$C5PICK/F %08" PRIX32 "\n%s\n$C4%s", cmd.item_id.load(), name.c_str(), e.what());
+      }
+      return;
+    }
+
     auto name = s->describe_item(c->version(), item, false);
     l->log.info("Player %hu picked up %08" PRIX32 " (%s)",
         cmd.header.client_id.load(), cmd.item_id.load(), name.c_str());

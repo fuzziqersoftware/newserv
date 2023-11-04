@@ -338,10 +338,11 @@ void SavedPlayerDataBB::add_item(const ItemData& item) {
 
     // If we found an existing stack, add it to the total and return
     if (y < this->inventory.num_items) {
-      this->inventory.items[y].data.data1[5] += item.data1[5];
-      if (this->inventory.items[y].data.data1[5] > combine_max) {
-        this->inventory.items[y].data.data1[5] = combine_max;
+      size_t new_stack_size = this->inventory.items[y].data.data1[5] + item.data1[5];
+      if (new_stack_size > combine_max) {
+        throw out_of_range("stack is too large");
       }
+      this->inventory.items[y].data.data1[5] = new_stack_size;
       return;
     }
   }
@@ -349,7 +350,7 @@ void SavedPlayerDataBB::add_item(const ItemData& item) {
   // If we get here, then it's not meseta and not a combine item, so it needs to
   // go into an empty inventory slot
   if (this->inventory.num_items >= 30) {
-    throw runtime_error("inventory is full");
+    throw out_of_range("inventory is full");
   }
   auto& inv_item = this->inventory.items[this->inventory.num_items];
   inv_item.present = 1;

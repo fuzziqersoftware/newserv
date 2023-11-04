@@ -173,6 +173,7 @@ struct Lobby : public std::enable_shared_from_this<Lobby> {
       uint64_t serial_number = 0);
 
   bool item_exists(uint32_t item_id) const;
+  const FloorItem& find_item(uint32_t item_id) const;
   void add_item(const ItemData& item, uint8_t area, float x, float z);
   ItemData remove_item(uint32_t item_id);
   uint32_t generate_item_id(uint8_t client_id);
