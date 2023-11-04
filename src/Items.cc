@@ -35,11 +35,20 @@ void player_use_item(shared_ptr<Client> c, size_t item_index) {
     if (item.data.data1[2] > 2) {
       throw runtime_error("incorrect grinder value");
     }
+
     auto& weapon = player->inventory.items[player->inventory.find_equipped_weapon()];
-    auto item_parameter_table = s->item_parameter_table_for_version(c->version());
-    auto weapon_def = item_parameter_table->get_weapon(weapon.data.data1[1], weapon.data.data1[2]);
-    if (weapon.data.data1[3] >= weapon_def.max_grind) {
-      throw runtime_error("weapon already at maximum grind");
+    // Don't enforce the weapon's grind limit on V1 and V2. This is necessary
+    // because the V2 client replaces its inventory items on the fly with items
+    // compatible with V1 when sending the 61 and 98 commands. There appears to
+    // be no way to disable this behavior, so there's no way for the server to
+    // get an accurate picture of what's actually in the player's inventory, so
+    // there's no way to know if we would be enforcing the correct grind limit.
+    if ((c->version() != GameVersion::DC) && (c->version() != GameVersion::PC)) {
+      auto item_parameter_table = s->item_parameter_table_for_version(c->version());
+      auto weapon_def = item_parameter_table->get_weapon(weapon.data.data1[1], weapon.data.data1[2]);
+      if (weapon.data.data1[3] >= weapon_def.max_grind) {
+        throw runtime_error("weapon already at maximum grind");
+      }
     }
     weapon.data.data1[3] += (item.data.data1[2] + 1);
 
