@@ -39,6 +39,7 @@
     "gc-us12t2":     [9202,  "gc",    "login_server"],
     "gc-eu3":        [9203,  "gc",    "login_server"],
     "pc":            [9300,  "pc",    "login_server"],
+    "xb":            [9500,  "xb",    "login_server"],
     "pc-patch":      [10000, "patch", "patch_server_pc"],
     "bb-patch":      [11000, "patch", "patch_server_bb"],
     "bb-init":       [12000, "bb",    "data_server_bb"],
