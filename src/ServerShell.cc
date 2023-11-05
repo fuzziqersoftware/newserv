@@ -627,17 +627,17 @@ Proxy session commands:\n\
     }
     data.resize((data.size() + 3) & (~3));
 
-    shared_ptr<ProxyServer::LinkedSession> proxy_session;
+    shared_ptr<ProxyServer::LinkedSession> ses;
     try {
-      proxy_session = this->get_proxy_session(session_name);
+      ses = this->get_proxy_session(session_name);
     } catch (const exception&) {
     }
 
-    if (proxy_session.get()) {
+    if (ses.get()) {
       if (command_name[1] == 's') {
-        proxy_session->server_channel.send(data);
+        ses->server_channel.send(data);
       } else {
-        proxy_session->client_channel.send(data);
+        ses->client_channel.send(data);
       }
 
     } else {
@@ -645,8 +645,7 @@ Proxy session commands:\n\
       if (session_name.empty()) {
         c = this->state->game_server->get_client();
       } else {
-        auto clients = this->state->game_server->get_clients_by_identifier(
-            session_name);
+        auto clients = this->state->game_server->get_clients_by_identifier(session_name);
         if (clients.empty()) {
           throw runtime_error("no such client");
         }
@@ -668,9 +667,9 @@ Proxy session commands:\n\
     }
 
   } else if (command_name == "show-slots") {
-    auto session = this->get_proxy_session(session_name);
-    for (size_t z = 0; z < session->lobby_players.size(); z++) {
-      const auto& player = session->lobby_players[z];
+    auto ses = this->get_proxy_session(session_name);
+    for (size_t z = 0; z < ses->lobby_players.size(); z++) {
+      const auto& player = ses->lobby_players[z];
       if (player.guild_card_number) {
         auto secid_name = name_for_section_id(player.section_id);
         fprintf(stderr, "  %zu: %" PRIu32 " => %s (%c, %s, %s)\n",
@@ -683,11 +682,11 @@ Proxy session commands:\n\
     }
 
   } else if ((command_name == "c") || (command_name == "chat") || (command_name == "dchat")) {
-    auto session = this->get_proxy_session(session_name);
+    auto ses = this->get_proxy_session(session_name);
     bool is_dchat = (command_name == "dchat");
 
-    if (!is_dchat && (session->version() == GameVersion::PC || session->version() == GameVersion::BB)) {
-      send_chat_message_from_client(session->server_channel, command_args, 0);
+    if (!is_dchat && (ses->version() == GameVersion::PC || ses->version() == GameVersion::BB)) {
+      send_chat_message_from_client(ses->server_channel, command_args, 0);
     } else {
       string data(8, '\0');
       data.push_back('\x09');
@@ -699,13 +698,13 @@ Proxy session commands:\n\
         data.push_back('\0');
       }
       data.resize((data.size() + 3) & (~3));
-      session->server_channel.send(0x06, 0x00, data);
+      ses->server_channel.send(0x06, 0x00, data);
     }
 
   } else if ((command_name == "wc") || (command_name == "wchat")) {
-    auto session = this->get_proxy_session(session_name);
-    if ((session->version() != GameVersion::GC) ||
-        !session->config.check_flag(Client::Flag::IS_EPISODE_3)) {
+    auto ses = this->get_proxy_session(session_name);
+    if ((ses->version() != GameVersion::GC) ||
+        !ses->config.check_flag(Client::Flag::IS_EPISODE_3)) {
       throw runtime_error("wchat can only be used on Episode 3");
     }
     string data(8, '\0');
@@ -715,27 +714,27 @@ Proxy session commands:\n\
     data += command_args;
     data.push_back('\0');
     data.resize((data.size() + 3) & (~3));
-    session->server_channel.send(0x06, 0x00, data);
+    ses->server_channel.send(0x06, 0x00, data);
 
   } else if (command_name == "marker") {
-    auto session = this->get_proxy_session(session_name);
-    session->server_channel.send(0x89, stoul(command_args));
+    auto ses = this->get_proxy_session(session_name);
+    ses->server_channel.send(0x89, stoul(command_args));
 
   } else if ((command_name == "warp") || (command_name == "warpme")) {
-    auto session = this->get_proxy_session(session_name);
+    auto ses = this->get_proxy_session(session_name);
 
     uint8_t area = stoul(command_args);
-    send_warp(session->client_channel, session->lobby_client_id, area, true);
+    send_warp(ses->client_channel, ses->lobby_client_id, area, true);
 
   } else if (command_name == "warpall") {
-    auto session = this->get_proxy_session(session_name);
+    auto ses = this->get_proxy_session(session_name);
 
     uint8_t area = stoul(command_args);
-    send_warp(session->client_channel, session->lobby_client_id, area, false);
-    send_warp(session->server_channel, session->lobby_client_id, area, false);
+    send_warp(ses->client_channel, ses->lobby_client_id, area, false);
+    send_warp(ses->server_channel, ses->lobby_client_id, area, false);
 
   } else if ((command_name == "info-board") || (command_name == "info-board-data")) {
-    auto session = this->get_proxy_session(session_name);
+    auto ses = this->get_proxy_session(session_name);
 
     string data;
     if (command_name == "info-board-data") {
@@ -746,98 +745,98 @@ Proxy session commands:\n\
     data.push_back('\0');
     data.resize((data.size() + 3) & (~3));
 
-    session->server_channel.send(0xD9, 0x00, data);
+    ses->server_channel.send(0xD9, 0x00, data);
 
   } else if (command_name == "set-override-section-id") {
-    auto session = this->get_proxy_session(session_name);
+    auto ses = this->get_proxy_session(session_name);
     if (command_args.empty()) {
-      session->config.override_section_id = 0xFF;
+      ses->config.override_section_id = 0xFF;
     } else {
-      session->config.override_section_id = section_id_for_name(command_args);
+      ses->config.override_section_id = section_id_for_name(command_args);
     }
 
   } else if (command_name == "set-override-event") {
-    auto session = this->get_proxy_session(session_name);
+    auto ses = this->get_proxy_session(session_name);
     if (command_args.empty()) {
-      session->config.override_lobby_event = 0xFF;
+      ses->config.override_lobby_event = 0xFF;
     } else {
-      session->config.override_lobby_event = event_for_name(command_args);
-      if ((session->version() != GameVersion::DC) &&
-          (session->version() != GameVersion::PC) &&
-          !((session->version() == GameVersion::GC) && session->config.check_flag(Client::Flag::IS_GC_TRIAL_EDITION))) {
-        session->client_channel.send(0xDA, session->config.override_lobby_event);
+      ses->config.override_lobby_event = event_for_name(command_args);
+      if ((ses->version() != GameVersion::DC) &&
+          (ses->version() != GameVersion::PC) &&
+          !((ses->version() == GameVersion::GC) && ses->config.check_flag(Client::Flag::IS_GC_TRIAL_EDITION))) {
+        ses->client_channel.send(0xDA, ses->config.override_lobby_event);
       }
     }
 
   } else if (command_name == "set-override-lobby-number") {
-    auto session = this->get_proxy_session(session_name);
+    auto ses = this->get_proxy_session(session_name);
     if (command_args.empty()) {
-      session->config.override_lobby_number = 0x80;
+      ses->config.override_lobby_number = 0x80;
     } else {
-      session->config.override_lobby_number = lobby_type_for_name(command_args);
+      ses->config.override_lobby_number = lobby_type_for_name(command_args);
     }
 
   } else if (command_name == "set-challenge-rank-title") {
-    auto session = this->get_proxy_session(session_name);
-    session->challenge_rank_title_override = command_args;
+    auto ses = this->get_proxy_session(session_name);
+    ses->challenge_rank_title_override = command_args;
 
   } else if (command_name == "set-challenge-rank-color") {
-    auto session = this->get_proxy_session(session_name);
-    session->challenge_rank_color_override = stoul(command_args, nullptr, 16);
+    auto ses = this->get_proxy_session(session_name);
+    ses->challenge_rank_color_override = stoul(command_args, nullptr, 16);
 
   } else if (command_name == "set-chat-filter") {
-    auto session = this->get_proxy_session(session_name);
-    set_flag(session->config, Client::Flag::PROXY_CHAT_FILTER_ENABLED, command_args);
+    auto ses = this->get_proxy_session(session_name);
+    set_flag(ses->config, Client::Flag::PROXY_CHAT_FILTER_ENABLED, command_args);
 
   } else if (command_name == "set-infinite-hp") {
-    auto session = this->get_proxy_session(session_name);
-    set_flag(session->config, Client::Flag::INFINITE_HP_ENABLED, command_args);
+    auto ses = this->get_proxy_session(session_name);
+    set_flag(ses->config, Client::Flag::INFINITE_HP_ENABLED, command_args);
 
   } else if (command_name == "set-infinite-tp") {
-    auto session = this->get_proxy_session(session_name);
-    set_flag(session->config, Client::Flag::INFINITE_TP_ENABLED, command_args);
+    auto ses = this->get_proxy_session(session_name);
+    set_flag(ses->config, Client::Flag::INFINITE_TP_ENABLED, command_args);
 
   } else if (command_name == "set-switch-assist") {
-    auto session = this->get_proxy_session(session_name);
-    set_flag(session->config, Client::Flag::SWITCH_ASSIST_ENABLED, command_args);
+    auto ses = this->get_proxy_session(session_name);
+    set_flag(ses->config, Client::Flag::SWITCH_ASSIST_ENABLED, command_args);
 
   } else if (command_name == "set-save-files" && this->state->proxy_allow_save_files) {
-    auto session = this->get_proxy_session(session_name);
-    set_flag(session->config, Client::Flag::PROXY_SAVE_FILES, command_args);
+    auto ses = this->get_proxy_session(session_name);
+    set_flag(ses->config, Client::Flag::PROXY_SAVE_FILES, command_args);
 
   } else if (command_name == "set-block-function-calls") {
-    auto session = this->get_proxy_session(session_name);
-    set_flag(session->config, Client::Flag::PROXY_BLOCK_FUNCTION_CALLS, command_args);
+    auto ses = this->get_proxy_session(session_name);
+    set_flag(ses->config, Client::Flag::PROXY_BLOCK_FUNCTION_CALLS, command_args);
 
   } else if ((command_name == "create-item") || (command_name == "set-next-item")) {
-    auto session = this->get_proxy_session(session_name);
+    auto ses = this->get_proxy_session(session_name);
 
-    if (session->version() == GameVersion::BB) {
+    if (ses->version() == GameVersion::BB) {
       throw runtime_error("proxy session is BB");
     }
-    if (!session->is_in_game) {
+    if (!ses->is_in_game) {
       throw runtime_error("proxy session is not in a game");
     }
-    if (session->lobby_client_id != session->leader_client_id) {
+    if (ses->lobby_client_id != ses->leader_client_id) {
       throw runtime_error("proxy session is not game leader");
     }
 
-    auto s = session->require_server_state();
-    ItemData item = s->item_name_index->parse_item_description(session->version(), command_args);
+    auto s = ses->require_server_state();
+    ItemData item = s->item_name_index->parse_item_description(ses->version(), command_args);
     item.id = random_object<uint32_t>();
 
     if (command_name == "set-next-item") {
-      session->next_drop_item = item;
+      ses->next_drop_item = item;
 
-      string name = s->describe_item(session->version(), session->next_drop_item, true);
-      send_text_message(session->client_channel, "$C7Next drop:\n" + name);
+      string name = s->describe_item(ses->version(), ses->next_drop_item, true);
+      send_text_message(ses->client_channel, "$C7Next drop:\n" + name);
 
     } else {
-      send_drop_stacked_item(session->client_channel, item, session->area, session->x, session->z);
-      send_drop_stacked_item(session->server_channel, item, session->area, session->x, session->z);
+      send_drop_stacked_item(s, ses->client_channel, item, ses->area, ses->x, ses->z);
+      send_drop_stacked_item(s, ses->server_channel, item, ses->area, ses->x, ses->z);
 
-      string name = s->describe_item(session->version(), session->next_drop_item, true);
-      send_text_message(session->client_channel, "$C7Item created:\n" + name);
+      string name = s->describe_item(ses->version(), ses->next_drop_item, true);
+      send_text_message(ses->client_channel, "$C7Item created:\n" + name);
     }
 
   } else if (command_name == "close-idle-sessions") {

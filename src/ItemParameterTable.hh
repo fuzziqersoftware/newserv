@@ -321,6 +321,7 @@ public:
   uint8_t get_special_stars(uint8_t det) const;
   const Special<false>& get_special(uint8_t special) const;
   uint8_t get_max_tech_level(uint8_t char_class, uint8_t tech_num) const;
+  uint8_t get_weapon_v1_replacement(uint8_t data1_1) const;
 
   uint32_t get_item_id(const ItemData& item) const;
   uint8_t get_item_base_stars(const ItemData& item) const;
@@ -353,7 +354,7 @@ private:
     /* 0C / 5A6C */ le_uint32_t unit_table; // -> {count, offset -> [UnitV2]} (last if out of range)
     /* 10 / 5A7C */ le_uint32_t tool_table; // -> [{count, offset -> [ToolV2]}](0x10) (last if out of range)
     /* 14 / 5A74 */ le_uint32_t mag_table; // -> {count, offset -> [MagV2]}
-    /* 18 / 3DF8 */ le_uint32_t attack_animation_table; // -> [uint8_t](0x89)
+    /* 18 / 3DF8 */ le_uint32_t v1_replacement_table; // -> [uint8_t](0x89)
     /* 1C / 2E4C */ le_uint32_t photon_color_table; // -> [0x24-byte structs](0x20)
     /* 20 / 32CC */ le_uint32_t weapon_range_table; // -> ???
     /* 24 / 3E84 */ le_uint32_t weapon_sale_divisor_table; // -> [float](0x89)
@@ -375,7 +376,7 @@ private:
     /* 08 / EFA0 / 1479C */ U32T unit_table; // -> {count, offset -> [UnitV3/UnitV4]} (last if out of range)
     /* 0C / EFB0 / 147AC */ U32T tool_table; // -> [{count, offset -> [ToolV3/ToolV4]}](0x1A) (last if out of range)
     /* 10 / EFA8 / 147A4 */ U32T mag_table; // -> {count, offset -> [MagV3/MagV4]}
-    /* 14 / B88C / 0F4B8 */ U32T attack_animation_table; // -> [uint8_t](0xED)
+    /* 14 / B88C / 0F4B8 */ U32T v1_replacement_table; // -> [uint8_t](0xED)
     /* 18 / A7FC / 0DE7C */ U32T photon_color_table; // -> [0x24-byte structs](0x20)
     /* 1C / AACC / 0E194 */ U32T weapon_range_table; // -> ???
     /* 20 / B938 / 0F5A8 */ U32T weapon_sale_divisor_table; // -> [float](0xED)

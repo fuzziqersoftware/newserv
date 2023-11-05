@@ -292,11 +292,11 @@ void send_ep3_change_music(Channel& ch, uint32_t song);
 void send_set_player_visibility(std::shared_ptr<Client> c, bool visible);
 void send_revive_player(std::shared_ptr<Client> c);
 
-void send_drop_item(Channel& ch, const ItemData& item,
+void send_drop_item(std::shared_ptr<ServerState> s, Channel& ch, const ItemData& item,
     bool from_enemy, uint8_t area, float x, float z, uint16_t request_id);
 void send_drop_item(std::shared_ptr<Lobby> l, const ItemData& item,
     bool from_enemy, uint8_t area, float x, float z, uint16_t request_id);
-void send_drop_stacked_item(Channel& ch, const ItemData& item,
+void send_drop_stacked_item(std::shared_ptr<ServerState> s, Channel& ch, const ItemData& item,
     uint8_t area, float x, float z);
 void send_drop_stacked_item(std::shared_ptr<Lobby> l, const ItemData& item,
     uint8_t area, float x, float z);

@@ -8,6 +8,8 @@
 
 constexpr uint32_t MESETA_IDENTIFIER = 0x00040000;
 
+class ItemParameterTable;
+
 struct ItemMagStats {
   uint16_t iq;
   uint16_t synchro;
@@ -86,7 +88,7 @@ struct ItemData { // 0x14 bytes
   // Related note: PSO V2 has an annoyingly complicated format for mags that
   // doesn't match the above table. We decode this upon receipt and encode it
   // imemdiately before sending when interacting with V2 clients; see the
-  // implementation of decode_if_mag() for details.
+  // implementation of decode_for_version() for details.
 
   union {
     parray<uint8_t, 12> data1;
@@ -130,8 +132,10 @@ struct ItemData { // 0x14 bytes
   uint8_t mag_photon_blast_for_slot(uint8_t slot) const;
   bool mag_has_photon_blast_in_any_slot(uint8_t pb_num) const;
   void add_mag_photon_blast(uint8_t pb_num);
-  void decode_if_mag(GameVersion version);
-  void encode_if_mag(GameVersion version);
+  void decode_for_version(GameVersion version);
+  void encode_for_version(GameVersion version, std::shared_ptr<const ItemParameterTable> item_parameter_table);
+  uint8_t get_encoded_v2_data() const;
+  bool has_encoded_v2_data() const;
 
   uint16_t get_sealed_item_kill_count() const;
   void set_sealed_item_kill_count(uint16_t v);

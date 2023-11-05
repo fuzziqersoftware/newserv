@@ -1475,6 +1475,8 @@ static void send_join_spectator_team(shared_ptr<Client> c, shared_ptr<Lobby> l) 
     throw runtime_error("lobby is not a spectator team");
   }
 
+  auto s = c->require_server_state();
+
   S_JoinSpectatorTeam_GC_Ep3_E8 cmd;
 
   cmd.variations.clear(0);
@@ -1501,7 +1503,7 @@ static void send_join_spectator_team(shared_ptr<Client> c, shared_ptr<Lobby> l) 
       p.lobby_data.client_id = wc->lobby_client_id;
       p.lobby_data.name.encode(wc_p->disp.name.decode(wc_p->inventory.language), c->language());
       p.inventory = wc_p->inventory;
-      p.inventory.encode_mags(c->version());
+      p.inventory.encode_for_version(c->version(), s->item_parameter_table_for_version(c->version()));
       p.disp = wc_p->disp.to_dcpcv3(c->language(), p.inventory.language);
       p.disp.enforce_lobby_join_limits(c->version());
 
@@ -1539,7 +1541,7 @@ static void send_join_spectator_team(shared_ptr<Client> c, shared_ptr<Lobby> l) 
       auto& p = cmd.players[client_id];
       p.lobby_data = entry.lobby_data;
       p.inventory = entry.inventory;
-      p.inventory.encode_mags(c->version());
+      p.inventory.encode_for_version(c->version(), s->item_parameter_table_for_version(c->version()));
       p.disp = entry.disp;
       p.disp.enforce_lobby_join_limits(c->version());
 
@@ -1671,11 +1673,12 @@ void send_join_game(shared_ptr<Client> c, shared_ptr<Lobby> l) {
       if (c->config.check_flag(Client::Flag::IS_EPISODE_3)) {
         S_JoinGame_GC_Ep3_64 cmd;
         size_t player_count = populate_v3_cmd(cmd);
+        auto s = c->require_server_state();
         for (size_t x = 0; x < 4; x++) {
           if (l->clients[x]) {
             auto other_p = l->clients[x]->game_data.player();
             cmd.players_ep3[x].inventory = other_p->inventory;
-            cmd.players_ep3[x].inventory.encode_mags(c->version());
+            cmd.players_ep3[x].inventory.encode_for_version(c->version(), s->item_parameter_table_for_version(c->version()));
             cmd.players_ep3[x].disp = convert_player_disp_data<PlayerDispDataDCPCV3>(other_p->disp, c->language(), other_p->inventory.language);
             cmd.players_ep3[x].disp.enforce_lobby_join_limits(c->version());
           }
@@ -1712,6 +1715,8 @@ void send_join_game(shared_ptr<Client> c, shared_ptr<Lobby> l) {
 
 template <typename LobbyDataT, typename DispDataT, typename RecordsT, bool UseLanguageMarkerInName>
 void send_join_lobby_t(shared_ptr<Client> c, shared_ptr<Lobby> l, shared_ptr<Client> joining_client = nullptr) {
+  auto s = c->require_server_state();
+
   uint8_t command;
   if (l->is_game()) {
     if (joining_client) {
@@ -1789,7 +1794,7 @@ void send_join_lobby_t(shared_ptr<Client> c, shared_ptr<Lobby> l, shared_ptr<Cli
       e.lobby_data.name.encode(lp->disp.name.decode(lp->inventory.language), c->language());
     }
     e.inventory = lp->inventory;
-    e.inventory.encode_mags(c->version());
+    e.inventory.encode_for_version(c->version(), s->item_parameter_table_for_version(c->version()));
     e.disp = convert_player_disp_data<DispDataT>(lp->disp, c->language(), lp->inventory.language);
     e.disp.enforce_lobby_join_limits(c->version());
   }
@@ -1826,6 +1831,8 @@ void send_join_lobby_dc_nte(shared_ptr<Client> c, shared_ptr<Lobby> l,
     }
   }
 
+  auto s = c->require_server_state();
+
   size_t used_entries = 0;
   for (const auto& lc : lobby_clients) {
     auto lp = lc->game_data.player();
@@ -1835,7 +1842,7 @@ void send_join_lobby_dc_nte(shared_ptr<Client> c, shared_ptr<Lobby> l,
     e.lobby_data.client_id = lc->lobby_client_id;
     e.lobby_data.name.encode(lp->disp.name.decode(lp->inventory.language), c->language());
     e.inventory = lp->inventory;
-    e.inventory.encode_mags(c->version());
+    e.inventory.encode_for_version(c->version(), s->item_parameter_table_for_version(c->version()));
     e.disp = convert_player_disp_data<PlayerDispDataDCPCV3>(lp->disp, c->language(), lp->inventory.language);
     e.disp.enforce_lobby_join_limits(c->version());
   }
@@ -1939,6 +1946,8 @@ void send_get_player_info(shared_ptr<Client> c) {
 // Trade window
 
 void send_execute_item_trade(shared_ptr<Client> c, const vector<ItemData>& items) {
+  auto s = c->require_server_state();
+
   SC_TradeItems_D0_D3 cmd;
   if (items.size() > cmd.item_datas.size()) {
     throw logic_error("too many items in execute trade command");
@@ -1947,7 +1956,7 @@ void send_execute_item_trade(shared_ptr<Client> c, const vector<ItemData>& items
   cmd.item_count = items.size();
   for (size_t x = 0; x < items.size(); x++) {
     cmd.item_datas[x] = items[x];
-    cmd.item_datas[x].encode_if_mag(c->version());
+    cmd.item_datas[x].encode_for_version(c->version(), s->item_parameter_table_for_version(c->version()));
   }
   send_command_t(c, 0xD3, 0x00, cmd);
 }
@@ -2072,39 +2081,38 @@ void send_set_player_visibility(shared_ptr<Lobby> l, shared_ptr<Client> c,
 ////////////////////////////////////////////////////////////////////////////////
 // BB game commands
 
-void send_drop_item(Channel& ch, const ItemData& item,
+void send_drop_item(shared_ptr<ServerState> s, Channel& ch, const ItemData& item,
     bool from_enemy, uint8_t area, float x, float z, uint16_t entity_id) {
   G_DropItem_PC_V3_BB_6x5F cmd = {
       {{0x5F, 0x0B, 0x0000}, {area, from_enemy, entity_id, x, z, 0, 0, item}}, 0};
-  cmd.item.item.encode_if_mag(ch.version);
+  cmd.item.item.encode_for_version(ch.version, s->item_parameter_table_for_version(ch.version));
   ch.send(0x60, 0x00, &cmd, sizeof(cmd));
 }
 
 void send_drop_item(shared_ptr<Lobby> l, const ItemData& item,
     bool from_enemy, uint8_t area, float x, float z, uint16_t entity_id) {
+  auto s = l->require_server_state();
   for (auto& c : l->clients) {
     if (!c) {
       continue;
     }
-    send_drop_item(c->channel, item, from_enemy, area, x, z, entity_id);
+    send_drop_item(s, c->channel, item, from_enemy, area, x, z, entity_id);
   }
 }
 
-void send_drop_stacked_item(Channel& ch, const ItemData& item,
-    uint8_t area, float x, float z) {
-  G_DropStackedItem_PC_V3_BB_6x5D cmd = {
-      {{0x5D, 0x0A, 0x0000}, area, 0, x, z, item}, 0};
-  cmd.item_data.encode_if_mag(ch.version);
+void send_drop_stacked_item(shared_ptr<ServerState> s, Channel& ch, const ItemData& item, uint8_t area, float x, float z) {
+  G_DropStackedItem_PC_V3_BB_6x5D cmd = {{{0x5D, 0x0A, 0x0000}, area, 0, x, z, item}, 0};
+  cmd.item_data.encode_for_version(ch.version, s->item_parameter_table_for_version(ch.version));
   ch.send(0x60, 0x00, &cmd, sizeof(cmd));
 }
 
-void send_drop_stacked_item(shared_ptr<Lobby> l, const ItemData& item,
-    uint8_t area, float x, float z) {
+void send_drop_stacked_item(shared_ptr<Lobby> l, const ItemData& item, uint8_t area, float x, float z) {
+  auto s = l->require_server_state();
   for (auto& c : l->clients) {
     if (!c) {
       continue;
     }
-    send_drop_stacked_item(c->channel, item, area, x, z);
+    send_drop_stacked_item(s, c->channel, item, area, x, z);
   }
 }
 

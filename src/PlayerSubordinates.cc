@@ -10,6 +10,7 @@
 #include <stdexcept>
 
 #include "ItemData.hh"
+#include "ItemParameterTable.hh"
 #include "Loggers.hh"
 #include "PSOEncryption.hh"
 #include "StaticGameData.hh"
@@ -566,15 +567,15 @@ size_t PlayerInventory::remove_all_items_of_type(uint8_t data1_0, int16_t data1_
   return ret;
 }
 
-void PlayerInventory::decode_mags(GameVersion version) {
+void PlayerInventory::decode_for_version(GameVersion version) {
   for (size_t z = 0; z < this->items.size(); z++) {
-    this->items[z].data.decode_if_mag(version);
+    this->items[z].data.decode_for_version(version);
   }
 }
 
-void PlayerInventory::encode_mags(GameVersion version) {
+void PlayerInventory::encode_for_version(GameVersion version, shared_ptr<const ItemParameterTable> item_parameter_table) {
   for (size_t z = 0; z < this->items.size(); z++) {
-    this->items[z].data.encode_if_mag(version);
+    this->items[z].data.encode_for_version(version, item_parameter_table);
   }
 }
 
@@ -827,7 +828,7 @@ static PlayerInventoryItem make_template_item(bool equipped, uint64_t first_data
 
 static PlayerInventoryItem v2_item(bool equipped, uint64_t first_data, uint64_t second_data) {
   auto ret = make_template_item(equipped, first_data, second_data);
-  ret.data.decode_if_mag(GameVersion::PC);
+  ret.data.decode_for_version(GameVersion::PC);
   return ret;
 }
 

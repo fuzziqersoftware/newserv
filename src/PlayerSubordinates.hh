@@ -16,6 +16,8 @@
 #include "Text.hh"
 #include "Version.hh"
 
+class ItemParameterTable;
+
 extern FileContentsCache player_files_cache;
 
 // PSO V2 stored some extra data in the character structs in a format that I'm
@@ -79,8 +81,8 @@ struct PlayerInventory {
 
   size_t remove_all_items_of_type(uint8_t data0, int16_t data1 = -1);
 
-  void decode_mags(GameVersion version);
-  void encode_mags(GameVersion version);
+  void decode_for_version(GameVersion version);
+  void encode_for_version(GameVersion version, std::shared_ptr<const ItemParameterTable> item_parameter_table);
 } __attribute__((packed));
 
 struct PlayerBank {

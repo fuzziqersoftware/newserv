@@ -2,6 +2,7 @@
 
 #include <map>
 
+#include "ItemParameterTable.hh"
 #include "StaticGameData.hh"
 
 using namespace std;
@@ -279,59 +280,191 @@ void ItemData::add_mag_photon_blast(uint8_t pb_num) {
   }
 }
 
-void ItemData::decode_if_mag(GameVersion from_version) {
-  if (this->data1[0] != 2) {
-    return;
-  }
+void ItemData::decode_for_version(GameVersion from_version) {
+  bool is_v2 = (from_version == GameVersion::DC) || (from_version == GameVersion::PC);
 
-  if (from_version == GameVersion::GC) {
-    // PSO GC erroneously byteswaps the data2d field, even though it's actually
-    // just four individual bytes, so we correct for that here.
-    this->data2d = bswap32(this->data2d);
+  uint8_t encoded_v2_data = this->get_encoded_v2_data();
+  bool should_decode_v2_data = is_v2 && (encoded_v2_data != 0x00) && this->has_encoded_v2_data();
 
-  } else if (from_version == GameVersion::DC || from_version == GameVersion::PC) {
-    // PSO PC encodes mags in a tediously annoying manner. The first four bytes are the same, but then...
-    // V2: pHHHHHHHHHHHHHHc pIIIIIIIIIIIIIIc JJJJJJJJJJJJJJJc KKKKKKKKKKKKKKKc QQQQQQQQ QQQQQQQQ YYYYYYYY pYYYYYYY
-    // V3: HHHHHHHHHHHHHHHH IIIIIIIIIIIIIIII JJJJJJJJJJJJJJJJ KKKKKKKKKKKKKKKK YYYYYYYY QQQQQQQQ PPPPPPPP CCCCCCCC
-    // c = color in V2 (4 bits; low bit first)
-    // C = color in V3
-    // p = PB flag bits in V2 (3 bits; ordered 1, 2, 0)
-    // P = PB flag bits in V3
-    // H, I, J, K = DEF, POW, DEX, MIND
-    // Q = IQ (little-endian in V2)
-    // Y = synchro (little-endian in V2)
+  switch (this->data1[0]) {
+    case 0x00:
+      if (should_decode_v2_data) {
+        this->data1[5] = ((encoded_v2_data < 0x89) || (this->data1[1] == 0x0F)) ? 0x00 : this->data1[1];
+        this->data1[1] = encoded_v2_data;
+      }
+      break;
 
-    // Order is important; data2[0] must not be written before data2w[0] is read
-    this->data2[1] = this->data2w[0]; // IQ
-    this->data2[0] = this->data2w[1] & 0x7FFF; // Synchro
-    this->data2[2] = ((this->data2[3] >> 7) & 1) | ((this->data1w[2] >> 14) & 2) | ((this->data1w[3] >> 13) & 4); // PB flags
-    this->data2[3] = (this->data1w[2] & 1) | ((this->data1w[3] & 1) << 1) | ((this->data1w[4] & 1) << 2) | ((this->data1w[5] & 1) << 3); // Color
-    this->data1w[2] &= 0x7FFE;
-    this->data1w[3] &= 0x7FFE;
-    this->data1w[4] &= 0xFFFE;
-    this->data1w[5] &= 0xFFFE;
+    case 0x01:
+      if (should_decode_v2_data) {
+        this->data1[3] = 0x00;
+        this->data1[2] = encoded_v2_data;
+      }
+      break;
+
+    case 0x02:
+      if (should_decode_v2_data) {
+        this->data1[2] = 0xC8;
+        this->data1[1] = encoded_v2_data + 0x2B;
+      }
+
+      if (from_version == GameVersion::GC) {
+        // PSO GC erroneously byteswaps the data2d field, even though it's actually
+        // just four individual bytes, so we correct for that here.
+        this->data2d = bswap32(this->data2d);
+
+      } else if (from_version == GameVersion::DC || from_version == GameVersion::PC) {
+        // PSO PC encodes mags in a tediously annoying manner. The first four bytes are the same, but then...
+        // V2: pHHHHHHHHHHHHHHc pIIIIIIIIIIIIIIc JJJJJJJJJJJJJJJc KKKKKKKKKKKKKKKc QQQQQQQQ QQQQQQQQ YYYYYYYY pYYYYYYY
+        // V3: HHHHHHHHHHHHHHHH IIIIIIIIIIIIIIII JJJJJJJJJJJJJJJJ KKKKKKKKKKKKKKKK YYYYYYYY QQQQQQQQ PPPPPPPP CCCCCCCC
+        // c = color in V2 (4 bits; low bit first)
+        // C = color in V3
+        // p = PB flag bits in V2 (3 bits; ordered 1, 2, 0)
+        // P = PB flag bits in V3
+        // H, I, J, K = DEF, POW, DEX, MIND
+        // Q = IQ (little-endian in V2)
+        // Y = synchro (little-endian in V2)
+
+        // Order is important; data2[0] must not be written before data2w[0] is read
+        this->data2[1] = this->data2w[0]; // IQ
+        this->data2[0] = this->data2w[1] & 0x7FFF; // Synchro
+        this->data2[2] = ((this->data2[3] >> 7) & 1) | ((this->data1w[2] >> 14) & 2) | ((this->data1w[3] >> 13) & 4); // PB flags
+        this->data2[3] = (this->data1w[2] & 1) | ((this->data1w[3] & 1) << 1) | ((this->data1w[4] & 1) << 2) | ((this->data1w[5] & 1) << 3); // Color
+        this->data1w[2] &= 0x7FFE;
+        this->data1w[3] &= 0x7FFE;
+        this->data1w[4] &= 0xFFFE;
+        this->data1w[5] &= 0xFFFE;
+      }
+      break;
+
+    case 0x03:
+      if (should_decode_v2_data) {
+        this->data1[3] = 0x00;
+        if (this->data1[1] == 0x02) {
+          this->data1[2] = encoded_v2_data + 0x0E;
+        } else if (this->data1[1] == 0x0D) {
+          if (this->data1[2] == 0x06) {
+            this->data1[1] = 0x0E;
+            this->data1[2] = encoded_v2_data + -1;
+          } else if (this->data1[2] == 0x07) {
+            this->data1[1] = this->data1[6];
+            this->data1[2] = encoded_v2_data + -1;
+            this->data1[6] = 0x00;
+          }
+        }
+      }
+      break;
+
+    case 0x04:
+      break;
+
+    default:
+      throw runtime_error("invalid item class");
   }
 }
 
-void ItemData::encode_if_mag(GameVersion to_version) {
-  if (this->data1[0] != 2) {
-    return;
-  }
+void ItemData::encode_for_version(GameVersion to_version, shared_ptr<const ItemParameterTable> item_parameter_table) {
+  bool is_v2 = (to_version == GameVersion::DC) || (to_version == GameVersion::PC);
+  bool should_encode_v2_data = is_v2 && !this->has_encoded_v2_data();
 
-  // This function is the inverse of decode_v2_mag; see that function for a
-  // description of what's going on here.
-  if (to_version == GameVersion::GC) {
-    this->data2d = bswap32(this->data2d);
+  switch (this->data1[0]) {
+    case 0x00:
+      if (should_encode_v2_data && (this->data1[1] > 0x26)) {
+        if (this->data1[1] < 0x89) {
+          this->data1[5] = this->data1[1];
+          this->data1[1] = item_parameter_table->get_weapon_v1_replacement(this->data1[1]);
+          if (this->data1[1] == 0x00) {
+            this->data1[1] = 0x0F;
+          }
+        } else {
+          uint8_t data1_5 = this->data1[5];
+          if (this->data1[1] > data1_5) {
+            this->data1[5] = this->data1[1];
+            this->data1[1] = (data1_5 != 0) ? data1_5 : 0x0F;
+          }
+        }
+      }
+      break;
 
-  } else if (to_version == GameVersion::DC || to_version == GameVersion::PC) {
-    this->data1w[2] = (this->data1w[2] & 0x7FFE) | ((this->data2[2] << 14) & 0x8000) | (this->data2[3] & 1);
-    this->data1w[3] = (this->data1w[3] & 0x7FFE) | ((this->data2[2] << 13) & 0x8000) | ((this->data2[3] >> 1) & 1);
-    this->data1w[4] = (this->data1w[4] & 0xFFFE) | ((this->data2[3] >> 2) & 1);
-    this->data1w[5] = (this->data1w[5] & 0xFFFE) | ((this->data2[3] >> 3) & 1);
-    // Order is important; data2w[0] must not be written before data2[0] is read
-    this->data2w[1] = this->data2[0] | ((this->data2[2] << 15) & 0x8000);
-    this->data2w[0] = this->data2[1];
+    case 0x01: {
+      static const array<uint8_t, 4> armor_limits = {0x00, 0x29, 0x27, 0x44};
+      if (should_encode_v2_data && (this->data1[2] >= armor_limits[this->data1[1]])) {
+        this->data1[3] = this->data1[2];
+        this->data1[2] = 0x00;
+      }
+      break;
+    }
+
+    case 0x02:
+      if (should_encode_v2_data && (this->data1[1] > 0x2B)) {
+        this->data1[2] = this->data1[1] - 0x2B - 0x38;
+        this->data1[1] = 0x00;
+      }
+
+      // This logic is the inverse of the corresponding logic in
+      // decode_for_version; see that function for a description of what's
+      // going on here.
+      if (to_version == GameVersion::GC) {
+        this->data2d = bswap32(this->data2d);
+      } else if (to_version == GameVersion::DC || to_version == GameVersion::PC) {
+        this->data1w[2] = (this->data1w[2] & 0x7FFE) | ((this->data2[2] << 14) & 0x8000) | (this->data2[3] & 1);
+        this->data1w[3] = (this->data1w[3] & 0x7FFE) | ((this->data2[2] << 13) & 0x8000) | ((this->data2[3] >> 1) & 1);
+        this->data1w[4] = (this->data1w[4] & 0xFFFE) | ((this->data2[3] >> 2) & 1);
+        this->data1w[5] = (this->data1w[5] & 0xFFFE) | ((this->data2[3] >> 3) & 1);
+        // Order is important; data2w[0] must not be written before data2[0] is read
+        this->data2w[1] = this->data2[0] | ((this->data2[2] << 15) & 0x8000);
+        this->data2w[0] = this->data2[1];
+      }
+      break;
+
+    case 0x03:
+      if (should_encode_v2_data) {
+        if (this->data1[1] == 2) {
+          if (this->data1[2] > 0x0E) {
+            this->data1[3] = this->data1[2] - 0x0E;
+            this->data1[2] %= 0x0F;
+          }
+        } else if (this->data1[1] == 0x0E) {
+          this->data1[3] = this->data1[2] + 1;
+          this->data1[1] = 0x0D;
+          this->data1[2] = 0x06;
+        } else if (this->data1[1] > 0x0E) {
+          this->data1[6] = this->data1[1];
+          this->data1[3] = this->data1[2] + 0x01;
+          this->data1[1] = 0x0D;
+          this->data1[2] = 0x07;
+        }
+      }
+      break;
+
+    case 0x04:
+      break;
+
+    default:
+      throw runtime_error("invalid item class");
   }
+}
+
+uint8_t ItemData::get_encoded_v2_data() const {
+  switch (this->data1[0]) {
+    case 0x00:
+      return this->data1[5];
+    case 0x01:
+    case 0x03:
+      return this->data1[3];
+    case 0x02:
+      if (this->data1[2] > 0xC8) {
+        return this->data1[2] + 0x38;
+      }
+      return 0x00;
+    default:
+      return 0x00;
+  }
+}
+
+bool ItemData::has_encoded_v2_data() const {
+  return (this->data1[0] == 0)
+      ? (this->data1[1] < this->get_encoded_v2_data())
+      : (this->get_encoded_v2_data() != 0);
 }
 
 uint16_t ItemData::get_sealed_item_kill_count() const {

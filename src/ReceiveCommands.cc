@@ -2725,7 +2725,7 @@ static void on_61_98(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
     default:
       throw logic_error("player data command not implemented for version");
   }
-  player->inventory.decode_mags(c->version());
+  player->inventory.decode_for_version(c->version());
   c->channel.language = player->inventory.language;
 
   string name_str = player->disp.name.decode(c->language());
@@ -3752,7 +3752,7 @@ static void on_D0_V3_BB(shared_ptr<Client> c, uint16_t, uint32_t, string& data) 
   c->game_data.pending_item_trade->other_client_id = cmd.target_client_id;
   for (size_t x = 0; x < cmd.item_count; x++) {
     auto& item = c->game_data.pending_item_trade->items.emplace_back(cmd.item_datas[x]);
-    item.decode_if_mag(c->version());
+    item.decode_for_version(c->version());
   }
 
   // If the other player has a pending trade as well, assume this is the second

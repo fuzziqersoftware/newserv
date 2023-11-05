@@ -227,7 +227,7 @@ The actions are:\n\
     Print the name of the item given by DATA (in hex). DATA must not contain\n\
     spaces. If DATA is 20 bytes, newserv assumes it contains an unused item ID\n\
     field; if it is fewer bytes, up to 16 bytes are used.\n\
-  encode-item DESCRIPTION\n\
+  encode-item DESCRIPTION [--pc|--bb]\n\
     Encode the description of an item into its corresponding ItemData (hex)\n\
     representation. If DESCRIPTION contains spaces, it must be quoted, such as\n\
     \"L&K14 COMBAT +10 0/10/15/0/35\".\n\
@@ -1598,14 +1598,58 @@ int main(int argc, char** argv) {
           JSON::parse(load_file("system/item-tables/names-v2.json")),
           JSON::parse(load_file("system/item-tables/names-v3.json")),
           JSON::parse(load_file("system/item-tables/names-v4.json")));
+      shared_ptr<string> pmt_data_v2(new string(prs_decompress(load_file("system/item-tables/ItemPMT-v2.prs"))));
+      auto pmt_v2 = make_shared<ItemParameterTable>(pmt_data_v2, ItemParameterTable::Version::V2);
+      shared_ptr<string> pmt_data_v3(new string(prs_decompress(load_file("system/item-tables/ItemPMT-gc.prs"))));
+      auto pmt_v3 = make_shared<ItemParameterTable>(pmt_data_v3, ItemParameterTable::Version::V3);
 
       ItemData item = name_index->parse_item_description(cli_version, input_filename);
+
       string desc = name_index->describe_item(cli_version, item);
-      log_info("Data: %02hhX%02hhX%02hhX%02hhX %02hhX%02hhX%02hhX%02hhX %02hhX%02hhX%02hhX%02hhX -------- %02hhX%02hhX%02hhX%02hhX",
+      log_info("Data (decoded):    %02hhX%02hhX%02hhX%02hhX %02hhX%02hhX%02hhX%02hhX %02hhX%02hhX%02hhX%02hhX -------- %02hhX%02hhX%02hhX%02hhX",
           item.data1[0], item.data1[1], item.data1[2], item.data1[3],
           item.data1[4], item.data1[5], item.data1[6], item.data1[7],
           item.data1[8], item.data1[9], item.data1[10], item.data1[11],
           item.data2[0], item.data2[1], item.data2[2], item.data2[3]);
+
+      ItemData item_v1 = item;
+      item_v1.encode_for_version(GameVersion::PC, pmt_v2);
+      ItemData item_v1_decoded = item_v1;
+      item_v1_decoded.decode_for_version(GameVersion::PC);
+
+      log_info("Data (V1-encoded): %02hhX%02hhX%02hhX%02hhX %02hhX%02hhX%02hhX%02hhX %02hhX%02hhX%02hhX%02hhX -------- %02hhX%02hhX%02hhX%02hhX",
+          item_v1.data1[0], item_v1.data1[1], item_v1.data1[2], item_v1.data1[3],
+          item_v1.data1[4], item_v1.data1[5], item_v1.data1[6], item_v1.data1[7],
+          item_v1.data1[8], item_v1.data1[9], item_v1.data1[10], item_v1.data1[11],
+          item_v1.data2[0], item_v1.data2[1], item_v1.data2[2], item_v1.data2[3]);
+      if (item_v1_decoded != item) {
+        log_warning("V1-decoded data does not match original data");
+        log_warning("Data (V1-decoded): %02hhX%02hhX%02hhX%02hhX %02hhX%02hhX%02hhX%02hhX %02hhX%02hhX%02hhX%02hhX -------- %02hhX%02hhX%02hhX%02hhX",
+            item_v1_decoded.data1[0], item_v1_decoded.data1[1], item_v1_decoded.data1[2], item_v1_decoded.data1[3],
+            item_v1_decoded.data1[4], item_v1_decoded.data1[5], item_v1_decoded.data1[6], item_v1_decoded.data1[7],
+            item_v1_decoded.data1[8], item_v1_decoded.data1[9], item_v1_decoded.data1[10], item_v1_decoded.data1[11],
+            item_v1_decoded.data2[0], item_v1_decoded.data2[1], item_v1_decoded.data2[2], item_v1_decoded.data2[3]);
+      }
+
+      ItemData item_gc = item;
+      item_gc.encode_for_version(GameVersion::GC, pmt_v3);
+      ItemData item_gc_decoded = item_gc;
+      item_gc_decoded.decode_for_version(GameVersion::GC);
+
+      log_info("Data (GC-encoded): %02hhX%02hhX%02hhX%02hhX %02hhX%02hhX%02hhX%02hhX %02hhX%02hhX%02hhX%02hhX -------- %02hhX%02hhX%02hhX%02hhX",
+          item_gc.data1[0], item_gc.data1[1], item_gc.data1[2], item_gc.data1[3],
+          item_gc.data1[4], item_gc.data1[5], item_gc.data1[6], item_gc.data1[7],
+          item_gc.data1[8], item_gc.data1[9], item_gc.data1[10], item_gc.data1[11],
+          item_gc.data2[0], item_gc.data2[1], item_gc.data2[2], item_gc.data2[3]);
+      if (item_gc_decoded != item) {
+        log_warning("GC-decoded data does not match original data");
+        log_warning("Data (GC-decoded): %02hhX%02hhX%02hhX%02hhX %02hhX%02hhX%02hhX%02hhX %02hhX%02hhX%02hhX%02hhX -------- %02hhX%02hhX%02hhX%02hhX",
+            item_gc_decoded.data1[0], item_gc_decoded.data1[1], item_gc_decoded.data1[2], item_gc_decoded.data1[3],
+            item_gc_decoded.data1[4], item_gc_decoded.data1[5], item_gc_decoded.data1[6], item_gc_decoded.data1[7],
+            item_gc_decoded.data1[8], item_gc_decoded.data1[9], item_gc_decoded.data1[10], item_gc_decoded.data1[11],
+            item_gc_decoded.data2[0], item_gc_decoded.data2[1], item_gc_decoded.data2[2], item_gc_decoded.data2[3]);
+      }
+
       log_info("Description: %s", desc.c_str());
       break;
     }

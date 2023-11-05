@@ -1316,8 +1316,8 @@ static void proxy_command_item(shared_ptr<ProxyServer::LinkedSession> ses, const
     send_text_message(ses->client_channel, "$C7Next drop:\n" + name);
 
   } else {
-    send_drop_stacked_item(ses->client_channel, item, ses->area, ses->x, ses->z);
-    send_drop_stacked_item(ses->server_channel, item, ses->area, ses->x, ses->z);
+    send_drop_stacked_item(s, ses->client_channel, item, ses->area, ses->x, ses->z);
+    send_drop_stacked_item(s, ses->server_channel, item, ses->area, ses->x, ses->z);
 
     string name = s->describe_item(ses->version(), item, true);
     send_text_message(ses->client_channel, "$C7Item created:\n" + name);

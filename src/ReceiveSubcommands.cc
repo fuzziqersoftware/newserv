@@ -222,7 +222,7 @@ static void on_sync_joining_player_item_state(shared_ptr<Client> c, uint8_t comm
         // NOTE: If we use this codepath for non-V3 in the future, we'll need to
         // change this hardcoded version. This only works because GC's mag
         // encoding/decoding is symmetric (encode and decode do the same thing).
-        floor_items[z].item.decode_if_mag(GameVersion::GC);
+        floor_items[z].item.decode_for_version(GameVersion::GC);
       }
 
       string out_compressed_data = bc0_compress(decompressed);
@@ -289,7 +289,7 @@ static void on_sync_joining_player_disp_and_inventory(
       // NOTE: If we use this codepath for non-V3 in the future, we'll need to
       // change this hardcoded version. This only works because GC's mag
       // encoding/decoding is symmetric (encode and decode do the same thing).
-      out_cmd.inventory.items[z].data.decode_if_mag(GameVersion::GC);
+      out_cmd.inventory.items[z].data.decode_for_version(GameVersion::GC);
     }
     send_command_t(target, command, flag, out_cmd);
   }
@@ -712,16 +712,19 @@ void forward_subcommand_with_mag_transcode_t(shared_ptr<Client> c, uint8_t comma
   }
 
   auto l = c->require_lobby();
+  auto s = c->require_server_state();
   for (auto& other_c : l->clients) {
     if (!other_c || other_c == c) {
       continue;
     }
-    CmdT out_cmd = cmd;
     if (c->version() != other_c->version()) {
-      out_cmd.item_data.decode_if_mag(c->version());
-      out_cmd.item_data.encode_if_mag(other_c->version());
+      CmdT out_cmd = cmd;
+      out_cmd.item_data.decode_for_version(c->version());
+      out_cmd.item_data.encode_for_version(other_c->version(), s->item_parameter_table_for_version(other_c->version()));
+      send_command_t(other_c, command, flag, out_cmd);
+    } else {
+      send_command_t(other_c, command, flag, cmd);
     }
-    send_command_t(other_c, command, flag, out_cmd);
   }
 }
 
@@ -742,7 +745,7 @@ static void on_create_inventory_item_t(shared_ptr<Client> c, uint8_t command, ui
   if (l->check_flag(Lobby::Flag::ITEM_TRACKING_ENABLED)) {
     auto p = c->game_data.player();
     ItemData item = cmd.item_data;
-    item.decode_if_mag(c->version());
+    item.decode_for_version(c->version());
     l->on_item_id_generated_externally(item.id);
     p->add_item(item);
 
@@ -786,7 +789,7 @@ static void on_drop_partial_stack_t(shared_ptr<Client> c, uint8_t command, uint8
     // TODO: Should we delete anything from the inventory here? Does the client
     // send an appropriate 6x29 alongside this?
     ItemData item = cmd.item_data;
-    item.decode_if_mag(c->version());
+    item.decode_for_version(c->version());
     l->on_item_id_generated_externally(item.id);
     l->add_item(item, cmd.area, cmd.x, cmd.z);
 
@@ -879,7 +882,7 @@ static void on_buy_shop_item(shared_ptr<Client> c, uint8_t command, uint8_t flag
   if (l->check_flag(Lobby::Flag::ITEM_TRACKING_ENABLED)) {
     auto p = c->game_data.player();
     ItemData item = cmd.item_data;
-    item.decode_if_mag(c->version());
+    item.decode_for_version(c->version());
     l->on_item_id_generated_externally(item.id);
     p->add_item(item);
 
@@ -908,6 +911,7 @@ static void on_box_or_enemy_item_drop_t(shared_ptr<Client> c, uint8_t command, u
 
   const auto& cmd = check_size_t<CmdT>(data, size);
 
+  auto s = c->require_server_state();
   auto l = c->require_lobby();
   if (!l->is_game() || (c->lobby_client_id != l->leader_id)) {
     return;
@@ -918,7 +922,7 @@ static void on_box_or_enemy_item_drop_t(shared_ptr<Client> c, uint8_t command, u
 
   if (l->check_flag(Lobby::Flag::ITEM_TRACKING_ENABLED)) {
     ItemData item = cmd.item.item;
-    item.decode_if_mag(c->version());
+    item.decode_for_version(c->version());
     l->on_item_id_generated_externally(item.id);
     l->add_item(item, cmd.item.area, cmd.item.x, cmd.item.z);
 
@@ -938,8 +942,8 @@ static void on_box_or_enemy_item_drop_t(shared_ptr<Client> c, uint8_t command, u
     }
     CmdT out_cmd = cmd;
     if (c->version() != lc->version()) {
-      out_cmd.item.item.decode_if_mag(c->version());
-      out_cmd.item.item.encode_if_mag(lc->version());
+      out_cmd.item.item.decode_for_version(c->version());
+      out_cmd.item.item.encode_for_version(lc->version(), s->item_parameter_table_for_version(lc->version()));
     }
     send_command_t(lc, command, flag, out_cmd);
   }

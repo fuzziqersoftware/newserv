@@ -566,6 +566,23 @@ uint8_t ItemParameterTable::get_max_tech_level(uint8_t char_class, uint8_t tech_
   }
 }
 
+uint8_t ItemParameterTable::get_weapon_v1_replacement(uint8_t data1_1) const {
+  uint32_t offset;
+  if (this->offsets_v2) {
+    offset = this->offsets_v2->v1_replacement_table;
+  } else if (this->offsets_v3) {
+    offset = this->offsets_v3->v1_replacement_table;
+  } else if (this->offsets_v4) {
+    offset = this->offsets_v4->v1_replacement_table;
+  } else {
+    throw logic_error("table is not v2, v3, or v4");
+  }
+
+  return (data1_1 < this->num_weapon_classes)
+      ? this->r.pget_u8(offset + data1_1)
+      : 0x00;
+}
+
 uint32_t ItemParameterTable::get_item_id(const ItemData& item) const {
   switch (item.data1[0]) {
     case 0:

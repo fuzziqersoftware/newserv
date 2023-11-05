@@ -877,6 +877,8 @@ static HandlerResult S_V3_BB_DA(shared_ptr<ProxyServer::LinkedSession> ses, uint
 }
 
 static HandlerResult S_6x(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t, uint32_t, string& data) {
+  auto s = ses->require_server_state();
+
   if (ses->config.check_flag(Client::Flag::PROXY_SAVE_FILES)) {
     if ((ses->version() == GameVersion::GC) && (data.size() >= 0x14)) {
       if (static_cast<uint8_t>(data[0]) == 0xB6) {
@@ -963,8 +965,8 @@ static HandlerResult S_6x(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t, 
       const auto& cmd = check_size_t<G_StandardDropItemRequest_DC_6x60>(
           data, sizeof(G_StandardDropItemRequest_PC_V3_BB_6x60));
       ses->next_drop_item.id = ses->next_item_id++;
-      send_drop_item(ses->server_channel, ses->next_drop_item, true, cmd.area, cmd.x, cmd.z, cmd.entity_id);
-      send_drop_item(ses->client_channel, ses->next_drop_item, true, cmd.area, cmd.x, cmd.z, cmd.entity_id);
+      send_drop_item(s, ses->server_channel, ses->next_drop_item, true, cmd.area, cmd.x, cmd.z, cmd.entity_id);
+      send_drop_item(s, ses->client_channel, ses->next_drop_item, true, cmd.area, cmd.x, cmd.z, cmd.entity_id);
       ses->next_drop_item.clear();
       return HandlerResult::Type::SUPPRESS;
 
@@ -975,8 +977,8 @@ static HandlerResult S_6x(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t, 
     } else if ((static_cast<uint8_t>(data[0]) == 0xA2) && ses->next_drop_item.data1d[0] && (ses->version() != GameVersion::BB)) {
       const auto& cmd = check_size_t<G_SpecializableItemDropRequest_6xA2>(data);
       ses->next_drop_item.id = ses->next_item_id++;
-      send_drop_item(ses->server_channel, ses->next_drop_item, false, cmd.area, cmd.x, cmd.z, cmd.entity_id);
-      send_drop_item(ses->client_channel, ses->next_drop_item, false, cmd.area, cmd.x, cmd.z, cmd.entity_id);
+      send_drop_item(s, ses->server_channel, ses->next_drop_item, false, cmd.area, cmd.x, cmd.z, cmd.entity_id);
+      send_drop_item(s, ses->client_channel, ses->next_drop_item, false, cmd.area, cmd.x, cmd.z, cmd.entity_id);
       ses->next_drop_item.clear();
       return HandlerResult::Type::SUPPRESS;
 
