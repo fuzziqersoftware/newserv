@@ -1,5 +1,6 @@
 #include "ItemData.hh"
 
+#include <array>
 #include <map>
 
 #include "ItemParameterTable.hh"
