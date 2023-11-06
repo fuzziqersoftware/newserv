@@ -6279,7 +6279,7 @@ struct G_SetTournamentPlayerDecks_GC_Ep3_6xB4x3D {
   struct Entry {
     uint8_t type = 0; // 0 = no player, 1 = human, 2 = COM
     pstring<TextEncoding::MARKED, 0x10> player_name;
-    pstring<TextEncoding::MARKED, 0x10> deck_name; // Only be used for COM players
+    pstring<TextEncoding::MARKED, 0x10> deck_name; // Only used for COM players
     parray<uint8_t, 5> unknown_a1;
     parray<le_uint16_t, 0x1F> card_ids; // Can be blank for human players
     uint8_t client_id = 0; // Unused for COMs
