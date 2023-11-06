@@ -342,10 +342,10 @@ If you're emulating PSO DC or have a disc image, you can patch the appropriate f
 
 If you're emulating PSO DC, all versions will connect to newserv by setting the following options in Flycast's `emu.cfg` file under `[network]`:
 - DNS = Your newserv's server address (newserv's DNS server must be running on port 53)
-- EmulateBBA = no (while some versions support the BBA, some do not, and all versions support the modem)
+- EmulateBBA = yes (some V1 regions do not support the BBA, turn this off needed)
 - Enable = yes
 
-Once set up, the EU and US versions will work without any extra set up (other than the HL Check Disable code for USv2), while the JP versions require HL Check Disable codes to be running, and an e-mail account set up. The easiest way to set up an e-mail account is through PlanetWeb's Internet Browser for Dreamcast.
+Once set up, the EU and US versions will work without any extra set up (other than the HL Check Disable code for USv2), while the JP versions require HL Check Disable codes to be running.
 
 If the server is running on the same machine as Flycast, this might not work, even if you point Flycast's DNS queries at your local IP address (instead of 127.0.0.1). In this case, you can modify the loaded executable in memory to make it connect anywhere you want. There is a script included with newserv that can do this on macOS; a similar technique could be done manually using scanmem on Linux or Cheat Engine on Windows. To use the script, do this:
 1. Build and install memwatch (https://github.com/fuzziqersoftware/memwatch).
