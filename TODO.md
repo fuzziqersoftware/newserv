@@ -29,6 +29,19 @@
 - Make `reload licenses` not vulnerable to online players' licenses overwriting licenses on disk somehow
 - Implement ranks (based on total Meseta earned)
 
+## PSO XBOX
+
+- Test the following things:
+    - Login
+    - Lobby interactions with GC players
+        - Symbol chats: any byteswapping required?
+        - Word Select mapping to other consoles (is it the same as GC? probably?)
+        - Guild card send/receive, simple mail (+ auto reply), info board
+    - Crossplay in games
+        - Check mag correctness in various situations, including on the ground at join time
+    - Voice chat (both in games and lobbies)
+    - Quest loading (symlink all XB quests to GC quests by default, make sure they load properly)
+
 ## PSOBB
 
 - Find any remaining mismatches in enemy IDs / experience
