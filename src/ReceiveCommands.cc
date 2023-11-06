@@ -2123,11 +2123,9 @@ static void on_10(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
           if (vq->battle_rules) {
             lc->game_data.create_battle_overlay(vq->battle_rules, s->level_table);
             lc->log.info("Created battle overlay");
-            lc->game_data.player()->print_inventory(stderr, c->version(), s->item_name_index);
           } else if (vq->challenge_template_index >= 0) {
             lc->game_data.create_challenge_overlay(lc->version(), vq->challenge_template_index, s->level_table);
             lc->log.info("Created challenge overlay");
-            lc->game_data.player()->print_inventory(stderr, c->version(), s->item_name_index);
           }
 
           // If an overlay was created, item IDs need to be assigned
@@ -2136,6 +2134,8 @@ static void on_10(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
             for (size_t z = 0; z < overlay->inventory.num_items; z++) {
               overlay->inventory.items[z].data.id = l->generate_item_id(client_id);
             }
+            lc->log.info("Assigned overlay item IDs");
+            lc->game_data.player()->print_inventory(stderr, c->version(), s->item_name_index);
           }
 
           string bin_filename = vq->bin_filename();
