@@ -1602,6 +1602,8 @@ int main(int argc, char** argv) {
       auto pmt_v2 = make_shared<ItemParameterTable>(pmt_data_v2, ItemParameterTable::Version::V2);
       shared_ptr<string> pmt_data_v3(new string(prs_decompress(load_file("system/item-tables/ItemPMT-gc.prs"))));
       auto pmt_v3 = make_shared<ItemParameterTable>(pmt_data_v3, ItemParameterTable::Version::V3);
+      shared_ptr<string> pmt_data_v4(new string(prs_decompress(load_file("system/item-tables/ItemPMT-bb.prs"))));
+      auto pmt_v4 = make_shared<ItemParameterTable>(pmt_data_v4, ItemParameterTable::Version::V4);
 
       ItemData item = name_index->parse_item_description(cli_version, input_filename);
 
@@ -1651,6 +1653,10 @@ int main(int argc, char** argv) {
       }
 
       log_info("Description: %s", desc.c_str());
+
+      size_t purchase_price = pmt_v4->price_for_item(item);
+      size_t sale_price = purchase_price >> 3;
+      log_info("Purchase price: %zu; sale price: %zu", purchase_price, sale_price);
       break;
     }
 
