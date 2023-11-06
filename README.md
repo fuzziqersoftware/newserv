@@ -342,8 +342,10 @@ If you're emulating PSO DC or have a disc image, you can patch the appropriate f
 
 If you're emulating PSO DC, all versions will connect to newserv by setting the following options in Flycast's `emu.cfg` file under `[network]`:
 - DNS = Your newserv's server address (newserv's DNS server must be running on port 53)
-- EmulateBBA = yes (some V1 regions do not support the BBA, turn this off if needed)
+- EmulateBBA = yes
 - Enable = yes
+
+It is also necessary to save any DNS information to the flash memory of the Dreamcast to use the BBA - the easiest way to do this is to use the website option in USv2 and then choose the save to flash option.
 
 Once set up, the EU and US versions will work without any extra set up (other than the HL Check Disable code for USv2), while the JP versions require HL Check Disable codes to be running.
 
