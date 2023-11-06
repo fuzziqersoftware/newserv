@@ -815,7 +815,9 @@ size_t ItemParameterTable::price_for_item(const ItemData& item) const {
       return (item.data1[2] + 1) * this->get_sale_divisor(2, item.data1[1]);
 
     case 3: {
-      const auto& def = this->get_tool(item.data1[1], item.data1[2]);
+      const auto& def = (item.data1[1] == 2)
+          ? this->get_tool(2, item.data1[4])
+          : this->get_tool(item.data1[1], item.data1[2]);
       return def.cost * ((item.data1[1] == 2) ? (item.data1[2] + 1) : 1);
     }
 
