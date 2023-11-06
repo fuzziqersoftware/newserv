@@ -1236,6 +1236,7 @@ static void on_open_bank_bb_or_card_trade_counter_ep3(shared_ptr<Client> c, uint
 }
 
 static void on_ep3_private_word_select_bb_bank_action(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
+  auto s = c->require_server_state();
   auto l = c->require_lobby();
   if (l->base_version == GameVersion::BB) {
     const auto& cmd = check_size_t<G_BankAction_BB_6xBD>(data, size);
@@ -1249,36 +1250,57 @@ static void on_ep3_private_word_select_bb_bank_action(shared_ptr<Client> c, uint
     }
 
     auto p = c->game_data.player();
-    if (cmd.action == 0) { // deposit
-      if (cmd.item_id == 0xFFFFFFFF) { // meseta
+    if (cmd.action == 0) { // Deposit
+      if (cmd.item_id == 0xFFFFFFFF) { // Deposit Meseta
         if (cmd.meseta_amount > p->disp.stats.meseta) {
-          return;
+          l->log.info("Player %hu attempted to deposit %" PRIu32 " Meseta in the bank, but has only %" PRIu32 " Meseta on hand",
+              c->lobby_client_id, cmd.meseta_amount.load(), p->disp.stats.meseta.load());
+        } else if ((p->bank.meseta + cmd.meseta_amount) > 999999) {
+          l->log.info("Player %hu attempted to deposit %" PRIu32 " Meseta in the bank, but already has %" PRIu32 " Meseta in the bank",
+              c->lobby_client_id, cmd.meseta_amount.load(), p->disp.stats.meseta.load());
+        } else {
+          p->bank.meseta += cmd.meseta_amount;
+          p->disp.stats.meseta -= cmd.meseta_amount;
+          l->log.info("Player %hu deposited %" PRIu32 " Meseta in the bank (bank now has %" PRIu32 "; inventory now has %" PRIu32 ")",
+              c->lobby_client_id, cmd.meseta_amount.load(), p->bank.meseta.load(), p->disp.stats.meseta.load());
         }
-        if ((p->bank.meseta + cmd.meseta_amount) > 999999) {
-          return;
-        }
-        p->bank.meseta += cmd.meseta_amount;
-        p->disp.stats.meseta -= cmd.meseta_amount;
-      } else { // item
+
+      } else { // Deposit item
         auto item = p->remove_item(cmd.item_id, cmd.item_amount, c->version() != GameVersion::BB);
         p->bank.add_item(item);
         send_destroy_item(c, cmd.item_id, cmd.item_amount);
+
+        string name = s->item_name_index->describe_item(GameVersion::BB, item);
+        l->log.info("Player %hu deposited item %08" PRIX32 " (x%hhu) (%s) in the bank",
+            c->lobby_client_id, cmd.item_id.load(), cmd.item_amount, name.c_str());
+        c->game_data.player()->print_inventory(stderr, c->version(), s->item_name_index);
       }
-    } else if (cmd.action == 1) { // take
-      if (cmd.item_id == 0xFFFFFFFF) { // meseta
+
+    } else if (cmd.action == 1) { // Take
+      if (cmd.item_id == 0xFFFFFFFF) { // Take Meseta
         if (cmd.meseta_amount > p->bank.meseta) {
-          return;
+          l->log.info("Player %hu attempted to withdraw %" PRIu32 " Meseta from the bank, but has only %" PRIu32 " Meseta in the bank",
+              c->lobby_client_id, cmd.meseta_amount.load(), p->bank.meseta.load());
+        } else if ((p->disp.stats.meseta + cmd.meseta_amount) > 999999) {
+          l->log.info("Player %hu attempted to withdraw %" PRIu32 " Meseta from the bank, but already has %" PRIu32 " Meseta on hand",
+              c->lobby_client_id, cmd.meseta_amount.load(), p->disp.stats.meseta.load());
+        } else {
+          p->bank.meseta -= cmd.meseta_amount;
+          p->disp.stats.meseta += cmd.meseta_amount;
+          l->log.info("Player %hu withdrew %" PRIu32 " Meseta from the bank (bank now has %" PRIu32 "; inventory now has %" PRIu32 ")",
+              c->lobby_client_id, cmd.meseta_amount.load(), p->bank.meseta.load(), p->disp.stats.meseta.load());
         }
-        if ((p->disp.stats.meseta + cmd.meseta_amount) > 999999) {
-          return;
-        }
-        p->bank.meseta -= cmd.meseta_amount;
-        p->disp.stats.meseta += cmd.meseta_amount;
-      } else { // item
+
+      } else { // Take item
         auto item = p->bank.remove_item(cmd.item_id, cmd.item_amount);
         item.id = l->generate_item_id(0xFF);
         p->add_item(item);
         send_create_inventory_item(c, item);
+
+        string name = s->item_name_index->describe_item(GameVersion::BB, item);
+        l->log.info("Player %hu withdrew item %08" PRIX32 " (x%hhu) (%s) from the bank",
+            c->lobby_client_id, cmd.item_id.load(), cmd.item_amount, name.c_str());
+        c->game_data.player()->print_inventory(stderr, c->version(), s->item_name_index);
       }
     }
 
