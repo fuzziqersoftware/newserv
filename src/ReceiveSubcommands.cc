@@ -1567,6 +1567,26 @@ static void on_charge_attack_bb(shared_ptr<Client> c, uint8_t command, uint8_t f
   }
 }
 
+static void on_level_up(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
+  const auto& cmd = check_size_t<G_LevelUp_6x30>(data, size);
+
+  auto l = c->require_lobby();
+  if (!l->is_game()) {
+    return;
+  }
+
+  auto p = c->game_data.player();
+  p->disp.stats.char_stats.atp = cmd.atp;
+  p->disp.stats.char_stats.mst = cmd.mst;
+  p->disp.stats.char_stats.evp = cmd.evp;
+  p->disp.stats.char_stats.hp = cmd.hp;
+  p->disp.stats.char_stats.dfp = cmd.dfp;
+  p->disp.stats.char_stats.ata = cmd.ata;
+  p->disp.stats.level = cmd.level.load();
+
+  forward_subcommand(c, command, flag, data, size);
+}
+
 static void add_player_exp(shared_ptr<Client> c, uint32_t exp) {
   auto s = c->require_server_state();
   auto p = c->game_data.player();
@@ -2209,7 +2229,7 @@ subcommand_handler_t subcommand_handlers[0x100] = {
     /* 6x2D */ on_forward_check_size,
     /* 6x2E */ nullptr,
     /* 6x2F */ on_hit_by_enemy,
-    /* 6x30 */ on_forward_check_size_game,
+    /* 6x30 */ on_level_up,
     /* 6x31 */ on_forward_check_size_game,
     /* 6x32 */ on_forward_check_size_game,
     /* 6x33 */ on_forward_check_size_game,
