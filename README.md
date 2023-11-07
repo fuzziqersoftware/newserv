@@ -67,7 +67,7 @@ newserv supports several versions of PSO. Specifically:
 | GC Ep1&2 Plus  | Yes          | Yes          | Yes          | Yes          |
 | GC Ep3 Trial   | Yes          | Yes          | Partial (4)  | Yes          |
 | GC Ep3         | Yes          | Yes          | Yes          | Yes          |
-| Xbox Ep1&2     | Yes          | Yes          | Yes          | Partial (5)  |
+| Xbox Ep1&2     | Yes          | Yes          | Yes          | Yes          |
 | BB (vanilla)   | Yes          | Yes          | Yes (2)      | Yes          |
 | BB (Tethealla) | Yes          | Yes          | Yes (2)      | Yes          |
 
@@ -76,7 +76,6 @@ newserv supports several versions of PSO. Specifically:
 2. *BB games are mostly playable, but there are still some unimplemented features (for example, some quests that use rare commands may not work). Please submit a GitHub issue if you find something that doesn't work.*
 3. *Support for PSO Dreamcast Trial Edition and the December 2000 prototype is somewhat incomplete and probably never will be complete. These versions are rather unstable and seem to crash often, but it's not obvious whether it's because they're prototypes or because newserv sends data they can't handle.*
 4. *Creating a game works and battle setup behaves mostly normally, but starting a battle doesn't work.*
-5. *PSO Xbox sessions can be proxied to Sylverant. On Schtserv, Xbox proxy sessions can connect, but Schtserv does not recognize them as Xbox sessions when they join the lobby, so the session fails at that point.*
 
 ## Setup
 

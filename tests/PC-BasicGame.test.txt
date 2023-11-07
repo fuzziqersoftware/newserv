@@ -92,10 +92,10 @@ I 49484 2023-05-26 16:35:14 - [Commands] Received from C-2 (version=PC command=B
 I 49484 2023-05-26 16:35:14 - [Commands] Sending to C-2 (version=PC command=B1 flag=00)
 0000 | 1C 00 B1 00 32 30 32 33 3A 30 35 3A 32 36 3A 20 |     2023:05:26:
 0010 | 32 33 3A 33 35 3A 31 34 2E 30 30 30             | 23:35:14.000
-I 49484 2023-05-26 16:35:14 - [Commands] Sending to C-2 (version=PC command=19 flag=00)
-0000 | 0C 00 19 00 0A 00 00 04 F7 13 00 00             |
 I 49484 2023-05-26 16:35:14 - [Commands] Received from C-2 (version=PC command=99 flag=00)
 0000 | 04 00 99 00                                     |
+I 49484 2023-05-26 16:35:14 - [Commands] Sending to C-2 (version=PC command=19 flag=00)
+0000 | 0C 00 19 00 0A 00 00 04 F7 13 00 00             |
 I 49484 2023-05-26 16:35:14 - [Server] Client disconnected: C-2 on fd 38
 I 49484 2023-05-26 16:35:14 - [C-2] Deleted
 I 49484 2023-05-26 16:35:14 - [C-3] Created

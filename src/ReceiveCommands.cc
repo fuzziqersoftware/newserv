@@ -94,28 +94,16 @@ static shared_ptr<const Menu> proxy_options_menu_for_client(shared_ptr<const Cli
 }
 
 void send_client_to_login_server(shared_ptr<Client> c) {
-  if (c->version() == GameVersion::XB) {
-    c->server_behavior = ServerBehavior::LOGIN_SERVER;
-    on_login_complete(c);
-
-  } else {
-    const auto& port_name = version_to_login_port_name.at(static_cast<size_t>(c->version()));
-    auto s = c->require_server_state();
-    send_reconnect(c, s->connect_address_for_client(c), s->name_to_port_config.at(port_name)->port);
-  }
+  const auto& port_name = version_to_login_port_name.at(static_cast<size_t>(c->version()));
+  auto s = c->require_server_state();
+  send_reconnect(c, s->connect_address_for_client(c), s->name_to_port_config.at(port_name)->port);
 }
 
 void send_client_to_lobby_server(shared_ptr<Client> c) {
-  if (c->version() == GameVersion::XB) {
-    c->server_behavior = ServerBehavior::LOBBY_SERVER;
-    on_login_complete(c);
-
-  } else {
-    auto s = c->require_server_state();
-    const auto& port_name = version_to_lobby_port_name.at(static_cast<size_t>(c->version()));
-    send_reconnect(c, s->connect_address_for_client(c),
-        s->name_to_port_config.at(port_name)->port);
-  }
+  auto s = c->require_server_state();
+  const auto& port_name = version_to_lobby_port_name.at(static_cast<size_t>(c->version()));
+  send_reconnect(c, s->connect_address_for_client(c),
+      s->name_to_port_config.at(port_name)->port);
 }
 
 void send_client_to_proxy_server(shared_ptr<Client> c) {
@@ -137,12 +125,7 @@ void send_client_to_proxy_server(shared_ptr<Client> c) {
     ses->remote_guild_card_number = 0;
   }
 
-  if (c->version() == GameVersion::XB) {
-    ses->resume_xb(c);
-    c->should_disconnect = true;
-  } else {
-    send_reconnect(c, s->connect_address_for_client(c), local_port);
-  }
+  send_reconnect(c, s->connect_address_for_client(c), local_port);
 }
 
 static void send_proxy_destinations_menu(shared_ptr<Client> c) {
@@ -887,13 +870,6 @@ static void on_9E_XB(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
     }
   }
 
-  try {
-    c->config.parse_from(cmd.client_config);
-  } catch (const invalid_argument&) {
-    // If we can't import the config, assume that the client was not connected
-    // to newserv before, so we should show the welcome message.
-    c->config.set_flag(Client::Flag::AT_WELCOME_MESSAGE);
-  }
   c->xb_netloc.reset(new XBNetworkLocation(cmd.netloc));
   c->xb_9E_unknown_a1a = cmd.unknown_a1a;
 
@@ -947,8 +923,9 @@ static void on_9E_XB(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
     c->log.info("Created license %s", l_str.c_str());
   }
 
-  send_update_client_config(c);
-  on_login_complete(c);
+  // The 9E command doesn't include the client config, so we need to request it
+  // separately with a 9F command. The 9F handler will call on_login_complete.
+  send_command(c, 0x9F, 0x00);
 }
 
 static void on_93_BB(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
@@ -1045,13 +1022,35 @@ static void on_93_BB(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
   }
 }
 
-static void on_9F_V3(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
-  if (c->version() == GameVersion::BB) {
-    const auto& cmd = check_size_t<C_ClientConfig_BB_9F>(data);
-    c->config.parse_from(cmd.data);
-  } else {
-    const auto& cmd = check_size_t<C_ClientConfig_V3_9F>(data);
-    c->config.parse_from(cmd.data);
+static void on_9F(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
+  switch (c->version()) {
+    case GameVersion::GC: {
+      const auto& cmd = check_size_t<C_ClientConfig_V3_9F>(data);
+      c->config.parse_from(cmd.data);
+      break;
+    }
+    case GameVersion::XB: {
+      const auto& cmd = check_size_t<C_ClientConfig_V3_9F>(data);
+      // On XB, this command is part of the login sequence, so we may not be
+      // able to import the config the first time the client connects. If we
+      // can't import the config, assume that the client was not connected to
+      // newserv before, so we should show the welcome message.
+      try {
+        c->config.parse_from(cmd.data);
+      } catch (const invalid_argument&) {
+        c->config.set_flag(Client::Flag::AT_WELCOME_MESSAGE);
+      }
+      send_update_client_config(c);
+      on_login_complete(c);
+      break;
+    }
+    case GameVersion::BB: {
+      const auto& cmd = check_size_t<C_ClientConfig_BB_9F>(data);
+      c->config.parse_from(cmd.data);
+      break;
+    }
+    default:
+      throw logic_error("incorrect client version for 9F command");
   }
 }
 
@@ -1063,20 +1062,6 @@ static void on_96(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
 static void on_B1(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
   check_size_v(data.size(), 0);
   send_server_time(c);
-  // The B1 command is sent in response to a 97 command, which is normally part
-  // of the pre-ship-select login sequence. However, newserv delays this until
-  // after the ship select menu so that loading a GameCube program doesn't cause
-  // the player's items to be deleted when they next play PSO. It's also not a
-  // good idea to send a 97 and 19 at the same time, because the memory card and
-  // BBA are on the same EXI bus on the GameCube and this seems to cause the SYN
-  // packet after a 19 to get dropped pretty often, which causes a delay in
-  // joining the lobby. This is why we delay the 19 command until the client
-  // responds after saving.
-  if (c->should_send_to_lobby_server) {
-    send_client_to_lobby_server(c);
-  } else if (c->should_send_to_proxy_server) {
-    send_client_to_proxy_server(c);
-  }
 }
 
 static void on_BA_Ep3(shared_ptr<Client> c, uint16_t command, uint32_t, string& data) {
@@ -3811,7 +3796,7 @@ static void on_6F(shared_ptr<Client> c, uint16_t command, uint32_t, string& data
   add_next_game_client(l);
 }
 
-static void on_99_GC(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
+static void on_99(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
   check_size_v(data.size(), 0);
 
   // This is an odd place to send 6xB4x52, but there's a reason for it. If the
@@ -3828,6 +3813,22 @@ static void on_99_GC(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
     if (watched_l) {
       send_ep3_update_game_metadata(watched_l);
     }
+  }
+
+  // The 99 command is sent in response to a B1 command, which is normally part
+  // of the pre-ship-select login sequence. However, newserv delays the 97
+  // command (and therefore the following B1 command) until after the ship
+  // select menu so that loading a GameCube program doesn't cause the player's
+  // items to be deleted when they next play PSO. It's also not a good idea to
+  // send a 97 and 19 at the same time, because the memory card and BBA are on
+  // the same EXI bus on the GameCube and this seems to cause the SYN packet
+  // after a 19 to get dropped pretty often, which causes a delay in joining the
+  // lobby. This is why we delay the 19 command until the client responds after
+  // saving.
+  if (c->should_send_to_lobby_server) {
+    send_client_to_lobby_server(c);
+  } else if (c->should_send_to_proxy_server) {
+    send_client_to_proxy_server(c);
   }
 }
 
@@ -4381,13 +4382,13 @@ static on_command_t handlers[0x100][6] = {
   /* 96 */ {nullptr, on_96,          on_96,       on_96,          on_96,          nullptr},
   /* 97 */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
   /* 98 */ {nullptr, on_61_98,       on_61_98,    on_61_98,       on_61_98,       on_61_98},
-  /* 99 */ {nullptr, on_ignored,     on_ignored,  on_99_GC,       on_ignored,     on_ignored},
+  /* 99 */ {nullptr, on_99,          on_99,       on_99,          on_99,          on_99},
   /* 9A */ {nullptr, on_9A,          on_9A,       on_9A,          nullptr,        nullptr},
   /* 9B */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
   /* 9C */ {nullptr, on_9C,          on_9C,       on_9C,          on_9C,          nullptr},
   /* 9D */ {nullptr, on_9D_9E,       on_9D_9E,    on_9D_9E,       on_9D_9E,       nullptr},
   /* 9E */ {nullptr, nullptr,        on_9D_9E,    on_9D_9E,       on_9E_XB,       nullptr},
-  /* 9F */ {nullptr, nullptr,        nullptr,     on_9F_V3,       on_9F_V3,       nullptr},
+  /* 9F */ {nullptr, nullptr,        nullptr,     on_9F,          on_9F,          on_9F},
   //        PATCH    DC              PC           GC              XB              BB
   /* A0 */ {nullptr, on_A0,          on_A0,       on_A0,          on_A0,          on_A0},
   /* A1 */ {nullptr, on_A1,          on_A1,       on_A1,          on_A1,          on_A1},
@@ -4504,7 +4505,6 @@ static void check_unlicensed_command(GameVersion version, uint8_t command) {
       }
       break;
     case GameVersion::GC:
-    case GameVersion::XB:
       // See comment in the DC case above for why DC commands are included here.
       if (command != 0x88 && // DC NTE
           command != 0x8B && // DC NTE
@@ -4516,6 +4516,11 @@ static void check_unlicensed_command(GameVersion version, uint8_t command) {
           command != 0x9E && // GC non-trial
           command != 0xDB) { // GC non-trial
         throw runtime_error("only commands 88, 8B, 90, 93, 9A, 9C, 9D, 9E, and DB may be sent before login");
+      }
+      break;
+    case GameVersion::XB:
+      if (command != 0x9E && command != 0x9F) {
+        throw runtime_error("only commands 9E and 9F may be sent before login");
       }
       break;
     case GameVersion::BB:

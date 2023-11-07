@@ -259,12 +259,6 @@ void ProxyServer::UnlinkedSession::on_input(Channel& ch, uint16_t command, uint3
   auto s = server->state;
 
   bool should_close_unlinked_session = false;
-  shared_ptr<License> license;
-  uint32_t sub_version = 0;
-  string character_name;
-  Client::Config config;
-  string login_command_bb;
-  string hardware_id;
 
   try {
     if (ses->version == GameVersion::DC) {
@@ -272,18 +266,18 @@ void ProxyServer::UnlinkedSession::on_input(Channel& ch, uint16_t command, uint3
       // anything else, disconnect
       if (command == 0x93) {
         const auto& cmd = check_size_t<C_LoginV1_DC_93>(data);
-        license = s->license_index->verify_v1_v2(stoul(cmd.serial_number.decode(), nullptr, 16), cmd.access_key.decode());
-        sub_version = cmd.sub_version;
+        ses->license = s->license_index->verify_v1_v2(stoul(cmd.serial_number.decode(), nullptr, 16), cmd.access_key.decode());
+        ses->sub_version = cmd.sub_version;
         ses->channel.language = cmd.language;
-        character_name = cmd.name.decode(ses->channel.language);
-        hardware_id = cmd.hardware_id.decode();
-        config.set_flag(Client::Flag::IS_DC_V1);
+        ses->character_name = cmd.name.decode(ses->channel.language);
+        ses->hardware_id = cmd.hardware_id.decode();
+        ses->config.set_flag(Client::Flag::IS_DC_V1);
       } else if (command == 0x9D) {
         const auto& cmd = check_size_t<C_Login_DC_PC_GC_9D>(data, sizeof(C_LoginExtended_DC_GC_9D));
-        license = s->license_index->verify_v1_v2(stoul(cmd.serial_number.decode(), nullptr, 16), cmd.access_key.decode());
-        sub_version = cmd.sub_version;
+        ses->license = s->license_index->verify_v1_v2(stoul(cmd.serial_number.decode(), nullptr, 16), cmd.access_key.decode());
+        ses->sub_version = cmd.sub_version;
         ses->channel.language = cmd.language;
-        character_name = cmd.name.decode(ses->channel.language);
+        ses->character_name = cmd.name.decode(ses->channel.language);
       } else {
         throw runtime_error("command is not 93 or 9D");
       }
@@ -295,10 +289,10 @@ void ProxyServer::UnlinkedSession::on_input(Channel& ch, uint16_t command, uint3
         throw runtime_error("command is not 9D");
       }
       const auto& cmd = check_size_t<C_Login_DC_PC_GC_9D>(data, sizeof(C_LoginExtended_PC_9D));
-      license = s->license_index->verify_v1_v2(stoul(cmd.serial_number.decode(), nullptr, 16), cmd.access_key.decode());
-      sub_version = cmd.sub_version;
+      ses->license = s->license_index->verify_v1_v2(stoul(cmd.serial_number.decode(), nullptr, 16), cmd.access_key.decode());
+      ses->sub_version = cmd.sub_version;
       ses->channel.language = cmd.language;
-      character_name = cmd.name.decode(ses->channel.language);
+      ses->character_name = cmd.name.decode(ses->channel.language);
 
     } else if (ses->version == GameVersion::GC) {
       // We should only get a 9E while the session is unlinked; if we get
@@ -308,11 +302,34 @@ void ProxyServer::UnlinkedSession::on_input(Channel& ch, uint16_t command, uint3
         throw runtime_error("command is not 9E");
       }
       const auto& cmd = check_size_t<C_Login_GC_9E>(data, sizeof(C_LoginExtended_GC_9E));
-      license = s->license_index->verify_gc(stoul(cmd.serial_number.decode(), nullptr, 16), cmd.access_key.decode());
-      sub_version = cmd.sub_version;
+      ses->license = s->license_index->verify_gc(stoul(cmd.serial_number.decode(), nullptr, 16), cmd.access_key.decode());
+      ses->sub_version = cmd.sub_version;
       ses->channel.language = cmd.language;
-      character_name = cmd.name.decode(ses->channel.language);
-      config.parse_from(cmd.client_config);
+      ses->character_name = cmd.name.decode(ses->channel.language);
+      ses->config.parse_from(cmd.client_config);
+
+    } else if (ses->version == GameVersion::XB) {
+      // We should only get a 9E or 9F while the session is unlinked; if we get
+      // anything else, disconnect
+      if (command == 0x9E) {
+        const auto& cmd = check_size_t<C_Login_XB_9E>(data, sizeof(C_LoginExtended_XB_9E));
+        string xb_gamertag = cmd.serial_number.decode();
+        uint64_t xb_user_id = stoull(cmd.access_key.decode(), nullptr, 16);
+        uint64_t xb_account_id = cmd.netloc.account_id;
+        ses->license = s->license_index->verify_xb(xb_gamertag, xb_user_id, xb_account_id);
+        ses->sub_version = cmd.sub_version;
+        ses->channel.language = cmd.language;
+        ses->character_name = cmd.name.decode(ses->channel.language);
+        ses->xb_netloc = cmd.netloc;
+        ses->xb_9E_unknown_a1a = cmd.unknown_a1a;
+        ses->channel.send(0x9F, 0x00);
+        return;
+      } else if (command == 0x9F) {
+        const auto& cmd = check_size_t<C_ClientConfig_V3_9F>(data);
+        ses->config.parse_from(cmd.data);
+      } else {
+        throw runtime_error("command is not 9E or 9F");
+      }
 
     } else if (ses->version == GameVersion::XB) {
       throw runtime_error("xbox licenses are not implemented");
@@ -325,7 +342,7 @@ void ProxyServer::UnlinkedSession::on_input(Channel& ch, uint16_t command, uint3
       }
       const auto& cmd = check_size_t<C_Login_BB_93>(data);
       try {
-        license = s->license_index->verify_bb(cmd.username.decode(), cmd.password.decode());
+        ses->license = s->license_index->verify_bb(cmd.username.decode(), cmd.password.decode());
       } catch (const LicenseIndex::missing_license&) {
         if (!s->allow_unregistered_users) {
           throw;
@@ -336,11 +353,11 @@ void ProxyServer::UnlinkedSession::on_input(Channel& ch, uint16_t command, uint3
         l->bb_password = cmd.password.decode();
         s->license_index->add(l);
         l->save();
-        license = l;
+        ses->license = l;
         string l_str = l->str();
         ses->log.info("Created license %s", l_str.c_str());
       }
-      login_command_bb = std::move(data);
+      ses->login_command_bb = std::move(data);
 
     } else {
       throw logic_error("unsupported unlinked session version");
@@ -358,7 +375,7 @@ void ProxyServer::UnlinkedSession::on_input(Channel& ch, uint16_t command, uint3
 
   // If license is non-null, then the client has a password and can be connected
   // to the remote lobby server.
-  if (license.get()) {
+  if (ses->license.get()) {
     // At this point, we will always close the unlinked session, even if it
     // doesn't get converted/merged to a linked session
     should_close_unlinked_session = true;
@@ -366,18 +383,18 @@ void ProxyServer::UnlinkedSession::on_input(Channel& ch, uint16_t command, uint3
     // Look up the linked session for this license (if any)
     shared_ptr<LinkedSession> linked_ses;
     try {
-      linked_ses = server->id_to_session.at(license->serial_number);
+      linked_ses = server->id_to_session.at(ses->license->serial_number);
       linked_ses->log.info("Resuming linked session from unlinked session");
 
     } catch (const out_of_range&) {
       // If there's no open session for this license, then there must be a valid
       // destination somewhere - either in the client config or in the unlinked
       // session
-      if (config.proxy_destination_address != 0) {
-        linked_ses.reset(new LinkedSession(server, ses->local_port, ses->version, license, config));
+      if (ses->config.proxy_destination_address != 0) {
+        linked_ses.reset(new LinkedSession(server, ses->local_port, ses->version, ses->license, ses->config));
         linked_ses->log.info("Opened licensed session for unlinked session based on client config");
       } else if (ses->next_destination.ss_family == AF_INET) {
-        linked_ses.reset(new LinkedSession(server, ses->local_port, ses->version, license, ses->next_destination));
+        linked_ses.reset(new LinkedSession(server, ses->local_port, ses->version, ses->license, ses->next_destination));
         linked_ses->log.info("Opened licensed session for unlinked session based on unlinked default destination");
       } else {
         ses->log.error("Cannot open linked session: no valid destination in client config or unlinked session");
@@ -385,7 +402,7 @@ void ProxyServer::UnlinkedSession::on_input(Channel& ch, uint16_t command, uint3
     }
 
     if (linked_ses.get()) {
-      server->id_to_session.emplace(license->serial_number, linked_ses);
+      server->id_to_session.emplace(ses->license->serial_number, linked_ses);
       if (linked_ses->version() != ses->version) {
         linked_ses->log.error("Linked session has different game version");
       } else {
@@ -395,14 +412,16 @@ void ProxyServer::UnlinkedSession::on_input(Channel& ch, uint16_t command, uint3
             linked_ses->resume(
                 std::move(ses->channel),
                 ses->detector_crypt,
-                std::move(login_command_bb));
+                std::move(ses->login_command_bb));
           } else {
             linked_ses->resume(
                 std::move(ses->channel),
                 ses->detector_crypt,
-                sub_version,
-                character_name,
-                hardware_id);
+                ses->sub_version,
+                ses->character_name,
+                ses->hardware_id,
+                ses->xb_netloc,
+                ses->xb_9E_unknown_a1a);
           }
         } catch (const exception& e) {
           linked_ses->log.error("Failed to resume linked session: %s", e.what());
@@ -526,24 +545,19 @@ std::shared_ptr<ServerState> ProxyServer::LinkedSession::require_server_state() 
   return this->require_server()->state;
 }
 
-void ProxyServer::LinkedSession::resume_xb(shared_ptr<Client> c) {
-  this->sub_version = c->sub_version;
-  this->character_name = c->game_data.player()->disp.name.decode();
-  this->config = c->config;
-  this->wrapped_client = c;
-  this->resume_inner(std::move(c->channel), detector_crypt);
-  c->suspend_timeouts();
-}
-
 void ProxyServer::LinkedSession::resume(
     Channel&& client_channel,
     shared_ptr<PSOBBMultiKeyDetectorEncryption> detector_crypt,
     uint32_t sub_version,
     const string& character_name,
-    const string& hardware_id) {
+    const string& hardware_id,
+    const XBNetworkLocation& xb_netloc,
+    const parray<le_uint32_t, 3>& xb_9E_unknown_a1a) {
   this->sub_version = sub_version;
   this->character_name = character_name;
   this->hardware_id = hardware_id;
+  this->xb_netloc = xb_netloc;
+  this->xb_9E_unknown_a1a = xb_9E_unknown_a1a;
   this->resume_inner(std::move(client_channel), detector_crypt);
 }
 
@@ -720,43 +734,31 @@ void ProxyServer::LinkedSession::send_to_game_server(const char* error_message) 
       this->client_channel.send(0x04, 0x00, &update_client_config_cmd, sizeof(update_client_config_cmd));
     }
 
-    if (this->version() == GameVersion::XB) {
-      if (!this->wrapped_client) {
-        throw logic_error("wrapped client is missing from XB proxy session");
-      }
-      this->wrapped_client->should_disconnect = false;
-      s->game_server->connect_client(this->wrapped_client, std::move(this->client_channel));
-      on_login_complete(this->wrapped_client);
-      this->disconnect_action = DisconnectAction::CLOSE_IMMEDIATELY;
-      this->disconnect();
+    const auto& port_name = version_to_login_port_name.at(static_cast<size_t>(this->version()));
 
+    S_Reconnect_19 reconnect_cmd = {{0, s->name_to_port_config.at(port_name)->port, 0}};
+
+    // If the client is on a virtual connection, we can use any address
+    // here and they should be able to connect back to the game server. If
+    // the client is on a real connection, we'll use the sockname of the
+    // existing connection (like we do in the server 19 command handler).
+    if (this->client_channel.is_virtual_connection) {
+      struct sockaddr_in* dest_sin = reinterpret_cast<struct sockaddr_in*>(&this->next_destination);
+      if (dest_sin->sin_family != AF_INET) {
+        throw logic_error("ss not AF_INET");
+      }
+      reconnect_cmd.address.store_raw(dest_sin->sin_addr.s_addr);
     } else {
-      const auto& port_name = version_to_login_port_name.at(static_cast<size_t>(this->version()));
-
-      S_Reconnect_19 reconnect_cmd = {{0, s->name_to_port_config.at(port_name)->port, 0}};
-
-      // If the client is on a virtual connection, we can use any address
-      // here and they should be able to connect back to the game server. If
-      // the client is on a real connection, we'll use the sockname of the
-      // existing connection (like we do in the server 19 command handler).
-      if (this->client_channel.is_virtual_connection) {
-        struct sockaddr_in* dest_sin = reinterpret_cast<struct sockaddr_in*>(&this->next_destination);
-        if (dest_sin->sin_family != AF_INET) {
-          throw logic_error("ss not AF_INET");
-        }
-        reconnect_cmd.address.store_raw(dest_sin->sin_addr.s_addr);
-      } else {
-        const struct sockaddr_in* sin = reinterpret_cast<const struct sockaddr_in*>(
-            &this->client_channel.local_addr);
-        if (sin->sin_family != AF_INET) {
-          throw logic_error("existing connection is not ipv4");
-        }
-        reconnect_cmd.address.store_raw(sin->sin_addr.s_addr);
+      const struct sockaddr_in* sin = reinterpret_cast<const struct sockaddr_in*>(
+          &this->client_channel.local_addr);
+      if (sin->sin_family != AF_INET) {
+        throw logic_error("existing connection is not ipv4");
       }
-
-      this->client_channel.send(0x19, 0x00, &reconnect_cmd, sizeof(reconnect_cmd));
-      this->disconnect_action = DisconnectAction::CLOSE_IMMEDIATELY;
+      reconnect_cmd.address.store_raw(sin->sin_addr.s_addr);
     }
+
+    this->client_channel.send(0x19, 0x00, &reconnect_cmd, sizeof(reconnect_cmd));
+    this->disconnect_action = DisconnectAction::CLOSE_IMMEDIATELY;
   }
 }
 
@@ -836,7 +838,9 @@ shared_ptr<ProxyServer::LinkedSession> ProxyServer::get_session_by_name(
 }
 
 shared_ptr<ProxyServer::LinkedSession> ProxyServer::create_licensed_session(
-    shared_ptr<License> l, uint16_t local_port, GameVersion version,
+    shared_ptr<License> l,
+    uint16_t local_port,
+    GameVersion version,
     const Client::Config& config) {
   shared_ptr<LinkedSession> session(new LinkedSession(this->shared_from_this(), local_port, version, l, config));
   auto emplace_ret = this->id_to_session.emplace(session->id, session);

@@ -61,6 +61,8 @@ public:
     std::string character_name;
     std::string hardware_id; // Only used for DC sessions
     std::string login_command_bb;
+    XBNetworkLocation xb_netloc;
+    parray<le_uint32_t, 3> xb_9E_unknown_a1a;
 
     uint32_t challenge_rank_color_override;
     std::string challenge_rank_title_override;
@@ -91,7 +93,6 @@ public:
     bool is_in_quest;
 
     std::shared_ptr<PSOBBMultiKeyDetectorEncryption> detector_crypt;
-    std::shared_ptr<Client> wrapped_client;
 
     struct SavingFile {
       std::string basename;
@@ -145,13 +146,14 @@ public:
       return this->client_channel.language;
     }
 
-    void resume_xb(std::shared_ptr<Client> wrapped_client);
     void resume(
         Channel&& client_channel,
         std::shared_ptr<PSOBBMultiKeyDetectorEncryption> detector_crypt,
         uint32_t sub_version,
         const std::string& character_name,
-        const std::string& hardware_id);
+        const std::string& hardware_id,
+        const XBNetworkLocation& xb_netloc,
+        const parray<le_uint32_t, 3>& xb_9E_unknown_a1a);
     void resume(
         Channel&& client_channel,
         std::shared_ptr<PSOBBMultiKeyDetectorEncryption> detector_crypt,
@@ -221,6 +223,19 @@ private:
     struct sockaddr_storage next_destination;
 
     std::shared_ptr<PSOBBMultiKeyDetectorEncryption> detector_crypt;
+
+    // Temporary state used just before resuming a LinkedSession. These aren't
+    // just local variables inside on_input because XB requires two commands to
+    // get started (9E and 9F), so we need to store this state somewhere between
+    // those commands.
+    std::shared_ptr<License> license;
+    uint32_t sub_version = 0;
+    std::string character_name;
+    Client::Config config;
+    std::string login_command_bb;
+    std::string hardware_id;
+    XBNetworkLocation xb_netloc;
+    parray<le_uint32_t, 3> xb_9E_unknown_a1a;
 
     UnlinkedSession(std::shared_ptr<ProxyServer> server, struct bufferevent* bev, uint16_t port, GameVersion version);
 

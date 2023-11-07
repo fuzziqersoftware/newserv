@@ -2658,10 +2658,10 @@ I 16332 2023-09-17 10:14:35 - [Commands] Received from C-1 (Tali) (version=GC co
 I 16332 2023-09-17 10:14:35 - [Commands] Sending to C-1 (Tali) (version=GC command=B1 flag=00)
 0000 | B1 00 1C 00 32 30 32 33 3A 30 39 3A 31 37 3A 20 |     2023:09:17:
 0010 | 31 37 3A 31 34 3A 33 35 2E 30 30 30             | 17:14:35.000
-I 16332 2023-09-17 10:14:35 - [Commands] Sending to C-1 (Tali) (version=GC command=19 flag=00)
-0000 | 19 00 0C 00 23 23 23 23 F6 13 00 00             |     ####
 I 16332 2023-09-17 10:14:37 - [Commands] Received from C-1 (Tali) (version=GC command=99 flag=00)
 0000 | 99 00 04 00                                     |
+I 16332 2023-09-17 10:14:35 - [Commands] Sending to C-1 (Tali) (version=GC command=19 flag=00)
+0000 | 19 00 0C 00 23 23 23 23 F6 13 00 00             |     ####
 I 16332 2023-09-17 10:14:37 - [Server] Client disconnected: C-1 on virtual connection 0x1048044d0
 I 16332 2023-09-17 10:14:37 - [C-1] Deleted
 W 16332 2023-09-17 10:14:37 - [IPStackSimulator] Failed to process frame: non-SYN frame does not correspond to any open TCP connection

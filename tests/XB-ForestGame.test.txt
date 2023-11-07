@@ -45,6 +45,12 @@ I 7323 2023-11-07 02:01:35 - [Commands] Received from C-1 (version=XB command=9E
 0180 | 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 |
 0190 | 00 00 00 00 00 00 00 00                         |
 I 7323 2023-11-07 02:01:35 - [Commands] Sending to C-1 (version=XB command=04 flag=00)
+0000 | 9F 00 04 00                                     |
+I 7323 2023-11-07 02:01:36 - [Commands] Received from C-1 (version=XB command=96 flag=00)
+0000 | 9F 00 24 00 00 00 00 00 00 00 00 00 00 00 00 00 |
+0010 | 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 |
+0020 | 00 00 00 00                                     |
+I 7323 2023-11-07 02:01:35 - [Commands] Sending to C-1 (version=XB command=04 flag=00)
 0000 | 04 00 2C 00 00 00 01 00 E2 D4 45 39 32 AC 99 83 |   ,       E92
 0010 | 00 00 00 34 00 81 00 42 60 00 00 00 00 00 00 00 |    4   B`
 0020 | 00 00 00 00 00 00 FF FF 80 FF FF FF             |
@@ -88,6 +94,8 @@ I 7323 2023-11-07 02:01:42 - [Commands] Received from C-1 (version=XB command=B1
 I 7323 2023-11-07 02:01:42 - [Commands] Sending to C-1 (version=XB command=B1 flag=00)
 0000 | B1 00 1C 00 32 30 32 33 3A 31 31 3A 30 37 3A 20 |     2023:11:07:
 0010 | 30 32 3A 30 31 3A 34 32 2E 30 30 30             | 02:01:42.000
+I 7323 2023-11-07 02:01:42 - [Commands] Received from C-1 (version=XB command=99 flag=00)
+0000 | 99 00 04 00                                     |
 I 7323 2023-11-07 02:01:42 - [Commands] Sending to C-1 (version=XB command=83 flag=0F)
 0000 | 83 0F B8 00 33 00 00 33 01 00 00 00 00 00 00 00 |     3  3
 0010 | 33 00 00 33 02 00 00 00 00 00 00 00 33 00 00 33 | 3  3        3  3
@@ -103,8 +111,6 @@ I 7323 2023-11-07 02:01:42 - [Commands] Sending to C-1 (version=XB command=83 fl
 00B0 | 0F 00 00 00 00 00 00 00                         |
 I 7323 2023-11-07 02:01:42 - [Commands] Sending to C-1 (version=XB command=95 flag=00)
 0000 | 95 00 04 00                                     |
-I 7323 2023-11-07 02:01:42 - [Commands] Received from C-1 (version=XB command=99 flag=00)
-0000 | 99 00 04 00                                     |
 I 7323 2023-11-07 02:01:43 - [Commands] Received from C-1 (version=XB command=61 flag=03)
 0000 | 61 03 80 06 03 00 00 01 02 00 00 00 4C 00 00 00 | a           L
 0010 | 02 00 05 00 F4 01 00 00 00 00 00 00 00 00 01 00 |

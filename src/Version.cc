@@ -9,11 +9,11 @@
 using namespace std;
 
 const vector<string> version_to_login_port_name = {
-    "bb-patch", "console-login", "pc-login", "console-login", "console-login", "bb-init"};
+    "bb-patch", "console-login", "pc-login", "console-login", "xb-login", "bb-init"};
 const vector<string> version_to_lobby_port_name = {
-    "bb-patch", "console-lobby", "pc-lobby", "console-lobby", "console-lobby", "bb-lobby"};
+    "bb-patch", "console-lobby", "pc-lobby", "console-lobby", "xb-lobby", "bb-lobby"};
 const vector<string> version_to_proxy_port_name = {
-    "", "dc-proxy", "pc-proxy", "gc-proxy", "xb", "bb-proxy"};
+    "", "dc-proxy", "pc-proxy", "gc-proxy", "xb-proxy", "bb-proxy"};
 
 const char* name_for_version(GameVersion version) {
   switch (version) {

@@ -1888,6 +1888,9 @@ struct C_LoginExtended_PC_9D : C_Login_DC_PC_GC_9D {
 // Not used on GC Episodes 1&2 Trial Edition.
 // The extended version of this command is used in the same circumstances as
 // when PSO PC uses the extended version of the 9D command.
+// PSO XB does not send the client config (security data) in the 9E command,
+// even though there is a space for it. The server must use 9F instead to
+// retrieve the client config.
 // header.flag is 1 if the client has UDP disabled.
 
 struct C_Login_GC_9E : C_Login_DC_PC_GC_9D {
@@ -1897,7 +1900,8 @@ struct C_LoginExtended_GC_9E : C_Login_GC_9E {
   SC_MeetUserExtension<TextEncoding::MARKED> extension;
 } __packed__;
 
-struct C_Login_XB_9E : C_Login_GC_9E {
+struct C_Login_XB_9E : C_Login_DC_PC_GC_9D {
+  parray<uint8_t, 0x20> unused;
   XBNetworkLocation netloc;
   parray<le_uint32_t, 3> unknown_a1a;
   le_uint32_t xb_user_id_high = 0;

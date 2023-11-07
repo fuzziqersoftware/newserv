@@ -356,6 +356,7 @@ static HandlerResult S_V123P_02_17(
         }
       }
       throw logic_error("DC/PC init command not handled");
+
     case GameVersion::GC:
       if (command == 0x17) {
         C_VerifyLicense_V3_DB cmd;
@@ -411,6 +412,7 @@ static HandlerResult S_V123P_02_17(
         return S_G_9A(ses, command, flag, data);
       }
       throw logic_error("GC init command not handled");
+
     case GameVersion::XB: {
       C_LoginExtended_XB_9E cmd;
       if (ses->remote_guild_card_number < 0) {
@@ -434,20 +436,14 @@ static HandlerResult S_V123P_02_17(
       } else {
         cmd.name.encode(ses->character_name, ses->language());
       }
-      cmd.client_config = ses->remote_client_config_data;
-      if (ses->wrapped_client && ses->wrapped_client->xb_netloc) {
-        cmd.netloc = *ses->wrapped_client->xb_netloc;
-        cmd.unknown_a1a = ses->wrapped_client->xb_9E_unknown_a1a;
-      } else {
-        cmd.netloc.account_id = ses->license->xb_account_id;
-      }
+      cmd.netloc = ses->xb_netloc;
+      cmd.unknown_a1a = ses->xb_9E_unknown_a1a;
       cmd.xb_user_id_high = (ses->license->xb_user_id >> 32) & 0xFFFFFFFF;
       cmd.xb_user_id_low = ses->license->xb_user_id & 0xFFFFFFFF;
-      ses->server_channel.send(
-          0x9E, 0x01, &cmd,
-          cmd.is_extended ? sizeof(C_LoginExtended_XB_9E) : sizeof(C_Login_XB_9E));
+      ses->server_channel.send(0x9E, 0x01, &cmd, sizeof(C_LoginExtended_XB_9E));
       return HandlerResult::Type::SUPPRESS;
     }
+
     default:
       throw logic_error("invalid game version in server init handler");
   }
@@ -1538,7 +1534,9 @@ static HandlerResult S_AC(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t, 
 }
 
 static HandlerResult S_66_69_E9(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t, uint32_t, string& data) {
-  const auto& cmd = check_size_t<S_LeaveLobby_66_69_Ep3_E9>(data);
+  // Schtserv sends a large command here for unknown reasons. The client ignores
+  // the extra data, so we allow the large command here.
+  const auto& cmd = check_size_t<S_LeaveLobby_66_69_Ep3_E9>(data, 0xFFFF);
   size_t index = cmd.client_id;
   if (index >= ses->lobby_players.size()) {
     ses->log.warning("Lobby leave command references missing position");
