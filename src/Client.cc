@@ -35,6 +35,8 @@ void Client::Config::set_flags_for_version(GameVersion version, int64_t sub_vers
         case GameVersion::GC:
           break;
         case GameVersion::XB:
+          // TODO: Do all versions of XB need this flag? US does, at least.
+          this->set_flag(Flag::NO_D6_AFTER_LOBBY);
           this->set_flag(Flag::SEND_FUNCTION_CALL_NO_CACHE_PATCH);
           break;
         case GameVersion::PC:
@@ -81,7 +83,7 @@ void Client::Config::set_flags_for_version(GameVersion version, int64_t sub_vers
       this->set_flag(Flag::SEND_FUNCTION_CALL_NO_CACHE_PATCH);
       break;
     case 0x30: // GC Ep1&2 GameJam demo, GC Ep1&2 JP v1.02, at least one version of PSO XB
-    case 0x31: // GC Ep1&2 US v1.00, GC US v1.01, GC EU v1.00, GC JP v1.00
+    case 0x31: // GC Ep1&2 US v1.00, GC US v1.01, GC EU v1.00, GC JP v1.00, XB US
     case 0x34: // GC Ep1&2 JP v1.03
       // In the case of GC Trial Edition, the IS_GC_TRIAL_EDITION flag is
       // already set when we get here (because the client has used V2 encryption
@@ -145,6 +147,7 @@ Client::Client(
       should_send_to_lobby_server(false),
       should_send_to_proxy_server(false),
       bb_connection_phase(0xFF),
+      sub_version(-1),
       x(0.0f),
       z(0.0f),
       area(0),
@@ -306,4 +309,10 @@ void Client::idle_timeout() {
   } else {
     this->log.info("Server is deleted; cannot disconnect client");
   }
+}
+
+void Client::suspend_timeouts() {
+  event_del(this->send_ping_event.get());
+  event_del(this->idle_timeout_event.get());
+  this->log.info("Timeouts suspended");
 }

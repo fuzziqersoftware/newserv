@@ -141,6 +141,9 @@ Server commands:\n\
     Add a license to the server. <parameters> is some subset of the following:\n\
       bb-username=<username> (BB username)\n\
       bb-password=<password> (BB password)\n\
+      xb-gamertag=<gamertag> (Xbox gamertag)\n\
+      xb-user-id=<user-id> (Xbox user ID)\n\
+      xb-account-id=<account-id> (Xbox account ID)\n\
       gc-password=<password> (GC password)\n\
       access-key=<access-key> (DC/GC/PC access key)\n\
       serial=<serial-number> (decimal serial number; required for all licenses)\n\
@@ -319,31 +322,21 @@ Proxy session commands:\n\
 
     for (const string& token : split(command_args, ' ')) {
       if (starts_with(token, "bb-username=")) {
-        if (token.size() >= 32) {
-          throw invalid_argument("username too long");
-        }
         l->bb_username = token.substr(12);
-
       } else if (starts_with(token, "bb-password=")) {
-        if (token.size() >= 32) {
-          throw invalid_argument("bb-password too long");
-        }
         l->bb_password = token.substr(12);
-
+      } else if (starts_with(token, "xb-gamertag=")) {
+        l->xb_gamertag = token.substr(12);
+      } else if (starts_with(token, "xb-user-id=")) {
+        l->xb_user_id = stoull(token.substr(11), nullptr, 16);
+      } else if (starts_with(token, "xb-account-id=")) {
+        l->xb_account_id = stoull(token.substr(14), nullptr, 16);
       } else if (starts_with(token, "gc-password=")) {
-        if (token.size() > 20) {
-          throw invalid_argument("gc-password too long");
-        }
         l->gc_password = token.substr(12);
-
       } else if (starts_with(token, "access-key=")) {
-        if (token.size() > 23) {
-          throw invalid_argument("access-key is too long");
-        }
         l->access_key = token.substr(11);
-
       } else if (starts_with(token, "serial=")) {
-        l->serial_number = stoul(token.substr(7));
+        l->serial_number = stoul(token.substr(7), nullptr, 0);
 
       } else if (starts_with(token, "flags=")) {
         string mask = token.substr(6);
@@ -386,31 +379,21 @@ Proxy session commands:\n\
     try {
       for (const string& token : tokens) {
         if (starts_with(token, "bb-username=")) {
-          if (token.size() >= 32) {
-            throw invalid_argument("username too long");
-          }
           l->bb_username = token.substr(12);
-
         } else if (starts_with(token, "bb-password=")) {
-          if (token.size() >= 32) {
-            throw invalid_argument("bb-password too long");
-          }
           l->bb_password = token.substr(12);
-
+        } else if (starts_with(token, "xb-gamertag=")) {
+          l->xb_gamertag = token.substr(12);
+        } else if (starts_with(token, "xb-user-id=")) {
+          l->xb_user_id = stoull(token.substr(11), nullptr, 16);
+        } else if (starts_with(token, "xb-account-id=")) {
+          l->xb_account_id = stoull(token.substr(14), nullptr, 16);
         } else if (starts_with(token, "gc-password=")) {
-          if (token.size() > 20) {
-            throw invalid_argument("gc-password too long");
-          }
           l->gc_password = token.substr(12);
-
         } else if (starts_with(token, "access-key=")) {
-          if (token.size() > 23) {
-            throw invalid_argument("access-key is too long");
-          }
           l->access_key = token.substr(11);
-
         } else if (starts_with(token, "serial=")) {
-          l->serial_number = stoul(token.substr(7));
+          l->serial_number = stoul(token.substr(7), nullptr, 0);
 
         } else if (starts_with(token, "flags=")) {
           string mask = token.substr(6);

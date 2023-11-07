@@ -81,6 +81,7 @@ struct VersionedQuest {
 
   std::string bin_filename() const;
   std::string dat_filename() const;
+  std::string xb_filename() const;
 
   std::shared_ptr<VersionedQuest> create_download_quest(uint8_t override_language = 0xFF) const;
   std::string encode_qst() const;
@@ -149,5 +150,6 @@ std::string encode_qst_file(
     const std::string& dat_data,
     const std::string& name,
     uint32_t quest_number,
+    uint8_t language,
     QuestScriptVersion version,
     bool is_dlq_encoded);

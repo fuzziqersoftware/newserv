@@ -242,6 +242,7 @@ void send_card_search_result(
 void send_guild_card(
     Channel& ch,
     uint32_t guild_card_number,
+    uint64_t xb_user_id,
     const std::string& name,
     const std::string& team_name,
     const std::string& description,
@@ -362,9 +363,11 @@ enum class QuestFileType {
 void send_open_quest_file(
     std::shared_ptr<Client> c,
     const std::string& quest_name,
-    const std::string& basename,
-    std::shared_ptr<const std::string> contents,
-    QuestFileType type);
+    const std::string& filename,
+    const std::string& xb_filename,
+    uint32_t quest_number,
+    QuestFileType type,
+    std::shared_ptr<const std::string> contents);
 void send_quest_file_chunk(
     std::shared_ptr<Client> c,
     const std::string& filename,

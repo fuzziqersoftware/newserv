@@ -383,9 +383,7 @@ static void server_command_exit(shared_ptr<Client> c, const std::string&) {
       send_message_box(c, "");
     }
 
-    const auto& port_name = version_to_login_port_name.at(static_cast<size_t>(c->version()));
-    auto s = c->require_server_state();
-    send_reconnect(c, s->connect_address_for_client(c), s->name_to_port_config.at(port_name)->port);
+    send_client_to_login_server(c);
   }
 }
 
@@ -431,7 +429,7 @@ static void proxy_command_get_player_card(shared_ptr<ProxyServer::LinkedSession>
   bool any_card_sent = false;
   for (const auto& p : ses->lobby_players) {
     if (!p.name.empty() && args == p.name) {
-      send_guild_card(ses->client_channel, p.guild_card_number, p.name, "", "", p.language, p.section_id, p.char_class);
+      send_guild_card(ses->client_channel, p.guild_card_number, p.guild_card_number, p.name, "", "", p.language, p.section_id, p.char_class);
       any_card_sent = true;
     }
   }
@@ -441,7 +439,7 @@ static void proxy_command_get_player_card(shared_ptr<ProxyServer::LinkedSession>
       size_t index = stoull(args, nullptr, 0);
       const auto& p = ses->lobby_players.at(index);
       if (!p.name.empty()) {
-        send_guild_card(ses->client_channel, p.guild_card_number, p.name, "", "", p.language, p.section_id, p.char_class);
+        send_guild_card(ses->client_channel, p.guild_card_number, p.guild_card_number, p.name, "", "", p.language, p.section_id, p.char_class);
       }
     } catch (const exception& e) {
       send_text_message_printf(ses->client_channel, "Error: %s", e.what());

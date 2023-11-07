@@ -18,5 +18,11 @@ std::shared_ptr<Lobby> create_game_generic(
 
 void on_connect(std::shared_ptr<Client> c);
 void on_disconnect(std::shared_ptr<Client> c);
+void on_login_complete(std::shared_ptr<Client> c);
+
 void on_command(std::shared_ptr<Client> c, uint16_t command, uint32_t flag, std::string& data);
 void on_command_with_header(std::shared_ptr<Client> c, const std::string& data);
+
+void send_client_to_login_server(std::shared_ptr<Client> c);
+void send_client_to_lobby_server(std::shared_ptr<Client> c);
+void send_client_to_proxy_server(std::shared_ptr<Client> c);

@@ -38,9 +38,9 @@
 // DC = Both DCv1 and DCv2
 // PC = PSO PC (v2)
 // GC = PSO GC Episodes 1&2 and/or Episode 3
-// XB = PSO XBOX Episodes 1&2
+// XB = PSO Xbox Episodes 1&2
 // BB = PSO Blue Burst
-// V3 = PSO GC and PSO XBOX (these versions are similar and share many formats)
+// V3 = PSO GC and PSO Xbox (these versions are similar and share many formats)
 
 // For variable-length commands, generally a zero-length array is included on
 // the end of the struct if the command is received by newserv, and is omitted
@@ -988,7 +988,9 @@ struct S_OpenFile_PC_GC_44_A6 {
 // those extra bytes are unused, and the client does not fail if they're
 // omitted.
 struct S_OpenFile_XB_44_A6 : S_OpenFile_PC_GC_44_A6 {
-  parray<uint8_t, 0x18> unused2;
+  pstring<TextEncoding::ASCII, 0x10> xb_filename;
+  le_uint32_t content_meta;
+  parray<uint8_t, 4> unused2;
 } __packed__;
 
 struct S_OpenFile_BB_44_A6 {
@@ -1858,21 +1860,22 @@ struct C_Register_BB_9C {
 // by its menu ID and item ID.
 
 struct C_Login_DC_PC_GC_9D {
-  le_uint32_t player_tag = 0x00010000; // 0x00010000 if guild card is set (via 04)
-  le_uint32_t guild_card_number = 0; // 0xFFFFFFFF if not set
-  le_uint32_t unused1 = 0;
-  le_uint32_t unused2 = 0;
-  le_uint32_t sub_version = 0;
-  uint8_t is_extended = 0; // If 1, structure has extended format
-  uint8_t language = 0; // 0 = JP, 1 = EN, 2 = DE, 3 = FR, 4 = ES
-  parray<uint8_t, 0x2> unused3; // Always zeroes
-  pstring<TextEncoding::ASCII, 0x10> v1_serial_number;
-  pstring<TextEncoding::ASCII, 0x10> v1_access_key;
-  pstring<TextEncoding::ASCII, 0x10> serial_number; // On XB, this is the XBL gamertag
-  pstring<TextEncoding::ASCII, 0x10> access_key; // On XB, this is the XBL user ID
-  pstring<TextEncoding::ASCII, 0x30> serial_number2; // On XB, this is the XBL gamertag
-  pstring<TextEncoding::ASCII, 0x30> access_key2; // On XB, this is the XBL user ID
-  pstring<TextEncoding::ASCII, 0x10> name;
+  /* 04 */ le_uint32_t player_tag = 0x00010000; // 0x00010000 if guild card is set (via 04)
+  /* 08 */ le_uint32_t guild_card_number = 0; // 0xFFFFFFFF if not set
+  /* 0C */ le_uint32_t unused1 = 0;
+  /* 10 */ le_uint32_t unused2 = 0;
+  /* 14 */ le_uint32_t sub_version = 0;
+  /* 18 */ uint8_t is_extended = 0; // If 1, structure has extended format
+  /* 19 */ uint8_t language = 0; // 0 = JP, 1 = EN, 2 = DE, 3 = FR, 4 = ES
+  /* 1A */ parray<uint8_t, 0x2> unused3; // Always zeroes
+  /* 1C */ pstring<TextEncoding::ASCII, 0x10> v1_serial_number;
+  /* 2C */ pstring<TextEncoding::ASCII, 0x10> v1_access_key;
+  /* 3C */ pstring<TextEncoding::ASCII, 0x10> serial_number; // On XB, this is the XBL gamertag
+  /* 4C */ pstring<TextEncoding::ASCII, 0x10> access_key; // On XB, this is the XBL user ID
+  /* 5C */ pstring<TextEncoding::ASCII, 0x30> serial_number2; // On XB, this is the XBL gamertag
+  /* 8C */ pstring<TextEncoding::ASCII, 0x30> access_key2; // On XB, this is the XBL user ID
+  /* BC */ pstring<TextEncoding::ASCII, 0x10> name;
+  /* CC */
 } __packed__;
 struct C_LoginExtended_DC_GC_9D : C_Login_DC_PC_GC_9D {
   SC_MeetUserExtension<TextEncoding::MARKED> extension;
@@ -1896,7 +1899,10 @@ struct C_LoginExtended_GC_9E : C_Login_GC_9E {
 
 struct C_Login_XB_9E : C_Login_GC_9E {
   XBNetworkLocation netloc;
-  parray<le_uint32_t, 6> unknown_a1;
+  parray<le_uint32_t, 3> unknown_a1a;
+  le_uint32_t xb_user_id_high = 0;
+  le_uint32_t xb_user_id_low = 0;
+  le_uint32_t unknown_a1b = 0;
 } __packed__;
 struct C_LoginExtended_XB_9E : C_Login_XB_9E {
   SC_MeetUserExtension<TextEncoding::MARKED> extension;
@@ -2479,6 +2485,10 @@ struct C_SetBlockedSenders_BB_C6 : C_SetBlockedSenders_C6<28> {
 // newserv uses this command for all server-generated events (in response to CA
 // commands), except for map data requests. This differs from Sega's original
 // implementation, which sent CA responses via 60 commands instead.
+
+// C9 (C->S): Change connection status (Xbox)
+// header.flag specifies if the player's online status should be hidden; 1 means
+// shown, 2 means hidden.
 
 // CA (C->S): Server data request (Episode 3)
 // Internal name: SndCardServerData
@@ -3699,9 +3709,14 @@ struct G_SendGuildCard_PC_6x06 {
   GuildCardPC guild_card;
 } __packed__;
 
-struct G_SendGuildCard_V3_6x06 {
+struct G_SendGuildCard_GC_6x06 {
   G_UnusedHeader header;
-  GuildCardV3 guild_card;
+  GuildCardGC guild_card;
+} __packed__;
+
+struct G_SendGuildCard_XB_6x06 {
+  G_UnusedHeader header;
+  GuildCardXB guild_card;
 } __packed__;
 
 struct G_SendGuildCard_BB_6x06 {
@@ -4554,7 +4569,7 @@ struct G_SetQuestFlags_6x6F {
 // Episode 3 does not send this command at all since the relevant data is sent
 // to the joining player in the 64 command instead.
 
-struct G_SyncPlayerDispAndInventory_DC_PC_V3_6x70 {
+struct G_SyncPlayerDispAndInventory_DC_PC_GC_6x70 {
   // Offsets in this struct are relative to the overall command header
   /* 0004 */ G_ExtendedHeader<G_UnusedHeader> header;
   /* 000C */ le_uint16_t client_id = 0;
@@ -4587,6 +4602,14 @@ struct G_SyncPlayerDispAndInventory_DC_PC_V3_6x70 {
   } __packed__ inventory;
   /* 0494 */ le_uint32_t unknown_a15 = 0;
   /* 0498 */
+} __packed__;
+
+struct G_SyncPlayerDispAndInventory_XB_6x70 : G_SyncPlayerDispAndInventory_DC_PC_GC_6x70 {
+  // Offsets in this struct are relative to the overall command header
+  /* 0498 */ le_uint32_t xb_user_id_high = 0;
+  /* 049C */ le_uint32_t xb_user_id_low = 0;
+  /* 04A0 */ le_uint32_t unknown_a16 = 0;
+  /* 04A4 */
 } __packed__;
 
 // 6x71: Unknown (used while loading into game)
@@ -5130,7 +5153,7 @@ struct G_Unknown_6xB2 {
   le_uint32_t unknown_a3 = 0; // PSO GC puts 0x00051720 (333600) here
 } __packed__;
 
-// 6xB3: Unknown (XBOX; voice chat)
+// 6xB3: Unknown (Xbox; voice chat)
 
 // 6xB3: CARD battle server data request (Episode 3)
 
@@ -5176,7 +5199,7 @@ struct G_CardServerDataCommandHeader {
   /* 10 */
 } __packed__;
 
-// 6xB4: Unknown (XBOX; voice chat)
+// 6xB4: Unknown (Xbox; voice chat)
 
 // 6xB4: CARD battle server response (Episode 3) - see 6xB3 above
 // 6xB5: CARD battle client command (Episode 3) - see 6xB3 above

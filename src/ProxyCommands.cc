@@ -227,12 +227,11 @@ static HandlerResult S_V123P_02_17(
   if (!ses->license) {
     ses->log.info("No license in linked session");
 
-    // We have to forward the command before setting up encryption, so the
-    // client will be able to understand it.
+    // We have to forward the command BEFORE setting up encryption, so the
+    // client will be able to understand what we sent.
     forward_command(ses, false, command, flag, data);
 
-    if ((ses->version() == GameVersion::GC) ||
-        (ses->version() == GameVersion::XB)) {
+    if ((ses->version() == GameVersion::GC) || (ses->version() == GameVersion::XB)) {
       ses->server_channel.crypt_in.reset(new PSOV3Encryption(cmd.server_key));
       ses->server_channel.crypt_out.reset(new PSOV3Encryption(cmd.client_key));
       ses->client_channel.crypt_in.reset(new PSOV3Encryption(cmd.client_key));
@@ -270,130 +269,164 @@ static HandlerResult S_V123P_02_17(
   // because it believes it already did (when it was in an unlinked session, or
   // in the patch server case, during the current session due to a hidden
   // redirect).
-  if (ses->version() == GameVersion::PATCH) {
-    ses->server_channel.send(0x02);
-    return HandlerResult::Type::SUPPRESS;
+  switch (ses->version()) {
+    case GameVersion::PATCH:
+      ses->server_channel.send(0x02);
+      return HandlerResult::Type::SUPPRESS;
 
-  } else if ((ses->version() == GameVersion::DC) || (ses->version() == GameVersion::PC)) {
-    if (ses->config.check_flag(Client::Flag::IS_DC_V1)) {
-      if (command == 0x17) {
-        C_LoginV1_DC_PC_V3_90 cmd;
-        cmd.serial_number.encode(string_printf("%08" PRIX32 "", ses->license->serial_number));
-        cmd.access_key.encode(ses->license->access_key);
-        cmd.access_key.clear_after(8);
-        ses->server_channel.send(0x90, 0x00, &cmd, sizeof(cmd));
-        return HandlerResult::Type::SUPPRESS;
-      } else {
-        C_LoginV1_DC_93 cmd;
-        if (ses->remote_guild_card_number < 0) {
-          cmd.player_tag = 0xFFFF0000;
-          cmd.guild_card_number = 0xFFFFFFFF;
+    case GameVersion::DC:
+    case GameVersion::PC:
+      if (ses->config.check_flag(Client::Flag::IS_DC_V1)) {
+        if (command == 0x17) {
+          C_LoginV1_DC_PC_V3_90 cmd;
+          cmd.serial_number.encode(string_printf("%08" PRIX32 "", ses->license->serial_number));
+          cmd.access_key.encode(ses->license->access_key);
+          cmd.access_key.clear_after(8);
+          ses->server_channel.send(0x90, 0x00, &cmd, sizeof(cmd));
+          return HandlerResult::Type::SUPPRESS;
         } else {
-          cmd.player_tag = 0x00010000;
-          cmd.guild_card_number = ses->remote_guild_card_number;
+          C_LoginV1_DC_93 cmd;
+          if (ses->remote_guild_card_number < 0) {
+            cmd.player_tag = 0xFFFF0000;
+            cmd.guild_card_number = 0xFFFFFFFF;
+          } else {
+            cmd.player_tag = 0x00010000;
+            cmd.guild_card_number = ses->remote_guild_card_number;
+          }
+          cmd.unknown_a1 = 0;
+          cmd.unknown_a2 = 0;
+          cmd.sub_version = ses->sub_version;
+          cmd.is_extended = 0;
+          cmd.language = ses->language();
+          cmd.serial_number.encode(string_printf("%08" PRIX32 "", ses->license->serial_number));
+          cmd.access_key.encode(ses->license->access_key);
+          cmd.access_key.clear_after(8);
+          cmd.hardware_id.encode(ses->hardware_id);
+          cmd.name.encode(ses->character_name);
+          ses->server_channel.send(0x93, 0x00, &cmd, sizeof(cmd));
+          return HandlerResult::Type::SUPPRESS;
         }
-        cmd.unknown_a1 = 0;
-        cmd.unknown_a2 = 0;
-        cmd.sub_version = ses->sub_version;
-        cmd.is_extended = 0;
-        cmd.language = ses->language();
-        cmd.serial_number.encode(string_printf("%08" PRIX32 "", ses->license->serial_number));
-        cmd.access_key.encode(ses->license->access_key);
-        cmd.access_key.clear_after(8);
-        cmd.hardware_id.encode(ses->hardware_id);
-        cmd.name.encode(ses->character_name);
-        ses->server_channel.send(0x93, 0x00, &cmd, sizeof(cmd));
-        return HandlerResult::Type::SUPPRESS;
+      } else { // DCv2 or PC
+        if (command == 0x17) {
+          C_Login_DC_PC_V3_9A cmd;
+          if (ses->remote_guild_card_number < 0) {
+            cmd.player_tag = 0xFFFF0000;
+            cmd.guild_card_number = 0xFFFFFFFF;
+          } else {
+            cmd.player_tag = 0x00010000;
+            cmd.guild_card_number = ses->remote_guild_card_number;
+          }
+          cmd.sub_version = ses->sub_version;
+          cmd.serial_number.encode(string_printf("%08" PRIX32 "", ses->license->serial_number));
+          cmd.access_key.encode(ses->license->access_key);
+          cmd.access_key.clear_after(8);
+          cmd.serial_number2 = cmd.serial_number;
+          cmd.access_key2 = cmd.access_key;
+          // TODO: We probably should set email_address, but we currently don't
+          // keep that value anywhere in the session object, nor is it saved in
+          // the License object.
+          ses->server_channel.send(0x9A, 0x00, &cmd, sizeof(cmd));
+          return HandlerResult::Type::SUPPRESS;
+        } else {
+          C_Login_DC_PC_GC_9D cmd;
+          if (ses->remote_guild_card_number < 0) {
+            cmd.player_tag = 0xFFFF0000;
+            cmd.guild_card_number = 0xFFFFFFFF;
+          } else {
+            cmd.player_tag = 0x00010000;
+            cmd.guild_card_number = ses->remote_guild_card_number;
+          }
+          cmd.unused1 = 0;
+          cmd.unused2 = 0;
+          cmd.sub_version = ses->sub_version;
+          cmd.is_extended = 0;
+          cmd.language = ses->language();
+          cmd.serial_number.encode(string_printf("%08" PRIX32 "", ses->license->serial_number));
+          cmd.access_key.encode(ses->license->access_key);
+          cmd.access_key.clear_after(8);
+          cmd.serial_number2 = cmd.serial_number;
+          cmd.access_key2 = cmd.access_key;
+          if (ses->config.check_flag(Client::Flag::PROXY_BLANK_NAME_ENABLED)) {
+            cmd.name.encode(" ", ses->language());
+          } else {
+            cmd.name.encode(ses->character_name);
+          }
+          ses->server_channel.send(0x9D, 0x00, &cmd, sizeof(cmd));
+          return HandlerResult::Type::SUPPRESS;
+        }
       }
-    } else { // DCv2 or PC
+      throw logic_error("DC/PC init command not handled");
+    case GameVersion::GC:
       if (command == 0x17) {
-        C_Login_DC_PC_V3_9A cmd;
-        if (ses->remote_guild_card_number < 0) {
-          cmd.player_tag = 0xFFFF0000;
-          cmd.guild_card_number = 0xFFFFFFFF;
-        } else {
-          cmd.player_tag = 0x00010000;
-          cmd.guild_card_number = ses->remote_guild_card_number;
-        }
-        cmd.sub_version = ses->sub_version;
+        C_VerifyLicense_V3_DB cmd;
         cmd.serial_number.encode(string_printf("%08" PRIX32 "", ses->license->serial_number));
         cmd.access_key.encode(ses->license->access_key);
-        cmd.access_key.clear_after(8);
+        cmd.sub_version = ses->sub_version;
         cmd.serial_number2 = cmd.serial_number;
         cmd.access_key2 = cmd.access_key;
-        // TODO: We probably should set email_address, but we currently don't
-        // keep that value anywhere in the session object, nor is it saved in
-        // the License object.
-        ses->server_channel.send(0x9A, 0x00, &cmd, sizeof(cmd));
+        cmd.password.encode(ses->license->gc_password);
+        ses->server_channel.send(0xDB, 0x00, &cmd, sizeof(cmd));
         return HandlerResult::Type::SUPPRESS;
-      } else {
-        C_Login_DC_PC_GC_9D cmd;
-        if (ses->remote_guild_card_number < 0) {
-          cmd.player_tag = 0xFFFF0000;
-          cmd.guild_card_number = 0xFFFFFFFF;
+
+      } else if (ses->config.check_flag(Client::Flag::PROXY_SUPPRESS_REMOTE_LOGIN)) {
+        uint32_t guild_card_number;
+        if (ses->remote_guild_card_number >= 0) {
+          guild_card_number = ses->remote_guild_card_number;
+          log_info("Using Guild Card number %" PRIu32 " from session", guild_card_number);
         } else {
-          cmd.player_tag = 0x00010000;
-          cmd.guild_card_number = ses->remote_guild_card_number;
+          guild_card_number = random_object<uint32_t>();
+          log_info("Using Guild Card number %" PRIu32 " from random generator", guild_card_number);
         }
+
+        uint32_t fake_serial_number = random_object<uint32_t>() & 0x7FFFFFFF;
+        uint64_t fake_access_key = random_object<uint64_t>();
+        string fake_access_key_str = string_printf("00000000000%" PRIu64, fake_access_key);
+        if (fake_access_key_str.size() > 12) {
+          fake_access_key_str = fake_access_key_str.substr(fake_access_key_str.size() - 12);
+        }
+
+        C_LoginExtended_GC_9E cmd;
+        cmd.player_tag = 0x00010000;
+        cmd.guild_card_number = guild_card_number;
         cmd.unused1 = 0;
         cmd.unused2 = 0;
         cmd.sub_version = ses->sub_version;
         cmd.is_extended = 0;
         cmd.language = ses->language();
-        cmd.serial_number.encode(string_printf("%08" PRIX32 "", ses->license->serial_number));
-        cmd.access_key.encode(ses->license->access_key);
-        cmd.access_key.clear_after(8);
+        cmd.serial_number.encode(string_printf("%08" PRIX32, fake_serial_number));
+        cmd.access_key.encode(fake_access_key_str);
         cmd.serial_number2 = cmd.serial_number;
         cmd.access_key2 = cmd.access_key;
         if (ses->config.check_flag(Client::Flag::PROXY_BLANK_NAME_ENABLED)) {
           cmd.name.encode(" ", ses->language());
         } else {
-          cmd.name.encode(ses->character_name);
+          cmd.name.encode(ses->character_name, ses->language());
         }
-        ses->server_channel.send(0x9D, 0x00, &cmd, sizeof(cmd));
+        cmd.client_config = ses->remote_client_config_data;
+        ses->server_channel.send(0x9E, 0x01, &cmd, sizeof(C_Login_GC_9E));
         return HandlerResult::Type::SUPPRESS;
-      }
-    }
 
-  } else if (ses->version() == GameVersion::GC) {
-    if (command == 0x17) {
-      C_VerifyLicense_V3_DB cmd;
-      cmd.serial_number.encode(string_printf("%08" PRIX32 "", ses->license->serial_number));
-      cmd.access_key.encode(ses->license->access_key);
-      cmd.sub_version = ses->sub_version;
-      cmd.serial_number2 = cmd.serial_number;
-      cmd.access_key2 = cmd.access_key;
-      cmd.password.encode(ses->license->gc_password);
-      ses->server_channel.send(0xDB, 0x00, &cmd, sizeof(cmd));
-      return HandlerResult::Type::SUPPRESS;
-
-    } else if (ses->config.check_flag(Client::Flag::PROXY_SUPPRESS_REMOTE_LOGIN)) {
-      uint32_t guild_card_number;
-      if (ses->remote_guild_card_number >= 0) {
-        guild_card_number = ses->remote_guild_card_number;
-        log_info("Using Guild Card number %" PRIu32 " from session", guild_card_number);
       } else {
-        guild_card_number = random_object<uint32_t>();
-        log_info("Using Guild Card number %" PRIu32 " from random generator", guild_card_number);
+        // For command 02, send the same as if we had received 9A from the server
+        return S_G_9A(ses, command, flag, data);
       }
-
-      uint32_t fake_serial_number = random_object<uint32_t>() & 0x7FFFFFFF;
-      uint64_t fake_access_key = random_object<uint64_t>();
-      string fake_access_key_str = string_printf("00000000000%" PRIu64, fake_access_key);
-      if (fake_access_key_str.size() > 12) {
-        fake_access_key_str = fake_access_key_str.substr(fake_access_key_str.size() - 12);
+      throw logic_error("GC init command not handled");
+    case GameVersion::XB: {
+      C_LoginExtended_XB_9E cmd;
+      if (ses->remote_guild_card_number < 0) {
+        cmd.player_tag = 0xFFFF0000;
+        cmd.guild_card_number = 0xFFFFFFFF;
+      } else {
+        cmd.player_tag = 0x00010000;
+        cmd.guild_card_number = ses->remote_guild_card_number;
       }
-
-      C_LoginExtended_GC_9E cmd;
-      cmd.player_tag = 0x00010000;
-      cmd.guild_card_number = guild_card_number;
       cmd.unused1 = 0;
       cmd.unused2 = 0;
       cmd.sub_version = ses->sub_version;
-      cmd.is_extended = 0;
+      cmd.is_extended = (ses->remote_guild_card_number < 0) ? 1 : 0;
       cmd.language = ses->language();
-      cmd.serial_number.encode(string_printf("%08" PRIX32, fake_serial_number));
-      cmd.access_key.encode(fake_access_key_str);
+      cmd.serial_number.encode(ses->license->xb_gamertag);
+      cmd.access_key.encode(string_printf("%016" PRIX64, ses->license->xb_user_id));
       cmd.serial_number2 = cmd.serial_number;
       cmd.access_key2 = cmd.access_key;
       if (ses->config.check_flag(Client::Flag::PROXY_BLANK_NAME_ENABLED)) {
@@ -402,19 +435,21 @@ static HandlerResult S_V123P_02_17(
         cmd.name.encode(ses->character_name, ses->language());
       }
       cmd.client_config = ses->remote_client_config_data;
-      ses->server_channel.send(0x9E, 0x01, &cmd, sizeof(C_Login_GC_9E));
+      if (ses->wrapped_client && ses->wrapped_client->xb_netloc) {
+        cmd.netloc = *ses->wrapped_client->xb_netloc;
+        cmd.unknown_a1a = ses->wrapped_client->xb_9E_unknown_a1a;
+      } else {
+        cmd.netloc.account_id = ses->license->xb_account_id;
+      }
+      cmd.xb_user_id_high = (ses->license->xb_user_id >> 32) & 0xFFFFFFFF;
+      cmd.xb_user_id_low = ses->license->xb_user_id & 0xFFFFFFFF;
+      ses->server_channel.send(
+          0x9E, 0x01, &cmd,
+          cmd.is_extended ? sizeof(C_LoginExtended_XB_9E) : sizeof(C_Login_XB_9E));
       return HandlerResult::Type::SUPPRESS;
-
-    } else {
-      // For command 02, send the same as if we had received 9A from the server
-      return S_G_9A(ses, command, flag, data);
     }
-
-  } else if (ses->version() == GameVersion::XB) {
-    throw runtime_error("xbox licenses are not implemented");
-
-  } else {
-    throw logic_error("invalid game version in server init handler");
+    default:
+      throw logic_error("invalid game version in server init handler");
   }
 }
 
@@ -1679,7 +1714,8 @@ static HandlerResult C_6x(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t c
 
 constexpr on_command_t C_D_6x = &C_6x<G_SendGuildCard_DC_6x06>;
 constexpr on_command_t C_P_6x = &C_6x<G_SendGuildCard_PC_6x06>;
-constexpr on_command_t C_GX_6x = &C_6x<G_SendGuildCard_V3_6x06>;
+constexpr on_command_t C_G_6x = &C_6x<G_SendGuildCard_GC_6x06>;
+constexpr on_command_t C_X_6x = &C_6x<G_SendGuildCard_XB_6x06>;
 constexpr on_command_t C_B_6x = &C_6x<G_SendGuildCard_BB_6x06>;
 
 template <>
@@ -1818,9 +1854,9 @@ static on_command_t handlers[0x100][6][2] = {
 /* 5E */ {{S_invalid,     nullptr}, {S_invalid,        nullptr},      {S_invalid,     nullptr},      {S_invalid,        nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
 /* 5F */ {{S_invalid,     nullptr}, {S_invalid,        nullptr},      {S_invalid,     nullptr},      {S_invalid,        nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
 // CMD     S-PATCH        C-PATCH    S-DC              C-DC            S-PC           C-PC            S-GC              C-GC            S-XB           C-XB            S-BB          C-BB
-/* 60 */ {{S_invalid,     nullptr}, {S_6x,             C_D_6x},       {S_6x,          C_P_6x},       {S_6x,             C_GX_6x},      {S_6x,          C_GX_6x},      {S_6x,         C_B_6x}},
+/* 60 */ {{S_invalid,     nullptr}, {S_6x,             C_D_6x},       {S_6x,          C_P_6x},       {S_6x,             C_G_6x},       {S_6x,          C_X_6x},       {S_6x,         C_B_6x}},
 /* 61 */ {{S_invalid,     nullptr}, {S_invalid,        nullptr},      {S_invalid,     nullptr},      {S_invalid,        C_GXB_61},     {S_invalid,     C_GXB_61},     {S_invalid,    C_GXB_61}},
-/* 62 */ {{S_invalid,     nullptr}, {S_6x,             C_D_6x},       {S_6x,          C_P_6x},       {S_6x,             C_GX_6x},      {S_6x,          C_GX_6x},      {S_6x,         C_B_6x}},
+/* 62 */ {{S_invalid,     nullptr}, {S_6x,             C_D_6x},       {S_6x,          C_P_6x},       {S_6x,             C_G_6x},       {S_6x,          C_X_6x},       {S_6x,         C_B_6x}},
 /* 63 */ {{S_invalid,     nullptr}, {S_invalid,        nullptr},      {S_invalid,     nullptr},      {S_invalid,        nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
 /* 64 */ {{S_invalid,     nullptr}, {S_D_64,           nullptr},      {S_P_64,        nullptr},      {S_G_64,           nullptr},      {S_X_64,        nullptr},      {S_B_64,       nullptr}},
 /* 65 */ {{S_invalid,     nullptr}, {S_DG_65_67_68_EB, nullptr},      {S_P_65_67_68,  nullptr},      {S_DG_65_67_68_EB, nullptr},      {S_X_65_67_68,  nullptr},      {S_B_65_67_68, nullptr}},
@@ -1830,8 +1866,8 @@ static on_command_t handlers[0x100][6][2] = {
 /* 69 */ {{S_invalid,     nullptr}, {S_66_69_E9,       nullptr},      {S_66_69_E9,    nullptr},      {S_66_69_E9,       nullptr},      {S_66_69_E9,    nullptr},      {S_66_69_E9,   nullptr}},
 /* 6A */ {{S_invalid,     nullptr}, {S_invalid,        nullptr},      {S_invalid,     nullptr},      {S_invalid,        nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
 /* 6B */ {{S_invalid,     nullptr}, {S_invalid,        nullptr},      {S_invalid,     nullptr},      {S_invalid,        nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
-/* 6C */ {{S_invalid,     nullptr}, {S_6x,             C_D_6x},       {S_6x,          C_P_6x},       {S_6x,             C_GX_6x},      {S_6x,          C_GX_6x},      {S_6x,         C_B_6x}},
-/* 6D */ {{S_invalid,     nullptr}, {S_6x,             C_D_6x},       {S_6x,          C_P_6x},       {S_6x,             C_GX_6x},      {S_6x,          C_GX_6x},      {S_6x,         C_B_6x}},
+/* 6C */ {{S_invalid,     nullptr}, {S_6x,             C_D_6x},       {S_6x,          C_P_6x},       {S_6x,             C_G_6x},       {S_6x,          C_X_6x},       {S_6x,         C_B_6x}},
+/* 6D */ {{S_invalid,     nullptr}, {S_6x,             C_D_6x},       {S_6x,          C_P_6x},       {S_6x,             C_G_6x},       {S_6x,          C_X_6x},       {S_6x,         C_B_6x}},
 /* 6E */ {{S_invalid,     nullptr}, {S_invalid,        nullptr},      {S_invalid,     nullptr},      {S_invalid,        nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
 /* 6F */ {{S_invalid,     nullptr}, {S_invalid,        nullptr},      {S_invalid,     nullptr},      {S_invalid,        nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
 /* 70 */ {{S_invalid,     nullptr}, {S_invalid,        nullptr},      {S_invalid,     nullptr},      {S_invalid,        nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},

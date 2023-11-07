@@ -31,16 +31,10 @@
 
 ## PSO XBOX
 
-- Test the following things:
-    - Login
-    - Lobby interactions with GC players
-        - Symbol chats: any byteswapping required?
-        - Word Select mapping to other consoles (is it the same as GC? probably?)
-        - Guild card send/receive, simple mail (+ auto reply), info board
-    - Crossplay in games
-        - Check mag correctness in various situations, including on the ground at join time
-    - Voice chat (both in games and lobbies)
-    - Quest loading (symlink all XB quests to GC quests by default, make sure they load properly)
+- Fix receiving Guild Cards from non-Xbox players
+- Make the Guild Card description field in SavedPlayerDataBB longer to accommodate XB descriptions (0x200 bytes)
+- Implement and test voice chat
+- Fix whatever causes Schtserv to not recognize proxy connections as Xbox
 
 ## PSOBB
 

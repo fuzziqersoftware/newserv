@@ -257,9 +257,10 @@ void XBNetworkLocation::clear() {
   this->external_ipv4_address = 0;
   this->port = 0;
   this->mac_address.clear(0);
-  this->unknown_a1.clear(0);
+  this->unknown_a1 = 0;
+  this->unknown_a2 = 0;
   this->account_id = 0;
-  this->unknown_a2.clear(0);
+  this->unknown_a3.clear(0);
 }
 
 void PlayerLobbyDataXB::clear() {

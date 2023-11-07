@@ -163,6 +163,8 @@ struct Client : public std::enable_shared_from_this<Client> {
   bool should_send_to_lobby_server;
   bool should_send_to_proxy_server;
   std::unordered_map<std::string, std::function<void()>> disconnect_hooks;
+  std::shared_ptr<XBNetworkLocation> xb_netloc;
+  parray<le_uint32_t, 3> xb_9E_unknown_a1a;
   uint8_t bb_connection_phase;
 
   // Patch server
@@ -170,6 +172,7 @@ struct Client : public std::enable_shared_from_this<Client> {
 
   // Lobby/positioning
   Config config;
+  int32_t sub_version;
   float x;
   float z;
   uint32_t area;
@@ -229,4 +232,6 @@ struct Client : public std::enable_shared_from_this<Client> {
   void send_ping();
   static void dispatch_idle_timeout(evutil_socket_t, short, void* ctx);
   void idle_timeout();
+
+  void suspend_timeouts();
 };

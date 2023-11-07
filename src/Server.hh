@@ -15,8 +15,7 @@ public:
   Server() = delete;
   Server(const Server&) = delete;
   Server(Server&&) = delete;
-  Server(std::shared_ptr<struct event_base> base,
-      std::shared_ptr<ServerState> state);
+  Server(std::shared_ptr<struct event_base> base, std::shared_ptr<ServerState> state);
   virtual ~Server() = default;
 
   void listen(const std::string& addr_str, const std::string& socket_path, GameVersion version, ServerBehavior initial_state);
@@ -27,6 +26,7 @@ public:
   void connect_client(struct bufferevent* bev, uint32_t address,
       uint16_t client_port, uint16_t server_port,
       GameVersion version, ServerBehavior initial_state);
+  void connect_client(std::shared_ptr<Client> c, Channel&& ch);
   void disconnect_client(std::shared_ptr<Client> c);
 
   std::shared_ptr<Client> get_client() const;

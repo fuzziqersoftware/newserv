@@ -67,7 +67,7 @@ newserv supports several versions of PSO. Specifically:
 | GC Ep1&2 Plus  | Yes          | Yes          | Yes          | Yes          |
 | GC Ep3 Trial   | Yes          | Yes          | Partial (4)  | Yes          |
 | GC Ep3         | Yes          | Yes          | Yes          | Yes          |
-| XBOX Ep1&2     | Untested (1) | Untested (1) | Untested (1) | Untested (1) |
+| Xbox Ep1&2     | Yes          | Yes          | Yes          | Partial (5)  |
 | BB (vanilla)   | Yes          | Yes          | Yes (2)      | Yes          |
 | BB (Tethealla) | Yes          | Yes          | Yes (2)      | Yes          |
 
@@ -76,6 +76,7 @@ newserv supports several versions of PSO. Specifically:
 2. *BB games are mostly playable, but there are still some unimplemented features (for example, some quests that use rare commands may not work). Please submit a GitHub issue if you find something that doesn't work.*
 3. *Support for PSO Dreamcast Trial Edition and the December 2000 prototype is somewhat incomplete and probably never will be complete. These versions are rather unstable and seem to crash often, but it's not obvious whether it's because they're prototypes or because newserv sends data they can't handle.*
 4. *Creating a game works and battle setup behaves mostly normally, but starting a battle doesn't work.*
+5. *PSO Xbox sessions can be proxied to Sylverant. On Schtserv, Xbox proxy sessions can connect, but Schtserv does not recognize them as Xbox sessions when they join the lobby, so the session fails at that point.*
 
 ## Setup
 
@@ -117,6 +118,8 @@ Standard quest files should be named like `q###-CATEGORY-VERSION-LANGUAGE.EXT`, 
 On .dat files, the `LANGUAGE` token may be omitted. If it's present, then that .dat file will only be used for that version of the quest; if omitted, then that .dat file will be used for all versions of the quest.
 
 For example, the GameCube version of Lost HEAT SWORD is in two files named `q058-ret-gc-e.bin` and `q058-ret-gc.dat`. newserv knows these files are quests because they're in the system/quests/ directory, it knows they're for PSO GC because the filenames contain `-gc`, it knows this is the English version of the quest because the .bin filename ends with `-e` (even though the .dat filename does not), and it puts them in the Retrieval category because the filenames contain `-ret`.
+
+The GameCube and Xbox quest formats are very similar, but newserv treats them as different. If you want to use the same quest file for GameCube and Xbox clients, you can make one a symbolic link to the other.
 
 The type identifiers (`b`, `c`, `d`, `e`, or `q`) and categories are configurable. See QuestCategories in config.example.json for more information on how to make new categories or edit the existing categories.
 

@@ -256,7 +256,7 @@ struct PSOGCCharacterFile {
     /* 0460:0044 */ parray<parray<uint8_t, 0x80>, 4> quest_flags;
     /* 0660:0244 */ be_uint32_t death_count;
     /* 0664:0248 */ PlayerBank bank;
-    /* 192C:1510 */ GuildCardV3 guild_card;
+    /* 192C:1510 */ GuildCardGC guild_card;
     /* 19BC:15A0 */ parray<PSOGCSaveFileSymbolChatEntry, 12> symbol_chats;
     /* 1DDC:19C0 */ parray<PSOGCSaveFileChatShortcutEntry, 20> chat_shortcuts;
     /* 246C:2050 */ pstring<TextEncoding::SJIS, 0xAC> auto_reply;
@@ -313,7 +313,7 @@ struct PSOGCEp3CharacterFile {
     /* 0864:0448 */ be_uint32_t num_bank_items;
     /* 0868:044C */ be_uint32_t bank_meseta;
     /* 086C:0450 */ parray<PlayerBankItem, 4> bank_items;
-    /* 08CC:04B0 */ GuildCardV3 guild_card;
+    /* 08CC:04B0 */ GuildCardGC guild_card;
     /* 095C:0540 */ parray<PSOGCSaveFileSymbolChatEntry, 12> symbol_chats;
     /* 0D7C:0960 */ parray<PSOGCSaveFileChatShortcutEntry, 20> chat_shortcuts;
     /* 140C:0FF0 */ pstring<TextEncoding::SJIS, 0xAC> auto_reply;
@@ -356,12 +356,12 @@ struct PSOGCGuildCardFile {
   /* 0000 */ be_uint32_t checksum;
   /* 0004 */ parray<uint8_t, 0xC0> unknown_a1;
   struct GuildCardBE {
-    // Note: This struct (up through offset 0x90) is identical to GuildCardV3
-    // except for 32-bit fields, which are big-endian here.
+    // Note: This struct (up through offset 0x90) is identical to GuildCardGC
+    // except for the 32-bit fields, which are big-endian here.
     /* 0000 */ be_uint32_t player_tag; // == 0x00000001 (not 0x00010000)
     /* 0004 */ be_uint32_t guild_card_number;
-    /* 0008 */ pstring<TextEncoding::SJIS, 0x18> name;
-    /* 0020 */ pstring<TextEncoding::SJIS, 0x6C> description;
+    /* 0008 */ pstring<TextEncoding::ASCII, 0x18> name;
+    /* 0020 */ pstring<TextEncoding::MARKED, 0x6C> description;
     /* 008C */ uint8_t present;
     /* 008D */ uint8_t language;
     /* 008E */ uint8_t section_id;
@@ -374,7 +374,7 @@ struct PSOGCGuildCardFile {
     /* 0091 */ uint8_t unknown_a2;
     /* 0092 */ uint8_t unknown_a3;
     /* 0093 */ uint8_t unknown_a4;
-    /* 0094 */ pstring<TextEncoding::SJIS, 0x6C> comment;
+    /* 0094 */ pstring<TextEncoding::MARKED, 0x6C> comment;
     /* 0100 */
   } __attribute__((packed));
   /* 00C4 */ parray<GuildCardEntry, 0xD2> entries;
@@ -396,7 +396,7 @@ struct PSOGCSnapshotFile {
   /* 1800A */ be_int16_t max_players;
   /* 1800C */ parray<be_uint32_t, 12> players_present;
   /* 1803C */ parray<be_uint32_t, 12> player_levels;
-  /* 1806C */ parray<pstring<TextEncoding::SJIS, 0x18>, 12> player_names;
+  /* 1806C */ parray<pstring<TextEncoding::ASCII, 0x18>, 12> player_names;
   /* 1818C */
 
   bool checksum_correct() const;

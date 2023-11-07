@@ -249,9 +249,11 @@ static void on_sync_joining_player_item_state(shared_ptr<Client> c, uint8_t comm
 
 static void on_sync_joining_player_disp_and_inventory(
     shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
-  auto l = c->require_lobby();
+  auto s = c->require_server_state();
+
   // In V1/V2 games, this command sometimes is sent after the new client has
   // finished loading, so we don't check l->any_client_loading() here.
+  auto l = c->require_lobby();
   if (!l->is_game()) {
     return;
   }
@@ -283,15 +285,34 @@ static void on_sync_joining_player_disp_and_inventory(
   bool target_is_gc = (target->version() == GameVersion::GC);
   if (target_is_gc == sender_is_gc) {
     send_command(target, command, flag, data, size);
-  } else {
-    auto out_cmd = check_size_t<G_SyncPlayerDispAndInventory_DC_PC_V3_6x70>(data, size);
-    for (size_t z = 0; z < 30; z++) {
-      // NOTE: If we use this codepath for non-V3 in the future, we'll need to
-      // change this hardcoded version. This only works because GC's mag
-      // encoding/decoding is symmetric (encode and decode do the same thing).
+
+  } else if (sender_is_gc) {
+    // Convert GC command to XB command
+    G_SyncPlayerDispAndInventory_XB_6x70 out_cmd = {check_size_t<G_SyncPlayerDispAndInventory_DC_PC_GC_6x70>(data, size), 0, 0, 0};
+    if (c->license->xb_user_id) {
+      out_cmd.xb_user_id_high = static_cast<uint32_t>((c->license->xb_user_id >> 32) & 0xFFFFFFFF);
+      out_cmd.xb_user_id_low = static_cast<uint32_t>(c->license->xb_user_id & 0xFFFFFFFF);
+    } else {
+      out_cmd.xb_user_id_high = 0xAE000000;
+      out_cmd.xb_user_id_low = c->license->serial_number;
+    }
+    for (size_t z = 0; z < out_cmd.inventory.num_items; z++) {
       out_cmd.inventory.items[z].data.decode_for_version(GameVersion::GC);
+      out_cmd.inventory.items[z].data.encode_for_version(GameVersion::XB, s->item_parameter_table_for_version(GameVersion::XB));
     }
     send_command_t(target, command, flag, out_cmd);
+
+  } else {
+    // Comvert XB command to GC command
+    static_assert(
+        sizeof(G_SyncPlayerDispAndInventory_DC_PC_GC_6x70) < sizeof(G_SyncPlayerDispAndInventory_XB_6x70),
+        "GC 6x70 command is larger than XB 6x70 command");
+    auto out_cmd = check_size_t<G_SyncPlayerDispAndInventory_XB_6x70>(data, size);
+    for (size_t z = 0; z < out_cmd.inventory.num_items; z++) {
+      out_cmd.inventory.items[z].data.decode_for_version(GameVersion::XB);
+      out_cmd.inventory.items[z].data.encode_for_version(GameVersion::GC, s->item_parameter_table_for_version(GameVersion::GC));
+    }
+    send_command(target, command, flag, &out_cmd, sizeof(G_SyncPlayerDispAndInventory_DC_PC_GC_6x70));
   }
 }
 
@@ -417,9 +438,13 @@ static void on_send_guild_card(shared_ptr<Client> c, uint8_t command, uint8_t fl
       c->game_data.player(true, false)->guild_card_description = cmd.guild_card.description;
       break;
     }
-    case GameVersion::GC:
+    case GameVersion::GC: {
+      const auto& cmd = check_size_t<G_SendGuildCard_GC_6x06>(data, size);
+      c->game_data.player(true, false)->guild_card_description.encode(cmd.guild_card.description.decode(c->language()), c->language());
+      break;
+    }
     case GameVersion::XB: {
-      const auto& cmd = check_size_t<G_SendGuildCard_V3_6x06>(data, size);
+      const auto& cmd = check_size_t<G_SendGuildCard_XB_6x06>(data, size);
       c->game_data.player(true, false)->guild_card_description.encode(cmd.guild_card.description.decode(c->language()), c->language());
       break;
     }
@@ -882,6 +907,7 @@ static void on_buy_shop_item(shared_ptr<Client> c, uint8_t command, uint8_t flag
   if (l->check_flag(Lobby::Flag::ITEM_TRACKING_ENABLED)) {
     auto p = c->game_data.player();
     ItemData item = cmd.item_data;
+    item.data2d = 0; // Clear the price field
     item.decode_for_version(c->version());
     l->on_item_id_generated_externally(item.id);
     p->add_item(item);

@@ -163,14 +163,17 @@ void send_server_init_dc_pc_v3(shared_ptr<Client> c, uint8_t flags) {
       c->channel.crypt_out.reset(new PSOV2Encryption(server_key));
       break;
     case GameVersion::DC:
-    case GameVersion::GC:
-    case GameVersion::XB: {
+    case GameVersion::GC: {
       shared_ptr<PSOV2OrV3DetectorEncryption> det_crypt(new PSOV2OrV3DetectorEncryption(
           client_key, v2_crypt_initial_client_commands, v3_crypt_initial_client_commands));
       c->channel.crypt_in = det_crypt;
       c->channel.crypt_out.reset(new PSOV2OrV3ImitatorEncryption(server_key, det_crypt));
       break;
     }
+    case GameVersion::XB:
+      c->channel.crypt_in.reset(new PSOV3Encryption(client_key));
+      c->channel.crypt_out.reset(new PSOV3Encryption(server_key));
+      break;
     default:
       throw invalid_argument("incorrect client version");
   }
@@ -273,44 +276,6 @@ void send_update_client_config(shared_ptr<Client> c) {
   }
 }
 
-template <typename CommandT>
-void send_quest_open_file_t(
-    shared_ptr<Client> c,
-    const string& quest_name,
-    const string& filename,
-    uint32_t file_size,
-    QuestFileType type) {
-  CommandT cmd;
-  uint8_t command_num;
-  switch (type) {
-    case QuestFileType::ONLINE:
-      command_num = 0x44;
-      cmd.name.encode("PSO/" + quest_name);
-      cmd.type = 0;
-      break;
-    case QuestFileType::GBA_DEMO:
-      command_num = 0xA6;
-      cmd.name.encode("GBA Demo");
-      cmd.type = 2;
-      break;
-    case QuestFileType::DOWNLOAD:
-      command_num = 0xA6;
-      cmd.name.encode("PSO/" + quest_name);
-      cmd.type = 0;
-      break;
-    case QuestFileType::EPISODE_3:
-      command_num = 0xA6;
-      cmd.name.encode("PSO/" + quest_name);
-      cmd.type = 3;
-      break;
-    default:
-      throw logic_error("invalid quest file type");
-  }
-  cmd.file_size = file_size;
-  cmd.filename.encode(filename);
-  send_command_t(c, command_num, 0x00, cmd);
-}
-
 void send_quest_buffer_overflow(shared_ptr<Client> c) {
   // PSO Episode 3 USA doesn't natively support the B2 command, but we can add
   // it back to the game with some tricky commands. For details on how this
@@ -320,18 +285,21 @@ void send_quest_buffer_overflow(shared_ptr<Client> c) {
     throw runtime_error("Episode 3 buffer overflow code must be a single segment");
   }
 
-  static const string filename = "m999999p_e.bin";
-  send_quest_open_file_t<S_OpenFile_PC_GC_44_A6>(
-      c, "BufferOverflow", filename, 0x18, QuestFileType::EPISODE_3);
+  S_OpenFile_PC_GC_44_A6 open_cmd;
+  open_cmd.name.encode("PSO/BufferOverflow");
+  open_cmd.type = 3;
+  open_cmd.file_size = 0x18;
+  open_cmd.filename.encode("m999999p_e.bin");
+  send_command_t(c, 0xA6, 0x00, open_cmd);
 
-  S_WriteFile_13_A7 cmd;
-  cmd.filename.encode(filename);
-  memcpy(cmd.data.data(), fn->code.data(), fn->code.size());
+  S_WriteFile_13_A7 write_cmd;
+  write_cmd.filename.encode("m999999p_e.bin");
+  memcpy(write_cmd.data.data(), fn->code.data(), fn->code.size());
   if (fn->code.size() < 0x400) {
-    memset(&cmd.data[fn->code.size()], 0, 0x400 - fn->code.size());
+    memset(&write_cmd.data[fn->code.size()], 0, 0x400 - fn->code.size());
   }
-  cmd.data_size = fn->code.size();
-  send_command_t(c, 0xA7, 0x00, cmd);
+  write_cmd.data_size = fn->code.size();
+  send_command_t(c, 0xA7, 0x00, write_cmd);
 }
 
 void empty_function_call_response_handler(uint32_t, uint32_t) {}
@@ -1054,7 +1022,7 @@ void send_card_search_result(
 }
 
 template <typename CmdT>
-void send_guild_card_dc_pc_v3_t(
+void send_guild_card_dc_pc_gc_t(
     Channel& ch,
     uint32_t guild_card_number,
     const string& name,
@@ -1068,6 +1036,32 @@ void send_guild_card_dc_pc_v3_t(
   cmd.header.unused = 0x0000;
   cmd.guild_card.player_tag = 0x00010000;
   cmd.guild_card.guild_card_number = guild_card_number;
+  cmd.guild_card.name.encode(name, ch.language);
+  cmd.guild_card.description.encode(description, ch.language);
+  cmd.guild_card.present = 1;
+  cmd.guild_card.language = language;
+  cmd.guild_card.section_id = section_id;
+  cmd.guild_card.char_class = char_class;
+  ch.send(0x60, 0x00, &cmd, sizeof(cmd));
+}
+
+void send_guild_card_xb(
+    Channel& ch,
+    uint32_t guild_card_number,
+    uint64_t xb_user_id,
+    const string& name,
+    const string& description,
+    uint8_t language,
+    uint8_t section_id,
+    uint8_t char_class) {
+  G_SendGuildCard_XB_6x06 cmd;
+  cmd.header.subcommand = 0x06;
+  cmd.header.size = sizeof(G_SendGuildCard_XB_6x06) / 4;
+  cmd.header.unused = 0x0000;
+  cmd.guild_card.player_tag = 0x00010000;
+  cmd.guild_card.guild_card_number = guild_card_number;
+  cmd.guild_card.xb_user_id_high = (xb_user_id >> 32) & 0xFFFFFFFF;
+  cmd.guild_card.xb_user_id_low = xb_user_id & 0xFFFFFFFF;
   cmd.guild_card.name.encode(name, ch.language);
   cmd.guild_card.description.encode(description, ch.language);
   cmd.guild_card.present = 1;
@@ -1104,6 +1098,7 @@ static void send_guild_card_bb(
 void send_guild_card(
     Channel& ch,
     uint32_t guild_card_number,
+    uint64_t xb_user_id,
     const string& name,
     const string& team_name,
     const string& description,
@@ -1112,17 +1107,20 @@ void send_guild_card(
     uint8_t char_class) {
   switch (ch.version) {
     case GameVersion::DC:
-      send_guild_card_dc_pc_v3_t<G_SendGuildCard_DC_6x06>(
+      send_guild_card_dc_pc_gc_t<G_SendGuildCard_DC_6x06>(
           ch, guild_card_number, name, description, language, section_id, char_class);
       break;
     case GameVersion::PC:
-      send_guild_card_dc_pc_v3_t<G_SendGuildCard_PC_6x06>(
+      send_guild_card_dc_pc_gc_t<G_SendGuildCard_PC_6x06>(
           ch, guild_card_number, name, description, language, section_id, char_class);
       break;
     case GameVersion::GC:
-    case GameVersion::XB:
-      send_guild_card_dc_pc_v3_t<G_SendGuildCard_V3_6x06>(
+      send_guild_card_dc_pc_gc_t<G_SendGuildCard_GC_6x06>(
           ch, guild_card_number, name, description, language, section_id, char_class);
+      break;
+    case GameVersion::XB:
+      send_guild_card_xb(
+          ch, guild_card_number, xb_user_id, name, description, language, section_id, char_class);
       break;
     case GameVersion::BB:
       send_guild_card_bb(ch, guild_card_number, name, team_name, description, language, section_id, char_class);
@@ -1139,13 +1137,16 @@ void send_guild_card(shared_ptr<Client> c, shared_ptr<Client> source) {
 
   auto source_p = source->game_data.player(true, false);
   uint32_t guild_card_number = source->license->serial_number;
+  uint64_t xb_user_id = source->license->xb_user_id
+      ? source->license->xb_user_id
+      : (0xAE00000000000000 | guild_card_number);
   uint8_t language = source_p->inventory.language;
   string name = source_p->disp.name.decode(language);
   string description = source_p->guild_card_description.decode(language);
   uint8_t section_id = source_p->disp.visual.section_id;
   uint8_t char_class = source_p->disp.visual.char_class;
 
-  send_guild_card(c->channel, guild_card_number, name, "", description, language, section_id, char_class);
+  send_guild_card(c->channel, guild_card_number, xb_user_id, name, "", description, language, section_id, char_class);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1694,6 +1695,16 @@ void send_join_game(shared_ptr<Client> c, shared_ptr<Lobby> l) {
     case GameVersion::XB: {
       S_JoinGame_XB_64 cmd;
       size_t player_count = populate_v3_cmd(cmd);
+      for (size_t x = 0; x < 4; x++) {
+        auto lc = l->clients[x];
+        if (lc) {
+          if (lc->xb_netloc) {
+            cmd.lobby_data[x].netloc = *lc->xb_netloc;
+          } else {
+            cmd.lobby_data[x].netloc.account_id = 0xAE00000000000000 | lc->license->serial_number;
+          }
+        }
+      }
       send_command_t(c, 0x64, player_count, cmd);
       break;
     }
@@ -1802,6 +1813,79 @@ void send_join_lobby_t(shared_ptr<Client> c, shared_ptr<Lobby> l, shared_ptr<Cli
   send_command(c, command, used_entries, &cmd, cmd.size(used_entries));
 }
 
+void send_join_lobby_xb(shared_ptr<Client> c, shared_ptr<Lobby> l, shared_ptr<Client> joining_client = nullptr) {
+  auto s = c->require_server_state();
+
+  uint8_t command;
+  if (l->is_game()) {
+    if (joining_client) {
+      command = 0x65;
+    } else {
+      throw logic_error("send_join_lobby_xb should not be used for primary game join command");
+    }
+  } else {
+    command = joining_client ? 0x68 : 0x67;
+  }
+
+  send_player_records_t<PlayerRecordsEntry_V3>(c, l, joining_client);
+
+  uint8_t lobby_type;
+  if (c->config.override_lobby_number != 0x80) {
+    lobby_type = c->config.override_lobby_number;
+  } else if (l->check_flag(Lobby::Flag::IS_OVERFLOW)) {
+    lobby_type = c->config.check_flag(Client::Flag::IS_EPISODE_3) ? 15 : 0;
+  } else {
+    lobby_type = l->block - 1;
+  }
+
+  if ((lobby_type > 0x11) && (lobby_type != 0x67) && (lobby_type != 0xD4) && (lobby_type < 0xFC)) {
+    lobby_type = l->block - 1;
+  }
+
+  S_JoinLobby_XB_65_67_68 cmd;
+  cmd.lobby_flags.client_id = c->lobby_client_id;
+  cmd.lobby_flags.leader_id = l->leader_id;
+  cmd.lobby_flags.disable_udp = 0x01;
+  cmd.lobby_flags.lobby_number = lobby_type;
+  cmd.lobby_flags.block_number = l->block;
+  cmd.lobby_flags.unknown_a1 = 0;
+  cmd.lobby_flags.event = l->event;
+  cmd.lobby_flags.unknown_a2 = 0;
+  cmd.lobby_flags.unused = 0;
+
+  vector<shared_ptr<Client>> lobby_clients;
+  if (joining_client) {
+    lobby_clients.emplace_back(joining_client);
+  } else {
+    for (auto lc : l->clients) {
+      if (lc) {
+        lobby_clients.emplace_back(lc);
+      }
+    }
+  }
+
+  size_t used_entries = 0;
+  for (const auto& lc : lobby_clients) {
+    auto lp = lc->game_data.player();
+    auto& e = cmd.entries[used_entries++];
+    e.lobby_data.player_tag = 0x00010000;
+    e.lobby_data.guild_card_number = lc->license->serial_number;
+    if (lc->xb_netloc) {
+      e.lobby_data.netloc = *lc->xb_netloc;
+    } else {
+      e.lobby_data.netloc.account_id = 0xAE00000000000000 | lc->license->serial_number;
+    }
+    e.lobby_data.client_id = lc->lobby_client_id;
+    e.lobby_data.name.encode(lp->disp.name.decode(lp->inventory.language), c->language());
+    e.inventory = lp->inventory;
+    e.inventory.encode_for_version(c->version(), s->item_parameter_table_for_version(c->version()));
+    e.disp = convert_player_disp_data<PlayerDispDataDCPCV3>(lp->disp, c->language(), lp->inventory.language);
+    e.disp.enforce_lobby_join_limits(c->version());
+  }
+
+  send_command(c, command, used_entries, &cmd, cmd.size(used_entries));
+}
+
 void send_join_lobby_dc_nte(shared_ptr<Client> c, shared_ptr<Lobby> l,
     shared_ptr<Client> joining_client = nullptr) {
   uint8_t command;
@@ -1869,7 +1953,7 @@ void send_join_lobby(shared_ptr<Client> c, shared_ptr<Lobby> l) {
         send_join_lobby_t<PlayerLobbyDataDCGC, PlayerDispDataDCPCV3, PlayerRecordsEntry_V3, false>(c, l);
         break;
       case GameVersion::XB:
-        send_join_lobby_t<PlayerLobbyDataXB, PlayerDispDataDCPCV3, PlayerRecordsEntry_V3, false>(c, l);
+        send_join_lobby_xb(c, l);
         break;
       case GameVersion::BB:
         send_join_lobby_t<PlayerLobbyDataBB, PlayerDispDataBB, PlayerRecordsEntry_BB, true>(c, l);
@@ -1904,7 +1988,7 @@ void send_player_join_notification(shared_ptr<Client> c,
       send_join_lobby_t<PlayerLobbyDataDCGC, PlayerDispDataDCPCV3, PlayerRecordsEntry_V3, false>(c, l, joining_client);
       break;
     case GameVersion::XB:
-      send_join_lobby_t<PlayerLobbyDataXB, PlayerDispDataDCPCV3, PlayerRecordsEntry_V3, false>(c, l, joining_client);
+      send_join_lobby_xb(c, l, joining_client);
       break;
     case GameVersion::BB:
       send_join_lobby_t<PlayerLobbyDataBB, PlayerDispDataBB, PlayerRecordsEntry_BB, true>(c, l, joining_client);
@@ -2830,26 +2914,87 @@ void send_quest_file_chunk(
   send_command_t(c, is_download_quest ? 0xA7 : 0x13, chunk_index, cmd);
 }
 
-void send_open_quest_file(shared_ptr<Client> c, const string& quest_name,
-    const string& basename, shared_ptr<const string> contents, QuestFileType type) {
+template <typename CommandT>
+void send_open_quest_file_t(
+    shared_ptr<Client> c,
+    const string& quest_name,
+    const string& filename,
+    const string&,
+    uint32_t file_size,
+    uint32_t,
+    QuestFileType type) {
+  CommandT cmd;
+  uint8_t command_num;
+  switch (type) {
+    case QuestFileType::ONLINE:
+      command_num = 0x44;
+      cmd.name.encode("PSO/" + quest_name);
+      cmd.type = 0;
+      break;
+    case QuestFileType::GBA_DEMO:
+      command_num = 0xA6;
+      cmd.name.encode("GBA Demo");
+      cmd.type = 2;
+      break;
+    case QuestFileType::DOWNLOAD:
+      command_num = 0xA6;
+      cmd.name.encode("PSO/" + quest_name);
+      cmd.type = 0;
+      break;
+    case QuestFileType::EPISODE_3:
+      command_num = 0xA6;
+      cmd.name.encode("PSO/" + quest_name);
+      cmd.type = 3;
+      break;
+    default:
+      throw logic_error("invalid quest file type");
+  }
+  cmd.file_size = file_size;
+  cmd.filename.encode(filename);
+  send_command_t(c, command_num, 0x00, cmd);
+}
+
+template <>
+void send_open_quest_file_t<S_OpenFile_XB_44_A6>(
+    shared_ptr<Client> c,
+    const string& quest_name,
+    const string& filename,
+    const string& xb_filename,
+    uint32_t file_size,
+    uint32_t quest_number,
+    QuestFileType type) {
+  S_OpenFile_XB_44_A6 cmd;
+  cmd.name.encode("PSO/" + quest_name);
+  cmd.type = 0;
+  cmd.file_size = file_size;
+  cmd.filename.encode(filename);
+  cmd.xb_filename.encode(xb_filename);
+  cmd.content_meta = 0x30000000 | quest_number;
+  send_command_t(c, (type == QuestFileType::ONLINE) ? 0x44 : 0xA6, 0x00, cmd);
+}
+
+void send_open_quest_file(
+    shared_ptr<Client> c,
+    const string& quest_name,
+    const string& filename,
+    const string& xb_filename,
+    uint32_t quest_number,
+    QuestFileType type,
+    shared_ptr<const string> contents) {
 
   switch (c->version()) {
     case GameVersion::DC:
-      send_quest_open_file_t<S_OpenFile_DC_44_A6>(
-          c, quest_name, basename, contents->size(), type);
+      send_open_quest_file_t<S_OpenFile_DC_44_A6>(c, quest_name, filename, xb_filename, contents->size(), quest_number, type);
       break;
     case GameVersion::PC:
     case GameVersion::GC:
-      send_quest_open_file_t<S_OpenFile_PC_GC_44_A6>(
-          c, quest_name, basename, contents->size(), type);
+      send_open_quest_file_t<S_OpenFile_PC_GC_44_A6>(c, quest_name, filename, xb_filename, contents->size(), quest_number, type);
       break;
     case GameVersion::XB:
-      send_quest_open_file_t<S_OpenFile_XB_44_A6>(
-          c, quest_name, basename, contents->size(), type);
+      send_open_quest_file_t<S_OpenFile_XB_44_A6>(c, quest_name, filename, xb_filename, contents->size(), quest_number, type);
       break;
     case GameVersion::BB:
-      send_quest_open_file_t<S_OpenFile_BB_44_A6>(
-          c, quest_name, basename, contents->size(), type);
+      send_open_quest_file_t<S_OpenFile_BB_44_A6>(c, quest_name, filename, xb_filename, contents->size(), quest_number, type);
       break;
     default:
       throw logic_error("cannot send quest files to this version of client");
@@ -2863,12 +3008,12 @@ void send_open_quest_file(shared_ptr<Client> c, const string& quest_name,
       if (chunk_bytes > 0x400) {
         chunk_bytes = 0x400;
       }
-      send_quest_file_chunk(c, basename.c_str(), offset / 0x400,
+      send_quest_file_chunk(c, filename.c_str(), offset / 0x400,
           contents->data() + offset, chunk_bytes, (type != QuestFileType::ONLINE));
     }
   } else {
-    c->sending_files.emplace(basename, contents);
-    c->log.info("Opened file %s", basename.c_str());
+    c->sending_files.emplace(filename, contents);
+    c->log.info("Opened file %s", filename.c_str());
   }
 }
 

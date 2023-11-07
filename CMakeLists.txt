@@ -134,7 +134,7 @@ foreach(LogTestCase IN ITEMS ${LogTestCases})
     add_test(
         NAME ${LogTestCase}
         WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-        COMMAND ${CMAKE_BINARY_DIR}/newserv replay-log ${LogTestCase} --config=${CMAKE_SOURCE_DIR}/tests/config.json --require-basic-credentials)
+        COMMAND ${CMAKE_BINARY_DIR}/newserv replay-log ${LogTestCase} --config=${CMAKE_SOURCE_DIR}/tests/config.json)
 endforeach()
 
 file(GLOB ScriptTestCases ${CMAKE_SOURCE_DIR}/tests/*.test.sh)

@@ -6,7 +6,6 @@
 #include <phosg/Time.hh>
 
 #include "License.hh"
-#include "Loggers.hh"
 
 using namespace std;
 
@@ -19,6 +18,9 @@ License::License(const JSON& json)
   this->serial_number = json.get_int("SerialNumber");
   this->access_key = json.get_string("AccessKey", "");
   this->gc_password = json.get_string("GCPassword", "");
+  this->xb_gamertag = json.get_string("XBGamerTag", "");
+  this->xb_user_id = json.get_int("XBUserID", 0);
+  this->xb_account_id = json.get_int("XBAccountID", 0);
   this->bb_username = json.get_string("BBUsername", "");
   this->bb_password = json.get_string("BBPassword", "");
   this->flags = json.get_int("Flags", 0);
@@ -32,6 +34,9 @@ JSON License::json() const {
       {"SerialNumber", this->serial_number},
       {"AccessKey", this->access_key},
       {"GCPassword", this->gc_password},
+      {"XBGamerTag", this->xb_gamertag},
+      {"XBUserID", this->xb_user_id},
+      {"XBAccountID", this->xb_account_id},
       {"BBUsername", this->bb_username},
       {"BBPassword", this->bb_password},
       {"Flags", this->flags},
@@ -61,6 +66,15 @@ string License::str() const {
   }
   if (!this->gc_password.empty()) {
     tokens.emplace_back("gc_password=" + this->gc_password);
+  }
+  if (!this->xb_gamertag.empty()) {
+    tokens.emplace_back("xb_gamertag=" + this->xb_gamertag);
+  }
+  if (this->xb_user_id != 0) {
+    tokens.emplace_back(string_printf("xb_user_id=%016" PRIX64, this->xb_user_id));
+  }
+  if (this->xb_account_id != 0) {
+    tokens.emplace_back(string_printf("xb_account_id=%016" PRIX64, this->xb_account_id));
   }
   if (!this->bb_username.empty()) {
     tokens.emplace_back("bb_username=" + this->bb_username);
@@ -156,6 +170,9 @@ void LicenseIndex::add(shared_ptr<License> l) {
   if (!l->bb_username.empty()) {
     this->bb_username_to_license[l->bb_username] = l;
   }
+  if (!l->xb_gamertag.empty()) {
+    this->xb_gamertag_to_license[l->xb_gamertag] = l;
+  }
 }
 
 void LicenseIndex::remove(uint32_t serial_number) {
@@ -163,6 +180,9 @@ void LicenseIndex::remove(uint32_t serial_number) {
   this->serial_number_to_license.erase(l->serial_number);
   if (!l->bb_username.empty()) {
     this->bb_username_to_license.erase(l->bb_username);
+  }
+  if (!l->xb_gamertag.empty()) {
+    this->xb_gamertag_to_license.erase(l->xb_gamertag);
   }
 }
 
@@ -213,6 +233,27 @@ shared_ptr<License> LicenseIndex::verify_gc(uint32_t serial_number, const string
     }
     if (license->gc_password != password) {
       throw incorrect_password();
+    }
+    if (license->ban_end_time && (license->ban_end_time >= now())) {
+      throw invalid_argument("user is banned");
+    }
+    return license;
+  } catch (const out_of_range&) {
+    throw missing_license();
+  }
+}
+
+shared_ptr<License> LicenseIndex::verify_xb(const string& gamertag, uint64_t user_id, uint64_t account_id) const {
+  if (user_id == 0 || account_id == 0) {
+    throw incorrect_access_key();
+  }
+  try {
+    auto& license = this->xb_gamertag_to_license.at(gamertag);
+    if (license->xb_user_id && (license->xb_user_id != user_id)) {
+      throw incorrect_access_key();
+    }
+    if (license->xb_account_id && (license->xb_account_id != account_id)) {
+      throw incorrect_access_key();
     }
     if (license->ban_end_time && (license->ban_end_time >= now())) {
       throw invalid_argument("user is banned");

@@ -526,6 +526,15 @@ std::shared_ptr<ServerState> ProxyServer::LinkedSession::require_server_state() 
   return this->require_server()->state;
 }
 
+void ProxyServer::LinkedSession::resume_xb(shared_ptr<Client> c) {
+  this->sub_version = c->sub_version;
+  this->character_name = c->game_data.player()->disp.name.decode();
+  this->config = c->config;
+  this->wrapped_client = c;
+  this->resume_inner(std::move(c->channel), detector_crypt);
+  c->suspend_timeouts();
+}
+
 void ProxyServer::LinkedSession::resume(
     Channel&& client_channel,
     shared_ptr<PSOBBMultiKeyDetectorEncryption> detector_crypt,
@@ -711,31 +720,43 @@ void ProxyServer::LinkedSession::send_to_game_server(const char* error_message) 
       this->client_channel.send(0x04, 0x00, &update_client_config_cmd, sizeof(update_client_config_cmd));
     }
 
-    const auto& port_name = version_to_login_port_name.at(static_cast<size_t>(this->version()));
-
-    S_Reconnect_19 reconnect_cmd = {{0, s->name_to_port_config.at(port_name)->port, 0}};
-
-    // If the client is on a virtual connection, we can use any address
-    // here and they should be able to connect back to the game server. If
-    // the client is on a real connection, we'll use the sockname of the
-    // existing connection (like we do in the server 19 command handler).
-    if (this->client_channel.is_virtual_connection) {
-      struct sockaddr_in* dest_sin = reinterpret_cast<struct sockaddr_in*>(&this->next_destination);
-      if (dest_sin->sin_family != AF_INET) {
-        throw logic_error("ss not AF_INET");
+    if (this->version() == GameVersion::XB) {
+      if (!this->wrapped_client) {
+        throw logic_error("wrapped client is missing from XB proxy session");
       }
-      reconnect_cmd.address.store_raw(dest_sin->sin_addr.s_addr);
+      this->wrapped_client->should_disconnect = false;
+      s->game_server->connect_client(this->wrapped_client, std::move(this->client_channel));
+      on_login_complete(this->wrapped_client);
+      this->disconnect_action = DisconnectAction::CLOSE_IMMEDIATELY;
+      this->disconnect();
+
     } else {
-      const struct sockaddr_in* sin = reinterpret_cast<const struct sockaddr_in*>(
-          &this->client_channel.local_addr);
-      if (sin->sin_family != AF_INET) {
-        throw logic_error("existing connection is not ipv4");
-      }
-      reconnect_cmd.address.store_raw(sin->sin_addr.s_addr);
-    }
+      const auto& port_name = version_to_login_port_name.at(static_cast<size_t>(this->version()));
 
-    this->client_channel.send(0x19, 0x00, &reconnect_cmd, sizeof(reconnect_cmd));
-    this->disconnect_action = DisconnectAction::CLOSE_IMMEDIATELY;
+      S_Reconnect_19 reconnect_cmd = {{0, s->name_to_port_config.at(port_name)->port, 0}};
+
+      // If the client is on a virtual connection, we can use any address
+      // here and they should be able to connect back to the game server. If
+      // the client is on a real connection, we'll use the sockname of the
+      // existing connection (like we do in the server 19 command handler).
+      if (this->client_channel.is_virtual_connection) {
+        struct sockaddr_in* dest_sin = reinterpret_cast<struct sockaddr_in*>(&this->next_destination);
+        if (dest_sin->sin_family != AF_INET) {
+          throw logic_error("ss not AF_INET");
+        }
+        reconnect_cmd.address.store_raw(dest_sin->sin_addr.s_addr);
+      } else {
+        const struct sockaddr_in* sin = reinterpret_cast<const struct sockaddr_in*>(
+            &this->client_channel.local_addr);
+        if (sin->sin_family != AF_INET) {
+          throw logic_error("existing connection is not ipv4");
+        }
+        reconnect_cmd.address.store_raw(sin->sin_addr.s_addr);
+      }
+
+      this->client_channel.send(0x19, 0x00, &reconnect_cmd, sizeof(reconnect_cmd));
+      this->disconnect_action = DisconnectAction::CLOSE_IMMEDIATELY;
+    }
   }
 }
 
@@ -762,8 +783,7 @@ void ProxyServer::LinkedSession::disconnect() {
 
   // Set a timeout to delete the session entirely (in case the client doesn't
   // reconnect)
-  struct timeval tv = usecs_to_timeval(this->timeout_for_disconnect_action(
-      this->disconnect_action));
+  struct timeval tv = usecs_to_timeval(this->timeout_for_disconnect_action(this->disconnect_action));
   event_add(this->timeout_event.get(), &tv);
 }
 
@@ -818,8 +838,7 @@ shared_ptr<ProxyServer::LinkedSession> ProxyServer::get_session_by_name(
 shared_ptr<ProxyServer::LinkedSession> ProxyServer::create_licensed_session(
     shared_ptr<License> l, uint16_t local_port, GameVersion version,
     const Client::Config& config) {
-  shared_ptr<LinkedSession> session(new LinkedSession(
-      this->shared_from_this(), local_port, version, l, config));
+  shared_ptr<LinkedSession> session(new LinkedSession(this->shared_from_this(), local_port, version, l, config));
   auto emplace_ret = this->id_to_session.emplace(session->id, session);
   if (!emplace_ret.second) {
     throw runtime_error("session already exists for this license");

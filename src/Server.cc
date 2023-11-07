@@ -29,13 +29,11 @@ using namespace std::placeholders;
 
 void Server::disconnect_client(shared_ptr<Client> c) {
   if (c->channel.is_virtual_connection) {
-    server_log.info(
-        "Client disconnected: C-%" PRIX64 " on virtual connection %p",
-        c->id, c->channel.bev.get());
+    server_log.info("Client disconnected: C-%" PRIX64 " on virtual connection %p", c->id, c->channel.bev.get());
+  } else if (c->channel.bev) {
+    server_log.info("Client disconnected: C-%" PRIX64 " on fd %d", c->id, bufferevent_getfd(c->channel.bev.get()));
   } else {
-    server_log.info(
-        "Client disconnected: C-%" PRIX64 " on fd %d",
-        c->id, bufferevent_getfd(c->channel.bev.get()));
+    server_log.info("Client C-%" PRIX64 " removed from game server", c->id);
   }
 
   this->state->channel_to_client.erase(&c->channel);
@@ -163,6 +161,12 @@ void Server::connect_client(
     server_log.error("Error during client initialization: %s", e.what());
     this->disconnect_client(c);
   }
+}
+
+void Server::connect_client(shared_ptr<Client> c, Channel&& ch) {
+  c->channel.replace_with(std::move(ch), Server::on_client_input, Server::on_client_error, this, string_printf("C-%" PRIX64, c->id));
+  this->state->channel_to_client.emplace(&c->channel, c);
+  server_log.info("Client C-%" PRIX64 " added to game server", c->id);
 }
 
 void Server::on_listen_error(struct evconnlistener* listener) {

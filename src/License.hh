@@ -33,6 +33,9 @@ struct License {
   uint32_t serial_number = 0;
   std::string access_key;
   std::string gc_password;
+  std::string xb_gamertag;
+  uint64_t xb_user_id = 0;
+  uint64_t xb_account_id = 0;
   std::string bb_username;
   std::string bb_password;
 
@@ -84,9 +87,11 @@ public:
   std::shared_ptr<License> verify_v1_v2(uint32_t serial_number, const std::string& access_key) const;
   std::shared_ptr<License> verify_gc(uint32_t serial_number, const std::string& access_key) const;
   std::shared_ptr<License> verify_gc(uint32_t serial_number, const std::string& access_key, const std::string& password) const;
+  std::shared_ptr<License> verify_xb(const std::string& gamertag, uint64_t user_id, uint64_t account_id) const;
   std::shared_ptr<License> verify_bb(const std::string& username, const std::string& password) const;
 
 protected:
   std::unordered_map<std::string, std::shared_ptr<License>> bb_username_to_license;
+  std::unordered_map<std::string, std::shared_ptr<License>> xb_gamertag_to_license;
   std::unordered_map<uint32_t, std::shared_ptr<License>> serial_number_to_license;
 };

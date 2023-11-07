@@ -30,6 +30,8 @@ const char* BATTLE_TABLE_DISCONNECT_HOOK_NAME = "battle_table_state";
 const char* QUEST_BARRIER_DISCONNECT_HOOK_NAME = "quest_barrier";
 const char* ADD_NEXT_CLIENT_DISCONNECT_HOOK_NAME = "add_next_game_client";
 
+void on_login_complete(shared_ptr<Client> c);
+
 static shared_ptr<const Menu> proxy_options_menu_for_client(shared_ptr<const Client> c) {
   auto s = c->require_server_state();
 
@@ -91,14 +93,32 @@ static shared_ptr<const Menu> proxy_options_menu_for_client(shared_ptr<const Cli
   return ret;
 }
 
-static void send_client_to_lobby_server(shared_ptr<Client> c) {
-  auto s = c->require_server_state();
-  const auto& port_name = version_to_lobby_port_name.at(static_cast<size_t>(c->version()));
-  send_reconnect(c, s->connect_address_for_client(c),
-      s->name_to_port_config.at(port_name)->port);
+void send_client_to_login_server(shared_ptr<Client> c) {
+  if (c->version() == GameVersion::XB) {
+    c->server_behavior = ServerBehavior::LOGIN_SERVER;
+    on_login_complete(c);
+
+  } else {
+    const auto& port_name = version_to_login_port_name.at(static_cast<size_t>(c->version()));
+    auto s = c->require_server_state();
+    send_reconnect(c, s->connect_address_for_client(c), s->name_to_port_config.at(port_name)->port);
+  }
 }
 
-static void send_client_to_proxy_server(shared_ptr<Client> c) {
+void send_client_to_lobby_server(shared_ptr<Client> c) {
+  if (c->version() == GameVersion::XB) {
+    c->server_behavior = ServerBehavior::LOBBY_SERVER;
+    on_login_complete(c);
+
+  } else {
+    auto s = c->require_server_state();
+    const auto& port_name = version_to_lobby_port_name.at(static_cast<size_t>(c->version()));
+    send_reconnect(c, s->connect_address_for_client(c),
+        s->name_to_port_config.at(port_name)->port);
+  }
+}
+
+void send_client_to_proxy_server(shared_ptr<Client> c) {
   auto s = c->require_server_state();
 
   const auto& port_name = version_to_proxy_port_name.at(static_cast<size_t>(c->version()));
@@ -117,7 +137,12 @@ static void send_client_to_proxy_server(shared_ptr<Client> c) {
     ses->remote_guild_card_number = 0;
   }
 
-  send_reconnect(c, s->connect_address_for_client(c), local_port);
+  if (c->version() == GameVersion::XB) {
+    ses->resume_xb(c);
+    c->should_disconnect = true;
+  } else {
+    send_reconnect(c, s->connect_address_for_client(c), local_port);
+  }
 }
 
 static void send_proxy_destinations_menu(shared_ptr<Client> c) {
@@ -239,7 +264,7 @@ static void send_main_menu(shared_ptr<Client> c) {
       "Disconnect", 0);
   main_menu->items.emplace_back(MainMenuItemID::CLEAR_LICENSE, "Clear license",
       "Disconnect with an\ninvalid license error\nso you can enter a\ndifferent serial\nnumber, access key,\nor password",
-      MenuItem::Flag::INVISIBLE_ON_DCNTE | MenuItem::Flag::INVISIBLE_ON_BB);
+      MenuItem::Flag::INVISIBLE_ON_DCNTE | MenuItem::Flag::INVISIBLE_ON_XB | MenuItem::Flag::INVISIBLE_ON_BB);
 
   send_menu(c, main_menu);
 }
@@ -312,6 +337,10 @@ void on_disconnect(shared_ptr<Client> c) {
 
 ////////////////////////////////////////////////////////////////////////////////
 
+static void on_05(shared_ptr<Client> c, uint16_t, uint32_t, string&) {
+  c->should_disconnect = true;
+}
+
 static void set_console_client_flags(shared_ptr<Client> c, uint32_t sub_version) {
   if (c->channel.crypt_in->type() == PSOEncryption::Type::V2) {
     if (sub_version <= 0x28) {
@@ -323,6 +352,7 @@ static void set_console_client_flags(shared_ptr<Client> c, uint32_t sub_version)
     }
   }
   c->config.set_flags_for_version(c->version(), sub_version);
+  c->sub_version = sub_version;
   if (c->config.specific_version == default_specific_version_for_version(c->version(), -1)) {
     c->config.specific_version = default_specific_version_for_version(c->version(), sub_version);
   }
@@ -747,21 +777,7 @@ static void on_9D_9E(shared_ptr<Client> c, uint16_t command, uint32_t, string& d
     }
 
   } else if (command == 0x9E) {
-    // GC and XB send different amounts of data in this command. This is how
-    // newserv determines if a V3 client is GC or XB.
-    const auto& cmd = check_size_t<C_Login_GC_9E>(data, sizeof(C_LoginExtended_XB_9E));
-    switch (data.size()) {
-      case sizeof(C_Login_GC_9E):
-      case sizeof(C_LoginExtended_GC_9E):
-        break;
-      case sizeof(C_Login_XB_9E):
-      case sizeof(C_LoginExtended_XB_9E):
-        c->channel.version = GameVersion::XB;
-        c->log.info("Game version set to XB");
-        break;
-      default:
-        throw runtime_error("invalid size for 9E command");
-    }
+    const auto& cmd = check_size_t<C_Login_GC_9E>(data, sizeof(C_LoginExtended_GC_9E));
     base_cmd = &cmd;
     if (cmd.is_extended) {
       const auto& cmd = check_size_t<C_LoginExtended_GC_9E>(data);
@@ -832,12 +848,11 @@ static void on_9D_9E(shared_ptr<Client> c, uint16_t command, uint32_t, string& d
     return;
 
   } catch (const LicenseIndex::missing_license& e) {
-    // On V3, the client should have sent a different command containing the
+    // On GC, the client should have sent a different command containing the
     // password already, which should have created and added a license. So, if
     // no license exists at this point, disconnect the client even if
     // unregistered clients are allowed.
-    shared_ptr<License> l;
-    if ((c->version() == GameVersion::GC) || (c->version() == GameVersion::XB)) {
+    if (c->version() == GameVersion::GC) {
       send_command(c, 0x04, 0x04);
       c->should_disconnect = true;
       return;
@@ -855,6 +870,81 @@ static void on_9D_9E(shared_ptr<Client> c, uint16_t command, uint32_t, string& d
     } else {
       throw runtime_error("unsupported game version");
     }
+  }
+
+  send_update_client_config(c);
+  on_login_complete(c);
+}
+
+static void on_9E_XB(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
+  auto s = c->require_server_state();
+
+  const auto& cmd = check_size_t<C_Login_XB_9E>(data, sizeof(C_LoginExtended_XB_9E));
+  if (cmd.is_extended) {
+    const auto& cmd = check_size_t<C_LoginExtended_XB_9E>(data);
+    if (cmd.extension.lobby_refs[0].menu_id == MenuID::LOBBY) {
+      c->preferred_lobby_id = cmd.extension.lobby_refs[0].item_id;
+    }
+  }
+
+  try {
+    c->config.parse_from(cmd.client_config);
+  } catch (const invalid_argument&) {
+    // If we can't import the config, assume that the client was not connected
+    // to newserv before, so we should show the welcome message.
+    c->config.set_flag(Client::Flag::AT_WELCOME_MESSAGE);
+  }
+  c->xb_netloc.reset(new XBNetworkLocation(cmd.netloc));
+  c->xb_9E_unknown_a1a = cmd.unknown_a1a;
+
+  c->channel.language = cmd.language;
+  c->config.set_flags_for_version(c->version(), -1);
+  set_console_client_flags(c, cmd.sub_version);
+
+  string xb_gamertag = cmd.serial_number.decode();
+  uint64_t xb_user_id = stoull(cmd.access_key.decode(), nullptr, 16);
+  uint64_t xb_account_id = cmd.netloc.account_id;
+  try {
+    shared_ptr<License> l = s->license_index->verify_xb(xb_gamertag, xb_user_id, xb_account_id);
+    bool should_save = false;
+    if (l->xb_user_id == 0) {
+      l->xb_user_id = xb_user_id;
+      c->log.info("Set license XB user ID to %016" PRIX64, l->xb_user_id);
+      should_save = true;
+    }
+    if (l->xb_account_id == 0) {
+      l->xb_account_id = xb_account_id;
+      c->log.info("Set license XB account ID to %016" PRIX64, l->xb_account_id);
+      should_save = true;
+    }
+    if (should_save && !s->is_replay) {
+      l->save();
+    }
+    c->set_license(l);
+
+  } catch (const LicenseIndex::no_username& e) {
+    send_command(c, 0x04, 0x03);
+    c->should_disconnect = true;
+    return;
+
+  } catch (const LicenseIndex::incorrect_access_key& e) {
+    send_command(c, 0x04, 0x03);
+    c->should_disconnect = true;
+    return;
+
+  } catch (const LicenseIndex::missing_license& e) {
+    shared_ptr<License> l(new License());
+    l->serial_number = fnv1a32(xb_gamertag) & 0x7FFFFFFF;
+    l->xb_gamertag = xb_gamertag;
+    l->xb_user_id = xb_user_id;
+    l->xb_account_id = xb_account_id;
+    s->license_index->add(l);
+    if (!s->is_replay) {
+      l->save();
+    }
+    c->set_license(l);
+    string l_str = l->str();
+    c->log.info("Created license %s", l_str.c_str());
   }
 
   send_update_client_config(c);
@@ -1784,6 +1874,9 @@ static void on_10(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
         }
 
         case MainMenuItemID::PROXY_DESTINATIONS:
+          if (!c->game_data.player(false, false)) {
+            send_get_player_info(c);
+          }
           send_proxy_destinations_menu(c);
           break;
 
@@ -1851,6 +1944,11 @@ static void on_10(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
           break;
 
         case MainMenuItemID::DISCONNECT:
+          if (c->version() == GameVersion::XB) {
+            // On XB (at least via Insignia) the server has to explicitly tell
+            // the client to disconnect by sending this command.
+            send_command(c, 0x05, 0x00);
+          }
           c->should_disconnect = true;
           break;
 
@@ -2140,8 +2238,9 @@ static void on_10(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
 
           string bin_filename = vq->bin_filename();
           string dat_filename = vq->dat_filename();
-          send_open_quest_file(lc, bin_filename, bin_filename, vq->bin_contents, QuestFileType::ONLINE);
-          send_open_quest_file(lc, dat_filename, dat_filename, vq->dat_contents, QuestFileType::ONLINE);
+          string xb_filename = vq->xb_filename();
+          send_open_quest_file(lc, bin_filename, bin_filename, xb_filename, vq->quest_number, QuestFileType::ONLINE, vq->bin_contents);
+          send_open_quest_file(lc, dat_filename, dat_filename, xb_filename, vq->quest_number, QuestFileType::ONLINE, vq->dat_contents);
 
           // There is no such thing as command AC on PSO V1 and V2 - quests just
           // start immediately when they're done downloading. (This is also the
@@ -2171,11 +2270,12 @@ static void on_10(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
         // TODO: This is not true for Episode 3 Trial Edition. We also would
         // have to convert the map to a MapDefinitionTrial, though.
         if (vq->version == QuestScriptVersion::GC_EP3) {
-          send_open_quest_file(c, q->name, vq->bin_filename(), vq->bin_contents, QuestFileType::EPISODE_3);
+          send_open_quest_file(c, q->name, vq->bin_filename(), "", vq->quest_number, QuestFileType::EPISODE_3, vq->bin_contents);
         } else {
           vq = vq->create_download_quest(c->language());
-          send_open_quest_file(c, q->name, vq->bin_filename(), vq->bin_contents, QuestFileType::DOWNLOAD);
-          send_open_quest_file(c, q->name, vq->dat_filename(), vq->dat_contents, QuestFileType::DOWNLOAD);
+          string xb_filename = vq->xb_filename();
+          send_open_quest_file(c, q->name, vq->bin_filename(), xb_filename, vq->quest_number, QuestFileType::DOWNLOAD, vq->bin_contents);
+          send_open_quest_file(c, q->name, vq->dat_filename(), xb_filename, vq->quest_number, QuestFileType::DOWNLOAD, vq->dat_contents);
         }
       }
       break;
@@ -2354,11 +2454,7 @@ static void on_A0(shared_ptr<Client> c, uint16_t, uint32_t, string&) {
     send_message_box(c, "");
   }
 
-  const auto& port_name = version_to_login_port_name.at(static_cast<size_t>(c->version()));
-
-  auto s = c->require_server_state();
-  send_reconnect(c, s->connect_address_for_client(c),
-      s->name_to_port_config.at(port_name)->port);
+  send_client_to_login_server(c);
 }
 
 static void on_A1(shared_ptr<Client> c, uint16_t command, uint32_t flag, string& data) {
@@ -2555,7 +2651,7 @@ static void on_D7_GC(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
     try {
       static FileContentsCache gba_file_cache(300 * 1000 * 1000);
       auto f = gba_file_cache.get_or_load("system/gba/" + filename).file;
-      send_open_quest_file(c, "", filename, f->data, QuestFileType::GBA_DEMO);
+      send_open_quest_file(c, "", filename, "", 0, QuestFileType::GBA_DEMO, f->data);
     } catch (const out_of_range&) {
       send_command(c, 0xD7, 0x00);
     } catch (const cannot_open_file&) {
@@ -3281,6 +3377,11 @@ static void on_C6(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
   }
 }
 
+static void on_C9_XB(shared_ptr<Client> c, uint16_t, uint32_t flag, string& data) {
+  check_size_v(data.size(), 0);
+  c->log.warning("Ignoring connection status change command (%02" PRIX32 ")", flag);
+}
+
 shared_ptr<Lobby> create_game_generic(
     shared_ptr<ServerState> s,
     shared_ptr<Client> c,
@@ -3681,12 +3782,13 @@ static void on_6F(shared_ptr<Client> c, uint16_t command, uint32_t, string& data
       if (!vq) {
         throw runtime_error("JOINABLE_QUEST_IN_PROGRESS is set, but lobby has no quest for client version");
       }
-      string bin_basename = vq->bin_filename();
-      string dat_basename = vq->dat_filename();
+      string bin_filename = vq->bin_filename();
+      string dat_filename = vq->dat_filename();
 
-      send_open_quest_file(c, bin_basename + ".bin", bin_basename, vq->bin_contents, QuestFileType::ONLINE);
-      send_open_quest_file(c, dat_basename + ".dat", dat_basename, vq->dat_contents, QuestFileType::ONLINE);
+      send_open_quest_file(c, bin_filename, bin_filename, "", vq->quest_number, QuestFileType::ONLINE, vq->bin_contents);
+      send_open_quest_file(c, dat_filename, dat_filename, "", vq->quest_number, QuestFileType::ONLINE, vq->dat_contents);
       c->config.set_flag(Client::Flag::LOADING_RUNNING_JOINABLE_QUEST);
+
     } else if (l->map) {
       send_rare_enemy_index_list(c, l->map->rare_enemy_indexes);
     }
@@ -4127,7 +4229,7 @@ static on_command_t handlers[0x100][6] = {
   /* 02 */ {on_02_P, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
   /* 03 */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
   /* 04 */ {on_04_P, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* 05 */ {nullptr, on_ignored,     on_ignored,  on_ignored,     on_ignored,     on_ignored},
+  /* 05 */ {nullptr, on_05,          on_05,       on_05,          on_05,          on_05},
   /* 06 */ {nullptr, on_06,          on_06,       on_06,          on_06,          on_06},
   /* 07 */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
   /* 08 */ {nullptr, on_08_E6,       on_08_E6,    on_08_E6,       on_08_E6,       on_08_E6},
@@ -4284,7 +4386,7 @@ static on_command_t handlers[0x100][6] = {
   /* 9B */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
   /* 9C */ {nullptr, on_9C,          on_9C,       on_9C,          on_9C,          nullptr},
   /* 9D */ {nullptr, on_9D_9E,       on_9D_9E,    on_9D_9E,       on_9D_9E,       nullptr},
-  /* 9E */ {nullptr, nullptr,        on_9D_9E,    on_9D_9E,       on_9D_9E,       nullptr},
+  /* 9E */ {nullptr, nullptr,        on_9D_9E,    on_9D_9E,       on_9E_XB,       nullptr},
   /* 9F */ {nullptr, nullptr,        nullptr,     on_9F_V3,       on_9F_V3,       nullptr},
   //        PATCH    DC              PC           GC              XB              BB
   /* A0 */ {nullptr, on_A0,          on_A0,       on_A0,          on_A0,          on_A0},
@@ -4329,7 +4431,7 @@ static on_command_t handlers[0x100][6] = {
   /* C6 */ {nullptr, nullptr,        on_C6,       on_C6,          on_C6,          on_C6},
   /* C7 */ {nullptr, nullptr,        on_C7,       on_C7,          on_C7,          on_C7},
   /* C8 */ {nullptr, nullptr,        on_C8,       on_C8,          on_C8,          on_C8},
-  /* C9 */ {nullptr, nullptr,        nullptr,     on_6x_C9_CB,    nullptr,        nullptr},
+  /* C9 */ {nullptr, nullptr,        nullptr,     on_6x_C9_CB,    on_C9_XB,       nullptr},
   /* CA */ {nullptr, nullptr,        nullptr,     on_CA_Ep3,      nullptr,        nullptr},
   /* CB */ {nullptr, nullptr,        nullptr,     on_6x_C9_CB,    nullptr,        nullptr},
   /* CC */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},

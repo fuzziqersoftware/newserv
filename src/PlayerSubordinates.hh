@@ -210,9 +210,7 @@ struct GuildCardPC {
   /* F0 */
 } __attribute__((packed));
 
-// TODO: Is this the same for XB as it is for GC? (This struct is based on the
-// GC format)
-struct GuildCardV3 {
+struct GuildCardGC {
   /* 00 */ le_uint32_t player_tag = 0;
   /* 04 */ le_uint32_t guild_card_number = 0;
   /* 08 */ pstring<TextEncoding::ASCII, 0x18> name;
@@ -222,6 +220,20 @@ struct GuildCardV3 {
   /* 8E */ uint8_t section_id = 0;
   /* 8F */ uint8_t char_class = 0;
   /* 90 */
+} __attribute__((packed));
+
+struct GuildCardXB {
+  /* 0000 */ le_uint32_t player_tag = 0;
+  /* 0004 */ le_uint32_t guild_card_number = 0;
+  /* 0008 */ le_uint32_t xb_user_id_high = 0;
+  /* 000C */ le_uint32_t xb_user_id_low = 0;
+  /* 0010 */ pstring<TextEncoding::ASCII, 0x18> name;
+  /* 0028 */ pstring<TextEncoding::MARKED, 0x200> description;
+  /* 0228 */ uint8_t present = 0;
+  /* 0229 */ uint8_t language = 0;
+  /* 022A */ uint8_t section_id = 0;
+  /* 022B */ uint8_t char_class = 0;
+  /* 022C */
 } __attribute__((packed));
 
 struct GuildCardBB {
@@ -266,11 +278,12 @@ struct PlayerLobbyDataDCGC {
 struct XBNetworkLocation {
   le_uint32_t internal_ipv4_address = 0x0A0A0A0A;
   le_uint32_t external_ipv4_address = 0x23232323;
-  le_uint16_t port = 9100;
+  le_uint16_t port = 9500;
   parray<uint8_t, 6> mac_address = 0x77;
-  parray<le_uint32_t, 2> unknown_a1;
+  le_uint32_t unknown_a1;
+  le_uint32_t unknown_a2;
   le_uint64_t account_id = 0xFFFFFFFFFFFFFFFF;
-  parray<le_uint32_t, 4> unknown_a2;
+  parray<le_uint32_t, 4> unknown_a3;
 
   void clear();
 } __attribute__((packed));

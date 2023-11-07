@@ -75,8 +75,9 @@ public:
 
     struct LobbyPlayer {
       uint32_t guild_card_number = 0;
+      uint64_t xb_user_id = 0;
       std::string name;
-      uint8_t language;
+      uint8_t language = 0;
       uint8_t section_id = 0;
       uint8_t char_class = 0;
     };
@@ -90,6 +91,7 @@ public:
     bool is_in_quest;
 
     std::shared_ptr<PSOBBMultiKeyDetectorEncryption> detector_crypt;
+    std::shared_ptr<Client> wrapped_client;
 
     struct SavingFile {
       std::string basename;
@@ -143,6 +145,7 @@ public:
       return this->client_channel.language;
     }
 
+    void resume_xb(std::shared_ptr<Client> wrapped_client);
     void resume(
         Channel&& client_channel,
         std::shared_ptr<PSOBBMultiKeyDetectorEncryption> detector_crypt,

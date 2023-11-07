@@ -13,7 +13,7 @@ const vector<string> version_to_login_port_name = {
 const vector<string> version_to_lobby_port_name = {
     "bb-patch", "console-lobby", "pc-lobby", "console-lobby", "console-lobby", "bb-lobby"};
 const vector<string> version_to_proxy_port_name = {
-    "", "dc-proxy", "pc-proxy", "gc-proxy", "xb-proxy", "bb-proxy"};
+    "", "dc-proxy", "pc-proxy", "gc-proxy", "xb", "bb-proxy"};
 
 const char* name_for_version(GameVersion version) {
   switch (version) {
