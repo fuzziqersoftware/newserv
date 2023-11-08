@@ -2497,7 +2497,7 @@ subcommand_handler_t subcommand_handlers[0x100] = {
     /* 6xD9 */ on_momoka_item_exchange_bb,
     /* 6xDA */ on_upgrade_weapon_attribute_bb,
     /* 6xDB */ nullptr,
-    /* 6xDC */ nullptr,
+    /* 6xDC */ on_forward_check_size_game,
     /* 6xDD */ nullptr,
     /* 6xDE */ nullptr,
     /* 6xDF */ on_photon_crystal_exchange_bb,
