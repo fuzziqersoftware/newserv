@@ -845,7 +845,10 @@ static void server_command_edit(shared_ptr<Client> c, const std::string& args) {
         p->disp.visual.section_id = secid;
       }
     } else if (tokens.at(0) == "name") {
-      p->disp.name.encode(tokens.at(1), p->inventory.language);
+      vector<string> orig_tokens = split(args, ' ');
+      string name = ((p->inventory.language == 0) ? "\tE" : "\tJ") + orig_tokens.at(1);
+      p->disp.name.clear();
+      p->disp.name.encode(name, p->inventory.language);
     } else if (tokens.at(0) == "npc") {
       if (tokens.at(1) == "none") {
         p->disp.visual.extra_model = 0;
