@@ -385,12 +385,6 @@ PlayerRecordsBB_Challenge::operator PlayerRecordsV3_Challenge<false>() const {
   return ret;
 }
 
-PlayerInventory::PlayerInventory()
-    : num_items(0),
-      hp_materials_used(0),
-      tp_materials_used(0),
-      language(0) {}
-
 void PlayerBank::add_item(const ItemData& item) {
   uint32_t pid = item.primary_identifier();
 

@@ -64,13 +64,11 @@ struct PlayerBankItem {
 
 struct PlayerInventory {
   /* 0000 */ uint8_t num_items = 0;
-  /* 0001 */ uint8_t hp_materials_used = 0;
-  /* 0002 */ uint8_t tp_materials_used = 0;
-  /* 0003 */ uint8_t language = 1; // English
+  /* 0001 */ uint8_t hp_from_materials = 0;
+  /* 0002 */ uint8_t tp_from_materials = 0;
+  /* 0003 */ uint8_t language = 0;
   /* 0004 */ parray<PlayerInventoryItem, 30> items;
   /* 034C */
-
-  PlayerInventory();
 
   size_t find_item(uint32_t item_id) const;
   size_t find_item_by_primary_identifier(uint32_t primary_identifier) const;

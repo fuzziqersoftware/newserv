@@ -58,8 +58,8 @@ void ClientGameData::create_battle_overlay(shared_ptr<const BattleRules> rules, 
   if (rules->replace_char) {
     // TODO: Shouldn't we clear other material usage here? It looks like the
     // original code doesn't, but that seems wrong.
-    this->overlay_player_data->inventory.hp_materials_used = 0;
-    this->overlay_player_data->inventory.tp_materials_used = 0;
+    this->overlay_player_data->inventory.hp_from_materials = 0;
+    this->overlay_player_data->inventory.tp_from_materials = 0;
 
     uint32_t target_level = clamp<uint32_t>(rules->char_level, 0, 199);
     uint8_t char_class = this->overlay_player_data->disp.visual.char_class;
@@ -442,9 +442,9 @@ void SavedPlayerDataBB::set_technique_level(uint8_t which, uint8_t level) {
 uint8_t SavedPlayerDataBB::get_material_usage(MaterialType which) const {
   switch (which) {
     case MaterialType::HP:
-      return this->inventory.hp_materials_used;
+      return this->inventory.hp_from_materials >> 1;
     case MaterialType::TP:
-      return this->inventory.tp_materials_used;
+      return this->inventory.tp_from_materials >> 1;
     case MaterialType::POWER:
     case MaterialType::MIND:
     case MaterialType::EVADE:
@@ -459,10 +459,10 @@ uint8_t SavedPlayerDataBB::get_material_usage(MaterialType which) const {
 void SavedPlayerDataBB::set_material_usage(MaterialType which, uint8_t usage) {
   switch (which) {
     case MaterialType::HP:
-      this->inventory.hp_materials_used = usage;
+      this->inventory.hp_from_materials = usage << 1;
       break;
     case MaterialType::TP:
-      this->inventory.tp_materials_used = usage;
+      this->inventory.tp_from_materials = usage << 1;
       break;
     case MaterialType::POWER:
     case MaterialType::MIND:
@@ -477,8 +477,8 @@ void SavedPlayerDataBB::set_material_usage(MaterialType which, uint8_t usage) {
 }
 
 void SavedPlayerDataBB::clear_all_material_usage() {
-  this->inventory.hp_materials_used = 0;
-  this->inventory.tp_materials_used = 0;
+  this->inventory.hp_from_materials = 0;
+  this->inventory.tp_from_materials = 0;
   for (size_t z = 0; z < 5; z++) {
     this->inventory.items[z + 8].extension_data2 = 0;
   }
