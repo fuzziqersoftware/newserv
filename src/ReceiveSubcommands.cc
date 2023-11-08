@@ -303,7 +303,7 @@ static void on_sync_joining_player_disp_and_inventory(
     send_command_t(target, command, flag, out_cmd);
 
   } else {
-    // Comvert XB command to GC command
+    // Convert XB command to GC command
     static_assert(
         sizeof(G_SyncPlayerDispAndInventory_DC_PC_GC_6x70) < sizeof(G_SyncPlayerDispAndInventory_XB_6x70),
         "GC 6x70 command is larger than XB 6x70 command");
