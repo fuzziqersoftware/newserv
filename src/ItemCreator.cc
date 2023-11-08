@@ -60,7 +60,7 @@ uint8_t ItemCreator::normalize_area_number(uint8_t area) const {
   if (!this->restrictions || (this->restrictions->box_drop_area == 0) || (area < 0x10) || (area > 0x11)) {
     switch (this->episode) {
       case Episode::EP1:
-        if (area >= 15) {
+        if (area >= 0x0F) {
           throw runtime_error("invalid Episode 1 area number");
         }
         switch (area) {
@@ -102,7 +102,9 @@ uint8_t ItemCreator::normalize_area_number(uint8_t area) const {
         return area;
       }
       case Episode::EP4:
-        // TODO: Figure out remaps for Episode 4 (if there are any)
+        if (area >= 0x24 && area < 0x2D) {
+          return area - 0x22;
+        }
         return area;
       default:
         throw logic_error("invalid episode number");
@@ -115,13 +117,13 @@ uint8_t ItemCreator::normalize_area_number(uint8_t area) const {
 
 ItemData ItemCreator::on_box_item_drop(uint16_t entity_id, uint8_t area) {
   return this->destroyed_boxes.emplace(entity_id).second
-      ? this->on_box_item_drop_with_norm_area(normalize_area_number(area) - 1)
+      ? this->on_box_item_drop_with_norm_area(this->normalize_area_number(area) - 1)
       : ItemData();
 }
 
 ItemData ItemCreator::on_monster_item_drop(uint16_t entity_id, uint32_t enemy_type, uint8_t area) {
   return this->destroyed_monsters.emplace(entity_id).second
-      ? this->on_monster_item_drop_with_norm_area(enemy_type, normalize_area_number(area) - 1)
+      ? this->on_monster_item_drop_with_norm_area(enemy_type, this->normalize_area_number(area) - 1)
       : ItemData();
 }
 
