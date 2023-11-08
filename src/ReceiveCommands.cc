@@ -2812,6 +2812,9 @@ static void on_61_98(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
   c->channel.language = player->inventory.language;
 
   string name_str = player->disp.name.decode(c->language());
+  if ((name_str.size() > 2) && (name_str[0] == '\t') && ((name_str[1] == 'E') || (name_str[1] == 'J'))) {
+    name_str = name_str.substr(2);
+  }
   c->channel.name = string_printf("C-%" PRIX64 " (%s)", c->id, name_str.c_str());
 
   // 98 should only be sent when leaving a game, and we should leave the client
