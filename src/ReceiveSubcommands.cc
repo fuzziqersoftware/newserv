@@ -729,7 +729,7 @@ static void on_player_drop_item(shared_ptr<Client> c, uint8_t command, uint8_t f
 }
 
 template <typename CmdT>
-void forward_subcommand_with_mag_transcode_t(shared_ptr<Client> c, uint8_t command, uint8_t flag, const CmdT& cmd) {
+void forward_subcommand_with_item_transcode_t(shared_ptr<Client> c, uint8_t command, uint8_t flag, const CmdT& cmd) {
   // I'm lazy and this should never happen for item commands (since all players
   // need to stay in sync)
   if (command_is_private(command)) {
@@ -784,7 +784,7 @@ static void on_create_inventory_item_t(shared_ptr<Client> c, uint8_t command, ui
     p->print_inventory(stderr, c->version(), s->item_name_index);
   }
 
-  forward_subcommand_with_mag_transcode_t(c, command, flag, cmd);
+  forward_subcommand_with_item_transcode_t(c, command, flag, cmd);
 }
 
 static void on_create_inventory_item(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
@@ -830,7 +830,7 @@ static void on_drop_partial_stack_t(shared_ptr<Client> c, uint8_t command, uint8
     c->game_data.player()->print_inventory(stderr, c->version(), s->item_name_index);
   }
 
-  forward_subcommand_with_mag_transcode_t(c, command, flag, cmd);
+  forward_subcommand_with_item_transcode_t(c, command, flag, cmd);
 }
 
 static void on_drop_partial_stack(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
@@ -924,7 +924,7 @@ static void on_buy_shop_item(shared_ptr<Client> c, uint8_t command, uint8_t flag
     p->print_inventory(stderr, c->version(), s->item_name_index);
   }
 
-  forward_subcommand_with_mag_transcode_t(c, command, flag, cmd);
+  forward_subcommand_with_item_transcode_t(c, command, flag, cmd);
 }
 
 template <typename CmdT>
@@ -1547,14 +1547,74 @@ static void on_set_quest_flag(shared_ptr<Client> c, uint8_t command, uint8_t fla
   }
 }
 
-static void on_enemy_hit(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
-  auto l = c->require_lobby();
-  if (l->base_version == GameVersion::BB) {
-    const auto& cmd = check_size_t<G_EnemyHitByPlayer_6x0A>(data, size);
+static void on_dragon_actions(shared_ptr<Client> c, uint8_t command, uint8_t, const void* data, size_t size) {
+  const auto& cmd = check_size_t<G_DragonBossActions_DC_PC_XB_BB_6x12>(data, size);
 
-    if (!l->is_game()) {
-      return;
+  if (command_is_private(command)) {
+    return;
+  }
+  auto l = c->require_lobby();
+  if (!l->is_game()) {
+    return;
+  }
+
+  G_DragonBossActions_GC_6x12 sw_cmd = {{{cmd.header.subcommand, cmd.header.size, cmd.header.enemy_id},
+      cmd.unknown_a2, cmd.unknown_a3, cmd.unknown_a4, cmd.x.load(), cmd.z.load()}};
+  bool sender_is_gc = (c->version() == GameVersion::GC);
+  for (auto lc : l->clients) {
+    if (lc && (lc != c)) {
+      if ((lc->version() == GameVersion::GC) == sender_is_gc) {
+        send_command_t(lc, 0x60, 0x00, cmd);
+      } else {
+        send_command_t(lc, 0x60, 0x00, sw_cmd);
+      }
     }
+  }
+}
+
+static void on_gol_dragon_actions(shared_ptr<Client> c, uint8_t command, uint8_t, const void* data, size_t size) {
+  const auto& cmd = check_size_t<G_GolDragonBossActions_XB_BB_6xA8>(data, size);
+
+  if (command_is_private(command)) {
+    return;
+  }
+  auto l = c->require_lobby();
+  if (!l->is_game()) {
+    return;
+  }
+
+  G_GolDragonBossActions_GC_6xA8 sw_cmd = {{{cmd.header.subcommand, cmd.header.size, cmd.header.enemy_id},
+      cmd.unknown_a2,
+      cmd.unknown_a3,
+      cmd.unknown_a4,
+      cmd.x.load(),
+      cmd.z.load(),
+      cmd.unknown_a5,
+      0}};
+  bool sender_is_gc = (c->version() == GameVersion::GC);
+  for (auto lc : l->clients) {
+    if (lc && (lc != c)) {
+      if ((lc->version() == GameVersion::GC) == sender_is_gc) {
+        send_command_t(lc, 0x60, 0x00, cmd);
+      } else {
+        send_command_t(lc, 0x60, 0x00, sw_cmd);
+      }
+    }
+  }
+}
+
+static void on_enemy_hit(shared_ptr<Client> c, uint8_t command, uint8_t, const void* data, size_t size) {
+  const auto& cmd = check_size_t<G_EnemyHitByPlayer_DC_PC_XB_BB_6x0A>(data, size);
+
+  if (command_is_private(command)) {
+    return;
+  }
+  auto l = c->require_lobby();
+  if (!l->is_game()) {
+    return;
+  }
+
+  if (l->base_version == GameVersion::BB) {
     if (c->lobby_client_id > 3) {
       throw logic_error("client ID is above 3");
     }
@@ -1573,7 +1633,17 @@ static void on_enemy_hit(shared_ptr<Client> c, uint8_t command, uint8_t flag, co
     enemy.last_hit_by_client_id = c->lobby_client_id;
   }
 
-  forward_subcommand(c, command, flag, data, size);
+  G_EnemyHitByPlayer_GC_6x0A sw_cmd = {{{cmd.header.subcommand, cmd.header.size, cmd.header.enemy_id}, cmd.enemy_id, cmd.remaining_hp, cmd.flags.load()}};
+  bool sender_is_gc = (c->version() == GameVersion::GC);
+  for (auto lc : l->clients) {
+    if (lc && (lc != c)) {
+      if ((lc->version() == GameVersion::GC) == sender_is_gc) {
+        send_command_t(lc, 0x60, 0x00, cmd);
+      } else {
+        send_command_t(lc, 0x60, 0x00, sw_cmd);
+      }
+    }
+  }
 }
 
 static void on_charge_attack_bb(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
@@ -2225,7 +2295,7 @@ subcommand_handler_t subcommand_handlers[0x100] = {
     /* 6x0F */ nullptr,
     /* 6x10 */ nullptr,
     /* 6x11 */ nullptr,
-    /* 6x12 */ on_forward_check_size_game,
+    /* 6x12 */ on_dragon_actions,
     /* 6x13 */ on_forward_check_size_game,
     /* 6x14 */ on_forward_check_size_game,
     /* 6x15 */ on_forward_check_size_game,
@@ -2375,7 +2445,7 @@ subcommand_handler_t subcommand_handlers[0x100] = {
     /* 6xA5 */ on_forward_check_size_game,
     /* 6xA6 */ on_forward_check_size,
     /* 6xA7 */ nullptr,
-    /* 6xA8 */ on_forward_check_size_game,
+    /* 6xA8 */ on_gol_dragon_actions,
     /* 6xA9 */ on_forward_check_size_game,
     /* 6xAA */ on_forward_check_size_game,
     /* 6xAB */ on_forward_check_size_client,

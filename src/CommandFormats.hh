@@ -3768,12 +3768,18 @@ struct G_Unknown_6x09 {
 
 // 6x0A: Enemy hit
 
+template <bool IsBigEndian>
 struct G_EnemyHitByPlayer_6x0A {
   G_EnemyIDHeader header;
   // Note: enemy_id (in header) is in the range [0x1000, 0x4000)
   le_uint16_t enemy_id = 0;
   le_uint16_t remaining_hp = 0;
-  be_uint32_t flags = 0;
+  typename std::conditional<IsBigEndian, be_uint32_t, le_uint32_t>::type flags = 0;
+} __packed__;
+
+struct G_EnemyHitByPlayer_GC_6x0A : G_EnemyHitByPlayer_6x0A<true> {
+} __packed__;
+struct G_EnemyHitByPlayer_DC_PC_XB_BB_6x0A : G_EnemyHitByPlayer_6x0A<false> {
 } __packed__;
 
 // 6x0B: Box destroyed
@@ -3814,7 +3820,22 @@ struct G_Unknown_6x10_6x11_6x12_6x14 {
 // Same format as 6x10
 
 // 6x12: Dragon boss actions (not valid on Episode 3)
-// Same format as 6x10
+
+template <bool IsBigEndian>
+struct G_DragonBossActions_6x12 {
+  using F32T = typename std::conditional<IsBigEndian, be_float, le_float>::type;
+  G_EnemyIDHeader header;
+  le_uint16_t unknown_a2 = 0;
+  le_uint16_t unknown_a3 = 0;
+  le_uint32_t unknown_a4 = 0;
+  F32T x = 0.0f;
+  F32T z = 0.0f;
+} __packed__;
+
+struct G_DragonBossActions_DC_PC_XB_BB_6x12 : G_DragonBossActions_6x12<false> {
+} __packed__;
+struct G_DragonBossActions_GC_6x12 : G_DragonBossActions_6x12<true> {
+} __packed__;
 
 // 6x13: De Rol Le boss actions (not valid on Episode 3)
 
@@ -5068,11 +5089,22 @@ struct G_ModifyTradeProposal_6xA6 {
 
 // 6xA8: Gol Dragon boss actions (not valid on pre-V3 or Episode 3)
 
+template <bool IsBigEndian>
 struct G_GolDragonBossActions_6xA8 {
+  using F32T = typename std::conditional<IsBigEndian, be_float, le_float>::type;
   G_EnemyIDHeader header;
-  le_uint16_t unknown_a1 = 0;
   le_uint16_t unknown_a2 = 0;
-  le_uint32_t unknown_a3 = 0;
+  le_uint16_t unknown_a3 = 0;
+  le_uint32_t unknown_a4 = 0;
+  F32T x = 0.0f;
+  F32T z = 0.0f;
+  uint8_t unknown_a5 = 0;
+  parray<uint8_t, 3> unused;
+} __packed__;
+
+struct G_GolDragonBossActions_XB_BB_6xA8 : G_GolDragonBossActions_6xA8<false> {
+} __packed__;
+struct G_GolDragonBossActions_GC_6xA8 : G_GolDragonBossActions_6xA8<true> {
 } __packed__;
 
 // 6xA9: Barba Ray boss actions (not valid on pre-V3 or Episode 3)
