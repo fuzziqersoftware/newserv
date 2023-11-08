@@ -23,7 +23,9 @@
 #include <phosg/Strings.hh>
 #include <phosg/Time.hh>
 
+#include "IPStackSimulator.hh"
 #include "Loggers.hh"
+#include "NetworkAddresses.hh"
 #include "PSOProtocol.hh"
 #include "ProxyCommands.hh"
 #include "ReceiveCommands.hh"
@@ -739,22 +741,19 @@ void ProxyServer::LinkedSession::send_to_game_server(const char* error_message) 
     S_Reconnect_19 reconnect_cmd = {{0, s->name_to_port_config.at(port_name)->port, 0}};
 
     // If the client is on a virtual connection, we can use any address
-    // here and they should be able to connect back to the game server. If
-    // the client is on a real connection, we'll use the sockname of the
-    // existing connection (like we do in the server 19 command handler).
+    // here and they should be able to connect back to the game server
     if (this->client_channel.is_virtual_connection) {
       struct sockaddr_in* dest_sin = reinterpret_cast<struct sockaddr_in*>(&this->next_destination);
       if (dest_sin->sin_family != AF_INET) {
         throw logic_error("ss not AF_INET");
       }
-      reconnect_cmd.address.store_raw(dest_sin->sin_addr.s_addr);
+      reconnect_cmd.address = IPStackSimulator::connect_address_for_remote_address(ntohl(dest_sin->sin_addr.s_addr));
     } else {
-      const struct sockaddr_in* sin = reinterpret_cast<const struct sockaddr_in*>(
-          &this->client_channel.local_addr);
+      const struct sockaddr_in* sin = reinterpret_cast<const struct sockaddr_in*>(&this->client_channel.remote_addr);
       if (sin->sin_family != AF_INET) {
         throw logic_error("existing connection is not ipv4");
       }
-      reconnect_cmd.address.store_raw(sin->sin_addr.s_addr);
+      reconnect_cmd.address = is_local_address(ntohl(sin->sin_addr.s_addr)) ? s->local_address : s->external_address;
     }
 
     this->client_channel.send(0x19, 0x00, &reconnect_cmd, sizeof(reconnect_cmd));

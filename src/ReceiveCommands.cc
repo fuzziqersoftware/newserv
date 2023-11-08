@@ -84,10 +84,12 @@ static shared_ptr<const Menu> proxy_options_menu_for_client(shared_ptr<const Cli
         "Red name", "Set the colors\nof your name and\nChallenge Mode\nrank to red");
     add_option(ProxyOptionsMenuItemID::BLANK_NAME, Client::Flag::PROXY_BLANK_NAME_ENABLED,
         "Blank name", "Suppress your\ncharacter name\nduring login");
-    add_option(ProxyOptionsMenuItemID::SUPPRESS_LOGIN, Client::Flag::PROXY_SUPPRESS_REMOTE_LOGIN,
-        "Skip login", "Use an alternate\nlogin sequence");
-    add_option(ProxyOptionsMenuItemID::SKIP_CARD, Client::Flag::PROXY_ZERO_REMOTE_GUILD_CARD,
-        "Skip card", "Use an alternate\nvalue for your initial\nGuild Card");
+    if (c->version() != GameVersion::XB) {
+      add_option(ProxyOptionsMenuItemID::SUPPRESS_LOGIN, Client::Flag::PROXY_SUPPRESS_REMOTE_LOGIN,
+          "Skip login", "Use an alternate\nlogin sequence");
+      add_option(ProxyOptionsMenuItemID::SKIP_CARD, Client::Flag::PROXY_ZERO_REMOTE_GUILD_CARD,
+          "Skip card", "Use an alternate\nvalue for your initial\nGuild Card");
+    }
   }
 
   return ret;
