@@ -927,6 +927,8 @@ static void on_9E_XB(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
 
   // The 9E command doesn't include the client config, so we need to request it
   // separately with a 9F command. The 9F handler will call on_login_complete.
+  // Note that we can't send this command immediately after the 02/17 command;
+  // if we do, the client doesn't decrypt it properly and won't respond.
   send_command(c, 0x9F, 0x00);
 }
 
