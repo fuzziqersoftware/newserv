@@ -322,7 +322,11 @@ void on_disconnect(shared_ptr<Client> c) {
 
 ////////////////////////////////////////////////////////////////////////////////
 
-static void on_05(shared_ptr<Client> c, uint16_t, uint32_t, string&) {
+static void on_05_XB(shared_ptr<Client> c, uint16_t, uint32_t, string&) {
+  // The Xbox Live service doesn't close the TCP connection when the player
+  // chooses Quit Game, so we manually disconnect the client when they send this
+  // command instead. We could let the idle timeout take care of it, but this is
+  // cleaner overall.
   c->should_disconnect = true;
 }
 
@@ -4326,7 +4330,7 @@ static on_command_t handlers[0x100][6] = {
   /* 02 */ {on_02_P, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
   /* 03 */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
   /* 04 */ {on_04_P, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* 05 */ {nullptr, on_05,          on_05,       on_05,          on_05,          on_05},
+  /* 05 */ {nullptr, on_ignored,     on_ignored,  on_ignored,     on_05_XB,       on_ignored},
   /* 06 */ {nullptr, on_06,          on_06,       on_06,          on_06,          on_06},
   /* 07 */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
   /* 08 */ {nullptr, on_08_E6,       on_08_E6,    on_08_E6,       on_08_E6,       on_08_E6},
