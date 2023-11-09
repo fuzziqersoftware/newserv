@@ -461,7 +461,7 @@ struct pstring {
 
   size_t used_chars_16() const {
     if (Bytes & 1) {
-      throw std::logic_error("used_bytes_16 must not be called on an odd-length pstring");
+      throw std::logic_error("used_chars_16 must not be called on an odd-length pstring");
     }
     for (size_t z = 0; z < Bytes; z += 2) {
       if (!this->data[z] && !this->data[z + 1]) {
