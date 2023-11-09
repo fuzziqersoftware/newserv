@@ -2304,7 +2304,7 @@ subcommand_handler_t subcommand_handlers[0x100] = {
     /* 6x18 */ on_forward_check_size_game,
     /* 6x19 */ on_forward_check_size_game,
     /* 6x1A */ nullptr,
-    /* 6x1B */ nullptr,
+    /* 6x1B */ on_forward_check_size_game,
     /* 6x1C */ on_forward_check_size_game,
     /* 6x1D */ nullptr,
     /* 6x1E */ nullptr,
