@@ -97,7 +97,7 @@ struct Lobby : public std::enable_shared_from_this<Lobby> {
       uint32_t bitmask = 0;
       uint32_t seconds = 0;
     };
-    parray<RankThreshold, 3> rank_thresholds;
+    std::array<RankThreshold, 3> rank_thresholds;
   };
   std::shared_ptr<ChallengeParameters> challenge_params;
 
