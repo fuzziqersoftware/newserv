@@ -81,13 +81,25 @@ struct Lobby : public std::enable_shared_from_this<Lobby> {
   Episode episode;
   GameMode mode;
   uint8_t difficulty; // 0-3
-  uint16_t exp_multiplier;
+  float exp_multiplier;
   std::string password;
   std::string name;
   // This seed is also sent to the client for rare enemy generation
   uint32_t random_seed;
   std::shared_ptr<PSOLFGEncryption> random_crypt;
   std::shared_ptr<ItemCreator> item_creator;
+
+  struct ChallengeParameters {
+    uint8_t stage_number = 0;
+    uint32_t rank_color = 0xFFFFFFFF;
+    std::string rank_text;
+    struct RankThreshold {
+      uint32_t bitmask = 0;
+      uint32_t seconds = 0;
+    };
+    parray<RankThreshold, 3> rank_thresholds;
+  };
+  std::shared_ptr<ChallengeParameters> challenge_params;
 
   // Ep3 stuff
   // There are three kinds of Episode 3 games. All of these types have the flag
@@ -139,6 +151,7 @@ struct Lobby : public std::enable_shared_from_this<Lobby> {
   }
 
   std::shared_ptr<ServerState> require_server_state() const;
+  std::shared_ptr<ChallengeParameters> require_challenge_params() const;
   void create_item_creator();
   void create_ep3_server();
 

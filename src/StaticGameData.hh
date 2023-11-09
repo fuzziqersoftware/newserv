@@ -76,3 +76,5 @@ uint8_t area_for_name(const std::string& name);
 const char* name_for_area(Episode episode, uint8_t area);
 
 uint32_t class_flags_for_class(uint8_t char_class);
+
+char char_for_challenge_rank(uint8_t rank);

@@ -1650,7 +1650,7 @@ static HandlerResult C_81(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t, 
     }
   }
   // GC clients send uninitialized memory here; don't forward it
-  cmd.text.clear_after(cmd.text.used_bytes_8());
+  cmd.text.clear_after(cmd.text.used_chars_8());
   return HandlerResult::Type::MODIFIED;
 }
 

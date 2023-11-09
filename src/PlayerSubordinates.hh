@@ -312,6 +312,13 @@ struct PlayerLobbyDataBB {
   void clear();
 } __attribute__((packed));
 
+template <bool IsBigEndian>
+struct ChallengeAwardState {
+  using U32T = typename std::conditional<IsBigEndian, be_uint32_t, le_uint32_t>::type;
+  U32T rank_award_flags = 0;
+  U32T maximum_rank = 0; // Encrypted; see decrypt_challenge_time
+} __attribute__((packed));
+
 template <TextEncoding UnencryptedEncoding, TextEncoding EncryptedEncoding>
 struct PlayerRecordsDCPC_Challenge {
   /* 00 */ le_uint16_t title_color = 0x7FFF;
@@ -354,7 +361,10 @@ struct PlayerRecordsV3_Challenge {
     /* 7C:98 */ pstring<TextEncoding::ASCII, 0x14> grave_team;
     /* 90:AC */ pstring<TextEncoding::ASCII, 0x20> grave_message;
     /* B0:CC */ parray<uint8_t, 4> unknown_m5;
-    /* B4:D0 */ parray<U32T, 9> unknown_t6;
+    /* B4:D0 */ parray<U32T, 3> unknown_t6;
+    /* C0:DC */ ChallengeAwardState<IsBigEndian> ep1_online_award_state;
+    /* C8:E4 */ ChallengeAwardState<IsBigEndian> ep2_online_award_state;
+    /* D0:EC */ ChallengeAwardState<IsBigEndian> ep1_offline_award_state;
     /* D8:F4 */
   } __attribute__((packed));
   /* 0000:001C */ Stats stats;
@@ -383,7 +393,10 @@ struct PlayerRecordsBB_Challenge {
   /* 007C */ pstring<TextEncoding::UTF16, 0x14> grave_team;
   /* 00A4 */ pstring<TextEncoding::UTF16, 0x20> grave_message;
   /* 00E4 */ parray<uint8_t, 4> unknown_m5;
-  /* 00E8 */ parray<le_uint32_t, 9> unknown_t6;
+  /* 00E8 */ parray<le_uint32_t, 3> unknown_t6;
+  /* 00F4 */ ChallengeAwardState<false> ep1_online_award_state;
+  /* 00FC */ ChallengeAwardState<false> ep2_online_award_state;
+  /* 0104 */ ChallengeAwardState<false> ep1_offline_award_state;
   /* 010C */ pstring<TextEncoding::UTF16, 0x0C> rank_title; // Encrypted; see decrypt_challenge_rank_text
   /* 0124 */ parray<uint8_t, 0x1C> unknown_l7;
   /* 0140 */

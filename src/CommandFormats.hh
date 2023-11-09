@@ -2727,38 +2727,42 @@ struct S_RareMonsterList_BB_DE {
   parray<le_uint16_t, 0x10> enemy_ids;
 } __packed__;
 
-// DF (C->S): Unknown (BB)
-// This command has many subcommands. It's not clear what any of them do.
+// DF (C->S): Set Challenge Mode parameters (BB)
+// This command has 7 subcommands, most of which are self-explanatory.
 
-struct C_Unknown_BB_01DF {
-  le_uint32_t unknown_a1 = 0;
+struct C_SetChallengeModeStageNumber_BB_01DF {
+  le_uint32_t stage = 0;
 } __packed__;
 
-struct C_Unknown_BB_02DF {
-  le_uint32_t unknown_a1 = 0;
+struct C_SetChallengeModeCharacterTemplate_BB_02DF {
+  le_uint32_t template_index = 0;
 } __packed__;
 
-struct C_Unknown_BB_03DF {
-  le_uint32_t unknown_a1 = 0;
+struct C_SetChallengeModeDifficulty_BB_03DF {
+  // No existing challenge mode quest sets this to a value other than zero.
+  le_uint32_t difficulty = 0;
 } __packed__;
 
-struct C_Unknown_BB_04DF {
-  le_uint32_t unknown_a1 = 0;
+struct C_SetChallengeModeEXPMultiplier_BB_04DF {
+  le_float exp_multiplier = 0;
 } __packed__;
 
-struct C_Unknown_BB_05DF {
-  le_uint32_t unknown_a1 = 0;
-  pstring<TextEncoding::UTF16, 0x0C> unknown_a2;
+struct C_SetChallengeRankText_BB_05DF {
+  le_uint32_t rank_color = 0; // ARGB8888
+  pstring<TextEncoding::CHALLENGE16, 0x0C> rank_text;
 } __packed__;
 
-struct C_Unknown_BB_06DF {
-  parray<le_uint32_t, 3> unknown_a1;
+// This is sent once for each rank (so, 3 times in total)
+struct C_SetChallengeRankThreshold_BB_06DF {
+  le_uint32_t rank = 0; // 0 = B, 1 = A, 2 = S
+  le_uint32_t seconds = 0;
+  le_uint32_t rank_bitmask = 0; // 1 = B, 2 = A, 4 = S
 } __packed__;
 
-struct C_Unknown_BB_07DF {
-  le_uint32_t unused1 = 0xFFFFFFFF;
-  le_uint32_t unused2 = 0; // Always 0
-  parray<le_uint32_t, 5> unknown_a1;
+struct C_CreateChallengeModeAwardItem_BB_07DF {
+  le_uint32_t prize_rank = 0xFFFFFFFF; // 0 = B, 1 = A, 2 = S, anything else = error
+  le_uint32_t rank_bitmask = 0; // Same as in 06DF
+  ItemData item;
 } __packed__;
 
 // E0 (S->C): Tournament list (Episode 3)
@@ -3458,34 +3462,34 @@ struct C_LeaveCharacterSelect_BB_00EC {
 // sending an 84 to be added to a lobby. This is used when a spectator team is
 // disbanded because the target game ends.
 
-// ED (C->S): Update account data (BB)
+// ED (C->S): Update save file data (BB)
 // There are several subcommands (noted in the structs below) that each update a
-// specific kind of account data.
+// specific kind of data.
 // TODO: Actually define these structures and don't just treat them as raw data
 
-struct C_UpdateAccountOptionFlags_BB_01ED {
+struct C_UpdateOptionFlags_BB_01ED {
   le_uint32_t option_flags = 0;
 } __packed__;
-struct C_UpdateAccountSymbolChats_BB_02ED {
+struct C_UpdateSymbolChats_BB_02ED {
   parray<uint8_t, 0x4E0> symbol_chats;
 } __packed__;
-struct C_UpdateAccountChatShortcuts_BB_03ED {
+struct C_UpdateChatShortcuts_BB_03ED {
   parray<uint8_t, 0xA40> chat_shortcuts;
 } __packed__;
-struct C_UpdateAccountKeyConfig_BB_04ED {
+struct C_UpdateKeyConfig_BB_04ED {
   parray<uint8_t, 0x16C> key_config;
 } __packed__;
-struct C_UpdateAccountPadConfig_BB_05ED {
+struct C_UpdatePadConfig_BB_05ED {
   parray<uint8_t, 0x38> pad_config;
 } __packed__;
-struct C_UpdateAccountTechMenu_BB_06ED {
+struct C_UpdateTechMenu_BB_06ED {
   parray<uint8_t, 0x28> tech_menu;
 } __packed__;
-struct C_UpdateAccountCustomizeMenu_BB_07ED {
+struct C_UpdateCustomizeMenu_BB_07ED {
   parray<uint8_t, 0xE8> customize;
 } __packed__;
-struct C_UpdateAccountChallengeAndBattleConfig_BB_08ED {
-  parray<uint8_t, 0x140> challenge_battle_config;
+struct C_UpdateChallengeRecords_BB_08ED {
+  PlayerRecordsBB_Challenge records;
 } __packed__;
 
 // EE: Trade cards (Episode 3)

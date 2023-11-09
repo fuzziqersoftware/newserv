@@ -762,3 +762,10 @@ uint32_t class_flags_for_class(uint8_t char_class) {
   }
   return flags[char_class];
 }
+
+char char_for_challenge_rank(uint8_t rank) {
+  if (rank > 2) {
+    return '?';
+  }
+  return "BAS"[rank];
+}

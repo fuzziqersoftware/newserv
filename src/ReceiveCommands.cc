@@ -2940,12 +2940,12 @@ static void on_06(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
   }
 }
 
-static void on_00E0_BB(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
+static void on_E0_BB(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
   check_size_v(data.size(), 0);
   send_system_file_bb(c);
 }
 
-static void on_00E3_BB(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
+static void on_E3_BB(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
   const auto& cmd = check_size_t<C_PlayerPreviewRequest_BB_E3>(data);
 
   if (c->bb_connection_phase != 0x00) {
@@ -2973,7 +2973,7 @@ static void on_00E3_BB(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
   }
 }
 
-static void on_00E8_BB(shared_ptr<Client> c, uint16_t command, uint32_t, string& data) {
+static void on_E8_BB(shared_ptr<Client> c, uint16_t command, uint32_t, string& data) {
   constexpr size_t max_count = sizeof(PSOBBGuildCardFile::entries) / sizeof(PSOBBGuildCardFile::Entry);
   constexpr size_t max_blocked = sizeof(PSOBBGuildCardFile::blocked) / sizeof(GuildCardBB);
   switch (command) {
@@ -3118,7 +3118,7 @@ static void on_DC_BB(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
   }
 }
 
-static void on_xxEB_BB(shared_ptr<Client> c, uint16_t command, uint32_t flag, string& data) {
+static void on_EB_BB(shared_ptr<Client> c, uint16_t command, uint32_t flag, string& data) {
   check_size_v(data.size(), 0);
 
   if (command == 0x04EB) {
@@ -3130,11 +3130,11 @@ static void on_xxEB_BB(shared_ptr<Client> c, uint16_t command, uint32_t flag, st
   }
 }
 
-static void on_00EC_BB(shared_ptr<Client>, uint16_t, uint32_t, string& data) {
+static void on_EC_BB(shared_ptr<Client>, uint16_t, uint32_t, string& data) {
   check_size_t<C_LeaveCharacterSelect_BB_00EC>(data);
 }
 
-static void on_00E5_BB(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
+static void on_E5_BB(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
   const auto& cmd = check_size_t<SC_PlayerPreview_CreateCharacter_BB_00E5>(data);
 
   if (!c->license) {
@@ -3169,46 +3169,46 @@ static void on_00E5_BB(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
   send_approve_player_choice_bb(c);
 }
 
-static void on_xxED_BB(shared_ptr<Client> c, uint16_t command, uint32_t, string& data) {
+static void on_ED_BB(shared_ptr<Client> c, uint16_t command, uint32_t, string& data) {
   switch (command) {
     case 0x01ED: {
-      const auto& cmd = check_size_t<C_UpdateAccountOptionFlags_BB_01ED>(data);
+      const auto& cmd = check_size_t<C_UpdateOptionFlags_BB_01ED>(data);
       c->game_data.account()->option_flags = cmd.option_flags;
       break;
     }
     case 0x02ED: {
-      const auto& cmd = check_size_t<C_UpdateAccountSymbolChats_BB_02ED>(data);
+      const auto& cmd = check_size_t<C_UpdateSymbolChats_BB_02ED>(data);
       c->game_data.account()->symbol_chats = cmd.symbol_chats;
       break;
     }
     case 0x03ED: {
-      const auto& cmd = check_size_t<C_UpdateAccountChatShortcuts_BB_03ED>(data);
+      const auto& cmd = check_size_t<C_UpdateChatShortcuts_BB_03ED>(data);
       c->game_data.account()->shortcuts = cmd.chat_shortcuts;
       break;
     }
     case 0x04ED: {
-      const auto& cmd = check_size_t<C_UpdateAccountKeyConfig_BB_04ED>(data);
+      const auto& cmd = check_size_t<C_UpdateKeyConfig_BB_04ED>(data);
       c->game_data.account()->system_file.key_config = cmd.key_config;
       break;
     }
     case 0x05ED: {
-      const auto& cmd = check_size_t<C_UpdateAccountPadConfig_BB_05ED>(data);
+      const auto& cmd = check_size_t<C_UpdatePadConfig_BB_05ED>(data);
       c->game_data.account()->system_file.joystick_config = cmd.pad_config;
       break;
     }
     case 0x06ED: {
-      const auto& cmd = check_size_t<C_UpdateAccountTechMenu_BB_06ED>(data);
+      const auto& cmd = check_size_t<C_UpdateTechMenu_BB_06ED>(data);
       c->game_data.player()->tech_menu_config = cmd.tech_menu;
       break;
     }
     case 0x07ED: {
-      const auto& cmd = check_size_t<C_UpdateAccountCustomizeMenu_BB_07ED>(data);
+      const auto& cmd = check_size_t<C_UpdateCustomizeMenu_BB_07ED>(data);
       c->game_data.player()->disp.config = cmd.customize;
       break;
     }
     case 0x08ED: {
-      check_size_t<C_UpdateAccountChallengeAndBattleConfig_BB_08ED>(data);
-      // TODO: Save this data appropriately
+      const auto& cmd = check_size_t<C_UpdateChallengeRecords_BB_08ED>(data);
+      c->game_data.player()->challenge_records = cmd.records;
       break;
     }
     default:
@@ -3216,7 +3216,7 @@ static void on_xxED_BB(shared_ptr<Client> c, uint16_t command, uint32_t, string&
   }
 }
 
-static void on_00E7_BB(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
+static void on_E7_BB(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
   const auto& cmd = check_size_t<SC_SyncCharacterSaveFile_BB_00E7>(data);
 
   // We only trust the player's quest data and challenge data.
@@ -3230,9 +3230,95 @@ static void on_00E7_BB(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
   p->quest_data2 = cmd.quest_data2;
 }
 
-static void on_00E2_BB(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
+static void on_E2_BB(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
   auto& cmd = check_size_t<PSOBBSystemFile>(data);
   c->game_data.account()->system_file = cmd;
+}
+
+static void on_DF_BB(shared_ptr<Client> c, uint16_t command, uint32_t, string& data) {
+  auto s = c->require_server_state();
+  auto l = c->require_lobby();
+  if (!l->is_game()) {
+    throw runtime_error("challenge mode config command sent outside of game");
+  }
+  if (l->mode != GameMode::CHALLENGE) {
+    throw runtime_error("challenge mode config command sent in non-challenge game");
+  }
+  auto cp = l->require_challenge_params();
+
+  switch (command) {
+    case 0x01DF: {
+      const auto& cmd = check_size_t<C_SetChallengeModeStageNumber_BB_01DF>(data);
+      cp->stage_number = cmd.stage;
+      l->log.info("(Challenge mode) Stage number set to %02hhX", cp->stage_number);
+      break;
+    }
+
+    case 0x02DF: {
+      const auto& cmd = check_size_t<C_SetChallengeModeCharacterTemplate_BB_02DF>(data);
+      if (!l->quest) {
+        throw runtime_error("challenge mode character template config command sent in non-challenge game");
+      }
+      if (l->quest->challenge_template_index != cmd.template_index) {
+        throw runtime_error("challenge template index in quest metadata does not match index sent by client");
+      }
+      // Do nothing: we've already created the player overlay by the time this
+      // opcode is run on the client. We can't easily move the overlay creation
+      // here, since non-BB versions do not send anything when they create the
+      // overlay, so we have to do it when the quest loads instead.
+      break;
+    }
+
+    case 0x03DF: {
+      const auto& cmd = check_size_t<C_SetChallengeModeDifficulty_BB_03DF>(data);
+      if (l->difficulty != cmd.difficulty) {
+        l->difficulty = cmd.difficulty;
+        l->create_item_creator();
+      }
+      l->log.info("(Challenge mode) Difficulty set to %02hhX", l->difficulty);
+      break;
+    }
+
+    case 0x04DF: {
+      const auto& cmd = check_size_t<C_SetChallengeModeEXPMultiplier_BB_04DF>(data);
+      l->exp_multiplier = cmd.exp_multiplier;
+      l->log.info("(Challenge mode) EXP multiplier set to %g", l->exp_multiplier);
+      break;
+    }
+
+    case 0x05DF: {
+      const auto& cmd = check_size_t<C_SetChallengeRankText_BB_05DF>(data);
+      cp->rank_color = cmd.rank_color;
+      cp->rank_text = cmd.rank_text.decode();
+      l->log.info("(Challenge mode) Rank text set to %s (color %08" PRIX32 ")", cp->rank_text.c_str(), cp->rank_color);
+      break;
+    }
+
+    case 0x06DF: {
+      const auto& cmd = check_size_t<C_SetChallengeRankThreshold_BB_06DF>(data);
+      auto& threshold = cp->rank_thresholds[cmd.rank];
+      threshold.bitmask = cmd.rank_bitmask;
+      threshold.seconds = cmd.seconds;
+      string time_str = format_duration(static_cast<uint64_t>(threshold.seconds) * 1000000);
+      l->log.info("(Challenge mode) Rank %c threshold set to %s (bitmask %08" PRIX32 ")",
+          char_for_challenge_rank(cmd.rank), time_str.c_str(), threshold.bitmask);
+      break;
+    }
+
+    case 0x07DF: {
+      const auto& cmd = check_size_t<C_CreateChallengeModeAwardItem_BB_07DF>(data);
+      auto p = c->game_data.player(true, false);
+      auto& award_state = (l->episode == Episode::EP2)
+          ? p->challenge_records.ep2_online_award_state
+          : p->challenge_records.ep1_online_award_state;
+      award_state.rank_award_flags |= cmd.rank_bitmask;
+      p->add_item(cmd.item);
+      l->on_item_id_generated_externally(cmd.item.id);
+      string desc = s->describe_item(GameVersion::BB, cmd.item, false);
+      l->log.info("(Challenge mode) Item awarded to player %hhu: %s", c->lobby_client_id, desc.c_str());
+      break;
+    }
+  }
 }
 
 static void on_89(shared_ptr<Client> c, uint16_t, uint32_t flag, string& data) {
@@ -3520,6 +3606,9 @@ shared_ptr<Lobby> create_game_generic(
       : p->disp.visual.section_id;
   game->episode = episode;
   game->mode = mode;
+  if (game->mode == GameMode::CHALLENGE) {
+    game->challenge_params.reset(new Lobby::ChallengeParameters());
+  }
   game->difficulty = difficulty;
   if (c->config.check_flag(Client::Flag::USE_OVERRIDE_RANDOM_SEED)) {
     game->random_seed = c->config.override_random_seed;
@@ -3758,7 +3847,7 @@ static void on_6F(shared_ptr<Client> c, uint16_t command, uint32_t, string& data
   c->config.clear_flag(Client::Flag::LOADING);
 
   send_resume_game(l, c);
-  if (l->base_version == GameVersion::BB) {
+  if ((l->base_version == GameVersion::BB) && (l->mode != GameMode::CHALLENGE)) {
     send_set_exp_multiplier(l);
   }
   send_server_time(c);
@@ -4055,7 +4144,7 @@ static void on_EF_Ep3(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
   send_ep3_card_auction(l);
 }
 
-static void on_xxEA_BB(shared_ptr<Client> c, uint16_t command, uint32_t, string&) {
+static void on_EA_BB(shared_ptr<Client> c, uint16_t command, uint32_t, string&) {
   // TODO: Implement teams. This command has a very large number of subcommands
   // (up to 20EA!).
   if (command == 0x01EA) {
@@ -4461,22 +4550,22 @@ static on_command_t handlers[0x100][6] = {
   /* DC */ {nullptr, nullptr,        nullptr,     on_DC_Ep3,      nullptr,        on_DC_BB},
   /* DD */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
   /* DE */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* DF */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
+  /* DF */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        on_DF_BB},
   //        PATCH    DC              PC           GC              XB              BB
-  /* E0 */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        on_00E0_BB},
+  /* E0 */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        on_E0_BB},
   /* E1 */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* E2 */ {nullptr, nullptr,        nullptr,     on_E2_Ep3,      nullptr,        on_00E2_BB},
-  /* E3 */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        on_00E3_BB},
+  /* E2 */ {nullptr, nullptr,        nullptr,     on_E2_Ep3,      nullptr,        on_E2_BB},
+  /* E3 */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        on_E3_BB},
   /* E4 */ {nullptr, nullptr,        nullptr,     on_E4_Ep3,      nullptr,        nullptr},
-  /* E5 */ {nullptr, nullptr,        nullptr,     on_E5_Ep3,      nullptr,        on_00E5_BB},
+  /* E5 */ {nullptr, nullptr,        nullptr,     on_E5_Ep3,      nullptr,        on_E5_BB},
   /* E6 */ {nullptr, nullptr,        nullptr,     on_08_E6,       nullptr,        nullptr},
-  /* E7 */ {nullptr, nullptr,        nullptr,     on_0C_C1_E7_EC, nullptr,        on_00E7_BB},
-  /* E8 */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        on_00E8_BB},
+  /* E7 */ {nullptr, nullptr,        nullptr,     on_0C_C1_E7_EC, nullptr,        on_E7_BB},
+  /* E8 */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        on_E8_BB},
   /* E9 */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* EA */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        on_xxEA_BB},
-  /* EB */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        on_xxEB_BB},
-  /* EC */ {nullptr, nullptr,        nullptr,     on_0C_C1_E7_EC, nullptr,        on_00EC_BB},
-  /* ED */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        on_xxED_BB},
+  /* EA */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        on_EA_BB},
+  /* EB */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        on_EB_BB},
+  /* EC */ {nullptr, nullptr,        nullptr,     on_0C_C1_E7_EC, nullptr,        on_EC_BB},
+  /* ED */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        on_ED_BB},
   /* EE */ {nullptr, nullptr,        nullptr,     on_EE_Ep3,      nullptr,        nullptr},
   /* EF */ {nullptr, nullptr,        nullptr,     on_EF_Ep3,      nullptr,        nullptr},
   /* F0 */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},

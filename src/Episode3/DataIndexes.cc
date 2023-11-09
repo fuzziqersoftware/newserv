@@ -2578,16 +2578,16 @@ const string& MapIndex::get_compressed_list(size_t num_players, uint8_t language
       e.modification_tiles = vm->map->modification_tiles;
 
       e.name_offset = strings_w.size();
-      strings_w.write(vm->map->name.data, vm->map->name.used_bytes_8());
+      strings_w.write(vm->map->name.data, vm->map->name.used_chars_8());
       strings_w.put_u8(0);
       e.location_name_offset = strings_w.size();
-      strings_w.write(vm->map->location_name.data, vm->map->location_name.used_bytes_8());
+      strings_w.write(vm->map->location_name.data, vm->map->location_name.used_chars_8());
       strings_w.put_u8(0);
       e.quest_name_offset = strings_w.size();
-      strings_w.write(vm->map->quest_name.data, vm->map->quest_name.used_bytes_8());
+      strings_w.write(vm->map->quest_name.data, vm->map->quest_name.used_chars_8());
       strings_w.put_u8(0);
       e.description_offset = strings_w.size();
-      strings_w.write(vm->map->description.data, vm->map->description.used_bytes_8());
+      strings_w.write(vm->map->description.data, vm->map->description.used_chars_8());
       strings_w.put_u8(0);
       e.map_category = vm->map->map_category;
 

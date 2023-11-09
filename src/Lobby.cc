@@ -23,7 +23,7 @@ Lobby::Lobby(shared_ptr<ServerState> s, uint32_t id)
       episode(Episode::NONE),
       mode(GameMode::NORMAL),
       difficulty(0),
-      exp_multiplier(1),
+      exp_multiplier(1.0f),
       random_seed(random_object<uint32_t>()),
       event(0),
       block(0),
@@ -41,6 +41,13 @@ shared_ptr<ServerState> Lobby::require_server_state() const {
     throw logic_error("server is deleted");
   }
   return s;
+}
+
+shared_ptr<Lobby::ChallengeParameters> Lobby::require_challenge_params() const {
+  if (!this->challenge_params) {
+    throw runtime_error("challenge params are missing");
+  }
+  return this->challenge_params;
 }
 
 void Lobby::create_item_creator() {

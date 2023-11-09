@@ -484,7 +484,7 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     {0xF821, "nop_F821", {{REG_SET_FIXED, 9}}, F_V2_V4}, // regsA[3-8] specify first 6 bytes of an ItemData. This opcode consumes an item ID, but does nothing else.
     {0xF822, "nop_F822", {REG}, F_V2_V4},
     {0xF823, "set_cmode_char_template", {INT32}, F_V2_V4 | F_ARGS},
-    {0xF824, "set_cmode_diff", {INT32}, F_V2_V4 | F_ARGS},
+    {0xF824, "set_cmode_difficulty", {INT32}, F_V2_V4 | F_ARGS},
     {0xF825, "exp_multiplication", {{REG_SET_FIXED, 3}}, F_V2_V4},
     {0xF826, "if_player_alive_cm", {REG}, F_V2_V4},
     {0xF827, "get_user_is_dead", {REG}, F_V2_V4},
@@ -537,11 +537,11 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     {0xF862, "give_s_rank_weapon", {INT32, REG, CSTRING}, F_V3_V4 | F_ARGS},
     {0xF863, "get_mag_levels", {{REG32_SET_FIXED, 4}}, F_V2},
     {0xF863, "get_mag_levels", {{REG_SET_FIXED, 4}}, F_V3_V4},
-    {0xF864, "cmode_rank", {INT32, CSTRING}, F_V2_V4 | F_ARGS},
+    {0xF864, "set_cmode_rank_result", {INT32, CSTRING}, F_V2_V4 | F_ARGS},
     {0xF865, "award_item_name", {}, F_V2_V4},
     {0xF866, "award_item_select", {}, F_V2_V4},
     {0xF867, "award_item_give_to", {REG}, F_V2_V4},
-    {0xF868, "set_cmode_rank", {REG, REG}, F_V2_V4},
+    {0xF868, "set_cmode_rank_threshold", {REG, REG}, F_V2_V4},
     {0xF869, "check_rank_time", {REG, REG}, F_V2_V4},
     {0xF86A, "item_create_cmode", {{REG_SET_FIXED, 6}, REG}, F_V2_V4}, // regsA specifies item.data1[0-5]
     {0xF86B, "ba_set_box_drop_area", {REG}, F_V2_V4}, // TODO: This sets override_area in TItemDropSub; use this in ItemCreator

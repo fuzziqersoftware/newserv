@@ -395,22 +395,22 @@ struct pstring {
     try {
       switch (Encoding) {
         case TextEncoding::CHALLENGE8: {
-          std::string decrypted(reinterpret_cast<const char*>(this->data), this->used_bytes_8());
+          std::string decrypted(reinterpret_cast<const char*>(this->data), this->used_chars_8());
           decrypt_challenge_rank_text_t<uint8_t>(decrypted.data(), decrypted.size());
           return tt_ascii_to_utf8(decrypted.data(), decrypted.size());
         }
         case TextEncoding::ASCII:
-          return tt_ascii_to_utf8(this->data, this->used_bytes_8());
+          return tt_ascii_to_utf8(this->data, this->used_chars_8());
         case TextEncoding::ISO8859:
-          return tt_8859_to_utf8(this->data, this->used_bytes_8());
+          return tt_8859_to_utf8(this->data, this->used_chars_8());
         case TextEncoding::SJIS:
-          return tt_sjis_to_utf8(this->data, this->used_bytes_8());
+          return tt_sjis_to_utf8(this->data, this->used_chars_8());
         case TextEncoding::UTF16:
-          return tt_utf16_to_utf8(this->data, this->used_bytes_16());
+          return tt_utf16_to_utf8(this->data, this->used_chars_16());
         case TextEncoding::UTF8:
-          return std::string(reinterpret_cast<const char*>(&this->data[0]), this->used_bytes_8());
+          return std::string(reinterpret_cast<const char*>(&this->data[0]), this->used_chars_8());
         case TextEncoding::CHALLENGE16: {
-          std::string decrypted(reinterpret_cast<const char*>(&this->data[0]), this->used_bytes_8());
+          std::string decrypted(reinterpret_cast<const char*>(&this->data[0]), this->used_chars_16() * 2);
           decrypt_challenge_rank_text_t<le_uint16_t>(decrypted.data(), decrypted.size());
           return tt_utf16_to_utf8(decrypted.data(), decrypted.size());
         }
@@ -426,8 +426,8 @@ struct pstring {
             }
           }
           return client_language
-              ? tt_8859_to_utf8(&this->data[offset], this->used_bytes_8() - offset)
-              : tt_sjis_to_utf8(&this->data[offset], this->used_bytes_8() - offset);
+              ? tt_8859_to_utf8(&this->data[offset], this->used_chars_8() - offset)
+              : tt_sjis_to_utf8(&this->data[offset], this->used_chars_8() - offset);
         }
         default:
           throw std::logic_error("unknown text encoding");
@@ -449,7 +449,7 @@ struct pstring {
     return this->decode(language) == other;
   }
 
-  size_t used_bytes_8() const {
+  size_t used_chars_8() const {
     size_t size = 0;
     for (size = 0; size < Bytes; size++) {
       if (!this->data[size]) {
@@ -459,7 +459,7 @@ struct pstring {
     return Bytes;
   }
 
-  size_t used_bytes_16() const {
+  size_t used_chars_16() const {
     if (Bytes & 1) {
       throw std::logic_error("used_bytes_16 must not be called on an odd-length pstring");
     }
@@ -468,7 +468,7 @@ struct pstring {
         return z;
       }
     }
-    return Bytes;
+    return Bytes >> 1;
   }
 
   bool empty() const {
