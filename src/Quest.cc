@@ -305,7 +305,7 @@ VersionedQuest::VersionedQuest(
       }
       auto* header = reinterpret_cast<const PSOQuestHeaderGC*>(bin_decompressed.data());
       this->joinable = false;
-      this->episode = (header->episode == 1) ? Episode::EP2 : Episode::EP1;
+      this->episode = find_quest_episode_from_script(bin_decompressed.data(), bin_decompressed.size(), this->version);
       if (this->quest_number == 0xFFFFFFFF) {
         this->quest_number = header->quest_number;
       }
@@ -321,19 +321,7 @@ VersionedQuest::VersionedQuest(
       }
       auto* header = reinterpret_cast<const PSOQuestHeaderBB*>(bin_decompressed.data());
       this->joinable = header->joinable_in_progress;
-      switch (header->episode) {
-        case 0:
-          this->episode = Episode::EP1;
-          break;
-        case 1:
-          this->episode = Episode::EP2;
-          break;
-        case 2:
-          this->episode = Episode::EP4;
-          break;
-        default:
-          throw runtime_error("invalid episode number");
-      }
+      this->episode = find_quest_episode_from_script(bin_decompressed.data(), bin_decompressed.size(), this->version);
       if (this->quest_number == 0xFFFFFFFF) {
         this->quest_number = header->quest_number;
       }
