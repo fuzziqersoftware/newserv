@@ -114,22 +114,7 @@ void Map::add_enemies_from_map_data(
     uint8_t event,
     const void* data,
     size_t size,
-    const RareEnemyRates* rare_rates) {
-  static const RareEnemyRates default_rare_rates = {
-      // All 1/512 except Kondrieu, which is 1/10
-      .hildeblue = 0x00800000,
-      .rappy = 0x00800000,
-      .nar_lily = 0x00800000,
-      .pouilly_slime = 0x00800000,
-      .merissa_aa = 0x00800000,
-      .pazuzu = 0x00800000,
-      .dorphon_eclair = 0x00800000,
-      .kondrieu = 0x1999999A,
-  };
-  if (!rare_rates) {
-    rare_rates = &default_rare_rates;
-  }
-
+    const RareEnemyRates& rare_rates) {
   auto check_rare = [&](bool default_is_rare, uint32_t rare_rate) -> bool {
     if (default_is_rare) {
       return true;
@@ -156,12 +141,12 @@ void Map::add_enemies_from_map_data(
 
     switch (e.base_type) {
       case 0x40: {
-        bool is_rare = check_rare(e.skin & 0x01, rare_rates->hildeblue);
+        bool is_rare = check_rare(e.skin & 0x01, rare_rates.hildeblue);
         this->enemies.emplace_back(is_rare ? EnemyType::HILDEBLUE : EnemyType::HILDEBEAR);
         break;
       }
       case 0x41: {
-        bool is_rare = check_rare(e.skin & 0x01, rare_rates->rappy);
+        bool is_rare = check_rare(e.skin & 0x01, rare_rates.rappy);
         switch (episode) {
           case Episode::EP1:
             this->enemies.emplace_back(is_rare ? EnemyType::AL_RAPPY : EnemyType::RAG_RAPPY);
@@ -219,7 +204,7 @@ void Map::add_enemies_from_map_data(
         if ((episode == Episode::EP2) && (e.area > 0x0F)) {
           this->enemies.emplace_back(EnemyType::DEL_LILY);
         } else {
-          bool is_rare = check_rare(e.skin & 0x01, rare_rates->nar_lily);
+          bool is_rare = check_rare(e.skin & 0x01, rare_rates.nar_lily);
           this->enemies.emplace_back(is_rare ? EnemyType::NAR_LILY : EnemyType::POISON_LILY);
         }
         break;
@@ -232,7 +217,7 @@ void Map::add_enemies_from_map_data(
         break;
       }
       case 0x64: {
-        bool is_rare = check_rare(e.skin & 0x01, rare_rates->pouilly_slime);
+        bool is_rare = check_rare(e.skin & 0x01, rare_rates.pouilly_slime);
         for (size_t x = 0; x < 5; x++) { // Main slime + 4 clones
           this->enemies.emplace_back(is_rare ? EnemyType::POFUILLY_SLIME : EnemyType::POUILLY_SLIME);
         }
@@ -439,7 +424,7 @@ void Map::add_enemies_from_map_data(
         }
         break;
       case 0x0112: {
-        bool is_rare = check_rare(e.skin & 0x01, rare_rates->merissa_aa);
+        bool is_rare = check_rare(e.skin & 0x01, rare_rates.merissa_aa);
         this->enemies.emplace_back(is_rare ? EnemyType::MERISSA_AA : EnemyType::MERISSA_A);
         break;
       }
@@ -447,7 +432,7 @@ void Map::add_enemies_from_map_data(
         this->enemies.emplace_back(EnemyType::GIRTABLULU);
         break;
       case 0x0114: {
-        bool is_rare = check_rare(e.skin & 0x01, rare_rates->pazuzu);
+        bool is_rare = check_rare(e.skin & 0x01, rare_rates.pazuzu);
         if (e.area > 0x05) {
           this->enemies.emplace_back(is_rare ? EnemyType::PAZUZU_ALT : EnemyType::ZU_ALT);
         } else {
@@ -463,7 +448,7 @@ void Map::add_enemies_from_map_data(
         }
         break;
       case 0x0116: {
-        bool is_rare = check_rare(e.skin & 0x01, rare_rates->dorphon_eclair);
+        bool is_rare = check_rare(e.skin & 0x01, rare_rates.dorphon_eclair);
         this->enemies.emplace_back(is_rare ? EnemyType::DORPHON_ECLAIR : EnemyType::DORPHON);
         break;
       }
@@ -473,7 +458,7 @@ void Map::add_enemies_from_map_data(
         break;
       }
       case 0x0119: {
-        bool is_rare = check_rare((e.unknown_a4 != 0), rare_rates->kondrieu);
+        bool is_rare = check_rare((e.unknown_a4 != 0), rare_rates.kondrieu);
         if (is_rare) {
           this->enemies.emplace_back(EnemyType::KONDRIEU);
         } else {
@@ -505,10 +490,14 @@ void Map::add_enemies_and_objects_from_quest_data(
     uint8_t difficulty,
     uint8_t event,
     const void* data,
-    size_t size) {
+    size_t size,
+    const RareEnemyRates& rare_rates) {
   StringReader r(data, size);
   while (!r.eof()) {
     const auto& header = r.get<DATSectionHeader>();
+    static_game_data_log.info("(DAT:%08zX) type=%08" PRIX32 " area=%08" PRIX32 " data_size=%08" PRIX32,
+        r.where() - sizeof(DATSectionHeader), header.type.load(), header.area.load(), header.data_size.load());
+
     if (header.type == 0 && header.section_size == 0) {
       break;
     }
@@ -526,7 +515,8 @@ void Map::add_enemies_and_objects_from_quest_data(
       if (header.data_size % sizeof(EnemyEntry)) {
         throw runtime_error("quest layout enemy section size is not a multiple of enemy entry size");
       }
-      this->add_enemies_from_map_data(episode, difficulty, event, r.getv(header.data_size), header.data_size);
+      this->add_enemies_from_map_data(episode, difficulty, event, r.getv(header.data_size), header.data_size, rare_rates);
+      static_game_data_log.info("There are now %zu enemies", this->enemies.size());
 
     } else {
       r.skip(header.section_size - sizeof(header));
@@ -824,3 +814,26 @@ vector<string> map_filenames_for_variation(
   }
   return ret;
 }
+
+const Map::RareEnemyRates Map::NO_RARE_ENEMIES = {
+    .hildeblue = 0x00000000,
+    .rappy = 0x00000000,
+    .nar_lily = 0x00000000,
+    .pouilly_slime = 0x00000000,
+    .merissa_aa = 0x00000000,
+    .pazuzu = 0x00000000,
+    .dorphon_eclair = 0x00000000,
+    .kondrieu = 0x00000000,
+};
+
+const Map::RareEnemyRates Map::DEFAULT_RARE_ENEMIES = {
+    // All 1/512 except Kondrieu, which is 1/10
+    .hildeblue = 0x00800000,
+    .rappy = 0x00800000,
+    .nar_lily = 0x00800000,
+    .pouilly_slime = 0x00800000,
+    .merissa_aa = 0x00800000,
+    .pazuzu = 0x00800000,
+    .dorphon_eclair = 0x00800000,
+    .kondrieu = 0x1999999A,
+};

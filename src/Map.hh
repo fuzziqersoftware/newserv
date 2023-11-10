@@ -25,6 +25,9 @@ struct Map {
     uint32_t kondrieu; // {SAINT_MILLION, SHAMBERTIN} -> KONDRIEU
   };
 
+  static const RareEnemyRates NO_RARE_ENEMIES;
+  static const RareEnemyRates DEFAULT_RARE_ENEMIES;
+
   struct Enemy {
     enum Flag {
       HIT_BY_PLAYER0 = 0x01,
@@ -54,13 +57,14 @@ struct Map {
       uint8_t event,
       const void* data,
       size_t size,
-      const RareEnemyRates* rare_rates = nullptr);
+      const RareEnemyRates& rare_rates = Map::DEFAULT_RARE_ENEMIES);
   void add_enemies_and_objects_from_quest_data(
       Episode episode,
       uint8_t difficulty,
       uint8_t event,
       const void* data,
-      size_t size);
+      size_t size,
+      const RareEnemyRates& rare_rates = Map::DEFAULT_RARE_ENEMIES);
 };
 
 // TODO: This class is currently unused. It would be nice if we could use this

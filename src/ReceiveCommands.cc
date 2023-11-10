@@ -2605,7 +2605,13 @@ static void on_AC_V3_BB(shared_ptr<Client> c, uint16_t, uint32_t, string& data) 
       auto vq = l->quest->version(QuestScriptVersion::BB_V4, c->language());
       auto dat_contents = prs_decompress(*vq->dat_contents);
       l->map->clear();
-      l->map->add_enemies_and_objects_from_quest_data(l->episode, l->difficulty, l->event, dat_contents.data(), dat_contents.size());
+      l->map->add_enemies_and_objects_from_quest_data(
+          l->episode,
+          l->difficulty,
+          l->event,
+          dat_contents.data(),
+          dat_contents.size(),
+          (l->mode == GameMode::CHALLENGE) ? Map::NO_RARE_ENEMIES : Map::DEFAULT_RARE_ENEMIES);
       c->log.info("Replaced enemies list with quest layout (%zu entries)",
           l->map->enemies.size());
       for (size_t z = 0; z < l->map->enemies.size(); z++) {
