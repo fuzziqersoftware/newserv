@@ -147,6 +147,7 @@ Client::Client(
       should_send_to_lobby_server(false),
       should_send_to_proxy_server(false),
       bb_connection_phase(0xFF),
+      ping_start_time(0),
       sub_version(-1),
       x(0.0f),
       z(0.0f),

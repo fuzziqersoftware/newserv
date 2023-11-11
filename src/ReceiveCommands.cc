@@ -322,6 +322,15 @@ void on_disconnect(shared_ptr<Client> c) {
 
 ////////////////////////////////////////////////////////////////////////////////
 
+static void on_1D(shared_ptr<Client> c, uint16_t, uint32_t, string&) {
+  if (c->ping_start_time) {
+    uint64_t ping_usecs = now() - c->ping_start_time;
+    c->ping_start_time = 0;
+    double ping_ms = static_cast<double>(ping_usecs) / 1000.0;
+    send_text_message_printf(c, "To server: %gms", ping_ms);
+  }
+}
+
 static void on_05_XB(shared_ptr<Client> c, uint16_t, uint32_t, string&) {
   // The Xbox Live service doesn't close the TCP connection when the player
   // chooses Quit Game, so we manually disconnect the client when they send this
@@ -4360,7 +4369,7 @@ static on_command_t handlers[0x100][6] = {
   /* 1A */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
   /* 1B */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
   /* 1C */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* 1D */ {nullptr, on_ignored,     on_ignored,  on_ignored,     on_ignored,     on_ignored},
+  /* 1D */ {nullptr, on_1D,          on_1D,       on_1D,          on_1D,          on_1D},
   /* 1E */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
   /* 1F */ {nullptr, on_1F,          on_1F,       nullptr,        nullptr,        nullptr},
   //        PATCH    DC              PC           GC              XB              BB

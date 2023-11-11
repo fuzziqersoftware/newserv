@@ -159,6 +159,11 @@ static void server_command_lobby_info(shared_ptr<Client> c, const std::string&) 
   send_text_message(c, join(lines, "\n"));
 }
 
+static void server_command_ping(shared_ptr<Client> c, const std::string&) {
+  c->ping_start_time = now();
+  send_command(c, 0x1D, 0x00);
+}
+
 static void proxy_command_lobby_info(shared_ptr<ProxyServer::LinkedSession> ses, const std::string&) {
   string msg;
   // On non-masked-GC sessions (BB), there is no remote Guild Card number, so we
@@ -1598,6 +1603,7 @@ static const unordered_map<string, ChatCommandDefinition> chat_commands({
     {"$password", {server_command_password, nullptr}},
     {"$patch", {server_command_patch, proxy_command_patch}},
     {"$persist", {server_command_persist, nullptr}},
+    {"$ping", {server_command_ping, nullptr}},
     {"$playrec", {server_command_playrec, nullptr}},
     {"$rand", {server_command_rand, proxy_command_rand}},
     {"$saverec", {server_command_saverec, nullptr}},
