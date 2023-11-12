@@ -166,6 +166,7 @@ struct Client : public std::enable_shared_from_this<Client> {
   std::shared_ptr<XBNetworkLocation> xb_netloc;
   parray<le_uint32_t, 3> xb_9E_unknown_a1a;
   uint8_t bb_connection_phase;
+  uint64_t ping_start_time;
 
   // Patch server
   std::vector<PatchFileChecksumRequest> patch_file_checksum_requests;

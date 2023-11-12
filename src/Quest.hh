@@ -98,6 +98,7 @@ public:
 
   void add_version(std::shared_ptr<const VersionedQuest> vq);
   bool has_version(QuestScriptVersion v, uint8_t language) const;
+  bool has_version_any_language(QuestScriptVersion v) const;
   std::shared_ptr<const VersionedQuest> version(QuestScriptVersion v, uint8_t language) const;
 
   static uint16_t versions_key(QuestScriptVersion v, uint8_t language);
@@ -124,7 +125,7 @@ struct QuestIndex {
 
   std::shared_ptr<const Quest> get(uint32_t quest_number) const;
   std::shared_ptr<const std::string> get_gba(const std::string& name) const;
-  std::vector<std::shared_ptr<const Quest>> filter(uint32_t category_id, QuestScriptVersion version, uint8_t language) const;
+  std::vector<std::shared_ptr<const Quest>> filter(uint32_t category_id, QuestScriptVersion version) const;
 };
 
 std::string encode_download_quest_data(

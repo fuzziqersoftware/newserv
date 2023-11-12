@@ -38,7 +38,7 @@
 
 ## PSOBB
 
-- Find any remaining mismatches in enemy IDs / experience
+- Find any remaining mismatches in enemy indexes / experience
 - Support EXP multipliers
 - Sale prices for non-rare weapons with specials are computed incorrectly when buying/selling at shops
 - Implement trade window

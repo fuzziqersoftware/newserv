@@ -128,7 +128,8 @@ ItemData ItemCreator::on_monster_item_drop(uint16_t entity_id, uint32_t enemy_ty
 }
 
 ItemData ItemCreator::on_box_item_drop_with_norm_area(uint8_t area_norm) {
-  this->log.info("Box drop checks; random state: %08" PRIX32 " %08" PRIX32, this->random_crypt.seed(), this->random_crypt.absolute_offset());
+  this->log.info("Box drop checks for area_norm %02hhX; random state: %08" PRIX32 " %08" PRIX32,
+      area_norm, this->random_crypt.seed(), this->random_crypt.absolute_offset());
   ItemData item = this->check_rare_specs_and_create_rare_box_item(area_norm);
   if (item.empty()) {
     uint8_t item_class = this->get_rand_from_weighted_tables_2d_vertical(this->pt->box_item_class_prob_table(), area_norm);

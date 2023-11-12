@@ -168,6 +168,8 @@ static constexpr uint16_t F_GC_V3 = v_flag(V::GC_V3);
 static constexpr uint16_t F_XB_V3 = v_flag(V::XB_V3);
 static constexpr uint16_t F_GC_EP3 = v_flag(V::GC_EP3);
 static constexpr uint16_t F_BB_V4 = v_flag(V::BB_V4);
+static constexpr uint16_t F_RET = 0x1000;
+static constexpr uint16_t F_SET_EPISODE = 0x2000;
 static constexpr uint16_t F_PASS = 0x4000;
 static constexpr uint16_t F_ARGS = 0x8000;
 
@@ -210,7 +212,7 @@ static const Arg AREA(INT32, 0, "area");
 
 static const QuestScriptOpcodeDefinition opcode_defs[] = {
     {0x0000, "nop", {}, F_V0_V4}, // Does nothing
-    {0x0001, "ret", {}, F_V0_V4}, // Pops new PC off stack
+    {0x0001, "ret", {}, F_V0_V4 | F_RET}, // Pops new PC off stack
     {0x0002, "sync", {}, F_V0_V4}, // Stops execution for the current frame
     {0x0003, "exit", {INT32}, F_V0_V4}, // Exits entirely
     {0x0004, "thread", {SCRIPT16}, F_V0_V4}, // Starts a new thread
@@ -634,7 +636,7 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     {0xF8B9, "chl_recovery", {}, F_V2_V4},
     {0xF8BA, "load_guild_card_file_creation_time_to_flag_buf", {}, F_V2_V4},
     {0xF8BB, "write_flag_buf_to_event_flags2", {REG}, F_V2_V4},
-    {0xF8BC, "set_episode", {INT32}, F_V3_V4},
+    {0xF8BC, "set_episode", {INT32}, F_V3_V4 | F_SET_EPISODE},
     {0xF8C0, "file_dl_req", {INT32, CSTRING}, F_V3 | F_ARGS}, // Sends D7
     {0xF8C0, "nop_F8C0", {INT32, CSTRING}, F_V4 | F_ARGS},
     {0xF8C1, "get_dl_status", {REG}, F_V3},
@@ -1075,10 +1077,10 @@ std::string disassemble_quest_script(const void* data, size_t size, QuestScriptV
                   break;
                 }
                 case Type::REG_SET_FIXED: {
-                  uint8_t first_reg = cmd_r.get_u8();
                   if (def->flags & F_PASS) {
                     throw logic_error("REG_SET_FIXED cannot be pushed to arg stack");
                   }
+                  uint8_t first_reg = cmd_r.get_u8();
                   dasm_arg = string_printf("r%hhu-r%hhu", first_reg, static_cast<uint8_t>(first_reg + arg.count - 1));
                   break;
                 }
@@ -1472,4 +1474,152 @@ std::string disassemble_quest_script(const void* data, size_t size, QuestScriptV
 
   lines.emplace_back(); // Add a \n on the end
   return join(lines, "\n");
+}
+
+Episode find_quest_episode_from_script(const void* data, size_t size, QuestScriptVersion version) {
+  StringReader r(data, size);
+
+  bool use_wstrs = false;
+  size_t code_offset = 0;
+  size_t function_table_offset = 0;
+  Episode header_episode = Episode::NONE;
+  switch (version) {
+    case QuestScriptVersion::DC_NTE:
+    case QuestScriptVersion::DC_V1:
+    case QuestScriptVersion::DC_V2:
+    case QuestScriptVersion::PC_V2:
+      return Episode::EP1;
+    case QuestScriptVersion::GC_NTE:
+    case QuestScriptVersion::GC_V3:
+    case QuestScriptVersion::GC_EP3:
+    case QuestScriptVersion::XB_V3: {
+      const auto& header = r.get<PSOQuestHeaderGC>();
+      code_offset = header.code_offset;
+      function_table_offset = header.function_table_offset;
+      header_episode = episode_for_quest_episode_number(header.episode);
+      break;
+    }
+    case QuestScriptVersion::BB_V4: {
+      use_wstrs = true;
+      const auto& header = r.get<PSOQuestHeaderBB>();
+      code_offset = header.code_offset;
+      function_table_offset = header.function_table_offset;
+      header_episode = episode_for_quest_episode_number(header.episode);
+      break;
+    }
+    default:
+      throw logic_error("invalid quest version");
+  }
+
+  const auto& opcodes = opcodes_for_version(version);
+  unordered_set<Episode> found_episodes;
+
+  // The set_episode opcode should always be in the first function (0)
+  StringReader cmd_r = r.sub(code_offset + r.pget_u32l(function_table_offset));
+
+  while (!cmd_r.eof()) {
+    uint16_t opcode = cmd_r.get_u8();
+    if ((opcode & 0xFE) == 0xF8) {
+      opcode = (opcode << 8) | cmd_r.get_u8();
+    }
+
+    const QuestScriptOpcodeDefinition* def = nullptr;
+    try {
+      def = opcodes.at(opcode);
+    } catch (const out_of_range&) {
+    }
+
+    if (def == nullptr) {
+      throw runtime_error("unknown quest opcode");
+    }
+
+    if (def->flags & F_RET) {
+      break;
+    }
+
+    if (!(def->flags & F_ARGS)) {
+      for (const auto& arg : def->args) {
+        using Type = QuestScriptOpcodeDefinition::Argument::Type;
+        string dasm_arg;
+        switch (arg.type) {
+          case Type::LABEL16:
+            cmd_r.skip(2);
+            break;
+          case Type::LABEL32:
+            cmd_r.skip(4);
+            break;
+          case Type::LABEL16_SET:
+            if (def->flags & F_PASS) {
+              throw logic_error("LABEL16_SET cannot be pushed to arg stack");
+            }
+            cmd_r.skip(cmd_r.get_u8() * 2);
+            break;
+          case Type::REG:
+            cmd_r.skip(1);
+            break;
+          case Type::REG_SET:
+            if (def->flags & F_PASS) {
+              throw logic_error("REG_SET cannot be pushed to arg stack");
+            }
+            cmd_r.skip(cmd_r.get_u8());
+            break;
+          case Type::REG_SET_FIXED:
+            if (def->flags & F_PASS) {
+              throw logic_error("REG_SET_FIXED cannot be pushed to arg stack");
+            }
+            cmd_r.skip(1);
+            break;
+          case Type::INT8:
+            cmd_r.skip(1);
+            break;
+          case Type::INT16:
+            cmd_r.skip(2);
+            break;
+          case Type::INT32:
+            if (def->flags & F_SET_EPISODE) {
+              found_episodes.emplace(episode_for_quest_episode_number(cmd_r.get_u32l()));
+            } else {
+              cmd_r.skip(4);
+            }
+            break;
+          case Type::FLOAT32:
+            cmd_r.skip(4);
+            break;
+          case Type::CSTRING:
+            if (use_wstrs) {
+              for (uint16_t ch = cmd_r.get_u16l(); ch; ch = cmd_r.get_u16l()) {
+              }
+            } else {
+              for (uint8_t ch = cmd_r.get_u8(); ch; ch = cmd_r.get_u8()) {
+              }
+            }
+            break;
+          default:
+            throw logic_error("invalid argument type");
+        }
+      }
+    }
+  }
+
+  if (found_episodes.size() > 1) {
+    throw runtime_error("multiple episodes found");
+  } else if (found_episodes.size() == 1) {
+    return *found_episodes.begin();
+  } else {
+    return header_episode;
+  }
+}
+
+Episode episode_for_quest_episode_number(uint8_t episode_number) {
+  switch (episode_number) {
+    case 0x00:
+    case 0xFF:
+      return Episode::EP1;
+    case 0x01:
+      return Episode::EP2;
+    case 0x02:
+      return Episode::EP4;
+    default:
+      throw runtime_error(string_printf("invalid episode number %02hhX", episode_number));
+  }
 }

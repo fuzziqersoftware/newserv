@@ -204,15 +204,18 @@ std::string ItemNameIndex::describe_item(
 
     if (item.is_s_rank_weapon()) {
       // S-rank (has name instead of percent bonuses)
+      uint16_t be_data1w3 = bswap16(item.data1w[3]);
+      uint16_t be_data1w4 = bswap16(item.data1w[4]);
+      uint16_t be_data1w5 = bswap16(item.data1w[5]);
       uint8_t char_indexes[8] = {
-          static_cast<uint8_t>((item.data1w[3] >> 5) & 0x1F),
-          static_cast<uint8_t>(item.data1w[3] & 0x1F),
-          static_cast<uint8_t>((item.data1w[4] >> 10) & 0x1F),
-          static_cast<uint8_t>((item.data1w[4] >> 5) & 0x1F),
-          static_cast<uint8_t>(item.data1w[4] & 0x1F),
-          static_cast<uint8_t>((item.data1w[5] >> 10) & 0x1F),
-          static_cast<uint8_t>((item.data1w[5] >> 5) & 0x1F),
-          static_cast<uint8_t>(item.data1w[5] & 0x1F),
+          static_cast<uint8_t>((be_data1w3 >> 5) & 0x1F),
+          static_cast<uint8_t>(be_data1w3 & 0x1F),
+          static_cast<uint8_t>((be_data1w4 >> 10) & 0x1F),
+          static_cast<uint8_t>((be_data1w4 >> 5) & 0x1F),
+          static_cast<uint8_t>(be_data1w4 & 0x1F),
+          static_cast<uint8_t>((be_data1w5 >> 10) & 0x1F),
+          static_cast<uint8_t>((be_data1w5 >> 5) & 0x1F),
+          static_cast<uint8_t>(be_data1w5 & 0x1F),
       };
 
       string name;
@@ -538,9 +541,9 @@ ItemData ItemNameIndex::parse_item_description_phase(GameVersion version, const 
           char_indexes[z] = (pos - s_rank_name_characters);
         }
 
-        ret.data1w[3] = (char_indexes[1] & 0x1F) | ((char_indexes[0] & 0x1F) << 5);
-        ret.data1w[4] = (char_indexes[4] & 0x1F) | ((char_indexes[3] & 0x1F) << 5) | ((char_indexes[2] & 0x1F) << 10);
-        ret.data1w[5] = (char_indexes[7] & 0x1F) | ((char_indexes[6] & 0x1F) << 5) | ((char_indexes[5] & 0x1F) << 10);
+        ret.data1w[3] = bswap16(0x8000 | (char_indexes[1] & 0x1F) | ((char_indexes[0] & 0x1F) << 5));
+        ret.data1w[4] = bswap16(0x8000 | (char_indexes[4] & 0x1F) | ((char_indexes[3] & 0x1F) << 5) | ((char_indexes[2] & 0x1F) << 10));
+        ret.data1w[5] = bswap16(0x8000 | (char_indexes[7] & 0x1F) | ((char_indexes[6] & 0x1F) << 5) | ((char_indexes[5] & 0x1F) << 10));
 
       } else {
         auto p_tokens = split(token, '/');

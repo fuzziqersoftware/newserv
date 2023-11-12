@@ -2327,13 +2327,13 @@ void send_set_exp_multiplier(std::shared_ptr<Lobby> l) {
 
 void send_rare_enemy_index_list(shared_ptr<Client> c, const vector<size_t>& indexes) {
   S_RareMonsterList_BB_DE cmd;
-  if (indexes.size() > cmd.enemy_ids.size()) {
+  if (indexes.size() > cmd.enemy_indexes.size()) {
     throw runtime_error("too many rare enemies");
   }
   for (size_t z = 0; z < indexes.size(); z++) {
-    cmd.enemy_ids[z] = indexes[z];
+    cmd.enemy_indexes[z] = indexes[z];
   }
-  cmd.enemy_ids.clear_after(indexes.size(), 0xFFFF);
+  cmd.enemy_indexes.clear_after(indexes.size(), 0xFFFF);
   send_command_t(c, 0xDE, 0x00, cmd);
 }
 
