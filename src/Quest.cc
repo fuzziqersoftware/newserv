@@ -416,6 +416,12 @@ bool Quest::has_version(QuestScriptVersion v, uint8_t language) const {
   return this->versions.count(this->versions_key(v, language));
 }
 
+bool Quest::has_version_any_language(QuestScriptVersion v) const {
+  uint16_t k = this->versions_key(v, 0);
+  auto it = this->versions.lower_bound(k);
+  return ((it != this->versions.end()) && ((it->first & 0xFF00) == k));
+}
+
 shared_ptr<const VersionedQuest> Quest::version(QuestScriptVersion v, uint8_t language) const {
   // Return the requested version, if it exists
   try {
@@ -727,12 +733,10 @@ shared_ptr<const string> QuestIndex::get_gba(const string& name) const {
   }
 }
 
-vector<shared_ptr<const Quest>> QuestIndex::filter(uint32_t category_id, QuestScriptVersion version, uint8_t language) const {
+vector<shared_ptr<const Quest>> QuestIndex::filter(uint32_t category_id, QuestScriptVersion version) const {
   vector<shared_ptr<const Quest>> ret;
   for (auto it : this->quests_by_number) {
-    // Show English quests, and quests that exist in the player's language
-    if ((it.second->category_id == category_id) &&
-        (it.second->has_version(version, language) || it.second->has_version(version, 1))) {
+    if ((it.second->category_id == category_id) && it.second->has_version_any_language(version)) {
       ret.emplace_back(it.second);
     }
   }
