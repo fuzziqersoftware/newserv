@@ -421,16 +421,16 @@ void Map::add_enemies_from_map_data(
 }
 
 struct DATParserRandomState {
-  PSOV2Encryption global_random_crypt;
-  PSOV2Encryption local_random_crypt;
+  PSOV2Encryption random;
+  PSOV2Encryption location_table_random;
   std::array<uint32_t, 0x20> location_index_table;
   uint32_t location_indexes_populated;
   uint32_t location_indexes_used;
   uint32_t location_entries_base_offset;
 
   DATParserRandomState(uint32_t rare_seed)
-      : global_random_crypt(rare_seed),
-        local_random_crypt(0),
+      : random(rare_seed),
+        location_table_random(0),
         location_indexes_populated(0),
         location_indexes_used(0),
         location_entries_base_offset(0) {
@@ -439,7 +439,7 @@ struct DATParserRandomState {
 
   size_t rand_int_biased(size_t min_v, size_t max_v) {
     float max_f = static_cast<float>(max_v + 1);
-    uint32_t crypt_v = this->global_random_crypt.next();
+    uint32_t crypt_v = this->random.next();
     fprintf(stderr, "(global) => %08" PRIX32 "\n", crypt_v);
     float det_f = static_cast<float>(crypt_v);
     return max<size_t>(floorf((max_f * det_f) / UINT32_MAX_AS_FLOAT), min_v);
@@ -484,7 +484,7 @@ struct DATParserRandomState {
 
     for (size_t z = 0; z < 4; z++) {
       for (size_t x = 0; x < sec.count; x++) {
-        uint32_t crypt_v = this->local_random_crypt.next();
+        uint32_t crypt_v = this->location_table_random.next();
         fprintf(stderr, "(local?) => %08" PRIX32 "\n", crypt_v);
         size_t choice = floorf((static_cast<float>(sec.count) * static_cast<float>(crypt_v)) / UINT32_MAX_AS_FLOAT);
         uint32_t t = this->location_index_table[x];
@@ -535,7 +535,7 @@ void Map::add_random_enemies_from_map_data(
 
     size_t remaining_waves = random.rand_int_biased(1, entry.max_waves);
     entry_log.info("Chose %zu waves (max=%hu)", remaining_waves, entry.max_waves.load());
-    // BP 0080E125 EAX is wave count
+    // Trace: at 0080E125 EAX is wave count
 
     uint32_t wave_number = entry.wave_number;
     while (remaining_waves) {
@@ -544,14 +544,14 @@ void Map::add_random_enemies_from_map_data(
 
       size_t remaining_enemies = random.rand_int_biased(entry.min_enemies, entry.max_enemies);
       wave_log.info("Chose %zu enemies (range=[%hhu, %hhu])", remaining_enemies, entry.min_enemies, entry.max_enemies);
-      // BP 0080E208 EDI is enemy count
+      // Trace: at 0080E208 EDI is enemy count
 
       random.generate_shuffled_location_table(locations_header, locations_segment_r, entry.section);
       wave_log.info("Generated shuffled location table");
       for (size_t z = 0; z < random.location_indexes_populated; z++) {
         wave_log.info("  table[%zX] = %" PRIX32, z, random.location_index_table[z]);
       }
-      // BP 0080EBB0 *(EBP + 4) points to table (0x20 uint32_ts)
+      // Trace: at 0080EBB0 *(EBP + 4) points to table (0x20 uint32_ts)
 
       while (remaining_enemies) {
         remaining_enemies--;
@@ -563,11 +563,11 @@ void Map::add_random_enemies_from_map_data(
         while (!weights_r.eof()) {
           weight_total += weights_r.get<RandomEnemyWeight>().weight;
         }
-        // BP 0080E2C2 EBX is weight_total
+        // Trace: at 0080E2C2 EBX is weight_total
 
         size_t det = random.rand_int_biased(0, weight_total - 1);
         enemy_log.info("weight_total=%zX, det=%zX", weight_total, det);
-        // BP 0080E300 EDX is det
+        // Trace: at 0080E300 EDX is det
 
         weights_r.go(0);
         while (!weights_r.eof()) {
@@ -617,7 +617,7 @@ void Map::add_random_enemies_from_map_data(
               e.z_angle = loc.z_angle;
 
               enemy_log.info("Creating enemy with base_type %04hX fparam2 %g uparam1 %04hX", e.base_type.load(), e.fparam2.load(), e.uparam1.load());
-              // BP 0080E6FE CX is base_type
+              // Trace: at 0080E6FE CX is base_type
               this->add_enemy(episode, difficulty, event, 0, e, rare_rates);
             } else {
               enemy_log.info("Cannot create enemy: parameters are missing");
@@ -630,16 +630,16 @@ void Map::add_random_enemies_from_map_data(
       }
       if (remaining_waves) {
         // We don't generate the event stream here, but the client does, and in
-        // doing so, it uses one value from global_random_crypt to determine the
-        // delay parameter of the event. To keep our state in sync with what the
+        // doing so, it uses one value from random to determine the delay
+        // parameter of the event. To keep our state in sync with what the
         // client would do, we skip a random value here.
-        random.global_random_crypt.next();
+        random.random.next();
         wave_number++;
       }
     }
 
     // For the same reason as above, we need to skip another random value here.
-    random.global_random_crypt.next();
+    random.random.next();
   }
 }
 
