@@ -5,6 +5,7 @@
 #include <phosg/Encoding.hh>
 #include <phosg/Tools.hh>
 
+#include "StaticGameData.hh"
 #include "Text.hh"
 #include "Version.hh"
 
@@ -86,5 +87,9 @@ struct PSOQuestHeaderBB {
   /* 0398 */
 } __attribute__((packed));
 
+Episode episode_for_quest_episode_number(uint8_t episode_number);
+
 std::string disassemble_quest_script(
     const void* data, size_t size, QuestScriptVersion version, uint8_t language);
+
+Episode find_quest_episode_from_script(const void* data, size_t size, QuestScriptVersion version);

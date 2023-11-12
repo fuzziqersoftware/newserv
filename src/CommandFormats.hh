@@ -2724,7 +2724,7 @@ struct C_GuildCardDataRequest_BB_03DC {
 
 struct S_RareMonsterList_BB_DE {
   // Unused entries are set to FFFF
-  parray<le_uint16_t, 0x10> enemy_ids;
+  parray<le_uint16_t, 0x10> enemy_indexes;
 } __packed__;
 
 // DF (C->S): Set Challenge Mode parameters (BB)
@@ -3646,7 +3646,7 @@ struct G_ClientIDHeader {
 struct G_EnemyIDHeader {
   uint8_t subcommand = 0;
   uint8_t size = 0;
-  le_uint16_t enemy_id = 0; // In range [0x1000, 0x4000)
+  le_uint16_t enemy_id = 0; // In [0x1000, 0x4000); not the same as enemy_index!
 } __packed__;
 struct G_ObjectIDHeader {
   uint8_t subcommand = 0;
@@ -3775,8 +3775,7 @@ struct G_Unknown_6x09 {
 template <bool IsBigEndian>
 struct G_EnemyHitByPlayer_6x0A {
   G_EnemyIDHeader header;
-  // Note: enemy_id (in header) is in the range [0x1000, 0x4000)
-  le_uint16_t enemy_id = 0;
+  le_uint16_t enemy_index = 0; // [0, 0xB50)
   le_uint16_t remaining_hp = 0;
   typename std::conditional<IsBigEndian, be_uint32_t, le_uint32_t>::type flags = 0;
 } __packed__;
@@ -3790,8 +3789,8 @@ struct G_EnemyHitByPlayer_DC_PC_XB_BB_6x0A : G_EnemyHitByPlayer_6x0A<false> {
 
 struct G_BoxDestroyed_6x0B {
   G_ClientIDHeader header;
-  le_uint32_t unknown_a2 = 0;
-  le_uint32_t unknown_a3 = 0;
+  le_uint32_t flags = 0;
+  le_uint32_t object_index = 0;
 } __packed__;
 
 // 6x0C: Add condition (poison/slow/etc.)
@@ -4528,15 +4527,13 @@ struct G_SyncGameStateHeader_6x6B_6x6C_6x6D_6x6E {
 // Decompressed format is a list of these
 struct G_SyncEnemyState_6x6B_Entry_Decompressed {
   // TODO: Verify this format on DC and PC. It appears correct for GC and BB.
-  le_uint32_t unknown_a1 = 0; // Possibly some kind of flags
-  // enemy_index is not the same as enemy_id, unfortunately - the enemy_id sent
-  // in the 6x76 command when an enemy is killed does not match enemy_index
-  le_uint16_t enemy_index = 0; // FFFF = enemy is dead
-  le_uint16_t damage_taken = 0;
-  uint8_t unknown_a4 = 0;
-  uint8_t unknown_a5 = 0;
-  uint8_t unknown_a6 = 0;
-  uint8_t unknown_a7 = 0;
+  le_uint32_t flags = 0;
+  le_uint16_t last_attacker = 0;
+  le_uint16_t remaining_hp = 0;
+  uint8_t red_buff_type = 0;
+  uint8_t red_buff_level = 0;
+  uint8_t blue_buff_type = 0;
+  uint8_t blue_buff_level = 0;
 } __packed__;
 
 // 6x6C: Sync object state (used while loading into game; same header format as 6E)
@@ -5498,7 +5495,7 @@ struct G_MedicalCenterUsed_BB_6xC5 {
 
 struct G_StealEXP_BB_6xC6 {
   G_ClientIDHeader header;
-  le_uint16_t enemy_id = 0;
+  le_uint16_t enemy_index = 0;
   le_uint16_t unknown_a1 = 0;
 } __packed__;
 
@@ -5515,7 +5512,7 @@ struct G_ChargeAttack_BB_6xC7 {
 
 struct G_EnemyKilled_BB_6xC8 {
   G_EnemyIDHeader header;
-  le_uint16_t enemy_id = 0;
+  le_uint16_t enemy_index = 0;
   le_uint16_t killer_client_id = 0;
   uint8_t unknown_a1 = 0;
   parray<uint8_t, 3> unused;

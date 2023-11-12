@@ -271,6 +271,7 @@ Some commands only work on the game server and not on the proxy server. The chat
 
 * Information commands
     * `$li`: Shows basic information about the lobby or game you're in. If you're on the proxy server, shows information about your connection instead (remote Guild Card number, client ID, etc.).
+    * `$ping` (game server only): Shows round-trip ping time from the server to you.
     * `$what` (game server only): Shows the type, name, and stats of the nearest item on the ground.
     * `$matcount` (game server only): Shows how many of each type of material you've used.
 

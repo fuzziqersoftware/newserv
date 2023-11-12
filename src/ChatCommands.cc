@@ -159,6 +159,11 @@ static void server_command_lobby_info(shared_ptr<Client> c, const std::string&) 
   send_text_message(c, join(lines, "\n"));
 }
 
+static void server_command_ping(shared_ptr<Client> c, const std::string&) {
+  c->ping_start_time = now();
+  send_command(c, 0x1D, 0x00);
+}
+
 static void proxy_command_lobby_info(shared_ptr<ProxyServer::LinkedSession> ses, const std::string&) {
   string msg;
   // On non-masked-GC sessions (BB), there is no remote Guild Card number, so we
@@ -252,16 +257,34 @@ static void server_command_debug(shared_ptr<Client> c, const std::string&) {
   send_text_message_printf(c, "Debug %s", (c->config.check_flag(Client::Flag::DEBUG_ENABLED) ? "enabled" : "disabled"));
 }
 
+static void server_command_quest(shared_ptr<Client> c, const std::string& args) {
+  if (!c->config.check_flag(Client::Flag::DEBUG_ENABLED)) {
+    send_text_message(c, "$C6This command can only\nbe run in debug mode\n(run %sdebug first)");
+    return;
+  }
+
+  auto s = c->require_server_state();
+  auto l = c->require_lobby();
+  auto q = s->quest_index_for_client(c)->get(stoul(args));
+  set_lobby_quest(c->require_lobby(), q);
+}
+
 static void server_command_show_material_counts(shared_ptr<Client> c, const std::string&) {
   auto p = c->game_data.player();
-  send_text_message_printf(c, "%hhu HP, %hhu TP, %hhu POW\n%hhu MIND, %hhu EVADE\n%hhu DEF, %hhu LUCK",
-      p->get_material_usage(SavedPlayerDataBB::MaterialType::HP),
-      p->get_material_usage(SavedPlayerDataBB::MaterialType::TP),
-      p->get_material_usage(SavedPlayerDataBB::MaterialType::POWER),
-      p->get_material_usage(SavedPlayerDataBB::MaterialType::MIND),
-      p->get_material_usage(SavedPlayerDataBB::MaterialType::EVADE),
-      p->get_material_usage(SavedPlayerDataBB::MaterialType::DEF),
-      p->get_material_usage(SavedPlayerDataBB::MaterialType::LUCK));
+  if ((c->version() == GameVersion::DC) || (c->version() == GameVersion::PC)) {
+    send_text_message_printf(c, "%hhu HP, %hhu TP",
+        p->get_material_usage(SavedPlayerDataBB::MaterialType::HP),
+        p->get_material_usage(SavedPlayerDataBB::MaterialType::TP));
+  } else {
+    send_text_message_printf(c, "%hhu HP, %hhu TP, %hhu POW\n%hhu MIND, %hhu EVADE\n%hhu DEF, %hhu LUCK",
+        p->get_material_usage(SavedPlayerDataBB::MaterialType::HP),
+        p->get_material_usage(SavedPlayerDataBB::MaterialType::TP),
+        p->get_material_usage(SavedPlayerDataBB::MaterialType::POWER),
+        p->get_material_usage(SavedPlayerDataBB::MaterialType::MIND),
+        p->get_material_usage(SavedPlayerDataBB::MaterialType::EVADE),
+        p->get_material_usage(SavedPlayerDataBB::MaterialType::DEF),
+        p->get_material_usage(SavedPlayerDataBB::MaterialType::LUCK));
+  }
 }
 
 static void server_command_auction(shared_ptr<Client> c, const std::string&) {
@@ -1598,7 +1621,9 @@ static const unordered_map<string, ChatCommandDefinition> chat_commands({
     {"$password", {server_command_password, nullptr}},
     {"$patch", {server_command_patch, proxy_command_patch}},
     {"$persist", {server_command_persist, nullptr}},
+    {"$ping", {server_command_ping, nullptr}},
     {"$playrec", {server_command_playrec, nullptr}},
+    {"$quest", {server_command_quest, nullptr}},
     {"$rand", {server_command_rand, proxy_command_rand}},
     {"$saverec", {server_command_saverec, nullptr}},
     {"$sc", {server_command_send_client, proxy_command_send_client}},

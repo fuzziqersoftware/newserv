@@ -116,7 +116,7 @@ public:
       // V2/V3: -> parray<uint8_t, 0x05>
       /* 14 */ U32T armor_slot_count_prob_table_offset;
 
-      // This array (indexed by enemy_id) specifies the range of meseta values
+      // This array (indexed by enemy_type) specifies the range of meseta values
       // that each enemy can drop.
       // V2/V3: -> parray<Range<U16T>, 0x64>
       /* 18 */ U32T enemy_meseta_ranges_offset;
