@@ -1462,7 +1462,7 @@ static void on_entity_drop_item_request(shared_ptr<Client> c, uint8_t command, u
   } else {
     item.id = l->generate_item_id(0xFF);
     string name = s->item_name_index->describe_item(l->base_version, item);
-    l->log.info("Box %04hX (area %02hX) created item %s", cmd.entity_id.load(), cmd.effective_area, name.c_str());
+    l->log.info("Entity %04hX (area %02hX) created item %s", cmd.entity_id.load(), cmd.effective_area, name.c_str());
     l->log.info("Creating item %08" PRIX32 " at %02hhX:%g,%g", item.id.load(), cmd.area, cmd.x.load(), cmd.z.load());
     if (l->check_flag(Lobby::Flag::ITEM_TRACKING_ENABLED)) {
       l->add_item(item, cmd.area, cmd.x, cmd.z);
