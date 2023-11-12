@@ -15,6 +15,7 @@ std::shared_ptr<Lobby> create_game_generic(
     bool allow_v1 = false,
     std::shared_ptr<Lobby> watched_lobby = nullptr,
     std::shared_ptr<Episode3::BattleRecordPlayer> battle_player = nullptr);
+void set_lobby_quest(std::shared_ptr<Lobby> l, std::shared_ptr<const Quest> q);
 
 void on_connect(std::shared_ptr<Client> c);
 void on_disconnect(std::shared_ptr<Client> c);

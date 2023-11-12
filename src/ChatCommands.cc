@@ -257,6 +257,18 @@ static void server_command_debug(shared_ptr<Client> c, const std::string&) {
   send_text_message_printf(c, "Debug %s", (c->config.check_flag(Client::Flag::DEBUG_ENABLED) ? "enabled" : "disabled"));
 }
 
+static void server_command_quest(shared_ptr<Client> c, const std::string& args) {
+  if (!c->config.check_flag(Client::Flag::DEBUG_ENABLED)) {
+    send_text_message(c, "$C6This command can only\nbe run in debug mode\n(run %sdebug first)");
+    return;
+  }
+
+  auto s = c->require_server_state();
+  auto l = c->require_lobby();
+  auto q = s->quest_index_for_client(c)->get(stoul(args));
+  set_lobby_quest(c->require_lobby(), q);
+}
+
 static void server_command_show_material_counts(shared_ptr<Client> c, const std::string&) {
   auto p = c->game_data.player();
   if ((c->version() == GameVersion::DC) || (c->version() == GameVersion::PC)) {
@@ -1611,6 +1623,7 @@ static const unordered_map<string, ChatCommandDefinition> chat_commands({
     {"$persist", {server_command_persist, nullptr}},
     {"$ping", {server_command_ping, nullptr}},
     {"$playrec", {server_command_playrec, nullptr}},
+    {"$quest", {server_command_quest, nullptr}},
     {"$rand", {server_command_rand, proxy_command_rand}},
     {"$saverec", {server_command_saverec, nullptr}},
     {"$sc", {server_command_send_client, proxy_command_send_client}},

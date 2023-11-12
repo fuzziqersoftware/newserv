@@ -1812,6 +1812,85 @@ static void on_09(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
   }
 }
 
+void set_lobby_quest(shared_ptr<Lobby> l, shared_ptr<const Quest> q) {
+  if (!l->is_game()) {
+    throw logic_error("non-game lobby cannot accept a quest");
+  }
+  if (l->quest) {
+    throw runtime_error("lobby already has an assigned quest");
+  }
+
+  auto s = l->require_server_state();
+
+  if (q->joinable) {
+    l->set_flag(Lobby::Flag::JOINABLE_QUEST_IN_PROGRESS);
+  } else {
+    l->set_flag(Lobby::Flag::QUEST_IN_PROGRESS);
+  }
+
+  l->quest = q;
+  l->episode = q->episode;
+  if (l->item_creator) {
+    l->item_creator->clear_destroyed_entities();
+    if (q->battle_rules) {
+      l->item_creator->set_restrictions(q->battle_rules);
+    }
+  }
+
+  for (size_t client_id = 0; client_id < l->max_clients; client_id++) {
+    auto lc = l->clients[client_id];
+    if (!lc) {
+      continue;
+    }
+
+    auto vq = q->version(lc->quest_version(), lc->language());
+    if (!vq) {
+      send_lobby_message_box(lc, "$C6Quest does not exist\nfor this game version.");
+      lc->should_disconnect = true;
+      break;
+    }
+
+    if (vq->battle_rules) {
+      lc->game_data.create_battle_overlay(vq->battle_rules, s->level_table);
+      lc->log.info("Created battle overlay");
+    } else if (vq->challenge_template_index >= 0) {
+      lc->game_data.create_challenge_overlay(lc->version(), vq->challenge_template_index, s->level_table);
+      lc->log.info("Created challenge overlay");
+    }
+
+    // If an overlay was created, item IDs need to be assigned
+    if (lc->game_data.has_overlay()) {
+      auto overlay = lc->game_data.player();
+      for (size_t z = 0; z < overlay->inventory.num_items; z++) {
+        overlay->inventory.items[z].data.id = l->generate_item_id(client_id);
+      }
+      lc->log.info("Assigned overlay item IDs");
+      lc->game_data.player()->print_inventory(stderr, lc->version(), s->item_name_index);
+    }
+
+    string bin_filename = vq->bin_filename();
+    string dat_filename = vq->dat_filename();
+    string xb_filename = vq->xb_filename();
+    send_open_quest_file(lc, bin_filename, bin_filename, xb_filename, vq->quest_number, QuestFileType::ONLINE, vq->bin_contents);
+    send_open_quest_file(lc, dat_filename, dat_filename, xb_filename, vq->quest_number, QuestFileType::ONLINE, vq->dat_contents);
+
+    // There is no such thing as command AC on PSO V1 and V2 - quests just
+    // start immediately when they're done downloading. (This is also the
+    // case on V3 Trial Edition.) There are also no chunk acknowledgements
+    // (C->S 13 commands) like there are on GC. So, for pre-V3 clients, we
+    // can just not set the loading flag, since we never need to
+    // check/clear it later.
+    if ((lc->version() != GameVersion::DC) &&
+        (lc->version() != GameVersion::PC) &&
+        !lc->config.check_flag(Client::Flag::IS_GC_TRIAL_EDITION)) {
+      lc->config.set_flag(Client::Flag::LOADING_QUEST);
+      lc->disconnect_hooks.emplace(QUEST_BARRIER_DISCONNECT_HOOK_NAME, [l]() -> void {
+        send_quest_barrier_if_all_clients_ready(l);
+      });
+    }
+  }
+}
+
 static void on_10(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
   bool uses_unicode = ((c->version() == GameVersion::PC) || (c->version() == GameVersion::BB));
 
@@ -2192,73 +2271,7 @@ static void on_10(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
           send_lobby_message_box(c, "$C6A quest is already\nin progress.");
           break;
         }
-        if (q->joinable) {
-          l->set_flag(Lobby::Flag::JOINABLE_QUEST_IN_PROGRESS);
-        } else {
-          l->set_flag(Lobby::Flag::QUEST_IN_PROGRESS);
-        }
-
-        l->quest = q;
-        l->episode = q->episode;
-        if (l->item_creator) {
-          l->item_creator->clear_destroyed_entities();
-          if (q->battle_rules) {
-            l->item_creator->set_restrictions(q->battle_rules);
-          }
-        }
-
-        for (size_t client_id = 0; client_id < l->max_clients; client_id++) {
-          auto lc = l->clients[client_id];
-          if (!lc) {
-            continue;
-          }
-
-          auto vq = q->version(lc->quest_version(), lc->language());
-          if (!vq) {
-            send_lobby_message_box(lc, "$C6Quest does not exist\nfor this game version.");
-            lc->should_disconnect = true;
-            break;
-          }
-
-          if (vq->battle_rules) {
-            lc->game_data.create_battle_overlay(vq->battle_rules, s->level_table);
-            lc->log.info("Created battle overlay");
-          } else if (vq->challenge_template_index >= 0) {
-            lc->game_data.create_challenge_overlay(lc->version(), vq->challenge_template_index, s->level_table);
-            lc->log.info("Created challenge overlay");
-          }
-
-          // If an overlay was created, item IDs need to be assigned
-          if (lc->game_data.has_overlay()) {
-            auto overlay = lc->game_data.player();
-            for (size_t z = 0; z < overlay->inventory.num_items; z++) {
-              overlay->inventory.items[z].data.id = l->generate_item_id(client_id);
-            }
-            lc->log.info("Assigned overlay item IDs");
-            lc->game_data.player()->print_inventory(stderr, c->version(), s->item_name_index);
-          }
-
-          string bin_filename = vq->bin_filename();
-          string dat_filename = vq->dat_filename();
-          string xb_filename = vq->xb_filename();
-          send_open_quest_file(lc, bin_filename, bin_filename, xb_filename, vq->quest_number, QuestFileType::ONLINE, vq->bin_contents);
-          send_open_quest_file(lc, dat_filename, dat_filename, xb_filename, vq->quest_number, QuestFileType::ONLINE, vq->dat_contents);
-
-          // There is no such thing as command AC on PSO V1 and V2 - quests just
-          // start immediately when they're done downloading. (This is also the
-          // case on V3 Trial Edition.) There are also no chunk acknowledgements
-          // (C->S 13 commands) like there are on GC. So, for pre-V3 clients, we
-          // can just not set the loading flag, since we never need to
-          // check/clear it later.
-          if ((lc->version() != GameVersion::DC) &&
-              (lc->version() != GameVersion::PC) &&
-              !lc->config.check_flag(Client::Flag::IS_GC_TRIAL_EDITION)) {
-            lc->config.set_flag(Client::Flag::LOADING_QUEST);
-            lc->disconnect_hooks.emplace(QUEST_BARRIER_DISCONNECT_HOOK_NAME, [l]() -> void {
-              send_quest_barrier_if_all_clients_ready(l);
-            });
-          }
-        }
+        set_lobby_quest(l, q);
 
       } else {
         auto vq = q->version(c->quest_version(), c->language());
