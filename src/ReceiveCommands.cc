@@ -2641,6 +2641,11 @@ static void on_AC_V3_BB(shared_ptr<Client> c, uint16_t, uint32_t, string& data) 
         string e_str = l->map->enemies[z].str();
         l->log.info("(Entry %zX) %s", z, e_str.c_str());
       }
+      for (auto& lc : l->clients) {
+        if (lc) {
+          send_rare_enemy_index_list(c, l->map->rare_enemy_indexes);
+        }
+      }
     }
   }
 }
