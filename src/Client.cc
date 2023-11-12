@@ -111,19 +111,14 @@ void Client::Config::set_flags_for_version(GameVersion version, int64_t sub_vers
       this->set_flag(Flag::ENCRYPTED_SEND_FUNCTION_CALL);
       this->set_flag(Flag::SEND_FUNCTION_CALL_NO_CACHE_PATCH);
       break;
-    case 0x42: // Also GC Ep3 JP?
-      this->set_flag(Flag::NO_D6_AFTER_LOBBY);
-      this->set_flag(Flag::IS_EPISODE_3);
-      this->set_flag(Flag::ENCRYPTED_SEND_FUNCTION_CALL);
-      this->set_flag(Flag::SEND_FUNCTION_CALL_NO_CACHE_PATCH);
-      break;
     case 0x41: // GC Ep3 US
       this->set_flag(Flag::NO_D6_AFTER_LOBBY);
       this->set_flag(Flag::IS_EPISODE_3);
       this->set_flag(Flag::USE_OVERFLOW_FOR_SEND_FUNCTION_CALL);
       this->set_flag(Flag::SEND_FUNCTION_CALL_NO_CACHE_PATCH);
       break;
-    case 0x43: // GC Ep3 EU
+    case 0x42: // GC Ep3 EU 50Hz
+    case 0x43: // GC Ep3 EU 60Hz
       this->set_flag(Flag::NO_D6_AFTER_LOBBY);
       this->set_flag(Flag::IS_EPISODE_3);
       this->set_flag(Flag::NO_SEND_FUNCTION_CALL);
