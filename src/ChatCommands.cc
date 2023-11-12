@@ -259,14 +259,20 @@ static void server_command_debug(shared_ptr<Client> c, const std::string&) {
 
 static void server_command_show_material_counts(shared_ptr<Client> c, const std::string&) {
   auto p = c->game_data.player();
-  send_text_message_printf(c, "%hhu HP, %hhu TP, %hhu POW\n%hhu MIND, %hhu EVADE\n%hhu DEF, %hhu LUCK",
-      p->get_material_usage(SavedPlayerDataBB::MaterialType::HP),
-      p->get_material_usage(SavedPlayerDataBB::MaterialType::TP),
-      p->get_material_usage(SavedPlayerDataBB::MaterialType::POWER),
-      p->get_material_usage(SavedPlayerDataBB::MaterialType::MIND),
-      p->get_material_usage(SavedPlayerDataBB::MaterialType::EVADE),
-      p->get_material_usage(SavedPlayerDataBB::MaterialType::DEF),
-      p->get_material_usage(SavedPlayerDataBB::MaterialType::LUCK));
+  if ((c->version() == GameVersion::DC) || (c->version() == GameVersion::PC)) {
+    send_text_message_printf(c, "%hhu HP, %hhu TP",
+        p->get_material_usage(SavedPlayerDataBB::MaterialType::HP),
+        p->get_material_usage(SavedPlayerDataBB::MaterialType::TP));
+  } else {
+    send_text_message_printf(c, "%hhu HP, %hhu TP, %hhu POW\n%hhu MIND, %hhu EVADE\n%hhu DEF, %hhu LUCK",
+        p->get_material_usage(SavedPlayerDataBB::MaterialType::HP),
+        p->get_material_usage(SavedPlayerDataBB::MaterialType::TP),
+        p->get_material_usage(SavedPlayerDataBB::MaterialType::POWER),
+        p->get_material_usage(SavedPlayerDataBB::MaterialType::MIND),
+        p->get_material_usage(SavedPlayerDataBB::MaterialType::EVADE),
+        p->get_material_usage(SavedPlayerDataBB::MaterialType::DEF),
+        p->get_material_usage(SavedPlayerDataBB::MaterialType::LUCK));
+  }
 }
 
 static void server_command_auction(shared_ptr<Client> c, const std::string&) {
