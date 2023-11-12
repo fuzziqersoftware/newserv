@@ -68,7 +68,7 @@
     "gc-eu10":       [9200,  "gc",    "login_server"],
     "gc-eu11":       [9201,  "gc",    "login_server"],
     "gc-eu3-50":     [9202,  "gc",    "login_server"],
-    "gc-eu3-60":     [9203,  "gc",    "login_server"],
+    "gc-eu3-60":     [9204,  "gc",    "login_server"],
     "pc":            [9300,  "pc",    "login_server"],
     "pc-patch":      [10000, "patch", "patch_server_pc"],
     "bb-patch":      [11000, "patch", "patch_server_bb"],
@@ -113,6 +113,8 @@
     //   (below).
     "console-login": [5100,  "gc",    "login_server"],
     "pc-login":      [5101,  "pc",    "login_server"],
+    "xb-login":      [5102,  "xb",    "login_server"],
+    "xb-lobby":      [5105,  "xb",    "login_server"],
     "console-lobby": [5110,  "gc",    "lobby_server"],
     "pc-lobby":      [5111,  "pc",    "lobby_server"],
     "bb-lobby":      [5112,  "bb",    "lobby_server"],
