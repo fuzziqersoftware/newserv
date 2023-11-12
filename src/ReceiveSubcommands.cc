@@ -1621,11 +1621,11 @@ static void on_enemy_hit(shared_ptr<Client> c, uint8_t command, uint8_t, const v
     if (!l->map) {
       throw runtime_error("game does not have a map loaded");
     }
-    if (cmd.enemy_id >= l->map->enemies.size()) {
+    if (cmd.enemy_index >= l->map->enemies.size()) {
       return;
     }
 
-    auto& enemy = l->map->enemies[cmd.enemy_id];
+    auto& enemy = l->map->enemies[cmd.enemy_index];
     if (enemy.flags & Map::Enemy::Flag::DEFEATED) {
       return;
     }
@@ -1633,7 +1633,7 @@ static void on_enemy_hit(shared_ptr<Client> c, uint8_t command, uint8_t, const v
     enemy.last_hit_by_client_id = c->lobby_client_id;
   }
 
-  G_EnemyHitByPlayer_GC_6x0A sw_cmd = {{{cmd.header.subcommand, cmd.header.size, cmd.header.enemy_id}, cmd.enemy_id, cmd.remaining_hp, cmd.flags.load()}};
+  G_EnemyHitByPlayer_GC_6x0A sw_cmd = {{{cmd.header.subcommand, cmd.header.size, cmd.header.enemy_id}, cmd.enemy_index, cmd.remaining_hp, cmd.flags.load()}};
   bool sender_is_gc = (c->version() == GameVersion::GC);
   for (auto lc : l->clients) {
     if (lc && (lc != c)) {
@@ -1721,7 +1721,7 @@ static void on_steal_exp_bb(shared_ptr<Client> c, uint8_t, uint8_t, const void* 
   const auto& cmd = check_size_t<G_StealEXP_BB_6xC6>(data, size);
 
   auto p = c->game_data.player();
-  const auto& enemy = l->map->enemies.at(cmd.enemy_id);
+  const auto& enemy = l->map->enemies.at(cmd.enemy_index);
   const auto& inventory = p->inventory;
   const auto& weapon = inventory.items[inventory.find_equipped_weapon()];
 
@@ -1751,7 +1751,7 @@ static void on_steal_exp_bb(shared_ptr<Client> c, uint8_t, uint8_t, const void* 
   uint32_t stolen_exp = min<uint32_t>((enemy_exp * percent) / 100, (l->difficulty + 1) * 20);
   if (c->config.check_flag(Client::Flag::DEBUG_ENABLED)) {
     send_text_message_printf(c, "$C5+%" PRIu32 " E-%hX %s",
-        stolen_exp, cmd.enemy_id.load(), name_for_enum(enemy.type));
+        stolen_exp, cmd.enemy_index.load(), name_for_enum(enemy.type));
   }
   add_player_exp(c, stolen_exp);
 }
@@ -1774,17 +1774,17 @@ static void on_enemy_killed_bb(shared_ptr<Client> c, uint8_t command, uint8_t fl
   if (!l->map) {
     throw runtime_error("game does not have a map loaded");
   }
-  if (cmd.enemy_id >= l->map->enemies.size()) {
+  if (cmd.enemy_index >= l->map->enemies.size()) {
     send_text_message(c, "$C6Missing enemy killed");
     return;
   }
 
-  auto& e = l->map->enemies[cmd.enemy_id];
+  auto& e = l->map->enemies[cmd.enemy_index];
   string e_str = e.str();
-  c->log.info("Enemy killed: E-%hX => %s", cmd.enemy_id.load(), e_str.c_str());
+  c->log.info("Enemy killed: E-%hX => %s", cmd.enemy_index.load(), e_str.c_str());
   if (e.flags & Map::Enemy::Flag::DEFEATED) {
     if (c->config.check_flag(Client::Flag::DEBUG_ENABLED)) {
-      send_text_message_printf(c, "$C5E-%hX __DEFEATED__", cmd.enemy_id.load());
+      send_text_message_printf(c, "$C5E-%hX __DEFEATED__", cmd.enemy_index.load());
     }
     return;
   }
@@ -1796,7 +1796,7 @@ static void on_enemy_killed_bb(shared_ptr<Client> c, uint8_t command, uint8_t fl
     experience = bp_table.stats[l->difficulty][bp_index].experience * l->exp_multiplier;
   } catch (const exception& e) {
     if (c->config.check_flag(Client::Flag::DEBUG_ENABLED)) {
-      send_text_message_printf(c, "$C5E-%hX __MISSING__\n%s", cmd.enemy_id.load(), e.what());
+      send_text_message_printf(c, "$C5E-%hX __MISSING__\n%s", cmd.enemy_index.load(), e.what());
     } else {
       send_text_message_printf(c, "$C4Unknown enemy type killed:\n%s", e.what());
     }
@@ -1812,19 +1812,18 @@ static void on_enemy_killed_bb(shared_ptr<Client> c, uint8_t command, uint8_t fl
     if (!other_c) {
       continue; // No player
     }
-    if (other_c->game_data.player()->disp.stats.level >= 199) {
-      continue; // Player is level 200 or higher
-    }
 
     if (experience != 0xFFFFFFFF) {
       // Killer gets full experience, others get 77%
       bool is_killer = (e.last_hit_by_client_id == other_c->lobby_client_id);
       uint32_t player_exp = is_killer ? experience : ((experience * 77) / 100);
-      if (c->config.check_flag(Client::Flag::DEBUG_ENABLED)) {
+      if (other_c->config.check_flag(Client::Flag::DEBUG_ENABLED)) {
         send_text_message_printf(c, "$C5+%" PRIu32 " E-%hX %s",
-            player_exp, cmd.enemy_id.load(), name_for_enum(e.type));
+            player_exp, cmd.enemy_index.load(), name_for_enum(e.type));
       }
-      add_player_exp(c, player_exp);
+      if (other_c->game_data.player()->disp.stats.level < 199) {
+        add_player_exp(other_c, player_exp);
+      }
     }
   }
 

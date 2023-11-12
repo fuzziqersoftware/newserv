@@ -2620,8 +2620,9 @@ static void on_AC_V3_BB(shared_ptr<Client> c, uint16_t, uint32_t, string& data) 
           l->event,
           dat_contents.data(),
           dat_contents.size(),
+          l->random_seed,
           (l->mode == GameMode::CHALLENGE) ? Map::NO_RARE_ENEMIES : Map::DEFAULT_RARE_ENEMIES);
-      c->log.info("Replaced enemies list with quest layout (%zu entries)",
+      l->log.info("Replaced enemies list with quest layout (%zu entries)",
           l->map->enemies.size());
       for (size_t z = 0; z < l->map->enemies.size(); z++) {
         string e_str = l->map->enemies[z].str();
