@@ -174,10 +174,8 @@ std::string prs_compress_indexed(
 // Compresses data using PRS to the smallest possible output size. This function
 // is slow, but produces results significantly smaller than even Sega's original
 // compressor.
-std::string prs_compress_optimal(
-    const void* vdata,
-    size_t size,
-    ProgressCallback progress_fn = nullptr);
+std::string prs_compress_optimal(const void* vdata, size_t size, ProgressCallback progress_fn = nullptr);
+std::string prs_compress_optimal(const std::string& data, ProgressCallback progress_fn = nullptr);
 
 // Decompresses PRS-compressed data.
 struct PRSDecompressResult {

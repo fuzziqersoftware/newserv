@@ -1349,9 +1349,10 @@ int main(int argc, char** argv) {
         auto decoded = decode_dlq_data(read_input_data());
         save_file(output_filename_base + ".dec", decoded);
       } else if (quest_file_type == QuestFileFormat::QST) {
-        auto data = decode_qst_data(read_input_data());
-        save_file(output_filename_base + ".bin", data.first);
-        save_file(output_filename_base + ".dat", data.second);
+        auto files = decode_qst_data(read_input_data());
+        for (const auto& it : files) {
+          save_file(output_filename_base + "-" + it.first, it.second);
+        }
       } else {
         throw logic_error("invalid quest file format");
       }
@@ -1367,9 +1368,17 @@ int main(int argc, char** argv) {
       string dat_filename = ends_with(bin_filename, ".bin")
           ? (bin_filename.substr(0, bin_filename.size() - 3) + "dat")
           : (bin_filename + ".dat");
+      string pvr_filename = ends_with(bin_filename, ".bin")
+          ? (bin_filename.substr(0, bin_filename.size() - 3) + "pvr")
+          : (bin_filename + ".pvr");
       shared_ptr<string> bin_data(new string(load_file(bin_filename)));
       shared_ptr<string> dat_data(new string(load_file(dat_filename)));
-      shared_ptr<VersionedQuest> vq(new VersionedQuest(0, 0, cli_quest_version, 0, bin_data, dat_data));
+      shared_ptr<string> pvr_data;
+      try {
+        shared_ptr<string> dat_data(new string(load_file(pvr_filename)));
+      } catch (const cannot_open_file&) {
+      }
+      shared_ptr<VersionedQuest> vq(new VersionedQuest(0, 0, cli_quest_version, 0, bin_data, dat_data, pvr_data));
       if (download) {
         vq = vq->create_download_quest();
       }

@@ -217,8 +217,7 @@ struct PRSPathNode {
   size_t to_offset = 0;
 };
 
-string prs_compress_optimal(
-    const void* in_data_v, size_t in_size, ProgressCallback progress_fn) {
+string prs_compress_optimal(const void* in_data_v, size_t in_size, ProgressCallback progress_fn) {
   const uint8_t* in_data = reinterpret_cast<const uint8_t*>(in_data_v);
 
   vector<PRSPathNode> nodes;
@@ -433,6 +432,10 @@ string prs_compress_optimal(
   w.write_data(0);
 
   return std::move(w.close());
+}
+
+string prs_compress_optimal(const string& data, ProgressCallback progress_fn) {
+  return prs_compress_optimal(data.data(), data.size(), progress_fn);
 }
 
 PRSCompressor::PRSCompressor(

@@ -355,7 +355,8 @@ void set_mask_for_ep3_game_command(void* vdata, size_t size, uint8_t mask_key);
 
 enum class QuestFileType {
   ONLINE = 0,
-  DOWNLOAD,
+  DOWNLOAD_WITHOUT_PVR,
+  DOWNLOAD_WITH_PVR,
   EPISODE_3,
   GBA_DEMO,
 };

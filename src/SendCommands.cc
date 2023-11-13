@@ -2939,10 +2939,11 @@ void send_open_quest_file_t(
       cmd.name.encode("GBA Demo");
       cmd.type = 2;
       break;
-    case QuestFileType::DOWNLOAD:
+    case QuestFileType::DOWNLOAD_WITHOUT_PVR:
+    case QuestFileType::DOWNLOAD_WITH_PVR:
       command_num = 0xA6;
       cmd.name.encode("PSO/" + quest_name);
-      cmd.type = 0;
+      cmd.type = (type == QuestFileType::DOWNLOAD_WITH_PVR) ? 1 : 0;
       break;
     case QuestFileType::EPISODE_3:
       command_num = 0xA6;
@@ -2968,7 +2969,7 @@ void send_open_quest_file_t<S_OpenFile_XB_44_A6>(
     QuestFileType type) {
   S_OpenFile_XB_44_A6 cmd;
   cmd.name.encode("PSO/" + quest_name);
-  cmd.type = 0;
+  cmd.type = (type == QuestFileType::DOWNLOAD_WITH_PVR) ? 1 : 0;
   cmd.file_size = file_size;
   cmd.filename.encode(filename);
   cmd.xb_filename.encode(xb_filename);

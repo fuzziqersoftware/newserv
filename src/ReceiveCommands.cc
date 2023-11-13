@@ -2289,8 +2289,12 @@ static void on_10(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
         } else {
           vq = vq->create_download_quest(c->language());
           string xb_filename = vq->xb_filename();
-          send_open_quest_file(c, q->name, vq->bin_filename(), xb_filename, vq->quest_number, QuestFileType::DOWNLOAD, vq->bin_contents);
-          send_open_quest_file(c, q->name, vq->dat_filename(), xb_filename, vq->quest_number, QuestFileType::DOWNLOAD, vq->dat_contents);
+          QuestFileType type = vq->pvr_contents ? QuestFileType::DOWNLOAD_WITH_PVR : QuestFileType::DOWNLOAD_WITHOUT_PVR;
+          send_open_quest_file(c, q->name, vq->bin_filename(), xb_filename, vq->quest_number, type, vq->bin_contents);
+          send_open_quest_file(c, q->name, vq->dat_filename(), xb_filename, vq->quest_number, type, vq->dat_contents);
+          if (vq->pvr_contents) {
+            send_open_quest_file(c, q->name, vq->dat_filename(), xb_filename, vq->quest_number, type, vq->pvr_contents);
+          }
         }
       }
       break;

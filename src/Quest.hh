@@ -5,6 +5,7 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #include "PlayerSubordinates.hh"
@@ -35,8 +36,7 @@ struct QuestCategoryIndex {
 
     uint32_t category_id;
     uint8_t flags;
-    char type;
-    std::string short_token;
+    std::string directory_name;
     std::string name;
     std::string description;
 
@@ -49,7 +49,6 @@ struct QuestCategoryIndex {
 
   explicit QuestCategoryIndex(const JSON& json);
 
-  const Category& find(char type, const std::string& short_token) const;
   const Category& at(uint32_t category_id) const;
 };
 
@@ -66,6 +65,7 @@ struct VersionedQuest {
   std::string long_description;
   std::shared_ptr<const std::string> bin_contents;
   std::shared_ptr<const std::string> dat_contents;
+  std::shared_ptr<const std::string> pvr_contents;
   std::shared_ptr<const BattleRules> battle_rules;
   ssize_t challenge_template_index;
 
@@ -76,6 +76,7 @@ struct VersionedQuest {
       uint8_t language,
       std::shared_ptr<const std::string> bin_contents,
       std::shared_ptr<const std::string> dat_contents,
+      std::shared_ptr<const std::string> pvr_contents,
       std::shared_ptr<const BattleRules> battle_rules = nullptr,
       ssize_t challenge_template_index = -1);
 
@@ -119,12 +120,9 @@ struct QuestIndex {
 
   std::map<uint32_t, std::shared_ptr<Quest>> quests_by_number;
 
-  std::map<std::string, std::shared_ptr<std::string>> gba_file_contents;
-
   QuestIndex(const std::string& directory, std::shared_ptr<const QuestCategoryIndex> category_index);
 
   std::shared_ptr<const Quest> get(uint32_t quest_number) const;
-  std::shared_ptr<const std::string> get_gba(const std::string& name) const;
   std::vector<std::shared_ptr<const Quest>> filter(uint32_t category_id, QuestScriptVersion version) const;
 };
 
@@ -144,13 +142,12 @@ std::string decode_vms_data(
     int64_t known_seed = -1,
     bool skip_checksum = false);
 std::string decode_dlq_data(const std::string& data);
-std::pair<std::string, std::string> decode_qst_data(const std::string& data);
+std::unordered_map<std::string, std::string> decode_qst_data(const std::string& data);
 
 std::string encode_qst_file(
-    const std::string& bin_data,
-    const std::string& dat_data,
+    const std::unordered_map<std::string, std::shared_ptr<const std::string>>& files,
     const std::string& name,
     uint32_t quest_number,
-    uint8_t language,
+    const std::string& xb_filename,
     QuestScriptVersion version,
     bool is_dlq_encoded);

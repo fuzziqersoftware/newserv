@@ -24,10 +24,9 @@ using namespace std;
 QuestCategoryIndex::Category::Category(uint32_t category_id, const JSON& json)
     : category_id(category_id) {
   this->flags = json.get_int(0);
-  this->type = json.get_string(1).at(0);
-  this->short_token = json.get_string(2);
-  this->name = json.get_string(3);
-  this->description = json.get_string(4);
+  this->directory_name = json.get_string(1);
+  this->name = json.get_string(2);
+  this->description = json.get_string(3);
 }
 
 bool QuestCategoryIndex::Category::matches_flags(uint8_t request) const {
@@ -44,17 +43,6 @@ QuestCategoryIndex::QuestCategoryIndex(const JSON& json) {
   for (const auto& it : json.as_list()) {
     this->categories.emplace_back(next_category_id++, *it);
   }
-}
-
-const QuestCategoryIndex::Category& QuestCategoryIndex::find(char type, const std::string& short_token) const {
-  // Technically we should index these and do a map lookup, but there will
-  // probably always only be a small constant number of them
-  for (const auto& it : this->categories) {
-    if (it.type == type && it.short_token == short_token) {
-      return it;
-    }
-  }
-  throw out_of_range(string_printf("no category with type %c and short_token %s", type, short_token.c_str()));
 }
 
 const QuestCategoryIndex::Category& QuestCategoryIndex::at(uint32_t category_id) const {
@@ -223,6 +211,7 @@ VersionedQuest::VersionedQuest(
     uint8_t language,
     std::shared_ptr<const std::string> bin_contents,
     std::shared_ptr<const std::string> dat_contents,
+    std::shared_ptr<const std::string> pvr_contents,
     std::shared_ptr<const BattleRules> battle_rules,
     ssize_t challenge_template_index)
     : quest_number(quest_number),
@@ -234,6 +223,7 @@ VersionedQuest::VersionedQuest(
       is_dlq_encoded(false),
       bin_contents(bin_contents),
       dat_contents(dat_contents),
+      pvr_contents(pvr_contents),
       battle_rules(battle_rules),
       challenge_template_index(challenge_template_index) {
 
@@ -361,14 +351,14 @@ string VersionedQuest::xb_filename() const {
 }
 
 string VersionedQuest::encode_qst() const {
-  return encode_qst_file(
-      *this->bin_contents,
-      *this->dat_contents,
-      this->name,
-      this->quest_number,
-      this->language,
-      this->version,
-      this->is_dlq_encoded);
+  unordered_map<string, shared_ptr<const string>> files;
+  files.emplace(string_printf("quest%" PRIu32 ".bin", this->quest_number), this->bin_contents);
+  files.emplace(string_printf("quest%" PRIu32 ".dat", this->quest_number), this->dat_contents);
+  if (this->pvr_contents) {
+    files.emplace(string_printf("quest%" PRIu32 ".pvr", this->quest_number), this->pvr_contents);
+  }
+  string xb_filename = string_printf("quest%" PRIu32 "_%c.dat", quest_number, tolower(char_for_language_code(language)));
+  return encode_qst_file(files, this->name, this->quest_number, xb_filename, this->version, this->is_dlq_encoded);
 }
 
 Quest::Quest(shared_ptr<const VersionedQuest> initial_version)
@@ -447,76 +437,128 @@ QuestIndex::QuestIndex(
     : directory(directory),
       category_index(category_index) {
 
-  unordered_map<string, shared_ptr<const string>> dat_cache;
-  unordered_map<string, shared_ptr<const JSON>> metadata_json_cache;
+  map<string, shared_ptr<const string>> bin_files;
+  map<string, shared_ptr<const string>> dat_files;
+  map<string, shared_ptr<const string>> pvr_files;
+  map<string, shared_ptr<const string>> json_files;
+  map<string, uint32_t> categories;
+  for (const auto& cat : this->category_index->categories) {
 
-  for (const auto& bin_filename : list_directory_sorted(directory)) {
-    string bin_path = this->directory + "/" + bin_filename;
+    auto add_file = [&](map<string, shared_ptr<const string>>& files, const string& name, string&& value) {
+      if (categories.emplace(name, cat.category_id).first->second != cat.category_id) {
+        throw runtime_error("file " + name + " exists in multiple categories");
+      }
+      shared_ptr<const string> data_ptr(new string(std::move(value)));
+      if (!files.emplace(name, data_ptr).second) {
+        throw runtime_error("file " + name + " already exists");
+      }
+    };
 
-    if (ends_with(bin_filename, ".gba")) {
-      shared_ptr<string> contents(new string(load_file(bin_path)));
-      this->gba_file_contents.emplace(make_pair(bin_filename, contents));
+    string cat_path = directory + "/" + cat.directory_name;
+    if (!isdir(cat_path)) {
+      static_game_data_log.warning("Quest category directory %s is missing; skipping it", cat_path.c_str());
       continue;
     }
+    for (string filename : list_directory_sorted(cat_path)) {
+      string file_path = cat_path + "/" + filename;
+      try {
+        string file_data;
+        if (ends_with(filename, ".gci")) {
+          file_data = decode_gci_data(load_file(file_path));
+          filename.resize(filename.size() - 4);
+        } else if (ends_with(filename, ".vms")) {
+          file_data = decode_vms_data(load_file(file_path));
+          filename.resize(filename.size() - 4);
+        } else if (ends_with(filename, ".dlq")) {
+          file_data = decode_dlq_data(load_file(file_path));
+          filename.resize(filename.size() - 4);
+        } else {
+          file_data = load_file(file_path);
+        }
+
+        size_t dot_pos = filename.rfind('.');
+        string file_basename;
+        string extension;
+        if (dot_pos != string::npos) {
+          file_basename = tolower(filename.substr(0, dot_pos));
+          extension = tolower(filename.substr(dot_pos + 1));
+        } else {
+          file_basename = tolower(filename);
+        }
+
+        if (extension == "json") {
+          add_file(json_files, file_basename, std::move(file_data));
+        } else if (extension == "bin" || extension == "mnm") {
+          add_file(bin_files, file_basename, std::move(file_data));
+        } else if (extension == "bind" || extension == "mnmd") {
+          add_file(bin_files, file_basename, prs_compress_optimal(file_data));
+        } else if (extension == "dat") {
+          add_file(dat_files, file_basename, std::move(file_data));
+        } else if (extension == "datd") {
+          add_file(dat_files, file_basename, prs_compress_optimal(file_data));
+        } else if (extension == "pvr") {
+          add_file(pvr_files, file_basename, std::move(file_data));
+        } else if (extension == "pvrd") {
+          add_file(pvr_files, file_basename, prs_compress_optimal(file_data));
+        } else if (extension == "qst") {
+          auto files = decode_qst_data(file_data);
+          for (auto& it : files) {
+            if (ends_with(it.first, ".bin")) {
+              add_file(bin_files, file_basename, std::move(it.second));
+            } else if (ends_with(it.first, ".dat")) {
+              add_file(dat_files, file_basename, std::move(it.second));
+            } else if (ends_with(it.first, ".pvr")) {
+              add_file(pvr_files, file_basename, std::move(it.second));
+            } else {
+              throw runtime_error("qst file contains unsupported file type: " + it.first);
+            }
+          }
+        } else {
+          static_game_data_log.warning("(%s) Skipping file (unsupported format)", filename.c_str());
+        }
+
+      } catch (const exception& e) {
+        static_game_data_log.warning("(%s) Failed to load quest file: (%s)", filename.c_str(), e.what());
+      }
+    }
+  }
+
+  // All quests have a bin file (even in Episode 3, though its format is
+  // different), so we use bin_files as the primary list of all quests that
+  // should be indexed
+  for (auto& bin_it : bin_files) {
+    const string& basename = bin_it.first;
+    shared_ptr<const string> bin_contents = bin_it.second;
 
     try {
-      QuestFileFormat format;
-      string basename;
-      if (ends_with(bin_filename, ".bin.gci") || ends_with(bin_filename, ".mnm.gci")) {
-        format = QuestFileFormat::BIN_DAT_GCI;
-        basename = bin_filename.substr(0, bin_filename.size() - 8);
-      } else if (ends_with(bin_filename, ".bin.vms")) {
-        format = QuestFileFormat::BIN_DAT_VMS;
-        basename = bin_filename.substr(0, bin_filename.size() - 8);
-      } else if (ends_with(bin_filename, ".bin.dlq") || ends_with(bin_filename, ".mnm.dlq")) {
-        format = QuestFileFormat::BIN_DAT_DLQ;
-        basename = bin_filename.substr(0, bin_filename.size() - 8);
-      } else if (ends_with(bin_filename, ".qst")) {
-        format = QuestFileFormat::QST;
-        basename = bin_filename.substr(0, bin_filename.size() - 4);
-      } else if (ends_with(bin_filename, ".bin") || ends_with(bin_filename, ".mnm")) {
-        format = QuestFileFormat::BIN_DAT;
-        basename = bin_filename.substr(0, bin_filename.size() - 4);
-      } else if (ends_with(bin_filename, ".bind") || ends_with(bin_filename, ".mnmd")) {
-        format = QuestFileFormat::BIN_DAT_UNCOMPRESSED;
-        basename = bin_filename.substr(0, bin_filename.size() - 5);
-      } else {
-        continue; // Silently skip file
-      }
-      if (basename.empty()) {
-        throw invalid_argument("empty filename");
-      }
-      if (basename.size() < 2) {
-        throw logic_error("basename too short for language trim");
-      }
-
-      // Quest .bin filenames are like K###-CAT-VERS-LANG.EXT, where:
-      //   K = class (quest, battle, challenge, etc.)
+      // Quest .bin filenames are like K###-VERS-LANG.EXT, where:
+      //   K can be any character (usually it's q)
       //   # = quest number (does not have to match the internal quest number)
-      //   CAT = menu category in which quest should appear (optional)
-      //   VERS = PSO version that the quest is for
+      //   VERS = PSO version that the quest is for (dc, pc, gc, etc.)
       //   LANG = client language (j, e, g, f, s)
       //   EXT = file type (bin, bind, bin.dlq, qst, etc.)
-      // Quest .dat filenames are like K###-CAT-VERS.EXT (same as for .bin except
-      // the LANG token is omitted)
-      vector<string> filename_tokens = split(basename, '-');
-
-      string category_token;
-      if (filename_tokens.size() == 4) {
-        category_token = std::move(filename_tokens[1]);
-        filename_tokens.erase(filename_tokens.begin() + 1);
-      } else if (filename_tokens.size() != 3) {
-        throw invalid_argument("incorrect filename format");
+      // EXT has already been stripped off by the time we get here, so we just
+      // parse the remaining fields.
+      string quest_number_token, version_token, language_token;
+      {
+        vector<string> filename_tokens = split(basename, '-');
+        if (filename_tokens.size() != 3) {
+          throw invalid_argument("incorrect filename format");
+        }
+        quest_number_token = std::move(filename_tokens[0]);
+        version_token = std::move(filename_tokens[1]);
+        language_token = std::move(filename_tokens[2]);
       }
 
-      uint32_t category_id = this->category_index
-          ? this->category_index->find(basename[0], category_token).category_id
-          : 0;
+      uint32_t category_id = categories.at(basename);
 
-      // Parse the number out of the first token
-      uint32_t quest_number = strtoull(filename_tokens[0].c_str() + 1, nullptr, 10);
+      // Get the number from the first token
+      if (quest_number_token.empty()) {
+        throw runtime_error("quest number token is missing");
+      }
+      uint32_t quest_number = strtoull(quest_number_token.c_str() + 1, nullptr, 10);
 
-      // Get the version from the second (or previously third) token
+      // Get the version from the second token
       static const unordered_map<string, QuestScriptVersion> name_to_version({
           {"dn", QuestScriptVersion::DC_NTE},
           {"d1", QuestScriptVersion::DC_V1},
@@ -528,166 +570,98 @@ QuestIndex::QuestIndex(
           {"xb", QuestScriptVersion::XB_V3},
           {"bb", QuestScriptVersion::BB_V4},
       });
-      auto version = name_to_version.at(filename_tokens[1]);
+      auto version = name_to_version.at(version_token);
 
       // Get the language from the last token
-      if (filename_tokens[2].size() != 1) {
+      if (language_token.size() != 1) {
         throw runtime_error("language token is not a single character");
       }
-      uint8_t language = language_code_for_char(filename_tokens[2][0]);
+      uint8_t language = language_code_for_char(language_token[0]);
 
-      shared_ptr<const string> bin_contents;
-      shared_ptr<const string> dat_contents;
-      string bin_data = load_file(bin_path);
-      switch (format) {
-        case QuestFileFormat::BIN_DAT:
-          bin_contents.reset(new string(std::move(bin_data)));
-          break;
-        case QuestFileFormat::BIN_DAT_UNCOMPRESSED:
-          bin_contents.reset(new string(prs_compress(bin_data)));
-          break;
-        case QuestFileFormat::BIN_DAT_GCI:
-          bin_contents.reset(new string(decode_gci_data(bin_data)));
-          break;
-        case QuestFileFormat::BIN_DAT_VMS:
-          bin_contents.reset(new string(decode_vms_data(bin_data)));
-          break;
-        case QuestFileFormat::BIN_DAT_DLQ:
-          bin_contents.reset(new string(decode_dlq_data(bin_data)));
-          break;
-        case QuestFileFormat::QST: {
-          auto result = decode_qst_data(bin_data);
-          bin_contents.reset(new string(std::move(result.first)));
-          dat_contents.reset(new string(std::move(result.second)));
-          dat_cache.emplace(basename, dat_contents);
-          break;
-        }
-        default:
-          throw logic_error("invalid quest file format");
-      }
-
+      // Find the corresponding dat and pvr files
       string dat_filename;
-      if (!dat_contents && (version != QuestScriptVersion::GC_EP3)) {
-        if (basename.size() < 2) {
-          throw logic_error("basename too short for language trim");
-        }
-
-        // Look for dat file with the same basename as the bin file; if not
-        // found, look for a dat file without the language suffix
-        string dat_basename;
-        for (size_t z = 0; z < 2; z++) {
-          dat_basename = z ? basename.substr(0, basename.size() - 2) : basename;
-          dat_filename = dat_basename;
-          try {
-            dat_contents = dat_cache.at(dat_basename);
-            break;
-          } catch (const out_of_range&) {
-          }
-
-          dat_filename = dat_basename + ".dat";
-          string dat_path = this->directory + "/" + dat_filename;
-          if (isfile(dat_path)) {
-            dat_contents.reset(new string(load_file(dat_path)));
-            break;
-          }
-
-          dat_filename = dat_basename + ".datd";
-          dat_path = this->directory + "/" + dat_filename;
-          if (isfile(dat_path)) {
-            string decompressed = load_file(dat_path);
-            dat_contents.reset(new string(prs_compress_optimal(decompressed.data(), decompressed.size())));
-            break;
-          }
-
-          dat_filename = dat_basename + ".dat.gci";
-          dat_path = this->directory + "/" + dat_filename;
-          if (isfile(dat_path)) {
-            dat_contents.reset(new string(decode_gci_data(load_file(dat_path))));
-            break;
-          }
-
-          dat_filename = dat_basename + ".dat.vms";
-          dat_path = this->directory + "/" + dat_filename;
-          if (isfile(dat_path)) {
-            dat_contents.reset(new string(decode_vms_data(load_file(dat_path))));
-            break;
-          }
-
-          dat_filename = dat_basename + ".dat.dlq";
-          dat_path = this->directory + "/" + dat_filename;
-          if (isfile(dat_path)) {
-            dat_contents.reset(new string(decode_dlq_data(load_file(dat_path))));
-            break;
-          }
-
-          dat_filename = dat_basename + ".qst";
-          dat_path = this->directory + "/" + dat_filename;
-          if (isfile(dat_basename + ".qst")) {
-            dat_contents.reset(new string(decode_dlq_data(load_file(dat_basename + ".dat.dlq"))));
-            break;
-          }
-        }
-        if (dat_contents) {
-          dat_cache.emplace(dat_basename, dat_contents);
-        } else {
-          throw runtime_error("no dat file found");
-        }
-      }
-
-      // Look for a JSON file with the same basename as the bin file; if not
-      // found, look for a JSON file without the language suffix
-      shared_ptr<const JSON> metadata_json;
-      string json_filename;
-      for (size_t z = 0; z < 3; z++) {
-        string json_basename;
-        if (z == 0) {
-          json_filename = basename + ".json";
-        } else if (z == 1) {
-          json_filename = basename.substr(0, basename.size() - 2) + ".json"; // Strip off language prefix
-        } else if (z == 2) {
-          json_filename = basename.substr(0, basename.find('-')) + ".json"; // Look only at base token (e.g. "b88001")
-        }
-
+      string pvr_filename;
+      shared_ptr<const string> dat_contents;
+      shared_ptr<const string> pvr_contents;
+      if (version != QuestScriptVersion::GC_EP3) {
+        // Look for dat and pvr files with the same basename as the bin file; if
+        // not found, look for them without the language suffix
         try {
-          metadata_json = metadata_json_cache.at(json_filename);
-          break;
+          dat_filename = basename;
+          dat_contents = dat_files.at(dat_filename);
         } catch (const out_of_range&) {
+          try {
+            dat_filename = quest_number_token + "-" + version_token;
+            dat_contents = dat_files.at(dat_filename);
+          } catch (const out_of_range&) {
+            throw runtime_error("no dat file found for bin file " + basename);
+          }
         }
-
-        string json_path = this->directory + "/" + json_filename;
-        if (isfile(json_path)) {
-          metadata_json.reset(new JSON(JSON::parse(load_file(json_path))));
-          break;
+        try {
+          pvr_filename = basename;
+          pvr_contents = pvr_files.at(pvr_filename);
+        } catch (const out_of_range&) {
+          try {
+            pvr_filename = quest_number_token + "-" + version_token;
+            pvr_contents = pvr_files.at(pvr_filename);
+          } catch (const out_of_range&) {
+            // pvr files aren't required (and most quests do not have them), so
+            // don't fail if it's missing
+          }
         }
       }
-      metadata_json_cache.emplace(json_filename, metadata_json);
 
+      // Load the quest's metadata JSON file, if it exists
+      string json_filename;
+      JSON metadata_json = nullptr;
       shared_ptr<BattleRules> battle_rules;
       ssize_t challenge_template_index = -1;
-      if (metadata_json) {
+      try {
+        json_filename = basename;
+        metadata_json = JSON::parse(*json_files.at(json_filename));
+      } catch (const out_of_range&) {
         try {
-          battle_rules.reset(new BattleRules(metadata_json->at("battle_rules")));
+          json_filename = quest_number_token + "-" + version_token;
+          metadata_json = JSON::parse(*json_files.at(json_filename));
+        } catch (const out_of_range&) {
+          try {
+            json_filename = quest_number_token;
+            metadata_json = JSON::parse(*json_files.at(json_filename));
+          } catch (const out_of_range&) {
+          }
+        }
+      }
+      if (!metadata_json.is_null()) {
+        try {
+          battle_rules.reset(new BattleRules(metadata_json.at("battle_rules")));
         } catch (const out_of_range&) {
         }
         try {
-          challenge_template_index = metadata_json->at("challenge_template_index").as_int();
+          challenge_template_index = metadata_json.at("challenge_template_index").as_int();
         } catch (const out_of_range&) {
         }
       }
 
       shared_ptr<VersionedQuest> vq(new VersionedQuest(
-          quest_number, category_id, version, language, bin_contents, dat_contents, battle_rules, challenge_template_index));
+          quest_number,
+          category_id,
+          version,
+          language,
+          bin_contents,
+          dat_contents,
+          pvr_contents,
+          battle_rules,
+          challenge_template_index));
 
       auto category_name = this->category_index->at(vq->category_id).name;
-
-      string dat_str = dat_filename.empty() ? "" : (" with layout " + dat_filename);
-      string battle_rules_str = battle_rules ? (" with battle rules from " + json_filename) : "";
+      string dat_str = dat_filename.empty() ? "" : (" with layout from " + dat_filename + ".dat");
+      string battle_rules_str = battle_rules ? (" with battle rules from " + json_filename + ".json") : "";
       string challenge_template_str = (challenge_template_index >= 0) ? string_printf(" with challenge template index %zd", vq->challenge_template_index) : "";
       auto q_it = this->quests_by_number.find(vq->quest_number);
       if (q_it != this->quests_by_number.end()) {
         q_it->second->add_version(vq);
         static_game_data_log.info("(%s) Added %s %c version of quest %" PRIu32 " (%s)%s%s%s",
-            bin_filename.c_str(),
+            basename.c_str(),
             name_for_enum(vq->version),
             char_for_language_code(vq->language),
             vq->quest_number,
@@ -698,7 +672,7 @@ QuestIndex::QuestIndex(
       } else {
         this->quests_by_number.emplace(vq->quest_number, new Quest(vq));
         static_game_data_log.info("(%s) Created %s %c quest %" PRIu32 " (%s) (%s, %s (%" PRIu32 "), %s)%s%s%s",
-            bin_filename.c_str(),
+            basename.c_str(),
             name_for_enum(vq->version),
             char_for_language_code(vq->language),
             vq->quest_number,
@@ -712,7 +686,7 @@ QuestIndex::QuestIndex(
             challenge_template_str.c_str());
       }
     } catch (const exception& e) {
-      static_game_data_log.warning("(%s) Failed to index quest file: (%s)", bin_filename.c_str(), e.what());
+      static_game_data_log.warning("(%s) Failed to index quest file: (%s)", basename.c_str(), e.what());
     }
   }
 }
@@ -720,14 +694,6 @@ QuestIndex::QuestIndex(
 shared_ptr<const Quest> QuestIndex::get(uint32_t quest_number) const {
   try {
     return this->quests_by_number.at(quest_number);
-  } catch (const out_of_range&) {
-    return nullptr;
-  }
-}
-
-shared_ptr<const string> QuestIndex::get_gba(const string& name) const {
-  try {
-    return this->gba_file_contents.at(name);
   } catch (const out_of_range&) {
     return nullptr;
   }
@@ -833,6 +799,9 @@ shared_ptr<VersionedQuest> VersionedQuest::create_download_quest(uint8_t overrid
   shared_ptr<VersionedQuest> dlq(new VersionedQuest(*this));
   dlq->bin_contents.reset(new string(encode_download_quest_data(compressed_bin, decompressed_bin.size())));
   dlq->dat_contents.reset(new string(encode_download_quest_data(*this->dat_contents)));
+  if (this->pvr_contents) {
+    dlq->pvr_contents.reset(new string(encode_download_quest_data(*this->pvr_contents)));
+  }
   dlq->is_dlq_encoded = true;
   return dlq;
 }
@@ -997,15 +966,11 @@ string decode_dlq_data(const string& data) {
 }
 
 template <typename HeaderT, typename OpenFileT>
-static pair<string, string> decode_qst_data_t(const string& data) {
+static unordered_map<string, string> decode_qst_data_t(const string& data) {
   StringReader r(data);
 
-  string bin_contents;
-  string dat_contents;
-  string internal_bin_filename;
-  string internal_dat_filename;
-  uint32_t bin_file_size = 0;
-  uint32_t dat_file_size = 0;
+  unordered_map<string, string> files;
+  unordered_map<string, size_t> file_remaining_bytes;
   QuestFileFormat subformat = QuestFileFormat::QST; // Stand-in for unknown
   while (!r.eof()) {
     // Handle BB's implicit 8-byte command alignment
@@ -1039,24 +1004,11 @@ static pair<string, string> decode_qst_data_t(const string& data) {
       const auto& cmd = r.get<OpenFileT>();
       string internal_filename = cmd.filename.decode();
 
-      if (ends_with(internal_filename, ".bin")) {
-        if (internal_bin_filename.empty()) {
-          internal_bin_filename = internal_filename;
-        } else {
-          throw runtime_error("qst contains multiple bin files");
-        }
-        bin_file_size = cmd.file_size;
-
-      } else if (ends_with(internal_filename, ".dat")) {
-        if (internal_dat_filename.empty()) {
-          internal_dat_filename = internal_filename;
-        } else {
-          throw runtime_error("qst contains multiple dat files");
-        }
-        dat_file_size = cmd.file_size;
-
-      } else {
-        throw runtime_error("qst contains non-bin, non-dat file");
+      if (!files.emplace(internal_filename, "").second) {
+        throw runtime_error("qst opens the same file multiple times: " + internal_filename);
+      }
+      if (!file_remaining_bytes.emplace(internal_filename, cmd.file_size).second) {
+        throw runtime_error("qst opens the same file multiple times: " + internal_filename);
       }
 
     } else if (header.command == 0x13 || header.command == 0xA7) {
@@ -1067,50 +1019,44 @@ static pair<string, string> decode_qst_data_t(const string& data) {
         throw runtime_error("qst write file command has incorrect size");
       }
       const auto& cmd = r.get<S_WriteFile_13_A7>();
-      string filename = cmd.filename.decode();
-
-      string* dest = nullptr;
-      if (filename == internal_bin_filename) {
-        dest = &bin_contents;
-      } else if (filename == internal_dat_filename) {
-        dest = &dat_contents;
-      } else {
-        throw runtime_error(string_printf("qst contains write command for non-open file \"%s\" (open files are \"%s\" and \"%s\")",
-            filename.c_str(), internal_bin_filename.c_str(), internal_dat_filename.c_str()));
-      }
-
       if (cmd.data_size > 0x400) {
         throw runtime_error("qst contains invalid write command");
       }
-      if (dest->size() & 0x3FF) {
+      string filename = cmd.filename.decode();
+
+      string& file_data = files.at(filename);
+      size_t& remaining_bytes = file_remaining_bytes.at(filename);
+
+      if (file_data.size() & 0x3FF) {
         throw runtime_error("qst contains uneven chunks out of order");
       }
-      if (header.flag != dest->size() / 0x400) {
+      if (header.flag != file_data.size() / 0x400) {
         throw runtime_error("qst contains chunks out of order");
       }
-      dest->append(reinterpret_cast<const char*>(cmd.data.data()), cmd.data_size);
+      file_data.append(reinterpret_cast<const char*>(cmd.data.data()), cmd.data_size);
+      remaining_bytes -= cmd.data_size;
 
     } else {
       throw runtime_error("invalid command in qst file");
     }
   }
 
-  if (bin_contents.size() != bin_file_size) {
-    throw runtime_error("bin file does not match expected size");
-  }
-  if (dat_contents.size() != dat_file_size) {
-    throw runtime_error("dat file does not match expected size");
+  for (const auto& it : file_remaining_bytes) {
+    if (it.second) {
+      throw runtime_error(string_printf("expected %zu (0x%zX) more bytes for file %s", it.second, it.second, it.first.c_str()));
+    }
   }
 
   if (subformat == QuestFileFormat::BIN_DAT_DLQ) {
-    bin_contents = decode_dlq_data(bin_contents);
-    dat_contents = decode_dlq_data(dat_contents);
+    for (auto& it : files) {
+      it.second = decode_dlq_data(it.second);
+    }
   }
 
-  return make_pair(bin_contents, dat_contents);
+  return files;
 }
 
-pair<string, string> decode_qst_data(const string& data) {
+unordered_map<string, string> decode_qst_data(const string& data) {
   // QST files start with an open file command, but the format differs depending
   // on the PSO version that the qst file is for. We can detect the format from
   // the first 4 bytes in the file:
@@ -1216,18 +1162,13 @@ void add_write_file_commands_t(
 }
 
 string encode_qst_file(
-    const string& bin_data,
-    const string& dat_data,
+    const unordered_map<string, shared_ptr<const string>>& files,
     const string& name,
     uint32_t quest_number,
-    uint8_t language,
+    const string& xb_filename,
     QuestScriptVersion version,
     bool is_dlq_encoded) {
   StringWriter w;
-
-  string bin_filename = string_printf("quest%" PRIu32 ".bin", quest_number);
-  string dat_filename = string_printf("quest%" PRIu32 ".dat", quest_number);
-  string xb_filename = string_printf("quest%" PRIu32 "_%c.dat", quest_number, tolower(char_for_language_code(language)));
 
   // Some tools expect both open file commands at the beginning, hence this
   // unfortunate abstraction-breaking.
@@ -1235,39 +1176,46 @@ string encode_qst_file(
     case QuestScriptVersion::DC_NTE:
     case QuestScriptVersion::DC_V1:
     case QuestScriptVersion::DC_V2:
-      add_open_file_command_t<PSOCommandHeaderDCV3, S_OpenFile_DC_44_A6>(w, name, bin_filename, xb_filename, quest_number, bin_data.size(), is_dlq_encoded);
-      add_open_file_command_t<PSOCommandHeaderDCV3, S_OpenFile_DC_44_A6>(w, name, dat_filename, xb_filename, quest_number, dat_data.size(), is_dlq_encoded);
-      add_write_file_commands_t<PSOCommandHeaderDCV3>(w, bin_filename, bin_data, is_dlq_encoded, false);
-      add_write_file_commands_t<PSOCommandHeaderDCV3>(w, dat_filename, dat_data, is_dlq_encoded, false);
+      for (const auto& it : files) {
+        add_open_file_command_t<PSOCommandHeaderDCV3, S_OpenFile_DC_44_A6>(w, name, it.first, xb_filename, quest_number, it.second->size(), is_dlq_encoded);
+      }
+      for (const auto& it : files) {
+        add_write_file_commands_t<PSOCommandHeaderDCV3>(w, it.first, *it.second, is_dlq_encoded, false);
+      }
       break;
     case QuestScriptVersion::PC_V2:
-      add_open_file_command_t<PSOCommandHeaderPC, S_OpenFile_PC_GC_44_A6>(w, name, bin_filename, xb_filename, quest_number, bin_data.size(), is_dlq_encoded);
-      add_open_file_command_t<PSOCommandHeaderPC, S_OpenFile_PC_GC_44_A6>(w, name, dat_filename, xb_filename, quest_number, dat_data.size(), is_dlq_encoded);
-      add_write_file_commands_t<PSOCommandHeaderPC>(w, bin_filename, bin_data, is_dlq_encoded, false);
-      add_write_file_commands_t<PSOCommandHeaderPC>(w, dat_filename, dat_data, is_dlq_encoded, false);
+      for (const auto& it : files) {
+        add_open_file_command_t<PSOCommandHeaderPC, S_OpenFile_PC_GC_44_A6>(w, name, it.first, xb_filename, quest_number, it.second->size(), is_dlq_encoded);
+      }
+      for (const auto& it : files) {
+        add_write_file_commands_t<PSOCommandHeaderPC>(w, it.first, *it.second, is_dlq_encoded, false);
+      }
       break;
     case QuestScriptVersion::GC_NTE:
     case QuestScriptVersion::GC_V3:
-      add_open_file_command_t<PSOCommandHeaderDCV3, S_OpenFile_PC_GC_44_A6>(w, name, bin_filename, xb_filename, quest_number, bin_data.size(), is_dlq_encoded);
-      add_open_file_command_t<PSOCommandHeaderDCV3, S_OpenFile_PC_GC_44_A6>(w, name, dat_filename, xb_filename, quest_number, dat_data.size(), is_dlq_encoded);
-      add_write_file_commands_t<PSOCommandHeaderDCV3>(w, bin_filename, bin_data, is_dlq_encoded, false);
-      add_write_file_commands_t<PSOCommandHeaderDCV3>(w, dat_filename, dat_data, is_dlq_encoded, false);
-      break;
     case QuestScriptVersion::GC_EP3:
-      add_open_file_command_t<PSOCommandHeaderDCV3, S_OpenFile_PC_GC_44_A6>(w, name, bin_filename, xb_filename, quest_number, bin_data.size(), is_dlq_encoded);
-      add_write_file_commands_t<PSOCommandHeaderDCV3>(w, bin_filename, bin_data, is_dlq_encoded, false);
+      for (const auto& it : files) {
+        add_open_file_command_t<PSOCommandHeaderDCV3, S_OpenFile_PC_GC_44_A6>(w, name, it.first, xb_filename, quest_number, it.second->size(), is_dlq_encoded);
+      }
+      for (const auto& it : files) {
+        add_write_file_commands_t<PSOCommandHeaderDCV3>(w, it.first, *it.second, is_dlq_encoded, false);
+      }
       break;
     case QuestScriptVersion::XB_V3:
-      add_open_file_command_t<PSOCommandHeaderDCV3, S_OpenFile_XB_44_A6>(w, name, bin_filename, xb_filename, quest_number, bin_data.size(), is_dlq_encoded);
-      add_open_file_command_t<PSOCommandHeaderDCV3, S_OpenFile_XB_44_A6>(w, name, dat_filename, xb_filename, quest_number, dat_data.size(), is_dlq_encoded);
-      add_write_file_commands_t<PSOCommandHeaderDCV3>(w, bin_filename, bin_data, is_dlq_encoded, false);
-      add_write_file_commands_t<PSOCommandHeaderDCV3>(w, dat_filename, dat_data, is_dlq_encoded, false);
+      for (const auto& it : files) {
+        add_open_file_command_t<PSOCommandHeaderDCV3, S_OpenFile_XB_44_A6>(w, name, it.first, xb_filename, quest_number, it.second->size(), is_dlq_encoded);
+      }
+      for (const auto& it : files) {
+        add_write_file_commands_t<PSOCommandHeaderDCV3>(w, it.first, *it.second, is_dlq_encoded, false);
+      }
       break;
     case QuestScriptVersion::BB_V4:
-      add_open_file_command_t<PSOCommandHeaderBB, S_OpenFile_BB_44_A6>(w, name, bin_filename, xb_filename, quest_number, bin_data.size(), is_dlq_encoded);
-      add_open_file_command_t<PSOCommandHeaderBB, S_OpenFile_BB_44_A6>(w, name, dat_filename, xb_filename, quest_number, dat_data.size(), is_dlq_encoded);
-      add_write_file_commands_t<PSOCommandHeaderBB>(w, bin_filename, bin_data, is_dlq_encoded, true);
-      add_write_file_commands_t<PSOCommandHeaderBB>(w, dat_filename, dat_data, is_dlq_encoded, true);
+      for (const auto& it : files) {
+        add_open_file_command_t<PSOCommandHeaderBB, S_OpenFile_BB_44_A6>(w, name, it.first, xb_filename, quest_number, it.second->size(), is_dlq_encoded);
+      }
+      for (const auto& it : files) {
+        add_write_file_commands_t<PSOCommandHeaderBB>(w, it.first, *it.second, is_dlq_encoded, true);
+      }
       break;
     default:
       throw logic_error("invalid game version");
