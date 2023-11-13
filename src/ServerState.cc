@@ -23,7 +23,6 @@ ServerState::ServerState(const char* config_filename, bool is_replay)
       dns_server_port(0),
       ip_stack_debug(false),
       allow_unregistered_users(false),
-      allow_saving(true),
       allow_dc_pc_games(false),
       allow_gc_xb_games(true),
       item_tracking_enabled(true),
@@ -108,11 +107,6 @@ void ServerState::init() {
   this->load_quest_index();
   this->compile_functions();
   this->load_dol_files();
-
-  if (this->is_replay) {
-    this->allow_saving = false;
-    config_log.info("Saving disabled because this is a replay session");
-  }
 }
 
 void ServerState::add_client_to_available_lobby(shared_ptr<Client> c) {

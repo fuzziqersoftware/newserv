@@ -1005,9 +1005,7 @@ static void on_93_BB(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
     string version_string = is_old_format
         ? cmd.var.old_client_config.as_string()
         : cmd.var.new_clients.client_config.as_string();
-    print_data(stderr, version_string);
     strip_trailing_zeroes(version_string);
-
     // Note: Tethealla PSOBB is actually Japanese PSOBB, but with most of the
     // files replaced with English text/graphics/etc. For this reason, it still
     // reports its language as Japanese, so we have to account for that
@@ -1019,7 +1017,7 @@ static void on_93_BB(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
   }
   c->channel.language = c->config.check_flag(Client::Flag::FORCE_ENGLISH_LANGUAGE_BB) ? 1 : cmd.language;
   c->bb_connection_phase = cmd.connection_phase;
-  c->game_data.bb_player_index = cmd.character_slot;
+  c->game_data.bb_character_index = cmd.character_slot;
 
   if (cmd.menu_id == MenuID::LOBBY) {
     c->preferred_lobby_id = cmd.preferred_lobby_id;
@@ -1492,7 +1490,7 @@ static void on_CA_Ep3(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
       l->battle_record.reset(new Episode3::BattleRecord(s->ep3_behavior_flags));
       for (auto existing_c : l->clients) {
         if (existing_c) {
-          auto existing_p = existing_c->game_data.player();
+          auto existing_p = existing_c->game_data.character();
           PlayerLobbyDataDCGC lobby_data;
           lobby_data.name.encode(existing_p->disp.name.decode(existing_c->language()), c->language());
           lobby_data.player_tag = 0x00010000;
@@ -1677,7 +1675,7 @@ static void on_09(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
         for (size_t x = 0; x < game->max_clients; x++) {
           const auto& game_c = game->clients[x];
           if (game_c.get()) {
-            auto player = game_c->game_data.player();
+            auto player = game_c->game_data.character();
             string name = player->disp.name.decode(game_c->language());
             if (game->is_ep3()) {
               info += string_printf("%zu: $C6%s$C7 L%" PRIu32 "\n",
@@ -1860,12 +1858,12 @@ void set_lobby_quest(shared_ptr<Lobby> l, shared_ptr<const Quest> q) {
 
     // If an overlay was created, item IDs need to be assigned
     if (lc->game_data.has_overlay()) {
-      auto overlay = lc->game_data.player();
+      auto overlay = lc->game_data.character();
       for (size_t z = 0; z < overlay->inventory.num_items; z++) {
         overlay->inventory.items[z].data.id = l->generate_item_id(client_id);
       }
       lc->log.info("Assigned overlay item IDs");
-      lc->game_data.player()->print_inventory(stderr, lc->version(), s->item_name_index);
+      overlay->print_inventory(stderr, lc->version(), s->item_name_index);
     }
 
     string bin_filename = vq->bin_filename();
@@ -1955,7 +1953,7 @@ static void on_10(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
         }
 
         case MainMenuItemID::PROXY_DESTINATIONS:
-          if (!c->game_data.player(false, false)) {
+          if (!c->game_data.character(false, false)) {
             send_get_player_info(c);
           }
           send_proxy_destinations_menu(c);
@@ -2207,7 +2205,7 @@ static void on_10(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
           send_lobby_message_box(c, "$C6Incorrect password.");
           break;
         }
-        auto p = c->game_data.player();
+        auto p = c->game_data.character();
         if (p->disp.stats.level < game->min_level) {
           send_lobby_message_box(c, "$C6Your level is too\nlow to join this\ngame.");
           break;
@@ -2361,7 +2359,7 @@ static void on_10(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
         break;
       }
       if (team_name.empty()) {
-        team_name = c->game_data.player()->disp.name.decode(c->language());
+        team_name = c->game_data.character()->disp.name.decode(c->language());
         team_name += string_printf("/%" PRIX32, c->license->serial_number);
       }
       auto s = c->require_server_state();
@@ -2726,35 +2724,36 @@ static void on_13_A7_V3_BB(shared_ptr<Client> c, uint16_t command, uint32_t flag
 
 static void on_61_98(shared_ptr<Client> c, uint16_t command, uint32_t flag, string& data) {
   auto s = c->require_server_state();
-  auto player = c->game_data.player();
-  auto account = c->game_data.account();
+  auto player = c->game_data.character();
 
   switch (c->version()) {
     case GameVersion::DC: {
       if (c->config.check_flag(Client::Flag::IS_DC_V1)) {
-        const auto& pd = check_size_t<C_CharacterData_DCv1_61_98>(data);
-        player->inventory = pd.inventory;
-        player->disp = pd.disp.to_bb(player->inventory.language, player->inventory.language);
+        const auto& cmd = check_size_t<C_CharacterData_DCv1_61_98>(data);
+        player->inventory = cmd.inventory;
+        player->disp = cmd.disp.to_bb(player->inventory.language, player->inventory.language);
       } else {
-        const auto& pd = check_size_t<C_CharacterData_DCv2_61_98>(data, 0xFFFF);
-        player->inventory = pd.inventory;
-        player->disp = pd.disp.to_bb(player->inventory.language, player->inventory.language);
-        player->battle_records = pd.records.battle;
-        player->challenge_records = pd.records.challenge;
-        // TODO: Parse choice search config
+        const auto& cmd = check_size_t<C_CharacterData_DCv2_61_98>(data, 0xFFFF);
+        player->inventory = cmd.inventory;
+        player->disp = cmd.disp.to_bb(player->inventory.language, player->inventory.language);
+        player->battle_records = cmd.records.battle;
+        player->challenge_records = cmd.records.challenge;
+        player->choice_search_config = cmd.choice_search_config;
       }
       break;
     }
     case GameVersion::PC: {
-      const auto& pd = check_size_t<C_CharacterData_PC_61_98>(data, 0xFFFF);
-      player->inventory = pd.inventory;
-      player->disp = pd.disp.to_bb(player->inventory.language, player->inventory.language);
-      player->battle_records = pd.records.battle;
-      player->challenge_records = pd.records.challenge;
-      // TODO: Parse choice search config
-      account->blocked_senders = pd.blocked_senders;
-      if (pd.auto_reply_enabled) {
-        string auto_reply = data.substr(sizeof(pd));
+      const auto& cmd = check_size_t<C_CharacterData_PC_61_98>(data, 0xFFFF);
+      player->inventory = cmd.inventory;
+      player->disp = cmd.disp.to_bb(player->inventory.language, player->inventory.language);
+      player->battle_records = cmd.records.battle;
+      player->challenge_records = cmd.records.challenge;
+      player->choice_search_config = cmd.choice_search_config;
+      for (size_t z = 0; z < cmd.blocked_senders.size(); z++) {
+        c->game_data.blocked_senders.at(z) = cmd.blocked_senders[z];
+      }
+      if (cmd.auto_reply_enabled) {
+        string auto_reply = data.substr(sizeof(cmd));
         strip_trailing_zeroes(auto_reply);
         if (auto_reply.size() & 1) {
           auto_reply.push_back(0);
@@ -2772,9 +2771,9 @@ static void on_61_98(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
         if (!c->config.check_flag(Client::Flag::IS_EPISODE_3)) {
           throw runtime_error("non-Episode 3 client sent Episode 3 player data");
         }
-        const auto* pd3 = &check_size_t<C_CharacterData_GC_Ep3_61_98>(data);
-        c->game_data.ep3_config.reset(new Episode3::PlayerConfig(pd3->ep3_config));
-        cmd = reinterpret_cast<const C_CharacterData_V3_61_98*>(pd3);
+        const auto* cmd3 = &check_size_t<C_CharacterData_GC_Ep3_61_98>(data);
+        c->game_data.ep3_config.reset(new Episode3::PlayerConfig(cmd3->ep3_config));
+        cmd = reinterpret_cast<const C_CharacterData_V3_61_98*>(cmd3);
       } else {
         if (c->config.check_flag(Client::Flag::IS_EPISODE_3)) {
           c->config.set_flag(Client::Flag::IS_EP3_TRIAL_EDITION);
@@ -2817,7 +2816,9 @@ static void on_61_98(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
       player->challenge_records = cmd->records.challenge;
       // TODO: Parse choice search config
       player->info_board.encode(cmd->info_board.decode(player->inventory.language), player->inventory.language);
-      account->blocked_senders = cmd->blocked_senders;
+      for (size_t z = 0; z < cmd->blocked_senders.size(); z++) {
+        c->game_data.blocked_senders.at(z) = cmd->blocked_senders[z];
+      }
       if (cmd->auto_reply_enabled) {
         string auto_reply = data.substr(sizeof(cmd), 0xAC);
         strip_trailing_zeroes(auto_reply);
@@ -2836,7 +2837,9 @@ static void on_61_98(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
       player->challenge_records = cmd.records.challenge;
       // TODO: Parse choice search config
       player->info_board = cmd.info_board;
-      account->blocked_senders = cmd.blocked_senders;
+      for (size_t z = 0; z < cmd.blocked_senders.size(); z++) {
+        c->game_data.blocked_senders.at(z) = cmd.blocked_senders[z];
+      }
       if (cmd.auto_reply_enabled) {
         string auto_reply = data.substr(sizeof(cmd), 0xAC);
         strip_trailing_zeroes(auto_reply);
@@ -2872,14 +2875,14 @@ static void on_61_98(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
   } else if (command == 0x61) {
     if (!c->pending_bb_save_username.empty()) {
       string prev_bb_username = c->game_data.bb_username;
-      size_t prev_bb_player_index = c->game_data.bb_player_index;
+      int8_t prev_bb_character_index = c->game_data.bb_character_index;
 
       c->game_data.bb_username = c->pending_bb_save_username;
-      c->game_data.bb_player_index = c->pending_bb_save_player_index;
+      c->game_data.bb_character_index = c->pending_bb_save_character_index;
 
       bool failure = false;
       try {
-        c->game_data.save_player_data();
+        c->game_data.save_character_file();
       } catch (const exception& e) {
         send_text_message_printf(c, "$C6PSOBB player data could\nnot be saved:\n%s", e.what());
         failure = true;
@@ -2888,12 +2891,12 @@ static void on_61_98(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
       if (!failure) {
         send_text_message_printf(c,
             "$C6BB player data saved\nas player %hhu for user\n%s",
-            static_cast<uint8_t>(c->pending_bb_save_player_index + 1),
+            static_cast<uint8_t>(c->pending_bb_save_character_index + 1),
             c->pending_bb_save_username.c_str());
       }
 
       c->game_data.bb_username = prev_bb_username;
-      c->game_data.bb_player_index = prev_bb_player_index;
+      c->game_data.bb_character_index = prev_bb_character_index;
 
       c->pending_bb_save_username.clear();
     }
@@ -2951,7 +2954,7 @@ static void on_06(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
     return;
   }
 
-  auto p = c->game_data.player();
+  auto p = c->game_data.character();
   string from_name = p->disp.name.decode(c->language());
   if (from_name.size() >= 2 && from_name[0] == '\t' && (from_name[1] == 'E' || from_name[1] == 'J')) {
     from_name = from_name.substr(2);
@@ -2990,6 +2993,8 @@ static void on_E0_BB(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
 static void on_E3_BB(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
   const auto& cmd = check_size_t<C_PlayerPreviewRequest_BB_E3>(data);
 
+  c->game_data.bb_character_index = cmd.character_index;
+
   if (c->bb_connection_phase != 0x00) {
     send_approve_player_choice_bb(c);
 
@@ -3002,15 +3007,16 @@ static void on_E3_BB(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
     ClientGameData temp_gd;
     temp_gd.guild_card_number = c->license->serial_number;
     temp_gd.bb_username = c->license->bb_username;
-    temp_gd.bb_player_index = cmd.player_index;
+    temp_gd.bb_character_index = cmd.character_index;
 
     try {
-      auto preview = temp_gd.player()->disp.to_preview();
-      send_player_preview_bb(c, cmd.player_index, &preview);
+      auto preview = temp_gd.character()->disp.to_preview();
+      send_player_preview_bb(c, cmd.character_index, &preview);
 
     } catch (const exception& e) {
       // Player doesn't exist
-      send_player_preview_bb(c, cmd.player_index, nullptr);
+      c->log.warning("Can\'t load character data: %s", e.what());
+      send_player_preview_bb(c, cmd.character_index, nullptr);
     }
   }
 }
@@ -3018,10 +3024,12 @@ static void on_E3_BB(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
 static void on_E8_BB(shared_ptr<Client> c, uint16_t command, uint32_t, string& data) {
   constexpr size_t max_count = sizeof(PSOBBGuildCardFile::entries) / sizeof(PSOBBGuildCardFile::Entry);
   constexpr size_t max_blocked = sizeof(PSOBBGuildCardFile::blocked) / sizeof(GuildCardBB);
+  auto gcf = c->game_data.guild_cards();
+  bool should_save = false;
   switch (command) {
     case 0x01E8: { // Check guild card file checksum
       const auto& cmd = check_size_t<C_GuildCardChecksum_01E8>(data);
-      uint32_t checksum = c->game_data.account()->guild_card_file.checksum();
+      uint32_t checksum = gcf->checksum();
       c->log.info("(Guild card file) Server checksum = %08" PRIX32 ", client checksum = %08" PRIX32,
           checksum, cmd.checksum.load());
       S_GuildCardChecksumResponse_BB_02E8 response = {
@@ -3035,13 +3043,12 @@ static void on_E8_BB(shared_ptr<Client> c, uint16_t command, uint32_t, string& d
       break;
     case 0x04E8: { // Add guild card
       auto& new_gc = check_size_t<GuildCardBB>(data);
-      auto& gcf = c->game_data.account()->guild_card_file;
       for (size_t z = 0; z < max_count; z++) {
-        if (!gcf.entries[z].data.present) {
-          gcf.entries[z].data = new_gc;
-          gcf.entries[z].unknown_a1.clear(0);
-          c->log.info("Added guild card %" PRIu32 " at position %zu",
-              new_gc.guild_card_number.load(), z);
+        if (!gcf->entries[z].data.present) {
+          gcf->entries[z].data = new_gc;
+          gcf->entries[z].unknown_a1.clear(0);
+          c->log.info("Added guild card %" PRIu32 " at position %zu", new_gc.guild_card_number.load(), z);
+          should_save = true;
           break;
         }
       }
@@ -3049,15 +3056,14 @@ static void on_E8_BB(shared_ptr<Client> c, uint16_t command, uint32_t, string& d
     }
     case 0x05E8: { // Delete guild card
       auto& cmd = check_size_t<C_DeleteGuildCard_BB_05E8_08E8>(data);
-      auto& gcf = c->game_data.account()->guild_card_file;
       for (size_t z = 0; z < max_count; z++) {
-        if (gcf.entries[z].data.guild_card_number == cmd.guild_card_number) {
-          c->log.info("Deleted guild card %" PRIu32 " at position %zu",
-              cmd.guild_card_number.load(), z);
+        if (gcf->entries[z].data.guild_card_number == cmd.guild_card_number) {
+          c->log.info("Deleted guild card %" PRIu32 " at position %zu", cmd.guild_card_number.load(), z);
           for (z = 0; z < max_count - 1; z++) {
-            gcf.entries[z] = gcf.entries[z + 1];
+            gcf->entries[z] = gcf->entries[z + 1];
           }
-          gcf.entries[max_count - 1].clear();
+          gcf->entries[max_count - 1].clear();
+          should_save = true;
           break;
         }
       }
@@ -3065,26 +3071,24 @@ static void on_E8_BB(shared_ptr<Client> c, uint16_t command, uint32_t, string& d
     }
     case 0x06E8: { // Update guild card
       auto& new_gc = check_size_t<GuildCardBB>(data);
-      auto& gcf = c->game_data.account()->guild_card_file;
       for (size_t z = 0; z < max_count; z++) {
-        if (gcf.entries[z].data.guild_card_number == new_gc.guild_card_number) {
-          gcf.entries[z].data = new_gc;
-          c->log.info("Updated guild card %" PRIu32 " at position %zu",
-              new_gc.guild_card_number.load(), z);
+        if (gcf->entries[z].data.guild_card_number == new_gc.guild_card_number) {
+          gcf->entries[z].data = new_gc;
+          c->log.info("Updated guild card %" PRIu32 " at position %zu", new_gc.guild_card_number.load(), z);
+          should_save = true;
         }
       }
       break;
     }
     case 0x07E8: { // Add blocked user
       auto& new_gc = check_size_t<GuildCardBB>(data);
-      auto& gcf = c->game_data.account()->guild_card_file;
       for (size_t z = 0; z < max_blocked; z++) {
-        if (!gcf.blocked[z].present) {
-          gcf.blocked[z] = new_gc;
-          c->log.info("Added blocked guild card %" PRIu32 " at position %zu",
-              new_gc.guild_card_number.load(), z);
+        if (!gcf->blocked[z].present) {
+          gcf->blocked[z] = new_gc;
+          c->log.info("Added blocked guild card %" PRIu32 " at position %zu", new_gc.guild_card_number.load(), z);
           // Note: The client also sends a C6 command, so we don't have to
           // manually sync the actual blocked senders list here
+          should_save = true;
           break;
         }
       }
@@ -3092,17 +3096,17 @@ static void on_E8_BB(shared_ptr<Client> c, uint16_t command, uint32_t, string& d
     }
     case 0x08E8: { // Delete blocked user
       auto& cmd = check_size_t<C_DeleteGuildCard_BB_05E8_08E8>(data);
-      auto& gcf = c->game_data.account()->guild_card_file;
       for (size_t z = 0; z < max_blocked; z++) {
-        if (gcf.blocked[z].guild_card_number == cmd.guild_card_number) {
+        if (gcf->blocked[z].guild_card_number == cmd.guild_card_number) {
           c->log.info("Deleted blocked guild card %" PRIu32 " at position %zu",
               cmd.guild_card_number.load(), z);
           for (z = 0; z < max_blocked - 1; z++) {
-            gcf.blocked[z] = gcf.blocked[z + 1];
+            gcf->blocked[z] = gcf->blocked[z + 1];
           }
-          gcf.blocked[max_blocked - 1].clear();
+          gcf->blocked[max_blocked - 1].clear();
           // Note: The client also sends a C6 command, so we don't have to
           // manually sync the actual blocked senders list here
+          should_save = true;
           break;
         }
       }
@@ -3110,12 +3114,11 @@ static void on_E8_BB(shared_ptr<Client> c, uint16_t command, uint32_t, string& d
     }
     case 0x09E8: { // Write comment
       auto& cmd = check_size_t<C_WriteGuildCardComment_BB_09E8>(data);
-      auto& gcf = c->game_data.account()->guild_card_file;
       for (size_t z = 0; z < max_count; z++) {
-        if (gcf.entries[z].data.guild_card_number == cmd.guild_card_number) {
-          gcf.entries[z].comment = cmd.comment;
-          c->log.info("Updated comment on guild card %" PRIu32 " at position %zu",
-              cmd.guild_card_number.load(), z);
+        if (gcf->entries[z].data.guild_card_number == cmd.guild_card_number) {
+          gcf->entries[z].comment = cmd.comment;
+          c->log.info("Updated comment on guild card %" PRIu32 " at position %zu", cmd.guild_card_number.load(), z);
+          should_save = true;
           break;
         }
       }
@@ -3123,33 +3126,35 @@ static void on_E8_BB(shared_ptr<Client> c, uint16_t command, uint32_t, string& d
     }
     case 0x0AE8: { // Move guild card in list
       auto& cmd = check_size_t<C_MoveGuildCard_BB_0AE8>(data);
-      auto& gcf = c->game_data.account()->guild_card_file;
       if (cmd.position >= max_count) {
         throw invalid_argument("invalid new position");
       }
       size_t index;
       for (index = 0; index < max_count; index++) {
-        if (gcf.entries[index].data.guild_card_number == cmd.guild_card_number) {
+        if (gcf->entries[index].data.guild_card_number == cmd.guild_card_number) {
           break;
         }
       }
       if (index >= max_count) {
         throw invalid_argument("player does not have requested guild card");
       }
-      auto moved_gc = gcf.entries[index];
+      auto moved_gc = gcf->entries[index];
       for (; index < cmd.position; index++) {
-        gcf.entries[index] = gcf.entries[index + 1];
+        gcf->entries[index] = gcf->entries[index + 1];
       }
       for (; index > cmd.position; index--) {
-        gcf.entries[index] = gcf.entries[index - 1];
+        gcf->entries[index] = gcf->entries[index - 1];
       }
-      gcf.entries[index] = moved_gc;
-      c->log.info("Moved guild card %" PRIu32 " to position %zu",
-          cmd.guild_card_number.load(), index);
+      gcf->entries[index] = moved_gc;
+      c->log.info("Moved guild card %" PRIu32 " to position %zu", cmd.guild_card_number.load(), index);
+      should_save = true;
       break;
     }
     default:
       throw invalid_argument("invalid command");
+  }
+  if (should_save) {
+    c->game_data.save_guild_card_file();
   }
 }
 
@@ -3184,15 +3189,17 @@ static void on_E5_BB(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
     return;
   }
 
-  if (c->game_data.player(false).get()) {
+  if (c->game_data.character(false).get()) {
     throw runtime_error("player already exists");
   }
 
-  c->game_data.bb_player_index = cmd.player_index;
+  c->game_data.bb_character_index = -1;
+  c->game_data.system(); // Ensure system file is loaded
+  c->game_data.bb_character_index = cmd.character_index;
 
   if (c->bb_connection_phase == 0x03) { // Dressing room
     try {
-      c->game_data.player()->disp.apply_dressing_room(cmd.preview);
+      c->game_data.character()->disp.apply_dressing_room(cmd.preview);
     } catch (const exception& e) {
       send_message_box(c, string_printf("$C6Character could not be modified:\n%s", e.what()));
       return;
@@ -3200,7 +3207,7 @@ static void on_E5_BB(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
   } else {
     try {
       auto s = c->require_server_state();
-      c->game_data.create_player(cmd.preview, s->level_table);
+      c->game_data.create_character_file(c->license->serial_number, c->language(), cmd.preview, s->level_table);
     } catch (const exception& e) {
       send_message_box(c, string_printf("$C6New character could not be created:\n%s", e.what()));
       return;
@@ -3212,45 +3219,49 @@ static void on_E5_BB(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
 }
 
 static void on_ED_BB(shared_ptr<Client> c, uint16_t command, uint32_t, string& data) {
+  auto p = c->game_data.character();
+  auto sys = c->game_data.system();
   switch (command) {
     case 0x01ED: {
       const auto& cmd = check_size_t<C_UpdateOptionFlags_BB_01ED>(data);
-      c->game_data.account()->option_flags = cmd.option_flags;
+      p->option_flags = cmd.option_flags;
       break;
     }
     case 0x02ED: {
       const auto& cmd = check_size_t<C_UpdateSymbolChats_BB_02ED>(data);
-      c->game_data.account()->symbol_chats = cmd.symbol_chats;
+      p->symbol_chats = cmd.symbol_chats;
       break;
     }
     case 0x03ED: {
       const auto& cmd = check_size_t<C_UpdateChatShortcuts_BB_03ED>(data);
-      c->game_data.account()->shortcuts = cmd.chat_shortcuts;
+      p->shortcuts = cmd.chat_shortcuts;
       break;
     }
     case 0x04ED: {
       const auto& cmd = check_size_t<C_UpdateKeyConfig_BB_04ED>(data);
-      c->game_data.account()->system_file.key_config = cmd.key_config;
+      sys->key_config = cmd.key_config;
+      c->game_data.save_system_file();
       break;
     }
     case 0x05ED: {
       const auto& cmd = check_size_t<C_UpdatePadConfig_BB_05ED>(data);
-      c->game_data.account()->system_file.joystick_config = cmd.pad_config;
+      sys->joystick_config = cmd.pad_config;
+      c->game_data.save_system_file();
       break;
     }
     case 0x06ED: {
       const auto& cmd = check_size_t<C_UpdateTechMenu_BB_06ED>(data);
-      c->game_data.player()->tech_menu_config = cmd.tech_menu;
+      p->tech_menu_config = cmd.tech_menu;
       break;
     }
     case 0x07ED: {
       const auto& cmd = check_size_t<C_UpdateCustomizeMenu_BB_07ED>(data);
-      c->game_data.player()->disp.config = cmd.customize;
+      p->disp.config = cmd.customize;
       break;
     }
     case 0x08ED: {
       const auto& cmd = check_size_t<C_UpdateChallengeRecords_BB_08ED>(data);
-      c->game_data.player()->challenge_records = cmd.records;
+      p->challenge_records = cmd.records;
       break;
     }
     default:
@@ -3259,22 +3270,26 @@ static void on_ED_BB(shared_ptr<Client> c, uint16_t command, uint32_t, string& d
 }
 
 static void on_E7_BB(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
-  const auto& cmd = check_size_t<SC_SyncCharacterSaveFile_BB_00E7>(data);
+  const auto& cmd = check_size_t<SC_SyncSaveFiles_BB_E7>(data);
 
-  // We only trust the player's quest data and challenge data.
-  // TODO: In the future, we shouldn't even need to trust these fields. We
-  // should instead verify our copy of the player against what the client sent,
-  // and alert on anything that's out of sync.
-  // TODO: In the future, we should save battle records here too.
-  auto p = c->game_data.player();
-  p->challenge_records = cmd.challenge_records;
-  p->quest_data1 = cmd.quest_data1;
-  p->quest_data2 = cmd.quest_data2;
+  // TODO: In the future, we shouldn't need to trust any of the client's data
+  // here. We should instead verify our copy of the player against what the
+  // client sent, and alert on anything that's out of sync.
+  auto p = c->game_data.character();
+  p->challenge_records = cmd.char_file.challenge_records;
+  p->battle_records = cmd.char_file.battle_records;
+  p->death_count = cmd.char_file.death_count;
+  *c->game_data.system() = cmd.system_file;
 }
 
 static void on_E2_BB(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
   auto& cmd = check_size_t<PSOBBSystemFile>(data);
-  c->game_data.account()->system_file = cmd;
+  auto sys = c->game_data.system();
+  *sys = cmd;
+  c->game_data.save_system_file();
+
+  S_SystemFileCreated_00E1_BB out_cmd = {1};
+  send_command_t(c, 0x00E1, 0x00000000, out_cmd);
 }
 
 static void on_DF_BB(shared_ptr<Client> c, uint16_t command, uint32_t, string& data) {
@@ -3349,7 +3364,7 @@ static void on_DF_BB(shared_ptr<Client> c, uint16_t command, uint32_t, string& d
 
     case 0x07DF: {
       const auto& cmd = check_size_t<C_CreateChallengeModeAwardItem_BB_07DF>(data);
-      auto p = c->game_data.player(true, false);
+      auto p = c->game_data.character(true, false);
       auto& award_state = (l->episode == Episode::EP2)
           ? p->challenge_records.ep2_online_award_state
           : p->challenge_records.ep1_online_award_state;
@@ -3434,14 +3449,14 @@ static void on_81(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
   } else {
     // If the sender is blocked, don't forward the mail
     for (size_t y = 0; y < 30; y++) {
-      if (target->game_data.account()->blocked_senders.data()[y] == c->license->serial_number) {
+      if (target->game_data.blocked_senders.data()[y] == c->license->serial_number) {
         return;
       }
     }
 
     // If the target has auto-reply enabled, send the autoreply. Note that we also
     // forward the message in this case.
-    auto target_p = target->game_data.player();
+    auto target_p = target->game_data.character();
     if (!target_p->auto_reply.empty()) {
       send_simple_mail(
           c,
@@ -3454,7 +3469,7 @@ static void on_81(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
     send_simple_mail(
         target,
         c->license->serial_number,
-        c->game_data.player()->disp.name.decode(c->language()),
+        c->game_data.character()->disp.name.decode(c->language()),
         message);
   }
 }
@@ -3470,7 +3485,7 @@ void on_D9(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
   if (is_w && (data.size() & 1)) {
     data.push_back(0);
   }
-  c->game_data.player(true, false)->info_board.encode(tt_decode_marked(data, c->language(), is_w), c->language());
+  c->game_data.character(true, false)->info_board.encode(tt_decode_marked(data, c->language(), is_w), c->language());
 }
 
 void on_C7(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
@@ -3479,21 +3494,26 @@ void on_C7(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
   if (is_w && (data.size() & 1)) {
     data.push_back(0);
   }
-  c->game_data.player(true, false)->auto_reply.encode(tt_decode_marked(data, c->language(), is_w), c->language());
+  c->game_data.character(true, false)->auto_reply.encode(tt_decode_marked(data, c->language(), is_w), c->language());
 }
 
 static void on_C8(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
   check_size_v(data.size(), 0);
-  c->game_data.player(true, false)->auto_reply.clear();
+  c->game_data.character(true, false)->auto_reply.clear();
 }
 
 static void on_C6(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
+  c->game_data.blocked_senders.fill(0);
   if (c->version() == GameVersion::BB) {
     const auto& cmd = check_size_t<C_SetBlockedSenders_BB_C6>(data);
-    c->game_data.account()->blocked_senders = cmd.blocked_senders;
+    for (size_t z = 0; z < cmd.blocked_senders.size(); z++) {
+      c->game_data.blocked_senders[z] = cmd.blocked_senders[z];
+    }
   } else {
     const auto& cmd = check_size_t<C_SetBlockedSenders_V3_C6>(data);
-    c->game_data.account()->blocked_senders = cmd.blocked_senders;
+    for (size_t z = 0; z < cmd.blocked_senders.size(); z++) {
+      c->game_data.blocked_senders[z] = cmd.blocked_senders[z];
+    }
   }
 }
 
@@ -3553,7 +3573,7 @@ shared_ptr<Lobby> create_game_generic(
       throw runtime_error("invalid episode");
   }
 
-  auto p = c->game_data.player();
+  auto p = c->game_data.character();
   if (!(c->license->flags & License::Flag::FREE_JOIN_GAMES) &&
       (min_level > p->disp.stats.level)) {
     // Note: We don't throw here because this is a situation players might

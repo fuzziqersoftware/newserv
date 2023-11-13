@@ -12,58 +12,51 @@
 #include "ItemData.hh"
 #include "Loggers.hh"
 #include "PSOEncryption.hh"
+#include "PSOProtocol.hh"
 #include "StaticGameData.hh"
 #include "Text.hh"
 #include "Version.hh"
 
 using namespace std;
 
-// Originally there was going to be a language-based header, but then I decided
-// against it. This string was already in use for that parser, so I didn't
-// bother changing it.
-static const string ACCOUNT_FILE_SIGNATURE =
-    "newserv account file format; 7 sections present; sequential;";
-
 ClientGameData::ClientGameData()
-    : last_play_time_update(0),
-      guild_card_number(0),
+    : guild_card_number(0),
       should_update_play_time(false),
-      bb_player_index(0),
-      should_save(true) {}
+      bb_character_index(-1),
+      last_play_time_update(0) {
+  for (size_t z = 0; z < this->blocked_senders.size(); z++) {
+    this->blocked_senders[z] = 0;
+  }
+}
 
 ClientGameData::~ClientGameData() {
-  if (!this->bb_username.empty()) {
-    if (this->account_data.get()) {
-      this->save_account_data();
-    }
-    if (this->player_data.get()) {
-      this->save_player_data();
-    }
+  if (!this->bb_username.empty() && this->character_data.get()) {
+    this->save_character_file();
   }
 }
 
 void ClientGameData::create_battle_overlay(shared_ptr<const BattleRules> rules, shared_ptr<const LevelTable> level_table) {
-  this->overlay_player_data.reset(new SavedPlayerDataBB(*this->player(true, false)));
+  this->overlay_character_data.reset(new PSOBBCharacterFile(*this->character(true, false)));
 
   if (rules->weapon_and_armor_mode != BattleRules::WeaponAndArmorMode::ALLOW) {
-    this->overlay_player_data->inventory.remove_all_items_of_type(0);
-    this->overlay_player_data->inventory.remove_all_items_of_type(1);
+    this->overlay_character_data->inventory.remove_all_items_of_type(0);
+    this->overlay_character_data->inventory.remove_all_items_of_type(1);
   }
   if (rules->mag_mode == BattleRules::MagMode::FORBID_ALL) {
-    this->overlay_player_data->inventory.remove_all_items_of_type(2);
+    this->overlay_character_data->inventory.remove_all_items_of_type(2);
   }
   if (rules->tool_mode != BattleRules::ToolMode::ALLOW) {
-    this->overlay_player_data->inventory.remove_all_items_of_type(3);
+    this->overlay_character_data->inventory.remove_all_items_of_type(3);
   }
   if (rules->replace_char) {
     // TODO: Shouldn't we clear other material usage here? It looks like the
     // original code doesn't, but that seems wrong.
-    this->overlay_player_data->inventory.hp_from_materials = 0;
-    this->overlay_player_data->inventory.tp_from_materials = 0;
+    this->overlay_character_data->inventory.hp_from_materials = 0;
+    this->overlay_character_data->inventory.tp_from_materials = 0;
 
     uint32_t target_level = clamp<uint32_t>(rules->char_level, 0, 199);
-    uint8_t char_class = this->overlay_player_data->disp.visual.char_class;
-    auto& stats = this->overlay_player_data->disp.stats;
+    uint8_t char_class = this->overlay_character_data->disp.visual.char_class;
+    auto& stats = this->overlay_character_data->disp.stats;
 
     stats.reset_to_base(char_class, level_table);
     stats.advance_to_level(char_class, target_level, level_table);
@@ -74,30 +67,30 @@ void ClientGameData::create_battle_overlay(shared_ptr<const BattleRules> rules, 
   if (rules->tech_disk_mode == BattleRules::TechDiskMode::LIMIT_LEVEL) {
     // TODO: Verify this is what the game actually does.
     for (uint8_t tech_num = 0; tech_num < 0x13; tech_num++) {
-      uint8_t existing_level = this->overlay_player_data->get_technique_level(tech_num);
+      uint8_t existing_level = this->overlay_character_data->get_technique_level(tech_num);
       if ((existing_level != 0xFF) && (existing_level > rules->max_tech_level)) {
-        this->overlay_player_data->set_technique_level(tech_num, rules->max_tech_level);
+        this->overlay_character_data->set_technique_level(tech_num, rules->max_tech_level);
       }
     }
   } else if (rules->tech_disk_mode == BattleRules::TechDiskMode::FORBID_ALL) {
     for (uint8_t tech_num = 0; tech_num < 0x13; tech_num++) {
-      this->overlay_player_data->set_technique_level(tech_num, 0xFF);
+      this->overlay_character_data->set_technique_level(tech_num, 0xFF);
     }
   }
   if (rules->meseta_mode != BattleRules::MesetaMode::ALLOW) {
-    this->overlay_player_data->disp.stats.meseta = 0;
+    this->overlay_character_data->disp.stats.meseta = 0;
   }
   if (rules->forbid_scape_dolls) {
-    this->overlay_player_data->inventory.remove_all_items_of_type(3, 9);
+    this->overlay_character_data->inventory.remove_all_items_of_type(3, 9);
   }
 }
 
 void ClientGameData::create_challenge_overlay(GameVersion version, size_t template_index, shared_ptr<const LevelTable> level_table) {
-  const auto& tpl = get_challenge_template_definition(
-      version, this->player(true, false)->disp.visual.class_flags, template_index);
+  auto p = this->character(true, false);
+  const auto& tpl = get_challenge_template_definition(version, p->disp.visual.class_flags, template_index);
 
-  this->overlay_player_data.reset(new SavedPlayerDataBB(*this->player(true, false)));
-  auto overlay = this->overlay_player_data;
+  this->overlay_character_data.reset(new PSOBBCharacterFile(*p));
+  auto overlay = this->overlay_character_data;
 
   for (size_t z = 0; z < overlay->inventory.items.size(); z++) {
     auto& i = overlay->inventory.items[z];
@@ -137,360 +130,287 @@ void ClientGameData::create_challenge_overlay(GameVersion version, size_t templa
   }
 }
 
-shared_ptr<SavedAccountDataBB> ClientGameData::account(bool allow_load) {
-  if (!this->account_data.get() && allow_load) {
-    if (this->bb_username.empty()) {
-      this->account_data.reset(new SavedAccountDataBB());
-      this->account_data->signature.encode(ACCOUNT_FILE_SIGNATURE);
-    } else {
-      this->load_account_data();
-    }
+shared_ptr<PSOBBSystemFile> ClientGameData::system(bool allow_load) {
+  if (!this->system_data && allow_load) {
+    this->load_all_files();
   }
-  return this->account_data;
+  return this->system_data;
 }
 
-shared_ptr<SavedPlayerDataBB> ClientGameData::player(bool allow_load, bool allow_overlay) {
-  if (this->overlay_player_data && allow_overlay) {
-    return this->overlay_player_data;
+shared_ptr<const PSOBBSystemFile> ClientGameData::system(bool allow_load) const {
+  if (!this->system_data.get() && allow_load) {
+    throw runtime_error("system data is not loaded");
   }
-  if (!this->player_data.get() && allow_load) {
-    if (this->bb_username.empty()) {
-      this->player_data.reset(new SavedPlayerDataBB());
-    } else {
-      this->load_player_data();
-    }
-  }
-  return this->player_data;
+  return this->system_data;
 }
 
-shared_ptr<const SavedAccountDataBB> ClientGameData::account(bool allow_load) const {
-  if (!this->account_data.get() && allow_load) {
+shared_ptr<PSOBBCharacterFile> ClientGameData::character(bool allow_load, bool allow_overlay) {
+  if (this->overlay_character_data && allow_overlay) {
+    return this->overlay_character_data;
+  }
+  if (!this->character_data && allow_load) {
+    if (this->bb_character_index < 0) {
+      throw runtime_error("character index not specified");
+    }
+    this->load_all_files();
+  }
+  return this->character_data;
+}
+
+shared_ptr<const PSOBBCharacterFile> ClientGameData::character(bool allow_load, bool allow_overlay) const {
+  if (allow_overlay && this->overlay_character_data) {
+    return this->overlay_character_data;
+  }
+  if (!this->character_data && allow_load) {
+    throw runtime_error("character data is not loaded");
+  }
+  return this->character_data;
+}
+
+shared_ptr<PSOBBGuildCardFile> ClientGameData::guild_cards(bool allow_load) {
+  if (!this->guild_card_data && allow_load) {
+    this->load_all_files();
+  }
+  return this->guild_card_data;
+}
+
+shared_ptr<const PSOBBGuildCardFile> ClientGameData::guild_cards(bool allow_load) const {
+  if (!this->guild_card_data && allow_load) {
     throw runtime_error("account data is not loaded");
   }
-  return this->account_data;
+  return this->guild_card_data;
 }
 
-shared_ptr<const SavedPlayerDataBB> ClientGameData::player(bool allow_load, bool allow_overlay) const {
-  if (allow_overlay && this->overlay_player_data) {
-    return this->overlay_player_data;
-  }
-  if (!this->player_data.get() && allow_load) {
-    throw runtime_error("player data is not loaded");
-  }
-  return this->player_data;
-}
-
-string ClientGameData::account_data_filename() const {
+string ClientGameData::system_filename() const {
   if (this->bb_username.empty()) {
-    throw logic_error("non-BB players do not have account data");
+    throw logic_error("non-BB players do not have system data");
   }
-  return string_printf("system/players/account_%s.nsa",
-      this->bb_username.c_str());
+  return string_printf("system/players/system_%s.psosys", this->bb_username.c_str());
 }
 
-string ClientGameData::player_data_filename() const {
+string ClientGameData::character_filename() const {
   if (this->bb_username.empty()) {
-    throw logic_error("non-BB players do not have account data");
+    throw logic_error("non-BB players do not have character data");
   }
-  return string_printf("system/players/player_%s_%zu.nsc",
-      this->bb_username.c_str(), this->bb_player_index + 1);
+  if (this->bb_character_index < 0) {
+    throw logic_error("character index is not set");
+  }
+  return string_printf("system/players/player_%s_%hhd.psochar", this->bb_username.c_str(), this->bb_character_index);
 }
 
-string ClientGameData::player_template_filename(uint8_t char_class) {
-  return string_printf("system/players/default_player_%hhu.nsc", char_class);
+string ClientGameData::guild_card_filename() const {
+  if (this->bb_username.empty()) {
+    throw logic_error("non-BB players do not have Guild Card files");
+  }
+  return string_printf("system/players/guild_cards_%s.psocard", this->bb_username.c_str());
 }
 
-void ClientGameData::create_player(
+string ClientGameData::legacy_account_filename() const {
+  if (this->bb_username.empty()) {
+    throw logic_error("non-BB players do not have legacy account data");
+  }
+  return string_printf("system/players/account_%s.nsa", this->bb_username.c_str());
+}
+
+string ClientGameData::legacy_player_filename() const {
+  if (this->bb_username.empty()) {
+    throw logic_error("non-BB players do not have legacy player data");
+  }
+  if (this->bb_character_index < 0) {
+    throw logic_error("character index is not set");
+  }
+  return string_printf(
+      "system/players/player_%s_%hhd.nsc",
+      this->bb_username.c_str(),
+      static_cast<int8_t>(this->bb_character_index + 1));
+}
+
+void ClientGameData::create_character_file(
+    uint32_t guild_card_number,
+    uint8_t language,
     const PlayerDispDataBBPreview& preview,
     shared_ptr<const LevelTable> level_table) {
-  shared_ptr<SavedPlayerDataBB> data(new SavedPlayerDataBB(
-      load_object_file<SavedPlayerDataBB>(player_template_filename(preview.visual.char_class))));
-  data->update_to_latest_version();
-
-  try {
-    data->disp.apply_preview(preview);
-    data->disp.stats.char_stats = level_table->base_stats_for_class(data->disp.visual.char_class);
-  } catch (const exception& e) {
-    throw runtime_error(string_printf("template application failed: %s", e.what()));
-  }
-
-  this->player_data = data;
-
-  this->save_player_data();
+  this->character_data = PSOBBCharacterFile::create_from_preview(guild_card_number, language, preview, level_table);
+  this->save_character_file();
 }
 
-void ClientGameData::load_account_data() {
-  string filename = this->account_data_filename();
+void ClientGameData::load_all_files() {
+  if (this->bb_username.empty()) {
+    this->system_data.reset(new PSOBBSystemFile());
+    this->character_data.reset(new PSOBBCharacterFile());
+    this->guild_card_data.reset(new PSOBBGuildCardFile());
+    return;
+  }
 
-  shared_ptr<SavedAccountDataBB> data;
-  try {
-    data.reset(new SavedAccountDataBB(
-        player_files_cache.get_obj_or_load<SavedAccountDataBB>(filename).obj));
-    if (!data->signature.eq(ACCOUNT_FILE_SIGNATURE)) {
-      throw runtime_error("account data header is incorrect");
+  this->system_data.reset();
+  this->character_data.reset();
+  this->guild_card_data.reset();
+
+  string sys_filename = this->system_filename();
+  if (isfile(sys_filename)) {
+    this->system_data.reset(new PSOBBSystemFile(load_object_file<PSOBBSystemFile>(sys_filename)));
+    player_data_log.info("Loaded system data from %s", sys_filename.c_str());
+  }
+
+  if (this->bb_character_index >= 0) {
+    string char_filename = this->character_filename();
+    if (isfile(char_filename)) {
+      auto f = fopen_unique(char_filename, "rb");
+      auto header = freadx<PSOCommandHeaderBB>(f.get());
+      if (header.size != 0x399C) {
+        throw runtime_error("incorrect size in character file header");
+      }
+      if (header.command != 0x00E7) {
+        throw runtime_error("incorrect command in character file header");
+      }
+      if (header.flag != 0x00000000) {
+        throw runtime_error("incorrect flag in character file header");
+      }
+      this->character_data.reset(new PSOBBCharacterFile(freadx<PSOBBCharacterFile>(f.get())));
+      player_data_log.info("Loaded character data from %s", char_filename.c_str());
+
+      // If there was no .psosys file, load the system file from the .psochar
+      // file instead
+      if (!this->system_data) {
+        this->system_data.reset(new PSOBBSystemFile(freadx<PSOBBSystemFile>(f.get())));
+        player_data_log.info("Loaded system data from %s", char_filename.c_str());
+      }
     }
-    player_data_log.info("Loaded account data file %s", filename.c_str());
+  }
 
-  } catch (const exception& e) {
-    player_data_log.info("Cannot load account data for %s (%s); using default",
-        this->bb_username.c_str(), e.what());
-    player_files_cache.delete_key(filename);
-    data.reset(new SavedAccountDataBB(
-        player_files_cache.get_obj_or_load<SavedAccountDataBB>(
-                              "system/players/default.nsa")
-            .obj));
-    if (!data->signature.eq(ACCOUNT_FILE_SIGNATURE)) {
-      throw runtime_error("default account data header is incorrect");
+  string card_filename = this->guild_card_filename();
+  if (isfile(card_filename)) {
+    this->guild_card_data.reset(new PSOBBGuildCardFile(load_object_file<PSOBBGuildCardFile>(card_filename)));
+    player_data_log.info("Loaded Guild Card data from %s", card_filename.c_str());
+  }
+
+  // If any of the above files were missing, try to load from .nsa/.nsc files instead
+  if (!this->system_data || (!this->character_data && (this->bb_character_index >= 0)) || !this->guild_card_data) {
+    string nsa_filename = this->legacy_account_filename();
+    shared_ptr<LegacySavedAccountDataBB> nsa_data;
+    if (isfile(nsa_filename)) {
+      nsa_data.reset(new LegacySavedAccountDataBB(load_object_file<LegacySavedAccountDataBB>(nsa_filename)));
+      if (!nsa_data->signature.eq(LegacySavedAccountDataBB::SIGNATURE)) {
+        throw runtime_error("account data header is incorrect");
+      }
+      if (!this->system_data) {
+        this->system_data.reset(new PSOBBSystemFile(nsa_data->system_file));
+        player_data_log.info("Loaded legacy system data from %s", nsa_filename.c_str());
+      }
+      if (!this->guild_card_data) {
+        this->guild_card_data.reset(new PSOBBGuildCardFile(nsa_data->guild_card_file));
+        player_data_log.info("Loaded legacy Guild Card data from %s", nsa_filename.c_str());
+      }
     }
-    player_data_log.info("Loaded default account data file");
+
+    if (!this->system_data) {
+      this->system_data.reset(new PSOBBSystemFile());
+      player_data_log.info("Created new system data");
+    }
+    if (!this->guild_card_data) {
+      this->guild_card_data.reset(new PSOBBGuildCardFile());
+      player_data_log.info("Created new Guild Card data");
+    }
+
+    if (!this->character_data && (this->bb_character_index >= 0)) {
+      string nsc_filename = this->legacy_player_filename();
+      auto nsc_data = load_object_file<LegacySavedPlayerDataBB>(nsc_filename);
+      if (nsc_data.signature == LegacySavedPlayerDataBB::SIGNATURE_V0) {
+        nsc_data.signature = LegacySavedPlayerDataBB::SIGNATURE_V0;
+        nsc_data.unused.clear();
+        nsc_data.battle_records.place_counts.clear(0);
+        nsc_data.battle_records.disconnect_count = 0;
+        nsc_data.battle_records.unknown_a1.clear(0);
+      } else if (nsc_data.signature != LegacySavedPlayerDataBB::SIGNATURE_V1) {
+        throw runtime_error("legacy player data has incorrect signature");
+      }
+
+      this->character_data.reset(new PSOBBCharacterFile());
+      this->character_data->inventory = nsc_data.inventory;
+      this->character_data->disp = nsc_data.disp;
+      this->character_data->play_time_seconds = nsc_data.disp.play_time;
+      this->character_data->unknown_a2 = nsc_data.unknown_a2;
+      this->character_data->quest_flags = nsc_data.quest_flags;
+      this->character_data->death_count = nsc_data.death_count;
+      this->character_data->bank = nsc_data.bank;
+      this->character_data->guild_card.guild_card_number = this->guild_card_number;
+      this->character_data->guild_card.name = nsc_data.disp.name;
+      this->character_data->guild_card.team_name = this->system_data->team_name;
+      this->character_data->guild_card.description = nsc_data.guild_card_description;
+      this->character_data->guild_card.present = 1;
+      this->character_data->guild_card.language = nsc_data.inventory.language;
+      this->character_data->guild_card.section_id = nsc_data.disp.visual.section_id;
+      this->character_data->guild_card.char_class = nsc_data.disp.visual.char_class;
+      this->character_data->auto_reply = nsc_data.auto_reply;
+      this->character_data->info_board = nsc_data.info_board;
+      this->character_data->battle_records = nsc_data.battle_records;
+      this->character_data->challenge_records = nsc_data.challenge_records;
+      this->character_data->tech_menu_config = nsc_data.tech_menu_config;
+      this->character_data->quest_global_flags = nsc_data.quest_global_flags;
+      if (nsa_data) {
+        this->character_data->option_flags = nsa_data->option_flags;
+        this->character_data->symbol_chats = nsa_data->symbol_chats;
+        this->character_data->shortcuts = nsa_data->shortcuts;
+        player_data_log.info("Loaded legacy player data from %s and %s", nsa_filename.c_str(), nsc_filename.c_str());
+      } else {
+        player_data_log.info("Loaded legacy player data from %s", nsc_filename.c_str());
+      }
+    }
   }
 
-  this->account_data = data;
+  this->blocked_senders.fill(0);
+  for (size_t z = 0; z < this->guild_card_data->blocked.size(); z++) {
+    if (this->guild_card_data->blocked[z].present) {
+      this->blocked_senders[z] = this->guild_card_data->blocked[z].guild_card_number;
+    }
+  }
+
+  if (this->character_data) {
+    this->last_play_time_update = now();
+  }
 }
 
-void ClientGameData::save_account_data() const {
-  if (!this->account_data.get()) {
-    throw logic_error("save_account_data called when no account data loaded");
+void ClientGameData::save_system_file() const {
+  if (!this->system_data) {
+    throw logic_error("no system file loaded");
   }
-  string filename = this->account_data_filename();
-  player_files_cache.replace(filename, this->account_data.get(), sizeof(SavedAccountDataBB));
-  if (this->should_save) {
-    save_file(filename, this->account_data.get(), sizeof(SavedAccountDataBB));
-    player_data_log.info("Saved account data file %s to filesystem", filename.c_str());
-  } else {
-    player_data_log.info("Saved account data file %s to cache only", filename.c_str());
-  }
+  string filename = this->system_filename();
+  save_object_file(filename, *this->system_data);
+  player_data_log.info("Saved system file %s", filename.c_str());
 }
 
-void ClientGameData::load_player_data() {
-  this->last_play_time_update = now();
-  string filename = this->player_data_filename();
-  this->player_data.reset(new SavedPlayerDataBB(
-      player_files_cache.get_obj_or_load<SavedPlayerDataBB>(filename).obj));
-  try {
-    this->player_data->update_to_latest_version();
-  } catch (const exception&) {
-    this->player_data.reset();
-    player_files_cache.delete_key(filename);
-    throw;
+void ClientGameData::save_character_file() {
+  if (!this->system_data.get()) {
+    throw logic_error("no system file loaded");
   }
-  player_data_log.info("Loaded player data file %s", filename.c_str());
-}
-
-void ClientGameData::save_player_data() {
-  if (!this->player_data.get()) {
-    throw logic_error("save_player_data called when no player data loaded");
+  if (!this->character_data.get()) {
+    throw logic_error("no character file loaded");
   }
   if (this->should_update_play_time) {
     // This is slightly inaccurate, since fractions of a second are truncated
     // off each time we save. I'm lazy, so insert shrug emoji here.
     uint64_t t = now();
     uint64_t seconds = (t - this->last_play_time_update) / 1000000;
-    this->player_data->disp.play_time += seconds;
+    this->character_data->disp.play_time += seconds;
+    this->character_data->play_time_seconds = this->character_data->disp.play_time;
     player_data_log.info("Added %" PRIu64 " seconds to play time", seconds);
     this->last_play_time_update = t;
   }
-  string filename = this->player_data_filename();
-  player_files_cache.replace(filename, this->player_data.get(), sizeof(SavedPlayerDataBB));
-  if (this->should_save) {
-    save_file(filename, this->player_data.get(), sizeof(SavedPlayerDataBB));
-    player_data_log.info("Saved player data file %s to filesystem", filename.c_str());
-  } else {
-    player_data_log.info("Saved player data file %s to cache only", filename.c_str());
-  }
+
+  string filename = this->character_filename();
+  auto f = fopen_unique(filename, "wb");
+  PSOCommandHeaderBB header = {sizeof(PSOCommandHeaderBB) + sizeof(PSOBBCharacterFile) + sizeof(PSOBBSystemFile), 0x00E7, 0x00000000};
+  fwritex(f.get(), header);
+  fwritex(f.get(), *this->character_data);
+  fwritex(f.get(), *this->system_data);
+  player_data_log.info("Saved character file %s", filename.c_str());
 }
 
-void SavedPlayerDataBB::update_to_latest_version() {
-  if (this->signature == PLAYER_FILE_SIGNATURE_V0) {
-    this->signature = PLAYER_FILE_SIGNATURE_V1;
-    this->unused.clear();
-    this->battle_records.place_counts.clear(0);
-    this->battle_records.disconnect_count = 0;
-    this->battle_records.unknown_a1.clear(0);
-  } else if (this->signature != PLAYER_FILE_SIGNATURE_V1) {
-    throw runtime_error("player data has incorrect signature");
+void ClientGameData::save_guild_card_file() const {
+  if (!this->guild_card_data.get()) {
+    throw logic_error("no Guild Card file loaded");
   }
-}
-
-// TODO: Eliminate duplication between this function and the parallel function
-// in PlayerBank
-void SavedPlayerDataBB::add_item(const ItemData& item) {
-  uint32_t pid = item.primary_identifier();
-
-  // Annoyingly, meseta is in the disp data, not in the inventory struct. If the
-  // item is meseta, we have to modify disp instead.
-  if (pid == MESETA_IDENTIFIER) {
-    this->add_meseta(item.data2d);
-    return;
-  }
-
-  // Handle combinable items
-  size_t combine_max = item.max_stack_size();
-  if (combine_max > 1) {
-    // Get the item index if there's already a stack of the same item in the
-    // player's inventory
-    size_t y;
-    for (y = 0; y < this->inventory.num_items; y++) {
-      if (this->inventory.items[y].data.primary_identifier() == item.primary_identifier()) {
-        break;
-      }
-    }
-
-    // If we found an existing stack, add it to the total and return
-    if (y < this->inventory.num_items) {
-      size_t new_stack_size = this->inventory.items[y].data.data1[5] + item.data1[5];
-      if (new_stack_size > combine_max) {
-        throw out_of_range("stack is too large");
-      }
-      this->inventory.items[y].data.data1[5] = new_stack_size;
-      return;
-    }
-  }
-
-  // If we get here, then it's not meseta and not a combine item, so it needs to
-  // go into an empty inventory slot
-  if (this->inventory.num_items >= 30) {
-    throw out_of_range("inventory is full");
-  }
-  auto& inv_item = this->inventory.items[this->inventory.num_items];
-  inv_item.present = 1;
-  inv_item.unknown_a1 = 0;
-  inv_item.flags = 0;
-  inv_item.data = item;
-  this->inventory.num_items++;
-}
-
-// TODO: Eliminate code duplication between this function and the parallel
-// function in PlayerBank
-ItemData SavedPlayerDataBB::remove_item(uint32_t item_id, uint32_t amount, bool allow_meseta_overdraft) {
-  ItemData ret;
-
-  // If we're removing meseta (signaled by an invalid item ID), then create a
-  // meseta item.
-  if (item_id == 0xFFFFFFFF) {
-    this->remove_meseta(amount, allow_meseta_overdraft);
-    ret.data1[0] = 0x04;
-    ret.data2d = amount;
-    return ret;
-  }
-
-  size_t index = this->inventory.find_item(item_id);
-  auto& inventory_item = this->inventory.items[index];
-
-  // If the item is a combine item and are we removing less than we have of it,
-  // then create a new item and reduce the amount of the existing stack. Note
-  // that passing amount == 0 means to remove the entire stack, so this only
-  // applies if amount is nonzero.
-  if (amount && (inventory_item.data.stack_size() > 1) &&
-      (amount < inventory_item.data.data1[5])) {
-    ret = inventory_item.data;
-    ret.data1[5] = amount;
-    ret.id = 0xFFFFFFFF;
-    inventory_item.data.data1[5] -= amount;
-    return ret;
-  }
-
-  // If we get here, then it's not meseta, and either it's not a combine item or
-  // we're removing the entire stack. Delete the item from the inventory slot
-  // and return the deleted item.
-  ret = inventory_item.data;
-  this->inventory.num_items--;
-  for (size_t x = index; x < this->inventory.num_items; x++) {
-    this->inventory.items[x] = this->inventory.items[x + 1];
-  }
-  auto& last_item = this->inventory.items[this->inventory.num_items];
-  last_item.present = 0;
-  last_item.unknown_a1 = 0;
-  last_item.flags = 0;
-  last_item.data.clear();
-  return ret;
-}
-
-void SavedPlayerDataBB::add_meseta(uint32_t amount) {
-  this->disp.stats.meseta = min<size_t>(static_cast<size_t>(this->disp.stats.meseta) + amount, 999999);
-}
-
-void SavedPlayerDataBB::remove_meseta(uint32_t amount, bool allow_overdraft) {
-  if (amount <= this->disp.stats.meseta) {
-    this->disp.stats.meseta -= amount;
-  } else if (allow_overdraft) {
-    this->disp.stats.meseta = 0;
-  } else {
-    throw out_of_range("player does not have enough meseta");
-  }
-}
-
-uint8_t SavedPlayerDataBB::get_technique_level(uint8_t which) const {
-  return (this->disp.technique_levels_v1[which] == 0xFF)
-      ? 0xFF
-      : (this->disp.technique_levels_v1[which] + this->inventory.items[which].extension_data1);
-}
-
-void SavedPlayerDataBB::set_technique_level(uint8_t which, uint8_t level) {
-  if (level == 0xFF) {
-    this->disp.technique_levels_v1[which] = 0xFF;
-    this->inventory.items[which].extension_data1 = 0x00;
-  } else if (level <= 0x0E) {
-    this->disp.technique_levels_v1[which] = level;
-    this->inventory.items[which].extension_data1 = 0x00;
-  } else {
-    this->disp.technique_levels_v1[which] = 0x0E;
-    this->inventory.items[which].extension_data1 = level - 0x0E;
-  }
-}
-
-uint8_t SavedPlayerDataBB::get_material_usage(MaterialType which) const {
-  switch (which) {
-    case MaterialType::HP:
-      return this->inventory.hp_from_materials >> 1;
-    case MaterialType::TP:
-      return this->inventory.tp_from_materials >> 1;
-    case MaterialType::POWER:
-    case MaterialType::MIND:
-    case MaterialType::EVADE:
-    case MaterialType::DEF:
-    case MaterialType::LUCK:
-      return this->inventory.items[8 + static_cast<uint8_t>(which)].extension_data2;
-    default:
-      throw logic_error("invalid material type");
-  }
-}
-
-void SavedPlayerDataBB::set_material_usage(MaterialType which, uint8_t usage) {
-  switch (which) {
-    case MaterialType::HP:
-      this->inventory.hp_from_materials = usage << 1;
-      break;
-    case MaterialType::TP:
-      this->inventory.tp_from_materials = usage << 1;
-      break;
-    case MaterialType::POWER:
-    case MaterialType::MIND:
-    case MaterialType::EVADE:
-    case MaterialType::DEF:
-    case MaterialType::LUCK:
-      this->inventory.items[8 + static_cast<uint8_t>(which)].extension_data2 = usage;
-      break;
-    default:
-      throw logic_error("invalid material type");
-  }
-}
-
-void SavedPlayerDataBB::clear_all_material_usage() {
-  this->inventory.hp_from_materials = 0;
-  this->inventory.tp_from_materials = 0;
-  for (size_t z = 0; z < 5; z++) {
-    this->inventory.items[z + 8].extension_data2 = 0;
-  }
-}
-
-void SavedPlayerDataBB::print_inventory(FILE* stream, GameVersion version, shared_ptr<const ItemNameIndex> name_index) const {
-  fprintf(stream, "[PlayerInventory] Meseta: %" PRIu32 "\n", this->disp.stats.meseta.load());
-  fprintf(stream, "[PlayerInventory] %hhu items\n", this->inventory.num_items);
-  for (size_t x = 0; x < this->inventory.num_items; x++) {
-    const auto& item = this->inventory.items[x];
-    auto name = name_index->describe_item(version, item.data);
-    auto hex = item.data.hex();
-    fprintf(stream, "[PlayerInventory]   %2zu: %s (%s)\n", x, hex.c_str(), name.c_str());
-  }
+  string filename = this->guild_card_filename();
+  save_object_file(filename, *this->guild_card_data);
+  player_data_log.info("Saved Guild Card file %s", filename.c_str());
 }

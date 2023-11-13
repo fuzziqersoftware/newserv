@@ -1671,7 +1671,7 @@ struct C_Login_BB_93 {
   le_uint32_t guild_card_number = 0;
   le_uint32_t sub_version = 0;
   uint8_t language;
-  uint8_t character_slot;
+  int8_t character_slot;
   // Values for connection_phase:
   // 00 - initial connection (client will request system file, characters, etc.)
   // 01 - choose character
@@ -2829,16 +2829,16 @@ struct S_GameInformation_GC_Ep3_E1 {
   /* 0298 */
 } __packed__;
 
-// E1 (S->C): Create system file (BB)
+// E1 (S->C): System file created (BB)
 // This seems to take the place of 00E2 in certain cases. Perhaps it was used
 // when a client hadn't logged in before and didn't have a system file, so the
 // client should use appropriate defaults.
 
-struct S_TeamAndKeyConfigMissing_00E1_BB {
+struct S_SystemFileCreated_00E1_BB {
   // If success is not equal to 1, the client shows a message saying "Forced
   // server disconnect (907)" and disconnects. Otherwise, the client proceeeds
   // as if it had received an 00E2 command, and sends its first 00E3.
-  le_uint32_t success = 0;
+  le_uint32_t success = 1;
 } __packed__;
 
 // E2 (C->S): Tournament control (Episode 3)
@@ -2954,7 +2954,7 @@ struct S_TournamentGameDetails_GC_Ep3_E3 {
 // E3 (C->S): Player preview request (BB)
 
 struct C_PlayerPreviewRequest_BB_E3 {
-  le_uint32_t player_index = 0;
+  le_int32_t character_index = 0;
   le_uint32_t unused = 0;
 } __packed__;
 
@@ -2990,12 +2990,12 @@ struct S_CardBattleTableState_GC_Ep3_E4 {
 // E4 (S->C): Player choice or no player present (BB)
 
 struct S_ApprovePlayerChoice_BB_00E4 {
-  le_uint32_t player_index = 0;
+  le_int32_t character_index = 0;
   le_uint32_t result = 0; // 1 = approved
 } __packed__;
 
 struct S_PlayerPreview_NoPlayer_BB_00E4 {
-  le_uint32_t player_index = 0;
+  le_int32_t character_index = 0;
   le_uint32_t error = 0; // 2 = no player present
 } __packed__;
 
@@ -3011,7 +3011,7 @@ struct S_CardBattleTableConfirmation_GC_Ep3_E5 {
 // E5 (C->S): Create character (BB)
 
 struct SC_PlayerPreview_CreateCharacter_BB_00E5 {
-  le_uint32_t player_index = 0;
+  le_int32_t character_index = 0;
   PlayerDispDataBBPreview preview;
 } __packed__;
 
@@ -3063,34 +3063,13 @@ struct C_CreateSpectatorTeam_GC_Ep3_E7 {
 // E7 (S->C): Tournament entry list for spectating (Episode 3)
 // Same format as E2 command.
 
-// E7: Save or load full character data (BB)
-// TODO: Verify full breakdown from send_E7 in BB disassembly.
+// E7: Sync save files (BB)
 
-struct SC_SyncCharacterSaveFile_BB_00E7 {
-  /* 0000 */ PlayerInventory inventory; // From player data
-  /* 034C */ PlayerDispDataBB disp; // From player data
-  /* 04DC */ le_uint32_t unknown_a1 = 0;
-  /* 04E0 */ le_uint32_t creation_timestamp = 0;
-  /* 04E4 */ le_uint32_t signature = 0xA205B064;
-  /* 04E8 */ le_uint32_t play_time_seconds = 0;
-  /* 04EC */ le_uint32_t option_flags = 0; // account
-  /* 04F0 */ parray<uint8_t, 0x0208> quest_data1; // player
-  /* 06F8 */ PlayerBank bank; // player
-  /* 19C0 */ GuildCardBB guild_card;
-  /* 1AC8 */ le_uint32_t unknown_a3 = 0;
-  /* 1ACC */ parray<uint8_t, 0x04E0> symbol_chats; // account
-  /* 1FAC */ parray<uint8_t, 0x0A40> shortcuts; // account
-  /* 29EC */ pstring<TextEncoding::UTF16, 0x00AC> auto_reply; // player
-  /* 2B44 */ pstring<TextEncoding::UTF16, 0x00AC> info_board; // player
-  /* 2C9C */ PlayerRecords_Battle<false> battle_records;
-  /* 2CB4 */ parray<uint8_t, 4> unknown_a4;
-  /* 2CB8 */ PlayerRecordsBB_Challenge challenge_records;
-  /* 2DF8 */ parray<uint8_t, 0x0028> tech_menu_config; // player
-  /* 2E20 */ parray<uint8_t, 0x002C> unknown_a6;
-  /* 2E4C */ parray<le_uint32_t, 0x0016> quest_data2; // player
-  /* 2EA4 */ PSOBBSystemFile system_file; // account
+struct SC_SyncSaveFiles_BB_E7 {
+  /* 0000 */ PSOBBCharacterFile char_file;
+  /* 2EA4 */ PSOBBSystemFile system_file;
   /* 3994 */
-} __attribute__((packed));
+} __packed__;
 
 // E8 (S->C): Join spectator team (Episode 3)
 // header.flag = player count (including spectators)
@@ -3471,7 +3450,7 @@ struct C_UpdateOptionFlags_BB_01ED {
   le_uint32_t option_flags = 0;
 } __packed__;
 struct C_UpdateSymbolChats_BB_02ED {
-  parray<uint8_t, 0x4E0> symbol_chats;
+  parray<PSOBBCharacterFile::SymbolChatEntry, 12> symbol_chats;
 } __packed__;
 struct C_UpdateChatShortcuts_BB_03ED {
   parray<uint8_t, 0xA40> chat_shortcuts;
@@ -3483,7 +3462,7 @@ struct C_UpdatePadConfig_BB_05ED {
   parray<uint8_t, 0x38> pad_config;
 } __packed__;
 struct C_UpdateTechMenu_BB_06ED {
-  parray<uint8_t, 0x28> tech_menu;
+  parray<le_uint16_t, 0x14> tech_menu;
 } __packed__;
 struct C_UpdateCustomizeMenu_BB_07ED {
   parray<uint8_t, 0xE8> customize;
@@ -3733,28 +3712,6 @@ struct G_SendGuildCard_BB_6x06 {
 } __packed__;
 
 // 6x07: Symbol chat
-
-struct SymbolChat {
-  // Bits: ----------------------DMSSSCCCFF
-  //   S = sound, C = face color, F = face shape, D = capture, M = mute sound
-  /* 00 */ le_uint32_t spec = 0;
-
-  // Corner objects are specified in reading order ([0] is the top-left one).
-  // Bits (each entry): ---VHCCCZZZZZZZZ
-  //   V = reverse vertical, H = reverse horizontal, C = color, Z = object
-  // If Z is all 1 bits (0xFF), no corner object is rendered.
-  /* 04 */ parray<le_uint16_t, 4> corner_objects;
-
-  struct FacePart {
-    uint8_t type = 0; // FF = no part in this slot
-    uint8_t x = 0;
-    uint8_t y = 0;
-    // Bits: ------VH (V = reverse vertical, H = reverse horizontal)
-    uint8_t flags = 0;
-  } __packed__;
-  /* 0C */ parray<FacePart, 12> face_parts;
-  /* 3C */
-} __packed__;
 
 struct G_SymbolChat_6x07 {
   G_UnusedHeader header;
@@ -5580,12 +5537,12 @@ struct G_ChallengeModeGrave_BB_6xD1 {
   le_uint32_t unknown_a5 = 0;
 } __packed__;
 
-// 6xD2: Set quest data 2 (BB)
+// 6xD2: Set quest global flag (BB)
 // Writes 4 bytes to the 32-bit field specified by index.
 
-struct G_SetQuestData2_BB_6xD2 {
+struct G_SetQuestGlobalFlag_BB_6xD2 {
   G_ClientIDHeader header;
-  le_uint32_t index = 0;
+  le_uint32_t index = 0; // There are 0x10 of them (0x00-0x0F)
   le_uint32_t value = 0;
 } __packed__;
 

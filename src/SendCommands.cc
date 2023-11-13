@@ -470,25 +470,23 @@ void send_client_init_bb(shared_ptr<Client> c, uint32_t error_code) {
 }
 
 void send_system_file_bb(shared_ptr<Client> c) {
-  send_command_t(c, 0x00E2, 0x00000000, c->game_data.account()->system_file);
+  send_command_t(c, 0x00E2, 0x00000000, *c->game_data.system());
 }
 
-void send_player_preview_bb(shared_ptr<Client> c, uint8_t player_index,
-    const PlayerDispDataBBPreview* preview) {
-
+void send_player_preview_bb(shared_ptr<Client> c, int8_t character_index, const PlayerDispDataBBPreview* preview) {
   if (!preview) {
     // no player exists
-    S_PlayerPreview_NoPlayer_BB_00E4 cmd = {player_index, 0x00000002};
+    S_PlayerPreview_NoPlayer_BB_00E4 cmd = {character_index, 0x00000002};
     send_command_t(c, 0x00E4, 0x00000000, cmd);
 
   } else {
-    SC_PlayerPreview_CreateCharacter_BB_00E5 cmd = {player_index, *preview};
+    SC_PlayerPreview_CreateCharacter_BB_00E5 cmd = {character_index, *preview};
     send_command_t(c, 0x00E5, 0x00000000, cmd);
   }
 }
 
 void send_guild_card_header_bb(shared_ptr<Client> c) {
-  uint32_t checksum = c->game_data.account()->guild_card_file.checksum();
+  uint32_t checksum = c->game_data.guild_cards()->checksum();
   S_GuildCardHeader_BB_01DC cmd = {1, sizeof(PSOBBGuildCardFile), checksum};
   send_command_t(c, 0x01DC, 0x00000000, cmd);
 }
@@ -505,7 +503,7 @@ void send_guild_card_chunk_bb(shared_ptr<Client> c, size_t chunk_index) {
   cmd.unknown = 0;
   cmd.chunk_index = chunk_index;
   cmd.data.assign_range(
-      reinterpret_cast<const uint8_t*>(&c->game_data.account()->guild_card_file) + chunk_offset,
+      reinterpret_cast<const uint8_t*>(c->game_data.guild_cards().get()) + chunk_offset,
       data_size, 0);
 
   send_command(c, 0x02DC, 0x00000000, &cmd, sizeof(cmd) - sizeof(cmd.data) + data_size);
@@ -591,50 +589,19 @@ void send_stream_file_chunk_bb(shared_ptr<Client> c, uint32_t chunk_index) {
 }
 
 void send_approve_player_choice_bb(shared_ptr<Client> c) {
-  S_ApprovePlayerChoice_BB_00E4 cmd = {c->game_data.bb_player_index, 1};
+  S_ApprovePlayerChoice_BB_00E4 cmd = {c->game_data.bb_character_index, 1};
   send_command_t(c, 0x00E4, 0x00000000, cmd);
 }
 
 void send_complete_player_bb(shared_ptr<Client> c) {
-  auto account = c->game_data.account();
-  auto player = c->game_data.player(true, false);
+  auto p = c->game_data.character(true, false);
+  auto sys = c->game_data.system(true);
   if (c->config.check_flag(Client::Flag::FORCE_ENGLISH_LANGUAGE_BB)) {
-    player->inventory.language = 1;
+    p->inventory.language = 1;
+    p->guild_card.language = 1;
+    sys->base.language = 1;
   }
-
-  SC_SyncCharacterSaveFile_BB_00E7 cmd;
-  cmd.inventory = player->inventory;
-  cmd.disp = player->disp;
-  cmd.disp.visual.compute_name_color_checksum();
-  cmd.disp.play_time = 0;
-  cmd.unknown_a1 = 0;
-  cmd.creation_timestamp = 0;
-  cmd.signature = 0xA205B064;
-  cmd.play_time_seconds = player->disp.play_time;
-  cmd.option_flags = account->option_flags;
-  cmd.quest_data1 = player->quest_data1;
-  cmd.bank = player->bank;
-  cmd.guild_card.guild_card_number = c->game_data.guild_card_number;
-  cmd.guild_card.name = player->disp.name;
-  cmd.guild_card.team_name = account->team_name;
-  cmd.guild_card.description = player->guild_card_description;
-  cmd.guild_card.present = 1;
-  cmd.guild_card.language = cmd.inventory.language;
-  cmd.guild_card.section_id = player->disp.visual.section_id;
-  cmd.guild_card.char_class = player->disp.visual.char_class;
-  cmd.unknown_a3 = 0;
-  cmd.symbol_chats = account->symbol_chats;
-  cmd.shortcuts = account->shortcuts;
-  cmd.auto_reply = player->auto_reply;
-  cmd.info_board = player->info_board;
-  cmd.battle_records = player->battle_records;
-  cmd.unknown_a4.clear(0);
-  cmd.challenge_records = player->challenge_records;
-  cmd.tech_menu_config = player->tech_menu_config;
-  cmd.unknown_a6.clear(0);
-  cmd.quest_data2 = player->quest_data2;
-  cmd.system_file = account->system_file;
-
+  SC_SyncSaveFiles_BB_E7 cmd = {*p, *sys};
   send_command_t(c, 0x00E7, 0x00000000, cmd);
 }
 
@@ -948,7 +915,7 @@ void send_info_board_t(shared_ptr<Client> c) {
     if (!other_c.get()) {
       continue;
     }
-    auto other_p = other_c->game_data.player(true, false);
+    auto other_p = other_c->game_data.character(true, false);
     auto& e = entries.emplace_back();
     e.name.encode(other_p->disp.name.decode(other_p->inventory.language), c->language());
     e.message.encode(add_color(other_p->info_board.decode(other_p->inventory.language)), c->language());
@@ -998,7 +965,7 @@ void send_card_search_result_t(
   cmd.location_string.encode(location_string, c->language());
   cmd.extension.lobby_refs[0].menu_id = MenuID::LOBBY;
   cmd.extension.lobby_refs[0].item_id = result_lobby->lobby_id;
-  auto rp = result->game_data.player(true, false);
+  auto rp = result->game_data.character(true, false);
   cmd.extension.player_name.encode(rp->disp.name.decode(rp->inventory.language), c->language());
 
   send_command_t(c, 0x41, 0x00, cmd);
@@ -1135,14 +1102,14 @@ void send_guild_card(shared_ptr<Client> c, shared_ptr<Client> source) {
     throw runtime_error("source player does not have a license");
   }
 
-  auto source_p = source->game_data.player(true, false);
+  auto source_p = source->game_data.character(true, false);
   uint32_t guild_card_number = source->license->serial_number;
   uint64_t xb_user_id = source->license->xb_user_id
       ? source->license->xb_user_id
       : (0xAE00000000000000 | guild_card_number);
   uint8_t language = source_p->inventory.language;
   string name = source_p->disp.name.decode(language);
-  string description = source_p->guild_card_description.decode(language);
+  string description = source_p->guild_card.description.decode(language);
   uint8_t section_id = source_p->disp.visual.section_id;
   uint8_t char_class = source_p->disp.visual.char_class;
 
@@ -1301,7 +1268,9 @@ void send_game_menu_t(
           e.flags |= 0x20;
           break;
         case GameMode::SOLO:
-          e.flags |= 0x34;
+          // These should only be visible to other BB clients
+          e.flags |= 0x04; // Grayed (but not disabled apparently)
+          e.episode = 0x10 | episode_num;
           break;
         default:
           throw logic_error("invalid game mode");
@@ -1445,7 +1414,7 @@ template <typename EntryT>
 void send_player_records_t(shared_ptr<Client> c, shared_ptr<Lobby> l, shared_ptr<Client> joining_client) {
   vector<EntryT> entries;
   auto add_client = [&](shared_ptr<Client> lc) -> void {
-    auto lp = lc->game_data.player(true, false);
+    auto lp = lc->game_data.character(true, false);
     auto& e = entries.emplace_back();
     e.client_id = lc->lobby_client_id;
     e.challenge = lp->challenge_records;
@@ -1497,7 +1466,7 @@ static void send_join_spectator_team(shared_ptr<Client> c, shared_ptr<Lobby> l) 
       if (!wc) {
         continue;
       }
-      auto wc_p = wc->game_data.player();
+      auto wc_p = wc->game_data.character();
       auto& p = cmd.players[z];
       p.lobby_data.player_tag = 0x00010000;
       p.lobby_data.guild_card_number = wc->license->serial_number;
@@ -1564,7 +1533,7 @@ static void send_join_spectator_team(shared_ptr<Client> c, shared_ptr<Lobby> l) 
   for (size_t z = 4; z < 12; z++) {
     if (l->clients[z]) {
       auto other_c = l->clients[z];
-      auto other_p = other_c->game_data.player();
+      auto other_p = other_c->game_data.character();
       auto& cmd_p = cmd.spectator_players[z - 4];
       auto& cmd_e = cmd.entries[z];
       cmd_p.lobby_data.player_tag = 0x00010000;
@@ -1606,7 +1575,7 @@ void send_join_game(shared_ptr<Client> c, shared_ptr<Lobby> l) {
         cmd.lobby_data[x].player_tag = 0x00010000;
         cmd.lobby_data[x].guild_card_number = lc->license->serial_number;
         cmd.lobby_data[x].client_id = lc->lobby_client_id;
-        cmd.lobby_data[x].name.encode(lc->game_data.player()->disp.name.decode(lc->language()), c->language());
+        cmd.lobby_data[x].name.encode(lc->game_data.character()->disp.name.decode(lc->language()), c->language());
         player_count++;
       } else {
         cmd.lobby_data[x].clear();
@@ -1677,7 +1646,7 @@ void send_join_game(shared_ptr<Client> c, shared_ptr<Lobby> l) {
         auto s = c->require_server_state();
         for (size_t x = 0; x < 4; x++) {
           if (l->clients[x]) {
-            auto other_p = l->clients[x]->game_data.player();
+            auto other_p = l->clients[x]->game_data.character();
             cmd.players_ep3[x].inventory = other_p->inventory;
             cmd.players_ep3[x].inventory.encode_for_version(c->version(), s->item_parameter_table_for_version(c->version()));
             cmd.players_ep3[x].disp = convert_player_disp_data<PlayerDispDataDCPCV3>(other_p->disp, c->language(), other_p->inventory.language);
@@ -1794,7 +1763,7 @@ void send_join_lobby_t(shared_ptr<Client> c, shared_ptr<Lobby> l, shared_ptr<Cli
 
   size_t used_entries = 0;
   for (const auto& lc : lobby_clients) {
-    auto lp = lc->game_data.player();
+    auto lp = lc->game_data.character();
     auto& e = cmd.entries[used_entries++];
     e.lobby_data.player_tag = 0x00010000;
     e.lobby_data.guild_card_number = lc->license->serial_number;
@@ -1866,7 +1835,7 @@ void send_join_lobby_xb(shared_ptr<Client> c, shared_ptr<Lobby> l, shared_ptr<Cl
 
   size_t used_entries = 0;
   for (const auto& lc : lobby_clients) {
-    auto lp = lc->game_data.player();
+    auto lp = lc->game_data.character();
     auto& e = cmd.entries[used_entries++];
     e.lobby_data.player_tag = 0x00010000;
     e.lobby_data.guild_card_number = lc->license->serial_number;
@@ -1919,7 +1888,7 @@ void send_join_lobby_dc_nte(shared_ptr<Client> c, shared_ptr<Lobby> l,
 
   size_t used_entries = 0;
   for (const auto& lc : lobby_clients) {
-    auto lp = lc->game_data.player();
+    auto lp = lc->game_data.character();
     auto& e = cmd.entries[used_entries++];
     e.lobby_data.player_tag = 0x00010000;
     e.lobby_data.guild_card_number = lc->license->serial_number;
@@ -2242,7 +2211,7 @@ void send_bank(shared_ptr<Client> c) {
     throw logic_error("6xBC can only be sent to BB clients");
   }
 
-  auto p = c->game_data.player();
+  auto p = c->game_data.character();
   const auto* items_it = p->bank.items.data();
   vector<PlayerBankItem> items(items_it, items_it + p->bank.num_items);
 
@@ -2278,7 +2247,7 @@ void send_shop(shared_ptr<Client> c, uint8_t shop_type) {
 
 void send_level_up(shared_ptr<Client> c) {
   auto l = c->require_lobby();
-  auto p = c->game_data.player();
+  auto p = c->game_data.character();
   CharacterStats stats = p->disp.stats.char_stats;
 
   const ItemData* mag = nullptr;
@@ -2547,12 +2516,12 @@ string ep3_description_for_client(shared_ptr<Client> c) {
   if (!c->config.check_flag(Client::Flag::IS_EPISODE_3)) {
     throw runtime_error("client is not Episode 3");
   }
-  auto player = c->game_data.player();
+  auto p = c->game_data.character();
   return string_printf(
       "%s CLv%" PRIu32 " %c",
-      name_for_char_class(player->disp.visual.char_class),
-      player->disp.stats.level + 1,
-      char_for_language_code(player->inventory.language));
+      name_for_char_class(p->disp.visual.char_class),
+      p->disp.stats.level + 1,
+      char_for_language_code(p->inventory.language));
 }
 
 void send_ep3_game_details(shared_ptr<Client> c, shared_ptr<Lobby> l) {
@@ -2595,7 +2564,7 @@ void send_ep3_game_details(shared_ptr<Client> c, shared_ptr<Lobby> l) {
           if (player.is_human()) {
             try {
               auto other_c = serial_number_to_client.at(player.serial_number);
-              entry.name.encode(other_c->game_data.player()->disp.name.decode(other_c->language()), c->language());
+              entry.name.encode(other_c->game_data.character()->disp.name.decode(other_c->language()), c->language());
               entry.description.encode(ep3_description_for_client(other_c), c->language());
             } catch (const out_of_range&) {
               entry.name.encode(player.player_name, c->language());
@@ -2616,7 +2585,7 @@ void send_ep3_game_details(shared_ptr<Client> c, shared_ptr<Lobby> l) {
       for (auto spec_c : l->clients) {
         if (spec_c) {
           auto& entry = cmd.spectator_entries[cmd.num_spectators++];
-          entry.name.encode(spec_c->game_data.player()->disp.name.decode(spec_c->language()), c->language());
+          entry.name.encode(spec_c->game_data.character()->disp.name.decode(spec_c->language()), c->language());
           entry.description.encode(ep3_description_for_client(spec_c), c->language());
         }
       }
@@ -2633,7 +2602,7 @@ void send_ep3_game_details(shared_ptr<Client> c, shared_ptr<Lobby> l) {
       size_t num_players = 0;
       for (const auto& opp_c : primary_lobby->clients) {
         if (opp_c) {
-          cmd.player_entries[num_players].name.encode(opp_c->game_data.player()->disp.name.decode(opp_c->language()), c->language());
+          cmd.player_entries[num_players].name.encode(opp_c->game_data.character()->disp.name.decode(opp_c->language()), c->language());
           cmd.player_entries[num_players].description.encode(ep3_description_for_client(opp_c), c->language());
           num_players++;
         }
@@ -2646,7 +2615,7 @@ void send_ep3_game_details(shared_ptr<Client> c, shared_ptr<Lobby> l) {
       for (auto spec_c : l->clients) {
         if (spec_c) {
           auto& entry = cmd.spectator_entries[num_spectators++];
-          entry.name.encode(spec_c->game_data.player()->disp.name.decode(spec_c->language()), c->language());
+          entry.name.encode(spec_c->game_data.character()->disp.name.decode(spec_c->language()), c->language());
           entry.description.encode(ep3_description_for_client(spec_c), c->language());
         }
       }
@@ -2757,7 +2726,7 @@ void send_ep3_tournament_match_result(shared_ptr<Lobby> l, uint32_t meseta_rewar
         if (player.is_human()) {
           try {
             auto pc = serial_number_to_client.at(player.serial_number);
-            entry.player_names[z].encode(pc->game_data.player()->disp.name.decode(pc->language()), lc->language());
+            entry.player_names[z].encode(pc->game_data.character()->disp.name.decode(pc->language()), lc->language());
           } catch (const out_of_range&) {
             entry.player_names[z].encode(player.player_name, lc->language());
           }

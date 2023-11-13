@@ -16,7 +16,7 @@ Tournament::PlayerEntry::PlayerEntry(uint32_t serial_number, const string& playe
 Tournament::PlayerEntry::PlayerEntry(shared_ptr<Client> c)
     : serial_number(c->license->serial_number),
       client(c),
-      player_name(c->game_data.player()->disp.name.decode(c->language())) {}
+      player_name(c->game_data.character()->disp.name.decode(c->language())) {}
 
 Tournament::PlayerEntry::PlayerEntry(
     shared_ptr<const COMDeckDefinition> com_deck)

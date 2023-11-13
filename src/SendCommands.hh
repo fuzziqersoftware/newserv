@@ -161,8 +161,7 @@ void send_pc_console_split_reconnect(
 
 void send_client_init_bb(std::shared_ptr<Client> c, uint32_t error);
 void send_system_file_bb(std::shared_ptr<Client> c);
-void send_player_preview_bb(std::shared_ptr<Client> c, uint8_t player_index,
-    const PlayerDispDataBBPreview* preview);
+void send_player_preview_bb(std::shared_ptr<Client> c, int8_t character_index, const PlayerDispDataBBPreview* preview);
 void send_accept_client_checksum_bb(std::shared_ptr<Client> c);
 void send_guild_card_header_bb(std::shared_ptr<Client> c);
 void send_guild_card_chunk_bb(std::shared_ptr<Client> c, size_t chunk_index);

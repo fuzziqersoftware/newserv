@@ -112,7 +112,6 @@ void Server::on_listen_accept(
       BEV_OPT_CLOSE_ON_FREE | BEV_OPT_DEFER_CALLBACKS);
   shared_ptr<Client> c(new Client(
       this->shared_from_this(), bev, listening_socket->version, listening_socket->behavior));
-  c->game_data.should_save = this->state->allow_saving;
   c->channel.on_command_received = Server::on_client_input;
   c->channel.on_error = Server::on_client_error;
   c->channel.context_obj = this;
@@ -133,7 +132,6 @@ void Server::connect_client(
     struct bufferevent* bev, uint32_t address, uint16_t client_port,
     uint16_t server_port, GameVersion version, ServerBehavior initial_state) {
   shared_ptr<Client> c(new Client(this->shared_from_this(), bev, version, initial_state));
-  c->game_data.should_save = this->state->allow_saving;
   c->channel.on_command_received = Server::on_client_input;
   c->channel.on_error = Server::on_client_error;
   c->channel.context_obj = this;
@@ -318,7 +316,7 @@ vector<shared_ptr<Client>> Server::get_clients_by_identifier(const string& ident
       continue;
     }
 
-    auto p = c->game_data.player(false, false);
+    auto p = c->game_data.character(false, false);
     if (p && p->disp.name.eq(ident, p->inventory.language)) {
       results.emplace_back(std::move(c));
       continue;

@@ -197,7 +197,7 @@ struct Client : public std::enable_shared_from_this<Client> {
   G_SwitchStateChanged_6x05 last_switch_enabled_command;
   bool can_chat;
   std::string pending_bb_save_username;
-  uint8_t pending_bb_save_player_index;
+  uint8_t pending_bb_save_character_index;
   std::deque<std::function<void(uint32_t, uint32_t)>> function_call_response_queue;
 
   // File loading state

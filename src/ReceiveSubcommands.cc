@@ -430,22 +430,22 @@ static void on_send_guild_card(shared_ptr<Client> c, uint8_t command, uint8_t fl
   switch (c->version()) {
     case GameVersion::DC: {
       const auto& cmd = check_size_t<G_SendGuildCard_DC_6x06>(data, size);
-      c->game_data.player(true, false)->guild_card_description.encode(cmd.guild_card.description.decode(c->language()), c->language());
+      c->game_data.character(true, false)->guild_card.description.encode(cmd.guild_card.description.decode(c->language()), c->language());
       break;
     }
     case GameVersion::PC: {
       const auto& cmd = check_size_t<G_SendGuildCard_PC_6x06>(data, size);
-      c->game_data.player(true, false)->guild_card_description = cmd.guild_card.description;
+      c->game_data.character(true, false)->guild_card.description = cmd.guild_card.description;
       break;
     }
     case GameVersion::GC: {
       const auto& cmd = check_size_t<G_SendGuildCard_GC_6x06>(data, size);
-      c->game_data.player(true, false)->guild_card_description.encode(cmd.guild_card.description.decode(c->language()), c->language());
+      c->game_data.character(true, false)->guild_card.description.encode(cmd.guild_card.description.decode(c->language()), c->language());
       break;
     }
     case GameVersion::XB: {
       const auto& cmd = check_size_t<G_SendGuildCard_XB_6x06>(data, size);
-      c->game_data.player(true, false)->guild_card_description.encode(cmd.guild_card.description.decode(c->language()), c->language());
+      c->game_data.character(true, false)->guild_card.description.encode(cmd.guild_card.description.decode(c->language()), c->language());
       break;
     }
     case GameVersion::BB:
@@ -522,7 +522,7 @@ static void on_word_select_t(shared_ptr<Client> c, uint8_t command, uint8_t, con
         }
 
       } catch (const exception& e) {
-        string name = c->game_data.player()->disp.name.decode(c->language());
+        string name = c->game_data.character()->disp.name.decode(c->language());
         lc->log.warning("Untranslatable Word Select message: %s", e.what());
         send_text_message_printf(lc, "$C4Untranslatable Word\nSelect message from\n%s", name.c_str());
       }
@@ -576,7 +576,7 @@ static void on_player_died(shared_ptr<Client> c, uint8_t command, uint8_t flag, 
 
   if (l->check_flag(Lobby::Flag::ITEM_TRACKING_ENABLED)) {
     try {
-      auto& inventory = c->game_data.player()->inventory;
+      auto& inventory = c->game_data.character()->inventory;
       size_t mag_index = inventory.find_equipped_mag();
       auto& data = inventory.items[mag_index].data;
       data.data2[0] = max<int8_t>(static_cast<int8_t>(data.data2[0] - 5), 0);
@@ -709,7 +709,7 @@ static void on_player_drop_item(shared_ptr<Client> c, uint8_t command, uint8_t f
 
   auto l = c->require_lobby();
   if (l->check_flag(Lobby::Flag::ITEM_TRACKING_ENABLED)) {
-    auto p = c->game_data.player();
+    auto p = c->game_data.character();
     auto item = p->remove_item(cmd.item_id, 0, c->version() != GameVersion::BB);
     l->add_item(item, cmd.area, cmd.x, cmd.z);
 
@@ -768,7 +768,7 @@ static void on_create_inventory_item_t(shared_ptr<Client> c, uint8_t command, ui
 
   auto l = c->require_lobby();
   if (l->check_flag(Lobby::Flag::ITEM_TRACKING_ENABLED)) {
-    auto p = c->game_data.player();
+    auto p = c->game_data.character();
     ItemData item = cmd.item_data;
     item.decode_for_version(c->version());
     l->on_item_id_generated_externally(item.id);
@@ -827,7 +827,7 @@ static void on_drop_partial_stack_t(shared_ptr<Client> c, uint8_t command, uint8
       string name = s->describe_item(c->version(), item, true);
       send_text_message_printf(c, "$C5SPLIT %08" PRIX32 "\n%s", item.id.load(), name.c_str());
     }
-    c->game_data.player()->print_inventory(stderr, c->version(), s->item_name_index);
+    c->game_data.character()->print_inventory(stderr, c->version(), s->item_name_index);
   }
 
   forward_subcommand_with_item_transcode_t(c, command, flag, cmd);
@@ -856,7 +856,7 @@ static void on_drop_partial_stack_bb(shared_ptr<Client> c, uint8_t command, uint
       throw logic_error("item tracking not enabled in BB game");
     }
 
-    auto p = c->game_data.player();
+    auto p = c->game_data.character();
     auto item = p->remove_item(cmd.item_id, cmd.amount, c->version() != GameVersion::BB);
 
     // If a stack was split, the original item still exists, so the dropped item
@@ -905,7 +905,7 @@ static void on_buy_shop_item(shared_ptr<Client> c, uint8_t command, uint8_t flag
   }
 
   if (l->check_flag(Lobby::Flag::ITEM_TRACKING_ENABLED)) {
-    auto p = c->game_data.player();
+    auto p = c->game_data.character();
     ItemData item = cmd.item_data;
     item.data2d = 0; // Clear the price field
     item.decode_for_version(c->version());
@@ -1004,7 +1004,7 @@ static void on_pick_up_item(shared_ptr<Client> c, uint8_t command, uint8_t flag,
 
   if (l->check_flag(Lobby::Flag::ITEM_TRACKING_ENABLED)) {
     auto s = c->require_server_state();
-    auto effective_p = effective_c->game_data.player();
+    auto effective_p = effective_c->game_data.character();
 
     // It seems the client just plays it fast and loose with these commands.
     // There can be multiple 6x5A (request to pick up item) commands in flight,
@@ -1072,7 +1072,7 @@ static void on_pick_up_item_request(shared_ptr<Client> c, uint8_t command, uint8
       throw logic_error("item tracking not enabled in BB game");
     }
 
-    auto p = c->game_data.player();
+    auto p = c->game_data.character();
     auto item = l->remove_item(cmd.item_id);
     p->add_item(item);
 
@@ -1107,7 +1107,7 @@ static void on_equip_unequip_item(shared_ptr<Client> c, uint8_t command, uint8_t
 
   auto l = c->require_lobby();
   if (l->check_flag(Lobby::Flag::ITEM_TRACKING_ENABLED)) {
-    auto p = c->game_data.player();
+    auto p = c->game_data.character();
     size_t index = p->inventory.find_item(cmd.item_id);
     if (cmd.header.subcommand == 0x25) { // Equip
       p->inventory.items[index].flags |= 0x00000008;
@@ -1135,7 +1135,7 @@ static void on_use_item(
   auto l = c->require_lobby();
   if (l->check_flag(Lobby::Flag::ITEM_TRACKING_ENABLED)) {
     auto s = c->require_server_state();
-    auto p = c->game_data.player();
+    auto p = c->game_data.character();
     size_t index = p->inventory.find_item(cmd.item_id);
     string name, colored_name;
     {
@@ -1173,7 +1173,7 @@ static void on_feed_mag(
   auto l = c->require_lobby();
   if (l->check_flag(Lobby::Flag::ITEM_TRACKING_ENABLED)) {
     auto s = c->require_server_state();
-    auto p = c->game_data.player();
+    auto p = c->game_data.character();
 
     size_t mag_index = p->inventory.find_item(cmd.mag_item_id);
     size_t fed_index = p->inventory.find_item(cmd.fed_item_id);
@@ -1228,7 +1228,7 @@ static void on_open_shop_bb_or_ep3_battle_subs(shared_ptr<Client> c, uint8_t com
       }
 
       auto s = c->require_server_state();
-      size_t level = c->game_data.player()->disp.stats.level + 1;
+      size_t level = c->game_data.character()->disp.stats.level + 1;
       switch (cmd.shop_type) {
         case 0:
           c->game_data.shop_contents[0] = l->item_creator->generate_tool_shop_contents(level);
@@ -1275,7 +1275,7 @@ static void on_ep3_private_word_select_bb_bank_action(shared_ptr<Client> c, uint
       throw logic_error("item tracking not enabled in BB game");
     }
 
-    auto p = c->game_data.player();
+    auto p = c->game_data.character();
     if (cmd.action == 0) { // Deposit
       if (cmd.item_id == 0xFFFFFFFF) { // Deposit Meseta
         if (cmd.meseta_amount > p->disp.stats.meseta) {
@@ -1299,7 +1299,7 @@ static void on_ep3_private_word_select_bb_bank_action(shared_ptr<Client> c, uint
         string name = s->item_name_index->describe_item(GameVersion::BB, item);
         l->log.info("Player %hu deposited item %08" PRIX32 " (x%hhu) (%s) in the bank",
             c->lobby_client_id, cmd.item_id.load(), cmd.item_amount, name.c_str());
-        c->game_data.player()->print_inventory(stderr, c->version(), s->item_name_index);
+        c->game_data.character()->print_inventory(stderr, c->version(), s->item_name_index);
       }
 
     } else if (cmd.action == 1) { // Take
@@ -1326,7 +1326,7 @@ static void on_ep3_private_word_select_bb_bank_action(shared_ptr<Client> c, uint
         string name = s->item_name_index->describe_item(GameVersion::BB, item);
         l->log.info("Player %hu withdrew item %08" PRIX32 " (x%hhu) (%s) from the bank",
             c->lobby_client_id, cmd.item_id.load(), cmd.item_amount, name.c_str());
-        c->game_data.player()->print_inventory(stderr, c->version(), s->item_name_index);
+        c->game_data.character()->print_inventory(stderr, c->version(), s->item_name_index);
       }
     }
 
@@ -1344,7 +1344,7 @@ static void on_sort_inventory_bb(shared_ptr<Client> c, uint8_t, uint8_t, const v
       throw logic_error("item tracking not enabled in BB game");
     }
 
-    auto p = c->game_data.player();
+    auto p = c->game_data.character();
 
     // Make sure the set of item IDs passed in by the client exactly matches the
     // set of item IDs present in the inventory
@@ -1495,17 +1495,16 @@ static void on_set_quest_flag(shared_ptr<Client> c, uint8_t command, uint8_t fla
   }
 
   // TODO: Should we allow overlays here?
-  auto p = c->game_data.player(true, false);
+  auto p = c->game_data.character(true, false);
 
   // The client explicitly checks for both 0 and 1 - any other value means no
   // operation is performed.
-  size_t bit_index = (difficulty << 10) + flag_index;
-  size_t byte_index = bit_index >> 3;
-  uint8_t mask = 0x80 >> (bit_index & 7);
+  size_t byte_index = flag_index >> 3;
+  uint8_t mask = 0x80 >> (flag_index & 7);
   if (action == 0) {
-    p->quest_data1[byte_index] |= mask;
+    p->quest_flags[difficulty][byte_index] |= mask;
   } else if (action == 1) {
-    p->quest_data1[byte_index] &= (~mask);
+    p->quest_flags[difficulty][byte_index] &= (~mask);
   }
 
   forward_subcommand(c, command, flag, data, size);
@@ -1655,7 +1654,7 @@ static void on_charge_attack_bb(shared_ptr<Client> c, uint8_t command, uint8_t f
   forward_subcommand(c, command, flag, data, size);
 
   const auto& cmd = check_size_t<G_ChargeAttack_BB_6xC7>(data, size);
-  auto& disp = c->game_data.player()->disp;
+  auto& disp = c->game_data.character()->disp;
   if (cmd.meseta_amount > disp.stats.meseta) {
     disp.stats.meseta = 0;
   } else {
@@ -1671,7 +1670,7 @@ static void on_level_up(shared_ptr<Client> c, uint8_t command, uint8_t flag, con
     return;
   }
 
-  auto p = c->game_data.player();
+  auto p = c->game_data.character();
   p->disp.stats.char_stats.atp = cmd.atp;
   p->disp.stats.char_stats.mst = cmd.mst;
   p->disp.stats.char_stats.evp = cmd.evp;
@@ -1685,7 +1684,7 @@ static void on_level_up(shared_ptr<Client> c, uint8_t command, uint8_t flag, con
 
 static void add_player_exp(shared_ptr<Client> c, uint32_t exp) {
   auto s = c->require_server_state();
-  auto p = c->game_data.player();
+  auto p = c->game_data.character();
 
   p->disp.stats.experience += exp;
   send_give_experience(c, exp);
@@ -1720,7 +1719,7 @@ static void on_steal_exp_bb(shared_ptr<Client> c, uint8_t, uint8_t, const void* 
 
   const auto& cmd = check_size_t<G_StealEXP_BB_6xC6>(data, size);
 
-  auto p = c->game_data.player();
+  auto p = c->game_data.character();
   const auto& enemy = l->map->enemies.at(cmd.enemy_index);
   const auto& inventory = p->inventory;
   const auto& weapon = inventory.items[inventory.find_equipped_weapon()];
@@ -1821,14 +1820,14 @@ static void on_enemy_killed_bb(shared_ptr<Client> c, uint8_t command, uint8_t fl
         send_text_message_printf(c, "$C5+%" PRIu32 " E-%hX %s",
             player_exp, cmd.enemy_index.load(), name_for_enum(e.type));
       }
-      if (other_c->game_data.player()->disp.stats.level < 199) {
+      if (other_c->game_data.character()->disp.stats.level < 199) {
         add_player_exp(other_c, player_exp);
       }
     }
   }
 
   // Update kill counts on unsealable items
-  auto& inventory = c->game_data.player()->inventory;
+  auto& inventory = c->game_data.character()->inventory;
   for (size_t z = 0; z < inventory.num_items; z++) {
     auto& item = inventory.items[z];
     if ((item.flags & 0x08) &&
@@ -1841,7 +1840,7 @@ static void on_enemy_killed_bb(shared_ptr<Client> c, uint8_t command, uint8_t fl
 void on_meseta_reward_request_bb(shared_ptr<Client> c, uint8_t, uint8_t, const void* data, size_t size) {
   const auto& cmd = check_size_t<G_MesetaRewardRequest_BB_6xC9>(data, size);
 
-  auto p = c->game_data.player();
+  auto p = c->game_data.character();
   if (cmd.amount < 0) {
     if (-cmd.amount > static_cast<int32_t>(p->disp.stats.meseta.load())) {
       p->disp.stats.meseta = 0;
@@ -1867,7 +1866,7 @@ void on_item_reward_request_bb(shared_ptr<Client> c, uint8_t, uint8_t, const voi
   ItemData item;
   item = cmd.item_data;
   item.id = l->generate_item_id(0xFF);
-  c->game_data.player()->add_item(item);
+  c->game_data.character()->add_item(item);
   send_create_inventory_item(c, item);
 }
 
@@ -1884,7 +1883,7 @@ static void on_destroy_inventory_item(shared_ptr<Client> c, uint8_t command, uin
 
   if (l->check_flag(Lobby::Flag::ITEM_TRACKING_ENABLED)) {
     auto s = c->require_server_state();
-    auto p = c->game_data.player();
+    auto p = c->game_data.character();
     auto item = p->remove_item(cmd.item_id, cmd.amount, c->version() != GameVersion::BB);
     auto name = s->describe_item(c->version(), item, false);
     l->log.info("Player %hhu destroyed inventory item %hu:%08" PRIX32 " (%s)",
@@ -1936,7 +1935,7 @@ static void on_identify_item_bb(shared_ptr<Client> c, uint8_t command, uint8_t f
       throw logic_error("received item identify subcommand without item creator present");
     }
 
-    auto p = c->game_data.player();
+    auto p = c->game_data.character();
     size_t x = p->inventory.find_item(cmd.item_id);
     if (p->inventory.items[x].data.data1[0] != 0) {
       return; // Only weapons can be identified
@@ -1968,7 +1967,7 @@ static void on_accept_identify_item_bb(shared_ptr<Client> c, uint8_t command, ui
     if (c->game_data.identify_result.id != cmd.item_id) {
       throw runtime_error("accepted item ID does not match previous identify request");
     }
-    c->game_data.player()->add_item(c->game_data.identify_result);
+    c->game_data.character()->add_item(c->game_data.identify_result);
     send_create_inventory_item(c, c->game_data.identify_result);
     c->game_data.identify_result.clear();
 
@@ -1988,7 +1987,7 @@ static void on_sell_item_at_shop_bb(shared_ptr<Client> c, uint8_t command, uint8
     }
 
     auto s = c->require_server_state();
-    auto p = c->game_data.player();
+    auto p = c->game_data.character();
     auto item = p->remove_item(cmd.item_id, cmd.amount, c->version() != GameVersion::BB);
     size_t price = (s->item_parameter_table_for_version(c->version())->price_for_item(item) >> 3) * cmd.amount;
     p->add_meseta(price);
@@ -2025,7 +2024,7 @@ static void on_buy_shop_item_bb(shared_ptr<Client> c, uint8_t, uint8_t, const vo
 
     size_t price = item.data2d * cmd.amount;
     item.data2d = 0;
-    auto p = c->game_data.player();
+    auto p = c->game_data.character();
     p->remove_meseta(price, false);
 
     item.id = cmd.inventory_item_id;
@@ -2048,7 +2047,7 @@ static void on_buy_shop_item_bb(shared_ptr<Client> c, uint8_t, uint8_t, const vo
 static void on_medical_center_bb(shared_ptr<Client> c, uint8_t, uint8_t, const void*, size_t) {
   auto l = c->require_lobby();
   if (l->is_game() && (l->base_version == GameVersion::BB)) {
-    c->game_data.player()->remove_meseta(10, false);
+    c->game_data.character()->remove_meseta(10, false);
   }
 }
 
@@ -2089,7 +2088,7 @@ static void on_battle_level_up_bb(shared_ptr<Client> c, uint8_t, uint8_t, const 
     auto lc = l->clients[cmd.header.client_id];
     if (lc) {
       auto s = c->require_server_state();
-      auto lp = lc->game_data.player();
+      auto lp = lc->game_data.character();
       uint32_t target_level = lp->disp.stats.level + cmd.num_levels;
       uint32_t before_exp = lp->disp.stats.experience;
       lp->disp.stats.advance_to_level(lp->disp.visual.char_class, target_level, s->level_table);
@@ -2107,7 +2106,7 @@ static void on_quest_exchange_item_bb(shared_ptr<Client> c, uint8_t, uint8_t, co
     const auto& cmd = check_size_t<G_ExchangeItemInQuest_BB_6xD5>(data, size);
 
     try {
-      auto p = c->game_data.player();
+      auto p = c->game_data.character();
 
       size_t found_index = p->inventory.find_item_by_primary_identifier(cmd.find_item.primary_identifier());
       auto found_item = p->remove_item(p->inventory.items[found_index].data.id, 1, false);
@@ -2134,7 +2133,7 @@ static void on_wrap_item_bb(shared_ptr<Client> c, uint8_t, uint8_t, const void* 
   if (l->is_game() && (l->base_version == GameVersion::BB)) {
     const auto& cmd = check_size_t<G_WrapItem_BB_6xD6>(data, size);
 
-    auto p = c->game_data.player();
+    auto p = c->game_data.character();
     auto item = p->remove_item(cmd.item.id, 1, false);
     send_destroy_item(c, item.id, 1);
     item.wrap();
@@ -2149,7 +2148,7 @@ static void on_photon_drop_exchange_bb(shared_ptr<Client> c, uint8_t, uint8_t, c
     const auto& cmd = check_size_t<G_PaganiniPhotonDropExchange_BB_6xD7>(data, size);
 
     try {
-      auto p = c->game_data.player();
+      auto p = c->game_data.character();
 
       size_t found_index = p->inventory.find_item_by_primary_identifier(0x031000);
       auto found_item = p->remove_item(p->inventory.items[found_index].data.id, 0, false);
@@ -2175,7 +2174,7 @@ static void on_photon_crystal_exchange_bb(shared_ptr<Client> c, uint8_t, uint8_t
   auto l = c->require_lobby();
   if (l->is_game() && (l->base_version == GameVersion::BB) && l->check_flag(Lobby::Flag::QUEST_IN_PROGRESS)) {
     check_size_t<G_BlackPaperDealPhotonCrystalExchange_BB_6xDF>(data, size);
-    auto p = c->game_data.player();
+    auto p = c->game_data.character();
     size_t index = p->inventory.find_item_by_primary_identifier(0x031002);
     auto item = p->remove_item(p->inventory.items[index].data.id, 1, false);
     send_destroy_item(c, item.id, 1);
@@ -2187,7 +2186,7 @@ static void on_momoka_item_exchange_bb(shared_ptr<Client> c, uint8_t, uint8_t, c
   auto l = c->require_lobby();
   if (l->is_game() && (l->base_version == GameVersion::BB) && l->check_flag(Lobby::Flag::QUEST_IN_PROGRESS)) {
     const auto& cmd = check_size_t<G_MomokaItemExchange_BB_6xD9>(data, size);
-    auto p = c->game_data.player();
+    auto p = c->game_data.character();
     try {
       size_t found_index = p->inventory.find_item_by_primary_identifier(cmd.find_item.primary_identifier());
       auto found_item = p->remove_item(p->inventory.items[found_index].data.id, 1, false);
@@ -2216,7 +2215,7 @@ static void on_upgrade_weapon_attribute_bb(shared_ptr<Client> c, uint8_t, uint8_
   auto l = c->require_lobby();
   if (l->is_game() && (l->base_version == GameVersion::BB) && l->check_flag(Lobby::Flag::QUEST_IN_PROGRESS)) {
     const auto& cmd = check_size_t<G_UpgradeWeaponAttribute_BB_6xDA>(data, size);
-    auto p = c->game_data.player();
+    auto p = c->game_data.character();
     try {
       size_t item_index = p->inventory.find_item(cmd.item_id);
       auto& item = p->inventory.items[item_index].data;
@@ -2266,9 +2265,9 @@ static void on_upgrade_weapon_attribute_bb(shared_ptr<Client> c, uint8_t, uint8_
   }
 }
 
-static void on_write_quest_data2_bb(shared_ptr<Client> c, uint8_t, uint8_t, const void* data, size_t size) {
-  const auto& cmd = check_size_t<G_SetQuestData2_BB_6xD2>(data, size);
-  c->game_data.player()->quest_data2[cmd.index] = cmd.value;
+static void on_write_quest_global_flag_bb(shared_ptr<Client> c, uint8_t, uint8_t, const void* data, size_t size) {
+  const auto& cmd = check_size_t<G_SetQuestGlobalFlag_BB_6xD2>(data, size);
+  c->game_data.character()->quest_global_flags[cmd.index] = cmd.value;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2486,7 +2485,7 @@ subcommand_handler_t subcommand_handlers[0x100] = {
     /* 6xCF */ on_battle_restart_bb,
     /* 6xD0 */ on_battle_level_up_bb,
     /* 6xD1 */ nullptr,
-    /* 6xD2 */ on_write_quest_data2_bb,
+    /* 6xD2 */ on_write_quest_global_flag_bb,
     /* 6xD3 */ nullptr,
     /* 6xD4 */ nullptr,
     /* 6xD5 */ on_quest_exchange_item_bb,

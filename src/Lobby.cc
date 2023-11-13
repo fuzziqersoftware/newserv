@@ -193,7 +193,7 @@ void Lobby::add_client(shared_ptr<Client> c, ssize_t required_client_id) {
   // item IDs
   if (this->is_game() && this->check_flag(Lobby::Flag::ITEM_TRACKING_ENABLED)) {
     auto s = this->require_server_state();
-    auto p = c->game_data.player();
+    auto p = c->game_data.character();
     auto& inv = p->inventory;
     size_t count = min<uint8_t>(inv.num_items, 30);
     for (size_t x = 0; x < count; x++) {
@@ -205,7 +205,7 @@ void Lobby::add_client(shared_ptr<Client> c, ssize_t required_client_id) {
 
   // If the lobby is recording a battle record, add the player join event
   if (this->battle_record) {
-    auto p = c->game_data.player();
+    auto p = c->game_data.character();
     PlayerLobbyDataDCGC lobby_data;
     lobby_data.player_tag = 0x00010000;
     lobby_data.guild_card_number = c->license->serial_number;
@@ -304,7 +304,7 @@ shared_ptr<Client> Lobby::find_client(const string* identifier, uint64_t serial_
         (lc->license->serial_number == serial_number)) {
       return lc;
     }
-    if (identifier && (lc->game_data.player()->disp.name.eq(*identifier, lc->language()))) {
+    if (identifier && (lc->game_data.character()->disp.name.eq(*identifier, lc->language()))) {
       return lc;
     }
   }

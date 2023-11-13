@@ -16,7 +16,7 @@ void player_use_item(shared_ptr<Client> c, size_t item_index) {
   // delete the item here.
   bool should_delete_item = (c->version() != GameVersion::DC) && (c->version() != GameVersion::PC);
 
-  auto player = c->game_data.player();
+  auto player = c->game_data.character();
   auto& item = player->inventory.items[item_index];
   uint32_t item_identifier = item.data.primary_identifier();
 
@@ -53,10 +53,10 @@ void player_use_item(shared_ptr<Client> c, size_t item_index) {
     weapon.data.data1[3] += (item.data.data1[2] + 1);
 
   } else if ((item_identifier & 0xFFFF00) == 0x030B00) { // Material
-    auto p = c->game_data.player();
+    auto p = c->game_data.character();
     bool track_non_hp_tp_materials = (c->version() != GameVersion::DC) && (c->version() != GameVersion::PC);
 
-    using Type = SavedPlayerDataBB::MaterialType;
+    using Type = PSOBBCharacterFile::MaterialType;
     Type type;
     switch (item.data.data1[2]) {
       case 0: // Power Material
@@ -276,7 +276,7 @@ void player_feed_mag(std::shared_ptr<Client> c, size_t mag_item_index, size_t fe
   });
 
   auto s = c->require_server_state();
-  auto player = c->game_data.player();
+  auto player = c->game_data.character();
   auto& fed_item = player->inventory.items[fed_item_index];
   auto& mag_item = player->inventory.items[mag_item_index];
 

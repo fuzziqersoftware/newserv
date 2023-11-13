@@ -170,7 +170,7 @@ Client::Client(
       card_battle_table_seat_state(0),
       next_exp_value(0),
       can_chat(true),
-      pending_bb_save_player_index(0),
+      pending_bb_save_character_index(0),
       dol_base_addr(0) {
 
   this->config.set_flags_for_version(version, -1);
@@ -267,11 +267,8 @@ void Client::save_game_data() {
   if (this->version() != GameVersion::BB) {
     throw logic_error("save_game_data called for non-BB client");
   }
-  if (this->game_data.account(false)) {
-    this->game_data.save_account_data();
-  }
-  if (this->game_data.player(false)) {
-    this->game_data.save_player_data();
+  if (this->game_data.character(false)) {
+    this->game_data.save_character_file();
   }
 }
 

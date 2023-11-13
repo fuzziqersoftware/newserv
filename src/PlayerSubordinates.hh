@@ -18,8 +18,6 @@
 
 class ItemParameterTable;
 
-extern FileContentsCache player_files_cache;
-
 // PSO V2 stored some extra data in the character structs in a format that I'm
 // sure Sega thought was very clever for backward compatibility, but for us is
 // just plain annoying. Specifically, they used the third and fourth bytes of
@@ -88,12 +86,6 @@ struct PlayerBank {
   /* 0004 */ le_uint32_t meseta = 0;
   /* 0008 */ parray<PlayerBankItem, 200> items;
   /* 12C8 */
-
-  void load(const std::string& filename);
-  void save(const std::string& filename, bool save_to_filesystem) const;
-
-  bool switch_with_file(const std::string& save_filename,
-      const std::string& load_filename);
 
   void add_item(const ItemData& item);
   ItemData remove_item(uint32_t item_id, uint32_t amount);
@@ -325,9 +317,21 @@ struct PlayerRecordsDCPC_Challenge {
   /* 02 */ parray<uint8_t, 2> unknown_u0;
   /* 04 */ pstring<EncryptedEncoding, 0x0C> rank_title;
   /* 10 */ parray<le_uint32_t, 9> times_ep1_online; // Encrypted; see decrypt_challenge_time. TODO: This might be offline times
-  /* 34 */ le_uint16_t unknown_g3 = 0;
+  /* 34 */ uint8_t grave_stage_num = 0;
+  /* 35 */ uint8_t grave_floor = 0;
   /* 36 */ le_uint16_t grave_deaths = 0;
-  /* 38 */ parray<le_uint32_t, 5> grave_coords_time;
+  // grave_time is encoded with the following bit fields:
+  //   YYYYMMMM DDDDDDDD HHHHHHHH mmmmmmmm
+  //   Y = year after 2000 (clamped to [0, 15])
+  //   M = month
+  //   D = day
+  //   H = hour
+  //   m = minute
+  /* 38 */ le_uint32_t grave_time = 0;
+  /* 3C */ le_uint32_t unknown_g1 = 0;
+  /* 40 */ le_float grave_x = 0.0f;
+  /* 44 */ le_float grave_y = 0.0f;
+  /* 48 */ le_float grave_z = 0.0f;
   /* 4C */ pstring<UnencryptedEncoding, 0x14> grave_team;
   /* 60 */ pstring<UnencryptedEncoding, 0x18> grave_message;
   /* 78 */ parray<le_uint32_t, 9> times_ep1_offline; // Encrypted; see decrypt_challenge_time. TODO: This might be online times
@@ -345,6 +349,7 @@ template <bool IsBigEndian>
 struct PlayerRecordsV3_Challenge {
   using U16T = typename std::conditional<IsBigEndian, be_uint16_t, le_uint16_t>::type;
   using U32T = typename std::conditional<IsBigEndian, be_uint32_t, le_uint32_t>::type;
+  using FloatT = typename std::conditional<IsBigEndian, be_float, le_float>::type;
 
   // Offsets are (1) relative to start of C5 entry, and (2) relative to start
   // of save file structure
@@ -354,10 +359,17 @@ struct PlayerRecordsV3_Challenge {
     /* 04:20 */ parray<U32T, 9> times_ep1_online; // Encrypted; see decrypt_challenge_time
     /* 28:44 */ parray<U32T, 5> times_ep2_online; // Encrypted; see decrypt_challenge_time
     /* 3C:58 */ parray<U32T, 9> times_ep1_offline; // Encrypted; see decrypt_challenge_time
-    /* 60:7C */ parray<uint8_t, 4> unknown_g3;
+    /* 60:7C */ uint8_t grave_is_ep2 = 0;
+    /* 61:7D */ uint8_t grave_stage_num = 0;
+    /* 62:7E */ uint8_t grave_floor = 0;
+    /* 63:7F */ uint8_t unknown_g0 = 0;
     /* 64:80 */ U16T grave_deaths = 0;
     /* 66:82 */ parray<uint8_t, 2> unknown_u4;
-    /* 68:84 */ parray<U32T, 5> grave_coords_time;
+    /* 68:84 */ U32T grave_time = 0; // Encoded as in PlayerRecordsDCPC_Challenge
+    /* 6C:88 */ U32T unknown_g1 = 0;
+    /* 70:8C */ FloatT grave_x = 0.0f;
+    /* 74:90 */ FloatT grave_y = 0.0f;
+    /* 78:94 */ FloatT grave_z = 0.0f;
     /* 7C:98 */ pstring<TextEncoding::ASCII, 0x14> grave_team;
     /* 90:AC */ pstring<TextEncoding::ASCII, 0x20> grave_message;
     /* B0:CC */ parray<uint8_t, 4> unknown_m5;
@@ -386,10 +398,17 @@ struct PlayerRecordsBB_Challenge {
   /* 0004 */ parray<le_uint32_t, 9> times_ep1_online; // Encrypted; see decrypt_challenge_time
   /* 0028 */ parray<le_uint32_t, 5> times_ep2_online; // Encrypted; see decrypt_challenge_time
   /* 003C */ parray<le_uint32_t, 9> times_ep1_offline; // Encrypted; see decrypt_challenge_time
-  /* 0060 */ parray<uint8_t, 4> unknown_g3;
+  /* 0060 */ uint8_t grave_is_ep2 = 0;
+  /* 0061 */ uint8_t grave_stage_num = 0;
+  /* 0062 */ uint8_t grave_floor = 0;
+  /* 0063 */ uint8_t unknown_g0 = 0;
   /* 0064 */ le_uint16_t grave_deaths = 0;
   /* 0066 */ parray<uint8_t, 2> unknown_u4;
-  /* 0068 */ parray<le_uint32_t, 5> grave_coords_time;
+  /* 0068 */ le_uint32_t grave_time = 0; // Encoded as in PlayerRecordsDCPC_Challenge
+  /* 006C */ le_uint32_t unknown_g1 = 0;
+  /* 0070 */ le_float grave_x = 0.0f;
+  /* 0074 */ le_float grave_y = 0.0f;
+  /* 0078 */ le_float grave_z = 0.0f;
   /* 007C */ pstring<TextEncoding::UTF16, 0x14> grave_team;
   /* 00A4 */ pstring<TextEncoding::UTF16, 0x20> grave_message;
   /* 00E4 */ parray<uint8_t, 4> unknown_m5;
@@ -428,7 +447,7 @@ struct PlayerRecords_Battle {
 template <typename ItemIDT>
 struct ChoiceSearchConfig {
   // 0 = enabled, 1 = disabled. Unused for command C3
-  le_uint32_t choice_search_disabled = 0;
+  le_uint32_t disabled = 1;
   struct Entry {
     ItemIDT parent_category_id = 0;
     ItemIDT category_id = 0;
@@ -592,3 +611,27 @@ struct ChallengeTemplateDefinition {
 };
 
 const ChallengeTemplateDefinition& get_challenge_template_definition(GameVersion version, uint32_t class_flags, size_t index);
+
+struct SymbolChat {
+  // Bits: ----------------------DMSSSCCCFF
+  //   S = sound, C = face color, F = face shape, D = capture, M = mute sound
+  /* 00 */ le_uint32_t spec = 0;
+
+  // Corner objects are specified in reading order ([0] is the top-left one).
+  // Bits (each entry): ---VHCCCZZZZZZZZ
+  //   V = reverse vertical, H = reverse horizontal, C = color, Z = object
+  // If Z is all 1 bits (0xFF), no corner object is rendered.
+  /* 04 */ parray<le_uint16_t, 4> corner_objects;
+
+  struct FacePart {
+    uint8_t type = 0xFF; // FF = no part in this slot
+    uint8_t x = 0;
+    uint8_t y = 0;
+    // Bits: ------VH (V = reverse vertical, H = reverse horizontal)
+    uint8_t flags = 0;
+  } __attribute__((packed));
+  /* 0C */ parray<FacePart, 12> face_parts;
+  /* 3C */
+
+  SymbolChat();
+} __attribute__((packed));

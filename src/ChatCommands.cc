@@ -270,20 +270,20 @@ static void server_command_quest(shared_ptr<Client> c, const std::string& args) 
 }
 
 static void server_command_show_material_counts(shared_ptr<Client> c, const std::string&) {
-  auto p = c->game_data.player();
+  auto p = c->game_data.character();
   if ((c->version() == GameVersion::DC) || (c->version() == GameVersion::PC)) {
     send_text_message_printf(c, "%hhu HP, %hhu TP",
-        p->get_material_usage(SavedPlayerDataBB::MaterialType::HP),
-        p->get_material_usage(SavedPlayerDataBB::MaterialType::TP));
+        p->get_material_usage(PSOBBCharacterFile::MaterialType::HP),
+        p->get_material_usage(PSOBBCharacterFile::MaterialType::TP));
   } else {
     send_text_message_printf(c, "%hhu HP, %hhu TP, %hhu POW\n%hhu MIND, %hhu EVADE\n%hhu DEF, %hhu LUCK",
-        p->get_material_usage(SavedPlayerDataBB::MaterialType::HP),
-        p->get_material_usage(SavedPlayerDataBB::MaterialType::TP),
-        p->get_material_usage(SavedPlayerDataBB::MaterialType::POWER),
-        p->get_material_usage(SavedPlayerDataBB::MaterialType::MIND),
-        p->get_material_usage(SavedPlayerDataBB::MaterialType::EVADE),
-        p->get_material_usage(SavedPlayerDataBB::MaterialType::DEF),
-        p->get_material_usage(SavedPlayerDataBB::MaterialType::LUCK));
+        p->get_material_usage(PSOBBCharacterFile::MaterialType::HP),
+        p->get_material_usage(PSOBBCharacterFile::MaterialType::TP),
+        p->get_material_usage(PSOBBCharacterFile::MaterialType::POWER),
+        p->get_material_usage(PSOBBCharacterFile::MaterialType::MIND),
+        p->get_material_usage(PSOBBCharacterFile::MaterialType::EVADE),
+        p->get_material_usage(PSOBBCharacterFile::MaterialType::DEF),
+        p->get_material_usage(PSOBBCharacterFile::MaterialType::LUCK));
   }
 }
 
@@ -832,7 +832,7 @@ static void server_command_edit(shared_ptr<Client> c, const std::string& args) {
   vector<string> tokens = split(encoded_args, ' ');
 
   try {
-    auto p = c->game_data.player();
+    auto p = c->game_data.character();
     if (tokens.at(0) == "atp") {
       p->disp.stats.char_stats.atp = stoul(tokens.at(1));
     } else if (tokens.at(0) == "mst") {
@@ -939,8 +939,8 @@ static void server_command_convert_char_to_bb(shared_ptr<Client> c, const std::s
   }
 
   // username/password are tokens[0] and [1]
-  c->pending_bb_save_player_index = stoul(tokens[2]) - 1;
-  if (c->pending_bb_save_player_index > 3) {
+  c->pending_bb_save_character_index = stoul(tokens[2]) - 1;
+  if (c->pending_bb_save_character_index > 3) {
     send_text_message(c, "$C6Player index must be 1-4");
     return;
   }
@@ -963,7 +963,7 @@ static void server_command_convert_char_to_bb(shared_ptr<Client> c, const std::s
 // Administration commands
 
 static string name_for_client(shared_ptr<Client> c) {
-  auto player = c->game_data.player(false);
+  auto player = c->game_data.character(false);
   if (player.get()) {
     return player->disp.name.decode(player->inventory.language);
   }
@@ -1486,7 +1486,7 @@ static void server_command_surrender(shared_ptr<Client> c, const std::string&) {
     send_text_message(c, "$C6Battle has not\nyet started");
     return;
   }
-  const string& name = c->game_data.player()->disp.name.decode(c->language());
+  const string& name = c->game_data.character()->disp.name.decode(c->language());
   send_text_message_printf(l, "$C6%s has\nsurrendered", name.c_str());
   for (const auto& watcher_l : l->watcher_lobbies) {
     send_text_message_printf(watcher_l, "$C6%s has\nsurrendered", name.c_str());
