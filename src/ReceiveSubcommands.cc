@@ -2057,8 +2057,9 @@ static void on_battle_restart_bb(shared_ptr<Client> c, uint8_t, uint8_t, const v
   if (l->is_game() &&
       (l->base_version == GameVersion::BB) &&
       (l->mode == GameMode::BATTLE) &&
-      l->check_flag(Lobby::Flag::QUEST_IN_PROGRESS)) {
-    const auto& cmd = check_size_t<G_RestartBattle_BB_6xCF>(data, size);
+      l->check_flag(Lobby::Flag::QUEST_IN_PROGRESS) &&
+      l->leader_id == c->lobby_client_id) {
+    const auto& cmd = check_size_t<G_StartBattle_BB_6xCF>(data, size);
 
     shared_ptr<BattleRules> new_rules(new BattleRules(cmd.rules));
     if (l->item_creator) {
@@ -2430,7 +2431,7 @@ subcommand_handler_t subcommand_handlers[0x100] = {
     /* 6x98 */ nullptr,
     /* 6x99 */ nullptr,
     /* 6x9A */ on_forward_check_size_game,
-    /* 6x9B */ nullptr,
+    /* 6x9B */ on_forward_check_size_game,
     /* 6x9C */ on_forward_check_size_game,
     /* 6x9D */ nullptr,
     /* 6x9E */ nullptr,

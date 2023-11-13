@@ -5510,9 +5510,9 @@ struct G_ExchangeItemForTeamPoints_BB_6xCC {
 // 6xCE: Accept master transfer (BB)
 // Same format as 6xC1
 
-// 6xCF: Restart battle (BB)
+// 6xCF: Start battle (BB)
 
-struct G_RestartBattle_BB_6xCF {
+struct G_StartBattle_BB_6xCF {
   G_UnusedHeader header;
   BattleRules rules;
 } __packed__;

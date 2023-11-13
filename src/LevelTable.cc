@@ -10,6 +10,7 @@ using namespace std;
 
 void PlayerStats::reset_to_base(uint8_t char_class, shared_ptr<const LevelTable> level_table) {
   this->level = 0;
+  this->experience = 0;
   this->char_stats = level_table->base_stats_for_class(char_class);
 }
 

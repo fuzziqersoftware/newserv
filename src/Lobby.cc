@@ -372,6 +372,15 @@ void Lobby::on_item_id_generated_externally(uint32_t item_id) {
   }
 }
 
+void Lobby::assign_inventory_item_ids(shared_ptr<Client> c) {
+  auto p = c->game_data.character();
+  for (size_t z = 0; z < p->inventory.num_items; z++) {
+    p->inventory.items[z].data.id = this->generate_item_id(c->lobby_client_id);
+  }
+  c->log.info("Assigned item IDs");
+  p->print_inventory(stderr, c->version(), c->require_server_state()->item_name_index);
+}
+
 unordered_map<uint32_t, shared_ptr<Client>> Lobby::clients_by_serial_number() const {
   unordered_map<uint32_t, shared_ptr<Client>> ret;
   for (auto c : this->clients) {

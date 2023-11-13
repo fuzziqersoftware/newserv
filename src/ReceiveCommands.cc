@@ -1848,24 +1848,6 @@ void set_lobby_quest(shared_ptr<Lobby> l, shared_ptr<const Quest> q) {
       break;
     }
 
-    if (vq->battle_rules) {
-      lc->game_data.create_battle_overlay(vq->battle_rules, s->level_table);
-      lc->log.info("Created battle overlay");
-    } else if (vq->challenge_template_index >= 0) {
-      lc->game_data.create_challenge_overlay(lc->version(), vq->challenge_template_index, s->level_table);
-      lc->log.info("Created challenge overlay");
-    }
-
-    // If an overlay was created, item IDs need to be assigned
-    if (lc->game_data.has_overlay()) {
-      auto overlay = lc->game_data.character();
-      for (size_t z = 0; z < overlay->inventory.num_items; z++) {
-        overlay->inventory.items[z].data.id = l->generate_item_id(client_id);
-      }
-      lc->log.info("Assigned overlay item IDs");
-      overlay->print_inventory(stderr, lc->version(), s->item_name_index);
-    }
-
     string bin_filename = vq->bin_filename();
     string dat_filename = vq->dat_filename();
     string xb_filename = vq->xb_filename();
@@ -2626,7 +2608,9 @@ static void on_AC_V3_BB(shared_ptr<Client> c, uint16_t, uint32_t, string& data) 
         (l->base_version == GameVersion::BB) &&
         l->map &&
         l->quest) {
+
       auto vq = l->quest->version(QuestScriptVersion::BB_V4, c->language());
+
       auto dat_contents = prs_decompress(*vq->dat_contents);
       l->map->clear();
       l->map->add_enemies_and_objects_from_quest_data(
@@ -2637,15 +2621,36 @@ static void on_AC_V3_BB(shared_ptr<Client> c, uint16_t, uint32_t, string& data) 
           dat_contents.size(),
           l->random_seed,
           (l->mode == GameMode::CHALLENGE) ? Map::NO_RARE_ENEMIES : Map::DEFAULT_RARE_ENEMIES);
-      l->log.info("Replaced enemies list with quest layout (%zu entries)",
-          l->map->enemies.size());
+      l->item_creator->clear_destroyed_entities();
+
+      l->log.info("Replaced enemies list with quest layout (%zu entries)", l->map->enemies.size());
       for (size_t z = 0; z < l->map->enemies.size(); z++) {
         string e_str = l->map->enemies[z].str();
         l->log.info("(Entry %zX) %s", z, e_str.c_str());
       }
+
+      auto s = l->require_server_state();
       for (auto& lc : l->clients) {
-        if (lc) {
-          send_rare_enemy_index_list(c, l->map->rare_enemy_indexes);
+        if (!lc) {
+          continue;
+        }
+
+        send_rare_enemy_index_list(c, l->map->rare_enemy_indexes);
+
+        // On non-BB versions, overlays are created when the quest starts because
+        // the server is not informed when the clients have replaced their player
+        // data. On BB, this is instead done in the 6xCF handler (for battle) or
+        // the 02DF handler (for challenge).
+        if (l->base_version != GameVersion::BB) {
+          lc->game_data.delete_overlay();
+          if (vq->battle_rules) {
+            lc->game_data.create_battle_overlay(vq->battle_rules, s->level_table);
+            lc->log.info("Created battle overlay");
+          } else if (vq->challenge_template_index >= 0) {
+            lc->game_data.create_challenge_overlay(lc->version(), vq->challenge_template_index, s->level_table);
+            lc->log.info("Created challenge overlay");
+            l->assign_inventory_item_ids(lc);
+          }
         }
       }
     }
@@ -3319,10 +3324,9 @@ static void on_DF_BB(shared_ptr<Client> c, uint16_t command, uint32_t, string& d
       if (l->quest->challenge_template_index != static_cast<ssize_t>(cmd.template_index)) {
         throw runtime_error("challenge template index in quest metadata does not match index sent by client");
       }
-      // Do nothing: we've already created the player overlay by the time this
-      // opcode is run on the client. We can't easily move the overlay creation
-      // here, since non-BB versions do not send anything when they create the
-      // overlay, so we have to do it when the quest loads instead.
+      c->game_data.create_challenge_overlay(c->version(), l->quest->challenge_template_index, s->level_table);
+      c->log.info("Created challenge overlay");
+      l->assign_inventory_item_ids(c);
       break;
     }
 
