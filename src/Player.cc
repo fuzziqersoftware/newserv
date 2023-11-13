@@ -149,7 +149,7 @@ shared_ptr<PSOBBCharacterFile> ClientGameData::character(bool allow_load, bool a
     return this->overlay_character_data;
   }
   if (!this->character_data && allow_load) {
-    if (this->bb_character_index < 0) {
+    if (!this->bb_username.empty() && (this->bb_character_index < 0)) {
       throw runtime_error("character index not specified");
     }
     this->load_all_files();
