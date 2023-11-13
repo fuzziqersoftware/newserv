@@ -3301,7 +3301,7 @@ static void on_DF_BB(shared_ptr<Client> c, uint16_t command, uint32_t, string& d
       if (!l->quest) {
         throw runtime_error("challenge mode character template config command sent in non-challenge game");
       }
-      if (l->quest->challenge_template_index != cmd.template_index) {
+      if (l->quest->challenge_template_index != static_cast<ssize_t>(cmd.template_index)) {
         throw runtime_error("challenge template index in quest metadata does not match index sent by client");
       }
       // Do nothing: we've already created the player overlay by the time this
