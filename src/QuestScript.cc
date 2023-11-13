@@ -1084,6 +1084,14 @@ std::string disassemble_quest_script(const void* data, size_t size, QuestScriptV
                   dasm_arg = string_printf("r%hhu-r%hhu", first_reg, static_cast<uint8_t>(first_reg + arg.count - 1));
                   break;
                 }
+                case Type::REG32_SET_FIXED: {
+                  if (def->flags & F_PASS) {
+                    throw logic_error("REG32_SET_FIXED cannot be pushed to arg stack");
+                  }
+                  uint32_t first_reg = cmd_r.get_u32l();
+                  dasm_arg = string_printf("r%" PRIu32 "-r%" PRIu32, first_reg, static_cast<uint32_t>(first_reg + arg.count - 1));
+                  break;
+                }
                 case Type::INT8: {
                   uint8_t v = cmd_r.get_u8();
                   if (def->flags & F_PASS) {
@@ -1568,6 +1576,12 @@ Episode find_quest_episode_from_script(const void* data, size_t size, QuestScrip
               throw logic_error("REG_SET_FIXED cannot be pushed to arg stack");
             }
             cmd_r.skip(1);
+            break;
+          case Type::REG32_SET_FIXED:
+            if (def->flags & F_PASS) {
+              throw logic_error("REG32_SET_FIXED cannot be pushed to arg stack");
+            }
+            cmd_r.skip(4);
             break;
           case Type::INT8:
             cmd_r.skip(1);
