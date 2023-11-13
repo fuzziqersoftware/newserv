@@ -433,7 +433,8 @@ shared_ptr<const VersionedQuest> Quest::version(QuestScriptVersion v, uint8_t la
 
 QuestIndex::QuestIndex(
     const string& directory,
-    std::shared_ptr<const QuestCategoryIndex> category_index)
+    std::shared_ptr<const QuestCategoryIndex> category_index,
+    bool is_ep3)
     : directory(directory),
       category_index(category_index) {
 
@@ -443,6 +444,11 @@ QuestIndex::QuestIndex(
   map<string, shared_ptr<const string>> json_files;
   map<string, uint32_t> categories;
   for (const auto& cat : this->category_index->categories) {
+    // Don't index Ep3 download categories for non-Ep3 quest indexing, and vice
+    // versa
+    if (is_ep3 == !(cat.flags & QuestCategoryIndex::Category::Flag::EP3_DOWNLOAD)) {
+      continue;
+    }
 
     auto add_file = [&](map<string, shared_ptr<const string>>& files, const string& name, string&& value) {
       if (categories.emplace(name, cat.category_id).first->second != cat.category_id) {

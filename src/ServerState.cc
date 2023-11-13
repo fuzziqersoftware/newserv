@@ -1065,9 +1065,9 @@ void ServerState::resolve_ep3_card_names() {
 
 void ServerState::load_quest_index() {
   config_log.info("Collecting quests");
-  this->default_quest_index.reset(new QuestIndex("system/quests", this->quest_category_index));
+  this->default_quest_index.reset(new QuestIndex("system/quests", this->quest_category_index, false));
   config_log.info("Collecting Episode 3 download quests");
-  this->ep3_download_quest_index.reset(new QuestIndex("system/ep3/maps-download", this->quest_category_index));
+  this->ep3_download_quest_index.reset(new QuestIndex("system/ep3/maps-download", this->quest_category_index, true));
 }
 
 void ServerState::compile_functions() {
