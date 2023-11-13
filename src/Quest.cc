@@ -498,8 +498,6 @@ QuestIndex::QuestIndex(
           add_file(dat_files, file_basename, prs_compress_optimal(file_data));
         } else if (extension == "pvr") {
           add_file(pvr_files, file_basename, std::move(file_data));
-        } else if (extension == "pvrd") {
-          add_file(pvr_files, file_basename, prs_compress_optimal(file_data));
         } else if (extension == "qst") {
           auto files = decode_qst_data(file_data);
           for (auto& it : files) {

@@ -1375,7 +1375,7 @@ int main(int argc, char** argv) {
       shared_ptr<string> dat_data(new string(load_file(dat_filename)));
       shared_ptr<string> pvr_data;
       try {
-        shared_ptr<string> dat_data(new string(load_file(pvr_filename)));
+        pvr_data.reset(new string(load_file(pvr_filename)));
       } catch (const cannot_open_file&) {
       }
       shared_ptr<VersionedQuest> vq(new VersionedQuest(0, 0, cli_quest_version, 0, bin_data, dat_data, pvr_data));
