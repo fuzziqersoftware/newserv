@@ -102,7 +102,7 @@ void player_use_item(shared_ptr<Client> c, size_t item_index) {
       default:
         throw runtime_error("unknown material used");
     }
-    if (!track_non_hp_tp_materials || (type == Type::HP) || (type == Type::TP)) {
+    if (track_non_hp_tp_materials || (type == Type::HP) || (type == Type::TP)) {
       p->set_material_usage(type, p->get_material_usage(type) + 1);
     }
 
