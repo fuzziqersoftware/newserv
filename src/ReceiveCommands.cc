@@ -3720,19 +3720,19 @@ shared_ptr<Lobby> create_game_generic(
 
   if (game->base_version == GameVersion::BB) {
     game->map.reset(new Map());
-    for (size_t area = 0; area < 0x10; area++) {
+    for (size_t floor = 0; floor < 0x10; floor++) {
       c->log.info("[Map/%zu] Using variations %" PRIX32 ", %" PRIX32,
-          area, game->variations[area * 2].load(), game->variations[area * 2 + 1].load());
+          floor, game->variations[floor * 2].load(), game->variations[floor * 2 + 1].load());
 
       auto enemy_filenames = map_filenames_for_variation(
           game->episode,
           is_solo,
-          area,
-          game->variations[area * 2],
-          game->variations[area * 2 + 1],
+          floor,
+          game->variations[floor * 2],
+          game->variations[floor * 2 + 1],
           true);
       if (enemy_filenames.empty()) {
-        c->log.info("[Map/%zu:e] No file to load", area);
+        c->log.info("[Map/%zu:e] No file to load", floor);
       } else {
         bool any_map_loaded = false;
         for (const string& filename : enemy_filenames) {
@@ -3743,7 +3743,7 @@ shared_ptr<Lobby> create_game_generic(
                 game->episode, game->difficulty, game->event, map_data->data(), map_data->size());
             size_t entries_loaded = game->map->enemies.size() - start_offset;
             c->log.info("[Map/%zu:e] Loaded %s (%zu entries)",
-                area, filename.c_str(), entries_loaded);
+                floor, filename.c_str(), entries_loaded);
             for (size_t z = start_offset; z < game->map->enemies.size(); z++) {
               string e_str = game->map->enemies[z].str();
               static_game_data_log.info("(Entry %zX) %s", z, e_str.c_str());
@@ -3751,11 +3751,11 @@ shared_ptr<Lobby> create_game_generic(
             any_map_loaded = true;
             break;
           } catch (const exception& e) {
-            c->log.info("[Map/%zu:e] Failed to load %s: %s", area, filename.c_str(), e.what());
+            c->log.info("[Map/%zu:e] Failed to load %s: %s", floor, filename.c_str(), e.what());
           }
         }
         if (!any_map_loaded) {
-          throw runtime_error(string_printf("no enemy maps loaded for area %zu", area));
+          throw runtime_error(string_printf("no enemy maps loaded for floor %zu", floor));
         }
       }
     }

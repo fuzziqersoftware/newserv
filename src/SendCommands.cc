@@ -2100,20 +2100,20 @@ void send_player_stats_change(Channel& ch, uint16_t client_id, PlayerStatsChange
   send_command_vt(ch, (subs.size() > 0x400 / sizeof(G_UpdatePlayerStat_6x9A)) ? 0x6C : 0x60, 0x00, subs);
 }
 
-void send_warp(Channel& ch, uint8_t client_id, uint32_t area, bool is_private) {
-  G_InterLevelWarp_6x94 cmd = {{0x94, 0x02, 0}, area, {}};
+void send_warp(Channel& ch, uint8_t client_id, uint32_t floor, bool is_private) {
+  G_InterLevelWarp_6x94 cmd = {{0x94, 0x02, 0}, floor, {}};
   ch.send(is_private ? 0x62 : 0x60, client_id, &cmd, sizeof(cmd));
 }
 
-void send_warp(shared_ptr<Client> c, uint32_t area, bool is_private) {
-  send_warp(c->channel, c->lobby_client_id, area, is_private);
-  c->area = area;
+void send_warp(shared_ptr<Client> c, uint32_t floor, bool is_private) {
+  send_warp(c->channel, c->lobby_client_id, floor, is_private);
+  c->floor = floor;
 }
 
-void send_warp(shared_ptr<Lobby> l, uint32_t area, bool is_private) {
+void send_warp(shared_ptr<Lobby> l, uint32_t floor, bool is_private) {
   for (const auto& c : l->clients) {
     if (c) {
-      send_warp(c, area, is_private);
+      send_warp(c, floor, is_private);
     }
   }
 }
@@ -2135,44 +2135,44 @@ void send_set_player_visibility(shared_ptr<Lobby> l, shared_ptr<Client> c,
 // BB game commands
 
 void send_drop_item(shared_ptr<ServerState> s, Channel& ch, const ItemData& item,
-    bool from_enemy, uint8_t area, float x, float z, uint16_t entity_id) {
+    bool from_enemy, uint8_t floor, float x, float z, uint16_t entity_id) {
   G_DropItem_PC_V3_BB_6x5F cmd = {
-      {{0x5F, 0x0B, 0x0000}, {area, from_enemy, entity_id, x, z, 0, 0, item}}, 0};
+      {{0x5F, 0x0B, 0x0000}, {floor, from_enemy, entity_id, x, z, 0, 0, item}}, 0};
   cmd.item.item.encode_for_version(ch.version, s->item_parameter_table_for_version(ch.version));
   ch.send(0x60, 0x00, &cmd, sizeof(cmd));
 }
 
 void send_drop_item(shared_ptr<Lobby> l, const ItemData& item,
-    bool from_enemy, uint8_t area, float x, float z, uint16_t entity_id) {
+    bool from_enemy, uint8_t floor, float x, float z, uint16_t entity_id) {
   auto s = l->require_server_state();
   for (auto& c : l->clients) {
     if (!c) {
       continue;
     }
-    send_drop_item(s, c->channel, item, from_enemy, area, x, z, entity_id);
+    send_drop_item(s, c->channel, item, from_enemy, floor, x, z, entity_id);
   }
 }
 
-void send_drop_stacked_item(shared_ptr<ServerState> s, Channel& ch, const ItemData& item, uint8_t area, float x, float z) {
-  G_DropStackedItem_PC_V3_BB_6x5D cmd = {{{0x5D, 0x0A, 0x0000}, area, 0, x, z, item}, 0};
+void send_drop_stacked_item(shared_ptr<ServerState> s, Channel& ch, const ItemData& item, uint8_t floor, float x, float z) {
+  G_DropStackedItem_PC_V3_BB_6x5D cmd = {{{0x5D, 0x0A, 0x0000}, floor, 0, x, z, item}, 0};
   cmd.item_data.encode_for_version(ch.version, s->item_parameter_table_for_version(ch.version));
   ch.send(0x60, 0x00, &cmd, sizeof(cmd));
 }
 
-void send_drop_stacked_item(shared_ptr<Lobby> l, const ItemData& item, uint8_t area, float x, float z) {
+void send_drop_stacked_item(shared_ptr<Lobby> l, const ItemData& item, uint8_t floor, float x, float z) {
   auto s = l->require_server_state();
   for (auto& c : l->clients) {
     if (!c) {
       continue;
     }
-    send_drop_stacked_item(s, c->channel, item, area, x, z);
+    send_drop_stacked_item(s, c->channel, item, floor, x, z);
   }
 }
 
-void send_pick_up_item(shared_ptr<Client> c, uint32_t item_id, uint8_t area) {
+void send_pick_up_item(shared_ptr<Client> c, uint32_t item_id, uint8_t floor) {
   auto l = c->require_lobby();
   uint16_t client_id = c->lobby_client_id;
-  G_PickUpItem_6x59 cmd = {{0x59, 0x03, client_id}, client_id, area, item_id};
+  G_PickUpItem_6x59 cmd = {{0x59, 0x03, client_id}, client_id, floor, item_id};
   send_command_t(l, 0x60, 0x00, cmd);
 }
 

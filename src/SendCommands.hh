@@ -284,23 +284,23 @@ enum PlayerStatsChange {
 void send_player_stats_change(std::shared_ptr<Client> c, PlayerStatsChange stat, uint32_t amount);
 void send_player_stats_change(
     Channel& ch, uint16_t client_id, PlayerStatsChange stat, uint32_t amount);
-void send_warp(Channel& ch, uint8_t client_id, uint32_t area, bool is_private);
-void send_warp(std::shared_ptr<Client> c, uint32_t area, bool is_private);
-void send_warp(std::shared_ptr<Lobby> l, uint32_t area, bool is_private);
+void send_warp(Channel& ch, uint8_t client_id, uint32_t floor, bool is_private);
+void send_warp(std::shared_ptr<Client> c, uint32_t floor, bool is_private);
+void send_warp(std::shared_ptr<Lobby> l, uint32_t floor, bool is_private);
 
 void send_ep3_change_music(Channel& ch, uint32_t song);
 void send_set_player_visibility(std::shared_ptr<Client> c, bool visible);
 void send_revive_player(std::shared_ptr<Client> c);
 
 void send_drop_item(std::shared_ptr<ServerState> s, Channel& ch, const ItemData& item,
-    bool from_enemy, uint8_t area, float x, float z, uint16_t request_id);
+    bool from_enemy, uint8_t floor, float x, float z, uint16_t request_id);
 void send_drop_item(std::shared_ptr<Lobby> l, const ItemData& item,
-    bool from_enemy, uint8_t area, float x, float z, uint16_t request_id);
+    bool from_enemy, uint8_t floor, float x, float z, uint16_t request_id);
 void send_drop_stacked_item(std::shared_ptr<ServerState> s, Channel& ch, const ItemData& item,
-    uint8_t area, float x, float z);
+    uint8_t floor, float x, float z);
 void send_drop_stacked_item(std::shared_ptr<Lobby> l, const ItemData& item,
-    uint8_t area, float x, float z);
-void send_pick_up_item(std::shared_ptr<Client> c, uint32_t id, uint8_t area);
+    uint8_t floor, float x, float z);
+void send_pick_up_item(std::shared_ptr<Client> c, uint32_t id, uint8_t floor);
 void send_create_inventory_item(std::shared_ptr<Client> c, const ItemData& item);
 void send_destroy_item(std::shared_ptr<Client> c, uint32_t item_id, uint32_t amount);
 void send_item_identify_result(std::shared_ptr<Client> c);

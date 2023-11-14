@@ -146,7 +146,7 @@ Client::Client(
       sub_version(-1),
       x(0.0f),
       z(0.0f),
-      area(0),
+      floor(0),
       lobby_client_id(0),
       lobby_arrow_color(0),
       preferred_lobby_id(-1),

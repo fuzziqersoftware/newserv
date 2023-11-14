@@ -202,10 +202,11 @@ struct Map {
       ITEM_DROPPED = 0x20,
     };
     EnemyType type;
+    uint8_t floor;
     uint8_t flags;
     uint8_t last_hit_by_client_id;
 
-    explicit Enemy(EnemyType type);
+    Enemy(uint8_t floor, EnemyType type);
 
     std::string str() const;
   } __attribute__((packed));
@@ -216,7 +217,7 @@ struct Map {
   void clear();
   void add_objects_from_map_data(const void* data, size_t size);
   bool check_and_log_rare_enemy(bool default_is_rare, uint32_t rare_rate);
-  void add_enemy(EnemyType type);
+  void add_enemy(uint8_t floor, EnemyType type);
   void add_enemy(
       Episode episode,
       uint8_t difficulty,
@@ -274,8 +275,8 @@ private:
   template <bool IsBigEndian>
   void load_table_t(std::shared_ptr<const std::string> data);
 
-  // Indexes are [area_id][variation1][variation2]
-  // area_id is cumulative per episode, so Ep2 starts at area_id=18.
+  // Indexes are [floor][variation1][variation2]
+  // floor is cumulative per episode, so Ep2 starts at floor=18.
   std::vector<std::vector<std::vector<SetEntry>>> entries;
 };
 
@@ -285,5 +286,5 @@ void generate_variations(
     Episode episode,
     bool is_solo);
 std::vector<std::string> map_filenames_for_variation(
-    Episode episode, bool is_solo, uint8_t area, uint32_t var1, uint32_t var2, bool is_enemies);
+    Episode episode, bool is_solo, uint8_t floor, uint32_t var1, uint32_t var2, bool is_enemies);
 void load_map_files();

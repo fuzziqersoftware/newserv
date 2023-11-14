@@ -396,7 +396,7 @@ static void server_command_exit(shared_ptr<Client> c, const std::string&) {
     } else if (l->check_flag(Lobby::Flag::QUEST_IN_PROGRESS) || l->check_flag(Lobby::Flag::JOINABLE_QUEST_IN_PROGRESS)) {
       G_UnusedHeader cmd = {0x73, 0x01, 0x0000};
       c->channel.send(0x60, 0x00, cmd);
-      c->area = 0;
+      c->floor = 0;
     } else {
       send_text_message(c, "$C6You must return to\nthe lobby first");
     }
@@ -1081,23 +1081,23 @@ static void server_command_warp(shared_ptr<Client> c, const std::string& args, b
   check_is_game(l, true);
   check_cheats_enabled(l);
 
-  uint32_t area = stoul(args, nullptr, 0);
-  if (c->area == area) {
+  uint32_t floor = stoul(args, nullptr, 0);
+  if (c->floor == floor) {
     return;
   }
 
-  size_t limit = area_limit_for_episode(l->episode);
+  size_t limit = floor_limit_for_episode(l->episode);
   if (limit == 0) {
     return;
-  } else if (area > limit) {
+  } else if (floor > limit) {
     send_text_message_printf(c, "$C6Area numbers must\nbe %zu or less.", limit);
     return;
   }
 
   if (is_warpall) {
-    send_warp(l, area, false);
+    send_warp(l, floor, false);
   } else {
-    send_warp(c, area, true);
+    send_warp(c, floor, true);
   }
 }
 
@@ -1116,12 +1116,12 @@ static void proxy_command_warp(shared_ptr<ProxyServer::LinkedSession> ses, const
     send_text_message(ses->client_channel, "$C6You must be in a\ngame to use this\ncommand");
     return;
   }
-  uint32_t area = stoul(args, nullptr, 0);
-  send_warp(ses->client_channel, ses->lobby_client_id, area, !is_warpall);
+  uint32_t floor = stoul(args, nullptr, 0);
+  send_warp(ses->client_channel, ses->lobby_client_id, floor, !is_warpall);
   if (is_warpall) {
-    send_warp(ses->server_channel, ses->lobby_client_id, area, false);
+    send_warp(ses->server_channel, ses->lobby_client_id, floor, false);
   }
-  ses->area = area;
+  ses->floor = floor;
 }
 
 static void proxy_command_warpme(shared_ptr<ProxyServer::LinkedSession> ses, const std::string& args) {
@@ -1138,11 +1138,11 @@ static void server_command_next(shared_ptr<Client> c, const std::string&) {
   check_is_game(l, true);
   check_cheats_enabled(l);
 
-  size_t limit = area_limit_for_episode(l->episode);
+  size_t limit = floor_limit_for_episode(l->episode);
   if (limit == 0) {
     return;
   }
-  send_warp(c, (c->area + 1) % limit, true);
+  send_warp(c, (c->floor + 1) % limit, true);
 }
 
 static void proxy_command_next(shared_ptr<ProxyServer::LinkedSession> ses, const std::string&) {
@@ -1153,8 +1153,8 @@ static void proxy_command_next(shared_ptr<ProxyServer::LinkedSession> ses, const
     return;
   }
 
-  ses->area++;
-  send_warp(ses->client_channel, ses->lobby_client_id, ses->area, true);
+  ses->floor++;
+  send_warp(ses->client_channel, ses->lobby_client_id, ses->floor, true);
 }
 
 static void server_command_what(shared_ptr<Client> c, const std::string&) {
@@ -1170,7 +1170,7 @@ static void server_command_what(shared_ptr<Client> c, const std::string&) {
     float min_dist2 = 0.0f;
     uint32_t nearest_item_id = 0xFFFFFFFF;
     for (const auto& it : l->item_id_to_floor_item) {
-      if (it.second.area != c->area) {
+      if (it.second.floor != c->floor) {
         continue;
       }
       float dx = it.second.x - c->x;
@@ -1305,8 +1305,8 @@ static void server_command_item(shared_ptr<Client> c, const std::string& args) {
   ItemData item = s->item_name_index->parse_item_description(c->version(), args);
   item.id = l->generate_item_id(c->lobby_client_id);
 
-  l->add_item(item, c->area, c->x, c->z);
-  send_drop_stacked_item(l, item, c->area, c->x, c->z);
+  l->add_item(item, c->floor, c->x, c->z);
+  send_drop_stacked_item(l, item, c->floor, c->x, c->z);
 
   string name = s->describe_item(c->version(), item, true);
   send_text_message(c, "$C7Item created:\n" + name);
@@ -1340,8 +1340,8 @@ static void proxy_command_item(shared_ptr<ProxyServer::LinkedSession> ses, const
     send_text_message(ses->client_channel, "$C7Next drop:\n" + name);
 
   } else {
-    send_drop_stacked_item(s, ses->client_channel, item, ses->area, ses->x, ses->z);
-    send_drop_stacked_item(s, ses->server_channel, item, ses->area, ses->x, ses->z);
+    send_drop_stacked_item(s, ses->client_channel, item, ses->floor, ses->x, ses->z);
+    send_drop_stacked_item(s, ses->server_channel, item, ses->floor, ses->x, ses->z);
 
     string name = s->describe_item(ses->version(), item, true);
     send_text_message(ses->client_channel, "$C7Item created:\n" + name);

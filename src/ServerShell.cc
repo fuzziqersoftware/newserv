@@ -230,9 +230,9 @@ Proxy session commands:\n\
     Change your lobby marker color.\n\
   warp AREA-ID\n\
   warpme AREA-ID\n\
-    Send yourself to a specific area.\n\
+    Send yourself to a specific floor.\n\
   warpall AREA-ID\n\
-    Send everyone to a specific area.\n\
+    Send everyone to a specific floor.\n\
   set-override-section-id [SECTION-ID]\n\
     Override the section ID for games you create or join. This affects the\n\
     active drop chart if you are the leader of the game and the server doesn't\n\
@@ -706,15 +706,15 @@ Proxy session commands:\n\
   } else if ((command_name == "warp") || (command_name == "warpme")) {
     auto ses = this->get_proxy_session(session_name);
 
-    uint8_t area = stoul(command_args);
-    send_warp(ses->client_channel, ses->lobby_client_id, area, true);
+    uint8_t floor = stoul(command_args);
+    send_warp(ses->client_channel, ses->lobby_client_id, floor, true);
 
   } else if (command_name == "warpall") {
     auto ses = this->get_proxy_session(session_name);
 
-    uint8_t area = stoul(command_args);
-    send_warp(ses->client_channel, ses->lobby_client_id, area, false);
-    send_warp(ses->server_channel, ses->lobby_client_id, area, false);
+    uint8_t floor = stoul(command_args);
+    send_warp(ses->client_channel, ses->lobby_client_id, floor, false);
+    send_warp(ses->server_channel, ses->lobby_client_id, floor, false);
 
   } else if ((command_name == "info-board") || (command_name == "info-board-data")) {
     auto ses = this->get_proxy_session(session_name);
@@ -815,8 +815,8 @@ Proxy session commands:\n\
       send_text_message(ses->client_channel, "$C7Next drop:\n" + name);
 
     } else {
-      send_drop_stacked_item(s, ses->client_channel, item, ses->area, ses->x, ses->z);
-      send_drop_stacked_item(s, ses->server_channel, item, ses->area, ses->x, ses->z);
+      send_drop_stacked_item(s, ses->client_channel, item, ses->floor, ses->x, ses->z);
+      send_drop_stacked_item(s, ses->server_channel, item, ses->floor, ses->x, ses->z);
 
       string name = s->describe_item(ses->version(), ses->next_drop_item, true);
       send_text_message(ses->client_channel, "$C7Item created:\n" + name);

@@ -78,8 +78,7 @@ private:
   bool are_rare_drops_allowed() const;
   uint8_t normalize_area_number(uint8_t area) const;
 
-  ItemData on_monster_item_drop_with_norm_area(
-      uint32_t enemy_type, uint8_t norm_area);
+  ItemData on_monster_item_drop_with_norm_area(uint32_t enemy_type, uint8_t norm_area);
   ItemData on_box_item_drop_with_norm_area(uint8_t area_norm);
 
   uint32_t rand_int(uint64_t max);
@@ -105,22 +104,19 @@ private:
   void generate_common_item_variances(uint32_t norm_area, ItemData& item);
   void generate_common_armor_slots_and_bonuses(ItemData& item);
   void generate_common_armor_slot_count(ItemData& item);
-  void generate_common_armor_or_shield_type_and_variances(
-      char area_norm, ItemData& item);
+  void generate_common_armor_or_shield_type_and_variances(char area_norm, ItemData& item);
   void generate_common_tool_variances(uint32_t area_norm, ItemData& item);
   uint8_t generate_tech_disk_level(uint32_t tech_num, uint32_t area_norm);
   void generate_common_tool_type(uint8_t tool_class, ItemData& item) const;
   void generate_common_mag_variances(ItemData& item) const;
   void generate_common_weapon_variances(uint8_t area_norm, ItemData& item);
-  void generate_common_weapon_grind(ItemData& item,
-      uint8_t offset_within_subtype_range);
+  void generate_common_weapon_grind(ItemData& item, uint8_t offset_within_subtype_range);
   void generate_common_weapon_bonuses(ItemData& item, uint8_t area_norm);
   void generate_common_weapon_special(ItemData& item, uint8_t area_norm);
   uint8_t choose_weapon_special(uint8_t det);
   void generate_unit_weights_tables();
   void generate_common_unit_variances(uint8_t det, ItemData& item);
-  void choose_tech_disk_level_for_tool_shop(
-      ItemData& item, size_t player_level, uint8_t tech_num_index);
+  void choose_tech_disk_level_for_tool_shop(ItemData& item, size_t player_level, uint8_t tech_num_index);
   static void clear_tool_item_if_invalid(ItemData& item);
   void clear_item_if_restricted(ItemData& item) const;
 

@@ -996,8 +996,8 @@ static HandlerResult S_6x(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t, 
       const auto& cmd = check_size_t<G_StandardDropItemRequest_DC_6x60>(
           data, sizeof(G_StandardDropItemRequest_PC_V3_BB_6x60));
       ses->next_drop_item.id = ses->next_item_id++;
-      send_drop_item(s, ses->server_channel, ses->next_drop_item, true, cmd.area, cmd.x, cmd.z, cmd.entity_id);
-      send_drop_item(s, ses->client_channel, ses->next_drop_item, true, cmd.area, cmd.x, cmd.z, cmd.entity_id);
+      send_drop_item(s, ses->server_channel, ses->next_drop_item, true, cmd.floor, cmd.x, cmd.z, cmd.entity_id);
+      send_drop_item(s, ses->client_channel, ses->next_drop_item, true, cmd.floor, cmd.x, cmd.z, cmd.entity_id);
       ses->next_drop_item.clear();
       return HandlerResult::Type::SUPPRESS;
 
@@ -1008,8 +1008,8 @@ static HandlerResult S_6x(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t, 
     } else if ((static_cast<uint8_t>(data[0]) == 0xA2) && ses->next_drop_item.data1d[0] && (ses->version() != GameVersion::BB)) {
       const auto& cmd = check_size_t<G_SpecializableItemDropRequest_6xA2>(data);
       ses->next_drop_item.id = ses->next_item_id++;
-      send_drop_item(s, ses->server_channel, ses->next_drop_item, false, cmd.area, cmd.x, cmd.z, cmd.entity_id);
-      send_drop_item(s, ses->client_channel, ses->next_drop_item, false, cmd.area, cmd.x, cmd.z, cmd.entity_id);
+      send_drop_item(s, ses->server_channel, ses->next_drop_item, false, cmd.floor, cmd.x, cmd.z, cmd.entity_id);
+      send_drop_item(s, ses->client_channel, ses->next_drop_item, false, cmd.floor, cmd.x, cmd.z, cmd.entity_id);
       ses->next_drop_item.clear();
       return HandlerResult::Type::SUPPRESS;
 
@@ -1344,7 +1344,7 @@ static HandlerResult S_65_67_68_EB(shared_ptr<ProxyServer::LinkedSession> ses, u
     ses->clear_lobby_players(12);
     ses->is_in_game = false;
     ses->is_in_quest = false;
-    ses->area = 0x0F;
+    ses->floor = 0x0F;
 
     // This command can cause the client to no longer send D6 responses when
     // 1A/D5 large message boxes are closed. newserv keeps track of this
@@ -1423,7 +1423,7 @@ static HandlerResult S_64(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t, 
   }
 
   ses->clear_lobby_players(4);
-  ses->area = 0;
+  ses->floor = 0;
   ses->is_in_game = true;
   ses->is_in_quest = false;
 
@@ -1477,7 +1477,7 @@ static HandlerResult S_E8(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t, 
   auto& cmd = check_size_t<S_JoinSpectatorTeam_GC_Ep3_E8>(data);
 
   ses->clear_lobby_players(12);
-  ses->area = 0;
+  ses->floor = 0;
   ses->is_in_game = true;
   ses->is_in_quest = false;
 
@@ -1555,7 +1555,7 @@ static HandlerResult S_66_69_E9(shared_ptr<ProxyServer::LinkedSession> ses, uint
 }
 
 static HandlerResult C_98(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t command, uint32_t flag, string& data) {
-  ses->area = 0x0F;
+  ses->floor = 0x0F;
   ses->is_in_game = false;
   ses->is_in_quest = false;
   if (ses->version() == GameVersion::GC ||
@@ -1681,7 +1681,7 @@ static HandlerResult C_6x(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t c
   if (!data.empty()) {
     if (data[0] == 0x21) {
       const auto& cmd = check_size_t<G_InterLevelWarp_6x21>(data);
-      ses->area = cmd.area;
+      ses->floor = cmd.floor;
 
     } else if (data[0] == 0x2F || data[0] == 0x4B || data[0] == 0x4C) {
       if (ses->config.check_flag(Client::Flag::INFINITE_HP_ENABLED)) {

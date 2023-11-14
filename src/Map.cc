@@ -13,8 +13,9 @@ using namespace std;
 
 static constexpr float UINT32_MAX_AS_FLOAT = 4294967296.0f;
 
-Map::Enemy::Enemy(EnemyType type)
+Map::Enemy::Enemy(uint8_t floor, EnemyType type)
     : type(type),
+      floor(floor),
       flags(0),
       last_hit_by_client_id(0) {
 }
@@ -52,9 +53,9 @@ bool Map::check_and_log_rare_enemy(bool default_is_rare, uint32_t rare_rate) {
   return false;
 }
 
-void Map::add_enemy(EnemyType type) {
-  static_game_data_log.info("Adding enemy E-%zX => %s", this->enemies.size(), name_for_enum(type));
-  this->enemies.emplace_back(type);
+void Map::add_enemy(uint8_t floor, EnemyType type) {
+  static_game_data_log.info("Adding enemy %02hhX:E-%zX => %s", floor, this->enemies.size(), name_for_enum(type));
+  this->enemies.emplace_back(floor, type);
 }
 
 void Map::add_enemy(
@@ -67,39 +68,39 @@ void Map::add_enemy(
   switch (e.base_type) {
     case 0x40: {
       bool is_rare = this->check_and_log_rare_enemy(e.uparam1 & 0x01, rare_rates.hildeblue);
-      this->add_enemy(is_rare ? EnemyType::HILDEBLUE : EnemyType::HILDEBEAR);
+      this->add_enemy(e.floor, is_rare ? EnemyType::HILDEBLUE : EnemyType::HILDEBEAR);
       break;
     }
     case 0x41: {
       bool is_rare = this->check_and_log_rare_enemy(e.uparam1 & 0x01, rare_rates.rappy);
       switch (episode) {
         case Episode::EP1:
-          this->add_enemy(is_rare ? EnemyType::AL_RAPPY : EnemyType::RAG_RAPPY);
+          this->add_enemy(e.floor, is_rare ? EnemyType::AL_RAPPY : EnemyType::RAG_RAPPY);
           break;
         case Episode::EP2:
           if (is_rare) {
             switch (event) {
               case 0x01:
-                this->add_enemy(EnemyType::SAINT_RAPPY);
+                this->add_enemy(e.floor, EnemyType::SAINT_RAPPY);
                 break;
               case 0x04:
-                this->add_enemy(EnemyType::EGG_RAPPY);
+                this->add_enemy(e.floor, EnemyType::EGG_RAPPY);
                 break;
               case 0x05:
-                this->add_enemy(EnemyType::HALLO_RAPPY);
+                this->add_enemy(e.floor, EnemyType::HALLO_RAPPY);
                 break;
               default:
-                this->add_enemy(EnemyType::LOVE_RAPPY);
+                this->add_enemy(e.floor, EnemyType::LOVE_RAPPY);
             }
           } else {
-            this->add_enemy(EnemyType::RAG_RAPPY);
+            this->add_enemy(e.floor, EnemyType::RAG_RAPPY);
           }
           break;
         case Episode::EP4:
           if (e.floor > 0x05) {
-            this->add_enemy(is_rare ? EnemyType::DEL_RAPPY_ALT : EnemyType::SAND_RAPPY_ALT);
+            this->add_enemy(e.floor, is_rare ? EnemyType::DEL_RAPPY_ALT : EnemyType::SAND_RAPPY_ALT);
           } else {
-            this->add_enemy(is_rare ? EnemyType::DEL_RAPPY : EnemyType::SAND_RAPPY);
+            this->add_enemy(e.floor, is_rare ? EnemyType::DEL_RAPPY : EnemyType::SAND_RAPPY);
           }
           break;
         default:
@@ -108,292 +109,292 @@ void Map::add_enemy(
       break;
     }
     case 0x42: {
-      this->add_enemy(EnemyType::MONEST);
+      this->add_enemy(e.floor, EnemyType::MONEST);
       for (size_t x = 0; x < 30; x++) {
-        this->add_enemy(EnemyType::MOTHMANT);
+        this->add_enemy(e.floor, EnemyType::MOTHMANT);
       }
       break;
     }
     case 0x43: {
-      this->add_enemy(e.fparam2 ? EnemyType::BARBAROUS_WOLF : EnemyType::SAVAGE_WOLF);
+      this->add_enemy(e.floor, e.fparam2 ? EnemyType::BARBAROUS_WOLF : EnemyType::SAVAGE_WOLF);
       break;
     }
     case 0x44:
       static const EnemyType types[3] = {EnemyType::BOOMA, EnemyType::GOBOOMA, EnemyType::GIGOBOOMA};
-      this->add_enemy(types[e.uparam1 % 3]);
+      this->add_enemy(e.floor, types[e.uparam1 % 3]);
       break;
     case 0x60:
-      this->add_enemy(EnemyType::GRASS_ASSASSIN);
+      this->add_enemy(e.floor, EnemyType::GRASS_ASSASSIN);
       break;
     case 0x61:
       if ((episode == Episode::EP2) && (e.floor > 0x0F)) {
-        this->add_enemy(EnemyType::DEL_LILY);
+        this->add_enemy(e.floor, EnemyType::DEL_LILY);
       } else {
         bool is_rare = this->check_and_log_rare_enemy(e.uparam1 & 0x01, rare_rates.nar_lily);
-        this->add_enemy(is_rare ? EnemyType::NAR_LILY : EnemyType::POISON_LILY);
+        this->add_enemy(e.floor, is_rare ? EnemyType::NAR_LILY : EnemyType::POISON_LILY);
       }
       break;
     case 0x62:
-      this->add_enemy(EnemyType::NANO_DRAGON);
+      this->add_enemy(e.floor, EnemyType::NANO_DRAGON);
       break;
     case 0x63: {
       static const EnemyType types[3] = {EnemyType::EVIL_SHARK, EnemyType::PAL_SHARK, EnemyType::GUIL_SHARK};
-      this->add_enemy(types[e.uparam1 % 3]);
+      this->add_enemy(e.floor, types[e.uparam1 % 3]);
       break;
     }
     case 0x64: {
       bool is_rare = this->check_and_log_rare_enemy(e.uparam1 & 0x01, rare_rates.pouilly_slime);
       for (size_t x = 0; x < 5; x++) { // Main slime + 4 clones
-        this->add_enemy(is_rare ? EnemyType::POFUILLY_SLIME : EnemyType::POUILLY_SLIME);
+        this->add_enemy(e.floor, is_rare ? EnemyType::POFUILLY_SLIME : EnemyType::POUILLY_SLIME);
       }
       break;
     }
     case 0x65:
-      this->add_enemy(EnemyType::PAN_ARMS);
-      this->add_enemy(EnemyType::HIDOOM);
-      this->add_enemy(EnemyType::MIGIUM);
+      this->add_enemy(e.floor, EnemyType::PAN_ARMS);
+      this->add_enemy(e.floor, EnemyType::HIDOOM);
+      this->add_enemy(e.floor, EnemyType::MIGIUM);
       break;
     case 0x80:
-      this->add_enemy((e.uparam1 & 0x01) ? EnemyType::GILLCHIC : EnemyType::DUBCHIC);
+      this->add_enemy(e.floor, (e.uparam1 & 0x01) ? EnemyType::GILLCHIC : EnemyType::DUBCHIC);
       break;
     case 0x81:
-      this->add_enemy(EnemyType::GARANZ);
+      this->add_enemy(e.floor, EnemyType::GARANZ);
       break;
     case 0x82: {
       EnemyType type = e.fparam2 ? EnemyType::SINOW_GOLD : EnemyType::SINOW_BEAT;
       size_t count = (e.num_children == 0) ? 5 : (e.num_children + 1);
       for (size_t z = 0; z < count; z++) {
-        this->add_enemy(type);
+        this->add_enemy(e.floor, type);
       }
       break;
     }
     case 0x83:
-      this->add_enemy(EnemyType::CANADINE);
+      this->add_enemy(e.floor, EnemyType::CANADINE);
       break;
     case 0x84:
-      this->add_enemy(EnemyType::CANANE);
+      this->add_enemy(e.floor, EnemyType::CANANE);
       for (size_t x = 0; x < 8; x++) {
-        this->add_enemy(EnemyType::CANADINE_GROUP);
+        this->add_enemy(e.floor, EnemyType::CANADINE_GROUP);
       }
       break;
     case 0x85:
-      this->add_enemy(EnemyType::DUBWITCH);
+      this->add_enemy(e.floor, EnemyType::DUBWITCH);
       break;
     case 0xA0:
-      this->add_enemy(EnemyType::DELSABER);
+      this->add_enemy(e.floor, EnemyType::DELSABER);
       break;
     case 0xA1:
-      this->add_enemy(EnemyType::CHAOS_SORCERER);
-      this->add_enemy(EnemyType::BEE_R);
-      this->add_enemy(EnemyType::BEE_L);
+      this->add_enemy(e.floor, EnemyType::CHAOS_SORCERER);
+      this->add_enemy(e.floor, EnemyType::BEE_R);
+      this->add_enemy(e.floor, EnemyType::BEE_L);
       break;
     case 0xA2:
-      this->add_enemy(EnemyType::DARK_GUNNER);
+      this->add_enemy(e.floor, EnemyType::DARK_GUNNER);
       break;
     case 0xA3:
-      this->add_enemy(EnemyType::DEATH_GUNNER);
+      this->add_enemy(e.floor, EnemyType::DEATH_GUNNER);
       break;
     case 0xA4:
-      this->add_enemy(EnemyType::CHAOS_BRINGER);
+      this->add_enemy(e.floor, EnemyType::CHAOS_BRINGER);
       break;
     case 0xA5:
-      this->add_enemy(EnemyType::DARK_BELRA);
+      this->add_enemy(e.floor, EnemyType::DARK_BELRA);
       break;
     case 0xA6: {
       static const EnemyType types[3] = {EnemyType::DIMENIAN, EnemyType::LA_DIMENIAN, EnemyType::SO_DIMENIAN};
-      this->add_enemy(types[e.uparam1 % 3]);
+      this->add_enemy(e.floor, types[e.uparam1 % 3]);
       break;
     }
     case 0xA7:
-      this->add_enemy(EnemyType::BULCLAW);
+      this->add_enemy(e.floor, EnemyType::BULCLAW);
       for (size_t x = 0; x < 4; x++) {
-        this->add_enemy(EnemyType::CLAW);
+        this->add_enemy(e.floor, EnemyType::CLAW);
       }
       break;
     case 0xA8:
-      this->add_enemy(EnemyType::CLAW);
+      this->add_enemy(e.floor, EnemyType::CLAW);
       break;
     case 0xC0:
       if (episode == Episode::EP1) {
-        this->add_enemy(EnemyType::DRAGON);
+        this->add_enemy(e.floor, EnemyType::DRAGON);
       } else if (episode == Episode::EP2) {
-        this->add_enemy(EnemyType::GAL_GRYPHON);
+        this->add_enemy(e.floor, EnemyType::GAL_GRYPHON);
       } else {
         throw runtime_error("DRAGON-type enemy placed outside of Episodes 1 or 2");
       }
       break;
     case 0xC1:
-      this->add_enemy(EnemyType::DE_ROL_LE);
+      this->add_enemy(e.floor, EnemyType::DE_ROL_LE);
       for (size_t z = 0; z < 0x0A; z++) {
-        this->add_enemy(EnemyType::DE_ROL_LE_BODY);
+        this->add_enemy(e.floor, EnemyType::DE_ROL_LE_BODY);
       }
       for (size_t z = 0; z < 0x09; z++) {
-        this->add_enemy(EnemyType::DE_ROL_LE_MINE);
+        this->add_enemy(e.floor, EnemyType::DE_ROL_LE_MINE);
       }
       break;
     case 0xC2:
-      this->add_enemy(EnemyType::VOL_OPT_1);
+      this->add_enemy(e.floor, EnemyType::VOL_OPT_1);
       for (size_t z = 0; z < 6; z++) {
-        this->add_enemy(EnemyType::VOL_OPT_PILLAR);
+        this->add_enemy(e.floor, EnemyType::VOL_OPT_PILLAR);
       }
       for (size_t z = 0; z < 24; z++) {
-        this->add_enemy(EnemyType::VOL_OPT_MONITOR);
+        this->add_enemy(e.floor, EnemyType::VOL_OPT_MONITOR);
       }
       for (size_t z = 0; z < 2; z++) {
-        this->add_enemy(EnemyType::NONE);
+        this->add_enemy(e.floor, EnemyType::NONE);
       }
-      this->add_enemy(EnemyType::VOL_OPT_AMP);
-      this->add_enemy(EnemyType::VOL_OPT_CORE);
-      this->add_enemy(EnemyType::NONE);
+      this->add_enemy(e.floor, EnemyType::VOL_OPT_AMP);
+      this->add_enemy(e.floor, EnemyType::VOL_OPT_CORE);
+      this->add_enemy(e.floor, EnemyType::NONE);
       break;
     case 0xC5:
-      this->add_enemy(EnemyType::VOL_OPT_2);
+      this->add_enemy(e.floor, EnemyType::VOL_OPT_2);
       break;
     case 0xC8:
       if (difficulty) {
-        this->add_enemy(EnemyType::DARK_FALZ_3);
+        this->add_enemy(e.floor, EnemyType::DARK_FALZ_3);
       } else {
-        this->add_enemy(EnemyType::DARK_FALZ_2);
+        this->add_enemy(e.floor, EnemyType::DARK_FALZ_2);
       }
       for (size_t x = 0; x < 0x1FD; x++) {
-        this->add_enemy(difficulty == 3 ? EnemyType::DARVANT_ULTIMATE : EnemyType::DARVANT);
+        this->add_enemy(e.floor, difficulty == 3 ? EnemyType::DARVANT_ULTIMATE : EnemyType::DARVANT);
       }
-      this->add_enemy(EnemyType::DARK_FALZ_3);
-      this->add_enemy(EnemyType::DARK_FALZ_2);
-      this->add_enemy(EnemyType::DARK_FALZ_1);
+      this->add_enemy(e.floor, EnemyType::DARK_FALZ_3);
+      this->add_enemy(e.floor, EnemyType::DARK_FALZ_2);
+      this->add_enemy(e.floor, EnemyType::DARK_FALZ_1);
       break;
     case 0xCA:
       for (size_t z = 0; z < 0x201; z++) {
-        this->add_enemy(EnemyType::OLGA_FLOW_2);
+        this->add_enemy(e.floor, EnemyType::OLGA_FLOW_2);
       }
       break;
     case 0xCB:
-      this->add_enemy(EnemyType::BARBA_RAY);
+      this->add_enemy(e.floor, EnemyType::BARBA_RAY);
       for (size_t z = 0; z < 0x2F; z++) {
-        this->add_enemy(EnemyType::PIG_RAY);
+        this->add_enemy(e.floor, EnemyType::PIG_RAY);
       }
       break;
     case 0xCC:
       for (size_t z = 0; z < 6; z++) {
-        this->add_enemy(EnemyType::GOL_DRAGON);
+        this->add_enemy(e.floor, EnemyType::GOL_DRAGON);
       }
       break;
     case 0xD4: {
       EnemyType type = (e.uparam1 & 1) ? EnemyType::SINOW_SPIGELL : EnemyType::SINOW_BERILL;
       for (size_t z = 0; z < 5; z++) {
-        this->add_enemy(type);
+        this->add_enemy(e.floor, type);
       }
       break;
     }
     case 0xD5:
-      this->add_enemy((e.uparam1 & 0x01) ? EnemyType::MERILTAS : EnemyType::MERILLIA);
+      this->add_enemy(e.floor, (e.uparam1 & 0x01) ? EnemyType::MERILTAS : EnemyType::MERILLIA);
       break;
     case 0xD6:
       if (e.uparam1 == 0) {
-        this->add_enemy(EnemyType::MERICAROL);
+        this->add_enemy(e.floor, EnemyType::MERICAROL);
       } else {
-        this->add_enemy(((e.uparam1 % 3) == 2) ? EnemyType::MERICUS : EnemyType::MERIKLE);
+        this->add_enemy(e.floor, ((e.uparam1 % 3) == 2) ? EnemyType::MERICUS : EnemyType::MERIKLE);
       }
       break;
     case 0xD7:
-      this->add_enemy((e.uparam1 & 0x01) ? EnemyType::ZOL_GIBBON : EnemyType::UL_GIBBON);
+      this->add_enemy(e.floor, (e.uparam1 & 0x01) ? EnemyType::ZOL_GIBBON : EnemyType::UL_GIBBON);
       break;
     case 0xD8:
-      this->add_enemy(EnemyType::GIBBLES);
+      this->add_enemy(e.floor, EnemyType::GIBBLES);
       break;
     case 0xD9:
-      this->add_enemy(EnemyType::GEE);
+      this->add_enemy(e.floor, EnemyType::GEE);
       break;
     case 0xDA:
-      this->add_enemy(EnemyType::GI_GUE);
+      this->add_enemy(e.floor, EnemyType::GI_GUE);
       break;
     case 0xDB:
-      this->add_enemy(EnemyType::DELDEPTH);
+      this->add_enemy(e.floor, EnemyType::DELDEPTH);
       break;
     case 0xDC:
-      this->add_enemy(EnemyType::DELBITER);
+      this->add_enemy(e.floor, EnemyType::DELBITER);
       break;
     case 0xDD:
-      this->add_enemy((e.uparam1 & 0x01) ? EnemyType::DOLMDARL : EnemyType::DOLMOLM);
+      this->add_enemy(e.floor, (e.uparam1 & 0x01) ? EnemyType::DOLMDARL : EnemyType::DOLMOLM);
       break;
     case 0xDE:
-      this->add_enemy(EnemyType::MORFOS);
+      this->add_enemy(e.floor, EnemyType::MORFOS);
       break;
     case 0xDF:
-      this->add_enemy(EnemyType::RECOBOX);
+      this->add_enemy(e.floor, EnemyType::RECOBOX);
       for (size_t x = 0; x < e.num_children; x++) {
-        this->add_enemy(EnemyType::RECON);
+        this->add_enemy(e.floor, EnemyType::RECON);
       }
       break;
     case 0xE0:
       if ((episode == Episode::EP2) && (e.floor > 0x0F)) {
-        this->add_enemy(EnemyType::EPSILON);
+        this->add_enemy(e.floor, EnemyType::EPSILON);
         for (size_t z = 0; z < 4; z++) {
-          this->add_enemy(EnemyType::EPSIGUARD);
+          this->add_enemy(e.floor, EnemyType::EPSIGUARD);
         }
       } else {
-        this->add_enemy((e.uparam1 & 0x01) ? EnemyType::SINOW_ZELE : EnemyType::SINOW_ZOA);
+        this->add_enemy(e.floor, (e.uparam1 & 0x01) ? EnemyType::SINOW_ZELE : EnemyType::SINOW_ZOA);
       }
       break;
     case 0xE1:
-      this->add_enemy(EnemyType::ILL_GILL);
+      this->add_enemy(e.floor, EnemyType::ILL_GILL);
       break;
     case 0x0110:
-      this->add_enemy(EnemyType::ASTARK);
+      this->add_enemy(e.floor, EnemyType::ASTARK);
       break;
     case 0x0111:
       if (e.floor > 0x05) {
-        this->add_enemy(e.fparam2 ? EnemyType::YOWIE_ALT : EnemyType::SATELLITE_LIZARD_ALT);
+        this->add_enemy(e.floor, e.fparam2 ? EnemyType::YOWIE_ALT : EnemyType::SATELLITE_LIZARD_ALT);
       } else {
-        this->add_enemy(e.fparam2 ? EnemyType::YOWIE : EnemyType::SATELLITE_LIZARD);
+        this->add_enemy(e.floor, e.fparam2 ? EnemyType::YOWIE : EnemyType::SATELLITE_LIZARD);
       }
       break;
     case 0x0112: {
       bool is_rare = this->check_and_log_rare_enemy(e.uparam1 & 0x01, rare_rates.merissa_aa);
-      this->add_enemy(is_rare ? EnemyType::MERISSA_AA : EnemyType::MERISSA_A);
+      this->add_enemy(e.floor, is_rare ? EnemyType::MERISSA_AA : EnemyType::MERISSA_A);
       break;
     }
     case 0x0113:
-      this->add_enemy(EnemyType::GIRTABLULU);
+      this->add_enemy(e.floor, EnemyType::GIRTABLULU);
       break;
     case 0x0114: {
       bool is_rare = this->check_and_log_rare_enemy(e.uparam1 & 0x01, rare_rates.pazuzu);
       if (e.floor > 0x05) {
-        this->add_enemy(is_rare ? EnemyType::PAZUZU_ALT : EnemyType::ZU_ALT);
+        this->add_enemy(e.floor, is_rare ? EnemyType::PAZUZU_ALT : EnemyType::ZU_ALT);
       } else {
-        this->add_enemy(is_rare ? EnemyType::PAZUZU : EnemyType::ZU);
+        this->add_enemy(e.floor, is_rare ? EnemyType::PAZUZU : EnemyType::ZU);
       }
       break;
     }
     case 0x0115:
       if (e.uparam1 & 2) {
-        this->add_enemy(EnemyType::BA_BOOTA);
+        this->add_enemy(e.floor, EnemyType::BA_BOOTA);
       } else {
-        this->add_enemy((e.uparam1 & 1) ? EnemyType::ZE_BOOTA : EnemyType::BOOTA);
+        this->add_enemy(e.floor, (e.uparam1 & 1) ? EnemyType::ZE_BOOTA : EnemyType::BOOTA);
       }
       break;
     case 0x0116: {
       bool is_rare = this->check_and_log_rare_enemy(e.uparam1 & 0x01, rare_rates.dorphon_eclair);
-      this->add_enemy(is_rare ? EnemyType::DORPHON_ECLAIR : EnemyType::DORPHON);
+      this->add_enemy(e.floor, is_rare ? EnemyType::DORPHON_ECLAIR : EnemyType::DORPHON);
       break;
     }
     case 0x0117: {
       static const EnemyType types[3] = {EnemyType::GORAN, EnemyType::PYRO_GORAN, EnemyType::GORAN_DETONATOR};
-      this->add_enemy(types[e.uparam1 % 3]);
+      this->add_enemy(e.floor, types[e.uparam1 % 3]);
       break;
     }
     case 0x0119: {
       bool is_rare = this->check_and_log_rare_enemy((e.fparam2 != 0.0f), rare_rates.kondrieu);
       if (is_rare) {
-        this->add_enemy(EnemyType::KONDRIEU);
+        this->add_enemy(e.floor, EnemyType::KONDRIEU);
       } else {
-        this->add_enemy((e.uparam1 & 1) ? EnemyType::SHAMBERTIN : EnemyType::SAINT_MILLION);
+        this->add_enemy(e.floor, (e.uparam1 & 1) ? EnemyType::SHAMBERTIN : EnemyType::SAINT_MILLION);
       }
       break;
     }
     default:
       for (size_t z = 0; z < static_cast<size_t>(e.num_children + 1); z++) {
-        this->add_enemy(EnemyType::UNKNOWN);
+        this->add_enemy(e.floor, EnemyType::UNKNOWN);
       }
       static_game_data_log.warning(
           "(Entry %zu, offset %zX in file) Unknown enemy type %04hX",
@@ -844,7 +845,7 @@ struct AreaMapFileIndex {
         variation2_values(variation2_values) {}
 };
 
-// These are indexed as [episode][is_solo][area], where episode is 0-2
+// These are indexed as [episode][is_solo][floor], where episode is 0-2
 static const vector<vector<vector<AreaMapFileIndex>>> map_file_info = {
     {
         // Episode 1
@@ -1009,7 +1010,7 @@ void generate_variations(
 }
 
 vector<string> map_filenames_for_variation(
-    Episode episode, bool is_solo, uint8_t area, uint32_t var1, uint32_t var2, bool is_enemies) {
+    Episode episode, bool is_solo, uint8_t floor, uint32_t var1, uint32_t var2, bool is_enemies) {
   // Map filenames are like map_<name_token>[_VV][_VV][_off]<e|o>[_s].dat
   //   name_token comes from AreaMapFileIndex
   //   _VV are the values from the variation<1|2>_values vector (in contrast to
@@ -1020,10 +1021,10 @@ vector<string> map_filenames_for_variation(
   const auto& ep_index = map_file_info_for_episode(episode);
   const AreaMapFileIndex* a = nullptr;
   if (is_solo) {
-    a = &ep_index.at(true).at(area);
+    a = &ep_index.at(true).at(floor);
   }
   if (!a || !a->name_token) {
-    a = &ep_index.at(false).at(area);
+    a = &ep_index.at(false).at(floor);
   }
   if (!a->name_token) {
     return vector<string>();

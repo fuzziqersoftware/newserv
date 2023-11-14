@@ -176,7 +176,7 @@ struct Client : public std::enable_shared_from_this<Client> {
   int32_t sub_version;
   float x;
   float z;
-  uint32_t area;
+  uint32_t floor;
   std::weak_ptr<Lobby> lobby;
   uint8_t lobby_client_id;
   uint8_t lobby_arrow_color;

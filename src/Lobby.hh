@@ -64,7 +64,7 @@ struct Lobby : public std::enable_shared_from_this<Lobby> {
     ItemData data;
     float x;
     float z;
-    uint8_t area;
+    uint8_t floor;
   };
   std::shared_ptr<Map> map;
   std::array<uint32_t, 12> next_item_id;
@@ -188,7 +188,7 @@ struct Lobby : public std::enable_shared_from_this<Lobby> {
 
   bool item_exists(uint32_t item_id) const;
   const FloorItem& find_item(uint32_t item_id) const;
-  void add_item(const ItemData& item, uint8_t area, float x, float z);
+  void add_item(const ItemData& item, uint8_t floor, float x, float z);
   ItemData remove_item(uint32_t item_id);
   uint32_t generate_item_id(uint8_t client_id);
   void on_item_id_generated_externally(uint32_t item_id);

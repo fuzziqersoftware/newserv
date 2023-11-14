@@ -336,10 +336,10 @@ const Lobby::FloorItem& Lobby::find_item(uint32_t item_id) const {
   return this->item_id_to_floor_item.at(item_id);
 }
 
-void Lobby::add_item(const ItemData& data, uint8_t area, float x, float z) {
+void Lobby::add_item(const ItemData& data, uint8_t floor, float x, float z) {
   auto& fi = this->item_id_to_floor_item[data.id];
   fi.data = data;
-  fi.area = area;
+  fi.floor = floor;
   fi.x = x;
   fi.z = z;
 }

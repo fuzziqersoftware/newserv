@@ -583,8 +583,8 @@ const unordered_map<string, uint8_t> mag_color_for_name({
     {"costume-color", 0x12},
 });
 
-uint8_t area_for_name(const std::string& name) {
-  static const unordered_map<string, uint8_t> areas({
+uint8_t floor_for_name(const std::string& name) {
+  static const unordered_map<string, uint8_t> floors({
       {"pioneer2", 0x00},
       {"p2", 0x00},
       {"forest1", 0x01},
@@ -669,10 +669,10 @@ uint8_t area_for_name(const std::string& name) {
       {"saintmillion", 0x09},
       {"purgatory", 0x0A},
   });
-  return areas.at(tolower(name));
+  return floors.at(tolower(name));
 }
 
-static const array<const char*, 0x12> ep1_area_names = {
+static const array<const char*, 0x12> ep1_floor_names = {
     "Pioneer2",
     "Forest1",
     "Forest2",
@@ -693,7 +693,7 @@ static const array<const char*, 0x12> ep1_area_names = {
     "Battle2",
 };
 
-static const array<const char*, 0x12> ep2_area_names = {
+static const array<const char*, 0x12> ep2_floor_names = {
     "Pioneer2",
     "VRTempleAlpha",
     "VRTempleBeta",
@@ -714,7 +714,7 @@ static const array<const char*, 0x12> ep2_area_names = {
     "Tower",
 };
 
-static const array<const char*, 0x0B> ep4_area_names = {
+static const array<const char*, 0x0B> ep4_floor_names = {
     "Pioneer2",
     "CraterEast",
     "CraterWest",
@@ -728,29 +728,29 @@ static const array<const char*, 0x0B> ep4_area_names = {
     "Purgatory",
 };
 
-size_t area_limit_for_episode(Episode ep) {
+size_t floor_limit_for_episode(Episode ep) {
   switch (ep) {
     case Episode::EP1:
-      return ep1_area_names.size() - 1;
+      return ep1_floor_names.size() - 1;
     case Episode::EP2:
-      return ep2_area_names.size() - 1;
+      return ep2_floor_names.size() - 1;
     case Episode::EP4:
-      return ep4_area_names.size() - 1;
+      return ep4_floor_names.size() - 1;
     default:
       return 0;
   }
 }
 
-const char* name_for_area(Episode episode, uint8_t area) {
+const char* name_for_floor(Episode episode, uint8_t floor) {
   switch (episode) {
     case Episode::EP1:
-      return ep1_area_names.at(area);
+      return ep1_floor_names.at(floor);
     case Episode::EP2:
-      return ep2_area_names.at(area);
+      return ep2_floor_names.at(floor);
     case Episode::EP4:
-      return ep4_area_names.at(area);
+      return ep4_floor_names.at(floor);
     default:
-      throw logic_error("invalid episode for drop area");
+      throw logic_error("invalid episode for drop floor");
   }
 }
 

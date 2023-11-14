@@ -206,8 +206,8 @@ static void on_sync_joining_player_item_state(shared_ptr<Client> c, uint8_t comm
       auto* decompressed_cmd = reinterpret_cast<G_SyncItemState_6x6D_Decompressed*>(decompressed.data());
 
       size_t num_floor_items = 0;
-      for (size_t z = 0; z < decompressed_cmd->floor_item_count_per_area.size(); z++) {
-        num_floor_items += decompressed_cmd->floor_item_count_per_area[z];
+      for (size_t z = 0; z < decompressed_cmd->floor_item_count_per_floor.size(); z++) {
+        num_floor_items += decompressed_cmd->floor_item_count_per_floor[z];
       }
 
       size_t required_size = sizeof(G_SyncItemState_6x6D_Decompressed) + num_floor_items * sizeof(FloorItem);
@@ -559,9 +559,9 @@ static void on_set_player_visibility(shared_ptr<Client> c, uint8_t command, uint
 // Game commands used by cheat mechanisms
 
 template <typename CmdT>
-static void on_change_area(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
+static void on_change_floor(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
   const auto& cmd = check_size_t<CmdT>(data, size);
-  c->area = cmd.area;
+  c->floor = cmd.floor;
   forward_subcommand(c, command, flag, data, size);
 }
 
@@ -684,7 +684,7 @@ void on_movement(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void
 }
 
 template <typename CmdT>
-void on_movement_with_area(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
+void on_movement_with_floor(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
   const auto& cmd = check_size_t<CmdT>(data, size);
   if (cmd.header.client_id != c->lobby_client_id) {
     return;
@@ -692,7 +692,7 @@ void on_movement_with_area(shared_ptr<Client> c, uint8_t command, uint8_t flag, 
 
   c->x = cmd.x;
   c->z = cmd.z;
-  c->area = cmd.area;
+  c->floor = cmd.floor;
 
   forward_subcommand(c, command, flag, data, size);
 }
@@ -711,12 +711,12 @@ static void on_player_drop_item(shared_ptr<Client> c, uint8_t command, uint8_t f
   if (l->check_flag(Lobby::Flag::ITEM_TRACKING_ENABLED)) {
     auto p = c->game_data.character();
     auto item = p->remove_item(cmd.item_id, 0, c->version() != GameVersion::BB);
-    l->add_item(item, cmd.area, cmd.x, cmd.z);
+    l->add_item(item, cmd.floor, cmd.x, cmd.z);
 
     auto s = c->require_server_state();
     auto name = s->describe_item(c->version(), item, false);
     l->log.info("Player %hu dropped item %08" PRIX32 " (%s) at %hu:(%g, %g)",
-        cmd.header.client_id.load(), cmd.item_id.load(), name.c_str(), cmd.area.load(), cmd.x.load(), cmd.z.load());
+        cmd.header.client_id.load(), cmd.item_id.load(), name.c_str(), cmd.floor.load(), cmd.x.load(), cmd.z.load());
     if (c->config.check_flag(Client::Flag::DEBUG_ENABLED)) {
       auto name = s->describe_item(c->version(), item, true);
       send_text_message_printf(c, "$C5DROP %08" PRIX32 "\n%s",
@@ -816,13 +816,13 @@ static void on_drop_partial_stack_t(shared_ptr<Client> c, uint8_t command, uint8
     ItemData item = cmd.item_data;
     item.decode_for_version(c->version());
     l->on_item_id_generated_externally(item.id);
-    l->add_item(item, cmd.area, cmd.x, cmd.z);
+    l->add_item(item, cmd.floor, cmd.x, cmd.z);
 
     auto s = c->require_server_state();
     auto name = s->describe_item(c->version(), item, false);
     l->log.info("Player %hu split stack to create floor item %08" PRIX32 " (%s) at %hu:(%g, %g)",
         cmd.header.client_id.load(), item.id.load(), name.c_str(),
-        cmd.area.load(), cmd.x.load(), cmd.z.load());
+        cmd.floor.load(), cmd.x.load(), cmd.z.load());
     if (c->config.check_flag(Client::Flag::DEBUG_ENABLED)) {
       string name = s->describe_item(c->version(), item, true);
       send_text_message_printf(c, "$C5SPLIT %08" PRIX32 "\n%s", item.id.load(), name.c_str());
@@ -871,13 +871,13 @@ static void on_drop_partial_stack_bb(shared_ptr<Client> c, uint8_t command, uint
     // removed again by the 6x29 handler)
     p->add_item(item);
 
-    l->add_item(item, cmd.area, cmd.x, cmd.z);
+    l->add_item(item, cmd.floor, cmd.x, cmd.z);
 
     auto s = c->require_server_state();
     auto name = s->describe_item(c->version(), item, false);
     l->log.info("Player %hu split stack %08" PRIX32 " (removed: %s) at %hu:(%g, %g)",
         cmd.header.client_id.load(), cmd.item_id.load(), name.c_str(),
-        cmd.area.load(), cmd.x.load(), cmd.z.load());
+        cmd.floor.load(), cmd.x.load(), cmd.z.load());
     if (c->config.check_flag(Client::Flag::DEBUG_ENABLED)) {
       auto name = s->describe_item(c->version(), item, true);
       send_text_message_printf(c, "$C5SPLIT/BB %08" PRIX32 "\n%s",
@@ -885,7 +885,7 @@ static void on_drop_partial_stack_bb(shared_ptr<Client> c, uint8_t command, uint
     }
     p->print_inventory(stderr, c->version(), s->item_name_index);
 
-    send_drop_stacked_item(l, item, cmd.area, cmd.x, cmd.z);
+    send_drop_stacked_item(l, item, cmd.floor, cmd.x, cmd.z);
 
   } else {
     forward_subcommand(c, command, flag, data, size);
@@ -950,12 +950,12 @@ static void on_box_or_enemy_item_drop_t(shared_ptr<Client> c, uint8_t command, u
     ItemData item = cmd.item.item;
     item.decode_for_version(c->version());
     l->on_item_id_generated_externally(item.id);
-    l->add_item(item, cmd.item.area, cmd.item.x, cmd.item.z);
+    l->add_item(item, cmd.item.floor, cmd.item.x, cmd.item.z);
 
     auto s = c->require_server_state();
     auto name = s->describe_item(c->version(), item, false);
     l->log.info("Player %hhu (leader) created floor item %08" PRIX32 " (%s) at %hhu:(%g, %g)",
-        l->leader_id, item.id.load(), name.c_str(), cmd.item.area, cmd.item.x.load(), cmd.item.z.load());
+        l->leader_id, item.id.load(), name.c_str(), cmd.item.floor, cmd.item.x.load(), cmd.item.z.load());
     if (c->config.check_flag(Client::Flag::DEBUG_ENABLED)) {
       string name = s->describe_item(c->version(), item, true);
       send_text_message_printf(c, "$C5DROP %08" PRIX32 "\n%s", item.id.load(), name.c_str());
@@ -1087,7 +1087,7 @@ static void on_pick_up_item_request(shared_ptr<Client> c, uint8_t command, uint8
     }
     p->print_inventory(stderr, c->version(), s->item_name_index);
 
-    send_pick_up_item(c, cmd.item_id, cmd.area);
+    send_pick_up_item(c, cmd.item_id, cmd.floor);
 
   } else if (l->check_flag(Lobby::Flag::ITEM_TRACKING_ENABLED) && !l->item_exists(cmd.item_id)) {
     l->log.warning("Player %hu requests to pick up %08" PRIX32 ", but the item does not exist; dropping command",
@@ -1414,7 +1414,7 @@ static void on_entity_drop_item_request(shared_ptr<Client> c, uint8_t command, u
       throw runtime_error("item drop request has incorrect subcommand");
     }
     cmd.entity_id = in_cmd.entity_id;
-    cmd.area = in_cmd.area;
+    cmd.floor = in_cmd.floor;
     cmd.rt_index = in_cmd.rt_index;
     cmd.x = in_cmd.x;
     cmd.z = in_cmd.z;
@@ -1426,12 +1426,12 @@ static void on_entity_drop_item_request(shared_ptr<Client> c, uint8_t command, u
       throw runtime_error("item drop request has incorrect subcommand");
     }
     cmd.entity_id = in_cmd.entity_id;
-    cmd.area = in_cmd.area;
+    cmd.floor = in_cmd.floor;
     cmd.rt_index = in_cmd.rt_index;
     cmd.x = in_cmd.x;
     cmd.z = in_cmd.z;
     cmd.ignore_def = true;
-    cmd.effective_area = in_cmd.area;
+    cmd.effective_area = in_cmd.floor;
   }
 
   ItemData item;
@@ -1453,6 +1453,10 @@ static void on_entity_drop_item_request(shared_ptr<Client> c, uint8_t command, u
         c->log.warning("rt_index %02hhX from command does not match entity\'s expected index %02" PRIX32,
             cmd.rt_index, expected_rt_index);
       }
+      if (cmd.floor != enemy.floor) {
+        c->log.warning("Floor %02hhX from command does not match entity\'s expected floor %02hhX",
+            cmd.floor, enemy.floor);
+      }
     }
     item = l->item_creator->on_monster_item_drop(cmd.entity_id, cmd.rt_index, cmd.effective_area);
   }
@@ -1463,11 +1467,11 @@ static void on_entity_drop_item_request(shared_ptr<Client> c, uint8_t command, u
     item.id = l->generate_item_id(0xFF);
     string name = s->item_name_index->describe_item(l->base_version, item);
     l->log.info("Entity %04hX (area %02hX) created item %s", cmd.entity_id.load(), cmd.effective_area, name.c_str());
-    l->log.info("Creating item %08" PRIX32 " at %02hhX:%g,%g", item.id.load(), cmd.area, cmd.x.load(), cmd.z.load());
+    l->log.info("Creating item %08" PRIX32 " at %02hhX:%g,%g", item.id.load(), cmd.floor, cmd.x.load(), cmd.z.load());
     if (l->check_flag(Lobby::Flag::ITEM_TRACKING_ENABLED)) {
-      l->add_item(item, cmd.area, cmd.x, cmd.z);
+      l->add_item(item, cmd.floor, cmd.x, cmd.z);
     }
-    send_drop_item(l, item, cmd.rt_index != 0x30, cmd.area, cmd.x, cmd.z, cmd.entity_id);
+    send_drop_item(l, item, cmd.rt_index != 0x30, cmd.floor, cmd.x, cmd.z, cmd.entity_id);
   }
 }
 
@@ -1512,7 +1516,7 @@ static void on_set_quest_flag(shared_ptr<Client> c, uint8_t command, uint8_t fla
   if (c->version() == GameVersion::GC) {
     bool should_send_boss_drop_req = false;
     bool is_ep2 = (l->episode == Episode::EP2);
-    if ((l->episode == Episode::EP1) && (c->area == 0x0E)) {
+    if ((l->episode == Episode::EP1) && (c->floor == 0x0E)) {
       // On Normal, Dark Falz does not have a third phase, so send the drop
       // request after the end of the second phase. On all other difficulty
       // levels, send it after the third phase.
@@ -1520,7 +1524,7 @@ static void on_set_quest_flag(shared_ptr<Client> c, uint8_t command, uint8_t fla
           ((difficulty != 0) && (flag_index == 0x0037))) {
         should_send_boss_drop_req = true;
       }
-    } else if (is_ep2 && (flag_index == 0x0057) && (c->area == 0x0D)) {
+    } else if (is_ep2 && (flag_index == 0x0057) && (c->floor == 0x0D)) {
       should_send_boss_drop_req = true;
     }
 
@@ -1530,7 +1534,7 @@ static void on_set_quest_flag(shared_ptr<Client> c, uint8_t command, uint8_t fla
         G_StandardDropItemRequest_PC_V3_BB_6x60 req = {
             {
                 {0x60, 0x06, 0x0000},
-                static_cast<uint8_t>(c->area),
+                static_cast<uint8_t>(c->floor),
                 static_cast<uint8_t>(is_ep2 ? 0x4E : 0x2F),
                 0x0B4F,
                 is_ep2 ? -9999.0f : 10160.58984375f,
@@ -1755,15 +1759,13 @@ static void on_steal_exp_bb(shared_ptr<Client> c, uint8_t, uint8_t, const void* 
   add_player_exp(c, stolen_exp);
 }
 
-static void on_enemy_killed_bb(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
+static void on_enemy_killed_bb(shared_ptr<Client> c, uint8_t, uint8_t, const void* data, size_t size) {
   auto s = c->require_server_state();
   auto l = c->require_lobby();
 
   if (l->base_version != GameVersion::BB) {
     throw runtime_error("BB-only command sent in non-BB game");
   }
-
-  forward_subcommand(c, command, flag, data, size);
 
   const auto& cmd = check_size_t<G_EnemyKilled_BB_6xC8>(data, size);
 
@@ -1806,10 +1808,12 @@ static void on_enemy_killed_bb(shared_ptr<Client> c, uint8_t command, uint8_t fl
     if (!((e.flags >> x) & 1)) {
       continue; // Player did not hit this enemy
     }
-
     auto other_c = l->clients[x];
     if (!other_c) {
       continue; // No player
+    }
+    if (other_c->floor != e.floor) {
+      continue;
     }
 
     if (experience != 0xFFFFFFFF) {
@@ -2307,9 +2311,9 @@ subcommand_handler_t subcommand_handlers[0x100] = {
     /* 6x1C */ on_forward_check_size_game,
     /* 6x1D */ nullptr,
     /* 6x1E */ nullptr,
-    /* 6x1F */ on_change_area<G_SetPlayerArea_6x1F>,
-    /* 6x20 */ on_movement_with_area<G_SetPosition_6x20>,
-    /* 6x21 */ on_change_area<G_InterLevelWarp_6x21>,
+    /* 6x1F */ on_change_floor<G_SetPlayerArea_6x1F>,
+    /* 6x20 */ on_movement_with_floor<G_SetPosition_6x20>,
+    /* 6x21 */ on_change_floor<G_InterLevelWarp_6x21>,
     /* 6x22 */ on_forward_check_size_client,
     /* 6x23 */ on_set_player_visibility,
     /* 6x24 */ on_forward_check_size_game,
@@ -2338,8 +2342,8 @@ subcommand_handler_t subcommand_handlers[0x100] = {
     /* 6x3B */ on_forward_check_size,
     /* 6x3C */ nullptr,
     /* 6x3D */ nullptr,
-    /* 6x3E */ on_movement_with_area<G_StopAtPosition_6x3E>,
-    /* 6x3F */ on_movement_with_area<G_SetPosition_6x3F>,
+    /* 6x3E */ on_movement_with_floor<G_StopAtPosition_6x3E>,
+    /* 6x3F */ on_movement_with_floor<G_SetPosition_6x3F>,
     /* 6x40 */ on_movement<G_WalkToPosition_6x40>,
     /* 6x41 */ nullptr,
     /* 6x42 */ on_movement<G_RunToPosition_6x42>,

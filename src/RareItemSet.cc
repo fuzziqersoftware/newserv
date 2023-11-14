@@ -319,7 +319,7 @@ RareItemSet::RareItemSet(const JSON& json, GameVersion version, shared_ptr<const
           for (const auto& item_it : section_id_it.second->as_dict()) {
             vector<ExpandedDrop>* target;
             if (starts_with(item_it.first, "Box-")) {
-              uint8_t area = area_for_name(item_it.first.substr(4));
+              uint8_t area = floor_for_name(item_it.first.substr(4));
               if (collection.box_area_to_specs.size() <= area) {
                 collection.box_area_to_specs.resize(area + 1);
               }
@@ -484,7 +484,7 @@ std::string RareItemSet::serialize_json(GameVersion version, shared_ptr<const It
 
             if (!area_list.empty()) {
               collection_dict.emplace(
-                  string_printf("Box-%s", name_for_area(episode, area)),
+                  string_printf("Box-%s", name_for_floor(episode, area)),
                   std::move(area_list));
             }
           }

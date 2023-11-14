@@ -3679,7 +3679,7 @@ struct G_SwitchStateChanged_6x05 {
   parray<uint8_t, 2> unknown_a1;
   le_uint16_t unknown_a2 = 0;
   parray<uint8_t, 2> unknown_a3;
-  uint8_t area = 0;
+  uint8_t floor = 0;
   uint8_t flags = 0; // Bit field, with 2 lowest bits having meaning
 } __packed__;
 
@@ -3870,11 +3870,11 @@ struct G_DestroyNPC_6x1C {
 // 6x1D: Invalid subcommand
 // 6x1E: Invalid subcommand
 
-// 6x1F: Set player area
+// 6x1F: Set player floor
 
 struct G_SetPlayerArea_6x1F {
   G_ClientIDHeader header;
-  le_uint32_t area = 0;
+  le_uint32_t floor = 0;
 } __packed__;
 
 // 6x20: Set position
@@ -3883,7 +3883,7 @@ struct G_SetPlayerArea_6x1F {
 
 struct G_SetPosition_6x20 {
   G_ClientIDHeader header;
-  le_uint32_t area = 0;
+  le_uint32_t floor = 0;
   le_float x = 0.0f;
   le_float y = 0.0f;
   le_float z = 0.0f;
@@ -3894,12 +3894,12 @@ struct G_SetPosition_6x20 {
 
 struct G_InterLevelWarp_6x21 {
   G_ClientIDHeader header;
-  le_uint32_t area = 0;
+  le_uint32_t floor = 0;
 } __packed__;
 
 // 6x22: Set player invisible
 // 6x23: Set player visible
-// These are generally used while a player is in the process of changing areas.
+// These are generally used while a player is in the process of changing floors.
 
 struct G_SetPlayerVisibility_6x22_6x23 {
   G_ClientIDHeader header;
@@ -3954,7 +3954,7 @@ struct G_DeleteInventoryItem_6x29 {
 struct G_DropItem_6x2A {
   G_ClientIDHeader header;
   le_uint16_t unknown_a1 = 0; // Should be 1... maybe amount?
-  le_uint16_t area = 0;
+  le_uint16_t floor = 0;
   le_uint32_t item_id = 0;
   le_float x = 0.0f;
   le_float y = 0.0f;
@@ -4093,7 +4093,7 @@ struct G_StopAtPosition_6x3E {
   G_ClientIDHeader header;
   le_uint16_t unknown_a1 = 0;
   le_uint16_t unknown_a2 = 0;
-  le_uint16_t area = 0;
+  le_uint16_t floor = 0;
   le_uint16_t unknown_a3 = 0;
   le_float x = 0.0f;
   le_float y = 0.0f;
@@ -4106,7 +4106,7 @@ struct G_SetPosition_6x3F {
   G_ClientIDHeader header;
   le_uint16_t unknown_a1 = 0;
   le_uint16_t angle = 0;
-  le_uint16_t area = 0;
+  le_uint16_t floor = 0;
   le_uint16_t room = 0;
   le_float x = 0.0f;
   le_float y = 0.0f;
@@ -4309,7 +4309,7 @@ struct G_LobbyAnimation_6x58 {
 struct G_PickUpItem_6x59 {
   G_ClientIDHeader header;
   le_uint16_t client_id2 = 0;
-  le_uint16_t area = 0;
+  le_uint16_t floor = 0;
   le_uint32_t item_id = 0;
 } __packed__;
 
@@ -4318,7 +4318,7 @@ struct G_PickUpItem_6x59 {
 struct G_PickUpItemRequest_6x5A {
   G_ClientIDHeader header;
   le_uint32_t item_id = 0;
-  le_uint16_t area = 0;
+  le_uint16_t floor = 0;
   le_uint16_t unused = 0;
 } __packed__;
 
@@ -4336,7 +4336,7 @@ struct G_Unknown_6x5C {
 
 struct G_DropStackedItem_DC_6x5D {
   G_ClientIDHeader header;
-  le_uint16_t area = 0;
+  le_uint16_t floor = 0;
   le_uint16_t unknown_a2 = 0; // Corresponds to FloorItem::unknown_a2
   le_float x = 0.0f;
   le_float z = 0.0f;
@@ -4357,15 +4357,15 @@ struct G_BuyShopItem_6x5E {
 // 6x5F: Drop item from box/enemy
 
 struct FloorItem {
-  uint8_t area = 0;
+  uint8_t floor = 0;
   uint8_t from_enemy = 0;
   le_uint16_t entity_id = 0; // < 0x0B50 if from_enemy != 0; otherwise < 0x0BA0
   le_float x = 0.0f;
   le_float z = 0.0f;
   le_uint16_t unknown_a2 = 0;
-  // The drop number is scoped to the area and increments by 1 each time an
-  // item is dropped. The last item dropped in each area has drop_number equal
-  // to total_items_dropped_per_area[area - 1] - 1.
+  // The drop number is scoped to the floor and increments by 1 each time an
+  // item is dropped. The last item dropped in each floor has drop_number equal
+  // to total_items_dropped_per_floor[floor - 1] - 1.
   le_uint16_t drop_number = 0;
   ItemData item;
 } __packed__;
@@ -4383,7 +4383,7 @@ struct G_DropItem_PC_V3_BB_6x5F : G_DropItem_DC_6x5F {
 
 struct G_StandardDropItemRequest_DC_6x60 {
   G_UnusedHeader header;
-  uint8_t area = 0;
+  uint8_t floor = 0;
   uint8_t rt_index = 0;
   le_uint16_t entity_id = 0;
   le_float x = 0.0f;
@@ -4413,7 +4413,7 @@ struct G_ActivateMagEffect_6x61 {
 struct G_DestroyGroundItem_6x63 {
   G_UnusedHeader header;
   le_uint32_t item_id = 0;
-  le_uint32_t area = 0;
+  le_uint32_t floor = 0;
 } __packed__;
 
 // 6x64: Unknown (not valid on Episode 3)
@@ -4433,7 +4433,7 @@ struct G_UseStarAtomizer_6x66 {
 
 struct G_CreateEnemySet_6x67 {
   G_UnusedHeader header;
-  // unused1 could be area; the client checks this againset a global but the
+  // unused1 could be floor; the client checks this against a global but the
   // logic is the same in both branches
   le_uint32_t unused1 = 0;
   le_uint32_t unknown_a1 = 0;
@@ -4510,16 +4510,16 @@ struct G_SyncItemState_6x6D_Decompressed {
   // TODO: Verify this format on DC and PC. It appears correct for GC and BB.
   // Note: 16 vs. 15 is not a bug here - there really is an extra field in the
   // total drop count vs. the floor item count. Despite this, Pioneer 2 or Lab
-  // (area 0) isn't included in total_items_dropped_per_area (so Forest 1 is [0]
-  // in that array) but it is included in floor_item_count_per_area (so Forest 1
-  // is [1] there).
-  parray<le_uint16_t, 16> total_items_dropped_per_area;
+  // (floor 0) isn't included in total_items_dropped_per_floor (so Forest 1 is
+  // [0] in that array) but it is included in floor_item_count_per_floor (so
+  // Forest 1 is [1] there).
+  parray<le_uint16_t, 16> total_items_dropped_per_floor;
   // Only [0]-[3] in this array are ever actually used in normal gameplay, but
   // the client fills in all 12 of these with reasonable values.
   parray<le_uint32_t, 12> next_item_id_per_player;
-  parray<le_uint32_t, 15> floor_item_count_per_area;
+  parray<le_uint32_t, 15> floor_item_count_per_floor;
   // Variable-length field:
-  // FloorItem items[sum(floor_item_count_per_area)];
+  // FloorItem items[sum(floor_item_count_per_floor)];
 } __packed__;
 
 // 6x6E: Sync flag state (used while loading into game)
@@ -4886,7 +4886,7 @@ struct G_Unknown_6x92 {
 
 struct G_ActivateTimedSwitch_6x93 {
   G_UnusedHeader header;
-  le_uint16_t area = 0;
+  le_uint16_t floor = 0;
   le_uint16_t switch_id = 0;
   uint8_t unknown_a1 = 0; // Logic is different if this is 1 vs. any other value
   parray<uint8_t, 3> unused;
@@ -4896,7 +4896,7 @@ struct G_ActivateTimedSwitch_6x93 {
 
 struct G_InterLevelWarp_6x94 {
   G_UnusedHeader header;
-  le_uint16_t area = 0;
+  le_uint16_t floor = 0;
   parray<uint8_t, 2> unused;
 } __packed__;
 
@@ -5141,7 +5141,7 @@ struct G_MoveLobbyChair_6xB0 {
 
 struct G_Unknown_6xB2 {
   G_UnusedHeader header;
-  uint8_t area = 0;
+  uint8_t floor = 0;
   uint8_t unused = 0;
   le_uint16_t client_id = 0;
   le_uint32_t unknown_a3 = 0; // PSO GC puts 0x00051720 (333600) here
@@ -5427,7 +5427,7 @@ struct G_TeamInvitationAction_BB_6xC1_6xC2_6xCD_6xCE {
 
 struct G_SplitStackedItem_BB_6xC3 {
   G_ClientIDHeader header;
-  le_uint16_t area = 0;
+  le_uint16_t floor = 0;
   le_uint16_t unused2 = 0;
   le_float x = 0.0f;
   le_float z = 0.0f;

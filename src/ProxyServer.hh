@@ -86,7 +86,7 @@ public:
     std::vector<LobbyPlayer> lobby_players;
     size_t lobby_client_id;
     size_t leader_client_id;
-    uint16_t area;
+    uint16_t floor;
     float x;
     float z;
     bool is_in_game;

@@ -489,7 +489,7 @@ ProxyServer::LinkedSession::LinkedSession(
       lobby_players(12),
       lobby_client_id(0),
       leader_client_id(0),
-      area(0),
+      floor(0),
       x(0.0),
       z(0.0),
       is_in_game(false),
