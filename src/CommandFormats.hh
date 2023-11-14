@@ -4388,7 +4388,7 @@ struct G_StandardDropItemRequest_DC_6x60 {
   le_uint16_t entity_id = 0;
   le_float x = 0.0f;
   le_float z = 0.0f;
-  le_uint16_t unknown_a1 = 0;
+  le_uint16_t section = 0;
   le_uint16_t ignore_def = 0;
 } __packed__;
 

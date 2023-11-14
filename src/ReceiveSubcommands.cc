@@ -1436,7 +1436,42 @@ static void on_entity_drop_item_request(shared_ptr<Client> c, uint8_t command, u
 
   ItemData item;
   if (cmd.rt_index == 0x30) {
-    if (cmd.ignore_def) {
+    if (l->map) {
+      auto& object = l->map->objects.at(cmd.entity_id);
+      if (cmd.floor != object.floor) {
+        l->log.warning("Floor %02hhX from command does not match object\'s expected floor %02hhX",
+            cmd.floor, object.floor);
+      }
+      bool object_ignore_def = (object.param1 > 0.0);
+      if (cmd.ignore_def != object_ignore_def) {
+        l->log.warning("ignore_def value %s from command does not match object\'s expected ignore_def %s (from p1=%g)",
+            cmd.ignore_def ? "true" : "false", object_ignore_def ? "true" : "false", object.param1);
+      }
+
+      if (object.item_drop_checked) {
+        l->log.warning("Object drop check has already occurred");
+        if (c->config.check_flag(Client::Flag::DEBUG_ENABLED)) {
+          send_text_message_printf(c, "$C5K-%hX %04hX __CHECKED__", cmd.entity_id.load(), object.base_type);
+        }
+
+      } else if (object_ignore_def) {
+        l->log.info("Creating item from box %04hX (area %02hX)", cmd.entity_id.load(), cmd.effective_area);
+        item = l->item_creator->on_box_item_drop(cmd.entity_id, cmd.effective_area);
+        if (c->config.check_flag(Client::Flag::DEBUG_ENABLED)) {
+          send_text_message_printf(c, "$C5K-%hX %04hX GEN %s", cmd.entity_id.load(), object.base_type, item.empty() ? "EMPTY" : "ITEM");
+        }
+
+      } else {
+        l->log.info("Creating item from box %04hX (area %02hX; specialized with %08" PRIX32 " %08" PRIX32 " %08" PRIX32 ")",
+            cmd.entity_id.load(), cmd.effective_area, object.param4, object.param5, object.param6);
+        item = l->item_creator->on_specialized_box_item_drop(cmd.entity_id, object.param4, object.param5, object.param6);
+        if (c->config.check_flag(Client::Flag::DEBUG_ENABLED)) {
+          send_text_message_printf(c, "$C5K-%hX %04hX CST %s", cmd.entity_id.load(), object.base_type, item.empty() ? "EMPTY" : "ITEM");
+        }
+      }
+      object.item_drop_checked = true;
+
+    } else if (cmd.ignore_def) {
       l->log.info("Creating item from box %04hX (area %02hX)", cmd.entity_id.load(), cmd.effective_area);
       item = l->item_creator->on_box_item_drop(cmd.entity_id, cmd.effective_area);
     } else {
@@ -1444,17 +1479,18 @@ static void on_entity_drop_item_request(shared_ptr<Client> c, uint8_t command, u
           cmd.entity_id.load(), cmd.effective_area, cmd.def[0].load(), cmd.def[1].load(), cmd.def[2].load());
       item = l->item_creator->on_specialized_box_item_drop(cmd.entity_id, cmd.def[0], cmd.def[1], cmd.def[2]);
     }
+
   } else {
     l->log.info("Creating item from enemy %04hX (area %02hX)", cmd.entity_id.load(), cmd.effective_area);
     if (l->map) {
       const auto& enemy = l->map->enemies.at(cmd.entity_id);
       uint32_t expected_rt_index = rare_table_index_for_enemy_type(enemy.type);
       if (cmd.rt_index != expected_rt_index) {
-        c->log.warning("rt_index %02hhX from command does not match entity\'s expected index %02" PRIX32,
+        l->log.warning("rt_index %02hhX from command does not match entity\'s expected index %02" PRIX32,
             cmd.rt_index, expected_rt_index);
       }
       if (cmd.floor != enemy.floor) {
-        c->log.warning("Floor %02hhX from command does not match entity\'s expected floor %02hhX",
+        l->log.warning("Floor %02hhX from command does not match entity\'s expected floor %02hhX",
             cmd.floor, enemy.floor);
       }
     }

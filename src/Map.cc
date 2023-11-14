@@ -25,21 +25,36 @@ string Map::Enemy::str() const {
       name_for_enum(this->type), this->flags, this->last_hit_by_client_id);
 }
 
+string Map::Object::str() const {
+  return string_printf("[Map::Object %04hX @%04hX p1=%g (%s) p456=[%08" PRIX32 " %08" PRIX32 " %08" PRIX32 "] floor=%02hhX item_drop_checked=%s]",
+      this->base_type, this->section, this->param1, (this->param1 <= 0.0f) ? "specialized" : "generic",
+      this->param4, this->param5, this->param6, this->floor, this->item_drop_checked ? "true" : "false");
+}
+
 void Map::clear() {
   this->enemies.clear();
   this->rare_enemy_indexes.clear();
 }
 
-void Map::add_objects_from_map_data(const void* data, size_t size) {
+void Map::add_objects_from_map_data(uint8_t floor, const void* data, size_t size) {
   size_t entry_count = size / sizeof(ObjectEntry);
   if (size != entry_count * sizeof(ObjectEntry)) {
     throw runtime_error("data size is not a multiple of entry size");
   }
 
-  (void)data;
-  // TODO: Actually track objects, so we can e.g. know what to drop from fixed
-  // boxes
-  // const auto* map = reinterpret_cast<const ObjectEntry*>(data);
+  const auto* objects = reinterpret_cast<const ObjectEntry*>(data);
+  for (size_t z = 0; z < entry_count; z++) {
+    this->objects.emplace_back(Object{
+        .base_type = objects[z].base_type,
+        .section = objects[z].section,
+        .param1 = objects[z].param1,
+        .param4 = objects[z].param4,
+        .param5 = objects[z].param5,
+        .param6 = objects[z].param6,
+        .floor = floor,
+        .item_drop_checked = false,
+    });
+  }
 }
 
 bool Map::check_and_log_rare_enemy(bool default_is_rare, uint32_t rare_rate) {
@@ -734,7 +749,7 @@ void Map::add_enemies_and_objects_from_quest_data(
         throw runtime_error("quest layout object section size is not a multiple of object entry size");
       }
       static_game_data_log.info("(Floor %02zX) Adding objects", floor);
-      this->add_objects_from_map_data(r.pgetv(sections.objects + sizeof(header), header.data_size), header.data_size);
+      this->add_objects_from_map_data(floor, r.pgetv(sections.objects + sizeof(header), header.data_size), header.data_size);
     }
 
     if (sections.enemies != 0xFFFFFFFF) {

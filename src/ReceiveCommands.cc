@@ -3742,11 +3742,10 @@ shared_ptr<Lobby> create_game_generic(
             game->map->add_enemies_from_map_data(
                 game->episode, game->difficulty, game->event, floor, map_data->data(), map_data->size());
             size_t entries_loaded = game->map->enemies.size() - start_offset;
-            c->log.info("[Map/%zu:e] Loaded %s (%zu entries)",
-                floor, filename.c_str(), entries_loaded);
+            c->log.info("[Map/%zu:e] Loaded %s (%zu entries)", floor, filename.c_str(), entries_loaded);
             for (size_t z = start_offset; z < game->map->enemies.size(); z++) {
               string e_str = game->map->enemies[z].str();
-              static_game_data_log.info("(Entry %zX) %s", z, e_str.c_str());
+              static_game_data_log.info("(E-%zX) %s", z, e_str.c_str());
             }
             any_map_loaded = true;
             break;
@@ -3758,10 +3757,43 @@ shared_ptr<Lobby> create_game_generic(
           throw runtime_error(string_printf("no enemy maps loaded for floor %zu", floor));
         }
       }
+
+      auto object_filenames = map_filenames_for_variation(
+          game->episode,
+          is_solo,
+          floor,
+          game->variations[floor * 2],
+          game->variations[floor * 2 + 1],
+          false);
+      if (object_filenames.empty()) {
+        c->log.info("[Map/%zu:o] No file to load", floor);
+      } else {
+        bool any_map_loaded = false;
+        for (const string& filename : object_filenames) {
+          try {
+            auto map_data = s->load_bb_file(filename, "", "map/" + filename);
+            size_t start_offset = game->map->objects.size();
+            game->map->add_objects_from_map_data(floor, map_data->data(), map_data->size());
+            size_t entries_loaded = game->map->objects.size() - start_offset;
+            c->log.info("[Map/%zu:o] Loaded %s (%zu entries)", floor, filename.c_str(), entries_loaded);
+            for (size_t z = start_offset; z < game->map->objects.size(); z++) {
+              string e_str = game->map->objects[z].str();
+              static_game_data_log.info("(K-%zX) %s", z, e_str.c_str());
+            }
+            any_map_loaded = true;
+            break;
+          } catch (const exception& e) {
+            c->log.info("[Map/%zu:o] Failed to load %s: %s", floor, filename.c_str(), e.what());
+          }
+        }
+        if (!any_map_loaded) {
+          throw runtime_error(string_printf("no object maps loaded for floor %zu", floor));
+        }
+      }
     }
 
-    c->log.info("Loaded maps contain %zu enemy entries overall (%zu as rares)",
-        game->map->enemies.size(), game->map->rare_enemy_indexes.size());
+    c->log.info("Loaded maps contain %zu object entries and %zu enemy entries overall (%zu as rares)",
+        game->map->objects.size(), game->map->enemies.size(), game->map->rare_enemy_indexes.size());
   }
   return game;
 }
