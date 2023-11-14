@@ -101,7 +101,7 @@ struct PlayerVisualConfig {
   /* 1C */ uint8_t extra_model = 0;
   /* 1D */ parray<uint8_t, 0x0F> unused;
   // See compute_name_color_checksum for details on how this is computed. This
-  // field is ignored on V3 and BB.
+  // field is ignored on V3.
   /* 2C */ le_uint32_t name_color_checksum = 0;
   /* 30 */ uint8_t section_id = 0;
   /* 31 */ uint8_t char_class = 0;

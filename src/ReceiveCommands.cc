@@ -2889,6 +2889,8 @@ static void on_61_98(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
       const auto& p = c->game_data.character();
       uint8_t prev_version = p->disp.visual.version;
       p->disp.visual.version = 4;
+      uint32_t prev_name_color_checksum = p->disp.visual.name_color_checksum;
+      p->disp.visual.name_color_checksum = 0x00000000;
 
       bool failure = false;
       try {
@@ -2899,6 +2901,7 @@ static void on_61_98(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
       }
 
       p->disp.visual.version = prev_version;
+      p->disp.visual.name_color_checksum = prev_name_color_checksum;
 
       if (!failure) {
         send_text_message_printf(c,
