@@ -26,7 +26,7 @@ public:
   };
 
   RareItemSet();
-  RareItemSet(const AFSArchive& afs);
+  RareItemSet(const AFSArchive& afs, bool is_v1);
   RareItemSet(const GSLArchive& gsl, bool is_big_endian);
   RareItemSet(const std::string& rel, bool is_big_endian);
   RareItemSet(const JSON& json, GameVersion version, std::shared_ptr<const ItemNameIndex> name_index = nullptr);
@@ -68,7 +68,7 @@ protected:
     template <bool IsBigEndian>
     struct Offsets {
       using U32T = typename std::conditional<IsBigEndian, be_uint32_t, le_uint32_t>::type;
-      /* 00 */ U32T monster_rares_offset; // -> parray<PackedDrop, 0x65>
+      /* 00 */ U32T monster_rares_offset; // -> parray<PackedDrop, 0x65> (or 0x33 on v1)
       /* 04 */ U32T box_count; // Usually 30 (0x1E)
       /* 08 */ U32T box_areas_offset; // -> parray<uint8_t, 0x1E>
       /* 0C */ U32T box_rares_offset; // -> parray<PackedDrop, 0x1E>
@@ -84,12 +84,12 @@ protected:
     std::vector<BoxRare> box_rares;
 
     ParsedRELData() = default;
-    ParsedRELData(StringReader r, bool big_endian);
+    ParsedRELData(StringReader r, bool big_endian, bool is_v1);
     explicit ParsedRELData(const SpecCollection& collection);
     std::string serialize(bool big_endian) const;
 
     template <bool IsBigEndian>
-    void parse_t(StringReader r);
+    void parse_t(StringReader r, bool is_v1);
     template <bool IsBigEndian>
     std::string serialize_t() const;
 

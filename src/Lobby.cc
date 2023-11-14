@@ -61,10 +61,13 @@ void Lobby::create_item_creator() {
   } else if (this->base_version == GameVersion::GC || this->base_version == GameVersion::XB) {
     common_item_set = s->common_item_set_v3;
     rare_item_set = s->rare_item_sets.at("rare-table-v3");
-  } else {
-    // TODO: Should there be separate tables for V1 eventually?
+  } else if (!this->check_flag(Lobby::Flag::USE_DCV1_RARE_TABLE)) {
     common_item_set = s->common_item_set_v2;
     rare_item_set = s->rare_item_sets.at("rare-table-v2");
+  } else {
+    // TODO: We should probably have a v1 common item set at some point too
+    common_item_set = s->common_item_set_v2;
+    rare_item_set = s->rare_item_sets.at("rare-table-v1");
   }
   this->item_creator.reset(new ItemCreator(
       common_item_set,

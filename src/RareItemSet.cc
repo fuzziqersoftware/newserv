@@ -86,14 +86,14 @@ RareItemSet::ExpandedDrop RareItemSet::ParsedRELData::PackedDrop::expand() const
 }
 
 template <bool IsBigEndian>
-void RareItemSet::ParsedRELData::parse_t(StringReader r) {
+void RareItemSet::ParsedRELData::parse_t(StringReader r, bool is_v1) {
   using U32T = typename std::conditional<IsBigEndian, be_uint32_t, le_uint32_t>::type;
 
   uint32_t root_offset = r.pget<U32T>(r.size() - 0x10);
   const auto& root = r.pget<Offsets<IsBigEndian>>(root_offset);
 
   StringReader monsters_r = r.sub(root.monster_rares_offset);
-  for (size_t z = 0; z < 0x65; z++) {
+  for (size_t z = 0; z < (is_v1 ? 0x33 : 0x65); z++) {
     const auto& d = monsters_r.get<PackedDrop>();
     this->monster_rares.emplace_back(d.expand());
   }
@@ -163,11 +163,11 @@ std::string RareItemSet::ParsedRELData::serialize_t() const {
   return std::move(w.str());
 }
 
-RareItemSet::ParsedRELData::ParsedRELData(StringReader r, bool big_endian) {
+RareItemSet::ParsedRELData::ParsedRELData(StringReader r, bool big_endian, bool is_v1) {
   if (big_endian) {
-    this->parse_t<true>(r);
+    this->parse_t<true>(r, is_v1);
   } else {
-    this->parse_t<false>(r);
+    this->parse_t<false>(r, is_v1);
   }
 }
 
@@ -229,14 +229,14 @@ RareItemSet::SpecCollection RareItemSet::ParsedRELData::as_collection() const {
   return ret;
 }
 
-RareItemSet::RareItemSet(const AFSArchive& afs) {
+RareItemSet::RareItemSet(const AFSArchive& afs, bool is_v1) {
   const array<GameMode, 4> modes = {GameMode::NORMAL, GameMode::BATTLE, GameMode::CHALLENGE, GameMode::SOLO};
   for (GameMode mode : modes) {
     for (size_t difficulty = 0; difficulty < 4; difficulty++) {
       for (size_t section_id = 0; section_id < 10; section_id++) {
         try {
           size_t index = difficulty * 10 + section_id;
-          ParsedRELData rel(afs.get_reader(index), false);
+          ParsedRELData rel(afs.get_reader(index), false, is_v1);
           this->collections.emplace(
               this->key_for_params(mode, Episode::EP1, difficulty, section_id),
               rel.as_collection());
@@ -264,7 +264,7 @@ RareItemSet::RareItemSet(const GSLArchive& gsl, bool is_big_endian) {
         for (size_t section_id = 0; section_id < 10; section_id++) {
           try {
             string filename = this->gsl_entry_name_for_table(mode, episode, difficulty, section_id);
-            ParsedRELData rel(gsl.get_reader(filename), is_big_endian);
+            ParsedRELData rel(gsl.get_reader(filename), is_big_endian, false);
             this->collections.emplace(
                 this->key_for_params(mode, episode, difficulty, section_id),
                 rel.as_collection());
@@ -285,7 +285,7 @@ RareItemSet::RareItemSet(const string& rel_data, bool is_big_endian) {
       for (size_t section_id = 0; section_id < 10; section_id++) {
         try {
           size_t index = (ep_index * 40) + difficulty * 10 + section_id;
-          ParsedRELData rel(r.sub(0x280 * index, 0x280), is_big_endian);
+          ParsedRELData rel(r.sub(0x280 * index, 0x280), is_big_endian, false);
           this->collections.emplace(
               this->key_for_params(GameMode::NORMAL, episodes[ep_index], difficulty, section_id),
               rel.as_collection());

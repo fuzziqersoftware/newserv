@@ -928,7 +928,7 @@ void ServerState::load_item_tables() {
     } else if (ends_with(filename, ".afs")) {
       config_log.info("Loading AFS rare item table %s", filename.c_str());
       shared_ptr<string> data(new string(load_file(path)));
-      this->rare_item_sets.emplace(basename, new RareItemSet(AFSArchive(data)));
+      this->rare_item_sets.emplace(basename, new RareItemSet(AFSArchive(data), false));
 
     } else if (ends_with(filename, ".gsl")) {
       config_log.info("Loading GSL rare item table %s", filename.c_str());

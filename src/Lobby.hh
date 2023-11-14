@@ -42,6 +42,7 @@ struct Lobby : public std::enable_shared_from_this<Lobby> {
     CANNOT_CHANGE_DROPS_ENABLED = 0x00040000,
     CANNOT_CHANGE_ITEM_TABLE = 0x00080000,
     CANNOT_CHANGE_CHEAT_MODE = 0x00100000,
+    USE_DCV1_RARE_TABLE = 0x00200000,
 
     // Flags used only for lobbies
     PUBLIC = 0x01000000,

@@ -1551,7 +1551,7 @@ int main(int argc, char** argv) {
       } else if (ends_with(input_filename, ".gslb")) {
         rs.reset(new RareItemSet(GSLArchive(data, true), true));
       } else if (ends_with(input_filename, ".afs")) {
-        rs.reset(new RareItemSet(AFSArchive(data)));
+        rs.reset(new RareItemSet(AFSArchive(data), (cli_quest_version == QuestScriptVersion::DC_V1)));
       } else if (ends_with(input_filename, ".rel")) {
         rs.reset(new RareItemSet(*data, true));
       } else {

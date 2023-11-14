@@ -3589,6 +3589,9 @@ shared_ptr<Lobby> create_game_generic(
   shared_ptr<Lobby> game = s->create_lobby();
   game->name = name;
   game->set_flag(Lobby::Flag::GAME);
+  if (c->config.check_flag(Client::Flag::IS_DC_V1)) {
+    game->set_flag(Lobby::Flag::USE_DCV1_RARE_TABLE);
+  }
   if ((c->version() == GameVersion::GC) &&
       c->config.check_flag(Client::Flag::IS_EPISODE_3) &&
       c->config.check_flag(Client::Flag::IS_EP3_TRIAL_EDITION)) {
