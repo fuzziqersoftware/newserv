@@ -3342,8 +3342,8 @@ static void on_DF_BB(shared_ptr<Client> c, uint16_t command, uint32_t, string& d
 
     case 0x04DF: {
       const auto& cmd = check_size_t<C_SetChallengeModeEXPMultiplier_BB_04DF>(data);
-      l->exp_multiplier = cmd.exp_multiplier;
-      l->log.info("(Challenge mode) EXP multiplier set to %g", l->exp_multiplier);
+      l->challenge_exp_multiplier = cmd.exp_multiplier;
+      l->log.info("(Challenge mode) EXP multiplier set to %g", l->challenge_exp_multiplier);
       break;
     }
 
@@ -3740,7 +3740,7 @@ shared_ptr<Lobby> create_game_generic(
             auto map_data = s->load_bb_file(filename, "", "map/" + filename);
             size_t start_offset = game->map->enemies.size();
             game->map->add_enemies_from_map_data(
-                game->episode, game->difficulty, game->event, map_data->data(), map_data->size());
+                game->episode, game->difficulty, game->event, floor, map_data->data(), map_data->size());
             size_t entries_loaded = game->map->enemies.size() - start_offset;
             c->log.info("[Map/%zu:e] Loaded %s (%zu entries)",
                 floor, filename.c_str(), entries_loaded);
@@ -3916,7 +3916,7 @@ static void on_6F(shared_ptr<Client> c, uint16_t command, uint32_t, string& data
   c->config.clear_flag(Client::Flag::LOADING);
 
   send_resume_game(l, c);
-  if ((l->base_version == GameVersion::BB) && (l->mode != GameMode::CHALLENGE)) {
+  if (l->base_version == GameVersion::BB) {
     send_set_exp_multiplier(l);
   }
   send_server_time(c);

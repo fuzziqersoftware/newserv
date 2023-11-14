@@ -2287,10 +2287,7 @@ void send_set_exp_multiplier(std::shared_ptr<Lobby> l) {
   if (!l->is_game()) {
     throw logic_error("6xDD can only be sent in games (not in lobbies)");
   }
-  if (floorf(l->exp_multiplier) != l->exp_multiplier) {
-    throw runtime_error("EXP multiplier is not an integer");
-  }
-  G_SetEXPMultiplier_BB_6xDD cmd = {{0xDD, sizeof(G_SetEXPMultiplier_BB_6xDD) / 4, static_cast<uint16_t>(l->exp_multiplier)}};
+  G_SetEXPMultiplier_BB_6xDD cmd = {{0xDD, sizeof(G_SetEXPMultiplier_BB_6xDD) / 4, (l->mode == GameMode::CHALLENGE) ? 1 : l->base_exp_multiplier}};
   send_command_t(l, 0x60, 0x00, cmd);
 }
 

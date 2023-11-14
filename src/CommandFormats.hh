@@ -2744,7 +2744,7 @@ struct C_SetChallengeModeDifficulty_BB_03DF {
 } __packed__;
 
 struct C_SetChallengeModeEXPMultiplier_BB_04DF {
-  le_float exp_multiplier = 0;
+  le_float exp_multiplier = 1.0f;
 } __packed__;
 
 struct C_SetChallengeRankText_BB_05DF {

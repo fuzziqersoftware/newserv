@@ -222,6 +222,7 @@ struct Map {
       Episode episode,
       uint8_t difficulty,
       uint8_t event,
+      uint8_t floor,
       size_t index,
       const EnemyEntry& e,
       const RareEnemyRates& rare_rates = Map::DEFAULT_RARE_ENEMIES);
@@ -229,6 +230,7 @@ struct Map {
       Episode episode,
       uint8_t difficulty,
       uint8_t event,
+      uint8_t floor,
       const void* data,
       size_t size,
       const RareEnemyRates& rare_rates = Map::DEFAULT_RARE_ENEMIES);
@@ -236,6 +238,7 @@ struct Map {
       Episode episode,
       uint8_t difficulty,
       uint8_t event,
+      uint8_t floor,
       StringReader wave_events_r,
       StringReader random_enemy_locations_r,
       StringReader random_enemy_definitions_r,

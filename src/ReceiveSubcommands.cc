@@ -1790,11 +1790,11 @@ static void on_enemy_killed_bb(shared_ptr<Client> c, uint8_t, uint8_t, const voi
     return;
   }
 
-  uint32_t experience = 0xFFFFFFFF;
+  double experience = 0.0;
   try {
     const auto& bp_table = s->battle_params->get_table(l->mode == GameMode::SOLO, l->episode);
     uint32_t bp_index = battle_param_index_for_enemy_type(l->episode, e.type);
-    experience = bp_table.stats[l->difficulty][bp_index].experience * l->exp_multiplier;
+    experience = bp_table.stats[l->difficulty][bp_index].experience;
   } catch (const exception& e) {
     if (c->config.check_flag(Client::Flag::DEBUG_ENABLED)) {
       send_text_message_printf(c, "$C5E-%hX __MISSING__\n%s", cmd.enemy_index.load(), e.what());
@@ -1804,28 +1804,43 @@ static void on_enemy_killed_bb(shared_ptr<Client> c, uint8_t, uint8_t, const voi
   }
 
   e.flags |= Map::Enemy::Flag::DEFEATED;
-  for (size_t x = 0; x < l->max_clients; x++) {
-    if (!((e.flags >> x) & 1)) {
-      continue; // Player did not hit this enemy
-    }
-    auto other_c = l->clients[x];
-    if (!other_c) {
-      continue; // No player
-    }
-    if (other_c->floor != e.floor) {
-      continue;
-    }
-
-    if (experience != 0xFFFFFFFF) {
-      // Killer gets full experience, others get 77%
-      bool is_killer = (e.last_hit_by_client_id == other_c->lobby_client_id);
-      uint32_t player_exp = is_killer ? experience : ((experience * 77) / 100);
-      if (other_c->config.check_flag(Client::Flag::DEBUG_ENABLED)) {
-        send_text_message_printf(c, "$C5+%" PRIu32 " E-%hX %s",
-            player_exp, cmd.enemy_index.load(), name_for_enum(e.type));
+  if (experience != 0.0) {
+    for (size_t x = 0; x < l->max_clients; x++) {
+      auto lc = l->clients[x];
+      if (!lc) {
+        continue;
       }
-      if (other_c->game_data.character()->disp.stats.level < 199) {
-        add_player_exp(other_c, player_exp);
+      if (!((e.flags >> x) & 1)) {
+        if (lc->config.check_flag(Client::Flag::DEBUG_ENABLED)) {
+          send_text_message_printf(lc, "$C5E-%hX %s\n$C4NOHIT", cmd.enemy_index.load(), name_for_enum(e.type));
+        }
+        continue; // Player did not hit this enemy
+      }
+      if (lc->floor != e.floor) {
+        if (lc->config.check_flag(Client::Flag::DEBUG_ENABLED)) {
+          send_text_message_printf(lc, "$C5E-%hX %s\n$C4FLOOR Y:%02" PRIX32 " E:%02hhX",
+              cmd.enemy_index.load(), name_for_enum(e.type), lc->floor, e.floor);
+        }
+        continue;
+      }
+
+      // In PSOBB, Sega decided to add a 30% EXP boost for Episode 2. They could
+      // have done something reasonable, like edit the BattleParamEntry files so
+      // the monsters would all give more EXP, but they did something far lazier
+      // instead: they just stuck an if statement in the client's EXP request
+      // function. We, unfortunately, have to do the same here.
+      bool is_killer = (e.last_hit_by_client_id == lc->lobby_client_id);
+      bool is_ep2 = (l->episode == Episode::EP2);
+      uint32_t player_exp = experience *
+          (is_killer ? 1.0 : 0.8) *
+          l->base_exp_multiplier *
+          l->challenge_exp_multiplier *
+          (is_ep2 ? 1.3 : 1.0);
+      if (lc->config.check_flag(Client::Flag::DEBUG_ENABLED)) {
+        send_text_message_printf(lc, "$C5+%" PRIu32 " E-%hX %s", player_exp, cmd.enemy_index.load(), name_for_enum(e.type));
+      }
+      if (lc->game_data.character()->disp.stats.level < 199) {
+        add_player_exp(lc, player_exp);
       }
     }
   }
