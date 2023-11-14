@@ -197,8 +197,13 @@ uint32_t PSOBBGuildCardFile::checksum() const {
   return crc32(this, sizeof(*this));
 }
 
-PSOBBSystemFile::PSOBBSystemFile(uint32_t guild_card_number)
-    : PSOBBSystemFile() {
+PSOBBSystemFile::PSOBBSystemFile()
+    : guild_card_number(0),
+      team_id(0),
+      team_info(0),
+      team_privilege_level(0),
+      reserved(0),
+      team_rewards(0) {
   // This field is based on 1/1/2000, not 1/1/1970, so adjust appropriately
   this->base.creation_timestamp = (now() - 946684800000000ULL) / 1000000;
   for (size_t z = 0; z < PSOBBSystemFile::DEFAULT_KEY_CONFIG.size(); z++) {
@@ -207,7 +212,6 @@ PSOBBSystemFile::PSOBBSystemFile(uint32_t guild_card_number)
   for (size_t z = 0; z < PSOBBSystemFile::DEFAULT_JOYSTICK_CONFIG.size(); z++) {
     this->joystick_config[z] = PSOBBSystemFile::DEFAULT_JOYSTICK_CONFIG[z];
   }
-  this->guild_card_number = guild_card_number;
 }
 
 shared_ptr<PSOBBCharacterFile> PSOBBCharacterFile::create_from_preview(

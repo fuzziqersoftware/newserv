@@ -2885,6 +2885,11 @@ static void on_61_98(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
       c->game_data.bb_username = c->pending_bb_save_username;
       c->game_data.bb_character_index = c->pending_bb_save_character_index;
 
+      // Update a few fields for BB
+      const auto& p = c->game_data.character();
+      uint8_t prev_version = p->disp.visual.version;
+      p->disp.visual.version = 4;
+
       bool failure = false;
       try {
         c->game_data.save_character_file();
@@ -2892,6 +2897,8 @@ static void on_61_98(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
         send_text_message_printf(c, "$C6PSOBB player data could\nnot be saved:\n%s", e.what());
         failure = true;
       }
+
+      p->disp.visual.version = prev_version;
 
       if (!failure) {
         send_text_message_printf(c,

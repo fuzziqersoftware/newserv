@@ -149,8 +149,7 @@ struct PSOBBSystemFile {
   static const std::array<uint8_t, 0x016C> DEFAULT_KEY_CONFIG;
   static const std::array<uint8_t, 0x0038> DEFAULT_JOYSTICK_CONFIG;
 
-  PSOBBSystemFile() = default;
-  explicit PSOBBSystemFile(uint32_t guild_card_number);
+  PSOBBSystemFile();
 } __attribute__((packed));
 
 struct PSOBBCharacterFile {
@@ -174,7 +173,7 @@ struct PSOBBCharacterFile {
   /* 034C */ PlayerDispDataBB disp;
   /* 04DC */ le_uint32_t flags = 0;
   /* 04E0 */ le_uint32_t creation_timestamp = 0;
-  /* 04E4 */ le_uint32_t signature = 0xA205B064;
+  /* 04E4 */ le_uint32_t signature = 0xC87ED5B1;
   /* 04E8 */ le_uint32_t play_time_seconds = 0;
   /* 04EC */ le_uint32_t option_flags = 0;
   /* 04F0 */ parray<uint8_t, 4> unknown_a2;
