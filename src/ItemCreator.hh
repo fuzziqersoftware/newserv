@@ -34,6 +34,8 @@ public:
   ItemData on_box_item_drop(uint16_t entity_id, uint8_t area);
   ItemData on_specialized_box_item_drop(uint16_t entity_id, uint32_t def0, uint32_t def1, uint32_t def2);
 
+  static ItemData item_for_specialized_box(uint32_t def0, uint32_t def1, uint32_t def2);
+
   std::vector<ItemData> generate_armor_shop_contents(size_t player_level);
   std::vector<ItemData> generate_tool_shop_contents(size_t player_level);
   std::vector<ItemData> generate_weapon_shop_contents(size_t player_level);

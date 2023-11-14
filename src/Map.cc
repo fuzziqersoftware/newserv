@@ -4,6 +4,7 @@
 #include <phosg/Random.hh>
 #include <phosg/Strings.hh>
 
+#include "ItemCreator.hh"
 #include "Loggers.hh"
 #include "PSOEncryption.hh"
 #include "Quest.hh"
@@ -25,10 +26,17 @@ string Map::Enemy::str() const {
       name_for_enum(this->type), this->flags, this->last_hit_by_client_id);
 }
 
-string Map::Object::str() const {
-  return string_printf("[Map::Object %04hX @%04hX p1=%g (%s) p456=[%08" PRIX32 " %08" PRIX32 " %08" PRIX32 "] floor=%02hhX item_drop_checked=%s]",
-      this->base_type, this->section, this->param1, (this->param1 <= 0.0f) ? "specialized" : "generic",
-      this->param4, this->param5, this->param6, this->floor, this->item_drop_checked ? "true" : "false");
+string Map::Object::str(shared_ptr<const ItemNameIndex> name_index) const {
+  if (this->param1 <= 0.0f) {
+    auto item = ItemCreator::item_for_specialized_box(this->param4, this->param5, this->param6);
+    string item_name = name_index ? name_index->describe_item(GameVersion::BB, item) : item.hex();
+    return string_printf("[Map::Object %04hX @%04hX p1=%g (specialized: %s) floor=%02hhX item_drop_checked=%s]",
+        this->base_type, this->section, this->param1, item_name.c_str(), this->floor, this->item_drop_checked ? "true" : "false");
+  } else {
+    return string_printf("[Map::Object %04hX @%04hX p1=%g (generic) p456=[%08" PRIX32 " %08" PRIX32 " %08" PRIX32 "] floor=%02hhX item_drop_checked=%s]",
+        this->base_type, this->section, this->param1, this->param4, this->param5, this->param6,
+        this->floor, this->item_drop_checked ? "true" : "false");
+  }
 }
 
 void Map::clear() {

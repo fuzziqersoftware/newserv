@@ -1658,7 +1658,10 @@ ItemData ItemCreator::on_specialized_box_item_drop(uint16_t entity_id, uint32_t 
   if (!this->destroyed_boxes.emplace(entity_id).second) {
     return ItemData();
   }
+  return this->item_for_specialized_box(def0, def1, def2);
+}
 
+ItemData ItemCreator::item_for_specialized_box(uint32_t def0, uint32_t def1, uint32_t def2) {
   ItemData item;
   item.data1[0] = (def0 >> 0x18) & 0x0F;
   item.data1[1] = (def0 >> 0x10) + ((item.data1[0] == 0x00) || (item.data1[0] == 0x01));

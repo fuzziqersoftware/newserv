@@ -3777,7 +3777,7 @@ shared_ptr<Lobby> create_game_generic(
             size_t entries_loaded = game->map->objects.size() - start_offset;
             c->log.info("[Map/%zu:o] Loaded %s (%zu entries)", floor, filename.c_str(), entries_loaded);
             for (size_t z = start_offset; z < game->map->objects.size(); z++) {
-              string e_str = game->map->objects[z].str();
+              string e_str = game->map->objects[z].str(s->item_name_index);
               static_game_data_log.info("(K-%zX) %s", z, e_str.c_str());
             }
             any_map_loaded = true;

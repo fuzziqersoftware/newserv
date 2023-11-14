@@ -9,6 +9,7 @@
 #include <vector>
 
 #include "BattleParamsIndex.hh"
+#include "ItemNameIndex.hh"
 #include "PSOEncryption.hh"
 #include "StaticGameData.hh"
 #include "Text.hh"
@@ -204,7 +205,7 @@ struct Map {
     uint8_t floor;
     bool item_drop_checked;
 
-    std::string str() const;
+    std::string str(std::shared_ptr<const ItemNameIndex> name_index) const;
   };
 
   struct Enemy {
