@@ -21,7 +21,7 @@ struct CharacterStats {
 struct PlayerStats {
   /* 00 */ CharacterStats char_stats;
   /* 0E */ le_uint16_t unknown_a1 = 0;
-  /* 10 */ le_float unknown_a2 = 0.0;
+  /* 10 */ le_float height = 0.0;
   /* 14 */ le_float unknown_a3 = 0.0;
   /* 18 */ le_uint32_t level = 0;
   /* 1C */ le_uint32_t experience = 0;

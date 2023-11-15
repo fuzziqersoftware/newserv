@@ -4577,21 +4577,44 @@ struct G_SyncPlayerDispAndInventory_DC_PC_GC_6x70 {
   /* 000E */ le_uint16_t unknown_a1 = 0;
   // [1] and [3] in this array (and maybe [2] also) appear to be le_floats;
   // they could be the player's current (x, y, z) coords
-  /* 0010 */ parray<le_uint32_t, 7> unknown_a2;
-  /* 002C */ parray<le_uint16_t, 4> unknown_a3;
+  /* 0010 */ le_uint32_t flags1;
+  /* 0014 */ le_float x;
+  /* 0018 */ le_float y;
+  /* 001C */ le_float z;
+  /* 0020 */ le_uint32_t angle_x;
+  /* 0024 */ le_uint32_t angle_y;
+  /* 0028 */ le_uint32_t angle_z;
+  /* 002C */ le_uint16_t unknown_a3a;
+  /* 002C */ le_uint16_t current_hp;
+  /* 002C */ le_uint16_t bonus_hp_from_materials;
+  /* 002C */ le_uint16_t bonus_tp_from_materials;
   /* 0034 */ parray<parray<le_uint32_t, 3>, 5> unknown_a4;
-  /* 0070 */ le_uint32_t unknown_a5 = 0;
+  /* 0070 */ le_uint32_t language = 0;
   /* 0074 */ le_uint32_t player_tag = 0;
   /* 0078 */ le_uint32_t guild_card_number = 0;
-  /* 007C */ parray<le_uint32_t, 2> unknown_a6;
+  /* 007C */ le_uint32_t unknown_a6;
+  /* 0080 */ le_uint32_t battle_team_number;
   /* 0084 */ struct {
-    parray<le_uint16_t, 2> unknown_a1;
-    parray<le_uint32_t, 6> unknown_a2;
-  } __packed__ unknown_a7;
+    /* 0084 */ le_uint16_t client_id;
+    /* 0086 */ le_uint16_t unknown_a1;
+    /* 0088 */ le_uint32_t unknown_a2;
+    /* 008C */ le_float x;
+    /* 0090 */ le_float y;
+    /* 0094 */ le_float z;
+    /* 0098 */ le_uint32_t unknown_a3;
+    /* 009C */ parray<uint8_t, 4> unknown_a4;
+  } __packed__ telepipe;
   /* 00A0 */ le_uint32_t unknown_a8 = 0;
-  /* 00A4 */ parray<uint8_t, 0x14> unknown_a9;
-  /* 00B8 */ le_uint32_t unknown_a10 = 0;
-  /* 00BC */ le_uint32_t unknown_a11 = 0;
+  /* 00A4 */ struct {
+    /* 00A4 */ le_uint16_t unknown_a1;
+    /* 00A6 */ le_uint16_t unknown_a2;
+    /* 00A8 */ le_uint32_t unknown_a3;
+    /* 00AC */ le_uint32_t unknown_a4;
+    /* 00B0 */ le_uint32_t unknown_a5;
+    /* 00B4 */ le_uint32_t unknown_a6;
+  } __packed__ unknown_a9;
+  /* 00B8 */ le_uint32_t area = 0;
+  /* 00BC */ le_uint32_t flags2 = 0;
   /* 00C0 */ parray<uint8_t, 0x14> technique_levels_v1; // Last byte is uninitialized
   /* 00D4 */ PlayerVisualConfig visual;
   /* 0124 */ PlayerStats stats;
@@ -4601,7 +4624,7 @@ struct G_SyncPlayerDispAndInventory_DC_PC_GC_6x70 {
     // the contents of a previous sync command)
     parray<PlayerInventoryItem, 0x1E> items;
   } __packed__ inventory;
-  /* 0494 */ le_uint32_t unknown_a15 = 0;
+  /* 0494 */ le_uint32_t floor = 0;
   /* 0498 */
 } __packed__;
 
