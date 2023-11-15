@@ -4706,7 +4706,10 @@ struct G_SyncQuestData_6x77 {
   G_UnusedHeader header;
   le_uint16_t register_number = 0; // Must be < 0x100
   le_uint16_t unused = 0;
-  le_uint32_t value = 0;
+  union {
+    le_uint32_t as_int;
+    le_float as_float;
+  } __packed__ value;
 } __packed__;
 
 // 6x78: Unknown

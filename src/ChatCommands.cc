@@ -316,19 +316,18 @@ static void server_command_qsync(shared_ptr<Client> c, const std::string& args) 
     return;
   }
 
-  uint16_t reg_num = stoul(tokens[0].substr(1), nullptr, 0);
-  uint32_t reg_val;
+  G_SyncQuestData_6x77 cmd;
+  cmd.header = {0x77, 0x03, 0x0000};
+  cmd.register_number = stoul(tokens[0].substr(1), nullptr, 0);
+  cmd.unused = 0;
   if (tokens[0][0] == 'r') {
-    reg_val = stoul(tokens[1], nullptr, 0);
+    cmd.value.as_int = stoul(tokens[1], nullptr, 0);
   } else if (tokens[0][0] == 'f') {
-    float float_val = stof(tokens[1]);
-    reg_val = *reinterpret_cast<const uint32_t*>(&float_val);
+    cmd.value.as_float = stof(tokens[1]);
   } else {
     send_text_message(c, "$C6First argument must\nbe a register");
     return;
   }
-
-  G_SyncQuestData_6x77 cmd = {{0x77, 0x03, 0x0000}, reg_num, 0, reg_val};
   send_command_t(c, 0x60, 0x00, cmd);
 }
 
