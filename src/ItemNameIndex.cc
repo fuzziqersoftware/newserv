@@ -575,9 +575,7 @@ ItemData ItemNameIndex::parse_item_description_phase(GameVersion version, const 
           {"+", 0x0002},
           {"++", 0x0004},
       });
-      uint16_t modifier = modifiers.at(desc);
-      ret.data1[7] = modifier & 0xFF;
-      ret.data1[8] = (modifier >> 8) & 0xFF;
+      ret.data1w[3] = modifiers.at(desc);
 
     } else { // Armor/shield
       for (const auto& token : split(desc, ' ')) {
