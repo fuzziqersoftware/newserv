@@ -2291,10 +2291,65 @@ static void on_photon_drop_exchange_bb(shared_ptr<Client> c, uint8_t, uint8_t, c
   }
 }
 
+static void on_secret_lottery_ticket_exchange_bb(shared_ptr<Client> c, uint8_t, uint8_t, const void* data, size_t size) {
+  auto s = c->require_server_state();
+  auto l = c->require_lobby();
+  if (l->is_game() && (l->base_version == GameVersion::BB) && l->check_flag(Lobby::Flag::QUEST_IN_PROGRESS)) {
+    const auto& cmd = check_size_t<G_ExchangeSecretLotteryTicket_BB_6xDE>(data, size);
+
+    if (s->secret_lottery_results.empty()) {
+      throw runtime_error("no secret lottery results are defined");
+    }
+
+    auto p = c->game_data.character();
+    ssize_t slt_index = -1;
+    try {
+      slt_index = p->inventory.find_item_by_primary_identifier(0x031003); // Secret Lottery Ticket
+    } catch (const out_of_range&) {
+    }
+
+    if (slt_index >= 0) {
+      uint32_t slt_item_id = p->inventory.items[slt_index].data.id;
+
+      G_ExchangeItemInQuest_BB_6xDB exchange_cmd;
+      exchange_cmd.header.subcommand = 0xDB;
+      exchange_cmd.header.size = 4;
+      exchange_cmd.header.client_id = c->lobby_client_id;
+      exchange_cmd.unknown_a1 = 1;
+      exchange_cmd.item_id = slt_item_id;
+      exchange_cmd.unknown_a3 = 1;
+      send_command_t(c, 0x60, 0x00, exchange_cmd);
+
+      send_destroy_item(c, slt_item_id, 1);
+
+      ItemData item = (s->secret_lottery_results.size() == 1)
+          ? s->secret_lottery_results[0]
+          : s->secret_lottery_results[random_object<uint32_t>() % s->secret_lottery_results.size()];
+      item.id = l->generate_item_id(c->lobby_client_id);
+      p->add_item(item);
+      send_create_inventory_item(c, item);
+    }
+
+    S_ExchangeSecretLotteryTicketResult_BB_24 out_cmd;
+    out_cmd.unknown_a1 = cmd.unknown_a1;
+    out_cmd.unknown_a2 = cmd.unknown_a2;
+    if (s->secret_lottery_results.empty()) {
+      out_cmd.unknown_a3.clear(0);
+    } else if (s->secret_lottery_results.size() == 1) {
+      out_cmd.unknown_a3.clear(1);
+    } else {
+      for (size_t z = 0; z < out_cmd.unknown_a3.size(); z++) {
+        out_cmd.unknown_a3[z] = random_object<uint32_t>() % s->secret_lottery_results.size();
+      }
+    }
+    send_command_t(c, 0x24, (slt_index >= 0) ? 0 : 1, out_cmd);
+  }
+}
+
 static void on_photon_crystal_exchange_bb(shared_ptr<Client> c, uint8_t, uint8_t, const void* data, size_t size) {
   auto l = c->require_lobby();
   if (l->is_game() && (l->base_version == GameVersion::BB) && l->check_flag(Lobby::Flag::QUEST_IN_PROGRESS)) {
-    check_size_t<G_BlackPaperDealPhotonCrystalExchange_BB_6xDF>(data, size);
+    check_size_t<G_ExchangePhotonCrystals_BB_6xDF>(data, size);
     auto p = c->game_data.character();
     size_t index = p->inventory.find_item_by_primary_identifier(0x031002);
     auto item = p->remove_item(p->inventory.items[index].data.id, 1, false);
@@ -2648,7 +2703,7 @@ subcommand_handler_t subcommand_handlers[0x100] = {
     /* 6xDB */ nullptr,
     /* 6xDC */ on_forward_check_size_game,
     /* 6xDD */ nullptr,
-    /* 6xDE */ nullptr,
+    /* 6xDE */ on_secret_lottery_ticket_exchange_bb,
     /* 6xDF */ on_photon_crystal_exchange_bb,
     /* 6xE0 */ on_quest_F95E_result_bb,
     /* 6xE1 */ nullptr,

@@ -715,6 +715,15 @@ void ServerState::parse_config(const JSON& json, bool is_reload) {
   } catch (const out_of_range&) {
   }
 
+  try {
+    this->secret_lottery_results.clear();
+    for (const auto& it : json.get_list("SecretLotteryResultItems")) {
+      string data = parse_data_string(it->as_string());
+      this->secret_lottery_results.emplace_back(ItemData::from_data(data));
+    }
+  } catch (const out_of_range&) {
+  }
+
   set_log_levels_from_json(json.get("LogLevels", JSON::dict()));
 
   if (!is_reload) {

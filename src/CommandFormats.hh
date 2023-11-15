@@ -849,15 +849,17 @@ struct SC_GameGuardCheck_BB_0022 {
 // header.flag indicates if an item was exchanged: 0 means success, 1 means
 // failure.
 
-// 24 (S->C): Good Luck result (BB)
+// 24 (S->C): Secret Lottery Ticket exchange result (BB)
 // Sent in response to a 6xDE command from the client.
 // header.flag indicates whether the client had any Secret Lottery Tickets in
 // their inventory (and hence could participate): 0 means success, 1 means
 // failure.
 
-struct S_GoodLuckResult_BB_24 {
-  le_uint16_t unknown_a1 = 0;
+struct S_ExchangeSecretLotteryTicketResult_BB_24 {
+  // These fields map to unknown_a1 and unknown_a2 in the 6xDE command (but
+  // their order is swapped here).
   le_uint16_t unknown_a2 = 0;
+  le_uint16_t unknown_a1 = 0;
   parray<le_uint32_t, 8> unknown_a3;
 } __packed__;
 
@@ -5672,7 +5674,7 @@ struct G_UpgradeWeaponAttribute_BB_6xDA {
 struct G_ExchangeItemInQuest_BB_6xDB {
   G_ClientIDHeader header;
   le_uint32_t unknown_a1 = 0;
-  le_uint32_t unknown_a2 = 0;
+  le_uint32_t item_id = 0;
   le_uint32_t unknown_a3 = 0;
 } __packed__;
 
@@ -5692,20 +5694,20 @@ struct G_SetEXPMultiplier_BB_6xDD {
   G_ParameterHeader header;
 } __packed__;
 
-// 6xDE: Good Luck quest (BB; handled by server)
+// 6xDE: Exchange Secret Lottery Ticket (BB; handled by server)
 // The client sends this when it executes an F95C quest opcode.
 
-struct G_GoodLuckQuestActions_BB_6xDE {
+struct G_ExchangeSecretLotteryTicket_BB_6xDE {
   G_ClientIDHeader header;
   uint8_t unknown_a1 = 0;
   uint8_t unknown_a2 = 0;
   le_uint16_t unknown_a3 = 0;
 } __packed__;
 
-// 6xDF: Black Paper's Deal Photon Crystal exchange (BB; handled by server)
+// 6xDF: Exchange Photon Crystals (BB; handled by server)
 // The client sends this when it executes an F95D quest opcode.
 
-struct G_BlackPaperDealPhotonCrystalExchange_BB_6xDF {
+struct G_ExchangePhotonCrystals_BB_6xDF {
   G_ClientIDHeader header;
 } __packed__;
 
