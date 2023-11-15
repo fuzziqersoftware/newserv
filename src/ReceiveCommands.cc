@@ -2224,8 +2224,10 @@ static void on_10(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
         send_lobby_message_box(c, "$C6Quests are not available.");
         break;
       }
+      const auto& category = s->quest_category_index->at(item_id);
       shared_ptr<Lobby> l = c->lobby.lock();
-      auto quests = quest_index->filter(l ? l->episode : Episode::NONE, item_id, c->quest_version());
+      bool filter_by_episode = l && !(category.flags & QuestCategoryIndex::Category::Flag::GOVERNMENT);
+      auto quests = quest_index->filter(filter_by_episode ? l->episode : Episode::NONE, item_id, c->quest_version());
 
       // Hack: Assume the menu to be sent is the download quest menu if the
       // client is not in any lobby
@@ -2560,7 +2562,6 @@ static void on_A2(shared_ptr<Client> c, uint16_t, uint32_t flag, string& data) {
     send_lobby_message_box(c, "$C6Episode 3 does not\nprovide online quests\nvia this interface.");
 
   } else {
-
     uint8_t flags = (c->version() == GameVersion::DC || c->version() == GameVersion::PC)
         ? QuestCategoryIndex::Category::Flag::HIDE_ON_PRE_V3
         : 0;
