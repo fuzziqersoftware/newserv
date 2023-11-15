@@ -6,9 +6,20 @@
 #include "Text.hh"
 #include "Version.hh"
 
-constexpr uint32_t MESETA_IDENTIFIER = 0x00040000;
+constexpr uint32_t MESETA_IDENTIFIER = 0x040000;
 
 class ItemParameterTable;
+
+enum class EquipSlot {
+  MAG = 0x01,
+  ARMOR = 0x02,
+  SHIELD = 0x03,
+  WEAPON = 0x06,
+  UNIT_1 = 0x09,
+  UNIT_2 = 0x0A,
+  UNIT_3 = 0x0B,
+  UNIT_4 = 0x0C,
+};
 
 struct ItemMagStats {
   uint16_t iq;
@@ -151,6 +162,8 @@ struct ItemData { // 0x14 bytes
 
   bool has_bonuses() const;
   bool is_s_rank_weapon() const;
+
+  bool can_be_equipped_in_slot(EquipSlot slot) const;
 
   bool empty() const;
 

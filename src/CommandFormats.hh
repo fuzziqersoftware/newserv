@@ -3918,12 +3918,20 @@ struct G_TeleportPlayer_6x24 {
 } __packed__;
 
 // 6x25: Equip item
-// 6x26: Unequip item
 
-struct G_EquipOrUnequipItem_6x25_6x26 {
+struct G_EquipItem_6x25 {
   G_ClientIDHeader header;
   le_uint32_t item_id = 0;
-  le_uint32_t equip_slot = 0; // Unused for 6x26 (unequip item)
+  // Values here match the EquipSlot enum (in ItemData.hh)
+  le_uint32_t equip_slot = 0;
+} __packed__;
+
+// 6x26: Unequip item
+
+struct G_UnequipItem_6x26 {
+  G_ClientIDHeader header;
+  le_uint32_t item_id = 0;
+  le_uint32_t unused = 0;
 } __packed__;
 
 // 6x27: Use item

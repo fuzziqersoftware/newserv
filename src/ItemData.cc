@@ -567,6 +567,26 @@ bool ItemData::is_s_rank_weapon() const {
   return false;
 }
 
+bool ItemData::can_be_equipped_in_slot(EquipSlot slot) const {
+  switch (slot) {
+    case EquipSlot::MAG:
+      return (this->data1[0] == 0x02);
+    case EquipSlot::ARMOR:
+      return ((this->data1[0] == 0x01) && (this->data1[1] == 0x01));
+    case EquipSlot::SHIELD:
+      return ((this->data1[0] == 0x01) && (this->data1[1] == 0x02));
+    case EquipSlot::UNIT_1:
+    case EquipSlot::UNIT_2:
+    case EquipSlot::UNIT_3:
+    case EquipSlot::UNIT_4:
+      return ((this->data1[0] == 0x01) && (this->data1[1] == 0x03));
+    case EquipSlot::WEAPON:
+      return (this->data1[0] == 0x00);
+    default:
+      throw runtime_error("invalid equip slot");
+  }
+}
+
 bool ItemData::compare_for_sort(const ItemData& a, const ItemData& b) {
   for (size_t z = 0; z < 12; z++) {
     if (a.data1[z] < b.data1[z]) {

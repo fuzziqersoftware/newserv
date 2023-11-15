@@ -36,7 +36,7 @@ void player_use_item(shared_ptr<Client> c, size_t item_index) {
       throw runtime_error("incorrect grinder value");
     }
 
-    auto& weapon = player->inventory.items[player->inventory.find_equipped_weapon()];
+    auto& weapon = player->inventory.items[player->inventory.find_equipped_item(EquipSlot::WEAPON)];
     // Don't enforce the weapon's grind limit on V1 and V2. This is necessary
     // because the V2 client replaces its inventory items on the fly with items
     // compatible with V1 when sending the 61 and 98 commands. There appears to
@@ -107,7 +107,7 @@ void player_use_item(shared_ptr<Client> c, size_t item_index) {
     }
 
   } else if ((item_identifier & 0xFFFF00) == 0x030F00) { // AddSlot
-    auto& armor = player->inventory.items[player->inventory.find_equipped_armor()];
+    auto& armor = player->inventory.items[player->inventory.find_equipped_item(EquipSlot::ARMOR)];
     if (armor.data.data1[5] >= 4) {
       throw runtime_error("armor already at maximum slot count");
     }
@@ -140,32 +140,32 @@ void player_use_item(shared_ptr<Client> c, size_t item_index) {
 
   } else if (item_identifier == 0x030C00) {
     // Cell of MAG 502
-    auto& mag = player->inventory.items[player->inventory.find_equipped_mag()];
+    auto& mag = player->inventory.items[player->inventory.find_equipped_item(EquipSlot::MAG)];
     mag.data.data1[1] = (player->disp.visual.section_id & 1) ? 0x1D : 0x21;
 
   } else if (item_identifier == 0x030C01) {
     // Cell of MAG 213
-    auto& mag = player->inventory.items[player->inventory.find_equipped_mag()];
+    auto& mag = player->inventory.items[player->inventory.find_equipped_item(EquipSlot::MAG)];
     mag.data.data1[1] = (player->disp.visual.section_id & 1) ? 0x27 : 0x22;
 
   } else if (item_identifier == 0x030C02) {
     // Parts of RoboChao
-    auto& mag = player->inventory.items[player->inventory.find_equipped_mag()];
+    auto& mag = player->inventory.items[player->inventory.find_equipped_item(EquipSlot::MAG)];
     mag.data.data1[1] = 0x28;
 
   } else if (item_identifier == 0x030C03) {
     // Heart of Opa Opa
-    auto& mag = player->inventory.items[player->inventory.find_equipped_mag()];
+    auto& mag = player->inventory.items[player->inventory.find_equipped_item(EquipSlot::MAG)];
     mag.data.data1[1] = 0x29;
 
   } else if (item_identifier == 0x030C04) {
     // Heart of Pian
-    auto& mag = player->inventory.items[player->inventory.find_equipped_mag()];
+    auto& mag = player->inventory.items[player->inventory.find_equipped_item(EquipSlot::MAG)];
     mag.data.data1[1] = 0x2A;
 
   } else if (item_identifier == 0x030C05) {
     // Heart of Chao
-    auto& mag = player->inventory.items[player->inventory.find_equipped_mag()];
+    auto& mag = player->inventory.items[player->inventory.find_equipped_item(EquipSlot::MAG)];
     mag.data.data1[1] = 0x2B;
 
   } else if ((item_identifier & 0xFFFF00) == 0x031500) {

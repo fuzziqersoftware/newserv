@@ -525,67 +525,84 @@ size_t PlayerInventory::find_item_by_primary_identifier(uint32_t primary_identif
   throw out_of_range("item not present");
 }
 
-size_t PlayerInventory::find_equipped_weapon() const {
+size_t PlayerInventory::find_equipped_item(EquipSlot slot) const {
   ssize_t ret = -1;
   for (size_t y = 0; y < this->num_items; y++) {
-    if (!(this->items[y].flags & 0x00000008)) {
+    const auto& i = this->items[y];
+    if (!(i.flags & 0x00000008)) {
       continue;
     }
-    if (this->items[y].data.data1[0] != 0) {
+    if (!i.data.can_be_equipped_in_slot(slot)) {
       continue;
     }
+
+    // Units can be equipped in multiple slots, so the currently-equipped slot
+    // is stored in the item data itself.
+    if (((slot == EquipSlot::UNIT_1) && (i.data.data1[4] != 0x00)) ||
+        ((slot == EquipSlot::UNIT_2) && (i.data.data1[4] != 0x01)) ||
+        ((slot == EquipSlot::UNIT_3) && (i.data.data1[4] != 0x02)) ||
+        ((slot == EquipSlot::UNIT_4) && (i.data.data1[4] != 0x03))) {
+      continue;
+    }
+
     if (ret < 0) {
       ret = y;
     } else {
-      throw runtime_error("multiple weapons are equipped");
+      throw runtime_error("multiple items are equipped in the same slot");
     }
   }
   if (ret < 0) {
-    throw out_of_range("no weapon is equipped");
+    throw out_of_range("no item is equipped in this slot");
   }
   return ret;
 }
 
-size_t PlayerInventory::find_equipped_armor() const {
-  ssize_t ret = -1;
-  for (size_t y = 0; y < this->num_items; y++) {
-    if (!(this->items[y].flags & 0x00000008)) {
-      continue;
-    }
-    if (this->items[y].data.data1[0] != 1 || this->items[y].data.data1[1] != 1) {
-      continue;
-    }
-    if (ret < 0) {
-      ret = y;
-    } else {
-      throw runtime_error("multiple armors are equipped");
-    }
+bool PlayerInventory::has_equipped_item(EquipSlot slot) const {
+  try {
+    this->find_equipped_item(slot);
+    return true;
+  } catch (const out_of_range&) {
+    return false;
   }
-  if (ret < 0) {
-    throw out_of_range("no armor is equipped");
-  }
-  return ret;
 }
 
-size_t PlayerInventory::find_equipped_mag() const {
-  ssize_t ret = -1;
-  for (size_t y = 0; y < this->num_items; y++) {
-    if (!(this->items[y].flags & 0x00000008)) {
-      continue;
-    }
-    if (this->items[y].data.data1[0] != 2) {
-      continue;
-    }
-    if (ret < 0) {
-      ret = y;
-    } else {
-      throw runtime_error("multiple mags are equipped");
+void PlayerInventory::equip_item(uint32_t item_id, EquipSlot slot) {
+  size_t index = this->find_item(item_id);
+  auto& item = this->items[index];
+
+  if (!item.data.can_be_equipped_in_slot(slot)) {
+    throw runtime_error("incorrect item type for equip slot");
+  }
+  if (this->has_equipped_item(slot)) {
+    throw runtime_error("equip slot is already in use");
+  }
+
+  item.flags |= 0x00000008;
+  // Units store which slot they're equipped in within the item data itself
+  if ((item.data.data1[0] == 0x01) && (item.data.data1[1] == 0x03)) {
+    item.data.data1[4] = static_cast<uint8_t>(slot) - 9;
+  }
+}
+
+void PlayerInventory::unequip_item(uint32_t item_id) {
+  size_t index = this->find_item(item_id);
+  auto& item = this->items[index];
+
+  item.flags &= (~0x00000008);
+  // Units store which slot they're equipped in within the item data itself
+  if ((item.data.data1[0] == 0x01) && (item.data.data1[1] == 0x03)) {
+    item.data.data1[4] = 0x00;
+  }
+  // If the item is an armor, remove all units too
+  if ((item.data.data1[0] == 0x01) && (item.data.data1[1] == 0x01)) {
+    for (size_t z = 0; z < 30; z++) {
+      auto& unit = this->items[z];
+      if ((unit.data.data1[0] == 0x01) && (unit.data.data1[1] == 0x03)) {
+        unit.flags &= (~0x00000008);
+        unit.data.data1[4] = 0x00;
+      }
     }
   }
-  if (ret < 0) {
-    throw out_of_range("no mag is equipped");
-  }
-  return ret;
 }
 
 size_t PlayerInventory::remove_all_items_of_type(uint8_t data1_0, int16_t data1_1) {

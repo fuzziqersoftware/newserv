@@ -625,7 +625,7 @@ static void on_player_died(shared_ptr<Client> c, uint8_t command, uint8_t flag, 
   if (l->check_flag(Lobby::Flag::ITEM_TRACKING_ENABLED)) {
     try {
       auto& inventory = c->game_data.character()->inventory;
-      size_t mag_index = inventory.find_equipped_mag();
+      size_t mag_index = inventory.find_equipped_item(EquipSlot::MAG);
       auto& data = inventory.items[mag_index].data;
       data.data2[0] = max<int8_t>(static_cast<int8_t>(data.data2[0] - 5), 0);
     } catch (const out_of_range&) {
@@ -1146,8 +1146,27 @@ static void on_pick_up_item_request(shared_ptr<Client> c, uint8_t command, uint8
   }
 }
 
-static void on_equip_unequip_item(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
-  const auto& cmd = check_size_t<G_EquipOrUnequipItem_6x25_6x26>(data, size);
+static void on_equip_item(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
+  const auto& cmd = check_size_t<G_EquipItem_6x25>(data, size);
+
+  if (cmd.header.client_id != c->lobby_client_id) {
+    return;
+  }
+
+  auto l = c->require_lobby();
+  if (l->check_flag(Lobby::Flag::ITEM_TRACKING_ENABLED)) {
+    EquipSlot slot = static_cast<EquipSlot>(cmd.equip_slot.load());
+    auto p = c->game_data.character();
+    p->inventory.equip_item(cmd.item_id, slot);
+  } else if (l->base_version == GameVersion::BB) {
+    throw logic_error("item tracking not enabled in BB game");
+  }
+
+  forward_subcommand(c, command, flag, data, size);
+}
+
+static void on_unequip_item(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
+  const auto& cmd = check_size_t<G_UnequipItem_6x26>(data, size);
 
   if (cmd.header.client_id != c->lobby_client_id) {
     return;
@@ -1156,12 +1175,7 @@ static void on_equip_unequip_item(shared_ptr<Client> c, uint8_t command, uint8_t
   auto l = c->require_lobby();
   if (l->check_flag(Lobby::Flag::ITEM_TRACKING_ENABLED)) {
     auto p = c->game_data.character();
-    size_t index = p->inventory.find_item(cmd.item_id);
-    if (cmd.header.subcommand == 0x25) { // Equip
-      p->inventory.items[index].flags |= 0x00000008;
-    } else { // Unequip
-      p->inventory.items[index].flags &= 0xFFFFFFF7;
-    }
+    p->inventory.unequip_item(cmd.item_id);
   } else if (l->base_version == GameVersion::BB) {
     throw logic_error("item tracking not enabled in BB game");
   }
@@ -1833,7 +1847,7 @@ static void on_steal_exp_bb(shared_ptr<Client> c, uint8_t, uint8_t, const void* 
   auto p = c->game_data.character();
   const auto& enemy = l->map->enemies.at(cmd.enemy_index);
   const auto& inventory = p->inventory;
-  const auto& weapon = inventory.items[inventory.find_equipped_weapon()];
+  const auto& weapon = inventory.items[inventory.find_equipped_item(EquipSlot::WEAPON)];
 
   auto item_parameter_table = s->item_parameter_table_for_version(c->version());
 
@@ -2524,8 +2538,8 @@ subcommand_handler_t subcommand_handlers[0x100] = {
     /* 6x22 */ on_forward_check_size_client,
     /* 6x23 */ on_set_player_visibility,
     /* 6x24 */ on_forward_check_size_game,
-    /* 6x25 */ on_equip_unequip_item,
-    /* 6x26 */ on_equip_unequip_item,
+    /* 6x25 */ on_equip_item,
+    /* 6x26 */ on_unequip_item,
     /* 6x27 */ on_use_item,
     /* 6x28 */ on_feed_mag,
     /* 6x29 */ on_destroy_inventory_item,
