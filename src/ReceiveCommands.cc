@@ -329,6 +329,18 @@ static void on_1D(shared_ptr<Client> c, uint16_t, uint32_t, string&) {
     double ping_ms = static_cast<double>(ping_usecs) / 1000.0;
     send_text_message_printf(c, "To server: %gms", ping_ms);
   }
+
+  // See the comment on the 6x6D command in CommandFormats.hh to understand why
+  // we do this.
+  if (c->game_join_command_queue) {
+    c->log.info("Sending %zu queued command(s)", c->game_join_command_queue->size());
+    while (!c->game_join_command_queue->empty()) {
+      const auto& cmd = c->game_join_command_queue->front();
+      send_command(c, cmd.command, cmd.flag, cmd.data);
+      c->game_join_command_queue->pop_front();
+    }
+    c->game_join_command_queue.reset();
+  }
 }
 
 static void on_05_XB(shared_ptr<Client> c, uint16_t, uint32_t, string&) {

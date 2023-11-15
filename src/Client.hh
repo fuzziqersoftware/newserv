@@ -191,6 +191,12 @@ struct Client : public std::enable_shared_from_this<Client> {
   std::weak_ptr<Episode3::Tournament::Team> ep3_tournament_team;
   std::shared_ptr<Episode3::BattleRecord> ep3_prev_battle_record;
   std::shared_ptr<const Menu> last_menu_sent;
+  struct JoinCommand {
+    uint16_t command;
+    uint32_t flag;
+    std::string data;
+  };
+  std::unique_ptr<std::deque<JoinCommand>> game_join_command_queue;
 
   // Miscellaneous (used by chat commands)
   uint32_t next_exp_value; // next EXP value to give

@@ -3996,6 +3996,10 @@ I 16332 2023-09-17 10:14:46 - [Commands] Received from C-2 (Tali) (version=GC co
 02F0 | CF 0C 3D 32 FB E8 89 AE 67 04 15 6A 13 60 E1 66 |   =2    g  j ` f
 0300 | FF FC ED A2 2B D8 39 1E                         |     + 9
 I 16332 2023-09-17 10:14:46 - [Lobby/15] Creating Episode 3 server state
+I 16332 2023-09-17 10:14:46 - [Commands] Sending to C-2 (Tali) (version=GC command=1D flag=00)
+0000 | 1D 00 04 00                                     |
+I 16332 2023-09-17 10:14:46 - [Commands] Received from C-2 (Tali) (version=GC command=1D flag=00)
+0000 | 1D 00 04 00                                     |
 I 16332 2023-09-17 10:14:46 - [Commands] Sending to C-2 (Tali) (version=GC command=C9 flag=00)
 0000 | C9 00 24 00 B4 08 00 00 03 00 00 00 01 00 00 FF |   $
 0010 | FF 00 00 00 00 00 00 00 00 00 00 00 00 00 FF 00 |

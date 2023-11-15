@@ -654,6 +654,10 @@ I 49108 2023-05-26 16:18:32 - [Commands] Sending to C-2 (Jess) (version=GC comma
 00F0 | 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 |
 0100 | 00 00 00 00 00 00 01 00 00 00 05 00 61 49 35 3D |             aI5=
 0110 | 01 00 00 00                                     |
+I 49108 2023-05-26 16:18:33 - [Commands] Sending to C-2 (Jess) (version=GC command=1D flag=00)
+0000 | 1D 00 04 00                                     |
+I 49108 2023-05-26 16:18:33 - [Commands] Received from C-2 (Jess) (version=GC command=1D flag=00)
+0000 | 1D 00 04 00                                     |
 I 49108 2023-05-26 16:18:33 - [Commands] Received from C-2 (Jess) (version=GC command=8A flag=00)
 0000 | 8A 00 04 00                                     |
 I 49108 2023-05-26 16:18:33 - [Commands] Sending to C-2 (Jess) (version=GC command=8A flag=00)

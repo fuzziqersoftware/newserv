@@ -1691,6 +1691,10 @@ void send_join_game(shared_ptr<Client> c, shared_ptr<Lobby> l) {
     default:
       throw logic_error("invalid game version");
   }
+
+  c->log.info("Creating game join command queue");
+  c->game_join_command_queue.reset(new deque<Client::JoinCommand>());
+  send_command(c, 0x1D, 0x00);
 }
 
 template <typename LobbyDataT, typename DispDataT, typename RecordsT, bool UseLanguageMarkerInName>

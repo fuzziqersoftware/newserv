@@ -4446,7 +4446,7 @@ struct G_CreateTelepipe_6x68 {
   G_UnusedHeader header;
   le_uint16_t client_id2 = 0;
   le_uint16_t unknown_a1 = 0;
-  le_uint16_t unused1 = 0;
+  le_uint16_t unknown_a2 = 0;
   parray<uint8_t, 2> unused2;
   le_float x = 0.0f;
   le_float y = 0.0f;
@@ -4504,7 +4504,25 @@ struct G_SyncObjectState_6x6C_Entry_Decompressed {
 } __packed__;
 
 // 6x6D: Sync item state (used while loading into game; same header format as 6E)
+// Internal name: RcvItemCondition
 // Compressed format is the same as 6x6B.
+
+// There is a bug in the client that can cause desync between players' item IDs
+// if the 6x6D command is sent too quickly. 6x6D is the first command sent by
+// the leader when a player joins a game, so the joining player often receives
+// it immediately after the 64 command. One of the first steps of the game join
+// process is to reset the next item ID variables for each player in the game,
+// which under normal operation, the 6x6D command overwrites with the values in
+// the next_item_id_per_player array. However, the loading process doesn't
+// actually start until the next frame after the 64 command is received, so if
+// the 6x6D command is received on the same frame as the 64 command, it will
+// set the next item ID variables correctly and the loading process will then
+// clear all of them on the next frame. The client will then assign its own
+// inventory item IDs based on the default base item ID, which will result in
+// incorrect IDs if another player had previously been in the game in the same
+// slot. To prevent this bug, we delay the 6x6D command and everything that
+// depends on it until the client responds to a ping command (sent along with
+// the 64 command).
 
 struct G_SyncItemState_6x6D_Decompressed {
   // TODO: Verify this format on DC and PC. It appears correct for GC and BB.
