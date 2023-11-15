@@ -2256,18 +2256,18 @@ void send_level_up(shared_ptr<Client> c) {
 
   const ItemData* mag = nullptr;
   try {
-    mag = &p->inventory.items[p->inventory.find_equipped_mag()].data;
+    mag = &p->inventory.items[p->inventory.find_equipped_item(EquipSlot::MAG)].data;
   } catch (const out_of_range&) {
   }
 
   G_LevelUp_6x30 cmd = {
       {0x30, sizeof(G_LevelUp_6x30) / 4, c->lobby_client_id},
-      stats.atp + (mag ? (mag->data1w[3] / 50) : 0),
-      stats.mst + (mag ? (mag->data1w[5] / 50) : 0),
+      stats.atp + (mag ? ((mag->data1w[3] / 100) * 2) : 0),
+      stats.mst + (mag ? ((mag->data1w[5] / 100) * 2) : 0),
       stats.evp,
       stats.hp,
       stats.dfp + (mag ? (mag->data1w[2] / 100) : 0),
-      stats.ata + (mag ? (mag->data1w[4] / 20) : 0),
+      stats.ata + (mag ? ((mag->data1w[4] / 100) / 2) : 0),
       p->disp.stats.level.load(),
       0};
   send_command_t(l, 0x60, 0x00, cmd);
