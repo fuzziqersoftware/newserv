@@ -83,7 +83,7 @@ static void check_cheats_allowed(shared_ptr<ServerState> s) {
 }
 
 static void check_proxy_cheats_allowed(shared_ptr<ServerState> s) {
-  if (s->cheat_mode_behavior != ServerState::BehaviorSwitch::OFF) {
+  if (s->cheat_mode_behavior == ServerState::BehaviorSwitch::OFF) {
     throw precondition_failed("$C6Cheats are disabled\non this proxy.");
   }
 }
@@ -824,7 +824,7 @@ static void server_command_edit(shared_ptr<Client> c, const std::string& args) {
   check_version(c, GameVersion::BB);
 
   if (s->cheat_mode_behavior == ServerState::BehaviorSwitch::OFF) {
-    send_text_message(l, "$C6Cheats are disabled on\nthis server");
+    send_text_message(l, "$C6Cheats are disabled\non this server");
     return;
   }
 
