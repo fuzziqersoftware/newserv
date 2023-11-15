@@ -1971,7 +1971,7 @@ static void on_10(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
             if (num_ep3_categories == 1) {
               auto quest_index = s->quest_index_for_client(c);
               if (quest_index) {
-                auto quests = quest_index->filter(ep3_category_id, c->quest_version());
+                auto quests = quest_index->filter(Episode::EP3, ep3_category_id, c->quest_version());
                 send_quest_menu(c, MenuID::QUEST, quests, true);
               } else {
                 send_lobby_message_box(c, "$C6Quests are not available.");
@@ -2225,7 +2225,7 @@ static void on_10(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
         break;
       }
       shared_ptr<Lobby> l = c->lobby.lock();
-      auto quests = quest_index->filter(item_id, c->quest_version());
+      auto quests = quest_index->filter(l ? l->episode : Episode::NONE, item_id, c->quest_version());
 
       // Hack: Assume the menu to be sent is the download quest menu if the
       // client is not in any lobby

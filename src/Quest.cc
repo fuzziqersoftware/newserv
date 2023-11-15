@@ -703,10 +703,12 @@ shared_ptr<const Quest> QuestIndex::get(uint32_t quest_number) const {
   }
 }
 
-vector<shared_ptr<const Quest>> QuestIndex::filter(uint32_t category_id, QuestScriptVersion version) const {
+vector<shared_ptr<const Quest>> QuestIndex::filter(Episode episode, uint32_t category_id, QuestScriptVersion version) const {
   vector<shared_ptr<const Quest>> ret;
   for (auto it : this->quests_by_number) {
-    if ((it.second->category_id == category_id) && it.second->has_version_any_language(version)) {
+    if (((episode == Episode::NONE) || (it.second->episode == episode)) &&
+        (it.second->category_id == category_id) &&
+        it.second->has_version_any_language(version)) {
       ret.emplace_back(it.second);
     }
   }

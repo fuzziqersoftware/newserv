@@ -488,13 +488,13 @@
     //   category_name: what appears in the quest menu on the client.
     //   description: what appears in the category description window (may
     //       contain color escape codes like $C6).
-    [0x21, "retrieval", "Retrieval", "$E$C6Quests that involve\nretrieving an object"],
-    [0x21, "extermination", "Extermination", "$E$C6Quests that involve\ndestroying all\nmonsters"],
-    [0x21, "events", "Events", "$E$C6Quests that are part\nof an event"],
-    [0x21, "shops", "Shops", "$E$C6Quests that contain\nshops"],
-    [0x21, "vr", "Virtual Reality", "$E$C6Quests that are\ndone in a simulator"],
-    [0xA1, "tower", "Control Tower", "$E$C6Quests that take\nplace at the Control\nTower"],
-    [0xA1, "team", "Team", "$E$C6Quests for you\nand your team\nmembers."],
+    [0x01, "retrieval", "Retrieval", "$E$C6Quests that involve\nretrieving an object"],
+    [0x01, "extermination", "Extermination", "$E$C6Quests that involve\ndestroying all\nmonsters"],
+    [0x01, "events", "Events", "$E$C6Quests that are part\nof an event"],
+    [0x01, "shops", "Shops", "$E$C6Quests that contain\nshops"],
+    [0x01, "vr", "Virtual Reality", "$E$C6Quests that are\ndone in a simulator"],
+    [0x81, "tower", "Control Tower", "$E$C6Quests that take\nplace at the Control\nTower"],
+    [0x81, "team", "Team", "$E$C6Quests for you\nand your team\nmembers."],
     [0x02, "battle", "Battle", "$E$C6Battle mode rule\nsets"],
     [0x04, "challenge-ep1", "Challenge (Episode 1)", "$E$C6Challenge mode\nquests in Episode 1"],
     [0x84, "challenge-ep2", "Challenge (Episode 2)", "$E$C6Challenge mode\nquests in Episode 2"],

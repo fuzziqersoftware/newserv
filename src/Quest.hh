@@ -123,7 +123,7 @@ struct QuestIndex {
   QuestIndex(const std::string& directory, std::shared_ptr<const QuestCategoryIndex> category_index, bool is_ep3);
 
   std::shared_ptr<const Quest> get(uint32_t quest_number) const;
-  std::vector<std::shared_ptr<const Quest>> filter(uint32_t category_id, QuestScriptVersion version) const;
+  std::vector<std::shared_ptr<const Quest>> filter(Episode episode, uint32_t category_id, QuestScriptVersion version) const;
 };
 
 std::string encode_download_quest_data(
