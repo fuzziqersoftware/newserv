@@ -269,6 +269,91 @@ static void server_command_quest(shared_ptr<Client> c, const std::string& args) 
   set_lobby_quest(c->require_lobby(), q);
 }
 
+static void server_command_qset_qclear(shared_ptr<Client> c, const std::string& args, bool should_set) {
+  if (!c->config.check_flag(Client::Flag::DEBUG_ENABLED)) {
+    send_text_message(c, "$C6This command can only\nbe run in debug mode\n(run %sdebug first)");
+    return;
+  }
+  auto l = c->require_lobby();
+  if (!l->is_game()) {
+    send_text_message(c, "$C6This command cannot\nbe used in the lobby");
+    return;
+  }
+
+  uint16_t flag_num = stoul(args, nullptr, 0);
+
+  if ((c->version() == GameVersion::DC) || (c->version() == GameVersion::PC)) {
+    G_SetQuestFlag_DC_PC_6x75 cmd = {{0x75, 0x02, 0x0000}, flag_num, should_set ? 0 : 1};
+    send_command_t(l, 0x60, 0x00, cmd);
+  } else {
+    G_SetQuestFlag_V3_BB_6x75 cmd = {{{0x75, 0x02, 0x0000}, flag_num, should_set ? 0 : 1}, l->difficulty, 0x0000};
+    send_command_t(l, 0x60, 0x00, cmd);
+  }
+}
+
+static void server_command_qset(shared_ptr<Client> c, const std::string& args) {
+  return server_command_qset_qclear(c, args, true);
+}
+
+static void server_command_qclear(shared_ptr<Client> c, const std::string& args) {
+  return server_command_qset_qclear(c, args, false);
+}
+
+static void server_command_qsync(shared_ptr<Client> c, const std::string& args) {
+  if (!c->config.check_flag(Client::Flag::DEBUG_ENABLED)) {
+    send_text_message(c, "$C6This command can only\nbe run in debug mode\n(run %sdebug first)");
+    return;
+  }
+  auto l = c->require_lobby();
+  if (!l->is_game()) {
+    send_text_message(c, "$C6This command cannot\nbe used in the lobby");
+    return;
+  }
+
+  auto tokens = split(args, ' ');
+  if (tokens.size() != 2) {
+    send_text_message(c, "$C6Incorrect number of\narguments");
+    return;
+  }
+
+  uint16_t reg_num = stoul(tokens[0].substr(1), nullptr, 0);
+  uint32_t reg_val;
+  if (tokens[0][0] == 'r') {
+    reg_val = stoul(tokens[1], nullptr, 0);
+  } else if (tokens[0][0] == 'f') {
+    float float_val = stof(tokens[1]);
+    reg_val = *reinterpret_cast<const uint32_t*>(&float_val);
+  } else {
+    send_text_message(c, "$C6First argument must\nbe a register");
+    return;
+  }
+
+  G_SyncQuestData_6x77 cmd = {{0x77, 0x03, 0x0000}, reg_num, 0, reg_val};
+  send_command_t(c, 0x60, 0x00, cmd);
+}
+
+static void server_command_qcall(shared_ptr<Client> c, const std::string& args) {
+  if (!c->config.check_flag(Client::Flag::DEBUG_ENABLED)) {
+    send_text_message(c, "$C6This command can only\nbe run in debug mode\n(run %sdebug first)");
+    return;
+  }
+
+  auto l = c->require_lobby();
+  if (l->is_game() && l->quest) {
+    send_quest_function_call(c, stoul(args, nullptr, 0));
+  } else {
+    send_text_message(c, "$C6You must be in a\nquest to use this\ncommand");
+  }
+}
+
+static void proxy_command_qcall(shared_ptr<ProxyServer::LinkedSession> ses, const std::string& args) {
+  if (ses->is_in_game && ses->is_in_quest) {
+    send_quest_function_call(ses->client_channel, stoul(args, nullptr, 0));
+  } else {
+    send_text_message(ses->client_channel, "$C6You must be in a\nquest to use this\ncommand");
+  }
+}
+
 static void server_command_show_material_counts(shared_ptr<Client> c, const std::string&) {
   auto p = c->game_data.character();
   if ((c->version() == GameVersion::DC) || (c->version() == GameVersion::PC)) {
@@ -423,23 +508,6 @@ static void proxy_command_exit(shared_ptr<ProxyServer::LinkedSession> ses, const
   } else {
     ses->disconnect_action = ProxyServer::LinkedSession::DisconnectAction::CLOSE_IMMEDIATELY;
     ses->send_to_game_server();
-  }
-}
-
-static void server_command_call(shared_ptr<Client> c, const std::string& args) {
-  auto l = c->require_lobby();
-  if (l->is_game() && l->quest) {
-    send_quest_function_call(c, stoul(args, nullptr, 0));
-  } else {
-    send_text_message(c, "$C6You must be in\nquest to use this\ncommand");
-  }
-}
-
-static void proxy_command_call(shared_ptr<ProxyServer::LinkedSession> ses, const std::string& args) {
-  if (ses->is_in_game && ses->is_in_quest) {
-    send_quest_function_call(ses->client_channel, stoul(args, nullptr, 0));
-  } else {
-    send_text_message(ses->client_channel, "$C6You must be in\nquest to use this\ncommand");
   }
 }
 
@@ -1594,7 +1662,6 @@ static const unordered_map<string, ChatCommandDefinition> chat_commands({
     {"$ax", {server_command_ax, nullptr}},
     {"$ban", {server_command_ban, nullptr}},
     {"$bbchar", {server_command_convert_char_to_bb, nullptr}},
-    {"$call", {server_command_call, proxy_command_call}},
     {"$cheat", {server_command_cheat, nullptr}},
     {"$debug", {server_command_debug, nullptr}},
     {"$defrange", {server_command_ep3_set_def_dice_range, nullptr}},
@@ -1623,6 +1690,10 @@ static const unordered_map<string, ChatCommandDefinition> chat_commands({
     {"$persist", {server_command_persist, nullptr}},
     {"$ping", {server_command_ping, nullptr}},
     {"$playrec", {server_command_playrec, nullptr}},
+    {"$qcall", {server_command_qcall, proxy_command_qcall}},
+    {"$qclear", {server_command_qclear, nullptr}},
+    {"$qset", {server_command_qset, nullptr}},
+    {"$qsync", {server_command_qsync, nullptr}},
     {"$quest", {server_command_quest, nullptr}},
     {"$rand", {server_command_rand, proxy_command_rand}},
     {"$saverec", {server_command_saverec, nullptr}},

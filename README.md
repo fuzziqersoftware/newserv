@@ -278,7 +278,10 @@ Some commands only work on the game server and not on the proxy server. The chat
 
 * Debugging commands
     * `$debug` (game server only): Enable or disable debug. You need the DEBUG permission in your user license to use this command. When debug is enabled, you'll see in-game messages from the server when you take certain actions. You'll also be placed into the highest available slot in lobbies and games instead of the lowest, which is useful for finding commands for which newserv doesn't handle client IDs properly. This setting also disables certain safeguards and allows you to do some things that might crash your client.
-    * `$call <function-id>`: Call a quest function on your client.
+    * `$quest <number>`: Load a quest by quest number. Can be used to load battle or challenge quests with only one player present.
+    * `$qcall <function-id>`: Call a quest function on your client.
+    * `$qset <flag-num>` or `$qclear <flag-num>`: Set or clear a global quest flag for everyone in the game.
+    * `$qsync <reg-num> <value>`: Set a quest register's value on your client. `<reg-num>` should be either rXX (e.g. r60) or fXX (e.g. f60); if the latter, `<value>` is parsed as a floating-point value instead of as an integer.
     * `$gc` (game server only): Send your own Guild Card to yourself.
     * `$persist` (game server only): Enable or disable persistence for the current lobby or game. This determines whether the lobby/game is deleted when the last player leaves. You need the DEBUG permission in your user license to use this command because there are no game state checks when you do this. For example, if you make a game persistent, start a quest, then leave the game, the game can't be joined by anyone but also can't be deleted.
     * `$sc <data>`: Send a command to yourself.
