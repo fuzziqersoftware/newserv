@@ -1428,6 +1428,12 @@ static void on_sort_inventory_bb(shared_ptr<Client> c, uint8_t, uint8_t, const v
         sorted[x] = p->inventory.items[index];
       }
     }
+    // It's annoying that extension data is stored in the inventory items array,
+    // because we have to be careful to avoid sorting it here too.
+    for (size_t x = 0; x < 30; x++) {
+      sorted[x].extension_data1 = p->inventory.items[x].extension_data1;
+      sorted[x].extension_data2 = p->inventory.items[x].extension_data2;
+    }
     p->inventory.items = sorted;
   }
 }
