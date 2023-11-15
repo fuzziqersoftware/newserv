@@ -1486,27 +1486,33 @@ static void on_entity_drop_item_request(shared_ptr<Client> c, uint8_t command, u
   if (cmd.rt_index == 0x30) {
     if (l->map) {
       auto& object = l->map->objects.at(cmd.entity_id);
+
+      const char* floor_warning_token = "";
       if (cmd.floor != object.floor) {
         l->log.warning("Floor %02hhX from command does not match object\'s expected floor %02hhX",
             cmd.floor, object.floor);
+        floor_warning_token = "$C6!F$C5 ";
       }
+
+      const char* ignore_def_warning_token = "";
       bool object_ignore_def = (object.param1 > 0.0);
       if (cmd.ignore_def != object_ignore_def) {
         l->log.warning("ignore_def value %s from command does not match object\'s expected ignore_def %s (from p1=%g)",
             cmd.ignore_def ? "true" : "false", object_ignore_def ? "true" : "false", object.param1);
+        ignore_def_warning_token = "$C6!I$C5 ";
       }
 
       if (object.item_drop_checked) {
         l->log.warning("Object drop check has already occurred");
         if (c->config.check_flag(Client::Flag::DEBUG_ENABLED)) {
-          send_text_message_printf(c, "$C5K-%hX %04hX __CHECKED__", cmd.entity_id.load(), object.base_type);
+          send_text_message_printf(c, "$C5K-%hX %04hX %s%s__CHECKED__", cmd.entity_id.load(), object.base_type, floor_warning_token, ignore_def_warning_token);
         }
 
       } else if (object_ignore_def) {
         l->log.info("Creating item from box %04hX (area %02hX)", cmd.entity_id.load(), cmd.effective_area);
         item = l->item_creator->on_box_item_drop(cmd.entity_id, cmd.effective_area);
         if (c->config.check_flag(Client::Flag::DEBUG_ENABLED)) {
-          send_text_message_printf(c, "$C5K-%hX %04hX GEN %s", cmd.entity_id.load(), object.base_type, item.empty() ? "EMPTY" : "ITEM");
+          send_text_message_printf(c, "$C5K-%hX %04hX %s%sGEN %s", cmd.entity_id.load(), object.base_type, floor_warning_token, ignore_def_warning_token, item.empty() ? "EMPTY" : "ITEM");
         }
 
       } else {
@@ -1514,7 +1520,7 @@ static void on_entity_drop_item_request(shared_ptr<Client> c, uint8_t command, u
             cmd.entity_id.load(), cmd.effective_area, object.param4, object.param5, object.param6);
         item = l->item_creator->on_specialized_box_item_drop(cmd.entity_id, object.param4, object.param5, object.param6);
         if (c->config.check_flag(Client::Flag::DEBUG_ENABLED)) {
-          send_text_message_printf(c, "$C5K-%hX %04hX CST %s", cmd.entity_id.load(), object.base_type, item.empty() ? "EMPTY" : "ITEM");
+          send_text_message_printf(c, "$C5K-%hX %04hX %s%sCST %s", cmd.entity_id.load(), object.base_type, floor_warning_token, ignore_def_warning_token, item.empty() ? "EMPTY" : "ITEM");
         }
       }
       object.item_drop_checked = true;
@@ -1530,19 +1536,30 @@ static void on_entity_drop_item_request(shared_ptr<Client> c, uint8_t command, u
 
   } else {
     l->log.info("Creating item from enemy %04hX (area %02hX)", cmd.entity_id.load(), cmd.effective_area);
+
+    uint8_t effective_rt_index = cmd.rt_index;
+    string rt_index_warning_token = "";
+    string floor_warning_token = "";
     if (l->map) {
       const auto& enemy = l->map->enemies.at(cmd.entity_id);
       uint32_t expected_rt_index = rare_table_index_for_enemy_type(enemy.type);
       if (cmd.rt_index != expected_rt_index) {
         l->log.warning("rt_index %02hhX from command does not match entity\'s expected index %02" PRIX32,
             cmd.rt_index, expected_rt_index);
+        rt_index_warning_token = string_printf("$C6!RT:%02hhX/%02" PRIX32 "$C5 ", cmd.rt_index, expected_rt_index);
+        effective_rt_index = expected_rt_index;
       }
       if (cmd.floor != enemy.floor) {
         l->log.warning("Floor %02hhX from command does not match entity\'s expected floor %02hhX",
             cmd.floor, enemy.floor);
+        floor_warning_token = string_printf("$C6!F:%02hhX/%02hhX$C5 ", cmd.floor, enemy.floor);
       }
     }
-    item = l->item_creator->on_monster_item_drop(cmd.entity_id, cmd.rt_index, cmd.effective_area);
+
+    item = l->item_creator->on_monster_item_drop(cmd.entity_id, effective_rt_index, cmd.effective_area);
+    if (c->config.check_flag(Client::Flag::DEBUG_ENABLED)) {
+      send_text_message_printf(c, "$C5E-%hX %s%s%s", cmd.entity_id.load(), floor_warning_token.c_str(), rt_index_warning_token.c_str(), item.empty() ? "NO_DROP" : "ITEM");
+    }
   }
 
   if (item.empty()) {

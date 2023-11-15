@@ -28,8 +28,13 @@ string Map::Enemy::str() const {
 
 string Map::Object::str(shared_ptr<const ItemNameIndex> name_index) const {
   if (this->param1 <= 0.0f) {
-    auto item = ItemCreator::item_for_specialized_box(this->param4, this->param5, this->param6);
-    string item_name = name_index ? name_index->describe_item(GameVersion::BB, item) : item.hex();
+    string item_name;
+    try {
+      auto item = ItemCreator::item_for_specialized_box(this->param4, this->param5, this->param6);
+      item_name = name_index ? name_index->describe_item(GameVersion::BB, item) : item.hex();
+    } catch (const exception& e) {
+      item_name = string_printf("(failed: %s)", e.what());
+    }
     return string_printf("[Map::Object %04hX @%04hX p1=%g (specialized: %s) floor=%02hhX item_drop_checked=%s]",
         this->base_type, this->section, this->param1, item_name.c_str(), this->floor, this->item_drop_checked ? "true" : "false");
   } else {
