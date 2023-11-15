@@ -585,6 +585,21 @@ bool ItemData::compare_for_sort(const ItemData& a, const ItemData& b) {
   return false;
 }
 
+ItemData ItemData::from_data(const string& data) {
+  if (data.size() > 0x10) {
+    throw runtime_error("data is too long");
+  }
+
+  ItemData ret;
+  for (size_t z = 0; z < min<size_t>(data.size(), 12); z++) {
+    ret.data1[z] = data[z];
+  }
+  for (size_t z = 12; z < min<size_t>(data.size(), 16); z++) {
+    ret.data2[z - 12] = data[z];
+  }
+  return ret;
+}
+
 string ItemData::hex() const {
   return string_printf("%02hhX%02hhX%02hhX%02hhX %02hhX%02hhX%02hhX%02hhX %02hhX%02hhX%02hhX%02hhX (%08" PRIX32 ") %02hhX%02hhX%02hhX%02hhX",
       this->data1[0], this->data1[1], this->data1[2], this->data1[3],

@@ -111,6 +111,7 @@ struct ItemData { // 0x14 bytes
 
   void clear();
 
+  static ItemData from_data(const std::string& data);
   std::string hex() const;
   uint32_t primary_identifier() const;
 

@@ -700,6 +700,21 @@ void ServerState::parse_config(const JSON& json, bool is_reload) {
     }
   }
 
+  try {
+    this->quest_F95E_results.clear();
+    for (const auto& type_it : json.get_list("QuestF95ERewardItems")) {
+      auto& type_res = this->quest_F95E_results.emplace_back();
+      for (const auto& difficulty_it : type_it->as_list()) {
+        auto& difficulty_res = type_res.emplace_back();
+        for (const auto& item_it : difficulty_it->as_list()) {
+          string data = parse_data_string(item_it->as_string());
+          difficulty_res.emplace_back(ItemData::from_data(data));
+        }
+      }
+    }
+  } catch (const out_of_range&) {
+  }
+
   set_log_levels_from_json(json.get("LogLevels", JSON::dict()));
 
   if (!is_reload) {

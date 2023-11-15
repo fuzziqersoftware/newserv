@@ -113,6 +113,9 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   std::shared_ptr<const ItemNameIndex> item_name_index;
   std::shared_ptr<const WordSelectTable> word_select_table;
 
+  // Indexed as [type][difficulty][random_choice]
+  std::vector<std::vector<std::vector<ItemData>>> quest_F95E_results;
+
   std::shared_ptr<Episode3::TournamentIndex> ep3_tournament_index;
 
   uint16_t ep3_card_auction_points;

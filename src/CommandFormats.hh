@@ -5709,17 +5709,17 @@ struct G_BlackPaperDealPhotonCrystalExchange_BB_6xDF {
   G_ClientIDHeader header;
 } __packed__;
 
-// 6xE0: Black Paper's Deal rewards (BB; handled by server)
+// 6xE0: Request item drop from quest (BB; handled by server)
 // The client sends this when it executes an F95E quest opcode.
 
-struct G_BlackPaperDealRewards_BB_6xE0 {
+struct G_RequestItemDropFromQuest_BB_6xE0 {
   G_ClientIDHeader header;
-  uint8_t unknown_a1 = 0;
-  uint8_t unknown_a2 = 0; // argsA[0]
+  uint8_t floor = 0;
+  uint8_t type = 0; // argsA[0]
   uint8_t unknown_a3 = 0;
-  uint8_t unknown_a4 = 0;
-  le_float unknown_a5 = 0.0f; // argsA[1]
-  le_float unknown_a6 = 0.0f; // argsA[2]
+  uint8_t unused = 0;
+  le_float x = 0.0f; // argsA[1]
+  le_float z = 0.0f; // argsA[2]
 } __packed__;
 
 // 6xE1: Gallon's Plan quest (BB; handled by server)

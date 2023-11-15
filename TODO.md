@@ -49,7 +49,6 @@
     - 6xCC: Exchange item for team points
     - 6xD8: Add S-rank weapon special
     - 6xDE: Good Luck quest
-    - 6xE0
     - 6xE1: Gallon's Plan quest
 - Implement teams
 - Implement story progress flags for unlocking quests

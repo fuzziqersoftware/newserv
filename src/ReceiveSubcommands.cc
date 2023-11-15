@@ -2286,6 +2286,36 @@ static void on_photon_crystal_exchange_bb(shared_ptr<Client> c, uint8_t, uint8_t
   }
 }
 
+static void on_quest_F95E_result_bb(shared_ptr<Client> c, uint8_t, uint8_t, const void* data, size_t size) {
+  auto l = c->require_lobby();
+  if (l->is_game() && (l->base_version == GameVersion::BB) && l->check_flag(Lobby::Flag::QUEST_IN_PROGRESS)) {
+    const auto& cmd = check_size_t<G_RequestItemDropFromQuest_BB_6xE0>(data, size);
+    auto s = c->require_server_state();
+
+    size_t count = (cmd.type > 0x03) ? 1 : (l->difficulty + 1);
+    for (size_t z = 0; z < count; z++) {
+      const auto& results = s->quest_F95E_results.at(cmd.type).at(l->difficulty);
+      if (results.empty()) {
+        throw runtime_error("invalid result type");
+      }
+      ItemData item = (results.size() == 1) ? results[0] : results[random_object<uint32_t>() % results.size()];
+      if (item.data1[0] == 0x04) { // Meseta
+        // TODO: What is the right amount of Meseta to use here? Presumably it
+        // should be random within a certain range, but it's not obvious what
+        // that range should be.
+        item.data2d = 100;
+      } else if (item.data1[0] == 0x00) {
+        item.data1[4] |= 0x80; // Unidentified
+      }
+
+      item.id = l->generate_item_id(0xFF);
+      l->add_item(item, cmd.floor, cmd.x, cmd.z);
+
+      send_drop_stacked_item(l, item, cmd.floor, cmd.x, cmd.z);
+    }
+  }
+}
+
 static void on_momoka_item_exchange_bb(shared_ptr<Client> c, uint8_t, uint8_t, const void* data, size_t size) {
   auto l = c->require_lobby();
   if (l->is_game() && (l->base_version == GameVersion::BB) && l->check_flag(Lobby::Flag::QUEST_IN_PROGRESS)) {
@@ -2603,7 +2633,7 @@ subcommand_handler_t subcommand_handlers[0x100] = {
     /* 6xDD */ nullptr,
     /* 6xDE */ nullptr,
     /* 6xDF */ on_photon_crystal_exchange_bb,
-    /* 6xE0 */ nullptr,
+    /* 6xE0 */ on_quest_F95E_result_bb,
     /* 6xE1 */ nullptr,
     /* 6xE2 */ nullptr,
     /* 6xE3 */ nullptr,
