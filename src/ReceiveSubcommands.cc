@@ -136,7 +136,7 @@ template <typename CmdT>
 static void send_or_enqueue_joining_player_command(shared_ptr<Client> c, uint8_t command, uint8_t flag, const CmdT& data) {
   if (c->game_join_command_queue) {
     c->log.info("Client not ready to receive join commands; adding to queue");
-    auto cmd = c->game_join_command_queue->emplace_back();
+    auto& cmd = c->game_join_command_queue->emplace_back();
     cmd.command = command;
     cmd.flag = flag;
     cmd.data.assign(reinterpret_cast<const char*>(&data), sizeof(data));
@@ -148,7 +148,7 @@ static void send_or_enqueue_joining_player_command(shared_ptr<Client> c, uint8_t
 static void send_or_enqueue_joining_player_command(shared_ptr<Client> c, uint8_t command, uint8_t flag, string&& data) {
   if (c->game_join_command_queue) {
     c->log.info("Client not ready to receive join commands; adding to queue");
-    auto cmd = c->game_join_command_queue->emplace_back();
+    auto& cmd = c->game_join_command_queue->emplace_back();
     cmd.command = command;
     cmd.flag = flag;
     cmd.data = std::move(data);
@@ -160,7 +160,7 @@ static void send_or_enqueue_joining_player_command(shared_ptr<Client> c, uint8_t
 static void send_or_enqueue_joining_player_command(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
   if (c->game_join_command_queue) {
     c->log.info("Client not ready to receive join commands; adding to queue");
-    auto cmd = c->game_join_command_queue->emplace_back();
+    auto& cmd = c->game_join_command_queue->emplace_back();
     cmd.command = command;
     cmd.flag = flag;
     cmd.data.assign(reinterpret_cast<const char*>(data), size);
