@@ -2189,7 +2189,7 @@ static void on_battle_level_up_bb(shared_ptr<Client> c, uint8_t, uint8_t, const 
       (l->mode == GameMode::BATTLE) &&
       l->check_flag(Lobby::Flag::QUEST_IN_PROGRESS)) {
     const auto& cmd = check_size_t<G_BattleModeLevelUp_BB_6xD0>(data, size);
-    auto lc = l->clients[cmd.header.client_id];
+    auto lc = l->clients.at(cmd.header.client_id);
     if (lc) {
       auto s = c->require_server_state();
       auto lp = lc->game_data.character();

@@ -151,14 +151,14 @@ void Lobby::add_client(shared_ptr<Client> c, ssize_t required_client_id) {
   ssize_t min_client_id = this->check_flag(Lobby::Flag::IS_SPECTATOR_TEAM) ? 4 : 0;
 
   if (required_client_id >= 0) {
-    if (this->clients[required_client_id].get()) {
+    if (this->clients.at(required_client_id).get()) {
       throw out_of_range("required slot is in use");
     }
     this->clients[required_client_id] = c;
     index = required_client_id;
 
   } else if (c->config.check_flag(Client::Flag::DEBUG_ENABLED) && (this->mode != GameMode::SOLO)) {
-    for (index = max_clients - 1; index >= min_client_id; index--) {
+    for (index = this->max_clients - 1; index >= min_client_id; index--) {
       if (!this->clients[index].get()) {
         this->clients[index] = c;
         break;
@@ -168,13 +168,13 @@ void Lobby::add_client(shared_ptr<Client> c, ssize_t required_client_id) {
       throw out_of_range("no space left in lobby");
     }
   } else {
-    for (index = min_client_id; index < max_clients; index++) {
+    for (index = min_client_id; index < this->max_clients; index++) {
       if (!this->clients[index].get()) {
         this->clients[index] = c;
         break;
       }
     }
-    if (index >= max_clients) {
+    if (index >= this->max_clients) {
       throw out_of_range("no space left in lobby");
     }
   }
@@ -184,12 +184,12 @@ void Lobby::add_client(shared_ptr<Client> c, ssize_t required_client_id) {
 
   // If there's no one else in the lobby, set the leader id as well
   size_t leader_index;
-  for (leader_index = 0; leader_index < max_clients; leader_index++) {
+  for (leader_index = 0; leader_index < this->max_clients; leader_index++) {
     if (this->clients[leader_index] && (this->clients[leader_index] != c)) {
       break;
     }
   }
-  if (leader_index >= max_clients) {
+  if (leader_index >= this->max_clients) {
     this->leader_id = c->lobby_client_id;
   }
 
@@ -235,7 +235,7 @@ void Lobby::add_client(shared_ptr<Client> c, ssize_t required_client_id) {
 }
 
 void Lobby::remove_client(shared_ptr<Client> c) {
-  if (this->clients[c->lobby_client_id] != c) {
+  if (this->clients.at(c->lobby_client_id) != c) {
     auto other_c = this->clients[c->lobby_client_id].get();
     throw logic_error(string_printf(
         "client\'s lobby client id (%hhu) does not match client list (%u)",
@@ -283,7 +283,7 @@ void Lobby::move_client_to_lobby(
   }
 
   if (required_client_id >= 0) {
-    if (dest_lobby->clients[required_client_id]) {
+    if (dest_lobby->clients.at(required_client_id)) {
       throw out_of_range("required slot is in use");
     }
   } else {

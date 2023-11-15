@@ -1139,7 +1139,7 @@ static bool add_next_game_client(shared_ptr<Lobby> l) {
     return false;
   }
 
-  if (l->clients[target_client_id] != nullptr) {
+  if (l->clients.at(target_client_id) != nullptr) {
     throw logic_error("client id is already in use");
   }
 
