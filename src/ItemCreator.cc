@@ -161,7 +161,9 @@ ItemData ItemCreator::on_box_item_drop_with_norm_area(uint8_t area_norm) {
       default:
         throw logic_error("this should be impossible");
     }
-    this->generate_common_item_variances(area_norm, item);
+    if (item_class < 6) {
+      this->generate_common_item_variances(area_norm, item);
+    }
   }
   return item;
 }
