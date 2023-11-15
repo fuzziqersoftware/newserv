@@ -567,6 +567,26 @@ bool ItemData::is_s_rank_weapon() const {
   return false;
 }
 
+EquipSlot ItemData::default_equip_slot() const {
+  switch (this->data1[0]) {
+    case 0x00:
+      return EquipSlot::WEAPON;
+    case 0x01:
+      switch (this->data1[1]) {
+        case 0x01:
+          return EquipSlot::ARMOR;
+        case 0x02:
+          return EquipSlot::SHIELD;
+        case 0x03:
+          return EquipSlot::UNIT_1;
+      }
+      break;
+    case 0x02:
+      return EquipSlot::MAG;
+  }
+  throw runtime_error("item cannot be equipped");
+}
+
 bool ItemData::can_be_equipped_in_slot(EquipSlot slot) const {
   switch (slot) {
     case EquipSlot::MAG:

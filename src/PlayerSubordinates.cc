@@ -570,6 +570,10 @@ void PlayerInventory::equip_item(uint32_t item_id, EquipSlot slot) {
   size_t index = this->find_item(item_id);
   auto& item = this->items[index];
 
+  if (slot == EquipSlot::UNKNOWN) {
+    slot = item.data.default_equip_slot();
+  }
+
   if (!item.data.can_be_equipped_in_slot(slot)) {
     throw runtime_error("incorrect item type for equip slot");
   }

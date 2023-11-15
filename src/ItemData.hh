@@ -11,6 +11,13 @@ constexpr uint32_t MESETA_IDENTIFIER = 0x040000;
 class ItemParameterTable;
 
 enum class EquipSlot {
+  // When equipping items through the Item Pack pause menu, the client sends
+  // UNKNOWN for the slot. The receiving client (and server, in our case) have
+  // to analyze the item being equipped and put it in the appropriate slot in
+  // this case. See ItemData::default_equip_slot() for this computation.
+  UNKNOWN = 0x00,
+  // When equipping items through the quick menu or Equip pause menu, the client
+  // sends one of the slots below.
   MAG = 0x01,
   ARMOR = 0x02,
   SHIELD = 0x03,
@@ -163,6 +170,7 @@ struct ItemData { // 0x14 bytes
   bool has_bonuses() const;
   bool is_s_rank_weapon() const;
 
+  EquipSlot default_equip_slot() const;
   bool can_be_equipped_in_slot(EquipSlot slot) const;
 
   bool empty() const;
