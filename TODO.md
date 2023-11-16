@@ -34,7 +34,6 @@
 
 - Find any remaining mismatches in enemy indexes / experience
 - Support EXP multipliers in config.json
-- Implement trade window
 - Fix some edge cases on the BB proxy server (e.g. Change Ship)
 - Implement less-common subcommands
     - 6xAC: Sort inventory

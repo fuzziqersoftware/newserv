@@ -2588,7 +2588,11 @@ struct SC_TradeItems_D0_D3 { // D0 when sent by client, D3 when sent by server
 // See D0 description for usage information.
 
 // D3 (S->C): Execute trade (V3/BB)
-// Same format as D0. See D0 description for usage information.
+// On V3, this command has the same format as D0. See the D0 description for
+// usage information.
+// On BB, this command has no arguments (and the server generates the
+// appropriate delete and create inventory item commands), but the D3 command
+// must still must be sent before the D4 command to advance the trade state.
 
 // D4 (C->S): Trade failed (V3/BB)
 // No arguments

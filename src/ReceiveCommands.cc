@@ -4116,12 +4116,45 @@ static void on_D2_V3_BB(shared_ptr<Client> c, uint16_t, uint32_t, string& data) 
     throw runtime_error("player executed a trade with no other side pending");
   }
 
+  auto complete_trade_for_side = [&](shared_ptr<Client> to_c, shared_ptr<Client> from_c) {
+    if (c->version() == GameVersion::BB) {
+      // On BB, the server is expected to generate the delete item and create
+      // item commands
+      auto to_p = to_c->game_data.character();
+      auto from_p = from_c->game_data.character();
+      for (const auto& trade_item : from_c->game_data.pending_item_trade->items) {
+        size_t amount = trade_item.stack_size();
+
+        auto item = from_p->remove_item(trade_item.id, amount, false);
+        // This is a special case: when the trade is executed, the client
+        // deletes the traded items from its own inventory automatically, so we
+        // should NOT send the 6x29 to that client; we should only send it to
+        // the other clients in the game.
+        G_DeleteInventoryItem_6x29 cmd = {{0x29, 0x03, from_c->lobby_client_id}, item.id, amount};
+        for (auto lc : l->clients) {
+          if (lc && (lc != from_c)) {
+            send_command_t(l, 0x60, 0x00, cmd);
+          }
+        }
+
+        to_p->add_item(trade_item);
+        send_create_inventory_item(to_c, item);
+      }
+      send_command(to_c, 0xD3, 0x00);
+
+    } else {
+      // On V3, the clients will handle it; we just send their final trade lists
+      // to each other
+      send_execute_item_trade(to_c, target_c->game_data.pending_item_trade->items);
+    }
+
+    send_command(to_c, 0xD4, 0x01);
+  };
+
   c->game_data.pending_item_trade->confirmed = true;
   if (target_c->game_data.pending_item_trade->confirmed) {
-    send_execute_item_trade(c, target_c->game_data.pending_item_trade->items);
-    send_execute_item_trade(target_c, c->game_data.pending_item_trade->items);
-    send_command(c, 0xD4, 0x01);
-    send_command(target_c, 0xD4, 0x01);
+    complete_trade_for_side(c, target_c);
+    complete_trade_for_side(target_c, c);
     c->game_data.pending_item_trade.reset();
     target_c->game_data.pending_item_trade.reset();
   }
