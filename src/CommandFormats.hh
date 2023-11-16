@@ -5155,6 +5155,16 @@ struct G_CreateLobbyChair_6xAB {
 } __packed__;
 
 // 6xAC: Unknown (not valid on pre-V3)
+// This command's appears to be different on GC NTE than on any other version.
+// It also seems that no version (other than perhaps GC NTE) ever sends this
+// command.
+
+struct G_Unknown_6xAC_GCNTE {
+  G_EnemyIDHeader header;
+  le_uint16_t unknown_a1 = 0;
+  le_uint16_t unknown_a2 = 0;
+  le_uint32_t unknown_a3 = 0;
+} __packed__;
 
 struct G_Unknown_6xAC {
   G_ClientIDHeader header;
