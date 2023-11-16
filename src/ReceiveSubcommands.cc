@@ -2344,7 +2344,7 @@ static void on_secret_lottery_ticket_exchange_bb(shared_ptr<Client> c, uint8_t, 
       exchange_cmd.header.client_id = c->lobby_client_id;
       exchange_cmd.unknown_a1 = 1;
       exchange_cmd.item_id = slt_item_id;
-      exchange_cmd.unknown_a3 = 1;
+      exchange_cmd.amount = 1;
       send_command_t(c, 0x60, 0x00, exchange_cmd);
 
       send_destroy_item(c, slt_item_id, 1);
@@ -2358,8 +2358,8 @@ static void on_secret_lottery_ticket_exchange_bb(shared_ptr<Client> c, uint8_t, 
     }
 
     S_ExchangeSecretLotteryTicketResult_BB_24 out_cmd;
-    out_cmd.unknown_a1 = cmd.unknown_a1;
-    out_cmd.unknown_a2 = cmd.unknown_a2;
+    out_cmd.start_index = cmd.index;
+    out_cmd.function_id = cmd.function_id1;
     if (s->secret_lottery_results.empty()) {
       out_cmd.unknown_a3.clear(0);
     } else if (s->secret_lottery_results.size() == 1) {
@@ -2412,6 +2412,45 @@ static void on_quest_F95E_result_bb(shared_ptr<Client> c, uint8_t, uint8_t, cons
 
       send_drop_stacked_item(l, item, cmd.floor, cmd.x, cmd.z);
     }
+  }
+}
+
+static void on_quest_F95F_result_bb(shared_ptr<Client> c, uint8_t, uint8_t, const void* data, size_t size) {
+  auto l = c->require_lobby();
+  if (l->is_game() && (l->base_version == GameVersion::BB) && l->check_flag(Lobby::Flag::QUEST_IN_PROGRESS)) {
+    const auto& cmd = check_size_t<G_ExchangePhotonTickets_BB_6xE1>(data, size);
+    auto s = c->require_server_state();
+    auto p = c->game_data.character();
+
+    const auto& result = s->quest_F95F_results.at(cmd.result_index);
+    if (result.second.empty()) {
+      throw runtime_error("invalid result index");
+    }
+
+    size_t index = p->inventory.find_item_by_primary_identifier(0x031004); // Photon Ticket
+    auto ticket_item = p->remove_item(p->inventory.items[index].data.id, result.first, false);
+    // TODO: Shouldn't we send a 6x29 here? Check if this causes desync in an
+    // actual game
+
+    G_ExchangeItemInQuest_BB_6xDB cmd_6xDB;
+    cmd_6xDB.header = {0xDB, 0x04, c->lobby_client_id};
+    cmd_6xDB.unknown_a1 = 1;
+    cmd_6xDB.item_id = ticket_item.id;
+    cmd_6xDB.amount = result.first;
+    send_command_t(c, 0x60, 0x00, cmd_6xDB);
+
+    ItemData new_item = result.second;
+    new_item.id = l->generate_item_id(c->lobby_client_id);
+    p->add_item(new_item);
+    send_create_inventory_item(c, new_item);
+
+    S_GallonPlanResult_BB_25 out_cmd;
+    out_cmd.function_id = cmd.function_id1;
+    out_cmd.offset1 = 0x3C;
+    out_cmd.offset2 = 0x08;
+    out_cmd.value1 = 0x00;
+    out_cmd.value2 = cmd.result_index;
+    send_command_t(c, 0x25, 0x00, out_cmd);
   }
 }
 
@@ -2733,7 +2772,7 @@ subcommand_handler_t subcommand_handlers[0x100] = {
     /* 6xDE */ on_secret_lottery_ticket_exchange_bb,
     /* 6xDF */ on_photon_crystal_exchange_bb,
     /* 6xE0 */ on_quest_F95E_result_bb,
-    /* 6xE1 */ nullptr,
+    /* 6xE1 */ on_quest_F95F_result_bb,
     /* 6xE2 */ nullptr,
     /* 6xE3 */ nullptr,
     /* 6xE4 */ nullptr,

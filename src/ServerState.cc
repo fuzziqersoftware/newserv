@@ -703,7 +703,7 @@ void ServerState::parse_config(const JSON& json, bool is_reload) {
 
   try {
     this->quest_F95E_results.clear();
-    for (const auto& type_it : json.get_list("QuestF95ERewardItems")) {
+    for (const auto& type_it : json.get_list("QuestF95EResultItems")) {
       auto& type_res = this->quest_F95E_results.emplace_back();
       for (const auto& difficulty_it : type_it->as_list()) {
         auto& difficulty_res = type_res.emplace_back();
@@ -715,7 +715,16 @@ void ServerState::parse_config(const JSON& json, bool is_reload) {
     }
   } catch (const out_of_range&) {
   }
-
+  try {
+    this->quest_F95F_results.clear();
+    for (const auto& it : json.get_list("QuestF95FResultItems")) {
+      auto& list = it->as_list();
+      size_t price = list.at(0)->as_int();
+      string data = parse_data_string(list.at(1)->as_string());
+      this->quest_F95F_results.emplace_back(make_pair(price, ItemData::from_data(data)));
+    }
+  } catch (const out_of_range&) {
+  }
   try {
     this->secret_lottery_results.clear();
     for (const auto& it : json.get_list("SecretLotteryResultItems")) {

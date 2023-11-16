@@ -858,8 +858,9 @@ struct SC_GameGuardCheck_BB_0022 {
 struct S_ExchangeSecretLotteryTicketResult_BB_24 {
   // These fields map to unknown_a1 and unknown_a2 in the 6xDE command (but
   // their order is swapped here).
-  le_uint16_t unknown_a2 = 0;
-  le_uint16_t unknown_a1 = 0;
+  le_uint16_t function_id = 0;
+  uint8_t start_index = 0;
+  uint8_t unused = 0;
   parray<le_uint32_t, 8> unknown_a3;
 } __packed__;
 
@@ -867,7 +868,7 @@ struct S_ExchangeSecretLotteryTicketResult_BB_24 {
 // Sent in response to a 6xE1 command from the client.
 
 struct S_GallonPlanResult_BB_25 {
-  le_uint16_t unknown_a1 = 0;
+  le_uint16_t function_id = 0;
   uint8_t offset1 = 0;
   uint8_t offset2 = 0;
   uint8_t value1 = 0;
@@ -5695,7 +5696,7 @@ struct G_ExchangeItemInQuest_BB_6xDB {
   G_ClientIDHeader header;
   le_uint32_t unknown_a1 = 0;
   le_uint32_t item_id = 0;
-  le_uint32_t unknown_a3 = 0;
+  le_uint32_t amount = 0;
 } __packed__;
 
 // 6xDC: Saint-Million boss actions (BB)
@@ -5719,9 +5720,9 @@ struct G_SetEXPMultiplier_BB_6xDD {
 
 struct G_ExchangeSecretLotteryTicket_BB_6xDE {
   G_ClientIDHeader header;
-  uint8_t unknown_a1 = 0;
-  uint8_t unknown_a2 = 0;
-  le_uint16_t unknown_a3 = 0;
+  uint8_t index = 0;
+  uint8_t function_id1 = 0;
+  le_uint16_t function_id2 = 0;
 } __packed__;
 
 // 6xDF: Exchange Photon Crystals (BB; handled by server)
@@ -5744,17 +5745,17 @@ struct G_RequestItemDropFromQuest_BB_6xE0 {
   le_float z = 0.0f; // argsA[2]
 } __packed__;
 
-// 6xE1: Gallon's Plan quest (BB; handled by server)
+// 6xE1: Exchange Photon Tickets (BB; handled by server)
 // The client sends this when it executes an F95F quest opcode.
 
-struct G_GallonsPlanQuestActions_BB_6xE1 {
+struct G_ExchangePhotonTickets_BB_6xE1 {
   G_ClientIDHeader header;
-  uint8_t unknown_a1 = 0;
-  uint8_t unknown_a2 = 0;
-  uint8_t unknown_a3 = 0;
+  uint8_t unknown_a1 = 0; // argsA[0]
+  uint8_t unknown_a2 = 0; // argsA[1]
+  uint8_t result_index = 0; // argsA[2]
   uint8_t unused = 0;
-  le_uint16_t unknown_a4 = 0;
-  le_uint16_t unknown_a5 = 0;
+  le_uint16_t function_id1 = 0; // argsA[3]
+  le_uint16_t unknown_a5 = 0; // argsA[4]
 } __packed__;
 
 // 6xE2: Coren actions (BB)

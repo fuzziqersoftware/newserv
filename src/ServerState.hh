@@ -115,6 +115,7 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
 
   // Indexed as [type][difficulty][random_choice]
   std::vector<std::vector<std::vector<ItemData>>> quest_F95E_results;
+  std::vector<std::pair<size_t, ItemData>> quest_F95F_results; // [(num_photon_tickets, item)]
   std::vector<ItemData> secret_lottery_results;
   uint16_t bb_global_exp_multiplier;
 

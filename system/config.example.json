@@ -507,14 +507,14 @@
     [0x40, "download-ep3", "Download", "$E$C6Quests to download\nto your Memory Card"],
   ],
 
-  // Quest reward item definitions for opcode F95E (used in Black Paper's
+  // Quest result item definitions for opcode F95E (used in Black Paper's
   // Dangerous Deal 1 and 2). This list is indexed as [reward_type][difficulty].
   // Reward types 0, 1, 2, and 4 are used by vanilla PSOBB; other reward types
   // can be specified when using the F95E quest opcode in custom quests. Rewards
   // are chosen uniformly at random from the list corresponding to the reward
   // location and difficulty level. All items in these lists must be hex item
   // codes (1-16 bytes); textual descriptions are not supported here.
-  "QuestF95ERewardItems": [
+  "QuestF95EResultItems": [
     [
       ["009000", "009001", "009002", "009003", "009004", "009005", "009006", "009007", "009008", "00B400", "01014E", "010307", "010341", "040000", "040000", "040000", "040000", "040000", "040000", "040000", "040000", "040000"],
       ["00B900", "003400", "000901", "009002", "009007", "002C00", "002D00", "010235", "000106", "000105", "040000", "040000", "040000", "040000", "040000", "040000", "040000", "040000", "040000"],
@@ -537,7 +537,16 @@
       ["00BA00", "00B400", "000D03", "00B600", "00B300", "000708", "004301", "00C900", "010136", "01028A", "010299", "010285", "010348", "010351", "01035B", "010352"],
     ],
   ],
-  // Reward item definitions for Secret Lottery Ticket exchange (quest opcode
+  // Results for quest opcode F95F (used in Gallon's Plan). This list is indexed
+  // by type (which is the third argument to the opcode). The entries here are
+  // [num_photon_tickets, item_hex].
+  "QuestF95FResultItems": [
+    [0, ""], // Unused
+    [10, "00D500"],
+    [15, "000A07"],
+    [20, "010157"],
+  ],
+  // Result item definitions for Secret Lottery Ticket exchange (quest opcode
   // F95C, used in the Good Luck quest).
   "SecretLotteryResultItems": [
     "000106", "000107", "000206", "000407", "000606", "000807", "000D01",

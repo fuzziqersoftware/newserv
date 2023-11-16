@@ -35,10 +35,9 @@
 - Find any remaining mismatches in enemy indexes / experience
 - Fix some edge cases on the BB proxy server (e.g. Change Ship)
 - Implement less-common subcommands
-    - 6xAC: Sort inventory
-    - 6xC1, 6xC2, 6xCD, 6xCE
-    - 6xCC: Exchange item for team points
     - 6xD8: Add S-rank weapon special
-    - 6xE1: Gallon's Plan quest
 - Implement teams
+    - All EA subcommands
+    - 6xC1, 6xC2, 6xCD, 6xCE: Team invites/administration
+    - 6xCC: Exchange item for team points
 - Implement story progress flags for unlocking quests
