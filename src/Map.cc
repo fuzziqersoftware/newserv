@@ -472,7 +472,6 @@ struct DATParserRandomState {
   size_t rand_int_biased(size_t min_v, size_t max_v) {
     float max_f = static_cast<float>(max_v + 1);
     uint32_t crypt_v = this->random.next();
-    fprintf(stderr, "(global) => %08" PRIX32 "\n", crypt_v);
     float det_f = static_cast<float>(crypt_v);
     return max<size_t>(floorf((max_f * det_f) / UINT32_MAX_AS_FLOAT), min_v);
   }
@@ -517,7 +516,6 @@ struct DATParserRandomState {
     for (size_t z = 0; z < 4; z++) {
       for (size_t x = 0; x < sec.count; x++) {
         uint32_t crypt_v = this->location_table_random.next();
-        fprintf(stderr, "(local?) => %08" PRIX32 "\n", crypt_v);
         size_t choice = floorf((static_cast<float>(sec.count) * static_cast<float>(crypt_v)) / UINT32_MAX_AS_FLOAT);
         uint32_t t = this->location_index_table[x];
         this->location_index_table[x] = this->location_index_table[choice];

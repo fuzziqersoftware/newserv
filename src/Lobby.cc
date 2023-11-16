@@ -196,15 +196,7 @@ void Lobby::add_client(shared_ptr<Client> c, ssize_t required_client_id) {
   // If the lobby is a game and item tracking is enabled, assign the inventory's
   // item IDs
   if (this->is_game() && this->check_flag(Lobby::Flag::ITEM_TRACKING_ENABLED)) {
-    auto s = this->require_server_state();
-    auto p = c->game_data.character();
-    auto& inv = p->inventory;
-    size_t count = min<uint8_t>(inv.num_items, 30);
-    for (size_t x = 0; x < count; x++) {
-      inv.items[x].data.id = this->generate_item_id(c->lobby_client_id);
-    }
-    this->log.info("Assigned item IDs for joining player %zd", index);
-    p->print_inventory(stderr, c->version(), s->item_name_index);
+    this->assign_inventory_item_ids(c);
   }
 
   // If the lobby is recording a battle record, add the player join event

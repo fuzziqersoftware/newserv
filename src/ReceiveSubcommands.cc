@@ -228,78 +228,82 @@ static void on_sync_joining_player_item_state(shared_ptr<Client> c, uint8_t comm
     return;
   }
 
-  // For non-V3 versions, just forward the data verbatim. For V3, we need to
-  // byteswap mags' data2 fields if exactly one of the sender and recipient is
-  // PSO GC
-  bool sender_is_gc = (c->version() == GameVersion::GC);
-  if (!sender_is_gc && (c->version() != GameVersion::XB)) {
+  const auto& cmd = check_size_t<G_SyncGameStateHeader_6x6B_6x6C_6x6D_6x6E>(data, size, 0xFFFF);
+  if (cmd.compressed_size > size - sizeof(cmd)) {
+    throw runtime_error("compressed end offset is beyond end of command");
+  }
+
+  string decompressed = bc0_decompress(reinterpret_cast<const char*>(data) + sizeof(cmd), cmd.compressed_size);
+  if (c->config.check_flag(Client::Flag::DEBUG_ENABLED)) {
+    c->log.info("Decompressed item sync data (%" PRIX32 " -> %zX bytes; expected %" PRIX32 "):",
+        cmd.compressed_size.load(), decompressed.size(), cmd.decompressed_size.load());
+    print_data(stderr, decompressed);
+  }
+
+  if (decompressed.size() < sizeof(G_SyncItemState_6x6D_Decompressed)) {
+    throw runtime_error(string_printf(
+        "decompressed 6x6D data (0x%zX bytes) is too short for header (0x%zX bytes)",
+        decompressed.size(), sizeof(G_SyncItemState_6x6D_Decompressed)));
+  }
+  auto* decompressed_cmd = reinterpret_cast<G_SyncItemState_6x6D_Decompressed*>(decompressed.data());
+
+  size_t num_floor_items = 0;
+  for (size_t z = 0; z < decompressed_cmd->floor_item_count_per_floor.size(); z++) {
+    num_floor_items += decompressed_cmd->floor_item_count_per_floor[z];
+  }
+
+  size_t required_size = sizeof(G_SyncItemState_6x6D_Decompressed) + num_floor_items * sizeof(FloorItem);
+  if (decompressed.size() < required_size) {
+    throw runtime_error(string_printf(
+        "decompressed 6x6D data (0x%zX bytes) is too short for all floor items (0x%zX bytes)",
+        decompressed.size(), required_size));
+  }
+  auto* floor_items = reinterpret_cast<FloorItem*>(decompressed.data() + sizeof(G_SyncItemState_6x6D_Decompressed));
+
+  size_t target_num_items = target->game_data.character()->inventory.num_items;
+  for (size_t z = 0; z < 12; z++) {
+    uint32_t client_next_id = decompressed_cmd->next_item_id_per_player[z];
+    uint32_t server_next_id = l->next_item_id[z];
+    if (client_next_id == server_next_id) {
+      l->log.info("Next item ID for player %zu (%08" PRIX32 ") matches expected value", z, l->next_item_id[z]);
+    } else if ((z == target->lobby_client_id) && (client_next_id == server_next_id - target_num_items)) {
+      l->log.info("Next item ID for player %zu (%08" PRIX32 ") matches expected value before inventory item ID assignment (%08" PRIX32 ")", z, l->next_item_id[z], static_cast<uint32_t>(server_next_id - target_num_items));
+    } else {
+      l->log.warning("Next item ID for player %zu (%08" PRIX32 ") does not match expected value (%08" PRIX32 ")",
+          z, decompressed_cmd->next_item_id_per_player[z].load(), l->next_item_id[z]);
+    }
+  }
+
+  // We need to byteswap mags' data2 fields if exactly one of the sender and
+  // recipient is PSO GC
+  if ((c->version() == GameVersion::GC) == (target->version() == GameVersion::GC)) {
     send_or_enqueue_joining_player_command(target, command, flag, data, size);
 
   } else {
-    bool target_is_gc = (target->version() == GameVersion::GC);
-
-    if (target_is_gc == sender_is_gc) {
-      send_or_enqueue_joining_player_command(target, command, flag, data, size);
-
-    } else {
-      const auto& cmd = check_size_t<G_SyncGameStateHeader_6x6B_6x6C_6x6D_6x6E>(data, size, 0xFFFF);
-      if (cmd.compressed_size > size - sizeof(cmd)) {
-        throw runtime_error("compressed end offset is beyond end of command");
-      }
-
-      string decompressed = bc0_decompress(reinterpret_cast<const char*>(data) + sizeof(cmd), cmd.compressed_size);
-      if (c->config.check_flag(Client::Flag::DEBUG_ENABLED)) {
-        c->log.info("Decompressed item sync data (%" PRIX32 " -> %zX bytes; expected %" PRIX32 "):",
-            cmd.compressed_size.load(), decompressed.size(), cmd.decompressed_size.load());
-        print_data(stderr, decompressed);
-      }
-
-      if (decompressed.size() < sizeof(G_SyncItemState_6x6D_Decompressed)) {
-        throw runtime_error(string_printf(
-            "decompressed 6x6D data (0x%zX bytes) is too short for header (0x%zX bytes)",
-            decompressed.size(), sizeof(G_SyncItemState_6x6D_Decompressed)));
-      }
-      auto* decompressed_cmd = reinterpret_cast<G_SyncItemState_6x6D_Decompressed*>(decompressed.data());
-
-      size_t num_floor_items = 0;
-      for (size_t z = 0; z < decompressed_cmd->floor_item_count_per_floor.size(); z++) {
-        num_floor_items += decompressed_cmd->floor_item_count_per_floor[z];
-      }
-
-      size_t required_size = sizeof(G_SyncItemState_6x6D_Decompressed) + num_floor_items * sizeof(FloorItem);
-      if (decompressed.size() < required_size) {
-        throw runtime_error(string_printf(
-            "decompressed 6x6D data (0x%zX bytes) is too short for all items (0x%zX bytes)",
-            decompressed.size(), required_size));
-      }
-      auto* floor_items = reinterpret_cast<FloorItem*>(decompressed.data() + sizeof(G_SyncItemState_6x6D_Decompressed));
-
-      for (size_t z = 0; z < num_floor_items; z++) {
-        // NOTE: If we use this codepath for non-V3 in the future, we'll need to
-        // change this hardcoded version. This only works because GC's mag
-        // encoding/decoding is symmetric (encode and decode do the same thing).
-        floor_items[z].item.decode_for_version(GameVersion::GC);
-      }
-
-      string out_compressed_data = bc0_compress(decompressed);
-
-      G_SyncGameStateHeader_6x6B_6x6C_6x6D_6x6E out_cmd;
-      out_cmd.header.basic_header.subcommand = 0x6D;
-      out_cmd.header.basic_header.size = 0x00;
-      out_cmd.header.basic_header.unused = 0x0000;
-      out_cmd.header.size = ((out_compressed_data.size() + sizeof(G_SyncGameStateHeader_6x6B_6x6C_6x6D_6x6E)) + 3) & (~3);
-      out_cmd.decompressed_size = decompressed.size();
-      out_cmd.compressed_size = out_compressed_data.size();
-
-      if (c->config.check_flag(Client::Flag::DEBUG_ENABLED)) {
-        c->log.info("Byteswapped and recompressed item sync data (%zX bytes)", out_compressed_data.size());
-      }
-
-      StringWriter w;
-      w.write(&out_cmd, sizeof(out_cmd));
-      w.write(out_compressed_data);
-      send_or_enqueue_joining_player_command(target, command, flag, std::move(w.str()));
+    auto s = target->require_server_state();
+    for (size_t z = 0; z < num_floor_items; z++) {
+      floor_items[z].item.decode_for_version(c->version());
+      floor_items[z].item.encode_for_version(target->version(), s->item_parameter_table_for_version(target->version()));
     }
+
+    string out_compressed_data = bc0_compress(decompressed);
+
+    G_SyncGameStateHeader_6x6B_6x6C_6x6D_6x6E out_cmd;
+    out_cmd.header.basic_header.subcommand = 0x6D;
+    out_cmd.header.basic_header.size = 0x00;
+    out_cmd.header.basic_header.unused = 0x0000;
+    out_cmd.header.size = ((out_compressed_data.size() + sizeof(G_SyncGameStateHeader_6x6B_6x6C_6x6D_6x6E)) + 3) & (~3);
+    out_cmd.decompressed_size = decompressed.size();
+    out_cmd.compressed_size = out_compressed_data.size();
+
+    if (c->config.check_flag(Client::Flag::DEBUG_ENABLED)) {
+      c->log.info("Transcoded and recompressed item sync data (%zX bytes)", out_compressed_data.size());
+    }
+
+    StringWriter w;
+    w.write(&out_cmd, sizeof(out_cmd));
+    w.write(out_compressed_data);
+    send_or_enqueue_joining_player_command(target, command, flag, std::move(w.str()));
   }
 }
 
@@ -1307,7 +1311,7 @@ static void on_open_shop_bb_or_ep3_battle_subs(shared_ptr<Client> c, uint8_t com
           throw runtime_error("invalid shop type");
       }
       for (auto& item : c->game_data.shop_contents[cmd.shop_type]) {
-        item.id = l->generate_item_id(c->lobby_client_id);
+        item.id = 0xFFFFFFFF;
         item.data2d = s->item_parameter_table_for_version(c->version())->price_for_item(item);
       }
 
@@ -1383,9 +1387,9 @@ static void on_ep3_private_word_select_bb_bank_action(shared_ptr<Client> c, uint
 
       } else { // Take item
         auto item = p->bank.remove_item(cmd.item_id, cmd.item_amount);
-        item.id = l->generate_item_id(0xFF);
+        item.id = l->generate_item_id(c->lobby_client_id);
         p->add_item(item);
-        send_create_inventory_item(c, item);
+        send_create_inventory_item(c, item, true);
 
         string name = s->item_name_index->describe_item(GameVersion::BB, item);
         l->log.info("Player %hu withdrew item %08" PRIX32 " (x%hhu) (%s) from the bank",
@@ -1996,9 +2000,9 @@ void on_meseta_reward_request_bb(shared_ptr<Client> c, uint8_t, uint8_t, const v
     ItemData item;
     item.data1[0] = 0x04;
     item.data2d = cmd.amount.load();
-    item.id = l->generate_item_id(0xFF);
+    item.id = l->generate_item_id(c->lobby_client_id);
     p->add_item(item);
-    send_create_inventory_item(c, item);
+    send_create_inventory_item(c, item, true);
   }
 }
 
@@ -2008,9 +2012,9 @@ void on_item_reward_request_bb(shared_ptr<Client> c, uint8_t, uint8_t, const voi
 
   ItemData item;
   item = cmd.item_data;
-  item.id = l->generate_item_id(0xFF);
+  item.id = l->generate_item_id(c->lobby_client_id);
   c->game_data.character()->add_item(item);
-  send_create_inventory_item(c, item);
+  send_create_inventory_item(c, item, true);
 }
 
 static void on_destroy_inventory_item(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
@@ -2111,7 +2115,7 @@ static void on_accept_identify_item_bb(shared_ptr<Client> c, uint8_t command, ui
       throw runtime_error("accepted item ID does not match previous identify request");
     }
     c->game_data.character()->add_item(c->game_data.identify_result);
-    send_create_inventory_item(c, c->game_data.identify_result);
+    send_create_inventory_item(c, c->game_data.identify_result, false);
     c->game_data.identify_result.clear();
 
   } else {
@@ -2170,19 +2174,19 @@ static void on_buy_shop_item_bb(shared_ptr<Client> c, uint8_t, uint8_t, const vo
     auto p = c->game_data.character();
     p->remove_meseta(price, false);
 
-    item.id = cmd.inventory_item_id;
+    item.id = l->generate_item_id(c->lobby_client_id);
     p->add_item(item);
-    send_create_inventory_item(c, item);
+    send_create_inventory_item(c, item, true);
 
     auto s = c->require_server_state();
     auto name = s->describe_item(c->version(), item, false);
     l->log.info("Player %hhu purchased item %08" PRIX32 " (%s) for %zu meseta",
-        c->lobby_client_id, cmd.inventory_item_id.load(), name.c_str(), price);
+        c->lobby_client_id, item.id.load(), name.c_str(), price);
     p->print_inventory(stderr, c->version(), s->item_name_index);
     if (c->config.check_flag(Client::Flag::DEBUG_ENABLED)) {
       string name = s->describe_item(c->version(), item, true);
       send_text_message_printf(c, "$C5CREATE/BUY %08" PRIX32 "\n-%zu Meseta\n%s",
-          cmd.inventory_item_id.load(), price, name.c_str());
+          item.id.load(), price, name.c_str());
     }
   }
 }
@@ -2261,7 +2265,7 @@ static void on_quest_exchange_item_bb(shared_ptr<Client> c, uint8_t, uint8_t, co
       ItemData new_item = cmd.replace_item;
       new_item.id = l->generate_item_id(c->lobby_client_id);
       p->add_item(new_item);
-      send_create_inventory_item(c, new_item);
+      send_create_inventory_item(c, new_item, true);
 
       send_quest_function_call(c, cmd.success_function_id);
 
@@ -2282,7 +2286,7 @@ static void on_wrap_item_bb(shared_ptr<Client> c, uint8_t, uint8_t, const void* 
     send_destroy_item(c, item.id, 1);
     item.wrap();
     p->add_item(cmd.item);
-    send_create_inventory_item(c, item);
+    send_create_inventory_item(c, item, false);
   }
 }
 
@@ -2303,7 +2307,7 @@ static void on_photon_drop_exchange_bb(shared_ptr<Client> c, uint8_t, uint8_t, c
       ItemData new_item = cmd.new_item;
       new_item.id = l->generate_item_id(c->lobby_client_id);
       p->add_item(new_item);
-      send_create_inventory_item(c, new_item);
+      send_create_inventory_item(c, new_item, true);
 
       send_quest_function_call(c, cmd.success_function_id);
 
@@ -2350,7 +2354,7 @@ static void on_secret_lottery_ticket_exchange_bb(shared_ptr<Client> c, uint8_t, 
           : s->secret_lottery_results[random_object<uint32_t>() % s->secret_lottery_results.size()];
       item.id = l->generate_item_id(c->lobby_client_id);
       p->add_item(item);
-      send_create_inventory_item(c, item);
+      send_create_inventory_item(c, item, true);
     }
 
     S_ExchangeSecretLotteryTicketResult_BB_24 out_cmd;
@@ -2430,7 +2434,7 @@ static void on_momoka_item_exchange_bb(shared_ptr<Client> c, uint8_t, uint8_t, c
       ItemData new_item = cmd.replace_item;
       new_item.id = l->generate_item_id(c->lobby_client_id);
       p->add_item(new_item);
-      send_create_inventory_item(c, new_item);
+      send_create_inventory_item(c, new_item, true);
 
       send_command(c, 0x23, 0x00);
     } catch (const exception& e) {
@@ -2484,7 +2488,7 @@ static void on_upgrade_weapon_attribute_bb(shared_ptr<Client> c, uint8_t, uint8_
       item.data1[attribute_index] += attribute_amount;
 
       send_destroy_item(c, item.id, 1);
-      send_create_inventory_item(c, item);
+      send_create_inventory_item(c, item, false);
       send_quest_function_call(c, cmd.success_function_id);
 
     } catch (const exception& e) {

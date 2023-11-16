@@ -5312,7 +5312,7 @@ struct G_ShopContents_BB_6xB6 {
 
 struct G_BuyShopItem_BB_6xB7 {
   G_UnusedHeader header;
-  le_uint32_t inventory_item_id = 0;
+  le_uint32_t shop_item_id = 0;
   uint8_t shop_type = 0;
   uint8_t item_index = 0;
   uint8_t amount = 0;
