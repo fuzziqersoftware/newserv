@@ -199,6 +199,7 @@ struct Map {
     uint16_t base_type;
     uint16_t section;
     float param1; // If <= 0, this is a specialized box, and the specialization is in param4/5/6
+    float param3; // If == 0, the item should be varied by difficulty and area
     uint32_t param4;
     uint32_t param5;
     uint32_t param6;

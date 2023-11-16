@@ -1656,14 +1656,23 @@ void ItemCreator::generate_weapon_shop_item_bonus2(ItemData& item, size_t player
   }
 }
 
-ItemData ItemCreator::on_specialized_box_item_drop(uint16_t entity_id, uint32_t def0, uint32_t def1, uint32_t def2) {
+ItemData ItemCreator::on_specialized_box_item_drop(
+    uint16_t entity_id, uint8_t area, float def_z, uint32_t def0, uint32_t def1, uint32_t def2) {
   if (!this->destroyed_boxes.emplace(entity_id).second) {
     return ItemData();
   }
-  return this->item_for_specialized_box(def0, def1, def2);
+
+  ItemData item = this->base_item_for_specialized_box(def0, def1, def2);
+  if (def_z == 0.0f) {
+    uint16_t type = item.data1w[0];
+    item.clear();
+    item.data1w[0] = type;
+    this->generate_common_item_variances(this->normalize_area_number(area), item);
+  }
+  return item;
 }
 
-ItemData ItemCreator::item_for_specialized_box(uint32_t def0, uint32_t def1, uint32_t def2) {
+ItemData ItemCreator::base_item_for_specialized_box(uint32_t def0, uint32_t def1, uint32_t def2) {
   ItemData item;
   item.data1[0] = (def0 >> 0x18) & 0x0F;
   item.data1[1] = (def0 >> 0x10) + ((item.data1[0] == 0x00) || (item.data1[0] == 0x01));

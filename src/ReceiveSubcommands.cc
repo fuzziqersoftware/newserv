@@ -1538,9 +1538,9 @@ static void on_entity_drop_item_request(shared_ptr<Client> c, uint8_t command, u
         }
 
       } else {
-        l->log.info("Creating item from box %04hX (area %02hX; specialized with %08" PRIX32 " %08" PRIX32 " %08" PRIX32 ")",
-            cmd.entity_id.load(), cmd.effective_area, object.param4, object.param5, object.param6);
-        item = l->item_creator->on_specialized_box_item_drop(cmd.entity_id, object.param4, object.param5, object.param6);
+        l->log.info("Creating item from box %04hX (area %02hX; specialized with %g %08" PRIX32 " %08" PRIX32 " %08" PRIX32 ")",
+            cmd.entity_id.load(), cmd.effective_area, object.param3, object.param4, object.param5, object.param6);
+        item = l->item_creator->on_specialized_box_item_drop(cmd.entity_id, cmd.effective_area, object.param3, object.param4, object.param5, object.param6);
         if (c->config.check_flag(Client::Flag::DEBUG_ENABLED)) {
           send_text_message_printf(c, "$C5K-%hX %04hX %s%sCST %s", cmd.entity_id.load(), object.base_type, floor_warning_token, ignore_def_warning_token, item.empty() ? "EMPTY" : "ITEM");
         }
@@ -1551,9 +1551,10 @@ static void on_entity_drop_item_request(shared_ptr<Client> c, uint8_t command, u
       l->log.info("Creating item from box %04hX (area %02hX)", cmd.entity_id.load(), cmd.effective_area);
       item = l->item_creator->on_box_item_drop(cmd.entity_id, cmd.effective_area);
     } else {
-      l->log.info("Creating item from box %04hX (area %02hX; specialized with %08" PRIX32 " %08" PRIX32 " %08" PRIX32 ")",
-          cmd.entity_id.load(), cmd.effective_area, cmd.def[0].load(), cmd.def[1].load(), cmd.def[2].load());
-      item = l->item_creator->on_specialized_box_item_drop(cmd.entity_id, cmd.def[0], cmd.def[1], cmd.def[2]);
+      l->log.info("Creating item from box %04hX (area %02hX; specialized with %g %08" PRIX32 " %08" PRIX32 " %08" PRIX32 ")",
+          cmd.entity_id.load(), cmd.effective_area, cmd.param3.load(), cmd.param4.load(), cmd.param5.load(), cmd.param6.load());
+      item = l->item_creator->on_specialized_box_item_drop(
+          cmd.entity_id, cmd.effective_area, cmd.param3, cmd.param4, cmd.param5, cmd.param6);
     }
 
   } else {

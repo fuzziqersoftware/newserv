@@ -5056,8 +5056,10 @@ struct G_Unknown_6xA1 {
 // server on BB)
 
 struct G_SpecializableItemDropRequest_6xA2 : G_StandardDropItemRequest_PC_V3_BB_6x60 {
-  le_float def_a1 = 0.0f;
-  parray<le_uint32_t, 3> def;
+  le_float param3 = 0.0f;
+  le_uint32_t param4 = 0;
+  le_uint32_t param5 = 0;
+  le_uint32_t param6 = 0;
 } __packed__;
 
 // 6xA3: Olga Flow boss actions (not valid on pre-V3 or Episode 3)
