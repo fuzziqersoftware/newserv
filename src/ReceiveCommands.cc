@@ -3715,6 +3715,9 @@ shared_ptr<Lobby> create_game_generic(
     game->battle_player = battle_player;
     battle_player->set_lobby(game);
   }
+  if (game->base_version == GameVersion::BB) {
+    game->base_exp_multiplier = s->bb_global_exp_multiplier;
+  }
 
   for (size_t x = 0; x < 4; x++) {
     game->next_item_id[x] = (0x00200000 * x) + 0x00010000;

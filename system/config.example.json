@@ -547,6 +547,9 @@
     "010132", "010133", "010221", "010224", "010229", "01022B", "010235",
     "031000",
   ],
+  // EXP multiplier for BB games. This must be an integer due to a client
+  // limitation, and must be at least 1.
+  "BBGlobalEXPMultiplier": 1,
 
   // Cheat mode behavior. There are three values:
   //   "Off": Cheat mode is disabled on the entire server. Cheat mode cannot be

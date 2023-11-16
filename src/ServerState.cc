@@ -38,6 +38,7 @@ ServerState::ServerState(const char* config_filename, bool is_replay)
       ep3_behavior_flags(0),
       run_shell_behavior(RunShellBehavior::DEFAULT),
       cheat_mode_behavior(BehaviorSwitch::OFF_BY_DEFAULT),
+      bb_global_exp_multiplier(1),
       ep3_card_auction_points(0),
       ep3_card_auction_min_size(0),
       ep3_card_auction_max_size(0),
@@ -723,6 +724,8 @@ void ServerState::parse_config(const JSON& json, bool is_reload) {
     }
   } catch (const out_of_range&) {
   }
+
+  this->bb_global_exp_multiplier = json.get_int("BBGlobalEXPMultiplier", this->bb_global_exp_multiplier);
 
   set_log_levels_from_json(json.get("LogLevels", JSON::dict()));
 
