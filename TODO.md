@@ -1,22 +1,17 @@
 ## General
 
-- Test PSOX (blocked on Insignia private server support)
-- Implement server-side drops on non-BB game versions
 - Find a way to silence audio in RunDOL.s
 - Encapsulate BB server-side random state and make replays deterministic
 - Implement choice search
 - Write a simple status API
 - Implement per-game logging
-- Check for RCE potential in 6x6B-6x6E commands
 - Build an exception-handling abstraction in ChatCommands that shows formatted error messages in all cases
 - Make reloading happen on separate threads so compression doesn't block active clients
 - Implement decrypt/encrypt actions for VMS files
 - Make UI strings localizable (e.g. entries in menus, welcome message, etc.)
 - Figure out what causes the corruption message on PC proxy sessions and fix it
-- Enable item tracking in battle/challenge games (everything should already be set up for it to work)
 - Rewrite REL-based parsers so they don't assume any fixed offsets
-- Make $edit for DC/PC and attempt to repro disconnect issue with higher-level char
-- Look into double item drop from boxes in server drop mode
+- Make $edit for DC/PC
 - Handle DC NTE broadcast commands (see Sylverant subcmd_dcnte_handle_bcast)
 
 ## Episode 3
@@ -34,13 +29,11 @@
 - Fix receiving Guild Cards from non-Xbox players
 - Make the Guild Card description field in SavedPlayerDataBB longer to accommodate XB descriptions (0x200 bytes)
 - Implement and test voice chat
-- Fix whatever causes Schtserv to not recognize proxy connections as Xbox
 
 ## PSOBB
 
 - Find any remaining mismatches in enemy indexes / experience
-- Support EXP multipliers
-- Sale prices for non-rare weapons with specials are computed incorrectly when buying/selling at shops
+- Support EXP multipliers in config.json
 - Implement trade window
 - Fix some edge cases on the BB proxy server (e.g. Change Ship)
 - Implement less-common subcommands
