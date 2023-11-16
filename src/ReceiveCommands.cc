@@ -2621,6 +2621,7 @@ static void on_AC_V3_BB(shared_ptr<Client> c, uint16_t, uint32_t, string& data) 
         (l->base_version == GameVersion::BB) &&
         l->map &&
         l->quest) {
+      auto s = l->require_server_state();
 
       auto vq = l->quest->version(QuestScriptVersion::BB_V4, c->language());
 
@@ -2636,13 +2637,17 @@ static void on_AC_V3_BB(shared_ptr<Client> c, uint16_t, uint32_t, string& data) 
           (l->mode == GameMode::CHALLENGE) ? Map::NO_RARE_ENEMIES : Map::DEFAULT_RARE_ENEMIES);
       l->item_creator->clear_destroyed_entities();
 
+      l->log.info("Replaced objects list with quest layout (%zu entries)", l->map->objects.size());
+      for (size_t z = 0; z < l->map->objects.size(); z++) {
+        string o_str = l->map->objects[z].str(s->item_name_index);
+        l->log.info("(K-%zX) %s", z, o_str.c_str());
+      }
       l->log.info("Replaced enemies list with quest layout (%zu entries)", l->map->enemies.size());
       for (size_t z = 0; z < l->map->enemies.size(); z++) {
         string e_str = l->map->enemies[z].str();
-        l->log.info("(Entry %zX) %s", z, e_str.c_str());
+        l->log.info("(E-%zX) %s", z, e_str.c_str());
       }
 
-      auto s = l->require_server_state();
       for (auto& lc : l->clients) {
         if (!lc) {
           continue;

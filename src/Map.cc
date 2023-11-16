@@ -45,6 +45,7 @@ string Map::Object::str(shared_ptr<const ItemNameIndex> name_index) const {
 }
 
 void Map::clear() {
+  this->objects.clear();
   this->enemies.clear();
   this->rare_enemy_indexes.clear();
 }
