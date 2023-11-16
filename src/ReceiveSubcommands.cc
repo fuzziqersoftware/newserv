@@ -1114,13 +1114,14 @@ static void on_pick_up_item_request(shared_ptr<Client> c, uint8_t command, uint8
     return;
   }
 
-  // This is handled by the server on BB, and by the leader on other versions.
-  // However, there appears to be a bug in v2 that causes the leader to
-  // sometimes allow players to pick up items that someone else has already
-  // picked up. To account for this, we discard requests to pick up items that
-  // don't exist instead of disconnecting the client.
-  if (l->base_version == GameVersion::BB) {
-    if (!l->check_flag(Lobby::Flag::ITEM_TRACKING_ENABLED)) {
+  bool item_tracking_enabled = l->check_flag(Lobby::Flag::ITEM_TRACKING_ENABLED);
+  if (item_tracking_enabled && !l->item_exists(cmd.item_id)) {
+    l->log.warning("Player %hu requests to pick up %08" PRIX32 ", but the item does not exist; dropping command",
+        cmd.header.client_id.load(), cmd.item_id.load());
+
+  } else if (l->base_version == GameVersion::BB) {
+    // This is handled by the server on BB, and by the leader on other versions.
+    if (!item_tracking_enabled) {
       throw logic_error("item tracking not enabled in BB game");
     }
 
@@ -1130,20 +1131,14 @@ static void on_pick_up_item_request(shared_ptr<Client> c, uint8_t command, uint8
 
     auto s = c->require_server_state();
     auto name = s->describe_item(c->version(), item, false);
-    l->log.info("Player %hu picked up (BB) %08" PRIX32 " (%s)",
-        cmd.header.client_id.load(), cmd.item_id.load(), name.c_str());
+    l->log.info("Player %hu picked up (BB) %08" PRIX32 " (%s)", cmd.header.client_id.load(), cmd.item_id.load(), name.c_str());
     if (c->config.check_flag(Client::Flag::DEBUG_ENABLED)) {
       auto name = s->describe_item(c->version(), item, true);
-      send_text_message_printf(c, "$C5PICK/BB %08" PRIX32 "\n%s",
-          cmd.item_id.load(), name.c_str());
+      send_text_message_printf(c, "$C5PICK/BB %08" PRIX32 "\n%s", cmd.item_id.load(), name.c_str());
     }
     p->print_inventory(stderr, c->version(), s->item_name_index);
 
     send_pick_up_item(c, cmd.item_id, cmd.floor);
-
-  } else if (l->check_flag(Lobby::Flag::ITEM_TRACKING_ENABLED) && !l->item_exists(cmd.item_id)) {
-    l->log.warning("Player %hu requests to pick up %08" PRIX32 ", but the item does not exist; dropping command",
-        cmd.header.client_id.load(), cmd.item_id.load());
 
   } else {
     forward_subcommand(c, command, flag, data, size);
