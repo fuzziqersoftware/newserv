@@ -1384,7 +1384,7 @@ static void on_ep3_private_word_select_bb_bank_action(shared_ptr<Client> c, uint
         auto item = p->bank.remove_item(cmd.item_id, cmd.item_amount);
         item.id = l->generate_item_id(c->lobby_client_id);
         p->add_item(item);
-        send_create_inventory_item(c, item, true);
+        send_create_inventory_item(c, item);
 
         string name = s->item_name_index->describe_item(GameVersion::BB, item);
         l->log.info("Player %hu withdrew item %08" PRIX32 " (x%hhu) (%s) from the bank",
@@ -1997,7 +1997,7 @@ void on_meseta_reward_request_bb(shared_ptr<Client> c, uint8_t, uint8_t, const v
     item.data2d = cmd.amount.load();
     item.id = l->generate_item_id(c->lobby_client_id);
     p->add_item(item);
-    send_create_inventory_item(c, item, true);
+    send_create_inventory_item(c, item);
   }
 }
 
@@ -2009,7 +2009,7 @@ void on_item_reward_request_bb(shared_ptr<Client> c, uint8_t, uint8_t, const voi
   item = cmd.item_data;
   item.id = l->generate_item_id(c->lobby_client_id);
   c->game_data.character()->add_item(item);
-  send_create_inventory_item(c, item, true);
+  send_create_inventory_item(c, item);
 }
 
 static void on_destroy_inventory_item(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
@@ -2080,9 +2080,14 @@ static void on_identify_item_bb(shared_ptr<Client> c, uint8_t command, uint8_t f
     auto p = c->game_data.character();
     size_t x = p->inventory.find_item(cmd.item_id);
     if (p->inventory.items[x].data.data1[0] != 0) {
-      return; // Only weapons can be identified
+      throw runtime_error("non-weapon items cannot be unidentified");
     }
 
+    // It seems the client expects an item ID to be consumed here, even though
+    // the returned item has the same ID as the original item. Perhaps this was
+    // not the case on Sega's original server, and the returned item had a new
+    // ID instead.
+    l->generate_item_id(c->lobby_client_id);
     p->disp.stats.meseta -= 100;
     c->game_data.identify_result = p->inventory.items[x].data;
     c->game_data.identify_result.data1[4] &= 0x7F;
@@ -2110,7 +2115,7 @@ static void on_accept_identify_item_bb(shared_ptr<Client> c, uint8_t command, ui
       throw runtime_error("accepted item ID does not match previous identify request");
     }
     c->game_data.character()->add_item(c->game_data.identify_result);
-    send_create_inventory_item(c, c->game_data.identify_result, false);
+    send_create_inventory_item(c, c->game_data.identify_result);
     c->game_data.identify_result.clear();
 
   } else {
@@ -2171,7 +2176,7 @@ static void on_buy_shop_item_bb(shared_ptr<Client> c, uint8_t, uint8_t, const vo
 
     item.id = l->generate_item_id(c->lobby_client_id);
     p->add_item(item);
-    send_create_inventory_item(c, item, true);
+    send_create_inventory_item(c, item);
 
     auto s = c->require_server_state();
     auto name = s->describe_item(c->version(), item, false);
@@ -2260,7 +2265,7 @@ static void on_quest_exchange_item_bb(shared_ptr<Client> c, uint8_t, uint8_t, co
       ItemData new_item = cmd.replace_item;
       new_item.id = l->generate_item_id(c->lobby_client_id);
       p->add_item(new_item);
-      send_create_inventory_item(c, new_item, true);
+      send_create_inventory_item(c, new_item);
 
       send_quest_function_call(c, cmd.success_function_id);
 
@@ -2281,7 +2286,7 @@ static void on_wrap_item_bb(shared_ptr<Client> c, uint8_t, uint8_t, const void* 
     send_destroy_item(c, item.id, 1);
     item.wrap();
     p->add_item(cmd.item);
-    send_create_inventory_item(c, item, false);
+    send_create_inventory_item(c, item);
   }
 }
 
@@ -2302,7 +2307,7 @@ static void on_photon_drop_exchange_bb(shared_ptr<Client> c, uint8_t, uint8_t, c
       ItemData new_item = cmd.new_item;
       new_item.id = l->generate_item_id(c->lobby_client_id);
       p->add_item(new_item);
-      send_create_inventory_item(c, new_item, true);
+      send_create_inventory_item(c, new_item);
 
       send_quest_function_call(c, cmd.success_function_id);
 
@@ -2349,7 +2354,7 @@ static void on_secret_lottery_ticket_exchange_bb(shared_ptr<Client> c, uint8_t, 
           : s->secret_lottery_results[random_object<uint32_t>() % s->secret_lottery_results.size()];
       item.id = l->generate_item_id(c->lobby_client_id);
       p->add_item(item);
-      send_create_inventory_item(c, item, true);
+      send_create_inventory_item(c, item);
     }
 
     S_ExchangeSecretLotteryTicketResult_BB_24 out_cmd;
@@ -2429,7 +2434,7 @@ static void on_momoka_item_exchange_bb(shared_ptr<Client> c, uint8_t, uint8_t, c
       ItemData new_item = cmd.replace_item;
       new_item.id = l->generate_item_id(c->lobby_client_id);
       p->add_item(new_item);
-      send_create_inventory_item(c, new_item, true);
+      send_create_inventory_item(c, new_item);
 
       send_command(c, 0x23, 0x00);
     } catch (const exception& e) {
@@ -2483,7 +2488,7 @@ static void on_upgrade_weapon_attribute_bb(shared_ptr<Client> c, uint8_t, uint8_
       item.data1[attribute_index] += attribute_amount;
 
       send_destroy_item(c, item.id, 1);
-      send_create_inventory_item(c, item, false);
+      send_create_inventory_item(c, item);
       send_quest_function_call(c, cmd.success_function_id);
 
     } catch (const exception& e) {

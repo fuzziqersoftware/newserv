@@ -194,7 +194,7 @@ void player_use_item(shared_ptr<Client> c, size_t item_index) {
 
         auto l = c->lobby.lock();
         if (l) {
-          send_create_inventory_item(c, item.data, false);
+          send_create_inventory_item(c, item.data);
         }
         break;
       }
