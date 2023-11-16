@@ -179,10 +179,7 @@ Client::Client(
   this->last_switch_enabled_command.header.subcommand = 0;
   memset(&this->next_connection_addr, 0, sizeof(this->next_connection_addr));
 
-  if (this->version() == GameVersion::BB) {
-    struct timeval tv = usecs_to_timeval(60000000); // 1 minute
-    event_add(this->save_game_data_event.get(), &tv);
-  }
+  this->reschedule_save_game_data_event();
   this->reschedule_ping_and_timeout_events();
 
   this->log.info("Created");
@@ -197,6 +194,13 @@ Client::~Client() {
   }
 
   this->log.info("Deleted");
+}
+
+void Client::reschedule_save_game_data_event() {
+  if (this->version() == GameVersion::BB) {
+    struct timeval tv = usecs_to_timeval(60000000); // 1 minute
+    event_add(this->save_game_data_event.get(), &tv);
+  }
 }
 
 void Client::reschedule_ping_and_timeout_events() {

@@ -218,6 +218,7 @@ struct Client : public std::enable_shared_from_this<Client> {
       ServerBehavior server_behavior);
   ~Client();
 
+  void reschedule_save_game_data_event();
   void reschedule_ping_and_timeout_events();
 
   inline GameVersion version() const {

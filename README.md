@@ -298,6 +298,7 @@ Some commands only work on the game server and not on the proxy server. The chat
 * Blue Burst player commands (game server only)
     * `$bbchar <username> <password> <1-4>`: Use this command when playing on a non-BB version of PSO. If the username and password are correct, this command converts your current character to BB format and saves it on the server in the given slot. Any character already in that slot is overwritten.
     * `$edit <stat> <value>`: Modifies your character data. If the server does not allow cheat mode anywhere (that is, "CheatModeBehavior" is "Off" in config.json), this command does nothing.
+    * `$save`: Saves your character, system, and Guild Card data immediately. (By default, your character is saved every 60 seconds while online, and your account and Guild Card data are saved whenever they change.)
 
 * Game state commands (game server only)
     * `$maxlevel <level>`: Sets the maximum level for players to join the current game. (This only applies when joining; if a player joins and then levels up past this level during the game, they are not kicked out, but won't be able to rejoin if they leave.)

@@ -1026,6 +1026,29 @@ static void server_command_convert_char_to_bb(shared_ptr<Client> c, const std::s
   send_get_player_info(c);
 }
 
+static void server_command_save(shared_ptr<Client> c, const std::string&) {
+  check_version(c, GameVersion::BB);
+  try {
+    c->game_data.save_character_file();
+    send_text_message(c, "Character data saved");
+  } catch (const exception& e) {
+    send_text_message_printf(c, "Can\'t save character:\n%s", e.what());
+  }
+  try {
+    c->game_data.save_system_file();
+    send_text_message(c, "System data saved");
+  } catch (const exception& e) {
+    send_text_message_printf(c, "Can\'t save system data:\n%s", e.what());
+  }
+  try {
+    c->game_data.save_guild_card_file();
+    send_text_message(c, "Guild Card data saved");
+  } catch (const exception& e) {
+    send_text_message_printf(c, "Can\'t save Guild Cards:\n%s", e.what());
+  }
+  c->reschedule_save_game_data_event();
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 // Administration commands
 
@@ -1695,6 +1718,7 @@ static const unordered_map<string, ChatCommandDefinition> chat_commands({
     {"$qsync", {server_command_qsync, nullptr}},
     {"$quest", {server_command_quest, nullptr}},
     {"$rand", {server_command_rand, proxy_command_rand}},
+    {"$save", {server_command_save, nullptr}},
     {"$saverec", {server_command_saverec, nullptr}},
     {"$sc", {server_command_send_client, proxy_command_send_client}},
     {"$secid", {server_command_secid, proxy_command_secid}},
