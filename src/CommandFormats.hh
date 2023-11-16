@@ -1557,11 +1557,14 @@ struct C_ConnectionInfo_DCNTE_8A {
 // No arguments
 
 // 8A (S->C): Lobby/game name (except DC NTE)
-// Contents is a string containing the lobby or game name. The client generally
-// only sends this immediately after joining a game, but Sega's servers also
-// replied to it if it was sent in a lobby. They would return a string like
-// "LOBBY01" in that case even though this would never be used under normal
-// circumstances.
+// Contents is a string containing the lobby or game name. All versions after
+// DCv1 (including the August 2001 DCv2 prototype) send an 8A command to request
+// the team name after joining a game. The response is used to handle the
+// team_name token in quest strings, and appears in some Challenge Mode
+// information windows.
+// Even though this was only ever used to retrieve the game name, Sega's
+// original servers also replied to 8A if it was sent in a lobby. They would
+// return a string like "LOBBY01" in that case.
 
 // 8B: Log in (DC NTE only)
 
