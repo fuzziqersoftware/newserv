@@ -613,6 +613,8 @@ ItemData ItemNameIndex::parse_item_description_phase(GameVersion version, const 
             {"g", 2},
             {"p", 3},
             {"l", 4},
+            {"m", 5},
+            {"my", 5},
             {"m&y", 5},
         });
         for (const auto& pb_token : pb_tokens) {
