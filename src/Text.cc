@@ -84,7 +84,7 @@ string TextTranscoder::operator()(const void* src, size_t src_size) {
   const void* orig_src = src;
   deque<string> blocks;
   while (src_size > 0) {
-    // Assume 2x input size on average, but always alocate at least 4 bytes
+    // Assume 2x input size on average, but always allocate at least 4 bytes
     string& block = blocks.emplace_back(max<size_t>((src_size << 2), 4), '\0');
     char* dest = block.data();
     size_t dest_size = block.size();

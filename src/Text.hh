@@ -25,7 +25,7 @@ public:
     size_t bytes_read;
     size_t bytes_written;
   };
-  Result operator()(void* dest, size_t dest_size, const void* src, size_t src_bytes, bool truncate_oversize_result);
+  Result operator()(void* dest, size_t dest_bytes, const void* src, size_t src_bytes, bool truncate_oversize_result);
 
   std::string operator()(const void* src, size_t src_bytes);
   std::string operator()(const std::string& data);
@@ -465,7 +465,7 @@ struct pstring {
     }
     for (size_t z = 0; z < Bytes; z += 2) {
       if (!this->data[z] && !this->data[z + 1]) {
-        return z;
+        return z >> 1;
       }
     }
     return Bytes >> 1;
