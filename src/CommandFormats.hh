@@ -3358,7 +3358,7 @@ struct S_TeamMembershipInformation_BB_18EA {
   le_uint32_t unknown_a2 = 1;
   le_uint32_t unknown_a3 = 1;
   le_uint32_t privilege_level = 0;
-  le_uint32_t guild_card_number;
+  le_uint32_t guild_card_number = 0;
   pstring<TextEncoding::UTF16, 0x10> player_name;
   le_uint32_t unknown_a4 = 0;
   le_uint32_t unknown_a5 = 2;
