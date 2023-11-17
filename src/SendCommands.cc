@@ -1257,7 +1257,10 @@ void send_game_menu_t(
     if (l->is_ep3()) {
       e.flags = (l->password.empty() ? 0 : 2) | (l->check_flag(Lobby::Flag::BATTLE_IN_PROGRESS) ? 4 : 0);
     } else {
-      e.flags = ((episode_num << 6) | (l->password.empty() ? 0 : 2));
+      e.flags = (l->password.empty() ? 0 : 2);
+      if ((c->version() != GameVersion::DC) && (c->version() != GameVersion::PC)) {
+        e.flags |= (episode_num << 6);
+      }
       switch (l->mode) {
         case GameMode::NORMAL:
           break;
