@@ -4,6 +4,7 @@
 #include <string.h>
 #include <wchar.h>
 
+#include <algorithm>
 #include <phosg/Filesystem.hh>
 #include <phosg/Hash.hh>
 #include <phosg/Random.hh>
@@ -116,13 +117,14 @@ void PlayerDispDataDCPCV3::enforce_lobby_join_limits_for_client(shared_ptr<Clien
         this->visual.char_class = 0; // Invalid classes -> HUmar
     }
 
+    this->visual.version = min<uint8_t>(this->visual.version, c->config.check_flag(Client::Flag::IS_DC_V1) ? 0 : 2);
     maxes = &v1_v2_class_maxes[this->visual.char_class];
-    this->visual.version = c->config.check_flag(Client::Flag::IS_DC_V1) ? 1 : 2;
 
   } else {
     if (this->visual.char_class >= 19) {
       this->visual.char_class = 0; // Invalid classes -> HUmar
     }
+    this->visual.version = min<uint8_t>(this->visual.version, 3);
     maxes = &v3_v4_class_maxes[this->visual.char_class];
   }
 
