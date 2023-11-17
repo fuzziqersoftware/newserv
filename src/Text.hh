@@ -406,7 +406,7 @@ struct pstring {
         case TextEncoding::SJIS:
           return tt_sjis_to_utf8(this->data, this->used_chars_8());
         case TextEncoding::UTF16:
-          return tt_utf16_to_utf8(this->data, this->used_chars_16());
+          return tt_utf16_to_utf8(this->data, this->used_chars_16() * 2);
         case TextEncoding::UTF8:
           return std::string(reinterpret_cast<const char*>(&this->data[0]), this->used_chars_8());
         case TextEncoding::CHALLENGE16: {

@@ -154,7 +154,8 @@ PlayerDispDataBB PlayerDispDataDCPCV3::to_bb(uint8_t to_language, uint8_t from_l
   bb.stats = this->stats;
   bb.visual = this->visual;
   bb.visual.name.encode("         0");
-  bb.name.encode(this->visual.name.decode(from_language), to_language);
+  string decoded_name = this->visual.name.decode(from_language);
+  bb.name.encode(decoded_name, to_language);
   bb.config = this->config;
   bb.technique_levels_v1 = this->technique_levels_v1;
   return bb;
@@ -164,7 +165,8 @@ PlayerDispDataDCPCV3 PlayerDispDataBB::to_dcpcv3(uint8_t to_language, uint8_t fr
   PlayerDispDataDCPCV3 ret;
   ret.stats = this->stats;
   ret.visual = this->visual;
-  ret.visual.name.encode(this->name.decode(from_language), to_language);
+  string decoded_name = this->name.decode(from_language);
+  ret.visual.name.encode(decoded_name, to_language);
   ret.config = this->config;
   ret.technique_levels_v1 = this->technique_levels_v1;
   return ret;
