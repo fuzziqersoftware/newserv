@@ -8,22 +8,6 @@
 
 using namespace std;
 
-static uint16_t encode_rgb565(uint8_t r, uint8_t g, uint8_t b) {
-  return ((r << 8) & 0xF800) | ((g << 3) & 0x07E0) | ((b >> 3) & 0x001F);
-}
-
-static uint16_t encode_rgb5a3(uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
-  if ((a & 0xE0) == 0xE0) {
-    return 0x8000 | ((r << 7) & 0x7C00) | ((g << 2) & 0x03E0) | ((b >> 3) & 0x001F);
-  } else {
-    return ((a << 7) & 0x7000) | ((r << 4) & 0x0F00) | (g & 0x00F0) | ((b >> 4) & 0x000F);
-  }
-}
-
-static uint32_t encode_argb8888(uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
-  return (a << 24) | (r << 16) | (g << 8) | b;
-}
-
 struct GVMFileEntry {
   be_uint16_t file_num;
   pstring<TextEncoding::ASCII, 0x1C> name;
