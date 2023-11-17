@@ -23,6 +23,19 @@ using namespace std;
 // The functions in this file are called when a client sends a game command
 // (60, 62, 6C, 6D, C9, or CB).
 
+// There are three different sets of subcommand numbers: the DC NTE set, the
+// November 2000 prototype set, and the set used by all other versions of the
+// game (starting from the December 2000 prototype, all the way through BB).
+// Currently we do not support the November 2000 prototype, but we do support
+// DC NTE. In general, DC NTE clients can only interact with non-NTE players in
+// very limited ways, since most subcommand-based actions take place in games,
+// and non-NTE players cannot join NTE games. Commands sent by DC NTE clients
+// are not handled by the functions defined in subcommand_handlers, but are
+// instead handled by handle_subcommand_dc_nte. This means we only have to
+// consider sending to DC NTE clients in a small subset of the command handlers
+// (those that can occur in the lobby), and we can skip sending most
+// subcommands to DC NTE by default.
+
 bool command_is_private(uint8_t command) {
   return (command == 0x62) || (command == 0x6D);
 }
@@ -39,7 +52,8 @@ static void forward_subcommand(
     uint8_t command,
     uint8_t flag,
     const void* data,
-    size_t size) {
+    size_t size,
+    uint8_t dc_nte_subcommand = 0x00) {
 
   // If the command is an Ep3-only command, make sure an Ep3 client sent it
   bool command_is_ep3 = (command & 0xF0) == 0xC0;
@@ -56,7 +70,17 @@ static void forward_subcommand(
     if (!target) {
       return;
     }
-    send_command(target, command, flag, data, size);
+    if (target->config.check_flag(Client::Flag::IS_DC_TRIAL_EDITION)) {
+      if (dc_nte_subcommand) {
+        string nte_data(reinterpret_cast<const char*>(data), size);
+        nte_data[0] = dc_nte_subcommand;
+        send_command(target, command, flag, nte_data);
+      } else {
+        c->log.warning("Attempted to send unsupported target command to DC NTE client; dropping command");
+      }
+    } else {
+      send_command(target, command, flag, data, size);
+    }
 
   } else {
     if (command_is_ep3) {
@@ -66,8 +90,25 @@ static void forward_subcommand(
         }
         send_command(target, command, flag, data, size);
       }
+
     } else {
-      send_command_excluding_client(l, c, command, flag, data, size);
+      string nte_data;
+      for (auto& lc : l->clients) {
+        if (!lc || (lc == c)) {
+          continue;
+        }
+        if (lc->config.check_flag(Client::Flag::IS_DC_TRIAL_EDITION)) {
+          if (dc_nte_subcommand) {
+            if (nte_data.empty()) {
+              nte_data.assign(reinterpret_cast<const char*>(data), size);
+              nte_data[0] = dc_nte_subcommand;
+            }
+            send_command(lc, command, flag, nte_data);
+          }
+        } else {
+          send_command(lc, command, flag, data, size);
+        }
+      }
     }
 
     // Before battle, forward only chat commands to watcher lobbies; during
@@ -590,13 +631,21 @@ static void on_word_select(shared_ptr<Client> c, uint8_t command, uint8_t flag, 
   }
 }
 
-static void on_set_player_visibility(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
+static void on_set_player_invisible(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
+  const auto& cmd = check_size_t<G_SetPlayerVisibility_6x22_6x23>(data, size);
+  if (cmd.header.client_id != c->lobby_client_id) {
+    return;
+  }
+  forward_subcommand(c, command, flag, data, size, 0x1E);
+}
+
+static void on_set_player_visible(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
   const auto& cmd = check_size_t<G_SetPlayerVisibility_6x22_6x23>(data, size);
 
   if (cmd.header.client_id == c->lobby_client_id) {
-    auto l = c->require_lobby();
+    forward_subcommand(c, command, flag, data, size, 0x1F);
 
-    forward_subcommand(c, command, flag, data, size);
+    auto l = c->require_lobby();
     if (!l->is_game() && !c->config.check_flag(Client::Flag::IS_DC_V1)) {
       send_arrow_update(l);
     }
@@ -610,11 +659,16 @@ static void on_set_player_visibility(shared_ptr<Client> c, uint8_t command, uint
 ////////////////////////////////////////////////////////////////////////////////
 // Game commands used by cheat mechanisms
 
-template <typename CmdT>
-static void on_change_floor(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
-  const auto& cmd = check_size_t<CmdT>(data, size);
+static void on_change_floor_6x1F(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
+  const auto& cmd = check_size_t<G_SetPlayerArea_6x1F>(data, size);
   c->floor = cmd.floor;
   forward_subcommand(c, command, flag, data, size);
+}
+
+static void on_change_floor_6x21(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
+  const auto& cmd = check_size_t<G_InterLevelWarp_6x21>(data, size);
+  c->floor = cmd.floor;
+  forward_subcommand(c, command, flag, data, size, 0x1D);
 }
 
 // When a player dies, decrease their mag's synchro
@@ -722,7 +776,7 @@ static void on_switch_state_changed(shared_ptr<Client> c, uint8_t command, uint8
 
 ////////////////////////////////////////////////////////////////////////////////
 
-template <typename CmdT>
+template <typename CmdT, uint8_t DCNTESubcommand>
 void on_movement(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
   const auto& cmd = check_size_t<CmdT>(data, size);
   if (cmd.header.client_id != c->lobby_client_id) {
@@ -732,10 +786,10 @@ void on_movement(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void
   c->x = cmd.x;
   c->z = cmd.z;
 
-  forward_subcommand(c, command, flag, data, size);
+  forward_subcommand(c, command, flag, data, size, DCNTESubcommand);
 }
 
-template <typename CmdT>
+template <typename CmdT, uint8_t DCNTESubcommand>
 void on_movement_with_floor(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
   const auto& cmd = check_size_t<CmdT>(data, size);
   if (cmd.header.client_id != c->lobby_client_id) {
@@ -746,7 +800,12 @@ void on_movement_with_floor(shared_ptr<Client> c, uint8_t command, uint8_t flag,
   c->z = cmd.z;
   c->floor = cmd.floor;
 
-  forward_subcommand(c, command, flag, data, size);
+  forward_subcommand(c, command, flag, data, size, DCNTESubcommand);
+}
+
+static void on_toggle_counter_interaction(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
+  check_size_t<G_ToggleCounterInteraction_6x52>(data, size, 0xFFFF);
+  forward_subcommand(c, command, flag, data, size, 0x46);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2544,6 +2603,69 @@ static void on_write_quest_global_flag_bb(shared_ptr<Client> c, uint8_t, uint8_t
 
 ////////////////////////////////////////////////////////////////////////////////
 
+static void handle_subcommand_dc_nte(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
+  auto l = c->require_lobby();
+  if (l->is_game()) {
+    // In a game, assume all other clients are DC NTE as well and forward the
+    // subcommand without any processing
+    forward_subcommand(c, command, flag, data, size);
+
+  } else {
+    // In a lobby, we have to deal with all other versions of the game having
+    // different subcommand numbers than DC NTE. We'll forward the command
+    // verbatim to other DC NTE clients, but will have to translate it for
+    // non-NTE clients. Some subcommands may not map cleanly; for those, we
+    // don't send anything at all to non-NTE clients.
+    auto& header = check_size_t<G_UnusedHeader>(data, size, 0xFFFF);
+    uint8_t nte_subcommand = header.subcommand;
+    uint8_t non_nte_subcommand = 0x00;
+    switch (nte_subcommand) {
+      case 0x1D:
+        non_nte_subcommand = 0x21;
+        break;
+      case 0x1E:
+        non_nte_subcommand = 0x22;
+        break;
+      case 0x1F:
+        non_nte_subcommand = 0x23;
+        break;
+      case 0x36:
+        non_nte_subcommand = 0x3F;
+        break;
+      case 0x37:
+        non_nte_subcommand = 0x40;
+        break;
+      case 0x39:
+        non_nte_subcommand = 0x42;
+        break;
+      case 0x46:
+        non_nte_subcommand = 0x52;
+        break;
+      default:
+        non_nte_subcommand = 0x00;
+    }
+
+    string non_nte_data;
+    for (auto lc : l->clients) {
+      if (!lc || (lc == c)) {
+        continue;
+      }
+
+      if (lc->config.check_flag(Client::Flag::IS_DC_TRIAL_EDITION)) {
+        send_command(lc, command, flag, data, size);
+      } else if (non_nte_subcommand != 0x00) {
+        if (non_nte_data.empty()) {
+          non_nte_data.assign(reinterpret_cast<const char*>(data), size);
+          non_nte_data[0] = non_nte_subcommand;
+        }
+        send_command(lc, command, flag, non_nte_data);
+      }
+    }
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
 typedef void (*subcommand_handler_t)(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size);
 
 subcommand_handler_t subcommand_handlers[0x100] = {
@@ -2578,11 +2700,11 @@ subcommand_handler_t subcommand_handlers[0x100] = {
     /* 6x1C */ on_forward_check_size_game,
     /* 6x1D */ nullptr,
     /* 6x1E */ nullptr,
-    /* 6x1F */ on_change_floor<G_SetPlayerArea_6x1F>,
-    /* 6x20 */ on_movement_with_floor<G_SetPosition_6x20>,
-    /* 6x21 */ on_change_floor<G_InterLevelWarp_6x21>,
-    /* 6x22 */ on_forward_check_size_client,
-    /* 6x23 */ on_set_player_visibility,
+    /* 6x1F */ on_change_floor_6x1F,
+    /* 6x20 */ on_movement_with_floor<G_SetPosition_6x20, 0x00>,
+    /* 6x21 */ on_change_floor_6x21,
+    /* 6x22 */ on_set_player_invisible,
+    /* 6x23 */ on_set_player_visible,
     /* 6x24 */ on_forward_check_size_game,
     /* 6x25 */ on_equip_item,
     /* 6x26 */ on_unequip_item,
@@ -2609,11 +2731,11 @@ subcommand_handler_t subcommand_handlers[0x100] = {
     /* 6x3B */ on_forward_check_size,
     /* 6x3C */ nullptr,
     /* 6x3D */ nullptr,
-    /* 6x3E */ on_movement_with_floor<G_StopAtPosition_6x3E>,
-    /* 6x3F */ on_movement_with_floor<G_SetPosition_6x3F>,
-    /* 6x40 */ on_movement<G_WalkToPosition_6x40>,
+    /* 6x3E */ on_movement_with_floor<G_StopAtPosition_6x3E, 0x00>,
+    /* 6x3F */ on_movement_with_floor<G_SetPosition_6x3F, 0x36>,
+    /* 6x40 */ on_movement<G_WalkToPosition_6x40, 0x37>,
     /* 6x41 */ nullptr,
-    /* 6x42 */ on_movement<G_RunToPosition_6x42>,
+    /* 6x42 */ on_movement<G_RunToPosition_6x42, 0x39>,
     /* 6x43 */ on_forward_check_size_client,
     /* 6x44 */ on_forward_check_size_client,
     /* 6x45 */ on_forward_check_size_client,
@@ -2629,7 +2751,7 @@ subcommand_handler_t subcommand_handlers[0x100] = {
     /* 6x4F */ on_forward_check_size_client,
     /* 6x50 */ on_forward_check_size_client,
     /* 6x51 */ nullptr,
-    /* 6x52 */ on_forward_check_size,
+    /* 6x52 */ on_toggle_counter_interaction,
     /* 6x53 */ on_forward_check_size_game,
     /* 6x54 */ nullptr,
     /* 6x55 */ on_forward_check_size_client,
@@ -2809,32 +2931,31 @@ void on_subcommand_multi(shared_ptr<Client> c, uint8_t command, uint8_t flag, co
   if (data.empty()) {
     throw runtime_error("game command is empty");
   }
-  if (c->version() == GameVersion::DC &&
-      (c->config.check_flag(Client::Flag::IS_DC_TRIAL_EDITION) || c->config.check_flag(Client::Flag::IS_DC_V1_PROTOTYPE))) {
-    // TODO: We should convert these to non-trial formats and vice versa
-    forward_subcommand(c, command, flag, data.data(), data.size());
-  } else {
-    StringReader r(data);
-    while (!r.eof()) {
-      size_t size;
-      const auto& header = r.get<G_UnusedHeader>(false);
-      if (header.size != 0) {
-        size = header.size << 2;
-      } else {
-        const auto& ext_header = r.get<G_ExtendedHeader<G_UnusedHeader>>(false);
-        size = ext_header.size;
-        if (size < 8) {
-          throw runtime_error("extended subcommand header has size < 8");
-        }
-        if (size & 3) {
-          throw runtime_error("extended subcommand size is not a multiple of 4");
-        }
-      }
-      if (size == 0) {
-        throw runtime_error("invalid subcommand size");
-      }
-      const void* data = r.getv(size);
 
+  StringReader r(data);
+  while (!r.eof()) {
+    size_t size;
+    const auto& header = r.get<G_UnusedHeader>(false);
+    if (header.size != 0) {
+      size = header.size << 2;
+    } else {
+      const auto& ext_header = r.get<G_ExtendedHeader<G_UnusedHeader>>(false);
+      size = ext_header.size;
+      if (size < 8) {
+        throw runtime_error("extended subcommand header has size < 8");
+      }
+      if (size & 3) {
+        throw runtime_error("extended subcommand size is not a multiple of 4");
+      }
+    }
+    if (size == 0) {
+      throw runtime_error("invalid subcommand size");
+    }
+    const void* data = r.getv(size);
+
+    if (c->config.check_flag(Client::Flag::IS_DC_TRIAL_EDITION)) {
+      handle_subcommand_dc_nte(c, command, flag, data, size);
+    } else {
       auto fn = subcommand_handlers[header.subcommand];
       if (fn) {
         fn(c, command, flag, data, size);

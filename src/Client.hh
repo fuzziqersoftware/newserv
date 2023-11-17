@@ -95,8 +95,12 @@ struct Client : public std::enable_shared_from_this<Client> {
 
     Config() = default;
 
+    [[nodiscard]] static inline bool check_flag(uint64_t enabled_flags, Flag flag) {
+      return !!(enabled_flags & static_cast<uint64_t>(flag));
+    }
+
     [[nodiscard]] inline bool check_flag(Flag flag) const {
-      return !!(this->enabled_flags & static_cast<uint64_t>(flag));
+      return this->check_flag(this->enabled_flags, flag);
     }
     inline void set_flag(Flag flag) {
       this->enabled_flags |= static_cast<uint64_t>(flag);

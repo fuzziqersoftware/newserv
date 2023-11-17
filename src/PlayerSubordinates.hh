@@ -16,6 +16,7 @@
 #include "Text.hh"
 #include "Version.hh"
 
+struct Client;
 class ItemParameterTable;
 
 // PSO V2 stored some extra data in the character structs in a format that I'm
@@ -68,6 +69,8 @@ struct PlayerInventory {
   /* 0004 */ parray<PlayerInventoryItem, 30> items;
   /* 034C */
 
+  void clear_dc_nte_unused_fields();
+
   size_t find_item(uint32_t item_id) const;
   size_t find_item_by_primary_identifier(uint32_t primary_identifier) const;
 
@@ -78,8 +81,8 @@ struct PlayerInventory {
 
   size_t remove_all_items_of_type(uint8_t data0, int16_t data1 = -1);
 
-  void decode_for_version(GameVersion version);
-  void encode_for_version(GameVersion version, std::shared_ptr<const ItemParameterTable> item_parameter_table);
+  void decode_from_client(std::shared_ptr<Client> c);
+  void encode_for_client(std::shared_ptr<Client> c);
 } __attribute__((packed));
 
 struct PlayerBank {
@@ -142,7 +145,8 @@ struct PlayerDispDataDCPCV3 {
   /* 74 */ parray<uint8_t, 0x48> config;
   /* BC */ parray<uint8_t, 0x14> technique_levels_v1;
   /* D0 */
-  void enforce_lobby_join_limits(GameVersion target_version);
+
+  void enforce_lobby_join_limits_for_client(std::shared_ptr<Client> c);
   PlayerDispDataBB to_bb(uint8_t to_language, uint8_t from_language) const;
 } __attribute__((packed));
 
@@ -168,7 +172,7 @@ struct PlayerDispDataBB {
   /* 017C */ parray<uint8_t, 0x14> technique_levels_v1;
   /* 0190 */
 
-  void enforce_lobby_join_limits(GameVersion target_version);
+  void enforce_lobby_join_limits_for_client(std::shared_ptr<Client> c);
   PlayerDispDataDCPCV3 to_dcpcv3(uint8_t to_language, uint8_t from_language) const;
   PlayerDispDataBBPreview to_preview() const;
   void apply_preview(const PlayerDispDataBBPreview&);

@@ -2878,7 +2878,7 @@ static void on_61_98(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
     default:
       throw logic_error("player data command not implemented for version");
   }
-  player->inventory.decode_for_version(c->version());
+  player->inventory.decode_from_client(c);
   c->channel.language = player->inventory.language;
 
   string name_str = player->disp.name.decode(c->language());

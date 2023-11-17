@@ -1473,9 +1473,9 @@ static void send_join_spectator_team(shared_ptr<Client> c, shared_ptr<Lobby> l) 
       p.lobby_data.client_id = wc->lobby_client_id;
       p.lobby_data.name.encode(wc_p->disp.name.decode(wc_p->inventory.language), c->language());
       p.inventory = wc_p->inventory;
-      p.inventory.encode_for_version(c->version(), s->item_parameter_table_for_version(c->version()));
+      p.inventory.encode_for_client(c);
       p.disp = wc_p->disp.to_dcpcv3(c->language(), p.inventory.language);
-      p.disp.enforce_lobby_join_limits(c->version());
+      p.disp.enforce_lobby_join_limits_for_client(c);
 
       auto& e = cmd.entries[z];
       e.player_tag = 0x00010000;
@@ -1511,9 +1511,9 @@ static void send_join_spectator_team(shared_ptr<Client> c, shared_ptr<Lobby> l) 
       auto& p = cmd.players[client_id];
       p.lobby_data = entry.lobby_data;
       p.inventory = entry.inventory;
-      p.inventory.encode_for_version(c->version(), s->item_parameter_table_for_version(c->version()));
+      p.inventory.encode_for_client(c);
       p.disp = entry.disp;
-      p.disp.enforce_lobby_join_limits(c->version());
+      p.disp.enforce_lobby_join_limits_for_client(c);
 
       auto& e = cmd.entries[client_id];
       e.player_tag = 0x00010000;
@@ -1542,7 +1542,7 @@ static void send_join_spectator_team(shared_ptr<Client> c, shared_ptr<Lobby> l) 
       cmd_p.lobby_data.name.encode(other_p->disp.name.decode(other_p->inventory.language), c->language());
       cmd_p.inventory = other_p->inventory;
       cmd_p.disp = other_p->disp.to_dcpcv3(c->language(), cmd_p.inventory.language);
-      cmd_p.disp.enforce_lobby_join_limits(c->version());
+      cmd_p.disp.enforce_lobby_join_limits_for_client(c);
 
       cmd_e.player_tag = 0x00010000;
       cmd_e.guild_card_number = other_c->license->serial_number;
@@ -1648,9 +1648,9 @@ void send_join_game(shared_ptr<Client> c, shared_ptr<Lobby> l) {
           if (l->clients[x]) {
             auto other_p = l->clients[x]->game_data.character();
             cmd.players_ep3[x].inventory = other_p->inventory;
-            cmd.players_ep3[x].inventory.encode_for_version(c->version(), s->item_parameter_table_for_version(c->version()));
+            cmd.players_ep3[x].inventory.encode_for_client(c);
             cmd.players_ep3[x].disp = convert_player_disp_data<PlayerDispDataDCPCV3>(other_p->disp, c->language(), other_p->inventory.language);
-            cmd.players_ep3[x].disp.enforce_lobby_join_limits(c->version());
+            cmd.players_ep3[x].disp.enforce_lobby_join_limits_for_client(c);
           }
         }
         send_command_t(c, 0x64, player_count, cmd);
@@ -1778,9 +1778,9 @@ void send_join_lobby_t(shared_ptr<Client> c, shared_ptr<Lobby> l, shared_ptr<Cli
       e.lobby_data.name.encode(lp->disp.name.decode(lp->inventory.language), c->language());
     }
     e.inventory = lp->inventory;
-    e.inventory.encode_for_version(c->version(), s->item_parameter_table_for_version(c->version()));
+    e.inventory.encode_for_client(c);
     e.disp = convert_player_disp_data<DispDataT>(lp->disp, c->language(), lp->inventory.language);
-    e.disp.enforce_lobby_join_limits(c->version());
+    e.disp.enforce_lobby_join_limits_for_client(c);
   }
 
   send_command(c, command, used_entries, &cmd, cmd.size(used_entries));
@@ -1851,9 +1851,9 @@ void send_join_lobby_xb(shared_ptr<Client> c, shared_ptr<Lobby> l, shared_ptr<Cl
     e.lobby_data.client_id = lc->lobby_client_id;
     e.lobby_data.name.encode(lp->disp.name.decode(lp->inventory.language), c->language());
     e.inventory = lp->inventory;
-    e.inventory.encode_for_version(c->version(), s->item_parameter_table_for_version(c->version()));
+    e.inventory.encode_for_client(c);
     e.disp = convert_player_disp_data<PlayerDispDataDCPCV3>(lp->disp, c->language(), lp->inventory.language);
-    e.disp.enforce_lobby_join_limits(c->version());
+    e.disp.enforce_lobby_join_limits_for_client(c);
   }
 
   send_command(c, command, used_entries, &cmd, cmd.size(used_entries));
@@ -1899,9 +1899,9 @@ void send_join_lobby_dc_nte(shared_ptr<Client> c, shared_ptr<Lobby> l,
     e.lobby_data.client_id = lc->lobby_client_id;
     e.lobby_data.name.encode(lp->disp.name.decode(lp->inventory.language), c->language());
     e.inventory = lp->inventory;
-    e.inventory.encode_for_version(c->version(), s->item_parameter_table_for_version(c->version()));
+    e.inventory.encode_for_client(c);
     e.disp = convert_player_disp_data<PlayerDispDataDCPCV3>(lp->disp, c->language(), lp->inventory.language);
-    e.disp.enforce_lobby_join_limits(c->version());
+    e.disp.enforce_lobby_join_limits_for_client(c);
   }
 
   send_command(c, command, used_entries, &cmd, cmd.size(used_entries));

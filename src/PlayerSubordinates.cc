@@ -9,10 +9,12 @@
 #include <phosg/Random.hh>
 #include <stdexcept>
 
+#include "Client.hh"
 #include "ItemData.hh"
 #include "ItemParameterTable.hh"
 #include "Loggers.hh"
 #include "PSOEncryption.hh"
+#include "ServerState.hh"
 #include "StaticGameData.hh"
 #include "Text.hh"
 #include "Version.hh"
@@ -33,7 +35,7 @@ void PlayerVisualConfig::compute_name_color_checksum() {
   this->name_color_checksum = this->compute_name_color_checksum(this->name_color);
 }
 
-void PlayerDispDataDCPCV3::enforce_lobby_join_limits(GameVersion target_version) {
+void PlayerDispDataDCPCV3::enforce_lobby_join_limits_for_client(shared_ptr<Client> c) {
   struct ClassMaxes {
     uint16_t costume;
     uint16_t skin;
@@ -79,7 +81,7 @@ void PlayerDispDataDCPCV3::enforce_lobby_join_limits(GameVersion target_version)
       {0x0000, 0x0000, 0x0000, 0x0000, 0x0000}};
 
   const ClassMaxes* maxes;
-  if ((target_version == GameVersion::PC) || (target_version == GameVersion::DC)) {
+  if ((c->version() == GameVersion::PC) || (c->version() == GameVersion::DC)) {
     // V1/V2 have fewer classes, so we'll substitute some here
     switch (this->visual.char_class) {
       case 0: // HUmar
@@ -115,7 +117,7 @@ void PlayerDispDataDCPCV3::enforce_lobby_join_limits(GameVersion target_version)
     }
 
     maxes = &v1_v2_class_maxes[this->visual.char_class];
-    this->visual.version = 2;
+    this->visual.version = c->config.check_flag(Client::Flag::IS_DC_V1) ? 1 : 2;
 
   } else {
     if (this->visual.char_class >= 19) {
@@ -139,8 +141,8 @@ void PlayerDispDataDCPCV3::enforce_lobby_join_limits(GameVersion target_version)
   }
 }
 
-void PlayerDispDataBB::enforce_lobby_join_limits(GameVersion version) {
-  if (version != GameVersion::BB) {
+void PlayerDispDataBB::enforce_lobby_join_limits_for_client(shared_ptr<Client> c) {
+  if (c->version() != GameVersion::BB) {
     throw logic_error("PlayerDispDataBB being sent to non-BB client");
   }
   this->play_time = 0;
@@ -631,15 +633,26 @@ size_t PlayerInventory::remove_all_items_of_type(uint8_t data1_0, int16_t data1_
   return ret;
 }
 
-void PlayerInventory::decode_for_version(GameVersion version) {
+void PlayerInventory::decode_from_client(shared_ptr<Client> c) {
   for (size_t z = 0; z < this->items.size(); z++) {
-    this->items[z].data.decode_for_version(version);
+    this->items[z].data.decode_for_version(c->version());
   }
 }
 
-void PlayerInventory::encode_for_version(GameVersion version, shared_ptr<const ItemParameterTable> item_parameter_table) {
+void PlayerInventory::encode_for_client(shared_ptr<Client> c) {
+  if (c->config.check_flag(Client::Flag::IS_DC_TRIAL_EDITION)) {
+    // DC NTE has the item count as a 32-bit value here, whereas every other
+    // version uses a single byte. To stop DC NTE from crashing by trying to
+    // construct far more than 30 TItem objects, we clear the fields DC NTE
+    // doesn't know about.
+    this->hp_from_materials = 0;
+    this->tp_from_materials = 0;
+    this->language = 0;
+  }
+
+  auto item_parameter_table = c->require_server_state()->item_parameter_table_for_version(c->version());
   for (size_t z = 0; z < this->items.size(); z++) {
-    this->items[z].data.encode_for_version(version, item_parameter_table);
+    this->items[z].data.encode_for_version(c->version(), item_parameter_table);
   }
 }
 
