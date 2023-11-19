@@ -1215,7 +1215,7 @@ static void on_equip_item(shared_ptr<Client> c, uint8_t command, uint8_t flag, c
   if (l->check_flag(Lobby::Flag::ITEM_TRACKING_ENABLED)) {
     EquipSlot slot = static_cast<EquipSlot>(cmd.equip_slot.load());
     auto p = c->game_data.character();
-    p->inventory.equip_item(cmd.item_id, slot);
+    p->inventory.equip_item_id(cmd.item_id, slot);
     c->log.info("Equipped item %08" PRIX32, cmd.item_id.load());
   } else if (l->base_version == GameVersion::BB) {
     throw logic_error("item tracking not enabled in BB game");
@@ -1234,7 +1234,7 @@ static void on_unequip_item(shared_ptr<Client> c, uint8_t command, uint8_t flag,
   auto l = c->require_lobby();
   if (l->check_flag(Lobby::Flag::ITEM_TRACKING_ENABLED)) {
     auto p = c->game_data.character();
-    p->inventory.unequip_item(cmd.item_id);
+    p->inventory.unequip_item_id(cmd.item_id);
     c->log.info("Unequipped item %08" PRIX32, cmd.item_id.load());
   } else if (l->base_version == GameVersion::BB) {
     throw logic_error("item tracking not enabled in BB game");

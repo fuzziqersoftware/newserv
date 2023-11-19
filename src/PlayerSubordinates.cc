@@ -572,8 +572,11 @@ bool PlayerInventory::has_equipped_item(EquipSlot slot) const {
   }
 }
 
-void PlayerInventory::equip_item(uint32_t item_id, EquipSlot slot) {
-  size_t index = this->find_item(item_id);
+void PlayerInventory::equip_item_id(uint32_t item_id, EquipSlot slot) {
+  this->equip_item_index(this->find_item(item_id), slot);
+}
+
+void PlayerInventory::equip_item_index(size_t index, EquipSlot slot) {
   auto& item = this->items[index];
 
   if (slot == EquipSlot::UNKNOWN) {
@@ -594,8 +597,15 @@ void PlayerInventory::equip_item(uint32_t item_id, EquipSlot slot) {
   }
 }
 
-void PlayerInventory::unequip_item(uint32_t item_id) {
-  size_t index = this->find_item(item_id);
+void PlayerInventory::unequip_item_id(uint32_t item_id) {
+  this->unequip_item_index(this->find_item(item_id));
+}
+
+void PlayerInventory::unequip_item_slot(EquipSlot slot) {
+  this->unequip_item_index(this->find_equipped_item(slot));
+}
+
+void PlayerInventory::unequip_item_index(size_t index) {
   auto& item = this->items[index];
 
   item.flags &= (~0x00000008);

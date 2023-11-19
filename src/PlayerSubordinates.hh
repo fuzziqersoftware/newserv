@@ -76,8 +76,11 @@ struct PlayerInventory {
 
   size_t find_equipped_item(EquipSlot slot) const;
   bool has_equipped_item(EquipSlot slot) const;
-  void equip_item(uint32_t item_id, EquipSlot slot);
-  void unequip_item(uint32_t item_id);
+  void equip_item_id(uint32_t item_id, EquipSlot slot);
+  void equip_item_index(size_t index, EquipSlot slot);
+  void unequip_item_id(uint32_t item_id);
+  void unequip_item_slot(EquipSlot slot);
+  void unequip_item_index(size_t index);
 
   size_t remove_all_items_of_type(uint8_t data0, int16_t data1 = -1);
 

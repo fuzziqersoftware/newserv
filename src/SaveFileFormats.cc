@@ -310,6 +310,7 @@ ItemData PSOBBCharacterFile::remove_item(uint32_t item_id, uint32_t amount, bool
 
   size_t index = this->inventory.find_item(item_id);
   auto& inventory_item = this->inventory.items[index];
+  bool is_equipped = (inventory_item.flags & 0x00000008);
 
   // If the item is a combine item and are we removing less than we have of it,
   // then create a new item and reduce the amount of the existing stack. Note
@@ -317,6 +318,9 @@ ItemData PSOBBCharacterFile::remove_item(uint32_t item_id, uint32_t amount, bool
   // applies if amount is nonzero.
   if (amount && (inventory_item.data.stack_size() > 1) &&
       (amount < inventory_item.data.data1[5])) {
+    if (is_equipped) {
+      throw runtime_error("character has a combine item equipped");
+    }
     ret = inventory_item.data;
     ret.data1[5] = amount;
     ret.id = 0xFFFFFFFF;
@@ -327,6 +331,9 @@ ItemData PSOBBCharacterFile::remove_item(uint32_t item_id, uint32_t amount, bool
   // If we get here, then it's not meseta, and either it's not a combine item or
   // we're removing the entire stack. Delete the item from the inventory slot
   // and return the deleted item.
+  if (is_equipped) {
+    this->inventory.unequip_item_index(index);
+  }
   ret = inventory_item.data;
   this->inventory.num_items--;
   for (size_t x = index; x < this->inventory.num_items; x++) {
@@ -425,7 +432,7 @@ void PSOBBCharacterFile::print_inventory(FILE* stream, GameVersion version, shar
     const auto& item = this->inventory.items[x];
     auto name = name_index->describe_item(version, item.data);
     auto hex = item.data.hex();
-    fprintf(stream, "[PlayerInventory]   %2zu: %s (%s)\n", x, hex.c_str(), name.c_str());
+    fprintf(stream, "[PlayerInventory]   %2zu: [+%08" PRIX32 "] %s (%s)\n", x, item.flags.load(), hex.c_str(), name.c_str());
   }
 }
 
