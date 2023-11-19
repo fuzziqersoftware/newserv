@@ -83,7 +83,7 @@ void Client::Config::set_flags_for_version(GameVersion version, int64_t sub_vers
       this->set_flag(Flag::SEND_FUNCTION_CALL_NO_CACHE_PATCH);
       break;
     case 0x30: // GC Ep1&2 GameJam demo, GC Ep1&2 JP v1.02, at least one version of PSO XB
-    case 0x31: // GC Ep1&2 US v1.00, GC US v1.01, GC EU v1.00, GC JP v1.00, XB US
+    case 0x31: // GC Ep1&2 US v1.00, GC US v1.01, XB US
     case 0x34: // GC Ep1&2 JP v1.03
       // In the case of GC Trial Edition, the IS_GC_TRIAL_EDITION flag is
       // already set when we get here (because the client has used V2 encryption
@@ -104,12 +104,13 @@ void Client::Config::set_flags_for_version(GameVersion version, int64_t sub_vers
       this->set_flag(Flag::NO_SEND_FUNCTION_CALL);
       break;
     case 0x40: // GC Ep3 JP and Trial Edition
-               // sub_version can't be used to tell JP final and Trial Edition apart; we
-               // instead look at header.flag in the 61 command.
       this->set_flag(Flag::NO_D6_AFTER_LOBBY);
       this->set_flag(Flag::IS_EPISODE_3);
       this->set_flag(Flag::ENCRYPTED_SEND_FUNCTION_CALL);
       this->set_flag(Flag::SEND_FUNCTION_CALL_NO_CACHE_PATCH);
+      // sub_version can't be used to tell JP final and Trial Edition apart; we
+      // instead look at header.flag in the 61 command and set the
+      // IS_EP3_TRIAL_EDITION flag there.
       break;
     case 0x41: // GC Ep3 US
       this->set_flag(Flag::NO_D6_AFTER_LOBBY);
