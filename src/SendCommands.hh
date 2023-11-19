@@ -383,3 +383,11 @@ void send_server_time(std::shared_ptr<Client> c);
 void send_change_event(std::shared_ptr<Client> c, uint8_t new_event);
 void send_change_event(std::shared_ptr<Lobby> l, uint8_t new_event);
 void send_change_event(std::shared_ptr<ServerState> s, uint8_t new_event);
+
+void send_team_membership_info(std::shared_ptr<Client> c); // 12EA
+void send_update_team_metadata_for_client(std::shared_ptr<Client> c); // 15EA (to all clients in lobby, with only c's data)
+void send_all_nearby_team_metadatas_to_client(std::shared_ptr<Client> c, bool is_13EA); // 13EA/15EA (to only c, with all lobby clients' data)
+void send_update_team_reward_flags(std::shared_ptr<Client> c); // 1DEA
+void send_team_member_list(std::shared_ptr<Client> c); // 09EA
+void send_team_rank_info(std::shared_ptr<Client> c); // 18EA
+void send_team_rewards_available_for_purchase(std::shared_ptr<Client> c); // 1AEA

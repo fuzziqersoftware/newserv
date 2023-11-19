@@ -3312,13 +3312,13 @@ static void on_E7_BB(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
   p->challenge_records = cmd.char_file.challenge_records;
   p->battle_records = cmd.char_file.battle_records;
   p->death_count = cmd.char_file.death_count;
-  *c->game_data.system() = cmd.system_file;
+  *c->game_data.system() = cmd.system_file.base;
 }
 
 static void on_E2_BB(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
-  auto& cmd = check_size_t<PSOBBSystemFile>(data);
+  auto& cmd = check_size_t<PSOBBFullSystemFile>(data);
   auto sys = c->game_data.system();
-  *sys = cmd;
+  *sys = cmd.base;
   c->game_data.save_system_file();
 
   S_SystemFileCreated_00E1_BB out_cmd = {1};
@@ -4309,15 +4309,323 @@ static void on_EF_Ep3(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
   send_ep3_card_auction(l);
 }
 
-static void on_EA_BB(shared_ptr<Client> c, uint16_t command, uint32_t, string&) {
-  // TODO: Implement teams. This command has a very large number of subcommands
-  // (up to 20EA!).
-  if (command == 0x01EA) {
-    send_lobby_message_box(c, "$C6Teams are not supported.");
-  } else if (command == 0x14EA) {
-    // Do nothing (for now)
-  } else {
-    throw invalid_argument("unimplemented team command");
+static void on_EA_BB(shared_ptr<Client> c, uint16_t command, uint32_t flag, string& data) {
+  auto s = c->require_server_state();
+
+  switch (command >> 8) {
+    case 0x01: { // Create team
+      const auto& cmd = check_size_t<C_CreateTeam_BB_01EA>(data);
+      string team_name = cmd.name.decode(c->language());
+      if (s->team_index->get_by_name(team_name)) {
+        send_command(c, 0x02EA, 0x00000002);
+      } else if (c->license->bb_team_id != 0) {
+        // TODO: What's the right error code to use here?
+        send_command(c, 0x02EA, 0x00000001);
+      } else {
+        string player_name = c->game_data.character()->disp.name.decode(c->language());
+        auto team = s->team_index->create(team_name, c->license->serial_number, player_name);
+        c->license->bb_team_id = team->team_id;
+        c->license->save();
+
+        send_command(c, 0x02EA, 0x00000000);
+        send_update_team_metadata_for_client(c);
+        send_team_membership_info(c);
+        send_update_team_reward_flags(c);
+      }
+      break;
+    }
+    case 0x03: { // Add team member
+      auto team = c->team();
+      if (team && team->members.at(c->license->serial_number).privilege_level() >= 0x30) {
+        const auto& cmd = check_size_t<C_AddOrRemoveTeamMember_BB_03EA_05EA>(data);
+        auto s = c->require_server_state();
+        shared_ptr<Client> added_c;
+        try {
+          added_c = s->find_client(nullptr, cmd.guild_card_number);
+        } catch (const out_of_range&) {
+          send_lobby_message_box(c, "Player is offline");
+        }
+
+        if (added_c) {
+          auto added_c_team = added_c->team();
+          if (added_c_team) {
+            send_lobby_message_box(c, "Player is already\nin another team");
+          } else if (!added_c->config.check_flag(Client::Flag::ACCEPTED_TEAM_INVITATION)) {
+            send_lobby_message_box(c, "Player did not accept\nteam invitation");
+          } else if (!team->can_add_member()) {
+            // Send "team is full" error
+            send_command(c, 0x04EA, 0x00000005);
+            send_command(added_c, 0x04EA, 0x00000005);
+          } else {
+            added_c->license->bb_team_id = team->team_id;
+            added_c->license->save();
+            added_c->config.clear_flag(Client::Flag::ACCEPTED_TEAM_INVITATION);
+
+            send_update_team_metadata_for_client(added_c);
+            send_team_membership_info(added_c);
+            send_command(c, 0x04EA, 0x00000000);
+            send_command(added_c, 0x04EA, 0x00000000);
+          }
+        }
+      }
+      break;
+    }
+    case 0x05: { // Remove team member
+      auto team = c->team();
+      if (team) {
+        const auto& cmd = check_size_t<C_AddOrRemoveTeamMember_BB_03EA_05EA>(data);
+        bool is_removing_self = (cmd.guild_card_number == c->license->serial_number);
+        if (is_removing_self ||
+            (team->members.at(c->license->serial_number).privilege_level() >= 0x30)) {
+          s->team_index->remove_member(cmd.guild_card_number);
+          auto removed_license = s->license_index->get(cmd.guild_card_number);
+          removed_license->bb_team_id = 0;
+          removed_license->save();
+          send_command(c, 0x06EA, 0x00000000);
+
+          shared_ptr<Client> removed_c;
+          if (is_removing_self) {
+            removed_c = c;
+          } else {
+            try {
+              removed_c = s->find_client(nullptr, cmd.guild_card_number);
+            } catch (const out_of_range&) {
+            }
+          }
+          if (removed_c) {
+            send_update_team_metadata_for_client(removed_c);
+            send_team_membership_info(removed_c);
+          }
+        } else {
+          // TODO: Figure out the right error code to use here.
+          send_command(c, 0x06EA, 0x00000001);
+        }
+      }
+      break;
+    }
+    case 0x07: { // Team chat
+      auto team = c->team();
+      if (team) {
+        check_size_v(data.size(), sizeof(SC_TeamChat_BB_07EA) + 4);
+        static const string required_end("\0\0", 2);
+        if (ends_with(data, required_end)) {
+          for (const auto& it : team->members) {
+            try {
+              auto target_c = s->find_client(nullptr, it.second.serial_number);
+              send_command(target_c, 0x07EA, 0x00000000, data);
+            } catch (const out_of_range&) {
+            }
+          }
+        }
+      }
+      break;
+    }
+    case 0x08:
+      send_team_member_list(c);
+      break;
+    case 0x0D: {
+      auto team = c->team();
+      if (team) {
+        S_Unknown_BB_0EEA cmd;
+        cmd.team_name.encode(team->name, c->language());
+        send_command_t(c, 0x0EEA, 0x00000000, cmd);
+      } else {
+        throw runtime_error("client is not in a team");
+      }
+      break;
+    }
+    case 0x0F: { // Set team flag
+      auto team = c->team();
+      if (team && team->members.at(c->license->serial_number).check_flag(TeamIndex::Team::Member::Flag::IS_MASTER)) {
+        const auto& cmd = check_size_t<C_SetTeamFlag_BB_0FEA>(data);
+        team->flag_data.reset(new parray<le_uint16_t, 0x20 * 0x20>(cmd.flag_data));
+        team->save_flag();
+        for (const auto& it : team->members) {
+          try {
+            auto member_c = s->find_client(nullptr, it.second.serial_number);
+            send_update_team_metadata_for_client(member_c);
+          } catch (const out_of_range&) {
+          }
+        }
+      }
+      break;
+    }
+    case 0x10: { // Disband team
+      auto team = c->team();
+      if (team && team->members.at(c->license->serial_number).check_flag(TeamIndex::Team::Member::Flag::IS_MASTER)) {
+        s->team_index->disband(team->team_id);
+
+        send_command(c, 0x10EA, 0x00000000);
+        for (const auto& it : team->members) {
+          try {
+            auto member_c = s->find_client(nullptr, it.second.serial_number);
+            send_update_team_metadata_for_client(member_c);
+            send_team_membership_info(member_c);
+          } catch (const out_of_range&) {
+          }
+        }
+      }
+      break;
+    }
+    case 0x11: { // Change member privilege level
+      auto team = c->team();
+      if (team) {
+        auto& cmd = check_size_t<C_ChangeTeamMemberPrivilegeLevel_BB_11EA>(data);
+        if (cmd.guild_card_number == c->license->serial_number) {
+          throw runtime_error("this command cannot be used to modify your own permissions");
+        }
+
+        auto& this_m = team->members.at(c->license->serial_number);
+        if (!this_m.check_flag(TeamIndex::Team::Member::Flag::IS_MASTER)) {
+          break;
+        }
+        auto& other_m = team->members.at(cmd.guild_card_number);
+
+        // The client only sends this command with flag = 0x00, 0x30, or 0x40
+        bool send_updates_for_this_m = false;
+        bool send_updates_for_other_m = false;
+        switch (flag) {
+          case 0x00: // Demote member
+            if (other_m.check_flag(TeamIndex::Team::Member::Flag::IS_LEADER)) {
+              other_m.clear_flag(TeamIndex::Team::Member::Flag::IS_LEADER);
+              send_updates_for_other_m = true;
+            } else {
+              send_command(c, 0x11EA, 0x00000005);
+            }
+            break;
+          case 0x30: // Promote member
+            if (!other_m.check_flag(TeamIndex::Team::Member::Flag::IS_LEADER) && team->can_promote_leader()) {
+              other_m.set_flag(TeamIndex::Team::Member::Flag::IS_LEADER);
+              send_updates_for_other_m = true;
+            } else {
+              send_command(c, 0x11EA, 0x00000005);
+            }
+            break;
+          case 0x40: // Transfer master
+            this_m.clear_flag(TeamIndex::Team::Member::Flag::IS_MASTER);
+            this_m.set_flag(TeamIndex::Team::Member::Flag::IS_LEADER);
+            other_m.clear_flag(TeamIndex::Team::Member::Flag::IS_LEADER);
+            other_m.set_flag(TeamIndex::Team::Member::Flag::IS_MASTER);
+            send_updates_for_this_m = true;
+            send_updates_for_other_m = true;
+            break;
+          default:
+            throw runtime_error("invalid privilege level");
+        }
+
+        if (send_updates_for_this_m) {
+          send_update_team_metadata_for_client(c);
+          send_team_membership_info(c);
+        }
+        if (send_updates_for_other_m) {
+          try {
+            auto other_c = s->find_client(nullptr, cmd.guild_card_number);
+            send_update_team_metadata_for_client(c);
+            send_team_membership_info(c);
+          } catch (const out_of_range&) {
+          }
+        }
+      }
+      break;
+    }
+    case 0x13:
+      send_all_nearby_team_metadatas_to_client(c, true);
+      break;
+    case 0x14:
+      break;
+    case 0x18: // Ranking information
+      send_team_rank_info(c);
+      break;
+    case 0x19: {
+      S_TeamRewardList_BB_19EA cmd = {0};
+      send_command_t(c, 0x19EA, 0x00000000, cmd);
+      break;
+    }
+    case 0x1A: // Get team rewards available for purchase
+      send_team_rewards_available_for_purchase(c);
+      break;
+    case 0x1B: { // Buy team reward
+      auto team = c->team();
+      if (team) {
+        check_size_v(data.size(), 0); // No data should be sent
+        bool should_send_update_reward_flags = false;
+        switch (flag) {
+          case TeamRewardMenuItemID::TEAM_FLAG:
+            team->set_reward_flag(TeamIndex::Team::RewardFlag::TEAM_FLAG);
+            should_send_update_reward_flags = true;
+            break;
+          case TeamRewardMenuItemID::DRESSING_ROOM:
+            team->set_reward_flag(TeamIndex::Team::RewardFlag::DRESSING_ROOM);
+            should_send_update_reward_flags = true;
+            break;
+          case TeamRewardMenuItemID::MEMBERS_20_LEADERS_3:
+            if (team->check_reward_flag(TeamIndex::Team::RewardFlag::MEMBERS_20_LEADERS_3) ||
+                team->check_reward_flag(TeamIndex::Team::RewardFlag::MEMBERS_40_LEADERS_5) ||
+                team->check_reward_flag(TeamIndex::Team::RewardFlag::MEMBERS_70_LEADERS_8) ||
+                team->check_reward_flag(TeamIndex::Team::RewardFlag::MEMBERS_100_LEADERS_10)) {
+              throw runtime_error("team size upgrades purchased out of order");
+            }
+            team->set_reward_flag(TeamIndex::Team::RewardFlag::MEMBERS_20_LEADERS_3);
+            should_send_update_reward_flags = true;
+            break;
+          case TeamRewardMenuItemID::MEMBERS_40_LEADERS_5:
+            if (!team->check_reward_flag(TeamIndex::Team::RewardFlag::MEMBERS_20_LEADERS_3) ||
+                team->check_reward_flag(TeamIndex::Team::RewardFlag::MEMBERS_40_LEADERS_5) ||
+                team->check_reward_flag(TeamIndex::Team::RewardFlag::MEMBERS_70_LEADERS_8) ||
+                team->check_reward_flag(TeamIndex::Team::RewardFlag::MEMBERS_100_LEADERS_10)) {
+              throw runtime_error("team size upgrades purchased out of order");
+            }
+            team->set_reward_flag(TeamIndex::Team::RewardFlag::MEMBERS_40_LEADERS_5);
+            should_send_update_reward_flags = true;
+            break;
+          case TeamRewardMenuItemID::MEMBERS_70_LEADERS_8:
+            if (!team->check_reward_flag(TeamIndex::Team::RewardFlag::MEMBERS_20_LEADERS_3) ||
+                !team->check_reward_flag(TeamIndex::Team::RewardFlag::MEMBERS_40_LEADERS_5) ||
+                team->check_reward_flag(TeamIndex::Team::RewardFlag::MEMBERS_70_LEADERS_8) ||
+                team->check_reward_flag(TeamIndex::Team::RewardFlag::MEMBERS_100_LEADERS_10)) {
+              throw runtime_error("team size upgrades purchased out of order");
+            }
+            team->set_reward_flag(TeamIndex::Team::RewardFlag::MEMBERS_70_LEADERS_8);
+            should_send_update_reward_flags = true;
+            break;
+          case TeamRewardMenuItemID::MEMBERS_100_LEADERS_10:
+            if (!team->check_reward_flag(TeamIndex::Team::RewardFlag::MEMBERS_20_LEADERS_3) ||
+                !team->check_reward_flag(TeamIndex::Team::RewardFlag::MEMBERS_40_LEADERS_5) ||
+                !team->check_reward_flag(TeamIndex::Team::RewardFlag::MEMBERS_70_LEADERS_8) ||
+                team->check_reward_flag(TeamIndex::Team::RewardFlag::MEMBERS_100_LEADERS_10)) {
+              throw runtime_error("team size upgrades purchased out of order");
+            }
+            team->set_reward_flag(TeamIndex::Team::RewardFlag::MEMBERS_100_LEADERS_10);
+            should_send_update_reward_flags = true;
+            break;
+            // TODO: Implement all the following cases
+            // case POINT_OF_DISASTER:
+            // case TOYS_TWILIGHT:
+            // case COMMANDER_BLADE:
+            // case UNION_GUARD:
+            // case TEAM_POINTS_500:
+            // case TEAM_POINTS_1000:
+            // case TEAM_POINTS_5000:
+            // case TEAM_POINTS_10000:
+          default:
+            throw runtime_error("incorrect team reward ID");
+        }
+        if (should_send_update_reward_flags) {
+          for (const auto& it : team->members) {
+            try {
+              auto member_c = s->find_client(nullptr, it.second.serial_number);
+              send_update_team_reward_flags(member_c);
+            } catch (const out_of_range&) {
+            }
+          }
+        }
+      }
+      break;
+    }
+    case 0x1C:
+      throw runtime_error("team subcommand is not yet implemented");
+    default:
+      throw runtime_error("invalid team command");
   }
 }
 

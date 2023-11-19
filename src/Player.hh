@@ -64,8 +64,8 @@ public:
     return this->overlay_character_data.get() != nullptr;
   }
 
-  std::shared_ptr<PSOBBSystemFile> system(bool allow_load = true);
-  std::shared_ptr<const PSOBBSystemFile> system(bool allow_load = true) const;
+  std::shared_ptr<PSOBBBaseSystemFile> system(bool allow_load = true);
+  std::shared_ptr<const PSOBBBaseSystemFile> system(bool allow_load = true) const;
 
   std::shared_ptr<PSOBBCharacterFile> character(bool allow_load = true, bool allow_overlay = true);
   std::shared_ptr<const PSOBBCharacterFile> character(bool allow_load = true, bool allow_overlay = true) const;
@@ -88,7 +88,7 @@ private:
   // The overlay character data is used in battle and challenge modes, when
   // character data is temporarily replaced in-game. In other play modes and in
   // lobbies, overlay_character_data is null.
-  std::shared_ptr<PSOBBSystemFile> system_data;
+  std::shared_ptr<PSOBBBaseSystemFile> system_data;
   std::shared_ptr<PSOBBCharacterFile> overlay_character_data;
   std::shared_ptr<PSOBBCharacterFile> character_data;
   std::shared_ptr<PSOBBGuildCardFile> guild_card_data;

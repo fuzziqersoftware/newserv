@@ -98,6 +98,7 @@ void ServerState::init() {
   this->parse_config(config, false);
   this->load_bb_private_keys();
   this->load_licenses();
+  this->load_teams();
   this->load_patch_indexes();
   this->load_battle_params();
   this->load_level_table();
@@ -285,7 +286,6 @@ shared_ptr<Client> ServerState::find_client(const std::string* identifier, uint6
     }
   }
 
-  // look in the current lobby first
   if (l) {
     try {
       return l->find_client(identifier, serial_number);
@@ -293,7 +293,6 @@ shared_ptr<Client> ServerState::find_client(const std::string* identifier, uint6
     }
   }
 
-  // look in all lobbies if not found
   for (auto& other_l : this->all_lobbies()) {
     if (l == other_l) {
       continue; // don't bother looking again
@@ -887,8 +886,13 @@ void ServerState::load_bb_private_keys() {
 }
 
 void ServerState::load_licenses() {
-  config_log.info("Loading license list");
+  config_log.info("Indexing licenses");
   this->license_index.reset(new LicenseIndex());
+}
+
+void ServerState::load_teams() {
+  config_log.info("Indexing teams");
+  this->team_index.reset(new TeamIndex("system/teams"));
 }
 
 void ServerState::load_patch_indexes() {

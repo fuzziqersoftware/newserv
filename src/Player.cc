@@ -130,14 +130,14 @@ void ClientGameData::create_challenge_overlay(GameVersion version, size_t templa
   }
 }
 
-shared_ptr<PSOBBSystemFile> ClientGameData::system(bool allow_load) {
+shared_ptr<PSOBBBaseSystemFile> ClientGameData::system(bool allow_load) {
   if (!this->system_data && allow_load) {
     this->load_all_files();
   }
   return this->system_data;
 }
 
-shared_ptr<const PSOBBSystemFile> ClientGameData::system(bool allow_load) const {
+shared_ptr<const PSOBBBaseSystemFile> ClientGameData::system(bool allow_load) const {
   if (!this->system_data.get() && allow_load) {
     throw runtime_error("system data is not loaded");
   }
@@ -236,7 +236,7 @@ void ClientGameData::create_character_file(
 
 void ClientGameData::load_all_files() {
   if (this->bb_username.empty()) {
-    this->system_data.reset(new PSOBBSystemFile());
+    this->system_data.reset(new PSOBBBaseSystemFile());
     this->character_data.reset(new PSOBBCharacterFile());
     this->guild_card_data.reset(new PSOBBGuildCardFile());
     return;
@@ -248,7 +248,7 @@ void ClientGameData::load_all_files() {
 
   string sys_filename = this->system_filename();
   if (isfile(sys_filename)) {
-    this->system_data.reset(new PSOBBSystemFile(load_object_file<PSOBBSystemFile>(sys_filename)));
+    this->system_data.reset(new PSOBBBaseSystemFile(load_object_file<PSOBBBaseSystemFile>(sys_filename, true)));
     player_data_log.info("Loaded system data from %s", sys_filename.c_str());
   }
 
@@ -272,7 +272,7 @@ void ClientGameData::load_all_files() {
       // If there was no .psosys file, load the system file from the .psochar
       // file instead
       if (!this->system_data) {
-        this->system_data.reset(new PSOBBSystemFile(freadx<PSOBBSystemFile>(f.get())));
+        this->system_data.reset(new PSOBBBaseSystemFile(freadx<PSOBBBaseSystemFile>(f.get())));
         player_data_log.info("Loaded system data from %s", char_filename.c_str());
       }
     }
@@ -294,7 +294,7 @@ void ClientGameData::load_all_files() {
         throw runtime_error("account data header is incorrect");
       }
       if (!this->system_data) {
-        this->system_data.reset(new PSOBBSystemFile(nsa_data->system_file));
+        this->system_data.reset(new PSOBBBaseSystemFile(nsa_data->system_file.base));
         player_data_log.info("Loaded legacy system data from %s", nsa_filename.c_str());
       }
       if (!this->guild_card_data) {
@@ -304,7 +304,7 @@ void ClientGameData::load_all_files() {
     }
 
     if (!this->system_data) {
-      this->system_data.reset(new PSOBBSystemFile());
+      this->system_data.reset(new PSOBBBaseSystemFile());
       player_data_log.info("Created new system data");
     }
     if (!this->guild_card_data) {
@@ -335,7 +335,6 @@ void ClientGameData::load_all_files() {
       this->character_data->bank = nsc_data.bank;
       this->character_data->guild_card.guild_card_number = this->guild_card_number;
       this->character_data->guild_card.name = nsc_data.disp.name;
-      this->character_data->guild_card.team_name = this->system_data->team_name;
       this->character_data->guild_card.description = nsc_data.guild_card_description;
       this->character_data->guild_card.present = 1;
       this->character_data->guild_card.language = nsc_data.inventory.language;
@@ -399,10 +398,22 @@ void ClientGameData::save_character_file() {
 
   string filename = this->character_filename();
   auto f = fopen_unique(filename, "wb");
-  PSOCommandHeaderBB header = {sizeof(PSOCommandHeaderBB) + sizeof(PSOBBCharacterFile) + sizeof(PSOBBSystemFile), 0x00E7, 0x00000000};
+  PSOCommandHeaderBB header = {sizeof(PSOCommandHeaderBB) + sizeof(PSOBBCharacterFile) + sizeof(PSOBBBaseSystemFile) + sizeof(PSOBBTeamMembership), 0x00E7, 0x00000000};
   fwritex(f.get(), header);
   fwritex(f.get(), *this->character_data);
   fwritex(f.get(), *this->system_data);
+  // TODO: Technically, we should write the actual team membership struct to the
+  // file here, but that would cause ClientGameData to depend on License, which
+  // it currently does not. This data doesn't matter at all for correctness
+  // within newserv, since it ignores this data entirely and instead generates
+  // the membership struct from the team ID in the License and the team's state.
+  // So, writing correct data here would mostly be for compatibility with other
+  // PSO servers. But if the other server is newserv, then this data would be
+  // used anyway, and if it's not, then it would presumably have a different set
+  // of teams with a different set of team IDs anyway, so the membership struct
+  // here would be useless either way.
+  static const PSOBBTeamMembership empty_membership;
+  fwritex(f.get(), empty_membership);
   player_data_log.info("Saved character file %s", filename.c_str());
 }
 

@@ -22,6 +22,7 @@
 #include "Lobby.hh"
 #include "Menu.hh"
 #include "Quest.hh"
+#include "TeamIndex.hh"
 #include "WordSelectTable.hh"
 
 // Forward declarations due to reference cycles
@@ -141,6 +142,7 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   std::vector<Ep3LobbyBannerEntry> ep3_lobby_banners;
 
   std::shared_ptr<LicenseIndex> license_index;
+  std::shared_ptr<TeamIndex> team_index;
 
   std::shared_ptr<const Menu> information_menu_v2;
   std::shared_ptr<const Menu> information_menu_v3;
@@ -232,6 +234,7 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   void parse_config(const JSON& config_json, bool is_reload);
   void load_bb_private_keys();
   void load_licenses();
+  void load_teams();
   void load_patch_indexes();
   void load_battle_params();
   void load_level_table();

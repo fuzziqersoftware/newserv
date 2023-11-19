@@ -43,7 +43,7 @@ constexpr uint16_t encode_xrgb8888_to_xrgb1555(uint32_t xrgb8888) {
   return ((xrgb8888 >> 9) & 0x7C00) | ((xrgb8888 >> 6) & 0x03E0) | ((xrgb8888 >> 3) & 0x001F);
 }
 
-constexpr uint32_t encode_rgbx8888_to_xrgb1555(uint16_t rgbx8888) {
+constexpr uint16_t encode_rgbx8888_to_xrgb1555(uint32_t rgbx8888) {
   // In:  rrrrrrrrggggggggbbbbbbbbxxxxxxxx
   // Out:                 -rrrrrgggggbbbbb
   return ((rgbx8888 >> 17) & 0x7C00) | ((rgbx8888 >> 14) & 0x03E0) | ((rgbx8888 >> 11) & 0x001F);

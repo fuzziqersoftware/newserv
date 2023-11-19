@@ -76,6 +76,23 @@ constexpr uint32_t EP3_INFINITE_MESETA = 0xAA0F0FAA;
 constexpr uint32_t EP3_INFINITE_TIME = 0xAA1010AA;
 } // namespace ProxyOptionsMenuItemID
 
+namespace TeamRewardMenuItemID {
+constexpr uint32_t TEAM_FLAG = 0x01010101;
+constexpr uint32_t DRESSING_ROOM = 0x02020202;
+constexpr uint32_t MEMBERS_20_LEADERS_3 = 0x03030303;
+constexpr uint32_t MEMBERS_40_LEADERS_5 = 0x04040404;
+constexpr uint32_t MEMBERS_70_LEADERS_8 = 0x05050505;
+constexpr uint32_t MEMBERS_100_LEADERS_10 = 0x06060606;
+// constexpr uint32_t POINT_OF_DISASTER = ...;
+// constexpr uint32_t TOYS_TWILIGHT = ...;
+// constexpr uint32_t COMMANDER_BLADE = ...;
+// constexpr uint32_t UNION_GUARD = ...;
+// constexpr uint32_t TEAM_POINTS_500 = ...;
+// constexpr uint32_t TEAM_POINTS_1000 = ...;
+// constexpr uint32_t TEAM_POINTS_5000 = ...;
+// constexpr uint32_t TEAM_POINTS_10000 = ...;
+} // namespace TeamRewardMenuItemID
+
 struct MenuItem {
   enum Flag {
     // For menu items to be visible on DCNTE, they must not have either of the

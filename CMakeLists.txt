@@ -105,6 +105,7 @@ add_executable(newserv
     src/ServerState.cc
     src/Shell.cc
     src/StaticGameData.cc
+    src/TeamIndex.cc
     src/Text.cc
     src/TextArchive.cc
     src/UnicodeTextSet.cc

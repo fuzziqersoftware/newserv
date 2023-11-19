@@ -263,6 +263,46 @@ shared_ptr<Lobby> Client::require_lobby() const {
   return l;
 }
 
+shared_ptr<TeamIndex::Team> Client::team() {
+  if (!this->license) {
+    throw logic_error("Client::team called on client with no license");
+  }
+
+  if (this->license->bb_team_id == 0) {
+    return nullptr;
+  }
+
+  auto p = this->game_data.character(false);
+  auto s = this->require_server_state();
+  auto team = s->team_index->get_by_id(this->license->bb_team_id);
+  if (!team) {
+    this->license->bb_team_id = 0;
+    this->license->save();
+    return nullptr;
+  }
+
+  auto member_it = team->members.find(this->license->serial_number);
+  if (member_it == team->members.end()) {
+    this->license->bb_team_id = 0;
+    this->license->save();
+    return nullptr;
+  }
+
+  // The team membership is valid, but the player name may be different; update
+  // the team membership if needed
+  if (p) {
+    auto& m = member_it->second;
+    string name = p->disp.name.decode(this->language());
+    if (m.name != name) {
+      this->log.info("Updating player name in team config");
+      m.name = name;
+      team->save_config();
+    }
+  }
+
+  return team;
+}
+
 void Client::dispatch_save_game_data(evutil_socket_t, short, void* ctx) {
   reinterpret_cast<Client*>(ctx)->save_game_data();
 }

@@ -288,6 +288,8 @@ Proxy session commands:\n\
     for (const string& type : types) {
       if (type == "licenses") {
         this->state->load_licenses();
+      } else if (type == "teams") {
+        this->state->load_teams();
       } else if (type == "patches") {
         this->state->load_patch_indexes();
       } else if (type == "battle-params") {

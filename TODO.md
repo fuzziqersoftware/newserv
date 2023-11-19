@@ -36,8 +36,8 @@
 - Fix some edge cases on the BB proxy server (e.g. Change Ship)
 - Implement less-common subcommands
     - 6xD8: Add S-rank weapon special
-- Implement teams
-    - All EA subcommands
-    - 6xC1, 6xC2, 6xCD, 6xCE: Team invites/administration
-    - 6xCC: Exchange item for team points
+- Test team commands
+    - Test all EA subcommands (a few are still not implemented)
+    - 6xC1, 6xC2, 6xCD, 6xCE: Team invites/administration (not implemented)
+    - 6xCC: Exchange item for team points (not implemented)
 - Implement story progress flags for unlocking quests

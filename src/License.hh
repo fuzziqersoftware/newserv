@@ -45,6 +45,8 @@ struct License {
   uint32_t ep3_current_meseta = 0;
   uint32_t ep3_total_meseta_earned = 0;
 
+  uint32_t bb_team_id = 0;
+
   License() = default;
   explicit License(const JSON& json);
 

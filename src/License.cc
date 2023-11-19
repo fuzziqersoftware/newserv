@@ -14,7 +14,8 @@ License::License(const JSON& json)
       flags(0),
       ban_end_time(0),
       ep3_current_meseta(0),
-      ep3_total_meseta_earned(0) {
+      ep3_total_meseta_earned(0),
+      bb_team_id(0) {
   this->serial_number = json.get_int("SerialNumber");
   this->access_key = json.get_string("AccessKey", "");
   this->gc_password = json.get_string("GCPassword", "");
@@ -27,6 +28,7 @@ License::License(const JSON& json)
   this->ban_end_time = json.get_int("BanEndTime", 0);
   this->ep3_current_meseta = json.get_int("Ep3CurrentMeseta", 0);
   this->ep3_total_meseta_earned = json.get_int("Ep3TotalMesetaEarned", 0);
+  this->bb_team_id = json.get_int("BBTeamID", 0);
 }
 
 JSON License::json() const {
@@ -43,6 +45,7 @@ JSON License::json() const {
       {"BanEndTime", this->ban_end_time},
       {"Ep3CurrentMeseta", this->ep3_current_meseta},
       {"Ep3TotalMesetaEarned", this->ep3_total_meseta_earned},
+      {"BBTeamID", this->bb_team_id},
   });
 }
 

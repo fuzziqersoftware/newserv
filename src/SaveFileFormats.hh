@@ -119,7 +119,7 @@ struct PSOGCEp3SystemFile {
   /* 012C */
 } __attribute__((packed));
 
-struct PSOBBSystemFileBase {
+struct PSOBBMinimalSystemFile {
   /* 0000 */ be_uint32_t checksum = 0;
   /* 0004 */ be_int16_t music_volume = 0;
   /* 0006 */ int8_t sound_volume = 0;
@@ -132,24 +132,41 @@ struct PSOBBSystemFileBase {
   /* 0114 */
 } __attribute__((packed));
 
-struct PSOBBSystemFile {
-  /* 0000 */ PSOBBSystemFileBase base;
+struct PSOBBTeamMembership {
+  /* 0000 */ le_uint32_t guild_card_number = 0;
+  /* 0004 */ le_uint32_t team_id = 0;
+  /* 0008 */ le_uint32_t unknown_a4 = 0;
+  /* 000C */ le_uint32_t unknown_a6 = 0;
+  /* 0010 */ uint8_t privilege_level = 0;
+  /* 0011 */ uint8_t unknown_a7 = 0;
+  /* 0012 */ uint8_t unknown_a8 = 0;
+  /* 0013 */ uint8_t unknown_a9 = 0;
+  /* 0014 */ pstring<TextEncoding::UTF16, 0x0010> team_name;
+  /* 0034 */ parray<le_uint16_t, 0x20 * 0x20> flag_data;
+  /* 0834 */ le_uint32_t reward_flags = 0;
+  /* 0838 */
+
+  PSOBBTeamMembership() = default;
+} __attribute__((packed));
+
+struct PSOBBBaseSystemFile {
+  /* 0000 */ PSOBBMinimalSystemFile base;
   /* 0114 */ parray<uint8_t, 0x016C> key_config;
   /* 0280 */ parray<uint8_t, 0x0038> joystick_config;
-  /* 02B8 */ le_uint32_t guild_card_number = 0;
-  /* 02BC */ le_uint32_t team_id = 0;
-  /* 02C0 */ le_uint64_t team_info = 0;
-  /* 02C8 */ le_uint16_t team_privilege_level = 0;
-  /* 02CA */ le_uint16_t reserved = 0;
-  /* 02CC */ pstring<TextEncoding::UTF16, 0x0010> team_name;
-  /* 02EC */ parray<uint8_t, 0x0800> team_flag;
-  /* 0AEC */ le_uint32_t team_rewards = 0;
-  /* 0AF0 */
+  /* 02B8 */
 
   static const std::array<uint8_t, 0x016C> DEFAULT_KEY_CONFIG;
   static const std::array<uint8_t, 0x0038> DEFAULT_JOYSTICK_CONFIG;
 
-  PSOBBSystemFile();
+  PSOBBBaseSystemFile();
+} __attribute__((packed));
+
+struct PSOBBFullSystemFile {
+  /* 0000 */ PSOBBBaseSystemFile base;
+  /* 02B8 */ PSOBBTeamMembership team_membership;
+  /* 0AF0 */
+
+  PSOBBFullSystemFile() = default;
 } __attribute__((packed));
 
 struct PSOBBCharacterFile {
@@ -242,7 +259,7 @@ struct PSOBBGuildCardFile {
     void clear();
   } __attribute__((packed));
 
-  /* 0000 */ PSOBBSystemFileBase system_file;
+  /* 0000 */ PSOBBMinimalSystemFile system_file;
   /* 0114 */ parray<GuildCardBB, 0x1C> blocked;
   /* 1DF4 */ parray<uint8_t, 0x180> unknown_a2;
   /* 1F74 */ parray<Entry, 0x69> entries;
@@ -758,7 +775,7 @@ struct LegacySavedAccountDataBB { // .nsa file format
   /* 0000 */ pstring<TextEncoding::ASCII, 0x40> signature;
   /* 0040 */ parray<le_uint32_t, 0x001E> blocked_senders;
   /* 00B8 */ PSOBBGuildCardFile guild_card_file;
-  /* D648 */ PSOBBSystemFile system_file;
+  /* D648 */ PSOBBFullSystemFile system_file;
   /* E138 */ le_uint32_t unused;
   /* E13C */ le_uint32_t option_flags;
   /* E140 */ parray<uint8_t, 0x0A40> shortcuts;
