@@ -3352,9 +3352,13 @@ static void on_DF_BB(shared_ptr<Client> c, uint16_t command, uint32_t, string& d
       if (l->quest->challenge_template_index != static_cast<ssize_t>(cmd.template_index)) {
         throw runtime_error("challenge template index in quest metadata does not match index sent by client");
       }
-      c->game_data.create_challenge_overlay(c->version(), l->quest->challenge_template_index, s->level_table);
-      c->log.info("Created challenge overlay");
-      l->assign_inventory_item_ids(c);
+      for (auto lc : l->clients) {
+        if (lc) {
+          lc->game_data.create_challenge_overlay(lc->version(), l->quest->challenge_template_index, s->level_table);
+          lc->log.info("Created challenge overlay");
+          l->assign_inventory_item_ids(lc);
+        }
+      }
       break;
     }
 
