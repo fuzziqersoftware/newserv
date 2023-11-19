@@ -4316,8 +4316,8 @@ static void on_EF_Ep3(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
 static void on_EA_BB(shared_ptr<Client> c, uint16_t command, uint32_t flag, string& data) {
   auto s = c->require_server_state();
 
-  switch (command >> 8) {
-    case 0x01: { // Create team
+  switch (command) {
+    case 0x01EA: { // Create team
       const auto& cmd = check_size_t<C_CreateTeam_BB_01EA>(data);
       string team_name = cmd.name.decode(c->language());
       if (s->team_index->get_by_name(team_name)) {
@@ -4338,7 +4338,7 @@ static void on_EA_BB(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
       }
       break;
     }
-    case 0x03: { // Add team member
+    case 0x03EA: { // Add team member
       auto team = c->team();
       if (team && team->members.at(c->license->serial_number).privilege_level() >= 0x30) {
         const auto& cmd = check_size_t<C_AddOrRemoveTeamMember_BB_03EA_05EA>(data);
@@ -4374,7 +4374,7 @@ static void on_EA_BB(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
       }
       break;
     }
-    case 0x05: { // Remove team member
+    case 0x05EA: { // Remove team member
       auto team = c->team();
       if (team) {
         const auto& cmd = check_size_t<C_AddOrRemoveTeamMember_BB_03EA_05EA>(data);
@@ -4407,7 +4407,7 @@ static void on_EA_BB(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
       }
       break;
     }
-    case 0x07: { // Team chat
+    case 0x07EA: { // Team chat
       auto team = c->team();
       if (team) {
         check_size_v(data.size(), sizeof(SC_TeamChat_BB_07EA) + 4);
@@ -4424,10 +4424,10 @@ static void on_EA_BB(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
       }
       break;
     }
-    case 0x08:
+    case 0x08EA:
       send_team_member_list(c);
       break;
-    case 0x0D: {
+    case 0x0DEA: {
       auto team = c->team();
       if (team) {
         S_Unknown_BB_0EEA cmd;
@@ -4438,7 +4438,7 @@ static void on_EA_BB(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
       }
       break;
     }
-    case 0x0F: { // Set team flag
+    case 0x0FEA: { // Set team flag
       auto team = c->team();
       if (team && team->members.at(c->license->serial_number).check_flag(TeamIndex::Team::Member::Flag::IS_MASTER)) {
         const auto& cmd = check_size_t<C_SetTeamFlag_BB_0FEA>(data);
@@ -4454,7 +4454,7 @@ static void on_EA_BB(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
       }
       break;
     }
-    case 0x10: { // Disband team
+    case 0x10EA: { // Disband team
       auto team = c->team();
       if (team && team->members.at(c->license->serial_number).check_flag(TeamIndex::Team::Member::Flag::IS_MASTER)) {
         s->team_index->disband(team->team_id);
@@ -4471,7 +4471,7 @@ static void on_EA_BB(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
       }
       break;
     }
-    case 0x11: { // Change member privilege level
+    case 0x11EA: { // Change member privilege level
       auto team = c->team();
       if (team) {
         auto& cmd = check_size_t<C_ChangeTeamMemberPrivilegeLevel_BB_11EA>(data);
@@ -4532,23 +4532,23 @@ static void on_EA_BB(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
       }
       break;
     }
-    case 0x13:
+    case 0x13EA:
       send_all_nearby_team_metadatas_to_client(c, true);
       break;
-    case 0x14:
+    case 0x14EA:
       break;
-    case 0x18: // Ranking information
+    case 0x18EA: // Ranking information
       send_team_rank_info(c);
       break;
-    case 0x19: {
+    case 0x19EA: {
       S_TeamRewardList_BB_19EA cmd = {0};
       send_command_t(c, 0x19EA, 0x00000000, cmd);
       break;
     }
-    case 0x1A: // Get team rewards available for purchase
+    case 0x1AEA: // Get team rewards available for purchase
       send_team_rewards_available_for_purchase(c);
       break;
-    case 0x1B: { // Buy team reward
+    case 0x1BEA: { // Buy team reward
       auto team = c->team();
       if (team) {
         check_size_v(data.size(), 0); // No data should be sent
@@ -4626,7 +4626,7 @@ static void on_EA_BB(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
       }
       break;
     }
-    case 0x1C:
+    case 0x1CEA:
       throw runtime_error("team subcommand is not yet implemented");
     default:
       throw runtime_error("invalid team command");
