@@ -10,9 +10,7 @@
 - Implement decrypt/encrypt actions for VMS files
 - Make UI strings localizable (e.g. entries in menus, welcome message, etc.)
 - Figure out what causes the corruption message on PC proxy sessions and fix it
-- Rewrite REL-based parsers so they don't assume any fixed offsets
 - Make $edit for DC/PC
-- Handle DC NTE broadcast commands (see Sylverant subcmd_dcnte_handle_bcast)
 
 ## Episode 3
 
@@ -28,7 +26,6 @@
 
 - Fix receiving Guild Cards from non-Xbox players
 - Make the Guild Card description field in SavedPlayerDataBB longer to accommodate XB descriptions (0x200 bytes)
-- Implement and test voice chat
 
 ## PSOBB
 
