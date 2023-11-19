@@ -2341,7 +2341,7 @@ static void on_wrap_item_bb(shared_ptr<Client> c, uint8_t, uint8_t, const void* 
     auto item = p->remove_item(cmd.item.id, 1, false);
     send_destroy_item(c, item.id, 1);
     item.wrap();
-    p->add_item(cmd.item);
+    p->add_item(item);
     send_create_inventory_item(c, item);
   }
 }
