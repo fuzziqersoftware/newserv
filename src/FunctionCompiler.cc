@@ -280,7 +280,7 @@ DOLFileIndex::DOLFileIndex(const string& directory) {
     string name = filename.substr(0, filename.size() - (is_compressed_dol ? 8 : 4));
 
     try {
-      shared_ptr<DOLFile> dol(new DOLFile());
+      shared_ptr<File> dol(new File());
       dol->menu_item_id = next_menu_item_id++;
       dol->name = name;
 

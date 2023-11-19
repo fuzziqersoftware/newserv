@@ -14,6 +14,11 @@
 #include <thread>
 #include <unordered_map>
 
+#ifdef HAVE_RESOURCE_FILE
+#include "ARCodeTranslator.hh"
+#else
+#include "ARCodeTranslator-Stub.hh"
+#endif
 #include "BMLArchive.hh"
 #include "CatSession.hh"
 #include "Compression.hh"
@@ -337,6 +342,7 @@ enum class Behavior {
   GENERATE_ALL_DC_SERIAL_NUMBERS,
   INSPECT_DC_SERIAL_NUMBER,
   DC_SERIAL_NUMBER_SPEED_TEST,
+  AR_CODE_TRANSLATOR,
 };
 
 static bool behavior_takes_input_filename(Behavior b) {
@@ -382,7 +388,8 @@ static bool behavior_takes_input_filename(Behavior b) {
       (b == Behavior::PARSE_OBJECT_GRAPH) ||
       (b == Behavior::REPLAY_LOG) ||
       (b == Behavior::CAT_CLIENT) ||
-      (b == Behavior::INSPECT_DC_SERIAL_NUMBER);
+      (b == Behavior::INSPECT_DC_SERIAL_NUMBER) ||
+      (b == Behavior::AR_CODE_TRANSLATOR);
 }
 
 static bool behavior_takes_output_filename(Behavior b) {
@@ -655,6 +662,8 @@ int main(int argc, char** argv) {
           behavior = Behavior::INSPECT_DC_SERIAL_NUMBER;
         } else if (!strcmp(argv[x], "dc-serial-number-speed-test")) {
           behavior = Behavior::DC_SERIAL_NUMBER_SPEED_TEST;
+        } else if (!strcmp(argv[x], "ar-code-translator")) {
+          behavior = Behavior::AR_CODE_TRANSLATOR;
         } else {
           throw invalid_argument(string_printf("unknown command: %s (try --help)", argv[x]));
         }
@@ -1944,6 +1953,13 @@ int main(int argc, char** argv) {
       } else {
         dc_serial_number_speed_test(stoul(seed, nullptr, 16));
       }
+      break;
+
+    case Behavior::AR_CODE_TRANSLATOR:
+      if (!input_filename || !strcmp(input_filename, "-")) {
+        throw invalid_argument("a directory name is required");
+      }
+      run_ar_code_translator(input_filename);
       break;
 
     case Behavior::REPLAY_LOG:

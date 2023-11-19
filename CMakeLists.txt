@@ -40,7 +40,7 @@ find_package(resource_file QUIET)
 
 # Executable definition
 
-add_executable(newserv
+set(SOURCES
     src/AFSArchive.cc
     src/BattleParamsIndex.cc
     src/BMLArchive.cc
@@ -112,6 +112,12 @@ add_executable(newserv
     src/Version.cc
     src/WordSelectTable.cc
 )
+
+if(resource_file_FOUND)
+    set(SOURCES ${SOURCES} src/ARCodeTranslator.cc)
+endif()
+
+add_executable(newserv ${SOURCES})
 target_include_directories(newserv PUBLIC ${LIBEVENT_INCLUDE_DIR} ${Iconv_INCLUDE_DIRS})
 target_link_libraries(newserv phosg ${LIBEVENT_LIBRARIES} ${Iconv_LIBRARIES} pthread)
 
