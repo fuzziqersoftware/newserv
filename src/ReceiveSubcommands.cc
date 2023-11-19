@@ -1638,9 +1638,6 @@ static void on_entity_drop_item_request(shared_ptr<Client> c, uint8_t command, u
     }
 
     item = l->item_creator->on_monster_item_drop(cmd.entity_id, effective_rt_index, cmd.effective_area);
-    if (c->config.check_flag(Client::Flag::DEBUG_ENABLED)) {
-      send_text_message_printf(c, "$C5E-%hX %s%s%s", cmd.entity_id.load(), floor_warning_token.c_str(), rt_index_warning_token.c_str(), item.empty() ? "NO_DROP" : "ITEM");
-    }
   }
 
   if (item.empty()) {
