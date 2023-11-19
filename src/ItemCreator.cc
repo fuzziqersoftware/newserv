@@ -1724,11 +1724,14 @@ ssize_t ItemCreator::apply_tekker_deltas(ItemData& item, uint8_t section_id) {
   bool favored = item.data1[1] == favored_weapon_by_section_id[section_id];
   ssize_t luck = 0;
 
+  this->log.info("Applying tekker deltas for %s weapon", favored ? "favored" : "non-favored");
+
   // Adjust the weapon's special
   {
     const auto& prob_table = this->tekker_adjustment_set->get_special_upgrade_prob_table(section_id, favored);
     uint8_t delta_index = prob_table.sample(this->random_crypt);
     int8_t delta = delta_table.at(delta_index);
+    this->log.info("(Special) Delta index %hhu, delta %hhd", delta_index, delta);
     // Note: The original code checks specifically for -1 and +1 here, but the
     // data files only include delta_indexes 4, 5, and 6 (which correspond to -1,
     // 0, and 1) anyway, so we just check for positive and negative numbers
@@ -1746,12 +1749,14 @@ ssize_t ItemCreator::apply_tekker_deltas(ItemData& item, uint8_t section_id) {
       if ((new_special != item.data1[4]) &&
           (this->item_parameter_table->get_special(item.data1[4]).type ==
               this->item_parameter_table->get_special(new_special).type)) {
+        this->log.info("(Special) Delta canceled because it would change special category");
         item.data1[4] = new_special;
       }
     } catch (const runtime_error&) {
       // Invalid special number passed to get_special; just ignore it
     }
     luck += this->tekker_adjustment_set->get_luck_for_special_upgrade(delta_index);
+    this->log.info("(Special) Luck is now %zd", luck);
   }
 
   // Adjust the weapon's grind if it's not rare
@@ -1760,9 +1765,13 @@ ssize_t ItemCreator::apply_tekker_deltas(ItemData& item, uint8_t section_id) {
     const auto& prob_table = this->tekker_adjustment_set->get_grind_delta_prob_table(section_id, favored);
     uint8_t delta_index = prob_table.sample(this->random_crypt);
     int8_t delta = delta_table.at(delta_index);
+    this->log.info("(Grind) Delta index %hhu, delta %hhd", delta_index, delta);
     int16_t new_grind = static_cast<int16_t>(item.data1[3]) + static_cast<int16_t>(delta);
     item.data1[3] = clamp<int16_t>(new_grind, 0, weapon_def.max_grind);
     luck += this->tekker_adjustment_set->get_luck_for_grind_delta(delta_index);
+    this->log.info("(Grind) Luck is now %zd", luck);
+  } else {
+    this->log.info("(Grind) Item is rare; skipping grind adjustment");
   }
 
   // Adjust the weapon's bonuses
@@ -1772,6 +1781,7 @@ ssize_t ItemCreator::apply_tekker_deltas(ItemData& item, uint8_t section_id) {
     // bonuses.
     uint8_t delta_index = prob_table.sample(this->random_crypt);
     int8_t delta = delta_table.at(delta_index);
+    this->log.info("(Bonuses) Delta index %hhu, delta %hhd", delta_index, delta);
     // Note: The original code doesn't check if there's actually a bonus in each
     // slot before incrementing the values. Presumably there's a check later
     // that will clear any invalid bonuses, but we don't have such a check, so
@@ -1782,6 +1792,7 @@ ssize_t ItemCreator::apply_tekker_deltas(ItemData& item, uint8_t section_id) {
       }
     }
     luck += this->tekker_adjustment_set->get_luck_for_bonus_delta(delta_index);
+    this->log.info("(Bonuses) Luck is now %zd", luck);
   }
 
   return luck;

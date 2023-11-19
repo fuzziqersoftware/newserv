@@ -320,7 +320,7 @@ struct ProbabilityTable {
 
   ItemT sample(PSOLFGEncryption& random_crypt) const {
     if (this->count == 0) {
-      throw std::runtime_error("pop from empty probability table");
+      throw std::runtime_error("sample from empty probability table");
     } else if (this->count == 1) {
       return this->items[0];
     } else {
