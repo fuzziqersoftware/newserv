@@ -285,7 +285,7 @@ PlayerRecordsBB_Challenge::PlayerRecordsBB_Challenge(const PlayerRecordsDC_Chall
       grave_deaths(rec.grave_deaths),
       unknown_u4(0),
       grave_time(rec.grave_time),
-      unknown_g1(rec.unknown_g1),
+      grave_defeated_by_enemy_rt_index(rec.grave_defeated_by_enemy_rt_index),
       grave_x(rec.grave_x),
       grave_y(rec.grave_y),
       grave_z(rec.grave_z),
@@ -309,7 +309,7 @@ PlayerRecordsBB_Challenge::PlayerRecordsBB_Challenge(const PlayerRecordsPC_Chall
       grave_deaths(rec.grave_deaths),
       unknown_u4(0),
       grave_time(rec.grave_time),
-      unknown_g1(rec.unknown_g1),
+      grave_defeated_by_enemy_rt_index(rec.grave_defeated_by_enemy_rt_index),
       grave_x(rec.grave_x),
       grave_y(rec.grave_y),
       grave_z(rec.grave_z),
@@ -333,7 +333,7 @@ PlayerRecordsBB_Challenge::PlayerRecordsBB_Challenge(const PlayerRecordsV3_Chall
       grave_deaths(rec.stats.grave_deaths),
       unknown_u4(rec.stats.unknown_u4),
       grave_time(rec.stats.grave_time),
-      unknown_g1(rec.stats.unknown_g1),
+      grave_defeated_by_enemy_rt_index(rec.stats.grave_defeated_by_enemy_rt_index),
       grave_x(rec.stats.grave_x),
       grave_y(rec.stats.grave_y),
       grave_z(rec.stats.grave_z),
@@ -356,14 +356,14 @@ PlayerRecordsBB_Challenge::operator PlayerRecordsDC_Challenge() const {
   if (this->grave_is_ep2) {
     ret.grave_stage_num = 0;
     ret.grave_floor = 0;
-    ret.unknown_g1 = 0;
+    ret.grave_defeated_by_enemy_rt_index = 0;
     ret.grave_x = 0;
     ret.grave_y = 0;
     ret.grave_z = 0;
   } else {
     ret.grave_stage_num = this->grave_stage_num;
     ret.grave_floor = this->grave_floor;
-    ret.unknown_g1 = this->unknown_g1;
+    ret.grave_defeated_by_enemy_rt_index = this->grave_defeated_by_enemy_rt_index;
     ret.grave_x = this->grave_x;
     ret.grave_y = this->grave_y;
     ret.grave_z = this->grave_z;
@@ -386,14 +386,14 @@ PlayerRecordsBB_Challenge::operator PlayerRecordsPC_Challenge() const {
   if (this->grave_is_ep2) {
     ret.grave_stage_num = 0;
     ret.grave_floor = 0;
-    ret.unknown_g1 = 0;
+    ret.grave_defeated_by_enemy_rt_index = 0;
     ret.grave_x = 0;
     ret.grave_y = 0;
     ret.grave_z = 0;
   } else {
     ret.grave_stage_num = this->grave_stage_num;
     ret.grave_floor = this->grave_floor;
-    ret.unknown_g1 = this->unknown_g1;
+    ret.grave_defeated_by_enemy_rt_index = this->grave_defeated_by_enemy_rt_index;
     ret.grave_x = this->grave_x;
     ret.grave_y = this->grave_y;
     ret.grave_z = this->grave_z;
@@ -421,7 +421,7 @@ PlayerRecordsBB_Challenge::operator PlayerRecordsV3_Challenge<false>() const {
   ret.stats.grave_deaths = this->grave_deaths;
   ret.stats.unknown_u4 = this->unknown_u4;
   ret.stats.grave_time = this->grave_time;
-  ret.stats.unknown_g1 = this->unknown_g1;
+  ret.stats.grave_defeated_by_enemy_rt_index = this->grave_defeated_by_enemy_rt_index;
   ret.stats.grave_x = this->grave_x;
   ret.stats.grave_y = this->grave_y;
   ret.stats.grave_z = this->grave_z;

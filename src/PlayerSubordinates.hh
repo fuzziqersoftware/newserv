@@ -333,7 +333,7 @@ struct PlayerRecordsDCPC_Challenge {
   //   H = hour
   //   m = minute
   /* 38 */ le_uint32_t grave_time = 0;
-  /* 3C */ le_uint32_t unknown_g1 = 0;
+  /* 3C */ le_uint32_t grave_defeated_by_enemy_rt_index = 0;
   /* 40 */ le_float grave_x = 0.0f;
   /* 44 */ le_float grave_y = 0.0f;
   /* 48 */ le_float grave_z = 0.0f;
@@ -371,7 +371,7 @@ struct PlayerRecordsV3_Challenge {
     /* 64:80 */ U16T grave_deaths = 0;
     /* 66:82 */ parray<uint8_t, 2> unknown_u4;
     /* 68:84 */ U32T grave_time = 0; // Encoded as in PlayerRecordsDCPC_Challenge
-    /* 6C:88 */ U32T unknown_g1 = 0;
+    /* 6C:88 */ U32T grave_defeated_by_enemy_rt_index = 0;
     /* 70:8C */ FloatT grave_x = 0.0f;
     /* 74:90 */ FloatT grave_y = 0.0f;
     /* 78:94 */ FloatT grave_z = 0.0f;
@@ -410,7 +410,7 @@ struct PlayerRecordsBB_Challenge {
   /* 0064 */ le_uint16_t grave_deaths = 0;
   /* 0066 */ parray<uint8_t, 2> unknown_u4;
   /* 0068 */ le_uint32_t grave_time = 0; // Encoded as in PlayerRecordsDCPC_Challenge
-  /* 006C */ le_uint32_t unknown_g1 = 0;
+  /* 006C */ le_uint32_t grave_defeated_by_enemy_rt_index = 0;
   /* 0070 */ le_float grave_x = 0.0f;
   /* 0074 */ le_float grave_y = 0.0f;
   /* 0078 */ le_float grave_z = 0.0f;
