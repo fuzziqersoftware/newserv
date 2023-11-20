@@ -5555,8 +5555,8 @@ struct G_MedicalCenterUsed_BB_6xC5 {
 
 struct G_StealEXP_BB_6xC6 {
   G_ClientIDHeader header;
+  le_uint16_t entity_id = 0;
   le_uint16_t enemy_index = 0;
-  le_uint16_t unknown_a1 = 0;
 } __packed__;
 
 // 6xC7: Charge attack (BB)
