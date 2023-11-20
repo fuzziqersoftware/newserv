@@ -3988,6 +3988,14 @@ static void on_6F(shared_ptr<Client> c, uint16_t command, uint32_t, string& data
   }
   send_server_time(c);
 
+  if (c->config.check_flag(Client::Flag::DEBUG_ENABLED)) {
+    string variations_str;
+    for (size_t z = 0; z < l->variations.size(); z++) {
+      variations_str += string_printf("%" PRIX32, l->variations[z].load());
+    }
+    send_text_message_printf(c, "Rare seed: %08" PRIX32 "\nVariations: %s", l->random_seed, variations_str.c_str());
+  }
+
   // BB sends 016F when the client is done loading a quest. In that case, we
   // shouldn't send the quest to them again!
   if (command == 0x006F && c->version() == GameVersion::BB) {
