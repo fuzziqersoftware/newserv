@@ -2617,35 +2617,33 @@ static void on_AC_V3_BB(shared_ptr<Client> c, uint16_t, uint32_t, string& data) 
       return;
     }
 
-    if (send_quest_barrier_if_all_clients_ready(l) &&
-        (l->base_version == GameVersion::BB) &&
-        l->map &&
-        l->quest) {
+    if (send_quest_barrier_if_all_clients_ready(l) && l->quest) {
       auto s = l->require_server_state();
-
       auto vq = l->quest->version(QuestScriptVersion::BB_V4, c->language());
 
-      auto dat_contents = prs_decompress(*vq->dat_contents);
-      l->map->clear();
-      l->map->add_enemies_and_objects_from_quest_data(
-          l->episode,
-          l->difficulty,
-          l->event,
-          dat_contents.data(),
-          dat_contents.size(),
-          l->random_seed,
-          (l->mode == GameMode::CHALLENGE) ? Map::NO_RARE_ENEMIES : Map::DEFAULT_RARE_ENEMIES);
-      l->item_creator->clear_destroyed_entities();
+      if ((l->base_version == GameVersion::BB) && l->map) {
+        auto dat_contents = prs_decompress(*vq->dat_contents);
+        l->map->clear();
+        l->map->add_enemies_and_objects_from_quest_data(
+            l->episode,
+            l->difficulty,
+            l->event,
+            dat_contents.data(),
+            dat_contents.size(),
+            l->random_seed,
+            (l->mode == GameMode::CHALLENGE) ? Map::NO_RARE_ENEMIES : Map::DEFAULT_RARE_ENEMIES);
+        l->item_creator->clear_destroyed_entities();
 
-      l->log.info("Replaced objects list with quest layout (%zu entries)", l->map->objects.size());
-      for (size_t z = 0; z < l->map->objects.size(); z++) {
-        string o_str = l->map->objects[z].str(s->item_name_index);
-        l->log.info("(K-%zX) %s", z, o_str.c_str());
-      }
-      l->log.info("Replaced enemies list with quest layout (%zu entries)", l->map->enemies.size());
-      for (size_t z = 0; z < l->map->enemies.size(); z++) {
-        string e_str = l->map->enemies[z].str();
-        l->log.info("(E-%zX) %s", z, e_str.c_str());
+        l->log.info("Replaced objects list with quest layout (%zu entries)", l->map->objects.size());
+        for (size_t z = 0; z < l->map->objects.size(); z++) {
+          string o_str = l->map->objects[z].str(s->item_name_index);
+          l->log.info("(K-%zX) %s", z, o_str.c_str());
+        }
+        l->log.info("Replaced enemies list with quest layout (%zu entries)", l->map->enemies.size());
+        for (size_t z = 0; z < l->map->enemies.size(); z++) {
+          string e_str = l->map->enemies[z].str();
+          l->log.info("(E-%zX) %s", z, e_str.c_str());
+        }
       }
 
       for (auto& lc : l->clients) {
@@ -2653,7 +2651,9 @@ static void on_AC_V3_BB(shared_ptr<Client> c, uint16_t, uint32_t, string& data) 
           continue;
         }
 
-        send_rare_enemy_index_list(c, l->map->rare_enemy_indexes);
+        if ((l->base_version == GameVersion::BB) && l->map) {
+          send_rare_enemy_index_list(lc, l->map->rare_enemy_indexes);
+        }
 
         // On non-BB versions, overlays are created when the quest starts because
         // the server is not informed when the clients have replaced their player
