@@ -418,7 +418,8 @@ void Map::add_enemy(
         }
       } else {
         EnemyType type = (e.uparam1 & 0x01) ? EnemyType::SINOW_ZELE : EnemyType::SINOW_ZOA;
-        for (size_t z = 0; z < e.num_children + 1; z++) {
+        size_t count = e.num_children + 1;
+        for (size_t z = 0; z < count; z++) {
           this->add_enemy(floor, type);
         }
       }
