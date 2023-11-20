@@ -2302,6 +2302,28 @@ static void on_battle_level_up_bb(shared_ptr<Client> c, uint8_t, uint8_t, const 
   }
 }
 
+static void on_request_challenge_grave_recovery_item_bb(shared_ptr<Client> c, uint8_t, uint8_t, const void* data, size_t size) {
+  auto l = c->require_lobby();
+  if (l->is_game() &&
+      (l->base_version == GameVersion::BB) &&
+      (l->mode == GameMode::CHALLENGE) &&
+      l->check_flag(Lobby::Flag::QUEST_IN_PROGRESS)) {
+    const auto& cmd = check_size_t<G_ChallengeModeGraveRecoveryItemRequest_BB_6xD1>(data, size);
+    static const array<ItemData, 6> items = {
+        ItemData(0x0300000000010000), // Monomate x1
+        ItemData(0x0300010000010000), // Dimate x1
+        ItemData(0x0300020000010000), // Trimate x1
+        ItemData(0x0301000000010000), // Monofluid x1
+        ItemData(0x0301010000010000), // Difluid x1
+        ItemData(0x0301020000010000), // Trifluid x1
+    };
+    ItemData item = items.at(cmd.item_type);
+    item.id = l->generate_item_id(0xFF);
+    l->add_item(item, cmd.floor, cmd.x, cmd.z);
+    send_drop_stacked_item(l, item, cmd.floor, cmd.x, cmd.z);
+  }
+}
+
 static void on_quest_exchange_item_bb(shared_ptr<Client> c, uint8_t, uint8_t, const void* data, size_t size) {
   auto l = c->require_lobby();
   if (l->is_game() &&
@@ -2875,7 +2897,7 @@ subcommand_handler_t subcommand_handlers[0x100] = {
     /* 6xCE */ nullptr,
     /* 6xCF */ on_battle_restart_bb,
     /* 6xD0 */ on_battle_level_up_bb,
-    /* 6xD1 */ nullptr,
+    /* 6xD1 */ on_request_challenge_grave_recovery_item_bb,
     /* 6xD2 */ on_write_quest_global_flag_bb,
     /* 6xD3 */ nullptr,
     /* 6xD4 */ nullptr,

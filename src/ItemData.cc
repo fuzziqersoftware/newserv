@@ -18,6 +18,12 @@ ItemData::ItemData(const ItemData& other) {
   this->data2d = other.data2d;
 }
 
+ItemData::ItemData(uint64_t first, uint64_t second) {
+  *reinterpret_cast<be_uint64_t*>(&this->data1[0]) = first;
+  this->data1d[2] = bswap32((second >> 32) & 0xFFFFFFFF);
+  this->data2d = bswap32(second & 0xFFFFFFFF);
+}
+
 ItemData& ItemData::operator=(const ItemData& other) {
   this->data1d = other.data1d;
   this->id = other.id;

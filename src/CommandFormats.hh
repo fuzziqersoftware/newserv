@@ -5629,15 +5629,15 @@ struct G_BattleModeLevelUp_BB_6xD0 {
   le_uint32_t num_levels = 0;
 } __packed__;
 
-// 6xD1: Challenge mode grave (BB; handled by server)
+// 6xD1: Request Challenge Mode grave recovery item (BB; handled by server)
 
-struct G_ChallengeModeGrave_BB_6xD1 {
+struct G_ChallengeModeGraveRecoveryItemRequest_BB_6xD1 {
   G_ClientIDHeader header;
-  le_uint16_t unknown_a1 = 0;
+  le_uint16_t floor = 0;
   le_uint16_t unknown_a2 = 0;
-  le_uint32_t unknown_a3 = 0;
-  le_uint32_t unknown_a4 = 0;
-  le_uint32_t unknown_a5 = 0;
+  le_float x = 0;
+  le_float z = 0;
+  le_uint32_t item_type = 0; // Should be < 6
 } __packed__;
 
 // 6xD2: Set quest global flag (BB)

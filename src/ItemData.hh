@@ -122,6 +122,7 @@ struct ItemData { // 0x14 bytes
 
   ItemData();
   ItemData(const ItemData& other);
+  ItemData(uint64_t first, uint64_t second = 0);
   ItemData& operator=(const ItemData& other);
 
   bool operator==(const ItemData& other) const;
