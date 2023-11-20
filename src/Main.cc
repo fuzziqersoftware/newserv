@@ -214,6 +214,10 @@ The actions are:\n\
     of the commands and metadata it contains. Specify the quest\'s game version\n\
     with one of the --dc-nte, --dc-v1, --dc-v2, --pc, --gc-nte, --gc, --gc-ep3,\n\
     --xb, or --bb options.\n\
+  disassemble-quest-map [INPUT-FILENAME [OUTPUT-FILENAME]]\n\
+    Disassemble the input quest map (.dat file) into a text representation of\n\
+    the data it contains. Specify the quest\'s game version with one of the\n\
+    --dc-nte, --dc-v1, --dc-v2, --pc, --gc-nte, --gc, --xb, or --bb options.\n\
   cat-client ADDR:PORT\n\
     Connect to the given server and simulate a PSO client. newserv will then\n\
     print all the received commands to stdout, and forward any commands typed\n\
@@ -322,6 +326,7 @@ enum class Behavior {
   DECODE_QUEST_FILE,
   ENCODE_QST,
   DISASSEMBLE_QUEST_SCRIPT,
+  DISASSEMBLE_QUEST_MAP,
   EXTRACT_AFS,
   EXTRACT_GSL,
   EXTRACT_BML,
@@ -375,6 +380,7 @@ static bool behavior_takes_input_filename(Behavior b) {
       (b == Behavior::DECODE_QUEST_FILE) ||
       (b == Behavior::ENCODE_QST) ||
       (b == Behavior::DISASSEMBLE_QUEST_SCRIPT) ||
+      (b == Behavior::DISASSEMBLE_QUEST_MAP) ||
       (b == Behavior::CONVERT_RARE_ITEM_SET) ||
       (b == Behavior::EXTRACT_AFS) ||
       (b == Behavior::EXTRACT_GSL) ||
@@ -416,6 +422,7 @@ static bool behavior_takes_output_filename(Behavior b) {
       (b == Behavior::ENCODE_GVM) ||
       (b == Behavior::ENCODE_QST) ||
       (b == Behavior::DISASSEMBLE_QUEST_SCRIPT) ||
+      (b == Behavior::DISASSEMBLE_QUEST_MAP) ||
       (b == Behavior::CONVERT_RARE_ITEM_SET) ||
       (b == Behavior::EXTRACT_AFS) ||
       (b == Behavior::EXTRACT_GSL) ||
@@ -622,6 +629,8 @@ int main(int argc, char** argv) {
           behavior = Behavior::ENCODE_QST;
         } else if (!strcmp(argv[x], "disassemble-quest-script")) {
           behavior = Behavior::DISASSEMBLE_QUEST_SCRIPT;
+        } else if (!strcmp(argv[x], "disassemble-quest-map")) {
+          behavior = Behavior::DISASSEMBLE_QUEST_MAP;
         } else if (!strcmp(argv[x], "cat-client")) {
           behavior = Behavior::CAT_CLIENT;
         } else if (!strcmp(argv[x], "convert-rare-item-set")) {
@@ -737,14 +746,14 @@ int main(int argc, char** argv) {
         filename += ".gvm";
       } else if ((behavior == Behavior::DECODE_TEXT_ARCHIVE) || (behavior == Behavior::DECODE_UNICODE_TEXT_SET)) {
         filename += ".json";
-      } else if (behavior == Behavior::DISASSEMBLE_QUEST_SCRIPT) {
+      } else if ((behavior == Behavior::DISASSEMBLE_QUEST_SCRIPT) || (behavior == Behavior::DISASSEMBLE_QUEST_MAP)) {
         filename += ".txt";
       } else {
         filename += ".dec";
       }
       save_file(filename, data, size);
 
-    } else if (isatty(fileno(stdout)) && (behavior != Behavior::DISASSEMBLE_QUEST_SCRIPT)) {
+    } else if (isatty(fileno(stdout)) && (behavior != Behavior::DISASSEMBLE_QUEST_SCRIPT) && (behavior != Behavior::DISASSEMBLE_QUEST_MAP)) {
       // If stdout is a terminal and the data is not known to be text, use
       // print_data to write the result
       print_data(stdout, data, size);
@@ -1407,6 +1416,20 @@ int main(int argc, char** argv) {
         data = prs_decompress(data);
       }
       string result = disassemble_quest_script(data.data(), data.size(), cli_quest_version, 1);
+      write_output_data(result.data(), result.size());
+      break;
+    }
+
+    case Behavior::DISASSEMBLE_QUEST_MAP: {
+      if (!input_filename || !strcmp(input_filename, "-")) {
+        throw invalid_argument("an input filename is required");
+      }
+
+      string data = read_input_data();
+      if (!expect_decompressed) {
+        data = prs_decompress(data);
+      }
+      string result = Map::disassemble_quest_data(data.data(), data.size());
       write_output_data(result.data(), result.size());
       break;
     }

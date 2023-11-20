@@ -14,6 +14,59 @@ using namespace std;
 
 static constexpr float UINT32_MAX_AS_FLOAT = 4294967296.0f;
 
+string Map::ObjectEntry::str() const {
+  return string_printf("[ObjectEntry type=%04hX flags=%04hX index=%04hX a2=%04hX entity_id=%04hX group=%04hX section=%04hX a3=%04hX x=%g y=%g z=%g x_angle=%08" PRIX32 " y_angle=%08" PRIX32 " z_angle=%08" PRIX32 " params=[%g %g %g %08" PRIX32 " %08" PRIX32 " %08" PRIX32 "] unused=%08" PRIX32 "]",
+      this->base_type.load(),
+      this->flags.load(),
+      this->index.load(),
+      this->unknown_a2.load(),
+      this->entity_id.load(),
+      this->group.load(),
+      this->section.load(),
+      this->unknown_a3.load(),
+      this->x.load(),
+      this->y.load(),
+      this->z.load(),
+      this->x_angle.load(),
+      this->y_angle.load(),
+      this->z_angle.load(),
+      this->param1.load(),
+      this->param2.load(),
+      this->param3.load(),
+      this->param4.load(),
+      this->param5.load(),
+      this->param6.load(),
+      this->unused.load());
+}
+
+string Map::EnemyEntry::str() const {
+  return string_printf("[EnemyEntry type=%04hX flags=%04hX index=%04hX num_children=%04hX floor=%04hX entity_id=%04hX section=%04hX wave_number=%04hX wave_number2=%04hX a1=%04hX x=%g y=%g z=%g x_angle=%08" PRIX32 " y_angle=%08" PRIX32 " z_angle=%08" PRIX32 " params=[%g %g %g %g %g %04hX %04hX] unused=%08" PRIX32 "]",
+      this->base_type.load(),
+      this->flags.load(),
+      this->index.load(),
+      this->num_children.load(),
+      this->floor.load(),
+      this->entity_id.load(),
+      this->section.load(),
+      this->wave_number.load(),
+      this->wave_number2.load(),
+      this->unknown_a1.load(),
+      this->x.load(),
+      this->y.load(),
+      this->z.load(),
+      this->x_angle.load(),
+      this->y_angle.load(),
+      this->z_angle.load(),
+      this->fparam1.load(),
+      this->fparam2.load(),
+      this->fparam3.load(),
+      this->fparam4.load(),
+      this->fparam5.load(),
+      this->uparam1.load(),
+      this->uparam2.load(),
+      this->unused.load());
+}
+
 Map::Enemy::Enemy(uint8_t floor, EnemyType type)
     : type(type),
       floor(floor),
@@ -676,24 +729,8 @@ void Map::add_random_enemies_from_map_data(
   }
 }
 
-void Map::add_enemies_and_objects_from_quest_data(
-    Episode episode,
-    uint8_t difficulty,
-    uint8_t event,
-    const void* data,
-    size_t size,
-    uint32_t rare_seed,
-    const RareEnemyRates& rare_rates) {
-
-  struct DATSectionsForFloor {
-    uint32_t objects = 0xFFFFFFFF;
-    uint32_t enemies = 0xFFFFFFFF;
-    uint32_t wave_events = 0xFFFFFFFF;
-    uint32_t random_enemy_locations = 0xFFFFFFFF;
-    uint32_t random_enemy_definitions = 0xFFFFFFFF;
-  };
-
-  vector<DATSectionsForFloor> floor_sections;
+vector<Map::DATSectionsForFloor> Map::collect_quest_map_data_sections(const void* data, size_t size) {
+  vector<DATSectionsForFloor> ret;
   StringReader r(data, size);
   while (!r.eof()) {
     size_t header_offset = r.where();
@@ -712,61 +749,74 @@ void Map::add_enemies_and_objects_from_quest_data(
       throw runtime_error("section floor number too large");
     }
 
-    if (header.floor >= floor_sections.size()) {
-      floor_sections.resize(header.floor + 1);
+    if (header.floor >= ret.size()) {
+      ret.resize(header.floor + 1);
     }
-    auto& sections = floor_sections[header.floor];
+    auto& floor_sections = ret[header.floor];
     switch (header.type()) {
       case SectionHeader::Type::OBJECTS:
-        if (sections.objects != 0xFFFFFFFF) {
+        if (floor_sections.objects != 0xFFFFFFFF) {
           throw runtime_error("multiple objects sections for same floor");
         }
-        sections.objects = header_offset;
+        floor_sections.objects = header_offset;
         break;
       case SectionHeader::Type::ENEMIES:
-        if (sections.enemies != 0xFFFFFFFF) {
+        if (floor_sections.enemies != 0xFFFFFFFF) {
           throw runtime_error("multiple enemies sections for same floor");
         }
-        sections.enemies = header_offset;
+        floor_sections.enemies = header_offset;
         break;
       case SectionHeader::Type::WAVE_EVENTS:
-        if (sections.wave_events != 0xFFFFFFFF) {
+        if (floor_sections.wave_events != 0xFFFFFFFF) {
           throw runtime_error("multiple wave events sections for same floor");
         }
-        sections.wave_events = header_offset;
+        floor_sections.wave_events = header_offset;
         break;
       case SectionHeader::Type::RANDOM_ENEMY_LOCATIONS:
-        if (sections.random_enemy_locations != 0xFFFFFFFF) {
+        if (floor_sections.random_enemy_locations != 0xFFFFFFFF) {
           throw runtime_error("multiple random enemy locations sections for same floor");
         }
-        sections.random_enemy_locations = header_offset;
+        floor_sections.random_enemy_locations = header_offset;
         break;
       case SectionHeader::Type::RANDOM_ENEMY_DEFINITIONS:
-        if (sections.random_enemy_definitions != 0xFFFFFFFF) {
+        if (floor_sections.random_enemy_definitions != 0xFFFFFFFF) {
           throw runtime_error("multiple random enemy definitions sections for same floor");
         }
-        sections.random_enemy_definitions = header_offset;
+        floor_sections.random_enemy_definitions = header_offset;
         break;
       default:
         throw runtime_error("invalid section type");
     }
     r.skip(header.data_size);
   }
+  return ret;
+}
 
-  for (size_t floor = 0; floor < floor_sections.size(); floor++) {
-    const auto& sections = floor_sections[floor];
+void Map::add_enemies_and_objects_from_quest_data(
+    Episode episode,
+    uint8_t difficulty,
+    uint8_t event,
+    const void* data,
+    size_t size,
+    uint32_t rare_seed,
+    const RareEnemyRates& rare_rates) {
+  auto all_floor_sections = this->collect_quest_map_data_sections(data, size);
 
-    if (sections.objects != 0xFFFFFFFF) {
-      const auto& header = r.pget<SectionHeader>(sections.objects);
+  StringReader r(data, size);
+  for (size_t floor = 0; floor < all_floor_sections.size(); floor++) {
+    const auto& floor_sections = all_floor_sections[floor];
+
+    if (floor_sections.objects != 0xFFFFFFFF) {
+      const auto& header = r.pget<SectionHeader>(floor_sections.objects);
       if (header.data_size % sizeof(ObjectEntry)) {
         throw runtime_error("quest layout object section size is not a multiple of object entry size");
       }
       static_game_data_log.info("(Floor %02zX) Adding objects", floor);
-      this->add_objects_from_map_data(floor, r.pgetv(sections.objects + sizeof(header), header.data_size), header.data_size);
+      this->add_objects_from_map_data(floor, r.pgetv(floor_sections.objects + sizeof(header), header.data_size), header.data_size);
     }
 
-    if (sections.enemies != 0xFFFFFFFF) {
-      const auto& header = r.pget<SectionHeader>(sections.enemies);
+    if (floor_sections.enemies != 0xFFFFFFFF) {
+      const auto& header = r.pget<SectionHeader>(floor_sections.enemies);
       if (header.data_size % sizeof(EnemyEntry)) {
         throw runtime_error("quest layout enemy section size is not a multiple of enemy entry size");
       }
@@ -776,29 +826,98 @@ void Map::add_enemies_and_objects_from_quest_data(
           difficulty,
           event,
           floor,
-          r.pgetv(sections.enemies + sizeof(header), header.data_size),
+          r.pgetv(floor_sections.enemies + sizeof(header), header.data_size),
           header.data_size,
           rare_rates);
 
-    } else if ((sections.wave_events != 0xFFFFFFFF) &&
-        (sections.random_enemy_locations != 0xFFFFFFFF) &&
-        (sections.random_enemy_definitions != 0xFFFFFFFF)) {
+    } else if ((floor_sections.wave_events != 0xFFFFFFFF) &&
+        (floor_sections.random_enemy_locations != 0xFFFFFFFF) &&
+        (floor_sections.random_enemy_definitions != 0xFFFFFFFF)) {
       static_game_data_log.info("(Floor %02zX) Adding random enemies", floor);
-      const auto& wave_events_header = r.pget<SectionHeader>(sections.wave_events);
-      const auto& random_enemy_locations_header = r.pget<SectionHeader>(sections.random_enemy_locations);
-      const auto& random_enemy_definitions_header = r.pget<SectionHeader>(sections.random_enemy_definitions);
+      const auto& wave_events_header = r.pget<SectionHeader>(floor_sections.wave_events);
+      const auto& random_enemy_locations_header = r.pget<SectionHeader>(floor_sections.random_enemy_locations);
+      const auto& random_enemy_definitions_header = r.pget<SectionHeader>(floor_sections.random_enemy_definitions);
       this->add_random_enemies_from_map_data(
           episode,
           difficulty,
           event,
           floor,
-          r.sub(sections.wave_events + sizeof(SectionHeader), wave_events_header.data_size),
-          r.sub(sections.random_enemy_locations + sizeof(SectionHeader), random_enemy_locations_header.data_size),
-          r.sub(sections.random_enemy_definitions + sizeof(SectionHeader), random_enemy_definitions_header.data_size),
+          r.sub(floor_sections.wave_events + sizeof(SectionHeader), wave_events_header.data_size),
+          r.sub(floor_sections.random_enemy_locations + sizeof(SectionHeader), random_enemy_locations_header.data_size),
+          r.sub(floor_sections.random_enemy_definitions + sizeof(SectionHeader), random_enemy_definitions_header.data_size),
           rare_seed,
           rare_rates);
     }
   }
+}
+
+string Map::disassemble_quest_data(const void* data, size_t size) {
+  auto all_floor_sections = Map::collect_quest_map_data_sections(data, size);
+
+  deque<string> ret;
+  StringReader r(data, size);
+  size_t object_number = 0;
+  size_t enemy_number = 0;
+  for (size_t floor = 0; floor < all_floor_sections.size(); floor++) {
+    const auto& floor_sections = all_floor_sections[floor];
+
+    if (floor_sections.objects != 0xFFFFFFFF) {
+      ret.emplace_back(string_printf(".objects %zu", floor));
+      const auto& header = r.pget<SectionHeader>(floor_sections.objects);
+      auto sub_r = r.sub(floor_sections.objects + sizeof(SectionHeader), header.data_size);
+      while (sub_r.remaining() >= sizeof(ObjectEntry)) {
+        string o_str = sub_r.get<ObjectEntry>().str();
+        ret.emplace_back(string_printf("/* K-%zX */ %s", object_number++, o_str.c_str()));
+      }
+      if (sub_r.remaining()) {
+        ret.emplace_back("// Warning: object section size is not a multiple of object entry size");
+        size_t offset = floor_sections.objects + sizeof(SectionHeader) + r.where();
+        size_t bytes = r.remaining();
+        ret.emplace_back(format_data(r.getv(r.remaining()), bytes, offset));
+      }
+    }
+
+    if (floor_sections.enemies != 0xFFFFFFFF) {
+      ret.emplace_back(string_printf(".enemies %zu", floor));
+      const auto& header = r.pget<SectionHeader>(floor_sections.enemies);
+      auto sub_r = r.sub(floor_sections.enemies + sizeof(SectionHeader), header.data_size);
+      while (sub_r.remaining() >= sizeof(EnemyEntry)) {
+        string e_str = sub_r.get<EnemyEntry>().str();
+        ret.emplace_back(string_printf("/* entry %zX */ %s", enemy_number++, e_str.c_str()));
+      }
+      if (sub_r.remaining()) {
+        ret.emplace_back("// Warning: enemy section size is not a multiple of enemy entry size");
+        size_t offset = floor_sections.objects + sizeof(SectionHeader) + r.where();
+        size_t bytes = r.remaining();
+        ret.emplace_back(format_data(r.getv(r.remaining()), bytes, offset));
+      }
+    }
+
+    // TODO: Add disassembly for these section types
+    if (floor_sections.wave_events != 0xFFFFFFFF) {
+      ret.emplace_back(string_printf(".wave_events %zu", floor));
+      const auto& header = r.pget<SectionHeader>(floor_sections.wave_events);
+      size_t offset = floor_sections.wave_events + sizeof(SectionHeader);
+      auto sub_r = r.sub(offset, header.data_size);
+      ret.emplace_back(format_data(r.getv(r.remaining()), header.data_size, offset));
+    }
+    if (floor_sections.random_enemy_locations != 0xFFFFFFFF) {
+      ret.emplace_back(string_printf(".random_enemy_locations %zu", floor));
+      const auto& header = r.pget<SectionHeader>(floor_sections.random_enemy_locations);
+      size_t offset = floor_sections.random_enemy_locations + sizeof(SectionHeader);
+      auto sub_r = r.sub(offset, header.data_size);
+      ret.emplace_back(format_data(r.getv(r.remaining()), header.data_size, offset));
+    }
+    if (floor_sections.random_enemy_definitions != 0xFFFFFFFF) {
+      ret.emplace_back(string_printf(".random_enemy_definitions %zu", floor));
+      const auto& header = r.pget<SectionHeader>(floor_sections.random_enemy_definitions);
+      size_t offset = floor_sections.random_enemy_definitions + sizeof(SectionHeader);
+      auto sub_r = r.sub(offset, header.data_size);
+      ret.emplace_back(format_data(r.getv(r.remaining()), header.data_size, offset));
+    }
+  }
+
+  return join(ret, "\n");
 }
 
 SetDataTable::SetDataTable(shared_ptr<const string> data, bool big_endian) {

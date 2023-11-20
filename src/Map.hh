@@ -57,6 +57,8 @@ struct Map {
     /* 3C */ le_uint32_t param6;
     /* 40 */ le_uint32_t unused; // Reserved for pointer in client's memory; unused by server
     /* 44 */
+
+    std::string str() const;
   } __attribute__((packed));
 
   struct EnemyEntry { // Section type 2 (ENEMIES)
@@ -85,6 +87,8 @@ struct Map {
     /* 42 */ le_uint16_t uparam2;
     /* 44 */ le_uint32_t unused; // Reserved for pointer in client's memory; unused by server
     /* 48 */
+
+    std::string str() const;
   } __attribute__((packed));
 
   struct EventsSectionHeader { // Section type 3 (WAVE_EVENTS)
@@ -265,6 +269,15 @@ struct Map {
       uint32_t rare_seed,
       const RareEnemyRates& rare_rates = Map::DEFAULT_RARE_ENEMIES);
 
+  struct DATSectionsForFloor {
+    uint32_t objects = 0xFFFFFFFF;
+    uint32_t enemies = 0xFFFFFFFF;
+    uint32_t wave_events = 0xFFFFFFFF;
+    uint32_t random_enemy_locations = 0xFFFFFFFF;
+    uint32_t random_enemy_definitions = 0xFFFFFFFF;
+  };
+  static std::vector<DATSectionsForFloor> collect_quest_map_data_sections(const void* data, size_t size);
+
   void add_enemies_and_objects_from_quest_data(
       Episode episode,
       uint8_t difficulty,
@@ -273,6 +286,8 @@ struct Map {
       size_t size,
       uint32_t rare_seed,
       const RareEnemyRates& rare_rates = Map::DEFAULT_RARE_ENEMIES);
+
+  static std::string disassemble_quest_data(const void* data, size_t size);
 };
 
 // TODO: This class is currently unused. It would be nice if we could use this
