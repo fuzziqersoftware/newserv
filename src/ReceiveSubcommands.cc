@@ -2267,6 +2267,7 @@ static void on_battle_restart_bb(shared_ptr<Client> c, uint8_t, uint8_t, const v
     shared_ptr<BattleRules> new_rules(new BattleRules(cmd.rules));
     if (l->item_creator) {
       l->item_creator->set_restrictions(new_rules);
+      l->item_creator->clear_destroyed_entities();
     }
 
     for (auto& lc : l->clients) {
@@ -2276,9 +2277,6 @@ static void on_battle_restart_bb(shared_ptr<Client> c, uint8_t, uint8_t, const v
       }
     }
     l->map->clear();
-    if (l->item_creator) {
-      l->item_creator->clear_destroyed_entities();
-    }
   }
 }
 

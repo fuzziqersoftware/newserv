@@ -1841,10 +1841,7 @@ void set_lobby_quest(shared_ptr<Lobby> l, shared_ptr<const Quest> q) {
   l->quest = q;
   l->episode = q->episode;
   if (l->item_creator) {
-    l->item_creator->clear_destroyed_entities();
-    if (q->battle_rules) {
-      l->item_creator->set_restrictions(q->battle_rules);
-    }
+    l->create_item_creator();
   }
 
   for (size_t client_id = 0; client_id < l->max_clients; client_id++) {
