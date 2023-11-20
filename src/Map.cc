@@ -417,7 +417,10 @@ void Map::add_enemy(
           this->add_enemy(floor, EnemyType::EPSIGUARD);
         }
       } else {
-        this->add_enemy(floor, (e.uparam1 & 0x01) ? EnemyType::SINOW_ZELE : EnemyType::SINOW_ZOA);
+        EnemyType type = (e.uparam1 & 0x01) ? EnemyType::SINOW_ZELE : EnemyType::SINOW_ZOA;
+        for (size_t z = 0; z < e.num_children + 1; z++) {
+          this->add_enemy(floor, type);
+        }
       }
       break;
     case 0xE1:
