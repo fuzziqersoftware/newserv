@@ -3230,7 +3230,7 @@ void send_all_nearby_team_metadatas_to_client(shared_ptr<Client> c, bool is_13EA
       entries.emplace_back(team_metadata_for_client(lc));
     }
   }
-  send_command_vt(l, is_13EA ? 0x13EA : 0x15EA, entries.size(), entries);
+  send_command_vt(c, is_13EA ? 0x13EA : 0x15EA, entries.size(), entries);
 }
 
 void send_update_team_reward_flags(std::shared_ptr<Client> c) {
@@ -3271,22 +3271,7 @@ void send_team_rank_info(std::shared_ptr<Client> c) {
   cmd.num_entries = team->num_members();
 
   vector<S_TeamRankingInformation_BB_18EA::Entry> entries;
-  auto& e1 = entries.emplace_back();
-  e1.unknown_a1 = 1;
-  e1.privilege_level = 0x00;
-  e1.guild_card_number = 0x55555555;
-  e1.player_name.encode("TeamRappy");
-  auto& e2 = entries.emplace_back();
-  e2.unknown_a1 = 2;
-  e2.privilege_level = 0x30;
-  e2.guild_card_number = 0x66666666;
-  e2.player_name.encode("TeamRappy");
-  auto& e3 = entries.emplace_back();
-  e3.unknown_a1 = 3;
-  e3.privilege_level = 0x40;
-  e3.guild_card_number = 0x77777777;
-  e3.player_name.encode("TeamRappy");
-  // TODO NOCOMMIT: write this function for realz
+  // TODO: FIll in entries here
 
   send_command_t_vt(c, 0x18EA, 0x00000000, cmd, entries);
 }
