@@ -16,6 +16,8 @@ const char* name_for_enum<EnemyType>(EnemyType type) {
       return "UNKNOWN";
     case EnemyType::NONE:
       return "NONE";
+    case EnemyType::NON_ENEMY_NPC:
+      return "NON_ENEMY_NPC";
     case EnemyType::AL_RAPPY:
       return "AL_RAPPY";
     case EnemyType::ASTARK:
@@ -274,6 +276,7 @@ EnemyType enum_for_name<EnemyType>(const char* name) {
   static const unordered_map<string, EnemyType> names({
       {"UNKNOWN", EnemyType::UNKNOWN},
       {"NONE", EnemyType::NONE},
+      {"NON_ENEMY_NPC", EnemyType::NON_ENEMY_NPC},
       {"AL_RAPPY", EnemyType::AL_RAPPY},
       {"ASTARK", EnemyType::ASTARK},
       {"BA_BOOTA", EnemyType::BA_BOOTA},

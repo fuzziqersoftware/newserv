@@ -67,16 +67,17 @@ string Map::EnemyEntry::str() const {
       this->unused.load());
 }
 
-Map::Enemy::Enemy(uint8_t floor, EnemyType type)
-    : type(type),
+Map::Enemy::Enemy(size_t source_index, uint8_t floor, EnemyType type)
+    : source_index(source_index),
+      type(type),
       floor(floor),
       flags(0),
       last_hit_by_client_id(0) {
 }
 
 string Map::Enemy::str() const {
-  return string_printf("[Map::Enemy %s flags=%02hhX last_hit_by_client_id=%hu]",
-      name_for_enum(this->type), this->flags, this->last_hit_by_client_id);
+  return string_printf("[Map::Enemy source %zX %s flags=%02hhX last_hit_by_client_id=%hu]",
+      this->source_index, name_for_enum(this->type), this->flags, this->last_hit_by_client_id);
 }
 
 string Map::Object::str(shared_ptr<const ItemNameIndex> name_index) const {
@@ -88,11 +89,11 @@ string Map::Object::str(shared_ptr<const ItemNameIndex> name_index) const {
     } catch (const exception& e) {
       item_name = string_printf("(failed: %s)", e.what());
     }
-    return string_printf("[Map::Object %04hX @%04hX p1=%g (specialized: %s) floor=%02hhX item_drop_checked=%s]",
-        this->base_type, this->section, this->param1, item_name.c_str(), this->floor, this->item_drop_checked ? "true" : "false");
+    return string_printf("[Map::Object source %zX %04hX @%04hX p1=%g (specialized: %s) floor=%02hhX item_drop_checked=%s]",
+        this->source_index, this->base_type, this->section, this->param1, item_name.c_str(), this->floor, this->item_drop_checked ? "true" : "false");
   } else {
-    return string_printf("[Map::Object %04hX @%04hX p1=%g (generic) p456=[%08" PRIX32 " %08" PRIX32 " %08" PRIX32 "] floor=%02hhX item_drop_checked=%s]",
-        this->base_type, this->section, this->param1, this->param4, this->param5, this->param6,
+    return string_printf("[Map::Object source %zX %04hX @%04hX p1=%g (generic) p456=[%08" PRIX32 " %08" PRIX32 " %08" PRIX32 "] floor=%02hhX item_drop_checked=%s]",
+        this->source_index, this->base_type, this->section, this->param1, this->param4, this->param5, this->param6,
         this->floor, this->item_drop_checked ? "true" : "false");
   }
 }
@@ -112,6 +113,7 @@ void Map::add_objects_from_map_data(uint8_t floor, const void* data, size_t size
   const auto* objects = reinterpret_cast<const ObjectEntry*>(data);
   for (size_t z = 0; z < entry_count; z++) {
     this->objects.emplace_back(Object{
+        .source_index = z,
         .base_type = objects[z].base_type,
         .section = objects[z].section,
         .param1 = objects[z].param1,
@@ -136,11 +138,6 @@ bool Map::check_and_log_rare_enemy(bool default_is_rare, uint32_t rare_rate) {
   return false;
 }
 
-void Map::add_enemy(uint8_t floor, EnemyType type) {
-  static_game_data_log.info("Adding enemy %02hhX:E-%zX => %s", floor, this->enemies.size(), name_for_enum(type));
-  this->enemies.emplace_back(floor, type);
-}
-
 void Map::add_enemy(
     Episode episode,
     uint8_t difficulty,
@@ -149,42 +146,112 @@ void Map::add_enemy(
     size_t index,
     const EnemyEntry& e,
     const RareEnemyRates& rare_rates) {
+  auto add = [&](EnemyType type) -> void {
+    this->enemies.emplace_back(index, floor, type);
+  };
+
+  EnemyType child_type = EnemyType::UNKNOWN;
+  ssize_t default_num_children = 0;
   switch (e.base_type) {
-    case 0x40: {
-      bool is_rare = this->check_and_log_rare_enemy(e.uparam1 & 0x01, rare_rates.hildeblue);
-      this->add_enemy(floor, is_rare ? EnemyType::HILDEBLUE : EnemyType::HILDEBEAR);
+    case 0x0001: // TObjNpcFemaleBase
+    case 0x0002: // TObjNpcFemaleChild
+    case 0x0003: // TObjNpcFemaleDwarf
+    case 0x0004: // TObjNpcFemaleFat
+    case 0x0005: // TObjNpcFemaleMacho
+    case 0x0006: // TObjNpcFemaleOld
+    case 0x0007: // TObjNpcFemaleTall
+    case 0x0008: // TObjNpcMaleBase
+    case 0x0009: // TObjNpcMaleChild
+    case 0x000A: // TObjNpcMaleDwarf
+    case 0x000B: // TObjNpcMaleFat
+    case 0x000C: // TObjNpcMaleMacho
+    case 0x000D: // TObjNpcMaleOld
+    case 0x000E: // TObjNpcMaleTall
+    case 0x0019: // TObjNpcSoldierBase
+    case 0x001A: // TObjNpcSoldierMacho
+    case 0x001B: // TObjNpcGovernorBase
+    case 0x001C: // TObjNpcConnoisseur
+    case 0x001D: // TObjNpcCloakroomBase
+    case 0x001E: // TObjNpcExpertBase
+    case 0x001F: // TObjNpcNurseBase
+    case 0x0020: // TObjNpcSecretaryBase
+    case 0x0021: // TObjNpcHHM00
+    case 0x0022: // TObjNpcNHW00
+    case 0x0024: // TObjNpcHRM00
+    case 0x0025: // TObjNpcARM00
+    case 0x0026: // TObjNpcARW00
+    case 0x0027: // TObjNpcHFW00
+    case 0x0028: // TObjNpcNFM00
+    case 0x0029: // TObjNpcNFW00
+    case 0x002B: // TObjNpcNHW01
+    case 0x002C: // TObjNpcAHM01
+    case 0x002D: // TObjNpcHRM01
+    case 0x0030: // TObjNpcHFW01
+    case 0x0031: // TObjNpcNFM01
+    case 0x0032: // TObjNpcNFW01
+    case 0x0033: // TObjNpcEnemy
+    case 0x0045: // TObjNpcLappy
+    case 0x0046: // TObjNpcMoja
+    case 0x00A9: // TObjNpcBringer
+    case 0x00D0: // TObjNpcKenkyu
+    case 0x00D1: // TObjNpcSoutokufu
+    case 0x00D2: // TObjNpcHosa
+    case 0x00D3: // TObjNpcKenkyuW
+    case 0x00F0: // TObjNpcHosa2
+    case 0x00F1: // TObjNpcKenkyu2
+    case 0x00F2: // TObjNpcNgcBase
+    case 0x00F3: // TObjNpcNgcBase
+    case 0x00F4: // TObjNpcNgcBase
+    case 0x00F5: // TObjNpcNgcBase
+    case 0x00F6: // TObjNpcNgcBase
+    case 0x00F7: // TObjNpcNgcBase
+    case 0x00F8: // TObjNpcNgcBase
+    case 0x00F9: // TObjNpcNgcBase
+    case 0x00FA: // TObjNpcNgcBase
+    case 0x00FB: // TObjNpcNgcBase
+    case 0x00FC: // TObjNpcNgcBase
+    case 0x00FD: // TObjNpcNgcBase
+    case 0x00FE: // TObjNpcNgcBase
+    case 0x00FF: // TObjNpcNgcBase
+      // All of these have a default child count of zero
+      add(EnemyType::NON_ENEMY_NPC);
       break;
-    }
-    case 0x41: {
+
+    case 0x0040: // TObjEneMoja
+      add(this->check_and_log_rare_enemy(e.uparam1 & 0x01, rare_rates.hildeblue)
+              ? EnemyType::HILDEBLUE
+              : EnemyType::HILDEBEAR);
+      break;
+    case 0x0041: { // TObjEneLappy
       bool is_rare = this->check_and_log_rare_enemy(e.uparam1 & 0x01, rare_rates.rappy);
       switch (episode) {
         case Episode::EP1:
-          this->add_enemy(floor, is_rare ? EnemyType::AL_RAPPY : EnemyType::RAG_RAPPY);
+          add(is_rare ? EnemyType::AL_RAPPY : EnemyType::RAG_RAPPY);
           break;
         case Episode::EP2:
           if (is_rare) {
             switch (event) {
               case 0x01:
-                this->add_enemy(floor, EnemyType::SAINT_RAPPY);
+                add(EnemyType::SAINT_RAPPY);
                 break;
               case 0x04:
-                this->add_enemy(floor, EnemyType::EGG_RAPPY);
+                add(EnemyType::EGG_RAPPY);
                 break;
               case 0x05:
-                this->add_enemy(floor, EnemyType::HALLO_RAPPY);
+                add(EnemyType::HALLO_RAPPY);
                 break;
               default:
-                this->add_enemy(floor, EnemyType::LOVE_RAPPY);
+                add(EnemyType::LOVE_RAPPY);
             }
           } else {
-            this->add_enemy(floor, EnemyType::RAG_RAPPY);
+            add(EnemyType::RAG_RAPPY);
           }
           break;
         case Episode::EP4:
           if (e.floor > 0x05) {
-            this->add_enemy(floor, is_rare ? EnemyType::DEL_RAPPY_ALT : EnemyType::SAND_RAPPY_ALT);
+            add(is_rare ? EnemyType::DEL_RAPPY_ALT : EnemyType::SAND_RAPPY_ALT);
           } else {
-            this->add_enemy(floor, is_rare ? EnemyType::DEL_RAPPY : EnemyType::SAND_RAPPY);
+            add(is_rare ? EnemyType::DEL_RAPPY : EnemyType::SAND_RAPPY);
           }
           break;
         default:
@@ -192,302 +259,321 @@ void Map::add_enemy(
       }
       break;
     }
-    case 0x42: {
-      this->add_enemy(floor, EnemyType::MONEST);
-      for (size_t x = 0; x < 30; x++) {
-        this->add_enemy(floor, EnemyType::MOTHMANT);
-      }
+    case 0x0042: // TObjEneBm3FlyNest
+      add(EnemyType::MONEST);
+      default_num_children = 30;
       break;
-    }
-    case 0x43: {
-      this->add_enemy(floor, e.fparam2 ? EnemyType::BARBAROUS_WOLF : EnemyType::SAVAGE_WOLF);
+    case 0x0043: // TObjEneBm5Wolf
+      add(e.fparam2 ? EnemyType::BARBAROUS_WOLF : EnemyType::SAVAGE_WOLF);
       break;
-    }
-    case 0x44:
+    case 0x0044: { // TObjEneBeast
       static const EnemyType types[3] = {EnemyType::BOOMA, EnemyType::GOBOOMA, EnemyType::GIGOBOOMA};
-      this->add_enemy(floor, types[e.uparam1 % 3]);
+      add(types[e.uparam1 % 3]);
       break;
-    case 0x60:
-      this->add_enemy(floor, EnemyType::GRASS_ASSASSIN);
+    }
+    case 0x0060: // TObjGrass
+      add(EnemyType::GRASS_ASSASSIN);
       break;
-    case 0x61:
+    case 0x0061: // TObjEneRe2Flower
       if ((episode == Episode::EP2) && (e.floor > 0x0F)) {
-        this->add_enemy(floor, EnemyType::DEL_LILY);
+        add(EnemyType::DEL_LILY);
       } else {
-        bool is_rare = this->check_and_log_rare_enemy(e.uparam1 & 0x01, rare_rates.nar_lily);
-        this->add_enemy(floor, is_rare ? EnemyType::NAR_LILY : EnemyType::POISON_LILY);
+        add(this->check_and_log_rare_enemy(e.uparam1 & 0x01, rare_rates.nar_lily)
+                ? EnemyType::NAR_LILY
+                : EnemyType::POISON_LILY);
       }
       break;
-    case 0x62:
-      this->add_enemy(floor, EnemyType::NANO_DRAGON);
+    case 0x0062: // TObjEneNanoDrago
+      add(EnemyType::NANO_DRAGON);
       break;
-    case 0x63: {
+    case 0x0063: { // TObjEneShark
       static const EnemyType types[3] = {EnemyType::EVIL_SHARK, EnemyType::PAL_SHARK, EnemyType::GUIL_SHARK};
-      this->add_enemy(floor, types[e.uparam1 % 3]);
+      add(types[e.uparam1 % 3]);
       break;
     }
-    case 0x64: {
-      bool is_rare = this->check_and_log_rare_enemy(e.uparam1 & 0x01, rare_rates.pouilly_slime);
-      for (size_t x = 0; x < 5; x++) { // Main slime + 4 clones
-        this->add_enemy(floor, is_rare ? EnemyType::POFUILLY_SLIME : EnemyType::POUILLY_SLIME);
+    case 0x0064: // TObjEneSlime
+      add(this->check_and_log_rare_enemy(e.uparam1 & 0x01, rare_rates.pouilly_slime)
+              ? EnemyType::POFUILLY_SLIME
+              : EnemyType::POUILLY_SLIME);
+      default_num_children = 4;
+      break;
+    case 0x0065: // TObjEnePanarms
+      if ((e.num_children != 0) && (e.num_children != 2)) {
+        static_game_data_log.warning("PAN_ARMS has an unusual num_children (0x%hX)", e.num_children.load());
       }
+      default_num_children = -1; // Skip adding children (because we do it here)
+      add(EnemyType::PAN_ARMS);
+      add(EnemyType::HIDOOM);
+      add(EnemyType::MIGIUM);
       break;
-    }
-    case 0x65:
-      this->add_enemy(floor, EnemyType::PAN_ARMS);
-      this->add_enemy(floor, EnemyType::HIDOOM);
-      this->add_enemy(floor, EnemyType::MIGIUM);
+    case 0x0080: // TObjEneDubchik
+      add((e.uparam1 & 0x01) ? EnemyType::GILLCHIC : EnemyType::DUBCHIC);
       break;
-    case 0x80:
-      this->add_enemy(floor, (e.uparam1 & 0x01) ? EnemyType::GILLCHIC : EnemyType::DUBCHIC);
+    case 0x0081: // TObjEneGyaranzo
+      add(EnemyType::GARANZ);
       break;
-    case 0x81:
-      this->add_enemy(floor, EnemyType::GARANZ);
+    case 0x0082: // TObjEneMe3ShinowaReal
+      add(e.fparam2 ? EnemyType::SINOW_GOLD : EnemyType::SINOW_BEAT);
+      default_num_children = 4;
       break;
-    case 0x82: {
-      EnemyType type = e.fparam2 ? EnemyType::SINOW_GOLD : EnemyType::SINOW_BEAT;
-      size_t count = (e.num_children == 0) ? 5 : (e.num_children + 1);
-      for (size_t z = 0; z < count; z++) {
-        this->add_enemy(floor, type);
+    case 0x0083: // TObjEneMe1Canadin
+      add(EnemyType::CANADINE);
+      break;
+    case 0x0084: // TObjEneMe1CanadinLeader
+      add(EnemyType::CANANE);
+      child_type = EnemyType::CANADINE_GROUP;
+      default_num_children = 8;
+      break;
+    case 0x0085: // TOCtrlDubchik
+      add(EnemyType::DUBWITCH);
+      break;
+    case 0x00A0: // TObjEneSaver
+      add(EnemyType::DELSABER);
+      break;
+    case 0x00A1: // TObjEneRe4Sorcerer
+      if ((e.num_children != 0) && (e.num_children != 2)) {
+        static_game_data_log.warning("CHAOS_SORCERER has an unusual num_children (0x%hX)", e.num_children.load());
       }
+      default_num_children = -1; // Skip adding children (because we do it here)
+      add(EnemyType::CHAOS_SORCERER);
+      add(EnemyType::BEE_R);
+      add(EnemyType::BEE_L);
       break;
-    }
-    case 0x83:
-      this->add_enemy(floor, EnemyType::CANADINE);
+    case 0x00A2: // TObjEneDarkGunner
+      add(EnemyType::DARK_GUNNER);
       break;
-    case 0x84:
-      this->add_enemy(floor, EnemyType::CANANE);
-      for (size_t x = 0; x < 8; x++) {
-        this->add_enemy(floor, EnemyType::CANADINE_GROUP);
-      }
+    case 0x00A3: // TObjEneDarkGunCenter
+      add(EnemyType::DEATH_GUNNER);
       break;
-    case 0x85:
-      this->add_enemy(floor, EnemyType::DUBWITCH);
+    case 0x00A4: // TObjEneDf2Bringer
+      add(EnemyType::CHAOS_BRINGER);
       break;
-    case 0xA0:
-      this->add_enemy(floor, EnemyType::DELSABER);
+    case 0x00A5: // TObjEneRe7Berura
+      add(EnemyType::DARK_BELRA);
       break;
-    case 0xA1:
-      this->add_enemy(floor, EnemyType::CHAOS_SORCERER);
-      this->add_enemy(floor, EnemyType::BEE_R);
-      this->add_enemy(floor, EnemyType::BEE_L);
-      break;
-    case 0xA2:
-      this->add_enemy(floor, EnemyType::DARK_GUNNER);
-      break;
-    case 0xA3:
-      this->add_enemy(floor, EnemyType::DEATH_GUNNER);
-      break;
-    case 0xA4:
-      this->add_enemy(floor, EnemyType::CHAOS_BRINGER);
-      break;
-    case 0xA5:
-      this->add_enemy(floor, EnemyType::DARK_BELRA);
-      break;
-    case 0xA6: {
+    case 0x00A6: { // TObjEneDimedian
       static const EnemyType types[3] = {EnemyType::DIMENIAN, EnemyType::LA_DIMENIAN, EnemyType::SO_DIMENIAN};
-      this->add_enemy(floor, types[e.uparam1 % 3]);
+      add(types[e.uparam1 % 3]);
       break;
     }
-    case 0xA7:
-      this->add_enemy(floor, EnemyType::BULCLAW);
-      for (size_t x = 0; x < 4; x++) {
-        this->add_enemy(floor, EnemyType::CLAW);
-      }
+    case 0x00A7: // TObjEneBalClawBody
+      add(EnemyType::BULCLAW);
+      child_type = EnemyType::CLAW;
+      default_num_children = 4;
       break;
-    case 0xA8:
-      this->add_enemy(floor, EnemyType::CLAW);
+    case 0x00A8: // Unnamed subclass of TObjEneBalClawClaw
+      add(EnemyType::CLAW);
       break;
-    case 0xC0:
+    case 0x00C0: // TBoss1Dragon or TBoss5Gryphon
       if (episode == Episode::EP1) {
-        this->add_enemy(floor, EnemyType::DRAGON);
+        add(EnemyType::DRAGON);
       } else if (episode == Episode::EP2) {
-        this->add_enemy(floor, EnemyType::GAL_GRYPHON);
+        add(EnemyType::GAL_GRYPHON);
       } else {
-        throw runtime_error("DRAGON-type enemy placed outside of Episodes 1 or 2");
+        throw runtime_error("DRAGON placed outside of Episode 1 or 2");
       }
       break;
-    case 0xC1:
-      this->add_enemy(floor, EnemyType::DE_ROL_LE);
+    case 0x00C1: // TBoss2DeRolLe
+      if ((e.num_children != 0) && (e.num_children != 0x13)) {
+        static_game_data_log.warning("DE_ROL_LE has an unusual num_children (0x%hX)", e.num_children.load());
+      }
+      default_num_children = -1; // Skip adding children (because we do it here)
+      add(EnemyType::DE_ROL_LE);
       for (size_t z = 0; z < 0x0A; z++) {
-        this->add_enemy(floor, EnemyType::DE_ROL_LE_BODY);
+        add(EnemyType::DE_ROL_LE_BODY);
       }
       for (size_t z = 0; z < 0x09; z++) {
-        this->add_enemy(floor, EnemyType::DE_ROL_LE_MINE);
+        add(EnemyType::DE_ROL_LE_MINE);
       }
       break;
-    case 0xC2:
-      this->add_enemy(floor, EnemyType::VOL_OPT_1);
-      for (size_t z = 0; z < 6; z++) {
-        this->add_enemy(floor, EnemyType::VOL_OPT_PILLAR);
+    case 0x00C2: // TBoss3Volopt
+      if ((e.num_children != 0) && (e.num_children != 0x23)) {
+        static_game_data_log.warning("VOL_OPT has an unusual num_children (0x%hX)", e.num_children.load());
       }
-      for (size_t z = 0; z < 24; z++) {
-        this->add_enemy(floor, EnemyType::VOL_OPT_MONITOR);
+      default_num_children = -1; // Skip adding children (because we do it here)
+      add(EnemyType::VOL_OPT_1);
+      for (size_t z = 0; z < 0x06; z++) {
+        add(EnemyType::VOL_OPT_PILLAR);
       }
-      for (size_t z = 0; z < 2; z++) {
-        this->add_enemy(floor, EnemyType::NONE);
+      for (size_t z = 0; z < 0x18; z++) {
+        add(EnemyType::VOL_OPT_MONITOR);
       }
-      this->add_enemy(floor, EnemyType::VOL_OPT_AMP);
-      this->add_enemy(floor, EnemyType::VOL_OPT_CORE);
-      this->add_enemy(floor, EnemyType::NONE);
+      for (size_t z = 0; z < 0x02; z++) {
+        add(EnemyType::NONE);
+      }
+      add(EnemyType::VOL_OPT_AMP);
+      add(EnemyType::VOL_OPT_CORE);
+      add(EnemyType::NONE);
       break;
-    case 0xC5:
-      this->add_enemy(floor, EnemyType::VOL_OPT_2);
+    case 0x00C5: // Unnamed subclass of TObjEnemyCustom
+      add(EnemyType::VOL_OPT_2);
       break;
-    case 0xC8:
+    case 0x00C8: // TBoss4DarkFalz
+      if ((e.num_children != 0) && (e.num_children != 0x200)) {
+        static_game_data_log.warning("DARK_FALZ has an unusual num_children (0x%hX)", e.num_children.load());
+      }
+      default_num_children = -1; // Skip adding children (because we do it here)
       if (difficulty) {
-        this->add_enemy(floor, EnemyType::DARK_FALZ_3);
+        add(EnemyType::DARK_FALZ_3);
       } else {
-        this->add_enemy(floor, EnemyType::DARK_FALZ_2);
+        add(EnemyType::DARK_FALZ_2);
       }
       for (size_t x = 0; x < 0x1FD; x++) {
-        this->add_enemy(floor, difficulty == 3 ? EnemyType::DARVANT_ULTIMATE : EnemyType::DARVANT);
+        add(difficulty == 3 ? EnemyType::DARVANT_ULTIMATE : EnemyType::DARVANT);
       }
-      this->add_enemy(floor, EnemyType::DARK_FALZ_3);
-      this->add_enemy(floor, EnemyType::DARK_FALZ_2);
-      this->add_enemy(floor, EnemyType::DARK_FALZ_1);
+      add(EnemyType::DARK_FALZ_3);
+      add(EnemyType::DARK_FALZ_2);
+      add(EnemyType::DARK_FALZ_1);
       break;
-    case 0xCA:
-      for (size_t z = 0; z < 0x201; z++) {
-        this->add_enemy(floor, EnemyType::OLGA_FLOW_2);
-      }
+    case 0x00CA: // TBoss6PlotFalz
+      add(EnemyType::OLGA_FLOW_2);
+      default_num_children = 0x200;
       break;
-    case 0xCB:
-      this->add_enemy(floor, EnemyType::BARBA_RAY);
-      for (size_t z = 0; z < 0x2F; z++) {
-        this->add_enemy(floor, EnemyType::PIG_RAY);
-      }
+    case 0x00CB: // TBoss7DeRolLeC
+      add(EnemyType::BARBA_RAY);
+      child_type = EnemyType::PIG_RAY;
+      default_num_children = 0x2F;
       break;
-    case 0xCC:
-      for (size_t z = 0; z < 6; z++) {
-        this->add_enemy(floor, EnemyType::GOL_DRAGON);
-      }
+    case 0x00CC: // TBoss8Dragon
+      add(EnemyType::GOL_DRAGON);
+      default_num_children = 5;
       break;
-    case 0xD4: {
-      EnemyType type = (e.uparam1 & 1) ? EnemyType::SINOW_SPIGELL : EnemyType::SINOW_BERILL;
-      for (size_t z = 0; z < 5; z++) {
-        this->add_enemy(floor, type);
-      }
+    case 0x00D4: // TObjEneMe3StelthReal
+      add((e.uparam1 & 1) ? EnemyType::SINOW_SPIGELL : EnemyType::SINOW_BERILL);
+      default_num_children = 4;
       break;
-    }
-    case 0xD5:
-      this->add_enemy(floor, (e.uparam1 & 0x01) ? EnemyType::MERILTAS : EnemyType::MERILLIA);
+    case 0x00D5: // TObjEneMerillLia
+      add((e.uparam1 & 0x01) ? EnemyType::MERILTAS : EnemyType::MERILLIA);
       break;
-    case 0xD6:
+    case 0x00D6: // TObjEneBm9Mericarol
       if (e.uparam1 == 0) {
-        this->add_enemy(floor, EnemyType::MERICAROL);
+        add(EnemyType::MERICAROL);
       } else {
-        this->add_enemy(floor, ((e.uparam1 % 3) == 2) ? EnemyType::MERICUS : EnemyType::MERIKLE);
+        add(((e.uparam1 % 3) == 2) ? EnemyType::MERICUS : EnemyType::MERIKLE);
       }
       break;
-    case 0xD7:
-      this->add_enemy(floor, (e.uparam1 & 0x01) ? EnemyType::ZOL_GIBBON : EnemyType::UL_GIBBON);
+    case 0x00D7: // TObjEneBm5GibonU
+      add((e.uparam1 & 0x01) ? EnemyType::ZOL_GIBBON : EnemyType::UL_GIBBON);
       break;
-    case 0xD8:
-      this->add_enemy(floor, EnemyType::GIBBLES);
+    case 0x00D8: // TObjEneGibbles
+      add(EnemyType::GIBBLES);
       break;
-    case 0xD9:
-      this->add_enemy(floor, EnemyType::GEE);
+    case 0x00D9: // TObjEneMe1Gee
+      add(EnemyType::GEE);
       break;
-    case 0xDA:
-      this->add_enemy(floor, EnemyType::GI_GUE);
+    case 0x00DA: // TObjEneMe1GiGue
+      add(EnemyType::GI_GUE);
       break;
-    case 0xDB:
-      this->add_enemy(floor, EnemyType::DELDEPTH);
+    case 0x00DB: // TObjEneDelDepth
+      add(EnemyType::DELDEPTH);
       break;
-    case 0xDC:
-      this->add_enemy(floor, EnemyType::DELBITER);
+    case 0x00DC: // TObjEneDellBiter
+      add(EnemyType::DELBITER);
       break;
-    case 0xDD:
-      this->add_enemy(floor, (e.uparam1 & 0x01) ? EnemyType::DOLMDARL : EnemyType::DOLMOLM);
+    case 0x00DD: // TObjEneDolmOlm
+      add(e.uparam1 ? EnemyType::DOLMDARL : EnemyType::DOLMOLM);
       break;
-    case 0xDE:
-      this->add_enemy(floor, EnemyType::MORFOS);
+    case 0x00DE: // TObjEneMorfos
+      add(EnemyType::MORFOS);
       break;
-    case 0xDF:
-      this->add_enemy(floor, EnemyType::RECOBOX);
-      for (size_t x = 0; x < e.num_children; x++) {
-        this->add_enemy(floor, EnemyType::RECON);
-      }
+    case 0x00DF: // TObjEneRecobox
+      add(EnemyType::RECOBOX);
+      child_type = EnemyType::RECON;
       break;
-    case 0xE0:
+    case 0x00E0: // TObjEneMe3SinowZoaReal or TObjEneEpsilonBody
       if ((episode == Episode::EP2) && (e.floor > 0x0F)) {
-        this->add_enemy(floor, EnemyType::EPSILON);
-        for (size_t z = 0; z < 4; z++) {
-          this->add_enemy(floor, EnemyType::EPSIGUARD);
-        }
+        add(EnemyType::EPSILON);
+        default_num_children = 4;
+        child_type = EnemyType::EPSIGUARD;
       } else {
-        EnemyType type = (e.uparam1 & 0x01) ? EnemyType::SINOW_ZELE : EnemyType::SINOW_ZOA;
-        size_t count = e.num_children + 1;
-        for (size_t z = 0; z < count; z++) {
-          this->add_enemy(floor, type);
-        }
+        add((e.uparam1 & 0x01) ? EnemyType::SINOW_ZELE : EnemyType::SINOW_ZOA);
       }
       break;
-    case 0xE1:
-      this->add_enemy(floor, EnemyType::ILL_GILL);
+    case 0x00E1: // TObjEneIllGill
+      add(EnemyType::ILL_GILL);
       break;
     case 0x0110:
-      this->add_enemy(floor, EnemyType::ASTARK);
+      add(EnemyType::ASTARK);
       break;
     case 0x0111:
       if (e.floor > 0x05) {
-        this->add_enemy(floor, e.fparam2 ? EnemyType::YOWIE_ALT : EnemyType::SATELLITE_LIZARD_ALT);
+        add(e.fparam2 ? EnemyType::YOWIE_ALT : EnemyType::SATELLITE_LIZARD_ALT);
       } else {
-        this->add_enemy(floor, e.fparam2 ? EnemyType::YOWIE : EnemyType::SATELLITE_LIZARD);
+        add(e.fparam2 ? EnemyType::YOWIE : EnemyType::SATELLITE_LIZARD);
       }
       break;
-    case 0x0112: {
-      bool is_rare = this->check_and_log_rare_enemy(e.uparam1 & 0x01, rare_rates.merissa_aa);
-      this->add_enemy(floor, is_rare ? EnemyType::MERISSA_AA : EnemyType::MERISSA_A);
+    case 0x0112:
+      add(this->check_and_log_rare_enemy(e.uparam1 & 0x01, rare_rates.merissa_aa)
+              ? EnemyType::MERISSA_AA
+              : EnemyType::MERISSA_A);
       break;
-    }
     case 0x0113:
-      this->add_enemy(floor, EnemyType::GIRTABLULU);
+      add(EnemyType::GIRTABLULU);
       break;
     case 0x0114: {
       bool is_rare = this->check_and_log_rare_enemy(e.uparam1 & 0x01, rare_rates.pazuzu);
       if (e.floor > 0x05) {
-        this->add_enemy(floor, is_rare ? EnemyType::PAZUZU_ALT : EnemyType::ZU_ALT);
+        add(is_rare ? EnemyType::PAZUZU_ALT : EnemyType::ZU_ALT);
       } else {
-        this->add_enemy(floor, is_rare ? EnemyType::PAZUZU : EnemyType::ZU);
+        add(is_rare ? EnemyType::PAZUZU : EnemyType::ZU);
       }
       break;
     }
     case 0x0115:
       if (e.uparam1 & 2) {
-        this->add_enemy(floor, EnemyType::BA_BOOTA);
+        add(EnemyType::BA_BOOTA);
       } else {
-        this->add_enemy(floor, (e.uparam1 & 1) ? EnemyType::ZE_BOOTA : EnemyType::BOOTA);
+        add((e.uparam1 & 1) ? EnemyType::ZE_BOOTA : EnemyType::BOOTA);
       }
       break;
-    case 0x0116: {
-      bool is_rare = this->check_and_log_rare_enemy(e.uparam1 & 0x01, rare_rates.dorphon_eclair);
-      this->add_enemy(floor, is_rare ? EnemyType::DORPHON_ECLAIR : EnemyType::DORPHON);
+    case 0x0116:
+      add(this->check_and_log_rare_enemy(e.uparam1 & 0x01, rare_rates.dorphon_eclair)
+              ? EnemyType::DORPHON_ECLAIR
+              : EnemyType::DORPHON);
       break;
-    }
     case 0x0117: {
       static const EnemyType types[3] = {EnemyType::GORAN, EnemyType::PYRO_GORAN, EnemyType::GORAN_DETONATOR};
-      this->add_enemy(floor, types[e.uparam1 % 3]);
+      add(types[e.uparam1 % 3]);
       break;
     }
     case 0x0119: {
       bool is_rare = this->check_and_log_rare_enemy((e.fparam2 != 0.0f), rare_rates.kondrieu);
       if (is_rare) {
-        this->add_enemy(floor, EnemyType::KONDRIEU);
+        add(EnemyType::KONDRIEU);
       } else {
-        this->add_enemy(floor, (e.uparam1 & 1) ? EnemyType::SHAMBERTIN : EnemyType::SAINT_MILLION);
+        add((e.uparam1 & 1) ? EnemyType::SHAMBERTIN : EnemyType::SAINT_MILLION);
       }
+      default_num_children = 0x18;
       break;
     }
-    default:
-      for (size_t z = 0; z < static_cast<size_t>(e.num_children + 1); z++) {
-        this->add_enemy(floor, EnemyType::UNKNOWN);
-      }
+
+    case 0x00C3: // TBoss3VoloptP01
+    case 0x00C4: // TBoss3VoloptCore or subclass
+    case 0x00C6: // TBoss3VoloptMonitor
+    case 0x00C7: // TBoss3VoloptHiraisin
+    case 0x0100:
+      add(EnemyType::UNKNOWN);
       static_game_data_log.warning(
           "(Entry %zu, offset %zX in file) Unknown enemy type %04hX",
           index, index * sizeof(EnemyEntry), e.base_type.load());
       break;
+
+    default:
+      add(EnemyType::UNKNOWN);
+      static_game_data_log.warning(
+          "(Entry %zu, offset %zX in file) Invalid enemy type %04hX",
+          index, index * sizeof(EnemyEntry), e.base_type.load());
+      break;
+  }
+
+  if (default_num_children >= 0) {
+    size_t num_children = e.num_children ? e.num_children.load() : default_num_children;
+    if ((child_type == EnemyType::UNKNOWN) && !this->enemies.empty()) {
+      child_type = this->enemies.back().type;
+    }
+    for (size_t x = 0; x < num_children; x++) {
+      add(child_type);
+    }
   }
 }
 

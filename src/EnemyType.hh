@@ -9,6 +9,7 @@
 enum class EnemyType {
   UNKNOWN = -1,
   NONE = 0,
+  NON_ENEMY_NPC,
   AL_RAPPY,
   ASTARK,
   BA_BOOTA,

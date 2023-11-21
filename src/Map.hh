@@ -200,6 +200,7 @@ struct Map {
   struct Object {
     // TODO: Add more fields in here if we ever care about them. Currently we
     // only care about boxes with fixed item drops.
+    size_t source_index;
     uint16_t base_type;
     uint16_t section;
     float param1; // If <= 0, this is a specialized box, and the specialization is in param4/5/6
@@ -222,12 +223,13 @@ struct Map {
       DEFEATED = 0x10,
       ITEM_DROPPED = 0x20,
     };
+    size_t source_index;
     EnemyType type;
     uint8_t floor;
     uint8_t flags;
     uint8_t last_hit_by_client_id;
 
-    Enemy(uint8_t floor, EnemyType type);
+    Enemy(size_t source_index, uint8_t floor, EnemyType type);
 
     std::string str() const;
   } __attribute__((packed));
@@ -241,7 +243,6 @@ struct Map {
   void add_objects_from_map_data(uint8_t floor, const void* data, size_t size);
 
   bool check_and_log_rare_enemy(bool default_is_rare, uint32_t rare_rate);
-  void add_enemy(uint8_t floor, EnemyType type);
   void add_enemy(
       Episode episode,
       uint8_t difficulty,
