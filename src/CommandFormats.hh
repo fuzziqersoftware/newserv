@@ -4555,21 +4555,26 @@ struct G_SyncObjectState_6x6C_Entry_Decompressed {
 // Compressed format is the same as 6x6B.
 
 // There is a bug in the client that can cause desync between players' item IDs
-// if the 6x6D command is sent too quickly. 6x6D is the first command sent by
-// the leader when a player joins a game, so the joining player often receives
-// it immediately after the 64 command. One of the first steps of the game join
-// process is to reset the next item ID variables for each player in the game,
-// which under normal operation, the 6x6D command overwrites with the values in
-// the next_item_id_per_player array. However, the loading process doesn't
-// actually start until the next frame after the 64 command is received, so if
-// the 6x6D command is received on the same frame as the 64 command, it will
-// set the next item ID variables correctly and the loading process will then
-// clear all of them on the next frame. The client will then assign its own
-// inventory item IDs based on the default base item ID, which will result in
-// incorrect IDs if another player had previously been in the game in the same
-// slot. To prevent this bug, we delay the 6x6D command and everything that
-// depends on it until the client responds to a ping command (sent along with
-// the 64 command).
+// if the 6x6D command is sent too quickly. Under normal operation, the client
+// keeps track of the next item ID to be assigned for items it creates, and uses
+// that to assign item IDs to its inventory items when it's done loading (just
+// before it sends the 6F command). The loading process triggered by the 64
+// (game join) command resets these next item ID variables to their default
+// values, and the 6x6D command sent by the leader resets them again to match
+// the corresponding variables in the leader's item state. However, the loading
+// process doesn't actually start until the next frame after the 64 command is
+// received, so if the 6x6D command is received on the same frame as the 64
+// command, it will set the next item ID variables correctly, and the loading
+// process will then clear all of them on the next frame. The client will then
+// assign its own inventory item IDs based on the default base item ID, which
+// will result in incorrect IDs if another player had previously been in the
+// game in the same slot (since the leader's next item ID for the joining player
+// will not match the default value). Fortunately, the game processes commands
+// in two phases: first, it receives as much data as possible, then it processes
+// as many commands as possible. So, to prevent this bug, we delay all commands
+// after a 64 is sent until the client responds to a ping command (sent
+// immediately after the 64 command), which ensures that the 64 and 6x6D
+// commands cannot be processed on the same frame.
 
 struct G_SyncItemState_6x6D_Decompressed {
   // TODO: Verify this format on DC and PC. It appears correct for GC and BB.
