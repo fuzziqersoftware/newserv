@@ -1822,6 +1822,70 @@ static void on_09(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
   }
 }
 
+static void on_quest_loaded(shared_ptr<Lobby> l) {
+  if (!l->quest) {
+    throw logic_error("on_quest_loaded called without a quest loaded");
+  }
+
+  auto s = l->require_server_state();
+  if ((l->base_version == GameVersion::BB) && l->map) {
+    auto leader_c = l->clients.at(l->leader_id);
+    if (!leader_c) {
+      throw logic_error("lobby leader is missing");
+    }
+
+    auto vq = l->quest->version(QuestScriptVersion::BB_V4, leader_c->language());
+    auto dat_contents = prs_decompress(*vq->dat_contents);
+    l->map->clear();
+    l->map->add_enemies_and_objects_from_quest_data(
+        l->episode,
+        l->difficulty,
+        l->event,
+        dat_contents.data(),
+        dat_contents.size(),
+        l->random_seed,
+        (l->mode == GameMode::CHALLENGE) ? Map::NO_RARE_ENEMIES : Map::DEFAULT_RARE_ENEMIES);
+    l->item_creator->clear_destroyed_entities();
+
+    l->log.info("Replaced objects list with quest layout (%zu entries)", l->map->objects.size());
+    for (size_t z = 0; z < l->map->objects.size(); z++) {
+      string o_str = l->map->objects[z].str(s->item_name_index);
+      l->log.info("(K-%zX) %s", z, o_str.c_str());
+    }
+    l->log.info("Replaced enemies list with quest layout (%zu entries)", l->map->enemies.size());
+    for (size_t z = 0; z < l->map->enemies.size(); z++) {
+      string e_str = l->map->enemies[z].str();
+      l->log.info("(E-%zX) %s", z, e_str.c_str());
+    }
+  }
+
+  for (auto& lc : l->clients) {
+    if (!lc) {
+      continue;
+    }
+
+    if ((lc->version() == GameVersion::BB) && l->map) {
+      send_rare_enemy_index_list(lc, l->map->rare_enemy_indexes);
+    }
+
+    // On non-BB versions, overlays are created when the quest starts because
+    // the server is not informed when the clients have replaced their player
+    // data. On BB, this is instead done in the 6xCF handler (for battle) or
+    // the 02DF handler (for challenge).
+    if (l->base_version != GameVersion::BB) {
+      lc->game_data.delete_overlay();
+      if (l->quest->battle_rules) {
+        lc->game_data.create_battle_overlay(l->quest->battle_rules, s->level_table);
+        lc->log.info("Created battle overlay");
+      } else if (l->quest->challenge_template_index >= 0) {
+        lc->game_data.create_challenge_overlay(lc->version(), l->quest->challenge_template_index, s->level_table);
+        lc->log.info("Created challenge overlay");
+        l->assign_inventory_item_ids(lc);
+      }
+    }
+  }
+}
+
 void set_lobby_quest(shared_ptr<Lobby> l, shared_ptr<const Quest> q) {
   if (!l->is_game()) {
     throw logic_error("non-game lobby cannot accept a quest");
@@ -1844,6 +1908,30 @@ void set_lobby_quest(shared_ptr<Lobby> l, shared_ptr<const Quest> q) {
     l->create_item_creator();
   }
 
+  // There is no such thing as command AC on PSO V1 and V2 - quests just start
+  // immediately when they're done downloading. (This is also the case on V3
+  // Trial Edition.) There are also no chunk acknowledgements (C->S 13 commands)
+  // like there are on GC. So, for pre-V3 clients, we can just not set the
+  // loading flag, since we never need to check/clear it later.
+  size_t num_clients_need_loading_flag = 0;
+  size_t num_clients_skip_loading_flag = 0;
+  for (auto lc : l->clients) {
+    if (!lc) {
+      continue;
+    }
+    if ((lc->version() != GameVersion::DC) &&
+        (lc->version() != GameVersion::PC) &&
+        !lc->config.check_flag(Client::Flag::IS_GC_TRIAL_EDITION)) {
+      num_clients_need_loading_flag++;
+    } else {
+      num_clients_skip_loading_flag++;
+    }
+  }
+  if ((num_clients_need_loading_flag == 0) == (num_clients_skip_loading_flag == 0)) {
+    throw runtime_error("not all clients in the lobby have the same loading flag behavior");
+  }
+  bool use_loading_flag = (num_clients_need_loading_flag != 0);
+
   for (size_t client_id = 0; client_id < l->max_clients; client_id++) {
     auto lc = l->clients[client_id];
     if (!lc) {
@@ -1863,20 +1951,16 @@ void set_lobby_quest(shared_ptr<Lobby> l, shared_ptr<const Quest> q) {
     send_open_quest_file(lc, bin_filename, bin_filename, xb_filename, vq->quest_number, QuestFileType::ONLINE, vq->bin_contents);
     send_open_quest_file(lc, dat_filename, dat_filename, xb_filename, vq->quest_number, QuestFileType::ONLINE, vq->dat_contents);
 
-    // There is no such thing as command AC on PSO V1 and V2 - quests just
-    // start immediately when they're done downloading. (This is also the
-    // case on V3 Trial Edition.) There are also no chunk acknowledgements
-    // (C->S 13 commands) like there are on GC. So, for pre-V3 clients, we
-    // can just not set the loading flag, since we never need to
-    // check/clear it later.
-    if ((lc->version() != GameVersion::DC) &&
-        (lc->version() != GameVersion::PC) &&
-        !lc->config.check_flag(Client::Flag::IS_GC_TRIAL_EDITION)) {
+    if (use_loading_flag) {
       lc->config.set_flag(Client::Flag::LOADING_QUEST);
       lc->disconnect_hooks.emplace(QUEST_BARRIER_DISCONNECT_HOOK_NAME, [l]() -> void {
         send_quest_barrier_if_all_clients_ready(l);
       });
     }
+  }
+
+  if (!use_loading_flag) {
+    on_quest_loaded(l);
   }
 }
 
@@ -2609,65 +2693,8 @@ static void on_AC_V3_BB(shared_ptr<Client> c, uint16_t, uint32_t, string& data) 
 
   } else if (c->config.check_flag(Client::Flag::LOADING_QUEST)) {
     c->config.clear_flag(Client::Flag::LOADING_QUEST);
-
-    if (!l->quest.get()) {
-      return;
-    }
-
-    if (send_quest_barrier_if_all_clients_ready(l) && l->quest) {
-      auto s = l->require_server_state();
-      auto vq = l->quest->version(QuestScriptVersion::BB_V4, c->language());
-
-      if ((l->base_version == GameVersion::BB) && l->map) {
-        auto dat_contents = prs_decompress(*vq->dat_contents);
-        l->map->clear();
-        l->map->add_enemies_and_objects_from_quest_data(
-            l->episode,
-            l->difficulty,
-            l->event,
-            dat_contents.data(),
-            dat_contents.size(),
-            l->random_seed,
-            (l->mode == GameMode::CHALLENGE) ? Map::NO_RARE_ENEMIES : Map::DEFAULT_RARE_ENEMIES);
-        l->item_creator->clear_destroyed_entities();
-
-        l->log.info("Replaced objects list with quest layout (%zu entries)", l->map->objects.size());
-        for (size_t z = 0; z < l->map->objects.size(); z++) {
-          string o_str = l->map->objects[z].str(s->item_name_index);
-          l->log.info("(K-%zX) %s", z, o_str.c_str());
-        }
-        l->log.info("Replaced enemies list with quest layout (%zu entries)", l->map->enemies.size());
-        for (size_t z = 0; z < l->map->enemies.size(); z++) {
-          string e_str = l->map->enemies[z].str();
-          l->log.info("(E-%zX) %s", z, e_str.c_str());
-        }
-      }
-
-      for (auto& lc : l->clients) {
-        if (!lc) {
-          continue;
-        }
-
-        if ((l->base_version == GameVersion::BB) && l->map) {
-          send_rare_enemy_index_list(lc, l->map->rare_enemy_indexes);
-        }
-
-        // On non-BB versions, overlays are created when the quest starts because
-        // the server is not informed when the clients have replaced their player
-        // data. On BB, this is instead done in the 6xCF handler (for battle) or
-        // the 02DF handler (for challenge).
-        if (l->base_version != GameVersion::BB) {
-          lc->game_data.delete_overlay();
-          if (vq->battle_rules) {
-            lc->game_data.create_battle_overlay(vq->battle_rules, s->level_table);
-            lc->log.info("Created battle overlay");
-          } else if (vq->challenge_template_index >= 0) {
-            lc->game_data.create_challenge_overlay(lc->version(), vq->challenge_template_index, s->level_table);
-            lc->log.info("Created challenge overlay");
-            l->assign_inventory_item_ids(lc);
-          }
-        }
-      }
+    if (l->quest && send_quest_barrier_if_all_clients_ready(l)) {
+      on_quest_loaded(l);
     }
   }
 }
