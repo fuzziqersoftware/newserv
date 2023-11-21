@@ -80,8 +80,8 @@ private:
   bool are_rare_drops_allowed() const;
   uint8_t normalize_area_number(uint8_t area) const;
 
-  ItemData on_monster_item_drop_with_norm_area(uint32_t enemy_type, uint8_t norm_area);
-  ItemData on_box_item_drop_with_norm_area(uint8_t area_norm);
+  ItemData on_monster_item_drop_with_area_norm(uint32_t enemy_type, uint8_t area_norm);
+  ItemData on_box_item_drop_with_area_norm(uint8_t area_norm);
 
   uint32_t rand_int(uint64_t max);
   float rand_float_0_1_from_crypt();
@@ -103,7 +103,7 @@ private:
   void set_item_unidentified_flag_if_not_challenge(ItemData& item) const;
   void set_tool_item_amount_to_1(ItemData& item) const;
 
-  void generate_common_item_variances(uint32_t norm_area, ItemData& item);
+  void generate_common_item_variances(uint32_t area_norm, ItemData& item);
   void generate_common_armor_slots_and_bonuses(ItemData& item);
   void generate_common_armor_slot_count(ItemData& item);
   void generate_common_armor_or_shield_type_and_variances(char area_norm, ItemData& item);

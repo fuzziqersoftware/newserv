@@ -65,47 +65,47 @@ uint8_t ItemCreator::normalize_area_number(uint8_t area) const {
         }
         switch (area) {
           case 11:
-            return 3; // Dragon -> Cave 1
+            return 2; // Dragon -> Cave 1
           case 12:
-            return 6; // De Rol Le -> Mine 1
+            return 5; // De Rol Le -> Mine 1
           case 13:
-            return 8; // Vol Opt -> Ruins 1
+            return 7; // Vol Opt -> Ruins 1
           case 14:
-            return 10; // Dark Falz -> Ruins 3
+            return 9; // Dark Falz -> Ruins 3
           default:
-            return area;
+            return area - 1;
         }
         throw logic_error("this should be impossible");
       case Episode::EP2: {
         static const vector<uint8_t> area_subs = {
-            0x01, // 13 (VR Temple Alpha)
-            0x02, // 14 (VR Temple Beta)
-            0x03, // 15 (VR Spaceship Alpha)
-            0x04, // 16 (VR Spaceship Beta)
-            0x08, // 17 (Central Control Area)
-            0x05, // 18 (Jungle North)
-            0x06, // 19 (Jungle South)
-            0x07, // 1A (Mountain)
-            0x08, // 1B (Seaside)
-            0x09, // 1C (Seabed Upper)
-            0x0A, // 1D (Seabed Lower)
-            0x09, // 1E (Gal Gryphon)
-            0x0A, // 1F (Olga Flow)
-            0x03, // 20 (Barba Ray)
-            0x05, // 21 (Gol Dragon)
-            0x08, // 22 (Seaside Night)
-            0x0A, // 23 (Tower)
+            0x00, // 13 (VR Temple Alpha)
+            0x01, // 14 (VR Temple Beta)
+            0x02, // 15 (VR Spaceship Alpha)
+            0x03, // 16 (VR Spaceship Beta)
+            0x07, // 17 (Central Control Area)
+            0x04, // 18 (Jungle North)
+            0x05, // 19 (Jungle South)
+            0x06, // 1A (Mountain)
+            0x07, // 1B (Seaside)
+            0x08, // 1C (Seabed Upper)
+            0x09, // 1D (Seabed Lower)
+            0x08, // 1E (Gal Gryphon)
+            0x09, // 1F (Olga Flow)
+            0x02, // 20 (Barba Ray)
+            0x04, // 21 (Gol Dragon)
+            0x07, // 22 (Seaside Night)
+            0x09, // 23 (Tower)
         };
         if ((area >= 0x13) && (area < 0x24)) {
           return area_subs.at(area - 0x13);
         }
-        return area;
+        return area - 1;
       }
       case Episode::EP4:
         if (area >= 0x24 && area < 0x2D) {
-          return area - 0x22;
+          return area - 0x23;
         }
-        return area;
+        throw runtime_error("invalid Episode 4 area number");
       default:
         throw logic_error("invalid episode number");
     }
@@ -117,17 +117,17 @@ uint8_t ItemCreator::normalize_area_number(uint8_t area) const {
 
 ItemData ItemCreator::on_box_item_drop(uint16_t entity_id, uint8_t area) {
   return this->destroyed_boxes.emplace(entity_id).second
-      ? this->on_box_item_drop_with_norm_area(this->normalize_area_number(area) - 1)
+      ? this->on_box_item_drop_with_area_norm(this->normalize_area_number(area))
       : ItemData();
 }
 
 ItemData ItemCreator::on_monster_item_drop(uint16_t entity_id, uint32_t enemy_type, uint8_t area) {
   return this->destroyed_monsters.emplace(entity_id).second
-      ? this->on_monster_item_drop_with_norm_area(enemy_type, this->normalize_area_number(area) - 1)
+      ? this->on_monster_item_drop_with_area_norm(enemy_type, this->normalize_area_number(area))
       : ItemData();
 }
 
-ItemData ItemCreator::on_box_item_drop_with_norm_area(uint8_t area_norm) {
+ItemData ItemCreator::on_box_item_drop_with_area_norm(uint8_t area_norm) {
   this->log.info("Box drop checks for area_norm %02hhX; random state: %08" PRIX32 " %08" PRIX32,
       area_norm, this->random_crypt.seed(), this->random_crypt.absolute_offset());
   ItemData item = this->check_rare_specs_and_create_rare_box_item(area_norm);
@@ -168,7 +168,7 @@ ItemData ItemCreator::on_box_item_drop_with_norm_area(uint8_t area_norm) {
   return item;
 }
 
-ItemData ItemCreator::on_monster_item_drop_with_norm_area(uint32_t enemy_type, uint8_t area_norm) {
+ItemData ItemCreator::on_monster_item_drop_with_area_norm(uint32_t enemy_type, uint8_t area_norm) {
   if (enemy_type > 0x58) {
     this->log.warning("Invalid enemy type: %" PRIX32, enemy_type);
     return ItemData();
@@ -553,14 +553,14 @@ void ItemCreator::clear_item_if_restricted(ItemData& item) const {
   }
 }
 
-void ItemCreator::generate_common_item_variances(uint32_t norm_area, ItemData& item) {
+void ItemCreator::generate_common_item_variances(uint32_t area_norm, ItemData& item) {
   switch (item.data1[0]) {
     case 0:
-      this->generate_common_weapon_variances(norm_area, item);
+      this->generate_common_weapon_variances(area_norm, item);
       break;
     case 1:
       if (item.data1[1] == 3) {
-        float f1 = 1.0 + this->pt->unit_maxes_table().at(norm_area);
+        float f1 = 1.0 + this->pt->unit_maxes_table().at(area_norm);
         float f2 = this->rand_float_0_1_from_crypt();
         uint8_t det = static_cast<uint32_t>(f1 * f2) & 0xFF;
         this->log.info("Unit variances determinant: %g * %g = %08" PRIX32, f1, f2, det);
@@ -570,17 +570,17 @@ void ItemCreator::generate_common_item_variances(uint32_t norm_area, ItemData& i
           item.clear();
         }
       } else {
-        this->generate_common_armor_or_shield_type_and_variances(norm_area, item);
+        this->generate_common_armor_or_shield_type_and_variances(area_norm, item);
       }
       break;
     case 2:
       this->generate_common_mag_variances(item);
       break;
     case 3:
-      this->generate_common_tool_variances(norm_area, item);
+      this->generate_common_tool_variances(area_norm, item);
       break;
     case 4:
-      item.data2d = this->choose_meseta_amount(this->pt->box_meseta_ranges(), norm_area) & 0xFFFF;
+      item.data2d = this->choose_meseta_amount(this->pt->box_meseta_ranges(), area_norm) & 0xFFFF;
       break;
     default:
       // Note: The original code does the following here:
