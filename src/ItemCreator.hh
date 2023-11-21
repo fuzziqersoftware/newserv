@@ -109,7 +109,6 @@ private:
   void generate_common_armor_or_shield_type_and_variances(char area_norm, ItemData& item);
   void generate_common_tool_variances(uint32_t area_norm, ItemData& item);
   uint8_t generate_tech_disk_level(uint32_t tech_num, uint32_t area_norm);
-  void generate_common_tool_type(uint8_t tool_class, ItemData& item) const;
   void generate_common_mag_variances(ItemData& item) const;
   void generate_common_weapon_variances(uint8_t area_norm, ItemData& item);
   void generate_common_weapon_grind(ItemData& item, uint8_t offset_within_subtype_range);

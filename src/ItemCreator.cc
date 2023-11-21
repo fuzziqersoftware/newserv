@@ -632,8 +632,26 @@ void ItemCreator::generate_common_tool_variances(uint32_t area_norm, ItemData& i
   if (this->is_v3() && (tool_class == 0x1A)) {
     tool_class = 0x73;
   }
+  this->log.info("Generating tool with class %02hhX", tool_class);
 
-  this->generate_common_tool_type(tool_class, item);
+  // Note: This block was originally a separate function called
+  // generate_common_tool_type
+  {
+    // It appears that when Sega deleted Hit Material in v3, they never deleted
+    // it from the ItemPT entries, so sometimes ItemCreator tries to generate
+    // it. The original implementation just generates no item when that happens,
+    // so we do the same here.
+    try {
+      auto data = this->item_parameter_table->find_tool_by_id(tool_class);
+      item.data1[0] = 0x03;
+      item.data1[1] = data.first;
+      item.data1[2] = data.second;
+    } catch (const out_of_range&) {
+      this->log.info("Tool class is missing; skipping item generation");
+      return;
+    }
+  }
+
   if (item.data1[1] == 0x02) { // Tech disk
     item.data1[4] = this->get_rand_from_weighted_tables_2d_vertical(this->pt->technique_index_prob_table(), area_norm);
     item.data1[2] = this->generate_tech_disk_level(item.data1[4], area_norm);
@@ -650,13 +668,6 @@ uint8_t ItemCreator::generate_tech_disk_level(uint32_t tech_num, uint32_t area_n
     return this->rand_int((range.max - range.min) + 1) + range.min;
   }
   return range.min;
-}
-
-void ItemCreator::generate_common_tool_type(uint8_t id, ItemData& item) const {
-  auto data = this->item_parameter_table->find_tool_by_id(id);
-  item.data1[0] = 0x03;
-  item.data1[1] = data.first;
-  item.data1[2] = data.second;
 }
 
 void ItemCreator::generate_common_mag_variances(ItemData& item) const {
