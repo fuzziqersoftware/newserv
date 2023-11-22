@@ -52,6 +52,9 @@ struct PlayerInventoryItem {
   /* 04 */ le_uint32_t flags = 0; // 8 = equipped
   /* 08 */ ItemData data;
   /* 1C */
+
+  PlayerInventoryItem() = default;
+  explicit PlayerInventoryItem(const ItemData& item, bool equipped = false);
 } __attribute__((packed));
 
 struct PlayerBankItem {

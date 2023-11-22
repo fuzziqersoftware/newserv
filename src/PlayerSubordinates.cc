@@ -22,6 +22,14 @@
 
 using namespace std;
 
+PlayerInventoryItem::PlayerInventoryItem(const ItemData& item, bool equipped)
+    : present(1),
+      unknown_a1(0),
+      extension_data1(0),
+      extension_data2(0),
+      flags(equipped ? 8 : 0),
+      data(item) {}
+
 uint32_t PlayerVisualConfig::compute_name_color_checksum(uint32_t name_color) {
   uint8_t x = (random_object<uint32_t>() % 0xFF) + 1;
   uint8_t y = (random_object<uint32_t>() % 0xFF) + 1;
@@ -889,13 +897,7 @@ BattleRules::MesetaMode enum_for_name<BattleRules::MesetaMode>(const char* name)
 }
 
 static PlayerInventoryItem make_template_item(bool equipped, uint64_t first_data, uint64_t second_data) {
-  PlayerInventoryItem ret = {
-      .present = 1,
-      .unknown_a1 = 0,
-      .extension_data1 = 0,
-      .extension_data2 = 0,
-      .flags = (equipped ? 8 : 0),
-      .data = ItemData()};
+  PlayerInventoryItem ret(ItemData(), equipped);
   ret.data.data1[0] = first_data >> 56;
   ret.data.data1[1] = first_data >> 48;
   ret.data.data1[2] = first_data >> 40;

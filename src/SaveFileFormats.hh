@@ -192,7 +192,7 @@ struct PSOBBCharacterFile {
   /* 04E0 */ le_uint32_t creation_timestamp = 0;
   /* 04E4 */ le_uint32_t signature = 0xC87ED5B1;
   /* 04E8 */ le_uint32_t play_time_seconds = 0;
-  /* 04EC */ le_uint32_t option_flags = 0;
+  /* 04EC */ le_uint32_t option_flags = 0x00040058;
   /* 04F0 */ parray<uint8_t, 4> unknown_a2;
   /* 04F4 */ parray<parray<uint8_t, 0x80>, 4> quest_flags;
   /* 06F4 */ le_uint32_t death_count = 0;
