@@ -11,6 +11,7 @@
 - Make UI strings localizable (e.g. entries in menus, welcome message, etc.)
 - Figure out what causes the corruption message on PC proxy sessions and fix it
 - Make $edit for DC/PC
+- Add an idle connection timeout for proxy sessions
 
 ## Episode 3
 
