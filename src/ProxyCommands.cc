@@ -1354,7 +1354,7 @@ static HandlerResult S_65_67_68_EB(shared_ptr<ProxyServer::LinkedSession> ses, u
   }
 
   size_t expected_size = offsetof(CmdT, entries) + sizeof(typename CmdT::Entry) * flag;
-  auto& cmd = check_size_t<CmdT>(data, expected_size, expected_size);
+  auto& cmd = check_size_t<CmdT>(data, expected_size, 0xFFFF);
   bool modified = false;
 
   size_t num_replacements = 0;
