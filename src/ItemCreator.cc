@@ -38,7 +38,7 @@ ItemCreator::ItemCreator(
       pt(common_item_set->get_table(this->episode, this->mode, this->difficulty, this->section_id)),
       restrictions(restrictions),
       random_crypt(random_seed) {
-  this->generate_unit_weights_tables();
+  this->generate_unit_stars_tables();
 }
 
 void ItemCreator::clear_destroyed_entities() {
@@ -560,11 +560,11 @@ void ItemCreator::generate_common_item_variances(uint32_t area_norm, ItemData& i
       break;
     case 1:
       if (item.data1[1] == 3) {
-        float f1 = 1.0 + this->pt->unit_maxes_table().at(area_norm);
+        float f1 = 1.0 + this->pt->unit_max_stars_table().at(area_norm);
         float f2 = this->rand_float_0_1_from_crypt();
-        uint8_t det = static_cast<uint32_t>(f1 * f2) & 0xFF;
-        this->log.info("Unit variances determinant: %g * %g = %08" PRIX32, f1, f2, det);
-        this->generate_common_unit_variances(det, item);
+        uint8_t stars = static_cast<uint32_t>(f1 * f2) & 0xFF;
+        this->log.info("Unit stars: %g * %g = %" PRIu32, f1, f2, stars);
+        this->generate_common_unit_variances(stars, item);
         if (item.data1[2] == 0xFF) {
           this->log.info("Unit subtype not valid; clearing item");
           item.clear();
@@ -778,111 +778,76 @@ uint8_t ItemCreator::choose_weapon_special(uint8_t det) {
   return 0;
 }
 
-void ItemCreator::generate_unit_weights_tables() {
+void ItemCreator::generate_unit_stars_tables() {
   // Note: This part of the function was originally in a different function,
   // since it had another callsite. Unlike the original code, we generate these
   // tables only once at construction time, so we've inlined the function here.
 
   size_t star_base_index;
+  uint8_t num_units;
   switch (this->version) {
     case GameVersion::DC:
     case GameVersion::PC:
       star_base_index = 0x1D1;
-      this->unit_weights_table1.resize(0x84);
+      num_units = 0x44;
       break;
     case GameVersion::GC:
     case GameVersion::XB:
       star_base_index = 0x2AF;
-      this->unit_weights_table1.resize(0x88);
+      num_units = 0x48;
       break;
     case GameVersion::BB:
       star_base_index = 0x37D;
-      this->unit_weights_table1.resize(0x88);
+      num_units = 0x64;
       break;
     default:
       throw logic_error("invalid game version");
   }
 
-  size_t z;
-  for (z = 0; z < 0x10; z++) {
-    uint8_t v = this->item_parameter_table->get_item_stars(z + star_base_index);
-    this->unit_weights_table1.at((z * 5) + 0) = v - 1;
-    this->unit_weights_table1.at((z * 5) + 1) = v - 1;
-    this->unit_weights_table1.at((z * 5) + 2) = v;
-    this->unit_weights_table1.at((z * 5) + 3) = v + 1;
-    this->unit_weights_table1.at((z * 5) + 4) = v + 1;
+  for (auto& vec : this->unit_results_by_star_count) {
+    vec.clear();
   }
-  for (; z < (this->unit_weights_table1.size() - 0x40); z++) {
-    this->unit_weights_table1.at(z + 0x40) = this->item_parameter_table->get_item_stars(z + star_base_index);
-  }
-  // Note: Inlining ends here
 
-  this->unit_weights_table2.clear(0);
-  for (size_t z = 0; z < 0x88; z++) {
-    uint8_t index = this->unit_weights_table1[z];
-    if (index < this->unit_weights_table2.size()) {
-      this->unit_weights_table2[index]++;
+  for (uint8_t z = 0; z < num_units; z++) {
+    uint8_t stars = this->item_parameter_table->get_item_stars(z + star_base_index);
+    if (z < 0x10) {
+      // Units 00-0F can have modifiers; others can't
+      this->unit_results_by_star_count.at(stars - 1).emplace_back(UnitResult{z, -2});
+      this->unit_results_by_star_count.at(stars - 1).emplace_back(UnitResult{z, -1});
+      this->unit_results_by_star_count.at(stars + 1).emplace_back(UnitResult{z, 1});
+      this->unit_results_by_star_count.at(stars + 1).emplace_back(UnitResult{z, 2});
     }
-    z = z + 1;
+    this->unit_results_by_star_count.at(stars).emplace_back(UnitResult{z, 0});
+  }
+
+  for (size_t z = 0; z < this->unit_results_by_star_count.size(); z++) {
+    fprintf(stderr, "result table %zu\n", z);
+    print_data(stderr, this->unit_results_by_star_count[z].data(), this->unit_results_by_star_count[z].size() * 2);
   }
 }
 
-void ItemCreator::generate_common_unit_variances(uint8_t det, ItemData& item) {
-  if (det >= 0x0D) {
+void ItemCreator::generate_common_unit_variances(uint8_t stars, ItemData& item) {
+  if (stars >= 0x0D) {
     return;
   }
   item.clear();
-  item.data1[0] = 0x01;
-  item.data1[1] = 0x03;
 
-  // Note: The original code calls generate_unit_weights_table1 here (which we
-  // have inlined into generate_unit_weights_tables above). This call seems
-  // unnecessary because the contents of the tables don't depend on anything
-  // except what appears in ItemPMT, which is essentially constant, so we
-  // don't bother regenerating the table here.
-
-  if (this->unit_weights_table2[det] == 0) {
-    this->log.info("Unit weights table 2 entry is zero; skipping variances");
+  const auto& results = this->unit_results_by_star_count.at(stars);
+  if (results.empty()) {
+    this->log.info("There are no available units with %hhu stars", stars);
     return;
   }
 
-  size_t which = this->rand_int(this->unit_weights_table2[det]);
-  this->log.info("Unit values: which=%02zX max=%02hhX", which, this->unit_weights_table2[det]);
-  size_t current_index = 0;
-  for (size_t z = 0; z < this->unit_weights_table1.size(); z++) {
-    if (det != this->unit_weights_table1[z]) {
-      continue;
-    }
-    if (current_index != which) {
-      current_index++;
-    } else {
-      if (z >= 0x50) {
-        if (det <= 0x87) {
-          item.data1[2] = z + 0xC0;
-        }
-      } else {
-        item.data1[2] = z / 5;
-        const auto& def = this->item_parameter_table->get_unit(item.data1[2]);
-        switch (z % 5) {
-          case 0:
-            item.set_unit_bonus(-(def.modifier_amount * 2));
-            break;
-          case 1:
-            item.set_unit_bonus(-def.modifier_amount);
-            break;
-          case 2:
-            break;
-          case 3:
-            item.set_unit_bonus(def.modifier_amount);
-            break;
-          case 4:
-            item.set_unit_bonus(def.modifier_amount * 2);
-            break;
-        }
-      }
-      break;
-    }
+  const auto& result = (results.size() == 1) ? results[0] : results[this->rand_int(results.size())];
+  item.data1[0] = 0x01;
+  item.data1[1] = 0x03;
+  item.data1[2] = result.unit;
+  if (result.modifier) {
+    const auto& def = this->item_parameter_table->get_unit(result.unit);
+    item.set_unit_bonus(def.modifier_amount * result.modifier);
   }
+  this->log.info("Generated unit %02hhX with modifier %hhd, from %zu choices with %hhu stars",
+      result.unit, result.modifier, results.size(), stars);
 }
 
 // Returns a weighted random result, indicating the chosen position in the

@@ -41,7 +41,7 @@ public:
     const parray<parray<uint8_t, 0x0A>, 0x13>& technique_index_prob_table() const;
     const parray<parray<Range<uint8_t>, 0x0A>, 0x13>& technique_level_ranges() const;
     uint8_t armor_or_shield_type_bias() const;
-    const parray<uint8_t, 0x0A>& unit_maxes_table() const;
+    const parray<uint8_t, 0x0A>& unit_max_stars_table() const;
     const parray<parray<uint8_t, 10>, 7>& box_item_class_prob_table() const;
 
   private:
@@ -219,21 +219,21 @@ public:
       /* 48 */ uint8_t armor_or_shield_type_bias;
       /* 49 */ parray<uint8_t, 3> unused1;
 
-      // These values specify maximum indexes into another array which is
-      // generated at runtime. The values here are multiplied by a random float in
-      // the range [0, n] to look up the value in the secondary array, which is
-      // what ends up determining the unit type.
-      // TODO: Figure out and document the exact logic here. Anchor: 80106364
+      // These values specify the maximum number of stars any generated unit can
+      // have in each area. The values here are not inclusive; that is, a value
+      // of 7 means that only units with 1-6 stars can drop in that area. The
+      // game uniformly chooses a random number of stars in the acceptable
+      // range, then uniformly chooses a random unit with that many stars.
       // V2/V3: -> parray<uint8_t, 0x0A>
-      /* 4C */ U32T unit_maxes_offset;
+      /* 4C */ U32T unit_max_stars_offset;
 
       // This index probability table determines which type of items drop from
-      // boxes. The table is indexed as [item_class][area - 1], with item_class as
-      // the result value (that is, in the example below, the game looks at a
-      // single column and sums the values going down, then the chosen item class
-      // is one of the row indexes based on the weight values in the column.) The
-      // resulting item_class value has the same meaning as in enemy_item_classes
-      // above.
+      // boxes. The table is indexed as [item_class][area - 1], with item_class
+      // as the result value (that is, in the example below, the game looks at a
+      // single column and sums the values going down, then the chosen item
+      // class is one of the row indexes based on the weight values in the
+      // column.) The resulting item_class value has the same meaning as in
+      // enemy_item_classes above.
       // For example, this array might look like the following:
       //   [07 07 08 08 06 07 08 09 09 0A] // Chances per area of a weapon drop
       //   [02 02 02 02 03 02 02 02 03 03] // Chances per area of an armor drop

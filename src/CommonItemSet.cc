@@ -33,7 +33,7 @@ CommonItemSet::Table::Table(
     this->offsets.technique_index_prob_table_offset = be_offsets.technique_index_prob_table_offset.load();
     this->offsets.technique_level_ranges_offset = be_offsets.technique_level_ranges_offset.load();
     this->offsets.armor_or_shield_type_bias = be_offsets.armor_or_shield_type_bias;
-    this->offsets.unit_maxes_offset = be_offsets.unit_maxes_offset.load();
+    this->offsets.unit_max_stars_offset = be_offsets.unit_max_stars_offset.load();
     this->offsets.box_item_class_prob_table_offset = be_offsets.box_item_class_prob_table_offset.load();
   } else {
     this->offsets = r.pget<Offsets<false>>(r.pget_u32l(this->r.size() - 0x10));
@@ -171,8 +171,8 @@ const parray<parray<CommonItemSet::Table::Range<uint8_t>, 0x0A>, 0x13>& CommonIt
 uint8_t CommonItemSet::Table::armor_or_shield_type_bias() const {
   return this->offsets.armor_or_shield_type_bias;
 }
-const parray<uint8_t, 0x0A>& CommonItemSet::Table::unit_maxes_table() const {
-  return this->r.pget<parray<uint8_t, 0x0A>>(this->offsets.unit_maxes_offset);
+const parray<uint8_t, 0x0A>& CommonItemSet::Table::unit_max_stars_table() const {
+  return this->r.pget<parray<uint8_t, 0x0A>>(this->offsets.unit_max_stars_offset);
 }
 const parray<parray<uint8_t, 10>, 7>& CommonItemSet::Table::box_item_class_prob_table() const {
   return this->r.pget<parray<parray<uint8_t, 10>, 7>>(this->offsets.box_item_class_prob_table_offset);

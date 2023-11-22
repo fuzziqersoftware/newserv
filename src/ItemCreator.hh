@@ -64,8 +64,11 @@ private:
   std::shared_ptr<const CommonItemSet::Table> pt;
   std::shared_ptr<const BattleRules> restrictions;
 
-  std::vector<uint8_t> unit_weights_table1;
-  parray<int8_t, 0x0D> unit_weights_table2;
+  struct UnitResult {
+    uint8_t unit;
+    int8_t modifier;
+  } __attribute__((packed));
+  std::array<std::vector<UnitResult>, 13> unit_results_by_star_count;
 
   // Note: The original implementation uses 17 different random states for some
   // reason. We forego that and use only one for simplicity.
@@ -115,8 +118,8 @@ private:
   void generate_common_weapon_bonuses(ItemData& item, uint8_t area_norm);
   void generate_common_weapon_special(ItemData& item, uint8_t area_norm);
   uint8_t choose_weapon_special(uint8_t det);
-  void generate_unit_weights_tables();
-  void generate_common_unit_variances(uint8_t det, ItemData& item);
+  void generate_unit_stars_tables();
+  void generate_common_unit_variances(uint8_t stars, ItemData& item);
   void choose_tech_disk_level_for_tool_shop(ItemData& item, size_t player_level, uint8_t tech_num_index);
   static void clear_tool_item_if_invalid(ItemData& item);
   void clear_item_if_restricted(ItemData& item) const;
