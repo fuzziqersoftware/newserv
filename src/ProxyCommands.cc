@@ -1415,6 +1415,10 @@ static HandlerResult S_64(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t, 
   if (ses->sub_version >= 0x40) {
     cmd = &check_size_t<CmdT>(data, sizeof(S_JoinGame_GC_Ep3_64));
     cmd_ep3 = &check_size_t<S_JoinGame_GC_Ep3_64>(data);
+  } else if (ses->version() == GameVersion::XB) {
+    // Schtserv doesn't send the unknown_a1 field in this command, and we don't
+    // use it here, so we allow it to be omitted.
+    cmd = &check_size_t<CmdT>(data.data(), data.size(), sizeof(CmdT) - 0x18, sizeof(CmdT));
   } else {
     cmd = &check_size_t<CmdT>(data);
   }
@@ -1444,8 +1448,7 @@ static HandlerResult S_64(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t, 
     } else {
       p.name.clear();
     }
-    ses->log.info("Added lobby player: (%zu) %" PRIu32 " %s",
-        x, p.guild_card_number, p.name.c_str());
+    ses->log.info("Added lobby player: (%zu) %" PRIu32 " %s", x, p.guild_card_number, p.name.c_str());
   }
 
   if (ses->config.override_section_id != 0xFF) {
