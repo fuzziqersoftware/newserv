@@ -2021,14 +2021,13 @@ int main(int argc, char** argv) {
         config_log.info("Starting game server");
         state->game_server.reset(new Server(base, state));
 
-        shared_ptr<FILE> log_f(
-            stdin, +[](FILE*) {});
+        auto nop_destructor = +[](FILE*) {};
+        shared_ptr<FILE> log_f(stdin, nop_destructor);
         if (input_filename && strcmp(input_filename, "-")) {
           log_f = fopen_shared(input_filename, "rt");
         }
 
-        replay_session.reset(new ReplaySession(
-            base, log_f.get(), state, replay_require_basic_credentials));
+        replay_session.reset(new ReplaySession(base, log_f.get(), state, replay_require_basic_credentials));
         replay_session->start();
 
       } else if (behavior == Behavior::RUN_SERVER) {
