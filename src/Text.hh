@@ -318,39 +318,59 @@ struct pstring {
       switch (Encoding) {
         case TextEncoding::CHALLENGE8:
         case TextEncoding::ASCII: {
+          fprintf(stderr, "pstring encode ASCII/CHALLENGE8\n");
+          print_data(stderr, s);
           auto ret = tt_utf8_to_ascii(this->data, Bytes, s.data(), s.size(), true);
           this->clear_after(ret.bytes_written);
           if (Encoding == TextEncoding::CHALLENGE8) {
             encrypt_challenge_rank_text_t<uint8_t>(this->data, Bytes);
           }
+          print_data(stderr, this->data, Bytes);
           break;
         }
         case TextEncoding::ISO8859: {
+          fprintf(stderr, "pstring encode ISO8859\n");
+          print_data(stderr, s);
           auto ret = tt_utf8_to_8859(this->data, Bytes, s.data(), s.size(), true);
           this->clear_after(ret.bytes_written);
+          print_data(stderr, this->data, Bytes);
           break;
         }
         case TextEncoding::SJIS: {
+          fprintf(stderr, "pstring encode SJIS\n");
+          print_data(stderr, s);
           auto ret = tt_utf8_to_sjis(this->data, Bytes, s.data(), s.size(), true);
           this->clear_after(ret.bytes_written);
+          print_data(stderr, this->data, Bytes);
           break;
         }
         case TextEncoding::UTF16: {
+          fprintf(stderr, "pstring encode UTF16\n");
+          print_data(stderr, s);
           auto ret = tt_utf8_to_utf16(this->data, Bytes, s.data(), s.size(), true);
           this->clear_after(ret.bytes_written);
+          print_data(stderr, this->data, Bytes);
           break;
         }
         case TextEncoding::UTF8:
+          fprintf(stderr, "pstring encode UTF8\n");
+          print_data(stderr, s);
           memcpy(this->data, s.data(), std::min<size_t>(s.size(), Bytes));
           this->clear_after(s.size());
+          print_data(stderr, this->data, Bytes);
           break;
         case TextEncoding::CHALLENGE16: {
+          fprintf(stderr, "pstring encode CHALLENGE16\n");
+          print_data(stderr, s);
           auto ret = tt_utf8_to_utf16(this->data, Bytes, s.data(), s.size(), true);
           encrypt_challenge_rank_text_t<le_uint16_t>(this->data, ret.bytes_written / 2);
           this->clear_after(ret.bytes_written);
+          print_data(stderr, this->data, Bytes);
           break;
         }
         case TextEncoding::MARKED: {
+          fprintf(stderr, "pstring encode MARKED\n");
+          print_data(stderr, s);
           if (client_language == 0) {
             try {
               auto ret = tt_utf8_to_sjis(this->data, Bytes, s.data(), s.size(), true);
@@ -372,6 +392,7 @@ struct pstring {
               this->clear_after(ret.bytes_written + 2);
             }
           }
+          print_data(stderr, this->data, Bytes);
           break;
         }
         default:
@@ -395,26 +416,61 @@ struct pstring {
     try {
       switch (Encoding) {
         case TextEncoding::CHALLENGE8: {
+          fprintf(stderr, "pstring decode CHALLENGE8\n");
+          print_data(stderr, this->data, this->used_chars_8());
           std::string decrypted(reinterpret_cast<const char*>(this->data), this->used_chars_8());
           decrypt_challenge_rank_text_t<uint8_t>(decrypted.data(), decrypted.size());
-          return tt_ascii_to_utf8(decrypted.data(), decrypted.size());
+          std::string ret = tt_ascii_to_utf8(decrypted.data(), decrypted.size());
+          print_data(stderr, ret);
+          return ret;
         }
-        case TextEncoding::ASCII:
-          return tt_ascii_to_utf8(this->data, this->used_chars_8());
-        case TextEncoding::ISO8859:
-          return tt_8859_to_utf8(this->data, this->used_chars_8());
-        case TextEncoding::SJIS:
-          return tt_sjis_to_utf8(this->data, this->used_chars_8());
-        case TextEncoding::UTF16:
-          return tt_utf16_to_utf8(this->data, this->used_chars_16() * 2);
-        case TextEncoding::UTF8:
-          return std::string(reinterpret_cast<const char*>(&this->data[0]), this->used_chars_8());
+        case TextEncoding::ASCII: {
+          fprintf(stderr, "pstring decode ASCII\n");
+          print_data(stderr, this->data, this->used_chars_8());
+          std::string ret = tt_ascii_to_utf8(this->data, this->used_chars_8());
+          print_data(stderr, ret);
+          return ret;
+        }
+        case TextEncoding::ISO8859: {
+          fprintf(stderr, "pstring decode ISO8859\n");
+          print_data(stderr, this->data, this->used_chars_8());
+          std::string ret = tt_8859_to_utf8(this->data, this->used_chars_8());
+          print_data(stderr, ret);
+          return ret;
+        }
+        case TextEncoding::SJIS: {
+          fprintf(stderr, "pstring decode SJIS\n");
+          print_data(stderr, this->data, this->used_chars_8());
+          std::string ret = tt_sjis_to_utf8(this->data, this->used_chars_8());
+          print_data(stderr, ret);
+          return ret;
+        }
+        case TextEncoding::UTF16: {
+          fprintf(stderr, "pstring decode UTF16\n");
+          print_data(stderr, this->data, this->used_chars_16() * 2);
+          std::string ret = tt_utf16_to_utf8(this->data, this->used_chars_16() * 2);
+          print_data(stderr, ret);
+          return ret;
+        }
+        case TextEncoding::UTF8: {
+          fprintf(stderr, "pstring decode UTF8\n");
+          print_data(stderr, this->data, this->used_chars_8());
+          std::string ret = std::string(reinterpret_cast<const char*>(&this->data[0]), this->used_chars_8());
+          print_data(stderr, ret);
+          return ret;
+        }
         case TextEncoding::CHALLENGE16: {
+          fprintf(stderr, "pstring decode CHALLENGE16\n");
+          print_data(stderr, this->data, this->used_chars_8());
           std::string decrypted(reinterpret_cast<const char*>(&this->data[0]), this->used_chars_16() * 2);
           decrypt_challenge_rank_text_t<le_uint16_t>(decrypted.data(), decrypted.size());
-          return tt_utf16_to_utf8(decrypted.data(), decrypted.size());
+          std::string ret = tt_utf16_to_utf8(decrypted.data(), decrypted.size());
+          print_data(stderr, ret);
+          return ret;
         }
         case TextEncoding::MARKED: {
+          fprintf(stderr, "pstring decode MARKED\n");
+          print_data(stderr, this->data, this->used_chars_8());
           size_t offset = 0;
           if (this->data[0] == '\t') {
             if (this->data[1] == 'J') {
@@ -425,9 +481,11 @@ struct pstring {
               offset = 2;
             }
           }
-          return client_language
+          std::string ret = client_language
               ? tt_8859_to_utf8(&this->data[offset], this->used_chars_8() - offset)
               : tt_sjis_to_utf8(&this->data[offset], this->used_chars_8() - offset);
+          print_data(stderr, ret);
+          return ret;
         }
         default:
           throw std::logic_error("unknown text encoding");
