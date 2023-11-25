@@ -68,7 +68,7 @@ static string escape_string(const string& data, TextEncoding encoding = TextEnco
       ret += "\\r";
     } else if (ch == '\t') {
       ret += "\\t";
-    } else if (ch >= 0x00 && ch < 0x20) {
+    } else if (static_cast<uint8_t>(ch) < 0x20) {
       ret += string_printf("\\x%02hhX", ch);
     } else if (ch == '\'') {
       ret += "\\\'";
