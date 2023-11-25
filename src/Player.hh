@@ -56,7 +56,7 @@ public:
   ~ClientGameData();
 
   void create_battle_overlay(std::shared_ptr<const BattleRules> rules, std::shared_ptr<const LevelTable> level_table);
-  void create_challenge_overlay(GameVersion version, size_t template_index, std::shared_ptr<const LevelTable> level_table);
+  void create_challenge_overlay(Version version, size_t template_index, std::shared_ptr<const LevelTable> level_table);
   inline void delete_overlay() {
     this->overlay_character_data.reset();
   }

@@ -106,7 +106,7 @@ const array<const char*, 0x11> name_for_s_rank_special = {
 };
 
 std::string ItemNameIndex::describe_item(
-    GameVersion version,
+    Version version,
     const ItemData& item,
     std::shared_ptr<const ItemParameterTable> item_parameter_table) const {
   if (item.data1[0] == 0x04) {
@@ -171,20 +171,12 @@ std::string ItemNameIndex::describe_item(
     try {
       auto meta = this->primary_identifier_index.at(primary_identifier);
       const string* name;
-      switch (version) {
-        case GameVersion::DC:
-        case GameVersion::PC:
-          name = &meta->v2_name;
-          break;
-        case GameVersion::GC:
-        case GameVersion::XB:
-          name = &meta->v3_name;
-          break;
-        case GameVersion::BB:
-          name = &meta->v4_name;
-          break;
-        default:
-          throw logic_error("invalid game version");
+      if (is_v4(version)) {
+        name = &meta->v4_name;
+      } else if (is_v3(version)) {
+        name = &meta->v3_name;
+      } else {
+        name = &meta->v2_name;
       }
       if (name->empty()) {
         throw out_of_range("item does not exist");
@@ -368,7 +360,7 @@ std::string ItemNameIndex::describe_item(
   }
 }
 
-ItemData ItemNameIndex::parse_item_description(GameVersion version, const std::string& desc) const {
+ItemData ItemNameIndex::parse_item_description(Version version, const std::string& desc) const {
   try {
     return this->parse_item_description_phase(version, desc, false);
   } catch (const exception& e1) {
@@ -406,7 +398,7 @@ ItemData ItemNameIndex::parse_item_description(GameVersion version, const std::s
   }
 }
 
-ItemData ItemNameIndex::parse_item_description_phase(GameVersion version, const std::string& description, bool skip_special) const {
+ItemData ItemNameIndex::parse_item_description_phase(Version version, const std::string& description, bool skip_special) const {
   ItemData ret;
   ret.data1d.clear(0);
   ret.id = 0xFFFFFFFF;
@@ -468,20 +460,12 @@ ItemData ItemNameIndex::parse_item_description_phase(GameVersion version, const 
   }
 
   const map<string, shared_ptr<ItemMetadata>>* name_index;
-  switch (version) {
-    case GameVersion::DC:
-    case GameVersion::PC:
-      name_index = &this->v2_name_index;
-      break;
-    case GameVersion::GC:
-    case GameVersion::XB:
-      name_index = &this->v3_name_index;
-      break;
-    case GameVersion::BB:
-      name_index = &this->v4_name_index;
-      break;
-    default:
-      throw logic_error("invalid game version");
+  if (is_v4(version)) {
+    name_index = &this->v4_name_index;
+  } else if (is_v3(version)) {
+    name_index = &this->v3_name_index;
+  } else {
+    name_index = &this->v2_name_index;
   }
 
   auto name_it = name_index->lower_bound(desc);

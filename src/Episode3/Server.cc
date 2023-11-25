@@ -242,8 +242,7 @@ void Server::send_6xB4x46() const {
   this->send(cmd46);
 }
 
-string Server::prepare_6xB6x41_map_definition(
-    shared_ptr<const MapIndex::Map> map, uint8_t language, bool is_trial) {
+string Server::prepare_6xB6x41_map_definition(shared_ptr<const MapIndex::Map> map, uint8_t language, bool is_trial) {
   auto vm = map->version(language);
 
   const auto& compressed = vm->compressed(is_trial);
@@ -255,7 +254,7 @@ string Server::prepare_6xB6x41_map_definition(
   return std::move(w.str());
 }
 
-void Server::send_commands_for_joining_spectator(Channel& ch, bool is_trial) const {
+void Server::send_commands_for_joining_spectator(Channel& ch) const {
   bool should_send_state = true;
   if (this->setup_phase == SetupPhase::REGISTRATION) {
     // If registration is still in progress, we only need to send the map data
@@ -267,7 +266,8 @@ void Server::send_commands_for_joining_spectator(Channel& ch, bool is_trial) con
   }
 
   if (this->last_chosen_map) {
-    string data = this->prepare_6xB6x41_map_definition(this->last_chosen_map, ch.language, is_trial);
+    string data = this->prepare_6xB6x41_map_definition(
+        this->last_chosen_map, ch.language, (ch.version == Version::GC_EP3_TRIAL_EDITION));
     this->log().info("Sending %c version of map %08" PRIX32, char_for_language_code(ch.language), this->last_chosen_map->map_number);
     ch.send(0x6C, 0x00, data);
   }
@@ -2349,7 +2349,7 @@ void Server::send_6xB6x41_to_all_clients() const {
     }
     if (map_commands_by_language[c->language()].empty()) {
       map_commands_by_language[c->language()] = this->prepare_6xB6x41_map_definition(
-          this->last_chosen_map, c->language(), l->check_flag(Lobby::Flag::IS_EP3_TRIAL));
+          this->last_chosen_map, c->language(), (l->base_version == Version::GC_EP3_TRIAL_EDITION));
     }
     this->log().info("Sending %c version of map %08" PRIX32, char_for_language_code(c->language()), this->last_chosen_map->map_number);
     send_command(c, 0x6C, 0x00, map_commands_by_language[c->language()]);

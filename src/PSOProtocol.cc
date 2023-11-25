@@ -17,40 +17,54 @@ PSOCommandHeader::PSOCommandHeader() {
   this->bb.flag = 0;
 }
 
-uint16_t PSOCommandHeader::command(GameVersion version) const {
+uint16_t PSOCommandHeader::command(Version version) const {
   switch (version) {
-    case GameVersion::DC:
-      return this->dc.command;
-    case GameVersion::GC:
-      return this->gc.command;
-    case GameVersion::XB:
-      return this->xb.command;
-    case GameVersion::PC:
-    case GameVersion::PATCH:
+    case Version::PC_PATCH:
+    case Version::BB_PATCH:
+    case Version::PC_V2:
       return this->pc.command;
-    case GameVersion::BB:
+    case Version::DC_NTE:
+    case Version::DC_V1_12_2000_PROTOTYPE:
+    case Version::DC_V1:
+    case Version::DC_V2:
+      return this->dc.command;
+    case Version::GC_NTE:
+    case Version::GC_V3:
+    case Version::GC_EP3_TRIAL_EDITION:
+    case Version::GC_EP3:
+      return this->gc.command;
+    case Version::XB_V3:
+      return this->xb.command;
+    case Version::BB_V4:
       return this->bb.command;
     default:
       throw logic_error("unknown game version");
   }
 }
 
-void PSOCommandHeader::set_command(GameVersion version, uint16_t command) {
+void PSOCommandHeader::set_command(Version version, uint16_t command) {
   switch (version) {
-    case GameVersion::DC:
-      this->dc.command = command;
-      break;
-    case GameVersion::GC:
-      this->gc.command = command;
-      break;
-    case GameVersion::XB:
-      this->xb.command = command;
-      break;
-    case GameVersion::PC:
-    case GameVersion::PATCH:
+    case Version::PC_PATCH:
+    case Version::BB_PATCH:
+    case Version::PC_V2:
       this->pc.command = command;
       break;
-    case GameVersion::BB:
+    case Version::DC_NTE:
+    case Version::DC_V1_12_2000_PROTOTYPE:
+    case Version::DC_V1:
+    case Version::DC_V2:
+      this->dc.command = command;
+      break;
+    case Version::GC_NTE:
+    case Version::GC_V3:
+    case Version::GC_EP3_TRIAL_EDITION:
+    case Version::GC_EP3:
+      this->gc.command = command;
+      break;
+    case Version::XB_V3:
+      this->xb.command = command;
+      break;
+    case Version::BB_V4:
       this->bb.command = command;
       break;
     default:
@@ -58,40 +72,54 @@ void PSOCommandHeader::set_command(GameVersion version, uint16_t command) {
   }
 }
 
-uint16_t PSOCommandHeader::size(GameVersion version) const {
+uint16_t PSOCommandHeader::size(Version version) const {
   switch (version) {
-    case GameVersion::DC:
-      return this->dc.size;
-    case GameVersion::GC:
-      return this->gc.size;
-    case GameVersion::XB:
-      return this->xb.size;
-    case GameVersion::PC:
-    case GameVersion::PATCH:
+    case Version::PC_PATCH:
+    case Version::BB_PATCH:
+    case Version::PC_V2:
       return this->pc.size;
-    case GameVersion::BB:
+    case Version::DC_NTE:
+    case Version::DC_V1_12_2000_PROTOTYPE:
+    case Version::DC_V1:
+    case Version::DC_V2:
+      return this->dc.size;
+    case Version::GC_NTE:
+    case Version::GC_V3:
+    case Version::GC_EP3_TRIAL_EDITION:
+    case Version::GC_EP3:
+      return this->gc.size;
+    case Version::XB_V3:
+      return this->xb.size;
+    case Version::BB_V4:
       return this->bb.size;
     default:
       throw logic_error("unknown game version");
   }
 }
 
-void PSOCommandHeader::set_size(GameVersion version, uint32_t size) {
+void PSOCommandHeader::set_size(Version version, uint32_t size) {
   switch (version) {
-    case GameVersion::DC:
-      this->dc.size = size;
-      break;
-    case GameVersion::GC:
-      this->gc.size = size;
-      break;
-    case GameVersion::XB:
-      this->xb.size = size;
-      break;
-    case GameVersion::PC:
-    case GameVersion::PATCH:
+    case Version::PC_PATCH:
+    case Version::BB_PATCH:
+    case Version::PC_V2:
       this->pc.size = size;
       break;
-    case GameVersion::BB:
+    case Version::DC_NTE:
+    case Version::DC_V1_12_2000_PROTOTYPE:
+    case Version::DC_V1:
+    case Version::DC_V2:
+      this->dc.size = size;
+      break;
+    case Version::GC_NTE:
+    case Version::GC_V3:
+    case Version::GC_EP3_TRIAL_EDITION:
+    case Version::GC_EP3:
+      this->gc.size = size;
+      break;
+    case Version::XB_V3:
+      this->xb.size = size;
+      break;
+    case Version::BB_V4:
       this->bb.size = size;
       break;
     default:
@@ -99,40 +127,54 @@ void PSOCommandHeader::set_size(GameVersion version, uint32_t size) {
   }
 }
 
-uint32_t PSOCommandHeader::flag(GameVersion version) const {
+uint32_t PSOCommandHeader::flag(Version version) const {
   switch (version) {
-    case GameVersion::DC:
-      return this->dc.flag;
-    case GameVersion::GC:
-      return this->gc.flag;
-    case GameVersion::XB:
-      return this->xb.flag;
-    case GameVersion::PC:
-    case GameVersion::PATCH:
+    case Version::PC_PATCH:
+    case Version::BB_PATCH:
+    case Version::PC_V2:
       return this->pc.flag;
-    case GameVersion::BB:
+    case Version::DC_NTE:
+    case Version::DC_V1_12_2000_PROTOTYPE:
+    case Version::DC_V1:
+    case Version::DC_V2:
+      return this->dc.flag;
+    case Version::GC_NTE:
+    case Version::GC_V3:
+    case Version::GC_EP3_TRIAL_EDITION:
+    case Version::GC_EP3:
+      return this->gc.flag;
+    case Version::XB_V3:
+      return this->xb.flag;
+    case Version::BB_V4:
       return this->bb.flag;
     default:
       throw logic_error("unknown game version");
   }
 }
 
-void PSOCommandHeader::set_flag(GameVersion version, uint32_t flag) {
+void PSOCommandHeader::set_flag(Version version, uint32_t flag) {
   switch (version) {
-    case GameVersion::DC:
-      this->dc.flag = flag;
-      break;
-    case GameVersion::GC:
-      this->gc.flag = flag;
-      break;
-    case GameVersion::XB:
-      this->xb.flag = flag;
-      break;
-    case GameVersion::PC:
-    case GameVersion::PATCH:
+    case Version::PC_PATCH:
+    case Version::BB_PATCH:
+    case Version::PC_V2:
       this->pc.flag = flag;
       break;
-    case GameVersion::BB:
+    case Version::DC_NTE:
+    case Version::DC_V1_12_2000_PROTOTYPE:
+    case Version::DC_V1:
+    case Version::DC_V2:
+      this->dc.flag = flag;
+      break;
+    case Version::GC_NTE:
+    case Version::GC_V3:
+    case Version::GC_EP3_TRIAL_EDITION:
+    case Version::GC_EP3:
+      this->gc.flag = flag;
+      break;
+    case Version::XB_V3:
+      this->xb.flag = flag;
+      break;
+    case Version::BB_V4:
       this->bb.flag = flag;
       break;
     default:
@@ -157,16 +199,22 @@ void check_size_v(size_t size, size_t min_size, size_t max_size) {
 }
 
 std::string prepend_command_header(
-    GameVersion version,
+    Version version,
     bool encryption_enabled,
     uint16_t cmd,
     uint32_t flag,
     const std::string& data) {
   StringWriter ret;
   switch (version) {
-    case GameVersion::DC:
-    case GameVersion::GC:
-    case GameVersion::XB: {
+    case Version::DC_NTE:
+    case Version::DC_V1_12_2000_PROTOTYPE:
+    case Version::DC_V1:
+    case Version::DC_V2:
+    case Version::GC_NTE:
+    case Version::GC_V3:
+    case Version::GC_EP3_TRIAL_EDITION:
+    case Version::GC_EP3:
+    case Version::XB_V3: {
       PSOCommandHeaderDCV3 header;
       if (encryption_enabled) {
         header.size = (sizeof(header) + data.size() + 3) & ~3;
@@ -178,8 +226,10 @@ std::string prepend_command_header(
       ret.put(header);
       break;
     }
-    case GameVersion::PC:
-    case GameVersion::PATCH: {
+
+    case Version::PC_PATCH:
+    case Version::BB_PATCH:
+    case Version::PC_V2: {
       PSOCommandHeaderPC header;
       if (encryption_enabled) {
         header.size = (sizeof(header) + data.size() + 3) & ~3;
@@ -191,7 +241,8 @@ std::string prepend_command_header(
       ret.put(header);
       break;
     }
-    case GameVersion::BB: {
+
+    case Version::BB_V4: {
       PSOCommandHeaderBB header;
       if (encryption_enabled) {
         header.size = (sizeof(header) + data.size() + 3) & ~3;
@@ -203,6 +254,7 @@ std::string prepend_command_header(
       ret.put(header);
       break;
     }
+
     default:
       throw logic_error("unimplemented game version in prepend_command_header");
   }

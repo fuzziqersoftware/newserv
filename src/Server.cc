@@ -130,7 +130,7 @@ void Server::on_listen_accept(
 
 void Server::connect_client(
     struct bufferevent* bev, uint32_t address, uint16_t client_port,
-    uint16_t server_port, GameVersion version, ServerBehavior initial_state) {
+    uint16_t server_port, Version version, ServerBehavior initial_state) {
   shared_ptr<Client> c(new Client(this->shared_from_this(), bev, version, initial_state));
   c->channel.on_command_received = Server::on_client_input;
   c->channel.on_error = Server::on_client_error;
@@ -141,8 +141,8 @@ void Server::connect_client(
       c->id,
       bev,
       server_port,
-      name_for_version(version),
-      name_for_server_behavior(initial_state));
+      name_for_enum(version),
+      name_for_enum(initial_state));
 
   this->state->channel_to_client.emplace(&c->channel, c);
 
@@ -221,7 +221,7 @@ Server::Server(
 void Server::listen(
     const std::string& addr_str,
     const string& socket_path,
-    GameVersion version,
+    Version version,
     ServerBehavior behavior) {
   int fd = ::listen(socket_path, 0, SOMAXCONN);
   server_log.info("Listening on Unix socket %s on fd %d as %s",
@@ -233,7 +233,7 @@ void Server::listen(
     const std::string& addr_str,
     const string& addr,
     int port,
-    GameVersion version,
+    Version version,
     ServerBehavior behavior) {
   if (port == 0) {
     this->listen(addr_str, addr, version, behavior);
@@ -246,13 +246,13 @@ void Server::listen(
   }
 }
 
-void Server::listen(const std::string& addr_str, int port, GameVersion version, ServerBehavior behavior) {
+void Server::listen(const std::string& addr_str, int port, Version version, ServerBehavior behavior) {
   this->listen(addr_str, "", port, version, behavior);
 }
 
 Server::ListeningSocket::ListeningSocket(
     Server* s, const std::string& addr_str,
-    int fd, GameVersion version, ServerBehavior behavior)
+    int fd, Version version, ServerBehavior behavior)
     : addr_str(addr_str),
       fd(fd),
       version(version),
@@ -269,7 +269,7 @@ Server::ListeningSocket::ListeningSocket(
 void Server::add_socket(
     const std::string& addr_str,
     int fd,
-    GameVersion version,
+    Version version,
     ServerBehavior behavior) {
   this->listening_sockets.emplace(
       piecewise_construct, forward_as_tuple(fd),

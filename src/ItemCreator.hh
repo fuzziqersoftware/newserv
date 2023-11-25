@@ -19,7 +19,7 @@ public:
       std::shared_ptr<const WeaponRandomSet> weapon_random_set,
       std::shared_ptr<const TekkerAdjustmentSet> tekker_adjustment_set,
       std::shared_ptr<const ItemParameterTable> item_parameter_table,
-      GameVersion version,
+      Version version,
       Episode episode,
       GameMode mode,
       uint8_t difficulty,
@@ -50,7 +50,7 @@ public:
 
 private:
   PrefixedLogger log;
-  GameVersion version;
+  Version version;
   Episode episode;
   GameMode mode;
   uint8_t difficulty;
@@ -77,7 +77,7 @@ private:
   std::unordered_set<uint16_t> destroyed_boxes;
 
   inline bool is_v3() const {
-    return (this->version != GameVersion::DC) && (this->version != GameVersion::PC);
+    return !is_v1_or_v2(this->version);
   }
 
   bool are_rare_drops_allowed() const;

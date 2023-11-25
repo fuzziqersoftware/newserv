@@ -111,16 +111,23 @@ void send_command_with_header_t(Channel& ch, const void* data, size_t size) {
 
 void send_command_with_header(Channel& ch, const void* data, size_t size) {
   switch (ch.version) {
-    case GameVersion::DC:
-    case GameVersion::GC:
-    case GameVersion::XB:
-      send_command_with_header_t<PSOCommandHeaderDCV3>(ch, data, size);
-      break;
-    case GameVersion::PC:
-    case GameVersion::PATCH:
+    case Version::PC_PATCH:
+    case Version::BB_PATCH:
+    case Version::PC_V2:
       send_command_with_header_t<PSOCommandHeaderPC>(ch, data, size);
       break;
-    case GameVersion::BB:
+    case Version::DC_NTE:
+    case Version::DC_V1_12_2000_PROTOTYPE:
+    case Version::DC_V1:
+    case Version::DC_V2:
+    case Version::GC_NTE:
+    case Version::GC_V3:
+    case Version::GC_EP3_TRIAL_EDITION:
+    case Version::GC_EP3:
+    case Version::XB_V3:
+      send_command_with_header_t<PSOCommandHeaderDCV3>(ch, data, size);
+      break;
+    case Version::BB_V4:
       send_command_with_header_t<PSOCommandHeaderBB>(ch, data, size);
       break;
     default:
@@ -153,24 +160,29 @@ void send_server_init_dc_pc_v3(shared_ptr<Client> c, uint8_t flags) {
   uint32_t server_key = random_object<uint32_t>();
   uint32_t client_key = random_object<uint32_t>();
 
-  auto cmd = prepare_server_init_contents_console(
-      server_key, client_key, initial_connection);
+  auto cmd = prepare_server_init_contents_console(server_key, client_key, initial_connection);
   send_command_t(c, command, 0x00, cmd);
 
   switch (c->version()) {
-    case GameVersion::PC:
+    case Version::PC_V2:
       c->channel.crypt_in.reset(new PSOV2Encryption(client_key));
       c->channel.crypt_out.reset(new PSOV2Encryption(server_key));
       break;
-    case GameVersion::DC:
-    case GameVersion::GC: {
+    case Version::DC_NTE:
+    case Version::DC_V1_12_2000_PROTOTYPE:
+    case Version::DC_V1:
+    case Version::DC_V2:
+    case Version::GC_NTE:
+    case Version::GC_V3:
+    case Version::GC_EP3_TRIAL_EDITION:
+    case Version::GC_EP3: {
       shared_ptr<PSOV2OrV3DetectorEncryption> det_crypt(new PSOV2OrV3DetectorEncryption(
           client_key, v2_crypt_initial_client_commands, v3_crypt_initial_client_commands));
       c->channel.crypt_in = det_crypt;
       c->channel.crypt_out.reset(new PSOV2OrV3ImitatorEncryption(server_key, det_crypt));
       break;
     }
-    case GameVersion::XB:
+    case Version::XB_V3:
       c->channel.crypt_in.reset(new PSOV3Encryption(client_key));
       c->channel.crypt_out.reset(new PSOV3Encryption(server_key));
       break;
@@ -231,16 +243,23 @@ void send_server_init_patch(shared_ptr<Client> c) {
 
 void send_server_init(shared_ptr<Client> c, uint8_t flags) {
   switch (c->version()) {
-    case GameVersion::DC:
-    case GameVersion::PC:
-    case GameVersion::GC:
-    case GameVersion::XB:
+    case Version::DC_NTE:
+    case Version::DC_V1_12_2000_PROTOTYPE:
+    case Version::DC_V1:
+    case Version::DC_V2:
+    case Version::PC_V2:
+    case Version::GC_NTE:
+    case Version::GC_V3:
+    case Version::GC_EP3_TRIAL_EDITION:
+    case Version::GC_EP3:
+    case Version::XB_V3:
       send_server_init_dc_pc_v3(c, flags);
       break;
-    case GameVersion::PATCH:
+    case Version::PC_PATCH:
+    case Version::BB_PATCH:
       send_server_init_patch(c);
       break;
-    case GameVersion::BB:
+    case Version::BB_V4:
       send_server_init_bb(c, flags);
       break;
     default:
@@ -250,8 +269,11 @@ void send_server_init(shared_ptr<Client> c, uint8_t flags) {
 
 void send_update_client_config(shared_ptr<Client> c) {
   switch (c->version()) {
-    case GameVersion::DC:
-    case GameVersion::PC: {
+    case Version::DC_NTE:
+    case Version::DC_V1_12_2000_PROTOTYPE:
+    case Version::DC_V1:
+    case Version::DC_V2:
+    case Version::PC_V2: {
       if (!c->config.check_flag(Client::Flag::HAS_GUILD_CARD_NUMBER)) {
         c->config.set_flag(Client::Flag::HAS_GUILD_CARD_NUMBER);
         S_UpdateClientConfig_DC_PC_04 cmd;
@@ -261,8 +283,11 @@ void send_update_client_config(shared_ptr<Client> c) {
       }
       break;
     }
-    case GameVersion::GC:
-    case GameVersion::XB: {
+    case Version::GC_NTE:
+    case Version::GC_V3:
+    case Version::GC_EP3_TRIAL_EDITION:
+    case Version::GC_EP3:
+    case Version::XB_V3: {
       c->config.set_flag(Client::Flag::HAS_GUILD_CARD_NUMBER);
       S_UpdateClientConfig_V3_04 cmd;
       cmd.player_tag = 0x00010000;
@@ -312,8 +337,8 @@ void prepare_client_for_patches(shared_ptr<Client> c, std::function<void()> on_c
     if (!c) {
       return;
     }
-    if (c->version() == GameVersion::GC &&
-        c->config.specific_version == default_specific_version_for_version(GameVersion::GC, -1)) {
+    if (is_gc(c->version()) &&
+        c->config.specific_version == default_specific_version_for_version(c->version(), -1)) {
       send_function_call(c, s->function_code_index->name_to_function.at("VersionDetect"));
       c->function_call_response_queue.emplace_back([wc = weak_ptr<Client>(c), on_complete](uint32_t specific_version, uint32_t) -> void {
         auto c = wc.lock();
@@ -441,7 +466,7 @@ void send_function_call(
 
 void send_reconnect(shared_ptr<Client> c, uint32_t address, uint16_t port) {
   S_Reconnect_19 cmd = {{address, port, 0}};
-  send_command_t(c, (c->version() == GameVersion::PATCH) ? 0x14 : 0x19, 0x00, cmd);
+  send_command_t(c, is_patch(c->version()) ? 0x14 : 0x19, 0x00, cmd);
 }
 
 void send_pc_console_split_reconnect(shared_ptr<Client> c, uint32_t address,
@@ -661,7 +686,10 @@ static void send_text(
     uint16_t command,
     const string& text,
     ColorMode color_mode) {
-  bool is_w = (ch.version == GameVersion::PC || ch.version == GameVersion::BB || ch.version == GameVersion::PATCH);
+  bool is_w = uses_utf16(ch.version);
+  if (ch.version == Version::DC_NTE) {
+    color_mode = ColorMode::STRIP;
+  }
 
   switch (color_mode) {
     case ColorMode::NONE:
@@ -701,22 +729,29 @@ static void send_header_text(Channel& ch, uint16_t command, uint32_t guild_card_
 void send_message_box(shared_ptr<Client> c, const string& text) {
   uint16_t command;
   switch (c->version()) {
-    case GameVersion::PATCH:
+    case Version::PC_PATCH:
+    case Version::BB_PATCH:
       command = 0x13;
       break;
-    case GameVersion::DC:
-    case GameVersion::PC:
+    case Version::DC_NTE:
+    case Version::DC_V1_12_2000_PROTOTYPE:
+    case Version::DC_V1:
+    case Version::DC_V2:
+    case Version::PC_V2:
       command = 0x1A;
       break;
-    case GameVersion::GC:
-    case GameVersion::XB:
-    case GameVersion::BB:
+    case Version::GC_NTE:
+    case Version::GC_V3:
+    case Version::GC_EP3_TRIAL_EDITION:
+    case Version::GC_EP3:
+    case Version::XB_V3:
+    case Version::BB_V4:
       command = 0xD5;
       break;
     default:
       throw logic_error("invalid game version");
   }
-  send_text(c->channel, command, text, c->config.check_flag(Client::Flag::IS_DC_TRIAL_EDITION) ? ColorMode::STRIP : ColorMode::ADD);
+  send_text(c->channel, command, text, ColorMode::ADD);
 }
 
 void send_ep3_timed_message_box(Channel& ch, uint32_t frames, const string& message) {
@@ -736,18 +771,16 @@ void send_lobby_name(shared_ptr<Client> c, const string& text) {
 }
 
 void send_quest_info(shared_ptr<Client> c, const string& text, bool is_download_quest) {
-  send_text(
-      c->channel, is_download_quest ? 0xA5 : 0xA3, text,
-      c->config.check_flag(Client::Flag::IS_DC_TRIAL_EDITION) ? ColorMode::STRIP : ColorMode::ADD);
+  send_text(c->channel, is_download_quest ? 0xA5 : 0xA3, text, ColorMode::ADD);
 }
 
 void send_lobby_message_box(shared_ptr<Client> c, const string& text, bool left_side_on_bb) {
-  uint16_t command = (left_side_on_bb && (c->version() == GameVersion::BB)) ? 0x0101 : 0x0001;
-  send_header_text(c->channel, command, 0, text, c->config.check_flag(Client::Flag::IS_DC_TRIAL_EDITION) ? ColorMode::STRIP : ColorMode::ADD);
+  uint16_t command = (left_side_on_bb && (c->version() == Version::BB_V4)) ? 0x0101 : 0x0001;
+  send_header_text(c->channel, command, 0, text, ColorMode::ADD);
 }
 
 void send_ship_info(shared_ptr<Client> c, const string& text) {
-  send_header_text(c->channel, 0x11, 0, text, c->config.check_flag(Client::Flag::IS_DC_TRIAL_EDITION) ? ColorMode::STRIP : ColorMode::ADD);
+  send_header_text(c->channel, 0x11, 0, text, ColorMode::ADD);
 }
 
 void send_ship_info(Channel& ch, const string& text) {
@@ -759,7 +792,7 @@ void send_text_message(Channel& ch, const string& text) {
 }
 
 void send_text_message(shared_ptr<Client> c, const string& text) {
-  if (!c->config.check_flag(Client::Flag::IS_DC_TRIAL_EDITION)) {
+  if (c->version() != Version::DC_NTE) {
     send_header_text(c->channel, 0xB0, 0, text, ColorMode::ADD);
   }
 }
@@ -787,7 +820,7 @@ __attribute__((format(printf, 2, 3))) void send_ep3_text_message_printf(shared_p
   va_end(va);
   for (auto& it : s->id_to_lobby) {
     for (auto& c : it.second->clients) {
-      if (c && c->config.check_flag(Client::Flag::IS_EPISODE_3)) {
+      if (c && is_ep3(c->version())) {
         send_text_message(c, buf);
       }
     }
@@ -795,8 +828,7 @@ __attribute__((format(printf, 2, 3))) void send_ep3_text_message_printf(shared_p
 }
 
 string prepare_chat_data(
-    GameVersion version,
-    bool is_nte,
+    Version version,
     uint8_t language,
     uint8_t from_client_id,
     const string& from_name,
@@ -804,11 +836,11 @@ string prepare_chat_data(
     char private_flags) {
   string data;
 
-  if (version == GameVersion::BB) {
+  if (version == Version::BB_V4) {
     data.append("\tJ");
   }
   data.append(from_name);
-  if (is_nte) {
+  if (version == Version::DC_NTE) {
     data.append(string_printf(">%X", from_client_id));
   } else {
     data.append(1, '\t');
@@ -817,11 +849,11 @@ string prepare_chat_data(
     data.append(1, static_cast<uint16_t>(private_flags));
   }
 
-  if ((version == GameVersion::BB) || (version == GameVersion::PC)) {
+  if (uses_utf16(version)) {
     data.append(language ? "\tE" : "\tJ");
     data.append(text);
     return tt_utf8_to_utf16(data);
-  } else if (is_nte) {
+  } else if (version == Version::DC_NTE) {
     data.append(tt_utf8_to_sjis(text));
     return data;
   } else {
@@ -832,7 +864,7 @@ string prepare_chat_data(
 
 void send_chat_message_from_client(Channel& ch, const string& text, char private_flags) {
   if (private_flags != 0) {
-    if (ch.version != GameVersion::GC) {
+    if (!is_ep3(ch.version)) {
       throw runtime_error("nonzero private_flags in non-GC chat message");
     }
     string effective_text;
@@ -849,7 +881,7 @@ void send_prepared_chat_message(shared_ptr<Client> c, uint32_t from_guild_card_n
   w.put(SC_TextHeader_01_06_11_B0_EE{0, from_guild_card_number});
   w.write(prepared_data);
   w.put_u8(0);
-  if ((c->version() == GameVersion::BB) || (c->version() == GameVersion::PC)) {
+  if (uses_utf16(c->version())) {
     w.put_u8(0);
   }
   while (w.size() & 3) {
@@ -869,7 +901,6 @@ void send_prepared_chat_message(shared_ptr<Lobby> l, uint32_t from_guild_card_nu
 void send_chat_message(shared_ptr<Client> c, uint32_t from_guild_card_number, const string& from_name, const string& text, char private_flags) {
   string prepared_data = prepare_chat_data(
       c->version(),
-      c->config.check_flag(Client::Flag::IS_DC_TRIAL_EDITION),
       c->language(),
       c->lobby_client_id,
       from_name,
@@ -902,15 +933,21 @@ void send_simple_mail_bb(shared_ptr<Client> c, uint32_t from_guild_card_number, 
 
 void send_simple_mail(shared_ptr<Client> c, uint32_t from_guild_card_number, const string& from_name, const string& text) {
   switch (c->version()) {
-    case GameVersion::DC:
-    case GameVersion::GC:
-    case GameVersion::XB:
+    case Version::DC_NTE:
+    case Version::DC_V1_12_2000_PROTOTYPE:
+    case Version::DC_V1:
+    case Version::DC_V2:
+    case Version::GC_NTE:
+    case Version::GC_V3:
+    case Version::GC_EP3_TRIAL_EDITION:
+    case Version::GC_EP3:
+    case Version::XB_V3:
       send_simple_mail_t<SC_SimpleMail_DC_V3_81>(c, from_guild_card_number, from_name, text);
       break;
-    case GameVersion::PC:
+    case Version::PC_V2:
       send_simple_mail_t<SC_SimpleMail_PC_81>(c, from_guild_card_number, from_name, text);
       break;
-    case GameVersion::BB:
+    case Version::BB_V4:
       send_simple_mail_bb(c, from_guild_card_number, from_name, text);
       break;
     default:
@@ -938,9 +975,7 @@ void send_info_board_t(shared_ptr<Client> c) {
 }
 
 void send_info_board(shared_ptr<Client> c) {
-  if (c->version() == GameVersion::PC ||
-      c->version() == GameVersion::PATCH ||
-      c->version() == GameVersion::BB) {
+  if (uses_utf16(c->version())) {
     send_info_board_t<TextEncoding::UTF16, TextEncoding::UTF16>(c);
   } else if (c->language()) {
     send_info_board_t<TextEncoding::ASCII, TextEncoding::ISO8859>(c);
@@ -955,7 +990,7 @@ void send_card_search_result_t(
     shared_ptr<Client> result,
     shared_ptr<Lobby> result_lobby) {
   auto s = c->require_server_state();
-  const auto& port_name = version_to_lobby_port_name.at(static_cast<size_t>(c->version()));
+  string port_name = lobby_port_name_for_version(c->version());
 
   S_GuildCardSearchResult<CommandHeaderT, Encoding> cmd;
   cmd.player_tag = 0x00010000;
@@ -989,16 +1024,26 @@ void send_card_search_result(
     shared_ptr<Client> c,
     shared_ptr<Client> result,
     shared_ptr<Lobby> result_lobby) {
-  if ((c->version() == GameVersion::DC) ||
-      (c->version() == GameVersion::GC) ||
-      (c->version() == GameVersion::XB)) {
-    send_card_search_result_t<PSOCommandHeaderDCV3, TextEncoding::SJIS>(c, result, result_lobby);
-  } else if (c->version() == GameVersion::PC) {
-    send_card_search_result_t<PSOCommandHeaderPC, TextEncoding::UTF16>(c, result, result_lobby);
-  } else if (c->version() == GameVersion::BB) {
-    send_card_search_result_t<PSOCommandHeaderBB, TextEncoding::UTF16>(c, result, result_lobby);
-  } else {
-    throw logic_error("unimplemented versioned command");
+  switch (c->version()) {
+    case Version::DC_NTE:
+    case Version::DC_V1_12_2000_PROTOTYPE:
+    case Version::DC_V1:
+    case Version::DC_V2:
+    case Version::GC_NTE:
+    case Version::GC_V3:
+    case Version::GC_EP3_TRIAL_EDITION:
+    case Version::GC_EP3:
+    case Version::XB_V3:
+      send_card_search_result_t<PSOCommandHeaderDCV3, TextEncoding::SJIS>(c, result, result_lobby);
+      break;
+    case Version::PC_V2:
+      send_card_search_result_t<PSOCommandHeaderPC, TextEncoding::UTF16>(c, result, result_lobby);
+      break;
+    case Version::BB_V4:
+      send_card_search_result_t<PSOCommandHeaderBB, TextEncoding::UTF16>(c, result, result_lobby);
+      break;
+    default:
+      throw logic_error("unimplemented versioned command");
   }
 }
 
@@ -1087,23 +1132,30 @@ void send_guild_card(
     uint8_t section_id,
     uint8_t char_class) {
   switch (ch.version) {
-    case GameVersion::DC:
+    case Version::DC_NTE:
+    case Version::DC_V1_12_2000_PROTOTYPE:
+    case Version::DC_V1:
+    case Version::DC_V2:
+      // TODO: Is this the right format and subcommand for NTE and the prototype?
       send_guild_card_dc_pc_gc_t<G_SendGuildCard_DC_6x06>(
           ch, guild_card_number, name, description, language, section_id, char_class);
       break;
-    case GameVersion::PC:
+    case Version::PC_V2:
       send_guild_card_dc_pc_gc_t<G_SendGuildCard_PC_6x06>(
           ch, guild_card_number, name, description, language, section_id, char_class);
       break;
-    case GameVersion::GC:
+    case Version::GC_NTE:
+    case Version::GC_V3:
+    case Version::GC_EP3_TRIAL_EDITION:
+    case Version::GC_EP3:
       send_guild_card_dc_pc_gc_t<G_SendGuildCard_GC_6x06>(
           ch, guild_card_number, name, description, language, section_id, char_class);
       break;
-    case GameVersion::XB:
+    case Version::XB_V3:
       send_guild_card_xb(
           ch, guild_card_number, xb_user_id, name, description, language, section_id, char_class);
       break;
-    case GameVersion::BB:
+    case Version::BB_V4:
       send_guild_card_bb(ch, guild_card_number, name, team_name, description, language, section_id, char_class);
       break;
     default:
@@ -1152,25 +1204,29 @@ void send_menu_t(shared_ptr<Client> c, shared_ptr<const Menu> menu, bool is_info
   for (const auto& item : menu->items) {
     bool is_visible = true;
     switch (c->version()) {
-      case GameVersion::DC:
+      case Version::DC_NTE:
+        is_visible &= !(item.flags & MenuItem::Flag::INVISIBLE_ON_DCNTE);
+        [[fallthrough]];
+      case Version::DC_V1_12_2000_PROTOTYPE:
+      case Version::DC_V1:
+      case Version::DC_V2:
         is_visible &= !(item.flags & MenuItem::Flag::INVISIBLE_ON_DC);
-        if (c->config.check_flag(Client::Flag::IS_DC_TRIAL_EDITION)) {
-          is_visible &= !(item.flags & MenuItem::Flag::INVISIBLE_ON_DCNTE);
-        }
         break;
-      case GameVersion::PC:
+      case Version::PC_V2:
         is_visible &= !(item.flags & MenuItem::Flag::INVISIBLE_ON_PC);
         break;
-      case GameVersion::GC:
+      case Version::GC_NTE:
+        is_visible &= !(item.flags & MenuItem::Flag::INVISIBLE_ON_GC_TRIAL_EDITION);
+        [[fallthrough]];
+      case Version::GC_V3:
+      case Version::GC_EP3_TRIAL_EDITION:
+      case Version::GC_EP3:
         is_visible &= !(item.flags & MenuItem::Flag::INVISIBLE_ON_GC);
-        if (c->config.check_flag(Client::Flag::IS_GC_TRIAL_EDITION)) {
-          is_visible &= !(item.flags & MenuItem::Flag::INVISIBLE_ON_GC_TRIAL_EDITION);
-        }
         break;
-      case GameVersion::XB:
+      case Version::XB_V3:
         is_visible &= !(item.flags & MenuItem::Flag::INVISIBLE_ON_XB);
         break;
-      case GameVersion::BB:
+      case Version::BB_V4:
         is_visible &= !(item.flags & MenuItem::Flag::INVISIBLE_ON_BB);
         break;
       default:
@@ -1193,7 +1249,7 @@ void send_menu_t(shared_ptr<Client> c, shared_ptr<const Menu> menu, bool is_info
       auto& e = entries.emplace_back();
       e.menu_id = menu->menu_id;
       e.item_id = item.item_id;
-      e.flags = (c->version() == GameVersion::BB) ? 0x0004 : 0x0F04;
+      e.flags = (c->version() == Version::BB_V4) ? 0x0004 : 0x0F04;
       e.text.encode(item.name, c->language());
     }
   }
@@ -1203,9 +1259,7 @@ void send_menu_t(shared_ptr<Client> c, shared_ptr<const Menu> menu, bool is_info
 }
 
 void send_menu(shared_ptr<Client> c, shared_ptr<const Menu> menu, bool is_info_menu) {
-  if (c->version() == GameVersion::PC ||
-      c->version() == GameVersion::PATCH ||
-      c->version() == GameVersion::BB) {
+  if (uses_utf16(c->version())) {
     send_menu_t<S_MenuEntry_PC_BB_07_1F>(c, menu, is_info_menu);
   } else {
     send_menu_t<S_MenuEntry_DC_V3_07_1F>(c, menu, is_info_menu);
@@ -1235,7 +1289,7 @@ void send_game_menu_t(
     if (!l->is_game()) {
       continue;
     }
-    if (!l->version_is_allowed(c->quest_version())) {
+    if (!l->version_is_allowed(c->version())) {
       continue;
     }
     if (l->check_flag(Lobby::Flag::IS_SPECTATOR_TEAM) != is_spectator_team_list) {
@@ -1268,16 +1322,16 @@ void send_game_menu_t(
     e.game_id = l->lobby_id;
     e.difficulty_tag = (l->is_ep3() ? 0x0A : (l->difficulty + 0x22));
     e.num_players = l->count_clients();
-    if (c->version() == GameVersion::DC) {
-      e.episode = l->version_is_allowed(QuestScriptVersion::DC_V1) ? 1 : 0;
+    if (is_dc(c->version())) {
+      e.episode = l->version_is_allowed(Version::DC_V1) ? 1 : 0;
     } else {
-      e.episode = ((c->version() == GameVersion::BB) ? (l->max_clients << 4) : 0) | episode_num;
+      e.episode = ((c->version() == Version::BB_V4) ? (l->max_clients << 4) : 0) | episode_num;
     }
     if (l->is_ep3()) {
       e.flags = (l->password.empty() ? 0 : 2) | (l->check_flag(Lobby::Flag::BATTLE_IN_PROGRESS) ? 4 : 0);
     } else {
       e.flags = (l->password.empty() ? 0 : 2);
-      if ((c->version() != GameVersion::DC) && (c->version() != GameVersion::PC)) {
+      if ((c->version() == Version::GC_NTE) || !is_v1_or_v2(c->version())) {
         e.flags |= (episode_num << 6);
       }
       switch (l->mode) {
@@ -1308,12 +1362,10 @@ void send_game_menu(
     shared_ptr<Client> c,
     bool is_spectator_team_list,
     bool show_tournaments_only) {
-  if ((c->version() == GameVersion::DC) ||
-      (c->version() == GameVersion::GC) ||
-      (c->version() == GameVersion::XB)) {
-    send_game_menu_t<TextEncoding::SJIS>(c, is_spectator_team_list, show_tournaments_only);
-  } else {
+  if (uses_utf16(c->version())) {
     send_game_menu_t<TextEncoding::UTF16>(c, is_spectator_team_list, show_tournaments_only);
+  } else {
+    send_game_menu_t<TextEncoding::MARKED>(c, is_spectator_team_list, show_tournaments_only);
   }
 }
 
@@ -1323,7 +1375,7 @@ void send_quest_menu_t(
     uint32_t menu_id,
     const vector<shared_ptr<const Quest>>& quests,
     bool is_download_menu) {
-  auto v = c->quest_version();
+  auto v = c->version();
   vector<EntryT> entries;
   for (const auto& quest : quests) {
     auto vq = quest->version(v, c->language());
@@ -1364,17 +1416,23 @@ void send_quest_menu_t(
 void send_quest_menu(shared_ptr<Client> c, uint32_t menu_id,
     const vector<shared_ptr<const Quest>>& quests, bool is_download_menu) {
   switch (c->version()) {
-    case GameVersion::PC:
+    case Version::PC_V2:
       send_quest_menu_t<S_QuestMenuEntry_PC_A2_A4>(c, menu_id, quests, is_download_menu);
       break;
-    case GameVersion::DC:
-    case GameVersion::GC:
+    case Version::DC_NTE:
+    case Version::DC_V1_12_2000_PROTOTYPE:
+    case Version::DC_V1:
+    case Version::DC_V2:
+    case Version::GC_NTE:
+    case Version::GC_V3:
+    case Version::GC_EP3_TRIAL_EDITION:
+    case Version::GC_EP3:
       send_quest_menu_t<S_QuestMenuEntry_DC_GC_A2_A4>(c, menu_id, quests, is_download_menu);
       break;
-    case GameVersion::XB:
+    case Version::XB_V3:
       send_quest_menu_t<S_QuestMenuEntry_XB_A2_A4>(c, menu_id, quests, is_download_menu);
       break;
-    case GameVersion::BB:
+    case Version::BB_V4:
       send_quest_menu_t<S_QuestMenuEntry_BB_A2_A4>(c, menu_id, quests, is_download_menu);
       break;
     default:
@@ -1385,17 +1443,23 @@ void send_quest_menu(shared_ptr<Client> c, uint32_t menu_id,
 void send_quest_menu(shared_ptr<Client> c, uint32_t menu_id,
     shared_ptr<const QuestCategoryIndex> category_index, uint8_t flags) {
   switch (c->version()) {
-    case GameVersion::PC:
+    case Version::PC_V2:
       send_quest_menu_t<S_QuestMenuEntry_PC_A2_A4>(c, menu_id, category_index, flags);
       break;
-    case GameVersion::DC:
-    case GameVersion::GC:
+    case Version::DC_NTE:
+    case Version::DC_V1_12_2000_PROTOTYPE:
+    case Version::DC_V1:
+    case Version::DC_V2:
+    case Version::GC_NTE:
+    case Version::GC_V3:
+    case Version::GC_EP3_TRIAL_EDITION:
+    case Version::GC_EP3:
       send_quest_menu_t<S_QuestMenuEntry_DC_GC_A2_A4>(c, menu_id, category_index, flags);
       break;
-    case GameVersion::XB:
+    case Version::XB_V3:
       send_quest_menu_t<S_QuestMenuEntry_XB_A2_A4>(c, menu_id, category_index, flags);
       break;
-    case GameVersion::BB:
+    case Version::BB_V4:
       send_quest_menu_t<S_QuestMenuEntry_BB_A2_A4>(c, menu_id, category_index, flags);
       break;
     default:
@@ -1414,10 +1478,7 @@ void send_lobby_list(shared_ptr<Client> c) {
     if (!l->check_flag(Lobby::Flag::DEFAULT)) {
       continue;
     }
-    if (l->check_flag(Lobby::Flag::V2_AND_LATER) && c->config.check_flag(Client::Flag::IS_DC_V1)) {
-      continue;
-    }
-    if (l->is_ep3() && !c->config.check_flag(Client::Flag::IS_EPISODE_3)) {
+    if (!l->version_is_allowed(c->version())) {
       continue;
     }
     auto& e = entries.emplace_back();
@@ -1457,8 +1518,8 @@ void send_player_records_t(shared_ptr<Client> c, shared_ptr<Lobby> l, shared_ptr
 }
 
 static void send_join_spectator_team(shared_ptr<Client> c, shared_ptr<Lobby> l) {
-  if (!c->config.check_flag(Client::Flag::IS_EPISODE_3)) {
-    throw runtime_error("lobby is not Episode 3");
+  if (!is_ep3(c->version())) {
+    throw runtime_error("client is not Episode 3");
   }
   if (!l->is_ep3()) {
     throw runtime_error("lobby is not Episode 3");
@@ -1639,51 +1700,55 @@ void send_join_game(shared_ptr<Client> c, shared_ptr<Lobby> l) {
   };
 
   switch (c->version()) {
-    case GameVersion::DC: {
-      if (c->config.check_flag(Client::Flag::IS_DC_TRIAL_EDITION)) {
-        S_JoinGame_DCNTE_64 cmd;
-        cmd.client_id = c->lobby_client_id;
-        cmd.leader_id = l->leader_id;
-        cmd.disable_udp = 0x01;
-        cmd.variations = l->variations;
-        size_t player_count = populate_lobby_data(cmd);
-        send_command_t(c, 0x64, player_count, cmd);
-      } else {
-        S_JoinGame_DC_64 cmd;
-        size_t player_count = populate_base_cmd(cmd);
-        send_command_t(c, 0x64, player_count, cmd);
-      }
+    case Version::DC_NTE: {
+      S_JoinGame_DCNTE_64 cmd;
+      cmd.client_id = c->lobby_client_id;
+      cmd.leader_id = l->leader_id;
+      cmd.disable_udp = 0x01;
+      cmd.variations = l->variations;
+      size_t player_count = populate_lobby_data(cmd);
+      send_command_t(c, 0x64, player_count, cmd);
       break;
     }
-    case GameVersion::PC: {
+    case Version::DC_V1_12_2000_PROTOTYPE:
+    case Version::DC_V1:
+    case Version::DC_V2: {
+      S_JoinGame_DC_64 cmd;
+      size_t player_count = populate_base_cmd(cmd);
+      send_command_t(c, 0x64, player_count, cmd);
+      break;
+    }
+    case Version::PC_V2: {
       S_JoinGame_PC_64 cmd;
       size_t player_count = populate_base_cmd(cmd);
       send_command_t(c, 0x64, player_count, cmd);
       break;
     }
-    case GameVersion::GC: {
-      if (c->config.check_flag(Client::Flag::IS_EPISODE_3)) {
-        S_JoinGame_GC_Ep3_64 cmd;
-        size_t player_count = populate_v3_cmd(cmd);
-        auto s = c->require_server_state();
-        for (size_t x = 0; x < 4; x++) {
-          if (l->clients[x]) {
-            auto other_p = l->clients[x]->game_data.character();
-            cmd.players_ep3[x].inventory = other_p->inventory;
-            cmd.players_ep3[x].inventory.encode_for_client(c);
-            cmd.players_ep3[x].disp = convert_player_disp_data<PlayerDispDataDCPCV3>(other_p->disp, c->language(), other_p->inventory.language);
-            cmd.players_ep3[x].disp.enforce_lobby_join_limits_for_client(c);
-          }
-        }
-        send_command_t(c, 0x64, player_count, cmd);
-      } else {
-        S_JoinGame_GC_64 cmd;
-        size_t player_count = populate_v3_cmd(cmd);
-        send_command_t(c, 0x64, player_count, cmd);
-      }
+    case Version::GC_NTE:
+    case Version::GC_V3: {
+      S_JoinGame_GC_64 cmd;
+      size_t player_count = populate_v3_cmd(cmd);
+      send_command_t(c, 0x64, player_count, cmd);
       break;
     }
-    case GameVersion::XB: {
+    case Version::GC_EP3_TRIAL_EDITION:
+    case Version::GC_EP3: {
+      S_JoinGame_GC_Ep3_64 cmd;
+      size_t player_count = populate_v3_cmd(cmd);
+      auto s = c->require_server_state();
+      for (size_t x = 0; x < 4; x++) {
+        if (l->clients[x]) {
+          auto other_p = l->clients[x]->game_data.character();
+          cmd.players_ep3[x].inventory = other_p->inventory;
+          cmd.players_ep3[x].inventory.encode_for_client(c);
+          cmd.players_ep3[x].disp = convert_player_disp_data<PlayerDispDataDCPCV3>(other_p->disp, c->language(), other_p->inventory.language);
+          cmd.players_ep3[x].disp.enforce_lobby_join_limits_for_client(c);
+        }
+      }
+      send_command_t(c, 0x64, player_count, cmd);
+      break;
+    }
+    case Version::XB_V3: {
       S_JoinGame_XB_64 cmd;
       size_t player_count = populate_v3_cmd(cmd);
       for (size_t x = 0; x < 4; x++) {
@@ -1699,7 +1764,7 @@ void send_join_game(shared_ptr<Client> c, shared_ptr<Lobby> l) {
       send_command_t(c, 0x64, player_count, cmd);
       break;
     }
-    case GameVersion::BB: {
+    case Version::BB_V4: {
       S_JoinGame_BB_64 cmd;
       size_t player_count = populate_v3_cmd(cmd);
       cmd.unused1 = 0;
@@ -1708,8 +1773,6 @@ void send_join_game(shared_ptr<Client> c, shared_ptr<Lobby> l) {
       send_command_t(c, 0x64, player_count, cmd);
       break;
     }
-    case GameVersion::PATCH:
-      throw logic_error("patch server clients cannot join games");
     default:
       throw logic_error("invalid game version");
   }
@@ -1734,11 +1797,10 @@ void send_join_lobby_t(shared_ptr<Client> c, shared_ptr<Lobby> l, shared_ptr<Cli
     command = joining_client ? 0x68 : 0x67;
   }
 
-  if ((c->version() != GameVersion::DC) || !c->config.check_flag(Client::Flag::IS_DC_V1)) {
+  if (!is_v1(c->version())) {
     send_player_records_t<RecordsT>(c, l, joining_client);
   }
-
-  if (c->version() == GameVersion::BB) {
+  if (c->version() == Version::BB_V4) {
     send_all_nearby_team_metadatas_to_client(c, false);
   }
 
@@ -1746,27 +1808,29 @@ void send_join_lobby_t(shared_ptr<Client> c, shared_ptr<Lobby> l, shared_ptr<Cli
   if (c->config.override_lobby_number != 0x80) {
     lobby_type = c->config.override_lobby_number;
   } else if (l->check_flag(Lobby::Flag::IS_OVERFLOW)) {
-    lobby_type = c->config.check_flag(Client::Flag::IS_EPISODE_3) ? 15 : 0;
+    lobby_type = is_ep3(c->version()) ? 15 : 0;
   } else {
     lobby_type = l->block - 1;
   }
 
   // Allow non-canonical lobby types on GC. They may work on other versions too,
   // but I haven't verified which values don't crash on each version.
-  if (c->version() == GameVersion::GC) {
-    if (c->config.check_flag(Client::Flag::IS_EPISODE_3)) {
+  switch (c->version()) {
+    case Version::GC_EP3_TRIAL_EDITION:
+    case Version::GC_EP3:
       if ((lobby_type > 0x14) && (lobby_type < 0xE9)) {
         lobby_type = l->block - 1;
       }
-    } else {
+      break;
+    case Version::GC_V3:
       if ((lobby_type > 0x11) && (lobby_type != 0x67) && (lobby_type != 0xD4) && (lobby_type < 0xFC)) {
         lobby_type = l->block - 1;
       }
-    }
-  } else {
-    if (lobby_type > 0x0E) {
-      lobby_type = l->block - 1;
-    }
+      break;
+    default:
+      if (lobby_type > 0x0E) {
+        lobby_type = l->block - 1;
+      }
   }
 
   S_JoinLobby<LobbyFlags, LobbyDataT, DispDataT> cmd;
@@ -1832,7 +1896,7 @@ void send_join_lobby_xb(shared_ptr<Client> c, shared_ptr<Lobby> l, shared_ptr<Cl
   if (c->config.override_lobby_number != 0x80) {
     lobby_type = c->config.override_lobby_number;
   } else if (l->check_flag(Lobby::Flag::IS_OVERFLOW)) {
-    lobby_type = c->config.check_flag(Client::Flag::IS_EPISODE_3) ? 15 : 0;
+    lobby_type = is_ep3(c->version()) ? 15 : 0;
   } else {
     lobby_type = l->block - 1;
   }
@@ -1938,23 +2002,27 @@ void send_join_lobby(shared_ptr<Client> c, shared_ptr<Lobby> l) {
     send_join_game(c, l);
   } else {
     switch (c->version()) {
-      case GameVersion::DC:
-        if (c->config.check_flag(Client::Flag::IS_DC_TRIAL_EDITION) || c->config.check_flag(Client::Flag::IS_DC_V1_PROTOTYPE)) {
-          send_join_lobby_dc_nte(c, l);
-        } else {
-          send_join_lobby_t<PlayerLobbyDataDCGC, PlayerDispDataDCPCV3, PlayerRecordsEntry_DC, false>(c, l);
-        }
+      case Version::DC_NTE:
+      case Version::DC_V1_12_2000_PROTOTYPE:
+        send_join_lobby_dc_nte(c, l);
         break;
-      case GameVersion::PC:
+      case Version::DC_V1:
+      case Version::DC_V2:
+        send_join_lobby_t<PlayerLobbyDataDCGC, PlayerDispDataDCPCV3, PlayerRecordsEntry_DC, false>(c, l);
+        break;
+      case Version::PC_V2:
         send_join_lobby_t<PlayerLobbyDataPC, PlayerDispDataDCPCV3, PlayerRecordsEntry_PC, false>(c, l);
         break;
-      case GameVersion::GC:
+      case Version::GC_NTE:
+      case Version::GC_V3:
+      case Version::GC_EP3_TRIAL_EDITION:
+      case Version::GC_EP3:
         send_join_lobby_t<PlayerLobbyDataDCGC, PlayerDispDataDCPCV3, PlayerRecordsEntry_V3, false>(c, l);
         break;
-      case GameVersion::XB:
+      case Version::XB_V3:
         send_join_lobby_xb(c, l);
         break;
-      case GameVersion::BB:
+      case Version::BB_V4:
         send_join_lobby_t<PlayerLobbyDataBB, PlayerDispDataBB, PlayerRecordsEntry_BB, true>(c, l);
         break;
       default:
@@ -1973,23 +2041,27 @@ void send_join_lobby(shared_ptr<Client> c, shared_ptr<Lobby> l) {
 void send_player_join_notification(shared_ptr<Client> c,
     shared_ptr<Lobby> l, shared_ptr<Client> joining_client) {
   switch (c->version()) {
-    case GameVersion::DC:
-      if (c->config.check_flag(Client::Flag::IS_DC_TRIAL_EDITION) || c->config.check_flag(Client::Flag::IS_DC_V1_PROTOTYPE)) {
-        send_join_lobby_dc_nte(c, l, joining_client);
-      } else {
-        send_join_lobby_t<PlayerLobbyDataDCGC, PlayerDispDataDCPCV3, PlayerRecordsEntry_DC, false>(c, l, joining_client);
-      }
+    case Version::DC_NTE:
+    case Version::DC_V1_12_2000_PROTOTYPE:
+      send_join_lobby_dc_nte(c, l, joining_client);
       break;
-    case GameVersion::PC:
+    case Version::DC_V1:
+    case Version::DC_V2:
+      send_join_lobby_t<PlayerLobbyDataDCGC, PlayerDispDataDCPCV3, PlayerRecordsEntry_DC, false>(c, l, joining_client);
+      break;
+    case Version::PC_V2:
       send_join_lobby_t<PlayerLobbyDataPC, PlayerDispDataDCPCV3, PlayerRecordsEntry_PC, false>(c, l, joining_client);
       break;
-    case GameVersion::GC:
+    case Version::GC_NTE:
+    case Version::GC_V3:
+    case Version::GC_EP3_TRIAL_EDITION:
+    case Version::GC_EP3:
       send_join_lobby_t<PlayerLobbyDataDCGC, PlayerDispDataDCPCV3, PlayerRecordsEntry_V3, false>(c, l, joining_client);
       break;
-    case GameVersion::XB:
+    case Version::XB_V3:
       send_join_lobby_xb(c, l, joining_client);
       break;
-    case GameVersion::BB:
+    case Version::BB_V4:
       send_join_lobby_t<PlayerLobbyDataBB, PlayerDispDataBB, PlayerRecordsEntry_BB, true>(c, l, joining_client);
       break;
     default:
@@ -2017,12 +2089,7 @@ void send_self_leave_notification(shared_ptr<Client> c) {
 }
 
 void send_get_player_info(shared_ptr<Client> c) {
-  if ((c->version() == GameVersion::DC) &&
-      c->config.check_flag(Client::Flag::IS_DC_TRIAL_EDITION)) {
-    send_command(c, 0x8D, 0x00);
-  } else {
-    send_command(c, 0x95, 0x00);
-  }
+  send_command(c, (c->version() == Version::DC_NTE) ? 0x8D : 0x95, 0x00);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2044,9 +2111,8 @@ void send_execute_item_trade(shared_ptr<Client> c, const vector<ItemData>& items
   send_command_t(c, 0xD3, 0x00, cmd);
 }
 
-void send_execute_card_trade(shared_ptr<Client> c,
-    const vector<pair<uint32_t, uint32_t>>& card_to_count) {
-  if (!c->config.check_flag(Client::Flag::IS_EPISODE_3)) {
+void send_execute_card_trade(shared_ptr<Client> c, const vector<pair<uint32_t, uint32_t>>& card_to_count) {
+  if (is_ep3(c->version())) {
     throw logic_error("cannot send trade cards command to non-Ep3 client");
   }
 
@@ -2077,20 +2143,22 @@ void send_arrow_update(shared_ptr<Lobby> l) {
   vector<S_ArrowUpdateEntry_88> entries;
 
   for (size_t x = 0; x < l->max_clients; x++) {
-    if (!l->clients[x]) {
+    auto lc = l->clients[x];
+    if (!lc) {
       continue;
     }
     auto& e = entries.emplace_back();
     e.player_tag = 0x00010000;
-    e.guild_card_number = l->clients[x]->license->serial_number;
-    e.arrow_color = l->clients[x]->lobby_arrow_color;
+    e.guild_card_number = lc->license->serial_number;
+    e.arrow_color = lc->lobby_arrow_color;
   }
 
   for (size_t x = 0; x < l->max_clients; x++) {
-    if (!l->clients[x] || l->clients[x]->config.check_flag(Client::Flag::IS_DC_V1)) {
+    auto lc = l->clients[x];
+    if (!lc || is_v1(lc->version())) {
       continue;
     }
-    send_command_vt(l->clients[x], 0x88, entries.size(), entries);
+    send_command_vt(lc, 0x88, entries.size(), entries);
   }
 }
 
@@ -2208,7 +2276,7 @@ void send_pick_up_item(shared_ptr<Client> c, uint32_t item_id, uint8_t floor) {
 
 void send_create_inventory_item(shared_ptr<Client> c, const ItemData& item) {
   auto l = c->require_lobby();
-  if (c->version() != GameVersion::BB) {
+  if (c->version() != Version::BB_V4) {
     throw logic_error("6xBE can only be sent to BB clients");
   }
   uint16_t client_id = c->lobby_client_id;
@@ -2225,7 +2293,7 @@ void send_destroy_item(shared_ptr<Client> c, uint32_t item_id, uint32_t amount) 
 
 void send_item_identify_result(shared_ptr<Client> c) {
   auto l = c->require_lobby();
-  if (c->version() != GameVersion::BB) {
+  if (c->version() != Version::BB_V4) {
     throw logic_error("cannot send item identify result to non-BB client");
   }
   G_IdentifyResult_BB_6xB9 res;
@@ -2237,7 +2305,7 @@ void send_item_identify_result(shared_ptr<Client> c) {
 }
 
 void send_bank(shared_ptr<Client> c) {
-  if (c->version() != GameVersion::BB) {
+  if (c->version() != Version::BB_V4) {
     throw logic_error("6xBC can only be sent to BB clients");
   }
 
@@ -2255,7 +2323,7 @@ void send_bank(shared_ptr<Client> c) {
 }
 
 void send_shop(shared_ptr<Client> c, uint8_t shop_type) {
-  if (c->version() != GameVersion::BB) {
+  if (c->version() != Version::BB_V4) {
     throw logic_error("6xB6 can only be sent to BB clients");
   }
 
@@ -2301,7 +2369,7 @@ void send_level_up(shared_ptr<Client> c) {
 
 void send_give_experience(shared_ptr<Client> c, uint32_t amount) {
   auto l = c->require_lobby();
-  if (c->version() != GameVersion::BB) {
+  if (c->version() != Version::BB_V4) {
     throw logic_error("6xBF can only be sent to BB clients");
   }
   uint16_t client_id = c->lobby_client_id;
@@ -2311,7 +2379,7 @@ void send_give_experience(shared_ptr<Client> c, uint32_t amount) {
 }
 
 void send_set_exp_multiplier(std::shared_ptr<Lobby> l) {
-  if (l->base_version != GameVersion::BB) {
+  if (l->base_version != Version::BB_V4) {
     throw logic_error("6xDD can only be sent to BB clients");
   }
   if (!l->is_game()) {
@@ -2349,7 +2417,7 @@ void send_quest_function_call(shared_ptr<Client> c, uint16_t function_id) {
 void send_ep3_card_list_update(shared_ptr<Client> c) {
   if (!c->config.check_flag(Client::Flag::HAS_EP3_CARD_DEFS)) {
     auto s = c->require_server_state();
-    const auto& data = c->config.check_flag(Client::Flag::IS_EP3_TRIAL_EDITION)
+    const auto& data = (c->version() == Version::GC_EP3_TRIAL_EDITION)
         ? s->ep3_card_index_trial->get_compressed_definitions()
         : s->ep3_card_index->get_compressed_definitions();
 
@@ -2423,7 +2491,7 @@ void send_ep3_set_context_token(shared_ptr<Client> c, uint32_t context_token) {
 void send_ep3_confirm_tournament_entry(
     shared_ptr<Client> c,
     shared_ptr<const Episode3::Tournament> tourn) {
-  if (c->config.check_flag(Client::Flag::IS_EP3_TRIAL_EDITION)) {
+  if (c->version() == Version::GC_EP3_TRIAL_EDITION) {
     throw runtime_error("cannot send tournament entry command to Episode 3 Trial Edition client");
   }
 
@@ -2540,7 +2608,7 @@ void send_ep3_tournament_details(
 }
 
 string ep3_description_for_client(shared_ptr<Client> c) {
-  if (!c->config.check_flag(Client::Flag::IS_EPISODE_3)) {
+  if (!is_ep3(c->version())) {
     throw runtime_error("client is not Episode 3");
   }
   auto p = c->game_data.character();
@@ -2983,17 +3051,22 @@ void send_open_quest_file(
     shared_ptr<const string> contents) {
 
   switch (c->version()) {
-    case GameVersion::DC:
+    case Version::DC_V1_12_2000_PROTOTYPE:
+    case Version::DC_V1:
+    case Version::DC_V2:
       send_open_quest_file_t<S_OpenFile_DC_44_A6>(c, quest_name, filename, xb_filename, contents->size(), quest_number, type);
       break;
-    case GameVersion::PC:
-    case GameVersion::GC:
+    case Version::PC_V2:
+    case Version::GC_NTE:
+    case Version::GC_V3:
+    case Version::GC_EP3_TRIAL_EDITION:
+    case Version::GC_EP3:
       send_open_quest_file_t<S_OpenFile_PC_GC_44_A6>(c, quest_name, filename, xb_filename, contents->size(), quest_number, type);
       break;
-    case GameVersion::XB:
+    case Version::XB_V3:
       send_open_quest_file_t<S_OpenFile_XB_44_A6>(c, quest_name, filename, xb_filename, contents->size(), quest_number, type);
       break;
-    case GameVersion::BB:
+    case Version::BB_V4:
       send_open_quest_file_t<S_OpenFile_BB_44_A6>(c, quest_name, filename, xb_filename, contents->size(), quest_number, type);
       break;
     default:
@@ -3002,7 +3075,7 @@ void send_open_quest_file(
 
   // For GC/XB/BB, we wait for acknowledgement commands before sending each
   // chunk. For DC/PC, we send the entire quest all at once.
-  if ((c->version() == GameVersion::DC) || (c->version() == GameVersion::PC)) {
+  if (is_v1_or_v2(c->version())) {
     for (size_t offset = 0; offset < contents->size(); offset += 0x400) {
       size_t chunk_bytes = contents->size() - offset;
       if (chunk_bytes > 0x400) {
@@ -3106,7 +3179,7 @@ void send_ep3_card_auction(shared_ptr<Lobby> l) {
     distribution_size += e.probability;
   }
 
-  auto card_index = l->check_flag(Lobby::Flag::IS_EP3_TRIAL)
+  auto card_index = (l->base_version == Version::GC_EP3_TRIAL_EDITION)
       ? s->ep3_card_index_trial
       : s->ep3_card_index;
 
@@ -3157,12 +3230,9 @@ void send_server_time(shared_ptr<Client> c) {
 
 void send_change_event(shared_ptr<Client> c, uint8_t new_event) {
   // This command isn't supported on versions before V3, nor on Trial Edition.
-  if ((c->version() == GameVersion::DC) ||
-      (c->version() == GameVersion::PC) ||
-      c->config.check_flag(Client::Flag::IS_GC_TRIAL_EDITION)) {
-    return;
+  if (!is_v1_or_v2(c->version())) {
+    send_command(c, 0xDA, new_event);
   }
-  send_command(c, 0xDA, new_event);
 }
 
 void send_change_event(shared_ptr<Lobby> l, uint8_t new_event) {

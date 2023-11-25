@@ -23,32 +23,6 @@ using AttackData = BattleParamsIndex::AttackData;
 using ResistData = BattleParamsIndex::ResistData;
 using MovementData = BattleParamsIndex::MovementData;
 
-template <>
-const char* name_for_enum<QuestScriptVersion>(QuestScriptVersion v) {
-  switch (v) {
-    case QuestScriptVersion::DC_NTE:
-      return "DC_NTE";
-    case QuestScriptVersion::DC_V1:
-      return "DC_V1";
-    case QuestScriptVersion::DC_V2:
-      return "DC_V2";
-    case QuestScriptVersion::PC_V2:
-      return "PC_V2";
-    case QuestScriptVersion::GC_NTE:
-      return "GC_NTE";
-    case QuestScriptVersion::GC_V3:
-      return "GC_V3";
-    case QuestScriptVersion::XB_V3:
-      return "XB_V3";
-    case QuestScriptVersion::GC_EP3:
-      return "GC_EP3";
-    case QuestScriptVersion::BB_V4:
-      return "BB_V4";
-    default:
-      return "__UNKNOWN__";
-  }
-}
-
 // bit_cast isn't in the standard place on macOS (it is apparently implicitly
 // included by resource_dasm, but newserv can be built without resource_dasm)
 // and I'm too lazy to go find the right header to include
@@ -152,12 +126,12 @@ struct QuestScriptOpcodeDefinition {
         flags(flags) {}
 };
 
-constexpr uint16_t v_flag(QuestScriptVersion v) {
+constexpr uint16_t v_flag(Version v) {
   return (1 << static_cast<uint16_t>(v));
 }
 
 using Arg = QuestScriptOpcodeDefinition::Argument;
-using V = QuestScriptVersion;
+using V = Version;
 
 static constexpr uint16_t F_DC_NTE = v_flag(V::DC_NTE);
 static constexpr uint16_t F_DC_V1 = v_flag(V::DC_V1);
@@ -801,10 +775,10 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
 };
 
 static const unordered_map<uint16_t, const QuestScriptOpcodeDefinition*>&
-opcodes_for_version(QuestScriptVersion v) {
+opcodes_for_version(Version v) {
   static array<
       unordered_map<uint16_t, const QuestScriptOpcodeDefinition*>,
-      static_cast<size_t>(QuestScriptVersion::BB_V4) + 1>
+      static_cast<size_t>(Version::BB_V4) + 1>
       indexes;
 
   auto& index = indexes.at(static_cast<size_t>(v));
@@ -823,7 +797,7 @@ opcodes_for_version(QuestScriptVersion v) {
   return index;
 }
 
-std::string disassemble_quest_script(const void* data, size_t size, QuestScriptVersion version, uint8_t language) {
+std::string disassemble_quest_script(const void* data, size_t size, Version version, uint8_t language) {
   StringReader r(data, size);
   deque<string> lines;
 
@@ -831,9 +805,16 @@ std::string disassemble_quest_script(const void* data, size_t size, QuestScriptV
   size_t code_offset = 0;
   size_t function_table_offset = 0;
   switch (version) {
-    case QuestScriptVersion::DC_NTE:
-    case QuestScriptVersion::DC_V1:
-    case QuestScriptVersion::DC_V2: {
+    case Version::DC_NTE: {
+      const auto& header = r.get<PSOQuestHeaderDCNTE>();
+      code_offset = header.code_offset;
+      function_table_offset = header.function_table_offset;
+      lines.emplace_back(".name " + JSON(header.name.decode(0)).serialize());
+      break;
+    }
+    case Version::DC_V1_12_2000_PROTOTYPE:
+    case Version::DC_V1:
+    case Version::DC_V2: {
       const auto& header = r.get<PSOQuestHeaderDC>();
       code_offset = header.code_offset;
       function_table_offset = header.function_table_offset;
@@ -844,7 +825,7 @@ std::string disassemble_quest_script(const void* data, size_t size, QuestScriptV
       lines.emplace_back(".long_desc " + JSON(header.long_description.decode(language)).serialize());
       break;
     }
-    case QuestScriptVersion::PC_V2: {
+    case Version::PC_V2: {
       use_wstrs = true;
       const auto& header = r.get<PSOQuestHeaderPC>();
       code_offset = header.code_offset;
@@ -856,10 +837,11 @@ std::string disassemble_quest_script(const void* data, size_t size, QuestScriptV
       lines.emplace_back(".long_desc " + JSON(header.long_description.decode(language)).serialize());
       break;
     }
-    case QuestScriptVersion::GC_NTE:
-    case QuestScriptVersion::GC_V3:
-    case QuestScriptVersion::GC_EP3:
-    case QuestScriptVersion::XB_V3: {
+    case Version::GC_NTE:
+    case Version::GC_V3:
+    case Version::GC_EP3_TRIAL_EDITION:
+    case Version::GC_EP3:
+    case Version::XB_V3: {
       const auto& header = r.get<PSOQuestHeaderGC>();
       code_offset = header.code_offset;
       function_table_offset = header.function_table_offset;
@@ -871,7 +853,7 @@ std::string disassemble_quest_script(const void* data, size_t size, QuestScriptV
       lines.emplace_back(".long_desc " + JSON(header.long_description.decode(language)).serialize());
       break;
     }
-    case QuestScriptVersion::BB_V4: {
+    case Version::BB_V4: {
       use_wstrs = true;
       const auto& header = r.get<PSOQuestHeaderBB>();
       code_offset = header.code_offset;
@@ -1484,7 +1466,7 @@ std::string disassemble_quest_script(const void* data, size_t size, QuestScriptV
   return join(lines, "\n");
 }
 
-Episode find_quest_episode_from_script(const void* data, size_t size, QuestScriptVersion version) {
+Episode find_quest_episode_from_script(const void* data, size_t size, Version version) {
   StringReader r(data, size);
 
   bool use_wstrs = false;
@@ -1492,22 +1474,24 @@ Episode find_quest_episode_from_script(const void* data, size_t size, QuestScrip
   size_t function_table_offset = 0;
   Episode header_episode = Episode::NONE;
   switch (version) {
-    case QuestScriptVersion::DC_NTE:
-    case QuestScriptVersion::DC_V1:
-    case QuestScriptVersion::DC_V2:
-    case QuestScriptVersion::PC_V2:
+    case Version::DC_NTE:
+    case Version::DC_V1_12_2000_PROTOTYPE:
+    case Version::DC_V1:
+    case Version::DC_V2:
+    case Version::PC_V2:
       return Episode::EP1;
-    case QuestScriptVersion::GC_NTE:
-    case QuestScriptVersion::GC_V3:
-    case QuestScriptVersion::GC_EP3:
-    case QuestScriptVersion::XB_V3: {
+    case Version::GC_NTE:
+    case Version::GC_V3:
+    case Version::GC_EP3_TRIAL_EDITION:
+    case Version::GC_EP3:
+    case Version::XB_V3: {
       const auto& header = r.get<PSOQuestHeaderGC>();
       code_offset = header.code_offset;
       function_table_offset = header.function_table_offset;
       header_episode = episode_for_quest_episode_number(header.episode);
       break;
     }
-    case QuestScriptVersion::BB_V4: {
+    case Version::BB_V4: {
       use_wstrs = true;
       const auto& header = r.get<PSOQuestHeaderBB>();
       code_offset = header.code_offset;

@@ -23,7 +23,7 @@ static void flush_and_free_bufferevent(struct bufferevent* bev) {
 }
 
 Channel::Channel(
-    GameVersion version,
+    Version version,
     uint8_t language,
     on_command_received_t on_command_received,
     on_error_t on_error,
@@ -44,7 +44,7 @@ Channel::Channel(
 
 Channel::Channel(
     struct bufferevent* bev,
-    GameVersion version,
+    Version version,
     uint8_t language,
     on_command_received_t on_command_received,
     on_error_t on_error,
@@ -157,7 +157,7 @@ void Channel::disconnect() {
 Channel::Message Channel::recv() {
   struct evbuffer* buf = bufferevent_get_input(this->bev.get());
 
-  size_t header_size = (this->version == GameVersion::BB) ? 8 : 4;
+  size_t header_size = (this->version == Version::BB_V4) ? 8 : 4;
   PSOCommandHeader header;
   if (evbuffer_copyout(buf, &header, header_size) < static_cast<ssize_t>(header_size)) {
     throw out_of_range("no command available");
@@ -172,7 +172,7 @@ Channel::Message Channel::recv() {
   // If encryption is enabled, BB pads commands to 8-byte boundaries, and this
   // is not reflected in the size field. This logic does not occur if encryption
   // is not yet enabled.
-  size_t command_physical_size = (this->crypt_in.get() && (version == GameVersion::BB))
+  size_t command_physical_size = (this->crypt_in.get() && (version == Version::BB_V4))
       ? ((command_logical_size + 7) & ~7)
       : command_logical_size;
   if (evbuffer_get_length(buf) < command_physical_size) {
@@ -214,7 +214,7 @@ Channel::Message Channel::recv() {
       print_color_escape(stderr, this->terminal_recv_color, TerminalFormat::BOLD, TerminalFormat::END);
     }
 
-    if (version == GameVersion::BB) {
+    if (version == Version::BB_V4) {
       command_data_log.info(
           "Received from %s (version=BB command=%04hX flag=%08" PRIX32 ")",
           this->name.c_str(),
@@ -224,7 +224,7 @@ Channel::Message Channel::recv() {
       command_data_log.info(
           "Received from %s (version=%s command=%02hX flag=%02" PRIX32 ")",
           this->name.c_str(),
-          name_for_version(this->version),
+          name_for_enum(this->version),
           header.command(this->version),
           header.flag(this->version));
     }
@@ -265,11 +265,20 @@ void Channel::send(uint16_t cmd, uint32_t flag, const std::vector<std::pair<cons
   size_t logical_size;
   size_t send_data_size = 0;
   switch (this->version) {
-    case GameVersion::DC:
-    case GameVersion::GC:
-    case GameVersion::XB: {
+    case Version::DC_NTE:
+    case Version::DC_V1_12_2000_PROTOTYPE:
+    case Version::DC_V1:
+    case Version::DC_V2:
+    case Version::GC_NTE:
+    case Version::GC_V3:
+    case Version::GC_EP3_TRIAL_EDITION:
+    case Version::GC_EP3:
+    case Version::XB_V3: {
       PSOCommandHeaderDCV3 header;
-      if (this->crypt_out.get()) {
+      if (this->crypt_out.get() &&
+          (this->version != Version::DC_NTE) &&
+          (this->version != Version::DC_V1_12_2000_PROTOTYPE) &&
+          (this->version != Version::DC_V1)) {
         send_data_size = (sizeof(header) + size + 3) & ~3;
       } else {
         send_data_size = (sizeof(header) + size);
@@ -281,9 +290,9 @@ void Channel::send(uint16_t cmd, uint32_t flag, const std::vector<std::pair<cons
       send_data.append(reinterpret_cast<const char*>(&header), sizeof(header));
       break;
     }
-
-    case GameVersion::PC:
-    case GameVersion::PATCH: {
+    case Version::PC_PATCH:
+    case Version::BB_PATCH:
+    case Version::PC_V2: {
       PSOCommandHeaderPC header;
       if (this->crypt_out.get()) {
         send_data_size = (sizeof(header) + size + 3) & ~3;
@@ -297,8 +306,7 @@ void Channel::send(uint16_t cmd, uint32_t flag, const std::vector<std::pair<cons
       send_data.append(reinterpret_cast<const char*>(&header), sizeof(header));
       break;
     }
-
-    case GameVersion::BB: {
+    case Version::BB_V4: {
       // BB has an annoying behavior here: command lengths must be multiples of
       // 4, but the actual data length must be a multiple of 8. If the size
       // field is not divisible by 8, 4 extra bytes are sent anyway. This
@@ -340,12 +348,12 @@ void Channel::send(uint16_t cmd, uint32_t flag, const std::vector<std::pair<cons
     if (use_terminal_colors && this->terminal_send_color != TerminalFormat::NORMAL) {
       print_color_escape(stderr, TerminalFormat::FG_YELLOW, TerminalFormat::BOLD, TerminalFormat::END);
     }
-    if (version == GameVersion::BB) {
+    if (version == Version::BB_V4) {
       command_data_log.info("Sending to %s (version=BB command=%04hX flag=%08" PRIX32 ")",
           this->name.c_str(), cmd, flag);
     } else {
       command_data_log.info("Sending to %s (version=%s command=%02hX flag=%02" PRIX32 ")",
-          this->name.c_str(), name_for_version(version), cmd, flag);
+          this->name.c_str(), name_for_enum(version), cmd, flag);
     }
     print_data(stderr, send_data.data(), logical_size, 0, nullptr, PrintDataFlags::PRINT_ASCII | PrintDataFlags::DISABLE_COLOR | PrintDataFlags::OFFSET_16_BITS);
     if (use_terminal_colors && this->terminal_send_color != TerminalFormat::NORMAL) {
@@ -370,7 +378,7 @@ void Channel::send(uint16_t cmd, uint32_t flag, const string& data, bool silent)
 }
 
 void Channel::send(const void* data, size_t size, bool silent) {
-  size_t header_size = (this->version == GameVersion::BB) ? 8 : 4;
+  size_t header_size = (this->version == Version::BB_V4) ? 8 : 4;
   const auto* header = reinterpret_cast<const PSOCommandHeader*>(data);
   this->send(
       header->command(this->version),

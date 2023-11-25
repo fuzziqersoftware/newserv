@@ -6,7 +6,7 @@
 
 using namespace std;
 
-void run_ar_code_translator(const std::string& initial_directory) {
+void run_ar_code_translator(const std::string& initial_directory, const std::string& use_file, const std::string& command) {
   string directory = initial_directory;
   while (ends_with(directory, "/")) {
     directory.resize(directory.size() - 1);
@@ -93,51 +93,62 @@ void run_ar_code_translator(const std::string& initial_directory) {
     throw runtime_error("scan field too long; too many matches");
   };
 
-  while (!feof(stdin)) {
-    if (!source_filename.empty()) {
-      fprintf(stdout, "ar-trans:%s/%s> ", directory.c_str(), source_filename.c_str());
-    } else {
-      fprintf(stdout, "ar-trans:%s> ", directory.c_str());
+  auto handle_command = [&](const string& command) -> void {
+    auto tokens = split(command, ' ');
+    if (tokens.empty()) {
+      throw runtime_error("no command given");
     }
-    fflush(stdout);
+    strip_trailing_whitespace(tokens[tokens.size() - 1]);
 
-    string command = fgets(stdin);
-    try {
-      strip_trailing_whitespace(command);
-      auto tokens = split(command, ' ');
-      if (tokens.empty()) {
-        throw runtime_error("no command given");
+    if (tokens[0] == "use") {
+      source_filename = tokens.at(1);
+      source_file = files.at(source_filename);
+    } else if (tokens[0] == "match") {
+      if (!source_file) {
+        throw runtime_error("no source file selected");
+      }
 
-      } else if (tokens[0] == "use") {
-        source_filename = tokens.at(1);
-        source_file = files.at(source_filename);
-
-      } else if (tokens[0] == "match") {
-        if (!source_file) {
-          throw runtime_error("no source file selected");
-        }
-
-        uint32_t source_addr = stoul(tokens.at(1), nullptr, 16);
-        for (const auto& it : files) {
-          if (it.second == source_file) {
-            log.info("(%s) %08" PRIX32, it.first.c_str(), source_addr);
-          } else {
-            try {
-              uint32_t match_addr = find_match(it.second, source_addr);
-              log.info("(%s) %08" PRIX32, it.first.c_str(), match_addr);
-            } catch (const exception& e) {
-              log.error("(%s) failed: %s", it.first.c_str(), e.what());
-            }
+      uint32_t source_addr = stoul(tokens.at(1), nullptr, 16);
+      for (const auto& it : files) {
+        if (it.second == source_file) {
+          log.info("(%s) %08" PRIX32, it.first.c_str(), source_addr);
+        } else {
+          try {
+            uint32_t match_addr = find_match(it.second, source_addr);
+            log.info("(%s) %08" PRIX32, it.first.c_str(), match_addr);
+          } catch (const exception& e) {
+            log.error("(%s) failed: %s", it.first.c_str(), e.what());
           }
         }
-
-      } else if (!tokens[0].empty()) {
-        throw runtime_error("unknown command");
       }
-    } catch (const exception& e) {
-      log.error("Failed: %s", e.what());
+    } else if (!tokens[0].empty()) {
+      throw runtime_error("unknown command");
     }
+  };
+
+  if (!use_file.empty()) {
+    source_filename = use_file;
+    source_file = files.at(source_filename);
   }
 
-  fputc('\n', stdout);
+  if (!command.empty()) {
+    handle_command(command);
+  } else {
+    while (!feof(stdin)) {
+      if (!source_filename.empty()) {
+        fprintf(stdout, "ar-trans:%s/%s> ", directory.c_str(), source_filename.c_str());
+      } else {
+        fprintf(stdout, "ar-trans:%s> ", directory.c_str());
+      }
+      fflush(stdout);
+
+      string command = fgets(stdin);
+      try {
+        handle_command(command);
+      } catch (const exception& e) {
+        log.error("Failed: %s", e.what());
+      }
+    }
+    fputc('\n', stdout);
+  }
 }

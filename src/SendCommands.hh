@@ -187,8 +187,7 @@ void send_text_message(std::shared_ptr<Lobby> l, const std::string& text);
 void send_text_message(std::shared_ptr<ServerState> s, const std::string& text);
 
 std::string prepare_chat_data(
-    GameVersion version,
-    bool is_nte,
+    Version version,
     uint8_t language,
     uint8_t from_client_id,
     const std::string& from_name,

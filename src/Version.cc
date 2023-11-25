@@ -8,52 +8,154 @@
 
 using namespace std;
 
-const vector<string> version_to_login_port_name = {
-    "bb-patch", "console-login", "pc-login", "console-login", "xb-login", "bb-init"};
-const vector<string> version_to_lobby_port_name = {
-    "bb-patch", "console-lobby", "pc-lobby", "console-lobby", "xb-lobby", "bb-lobby"};
-const vector<string> version_to_proxy_port_name = {
-    "", "dc-proxy", "pc-proxy", "gc-proxy", "xb-proxy", "bb-proxy"};
-
-const char* name_for_version(GameVersion version) {
-  switch (version) {
-    case GameVersion::GC:
-      return "GC";
-    case GameVersion::XB:
-      return "XB";
-    case GameVersion::PC:
-      return "PC";
-    case GameVersion::BB:
-      return "BB";
-    case GameVersion::DC:
-      return "DC";
-    case GameVersion::PATCH:
-      return "Patch";
+const char* login_port_name_for_version(Version v) {
+  switch (v) {
+    case Version::PC_PATCH:
+      return "pc-patch";
+    case Version::BB_PATCH:
+      return "bb-patch";
+    case Version::DC_NTE:
+    case Version::DC_V1_12_2000_PROTOTYPE:
+    case Version::DC_V1:
+    case Version::DC_V2:
+    case Version::GC_NTE:
+    case Version::GC_V3:
+    case Version::GC_EP3_TRIAL_EDITION:
+    case Version::GC_EP3:
+      return "console-login";
+    case Version::PC_V2:
+      return "pc-login";
+    case Version::XB_V3:
+      return "xb-login";
+    case Version::BB_V4:
+      return "bb-init";
     default:
-      return "Unknown";
+      throw runtime_error("unknown version");
   }
 }
 
-GameVersion version_for_name(const char* name) {
-  if (!strcasecmp(name, "DC") || !strcasecmp(name, "DreamCast")) {
-    return GameVersion::DC;
-  } else if (!strcasecmp(name, "PC")) {
-    return GameVersion::PC;
-  } else if (!strcasecmp(name, "GC") || !strcasecmp(name, "GameCube")) {
-    return GameVersion::GC;
-  } else if (!strcasecmp(name, "XB") || !strcasecmp(name, "Xbox")) {
-    return GameVersion::XB;
-  } else if (!strcasecmp(name, "BB") || !strcasecmp(name, "BlueBurst") ||
-      !strcasecmp(name, "Blue Burst")) {
-    return GameVersion::BB;
-  } else if (!strcasecmp(name, "Patch")) {
-    return GameVersion::PATCH;
+const char* lobby_port_name_for_version(Version v) {
+  switch (v) {
+    case Version::PC_PATCH:
+      return "pc-patch";
+    case Version::BB_PATCH:
+      return "bb-patch";
+    case Version::DC_NTE:
+    case Version::DC_V1_12_2000_PROTOTYPE:
+    case Version::DC_V1:
+    case Version::DC_V2:
+    case Version::GC_NTE:
+    case Version::GC_V3:
+    case Version::GC_EP3_TRIAL_EDITION:
+    case Version::GC_EP3:
+      return "console-lobby";
+    case Version::PC_V2:
+      return "pc-lobby";
+    case Version::XB_V3:
+      return "xb-lobby";
+    case Version::BB_V4:
+      return "bb-lobby";
+    default:
+      throw runtime_error("unknown version");
+  }
+}
+
+const char* proxy_port_name_for_version(Version v) {
+  switch (v) {
+    case Version::PC_PATCH:
+      return "pc-patch";
+    case Version::BB_PATCH:
+      return "bb-patch";
+    case Version::DC_NTE:
+    case Version::DC_V1_12_2000_PROTOTYPE:
+    case Version::DC_V1:
+    case Version::DC_V2:
+      return "dc-proxy";
+    case Version::GC_NTE:
+    case Version::GC_V3:
+    case Version::GC_EP3_TRIAL_EDITION:
+    case Version::GC_EP3:
+      return "gc-proxy";
+    case Version::PC_V2:
+      return "pc-proxy";
+    case Version::XB_V3:
+      return "xb-proxy";
+    case Version::BB_V4:
+      return "bb-proxy";
+    default:
+      throw runtime_error("unknown version");
+  }
+}
+
+template <>
+const char* name_for_enum<Version>(Version v) {
+  switch (v) {
+    case Version::PC_PATCH:
+      return "PC_PATCH";
+    case Version::BB_PATCH:
+      return "BB_PATCH";
+    case Version::DC_NTE:
+      return "DC_NTE";
+    case Version::DC_V1_12_2000_PROTOTYPE:
+      return "DC_V1_12_2000_PROTOTYPE";
+    case Version::DC_V1:
+      return "DC_V1";
+    case Version::DC_V2:
+      return "DC_V2";
+    case Version::PC_V2:
+      return "PC_V2";
+    case Version::GC_NTE:
+      return "GC_NTE";
+    case Version::GC_V3:
+      return "GC_V3";
+    case Version::GC_EP3_TRIAL_EDITION:
+      return "GC_EP3_TRIAL_EDITION";
+    case Version::GC_EP3:
+      return "GC_EP3";
+    case Version::XB_V3:
+      return "XB_V3";
+    case Version::BB_V4:
+      return "BB_V4";
+    default:
+      throw runtime_error("unknown version");
+  }
+}
+
+template <>
+Version enum_for_name<Version>(const char* name) {
+  if (!strcmp(name, "PC_PATCH") || !strcasecmp(name, "patch")) {
+    return Version::PC_PATCH;
+  } else if (!strcmp(name, "BB_PATCH")) {
+    return Version::BB_PATCH;
+  } else if (!strcmp(name, "DC_NTE")) {
+    return Version::DC_NTE;
+  } else if (!strcmp(name, "DC_V1_12_2000_PROTOTYPE")) {
+    return Version::DC_V1_12_2000_PROTOTYPE;
+  } else if (!strcmp(name, "DC_V1")) {
+    return Version::DC_V1;
+  } else if (!strcmp(name, "DC_V2") || !strcasecmp(name, "dc")) {
+    return Version::DC_V2;
+  } else if (!strcmp(name, "PC_V2") || !strcasecmp(name, "pc")) {
+    return Version::PC_V2;
+  } else if (!strcmp(name, "GC_NTE")) {
+    return Version::GC_NTE;
+  } else if (!strcmp(name, "GC_V3") || !strcasecmp(name, "gc")) {
+    return Version::GC_V3;
+  } else if (!strcmp(name, "GC_EP3_TRIAL_EDITION")) {
+    return Version::GC_EP3_TRIAL_EDITION;
+  } else if (!strcmp(name, "GC_EP3")) {
+    return Version::GC_EP3;
+  } else if (!strcmp(name, "XB_V3") || !strcasecmp(name, "xb")) {
+    return Version::XB_V3;
+  } else if (!strcmp(name, "BB_V4") || !strcasecmp(name, "bb")) {
+    return Version::BB_V4;
   } else {
     throw invalid_argument("incorrect version name");
   }
 }
 
-const char* name_for_server_behavior(ServerBehavior behavior) {
+template <>
+const char* name_for_enum<ServerBehavior>(ServerBehavior behavior) {
   switch (behavior) {
     case ServerBehavior::PC_CONSOLE_DETECT:
       return "pc_console_detect";
@@ -69,12 +171,12 @@ const char* name_for_server_behavior(ServerBehavior behavior) {
       return "patch_server_bb";
     case ServerBehavior::PROXY_SERVER:
       return "proxy_server";
-    default:
-      throw logic_error("invalid server behavior");
   }
+  throw logic_error("invalid server behavior");
 }
 
-ServerBehavior server_behavior_for_name(const char* name) {
+template <>
+ServerBehavior enum_for_name<ServerBehavior>(const char* name) {
   if (!strcasecmp(name, "pc_console_detect")) {
     return ServerBehavior::PC_CONSOLE_DETECT;
   } else if (!strcasecmp(name, "login_server") || !strcasecmp(name, "login")) {
@@ -94,36 +196,50 @@ ServerBehavior server_behavior_for_name(const char* name) {
   }
 }
 
-uint32_t default_specific_version_for_version(GameVersion version, int64_t sub_version) {
-  uint32_t base_specific_version = (static_cast<uint32_t>(version) + '0') << 24;
-  if (version == GameVersion::GC) {
-    // For versions that don't support send_function_call by default, we need
-    // to set the specific_version based on sub_version. Fortunately, all
-    // versions that share sub_version values also support send_function_call,
-    // so for those versions we get the specific_version later by sending the
-    // VersionDetect call.
-    switch (sub_version) {
-      case 0x36: // GC Ep1&2 US v1.02 (Plus)
-        return 0x334F4532; // 3OE2
-      case 0x39: // GC Ep1&2 JP v1.05 (Plus)
-        return 0x334F4A35; // 3OJ5
-      case 0x41: // GC Ep3 US
-        return 0x33534530; // 3SE0
-      case 0x43: // GC Ep3 EU
-        return 0x33535030; // 3SP0
-      case -1: // Initial check (before sub_version recognition)
-      case 0x30: // GC Ep1&2 JP v1.02, at least one version of PSO XB
-      case 0x31: // GC Ep1&2 US v1.00, GC US v1.01, GC EU v1.00, GC JP v1.00
-      case 0x32: // GC Ep1&2 EU 50Hz
-      case 0x33: // GC Ep1&2 EU 60Hz
-      case 0x34: // GC Ep1&2 JP v1.03
-      case 0x35: // GC Ep1&2 JP v1.04 (Plus)
-      case 0x40: // GC Ep3 trial
-      case 0x42: // GC Ep3 JP
-      default:
-        return base_specific_version;
-    }
-  } else {
-    return base_specific_version;
+uint32_t default_specific_version_for_version(Version version, int64_t sub_version) {
+  // For versions that don't support send_function_call by default, we need
+  // to set the specific_version based on sub_version. Fortunately, all
+  // versions that share sub_version values also support send_function_call,
+  // so for those versions we get the specific_version later by sending the
+  // VersionDetect call.
+  switch (version) {
+    case Version::GC_NTE:
+      return 0x334F4A54; // 3OJT
+    case Version::GC_V3:
+      switch (sub_version) {
+        case 0x32: // GC Ep1&2 EU 50Hz
+        case 0x33: // GC Ep1&2 EU 60Hz
+          return 0x334F5030; // 3OP0
+        case 0x36: // GC Ep1&2 US v1.02 (Plus)
+          return 0x334F4532; // 3OE2
+        case 0x39: // GC Ep1&2 JP v1.05 (Plus)
+          return 0x334F4A35; // 3OJ5
+        case 0x34: // GC Ep1&2 JP v1.03
+          return 0x334F4A33; // 3OJ3
+        case 0x35: // GC Ep1&2 JP v1.04 (Plus)
+          return 0x334F4A34; // 3OJ4
+        case -1: // Initial check (before sub_version recognition)
+        case 0x30: // GC Ep1&2 GameJam demo, GC Ep1&2 Trial Edition, GC Ep1&2 JP v1.02, at least one version of PSO XB
+        case 0x31: // GC Ep1&2 US v1.00, GC US v1.01, XB US
+        default:
+          return 0x33000000;
+      }
+      throw logic_error("this should be impossible");
+    case Version::GC_EP3_TRIAL_EDITION:
+      return 0x33534A54; // 3SJT
+    case Version::GC_EP3:
+      switch (sub_version) {
+        case 0x41: // GC Ep3 US
+          return 0x33534530; // 3SE0
+        case 0x42: // GC Ep3 EU 50Hz
+        case 0x43: // GC Ep3 EU 60Hz
+          return 0x33535030; // 3SP0
+        case -1: // Initial check (before sub_version recognition)
+        case 0x40: // GC Ep3 trial and GC Ep3 JP
+        default:
+          return 0x33000000;
+      }
+    default:
+      return 0x00000000;
   }
 }

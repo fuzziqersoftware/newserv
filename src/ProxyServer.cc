@@ -43,8 +43,7 @@ ProxyServer::ProxyServer(
       state(state),
       next_unlicensed_session_id(0xFF00000000000001) {}
 
-void ProxyServer::listen(uint16_t port, GameVersion version,
-    const struct sockaddr_storage* default_destination) {
+void ProxyServer::listen(uint16_t port, Version version, const struct sockaddr_storage* default_destination) {
   shared_ptr<ListeningSocket> socket_obj(new ListeningSocket(
       this, port, version, default_destination));
   auto l = this->listeners.emplace(port, socket_obj).first->second;
@@ -53,7 +52,7 @@ void ProxyServer::listen(uint16_t port, GameVersion version,
 ProxyServer::ListeningSocket::ListeningSocket(
     ProxyServer* server,
     uint16_t port,
-    GameVersion version,
+    Version version,
     const struct sockaddr_storage* default_destination)
     : server(server),
       log(string_printf("[ProxyServer:ListeningSocket:%hu] ", port), proxy_server_log.min_level),
@@ -83,8 +82,7 @@ ProxyServer::ListeningSocket::ListeningSocket(
     this->default_destination.ss_family = 0;
   }
 
-  this->log.info("Listening on TCP port %hu (%s) on fd %d",
-      this->port, name_for_version(this->version), static_cast<int>(this->fd));
+  this->log.info("Listening on TCP port %hu (%s) on fd %d", this->port, name_for_enum(this->version), static_cast<int>(this->fd));
 }
 
 void ProxyServer::ListeningSocket::dispatch_on_listen_accept(
@@ -98,10 +96,8 @@ void ProxyServer::ListeningSocket::dispatch_on_listen_error(
 }
 
 void ProxyServer::ListeningSocket::on_listen_accept(int fd) {
-  this->log.info("Client connected on fd %d (port %hu, version %s)",
-      fd, this->port, name_for_version(this->version));
-  auto* bev = bufferevent_socket_new(this->server->base.get(), fd,
-      BEV_OPT_CLOSE_ON_FREE | BEV_OPT_DEFER_CALLBACKS);
+  this->log.info("Client connected on fd %d (port %hu, version %s)", fd, this->port, name_for_enum(this->version));
+  auto* bev = bufferevent_socket_new(this->server->base.get(), fd, BEV_OPT_CLOSE_ON_FREE | BEV_OPT_DEFER_CALLBACKS);
   this->server->on_client_connect(bev, this->port, this->version,
       (this->default_destination.ss_family == AF_INET) ? &this->default_destination : nullptr);
 }
@@ -117,7 +113,7 @@ void ProxyServer::ListeningSocket::on_listen_error() {
 void ProxyServer::connect_client(struct bufferevent* bev, uint16_t server_port) {
   // Look up the listening socket for the given port, and use that game version.
   // We don't support default-destination proxying for virtual connections (yet)
-  GameVersion version;
+  Version version;
   try {
     version = this->listeners.at(server_port)->version;
   } catch (const out_of_range&) {
@@ -136,12 +132,12 @@ void ProxyServer::connect_client(struct bufferevent* bev, uint16_t server_port) 
 void ProxyServer::on_client_connect(
     struct bufferevent* bev,
     uint16_t listen_port,
-    GameVersion version,
+    Version version,
     const struct sockaddr_storage* default_destination) {
   // If a default destination exists for this client and the client is a patch
   // client, create a linked session immediately and connect to the remote
   // server. This creates a direct session.
-  if (default_destination && (version == GameVersion::PATCH)) {
+  if (default_destination && is_patch(version)) {
     uint64_t session_id = this->next_unlicensed_session_id++;
     if (this->next_unlicensed_session_id == 0) {
       this->next_unlicensed_session_id = 0xFF00000000000001;
@@ -175,18 +171,24 @@ void ProxyServer::on_client_connect(
     }
 
     switch (version) {
-      case GameVersion::PATCH:
+      case Version::PC_PATCH:
+      case Version::BB_PATCH:
         throw logic_error("cannot create unlinked patch session");
-      case GameVersion::DC:
-      case GameVersion::PC:
-      case GameVersion::GC:
-      case GameVersion::XB: {
+      case Version::DC_NTE:
+      case Version::DC_V1_12_2000_PROTOTYPE:
+      case Version::DC_V1:
+      case Version::DC_V2:
+      case Version::PC_V2:
+      case Version::GC_NTE:
+      case Version::GC_V3:
+      case Version::GC_EP3_TRIAL_EDITION:
+      case Version::GC_EP3:
+      case Version::XB_V3: {
         uint32_t server_key = random_object<uint32_t>();
         uint32_t client_key = random_object<uint32_t>();
-        auto cmd = prepare_server_init_contents_console(
-            server_key, client_key, 0);
+        auto cmd = prepare_server_init_contents_console(server_key, client_key, 0);
         ses->channel.send(0x02, 0x00, &cmd, sizeof(cmd));
-        if ((version == GameVersion::DC) || (version == GameVersion::PC)) {
+        if (uses_v2_encryption(version)) {
           ses->channel.crypt_out.reset(new PSOV2Encryption(server_key));
           ses->channel.crypt_in.reset(new PSOV2Encryption(client_key));
         } else {
@@ -195,7 +197,7 @@ void ProxyServer::on_client_connect(
         }
         break;
       }
-      case GameVersion::BB: {
+      case Version::BB_V4: {
         parray<uint8_t, 0x30> server_key;
         parray<uint8_t, 0x30> client_key;
         random_data(server_key.data(), server_key.bytes());
@@ -225,7 +227,7 @@ ProxyServer::UnlinkedSession::UnlinkedSession(
     shared_ptr<ProxyServer> server,
     struct bufferevent* bev,
     uint16_t local_port,
-    GameVersion version)
+    Version version)
     : server(server),
       log(string_printf("[ProxyServer:UnlinkedSession:%p] ", bev), proxy_server_log.min_level),
       channel(
@@ -263,108 +265,139 @@ void ProxyServer::UnlinkedSession::on_input(Channel& ch, uint16_t command, uint3
   bool should_close_unlinked_session = false;
 
   try {
-    if (ses->version == GameVersion::DC) {
-      // We should only get a 93 or 9D while the session is unlinked; if we get
-      // anything else, disconnect
-      if (command == 0x93) {
-        const auto& cmd = check_size_t<C_LoginV1_DC_93>(data);
-        ses->license = s->license_index->verify_v1_v2(stoul(cmd.serial_number.decode(), nullptr, 16), cmd.access_key.decode());
-        ses->sub_version = cmd.sub_version;
-        ses->channel.language = cmd.language;
-        ses->character_name = cmd.name.decode(ses->channel.language);
-        ses->hardware_id = cmd.hardware_id.decode();
-        ses->config.set_flag(Client::Flag::IS_DC_V1);
-      } else if (command == 0x9D) {
-        const auto& cmd = check_size_t<C_Login_DC_PC_GC_9D>(data, sizeof(C_LoginExtended_DC_GC_9D));
-        ses->license = s->license_index->verify_v1_v2(stoul(cmd.serial_number.decode(), nullptr, 16), cmd.access_key.decode());
-        ses->sub_version = cmd.sub_version;
-        ses->channel.language = cmd.language;
-        ses->character_name = cmd.name.decode(ses->channel.language);
-      } else {
-        throw runtime_error("command is not 93 or 9D");
-      }
-
-    } else if (ses->version == GameVersion::PC) {
-      // We should only get a 9D while the session is unlinked; if we get
-      // anything else, disconnect
-      if (command != 0x9D) {
-        throw runtime_error("command is not 9D");
-      }
-      const auto& cmd = check_size_t<C_Login_DC_PC_GC_9D>(data, sizeof(C_LoginExtended_PC_9D));
-      ses->license = s->license_index->verify_v1_v2(stoul(cmd.serial_number.decode(), nullptr, 16), cmd.access_key.decode());
-      ses->sub_version = cmd.sub_version;
-      ses->channel.language = cmd.language;
-      ses->character_name = cmd.name.decode(ses->channel.language);
-
-    } else if (ses->version == GameVersion::GC) {
-      // We should only get a 9E while the session is unlinked; if we get
-      // anything else, disconnect
-      // TODO: GCTE will send 9D; we should presumably handle that too, sigh
-      if (command != 0x9E) {
-        throw runtime_error("command is not 9E");
-      }
-      const auto& cmd = check_size_t<C_Login_GC_9E>(data, sizeof(C_LoginExtended_GC_9E));
-      ses->license = s->license_index->verify_gc(stoul(cmd.serial_number.decode(), nullptr, 16), cmd.access_key.decode());
-      ses->sub_version = cmd.sub_version;
-      ses->channel.language = cmd.language;
-      ses->character_name = cmd.name.decode(ses->channel.language);
-      ses->config.parse_from(cmd.client_config);
-
-    } else if (ses->version == GameVersion::XB) {
-      // We should only get a 9E or 9F while the session is unlinked; if we get
-      // anything else, disconnect
-      if (command == 0x9E) {
-        const auto& cmd = check_size_t<C_Login_XB_9E>(data, sizeof(C_LoginExtended_XB_9E));
-        string xb_gamertag = cmd.serial_number.decode();
-        uint64_t xb_user_id = stoull(cmd.access_key.decode(), nullptr, 16);
-        uint64_t xb_account_id = cmd.netloc.account_id;
-        ses->license = s->license_index->verify_xb(xb_gamertag, xb_user_id, xb_account_id);
-        ses->sub_version = cmd.sub_version;
-        ses->channel.language = cmd.language;
-        ses->character_name = cmd.name.decode(ses->channel.language);
-        ses->xb_netloc = cmd.netloc;
-        ses->xb_9E_unknown_a1a = cmd.unknown_a1a;
-        ses->channel.send(0x9F, 0x00);
-        return;
-      } else if (command == 0x9F) {
-        const auto& cmd = check_size_t<C_ClientConfig_V3_9F>(data);
-        ses->config.parse_from(cmd.data);
-      } else {
-        throw runtime_error("command is not 9E or 9F");
-      }
-
-    } else if (ses->version == GameVersion::XB) {
-      throw runtime_error("xbox licenses are not implemented");
-
-    } else if (ses->version == GameVersion::BB) {
-      // We should only get a 93 while the session is unlinked; if we get
-      // anything else, disconnect
-      if (command != 0x93) {
-        throw runtime_error("command is not 93");
-      }
-      const auto& cmd = check_size_t<C_Login_BB_93>(data);
-      try {
-        ses->license = s->license_index->verify_bb(cmd.username.decode(), cmd.password.decode());
-      } catch (const LicenseIndex::missing_license&) {
-        if (!s->allow_unregistered_users) {
-          throw;
+    switch (ses->version) {
+      case Version::DC_NTE: {
+        // We should only get an 8B while the session is unlinked
+        if (command != 0x8B) {
+          throw runtime_error("command is not 8B");
         }
-        shared_ptr<License> l(new License());
-        l->serial_number = fnv1a32(cmd.username.decode()) & 0x7FFFFFFF;
-        l->bb_username = cmd.username.decode();
-        l->bb_password = cmd.password.decode();
-        s->license_index->add(l);
-        l->save();
-        ses->license = l;
-        string l_str = l->str();
-        ses->log.info("Created license %s", l_str.c_str());
+        const auto& cmd = check_size_t<C_Login_DCNTE_8B>(data, sizeof(C_LoginExtended_DCNTE_8B));
+        ses->license = s->license_index->verify_v1_v2(stoul(cmd.serial_number.decode(), nullptr, 16), cmd.access_key.decode());
+        ses->sub_version = cmd.sub_version;
+        ses->channel.language = cmd.language;
+        ses->character_name = cmd.name.decode(ses->channel.language);
+        // TODO: Parse cmd.hardware_id
+        ses->version = Version::DC_NTE;
+        break;
       }
-      ses->login_command_bb = std::move(data);
 
-    } else {
-      throw logic_error("unsupported unlinked session version");
+      case Version::DC_V1_12_2000_PROTOTYPE:
+      case Version::DC_V1:
+      case Version::DC_V2:
+        // We should only get a 93 or 9D while the session is unlinked
+        if (command == 0x93) {
+          const auto& cmd = check_size_t<C_LoginV1_DC_93>(data);
+          ses->license = s->license_index->verify_v1_v2(stoul(cmd.serial_number.decode(), nullptr, 16), cmd.access_key.decode());
+          ses->sub_version = cmd.sub_version;
+          ses->channel.language = cmd.language;
+          ses->character_name = cmd.name.decode(ses->channel.language);
+          ses->hardware_id = cmd.hardware_id.decode();
+          ses->version = Version::DC_V1;
+        } else if (command == 0x9D) {
+          const auto& cmd = check_size_t<C_Login_DC_PC_GC_9D>(data, sizeof(C_LoginExtended_DC_GC_9D));
+          ses->license = s->license_index->verify_v1_v2(stoul(cmd.serial_number.decode(), nullptr, 16), cmd.access_key.decode());
+          ses->sub_version = cmd.sub_version;
+          ses->channel.language = cmd.language;
+          ses->character_name = cmd.name.decode(ses->channel.language);
+        } else {
+          throw runtime_error("command is not 93 or 9D");
+        }
+        break;
+
+      case Version::PC_V2: {
+        // We should only get a 9D while the session is unlinked
+        if (command != 0x9D) {
+          throw runtime_error("command is not 9D");
+        }
+        const auto& cmd = check_size_t<C_Login_DC_PC_GC_9D>(data, sizeof(C_LoginExtended_PC_9D));
+        ses->license = s->license_index->verify_v1_v2(stoul(cmd.serial_number.decode(), nullptr, 16), cmd.access_key.decode());
+        ses->sub_version = cmd.sub_version;
+        ses->channel.language = cmd.language;
+        ses->character_name = cmd.name.decode(ses->channel.language);
+        break;
+      }
+
+      case Version::GC_NTE:
+      case Version::GC_V3:
+      case Version::GC_EP3_TRIAL_EDITION:
+      case Version::GC_EP3:
+        // We should only get a 9D or 9E while the session is unlinked
+        if (command == 0x9D) {
+          const auto& cmd = check_size_t<C_Login_DC_PC_GC_9D>(data, sizeof(C_LoginExtended_DC_GC_9D));
+          ses->license = s->license_index->verify_gc(stoul(cmd.serial_number.decode(), nullptr, 16), cmd.access_key.decode());
+          ses->sub_version = cmd.sub_version;
+          ses->channel.language = cmd.language;
+          ses->character_name = cmd.name.decode(ses->channel.language);
+          ses->version = Version::GC_NTE;
+          ses->config.set_flags_for_version(ses->version, cmd.sub_version);
+        } else if (command == 0x9E) {
+          const auto& cmd = check_size_t<C_Login_GC_9E>(data, sizeof(C_LoginExtended_GC_9E));
+          ses->license = s->license_index->verify_gc(stoul(cmd.serial_number.decode(), nullptr, 16), cmd.access_key.decode());
+          ses->sub_version = cmd.sub_version;
+          ses->channel.language = cmd.language;
+          ses->character_name = cmd.name.decode(ses->channel.language);
+          ses->config.parse_from(cmd.client_config);
+          if (cmd.sub_version >= 0x40) {
+            ses->version = Version::GC_EP3;
+          }
+        } else {
+          throw runtime_error("command is not 9D or 9E");
+        }
+        break;
+
+      case Version::XB_V3:
+        // We should only get a 9E or 9F while the session is unlinked
+        if (command == 0x9E) {
+          const auto& cmd = check_size_t<C_Login_XB_9E>(data, sizeof(C_LoginExtended_XB_9E));
+          string xb_gamertag = cmd.serial_number.decode();
+          uint64_t xb_user_id = stoull(cmd.access_key.decode(), nullptr, 16);
+          uint64_t xb_account_id = cmd.netloc.account_id;
+          ses->license = s->license_index->verify_xb(xb_gamertag, xb_user_id, xb_account_id);
+          ses->sub_version = cmd.sub_version;
+          ses->channel.language = cmd.language;
+          ses->character_name = cmd.name.decode(ses->channel.language);
+          ses->xb_netloc = cmd.netloc;
+          ses->xb_9E_unknown_a1a = cmd.unknown_a1a;
+          ses->channel.send(0x9F, 0x00);
+          return;
+        } else if (command == 0x9F) {
+          const auto& cmd = check_size_t<C_ClientConfig_V3_9F>(data);
+          ses->config.parse_from(cmd.data);
+        } else {
+          throw runtime_error("command is not 9E or 9F");
+        }
+        break;
+
+      case Version::BB_V4: {
+        // We should only get a 93 while the session is unlinked; if we get
+        // anything else, disconnect
+        if (command != 0x93) {
+          throw runtime_error("command is not 93");
+        }
+        const auto& cmd = check_size_t<C_Login_BB_93>(data);
+        try {
+          ses->license = s->license_index->verify_bb(cmd.username.decode(), cmd.password.decode());
+        } catch (const LicenseIndex::missing_license&) {
+          if (!s->allow_unregistered_users) {
+            throw;
+          }
+          shared_ptr<License> l(new License());
+          l->serial_number = fnv1a32(cmd.username.decode()) & 0x7FFFFFFF;
+          l->bb_username = cmd.username.decode();
+          l->bb_password = cmd.password.decode();
+          s->license_index->add(l);
+          l->save();
+          ses->license = l;
+          string l_str = l->str();
+          ses->log.info("Created license %s", l_str.c_str());
+        }
+        ses->login_command_bb = std::move(data);
+        break;
+      }
+
+      default:
+        throw runtime_error("unvalid unlinked session version");
     }
-
   } catch (const exception& e) {
     ses->log.error("Failed to process command from unlinked client: %s", e.what());
     should_close_unlinked_session = true;
@@ -410,7 +443,7 @@ void ProxyServer::UnlinkedSession::on_input(Channel& ch, uint16_t command, uint3
       } else {
         // Resume the linked session using the unlinked session
         try {
-          if (ses->version == GameVersion::BB) {
+          if (ses->version == Version::BB_V4) {
             linked_ses->resume(
                 std::move(ses->channel),
                 ses->detector_crypt,
@@ -455,7 +488,7 @@ ProxyServer::LinkedSession::LinkedSession(
     shared_ptr<ProxyServer> server,
     uint64_t id,
     uint16_t local_port,
-    GameVersion version)
+    Version version)
     : server(server),
       id(id),
       log(string_printf("[ProxyServer:LinkedSession:%08" PRIX64 "] ", this->id), proxy_server_log.min_level),
@@ -501,7 +534,7 @@ ProxyServer::LinkedSession::LinkedSession(
 ProxyServer::LinkedSession::LinkedSession(
     shared_ptr<ProxyServer> server,
     uint16_t local_port,
-    GameVersion version,
+    Version version,
     shared_ptr<License> license,
     const Client::Config& config)
     : LinkedSession(server, license->serial_number, local_port, version) {
@@ -517,7 +550,7 @@ ProxyServer::LinkedSession::LinkedSession(
 ProxyServer::LinkedSession::LinkedSession(
     shared_ptr<ProxyServer> server,
     uint16_t local_port,
-    GameVersion version,
+    Version version,
     std::shared_ptr<License> license,
     const struct sockaddr_storage& next_destination)
     : LinkedSession(server, license->serial_number, local_port, version) {
@@ -529,7 +562,7 @@ ProxyServer::LinkedSession::LinkedSession(
     shared_ptr<ProxyServer> server,
     uint64_t id,
     uint16_t local_port,
-    GameVersion version,
+    Version version,
     const struct sockaddr_storage& destination)
     : LinkedSession(server, id, local_port, version) {
   this->next_destination = destination;
@@ -545,6 +578,11 @@ shared_ptr<ProxyServer> ProxyServer::LinkedSession::require_server() const {
 
 std::shared_ptr<ServerState> ProxyServer::LinkedSession::require_server_state() const {
   return this->require_server()->state;
+}
+
+void ProxyServer::LinkedSession::set_version(Version v) {
+  this->client_channel.version = v;
+  this->server_channel.version = v;
 }
 
 void ProxyServer::LinkedSession::resume(
@@ -594,6 +632,7 @@ void ProxyServer::LinkedSession::resume_inner(
       this,
       string_printf("LinkedSession:%08" PRIX64 ":client", this->id));
   this->server_channel.language = this->client_channel.language;
+  this->server_channel.version = this->client_channel.version;
 
   this->detector_crypt = detector_crypt;
   this->server_channel.disconnect();
@@ -663,10 +702,7 @@ void ProxyServer::LinkedSession::on_error(Channel& ch, short events) {
   if (events & BEV_EVENT_CONNECTED) {
     ses->log.info("%s channel connected", is_server_stream ? "Server" : "Client");
 
-    if (is_server_stream && (ses->config.override_lobby_event != 0xFF) &&
-        (((ses->version() == GameVersion::GC) && !(ses->config.check_flag(Client::Flag::IS_GC_TRIAL_EDITION))) ||
-            (ses->version() == GameVersion::XB) ||
-            (ses->version() == GameVersion::BB))) {
+    if (is_server_stream && (ses->config.override_lobby_event != 0xFF) && (is_v3(ses->version()) || is_v4(ses->version()))) {
       ses->client_channel.send(0xDA, ses->config.override_lobby_event);
     }
   }
@@ -703,7 +739,7 @@ void ProxyServer::LinkedSession::send_to_game_server(const char* error_message) 
   }
   // On BB, do nothing - we can't return to the game server since the remote
   // server likely sent different game data than what newserv would have sent
-  if (this->version() == GameVersion::BB) {
+  if (this->version() == Version::BB_V4) {
     this->disconnect();
     return;
   }
@@ -728,7 +764,7 @@ void ProxyServer::LinkedSession::send_to_game_server(const char* error_message) 
     send_ship_info(this->client_channel, string_printf("You\'ve returned to\n\tC6%s$C7\n\n%s", s->name.c_str(), error_message ? error_message : ""));
 
     // Restore newserv_client_config, so the login server gets the client flags
-    if (this->version() == GameVersion::GC || this->version() == GameVersion::XB) {
+    if (is_v3(this->version())) {
       S_UpdateClientConfig_V3_04 update_client_config_cmd;
       update_client_config_cmd.player_tag = 0x00010000;
       update_client_config_cmd.guild_card_number = this->license->serial_number;
@@ -736,8 +772,7 @@ void ProxyServer::LinkedSession::send_to_game_server(const char* error_message) 
       this->client_channel.send(0x04, 0x00, &update_client_config_cmd, sizeof(update_client_config_cmd));
     }
 
-    const auto& port_name = version_to_login_port_name.at(static_cast<size_t>(this->version()));
-
+    string port_name = login_port_name_for_version(this->version());
     S_Reconnect_19 reconnect_cmd = {{0, s->name_to_port_config.at(port_name)->port, 0}};
 
     // If the client is on a virtual connection, we can use any address
@@ -839,7 +874,7 @@ shared_ptr<ProxyServer::LinkedSession> ProxyServer::get_session_by_name(
 shared_ptr<ProxyServer::LinkedSession> ProxyServer::create_licensed_session(
     shared_ptr<License> l,
     uint16_t local_port,
-    GameVersion version,
+    Version version,
     const Client::Config& config) {
   shared_ptr<LinkedSession> session(new LinkedSession(this->shared_from_this(), local_port, version, l, config));
   auto emplace_ret = this->id_to_session.emplace(session->id, session);

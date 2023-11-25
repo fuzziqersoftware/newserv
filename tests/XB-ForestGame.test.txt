@@ -52,7 +52,7 @@ I 16496 2023-11-08 01:54:08 - [Commands] Received from C-1 (version=XB command=9
 0020 | 00 00 00 00                                     |
 I 16496 2023-11-08 01:54:08 - [Commands] Sending to C-1 (version=XB command=04 flag=00)
 0000 | 04 00 2C 00 00 00 01 00 E2 D4 45 39 32 AC 99 83 |   ,       E92
-0010 | 00 00 00 34 00 81 00 42 60 00 00 00 00 00 00 00 |    4   B`
+0010 | 00 00 00 00 00 81 00 42 60 00 00 00 00 00 00 00 |    4   B`
 0020 | 00 00 00 00 00 00 FF FF 80 FF FF FF             |
 I 16496 2023-11-08 01:54:08 - [Commands] Sending to C-1 (version=XB command=D5 flag=00)
 0000 | D5 00 2C 00 59 6F 75 20 61 72 65 20 63 6F 6E 6E |   , You are conn
@@ -69,7 +69,7 @@ I 16496 2023-11-08 01:54:13 - [Commands] Received from C-1 (version=XB command=D
 0000 | D6 00 04 00                                     |
 I 16496 2023-11-08 01:54:13 - [Commands] Sending to C-1 (version=XB command=04 flag=00)
 0000 | 04 00 2C 00 00 00 01 00 E2 D4 45 39 32 AC 99 83 |   ,       E92
-0010 | 00 00 00 34 00 81 00 40 60 00 00 00 00 00 00 00 |    4   @`
+0010 | 00 00 00 00 00 81 00 40 60 00 00 00 00 00 00 00 |    4   @`
 0020 | 00 00 00 00 00 00 FF FF 80 FF FF FF             |
 I 16496 2023-11-08 01:54:13 - [Commands] Sending to C-1 (version=XB command=07 flag=05)
 0000 | 07 04 90 00 11 00 00 11 FF FF FF FF 04 00 41 6C |               Al
@@ -87,7 +87,7 @@ I 16496 2023-11-08 01:54:15 - [Commands] Sending to C-1 (version=XB command=97 f
 0000 | 97 01 04 00                                     |
 I 16496 2023-11-08 01:54:15 - [Commands] Sending to C-1 (version=XB command=04 flag=00)
 0000 | 04 00 2C 00 00 00 01 00 E2 D4 45 39 32 AC 99 83 |   ,       E92
-0010 | 00 00 00 34 00 81 00 44 60 00 00 00 00 00 00 00 |    4   D`
+0010 | 00 00 00 00 00 81 00 44 60 00 00 00 00 00 00 00 |    4   D`
 0020 | 00 00 00 00 00 00 FF FF 80 FF FF FF             |
 I 16496 2023-11-08 01:54:16 - [Commands] Received from C-1 (version=XB command=B1 flag=00)
 0000 | B1 00 04 00                                     |
@@ -149,12 +149,12 @@ I 16496 2023-11-08 01:54:17 - [Commands] Received from C-2 (version=XB command=9
 I 16496 2023-11-08 01:54:17 - [Commands] Sending to C-2 (version=XB command=9F flag=00)
 0000 | 9F 00 04 00                                     |
 I 16496 2023-11-08 01:54:18 - [Commands] Received from C-2 (version=XB command=9F flag=00)
-0000 | 9F 00 24 00 32 AC 99 83 00 00 00 34 00 81 00 44 |   $ 2      4   D
+0000 | 9F 00 24 00 32 AC 99 83 00 00 00 00 00 81 00 44 |   $ 2      4   D
 0010 | 60 00 00 00 00 00 00 00 00 00 00 00 00 00 FF FF | `
 0020 | 80 FF FF FF                                     |
 I 16496 2023-11-08 01:54:18 - [Commands] Sending to C-2 (version=XB command=04 flag=00)
 0000 | 04 00 2C 00 00 00 01 00 E2 D4 45 39 32 AC 99 83 |   ,       E92
-0010 | 00 00 00 34 00 81 00 44 60 00 00 00 00 00 00 00 |    4   D`
+0010 | 00 00 00 00 00 81 00 44 60 00 00 00 00 00 00 00 |    4   D`
 0020 | 00 00 00 00 00 00 FF FF 80 FF FF FF             |
 I 16496 2023-11-08 01:54:18 - [Commands] Sending to C-2 (version=XB command=83 flag=0F)
 0000 | 83 0F B8 00 33 00 00 33 01 00 00 00 00 00 00 00 |     3  3
@@ -371,7 +371,7 @@ I 16496 2023-11-08 01:54:18 - [Commands] Sending to C-2 (Tali) (version=XB comma
 0480 | FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF |
 I 16496 2023-11-08 01:54:18 - [Commands] Sending to C-2 (Tali) (version=XB command=04 flag=00)
 0000 | 04 00 2C 00 00 00 01 00 E2 D4 45 39 32 AC 99 83 |   ,       E92
-0010 | 00 00 00 34 00 83 00 44 60 00 00 00 00 00 00 00 |    4   D`
+0010 | 00 00 00 00 00 83 00 44 60 00 00 00 00 00 00 00 |    4   D`
 0020 | 00 00 00 00 00 00 FF FF 80 FF FF FF             |
 I 16496 2023-11-08 01:54:19 - [Commands] Received from C-2 (Tali) (version=XB command=60 flag=00)
 0000 | 60 00 1C 00 3F 06 00 00 00 00 00 80 0F 00 FF FF | `   ?

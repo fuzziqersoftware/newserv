@@ -701,10 +701,7 @@ void Tournament::send_all_state_updates() const {
       // Note: The last check here is to make sure the client is still linked
       // with this instance of the tournament - an intervening shell command
       // `reload ep3` could have changed the client's linkage
-      if (c &&
-          c->config.check_flag(Client::Flag::IS_EPISODE_3) &&
-          !c->config.check_flag(Client::Flag::IS_EP3_TRIAL_EDITION) &&
-          (c->ep3_tournament_team.lock() == team)) {
+      if (c && (c->version() == Version::GC_EP3) && (c->ep3_tournament_team.lock() == team)) {
         send_ep3_confirm_tournament_entry(c, this->shared_from_this());
       }
     }
@@ -715,10 +712,7 @@ void Tournament::send_all_state_updates_on_deletion() const {
   for (const auto& team : this->teams) {
     for (const auto& player : team->players) {
       auto c = player.client.lock();
-      if (c &&
-          c->config.check_flag(Client::Flag::IS_EPISODE_3) &&
-          !c->config.check_flag(Client::Flag::IS_EP3_TRIAL_EDITION) &&
-          (c->ep3_tournament_team.lock() == team)) {
+      if (c && (c->version() == Version::GC_EP3) && (c->ep3_tournament_team.lock() == team)) {
         send_ep3_confirm_tournament_entry(c, nullptr);
       }
     }
@@ -916,7 +910,7 @@ shared_ptr<Tournament::Team> TournamentIndex::team_for_serial_number(uint32_t se
 }
 
 void TournamentIndex::link_client(shared_ptr<Client> c) {
-  if (!c->config.check_flag(Client::Flag::IS_EPISODE_3)) {
+  if (!is_ep3(c->version())) {
     return;
   }
 
@@ -927,7 +921,7 @@ void TournamentIndex::link_client(shared_ptr<Client> c) {
       if (player.serial_number == c->license->serial_number) {
         c->ep3_tournament_team = team;
         player.client = c;
-        if (!c->config.check_flag(Client::Flag::IS_EP3_TRIAL_EDITION)) {
+        if (c->version() == Version::GC_EP3) {
           send_ep3_confirm_tournament_entry(c, tourn);
         }
         return;
@@ -936,7 +930,7 @@ void TournamentIndex::link_client(shared_ptr<Client> c) {
     throw logic_error("tournament team found for player, but player not found on team");
   } else {
     c->ep3_tournament_team.reset();
-    if (!c->config.check_flag(Client::Flag::IS_EP3_TRIAL_EDITION)) {
+    if (c->version() == Version::GC_EP3) {
       send_ep3_confirm_tournament_entry(c, nullptr);
     }
   }

@@ -58,7 +58,7 @@ struct VersionedQuest {
   Episode episode;
   bool joinable;
   std::string name;
-  QuestScriptVersion version;
+  Version version;
   uint8_t language;
   bool is_dlq_encoded;
   std::string short_description;
@@ -72,7 +72,7 @@ struct VersionedQuest {
   VersionedQuest(
       uint32_t quest_number,
       uint32_t category_id,
-      QuestScriptVersion version,
+      Version version,
       uint8_t language,
       std::shared_ptr<const std::string> bin_contents,
       std::shared_ptr<const std::string> dat_contents,
@@ -98,11 +98,11 @@ public:
   Quest& operator=(Quest&&) = default;
 
   void add_version(std::shared_ptr<const VersionedQuest> vq);
-  bool has_version(QuestScriptVersion v, uint8_t language) const;
-  bool has_version_any_language(QuestScriptVersion v) const;
-  std::shared_ptr<const VersionedQuest> version(QuestScriptVersion v, uint8_t language) const;
+  bool has_version(Version v, uint8_t language) const;
+  bool has_version_any_language(Version v) const;
+  std::shared_ptr<const VersionedQuest> version(Version v, uint8_t language) const;
 
-  static uint16_t versions_key(QuestScriptVersion v, uint8_t language);
+  static uint32_t versions_key(Version v, uint8_t language);
 
   uint32_t quest_number;
   uint32_t category_id;
@@ -111,7 +111,7 @@ public:
   std::string name;
   std::shared_ptr<const BattleRules> battle_rules;
   ssize_t challenge_template_index;
-  std::map<uint16_t, std::shared_ptr<const VersionedQuest>> versions;
+  std::map<uint32_t, std::shared_ptr<const VersionedQuest>> versions;
 };
 
 struct QuestIndex {
@@ -123,7 +123,7 @@ struct QuestIndex {
   QuestIndex(const std::string& directory, std::shared_ptr<const QuestCategoryIndex> category_index, bool is_ep3);
 
   std::shared_ptr<const Quest> get(uint32_t quest_number) const;
-  std::vector<std::shared_ptr<const Quest>> filter(Episode episode, uint32_t category_id, QuestScriptVersion version) const;
+  std::vector<std::shared_ptr<const Quest>> filter(Episode episode, uint32_t category_id, Version version) const;
 };
 
 std::string encode_download_quest_data(
@@ -149,5 +149,5 @@ std::string encode_qst_file(
     const std::string& name,
     uint32_t quest_number,
     const std::string& xb_filename,
-    QuestScriptVersion version,
+    Version version,
     bool is_dlq_encoded);

@@ -56,7 +56,7 @@ static shared_ptr<const Menu> proxy_options_menu_for_client(shared_ptr<const Cli
   add_option(ProxyOptionsMenuItemID::BLOCK_PINGS, Client::Flag::PROXY_SUPPRESS_CLIENT_PINGS,
       "Block pings", "Block ping commands\nsent by the client");
   if (s->cheat_mode_behavior != ServerState::BehaviorSwitch::OFF) {
-    if (!c->config.check_flag(Client::Flag::IS_EPISODE_3)) {
+    if (!is_ep3(c->version())) {
       add_option(ProxyOptionsMenuItemID::INFINITE_HP, Client::Flag::INFINITE_HP_ENABLED,
           "Infinite HP", "Enable automatic HP\nrestoration when\nyou are hit by an\nenemy or trap\n\nCannot revive you\nfrom one-hit kills");
       add_option(ProxyOptionsMenuItemID::INFINITE_TP, Client::Flag::INFINITE_TP_ENABLED,
@@ -84,7 +84,7 @@ static shared_ptr<const Menu> proxy_options_menu_for_client(shared_ptr<const Cli
         "Red name", "Set the colors\nof your name and\nChallenge Mode\nrank to red");
     add_option(ProxyOptionsMenuItemID::BLANK_NAME, Client::Flag::PROXY_BLANK_NAME_ENABLED,
         "Blank name", "Suppress your\ncharacter name\nduring login");
-    if (c->version() != GameVersion::XB) {
+    if (c->version() != Version::XB_V3) {
       add_option(ProxyOptionsMenuItemID::SUPPRESS_LOGIN, Client::Flag::PROXY_SUPPRESS_REMOTE_LOGIN,
           "Skip login", "Use an alternate\nlogin sequence");
       add_option(ProxyOptionsMenuItemID::SKIP_CARD, Client::Flag::PROXY_ZERO_REMOTE_GUILD_CARD,
@@ -96,14 +96,14 @@ static shared_ptr<const Menu> proxy_options_menu_for_client(shared_ptr<const Cli
 }
 
 void send_client_to_login_server(shared_ptr<Client> c) {
-  const auto& port_name = version_to_login_port_name.at(static_cast<size_t>(c->version()));
+  string port_name = login_port_name_for_version(c->version());
   auto s = c->require_server_state();
   send_reconnect(c, s->connect_address_for_client(c), s->name_to_port_config.at(port_name)->port);
 }
 
 void send_client_to_lobby_server(shared_ptr<Client> c) {
   auto s = c->require_server_state();
-  const auto& port_name = version_to_lobby_port_name.at(static_cast<size_t>(c->version()));
+  string port_name = lobby_port_name_for_version(c->version());
   send_reconnect(c, s->connect_address_for_client(c),
       s->name_to_port_config.at(port_name)->port);
 }
@@ -111,7 +111,7 @@ void send_client_to_lobby_server(shared_ptr<Client> c) {
 void send_client_to_proxy_server(shared_ptr<Client> c) {
   auto s = c->require_server_state();
 
-  const auto& port_name = version_to_proxy_port_name.at(static_cast<size_t>(c->version()));
+  string port_name = proxy_port_name_for_version(c->version());
   uint16_t local_port = s->name_to_port_config.at(port_name)->port;
 
   s->proxy_server->delete_session(c->license->serial_number);
@@ -166,12 +166,15 @@ void on_connect(std::shared_ptr<Client> c) {
       send_server_init(c, SendServerInitFlag::IS_INITIAL_CONNECTION);
       break;
 
+    case ServerBehavior::PATCH_SERVER_PC:
+      c->channel.version = Version::PC_PATCH;
+      send_server_init(c, 0);
+      break;
     case ServerBehavior::PATCH_SERVER_BB:
-      c->config.set_flag(Client::Flag::IS_BB_PATCH);
+      c->channel.version = Version::BB_PATCH;
       send_server_init(c, 0);
       break;
 
-    case ServerBehavior::PATCH_SERVER_PC:
     case ServerBehavior::DATA_SERVER_BB:
     case ServerBehavior::LOBBY_SERVER:
       send_server_init(c, 0);
@@ -202,8 +205,7 @@ static void send_main_menu(shared_ptr<Client> c) {
           const auto& l = it.second;
           if (l->is_game()) {
             num_games++;
-            if (l->version_is_allowed(c->quest_version()) &&
-                (l->is_ep3() == c->config.check_flag(Client::Flag::IS_EPISODE_3))) {
+            if (l->version_is_allowed(c->version()) && (l->is_ep3() == is_ep3(c->version()))) {
               num_compatible_games++;
             }
           }
@@ -263,7 +265,7 @@ void on_login_complete(shared_ptr<Client> c) {
 
     // On the login server, send the events/songs, ep3 updates, and the main
     // menu or welcome message
-    if (c->config.check_flag(Client::Flag::IS_EPISODE_3)) {
+    if (is_ep3(c->version())) {
       if (s->ep3_menu_song >= 0) {
         send_ep3_change_music(c->channel, s->ep3_menu_song);
       } else if (s->pre_lobby_event) {
@@ -291,13 +293,13 @@ void on_login_complete(shared_ptr<Client> c) {
 
   } else if (c->server_behavior == ServerBehavior::LOBBY_SERVER) {
 
-    if (c->version() == GameVersion::BB) {
+    if (c->version() == Version::BB_V4) {
       // This implicitly loads the client's account and player data
       send_complete_player_bb(c);
       c->game_data.should_update_play_time = true;
     }
 
-    if (c->config.check_flag(Client::Flag::IS_EPISODE_3)) {
+    if (is_ep3(c->version())) {
       send_ep3_rank_update(c);
     }
 
@@ -353,12 +355,20 @@ static void on_05_XB(shared_ptr<Client> c, uint16_t, uint32_t, string&) {
 
 static void set_console_client_flags(shared_ptr<Client> c, uint32_t sub_version) {
   if (c->channel.crypt_in->type() == PSOEncryption::Type::V2) {
-    if (sub_version <= 0x28) {
-      c->channel.version = GameVersion::DC;
-      c->log.info("Game version changed to DC");
-    } else if (c->version() == GameVersion::GC) {
-      c->config.set_flag(Client::Flag::IS_GC_TRIAL_EDITION);
-      c->log.info("GC Trial Edition flag set");
+    if (sub_version <= 0x24) {
+      c->channel.version = Version::DC_V1;
+      c->log.info("Game version changed to DC_V1");
+    } else if (sub_version <= 0x28) {
+      c->channel.version = Version::DC_V2;
+      c->log.info("Game version changed to DC_V2");
+    } else if (is_v3(c->version())) {
+      c->channel.version = Version::GC_NTE;
+      c->log.info("Game version changed to GC_NTE");
+    }
+  } else {
+    if (sub_version >= 0x40 && !is_ep3(c->version())) {
+      c->channel.version = Version::GC_EP3;
+      c->log.info("Game version changed to GC_EP3");
     }
   }
   c->config.set_flags_for_version(c->version(), sub_version);
@@ -423,10 +433,9 @@ static void on_88_DCNTE(shared_ptr<Client> c, uint16_t, uint32_t, string& data) 
   const auto& cmd = check_size_t<C_Login_DCNTE_88>(data);
   auto s = c->require_server_state();
 
-  c->channel.version = GameVersion::DC;
-  c->config.set_flag(Client::Flag::IS_DC_V1);
-  c->config.set_flag(Client::Flag::IS_DC_TRIAL_EDITION);
+  c->channel.version = Version::DC_NTE;
   c->config.set_flags_for_version(c->version(), -1);
+  c->log.info("Game version changed to DC_NTE");
 
   uint32_t serial_number = stoul(cmd.serial_number.decode(), nullptr, 16);
   try {
@@ -467,11 +476,10 @@ static void on_8B_DCNTE(shared_ptr<Client> c, uint16_t, uint32_t, string& data) 
   const auto& cmd = check_size_t<C_Login_DCNTE_8B>(data, sizeof(C_LoginExtended_DCNTE_8B));
   auto s = c->require_server_state();
 
-  c->channel.version = GameVersion::DC;
+  c->channel.version = Version::DC_NTE;
   c->channel.language = cmd.language;
-  c->config.set_flag(Client::Flag::IS_DC_V1);
-  c->config.set_flag(Client::Flag::IS_DC_TRIAL_EDITION);
   c->config.set_flags_for_version(c->version(), -1);
+  c->log.info("Game version changed to DC_NTE");
 
   uint32_t serial_number = stoul(cmd.serial_number.decode(), nullptr, 16);
   try {
@@ -522,9 +530,9 @@ static void on_90_DC(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
   const auto& cmd = check_size_t<C_LoginV1_DC_PC_V3_90>(data, 0xFFFF);
   auto s = c->require_server_state();
 
-  c->channel.version = GameVersion::DC;
-  c->config.set_flag(Client::Flag::IS_DC_V1);
+  c->channel.version = Version::DC_V1;
   c->config.set_flags_for_version(c->version(), -1);
+  c->log.info("Game version changed to DC_V1");
 
   uint32_t serial_number = stoul(cmd.serial_number.decode(), nullptr, 16);
   try {
@@ -568,7 +576,7 @@ static void on_92_DC(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
   // than 92, so we use the presence of a 92 command to determine that the
   // client is actually DCv1 and not the prototype.
   c->config.set_flag(Client::Flag::CHECKED_FOR_DC_V1_PROTOTYPE);
-  c->config.clear_flag(Client::Flag::IS_DC_V1_PROTOTYPE);
+  c->log.info("Game version changed to DC_V1");
   send_command(c, 0x92, 0x01);
 }
 
@@ -631,7 +639,7 @@ static void on_93_DC(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
   if (!c->config.check_flag(Client::Flag::CHECKED_FOR_DC_V1_PROTOTYPE)) {
     send_command(c, 0x90, 0x01);
     c->config.set_flag(Client::Flag::CHECKED_FOR_DC_V1_PROTOTYPE);
-    c->config.set_flag(Client::Flag::IS_DC_V1_PROTOTYPE);
+    c->log.info("Game version changed to DC_V1_12_2000_PROTOTYPE (will be changed to V1 if 92 is received)");
   } else {
     on_login_complete(c);
   }
@@ -647,18 +655,18 @@ static void on_9A(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
   try {
     shared_ptr<License> l;
     switch (c->version()) {
-      case GameVersion::DC:
-      case GameVersion::PC:
+      case Version::DC_V2:
+      case Version::PC_V2:
         l = s->license_index->verify_v1_v2(serial_number, cmd.access_key.decode());
         break;
-      case GameVersion::GC:
+      case Version::GC_NTE:
+      case Version::GC_V3:
+      case Version::GC_EP3_TRIAL_EDITION:
+      case Version::GC_EP3:
         l = s->license_index->verify_gc(serial_number, cmd.access_key.decode());
         break;
-      case GameVersion::XB:
-        throw runtime_error("xbox licenses are not implemented");
-        break;
       default:
-        throw logic_error("unsupported versioned command");
+        throw runtime_error("unsupported versioned command");
     }
     c->set_license(l);
     send_command(c, 0x9A, 0x02);
@@ -683,11 +691,11 @@ static void on_9A(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
     // no license exists at this point, disconnect the client even if
     // unregistered clients are allowed.
     shared_ptr<License> l;
-    if ((c->version() == GameVersion::GC) || (c->version() == GameVersion::XB)) {
+    if (is_v3(c->version())) {
       send_command(c, 0x9A, 0x04);
       c->should_disconnect = true;
       return;
-    } else if ((c->version() == GameVersion::DC) || (c->version() == GameVersion::PC)) {
+    } else if (is_v1_or_v2(c->version())) {
       shared_ptr<License> l(new License());
       l->serial_number = serial_number;
       l->access_key = cmd.access_key.decode();
@@ -716,15 +724,15 @@ static void on_9C(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
   try {
     shared_ptr<License> l;
     switch (c->version()) {
-      case GameVersion::DC:
-      case GameVersion::PC:
+      case Version::DC_V2:
+      case Version::PC_V2:
         l = s->license_index->verify_v1_v2(serial_number, cmd.access_key.decode());
         break;
-      case GameVersion::GC:
+      case Version::GC_NTE:
+      case Version::GC_V3:
+      case Version::GC_EP3_TRIAL_EDITION:
+      case Version::GC_EP3:
         l = s->license_index->verify_gc(serial_number, cmd.access_key.decode(), cmd.password.decode());
-        break;
-      case GameVersion::XB:
-        throw runtime_error("xbox licenses are not implemented");
         break;
       default:
         throw logic_error("unsupported versioned command");
@@ -751,7 +759,7 @@ static void on_9C(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
       shared_ptr<License> l(new License());
       l->serial_number = serial_number;
       l->access_key = cmd.access_key.decode();
-      if (c->version() == GameVersion::GC) {
+      if (is_gc(c->version())) {
         l->gc_password = cmd.password.decode();
       }
       s->license_index->add(l);
@@ -773,7 +781,7 @@ static void on_9D_9E(shared_ptr<Client> c, uint16_t command, uint32_t, string& d
   if (command == 0x9D) {
     base_cmd = &check_size_t<C_Login_DC_PC_GC_9D>(data, sizeof(C_LoginExtended_PC_9D));
     if (base_cmd->is_extended) {
-      if (c->version() == GameVersion::PC) {
+      if (c->version() == Version::PC_V2) {
         const auto& cmd = check_size_t<C_LoginExtended_PC_9D>(data);
         if (cmd.extension.lobby_refs[0].menu_id == MenuID::LOBBY) {
           c->preferred_lobby_id = cmd.extension.lobby_refs[0].item_id;
@@ -827,15 +835,15 @@ static void on_9D_9E(shared_ptr<Client> c, uint16_t command, uint32_t, string& d
   try {
     shared_ptr<License> l;
     switch (c->version()) {
-      case GameVersion::DC:
-      case GameVersion::PC:
+      case Version::DC_V2:
+      case Version::PC_V2:
         l = s->license_index->verify_v1_v2(serial_number, base_cmd->access_key.decode());
         break;
-      case GameVersion::GC:
+      case Version::GC_NTE:
+      case Version::GC_V3:
+      case Version::GC_EP3_TRIAL_EDITION:
+      case Version::GC_EP3:
         l = s->license_index->verify_gc(serial_number, base_cmd->access_key.decode());
-        break;
-      case GameVersion::XB:
-        throw runtime_error("xbox licenses are not implemented");
         break;
       default:
         throw logic_error("unsupported versioned command");
@@ -862,11 +870,11 @@ static void on_9D_9E(shared_ptr<Client> c, uint16_t command, uint32_t, string& d
     // password already, which should have created and added a license. So, if
     // no license exists at this point, disconnect the client even if
     // unregistered clients are allowed.
-    if (c->version() == GameVersion::GC) {
+    if (is_v3(c->version())) {
       send_command(c, 0x04, 0x04);
       c->should_disconnect = true;
       return;
-    } else if ((c->version() == GameVersion::DC) || (c->version() == GameVersion::PC)) {
+    } else if (is_v1_or_v2(c->version())) {
       shared_ptr<License> l(new License());
       l->serial_number = serial_number;
       l->access_key = base_cmd->access_key.decode();
@@ -1051,12 +1059,14 @@ static void on_93_BB(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
 
 static void on_9F(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
   switch (c->version()) {
-    case GameVersion::GC: {
+    case Version::GC_V3:
+    case Version::GC_EP3_TRIAL_EDITION:
+    case Version::GC_EP3: {
       const auto& cmd = check_size_t<C_ClientConfig_V3_9F>(data);
       c->config.parse_from(cmd.data);
       break;
     }
-    case GameVersion::XB: {
+    case Version::XB_V3: {
       const auto& cmd = check_size_t<C_ClientConfig_V3_9F>(data);
       // On XB, this command is part of the login sequence, so we may not be
       // able to import the config the first time the client connects. If we
@@ -1071,7 +1081,7 @@ static void on_9F(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
       on_login_complete(c);
       break;
     }
-    case GameVersion::BB: {
+    case Version::BB_V4: {
       const auto& cmd = check_size_t<C_ClientConfig_BB_9F>(data);
       c->config.parse_from(cmd.data);
       break;
@@ -1658,7 +1668,7 @@ static void on_09(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
         if (!q) {
           send_quest_info(c, "$C4Quest does not\nexist.", is_download_quest);
         } else {
-          auto vq = q->version(c->quest_version(), c->language());
+          auto vq = q->version(c->version(), c->language());
           if (!vq) {
             send_quest_info(c, "$C4Quest does not\nexist for this game\nversion.", is_download_quest);
           } else {
@@ -1679,7 +1689,7 @@ static void on_09(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
       if (!game->is_game()) {
         send_ship_info(c, "$C4Incorrect game ID");
 
-      } else if (c->config.check_flag(Client::Flag::IS_EPISODE_3) && game->is_ep3()) {
+      } else if (is_ep3(c->version()) && game->is_ep3()) {
         send_ep3_game_details(c, game);
 
       } else {
@@ -1742,7 +1752,7 @@ static void on_09(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
 
     case MenuID::TOURNAMENTS_FOR_SPEC:
     case MenuID::TOURNAMENTS: {
-      if (!c->config.check_flag(Client::Flag::IS_EPISODE_3)) {
+      if (!is_ep3(c->version())) {
         send_ship_info(c, "Incorrect menu ID");
         break;
       }
@@ -1754,7 +1764,7 @@ static void on_09(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
     }
 
     case MenuID::TOURNAMENT_ENTRIES: {
-      if (!c->config.check_flag(Client::Flag::IS_EPISODE_3)) {
+      if (!is_ep3(c->version())) {
         send_ship_info(c, "Incorrect menu ID");
         break;
       }
@@ -1828,13 +1838,13 @@ static void on_quest_loaded(shared_ptr<Lobby> l) {
   }
 
   auto s = l->require_server_state();
-  if ((l->base_version == GameVersion::BB) && l->map) {
+  if ((l->base_version == Version::BB_PATCH) && l->map) {
     auto leader_c = l->clients.at(l->leader_id);
     if (!leader_c) {
       throw logic_error("lobby leader is missing");
     }
 
-    auto vq = l->quest->version(QuestScriptVersion::BB_V4, leader_c->language());
+    auto vq = l->quest->version(Version::BB_V4, leader_c->language());
     auto dat_contents = prs_decompress(*vq->dat_contents);
     l->map->clear();
     l->map->add_enemies_and_objects_from_quest_data(
@@ -1864,7 +1874,7 @@ static void on_quest_loaded(shared_ptr<Lobby> l) {
       continue;
     }
 
-    if ((lc->version() == GameVersion::BB) && l->map) {
+    if ((lc->version() == Version::BB_V4) && l->map) {
       send_rare_enemy_index_list(lc, l->map->rare_enemy_indexes);
     }
 
@@ -1872,7 +1882,7 @@ static void on_quest_loaded(shared_ptr<Lobby> l) {
     // the server is not informed when the clients have replaced their player
     // data. On BB, this is instead done in the 6xCF handler (for battle) or
     // the 02DF handler (for challenge).
-    if (l->base_version != GameVersion::BB) {
+    if (l->base_version != Version::BB_V4) {
       lc->game_data.delete_overlay();
       if (l->quest->battle_rules) {
         lc->game_data.create_battle_overlay(l->quest->battle_rules, s->level_table);
@@ -1919,9 +1929,7 @@ void set_lobby_quest(shared_ptr<Lobby> l, shared_ptr<const Quest> q) {
     if (!lc) {
       continue;
     }
-    if ((lc->version() != GameVersion::DC) &&
-        (lc->version() != GameVersion::PC) &&
-        !lc->config.check_flag(Client::Flag::IS_GC_TRIAL_EDITION)) {
+    if (is_v3(lc->version()) || is_v4(lc->version())) {
       num_clients_need_loading_flag++;
     } else {
       num_clients_skip_loading_flag++;
@@ -1938,7 +1946,7 @@ void set_lobby_quest(shared_ptr<Lobby> l, shared_ptr<const Quest> q) {
       continue;
     }
 
-    auto vq = q->version(lc->quest_version(), lc->language());
+    auto vq = q->version(lc->version(), lc->language());
     if (!vq) {
       send_lobby_message_box(lc, "$C6Quest does not exist\nfor this game version.");
       lc->should_disconnect = true;
@@ -1965,7 +1973,7 @@ void set_lobby_quest(shared_ptr<Lobby> l, shared_ptr<const Quest> q) {
 }
 
 static void on_10(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
-  bool uses_unicode = ((c->version() == GameVersion::PC) || (c->version() == GameVersion::BB));
+  bool uses_utf16 = ::uses_utf16(c->version());
 
   uint32_t menu_id;
   uint32_t item_id;
@@ -1973,7 +1981,7 @@ static void on_10(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
   string password;
 
   if (data.size() > sizeof(C_MenuSelection_10_Flag00)) {
-    if (uses_unicode) {
+    if (uses_utf16) {
       // TODO: We can support the Flag03 variant here, but PC/BB probably never
       // actually use it.
       const auto& cmd = check_size_t<C_MenuSelection_PC_BB_10_Flag02>(data);
@@ -2007,8 +2015,7 @@ static void on_10(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
             c->config.set_flag(Client::Flag::SAVE_ENABLED);
             // DC NTE and the v1 prototype crash if they receive a 97 command,
             // so we instead do the redirect immediately
-            if ((c->version() == GameVersion::DC) &&
-                (c->config.check_flag(Client::Flag::IS_DC_TRIAL_EDITION) || c->config.check_flag(Client::Flag::IS_DC_V1_PROTOTYPE))) {
+            if ((c->version() == Version::DC_NTE) || (c->version() == Version::DC_V1_12_2000_PROTOTYPE)) {
               send_client_to_lobby_server(c);
             } else {
               send_command(c, 0x97, 0x01);
@@ -2036,7 +2043,7 @@ static void on_10(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
 
         case MainMenuItemID::DOWNLOAD_QUESTS: {
           auto s = c->require_server_state();
-          if (c->config.check_flag(Client::Flag::IS_EPISODE_3)) {
+          if (is_ep3(c->version())) {
             // Episode 3 has only download quests, not online quests, so this is
             // always the download quest menu. (Episode 3 does actually have
             // online quests, but they're served via a server data request
@@ -2052,7 +2059,7 @@ static void on_10(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
             if (num_ep3_categories == 1) {
               auto quest_index = s->quest_index_for_client(c);
               if (quest_index) {
-                auto quests = quest_index->filter(Episode::EP3, ep3_category_id, c->quest_version());
+                auto quests = quest_index->filter(Episode::EP3, ep3_category_id, c->version());
                 send_quest_menu(c, MenuID::QUEST, quests, true);
               } else {
                 send_lobby_message_box(c, "$C6Quests are not available.");
@@ -2063,10 +2070,10 @@ static void on_10(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
 
           // Not Episode 3, or there are multiple Episode 3 download categories;
           // send the categories menu instead
-          uint8_t flags = c->config.check_flag(Client::Flag::IS_EPISODE_3)
+          uint8_t flags = is_ep3(c->version())
               ? QuestCategoryIndex::Category::Flag::EP3_DOWNLOAD
               : QuestCategoryIndex::Category::Flag::DOWNLOAD;
-          if (c->version() == GameVersion::DC || c->version() == GameVersion::PC) {
+          if (is_v1_or_v2(c->version())) {
             flags |= QuestCategoryIndex::Category::Flag::HIDE_ON_PRE_V3;
           }
           send_quest_menu(c, MenuID::QUEST_FILTER, s->quest_category_index, flags);
@@ -2098,7 +2105,7 @@ static void on_10(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
           break;
 
         case MainMenuItemID::DISCONNECT:
-          if (c->version() == GameVersion::XB) {
+          if (c->version() == Version::XB_V3) {
             // On XB (at least via Insignia) the server has to explicitly tell
             // the client to disconnect by sending this command.
             send_command(c, 0x05, 0x00);
@@ -2216,8 +2223,9 @@ static void on_10(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
           c->should_disconnect = true;
         } else {
           // Clear Check Tactics menu so client won't see newserv tournament
-          // state while logically on another server
-          if (c->config.check_flag(Client::Flag::IS_EPISODE_3) && !c->config.check_flag(Client::Flag::IS_EP3_TRIAL_EDITION)) {
+          // state while logically on another server. There is no such command
+          // on Trial Edition though, so only do this on Ep3 final.
+          if (c->version() == Version::GC_EP3) {
             send_ep3_confirm_tournament_entry(c, nullptr);
           }
 
@@ -2252,9 +2260,7 @@ static void on_10(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
         send_lobby_message_box(c, "$C6You cannot join this\ngame because it is\nfull.");
         break;
       }
-      if (!game->version_is_allowed(c->quest_version()) ||
-          (game->is_ep3() != c->config.check_flag(Client::Flag::IS_EPISODE_3)) ||
-          (game->check_flag(Lobby::Flag::IS_EP3_TRIAL) != c->config.check_flag(Client::Flag::IS_EP3_TRIAL_EDITION))) {
+      if (!game->version_is_allowed(c->version())) {
         send_lobby_message_box(c, "$C6You cannot join this\ngame because it is\nfor a different\nversion of PSO.");
         break;
       }
@@ -2308,7 +2314,7 @@ static void on_10(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
       const auto& category = s->quest_category_index->at(item_id);
       shared_ptr<Lobby> l = c->lobby.lock();
       bool filter_by_episode = l && !(category.flags & QuestCategoryIndex::Category::Flag::GOVERNMENT);
-      auto quests = quest_index->filter(filter_by_episode ? l->episode : Episode::NONE, item_id, c->quest_version());
+      auto quests = quest_index->filter(filter_by_episode ? l->episode : Episode::NONE, item_id, c->version());
 
       // Hack: Assume the menu to be sent is the download quest menu if the
       // client is not in any lobby
@@ -2349,7 +2355,7 @@ static void on_10(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
         set_lobby_quest(l, q);
 
       } else {
-        auto vq = q->version(c->quest_version(), c->language());
+        auto vq = q->version(c->version(), c->language());
         if (!vq) {
           send_lobby_message_box(c, "$C6Quest does not exist\nfor this game version.");
           break;
@@ -2359,7 +2365,7 @@ static void on_10(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
         // other versions.
         // TODO: This is not true for Episode 3 Trial Edition. We also would
         // have to convert the map to a MapDefinitionTrial, though.
-        if (vq->version == QuestScriptVersion::GC_EP3) {
+        if (is_ep3(vq->version)) {
           send_open_quest_file(c, q->name, vq->bin_filename(), "", vq->quest_number, QuestFileType::EPISODE_3, vq->bin_contents);
         } else {
           vq = vq->create_download_quest(c->language());
@@ -2417,7 +2423,7 @@ static void on_10(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
 
     case MenuID::TOURNAMENTS_FOR_SPEC:
     case MenuID::TOURNAMENTS: {
-      if (!c->config.check_flag(Client::Flag::IS_EPISODE_3)) {
+      if (!is_ep3(c->version())) {
         throw runtime_error("non-Episode 3 client attempted to join tournament");
       }
       auto s = c->require_server_state();
@@ -2428,7 +2434,7 @@ static void on_10(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
       break;
     }
     case MenuID::TOURNAMENT_ENTRIES: {
-      if (!c->config.check_flag(Client::Flag::IS_EPISODE_3)) {
+      if (!is_ep3(c->version())) {
         throw runtime_error("non-Episode 3 client attempted to join tournament");
       }
       if (c->ep3_tournament_team.lock()) {
@@ -2508,7 +2514,7 @@ static void on_84(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
       return;
     }
 
-    if (new_lobby->is_ep3() && !c->config.check_flag(Client::Flag::IS_EPISODE_3)) {
+    if (new_lobby->is_ep3() && !is_ep3(c->version())) {
       send_lobby_message_box(c, "$C6Can't change lobby\n\n$C7The lobby is for\nEpisode 3 only.");
       return;
     }
@@ -2557,7 +2563,7 @@ static void on_A1(shared_ptr<Client> c, uint16_t command, uint32_t flag, string&
 }
 
 static void on_8E_DCNTE(shared_ptr<Client> c, uint16_t command, uint32_t flag, string& data) {
-  if (c->config.check_flag(Client::Flag::IS_DC_TRIAL_EDITION)) {
+  if (c->version() == Version::DC_NTE) {
     on_A0(c, command, flag, data);
   } else {
     throw runtime_error("non-DCNTE client sent 8E");
@@ -2565,7 +2571,7 @@ static void on_8E_DCNTE(shared_ptr<Client> c, uint16_t command, uint32_t flag, s
 }
 
 static void on_8F_DCNTE(shared_ptr<Client> c, uint16_t command, uint32_t flag, string& data) {
-  if (c->config.check_flag(Client::Flag::IS_DC_TRIAL_EDITION)) {
+  if (c->version() == Version::DC_NTE) {
     on_A1(c, command, flag, data);
   } else {
     throw runtime_error("non-DCNTE client sent 8F");
@@ -2639,15 +2645,15 @@ static void on_A2(shared_ptr<Client> c, uint16_t, uint32_t flag, string& data) {
 
   // In Episode 3, there are no quest categories, so skip directly to the quest
   // filter menu.
-  if (c->config.check_flag(Client::Flag::IS_EPISODE_3)) {
+  if (is_ep3(c->version())) {
     send_lobby_message_box(c, "$C6Episode 3 does not\nprovide online quests\nvia this interface.");
 
   } else {
-    uint8_t flags = (c->version() == GameVersion::DC || c->version() == GameVersion::PC)
+    uint8_t flags = is_v1_or_v2(c->version())
         ? QuestCategoryIndex::Category::Flag::HIDE_ON_PRE_V3
         : 0;
 
-    if ((c->version() == GameVersion::BB) && flag) {
+    if ((c->version() == Version::BB_V4) && flag) {
       flags |= QuestCategoryIndex::Category::Flag::GOVERNMENT;
     } else {
       switch (l->mode) {
@@ -2679,7 +2685,7 @@ static void on_AC_V3_BB(shared_ptr<Client> c, uint16_t, uint32_t, string& data) 
 
   if (c->config.check_flag(Client::Flag::LOADING_RUNNING_JOINABLE_QUEST)) {
     c->config.clear_flag(Client::Flag::LOADING_RUNNING_JOINABLE_QUEST);
-    if (l->base_version != GameVersion::BB) {
+    if (l->base_version != Version::BB_V4) {
       throw logic_error("joinable quest started on non-BB version");
     }
 
@@ -2702,11 +2708,8 @@ static void on_AC_V3_BB(shared_ptr<Client> c, uint16_t, uint32_t, string& data) 
 static void on_AA(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
   const auto& cmd = check_size_t<C_SendQuestStatistic_V3_BB_AA>(data);
 
-  if (c->version() == GameVersion::DC || c->version() == GameVersion::PC) {
+  if (is_v1_or_v2(c->version())) {
     throw runtime_error("pre-V3 client sent update quest stats command");
-  }
-  if (c->config.check_flag(Client::Flag::IS_GC_TRIAL_EDITION)) {
-    throw runtime_error("trial edition client sent update quest stats command");
   }
 
   auto l = c->require_lobby();
@@ -2774,22 +2777,24 @@ static void on_61_98(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
   auto player = c->game_data.character();
 
   switch (c->version()) {
-    case GameVersion::DC: {
-      if (c->config.check_flag(Client::Flag::IS_DC_V1)) {
-        const auto& cmd = check_size_t<C_CharacterData_DCv1_61_98>(data);
-        player->inventory = cmd.inventory;
-        player->disp = cmd.disp.to_bb(player->inventory.language, player->inventory.language);
-      } else {
-        const auto& cmd = check_size_t<C_CharacterData_DCv2_61_98>(data, 0xFFFF);
-        player->inventory = cmd.inventory;
-        player->disp = cmd.disp.to_bb(player->inventory.language, player->inventory.language);
-        player->battle_records = cmd.records.battle;
-        player->challenge_records = cmd.records.challenge;
-        player->choice_search_config = cmd.choice_search_config;
-      }
+    case Version::DC_NTE:
+    case Version::DC_V1_12_2000_PROTOTYPE:
+    case Version::DC_V1: {
+      const auto& cmd = check_size_t<C_CharacterData_DCv1_61_98>(data);
+      player->inventory = cmd.inventory;
+      player->disp = cmd.disp.to_bb(player->inventory.language, player->inventory.language);
       break;
     }
-    case GameVersion::PC: {
+    case Version::DC_V2: {
+      const auto& cmd = check_size_t<C_CharacterData_DCv2_61_98>(data, 0xFFFF);
+      player->inventory = cmd.inventory;
+      player->disp = cmd.disp.to_bb(player->inventory.language, player->inventory.language);
+      player->battle_records = cmd.records.battle;
+      player->challenge_records = cmd.records.challenge;
+      player->choice_search_config = cmd.choice_search_config;
+      break;
+    }
+    case Version::PC_V2: {
       const auto& cmd = check_size_t<C_CharacterData_PC_61_98>(data, 0xFFFF);
       player->inventory = cmd.inventory;
       player->disp = cmd.disp.to_bb(player->inventory.language, player->inventory.language);
@@ -2811,20 +2816,30 @@ static void on_61_98(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
       }
       break;
     }
-    case GameVersion::GC:
-    case GameVersion::XB: {
+    case Version::GC_NTE:
+    case Version::GC_V3:
+    case Version::GC_EP3_TRIAL_EDITION:
+    case Version::GC_EP3:
+    case Version::XB_V3: {
       const C_CharacterData_V3_61_98* cmd;
       if (flag == 4) { // Episode 3
-        if (!c->config.check_flag(Client::Flag::IS_EPISODE_3)) {
+        if (!is_ep3(c->version())) {
           throw runtime_error("non-Episode 3 client sent Episode 3 player data");
         }
         const auto* cmd3 = &check_size_t<C_CharacterData_GC_Ep3_61_98>(data);
         c->game_data.ep3_config.reset(new Episode3::PlayerConfig(cmd3->ep3_config));
         cmd = reinterpret_cast<const C_CharacterData_V3_61_98*>(cmd3);
+        if (c->config.specific_version == 0x33000000) {
+          c->config.specific_version = 0x33534A30; // 3SJ0
+        }
       } else {
-        if (c->config.check_flag(Client::Flag::IS_EPISODE_3)) {
-          c->config.set_flag(Client::Flag::IS_EP3_TRIAL_EDITION);
+        if (is_ep3(c->version())) {
+          c->channel.version = Version::GC_EP3_TRIAL_EDITION;
+          c->log.info("Game version changed to GC_EP3_TRIAL_EDITION");
           c->config.clear_flag(Client::Flag::ENCRYPTED_SEND_FUNCTION_CALL);
+          if (c->config.specific_version == 0x33000000) {
+            c->config.specific_version = 0x33534A54; // 3SJT
+          }
         }
         cmd = &check_size_t<C_CharacterData_V3_61_98>(data, 0xFFFF);
       }
@@ -2837,7 +2852,7 @@ static void on_61_98(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
       // update and the current tournament entry depend on this flag, we have
       // to delay sending them until now, instead of sending them during the
       // login sequence.
-      if (c->config.check_flag(Client::Flag::IS_EPISODE_3)) {
+      if (is_ep3(c->version())) {
         bool flags_changed = false;
         if (!c->config.check_flag(Client::Flag::HAS_EP3_CARD_DEFS)) {
           send_ep3_card_list_update(c);
@@ -2876,7 +2891,7 @@ static void on_61_98(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
       }
       break;
     }
-    case GameVersion::BB: {
+    case Version::BB_V4: {
       const auto& cmd = check_size_t<C_CharacterData_BB_61_98>(data, 0xFFFF);
       // Note: we don't copy the inventory and disp here because we already have
       // them (we sent the player data to the client in the first place)
@@ -2981,14 +2996,14 @@ static void on_06(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
   if (text.empty()) {
     return;
   }
-  bool is_w = (c->version() == GameVersion::PC || c->version() == GameVersion::BB);
+  bool is_w = uses_utf16(c->version());
   if (is_w && (text.size() & 1)) {
     text.push_back(0);
   }
 
   auto l = c->lobby.lock();
   char private_flags = 0;
-  if ((c->version() == GameVersion::GC) && c->config.check_flag(Client::Flag::IS_EPISODE_3) && l && l->is_ep3() && (text[0] != '\t')) {
+  if (is_ep3(c->version()) && l && l->is_ep3() && (text[0] != '\t')) {
     private_flags = text[0];
     text = text.substr(1);
   }
@@ -3032,7 +3047,6 @@ static void on_06(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
   if (l->battle_record && l->battle_record->battle_in_progress()) {
     auto prepared_message = prepare_chat_data(
         c->version(),
-        c->config.check_flag(Client::Flag::IS_DC_TRIAL_EDITION),
         c->language(),
         c->lobby_client_id,
         p->disp.name.decode(c->language()),
@@ -3431,7 +3445,7 @@ static void on_DF_BB(shared_ptr<Client> c, uint16_t command, uint32_t, string& d
       award_state.rank_award_flags |= cmd.rank_bitmask;
       p->add_item(cmd.item);
       l->on_item_id_generated_externally(cmd.item.id);
-      string desc = s->describe_item(GameVersion::BB, cmd.item, false);
+      string desc = s->describe_item(Version::BB_V4, cmd.item, false);
       l->log.info("(Challenge mode) Item awarded to player %hhu: %s", c->lobby_client_id, desc.c_str());
       break;
     }
@@ -3470,21 +3484,27 @@ static void on_81(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
   string message;
   uint32_t to_guild_card_number;
   switch (c->version()) {
-    case GameVersion::DC:
-    case GameVersion::GC:
-    case GameVersion::XB: {
+    case Version::DC_NTE:
+    case Version::DC_V1_12_2000_PROTOTYPE:
+    case Version::DC_V1:
+    case Version::DC_V2:
+    case Version::GC_NTE:
+    case Version::GC_V3:
+    case Version::GC_EP3_TRIAL_EDITION:
+    case Version::GC_EP3:
+    case Version::XB_V3: {
       const auto& cmd = check_size_t<SC_SimpleMail_DC_V3_81>(data);
       to_guild_card_number = cmd.to_guild_card_number;
       message = cmd.text.decode(c->language());
       break;
     }
-    case GameVersion::PC: {
+    case Version::PC_V2: {
       const auto& cmd = check_size_t<SC_SimpleMail_PC_81>(data);
       to_guild_card_number = cmd.to_guild_card_number;
       message = cmd.text.decode(c->language());
       break;
     }
-    case GameVersion::BB: {
+    case Version::BB_V4: {
       const auto& cmd = check_size_t<SC_SimpleMail_BB_81>(data);
       to_guild_card_number = cmd.to_guild_card_number;
       message = cmd.text.decode(c->language());
@@ -3541,7 +3561,7 @@ static void on_D8(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
 
 void on_D9(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
   strip_trailing_zeroes(data);
-  bool is_w = (c->version() == GameVersion::PC || c->version() == GameVersion::BB);
+  bool is_w = uses_utf16(c->version());
   if (is_w && (data.size() & 1)) {
     data.push_back(0);
   }
@@ -3550,7 +3570,7 @@ void on_D9(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
 
 void on_C7(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
   strip_trailing_zeroes(data);
-  bool is_w = (c->version() == GameVersion::PC || c->version() == GameVersion::BB);
+  bool is_w = uses_utf16(c->version());
   if (is_w && (data.size() & 1)) {
     data.push_back(0);
   }
@@ -3564,7 +3584,7 @@ static void on_C8(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
 
 static void on_C6(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
   c->game_data.blocked_senders.fill(0);
-  if (c->version() == GameVersion::BB) {
+  if (c->version() == Version::BB_V4) {
     const auto& cmd = check_size_t<C_SetBlockedSenders_BB_C6>(data);
     for (size_t z = 0; z < cmd.blocked_senders.size(); z++) {
       c->game_data.blocked_senders[z] = cmd.blocked_senders[z];
@@ -3645,15 +3665,70 @@ shared_ptr<Lobby> create_game_generic(
   shared_ptr<Lobby> game = s->create_lobby();
   game->name = name;
   game->set_flag(Lobby::Flag::GAME);
-  if (c->config.check_flag(Client::Flag::IS_DC_V1)) {
-    game->set_flag(Lobby::Flag::USE_DCV1_RARE_TABLE);
+
+  game->base_version = c->version();
+  game->allowed_versions = 0;
+  switch (game->base_version) {
+    case Version::DC_NTE:
+      game->allow_version(Version::DC_NTE);
+      break;
+    case Version::DC_V1_12_2000_PROTOTYPE:
+      game->allow_version(Version::DC_V1_12_2000_PROTOTYPE);
+      break;
+    case Version::DC_V1:
+      game->allow_version(Version::DC_V1);
+      game->allow_version(Version::DC_V2);
+      if (s->allow_dc_pc_games) {
+        game->allow_version(Version::PC_V2);
+      }
+      break;
+    case Version::DC_V2:
+      if (allow_v1 && (difficulty <= 2)) {
+        game->allow_version(Version::DC_V1);
+      }
+      game->allow_version(Version::DC_V2);
+      if (s->allow_dc_pc_games) {
+        game->allow_version(Version::PC_V2);
+      }
+      break;
+    case Version::PC_V2:
+      game->allow_version(Version::PC_V2);
+      if (s->allow_dc_pc_games) {
+        game->allow_version(Version::DC_V2);
+        if (allow_v1 && (difficulty <= 2)) {
+          game->allow_version(Version::DC_V1);
+        }
+      }
+      break;
+    case Version::GC_NTE:
+      game->allow_version(Version::GC_NTE);
+      break;
+    case Version::GC_V3:
+      game->allow_version(Version::GC_V3);
+      if (s->allow_gc_xb_games) {
+        game->allow_version(Version::XB_V3);
+      }
+      break;
+    case Version::GC_EP3_TRIAL_EDITION:
+      game->allow_version(Version::GC_EP3_TRIAL_EDITION);
+      break;
+    case Version::GC_EP3:
+      game->allow_version(Version::GC_EP3);
+      break;
+    case Version::XB_V3:
+      game->allow_version(Version::XB_V3);
+      if (s->allow_gc_xb_games) {
+        game->allow_version(Version::GC_V3);
+      }
+      break;
+    case Version::BB_V4:
+      game->allow_version(Version::BB_V4);
+      break;
+    default:
+      throw logic_error("invalid quest script version");
   }
-  if ((c->version() == GameVersion::GC) &&
-      c->config.check_flag(Client::Flag::IS_EPISODE_3) &&
-      c->config.check_flag(Client::Flag::IS_EP3_TRIAL_EDITION)) {
-    game->set_flag(Lobby::Flag::IS_EP3_TRIAL);
-  }
-  if ((c->version() == GameVersion::BB) || s->item_tracking_enabled) {
+
+  if ((game->base_version == Version::BB_V4) || s->item_tracking_enabled) {
     game->set_flag(Lobby::Flag::ITEM_TRACKING_ENABLED);
   }
   // Only disable drops if the config flag is set and for regular multi-mode;
@@ -3678,54 +3753,6 @@ shared_ptr<Lobby> create_game_generic(
   }
   game->password = password;
 
-  game->base_version = c->version();
-  game->allowed_versions = 0;
-  switch (c->quest_version()) {
-    case QuestScriptVersion::DC_NTE:
-      game->allow_version(QuestScriptVersion::DC_NTE);
-      break;
-    case QuestScriptVersion::DC_V1:
-      game->allow_version(QuestScriptVersion::DC_V1);
-      game->allow_version(QuestScriptVersion::DC_V2);
-      if (s->allow_dc_pc_games) {
-        game->allow_version(QuestScriptVersion::PC_V2);
-      }
-      break;
-    case QuestScriptVersion::DC_V2:
-    case QuestScriptVersion::PC_V2:
-      if (allow_v1 && (difficulty <= 2)) {
-        game->allow_version(QuestScriptVersion::DC_V1);
-      }
-      game->allow_version(QuestScriptVersion::DC_V2);
-      if (s->allow_dc_pc_games) {
-        game->allow_version(QuestScriptVersion::PC_V2);
-      }
-      break;
-    case QuestScriptVersion::GC_NTE:
-      game->allow_version(QuestScriptVersion::GC_NTE);
-      break;
-    case QuestScriptVersion::GC_V3:
-      game->allow_version(QuestScriptVersion::GC_V3);
-      if (s->allow_gc_xb_games) {
-        game->allow_version(QuestScriptVersion::XB_V3);
-      }
-      break;
-    case QuestScriptVersion::XB_V3:
-      game->allow_version(QuestScriptVersion::XB_V3);
-      if (s->allow_gc_xb_games) {
-        game->allow_version(QuestScriptVersion::GC_V3);
-      }
-      break;
-    case QuestScriptVersion::GC_EP3:
-      game->allow_version(QuestScriptVersion::GC_EP3);
-      break;
-    case QuestScriptVersion::BB_V4:
-      game->allow_version(QuestScriptVersion::BB_V4);
-      break;
-    default:
-      throw logic_error("invalid quest script version");
-  }
-
   game->section_id = (c->config.override_section_id != 0xFF)
       ? c->config.override_section_id
       : p->disp.visual.section_id;
@@ -3743,7 +3770,7 @@ shared_ptr<Lobby> create_game_generic(
     game->battle_player = battle_player;
     battle_player->set_lobby(game);
   }
-  if (game->base_version == GameVersion::BB) {
+  if (game->base_version == Version::BB_V4) {
     game->base_exp_multiplier = s->bb_global_exp_multiplier;
   }
 
@@ -3751,7 +3778,7 @@ shared_ptr<Lobby> create_game_generic(
     game->next_item_id[x] = (0x00200000 * x) + 0x00010000;
   }
   game->next_game_item_id = 0x00810000;
-  if ((game->base_version == GameVersion::BB) ||
+  if ((game->base_version == Version::BB_V4) ||
       (game->check_flag(Lobby::Flag::ITEM_TRACKING_ENABLED) && s->behavior_enabled(s->use_server_item_tables_behavior))) {
     game->create_item_creator();
   }
@@ -3770,14 +3797,14 @@ shared_ptr<Lobby> create_game_generic(
 
   // Generate the map variations
   if (game->is_ep3() ||
-      (c->version() == GameVersion::DC &&
-          (c->config.check_flag(Client::Flag::IS_DC_TRIAL_EDITION) || c->config.check_flag(Client::Flag::IS_DC_V1_PROTOTYPE)))) {
+      (c->version() == Version::DC_NTE) ||
+      (c->version() == Version::DC_V1_12_2000_PROTOTYPE)) {
     game->variations.clear(0);
   } else {
     generate_variations(game->variations, game->random_crypt, game->episode, is_solo);
   }
 
-  if (game->base_version == GameVersion::BB) {
+  if (game->base_version == Version::BB_V4) {
     game->map.reset(new Map());
     for (size_t floor = 0; floor < 0x10; floor++) {
       c->log.info("[Map/%zu] Using variations %" PRIX32 ", %" PRIX32,
@@ -3878,8 +3905,7 @@ static void on_0C_C1_E7_EC(shared_ptr<Client> c, uint16_t command, uint32_t, str
   auto s = c->require_server_state();
 
   shared_ptr<Lobby> game;
-  if ((c->version() == GameVersion::DC) &&
-      (c->config.check_flag(Client::Flag::IS_DC_TRIAL_EDITION) || c->config.check_flag(Client::Flag::IS_DC_V1_PROTOTYPE))) {
+  if ((c->version() == Version::DC_NTE) || (c->version() == Version::DC_V1_12_2000_PROTOTYPE)) {
     const auto& cmd = check_size_t<C_CreateGame_DCNTE<TextEncoding::SJIS>>(data);
     game = create_game_generic(s, c, cmd.name.decode(c->language()), cmd.password.decode(c->language()), Episode::EP1, GameMode::NORMAL, 0, true);
 
@@ -3887,14 +3913,14 @@ static void on_0C_C1_E7_EC(shared_ptr<Client> c, uint16_t command, uint32_t, str
     const auto& cmd = check_size_t<C_CreateGame_DC_V3_0C_C1_Ep3_EC>(data);
 
     // Only allow E7/EC from Ep3 clients
-    bool client_is_ep3 = c->config.check_flag(Client::Flag::IS_EPISODE_3);
+    bool client_is_ep3 = is_ep3(c->version());
     if (((command & 0xF0) == 0xE0) != client_is_ep3) {
       throw runtime_error("invalid command");
     }
 
     Episode episode = Episode::NONE;
     bool allow_v1 = false;
-    if (c->version() == GameVersion::DC) {
+    if (is_v1_or_v2(c->version())) {
       allow_v1 = (cmd.episode == 0);
       episode = Episode::EP1;
     } else if (client_is_ep3) {
@@ -3985,7 +4011,7 @@ static void on_C1_BB(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
 }
 
 static void on_8A(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
-  if ((c->version() == GameVersion::DC) && c->config.check_flag(Client::Flag::IS_DC_TRIAL_EDITION)) {
+  if (c->version() == Version::DC_NTE) {
     const auto& cmd = check_size_t<C_ConnectionInfo_DCNTE_8A>(data);
     set_console_client_flags(c, cmd.sub_version);
     send_command(c, 0x8A, 0x01);
@@ -4007,7 +4033,7 @@ static void on_6F(shared_ptr<Client> c, uint16_t command, uint32_t, string& data
   c->config.clear_flag(Client::Flag::LOADING);
 
   send_resume_game(l, c);
-  if (l->base_version == GameVersion::BB) {
+  if (l->base_version == Version::BB_V4) {
     send_set_exp_multiplier(l);
   }
   send_server_time(c);
@@ -4022,12 +4048,12 @@ static void on_6F(shared_ptr<Client> c, uint16_t command, uint32_t, string& data
 
   // BB sends 016F when the client is done loading a quest. In that case, we
   // shouldn't send the quest to them again!
-  if (command == 0x006F && c->version() == GameVersion::BB) {
+  if (command == 0x006F && c->version() == Version::BB_V4) {
     if (l->check_flag(Lobby::Flag::JOINABLE_QUEST_IN_PROGRESS)) {
       if (!l->quest) {
         throw runtime_error("JOINABLE_QUEST_IN_PROGRESS is set, but lobby has no quest");
       }
-      auto vq = l->quest->version(c->quest_version(), c->language());
+      auto vq = l->quest->version(c->version(), c->language());
       if (!vq) {
         throw runtime_error("JOINABLE_QUEST_IN_PROGRESS is set, but lobby has no quest for client version");
       }
@@ -4049,8 +4075,7 @@ static void on_6F(shared_ptr<Client> c, uint16_t command, uint32_t, string& data
     l->battle_player->start();
   } else if (watched_lobby && watched_lobby->ep3_server) {
     if (!watched_lobby->ep3_server->battle_finished) {
-      watched_lobby->ep3_server->send_commands_for_joining_spectator(
-          c->channel, c->config.check_flag(Client::Flag::IS_EP3_TRIAL_EDITION));
+      watched_lobby->ep3_server->send_commands_for_joining_spectator(c->channel);
     }
     send_ep3_update_game_metadata(watched_lobby);
   }
@@ -4156,7 +4181,7 @@ static void on_D2_V3_BB(shared_ptr<Client> c, uint16_t, uint32_t, string& data) 
   }
 
   auto complete_trade_for_side = [&](shared_ptr<Client> to_c, shared_ptr<Client> from_c) {
-    if (c->version() == GameVersion::BB) {
+    if (c->version() == Version::BB_V4) {
       // On BB, the server is expected to generate the delete item and create
       // item commands
       auto to_p = to_c->game_data.character();
@@ -4230,7 +4255,7 @@ static void on_D4_V3_BB(shared_ptr<Client> c, uint16_t, uint32_t, string& data) 
 }
 
 static void on_EE_Ep3(shared_ptr<Client> c, uint16_t, uint32_t flag, string& data) {
-  if (!c->config.check_flag(Client::Flag::IS_EPISODE_3)) {
+  if (!is_ep3(c->version())) {
     throw runtime_error("non-Ep3 client sent card trade command");
   }
   auto l = c->require_lobby();
@@ -4252,7 +4277,7 @@ static void on_EE_Ep3(shared_ptr<Client> c, uint16_t, uint32_t flag, string& dat
     if (!target_c) {
       throw runtime_error("card trade command sent to missing player");
     }
-    if (!target_c->config.check_flag(Client::Flag::IS_EPISODE_3)) {
+    if (!is_ep3(target_c->version())) {
       throw runtime_error("card trade target is not Episode 3");
     }
 
@@ -4334,7 +4359,7 @@ static void on_EE_Ep3(shared_ptr<Client> c, uint16_t, uint32_t flag, string& dat
 static void on_EF_Ep3(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
   check_size_v(data.size(), 0);
 
-  if (!c->config.check_flag(Client::Flag::IS_EPISODE_3)) {
+  if (!is_ep3(c->version())) {
     throw runtime_error("non-Ep3 client sent card auction request");
   }
   auto l = c->require_lobby();
@@ -4737,14 +4762,15 @@ static void on_04_P(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
 
   // On BB we can use colors and newlines should be \n; on PC we can't use
   // colors, the text is auto-word-wrapped, and newlines should be \r\n.
-  const string& message = c->config.check_flag(Client::Flag::IS_BB_PATCH)
+  bool is_bb_patch = (c->version() == Version::BB_PATCH);
+  const string& message = is_bb_patch
       ? s->bb_patch_server_message
       : s->pc_patch_server_message;
   if (!message.empty()) {
     send_message_box(c, message.c_str());
   }
 
-  auto index = c->config.check_flag(Client::Flag::IS_BB_PATCH) ? s->bb_patch_file_index : s->pc_patch_file_index;
+  auto index = is_bb_patch ? s->bb_patch_file_index : s->pc_patch_file_index;
   if (index.get()) {
     send_command(c, 0x0B, 0x00); // Start patch session; go to root directory
 
@@ -4827,289 +4853,309 @@ typedef void (*on_command_t)(shared_ptr<Client> c, uint16_t command, uint32_t fl
 // Command handler table, indexed by command number and game version. Null
 // entries in this table cause on_unimplemented_command to be called, which
 // disconnects the client.
-static on_command_t handlers[0x100][6] = {
+static on_command_t handlers[0x100][13] = {
     // clang-format off
-  //        PATCH    DC              PC           GC              XB              BB
-  /* 00 */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* 01 */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* 02 */ {on_02_P, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* 03 */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* 04 */ {on_04_P, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* 05 */ {nullptr, on_ignored,     on_ignored,  on_ignored,     on_05_XB,       on_ignored},
-  /* 06 */ {nullptr, on_06,          on_06,       on_06,          on_06,          on_06},
-  /* 07 */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* 08 */ {nullptr, on_08_E6,       on_08_E6,    on_08_E6,       on_08_E6,       on_08_E6},
-  /* 09 */ {nullptr, on_09,          on_09,       on_09,          on_09,          on_09},
-  /* 0A */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* 0B */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* 0C */ {nullptr, on_0C_C1_E7_EC, nullptr,     nullptr,        nullptr,        nullptr},
-  /* 0D */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* 0E */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* 0F */ {on_0F_P, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* 10 */ {on_10_P, on_10,          on_10,       on_10,          on_10,          on_10},
-  /* 11 */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* 12 */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* 13 */ {nullptr, on_ignored,     on_ignored,  on_13_A7_V3_BB, on_13_A7_V3_BB, on_13_A7_V3_BB},
-  /* 14 */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* 15 */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* 16 */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* 17 */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* 18 */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* 19 */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* 1A */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* 1B */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* 1C */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* 1D */ {nullptr, on_1D,          on_1D,       on_1D,          on_1D,          on_1D},
-  /* 1E */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* 1F */ {nullptr, on_1F,          on_1F,       nullptr,        nullptr,        nullptr},
-  //        PATCH    DC              PC           GC              XB              BB
-  /* 20 */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* 21 */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* 22 */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        on_ignored},
-  /* 23 */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* 24 */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* 25 */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* 26 */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* 27 */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* 28 */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* 29 */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* 2A */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* 2B */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* 2C */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* 2D */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* 2E */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* 2F */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* 30 */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* 31 */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* 32 */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* 33 */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* 34 */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* 35 */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* 36 */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* 37 */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* 38 */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* 39 */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* 3A */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* 3B */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* 3C */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* 3D */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* 3E */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* 3F */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  //        PATCH    DC              PC           GC              XB              BB
-  /* 40 */ {nullptr, on_40,          on_40,       on_40,          on_40,          on_40},
-  /* 41 */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* 42 */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* 43 */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* 44 */ {nullptr, on_ignored,     on_ignored,  on_44_A6_V3_BB, on_44_A6_V3_BB, on_44_A6_V3_BB},
-  /* 45 */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* 46 */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* 47 */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* 48 */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* 49 */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* 4A */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* 4B */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* 4C */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* 4D */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* 4E */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* 4F */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* 50 */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* 51 */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* 52 */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* 53 */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* 54 */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* 55 */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* 56 */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* 57 */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* 58 */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* 59 */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* 5A */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* 5B */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* 5C */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* 5D */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* 5E */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* 5F */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  //        PATCH    DC              PC           GC              XB              BB
-  /* 60 */ {nullptr, on_6x_C9_CB,    on_6x_C9_CB, on_6x_C9_CB,    on_6x_C9_CB,    on_6x_C9_CB},
-  /* 61 */ {nullptr, on_61_98,       on_61_98,    on_61_98,       on_61_98,       on_61_98},
-  /* 62 */ {nullptr, on_6x_C9_CB,    on_6x_C9_CB, on_6x_C9_CB,    on_6x_C9_CB,    on_6x_C9_CB},
-  /* 63 */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* 64 */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* 65 */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* 66 */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* 67 */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* 68 */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* 69 */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* 6A */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* 6B */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* 6C */ {nullptr, on_6x_C9_CB,    on_6x_C9_CB, on_6x_C9_CB,    on_6x_C9_CB,    on_6x_C9_CB},
-  /* 6D */ {nullptr, on_6x_C9_CB,    on_6x_C9_CB, on_6x_C9_CB,    on_6x_C9_CB,    on_6x_C9_CB},
-  /* 6E */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* 6F */ {nullptr, on_6F,          on_6F,       on_6F,          on_6F,          on_6F},
-  /* 70 */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* 71 */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* 72 */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* 73 */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* 74 */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* 75 */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* 76 */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* 77 */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* 78 */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* 79 */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* 7A */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* 7B */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* 7C */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* 7D */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* 7E */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* 7F */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  //        PATCH    DC              PC           GC              XB              BB
-  /* 80 */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* 81 */ {nullptr, on_81,          on_81,       on_81,          on_81,          on_81},
-  /* 82 */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* 83 */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* 84 */ {nullptr, on_84,          on_84,       on_84,          on_84,          on_84},
-  /* 85 */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* 86 */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* 87 */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* 88 */ {nullptr, on_88_DCNTE,    nullptr,     on_88_DCNTE,    nullptr,        nullptr},
-  /* 89 */ {nullptr, on_89,          on_89,       on_89,          on_89,          on_89},
-  /* 8A */ {nullptr, on_8A,          on_8A,       on_8A,          on_8A,          on_8A},
-  /* 8B */ {nullptr, on_8B_DCNTE,    nullptr,     on_8B_DCNTE,    nullptr,        nullptr},
-  /* 8C */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* 8D */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* 8E */ {nullptr, on_8E_DCNTE,    nullptr,     nullptr,        nullptr,        nullptr},
-  /* 8F */ {nullptr, on_8F_DCNTE,    nullptr,     nullptr,        nullptr,        nullptr},
-  /* 90 */ {nullptr, on_90_DC,       nullptr,     on_90_DC,       nullptr,        nullptr},
-  /* 91 */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* 92 */ {nullptr, on_92_DC,       nullptr,     nullptr,        nullptr,        nullptr},
-  /* 93 */ {nullptr, on_93_DC,       nullptr,     on_93_DC,       nullptr,        on_93_BB},
-  /* 94 */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* 95 */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* 96 */ {nullptr, on_96,          on_96,       on_96,          on_96,          nullptr},
-  /* 97 */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* 98 */ {nullptr, on_61_98,       on_61_98,    on_61_98,       on_61_98,       on_61_98},
-  /* 99 */ {nullptr, on_99,          on_99,       on_99,          on_99,          on_99},
-  /* 9A */ {nullptr, on_9A,          on_9A,       on_9A,          nullptr,        nullptr},
-  /* 9B */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* 9C */ {nullptr, on_9C,          on_9C,       on_9C,          on_9C,          nullptr},
-  /* 9D */ {nullptr, on_9D_9E,       on_9D_9E,    on_9D_9E,       on_9D_9E,       nullptr},
-  /* 9E */ {nullptr, nullptr,        on_9D_9E,    on_9D_9E,       on_9E_XB,       nullptr},
-  /* 9F */ {nullptr, nullptr,        nullptr,     on_9F,          on_9F,          on_9F},
-  //        PATCH    DC              PC           GC              XB              BB
-  /* A0 */ {nullptr, on_A0,          on_A0,       on_A0,          on_A0,          on_A0},
-  /* A1 */ {nullptr, on_A1,          on_A1,       on_A1,          on_A1,          on_A1},
-  /* A2 */ {nullptr, on_A2,          on_A2,       on_A2,          on_A2,          on_A2},
-  /* A3 */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* A4 */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* A5 */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* A6 */ {nullptr, nullptr,        nullptr,     on_44_A6_V3_BB, on_44_A6_V3_BB, nullptr},
-  /* A7 */ {nullptr, nullptr,        nullptr,     on_13_A7_V3_BB, on_13_A7_V3_BB, nullptr},
-  /* A8 */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* A9 */ {nullptr, on_ignored,     on_ignored,  on_ignored,     on_ignored,     on_ignored},
-  /* AA */ {nullptr, nullptr,        on_AA,       on_AA,          on_AA,          on_AA},
-  /* AB */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* AC */ {nullptr, nullptr,        nullptr,     on_AC_V3_BB,    on_AC_V3_BB,    on_AC_V3_BB},
-  /* AD */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* AE */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* AF */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* B0 */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* B1 */ {nullptr, on_B1,          on_B1,       on_B1,          on_B1,          nullptr},
-  /* B2 */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* B3 */ {nullptr, on_B3,          on_B3,       on_B3,          on_B3,          on_B3},
-  /* B4 */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* B5 */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* B6 */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* B7 */ {nullptr, nullptr,        nullptr,     on_ignored,     nullptr,        nullptr},
-  /* B8 */ {nullptr, nullptr,        nullptr,     on_ignored,     nullptr,        nullptr},
-  /* B9 */ {nullptr, nullptr,        nullptr,     on_ignored,     nullptr,        nullptr},
-  /* BA */ {nullptr, nullptr,        nullptr,     on_BA_Ep3,      nullptr,        nullptr},
-  /* BB */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* BC */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* BD */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* BE */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* BF */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  //        PATCH    DC              PC           GC              XB              BB
-  /* C0 */ {nullptr, on_C0,          on_C0,       on_C0,          on_C0,          nullptr},
-  /* C1 */ {nullptr, on_0C_C1_E7_EC, on_C1_PC,    on_0C_C1_E7_EC, on_0C_C1_E7_EC, on_C1_BB},
-  /* C2 */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* C3 */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* C4 */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* C5 */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* C6 */ {nullptr, nullptr,        on_C6,       on_C6,          on_C6,          on_C6},
-  /* C7 */ {nullptr, nullptr,        on_C7,       on_C7,          on_C7,          on_C7},
-  /* C8 */ {nullptr, nullptr,        on_C8,       on_C8,          on_C8,          on_C8},
-  /* C9 */ {nullptr, nullptr,        nullptr,     on_6x_C9_CB,    on_C9_XB,       nullptr},
-  /* CA */ {nullptr, nullptr,        nullptr,     on_CA_Ep3,      nullptr,        nullptr},
-  /* CB */ {nullptr, nullptr,        nullptr,     on_6x_C9_CB,    nullptr,        nullptr},
-  /* CC */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* CD */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* CE */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* CF */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* D0 */ {nullptr, nullptr,        nullptr,     on_D0_V3_BB,    on_D0_V3_BB,    on_D0_V3_BB},
-  /* D1 */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* D2 */ {nullptr, nullptr,        nullptr,     on_D2_V3_BB,    on_D2_V3_BB,    on_D2_V3_BB},
-  /* D3 */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* D4 */ {nullptr, nullptr,        nullptr,     on_D4_V3_BB,    on_D4_V3_BB,    on_D4_V3_BB},
-  /* D5 */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* D6 */ {nullptr, nullptr,        nullptr,     on_D6_V3,       on_D6_V3,       nullptr},
-  /* D7 */ {nullptr, nullptr,        nullptr,     on_D7_GC,       on_D7_GC,       nullptr},
-  /* D8 */ {nullptr, nullptr,        on_D8,       on_D8,          on_D8,          on_D8},
-  /* D9 */ {nullptr, nullptr,        on_D9,       on_D9,          on_D9,          on_D9},
-  /* DA */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* DB */ {nullptr, nullptr,        nullptr,     on_DB_V3,       on_DB_V3,       nullptr},
-  /* DC */ {nullptr, nullptr,        nullptr,     on_DC_Ep3,      nullptr,        on_DC_BB},
-  /* DD */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* DE */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* DF */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        on_DF_BB},
-  //        PATCH    DC              PC           GC              XB              BB
-  /* E0 */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        on_E0_BB},
-  /* E1 */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* E2 */ {nullptr, nullptr,        nullptr,     on_E2_Ep3,      nullptr,        on_E2_BB},
-  /* E3 */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        on_E3_BB},
-  /* E4 */ {nullptr, nullptr,        nullptr,     on_E4_Ep3,      nullptr,        nullptr},
-  /* E5 */ {nullptr, nullptr,        nullptr,     on_E5_Ep3,      nullptr,        on_E5_BB},
-  /* E6 */ {nullptr, nullptr,        nullptr,     on_08_E6,       nullptr,        nullptr},
-  /* E7 */ {nullptr, nullptr,        nullptr,     on_0C_C1_E7_EC, nullptr,        on_E7_BB},
-  /* E8 */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        on_E8_BB},
-  /* E9 */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* EA */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        on_EA_BB},
-  /* EB */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        on_EB_BB},
-  /* EC */ {nullptr, nullptr,        nullptr,     on_0C_C1_E7_EC, nullptr,        on_EC_BB},
-  /* ED */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        on_ED_BB},
-  /* EE */ {nullptr, nullptr,        nullptr,     on_EE_Ep3,      nullptr,        nullptr},
-  /* EF */ {nullptr, nullptr,        nullptr,     on_EF_Ep3,      nullptr,        nullptr},
-  /* F0 */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* F1 */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* F2 */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* F3 */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* F4 */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* F5 */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* F6 */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* F7 */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* F8 */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* F9 */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* FA */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* FB */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* FC */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* FD */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* FE */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  /* FF */ {nullptr, nullptr,        nullptr,     nullptr,        nullptr,        nullptr},
-  //        PATCH    DC              PC           GC              XB              BB
+//        PC_PATCH BB_PATCH DC_NTE         DC_PROTO       DCV1           DCV2            PC           GCNTE           GC              EP3TE           EP3             XB              BB
+/* 00 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 01 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 02 */ {on_02_P, on_02_P, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 03 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 04 */ {on_04_P, on_04_P, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 05 */ {nullptr, nullptr, on_ignored,    on_ignored,    on_ignored,    on_ignored,     on_ignored,  on_ignored,     on_ignored,     on_ignored,     on_ignored,     on_05_XB,       on_ignored},
+/* 06 */ {nullptr, nullptr, on_06,         on_06,         on_06,         on_06,          on_06,       on_06,          on_06,          on_06,          on_06,          on_06,          on_06},
+/* 07 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 08 */ {nullptr, nullptr, on_08_E6,      on_08_E6,      on_08_E6,      on_08_E6,       on_08_E6,    on_08_E6,       on_08_E6,       on_08_E6,       on_08_E6,       on_08_E6,       on_08_E6},
+/* 09 */ {nullptr, nullptr, on_09,         on_09,         on_09,         on_09,          on_09,       on_09,          on_09,          on_09,          on_09,          on_09,          on_09},
+/* 0A */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 0B */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 0C */ {nullptr, nullptr, on_0C_C1_E7_EC,on_0C_C1_E7_EC,on_0C_C1_E7_EC,on_0C_C1_E7_EC, nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 0D */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 0E */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 0F */ {on_0F_P, on_0F_P, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+//        PC_PATCH BB_PATCH DC_NTE         DC_PROTO       DCV1           DCV2            PC           GCNTE           GC              EP3TE           EP3             XB              BB
+/* 10 */ {on_10_P, on_10_P, on_10,         on_10,         on_10,         on_10,          on_10,       on_10,          on_10,          on_10,          on_10,          on_10,          on_10},
+/* 11 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 12 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 13 */ {nullptr, nullptr, on_ignored,    on_ignored,    on_ignored,    on_ignored,     on_ignored,  on_13_A7_V3_BB, on_13_A7_V3_BB, on_13_A7_V3_BB, on_13_A7_V3_BB, on_13_A7_V3_BB, on_13_A7_V3_BB},
+/* 14 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 15 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 16 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 17 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 18 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 19 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 1A */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 1B */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 1C */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 1D */ {nullptr, nullptr, on_1D,         on_1D,         on_1D,         on_1D,          on_1D,       on_1D,          on_1D,          on_1D,          on_1D,          on_1D,          on_1D},
+/* 1E */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 1F */ {nullptr, nullptr, on_1F,         on_1F,         on_1F,         on_1F,          on_1F,       nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+//        PC_PATCH BB_PATCH DC_NTE         DC_PROTO       DCV1           DCV2            PC           GCNTE           GC              EP3TE           EP3             XB              BB
+/* 20 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 21 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 22 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        on_ignored},
+/* 23 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 24 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 25 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 26 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 27 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 28 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 29 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 2A */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 2B */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 2C */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 2D */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 2E */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 2F */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+//        PC_PATCH BB_PATCH DC_NTE         DC_PROTO       DCV1           DCV2            PC           GCNTE           GC              EP3TE           EP3             XB              BB
+/* 30 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 31 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 32 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 33 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 34 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 35 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 36 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 37 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 38 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 39 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 3A */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 3B */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 3C */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 3D */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 3E */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 3F */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+//        PC_PATCH BB_PATCH DC_NTE         DC_PROTO       DCV1           DCV2            PC           GCNTE           GC              EP3TE           EP3             XB              BB
+/* 40 */ {nullptr, nullptr, on_40,         on_40,         on_40,         on_40,          on_40,       on_40,          on_40,          on_40,          on_40,          on_40,          on_40},
+/* 41 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 42 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 43 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 44 */ {nullptr, nullptr, on_ignored,    on_ignored,    on_ignored,    on_ignored,     on_ignored,  on_44_A6_V3_BB, on_44_A6_V3_BB, on_44_A6_V3_BB, on_44_A6_V3_BB, on_44_A6_V3_BB, on_44_A6_V3_BB},
+/* 45 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 46 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 47 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 48 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 49 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 4A */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 4B */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 4C */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 4D */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 4E */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 4F */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+//        PC_PATCH BB_PATCH DC_NTE         DC_PROTO       DCV1           DCV2            PC           GCNTE           GC              EP3TE           EP3             XB              BB
+/* 50 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 51 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 52 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 53 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 54 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 55 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 56 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 57 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 58 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 59 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 5A */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 5B */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 5C */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 5D */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 5E */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 5F */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+//        PC_PATCH BB_PATCH DC_NTE         DC_PROTO       DCV1           DCV2            PC           GCNTE           GC              EP3TE           EP3             XB              BB
+/* 60 */ {nullptr, nullptr, on_6x_C9_CB,   on_6x_C9_CB,   on_6x_C9_CB,   on_6x_C9_CB,    on_6x_C9_CB, on_6x_C9_CB,    on_6x_C9_CB,    on_6x_C9_CB,    on_6x_C9_CB,    on_6x_C9_CB,    on_6x_C9_CB},
+/* 61 */ {nullptr, nullptr, on_61_98,      on_61_98,      on_61_98,      on_61_98,       on_61_98,    on_61_98,       on_61_98,       on_61_98,       on_61_98,       on_61_98,       on_61_98},
+/* 62 */ {nullptr, nullptr, on_6x_C9_CB,   on_6x_C9_CB,   on_6x_C9_CB,   on_6x_C9_CB,    on_6x_C9_CB, on_6x_C9_CB,    on_6x_C9_CB,    on_6x_C9_CB,    on_6x_C9_CB,    on_6x_C9_CB,    on_6x_C9_CB},
+/* 63 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 64 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 65 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 66 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 67 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 68 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 69 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 6A */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 6B */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 6C */ {nullptr, nullptr, on_6x_C9_CB,   on_6x_C9_CB,   on_6x_C9_CB,   on_6x_C9_CB,    on_6x_C9_CB, on_6x_C9_CB,    on_6x_C9_CB,    on_6x_C9_CB,    on_6x_C9_CB,    on_6x_C9_CB,    on_6x_C9_CB},
+/* 6D */ {nullptr, nullptr, on_6x_C9_CB,   on_6x_C9_CB,   on_6x_C9_CB,   on_6x_C9_CB,    on_6x_C9_CB, on_6x_C9_CB,    on_6x_C9_CB,    on_6x_C9_CB,    on_6x_C9_CB,    on_6x_C9_CB,    on_6x_C9_CB},
+/* 6E */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 6F */ {nullptr, nullptr, on_6F,         on_6F,         on_6F,         on_6F,          on_6F,       on_6F,          on_6F,          on_6F,          on_6F,          on_6F,          on_6F},
+//        PC_PATCH BB_PATCH DC_NTE         DC_PROTO       DCV1           DCV2            PC           GCNTE           GC              EP3TE           EP3             XB              BB
+/* 70 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 71 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 72 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 73 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 74 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 75 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 76 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 77 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 78 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 79 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 7A */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 7B */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 7C */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 7D */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 7E */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 7F */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+//        PC_PATCH BB_PATCH DC_NTE         DC_PROTO       DCV1           DCV2            PC           GCNTE           GC              EP3TE           EP3             XB              BB
+/* 80 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 81 */ {nullptr, nullptr, on_81,         on_81,         on_81,         on_81,          on_81,       on_81,          on_81,          on_81,          on_81,          on_81,          on_81},
+/* 82 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 83 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 84 */ {nullptr, nullptr, on_84,         on_84,         on_84,         on_84,          on_84,       on_84,          on_84,          on_84,          on_84,          on_84,          on_84},
+/* 85 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 86 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 87 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 88 */ {nullptr, nullptr, on_88_DCNTE,   on_88_DCNTE,   on_88_DCNTE,   on_88_DCNTE,    nullptr,     on_88_DCNTE,    on_88_DCNTE,    on_88_DCNTE,    on_88_DCNTE,    nullptr,        nullptr},
+/* 89 */ {nullptr, nullptr, on_89,         on_89,         on_89,         on_89,          on_89,       on_89,          on_89,          on_89,          on_89,          on_89,          on_89},
+/* 8A */ {nullptr, nullptr, on_8A,         on_8A,         on_8A,         on_8A,          on_8A,       on_8A,          on_8A,          on_8A,          on_8A,          on_8A,          on_8A},
+/* 8B */ {nullptr, nullptr, on_8B_DCNTE,   on_8B_DCNTE,   on_8B_DCNTE,   on_8B_DCNTE,    nullptr,     on_8B_DCNTE,    on_8B_DCNTE,    on_8B_DCNTE,    on_8B_DCNTE,    nullptr,        nullptr},
+/* 8C */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 8D */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 8E */ {nullptr, nullptr, on_8E_DCNTE,   on_8E_DCNTE,   on_8E_DCNTE,   on_8E_DCNTE,    nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 8F */ {nullptr, nullptr, on_8F_DCNTE,   on_8F_DCNTE,   on_8F_DCNTE,   on_8F_DCNTE,    nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+//        PC_PATCH BB_PATCH DC_NTE         DC_PROTO       DCV1           DCV2            PC           GCNTE           GC              EP3TE           EP3             XB              BB
+/* 90 */ {nullptr, nullptr, on_90_DC,      on_90_DC,      on_90_DC,      on_90_DC,       nullptr,     on_90_DC,       on_90_DC,       on_90_DC,       on_90_DC,       nullptr,        nullptr},
+/* 91 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 92 */ {nullptr, nullptr, on_92_DC,      on_92_DC,      on_92_DC,      on_92_DC,       nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 93 */ {nullptr, nullptr, on_93_DC,      on_93_DC,      on_93_DC,      on_93_DC,       nullptr,     on_93_DC,       on_93_DC,       on_93_DC,       on_93_DC,       nullptr,        on_93_BB},
+/* 94 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 95 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 96 */ {nullptr, nullptr, on_96,         on_96,         on_96,         on_96,          on_96,       on_96,          on_96,          on_96,          on_96,          on_96,          nullptr},
+/* 97 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 98 */ {nullptr, nullptr, on_61_98,      on_61_98,      on_61_98,      on_61_98,       on_61_98,    on_61_98,       on_61_98,       on_61_98,       on_61_98,       on_61_98,       on_61_98},
+/* 99 */ {nullptr, nullptr, on_99,         on_99,         on_99,         on_99,          on_99,       on_99,          on_99,          on_99,          on_99,          on_99,          on_99},
+/* 9A */ {nullptr, nullptr, on_9A,         on_9A,         on_9A,         on_9A,          on_9A,       on_9A,          on_9A,          on_9A,          on_9A,          nullptr,        nullptr},
+/* 9B */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 9C */ {nullptr, nullptr, on_9C,         on_9C,         on_9C,         on_9C,          on_9C,       on_9C,          on_9C,          on_9C,          on_9C,          on_9C,          nullptr},
+/* 9D */ {nullptr, nullptr, on_9D_9E,      on_9D_9E,      on_9D_9E,      on_9D_9E,       on_9D_9E,    on_9D_9E,       on_9D_9E,       on_9D_9E,       on_9D_9E,       on_9D_9E,       nullptr},
+/* 9E */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        on_9D_9E,    on_9D_9E,       on_9D_9E,       on_9D_9E,       on_9D_9E,       on_9E_XB,       nullptr},
+/* 9F */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     on_9F,          on_9F,          on_9F,          on_9F,          on_9F,          on_9F},
+//        PC_PATCH BB_PATCH DC_NTE         DC_PROTO       DCV1           DCV2            PC           GCNTE           GC              EP3TE           EP3             XB              BB
+/* A0 */ {nullptr, nullptr, on_A0,         on_A0,         on_A0,         on_A0,          on_A0,       on_A0,          on_A0,          on_A0,          on_A0,          on_A0,          on_A0},
+/* A1 */ {nullptr, nullptr, on_A1,         on_A1,         on_A1,         on_A1,          on_A1,       on_A1,          on_A1,          on_A1,          on_A1,          on_A1,          on_A1},
+/* A2 */ {nullptr, nullptr, on_A2,         on_A2,         on_A2,         on_A2,          on_A2,       on_A2,          on_A2,          on_A2,          on_A2,          on_A2,          on_A2},
+/* A3 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* A4 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* A5 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* A6 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     on_44_A6_V3_BB, on_44_A6_V3_BB, on_44_A6_V3_BB, on_44_A6_V3_BB, on_44_A6_V3_BB, nullptr},
+/* A7 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     on_13_A7_V3_BB, on_13_A7_V3_BB, on_13_A7_V3_BB, on_13_A7_V3_BB, on_13_A7_V3_BB, nullptr},
+/* A8 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* A9 */ {nullptr, nullptr, on_ignored,    on_ignored,    on_ignored,    on_ignored,     on_ignored,  on_ignored,     on_ignored,     on_ignored,     on_ignored,     on_ignored,     on_ignored},
+/* AA */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        on_AA,       on_AA,          on_AA,          on_AA,          on_AA,          on_AA,          on_AA},
+/* AB */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* AC */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     on_AC_V3_BB,    on_AC_V3_BB,    on_AC_V3_BB,    on_AC_V3_BB,    on_AC_V3_BB,    on_AC_V3_BB},
+/* AD */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* AE */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* AF */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+//        PC_PATCH BB_PATCH DC_NTE         DC_PROTO       DCV1           DCV2            PC           GCNTE           GC              EP3TE           EP3             XB              BB
+/* B0 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* B1 */ {nullptr, nullptr, on_B1,         on_B1,         on_B1,         on_B1,          on_B1,       on_B1,          on_B1,          on_B1,          on_B1,          on_B1,          nullptr},
+/* B2 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* B3 */ {nullptr, nullptr, on_B3,         on_B3,         on_B3,         on_B3,          on_B3,       on_B3,          on_B3,          on_B3,          on_B3,          on_B3,          on_B3},
+/* B4 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* B5 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* B6 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* B7 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     on_ignored,     on_ignored,     on_ignored,     on_ignored,     nullptr,        nullptr},
+/* B8 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     on_ignored,     on_ignored,     on_ignored,     on_ignored,     nullptr,        nullptr},
+/* B9 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     on_ignored,     on_ignored,     on_ignored,     on_ignored,     nullptr,        nullptr},
+/* BA */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     on_BA_Ep3,      on_BA_Ep3,      on_BA_Ep3,      on_BA_Ep3,      nullptr,        nullptr},
+/* BB */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* BC */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* BD */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* BE */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* BF */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+//        PC_PATCH BB_PATCH DC_NTE         DC_PROTO       DCV1           DCV2            PC           GCNTE           GC              EP3TE           EP3             XB              BB
+/* C0 */ {nullptr, nullptr, on_C0,         on_C0,         on_C0,         on_C0,          on_C0,       on_C0,          on_C0,          on_C0,          on_C0,          on_C0,          nullptr},
+/* C1 */ {nullptr, nullptr, on_0C_C1_E7_EC,on_0C_C1_E7_EC,on_0C_C1_E7_EC,on_0C_C1_E7_EC, on_C1_PC,    on_0C_C1_E7_EC, on_0C_C1_E7_EC, on_0C_C1_E7_EC, on_0C_C1_E7_EC, on_0C_C1_E7_EC, on_C1_BB},
+/* C2 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* C3 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* C4 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* C5 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* C6 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        on_C6,       on_C6,          on_C6,          on_C6,          on_C6,          on_C6,          on_C6},
+/* C7 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        on_C7,       on_C7,          on_C7,          on_C7,          on_C7,          on_C7,          on_C7},
+/* C8 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        on_C8,       on_C8,          on_C8,          on_C8,          on_C8,          on_C8,          on_C8},
+/* C9 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     on_6x_C9_CB,    on_6x_C9_CB,    on_6x_C9_CB,    on_6x_C9_CB,    on_C9_XB,       nullptr},
+/* CA */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     on_CA_Ep3,      on_CA_Ep3,      on_CA_Ep3,      on_CA_Ep3,      nullptr,        nullptr},
+/* CB */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     on_6x_C9_CB,    on_6x_C9_CB,    on_6x_C9_CB,    on_6x_C9_CB,    nullptr,        nullptr},
+/* CC */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* CD */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* CE */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* CF */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+//        PC_PATCH BB_PATCH DC_NTE         DC_PROTO       DCV1           DCV2            PC           GCNTE           GC              EP3TE           EP3             XB              BB
+/* D0 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     on_D0_V3_BB,    on_D0_V3_BB,    on_D0_V3_BB,    on_D0_V3_BB,    on_D0_V3_BB,    on_D0_V3_BB},
+/* D1 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* D2 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     on_D2_V3_BB,    on_D2_V3_BB,    on_D2_V3_BB,    on_D2_V3_BB,    on_D2_V3_BB,    on_D2_V3_BB},
+/* D3 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* D4 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     on_D4_V3_BB,    on_D4_V3_BB,    on_D4_V3_BB,    on_D4_V3_BB,    on_D4_V3_BB,    on_D4_V3_BB},
+/* D5 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* D6 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     on_D6_V3,       on_D6_V3,       on_D6_V3,       on_D6_V3,       on_D6_V3,       nullptr},
+/* D7 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     on_D7_GC,       on_D7_GC,       on_D7_GC,       on_D7_GC,       on_D7_GC,       nullptr},
+/* D8 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        on_D8,       on_D8,          on_D8,          on_D8,          on_D8,          on_D8,          on_D8},
+/* D9 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        on_D9,       on_D9,          on_D9,          on_D9,          on_D9,          on_D9,          on_D9},
+/* DA */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* DB */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     on_DB_V3,       on_DB_V3,       on_DB_V3,       on_DB_V3,       on_DB_V3,       nullptr},
+/* DC */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     on_DC_Ep3,      on_DC_Ep3,      on_DC_Ep3,      on_DC_Ep3,      nullptr,        on_DC_BB},
+/* DD */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* DE */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* DF */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        on_DF_BB},
+//        PC_PATCH BB_PATCH DC_NTE         DC_PROTO       DCV1           DCV2            PC           GCNTE           GC              EP3TE           EP3             XB              BB
+/* E0 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        on_E0_BB},
+/* E1 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* E2 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     on_E2_Ep3,      on_E2_Ep3,      on_E2_Ep3,      on_E2_Ep3,      nullptr,        on_E2_BB},
+/* E3 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        on_E3_BB},
+/* E4 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     on_E4_Ep3,      on_E4_Ep3,      on_E4_Ep3,      on_E4_Ep3,      nullptr,        nullptr},
+/* E5 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     on_E5_Ep3,      on_E5_Ep3,      on_E5_Ep3,      on_E5_Ep3,      nullptr,        on_E5_BB},
+/* E6 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     on_08_E6,       on_08_E6,       on_08_E6,       on_08_E6,       nullptr,        nullptr},
+/* E7 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     on_0C_C1_E7_EC, on_0C_C1_E7_EC, on_0C_C1_E7_EC, on_0C_C1_E7_EC, nullptr,        on_E7_BB},
+/* E8 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        on_E8_BB},
+/* E9 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* EA */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        on_EA_BB},
+/* EB */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        on_EB_BB},
+/* EC */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     on_0C_C1_E7_EC, on_0C_C1_E7_EC, on_0C_C1_E7_EC, on_0C_C1_E7_EC, nullptr,        on_EC_BB},
+/* ED */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        on_ED_BB},
+/* EE */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     on_EE_Ep3,      on_EE_Ep3,      on_EE_Ep3,      on_EE_Ep3,      nullptr,        nullptr},
+/* EF */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     on_EF_Ep3,      on_EF_Ep3,      on_EF_Ep3,      on_EF_Ep3,      nullptr,        nullptr},
+//        PC_PATCH BB_PATCH DC_NTE         DC_PROTO       DCV1           DCV2            PC           GCNTE           GC              EP3TE           EP3             XB              BB
+/* F0 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* F1 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* F2 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* F3 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* F4 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* F5 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* F6 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* F7 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* F8 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* F9 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* FA */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* FB */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* FC */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* FD */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* FE */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* FF */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+//        PC_PATCH BB_PATCH DC_NTE         DC_PROTO       DCV1           DCV2            PC           GCNTE           GC              EP3TE           EP3             XB              BB
     // clang-format on
 };
 
-static void check_unlicensed_command(GameVersion version, uint8_t command) {
+static void check_unlicensed_command(Version version, uint8_t command) {
   switch (version) {
-    case GameVersion::DC:
+    case Version::PC_PATCH:
+    case Version::BB_PATCH:
+      if (command != 0x02 && command != 0x04) {
+        throw runtime_error("only commands 02 and 04 may be sent before login");
+      }
+      break;
+    case Version::DC_NTE:
+    case Version::DC_V1_12_2000_PROTOTYPE:
+    case Version::DC_V1:
+    case Version::DC_V2:
       // newserv doesn't actually know that DC clients are DC until it receives
       // an appropriate login command (93, 9A, or 9D), but those commands also
       // log the client in, so this case should never be executed.
       throw logic_error("cannot check unlicensed command for DC client");
-    case GameVersion::PC:
+    case Version::PC_V2:
       if (command != 0x9A && command != 0x9C && command != 0x9D) {
         throw runtime_error("only commands 9A, 9C, and 9D may be sent before login");
       }
       break;
-    case GameVersion::GC:
+    case Version::GC_NTE:
+    case Version::GC_V3:
+    case Version::GC_EP3_TRIAL_EDITION:
+    case Version::GC_EP3:
       // See comment in the DC case above for why DC commands are included here.
       if (command != 0x88 && // DC NTE
           command != 0x8B && // DC NTE
@@ -5123,19 +5169,14 @@ static void check_unlicensed_command(GameVersion version, uint8_t command) {
         throw runtime_error("only commands 88, 8B, 90, 93, 9A, 9C, 9D, 9E, and DB may be sent before login");
       }
       break;
-    case GameVersion::XB:
+    case Version::XB_V3:
       if (command != 0x9E && command != 0x9F) {
         throw runtime_error("only commands 9E and 9F may be sent before login");
       }
       break;
-    case GameVersion::BB:
+    case Version::BB_V4:
       if (command != 0x93) {
         throw runtime_error("only command 93 may be sent before login");
-      }
-      break;
-    case GameVersion::PATCH:
-      if (command != 0x02 && command != 0x04) {
-        throw runtime_error("only commands 02 and 04 may be sent before login");
       }
       break;
     default:
@@ -5168,22 +5209,29 @@ void on_command(
 
 void on_command_with_header(shared_ptr<Client> c, const string& data) {
   switch (c->version()) {
-    case GameVersion::DC:
-    case GameVersion::GC:
-    case GameVersion::XB: {
+    case Version::DC_NTE:
+    case Version::DC_V1_12_2000_PROTOTYPE:
+    case Version::DC_V1:
+    case Version::DC_V2:
+    case Version::GC_NTE:
+    case Version::GC_V3:
+    case Version::GC_EP3_TRIAL_EDITION:
+    case Version::GC_EP3:
+    case Version::XB_V3: {
       auto& header = check_size_t<PSOCommandHeaderDCV3>(data, 0xFFFF);
       string sub_data = data.substr(sizeof(header));
       on_command(c, header.command, header.flag, sub_data);
       break;
     }
-    case GameVersion::PC:
-    case GameVersion::PATCH: {
+    case Version::PC_PATCH:
+    case Version::BB_PATCH:
+    case Version::PC_V2: {
       auto& header = check_size_t<PSOCommandHeaderPC>(data, 0xFFFF);
       string sub_data = data.substr(sizeof(header));
       on_command(c, header.command, header.flag, sub_data);
       break;
     }
-    case GameVersion::BB: {
+    case Version::BB_V4: {
       auto& header = check_size_t<PSOCommandHeaderBB>(data, 0xFFFF);
       string sub_data = data.substr(sizeof(header));
       on_command(c, header.command, header.flag, sub_data);

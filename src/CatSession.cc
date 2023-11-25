@@ -34,10 +34,10 @@ using namespace std;
 CatSession::CatSession(
     shared_ptr<struct event_base> base,
     const struct sockaddr_storage& remote,
-    GameVersion version,
+    Version version,
     shared_ptr<const PSOBBEncryption::KeyFile> bb_key_file)
     : Shell(base),
-      log(string_printf("[CatSession:%s] ", name_for_version(version)), proxy_server_log.min_level),
+      log(string_printf("[CatSession:%s] ", name_for_enum(version)), proxy_server_log.min_level),
       channel(
           version,
           1,
@@ -74,11 +74,10 @@ void CatSession::dispatch_on_channel_input(
 
 void CatSession::on_channel_input(
     uint16_t command, uint32_t flag, std::string& data) {
-  if (this->channel.version != GameVersion::BB) {
+  if (!uses_v4_encryption(this->channel.version)) {
     if (command == 0x02 || command == 0x17 || command == 0x91 || command == 0x9B) {
       const auto& cmd = check_size_t<S_ServerInitDefault_DC_PC_V3_02_17_91_9B>(data, 0xFFFF);
-      if ((this->channel.version == GameVersion::GC) ||
-          (this->channel.version == GameVersion::XB)) {
+      if (uses_v3_encryption(this->channel.version)) {
         this->channel.crypt_in.reset(new PSOV3Encryption(cmd.server_key));
         this->channel.crypt_out.reset(new PSOV3Encryption(cmd.client_key));
         this->log.info("Enabled V3 encryption (server key %08" PRIX32 ", client key %08" PRIX32 ")",

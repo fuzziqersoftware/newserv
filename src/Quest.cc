@@ -207,7 +207,7 @@ struct PSODownloadQuestHeader {
 VersionedQuest::VersionedQuest(
     uint32_t quest_number,
     uint32_t category_id,
-    QuestScriptVersion version,
+    Version version,
     uint8_t language,
     std::shared_ptr<const std::string> bin_contents,
     std::shared_ptr<const std::string> dat_contents,
@@ -230,9 +230,23 @@ VersionedQuest::VersionedQuest(
   auto bin_decompressed = prs_decompress(*this->bin_contents);
 
   switch (this->version) {
-    case QuestScriptVersion::DC_NTE:
-    case QuestScriptVersion::DC_V1:
-    case QuestScriptVersion::DC_V2: {
+    case Version::DC_NTE: {
+      if (bin_decompressed.size() < sizeof(PSOQuestHeaderDCNTE)) {
+        throw invalid_argument("file is too small for header");
+      }
+      auto* header = reinterpret_cast<const PSOQuestHeaderDCNTE*>(bin_decompressed.data());
+      this->joinable = false;
+      this->episode = Episode::EP1;
+      if (this->quest_number == 0xFFFFFFFF) {
+        this->quest_number = fnv1a32(header, sizeof(header)) & 0xFFFF;
+      }
+      this->name = header->name.decode(this->language);
+      break;
+    }
+
+    case Version::DC_V1_12_2000_PROTOTYPE:
+    case Version::DC_V1:
+    case Version::DC_V2: {
       if (bin_decompressed.size() < sizeof(PSOQuestHeaderDC)) {
         throw invalid_argument("file is too small for header");
       }
@@ -248,7 +262,7 @@ VersionedQuest::VersionedQuest(
       break;
     }
 
-    case QuestScriptVersion::PC_V2: {
+    case Version::PC_V2: {
       if (bin_decompressed.size() < sizeof(PSOQuestHeaderPC)) {
         throw invalid_argument("file is too small for header");
       }
@@ -264,14 +278,14 @@ VersionedQuest::VersionedQuest(
       break;
     }
 
-    case QuestScriptVersion::GC_EP3: {
+    case Version::GC_EP3_TRIAL_EDITION:
+    case Version::GC_EP3: {
       // Note: This codepath handles Episode 3 download quests, which are not
       // the same as Episode 3 quest scripts. The latter are only used offline
       // in story mode, but can be disassembled with disassemble_quest_script.
-      // It's unfortunate that the QuestScriptVersion::GC_EP3 value is used
-      // here for Episode 3 download quests (maps) and there for offline story
-      // mode scripts, but it's probably not worth refactoring this logic, at
-      // least right now.
+      // It's unfortunate that Version::GC_EP3 is used here for Episode 3
+      // download quests (maps) and there for offline story mode scripts, but
+      // it's probably not worth refactoring this logic, at least right now.
       if (bin_decompressed.size() != sizeof(Episode3::MapDefinition)) {
         throw invalid_argument("file is incorrect size");
       }
@@ -287,9 +301,9 @@ VersionedQuest::VersionedQuest(
       break;
     }
 
-    case QuestScriptVersion::XB_V3:
-    case QuestScriptVersion::GC_NTE:
-    case QuestScriptVersion::GC_V3: {
+    case Version::XB_V3:
+    case Version::GC_NTE:
+    case Version::GC_V3: {
       if (bin_decompressed.size() < sizeof(PSOQuestHeaderGC)) {
         throw invalid_argument("file is too small for header");
       }
@@ -305,7 +319,7 @@ VersionedQuest::VersionedQuest(
       break;
     }
 
-    case QuestScriptVersion::BB_V4: {
+    case Version::BB_V4: {
       if (bin_decompressed.size() < sizeof(PSOQuestHeaderBB)) {
         throw invalid_argument("file is too small for header");
       }
@@ -372,8 +386,8 @@ Quest::Quest(shared_ptr<const VersionedQuest> initial_version)
   this->versions.emplace(this->versions_key(initial_version->version, initial_version->language), initial_version);
 }
 
-uint16_t Quest::versions_key(QuestScriptVersion v, uint8_t language) {
-  return (static_cast<uint16_t>(v) << 8) | language;
+uint32_t Quest::versions_key(Version v, uint8_t language) {
+  return (static_cast<uint32_t>(v) << 8) | language;
 }
 
 void Quest::add_version(shared_ptr<const VersionedQuest> vq) {
@@ -402,17 +416,17 @@ void Quest::add_version(shared_ptr<const VersionedQuest> vq) {
   this->versions.emplace(this->versions_key(vq->version, vq->language), vq);
 }
 
-bool Quest::has_version(QuestScriptVersion v, uint8_t language) const {
+bool Quest::has_version(Version v, uint8_t language) const {
   return this->versions.count(this->versions_key(v, language));
 }
 
-bool Quest::has_version_any_language(QuestScriptVersion v) const {
-  uint16_t k = this->versions_key(v, 0);
+bool Quest::has_version_any_language(Version v) const {
+  uint32_t k = this->versions_key(v, 0);
   auto it = this->versions.lower_bound(k);
   return ((it != this->versions.end()) && ((it->first & 0xFF00) == k));
 }
 
-shared_ptr<const VersionedQuest> Quest::version(QuestScriptVersion v, uint8_t language) const {
+shared_ptr<const VersionedQuest> Quest::version(Version v, uint8_t language) const {
   // Return the requested version, if it exists
   try {
     return this->versions.at(this->versions_key(v, language));
@@ -563,16 +577,18 @@ QuestIndex::QuestIndex(
       uint32_t quest_number = strtoull(quest_number_token.c_str() + 1, nullptr, 10);
 
       // Get the version from the second token
-      static const unordered_map<string, QuestScriptVersion> name_to_version({
-          {"dn", QuestScriptVersion::DC_NTE},
-          {"d1", QuestScriptVersion::DC_V1},
-          {"dc", QuestScriptVersion::DC_V2},
-          {"pc", QuestScriptVersion::PC_V2},
-          {"gcn", QuestScriptVersion::GC_NTE},
-          {"gc", QuestScriptVersion::GC_V3},
-          {"gc3", QuestScriptVersion::GC_EP3},
-          {"xb", QuestScriptVersion::XB_V3},
-          {"bb", QuestScriptVersion::BB_V4},
+      static const unordered_map<string, Version> name_to_version({
+          {"dn", Version::DC_NTE},
+          {"dp", Version::DC_V1_12_2000_PROTOTYPE},
+          {"d1", Version::DC_V1},
+          {"dc", Version::DC_V2},
+          {"pc", Version::PC_V2},
+          {"gcn", Version::GC_NTE},
+          {"gc", Version::GC_V3},
+          {"gc3t", Version::GC_EP3_TRIAL_EDITION},
+          {"gc3", Version::GC_EP3},
+          {"xb", Version::XB_V3},
+          {"bb", Version::BB_V4},
       });
       auto version = name_to_version.at(version_token);
 
@@ -587,7 +603,7 @@ QuestIndex::QuestIndex(
       string pvr_filename;
       shared_ptr<const string> dat_contents;
       shared_ptr<const string> pvr_contents;
-      if (version != QuestScriptVersion::GC_EP3) {
+      if (!::is_ep3(version)) {
         // Look for dat and pvr files with the same basename as the bin file; if
         // not found, look for them without the language suffix
         try {
@@ -703,7 +719,7 @@ shared_ptr<const Quest> QuestIndex::get(uint32_t quest_number) const {
   }
 }
 
-vector<shared_ptr<const Quest>> QuestIndex::filter(Episode episode, uint32_t category_id, QuestScriptVersion version) const {
+vector<shared_ptr<const Quest>> QuestIndex::filter(Episode episode, uint32_t category_id, Version version) const {
   vector<shared_ptr<const Quest>> ret;
   for (auto it : this->quests_by_number) {
     if (((episode == Episode::NONE) || (it.second->episode == episode)) &&
@@ -754,7 +770,7 @@ shared_ptr<VersionedQuest> VersionedQuest::create_download_quest(uint8_t overrid
 
   // This function should not be used for Episode 3 quests (they should be sent
   // to the client as-is, without any encryption or other preprocessing)
-  if (this->episode == Episode::EP3 || this->version == QuestScriptVersion::GC_EP3) {
+  if (this->episode == Episode::EP3 || is_ep3(this->version)) {
     throw logic_error("Episode 3 quests cannot be converted to download quests");
   }
 
@@ -762,9 +778,16 @@ shared_ptr<VersionedQuest> VersionedQuest::create_download_quest(uint8_t overrid
 
   void* data_ptr = decompressed_bin.data();
   switch (this->version) {
-    case QuestScriptVersion::DC_NTE:
-    case QuestScriptVersion::DC_V1:
-    case QuestScriptVersion::DC_V2:
+    case Version::DC_NTE:
+      if (decompressed_bin.size() < sizeof(PSOQuestHeaderDCNTE)) {
+        throw runtime_error("bin file is too small for header");
+      }
+      // There's no known language field in this version, so we don't write
+      // anything here
+      break;
+    case Version::DC_V1_12_2000_PROTOTYPE:
+    case Version::DC_V1:
+    case Version::DC_V2:
       if (decompressed_bin.size() < sizeof(PSOQuestHeaderDC)) {
         throw runtime_error("bin file is too small for header");
       }
@@ -772,7 +795,7 @@ shared_ptr<VersionedQuest> VersionedQuest::create_download_quest(uint8_t overrid
         reinterpret_cast<PSOQuestHeaderDC*>(data_ptr)->language = override_language;
       }
       break;
-    case QuestScriptVersion::PC_V2:
+    case Version::PC_V2:
       if (decompressed_bin.size() < sizeof(PSOQuestHeaderPC)) {
         throw runtime_error("bin file is too small for header");
       }
@@ -780,9 +803,9 @@ shared_ptr<VersionedQuest> VersionedQuest::create_download_quest(uint8_t overrid
         reinterpret_cast<PSOQuestHeaderPC*>(data_ptr)->language = override_language;
       }
       break;
-    case QuestScriptVersion::GC_NTE:
-    case QuestScriptVersion::GC_V3:
-    case QuestScriptVersion::XB_V3:
+    case Version::GC_NTE:
+    case Version::GC_V3:
+    case Version::XB_V3:
       if (decompressed_bin.size() < sizeof(PSOQuestHeaderGC)) {
         throw runtime_error("bin file is too small for header");
       }
@@ -790,10 +813,8 @@ shared_ptr<VersionedQuest> VersionedQuest::create_download_quest(uint8_t overrid
         reinterpret_cast<PSOQuestHeaderGC*>(data_ptr)->language = override_language;
       }
       break;
-    case QuestScriptVersion::BB_V4:
+    case Version::BB_V4:
       throw invalid_argument("PSOBB does not support download quests");
-    case QuestScriptVersion::GC_EP3:
-      throw logic_error("Episode 3 quests cannot be converted to download quests");
     default:
       throw invalid_argument("unknown game version");
   }
@@ -1094,8 +1115,7 @@ unordered_map<string, string> decode_qst_data(const string& data) {
 }
 
 template <typename HeaderT>
-void add_command_header(
-    StringWriter& w, uint8_t command, uint8_t flag, uint16_t size) {
+void add_command_header(StringWriter& w, uint8_t command, uint8_t flag, uint16_t size) {
   HeaderT header;
   header.command = command;
   header.flag = flag;
@@ -1172,16 +1192,17 @@ string encode_qst_file(
     const string& name,
     uint32_t quest_number,
     const string& xb_filename,
-    QuestScriptVersion version,
+    Version version,
     bool is_dlq_encoded) {
   StringWriter w;
 
   // Some tools expect both open file commands at the beginning, hence this
   // unfortunate abstraction-breaking.
   switch (version) {
-    case QuestScriptVersion::DC_NTE:
-    case QuestScriptVersion::DC_V1:
-    case QuestScriptVersion::DC_V2:
+    case Version::DC_NTE: // DC NTE doesn't support quests, but we support encoding QST files anyway
+    case Version::DC_V1_12_2000_PROTOTYPE:
+    case Version::DC_V1:
+    case Version::DC_V2:
       for (const auto& it : files) {
         add_open_file_command_t<PSOCommandHeaderDCV3, S_OpenFile_DC_44_A6>(w, name, it.first, xb_filename, quest_number, it.second->size(), is_dlq_encoded);
       }
@@ -1189,7 +1210,7 @@ string encode_qst_file(
         add_write_file_commands_t<PSOCommandHeaderDCV3>(w, it.first, *it.second, is_dlq_encoded, false);
       }
       break;
-    case QuestScriptVersion::PC_V2:
+    case Version::PC_V2:
       for (const auto& it : files) {
         add_open_file_command_t<PSOCommandHeaderPC, S_OpenFile_PC_GC_44_A6>(w, name, it.first, xb_filename, quest_number, it.second->size(), is_dlq_encoded);
       }
@@ -1197,9 +1218,10 @@ string encode_qst_file(
         add_write_file_commands_t<PSOCommandHeaderPC>(w, it.first, *it.second, is_dlq_encoded, false);
       }
       break;
-    case QuestScriptVersion::GC_NTE:
-    case QuestScriptVersion::GC_V3:
-    case QuestScriptVersion::GC_EP3:
+    case Version::GC_NTE:
+    case Version::GC_V3:
+    case Version::GC_EP3_TRIAL_EDITION:
+    case Version::GC_EP3:
       for (const auto& it : files) {
         add_open_file_command_t<PSOCommandHeaderDCV3, S_OpenFile_PC_GC_44_A6>(w, name, it.first, xb_filename, quest_number, it.second->size(), is_dlq_encoded);
       }
@@ -1207,7 +1229,7 @@ string encode_qst_file(
         add_write_file_commands_t<PSOCommandHeaderDCV3>(w, it.first, *it.second, is_dlq_encoded, false);
       }
       break;
-    case QuestScriptVersion::XB_V3:
+    case Version::XB_V3:
       for (const auto& it : files) {
         add_open_file_command_t<PSOCommandHeaderDCV3, S_OpenFile_XB_44_A6>(w, name, it.first, xb_filename, quest_number, it.second->size(), is_dlq_encoded);
       }
@@ -1215,7 +1237,7 @@ string encode_qst_file(
         add_write_file_commands_t<PSOCommandHeaderDCV3>(w, it.first, *it.second, is_dlq_encoded, false);
       }
       break;
-    case QuestScriptVersion::BB_V4:
+    case Version::BB_V4:
       for (const auto& it : files) {
         add_open_file_command_t<PSOCommandHeaderBB, S_OpenFile_BB_44_A6>(w, name, it.first, xb_filename, quest_number, it.second->size(), is_dlq_encoded);
       }

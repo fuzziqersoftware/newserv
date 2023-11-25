@@ -21,7 +21,7 @@ public:
   CatSession(
       std::shared_ptr<struct event_base> base,
       const struct sockaddr_storage& remote,
-      GameVersion version,
+      Version version,
       std::shared_ptr<const PSOBBEncryption::KeyFile> bb_key_file);
   virtual ~CatSession() = default;
 

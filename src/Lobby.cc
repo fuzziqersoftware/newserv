@@ -17,8 +17,8 @@ Lobby::Lobby(shared_ptr<ServerState> s, uint32_t id)
       min_level(0),
       max_level(0xFFFFFFFF),
       next_game_item_id(0x00810000),
-      base_version(GameVersion::GC),
-      allowed_versions(0xFFFF),
+      base_version(Version::GC_V3),
+      allowed_versions(0x0000),
       section_id(0),
       episode(Episode::NONE),
       mode(GameMode::NORMAL),
@@ -56,19 +56,36 @@ void Lobby::create_item_creator() {
 
   shared_ptr<const RareItemSet> rare_item_set;
   shared_ptr<const CommonItemSet> common_item_set;
-  if (this->base_version == GameVersion::BB) {
-    common_item_set = s->common_item_set_v3;
-    rare_item_set = s->rare_item_sets.at("rare-table-v4");
-  } else if (this->base_version == GameVersion::GC || this->base_version == GameVersion::XB) {
-    common_item_set = s->common_item_set_v3;
-    rare_item_set = s->rare_item_sets.at("rare-table-v3");
-  } else if (!this->check_flag(Lobby::Flag::USE_DCV1_RARE_TABLE)) {
-    common_item_set = s->common_item_set_v2;
-    rare_item_set = s->rare_item_sets.at("rare-table-v2");
-  } else {
-    // TODO: We should probably have a v1 common item set at some point too
-    common_item_set = s->common_item_set_v2;
-    rare_item_set = s->rare_item_sets.at("rare-table-v1");
+  switch (this->base_version) {
+    case Version::PC_PATCH:
+    case Version::BB_PATCH:
+    case Version::GC_EP3_TRIAL_EDITION:
+    case Version::GC_EP3:
+      throw runtime_error("cannot create item creator for this base version");
+    case Version::DC_NTE:
+    case Version::DC_V1_12_2000_PROTOTYPE:
+    case Version::DC_V1:
+      // TODO: We should probably have a v1 common item set at some point too
+      common_item_set = s->common_item_set_v2;
+      rare_item_set = s->rare_item_sets.at("rare-table-v1");
+      break;
+    case Version::DC_V2:
+    case Version::PC_V2:
+      common_item_set = s->common_item_set_v2;
+      rare_item_set = s->rare_item_sets.at("rare-table-v2");
+      break;
+    case Version::GC_NTE:
+    case Version::GC_V3:
+    case Version::XB_V3:
+      common_item_set = s->common_item_set_v3;
+      rare_item_set = s->rare_item_sets.at("rare-table-v3");
+      break;
+    case Version::BB_V4:
+      common_item_set = s->common_item_set_v3;
+      rare_item_set = s->rare_item_sets.at("rare-table-v4");
+      break;
+    default:
+      throw logic_error("invalid lobby base version");
   }
   this->item_creator.reset(new ItemCreator(
       common_item_set,
@@ -95,7 +112,7 @@ void Lobby::create_ep3_server() {
     this->log.info("Recreating Episode 3 server state");
   }
   auto tourn = this->tournament_match ? this->tournament_match->tournament.lock() : nullptr;
-  bool is_trial = this->check_flag(Lobby::Flag::IS_EP3_TRIAL);
+  bool is_trial = this->base_version == Version::GC_EP3_TRIAL_EDITION;
   Episode3::Server::Options options = {
       .card_index = is_trial ? s->ep3_card_index_trial : s->ep3_card_index,
       .map_index = s->ep3_map_index,
@@ -355,9 +372,6 @@ uint32_t Lobby::generate_item_id(uint8_t client_id) {
 }
 
 void Lobby::on_item_id_generated_externally(uint32_t item_id) {
-  if (this->base_version == GameVersion::BB) {
-    throw logic_error("BB games cannot have externally-generated item IDs");
-  }
   // Note: The client checks for the range (0x00010000, 0x02010000) here, but
   // server-side item drop logic uses 0x00810000 as its base ID, so we restrict
   // the range further here.

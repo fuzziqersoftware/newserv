@@ -11,7 +11,7 @@ fi
 
 BASENAME="card-defs-test-$SCHEME"
 
-echo "... decompress"
+echo "... decompress-prs"
 $EXECUTABLE decompress-prs system/ep3/card-definitions.mnr $BASENAME.mnrd
 
 echo "... compress with level=-1 (no compression)"

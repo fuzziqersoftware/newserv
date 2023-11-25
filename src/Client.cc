@@ -21,34 +21,41 @@ const uint64_t CLIENT_CONFIG_MAGIC = 0x8399AC32;
 
 static atomic<uint64_t> next_id(1);
 
-void Client::Config::set_flags_for_version(GameVersion version, int64_t sub_version) {
+void Client::Config::set_flags_for_version(Version version, int64_t sub_version) {
   this->set_flag(Flag::PROXY_CHAT_COMMANDS_ENABLED);
   this->set_flag(Flag::PROXY_CHAT_FILTER_ENABLED);
 
   switch (sub_version) {
     case -1: // Initial check (before sub_version recognition)
       switch (version) {
-        case GameVersion::DC:
+        case Version::PC_PATCH:
+        case Version::BB_PATCH:
+          this->set_flag(Flag::NO_D6);
+          this->set_flag(Flag::NO_SEND_FUNCTION_CALL);
+          break;
+        case Version::DC_NTE:
+        case Version::DC_V1_12_2000_PROTOTYPE:
+        case Version::DC_V1:
+        case Version::DC_V2:
           this->set_flag(Flag::NO_D6);
           this->set_flag(Flag::SEND_FUNCTION_CALL_NO_CACHE_PATCH);
           break;
-        case GameVersion::GC:
-          break;
-        case GameVersion::XB:
-          // TODO: Do all versions of XB need this flag? US does, at least.
-          this->set_flag(Flag::NO_D6_AFTER_LOBBY);
-          this->set_flag(Flag::SEND_FUNCTION_CALL_NO_CACHE_PATCH);
-          break;
-        case GameVersion::PC:
+        case Version::PC_V2:
           this->set_flag(Flag::NO_D6);
           this->set_flag(Flag::SEND_FUNCTION_CALL_CHECKSUM_ONLY);
           this->set_flag(Flag::SEND_FUNCTION_CALL_NO_CACHE_PATCH);
           break;
-        case GameVersion::PATCH:
-          this->set_flag(Flag::NO_D6);
-          this->set_flag(Flag::NO_SEND_FUNCTION_CALL);
+        case Version::GC_NTE:
+        case Version::GC_V3:
+        case Version::GC_EP3_TRIAL_EDITION:
+        case Version::GC_EP3:
           break;
-        case GameVersion::BB:
+        case Version::XB_V3:
+          // TODO: Do all versions of XB need this flag? US does, at least.
+          this->set_flag(Flag::NO_D6_AFTER_LOBBY);
+          this->set_flag(Flag::SEND_FUNCTION_CALL_NO_CACHE_PATCH);
+          break;
+        case Version::BB_V4:
           this->set_flag(Flag::NO_D6);
           this->set_flag(Flag::SAVE_ENABLED);
           this->set_flag(Flag::SEND_FUNCTION_CALL_NO_CACHE_PATCH);
@@ -60,14 +67,12 @@ void Client::Config::set_flags_for_version(GameVersion version, int64_t sub_vers
 
     case 0x20: // DCNTE, possibly also DCv1 JP
     case 0x21: // DCv1 US
-      this->set_flag(Flag::IS_DC_V1);
       this->set_flag(Flag::NO_D6);
       this->set_flag(Flag::NO_SEND_FUNCTION_CALL);
       // In the case of DCNTE, the IS_DC_TRIAL_EDITION flag is already set when
       // we get here
       break;
     case 0x23: // DCv1 EU
-      this->set_flag(Flag::IS_DC_V1);
       this->set_flag(Flag::NO_D6);
       this->set_flag(Flag::NO_SEND_FUNCTION_CALL);
       break;
@@ -82,7 +87,7 @@ void Client::Config::set_flags_for_version(GameVersion version, int64_t sub_vers
       this->set_flag(Flag::SEND_FUNCTION_CALL_CHECKSUM_ONLY);
       this->set_flag(Flag::SEND_FUNCTION_CALL_NO_CACHE_PATCH);
       break;
-    case 0x30: // GC Ep1&2 GameJam demo, GC Ep1&2 JP v1.02, at least one version of PSO XB
+    case 0x30: // GC Ep1&2 GameJam demo, GC Ep1&2 Trial Edition, GC Ep1&2 JP v1.02, at least one version of XB
     case 0x31: // GC Ep1&2 US v1.00, GC US v1.01, XB US
     case 0x34: // GC Ep1&2 JP v1.03
       // In the case of GC Trial Edition, the IS_GC_TRIAL_EDITION flag is
@@ -105,7 +110,6 @@ void Client::Config::set_flags_for_version(GameVersion version, int64_t sub_vers
       break;
     case 0x40: // GC Ep3 JP and Trial Edition
       this->set_flag(Flag::NO_D6_AFTER_LOBBY);
-      this->set_flag(Flag::IS_EPISODE_3);
       this->set_flag(Flag::ENCRYPTED_SEND_FUNCTION_CALL);
       this->set_flag(Flag::SEND_FUNCTION_CALL_NO_CACHE_PATCH);
       // sub_version can't be used to tell JP final and Trial Edition apart; we
@@ -114,14 +118,12 @@ void Client::Config::set_flags_for_version(GameVersion version, int64_t sub_vers
       break;
     case 0x41: // GC Ep3 US
       this->set_flag(Flag::NO_D6_AFTER_LOBBY);
-      this->set_flag(Flag::IS_EPISODE_3);
       this->set_flag(Flag::USE_OVERFLOW_FOR_SEND_FUNCTION_CALL);
       this->set_flag(Flag::SEND_FUNCTION_CALL_NO_CACHE_PATCH);
       break;
     case 0x42: // GC Ep3 EU 50Hz
     case 0x43: // GC Ep3 EU 60Hz
       this->set_flag(Flag::NO_D6_AFTER_LOBBY);
-      this->set_flag(Flag::IS_EPISODE_3);
       this->set_flag(Flag::NO_SEND_FUNCTION_CALL);
       break;
     default:
@@ -132,7 +134,7 @@ void Client::Config::set_flags_for_version(GameVersion version, int64_t sub_vers
 Client::Client(
     shared_ptr<Server> server,
     struct bufferevent* bev,
-    GameVersion version,
+    Version version,
     ServerBehavior server_behavior)
     : server(server),
       id(next_id++),
@@ -198,7 +200,7 @@ Client::~Client() {
 }
 
 void Client::reschedule_save_game_data_event() {
-  if (this->version() == GameVersion::BB) {
+  if (this->version() == Version::BB_V4) {
     struct timeval tv = usecs_to_timeval(60000000); // 1 minute
     event_add(this->save_game_data_event.get(), &tv);
   }
@@ -211,39 +213,10 @@ void Client::reschedule_ping_and_timeout_events() {
   event_add(this->idle_timeout_event.get(), &idle_tv);
 }
 
-QuestScriptVersion Client::quest_version() const {
-  switch (this->version()) {
-    case GameVersion::DC:
-      if (this->config.check_flag(Flag::IS_DC_TRIAL_EDITION)) {
-        return QuestScriptVersion::DC_NTE;
-      } else if (this->config.check_flag(Flag::IS_DC_V1)) {
-        return QuestScriptVersion::DC_V1;
-      } else {
-        return QuestScriptVersion::DC_V2;
-      }
-    case GameVersion::PC:
-      return QuestScriptVersion::PC_V2;
-    case GameVersion::GC:
-      if (this->config.check_flag(Flag::IS_GC_TRIAL_EDITION)) {
-        return QuestScriptVersion::GC_NTE;
-      } else if (this->config.check_flag(Flag::IS_EPISODE_3)) {
-        return QuestScriptVersion::GC_EP3;
-      } else {
-        return QuestScriptVersion::GC_V3;
-      }
-    case GameVersion::XB:
-      return QuestScriptVersion::XB_V3;
-    case GameVersion::BB:
-      return QuestScriptVersion::BB_V4;
-    default:
-      throw logic_error("client\'s game version does not have a quest version");
-  }
-}
-
 void Client::set_license(shared_ptr<License> l) {
   this->license = l;
   this->game_data.guild_card_number = this->license->serial_number;
-  if (this->version() == GameVersion::BB) {
+  if (this->version() == Version::BB_V4) {
     this->game_data.bb_username = this->license->bb_username;
   }
 }
@@ -309,7 +282,7 @@ void Client::dispatch_save_game_data(evutil_socket_t, short, void* ctx) {
 }
 
 void Client::save_game_data() {
-  if (this->version() != GameVersion::BB) {
+  if (this->version() != Version::BB_V4) {
     throw logic_error("save_game_data called for non-BB client");
   }
   if (this->game_data.character(false)) {
@@ -322,7 +295,7 @@ void Client::dispatch_send_ping(evutil_socket_t, short, void* ctx) {
 }
 
 void Client::send_ping() {
-  if (this->version() != GameVersion::PATCH) {
+  if (!is_patch(this->version())) {
     this->log.info("Sending ping command");
     // The game doesn't use this timestamp; we only use it for debugging purposes
     be_uint64_t timestamp = now();

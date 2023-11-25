@@ -37,17 +37,14 @@ struct Lobby : public std::enable_shared_from_this<Lobby> {
     IS_SPECTATOR_TEAM = 0x00002000, // episode must be EP3 also
     SPECTATORS_FORBIDDEN = 0x00004000,
     START_BATTLE_PLAYER_IMMEDIATELY = 0x00008000,
-    IS_EP3_TRIAL = 0x00010000,
     DROPS_ENABLED = 0x00020000,
     CANNOT_CHANGE_DROPS_ENABLED = 0x00040000,
     CANNOT_CHANGE_ITEM_TABLE = 0x00080000,
     CANNOT_CHANGE_CHEAT_MODE = 0x00100000,
-    USE_DCV1_RARE_TABLE = 0x00200000,
 
     // Flags used only for lobbies
     PUBLIC = 0x01000000,
     DEFAULT = 0x02000000,
-    V2_AND_LATER = 0x04000000, // Lobby does not appear on v1
     IS_OVERFLOW = 0x08000000,
   };
 
@@ -73,10 +70,10 @@ struct Lobby : public std::enable_shared_from_this<Lobby> {
   parray<le_uint32_t, 0x20> variations;
 
   // Game config
-  GameVersion base_version;
+  Version base_version;
   // Bits in allowed_versions specify who is allowed to join this game. The
   // bits are indexed as (1 << version), where version is a value from the
-  // QuestScriptVersion enum.
+  // Version enum.
   uint16_t allowed_versions;
   uint8_t section_id;
   Episode episode;
@@ -164,10 +161,10 @@ struct Lobby : public std::enable_shared_from_this<Lobby> {
     return this->episode == Episode::EP3;
   }
 
-  [[nodiscard]] inline bool version_is_allowed(QuestScriptVersion v) const {
+  [[nodiscard]] inline bool version_is_allowed(Version v) const {
     return this->allowed_versions & (1 << static_cast<size_t>(v));
   }
-  inline void allow_version(QuestScriptVersion v) {
+  inline void allow_version(Version v) {
     this->allowed_versions |= (1 << static_cast<size_t>(v));
   }
 

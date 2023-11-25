@@ -152,8 +152,8 @@ struct ItemData { // 0x14 bytes
   uint8_t mag_photon_blast_for_slot(uint8_t slot) const;
   bool mag_has_photon_blast_in_any_slot(uint8_t pb_num) const;
   void add_mag_photon_blast(uint8_t pb_num);
-  void decode_for_version(GameVersion version);
-  void encode_for_version(GameVersion version, std::shared_ptr<const ItemParameterTable> item_parameter_table);
+  void decode_for_version(Version version);
+  void encode_for_version(Version version, std::shared_ptr<const ItemParameterTable> item_parameter_table);
   uint8_t get_encoded_v2_data() const;
   bool has_encoded_v2_data() const;
 

@@ -562,7 +562,7 @@ void PSOBBCharacterFile::clear_all_material_usage() {
   }
 }
 
-void PSOBBCharacterFile::print_inventory(FILE* stream, GameVersion version, shared_ptr<const ItemNameIndex> name_index) const {
+void PSOBBCharacterFile::print_inventory(FILE* stream, Version version, shared_ptr<const ItemNameIndex> name_index) const {
   fprintf(stream, "[PlayerInventory] Meseta: %" PRIu32 "\n", this->disp.stats.meseta.load());
   fprintf(stream, "[PlayerInventory] %hhu items\n", this->inventory.num_items);
   for (size_t x = 0; x < this->inventory.num_items; x++) {

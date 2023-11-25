@@ -30,14 +30,7 @@ struct Client : public std::enable_shared_from_this<Client> {
     // clang-format off
 
     // Version-related flags
-    IS_DC_TRIAL_EDITION                 = 0x0000000000000001,
     CHECKED_FOR_DC_V1_PROTOTYPE         = 0x0000000000000002,
-    IS_DC_V1_PROTOTYPE                  = 0x0000000000000004,
-    IS_DC_V1                            = 0x0000000000000008,
-    IS_GC_TRIAL_EDITION                 = 0x0000000000000010,
-    IS_EP3_TRIAL_EDITION                = 0x0000000000000020,
-    IS_EPISODE_3                        = 0x0000000000000040,
-    IS_BB_PATCH                         = 0x0000000000000080,
     NO_D6_AFTER_LOBBY                   = 0x0000000000000100,
     NO_D6                               = 0x0000000000000200,
     FORCE_ENGLISH_LANGUAGE_BB           = 0x0000000000000400,
@@ -114,7 +107,7 @@ struct Client : public std::enable_shared_from_this<Client> {
       this->enabled_flags ^= static_cast<uint64_t>(flag);
     }
 
-    void set_flags_for_version(GameVersion version, int64_t sub_version);
+    void set_flags_for_version(Version version, int64_t sub_version);
 
     template <size_t Bytes>
     void parse_from(const parray<uint8_t, Bytes>& data) {
@@ -220,20 +213,19 @@ struct Client : public std::enable_shared_from_this<Client> {
   Client(
       std::shared_ptr<Server> server,
       struct bufferevent* bev,
-      GameVersion version,
+      Version version,
       ServerBehavior server_behavior);
   ~Client();
 
   void reschedule_save_game_data_event();
   void reschedule_ping_and_timeout_events();
 
-  inline GameVersion version() const {
+  inline Version version() const {
     return this->channel.version;
   }
   inline uint8_t language() const {
     return this->channel.language;
   }
-  QuestScriptVersion quest_version() const;
 
   void set_license(std::shared_ptr<License> l);
 

@@ -26,8 +26,7 @@ public:
       std::shared_ptr<ServerState> state);
   virtual ~ProxyServer() = default;
 
-  void listen(uint16_t port, GameVersion version,
-      const struct sockaddr_storage* default_destination = nullptr);
+  void listen(uint16_t port, Version version, const struct sockaddr_storage* default_destination = nullptr);
 
   void connect_client(struct bufferevent* bev, uint16_t server_port);
 
@@ -116,35 +115,36 @@ public:
         std::shared_ptr<ProxyServer> server,
         uint64_t id,
         uint16_t local_port,
-        GameVersion version);
+        Version version);
     LinkedSession(
         std::shared_ptr<ProxyServer> server,
         uint16_t local_port,
-        GameVersion version,
+        Version version,
         std::shared_ptr<License> license,
         const Client::Config& config);
     LinkedSession(
         std::shared_ptr<ProxyServer> server,
         uint16_t local_port,
-        GameVersion version,
+        Version version,
         std::shared_ptr<License> license,
         const struct sockaddr_storage& next_destination);
     LinkedSession(
         std::shared_ptr<ProxyServer> server,
         uint64_t id,
         uint16_t local_port,
-        GameVersion version,
+        Version version,
         const struct sockaddr_storage& next_destination);
 
     std::shared_ptr<ProxyServer> require_server() const;
     std::shared_ptr<ServerState> require_server_state() const;
 
-    inline GameVersion version() const {
+    inline Version version() const {
       return this->client_channel.version;
     }
     inline uint8_t language() const {
       return this->client_channel.language;
     }
+    void set_version(Version v);
 
     void resume(
         Channel&& client_channel,
@@ -182,7 +182,7 @@ public:
   std::shared_ptr<LinkedSession> create_licensed_session(
       std::shared_ptr<License> l,
       uint16_t local_port,
-      GameVersion version,
+      Version version,
       const Client::Config& config);
   void delete_session(uint64_t id);
   void delete_session(struct bufferevent* bev);
@@ -197,13 +197,13 @@ private:
     uint16_t port;
     scoped_fd fd;
     std::unique_ptr<struct evconnlistener, void (*)(struct evconnlistener*)> listener;
-    GameVersion version;
+    Version version;
     struct sockaddr_storage default_destination;
 
     ListeningSocket(
         ProxyServer* server,
         uint16_t port,
-        GameVersion version,
+        Version version,
         const struct sockaddr_storage* default_destination);
 
     static void dispatch_on_listen_accept(struct evconnlistener* listener,
@@ -219,7 +219,7 @@ private:
     PrefixedLogger log;
     Channel channel;
     uint16_t local_port;
-    GameVersion version;
+    Version version;
     struct sockaddr_storage next_destination;
 
     std::shared_ptr<PSOBBMultiKeyDetectorEncryption> detector_crypt;
@@ -237,7 +237,7 @@ private:
     XBNetworkLocation xb_netloc;
     parray<le_uint32_t, 3> xb_9E_unknown_a1a;
 
-    UnlinkedSession(std::shared_ptr<ProxyServer> server, struct bufferevent* bev, uint16_t port, GameVersion version);
+    UnlinkedSession(std::shared_ptr<ProxyServer> server, struct bufferevent* bev, uint16_t port, Version version);
 
     std::shared_ptr<ProxyServer> require_server() const;
     std::shared_ptr<ServerState> require_server_state() const;
@@ -263,6 +263,6 @@ private:
   void on_client_connect(
       struct bufferevent* bev,
       uint16_t listen_port,
-      GameVersion version,
+      Version version,
       const struct sockaddr_storage* default_destination);
 };

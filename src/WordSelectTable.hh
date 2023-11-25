@@ -15,8 +15,8 @@ public:
 
   WordSelectMessage translate(
       const WordSelectMessage& msg,
-      QuestScriptVersion from_version,
-      QuestScriptVersion to_version) const;
+      Version from_version,
+      Version to_version) const;
 
 private:
   struct Token {
@@ -26,7 +26,7 @@ private:
     uint16_t ep3_value;
     uint16_t bb_value;
 
-    uint16_t value_for_version(QuestScriptVersion version) const;
+    uint16_t value_for_version(Version version) const;
   };
   std::vector<size_t> dc_index;
   std::vector<size_t> pc_index;

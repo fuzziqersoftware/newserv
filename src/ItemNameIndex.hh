@@ -17,13 +17,13 @@ public:
   ItemNameIndex(JSON&& v2_names, JSON&& v3_names, JSON&& v4_names);
 
   std::string describe_item(
-      GameVersion version,
+      Version version,
       const ItemData& item,
       std::shared_ptr<const ItemParameterTable> item_parameter_table = nullptr) const;
-  ItemData parse_item_description(GameVersion version, const std::string& description) const;
+  ItemData parse_item_description(Version version, const std::string& description) const;
 
 private:
-  ItemData parse_item_description_phase(GameVersion version, const std::string& description, bool skip_special) const;
+  ItemData parse_item_description_phase(Version version, const std::string& description, bool skip_special) const;
 
   struct ItemMetadata {
     uint32_t primary_identifier;

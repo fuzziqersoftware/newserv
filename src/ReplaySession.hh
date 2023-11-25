@@ -53,12 +53,12 @@ private:
   struct Client {
     uint64_t id;
     uint16_t port;
-    GameVersion version;
+    Version version;
     Channel channel;
     std::deque<std::shared_ptr<Event>> receive_events;
     std::shared_ptr<Event> disconnect_event;
 
-    Client(ReplaySession* session, uint64_t id, uint16_t port, GameVersion version);
+    Client(ReplaySession* session, uint64_t id, uint16_t port, Version version);
 
     std::string str() const;
   };

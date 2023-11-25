@@ -17,7 +17,7 @@ string RareItemSet::ExpandedDrop::str() const {
       this->probability, frac.first, frac.second, this->item_code[0], this->item_code[1], this->item_code[2]);
 }
 
-string RareItemSet::ExpandedDrop::str(GameVersion version, shared_ptr<const ItemNameIndex> name_index) const {
+string RareItemSet::ExpandedDrop::str(Version version, shared_ptr<const ItemNameIndex> name_index) const {
   ItemData item;
   item.data1[0] = this->item_code[0];
   item.data1[1] = this->item_code[1];
@@ -296,7 +296,7 @@ RareItemSet::RareItemSet(const string& rel_data, bool is_big_endian) {
   }
 }
 
-RareItemSet::RareItemSet(const JSON& json, GameVersion version, shared_ptr<const ItemNameIndex> name_index) {
+RareItemSet::RareItemSet(const JSON& json, Version version, shared_ptr<const ItemNameIndex> name_index) {
   for (const auto& mode_it : json.as_dict()) {
     static const unordered_map<string, GameMode> mode_keys(
         {{"Normal", GameMode::NORMAL}, {"Battle", GameMode::BATTLE}, {"Challenge", GameMode::CHALLENGE}, {"Solo", GameMode::SOLO}});
@@ -420,7 +420,7 @@ std::string RareItemSet::serialize_gsl(bool big_endian) const {
   return GSLArchive::generate(files, big_endian);
 }
 
-std::string RareItemSet::serialize_json(GameVersion version, shared_ptr<const ItemNameIndex> name_index) const {
+std::string RareItemSet::serialize_json(Version version, shared_ptr<const ItemNameIndex> name_index) const {
   auto modes_dict = JSON::dict();
   static const array<GameMode, 4> modes = {GameMode::NORMAL, GameMode::BATTLE, GameMode::CHALLENGE, GameMode::SOLO};
   for (const auto& mode : modes) {
@@ -505,7 +505,7 @@ std::string RareItemSet::serialize_json(GameVersion version, shared_ptr<const It
 
 void RareItemSet::print_collection(
     FILE* stream,
-    GameVersion version,
+    Version version,
     GameMode mode,
     Episode episode,
     uint8_t difficulty,
@@ -553,7 +553,7 @@ void RareItemSet::print_collection(
 }
 
 void RareItemSet::print_all_collections(
-    FILE* stream, GameVersion version, std::shared_ptr<const ItemNameIndex> name_index) const {
+    FILE* stream, Version version, std::shared_ptr<const ItemNameIndex> name_index) const {
   static const array<GameMode, 4> modes = {GameMode::NORMAL, GameMode::BATTLE, GameMode::CHALLENGE, GameMode::SOLO};
   static const array<Episode, 3> episodes = {Episode::EP1, Episode::EP2, Episode::EP4};
   for (GameMode mode : modes) {

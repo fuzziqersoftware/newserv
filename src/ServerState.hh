@@ -32,7 +32,7 @@ class Server;
 struct PortConfiguration {
   std::string name;
   uint16_t port;
-  GameVersion version;
+  Version version;
   ServerBehavior behavior;
 };
 
@@ -164,9 +164,7 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
 
   std::unordered_map<Channel*, std::shared_ptr<Client>> channel_to_client;
   std::map<int64_t, std::shared_ptr<Lobby>> id_to_lobby;
-  std::vector<std::shared_ptr<Lobby>> public_lobby_search_order_v1;
-  std::vector<std::shared_ptr<Lobby>> public_lobby_search_order_non_v1;
-  std::vector<std::shared_ptr<Lobby>> public_lobby_search_order_ep3;
+  std::vector<std::shared_ptr<Lobby>> public_lobby_search_order;
   std::atomic<int32_t> next_lobby_id;
   uint8_t pre_lobby_event;
   int32_t ep3_menu_song;
@@ -181,7 +179,7 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   std::shared_ptr<ProxyServer> proxy_server;
   std::shared_ptr<Server> game_server;
 
-  ServerState(const char* config_filename, bool is_replay);
+  ServerState(const std::string& config_filename, bool is_replay);
   ServerState(const ServerState&) = delete;
   ServerState(ServerState&&) = delete;
   ServerState& operator=(const ServerState&) = delete;
@@ -212,12 +210,12 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
 
   uint32_t connect_address_for_client(std::shared_ptr<Client> c) const;
 
-  std::shared_ptr<const Menu> information_menu_for_version(GameVersion version) const;
-  std::shared_ptr<const Menu> proxy_destinations_menu_for_version(GameVersion version) const;
-  const std::vector<std::pair<std::string, uint16_t>>& proxy_destinations_for_version(GameVersion version) const;
+  std::shared_ptr<const Menu> information_menu_for_version(Version version) const;
+  std::shared_ptr<const Menu> proxy_destinations_menu_for_version(Version version) const;
+  const std::vector<std::pair<std::string, uint16_t>>& proxy_destinations_for_version(Version version) const;
 
-  std::shared_ptr<const ItemParameterTable> item_parameter_table_for_version(GameVersion version) const;
-  std::string describe_item(GameVersion version, const ItemData& item, bool include_color_codes) const;
+  std::shared_ptr<const ItemParameterTable> item_parameter_table_for_version(Version version) const;
+  std::string describe_item(Version version, const ItemData& item, bool include_color_codes) const;
 
   std::shared_ptr<const std::vector<std::string>> information_contents_for_client(std::shared_ptr<const Client> c) const;
   std::shared_ptr<const QuestIndex> quest_index_for_client(std::shared_ptr<const Client> c) const;

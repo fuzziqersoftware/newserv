@@ -14,7 +14,8 @@ void player_use_item(shared_ptr<Client> c, size_t item_index) {
   // On PC (and presumably DC), the client sends a 6x29 after this to delete the
   // used item. On GC and later versions, this does not happen, so we should
   // delete the item here.
-  bool should_delete_item = (c->version() != GameVersion::DC) && (c->version() != GameVersion::PC);
+  bool is_v3_or_later = is_v3(c->version()) || is_v4(c->version());
+  bool should_delete_item = is_v3_or_later;
 
   auto player = c->game_data.character();
   auto& item = player->inventory.items[item_index];
@@ -43,7 +44,7 @@ void player_use_item(shared_ptr<Client> c, size_t item_index) {
     // be no way to disable this behavior, so there's no way for the server to
     // get an accurate picture of what's actually in the player's inventory, so
     // there's no way to know if we would be enforcing the correct grind limit.
-    if ((c->version() != GameVersion::DC) && (c->version() != GameVersion::PC)) {
+    if (is_v3_or_later) {
       auto item_parameter_table = s->item_parameter_table_for_version(c->version());
       auto weapon_def = item_parameter_table->get_weapon(weapon.data.data1[1], weapon.data.data1[2]);
       if (weapon.data.data1[3] >= weapon_def.max_grind) {
@@ -54,7 +55,6 @@ void player_use_item(shared_ptr<Client> c, size_t item_index) {
 
   } else if ((item_identifier & 0xFFFF00) == 0x030B00) { // Material
     auto p = c->game_data.character();
-    bool track_non_hp_tp_materials = (c->version() != GameVersion::DC) && (c->version() != GameVersion::PC);
 
     using Type = PSOBBCharacterFile::MaterialType;
     Type type;
@@ -83,7 +83,7 @@ void player_use_item(shared_ptr<Client> c, size_t item_index) {
         break;
       case 6: // Hit Material (v1/v2) or Luck Material (v3/v4)
         type = Type::LUCK;
-        if (c->version() == GameVersion::DC || c->version() == GameVersion::PC) {
+        if (!is_v3_or_later) {
           // Hit material doesn't exist on v3/v4, but we'll ignore type anyway
           // in this case because track_non_hp_tp_materials is false
           p->disp.stats.char_stats.ata += 2;
@@ -93,7 +93,7 @@ void player_use_item(shared_ptr<Client> c, size_t item_index) {
         break;
       case 7: // Luck Material (v1/v2)
         type = Type::LUCK;
-        if (c->version() == GameVersion::DC || c->version() == GameVersion::PC) {
+        if (!is_v3_or_later) {
           p->disp.stats.char_stats.lck += 2;
         } else {
           throw runtime_error("unknown material used");
@@ -102,7 +102,7 @@ void player_use_item(shared_ptr<Client> c, size_t item_index) {
       default:
         throw runtime_error("unknown material used");
     }
-    if (track_non_hp_tp_materials || (type == Type::HP) || (type == Type::TP)) {
+    if (is_v3_or_later || (type == Type::HP) || (type == Type::TP)) {
       p->set_material_usage(type, p->get_material_usage(type) + 1);
     }
 
@@ -256,7 +256,7 @@ void player_use_item(shared_ptr<Client> c, size_t item_index) {
   if (should_delete_item) {
     // Allow overdrafting meseta if the client is not BB, since the server isn't
     // informed when meseta is added or removed from the bank.
-    player->remove_item(item.data.id, 1, c->version() != GameVersion::BB);
+    player->remove_item(item.data.id, 1, !is_v4(c->version()));
   }
 }
 

@@ -34,14 +34,14 @@ union PSOCommandHeader {
   PSOCommandHeaderDCV3 xb;
   PSOCommandHeaderBB bb;
 
-  uint16_t command(GameVersion version) const;
-  void set_command(GameVersion version, uint16_t command);
-  uint16_t size(GameVersion version) const;
-  void set_size(GameVersion version, uint32_t size);
-  uint32_t flag(GameVersion version) const;
-  void set_flag(GameVersion version, uint32_t flag);
-  static inline size_t header_size(GameVersion version) {
-    return (version == GameVersion::BB) ? 8 : 4;
+  uint16_t command(Version version) const;
+  void set_command(Version version, uint16_t command);
+  uint16_t size(Version version) const;
+  void set_size(Version version, uint32_t size);
+  uint32_t flag(Version version) const;
+  void set_flag(Version version, uint32_t flag);
+  static inline size_t header_size(Version version) {
+    return (version == Version::BB_V4) ? 8 : 4;
   }
 
   PSOCommandHeader();
@@ -123,7 +123,7 @@ T& check_size_t(void* data, size_t size) {
 void check_size_v(size_t size, size_t min_size, size_t max_size = 0);
 
 std::string prepend_command_header(
-    GameVersion version,
+    Version version,
     bool encryption_enabled,
     uint16_t cmd,
     uint32_t flag,

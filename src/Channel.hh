@@ -15,7 +15,7 @@ struct Channel {
   struct sockaddr_storage remote_addr;
   bool is_virtual_connection;
 
-  GameVersion version;
+  Version version;
   uint8_t language;
   std::shared_ptr<PSOEncryption> crypt_in;
   std::shared_ptr<PSOEncryption> crypt_out;
@@ -39,7 +39,7 @@ struct Channel {
 
   // Creates an unconnected channel
   Channel(
-      GameVersion version,
+      Version version,
       uint8_t language,
       on_command_received_t on_command_received,
       on_error_t on_error,
@@ -50,7 +50,7 @@ struct Channel {
   // Creates a connected channel
   Channel(
       struct bufferevent* bev,
-      GameVersion version,
+      Version version,
       uint8_t language,
       on_command_received_t on_command_received,
       on_error_t on_error,

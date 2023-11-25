@@ -90,7 +90,7 @@ void PlayerDispDataDCPCV3::enforce_lobby_join_limits_for_client(shared_ptr<Clien
       {0x0000, 0x0000, 0x0000, 0x0000, 0x0000}};
 
   const ClassMaxes* maxes;
-  if ((c->version() == GameVersion::PC) || (c->version() == GameVersion::DC)) {
+  if (is_v1_or_v2(c->version())) {
     // V1/V2 have fewer classes, so we'll substitute some here
     switch (this->visual.char_class) {
       case 0: // HUmar
@@ -125,7 +125,7 @@ void PlayerDispDataDCPCV3::enforce_lobby_join_limits_for_client(shared_ptr<Clien
         this->visual.char_class = 0; // Invalid classes -> HUmar
     }
 
-    this->visual.version = min<uint8_t>(this->visual.version, c->config.check_flag(Client::Flag::IS_DC_V1) ? 0 : 2);
+    this->visual.version = min<uint8_t>(this->visual.version, is_v1(c->version()) ? 0 : 2);
     maxes = &v1_v2_class_maxes[this->visual.char_class];
 
   } else {
@@ -152,7 +152,7 @@ void PlayerDispDataDCPCV3::enforce_lobby_join_limits_for_client(shared_ptr<Clien
 }
 
 void PlayerDispDataBB::enforce_lobby_join_limits_for_client(shared_ptr<Client> c) {
-  if (c->version() != GameVersion::BB) {
+  if (!is_v4(c->version())) {
     throw logic_error("PlayerDispDataBB being sent to non-BB client");
   }
   this->play_time = 0;
@@ -660,7 +660,7 @@ void PlayerInventory::decode_from_client(shared_ptr<Client> c) {
 }
 
 void PlayerInventory::encode_for_client(shared_ptr<Client> c) {
-  if (c->config.check_flag(Client::Flag::IS_DC_TRIAL_EDITION)) {
+  if (c->version() == Version::DC_NTE) {
     // DC NTE has the item count as a 32-bit value here, whereas every other
     // version uses a single byte. To stop DC NTE from crashing by trying to
     // construct far more than 30 TItem objects, we clear the fields DC NTE
@@ -919,7 +919,7 @@ static PlayerInventoryItem make_template_item(bool equipped, uint64_t first_data
 
 static PlayerInventoryItem v2_item(bool equipped, uint64_t first_data, uint64_t second_data) {
   auto ret = make_template_item(equipped, first_data, second_data);
-  ret.data.decode_for_version(GameVersion::PC);
+  ret.data.decode_for_version(Version::PC_V2);
   return ret;
 }
 
@@ -927,7 +927,7 @@ static PlayerInventoryItem v3_item(bool equipped, uint64_t first_data, uint64_t 
   return make_template_item(equipped, first_data, second_data);
 }
 
-const ChallengeTemplateDefinition& get_challenge_template_definition(GameVersion version, uint32_t class_flags, size_t index) {
+const ChallengeTemplateDefinition& get_challenge_template_definition(Version version, uint32_t class_flags, size_t index) {
   // clang-format off
   static const vector<ChallengeTemplateDefinition> v2_hunter_templates({
       {0,  {v2_item(true, 0x0001000000000000, 0x0000000000000000), v2_item(true,  0x0101000000000000, 0x0000000000000000), v2_item(true,  0x02000500F4010100, 0x0100010000002800), v2_item(false, 0x0300000000030000, 0x0000000000000000), v2_item(false, 0x0309000000000000, 0x0000000000000000)}, {}},
@@ -1040,14 +1040,12 @@ const ChallengeTemplateDefinition& get_challenge_template_definition(GameVersion
   });
   // clang-format on
 
-  bool is_v2 = (version == GameVersion::DC) || (version == GameVersion::PC);
-
   if ((class_flags & 0xE0) == 0x20) {
-    return is_v2 ? v2_hunter_templates.at(index) : v3_hunter_templates.at(index);
+    return is_v1_or_v2(version) ? v2_hunter_templates.at(index) : v3_hunter_templates.at(index);
   } else if ((class_flags & 0xE0) == 0x40) {
-    return is_v2 ? v2_ranger_templates.at(index) : v3_ranger_templates.at(index);
+    return is_v1_or_v2(version) ? v2_ranger_templates.at(index) : v3_ranger_templates.at(index);
   } else if ((class_flags & 0xE0) == 0x80) {
-    return is_v2 ? v2_force_templates.at(index) : v3_force_templates.at(index);
+    return is_v1_or_v2(version) ? v2_force_templates.at(index) : v3_force_templates.at(index);
   } else {
     throw runtime_error("invalid class flags on original player");
   }

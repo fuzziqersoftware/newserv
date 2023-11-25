@@ -17,7 +17,7 @@
 
 using namespace std;
 
-ServerState::ServerState(const char* config_filename, bool is_replay)
+ServerState::ServerState(const string& config_filename, bool is_replay)
     : config_filename(config_filename),
       is_replay(is_replay),
       dns_server_port(0),
@@ -56,28 +56,38 @@ void ServerState::init() {
 
   for (size_t x = 0; x < 20; x++) {
     auto lobby_name = string_printf("LOBBY%zu", x + 1);
-    bool v2_and_later_only = (x > 9);
-    bool is_ep3_only = (x > 14);
+    bool allow_v1 = (x <= 9);
+    bool allow_non_ep3 = (x <= 14);
 
     shared_ptr<Lobby> l = this->create_lobby();
     l->set_flag(Lobby::Flag::PUBLIC);
     l->set_flag(Lobby::Flag::DEFAULT);
     l->set_flag(Lobby::Flag::PERSISTENT);
-    if (v2_and_later_only) {
-      l->set_flag(Lobby::Flag::V2_AND_LATER);
+    if (allow_non_ep3) {
+      if (allow_v1) {
+        l->allow_version(Version::DC_NTE);
+        l->allow_version(Version::DC_V1_12_2000_PROTOTYPE);
+        l->allow_version(Version::DC_V1);
+      }
+      l->allow_version(Version::DC_V2);
+      l->allow_version(Version::PC_V2);
+      l->allow_version(Version::GC_NTE);
+      l->allow_version(Version::GC_V3);
+      l->allow_version(Version::XB_V3);
+      l->allow_version(Version::BB_V4);
     }
+    l->allow_version(Version::GC_EP3_TRIAL_EDITION);
+    l->allow_version(Version::GC_EP3);
+
     l->block = x + 1;
     l->name = lobby_name;
     l->max_clients = 12;
-    if (is_ep3_only) {
+    if (!allow_non_ep3) {
       l->episode = Episode::EP3;
     }
 
-    if (!v2_and_later_only) {
-      this->public_lobby_search_order_v1.emplace_back(l);
-    }
-    if (!is_ep3_only) {
-      this->public_lobby_search_order_non_v1.emplace_back(l);
+    if (allow_non_ep3) {
+      this->public_lobby_search_order.emplace_back(l);
     } else {
       ep3_only_lobbies.emplace_back(l);
     }
@@ -86,9 +96,8 @@ void ServerState::init() {
   // Annoyingly, the CARD lobbies should be searched first, but are sent at the
   // end of the lobby list command, so we have to change the search order
   // manually here.
-  this->public_lobby_search_order_ep3 = this->public_lobby_search_order_non_v1;
-  this->public_lobby_search_order_ep3.insert(
-      this->public_lobby_search_order_ep3.begin(),
+  this->public_lobby_search_order.insert(
+      this->public_lobby_search_order.begin(),
       ep3_only_lobbies.begin(),
       ep3_only_lobbies.end());
 
@@ -120,7 +129,7 @@ void ServerState::add_client_to_available_lobby(shared_ptr<Client> c) {
       if (l &&
           !l->is_game() &&
           l->check_flag(Lobby::Flag::PUBLIC) &&
-          (c->config.check_flag(Client::Flag::IS_EPISODE_3) || (l->episode != Episode::EP3))) {
+          l->version_is_allowed(c->version())) {
         l->add_client(c);
         added_to_lobby = l;
       }
@@ -129,17 +138,16 @@ void ServerState::add_client_to_available_lobby(shared_ptr<Client> c) {
   }
 
   if (!added_to_lobby.get()) {
-    const auto* search_order = &this->public_lobby_search_order_non_v1;
-    if (c->config.check_flag(Client::Flag::IS_DC_V1)) {
-      search_order = &this->public_lobby_search_order_v1;
-    } else if (c->config.check_flag(Client::Flag::IS_EPISODE_3)) {
-      search_order = &this->public_lobby_search_order_ep3;
-    }
-    for (const auto& l : *search_order) {
+    for (const auto& l : this->public_lobby_search_order) {
       try {
-        l->add_client(c);
-        added_to_lobby = l;
-        break;
+        if (l &&
+            !l->is_game() &&
+            l->check_flag(Lobby::Flag::PUBLIC) &&
+            l->version_is_allowed(c->version())) {
+          l->add_client(c);
+          added_to_lobby = l;
+          break;
+        }
       } catch (const out_of_range&) {
       }
     }
@@ -153,6 +161,7 @@ void ServerState::add_client_to_available_lobby(shared_ptr<Client> c) {
     added_to_lobby->name = "Overflow";
     added_to_lobby->max_clients = 12;
     added_to_lobby->event = this->pre_lobby_event;
+    added_to_lobby->allow_version(c->version());
     added_to_lobby->add_client(c);
   }
 
@@ -325,61 +334,79 @@ uint32_t ServerState::connect_address_for_client(std::shared_ptr<Client> c) cons
   }
 }
 
-std::shared_ptr<const Menu> ServerState::information_menu_for_version(GameVersion version) const {
-  if ((version == GameVersion::DC) || (version == GameVersion::PC)) {
+std::shared_ptr<const Menu> ServerState::information_menu_for_version(Version version) const {
+  if (is_v1_or_v2(version)) {
     return this->information_menu_v2;
-  } else if ((version == GameVersion::GC) || (version == GameVersion::XB)) {
+  } else if (is_v3(version)) {
     return this->information_menu_v3;
   }
   throw out_of_range("no information menu exists for this version");
 }
 
-shared_ptr<const Menu> ServerState::proxy_destinations_menu_for_version(GameVersion version) const {
+shared_ptr<const Menu> ServerState::proxy_destinations_menu_for_version(Version version) const {
   switch (version) {
-    case GameVersion::DC:
+    case Version::DC_NTE:
+    case Version::DC_V1_12_2000_PROTOTYPE:
+    case Version::DC_V1:
+    case Version::DC_V2:
       return this->proxy_destinations_menu_dc;
-    case GameVersion::PC:
+    case Version::PC_V2:
       return this->proxy_destinations_menu_pc;
-    case GameVersion::GC:
+    case Version::GC_NTE:
+    case Version::GC_V3:
+    case Version::GC_EP3_TRIAL_EDITION:
+    case Version::GC_EP3:
       return this->proxy_destinations_menu_gc;
-    case GameVersion::XB:
+    case Version::XB_V3:
       return this->proxy_destinations_menu_xb;
     default:
       throw out_of_range("no proxy destinations menu exists for this version");
   }
 }
 
-const vector<pair<string, uint16_t>>& ServerState::proxy_destinations_for_version(GameVersion version) const {
+const vector<pair<string, uint16_t>>& ServerState::proxy_destinations_for_version(Version version) const {
   switch (version) {
-    case GameVersion::DC:
+    case Version::DC_NTE:
+    case Version::DC_V1_12_2000_PROTOTYPE:
+    case Version::DC_V1:
+    case Version::DC_V2:
       return this->proxy_destinations_dc;
-    case GameVersion::PC:
+    case Version::PC_V2:
       return this->proxy_destinations_pc;
-    case GameVersion::GC:
+    case Version::GC_NTE:
+    case Version::GC_V3:
+    case Version::GC_EP3_TRIAL_EDITION:
+    case Version::GC_EP3:
       return this->proxy_destinations_gc;
-    case GameVersion::XB:
+    case Version::XB_V3:
       return this->proxy_destinations_xb;
     default:
       throw out_of_range("no proxy destinations menu exists for this version");
   }
 }
 
-std::shared_ptr<const ItemParameterTable> ServerState::item_parameter_table_for_version(GameVersion version) const {
+std::shared_ptr<const ItemParameterTable> ServerState::item_parameter_table_for_version(Version version) const {
   switch (version) {
-    case GameVersion::DC:
-    case GameVersion::PC:
+    case Version::DC_NTE:
+    case Version::DC_V1_12_2000_PROTOTYPE:
+    case Version::DC_V1:
+    case Version::DC_V2:
+    case Version::PC_V2:
       return this->item_parameter_table_v2;
-    case GameVersion::GC:
-    case GameVersion::XB:
+    case Version::GC_NTE:
+    case Version::GC_V3:
+    case Version::GC_EP3_TRIAL_EDITION:
+    case Version::GC_EP3:
+    case Version::XB_V3:
       return this->item_parameter_table_v3;
-    case GameVersion::BB:
+    case Version::BB_V4:
       return this->item_parameter_table_v4;
     default:
       throw out_of_range("no item parameter table exists for this version");
   }
 }
 
-std::string ServerState::describe_item(GameVersion version, const ItemData& item, bool include_color_codes) const {
+std::string ServerState::describe_item(Version version, const ItemData& item, bool include_color_codes) const {
   return this->item_name_index->describe_item(
       version,
       item,
@@ -499,8 +526,8 @@ static vector<PortConfiguration> parse_port_configuration(const JSON& json) {
     PortConfiguration& pc = ret.emplace_back();
     pc.name = item_json_it.first;
     pc.port = item_list->at(0).as_int();
-    pc.version = version_for_name(item_list->at(1).as_string().c_str());
-    pc.behavior = server_behavior_for_name(item_list->at(2).as_string().c_str());
+    pc.version = enum_for_name<Version>(item_list->at(1).as_string().c_str());
+    pc.behavior = enum_for_name<ServerBehavior>(item_list->at(2).as_string().c_str());
   }
   return ret;
 }
@@ -846,7 +873,7 @@ void ServerState::parse_config(const JSON& json, bool is_reload) {
     this->proxy_destination_patch = parse_netloc(netloc_str);
     config_log.info("Patch server proxy is enabled with destination %s", netloc_str.c_str());
     for (auto& it : this->name_to_port_config) {
-      if (it.second->version == GameVersion::PATCH) {
+      if (is_patch(it.second->version)) {
         it.second->behavior = ServerBehavior::PROXY_SERVER;
       }
     }
@@ -859,7 +886,7 @@ void ServerState::parse_config(const JSON& json, bool is_reload) {
     this->proxy_destination_bb = parse_netloc(netloc_str);
     config_log.info("BB proxy is enabled with destination %s", netloc_str.c_str());
     for (auto& it : this->name_to_port_config) {
-      if (it.second->version == GameVersion::BB) {
+      if (it.second->version == Version::BB_V4) {
         it.second->behavior = ServerBehavior::PROXY_SERVER;
       }
     }
@@ -957,13 +984,13 @@ void ServerState::load_item_tables() {
 
     if (ends_with(filename, "-v2.json")) {
       config_log.info("Loading v2 JSON rare item table %s", filename.c_str());
-      this->rare_item_sets.emplace(basename, new RareItemSet(JSON::parse(load_file(path)), GameVersion::PC, this->item_name_index));
+      this->rare_item_sets.emplace(basename, new RareItemSet(JSON::parse(load_file(path)), Version::PC_V2, this->item_name_index));
     } else if (ends_with(filename, "-v3.json")) {
       config_log.info("Loading v3 JSON rare item table %s", filename.c_str());
-      this->rare_item_sets.emplace(basename, new RareItemSet(JSON::parse(load_file(path)), GameVersion::GC, this->item_name_index));
+      this->rare_item_sets.emplace(basename, new RareItemSet(JSON::parse(load_file(path)), Version::GC_V3, this->item_name_index));
     } else if (ends_with(filename, "-v4.json")) {
       config_log.info("Loading v4 JSON rare item table %s", filename.c_str());
-      this->rare_item_sets.emplace(basename, new RareItemSet(JSON::parse(load_file(path)), GameVersion::BB, this->item_name_index));
+      this->rare_item_sets.emplace(basename, new RareItemSet(JSON::parse(load_file(path)), Version::BB_V4, this->item_name_index));
 
     } else if (ends_with(filename, ".afs")) {
       config_log.info("Loading AFS rare item table %s", filename.c_str());
@@ -1121,13 +1148,9 @@ void ServerState::load_dol_files() {
 }
 
 shared_ptr<const vector<string>> ServerState::information_contents_for_client(shared_ptr<const Client> c) const {
-  return ((c->version() == GameVersion::DC) || (c->version() == GameVersion::PC))
-      ? this->information_contents_v2
-      : this->information_contents_v3;
+  return is_v1_or_v2(c->version()) ? this->information_contents_v2 : this->information_contents_v3;
 }
 
 shared_ptr<const QuestIndex> ServerState::quest_index_for_client(shared_ptr<const Client> c) const {
-  return c->config.check_flag(Client::Flag::IS_EPISODE_3)
-      ? this->ep3_download_quest_index
-      : this->default_quest_index;
+  return is_ep3(c->version()) ? this->ep3_download_quest_index : this->default_quest_index;
 }

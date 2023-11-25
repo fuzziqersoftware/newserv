@@ -287,11 +287,10 @@ void ItemData::add_mag_photon_blast(uint8_t pb_num) {
   }
 }
 
-void ItemData::decode_for_version(GameVersion from_version) {
-  bool is_v2 = (from_version == GameVersion::DC) || (from_version == GameVersion::PC);
-
+void ItemData::decode_for_version(Version from_version) {
   uint8_t encoded_v2_data = this->get_encoded_v2_data();
-  bool should_decode_v2_data = is_v2 && (encoded_v2_data != 0x00) && this->has_encoded_v2_data();
+  bool should_decode_v2_data = (is_v1(from_version) || is_v2(from_version)) &&
+      (encoded_v2_data != 0x00) && this->has_encoded_v2_data();
 
   switch (this->data1[0]) {
     case 0x00:
@@ -314,12 +313,12 @@ void ItemData::decode_for_version(GameVersion from_version) {
         this->data1[1] = encoded_v2_data + 0x2B;
       }
 
-      if (from_version == GameVersion::GC) {
+      if (is_big_endian(from_version)) {
         // PSO GC erroneously byteswaps the data2d field, even though it's actually
         // just four individual bytes, so we correct for that here.
         this->data2d = bswap32(this->data2d);
 
-      } else if (from_version == GameVersion::DC || from_version == GameVersion::PC) {
+      } else if (is_v1(from_version) || is_v2(from_version)) {
         // PSO PC encodes mags in a tediously annoying manner. The first four bytes are the same, but then...
         // V2: pHHHHHHHHHHHHHHc pIIIIIIIIIIIIIIc JJJJJJJJJJJJJJJc KKKKKKKKKKKKKKKc QQQQQQQQ QQQQQQQQ YYYYYYYY pYYYYYYY
         // V3: HHHHHHHHHHHHHHHH IIIIIIIIIIIIIIII JJJJJJJJJJJJJJJJ KKKKKKKKKKKKKKKK YYYYYYYY QQQQQQQQ PPPPPPPP CCCCCCCC
@@ -369,9 +368,8 @@ void ItemData::decode_for_version(GameVersion from_version) {
   }
 }
 
-void ItemData::encode_for_version(GameVersion to_version, shared_ptr<const ItemParameterTable> item_parameter_table) {
-  bool is_v2 = (to_version == GameVersion::DC) || (to_version == GameVersion::PC);
-  bool should_encode_v2_data = is_v2 && !this->has_encoded_v2_data();
+void ItemData::encode_for_version(Version to_version, shared_ptr<const ItemParameterTable> item_parameter_table) {
+  bool should_encode_v2_data = (is_v1(to_version) || is_v2(to_version)) && !this->has_encoded_v2_data();
 
   switch (this->data1[0]) {
     case 0x00:
@@ -410,9 +408,9 @@ void ItemData::encode_for_version(GameVersion to_version, shared_ptr<const ItemP
       // This logic is the inverse of the corresponding logic in
       // decode_for_version; see that function for a description of what's
       // going on here.
-      if (to_version == GameVersion::GC) {
+      if (is_big_endian(to_version)) {
         this->data2d = bswap32(this->data2d);
-      } else if (to_version == GameVersion::DC || to_version == GameVersion::PC) {
+      } else if (is_v1(to_version) || is_v2(to_version)) {
         this->data1w[2] = (this->data1w[2] & 0x7FFE) | ((this->data2[2] << 14) & 0x8000) | (this->data2[3] & 1);
         this->data1w[3] = (this->data1w[3] & 0x7FFE) | ((this->data2[2] << 13) & 0x8000) | ((this->data2[3] >> 1) & 1);
         this->data1w[4] = (this->data1w[4] & 0xFFFE) | ((this->data2[3] >> 2) & 1);

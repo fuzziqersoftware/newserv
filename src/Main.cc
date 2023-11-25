@@ -4,6 +4,7 @@
 #include <string.h>
 
 #include <mutex>
+#include <phosg/Arguments.hh>
 #include <phosg/Filesystem.hh>
 #include <phosg/JSON.hh>
 #include <phosg/Math.hh>
@@ -48,6 +49,8 @@ using namespace std;
 
 bool use_terminal_colors = false;
 
+void print_usage();
+
 template <typename T>
 vector<T> parse_int_vector(const JSON& o) {
   vector<T> ret;
@@ -84,29 +87,215 @@ void drop_privileges(const string& username) {
   config_log.info("Switched to user %s (%d:%d)", username.c_str(), pw->pw_uid, pw->pw_gid);
 }
 
-void print_usage() {
-  fputs("\
-Usage:\n\
-  newserv [ACTION [OPTIONS...]]\n\
-\n\
-If ACTION is not specified, newserv runs in server mode. PSO clients can\n\
-connect normally, join lobbies, play games, and use the proxy server. See\n\
-README.md and system/config.json for more information.\n\
-\n\
-When ACTION is given, newserv will do things other than running the server.\n\
-\n\
-Some actions accept input and/or output filenames; see the descriptions below\n\
-for details. If INPUT-FILENAME is missing or is '-', newserv reads from stdin.\n\
-If OUTPUT-FILENAME is missing and the input is not from stdin, newserv writes\n\
-the output to INPUT-FILENAME.dec or a similarly-named file; if OUTPUT-FILENAME\n\
-is '-', newserv writes the output to stdout. If stdout is a terminal and the\n\
-output is not text, the data written to stdout is formatted in a hex/ASCII\n\
-view; in any other case, the raw output is written to stdout, which (for most\n\
-actions) may include arbitrary binary data.\n\
-\n\
-The actions are:\n\
+Version get_cli_version(Arguments& args) {
+  if (args.get<bool>("pc-patch")) {
+    return Version::PC_PATCH;
+  } else if (args.get<bool>("bb-patch")) {
+    return Version::BB_PATCH;
+  } else if (args.get<bool>("dc-nte")) {
+    return Version::DC_NTE;
+  } else if (args.get<bool>("dc-proto")) {
+    return Version::DC_V1_12_2000_PROTOTYPE;
+  } else if (args.get<bool>("dc-v1")) {
+    return Version::DC_V1;
+  } else if (args.get<bool>("dc-v2") || args.get<bool>("dc")) {
+    return Version::DC_V2;
+  } else if (args.get<bool>("pc")) {
+    return Version::PC_V2;
+  } else if (args.get<bool>("gc-nte")) {
+    return Version::GC_NTE;
+  } else if (args.get<bool>("gc")) {
+    return Version::GC_V3;
+  } else if (args.get<bool>("xb")) {
+    return Version::XB_V3;
+  } else if (args.get<bool>("ep3-trial")) {
+    return Version::GC_EP3_TRIAL_EDITION;
+  } else if (args.get<bool>("ep3")) {
+    return Version::GC_EP3;
+  } else if (args.get<bool>("bb")) {
+    return Version::BB_V4;
+  } else {
+    throw runtime_error("a version option is required");
+  }
+}
+
+string read_input_data(Arguments& args) {
+  const string& input_filename = args.get<string>(1, false);
+
+  string data;
+  if (!input_filename.empty() && (input_filename != "-")) {
+    data = load_file(input_filename);
+  } else {
+    data = read_all(stdin);
+  }
+  if (args.get<bool>("parse-data")) {
+    data = parse_data_string(data, nullptr, ParseDataFlags::ALLOW_FILES);
+  }
+  return data;
+}
+
+bool is_text_extension(const char* extension) {
+  return (!strcmp(extension, "txt") || !strcmp(extension, "json"));
+}
+
+void write_output_data(Arguments& args, const void* data, size_t size, const char* extension) {
+  const string& input_filename = args.get<string>(1, false);
+  const string& output_filename = args.get<string>(2, false);
+
+  if (!output_filename.empty() && (output_filename != "-")) {
+    // If the output is to a specified file, write it there
+    save_file(output_filename, data, size);
+
+  } else if (output_filename.empty() && !input_filename.empty() && (input_filename != "-")) {
+    // If no output filename is given and an input filename is given, write to
+    // <input_filename>.<extension>
+    if (!extension) {
+      throw runtime_error("an output filename is required");
+    }
+    string filename = input_filename;
+    filename += ".";
+    filename += extension;
+    save_file(filename, data, size);
+
+  } else if (isatty(fileno(stdout)) && (!extension || !is_text_extension(extension))) {
+    // If stdout is a terminal and the data is not known to be text, use
+    // print_data to write the result
+    print_data(stdout, data, size);
+    fflush(stdout);
+
+  } else {
+    // If stdout is not a terminal, write the data as-is
+    fwritex(stdout, data, size);
+    fflush(stdout);
+  }
+}
+
+struct Action;
+unordered_map<string, const Action*> all_actions;
+vector<const Action*> action_order;
+
+struct Action {
+  const char* name;
+  const char* help_text; // May be null
+  function<void(Arguments& args)> run;
+
+  Action(
+      const char* name,
+      const char* help_text,
+      function<void(Arguments& args)> run)
+      : name(name),
+        help_text(help_text),
+        run(run) {
+    auto emplace_ret = all_actions.emplace(this->name, this);
+    if (!emplace_ret.second) {
+      throw logic_error(string_printf("multiple actions with the same name: %s", this->name));
+    }
+    action_order.emplace_back(this);
+  }
+};
+
+Action a_help(
+    "help", "\
   help\n\
-    You\'re reading it now.\n\
+    You\'re reading it now.\n",
+    +[](Arguments&) -> void {
+      print_usage();
+    });
+
+static void a_compress_decompress_fn(Arguments& args) {
+  const auto& action = args.get<string>(0);
+  bool is_prs = ends_with(action, "-prs");
+  bool is_bc0 = ends_with(action, "-bc0");
+  bool is_pr2 = ends_with(action, "-pr2");
+  bool is_decompress = starts_with(action, "decompress-");
+  bool is_big_endian = args.get<bool>("big-endian");
+  bool is_optimal = args.get<bool>("optimal");
+  int8_t compression_level = args.get<int8_t>("compression-level", 0);
+  size_t bytes = args.get<size_t>("bytes", 0);
+  string seed = args.get<string>("seed");
+
+  string data = read_input_data(args);
+
+  size_t pr2_expected_size = 0;
+  if (is_decompress && is_pr2) {
+    auto decrypted = is_big_endian ? decrypt_pr2_data<true>(data) : decrypt_pr2_data<false>(data);
+    pr2_expected_size = decrypted.decompressed_size;
+    data = std::move(decrypted.compressed_data);
+  }
+
+  size_t input_bytes = data.size();
+  auto progress_fn = [&](auto, size_t input_progress, size_t, size_t output_progress) -> void {
+    float progress = static_cast<float>(input_progress * 100) / input_bytes;
+    float size_ratio = static_cast<float>(output_progress * 100) / input_progress;
+    fprintf(stderr, "... %zu/%zu (%g%%) => %zu (%g%%)    \r",
+        input_progress, input_bytes, progress, output_progress, size_ratio);
+  };
+  auto optimal_progress_fn = [&](auto phase, size_t input_progress, size_t input_bytes, size_t output_progress) -> void {
+    const char* phase_name = name_for_enum(phase);
+    float progress = static_cast<float>(input_progress * 100) / input_bytes;
+    float size_ratio = static_cast<float>(output_progress * 100) / input_progress;
+    fprintf(stderr, "... [%s] %zu/%zu (%g%%) => %zu (%g%%)    \r",
+        phase_name, input_progress, input_bytes, progress, output_progress, size_ratio);
+  };
+
+  uint64_t start = now();
+  if (!is_decompress && (is_prs || is_pr2)) {
+    if (is_optimal) {
+      data = prs_compress_optimal(data.data(), data.size(), optimal_progress_fn);
+    } else {
+      data = prs_compress(data, compression_level, progress_fn);
+    }
+  } else if (is_decompress && (is_prs || is_pr2)) {
+    data = prs_decompress(data, bytes, (bytes != 0));
+  } else if (!is_decompress && is_bc0) {
+    if (is_optimal) {
+      data = bc0_compress_optimal(data.data(), data.size(), optimal_progress_fn);
+    } else if (compression_level < 0) {
+      data = bc0_encode(data.data(), data.size());
+    } else {
+      data = bc0_compress(data, progress_fn);
+    }
+  } else if (is_decompress && is_bc0) {
+    data = bc0_decompress(data);
+  } else {
+    throw logic_error("invalid behavior");
+  }
+  uint64_t end = now();
+  string time_str = format_duration(end - start);
+
+  float size_ratio = static_cast<float>(data.size() * 100) / input_bytes;
+  double bytes_per_sec = input_bytes / (static_cast<double>(end - start) / 1000000.0);
+  string bytes_per_sec_str = format_size(bytes_per_sec);
+  log_info("%zu (0x%zX) bytes input => %zu (0x%zX) bytes output (%g%%) in %s (%s / sec)",
+      input_bytes, input_bytes, data.size(), data.size(), size_ratio, time_str.c_str(), bytes_per_sec_str.c_str());
+
+  if (is_decompress && is_pr2 && (data.size() != pr2_expected_size)) {
+    log_warning("Result data size (%zu bytes) does not match expected size from PR2 header (%zu bytes)", data.size(), pr2_expected_size);
+  } else if (!is_decompress && is_pr2) {
+    uint32_t pr2_seed = seed.empty() ? random_object<uint32_t>() : stoul(seed, nullptr, 16);
+    data = is_big_endian
+        ? encrypt_pr2_data<true>(data, input_bytes, pr2_seed)
+        : encrypt_pr2_data<false>(data, input_bytes, pr2_seed);
+  }
+
+  const char* extension;
+  if (is_decompress) {
+    extension = "dec";
+  } else if (is_prs) {
+    extension = "prs";
+  } else if (is_bc0) {
+    extension = "bc0";
+  } else if (is_pr2) {
+    extension = "pr2";
+  } else {
+    throw logic_error("unknown action");
+  }
+  write_output_data(args, data.data(), data.size(), extension);
+}
+
+Action a_compress_prs("compress-prs", nullptr, a_compress_decompress_fn);
+Action a_compress_bc0("compress-bc0", nullptr, a_compress_decompress_fn);
+Action a_compress_pr2("compress-pr2", "\
   compress-prs [INPUT-FILENAME [OUTPUT-FILENAME]]\n\
   compress-pr2 [INPUT-FILENAME [OUTPUT-FILENAME]]\n\
   compress-bc0 [INPUT-FILENAME [OUTPUT-FILENAME]]\n\
@@ -121,22 +310,113 @@ The actions are:\n\
     in valid PRS data which is about 9/8 the size of the input.\n\
     There is also a compressor which produces the absolute smallest output\n\
     size, but uses much more memory and CPU time. To use this compressor, use\n\
-    the --optimal option.\n\
+    the --optimal option.\n",
+    a_compress_decompress_fn);
+Action a_decompress_prs("decompress-prs", nullptr, a_compress_decompress_fn);
+Action a_decompress_bc0("decompress-bc0", nullptr, a_compress_decompress_fn);
+Action a_decompress_pr2("decompress-pr2", "\
   decompress-prs [INPUT-FILENAME [OUTPUT-FILENAME]]\n\
   decompress-pr2 [INPUT-FILENAME [OUTPUT-FILENAME]]\n\
   decompress-bc0 [INPUT-FILENAME [OUTPUT-FILENAME]]\n\
-    Decompress data compressed using the PRS, PR2, or BC0 algorithms.\n\
-  recompress-prs-optimal [INPUT-AND-OUTPUT-FILENAME]\n\
-    Recompress the input PRS file optimally, overwriting it with the optimally-\n\
-    compressed result.\n\
+    Decompress data compressed using the PRS, PR2, or BC0 algorithms.\n",
+    a_compress_decompress_fn);
+
+Action a_prs_size(
+    "prs-size", "\
   prs-size [INPUT-FILENAME]\n\
     Compute the decompressed size of the PRS-compressed input data, but don\'t\n\
-    write the decompressed data anywhere.\n\
+    write the decompressed data anywhere.\n",
+    +[](Arguments& args) {
+      string data = read_input_data(args);
+      size_t input_bytes = data.size();
+      size_t output_bytes = prs_decompress_size(data);
+      log_info("%zu (0x%zX) bytes input => %zu (0x%zX) bytes output",
+          input_bytes, input_bytes, output_bytes, output_bytes);
+    });
+
+Action a_disassemble_prs(
+    "disassemble-prs", nullptr, +[](Arguments& args) {
+      prs_disassemble(stdout, read_input_data(args));
+    });
+Action a_disassemble_bc0(
+    "disassemble-bc0", "\
   disassemble-prs [INPUT-FILENAME]\n\
   disassemble-bc0 [INPUT-FILENAME]\n\
     Write a textual representation of the commands contained in a PRS or BC0\n\
     command stream. The output is written to stdout. This is mainly useful for\n\
-    debugging the compressors and decompressors themselves.\n\
+    debugging the compressors and decompressors themselves.\n",
+    +[](Arguments& args) {
+      bc0_disassemble(stdout, read_input_data(args));
+    });
+
+static void a_encrypt_decrypt_fn(Arguments& args) {
+  bool is_decrypt = (args.get<string>(0) == "decrypt-data");
+  string seed = args.get<string>("seed");
+  bool is_big_endian = args.get<bool>("big-endian");
+  auto version = get_cli_version(args);
+
+  shared_ptr<PSOEncryption> crypt;
+  switch (version) {
+    case Version::DC_NTE:
+    case Version::DC_V1_12_2000_PROTOTYPE:
+    case Version::DC_V1:
+    case Version::DC_V2:
+    case Version::PC_V2:
+    case Version::GC_NTE:
+      crypt.reset(new PSOV2Encryption(stoul(seed, nullptr, 16)));
+      break;
+    case Version::GC_V3:
+    case Version::XB_V3:
+    case Version::GC_EP3_TRIAL_EDITION:
+    case Version::GC_EP3:
+      crypt.reset(new PSOV3Encryption(stoul(seed, nullptr, 16)));
+      break;
+    case Version::BB_V4: {
+      string key_name = args.get<string>("key");
+      if (key_name.empty()) {
+        throw runtime_error("the --key option is required for BB");
+      }
+      seed = parse_data_string(seed, nullptr, ParseDataFlags::ALLOW_FILES);
+      auto key = load_object_file<PSOBBEncryption::KeyFile>("system/blueburst/keys/" + key_name + ".nsk");
+      crypt.reset(new PSOBBEncryption(key, seed.data(), seed.size()));
+      break;
+    }
+    default:
+      throw logic_error("invalid game version");
+  }
+
+  string data = read_input_data(args);
+
+  size_t original_size = data.size();
+  data.resize((data.size() + 7) & (~7), '\0');
+
+  if (is_big_endian) {
+    uint32_t* dwords = reinterpret_cast<uint32_t*>(data.data());
+    for (size_t x = 0; x < (data.size() >> 2); x++) {
+      dwords[x] = bswap32(dwords[x]);
+    }
+  }
+
+  if (is_decrypt) {
+    crypt->decrypt(data.data(), data.size());
+  } else {
+    crypt->encrypt(data.data(), data.size());
+  }
+
+  if (is_big_endian) {
+    uint32_t* dwords = reinterpret_cast<uint32_t*>(data.data());
+    for (size_t x = 0; x < (data.size() >> 2); x++) {
+      dwords[x] = bswap32(dwords[x]);
+    }
+  }
+
+  data.resize(original_size);
+
+  write_output_data(args, data.data(), data.size(), "dec");
+}
+
+Action a_encrypt_data("encrypt-data", nullptr, a_encrypt_decrypt_fn);
+Action a_decrypt_data("decrypt-data", "\
   encrypt-data [INPUT-FILENAME [OUTPUT-FILENAME] [OPTIONS...]]\n\
   decrypt-data [INPUT-FILENAME [OUTPUT-FILENAME] [OPTIONS...]]\n\
     Encrypt or decrypt data using PSO\'s standard network protocol encryption.\n\
@@ -147,7 +427,47 @@ The actions are:\n\
     file in system/blueburst/keys (without the directory or .nsk extension).\n\
     For non-BB ciphers, the --big-endian option applies the cipher masks as\n\
     big-endian instead of little-endian, which is necessary for some GameCube\n\
-    file formats.\n\
+    file formats.\n",
+    a_encrypt_decrypt_fn);
+
+static void a_encrypt_decrypt_trivial_fn(Arguments& args) {
+  bool is_decrypt = (args.get<string>(0) == "decrypt-trivial-data");
+  string seed = args.get<string>("seed");
+
+  if (seed.empty() && !is_decrypt) {
+    throw logic_error("--seed is required when encrypting data");
+  }
+  string data = read_input_data(args);
+  uint8_t basis;
+  if (seed.empty()) {
+    uint8_t best_seed = 0x00;
+    size_t best_seed_score = 0;
+    for (size_t z = 0; z < 0x100; z++) {
+      string decrypted = data;
+      decrypt_trivial_gci_data(decrypted.data(), decrypted.size(), z);
+      size_t score = 0;
+      for (size_t x = 0; x < decrypted.size(); x++) {
+        if (decrypted[x] == '\0') {
+          score++;
+        }
+      }
+      if (score > best_seed_score) {
+        best_seed = z;
+        best_seed_score = score;
+      }
+    }
+    fprintf(stderr, "Basis appears to be %02hhX (%zu zero bytes in output)\n",
+        best_seed, best_seed_score);
+    basis = best_seed;
+  } else {
+    basis = stoul(seed, nullptr, 16);
+  }
+  decrypt_trivial_gci_data(data.data(), data.size(), basis);
+  write_output_data(args, data.data(), data.size(), "dec");
+}
+
+Action a_encrypt_trivial_data("encrypt-trivial-data", nullptr, a_encrypt_decrypt_trivial_fn);
+Action a_decrypt_trivial_data("decrypt-trivial-data", "\
   encrypt-trivial-data --seed=BASIS [INPUT-FILENAME [OUTPUT-FILENAME]]\n\
   decrypt-trivial-data [--seed=BASIS] [INPUT-FILENAME [OUTPUT-FILENAME]]\n\
     Encrypt or decrypt data using the Episode 3 trivial algorithm. When\n\
@@ -155,1002 +475,219 @@ The actions are:\n\
     specified in hexadecimal. When decrypting, BASIS should be specified the\n\
     same way, but if it is not given, newserv will try all possible basis\n\
     values and return the one that results in the greatest number of zero bytes\n\
-    in the output.\n\
+    in the output.\n",
+    a_encrypt_decrypt_trivial_fn);
+
+Action a_decrypt_registry_value(
+    "decrypt-registry-value", nullptr, +[](Arguments& args) {
+      string data = read_input_data(args);
+      string out_data = decrypt_v2_registry_value(data.data(), data.size());
+      write_output_data(args, out_data.data(), out_data.size(), "dec");
+    });
+
+Action a_encrypt_challenge_data(
+    "encrypt-challenge-data", nullptr, +[](Arguments& args) {
+      string data = read_input_data(args);
+      encrypt_challenge_rank_text_t<uint8_t>(data.data(), data.size());
+      write_output_data(args, data.data(), data.size(), "dec");
+    });
+Action a_decrypt_challenge_data(
+    "decrypt-challenge-data", "\
   encrypt-challenge-data [INPUT-FILENAME [OUTPUT-FILENAME]]\n\
   decrypt-challenge-data [INPUT-FILENAME [OUTPUT-FILENAME]]\n\
-    Encrypt or decrypt data using the challenge mode trivial algorithm.\n\
-  encrypt-pc-save --seed=SEED [INPUT-FILENAME [OUTPUT-FILENAME]]\n\
-  decrypt-pc-save --seed=SEED [INPUT-FILENAME [OUTPUT-FILENAME]]\n\
-    Encrypt or decrypt a PSO PC character file (PSO______SYS or PSO______SYD)\n\
-    or Guild Card file (PSO______GUD). SEED should be the serial number\n\
-    associated with the save file, as a 32-bit hexadecimal integer.\n\
+    Encrypt or decrypt data using the challenge mode trivial algorithm.\n",
+    +[](Arguments& args) {
+      string data = read_input_data(args);
+      decrypt_challenge_rank_text_t<uint8_t>(data.data(), data.size());
+      write_output_data(args, data.data(), data.size(), "dec");
+    });
+
+static void a_encrypt_decrypt_gci_save_fn(Arguments& args) {
+  bool is_decrypt = (args.get<string>(0) == "decrypt-gci-save");
+  bool skip_checksum = args.get<bool>("skip-checksum");
+  string seed = args.get<string>("seed");
+  string system_filename = args.get<string>("sys");
+  int64_t override_round2_seed = args.get<int64_t>("round2-seed", -1, Arguments::IntFormat::HEX);
+
+  uint32_t round1_seed;
+  if (!system_filename.empty()) {
+    string system_data = load_file(system_filename);
+    StringReader r(system_data);
+    const auto& header = r.get<PSOGCIFileHeader>();
+    header.check();
+    const auto& system = r.get<PSOGCSystemFile>();
+    round1_seed = system.creation_timestamp;
+  } else if (!seed.empty()) {
+    round1_seed = stoul(seed, nullptr, 16);
+  } else {
+    throw runtime_error("either --sys or --seed must be given");
+  }
+
+  auto data = read_input_data(args);
+  StringReader r(data);
+  const auto& header = r.get<PSOGCIFileHeader>();
+  header.check();
+
+  size_t data_start_offset = r.where();
+
+  auto process_file = [&]<typename StructT>() {
+    if (is_decrypt) {
+      const void* data_section = r.getv(header.data_size);
+      auto decrypted = decrypt_fixed_size_data_section_t<StructT, true>(
+          data_section, header.data_size, round1_seed, skip_checksum, override_round2_seed);
+      *reinterpret_cast<StructT*>(data.data() + data_start_offset) = decrypted;
+    } else {
+      const auto& s = r.get<StructT>();
+      auto encrypted = encrypt_fixed_size_data_section_t<StructT, true>(s, round1_seed);
+      if (data_start_offset + encrypted.size() > data.size()) {
+        throw runtime_error("encrypted result exceeds file size");
+      }
+      memcpy(data.data() + data_start_offset, encrypted.data(), encrypted.size());
+    }
+  };
+
+  if (header.data_size == sizeof(PSOGCGuildCardFile)) {
+    process_file.template operator()<PSOGCGuildCardFile>();
+  } else if (header.is_ep12() && (header.data_size == sizeof(PSOGCCharacterFile))) {
+    process_file.template operator()<PSOGCCharacterFile>();
+  } else if (header.is_ep3() && (header.data_size == sizeof(PSOGCEp3CharacterFile))) {
+    auto* charfile = reinterpret_cast<PSOGCEp3CharacterFile*>(data.data() + data_start_offset);
+    if (!is_decrypt) {
+      for (size_t z = 0; z < charfile->characters.size(); z++) {
+        charfile->characters[z].ep3_config.encrypt(random_object<uint8_t>());
+      }
+    }
+    process_file.template operator()<PSOGCEp3CharacterFile>();
+    if (is_decrypt) {
+      for (size_t z = 0; z < charfile->characters.size(); z++) {
+        charfile->characters[z].ep3_config.decrypt();
+      }
+    }
+  } else {
+    throw runtime_error("unrecognized save type");
+  }
+
+  write_output_data(args, data.data(), data.size(), is_decrypt ? "gcid" : "gci");
+}
+
+Action a_decrypt_gci_save("decrypt-gci-save", nullptr, a_encrypt_decrypt_gci_save_fn);
+Action a_encrypt_gci_save("encrypt-gci-save", "\
   encrypt-gci-save CRYPT-OPTION INPUT-FILENAME [OUTPUT-FILENAME]\n\
   decrypt-gci-save CRYPT-OPTION INPUT-FILENAME [OUTPUT-FILENAME]\n\
     Encrypt or decrypt a character or Guild Card file in GCI format. If\n\
     encrypting, the checksum is also recomputed and stored in the encrypted\n\
     file. CRYPT-OPTION is required; it can be either --sys=SYSTEM-FILENAME\n\
     (specifying the name of the corresponding PSO_SYSTEM .gci file) or\n\
-    --seed=ROUND1-SEED (specified as a 32-bit hexadecimal number).\n\
-  salvage-gci INPUT-FILENAME [--round2] [CRYPT-OPTION] [--bytes=SIZE]\n\
-    Attempt to find either the round-1 or round-2 decryption seed for a\n\
-    corrupted GCI file. If --round2 is given, then CRYPT-OPTION must be given\n\
-    (and should specify either a valid system file or the round1 seed).\n\
-  find-decryption-seed OPTIONS...\n\
-    Perform a brute-force search for a decryption seed of the given data. The\n\
-    ciphertext is specified with the --encrypted=DATA option and the expected\n\
-    plaintext is specified with the --decrypted=DATA option. The plaintext may\n\
-    include unmatched bytes (specified with the Phosg parse_data_string ?\n\
-    operator), but overall it must be the same length as the ciphertext. By\n\
-    default, this option uses PSO V3 encryption, but this can be overridden\n\
-    with --pc. (BB encryption seeds are too long to be searched for with this\n\
-    function.) By default, the number of worker threads is equal to the number\n\
-    of CPU cores in the system, but this can be overridden with the\n\
-    --threads=NUM-THREADS option.\n\
-  decode-sjis [INPUT-FILENAME [OUTPUT-FILENAME]]\n\
-    Apply newserv\'s text decoding algorithm to the input data, producing\n\
-    little-endian UTF-16 output data.\n\
-  decode-gci INPUT-FILENAME [OPTIONS...]\n\
-  decode-vms INPUT-FILENAME [OPTIONS...]\n\
-  decode-dlq INPUT-FILENAME\n\
-  decode-qst INPUT-FILENAME\n\
-    Decode the input quest file into a compressed, unencrypted .bin or .dat\n\
-    file (or in the case of decode-qst, both a .bin and a .dat file).\n\
-    INPUT-FILENAME must be specified, but there is no OUTPUT-FILENAME; the\n\
-    output is written to INPUT-FILENAME.dec (or .bin, or .dat). If the output\n\
-    is a .dec file, you can rename it to .bin or .dat manually. DLQ and QST\n\
-    decoding are relatively simple operations, but GCI and VMS decoding can be\n\
-    computationally expensive if the file is encrypted and doesn\'t contain an\n\
-    embedded seed. If you know the player\'s serial number who generated the\n\
-    GCI or VMS file, use the --seed=SEED option and give the serial number (as\n\
-    a hex-encoded 32-bit integer). If you don\'t know the serial number,\n\
-    newserv will find it via a brute-force search, which will take a long time.\n\
-  encode-qst INPUT-FILENAME [OUTPUT-FILENAME] [OPTIONS...]\n\
-    Encode the input quest file (in .bin/.dat format) into a .qst file. If\n\
-    --download is given, generates a download .qst instead of an online .qst.\n\
-    Specify the quest\'s game version with one of the --dc-nte, --dc-v1,\n\
-    --dc-v2, --pc, --gc-nte, --gc, --gc-ep3, --xb, or --bb options.\n\
-  disassemble-quest-script [INPUT-FILENAME [OUTPUT-FILENAME]]\n\
-    Disassemble the input quest script (.bin file) into a text representation\n\
-    of the commands and metadata it contains. Specify the quest\'s game version\n\
-    with one of the --dc-nte, --dc-v1, --dc-v2, --pc, --gc-nte, --gc, --gc-ep3,\n\
-    --xb, or --bb options.\n\
-  disassemble-quest-map [INPUT-FILENAME [OUTPUT-FILENAME]]\n\
-    Disassemble the input quest map (.dat file) into a text representation of\n\
-    the data it contains. Specify the quest\'s game version with one of the\n\
-    --dc-nte, --dc-v1, --dc-v2, --pc, --gc-nte, --gc, --xb, or --bb options.\n\
-  cat-client ADDR:PORT\n\
-    Connect to the given server and simulate a PSO client. newserv will then\n\
-    print all the received commands to stdout, and forward any commands typed\n\
-    into stdin to the remote server. It is assumed that the input and output\n\
-    are terminals, so all commands are hex-encoded. The --patch, --dc, --pc,\n\
-    --gc, and --bb options can be used to select the command format and\n\
-    encryption. If --bb is used, the --key=KEY-NAME option is also required (as\n\
-    in decrypt-data above).\n\
-  show-ep3-maps\n\
-    Print the Episode 3 maps from the system/ep3 directory in a (sort of)\n\
-    human-readable format.\n\
-  show-ep3-cards\n\
-    Print the Episode 3 card definitions from the system/ep3 directory in a\n\
-    human-readable format.\n\
-  describe-item DATA\n\
-    Print the name of the item given by DATA (in hex). DATA must not contain\n\
-    spaces. If DATA is 20 bytes, newserv assumes it contains an unused item ID\n\
-    field; if it is fewer bytes, up to 16 bytes are used.\n\
-  encode-item DESCRIPTION [--pc|--bb]\n\
-    Encode the description of an item into its corresponding ItemData (hex)\n\
-    representation. If DESCRIPTION contains spaces, it must be quoted, such as\n\
-    \"L&K14 COMBAT +10 0/10/15/0/35\".\n\
-  replay-log [INPUT-FILENAME] [OPTIONS...]\n\
-    Replay a terminal log as if it were a client session. input-filename may be\n\
-    specified for this option. This is used for regression testing, to make\n\
-    sure client sessions are repeatable and code changes don\'t affect existing\n\
-    (working) functionality.\n\
-  extract-afs [INPUT-FILENAME] [--big-endian]\n\
-  extract-gsl [INPUT-FILENAME] [--big-endian]\n\
-  extract-bml [INPUT-FILENAME] [--big-endian]\n\
-    Extract all files from an AFS, GSL, or BML archive into the current\n\
-    directory. input-filename may be specified. If output-filename is\n\
-    specified, then it is treated as a prefix which is prepended to the\n\
-    filename of each file contained in the archive. If --big-endian is given,\n\
-    the archive header is read in GameCube format; otherwise it is read in\n\
-    PC/BB format.\n\
-  decode-text-archive [INPUT-FILENAME [OUTPUT-FILENAME]]\n\
-  encode-text-archive [INPUT-FILENAME [OUTPUT-FILENAME]]\n\
-    Decode a text archive (e.g. TextEnglish.pr2) to JSON for easy editing, or\n\
-    encode a JSON file to a text archive.\n\
-  decode-unicode-text-set [INPUT-FILENAME [OUTPUT-FILENAME]]\n\
-  encode-unicode-text-set [INPUT-FILENAME [OUTPUT-FILENAME]]\n\
-    Decode a Unicode text set (e.g. unitxt_e.prs) to JSON for easy editing, or\n\
-    encode a JSON file to a Unicode text set.\n\
-  convert-rare-item-set INPUT-FILENAME [OUTPUT-FILENAME]\n\
-    If OUTPUT-FILENAME is not given, print the contents of a rare item table in\n\
-    a human-readable format. Otherwise, convert the input rare item set to a\n\
-    different format and write it to OUTPUT-FILENAME. Both filenames must end\n\
-    in one of the following extensions:\n\
-      .json (newserv JSON rare item table)\n\
-      .gsl (PSO BB little-endian GSL archive)\n\
-      .gslb (PSO GC big-endian GSL archive)\n\
-      .afs (PSO V2 little-endian AFS archive)\n\
-      .rel (Schtserv rare table; cannot be used in output filename)\n\
-  generate-dc-serial-number [--domain=DOMAIN] [--subdomain=SUBDOMAIN]\n\
-    Generate a PSO DC serial number. DOMAIN should be 0 for Japanese, 1 for\n\
-    USA, or 2 for Europe. SUBDOMAIN should be 0 for v1, or 1 for v2.\n\
-  generate-all-dc-serial-numbers\n\
-    Generate all possible PSO DC serial numbers.\n\
-  inspect-dc-serial-number SERIAL-NUMBER\n\
-    Show which domain and subdomain the serial number belongs to. (As with\n\
-    generate-dc-serial-number, described above, this will tell you which PSO\n\
-    version it is valid for.)\n\
-  dc-serial-number-speed-test\n\
-    Run a speed test of the two DC serial number validation functions.\n\
-\n\
-A few options apply to multiple modes described above:\n\
-  --parse-data\n\
-      For modes that take input (from a file or from stdin), parse the input as\n\
-      a hex string before encrypting/decoding/etc.\n\
-  --config=FILENAME\n\
-      Use this file instead of system/config.json.\n\
-",
-      stderr);
-}
+    --seed=ROUND1-SEED (specified as a 32-bit hexadecimal number).\n",
+    a_encrypt_decrypt_gci_save_fn);
 
-enum class Behavior {
-  RUN_SERVER = 0,
-  COMPRESS_PRS,
-  DECOMPRESS_PRS,
-  RECOMPRESS_PRS_OPTIMAL,
-  COMPRESS_PR2,
-  DECOMPRESS_PR2,
-  COMPRESS_BC0,
-  DECOMPRESS_BC0,
-  PRS_SIZE,
-  DISASSEMBLE_PRS,
-  DISASSEMBLE_BC0,
-  ENCRYPT_DATA,
-  DECRYPT_DATA,
-  ENCRYPT_TRIVIAL_DATA,
-  DECRYPT_TRIVIAL_DATA,
-  DECRYPT_REGISTRY_VALUE,
-  ENCRYPT_CHALLENGE_DATA,
-  DECRYPT_CHALLENGE_DATA,
-  ENCRYPT_GCI_SAVE,
-  DECRYPT_GCI_SAVE,
-  ENCRYPT_PC_SAVE,
-  DECRYPT_PC_SAVE,
-  ENCRYPT_SAVE_DATA,
-  DECRYPT_SAVE_DATA,
-  DECODE_GCI_SNAPSHOT,
-  ENCODE_GVM,
-  FIND_DECRYPTION_SEED,
-  SALVAGE_GCI,
-  DECODE_QUEST_FILE,
-  ENCODE_QST,
-  DISASSEMBLE_QUEST_SCRIPT,
-  DISASSEMBLE_QUEST_MAP,
-  EXTRACT_AFS,
-  EXTRACT_GSL,
-  EXTRACT_BML,
-  DECODE_TEXT_ARCHIVE,
-  ENCODE_TEXT_ARCHIVE,
-  DECODE_UNICODE_TEXT_SET,
-  ENCODE_UNICODE_TEXT_SET,
-  CONVERT_RARE_ITEM_SET,
-  SHOW_EP3_MAPS,
-  SHOW_EP3_CARDS,
-  GENERATE_EP3_CARDS_HTML,
-  DESCRIBE_ITEM,
-  ENCODE_ITEM,
-  PARSE_OBJECT_GRAPH,
-  REPLAY_LOG,
-  CAT_CLIENT,
-  GENERATE_DC_SERIAL_NUMBER,
-  GENERATE_ALL_DC_SERIAL_NUMBERS,
-  INSPECT_DC_SERIAL_NUMBER,
-  DC_SERIAL_NUMBER_SPEED_TEST,
-  AR_CODE_TRANSLATOR,
-};
+static void a_encrypt_decrypt_pc_save_fn(Arguments& args) {
+  bool is_decrypt = (args.get<string>(0) == "decrypt-pc-save");
+  bool skip_checksum = args.get<bool>("skip-checksum");
+  string seed = args.get<string>("seed");
+  string system_filename = args.get<string>("sys");
+  int64_t override_round2_seed = args.get<int64_t>("round2-seed", -1, Arguments::IntFormat::HEX);
 
-static bool behavior_takes_input_filename(Behavior b) {
-  return (b == Behavior::COMPRESS_PRS) ||
-      (b == Behavior::DECOMPRESS_PRS) ||
-      (b == Behavior::RECOMPRESS_PRS_OPTIMAL) ||
-      (b == Behavior::COMPRESS_PR2) ||
-      (b == Behavior::DECOMPRESS_PR2) ||
-      (b == Behavior::COMPRESS_BC0) ||
-      (b == Behavior::DECOMPRESS_BC0) ||
-      (b == Behavior::PRS_SIZE) ||
-      (b == Behavior::DISASSEMBLE_PRS) ||
-      (b == Behavior::DISASSEMBLE_BC0) ||
-      (b == Behavior::ENCRYPT_DATA) ||
-      (b == Behavior::DECRYPT_DATA) ||
-      (b == Behavior::ENCRYPT_TRIVIAL_DATA) ||
-      (b == Behavior::DECRYPT_TRIVIAL_DATA) ||
-      (b == Behavior::DECRYPT_REGISTRY_VALUE) ||
-      (b == Behavior::ENCRYPT_CHALLENGE_DATA) ||
-      (b == Behavior::DECRYPT_CHALLENGE_DATA) ||
-      (b == Behavior::ENCRYPT_GCI_SAVE) ||
-      (b == Behavior::DECRYPT_GCI_SAVE) ||
-      (b == Behavior::ENCRYPT_PC_SAVE) ||
-      (b == Behavior::DECRYPT_PC_SAVE) ||
-      (b == Behavior::ENCRYPT_SAVE_DATA) ||
-      (b == Behavior::DECRYPT_SAVE_DATA) ||
-      (b == Behavior::DECODE_GCI_SNAPSHOT) ||
-      (b == Behavior::ENCODE_GVM) ||
-      (b == Behavior::SALVAGE_GCI) ||
-      (b == Behavior::DECODE_QUEST_FILE) ||
-      (b == Behavior::ENCODE_QST) ||
-      (b == Behavior::DISASSEMBLE_QUEST_SCRIPT) ||
-      (b == Behavior::DISASSEMBLE_QUEST_MAP) ||
-      (b == Behavior::CONVERT_RARE_ITEM_SET) ||
-      (b == Behavior::EXTRACT_AFS) ||
-      (b == Behavior::EXTRACT_GSL) ||
-      (b == Behavior::EXTRACT_BML) ||
-      (b == Behavior::DECODE_TEXT_ARCHIVE) ||
-      (b == Behavior::ENCODE_TEXT_ARCHIVE) ||
-      (b == Behavior::DECODE_UNICODE_TEXT_SET) ||
-      (b == Behavior::ENCODE_UNICODE_TEXT_SET) ||
-      (b == Behavior::DESCRIBE_ITEM) ||
-      (b == Behavior::ENCODE_ITEM) ||
-      (b == Behavior::PARSE_OBJECT_GRAPH) ||
-      (b == Behavior::REPLAY_LOG) ||
-      (b == Behavior::CAT_CLIENT) ||
-      (b == Behavior::INSPECT_DC_SERIAL_NUMBER) ||
-      (b == Behavior::AR_CODE_TRANSLATOR);
-}
+  if (seed.empty()) {
+    throw runtime_error("--seed must be given to specify the serial number");
+  }
+  uint32_t round1_seed = stoul(seed, nullptr, 16);
 
-static bool behavior_takes_output_filename(Behavior b) {
-  return (b == Behavior::COMPRESS_PRS) ||
-      (b == Behavior::DECOMPRESS_PRS) ||
-      (b == Behavior::COMPRESS_PR2) ||
-      (b == Behavior::DECOMPRESS_PR2) ||
-      (b == Behavior::COMPRESS_BC0) ||
-      (b == Behavior::DECOMPRESS_BC0) ||
-      (b == Behavior::ENCRYPT_DATA) ||
-      (b == Behavior::DECRYPT_DATA) ||
-      (b == Behavior::ENCRYPT_TRIVIAL_DATA) ||
-      (b == Behavior::DECRYPT_TRIVIAL_DATA) ||
-      (b == Behavior::DECRYPT_REGISTRY_VALUE) ||
-      (b == Behavior::ENCRYPT_CHALLENGE_DATA) ||
-      (b == Behavior::DECRYPT_CHALLENGE_DATA) ||
-      (b == Behavior::ENCRYPT_GCI_SAVE) ||
-      (b == Behavior::DECRYPT_GCI_SAVE) ||
-      (b == Behavior::ENCRYPT_PC_SAVE) ||
-      (b == Behavior::DECRYPT_PC_SAVE) ||
-      (b == Behavior::ENCRYPT_SAVE_DATA) ||
-      (b == Behavior::DECRYPT_SAVE_DATA) ||
-      (b == Behavior::DECODE_GCI_SNAPSHOT) ||
-      (b == Behavior::ENCODE_GVM) ||
-      (b == Behavior::ENCODE_QST) ||
-      (b == Behavior::DISASSEMBLE_QUEST_SCRIPT) ||
-      (b == Behavior::DISASSEMBLE_QUEST_MAP) ||
-      (b == Behavior::CONVERT_RARE_ITEM_SET) ||
-      (b == Behavior::EXTRACT_AFS) ||
-      (b == Behavior::EXTRACT_GSL) ||
-      (b == Behavior::EXTRACT_BML) ||
-      (b == Behavior::DECODE_TEXT_ARCHIVE) ||
-      (b == Behavior::ENCODE_TEXT_ARCHIVE) ||
-      (b == Behavior::DECODE_UNICODE_TEXT_SET) ||
-      (b == Behavior::ENCODE_UNICODE_TEXT_SET);
-}
-
-int main(int argc, char** argv) {
-  Behavior behavior = Behavior::RUN_SERVER;
-  GameVersion cli_version = GameVersion::GC;
-  QuestScriptVersion cli_quest_version = QuestScriptVersion::GC_V3;
-  QuestFileFormat quest_file_type = QuestFileFormat::BIN_DAT_GCI;
-  string seed;
-  string key_file_name;
-  const char* config_filename = "system/config.json";
-  bool parse_data = false;
-  bool big_endian = false;
-  bool skip_little_endian = false;
-  bool skip_big_endian = false;
-  bool round2 = false;
-  bool skip_checksum = false;
-  uint64_t override_round2_seed = 0xFFFFFFFFFFFFFFFF;
-  size_t offset = 0;
-  size_t stride = 1;
-  size_t num_threads = 0;
-  size_t bytes = 0;
-  ssize_t compression_level = 0;
-  bool expect_decompressed = false;
-  bool compress_optimal = false;
-  bool download = false;
-  bool one_line = false;
-  const char* find_decryption_seed_ciphertext = nullptr;
-  vector<const char*> find_decryption_seed_plaintexts;
-  const char* input_filename = nullptr;
-  const char* output_filename = nullptr;
-  const char* system_filename = nullptr;
-  bool replay_require_basic_credentials = false;
-  uint32_t root_object_address = 0;
-  uint8_t domain = 1;
-  uint8_t subdomain = 0xFF;
-  for (int x = 1; x < argc; x++) {
-    if (!strcmp(argv[x], "--help")) {
-      print_usage();
-      return 0;
-    } else if (!strncmp(argv[x], "--threads=", 10)) {
-      num_threads = strtoull(&argv[x][10], nullptr, 0);
-    } else if (!strcmp(argv[x], "--one-line")) {
-      one_line = true;
-    } else if (!strcmp(argv[x], "--download")) {
-      download = true;
-    } else if (!strcmp(argv[x], "--patch")) {
-      cli_version = GameVersion::PATCH;
-      cli_quest_version = QuestScriptVersion::PC_V2;
-    } else if (!strcmp(argv[x], "--dc-nte")) {
-      cli_version = GameVersion::DC;
-      cli_quest_version = QuestScriptVersion::DC_NTE;
-    } else if (!strcmp(argv[x], "--dc-v1")) {
-      cli_version = GameVersion::DC;
-      cli_quest_version = QuestScriptVersion::DC_V1;
-    } else if (!strcmp(argv[x], "--dc-v2") || !strcmp(argv[x], "--dc")) {
-      cli_version = GameVersion::DC;
-      cli_quest_version = QuestScriptVersion::DC_V2;
-    } else if (!strcmp(argv[x], "--pc")) {
-      cli_version = GameVersion::PC;
-      cli_quest_version = QuestScriptVersion::PC_V2;
-    } else if (!strcmp(argv[x], "--gc")) {
-      cli_version = GameVersion::GC;
-      cli_quest_version = QuestScriptVersion::GC_V3;
-    } else if (!strcmp(argv[x], "--gc-nte")) {
-      cli_version = GameVersion::GC;
-      cli_quest_version = QuestScriptVersion::GC_NTE;
-    } else if (!strcmp(argv[x], "--gc-ep3")) {
-      cli_version = GameVersion::GC;
-      cli_quest_version = QuestScriptVersion::GC_EP3;
-    } else if (!strcmp(argv[x], "--xb")) {
-      cli_version = GameVersion::XB;
-      cli_quest_version = QuestScriptVersion::XB_V3;
-    } else if (!strcmp(argv[x], "--bb")) {
-      cli_version = GameVersion::BB;
-      cli_quest_version = QuestScriptVersion::BB_V4;
-    } else if (!strncmp(argv[x], "--compression-level=", 20)) {
-      compression_level = strtoll(&argv[x][20], nullptr, 0);
-    } else if (!strcmp(argv[x], "--optimal")) {
-      compress_optimal = true;
-    } else if (!strcmp(argv[x], "--decompressed")) {
-      expect_decompressed = true;
-    } else if (!strcmp(argv[x], "--round2")) {
-      round2 = true;
-    } else if (!strncmp(argv[x], "--bytes=", 8)) {
-      bytes = strtoull(&argv[x][8], nullptr, 0);
-    } else if (!strncmp(argv[x], "--offset=", 9)) {
-      offset = strtoull(&argv[x][9], nullptr, 0);
-    } else if (!strncmp(argv[x], "--stride=", 9)) {
-      stride = strtoull(&argv[x][9], nullptr, 0);
-    } else if (!strcmp(argv[x], "--skip-checksum")) {
-      skip_checksum = true;
-    } else if (!strncmp(argv[x], "--seed=", 7)) {
-      seed = &argv[x][7];
-    } else if (!strncmp(argv[x], "--round2-seed=", 14)) {
-      override_round2_seed = strtoull(&argv[x][14], nullptr, 16);
-    } else if (!strncmp(argv[x], "--key=", 6)) {
-      key_file_name = &argv[x][6];
-    } else if (!strncmp(argv[x], "--sys=", 6)) {
-      system_filename = &argv[x][6];
-    } else if (!strncmp(argv[x], "--domain=", 9)) {
-      domain = atoi(&argv[x][9]);
-    } else if (!strncmp(argv[x], "--subdomain=", 12)) {
-      subdomain = atoi(&argv[x][12]);
-    } else if (!strncmp(argv[x], "--encrypted=", 12)) {
-      find_decryption_seed_ciphertext = &argv[x][12];
-    } else if (!strncmp(argv[x], "--decrypted=", 12)) {
-      find_decryption_seed_plaintexts.emplace_back(&argv[x][12]);
-    } else if (!strcmp(argv[x], "--parse-data")) {
-      parse_data = true;
-    } else if (!strcmp(argv[x], "--big-endian")) {
-      big_endian = true;
-    } else if (!strcmp(argv[x], "--skip-little-endian")) {
-      skip_little_endian = true;
-    } else if (!strcmp(argv[x], "--skip-big-endian")) {
-      skip_big_endian = true;
-    } else if (!strcmp(argv[x], "--require-basic-credentials")) {
-      replay_require_basic_credentials = true;
-    } else if (!strncmp(argv[x], "--root-addr=", 12)) {
-      root_object_address = strtoul(&argv[x][12], nullptr, 16);
-    } else if (!strncmp(argv[x], "--config=", 9)) {
-      config_filename = &argv[x][9];
-
-    } else if (!strcmp(argv[x], "-") || argv[x][0] != '-') {
-      if (behavior == Behavior::RUN_SERVER) {
-        if (!strcmp(argv[x], "help")) {
-          print_usage();
-          return 0;
-        }
-        if (!strcmp(argv[x], "compress-prs")) {
-          behavior = Behavior::COMPRESS_PRS;
-        } else if (!strcmp(argv[x], "decompress-prs")) {
-          behavior = Behavior::DECOMPRESS_PRS;
-        } else if (!strcmp(argv[x], "recompress-prs-optimal")) {
-          behavior = Behavior::RECOMPRESS_PRS_OPTIMAL;
-        } else if (!strcmp(argv[x], "compress-pr2")) {
-          behavior = Behavior::COMPRESS_PR2;
-        } else if (!strcmp(argv[x], "decompress-pr2")) {
-          behavior = Behavior::DECOMPRESS_PR2;
-        } else if (!strcmp(argv[x], "compress-bc0")) {
-          behavior = Behavior::COMPRESS_BC0;
-        } else if (!strcmp(argv[x], "decompress-bc0")) {
-          behavior = Behavior::DECOMPRESS_BC0;
-        } else if (!strcmp(argv[x], "prs-size")) {
-          behavior = Behavior::PRS_SIZE;
-        } else if (!strcmp(argv[x], "disassemble-prs")) {
-          behavior = Behavior::DISASSEMBLE_PRS;
-        } else if (!strcmp(argv[x], "disassemble-bc0")) {
-          behavior = Behavior::DISASSEMBLE_BC0;
-        } else if (!strcmp(argv[x], "encrypt-data")) {
-          behavior = Behavior::ENCRYPT_DATA;
-        } else if (!strcmp(argv[x], "decrypt-data")) {
-          behavior = Behavior::DECRYPT_DATA;
-        } else if (!strcmp(argv[x], "encrypt-trivial-data")) {
-          behavior = Behavior::ENCRYPT_TRIVIAL_DATA;
-        } else if (!strcmp(argv[x], "decrypt-trivial-data")) {
-          behavior = Behavior::DECRYPT_TRIVIAL_DATA;
-        } else if (!strcmp(argv[x], "decrypt-registry-value")) {
-          behavior = Behavior::DECRYPT_REGISTRY_VALUE;
-        } else if (!strcmp(argv[x], "encrypt-challenge-data")) {
-          behavior = Behavior::ENCRYPT_CHALLENGE_DATA;
-        } else if (!strcmp(argv[x], "decrypt-challenge-data")) {
-          behavior = Behavior::DECRYPT_CHALLENGE_DATA;
-        } else if (!strcmp(argv[x], "decrypt-gci-save")) {
-          behavior = Behavior::DECRYPT_GCI_SAVE;
-        } else if (!strcmp(argv[x], "encrypt-gci-save")) {
-          behavior = Behavior::ENCRYPT_GCI_SAVE;
-        } else if (!strcmp(argv[x], "decrypt-pc-save")) {
-          behavior = Behavior::DECRYPT_PC_SAVE;
-        } else if (!strcmp(argv[x], "encrypt-pc-save")) {
-          behavior = Behavior::ENCRYPT_PC_SAVE;
-        } else if (!strcmp(argv[x], "decrypt-save-data")) {
-          behavior = Behavior::DECRYPT_SAVE_DATA;
-        } else if (!strcmp(argv[x], "encrypt-save-data")) {
-          behavior = Behavior::ENCRYPT_SAVE_DATA;
-        } else if (!strcmp(argv[x], "decode-gci-snapshot")) {
-          behavior = Behavior::DECODE_GCI_SNAPSHOT;
-        } else if (!strcmp(argv[x], "encode-gvm")) {
-          behavior = Behavior::ENCODE_GVM;
-        } else if (!strcmp(argv[x], "find-decryption-seed")) {
-          behavior = Behavior::FIND_DECRYPTION_SEED;
-        } else if (!strcmp(argv[x], "salvage-gci")) {
-          behavior = Behavior::SALVAGE_GCI;
-        } else if (!strcmp(argv[x], "decode-gci")) {
-          behavior = Behavior::DECODE_QUEST_FILE;
-          quest_file_type = QuestFileFormat::BIN_DAT_GCI;
-        } else if (!strcmp(argv[x], "decode-vms")) {
-          behavior = Behavior::DECODE_QUEST_FILE;
-          quest_file_type = QuestFileFormat::BIN_DAT_VMS;
-        } else if (!strcmp(argv[x], "decode-dlq")) {
-          behavior = Behavior::DECODE_QUEST_FILE;
-          quest_file_type = QuestFileFormat::BIN_DAT_DLQ;
-        } else if (!strcmp(argv[x], "decode-qst")) {
-          behavior = Behavior::DECODE_QUEST_FILE;
-          quest_file_type = QuestFileFormat::QST;
-        } else if (!strcmp(argv[x], "encode-qst")) {
-          behavior = Behavior::ENCODE_QST;
-        } else if (!strcmp(argv[x], "disassemble-quest-script")) {
-          behavior = Behavior::DISASSEMBLE_QUEST_SCRIPT;
-        } else if (!strcmp(argv[x], "disassemble-quest-map")) {
-          behavior = Behavior::DISASSEMBLE_QUEST_MAP;
-        } else if (!strcmp(argv[x], "cat-client")) {
-          behavior = Behavior::CAT_CLIENT;
-        } else if (!strcmp(argv[x], "convert-rare-item-set")) {
-          behavior = Behavior::CONVERT_RARE_ITEM_SET;
-        } else if (!strcmp(argv[x], "show-ep3-maps")) {
-          behavior = Behavior::SHOW_EP3_MAPS;
-        } else if (!strcmp(argv[x], "show-ep3-cards")) {
-          behavior = Behavior::SHOW_EP3_CARDS;
-        } else if (!strcmp(argv[x], "generate-ep3-cards-html")) {
-          behavior = Behavior::GENERATE_EP3_CARDS_HTML;
-        } else if (!strcmp(argv[x], "describe-item")) {
-          behavior = Behavior::DESCRIBE_ITEM;
-        } else if (!strcmp(argv[x], "encode-item")) {
-          behavior = Behavior::ENCODE_ITEM;
-        } else if (!strcmp(argv[x], "parse-object-graph")) {
-          behavior = Behavior::PARSE_OBJECT_GRAPH;
-        } else if (!strcmp(argv[x], "replay-log")) {
-          behavior = Behavior::REPLAY_LOG;
-        } else if (!strcmp(argv[x], "extract-afs")) {
-          behavior = Behavior::EXTRACT_AFS;
-        } else if (!strcmp(argv[x], "extract-gsl")) {
-          behavior = Behavior::EXTRACT_GSL;
-        } else if (!strcmp(argv[x], "extract-bml")) {
-          behavior = Behavior::EXTRACT_BML;
-        } else if (!strcmp(argv[x], "decode-text-archive")) {
-          behavior = Behavior::DECODE_TEXT_ARCHIVE;
-        } else if (!strcmp(argv[x], "encode-text-archive")) {
-          behavior = Behavior::ENCODE_TEXT_ARCHIVE;
-        } else if (!strcmp(argv[x], "decode-unicode-text-set")) {
-          behavior = Behavior::DECODE_UNICODE_TEXT_SET;
-        } else if (!strcmp(argv[x], "encode-unicode-text-set")) {
-          behavior = Behavior::ENCODE_UNICODE_TEXT_SET;
-        } else if (!strcmp(argv[x], "generate-dc-serial-number")) {
-          behavior = Behavior::GENERATE_DC_SERIAL_NUMBER;
-        } else if (!strcmp(argv[x], "generate-all-dc-serial-numbers")) {
-          behavior = Behavior::GENERATE_ALL_DC_SERIAL_NUMBERS;
-        } else if (!strcmp(argv[x], "inspect-dc-serial-number")) {
-          behavior = Behavior::INSPECT_DC_SERIAL_NUMBER;
-        } else if (!strcmp(argv[x], "dc-serial-number-speed-test")) {
-          behavior = Behavior::DC_SERIAL_NUMBER_SPEED_TEST;
-        } else if (!strcmp(argv[x], "ar-code-translator")) {
-          behavior = Behavior::AR_CODE_TRANSLATOR;
-        } else {
-          throw invalid_argument(string_printf("unknown command: %s (try --help)", argv[x]));
-        }
-      } else if (!input_filename && behavior_takes_input_filename(behavior)) {
-        input_filename = argv[x];
-      } else if (!output_filename && behavior_takes_output_filename(behavior)) {
-        output_filename = argv[x];
-      } else {
-        throw invalid_argument(string_printf("unknown option: %s (try --help)", argv[x]));
-      }
-
+  auto data = read_input_data(args);
+  if (data.size() == sizeof(PSOPCGuildCardFile)) {
+    if (is_decrypt) {
+      data = decrypt_fixed_size_data_section_s<false>(
+          data.data(), offsetof(PSOPCGuildCardFile, end_padding), round1_seed, skip_checksum, override_round2_seed);
     } else {
-      throw invalid_argument(string_printf("unknown option: %s (try --help)", argv[x]));
+      data = encrypt_fixed_size_data_section_s<false>(
+          data.data(), offsetof(PSOPCGuildCardFile, end_padding), round1_seed);
     }
+    data.resize((sizeof(PSOPCGuildCardFile) + 0x1FF) & (~0x1FF), '\0');
+  } else if (data.size() == sizeof(PSOPCCharacterFile)) {
+    PSOPCCharacterFile* charfile = reinterpret_cast<PSOPCCharacterFile*>(data.data());
+    if (is_decrypt) {
+      for (size_t z = 0; z < charfile->entries.size(); z++) {
+        if (charfile->entries[z].present) {
+          try {
+            charfile->entries[z].character = decrypt_fixed_size_data_section_t<PSOPCCharacterFile::CharacterEntry::Character, false>(
+                &charfile->entries[z].character, sizeof(charfile->entries[z].character), round1_seed, skip_checksum, override_round2_seed);
+          } catch (const exception& e) {
+            fprintf(stderr, "warning: cannot decrypt character %zu: %s\n", z, e.what());
+          }
+        }
+      }
+    } else {
+      for (size_t z = 0; z < charfile->entries.size(); z++) {
+        if (charfile->entries[z].present) {
+          string encrypted = encrypt_fixed_size_data_section_t<PSOPCCharacterFile::CharacterEntry::Character, false>(
+              charfile->entries[z].character, round1_seed);
+          if (encrypted.size() != sizeof(PSOPCCharacterFile::CharacterEntry::Character)) {
+            throw logic_error("incorrect encrypted result size");
+          }
+          charfile->entries[z].character = *reinterpret_cast<const PSOPCCharacterFile::CharacterEntry::Character*>(encrypted.data());
+        }
+      }
+    }
+  } else if (data.size() == sizeof(PSOPCCreationTimeFile)) {
+    throw runtime_error("the PSO______FLS file is not encrypted; it is just random data");
+  } else if (data.size() == sizeof(PSOPCSystemFile)) {
+    throw runtime_error("the PSO______COM file is not encrypted");
+  } else {
+    throw runtime_error("unknown save file type");
   }
 
-  auto read_input_data = [&]() -> string {
-    string data;
-    if (input_filename && strcmp(input_filename, "-")) {
-      data = load_file(input_filename);
-    } else {
-      data = read_all(stdin);
-    }
-    if (parse_data) {
-      data = parse_data_string(data, nullptr, ParseDataFlags::ALLOW_FILES);
-    }
-    return data;
-  };
+  write_output_data(args, data.data(), data.size(), "dec");
+}
 
-  auto write_output_data = [&](const void* data, size_t size) {
-    if (output_filename && strcmp(output_filename, "-")) {
-      // If the output is to a specified file, write it there
-      save_file(output_filename, data, size);
+Action a_decrypt_pc_save("decrypt-pc-save", nullptr, a_encrypt_decrypt_pc_save_fn);
+Action a_encrypt_pc_save("encrypt-pc-save", "\
+  encrypt-pc-save --seed=SEED [INPUT-FILENAME [OUTPUT-FILENAME]]\n\
+  decrypt-pc-save --seed=SEED [INPUT-FILENAME [OUTPUT-FILENAME]]\n\
+    Encrypt or decrypt a PSO PC character file (PSO______SYS or PSO______SYD)\n\
+    or Guild Card file (PSO______GUD). SEED should be the serial number\n\
+    associated with the save file, as a 32-bit hexadecimal integer.\n",
+    a_encrypt_decrypt_pc_save_fn);
 
-    } else if (!output_filename && input_filename && strcmp(input_filename, "-")) {
-      // If no output filename is given and an input filename is given, write to
-      // <input-filename>.dec (or an appropriate extension, if it can be
-      // autodetected)
-      string filename = input_filename;
-      if (behavior == Behavior::COMPRESS_PRS) {
-        if (ends_with(filename, ".bind") ||
-            ends_with(filename, ".datd") ||
-            ends_with(filename, ".mnmd")) {
-          filename.resize(filename.size() - 1);
-        } else {
-          filename += ".prs";
-        }
-      } else if (behavior == Behavior::DECOMPRESS_PRS) {
-        if (ends_with(filename, ".bin") ||
-            ends_with(filename, ".dat") ||
-            ends_with(filename, ".mnm")) {
-          filename += "d";
-        } else {
-          filename += ".dec";
-        }
-      } else if (behavior == Behavior::ENCRYPT_GCI_SAVE) {
-        if (ends_with(filename, ".gcid")) {
-          filename.resize(filename.size() - 1);
-        } else {
-          filename += ".gci";
-        }
-      } else if (behavior == Behavior::DECRYPT_GCI_SAVE) {
-        if (ends_with(filename, ".gci")) {
-          filename += "d";
-        } else {
-          filename += ".dec";
-        }
-      } else if (behavior == Behavior::DECODE_GCI_SNAPSHOT) {
-        filename += ".bmp";
-      } else if (behavior == Behavior::ENCODE_GVM) {
-        filename += ".gvm";
-      } else if ((behavior == Behavior::DECODE_TEXT_ARCHIVE) || (behavior == Behavior::DECODE_UNICODE_TEXT_SET)) {
-        filename += ".json";
-      } else if ((behavior == Behavior::DISASSEMBLE_QUEST_SCRIPT) || (behavior == Behavior::DISASSEMBLE_QUEST_MAP)) {
-        filename += ".txt";
-      } else {
-        filename += ".dec";
-      }
-      save_file(filename, data, size);
+static void a_encrypt_decrypt_save_data_fn(Arguments& args) {
+  bool is_decrypt = (args.get<string>(0) == "decrypt-save-data");
+  bool skip_checksum = args.get<bool>("skip-checksum");
+  bool is_big_endian = args.get<bool>("big-endian");
+  string seed = args.get<string>("seed");
+  int64_t override_round2_seed = args.get<int64_t>("round2-seed", -1, Arguments::IntFormat::HEX);
+  size_t bytes = args.get<size_t>("bytes", 0);
 
-    } else if (isatty(fileno(stdout)) && (behavior != Behavior::DISASSEMBLE_QUEST_SCRIPT) && (behavior != Behavior::DISASSEMBLE_QUEST_MAP)) {
-      // If stdout is a terminal and the data is not known to be text, use
-      // print_data to write the result
-      print_data(stdout, data, size);
-      fflush(stdout);
+  if (seed.empty()) {
+    throw runtime_error("--seed must be given to specify the round1 seed");
+  }
+  uint32_t round1_seed = stoul(seed, nullptr, 16);
 
-    } else {
-      // If stdout is not a terminal, write the data as-is
-      fwritex(stdout, data, size);
-      fflush(stdout);
-    }
-  };
+  auto data = read_input_data(args);
+  StringReader r(data);
 
-  switch (behavior) {
-    case Behavior::COMPRESS_PRS:
-    case Behavior::DECOMPRESS_PRS:
-    case Behavior::COMPRESS_PR2:
-    case Behavior::DECOMPRESS_PR2:
-    case Behavior::COMPRESS_BC0:
-    case Behavior::DECOMPRESS_BC0: {
-      string data = read_input_data();
+  string output_data;
+  size_t effective_size = bytes ? min<size_t>(bytes, data.size()) : data.size();
+  if (is_decrypt) {
+    output_data = is_big_endian
+        ? decrypt_fixed_size_data_section_s<true>(data.data(), effective_size, round1_seed, skip_checksum, override_round2_seed)
+        : decrypt_fixed_size_data_section_s<false>(data.data(), effective_size, round1_seed, skip_checksum, override_round2_seed);
+  } else {
+    output_data = is_big_endian
+        ? encrypt_fixed_size_data_section_s<true>(data.data(), effective_size, round1_seed)
+        : encrypt_fixed_size_data_section_s<false>(data.data(), effective_size, round1_seed);
+  }
+  write_output_data(args, output_data.data(), output_data.size(), "dec");
+}
 
-      size_t pr2_expected_size = 0;
-      if (behavior == Behavior::DECOMPRESS_PR2) {
-        auto decrypted = big_endian ? decrypt_pr2_data<true>(data) : decrypt_pr2_data<false>(data);
-        pr2_expected_size = decrypted.decompressed_size;
-        data = std::move(decrypted.compressed_data);
-      }
+// TODO: Write usage text for these actions
+Action a_decrypt_save_data("decrypt-save-data", nullptr, a_encrypt_decrypt_save_data_fn);
+Action a_encrypt_save_data("encrypt-save-data", nullptr, a_encrypt_decrypt_save_data_fn);
 
-      size_t input_bytes = data.size();
-      auto progress_fn = [&](auto, size_t input_progress, size_t, size_t output_progress) -> void {
-        float progress = static_cast<float>(input_progress * 100) / input_bytes;
-        float size_ratio = static_cast<float>(output_progress * 100) / input_progress;
-        fprintf(stderr, "... %zu/%zu (%g%%) => %zu (%g%%)    \r",
-            input_progress, input_bytes, progress, output_progress, size_ratio);
-      };
-      auto optimal_progress_fn = [&](auto phase, size_t input_progress, size_t input_bytes, size_t output_progress) -> void {
-        const char* phase_name = name_for_enum(phase);
-        float progress = static_cast<float>(input_progress * 100) / input_bytes;
-        float size_ratio = static_cast<float>(output_progress * 100) / input_progress;
-        fprintf(stderr, "... [%s] %zu/%zu (%g%%) => %zu (%g%%)    \r",
-            phase_name, input_progress, input_bytes, progress, output_progress, size_ratio);
-      };
-
-      uint64_t start = now();
-      if ((behavior == Behavior::COMPRESS_PRS) || (behavior == Behavior::COMPRESS_PR2)) {
-        if (compress_optimal) {
-          data = prs_compress_optimal(data.data(), data.size(), optimal_progress_fn);
-        } else {
-          data = prs_compress(data, compression_level, progress_fn);
-        }
-      } else if ((behavior == Behavior::DECOMPRESS_PRS) || (behavior == Behavior::DECOMPRESS_PR2)) {
-        data = prs_decompress(data, bytes, (bytes != 0));
-      } else if (behavior == Behavior::COMPRESS_BC0) {
-        if (compress_optimal) {
-          data = bc0_compress_optimal(data.data(), data.size(), optimal_progress_fn);
-        } else if (compression_level < 0) {
-          data = bc0_encode(data.data(), data.size());
-        } else {
-          data = bc0_compress(data, progress_fn);
-        }
-      } else if (behavior == Behavior::DECOMPRESS_BC0) {
-        data = bc0_decompress(data);
-      } else {
-        throw logic_error("invalid behavior");
-      }
-      uint64_t end = now();
-      string time_str = format_duration(end - start);
-
-      float size_ratio = static_cast<float>(data.size() * 100) / input_bytes;
-      double bytes_per_sec = input_bytes / (static_cast<double>(end - start) / 1000000.0);
-      string bytes_per_sec_str = format_size(bytes_per_sec);
-      log_info("%zu (0x%zX) bytes input => %zu (0x%zX) bytes output (%g%%) in %s (%s / sec)",
-          input_bytes, input_bytes, data.size(), data.size(), size_ratio, time_str.c_str(), bytes_per_sec_str.c_str());
-
-      if ((behavior == Behavior::DECOMPRESS_PR2) && (data.size() != pr2_expected_size)) {
-        log_warning("Result data size (%zu bytes) does not match expected size from PR2 header (%zu bytes)", data.size(), pr2_expected_size);
-      } else if (behavior == Behavior::COMPRESS_PR2) {
-        uint32_t pr2_seed = seed.empty() ? random_object<uint32_t>() : stoul(seed, nullptr, 16);
-        data = big_endian
-            ? encrypt_pr2_data<true>(data, input_bytes, pr2_seed)
-            : encrypt_pr2_data<false>(data, input_bytes, pr2_seed);
-      }
-
-      write_output_data(data.data(), data.size());
-      break;
-    }
-
-    case Behavior::RECOMPRESS_PRS_OPTIMAL: {
-      string input_data = read_input_data();
-      string decompressed_data = prs_decompress(input_data);
-
-      auto progress_fn = [&](auto phase, size_t input_progress, size_t input_bytes, size_t output_progress) -> void {
-        const char* phase_name = name_for_enum(phase);
-        float progress = static_cast<float>(input_progress * 100) / decompressed_data.size();
-        float size_ratio = static_cast<float>(output_progress * 100) / input_progress;
-        fprintf(stderr, "... [%s] %zu/%zu (%g%%) => %zu (%g%%)    \r",
-            phase_name, input_progress, input_bytes, progress, output_progress, size_ratio);
-      };
-
-      uint64_t start = now();
-      string output_data = prs_compress_optimal(decompressed_data.data(), decompressed_data.size(), progress_fn);
-      uint64_t end = now();
-      string time_str = format_duration(end - start);
-
-      float output_size_ratio = static_cast<float>(output_data.size() * 100) / decompressed_data.size();
-      float input_size_ratio = static_cast<float>(input_data.size() * 100) / decompressed_data.size();
-      ssize_t size_difference = output_data.size() - input_data.size();
-      log_info("%zu (0x%zX) bytes input (%g%%) => %zu (0x%zX) bytes decompressed => %zu (0x%zX) bytes output (%g%%; %+zd bytes)",
-          input_data.size(), input_data.size(), input_size_ratio, decompressed_data.size(), decompressed_data.size(), output_data.size(), output_data.size(), output_size_ratio, size_difference);
-
-      output_filename = input_filename;
-      write_output_data(output_data.data(), output_data.size());
-      break;
-    }
-
-    case Behavior::PRS_SIZE: {
-      string data = read_input_data();
-      size_t input_bytes = data.size();
-      size_t output_bytes = prs_decompress_size(data);
-      log_info("%zu (0x%zX) bytes input => %zu (0x%zX) bytes output",
-          input_bytes, input_bytes, output_bytes, output_bytes);
-      break;
-    }
-
-    case Behavior::DISASSEMBLE_PRS: {
-      prs_disassemble(stdout, read_input_data());
-      break;
-    }
-    case Behavior::DISASSEMBLE_BC0: {
-      bc0_disassemble(stdout, read_input_data());
-      break;
-    }
-
-    case Behavior::DECRYPT_DATA:
-    case Behavior::ENCRYPT_DATA: {
-      shared_ptr<PSOEncryption> crypt;
-      switch (cli_version) {
-        case GameVersion::PATCH:
-        case GameVersion::DC:
-        case GameVersion::PC:
-          crypt.reset(new PSOV2Encryption(stoul(seed, nullptr, 16)));
-          break;
-        case GameVersion::GC:
-        case GameVersion::XB:
-          crypt.reset(new PSOV3Encryption(stoul(seed, nullptr, 16)));
-          break;
-        case GameVersion::BB: {
-          seed = parse_data_string(seed, nullptr, ParseDataFlags::ALLOW_FILES);
-          auto key = load_object_file<PSOBBEncryption::KeyFile>(
-              "system/blueburst/keys/" + key_file_name + ".nsk");
-          crypt.reset(new PSOBBEncryption(key, seed.data(), seed.size()));
-          break;
-        }
-        default:
-          throw logic_error("invalid game version");
-      }
-
-      string data = read_input_data();
-
-      size_t original_size = data.size();
-      data.resize((data.size() + 7) & (~7), '\0');
-
-      if (big_endian) {
-        uint32_t* dwords = reinterpret_cast<uint32_t*>(data.data());
-        for (size_t x = 0; x < (data.size() >> 2); x++) {
-          dwords[x] = bswap32(dwords[x]);
-        }
-      }
-
-      if (behavior == Behavior::DECRYPT_DATA) {
-        crypt->decrypt(data.data(), data.size());
-      } else if (behavior == Behavior::ENCRYPT_DATA) {
-        crypt->encrypt(data.data(), data.size());
-      } else {
-        throw logic_error("invalid behavior");
-      }
-
-      if (big_endian) {
-        uint32_t* dwords = reinterpret_cast<uint32_t*>(data.data());
-        for (size_t x = 0; x < (data.size() >> 2); x++) {
-          dwords[x] = bswap32(dwords[x]);
-        }
-      }
-
-      data.resize(original_size);
-
-      write_output_data(data.data(), data.size());
-
-      break;
-    }
-
-    case Behavior::ENCRYPT_TRIVIAL_DATA:
-    case Behavior::DECRYPT_TRIVIAL_DATA: {
-      if (seed.empty() && behavior == Behavior::ENCRYPT_TRIVIAL_DATA) {
-        throw logic_error("--seed is required when encrypting data");
-      }
-      string data = read_input_data();
-      uint8_t basis;
-      if (seed.empty()) {
-        uint8_t best_seed = 0x00;
-        size_t best_seed_score = 0;
-        for (size_t z = 0; z < 0x100; z++) {
-          string decrypted = data;
-          decrypt_trivial_gci_data(decrypted.data(), decrypted.size(), z);
-          size_t score = 0;
-          for (size_t x = 0; x < decrypted.size(); x++) {
-            if (decrypted[x] == '\0') {
-              score++;
-            }
-          }
-          if (score > best_seed_score) {
-            best_seed = z;
-            best_seed_score = score;
-          }
-        }
-        fprintf(stderr, "Basis appears to be %02hhX (%zu zero bytes in output)\n",
-            best_seed, best_seed_score);
-        basis = best_seed;
-      } else {
-        basis = stoul(seed, nullptr, 16);
-      }
-      decrypt_trivial_gci_data(data.data(), data.size(), basis);
-      write_output_data(data.data(), data.size());
-      break;
-    }
-
-    case Behavior::DECRYPT_REGISTRY_VALUE: {
-      string data = read_input_data();
-      string out_data = decrypt_v2_registry_value(data.data(), data.size());
-      write_output_data(out_data.data(), out_data.size());
-      break;
-    }
-
-    case Behavior::ENCRYPT_CHALLENGE_DATA:
-    case Behavior::DECRYPT_CHALLENGE_DATA: {
-      string data = read_input_data();
-      if (behavior == Behavior::DECRYPT_CHALLENGE_DATA) {
-        decrypt_challenge_rank_text_t<uint8_t>(data.data(), data.size());
-      } else {
-        encrypt_challenge_rank_text_t<uint8_t>(data.data(), data.size());
-      }
-      write_output_data(data.data(), data.size());
-      break;
-    }
-
-    case Behavior::ENCRYPT_GCI_SAVE:
-    case Behavior::DECRYPT_GCI_SAVE: {
-      uint32_t round1_seed;
-      if (system_filename) {
-        string system_data = load_file(system_filename);
-        StringReader r(system_data);
-        const auto& header = r.get<PSOGCIFileHeader>();
-        header.check();
-        const auto& system = r.get<PSOGCSystemFile>();
-        round1_seed = system.creation_timestamp;
-      } else if (!seed.empty()) {
-        round1_seed = stoul(seed, nullptr, 16);
-      } else {
-        throw runtime_error("either --sys or --seed must be given");
-      }
-
-      bool is_decrypt = (behavior == Behavior::DECRYPT_GCI_SAVE);
-
-      auto data = read_input_data();
-      StringReader r(data);
-      const auto& header = r.get<PSOGCIFileHeader>();
-      header.check();
-
-      size_t data_start_offset = r.where();
-
-      auto process_file = [&]<typename StructT>() {
-        if (is_decrypt) {
-          const void* data_section = r.getv(header.data_size);
-          auto decrypted = decrypt_fixed_size_data_section_t<StructT, true>(
-              data_section, header.data_size, round1_seed, skip_checksum, override_round2_seed);
-          *reinterpret_cast<StructT*>(data.data() + data_start_offset) = decrypted;
-        } else {
-          const auto& s = r.get<StructT>();
-          auto encrypted = encrypt_fixed_size_data_section_t<StructT, true>(s, round1_seed);
-          if (data_start_offset + encrypted.size() > data.size()) {
-            throw runtime_error("encrypted result exceeds file size");
-          }
-          memcpy(data.data() + data_start_offset, encrypted.data(), encrypted.size());
-        }
-      };
-
-      if (header.data_size == sizeof(PSOGCGuildCardFile)) {
-        process_file.template operator()<PSOGCGuildCardFile>();
-      } else if (header.is_ep12() && (header.data_size == sizeof(PSOGCCharacterFile))) {
-        process_file.template operator()<PSOGCCharacterFile>();
-      } else if (header.is_ep3() && (header.data_size == sizeof(PSOGCEp3CharacterFile))) {
-        auto* charfile = reinterpret_cast<PSOGCEp3CharacterFile*>(data.data() + data_start_offset);
-        if (!is_decrypt) {
-          for (size_t z = 0; z < charfile->characters.size(); z++) {
-            charfile->characters[z].ep3_config.encrypt(random_object<uint8_t>());
-          }
-        }
-        process_file.template operator()<PSOGCEp3CharacterFile>();
-        if (is_decrypt) {
-          for (size_t z = 0; z < charfile->characters.size(); z++) {
-            charfile->characters[z].ep3_config.decrypt();
-          }
-        }
-      } else {
-        throw runtime_error("unrecognized save type");
-      }
-
-      write_output_data(data.data(), data.size());
-
-      break;
-    }
-
-    case Behavior::ENCRYPT_PC_SAVE:
-    case Behavior::DECRYPT_PC_SAVE: {
-      if (seed.empty()) {
-        throw runtime_error("--seed must be given to specify the serial number");
-      }
-      uint32_t round1_seed = stoul(seed, nullptr, 16);
-
-      bool is_decrypt = (behavior == Behavior::DECRYPT_PC_SAVE);
-
-      auto data = read_input_data();
-      if (data.size() == sizeof(PSOPCGuildCardFile)) {
-        if (is_decrypt) {
-          data = decrypt_fixed_size_data_section_s<false>(
-              data.data(), offsetof(PSOPCGuildCardFile, end_padding), round1_seed, skip_checksum, override_round2_seed);
-        } else {
-          data = encrypt_fixed_size_data_section_s<false>(
-              data.data(), offsetof(PSOPCGuildCardFile, end_padding), round1_seed);
-        }
-        data.resize((sizeof(PSOPCGuildCardFile) + 0x1FF) & (~0x1FF), '\0');
-      } else if (data.size() == sizeof(PSOPCCharacterFile)) {
-        PSOPCCharacterFile* charfile = reinterpret_cast<PSOPCCharacterFile*>(data.data());
-        if (is_decrypt) {
-          for (size_t z = 0; z < charfile->entries.size(); z++) {
-            if (charfile->entries[z].present) {
-              try {
-                charfile->entries[z].character = decrypt_fixed_size_data_section_t<PSOPCCharacterFile::CharacterEntry::Character, false>(
-                    &charfile->entries[z].character, sizeof(charfile->entries[z].character), round1_seed, skip_checksum, override_round2_seed);
-              } catch (const exception& e) {
-                fprintf(stderr, "warning: cannot decrypt character %zu: %s\n", z, e.what());
-              }
-            }
-          }
-        } else {
-          for (size_t z = 0; z < charfile->entries.size(); z++) {
-            if (charfile->entries[z].present) {
-              string encrypted = encrypt_fixed_size_data_section_t<PSOPCCharacterFile::CharacterEntry::Character, false>(
-                  charfile->entries[z].character, round1_seed);
-              if (encrypted.size() != sizeof(PSOPCCharacterFile::CharacterEntry::Character)) {
-                throw logic_error("incorrect encrypted result size");
-              }
-              charfile->entries[z].character = *reinterpret_cast<const PSOPCCharacterFile::CharacterEntry::Character*>(encrypted.data());
-            }
-          }
-        }
-      } else if (data.size() == sizeof(PSOPCCreationTimeFile)) {
-        throw runtime_error("the PSO______FLS file is not encrypted; it is just random data");
-      } else if (data.size() == sizeof(PSOPCSystemFile)) {
-        throw runtime_error("the PSO______COM file is not encrypted");
-      } else {
-        throw runtime_error("unknown save file type");
-      }
-
-      write_output_data(data.data(), data.size());
-      break;
-    }
-
-    case Behavior::ENCRYPT_SAVE_DATA:
-    case Behavior::DECRYPT_SAVE_DATA: {
-      if (seed.empty()) {
-        throw runtime_error("--seed must be given to specify the round1 seed");
-      }
-      uint32_t round1_seed = stoul(seed, nullptr, 16);
-
-      bool is_decrypt = (behavior == Behavior::DECRYPT_SAVE_DATA);
-
-      auto data = read_input_data();
-      StringReader r(data);
-
-      string output_data;
-      size_t effective_size = bytes ? min<size_t>(bytes, data.size()) : data.size();
-      if (is_decrypt) {
-        output_data = big_endian
-            ? decrypt_fixed_size_data_section_s<true>(data.data(), effective_size, round1_seed, skip_checksum, override_round2_seed)
-            : decrypt_fixed_size_data_section_s<false>(data.data(), effective_size, round1_seed, skip_checksum, override_round2_seed);
-      } else {
-        output_data = big_endian
-            ? encrypt_fixed_size_data_section_s<true>(data.data(), effective_size, round1_seed)
-            : encrypt_fixed_size_data_section_s<false>(data.data(), effective_size, round1_seed);
-      }
-      write_output_data(output_data.data(), output_data.size());
-      break;
-    }
-
-    case Behavior::DECODE_GCI_SNAPSHOT: {
-      auto data = read_input_data();
+Action a_decode_gci_snapshot(
+    "decode-gci-snapshot", "\
+  decode-gci-snapshot [INPUT-FILENAME [OUTPUT-FILENAME]]\n\
+    Decode a PSO GC snapshot file into a Windows BMP image.\n",
+    +[](Arguments& args) {
+      auto data = read_input_data(args);
       StringReader r(data);
       const auto& header = r.get<PSOGCIFileHeader>();
       try {
@@ -1165,25 +702,43 @@ int main(int argc, char** argv) {
 
       auto img = file.decode_image();
       string saved = img.save(Image::Format::WINDOWS_BITMAP);
-      write_output_data(saved.data(), saved.size());
-      break;
-    }
+      write_output_data(args, saved.data(), saved.size(), "bmp");
+    });
 
-    case Behavior::ENCODE_GVM: {
+Action a_encode_gvm(
+    "encode-gvm", "\
+  encode-gvm [INPUT-FILENAME [OUTPUT-FILENAME]]\n\
+    Encode an image in BMP or PPM/PNM format into a GVM texture. The resulting\n\
+    GVM file can be used as an Episode 3 lobby banner.\n",
+    +[](Arguments& args) {
+      const string& input_filename = args.get<string>(1, false);
       Image img;
-      if (input_filename && strcmp(input_filename, "-")) {
+      if (!input_filename.empty() && (input_filename != "-")) {
         img = Image(input_filename);
       } else {
         img = Image(stdin);
       }
       string encoded = encode_gvm(img, img.get_has_alpha() ? GVRDataFormat::RGB5A3 : GVRDataFormat::RGB565);
-      write_output_data(encoded.data(), encoded.size());
-      break;
-    }
+      write_output_data(args, encoded.data(), encoded.size(), "gvm");
+    });
 
-    case Behavior::SALVAGE_GCI: {
+Action a_salvage_gci(
+    "salvage-gci", "\
+  salvage-gci INPUT-FILENAME [--round2] [CRYPT-OPTION] [--bytes=SIZE]\n\
+    Attempt to find either the round-1 or round-2 decryption seed for a\n\
+    corrupted GCI file. If --round2 is given, then CRYPT-OPTION must be given\n\
+    (and should specify either a valid system file or the round1 seed).\n",
+    +[](Arguments& args) {
+      bool round2 = args.get<bool>("round2");
+      string seed = args.get<string>("seed");
+      string system_filename = args.get<string>("sys");
+      size_t num_threads = args.get<size_t>("threads", 0);
+      size_t offset = args.get<size_t>("offset", 0);
+      size_t stride = args.get<size_t>("stride", 1);
+      size_t bytes = args.get<size_t>("bytes", 0);
+
       uint64_t likely_round1_seed = 0xFFFFFFFFFFFFFFFF;
-      if (system_filename) {
+      if (!system_filename.empty()) {
         try {
           string system_data = load_file(system_filename);
           StringReader r(system_data);
@@ -1204,7 +759,7 @@ int main(int argc, char** argv) {
         throw invalid_argument("cannot find round2 seed without known round1 seed");
       }
 
-      auto data = read_input_data();
+      auto data = read_input_data(args);
       StringReader r(data);
       const auto& header = r.get<PSOGCIFileHeader>();
       header.check();
@@ -1272,21 +827,38 @@ int main(int argc, char** argv) {
       } else {
         throw runtime_error("unrecognized save type");
       }
+    });
 
-      break;
-    }
-
-    case Behavior::FIND_DECRYPTION_SEED: {
-      if (find_decryption_seed_plaintexts.empty() || !find_decryption_seed_ciphertext) {
+Action a_find_decryption_seed(
+    "find-decryption-seed", "\
+  find-decryption-seed OPTIONS...\n\
+    Perform a brute-force search for a decryption seed of the given data. The\n\
+    ciphertext is specified with the --encrypted=DATA option and the expected\n\
+    plaintext is specified with the --decrypted=DATA option. The plaintext may\n\
+    include unmatched bytes (specified with the Phosg parse_data_string ?\n\
+    operator), but overall it must be the same length as the ciphertext. By\n\
+    default, this option uses PSO V3 encryption, but this can be overridden\n\
+    with --pc. (BB encryption seeds are too long to be searched for with this\n\
+    function.) By default, the number of worker threads is equal to the number\n\
+    of CPU cores in the system, but this can be overridden with the\n\
+    --threads=NUM-THREADS option.\n",
+    +[](Arguments& args) {
+      const auto& plaintexts_ascii = args.get_multi<string>("decrypted");
+      const auto& ciphertext_ascii = args.get<string>("encrypted");
+      auto version = get_cli_version(args);
+      if (plaintexts_ascii.empty() || ciphertext_ascii.empty()) {
         throw runtime_error("both --encrypted and --decrypted must be specified");
       }
-      if (cli_version == GameVersion::BB) {
+      if (uses_v4_encryption(version)) {
         throw runtime_error("--find-decryption-seed cannot be used for BB ciphers");
       }
+      bool skip_little_endian = args.get<bool>("skip-little-endian");
+      bool skip_big_endian = args.get<bool>("skip-big-endian");
+      size_t num_threads = args.get<size_t>("threads", 0);
 
       size_t max_plaintext_size = 0;
       vector<pair<string, string>> plaintexts;
-      for (const auto& plaintext_ascii : find_decryption_seed_plaintexts) {
+      for (const auto& plaintext_ascii : plaintexts_ascii) {
         string mask;
         string data = parse_data_string(plaintext_ascii, &mask, ParseDataFlags::ALLOW_FILES);
         if (data.size() != mask.size()) {
@@ -1295,7 +867,7 @@ int main(int argc, char** argv) {
         max_plaintext_size = max<size_t>(max_plaintext_size, data.size());
         plaintexts.emplace_back(std::move(data), std::move(mask));
       }
-      string ciphertext = parse_data_string(find_decryption_seed_ciphertext, nullptr, ParseDataFlags::ALLOW_FILES);
+      string ciphertext = parse_data_string(ciphertext_ascii, nullptr, ParseDataFlags::ALLOW_FILES);
 
       auto mask_match = +[](const void* a, const void* b, const void* m, size_t size) -> bool {
         const uint8_t* a8 = reinterpret_cast<const uint8_t*>(a);
@@ -1309,11 +881,10 @@ int main(int argc, char** argv) {
         return true;
       };
 
-      bool is_v3 = ((cli_version == GameVersion::GC) || (cli_version == GameVersion::XB));
       uint64_t seed = parallel_range<uint64_t>([&](uint64_t seed, size_t) -> bool {
         string be_decrypt_buf = ciphertext.substr(0, max_plaintext_size);
         string le_decrypt_buf = ciphertext.substr(0, max_plaintext_size);
-        if (is_v3) {
+        if (uses_v3_encryption(version)) {
           PSOV3Encryption(seed).encrypt_both_endian(
               le_decrypt_buf.data(),
               be_decrypt_buf.data(),
@@ -1346,41 +917,85 @@ int main(int argc, char** argv) {
       } else {
         log_error("No seed found");
       }
-      break;
-    }
+    });
 
-    case Behavior::DECODE_QUEST_FILE: {
-      if (!input_filename || !strcmp(input_filename, "-")) {
+Action a_decode_gci(
+    "decode-gci", nullptr, +[](Arguments& args) {
+      string input_filename = args.get<string>(1, false);
+      if (input_filename.empty() || (input_filename == "-")) {
         throw invalid_argument("an input filename is required");
       }
-
-      string output_filename_base = input_filename;
-      if (quest_file_type == QuestFileFormat::BIN_DAT_GCI) {
-        int64_t dec_seed = seed.empty() ? -1 : stoul(seed, nullptr, 16);
-        auto decoded = decode_gci_data(read_input_data(), num_threads, dec_seed, skip_checksum);
-        save_file(output_filename_base + ".dec", decoded);
-      } else if (quest_file_type == QuestFileFormat::BIN_DAT_VMS) {
-        int64_t dec_seed = seed.empty() ? -1 : stoul(seed, nullptr, 16);
-        auto decoded = decode_vms_data(read_input_data(), num_threads, dec_seed, skip_checksum);
-        save_file(output_filename_base + ".dec", decoded);
-      } else if (quest_file_type == QuestFileFormat::BIN_DAT_DLQ) {
-        auto decoded = decode_dlq_data(read_input_data());
-        save_file(output_filename_base + ".dec", decoded);
-      } else if (quest_file_type == QuestFileFormat::QST) {
-        auto files = decode_qst_data(read_input_data());
-        for (const auto& it : files) {
-          save_file(output_filename_base + "-" + it.first, it.second);
-        }
-      } else {
-        throw logic_error("invalid quest file format");
-      }
-      break;
-    }
-
-    case Behavior::ENCODE_QST: {
-      if (!input_filename || !strcmp(input_filename, "-")) {
+      string seed = args.get<string>("seed");
+      size_t num_threads = args.get<size_t>("threads", 0);
+      bool skip_checksum = args.get<bool>("skip-checksum");
+      int64_t dec_seed = seed.empty() ? -1 : stoul(seed, nullptr, 16);
+      auto decoded = decode_gci_data(read_input_data(args), num_threads, dec_seed, skip_checksum);
+      save_file(input_filename + ".dec", decoded);
+    });
+Action a_decode_vmg(
+    "decode-vms", nullptr, +[](Arguments& args) {
+      string input_filename = args.get<string>(1, false);
+      if (input_filename.empty() || (input_filename == "-")) {
         throw invalid_argument("an input filename is required");
       }
+      string seed = args.get<string>("seed");
+      size_t num_threads = args.get<size_t>("threads", 0);
+      bool skip_checksum = args.get<bool>("skip-checksum");
+      int64_t dec_seed = seed.empty() ? -1 : stoul(seed, nullptr, 16);
+      auto decoded = decode_vms_data(read_input_data(args), num_threads, dec_seed, skip_checksum);
+      save_file(input_filename + ".dec", decoded);
+    });
+Action a_decode_dlq(
+    "decode-dlq", nullptr, +[](Arguments& args) {
+      string input_filename = args.get<string>(1, false);
+      if (input_filename.empty() || (input_filename == "-")) {
+        throw invalid_argument("an input filename is required");
+      }
+      auto decoded = decode_dlq_data(read_input_data(args));
+      save_file(input_filename + ".dec", decoded);
+    });
+Action a_decode_qst(
+    "decode-qst", "\
+  decode-gci INPUT-FILENAME [OPTIONS...]\n\
+  decode-vms INPUT-FILENAME [OPTIONS...]\n\
+  decode-dlq INPUT-FILENAME\n\
+  decode-qst INPUT-FILENAME\n\
+    Decode the input quest file into a compressed, unencrypted .bin or .dat\n\
+    file (or in the case of decode-qst, both a .bin and a .dat file).\n\
+    INPUT-FILENAME must be specified, but there is no OUTPUT-FILENAME; the\n\
+    output is written to INPUT-FILENAME.dec (or .bin, or .dat). If the output\n\
+    is a .dec file, you can rename it to .bin or .dat manually. DLQ and QST\n\
+    decoding are relatively simple operations, but GCI and VMS decoding can be\n\
+    computationally expensive if the file is encrypted and doesn\'t contain an\n\
+    embedded seed. If you know the player\'s serial number who generated the\n\
+    GCI or VMS file, use the --seed=SEED option and give the serial number (as\n\
+    a hex-encoded 32-bit integer). If you don\'t know the serial number,\n\
+    newserv will find it via a brute-force search, which will take a long time.\n",
+    +[](Arguments& args) {
+      string input_filename = args.get<string>(1, false);
+      if (input_filename.empty() || (input_filename == "-")) {
+        throw invalid_argument("an input filename is required");
+      }
+      auto files = decode_qst_data(read_input_data(args));
+      for (const auto& it : files) {
+        save_file(input_filename + "-" + it.first, it.second);
+      }
+    });
+
+Action a_encode_qst(
+    "encode-qst", "\
+  encode-qst INPUT-FILENAME [OUTPUT-FILENAME] [OPTIONS...]\n\
+    Encode the input quest file (in .bin/.dat format) into a .qst file. If\n\
+    --download is given, generates a download .qst instead of an online .qst.\n\
+    Specify the quest\'s game version with one of the --dc-nte, --dc-v1,\n\
+    --dc-v2, --pc, --gc-nte, --gc, --gc-ep3, --xb, or --bb options.\n",
+    +[](Arguments& args) {
+      string input_filename = args.get<string>(1, false);
+      if (input_filename.empty() || (input_filename == "-")) {
+        throw invalid_argument("an input filename is required");
+      }
+      auto version = get_cli_version(args);
+      bool download = args.get<bool>("download");
 
       string bin_filename = input_filename;
       string dat_filename = ends_with(bin_filename, ".bin")
@@ -1396,117 +1011,144 @@ int main(int argc, char** argv) {
         pvr_data.reset(new string(load_file(pvr_filename)));
       } catch (const cannot_open_file&) {
       }
-      shared_ptr<VersionedQuest> vq(new VersionedQuest(0, 0, cli_quest_version, 0, bin_data, dat_data, pvr_data));
+      shared_ptr<VersionedQuest> vq(new VersionedQuest(0, 0, version, 0, bin_data, dat_data, pvr_data));
       if (download) {
         vq = vq->create_download_quest();
       }
       string qst_data = vq->encode_qst();
 
-      write_output_data(qst_data.data(), qst_data.size());
-      break;
-    }
+      write_output_data(args, qst_data.data(), qst_data.size(), "qst");
+    });
 
-    case Behavior::DISASSEMBLE_QUEST_SCRIPT: {
-      if (!input_filename || !strcmp(input_filename, "-")) {
-        throw invalid_argument("an input filename is required");
-      }
-
-      string data = read_input_data();
-      if (!expect_decompressed) {
+Action a_disassemble_quest_script(
+    "disassemble-quest-script", "\
+  disassemble-quest-script [INPUT-FILENAME [OUTPUT-FILENAME]]\n\
+    Disassemble the input quest script (.bin file) into a text representation\n\
+    of the commands and metadata it contains. Specify the quest\'s game version\n\
+    with one of the --dc-nte, --dc-v1, --dc-v2, --pc, --gc-nte, --gc, --gc-ep3,\n\
+    --xb, or --bb options.\n",
+    +[](Arguments& args) {
+      string data = read_input_data(args);
+      auto version = get_cli_version(args);
+      if (!args.get<bool>("decompressed")) {
         data = prs_decompress(data);
       }
-      string result = disassemble_quest_script(data.data(), data.size(), cli_quest_version, 1);
-      write_output_data(result.data(), result.size());
-      break;
-    }
-
-    case Behavior::DISASSEMBLE_QUEST_MAP: {
-      if (!input_filename || !strcmp(input_filename, "-")) {
-        throw invalid_argument("an input filename is required");
-      }
-
-      string data = read_input_data();
-      if (!expect_decompressed) {
+      string result = disassemble_quest_script(data.data(), data.size(), version, 1);
+      write_output_data(args, result.data(), result.size(), "txt");
+    });
+Action a_disassemble_quest_map(
+    "disassemble-quest-map", "\
+  disassemble-quest-map [INPUT-FILENAME [OUTPUT-FILENAME]]\n\
+    Disassemble the input quest map (.dat file) into a text representation of\n\
+    the data it contains. Specify the quest\'s game version with one of the\n\
+    --dc-nte, --dc-v1, --dc-v2, --pc, --gc-nte, --gc, --xb, or --bb options.\n",
+    +[](Arguments& args) {
+      string data = read_input_data(args);
+      if (!args.get<bool>("decompressed")) {
         data = prs_decompress(data);
       }
       string result = Map::disassemble_quest_data(data.data(), data.size());
-      write_output_data(result.data(), result.size());
-      break;
-    }
+      write_output_data(args, result.data(), result.size(), "txt");
+    });
 
-    case Behavior::EXTRACT_AFS:
-    case Behavior::EXTRACT_GSL:
-    case Behavior::EXTRACT_BML: {
-      string output_prefix;
-      if (!output_filename) {
-        output_prefix = input_filename;
-        output_prefix.push_back('_');
-      } else if (!strcmp(output_filename, "-")) {
-        throw invalid_argument("output prefix cannot be stdout");
+void a_extract_archive_fn(Arguments& args) {
+  string output_prefix = args.get<string>(2, false);
+  if (output_prefix == "-") {
+    throw invalid_argument("output prefix cannot be stdout");
+  } else if (output_prefix.empty()) {
+    output_prefix = args.get<string>(1, false);
+    if (output_prefix.empty() || (output_prefix == "-")) {
+      throw invalid_argument("an input filename must be given");
+    }
+    output_prefix += "_";
+  }
+
+  string data = read_input_data(args);
+  shared_ptr<string> data_shared(new string(std::move(data)));
+
+  if (args.get<string>(0) == "extract-afs") {
+    AFSArchive arch(data_shared);
+    const auto& all_entries = arch.all_entries();
+    for (size_t z = 0; z < all_entries.size(); z++) {
+      auto e = arch.get(z);
+      string out_file = string_printf("%s-%zu", output_prefix.c_str(), z);
+      save_file(out_file.c_str(), e.first, e.second);
+      fprintf(stderr, "... %s\n", out_file.c_str());
+    }
+  } else if (args.get<string>(0) == "extract-gsl") {
+    GSLArchive arch(data_shared, args.get<bool>("big-endian"));
+    for (const auto& entry_it : arch.all_entries()) {
+      auto e = arch.get(entry_it.first);
+      string out_file = output_prefix + entry_it.first;
+      save_file(out_file.c_str(), e.first, e.second);
+      fprintf(stderr, "... %s\n", out_file.c_str());
+    }
+  } else if (args.get<string>(0) == "extract-bml") {
+    BMLArchive arch(data_shared, args.get<bool>("big-endian"));
+    for (const auto& entry_it : arch.all_entries()) {
+      {
+        auto e = arch.get(entry_it.first);
+        string data = prs_decompress(e.first, e.second);
+        string out_file = output_prefix + entry_it.first;
+        save_file(out_file, data);
+        fprintf(stderr, "... %s\n", out_file.c_str());
       }
 
-      string data = read_input_data();
-      shared_ptr<string> data_shared(new string(std::move(data)));
-
-      if (behavior == Behavior::EXTRACT_AFS) {
-        AFSArchive arch(data_shared);
-        const auto& all_entries = arch.all_entries();
-        for (size_t z = 0; z < all_entries.size(); z++) {
-          auto e = arch.get(z);
-          string out_file = string_printf("%s-%zu", output_prefix.c_str(), z);
-          save_file(out_file.c_str(), e.first, e.second);
-          fprintf(stderr, "... %s\n", out_file.c_str());
-        }
-      } else if (behavior == Behavior::EXTRACT_GSL) {
-        GSLArchive arch(data_shared, big_endian);
-        for (const auto& entry_it : arch.all_entries()) {
-          auto e = arch.get(entry_it.first);
-          string out_file = output_prefix + entry_it.first;
-          save_file(out_file.c_str(), e.first, e.second);
-          fprintf(stderr, "... %s\n", out_file.c_str());
-        }
-      } else {
-        BMLArchive arch(data_shared, big_endian);
-        for (const auto& entry_it : arch.all_entries()) {
-          {
-            auto e = arch.get(entry_it.first);
-            string data = prs_decompress(e.first, e.second);
-            string out_file = output_prefix + entry_it.first;
-            save_file(out_file, data);
-            fprintf(stderr, "... %s\n", out_file.c_str());
-          }
-
-          auto gvm_e = arch.get_gvm(entry_it.first);
-          if (gvm_e.second) {
-            string data = prs_decompress(gvm_e.first, gvm_e.second);
-            string out_file = output_prefix + entry_it.first + ".gvm";
-            save_file(out_file, data);
-            fprintf(stderr, "... %s\n", out_file.c_str());
-          }
-        }
+      auto gvm_e = arch.get_gvm(entry_it.first);
+      if (gvm_e.second) {
+        string data = prs_decompress(gvm_e.first, gvm_e.second);
+        string out_file = output_prefix + entry_it.first + ".gvm";
+        save_file(out_file, data);
+        fprintf(stderr, "... %s\n", out_file.c_str());
       }
-      break;
     }
+  } else {
+    throw logic_error("unimplemented archive type");
+  }
+}
 
-    case Behavior::DECODE_TEXT_ARCHIVE: {
-      string data = read_input_data();
-      TextArchive a(data, big_endian);
+Action a_extract_afs("extract-afs", nullptr, a_extract_archive_fn);
+Action a_extract_gsl("extract-gsl", nullptr, a_extract_archive_fn);
+Action a_extract_bml("extract-bml", "\
+  extract-afs [INPUT-FILENAME] [--big-endian]\n\
+  extract-gsl [INPUT-FILENAME] [--big-endian]\n\
+  extract-bml [INPUT-FILENAME] [--big-endian]\n\
+    Extract all files from an AFS, GSL, or BML archive into the current\n\
+    directory. input-filename may be specified. If output-filename is\n\
+    specified, then it is treated as a prefix which is prepended to the\n\
+    filename of each file contained in the archive. If --big-endian is given,\n\
+    the archive header is read in GameCube format; otherwise it is read in\n\
+    PC/BB format.\n",
+    a_extract_archive_fn);
+
+Action a_decode_text_archive(
+    "decode-text-archive", nullptr, +[](Arguments& args) {
+      string data = read_input_data(args);
+      TextArchive a(data, args.get<bool>("big-endian"));
       JSON j = a.json();
       string out_data = j.serialize(JSON::SerializeOption::FORMAT);
-      write_output_data(out_data.data(), out_data.size());
-      break;
-    }
-    case Behavior::ENCODE_TEXT_ARCHIVE: {
-      auto json = JSON::parse(read_input_data());
+      write_output_data(args, out_data.data(), out_data.size(), "json");
+    });
+Action a_encode_text_archive(
+    "encode-text-archive", "\
+decode-text-archive [INPUT-FILENAME [OUTPUT-FILENAME]]\n\
+  encode-text-archive [INPUT-FILENAME [OUTPUT-FILENAME]]\n\
+    Decode a text archive (e.g. TextEnglish.pr2) to JSON for easy editing, or\n\
+    encode a JSON file to a text archive.\n",
+    +[](Arguments& args) {
+      const string& input_filename = args.get<string>(1, false);
+      const string& output_filename = args.get<string>(2, false);
+
+      auto json = JSON::parse(read_input_data(args));
       TextArchive a(json);
-      auto result = a.serialize(big_endian);
-      if (!output_filename) {
-        if (!input_filename || !strcmp(input_filename, "-")) {
+      auto result = a.serialize(args.get<bool>("big-endian"));
+      if (output_filename.empty()) {
+        if (input_filename.empty() || (input_filename == "-")) {
           throw runtime_error("encoded text archive cannot be written to stdout");
         }
-        save_file(string_printf("%s.pr2", input_filename), result.first);
-        save_file(string_printf("%s.pr3", input_filename), result.second);
-      } else if (!strcmp(input_filename, "-")) {
+        save_file(string_printf("%s.pr2", input_filename.c_str()), result.first);
+        save_file(string_printf("%s.pr3", input_filename.c_str()), result.second);
+      } else if (output_filename == "-") {
         throw runtime_error("encoded text archive cannot be written to stdout");
       } else {
         string out_filename = output_filename;
@@ -1519,10 +1161,11 @@ int main(int argc, char** argv) {
           save_file(out_filename + ".pr3", result.second);
         }
       }
-      break;
-    }
-    case Behavior::DECODE_UNICODE_TEXT_SET: {
-      auto collections = parse_unicode_text_set(read_input_data());
+    });
+
+Action a_decode_unicode_text_set(
+    "decode-unicode-text-set", nullptr, +[](Arguments& args) {
+      auto collections = parse_unicode_text_set(read_input_data(args));
       JSON j = JSON::list();
       for (const auto& collection : collections) {
         JSON& coll_j = j.emplace_back(JSON::list());
@@ -1531,11 +1174,16 @@ int main(int argc, char** argv) {
         }
       }
       string out_data = j.serialize(JSON::SerializeOption::FORMAT);
-      write_output_data(out_data.data(), out_data.size());
-      break;
-    }
-    case Behavior::ENCODE_UNICODE_TEXT_SET: {
-      auto json = JSON::parse(read_input_data());
+      write_output_data(args, out_data.data(), out_data.size(), "json");
+    });
+Action a_encode_unicode_text_set(
+    "encode-unicode-text-set", "\
+  decode-unicode-text-set [INPUT-FILENAME [OUTPUT-FILENAME]]\n\
+  encode-unicode-text-set [INPUT-FILENAME [OUTPUT-FILENAME]]\n\
+    Decode a Unicode text set (e.g. unitxt_e.prs) to JSON for easy editing, or\n\
+    encode a JSON file to a Unicode text set.\n",
+    +[](Arguments& args) {
+      auto json = JSON::parse(read_input_data(args));
       vector<vector<string>> collections;
       for (const auto& coll_json : json.as_list()) {
         auto& collection = collections.emplace_back();
@@ -1544,13 +1192,24 @@ int main(int argc, char** argv) {
         }
       }
       string encoded = serialize_unicode_text_set(collections);
-      write_output_data(encoded.data(), encoded.size());
-      break;
-    }
+      write_output_data(args, encoded.data(), encoded.size(), "prs");
+    });
 
-    case Behavior::CAT_CLIENT: {
+Action a_cat_client(
+    "cat-client", "\
+  cat-client ADDR:PORT\n\
+    Connect to the given server and simulate a PSO client. newserv will then\n\
+    print all the received commands to stdout, and forward any commands typed\n\
+    into stdin to the remote server. It is assumed that the input and output\n\
+    are terminals, so all commands are hex-encoded. The --patch, --dc, --pc,\n\
+    --gc, and --bb options can be used to select the command format and\n\
+    encryption. If --bb is used, the --key=KEY-NAME option is also required (as\n\
+    in decrypt-data above).\n",
+    +[](Arguments& args) {
+      auto version = get_cli_version(args);
       shared_ptr<PSOBBEncryption::KeyFile> key;
-      if (cli_version == GameVersion::BB) {
+      if (uses_v4_encryption(version)) {
+        string key_file_name = args.get<string>("key");
         if (key_file_name.empty()) {
           throw runtime_error("a key filename is required for BB client emulation");
         }
@@ -1558,83 +1217,81 @@ int main(int argc, char** argv) {
             load_object_file<PSOBBEncryption::KeyFile>("system/blueburst/keys/" + key_file_name + ".nsk")));
       }
       shared_ptr<struct event_base> base(event_base_new(), event_base_free);
-      auto cat_client_remote = make_sockaddr_storage(parse_netloc(input_filename)).first;
-      CatSession session(base, cat_client_remote, cli_version, key);
+      auto cat_client_remote = make_sockaddr_storage(parse_netloc(args.get<string>(1))).first;
+      CatSession session(base, cat_client_remote, get_cli_version(args), key);
       event_base_dispatch(base.get());
-      break;
-    }
+    });
 
-    case Behavior::CONVERT_RARE_ITEM_SET: {
+Action a_convert_rare_item_set(
+    "convert-rare-item-set", "\
+  convert-rare-item-set INPUT-FILENAME [OUTPUT-FILENAME]\n\
+    If OUTPUT-FILENAME is not given, print the contents of a rare item table in\n\
+    a human-readable format. Otherwise, convert the input rare item set to a\n\
+    different format and write it to OUTPUT-FILENAME. Both filenames must end\n\
+    in one of the following extensions:\n\
+      .json (newserv JSON rare item table)\n\
+      .gsl (PSO BB little-endian GSL archive)\n\
+      .gslb (PSO GC big-endian GSL archive)\n\
+      .afs (PSO V2 little-endian AFS archive)\n\
+      .rel (Schtserv rare table; cannot be used in output filename)\n",
+    +[](Arguments& args) {
       auto name_index = make_shared<ItemNameIndex>(
           JSON::parse(load_file("system/item-tables/names-v2.json")),
           JSON::parse(load_file("system/item-tables/names-v3.json")),
           JSON::parse(load_file("system/item-tables/names-v4.json")));
 
-      if (!input_filename || !strcmp(input_filename, "-")) {
+      string input_filename = args.get<string>(1, false);
+      if (input_filename.empty() || (input_filename == "-")) {
         throw runtime_error("input filename must be given");
       }
+      auto version = get_cli_version(args);
 
-      shared_ptr<string> data(new string(read_input_data()));
+      shared_ptr<string> data(new string(read_input_data(args)));
       shared_ptr<RareItemSet> rs;
       if (ends_with(input_filename, ".json")) {
-        rs.reset(new RareItemSet(JSON::parse(*data), cli_version, name_index));
+        rs.reset(new RareItemSet(JSON::parse(*data), version, name_index));
       } else if (ends_with(input_filename, ".gsl")) {
         rs.reset(new RareItemSet(GSLArchive(data, false), false));
       } else if (ends_with(input_filename, ".gslb")) {
         rs.reset(new RareItemSet(GSLArchive(data, true), true));
       } else if (ends_with(input_filename, ".afs")) {
-        rs.reset(new RareItemSet(AFSArchive(data), (cli_quest_version == QuestScriptVersion::DC_V1)));
+        rs.reset(new RareItemSet(AFSArchive(data), is_v1(version)));
       } else if (ends_with(input_filename, ".rel")) {
         rs.reset(new RareItemSet(*data, true));
       } else {
         throw runtime_error("cannot determine input format; use a filename ending with .json, .gsl, .gslb, .afs, or .rel");
       }
 
-      if (!output_filename || !strcmp(output_filename, "-")) {
-        rs->print_all_collections(stdout, cli_version, name_index);
+      string output_filename = args.get<string>(2, false);
+      if (output_filename.empty() || (output_filename == "-")) {
+        rs->print_all_collections(stdout, version, name_index);
       } else if (ends_with(output_filename, ".json")) {
-        string data = rs->serialize_json(cli_version, name_index);
-        write_output_data(data.data(), data.size());
+        string data = rs->serialize_json(version, name_index);
+        write_output_data(args, data.data(), data.size(), nullptr);
       } else if (ends_with(output_filename, ".gsl")) {
-        string data = rs->serialize_gsl(big_endian);
-        write_output_data(data.data(), data.size());
+        string data = rs->serialize_gsl(args.get<bool>("big-endian"));
+        write_output_data(args, data.data(), data.size(), nullptr);
       } else if (ends_with(output_filename, ".gslb")) {
         string data = rs->serialize_gsl(true);
-        write_output_data(data.data(), data.size());
+        write_output_data(args, data.data(), data.size(), nullptr);
       } else if (ends_with(output_filename, ".afs")) {
         string data = rs->serialize_afs();
-        write_output_data(data.data(), data.size());
+        write_output_data(args, data.data(), data.size(), nullptr);
       } else {
         throw runtime_error("cannot determine output format; use a filename ending with .json, .gsl, .gslb, or .afs");
       }
+    });
 
-      break;
-    }
+Action a_describe_item(
+    "describe-item", "\
+  describe-item DATA-OR-DESCRIPTION\n\
+    Describe an item. The argument may be the item\'s raw hex code or a textual\n\
+    description of the item. If the description contains spaces, it must be\n\
+    quoted, such as \"L&K14 COMBAT +10 0/10/15/0/35\".\n",
+    +[](Arguments& args) {
+      string description = args.get<string>(1);
+      auto version = get_cli_version(args);
 
-    case Behavior::DESCRIBE_ITEM: {
-      auto name_index = make_shared<ItemNameIndex>(
-          JSON::parse(load_file("system/item-tables/names-v2.json")),
-          JSON::parse(load_file("system/item-tables/names-v3.json")),
-          JSON::parse(load_file("system/item-tables/names-v4.json")));
-
-      string data = parse_data_string(input_filename);
-
-      ItemData item;
-      if (data.size() == sizeof(ItemData)) {
-        item = *reinterpret_cast<const ItemData*>(data.data());
-      } else {
-        memcpy(&item.data1[0], data.data(), min<size_t>(sizeof(item.data1), data.size()));
-        if (data.size() > sizeof(item.data1)) {
-          memcpy(&item.data2[0], data.data() + sizeof(item.data1), min<size_t>(sizeof(item.data2), data.size() - sizeof(item.data1)));
-        }
-      }
-
-      string desc = name_index->describe_item(cli_version, item);
-      log_info("Item: %s", desc.c_str());
-      break;
-    }
-
-    case Behavior::ENCODE_ITEM: {
       auto name_index = make_shared<ItemNameIndex>(
           JSON::parse(load_file("system/item-tables/names-v2.json")),
           JSON::parse(load_file("system/item-tables/names-v3.json")),
@@ -1646,9 +1303,9 @@ int main(int argc, char** argv) {
       shared_ptr<string> pmt_data_v4(new string(prs_decompress(load_file("system/item-tables/ItemPMT-bb.prs"))));
       auto pmt_v4 = make_shared<ItemParameterTable>(pmt_data_v4, ItemParameterTable::Version::V4);
 
-      ItemData item = name_index->parse_item_description(cli_version, input_filename);
+      ItemData item = name_index->parse_item_description(version, description);
 
-      string desc = name_index->describe_item(cli_version, item);
+      string desc = name_index->describe_item(version, item);
       log_info("Data (decoded):    %02hhX%02hhX%02hhX%02hhX %02hhX%02hhX%02hhX%02hhX %02hhX%02hhX%02hhX%02hhX -------- %02hhX%02hhX%02hhX%02hhX",
           item.data1[0], item.data1[1], item.data1[2], item.data1[3],
           item.data1[4], item.data1[5], item.data1[6], item.data1[7],
@@ -1656,9 +1313,9 @@ int main(int argc, char** argv) {
           item.data2[0], item.data2[1], item.data2[2], item.data2[3]);
 
       ItemData item_v1 = item;
-      item_v1.encode_for_version(GameVersion::PC, pmt_v2);
+      item_v1.encode_for_version(Version::PC_V2, pmt_v2);
       ItemData item_v1_decoded = item_v1;
-      item_v1_decoded.decode_for_version(GameVersion::PC);
+      item_v1_decoded.decode_for_version(Version::PC_V2);
 
       log_info("Data (V1-encoded): %02hhX%02hhX%02hhX%02hhX %02hhX%02hhX%02hhX%02hhX %02hhX%02hhX%02hhX%02hhX -------- %02hhX%02hhX%02hhX%02hhX",
           item_v1.data1[0], item_v1.data1[1], item_v1.data1[2], item_v1.data1[3],
@@ -1675,9 +1332,9 @@ int main(int argc, char** argv) {
       }
 
       ItemData item_gc = item;
-      item_gc.encode_for_version(GameVersion::GC, pmt_v3);
+      item_gc.encode_for_version(Version::GC_V3, pmt_v3);
       ItemData item_gc_decoded = item_gc;
-      item_gc_decoded.decode_for_version(GameVersion::GC);
+      item_gc_decoded.decode_for_version(Version::GC_V3);
 
       log_info("Data (GC-encoded): %02hhX%02hhX%02hhX%02hhX %02hhX%02hhX%02hhX%02hhX %02hhX%02hhX%02hhX%02hhX -------- %02hhX%02hhX%02hhX%02hhX",
           item_gc.data1[0], item_gc.data1[1], item_gc.data1[2], item_gc.data1[3],
@@ -1698,10 +1355,16 @@ int main(int argc, char** argv) {
       size_t purchase_price = pmt_v4->price_for_item(item);
       size_t sale_price = purchase_price >> 3;
       log_info("Purchase price: %zu; sale price: %zu", purchase_price, sale_price);
-      break;
-    }
+    });
 
-    case Behavior::SHOW_EP3_CARDS: {
+Action a_show_ep3_cards(
+    "show-ep3-cards", "\
+  show-ep3-cards\n\
+    Print the Episode 3 card definitions from the system/ep3 directory in a\n\
+    human-readable format.\n",
+    +[](Arguments& args) {
+      bool one_line = args.get<bool>("one-line");
+
       Episode3::CardIndex card_index(
           "system/ep3/card-definitions.mnr",
           "system/ep3/card-definitions.mnrd",
@@ -1743,10 +1406,16 @@ int main(int argc, char** argv) {
           fputc('\n', stdout);
         }
       }
-      break;
-    }
+    });
 
-    case Behavior::GENERATE_EP3_CARDS_HTML: {
+Action a_generate_ep3_cards_html(
+    "generate-ep3-cards-html", "\
+  generate-ep3-cards-html\n\
+    Generate an HTML file describing all Episode 3 card definitions from the\n\
+    system/ep3 directory.\n",
+    +[](Arguments& args) {
+      size_t num_threads = args.get<size_t>("threads", 0);
+
       Episode3::CardIndex card_index(
           "system/ep3/card-definitions.mnr",
           "system/ep3/card-definitions.mnrd",
@@ -1878,10 +1547,14 @@ int main(int argc, char** argv) {
       blocks.emplace_back("</table></body></html>");
 
       save_file("cards.html", join(blocks, ""));
-      break;
-    }
+    });
 
-    case Behavior::SHOW_EP3_MAPS: {
+Action a_show_ep3_maps(
+    "show-ep3-maps", "\
+  show-ep3-maps\n\
+    Print the Episode 3 maps from the system/ep3 directory in a (sort of)\n\
+    human-readable format.\n",
+    +[](Arguments&) {
       config_log.info("Collecting Episode 3 data");
       Episode3::MapIndex map_index("system/ep3/maps");
       Episode3::CardIndex card_index("system/ep3/card-definitions.mnr", "system/ep3/card-definitions.mnrd");
@@ -1899,23 +1572,34 @@ int main(int argc, char** argv) {
           fprintf(stdout, "(%c) %s\n", char_for_language_code(language), s.c_str());
         }
       }
-      break;
-    }
+    });
 
-    case Behavior::PARSE_OBJECT_GRAPH: {
-      string data = read_input_data();
+Action a_parse_object_graph(
+    "parse-object-graph", nullptr, +[](Arguments& args) {
+      uint32_t root_object_address = args.get<uint32_t>("root", Arguments::IntFormat::HEX);
+      string data = read_input_data(args);
       PSOGCObjectGraph g(data, root_object_address);
       g.print(stdout);
-      break;
-    }
+    });
 
-    case Behavior::GENERATE_DC_SERIAL_NUMBER: {
+Action a_generate_dc_serial_number(
+    "generate-dc-serial-number", "\
+  generate-dc-serial-number DOMAIN SUBDOMAIN\n\
+    Generate a PSO DC serial number. DOMAIN should be 0 for Japanese, 1 for\n\
+    USA, or 2 for Europe. SUBDOMAIN should be 0 for v1, or 1 for v2.\n",
+    +[](Arguments& args) {
+      uint8_t domain = args.get<uint8_t>(1);
+      uint8_t subdomain = args.get<uint8_t>(2);
       string serial_number = generate_dc_serial_number(domain, subdomain);
       fprintf(stdout, "%s\n", serial_number.c_str());
-      break;
-    }
+    });
+Action a_generate_all_dc_serial_numbers(
+    "generate-all-dc-serial-numbers", "\
+  generate-all-dc-serial-numbers\n\
+    Generate all possible PSO DC serial numbers.\n",
+    +[](Arguments& args) {
+      size_t num_threads = args.get<size_t>("threads", 0);
 
-    case Behavior::GENERATE_ALL_DC_SERIAL_NUMBERS: {
       auto serial_numbers = generate_all_dc_serial_numbers();
       fprintf(stdout, "%zu (0x%zX) serial numbers found\n", serial_numbers.size(), serial_numbers.size());
       for (const auto& it : serial_numbers) {
@@ -1948,48 +1632,63 @@ int main(int argc, char** argv) {
             current_value, num_found, num_found);
       };
       parallel_range<uint64_t>(thread_fn, 0, 0x100000000, num_threads, progress_fn);
-      break;
-    }
-
-    case Behavior::INSPECT_DC_SERIAL_NUMBER: {
-      if (!input_filename) {
+    });
+Action a_inspect_dc_serial_number(
+    "inspect-dc-serial-number", "\
+  inspect-dc-serial-number SERIAL-NUMBER\n\
+    Show which domain and subdomain the serial number belongs to. (As with\n\
+    generate-dc-serial-number, described above, this will tell you which PSO\n\
+    version it is valid for.)\n",
+    +[](Arguments& args) {
+      const string& serial_number_str = args.get<string>(1, false);
+      if (serial_number_str.empty()) {
         throw invalid_argument("no serial number given");
       }
       size_t num_valid_subdomains = 0;
       for (uint8_t domain = 0; domain < 3; domain++) {
         for (uint8_t subdomain = 0; subdomain < 3; subdomain++) {
-          if (dc_serial_number_is_valid_fast(input_filename, domain, subdomain)) {
-            fprintf(stdout, "%s is valid in domain %hhu subdomain %hhu\n", input_filename, domain, subdomain);
+          if (dc_serial_number_is_valid_fast(serial_number_str, domain, subdomain)) {
+            fprintf(stdout, "%s is valid in domain %hhu subdomain %hhu\n", serial_number_str.c_str(), domain, subdomain);
             num_valid_subdomains++;
           }
         }
       }
       if (num_valid_subdomains == 0) {
-        fprintf(stdout, "%s is not valid in any domain\n", input_filename);
+        fprintf(stdout, "%s is not valid in any domain\n", serial_number_str.c_str());
       }
-      break;
-    }
-
-    case Behavior::DC_SERIAL_NUMBER_SPEED_TEST:
+    });
+Action a_dc_serial_number_speed_test(
+    "dc-serial-number-speed-test", "\
+  dc-serial-number-speed-test\n\
+    Run a speed test of the two DC serial number validation functions.\n",
+    +[](Arguments& args) {
+      const string& seed = args.get<string>("seed");
       if (seed.empty()) {
         dc_serial_number_speed_test();
       } else {
         dc_serial_number_speed_test(stoul(seed, nullptr, 16));
       }
-      break;
+    });
 
-    case Behavior::AR_CODE_TRANSLATOR:
-      if (!input_filename || !strcmp(input_filename, "-")) {
+Action a_ar_code_translator(
+    "ar-code-translator", nullptr, +[](Arguments& args) {
+      const string& dir = args.get<string>(1, false);
+      if (dir.empty() || (dir == "-")) {
         throw invalid_argument("a directory name is required");
       }
-      run_ar_code_translator(input_filename);
-      break;
+      run_ar_code_translator(dir, args.get<string>(2, false), args.get<string>(3, false));
+    });
 
-    case Behavior::REPLAY_LOG:
-    case Behavior::RUN_SERVER: {
-      bool is_replay = behavior == Behavior::REPLAY_LOG;
+Action a_run_server_replay_log(
+    "", nullptr, +[](Arguments& args) {
+      string config_filename = args.get<string>("config");
+      const string& replay_log_filename = args.get<string>("replay-log");
+      bool is_replay = !replay_log_filename.empty();
+      if (config_filename.empty()) {
+        config_filename = "system/config.json";
+      }
+
       signal(SIGPIPE, SIG_IGN);
-
       if (isatty(fileno(stderr))) {
         use_terminal_colors = true;
       }
@@ -2003,7 +1702,7 @@ int main(int argc, char** argv) {
       state->init();
 
       shared_ptr<DNSServer> dns_server;
-      if (state->dns_server_port && (behavior != Behavior::REPLAY_LOG)) {
+      if (state->dns_server_port && !is_replay) {
         config_log.info("Starting DNS server on port %hu", state->dns_server_port);
         dns_server.reset(new DNSServer(base, state->local_address,
             state->external_address));
@@ -2015,7 +1714,7 @@ int main(int argc, char** argv) {
       shared_ptr<Shell> shell;
       shared_ptr<ReplaySession> replay_session;
       shared_ptr<IPStackSimulator> ip_stack_simulator;
-      if (behavior == Behavior::REPLAY_LOG) {
+      if (is_replay) {
         config_log.info("Starting proxy server");
         state->proxy_server.reset(new ProxyServer(base, state));
         config_log.info("Starting game server");
@@ -2023,14 +1722,14 @@ int main(int argc, char** argv) {
 
         auto nop_destructor = +[](FILE*) {};
         shared_ptr<FILE> log_f(stdin, nop_destructor);
-        if (input_filename && strcmp(input_filename, "-")) {
-          log_f = fopen_shared(input_filename, "rt");
+        if (replay_log_filename != "-") {
+          log_f = fopen_shared(replay_log_filename, "rt");
         }
 
-        replay_session.reset(new ReplaySession(base, log_f.get(), state, replay_require_basic_credentials));
+        replay_session.reset(new ReplaySession(base, log_f.get(), state, args.get<bool>("require-basic-credentials")));
         replay_session->start();
 
-      } else if (behavior == Behavior::RUN_SERVER) {
+      } else {
         config_log.info("Opening sockets");
         for (const auto& it : state->name_to_port_config) {
           const auto& pc = it.second;
@@ -2045,12 +1744,12 @@ int main(int argc, char** argv) {
               // no way to ask the client which destination they want, so only one
               // destination is supported, and we have to manually specify the
               // destination netloc here.
-              if (pc->version == GameVersion::PATCH) {
+              if (is_patch(pc->version)) {
                 auto [ss, size] = make_sockaddr_storage(
                     state->proxy_destination_patch.first,
                     state->proxy_destination_patch.second);
                 state->proxy_server->listen(pc->port, pc->version, &ss);
-              } else if (pc->version == GameVersion::BB) {
+              } else if (is_v4(pc->version)) {
                 auto [ss, size] = make_sockaddr_storage(
                     state->proxy_destination_bb.first,
                     state->proxy_destination_bb.second);
@@ -2064,9 +1763,7 @@ int main(int argc, char** argv) {
               config_log.info("Starting game server");
               state->game_server.reset(new Server(base, state));
             }
-            string spec = string_printf("T-%hu-%s-%s-%s",
-                pc->port, name_for_version(pc->version), pc->name.c_str(),
-                name_for_server_behavior(pc->behavior));
+            string spec = string_printf("T-%hu-%s-%s-%s", pc->port, name_for_enum(pc->version), pc->name.c_str(), name_for_enum(pc->behavior));
             state->game_server->listen(spec, "", pc->port, pc->version, pc->behavior);
           }
         }
@@ -2080,9 +1777,6 @@ int main(int argc, char** argv) {
             ip_stack_simulator->listen(spec, netloc.first, netloc.second);
           }
         }
-
-      } else {
-        throw logic_error("invalid behavior");
       }
 
       if (!state->username.empty()) {
@@ -2118,12 +1812,58 @@ int main(int argc, char** argv) {
 
       config_log.info("Normal shutdown");
       state->proxy_server.reset(); // Break reference cycle
-      break;
-    }
+    });
 
-    default:
-      throw logic_error("invalid behavior");
+void print_usage() {
+  fputs("\
+Usage:\n\
+  newserv [ACTION] [OPTIONS...]\n\
+\n\
+If ACTION is not specified, newserv runs in server mode. PSO clients can\n\
+connect normally, join lobbies, play games, and use the proxy server. See\n\
+README.md and system/config.json for more information.\n\
+\n\
+When ACTION is given, newserv will do things other than running the server.\n\
+\n\
+Some actions accept input and/or output filenames; see the descriptions below\n\
+for details. If INPUT-FILENAME is missing or is '-', newserv reads from stdin.\n\
+If OUTPUT-FILENAME is missing and the input is not from stdin, newserv writes\n\
+the output to INPUT-FILENAME.dec or a similarly-named file; if OUTPUT-FILENAME\n\
+is '-', newserv writes the output to stdout. If stdout is a terminal and the\n\
+output is not text or JSON, the data written to stdout is formatted in a\n\
+hex/ASCII view; in any other case, the raw output is written to stdout, which\n\
+(for most actions) may include arbitrary binary data.\n\
+\n\
+The actions are:\n",
+      stderr);
+  for (const auto& a : action_order) {
+    if (a->help_text) {
+      fputs(a->help_text, stderr);
+    }
+  }
+  fputs("\
+Most options that take data as input also accept the following option:\n\
+  --parse-data\n\
+      For modes that take input (from a file or from stdin), parse the input as\n\
+      a hex string before encrypting/decoding/etc.\n\
+\n",
+      stderr);
+}
+
+int main(int argc, char** argv) {
+  Arguments args(&argv[1], argc - 1);
+  if (args.get<bool>("help")) {
+    print_usage();
+    return 0;
   }
 
-  return 0;
+  string action_name = args.get<string>(0, false);
+  try {
+    const auto& a = all_actions.at(action_name);
+    a->run(args);
+    return 0;
+  } catch (const out_of_range&) {
+    log_error("Unknown or invalid action; try --help");
+    return 1;
+  }
 }

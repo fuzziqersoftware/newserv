@@ -44,23 +44,25 @@ WordSelectTable::WordSelectTable(const JSON& json) {
   }
 }
 
-uint16_t WordSelectTable::Token::value_for_version(QuestScriptVersion version) const {
+uint16_t WordSelectTable::Token::value_for_version(Version version) const {
   switch (version) {
-    case QuestScriptVersion::DC_NTE:
-    case QuestScriptVersion::DC_V1:
-    case QuestScriptVersion::DC_V2:
+    case Version::DC_NTE:
+    case Version::DC_V1_12_2000_PROTOTYPE:
+    case Version::DC_V1:
+    case Version::DC_V2:
       return this->dc_value;
-    case QuestScriptVersion::PC_V2:
+    case Version::PC_V2:
       return this->pc_value;
-    // TODO: Which index does GC_NTE use? Here we presume it's the same as GC,
-    // but this may not be true
-    case QuestScriptVersion::GC_NTE:
-    case QuestScriptVersion::GC_V3:
-    case QuestScriptVersion::XB_V3:
+    case Version::GC_NTE:
+    case Version::GC_V3:
+    case Version::XB_V3:
+      // TODO: Which index does GC_NTE use? Here we presume it's the same as GC,
+      // but this may not be true
       return this->gc_value;
-    case QuestScriptVersion::GC_EP3:
+    case Version::GC_EP3_TRIAL_EDITION:
+    case Version::GC_EP3:
       return this->ep3_value;
-    case QuestScriptVersion::BB_V4:
+    case Version::BB_V4:
       return this->bb_value;
     default:
       throw logic_error("invalid word select version");
@@ -69,29 +71,31 @@ uint16_t WordSelectTable::Token::value_for_version(QuestScriptVersion version) c
 
 WordSelectMessage WordSelectTable::translate(
     const WordSelectMessage& msg,
-    QuestScriptVersion from_version,
-    QuestScriptVersion to_version) const {
+    Version from_version,
+    Version to_version) const {
   const std::vector<size_t>* index;
   switch (from_version) {
-    case QuestScriptVersion::DC_NTE:
-    case QuestScriptVersion::DC_V1:
-    case QuestScriptVersion::DC_V2:
+    case Version::DC_NTE:
+    case Version::DC_V1_12_2000_PROTOTYPE:
+    case Version::DC_V1:
+    case Version::DC_V2:
       index = &this->dc_index;
       break;
-    case QuestScriptVersion::PC_V2:
+    case Version::PC_V2:
       index = &this->pc_index;
       break;
-    // TODO: Which index does GC_NTE use? Here we presume it's the same as GC,
-    // but this may not be true
-    case QuestScriptVersion::GC_NTE:
-    case QuestScriptVersion::GC_V3:
-    case QuestScriptVersion::XB_V3:
+    case Version::GC_NTE:
+    case Version::GC_V3:
+    case Version::XB_V3:
+      // TODO: Which index does GC_NTE use? Here we presume it's the same as GC,
+      // but this may not be true
       index = &this->gc_index;
       break;
-    case QuestScriptVersion::GC_EP3:
+    case Version::GC_EP3_TRIAL_EDITION:
+    case Version::GC_EP3:
       index = &this->ep3_index;
       break;
-    case QuestScriptVersion::BB_V4:
+    case Version::BB_V4:
       index = &this->bb_index;
       break;
     default:

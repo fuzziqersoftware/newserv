@@ -16,14 +16,14 @@ ItemCreator::ItemCreator(
     shared_ptr<const WeaponRandomSet> weapon_random_set,
     shared_ptr<const TekkerAdjustmentSet> tekker_adjustment_set,
     shared_ptr<const ItemParameterTable> item_parameter_table,
-    GameVersion version,
+    Version version,
     Episode episode,
     GameMode mode,
     uint8_t difficulty,
     uint8_t section_id,
     uint32_t random_seed,
     shared_ptr<const BattleRules> restrictions)
-    : log(string_printf("[ItemCreator:%s/%s/%s/%c/%hhu] ", name_for_version(version), abbreviation_for_episode(episode), abbreviation_for_mode(mode), abbreviation_for_difficulty(difficulty), section_id)),
+    : log(string_printf("[ItemCreator:%s/%s/%s/%c/%hhu] ", name_for_enum(version), abbreviation_for_episode(episode), abbreviation_for_mode(mode), abbreviation_for_difficulty(difficulty), section_id)),
       version(version),
       episode(episode),
       mode(mode),
@@ -786,17 +786,27 @@ void ItemCreator::generate_unit_stars_tables() {
   size_t star_base_index;
   uint8_t num_units;
   switch (this->version) {
-    case GameVersion::DC:
-    case GameVersion::PC:
+    case Version::PC_PATCH:
+    case Version::BB_PATCH:
+    case Version::GC_NTE:
+      throw logic_error("unknown parameters for version");
+    case Version::GC_EP3_TRIAL_EDITION:
+    case Version::GC_EP3:
+      throw logic_error("ItemCreator cannot be created for Episode 3 games");
+    case Version::DC_NTE:
+    case Version::DC_V1_12_2000_PROTOTYPE:
+    case Version::DC_V1:
+    case Version::DC_V2:
+    case Version::PC_V2:
       star_base_index = 0x1D1;
       num_units = 0x44;
       break;
-    case GameVersion::GC:
-    case GameVersion::XB:
+    case Version::GC_V3:
+    case Version::XB_V3:
       star_base_index = 0x2AF;
       num_units = 0x48;
       break;
-    case GameVersion::BB:
+    case Version::BB_V4:
       star_base_index = 0x37D;
       num_units = 0x64;
       break;

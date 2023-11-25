@@ -670,7 +670,7 @@ Proxy session commands:\n\
     auto ses = this->get_proxy_session(session_name);
     bool is_dchat = (command_name == "dchat");
 
-    if (!is_dchat && (ses->version() == GameVersion::PC || ses->version() == GameVersion::BB)) {
+    if (!is_dchat && uses_utf16(ses->version())) {
       send_chat_message_from_client(ses->server_channel, command_args, 0);
     } else {
       string data(8, '\0');
@@ -688,8 +688,7 @@ Proxy session commands:\n\
 
   } else if ((command_name == "wc") || (command_name == "wchat")) {
     auto ses = this->get_proxy_session(session_name);
-    if ((ses->version() != GameVersion::GC) ||
-        !ses->config.check_flag(Client::Flag::IS_EPISODE_3)) {
+    if (!is_ep3(ses->version())) {
       throw runtime_error("wchat can only be used on Episode 3");
     }
     string data(8, '\0');
@@ -746,9 +745,7 @@ Proxy session commands:\n\
       ses->config.override_lobby_event = 0xFF;
     } else {
       ses->config.override_lobby_event = event_for_name(command_args);
-      if ((ses->version() != GameVersion::DC) &&
-          (ses->version() != GameVersion::PC) &&
-          !((ses->version() == GameVersion::GC) && ses->config.check_flag(Client::Flag::IS_GC_TRIAL_EDITION))) {
+      if (!is_v1_or_v2(ses->version())) {
         ses->client_channel.send(0xDA, ses->config.override_lobby_event);
       }
     }
@@ -796,7 +793,7 @@ Proxy session commands:\n\
   } else if ((command_name == "create-item") || (command_name == "set-next-item")) {
     auto ses = this->get_proxy_session(session_name);
 
-    if (ses->version() == GameVersion::BB) {
+    if (ses->version() == Version::BB_V4) {
       throw runtime_error("proxy session is BB");
     }
     if (!ses->is_in_game) {

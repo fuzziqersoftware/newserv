@@ -46,13 +46,13 @@ static void check_license_flags(shared_ptr<Client> c, uint32_t mask) {
   }
 }
 
-static void check_version(shared_ptr<Client> c, GameVersion version) {
+static void check_version(shared_ptr<Client> c, Version version) {
   if (c->version() != version) {
     throw precondition_failed("$C6This command cannot\nbe used for your\nversion of PSO.");
   }
 }
 
-static void check_not_version(shared_ptr<Client> c, GameVersion version) {
+static void check_not_version(shared_ptr<Client> c, Version version) {
   if (c->version() == version) {
     throw precondition_failed("$C6This command cannot\nbe used for your\nversion of PSO.");
   }
@@ -65,7 +65,7 @@ static void check_is_game(shared_ptr<Lobby> l, bool is_game) {
 }
 
 static void check_is_ep3(shared_ptr<Client> c, bool is_ep3) {
-  if (c->config.check_flag(Client::Flag::IS_EPISODE_3) != is_ep3) {
+  if (::is_ep3(c->version()) != is_ep3) {
     throw precondition_failed(is_ep3 ? "$C6This command can only\nbe used in Episode 3." : "$C6This command cannot\nbe used in Episode 3.");
   }
 }
@@ -282,7 +282,7 @@ static void server_command_qset_qclear(shared_ptr<Client> c, const std::string& 
 
   uint16_t flag_num = stoul(args, nullptr, 0);
 
-  if ((c->version() == GameVersion::DC) || (c->version() == GameVersion::PC)) {
+  if (is_v1_or_v2(c->version())) {
     G_SetQuestFlag_DC_PC_6x75 cmd = {{0x75, 0x02, 0x0000}, flag_num, should_set ? 0 : 1};
     send_command_t(l, 0x60, 0x00, cmd);
   } else {
@@ -355,7 +355,7 @@ static void proxy_command_qcall(shared_ptr<ProxyServer::LinkedSession> ses, cons
 
 static void server_command_show_material_counts(shared_ptr<Client> c, const std::string&) {
   auto p = c->game_data.character();
-  if ((c->version() == GameVersion::DC) || (c->version() == GameVersion::PC)) {
+  if (is_v1_or_v2(c->version())) {
     send_text_message_printf(c, "%hhu HP, %hhu TP",
         p->get_material_usage(PSOBBCharacterFile::MaterialType::HP),
         p->get_material_usage(PSOBBCharacterFile::MaterialType::TP));
@@ -429,8 +429,8 @@ static void proxy_command_patch(shared_ptr<ProxyServer::LinkedSession> ses, cons
   };
 
   auto send_version_detect_or_send_call = [args, ses, send_call]() {
-    if (ses->version() == GameVersion::GC &&
-        ses->config.specific_version == default_specific_version_for_version(GameVersion::GC, -1)) {
+    if (is_gc(ses->version()) &&
+        ses->config.specific_version == default_specific_version_for_version(ses->version(), -1)) {
       auto s = ses->require_server_state();
       send_function_call(
           ses->client_channel,
@@ -475,7 +475,7 @@ static void server_command_persist(shared_ptr<Client> c, const std::string&) {
 static void server_command_exit(shared_ptr<Client> c, const std::string&) {
   auto l = c->require_lobby();
   if (l->is_game()) {
-    if (c->config.check_flag(Client::Flag::IS_EPISODE_3)) {
+    if (is_ep3(c->version())) {
       c->channel.send(0xED, 0x00);
     } else if (l->check_flag(Lobby::Flag::QUEST_IN_PROGRESS) || l->check_flag(Lobby::Flag::JOINABLE_QUEST_IN_PROGRESS)) {
       G_UnusedHeader cmd = {0x73, 0x01, 0x0000};
@@ -496,7 +496,7 @@ static void server_command_exit(shared_ptr<Client> c, const std::string&) {
 
 static void proxy_command_exit(shared_ptr<ProxyServer::LinkedSession> ses, const std::string&) {
   if (ses->is_in_game) {
-    if (ses->config.check_flag(Client::Flag::IS_EPISODE_3)) {
+    if (is_ep3(ses->version())) {
       ses->client_channel.send(0xED, 0x00);
     } else if (ses->is_in_quest) {
       G_UnusedHeader cmd = {0x73, 0x01, 0x0000};
@@ -595,10 +595,7 @@ static void proxy_command_lobby_event(shared_ptr<ProxyServer::LinkedSession> ses
       send_text_message(ses->client_channel, "$C6No such lobby event.");
     } else {
       ses->config.override_lobby_event = new_event;
-      // This command is supported on all V3 versions except Ep1&2 Trial
-      if ((ses->version() == GameVersion::GC && !ses->config.check_flag(Client::Flag::IS_GC_TRIAL_EDITION)) ||
-          (ses->version() == GameVersion::XB) ||
-          (ses->version() == GameVersion::BB)) {
+      if (!is_v1_or_v2(ses->version())) {
         ses->client_channel.send(0xDA, ses->config.override_lobby_event);
       }
     }
@@ -680,7 +677,7 @@ static void server_command_saverec(shared_ptr<Client> c, const std::string& args
 }
 
 static void server_command_playrec(shared_ptr<Client> c, const std::string& args) {
-  if (!c->config.check_flag(Client::Flag::IS_EPISODE_3)) {
+  if (!is_ep3(c->version())) {
     send_text_message(c, "$C4This command can\nonly be used on\nEpisode 3");
     return;
   }
@@ -888,7 +885,7 @@ static void server_command_edit(shared_ptr<Client> c, const std::string& args) {
   auto s = c->require_server_state();
   auto l = c->require_lobby();
   check_is_game(l, false);
-  check_version(c, GameVersion::BB);
+  check_version(c, Version::BB_V4);
 
   if (s->cheat_mode_behavior == ServerState::BehaviorSwitch::OFF) {
     send_text_message(l, "$C6Cheats are disabled\non this server");
@@ -988,7 +985,7 @@ static void server_command_edit(shared_ptr<Client> c, const std::string& args) {
 
 // TODO: implement this (and make sure the bank name is filesystem-safe)
 /* static void server_command_change_bank(shared_ptr<Client> c, const std::string&) {
-  check_version(c, GameVersion::BB);
+  check_version(c, Version::BB_V4);
   ...
 } */
 
@@ -997,7 +994,7 @@ static void server_command_convert_char_to_bb(shared_ptr<Client> c, const std::s
   auto s = c->require_server_state();
   auto l = c->require_lobby();
   check_is_game(l, false);
-  check_not_version(c, GameVersion::BB);
+  check_not_version(c, Version::BB_V4);
 
   vector<string> tokens = split(args, ' ');
   if (tokens.size() != 3) {
@@ -1027,7 +1024,7 @@ static void server_command_convert_char_to_bb(shared_ptr<Client> c, const std::s
 }
 
 static void server_command_save(shared_ptr<Client> c, const std::string&) {
-  check_version(c, GameVersion::BB);
+  check_version(c, Version::BB_V4);
   try {
     c->game_data.save_character_file();
     send_text_message(c, "Character data saved");
@@ -1373,7 +1370,7 @@ static void server_command_itemtable(shared_ptr<Client> c, const std::string&) {
   check_is_leader(l, c);
   if (l->check_flag(Lobby::Flag::CANNOT_CHANGE_ITEM_TABLE)) {
     send_text_message(c, "Cannot switch item\ntables on this\nserver");
-  } else if (l->base_version == GameVersion::BB) {
+  } else if (l->base_version == Version::BB_V4) {
     send_text_message(c, "Cannot use client\nitem table on BB");
   } else if (!l->check_flag(Lobby::Flag::ITEM_TRACKING_ENABLED)) {
     send_text_message(c, "Cannot use server\nitem tables if item\ntracking is off");
@@ -1405,7 +1402,7 @@ static void server_command_item(shared_ptr<Client> c, const std::string& args) {
 static void proxy_command_item(shared_ptr<ProxyServer::LinkedSession> ses, const std::string& args) {
   auto s = ses->require_server_state();
   check_proxy_cheats_allowed(s);
-  if (ses->version() == GameVersion::BB) {
+  if (ses->version() == Version::BB_V4) {
     send_text_message(ses->client_channel, "$C6This command cannot\nbe used on the proxy\nserver in BB games");
     return;
   }

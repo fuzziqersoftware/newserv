@@ -4380,6 +4380,7 @@ struct G_Unknown_6x5C {
 } __packed__;
 
 // 6x5D: Drop meseta or stacked item
+// On DC NTE, this command has the same format, but is subcommand 6x4F instead.
 
 struct G_DropStackedItem_DC_6x5D {
   G_ClientIDHeader header;
