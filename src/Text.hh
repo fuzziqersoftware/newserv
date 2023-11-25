@@ -321,7 +321,7 @@ struct pstring {
           auto ret = tt_utf8_to_ascii(this->data, Bytes, s.data(), s.size(), true);
           this->clear_after(ret.bytes_written);
           if (Encoding == TextEncoding::CHALLENGE8) {
-            encrypt_challenge_rank_text_t<le_uint16_t>(this->data, Bytes);
+            encrypt_challenge_rank_text_t<uint8_t>(this->data, Bytes);
           }
           break;
         }
