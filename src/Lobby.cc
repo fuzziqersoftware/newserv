@@ -198,6 +198,7 @@ void Lobby::add_client(shared_ptr<Client> c, ssize_t required_client_id) {
 
   c->lobby_client_id = index;
   c->lobby = this->weak_from_this();
+  c->lobby_arrow_color = 0;
 
   // If there's no one else in the lobby, set the leader id as well
   size_t leader_index;
