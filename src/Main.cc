@@ -1842,7 +1842,7 @@ The actions are:\n",
       fputs(a->help_text, stderr);
     }
   }
-  fputs("\
+  fputs("\n\
 Most options that take data as input also accept the following option:\n\
   --parse-data\n\
       For modes that take input (from a file or from stdin), parse the input as\n\
