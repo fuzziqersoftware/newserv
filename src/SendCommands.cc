@@ -641,6 +641,7 @@ void send_complete_player_bb(shared_ptr<Client> c) {
   if (team) {
     cmd.system_file.team_membership = team->membership_for_member(c->license->serial_number);
   }
+  cmd.char_file.disp.play_time = 0;
   send_command_t(c, 0x00E7, 0x00000000, cmd);
 }
 

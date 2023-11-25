@@ -3284,7 +3284,6 @@ static void on_E5_BB(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
       return;
     }
   }
-  c->log.info("Cleared dressing room flag for account");
 
   send_approve_player_choice_bb(c);
 }
