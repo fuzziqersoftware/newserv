@@ -146,7 +146,7 @@ void write_output_data(Arguments& args, const void* data, size_t size, const cha
     // If the output is to a specified file, write it there
     save_file(output_filename, data, size);
 
-  } else if (output_filename.empty() && !input_filename.empty() && (input_filename != "-")) {
+  } else if (output_filename.empty() && (output_filename != "-") && !input_filename.empty() && (input_filename != "-")) {
     // If no output filename is given and an input filename is given, write to
     // <input_filename>.<extension>
     if (!extension) {
@@ -1033,7 +1033,8 @@ Action a_disassemble_quest_script(
       if (!args.get<bool>("decompressed")) {
         data = prs_decompress(data);
       }
-      string result = disassemble_quest_script(data.data(), data.size(), version, 1);
+      uint8_t language = args.get<bool>("japanese") ? 0 : 1;
+      string result = disassemble_quest_script(data.data(), data.size(), version, language);
       write_output_data(args, result.data(), result.size(), "txt");
     });
 Action a_disassemble_quest_map(

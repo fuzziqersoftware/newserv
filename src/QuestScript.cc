@@ -34,6 +34,54 @@ ToT as_type(const FromT& v) {
   return ret;
 }
 
+static TextEncoding encoding_for_language(uint8_t language) {
+  return (language ? TextEncoding::ISO8859 : TextEncoding::SJIS);
+}
+
+static string escape_string(const string& data, TextEncoding encoding = TextEncoding::UTF8) {
+  string decoded;
+  switch (encoding) {
+    case TextEncoding::UTF8:
+      decoded = data;
+      break;
+    case TextEncoding::UTF16:
+      decoded = tt_utf16_to_utf8(data);
+      break;
+    case TextEncoding::SJIS:
+      decoded = tt_sjis_to_utf8(data);
+      break;
+    case TextEncoding::ISO8859:
+      decoded = tt_8859_to_utf8(data);
+      break;
+    case TextEncoding::ASCII:
+      decoded = tt_ascii_to_utf8(data);
+      break;
+    default:
+      return format_data_string(data);
+  }
+
+  string ret = "\"";
+  for (char ch : decoded) {
+    if (ch == '\n') {
+      ret += "\\n";
+    } else if (ch == '\r') {
+      ret += "\\r";
+    } else if (ch == '\t') {
+      ret += "\\t";
+    } else if (ch >= 0x00 && ch < 0x20) {
+      ret += string_printf("\\x%02hhX", ch);
+    } else if (ch == '\'') {
+      ret += "\\\'";
+    } else if (ch == '\"') {
+      ret += "\\\"";
+    } else {
+      ret += ch;
+    }
+  }
+  ret += "\"";
+  return ret;
+}
+
 static string format_and_indent_data(const void* data, size_t size, uint64_t start_address) {
   struct iovec iov;
   iov.iov_base = const_cast<void*>(data);
@@ -809,7 +857,8 @@ std::string disassemble_quest_script(const void* data, size_t size, Version vers
       const auto& header = r.get<PSOQuestHeaderDCNTE>();
       code_offset = header.code_offset;
       function_table_offset = header.function_table_offset;
-      lines.emplace_back(".name " + JSON(header.name.decode(0)).serialize());
+      language = 0;
+      lines.emplace_back(".name " + escape_string(header.name.decode(0)));
       break;
     }
     case Version::DC_V1_12_2000_PROTOTYPE:
@@ -818,11 +867,12 @@ std::string disassemble_quest_script(const void* data, size_t size, Version vers
       const auto& header = r.get<PSOQuestHeaderDC>();
       code_offset = header.code_offset;
       function_table_offset = header.function_table_offset;
+      language = header.language;
       lines.emplace_back(string_printf(".quest_num %hu", header.quest_number.load()));
       lines.emplace_back(string_printf(".language %hhu", header.language));
-      lines.emplace_back(".name " + JSON(header.name.decode(language)).serialize());
-      lines.emplace_back(".short_desc " + JSON(header.short_description.decode(language)).serialize());
-      lines.emplace_back(".long_desc " + JSON(header.long_description.decode(language)).serialize());
+      lines.emplace_back(".name " + escape_string(header.name.decode(language)));
+      lines.emplace_back(".short_desc " + escape_string(header.short_description.decode(language)));
+      lines.emplace_back(".long_desc " + escape_string(header.long_description.decode(language)));
       break;
     }
     case Version::PC_V2: {
@@ -830,11 +880,12 @@ std::string disassemble_quest_script(const void* data, size_t size, Version vers
       const auto& header = r.get<PSOQuestHeaderPC>();
       code_offset = header.code_offset;
       function_table_offset = header.function_table_offset;
+      language = header.language;
       lines.emplace_back(string_printf(".quest_num %hu", header.quest_number.load()));
       lines.emplace_back(string_printf(".language %hhu", header.language));
-      lines.emplace_back(".name " + JSON(header.name.decode(language)).serialize());
-      lines.emplace_back(".short_desc " + JSON(header.short_description.decode(language)).serialize());
-      lines.emplace_back(".long_desc " + JSON(header.long_description.decode(language)).serialize());
+      lines.emplace_back(".name " + escape_string(header.name.decode(language)));
+      lines.emplace_back(".short_desc " + escape_string(header.short_description.decode(language)));
+      lines.emplace_back(".long_desc " + escape_string(header.long_description.decode(language)));
       break;
     }
     case Version::GC_NTE:
@@ -845,12 +896,13 @@ std::string disassemble_quest_script(const void* data, size_t size, Version vers
       const auto& header = r.get<PSOQuestHeaderGC>();
       code_offset = header.code_offset;
       function_table_offset = header.function_table_offset;
+      language = header.language;
       lines.emplace_back(string_printf(".quest_num %hhu", header.quest_number));
       lines.emplace_back(string_printf(".language %hhu", header.language));
       lines.emplace_back(string_printf(".episode %hhu", header.episode));
-      lines.emplace_back(".name " + JSON(header.name.decode(language)).serialize());
-      lines.emplace_back(".short_desc " + JSON(header.short_description.decode(language)).serialize());
-      lines.emplace_back(".long_desc " + JSON(header.long_description.decode(language)).serialize());
+      lines.emplace_back(".name " + escape_string(header.name.decode(language)));
+      lines.emplace_back(".short_desc " + escape_string(header.short_description.decode(language)));
+      lines.emplace_back(".long_desc " + escape_string(header.long_description.decode(language)));
       break;
     }
     case Version::BB_V4: {
@@ -864,9 +916,9 @@ std::string disassemble_quest_script(const void* data, size_t size, Version vers
       if (header.joinable_in_progress) {
         lines.emplace_back(".joinable_in_progress");
       }
-      lines.emplace_back(".name " + JSON(header.name.decode(language)).serialize());
-      lines.emplace_back(".short_desc " + JSON(header.short_description.decode(language)).serialize());
-      lines.emplace_back(".long_desc " + JSON(header.long_description.decode(language)).serialize());
+      lines.emplace_back(".name " + escape_string(header.name.decode(language)));
+      lines.emplace_back(".short_desc " + escape_string(header.short_description.decode(language)));
+      lines.emplace_back(".long_desc " + escape_string(header.long_description.decode(language)));
       break;
     }
     default:
@@ -1115,13 +1167,13 @@ std::string disassemble_quest_script(const void* data, size_t size, Version vers
                     if (def->flags & F_PASS) {
                       arg_stack_values.emplace_back(tt_utf16_to_utf8(w.str()));
                     }
-                    dasm_arg = JSON(w.str()).serialize();
+                    dasm_arg = escape_string(w.str(), TextEncoding::UTF16);
                   } else {
                     string s = cmd_r.get_cstr();
                     if (def->flags & F_PASS) {
-                      arg_stack_values.emplace_back(s);
+                      arg_stack_values.emplace_back(language ? tt_8859_to_utf8(s) : tt_sjis_to_utf8(s));
                     }
-                    dasm_arg = JSON(s).serialize();
+                    dasm_arg = escape_string(s, encoding_for_language(language));
                   }
                   break;
                 default:
@@ -1227,7 +1279,7 @@ std::string disassemble_quest_script(const void* data, size_t size, Version vers
                     break;
                   case Arg::Type::CSTRING:
                     if (arg_value.type == ArgStackValue::Type::CSTRING) {
-                      dasm_arg = format_data_string(arg_value.as_string);
+                      dasm_arg = escape_string(arg_value.as_string);
                     } else {
                       dasm_arg = "/* invalid-type */";
                     }
@@ -1331,12 +1383,12 @@ std::string disassemble_quest_script(const void* data, size_t size, Version vers
         }
         str_data = tt_utf16_to_utf8(str_data);
       }
-      string formatted = format_data_string(str_data);
+      string formatted = escape_string(str_data, use_wstrs ? TextEncoding::UTF16 : encoding_for_language(language));
       lines.emplace_back(string_printf("  %04" PRIX32 "  %s", l->offset, formatted.c_str()));
     }
     print_as_struct.template operator()<Arg::DataType::PLAYER_VISUAL_CONFIG, PlayerVisualConfig>([&](const PlayerVisualConfig& visual) -> void {
       lines.emplace_back("  // As PlayerVisualConfig");
-      string name = format_data_string(visual.name.decode(language));
+      string name = escape_string(visual.name.decode(language));
       lines.emplace_back(string_printf("  %04zX  name                 %s", l->offset + offsetof(PlayerVisualConfig, name), name.c_str()));
       lines.emplace_back(string_printf("  %04zX  name_color           %08" PRIX32, l->offset + offsetof(PlayerVisualConfig, name_color), visual.name_color.load()));
       string a2_str = format_data_string(visual.unknown_a2.data(), sizeof(visual.unknown_a2));
