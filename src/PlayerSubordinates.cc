@@ -668,6 +668,14 @@ void PlayerInventory::encode_for_client(shared_ptr<Client> c) {
     this->hp_from_materials = 0;
     this->tp_from_materials = 0;
     this->language = 0;
+  } else if (c->version() != Version::PC_V2) {
+    if (this->language > 4) {
+      this->language = 0;
+    }
+  } else {
+    if (this->language > 7) {
+      this->language = 0;
+    }
   }
 
   auto item_parameter_table = c->require_server_state()->item_parameter_table_for_version(c->version());
