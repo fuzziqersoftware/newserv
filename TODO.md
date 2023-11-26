@@ -37,5 +37,5 @@
 - Test team commands
     - Test all EA subcommands (a few are still not implemented)
     - 6xC1, 6xC2, 6xCD, 6xCE: Team invites/administration (not implemented)
-    - 6xCC: Exchange item for team points (not implemented)
+    - Fix invite member menu
 - Implement story progress flags for unlocking quests
