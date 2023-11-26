@@ -292,7 +292,10 @@ void ReplaySession::apply_default_mask(shared_ptr<Event> ev) {
             auto& mask = check_size_t<S_JoinGame_XB_64>(mask_data, mask_size);
             mask.variations.clear(0);
             mask.rare_seed = 0;
-          } else if (version != Version::DC_NTE && version != Version::DC_V1_12_2000_PROTOTYPE) {
+          } else if (version == Version::DC_NTE || version == Version::DC_V1_12_2000_PROTOTYPE) {
+            auto& mask = check_size_t<S_JoinGame_DCNTE_64>(mask_data, mask_size);
+            mask.variations.clear(0);
+          } else {
             auto& mask = check_size_t<S_JoinGame_DC_64>(mask_data, mask_size, sizeof(S_JoinGame_GC_Ep3_64));
             mask.variations.clear(0);
             mask.rare_seed = 0;
