@@ -2639,7 +2639,17 @@ static void handle_subcommand_dc_nte(shared_ptr<Client> c, uint8_t command, uint
 
     // In a game, assume all other clients are DC NTE as well and forward the
     // subcommand without any processing
-    forward_subcommand(c, command, flag, data, size);
+    if (command_is_private(command)) {
+      if (flag < l->max_clients && l->clients[flag]) {
+        send_command(l->clients[flag], command, flag, data, size);
+      }
+    } else {
+      for (auto& lc : l->clients) {
+        if (lc && (lc != c)) {
+          send_command(lc, command, flag, data, size);
+        }
+      }
+    }
 
   } else {
     // In a lobby, we have to deal with all other versions of the game having
