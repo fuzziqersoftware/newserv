@@ -2309,8 +2309,12 @@ static void on_battle_restart_bb(shared_ptr<Client> c, uint8_t, uint8_t, const v
       (l->base_version == Version::BB_V4) &&
       (l->mode == GameMode::BATTLE) &&
       l->check_flag(Lobby::Flag::QUEST_IN_PROGRESS) &&
+      l->quest &&
       l->leader_id == c->lobby_client_id) {
     const auto& cmd = check_size_t<G_StartBattle_BB_6xCF>(data, size);
+
+    auto vq = l->quest->version(Version::BB_V4, c->language());
+    auto dat_contents = prs_decompress(*vq->dat_contents);
 
     shared_ptr<BattleRules> new_rules(new BattleRules(cmd.rules));
     if (l->item_creator) {
@@ -2325,6 +2329,14 @@ static void on_battle_restart_bb(shared_ptr<Client> c, uint8_t, uint8_t, const v
       }
     }
     l->map->clear();
+    l->map->add_enemies_and_objects_from_quest_data(
+        l->episode,
+        l->difficulty,
+        l->event,
+        dat_contents.data(),
+        dat_contents.size(),
+        l->random_seed,
+        (l->mode == GameMode::CHALLENGE) ? Map::NO_RARE_ENEMIES : Map::DEFAULT_RARE_ENEMIES);
   }
 }
 
