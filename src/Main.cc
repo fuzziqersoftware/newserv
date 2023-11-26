@@ -585,7 +585,6 @@ static void a_encrypt_decrypt_pc_save_fn(Arguments& args) {
   bool is_decrypt = (args.get<string>(0) == "decrypt-pc-save");
   bool skip_checksum = args.get<bool>("skip-checksum");
   string seed = args.get<string>("seed");
-  string system_filename = args.get<string>("sys");
   int64_t override_round2_seed = args.get<int64_t>("round2-seed", -1, Arguments::IntFormat::HEX);
 
   if (seed.empty()) {
@@ -1132,7 +1131,7 @@ Action a_decode_text_archive(
     });
 Action a_encode_text_archive(
     "encode-text-archive", "\
-decode-text-archive [INPUT-FILENAME [OUTPUT-FILENAME]]\n\
+  decode-text-archive [INPUT-FILENAME [OUTPUT-FILENAME]]\n\
   encode-text-archive [INPUT-FILENAME [OUTPUT-FILENAME]]\n\
     Decode a text archive (e.g. TextEnglish.pr2) to JSON for easy editing, or\n\
     encode a JSON file to a text archive.\n",
