@@ -1252,6 +1252,16 @@ void generate_variations(
   }
 }
 
+void generate_variations_dc_nte(
+    parray<le_uint32_t, 0x20>& variations,
+    shared_ptr<PSOLFGEncryption> random_crypt) {
+  static const std::array<uint32_t, 0x20> maxes(
+      {1, 1, 1, 2, 1, 2, 2, 2, 2, 2, 2, 2, 1, 2, 1, 2, 2, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1});
+  for (size_t z = 0; z < 0x20; z++) {
+    variations[z] = (maxes[z] < 2) ? 0 : (random_crypt->next() % maxes[z]);
+  }
+}
+
 vector<string> map_filenames_for_variation(
     Episode episode, bool is_solo, uint8_t floor, uint32_t var1, uint32_t var2, bool is_enemies) {
   // Map filenames are like map_<name_token>[_VV][_VV][_off]<e|o>[_s].dat

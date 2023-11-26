@@ -3795,10 +3795,10 @@ shared_ptr<Lobby> create_game_generic(
   bool is_solo = (game->mode == GameMode::SOLO);
 
   // Generate the map variations
-  if (game->is_ep3() ||
-      (c->version() == Version::DC_NTE) ||
-      (c->version() == Version::DC_V1_12_2000_PROTOTYPE)) {
+  if (game->is_ep3()) {
     game->variations.clear(0);
+  } else if ((c->version() == Version::DC_NTE) || (c->version() == Version::DC_V1_12_2000_PROTOTYPE)) {
+    generate_variations_dc_nte(game->variations, game->random_crypt);
   } else {
     generate_variations(game->variations, game->random_crypt, game->episode, is_solo);
   }

@@ -325,6 +325,9 @@ void generate_variations(
     std::shared_ptr<PSOLFGEncryption> random,
     Episode episode,
     bool is_solo);
+void generate_variations_dc_nte(
+    parray<le_uint32_t, 0x20>& variations,
+    std::shared_ptr<PSOLFGEncryption> random);
 std::vector<std::string> map_filenames_for_variation(
     Episode episode, bool is_solo, uint8_t floor, uint32_t var1, uint32_t var2, bool is_enemies);
 void load_map_files();
