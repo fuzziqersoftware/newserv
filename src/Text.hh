@@ -308,7 +308,7 @@ struct pstring {
   pstring<Encoding, Chars, BytesPerChar>& operator=(const pstring<Encoding, OtherChars, BytesPerChar>& other) {
     size_t end_offset = std::min<size_t>(Bytes, pstring<Encoding, OtherChars, BytesPerChar>::Bytes);
     memcpy(this->data, other.data, end_offset);
-    this->clear_after(end_offset);
+    this->clear_after_bytes(end_offset);
     return *this;
   }
   pstring<Encoding, Chars, BytesPerChar>& operator=(pstring<Encoding, Chars, BytesPerChar>&& s) = delete;
@@ -318,54 +318,36 @@ struct pstring {
       switch (Encoding) {
         case TextEncoding::CHALLENGE8:
         case TextEncoding::ASCII: {
-          fprintf(stderr, "pstring encode ASCII/CHALLENGE8\n");
-          print_data(stderr, s);
           auto ret = tt_utf8_to_ascii(this->data, Bytes, s.data(), s.size(), true);
-          this->clear_after(ret.bytes_written);
+          this->clear_after_bytes(ret.bytes_written);
           if (Encoding == TextEncoding::CHALLENGE8) {
             encrypt_challenge_rank_text_t<uint8_t>(this->data, Bytes);
           }
-          print_data(stderr, this->data, Bytes);
           break;
         }
         case TextEncoding::ISO8859: {
-          fprintf(stderr, "pstring encode ISO8859\n");
-          print_data(stderr, s);
           auto ret = tt_utf8_to_8859(this->data, Bytes, s.data(), s.size(), true);
-          this->clear_after(ret.bytes_written);
-          print_data(stderr, this->data, Bytes);
+          this->clear_after_bytes(ret.bytes_written);
           break;
         }
         case TextEncoding::SJIS: {
-          fprintf(stderr, "pstring encode SJIS\n");
-          print_data(stderr, s);
           auto ret = tt_utf8_to_sjis(this->data, Bytes, s.data(), s.size(), true);
-          this->clear_after(ret.bytes_written);
-          print_data(stderr, this->data, Bytes);
+          this->clear_after_bytes(ret.bytes_written);
           break;
         }
         case TextEncoding::UTF16: {
-          fprintf(stderr, "pstring encode UTF16\n");
-          print_data(stderr, s);
           auto ret = tt_utf8_to_utf16(this->data, Bytes, s.data(), s.size(), true);
-          this->clear_after(ret.bytes_written);
-          print_data(stderr, this->data, Bytes);
+          this->clear_after_bytes(ret.bytes_written);
           break;
         }
         case TextEncoding::UTF8:
-          fprintf(stderr, "pstring encode UTF8\n");
-          print_data(stderr, s);
           memcpy(this->data, s.data(), std::min<size_t>(s.size(), Bytes));
-          this->clear_after(s.size());
-          print_data(stderr, this->data, Bytes);
+          this->clear_after_bytes(s.size());
           break;
         case TextEncoding::CHALLENGE16: {
-          fprintf(stderr, "pstring encode CHALLENGE16\n");
-          print_data(stderr, s);
           auto ret = tt_utf8_to_utf16(this->data, Bytes, s.data(), s.size(), true);
           encrypt_challenge_rank_text_t<le_uint16_t>(this->data, ret.bytes_written / 2);
-          this->clear_after(ret.bytes_written);
-          print_data(stderr, this->data, Bytes);
+          this->clear_after_bytes(ret.bytes_written);
           break;
         }
         case TextEncoding::MARKED: {
@@ -374,22 +356,22 @@ struct pstring {
           if (client_language == 0) {
             try {
               auto ret = tt_utf8_to_sjis(this->data, Bytes, s.data(), s.size(), true);
-              this->clear_after(ret.bytes_written);
+              this->clear_after_bytes(ret.bytes_written);
             } catch (const std::runtime_error&) {
               this->data[0] = '\t';
               this->data[1] = 'E';
               auto ret = tt_utf8_to_8859(this->data + 2, Bytes - 2, s.data(), s.size(), true);
-              this->clear_after(ret.bytes_written + 2);
+              this->clear_after_bytes(ret.bytes_written + 2);
             }
           } else {
             try {
               auto ret = tt_utf8_to_8859(this->data, Bytes, s.data(), s.size(), true);
-              this->clear_after(ret.bytes_written);
+              this->clear_after_bytes(ret.bytes_written);
             } catch (const std::runtime_error&) {
               this->data[0] = '\t';
               this->data[1] = 'J';
               auto ret = tt_utf8_to_sjis(this->data + 2, Bytes - 2, s.data(), s.size(), true);
-              this->clear_after(ret.bytes_written + 2);
+              this->clear_after_bytes(ret.bytes_written + 2);
             }
           }
           print_data(stderr, this->data, Bytes);
@@ -400,14 +382,30 @@ struct pstring {
       }
     } catch (const std::runtime_error& e) {
       log_warning("Unencodable text: %s", e.what());
-      if (Bytes >= 3) {
-        this->data[0] = '<';
-        this->data[1] = '?';
-        this->data[2] = '>';
-        this->clear_after(3);
-      } else if (Bytes >= 1) {
-        this->data[0] = '?';
-        this->clear_after(1);
+      if (BytesPerChar == 2) {
+        if (Bytes >= 6) {
+          this->data[0] = '<';
+          this->data[1] = 0x00;
+          this->data[2] = '?';
+          this->data[3] = 0x00;
+          this->data[4] = '>';
+          this->data[5] = 0x00;
+          this->clear_after_bytes(6);
+        } else if (Bytes >= 2) {
+          this->data[0] = '?';
+          this->data[1] = 0x00;
+          this->clear_after_bytes(2);
+        }
+      } else {
+        if (Bytes >= 3) {
+          this->data[0] = '<';
+          this->data[1] = '?';
+          this->data[2] = '>';
+          this->clear_after_bytes(3);
+        } else if (Bytes >= 1) {
+          this->data[0] = '?';
+          this->clear_after_bytes(1);
+        }
       }
     }
   }
@@ -539,11 +537,11 @@ struct pstring {
   }
 
   void clear(uint8_t v = 0) {
-    memset(this->data, v, Chars * BytesPerChar);
+    memset(this->data, v, Bytes);
   }
 
-  void clear_after(size_t pos, uint8_t v = 0) {
-    for (pos *= BytesPerChar; pos < Chars * BytesPerChar; pos++) {
+  void clear_after_bytes(size_t pos, uint8_t v = 0) {
+    for (; pos < Bytes; pos++) {
       this->data[pos] = v;
     }
   }
@@ -557,7 +555,7 @@ struct pstring {
 
   void assign_raw(const void* data, size_t size) {
     memcpy(this->data, data, std::min<size_t>(size, Bytes));
-    this->clear_after(size);
+    this->clear_after_bytes(size);
   }
   void assign_raw(const std::string& data) {
     this->assign_raw(data.data(), data.size());

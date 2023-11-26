@@ -274,7 +274,7 @@ static HandlerResult S_V123P_02_17(
         C_LoginV1_DC_PC_V3_90 cmd;
         cmd.serial_number.encode(string_printf("%08" PRIX32 "", ses->license->serial_number));
         cmd.access_key.encode(ses->license->access_key);
-        cmd.access_key.clear_after(8);
+        cmd.access_key.clear_after_bytes(8);
         ses->server_channel.send(0x90, 0x00, &cmd, sizeof(cmd));
         return HandlerResult::Type::SUPPRESS;
       } else {
@@ -293,7 +293,7 @@ static HandlerResult S_V123P_02_17(
         cmd.language = ses->language();
         cmd.serial_number.encode(string_printf("%08" PRIX32 "", ses->license->serial_number));
         cmd.access_key.encode(ses->license->access_key);
-        cmd.access_key.clear_after(8);
+        cmd.access_key.clear_after_bytes(8);
         cmd.hardware_id.encode(ses->hardware_id);
         cmd.name.encode(ses->character_name);
         ses->server_channel.send(0x93, 0x00, &cmd, sizeof(cmd));
@@ -316,7 +316,7 @@ static HandlerResult S_V123P_02_17(
         cmd.sub_version = ses->sub_version;
         cmd.serial_number.encode(string_printf("%08" PRIX32 "", ses->license->serial_number));
         cmd.access_key.encode(ses->license->access_key);
-        cmd.access_key.clear_after(8);
+        cmd.access_key.clear_after_bytes(8);
         cmd.serial_number2 = cmd.serial_number;
         cmd.access_key2 = cmd.access_key;
         // TODO: We probably should set email_address, but we currently don't
@@ -340,7 +340,7 @@ static HandlerResult S_V123P_02_17(
         cmd.language = ses->language();
         cmd.serial_number.encode(string_printf("%08" PRIX32 "", ses->license->serial_number));
         cmd.access_key.encode(ses->license->access_key);
-        cmd.access_key.clear_after(8);
+        cmd.access_key.clear_after_bytes(8);
         cmd.serial_number2 = cmd.serial_number;
         cmd.access_key2 = cmd.access_key;
         if (ses->config.check_flag(Client::Flag::PROXY_BLANK_NAME_ENABLED)) {
@@ -1651,7 +1651,7 @@ static HandlerResult C_81(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t, 
     }
   }
   // GC clients send uninitialized memory here; don't forward it
-  cmd.text.clear_after(cmd.text.used_chars_8());
+  cmd.text.clear_after_bytes(cmd.text.used_chars_8());
   return HandlerResult::Type::MODIFIED;
 }
 
