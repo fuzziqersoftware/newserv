@@ -3363,16 +3363,16 @@ struct S_TeamInfoForPlayer_BB_13EA_15EA_Entry {
 // No arguments (C->S)
 
 struct S_TeamRankingInformation_BB_18EA {
-  /* 0000 */ le_uint32_t unknown_a1 = 0;
+  /* 0000 */ le_uint32_t ranking_points = 0;
   /* 0004 */ le_uint32_t unknown_a2 = 0;
-  /* 0008 */ le_uint32_t unknown_a3 = 0;
+  /* 0008 */ le_uint32_t points_remaining = 0;
   /* 000C */ le_uint32_t num_entries = 1;
   struct Entry {
-    /* 00 */ le_uint32_t unknown_a1 = 0;
+    /* 00 */ le_uint32_t rank = 0;
     /* 04 */ le_uint32_t privilege_level = 0;
     /* 08 */ le_uint32_t guild_card_number = 0;
     /* 0C */ pstring<TextEncoding::UTF16, 0x10> player_name;
-    /* 2C */ le_uint32_t unknown_a2 = 0;
+    /* 2C */ le_uint32_t points = 0;
     /* 30 */
   } __packed__;
   // Variable-length field:
@@ -5612,7 +5612,7 @@ struct G_ItemTransferRequest_BB_6xCB {
 struct G_ExchangeItemForTeamPoints_BB_6xCC {
   G_ClientIDHeader header;
   le_uint32_t item_id = 0;
-  le_uint32_t unknown_a2 = 0;
+  le_uint32_t amount = 0;
 } __packed__;
 
 // 6xCD: Transfer master (BB)

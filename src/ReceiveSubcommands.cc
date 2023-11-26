@@ -2075,6 +2075,47 @@ void on_item_reward_request_bb(shared_ptr<Client> c, uint8_t, uint8_t, const voi
   send_create_inventory_item(c, item);
 }
 
+void on_exchange_item_for_team_points_bb(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
+  const auto& cmd = check_size_t<G_ExchangeItemForTeamPoints_BB_6xCC>(data, size);
+
+  auto team = c->team();
+  if (!team) {
+    throw runtime_error("player is not in a team");
+  }
+  auto l = c->require_lobby();
+  if (!l->is_game()) {
+    return;
+  }
+  if (cmd.header.client_id != c->lobby_client_id) {
+    return;
+  }
+
+  if (l->base_version != Version::BB_V4) {
+    throw runtime_error("item tracking not enabled in BB game");
+  }
+  if (!l->check_flag(Lobby::Flag::ITEM_TRACKING_ENABLED)) {
+    throw runtime_error("item tracking not enabled in BB game");
+  }
+
+  auto s = c->require_server_state();
+  auto p = c->game_data.character();
+  auto item = p->remove_item(cmd.item_id, cmd.amount, c->version() != Version::BB_V4);
+
+  size_t points = s->item_parameter_table_v4->get_item_team_points(item);
+  team->members.at(c->license->serial_number).points += points;
+
+  auto name = s->describe_item(c->version(), item, false);
+  l->log.info("Player %hhu exchanged inventory item %hu:%08" PRIX32 " (%s) for %zu team points",
+      c->lobby_client_id, cmd.header.client_id.load(), cmd.item_id.load(), name.c_str(), points);
+  if (c->config.check_flag(Client::Flag::DEBUG_ENABLED)) {
+    string name = s->describe_item(c->version(), item, true);
+    send_text_message_printf(c, "$C5EX/PT %08" PRIX32 "\n%s\n$C5+%zuPT", cmd.item_id.load(), name.c_str(), points);
+  }
+  p->print_inventory(stderr, c->version(), s->item_name_index);
+
+  forward_subcommand(c, command, flag, data, size);
+}
+
 static void on_destroy_inventory_item(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
   const auto& cmd = check_size_t<G_DeleteInventoryItem_6x29>(data, size);
 
@@ -2914,7 +2955,7 @@ subcommand_handler_t subcommand_handlers[0x100] = {
     /* 6xC9 */ on_meseta_reward_request_bb,
     /* 6xCA */ on_item_reward_request_bb,
     /* 6xCB */ nullptr,
-    /* 6xCC */ nullptr,
+    /* 6xCC */ on_exchange_item_for_team_points_bb,
     /* 6xCD */ nullptr,
     /* 6xCE */ nullptr,
     /* 6xCF */ on_battle_restart_bb,

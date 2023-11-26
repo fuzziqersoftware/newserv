@@ -3272,13 +3272,13 @@ static S_TeamInfoForPlayer_BB_13EA_15EA_Entry team_metadata_for_client(shared_pt
   auto team = c->team();
   S_TeamInfoForPlayer_BB_13EA_15EA_Entry cmd;
   cmd.lobby_client_id = c->lobby_client_id;
+  cmd.guild_card_number = c->license->serial_number;
+  cmd.guild_card_number2 = c->license->serial_number;
+  cmd.player_name = c->game_data.character()->disp.name;
   if (team) {
-    cmd.guild_card_number = c->license->serial_number;
     cmd.team_id = team->team_id;
     cmd.privilege_level = team->members.at(c->license->serial_number).privilege_level();
     cmd.team_name.encode(team->name);
-    cmd.guild_card_number2 = c->license->serial_number;
-    cmd.player_name = c->game_data.character()->disp.name;
     if (team->flag_data) {
       cmd.flag_data = *team->flag_data;
     }
@@ -3338,11 +3338,30 @@ void send_team_rank_info(std::shared_ptr<Client> c) {
     throw runtime_error("client is not in a team");
   }
 
+  vector<const TeamIndex::Team::Member*> members;
+  for (const auto& it : team->members) {
+    members.emplace_back(&it.second);
+  }
+  auto rank_fn = +[](const TeamIndex::Team::Member* a, const TeamIndex::Team::Member* b) {
+    return a->points > b->points;
+  };
+  sort(members.begin(), members.end(), rank_fn);
+
   S_TeamRankingInformation_BB_18EA cmd;
-  cmd.num_entries = team->num_members();
+  cmd.points_remaining = 0;
 
   vector<S_TeamRankingInformation_BB_18EA::Entry> entries;
-  // TODO: FIll in entries here
+  for (size_t z = 0; z < members.size(); z++) {
+    const auto* m = members[z];
+    cmd.ranking_points += m->points;
+    auto& e = entries.emplace_back();
+    e.rank = z + 1;
+    e.privilege_level = m->privilege_level();
+    e.guild_card_number = m->serial_number;
+    e.player_name.encode(m->name);
+    e.points = m->points;
+  }
+  cmd.num_entries = entries.size();
 
   send_command_t_vt(c, 0x18EA, 0x00000000, cmd, entries);
 }

@@ -324,6 +324,7 @@ public:
   uint8_t get_weapon_v1_replacement(uint8_t data1_1) const;
 
   uint32_t get_item_id(const ItemData& item) const;
+  uint32_t get_item_team_points(const ItemData& item) const;
   uint8_t get_item_base_stars(const ItemData& item) const;
   uint8_t get_item_adjusted_stars(const ItemData& item) const;
   bool is_item_rare(const ItemData& item) const;

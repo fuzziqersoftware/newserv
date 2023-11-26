@@ -610,6 +610,33 @@ uint32_t ItemParameterTable::get_item_id(const ItemData& item) const {
   }
 }
 
+uint32_t ItemParameterTable::get_item_team_points(const ItemData& item) const {
+  switch (item.data1[0]) {
+    case 0:
+      return this->get_weapon(item.data1[1], item.data1[2]).base.team_points;
+    case 1:
+      if (item.data1[1] == 3) {
+        return this->get_unit(item.data1[2]).base.team_points;
+      } else if ((item.data1[1] == 1) || (item.data1[1] == 2)) {
+        return this->get_armor_or_shield(item.data1[1], item.data1[2]).base.team_points;
+      }
+      throw runtime_error("invalid item");
+    case 2:
+      return this->get_mag(item.data1[1]).base.team_points;
+    case 3:
+      if (item.data1[1] == 2) {
+        return this->get_tool(2, item.data1[4]).base.team_points;
+      } else {
+        return this->get_tool(item.data1[1], item.data1[2]).base.team_points;
+      }
+      throw logic_error("this should be impossible");
+    case 4:
+      throw runtime_error("item is meseta and therefore has no definition");
+    default:
+      throw runtime_error("invalid item");
+  }
+}
+
 uint8_t ItemParameterTable::get_item_base_stars(const ItemData& item) const {
   if (item.data1[0] == 2) {
     return (item.data1[1] >= this->first_rare_mag_index) ? 12 : 0;
