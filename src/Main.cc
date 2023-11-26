@@ -1858,12 +1858,13 @@ int main(int argc, char** argv) {
   }
 
   string action_name = args.get<string>(0, false);
+  const Action* a;
   try {
-    const auto& a = all_actions.at(action_name);
-    a->run(args);
-    return 0;
+    a = all_actions.at(action_name);
   } catch (const out_of_range&) {
     log_error("Unknown or invalid action; try --help");
     return 1;
   }
+  a->run(args);
+  return 0;
 }
