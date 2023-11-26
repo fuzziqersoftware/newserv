@@ -57,7 +57,7 @@ See TODO.md for a list of known issues and future work.
 newserv supports several versions of PSO. Specifically:
 | Version        | Login        | Lobbies      | Games        | Proxy        |
 |----------------|--------------|--------------|--------------|--------------|
-| DC Trial       | Yes (3)      | Yes (3)      | Yes (3)      | No           |
+| DC Trial       | Yes          | Yes          | Yes          | No           |
 | DC Prototype   | Yes (3)      | Yes (3)      | Yes (3)      | No           |
 | DC V1          | Yes          | Yes          | Yes          | Yes          |
 | DC V2          | Yes          | Yes          | Yes          | Yes          |
@@ -72,9 +72,9 @@ newserv supports several versions of PSO. Specifically:
 | BB (Tethealla) | Yes          | Yes          | Yes (2)      | Yes          |
 
 *Notes:*
-1. *newserv's implementations of these versions are based on disassembly of the client executables and have never been tested.*
+1. *newserv's implementation of this version is based on disassembly of the client executable and has never been tested.*
 2. *BB games are mostly playable, but there are still some unimplemented features (for example, some quests that use rare commands may not work). Please submit a GitHub issue if you find something that doesn't work.*
-3. *Support for PSO Dreamcast Trial Edition and the December 2000 prototype is somewhat incomplete and probably never will be complete. These versions are rather unstable and seem to crash often, but it's not obvious whether it's because they're prototypes or because newserv sends data they can't handle.*
+3. *Support for the December 2000 prototype is somewhat incomplete and probably never will be complete. This version is rather unstable and seems to crash often, but it's not obvious whether it's because it's a prototype or because newserv sends data it can't handle.*
 4. *Creating a game works and battle setup behaves mostly normally, but starting a battle doesn't work.*
 
 ## Setup
