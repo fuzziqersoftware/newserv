@@ -2630,6 +2630,13 @@ static void on_write_quest_global_flag_bb(shared_ptr<Client> c, uint8_t, uint8_t
 static void handle_subcommand_dc_nte(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
   auto l = c->require_lobby();
   if (l->is_game()) {
+    // DC NTE doesn't send 6F when it's done loading, so treat this command as
+    // 6F instead.
+    StringReader r(data, size);
+    if (r.get_u8() == 0x1F) {
+      c->config.clear_flag(Client::Flag::LOADING);
+    }
+
     // In a game, assume all other clients are DC NTE as well and forward the
     // subcommand without any processing
     forward_subcommand(c, command, flag, data, size);
