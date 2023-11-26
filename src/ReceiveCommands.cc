@@ -1838,7 +1838,7 @@ static void on_quest_loaded(shared_ptr<Lobby> l) {
   }
 
   auto s = l->require_server_state();
-  if ((l->base_version == Version::BB_PATCH) && l->map) {
+  if ((l->base_version == Version::BB_V4) && l->map) {
     auto leader_c = l->clients.at(l->leader_id);
     if (!leader_c) {
       throw logic_error("lobby leader is missing");
