@@ -1552,7 +1552,7 @@ static void on_entity_drop_item_request(shared_ptr<Client> c, uint8_t command, u
     cmd.rt_index = in_cmd.rt_index;
     cmd.x = in_cmd.x;
     cmd.z = in_cmd.z;
-    cmd.ignore_def = true;
+    cmd.ignore_def = 1;
     cmd.effective_area = in_cmd.effective_area;
   } else {
     const auto& in_cmd = check_size_t<G_StandardDropItemRequest_DC_6x60>(data, size);
@@ -1564,7 +1564,7 @@ static void on_entity_drop_item_request(shared_ptr<Client> c, uint8_t command, u
     cmd.rt_index = in_cmd.rt_index;
     cmd.x = in_cmd.x;
     cmd.z = in_cmd.z;
-    cmd.ignore_def = true;
+    cmd.ignore_def = 1;
     cmd.effective_area = in_cmd.floor;
   }
 
@@ -1594,7 +1594,7 @@ static void on_entity_drop_item_request(shared_ptr<Client> c, uint8_t command, u
           send_text_message_printf(c, "$C5K-%hX %04hX %s%s__CHECKED__", cmd.entity_id.load(), object.base_type, floor_warning_token, ignore_def_warning_token);
         }
 
-      } else if (object_ignore_def) {
+      } else if (cmd.ignore_def) {
         l->log.info("Creating item from box %04hX (area %02hX)", cmd.entity_id.load(), cmd.effective_area);
         item = l->item_creator->on_box_item_drop(cmd.entity_id, cmd.effective_area);
         if (c->config.check_flag(Client::Flag::DEBUG_ENABLED)) {

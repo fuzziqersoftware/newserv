@@ -2684,7 +2684,6 @@ static void on_AC_V3_BB(shared_ptr<Client> c, uint16_t, uint32_t, string& data) 
   auto l = c->require_lobby();
 
   if (c->config.check_flag(Client::Flag::LOADING_RUNNING_JOINABLE_QUEST)) {
-    c->config.clear_flag(Client::Flag::LOADING_RUNNING_JOINABLE_QUEST);
     if (l->base_version != Version::BB_V4) {
       throw logic_error("joinable quest started on non-BB version");
     }
@@ -2694,8 +2693,12 @@ static void on_AC_V3_BB(shared_ptr<Client> c, uint16_t, uint32_t, string& data) 
       throw logic_error("lobby leader is missing");
     }
 
-    send_command(c, 0xAC, 0x00);
     send_command(leader_c, 0xDD, c->lobby_client_id);
+    send_command(c, 0xAC, 0x00);
+
+    c->log.info("Creating game join command queue");
+    c->game_join_command_queue.reset(new deque<Client::JoinCommand>());
+    send_command(c, 0x1D, 0x00);
 
   } else if (c->config.check_flag(Client::Flag::LOADING_QUEST)) {
     c->config.clear_flag(Client::Flag::LOADING_QUEST);
@@ -4031,7 +4034,6 @@ static void on_6F(shared_ptr<Client> c, uint16_t command, uint32_t, string& data
   }
   c->config.clear_flag(Client::Flag::LOADING);
 
-  send_resume_game(l, c);
   if (l->base_version == Version::BB_V4) {
     send_set_exp_multiplier(l);
   }
@@ -4045,10 +4047,11 @@ static void on_6F(shared_ptr<Client> c, uint16_t command, uint32_t, string& data
     send_text_message_printf(c, "Rare seed: %08" PRIX32 "\nVariations: %s", l->random_seed, variations_str.c_str());
   }
 
-  // BB sends 016F when the client is done loading a quest. In that case, we
-  // shouldn't send the quest to them again!
-  if (command == 0x006F && c->version() == Version::BB_V4) {
-    if (l->check_flag(Lobby::Flag::JOINABLE_QUEST_IN_PROGRESS)) {
+  bool should_resume_game = true;
+  if (c->version() == Version::BB_V4) {
+    // BB sends 016F when the client is done loading a quest. In that case, we
+    // shouldn't send the quest to them again!
+    if ((command == 0x006F) && l->check_flag(Lobby::Flag::JOINABLE_QUEST_IN_PROGRESS)) {
       if (!l->quest) {
         throw runtime_error("JOINABLE_QUEST_IN_PROGRESS is set, but lobby has no quest");
       }
@@ -4062,10 +4065,21 @@ static void on_6F(shared_ptr<Client> c, uint16_t command, uint32_t, string& data
       send_open_quest_file(c, bin_filename, bin_filename, "", vq->quest_number, QuestFileType::ONLINE, vq->bin_contents);
       send_open_quest_file(c, dat_filename, dat_filename, "", vq->quest_number, QuestFileType::ONLINE, vq->dat_contents);
       c->config.set_flag(Client::Flag::LOADING_RUNNING_JOINABLE_QUEST);
+      should_resume_game = false;
 
-    } else if (l->map) {
+    } else if ((command == 0x016F) && c->config.check_flag(Client::Flag::LOADING_RUNNING_JOINABLE_QUEST)) {
+      c->config.clear_flag(Client::Flag::LOADING_RUNNING_JOINABLE_QUEST);
+    }
+    if (l->map) {
       send_rare_enemy_index_list(c, l->map->rare_enemy_indexes);
     }
+  }
+
+  // We should resume the game if:
+  // - command is 016F and a joinable quest is in progress
+  // - command is 006F and a joinable quest is NOT in progress
+  if (should_resume_game) {
+    send_resume_game(l, c);
   }
 
   // Handle initial commands for spectator teams
