@@ -829,11 +829,6 @@ void ItemCreator::generate_unit_stars_tables() {
     }
     this->unit_results_by_star_count.at(stars).emplace_back(UnitResult{z, 0});
   }
-
-  for (size_t z = 0; z < this->unit_results_by_star_count.size(); z++) {
-    fprintf(stderr, "result table %zu\n", z);
-    print_data(stderr, this->unit_results_by_star_count[z].data(), this->unit_results_by_star_count[z].size() * 2);
-  }
 }
 
 void ItemCreator::generate_common_unit_variances(uint8_t stars, ItemData& item) {
