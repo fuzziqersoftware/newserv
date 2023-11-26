@@ -253,10 +253,17 @@ void send_game_menu(
     std::shared_ptr<Client> c,
     bool is_spectator_team_list,
     bool is_tournament_game_list);
-void send_quest_menu(std::shared_ptr<Client> c, uint32_t menu_id,
-    const std::vector<std::shared_ptr<const Quest>>& quests, bool is_download_menu);
-void send_quest_menu(std::shared_ptr<Client> c, uint32_t menu_id,
-    std::shared_ptr<const QuestCategoryIndex> category_index, uint8_t flags);
+void send_quest_menu(
+    std::shared_ptr<Client> c,
+    uint32_t menu_id,
+    const std::vector<std::shared_ptr<const Quest>>& quests,
+    bool is_download_menu);
+void send_quest_categories_menu(
+    std::shared_ptr<Client> c,
+    uint32_t menu_id,
+    std::shared_ptr<const QuestIndex> quest_index,
+    QuestMenuType menu_type,
+    Episode episode);
 void send_lobby_list(std::shared_ptr<Client> c);
 
 void send_player_records(std::shared_ptr<Client> c, std::shared_ptr<Lobby> l, std::shared_ptr<Client> joining_client = nullptr);

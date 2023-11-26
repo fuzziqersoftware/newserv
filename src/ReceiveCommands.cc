@@ -1653,7 +1653,7 @@ static void on_09(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
   auto s = c->require_server_state();
 
   switch (cmd.menu_id) {
-    case MenuID::QUEST_FILTER:
+    case MenuID::QUEST_CATEGORIES:
       // Don't send anything here. The quest filter menu already has short
       // descriptions included with the entries, which the client shows in the
       // usual location on the screen.
@@ -2043,40 +2043,23 @@ static void on_10(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
 
         case MainMenuItemID::DOWNLOAD_QUESTS: {
           auto s = c->require_server_state();
+          QuestMenuType menu_type = QuestMenuType::DOWNLOAD;
           if (is_ep3(c->version())) {
+            menu_type = QuestMenuType::EP3_DOWNLOAD;
             // Episode 3 has only download quests, not online quests, so this is
             // always the download quest menu. (Episode 3 does actually have
             // online quests, but they're served via a server data request
             // instead of the file download paradigm that other versions use.)
-            uint32_t ep3_category_id = 0;
-            size_t num_ep3_categories = 0;
-            for (const auto& category : s->quest_category_index->categories) {
-              if (category.flags & QuestCategoryIndex::Category::Flag::EP3_DOWNLOAD) {
-                ep3_category_id = category.category_id;
-                num_ep3_categories++;
-              }
-            }
-            if (num_ep3_categories == 1) {
-              auto quest_index = s->quest_index_for_client(c);
-              if (quest_index) {
-                auto quests = quest_index->filter(Episode::EP3, ep3_category_id, c->version());
-                send_quest_menu(c, MenuID::QUEST, quests, true);
-              } else {
-                send_lobby_message_box(c, "$C6Quests are not available.");
-              }
+            auto quest_index = s->quest_index_for_client(c);
+            const auto& categories = quest_index->categories(menu_type, Episode::EP3, c->version());
+            if (categories.size() == 1) {
+              auto quests = quest_index->filter(menu_type, Episode::EP3, c->version(), categories[0]->category_id);
+              send_quest_menu(c, MenuID::QUEST, quests, true);
               break;
             }
           }
 
-          // Not Episode 3, or there are multiple Episode 3 download categories;
-          // send the categories menu instead
-          uint8_t flags = is_ep3(c->version())
-              ? QuestCategoryIndex::Category::Flag::EP3_DOWNLOAD
-              : QuestCategoryIndex::Category::Flag::DOWNLOAD;
-          if (is_v1_or_v2(c->version())) {
-            flags |= QuestCategoryIndex::Category::Flag::HIDE_ON_PRE_V3;
-          }
-          send_quest_menu(c, MenuID::QUEST_FILTER, s->quest_category_index, flags);
+          send_quest_categories_menu(c, MenuID::QUEST_CATEGORIES, s->quest_index_for_client(c), menu_type, Episode::NONE);
           break;
         }
 
@@ -2304,20 +2287,38 @@ static void on_10(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
       break;
     }
 
-    case MenuID::QUEST_FILTER: {
+    case MenuID::QUEST_CATEGORIES: {
       auto s = c->require_server_state();
       auto quest_index = s->quest_index_for_client(c);
       if (!quest_index) {
         send_lobby_message_box(c, "$C6Quests are not available.");
         break;
       }
-      const auto& category = s->quest_category_index->at(item_id);
-      shared_ptr<Lobby> l = c->lobby.lock();
-      bool filter_by_episode = l && !(category.flags & QuestCategoryIndex::Category::Flag::GOVERNMENT);
-      auto quests = quest_index->filter(filter_by_episode ? l->episode : Episode::NONE, item_id, c->version());
 
-      // Hack: Assume the menu to be sent is the download quest menu if the
-      // client is not in any lobby
+      shared_ptr<Lobby> l = c->lobby.lock();
+      Episode episode = l ? l->episode : Episode::NONE;
+      QuestMenuType menu_type = QuestMenuType::NORMAL;
+      if (!l) {
+        // Assume the menu to be sent is the download quest menu if the client
+        // is not in any lobby
+        menu_type = is_ep3(c->version()) ? QuestMenuType::EP3_DOWNLOAD : QuestMenuType::DOWNLOAD;
+      } else {
+        auto cat = quest_index->category_index->at(item_id);
+        static const std::array<QuestMenuType, 4> menu_types({
+            QuestMenuType::GOVERNMENT,
+            QuestMenuType::CHALLENGE,
+            QuestMenuType::BATTLE,
+            QuestMenuType::SOLO,
+        });
+        for (QuestMenuType check_menu_type : menu_types) {
+          if (cat->check_flag(check_menu_type)) {
+            menu_type = check_menu_type;
+            break;
+          }
+        }
+      }
+
+      const auto& quests = quest_index->filter(menu_type, episode, c->version(), item_id);
       send_quest_menu(c, MenuID::QUEST, quests, !l);
       break;
     }
@@ -2647,34 +2648,29 @@ static void on_A2(shared_ptr<Client> c, uint16_t, uint32_t flag, string& data) {
   // filter menu.
   if (is_ep3(c->version())) {
     send_lobby_message_box(c, "$C6Episode 3 does not\nprovide online quests\nvia this interface.");
-
   } else {
-    uint8_t flags = is_v1_or_v2(c->version())
-        ? QuestCategoryIndex::Category::Flag::HIDE_ON_PRE_V3
-        : 0;
-
+    QuestMenuType menu_type;
     if ((c->version() == Version::BB_V4) && flag) {
-      flags |= QuestCategoryIndex::Category::Flag::GOVERNMENT;
+      menu_type = QuestMenuType::GOVERNMENT;
     } else {
       switch (l->mode) {
         case GameMode::NORMAL:
-          flags |= QuestCategoryIndex::Category::Flag::NORMAL;
+          menu_type = QuestMenuType::NORMAL;
           break;
         case GameMode::BATTLE:
-          flags |= QuestCategoryIndex::Category::Flag::BATTLE;
+          menu_type = QuestMenuType::BATTLE;
           break;
         case GameMode::CHALLENGE:
-          flags |= QuestCategoryIndex::Category::Flag::CHALLENGE;
+          menu_type = QuestMenuType::CHALLENGE;
           break;
         case GameMode::SOLO:
-          flags |= QuestCategoryIndex::Category::Flag::SOLO;
+          menu_type = QuestMenuType::SOLO;
           break;
         default:
           throw logic_error("invalid game mode");
       }
     }
-
-    send_quest_menu(c, MenuID::QUEST_FILTER, s->quest_category_index, flags);
+    send_quest_categories_menu(c, MenuID::QUEST_CATEGORIES, s->quest_index_for_client(c), menu_type, l->episode);
   }
 }
 
@@ -4000,6 +3996,15 @@ static void on_C1_BB(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
       break;
     case 3:
       episode = Episode::EP4;
+      // Disallow battle/challenge in Ep4
+      if (mode == GameMode::BATTLE) {
+        send_lobby_message_box(c, "$C6Episode 4 does not\nsupport Battle Mode.");
+        return;
+      }
+      if (mode == GameMode::CHALLENGE) {
+        send_lobby_message_box(c, "$C6Episode 4 does not\nsupport Challenge Mode.");
+        return;
+      }
       break;
     default:
       throw runtime_error("invalid episode number");

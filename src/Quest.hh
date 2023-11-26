@@ -21,35 +21,36 @@ enum class QuestFileFormat {
   QST,
 };
 
+enum class QuestMenuType {
+  NORMAL = 0,
+  BATTLE = 1,
+  CHALLENGE = 2,
+  SOLO = 3,
+  GOVERNMENT = 4,
+  DOWNLOAD = 5,
+  EP3_DOWNLOAD = 6,
+};
+
 struct QuestCategoryIndex {
   struct Category {
-    enum Flag {
-      NORMAL = 0x01,
-      BATTLE = 0x02,
-      CHALLENGE = 0x04,
-      SOLO = 0x08,
-      GOVERNMENT = 0x10,
-      DOWNLOAD = 0x20,
-      EP3_DOWNLOAD = 0x40,
-      HIDE_ON_PRE_V3 = 0x80,
-    };
-
     uint32_t category_id;
-    uint8_t flags;
+    uint8_t enabled_flags;
     std::string directory_name;
     std::string name;
     std::string description;
 
     explicit Category(uint32_t category_id, const JSON& json);
 
-    bool matches_flags(uint8_t request) const;
+    [[nodiscard]] inline bool check_flag(QuestMenuType menu_type) const {
+      return this->enabled_flags & (1 << static_cast<uint8_t>(menu_type));
+    }
   };
 
-  std::vector<Category> categories;
+  std::vector<std::shared_ptr<Category>> categories;
 
   explicit QuestCategoryIndex(const JSON& json);
 
-  const Category& at(uint32_t category_id) const;
+  std::shared_ptr<const Category> at(uint32_t category_id) const;
 };
 
 struct VersionedQuest {
@@ -120,10 +121,17 @@ struct QuestIndex {
 
   std::map<uint32_t, std::shared_ptr<Quest>> quests_by_number;
 
+  mutable std::unordered_map<uint32_t, std::vector<std::shared_ptr<const QuestCategoryIndex::Category>>> category_filter_results_cache;
+  mutable std::unordered_map<uint64_t, std::vector<std::shared_ptr<const Quest>>> quest_filter_results_cache;
+
   QuestIndex(const std::string& directory, std::shared_ptr<const QuestCategoryIndex> category_index, bool is_ep3);
 
   std::shared_ptr<const Quest> get(uint32_t quest_number) const;
-  std::vector<std::shared_ptr<const Quest>> filter(Episode episode, uint32_t category_id, Version version) const;
+
+  const std::vector<std::shared_ptr<const QuestCategoryIndex::Category>>& categories(
+      QuestMenuType menu_type, Episode episode, Version version) const;
+  const std::vector<std::shared_ptr<const Quest>>& filter(
+      QuestMenuType menu_type, Episode episode, Version version, uint32_t category_id) const;
 };
 
 std::string encode_download_quest_data(

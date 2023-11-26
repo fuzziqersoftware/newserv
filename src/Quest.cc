@@ -23,29 +23,20 @@ using namespace std;
 
 QuestCategoryIndex::Category::Category(uint32_t category_id, const JSON& json)
     : category_id(category_id) {
-  this->flags = json.get_int(0);
+  this->enabled_flags = json.get_int(0);
   this->directory_name = json.get_string(1);
   this->name = json.get_string(2);
   this->description = json.get_string(3);
 }
 
-bool QuestCategoryIndex::Category::matches_flags(uint8_t request) const {
-  // If the request is for v1 or v2 (hence it has the HIDE_ON_PRE_V3 flag set)
-  // and the category also has that flag set, it never matches
-  if (request & this->flags & Flag::HIDE_ON_PRE_V3) {
-    return false;
-  }
-  return request & this->flags;
-}
-
 QuestCategoryIndex::QuestCategoryIndex(const JSON& json) {
   uint32_t next_category_id = 1;
   for (const auto& it : json.as_list()) {
-    this->categories.emplace_back(next_category_id++, *it);
+    this->categories.emplace_back(new Category(next_category_id++, *it));
   }
 }
 
-const QuestCategoryIndex::Category& QuestCategoryIndex::at(uint32_t category_id) const {
+shared_ptr<const QuestCategoryIndex::Category> QuestCategoryIndex::at(uint32_t category_id) const {
   return this->categories.at(category_id - 1);
 }
 
@@ -460,12 +451,12 @@ QuestIndex::QuestIndex(
   for (const auto& cat : this->category_index->categories) {
     // Don't index Ep3 download categories for non-Ep3 quest indexing, and vice
     // versa
-    if (is_ep3 == !(cat.flags & QuestCategoryIndex::Category::Flag::EP3_DOWNLOAD)) {
+    if (is_ep3 != cat->check_flag(QuestMenuType::EP3_DOWNLOAD)) {
       continue;
     }
 
     auto add_file = [&](map<string, shared_ptr<const string>>& files, const string& name, string&& value) {
-      if (categories.emplace(name, cat.category_id).first->second != cat.category_id) {
+      if (categories.emplace(name, cat->category_id).first->second != cat->category_id) {
         throw runtime_error("file " + name + " exists in multiple categories");
       }
       shared_ptr<const string> data_ptr(new string(std::move(value)));
@@ -474,7 +465,7 @@ QuestIndex::QuestIndex(
       }
     };
 
-    string cat_path = directory + "/" + cat.directory_name;
+    string cat_path = directory + "/" + cat->directory_name;
     if (!isdir(cat_path)) {
       static_game_data_log.warning("Quest category directory %s is missing; skipping it", cat_path.c_str());
       continue;
@@ -673,7 +664,7 @@ QuestIndex::QuestIndex(
           battle_rules,
           challenge_template_index));
 
-      auto category_name = this->category_index->at(vq->category_id).name;
+      auto category_name = this->category_index->at(vq->category_id)->name;
       string dat_str = dat_filename.empty() ? "" : (" with layout from " + dat_filename + ".dat");
       string battle_rules_str = battle_rules ? (" with battle rules from " + json_filename + ".json") : "";
       string challenge_template_str = (challenge_template_index >= 0) ? string_printf(" with challenge template index %zd", vq->challenge_template_index) : "";
@@ -719,16 +710,47 @@ shared_ptr<const Quest> QuestIndex::get(uint32_t quest_number) const {
   }
 }
 
-vector<shared_ptr<const Quest>> QuestIndex::filter(Episode episode, uint32_t category_id, Version version) const {
-  vector<shared_ptr<const Quest>> ret;
-  for (auto it : this->quests_by_number) {
-    if (((episode == Episode::NONE) || (it.second->episode == episode)) &&
-        (it.second->category_id == category_id) &&
-        it.second->has_version_any_language(version)) {
-      ret.emplace_back(it.second);
-    }
+const vector<shared_ptr<const QuestCategoryIndex::Category>>& QuestIndex::categories(
+    QuestMenuType menu_type, Episode episode, Version version) const {
+  // The episode filter should apply in normal or solo mode
+  if ((menu_type != QuestMenuType::NORMAL) && (menu_type != QuestMenuType::SOLO)) {
+    episode = Episode::NONE;
   }
-  return ret;
+
+  uint64_t key = (static_cast<uint32_t>(menu_type) << 20) | (static_cast<uint32_t>(episode) << 16) | static_cast<uint32_t>(version);
+  try {
+    return this->category_filter_results_cache.at(key);
+  } catch (const out_of_range&) {
+    auto& ret = this->category_filter_results_cache[key];
+    for (const auto& cat : this->category_index->categories) {
+      if (cat->check_flag(menu_type) && !this->filter(menu_type, episode, version, cat->category_id).empty()) {
+        ret.emplace_back(cat);
+      }
+    }
+    return ret;
+  }
+}
+
+const vector<shared_ptr<const Quest>>& QuestIndex::filter(
+    QuestMenuType menu_type, Episode episode, Version version, uint32_t category_id) const {
+  if ((menu_type != QuestMenuType::NORMAL) && (menu_type != QuestMenuType::SOLO)) {
+    episode = Episode::NONE;
+  }
+
+  uint64_t key = (static_cast<uint64_t>(episode) << 48) | (static_cast<uint64_t>(version) << 32) | category_id;
+  try {
+    return this->quest_filter_results_cache.at(key);
+  } catch (const out_of_range&) {
+    vector<shared_ptr<const Quest>>& ret = this->quest_filter_results_cache[key];
+    for (auto it : this->quests_by_number) {
+      if (((episode == Episode::NONE) || (it.second->episode == episode)) &&
+          (it.second->category_id == category_id) &&
+          it.second->has_version_any_language(version)) {
+        ret.emplace_back(it.second);
+      }
+    }
+    return ret;
+  }
 }
 
 string encode_download_quest_data(const string& compressed_data, size_t decompressed_size, uint32_t encryption_seed) {
