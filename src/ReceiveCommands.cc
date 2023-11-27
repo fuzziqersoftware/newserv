@@ -4485,7 +4485,7 @@ static void on_EA_BB(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
     case 0x07EA: { // Team chat
       auto team = c->team();
       if (team) {
-        check_size_v(data.size(), sizeof(SC_TeamChat_BB_07EA) + 4);
+        check_size_v(data.size(), sizeof(SC_TeamChat_BB_07EA) + 4, 0xFFFF);
         static const string required_end("\0\0", 2);
         if (ends_with(data, required_end)) {
           for (const auto& it : team->members) {

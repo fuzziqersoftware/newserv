@@ -3257,7 +3257,7 @@ struct C_AddOrRemoveTeamMember_BB_03EA_05EA {
 // 07EA: Team chat
 
 struct SC_TeamChat_BB_07EA {
-  pstring<TextEncoding::UTF16, 0x20> sender_name;
+  pstring<TextEncoding::UTF16, 0x10> sender_name;
   // It seems there are no real limits on the message length, other than the
   // overall command length limit of 0x7C00 bytes.
   // Text follows here
