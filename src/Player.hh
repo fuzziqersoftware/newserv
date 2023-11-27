@@ -39,6 +39,9 @@ public:
 
   std::array<uint32_t, 30> blocked_senders;
 
+  // This is only used if the client is v1 or v2
+  std::unique_ptr<PlayerDispDataDCPCV3> last_reported_disp_v1_v2;
+
   // Null unless the client is within the trade sequence (D0-D4 or EE commands)
   std::unique_ptr<PendingItemTrade> pending_item_trade;
   std::unique_ptr<PendingCardTrade> pending_card_trade;

@@ -2780,12 +2780,14 @@ static void on_61_98(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
     case Version::DC_V1_12_2000_PROTOTYPE:
     case Version::DC_V1: {
       const auto& cmd = check_size_t<C_CharacterData_DCv1_61_98>(data);
+      c->game_data.last_reported_disp_v1_v2.reset(new PlayerDispDataDCPCV3(cmd.disp));
       player->inventory = cmd.inventory;
       player->disp = cmd.disp.to_bb(player->inventory.language, player->inventory.language);
       break;
     }
     case Version::DC_V2: {
       const auto& cmd = check_size_t<C_CharacterData_DCv2_61_98>(data, 0xFFFF);
+      c->game_data.last_reported_disp_v1_v2.reset(new PlayerDispDataDCPCV3(cmd.disp));
       player->inventory = cmd.inventory;
       player->disp = cmd.disp.to_bb(player->inventory.language, player->inventory.language);
       player->battle_records = cmd.records.battle;
@@ -2795,6 +2797,7 @@ static void on_61_98(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
     }
     case Version::PC_V2: {
       const auto& cmd = check_size_t<C_CharacterData_PC_61_98>(data, 0xFFFF);
+      c->game_data.last_reported_disp_v1_v2.reset(new PlayerDispDataDCPCV3(cmd.disp));
       player->inventory = cmd.inventory;
       player->disp = cmd.disp.to_bb(player->inventory.language, player->inventory.language);
       player->battle_records = cmd.records.battle;
@@ -2841,6 +2844,10 @@ static void on_61_98(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
           }
         }
         cmd = &check_size_t<C_CharacterData_V3_61_98>(data, 0xFFFF);
+      }
+
+      if (c->version() == Version::GC_NTE) {
+        c->game_data.last_reported_disp_v1_v2.reset(new PlayerDispDataDCPCV3(cmd->disp));
       }
 
       auto s = c->require_server_state();

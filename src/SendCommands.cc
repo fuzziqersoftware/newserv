@@ -1869,8 +1869,12 @@ void send_join_lobby_t(shared_ptr<Client> c, shared_ptr<Lobby> l, shared_ptr<Cli
     }
     e.inventory = lp->inventory;
     e.inventory.encode_for_client(c);
-    e.disp = convert_player_disp_data<DispDataT>(lp->disp, c->language(), lp->inventory.language);
-    e.disp.enforce_lobby_join_limits_for_client(c);
+    if ((lc == c) && is_v1_or_v2(c->version()) && lc->game_data.last_reported_disp_v1_v2) {
+      e.disp = convert_player_disp_data<DispDataT>(*lc->game_data.last_reported_disp_v1_v2, c->language(), lp->inventory.language);
+    } else {
+      e.disp = convert_player_disp_data<DispDataT>(lp->disp, c->language(), lp->inventory.language);
+      e.disp.enforce_lobby_join_limits_for_client(c);
+    }
   }
 
   send_command(c, command, used_entries, &cmd, cmd.size(used_entries));

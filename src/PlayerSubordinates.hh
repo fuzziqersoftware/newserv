@@ -473,8 +473,7 @@ DestT convert_player_disp_data(const SrcT&, uint8_t, uint8_t) {
 }
 
 template <>
-inline PlayerDispDataDCPCV3 convert_player_disp_data<PlayerDispDataDCPCV3>(
-    const PlayerDispDataDCPCV3& src, uint8_t, uint8_t) {
+inline PlayerDispDataDCPCV3 convert_player_disp_data<PlayerDispDataDCPCV3>(const PlayerDispDataDCPCV3& src, uint8_t, uint8_t) {
   return src;
 }
 
