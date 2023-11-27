@@ -59,10 +59,10 @@ newserv supports several versions of PSO. Specifically:
 |----------------|--------------|--------------|--------------|--------------|
 | DC Trial       | Yes          | Yes          | Yes          | No           |
 | DC 11/2000     | Yes          | Yes          | Yes          | No           |
-| DC 12/2000     | Untested (1) | Untested (1) | Untested (1) | No           |
-| DC 01/2001     | Untested (1) | Untested (1) | Untested (1) | No           |
+| DC 12/2000     | Yes          | Yes          | Yes          | Yes          |
+| DC 01/2001     | Yes          | Yes          | Yes          | Yes          |
 | DC V1          | Yes          | Yes          | Yes          | Yes          |
-| DC 08/2001     | Untested (1) | Untested (1) | Untested (1) | No           |
+| DC 08/2001     | Untested (1) | Untested (1) | Untested (1) | Untested (1) |
 | DC V2          | Yes          | Yes          | Yes          | Yes          |
 | PC             | Yes          | Yes          | Yes          | Yes          |
 | GC Ep1&2 Trial | Untested (1) | Untested (1) | Untested (1) | Untested (1) |
