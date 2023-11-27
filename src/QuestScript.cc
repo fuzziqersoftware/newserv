@@ -179,32 +179,45 @@ constexpr uint16_t v_flag(Version v) {
 }
 
 using Arg = QuestScriptOpcodeDefinition::Argument;
-using V = Version;
 
-static constexpr uint16_t F_DC_NTE = v_flag(V::DC_NTE);
-static constexpr uint16_t F_DC_V1 = v_flag(V::DC_V1);
-static constexpr uint16_t F_DC_V2 = v_flag(V::DC_V2);
-static constexpr uint16_t F_PC_V2 = v_flag(V::PC_V2);
-static constexpr uint16_t F_GC_NTE = v_flag(V::GC_NTE);
-static constexpr uint16_t F_GC_V3 = v_flag(V::GC_V3);
-static constexpr uint16_t F_XB_V3 = v_flag(V::XB_V3);
-static constexpr uint16_t F_GC_EP3 = v_flag(V::GC_EP3);
-static constexpr uint16_t F_BB_V4 = v_flag(V::BB_V4);
-static constexpr uint16_t F_RET = 0x1000;
-static constexpr uint16_t F_SET_EPISODE = 0x2000;
-static constexpr uint16_t F_PASS = 0x4000;
-static constexpr uint16_t F_ARGS = 0x8000;
+static constexpr uint16_t F_PASS = 0x0001; // Version::PC_PATCH (unused for quests)
+static constexpr uint16_t F_ARGS = 0x0002; // Version::BB_PATCH (unused for quests)
+static constexpr uint16_t F_DC_NTE = 0x0004; // Version::DC_NTE
+static constexpr uint16_t F_DC_112000 = 0x0008; // Version::DC_V1_11_2000_PROTOTYPE
+static constexpr uint16_t F_DC_V1 = 0x0010; // Version::DC_V1
+static constexpr uint16_t F_DC_V2 = 0x0020; // Version::DC_V2
+static constexpr uint16_t F_PC_V2 = 0x0040; // Version::PC_V2
+static constexpr uint16_t F_GC_NTE = 0x0080; // Version::GC_NTE
+static constexpr uint16_t F_GC_V3 = 0x0100; // Version::GC_V3
+static constexpr uint16_t F_GC_EP3TE = 0x0200; // Version::GC_EP3_TRIAL_EDITION
+static constexpr uint16_t F_GC_EP3 = 0x0400; // Version::GC_EP3
+static constexpr uint16_t F_XB_V3 = 0x0800; // Version::XB_V3
+static constexpr uint16_t F_BB_V4 = 0x1000; // Version::BB_V4
+static constexpr uint16_t F_RET = 0x2000;
+static constexpr uint16_t F_SET_EPISODE = 0x4000;
+
+static_assert(F_DC_NTE == v_flag(Version::DC_NTE));
+static_assert(F_DC_112000 == v_flag(Version::DC_V1_11_2000_PROTOTYPE));
+static_assert(F_DC_V1 == v_flag(Version::DC_V1));
+static_assert(F_DC_V2 == v_flag(Version::DC_V2));
+static_assert(F_PC_V2 == v_flag(Version::PC_V2));
+static_assert(F_GC_NTE == v_flag(Version::GC_NTE));
+static_assert(F_GC_V3 == v_flag(Version::GC_V3));
+static_assert(F_GC_EP3TE == v_flag(Version::GC_EP3_TRIAL_EDITION));
+static_assert(F_GC_EP3 == v_flag(Version::GC_EP3));
+static_assert(F_XB_V3 == v_flag(Version::XB_V3));
+static_assert(F_BB_V4 == v_flag(Version::BB_V4));
 
 // clang-format off
-static constexpr uint16_t F_V0_V4 = F_DC_NTE | F_DC_V1 | F_DC_V2 | F_PC_V2 | F_GC_NTE | F_GC_V3 | F_XB_V3 | F_GC_EP3 | F_BB_V4;
-static constexpr uint16_t F_V0_V2 = F_DC_NTE | F_DC_V1 | F_DC_V2 | F_PC_V2 | F_GC_NTE;
-static constexpr uint16_t F_V1_V2 =            F_DC_V1 | F_DC_V2 | F_PC_V2 | F_GC_NTE;
-static constexpr uint16_t F_V1_V4 =            F_DC_V1 | F_DC_V2 | F_PC_V2 | F_GC_NTE | F_GC_V3 | F_XB_V3 | F_GC_EP3 | F_BB_V4;
-static constexpr uint16_t F_V2    =                      F_DC_V2 | F_PC_V2 | F_GC_NTE;
-static constexpr uint16_t F_V2_V4 =                      F_DC_V2 | F_PC_V2 | F_GC_NTE | F_GC_V3 | F_XB_V3 | F_GC_EP3 | F_BB_V4;
-static constexpr uint16_t F_V3    =                                                     F_GC_V3 | F_XB_V3 | F_GC_EP3;
-static constexpr uint16_t F_V3_V4 =                                                     F_GC_V3 | F_XB_V3 | F_GC_EP3 | F_BB_V4;
-static constexpr uint16_t F_V4    =                                                                                    F_BB_V4;
+static constexpr uint16_t F_V0_V4 = F_DC_NTE | F_DC_112000 | F_DC_V1 | F_DC_V2 | F_PC_V2 | F_GC_NTE | F_GC_V3 | F_GC_EP3TE | F_GC_EP3 | F_XB_V3 | F_BB_V4;
+static constexpr uint16_t F_V0_V2 = F_DC_NTE | F_DC_112000 | F_DC_V1 | F_DC_V2 | F_PC_V2 | F_GC_NTE;
+static constexpr uint16_t F_V1_V2 =                          F_DC_V1 | F_DC_V2 | F_PC_V2 | F_GC_NTE;
+static constexpr uint16_t F_V1_V4 =                          F_DC_V1 | F_DC_V2 | F_PC_V2 | F_GC_NTE | F_GC_V3 | F_GC_EP3TE | F_GC_EP3 | F_XB_V3 | F_BB_V4;
+static constexpr uint16_t F_V2    =                                    F_DC_V2 | F_PC_V2 | F_GC_NTE;
+static constexpr uint16_t F_V2_V4 =                                    F_DC_V2 | F_PC_V2 | F_GC_NTE | F_GC_V3 | F_GC_EP3TE | F_GC_EP3 | F_XB_V3 | F_BB_V4;
+static constexpr uint16_t F_V3    =                                                                   F_GC_V3 | F_GC_EP3TE | F_GC_EP3 | F_XB_V3;
+static constexpr uint16_t F_V3_V4 =                                                                   F_GC_V3 | F_GC_EP3TE | F_GC_EP3 | F_XB_V3 | F_BB_V4;
+static constexpr uint16_t F_V4    =                                                                                                               F_BB_V4;
 // clang-format on
 static constexpr uint16_t F_HAS_ARGS = F_V3_V4;
 
