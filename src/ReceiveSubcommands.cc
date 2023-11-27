@@ -1815,10 +1815,6 @@ static void on_enemy_hit(shared_ptr<Client> c, uint8_t command, uint8_t, const v
     }
 
     auto& enemy = l->map->enemies[cmd.enemy_index];
-    if (enemy.flags & Map::Enemy::Flag::DEFEATED) {
-      return;
-    }
-    enemy.flags |= (Map::Enemy::Flag::HIT_BY_PLAYER0 << c->lobby_client_id);
     enemy.last_hit_by_client_id = c->lobby_client_id;
   }
 
@@ -1945,7 +1941,7 @@ static void on_steal_exp_bb(shared_ptr<Client> c, uint8_t, uint8_t, const void* 
   add_player_exp(c, stolen_exp);
 }
 
-static void on_enemy_killed_bb(shared_ptr<Client> c, uint8_t, uint8_t, const void* data, size_t size) {
+static void on_enemy_exp_request_bb(shared_ptr<Client> c, uint8_t, uint8_t, const void* data, size_t size) {
   auto s = c->require_server_state();
   auto l = c->require_lobby();
 
@@ -1953,7 +1949,7 @@ static void on_enemy_killed_bb(shared_ptr<Client> c, uint8_t, uint8_t, const voi
     throw runtime_error("BB-only command sent in non-BB game");
   }
 
-  const auto& cmd = check_size_t<G_EnemyKilled_BB_6xC8>(data, size);
+  const auto& cmd = check_size_t<G_EnemyEXPRequest_BB_6xC8>(data, size);
 
   if (!l->is_game()) {
     throw runtime_error("client should not kill enemies outside of games");
@@ -1965,16 +1961,19 @@ static void on_enemy_killed_bb(shared_ptr<Client> c, uint8_t, uint8_t, const voi
     send_text_message(c, "$C6Missing enemy killed");
     return;
   }
+  if (c->lobby_client_id > 3) {
+    throw runtime_error("client ID is too large");
+  }
 
   auto& e = l->map->enemies[cmd.enemy_index];
   string e_str = e.str();
-  c->log.info("Enemy killed: E-%hX => %s", cmd.enemy_index.load(), e_str.c_str());
-  if (e.flags & Map::Enemy::Flag::DEFEATED) {
-    if (c->config.check_flag(Client::Flag::DEBUG_ENABLED)) {
-      send_text_message_printf(c, "$C5E-%hX __DEFEATED__", cmd.enemy_index.load());
-    }
-    return;
+  c->log.info("EXP requested for E-%hX => %s", cmd.enemy_index.load(), e_str.c_str());
+
+  uint8_t state_flag = Map::Enemy::Flag::EXP_REQUESTED_BY_PLAYER0 << c->lobby_client_id;
+  if (e.state_flags & state_flag) {
+    throw runtime_error("duplicate EXP request");
   }
+  e.state_flags |= state_flag;
 
   double experience = 0.0;
   try {
@@ -1989,44 +1988,35 @@ static void on_enemy_killed_bb(shared_ptr<Client> c, uint8_t, uint8_t, const voi
     }
   }
 
-  e.flags |= Map::Enemy::Flag::DEFEATED;
   if (experience != 0.0) {
-    for (size_t x = 0; x < l->max_clients; x++) {
-      auto lc = l->clients[x];
-      if (!lc) {
-        continue;
+    if (c->floor != e.floor) {
+      if (c->config.check_flag(Client::Flag::DEBUG_ENABLED)) {
+        send_text_message_printf(c, "$C5E-%hX %s\n$C4FLOOR Y:%02" PRIX32 " E:%02hhX",
+            cmd.enemy_index.load(), name_for_enum(e.type), c->floor, e.floor);
       }
-      if (!((e.flags >> x) & 1)) {
-        if (lc->config.check_flag(Client::Flag::DEBUG_ENABLED)) {
-          send_text_message_printf(lc, "$C5E-%hX %s\n$C4NOHIT", cmd.enemy_index.load(), name_for_enum(e.type));
-        }
-        continue; // Player did not hit this enemy
-      }
-      if (lc->floor != e.floor) {
-        if (lc->config.check_flag(Client::Flag::DEBUG_ENABLED)) {
-          send_text_message_printf(lc, "$C5E-%hX %s\n$C4FLOOR Y:%02" PRIX32 " E:%02hhX",
-              cmd.enemy_index.load(), name_for_enum(e.type), lc->floor, e.floor);
-        }
-        continue;
-      }
-
+    } else {
       // In PSOBB, Sega decided to add a 30% EXP boost for Episode 2. They could
       // have done something reasonable, like edit the BattleParamEntry files so
       // the monsters would all give more EXP, but they did something far lazier
       // instead: they just stuck an if statement in the client's EXP request
       // function. We, unfortunately, have to do the same here.
-      bool is_killer = (e.last_hit_by_client_id == lc->lobby_client_id);
+      bool is_killer = (e.last_hit_by_client_id == c->lobby_client_id);
       bool is_ep2 = (l->episode == Episode::EP2);
       uint32_t player_exp = experience *
           (is_killer ? 1.0 : 0.8) *
           l->base_exp_multiplier *
           l->challenge_exp_multiplier *
           (is_ep2 ? 1.3 : 1.0);
-      if (lc->config.check_flag(Client::Flag::DEBUG_ENABLED)) {
-        send_text_message_printf(lc, "$C5+%" PRIu32 " E-%hX %s", player_exp, cmd.enemy_index.load(), name_for_enum(e.type));
+      if (c->config.check_flag(Client::Flag::DEBUG_ENABLED)) {
+        send_text_message_printf(
+            c, "$C5+%" PRIu32 " E-%hX %s%s",
+            player_exp,
+            cmd.enemy_index.load(),
+            (!cmd.is_killer == !is_killer) ? "" : "$C6!K$C5 ",
+            name_for_enum(e.type));
       }
-      if (lc->game_data.character()->disp.stats.level < 199) {
-        add_player_exp(lc, player_exp);
+      if (c->game_data.character()->disp.stats.level < 199) {
+        add_player_exp(c, player_exp);
       }
     }
   }
@@ -2963,7 +2953,7 @@ subcommand_handler_t subcommand_handlers[0x100] = {
     /* 6xC5 */ on_medical_center_bb,
     /* 6xC6 */ on_steal_exp_bb,
     /* 6xC7 */ on_charge_attack_bb,
-    /* 6xC8 */ on_enemy_killed_bb,
+    /* 6xC8 */ on_enemy_exp_request_bb,
     /* 6xC9 */ on_meseta_reward_request_bb,
     /* 6xCA */ on_item_reward_request_bb,
     /* 6xCB */ nullptr,

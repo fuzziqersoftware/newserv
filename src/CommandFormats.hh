@@ -4199,8 +4199,8 @@ struct G_AttackFinished_6x46 {
     le_uint16_t unknown_a1 = 0;
     le_uint16_t unknown_a2 = 0;
   } __packed__;
-  // The client mauy send a shorter command if not all of these are used.
-  parray<TargetEntry, 11> targets;
+  // The client may send a shorter command if not all of these are used.
+  parray<TargetEntry, 10> targets;
 } __packed__;
 
 // 6x47: Cast technique
@@ -5574,13 +5574,13 @@ struct G_ChargeAttack_BB_6xC7 {
   le_uint32_t meseta_amount = 0;
 } __packed__;
 
-// 6xC8: Enemy killed (BB; handled by the server)
+// 6xC8: Enemy EXP request (BB; handled by the server)
 
-struct G_EnemyKilled_BB_6xC8 {
+struct G_EnemyEXPRequest_BB_6xC8 {
   G_EnemyIDHeader header;
   le_uint16_t enemy_index = 0;
-  le_uint16_t killer_client_id = 0;
-  uint8_t unknown_a1 = 0;
+  le_uint16_t requesting_client_id = 0;
+  uint8_t is_killer = 0;
   parray<uint8_t, 3> unused;
 } __packed__;
 

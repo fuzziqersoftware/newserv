@@ -216,17 +216,16 @@ struct Map {
 
   struct Enemy {
     enum Flag {
-      HIT_BY_PLAYER0 = 0x01,
-      HIT_BY_PLAYER1 = 0x02,
-      HIT_BY_PLAYER2 = 0x04,
-      HIT_BY_PLAYER3 = 0x08,
-      DEFEATED = 0x10,
-      ITEM_DROPPED = 0x20,
+      EXP_REQUESTED_BY_PLAYER0 = 0x01,
+      EXP_REQUESTED_BY_PLAYER1 = 0x02,
+      EXP_REQUESTED_BY_PLAYER2 = 0x04,
+      EXP_REQUESTED_BY_PLAYER3 = 0x08,
+      ITEM_DROPPED = 0x10,
     };
     size_t source_index;
     EnemyType type;
     uint8_t floor;
-    uint8_t flags;
+    uint8_t state_flags;
     uint8_t last_hit_by_client_id;
 
     Enemy(size_t source_index, uint8_t floor, EnemyType type);

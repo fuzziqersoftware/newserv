@@ -71,13 +71,13 @@ Map::Enemy::Enemy(size_t source_index, uint8_t floor, EnemyType type)
     : source_index(source_index),
       type(type),
       floor(floor),
-      flags(0),
+      state_flags(0),
       last_hit_by_client_id(0) {
 }
 
 string Map::Enemy::str() const {
   return string_printf("[Map::Enemy source %zX %s flags=%02hhX last_hit_by_client_id=%hu]",
-      this->source_index, name_for_enum(this->type), this->flags, this->last_hit_by_client_id);
+      this->source_index, name_for_enum(this->type), this->state_flags, this->last_hit_by_client_id);
 }
 
 string Map::Object::str(shared_ptr<const ItemNameIndex> name_index) const {
