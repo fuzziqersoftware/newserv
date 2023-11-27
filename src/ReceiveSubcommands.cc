@@ -579,6 +579,8 @@ static void on_send_guild_card(shared_ptr<Client> c, uint8_t command, uint8_t fl
 static void on_symbol_chat(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
   const auto& cmd = check_size_t<G_SymbolChat_6x07>(data, size);
   if (c->can_chat && (cmd.client_id == c->lobby_client_id)) {
+    // The 11/2000 DC prototype supports sybol chats, but the object values are
+    // different, so we don't forward symbol chats across that version boundary.
     forward_subcommand(c, command, flag, data, size);
   }
 }
