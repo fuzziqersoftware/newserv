@@ -789,11 +789,13 @@ void send_ship_info(Channel& ch, const string& text) {
 }
 
 void send_text_message(Channel& ch, const string& text) {
-  send_header_text(ch, 0xB0, 0, text, ColorMode::ADD);
+  if ((ch.version != Version::DC_NTE) && (ch.version != Version::DC_V1_11_2000_PROTOTYPE)) {
+    send_header_text(ch, 0xB0, 0, text, ColorMode::ADD);
+  }
 }
 
 void send_text_message(shared_ptr<Client> c, const string& text) {
-  if (c->version() != Version::DC_NTE) {
+  if ((c->version() != Version::DC_NTE) && (c->version() != Version::DC_V1_11_2000_PROTOTYPE)) {
     send_header_text(c->channel, 0xB0, 0, text, ColorMode::ADD);
   }
 }
