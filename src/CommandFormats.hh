@@ -1637,10 +1637,9 @@ struct C_RegisterV1_DC_92 {
   uint8_t is_extended = 0; // TODO: This is a guess
   uint8_t language = 0; // TODO: This is a guess; verify it
   parray<uint8_t, 2> unknown_a3;
-  pstring<TextEncoding::ASCII, 0x10> hardware_id;
-  parray<uint8_t, 0x50> unused1;
-  pstring<TextEncoding::ASCII, 0x20> email; // According to Sylverant documentation
-  parray<uint8_t, 0x10> unused2;
+  pstring<TextEncoding::ASCII, 0x30> hardware_id;
+  pstring<TextEncoding::ASCII, 0x30> unknown_a4;
+  pstring<TextEncoding::ASCII, 0x30> email; // According to Sylverant documentation
 } __packed__;
 
 // 92 (S->C): Register result (non-BB)

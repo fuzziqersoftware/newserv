@@ -664,7 +664,8 @@ void PlayerInventory::encode_for_client(shared_ptr<Client> c) {
     // DC NTE has the item count as a 32-bit value here, whereas every other
     // version uses a single byte. To stop DC NTE from crashing by trying to
     // construct far more than 30 TItem objects, we clear the fields DC NTE
-    // doesn't know about.
+    // doesn't know about. Note that the 11/2000 prototype does not have this
+    // issue - its inventory format matches the rest of the versions.
     this->hp_from_materials = 0;
     this->tp_from_materials = 0;
     this->language = 0;

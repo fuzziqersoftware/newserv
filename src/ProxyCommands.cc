@@ -268,7 +268,7 @@ static HandlerResult S_V123P_02_17(
       // TODO
       throw runtime_error("DC NTE proxy is not implemented");
 
-    case Version::DC_V1_12_2000_PROTOTYPE:
+    case Version::DC_V1_11_2000_PROTOTYPE:
     case Version::DC_V1:
       if (command == 0x17) {
         C_LoginV1_DC_PC_V3_90 cmd;

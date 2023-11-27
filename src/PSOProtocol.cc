@@ -24,7 +24,7 @@ uint16_t PSOCommandHeader::command(Version version) const {
     case Version::PC_V2:
       return this->pc.command;
     case Version::DC_NTE:
-    case Version::DC_V1_12_2000_PROTOTYPE:
+    case Version::DC_V1_11_2000_PROTOTYPE:
     case Version::DC_V1:
     case Version::DC_V2:
       return this->dc.command;
@@ -50,7 +50,7 @@ void PSOCommandHeader::set_command(Version version, uint16_t command) {
       this->pc.command = command;
       break;
     case Version::DC_NTE:
-    case Version::DC_V1_12_2000_PROTOTYPE:
+    case Version::DC_V1_11_2000_PROTOTYPE:
     case Version::DC_V1:
     case Version::DC_V2:
       this->dc.command = command;
@@ -79,7 +79,7 @@ uint16_t PSOCommandHeader::size(Version version) const {
     case Version::PC_V2:
       return this->pc.size;
     case Version::DC_NTE:
-    case Version::DC_V1_12_2000_PROTOTYPE:
+    case Version::DC_V1_11_2000_PROTOTYPE:
     case Version::DC_V1:
     case Version::DC_V2:
       return this->dc.size;
@@ -105,7 +105,7 @@ void PSOCommandHeader::set_size(Version version, uint32_t size) {
       this->pc.size = size;
       break;
     case Version::DC_NTE:
-    case Version::DC_V1_12_2000_PROTOTYPE:
+    case Version::DC_V1_11_2000_PROTOTYPE:
     case Version::DC_V1:
     case Version::DC_V2:
       this->dc.size = size;
@@ -134,7 +134,7 @@ uint32_t PSOCommandHeader::flag(Version version) const {
     case Version::PC_V2:
       return this->pc.flag;
     case Version::DC_NTE:
-    case Version::DC_V1_12_2000_PROTOTYPE:
+    case Version::DC_V1_11_2000_PROTOTYPE:
     case Version::DC_V1:
     case Version::DC_V2:
       return this->dc.flag;
@@ -160,7 +160,7 @@ void PSOCommandHeader::set_flag(Version version, uint32_t flag) {
       this->pc.flag = flag;
       break;
     case Version::DC_NTE:
-    case Version::DC_V1_12_2000_PROTOTYPE:
+    case Version::DC_V1_11_2000_PROTOTYPE:
     case Version::DC_V1:
     case Version::DC_V2:
       this->dc.flag = flag;
@@ -207,7 +207,7 @@ std::string prepend_command_header(
   StringWriter ret;
   switch (version) {
     case Version::DC_NTE:
-    case Version::DC_V1_12_2000_PROTOTYPE:
+    case Version::DC_V1_11_2000_PROTOTYPE:
     case Version::DC_V1:
     case Version::DC_V2:
     case Version::GC_NTE:

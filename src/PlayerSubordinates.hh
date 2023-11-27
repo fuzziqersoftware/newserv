@@ -72,8 +72,6 @@ struct PlayerInventory {
   /* 0004 */ parray<PlayerInventoryItem, 30> items;
   /* 034C */
 
-  void clear_dc_nte_unused_fields();
-
   size_t find_item(uint32_t item_id) const;
   size_t find_item_by_primary_identifier(uint32_t primary_identifier) const;
 

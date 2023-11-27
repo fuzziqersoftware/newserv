@@ -53,7 +53,8 @@ static void forward_subcommand(
     uint8_t flag,
     const void* data,
     size_t size,
-    uint8_t dc_nte_subcommand = 0x00) {
+    uint8_t dc_nte_subcommand = 0x00,
+    uint8_t dc_11_2000_proto_subcommand = 0x00) {
 
   // If the command is an Ep3-only command, make sure an Ep3 client sent it
   bool command_is_ep3 = (command & 0xF0) == 0xC0;
@@ -78,6 +79,14 @@ static void forward_subcommand(
       } else {
         c->log.warning("Attempted to send unsupported target command to DC NTE client; dropping command");
       }
+    } else if (target->version() == Version::DC_V1_11_2000_PROTOTYPE) {
+      if (dc_11_2000_proto_subcommand) {
+        string proto_data(reinterpret_cast<const char*>(data), size);
+        proto_data[0] = dc_11_2000_proto_subcommand;
+        send_command(target, command, flag, proto_data);
+      } else {
+        c->log.warning("Attempted to send unsupported target command to DC 11/2000 prototype client; dropping command");
+      }
     } else {
       send_command(target, command, flag, data, size);
     }
@@ -93,6 +102,7 @@ static void forward_subcommand(
 
     } else {
       string nte_data;
+      string proto_data;
       for (auto& lc : l->clients) {
         if (!lc || (lc == c)) {
           continue;
@@ -104,6 +114,14 @@ static void forward_subcommand(
               nte_data[0] = dc_nte_subcommand;
             }
             send_command(lc, command, flag, nte_data);
+          }
+        } else if (lc->version() == Version::DC_V1_11_2000_PROTOTYPE) {
+          if (dc_11_2000_proto_subcommand) {
+            if (proto_data.empty()) {
+              proto_data.assign(reinterpret_cast<const char*>(data), size);
+              proto_data[0] = dc_11_2000_proto_subcommand;
+            }
+            send_command(lc, command, flag, proto_data);
           }
         } else {
           send_command(lc, command, flag, data, size);
@@ -522,7 +540,7 @@ static void on_send_guild_card(shared_ptr<Client> c, uint8_t command, uint8_t fl
 
   switch (c->version()) {
     case Version::DC_NTE:
-    case Version::DC_V1_12_2000_PROTOTYPE:
+    case Version::DC_V1_11_2000_PROTOTYPE:
     case Version::DC_V1:
     case Version::DC_V2: {
       const auto& cmd = check_size_t<G_SendGuildCard_DC_6x06>(data, size);
@@ -642,14 +660,14 @@ static void on_set_player_invisible(shared_ptr<Client> c, uint8_t command, uint8
   if (cmd.header.client_id != c->lobby_client_id) {
     return;
   }
-  forward_subcommand(c, command, flag, data, size, 0x1E);
+  forward_subcommand(c, command, flag, data, size, 0x1E, 0x20);
 }
 
 static void on_set_player_visible(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
   const auto& cmd = check_size_t<G_SetPlayerVisibility_6x22_6x23>(data, size);
 
   if (cmd.header.client_id == c->lobby_client_id) {
-    forward_subcommand(c, command, flag, data, size, 0x1F);
+    forward_subcommand(c, command, flag, data, size, 0x1F, 0x21);
 
     auto l = c->require_lobby();
     if (!l->is_game() && !is_v1(c->version())) {
@@ -674,7 +692,7 @@ static void on_change_floor_6x1F(shared_ptr<Client> c, uint8_t command, uint8_t 
 static void on_change_floor_6x21(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
   const auto& cmd = check_size_t<G_InterLevelWarp_6x21>(data, size);
   c->floor = cmd.floor;
-  forward_subcommand(c, command, flag, data, size, 0x1D);
+  forward_subcommand(c, command, flag, data, size, 0x1D, 0x1F);
 }
 
 // When a player dies, decrease their mag's synchro
@@ -782,7 +800,7 @@ static void on_switch_state_changed(shared_ptr<Client> c, uint8_t command, uint8
 
 ////////////////////////////////////////////////////////////////////////////////
 
-template <typename CmdT, uint8_t DCNTESubcommand>
+template <typename CmdT, uint8_t DCNTESubcommand, uint8_t DC112000ProtoSubcommand>
 void on_movement(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
   const auto& cmd = check_size_t<CmdT>(data, size);
   if (cmd.header.client_id != c->lobby_client_id) {
@@ -792,10 +810,10 @@ void on_movement(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void
   c->x = cmd.x;
   c->z = cmd.z;
 
-  forward_subcommand(c, command, flag, data, size, DCNTESubcommand);
+  forward_subcommand(c, command, flag, data, size, DCNTESubcommand, DC112000ProtoSubcommand);
 }
 
-template <typename CmdT, uint8_t DCNTESubcommand>
+template <typename CmdT, uint8_t DCNTESubcommand, uint8_t DC112000ProtoSubcommand>
 void on_movement_with_floor(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
   const auto& cmd = check_size_t<CmdT>(data, size);
   if (cmd.header.client_id != c->lobby_client_id) {
@@ -806,12 +824,25 @@ void on_movement_with_floor(shared_ptr<Client> c, uint8_t command, uint8_t flag,
   c->z = cmd.z;
   c->floor = cmd.floor;
 
-  forward_subcommand(c, command, flag, data, size, DCNTESubcommand);
+  forward_subcommand(c, command, flag, data, size, DCNTESubcommand, DC112000ProtoSubcommand);
 }
 
 static void on_toggle_counter_interaction(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
   check_size_t<G_ToggleCounterInteraction_6x52>(data, size, 0xFFFF);
-  forward_subcommand(c, command, flag, data, size, 0x46);
+  forward_subcommand(c, command, flag, data, size, 0x46, 0x4C);
+}
+
+static void on_set_or_clear_player_flags_multi(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
+  const auto& cmd = check_size_t<G_ClientIDHeader>(data, size, 0xFFFF);
+  if (cmd.client_id != c->lobby_client_id) {
+    return;
+  }
+  forward_subcommand(c, command, flag, data, size, 0x00, 0x50);
+}
+
+static void on_unknown_6x3B(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
+  check_size_t<G_UnusedHeader>(data, size, 0xFFFF);
+  forward_subcommand(c, command, flag, data, size, 0x00, 0x38);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2670,7 +2701,273 @@ static void on_write_quest_global_flag_bb(shared_ptr<Client> c, uint8_t, uint8_t
 
 ////////////////////////////////////////////////////////////////////////////////
 
-static void handle_subcommand_dc_nte(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
+struct SubcommandDefinition {
+  uint8_t nte_subcommand;
+  uint8_t proto_subcommand;
+  uint8_t subcommand;
+  void (*handler)(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size);
+};
+
+SubcommandDefinition subcommand_definitions[0x100] = {
+    /* 6x00 */ {0x00, 0x00, 0x00, on_invalid},
+    /* 6x01 */ {0x00, 0x00, 0x01, nullptr},
+    /* 6x02 */ {0x00, 0x00, 0x02, nullptr},
+    /* 6x03 */ {0x00, 0x00, 0x03, nullptr},
+    /* 6x04 */ {0x00, 0x00, 0x04, nullptr},
+    /* 6x05 */ {0x00, 0x00, 0x05, on_switch_state_changed},
+    /* 6x06 */ {0x00, 0x00, 0x06, on_send_guild_card},
+    /* 6x07 */ {0x00, 0x00, 0x07, on_symbol_chat},
+    /* 6x08 */ {0x00, 0x00, 0x08, nullptr},
+    /* 6x09 */ {0x00, 0x00, 0x09, nullptr},
+    /* 6x0A */ {0x00, 0x00, 0x0A, on_enemy_hit},
+    /* 6x0B */ {0x00, 0x00, 0x0B, on_forward_check_size_game},
+    /* 6x0C */ {0x00, 0x00, 0x0C, on_forward_check_size_game},
+    /* 6x0D */ {0x00, 0x00, 0x0D, on_forward_check_size_game},
+    /* 6x0E */ {0x00, 0x00, 0x0E, nullptr},
+    /* 6x0F */ {0x00, 0x00, 0x0F, nullptr},
+    /* 6x10 */ {0x00, 0x00, 0x10, nullptr},
+    /* 6x11 */ {0x00, 0x00, 0x11, nullptr},
+    /* 6x12 */ {0x00, 0x00, 0x12, on_dragon_actions},
+    /* 6x13 */ {0x00, 0x00, 0x13, on_forward_check_size_game},
+    /* 6x14 */ {0x00, 0x00, 0x14, on_forward_check_size_game},
+    /* 6x15 */ {0x00, 0x00, 0x15, on_forward_check_size_game},
+    /* 6x16 */ {0x00, 0x00, 0x16, on_forward_check_size_game},
+    /* 6x17 */ {0x00, 0x00, 0x17, on_forward_check_size_game},
+    /* 6x18 */ {0x00, 0x00, 0x18, on_forward_check_size_game},
+    /* 6x19 */ {0x00, 0x00, 0x19, on_forward_check_size_game},
+    /* 6x1A */ {0x00, 0x00, 0x1A, nullptr},
+    /* 6x1B */ {0x00, 0x00, 0x1B, on_forward_check_size_game},
+    /* 6x1C */ {0x00, 0x00, 0x1C, on_forward_check_size_game},
+    /* 6x1D */ {0x00, 0x00, 0x1D, nullptr},
+    /* 6x1E */ {0x00, 0x00, 0x1E, nullptr},
+    /* 6x1F */ {0x00, 0x00, 0x1F, on_change_floor_6x1F},
+    /* 6x20 */ {0x00, 0x00, 0x20, on_movement_with_floor<G_SetPosition_6x20, 0x00, 0x00>},
+    /* 6x21 */ {0x1D, 0x1F, 0x21, on_change_floor_6x21},
+    /* 6x22 */ {0x1E, 0x20, 0x22, on_set_player_invisible},
+    /* 6x23 */ {0x1F, 0x21, 0x23, on_set_player_visible},
+    /* 6x24 */ {0x00, 0x00, 0x24, on_forward_check_size_game},
+    /* 6x25 */ {0x00, 0x00, 0x25, on_equip_item},
+    /* 6x26 */ {0x00, 0x00, 0x26, on_unequip_item},
+    /* 6x27 */ {0x00, 0x00, 0x27, on_use_item},
+    /* 6x28 */ {0x00, 0x00, 0x28, on_feed_mag},
+    /* 6x29 */ {0x00, 0x00, 0x29, on_destroy_inventory_item},
+    /* 6x2A */ {0x00, 0x00, 0x2A, on_player_drop_item},
+    /* 6x2B */ {0x00, 0x00, 0x2B, on_create_inventory_item},
+    /* 6x2C */ {0x00, 0x00, 0x2C, on_forward_check_size},
+    /* 6x2D */ {0x00, 0x00, 0x2D, on_forward_check_size},
+    /* 6x2E */ {0x00, 0x00, 0x2E, nullptr}, // TODO: DC112000 uses this as 6x2C; should we support it?
+    /* 6x2F */ {0x00, 0x00, 0x2F, on_hit_by_enemy},
+    /* 6x30 */ {0x00, 0x00, 0x30, on_level_up},
+    /* 6x31 */ {0x00, 0x00, 0x31, on_forward_check_size_game},
+    /* 6x32 */ {0x00, 0x00, 0x32, on_forward_check_size_game},
+    /* 6x33 */ {0x00, 0x00, 0x33, on_forward_check_size_game},
+    /* 6x34 */ {0x00, 0x00, 0x34, nullptr},
+    /* 6x35 */ {0x00, 0x00, 0x35, nullptr},
+    /* 6x36 */ {0x00, 0x00, 0x36, on_forward_check_game},
+    /* 6x37 */ {0x00, 0x00, 0x37, on_forward_check_size_game},
+    /* 6x38 */ {0x00, 0x00, 0x38, nullptr},
+    /* 6x39 */ {0x00, 0x00, 0x39, on_forward_check_size_game},
+    /* 6x3A */ {0x00, 0x00, 0x3A, on_forward_check_size_game},
+    /* 6x3B */ {0x00, 0x38, 0x3B, on_unknown_6x3B},
+    /* 6x3C */ {0x00, 0x00, 0x3C, nullptr},
+    /* 6x3D */ {0x00, 0x00, 0x3D, nullptr},
+    /* 6x3E */ {0x00, 0x00, 0x3E, on_movement_with_floor<G_StopAtPosition_6x3E, 0x00, 0x00>},
+    /* 6x3F */ {0x36, 0x3B, 0x3F, on_movement_with_floor<G_SetPosition_6x3F, 0x36, 0x3B>},
+    /* 6x40 */ {0x37, 0x3C, 0x40, on_movement<G_WalkToPosition_6x40, 0x37, 0x3C>},
+    /* 6x41 */ {0x00, 0x00, 0x41, nullptr},
+    /* 6x42 */ {0x39, 0x3E, 0x42, on_movement<G_RunToPosition_6x42, 0x39, 0x3E>},
+    /* 6x43 */ {0x00, 0x00, 0x43, on_forward_check_size_client},
+    /* 6x44 */ {0x00, 0x00, 0x44, on_forward_check_size_client},
+    /* 6x45 */ {0x00, 0x00, 0x45, on_forward_check_size_client},
+    /* 6x46 */ {0x00, 0x00, 0x46, on_attack_finished},
+    /* 6x47 */ {0x00, 0x00, 0x47, on_cast_technique},
+    /* 6x48 */ {0x00, 0x00, 0x48, on_cast_technique_finished},
+    /* 6x49 */ {0x00, 0x00, 0x49, on_subtract_pb_energy},
+    /* 6x4A */ {0x00, 0x00, 0x4A, on_forward_check_size_client},
+    /* 6x4B */ {0x00, 0x00, 0x4B, on_hit_by_enemy},
+    /* 6x4C */ {0x00, 0x00, 0x4C, on_hit_by_enemy},
+    /* 6x4D */ {0x00, 0x00, 0x4D, on_player_died},
+    /* 6x4E */ {0x00, 0x00, 0x4E, on_forward_check_size_client},
+    /* 6x4F */ {0x00, 0x00, 0x4F, on_forward_check_size_client},
+    /* 6x50 */ {0x00, 0x00, 0x50, on_forward_check_size_client},
+    /* 6x51 */ {0x00, 0x00, 0x51, nullptr},
+    /* 6x52 */ {0x46, 0x4C, 0x52, on_toggle_counter_interaction},
+    /* 6x53 */ {0x00, 0x00, 0x53, on_forward_check_size_game},
+    /* 6x54 */ {0x00, 0x00, 0x54, nullptr},
+    /* 6x55 */ {0x00, 0x00, 0x55, on_forward_check_size_client},
+    /* 6x56 */ {0x00, 0x50, 0x56, on_set_or_clear_player_flags_multi},
+    /* 6x57 */ {0x00, 0x00, 0x57, on_forward_check_size_client},
+    /* 6x58 */ {0x00, 0x00, 0x58, on_forward_check_size_client},
+    /* 6x59 */ {0x00, 0x00, 0x59, on_pick_up_item},
+    /* 6x5A */ {0x00, 0x00, 0x5A, on_pick_up_item_request},
+    /* 6x5B */ {0x00, 0x00, 0x5B, nullptr},
+    /* 6x5C */ {0x00, 0x00, 0x5C, nullptr},
+    /* 6x5D */ {0x00, 0x00, 0x5D, on_drop_partial_stack},
+    /* 6x5E */ {0x00, 0x00, 0x5E, on_buy_shop_item},
+    /* 6x5F */ {0x00, 0x00, 0x5F, on_box_or_enemy_item_drop},
+    /* 6x60 */ {0x00, 0x00, 0x60, on_entity_drop_item_request},
+    /* 6x61 */ {0x00, 0x00, 0x61, on_forward_check_size_game},
+    /* 6x62 */ {0x00, 0x00, 0x62, nullptr},
+    /* 6x63 */ {0x00, 0x00, 0x63, on_destroy_ground_item},
+    /* 6x64 */ {0x00, 0x00, 0x64, nullptr},
+    /* 6x65 */ {0x00, 0x00, 0x65, nullptr},
+    /* 6x66 */ {0x00, 0x00, 0x66, on_forward_check_size_game},
+    /* 6x67 */ {0x00, 0x00, 0x67, on_forward_check_size_game},
+    /* 6x68 */ {0x00, 0x00, 0x68, on_forward_check_size_game},
+    /* 6x69 */ {0x00, 0x00, 0x69, on_forward_check_size_game},
+    /* 6x6A */ {0x00, 0x00, 0x6A, on_forward_check_size_game},
+    /* 6x6B */ {0x00, 0x00, 0x6B, on_forward_sync_joining_player_state},
+    /* 6x6C */ {0x00, 0x00, 0x6C, on_forward_sync_joining_player_state},
+    /* 6x6D */ {0x00, 0x00, 0x6D, on_sync_joining_player_item_state},
+    /* 6x6E */ {0x00, 0x00, 0x6E, on_forward_sync_joining_player_state},
+    /* 6x6F */ {0x00, 0x00, 0x6F, on_forward_check_game_loading},
+    /* 6x70 */ {0x00, 0x00, 0x70, on_sync_joining_player_disp_and_inventory},
+    /* 6x71 */ {0x00, 0x00, 0x71, on_forward_check_game_loading},
+    /* 6x72 */ {0x00, 0x00, 0x72, on_forward_check_game_loading},
+    /* 6x73 */ {0x00, 0x00, 0x73, on_invalid},
+    /* 6x74 */ {0x00, 0x00, 0x74, on_word_select},
+    /* 6x75 */ {0x00, 0x00, 0x75, on_set_quest_flag},
+    /* 6x76 */ {0x00, 0x00, 0x76, on_forward_check_size_game},
+    /* 6x77 */ {0x00, 0x00, 0x77, on_forward_check_size_game},
+    /* 6x78 */ {0x00, 0x00, 0x78, nullptr},
+    /* 6x79 */ {0x00, 0x00, 0x79, on_forward_check_size},
+    /* 6x7A */ {0x00, 0x00, 0x7A, nullptr},
+    /* 6x7B */ {0x00, 0x00, 0x7B, nullptr},
+    /* 6x7C */ {0x00, 0x00, 0x7C, on_forward_check_size_game},
+    /* 6x7D */ {0x00, 0x00, 0x7D, on_forward_check_size_game},
+    /* 6x7E */ {0x00, 0x00, 0x7E, nullptr},
+    /* 6x7F */ {0x00, 0x00, 0x7F, nullptr},
+    /* 6x80 */ {0x00, 0x00, 0x80, on_forward_check_size_game},
+    /* 6x81 */ {0x00, 0x00, 0x81, nullptr},
+    /* 6x82 */ {0x00, 0x00, 0x82, nullptr},
+    /* 6x83 */ {0x00, 0x00, 0x83, on_forward_check_size_game},
+    /* 6x84 */ {0x00, 0x00, 0x84, on_forward_check_size_game},
+    /* 6x85 */ {0x00, 0x00, 0x85, on_forward_check_size_game},
+    /* 6x86 */ {0x00, 0x00, 0x86, on_forward_check_size_game},
+    /* 6x87 */ {0x00, 0x00, 0x87, on_forward_check_size_game},
+    /* 6x88 */ {0x00, 0x00, 0x88, on_forward_check_size_game},
+    /* 6x89 */ {0x00, 0x00, 0x89, on_forward_check_size_game},
+    /* 6x8A */ {0x00, 0x00, 0x8A, on_forward_check_size_game},
+    /* 6x8B */ {0x00, 0x00, 0x8B, nullptr},
+    /* 6x8C */ {0x00, 0x00, 0x8C, nullptr},
+    /* 6x8D */ {0x00, 0x00, 0x8D, on_forward_check_size_client},
+    /* 6x8E */ {0x00, 0x00, 0x8E, nullptr},
+    /* 6x8F */ {0x00, 0x00, 0x8F, nullptr},
+    /* 6x90 */ {0x00, 0x00, 0x90, nullptr},
+    /* 6x91 */ {0x00, 0x00, 0x91, on_forward_check_size_game},
+    /* 6x92 */ {0x00, 0x00, 0x92, nullptr},
+    /* 6x93 */ {0x00, 0x00, 0x93, on_forward_check_size_game},
+    /* 6x94 */ {0x00, 0x00, 0x94, on_forward_check_size_game},
+    /* 6x95 */ {0x00, 0x00, 0x95, nullptr},
+    /* 6x96 */ {0x00, 0x00, 0x96, nullptr},
+    /* 6x97 */ {0x00, 0x00, 0x97, on_forward_check_size_game},
+    /* 6x98 */ {0x00, 0x00, 0x98, nullptr},
+    /* 6x99 */ {0x00, 0x00, 0x99, nullptr},
+    /* 6x9A */ {0x00, 0x00, 0x9A, on_forward_check_size_game},
+    /* 6x9B */ {0x00, 0x00, 0x9B, on_forward_check_size_game},
+    /* 6x9C */ {0x00, 0x00, 0x9C, on_forward_check_size_game},
+    /* 6x9D */ {0x00, 0x00, 0x9D, on_forward_check_size_game},
+    /* 6x9E */ {0x00, 0x00, 0x9E, nullptr},
+    /* 6x9F */ {0x00, 0x00, 0x9F, on_forward_check_size_game},
+    /* 6xA0 */ {0x00, 0x00, 0xA0, on_forward_check_size_game},
+    /* 6xA1 */ {0x00, 0x00, 0xA1, on_forward_check_size_game},
+    /* 6xA2 */ {0x00, 0x00, 0xA2, on_entity_drop_item_request},
+    /* 6xA3 */ {0x00, 0x00, 0xA3, on_forward_check_size_game},
+    /* 6xA4 */ {0x00, 0x00, 0xA4, on_forward_check_size_game},
+    /* 6xA5 */ {0x00, 0x00, 0xA5, on_forward_check_size_game},
+    /* 6xA6 */ {0x00, 0x00, 0xA6, on_forward_check_size},
+    /* 6xA7 */ {0x00, 0x00, 0xA7, nullptr},
+    /* 6xA8 */ {0x00, 0x00, 0xA8, on_gol_dragon_actions},
+    /* 6xA9 */ {0x00, 0x00, 0xA9, on_forward_check_size_game},
+    /* 6xAA */ {0x00, 0x00, 0xAA, on_forward_check_size_game},
+    /* 6xAB */ {0x00, 0x00, 0xAB, on_forward_check_size_client},
+    /* 6xAC */ {0x00, 0x00, 0xAC, nullptr},
+    /* 6xAD */ {0x00, 0x00, 0xAD, on_forward_check_size_game},
+    /* 6xAE */ {0x00, 0x00, 0xAE, on_forward_check_size_client},
+    /* 6xAF */ {0x00, 0x00, 0xAF, on_forward_check_size_client},
+    /* 6xB0 */ {0x00, 0x00, 0xB0, on_forward_check_size_client},
+    /* 6xB1 */ {0x00, 0x00, 0xB1, nullptr},
+    /* 6xB2 */ {0x00, 0x00, 0xB2, nullptr},
+    /* 6xB3 */ {0x00, 0x00, 0xB3, nullptr}, // Should be sent via CA instead
+    /* 6xB4 */ {0x00, 0x00, 0xB4, nullptr}, // Should be sent by the server only
+    /* 6xB5 */ {0x00, 0x00, 0xB5, on_open_shop_bb_or_ep3_battle_subs},
+    /* 6xB6 */ {0x00, 0x00, 0xB6, nullptr},
+    /* 6xB7 */ {0x00, 0x00, 0xB7, on_buy_shop_item_bb},
+    /* 6xB8 */ {0x00, 0x00, 0xB8, on_identify_item_bb},
+    /* 6xB9 */ {0x00, 0x00, 0xB9, nullptr},
+    /* 6xBA */ {0x00, 0x00, 0xBA, on_accept_identify_item_bb},
+    /* 6xBB */ {0x00, 0x00, 0xBB, on_open_bank_bb_or_card_trade_counter_ep3},
+    /* 6xBC */ {0x00, 0x00, 0xBC, on_forward_check_size_ep3_game},
+    /* 6xBD */ {0x00, 0x00, 0xBD, on_ep3_private_word_select_bb_bank_action},
+    /* 6xBE */ {0x00, 0x00, 0xBE, on_ep3_sound_chat},
+    /* 6xBF */ {0x00, 0x00, 0xBF, on_forward_check_size_ep3_lobby},
+    /* 6xC0 */ {0x00, 0x00, 0xC0, on_sell_item_at_shop_bb},
+    /* 6xC1 */ {0x00, 0x00, 0xC1, nullptr},
+    /* 6xC2 */ {0x00, 0x00, 0xC2, nullptr},
+    /* 6xC3 */ {0x00, 0x00, 0xC3, on_drop_partial_stack_bb},
+    /* 6xC4 */ {0x00, 0x00, 0xC4, on_sort_inventory_bb},
+    /* 6xC5 */ {0x00, 0x00, 0xC5, on_medical_center_bb},
+    /* 6xC6 */ {0x00, 0x00, 0xC6, on_steal_exp_bb},
+    /* 6xC7 */ {0x00, 0x00, 0xC7, on_charge_attack_bb},
+    /* 6xC8 */ {0x00, 0x00, 0xC8, on_enemy_exp_request_bb},
+    /* 6xC9 */ {0x00, 0x00, 0xC9, on_meseta_reward_request_bb},
+    /* 6xCA */ {0x00, 0x00, 0xCA, on_item_reward_request_bb},
+    /* 6xCB */ {0x00, 0x00, 0xCB, nullptr},
+    /* 6xCC */ {0x00, 0x00, 0xCC, on_exchange_item_for_team_points_bb},
+    /* 6xCD */ {0x00, 0x00, 0xCD, nullptr},
+    /* 6xCE */ {0x00, 0x00, 0xCE, nullptr},
+    /* 6xCF */ {0x00, 0x00, 0xCF, on_battle_restart_bb},
+    /* 6xD0 */ {0x00, 0x00, 0xD0, on_battle_level_up_bb},
+    /* 6xD1 */ {0x00, 0x00, 0xD1, on_request_challenge_grave_recovery_item_bb},
+    /* 6xD2 */ {0x00, 0x00, 0xD2, on_write_quest_global_flag_bb},
+    /* 6xD3 */ {0x00, 0x00, 0xD3, nullptr},
+    /* 6xD4 */ {0x00, 0x00, 0xD4, nullptr},
+    /* 6xD5 */ {0x00, 0x00, 0xD5, on_quest_exchange_item_bb},
+    /* 6xD6 */ {0x00, 0x00, 0xD6, on_wrap_item_bb},
+    /* 6xD7 */ {0x00, 0x00, 0xD7, on_photon_drop_exchange_bb},
+    /* 6xD8 */ {0x00, 0x00, 0xD8, nullptr},
+    /* 6xD9 */ {0x00, 0x00, 0xD9, on_momoka_item_exchange_bb},
+    /* 6xDA */ {0x00, 0x00, 0xDA, on_upgrade_weapon_attribute_bb},
+    /* 6xDB */ {0x00, 0x00, 0xDB, nullptr},
+    /* 6xDC */ {0x00, 0x00, 0xDC, on_forward_check_size_game},
+    /* 6xDD */ {0x00, 0x00, 0xDD, nullptr},
+    /* 6xDE */ {0x00, 0x00, 0xDE, on_secret_lottery_ticket_exchange_bb},
+    /* 6xDF */ {0x00, 0x00, 0xDF, on_photon_crystal_exchange_bb},
+    /* 6xE0 */ {0x00, 0x00, 0xE0, on_quest_F95E_result_bb},
+    /* 6xE1 */ {0x00, 0x00, 0xE1, on_quest_F95F_result_bb},
+    /* 6xE2 */ {0x00, 0x00, 0xE2, nullptr},
+    /* 6xE3 */ {0x00, 0x00, 0xE3, nullptr},
+    /* 6xE4 */ {0x00, 0x00, 0xE4, nullptr},
+    /* 6xE5 */ {0x00, 0x00, 0xE5, nullptr},
+    /* 6xE6 */ {0x00, 0x00, 0xE6, nullptr},
+    /* 6xE7 */ {0x00, 0x00, 0xE7, nullptr},
+    /* 6xE8 */ {0x00, 0x00, 0xE8, nullptr},
+    /* 6xE9 */ {0x00, 0x00, 0xE9, nullptr},
+    /* 6xEA */ {0x00, 0x00, 0xEA, nullptr},
+    /* 6xEB */ {0x00, 0x00, 0xEB, nullptr},
+    /* 6xEC */ {0x00, 0x00, 0xEC, nullptr},
+    /* 6xED */ {0x00, 0x00, 0xED, nullptr},
+    /* 6xEE */ {0x00, 0x00, 0xEE, nullptr},
+    /* 6xEF */ {0x00, 0x00, 0xEF, nullptr},
+    /* 6xF0 */ {0x00, 0x00, 0xF0, nullptr},
+    /* 6xF1 */ {0x00, 0x00, 0xF1, nullptr},
+    /* 6xF2 */ {0x00, 0x00, 0xF2, nullptr},
+    /* 6xF3 */ {0x00, 0x00, 0xF3, nullptr},
+    /* 6xF4 */ {0x00, 0x00, 0xF4, nullptr},
+    /* 6xF5 */ {0x00, 0x00, 0xF5, nullptr},
+    /* 6xF6 */ {0x00, 0x00, 0xF6, nullptr},
+    /* 6xF7 */ {0x00, 0x00, 0xF7, nullptr},
+    /* 6xF8 */ {0x00, 0x00, 0xF8, nullptr},
+    /* 6xF9 */ {0x00, 0x00, 0xF9, nullptr},
+    /* 6xFA */ {0x00, 0x00, 0xFA, nullptr},
+    /* 6xFB */ {0x00, 0x00, 0xFB, nullptr},
+    /* 6xFC */ {0x00, 0x00, 0xFC, nullptr},
+    /* 6xFD */ {0x00, 0x00, 0xFD, nullptr},
+    /* 6xFE */ {0x00, 0x00, 0xFE, nullptr},
+    /* 6xFF */ {0x00, 0x00, 0xFF, nullptr},
+};
+
+static void handle_subcommand_dc_prototypes(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
   auto l = c->require_lobby();
   if (l->is_game()) {
     // DC NTE doesn't send 6F when it's done loading, so treat this command as
@@ -2695,321 +2992,71 @@ static void handle_subcommand_dc_nte(shared_ptr<Client> c, uint8_t command, uint
     }
 
   } else {
+    auto& header = check_size_t<G_UnusedHeader>(data, size, 0xFFFF);
+
     // In a lobby, we have to deal with all other versions of the game having
     // different subcommand numbers than DC NTE. We'll forward the command
     // verbatim to other DC NTE clients, but will have to translate it for
     // non-NTE clients. Some subcommands may not map cleanly; for those, we
     // don't send anything at all to non-NTE clients.
-    auto& header = check_size_t<G_UnusedHeader>(data, size, 0xFFFF);
-    uint8_t nte_subcommand = header.subcommand;
-    uint8_t non_nte_subcommand = 0x00;
-    switch (nte_subcommand) {
-      case 0x1D:
-        non_nte_subcommand = 0x21;
-        break;
-      case 0x1E:
-        non_nte_subcommand = 0x22;
-        break;
-      case 0x1F:
-        non_nte_subcommand = 0x23;
-        break;
-      case 0x36:
-        non_nte_subcommand = 0x3F;
-        break;
-      case 0x37:
-        non_nte_subcommand = 0x40;
-        break;
-      case 0x39:
-        non_nte_subcommand = 0x42;
-        break;
-      case 0x46:
-        non_nte_subcommand = 0x52;
-        break;
-      default:
-        non_nte_subcommand = 0x00;
+    static vector<uint8_t> nte_to_final_map;
+    static vector<uint8_t> proto_to_final_map;
+    if (nte_to_final_map.empty()) {
+      nte_to_final_map.resize(0x100, 0x00);
+      for (size_t z = 0; z < 0x100; z++) {
+        if (subcommand_definitions[z].nte_subcommand) {
+          nte_to_final_map[subcommand_definitions[z].nte_subcommand] = z;
+        }
+      }
+    }
+    if (proto_to_final_map.empty()) {
+      proto_to_final_map.resize(0x100, 0x00);
+      for (size_t z = 0; z < 0x100; z++) {
+        if (subcommand_definitions[z].proto_subcommand) {
+          proto_to_final_map[subcommand_definitions[z].proto_subcommand] = z;
+        }
+      }
     }
 
-    string non_nte_data;
+    const vector<uint8_t>& client_to_final_map = (c->version() == Version::DC_NTE) ? nte_to_final_map : proto_to_final_map;
+    uint8_t final_subcommand = client_to_final_map[header.subcommand];
+    uint8_t nte_subcommand = subcommand_definitions[final_subcommand].nte_subcommand;
+    uint8_t proto_subcommand = subcommand_definitions[final_subcommand].nte_subcommand;
+    uint8_t other_proto_subcommand = (c->version() == Version::DC_NTE) ? proto_subcommand : nte_subcommand;
+
+    string other_proto_data;
+    string final_data;
     for (auto lc : l->clients) {
       if (!lc || (lc == c)) {
         continue;
       }
 
-      if (lc->version() == Version::DC_NTE) {
+      if (lc->version() == c->version()) {
         send_command(lc, command, flag, data, size);
-      } else if (non_nte_subcommand != 0x00) {
-        if (non_nte_data.empty()) {
-          non_nte_data.assign(reinterpret_cast<const char*>(data), size);
-          non_nte_data[0] = non_nte_subcommand;
+
+      } else if ((lc->version() == Version::DC_NTE) || (lc->version() == Version::DC_V1_11_2000_PROTOTYPE)) {
+        // lc is the other prototype version (e.g. lc is DC_NTE and c is
+        // DC_V1_11_2000_PROTOTYPE, or vice versa)
+        if (other_proto_subcommand) {
+          if (other_proto_data.empty()) {
+            other_proto_data.assign(reinterpret_cast<const char*>(data), size);
+            other_proto_data[0] = other_proto_subcommand;
+          }
+          if (other_proto_data[0]) {
+            send_command(lc, command, flag, other_proto_data);
+          }
         }
-        send_command(lc, command, flag, non_nte_data);
+
+      } else if (final_subcommand != 0) {
+        if (final_data.empty()) {
+          final_data.assign(reinterpret_cast<const char*>(data), size);
+          final_data[0] = final_subcommand;
+        }
+        send_command(lc, command, flag, final_data);
       }
     }
   }
 }
-
-////////////////////////////////////////////////////////////////////////////////
-
-typedef void (*subcommand_handler_t)(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size);
-
-subcommand_handler_t subcommand_handlers[0x100] = {
-    /* 6x00 */ on_invalid,
-    /* 6x01 */ nullptr,
-    /* 6x02 */ nullptr,
-    /* 6x03 */ nullptr,
-    /* 6x04 */ nullptr,
-    /* 6x05 */ on_switch_state_changed,
-    /* 6x06 */ on_send_guild_card,
-    /* 6x07 */ on_symbol_chat,
-    /* 6x08 */ nullptr,
-    /* 6x09 */ nullptr,
-    /* 6x0A */ on_enemy_hit,
-    /* 6x0B */ on_forward_check_size_game,
-    /* 6x0C */ on_forward_check_size_game,
-    /* 6x0D */ on_forward_check_size_game,
-    /* 6x0E */ nullptr,
-    /* 6x0F */ nullptr,
-    /* 6x10 */ nullptr,
-    /* 6x11 */ nullptr,
-    /* 6x12 */ on_dragon_actions,
-    /* 6x13 */ on_forward_check_size_game,
-    /* 6x14 */ on_forward_check_size_game,
-    /* 6x15 */ on_forward_check_size_game,
-    /* 6x16 */ on_forward_check_size_game,
-    /* 6x17 */ on_forward_check_size_game,
-    /* 6x18 */ on_forward_check_size_game,
-    /* 6x19 */ on_forward_check_size_game,
-    /* 6x1A */ nullptr,
-    /* 6x1B */ on_forward_check_size_game,
-    /* 6x1C */ on_forward_check_size_game,
-    /* 6x1D */ nullptr,
-    /* 6x1E */ nullptr,
-    /* 6x1F */ on_change_floor_6x1F,
-    /* 6x20 */ on_movement_with_floor<G_SetPosition_6x20, 0x00>,
-    /* 6x21 */ on_change_floor_6x21,
-    /* 6x22 */ on_set_player_invisible,
-    /* 6x23 */ on_set_player_visible,
-    /* 6x24 */ on_forward_check_size_game,
-    /* 6x25 */ on_equip_item,
-    /* 6x26 */ on_unequip_item,
-    /* 6x27 */ on_use_item,
-    /* 6x28 */ on_feed_mag,
-    /* 6x29 */ on_destroy_inventory_item,
-    /* 6x2A */ on_player_drop_item,
-    /* 6x2B */ on_create_inventory_item,
-    /* 6x2C */ on_forward_check_size,
-    /* 6x2D */ on_forward_check_size,
-    /* 6x2E */ nullptr,
-    /* 6x2F */ on_hit_by_enemy,
-    /* 6x30 */ on_level_up,
-    /* 6x31 */ on_forward_check_size_game,
-    /* 6x32 */ on_forward_check_size_game,
-    /* 6x33 */ on_forward_check_size_game,
-    /* 6x34 */ nullptr,
-    /* 6x35 */ nullptr,
-    /* 6x36 */ on_forward_check_game,
-    /* 6x37 */ on_forward_check_size_game,
-    /* 6x38 */ nullptr,
-    /* 6x39 */ on_forward_check_size_game,
-    /* 6x3A */ on_forward_check_size_game,
-    /* 6x3B */ on_forward_check_size,
-    /* 6x3C */ nullptr,
-    /* 6x3D */ nullptr,
-    /* 6x3E */ on_movement_with_floor<G_StopAtPosition_6x3E, 0x00>,
-    /* 6x3F */ on_movement_with_floor<G_SetPosition_6x3F, 0x36>,
-    /* 6x40 */ on_movement<G_WalkToPosition_6x40, 0x37>,
-    /* 6x41 */ nullptr,
-    /* 6x42 */ on_movement<G_RunToPosition_6x42, 0x39>,
-    /* 6x43 */ on_forward_check_size_client,
-    /* 6x44 */ on_forward_check_size_client,
-    /* 6x45 */ on_forward_check_size_client,
-    /* 6x46 */ on_attack_finished,
-    /* 6x47 */ on_cast_technique,
-    /* 6x48 */ on_cast_technique_finished,
-    /* 6x49 */ on_subtract_pb_energy,
-    /* 6x4A */ on_forward_check_size_client,
-    /* 6x4B */ on_hit_by_enemy,
-    /* 6x4C */ on_hit_by_enemy,
-    /* 6x4D */ on_player_died,
-    /* 6x4E */ on_forward_check_size_client,
-    /* 6x4F */ on_forward_check_size_client,
-    /* 6x50 */ on_forward_check_size_client,
-    /* 6x51 */ nullptr,
-    /* 6x52 */ on_toggle_counter_interaction,
-    /* 6x53 */ on_forward_check_size_game,
-    /* 6x54 */ nullptr,
-    /* 6x55 */ on_forward_check_size_client,
-    /* 6x56 */ on_forward_check_size_client,
-    /* 6x57 */ on_forward_check_size_client,
-    /* 6x58 */ on_forward_check_size_client,
-    /* 6x59 */ on_pick_up_item,
-    /* 6x5A */ on_pick_up_item_request,
-    /* 6x5B */ nullptr,
-    /* 6x5C */ nullptr,
-    /* 6x5D */ on_drop_partial_stack,
-    /* 6x5E */ on_buy_shop_item,
-    /* 6x5F */ on_box_or_enemy_item_drop,
-    /* 6x60 */ on_entity_drop_item_request,
-    /* 6x61 */ on_forward_check_size_game,
-    /* 6x62 */ nullptr,
-    /* 6x63 */ on_destroy_ground_item,
-    /* 6x64 */ nullptr,
-    /* 6x65 */ nullptr,
-    /* 6x66 */ on_forward_check_size_game,
-    /* 6x67 */ on_forward_check_size_game,
-    /* 6x68 */ on_forward_check_size_game,
-    /* 6x69 */ on_forward_check_size_game,
-    /* 6x6A */ on_forward_check_size_game,
-    /* 6x6B */ on_forward_sync_joining_player_state,
-    /* 6x6C */ on_forward_sync_joining_player_state,
-    /* 6x6D */ on_sync_joining_player_item_state,
-    /* 6x6E */ on_forward_sync_joining_player_state,
-    /* 6x6F */ on_forward_check_game_loading,
-    /* 6x70 */ on_sync_joining_player_disp_and_inventory,
-    /* 6x71 */ on_forward_check_game_loading,
-    /* 6x72 */ on_forward_check_game_loading,
-    /* 6x73 */ on_invalid,
-    /* 6x74 */ on_word_select,
-    /* 6x75 */ on_set_quest_flag,
-    /* 6x76 */ on_forward_check_size_game,
-    /* 6x77 */ on_forward_check_size_game,
-    /* 6x78 */ nullptr,
-    /* 6x79 */ on_forward_check_size,
-    /* 6x7A */ nullptr,
-    /* 6x7B */ nullptr,
-    /* 6x7C */ on_forward_check_size_game,
-    /* 6x7D */ on_forward_check_size_game,
-    /* 6x7E */ nullptr,
-    /* 6x7F */ nullptr,
-    /* 6x80 */ on_forward_check_size_game,
-    /* 6x81 */ nullptr,
-    /* 6x82 */ nullptr,
-    /* 6x83 */ on_forward_check_size_game,
-    /* 6x84 */ on_forward_check_size_game,
-    /* 6x85 */ on_forward_check_size_game,
-    /* 6x86 */ on_forward_check_size_game,
-    /* 6x87 */ on_forward_check_size_game,
-    /* 6x88 */ on_forward_check_size_game,
-    /* 6x89 */ on_forward_check_size_game,
-    /* 6x8A */ on_forward_check_size_game,
-    /* 6x8B */ nullptr,
-    /* 6x8C */ nullptr,
-    /* 6x8D */ on_forward_check_size_client,
-    /* 6x8E */ nullptr,
-    /* 6x8F */ nullptr,
-    /* 6x90 */ nullptr,
-    /* 6x91 */ on_forward_check_size_game,
-    /* 6x92 */ nullptr,
-    /* 6x93 */ on_forward_check_size_game,
-    /* 6x94 */ on_forward_check_size_game,
-    /* 6x95 */ nullptr,
-    /* 6x96 */ nullptr,
-    /* 6x97 */ on_forward_check_size_game,
-    /* 6x98 */ nullptr,
-    /* 6x99 */ nullptr,
-    /* 6x9A */ on_forward_check_size_game,
-    /* 6x9B */ on_forward_check_size_game,
-    /* 6x9C */ on_forward_check_size_game,
-    /* 6x9D */ on_forward_check_size_game,
-    /* 6x9E */ nullptr,
-    /* 6x9F */ on_forward_check_size_game,
-    /* 6xA0 */ on_forward_check_size_game,
-    /* 6xA1 */ on_forward_check_size_game,
-    /* 6xA2 */ on_entity_drop_item_request,
-    /* 6xA3 */ on_forward_check_size_game,
-    /* 6xA4 */ on_forward_check_size_game,
-    /* 6xA5 */ on_forward_check_size_game,
-    /* 6xA6 */ on_forward_check_size,
-    /* 6xA7 */ nullptr,
-    /* 6xA8 */ on_gol_dragon_actions,
-    /* 6xA9 */ on_forward_check_size_game,
-    /* 6xAA */ on_forward_check_size_game,
-    /* 6xAB */ on_forward_check_size_client,
-    /* 6xAC */ nullptr,
-    /* 6xAD */ on_forward_check_size_game,
-    /* 6xAE */ on_forward_check_size_client,
-    /* 6xAF */ on_forward_check_size_client,
-    /* 6xB0 */ on_forward_check_size_client,
-    /* 6xB1 */ nullptr,
-    /* 6xB2 */ nullptr,
-    /* 6xB3 */ nullptr, // Should be sent via CA instead
-    /* 6xB4 */ nullptr, // Should be sent by the server only
-    /* 6xB5 */ on_open_shop_bb_or_ep3_battle_subs,
-    /* 6xB6 */ nullptr,
-    /* 6xB7 */ on_buy_shop_item_bb,
-    /* 6xB8 */ on_identify_item_bb,
-    /* 6xB9 */ nullptr,
-    /* 6xBA */ on_accept_identify_item_bb,
-    /* 6xBB */ on_open_bank_bb_or_card_trade_counter_ep3,
-    /* 6xBC */ on_forward_check_size_ep3_game,
-    /* 6xBD */ on_ep3_private_word_select_bb_bank_action,
-    /* 6xBE */ on_ep3_sound_chat,
-    /* 6xBF */ on_forward_check_size_ep3_lobby,
-    /* 6xC0 */ on_sell_item_at_shop_bb,
-    /* 6xC1 */ nullptr,
-    /* 6xC2 */ nullptr,
-    /* 6xC3 */ on_drop_partial_stack_bb,
-    /* 6xC4 */ on_sort_inventory_bb,
-    /* 6xC5 */ on_medical_center_bb,
-    /* 6xC6 */ on_steal_exp_bb,
-    /* 6xC7 */ on_charge_attack_bb,
-    /* 6xC8 */ on_enemy_exp_request_bb,
-    /* 6xC9 */ on_meseta_reward_request_bb,
-    /* 6xCA */ on_item_reward_request_bb,
-    /* 6xCB */ nullptr,
-    /* 6xCC */ on_exchange_item_for_team_points_bb,
-    /* 6xCD */ nullptr,
-    /* 6xCE */ nullptr,
-    /* 6xCF */ on_battle_restart_bb,
-    /* 6xD0 */ on_battle_level_up_bb,
-    /* 6xD1 */ on_request_challenge_grave_recovery_item_bb,
-    /* 6xD2 */ on_write_quest_global_flag_bb,
-    /* 6xD3 */ nullptr,
-    /* 6xD4 */ nullptr,
-    /* 6xD5 */ on_quest_exchange_item_bb,
-    /* 6xD6 */ on_wrap_item_bb,
-    /* 6xD7 */ on_photon_drop_exchange_bb,
-    /* 6xD8 */ nullptr,
-    /* 6xD9 */ on_momoka_item_exchange_bb,
-    /* 6xDA */ on_upgrade_weapon_attribute_bb,
-    /* 6xDB */ nullptr,
-    /* 6xDC */ on_forward_check_size_game,
-    /* 6xDD */ nullptr,
-    /* 6xDE */ on_secret_lottery_ticket_exchange_bb,
-    /* 6xDF */ on_photon_crystal_exchange_bb,
-    /* 6xE0 */ on_quest_F95E_result_bb,
-    /* 6xE1 */ on_quest_F95F_result_bb,
-    /* 6xE2 */ nullptr,
-    /* 6xE3 */ nullptr,
-    /* 6xE4 */ nullptr,
-    /* 6xE5 */ nullptr,
-    /* 6xE6 */ nullptr,
-    /* 6xE7 */ nullptr,
-    /* 6xE8 */ nullptr,
-    /* 6xE9 */ nullptr,
-    /* 6xEA */ nullptr,
-    /* 6xEB */ nullptr,
-    /* 6xEC */ nullptr,
-    /* 6xED */ nullptr,
-    /* 6xEE */ nullptr,
-    /* 6xEF */ nullptr,
-    /* 6xF0 */ nullptr,
-    /* 6xF1 */ nullptr,
-    /* 6xF2 */ nullptr,
-    /* 6xF3 */ nullptr,
-    /* 6xF4 */ nullptr,
-    /* 6xF5 */ nullptr,
-    /* 6xF6 */ nullptr,
-    /* 6xF7 */ nullptr,
-    /* 6xF8 */ nullptr,
-    /* 6xF9 */ nullptr,
-    /* 6xFA */ nullptr,
-    /* 6xFB */ nullptr,
-    /* 6xFC */ nullptr,
-    /* 6xFD */ nullptr,
-    /* 6xFE */ nullptr,
-    /* 6xFF */ nullptr,
-};
 
 void on_subcommand_multi(shared_ptr<Client> c, uint8_t command, uint8_t flag, const string& data) {
   if (data.empty()) {
@@ -3037,12 +3084,12 @@ void on_subcommand_multi(shared_ptr<Client> c, uint8_t command, uint8_t flag, co
     }
     const void* data = r.getv(size);
 
-    if (c->version() == Version::DC_NTE) {
-      handle_subcommand_dc_nte(c, command, flag, data, size);
+    if ((c->version() == Version::DC_NTE) || (c->version() == Version::DC_V1_11_2000_PROTOTYPE)) {
+      handle_subcommand_dc_prototypes(c, command, flag, data, size);
     } else {
-      auto fn = subcommand_handlers[header.subcommand];
-      if (fn) {
-        fn(c, command, flag, data, size);
+      const auto& def = subcommand_definitions[header.subcommand];
+      if (def.handler) {
+        def.handler(c, command, flag, data, size);
       } else {
         on_unimplemented(c, command, flag, data, size);
       }
@@ -3051,5 +3098,5 @@ void on_subcommand_multi(shared_ptr<Client> c, uint8_t command, uint8_t flag, co
 }
 
 bool subcommand_is_implemented(uint8_t which) {
-  return subcommand_handlers[which] != nullptr;
+  return subcommand_definitions[which].handler != nullptr;
 }

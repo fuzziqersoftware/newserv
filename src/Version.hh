@@ -10,7 +10,7 @@ enum class Version {
   PC_PATCH = 0,
   BB_PATCH = 1,
   DC_NTE = 2,
-  DC_V1_12_2000_PROTOTYPE = 3,
+  DC_V1_11_2000_PROTOTYPE = 3,
   DC_V1 = 4,
   DC_V2 = 5,
   PC_V2 = 6,
@@ -32,7 +32,7 @@ inline bool is_patch(Version version) {
   return (version == Version::PC_PATCH) || (version == Version::BB_PATCH);
 }
 inline bool is_v1(Version version) {
-  return (version == Version::DC_NTE) || (version == Version::DC_V1_12_2000_PROTOTYPE) || (version == Version::DC_V1);
+  return (version == Version::DC_NTE) || (version == Version::DC_V1_11_2000_PROTOTYPE) || (version == Version::DC_V1);
 }
 inline bool is_v2(Version version) {
   return (version == Version::DC_V2) || (version == Version::PC_V2) || (version == Version::GC_NTE);
@@ -56,7 +56,7 @@ inline bool is_ep3(Version version) {
 
 inline bool is_dc(Version version) {
   return (version == Version::DC_NTE) ||
-      (version == Version::DC_V1_12_2000_PROTOTYPE) ||
+      (version == Version::DC_V1_11_2000_PROTOTYPE) ||
       (version == Version::DC_V1) ||
       (version == Version::DC_V2);
 }

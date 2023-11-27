@@ -15,7 +15,7 @@ const char* login_port_name_for_version(Version v) {
     case Version::BB_PATCH:
       return "bb-patch";
     case Version::DC_NTE:
-    case Version::DC_V1_12_2000_PROTOTYPE:
+    case Version::DC_V1_11_2000_PROTOTYPE:
     case Version::DC_V1:
     case Version::DC_V2:
     case Version::GC_NTE:
@@ -41,7 +41,7 @@ const char* lobby_port_name_for_version(Version v) {
     case Version::BB_PATCH:
       return "bb-patch";
     case Version::DC_NTE:
-    case Version::DC_V1_12_2000_PROTOTYPE:
+    case Version::DC_V1_11_2000_PROTOTYPE:
     case Version::DC_V1:
     case Version::DC_V2:
     case Version::GC_NTE:
@@ -67,7 +67,7 @@ const char* proxy_port_name_for_version(Version v) {
     case Version::BB_PATCH:
       return "bb-patch";
     case Version::DC_NTE:
-    case Version::DC_V1_12_2000_PROTOTYPE:
+    case Version::DC_V1_11_2000_PROTOTYPE:
     case Version::DC_V1:
     case Version::DC_V2:
       return "dc-proxy";
@@ -96,8 +96,8 @@ const char* name_for_enum<Version>(Version v) {
       return "BB_PATCH";
     case Version::DC_NTE:
       return "DC_NTE";
-    case Version::DC_V1_12_2000_PROTOTYPE:
-      return "DC_V1_12_2000_PROTOTYPE";
+    case Version::DC_V1_11_2000_PROTOTYPE:
+      return "DC_V1_11_2000_PROTOTYPE";
     case Version::DC_V1:
       return "DC_V1";
     case Version::DC_V2:
@@ -129,8 +129,8 @@ Version enum_for_name<Version>(const char* name) {
     return Version::BB_PATCH;
   } else if (!strcmp(name, "DC_NTE")) {
     return Version::DC_NTE;
-  } else if (!strcmp(name, "DC_V1_12_2000_PROTOTYPE")) {
-    return Version::DC_V1_12_2000_PROTOTYPE;
+  } else if (!strcmp(name, "DC_V1_11_2000_PROTOTYPE")) {
+    return Version::DC_V1_11_2000_PROTOTYPE;
   } else if (!strcmp(name, "DC_V1")) {
     return Version::DC_V1;
   } else if (!strcmp(name, "DC_V2") || !strcasecmp(name, "dc")) {

@@ -576,6 +576,7 @@ static void on_92_DC(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
   // than 92, so we use the presence of a 92 command to determine that the
   // client is actually DCv1 and not the prototype.
   c->config.set_flag(Client::Flag::CHECKED_FOR_DC_V1_PROTOTYPE);
+  c->channel.version = Version::DC_V1;
   c->log.info("Game version changed to DC_V1");
   send_command(c, 0x92, 0x01);
 }
@@ -585,7 +586,9 @@ static void on_93_DC(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
   auto s = c->require_server_state();
 
   c->channel.language = cmd.language;
-  set_console_client_flags(c, cmd.sub_version);
+  if (!c->config.check_flag(Client::Flag::CHECKED_FOR_DC_V1_PROTOTYPE)) {
+    set_console_client_flags(c, cmd.sub_version);
+  }
 
   uint32_t serial_number = stoul(cmd.serial_number.decode(), nullptr, 16);
   try {
@@ -639,7 +642,8 @@ static void on_93_DC(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
   if (!c->config.check_flag(Client::Flag::CHECKED_FOR_DC_V1_PROTOTYPE)) {
     send_command(c, 0x90, 0x01);
     c->config.set_flag(Client::Flag::CHECKED_FOR_DC_V1_PROTOTYPE);
-    c->log.info("Game version changed to DC_V1_12_2000_PROTOTYPE (will be changed to V1 if 92 is received)");
+    c->channel.version = Version::DC_V1_11_2000_PROTOTYPE;
+    c->log.info("Game version changed to DC_V1_11_2000_PROTOTYPE (will be changed to V1 if 92 is received)");
   } else {
     on_login_complete(c);
   }
@@ -2015,7 +2019,7 @@ static void on_10(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
             c->config.set_flag(Client::Flag::SAVE_ENABLED);
             // DC NTE and the v1 prototype crash if they receive a 97 command,
             // so we instead do the redirect immediately
-            if ((c->version() == Version::DC_NTE) || (c->version() == Version::DC_V1_12_2000_PROTOTYPE)) {
+            if ((c->version() == Version::DC_NTE) || (c->version() == Version::DC_V1_11_2000_PROTOTYPE)) {
               send_client_to_lobby_server(c);
             } else {
               send_command(c, 0x97, 0x01);
@@ -2777,7 +2781,7 @@ static void on_61_98(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
 
   switch (c->version()) {
     case Version::DC_NTE:
-    case Version::DC_V1_12_2000_PROTOTYPE:
+    case Version::DC_V1_11_2000_PROTOTYPE:
     case Version::DC_V1: {
       const auto& cmd = check_size_t<C_CharacterData_DCv1_61_98>(data);
       c->game_data.last_reported_disp_v1_v2.reset(new PlayerDispDataDCPCV3(cmd.disp));
@@ -3490,7 +3494,7 @@ static void on_81(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
   uint32_t to_guild_card_number;
   switch (c->version()) {
     case Version::DC_NTE:
-    case Version::DC_V1_12_2000_PROTOTYPE:
+    case Version::DC_V1_11_2000_PROTOTYPE:
     case Version::DC_V1:
     case Version::DC_V2:
     case Version::GC_NTE:
@@ -3677,8 +3681,8 @@ shared_ptr<Lobby> create_game_generic(
     case Version::DC_NTE:
       game->allow_version(Version::DC_NTE);
       break;
-    case Version::DC_V1_12_2000_PROTOTYPE:
-      game->allow_version(Version::DC_V1_12_2000_PROTOTYPE);
+    case Version::DC_V1_11_2000_PROTOTYPE:
+      game->allow_version(Version::DC_V1_11_2000_PROTOTYPE);
       break;
     case Version::DC_V1:
       game->allow_version(Version::DC_V1);
@@ -3803,7 +3807,7 @@ shared_ptr<Lobby> create_game_generic(
   // Generate the map variations
   if (game->is_ep3()) {
     game->variations.clear(0);
-  } else if ((c->version() == Version::DC_NTE) || (c->version() == Version::DC_V1_12_2000_PROTOTYPE)) {
+  } else if ((c->version() == Version::DC_NTE) || (c->version() == Version::DC_V1_11_2000_PROTOTYPE)) {
     generate_variations_dc_nte(game->variations, game->random_crypt);
   } else {
     generate_variations(game->variations, game->random_crypt, game->episode, is_solo);
@@ -3910,7 +3914,7 @@ static void on_0C_C1_E7_EC(shared_ptr<Client> c, uint16_t command, uint32_t, str
   auto s = c->require_server_state();
 
   shared_ptr<Lobby> game;
-  if ((c->version() == Version::DC_NTE) || (c->version() == Version::DC_V1_12_2000_PROTOTYPE)) {
+  if ((c->version() == Version::DC_NTE) || (c->version() == Version::DC_V1_11_2000_PROTOTYPE)) {
     const auto& cmd = check_size_t<C_CreateGame_DCNTE<TextEncoding::SJIS>>(data);
     game = create_game_generic(s, c, cmd.name.decode(c->language()), cmd.password.decode(c->language()), Episode::EP1, GameMode::NORMAL, 0, true);
 
@@ -5165,7 +5169,7 @@ static void check_unlicensed_command(Version version, uint8_t command) {
       }
       break;
     case Version::DC_NTE:
-    case Version::DC_V1_12_2000_PROTOTYPE:
+    case Version::DC_V1_11_2000_PROTOTYPE:
     case Version::DC_V1:
     case Version::DC_V2:
       // newserv doesn't actually know that DC clients are DC until it receives
@@ -5235,7 +5239,7 @@ void on_command(
 void on_command_with_header(shared_ptr<Client> c, const string& data) {
   switch (c->version()) {
     case Version::DC_NTE:
-    case Version::DC_V1_12_2000_PROTOTYPE:
+    case Version::DC_V1_11_2000_PROTOTYPE:
     case Version::DC_V1:
     case Version::DC_V2:
     case Version::GC_NTE:

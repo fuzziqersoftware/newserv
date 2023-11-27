@@ -861,7 +861,7 @@ std::string disassemble_quest_script(const void* data, size_t size, Version vers
       lines.emplace_back(".name " + escape_string(header.name.decode(0)));
       break;
     }
-    case Version::DC_V1_12_2000_PROTOTYPE:
+    case Version::DC_V1_11_2000_PROTOTYPE:
     case Version::DC_V1:
     case Version::DC_V2: {
       const auto& header = r.get<PSOQuestHeaderDC>();
@@ -1527,7 +1527,7 @@ Episode find_quest_episode_from_script(const void* data, size_t size, Version ve
   Episode header_episode = Episode::NONE;
   switch (version) {
     case Version::DC_NTE:
-    case Version::DC_V1_12_2000_PROTOTYPE:
+    case Version::DC_V1_11_2000_PROTOTYPE:
     case Version::DC_V1:
     case Version::DC_V2:
     case Version::PC_V2:

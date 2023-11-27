@@ -266,7 +266,7 @@ void Channel::send(uint16_t cmd, uint32_t flag, const std::vector<std::pair<cons
   size_t send_data_size = 0;
   switch (this->version) {
     case Version::DC_NTE:
-    case Version::DC_V1_12_2000_PROTOTYPE:
+    case Version::DC_V1_11_2000_PROTOTYPE:
     case Version::DC_V1:
     case Version::DC_V2:
     case Version::GC_NTE:
@@ -277,7 +277,7 @@ void Channel::send(uint16_t cmd, uint32_t flag, const std::vector<std::pair<cons
       PSOCommandHeaderDCV3 header;
       if (this->crypt_out.get() &&
           (this->version != Version::DC_NTE) &&
-          (this->version != Version::DC_V1_12_2000_PROTOTYPE) &&
+          (this->version != Version::DC_V1_11_2000_PROTOTYPE) &&
           (this->version != Version::DC_V1)) {
         send_data_size = (sizeof(header) + size + 3) & ~3;
       } else {

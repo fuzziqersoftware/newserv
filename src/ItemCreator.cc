@@ -794,7 +794,7 @@ void ItemCreator::generate_unit_stars_tables() {
     case Version::GC_EP3:
       throw logic_error("ItemCreator cannot be created for Episode 3 games");
     case Version::DC_NTE:
-    case Version::DC_V1_12_2000_PROTOTYPE:
+    case Version::DC_V1_11_2000_PROTOTYPE:
     case Version::DC_V1:
     case Version::DC_V2:
     case Version::PC_V2:

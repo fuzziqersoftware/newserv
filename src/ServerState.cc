@@ -66,7 +66,7 @@ void ServerState::init() {
     if (allow_non_ep3) {
       if (allow_v1) {
         l->allow_version(Version::DC_NTE);
-        l->allow_version(Version::DC_V1_12_2000_PROTOTYPE);
+        l->allow_version(Version::DC_V1_11_2000_PROTOTYPE);
         l->allow_version(Version::DC_V1);
       }
       l->allow_version(Version::DC_V2);
@@ -346,7 +346,7 @@ std::shared_ptr<const Menu> ServerState::information_menu_for_version(Version ve
 shared_ptr<const Menu> ServerState::proxy_destinations_menu_for_version(Version version) const {
   switch (version) {
     case Version::DC_NTE:
-    case Version::DC_V1_12_2000_PROTOTYPE:
+    case Version::DC_V1_11_2000_PROTOTYPE:
     case Version::DC_V1:
     case Version::DC_V2:
       return this->proxy_destinations_menu_dc;
@@ -367,7 +367,7 @@ shared_ptr<const Menu> ServerState::proxy_destinations_menu_for_version(Version 
 const vector<pair<string, uint16_t>>& ServerState::proxy_destinations_for_version(Version version) const {
   switch (version) {
     case Version::DC_NTE:
-    case Version::DC_V1_12_2000_PROTOTYPE:
+    case Version::DC_V1_11_2000_PROTOTYPE:
     case Version::DC_V1:
     case Version::DC_V2:
       return this->proxy_destinations_dc;
@@ -388,7 +388,7 @@ const vector<pair<string, uint16_t>>& ServerState::proxy_destinations_for_versio
 std::shared_ptr<const ItemParameterTable> ServerState::item_parameter_table_for_version(Version version) const {
   switch (version) {
     case Version::DC_NTE:
-    case Version::DC_V1_12_2000_PROTOTYPE:
+    case Version::DC_V1_11_2000_PROTOTYPE:
     case Version::DC_V1:
     case Version::DC_V2:
     case Version::PC_V2:

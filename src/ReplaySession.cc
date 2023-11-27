@@ -146,7 +146,7 @@ void ReplaySession::check_for_password(shared_ptr<const Event> ev) const {
     }
 
     case Version::DC_NTE:
-    case Version::DC_V1_12_2000_PROTOTYPE:
+    case Version::DC_V1_11_2000_PROTOTYPE:
     case Version::DC_V1:
     case Version::DC_V2:
     case Version::GC_NTE:
@@ -238,7 +238,7 @@ void ReplaySession::apply_default_mask(shared_ptr<Event> ev) {
       break;
     }
     case Version::DC_NTE:
-    case Version::DC_V1_12_2000_PROTOTYPE:
+    case Version::DC_V1_11_2000_PROTOTYPE:
     case Version::DC_V1:
     case Version::DC_V2:
     case Version::PC_V2:
@@ -292,7 +292,7 @@ void ReplaySession::apply_default_mask(shared_ptr<Event> ev) {
             auto& mask = check_size_t<S_JoinGame_XB_64>(mask_data, mask_size);
             mask.variations.clear(0);
             mask.rare_seed = 0;
-          } else if (version == Version::DC_NTE || version == Version::DC_V1_12_2000_PROTOTYPE) {
+          } else if (version == Version::DC_NTE || version == Version::DC_V1_11_2000_PROTOTYPE) {
             auto& mask = check_size_t<S_JoinGame_DCNTE_64>(mask_data, mask_size);
             mask.variations.clear(0);
           } else {
@@ -728,7 +728,7 @@ void ReplaySession::on_command_received(
       }
       break;
     case Version::DC_NTE:
-    case Version::DC_V1_12_2000_PROTOTYPE:
+    case Version::DC_V1_11_2000_PROTOTYPE:
     case Version::DC_V1:
     case Version::DC_V2:
     case Version::PC_V2:

@@ -47,7 +47,7 @@ WordSelectTable::WordSelectTable(const JSON& json) {
 uint16_t WordSelectTable::Token::value_for_version(Version version) const {
   switch (version) {
     case Version::DC_NTE:
-    case Version::DC_V1_12_2000_PROTOTYPE:
+    case Version::DC_V1_11_2000_PROTOTYPE:
     case Version::DC_V1:
     case Version::DC_V2:
       return this->dc_value;
@@ -76,7 +76,7 @@ WordSelectMessage WordSelectTable::translate(
   const std::vector<size_t>* index;
   switch (from_version) {
     case Version::DC_NTE:
-    case Version::DC_V1_12_2000_PROTOTYPE:
+    case Version::DC_V1_11_2000_PROTOTYPE:
     case Version::DC_V1:
     case Version::DC_V2:
       index = &this->dc_index;

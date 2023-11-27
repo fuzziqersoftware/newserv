@@ -235,7 +235,7 @@ VersionedQuest::VersionedQuest(
       break;
     }
 
-    case Version::DC_V1_12_2000_PROTOTYPE:
+    case Version::DC_V1_11_2000_PROTOTYPE:
     case Version::DC_V1:
     case Version::DC_V2: {
       if (bin_decompressed.size() < sizeof(PSOQuestHeaderDC)) {
@@ -570,7 +570,7 @@ QuestIndex::QuestIndex(
       // Get the version from the second token
       static const unordered_map<string, Version> name_to_version({
           {"dn", Version::DC_NTE},
-          {"dp", Version::DC_V1_12_2000_PROTOTYPE},
+          {"dp", Version::DC_V1_11_2000_PROTOTYPE},
           {"d1", Version::DC_V1},
           {"dc", Version::DC_V2},
           {"pc", Version::PC_V2},
@@ -807,7 +807,7 @@ shared_ptr<VersionedQuest> VersionedQuest::create_download_quest(uint8_t overrid
       // There's no known language field in this version, so we don't write
       // anything here
       break;
-    case Version::DC_V1_12_2000_PROTOTYPE:
+    case Version::DC_V1_11_2000_PROTOTYPE:
     case Version::DC_V1:
     case Version::DC_V2:
       if (decompressed_bin.size() < sizeof(PSOQuestHeaderDC)) {
@@ -1222,7 +1222,7 @@ string encode_qst_file(
   // unfortunate abstraction-breaking.
   switch (version) {
     case Version::DC_NTE: // DC NTE doesn't support quests, but we support encoding QST files anyway
-    case Version::DC_V1_12_2000_PROTOTYPE:
+    case Version::DC_V1_11_2000_PROTOTYPE:
     case Version::DC_V1:
     case Version::DC_V2:
       for (const auto& it : files) {

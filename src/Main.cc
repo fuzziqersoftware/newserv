@@ -95,7 +95,7 @@ Version get_cli_version(Arguments& args) {
   } else if (args.get<bool>("dc-nte")) {
     return Version::DC_NTE;
   } else if (args.get<bool>("dc-proto")) {
-    return Version::DC_V1_12_2000_PROTOTYPE;
+    return Version::DC_V1_11_2000_PROTOTYPE;
   } else if (args.get<bool>("dc-v1")) {
     return Version::DC_V1;
   } else if (args.get<bool>("dc-v2") || args.get<bool>("dc")) {
@@ -358,7 +358,7 @@ static void a_encrypt_decrypt_fn(Arguments& args) {
   shared_ptr<PSOEncryption> crypt;
   switch (version) {
     case Version::DC_NTE:
-    case Version::DC_V1_12_2000_PROTOTYPE:
+    case Version::DC_V1_11_2000_PROTOTYPE:
     case Version::DC_V1:
     case Version::DC_V2:
     case Version::PC_V2:
