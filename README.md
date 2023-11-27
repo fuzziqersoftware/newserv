@@ -58,7 +58,7 @@ newserv supports several versions of PSO. Specifically:
 | Version        | Login        | Lobbies      | Games        | Proxy        |
 |----------------|--------------|--------------|--------------|--------------|
 | DC Trial       | Yes          | Yes          | Yes          | No           |
-| DC 11/2000     | Yes (3)      | Yes (3)      | Yes (3)      | No           |
+| DC 11/2000     | Yes          | Yes          | Yes          | No           |
 | DC 12/2000     | Untested (1) | Untested (1) | Untested (1) | No           |
 | DC 01/2001     | Untested (1) | Untested (1) | Untested (1) | No           |
 | DC V1          | Yes          | Yes          | Yes          | Yes          |
@@ -68,14 +68,14 @@ newserv supports several versions of PSO. Specifically:
 | GC Ep1&2 Trial | Untested (1) | Untested (1) | Untested (1) | Untested (1) |
 | GC Ep1&2       | Yes          | Yes          | Yes          | Yes          |
 | GC Ep1&2 Plus  | Yes          | Yes          | Yes          | Yes          |
-| GC Ep3 Trial   | Yes          | Yes          | Partial (4)  | Yes          |
+| GC Ep3 Trial   | Yes          | Yes          | Partial (3)  | Yes          |
 | GC Ep3         | Yes          | Yes          | Yes          | Yes          |
 | Xbox Ep1&2     | Yes          | Yes          | Yes          | Yes          |
 | BB (vanilla)   | Yes          | Yes          | Yes (2)      | Yes          |
 | BB (Tethealla) | Yes          | Yes          | Yes (2)      | Yes          |
 
 *Notes:*
-1. *newserv's implementation of this version is based on disassembly of the client executable and has never been tested.*
+1. *newserv's implementations of these versions are based on disassembly of the client executables and have never been tested.*
 2. *BB games are mostly playable, but there are still some unimplemented features (for example, some quests that use rare commands may not work). Please submit a GitHub issue if you find something that doesn't work.*
 3. *Creating a game works and battle setup behaves mostly normally, but starting a battle doesn't work.*
 
