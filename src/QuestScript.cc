@@ -209,15 +209,17 @@ static_assert(F_XB_V3 == v_flag(Version::XB_V3));
 static_assert(F_BB_V4 == v_flag(Version::BB_V4));
 
 // clang-format off
-static constexpr uint16_t F_V0_V4 = F_DC_NTE | F_DC_112000 | F_DC_V1 | F_DC_V2 | F_PC_V2 | F_GC_NTE | F_GC_V3 | F_GC_EP3TE | F_GC_EP3 | F_XB_V3 | F_BB_V4;
-static constexpr uint16_t F_V0_V2 = F_DC_NTE | F_DC_112000 | F_DC_V1 | F_DC_V2 | F_PC_V2 | F_GC_NTE;
-static constexpr uint16_t F_V1_V2 =                          F_DC_V1 | F_DC_V2 | F_PC_V2 | F_GC_NTE;
-static constexpr uint16_t F_V1_V4 =                          F_DC_V1 | F_DC_V2 | F_PC_V2 | F_GC_NTE | F_GC_V3 | F_GC_EP3TE | F_GC_EP3 | F_XB_V3 | F_BB_V4;
-static constexpr uint16_t F_V2    =                                    F_DC_V2 | F_PC_V2 | F_GC_NTE;
-static constexpr uint16_t F_V2_V4 =                                    F_DC_V2 | F_PC_V2 | F_GC_NTE | F_GC_V3 | F_GC_EP3TE | F_GC_EP3 | F_XB_V3 | F_BB_V4;
-static constexpr uint16_t F_V3    =                                                                   F_GC_V3 | F_GC_EP3TE | F_GC_EP3 | F_XB_V3;
-static constexpr uint16_t F_V3_V4 =                                                                   F_GC_V3 | F_GC_EP3TE | F_GC_EP3 | F_XB_V3 | F_BB_V4;
-static constexpr uint16_t F_V4    =                                                                                                               F_BB_V4;
+static constexpr uint16_t F_V0_V2  = F_DC_NTE | F_DC_112000 | F_DC_V1 | F_DC_V2 | F_PC_V2 | F_GC_NTE;
+static constexpr uint16_t F_V0_V4  = F_DC_NTE | F_DC_112000 | F_DC_V1 | F_DC_V2 | F_PC_V2 | F_GC_NTE | F_GC_V3 | F_GC_EP3TE | F_GC_EP3 | F_XB_V3 | F_BB_V4;
+static constexpr uint16_t F_V05_V2 =            F_DC_112000 | F_DC_V1 | F_DC_V2 | F_PC_V2 | F_GC_NTE | F_GC_V3 | F_GC_EP3TE | F_GC_EP3 | F_XB_V3 | F_BB_V4;
+static constexpr uint16_t F_V05_V4 =            F_DC_112000 | F_DC_V1 | F_DC_V2 | F_PC_V2 | F_GC_NTE;
+static constexpr uint16_t F_V1_V2  =                          F_DC_V1 | F_DC_V2 | F_PC_V2 | F_GC_NTE;
+static constexpr uint16_t F_V1_V4  =                          F_DC_V1 | F_DC_V2 | F_PC_V2 | F_GC_NTE | F_GC_V3 | F_GC_EP3TE | F_GC_EP3 | F_XB_V3 | F_BB_V4;
+static constexpr uint16_t F_V2     =                                    F_DC_V2 | F_PC_V2 | F_GC_NTE;
+static constexpr uint16_t F_V2_V4  =                                    F_DC_V2 | F_PC_V2 | F_GC_NTE | F_GC_V3 | F_GC_EP3TE | F_GC_EP3 | F_XB_V3 | F_BB_V4;
+static constexpr uint16_t F_V3     =                                                                   F_GC_V3 | F_GC_EP3TE | F_GC_EP3 | F_XB_V3;
+static constexpr uint16_t F_V3_V4  =                                                                   F_GC_V3 | F_GC_EP3TE | F_GC_EP3 | F_XB_V3 | F_BB_V4;
+static constexpr uint16_t F_V4     =                                                                                                               F_BB_V4;
 // clang-format on
 static constexpr uint16_t F_HAS_ARGS = F_V3_V4;
 
@@ -427,32 +429,32 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     {0x00B5, "item_delete", {REG, {REG_SET_FIXED, 12}}, F_V0_V4},
     {0x00B6, "item_delete2", {{REG_SET_FIXED, 3}, {REG_SET_FIXED, 12}}, F_V0_V4},
     {0x00B7, "item_check", {{REG_SET_FIXED, 3}, REG}, F_V0_V4},
-    {0x00B8, "setevt", {INT32}, F_V1_V4 | F_ARGS},
-    {0x00B9, "get_difficulty_level_v1", {REG}, F_V1_V4}, // Only returns 0-2, even in Ultimate (which results in 2 as well). Presumably all non-v1 quests should use get_difficulty_level_v2 instead.
-    {0x00BA, "set_qt_exit", {SCRIPT32}, F_V1_V2},
+    {0x00B8, "setevt", {INT32}, F_V05_V4 | F_ARGS},
+    {0x00B9, "get_difficulty_level_v1", {REG}, F_V05_V4}, // Only returns 0-2, even in Ultimate (which results in 2 as well). Presumably all non-v1 quests should use get_difficulty_level_v2 instead.
+    {0x00BA, "set_qt_exit", {SCRIPT32}, F_V05_V2},
     {0x00BA, "set_qt_exit", {SCRIPT16}, F_V3_V4},
-    {0x00BB, "clr_qt_exit", {}, F_V1_V4},
-    {0x00BC, "nop_BC", {CSTRING}, F_V1_V4},
-    {0x00C0, "particle", {{REG32_SET_FIXED, 5}, INT32}, F_V1_V2},
+    {0x00BB, "clr_qt_exit", {}, F_V05_V4},
+    {0x00BC, "nop_BC", {CSTRING}, F_V05_V4},
+    {0x00C0, "particle", {{REG32_SET_FIXED, 5}, INT32}, F_V05_V2},
     {0x00C0, "particle", {{REG_SET_FIXED, 5}}, F_V3_V4},
-    {0x00C1, "npc_text", {INT32, CSTRING}, F_V1_V4 | F_ARGS},
-    {0x00C2, "npc_chkwarp", {}, F_V1_V4},
-    {0x00C3, "pl_pkoff", {}, F_V1_V4},
-    {0x00C4, "map_designate", {{REG_SET_FIXED, 4}}, F_V1_V4},
-    {0x00C5, "masterkey_on", {}, F_V1_V4},
-    {0x00C6, "masterkey_off", {}, F_V1_V4},
-    {0x00C7, "window_time", {}, F_V1_V4},
-    {0x00C8, "winend_time", {}, F_V1_V4},
-    {0x00C9, "winset_time", {REG}, F_V1_V4},
-    {0x00CA, "getmtime", {REG}, F_V1_V4},
-    {0x00CB, "set_quest_board_handler", {INT32, SCRIPT32, CSTRING}, F_V1_V2},
+    {0x00C1, "npc_text", {INT32, CSTRING}, F_V05_V4 | F_ARGS},
+    {0x00C2, "npc_chkwarp", {}, F_V05_V4},
+    {0x00C3, "pl_pkoff", {}, F_V05_V4},
+    {0x00C4, "map_designate", {{REG_SET_FIXED, 4}}, F_V05_V4},
+    {0x00C5, "masterkey_on", {}, F_V05_V4},
+    {0x00C6, "masterkey_off", {}, F_V05_V4},
+    {0x00C7, "window_time", {}, F_V05_V4},
+    {0x00C8, "winend_time", {}, F_V05_V4},
+    {0x00C9, "winset_time", {REG}, F_V05_V4},
+    {0x00CA, "getmtime", {REG}, F_V05_V4},
+    {0x00CB, "set_quest_board_handler", {INT32, SCRIPT32, CSTRING}, F_V05_V2},
     {0x00CB, "set_quest_board_handler", {INT32, SCRIPT16, CSTRING}, F_V3_V4 | F_ARGS},
-    {0x00CC, "clear_quest_board_handler", {INT32}, F_V1_V4 | F_ARGS},
-    {0x00CD, "particle_id", {{REG32_SET_FIXED, 4}, INT32}, F_V1_V2},
+    {0x00CC, "clear_quest_board_handler", {INT32}, F_V05_V4 | F_ARGS},
+    {0x00CD, "particle_id", {{REG32_SET_FIXED, 4}, INT32}, F_V05_V2},
     {0x00CD, "particle_id", {{REG_SET_FIXED, 4}}, F_V3_V4},
-    {0x00CE, "npc_crptalk_id", {{REG32_SET_FIXED, 7}, INT32}, F_V1_V2},
+    {0x00CE, "npc_crptalk_id", {{REG32_SET_FIXED, 7}, INT32}, F_V05_V2},
     {0x00CE, "npc_crptalk_id", {{REG_SET_FIXED, 7}}, F_V3_V4},
-    {0x00CF, "npc_lang_clean", {}, F_V1_V4},
+    {0x00CF, "npc_lang_clean", {}, F_V05_V4},
     {0x00D0, "pl_pkon", {}, F_V1_V4},
     {0x00D1, "pl_chk_item2", {{REG_SET_FIXED, 4}, REG}, F_V1_V4}, // Presumably like item_check but also checks data2
     {0x00D2, "enable_mainmenu", {}, F_V1_V4},
