@@ -62,7 +62,12 @@ static void forward_subcommand(
     throw runtime_error("Episode 3 command sent by non-Episode 3 client");
   }
 
-  auto l = c->require_lobby();
+  auto l = c->lobby.lock();
+  if (!l) {
+    c->log.warning("Not in any lobby; dropping command");
+    return;
+  }
+
   if (command_is_private(command)) {
     if (flag >= l->max_clients) {
       return;
@@ -671,11 +676,11 @@ static void on_set_player_visible(shared_ptr<Client> c, uint8_t command, uint8_t
   if (cmd.header.client_id == c->lobby_client_id) {
     forward_subcommand(c, command, flag, data, size, 0x1F, 0x21);
 
-    auto l = c->require_lobby();
-    if (!l->is_game() && !is_v1(c->version())) {
+    auto l = c->lobby.lock();
+    if (l && !l->is_game() && !is_v1(c->version())) {
       send_arrow_update(l);
     }
-    if (!l->is_game() && l->check_flag(Lobby::Flag::IS_OVERFLOW)) {
+    if (l && !l->is_game() && l->check_flag(Lobby::Flag::IS_OVERFLOW)) {
       send_message_box(c, "$C6All lobbies are full.\n\n$C7You are in a private lobby. You can use the\nteleporter to join other lobbies if there is space\navailable.");
       send_lobby_message_box(c, "");
     }
@@ -2970,7 +2975,11 @@ SubcommandDefinition subcommand_definitions[0x100] = {
 };
 
 static void handle_subcommand_dc_prototypes(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
-  auto l = c->require_lobby();
+  auto l = c->lobby.lock();
+  if (!l) {
+    return;
+  }
+
   if (l->is_game()) {
     // DC NTE doesn't send 6F when it's done loading, so treat this command as
     // 6F instead.
