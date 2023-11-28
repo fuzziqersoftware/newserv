@@ -1802,9 +1802,6 @@ void send_join_lobby_t(shared_ptr<Client> c, shared_ptr<Lobby> l, shared_ptr<Cli
   if (!is_v1(c->version())) {
     send_player_records_t<RecordsT>(c, l, joining_client);
   }
-  if (c->version() == Version::BB_V4) {
-    send_all_nearby_team_metadatas_to_client(c, false);
-  }
 
   uint8_t lobby_type;
   if (c->config.override_lobby_number != 0x80) {

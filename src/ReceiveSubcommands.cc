@@ -677,12 +677,19 @@ static void on_set_player_visible(shared_ptr<Client> c, uint8_t command, uint8_t
     forward_subcommand(c, command, flag, data, size, 0x1F, 0x21);
 
     auto l = c->lobby.lock();
-    if (l && !l->is_game() && !is_v1(c->version())) {
-      send_arrow_update(l);
-    }
-    if (l && !l->is_game() && l->check_flag(Lobby::Flag::IS_OVERFLOW)) {
-      send_message_box(c, "$C6All lobbies are full.\n\n$C7You are in a private lobby. You can use the\nteleporter to join other lobbies if there is space\navailable.");
-      send_lobby_message_box(c, "");
+    if (l) {
+      if (!l->is_game()) {
+        if (!is_v1(c->version())) {
+          send_arrow_update(l);
+        }
+        if (l->check_flag(Lobby::Flag::IS_OVERFLOW)) {
+          send_message_box(c, "$C6All lobbies are full.\n\n$C7You are in a private lobby. You can use the\nteleporter to join other lobbies if there is space\navailable.");
+          send_lobby_message_box(c, "");
+        }
+      }
+      if (c->version() == Version::BB_V4) {
+        send_all_nearby_team_metadatas_to_client(c, false);
+      }
     }
   }
 }
