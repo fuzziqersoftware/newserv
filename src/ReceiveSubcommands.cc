@@ -631,14 +631,21 @@ static void on_word_select_t(shared_ptr<Client> c, uint8_t command, uint8_t, con
           lc_version = Version::GC_V3;
         }
 
+        uint8_t subcommand = cmd.subcommand;
+        if (lc->version() == Version::DC_NTE) {
+          subcommand = 0x62;
+        } else if (lc->version() == Version::DC_V1_11_2000_PROTOTYPE) {
+          subcommand = 0x69;
+        }
+
         if (is_big_endian(lc->version())) {
           G_WordSelect_6x74<true> out_cmd = {
-              cmd.subcommand, cmd.size, cmd.client_id.load(),
+              subcommand, cmd.size, cmd.client_id.load(),
               s->word_select_table->translate(cmd.message, from_version, lc_version)};
           send_command_t(lc, 0x60, 0x00, out_cmd);
         } else {
           G_WordSelect_6x74<false> out_cmd = {
-              cmd.subcommand, cmd.size, cmd.client_id.load(),
+              subcommand, cmd.size, cmd.client_id.load(),
               s->word_select_table->translate(cmd.message, from_version, lc_version)};
           send_command_t(lc, 0x60, 0x00, out_cmd);
         }
@@ -2838,7 +2845,7 @@ SubcommandDefinition subcommand_definitions[0x100] = {
     /* 6x71 */ {0x00, 0x00, 0x71, on_forward_check_game_loading},
     /* 6x72 */ {0x00, 0x00, 0x72, on_forward_check_game_loading},
     /* 6x73 */ {0x00, 0x00, 0x73, on_invalid},
-    /* 6x74 */ {0x00, 0x00, 0x74, on_word_select},
+    /* 6x74 */ {0x62, 0x69, 0x74, on_word_select},
     /* 6x75 */ {0x00, 0x00, 0x75, on_set_quest_flag},
     /* 6x76 */ {0x00, 0x00, 0x76, on_forward_check_size_game},
     /* 6x77 */ {0x00, 0x00, 0x77, on_forward_check_size_game},
@@ -3068,6 +3075,16 @@ static void handle_subcommand_dc_prototypes(shared_ptr<Client> c, uint8_t comman
         if (final_data.empty()) {
           final_data.assign(reinterpret_cast<const char*>(data), size);
           final_data[0] = final_subcommand;
+          // The Word Select command is a different size in final vs. NTE and
+          // proto, so handle that here by appending FFFFFFFF0000000000000000
+          if (final_subcommand == 0x74) {
+            final_data.resize(0x20, 0x00);
+            final_data[0x01] = 0x08;
+            final_data[0x14] = 0xFF;
+            final_data[0x15] = 0xFF;
+            final_data[0x16] = 0xFF;
+            final_data[0x17] = 0xFF;
+          }
         }
         send_command(lc, command, flag, final_data);
       }
