@@ -4627,11 +4627,7 @@ static void on_EA_BB(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
       send_all_nearby_team_metadatas_to_client(c, true);
       break;
     case 0x14EA:
-      // On Sega's original servers, this command was likely used for requesting
-      // other players' team membership information (15EA) only when the player
-      // pressed Tab in lobbies to show players' team names. newserv instead
-      // sends team membership whenever any player joins the lobby, so we ignore
-      // the 14EA requests.
+      send_all_nearby_team_metadatas_to_client(c, false);
       break;
     case 0x18EA: // Ranking information
       send_team_rank_info(c);
