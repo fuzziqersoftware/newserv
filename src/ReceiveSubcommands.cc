@@ -702,16 +702,11 @@ static void on_set_player_visible(shared_ptr<Client> c, uint8_t command, uint8_t
 ////////////////////////////////////////////////////////////////////////////////
 // Game commands used by cheat mechanisms
 
-static void on_change_floor_6x1F(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
-  const auto& cmd = check_size_t<G_SetPlayerArea_6x1F>(data, size);
+template <typename CmdT, uint8_t DCNTESubcommand, uint8_t DC112000ProtoSubcommand>
+static void on_change_floor(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
+  const auto& cmd = check_size_t<CmdT>(data, size);
   c->floor = cmd.floor;
-  forward_subcommand(c, command, flag, data, size);
-}
-
-static void on_change_floor_6x21(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
-  const auto& cmd = check_size_t<G_InterLevelWarp_6x21>(data, size);
-  c->floor = cmd.floor;
-  forward_subcommand(c, command, flag, data, size, 0x1D, 0x1F);
+  forward_subcommand(c, command, flag, data, size, DCNTESubcommand, DC112000ProtoSubcommand);
 }
 
 // When a player dies, decrease their mag's synchro
@@ -2760,9 +2755,9 @@ SubcommandDefinition subcommand_definitions[0x100] = {
     /* 6x1C */ {0x00, 0x00, 0x1C, on_forward_check_size_game},
     /* 6x1D */ {0x00, 0x00, 0x1D, nullptr},
     /* 6x1E */ {0x00, 0x00, 0x1E, nullptr},
-    /* 6x1F */ {0x00, 0x00, 0x1F, on_change_floor_6x1F},
-    /* 6x20 */ {0x00, 0x00, 0x20, on_movement_with_floor<G_SetPosition_6x20, 0x00, 0x00>},
-    /* 6x21 */ {0x1D, 0x1F, 0x21, on_change_floor_6x21},
+    /* 6x1F */ {0x1B, 0x1D, 0x1F, on_change_floor<G_SetPlayerArea_6x1F, 0x1B, 0x1D>},
+    /* 6x20 */ {0x1C, 0x1E, 0x20, on_movement_with_floor<G_SetPosition_6x20, 0x00, 0x00>},
+    /* 6x21 */ {0x1D, 0x1F, 0x21, on_change_floor<G_InterLevelWarp_6x21, 0x1D, 0x1F>},
     /* 6x22 */ {0x1E, 0x20, 0x22, on_set_player_invisible},
     /* 6x23 */ {0x1F, 0x21, 0x23, on_set_player_visible},
     /* 6x24 */ {0x00, 0x00, 0x24, on_forward_check_size_game},
