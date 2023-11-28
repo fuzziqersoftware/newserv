@@ -175,7 +175,6 @@ void on_connect(std::shared_ptr<Client> c) {
       send_server_init(c, 0);
       break;
 
-    case ServerBehavior::DATA_SERVER_BB:
     case ServerBehavior::LOBBY_SERVER:
       send_server_init(c, 0);
       break;
@@ -257,10 +256,9 @@ static void send_main_menu(shared_ptr<Client> c) {
 }
 
 void on_login_complete(shared_ptr<Client> c) {
-  // On the BB data server, this function is called only on the last connection
-  // (when we should send the ship select menu).
-  if ((c->server_behavior == ServerBehavior::LOGIN_SERVER) ||
-      (c->server_behavior == ServerBehavior::DATA_SERVER_BB)) {
+  // On BB, this function is called when the data server phase is done (and we
+  // should send the ship select menu), so we don't need to check for it here.
+  if (c->server_behavior == ServerBehavior::LOGIN_SERVER) {
     auto s = c->require_server_state();
 
     // On the login server, send the events/songs, ep3 updates, and the main

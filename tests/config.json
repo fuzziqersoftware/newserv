@@ -43,10 +43,10 @@
     "xb":            [9500,  "xb",    "login_server"],
     "pc-patch":      [10000, "patch", "patch_server_pc"],
     "bb-patch":      [11000, "patch", "patch_server_bb"],
-    "bb-init":       [12000, "bb",    "data_server_bb"],
+    "bb-init":       [12000, "bb",    "login_server"],
     "bb-patch2":     [10500, "patch", "patch_server_bb"],
     "bb-proxy2":     [9932,  "bb",    "proxy_server"],
-    "bb-patch3":     [13000, "bb",    "data_server_bb"],
+    "bb-patch3":     [13000, "bb",    "login_server"],
     "console-login": [5100,  "gc",    "login_server"],
     "pc-login":      [5101,  "pc",    "login_server"],
     "xb-login":      [5102,  "xb",    "login_server"],
@@ -59,8 +59,8 @@
     "xb-proxy":      [5113,  "xb",    "proxy_server"],
     "pc-proxy":      [5121,  "pc",    "proxy_server"],
     "bb-proxy":      [5122,  "bb",    "proxy_server"],
-    "bb-data1":      [12004, "bb",    "data_server_bb"],
-    "bb-data2":      [12005, "bb",    "data_server_bb"],
+    "bb-data1":      [12004, "bb",    "login_server"],
+    "bb-data2":      [12005, "bb",    "login_server"],
   },
 
   "ProxyDestinations-GC": {

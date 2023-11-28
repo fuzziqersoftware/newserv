@@ -163,8 +163,6 @@ const char* name_for_enum<ServerBehavior>(ServerBehavior behavior) {
       return "login_server";
     case ServerBehavior::LOBBY_SERVER:
       return "lobby_server";
-    case ServerBehavior::DATA_SERVER_BB:
-      return "data_server_bb";
     case ServerBehavior::PATCH_SERVER_PC:
       return "patch_server_pc";
     case ServerBehavior::PATCH_SERVER_BB:
@@ -179,12 +177,10 @@ template <>
 ServerBehavior enum_for_name<ServerBehavior>(const char* name) {
   if (!strcasecmp(name, "pc_console_detect")) {
     return ServerBehavior::PC_CONSOLE_DETECT;
-  } else if (!strcasecmp(name, "login_server") || !strcasecmp(name, "login")) {
+  } else if (!strcasecmp(name, "login_server") || !strcasecmp(name, "login") || !strcasecmp(name, "data_server_bb")) {
     return ServerBehavior::LOGIN_SERVER;
   } else if (!strcasecmp(name, "lobby_server") || !strcasecmp(name, "lobby")) {
     return ServerBehavior::LOBBY_SERVER;
-  } else if (!strcasecmp(name, "data_server_bb") || !strcasecmp(name, "data_server") || !strcasecmp(name, "data")) {
-    return ServerBehavior::DATA_SERVER_BB;
   } else if (!strcasecmp(name, "patch_server_pc") || !strcasecmp(name, "patch_pc")) {
     return ServerBehavior::PATCH_SERVER_PC;
   } else if (!strcasecmp(name, "patch_server_bb") || !strcasecmp(name, "patch_bb")) {

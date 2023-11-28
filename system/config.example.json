@@ -73,7 +73,7 @@
     "pc":            [9300,  "pc",    "login_server"],
     "pc-patch":      [10000, "patch", "patch_server_pc"],
     "bb-patch":      [11000, "patch", "patch_server_bb"],
-    "bb-init":       [12000, "bb",    "data_server_bb"],
+    "bb-init":       [12000, "bb",    "login_server"],
 
     // PSO Xbox tunnels its connections through the Xbox Live service (or, in
     // modern times, Insignia), and that service determines which port the
@@ -83,7 +83,7 @@
 
     // Schthack PSOBB uses these ports.
     // "bb-patch2":     [10500, "patch", "patch_server_bb"],
-    // "bb-init2":      [13000, "bb",    "data_server_bb"],
+    // "bb-init2":      [13000, "bb",    "login_server"],
 
     // Ephinea PSOBB uses these ports. Note that 13000 is also used by Schthack
     // PSOBB, but not for the patch server; this means you unfortunately can't
@@ -91,7 +91,7 @@
     // may be fixed in the future using a similar technique as the
     // pc_console_detect behavior, but this isn't implemented yet.
     // "bb-patch3":     [13000, "patch", "patch_server_bb"],
-    // "bb-init3":      [14000, "bb",    "data_server_bb"],
+    // "bb-init3":      [14000, "bb",    "login_server"],
 
     // newserv uses these ports, but there is no external reason that these
     // numbers were chosen. You can change the port numbers here without any
@@ -124,8 +124,8 @@
     "gc-proxy":      [5122,  "gc",    "proxy_server"],
     "xb-proxy":      [5123,  "xb",    "proxy_server"],
     "bb-proxy":      [5124,  "bb",    "proxy_server"],
-    "bb-data1":      [12004, "bb",    "data_server_bb"],
-    "bb-data2":      [12005, "bb",    "data_server_bb"],
+    "bb-data1":      [12004, "bb",    "login_server"],
+    "bb-data2":      [12005, "bb",    "login_server"],
   },
 
   // Where to listen for IP stack clients. This exists to interface with PSO GC
