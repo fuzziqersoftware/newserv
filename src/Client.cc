@@ -185,6 +185,14 @@ Client::Client(
   this->reschedule_save_game_data_event();
   this->reschedule_ping_and_timeout_events();
 
+  // Don't print data sent to patch clients to the logs. The patch server
+  // protocol is fully understood and data logs for patch clients are generally
+  // more annoying than helpful at this point.
+  if ((this->channel.version == Version::PC_PATCH) || (this->channel.version == Version::BB_PATCH)) {
+    this->channel.terminal_recv_color = TerminalFormat::END;
+    this->channel.terminal_send_color = TerminalFormat::END;
+  }
+
   this->log.info("Created");
 }
 

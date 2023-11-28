@@ -1058,6 +1058,13 @@ static void on_93_BB(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
     // game server phase; we should send the ship select menu or a lobby join
     // command.
     on_login_complete(c);
+
+  } else {
+    // The BB data server protocol is fairly well-understood and has some large
+    // commands, so we omit data logging for clients on the data server.
+    c->log.info("Client is in the BB data server phase; disabling command data logging for the rest of this client\'s session");
+    c->channel.terminal_recv_color = TerminalFormat::END;
+    c->channel.terminal_send_color = TerminalFormat::END;
   }
 }
 
