@@ -584,9 +584,7 @@ static void on_send_guild_card(shared_ptr<Client> c, uint8_t command, uint8_t fl
 static void on_symbol_chat(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
   const auto& cmd = check_size_t<G_SymbolChat_6x07>(data, size);
   if (c->can_chat && (cmd.client_id == c->lobby_client_id)) {
-    // The 11/2000 DC prototype supports sybol chats, but the object values are
-    // different, so we don't forward symbol chats across that version boundary.
-    forward_subcommand(c, command, flag, data, size);
+    forward_subcommand(c, command, flag, data, size, 0x00, 0x07);
   }
 }
 
@@ -2731,7 +2729,7 @@ SubcommandDefinition subcommand_definitions[0x100] = {
     /* 6x04 */ {0x00, 0x00, 0x04, nullptr},
     /* 6x05 */ {0x00, 0x00, 0x05, on_switch_state_changed},
     /* 6x06 */ {0x00, 0x00, 0x06, on_send_guild_card},
-    /* 6x07 */ {0x00, 0x00, 0x07, on_symbol_chat},
+    /* 6x07 */ {0x00, 0x07, 0x07, on_symbol_chat},
     /* 6x08 */ {0x00, 0x00, 0x08, nullptr},
     /* 6x09 */ {0x00, 0x00, 0x09, nullptr},
     /* 6x0A */ {0x00, 0x00, 0x0A, on_enemy_hit},
