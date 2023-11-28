@@ -2138,6 +2138,7 @@ void on_exchange_item_for_team_points_bb(shared_ptr<Client> c, uint8_t command, 
 
   size_t points = s->item_parameter_table_v4->get_item_team_points(item);
   team->members.at(c->license->serial_number).points += points;
+  team->save_config();
 
   auto name = s->describe_item(c->version(), item, false);
   l->log.info("Player %hhu exchanged inventory item %hu:%08" PRIX32 " (%s) for %zu team points",
