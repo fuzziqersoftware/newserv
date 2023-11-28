@@ -211,8 +211,8 @@ static_assert(F_BB_V4 == v_flag(Version::BB_V4));
 // clang-format off
 static constexpr uint16_t F_V0_V2  = F_DC_NTE | F_DC_112000 | F_DC_V1 | F_DC_V2 | F_PC_V2 | F_GC_NTE;
 static constexpr uint16_t F_V0_V4  = F_DC_NTE | F_DC_112000 | F_DC_V1 | F_DC_V2 | F_PC_V2 | F_GC_NTE | F_GC_V3 | F_GC_EP3TE | F_GC_EP3 | F_XB_V3 | F_BB_V4;
-static constexpr uint16_t F_V05_V2 =            F_DC_112000 | F_DC_V1 | F_DC_V2 | F_PC_V2 | F_GC_NTE | F_GC_V3 | F_GC_EP3TE | F_GC_EP3 | F_XB_V3 | F_BB_V4;
-static constexpr uint16_t F_V05_V4 =            F_DC_112000 | F_DC_V1 | F_DC_V2 | F_PC_V2 | F_GC_NTE;
+static constexpr uint16_t F_V05_V2 =            F_DC_112000 | F_DC_V1 | F_DC_V2 | F_PC_V2 | F_GC_NTE;
+static constexpr uint16_t F_V05_V4 =            F_DC_112000 | F_DC_V1 | F_DC_V2 | F_PC_V2 | F_GC_NTE | F_GC_V3 | F_GC_EP3TE | F_GC_EP3 | F_XB_V3 | F_BB_V4;
 static constexpr uint16_t F_V1_V2  =                          F_DC_V1 | F_DC_V2 | F_PC_V2 | F_GC_NTE;
 static constexpr uint16_t F_V1_V4  =                          F_DC_V1 | F_DC_V2 | F_PC_V2 | F_GC_NTE | F_GC_V3 | F_GC_EP3TE | F_GC_EP3 | F_XB_V3 | F_BB_V4;
 static constexpr uint16_t F_V2     =                                    F_DC_V2 | F_PC_V2 | F_GC_NTE;
