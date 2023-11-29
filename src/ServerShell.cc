@@ -656,11 +656,11 @@ Proxy session commands:\n\
     for (size_t z = 0; z < ses->lobby_players.size(); z++) {
       const auto& player = ses->lobby_players[z];
       if (player.guild_card_number) {
-        auto secid_name = name_for_section_id(player.section_id);
         fprintf(stderr, "  %zu: %" PRIu32 " => %s (%c, %s, %s)\n",
             z, player.guild_card_number, player.name.c_str(),
             char_for_language_code(player.language),
-            name_for_char_class(player.char_class), secid_name.c_str());
+            name_for_char_class(player.char_class),
+            name_for_section_id(player.section_id));
       } else {
         fprintf(stderr, "  %zu: (no player)\n", z);
       }

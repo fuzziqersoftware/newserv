@@ -89,7 +89,7 @@ const char* abbreviation_for_mode(GameMode mode) {
   }
 }
 
-const vector<string> section_id_to_name = {
+static const array<const char*, 10> section_id_to_name = {
     "Viridia", "Greennill", "Skyly", "Bluefull", "Purplenum",
     "Pinkal", "Redria", "Oran", "Yellowboze", "Whitill"};
 
@@ -205,12 +205,11 @@ const vector<string> npc_id_to_name({"ninja", "rico", "sonic", "knuckles", "tail
 const unordered_map<string, uint8_t> name_to_npc_id = {
     {"ninja", 0}, {"rico", 1}, {"sonic", 2}, {"knuckles", 3}, {"tails", 4}, {"flowen", 5}, {"elly", 6}};
 
-const string& name_for_section_id(uint8_t section_id) {
+const char* name_for_section_id(uint8_t section_id) {
   if (section_id < section_id_to_name.size()) {
     return section_id_to_name[section_id];
   } else {
-    static const string ret = "<Unknown section id>";
-    return ret;
+    return "<Unknown>";
   }
 }
 

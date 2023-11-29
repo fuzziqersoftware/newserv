@@ -112,7 +112,7 @@ static void server_command_lobby_info(shared_ptr<Client> c, const std::string&) 
         } else {
           lines.emplace_back(string_printf("$C6%08X$C7 L$C6%d-%d$C7", l->lobby_id, l->min_level + 1, l->max_level + 1));
         }
-        lines.emplace_back(string_printf("$C7Section ID: $C6%s$C7", name_for_section_id(l->section_id).c_str()));
+        lines.emplace_back(string_printf("$C7Section ID: $C6%s$C7", name_for_section_id(l->section_id)));
 
         if (l->check_flag(Lobby::Flag::DROPS_ENABLED)) {
           if (l->item_creator) {
@@ -751,8 +751,7 @@ static void server_command_secid(shared_ptr<Client> c, const std::string& args) 
       send_text_message(c, "$C6Invalid section ID");
     } else {
       c->config.override_section_id = new_secid;
-      string name = name_for_section_id(new_secid);
-      send_text_message_printf(c, "$C6Override section ID\nset to %s", name.c_str());
+      send_text_message_printf(c, "$C6Override section ID\nset to %s", name_for_section_id(new_secid));
     }
   }
 }
@@ -768,8 +767,7 @@ static void proxy_command_secid(shared_ptr<ProxyServer::LinkedSession> ses, cons
       send_text_message(ses->client_channel, "$C6Invalid section ID");
     } else {
       ses->config.override_section_id = new_secid;
-      string name = name_for_section_id(new_secid);
-      send_text_message(ses->client_channel, "$C6Override section ID\nset to " + name);
+      send_text_message_printf(ses->client_channel, "$C6Override section ID\nset to %s", name_for_section_id(new_secid));
     }
   }
 }

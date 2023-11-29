@@ -1412,8 +1412,7 @@ std::string disassemble_quest_script(const void* data, size_t size, Version vers
       string unused = format_data_string(visual.unused.data(), visual.unused.bytes());
       lines.emplace_back(string_printf("  %04zX  unused               %s", l->offset + offsetof(PlayerVisualConfig, unused), unused.c_str()));
       lines.emplace_back(string_printf("  %04zX  name_color_checksum  %08" PRIX32, l->offset + offsetof(PlayerVisualConfig, name_color_checksum), visual.name_color_checksum.load()));
-      string secid_name = name_for_section_id(visual.section_id);
-      lines.emplace_back(string_printf("  %04zX  section_id           %02hhX (%s)", l->offset + offsetof(PlayerVisualConfig, section_id), visual.section_id, secid_name.c_str()));
+      lines.emplace_back(string_printf("  %04zX  section_id           %02hhX (%s)", l->offset + offsetof(PlayerVisualConfig, section_id), visual.section_id, name_for_section_id(visual.section_id)));
       lines.emplace_back(string_printf("  %04zX  char_class           %02hhX (%s)", l->offset + offsetof(PlayerVisualConfig, char_class), visual.char_class, name_for_char_class(visual.char_class)));
       lines.emplace_back(string_printf("  %04zX  validation_flags     %02hhX", l->offset + offsetof(PlayerVisualConfig, validation_flags), visual.validation_flags));
       lines.emplace_back(string_printf("  %04zX  version              %02hhX", l->offset + offsetof(PlayerVisualConfig, version), visual.version));

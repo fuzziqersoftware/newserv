@@ -1720,12 +1720,11 @@ static void on_09(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
           }
         }
 
-        string secid_str = name_for_section_id(game->section_id);
         info += string_printf("%s %c %s %s\n",
             abbreviation_for_episode(game->episode),
             abbreviation_for_difficulty(game->difficulty),
             abbreviation_for_mode(game->mode),
-            secid_str.c_str());
+            name_for_section_id(game->section_id));
 
         bool cheats_enabled = game->check_flag(Lobby::Flag::CHEATS_ENABLED);
         bool locked = !game->password.empty();
@@ -3490,8 +3489,99 @@ static void on_40(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
 }
 
 static void on_C0(shared_ptr<Client> c, uint16_t, uint32_t, string&) {
-  // TODO: Implement choice search.
-  send_text_message(c, "$C6Choice Search is\nnot supported");
+  send_choice_search_choices(c);
+}
+
+static void on_C2(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
+  c->game_data.character()->choice_search_config = check_size_t<ChoiceSearchConfig>(data);
+}
+
+template <typename ResultT>
+static void on_choice_search_t(shared_ptr<Client> c, const ChoiceSearchConfig& cmd) {
+  auto s = c->require_server_state();
+
+  vector<ResultT> results;
+  for (const auto& l : s->all_lobbies()) {
+    for (const auto& lc : l->clients) {
+      if (!lc || lc->game_data.character()->choice_search_config.disabled) {
+        continue;
+      }
+
+      bool is_match = true;
+      for (const auto& cat : CHOICE_SEARCH_CATEGORIES) {
+        int32_t setting = cmd.get_setting(cat.id);
+        if (setting == -1) {
+          continue;
+        }
+        try {
+          if (!cat.client_matches(c, lc, setting)) {
+            is_match = false;
+            break;
+          }
+        } catch (const exception& e) {
+          c->log.info("Error in Choice Search matching for category %s: %s", cat.name, e.what());
+        }
+      }
+
+      if (is_match) {
+        auto lp = lc->game_data.character();
+        auto& result = results.emplace_back();
+        result.guild_card_number = lc->license->serial_number;
+        result.name.encode(lp->disp.name.decode(lc->language()), c->language());
+        string info_string = string_printf("%s Lv%zu %s",
+            name_for_char_class(lp->disp.visual.char_class),
+            static_cast<size_t>(lp->disp.stats.level + 1),
+            name_for_section_id(lp->disp.visual.section_id));
+        result.info_string.encode(info_string, c->language());
+        string lobby_name = l->is_game() ? l->name : string_printf("BLOCK01-%02" PRIu32, l->lobby_id);
+        string location_string;
+        if (l->is_game()) {
+          location_string = string_printf("%s,BLOCK01,%s", l->name.c_str(), s->name.c_str());
+        } else if (l->is_ep3()) {
+          location_string = string_printf("BLOCK01-C%02" PRIu32 ",BLOCK01,%s", l->lobby_id - 15, s->name.c_str());
+        } else {
+          location_string = string_printf("BLOCK01-%02" PRIu32 ",BLOCK01,%s", l->lobby_id, s->name.c_str());
+        }
+        result.location_string.encode(location_string, c->language());
+        result.reconnect_command_header.command = 0x19;
+        result.reconnect_command_header.flag = 0x00;
+        result.reconnect_command_header.size = sizeof(result.reconnect_command) + sizeof(result.reconnect_command_header);
+        result.reconnect_command.address = s->connect_address_for_client(c);
+        result.reconnect_command.port = s->name_to_port_config.at(lobby_port_name_for_version(c->version()))->port;
+        result.meet_user.lobby_refs[0].menu_id = MenuID::LOBBY;
+        result.meet_user.lobby_refs[0].item_id = l->lobby_id;
+        result.meet_user.player_name.encode(lp->disp.name.decode(lc->language()), c->language());
+        if (results.size() >= 0x20) {
+          break;
+        }
+      }
+    }
+  }
+
+  send_command_vt(c, 0xC4, results.size(), results);
+}
+
+static void on_C3(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
+  const auto& cmd = check_size_t<ChoiceSearchConfig>(data);
+  switch (c->version()) {
+      // DC V1 and the prototypes do not support this command
+    case Version::DC_V2:
+    case Version::GC_NTE:
+    case Version::GC_V3:
+    case Version::GC_EP3_TRIAL_EDITION:
+    case Version::GC_EP3:
+    case Version::XB_V3:
+      on_choice_search_t<S_ChoiceSearchResultEntry_DC_V3_C4>(c, cmd);
+      break;
+    case Version::PC_V2:
+      on_choice_search_t<S_ChoiceSearchResultEntry_PC_C4>(c, cmd);
+      break;
+    case Version::BB_V4:
+      on_choice_search_t<S_ChoiceSearchResultEntry_BB_C4>(c, cmd);
+      break;
+    default:
+      throw runtime_error("unimplemented versioned command");
+  }
 }
 
 static void on_81(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
@@ -5095,10 +5185,10 @@ static on_command_t handlers[0x100][13] = {
 /* BE */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
 /* BF */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
 //        PC_PATCH BB_PATCH DC_NTE         DC_PROTO       DCV1           DCV2            PC           GCNTE           GC              EP3TE           EP3             XB              BB
-/* C0 */ {nullptr, nullptr, on_C0,         on_C0,         on_C0,         on_C0,          on_C0,       on_C0,          on_C0,          on_C0,          on_C0,          on_C0,          nullptr},
+/* C0 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       on_C0,          on_C0,       on_C0,          on_C0,          on_C0,          on_C0,          on_C0,          on_C0},
 /* C1 */ {nullptr, nullptr, on_0C_C1_E7_EC,on_0C_C1_E7_EC,on_0C_C1_E7_EC,on_0C_C1_E7_EC, on_C1_PC,    on_0C_C1_E7_EC, on_0C_C1_E7_EC, on_0C_C1_E7_EC, on_0C_C1_E7_EC, on_0C_C1_E7_EC, on_C1_BB},
-/* C2 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* C3 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* C2 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       on_C2,          on_C2,       on_C2,          on_C2,          on_C2,          on_C2,          on_C2,          on_C2},
+/* C3 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       on_C3,          on_C3,       on_C3,          on_C3,          on_C3,          on_C3,          on_C3,          on_C3},
 /* C4 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
 /* C5 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
 /* C6 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        on_C6,       on_C6,          on_C6,          on_C6,          on_C6,          on_C6,          on_C6},

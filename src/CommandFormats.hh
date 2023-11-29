@@ -605,9 +605,10 @@ struct SC_MeetUserExtension {
     le_uint32_t menu_id = 0;
     le_uint32_t item_id = 0;
   } __packed__;
-  parray<LobbyReference, 8> lobby_refs;
-  le_uint32_t unknown_a2 = 0;
-  pstring<Encoding, 0x20> player_name;
+  /* 00 */ parray<LobbyReference, 8> lobby_refs;
+  /* 40 */ le_uint32_t unknown_a2 = 0;
+  /* 44 */ pstring<Encoding, 0x20> player_name;
+  /* 64 (or 84 on UTF16 versions) */
 } __packed__;
 
 struct S_LegacyJoinGame_PC_0E {
@@ -1103,7 +1104,7 @@ struct C_CharacterData_DCv2_61_98 {
   /* 0000 */ PlayerInventory inventory;
   /* 034C */ PlayerDispDataDCPCV3 disp;
   /* 041C */ PlayerRecordsEntry_DC records;
-  /* 04D8 */ ChoiceSearchConfig<le_uint16_t> choice_search_config;
+  /* 04D8 */ ChoiceSearchConfig choice_search_config;
   /* 04F0 */
 } __attribute__((packed));
 
@@ -1111,7 +1112,7 @@ struct C_CharacterData_PC_61_98 {
   /* 0000 */ PlayerInventory inventory;
   /* 034C */ PlayerDispDataDCPCV3 disp;
   /* 041C */ PlayerRecordsEntry_PC records;
-  /* 0510 */ ChoiceSearchConfig<le_uint16_t> choice_search_config;
+  /* 0510 */ ChoiceSearchConfig choice_search_config;
   /* 0528 */ parray<le_uint32_t, 0x1E> blocked_senders;
   /* 05A0 */ le_uint32_t auto_reply_enabled = 0;
   // The auto-reply message can be up to 0x200 characters. If it's shorter than
@@ -1124,7 +1125,7 @@ struct C_CharacterData_V3_61_98 {
   /* 0000 */ PlayerInventory inventory;
   /* 034C */ PlayerDispDataDCPCV3 disp;
   /* 041C */ PlayerRecordsEntry_V3 records;
-  /* 0538 */ ChoiceSearchConfig<le_uint16_t> choice_search_config;
+  /* 0538 */ ChoiceSearchConfig choice_search_config;
   /* 0550 */ pstring<TextEncoding::MARKED, 0xAC> info_board;
   /* 05FC */ parray<le_uint32_t, 0x1E> blocked_senders;
   /* 0674 */ le_uint32_t auto_reply_enabled = 0;
@@ -1138,7 +1139,7 @@ struct C_CharacterData_GC_Ep3_61_98 {
   /* 0000 */ PlayerInventory inventory;
   /* 034C */ PlayerDispDataDCPCV3 disp;
   /* 041C */ PlayerRecordsEntry_V3 records;
-  /* 0538 */ ChoiceSearchConfig<le_uint16_t> choice_search_config;
+  /* 0538 */ ChoiceSearchConfig choice_search_config;
   /* 0550 */ pstring<TextEncoding::MARKED, 0xAC> info_board;
   /* 05FC */ parray<le_uint32_t, 0x1E> blocked_senders;
   /* 0674 */ le_uint32_t auto_reply_enabled = 0;
@@ -1151,7 +1152,7 @@ struct C_CharacterData_BB_61_98 {
   /* 0000 */ PlayerInventory inventory;
   /* 034C */ PlayerDispDataBB disp;
   /* 04DC */ PlayerRecordsEntry_BB records;
-  /* 0638 */ ChoiceSearchConfig<le_uint16_t> choice_search_config;
+  /* 0638 */ ChoiceSearchConfig choice_search_config;
   /* 0650 */ pstring<TextEncoding::UTF16, 0xAC> info_board;
   /* 07A8 */ parray<le_uint32_t, 0x1E> blocked_senders;
   /* 0820 */ le_uint32_t auto_reply_enabled = 0;
@@ -2359,19 +2360,17 @@ struct S_TournamentMatchInformation_GC_Ep3_BB {
 // Internal name: RcvChoiceList
 
 // Command is a list of these; header.flag is the entry count (incl. top-level).
-template <typename ItemIDT, TextEncoding Encoding>
+template <TextEncoding Encoding>
 struct S_ChoiceSearchEntry {
   // Category IDs are nonzero; if the high byte of the ID is nonzero then the
   // category can be set by the user at any time; otherwise it can't.
-  ItemIDT parent_category_id = 0; // 0 for top-level categories
-  ItemIDT category_id = 0;
+  le_uint16_t parent_choice_id = 0; // 0 for top-level categories
+  le_uint16_t choice_id = 0;
   pstring<Encoding, 0x1C> text;
 } __packed__;
-struct S_ChoiceSearchEntry_DC_C0 : S_ChoiceSearchEntry<le_uint32_t, TextEncoding::MARKED> {
+struct S_ChoiceSearchEntry_DC_V3_C0 : S_ChoiceSearchEntry<TextEncoding::MARKED> {
 } __packed__;
-struct S_ChoiceSearchEntry_V3_C0 : S_ChoiceSearchEntry<le_uint16_t, TextEncoding::MARKED> {
-} __packed__;
-struct S_ChoiceSearchEntry_PC_BB_C0 : S_ChoiceSearchEntry<le_uint16_t, TextEncoding::UTF16> {
+struct S_ChoiceSearchEntry_PC_BB_C0 : S_ChoiceSearchEntry<TextEncoding::UTF16> {
 } __packed__;
 
 // Top-level categories are things like "Level", "Class", etc.
@@ -2425,12 +2424,7 @@ struct C_CreateGame_BB_C1 : C_CreateGame<TextEncoding::UTF16> {
 // C2 (C->S): Set choice search parameters (DCv2 and later versions)
 // Internal name: PutChoiceList
 // Server does not respond.
-// The ChoiceSearchConfig structure is defined in PlayerSubordinates.hh.
-
-struct C_ChoiceSearchSelections_DC_C2_C3 : ChoiceSearchConfig<le_uint32_t> {
-} __packed__;
-struct C_ChoiceSearchSelections_PC_V3_BB_C2_C3 : ChoiceSearchConfig<le_uint16_t> {
-} __packed__;
+// Contents is a ChoiceSearchConfig, which is defined in PlayerSubordinates.hh.
 
 // C3 (C->S): Execute choice search (DCv2 and later versions)
 // Internal name: SndChoiceSeq
@@ -2441,22 +2435,25 @@ struct C_ChoiceSearchSelections_PC_V3_BB_C2_C3 : ChoiceSearchConfig<le_uint16_t>
 // Internal name: RcvChoiceAns
 
 // Command is a list of these; header.flag is the entry count
-struct S_ChoiceSearchResultEntry_V3_C4 {
+template <typename HeaderT, TextEncoding NameEncoding, TextEncoding DescEncoding, TextEncoding LocatorEncoding>
+struct S_ChoiceSearchResultEntry_C4 {
   le_uint32_t guild_card_number = 0;
-  pstring<TextEncoding::ASCII, 0x10> name; // No language marker, as usual on V3
-  pstring<TextEncoding::MARKED, 0x20> info_string; // Usually something like "<class> Lvl <level>"
+  pstring<NameEncoding, 0x10> name;
+  pstring<DescEncoding, 0x20> info_string; // Usually something like "<class> Lvl <level>"
   // Format is stricter here; this is "LOBBYNAME,BLOCKNUM,SHIPNAME"
   // If target is in game, for example, "Game Name,BLOCK01,Alexandria"
   // If target is in lobby, for example, "BLOCK01-1,BLOCK01,Alexandria"
-  pstring<TextEncoding::MARKED, 0x34> locator_string;
-  // Server IP and port for "meet user" option
-  le_uint32_t server_ip = 0;
-  le_uint16_t server_port = 0;
-  le_uint16_t unused1 = 0;
-  le_uint32_t menu_id = 0;
-  le_uint32_t lobby_id = 0; // These two are guesses
-  le_uint32_t game_id = 0; // Zero if target is in a lobby rather than a game
-  parray<uint8_t, 0x58> unused2;
+  pstring<LocatorEncoding, 0x30> location_string;
+  HeaderT reconnect_command_header; // Ignored by the client
+  S_Reconnect_19 reconnect_command;
+  SC_MeetUserExtension<NameEncoding> meet_user;
+} __packed__;
+
+struct S_ChoiceSearchResultEntry_DC_V3_C4 : S_ChoiceSearchResultEntry_C4<PSOCommandHeaderDCV3, TextEncoding::ASCII, TextEncoding::MARKED, TextEncoding::ASCII> {
+} __packed__;
+struct S_ChoiceSearchResultEntry_PC_C4 : S_ChoiceSearchResultEntry_C4<PSOCommandHeaderPC, TextEncoding::UTF16, TextEncoding::UTF16, TextEncoding::UTF16> {
+} __packed__;
+struct S_ChoiceSearchResultEntry_BB_C4 : S_ChoiceSearchResultEntry_C4<PSOCommandHeaderBB, TextEncoding::UTF16, TextEncoding::UTF16, TextEncoding::UTF16> {
 } __packed__;
 
 // C5 (S->C): Player records update (DCv2 and later versions)

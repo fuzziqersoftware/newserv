@@ -987,6 +987,44 @@ void send_info_board(shared_ptr<Client> c) {
   }
 }
 
+template <typename CmdT>
+void send_choice_search_choices_t(shared_ptr<Client> c) {
+  vector<CmdT> entries;
+  for (const auto& cat : CHOICE_SEARCH_CATEGORIES) {
+    auto& cat_e = entries.emplace_back();
+    cat_e.parent_choice_id = 0;
+    cat_e.choice_id = cat.id;
+    cat_e.text.encode(cat.name, c->language());
+    for (const auto& choice : cat.choices) {
+      auto& e = entries.emplace_back();
+      e.parent_choice_id = cat.id;
+      e.choice_id = choice.id;
+      e.text.encode(choice.name, c->language());
+    }
+  }
+  send_command_vt(c, 0xC0, entries.size(), entries);
+}
+
+void send_choice_search_choices(shared_ptr<Client> c) {
+  switch (c->version()) {
+      // DC V1 and the prototypes do not support this command
+    case Version::DC_V2:
+    case Version::GC_NTE:
+    case Version::GC_V3:
+    case Version::GC_EP3_TRIAL_EDITION:
+    case Version::GC_EP3:
+    case Version::XB_V3:
+      send_choice_search_choices_t<S_ChoiceSearchEntry_DC_V3_C0>(c);
+      break;
+    case Version::PC_V2:
+    case Version::BB_V4:
+      send_choice_search_choices_t<S_ChoiceSearchEntry_PC_BB_C0>(c);
+      break;
+    default:
+      throw logic_error("unimplemented versioned command");
+  }
+}
+
 template <typename CommandHeaderT, TextEncoding Encoding>
 void send_card_search_result_t(
     shared_ptr<Client> c,
@@ -2981,7 +3019,8 @@ void send_quest_file_chunk(
   }
   cmd.data_size = size;
 
-  send_command_t(c, is_download_quest ? 0xA7 : 0x13, chunk_index, cmd);
+  c->log.info("Sending quest file chunk %s:%zu", filename.c_str(), chunk_index);
+  c->channel.send(is_download_quest ? 0xA7 : 0x13, chunk_index, &cmd, sizeof(cmd), true);
 }
 
 template <typename CommandT>

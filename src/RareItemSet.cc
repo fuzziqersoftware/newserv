@@ -518,12 +518,11 @@ void RareItemSet::print_collection(
     return;
   }
 
-  string secid_name = name_for_section_id(section_id);
   fprintf(stream, "%s %s %s %s\n",
       name_for_mode(mode),
       name_for_episode(episode),
       name_for_difficulty(difficulty),
-      secid_name.c_str());
+      name_for_section_id(section_id));
 
   fprintf(stream, "  Monster rares:\n");
   for (size_t z = 0; z < collection->rt_index_to_specs.size(); z++) {

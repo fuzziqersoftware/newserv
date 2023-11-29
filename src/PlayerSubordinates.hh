@@ -10,6 +10,7 @@
 #include <utility>
 #include <vector>
 
+#include "ChoiceSearch.hh"
 #include "FileContentsCache.hh"
 #include "ItemData.hh"
 #include "LevelTable.hh"
@@ -451,17 +452,6 @@ struct PlayerRecords_Battle {
   /* 0A */ parray<uint16_t, 3> unknown_a1;
   /* 10 */ parray<uint32_t, 2> unknown_a2;
   /* 18 */
-} __attribute__((packed));
-
-template <typename ItemIDT>
-struct ChoiceSearchConfig {
-  // 0 = enabled, 1 = disabled. Unused for command C3
-  le_uint32_t disabled = 1;
-  struct Entry {
-    ItemIDT parent_category_id = 0;
-    ItemIDT category_id = 0;
-  } __attribute__((packed));
-  parray<Entry, 5> entries;
 } __attribute__((packed));
 
 template <typename DestT, typename SrcT = DestT>

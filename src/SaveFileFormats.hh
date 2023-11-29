@@ -10,6 +10,7 @@
 #include <phosg/Strings.hh>
 #include <string>
 
+#include "ChoiceSearch.hh"
 #include "Episode3/DataIndexes.hh"
 #include "ItemNameIndex.hh"
 #include "PSOEncryption.hh"
@@ -207,7 +208,7 @@ struct PSOBBCharacterFile {
   /* 2CB4 */ parray<uint8_t, 4> unknown_a4;
   /* 2CB8 */ PlayerRecordsBB_Challenge challenge_records;
   /* 2DF8 */ parray<le_uint16_t, 0x0014> tech_menu_config;
-  /* 2E20 */ ChoiceSearchConfig<le_uint16_t> choice_search_config;
+  /* 2E20 */ ChoiceSearchConfig choice_search_config;
   /* 2E38 */ parray<uint8_t, 0x0010> unknown_a6;
   /* 2E48 */ parray<le_uint32_t, 0x0010> quest_global_flags;
   /* 2E88 */ parray<uint8_t, 0x1C> unknown_a7;

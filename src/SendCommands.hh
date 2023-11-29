@@ -232,6 +232,8 @@ __attribute__((format(printf, 2, 3))) void send_ep3_text_message_printf(
 
 void send_info_board(std::shared_ptr<Client> c);
 
+void send_choice_search_choices(std::shared_ptr<Client> c);
+
 void send_card_search_result(
     std::shared_ptr<Client> c,
     std::shared_ptr<Client> result,

@@ -2,7 +2,6 @@
 
 - Find a way to silence audio in RunDOL.s
 - Encapsulate BB server-side random state and make replays deterministic
-- Implement choice search
 - Write a simple status API
 - Implement per-game logging
 - Build an exception-handling abstraction in ChatCommands that shows formatted error messages in all cases

@@ -47,6 +47,7 @@ set(SOURCES
     src/CatSession.cc
     src/Channel.cc
     src/ChatCommands.cc
+    src/ChoiceSearch.cc
     src/Client.cc
     src/CommonItemSet.cc
     src/Compression.cc
