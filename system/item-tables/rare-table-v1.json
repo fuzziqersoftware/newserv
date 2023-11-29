@@ -1,5 +1,5 @@
 {
-  // Rare table for PSO DCv1 and PC.
+  // Rare table for PSO DCv1.
   // See rare-table-v4.json for a description of how this file works.
   // This file is only used when client rare tables are overridden. By default,
   // the client controls rare drops and this table is ignored.
