@@ -3254,9 +3254,8 @@ struct C_AddOrRemoveTeamMember_BB_03EA_05EA {
 
 struct SC_TeamChat_BB_07EA {
   pstring<TextEncoding::UTF16, 0x10> sender_name;
-  // It seems there are no real limits on the message length, other than the
-  // overall command length limit of 0x7C00 bytes.
-  // Text follows here
+  // Text follows here. The message is truncated by the client if it is longer
+  // than 0x8F wchar_ts.
 } __packed__;
 
 // 08EA (C->S): Get team member list
@@ -3267,8 +3266,8 @@ struct SC_TeamChat_BB_07EA {
 struct S_TeamMemberList_BB_09EA {
   le_uint32_t entry_count = 0;
   struct Entry {
-    // This is displayed as "<%04d> %s" % (value, message)
-    le_uint32_t index = 0;
+    // This is displayed as "<%04d> %s" % (rank, name)
+    le_uint32_t rank = 0;
     le_uint32_t privilege_level = 0; // 0x10 or 0x20 = green, 0x30 = blue, 0x40 = red, anything else = white
     le_uint32_t guild_card_number = 0;
     pstring<TextEncoding::UTF16, 0x10> name;
@@ -3278,16 +3277,17 @@ struct S_TeamMemberList_BB_09EA {
 } __packed__;
 
 // 0CEA (S->C): Unknown
+// The client appears to ignore this command.
 
 struct S_Unknown_BB_0CEA {
   parray<uint8_t, 0x20> unknown_a1;
   // Text follows here
 } __packed__;
 
-// 0DEA (C->S): Unknown
+// 0DEA (C->S): Get team name
 // No arguments
 
-// 0EEA (S->C): Unknown
+// 0EEA (S->C): Team name
 
 struct S_Unknown_BB_0EEA {
   parray<uint8_t, 0x10> unused;
@@ -3306,8 +3306,10 @@ struct C_SetTeamFlag_BB_0FEA {
 
 // 11EA: Change team member privilege level
 // The format below is used only when the client sends this command; when the
-// server sends it, only header.flag is used.
+// server sends it, only header.flag is used. As with various other team
+// commands, header.flag specifies the error code in this case.
 // header.flag specifies the new privilege level for the specified team member.
+// Known values: 0 = normal, 0x30 = leader, 0x40 = master
 
 struct C_ChangeTeamMemberPrivilegeLevel_BB_11EA {
   le_uint32_t guild_card_number = 0;
@@ -3333,6 +3335,8 @@ struct S_TeamMembershipInformation_BB_12EA {
 // header.flag specifies the number of entries.
 
 struct S_TeamInfoForPlayer_BB_13EA_15EA_Entry {
+  // The client uses the first four of these to determine if the player is in a
+  // team or not - if they are all zero, the player is not in a team.
   le_uint32_t guild_card_number = 0;
   le_uint32_t team_id = 0;
   le_uint32_t unknown_a3 = 0;
@@ -3345,20 +3349,20 @@ struct S_TeamInfoForPlayer_BB_13EA_15EA_Entry {
   parray<le_uint16_t, 0x20 * 0x20> flag_data;
 } __packed__;
 
-// 14EA (C->S): Unknown
+// 14EA (C->S): Get team info for lobby players
 // No arguments. Client always sends 1 in the header.flag field.
 
-// 15EA (S->C): Unknown
+// 15EA (S->C): Team info for lobby players
 // header.flag specifies the number of entries. The entry format appears to be
 // the same as for the 13EA command.
 
 // 16EA (S->C): Unknown
 // No arguments except header.flag.
 
-// 18EA: Team ranking information
+// 18EA: Intra-team ranking information
 // No arguments (C->S)
 
-struct S_TeamRankingInformation_BB_18EA {
+struct S_IntraTeamRanking_BB_18EA {
   /* 0000 */ le_uint32_t ranking_points = 0;
   /* 0004 */ le_uint32_t unknown_a2 = 0;
   /* 0008 */ le_uint32_t points_remaining = 0;
@@ -3378,13 +3382,7 @@ struct S_TeamRankingInformation_BB_18EA {
 // 19EA: Team reward list
 // No arguments (C->S)
 
-struct S_TeamRewardList_BB_19EA {
-  le_uint32_t num_rewards_unlocked = 0;
-} __packed__;
-
-// 1AEA: Team rewards available for purchase
-
-struct S_TeamRewardsAvailableForPurchase_BB_1AEA {
+struct S_TeamRewardList_BB_19EA_1AEA {
   le_uint32_t num_entries;
   struct Entry {
     /* 0000 */ pstring<TextEncoding::UTF16, 0x40> name;
@@ -3397,12 +3395,27 @@ struct S_TeamRewardsAvailableForPurchase_BB_1AEA {
   // Entry entries[num_entries];
 } __packed__;
 
+// 1AEA: Team rewards available for purchase
+// Same format as 19EA.
+
 // 1BEA (C->S): Buy team reward
 // No arguments except header.flag, which specifies a reward_id from a preceding
 // 1AEA command.
 
-// 1CEA: Ranking information
+// 1CEA: Cross-team ranking information
 // No arguments when sent by the client.
+
+struct S_CrossTeamRanking_BB_1CEA {
+  le_uint32_t num_entries;
+  struct Entry {
+    /* 00 */ pstring<TextEncoding::UTF16, 0x10> team_name;
+    /* 20 */ le_uint32_t team_points = 0;
+    /* 24 */ le_uint32_t unknown_a1 = 0;
+    /* 28 */
+  } __packed__;
+  // Variable length field:
+  // Entry entries[num_entries];
+} __packed__;
 
 // 1DEA (S->C): Update team rewards bitmask
 // header.flag specifies the new rewards bitmask.
@@ -3415,7 +3428,8 @@ struct C_Unknown_BB_1EEA {
 } __packed__;
 
 // 1FEA (S->C): Action result
-// This command behaves exactly like 02EA.
+// This command behaves exactly like 02EA. This command is presumably the
+// response to whatever 1EEA does.
 
 // 20EA: Unknown
 // header.flag is used, but no other arguments

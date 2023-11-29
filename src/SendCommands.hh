@@ -395,5 +395,6 @@ void send_update_team_metadata_for_client(std::shared_ptr<Client> c); // 15EA (t
 void send_all_nearby_team_metadatas_to_client(std::shared_ptr<Client> c, bool is_13EA); // 13EA/15EA (to only c, with all lobby clients' data)
 void send_update_team_reward_flags(std::shared_ptr<Client> c); // 1DEA
 void send_team_member_list(std::shared_ptr<Client> c); // 09EA
-void send_team_rank_info(std::shared_ptr<Client> c); // 18EA
-void send_team_rewards_available_for_purchase(std::shared_ptr<Client> c); // 1AEA
+void send_intra_team_ranking(std::shared_ptr<Client> c); // 18EA
+void send_team_reward_list(std::shared_ptr<Client> c, bool show_purchased); // 19EA, 1AEA
+void send_cross_team_ranking(std::shared_ptr<Client> c); // 1CEA

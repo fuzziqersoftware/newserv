@@ -314,6 +314,7 @@ Proxy session commands:\n\
         auto config_json = this->state->load_config();
         this->state->parse_config(config_json, true);
         this->state->resolve_ep3_card_names();
+        this->state->load_teams();
       } else {
         throw invalid_argument("incorrect data type");
       }

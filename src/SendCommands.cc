@@ -3313,10 +3313,10 @@ static S_TeamInfoForPlayer_BB_13EA_15EA_Entry team_metadata_for_client(shared_pt
   auto team = c->team();
   S_TeamInfoForPlayer_BB_13EA_15EA_Entry cmd;
   cmd.lobby_client_id = c->lobby_client_id;
-  cmd.guild_card_number = c->license->serial_number;
   cmd.guild_card_number2 = c->license->serial_number;
   cmd.player_name = c->game_data.character()->disp.name;
   if (team) {
+    cmd.guild_card_number = c->license->serial_number;
     cmd.team_id = team->team_id;
     cmd.privilege_level = team->members.at(c->license->serial_number).privilege_level();
     cmd.team_name.encode(team->name);
@@ -3356,29 +3356,6 @@ void send_team_member_list(shared_ptr<Client> c) {
     throw runtime_error("client is not in a team");
   }
 
-  S_TeamMemberList_BB_09EA header;
-  header.entry_count = team->members.size();
-
-  vector<S_TeamMemberList_BB_09EA::Entry> entries;
-  entries.reserve(header.entry_count);
-  for (auto& it : team->members) {
-    auto& m = it.second;
-    auto& e = entries.emplace_back();
-    e.index = entries.size();
-    e.privilege_level = m.privilege_level();
-    e.guild_card_number = m.serial_number;
-    e.name.encode(m.name, c->language());
-  }
-
-  send_command_t_vt(c, 0x09EA, 0x00000000, header, entries);
-}
-
-void send_team_rank_info(std::shared_ptr<Client> c) {
-  auto team = c->team();
-  if (!team) {
-    throw runtime_error("client is not in a team");
-  }
-
   vector<const TeamIndex::Team::Member*> members;
   for (const auto& it : team->members) {
     members.emplace_back(&it.second);
@@ -3388,10 +3365,45 @@ void send_team_rank_info(std::shared_ptr<Client> c) {
   };
   sort(members.begin(), members.end(), rank_fn);
 
-  S_TeamRankingInformation_BB_18EA cmd;
-  cmd.points_remaining = 0;
+  S_TeamMemberList_BB_09EA header;
+  header.entry_count = members.size();
 
-  vector<S_TeamRankingInformation_BB_18EA::Entry> entries;
+  vector<S_TeamMemberList_BB_09EA::Entry> entries;
+  entries.reserve(header.entry_count);
+  for (size_t z = 0; z < members.size(); z++) {
+    const auto* m = members[z];
+    auto& e = entries.emplace_back();
+    e.rank = z + 1;
+    e.privilege_level = m->privilege_level();
+    e.guild_card_number = m->serial_number;
+    e.name.encode(m->name, c->language());
+  }
+
+  send_command_t_vt(c, 0x09EA, 0x00000000, header, entries);
+}
+
+void send_intra_team_ranking(std::shared_ptr<Client> c) {
+  auto team = c->team();
+  if (!team) {
+    throw runtime_error("client is not in a team");
+  }
+
+  // TODO: At some point we should maintain a sorted index instead of sorting
+  // these on-demand.
+  vector<const TeamIndex::Team::Member*> members;
+  for (const auto& it : team->members) {
+    members.emplace_back(&it.second);
+  }
+  auto rank_fn = +[](const TeamIndex::Team::Member* a, const TeamIndex::Team::Member* b) {
+    return a->points > b->points;
+  };
+  sort(members.begin(), members.end(), rank_fn);
+
+  S_IntraTeamRanking_BB_18EA cmd;
+  cmd.points_remaining = team->points - team->spent_points;
+  cmd.num_entries = members.size();
+
+  vector<S_IntraTeamRanking_BB_18EA::Entry> entries;
   for (size_t z = 0; z < members.size(); z++) {
     const auto* m = members[z];
     cmd.ranking_points += m->points;
@@ -3402,111 +3414,69 @@ void send_team_rank_info(std::shared_ptr<Client> c) {
     e.player_name.encode(m->name);
     e.points = m->points;
   }
-  cmd.num_entries = entries.size();
 
   send_command_t_vt(c, 0x18EA, 0x00000000, cmd, entries);
 }
 
-void send_team_rewards_available_for_purchase(std::shared_ptr<Client> c) {
+void send_cross_team_ranking(std::shared_ptr<Client> c) {
+  auto s = c->require_server_state();
+
+  // TODO: At some point we should maintain a sorted index instead of sorting
+  // these on-demand.
+  auto teams = s->team_index->all();
+  auto rank_fn = +[](const shared_ptr<const TeamIndex::Team>& a, const shared_ptr<const TeamIndex::Team>& b) {
+    return a->points > b->points;
+  };
+  sort(teams.begin(), teams.end(), rank_fn);
+
+  size_t num_to_send = min<size_t>(teams.size(), 0x300);
+
+  S_CrossTeamRanking_BB_1CEA cmd;
+  cmd.num_entries = num_to_send;
+
+  vector<S_CrossTeamRanking_BB_1CEA::Entry> entries;
+  for (size_t z = 0; z < num_to_send; z++) {
+    auto t = teams[z];
+    auto& e = entries.emplace_back();
+    e.team_name.encode(t->name, c->language());
+    e.team_points = t->points;
+    e.unknown_a1 = 0x01020304;
+  }
+
+  send_command_t_vt(c, 0x1CEA, 0x00000000, cmd, entries);
+}
+
+void send_team_reward_list(std::shared_ptr<Client> c, bool show_purchased) {
   auto team = c->team();
   if (!team) {
     throw runtime_error("user is not in a team");
   }
+  auto s = c->require_server_state();
 
-  vector<S_TeamRewardsAvailableForPurchase_BB_1AEA::Entry> entries;
-  if (!team->check_reward_flag(TeamIndex::Team::RewardFlag::TEAM_FLAG)) {
+  vector<S_TeamRewardList_BB_19EA_1AEA::Entry> entries;
+  for (const auto& reward : s->team_index->reward_definitions()) {
+    if (team->has_reward(reward.key) != show_purchased) {
+      continue;
+    }
+    bool has_all_prerequisites = true;
+    for (const auto& key : reward.prerequisite_keys) {
+      if (!team->has_reward(key)) {
+        has_all_prerequisites = false;
+        break;
+      }
+    }
+    if (!has_all_prerequisites) {
+      continue;
+    }
     auto& e = entries.emplace_back();
-    e.name.encode("Team flag");
-    e.description.encode("Show a custom banner\nabove your team\'s\nplayers in the lobby");
-    e.reward_id = TeamRewardMenuItemID::TEAM_FLAG;
-    e.team_points = 2500;
-  }
-  if (!team->check_reward_flag(TeamIndex::Team::RewardFlag::DRESSING_ROOM)) {
-    auto& e = entries.emplace_back();
-    e.name.encode("Dressing room");
-    e.description.encode("Unlock the ability to\nchange your character\'s\nappearance");
-    e.reward_id = TeamRewardMenuItemID::DRESSING_ROOM;
-    e.team_points = 3000;
-  }
-  if (!team->check_reward_flag(TeamIndex::Team::RewardFlag::MEMBERS_20_LEADERS_3)) {
-    auto& e = entries.emplace_back();
-    e.name.encode("20 team members");
-    e.description.encode("Increase your team\'s\nsize limit to 30 members\nand 3 leaders");
-    e.reward_id = TeamRewardMenuItemID::MEMBERS_20_LEADERS_3;
-    e.team_points = 1500;
-  } else if (!team->check_reward_flag(TeamIndex::Team::RewardFlag::MEMBERS_40_LEADERS_5)) {
-    auto& e = entries.emplace_back();
-    e.name.encode("40 team members");
-    e.description.encode("Increase your team\'s\nsize limit to 40 members\nand 3 leaders");
-    e.reward_id = TeamRewardMenuItemID::MEMBERS_40_LEADERS_5;
-    e.team_points = 4000;
-  } else if (!team->check_reward_flag(TeamIndex::Team::RewardFlag::MEMBERS_70_LEADERS_8)) {
-    auto& e = entries.emplace_back();
-    e.name.encode("70 team members");
-    e.description.encode("Increase your team\'s\nsize limit to 70 members\nand 8 leaders");
-    e.reward_id = TeamRewardMenuItemID::MEMBERS_70_LEADERS_8;
-    e.team_points = 9000;
-  } else if (!team->check_reward_flag(TeamIndex::Team::RewardFlag::MEMBERS_100_LEADERS_10)) {
-    auto& e = entries.emplace_back();
-    e.name.encode("100 team members");
-    e.description.encode("Increase your team\'s\nsize limit to 100 members\nand 10 leaders");
-    e.reward_id = TeamRewardMenuItemID::MEMBERS_100_LEADERS_10;
-    e.team_points = 18000;
+    e.name.encode(reward.name, c->language());
+    e.description.encode(reward.description, c->language());
+    e.reward_id = reward.menu_item_id;
+    e.team_points = reward.team_points;
   }
 
-  // TODO: Implement these. Currently we don't have a good way to conditionally
-  // unlock quests, and especially not from a team reward flag.
-  // if (!point_of_disaster_unlocked) {
-  //   auto& e = entries.emplace_back();
-  //   e.name.encode("Quest: Point of Disaster");
-  //   e.description.encode("Unlock the quest\nPoint of Disaster\nfor your team");
-  //   e.team_points = 1000;
-  //   e.reward_id = TeamRewardMenuItemID::POINT_OF_DISASTER;
-  // }
-  // if (!toys_twilight_unlocked) {
-  //   auto& e = entries.emplace_back();
-  //   e.name.encode("Quest: Toys Twilight");
-  //   e.description.encode("Unlock the quest\nToys Twilight\nfor your team");
-  //   e.team_points = 1000;
-  //   e.reward_id = TeamRewardMenuItemID::TOYS_TWILIGHT;
-  // }
-
-  // TODO: How should these be implemented? There has to be a way to create
-  // items in the lobby, presumably...
-  // auto& e = entries.emplace_back();
-  // e.name.encode("Commander Blade");
-  // e.description.encode("Create a Commander\nBlade weapon");
-  // e.team_points = 8000;
-  // e.reward_id = TeamRewardMenuItemID::COMMANDER_BLADE;
-  // auto& e = entries.emplace_back();
-  // e.name.encode("Union Guard");
-  // e.description.encode("Create a Union Guard\nshield");
-  // e.team_points = 100;
-  // e.reward_id = TeamRewardMenuItemID::UNION_GUARD;
-
-  // auto& e = entries.emplace_back();
-  // e.name.encode("Team Points Ticket 500");
-  // e.description.encode("Create a 500-point ticket");
-  // e.team_points = 500;
-  // e.reward_id = TeamRewardMenuItemID::TEAM_POINTS_500;
-  // auto& e = entries.emplace_back();
-  // e.name.encode("Team Points Ticket 1000");
-  // e.description.encode("Create a 1000-point ticket");
-  // e.team_points = 1000;
-  // e.reward_id = TeamRewardMenuItemID::TEAM_POINTS_1000;
-  // auto& e = entries.emplace_back();
-  // e.name.encode("Team Points Ticket 5000");
-  // e.description.encode("Create a 5000-point ticket");
-  // e.team_points = 5000;
-  // e.reward_id = TeamRewardMenuItemID::TEAM_POINTS_5000;
-  // auto& e = entries.emplace_back();
-  // e.name.encode("Team Points Ticket 10000");
-  // e.description.encode("Create a 10000-point ticket");
-  // e.team_points = 10000;
-  // e.reward_id = TeamRewardMenuItemID::TEAM_POINTS_10000;
-
-  S_TeamRewardsAvailableForPurchase_BB_1AEA cmd;
+  S_TeamRewardList_BB_19EA_1AEA cmd;
   cmd.num_entries = entries.size();
 
-  send_command_t_vt(c, 0x1AEA, 0x00000000, cmd, entries);
+  send_command_t_vt(c, show_purchased ? 0x19EA : 0x1AEA, 0x00000000, cmd, entries);
 }

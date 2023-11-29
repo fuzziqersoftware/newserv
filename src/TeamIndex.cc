@@ -52,10 +52,19 @@ string TeamIndex::Team::flag_filename() const {
 void TeamIndex::Team::load_config() {
   auto json = JSON::parse(load_file(this->json_filename()));
   this->name = json.get_string("Name");
+  this->spent_points = json.get_int("SpentPoints");
+  this->points = 0;
   for (const auto& member_it : json.get_list("Members")) {
     Member m(*member_it);
+    this->points += m.points;
     uint32_t serial_number = m.serial_number;
     this->members.emplace(serial_number, std::move(m));
+  }
+  try {
+    for (const auto& it : json.get_list("RewardKeys")) {
+      this->reward_keys.emplace(it->as_string());
+    }
+  } catch (const out_of_range&) {
   }
   this->reward_flags = json.get_int("RewardFlags");
 }
@@ -65,9 +74,15 @@ void TeamIndex::Team::save_config() const {
   for (const auto& it : this->members) {
     members_json.emplace_back(it.second.json());
   }
+  JSON reward_keys_json = JSON::list();
+  for (const auto& it : this->reward_keys) {
+    reward_keys_json.emplace_back(it);
+  }
   JSON root = JSON::dict({
       {"Name", this->name},
+      {"SpentPoints", this->spent_points},
       {"Members", std::move(members_json)},
+      {"RewardKeys", std::move(reward_keys_json)},
       {"RewardFlags", this->reward_flags},
   });
   save_file(this->json_filename(), root.serialize(JSON::SerializeOption::FORMAT | JSON::SerializeOption::HEX_INTEGERS));
@@ -128,6 +143,10 @@ PSOBBTeamMembership TeamIndex::Team::membership_for_member(uint32_t serial_numbe
   return ret;
 }
 
+bool TeamIndex::Team::has_reward(const string& key) const {
+  return this->reward_keys.count(key);
+}
+
 size_t TeamIndex::Team::num_members() const {
   return this->members.size();
 }
@@ -178,9 +197,37 @@ bool TeamIndex::Team::can_promote_leader() const {
   return this->num_leaders() < this->max_leaders();
 }
 
-TeamIndex::TeamIndex(const string& directory)
+TeamIndex::Reward::Reward(uint32_t menu_item_id, const JSON& def_json)
+    : menu_item_id(menu_item_id),
+      key(def_json.get_string("Key")),
+      name(def_json.get_string("Name")),
+      description(def_json.get_string("Description")),
+      is_unique(def_json.get_bool("IsUnique", true)),
+      team_points(def_json.get_int("Points")) {
+  try {
+    for (const auto& it : def_json.get_list("PrerequisiteKeys")) {
+      this->prerequisite_keys.emplace(it->as_string());
+    }
+  } catch (const out_of_range&) {
+  }
+  try {
+    this->reward_flag = static_cast<Team::RewardFlag>(def_json.get_int("RewardFlag"));
+  } catch (const out_of_range&) {
+  }
+  try {
+    this->reward_item = ItemData::from_data(def_json.get_string("RewardItem"));
+  } catch (const out_of_range&) {
+  }
+}
+
+TeamIndex::TeamIndex(const string& directory, const JSON& reward_defs_json)
     : directory(directory),
       next_team_id(1) {
+  uint32_t reward_menu_item_id = 0;
+  for (const auto& it : reward_defs_json.as_list()) {
+    this->reward_defs.emplace_back(reward_menu_item_id++, *it);
+  }
+
   if (!isdir(this->directory)) {
     mkdir(this->directory.c_str(), 0755);
     return;
@@ -214,7 +261,7 @@ size_t TeamIndex::count() const {
   return this->id_to_team.size();
 }
 
-shared_ptr<TeamIndex::Team> TeamIndex::get_by_id(uint32_t team_id) {
+shared_ptr<const TeamIndex::Team> TeamIndex::get_by_id(uint32_t team_id) const {
   try {
     return this->id_to_team.at(team_id);
   } catch (const out_of_range&) {
@@ -222,7 +269,7 @@ shared_ptr<TeamIndex::Team> TeamIndex::get_by_id(uint32_t team_id) {
   }
 }
 
-shared_ptr<TeamIndex::Team> TeamIndex::get_by_name(const string& name) {
+shared_ptr<const TeamIndex::Team> TeamIndex::get_by_name(const string& name) const {
   try {
     return this->name_to_team.at(name);
   } catch (const out_of_range&) {
@@ -230,7 +277,7 @@ shared_ptr<TeamIndex::Team> TeamIndex::get_by_name(const string& name) {
   }
 }
 
-shared_ptr<TeamIndex::Team> TeamIndex::get_by_serial_number(uint32_t serial_number) {
+shared_ptr<const TeamIndex::Team> TeamIndex::get_by_serial_number(uint32_t serial_number) const {
   try {
     return this->serial_number_to_team.at(serial_number);
   } catch (const out_of_range&) {
@@ -238,15 +285,15 @@ shared_ptr<TeamIndex::Team> TeamIndex::get_by_serial_number(uint32_t serial_numb
   }
 }
 
-vector<shared_ptr<TeamIndex::Team>> TeamIndex::all() {
-  vector<shared_ptr<Team>> ret;
+vector<shared_ptr<const TeamIndex::Team>> TeamIndex::all() const {
+  vector<shared_ptr<const Team>> ret;
   for (const auto& it : this->id_to_team) {
     ret.emplace_back(it.second);
   }
   return ret;
 }
 
-shared_ptr<TeamIndex::Team> TeamIndex::create(string& name, uint32_t master_serial_number, const string& master_name) {
+shared_ptr<const TeamIndex::Team> TeamIndex::create(string& name, uint32_t master_serial_number, const string& master_name) {
   shared_ptr<Team> team(new Team(this->next_team_id++));
   save_file(this->directory + "/base.json", JSON::dict({{"NextTeamID", this->next_team_id}}).serialize());
 
@@ -299,6 +346,86 @@ void TeamIndex::remove_member(uint32_t serial_number) {
   } else {
     team->save_config();
   }
+}
+
+void TeamIndex::update_member_name(uint32_t serial_number, const std::string& name) {
+  auto team = this->serial_number_to_team.at(serial_number);
+  auto& m = team->members.at(serial_number);
+  m.name = name;
+  team->save_config();
+}
+
+void TeamIndex::add_member_points(uint32_t serial_number, uint32_t points) {
+  auto team = this->serial_number_to_team.at(serial_number);
+  team->members.at(serial_number).points += points;
+  team->points += points;
+  team->save_config();
+}
+
+void TeamIndex::set_flag_data(uint32_t team_id, const parray<le_uint16_t, 0x20 * 0x20>& flag_data) {
+  auto team = this->id_to_team.at(team_id);
+  team->flag_data.reset(new parray<le_uint16_t, 0x20 * 0x20>(flag_data));
+  team->save_flag();
+}
+
+bool TeamIndex::promote_leader(uint32_t master_serial_number, uint32_t leader_serial_number) {
+  auto team = this->serial_number_to_team.at(master_serial_number);
+  auto& master_m = team->members.at(master_serial_number);
+  if (!master_m.check_flag(TeamIndex::Team::Member::Flag::IS_MASTER)) {
+    throw runtime_error("incorrect master serial number");
+  }
+  auto& other_m = team->members.at(leader_serial_number);
+
+  if (other_m.check_flag(TeamIndex::Team::Member::Flag::IS_LEADER) || !team->can_promote_leader()) {
+    return false;
+  }
+  other_m.set_flag(TeamIndex::Team::Member::Flag::IS_LEADER);
+  team->save_config();
+  return true;
+}
+
+bool TeamIndex::demote_leader(uint32_t master_serial_number, uint32_t leader_serial_number) {
+  auto team = this->serial_number_to_team.at(master_serial_number);
+  auto& master_m = team->members.at(master_serial_number);
+  if (!master_m.check_flag(TeamIndex::Team::Member::Flag::IS_MASTER)) {
+    throw runtime_error("incorrect master serial number");
+  }
+  auto& other_m = team->members.at(leader_serial_number);
+
+  if (!other_m.check_flag(TeamIndex::Team::Member::Flag::IS_LEADER)) {
+    return false;
+  }
+  other_m.clear_flag(TeamIndex::Team::Member::Flag::IS_LEADER);
+  team->save_config();
+  return true;
+}
+
+void TeamIndex::change_master(uint32_t master_serial_number, uint32_t new_master_serial_number) {
+  auto team = this->serial_number_to_team.at(master_serial_number);
+  auto& master_m = team->members.at(master_serial_number);
+  if (!master_m.check_flag(TeamIndex::Team::Member::Flag::IS_MASTER)) {
+    throw runtime_error("incorrect master serial number");
+  }
+  auto& new_master_m = team->members.at(new_master_serial_number);
+
+  master_m.clear_flag(TeamIndex::Team::Member::Flag::IS_MASTER);
+  master_m.set_flag(TeamIndex::Team::Member::Flag::IS_LEADER);
+  new_master_m.clear_flag(TeamIndex::Team::Member::Flag::IS_LEADER);
+  new_master_m.set_flag(TeamIndex::Team::Member::Flag::IS_MASTER);
+  team->save_config();
+}
+
+void TeamIndex::buy_reward(uint32_t team_id, const string& key, uint32_t points, Team::RewardFlag reward_flag) {
+  auto team = this->id_to_team.at(team_id);
+  if (team->spent_points + points > team->points) {
+    throw runtime_error("not enough points available");
+  }
+  team->reward_keys.emplace(key);
+  team->spent_points += points;
+  if (reward_flag != Team::RewardFlag::NONE) {
+    team->set_reward_flag(reward_flag);
+  }
+  team->save_config();
 }
 
 void TeamIndex::add_to_indexes(shared_ptr<Team> team) {

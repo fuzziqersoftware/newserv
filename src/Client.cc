@@ -245,7 +245,7 @@ shared_ptr<Lobby> Client::require_lobby() const {
   return l;
 }
 
-shared_ptr<TeamIndex::Team> Client::team() {
+shared_ptr<const TeamIndex::Team> Client::team() {
   if (!this->license) {
     throw logic_error("Client::team called on client with no license");
   }
@@ -258,6 +258,7 @@ shared_ptr<TeamIndex::Team> Client::team() {
   auto s = this->require_server_state();
   auto team = s->team_index->get_by_id(this->license->bb_team_id);
   if (!team) {
+    this->log.info("License contains a team ID, but the team does not exist; clearing team ID from license");
     this->license->bb_team_id = 0;
     this->license->save();
     return nullptr;
@@ -265,6 +266,7 @@ shared_ptr<TeamIndex::Team> Client::team() {
 
   auto member_it = team->members.find(this->license->serial_number);
   if (member_it == team->members.end()) {
+    this->log.info("License contains a team ID, but the team does not contain this member; clearing team ID from license");
     this->license->bb_team_id = 0;
     this->license->save();
     return nullptr;
@@ -277,8 +279,7 @@ shared_ptr<TeamIndex::Team> Client::team() {
     string name = p->disp.name.decode(this->language());
     if (m.name != name) {
       this->log.info("Updating player name in team config");
-      m.name = name;
-      team->save_config();
+      s->team_index->update_member_name(this->license->serial_number, name);
     }
   }
 

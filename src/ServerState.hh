@@ -143,6 +143,7 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
 
   std::shared_ptr<LicenseIndex> license_index;
   std::shared_ptr<TeamIndex> team_index;
+  JSON team_reward_defs_json;
 
   std::shared_ptr<const Menu> information_menu_v2;
   std::shared_ptr<const Menu> information_menu_v3;

@@ -898,6 +898,11 @@ void ServerState::parse_config(const JSON& json, bool is_reload) {
   this->welcome_message = json.get_string("WelcomeMessage", "");
   this->pc_patch_server_message = json.get_string("PCPatchServerMessage", "");
   this->bb_patch_server_message = json.get_string("BBPatchServerMessage", "");
+
+  try {
+    this->team_reward_defs_json = std::move(json.at("TeamRewards"));
+  } catch (const out_of_range&) {
+  }
 }
 
 void ServerState::load_bb_private_keys() {
@@ -919,7 +924,8 @@ void ServerState::load_licenses() {
 
 void ServerState::load_teams() {
   config_log.info("Indexing teams");
-  this->team_index.reset(new TeamIndex("system/teams"));
+  this->team_index.reset(new TeamIndex("system/teams", this->team_reward_defs_json));
+  this->team_reward_defs_json = nullptr;
 }
 
 void ServerState::load_patch_indexes() {

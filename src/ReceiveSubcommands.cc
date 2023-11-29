@@ -2137,8 +2137,7 @@ void on_exchange_item_for_team_points_bb(shared_ptr<Client> c, uint8_t command, 
   auto item = p->remove_item(cmd.item_id, cmd.amount, c->version() != Version::BB_V4);
 
   size_t points = s->item_parameter_table_v4->get_item_team_points(item);
-  team->members.at(c->license->serial_number).points += points;
-  team->save_config();
+  s->team_index->add_member_points(c->license->serial_number, points);
 
   auto name = s->describe_item(c->version(), item, false);
   l->log.info("Player %hhu exchanged inventory item %hu:%08" PRIX32 " (%s) for %zu team points",
@@ -2917,8 +2916,8 @@ SubcommandDefinition subcommand_definitions[0x100] = {
     /* 6xBE */ {0x00, 0x00, 0xBE, on_ep3_sound_chat},
     /* 6xBF */ {0x00, 0x00, 0xBF, on_forward_check_size_ep3_lobby},
     /* 6xC0 */ {0x00, 0x00, 0xC0, on_sell_item_at_shop_bb},
-    /* 6xC1 */ {0x00, 0x00, 0xC1, nullptr},
-    /* 6xC2 */ {0x00, 0x00, 0xC2, nullptr},
+    /* 6xC1 */ {0x00, 0x00, 0xC1, on_forward_check_size},
+    /* 6xC2 */ {0x00, 0x00, 0xC2, on_forward_check_size},
     /* 6xC3 */ {0x00, 0x00, 0xC3, on_drop_partial_stack_bb},
     /* 6xC4 */ {0x00, 0x00, 0xC4, on_sort_inventory_bb},
     /* 6xC5 */ {0x00, 0x00, 0xC5, on_medical_center_bb},
@@ -2929,8 +2928,8 @@ SubcommandDefinition subcommand_definitions[0x100] = {
     /* 6xCA */ {0x00, 0x00, 0xCA, on_item_reward_request_bb},
     /* 6xCB */ {0x00, 0x00, 0xCB, nullptr},
     /* 6xCC */ {0x00, 0x00, 0xCC, on_exchange_item_for_team_points_bb},
-    /* 6xCD */ {0x00, 0x00, 0xCD, nullptr},
-    /* 6xCE */ {0x00, 0x00, 0xCE, nullptr},
+    /* 6xCD */ {0x00, 0x00, 0xCD, on_forward_check_size},
+    /* 6xCE */ {0x00, 0x00, 0xCE, on_forward_check_size},
     /* 6xCF */ {0x00, 0x00, 0xCF, on_battle_restart_bb},
     /* 6xD0 */ {0x00, 0x00, 0xD0, on_battle_level_up_bb},
     /* 6xD1 */ {0x00, 0x00, 0xD1, on_request_challenge_grave_recovery_item_bb},

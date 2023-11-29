@@ -4528,23 +4528,27 @@ static void on_EA_BB(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
         try {
           added_c = s->find_client(nullptr, cmd.guild_card_number);
         } catch (const out_of_range&) {
-          send_lobby_message_box(c, "Player is offline");
+          send_command(c, 0x04EA, 0x00000006);
         }
 
         if (added_c) {
           auto added_c_team = added_c->team();
           if (added_c_team) {
-            send_lobby_message_box(c, "Player is already\nin another team");
-          } else if (!added_c->config.check_flag(Client::Flag::ACCEPTED_TEAM_INVITATION)) {
-            send_lobby_message_box(c, "Player did not accept\nteam invitation");
+            send_command(c, 0x04EA, 0x00000001);
+            send_command(added_c, 0x04EA, 0x00000001);
+
           } else if (!team->can_add_member()) {
             // Send "team is full" error
             send_command(c, 0x04EA, 0x00000005);
             send_command(added_c, 0x04EA, 0x00000005);
+
           } else {
             added_c->license->bb_team_id = team->team_id;
             added_c->license->save();
-            added_c->config.clear_flag(Client::Flag::ACCEPTED_TEAM_INVITATION);
+            s->team_index->add_member(
+                team->team_id,
+                added_c->license->serial_number,
+                added_c->game_data.character()->disp.name.decode(added_c->language()));
 
             send_update_team_metadata_for_client(added_c);
             send_team_membership_info(added_c);
@@ -4623,8 +4627,7 @@ static void on_EA_BB(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
       auto team = c->team();
       if (team && team->members.at(c->license->serial_number).check_flag(TeamIndex::Team::Member::Flag::IS_MASTER)) {
         const auto& cmd = check_size_t<C_SetTeamFlag_BB_0FEA>(data);
-        team->flag_data.reset(new parray<le_uint16_t, 0x20 * 0x20>(cmd.flag_data));
-        team->save_flag();
+        s->team_index->set_flag_data(team->team_id, cmd.flag_data);
         for (const auto& it : team->members) {
           try {
             auto member_c = s->find_client(nullptr, it.second.serial_number);
@@ -4660,37 +4663,29 @@ static void on_EA_BB(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
           throw runtime_error("this command cannot be used to modify your own permissions");
         }
 
-        auto& this_m = team->members.at(c->license->serial_number);
-        if (!this_m.check_flag(TeamIndex::Team::Member::Flag::IS_MASTER)) {
-          break;
-        }
-        auto& other_m = team->members.at(cmd.guild_card_number);
-
         // The client only sends this command with flag = 0x00, 0x30, or 0x40
         bool send_updates_for_this_m = false;
         bool send_updates_for_other_m = false;
         switch (flag) {
           case 0x00: // Demote member
-            if (other_m.check_flag(TeamIndex::Team::Member::Flag::IS_LEADER)) {
-              other_m.clear_flag(TeamIndex::Team::Member::Flag::IS_LEADER);
+            if (s->team_index->demote_leader(c->license->serial_number, cmd.guild_card_number)) {
+              send_command(c, 0x11EA, 0x00000000);
               send_updates_for_other_m = true;
             } else {
               send_command(c, 0x11EA, 0x00000005);
             }
             break;
           case 0x30: // Promote member
-            if (!other_m.check_flag(TeamIndex::Team::Member::Flag::IS_LEADER) && team->can_promote_leader()) {
-              other_m.set_flag(TeamIndex::Team::Member::Flag::IS_LEADER);
+            if (s->team_index->promote_leader(c->license->serial_number, cmd.guild_card_number)) {
+              send_command(c, 0x11EA, 0x00000000);
               send_updates_for_other_m = true;
             } else {
               send_command(c, 0x11EA, 0x00000005);
             }
             break;
           case 0x40: // Transfer master
-            this_m.clear_flag(TeamIndex::Team::Member::Flag::IS_MASTER);
-            this_m.set_flag(TeamIndex::Team::Member::Flag::IS_LEADER);
-            other_m.clear_flag(TeamIndex::Team::Member::Flag::IS_LEADER);
-            other_m.set_flag(TeamIndex::Team::Member::Flag::IS_MASTER);
+            s->team_index->change_master(c->license->serial_number, cmd.guild_card_number);
+            send_command(c, 0x11EA, 0x00000000);
             send_updates_for_this_m = true;
             send_updates_for_other_m = true;
             break;
@@ -4705,8 +4700,8 @@ static void on_EA_BB(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
         if (send_updates_for_other_m) {
           try {
             auto other_c = s->find_client(nullptr, cmd.guild_card_number);
-            send_update_team_metadata_for_client(c);
-            send_team_membership_info(c);
+            send_update_team_metadata_for_client(other_c);
+            send_team_membership_info(other_c);
           } catch (const out_of_range&) {
           }
         }
@@ -4720,83 +4715,37 @@ static void on_EA_BB(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
       send_all_nearby_team_metadatas_to_client(c, false);
       break;
     case 0x18EA: // Ranking information
-      send_team_rank_info(c);
+      send_intra_team_ranking(c);
       break;
-    case 0x19EA: {
-      S_TeamRewardList_BB_19EA cmd = {0};
-      send_command_t(c, 0x19EA, 0x00000000, cmd);
-      break;
-    }
-    case 0x1AEA: // Get team rewards available for purchase
-      send_team_rewards_available_for_purchase(c);
+    case 0x19EA: // List purchased team rewards
+    case 0x1AEA: // List team rewards available for purchase
+      send_team_reward_list(c, (command == 0x19EA));
       break;
     case 0x1BEA: { // Buy team reward
       auto team = c->team();
       if (team) {
         check_size_v(data.size(), 0); // No data should be sent
-        bool should_send_update_reward_flags = false;
-        switch (flag) {
-          case TeamRewardMenuItemID::TEAM_FLAG:
-            team->set_reward_flag(TeamIndex::Team::RewardFlag::TEAM_FLAG);
-            should_send_update_reward_flags = true;
-            break;
-          case TeamRewardMenuItemID::DRESSING_ROOM:
-            team->set_reward_flag(TeamIndex::Team::RewardFlag::DRESSING_ROOM);
-            should_send_update_reward_flags = true;
-            break;
-          case TeamRewardMenuItemID::MEMBERS_20_LEADERS_3:
-            if (team->check_reward_flag(TeamIndex::Team::RewardFlag::MEMBERS_20_LEADERS_3) ||
-                team->check_reward_flag(TeamIndex::Team::RewardFlag::MEMBERS_40_LEADERS_5) ||
-                team->check_reward_flag(TeamIndex::Team::RewardFlag::MEMBERS_70_LEADERS_8) ||
-                team->check_reward_flag(TeamIndex::Team::RewardFlag::MEMBERS_100_LEADERS_10)) {
-              throw runtime_error("team size upgrades purchased out of order");
-            }
-            team->set_reward_flag(TeamIndex::Team::RewardFlag::MEMBERS_20_LEADERS_3);
-            should_send_update_reward_flags = true;
-            break;
-          case TeamRewardMenuItemID::MEMBERS_40_LEADERS_5:
-            if (!team->check_reward_flag(TeamIndex::Team::RewardFlag::MEMBERS_20_LEADERS_3) ||
-                team->check_reward_flag(TeamIndex::Team::RewardFlag::MEMBERS_40_LEADERS_5) ||
-                team->check_reward_flag(TeamIndex::Team::RewardFlag::MEMBERS_70_LEADERS_8) ||
-                team->check_reward_flag(TeamIndex::Team::RewardFlag::MEMBERS_100_LEADERS_10)) {
-              throw runtime_error("team size upgrades purchased out of order");
-            }
-            team->set_reward_flag(TeamIndex::Team::RewardFlag::MEMBERS_40_LEADERS_5);
-            should_send_update_reward_flags = true;
-            break;
-          case TeamRewardMenuItemID::MEMBERS_70_LEADERS_8:
-            if (!team->check_reward_flag(TeamIndex::Team::RewardFlag::MEMBERS_20_LEADERS_3) ||
-                !team->check_reward_flag(TeamIndex::Team::RewardFlag::MEMBERS_40_LEADERS_5) ||
-                team->check_reward_flag(TeamIndex::Team::RewardFlag::MEMBERS_70_LEADERS_8) ||
-                team->check_reward_flag(TeamIndex::Team::RewardFlag::MEMBERS_100_LEADERS_10)) {
-              throw runtime_error("team size upgrades purchased out of order");
-            }
-            team->set_reward_flag(TeamIndex::Team::RewardFlag::MEMBERS_70_LEADERS_8);
-            should_send_update_reward_flags = true;
-            break;
-          case TeamRewardMenuItemID::MEMBERS_100_LEADERS_10:
-            if (!team->check_reward_flag(TeamIndex::Team::RewardFlag::MEMBERS_20_LEADERS_3) ||
-                !team->check_reward_flag(TeamIndex::Team::RewardFlag::MEMBERS_40_LEADERS_5) ||
-                !team->check_reward_flag(TeamIndex::Team::RewardFlag::MEMBERS_70_LEADERS_8) ||
-                team->check_reward_flag(TeamIndex::Team::RewardFlag::MEMBERS_100_LEADERS_10)) {
-              throw runtime_error("team size upgrades purchased out of order");
-            }
-            team->set_reward_flag(TeamIndex::Team::RewardFlag::MEMBERS_100_LEADERS_10);
-            should_send_update_reward_flags = true;
-            break;
-            // TODO: Implement all the following cases
-            // case POINT_OF_DISASTER:
-            // case TOYS_TWILIGHT:
-            // case COMMANDER_BLADE:
-            // case UNION_GUARD:
-            // case TEAM_POINTS_500:
-            // case TEAM_POINTS_1000:
-            // case TEAM_POINTS_5000:
-            // case TEAM_POINTS_10000:
-          default:
-            throw runtime_error("incorrect team reward ID");
+        const auto& reward = s->team_index->reward_definitions().at(flag);
+
+        for (const auto& key : reward.prerequisite_keys) {
+          if (!team->has_reward(key)) {
+            throw runtime_error("not all prerequisite rewards have been purchased");
+          }
         }
-        if (should_send_update_reward_flags) {
+        if (reward.is_unique && team->has_reward(reward.key)) {
+          throw runtime_error("team reward already purchased");
+        }
+
+        if (!reward.reward_item.empty()) {
+          // TODO: How do we do this? Do we just send a 6xBE in the lobby?
+          // (Once this is figured out, don't forget to move this block to after
+          // the reward is actually purchased)
+          throw runtime_error("team reward items are not implemented");
+        }
+
+        s->team_index->buy_reward(team->team_id, reward.key, reward.team_points, reward.reward_flag);
+
+        if (reward.reward_flag != TeamIndex::Team::RewardFlag::NONE) {
           for (const auto& it : team->members) {
             try {
               auto member_c = s->find_client(nullptr, it.second.serial_number);
@@ -4809,7 +4758,8 @@ static void on_EA_BB(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
       break;
     }
     case 0x1CEA:
-      throw runtime_error("team subcommand is not yet implemented");
+      send_cross_team_ranking(c);
+      break;
     default:
       throw runtime_error("invalid team command");
   }
