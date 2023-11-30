@@ -54,6 +54,7 @@ struct Client : public std::enable_shared_from_this<Client> {
     HAS_EP3_MEDIA_UPDATES               = 0x0000000010000000,
     USE_OVERRIDE_RANDOM_SEED            = 0x0000000020000000,
     HAS_GUILD_CARD_NUMBER               = 0x0000000040000000,
+    AT_BANK_COUNTER                     = 0x0000000080000000,
 
     // Cheat mode flags
     SWITCH_ASSIST_ENABLED               = 0x0000000100000000,

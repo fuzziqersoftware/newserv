@@ -466,17 +466,18 @@ void PlayerBank::add_item(const ItemData& item) {
     }
 
     if (y < this->num_items) {
-      this->items[y].data.data1[5] += item.data1[5];
-      if (this->items[y].data.data1[5] > combine_max) {
-        this->items[y].data.data1[5] = combine_max;
+      uint8_t new_count = this->items[y].data.data1[5] + item.data1[5];
+      if (new_count > combine_max) {
+        throw runtime_error("stack size would exceed limit");
       }
-      this->items[y].amount = this->items[y].data.data1[5];
+      this->items[y].data.data1[5] = new_count;
+      this->items[y].amount = new_count;
       return;
     }
   }
 
   if (this->num_items >= 200) {
-    throw runtime_error("bank is full");
+    throw runtime_error("no free space in bank");
   }
   auto& last_item = this->items[this->num_items];
   last_item.data = item;

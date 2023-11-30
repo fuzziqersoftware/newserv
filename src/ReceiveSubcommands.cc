@@ -1428,6 +1428,7 @@ static void on_open_shop_bb_or_ep3_battle_subs(shared_ptr<Client> c, uint8_t com
 static void on_open_bank_bb_or_card_trade_counter_ep3(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
   auto l = c->require_lobby();
   if ((l->base_version == Version::BB_V4) && l->is_game()) {
+    c->config.set_flag(Client::Flag::AT_BANK_COUNTER);
     send_bank(c);
   } else if (l->is_ep3()) {
     forward_subcommand(c, command, flag, data, size);
@@ -1501,6 +1502,9 @@ static void on_ep3_private_word_select_bb_bank_action(shared_ptr<Client> c, uint
             c->lobby_client_id, cmd.item_id.load(), cmd.item_amount, name.c_str());
         c->game_data.character()->print_inventory(stderr, c->version(), s->item_name_index);
       }
+
+    } else if (cmd.action == 3) { // Leave bank counter
+      c->config.clear_flag(Client::Flag::AT_BANK_COUNTER);
     }
 
   } else if (is_ep3(c->version())) {
@@ -2108,6 +2112,71 @@ void on_item_reward_request_bb(shared_ptr<Client> c, uint8_t, uint8_t, const voi
   item.id = l->generate_item_id(c->lobby_client_id);
   c->game_data.character()->add_item(item);
   send_create_inventory_item(c, item);
+}
+
+void on_transfer_item_via_mail_message_bb(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
+  const auto& cmd = check_size_t<G_TransferItemViaMailMessage_BB_6xCB>(data, size);
+
+  auto team = c->team();
+  if (!team) {
+    throw runtime_error("player is not in a team");
+  }
+  auto l = c->require_lobby();
+  if (!l->is_game()) {
+    return;
+  }
+  if (cmd.header.client_id != c->lobby_client_id) {
+    return;
+  }
+
+  if (l->base_version != Version::BB_V4) {
+    throw runtime_error("item tracking not enabled in BB game");
+  }
+  if (!l->check_flag(Lobby::Flag::ITEM_TRACKING_ENABLED)) {
+    throw runtime_error("item tracking not enabled in BB game");
+  }
+
+  forward_subcommand(c, command, flag, data, size);
+
+  auto s = c->require_server_state();
+  auto p = c->game_data.character();
+  auto item = p->remove_item(cmd.item_id, cmd.amount, c->version() != Version::BB_V4);
+
+  auto name = s->describe_item(c->version(), item, false);
+  l->log.info("Player %hhu sent inventory item %hu:%08" PRIX32 " (%s) x%" PRIu32 " to player %08" PRIX32,
+      c->lobby_client_id, cmd.header.client_id.load(), cmd.item_id.load(), name.c_str(), cmd.amount.load(), cmd.target_guild_card_number.load());
+  if (c->config.check_flag(Client::Flag::DEBUG_ENABLED)) {
+    string name = s->describe_item(c->version(), item, true);
+    send_text_message_printf(c, "$C5SEND/MAIL %08" PRIX32 " x%" PRIu32 "\n%s", cmd.item_id.load(), cmd.amount.load(), name.c_str());
+  }
+  p->print_inventory(stderr, c->version(), s->item_name_index);
+
+  // To receive an item, the player must be online, using BB, have a character
+  // loaded (that is, be in a lobby or game), not be at the bank counter at the
+  // moment, and there must be room in their bank to receive the item.
+  bool item_sent = false;
+  auto target_c = s->find_client(nullptr, cmd.target_guild_card_number);
+  if (target_c &&
+      (target_c->version() == Version::BB_V4) &&
+      (target_c->game_data.character(false) != nullptr) &&
+      !target_c->config.check_flag(Client::Flag::AT_BANK_COUNTER)) {
+    auto target_p = target_c->game_data.character(false);
+    try {
+      target_p->bank.add_item(item);
+      item_sent = true;
+    } catch (const runtime_error&) {
+    }
+  }
+
+  if (item_sent) {
+    send_command(c, 0x16EA, 0x00000001);
+  } else {
+    send_command(c, 0x16EA, 0x00000000);
+    // If the item failed to send, add it back to the sender's inventory
+    item.id = l->generate_item_id(0xFF);
+    p->add_item(item);
+    send_create_inventory_item(c, item);
+  }
 }
 
 void on_exchange_item_for_team_points_bb(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
@@ -2926,7 +2995,7 @@ SubcommandDefinition subcommand_definitions[0x100] = {
     /* 6xC8 */ {0x00, 0x00, 0xC8, on_enemy_exp_request_bb},
     /* 6xC9 */ {0x00, 0x00, 0xC9, on_meseta_reward_request_bb},
     /* 6xCA */ {0x00, 0x00, 0xCA, on_item_reward_request_bb},
-    /* 6xCB */ {0x00, 0x00, 0xCB, nullptr},
+    /* 6xCB */ {0x00, 0x00, 0xCB, on_transfer_item_via_mail_message_bb},
     /* 6xCC */ {0x00, 0x00, 0xCC, on_exchange_item_for_team_points_bb},
     /* 6xCD */ {0x00, 0x00, 0xCD, on_forward_check_size},
     /* 6xCE */ {0x00, 0x00, 0xCE, on_forward_check_size},

@@ -3356,8 +3356,9 @@ struct S_TeamInfoForPlayer_BB_13EA_15EA_Entry {
 // header.flag specifies the number of entries. The entry format appears to be
 // the same as for the 13EA command.
 
-// 16EA (S->C): Unknown
-// No arguments except header.flag.
+// 16EA (S->C): Transfer item via Simple Mail result
+// No arguments except header.flag, which is 0 if the transfer failed and
+// nonzero if it succeeded.
 
 // 18EA: Intra-team ranking information
 // No arguments (C->S)
@@ -5486,7 +5487,7 @@ struct G_BankAction_BB_6xBD {
   G_UnusedHeader header;
   le_uint32_t item_id = 0; // 0xFFFFFFFF = meseta; anything else = item
   le_uint32_t meseta_amount = 0;
-  uint8_t action = 0; // 0 = deposit, 1 = take
+  uint8_t action = 0; // 0 = deposit, 1 = take, 3 = done (close bank window)
   uint8_t item_amount = 0;
   le_uint16_t unused2 = 0;
 } __packed__;
@@ -5608,13 +5609,13 @@ struct G_ItemRewardRequest_BB_6xCA {
   ItemData item_data;
 } __packed__;
 
-// 6xCB: Request to transfer item (BB)
+// 6xCB: Transfer item via mail message (BB)
 
-struct G_ItemTransferRequest_BB_6xCB {
+struct G_TransferItemViaMailMessage_BB_6xCB {
   G_ClientIDHeader header;
-  le_uint32_t unknown_a1 = 0;
-  le_uint32_t unknown_a2 = 0;
-  le_uint32_t unknown_a3 = 0;
+  le_uint32_t item_id = 0;
+  le_uint32_t amount = 0;
+  le_uint32_t target_guild_card_number = 0;
 } __packed__;
 
 // 6xCC: Exchange item for team points (BB)
