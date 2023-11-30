@@ -667,7 +667,7 @@ QuestIndex::QuestIndex(
         }
         require_flag = metadata_json.get_int("RequireFlag", -1);
         try {
-          require_team_reward_key = metadata_json.get_int("RequireTeamRewardKey", -1);
+          require_team_reward_key = metadata_json.get_string("RequireTeamRewardKey");
         } catch (const out_of_range&) {
         }
       }
@@ -764,7 +764,11 @@ vector<shared_ptr<const Quest>> QuestIndex::filter(
   }
 
   vector<shared_ptr<const Quest>> ret;
-  for (auto it : this->quests_by_category_id_and_number.at(category_id)) {
+  auto category_it = this->quests_by_category_id_and_number.find(category_id);
+  if (category_it == this->quests_by_category_id_and_number.end()) {
+    return ret;
+  }
+  for (auto it : category_it->second) {
     if (((episode == Episode::NONE) || (it.second->episode == episode)) &&
         it.second->has_version_any_language(version) &&
         (!include_condition || include_condition(it.second))) {
