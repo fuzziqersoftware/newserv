@@ -26,6 +26,7 @@
 
 - Fix receiving Guild Cards from non-Xbox players
 - Make the Guild Card description field in SavedPlayerDataBB longer to accommodate XB descriptions (0x200 bytes)
+- Research the F94D quest opcode
 
 ## PSOBB
 
