@@ -40,24 +40,28 @@ static TextEncoding encoding_for_language(uint8_t language) {
 
 static string escape_string(const string& data, TextEncoding encoding = TextEncoding::UTF8) {
   string decoded;
-  switch (encoding) {
-    case TextEncoding::UTF8:
-      decoded = data;
-      break;
-    case TextEncoding::UTF16:
-      decoded = tt_utf16_to_utf8(data);
-      break;
-    case TextEncoding::SJIS:
-      decoded = tt_sjis_to_utf8(data);
-      break;
-    case TextEncoding::ISO8859:
-      decoded = tt_8859_to_utf8(data);
-      break;
-    case TextEncoding::ASCII:
-      decoded = tt_ascii_to_utf8(data);
-      break;
-    default:
-      return format_data_string(data);
+  try {
+    switch (encoding) {
+      case TextEncoding::UTF8:
+        decoded = data;
+        break;
+      case TextEncoding::UTF16:
+        decoded = tt_utf16_to_utf8(data);
+        break;
+      case TextEncoding::SJIS:
+        decoded = tt_sjis_to_utf8(data);
+        break;
+      case TextEncoding::ISO8859:
+        decoded = tt_8859_to_utf8(data);
+        break;
+      case TextEncoding::ASCII:
+        decoded = tt_ascii_to_utf8(data);
+        break;
+      default:
+        return format_data_string(data);
+    }
+  } catch (const runtime_error&) {
+    return format_data_string(data);
   }
 
   string ret = "\"";
