@@ -979,6 +979,7 @@ void ServerState::load_item_tables() {
       JSON::parse(load_file("system/item-tables/names-v4.json"))));
 
   config_log.info("Loading rare item sets");
+  unordered_map<string, shared_ptr<const RareItemSet>> new_rare_item_sets;
   for (const auto& filename : list_directory_sorted("system/item-tables")) {
     if (!starts_with(filename, "rare-table-")) {
       continue;
@@ -990,42 +991,43 @@ void ServerState::load_item_tables() {
 
     if (ends_with(filename, "-v1.json")) {
       config_log.info("Loading v1 JSON rare item table %s", filename.c_str());
-      this->rare_item_sets.emplace(basename, new RareItemSet(JSON::parse(load_file(path)), Version::DC_V1, this->item_name_index));
+      new_rare_item_sets.emplace(basename, make_shared<RareItemSet>(JSON::parse(load_file(path)), Version::DC_V1, this->item_name_index));
     } else if (ends_with(filename, "-v2.json")) {
       config_log.info("Loading v2 JSON rare item table %s", filename.c_str());
-      this->rare_item_sets.emplace(basename, new RareItemSet(JSON::parse(load_file(path)), Version::PC_V2, this->item_name_index));
+      new_rare_item_sets.emplace(basename, make_shared<RareItemSet>(JSON::parse(load_file(path)), Version::PC_V2, this->item_name_index));
     } else if (ends_with(filename, "-v3.json")) {
       config_log.info("Loading v3 JSON rare item table %s", filename.c_str());
-      this->rare_item_sets.emplace(basename, new RareItemSet(JSON::parse(load_file(path)), Version::GC_V3, this->item_name_index));
+      new_rare_item_sets.emplace(basename, make_shared<RareItemSet>(JSON::parse(load_file(path)), Version::GC_V3, this->item_name_index));
     } else if (ends_with(filename, "-v4.json")) {
       config_log.info("Loading v4 JSON rare item table %s", filename.c_str());
-      this->rare_item_sets.emplace(basename, new RareItemSet(JSON::parse(load_file(path)), Version::BB_V4, this->item_name_index));
+      new_rare_item_sets.emplace(basename, make_shared<RareItemSet>(JSON::parse(load_file(path)), Version::BB_V4, this->item_name_index));
 
     } else if (ends_with(filename, ".afs")) {
       config_log.info("Loading AFS rare item table %s", filename.c_str());
-      shared_ptr<string> data(new string(load_file(path)));
-      this->rare_item_sets.emplace(basename, new RareItemSet(AFSArchive(data), false));
+      auto data = make_shared<string>(load_file(path));
+      new_rare_item_sets.emplace(basename, make_shared<RareItemSet>(AFSArchive(data), false));
 
     } else if (ends_with(filename, ".gsl")) {
       config_log.info("Loading GSL rare item table %s", filename.c_str());
-      shared_ptr<string> data(new string(load_file(path)));
-      this->rare_item_sets.emplace(basename, new RareItemSet(GSLArchive(data, false), false));
+      auto data = make_shared<string>(load_file(path));
+      new_rare_item_sets.emplace(basename, make_shared<RareItemSet>(GSLArchive(data, false), false));
 
     } else if (ends_with(filename, ".gslb")) {
       config_log.info("Loading GSL rare item table %s", filename.c_str());
-      shared_ptr<string> data(new string(load_file(path)));
-      this->rare_item_sets.emplace(basename, new RareItemSet(GSLArchive(data, true), true));
+      auto data = make_shared<string>(load_file(path));
+      new_rare_item_sets.emplace(basename, make_shared<RareItemSet>(GSLArchive(data, true), true));
 
     } else if (ends_with(filename, ".rel")) {
       config_log.info("Loading REL rare item table %s", filename.c_str());
-      this->rare_item_sets.emplace(basename, new RareItemSet(load_file(path), true));
+      new_rare_item_sets.emplace(basename, make_shared<RareItemSet>(load_file(path), true));
     }
   }
 
-  if (!this->rare_item_sets.count("rare-table-v4")) {
+  if (!new_rare_item_sets.count("rare-table-v4")) {
     config_log.info("rare-table-v4 rare item set is not available; loading from BB data");
-    this->rare_item_sets.emplace("rare-table-v4", new RareItemSet(load_file("system/blueburst/ItemRT.rel"), true));
+    new_rare_item_sets.emplace("rare-table-v4", make_shared<RareItemSet>(load_file("system/blueburst/ItemRT.rel"), true));
   }
+  this->rare_item_sets.swap(new_rare_item_sets);
 
   config_log.info("Loading v2 common item table");
   shared_ptr<string> ct_data_v2(new string(load_file("system/item-tables/ItemCT-v2.afs")));
