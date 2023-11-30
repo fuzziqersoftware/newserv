@@ -559,7 +559,21 @@
   // limitation, and must be at least 1.
   "BBGlobalEXPMultiplier": 1,
 
-  // BB team reward definitions.
+  // BB team reward definitions. Team rewards have the following fields:
+  //   Key: Internal name of the reward. Must be unique across all rewards.
+  //   Name: Reward name shown to the player.
+  //   Description: Reward description shown to the player.
+  //   Points: Cost in team points.
+  //   PrerequisiteKeys: List of reward keys required to be purchased before
+  //     this reward can be purchased.
+  //   RewardFlag: Flag in the client's team rewards field. Not used for most
+  //     rewards; only rewards that change client behavior need this.
+  //   RewardItem: Item to be given to the team master when this reward is
+  //     purchased. If the master's bank is full, item rewards do not appear in
+  //     the purchase list.
+  //   IsUnique: If false, the reward can be purchased multiple times (this only
+  //     really makes sense for item rewards). If true or omitted, the reward
+  //     can only be purchased once.
   "TeamRewards": [
     {
       "Key": "TeamFlag",

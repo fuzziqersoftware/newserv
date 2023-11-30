@@ -3289,7 +3289,7 @@ struct S_Unknown_BB_0CEA {
 
 // 0EEA (S->C): Team name
 
-struct S_Unknown_BB_0EEA {
+struct S_TeamName_BB_0EEA {
   parray<uint8_t, 0x10> unused;
   pstring<TextEncoding::UTF16, 0x10> team_name;
 } __packed__;
@@ -3433,7 +3433,9 @@ struct C_Unknown_BB_1EEA {
 // response to whatever 1EEA does.
 
 // 20EA: Unknown
-// header.flag is used, but no other arguments
+// header.flag is used, but no other arguments. When sent by the server,
+// header.flag is an error code, similar to various other result commands in
+// this section.
 
 // EB (S->C): Add player to spectator team (Episode 3)
 // Same format and usage as 65 and 68 commands, but sent to spectators in a

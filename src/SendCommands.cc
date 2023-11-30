@@ -3453,9 +3453,14 @@ void send_team_reward_list(std::shared_ptr<Client> c, bool show_purchased) {
   }
   auto s = c->require_server_state();
 
+  bool show_item_rewards = show_purchased || (c->game_data.character()->bank.num_items < 200);
+
   vector<S_TeamRewardList_BB_19EA_1AEA::Entry> entries;
   for (const auto& reward : s->team_index->reward_definitions()) {
     if (team->has_reward(reward.key) != show_purchased) {
+      continue;
+    }
+    if (!show_item_rewards && !reward.reward_item.empty()) {
       continue;
     }
     bool has_all_prerequisites = true;

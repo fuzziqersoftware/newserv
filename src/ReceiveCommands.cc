@@ -4615,7 +4615,7 @@ static void on_EA_BB(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
     case 0x0DEA: {
       auto team = c->team();
       if (team) {
-        S_Unknown_BB_0EEA cmd;
+        S_TeamName_BB_0EEA cmd;
         cmd.team_name.encode(team->name, c->language());
         send_command_t(c, 0x0EEA, 0x00000000, cmd);
       } else {
@@ -4736,13 +4736,6 @@ static void on_EA_BB(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
           throw runtime_error("team reward already purchased");
         }
 
-        if (!reward.reward_item.empty()) {
-          // TODO: How do we do this? Do we just send a 6xBE in the lobby?
-          // (Once this is figured out, don't forget to move this block to after
-          // the reward is actually purchased)
-          throw runtime_error("team reward items are not implemented");
-        }
-
         s->team_index->buy_reward(team->team_id, reward.key, reward.team_points, reward.reward_flag);
 
         if (reward.reward_flag != TeamIndex::Team::RewardFlag::NONE) {
@@ -4753,6 +4746,9 @@ static void on_EA_BB(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
             } catch (const out_of_range&) {
             }
           }
+        }
+        if (!reward.reward_item.empty()) {
+          c->game_data.character()->bank.add_item(reward.reward_item);
         }
       }
       break;
