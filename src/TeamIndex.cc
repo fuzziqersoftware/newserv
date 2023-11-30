@@ -215,7 +215,7 @@ TeamIndex::Reward::Reward(uint32_t menu_item_id, const JSON& def_json)
   } catch (const out_of_range&) {
   }
   try {
-    this->reward_item = ItemData::from_data(def_json.get_string("RewardItem"));
+    this->reward_item = ItemData::from_data(parse_data_string(def_json.get_string("RewardItem")));
   } catch (const out_of_range&) {
   }
 }

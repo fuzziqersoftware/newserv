@@ -5487,11 +5487,11 @@ struct G_WordSelectDuringBattle_GC_Ep3_6xBD {
 
 struct G_BankAction_BB_6xBD {
   G_UnusedHeader header;
-  le_uint32_t item_id = 0; // 0xFFFFFFFF = meseta; anything else = item
+  le_uint32_t item_id = 0;
   le_uint32_t meseta_amount = 0;
   uint8_t action = 0; // 0 = deposit, 1 = take, 3 = done (close bank window)
   uint8_t item_amount = 0;
-  le_uint16_t unused2 = 0;
+  le_uint16_t item_index = 0; // 0xFFFF = meseta
 } __packed__;
 
 // 6xBE: Sound chat (Episode 3; not Trial Edition)

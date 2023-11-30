@@ -97,7 +97,7 @@ struct PlayerBank {
   /* 12C8 */
 
   void add_item(const ItemData& item);
-  ItemData remove_item(uint32_t item_id, uint32_t amount);
+  ItemData remove_item_by_index(size_t index, uint32_t amount);
   size_t find_item(uint32_t item_id);
 } __attribute__((packed));
 

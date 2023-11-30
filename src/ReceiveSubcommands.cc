@@ -1480,7 +1480,7 @@ static void on_ep3_private_word_select_bb_bank_action(shared_ptr<Client> c, uint
       }
 
     } else if (cmd.action == 1) { // Take
-      if (cmd.item_id == 0xFFFFFFFF) { // Take Meseta
+      if (cmd.item_index == 0xFFFF) { // Take Meseta
         if (cmd.meseta_amount > p->bank.meseta) {
           l->log.info("Player %hu attempted to withdraw %" PRIu32 " Meseta from the bank, but has only %" PRIu32 " Meseta in the bank",
               c->lobby_client_id, cmd.meseta_amount.load(), p->bank.meseta.load());
@@ -1495,14 +1495,14 @@ static void on_ep3_private_word_select_bb_bank_action(shared_ptr<Client> c, uint
         }
 
       } else { // Take item
-        auto item = p->bank.remove_item(cmd.item_id, cmd.item_amount);
+        auto item = p->bank.remove_item_by_index(cmd.item_index, cmd.item_amount);
         item.id = l->generate_item_id(c->lobby_client_id);
         p->add_item(item);
         send_create_inventory_item(c, item);
 
         string name = s->item_name_index->describe_item(Version::BB_V4, item);
         l->log.info("Player %hu withdrew item %08" PRIX32 " (x%hhu) (%s) from the bank",
-            c->lobby_client_id, cmd.item_id.load(), cmd.item_amount, name.c_str());
+            c->lobby_client_id, item.id.load(), cmd.item_amount, name.c_str());
         c->game_data.character()->print_inventory(stderr, c->version(), s->item_name_index);
       }
 

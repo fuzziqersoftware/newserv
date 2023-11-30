@@ -486,22 +486,10 @@ void PlayerBank::add_item(const ItemData& item) {
   this->num_items++;
 }
 
-ItemData PlayerBank::remove_item(uint32_t item_id, uint32_t amount) {
-  ItemData ret;
-
-  if (item_id == 0xFFFFFFFF) {
-    if (amount > this->meseta) {
-      throw out_of_range("player does not have enough meseta");
-    }
-    ret.data1[0] = 0x04;
-    ret.data2d = amount;
-    this->meseta -= amount;
-    return ret;
-  }
-
-  size_t index = this->find_item(item_id);
+ItemData PlayerBank::remove_item_by_index(size_t index, uint32_t amount) {
   auto& bank_item = this->items[index];
 
+  ItemData ret;
   if (amount && (bank_item.data.stack_size() > 1) && (amount < bank_item.data.data1[5])) {
     ret = bank_item.data;
     ret.data1[5] = amount;
