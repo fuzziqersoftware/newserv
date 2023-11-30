@@ -5715,10 +5715,10 @@ struct G_PaganiniPhotonDropExchange_BB_6xD7 {
 struct G_AddSRankWeaponSpecial_BB_6xD8 {
   G_ClientIDHeader header;
   ItemData unknown_a1; // Only data1[0]-[2] are used
-  le_uint32_t unknown_a2 = 0;
-  le_uint32_t unknown_a3 = 0;
-  le_uint16_t unknown_a4 = 0;
-  le_uint16_t unknown_a5 = 0;
+  le_uint32_t item_id = 0;
+  le_uint32_t special_type = 0;
+  le_uint16_t success_function_id = 0;
+  le_uint16_t failure_function_id = 0;
 } __packed__;
 
 // 6xD9: Momoka item exchange (BB; handled by server)

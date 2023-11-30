@@ -2531,7 +2531,7 @@ static void on_wrap_item_bb(shared_ptr<Client> c, uint8_t, uint8_t, const void* 
   }
 }
 
-static void on_photon_drop_exchange_bb(shared_ptr<Client> c, uint8_t, uint8_t, const void* data, size_t size) {
+static void on_photon_drop_exchange_for_item_bb(shared_ptr<Client> c, uint8_t, uint8_t, const void* data, size_t size) {
   auto l = c->require_lobby();
   if (l->is_game() && (l->base_version == Version::BB_V4)) {
     const auto& cmd = check_size_t<G_PaganiniPhotonDropExchange_BB_6xD7>(data, size);
@@ -2553,7 +2553,41 @@ static void on_photon_drop_exchange_bb(shared_ptr<Client> c, uint8_t, uint8_t, c
       send_quest_function_call(c, cmd.success_function_id);
 
     } catch (const exception& e) {
-      c->log.warning("Quest Photon Drop exchange failed: %s", e.what());
+      c->log.warning("Quest Photon Drop exchange for item failed: %s", e.what());
+      send_quest_function_call(c, cmd.failure_function_id);
+    }
+  }
+}
+
+static void on_photon_drop_exchange_for_s_rank_special_bb(shared_ptr<Client> c, uint8_t, uint8_t, const void* data, size_t size) {
+  auto l = c->require_lobby();
+  if (l->is_game() && (l->base_version == Version::BB_V4)) {
+    const auto& cmd = check_size_t<G_AddSRankWeaponSpecial_BB_6xD8>(data, size);
+
+    try {
+      auto p = c->game_data.character();
+
+      static const array<uint8_t, 0x10> costs({60, 60, 20, 20, 30, 30, 30, 50, 40, 50, 40, 40, 50, 40, 40, 40});
+      uint8_t cost = costs.at(cmd.special_type);
+
+      size_t payment_item_index = p->inventory.find_item_by_primary_identifier(0x031000);
+      // Ensure weapon exists before removing PDs, so inventory state will be
+      // consistent in case of error
+      p->inventory.find_item(cmd.item_id);
+
+      auto payment_item = p->remove_item(p->inventory.items[payment_item_index].data.id, cost, false);
+      send_destroy_item(c, payment_item.id, cost);
+
+      auto item = p->remove_item(cmd.item_id, 1, false);
+      send_destroy_item(c, item.id, cost);
+      item.data1[2] = cmd.special_type;
+      p->add_item(item);
+      send_create_inventory_item(c, item);
+
+      send_quest_function_call(c, cmd.success_function_id);
+
+    } catch (const exception& e) {
+      c->log.warning("Quest Photon Drop exchange for S-rank special failed: %s", e.what());
       send_quest_function_call(c, cmd.failure_function_id);
     }
   }
@@ -2622,7 +2656,6 @@ static void on_photon_crystal_exchange_bb(shared_ptr<Client> c, uint8_t, uint8_t
     size_t index = p->inventory.find_item_by_primary_identifier(0x031002);
     auto item = p->remove_item(p->inventory.items[index].data.id, 1, false);
     send_destroy_item(c, item.id, 1);
-    // TODO: Should we disable drops here?
   }
 }
 
@@ -3008,8 +3041,8 @@ SubcommandDefinition subcommand_definitions[0x100] = {
     /* 6xD4 */ {0x00, 0x00, 0xD4, nullptr},
     /* 6xD5 */ {0x00, 0x00, 0xD5, on_quest_exchange_item_bb},
     /* 6xD6 */ {0x00, 0x00, 0xD6, on_wrap_item_bb},
-    /* 6xD7 */ {0x00, 0x00, 0xD7, on_photon_drop_exchange_bb},
-    /* 6xD8 */ {0x00, 0x00, 0xD8, nullptr},
+    /* 6xD7 */ {0x00, 0x00, 0xD7, on_photon_drop_exchange_for_item_bb},
+    /* 6xD8 */ {0x00, 0x00, 0xD8, on_photon_drop_exchange_for_s_rank_special_bb},
     /* 6xD9 */ {0x00, 0x00, 0xD9, on_momoka_item_exchange_bb},
     /* 6xDA */ {0x00, 0x00, 0xDA, on_upgrade_weapon_attribute_bb},
     /* 6xDB */ {0x00, 0x00, 0xDB, nullptr},

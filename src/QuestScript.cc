@@ -823,7 +823,7 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     {0xF953, "bb_swap_item", {INT32, INT32, INT32, INT32, INT32, INT32, SCRIPT16, SCRIPT16}, F_V4 | F_ARGS}, // Sends 6xD5
     {0xF954, "bb_check_wrap", {INT32, REG}, F_V4 | F_ARGS},
     {0xF955, "bb_exchange_pd_item", {INT32, INT32, INT32, LABEL16, LABEL16}, F_V4 | F_ARGS}, // Sends 6xD7
-    {0xF956, "bb_exchange_pd_srank", {INT32, INT32, INT32, INT32, INT32, INT32, INT32}, F_V4 | F_ARGS}, // Sends 6xD8
+    {0xF956, "bb_exchange_pd_srank", {INT32, INT32, INT32, INT32, INT32, LABEL16, LABEL16}, F_V4 | F_ARGS}, // Sends 6xD8; argsA[0] is item ID; argsA[1]-[3] are item.data1[0]-[2]; argsA[4] is special type; argsA[5] is success label; argsA[6] is failure label
     {0xF957, "bb_exchange_pd_percent", {INT32, INT32, INT32, INT32, INT32, INT32, LABEL16, LABEL16}, F_V4 | F_ARGS}, // Sends 6xDA
     {0xF958, "bb_exchange_ps_percent", {INT32, INT32, INT32, INT32, INT32, INT32, LABEL16, LABEL16}, F_V4 | F_ARGS}, // Sends 6xDA
     {0xF959, "bb_set_ep4_boss_can_escape", {INT32}, F_V4 | F_ARGS},
