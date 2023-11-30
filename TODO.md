@@ -14,9 +14,7 @@
 
 ## Episode 3
 
-- Make disconnecting during a tournament match cause you to forfeit the match
 - Enforce tournament deck restrictions (e.g. rank checks, No Assist option) when populating COMs at tournament start time
-- It may be possible to send spectators back to the waiting room after a non-tournament battle by sending 6xB4x05 with environment 0x19, then 6xB4x3B again; try this
 - Add support for recording battles on the proxy server (both in primary and spectator teams)
 - When `reload ep3` happens and the defs file is changed, send the new defs file to all connected players who aren't in a game (if this even works - when exactly does the client decompress the defs file from the server?)
 - Make `reload licenses` not vulnerable to online players' licenses overwriting licenses on disk somehow
@@ -30,12 +28,8 @@
 
 ## PSOBB
 
-- Find any remaining mismatches in enemy indexes / experience
 - Fix some edge cases on the BB proxy server (e.g. Change Ship)
 - Implement less-common subcommands
     - 6xD8: Add S-rank weapon special
-- Test team commands
-    - Test all EA subcommands (a few are still not implemented)
-    - 6xC1, 6xC2, 6xCD, 6xCE: Team invites/administration (not implemented)
-    - Fix invite member menu
+- Check if Commander Blade effect works and implement it if not
 - Implement story progress flags for unlocking quests
