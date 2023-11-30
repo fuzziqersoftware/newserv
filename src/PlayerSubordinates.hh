@@ -483,6 +483,40 @@ inline PlayerDispDataBB convert_player_disp_data<PlayerDispDataBB>(
   return src;
 }
 
+struct QuestFlagsForDifficulty {
+  parray<uint8_t, 0x80> data;
+
+  inline bool get(uint16_t flag_index) const {
+    size_t byte_index = flag_index >> 3;
+    uint8_t mask = 0x80 >> (flag_index & 7);
+    return !!(this->data[byte_index] & mask);
+  }
+  inline void set(uint16_t flag_index) {
+    size_t byte_index = flag_index >> 3;
+    uint8_t mask = 0x80 >> (flag_index & 7);
+    this->data[byte_index] |= mask;
+  }
+  inline void clear(uint16_t flag_index) {
+    size_t byte_index = flag_index >> 3;
+    uint8_t mask = 0x80 >> (flag_index & 7);
+    this->data[byte_index] &= (~mask);
+  }
+} __attribute__((packed));
+
+struct QuestFlags {
+  parray<QuestFlagsForDifficulty, 4> data;
+
+  inline bool get(uint8_t difficulty, uint16_t flag_index) const {
+    return this->data[difficulty].get(flag_index);
+  }
+  inline void set(uint8_t difficulty, uint16_t flag_index) {
+    this->data[difficulty].set(flag_index);
+  }
+  inline void clear(uint8_t difficulty, uint16_t flag_index) {
+    this->data[difficulty].clear(flag_index);
+  }
+} __attribute__((packed));
+
 struct BattleRules {
   enum class TechDiskMode : uint8_t {
     ALLOW = 0,

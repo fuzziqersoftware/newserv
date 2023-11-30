@@ -93,7 +93,7 @@ Within the category directories, quest files should be named like `q###-VERSION-
 
 For .dat files, the `LANGUAGE` token may be omitted. If it's present, then that .dat file will only be used for that language of the quest; if omitted, then that .dat file will be used for all languages of the quest.
 
-Some quests (mostly battle and challenge mode quests) have additional JSON metadata files that describe how the server should handle them. These metadata files are generally named similarly to their .bin and .dat counterparts, except the `VERSION` token may also be omitted if the metadata applies to all versions of the quest on all PSO versions.
+Some quests (mostly battle and challenge mode quests) have additional JSON metadata files that describe how the server should handle them. This includes flags that can be used to hide the quest unless a preceding quest has been cleared, or to hide the quest unless purchased as a team reward. These metadata files are generally named similarly to their .bin and .dat counterparts, except the `VERSION` token may also be omitted if the metadata applies to all versions of the quest on all PSO versions. See system/quests/battle/b88001.json for documentation on the exact format of the JSON file.
 
 Some quests may also include a .pvr file, which contains an image used in the quest. These files are named similarly to their .bin and .dat counterparts.
 

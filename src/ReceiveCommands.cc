@@ -2306,6 +2306,7 @@ static void on_10(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
       shared_ptr<Lobby> l = c->lobby.lock();
       Episode episode = l ? l->episode : Episode::NONE;
       QuestMenuType menu_type = QuestMenuType::NORMAL;
+      QuestIndex::IncludeCondition include_condition = nullptr;
       if (!l) {
         // Assume the menu to be sent is the download quest menu if the client
         // is not in any lobby
@@ -2324,9 +2325,12 @@ static void on_10(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
             break;
           }
         }
+        if (!(c->license->flags & License::Flag::DISABLE_QUEST_REQUIREMENTS)) {
+          include_condition = l->quest_include_condition();
+        }
       }
 
-      const auto& quests = quest_index->filter(menu_type, episode, c->version(), item_id);
+      const auto& quests = quest_index->filter(menu_type, episode, c->version(), item_id, include_condition);
       send_quest_menu(c, MenuID::QUEST, quests, !l);
       break;
     }
@@ -4145,10 +4149,13 @@ static void on_6F(shared_ptr<Client> c, uint16_t command, uint32_t, string& data
   }
   c->config.clear_flag(Client::Flag::LOADING);
 
+  send_server_time(c);
   if (l->base_version == Version::BB_V4) {
     send_set_exp_multiplier(l);
   }
-  send_server_time(c);
+  if (c->version() == Version::BB_V4) {
+    send_all_nearby_team_metadatas_to_client(c, false);
+  }
 
   if (c->config.check_flag(Client::Flag::DEBUG_ENABLED)) {
     string variations_str;

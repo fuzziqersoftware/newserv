@@ -4626,7 +4626,7 @@ struct G_SyncFlagState_6x6E_Decompressed {
 
 struct G_SetQuestFlags_6x6F {
   G_UnusedHeader header;
-  parray<parray<uint8_t, 0x80>, 4> quest_flags_by_difficulty;
+  QuestFlags quest_flags;
 } __packed__;
 
 // 6x70: Sync player disp data and inventory (used while loading into game)

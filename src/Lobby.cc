@@ -401,3 +401,30 @@ unordered_map<uint32_t, shared_ptr<Client>> Lobby::clients_by_serial_number() co
   }
   return ret;
 }
+
+QuestIndex::IncludeCondition Lobby::quest_include_condition() const {
+  return [this](shared_ptr<const Quest> q) -> bool {
+    if (q->require_flag >= 0) {
+      for (const auto& lc : this->clients) {
+        if (lc && !lc->game_data.character()->quest_flags.get(this->difficulty, q->require_flag)) {
+          return false;
+        }
+      }
+    }
+    if (!q->require_team_reward_key.empty()) {
+      // TODO: Technically we should check that all clients are on the SAME
+      // team, but I'm lazy (for now), so we allow clients on different teams
+      // to access the quest as long as all their teams have the quest reward.
+      for (const auto& lc : this->clients) {
+        if (!lc) {
+          continue;
+        }
+        auto team = lc->team();
+        if (!team || !team->has_reward(q->require_team_reward_key)) {
+          return false;
+        }
+      }
+    }
+    return true;
+  };
+}

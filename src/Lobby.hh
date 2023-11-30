@@ -192,6 +192,8 @@ struct Lobby : public std::enable_shared_from_this<Lobby> {
   void on_item_id_generated_externally(uint32_t item_id);
   void assign_inventory_item_ids(std::shared_ptr<Client> c);
 
+  QuestIndex::IncludeCondition quest_include_condition() const;
+
   static uint8_t game_event_for_lobby_event(uint8_t lobby_event);
 
   std::unordered_map<uint32_t, std::shared_ptr<Client>> clients_by_serial_number() const;

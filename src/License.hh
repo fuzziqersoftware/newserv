@@ -13,21 +13,22 @@ class LicenseIndex;
 struct License {
   enum Flag : uint32_t {
     // clang-format off
-    KICK_USER         = 0x00000001,
-    BAN_USER          = 0x00000002,
-    SILENCE_USER      = 0x00000004,
-    CHANGE_LOBBY_INFO = 0x00000008,
-    CHANGE_EVENT      = 0x00000010,
-    ANNOUNCE          = 0x00000020,
-    FREE_JOIN_GAMES   = 0x00000040,
-    UNLOCK_GAMES      = 0x00000080,
-    DEBUG             = 0x01000000,
-    CHEAT_ANYWHERE    = 0x02000000,
-    MODERATOR         = 0x00000007,
-    ADMINISTRATOR     = 0x000000FF,
-    ROOT              = 0x7FFFFFFF,
+    KICK_USER                  = 0x00000001,
+    BAN_USER                   = 0x00000002,
+    SILENCE_USER               = 0x00000004,
+    CHANGE_LOBBY_INFO          = 0x00000008,
+    CHANGE_EVENT               = 0x00000010,
+    ANNOUNCE                   = 0x00000020,
+    FREE_JOIN_GAMES            = 0x00000040,
+    UNLOCK_GAMES               = 0x00000080,
+    DEBUG                      = 0x01000000,
+    CHEAT_ANYWHERE             = 0x02000000,
+    DISABLE_QUEST_REQUIREMENTS = 0x04000000,
+    MODERATOR                  = 0x00000007,
+    ADMINISTRATOR              = 0x000000FF,
+    ROOT                       = 0x7FFFFFFF,
 
-    UNUSED_BITS       = 0x7CFFFF00,
+    UNUSED_BITS                = 0x78FFFF00,
     // clang-format on
   };
 

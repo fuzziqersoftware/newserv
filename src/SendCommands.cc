@@ -1440,8 +1440,14 @@ void send_quest_categories_menu_t(
     shared_ptr<const QuestIndex> quest_index,
     QuestMenuType menu_type,
     Episode episode) {
+  QuestIndex::IncludeCondition include_condition = nullptr;
+  if (!(c->license->flags & License::Flag::DISABLE_QUEST_REQUIREMENTS)) {
+    auto l = c->lobby.lock();
+    include_condition = l ? l->quest_include_condition() : nullptr;
+  }
+
   vector<EntryT> entries;
-  for (const auto& cat : quest_index->categories(menu_type, episode, c->version())) {
+  for (const auto& cat : quest_index->categories(menu_type, episode, c->version(), include_condition)) {
     auto& e = entries.emplace_back();
     e.menu_id = menu_id;
     e.item_id = cat->category_id;

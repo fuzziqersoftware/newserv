@@ -11,6 +11,7 @@
 #include "PlayerSubordinates.hh"
 #include "QuestScript.hh"
 #include "StaticGameData.hh"
+#include "TeamIndex.hh"
 
 enum class QuestFileFormat {
   BIN_DAT = 0,
@@ -69,6 +70,8 @@ struct VersionedQuest {
   std::shared_ptr<const std::string> pvr_contents;
   std::shared_ptr<const BattleRules> battle_rules;
   ssize_t challenge_template_index;
+  int16_t require_flag; // <0 = none
+  std::string require_team_reward_key;
 
   VersionedQuest(
       uint32_t quest_number,
@@ -79,7 +82,9 @@ struct VersionedQuest {
       std::shared_ptr<const std::string> dat_contents,
       std::shared_ptr<const std::string> pvr_contents,
       std::shared_ptr<const BattleRules> battle_rules = nullptr,
-      ssize_t challenge_template_index = -1);
+      ssize_t challenge_template_index = -1,
+      int16_t require_flag = -1,
+      const std::string& require_team_reward_key = "");
 
   std::string bin_filename() const;
   std::string dat_filename() const;
@@ -112,26 +117,36 @@ public:
   std::string name;
   std::shared_ptr<const BattleRules> battle_rules;
   ssize_t challenge_template_index;
+  int16_t require_flag;
+  std::string require_team_reward_key;
   std::map<uint32_t, std::shared_ptr<const VersionedQuest>> versions;
 };
 
 struct QuestIndex {
+  using IncludeCondition = std::function<bool(std::shared_ptr<const Quest>)>;
+
   std::string directory;
   std::shared_ptr<const QuestCategoryIndex> category_index;
 
   std::map<uint32_t, std::shared_ptr<Quest>> quests_by_number;
-
-  mutable std::unordered_map<uint32_t, std::vector<std::shared_ptr<const QuestCategoryIndex::Category>>> category_filter_results_cache;
-  mutable std::unordered_map<uint64_t, std::vector<std::shared_ptr<const Quest>>> quest_filter_results_cache;
+  std::map<uint32_t, std::map<uint32_t, std::shared_ptr<Quest>>> quests_by_category_id_and_number;
 
   QuestIndex(const std::string& directory, std::shared_ptr<const QuestCategoryIndex> category_index, bool is_ep3);
 
   std::shared_ptr<const Quest> get(uint32_t quest_number) const;
 
-  const std::vector<std::shared_ptr<const QuestCategoryIndex::Category>>& categories(
-      QuestMenuType menu_type, Episode episode, Version version) const;
-  const std::vector<std::shared_ptr<const Quest>>& filter(
-      QuestMenuType menu_type, Episode episode, Version version, uint32_t category_id) const;
+  std::vector<std::shared_ptr<const QuestCategoryIndex::Category>> categories(
+      QuestMenuType menu_type,
+      Episode episode,
+      Version version,
+      IncludeCondition include_condition = nullptr) const;
+  std::vector<std::shared_ptr<const Quest>> filter(
+      QuestMenuType menu_type,
+      Episode episode,
+      Version version,
+      uint32_t category_id,
+      IncludeCondition include_condition = nullptr,
+      size_t limit = 0) const;
 };
 
 std::string encode_download_quest_data(

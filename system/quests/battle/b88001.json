@@ -1,23 +1,48 @@
 {
-  "battle_rules": {
-    "tech_disk_mode": "ALLOW",
-    "weapon_and_armor_mode": "ALLOW",
-    "mag_mode": "ALLOW",
-    "tool_mode": "ALLOW",
-    "trap_mode": "ALL_PLAYERS",
-    "respawn_mode": 0,
-    "replace_char": 0,
-    "drop_weapon": 1,
-    "is_teams": 1,
-    "hide_target_reticle": 1,
-    "death_level_up": 3,
-    "meseta_mode": "ALLOW",
-    "enable_sonar": 1,
-    "time_limit": 10,
-    "forbid_scape_dolls": 1,
-    "death_tech_level_up": 1,
-    "trap_counts": [5, 5, 5, 5],
-    "sonar_count": 5,
-    "box_drop_area": 10
-  }
+  // Each quest may have an optional JSON file (like this one) that defines
+  // server-side behaviors for the quest.
+
+  // For battle quests, the BattleRules field should be defined to match the
+  // rules that the quest defines internally. These are the rules for Battle 1.
+  "BattleRules": {
+    "TechDiskMode": "ALLOW",
+    "WeaponAndArmorMode": "ALLOW",
+    "MagMode": "ALLOW",
+    "ToolMode": "ALLOW",
+    "TrapMode": "ALL_PLAYERS",
+    "RespawnMode": 0,
+    "ReplaceChar": 0,
+    "DropWeapon": 1,
+    "IsTeams": 1,
+    "HideTargetReticle": 1,
+    "DeathLevelUp": 3,
+    "MesetaMode": "ALLOW",
+    "EnableSonar": 1,
+    "TimeLimit": 10,
+    "ForbidScapeDolls": 1,
+    "DeathTechLevelUp": 1,
+    "TrapCounts": [5, 5, 5, 5],
+    "SonarCount": 5,
+    "BoxDropArea": 10,
+    // These rules are used by other battles, but not by Battle 1:
+    // "Lives": 10,
+    // "MaxTechLevel": 15,
+    // "CharLevel": 1,
+  },
+
+  // Challenge quests should specify the ChallengeTemplateIndex field, which
+  // should match the template that the quest uses to replace player characters.
+  // "ChallengeTemplateIndex": 0,
+
+  // Quests may be set to be unavailable until a preceding quest has been
+  // cleared. To enable this feature, set a value for RequireFlag in the quest's
+  // JSON file. This field is ignored if the player has the
+  // DISABLE_QUEST_REQUIREMENTS flag in their license.
+  // "RequireFlag": 0x01F5,
+
+  // Quests on BB may be set to be available only through a team reward. To
+  // enable this feature, set a value for RequireTeamRewardKey in the quest's
+  // JSON file. This field is ignored if the player has the
+  // DISABLE_QUEST_REQUIREMENTS flag in their license.
+  // "RequireTeamRewardKey": "PointOfDisasterQuest",
 }

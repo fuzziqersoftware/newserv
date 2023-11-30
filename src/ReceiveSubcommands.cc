@@ -691,9 +691,9 @@ static void on_set_player_visible(shared_ptr<Client> c, uint8_t command, uint8_t
           send_message_box(c, "$C6All lobbies are full.\n\n$C7You are in a private lobby. You can use the\nteleporter to join other lobbies if there is space\navailable.");
           send_lobby_message_box(c, "");
         }
-      }
-      if (c->version() == Version::BB_V4) {
-        send_all_nearby_team_metadatas_to_client(c, false);
+        if (c->version() == Version::BB_V4) {
+          send_all_nearby_team_metadatas_to_client(c, false);
+        }
       }
     }
   }
@@ -1741,12 +1741,10 @@ static void on_set_quest_flag(shared_ptr<Client> c, uint8_t command, uint8_t fla
 
   // The client explicitly checks for both 0 and 1 - any other value means no
   // operation is performed.
-  size_t byte_index = flag_index >> 3;
-  uint8_t mask = 0x80 >> (flag_index & 7);
   if (action == 0) {
-    p->quest_flags[difficulty][byte_index] |= mask;
+    p->quest_flags.set(difficulty, flag_index);
   } else if (action == 1) {
-    p->quest_flags[difficulty][byte_index] &= (~mask);
+    p->quest_flags.clear(difficulty, flag_index);
   }
 
   forward_subcommand(c, command, flag, data, size);

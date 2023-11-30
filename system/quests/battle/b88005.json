@@ -1,23 +1,23 @@
 {
-  "battle_rules": {
-    "tech_disk_mode": "ALLOW",
-    "weapon_and_armor_mode": "ALLOW",
-    "mag_mode": "FORBID_ALL",
-    "tool_mode": "ALLOW",
-    "trap_mode": "ALL_PLAYERS",
-    "respawn_mode": 1,
-    "replace_char": 0,
-    "drop_weapon": 1,
-    "is_teams": 1,
-    "hide_target_reticle": 1,
-    "death_level_up": 5,
-    "meseta_mode": "CLEAR_AND_ALLOW",
-    "enable_sonar": 1,
-    "time_limit": 10,
-    "forbid_scape_dolls": 1,
-    "death_tech_level_up": 1,
-    "trap_counts": [5, 5, 5, 5],
-    "sonar_count": 5,
-    "box_drop_area": 10
+  "BattleRules": {
+    "TechDiskMode": "ALLOW",
+    "WeaponAndArmorMode": "ALLOW",
+    "MagMode": "FORBID_ALL",
+    "ToolMode": "ALLOW",
+    "TrapMode": "ALL_PLAYERS",
+    "RespawnMode": 1,
+    "ReplaceChar": 0,
+    "DropWeapon": 1,
+    "IsTeams": 1,
+    "HideTargetReticle": 1,
+    "DeathLevelUp": 5,
+    "MesetaMode": "CLEAR_AND_ALLOW",
+    "EnableSonar": 1,
+    "TimeLimit": 10,
+    "ForbidScapeDolls": 1,
+    "DeathTechLevelUp": 1,
+    "TrapCounts": [5, 5, 5, 5],
+    "SonarCount": 5,
+    "BoxDropArea": 10
   }
 }

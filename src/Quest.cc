@@ -204,7 +204,9 @@ VersionedQuest::VersionedQuest(
     std::shared_ptr<const std::string> dat_contents,
     std::shared_ptr<const std::string> pvr_contents,
     std::shared_ptr<const BattleRules> battle_rules,
-    ssize_t challenge_template_index)
+    ssize_t challenge_template_index,
+    int16_t require_flag,
+    const string& require_team_reward_key)
     : quest_number(quest_number),
       category_id(category_id),
       episode(Episode::NONE),
@@ -216,7 +218,9 @@ VersionedQuest::VersionedQuest(
       dat_contents(dat_contents),
       pvr_contents(pvr_contents),
       battle_rules(battle_rules),
-      challenge_template_index(challenge_template_index) {
+      challenge_template_index(challenge_template_index),
+      require_flag(require_flag),
+      require_team_reward_key(require_team_reward_key) {
 
   auto bin_decompressed = prs_decompress(*this->bin_contents);
 
@@ -373,7 +377,9 @@ Quest::Quest(shared_ptr<const VersionedQuest> initial_version)
       joinable(initial_version->joinable),
       name(initial_version->name),
       battle_rules(initial_version->battle_rules),
-      challenge_template_index(initial_version->challenge_template_index) {
+      challenge_template_index(initial_version->challenge_template_index),
+      require_flag(initial_version->require_flag),
+      require_team_reward_key(initial_version->require_team_reward_key) {
   this->versions.emplace(this->versions_key(initial_version->version, initial_version->language), initial_version);
 }
 
@@ -402,6 +408,12 @@ void Quest::add_version(shared_ptr<const VersionedQuest> vq) {
   }
   if (this->challenge_template_index != vq->challenge_template_index) {
     throw runtime_error("quest version has different challenge template index");
+  }
+  if (this->require_flag != vq->require_flag) {
+    throw runtime_error("quest version has different required flag");
+  }
+  if (this->require_team_reward_key != vq->require_team_reward_key) {
+    throw runtime_error("quest version has different required team reward key");
   }
 
   this->versions.emplace(this->versions_key(vq->version, vq->language), vq);
@@ -627,6 +639,8 @@ QuestIndex::QuestIndex(
       JSON metadata_json = nullptr;
       shared_ptr<BattleRules> battle_rules;
       ssize_t challenge_template_index = -1;
+      int16_t require_flag = -1;
+      string require_team_reward_key;
       try {
         json_filename = basename;
         metadata_json = JSON::parse(*json_files.at(json_filename));
@@ -644,11 +658,16 @@ QuestIndex::QuestIndex(
       }
       if (!metadata_json.is_null()) {
         try {
-          battle_rules.reset(new BattleRules(metadata_json.at("battle_rules")));
+          battle_rules.reset(new BattleRules(metadata_json.at("BattleRules")));
         } catch (const out_of_range&) {
         }
         try {
-          challenge_template_index = metadata_json.at("challenge_template_index").as_int();
+          challenge_template_index = metadata_json.at("ChallengeTemplateIndex").as_int();
+        } catch (const out_of_range&) {
+        }
+        require_flag = metadata_json.get_int("RequireFlag", -1);
+        try {
+          require_team_reward_key = metadata_json.get_int("RequireTeamRewardKey", -1);
         } catch (const out_of_range&) {
         }
       }
@@ -662,7 +681,9 @@ QuestIndex::QuestIndex(
           dat_contents,
           pvr_contents,
           battle_rules,
-          challenge_template_index));
+          challenge_template_index,
+          require_flag,
+          require_team_reward_key));
 
       auto category_name = this->category_index->at(vq->category_id)->name;
       string dat_str = dat_filename.empty() ? "" : (" with layout from " + dat_filename + ".dat");
@@ -681,7 +702,9 @@ QuestIndex::QuestIndex(
             battle_rules_str.c_str(),
             challenge_template_str.c_str());
       } else {
-        this->quests_by_number.emplace(vq->quest_number, new Quest(vq));
+        shared_ptr<Quest> q(new Quest(vq));
+        this->quests_by_number.emplace(vq->quest_number, q);
+        this->quests_by_category_id_and_number[q->category_id].emplace(vq->quest_number, q);
         static_game_data_log.info("(%s) Created %s %c quest %" PRIu32 " (%s) (%s, %s (%" PRIu32 "), %s)%s%s%s",
             basename.c_str(),
             name_for_enum(vq->version),
@@ -710,47 +733,48 @@ shared_ptr<const Quest> QuestIndex::get(uint32_t quest_number) const {
   }
 }
 
-const vector<shared_ptr<const QuestCategoryIndex::Category>>& QuestIndex::categories(
-    QuestMenuType menu_type, Episode episode, Version version) const {
+vector<shared_ptr<const QuestCategoryIndex::Category>> QuestIndex::categories(
+    QuestMenuType menu_type,
+    Episode episode,
+    Version version,
+    function<bool(std::shared_ptr<const Quest>)> include_condition) const {
   // The episode filter should apply in normal or solo mode
   if ((menu_type != QuestMenuType::NORMAL) && (menu_type != QuestMenuType::SOLO)) {
     episode = Episode::NONE;
   }
 
-  uint64_t key = (static_cast<uint32_t>(menu_type) << 20) | (static_cast<uint32_t>(episode) << 16) | static_cast<uint32_t>(version);
-  try {
-    return this->category_filter_results_cache.at(key);
-  } catch (const out_of_range&) {
-    auto& ret = this->category_filter_results_cache[key];
-    for (const auto& cat : this->category_index->categories) {
-      if (cat->check_flag(menu_type) && !this->filter(menu_type, episode, version, cat->category_id).empty()) {
-        ret.emplace_back(cat);
-      }
+  vector<shared_ptr<const QuestCategoryIndex::Category>> ret;
+  for (const auto& cat : this->category_index->categories) {
+    if (cat->check_flag(menu_type) && !this->filter(menu_type, episode, version, cat->category_id, include_condition, 1).empty()) {
+      ret.emplace_back(cat);
     }
-    return ret;
   }
+  return ret;
 }
 
-const vector<shared_ptr<const Quest>>& QuestIndex::filter(
-    QuestMenuType menu_type, Episode episode, Version version, uint32_t category_id) const {
+vector<shared_ptr<const Quest>> QuestIndex::filter(
+    QuestMenuType menu_type,
+    Episode episode,
+    Version version,
+    uint32_t category_id,
+    function<bool(std::shared_ptr<const Quest>)> include_condition,
+    size_t limit) const {
   if ((menu_type != QuestMenuType::NORMAL) && (menu_type != QuestMenuType::SOLO)) {
     episode = Episode::NONE;
   }
 
-  uint64_t key = (static_cast<uint64_t>(episode) << 48) | (static_cast<uint64_t>(version) << 32) | category_id;
-  try {
-    return this->quest_filter_results_cache.at(key);
-  } catch (const out_of_range&) {
-    vector<shared_ptr<const Quest>>& ret = this->quest_filter_results_cache[key];
-    for (auto it : this->quests_by_number) {
-      if (((episode == Episode::NONE) || (it.second->episode == episode)) &&
-          (it.second->category_id == category_id) &&
-          it.second->has_version_any_language(version)) {
-        ret.emplace_back(it.second);
+  vector<shared_ptr<const Quest>> ret;
+  for (auto it : this->quests_by_category_id_and_number.at(category_id)) {
+    if (((episode == Episode::NONE) || (it.second->episode == episode)) &&
+        it.second->has_version_any_language(version) &&
+        (!include_condition || include_condition(it.second))) {
+      ret.emplace_back(it.second);
+      if (limit && (ret.size() >= limit)) {
+        break;
       }
     }
-    return ret;
   }
+  return ret;
 }
 
 string encode_download_quest_data(const string& compressed_data, size_t decompressed_size, uint32_t encryption_seed) {

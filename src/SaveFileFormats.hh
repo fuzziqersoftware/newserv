@@ -195,7 +195,7 @@ struct PSOBBCharacterFile {
   /* 04E8 */ le_uint32_t play_time_seconds = 0;
   /* 04EC */ le_uint32_t option_flags = 0x00040058;
   /* 04F0 */ parray<uint8_t, 4> unknown_a2;
-  /* 04F4 */ parray<parray<uint8_t, 0x80>, 4> quest_flags;
+  /* 04F4 */ QuestFlags quest_flags;
   /* 06F4 */ le_uint32_t death_count = 0;
   /* 06F8 */ PlayerBank bank;
   /* 19C0 */ GuildCardBB guild_card;
@@ -343,8 +343,7 @@ struct PSOGCCharacterFile {
     /* 0430:0014 */ be_uint32_t save_count;
     /* 0434:0018 */ parray<uint8_t, 0x1C> unknown_a4;
     /* 0450:0034 */ parray<uint8_t, 0x10> unknown_a5;
-    // 1024 bits (flags) per difficulty
-    /* 0460:0044 */ parray<parray<uint8_t, 0x80>, 4> quest_flags;
+    /* 0460:0044 */ QuestFlags quest_flags;
     /* 0660:0244 */ be_uint32_t death_count;
     /* 0664:0248 */ PlayerBank bank;
     /* 192C:1510 */ GuildCardGC guild_card;
@@ -761,7 +760,7 @@ struct LegacySavedPlayerDataBB { // .nsc file format
   /* 185C */ pstring<TextEncoding::UTF16, 0x00AC> info_board;
   /* 19B4 */ PlayerInventory inventory;
   /* 1D00 */ parray<uint8_t, 4> unknown_a2;
-  /* 1D04 */ parray<parray<uint8_t, 0x80>, 4> quest_flags;
+  /* 1D04 */ QuestFlags quest_flags;
   /* 1F04 */ le_uint32_t death_count;
   /* 1F08 */ parray<le_uint32_t, 0x0016> quest_global_flags;
   /* 1F60 */ parray<le_uint16_t, 0x0014> tech_menu_config;

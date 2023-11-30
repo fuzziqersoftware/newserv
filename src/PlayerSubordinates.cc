@@ -686,59 +686,59 @@ size_t PlayerBank::find_item(uint32_t item_id) {
 BattleRules::BattleRules(const JSON& json) {
   static const JSON empty_list = JSON::list();
 
-  this->tech_disk_mode = json.get_enum("tech_disk_mode", this->tech_disk_mode);
-  this->weapon_and_armor_mode = json.get_enum("weapon_and_armor_mode", this->weapon_and_armor_mode);
-  this->mag_mode = json.get_enum("mag_mode", this->mag_mode);
-  this->tool_mode = json.get_enum("tool_mode", this->tool_mode);
-  this->trap_mode = json.get_enum("trap_mode", this->trap_mode);
-  this->unused_F817 = json.get_int("unused_F817", this->unused_F817);
-  this->respawn_mode = json.get_int("respawn_mode", this->respawn_mode);
-  this->replace_char = json.get_int("replace_char", this->replace_char);
-  this->drop_weapon = json.get_int("drop_weapon", this->drop_weapon);
-  this->is_teams = json.get_int("is_teams", this->is_teams);
-  this->hide_target_reticle = json.get_int("hide_target_reticle", this->hide_target_reticle);
-  this->meseta_mode = json.get_enum("meseta_mode", this->meseta_mode);
-  this->death_level_up = json.get_int("death_level_up", this->death_level_up);
-  const JSON& trap_counts_json = json.get("trap_counts", empty_list);
+  this->tech_disk_mode = json.get_enum("TechDiskMode", this->tech_disk_mode);
+  this->weapon_and_armor_mode = json.get_enum("WeaponAndArmorMode", this->weapon_and_armor_mode);
+  this->mag_mode = json.get_enum("MagMode", this->mag_mode);
+  this->tool_mode = json.get_enum("ToolMode", this->tool_mode);
+  this->trap_mode = json.get_enum("TrapMode", this->trap_mode);
+  this->unused_F817 = json.get_int("UnusedF817", this->unused_F817);
+  this->respawn_mode = json.get_int("RespawnMode", this->respawn_mode);
+  this->replace_char = json.get_int("ReplaceChar", this->replace_char);
+  this->drop_weapon = json.get_int("DropWeapon", this->drop_weapon);
+  this->is_teams = json.get_int("IsTeams", this->is_teams);
+  this->hide_target_reticle = json.get_int("HideTargetReticle", this->hide_target_reticle);
+  this->meseta_mode = json.get_enum("MesetaMode", this->meseta_mode);
+  this->death_level_up = json.get_int("DeathLevelUp", this->death_level_up);
+  const JSON& trap_counts_json = json.get("TrapCounts", empty_list);
   for (size_t z = 0; z < trap_counts_json.size(); z++) {
     this->trap_counts[z] = trap_counts_json.at(z).as_int();
   }
-  this->enable_sonar = json.get_int("enable_sonar", this->enable_sonar);
-  this->sonar_count = json.get_int("sonar_count", this->sonar_count);
-  this->forbid_scape_dolls = json.get_int("forbid_scape_dolls", this->forbid_scape_dolls);
-  this->lives = json.get_int("lives", this->lives);
-  this->max_tech_level = json.get_int("max_tech_level", this->max_tech_level);
-  this->char_level = json.get_int("char_level", this->char_level);
-  this->time_limit = json.get_int("time_limit", this->time_limit);
-  this->death_tech_level_up = json.get_int("death_tech_level_up", this->death_tech_level_up);
-  this->box_drop_area = json.get_int("box_drop_area", this->box_drop_area);
+  this->enable_sonar = json.get_int("EnableSonar", this->enable_sonar);
+  this->sonar_count = json.get_int("SonarCount", this->sonar_count);
+  this->forbid_scape_dolls = json.get_int("ForbidScapeDolls", this->forbid_scape_dolls);
+  this->lives = json.get_int("Lives", this->lives);
+  this->max_tech_level = json.get_int("MaxTechLevel", this->max_tech_level);
+  this->char_level = json.get_int("CharLevel", this->char_level);
+  this->time_limit = json.get_int("TimeLimit", this->time_limit);
+  this->death_tech_level_up = json.get_int("DeathTechLevelUp", this->death_tech_level_up);
+  this->box_drop_area = json.get_int("BoxDropArea", this->box_drop_area);
 }
 
 JSON BattleRules::json() const {
   return JSON::dict({
-      {"tech_disk_mode", this->tech_disk_mode},
-      {"weapon_and_armor_mode", this->weapon_and_armor_mode},
-      {"mag_mode", this->mag_mode},
-      {"tool_mode", this->tool_mode},
-      {"trap_mode", this->trap_mode},
-      {"unused_F817", this->unused_F817},
-      {"respawn_mode", this->respawn_mode},
-      {"replace_char", this->replace_char},
-      {"drop_weapon", this->drop_weapon},
-      {"is_teams", this->is_teams},
-      {"hide_target_reticle", this->hide_target_reticle},
-      {"meseta_mode", this->meseta_mode},
-      {"death_level_up", this->death_level_up},
-      {"trap_counts", JSON::list({this->trap_counts[0], this->trap_counts[1], this->trap_counts[2], this->trap_counts[3]})},
-      {"enable_sonar", this->enable_sonar},
-      {"sonar_count", this->sonar_count},
-      {"forbid_scape_dolls", this->forbid_scape_dolls},
-      {"lives", this->lives.load()},
-      {"max_tech_level", this->max_tech_level.load()},
-      {"char_level", this->char_level.load()},
-      {"time_limit", this->time_limit.load()},
-      {"death_tech_level_up", this->death_tech_level_up.load()},
-      {"box_drop_area", this->box_drop_area.load()},
+      {"TechDiskMode", this->tech_disk_mode},
+      {"WeaponAndArmorMode", this->weapon_and_armor_mode},
+      {"MagMode", this->mag_mode},
+      {"ToolMode", this->tool_mode},
+      {"TrapMode", this->trap_mode},
+      {"UnusedF817", this->unused_F817},
+      {"RespawnMode", this->respawn_mode},
+      {"ReplaceChar", this->replace_char},
+      {"DropWeapon", this->drop_weapon},
+      {"IsTeams", this->is_teams},
+      {"HideTargetReticle", this->hide_target_reticle},
+      {"MesetaMode", this->meseta_mode},
+      {"DeathLevelUp", this->death_level_up},
+      {"TrapCounts", JSON::list({this->trap_counts[0], this->trap_counts[1], this->trap_counts[2], this->trap_counts[3]})},
+      {"EnableSonar", this->enable_sonar},
+      {"SonarCount", this->sonar_count},
+      {"ForbidScapeDolls", this->forbid_scape_dolls},
+      {"Lives", this->lives.load()},
+      {"MaxTechLevel", this->max_tech_level.load()},
+      {"CharLevel", this->char_level.load()},
+      {"TimeLimit", this->time_limit.load()},
+      {"DeathTechLevelUp", this->death_tech_level_up.load()},
+      {"BoxDropArea", this->box_drop_area.load()},
   });
 }
 
