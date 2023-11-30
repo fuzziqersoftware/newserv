@@ -988,7 +988,10 @@ void ServerState::load_item_tables() {
     size_t ext_offset = filename.rfind('.');
     string basename = (ext_offset == string::npos) ? filename : filename.substr(0, ext_offset);
 
-    if (ends_with(filename, "-v2.json")) {
+    if (ends_with(filename, "-v1.json")) {
+      config_log.info("Loading v1 JSON rare item table %s", filename.c_str());
+      this->rare_item_sets.emplace(basename, new RareItemSet(JSON::parse(load_file(path)), Version::DC_V1, this->item_name_index));
+    } else if (ends_with(filename, "-v2.json")) {
       config_log.info("Loading v2 JSON rare item table %s", filename.c_str());
       this->rare_item_sets.emplace(basename, new RareItemSet(JSON::parse(load_file(path)), Version::PC_V2, this->item_name_index));
     } else if (ends_with(filename, "-v3.json")) {
