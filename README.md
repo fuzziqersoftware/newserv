@@ -25,6 +25,7 @@ See TODO.md for a list of known issues and future work I've curated, or go to th
         * [PSO PC](#pso-pc)
         * [PSO GC on a real GameCube](#pso-gc-on-a-real-gamecube)
         * [PSO GC on Dolphin](#pso-gc-on-dolphin)
+        * [PSO BB](#pso-bb)
     * [Connecting external clients](#connecting-external-clients)
 * [Non-server features](#non-server-features)
 
@@ -364,6 +365,14 @@ If you're using a version of Dolphin with tapserver support, you can make it con
 2. Enable newserv's IP stack simulator according to the comments in config.json and start newserv.
 3. In PSO's network settings, enable DHCP ("Automatically obtain an IP address"), set DNS server address to "Automatic", and leave DHCP Hostname as "Not set". Leave the proxy server settings blank.
 4. Start an online game.
+
+#### PSO BB
+
+The PSO BB client has been modified and distributed in many different forms. newserv supports most, but not all, of the common distributions. Unlike other versions, it's important that the client and server have the same map files, so make sure to set up the patch directory based on the client you'll be using with newserv. (See the "Client patch directories" section for instructions on setting this up.)
+
+The original Japanese and US versions of PSO BB should work, but you'll have to modify your hosts file or edit psobb.exe to point to your newserv instance. The original versions are packed, so this is a more involved process than simply opening the executable in a hex editor and finding/replacing some strings.
+
+Alternatively, you can use the Tethealla client (https://archive.org/details/psobb-tethealla-client); you can find the connection addresses starting at 0x56D724 in psobb.exe. Overwrite these addresses with your server's hostname or IP address, and you should be able to connect.
 
 ### Connecting external clients
 
