@@ -718,11 +718,11 @@ void PSOV2OrV3DetectorEncryption::encrypt(void* data, size_t size, bool advance)
     le_uint32_t encrypted = *reinterpret_cast<le_uint32_t*>(data);
 
     le_uint32_t decrypted_v2 = encrypted;
-    unique_ptr<PSOEncryption> v2_crypt(new PSOV2Encryption(this->key));
+    auto v2_crypt = make_unique<PSOV2Encryption>(this->key);
     v2_crypt->decrypt(&decrypted_v2, sizeof(decrypted_v2), false);
 
     le_uint32_t decrypted_v3 = encrypted;
-    unique_ptr<PSOEncryption> v3_crypt(new PSOV3Encryption(this->key));
+    auto v3_crypt = make_unique<PSOV3Encryption>(this->key);
     v3_crypt->decrypt(&decrypted_v3, sizeof(decrypted_v3), false);
 
     bool v2_match = this->v2_matches.count(decrypted_v2);
@@ -760,9 +760,9 @@ void PSOV2OrV3ImitatorEncryption::encrypt(void* data, size_t size, bool advance)
   if (!this->active_crypt) {
     auto t = this->detector_crypt->type();
     if (t == Type::V2) {
-      this->active_crypt.reset(new PSOV2Encryption(this->key));
+      this->active_crypt = make_shared<PSOV2Encryption>(this->key);
     } else if (t == Type::V3) {
-      this->active_crypt.reset(new PSOV3Encryption(this->key));
+      this->active_crypt = make_shared<PSOV3Encryption>(this->key);
     } else {
       throw logic_error("detector crypt is not V2 or V3");
     }
@@ -801,8 +801,7 @@ void PSOBBMultiKeyDetectorEncryption::decrypt(void* data, size_t size, bool adva
 
     for (const auto& key : this->possible_keys) {
       this->active_key = key;
-      this->active_crypt.reset(new PSOBBEncryption(
-          *this->active_key, this->seed.data(), this->seed.size()));
+      this->active_crypt = make_shared<PSOBBEncryption>(*this->active_key, this->seed.data(), this->seed.size());
       string test_data(reinterpret_cast<const char*>(data), size);
       this->active_crypt->decrypt(test_data.data(), test_data.size(), false);
       if (this->expected_first_data.count(test_data)) {
@@ -854,11 +853,9 @@ shared_ptr<PSOBBEncryption> PSOBBMultiKeyImitatorEncryption::ensure_crypt() {
     // To handle this, we use the other crypt's seed if the type is JSD1.
     if ((key->subtype == PSOBBEncryption::Subtype::JSD1) && this->jsd1_use_detector_seed) {
       const auto& detector_seed = this->detector_crypt->get_seed();
-      this->active_crypt.reset(new PSOBBEncryption(
-          *key, detector_seed.data(), detector_seed.size()));
+      this->active_crypt = make_shared<PSOBBEncryption>(*key, detector_seed.data(), detector_seed.size());
     } else {
-      this->active_crypt.reset(new PSOBBEncryption(
-          *key, this->seed.data(), this->seed.size()));
+      this->active_crypt = make_shared<PSOBBEncryption>(*key, this->seed.data(), this->seed.size());
     }
   }
   return this->active_crypt;

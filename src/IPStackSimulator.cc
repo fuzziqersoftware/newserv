@@ -196,7 +196,7 @@ void IPStackSimulator::on_listen_accept(struct evconnlistener* listener,
 
   struct bufferevent* bev = bufferevent_socket_new(this->base.get(), fd,
       BEV_OPT_CLOSE_ON_FREE | BEV_OPT_DEFER_CALLBACKS);
-  shared_ptr<IPClient> c(new IPClient(this->shared_from_this(), bev));
+  auto c = make_shared<IPClient>(this->shared_from_this(), bev);
   this->bev_to_client.emplace(make_pair(bev, c));
 
   bufferevent_setcb(bev, &IPStackSimulator::dispatch_on_client_input, nullptr,

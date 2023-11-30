@@ -333,7 +333,7 @@ shared_ptr<PSOBBCharacterFile> PSOBBCharacterFile::create_from_preview(
           0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
           0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}};
 
-  shared_ptr<PSOBBCharacterFile> ret(new PSOBBCharacterFile());
+  auto ret = make_shared<PSOBBCharacterFile>();
 
   const auto& initial_items = initial_inventory.at(preview.visual.char_class);
   ret->inventory.num_items = initial_items.size();

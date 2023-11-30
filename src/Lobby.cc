@@ -87,7 +87,7 @@ void Lobby::create_item_creator() {
     default:
       throw logic_error("invalid lobby base version");
   }
-  this->item_creator.reset(new ItemCreator(
+  this->item_creator = make_shared<ItemCreator>(
       common_item_set,
       rare_item_set,
       s->armor_random_set,
@@ -101,7 +101,7 @@ void Lobby::create_item_creator() {
       this->difficulty,
       this->section_id,
       this->random_seed,
-      this->quest ? this->quest->battle_rules : nullptr));
+      this->quest ? this->quest->battle_rules : nullptr);
 }
 
 void Lobby::create_ep3_server() {

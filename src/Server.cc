@@ -110,8 +110,7 @@ void Server::on_listen_accept(
 
   struct bufferevent* bev = bufferevent_socket_new(this->base.get(), fd,
       BEV_OPT_CLOSE_ON_FREE | BEV_OPT_DEFER_CALLBACKS);
-  shared_ptr<Client> c(new Client(
-      this->shared_from_this(), bev, listening_socket->version, listening_socket->behavior));
+  auto c = make_shared<Client>(this->shared_from_this(), bev, listening_socket->version, listening_socket->behavior);
   c->channel.on_command_received = Server::on_client_input;
   c->channel.on_error = Server::on_client_error;
   c->channel.context_obj = this;
@@ -131,7 +130,7 @@ void Server::on_listen_accept(
 void Server::connect_client(
     struct bufferevent* bev, uint32_t address, uint16_t client_port,
     uint16_t server_port, Version version, ServerBehavior initial_state) {
-  shared_ptr<Client> c(new Client(this->shared_from_this(), bev, version, initial_state));
+  auto c = make_shared<Client>(this->shared_from_this(), bev, version, initial_state);
   c->channel.on_command_received = Server::on_client_input;
   c->channel.on_error = Server::on_client_error;
   c->channel.context_obj = this;

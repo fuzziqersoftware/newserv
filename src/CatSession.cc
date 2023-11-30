@@ -78,13 +78,13 @@ void CatSession::on_channel_input(
     if (command == 0x02 || command == 0x17 || command == 0x91 || command == 0x9B) {
       const auto& cmd = check_size_t<S_ServerInitDefault_DC_PC_V3_02_17_91_9B>(data, 0xFFFF);
       if (uses_v3_encryption(this->channel.version)) {
-        this->channel.crypt_in.reset(new PSOV3Encryption(cmd.server_key));
-        this->channel.crypt_out.reset(new PSOV3Encryption(cmd.client_key));
+        this->channel.crypt_in = make_shared<PSOV3Encryption>(cmd.server_key);
+        this->channel.crypt_out = make_shared<PSOV3Encryption>(cmd.client_key);
         this->log.info("Enabled V3 encryption (server key %08" PRIX32 ", client key %08" PRIX32 ")",
             cmd.server_key.load(), cmd.client_key.load());
       } else { // PC, DC, or patch server
-        this->channel.crypt_in.reset(new PSOV2Encryption(cmd.server_key));
-        this->channel.crypt_out.reset(new PSOV2Encryption(cmd.client_key));
+        this->channel.crypt_in = make_shared<PSOV2Encryption>(cmd.server_key);
+        this->channel.crypt_out = make_shared<PSOV2Encryption>(cmd.client_key);
         this->log.info("Enabled V2 encryption (server key %08" PRIX32 ", client key %08" PRIX32 ")",
             cmd.server_key.load(), cmd.client_key.load());
       }
@@ -95,8 +95,8 @@ void CatSession::on_channel_input(
         throw runtime_error("BB encryption requires a key file");
       }
       const auto& cmd = check_size_t<S_ServerInitDefault_BB_03_9B>(data, 0xFFFF);
-      this->channel.crypt_in.reset(new PSOBBEncryption(*this->bb_key_file, &cmd.server_key[0], sizeof(cmd.server_key)));
-      this->channel.crypt_out.reset(new PSOBBEncryption(*this->bb_key_file, &cmd.client_key[0], sizeof(cmd.client_key)));
+      this->channel.crypt_in = make_shared<PSOBBEncryption>(*this->bb_key_file, &cmd.server_key[0], sizeof(cmd.server_key));
+      this->channel.crypt_out = make_shared<PSOBBEncryption>(*this->bb_key_file, &cmd.client_key[0], sizeof(cmd.client_key));
       this->log.info("Enabled BB encryption");
     }
   }

@@ -241,7 +241,7 @@ TeamIndex::TeamIndex(const string& directory, const JSON& reward_defs_json)
     if (ends_with(filename, ".json")) {
       try {
         uint32_t team_id = stoul(filename.substr(0, filename.size() - 5), nullptr, 16);
-        shared_ptr<Team> team(new Team(team_id));
+        auto team = make_shared<Team>(team_id);
         team->load_config();
         try {
           team->load_flag();
@@ -294,7 +294,7 @@ vector<shared_ptr<const TeamIndex::Team>> TeamIndex::all() const {
 }
 
 shared_ptr<const TeamIndex::Team> TeamIndex::create(string& name, uint32_t master_serial_number, const string& master_name) {
-  shared_ptr<Team> team(new Team(this->next_team_id++));
+  auto team = make_shared<Team>(this->next_team_id++);
   save_file(this->directory + "/base.json", JSON::dict({{"NextTeamID", this->next_team_id}}).serialize());
 
   Team::Member m;

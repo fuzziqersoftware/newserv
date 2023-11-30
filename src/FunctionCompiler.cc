@@ -127,7 +127,7 @@ shared_ptr<CompiledFunctionCode> compile_function_code(
   throw runtime_error("function compiler is not available");
 
 #else
-  shared_ptr<CompiledFunctionCode> ret(new CompiledFunctionCode());
+  auto ret = make_shared<CompiledFunctionCode>();
   ret->arch = arch;
   ret->name = name;
   ret->index = 0;
@@ -236,7 +236,7 @@ FunctionCodeIndex::FunctionCodeIndex(const string& directory) {
 shared_ptr<const Menu> FunctionCodeIndex::patch_menu(uint32_t specific_version) const {
   auto suffix = string_printf("-%08" PRIX32, specific_version);
 
-  shared_ptr<Menu> ret(new Menu(MenuID::PATCHES, "Patches"));
+  auto ret = make_shared<Menu>(MenuID::PATCHES, "Patches");
   ret->items.emplace_back(PatchesMenuItemID::GO_BACK, "Go back", "Return to the\nmain menu", 0);
   for (const auto& it : this->name_and_specific_version_to_patch_function) {
     const auto& fn = it.second;
@@ -266,7 +266,7 @@ DOLFileIndex::DOLFileIndex(const string& directory) {
     return;
   }
 
-  shared_ptr<Menu> menu(new Menu(MenuID::PROGRAMS, "Programs"));
+  auto menu = make_shared<Menu>(MenuID::PROGRAMS, "Programs");
   this->menu = menu;
   menu->items.emplace_back(ProgramsMenuItemID::GO_BACK, "Go back", "Return to the\nmain menu", 0);
 
@@ -280,7 +280,7 @@ DOLFileIndex::DOLFileIndex(const string& directory) {
     string name = filename.substr(0, filename.size() - (is_compressed_dol ? 8 : 4));
 
     try {
-      shared_ptr<File> dol(new File());
+      auto dol = make_shared<File>();
       dol->menu_item_id = next_menu_item_id++;
       dol->name = name;
 

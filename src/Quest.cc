@@ -32,7 +32,7 @@ QuestCategoryIndex::Category::Category(uint32_t category_id, const JSON& json)
 QuestCategoryIndex::QuestCategoryIndex(const JSON& json) {
   uint32_t next_category_id = 1;
   for (const auto& it : json.as_list()) {
-    this->categories.emplace_back(new Category(next_category_id++, *it));
+    this->categories.emplace_back(make_shared<Category>(next_category_id++, *it));
   }
 }
 
@@ -471,7 +471,7 @@ QuestIndex::QuestIndex(
       if (categories.emplace(name, cat->category_id).first->second != cat->category_id) {
         throw runtime_error("file " + name + " exists in multiple categories");
       }
-      shared_ptr<const string> data_ptr(new string(std::move(value)));
+      auto data_ptr = make_shared<string>(std::move(value));
       if (!files.emplace(name, data_ptr).second) {
         throw runtime_error("file " + name + " already exists");
       }
@@ -658,7 +658,7 @@ QuestIndex::QuestIndex(
       }
       if (!metadata_json.is_null()) {
         try {
-          battle_rules.reset(new BattleRules(metadata_json.at("BattleRules")));
+          battle_rules = make_shared<BattleRules>(metadata_json.at("BattleRules"));
         } catch (const out_of_range&) {
         }
         try {
@@ -672,7 +672,7 @@ QuestIndex::QuestIndex(
         }
       }
 
-      shared_ptr<VersionedQuest> vq(new VersionedQuest(
+      auto vq = make_shared<VersionedQuest>(
           quest_number,
           category_id,
           version,
@@ -683,7 +683,7 @@ QuestIndex::QuestIndex(
           battle_rules,
           challenge_template_index,
           require_flag,
-          require_team_reward_key));
+          require_team_reward_key);
 
       auto category_name = this->category_index->at(vq->category_id)->name;
       string dat_str = dat_filename.empty() ? "" : (" with layout from " + dat_filename + ".dat");
@@ -702,7 +702,7 @@ QuestIndex::QuestIndex(
             battle_rules_str.c_str(),
             challenge_template_str.c_str());
       } else {
-        shared_ptr<Quest> q(new Quest(vq));
+        auto q = make_shared<Quest>(vq);
         this->quests_by_number.emplace(vq->quest_number, q);
         this->quests_by_category_id_and_number[q->category_id].emplace(vq->quest_number, q);
         static_game_data_log.info("(%s) Created %s %c quest %" PRIu32 " (%s) (%s, %s (%" PRIu32 "), %s)%s%s%s",
@@ -873,11 +873,11 @@ shared_ptr<VersionedQuest> VersionedQuest::create_download_quest(uint8_t overrid
 
   // Return a new VersionedQuest object with appropriately-processed .bin and
   // .dat file contents
-  shared_ptr<VersionedQuest> dlq(new VersionedQuest(*this));
-  dlq->bin_contents.reset(new string(encode_download_quest_data(compressed_bin, decompressed_bin.size())));
-  dlq->dat_contents.reset(new string(encode_download_quest_data(*this->dat_contents)));
+  auto dlq = make_shared<VersionedQuest>(*this);
+  dlq->bin_contents = make_shared<string>(encode_download_quest_data(compressed_bin, decompressed_bin.size()));
+  dlq->dat_contents = make_shared<string>(encode_download_quest_data(*this->dat_contents));
   if (this->pvr_contents) {
-    dlq->pvr_contents.reset(new string(encode_download_quest_data(*this->pvr_contents)));
+    dlq->pvr_contents = make_shared<string>(encode_download_quest_data(*this->pvr_contents));
   }
   dlq->is_dlq_encoded = true;
   return dlq;

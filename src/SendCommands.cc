@@ -165,8 +165,8 @@ void send_server_init_dc_pc_v3(shared_ptr<Client> c, uint8_t flags) {
 
   switch (c->version()) {
     case Version::PC_V2:
-      c->channel.crypt_in.reset(new PSOV2Encryption(client_key));
-      c->channel.crypt_out.reset(new PSOV2Encryption(server_key));
+      c->channel.crypt_in = make_shared<PSOV2Encryption>(client_key);
+      c->channel.crypt_out = make_shared<PSOV2Encryption>(server_key);
       break;
     case Version::DC_NTE:
     case Version::DC_V1_11_2000_PROTOTYPE:
@@ -176,15 +176,15 @@ void send_server_init_dc_pc_v3(shared_ptr<Client> c, uint8_t flags) {
     case Version::GC_V3:
     case Version::GC_EP3_TRIAL_EDITION:
     case Version::GC_EP3: {
-      shared_ptr<PSOV2OrV3DetectorEncryption> det_crypt(new PSOV2OrV3DetectorEncryption(
-          client_key, v2_crypt_initial_client_commands, v3_crypt_initial_client_commands));
+      auto det_crypt = make_shared<PSOV2OrV3DetectorEncryption>(
+          client_key, v2_crypt_initial_client_commands, v3_crypt_initial_client_commands);
       c->channel.crypt_in = det_crypt;
-      c->channel.crypt_out.reset(new PSOV2OrV3ImitatorEncryption(server_key, det_crypt));
+      c->channel.crypt_out = make_shared<PSOV2OrV3ImitatorEncryption>(server_key, det_crypt);
       break;
     }
     case Version::XB_V3:
-      c->channel.crypt_in.reset(new PSOV3Encryption(client_key));
-      c->channel.crypt_out.reset(new PSOV3Encryption(server_key));
+      c->channel.crypt_in = make_shared<PSOV3Encryption>(client_key);
+      c->channel.crypt_out = make_shared<PSOV3Encryption>(server_key);
       break;
     default:
       throw invalid_argument("incorrect client version");
@@ -216,15 +216,15 @@ void send_server_init_bb(shared_ptr<Client> c, uint8_t flags) {
 
   static const string primary_expected_first_data("\xB4\x00\x93\x00\x00\x00\x00\x00", 8);
   static const string secondary_expected_first_data("\xDC\x00\xDB\x00\x00\x00\x00\x00", 8);
-  shared_ptr<PSOBBMultiKeyDetectorEncryption> detector_crypt(new PSOBBMultiKeyDetectorEncryption(
+  auto detector_crypt = make_shared<PSOBBMultiKeyDetectorEncryption>(
       c->require_server_state()->bb_private_keys,
       bb_crypt_initial_client_commands,
       cmd.basic_cmd.client_key.data(),
-      sizeof(cmd.basic_cmd.client_key)));
+      sizeof(cmd.basic_cmd.client_key));
   c->channel.crypt_in = detector_crypt;
-  c->channel.crypt_out.reset(new PSOBBMultiKeyImitatorEncryption(
+  c->channel.crypt_out = make_shared<PSOBBMultiKeyImitatorEncryption>(
       detector_crypt, cmd.basic_cmd.server_key.data(),
-      sizeof(cmd.basic_cmd.server_key), true));
+      sizeof(cmd.basic_cmd.server_key), true);
 }
 
 void send_server_init_patch(shared_ptr<Client> c) {
@@ -237,8 +237,8 @@ void send_server_init_patch(shared_ptr<Client> c) {
   cmd.client_key = client_key;
   send_command_t(c, 0x02, 0x00, cmd);
 
-  c->channel.crypt_out.reset(new PSOV2Encryption(server_key));
-  c->channel.crypt_in.reset(new PSOV2Encryption(client_key));
+  c->channel.crypt_out = make_shared<PSOV2Encryption>(server_key);
+  c->channel.crypt_in = make_shared<PSOV2Encryption>(client_key);
 }
 
 void send_server_init(shared_ptr<Client> c, uint8_t flags) {
@@ -1824,7 +1824,7 @@ void send_join_game(shared_ptr<Client> c, shared_ptr<Lobby> l) {
   }
 
   c->log.info("Creating game join command queue");
-  c->game_join_command_queue.reset(new deque<Client::JoinCommand>());
+  c->game_join_command_queue = make_unique<deque<Client::JoinCommand>>();
   send_command(c, 0x1D, 0x00);
 }
 

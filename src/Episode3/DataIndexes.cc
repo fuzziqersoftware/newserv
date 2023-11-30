@@ -2261,7 +2261,7 @@ CardIndex::CardIndex(
         continue;
       }
 
-      shared_ptr<CardEntry> entry(new CardEntry({defs[x], "", "", "", {}}));
+      auto entry = make_shared<CardEntry>(CardEntry{defs[x], "", "", "", {}});
       if (!this->card_definitions.emplace(entry->def.card_id, entry).second) {
         throw runtime_error(string_printf(
             "duplicate card id: %08" PRIX32, entry->def.card_id.load()));
@@ -2391,12 +2391,12 @@ MapIndex::VersionedMap::VersionedMap(std::string&& compressed_data, uint8_t lang
         "decompressed data size is incorrect (expected %zu bytes, read %zu bytes)",
         sizeof(MapDefinition), decompressed.size()));
   }
-  this->map.reset(new MapDefinition(*reinterpret_cast<const MapDefinition*>(decompressed.data())));
+  this->map = make_shared<MapDefinition>(*reinterpret_cast<const MapDefinition*>(decompressed.data()));
 }
 
 shared_ptr<const MapDefinitionTrial> MapIndex::VersionedMap::trial() const {
   if (!this->trial_map) {
-    this->trial_map.reset(new MapDefinitionTrial(*this->map));
+    this->trial_map = make_shared<MapDefinitionTrial>(*this->map);
   }
   return this->trial_map;
 }
@@ -2465,7 +2465,7 @@ MapIndex::MapIndex(const string& directory) {
       string compressed_data;
       shared_ptr<MapDefinition> decompressed_data;
       if (ends_with(filename, ".mnmd") || ends_with(filename, ".bind")) {
-        decompressed_data.reset(new MapDefinition(load_object_file<MapDefinition>(directory + "/" + filename)));
+        decompressed_data = make_shared<MapDefinition>(load_object_file<MapDefinition>(directory + "/" + filename));
         base_filename = filename.substr(0, filename.size() - 5);
       } else if (ends_with(filename, ".mnm") || ends_with(filename, ".bin")) {
         compressed_data = load_file(directory + "/" + filename);
@@ -2502,9 +2502,9 @@ MapIndex::MapIndex(const string& directory) {
 
       shared_ptr<VersionedMap> vm;
       if (decompressed_data) {
-        vm.reset(new VersionedMap(decompressed_data, language));
+        vm = make_shared<VersionedMap>(decompressed_data, language);
       } else if (!compressed_data.empty()) {
-        vm.reset(new VersionedMap(std::move(compressed_data), language));
+        vm = make_shared<VersionedMap>(std::move(compressed_data), language);
       } else {
         throw runtime_error("unknown map file format");
       }
@@ -2512,7 +2512,7 @@ MapIndex::MapIndex(const string& directory) {
       string name = vm->map->name.decode(vm->language);
       auto map_it = this->maps.find(vm->map->map_number);
       if (map_it == this->maps.end()) {
-        map_it = this->maps.emplace(vm->map->map_number, new Map(vm)).first;
+        map_it = this->maps.emplace(vm->map->map_number, make_shared<Map>(vm)).first;
         static_game_data_log.info("(%s) Created Episode 3 map %08" PRIX32 " %c (%s; %s)",
             filename.c_str(),
             vm->map->map_number.load(),
@@ -2640,7 +2640,7 @@ COMDeckIndex::COMDeckIndex(const string& filename) {
   try {
     auto json = JSON::parse(load_file(filename));
     for (const auto& def_json : json.as_list()) {
-      auto& def = this->decks.emplace_back(new COMDeckDefinition());
+      auto& def = this->decks.emplace_back(make_shared<COMDeckDefinition>());
       def->index = this->decks.size() - 1;
       def->player_name = def_json->at(0).as_string();
       def->deck_name = def_json->at(1).as_string();

@@ -48,10 +48,7 @@ void PlayerState::init() {
     throw logic_error("replacing a player state object is not permitted");
   }
 
-  this->deck_state.reset(new DeckState(
-      this->client_id,
-      s->deck_entries[client_id]->card_ids,
-      s->options.random_crypt));
+  this->deck_state = make_shared<DeckState>(this->client_id, s->deck_entries[client_id]->card_ids, s->options.random_crypt);
   if (s->map_and_rules->rules.disable_deck_shuffle) {
     this->deck_state->disable_shuffle();
   }
@@ -77,10 +74,10 @@ void PlayerState::init() {
     throw runtime_error("SC card is not a Hunters or Arkz SC");
   }
 
-  this->hand_and_equip.reset(new HandAndEquipState());
-  this->card_short_statuses.reset(new parray<CardShortStatus, 0x10>());
-  this->set_card_action_chains.reset(new parray<ActionChainWithConds, 9>());
-  this->set_card_action_metadatas.reset(new parray<ActionMetadata, 9>());
+  this->hand_and_equip = make_shared<HandAndEquipState>();
+  this->card_short_statuses = make_shared<parray<CardShortStatus, 0x10>>();
+  this->set_card_action_chains = make_shared<parray<ActionChainWithConds, 9>>();
+  this->set_card_action_metadatas = make_shared<parray<ActionMetadata, 9>>();
 
   this->hand_and_equip->clear_FF();
   for (size_t z = 0; z < 0x10; z++) {
@@ -91,11 +88,7 @@ void PlayerState::init() {
     this->set_card_action_metadatas->at(z).clear_FF();
   }
 
-  this->sc_card.reset(new Card(
-      this->deck_state->sc_card_id(),
-      this->sc_card_ref,
-      this->client_id,
-      s));
+  this->sc_card = make_shared<Card>(this->deck_state->sc_card_id(), this->sc_card_ref, this->client_id, s);
   this->sc_card->init();
   this->draw_initial_hand();
 
@@ -1232,8 +1225,7 @@ bool PlayerState::set_card_from_hand(
   auto s = this->server();
 
   if (!skip_error_checks_and_atk_sub) {
-    int32_t code = this->error_code_for_client_setting_card(
-        card_ref, card_index, loc, assist_target_client_id);
+    int32_t code = this->error_code_for_client_setting_card(card_ref, card_index, loc, assist_target_client_id);
     if (code) {
       s->ruler_server->error_code1 = code;
       this->update_hand_and_equip_state_and_send_6xB4x02_if_needed();
@@ -1248,8 +1240,7 @@ bool PlayerState::set_card_from_hand(
   }
 
   if (!skip_error_checks_and_atk_sub) {
-    int16_t cost = s->ruler_server->set_cost_for_card(
-        this->client_id, card_ref);
+    int16_t cost = s->ruler_server->set_cost_for_card(this->client_id, card_ref);
     this->subtract_atk_points(cost);
   }
 
@@ -1261,11 +1252,7 @@ bool PlayerState::set_card_from_hand(
       return 0;
     }
     this->card_refs[card_index + 1] = card_ref;
-    this->set_cards[card_index - 7].reset(new Card(
-        s->card_id_for_card_ref(card_ref),
-        card_ref,
-        this->client_id,
-        s));
+    this->set_cards[card_index - 7] = make_shared<Card>(s->card_id_for_card_ref(card_ref), card_ref, this->client_id, s);
     auto new_card = this->set_cards[card_index - 7];
     new_card->init();
 

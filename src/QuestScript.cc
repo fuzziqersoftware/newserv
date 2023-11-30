@@ -975,7 +975,7 @@ std::string disassemble_quest_script(const void* data, size_t size, Version vers
       uint32_t function_id = function_table.size();
       string name = string_printf("label%04" PRIX32, function_id);
       uint32_t offset = function_table_r.get_u32l();
-      shared_ptr<Label> l(new Label(name, offset, function_id));
+      auto l = make_shared<Label>(name, offset, function_id);
       if (function_id == 0) {
         l->add_data_type(Arg::DataType::SCRIPT);
       }

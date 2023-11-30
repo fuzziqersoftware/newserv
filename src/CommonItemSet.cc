@@ -205,7 +205,7 @@ AFSV2CommonItemSet::AFSV2CommonItemSet(
     for (size_t section_id = 0; section_id < 10; section_id++) {
       auto entry = pt_afs.get(difficulty * 10 + section_id);
       StringReader r(entry.first, entry.second);
-      shared_ptr<Table> table(new Table(pt_afs_data, r, false, false));
+      auto table = make_shared<Table>(pt_afs_data, r, false, false);
       this->tables.emplace(this->key_for_table(Episode::EP1, GameMode::NORMAL, difficulty, section_id), table);
       this->tables.emplace(this->key_for_table(Episode::EP1, GameMode::BATTLE, difficulty, section_id), table);
       this->tables.emplace(this->key_for_table(Episode::EP1, GameMode::SOLO, difficulty, section_id), table);
@@ -217,7 +217,7 @@ AFSV2CommonItemSet::AFSV2CommonItemSet(
   AFSArchive ct_afs(ct_afs_data);
   for (size_t difficulty = 0; difficulty < 4; difficulty++) {
     auto r = ct_afs.get_reader(difficulty * 10);
-    shared_ptr<Table> table(new Table(ct_afs_data, r, false, false));
+    auto table = make_shared<Table>(ct_afs_data, r, false, false);
     for (size_t section_id = 0; section_id < 10; section_id++) {
       this->tables.emplace(this->key_for_table(Episode::EP1, GameMode::CHALLENGE, difficulty, section_id), table);
     }
@@ -237,7 +237,7 @@ GSLV3CommonItemSet::GSLV3CommonItemSet(std::shared_ptr<const std::string> gsl_da
             tolower(abbreviation_for_difficulty(difficulty)),
             section_id);
         auto r = gsl.get_reader(filename);
-        shared_ptr<Table> table(new Table(gsl_data, r, is_big_endian, true));
+        auto table = make_shared<Table>(gsl_data, r, is_big_endian, true);
         this->tables.emplace(this->key_for_table(episode, GameMode::NORMAL, difficulty, section_id), table);
         this->tables.emplace(this->key_for_table(episode, GameMode::BATTLE, difficulty, section_id), table);
         this->tables.emplace(this->key_for_table(episode, GameMode::SOLO, difficulty, section_id), table);
@@ -256,7 +256,7 @@ GSLV3CommonItemSet::GSLV3CommonItemSet(std::shared_ptr<const std::string> gsl_da
           ((episode == Episode::EP2) ? "l" : ""),
           tolower(abbreviation_for_difficulty(difficulty)));
       auto r = gsl.get_reader(filename);
-      shared_ptr<Table> table(new Table(gsl_data, r, is_big_endian, true));
+      auto table = make_shared<Table>(gsl_data, r, is_big_endian, true);
       for (size_t section_id = 0; section_id < 10; section_id++) {
         this->tables.emplace(this->key_for_table(episode, GameMode::CHALLENGE, difficulty, section_id), table);
       }

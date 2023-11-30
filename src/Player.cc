@@ -36,7 +36,7 @@ ClientGameData::~ClientGameData() {
 }
 
 void ClientGameData::create_battle_overlay(shared_ptr<const BattleRules> rules, shared_ptr<const LevelTable> level_table) {
-  this->overlay_character_data.reset(new PSOBBCharacterFile(*this->character(true, false)));
+  this->overlay_character_data = make_shared<PSOBBCharacterFile>(*this->character(true, false));
 
   if (rules->weapon_and_armor_mode != BattleRules::WeaponAndArmorMode::ALLOW) {
     this->overlay_character_data->inventory.remove_all_items_of_type(0);
@@ -89,7 +89,7 @@ void ClientGameData::create_challenge_overlay(Version version, size_t template_i
   auto p = this->character(true, false);
   const auto& tpl = get_challenge_template_definition(version, p->disp.visual.class_flags, template_index);
 
-  this->overlay_character_data.reset(new PSOBBCharacterFile(*p));
+  this->overlay_character_data = make_shared<PSOBBCharacterFile>(*p);
   auto overlay = this->overlay_character_data;
 
   for (size_t z = 0; z < overlay->inventory.items.size(); z++) {
@@ -236,9 +236,9 @@ void ClientGameData::create_character_file(
 
 void ClientGameData::load_all_files() {
   if (this->bb_username.empty()) {
-    this->system_data.reset(new PSOBBBaseSystemFile());
-    this->character_data.reset(new PSOBBCharacterFile());
-    this->guild_card_data.reset(new PSOBBGuildCardFile());
+    this->system_data = make_shared<PSOBBBaseSystemFile>();
+    this->character_data = make_shared<PSOBBCharacterFile>();
+    this->guild_card_data = make_shared<PSOBBGuildCardFile>();
     return;
   }
 
@@ -248,7 +248,7 @@ void ClientGameData::load_all_files() {
 
   string sys_filename = this->system_filename();
   if (isfile(sys_filename)) {
-    this->system_data.reset(new PSOBBBaseSystemFile(load_object_file<PSOBBBaseSystemFile>(sys_filename, true)));
+    this->system_data = make_shared<PSOBBBaseSystemFile>(load_object_file<PSOBBBaseSystemFile>(sys_filename, true));
     player_data_log.info("Loaded system data from %s", sys_filename.c_str());
   }
 
@@ -266,13 +266,13 @@ void ClientGameData::load_all_files() {
       if (header.flag != 0x00000000) {
         throw runtime_error("incorrect flag in character file header");
       }
-      this->character_data.reset(new PSOBBCharacterFile(freadx<PSOBBCharacterFile>(f.get())));
+      this->character_data = make_shared<PSOBBCharacterFile>(freadx<PSOBBCharacterFile>(f.get()));
       player_data_log.info("Loaded character data from %s", char_filename.c_str());
 
       // If there was no .psosys file, load the system file from the .psochar
       // file instead
       if (!this->system_data) {
-        this->system_data.reset(new PSOBBBaseSystemFile(freadx<PSOBBBaseSystemFile>(f.get())));
+        this->system_data = make_shared<PSOBBBaseSystemFile>(freadx<PSOBBBaseSystemFile>(f.get()));
         player_data_log.info("Loaded system data from %s", char_filename.c_str());
       }
     }
@@ -280,7 +280,7 @@ void ClientGameData::load_all_files() {
 
   string card_filename = this->guild_card_filename();
   if (isfile(card_filename)) {
-    this->guild_card_data.reset(new PSOBBGuildCardFile(load_object_file<PSOBBGuildCardFile>(card_filename)));
+    this->guild_card_data = make_shared<PSOBBGuildCardFile>(load_object_file<PSOBBGuildCardFile>(card_filename));
     player_data_log.info("Loaded Guild Card data from %s", card_filename.c_str());
   }
 
@@ -289,26 +289,26 @@ void ClientGameData::load_all_files() {
     string nsa_filename = this->legacy_account_filename();
     shared_ptr<LegacySavedAccountDataBB> nsa_data;
     if (isfile(nsa_filename)) {
-      nsa_data.reset(new LegacySavedAccountDataBB(load_object_file<LegacySavedAccountDataBB>(nsa_filename)));
+      nsa_data = make_shared<LegacySavedAccountDataBB>(load_object_file<LegacySavedAccountDataBB>(nsa_filename));
       if (!nsa_data->signature.eq(LegacySavedAccountDataBB::SIGNATURE)) {
         throw runtime_error("account data header is incorrect");
       }
       if (!this->system_data) {
-        this->system_data.reset(new PSOBBBaseSystemFile(nsa_data->system_file.base));
+        this->system_data = make_shared<PSOBBBaseSystemFile>(nsa_data->system_file.base);
         player_data_log.info("Loaded legacy system data from %s", nsa_filename.c_str());
       }
       if (!this->guild_card_data) {
-        this->guild_card_data.reset(new PSOBBGuildCardFile(nsa_data->guild_card_file));
+        this->guild_card_data = make_shared<PSOBBGuildCardFile>(nsa_data->guild_card_file);
         player_data_log.info("Loaded legacy Guild Card data from %s", nsa_filename.c_str());
       }
     }
 
     if (!this->system_data) {
-      this->system_data.reset(new PSOBBBaseSystemFile());
+      this->system_data = make_shared<PSOBBBaseSystemFile>();
       player_data_log.info("Created new system data");
     }
     if (!this->guild_card_data) {
-      this->guild_card_data.reset(new PSOBBGuildCardFile());
+      this->guild_card_data = make_shared<PSOBBGuildCardFile>();
       player_data_log.info("Created new Guild Card data");
     }
 
@@ -325,7 +325,7 @@ void ClientGameData::load_all_files() {
         throw runtime_error("legacy player data has incorrect signature");
       }
 
-      this->character_data.reset(new PSOBBCharacterFile());
+      this->character_data = make_shared<PSOBBCharacterFile>();
       this->character_data->inventory = nsc_data.inventory;
       this->character_data->disp = nsc_data.disp;
       this->character_data->play_time_seconds = nsc_data.disp.play_time;

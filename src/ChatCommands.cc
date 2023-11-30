@@ -702,9 +702,8 @@ static void server_command_playrec(shared_ptr<Client> c, const std::string& args
       send_text_message(c, "$C4The recording does\nnot exist");
       return;
     }
-    shared_ptr<Episode3::BattleRecord> record(new Episode3::BattleRecord(data));
-    shared_ptr<Episode3::BattleRecordPlayer> battle_player(
-        new Episode3::BattleRecordPlayer(record, s->game_server->get_base()));
+    auto record = make_shared<Episode3::BattleRecord>(data);
+    auto battle_player = make_shared<Episode3::BattleRecordPlayer>(record, s->game_server->get_base());
     auto game = create_game_generic(
         s, c, args, "", Episode::EP3, GameMode::NORMAL, 0, false, nullptr, battle_player);
     if (game) {

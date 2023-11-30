@@ -35,7 +35,7 @@ void on_login_complete(shared_ptr<Client> c);
 static shared_ptr<const Menu> proxy_options_menu_for_client(shared_ptr<const Client> c) {
   auto s = c->require_server_state();
 
-  shared_ptr<Menu> ret(new Menu(MenuID::PROXY_OPTIONS, "Proxy options"));
+  auto ret = make_shared<Menu>(MenuID::PROXY_OPTIONS, "Proxy options");
   ret->items.emplace_back(ProxyOptionsMenuItemID::GO_BACK, "Go back", "Return to the\nProxy Server menu", 0);
 
   auto add_bool_option = [&](uint32_t item_id, bool is_enabled, const char* text, const char* description) -> void {
@@ -188,7 +188,7 @@ void on_connect(std::shared_ptr<Client> c) {
 static void send_main_menu(shared_ptr<Client> c) {
   auto s = c->require_server_state();
 
-  shared_ptr<Menu> main_menu(new Menu(MenuID::MAIN, s->name));
+  auto main_menu = make_shared<Menu>(MenuID::MAIN, s->name);
   main_menu->items.emplace_back(
       MainMenuItemID::GO_TO_LOBBY, "Go to lobby",
       [s, wc = weak_ptr<Client>(c)]() -> string {
@@ -411,7 +411,7 @@ static void on_DB_V3(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
       c->should_disconnect = true;
       return;
     } else {
-      shared_ptr<License> l(new License());
+      auto l = make_shared<License>();
       l->serial_number = serial_number;
       l->access_key = cmd.access_key.decode();
       l->gc_password = cmd.password.decode();
@@ -455,7 +455,7 @@ static void on_88_DCNTE(shared_ptr<Client> c, uint16_t, uint32_t, string& data) 
       send_message_box(c, "Incorrect serial number");
       c->should_disconnect = true;
     } else {
-      shared_ptr<License> l(new License());
+      auto l = make_shared<License>();
       l->serial_number = serial_number;
       l->access_key = cmd.access_key.decode();
       s->license_index->add(l);
@@ -498,7 +498,7 @@ static void on_8B_DCNTE(shared_ptr<Client> c, uint16_t, uint32_t, string& data) 
       send_message_box(c, "Incorrect serial number");
       c->should_disconnect = true;
     } else {
-      shared_ptr<License> l(new License());
+      auto l = make_shared<License>();
       l->serial_number = serial_number;
       l->access_key = cmd.access_key.decode();
       s->license_index->add(l);
@@ -552,7 +552,7 @@ static void on_90_DC(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
       send_command(c, 0x90, 0x03);
       c->should_disconnect = true;
     } else {
-      shared_ptr<License> l(new License());
+      auto l = make_shared<License>();
       l->serial_number = serial_number;
       l->access_key = cmd.access_key.decode();
       s->license_index->add(l);
@@ -609,7 +609,7 @@ static void on_93_DC(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
       c->should_disconnect = true;
       return;
     } else {
-      shared_ptr<License> l(new License());
+      auto l = make_shared<License>();
       l->serial_number = serial_number;
       l->access_key = cmd.access_key.decode();
       s->license_index->add(l);
@@ -698,7 +698,7 @@ static void on_9A(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
       c->should_disconnect = true;
       return;
     } else if (is_v1_or_v2(c->version())) {
-      shared_ptr<License> l(new License());
+      auto l = make_shared<License>();
       l->serial_number = serial_number;
       l->access_key = cmd.access_key.decode();
       s->license_index->add(l);
@@ -758,7 +758,7 @@ static void on_9C(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
       c->should_disconnect = true;
       return;
     } else {
-      shared_ptr<License> l(new License());
+      auto l = make_shared<License>();
       l->serial_number = serial_number;
       l->access_key = cmd.access_key.decode();
       if (is_gc(c->version())) {
@@ -877,7 +877,7 @@ static void on_9D_9E(shared_ptr<Client> c, uint16_t command, uint32_t, string& d
       c->should_disconnect = true;
       return;
     } else if (is_v1_or_v2(c->version())) {
-      shared_ptr<License> l(new License());
+      auto l = make_shared<License>();
       l->serial_number = serial_number;
       l->access_key = base_cmd->access_key.decode();
       s->license_index->add(l);
@@ -907,7 +907,7 @@ static void on_9E_XB(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
     }
   }
 
-  c->xb_netloc.reset(new XBNetworkLocation(cmd.netloc));
+  c->xb_netloc = make_shared<XBNetworkLocation>(cmd.netloc);
   c->xb_9E_unknown_a1a = cmd.unknown_a1a;
 
   c->channel.language = cmd.language;
@@ -946,7 +946,7 @@ static void on_9E_XB(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
     return;
 
   } catch (const LicenseIndex::missing_license& e) {
-    shared_ptr<License> l(new License());
+    auto l = make_shared<License>();
     l->serial_number = fnv1a32(xb_gamertag) & 0x7FFFFFFF;
     l->xb_gamertag = xb_gamertag;
     l->xb_user_id = xb_user_id;
@@ -1003,7 +1003,7 @@ static void on_93_BB(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
       c->should_disconnect = true;
       return;
     } else {
-      shared_ptr<License> l(new License());
+      auto l = make_shared<License>();
       l->serial_number = fnv1a32(cmd.username.decode()) & 0x7FFFFFFF;
       l->bb_username = cmd.username.decode();
       l->bb_password = cmd.password.decode();
@@ -1518,7 +1518,7 @@ static void on_CA_Ep3(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
           }
         }
       }
-      l->battle_record.reset(new Episode3::BattleRecord(s->ep3_behavior_flags));
+      l->battle_record = make_shared<Episode3::BattleRecord>(s->ep3_behavior_flags);
       for (auto existing_c : l->clients) {
         if (existing_c) {
           auto existing_p = existing_c->game_data.character();
@@ -2705,7 +2705,7 @@ static void on_AC_V3_BB(shared_ptr<Client> c, uint16_t, uint32_t, string& data) 
     send_command(c, 0xAC, 0x00);
 
     c->log.info("Creating game join command queue");
-    c->game_join_command_queue.reset(new deque<Client::JoinCommand>());
+    c->game_join_command_queue = make_unique<deque<Client::JoinCommand>>();
     send_command(c, 0x1D, 0x00);
 
   } else if (c->config.check_flag(Client::Flag::LOADING_QUEST)) {
@@ -2792,14 +2792,14 @@ static void on_61_98(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
     case Version::DC_V1_11_2000_PROTOTYPE:
     case Version::DC_V1: {
       const auto& cmd = check_size_t<C_CharacterData_DCv1_61_98>(data);
-      c->game_data.last_reported_disp_v1_v2.reset(new PlayerDispDataDCPCV3(cmd.disp));
+      c->game_data.last_reported_disp_v1_v2 = make_unique<PlayerDispDataDCPCV3>(cmd.disp);
       player->inventory = cmd.inventory;
       player->disp = cmd.disp.to_bb(player->inventory.language, player->inventory.language);
       break;
     }
     case Version::DC_V2: {
       const auto& cmd = check_size_t<C_CharacterData_DCv2_61_98>(data, 0xFFFF);
-      c->game_data.last_reported_disp_v1_v2.reset(new PlayerDispDataDCPCV3(cmd.disp));
+      c->game_data.last_reported_disp_v1_v2 = make_unique<PlayerDispDataDCPCV3>(cmd.disp);
       player->inventory = cmd.inventory;
       player->disp = cmd.disp.to_bb(player->inventory.language, player->inventory.language);
       player->battle_records = cmd.records.battle;
@@ -2809,7 +2809,7 @@ static void on_61_98(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
     }
     case Version::PC_V2: {
       const auto& cmd = check_size_t<C_CharacterData_PC_61_98>(data, 0xFFFF);
-      c->game_data.last_reported_disp_v1_v2.reset(new PlayerDispDataDCPCV3(cmd.disp));
+      c->game_data.last_reported_disp_v1_v2 = make_unique<PlayerDispDataDCPCV3>(cmd.disp);
       player->inventory = cmd.inventory;
       player->disp = cmd.disp.to_bb(player->inventory.language, player->inventory.language);
       player->battle_records = cmd.records.battle;
@@ -2841,7 +2841,7 @@ static void on_61_98(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
           throw runtime_error("non-Episode 3 client sent Episode 3 player data");
         }
         const auto* cmd3 = &check_size_t<C_CharacterData_GC_Ep3_61_98>(data);
-        c->game_data.ep3_config.reset(new Episode3::PlayerConfig(cmd3->ep3_config));
+        c->game_data.ep3_config = make_shared<Episode3::PlayerConfig>(cmd3->ep3_config);
         cmd = reinterpret_cast<const C_CharacterData_V3_61_98*>(cmd3);
         if (c->config.specific_version == 0x33000000) {
           c->config.specific_version = 0x33534A30; // 3SJ0
@@ -2859,7 +2859,7 @@ static void on_61_98(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
       }
 
       if (c->version() == Version::GC_NTE) {
-        c->game_data.last_reported_disp_v1_v2.reset(new PlayerDispDataDCPCV3(cmd->disp));
+        c->game_data.last_reported_disp_v1_v2 = make_unique<PlayerDispDataDCPCV3>(cmd->disp);
       }
 
       auto s = c->require_server_state();
@@ -3867,13 +3867,13 @@ shared_ptr<Lobby> create_game_generic(
   game->episode = episode;
   game->mode = mode;
   if (game->mode == GameMode::CHALLENGE) {
-    game->challenge_params.reset(new Lobby::ChallengeParameters());
+    game->challenge_params = make_shared<Lobby::ChallengeParameters>();
   }
   game->difficulty = difficulty;
   if (c->config.check_flag(Client::Flag::USE_OVERRIDE_RANDOM_SEED)) {
     game->random_seed = c->config.override_random_seed;
   }
-  game->random_crypt.reset(new PSOV2Encryption(game->random_seed));
+  game->random_crypt = make_shared<PSOV2Encryption>(game->random_seed);
   if (battle_player) {
     game->battle_player = battle_player;
     battle_player->set_lobby(game);
@@ -3913,7 +3913,7 @@ shared_ptr<Lobby> create_game_generic(
   }
 
   if (game->base_version == Version::BB_V4) {
-    game->map.reset(new Map());
+    game->map = make_shared<Map>();
     for (size_t floor = 0; floor < 0x10; floor++) {
       c->log.info("[Map/%zu] Using variations %" PRIX32 ", %" PRIX32,
           floor, game->variations[floor * 2].load(), game->variations[floor * 2 + 1].load());
@@ -4271,7 +4271,7 @@ static void on_D0_V3_BB(shared_ptr<Client> c, uint16_t, uint32_t, string& data) 
     throw runtime_error("trade command sent to missing player");
   }
 
-  c->game_data.pending_item_trade.reset(new PendingItemTrade());
+  c->game_data.pending_item_trade = make_unique<PendingItemTrade>();
   c->game_data.pending_item_trade->other_client_id = cmd.target_client_id;
   for (size_t x = 0; x < cmd.item_count; x++) {
     auto& item = c->game_data.pending_item_trade->items.emplace_back(cmd.item_datas[x]);
@@ -4412,7 +4412,7 @@ static void on_EE_Ep3(shared_ptr<Client> c, uint16_t, uint32_t flag, string& dat
       throw runtime_error("card trade target is not Episode 3");
     }
 
-    c->game_data.pending_card_trade.reset(new PendingCardTrade());
+    c->game_data.pending_card_trade = make_unique<PendingCardTrade>();
     c->game_data.pending_card_trade->other_client_id = cmd.target_client_id;
     for (size_t x = 0; x < cmd.entry_count; x++) {
       c->game_data.pending_card_trade->card_to_count.emplace_back(
@@ -4824,7 +4824,7 @@ static void on_04_P(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
       return;
     } else {
 
-      shared_ptr<License> l(new License());
+      auto l = make_shared<License>();
       l->serial_number = fnv1a32(cmd.username.decode()) & 0x7FFFFFFF;
       l->bb_username = cmd.username.decode();
       l->bb_password = cmd.password.decode();

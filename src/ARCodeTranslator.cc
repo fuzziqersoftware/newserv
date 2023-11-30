@@ -18,7 +18,7 @@ void run_ar_code_translator(const std::string& initial_directory, const std::str
     if (ends_with(filename, ".dol")) {
       string name = filename.substr(0, filename.size() - 4);
       string path = directory + "/" + filename;
-      files.emplace(name, new DOLFile(path.c_str()));
+      files.emplace(name, make_shared<DOLFile>(path.c_str()));
       log.info("Loaded %s", name.c_str());
     }
   }

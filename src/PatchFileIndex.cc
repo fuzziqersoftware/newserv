@@ -23,7 +23,7 @@ std::shared_ptr<const std::string> PatchFileIndex::File::load_data() {
     string relative_path = join(this->path_directories, "/") + "/" + this->name;
     string full_path = this->index->root_dir + "/" + relative_path;
     patch_index_log.info("Loading data for %s", relative_path.c_str());
-    this->loaded_data.reset(new string(load_file(full_path)));
+    this->loaded_data = make_shared<string>(load_file(full_path));
     this->size = this->loaded_data->size();
   }
   return this->loaded_data;
@@ -70,7 +70,7 @@ PatchFileIndex::PatchFileIndex(const string& root_dir)
 
         auto st = stat(full_item_path);
 
-        shared_ptr<File> f(new File(this));
+        auto f = make_shared<File>(this);
         f->path_directories = path_directories;
         f->name = item;
 

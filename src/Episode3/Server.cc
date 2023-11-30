@@ -75,32 +75,32 @@ Server::~Server() noexcept(false) {
 }
 
 void Server::init() {
-  this->map_and_rules.reset(new MapAndRulesState());
+  this->map_and_rules = make_shared<MapAndRulesState>();
   this->num_clients_present = 0;
   this->overlay_state.clear();
   for (size_t z = 0; z < 4; z++) {
     this->presence_entries[z].clear();
-    this->deck_entries[z].reset(new DeckEntry());
+    this->deck_entries[z] = make_shared<DeckEntry>();
     this->name_entries[z].clear();
     this->name_entries_valid[z] = false;
   }
 
-  this->card_special.reset(new CardSpecial(this->shared_from_this()));
+  this->card_special = make_shared<CardSpecial>(this->shared_from_this());
 
   // Note: The original implementation calls the default PSOV2Encryption
   // constructor for random_crypt, which just uses 0 as the seed. It then
   // re-seeds the generator later. We instead expect the caller to provide a
   // seeded generator, and we don't re-seed it at all.
-  // this->random_crypt.reset(new PSOV2Encryption(0));
+  // this->random_crypt = make_shared<PSOV2Encryption>(0);
 
-  this->state_flags.reset(new StateFlags());
+  this->state_flags = make_shared<StateFlags>();
 
   this->clear_player_flags_after_dice_phase();
 
   this->update_battle_state_flags_and_send_6xB4x03_if_needed();
 
-  this->assist_server.reset(new AssistServer(this->shared_from_this()));
-  this->ruler_server.reset(new RulerServer(this->shared_from_this()));
+  this->assist_server = make_shared<AssistServer>(this->shared_from_this());
+  this->ruler_server = make_shared<RulerServer>(this->shared_from_this());
   this->ruler_server->link_objects(this->map_and_rules, this->state_flags, this->assist_server);
 
   this->send_6xB4x46();
@@ -1403,7 +1403,7 @@ void Server::setup_and_start_battle() {
     if (!this->check_presence_entry(z)) {
       this->name_entries[z].clear();
     } else {
-      this->player_states[z].reset(new PlayerState(z, this->shared_from_this()));
+      this->player_states[z] = make_shared<PlayerState>(z, this->shared_from_this());
       this->player_states[z]->init();
     }
   }

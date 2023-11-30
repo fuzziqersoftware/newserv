@@ -44,8 +44,7 @@ ProxyServer::ProxyServer(
       next_unlicensed_session_id(0xFF00000000000001) {}
 
 void ProxyServer::listen(uint16_t port, Version version, const struct sockaddr_storage* default_destination) {
-  shared_ptr<ListeningSocket> socket_obj(new ListeningSocket(
-      this, port, version, default_destination));
+  auto socket_obj = make_shared<ListeningSocket>(this, port, version, default_destination);
   auto l = this->listeners.emplace(port, socket_obj).first->second;
 }
 
@@ -143,7 +142,7 @@ void ProxyServer::on_client_connect(
       this->next_unlicensed_session_id = 0xFF00000000000001;
     }
 
-    auto emplace_ret = this->id_to_session.emplace(session_id, new LinkedSession(this->shared_from_this(), session_id, listen_port, version, *default_destination));
+    auto emplace_ret = this->id_to_session.emplace(session_id, make_shared<LinkedSession>(this->shared_from_this(), session_id, listen_port, version, *default_destination));
     if (!emplace_ret.second) {
       throw logic_error("linked session already exists for unlicensed client");
     }
@@ -157,7 +156,7 @@ void ProxyServer::on_client_connect(
     // create an unlinked session - we'll have to get the destination from the
     // client's config, which we'll get via a 9E command soon.
   } else {
-    auto emplace_ret = this->bev_to_unlinked_session.emplace(bev, new UnlinkedSession(this->shared_from_this(), bev, listen_port, version));
+    auto emplace_ret = this->bev_to_unlinked_session.emplace(bev, make_shared<UnlinkedSession>(this->shared_from_this(), bev, listen_port, version));
     if (!emplace_ret.second) {
       throw logic_error("stale unlinked session exists");
     }
@@ -189,11 +188,11 @@ void ProxyServer::on_client_connect(
         auto cmd = prepare_server_init_contents_console(server_key, client_key, 0);
         ses->channel.send(0x02, 0x00, &cmd, sizeof(cmd));
         if (uses_v2_encryption(version)) {
-          ses->channel.crypt_out.reset(new PSOV2Encryption(server_key));
-          ses->channel.crypt_in.reset(new PSOV2Encryption(client_key));
+          ses->channel.crypt_out = make_shared<PSOV2Encryption>(server_key);
+          ses->channel.crypt_in = make_shared<PSOV2Encryption>(client_key);
         } else {
-          ses->channel.crypt_out.reset(new PSOV3Encryption(server_key));
-          ses->channel.crypt_in.reset(new PSOV3Encryption(client_key));
+          ses->channel.crypt_out = make_shared<PSOV3Encryption>(server_key);
+          ses->channel.crypt_in = make_shared<PSOV3Encryption>(client_key);
         }
         break;
       }
@@ -204,17 +203,17 @@ void ProxyServer::on_client_connect(
         random_data(client_key.data(), client_key.bytes());
         auto cmd = prepare_server_init_contents_bb(server_key, client_key, 0);
         ses->channel.send(0x03, 0x00, &cmd, sizeof(cmd));
-        ses->detector_crypt.reset(new PSOBBMultiKeyDetectorEncryption(
+        ses->detector_crypt = make_shared<PSOBBMultiKeyDetectorEncryption>(
             this->state->bb_private_keys,
             bb_crypt_initial_client_commands,
             cmd.basic_cmd.client_key.data(),
-            sizeof(cmd.basic_cmd.client_key)));
+            sizeof(cmd.basic_cmd.client_key));
         ses->channel.crypt_in = ses->detector_crypt;
-        ses->channel.crypt_out.reset(new PSOBBMultiKeyImitatorEncryption(
+        ses->channel.crypt_out = make_shared<PSOBBMultiKeyImitatorEncryption>(
             ses->detector_crypt,
             cmd.basic_cmd.server_key.data(),
             sizeof(cmd.basic_cmd.server_key),
-            true));
+            true);
         break;
       }
       default:
@@ -381,7 +380,7 @@ void ProxyServer::UnlinkedSession::on_input(Channel& ch, uint16_t command, uint3
           if (!s->allow_unregistered_users) {
             throw;
           }
-          shared_ptr<License> l(new License());
+          auto l = make_shared<License>();
           l->serial_number = fnv1a32(cmd.username.decode()) & 0x7FFFFFFF;
           l->bb_username = cmd.username.decode();
           l->bb_password = cmd.password.decode();
@@ -426,10 +425,10 @@ void ProxyServer::UnlinkedSession::on_input(Channel& ch, uint16_t command, uint3
       // destination somewhere - either in the client config or in the unlinked
       // session
       if (ses->config.proxy_destination_address != 0) {
-        linked_ses.reset(new LinkedSession(server, ses->local_port, ses->version, ses->license, ses->config));
+        linked_ses = make_shared<LinkedSession>(server, ses->local_port, ses->version, ses->license, ses->config);
         linked_ses->log.info("Opened licensed session for unlinked session based on client config");
       } else if (ses->next_destination.ss_family == AF_INET) {
-        linked_ses.reset(new LinkedSession(server, ses->local_port, ses->version, ses->license, ses->next_destination));
+        linked_ses = make_shared<LinkedSession>(server, ses->local_port, ses->version, ses->license, ses->next_destination);
         linked_ses->log.info("Opened licensed session for unlinked session based on unlinked default destination");
       } else {
         ses->log.error("Cannot open linked session: no valid destination in client config or unlinked session");
@@ -876,7 +875,7 @@ shared_ptr<ProxyServer::LinkedSession> ProxyServer::create_licensed_session(
     uint16_t local_port,
     Version version,
     const Client::Config& config) {
-  shared_ptr<LinkedSession> session(new LinkedSession(this->shared_from_this(), local_port, version, l, config));
+  auto session = make_shared<LinkedSession>(this->shared_from_this(), local_port, version, l, config);
   auto emplace_ret = this->id_to_session.emplace(session->id, session);
   if (!emplace_ret.second) {
     throw runtime_error("session already exists for this license");

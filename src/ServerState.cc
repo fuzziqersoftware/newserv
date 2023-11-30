@@ -253,7 +253,7 @@ shared_ptr<Lobby> ServerState::create_lobby() {
   while (this->id_to_lobby.count(this->next_lobby_id)) {
     this->next_lobby_id++;
   }
-  shared_ptr<Lobby> l(new Lobby(this->shared_from_this(), this->next_lobby_id++));
+  auto l = make_shared<Lobby>(this->shared_from_this(), this->next_lobby_id++);
   this->id_to_lobby.emplace(l->lobby_id, l);
   l->log.info("Created lobby");
   return l;
@@ -420,7 +420,7 @@ void ServerState::set_port_configuration(
 
   bool any_port_is_pc_console_detect = false;
   for (const auto& pc : port_configs) {
-    shared_ptr<PortConfiguration> spc(new PortConfiguration(pc));
+    auto spc = make_shared<PortConfiguration>(pc);
     if (!this->name_to_port_config.emplace(spc->name, spc).second) {
       // Note: This is a logic_error instead of a runtime_error because
       // port_configs comes from a JSON map, so the names should already all be
@@ -470,7 +470,7 @@ shared_ptr<const string> ServerState::load_bb_file(
     try {
       // TODO: It's kinda not great that we copy the data here; find a way to
       // avoid doing this (also in the below case)
-      shared_ptr<string> ret(new string(this->bb_data_gsl->get_copy(effective_gsl_filename)));
+      auto ret = make_shared<string>(this->bb_data_gsl->get_copy(effective_gsl_filename));
       static_game_data_log.info("Loaded %s from data.gsl in BB patch tree", effective_gsl_filename.c_str());
       return ret;
     } catch (const out_of_range&) {
@@ -482,7 +482,7 @@ shared_ptr<const string> ServerState::load_bb_file(
     if (dot_offset != string::npos) {
       string no_ext_gsl_filename = effective_gsl_filename.substr(0, dot_offset);
       try {
-        shared_ptr<string> ret(new string(this->bb_data_gsl->get_copy(no_ext_gsl_filename)));
+        auto ret = make_shared<string>(this->bb_data_gsl->get_copy(no_ext_gsl_filename));
         static_game_data_log.info("Loaded %s from data.gsl in BB patch tree", no_ext_gsl_filename.c_str());
         return ret;
       } catch (const out_of_range&) {
@@ -700,7 +700,7 @@ void ServerState::parse_config(const JSON& json, bool is_reload) {
 
   {
     auto parse_ep3_ex_result_cmd = [&](const JSON& src) -> shared_ptr<G_SetEXResultValues_GC_Ep3_6xB4x4B> {
-      shared_ptr<G_SetEXResultValues_GC_Ep3_6xB4x4B> ret(new G_SetEXResultValues_GC_Ep3_6xB4x4B());
+      auto ret = make_shared<G_SetEXResultValues_GC_Ep3_6xB4x4B>();
       const auto& win_json = src.at("Win");
       for (size_t z = 0; z < min<size_t>(win_json.size(), 10); z++) {
         ret->win_entries[z].threshold = win_json.at(z).at(0).as_int();
@@ -790,7 +790,7 @@ void ServerState::parse_config(const JSON& json, bool is_reload) {
 
   if (!is_reload) {
     try {
-      this->quest_category_index.reset(new QuestCategoryIndex(json.at("QuestCategories")));
+      this->quest_category_index = make_shared<QuestCategoryIndex>(json.at("QuestCategories"));
     } catch (const exception& e) {
       throw runtime_error(string_printf(
           "QuestCategories is missing or invalid in config.json (%s) - see config.example.json for an example", e.what()));
@@ -799,10 +799,10 @@ void ServerState::parse_config(const JSON& json, bool is_reload) {
 
   config_log.info("Creating menus");
 
-  shared_ptr<Menu> information_menu_v2(new Menu(MenuID::INFORMATION, "Information"));
-  shared_ptr<Menu> information_menu_v3(new Menu(MenuID::INFORMATION, "Information"));
-  shared_ptr<vector<string>> information_contents_v2(new vector<string>());
-  shared_ptr<vector<string>> information_contents_v3(new vector<string>());
+  auto information_menu_v2 = make_shared<Menu>(MenuID::INFORMATION, "Information");
+  auto information_menu_v3 = make_shared<Menu>(MenuID::INFORMATION, "Information");
+  shared_ptr<vector<string>> information_contents_v2 = make_shared<vector<string>>();
+  shared_ptr<vector<string>> information_contents_v3 = make_shared<vector<string>>();
 
   information_menu_v2->items.emplace_back(InformationMenuItemID::GO_BACK, "Go back",
       "Return to the\nmain menu", MenuItem::Flag::INVISIBLE_IN_INFO_MENU);
@@ -838,7 +838,7 @@ void ServerState::parse_config(const JSON& json, bool is_reload) {
   this->information_contents_v3 = information_contents_v3;
 
   auto generate_proxy_destinations_menu = [&](vector<pair<string, uint16_t>>& ret_pds, const char* key) -> shared_ptr<const Menu> {
-    shared_ptr<Menu> ret(new Menu(MenuID::PROXY_DESTINATIONS, "Proxy server"));
+    auto ret = make_shared<Menu>(MenuID::PROXY_DESTINATIONS, "Proxy server");
     ret_pds.clear();
 
     try {
@@ -910,7 +910,7 @@ void ServerState::load_bb_private_keys() {
     if (!ends_with(filename, ".nsk")) {
       continue;
     }
-    this->bb_private_keys.emplace_back(new PSOBBEncryption::KeyFile(
+    this->bb_private_keys.emplace_back(make_shared<PSOBBEncryption::KeyFile>(
         load_object_file<PSOBBEncryption::KeyFile>("system/blueburst/keys/" + filename)));
     config_log.info("Loaded Blue Burst key file: %s", filename.c_str());
   }
@@ -919,28 +919,28 @@ void ServerState::load_bb_private_keys() {
 
 void ServerState::load_licenses() {
   config_log.info("Indexing licenses");
-  this->license_index.reset(new LicenseIndex());
+  this->license_index = make_shared<LicenseIndex>();
 }
 
 void ServerState::load_teams() {
   config_log.info("Indexing teams");
-  this->team_index.reset(new TeamIndex("system/teams", this->team_reward_defs_json));
+  this->team_index = make_shared<TeamIndex>("system/teams", this->team_reward_defs_json);
   this->team_reward_defs_json = nullptr;
 }
 
 void ServerState::load_patch_indexes() {
   if (isdir("system/patch-pc")) {
     config_log.info("Indexing PSO PC patch files");
-    this->pc_patch_file_index.reset(new PatchFileIndex("system/patch-pc"));
+    this->pc_patch_file_index = make_shared<PatchFileIndex>("system/patch-pc");
   } else {
     config_log.info("PSO PC patch files not present");
   }
   if (isdir("system/patch-bb")) {
     config_log.info("Indexing PSO BB patch files");
-    this->bb_patch_file_index.reset(new PatchFileIndex("system/patch-bb"));
+    this->bb_patch_file_index = make_shared<PatchFileIndex>("system/patch-bb");
     try {
       auto gsl_file = this->bb_patch_file_index->get("./data/data.gsl");
-      this->bb_data_gsl.reset(new GSLArchive(gsl_file->load_data(), false));
+      this->bb_data_gsl = make_shared<GSLArchive>(gsl_file->load_data(), false);
       config_log.info("data.gsl found in BB patch files");
     } catch (const out_of_range&) {
       config_log.info("data.gsl is not present in BB patch files");
@@ -952,31 +952,31 @@ void ServerState::load_patch_indexes() {
 
 void ServerState::load_battle_params() {
   config_log.info("Loading battle parameters");
-  this->battle_params.reset(new BattleParamsIndex(
+  this->battle_params = make_shared<BattleParamsIndex>(
       this->load_bb_file("BattleParamEntry_on.dat"),
       this->load_bb_file("BattleParamEntry_lab_on.dat"),
       this->load_bb_file("BattleParamEntry_ep4_on.dat"),
       this->load_bb_file("BattleParamEntry.dat"),
       this->load_bb_file("BattleParamEntry_lab.dat"),
-      this->load_bb_file("BattleParamEntry_ep4.dat")));
+      this->load_bb_file("BattleParamEntry_ep4.dat"));
 }
 
 void ServerState::load_level_table() {
   config_log.info("Loading level table");
-  this->level_table.reset(new LevelTable(this->load_bb_file("PlyLevelTbl.prs"), true));
+  this->level_table = make_shared<LevelTable>(this->load_bb_file("PlyLevelTbl.prs"), true);
 }
 
 void ServerState::load_word_select_table() {
   config_log.info("Loading Word Select table");
-  this->word_select_table.reset(new WordSelectTable(JSON::parse(load_file("system/word-select-table.json"))));
+  this->word_select_table = make_shared<WordSelectTable>(JSON::parse(load_file("system/word-select-table.json")));
 }
 
 void ServerState::load_item_tables() {
   config_log.info("Loading item name index");
-  this->item_name_index.reset(new ItemNameIndex(
+  this->item_name_index = make_shared<ItemNameIndex>(
       JSON::parse(load_file("system/item-tables/names-v2.json")),
       JSON::parse(load_file("system/item-tables/names-v3.json")),
-      JSON::parse(load_file("system/item-tables/names-v4.json"))));
+      JSON::parse(load_file("system/item-tables/names-v4.json")));
 
   config_log.info("Loading rare item sets");
   unordered_map<string, shared_ptr<const RareItemSet>> new_rare_item_sets;
@@ -1030,25 +1030,23 @@ void ServerState::load_item_tables() {
   this->rare_item_sets.swap(new_rare_item_sets);
 
   config_log.info("Loading v2 common item table");
-  shared_ptr<string> ct_data_v2(new string(load_file("system/item-tables/ItemCT-v2.afs")));
-  shared_ptr<string> pt_data_v2(new string(load_file("system/item-tables/ItemPT-v2.afs")));
-  this->common_item_set_v2.reset(new AFSV2CommonItemSet(pt_data_v2, ct_data_v2));
+  auto ct_data_v2 = make_shared<string>(load_file("system/item-tables/ItemCT-v2.afs"));
+  auto pt_data_v2 = make_shared<string>(load_file("system/item-tables/ItemPT-v2.afs"));
+  this->common_item_set_v2 = make_shared<AFSV2CommonItemSet>(pt_data_v2, ct_data_v2);
   config_log.info("Loading v3 common item table");
-  shared_ptr<string> pt_data_v3(new string(load_file("system/item-tables/ItemPT-gc.gsl")));
-  this->common_item_set_v3.reset(new GSLV3CommonItemSet(pt_data_v3, true));
+  auto pt_data_v3 = make_shared<string>(load_file("system/item-tables/ItemPT-gc.gsl"));
+  this->common_item_set_v3 = make_shared<GSLV3CommonItemSet>(pt_data_v3, true);
   // Note: The ItemPT files don't exist in BB, so we use the GC versions of them
   // instead. This doesn't include Episode 4 of course, so we use Episode 1
   // parameters for Episode 4 implicitly.
 
   config_log.info("Loading armor table");
-  shared_ptr<string> armor_data(new string(load_file(
-      "system/item-tables/ArmorRandom-gc.rel")));
-  this->armor_random_set.reset(new ArmorRandomSet(armor_data));
+  auto armor_data = make_shared<string>(load_file("system/item-tables/ArmorRandom-gc.rel"));
+  this->armor_random_set = make_shared<ArmorRandomSet>(armor_data);
 
   config_log.info("Loading tool table");
-  shared_ptr<string> tool_data(new string(load_file(
-      "system/item-tables/ToolRandom-gc.rel")));
-  this->tool_random_set.reset(new ToolRandomSet(tool_data));
+  auto tool_data = make_shared<string>(load_file("system/item-tables/ToolRandom-gc.rel"));
+  this->tool_random_set = make_shared<ToolRandomSet>(tool_data);
 
   config_log.info("Loading weapon tables");
   const char* filenames[4] = {
@@ -1058,54 +1056,52 @@ void ServerState::load_item_tables() {
       "system/item-tables/WeaponRandomUltimate-gc.rel",
   };
   for (size_t z = 0; z < 4; z++) {
-    shared_ptr<string> weapon_data(new string(load_file(filenames[z])));
-    this->weapon_random_sets[z].reset(new WeaponRandomSet(weapon_data));
+    auto weapon_data = make_shared<string>(load_file(filenames[z]));
+    this->weapon_random_sets[z] = make_shared<WeaponRandomSet>(weapon_data);
   }
 
   config_log.info("Loading tekker adjustment table");
-  shared_ptr<string> tekker_data(new string(load_file(
-      "system/item-tables/JudgeItem-gc.rel")));
-  this->tekker_adjustment_set.reset(new TekkerAdjustmentSet(tekker_data));
+  auto tekker_data = make_shared<string>(load_file("system/item-tables/JudgeItem-gc.rel"));
+  this->tekker_adjustment_set = make_shared<TekkerAdjustmentSet>(tekker_data);
 
   config_log.info("Loading item definition tables");
-  shared_ptr<string> pmt_data_v2(new string(prs_decompress(load_file("system/item-tables/ItemPMT-v2.prs"))));
-  this->item_parameter_table_v2.reset(new ItemParameterTable(pmt_data_v2, ItemParameterTable::Version::V2));
-  shared_ptr<string> pmt_data_v3(new string(prs_decompress(load_file("system/item-tables/ItemPMT-gc.prs"))));
-  this->item_parameter_table_v3.reset(new ItemParameterTable(pmt_data_v3, ItemParameterTable::Version::V3));
-  shared_ptr<string> pmt_data_v4(new string(prs_decompress(load_file("system/item-tables/ItemPMT-bb.prs"))));
-  this->item_parameter_table_v4.reset(new ItemParameterTable(pmt_data_v4, ItemParameterTable::Version::V4));
+  auto pmt_data_v2 = make_shared<string>(prs_decompress(load_file("system/item-tables/ItemPMT-v2.prs")));
+  this->item_parameter_table_v2 = make_shared<ItemParameterTable>(pmt_data_v2, ItemParameterTable::Version::V2);
+  auto pmt_data_v3 = make_shared<string>(prs_decompress(load_file("system/item-tables/ItemPMT-gc.prs")));
+  this->item_parameter_table_v3 = make_shared<ItemParameterTable>(pmt_data_v3, ItemParameterTable::Version::V3);
+  auto pmt_data_v4 = make_shared<string>(prs_decompress(load_file("system/item-tables/ItemPMT-bb.prs")));
+  this->item_parameter_table_v4 = make_shared<ItemParameterTable>(pmt_data_v4, ItemParameterTable::Version::V4);
 
   config_log.info("Loading mag evolution table");
-  shared_ptr<string> mag_data(new string(prs_decompress(load_file(
-      "system/item-tables/ItemMagEdit-bb.prs"))));
-  this->mag_evolution_table.reset(new MagEvolutionTable(mag_data));
+  auto mag_data = make_shared<string>(prs_decompress(load_file("system/item-tables/ItemMagEdit-bb.prs")));
+  this->mag_evolution_table = make_shared<MagEvolutionTable>(mag_data);
 }
 
 void ServerState::load_ep3_data() {
   config_log.info("Collecting Episode 3 maps");
-  this->ep3_map_index.reset(new Episode3::MapIndex("system/ep3/maps"));
+  this->ep3_map_index = make_shared<Episode3::MapIndex>("system/ep3/maps");
   config_log.info("Loading Episode 3 card definitions");
-  this->ep3_card_index.reset(new Episode3::CardIndex(
+  this->ep3_card_index = make_shared<Episode3::CardIndex>(
       "system/ep3/card-definitions.mnr",
       "system/ep3/card-definitions.mnrd",
       "system/ep3/card-text.mnr",
       "system/ep3/card-text.mnrd",
       "system/ep3/card-dice-text.mnr",
-      "system/ep3/card-dice-text.mnrd"));
+      "system/ep3/card-dice-text.mnrd");
   config_log.info("Loading Episode 3 trial card definitions");
-  this->ep3_card_index_trial.reset(new Episode3::CardIndex(
+  this->ep3_card_index_trial = make_shared<Episode3::CardIndex>(
       "system/ep3/card-definitions-trial.mnr",
       "system/ep3/card-definitions-trial.mnrd",
       "system/ep3/card-text-trial.mnr",
       "system/ep3/card-text-trial.mnrd",
       "system/ep3/card-dice-text-trial.mnr",
-      "system/ep3/card-dice-text-trial.mnrd"));
+      "system/ep3/card-dice-text-trial.mnrd");
   config_log.info("Loading Episode 3 COM decks");
-  this->ep3_com_deck_index.reset(new Episode3::COMDeckIndex("system/ep3/com-decks.json"));
+  this->ep3_com_deck_index = make_shared<Episode3::COMDeckIndex>("system/ep3/com-decks.json");
 
   const string& tournament_state_filename = "system/ep3/tournament-state.json";
-  this->ep3_tournament_index.reset(new Episode3::TournamentIndex(
-      this->ep3_map_index, this->ep3_com_deck_index, tournament_state_filename));
+  this->ep3_tournament_index = make_shared<Episode3::TournamentIndex>(
+      this->ep3_map_index, this->ep3_com_deck_index, tournament_state_filename);
   this->ep3_tournament_index->link_all_clients(this->shared_from_this());
   config_log.info("Loaded Episode 3 tournament state");
 }
@@ -1143,19 +1139,19 @@ void ServerState::resolve_ep3_card_names() {
 
 void ServerState::load_quest_index() {
   config_log.info("Collecting quests");
-  this->default_quest_index.reset(new QuestIndex("system/quests", this->quest_category_index, false));
+  this->default_quest_index = make_shared<QuestIndex>("system/quests", this->quest_category_index, false);
   config_log.info("Collecting Episode 3 download quests");
-  this->ep3_download_quest_index.reset(new QuestIndex("system/ep3/maps-download", this->quest_category_index, true));
+  this->ep3_download_quest_index = make_shared<QuestIndex>("system/ep3/maps-download", this->quest_category_index, true);
 }
 
 void ServerState::compile_functions() {
   config_log.info("Compiling client functions");
-  this->function_code_index.reset(new FunctionCodeIndex("system/ppc"));
+  this->function_code_index = make_shared<FunctionCodeIndex>("system/ppc");
 }
 
 void ServerState::load_dol_files() {
   config_log.info("Loading DOL files");
-  this->dol_file_index.reset(new DOLFileIndex("system/dol"));
+  this->dol_file_index = make_shared<DOLFileIndex>("system/dol");
 }
 
 shared_ptr<const vector<string>> ServerState::information_contents_for_client(shared_ptr<const Client> c) const {

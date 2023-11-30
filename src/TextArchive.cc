@@ -29,7 +29,7 @@ TextArchive::TextArchive(const JSON& json) {
   }
 
   for (const auto& keyboard_json : json.at("keyboards").as_list()) {
-    auto& keyboard = this->keyboards.emplace_back(new Keyboard());
+    auto& keyboard = this->keyboards.emplace_back(make_unique<Keyboard>());
     for (size_t y = 0; y < keyboard->size(); y++) {
       auto& row = keyboard->at(y);
       const auto& row_json = keyboard_json->at(y);
@@ -116,7 +116,7 @@ void TextArchive::set_keyboard(size_t kb_index, const Keyboard& kb) {
   if (kb_index >= this->keyboards.size()) {
     this->keyboards.resize(kb_index + 1);
   }
-  this->keyboards[kb_index].reset(new Keyboard(kb));
+  this->keyboards[kb_index] = make_unique<Keyboard>(kb);
 }
 
 void TextArchive::resize_keyboards(size_t num_keyboards) {
@@ -171,7 +171,7 @@ void TextArchive::load_t(const string& pr2_data) {
   while (this->keyboards.size() < num_keyboards) {
     uint32_t keyboard_offset = r.pget<U32T>(keyboards_offset + 4 * this->keyboards.size());
     used_offsets.emplace(keyboard_offset);
-    auto& kb = this->keyboards.emplace_back(new Keyboard());
+    auto& kb = this->keyboards.emplace_back(make_unique<Keyboard>());
     auto key_r = r.sub(keyboard_offset, sizeof(Keyboard));
     for (size_t y = 0; y < kb->size(); y++) {
       auto& row = kb->at(y);

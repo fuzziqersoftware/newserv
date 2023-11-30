@@ -363,13 +363,13 @@ static void a_encrypt_decrypt_fn(Arguments& args) {
     case Version::DC_V2:
     case Version::PC_V2:
     case Version::GC_NTE:
-      crypt.reset(new PSOV2Encryption(stoul(seed, nullptr, 16)));
+      crypt = make_shared<PSOV2Encryption>(stoul(seed, nullptr, 16));
       break;
     case Version::GC_V3:
     case Version::XB_V3:
     case Version::GC_EP3_TRIAL_EDITION:
     case Version::GC_EP3:
-      crypt.reset(new PSOV3Encryption(stoul(seed, nullptr, 16)));
+      crypt = make_shared<PSOV3Encryption>(stoul(seed, nullptr, 16));
       break;
     case Version::BB_V4: {
       string key_name = args.get<string>("key");
@@ -378,7 +378,7 @@ static void a_encrypt_decrypt_fn(Arguments& args) {
       }
       seed = parse_data_string(seed, nullptr, ParseDataFlags::ALLOW_FILES);
       auto key = load_object_file<PSOBBEncryption::KeyFile>("system/blueburst/keys/" + key_name + ".nsk");
-      crypt.reset(new PSOBBEncryption(key, seed.data(), seed.size()));
+      crypt = make_shared<PSOBBEncryption>(key, seed.data(), seed.size());
       break;
     }
     default:
@@ -1003,14 +1003,14 @@ Action a_encode_qst(
       string pvr_filename = ends_with(bin_filename, ".bin")
           ? (bin_filename.substr(0, bin_filename.size() - 3) + "pvr")
           : (bin_filename + ".pvr");
-      shared_ptr<string> bin_data(new string(load_file(bin_filename)));
-      shared_ptr<string> dat_data(new string(load_file(dat_filename)));
+      auto bin_data = make_shared<string>(load_file(bin_filename));
+      auto dat_data = make_shared<string>(load_file(dat_filename));
       shared_ptr<string> pvr_data;
       try {
-        pvr_data.reset(new string(load_file(pvr_filename)));
+        pvr_data = make_shared<string>(load_file(pvr_filename));
       } catch (const cannot_open_file&) {
       }
-      shared_ptr<VersionedQuest> vq(new VersionedQuest(0, 0, version, 0, bin_data, dat_data, pvr_data));
+      auto vq = make_shared<VersionedQuest>(0, 0, version, 0, bin_data, dat_data, pvr_data);
       if (download) {
         vq = vq->create_download_quest();
       }
@@ -1064,7 +1064,7 @@ void a_extract_archive_fn(Arguments& args) {
   }
 
   string data = read_input_data(args);
-  shared_ptr<string> data_shared(new string(std::move(data)));
+  auto data_shared = make_shared<string>(std::move(data));
 
   if (args.get<string>(0) == "extract-afs") {
     AFSArchive arch(data_shared);
@@ -1213,8 +1213,8 @@ Action a_cat_client(
         if (key_file_name.empty()) {
           throw runtime_error("a key filename is required for BB client emulation");
         }
-        key.reset(new PSOBBEncryption::KeyFile(
-            load_object_file<PSOBBEncryption::KeyFile>("system/blueburst/keys/" + key_file_name + ".nsk")));
+        key = make_shared<PSOBBEncryption::KeyFile>(
+            load_object_file<PSOBBEncryption::KeyFile>("system/blueburst/keys/" + key_file_name + ".nsk"));
       }
       shared_ptr<struct event_base> base(event_base_new(), event_base_free);
       auto cat_client_remote = make_sockaddr_storage(parse_netloc(args.get<string>(1))).first;
@@ -1246,18 +1246,18 @@ Action a_convert_rare_item_set(
       }
       auto version = get_cli_version(args);
 
-      shared_ptr<string> data(new string(read_input_data(args)));
+      auto data = make_shared<string>(read_input_data(args));
       shared_ptr<RareItemSet> rs;
       if (ends_with(input_filename, ".json")) {
-        rs.reset(new RareItemSet(JSON::parse(*data), version, name_index));
+        rs = make_shared<RareItemSet>(JSON::parse(*data), version, name_index);
       } else if (ends_with(input_filename, ".gsl")) {
-        rs.reset(new RareItemSet(GSLArchive(data, false), false));
+        rs = make_shared<RareItemSet>(GSLArchive(data, false), false);
       } else if (ends_with(input_filename, ".gslb")) {
-        rs.reset(new RareItemSet(GSLArchive(data, true), true));
+        rs = make_shared<RareItemSet>(GSLArchive(data, true), true);
       } else if (ends_with(input_filename, ".afs")) {
-        rs.reset(new RareItemSet(AFSArchive(data), is_v1(version)));
+        rs = make_shared<RareItemSet>(AFSArchive(data), is_v1(version));
       } else if (ends_with(input_filename, ".rel")) {
-        rs.reset(new RareItemSet(*data, true));
+        rs = make_shared<RareItemSet>(*data, true);
       } else {
         throw runtime_error("cannot determine input format; use a filename ending with .json, .gsl, .gslb, .afs, or .rel");
       }
@@ -1296,11 +1296,11 @@ Action a_describe_item(
           JSON::parse(load_file("system/item-tables/names-v2.json")),
           JSON::parse(load_file("system/item-tables/names-v3.json")),
           JSON::parse(load_file("system/item-tables/names-v4.json")));
-      shared_ptr<string> pmt_data_v2(new string(prs_decompress(load_file("system/item-tables/ItemPMT-v2.prs"))));
+      auto pmt_data_v2 = make_shared<string>(prs_decompress(load_file("system/item-tables/ItemPMT-v2.prs")));
       auto pmt_v2 = make_shared<ItemParameterTable>(pmt_data_v2, ItemParameterTable::Version::V2);
-      shared_ptr<string> pmt_data_v3(new string(prs_decompress(load_file("system/item-tables/ItemPMT-gc.prs"))));
+      auto pmt_data_v3 = make_shared<string>(prs_decompress(load_file("system/item-tables/ItemPMT-gc.prs")));
       auto pmt_v3 = make_shared<ItemParameterTable>(pmt_data_v3, ItemParameterTable::Version::V3);
-      shared_ptr<string> pmt_data_v4(new string(prs_decompress(load_file("system/item-tables/ItemPMT-bb.prs"))));
+      auto pmt_data_v4 = make_shared<string>(prs_decompress(load_file("system/item-tables/ItemPMT-bb.prs")));
       auto pmt_v4 = make_shared<ItemParameterTable>(pmt_data_v4, ItemParameterTable::Version::V4);
 
       ItemData item = name_index->parse_item_description(version, description);
@@ -1375,7 +1375,7 @@ Action a_show_ep3_cards(
       unique_ptr<TextArchive> text_english;
       try {
         JSON json = JSON::parse(load_file("system/ep3/text-english.json"));
-        text_english.reset(new TextArchive(json));
+        text_english = make_unique<TextArchive>(json);
       } catch (const exception& e) {
       }
 
@@ -1426,7 +1426,7 @@ Action a_generate_ep3_cards_html(
       unique_ptr<TextArchive> text_english;
       try {
         JSON json = JSON::parse(load_file("system/ep3/text-english.json"));
-        text_english.reset(new TextArchive(json));
+        text_english = make_unique<TextArchive>(json);
       } catch (const exception& e) {
       }
 
@@ -1698,14 +1698,13 @@ Action a_run_server_replay_log(
       }
 
       shared_ptr<struct event_base> base(event_base_new(), event_base_free);
-      shared_ptr<ServerState> state(new ServerState(config_filename, is_replay));
+      auto state = make_shared<ServerState>(config_filename, is_replay);
       state->init();
 
       shared_ptr<DNSServer> dns_server;
       if (state->dns_server_port && !is_replay) {
         config_log.info("Starting DNS server on port %hu", state->dns_server_port);
-        dns_server.reset(new DNSServer(base, state->local_address,
-            state->external_address));
+        dns_server = make_shared<DNSServer>(base, state->local_address, state->external_address);
         dns_server->listen("", state->dns_server_port);
       } else {
         config_log.info("DNS server is disabled");
@@ -1716,9 +1715,9 @@ Action a_run_server_replay_log(
       shared_ptr<IPStackSimulator> ip_stack_simulator;
       if (is_replay) {
         config_log.info("Starting proxy server");
-        state->proxy_server.reset(new ProxyServer(base, state));
+        state->proxy_server = make_shared<ProxyServer>(base, state);
         config_log.info("Starting game server");
-        state->game_server.reset(new Server(base, state));
+        state->game_server = make_shared<Server>(base, state);
 
         auto nop_destructor = +[](FILE*) {};
         shared_ptr<FILE> log_f(stdin, nop_destructor);
@@ -1726,7 +1725,7 @@ Action a_run_server_replay_log(
           log_f = fopen_shared(replay_log_filename, "rt");
         }
 
-        replay_session.reset(new ReplaySession(base, log_f.get(), state, args.get<bool>("require-basic-credentials")));
+        replay_session = make_shared<ReplaySession>(base, log_f.get(), state, args.get<bool>("require-basic-credentials"));
         replay_session->start();
 
       } else {
@@ -1736,7 +1735,7 @@ Action a_run_server_replay_log(
           if (pc->behavior == ServerBehavior::PROXY_SERVER) {
             if (!state->proxy_server.get()) {
               config_log.info("Starting proxy server");
-              state->proxy_server.reset(new ProxyServer(base, state));
+              state->proxy_server = make_shared<ProxyServer>(base, state);
             }
             if (state->proxy_server.get()) {
               // For PC and GC, proxy sessions are dynamically created when a client
@@ -1761,7 +1760,7 @@ Action a_run_server_replay_log(
           } else {
             if (!state->game_server.get()) {
               config_log.info("Starting game server");
-              state->game_server.reset(new Server(base, state));
+              state->game_server = make_shared<Server>(base, state);
             }
             string spec = string_printf("T-%hu-%s-%s-%s", pc->port, name_for_enum(pc->version), pc->name.c_str(), name_for_enum(pc->behavior));
             state->game_server->listen(spec, "", pc->port, pc->version, pc->behavior);
@@ -1770,7 +1769,7 @@ Action a_run_server_replay_log(
 
         if (!state->ip_stack_addresses.empty()) {
           config_log.info("Starting IP stack simulator");
-          ip_stack_simulator.reset(new IPStackSimulator(base, state));
+          ip_stack_simulator = make_shared<IPStackSimulator>(base, state);
           for (const auto& it : state->ip_stack_addresses) {
             auto netloc = parse_netloc(it);
             string spec = (netloc.second == 0) ? ("T-IPS-" + netloc.first) : string_printf("T-IPS-%hu", netloc.second);
@@ -1796,7 +1795,7 @@ Action a_run_server_replay_log(
         should_run_shell = !replay_session.get();
       }
       if (should_run_shell) {
-        shell.reset(new ServerShell(base, state));
+        shell = make_shared<ServerShell>(base, state);
       }
 
       config_log.info("Ready");

@@ -141,7 +141,7 @@ LicenseIndex::LicenseIndex() {
   for (const auto& item : list_directory("system/licenses")) {
     if (ends_with(item, ".json")) {
       JSON json = JSON::parse(load_file("system/licenses/" + item));
-      shared_ptr<License> license(new License(json));
+      auto license = make_shared<License>(json);
       this->add(license);
     }
   }

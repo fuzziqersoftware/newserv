@@ -229,15 +229,15 @@ static HandlerResult S_V123P_02_17(
     forward_command(ses, false, command, flag, data);
 
     if (uses_v3_encryption(ses->version())) {
-      ses->server_channel.crypt_in.reset(new PSOV3Encryption(cmd.server_key));
-      ses->server_channel.crypt_out.reset(new PSOV3Encryption(cmd.client_key));
-      ses->client_channel.crypt_in.reset(new PSOV3Encryption(cmd.client_key));
-      ses->client_channel.crypt_out.reset(new PSOV3Encryption(cmd.server_key));
+      ses->server_channel.crypt_in = make_shared<PSOV3Encryption>(cmd.server_key);
+      ses->server_channel.crypt_out = make_shared<PSOV3Encryption>(cmd.client_key);
+      ses->client_channel.crypt_in = make_shared<PSOV3Encryption>(cmd.client_key);
+      ses->client_channel.crypt_out = make_shared<PSOV3Encryption>(cmd.server_key);
     } else { // DC, PC, or patch server (they all use V2 encryption)
-      ses->server_channel.crypt_in.reset(new PSOV2Encryption(cmd.server_key));
-      ses->server_channel.crypt_out.reset(new PSOV2Encryption(cmd.client_key));
-      ses->client_channel.crypt_in.reset(new PSOV2Encryption(cmd.client_key));
-      ses->client_channel.crypt_out.reset(new PSOV2Encryption(cmd.server_key));
+      ses->server_channel.crypt_in = make_shared<PSOV2Encryption>(cmd.server_key);
+      ses->server_channel.crypt_out = make_shared<PSOV2Encryption>(cmd.client_key);
+      ses->client_channel.crypt_in = make_shared<PSOV2Encryption>(cmd.client_key);
+      ses->client_channel.crypt_out = make_shared<PSOV2Encryption>(cmd.server_key);
     }
 
     return HandlerResult::Type::SUPPRESS;
@@ -247,11 +247,11 @@ static HandlerResult S_V123P_02_17(
 
   // This isn't forwarded to the client, so don't recreate the client's crypts
   if (uses_v3_encryption(ses->version())) {
-    ses->server_channel.crypt_in.reset(new PSOV3Encryption(cmd.server_key));
-    ses->server_channel.crypt_out.reset(new PSOV3Encryption(cmd.client_key));
+    ses->server_channel.crypt_in = make_shared<PSOV3Encryption>(cmd.server_key);
+    ses->server_channel.crypt_out = make_shared<PSOV3Encryption>(cmd.client_key);
   } else {
-    ses->server_channel.crypt_in.reset(new PSOV2Encryption(cmd.server_key));
-    ses->server_channel.crypt_out.reset(new PSOV2Encryption(cmd.client_key));
+    ses->server_channel.crypt_in = make_shared<PSOV2Encryption>(cmd.server_key);
+    ses->server_channel.crypt_out = make_shared<PSOV2Encryption>(cmd.client_key);
   }
 
   // Respond with an appropriate login command. We don't let the client do this
@@ -466,10 +466,10 @@ static HandlerResult S_B_03(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t
     // being able to try all the crypts it knows to detect what type the client
     // uses, but the client can't do this since it sends the first encrypted
     // data on the connection.
-    ses->server_channel.crypt_in.reset(new PSOBBMultiKeyImitatorEncryption(
-        ses->detector_crypt, cmd.server_key.data(), sizeof(cmd.server_key), false));
-    ses->server_channel.crypt_out.reset(new PSOBBMultiKeyImitatorEncryption(
-        ses->detector_crypt, cmd.client_key.data(), sizeof(cmd.client_key), false));
+    ses->server_channel.crypt_in = make_shared<PSOBBMultiKeyImitatorEncryption>(
+        ses->detector_crypt, cmd.server_key.data(), sizeof(cmd.server_key), false);
+    ses->server_channel.crypt_out = make_shared<PSOBBMultiKeyImitatorEncryption>(
+        ses->detector_crypt, cmd.client_key.data(), sizeof(cmd.client_key), false);
 
     // Forward the login command we saved during the unlinked ses->
     if (ses->enable_remote_ip_crc_patch && (ses->login_command_bb.size() >= 0x98)) {
@@ -488,18 +488,18 @@ static HandlerResult S_B_03(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t
     // client receives the unencrypted data
     ses->client_channel.send(0x03, 0x00, data);
 
-    ses->detector_crypt.reset(new PSOBBMultiKeyDetectorEncryption(
+    ses->detector_crypt = make_shared<PSOBBMultiKeyDetectorEncryption>(
         ses->require_server_state()->bb_private_keys,
         bb_crypt_initial_client_commands,
         cmd.client_key.data(),
-        sizeof(cmd.client_key)));
+        sizeof(cmd.client_key));
     ses->client_channel.crypt_in = ses->detector_crypt;
-    ses->client_channel.crypt_out.reset(new PSOBBMultiKeyImitatorEncryption(
-        ses->detector_crypt, cmd.server_key.data(), sizeof(cmd.server_key), true));
-    ses->server_channel.crypt_in.reset(new PSOBBMultiKeyImitatorEncryption(
-        ses->detector_crypt, cmd.server_key.data(), sizeof(cmd.server_key), false));
-    ses->server_channel.crypt_out.reset(new PSOBBMultiKeyImitatorEncryption(
-        ses->detector_crypt, cmd.client_key.data(), sizeof(cmd.client_key), false));
+    ses->client_channel.crypt_out = make_shared<PSOBBMultiKeyImitatorEncryption>(
+        ses->detector_crypt, cmd.server_key.data(), sizeof(cmd.server_key), true);
+    ses->server_channel.crypt_in = make_shared<PSOBBMultiKeyImitatorEncryption>(
+        ses->detector_crypt, cmd.server_key.data(), sizeof(cmd.server_key), false);
+    ses->server_channel.crypt_out = make_shared<PSOBBMultiKeyImitatorEncryption>(
+        ses->detector_crypt, cmd.client_key.data(), sizeof(cmd.client_key), false);
 
     // We already forwarded the command, so don't do so again
     return HandlerResult::Type::SUPPRESS;

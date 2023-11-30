@@ -58,7 +58,7 @@ string ReplaySession::Client::str() const {
 
 shared_ptr<ReplaySession::Event> ReplaySession::create_event(
     Event::Type type, shared_ptr<Client> c, size_t line_num) {
-  shared_ptr<Event> event(new Event(type, c->id, line_num));
+  auto event = make_shared<Event>(type, c->id, line_num);
   if (!this->last_event.get()) {
     this->first_event = event;
   } else {
@@ -495,11 +495,11 @@ ReplaySession::ReplaySession(
           throw runtime_error(string_printf("(ev-line %zu) client connection message listening socket token format is incorrect", line_num));
         }
 
-        shared_ptr<Client> c(new Client(
+        auto c = make_shared<Client>(
             this,
             stoull(tokens[8].substr(2), nullptr, 16),
             stoul(listen_tokens[1], nullptr, 10),
-            enum_for_name<Version>(listen_tokens[2].c_str())));
+            enum_for_name<Version>(listen_tokens[2].c_str()));
         if (!this->clients.emplace(c->id, c).second) {
           throw runtime_error(string_printf("(ev-line %zu) duplicate client ID in input log", line_num));
         }
@@ -723,8 +723,8 @@ void ReplaySession::on_command_received(
     case Version::BB_PATCH:
       if (command == 0x02) {
         auto& cmd = check_size_t<S_ServerInit_Patch_02>(data);
-        c->channel.crypt_in.reset(new PSOV2Encryption(cmd.server_key));
-        c->channel.crypt_out.reset(new PSOV2Encryption(cmd.client_key));
+        c->channel.crypt_in = make_shared<PSOV2Encryption>(cmd.server_key);
+        c->channel.crypt_out = make_shared<PSOV2Encryption>(cmd.client_key);
       }
       break;
     case Version::DC_NTE:
@@ -740,11 +740,11 @@ void ReplaySession::on_command_received(
       if (command == 0x02 || command == 0x17 || command == 0x91 || command == 0x9B) {
         auto& cmd = check_size_t<S_ServerInitDefault_DC_PC_V3_02_17_91_9B>(data, 0xFFFF);
         if (is_v1_or_v2(c->version)) {
-          c->channel.crypt_in.reset(new PSOV2Encryption(cmd.server_key));
-          c->channel.crypt_out.reset(new PSOV2Encryption(cmd.client_key));
+          c->channel.crypt_in = make_shared<PSOV2Encryption>(cmd.server_key);
+          c->channel.crypt_out = make_shared<PSOV2Encryption>(cmd.client_key);
         } else { // V3
-          c->channel.crypt_in.reset(new PSOV3Encryption(cmd.server_key));
-          c->channel.crypt_out.reset(new PSOV3Encryption(cmd.client_key));
+          c->channel.crypt_in = make_shared<PSOV3Encryption>(cmd.server_key);
+          c->channel.crypt_out = make_shared<PSOV3Encryption>(cmd.client_key);
         }
       }
       break;
@@ -753,10 +753,10 @@ void ReplaySession::on_command_received(
         auto& cmd = check_size_t<S_ServerInitDefault_BB_03_9B>(data, 0xFFFF);
         // TODO: At some point it may matter which BB private key file we use.
         // Don't just blindly use the first one here.
-        c->channel.crypt_in.reset(new PSOBBEncryption(
-            *this->state->bb_private_keys[0], cmd.server_key.data(), cmd.server_key.size()));
-        c->channel.crypt_out.reset(new PSOBBEncryption(
-            *this->state->bb_private_keys[0], cmd.client_key.data(), cmd.client_key.size()));
+        c->channel.crypt_in = make_shared<PSOBBEncryption>(
+            *this->state->bb_private_keys[0], cmd.server_key.data(), cmd.server_key.size());
+        c->channel.crypt_out = make_shared<PSOBBEncryption>(
+            *this->state->bb_private_keys[0], cmd.client_key.data(), cmd.client_key.size());
       }
       break;
     default:

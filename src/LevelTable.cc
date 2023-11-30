@@ -33,7 +33,7 @@ void PlayerStats::advance_to_level(uint8_t char_class, uint32_t level, shared_pt
 
 LevelTable::LevelTable(shared_ptr<const string> data, bool compressed) {
   if (compressed) {
-    this->data.reset(new string(prs_decompress(*data)));
+    this->data = make_shared<string>(prs_decompress(*data));
   } else {
     this->data = data;
   }

@@ -364,10 +364,8 @@ void Tournament::init() {
     is_registration_complete = this->source_json.get_bool("is_registration_complete");
 
     for (const auto& team_json : this->source_json.get_list("teams")) {
-      auto& team = this->teams.emplace_back(new Team(
-          this->shared_from_this(),
-          this->teams.size(),
-          team_json->get_int("max_players")));
+      auto& team = this->teams.emplace_back(make_shared<Team>(
+          this->shared_from_this(), this->teams.size(), team_json->get_int("max_players")));
       team->name = team_json->get_string("name");
       team->password = team_json->get_string("password");
       team_index_to_rounds_cleared.emplace_back(team_json->get_int("num_rounds_cleared"));
@@ -806,7 +804,7 @@ TournamentIndex::TournamentIndex(
     }
     for (size_t z = 0; z < min<size_t>(json.size(), 0x20); z++) {
       if (!json.at(z).is_null()) {
-        shared_ptr<Tournament> tourn(new Tournament(this->map_index, this->com_deck_index, json.at(z)));
+        auto tourn = make_shared<Tournament>(this->map_index, this->com_deck_index, json.at(z));
         tourn->init();
         if (!this->name_to_tournament.emplace(tourn->get_name(), tourn).second) {
           throw runtime_error("multiple tournaments have the same name: " + tourn->get_name());
@@ -820,7 +818,7 @@ TournamentIndex::TournamentIndex(
       throw runtime_error("tournament JSON dict length is incorrect");
     }
     for (const auto& it : json.as_dict()) {
-      shared_ptr<Tournament> tourn(new Tournament(this->map_index, this->com_deck_index, *it.second));
+      auto tourn = make_shared<Tournament>(this->map_index, this->com_deck_index, *it.second);
       tourn->init();
       if (!this->name_to_tournament.emplace(tourn->get_name(), tourn).second) {
         // This is logic_error instead of runtime_error because JSON dicts are

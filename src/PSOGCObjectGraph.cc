@@ -38,7 +38,7 @@ shared_ptr<PSOGCObjectGraph::VTable> PSOGCObjectGraph::parse_vtable_memo(
   }
 
   const auto& vt = r.pget<TObjectVTable>(addr & 0x01FFFFFF);
-  auto ret = this->all_vtables.emplace(addr, new VTable()).first->second;
+  auto ret = this->all_vtables.emplace(addr, make_shared<VTable>()).first->second;
   ret->address = addr;
   ret->destroy_addr = vt.destroy;
   ret->update_addr = vt.update;
@@ -57,7 +57,7 @@ shared_ptr<PSOGCObjectGraph::Object> PSOGCObjectGraph::parse_object_memo(
   const auto& obj = r.pget<TObject>(addr & 0x01FFFFFF);
   string type_name = r.pget_cstr(obj.type_name_addr & 0x01FFFFFF);
 
-  auto ret = this->all_objects.emplace(addr, new Object()).first->second;
+  auto ret = this->all_objects.emplace(addr, make_shared<Object>()).first->second;
   ret->address = addr;
   ret->flags = obj.flags;
   ret->type_name = std::move(type_name);
