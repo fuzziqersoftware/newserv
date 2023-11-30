@@ -55,7 +55,7 @@ static shared_ptr<const Menu> proxy_options_menu_for_client(shared_ptr<const Cli
       "Player notifs", "Show a message\nwhen other players\njoin or leave");
   add_option(ProxyOptionsMenuItemID::BLOCK_PINGS, Client::Flag::PROXY_SUPPRESS_CLIENT_PINGS,
       "Block pings", "Block ping commands\nsent by the client");
-  if (s->cheat_mode_behavior != ServerState::BehaviorSwitch::OFF) {
+  if ((s->cheat_mode_behavior != ServerState::BehaviorSwitch::OFF) || (c->license->flags & License::Flag::CHEAT_ANYWHERE)) {
     if (!is_ep3(c->version())) {
       add_option(ProxyOptionsMenuItemID::INFINITE_HP, Client::Flag::INFINITE_HP_ENABLED,
           "Infinite HP", "Enable automatic HP\nrestoration when\nyou are hit by an\nenemy or trap\n\nCannot revive you\nfrom one-hit kills");

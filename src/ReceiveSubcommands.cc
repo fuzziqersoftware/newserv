@@ -738,7 +738,8 @@ static void on_hit_by_enemy(shared_ptr<Client> c, uint8_t command, uint8_t flag,
   auto l = c->require_lobby();
   if (l->is_game() && (cmd.client_id == c->lobby_client_id)) {
     forward_subcommand(c, command, flag, data, size);
-    if (l->check_flag(Lobby::Flag::CHEATS_ENABLED) && c->config.check_flag(Client::Flag::INFINITE_HP_ENABLED)) {
+    bool player_cheats_enabled = l->check_flag(Lobby::Flag::CHEATS_ENABLED) || (c->license->flags & License::Flag::CHEAT_ANYWHERE);
+    if (player_cheats_enabled && c->config.check_flag(Client::Flag::INFINITE_HP_ENABLED)) {
       send_player_stats_change(c, PlayerStatsChange::ADD_HP, 2550);
     }
   }
@@ -751,7 +752,8 @@ static void on_cast_technique_finished(shared_ptr<Client> c, uint8_t command, ui
   auto l = c->require_lobby();
   if (l->is_game() && (cmd.header.client_id == c->lobby_client_id)) {
     forward_subcommand(c, command, flag, data, size);
-    if (l->check_flag(Lobby::Flag::CHEATS_ENABLED) && c->config.check_flag(Client::Flag::INFINITE_TP_ENABLED)) {
+    bool player_cheats_enabled = l->check_flag(Lobby::Flag::CHEATS_ENABLED) || (c->license->flags & License::Flag::CHEAT_ANYWHERE);
+    if (player_cheats_enabled && c->config.check_flag(Client::Flag::INFINITE_TP_ENABLED)) {
       send_player_stats_change(c, PlayerStatsChange::ADD_TP, 255);
     }
   }
@@ -798,7 +800,8 @@ static void on_switch_state_changed(shared_ptr<Client> c, uint8_t command, uint8
   forward_subcommand(c, command, flag, data, size);
 
   if (cmd.flags && cmd.header.object_id != 0xFFFF) {
-    if (l->check_flag(Lobby::Flag::CHEATS_ENABLED) &&
+    bool player_cheats_enabled = l->check_flag(Lobby::Flag::CHEATS_ENABLED) || (c->license->flags & License::Flag::CHEAT_ANYWHERE);
+    if (player_cheats_enabled &&
         c->config.check_flag(Client::Flag::SWITCH_ASSIST_ENABLED) &&
         (c->last_switch_enabled_command.header.subcommand == 0x05)) {
       c->log.info("[Switch assist] Replaying previous enable command");
