@@ -226,14 +226,14 @@
       "PrerequisiteKeys": ["Members70Leaders8"],
       "RewardFlag": 0x00000020,
     }, {
-      "Key": "PointOfDisaster",
+      "Key": "PointOfDisasterQuest",
       "Name": "Quest: Point of Disaster",
       "Description": "Unlock the quest\nPoint of Disaster\nfor your team",
       "Points": 1000,
     }, {
-      "Key": "ToysTwilight",
-      "Name": "Quest: Toys Twilight",
-      "Description": "Unlock the quest\nToys Twilight\nfor your team",
+      "Key": "TheRobotsReckoningQuest",
+      "Name": "Quest: The Robots' Reckoning",
+      "Description": "Unlock the quest\nThe Robots' Reckoning\nfor your team",
       "Points": 1000,
     }, {
       "Key": "CommanderBlade",
