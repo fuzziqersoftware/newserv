@@ -1719,8 +1719,7 @@ static void on_set_quest_flag(shared_ptr<Client> c, uint8_t command, uint8_t fla
   }
 
   uint16_t flag_index, difficulty, action;
-  // TODO: Which format does GC NTE use?
-  if (is_v1_or_v2(c->version())) {
+  if (is_v1_or_v2(c->version()) && (c->version() != Version::GC_NTE)) {
     const auto& cmd = check_size_t<G_SetQuestFlag_DC_PC_6x75>(data, size);
     flag_index = cmd.flag;
     action = cmd.action;
