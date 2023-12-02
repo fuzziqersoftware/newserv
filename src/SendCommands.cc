@@ -3102,10 +3102,10 @@ void send_open_quest_file(
     case Version::DC_V1_11_2000_PROTOTYPE:
     case Version::DC_V1:
     case Version::DC_V2:
+    case Version::GC_NTE:
       send_open_quest_file_t<S_OpenFile_DC_44_A6>(c, quest_name, filename, xb_filename, contents->size(), quest_number, type);
       break;
     case Version::PC_V2:
-    case Version::GC_NTE:
     case Version::GC_V3:
     case Version::GC_EP3_TRIAL_EDITION:
     case Version::GC_EP3:
@@ -3123,7 +3123,7 @@ void send_open_quest_file(
 
   // For GC/XB/BB, we wait for acknowledgement commands before sending each
   // chunk. For DC/PC, we send the entire quest all at once.
-  if (is_v1_or_v2(c->version())) {
+  if (is_v1_or_v2(c->version()) && (c->version() != Version::GC_NTE)) {
     for (size_t offset = 0; offset < contents->size(); offset += 0x400) {
       size_t chunk_bytes = contents->size() - offset;
       if (chunk_bytes > 0x400) {
