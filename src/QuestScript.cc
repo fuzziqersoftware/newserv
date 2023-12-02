@@ -886,7 +886,9 @@ std::string disassemble_quest_script(const void* data, size_t size, Version vers
       const auto& header = r.get<PSOQuestHeaderDC>();
       code_offset = header.code_offset;
       function_table_offset = header.function_table_offset;
-      language = header.language;
+      if (header.language < 5) {
+        language = header.language;
+      }
       lines.emplace_back(string_printf(".quest_num %hu", header.quest_number.load()));
       lines.emplace_back(string_printf(".language %hhu", header.language));
       lines.emplace_back(".name " + escape_string(header.name.decode(language)));
@@ -899,7 +901,9 @@ std::string disassemble_quest_script(const void* data, size_t size, Version vers
       const auto& header = r.get<PSOQuestHeaderPC>();
       code_offset = header.code_offset;
       function_table_offset = header.function_table_offset;
-      language = header.language;
+      if (header.language < 8) {
+        language = header.language;
+      }
       lines.emplace_back(string_printf(".quest_num %hu", header.quest_number.load()));
       lines.emplace_back(string_printf(".language %hhu", header.language));
       lines.emplace_back(".name " + escape_string(header.name.decode(language)));
@@ -915,7 +919,9 @@ std::string disassemble_quest_script(const void* data, size_t size, Version vers
       const auto& header = r.get<PSOQuestHeaderGC>();
       code_offset = header.code_offset;
       function_table_offset = header.function_table_offset;
-      language = header.language;
+      if (header.language < 5) {
+        language = header.language;
+      }
       lines.emplace_back(string_printf(".quest_num %hhu", header.quest_number));
       lines.emplace_back(string_printf(".language %hhu", header.language));
       lines.emplace_back(string_printf(".episode %hhu", header.episode));
