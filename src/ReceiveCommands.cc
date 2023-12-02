@@ -4047,7 +4047,7 @@ static void on_0C_C1_E7_EC(shared_ptr<Client> c, uint16_t command, uint32_t, str
 
     Episode episode = Episode::NONE;
     bool allow_v1 = false;
-    if (is_v1_or_v2(c->version())) {
+    if (is_v1_or_v2(c->version()) && (c->version() != Version::GC_NTE)) {
       allow_v1 = (cmd.episode == 0);
       episode = Episode::EP1;
     } else if (client_is_ep3) {
