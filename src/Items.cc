@@ -376,7 +376,7 @@ void player_feed_mag(std::shared_ptr<Client> c, size_t mag_item_index, size_t fe
   } else if ((mag_level % 5) == 0) { // Level 50 (and beyond) evolutions
     if (evolution_number < 4) {
 
-      if (mag_level >= 100) {
+      if ((mag_level >= 100) && !is_v1_or_v2(c->version())) {
         uint8_t section_id_group = player->disp.visual.section_id % 3;
         uint16_t def = mag_item.data.data1w[2] / 100;
         uint16_t pow = mag_item.data.data1w[3] / 100;
