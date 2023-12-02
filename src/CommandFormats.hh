@@ -5271,6 +5271,12 @@ struct G_Unknown_6xB2 {
 
 // 6xB3: Unknown (Xbox; voice chat)
 
+struct G_Unknown_XB_6xB3 {
+  G_ClientIDHeader header;
+  le_uint32_t num_frames;
+  // (0x0A * num_frames) bytes of data follows here.
+} __packed__;
+
 // 6xB3: CARD battle server data request (Episode 3)
 
 // CARD battle subcommands have multiple subsubcommands, which we name 6xBYxZZ,
@@ -5316,6 +5322,11 @@ struct G_CardServerDataCommandHeader {
 } __packed__;
 
 // 6xB4: Unknown (Xbox; voice chat)
+
+struct G_Unknown_XB_6xB4 {
+  G_ClientIDHeader header;
+  le_uint32_t unknown_a1;
+} __packed__;
 
 // 6xB4: CARD battle server response (Episode 3) - see 6xB3 above
 // 6xB5: CARD battle client command (Episode 3) - see 6xB3 above
