@@ -1121,6 +1121,19 @@ struct C_CharacterData_PC_61_98 {
   /* 05A4 */ // uint16_t auto_reply[...EOF];
 } __attribute__((packed));
 
+struct C_CharacterData_GCNTE_61_98 {
+  /* 0000 */ PlayerInventory inventory;
+  /* 034C */ PlayerDispDataDCPCV3 disp;
+  /* 041C */ PlayerRecordsEntry_DC records;
+  /* 04D8 */ ChoiceSearchConfig choice_search_config;
+  /* 04F0 */ parray<le_uint32_t, 0x1E> blocked_senders;
+  /* 0468 */ le_uint32_t auto_reply_enabled = 0;
+  // The auto-reply message can be up to 0x200 bytes. If it's shorter than that,
+  // the client truncates the command after the first zero byte (rounded up to
+  // the next 4-byte boundary).
+  /* 046C */ // char auto_reply[...EOF];
+} __attribute__((packed));
+
 struct C_CharacterData_V3_61_98 {
   /* 0000 */ PlayerInventory inventory;
   /* 034C */ PlayerDispDataDCPCV3 disp;

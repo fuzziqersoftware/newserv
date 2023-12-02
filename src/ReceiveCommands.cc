@@ -2830,7 +2830,30 @@ static void on_61_98(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
       }
       break;
     }
-    case Version::GC_NTE:
+    case Version::GC_NTE: {
+      const auto& cmd = check_size_t<C_CharacterData_GCNTE_61_98>(data, 0xFFFF);
+      c->game_data.last_reported_disp_v1_v2 = make_unique<PlayerDispDataDCPCV3>(cmd.disp);
+
+      auto s = c->require_server_state();
+      player->inventory = cmd.inventory;
+      player->disp = cmd.disp.to_bb(player->inventory.language, player->inventory.language);
+      player->battle_records = cmd.records.battle;
+      player->challenge_records = cmd.records.challenge;
+      player->choice_search_config = cmd.choice_search_config;
+      for (size_t z = 0; z < cmd.blocked_senders.size(); z++) {
+        c->game_data.blocked_senders.at(z) = cmd.blocked_senders[z];
+      }
+      if (cmd.auto_reply_enabled) {
+        string auto_reply = data.substr(sizeof(cmd), 0xAC);
+        strip_trailing_zeroes(auto_reply);
+        string encoded = tt_decode_marked(auto_reply, player->inventory.language, false);
+        player->auto_reply.encode(encoded, player->inventory.language);
+      } else {
+        player->auto_reply.clear();
+      }
+      break;
+    }
+
     case Version::GC_V3:
     case Version::GC_EP3_TRIAL_EDITION:
     case Version::GC_EP3:
@@ -2856,10 +2879,6 @@ static void on_61_98(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
           }
         }
         cmd = &check_size_t<C_CharacterData_V3_61_98>(data, 0xFFFF);
-      }
-
-      if (c->version() == Version::GC_NTE) {
-        c->game_data.last_reported_disp_v1_v2 = make_unique<PlayerDispDataDCPCV3>(cmd->disp);
       }
 
       auto s = c->require_server_state();
@@ -2894,7 +2913,7 @@ static void on_61_98(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
       player->disp = cmd->disp.to_bb(player->inventory.language, player->inventory.language);
       player->battle_records = cmd->records.battle;
       player->challenge_records = cmd->records.challenge;
-      // TODO: Parse choice search config
+      player->choice_search_config = cmd->choice_search_config;
       player->info_board.encode(cmd->info_board.decode(player->inventory.language), player->inventory.language);
       for (size_t z = 0; z < cmd->blocked_senders.size(); z++) {
         c->game_data.blocked_senders.at(z) = cmd->blocked_senders[z];
@@ -2915,7 +2934,7 @@ static void on_61_98(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
       // them (we sent the player data to the client in the first place)
       player->battle_records = cmd.records.battle;
       player->challenge_records = cmd.records.challenge;
-      // TODO: Parse choice search config
+      player->choice_search_config = cmd.choice_search_config;
       player->info_board = cmd.info_board;
       for (size_t z = 0; z < cmd.blocked_senders.size(); z++) {
         c->game_data.blocked_senders.at(z) = cmd.blocked_senders[z];
