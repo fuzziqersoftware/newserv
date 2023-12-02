@@ -27,7 +27,5 @@
 
 ## PSOBB
 
-- Fix some edge cases on the BB proxy server (e.g. Change Ship)
 - Test all quest item subcommands
 - Check if Commander Blade effect works and implement it if not
-- Implement story progress flags for unlocking quests
