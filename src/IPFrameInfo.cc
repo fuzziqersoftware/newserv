@@ -13,120 +13,130 @@ static inline uint16_t collapse_checksum(uint32_t sum) {
   return (sum & 0xFFFF) + (sum >> 16);
 }
 
-FrameInfo::FrameInfo()
-    : ether(nullptr),
-      ether_protocol(0),
-      ipv4(nullptr),
-      arp(nullptr),
-      udp(nullptr),
-      tcp(nullptr),
-      header_start(nullptr),
-      payload(nullptr),
-      total_size(0),
-      tcp_options_size(0),
-      payload_size(0) {}
+FrameInfo::FrameInfo(LinkType link_type, const string& data)
+    : FrameInfo(link_type, data.data(), data.size()) {}
 
-FrameInfo::FrameInfo(const string& data) : FrameInfo(data.data(), data.size()) {}
+FrameInfo::FrameInfo(LinkType link_type, const void* header_start, size_t size)
+    : FrameInfo() {
+  this->link_type = link_type;
+  this->header_start = header_start;
+  this->total_size = size;
+  this->payload_size = size;
 
-FrameInfo::FrameInfo(const void* header_start, size_t size)
-    : ether(nullptr),
-      ether_protocol(0),
-      ipv4(nullptr),
-      arp(nullptr),
-      udp(nullptr),
-      tcp(nullptr),
-      header_start(header_start),
-      payload(nullptr),
-      total_size(size),
-      tcp_options_size(0),
-      payload_size(size) {
+  StringReader r(header_start, size);
 
-  // Parse ethernet header
-  if (this->payload_size < sizeof(EthernetHeader)) {
-    throw invalid_argument("frame is too small for ethernet");
-  }
-  this->payload_size -= sizeof(EthernetHeader);
-  this->ether = reinterpret_cast<const EthernetHeader*>(header_start);
-  this->ether_protocol = this->ether->protocol;
-
-  // Figure out the protocol
-  const be_uint16_t* u16data = reinterpret_cast<const be_uint16_t*>(this->ether + 1);
-  while ((this->ether_protocol == 0x8100) || (this->ether_protocol == 0x88A8)) {
-    if (this->payload_size < 4) {
-      throw invalid_argument("VLAN tags exceed frame size");
-    }
-    this->ether_protocol = u16data[1];
-    u16data += 2;
-    this->payload_size -= 4;
-  }
-
-  // TODO: Some less-common protocols that we might want to support:
-  // 0x8035 = RARP
-  // 0x809B = AppleTalk
-  // 0x80F3 = AppleTalk ARP
-  // 0x8137 = IPX
-  // 0x9000 = loopback
-
-  // Parse protocol headers if possible
-  if (this->ether_protocol == 0x0800) { // IPv4
-    if (this->payload_size < sizeof(IPv4Header)) {
-      throw invalid_argument("frame is too small for ipv4 header");
-    }
-    this->ipv4 = reinterpret_cast<const IPv4Header*>(u16data);
-    if (this->payload_size < this->ipv4->size) {
-      throw invalid_argument("ipv4 header specifies size larger than frame");
-    }
-    this->payload_size = this->ipv4->size - sizeof(IPv4Header);
-
-    if (this->ipv4->protocol == 0x06) {
-      if (this->payload_size < sizeof(TCPHeader)) {
-        throw invalid_argument("frame is too small for tcp4 header");
+  // Parse link-layer header
+  Protocol proto = Protocol::NONE;
+  switch (this->link_type) {
+    case LinkType::ETHERNET:
+      this->payload_size -= sizeof(EthernetHeader);
+      this->ether = &r.get<EthernetHeader>();
+      this->ether_protocol = this->ether->protocol;
+      // Unwrap VLAN tags if necessary
+      while ((this->ether_protocol == 0x8100) || (this->ether_protocol == 0x88A8)) {
+        r.skip(2);
+        this->ether_protocol = r.get_u16b();
+        this->payload_size -= 4;
       }
-      this->tcp = reinterpret_cast<const TCPHeader*>(this->ipv4 + 1);
-      size_t tcp_header_size = (this->tcp->flags >> 12) * 4;
-      if (tcp_header_size < sizeof(TCPHeader) || tcp_header_size > this->payload_size) {
-        throw invalid_argument("frame is too small for tcp4 header with options");
+      switch (this->ether_protocol) {
+        case 0x0800:
+          proto = Protocol::IPV4;
+          break;
+        case 0x0806:
+          proto = Protocol::ARP;
+          break;
       }
-      this->tcp_options_size = tcp_header_size - sizeof(TCPHeader);
-      this->payload_size -= tcp_header_size;
-      this->payload = reinterpret_cast<const uint8_t*>(this->tcp) + tcp_header_size;
+      break;
 
-    } else if (this->ipv4->protocol == 0x11) {
-      if (this->payload_size < sizeof(UDPHeader)) {
-        throw invalid_argument("frame is too small for udp4 header");
+    case LinkType::HDLC:
+      this->payload_size -= (sizeof(HDLCHeader) + 3); // Trim off checksum and end sentinel
+      this->hdlc = &r.get<HDLCHeader>();
+      this->hdlc_checksum = r.pget_u16b(r.where() + this->payload_size);
+      switch (this->hdlc->protocol) {
+        case 0xC021:
+          proto = Protocol::LCP;
+          break;
+        case 0xC023:
+          proto = Protocol::PAP;
+          break;
+        case 0x8021:
+          proto = Protocol::IPCP;
+          break;
+        case 0x0021:
+          proto = Protocol::IPV4;
+          break;
       }
-      this->payload_size -= sizeof(UDPHeader);
-      this->udp = reinterpret_cast<const UDPHeader*>(this->ipv4 + 1);
-      this->payload = this->udp + 1;
+      break;
 
-    } else {
-      this->payload = this->ipv4 + 1;
-    }
-
-  } else if (this->ether_protocol == 0x0806) { // ARP
-    if (this->payload_size < sizeof(const ARPHeader)) {
-      throw invalid_argument("frame is too small for arp header");
-    }
-    this->payload_size -= sizeof(ARPHeader);
-    this->arp = reinterpret_cast<const ARPHeader*>(u16data);
-    this->payload = this->arp + 1;
-
-  } else {
-    throw runtime_error("unknown protocol");
+    default:
+      throw logic_error("invalid link type");
   }
+
+  // Parse inner protocol headers
+  switch (proto) {
+    case Protocol::NONE:
+      throw runtime_error("unknown protocol");
+    case Protocol::LCP:
+      this->payload_size -= sizeof(LCPHeader);
+      this->lcp = &r.get<LCPHeader>();
+      break;
+    case Protocol::PAP:
+      this->payload_size -= sizeof(PAPHeader);
+      this->pap = &r.get<PAPHeader>();
+      break;
+    case Protocol::IPCP:
+      this->payload_size -= sizeof(IPCPHeader);
+      this->ipcp = &r.get<IPCPHeader>();
+      break;
+    case Protocol::IPV4:
+      this->ipv4 = &r.get<IPv4Header>();
+      if (this->payload_size < this->ipv4->size) {
+        throw invalid_argument("ipv4 header specifies size larger than frame");
+      }
+      this->payload_size = this->ipv4->size - sizeof(IPv4Header);
+
+      if (this->ipv4->protocol == 0x06) {
+        this->tcp = &r.get<TCPHeader>();
+        size_t tcp_header_size = (this->tcp->flags >> 12) * 4;
+        if (tcp_header_size < sizeof(TCPHeader) || tcp_header_size > this->payload_size) {
+          throw invalid_argument("frame is too small for tcp4 header with options");
+        }
+        this->tcp_options_size = tcp_header_size - sizeof(TCPHeader);
+        this->payload_size -= tcp_header_size;
+        r.skip(tcp_header_size - sizeof(TCPHeader));
+
+      } else if (this->ipv4->protocol == 0x11) {
+        this->payload_size -= sizeof(UDPHeader);
+        this->udp = &r.get<UDPHeader>();
+      }
+      break;
+    case Protocol::ARP:
+      this->payload_size -= sizeof(ARPHeader);
+      this->arp = &r.get<ARPHeader>();
+      break;
+  }
+
+  this->payload = r.getv(this->payload_size);
 }
 
 string FrameInfo::header_str() const {
-  if (!this->ether) {
+  if (!this->ether && !this->hdlc) {
     return "<invalid-frame-info>";
   }
 
-  string ret = string_printf(
-      "%02hhX%02hhX%02hhX%02hhX%02hhX%02hhX->%02hhX%02hhX%02hhX%02hhX%02hhX%02hhX",
-      this->ether->src_mac[0], this->ether->src_mac[1], this->ether->src_mac[2],
-      this->ether->src_mac[3], this->ether->src_mac[4], this->ether->src_mac[5],
-      this->ether->dest_mac[0], this->ether->dest_mac[1], this->ether->dest_mac[2],
-      this->ether->dest_mac[3], this->ether->dest_mac[4], this->ether->dest_mac[5]);
+  string ret;
+  if (this->ether) {
+    ret = string_printf(
+        "ETHER:%02hhX%02hhX%02hhX%02hhX%02hhX%02hhX->%02hhX%02hhX%02hhX%02hhX%02hhX%02hhX",
+        this->ether->src_mac[0], this->ether->src_mac[1], this->ether->src_mac[2],
+        this->ether->src_mac[3], this->ether->src_mac[4], this->ether->src_mac[5],
+        this->ether->dest_mac[0], this->ether->dest_mac[1], this->ether->dest_mac[2],
+        this->ether->dest_mac[3], this->ether->dest_mac[4], this->ether->dest_mac[5]);
+  } else if (this->hdlc) {
+    ret = string_printf("HDLC:%02hhX/%02hhX", this->hdlc->address, this->hdlc->control);
+  } else {
+    return "<invalid-frame-info>";
+  }
 
   if (this->arp) {
     ret += string_printf(
@@ -169,7 +179,11 @@ string FrameInfo::header_str() const {
     }
 
   } else {
-    ret += string_printf(",proto=%04hX", this->ether->protocol.load());
+    if (this->ether) {
+      ret += string_printf(",proto=%04hX", this->ether->protocol.load());
+    } else if (this->hdlc) {
+      ret += string_printf(",proto=%04hX", this->hdlc->protocol.load());
+    }
   }
 
   return ret;
@@ -291,4 +305,27 @@ uint16_t FrameInfo::computed_tcp4_checksum() const {
   return this->computed_tcp4_checksum(
       *this->ipv4, *this->tcp, this->tcp + 1,
       this->payload_size + this->tcp_options_size);
+}
+
+uint16_t FrameInfo::computed_hdlc_checksum(const void* vdata, size_t size) {
+  const uint8_t* data = reinterpret_cast<const uint8_t*>(vdata);
+  uint16_t crc = 0xFFFF;
+  for (size_t z = 0; z < size; z++) {
+    crc ^= data[z];
+    for (size_t b = 0; b < 8; b++) {
+      crc = (crc & 1) ? ((crc >> 1) ^ 0x8408) : (crc >> 1);
+    }
+  }
+  return ~crc;
+}
+
+uint16_t FrameInfo::computed_hdlc_checksum() const {
+  if (!this->hdlc) {
+    throw logic_error("cannot compute HDLC checksum for non-HDLC frame");
+  }
+  return this->computed_hdlc_checksum(&this->hdlc->address, this->total_size - 4);
+}
+
+uint16_t FrameInfo::stored_hdlc_checksum() const {
+  return *reinterpret_cast<const le_uint16_t*>(reinterpret_cast<const uint8_t*>(this->header_start) + (this->total_size - 3));
 }

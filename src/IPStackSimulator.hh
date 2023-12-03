@@ -21,10 +21,10 @@ public:
       std::shared_ptr<ServerState> state);
   ~IPStackSimulator();
 
-  void listen(const std::string& name, const std::string& socket_path);
-  void listen(const std::string& name, const std::string& addr, int port);
-  void listen(const std::string& name, int port);
-  void add_socket(const std::string& name, int fd);
+  void listen(const std::string& name, const std::string& socket_path, FrameInfo::LinkType link_type);
+  void listen(const std::string& name, const std::string& addr, int port, FrameInfo::LinkType link_type);
+  void listen(const std::string& name, int port, FrameInfo::LinkType link_type);
+  void add_socket(const std::string& name, int fd, FrameInfo::LinkType link_type);
 
   static uint32_t connect_address_for_remote_address(uint32_t remote_addr);
 
@@ -41,7 +41,10 @@ private:
     std::weak_ptr<IPStackSimulator> sim;
 
     unique_bufferevent bev;
-    parray<uint8_t, 6> mac_addr;
+    FrameInfo::LinkType link_type;
+    uint32_t hdlc_escape_control_character_flags = 0xFFFFFFFF;
+    uint32_t hdlc_remote_magic_number = 0;
+    parray<uint8_t, 6> mac_addr; // Only used for LinkType::ETHERNET
     uint32_t ipv4_addr;
 
     struct TCPConnection {
@@ -77,7 +80,7 @@ private:
 
     unique_event idle_timeout_event;
 
-    IPClient(std::shared_ptr<IPStackSimulator> sim, struct bufferevent* bev);
+    IPClient(std::shared_ptr<IPStackSimulator> sim, FrameInfo::LinkType link_type, struct bufferevent* bev);
 
     static void dispatch_on_idle_timeout(evutil_socket_t fd, short events, void* ctx);
     void on_idle_timeout();
@@ -85,10 +88,12 @@ private:
 
   struct ListeningSocket {
     std::string name;
+    FrameInfo::LinkType link_type;
     unique_listener listener;
 
-    ListeningSocket(const std::string& name, unique_listener&& l)
+    ListeningSocket(const std::string& name, FrameInfo::LinkType link_type, unique_listener&& l)
         : name(name),
+          link_type(link_type),
           listener(std::move(l)) {}
   };
 
@@ -122,7 +127,13 @@ private:
   static void dispatch_on_client_error(struct bufferevent* bev, short events, void* ctx);
   void on_client_error(struct bufferevent* bev, short events);
 
+  void send_layer3_frame(std::shared_ptr<IPClient> c, FrameInfo::Protocol proto, const std::string& data) const;
+  void send_layer3_frame(std::shared_ptr<IPClient> c, FrameInfo::Protocol proto, const void* data, size_t size) const;
+
   void on_client_frame(std::shared_ptr<IPClient> c, const std::string& frame);
+  void on_client_lcp_frame(std::shared_ptr<IPClient> c, const FrameInfo& fi);
+  void on_client_pap_frame(std::shared_ptr<IPClient> c, const FrameInfo& fi);
+  void on_client_ipcp_frame(std::shared_ptr<IPClient> c, const FrameInfo& fi);
   void on_client_arp_frame(std::shared_ptr<IPClient> c, const FrameInfo& fi);
   void on_client_udp_frame(std::shared_ptr<IPClient> c, const FrameInfo& fi);
   void on_client_tcp_frame(std::shared_ptr<IPClient> c, const FrameInfo& fi);

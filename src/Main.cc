@@ -1767,13 +1767,18 @@ Action a_run_server_replay_log(
           }
         }
 
-        if (!state->ip_stack_addresses.empty()) {
-          config_log.info("Starting IP stack simulator");
+        if (!state->ip_stack_addresses.empty() || !state->ppp_stack_addresses.empty()) {
+          config_log.info("Starting IP/PPP stack simulator");
           ip_stack_simulator = make_shared<IPStackSimulator>(base, state);
           for (const auto& it : state->ip_stack_addresses) {
             auto netloc = parse_netloc(it);
             string spec = (netloc.second == 0) ? ("T-IPS-" + netloc.first) : string_printf("T-IPS-%hu", netloc.second);
-            ip_stack_simulator->listen(spec, netloc.first, netloc.second);
+            ip_stack_simulator->listen(spec, netloc.first, netloc.second, FrameInfo::LinkType::ETHERNET);
+          }
+          for (const auto& it : state->ppp_stack_addresses) {
+            auto netloc = parse_netloc(it);
+            string spec = (netloc.second == 0) ? ("T-PPPS-" + netloc.first) : string_printf("T-PPPS-%hu", netloc.second);
+            ip_stack_simulator->listen(spec, netloc.first, netloc.second, FrameInfo::LinkType::HDLC);
           }
         }
       }

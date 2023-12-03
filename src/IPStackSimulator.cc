@@ -21,6 +21,65 @@ using namespace std;
 
 static const size_t DEFAULT_RESEND_PUSH_USECS = 200000; // 200ms
 
+static string unescape_hdlc_frame(const void* data, size_t size) {
+  StringReader r(data, size);
+  if (r.get_u8(data) != 0x7E) {
+    throw runtime_error("HDLC frame does not begin with 7E");
+  }
+  string ret("\x7E", 1);
+
+  while (r.get_u8(false) != 0x7E) {
+    uint8_t ch = r.get_u8();
+    if (ch == 0x7D) {
+      ch = r.get_u8();
+      if (ch == 0x7E) {
+        throw runtime_error("abort sequence received");
+      }
+      ret.push_back(ch ^ 0x20);
+    } else {
+      ret.push_back(ch);
+    }
+  }
+  ret.push_back(0x7E);
+  return ret;
+}
+
+static string unescape_hdlc_frame(const string& data) {
+  return unescape_hdlc_frame(data.data(), data.size());
+}
+
+static string escape_hdlc_frame(const void* data, size_t size, uint32_t escape_control_character_flags = 0xFFFFFFFF) {
+  if (size < 2) {
+    throw runtime_error("HDLC frame too small for start and end sentinels");
+  }
+
+  StringReader r(data, size);
+  if (r.pget_u8(size - 1) != 0x7E) {
+    throw runtime_error("HDLC frame does not end with 7E");
+  }
+  r.truncate(size - 1);
+  if (r.get_u8() != 0x7E) {
+    throw runtime_error("HDLC frame does not begin with 7E");
+  }
+  string ret("\x7E", 1);
+
+  while (!r.eof()) {
+    uint8_t ch = r.get_u8();
+    if ((ch == 0x7D) || (ch == 0x7E) || ((ch < 0x20) && ((escape_control_character_flags >> ch) & 1))) {
+      ret.push_back(0x7D);
+      ret.push_back(ch ^ 0x20);
+    } else {
+      ret.push_back(ch);
+    }
+  }
+  ret.push_back(0x7E);
+  return ret;
+}
+
+static string escape_hdlc_frame(const string& data, uint32_t escape_control_character_flags = 0xFFFFFFFF) {
+  return escape_hdlc_frame(data.data(), data.size(), escape_control_character_flags);
+}
+
 // Note: these functions exist because seq nums are allowed to wrap around the
 // 32-bit integer space by design. We have to do the subtraction before the
 // comparison to allow integer overflow to occur if needed.
@@ -51,8 +110,7 @@ string IPStackSimulator::str_for_ipv4_netloc(uint32_t addr, uint16_t port) {
   }
 }
 
-string IPStackSimulator::str_for_tcp_connection(shared_ptr<const IPClient> c,
-    const IPClient::TCPConnection& conn) {
+string IPStackSimulator::str_for_tcp_connection(shared_ptr<const IPClient> c, const IPClient::TCPConnection& conn) {
   uint64_t key = IPStackSimulator::tcp_conn_key_for_connection(conn);
   string server_netloc_str = str_for_ipv4_netloc(conn.server_addr, conn.server_port);
   string client_netloc_str = str_for_ipv4_netloc(c->ipv4_addr, conn.client_port);
@@ -77,28 +135,28 @@ IPStackSimulator::~IPStackSimulator() {
   }
 }
 
-void IPStackSimulator::listen(const string& name, const string& socket_path) {
+void IPStackSimulator::listen(const string& name, const string& socket_path, FrameInfo::LinkType link_type) {
   int fd = ::listen(socket_path, 0, SOMAXCONN);
   ip_stack_simulator_log.info("Listening on Unix socket %s on fd %d as %s", socket_path.c_str(), fd, name.c_str());
-  this->add_socket(name, fd);
+  this->add_socket(name, fd, link_type);
 }
 
-void IPStackSimulator::listen(const string& name, const string& addr, int port) {
+void IPStackSimulator::listen(const string& name, const string& addr, int port, FrameInfo::LinkType link_type) {
   if (port == 0) {
-    this->listen(name, addr);
+    this->listen(name, addr, link_type);
   } else {
     int fd = ::listen(addr, port, SOMAXCONN);
     string netloc_str = render_netloc(addr, port);
     ip_stack_simulator_log.info("Listening on TCP interface %s on fd %d as %s", netloc_str.c_str(), fd, name.c_str());
-    this->add_socket(name, fd);
+    this->add_socket(name, fd, link_type);
   }
 }
 
-void IPStackSimulator::listen(const string& name, int port) {
-  this->listen(name, "", port);
+void IPStackSimulator::listen(const string& name, int port, FrameInfo::LinkType link_type) {
+  this->listen(name, "", port, link_type);
 }
 
-void IPStackSimulator::add_socket(const string& name, int fd) {
+void IPStackSimulator::add_socket(const string& name, int fd, FrameInfo::LinkType link_type) {
   unique_listener l(
       evconnlistener_new(
           this->base.get(),
@@ -108,7 +166,7 @@ void IPStackSimulator::add_socket(const string& name, int fd) {
           0,
           fd),
       evconnlistener_free);
-  this->listening_sockets.emplace(piecewise_construct, forward_as_tuple(fd), forward_as_tuple(name, std::move(l)));
+  this->listening_sockets.emplace(piecewise_construct, forward_as_tuple(fd), forward_as_tuple(name, link_type, std::move(l)));
 }
 
 uint32_t IPStackSimulator::connect_address_for_remote_address(uint32_t remote_addr) {
@@ -122,9 +180,10 @@ uint32_t IPStackSimulator::connect_address_for_remote_address(uint32_t remote_ad
   }
 }
 
-IPStackSimulator::IPClient::IPClient(shared_ptr<IPStackSimulator> sim, struct bufferevent* bev)
+IPStackSimulator::IPClient::IPClient(shared_ptr<IPStackSimulator> sim, FrameInfo::LinkType link_type, struct bufferevent* bev)
     : sim(sim),
       bev(bev, bufferevent_free),
+      link_type(link_type),
       mac_addr(0),
       ipv4_addr(0),
       idle_timeout_event(event_new(sim->base.get(), -1, EV_TIMEOUT, &IPStackSimulator::IPClient::dispatch_on_idle_timeout, this), event_free) {
@@ -196,7 +255,7 @@ void IPStackSimulator::on_listen_accept(struct evconnlistener* listener,
 
   struct bufferevent* bev = bufferevent_socket_new(this->base.get(), fd,
       BEV_OPT_CLOSE_ON_FREE | BEV_OPT_DEFER_CALLBACKS);
-  auto c = make_shared<IPClient>(this->shared_from_this(), bev);
+  auto c = make_shared<IPClient>(this->shared_from_this(), listening_socket->link_type, bev);
   this->bev_to_client.emplace(make_pair(bev, c));
 
   bufferevent_setcb(bev, &IPStackSimulator::dispatch_on_client_input, nullptr,
@@ -274,21 +333,143 @@ void IPStackSimulator::on_client_error(struct bufferevent* bev, short events) {
   }
 }
 
-void IPStackSimulator::on_client_frame(
-    shared_ptr<IPClient> c, const string& frame) {
-  if (ip_stack_simulator_log.debug("Virtual network sent frame")) {
-    print_data(stderr, frame);
-    fputc('\n', stderr);
-  }
-  this->log_frame(frame);
+void IPStackSimulator::send_layer3_frame(shared_ptr<IPClient> c, FrameInfo::Protocol proto, const string& data) const {
+  this->send_layer3_frame(c, proto, data.data(), data.size());
+}
 
-  FrameInfo fi(frame);
+void IPStackSimulator::send_layer3_frame(shared_ptr<IPClient> c, FrameInfo::Protocol proto, const void* data, size_t size) const {
+  struct evbuffer* out_buf = bufferevent_get_output(c->bev.get());
+
+  switch (c->link_type) {
+    case FrameInfo::LinkType::ETHERNET: {
+      EthernetHeader ether;
+      ether.dest_mac = c->mac_addr;
+      ether.src_mac = this->host_mac_address_bytes;
+      switch (proto) {
+        case FrameInfo::Protocol::NONE:
+          throw logic_error("layer 3 protocol not specified");
+        case FrameInfo::Protocol::LCP:
+          throw logic_error("cannot send LCP frame over Ethernet");
+        case FrameInfo::Protocol::IPV4:
+          ether.protocol = 0x0800;
+          break;
+        case FrameInfo::Protocol::ARP:
+          ether.protocol = 0x0806;
+          break;
+        default:
+          throw logic_error("unknown layer 3 protocol");
+      }
+
+      le_uint16_t frame_size = size + sizeof(EthernetHeader);
+      evbuffer_add(out_buf, &frame_size, 2);
+      evbuffer_add(out_buf, &ether, sizeof(ether));
+      evbuffer_add(out_buf, data, size);
+      if (this->pcap_text_log_file) {
+        StringWriter w;
+        w.write(&ether, sizeof(ether));
+        w.write(data, size);
+        this->log_frame(w.str());
+      }
+      break;
+    }
+
+    case FrameInfo::LinkType::HDLC: {
+      HDLCHeader hdlc;
+      hdlc.start_sentinel1 = 0x7E;
+      hdlc.address = 0xFF;
+      hdlc.control = 0x03;
+      switch (proto) {
+        case FrameInfo::Protocol::NONE:
+          throw logic_error("layer 3 protocol not specified");
+        case FrameInfo::Protocol::LCP:
+          hdlc.protocol = 0xC021;
+          break;
+        case FrameInfo::Protocol::PAP:
+          hdlc.protocol = 0xC023;
+          break;
+        case FrameInfo::Protocol::IPCP:
+          hdlc.protocol = 0x8021;
+          break;
+        case FrameInfo::Protocol::IPV4:
+          hdlc.protocol = 0x0021;
+          break;
+        case FrameInfo::Protocol::ARP:
+          throw runtime_error("cannot send ARP packets over HDLC");
+        default:
+          throw logic_error("unknown layer 3 protocol");
+      }
+
+      StringWriter w;
+      w.put(hdlc);
+      w.write(data, size);
+      w.put_u16l(FrameInfo::computed_hdlc_checksum(w.str().data() + 1, w.size() - 1));
+      w.put_u8(0x7E);
+
+      string escaped = escape_hdlc_frame(w.str(), c->hdlc_escape_control_character_flags);
+      if (ip_stack_simulator_log.debug("Sending HDLC frame to virtual network (escaped to %zX bytes)", escaped.size())) {
+        print_data(stderr, w.str());
+      }
+
+      le_uint16_t frame_size = escaped.size();
+      evbuffer_add(out_buf, &frame_size, 2);
+      evbuffer_add(out_buf, escaped.data(), escaped.size());
+      if (this->pcap_text_log_file) {
+        this->log_frame(escaped);
+      }
+      break;
+    }
+
+    default:
+      throw logic_error("unknown link type");
+  }
+}
+
+void IPStackSimulator::on_client_frame(shared_ptr<IPClient> c, const string& frame) {
+  const string* effective_data = &frame;
+  string hdlc_unescaped_data;
+  if (c->link_type == FrameInfo::LinkType::HDLC) {
+    hdlc_unescaped_data = unescape_hdlc_frame(frame);
+    effective_data = &hdlc_unescaped_data;
+  }
+  if (ip_stack_simulator_log.debug("Virtual network sent frame")) {
+    print_data(stderr, *effective_data);
+  }
+  this->log_frame(*effective_data);
+
+  FrameInfo fi(c->link_type, *effective_data);
   if (ip_stack_simulator_log.should_log(LogLevel::DEBUG)) {
     string fi_header = fi.header_str();
     ip_stack_simulator_log.debug("Frame header: %s", fi_header.c_str());
   }
 
-  if (fi.arp) {
+  if (fi.ether) {
+    if (c->mac_addr.is_filled_with(0)) {
+      c->mac_addr = fi.ether->src_mac;
+    } else if ((fi.ether->src_mac != c->mac_addr) && (fi.ether->src_mac != this->broadcast_mac_address_bytes)) {
+      throw runtime_error("client sent IPv4 packet from different MAC address");
+    }
+  } else if (fi.hdlc) {
+    uint16_t expected_checksum = fi.computed_hdlc_checksum();
+    uint16_t stored_checksum = fi.stored_hdlc_checksum();
+    if (expected_checksum != stored_checksum) {
+      throw runtime_error(string_printf(
+          "HDLC checksum is incorrect (%04hX expected, %04hX received)",
+          expected_checksum, stored_checksum));
+    }
+  } else {
+    throw runtime_error("frame is not Ethernet or HDLC");
+  }
+
+  if (fi.lcp) {
+    this->on_client_lcp_frame(c, fi);
+
+  } else if (fi.pap) {
+    this->on_client_pap_frame(c, fi);
+
+  } else if (fi.ipcp) {
+    this->on_client_ipcp_frame(c, fi);
+
+  } else if (fi.arp) {
     this->on_client_arp_frame(c, fi);
 
   } else if (fi.ipv4) {
@@ -299,12 +480,6 @@ void IPStackSimulator::on_client_frame(
           expected_ipv4_checksum, fi.ipv4->checksum.load()));
     }
 
-    // Populate the client's addresses if needed
-    if (c->mac_addr.is_filled_with(0)) {
-      c->mac_addr = fi.ether->src_mac;
-    } else if ((fi.ether->src_mac != c->mac_addr) && (fi.ether->src_mac != this->broadcast_mac_address_bytes)) {
-      throw runtime_error("client sent IPv4 packet from different MAC address");
-    }
     if ((fi.ipv4->src_addr != c->ipv4_addr) && (fi.ipv4->src_addr != 0)) {
       throw runtime_error("client sent IPv4 packet from different IPv4 address");
     }
@@ -336,6 +511,261 @@ void IPStackSimulator::on_client_frame(
   }
 }
 
+void IPStackSimulator::on_client_lcp_frame(shared_ptr<IPClient> c, const FrameInfo& fi) {
+  switch (fi.lcp->command) {
+    case 0x01: { // Configure-Request
+      auto opts_r = fi.read_payload();
+      while (!opts_r.eof()) {
+        uint8_t opt = opts_r.get_u8();
+        string opt_data = opts_r.read(opts_r.get_u8() - 2);
+        StringReader opt_data_r(opt_data);
+        switch (opt) {
+          case 0x01: // Maximum receive unit
+            // TODO: Currently we ignore this, but we probably should use it.
+            opt_data_r.get_u16b();
+            break;
+          case 0x02: // Escaped control character flags
+            c->hdlc_escape_control_character_flags = opt_data_r.get_u32b();
+            break;
+          case 0x05: // Magic-Number
+            c->hdlc_remote_magic_number = opt_data_r.get_u32b();
+            break;
+          case 0x00: // RESERVED
+          case 0x03: // Authentication protocol
+          case 0x04: // Quality protocol
+          case 0x07: // Protocol field compression
+          case 0x08: // Address and control field compression
+            throw runtime_error(string_printf("unimplemented LCP option %02hhX (%zu bytes)", opt, opt_data.size()));
+          default:
+            throw runtime_error("unknown LCP option");
+        }
+      }
+      // Technically, we should implement the LCP state machine, but I'm too
+      // lazy to do this right now. In our situation, it should suffice to
+      // simply always send a Configure-Request to the client with a magic
+      // number not equal to the one we received.
+      StringWriter opts_w;
+      opts_w.put_u8(0x01); // Maximum receive unit
+      opts_w.put_u8(0x04);
+      opts_w.put_u16b(1500);
+      opts_w.put_u8(0x02); // Escaped control character flags (we don't require any)
+      opts_w.put_u8(0x06);
+      opts_w.put_u32(0);
+      opts_w.put_u8(0x03); // Authentication protocol
+      opts_w.put_u8(0x04);
+      opts_w.put_u16b(0xC023); // Password authentication protocol
+      opts_w.put_u8(0x05); // Magic number (bitwise inverse of the remote end's)
+      opts_w.put_u8(0x06);
+      opts_w.put_u32b(~c->hdlc_remote_magic_number);
+      StringWriter request_w;
+      request_w.put<LCPHeader>(LCPHeader{
+          .command = 0x01, // Configure-Request
+          .request_id = fi.lcp->request_id,
+          .size = static_cast<uint16_t>(sizeof(LCPHeader) + opts_w.size()),
+      });
+      request_w.write(opts_w.str());
+      this->send_layer3_frame(c, FrameInfo::Protocol::LCP, request_w.str());
+
+      StringWriter ack_w;
+      ack_w.put<LCPHeader>(LCPHeader{
+          .command = 0x02, // Configure-Ack
+          .request_id = fi.lcp->request_id,
+          .size = fi.lcp->size,
+      });
+      ack_w.write(fi.payload, fi.payload_size);
+      this->send_layer3_frame(c, FrameInfo::Protocol::LCP, ack_w.str());
+
+      break;
+    }
+
+    case 0x05: { // Terminate-Request
+      c->ipv4_addr = 0;
+      c->tcp_connections.clear();
+      string response(reinterpret_cast<const char*>(fi.payload), fi.payload_size);
+      response.at(0) = 0x06; // Terminate-Ack
+      this->send_layer3_frame(c, FrameInfo::Protocol::LCP, response);
+      break;
+    }
+
+    case 0x09: { // Echo-Request
+      string response(reinterpret_cast<const char*>(fi.payload), fi.payload_size);
+      response.at(0) = 0x0A; // Echo-Reply
+      this->send_layer3_frame(c, FrameInfo::Protocol::LCP, response);
+      break;
+    }
+
+    case 0x0B: // Discard-Request
+    case 0x02: // Configure-Ack
+      break;
+
+    case 0x03: // Configure-Nak
+    case 0x04: // Configure-Reject
+    case 0x06: // Terminate-Ack
+    case 0x07: // Code-Reject
+    case 0x08: // Protocol-Reject
+    case 0x0A: // Echo-Reply
+      throw runtime_error("unimplemented LCP command");
+    default:
+      throw runtime_error("unknown LCP command");
+  }
+}
+
+void IPStackSimulator::on_client_pap_frame(shared_ptr<IPClient> c, const FrameInfo& fi) {
+  if (fi.pap->command != 0x01) { // Authenticate-Request
+    throw runtime_error("client sent incorrect PAP command");
+  }
+
+  auto r = fi.read_payload();
+  string username = r.read(r.get_u8());
+  string password = r.read(r.get_u8());
+  ip_stack_simulator_log.info("Client logged in with username \"%s\" and password", username.c_str());
+
+  static const string login_message = "newserv PPP simulator";
+  StringWriter w;
+  w.put<PAPHeader>(PAPHeader{
+      .command = 0x02, // Authenticate-Ack
+      .request_id = fi.pap->request_id,
+      .size = login_message.size() + sizeof(PAPHeader) + 1,
+  });
+  w.put_u8(login_message.size());
+  w.write(login_message);
+  this->send_layer3_frame(c, FrameInfo::Protocol::PAP, w.str());
+}
+
+void IPStackSimulator::on_client_ipcp_frame(shared_ptr<IPClient> c, const FrameInfo& fi) {
+  switch (fi.ipcp->command) {
+    case 0x01: { // Configure-Request
+      auto opts_r = fi.read_payload();
+
+      uint32_t remote_ip = 0;
+      uint32_t remote_primary_dns = 0;
+      uint32_t remote_secondary_dns = 0;
+      StringWriter rejected_opts_w;
+      while (!opts_r.eof()) {
+        uint8_t opt = opts_r.get_u8();
+        string opt_data = opts_r.read(opts_r.get_u8() - 2);
+        StringReader opt_data_r(opt_data);
+        switch (opt) {
+          case 0x01: // IP addresses (deprecated as of 1992; we don't support it at all)
+            throw runtime_error("IPCP client sent IP-Addresses option");
+          case 0x02: // IP compression protocol
+            rejected_opts_w.put_u8(0x02);
+            rejected_opts_w.put_u8(opt_data_r.size() + 2);
+            rejected_opts_w.write(opt_data);
+            break;
+          case 0x03: // IP address
+            remote_ip = opt_data_r.get_u32b();
+            break;
+          case 0x81: // Primary DNS server address
+            remote_primary_dns = opt_data_r.get_u32b();
+            break;
+          case 0x83: // Secondary DNS server address
+            remote_secondary_dns = opt_data_r.get_u32b();
+            break;
+          case 0x82: // Primary NBNS server address
+          case 0x84: // Secondary NBNS server address
+          case 0x04: // Mobile IP address
+            throw runtime_error(string_printf("unimplemented IPCP option %02hhX (%zu bytes)", opt, opt_data.size()));
+          default:
+            throw runtime_error("unknown IPCP option");
+        }
+      }
+
+      if (!rejected_opts_w.str().empty()) {
+        // Send a Configure-Reject if the client specified IP header compression
+        StringWriter reject_w;
+        reject_w.put<IPCPHeader>(IPCPHeader{
+            .command = 0x04, // Configure-Reject
+            .request_id = fi.ipcp->request_id,
+            .size = sizeof(IPCPHeader) + rejected_opts_w.size(),
+        });
+        reject_w.write(rejected_opts_w.str());
+        this->send_layer3_frame(c, FrameInfo::Protocol::IPCP, reject_w.str());
+
+      } else if ((remote_ip != 0x1E1E1E1E) ||
+          (remote_primary_dns != 0x23232323) ||
+          (remote_secondary_dns != 0x24242424)) {
+        // Send a Configure-Nak if the client's request doesn't exactly match
+        // what we want them to use.
+        StringWriter opts_w;
+        opts_w.put_u8(0x03); // IP address
+        opts_w.put_u8(0x06);
+        opts_w.put_u32b(0x1E1E1E1E);
+        opts_w.put_u8(0x81); // Primary DNS server address
+        opts_w.put_u8(0x06);
+        opts_w.put_u32b(0x23232323);
+        opts_w.put_u8(0x83); // Secondary DNS server address
+        opts_w.put_u8(0x06);
+        opts_w.put_u32b(0x24242424);
+
+        StringWriter nak_w;
+        nak_w.put<IPCPHeader>(IPCPHeader{
+            .command = 0x03, // Configure-Nak
+            .request_id = fi.ipcp->request_id,
+            .size = static_cast<uint16_t>(opts_w.size() + sizeof(IPCPHeader)),
+        });
+        nak_w.write(opts_w.str());
+        this->send_layer3_frame(c, FrameInfo::Protocol::IPCP, nak_w.str());
+
+      } else { // Options OK
+        c->ipv4_addr = remote_ip;
+
+        // As with LCP, we technically should implement the state machine, but I
+        // continue to be lazy.
+        StringWriter opts_w;
+        opts_w.put_u8(0x03); // IP address
+        opts_w.put_u8(0x06);
+        opts_w.put_u32b(0x39393939);
+        opts_w.put_u8(0x81); // Primary DNS server address
+        opts_w.put_u8(0x06);
+        opts_w.put_u32b(0x23232323);
+        opts_w.put_u8(0x83); // Secondary DNS server address
+        opts_w.put_u8(0x06);
+        opts_w.put_u32b(0x24242424);
+
+        StringWriter request_w;
+        request_w.put<IPCPHeader>(IPCPHeader{
+            .command = 0x01, // Configure-Request
+            .request_id = fi.ipcp->request_id,
+            .size = static_cast<uint16_t>(opts_w.size() + sizeof(IPCPHeader)),
+        });
+        request_w.write(opts_w.str());
+        this->send_layer3_frame(c, FrameInfo::Protocol::IPCP, request_w.str());
+
+        StringWriter ack_w;
+        ack_w.put<IPCPHeader>(IPCPHeader{
+            .command = 0x02, // Configure-Ack
+            .request_id = fi.ipcp->request_id,
+            .size = fi.ipcp->size,
+        });
+        ack_w.write(fi.payload, fi.payload_size);
+        this->send_layer3_frame(c, FrameInfo::Protocol::IPCP, ack_w.str());
+      }
+      break;
+    }
+
+    case 0x05: { // Terminate-Request
+      c->ipv4_addr = 0;
+      c->tcp_connections.clear();
+      string response(reinterpret_cast<const char*>(fi.payload), fi.payload_size);
+      response.at(0) = 0x06; // Terminate-Ack
+      this->send_layer3_frame(c, FrameInfo::Protocol::LCP, response);
+      break;
+    }
+
+    case 0x02: // Configure-Ack
+      break;
+
+    case 0x03: // Configure-Nak
+    case 0x04: // Configure-Reject
+    case 0x06: // Terminate-Ack
+    case 0x07: // Code-Reject
+      throw runtime_error("unimplemented IPCP command");
+    default:
+      throw runtime_error("unknown LCP command");
+  }
+}
+
 void IPStackSimulator::on_client_arp_frame(
     shared_ptr<IPClient> c, const FrameInfo& fi) {
   if (fi.arp->hwaddr_len != 6 ||
@@ -353,17 +783,14 @@ void IPStackSimulator::on_client_arp_frame(
         reinterpret_cast<const uint8_t*>(fi.payload) + 6);
   }
 
-  EthernetHeader r_ether;
-  r_ether.dest_mac = fi.ether->src_mac;
-  r_ether.src_mac = this->host_mac_address_bytes;
-  r_ether.protocol = fi.ether->protocol;
-
-  ARPHeader r_arp;
-  r_arp.hardware_type = fi.arp->hardware_type;
-  r_arp.protocol_type = fi.arp->protocol_type;
-  r_arp.hwaddr_len = 6;
-  r_arp.paddr_len = 4;
-  r_arp.operation = 0x0002;
+  StringWriter w;
+  w.put<ARPHeader>(ARPHeader{
+      .hardware_type = fi.arp->hardware_type,
+      .protocol_type = fi.arp->protocol_type,
+      .hwaddr_len = 6,
+      .paddr_len = 4,
+      .operation = 0x0002,
+  });
 
   // The incoming payload is:
   // uint8_t src_mac[6]; // MAC address of client
@@ -375,43 +802,19 @@ void IPStackSimulator::on_client_arp_frame(
   // uint8_t dest_ip[4]; // IP address of host
   // uint8_t src_mac[6]; // MAC address of client
   // uint8_t src_ip[4]; // IP address of client
-
   const char* payload_bytes = reinterpret_cast<const char*>(fi.payload);
+  w.write(this->host_mac_address_bytes.data(), 6);
+  w.write(payload_bytes + 16, 4);
+  w.write(payload_bytes, 10);
 
-  uint8_t r_payload[20];
-  memcpy(&r_payload[0], this->host_mac_address_bytes.data(), 6);
-  memcpy(&r_payload[6], payload_bytes + 16, 4);
-  memcpy(&r_payload[10], payload_bytes, 10);
-
-  struct evbuffer* out_buf = bufferevent_get_output(c->bev.get());
-
-  uint16_t frame_size = sizeof(r_ether) + sizeof(r_arp) + sizeof(r_payload);
-  evbuffer_add(out_buf, &frame_size, 2);
-  evbuffer_add(out_buf, &r_ether, sizeof(r_ether));
-  evbuffer_add(out_buf, &r_arp, sizeof(r_arp));
-  evbuffer_add(out_buf, r_payload, sizeof(r_payload));
-
-  ip_stack_simulator_log.debug("Sending ARP response");
-
-  if (this->pcap_text_log_file) {
-    StringWriter w;
-    w.write(&r_ether, sizeof(r_ether));
-    w.write(&r_arp, sizeof(r_arp));
-    w.write(r_payload, sizeof(r_payload));
-    this->log_frame(w.str());
-  }
+  this->send_layer3_frame(c, FrameInfo::Protocol::ARP, w.str());
 }
 
-void IPStackSimulator::on_client_udp_frame(
-    shared_ptr<IPClient> c, const FrameInfo& fi) {
-  // We only implement DHCP and newserv's DNS server here
+void IPStackSimulator::on_client_udp_frame(shared_ptr<IPClient> c, const FrameInfo& fi) {
+  // We only implement DHCP and newserv's DNS server here.
 
   // Every received UDP packet will elicit exactly one UDP response from
   // newserv, so we prepare the response headers in advance
-  EthernetHeader r_ether;
-  r_ether.dest_mac = fi.ether->src_mac;
-  r_ether.src_mac = this->host_mac_address_bytes;
-  r_ether.protocol = fi.ether->protocol;
 
   IPv4Header r_ipv4;
   r_ipv4.version_ihl = 0x45;
@@ -433,7 +836,7 @@ void IPStackSimulator::on_client_udp_frame(
 
   string r_data;
   if (fi.udp->dest_port == 67) { // DHCP
-    StringReader r(fi.payload, fi.payload_size);
+    auto r = fi.read_payload();
     const auto& dhcp = r.get<DHCPHeader>();
     if (dhcp.hardware_type != 1) {
       throw runtime_error("unknown DHCP hardware type");
@@ -566,29 +969,18 @@ void IPStackSimulator::on_client_udp_frame(
     r_udp.checksum = FrameInfo::computed_udp4_checksum(
         r_ipv4, r_udp, r_data.data(), r_data.size());
 
-    struct evbuffer* out_buf = bufferevent_get_output(c->bev.get());
-
     if (ip_stack_simulator_log.should_log(LogLevel::DEBUG)) {
       string remote_str = this->str_for_ipv4_netloc(fi.ipv4->src_addr, fi.udp->src_port);
       ip_stack_simulator_log.debug("Sending UDP response to %s", remote_str.c_str());
       print_data(stderr, r_data);
     }
 
-    uint16_t frame_size = sizeof(r_ether) + sizeof(r_ipv4) + sizeof(r_udp) + r_data.size();
-    evbuffer_add(out_buf, &frame_size, 2);
-    evbuffer_add(out_buf, &r_ether, sizeof(r_ether));
-    evbuffer_add(out_buf, &r_ipv4, sizeof(r_ipv4));
-    evbuffer_add(out_buf, &r_udp, sizeof(r_udp));
-    evbuffer_add(out_buf, r_data.data(), r_data.size());
+    StringWriter w;
+    w.put(r_ipv4);
+    w.put(r_udp);
+    w.write(r_data);
 
-    if (this->pcap_text_log_file) {
-      StringWriter w;
-      w.write(&r_ether, sizeof(r_ether));
-      w.write(&r_ipv4, sizeof(r_ipv4));
-      w.write(&r_udp, sizeof(r_udp));
-      w.write(r_data.data(), r_data.size());
-      this->log_frame(w.str());
-    }
+    this->send_layer3_frame(c, FrameInfo::Protocol::IPV4, w.str());
   }
 }
 
@@ -863,8 +1255,7 @@ void IPStackSimulator::on_client_tcp_frame(
   }
 }
 
-void IPStackSimulator::open_server_connection(
-    shared_ptr<IPClient> c, IPClient::TCPConnection& conn) {
+void IPStackSimulator::open_server_connection(shared_ptr<IPClient> c, IPClient::TCPConnection& conn) {
   if (conn.server_bev.get()) {
     throw logic_error("server connection is already open");
   }
@@ -913,20 +1304,25 @@ void IPStackSimulator::open_server_connection(
   }
 }
 
-void IPStackSimulator::send_pending_push_frame(
-    shared_ptr<IPClient> c, IPClient::TCPConnection& conn) {
+void IPStackSimulator::send_pending_push_frame(shared_ptr<IPClient> c, IPClient::TCPConnection& conn) {
   size_t pending_bytes = evbuffer_get_length(conn.pending_data.get());
   if (!pending_bytes) {
     return;
   }
 
   size_t bytes_to_send = min<size_t>(pending_bytes, conn.next_push_max_frame_size);
+  if ((c->link_type == FrameInfo::LinkType::HDLC) && (bytes_to_send > 200)) {
+    // There is a bug in Dolphin's modem implementation (which I wrote, so it's
+    // my fault) that causes commands to be dropped when too much data is sent
+    // at once. To work around this, we only send up to 200 bytes in each push
+    // frame.
+    bytes_to_send = 200;
+  }
 
   ip_stack_simulator_log.debug("Sending PSH frame with seq_num %08" PRIX32 ", 0x%zX/0x%zX data bytes",
       conn.acked_server_seq, bytes_to_send, pending_bytes);
 
-  this->send_tcp_frame(c, conn, TCPHeader::Flag::PSH, conn.pending_data.get(),
-      bytes_to_send);
+  this->send_tcp_frame(c, conn, TCPHeader::Flag::PSH, conn.pending_data.get(), bytes_to_send);
   struct timeval resend_push_timeout = usecs_to_timeval(conn.resend_push_usecs);
   event_add(conn.resend_push_event.get(), &resend_push_timeout);
 
@@ -952,11 +1348,6 @@ void IPStackSimulator::send_tcp_frame(
   if (!src_bytes != !(flags & TCPHeader::Flag::PSH)) {
     throw logic_error("data should be given if and only if PSH is given");
   }
-
-  EthernetHeader ether;
-  ether.dest_mac = c->mac_addr;
-  ether.src_mac = this->host_mac_address_bytes;
-  ether.protocol = 0x0800; // IPv4
 
   IPv4Header ipv4;
   ipv4.version_ihl = 0x45;
@@ -984,28 +1375,16 @@ void IPStackSimulator::send_tcp_frame(
   ipv4.checksum = FrameInfo::computed_ipv4_header_checksum(ipv4);
 
   const void* linear_data = src_bytes ? evbuffer_pullup(src_buf, src_bytes) : nullptr;
-  tcp.checksum = FrameInfo::computed_tcp4_checksum(
-      ipv4, tcp, linear_data, src_bytes);
+  tcp.checksum = FrameInfo::computed_tcp4_checksum(ipv4, tcp, linear_data, src_bytes);
 
-  struct evbuffer* out_buf = bufferevent_get_output(c->bev.get());
-
-  uint16_t frame_size = sizeof(ether) + sizeof(ipv4) + sizeof(tcp) + src_bytes;
-  evbuffer_add(out_buf, &frame_size, 2);
-  evbuffer_add(out_buf, &ether, sizeof(ether));
-  evbuffer_add(out_buf, &ipv4, sizeof(ipv4));
-  evbuffer_add(out_buf, &tcp, sizeof(tcp));
+  StringWriter w;
+  w.put(ipv4);
+  w.put(tcp);
   if (src_bytes) {
-    evbuffer_add(out_buf, linear_data, src_bytes);
+    w.write(linear_data, src_bytes);
   }
 
-  if (this->pcap_text_log_file) {
-    StringWriter w;
-    w.write(&ether, sizeof(ether));
-    w.write(&ipv4, sizeof(ipv4));
-    w.write(&tcp, sizeof(tcp));
-    w.write(linear_data, src_bytes);
-    this->log_frame(w.str());
-  }
+  this->send_layer3_frame(c, FrameInfo::Protocol::IPV4, w.str());
 }
 
 void IPStackSimulator::dispatch_on_resend_push(evutil_socket_t, short, void* ctx) {

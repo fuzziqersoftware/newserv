@@ -581,6 +581,16 @@ void ServerState::parse_config(const JSON& json, bool is_reload) {
       }
     } catch (const out_of_range&) {
     }
+    try {
+      for (const auto& item : json.at("PPPStackListen").as_list()) {
+        if (item->is_int()) {
+          this->ppp_stack_addresses.emplace_back(string_printf("0.0.0.0:%" PRId64, item->as_int()));
+        } else {
+          this->ppp_stack_addresses.emplace_back(item->as_string());
+        }
+      }
+    } catch (const out_of_range&) {
+    }
   }
 
   auto local_address_str = json.at("LocalAddress").as_string();

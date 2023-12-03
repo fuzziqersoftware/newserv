@@ -18,6 +18,7 @@
 
   "DNSServerPort": 0,
   "IPStackListen": [],
+  "PPPStackListen": [],
   "EnableItemTracking": true,
   "Episode3BehaviorFlags": 0xFA,
 

@@ -3,8 +3,34 @@
 #include <stdint.h>
 
 #include <phosg/Encoding.hh>
+#include <phosg/Strings.hh>
 
 #include "Text.hh"
+
+struct HDLCHeader {
+  uint8_t start_sentinel1; // 0x7E
+  uint8_t address; // 0xFF usually
+  uint8_t control; // 0x03 for PPP
+  be_uint16_t protocol;
+} __attribute__((packed));
+
+struct LCPHeader {
+  uint8_t command;
+  uint8_t request_id;
+  be_uint16_t size;
+} __attribute__((packed));
+
+struct PAPHeader {
+  uint8_t command;
+  uint8_t request_id;
+  be_uint16_t size;
+} __attribute__((packed));
+
+struct IPCPHeader {
+  uint8_t command;
+  uint8_t request_id;
+  be_uint16_t size;
+} __attribute__((packed));
 
 struct EthernetHeader {
   parray<uint8_t, 6> dest_mac;
@@ -82,29 +108,62 @@ struct DHCPHeader {
 } __attribute__((packed));
 
 struct FrameInfo {
-  // This is always valid
-  const EthernetHeader* ether;
-  uint16_t ether_protocol;
+  enum class LinkType {
+    ETHERNET = 0,
+    HDLC,
+  };
+
+  enum class Protocol {
+    NONE = 0,
+    LCP,
+    PAP,
+    IPCP,
+    IPV4,
+    ARP,
+    // TODO: Some less-common protocols that we might want to support:
+    //   Ether  / HDLC   = proto
+    //   0x8035 / ?????? = RARP
+    //   0x809B / 0x0029 = AppleTalk
+    //   0x80F3 / ?????? = AppleTalk ARP
+    //   0x8137 / 0x002B = IPX
+  };
+
+  LinkType link_type = LinkType::ETHERNET;
+
+  // Exactly one of these headers is valid
+  const EthernetHeader* ether = nullptr;
+  uint16_t ether_protocol = 0;
+  const HDLCHeader* hdlc = nullptr;
+  uint16_t hdlc_checksum = 0;
+
+  // One of these may be non-null if hdlc is valid
+  const LCPHeader* lcp = nullptr;
+  const PAPHeader* pap = nullptr;
+  const IPCPHeader* ipcp = nullptr;
 
   // At most one of these is not null
-  const IPv4Header* ipv4;
-  const ARPHeader* arp;
+  const IPv4Header* ipv4 = nullptr;
+  const ARPHeader* arp = nullptr;
 
   // One of these may be not null if this->ipv4 is not null
-  const UDPHeader* udp;
-  const TCPHeader* tcp;
+  const UDPHeader* udp = nullptr;
+  const TCPHeader* tcp = nullptr;
 
-  const void* header_start;
-  const void* payload;
-  size_t total_size;
-  size_t tcp_options_size;
-  size_t payload_size;
+  const void* header_start = nullptr;
+  const void* payload = nullptr;
+  size_t total_size = 0;
+  size_t tcp_options_size = 0;
+  size_t payload_size = 0;
 
-  FrameInfo();
-  FrameInfo(const std::string& data);
-  FrameInfo(const void* data, size_t size);
+  FrameInfo() = default;
+  FrameInfo(LinkType link_type, const std::string& data);
+  FrameInfo(LinkType link_type, const void* data, size_t size);
 
   std::string header_str() const;
+
+  inline StringReader read_payload() const {
+    return StringReader(this->payload, this->payload_size);
+  }
 
   void truncate(size_t new_total_size);
 
@@ -112,10 +171,12 @@ struct FrameInfo {
 
   static uint16_t computed_ipv4_header_checksum(const IPv4Header& ipv4);
   uint16_t computed_ipv4_header_checksum() const;
-  static uint16_t computed_udp4_checksum(
-      const IPv4Header& ipv4, const UDPHeader& udp, const void* data, size_t size);
+  static uint16_t computed_udp4_checksum(const IPv4Header& ipv4, const UDPHeader& udp, const void* data, size_t size);
   uint16_t computed_udp4_checksum() const;
-  static uint16_t computed_tcp4_checksum(
-      const IPv4Header& ip, const TCPHeader& tcp, const void* data, size_t size);
+  static uint16_t computed_tcp4_checksum(const IPv4Header& ip, const TCPHeader& tcp, const void* data, size_t size);
   uint16_t computed_tcp4_checksum() const;
+
+  static uint16_t computed_hdlc_checksum(const void* data, size_t size);
+  uint16_t computed_hdlc_checksum() const;
+  uint16_t stored_hdlc_checksum() const;
 };

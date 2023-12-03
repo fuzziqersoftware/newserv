@@ -65,6 +65,7 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   std::string username;
   uint16_t dns_server_port;
   std::vector<std::string> ip_stack_addresses;
+  std::vector<std::string> ppp_stack_addresses;
   bool ip_stack_debug;
   bool allow_unregistered_users;
   bool allow_dc_pc_games;

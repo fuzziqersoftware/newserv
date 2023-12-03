@@ -128,19 +128,20 @@
     "bb-data2":      [12005, "bb",    "login_server"],
   },
 
-  // Where to listen for IP stack clients. This exists to interface with PSO GC
-  // clients running in a local Dolphin emulator. To enable local Dolphin
-  // clients to connect, set this to ["/tmp/dolphin-tap"] and configure Dolphin
-  // to use the tapserver type of broadband adapter. You do not need to install
-  // or run tapserver. See README.md for details on how to get PSO to connect
-  // via this interface. You can also add numbers or "address:port" strings to
-  // this list to listen for tapserver connections on a TCP port.
+  // Where to listen for IP and PPP stack clients. This exists to interface with
+  // PSO GC clients running in a local Dolphin emulator. To enable local Dolphin
+  // clients to connect, set IPStackListen to ["/tmp/dolphin-tap"] and configure
+  // Dolphin to use the tapserver type of broadband adapter. You do not need to
+  // install or run tapserver. See README.md for details on how to get PSO to
+  // connect via this interface. You can also add numbers or "address:port"
+  // strings to these lists to listen for tapserver connections on TCP ports.
   // On Windows, Unix sockets are not available, so you can only use TCP sockets
   // here. You can get Dolphin to connect locally by adding a port to this list
   // and configuring Dolphin to connect to the same port. For example, you could
   // set this to ["127.0.0.1:5059"], and configure Dolphin's tapserver BBA to
   // connect to 127.0.0.1:5059.
   "IPStackListen": [],
+  "PPPStackListen": [],
 
   // Other servers to support proxying to. If this is empty for any game
   // version, the proxy server is disabled for that version. Entries in these
