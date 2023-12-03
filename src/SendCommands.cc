@@ -2159,7 +2159,7 @@ void send_execute_item_trade(shared_ptr<Client> c, const vector<ItemData>& items
 }
 
 void send_execute_card_trade(shared_ptr<Client> c, const vector<pair<uint32_t, uint32_t>>& card_to_count) {
-  if (is_ep3(c->version())) {
+  if (!is_ep3(c->version())) {
     throw logic_error("cannot send trade cards command to non-Ep3 client");
   }
 
