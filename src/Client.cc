@@ -153,6 +153,7 @@ Client::Client(
       lobby_client_id(0),
       lobby_arrow_color(0),
       preferred_lobby_id(-1),
+      game_data(server->get_state()->player_files_manager),
       save_game_data_event(
           event_new(
               bufferevent_get_base(bev), -1, EV_TIMEOUT | EV_PERSIST,

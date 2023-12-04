@@ -1,5 +1,6 @@
 #pragma once
 
+#include <event2/event.h>
 #include <inttypes.h>
 #include <stddef.h>
 
@@ -30,6 +31,30 @@ struct PendingCardTrade {
   std::vector<std::pair<uint32_t, uint32_t>> card_to_count;
 };
 
+class PlayerFilesManager {
+public:
+  explicit PlayerFilesManager(std::shared_ptr<struct event_base> base);
+  ~PlayerFilesManager() = default;
+
+  std::shared_ptr<PSOBBBaseSystemFile> get_system(const std::string& filename);
+  std::shared_ptr<PSOBBCharacterFile> get_character(const std::string& filename);
+  std::shared_ptr<PSOBBGuildCardFile> get_guild_card(const std::string& filename);
+
+  void set_system(const std::string& filename, std::shared_ptr<PSOBBBaseSystemFile> file);
+  void set_character(const std::string& filename, std::shared_ptr<PSOBBCharacterFile> file);
+  void set_guild_card(const std::string& filename, std::shared_ptr<PSOBBGuildCardFile> file);
+
+private:
+  std::shared_ptr<struct event_base> base;
+  std::unique_ptr<struct event, void (*)(struct event*)> clear_expired_files_event;
+
+  std::unordered_map<std::string, std::shared_ptr<PSOBBBaseSystemFile>> loaded_system_files;
+  std::unordered_map<std::string, std::shared_ptr<PSOBBCharacterFile>> loaded_character_files;
+  std::unordered_map<std::string, std::shared_ptr<PSOBBGuildCardFile>> loaded_guild_card_files;
+
+  static void clear_expired_files(evutil_socket_t fd, short events, void* ctx);
+};
+
 class ClientGameData {
 public:
   uint32_t guild_card_number;
@@ -55,7 +80,7 @@ public:
   ItemData identify_result;
   std::array<std::vector<ItemData>, 3> shop_contents;
 
-  ClientGameData();
+  explicit ClientGameData(std::shared_ptr<PlayerFilesManager> files_manager);
   ~ClientGameData();
 
   void create_battle_overlay(std::shared_ptr<const BattleRules> rules, std::shared_ptr<const LevelTable> level_table);
@@ -88,6 +113,8 @@ public:
   void save_guild_card_file() const;
 
 private:
+  std::shared_ptr<PlayerFilesManager> files_manager;
+
   // The overlay character data is used in battle and challenge modes, when
   // character data is temporarily replaced in-game. In other play modes and in
   // lobbies, overlay_character_data is null.

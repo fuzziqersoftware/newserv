@@ -31,7 +31,6 @@ private:
   uint32_t local_connect_address;
   uint32_t external_connect_address;
 
-  static void dispatch_on_receive_message(evutil_socket_t fd, short events,
-      void* ctx);
+  static void dispatch_on_receive_message(evutil_socket_t fd, short events, void* ctx);
   void on_receive_message(int fd, short event);
 };

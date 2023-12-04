@@ -1,5 +1,7 @@
 #pragma once
 
+#include <event2/event.h>
+
 #include <atomic>
 #include <map>
 #include <memory>
@@ -167,6 +169,7 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   std::string pc_patch_server_message;
   std::string bb_patch_server_message;
 
+  std::shared_ptr<PlayerFilesManager> player_files_manager;
   std::unordered_map<Channel*, std::shared_ptr<Client>> channel_to_client;
   std::map<int64_t, std::shared_ptr<Lobby>> id_to_lobby;
   std::vector<std::shared_ptr<Lobby>> public_lobby_search_order;
@@ -184,7 +187,7 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   std::shared_ptr<ProxyServer> proxy_server;
   std::shared_ptr<Server> game_server;
 
-  ServerState(const std::string& config_filename, bool is_replay);
+  ServerState(std::shared_ptr<struct event_base> base, const std::string& config_filename, bool is_replay);
   ServerState(const ServerState&) = delete;
   ServerState(ServerState&&) = delete;
   ServerState& operator=(const ServerState&) = delete;

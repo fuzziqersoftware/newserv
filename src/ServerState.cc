@@ -17,7 +17,7 @@
 
 using namespace std;
 
-ServerState::ServerState(const string& config_filename, bool is_replay)
+ServerState::ServerState(shared_ptr<struct event_base> base, const string& config_filename, bool is_replay)
     : config_filename(config_filename),
       is_replay(is_replay),
       dns_server_port(0),
@@ -42,6 +42,7 @@ ServerState::ServerState(const string& config_filename, bool is_replay)
       ep3_card_auction_points(0),
       ep3_card_auction_min_size(0),
       ep3_card_auction_max_size(0),
+      player_files_manager(make_shared<PlayerFilesManager>(base)),
       next_lobby_id(1),
       pre_lobby_event(0),
       ep3_menu_song(-1),

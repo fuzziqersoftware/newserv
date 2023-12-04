@@ -3113,7 +3113,9 @@ static void on_E3_BB(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
       return;
     }
 
-    ClientGameData temp_gd;
+    auto s = c->require_server_state();
+
+    ClientGameData temp_gd(s->player_files_manager);
     temp_gd.guild_card_number = c->license->serial_number;
     temp_gd.bb_username = c->license->bb_username;
     temp_gd.bb_character_index = cmd.character_index;

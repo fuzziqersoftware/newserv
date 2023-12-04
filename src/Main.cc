@@ -1698,7 +1698,7 @@ Action a_run_server_replay_log(
       }
 
       shared_ptr<struct event_base> base(event_base_new(), event_base_free);
-      auto state = make_shared<ServerState>(config_filename, is_replay);
+      auto state = make_shared<ServerState>(base, config_filename, is_replay);
       state->init();
 
       shared_ptr<DNSServer> dns_server;

@@ -19,10 +19,90 @@
 
 using namespace std;
 
-ClientGameData::ClientGameData()
+PlayerFilesManager::PlayerFilesManager(std::shared_ptr<struct event_base> base)
+    : base(base),
+      clear_expired_files_event(
+          event_new(this->base.get(), -1, EV_TIMEOUT | EV_PERSIST, &PlayerFilesManager::clear_expired_files, this),
+          event_free) {
+  auto tv = usecs_to_timeval(30 * 1000 * 1000);
+  event_add(this->clear_expired_files_event.get(), &tv);
+}
+
+template <typename KeyT, typename ValueT>
+size_t erase_unused(std::unordered_map<KeyT, std::shared_ptr<ValueT>>& m) {
+  size_t ret = 0;
+  for (auto it = m.begin(); it != m.end();) {
+    if (it->second.use_count() <= 1) {
+      it = m.erase(it);
+      ret++;
+    } else {
+      it++;
+    }
+  }
+  return ret;
+}
+
+std::shared_ptr<PSOBBBaseSystemFile> PlayerFilesManager::get_system(const std::string& filename) {
+  try {
+    return this->loaded_system_files.at(filename);
+  } catch (const out_of_range&) {
+    return nullptr;
+  }
+}
+
+std::shared_ptr<PSOBBCharacterFile> PlayerFilesManager::get_character(const std::string& filename) {
+  try {
+    return this->loaded_character_files.at(filename);
+  } catch (const out_of_range&) {
+    return nullptr;
+  }
+}
+
+std::shared_ptr<PSOBBGuildCardFile> PlayerFilesManager::get_guild_card(const std::string& filename) {
+  try {
+    return this->loaded_guild_card_files.at(filename);
+  } catch (const out_of_range&) {
+    return nullptr;
+  }
+}
+
+void PlayerFilesManager::set_system(const std::string& filename, std::shared_ptr<PSOBBBaseSystemFile> file) {
+  if (!this->loaded_system_files.emplace(filename, file).second) {
+    throw runtime_error("Guild Card file already loaded");
+  }
+}
+void PlayerFilesManager::set_character(const std::string& filename, std::shared_ptr<PSOBBCharacterFile> file) {
+  if (!this->loaded_character_files.emplace(filename, file).second) {
+    throw runtime_error("character file already loaded");
+  }
+}
+void PlayerFilesManager::set_guild_card(const std::string& filename, std::shared_ptr<PSOBBGuildCardFile> file) {
+  if (!this->loaded_guild_card_files.emplace(filename, file).second) {
+    throw runtime_error("Guild Card file already loaded");
+  }
+}
+
+void PlayerFilesManager::clear_expired_files(evutil_socket_t, short, void* ctx) {
+  auto* self = reinterpret_cast<PlayerFilesManager*>(ctx);
+  size_t num_deleted = erase_unused(self->loaded_system_files);
+  if (num_deleted) {
+    player_data_log.info("Cleared %zu expired system file(s)", num_deleted);
+  }
+  num_deleted = erase_unused(self->loaded_character_files);
+  if (num_deleted) {
+    player_data_log.info("Cleared %zu expired character file(s)", num_deleted);
+  }
+  num_deleted = erase_unused(self->loaded_guild_card_files);
+  if (num_deleted) {
+    player_data_log.info("Cleared %zu expired Guild Card file(s)", num_deleted);
+  }
+}
+
+ClientGameData::ClientGameData(std::shared_ptr<PlayerFilesManager> files_manager)
     : guild_card_number(0),
       should_update_play_time(false),
       bb_character_index(-1),
+      files_manager(files_manager),
       last_play_time_update(0) {
   for (size_t z = 0; z < this->blocked_senders.size(); z++) {
     this->blocked_senders[z] = 0;
@@ -247,14 +327,23 @@ void ClientGameData::load_all_files() {
   this->guild_card_data.reset();
 
   string sys_filename = this->system_filename();
-  if (isfile(sys_filename)) {
+  this->system_data = this->files_manager->get_system(sys_filename);
+  if (this->system_data) {
+    player_data_log.info("Using loaded system file %s", sys_filename.c_str());
+  } else if (isfile(sys_filename)) {
     this->system_data = make_shared<PSOBBBaseSystemFile>(load_object_file<PSOBBBaseSystemFile>(sys_filename, true));
+    this->files_manager->set_system(sys_filename, this->system_data);
     player_data_log.info("Loaded system data from %s", sys_filename.c_str());
+  } else {
+    player_data_log.info("System file is missing: %s", sys_filename.c_str());
   }
 
   if (this->bb_character_index >= 0) {
     string char_filename = this->character_filename();
-    if (isfile(char_filename)) {
+    this->character_data = this->files_manager->get_character(char_filename);
+    if (this->character_data) {
+      player_data_log.info("Using loaded character file %s", char_filename.c_str());
+    } else if (isfile(char_filename)) {
       auto f = fopen_unique(char_filename, "rb");
       auto header = freadx<PSOCommandHeaderBB>(f.get());
       if (header.size != 0x399C) {
@@ -267,21 +356,31 @@ void ClientGameData::load_all_files() {
         throw runtime_error("incorrect flag in character file header");
       }
       this->character_data = make_shared<PSOBBCharacterFile>(freadx<PSOBBCharacterFile>(f.get()));
+      this->files_manager->set_character(this->character_filename(), this->character_data);
       player_data_log.info("Loaded character data from %s", char_filename.c_str());
 
       // If there was no .psosys file, load the system file from the .psochar
       // file instead
       if (!this->system_data) {
         this->system_data = make_shared<PSOBBBaseSystemFile>(freadx<PSOBBBaseSystemFile>(f.get()));
+        this->files_manager->set_system(sys_filename, this->system_data);
         player_data_log.info("Loaded system data from %s", char_filename.c_str());
       }
+    } else {
+      player_data_log.info("Character file is missing: %s", char_filename.c_str());
     }
   }
 
   string card_filename = this->guild_card_filename();
-  if (isfile(card_filename)) {
+  this->guild_card_data = this->files_manager->get_guild_card(card_filename);
+  if (this->guild_card_data) {
+    player_data_log.info("Using loaded Guild Card file %s", card_filename.c_str());
+  } else if (isfile(card_filename)) {
     this->guild_card_data = make_shared<PSOBBGuildCardFile>(load_object_file<PSOBBGuildCardFile>(card_filename));
+    this->files_manager->set_guild_card(card_filename, this->guild_card_data);
     player_data_log.info("Loaded Guild Card data from %s", card_filename.c_str());
+  } else {
+    player_data_log.info("Guild Card file is missing: %s", card_filename.c_str());
   }
 
   // If any of the above files were missing, try to load from .nsa/.nsc files instead
@@ -295,20 +394,24 @@ void ClientGameData::load_all_files() {
       }
       if (!this->system_data) {
         this->system_data = make_shared<PSOBBBaseSystemFile>(nsa_data->system_file.base);
+        this->files_manager->set_system(sys_filename, this->system_data);
         player_data_log.info("Loaded legacy system data from %s", nsa_filename.c_str());
       }
       if (!this->guild_card_data) {
         this->guild_card_data = make_shared<PSOBBGuildCardFile>(nsa_data->guild_card_file);
+        this->files_manager->set_guild_card(card_filename, this->guild_card_data);
         player_data_log.info("Loaded legacy Guild Card data from %s", nsa_filename.c_str());
       }
     }
 
     if (!this->system_data) {
       this->system_data = make_shared<PSOBBBaseSystemFile>();
+      this->files_manager->set_system(sys_filename, this->system_data);
       player_data_log.info("Created new system data");
     }
     if (!this->guild_card_data) {
       this->guild_card_data = make_shared<PSOBBGuildCardFile>();
+      this->files_manager->set_guild_card(card_filename, this->guild_card_data);
       player_data_log.info("Created new Guild Card data");
     }
 
@@ -326,6 +429,7 @@ void ClientGameData::load_all_files() {
       }
 
       this->character_data = make_shared<PSOBBCharacterFile>();
+      this->files_manager->set_character(this->character_filename(), this->character_data);
       this->character_data->inventory = nsc_data.inventory;
       this->character_data->disp = nsc_data.disp;
       this->character_data->play_time_seconds = nsc_data.disp.play_time;
