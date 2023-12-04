@@ -4,6 +4,7 @@
 
 #include <memory>
 #include <phosg/Encoding.hh>
+#include <phosg/JSON.hh>
 #include <random>
 #include <string>
 #include <vector>
@@ -192,10 +193,15 @@ struct Map {
     uint32_t pazuzu; // ZU -> PAZUZU (and _ALT variants)
     uint32_t dorphon_eclair; // DORPHON -> DORPHON_ECLAIR
     uint32_t kondrieu; // {SAINT_MILLION, SHAMBERTIN} -> KONDRIEU
+
+    RareEnemyRates(uint32_t enemy_rate, uint32_t boss_rate);
+    explicit RareEnemyRates(const JSON& json);
+
+    JSON json() const;
   };
 
-  static const RareEnemyRates NO_RARE_ENEMIES;
-  static const RareEnemyRates DEFAULT_RARE_ENEMIES;
+  static const std::shared_ptr<const RareEnemyRates> NO_RARE_ENEMIES;
+  static const std::shared_ptr<const RareEnemyRates> DEFAULT_RARE_ENEMIES;
 
   struct Object {
     // TODO: Add more fields in here if we ever care about them. Currently we
@@ -249,7 +255,7 @@ struct Map {
       uint8_t floor,
       size_t index,
       const EnemyEntry& e,
-      const RareEnemyRates& rare_rates = Map::DEFAULT_RARE_ENEMIES);
+      std::shared_ptr<const RareEnemyRates> rare_rates = DEFAULT_RARE_ENEMIES);
   void add_enemies_from_map_data(
       Episode episode,
       uint8_t difficulty,
@@ -257,7 +263,7 @@ struct Map {
       uint8_t floor,
       const void* data,
       size_t size,
-      const RareEnemyRates& rare_rates = Map::DEFAULT_RARE_ENEMIES);
+      std::shared_ptr<const RareEnemyRates> rare_rates = DEFAULT_RARE_ENEMIES);
   void add_random_enemies_from_map_data(
       Episode episode,
       uint8_t difficulty,
@@ -267,7 +273,7 @@ struct Map {
       StringReader random_enemy_locations_r,
       StringReader random_enemy_definitions_r,
       uint32_t rare_seed,
-      const RareEnemyRates& rare_rates = Map::DEFAULT_RARE_ENEMIES);
+      std::shared_ptr<const RareEnemyRates> rare_rates = DEFAULT_RARE_ENEMIES);
 
   struct DATSectionsForFloor {
     uint32_t objects = 0xFFFFFFFF;
@@ -285,7 +291,7 @@ struct Map {
       const void* data,
       size_t size,
       uint32_t rare_seed,
-      const RareEnemyRates& rare_rates = Map::DEFAULT_RARE_ENEMIES);
+      std::shared_ptr<const RareEnemyRates> rare_rates = Map::DEFAULT_RARE_ENEMIES);
 
   static std::string disassemble_quest_data(const void* data, size_t size);
 };
@@ -329,4 +335,3 @@ void generate_variations_dc_nte(
     std::shared_ptr<PSOLFGEncryption> random);
 std::vector<std::string> map_filenames_for_variation(
     Episode episode, bool is_solo, uint8_t floor, uint32_t var1, uint32_t var2, bool is_enemies);
-void load_map_files();

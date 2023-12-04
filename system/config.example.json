@@ -724,6 +724,31 @@
   "ItemDropMode": "OnByDefault",
   "UseServerItemTables": "OffByDefault",
 
+  // Rare enemy rates for BB games. The default rates specified here match the
+  // original rates on the official servers. There is a hard limit of 16 rare
+  // enemies per room or quest, which you may run into if you increase these
+  // rates significantly.
+  // If no rates are specified for a difficulty, the previous difficulty's rates
+  // will be used. (In the default configuration, only Normal is specified, so
+  // all difficulties use the same rates.)
+  "RareEnemyRates-Normal": {
+    // These are probabilities out of 0xFFFFFFFF - so 0 means that rare enemy
+    // will never appear, and 0xFFFFFFFF means it will always appear (until 16
+    // rare enemies have been assigned).
+    "Hildeblue": 0x00800000,
+    "Rappy": 0x00800000,
+    "NarLily": 0x00800000,
+    "PouillySlime": 0x00800000,
+    "MerissaAA": 0x00800000,
+    "Pazuzu": 0x00800000,
+    "DorphonEclair": 0x00800000,
+    "Kondrieu": 0x1999999A,
+  },
+  // "RareEnemyRates-Hard": {...},
+  // "RareEnemyRates-VeryHard": {...},
+  // "RareEnemyRates-Ultimate": {...},
+  // "RareEnemyRates-Challenge": {...},
+
   // Whether to enable certain exception handling. Disabling this causes
   // newserv to abort when any client causes an exception, which is generally
   // only useful for debugging newserv itself. This setting should usually be

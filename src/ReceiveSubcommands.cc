@@ -2440,7 +2440,7 @@ static void on_battle_restart_bb(shared_ptr<Client> c, uint8_t, uint8_t, const v
         dat_contents.data(),
         dat_contents.size(),
         l->random_seed,
-        (l->mode == GameMode::CHALLENGE) ? Map::NO_RARE_ENEMIES : Map::DEFAULT_RARE_ENEMIES);
+        l->rare_enemy_rates ? l->rare_enemy_rates : Map::NO_RARE_ENEMIES);
   }
 }
 

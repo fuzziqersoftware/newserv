@@ -14,6 +14,39 @@ using namespace std;
 
 static constexpr float UINT32_MAX_AS_FLOAT = 4294967296.0f;
 
+Map::RareEnemyRates::RareEnemyRates(uint32_t enemy_rate, uint32_t boss_rate)
+    : hildeblue(enemy_rate),
+      rappy(enemy_rate),
+      nar_lily(enemy_rate),
+      pouilly_slime(enemy_rate),
+      merissa_aa(enemy_rate),
+      pazuzu(enemy_rate),
+      dorphon_eclair(enemy_rate),
+      kondrieu(boss_rate) {}
+
+Map::RareEnemyRates::RareEnemyRates(const JSON& json)
+    : hildeblue(json.get_int("Hildeblue")),
+      rappy(json.get_int("Rappy")),
+      nar_lily(json.get_int("NarLily")),
+      pouilly_slime(json.get_int("PouillySlime")),
+      merissa_aa(json.get_int("MerissaAA")),
+      pazuzu(json.get_int("Pazuzu")),
+      dorphon_eclair(json.get_int("DorphonEclair")),
+      kondrieu(json.get_int("Kondrieu")) {}
+
+JSON Map::RareEnemyRates::json() const {
+  return JSON::dict({
+      {"Hildeblue", this->hildeblue},
+      {"Rappy", this->rappy},
+      {"NarLily", this->nar_lily},
+      {"PouillySlime", this->pouilly_slime},
+      {"MerissaAA", this->merissa_aa},
+      {"Pazuzu", this->pazuzu},
+      {"DorphonEclair", this->dorphon_eclair},
+      {"Kondrieu", this->kondrieu},
+  });
+}
+
 string Map::ObjectEntry::str() const {
   return string_printf("[ObjectEntry type=%04hX flags=%04hX index=%04hX a2=%04hX entity_id=%04hX group=%04hX section=%04hX a3=%04hX x=%g y=%g z=%g x_angle=%08" PRIX32 " y_angle=%08" PRIX32 " z_angle=%08" PRIX32 " params=[%g %g %g %08" PRIX32 " %08" PRIX32 " %08" PRIX32 "] unused=%08" PRIX32 "]",
       this->base_type.load(),
@@ -145,7 +178,7 @@ void Map::add_enemy(
     uint8_t floor,
     size_t index,
     const EnemyEntry& e,
-    const RareEnemyRates& rare_rates) {
+    std::shared_ptr<const RareEnemyRates> rare_rates) {
   auto add = [&](EnemyType type) -> void {
     this->enemies.emplace_back(index, floor, type);
   };
@@ -218,12 +251,12 @@ void Map::add_enemy(
       break;
 
     case 0x0040: // TObjEneMoja
-      add(this->check_and_log_rare_enemy(e.uparam1 & 0x01, rare_rates.hildeblue)
+      add(this->check_and_log_rare_enemy(e.uparam1 & 0x01, rare_rates->hildeblue)
               ? EnemyType::HILDEBLUE
               : EnemyType::HILDEBEAR);
       break;
     case 0x0041: { // TObjEneLappy
-      bool is_rare = this->check_and_log_rare_enemy(e.uparam1 & 0x01, rare_rates.rappy);
+      bool is_rare = this->check_and_log_rare_enemy(e.uparam1 & 0x01, rare_rates->rappy);
       switch (episode) {
         case Episode::EP1:
           add(is_rare ? EnemyType::AL_RAPPY : EnemyType::RAG_RAPPY);
@@ -278,7 +311,7 @@ void Map::add_enemy(
       if ((episode == Episode::EP2) && (e.floor > 0x0F)) {
         add(EnemyType::DEL_LILY);
       } else {
-        add(this->check_and_log_rare_enemy(e.uparam1 & 0x01, rare_rates.nar_lily)
+        add(this->check_and_log_rare_enemy(e.uparam1 & 0x01, rare_rates->nar_lily)
                 ? EnemyType::NAR_LILY
                 : EnemyType::POISON_LILY);
       }
@@ -292,7 +325,7 @@ void Map::add_enemy(
       break;
     }
     case 0x0064: // TObjEneSlime
-      add(this->check_and_log_rare_enemy(e.uparam1 & 0x01, rare_rates.pouilly_slime)
+      add(this->check_and_log_rare_enemy(e.uparam1 & 0x01, rare_rates->pouilly_slime)
               ? EnemyType::POFUILLY_SLIME
               : EnemyType::POUILLY_SLIME);
       default_num_children = 4;
@@ -503,7 +536,7 @@ void Map::add_enemy(
       }
       break;
     case 0x0112:
-      add(this->check_and_log_rare_enemy(e.uparam1 & 0x01, rare_rates.merissa_aa)
+      add(this->check_and_log_rare_enemy(e.uparam1 & 0x01, rare_rates->merissa_aa)
               ? EnemyType::MERISSA_AA
               : EnemyType::MERISSA_A);
       break;
@@ -511,7 +544,7 @@ void Map::add_enemy(
       add(EnemyType::GIRTABLULU);
       break;
     case 0x0114: {
-      bool is_rare = this->check_and_log_rare_enemy(e.uparam1 & 0x01, rare_rates.pazuzu);
+      bool is_rare = this->check_and_log_rare_enemy(e.uparam1 & 0x01, rare_rates->pazuzu);
       if (e.floor > 0x05) {
         add(is_rare ? EnemyType::PAZUZU_ALT : EnemyType::ZU_ALT);
       } else {
@@ -527,7 +560,7 @@ void Map::add_enemy(
       }
       break;
     case 0x0116:
-      add(this->check_and_log_rare_enemy(e.uparam1 & 0x01, rare_rates.dorphon_eclair)
+      add(this->check_and_log_rare_enemy(e.uparam1 & 0x01, rare_rates->dorphon_eclair)
               ? EnemyType::DORPHON_ECLAIR
               : EnemyType::DORPHON);
       break;
@@ -537,7 +570,7 @@ void Map::add_enemy(
       break;
     }
     case 0x0119: {
-      bool is_rare = this->check_and_log_rare_enemy((e.fparam2 != 0.0f), rare_rates.kondrieu);
+      bool is_rare = this->check_and_log_rare_enemy((e.fparam2 != 0.0f), rare_rates->kondrieu);
       if (is_rare) {
         add(EnemyType::KONDRIEU);
       } else {
@@ -584,7 +617,7 @@ void Map::add_enemies_from_map_data(
     uint8_t floor,
     const void* data,
     size_t size,
-    const RareEnemyRates& rare_rates) {
+    std::shared_ptr<const RareEnemyRates> rare_rates) {
   size_t entry_count = size / sizeof(EnemyEntry);
   if (size != entry_count * sizeof(EnemyEntry)) {
     throw runtime_error("data size is not a multiple of entry size");
@@ -678,7 +711,7 @@ void Map::add_random_enemies_from_map_data(
     StringReader locations_segment_r,
     StringReader definitions_segment_r,
     uint32_t rare_seed,
-    const RareEnemyRates& rare_rates) {
+    std::shared_ptr<const RareEnemyRates> rare_rates) {
 
   static const array<uint32_t, 41> rand_enemy_base_types = {
       0x44, 0x43, 0x41, 0x42, 0x40, 0x60, 0x61, 0x62, 0x63, 0x64, 0x65, 0x80,
@@ -889,7 +922,7 @@ void Map::add_enemies_and_objects_from_quest_data(
     const void* data,
     size_t size,
     uint32_t rare_seed,
-    const RareEnemyRates& rare_rates) {
+    std::shared_ptr<const RareEnemyRates> rare_rates) {
   auto all_floor_sections = this->collect_quest_map_data_sections(data, size);
 
   StringReader r(data, size);
@@ -1311,25 +1344,5 @@ vector<string> map_filenames_for_variation(
   return ret;
 }
 
-const Map::RareEnemyRates Map::NO_RARE_ENEMIES = {
-    .hildeblue = 0x00000000,
-    .rappy = 0x00000000,
-    .nar_lily = 0x00000000,
-    .pouilly_slime = 0x00000000,
-    .merissa_aa = 0x00000000,
-    .pazuzu = 0x00000000,
-    .dorphon_eclair = 0x00000000,
-    .kondrieu = 0x00000000,
-};
-
-const Map::RareEnemyRates Map::DEFAULT_RARE_ENEMIES = {
-    // All 1/512 except Kondrieu, which is 1/10
-    .hildeblue = 0x00800000,
-    .rappy = 0x00800000,
-    .nar_lily = 0x00800000,
-    .pouilly_slime = 0x00800000,
-    .merissa_aa = 0x00800000,
-    .pazuzu = 0x00800000,
-    .dorphon_eclair = 0x00800000,
-    .kondrieu = 0x1999999A,
-};
+const shared_ptr<const Map::RareEnemyRates> Map::NO_RARE_ENEMIES = make_shared<Map::RareEnemyRates>(0, 0);
+const shared_ptr<const Map::RareEnemyRates> Map::DEFAULT_RARE_ENEMIES = make_shared<Map::RareEnemyRates>(0x00800000, 0x1999999A);

@@ -63,6 +63,7 @@ struct Lobby : public std::enable_shared_from_this<Lobby> {
     float z;
     uint8_t floor;
   };
+  std::shared_ptr<const Map::RareEnemyRates> rare_enemy_rates;
   std::shared_ptr<Map> map;
   std::array<uint32_t, 12> next_item_id;
   uint32_t next_game_item_id;

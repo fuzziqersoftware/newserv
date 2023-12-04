@@ -1863,7 +1863,7 @@ static void on_quest_loaded(shared_ptr<Lobby> l) {
         dat_contents.data(),
         dat_contents.size(),
         l->random_seed,
-        (l->mode == GameMode::CHALLENGE) ? Map::NO_RARE_ENEMIES : Map::DEFAULT_RARE_ENEMIES);
+        l->rare_enemy_rates ? l->rare_enemy_rates : Map::NO_RARE_ENEMIES);
     l->item_creator->clear_destroyed_entities();
 
     l->log.info("Replaced objects list with quest layout (%zu entries)", l->map->objects.size());
@@ -3932,6 +3932,12 @@ shared_ptr<Lobby> create_game_generic(
     generate_variations(game->variations, game->random_crypt, game->episode, is_solo);
   }
 
+  if (game->mode == GameMode::CHALLENGE) {
+    game->rare_enemy_rates = s->rare_enemy_rates_challenge;
+  } else {
+    game->rare_enemy_rates = s->rare_enemy_rates.at(game->difficulty);
+  }
+
   if (game->base_version == Version::BB_V4) {
     game->map = make_shared<Map>();
     for (size_t floor = 0; floor < 0x10; floor++) {
@@ -3954,7 +3960,13 @@ shared_ptr<Lobby> create_game_generic(
             auto map_data = s->load_bb_file(filename, "", "map/" + filename);
             size_t start_offset = game->map->enemies.size();
             game->map->add_enemies_from_map_data(
-                game->episode, game->difficulty, game->event, floor, map_data->data(), map_data->size());
+                game->episode,
+                game->difficulty,
+                game->event,
+                floor,
+                map_data->data(),
+                map_data->size(),
+                game->rare_enemy_rates);
             size_t entries_loaded = game->map->enemies.size() - start_offset;
             c->log.info("[Map/%zu:e] Loaded %s (%zu entries)", floor, filename.c_str(), entries_loaded);
             for (size_t z = start_offset; z < game->map->enemies.size(); z++) {

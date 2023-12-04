@@ -913,6 +913,23 @@ void ServerState::parse_config(const JSON& json, bool is_reload) {
     this->team_reward_defs_json = std::move(json.at("TeamRewards"));
   } catch (const out_of_range&) {
   }
+
+  for (size_t z = 0; z < 4; z++) {
+    shared_ptr<const Map::RareEnemyRates> prev = Map::DEFAULT_RARE_ENEMIES;
+    try {
+      string key = "RareEnemyRates-";
+      key += token_name_for_difficulty(z);
+      this->rare_enemy_rates[z] = make_shared<Map::RareEnemyRates>(json.at(key));
+      prev = this->rare_enemy_rates[z];
+    } catch (const out_of_range&) {
+      this->rare_enemy_rates[z] = prev;
+    }
+  }
+  try {
+    this->rare_enemy_rates_challenge = make_shared<Map::RareEnemyRates>(json.at("RareEnemyRates-Challenge"));
+  } catch (const out_of_range&) {
+    this->rare_enemy_rates_challenge = Map::DEFAULT_RARE_ENEMIES;
+  }
 }
 
 void ServerState::load_bb_private_keys() {
