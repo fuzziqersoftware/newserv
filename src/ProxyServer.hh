@@ -219,7 +219,6 @@ private:
     PrefixedLogger log;
     Channel channel;
     uint16_t local_port;
-    Version version;
     struct sockaddr_storage next_destination;
 
     std::shared_ptr<PSOBBMultiKeyDetectorEncryption> detector_crypt;
@@ -241,6 +240,10 @@ private:
 
     std::shared_ptr<ProxyServer> require_server() const;
     std::shared_ptr<ServerState> require_server_state() const;
+
+    inline Version version() const {
+      return this->channel.version;
+    }
 
     void receive_and_process_commands();
 

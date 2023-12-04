@@ -70,8 +70,8 @@ const char* proxy_port_name_for_version(Version v) {
     case Version::DC_V1_11_2000_PROTOTYPE:
     case Version::DC_V1:
     case Version::DC_V2:
-      return "dc-proxy";
     case Version::GC_NTE:
+      return "dc-proxy";
     case Version::GC_V3:
     case Version::GC_EP3_TRIAL_EDITION:
     case Version::GC_EP3:

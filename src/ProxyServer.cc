@@ -239,8 +239,7 @@ ProxyServer::UnlinkedSession::UnlinkedSession(
           string_printf("UnlinkedSession:%p", bev),
           TerminalFormat::FG_YELLOW,
           TerminalFormat::FG_GREEN),
-      local_port(local_port),
-      version(version) {
+      local_port(local_port) {
   memset(&this->next_destination, 0, sizeof(this->next_destination));
 }
 
@@ -264,40 +263,46 @@ void ProxyServer::UnlinkedSession::on_input(Channel& ch, uint16_t command, uint3
   bool should_close_unlinked_session = false;
 
   try {
-    switch (ses->version) {
-      case Version::DC_NTE: {
-        // We should only get an 8B while the session is unlinked
-        if (command != 0x8B) {
-          throw runtime_error("command is not 8B");
-        }
-        const auto& cmd = check_size_t<C_Login_DCNTE_8B>(data, sizeof(C_LoginExtended_DCNTE_8B));
-        ses->license = s->license_index->verify_v1_v2(stoul(cmd.serial_number.decode(), nullptr, 16), cmd.access_key.decode());
-        ses->sub_version = cmd.sub_version;
-        ses->channel.language = cmd.language;
-        ses->character_name = cmd.name.decode(ses->channel.language);
-        // TODO: Parse cmd.hardware_id
-        ses->version = Version::DC_NTE;
-        break;
-      }
-
+    switch (ses->version()) {
+      case Version::DC_NTE:
       case Version::DC_V1_11_2000_PROTOTYPE:
       case Version::DC_V1:
       case Version::DC_V2:
-        // We should only get a 93 or 9D while the session is unlinked
-        if (command == 0x93) {
+      case Version::GC_NTE:
+        // We should only get an 8B, 93 or 9D while the session is unlinked
+        if (command == 0x8B) {
+          ses->channel.version = Version::DC_NTE;
+          ses->log.info("Version changed to DC_NTE");
+          const auto& cmd = check_size_t<C_Login_DCNTE_8B>(data, sizeof(C_LoginExtended_DCNTE_8B));
+          ses->license = s->license_index->verify_v1_v2(stoul(cmd.serial_number.decode(), nullptr, 16), cmd.access_key.decode());
+          ses->sub_version = cmd.sub_version;
+          ses->channel.language = cmd.language;
+          ses->character_name = cmd.name.decode(ses->channel.language);
+          // TODO: Parse cmd.hardware_id
+        } else if (command == 0x93) { // 11/2000 proto through DC V1
+          ses->channel.version = Version::DC_V1;
+          ses->log.info("Version changed to DC_V1");
           const auto& cmd = check_size_t<C_LoginV1_DC_93>(data);
           ses->license = s->license_index->verify_v1_v2(stoul(cmd.serial_number.decode(), nullptr, 16), cmd.access_key.decode());
           ses->sub_version = cmd.sub_version;
           ses->channel.language = cmd.language;
           ses->character_name = cmd.name.decode(ses->channel.language);
           ses->hardware_id = cmd.hardware_id.decode();
-          ses->version = Version::DC_V1;
         } else if (command == 0x9D) {
           const auto& cmd = check_size_t<C_Login_DC_PC_GC_9D>(data, sizeof(C_LoginExtended_DC_GC_9D));
-          ses->license = s->license_index->verify_v1_v2(stoul(cmd.serial_number.decode(), nullptr, 16), cmd.access_key.decode());
+          if (cmd.sub_version >= 0x30) {
+            ses->log.info("Version changed to GC_NTE");
+            ses->channel.version = Version::GC_NTE;
+            ses->license = s->license_index->verify_gc(stoul(cmd.serial_number.decode(), nullptr, 16), cmd.access_key.decode());
+          } else { // DC V2
+            ses->log.info("Version changed to DC_V2");
+            ses->channel.version = Version::DC_V2;
+            ses->license = s->license_index->verify_v1_v2(stoul(cmd.serial_number.decode(), nullptr, 16), cmd.access_key.decode());
+          }
           ses->sub_version = cmd.sub_version;
           ses->channel.language = cmd.language;
           ses->character_name = cmd.name.decode(ses->channel.language);
+          ses->config.set_flags_for_version(ses->version(), cmd.sub_version);
         } else {
           throw runtime_error("command is not 93 or 9D");
         }
@@ -316,20 +321,11 @@ void ProxyServer::UnlinkedSession::on_input(Channel& ch, uint16_t command, uint3
         break;
       }
 
-      case Version::GC_NTE:
       case Version::GC_V3:
       case Version::GC_EP3_TRIAL_EDITION:
       case Version::GC_EP3:
-        // We should only get a 9D or 9E while the session is unlinked
-        if (command == 0x9D) {
-          const auto& cmd = check_size_t<C_Login_DC_PC_GC_9D>(data, sizeof(C_LoginExtended_DC_GC_9D));
-          ses->license = s->license_index->verify_gc(stoul(cmd.serial_number.decode(), nullptr, 16), cmd.access_key.decode());
-          ses->sub_version = cmd.sub_version;
-          ses->channel.language = cmd.language;
-          ses->character_name = cmd.name.decode(ses->channel.language);
-          ses->version = Version::GC_NTE;
-          ses->config.set_flags_for_version(ses->version, cmd.sub_version);
-        } else if (command == 0x9E) {
+        // We should only get a 9E while the session is unlinked
+        if (command == 0x9E) {
           const auto& cmd = check_size_t<C_Login_GC_9E>(data, sizeof(C_LoginExtended_GC_9E));
           ses->license = s->license_index->verify_gc(stoul(cmd.serial_number.decode(), nullptr, 16), cmd.access_key.decode());
           ses->sub_version = cmd.sub_version;
@@ -337,7 +333,8 @@ void ProxyServer::UnlinkedSession::on_input(Channel& ch, uint16_t command, uint3
           ses->character_name = cmd.name.decode(ses->channel.language);
           ses->config.parse_from(cmd.client_config);
           if (cmd.sub_version >= 0x40) {
-            ses->version = Version::GC_EP3;
+            ses->log.info("Version changed to GC_EP3");
+            ses->channel.version = Version::GC_EP3;
           }
         } else {
           throw runtime_error("command is not 9D or 9E");
@@ -425,10 +422,10 @@ void ProxyServer::UnlinkedSession::on_input(Channel& ch, uint16_t command, uint3
       // destination somewhere - either in the client config or in the unlinked
       // session
       if (ses->config.proxy_destination_address != 0) {
-        linked_ses = make_shared<LinkedSession>(server, ses->local_port, ses->version, ses->license, ses->config);
+        linked_ses = make_shared<LinkedSession>(server, ses->local_port, ses->version(), ses->license, ses->config);
         linked_ses->log.info("Opened licensed session for unlinked session based on client config");
       } else if (ses->next_destination.ss_family == AF_INET) {
-        linked_ses = make_shared<LinkedSession>(server, ses->local_port, ses->version, ses->license, ses->next_destination);
+        linked_ses = make_shared<LinkedSession>(server, ses->local_port, ses->version(), ses->license, ses->next_destination);
         linked_ses->log.info("Opened licensed session for unlinked session based on unlinked default destination");
       } else {
         ses->log.error("Cannot open linked session: no valid destination in client config or unlinked session");
@@ -437,12 +434,12 @@ void ProxyServer::UnlinkedSession::on_input(Channel& ch, uint16_t command, uint3
 
     if (linked_ses.get()) {
       server->id_to_session.emplace(ses->license->serial_number, linked_ses);
-      if (linked_ses->version() != ses->version) {
+      if (linked_ses->version() != ses->version()) {
         linked_ses->log.error("Linked session has different game version");
       } else {
         // Resume the linked session using the unlinked session
         try {
-          if (ses->version == Version::BB_V4) {
+          if (ses->version() == Version::BB_V4) {
             linked_ses->resume(
                 std::move(ses->channel),
                 ses->detector_crypt,

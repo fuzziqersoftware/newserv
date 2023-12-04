@@ -84,8 +84,9 @@ inline bool uses_v2_encryption(Version version) {
 }
 inline bool uses_v3_encryption(Version version) {
   return (version == Version::GC_V3) ||
-      (version == Version::XB_V3) ||
-      (version == Version::GC_EP3);
+      (version == Version::GC_EP3_TRIAL_EDITION) ||
+      (version == Version::GC_EP3) ||
+      (version == Version::XB_V3);
 }
 inline bool uses_v4_encryption(Version version) {
   return (version == Version::BB_V4);

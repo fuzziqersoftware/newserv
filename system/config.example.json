@@ -147,6 +147,9 @@
   // version, the proxy server is disabled for that version. Entries in these
   // dictionaries should be of the form "name": "address:port"; the names are
   // used in the proxy server menu.
+  // Note that PSO GameCube Episodes 1&2 Trial Edition uses the DC's
+  // ProxyDestinations dictionary here. This is because other servers that
+  // support that version treat it as PSO DC v2.
   "ProxyDestinations-DC": {},
   "ProxyDestinations-PC": {},
   "ProxyDestinations-GC": {},

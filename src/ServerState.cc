@@ -370,10 +370,10 @@ const vector<pair<string, uint16_t>>& ServerState::proxy_destinations_for_versio
     case Version::DC_V1_11_2000_PROTOTYPE:
     case Version::DC_V1:
     case Version::DC_V2:
+    case Version::GC_NTE:
       return this->proxy_destinations_dc;
     case Version::PC_V2:
       return this->proxy_destinations_pc;
-    case Version::GC_NTE:
     case Version::GC_V3:
     case Version::GC_EP3_TRIAL_EDITION:
     case Version::GC_EP3:
