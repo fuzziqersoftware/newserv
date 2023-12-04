@@ -731,19 +731,19 @@
   // If no rates are specified for a difficulty, the previous difficulty's rates
   // will be used. (In the default configuration, only Normal is specified, so
   // all difficulties use the same rates.) If the Challenge set is not
-  // specified, the default rates are used for Challenge mode, which is 1/512
+  // specified, the default rates are used for Challenge mode, which is 1/500
   // for all enemies.
   "RareEnemyRates-Normal": {
     // These are probabilities out of 0xFFFFFFFF - so 0 means that rare enemy
     // will never appear, and 0xFFFFFFFF means it will always appear (until 16
     // rare enemies have been assigned).
-    "Hildeblue": 0x00800000,
-    "Rappy": 0x00800000,
-    "NarLily": 0x00800000,
-    "PouillySlime": 0x00800000,
-    "MerissaAA": 0x00800000,
-    "Pazuzu": 0x00800000,
-    "DorphonEclair": 0x00800000,
+    "Hildeblue": 0x0083126E,
+    "Rappy": 0x0083126E,
+    "NarLily": 0x0083126E,
+    "PouillySlime": 0x0083126E,
+    "MerissaAA": 0x0083126E,
+    "Pazuzu": 0x0083126E,
+    "DorphonEclair": 0x0083126E,
     "Kondrieu": 0x1999999A,
   },
   // "RareEnemyRates-Hard": {...},

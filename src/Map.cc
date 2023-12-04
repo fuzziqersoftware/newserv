@@ -1345,4 +1345,4 @@ vector<string> map_filenames_for_variation(
 }
 
 const shared_ptr<const Map::RareEnemyRates> Map::NO_RARE_ENEMIES = make_shared<Map::RareEnemyRates>(0, 0);
-const shared_ptr<const Map::RareEnemyRates> Map::DEFAULT_RARE_ENEMIES = make_shared<Map::RareEnemyRates>(0x00800000, 0x1999999A);
+const shared_ptr<const Map::RareEnemyRates> Map::DEFAULT_RARE_ENEMIES = make_shared<Map::RareEnemyRates>(0x0083126E, 0x1999999A);
