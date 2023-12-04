@@ -31,7 +31,7 @@ See TODO.md for a list of known issues and future work I've curated, or go to th
 
 ## Compatibility
 
-newserv supports several versions of PSO. Specifically:
+newserv supports several versions of PSO, including various development prototypes. Specifically:
 | Version        | Lobbies      | Games        | Proxy        |
 |----------------|--------------|--------------|--------------|
 | DC Trial       | Yes          | Yes          | No           |
@@ -39,22 +39,21 @@ newserv supports several versions of PSO. Specifically:
 | DC 12/2000     | Yes          | Yes          | Yes          |
 | DC 01/2001     | Yes          | Yes          | Yes          |
 | DC V1          | Yes          | Yes          | Yes          |
-| DC 08/2001     | Untested (1) | Untested (1) | Untested (1) |
+| DC 08/2001     | Yes          | Yes          | Yes          |
 | DC V2          | Yes          | Yes          | Yes          |
 | PC             | Yes          | Yes          | Yes          |
 | GC Ep1&2 Trial | Yes          | Yes          | Yes          |
 | GC Ep1&2       | Yes          | Yes          | Yes          |
 | GC Ep1&2 Plus  | Yes          | Yes          | Yes          |
-| GC Ep3 Trial   | Yes          | Partial (3)  | Yes          |
+| GC Ep3 Trial   | Yes          | Partial (1)  | Yes          |
 | GC Ep3         | Yes          | Yes          | Yes          |
 | Xbox Ep1&2     | Yes          | Yes          | Yes          |
 | BB (vanilla)   | Yes          | Yes (2)      | Yes          |
 | BB (Tethealla) | Yes          | Yes (2)      | Yes          |
 
 *Notes:*
-1. *newserv's implementations of this version is based on disassembly of the client executable and has never been tested.*
-2. *BB games are mostly playable, but there are still some unimplemented features (for example, some quests that use rare commands may not work). Please submit a GitHub issue if you find something that doesn't work.*
-3. *Creating a game works and battle setup behaves mostly normally, but starting a battle doesn't work.*
+1. *Players can create games, edit decks, trade cards, and participate in auctions, but CARD battles don't work on Episode 3 Trial Edition on newserv.*
+2. *Some BB-specific features are not well-tested (for example, some quests that use rare commands may not work properly). Please submit a GitHub issue if you find something that doesn't work.*
 
 ## Setup
 
