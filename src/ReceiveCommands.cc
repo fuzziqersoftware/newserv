@@ -223,8 +223,9 @@ static void send_main_menu(shared_ptr<Client> c) {
       "View server\ninformation", MenuItem::Flag::INVISIBLE_ON_DCNTE | MenuItem::Flag::REQUIRES_MESSAGE_BOXES);
 
   uint32_t proxy_destinations_menu_item_flags =
-      // DCNTE doesn't support multiple ship select menus without changing
-      // servers (via a 19 command) apparently :(
+      // DC NTE and the 11/2000 prototype don't support multiple ship select
+      // menus without changing servers via a 19 command apparently (the client
+      // sends nothing when the player makes a choice in the second menu)
       MenuItem::Flag::INVISIBLE_ON_DCNTE |
       (s->proxy_destinations_dc.empty() ? MenuItem::Flag::INVISIBLE_ON_DC : 0) |
       (s->proxy_destinations_pc.empty() ? MenuItem::Flag::INVISIBLE_ON_PC : 0) |
