@@ -114,8 +114,9 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   std::shared_ptr<const MagEvolutionTable> mag_evolution_table;
   std::shared_ptr<const ItemNameIndex> item_name_index;
   std::shared_ptr<const WordSelectTable> word_select_table;
-  std::array<std::shared_ptr<const Map::RareEnemyRates>, 4> rare_enemy_rates;
+  std::array<std::shared_ptr<const Map::RareEnemyRates>, 4> rare_enemy_rates_by_difficulty;
   std::shared_ptr<const Map::RareEnemyRates> rare_enemy_rates_challenge;
+  std::array<std::array<size_t, 4>, 3> min_levels_v4; // Indexed as [episode][difficulty]
 
   // Indexed as [type][difficulty][random_choice]
   std::vector<std::vector<std::vector<ItemData>>> quest_F95E_results;

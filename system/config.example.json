@@ -730,7 +730,9 @@
   // rates significantly.
   // If no rates are specified for a difficulty, the previous difficulty's rates
   // will be used. (In the default configuration, only Normal is specified, so
-  // all difficulties use the same rates.)
+  // all difficulties use the same rates.) If the Challenge set is not
+  // specified, the default rates are used for Challenge mode, which is 1/512
+  // for all enemies.
   "RareEnemyRates-Normal": {
     // These are probabilities out of 0xFFFFFFFF - so 0 means that rare enemy
     // will never appear, and 0xFFFFFFFF means it will always appear (until 16
@@ -748,6 +750,14 @@
   // "RareEnemyRates-VeryHard": {...},
   // "RareEnemyRates-Ultimate": {...},
   // "RareEnemyRates-Challenge": {...},
+
+  // You can override the minimum character levels required to make BB games in
+  // each episode and difficulty level here.
+  "BBMinimumLevels": {
+    "Episode1": [1, 20, 50, 90],
+    "Episode2": [1, 30, 60, 100],
+    "Episode4": [1, 40, 70, 110],
+  },
 
   // Whether to enable certain exception handling. Disabling this causes
   // newserv to abort when any client causes an exception, which is generally

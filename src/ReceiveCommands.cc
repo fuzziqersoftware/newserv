@@ -3755,17 +3755,17 @@ shared_ptr<Lobby> create_game_generic(
 
   auto current_lobby = c->require_lobby();
 
-  uint8_t min_level;
+  size_t min_level;
   // A player's actual level is their displayed level - 1, so the minimums for
   // Episode 1 (for example) are actually 1, 20, 40, 80.
   switch (episode) {
     case Episode::EP1: {
-      static const uint32_t min_levels[4] = {0, 19, 39, 79};
+      const auto& min_levels = (c->version() == Version::BB_V4) ? s->min_levels_v4[0] : DEFAULT_MIN_LEVELS_EP1;
       min_level = min_levels[difficulty];
       break;
     }
     case Episode::EP2: {
-      static const uint32_t min_levels[4] = {0, 29, 49, 89};
+      const auto& min_levels = (c->version() == Version::BB_V4) ? s->min_levels_v4[1] : DEFAULT_MIN_LEVELS_EP2;
       min_level = min_levels[difficulty];
       break;
     }
@@ -3773,7 +3773,7 @@ shared_ptr<Lobby> create_game_generic(
       min_level = 0;
       break;
     case Episode::EP4: {
-      static const uint32_t min_levels[4] = {0, 39, 79, 109};
+      const auto& min_levels = (c->version() == Version::BB_V4) ? s->min_levels_v4[2] : DEFAULT_MIN_LEVELS_EP4;
       min_level = min_levels[difficulty];
       break;
     }
@@ -3935,7 +3935,7 @@ shared_ptr<Lobby> create_game_generic(
   if (game->mode == GameMode::CHALLENGE) {
     game->rare_enemy_rates = s->rare_enemy_rates_challenge;
   } else {
-    game->rare_enemy_rates = s->rare_enemy_rates.at(game->difficulty);
+    game->rare_enemy_rates = s->rare_enemy_rates_by_difficulty.at(game->difficulty);
   }
 
   if (game->base_version == Version::BB_V4) {

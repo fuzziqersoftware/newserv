@@ -42,6 +42,22 @@ const char* token_name_for_episode(Episode ep) {
   }
 }
 
+Episode episode_for_token_name(const string& name) {
+  if (name == "Episode1") {
+    return Episode::EP1;
+  }
+  if (name == "Episode2") {
+    return Episode::EP2;
+  }
+  if (name == "Episode3") {
+    return Episode::EP3;
+  }
+  if (name == "Episode4") {
+    return Episode::EP4;
+  }
+  throw runtime_error("unknown episode");
+}
+
 const char* abbreviation_for_episode(Episode ep) {
   switch (ep) {
     case Episode::NONE:
@@ -764,3 +780,7 @@ char char_for_challenge_rank(uint8_t rank) {
   }
   return "BAS"[rank];
 }
+
+const array<size_t, 4> DEFAULT_MIN_LEVELS_EP1({0, 19, 39, 79});
+const array<size_t, 4> DEFAULT_MIN_LEVELS_EP2({0, 29, 49, 89});
+const array<size_t, 4> DEFAULT_MIN_LEVELS_EP4({0, 39, 79, 109});

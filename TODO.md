@@ -11,7 +11,6 @@
 - Figure out what causes the corruption message on PC proxy sessions and fix it
 - Make $edit for DC/PC
 - Add an idle connection timeout for proxy sessions
-- Make the proxy work with the various trial and beta versions
 
 ## Episode 3
 

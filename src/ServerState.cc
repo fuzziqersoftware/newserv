@@ -287,7 +287,7 @@ void ServerState::remove_lobby(uint32_t lobby_id) {
   this->id_to_lobby.erase(lobby_it);
 }
 
-shared_ptr<Client> ServerState::find_client(const std::string* identifier, uint64_t serial_number, shared_ptr<Lobby> l) {
+shared_ptr<Client> ServerState::find_client(const string* identifier, uint64_t serial_number, shared_ptr<Lobby> l) {
   if ((serial_number == 0) && identifier) {
     try {
       serial_number = stoull(*identifier, nullptr, 0);
@@ -315,7 +315,7 @@ shared_ptr<Client> ServerState::find_client(const std::string* identifier, uint6
   throw out_of_range("client not found");
 }
 
-uint32_t ServerState::connect_address_for_client(std::shared_ptr<Client> c) const {
+uint32_t ServerState::connect_address_for_client(shared_ptr<Client> c) const {
   if (c->channel.is_virtual_connection) {
     if (c->channel.remote_addr.ss_family != AF_INET) {
       throw logic_error("virtual connection is missing remote IPv4 address");
@@ -334,7 +334,7 @@ uint32_t ServerState::connect_address_for_client(std::shared_ptr<Client> c) cons
   }
 }
 
-std::shared_ptr<const Menu> ServerState::information_menu_for_version(Version version) const {
+shared_ptr<const Menu> ServerState::information_menu_for_version(Version version) const {
   if (is_v1_or_v2(version)) {
     return this->information_menu_v2;
   } else if (is_v3(version)) {
@@ -385,7 +385,7 @@ const vector<pair<string, uint16_t>>& ServerState::proxy_destinations_for_versio
   }
 }
 
-std::shared_ptr<const ItemParameterTable> ServerState::item_parameter_table_for_version(Version version) const {
+shared_ptr<const ItemParameterTable> ServerState::item_parameter_table_for_version(Version version) const {
   switch (version) {
     case Version::DC_NTE:
     case Version::DC_V1_11_2000_PROTOTYPE:
@@ -406,7 +406,7 @@ std::shared_ptr<const ItemParameterTable> ServerState::item_parameter_table_for_
   }
 }
 
-std::string ServerState::describe_item(Version version, const ItemData& item, bool include_color_codes) const {
+string ServerState::describe_item(Version version, const ItemData& item, bool include_color_codes) const {
   return this->item_name_index->describe_item(
       version,
       item,
@@ -448,9 +448,9 @@ void ServerState::set_port_configuration(
 }
 
 shared_ptr<const string> ServerState::load_bb_file(
-    const std::string& patch_index_filename,
-    const std::string& gsl_filename,
-    const std::string& bb_directory_filename) const {
+    const string& patch_index_filename,
+    const string& gsl_filename,
+    const string& bb_directory_filename) const {
 
   if (this->bb_patch_file_index) {
     // First, look in the patch tree's data directory
@@ -919,16 +919,42 @@ void ServerState::parse_config(const JSON& json, bool is_reload) {
     try {
       string key = "RareEnemyRates-";
       key += token_name_for_difficulty(z);
-      this->rare_enemy_rates[z] = make_shared<Map::RareEnemyRates>(json.at(key));
-      prev = this->rare_enemy_rates[z];
+      this->rare_enemy_rates_by_difficulty[z] = make_shared<Map::RareEnemyRates>(json.at(key));
+      prev = this->rare_enemy_rates_by_difficulty[z];
     } catch (const out_of_range&) {
-      this->rare_enemy_rates[z] = prev;
+      this->rare_enemy_rates_by_difficulty[z] = prev;
     }
   }
   try {
     this->rare_enemy_rates_challenge = make_shared<Map::RareEnemyRates>(json.at("RareEnemyRates-Challenge"));
   } catch (const out_of_range&) {
     this->rare_enemy_rates_challenge = Map::DEFAULT_RARE_ENEMIES;
+  }
+
+  this->min_levels_v4[0] = DEFAULT_MIN_LEVELS_EP1;
+  this->min_levels_v4[1] = DEFAULT_MIN_LEVELS_EP2;
+  this->min_levels_v4[2] = DEFAULT_MIN_LEVELS_EP4;
+  try {
+    for (const auto& ep_it : json.get_dict("BBMinimumLevels")) {
+      array<size_t, 4> levels({0, 0, 0, 0});
+      for (size_t z = 0; z < 4; z++) {
+        levels[z] = ep_it.second->get_int(z) - 1;
+      }
+      switch (episode_for_token_name(ep_it.first)) {
+        case Episode::EP1:
+          this->min_levels_v4[0] = levels;
+          break;
+        case Episode::EP2:
+          this->min_levels_v4[1] = levels;
+          break;
+        case Episode::EP4:
+          this->min_levels_v4[2] = levels;
+          break;
+        default:
+          throw runtime_error("unknown episode");
+      }
+    }
+  } catch (const out_of_range&) {
   }
 }
 

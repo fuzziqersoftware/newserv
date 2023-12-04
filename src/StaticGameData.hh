@@ -20,6 +20,7 @@ bool episode_has_arpg_semantics(Episode ep);
 const char* name_for_episode(Episode ep);
 const char* token_name_for_episode(Episode ep);
 const char* abbreviation_for_episode(Episode ep);
+Episode episode_for_token_name(const std::string& name);
 
 enum class GameMode {
   NORMAL = 0,
@@ -78,3 +79,7 @@ const char* name_for_floor(Episode episode, uint8_t floor);
 uint32_t class_flags_for_class(uint8_t char_class);
 
 char char_for_challenge_rank(uint8_t rank);
+
+extern const std::array<size_t, 4> DEFAULT_MIN_LEVELS_EP1;
+extern const std::array<size_t, 4> DEFAULT_MIN_LEVELS_EP2;
+extern const std::array<size_t, 4> DEFAULT_MIN_LEVELS_EP4;
