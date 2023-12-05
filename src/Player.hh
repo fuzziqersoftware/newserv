@@ -112,6 +112,15 @@ public:
       const PlayerDispDataBBPreview& preview,
       std::shared_ptr<const LevelTable> level_table);
 
+  std::string system_filename() const;
+  static std::string character_filename(const std::string& bb_username, int8_t index);
+  std::string character_filename(int8_t index = -1) const;
+  std::string guild_card_filename() const;
+  std::string shared_bank_filename() const;
+
+  std::string legacy_player_filename() const;
+  std::string legacy_account_filename() const;
+
   void save_all();
   void save_system_file() const;
   static void save_character_file(
@@ -147,12 +156,4 @@ private:
   void save_and_clear_external_bank();
 
   void load_all_files();
-
-  std::string system_filename() const;
-  std::string character_filename(int8_t index = -1) const;
-  std::string guild_card_filename() const;
-  std::string shared_bank_filename() const;
-
-  std::string legacy_player_filename() const;
-  std::string legacy_account_filename() const;
 };

@@ -1029,13 +1029,11 @@ static void server_command_convert_char_to_bb(shared_ptr<Client> c, const std::s
   }
 
   try {
-    s->license_index->verify_bb(tokens[0].c_str(), tokens[1].c_str());
+    c->pending_bb_save_license = s->license_index->verify_bb(tokens[0].c_str(), tokens[1].c_str());
   } catch (const exception& e) {
     send_text_message_printf(c, "$C6Login failed: %s", e.what());
     return;
   }
-
-  c->pending_bb_save_username = tokens[0];
 
   // Request the player data. The client will respond with a 61, and the handler
   // for that command will execute the conversion

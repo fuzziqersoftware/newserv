@@ -112,7 +112,7 @@ struct PlayerDispDataBB;
 struct PlayerVisualConfig {
   /* 00 */ pstring<TextEncoding::ASCII, 0x10> name;
   /* 10 */ parray<uint8_t, 8> unknown_a2;
-  /* 18 */ le_uint32_t name_color = 0x00000000; // ARGB
+  /* 18 */ le_uint32_t name_color = 0xFFFFFFFF; // ARGB
   /* 1C */ uint8_t extra_model = 0;
   /* 1D */ parray<uint8_t, 0x0F> unused;
   // See compute_name_color_checksum for details on how this is computed. This

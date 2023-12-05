@@ -219,6 +219,12 @@ struct PSOBBCharacterFile {
 
   PSOBBCharacterFile() = default;
 
+  static std::shared_ptr<PSOBBCharacterFile> create_from_config(
+      uint32_t guild_card_number,
+      uint8_t language,
+      const PlayerVisualConfig& visual,
+      const std::string& name,
+      std::shared_ptr<const LevelTable> level_table);
   static std::shared_ptr<PSOBBCharacterFile> create_from_preview(
       uint32_t guild_card_number,
       uint8_t language,

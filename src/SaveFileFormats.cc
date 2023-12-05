@@ -208,10 +208,11 @@ PSOBBBaseSystemFile::PSOBBBaseSystemFile() {
   }
 }
 
-shared_ptr<PSOBBCharacterFile> PSOBBCharacterFile::create_from_preview(
+shared_ptr<PSOBBCharacterFile> PSOBBCharacterFile::create_from_config(
     uint32_t guild_card_number,
     uint8_t language,
-    const PlayerDispDataBBPreview& preview,
+    const PlayerVisualConfig& visual,
+    const std::string& name,
     shared_ptr<const LevelTable> level_table) {
   static const array<array<PlayerInventoryItem, 5>, 12> initial_inventory{{
       {
@@ -300,7 +301,7 @@ shared_ptr<PSOBBCharacterFile> PSOBBCharacterFile::create_from_preview(
       },
   }};
 
-  array<uint8_t, 0xE8> config_hunter_ranger{
+  static const array<uint8_t, 0xE8> config_hunter_ranger{
       {0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00, 0x02, 0x01, 0x00, 0x00,
           0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
           0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -316,7 +317,7 @@ shared_ptr<PSOBBCharacterFile> PSOBBCharacterFile::create_from_preview(
           0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
           0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
           0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}};
-  array<uint8_t, 0xE8> config_force{
+  static const array<uint8_t, 0xE8> config_force{
       {0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00, 0x02, 0x01, 0x00, 0x00,
           0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
           0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -334,8 +335,10 @@ shared_ptr<PSOBBCharacterFile> PSOBBCharacterFile::create_from_preview(
           0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}};
 
   auto ret = make_shared<PSOBBCharacterFile>();
+  ret->disp.visual = visual;
+  ret->disp.name.encode(name, language);
 
-  const auto& initial_items = initial_inventory.at(preview.visual.char_class);
+  const auto& initial_items = initial_inventory.at(visual.char_class);
   ret->inventory.num_items = initial_items.size();
   for (size_t z = 0; z < initial_items.size(); z++) {
     ret->inventory.items[z] = initial_items[z];
@@ -347,7 +350,6 @@ shared_ptr<PSOBBCharacterFile> PSOBBCharacterFile::create_from_preview(
     ret->disp.config[z] = config[z];
   }
 
-  ret->disp.apply_preview(preview);
   ret->disp.stats.reset_to_base(ret->disp.visual.char_class, level_table);
   ret->disp.technique_levels_v1.clear(0xFF);
   if (ret->disp.visual.class_flags & 0x80) {
@@ -367,6 +369,15 @@ shared_ptr<PSOBBCharacterFile> PSOBBCharacterFile::create_from_preview(
     ret->tech_menu_config[z] = PSOBBCharacterFile::DEFAULT_TECH_MENU_CONFIG[z];
   }
   return ret;
+}
+
+shared_ptr<PSOBBCharacterFile> PSOBBCharacterFile::create_from_preview(
+    uint32_t guild_card_number,
+    uint8_t language,
+    const PlayerDispDataBBPreview& preview,
+    shared_ptr<const LevelTable> level_table) {
+  return PSOBBCharacterFile::create_from_config(
+      guild_card_number, language, preview.visual, preview.name.decode(language), level_table);
 }
 
 PSOBBCharacterFile::SymbolChatEntry PSOBBCharacterFile::DefaultSymbolChatEntry::to_entry() const {

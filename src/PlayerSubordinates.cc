@@ -194,13 +194,6 @@ PlayerDispDataBBPreview PlayerDispDataBB::to_preview() const {
   return pre;
 }
 
-void PlayerDispDataBB::apply_preview(const PlayerDispDataBBPreview& pre) {
-  this->stats.level = pre.level;
-  this->stats.experience = pre.experience;
-  this->visual = pre.visual;
-  this->name = pre.name;
-}
-
 void PlayerDispDataBB::apply_dressing_room(const PlayerDispDataBBPreview& pre) {
   this->visual.name_color = pre.visual.name_color;
   this->visual.extra_model = pre.visual.extra_model;

@@ -302,6 +302,16 @@ string ClientGameData::system_filename() const {
   return string_printf("system/players/system_%s.psosys", this->bb_username.c_str());
 }
 
+string ClientGameData::character_filename(const std::string& bb_username, int8_t index) {
+  if (bb_username.empty()) {
+    throw logic_error("non-BB players do not have character data");
+  }
+  if (index < 0) {
+    throw logic_error("character index is not set");
+  }
+  return string_printf("system/players/player_%s_%hhd.psochar", bb_username.c_str(), index);
+}
+
 string ClientGameData::character_filename(int8_t index) const {
   if (this->bb_username.empty()) {
     throw logic_error("non-BB players do not have character data");
@@ -312,7 +322,7 @@ string ClientGameData::character_filename(int8_t index) const {
   if (index < 0) {
     throw logic_error("character index is not set");
   }
-  return string_printf("system/players/player_%s_%hhd.psochar", this->bb_username.c_str(), index);
+  return this->character_filename(this->bb_username, index);
 }
 
 string ClientGameData::guild_card_filename() const {

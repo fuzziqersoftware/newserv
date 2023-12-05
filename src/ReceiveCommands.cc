@@ -2973,42 +2973,42 @@ static void on_61_98(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
     s->remove_client_from_lobby(c);
 
   } else if (command == 0x61) {
-    if (!c->pending_bb_save_username.empty()) {
-      string prev_bb_username = c->game_data.get_bb_username();
-      int8_t prev_bb_character_index = c->game_data.bb_character_index;
+    if (c->pending_bb_save_license) {
+      shared_ptr<License> dest_license = c->pending_bb_save_license;
+      c->pending_bb_save_license.reset();
 
-      c->game_data.set_bb_username(c->pending_bb_save_username);
-      c->game_data.bb_character_index = c->pending_bb_save_character_index;
+      string filename = ClientGameData::character_filename(dest_license->bb_username, c->pending_bb_save_character_index);
+      if (s->player_files_manager->get_character(filename)) {
+        send_text_message(c, "$C6The target player\nis currently loaded.\nSign off in Blue\nBurst and try again.");
 
-      // Update a few fields for BB
-      const auto& p = c->game_data.character();
-      uint8_t prev_version = p->disp.visual.version;
-      p->disp.visual.version = 4;
-      uint32_t prev_name_color_checksum = p->disp.visual.name_color_checksum;
-      p->disp.visual.name_color_checksum = 0x00000000;
-
-      bool failure = false;
-      try {
-        c->game_data.save_character_file();
-      } catch (const exception& e) {
-        send_text_message_printf(c, "$C6PSOBB player data could\nnot be saved:\n%s", e.what());
-        failure = true;
+      } else {
+        auto bb_player = PSOBBCharacterFile::create_from_config(
+            dest_license->serial_number,
+            c->language(),
+            player->disp.visual,
+            player->disp.name.decode(c->language()),
+            s->level_table);
+        bb_player->disp.visual.version = 4;
+        bb_player->disp.visual.name_color_checksum = 0x00000000;
+        bb_player->inventory = player->inventory;
+        bb_player->disp.stats.advance_to_level(bb_player->disp.visual.char_class, player->disp.stats.level, s->level_table);
+        bb_player->disp.stats.experience = player->disp.stats.experience;
+        bb_player->disp.technique_levels_v1 = player->disp.technique_levels_v1;
+        bb_player->auto_reply = player->auto_reply;
+        bb_player->info_board = player->info_board;
+        bb_player->battle_records = player->battle_records;
+        bb_player->challenge_records = player->challenge_records;
+        bb_player->choice_search_config = player->choice_search_config;
+        try {
+          ClientGameData::save_character_file(filename, c->game_data.system(), bb_player);
+          send_text_message_printf(c,
+              "$C6BB player data saved\nas player %hhu for user\n%s",
+              static_cast<uint8_t>(c->pending_bb_save_character_index + 1),
+              dest_license->bb_username.c_str());
+        } catch (const exception& e) {
+          send_text_message_printf(c, "$C6PSOBB player data could\nnot be saved:\n%s", e.what());
+        }
       }
-
-      p->disp.visual.version = prev_version;
-      p->disp.visual.name_color_checksum = prev_name_color_checksum;
-
-      if (!failure) {
-        send_text_message_printf(c,
-            "$C6BB player data saved\nas player %hhu for user\n%s",
-            static_cast<uint8_t>(c->pending_bb_save_character_index + 1),
-            c->pending_bb_save_username.c_str());
-      }
-
-      c->game_data.set_bb_username(prev_bb_username);
-      c->game_data.bb_character_index = prev_bb_character_index;
-
-      c->pending_bb_save_username.clear();
     }
 
     // We use 61 during the lobby server init sequence to trigger joining an
