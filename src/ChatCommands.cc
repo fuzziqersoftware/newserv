@@ -269,6 +269,16 @@ static void server_command_quest(shared_ptr<Client> c, const std::string& args) 
   set_lobby_quest(c->require_lobby(), q);
 }
 
+static void server_command_qcheck(shared_ptr<Client> c, const std::string& args) {
+  auto l = c->require_lobby();
+  uint16_t flag_num = stoul(args, nullptr, 0);
+
+  send_text_message_printf(c, "$C7Quest flag 0x%hX (%hu)\nis %s on %s",
+      flag_num, flag_num,
+      c->game_data.character()->quest_flags.get(l->difficulty, flag_num) ? "set" : "not set",
+      name_for_difficulty(l->difficulty));
+}
+
 static void server_command_qset_qclear(shared_ptr<Client> c, const std::string& args, bool should_set) {
   if (!c->config.check_flag(Client::Flag::DEBUG_ENABLED)) {
     send_text_message(c, "$C6This command can only\nbe run in debug mode\n(run %sdebug first)");
@@ -292,7 +302,7 @@ static void server_command_qset_qclear(shared_ptr<Client> c, const std::string& 
     G_SetQuestFlag_DC_PC_6x75 cmd = {{0x75, 0x02, 0x0000}, flag_num, should_set ? 0 : 1};
     send_command_t(l, 0x60, 0x00, cmd);
   } else {
-    G_SetQuestFlag_V3_BB_6x75 cmd = {{{0x75, 0x02, 0x0000}, flag_num, should_set ? 0 : 1}, l->difficulty, 0x0000};
+    G_SetQuestFlag_V3_BB_6x75 cmd = {{{0x75, 0x03, 0x0000}, flag_num, should_set ? 0 : 1}, l->difficulty, 0x0000};
     send_command_t(l, 0x60, 0x00, cmd);
   }
 }
@@ -1722,6 +1732,7 @@ static const unordered_map<string, ChatCommandDefinition> chat_commands({
     {"$ping", {server_command_ping, nullptr}},
     {"$playrec", {server_command_playrec, nullptr}},
     {"$qcall", {server_command_qcall, proxy_command_qcall}},
+    {"$qcheck", {server_command_qcheck, nullptr}},
     {"$qclear", {server_command_qclear, nullptr}},
     {"$qset", {server_command_qset, nullptr}},
     {"$qsync", {server_command_qsync, nullptr}},
