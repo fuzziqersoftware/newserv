@@ -1472,7 +1472,7 @@ static void on_ep3_private_word_select_bb_bank_action(shared_ptr<Client> c, uint
       } else { // Deposit item
         auto item = p->remove_item(cmd.item_id, cmd.item_amount, c->version() != Version::BB_V4);
         bank.add_item(item);
-        send_destroy_item(c, cmd.item_id, cmd.item_amount);
+        send_destroy_item(c, cmd.item_id, cmd.item_amount, true);
 
         string name = s->item_name_index->describe_item(Version::BB_V4, item);
         l->log.info("Player %hu deposited item %08" PRIX32 " (x%hhu) (%s) in the bank",

@@ -2331,11 +2331,15 @@ void send_create_inventory_item(shared_ptr<Client> c, const ItemData& item) {
   send_command_t(l, 0x60, 0x00, cmd);
 }
 
-void send_destroy_item(shared_ptr<Client> c, uint32_t item_id, uint32_t amount) {
+void send_destroy_item(shared_ptr<Client> c, uint32_t item_id, uint32_t amount, bool exclude_c) {
   auto l = c->require_lobby();
   uint16_t client_id = c->lobby_client_id;
   G_DeleteInventoryItem_6x29 cmd = {{0x29, 0x03, client_id}, item_id, amount};
-  send_command_t(l, 0x60, 0x00, cmd);
+  if (exclude_c) {
+    send_command_excluding_client(l, c, 0x60, 0x00, &cmd, sizeof(cmd));
+  } else {
+    send_command_t(l, 0x60, 0x00, cmd);
+  }
 }
 
 void send_item_identify_result(shared_ptr<Client> c) {
