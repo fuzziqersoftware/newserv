@@ -247,10 +247,6 @@ void player_use_item(shared_ptr<Client> c, size_t item_index) {
       } catch (const out_of_range&) {
       }
     }
-
-    if (!combo_applied) {
-      throw runtime_error("no combinations apply");
-    }
   }
 
   if (should_delete_item) {
