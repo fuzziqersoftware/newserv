@@ -683,6 +683,10 @@ size_t PlayerBank::find_item(uint32_t item_id) {
   throw out_of_range("item not present");
 }
 
+void PlayerBank::sort() {
+  std::sort(this->items.data(), this->items.data() + this->num_items);
+}
+
 BattleRules::BattleRules(const JSON& json) {
   static const JSON empty_list = JSON::list();
 

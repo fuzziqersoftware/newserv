@@ -63,6 +63,10 @@ struct PlayerBankItem {
   /* 14 */ le_uint16_t amount = 0;
   /* 16 */ le_uint16_t present = 0;
   /* 18 */
+
+  inline bool operator<(const PlayerBankItem& other) const {
+    return this->data < other.data;
+  }
 } __attribute__((packed));
 
 struct PlayerInventory {
@@ -99,6 +103,8 @@ struct PlayerBank {
   void add_item(const ItemData& item);
   ItemData remove_item_by_index(size_t index, uint32_t amount);
   size_t find_item(uint32_t item_id);
+
+  void sort();
 } __attribute__((packed));
 
 struct PlayerDispDataBB;

@@ -43,6 +43,17 @@ bool ItemData::operator!=(const ItemData& other) const {
   return !this->operator==(other);
 }
 
+bool ItemData::operator<(const ItemData& other) const {
+  for (size_t z = 0; z < 3; z++) {
+    if (this->data1db[z] < other.data1db[z]) {
+      return true;
+    } else if (this->data1db[z] > other.data1db[z]) {
+      return false;
+    }
+  }
+  return (this->data2db < other.data2db);
+}
+
 void ItemData::clear() {
   this->data1d.clear(0);
   this->id = 0xFFFFFFFF;

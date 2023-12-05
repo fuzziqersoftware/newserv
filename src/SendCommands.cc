@@ -2361,7 +2361,8 @@ void send_bank(shared_ptr<Client> c) {
   }
 
   auto p = c->game_data.character();
-  const auto& bank = c->game_data.current_bank();
+  auto& bank = c->game_data.current_bank();
+  bank.sort();
   const auto* items_it = bank.items.data();
   vector<PlayerBankItem> items(items_it, items_it + bank.num_items);
 

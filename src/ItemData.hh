@@ -111,13 +111,17 @@ struct ItemData { // 0x14 bytes
   union {
     parray<uint8_t, 12> data1;
     parray<le_uint16_t, 6> data1w;
+    parray<be_uint16_t, 6> data1wb;
     parray<le_uint32_t, 3> data1d;
+    parray<be_uint32_t, 3> data1db;
   } __attribute__((packed));
   le_uint32_t id;
   union {
     parray<uint8_t, 4> data2;
     parray<le_uint16_t, 2> data2w;
+    parray<be_uint16_t, 2> data2wb;
     le_uint32_t data2d;
+    be_uint32_t data2db;
   } __attribute__((packed));
 
   ItemData();
@@ -127,6 +131,8 @@ struct ItemData { // 0x14 bytes
 
   bool operator==(const ItemData& other) const;
   bool operator!=(const ItemData& other) const;
+
+  bool operator<(const ItemData& other) const;
 
   void clear();
 
