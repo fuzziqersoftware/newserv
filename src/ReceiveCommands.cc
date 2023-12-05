@@ -2370,6 +2370,10 @@ static void on_10(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
           send_lobby_message_box(c, "$C6A quest is already\nin progress.");
           break;
         }
+        if (!l->quest_include_condition()(q)) {
+          send_lobby_message_box(c, "$C6This quest has not\nbeen unlocked for\nall players in this\ngame.");
+          break;
+        }
         set_lobby_quest(l, q);
 
       } else {
