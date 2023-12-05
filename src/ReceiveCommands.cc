@@ -2287,6 +2287,10 @@ static void on_10(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
           send_lobby_message_box(c, "$C6Your level is too\nhigh to join this\ngame.");
           break;
         }
+        if (game->quest && !c->can_access_quest(game->quest, game->difficulty)) {
+          send_lobby_message_box(c, "$C6You don't have access\nto the quest in progress\nin this game.");
+          break;
+        }
       }
 
       if (!s->change_client_lobby(c, game)) {

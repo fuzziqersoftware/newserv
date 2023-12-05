@@ -246,7 +246,7 @@ shared_ptr<Lobby> Client::require_lobby() const {
   return l;
 }
 
-shared_ptr<const TeamIndex::Team> Client::team() {
+shared_ptr<const TeamIndex::Team> Client::team() const {
   if (!this->license) {
     throw logic_error("Client::team called on client with no license");
   }
@@ -285,6 +285,23 @@ shared_ptr<const TeamIndex::Team> Client::team() {
   }
 
   return team;
+}
+
+bool Client::can_access_quest(shared_ptr<const Quest> q, uint8_t difficulty) const {
+  if (this->license && (this->license->flags & License::Flag::DISABLE_QUEST_REQUIREMENTS)) {
+    return true;
+  }
+  if ((q->require_flag >= 0) &&
+      !this->game_data.character()->quest_flags.get(difficulty, q->require_flag)) {
+    return false;
+  }
+  if (!q->require_team_reward_key.empty()) {
+    auto team = this->team();
+    if (!team || !team->has_reward(q->require_team_reward_key)) {
+      return false;
+    }
+  }
+  return true;
 }
 
 void Client::dispatch_save_game_data(evutil_socket_t, short, void* ctx) {

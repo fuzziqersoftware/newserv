@@ -16,6 +16,7 @@
 #include "PSOProtocol.hh"
 #include "PatchFileIndex.hh"
 #include "Player.hh"
+#include "Quest.hh"
 #include "QuestScript.hh"
 #include "TeamIndex.hh"
 #include "Text.hh"
@@ -232,7 +233,9 @@ struct Client : public std::enable_shared_from_this<Client> {
   std::shared_ptr<ServerState> require_server_state() const;
   std::shared_ptr<Lobby> require_lobby() const;
 
-  std::shared_ptr<const TeamIndex::Team> team();
+  std::shared_ptr<const TeamIndex::Team> team() const;
+
+  bool can_access_quest(std::shared_ptr<const Quest> q, uint8_t difficulty) const;
 
   static void dispatch_save_game_data(evutil_socket_t, short, void* ctx);
   void save_game_data();

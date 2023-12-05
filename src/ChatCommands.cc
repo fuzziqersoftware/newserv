@@ -282,6 +282,12 @@ static void server_command_qset_qclear(shared_ptr<Client> c, const std::string& 
 
   uint16_t flag_num = stoul(args, nullptr, 0);
 
+  if (should_set) {
+    c->game_data.character()->quest_flags.set(l->difficulty, flag_num);
+  } else {
+    c->game_data.character()->quest_flags.clear(l->difficulty, flag_num);
+  }
+
   if (is_v1_or_v2(c->version())) {
     G_SetQuestFlag_DC_PC_6x75 cmd = {{0x75, 0x02, 0x0000}, flag_num, should_set ? 0 : 1};
     send_command_t(l, 0x60, 0x00, cmd);
