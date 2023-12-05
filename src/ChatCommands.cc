@@ -980,11 +980,33 @@ static void server_command_edit(shared_ptr<Client> c, const std::string& args) {
   s->send_lobby_join_notifications(l, c);
 }
 
-// TODO: implement this (and make sure the bank name is filesystem-safe)
-/* static void server_command_change_bank(shared_ptr<Client> c, const std::string&) {
+static void server_command_change_bank(shared_ptr<Client> c, const std::string& args) {
   check_version(c, Version::BB_V4);
-  ...
-} */
+
+  if (c->config.check_flag(Client::Flag::AT_BANK_COUNTER)) {
+    throw runtime_error("cannot change banks while at the bank counter");
+  }
+
+  ssize_t new_char_index = args.empty() ? (c->game_data.bb_character_index + 1) : stol(args, nullptr, 0);
+
+  if (new_char_index == 0) {
+    if (c->game_data.use_shared_bank()) {
+      send_text_message_printf(c, "$C6Using shared bank (0)");
+    } else {
+      send_text_message_printf(c, "$C6Created shared bank (0)");
+    }
+  } else if (new_char_index <= 4) {
+    c->game_data.use_character_bank(new_char_index - 1);
+    auto bp = c->game_data.current_bank_character();
+    auto name = bp->disp.name.decode(c->language());
+    send_text_message_printf(c, "$C6Using %s\'s bank (%zu)", name.c_str(), new_char_index);
+  } else {
+    throw runtime_error("invalid bank number");
+  }
+
+  const auto& bank = c->game_data.current_bank();
+  send_text_message_printf(c, "%" PRIu32 " items\n%" PRIu32 " Meseta", bank.num_items.load(), bank.meseta.load());
+}
 
 // TODO: This can be implemented on the proxy server too.
 static void server_command_convert_char_to_bb(shared_ptr<Client> c, const std::string& args) {
@@ -1023,22 +1045,10 @@ static void server_command_convert_char_to_bb(shared_ptr<Client> c, const std::s
 static void server_command_save(shared_ptr<Client> c, const std::string&) {
   check_version(c, Version::BB_V4);
   try {
-    c->game_data.save_character_file();
-    send_text_message(c, "Character data saved");
+    c->game_data.save_all();
+    send_text_message(c, "All data saved");
   } catch (const exception& e) {
-    send_text_message_printf(c, "Can\'t save character:\n%s", e.what());
-  }
-  try {
-    c->game_data.save_system_file();
-    send_text_message(c, "System data saved");
-  } catch (const exception& e) {
-    send_text_message_printf(c, "Can\'t save system data:\n%s", e.what());
-  }
-  try {
-    c->game_data.save_guild_card_file();
-    send_text_message(c, "Guild Card data saved");
-  } catch (const exception& e) {
-    send_text_message_printf(c, "Can\'t save Guild Cards:\n%s", e.what());
+    send_text_message_printf(c, "Can\'t save data:\n%s", e.what());
   }
   c->reschedule_save_game_data_event();
 }
@@ -1677,6 +1687,7 @@ static const unordered_map<string, ChatCommandDefinition> chat_commands({
     {"$auction", {server_command_auction, proxy_command_auction}},
     {"$ax", {server_command_ax, nullptr}},
     {"$ban", {server_command_ban, nullptr}},
+    {"$bank", {server_command_change_bank, nullptr}},
     {"$bbchar", {server_command_convert_char_to_bb, nullptr}},
     {"$cheat", {server_command_cheat, nullptr}},
     {"$debug", {server_command_debug, nullptr}},

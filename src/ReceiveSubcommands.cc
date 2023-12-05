@@ -1453,24 +1453,25 @@ static void on_ep3_private_word_select_bb_bank_action(shared_ptr<Client> c, uint
     }
 
     auto p = c->game_data.character();
+    auto& bank = c->game_data.current_bank();
     if (cmd.action == 0) { // Deposit
       if (cmd.item_id == 0xFFFFFFFF) { // Deposit Meseta
         if (cmd.meseta_amount > p->disp.stats.meseta) {
           l->log.info("Player %hu attempted to deposit %" PRIu32 " Meseta in the bank, but has only %" PRIu32 " Meseta on hand",
               c->lobby_client_id, cmd.meseta_amount.load(), p->disp.stats.meseta.load());
-        } else if ((p->bank.meseta + cmd.meseta_amount) > 999999) {
+        } else if ((bank.meseta + cmd.meseta_amount) > 999999) {
           l->log.info("Player %hu attempted to deposit %" PRIu32 " Meseta in the bank, but already has %" PRIu32 " Meseta in the bank",
               c->lobby_client_id, cmd.meseta_amount.load(), p->disp.stats.meseta.load());
         } else {
-          p->bank.meseta += cmd.meseta_amount;
+          bank.meseta += cmd.meseta_amount;
           p->disp.stats.meseta -= cmd.meseta_amount;
           l->log.info("Player %hu deposited %" PRIu32 " Meseta in the bank (bank now has %" PRIu32 "; inventory now has %" PRIu32 ")",
-              c->lobby_client_id, cmd.meseta_amount.load(), p->bank.meseta.load(), p->disp.stats.meseta.load());
+              c->lobby_client_id, cmd.meseta_amount.load(), bank.meseta.load(), p->disp.stats.meseta.load());
         }
 
       } else { // Deposit item
         auto item = p->remove_item(cmd.item_id, cmd.item_amount, c->version() != Version::BB_V4);
-        p->bank.add_item(item);
+        bank.add_item(item);
         send_destroy_item(c, cmd.item_id, cmd.item_amount);
 
         string name = s->item_name_index->describe_item(Version::BB_V4, item);
@@ -1481,21 +1482,21 @@ static void on_ep3_private_word_select_bb_bank_action(shared_ptr<Client> c, uint
 
     } else if (cmd.action == 1) { // Take
       if (cmd.item_index == 0xFFFF) { // Take Meseta
-        if (cmd.meseta_amount > p->bank.meseta) {
+        if (cmd.meseta_amount > bank.meseta) {
           l->log.info("Player %hu attempted to withdraw %" PRIu32 " Meseta from the bank, but has only %" PRIu32 " Meseta in the bank",
-              c->lobby_client_id, cmd.meseta_amount.load(), p->bank.meseta.load());
+              c->lobby_client_id, cmd.meseta_amount.load(), bank.meseta.load());
         } else if ((p->disp.stats.meseta + cmd.meseta_amount) > 999999) {
           l->log.info("Player %hu attempted to withdraw %" PRIu32 " Meseta from the bank, but already has %" PRIu32 " Meseta on hand",
               c->lobby_client_id, cmd.meseta_amount.load(), p->disp.stats.meseta.load());
         } else {
-          p->bank.meseta -= cmd.meseta_amount;
+          bank.meseta -= cmd.meseta_amount;
           p->disp.stats.meseta += cmd.meseta_amount;
           l->log.info("Player %hu withdrew %" PRIu32 " Meseta from the bank (bank now has %" PRIu32 "; inventory now has %" PRIu32 ")",
-              c->lobby_client_id, cmd.meseta_amount.load(), p->bank.meseta.load(), p->disp.stats.meseta.load());
+              c->lobby_client_id, cmd.meseta_amount.load(), bank.meseta.load(), p->disp.stats.meseta.load());
         }
 
       } else { // Take item
-        auto item = p->bank.remove_item_by_index(cmd.item_index, cmd.item_amount);
+        auto item = bank.remove_item_by_index(cmd.item_index, cmd.item_amount);
         item.id = l->generate_item_id(c->lobby_client_id);
         p->add_item(item);
         send_create_inventory_item(c, item);
@@ -2160,9 +2161,8 @@ void on_transfer_item_via_mail_message_bb(shared_ptr<Client> c, uint8_t command,
       (target_c->version() == Version::BB_V4) &&
       (target_c->game_data.character(false) != nullptr) &&
       !target_c->config.check_flag(Client::Flag::AT_BANK_COUNTER)) {
-    auto target_p = target_c->game_data.character(false);
     try {
-      target_p->bank.add_item(item);
+      target_c->game_data.current_bank().add_item(item);
       item_sent = true;
     } catch (const runtime_error&) {
     }

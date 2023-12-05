@@ -2357,14 +2357,15 @@ void send_bank(shared_ptr<Client> c) {
   }
 
   auto p = c->game_data.character();
-  const auto* items_it = p->bank.items.data();
-  vector<PlayerBankItem> items(items_it, items_it + p->bank.num_items);
+  const auto& bank = c->game_data.current_bank();
+  const auto* items_it = bank.items.data();
+  vector<PlayerBankItem> items(items_it, items_it + bank.num_items);
 
   G_BankContentsHeader_BB_6xBC cmd = {
       {{0xBC, 0, 0}, sizeof(G_BankContentsHeader_BB_6xBC) + items.size() * sizeof(PlayerBankItem)},
       random_object<uint32_t>(),
-      p->bank.num_items,
-      p->bank.meseta};
+      bank.num_items,
+      bank.meseta};
 
   send_command_t_vt(c, 0x6C, 0x00, cmd, items);
 }
@@ -3459,7 +3460,7 @@ void send_team_reward_list(std::shared_ptr<Client> c, bool show_purchased) {
   }
   auto s = c->require_server_state();
 
-  bool show_item_rewards = show_purchased || (c->game_data.character()->bank.num_items < 200);
+  bool show_item_rewards = show_purchased || (c->game_data.current_bank().num_items < 200);
 
   vector<S_TeamRewardList_BB_19EA_1AEA::Entry> entries;
   for (const auto& reward : s->team_index->reward_definitions()) {

@@ -66,19 +66,35 @@ std::shared_ptr<PSOBBGuildCardFile> PlayerFilesManager::get_guild_card(const std
   }
 }
 
+std::shared_ptr<PlayerBank> PlayerFilesManager::get_bank(const std::string& filename) {
+  try {
+    return this->loaded_bank_files.at(filename);
+  } catch (const out_of_range&) {
+    return nullptr;
+  }
+}
+
 void PlayerFilesManager::set_system(const std::string& filename, std::shared_ptr<PSOBBBaseSystemFile> file) {
   if (!this->loaded_system_files.emplace(filename, file).second) {
-    throw runtime_error("Guild Card file already loaded");
+    throw runtime_error("Guild Card file already loaded: " + filename);
   }
 }
+
 void PlayerFilesManager::set_character(const std::string& filename, std::shared_ptr<PSOBBCharacterFile> file) {
   if (!this->loaded_character_files.emplace(filename, file).second) {
-    throw runtime_error("character file already loaded");
+    throw runtime_error("character file already loaded: " + filename);
   }
 }
+
 void PlayerFilesManager::set_guild_card(const std::string& filename, std::shared_ptr<PSOBBGuildCardFile> file) {
   if (!this->loaded_guild_card_files.emplace(filename, file).second) {
-    throw runtime_error("Guild Card file already loaded");
+    throw runtime_error("Guild Card file already loaded: " + filename);
+  }
+}
+
+void PlayerFilesManager::set_bank(const std::string& filename, std::shared_ptr<PlayerBank> file) {
+  if (!this->loaded_bank_files.emplace(filename, file).second) {
+    throw runtime_error("bank file already loaded: " + filename);
   }
 }
 
@@ -96,6 +112,10 @@ void PlayerFilesManager::clear_expired_files(evutil_socket_t, short, void* ctx) 
   if (num_deleted) {
     player_data_log.info("Cleared %zu expired Guild Card file(s)", num_deleted);
   }
+  num_deleted = erase_unused(self->loaded_bank_files);
+  if (num_deleted) {
+    player_data_log.info("Cleared %zu expired bank file(s)", num_deleted);
+  }
 }
 
 ClientGameData::ClientGameData(std::shared_ptr<PlayerFilesManager> files_manager)
@@ -111,8 +131,22 @@ ClientGameData::ClientGameData(std::shared_ptr<PlayerFilesManager> files_manager
 
 ClientGameData::~ClientGameData() {
   if (!this->bb_username.empty() && this->character_data.get()) {
-    this->save_character_file();
+    this->save_all();
   }
+}
+
+const string& ClientGameData::get_bb_username() const {
+  return this->bb_username;
+}
+
+void ClientGameData::set_bb_username(const string& bb_username) {
+  // Make sure bb_username is filename-safe
+  for (char ch : bb_username) {
+    if (!isalnum(ch) && (ch != '-') && (ch != '_')) {
+      throw runtime_error("invalid characters in username");
+    }
+  }
+  this->bb_username = bb_username;
 }
 
 void ClientGameData::create_battle_overlay(shared_ptr<const BattleRules> rules, shared_ptr<const LevelTable> level_table) {
@@ -268,14 +302,17 @@ string ClientGameData::system_filename() const {
   return string_printf("system/players/system_%s.psosys", this->bb_username.c_str());
 }
 
-string ClientGameData::character_filename() const {
+string ClientGameData::character_filename(int8_t index) const {
   if (this->bb_username.empty()) {
     throw logic_error("non-BB players do not have character data");
   }
-  if (this->bb_character_index < 0) {
+  if (index < 0) {
+    index = this->bb_character_index;
+  }
+  if (index < 0) {
     throw logic_error("character index is not set");
   }
-  return string_printf("system/players/player_%s_%hhd.psochar", this->bb_username.c_str(), this->bb_character_index);
+  return string_printf("system/players/player_%s_%hhd.psochar", this->bb_username.c_str(), index);
 }
 
 string ClientGameData::guild_card_filename() const {
@@ -283,6 +320,13 @@ string ClientGameData::guild_card_filename() const {
     throw logic_error("non-BB players do not have Guild Card files");
   }
   return string_printf("system/players/guild_cards_%s.psocard", this->bb_username.c_str());
+}
+
+string ClientGameData::shared_bank_filename() const {
+  if (this->bb_username.empty()) {
+    throw logic_error("non-BB players do not have shared bank files");
+  }
+  return string_printf("system/players/shared_bank_%s.psobank", this->bb_username.c_str());
 }
 
 string ClientGameData::legacy_account_filename() const {
@@ -356,7 +400,7 @@ void ClientGameData::load_all_files() {
         throw runtime_error("incorrect flag in character file header");
       }
       this->character_data = make_shared<PSOBBCharacterFile>(freadx<PSOBBCharacterFile>(f.get()));
-      this->files_manager->set_character(this->character_filename(), this->character_data);
+      this->files_manager->set_character(char_filename, this->character_data);
       player_data_log.info("Loaded character data from %s", char_filename.c_str());
 
       // If there was no .psosys file, load the system file from the .psochar
@@ -473,6 +517,29 @@ void ClientGameData::load_all_files() {
   }
 }
 
+void ClientGameData::save_all() {
+  if (this->system_data) {
+    this->save_system_file();
+  }
+  if (this->character_data) {
+    this->save_character_file();
+  }
+  if (this->guild_card_data) {
+    this->save_guild_card_file();
+  }
+  if (this->external_bank) {
+    string filename = this->shared_bank_filename();
+    save_object_file<PlayerBank>(filename, *this->external_bank);
+    player_data_log.info("Saved shared bank file %s", filename.c_str());
+  }
+  if (this->external_bank_character) {
+    this->save_character_file(
+        this->character_filename(this->external_bank_character_index),
+        this->system_data,
+        this->external_bank_character);
+  }
+}
+
 void ClientGameData::save_system_file() const {
   if (!this->system_data) {
     throw logic_error("no system file loaded");
@@ -480,6 +547,30 @@ void ClientGameData::save_system_file() const {
   string filename = this->system_filename();
   save_object_file(filename, *this->system_data);
   player_data_log.info("Saved system file %s", filename.c_str());
+}
+
+void ClientGameData::save_character_file(
+    const string& filename,
+    shared_ptr<const PSOBBBaseSystemFile> system,
+    shared_ptr<const PSOBBCharacterFile> character) {
+  auto f = fopen_unique(filename, "wb");
+  PSOCommandHeaderBB header = {sizeof(PSOCommandHeaderBB) + sizeof(PSOBBCharacterFile) + sizeof(PSOBBBaseSystemFile) + sizeof(PSOBBTeamMembership), 0x00E7, 0x00000000};
+  fwritex(f.get(), header);
+  fwritex(f.get(), *character);
+  fwritex(f.get(), *system);
+  // TODO: Technically, we should write the actual team membership struct to the
+  // file here, but that would cause ClientGameData to depend on License, which
+  // it currently does not. This data doesn't matter at all for correctness
+  // within newserv, since it ignores this data entirely and instead generates
+  // the membership struct from the team ID in the License and the team's state.
+  // So, writing correct data here would mostly be for compatibility with other
+  // PSO servers. But if the other server is newserv, then this data would be
+  // used anyway, and if it's not, then it would presumably have a different set
+  // of teams with a different set of team IDs anyway, so the membership struct
+  // here would be useless either way.
+  static const PSOBBTeamMembership empty_membership;
+  fwritex(f.get(), empty_membership);
+  player_data_log.info("Saved character file %s", filename.c_str());
 }
 
 void ClientGameData::save_character_file() {
@@ -500,25 +591,7 @@ void ClientGameData::save_character_file() {
     this->last_play_time_update = t;
   }
 
-  string filename = this->character_filename();
-  auto f = fopen_unique(filename, "wb");
-  PSOCommandHeaderBB header = {sizeof(PSOCommandHeaderBB) + sizeof(PSOBBCharacterFile) + sizeof(PSOBBBaseSystemFile) + sizeof(PSOBBTeamMembership), 0x00E7, 0x00000000};
-  fwritex(f.get(), header);
-  fwritex(f.get(), *this->character_data);
-  fwritex(f.get(), *this->system_data);
-  // TODO: Technically, we should write the actual team membership struct to the
-  // file here, but that would cause ClientGameData to depend on License, which
-  // it currently does not. This data doesn't matter at all for correctness
-  // within newserv, since it ignores this data entirely and instead generates
-  // the membership struct from the team ID in the License and the team's state.
-  // So, writing correct data here would mostly be for compatibility with other
-  // PSO servers. But if the other server is newserv, then this data would be
-  // used anyway, and if it's not, then it would presumably have a different set
-  // of teams with a different set of team IDs anyway, so the membership struct
-  // here would be useless either way.
-  static const PSOBBTeamMembership empty_membership;
-  fwritex(f.get(), empty_membership);
-  player_data_log.info("Saved character file %s", filename.c_str());
+  this->save_character_file(this->character_filename(), this->system_data, this->character_data);
 }
 
 void ClientGameData::save_guild_card_file() const {
@@ -528,4 +601,76 @@ void ClientGameData::save_guild_card_file() const {
   string filename = this->guild_card_filename();
   save_object_file(filename, *this->guild_card_data);
   player_data_log.info("Saved Guild Card file %s", filename.c_str());
+}
+
+PlayerBank& ClientGameData::current_bank() {
+  if (this->external_bank) {
+    return *this->external_bank;
+  } else if (this->external_bank_character) {
+    return this->external_bank_character->bank;
+  }
+  return this->character()->bank;
+}
+
+std::shared_ptr<PSOBBCharacterFile> ClientGameData::current_bank_character() {
+  return this->external_bank_character ? this->external_bank_character : this->character();
+}
+
+void ClientGameData::use_default_bank() {
+  if (this->external_bank) {
+    string filename = this->shared_bank_filename();
+    save_object_file<PlayerBank>(filename, *this->external_bank);
+    this->external_bank.reset();
+    player_data_log.info("Detached shared bank %s", filename.c_str());
+  }
+  if (this->external_bank_character) {
+    string filename = this->character_filename(this->external_bank_character_index);
+    this->save_character_file(filename, this->system_data, this->external_bank_character);
+    this->external_bank_character.reset();
+    player_data_log.info("Detached character %s from bank", filename.c_str());
+  }
+}
+
+bool ClientGameData::use_shared_bank() {
+  this->use_default_bank();
+  string filename = this->shared_bank_filename();
+  if (isfile(filename)) {
+    this->external_bank = make_shared<PlayerBank>(load_object_file<PlayerBank>(filename));
+    player_data_log.info("Loaded shared bank %s", filename.c_str());
+    return true;
+  } else {
+    this->external_bank = make_shared<PlayerBank>();
+    player_data_log.info("Created shared bank for %s", filename.c_str());
+    return false;
+  }
+}
+
+void ClientGameData::use_character_bank(int8_t index) {
+  this->use_default_bank();
+  if (index != this->bb_character_index) {
+    string filename = this->character_filename(index);
+    this->external_bank_character = this->files_manager->get_character(filename);
+    if (this->external_bank_character) {
+      this->external_bank_character_index = index;
+      player_data_log.info("Using loaded character file %s for external bank", filename.c_str());
+    } else if (isfile(filename)) {
+      auto f = fopen_unique(filename, "rb");
+      auto header = freadx<PSOCommandHeaderBB>(f.get());
+      if (header.size != 0x399C) {
+        throw runtime_error("incorrect size in character file header");
+      }
+      if (header.command != 0x00E7) {
+        throw runtime_error("incorrect command in character file header");
+      }
+      if (header.flag != 0x00000000) {
+        throw runtime_error("incorrect flag in character file header");
+      }
+      this->external_bank_character = make_shared<PSOBBCharacterFile>(freadx<PSOBBCharacterFile>(f.get()));
+      this->external_bank_character_index = index;
+      this->files_manager->set_character(filename, this->external_bank_character);
+      player_data_log.info("Loaded character data from %s for external bank", filename.c_str());
+    } else {
+      throw runtime_error("character does not exist");
+    }
+  }
 }

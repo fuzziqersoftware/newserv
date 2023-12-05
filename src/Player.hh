@@ -39,10 +39,12 @@ public:
   std::shared_ptr<PSOBBBaseSystemFile> get_system(const std::string& filename);
   std::shared_ptr<PSOBBCharacterFile> get_character(const std::string& filename);
   std::shared_ptr<PSOBBGuildCardFile> get_guild_card(const std::string& filename);
+  std::shared_ptr<PlayerBank> get_bank(const std::string& filename);
 
   void set_system(const std::string& filename, std::shared_ptr<PSOBBBaseSystemFile> file);
   void set_character(const std::string& filename, std::shared_ptr<PSOBBCharacterFile> file);
   void set_guild_card(const std::string& filename, std::shared_ptr<PSOBBGuildCardFile> file);
+  void set_bank(const std::string& filename, std::shared_ptr<PlayerBank> file);
 
 private:
   std::shared_ptr<struct event_base> base;
@@ -51,6 +53,7 @@ private:
   std::unordered_map<std::string, std::shared_ptr<PSOBBBaseSystemFile>> loaded_system_files;
   std::unordered_map<std::string, std::shared_ptr<PSOBBCharacterFile>> loaded_character_files;
   std::unordered_map<std::string, std::shared_ptr<PSOBBGuildCardFile>> loaded_guild_card_files;
+  std::unordered_map<std::string, std::shared_ptr<PlayerBank>> loaded_bank_files;
 
   static void clear_expired_files(evutil_socket_t fd, short events, void* ctx);
 };
@@ -75,13 +78,15 @@ public:
   std::shared_ptr<Episode3::PlayerConfig> ep3_config;
 
   // These are only used if the client is BB
-  std::string bb_username;
   int8_t bb_character_index;
   ItemData identify_result;
   std::array<std::vector<ItemData>, 3> shop_contents;
 
   explicit ClientGameData(std::shared_ptr<PlayerFilesManager> files_manager);
   ~ClientGameData();
+
+  const std::string& get_bb_username() const;
+  void set_bb_username(const std::string& bb_username);
 
   void create_battle_overlay(std::shared_ptr<const BattleRules> rules, std::shared_ptr<const LevelTable> level_table);
   void create_challenge_overlay(Version version, size_t template_index, std::shared_ptr<const LevelTable> level_table);
@@ -107,12 +112,24 @@ public:
       const PlayerDispDataBBPreview& preview,
       std::shared_ptr<const LevelTable> level_table);
 
+  void save_all();
   void save_system_file() const;
+  static void save_character_file(
+      const std::string& filename,
+      std::shared_ptr<const PSOBBBaseSystemFile> sys,
+      std::shared_ptr<const PSOBBCharacterFile> character);
   // Note: This function is not const because it updates the player's play time.
   void save_character_file();
   void save_guild_card_file() const;
 
+  PlayerBank& current_bank();
+  std::shared_ptr<PSOBBCharacterFile> current_bank_character();
+  bool use_shared_bank(); // Returns true if the bank exists; false if it was created
+  void use_character_bank(int8_t bb_character_index);
+  void use_default_bank();
+
 private:
+  std::string bb_username;
   std::shared_ptr<PlayerFilesManager> files_manager;
 
   // The overlay character data is used in battle and challenge modes, when
@@ -122,13 +139,19 @@ private:
   std::shared_ptr<PSOBBCharacterFile> overlay_character_data;
   std::shared_ptr<PSOBBCharacterFile> character_data;
   std::shared_ptr<PSOBBGuildCardFile> guild_card_data;
+  std::shared_ptr<PlayerBank> external_bank;
+  std::shared_ptr<PSOBBCharacterFile> external_bank_character;
+  int8_t external_bank_character_index;
   uint64_t last_play_time_update;
+
+  void save_and_clear_external_bank();
 
   void load_all_files();
 
   std::string system_filename() const;
-  std::string character_filename() const;
+  std::string character_filename(int8_t index = -1) const;
   std::string guild_card_filename() const;
+  std::string shared_bank_filename() const;
 
   std::string legacy_player_filename() const;
   std::string legacy_account_filename() const;

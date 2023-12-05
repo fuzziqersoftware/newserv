@@ -226,7 +226,7 @@ void Client::set_license(shared_ptr<License> l) {
   this->license = l;
   this->game_data.guild_card_number = this->license->serial_number;
   if (this->version() == Version::BB_V4) {
-    this->game_data.bb_username = this->license->bb_username;
+    this->game_data.set_bb_username(this->license->bb_username);
   }
 }
 
@@ -296,7 +296,7 @@ void Client::save_game_data() {
     throw logic_error("save_game_data called for non-BB client");
   }
   if (this->game_data.character(false)) {
-    this->game_data.save_character_file();
+    this->game_data.save_all();
   }
 }
 

@@ -2974,10 +2974,10 @@ static void on_61_98(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
 
   } else if (command == 0x61) {
     if (!c->pending_bb_save_username.empty()) {
-      string prev_bb_username = c->game_data.bb_username;
+      string prev_bb_username = c->game_data.get_bb_username();
       int8_t prev_bb_character_index = c->game_data.bb_character_index;
 
-      c->game_data.bb_username = c->pending_bb_save_username;
+      c->game_data.set_bb_username(c->pending_bb_save_username);
       c->game_data.bb_character_index = c->pending_bb_save_character_index;
 
       // Update a few fields for BB
@@ -3005,7 +3005,7 @@ static void on_61_98(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
             c->pending_bb_save_username.c_str());
       }
 
-      c->game_data.bb_username = prev_bb_username;
+      c->game_data.set_bb_username(prev_bb_username);
       c->game_data.bb_character_index = prev_bb_character_index;
 
       c->pending_bb_save_username.clear();
@@ -3117,7 +3117,7 @@ static void on_E3_BB(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
 
     ClientGameData temp_gd(s->player_files_manager);
     temp_gd.guild_card_number = c->license->serial_number;
-    temp_gd.bb_username = c->license->bb_username;
+    temp_gd.set_bb_username(c->license->bb_username);
     temp_gd.bb_character_index = cmd.character_index;
 
     try {
@@ -4789,7 +4789,7 @@ static void on_EA_BB(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
           }
         }
         if (!reward.reward_item.empty()) {
-          c->game_data.character()->bank.add_item(reward.reward_item);
+          c->game_data.current_bank().add_item(reward.reward_item);
         }
       }
       break;
