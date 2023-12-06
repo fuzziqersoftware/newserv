@@ -2795,17 +2795,16 @@ static void on_upgrade_weapon_attribute_bb(shared_ptr<Client> c, uint8_t, uint8_
 
       size_t attribute_index = 0;
       for (size_t z = 6; z <= 10; z += 2) {
-        if (!(item.data1[z] & 0x80) && (item.data1[z] == cmd.attribute)) {
+        if ((item.data1[z] == 0) || (!(item.data1[z] & 0x80) && (item.data1[z] == cmd.attribute))) {
           attribute_index = z;
-        } else if (item.data1[z] == 0) {
-          attribute_index = z;
+          break;
         }
       }
       if (attribute_index == 0) {
         throw runtime_error("no available attribute slots");
       }
       item.data1[attribute_index] = cmd.attribute;
-      item.data1[attribute_index] += attribute_amount;
+      item.data1[attribute_index + 1] += attribute_amount;
 
       send_destroy_item(c, item.id, 1);
       send_create_inventory_item(c, item);
