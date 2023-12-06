@@ -1905,10 +1905,13 @@ void send_join_lobby_t(shared_ptr<Client> c, shared_ptr<Lobby> l, shared_ptr<Cli
     e.lobby_data.player_tag = 0x00010000;
     e.lobby_data.guild_card_number = lc->license->serial_number;
     e.lobby_data.client_id = lc->lobby_client_id;
-    if (UseLanguageMarkerInName) {
-      e.lobby_data.name.encode("\tJ" + lp->disp.name.decode(lp->inventory.language), c->language());
+    string name = lp->disp.name.decode(lp->inventory.language);
+    bool name_has_marker = (name.size() >= 2) && (name[0] == '\t') && (name[1] != 'C');
+    if (UseLanguageMarkerInName && !name_has_marker) {
+      const char* marker = c->language() ? "\tE" : "\tJ";
+      e.lobby_data.name.encode(marker + name, c->language());
     } else {
-      e.lobby_data.name.encode(lp->disp.name.decode(lp->inventory.language), c->language());
+      e.lobby_data.name.encode(name, c->language());
     }
     e.inventory = lp->inventory;
     e.inventory.encode_for_client(c);
