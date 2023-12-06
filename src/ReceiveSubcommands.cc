@@ -1682,12 +1682,13 @@ static void on_entity_drop_item_request(shared_ptr<Client> c, uint8_t command, u
     string floor_warning_token = "";
     if (l->map) {
       const auto& enemy = l->map->enemies.at(cmd.entity_id);
-      uint32_t expected_rt_index = rare_table_index_for_enemy_type(enemy.type);
-      if (cmd.rt_index != expected_rt_index) {
+      effective_rt_index = rare_table_index_for_enemy_type(enemy.type);
+      // rt_indexes in Episode 4 don't match those sent in the command; we just
+      // ignore what the client sends.
+      if ((l->episode != Episode::EP4) && (cmd.rt_index != effective_rt_index)) {
         l->log.warning("rt_index %02hhX from command does not match entity\'s expected index %02" PRIX32,
-            cmd.rt_index, expected_rt_index);
-        rt_index_warning_token = string_printf("$C6!RT:%02hhX/%02" PRIX32 "$C5 ", cmd.rt_index, expected_rt_index);
-        effective_rt_index = expected_rt_index;
+            cmd.rt_index, effective_rt_index);
+        rt_index_warning_token = string_printf("$C6!RT:%02hhX/%02" PRIX32 "$C5 ", cmd.rt_index, effective_rt_index);
       }
       if (cmd.floor != enemy.floor) {
         l->log.warning("Floor %02hhX from command does not match entity\'s expected floor %02hhX",

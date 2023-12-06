@@ -77,11 +77,11 @@ void Lobby::create_item_creator() {
     case Version::GC_NTE:
     case Version::GC_V3:
     case Version::XB_V3:
-      common_item_set = s->common_item_set_v3;
+      common_item_set = s->common_item_set_v3_v4;
       rare_item_set = s->rare_item_sets.at("rare-table-v3");
       break;
     case Version::BB_V4:
-      common_item_set = s->common_item_set_v3;
+      common_item_set = s->common_item_set_v3_v4;
       rare_item_set = s->rare_item_sets.at("rare-table-v4");
       break;
     default:

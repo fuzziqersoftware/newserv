@@ -28,6 +28,7 @@ public:
       std::shared_ptr<const BattleRules> restrictions = nullptr);
   ~ItemCreator() = default;
 
+  void set_random_state(uint32_t seed, uint32_t absolute_offset);
   void clear_destroyed_entities();
 
   ItemData on_monster_item_drop(uint16_t entity_id, uint32_t enemy_type, uint8_t area);

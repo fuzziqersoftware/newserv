@@ -13,7 +13,7 @@ public:
   class Table {
   public:
     Table() = delete;
-    Table(std::shared_ptr<const std::string> owned_data, const StringReader& r, bool big_endian, bool is_v3);
+    Table(const StringReader& r, bool big_endian, bool is_v3);
 
     template <typename IntT>
     struct Range {
@@ -21,30 +21,35 @@ public:
       IntT max;
     } __attribute__((packed));
 
-    const parray<uint8_t, 0x0C>& base_weapon_type_prob_table() const;
-    const parray<int8_t, 0x0C>& subtype_base_table() const;
-    const parray<uint8_t, 0x0C>& subtype_area_length_table() const;
-    const parray<parray<uint8_t, 4>, 9>& grind_prob_table() const;
-    const parray<uint8_t, 0x05>& armor_shield_type_index_prob_table() const;
-    const parray<uint8_t, 0x05>& armor_slot_count_prob_table() const;
-    const parray<Range<uint16_t>, 0x64>& enemy_meseta_ranges() const;
-    const parray<uint8_t, 0x64>& enemy_type_drop_probs() const;
-    const parray<uint8_t, 0x64>& enemy_item_classes() const;
-    const parray<Range<uint16_t>, 0x0A>& box_meseta_ranges() const;
-    bool has_rare_bonus_value_prob_table() const;
-    const parray<parray<uint16_t, 6>, 0x17>& bonus_value_prob_table() const;
-    const parray<parray<uint8_t, 10>, 3>& nonrare_bonus_prob_spec() const;
-    const parray<parray<uint8_t, 10>, 6>& bonus_type_prob_table() const;
-    const parray<uint8_t, 0x0A>& special_mult() const;
-    const parray<uint8_t, 0x0A>& special_percent() const;
-    const parray<parray<uint16_t, 0x0A>, 0x1C>& tool_class_prob_table() const;
-    const parray<parray<uint8_t, 0x0A>, 0x13>& technique_index_prob_table() const;
-    const parray<parray<Range<uint8_t>, 0x0A>, 0x13>& technique_level_ranges() const;
-    uint8_t armor_or_shield_type_bias() const;
-    const parray<uint8_t, 0x0A>& unit_max_stars_table() const;
-    const parray<parray<uint8_t, 10>, 7>& box_item_class_prob_table() const;
+    parray<uint8_t, 0x0C> base_weapon_type_prob_table;
+    parray<int8_t, 0x0C> subtype_base_table;
+    parray<uint8_t, 0x0C> subtype_area_length_table;
+    parray<parray<uint8_t, 4>, 9> grind_prob_table;
+    parray<uint8_t, 0x05> armor_shield_type_index_prob_table;
+    parray<uint8_t, 0x05> armor_slot_count_prob_table;
+    parray<Range<uint16_t>, 0x64> enemy_meseta_ranges;
+    parray<uint8_t, 0x64> enemy_type_drop_probs;
+    parray<uint8_t, 0x64> enemy_item_classes;
+    parray<Range<uint16_t>, 0x0A> box_meseta_ranges;
+    bool has_rare_bonus_value_prob_table;
+    parray<parray<uint16_t, 6>, 0x17> bonus_value_prob_table;
+    parray<parray<uint8_t, 10>, 3> nonrare_bonus_prob_spec;
+    parray<parray<uint8_t, 10>, 6> bonus_type_prob_table;
+    parray<uint8_t, 0x0A> special_mult;
+    parray<uint8_t, 0x0A> special_percent;
+    parray<parray<uint16_t, 0x0A>, 0x1C> tool_class_prob_table;
+    parray<parray<uint8_t, 0x0A>, 0x13> technique_index_prob_table;
+    parray<parray<Range<uint8_t>, 0x0A>, 0x13> technique_level_ranges;
+    uint8_t armor_or_shield_type_bias;
+    parray<uint8_t, 0x0A> unit_max_stars_table;
+    parray<parray<uint8_t, 10>, 7> box_item_class_prob_table;
+
+    void print_enemy_table(FILE* stream) const;
 
   private:
+    template <bool IsBigEndian>
+    void parse_itempt_t(const StringReader& r, bool is_v3);
+
     template <bool IsBigEndian>
     struct Offsets {
       using U16T = typename std::conditional<IsBigEndian, be_uint16_t, le_uint16_t>::type;
@@ -248,22 +253,6 @@ public:
 
       // There are several unused fields here.
     } __attribute__((packed));
-
-    std::shared_ptr<const std::string> owned_data;
-    StringReader r;
-    bool is_big_endian;
-    bool is_v3;
-
-    Offsets<false> offsets;
-
-    mutable parray<Range<uint16_t>, 0x64> parsed_enemy_meseta_ranges;
-    mutable bool parsed_enemy_meseta_ranges_populated = false;
-    mutable parray<Range<uint16_t>, 0x0A> parsed_box_meseta_ranges;
-    mutable bool parsed_box_meseta_ranges_populated = false;
-    mutable parray<parray<uint16_t, 6>, 0x17> parsed_bonus_value_prob_table;
-    mutable bool parsed_bonus_value_prob_table_populated = false;
-    mutable parray<parray<uint16_t, 0x0A>, 0x1C> parsed_tool_class_prob_table;
-    mutable bool parsed_tool_class_prob_table_populated = false;
   };
 
   std::shared_ptr<const Table> get_table(Episode episode, GameMode mode, uint8_t difficulty, uint8_t secid) const;
@@ -281,9 +270,9 @@ public:
   AFSV2CommonItemSet(std::shared_ptr<const std::string> pt_afs_data, std::shared_ptr<const std::string> ct_afs_data);
 };
 
-class GSLV3CommonItemSet : public CommonItemSet {
+class GSLV3V4CommonItemSet : public CommonItemSet {
 public:
-  GSLV3CommonItemSet(std::shared_ptr<const std::string> gsl_data, bool is_big_endian);
+  GSLV3V4CommonItemSet(std::shared_ptr<const std::string> gsl_data, bool is_big_endian);
 };
 
 // Note: There are clearly better ways of doing this, but this implementation

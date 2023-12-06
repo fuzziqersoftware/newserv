@@ -39,6 +39,16 @@ ItemCreator::ItemCreator(
       restrictions(restrictions),
       random_crypt(random_seed) {
   this->generate_unit_stars_tables();
+  this->pt->print_enemy_table(stderr);
+}
+
+void ItemCreator::set_random_state(uint32_t seed, uint32_t absolute_offset) {
+  if ((this->random_crypt.seed() != seed) || (this->random_crypt.absolute_offset() > absolute_offset)) {
+    this->random_crypt = PSOV2Encryption(seed);
+  }
+  while (this->random_crypt.absolute_offset() < absolute_offset) {
+    this->random_crypt.next();
+  }
 }
 
 void ItemCreator::clear_destroyed_entities() {
@@ -132,7 +142,7 @@ ItemData ItemCreator::on_box_item_drop_with_area_norm(uint8_t area_norm) {
       area_norm, this->random_crypt.seed(), this->random_crypt.absolute_offset());
   ItemData item = this->check_rare_specs_and_create_rare_box_item(area_norm);
   if (item.empty()) {
-    uint8_t item_class = this->get_rand_from_weighted_tables_2d_vertical(this->pt->box_item_class_prob_table(), area_norm);
+    uint8_t item_class = this->get_rand_from_weighted_tables_2d_vertical(this->pt->box_item_class_prob_table, area_norm);
     this->log.info("Item class is %02hhX", item_class);
     switch (item_class) {
       case 0: // Weapon
@@ -175,11 +185,13 @@ ItemData ItemCreator::on_monster_item_drop_with_area_norm(uint32_t enemy_type, u
   }
   this->log.info("Enemy type: %" PRIX32 "; random state: %08" PRIX32 " %08" PRIX32, enemy_type, this->random_crypt.seed(), this->random_crypt.absolute_offset());
 
-  uint8_t type_drop_prob = this->pt->enemy_type_drop_probs().at(enemy_type);
+  uint8_t type_drop_prob = this->pt->enemy_type_drop_probs.at(enemy_type);
   uint8_t drop_sample = this->rand_int(100);
   if (drop_sample >= type_drop_prob) {
     this->log.info("Drop not chosen (%hhu >= %hhu)", drop_sample, type_drop_prob);
     return ItemData();
+  } else {
+    this->log.info("Drop chosen (%hhu < %hhu)", drop_sample, type_drop_prob);
   }
 
   ItemData item = this->check_rare_spec_and_create_rare_enemy_item(enemy_type, area_norm);
@@ -198,7 +210,7 @@ ItemData ItemCreator::on_monster_item_drop_with_area_norm(uint32_t enemy_type, u
         item_class = 4;
         break;
       case 2:
-        item_class = this->pt->enemy_item_classes().at(enemy_type);
+        item_class = this->pt->enemy_item_classes.at(enemy_type);
         break;
       default:
         throw logic_error("invalid item class determinant");
@@ -224,7 +236,7 @@ ItemData ItemCreator::on_monster_item_drop_with_area_norm(uint32_t enemy_type, u
         break;
       case 5: // Meseta
         item.data1[0] = 0x04;
-        item.data2d = this->choose_meseta_amount(this->pt->enemy_meseta_ranges(), enemy_type) & 0xFFFF;
+        item.data2d = this->choose_meseta_amount(this->pt->enemy_meseta_ranges, enemy_type) & 0xFFFF;
         break;
       default:
         return item;
@@ -277,12 +289,16 @@ uint32_t ItemCreator::choose_meseta_amount(
 
   // Note: The original code seems like it has a bug here: it compares to 0xFF
   // instead of 0xFFFF (and returns 0xFF if either limit matches 0xFF).
+  uint32_t ret = 0;
   if (((min == 0xFFFF) || (max == 0xFFFF)) || (max < min)) {
-    return 0xFFFF;
+    ret = 0xFFFF;
   } else if (min != max) {
-    return this->rand_int((max - min) + 1) + min;
+    ret = this->rand_int((max - min) + 1) + min;
+  } else {
+    ret = min;
   }
-  return min;
+  this->log.info("Chose %" PRIu32 " Meseta from range [%hu, %hu]", ret, min, max);
+  return ret;
 }
 
 bool ItemCreator::should_allow_meseta_drops() const {
@@ -329,7 +345,7 @@ ItemData ItemCreator::check_rate_and_create_rare_item(const RareItemSet::Expande
   item.data1[2] = drop.item_code[2];
   switch (item.data1[0]) {
     case 0:
-      if (this->pt->has_rare_bonus_value_prob_table()) {
+      if (this->pt->has_rare_bonus_value_prob_table) {
         this->generate_rare_weapon_bonuses(item, this->rand_int(10));
       } else {
         this->generate_common_weapon_bonuses(item, area_norm);
@@ -362,13 +378,13 @@ void ItemCreator::generate_rare_weapon_bonuses(ItemData& item, uint32_t random_s
     return;
   }
 
-  if (!this->pt->has_rare_bonus_value_prob_table()) {
+  if (!this->pt->has_rare_bonus_value_prob_table) {
     throw logic_error("generate_rare_weapon_bonuses called for common item table without rare bonus value probability table");
   }
 
   for (size_t z = 0; z < 6; z += 2) {
-    uint8_t bonus_type = this->get_rand_from_weighted_tables_2d_vertical(this->pt->bonus_type_prob_table(), random_sample);
-    int16_t bonus_value = this->get_rand_from_weighted_tables_2d_vertical(this->pt->bonus_value_prob_table(), 5);
+    uint8_t bonus_type = this->get_rand_from_weighted_tables_2d_vertical(this->pt->bonus_type_prob_table, random_sample);
+    int16_t bonus_value = this->get_rand_from_weighted_tables_2d_vertical(this->pt->bonus_value_prob_table, 5);
     item.data1[z + 6] = bonus_type;
     item.data1[z + 7] = bonus_value * 5 - 10;
     // Note: The original code has a special case here, which divides
@@ -386,12 +402,12 @@ void ItemCreator::generate_common_weapon_bonuses(ItemData& item, uint8_t area_no
   }
 
   for (size_t row = 0; row < 3; row++) {
-    uint8_t spec = this->pt->nonrare_bonus_prob_spec().at(row).at(area_norm);
+    uint8_t spec = this->pt->nonrare_bonus_prob_spec.at(row).at(area_norm);
     if (spec == 0xFF) {
       this->log.info("Bonus %zu is forbidden", row);
     } else {
-      item.data1[(row * 2) + 6] = this->get_rand_from_weighted_tables_2d_vertical(this->pt->bonus_type_prob_table(), area_norm);
-      int16_t amount = this->get_rand_from_weighted_tables_2d_vertical(this->pt->bonus_value_prob_table(), spec);
+      item.data1[(row * 2) + 6] = this->get_rand_from_weighted_tables_2d_vertical(this->pt->bonus_type_prob_table, area_norm);
+      int16_t amount = this->get_rand_from_weighted_tables_2d_vertical(this->pt->bonus_value_prob_table, spec);
       item.data1[(row * 2) + 7] = amount * 5 - 10;
       this->log.info("Bonus %zu generated as %02hhX %02hhX from area_norm %02hhX and spec %02hhX", row, item.data1[(row * 2) + 6], item.data1[(row * 2) + 7], area_norm, spec);
     }
@@ -560,7 +576,7 @@ void ItemCreator::generate_common_item_variances(uint32_t area_norm, ItemData& i
       break;
     case 1:
       if (item.data1[1] == 3) {
-        float f1 = 1.0 + this->pt->unit_max_stars_table().at(area_norm);
+        float f1 = 1.0 + this->pt->unit_max_stars_table.at(area_norm);
         float f2 = this->rand_float_0_1_from_crypt();
         uint8_t stars = static_cast<uint32_t>(f1 * f2) & 0xFF;
         this->log.info("Unit stars: %g * %g = %" PRIu32, f1, f2, stars);
@@ -580,7 +596,7 @@ void ItemCreator::generate_common_item_variances(uint32_t area_norm, ItemData& i
       this->generate_common_tool_variances(area_norm, item);
       break;
     case 4:
-      item.data2d = this->choose_meseta_amount(this->pt->box_meseta_ranges(), area_norm) & 0xFFFF;
+      item.data2d = this->choose_meseta_amount(this->pt->box_meseta_ranges, area_norm) & 0xFFFF;
       break;
     default:
       // Note: The original code does the following here:
@@ -596,15 +612,15 @@ void ItemCreator::generate_common_item_variances(uint32_t area_norm, ItemData& i
 void ItemCreator::generate_common_armor_or_shield_type_and_variances(char area_norm, ItemData& item) {
   this->generate_common_armor_slots_and_bonuses(item);
 
-  uint8_t type = this->get_rand_from_weighted_tables_1d(this->pt->armor_shield_type_index_prob_table());
-  item.data1[2] = area_norm + type + this->pt->armor_or_shield_type_bias();
+  uint8_t type = this->get_rand_from_weighted_tables_1d(this->pt->armor_shield_type_index_prob_table);
+  item.data1[2] = area_norm + type + this->pt->armor_or_shield_type_bias;
   if (item.data1[2] < 3) {
     item.data1[2] = 0;
   } else {
     item.data1[2] -= 3;
   }
   this->log.info("Armor/shield type: max(%02hhX + %02hhX + %02hhX - 3, 0) = %02hhX",
-      area_norm, type, this->pt->armor_or_shield_type_bias(), item.data1[2]);
+      area_norm, type, this->pt->armor_or_shield_type_bias, item.data1[2]);
 }
 
 void ItemCreator::generate_common_armor_slots_and_bonuses(ItemData& item) {
@@ -622,13 +638,13 @@ void ItemCreator::generate_common_armor_slots_and_bonuses(ItemData& item) {
 }
 
 void ItemCreator::generate_common_armor_slot_count(ItemData& item) {
-  item.data1[5] = this->get_rand_from_weighted_tables_1d(this->pt->armor_slot_count_prob_table());
+  item.data1[5] = this->get_rand_from_weighted_tables_1d(this->pt->armor_slot_count_prob_table);
 }
 
 void ItemCreator::generate_common_tool_variances(uint32_t area_norm, ItemData& item) {
   item.clear();
 
-  uint8_t tool_class = this->get_rand_from_weighted_tables_2d_vertical(this->pt->tool_class_prob_table(), area_norm);
+  uint8_t tool_class = this->get_rand_from_weighted_tables_2d_vertical(this->pt->tool_class_prob_table, area_norm);
   if (this->is_v3() && (tool_class == 0x1A)) {
     tool_class = 0x73;
   }
@@ -653,7 +669,7 @@ void ItemCreator::generate_common_tool_variances(uint32_t area_norm, ItemData& i
   }
 
   if (item.data1[1] == 0x02) { // Tech disk
-    item.data1[4] = this->get_rand_from_weighted_tables_2d_vertical(this->pt->technique_index_prob_table(), area_norm);
+    item.data1[4] = this->get_rand_from_weighted_tables_2d_vertical(this->pt->technique_index_prob_table, area_norm);
     item.data1[2] = this->generate_tech_disk_level(item.data1[4], area_norm);
     this->clear_tool_item_if_invalid(item);
   }
@@ -661,7 +677,7 @@ void ItemCreator::generate_common_tool_variances(uint32_t area_norm, ItemData& i
 }
 
 uint8_t ItemCreator::generate_tech_disk_level(uint32_t tech_num, uint32_t area_norm) {
-  const auto& range = this->pt->technique_level_ranges().at(tech_num).at(area_norm);
+  const auto& range = this->pt->technique_level_ranges.at(tech_num).at(area_norm);
   if (((range.min == 0xFF) || (range.max == 0xFF)) || (range.max < range.min)) {
     return 0xFF;
   } else if (range.min != range.max) {
@@ -685,12 +701,12 @@ void ItemCreator::generate_common_weapon_variances(uint8_t area_norm, ItemData& 
   weapon_type_prob_table[0] = 0;
   memmove(
       weapon_type_prob_table.data() + 1,
-      this->pt->base_weapon_type_prob_table().data(),
+      this->pt->base_weapon_type_prob_table.data(),
       0x0C);
 
   for (size_t z = 1; z < 13; z++) {
     // Technically this should be `if (... < 0)`, but whatever
-    if ((area_norm + this->pt->subtype_base_table().at(z - 1)) & 0x80) {
+    if ((area_norm + this->pt->subtype_base_table.at(z - 1)) & 0x80) {
       weapon_type_prob_table[z] = 0;
     }
   }
@@ -706,8 +722,8 @@ void ItemCreator::generate_common_weapon_variances(uint8_t area_norm, ItemData& 
     this->log.info("00 chosen from subtype table; skipping item");
     item.clear();
   } else {
-    int8_t subtype_base = this->pt->subtype_base_table().at(item.data1[1] - 1);
-    uint8_t area_length = this->pt->subtype_area_length_table().at(item.data1[1] - 1);
+    int8_t subtype_base = this->pt->subtype_base_table.at(item.data1[1] - 1);
+    uint8_t area_length = this->pt->subtype_area_length_table.at(item.data1[1] - 1);
     this->log.info("Subtype table yielded %02hhX; subtype base is %hhd with area length %hhu", item.data1[1], subtype_base, area_length);
     if (subtype_base < 0) {
       item.data1[2] = (area_norm + subtype_base) / area_length;
@@ -727,7 +743,7 @@ void ItemCreator::generate_common_weapon_variances(uint8_t area_norm, ItemData& 
 void ItemCreator::generate_common_weapon_grind(ItemData& item, uint8_t offset_within_subtype_range) {
   if (item.data1[0] == 0) {
     uint8_t offset = clamp<uint8_t>(offset_within_subtype_range, 0, 3);
-    item.data1[3] = this->get_rand_from_weighted_tables_2d_vertical(this->pt->grind_prob_table(), offset);
+    item.data1[3] = this->get_rand_from_weighted_tables_2d_vertical(this->pt->grind_prob_table, offset);
     this->log.info("Generated grind %02hhX from offset within subtype range %02hhX", item.data1[3], offset_within_subtype_range);
   }
 }
@@ -740,13 +756,13 @@ void ItemCreator::generate_common_weapon_special(ItemData& item, uint8_t area_no
     this->log.info("Item is rare; skipping special generation");
     return;
   }
-  uint8_t special_mult = this->pt->special_mult().at(area_norm);
+  uint8_t special_mult = this->pt->special_mult.at(area_norm);
   if (special_mult == 0) {
     this->log.info("Special multiplier is zero for area_norm %02hhX; skipping special generation", area_norm);
     return;
   }
   uint8_t det = this->rand_int(100);
-  uint8_t prob = this->pt->special_percent().at(area_norm);
+  uint8_t prob = this->pt->special_percent.at(area_norm);
   if (det >= prob) {
     this->log.info("Special not chosen (%02hhX > %02hhX)", det, prob);
     return;

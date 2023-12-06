@@ -1087,12 +1087,9 @@ void ServerState::load_item_tables() {
   auto ct_data_v2 = make_shared<string>(load_file("system/item-tables/ItemCT-v2.afs"));
   auto pt_data_v2 = make_shared<string>(load_file("system/item-tables/ItemPT-v2.afs"));
   this->common_item_set_v2 = make_shared<AFSV2CommonItemSet>(pt_data_v2, ct_data_v2);
-  config_log.info("Loading v3 common item table");
-  auto pt_data_v3 = make_shared<string>(load_file("system/item-tables/ItemPT-gc.gsl"));
-  this->common_item_set_v3 = make_shared<GSLV3CommonItemSet>(pt_data_v3, true);
-  // Note: The ItemPT files don't exist in BB, so we use the GC versions of them
-  // instead. This doesn't include Episode 4 of course, so we use Episode 1
-  // parameters for Episode 4 implicitly.
+  config_log.info("Loading v3+v4 common item table");
+  auto pt_data_v3_v4 = make_shared<string>(load_file("system/item-tables/ItemPT-gc-v4.gsl"));
+  this->common_item_set_v3_v4 = make_shared<GSLV3V4CommonItemSet>(pt_data_v3_v4, true);
 
   config_log.info("Loading armor table");
   auto armor_data = make_shared<string>(load_file("system/item-tables/ArmorRandom-gc.rel"));

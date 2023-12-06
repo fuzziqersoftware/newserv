@@ -852,9 +852,9 @@ uint8_t rare_table_index_for_enemy_type(EnemyType enemy_type) {
     case EnemyType::AL_RAPPY:
       return 0x06;
     case EnemyType::ASTARK:
-      return 0x01;
+      return 0x41;
     case EnemyType::BA_BOOTA:
-      return 0x0B;
+      return 0x4F;
     case EnemyType::BARBA_RAY:
       return 0x49;
     case EnemyType::BARBAROUS_WOLF:
@@ -862,7 +862,7 @@ uint8_t rare_table_index_for_enemy_type(EnemyType enemy_type) {
     case EnemyType::BOOMA:
       return 0x09;
     case EnemyType::BOOTA:
-      return 0x09;
+      return 0x4D;
     case EnemyType::BULCLAW:
       return 0x28;
     case EnemyType::CANADINE:
@@ -889,8 +889,9 @@ uint8_t rare_table_index_for_enemy_type(EnemyType enemy_type) {
     case EnemyType::DEL_LILY:
       return 0x53;
     case EnemyType::DEL_RAPPY:
+      return 0x57;
     case EnemyType::DEL_RAPPY_ALT:
-      return 0x12;
+      return 0x58;
     case EnemyType::DELBITER:
       return 0x48;
     case EnemyType::DELDEPTH:
@@ -904,9 +905,9 @@ uint8_t rare_table_index_for_enemy_type(EnemyType enemy_type) {
     case EnemyType::DOLMOLM:
       return 0x40;
     case EnemyType::DORPHON:
-      return 0x0C;
+      return 0x50;
     case EnemyType::DORPHON_ECLAIR:
-      return 0x0D;
+      return 0x51;
     case EnemyType::DRAGON:
       return 0x2C;
     case EnemyType::DUBCHIC:
@@ -932,15 +933,15 @@ uint8_t rare_table_index_for_enemy_type(EnemyType enemy_type) {
     case EnemyType::GILLCHIC:
       return 0x32;
     case EnemyType::GIRTABLULU:
-      return 0x06;
+      return 0x48;
     case EnemyType::GOBOOMA:
       return 0x0A;
     case EnemyType::GOL_DRAGON:
       return 0x4C;
     case EnemyType::GORAN:
-      return 0x0E;
+      return 0x52;
     case EnemyType::GORAN_DETONATOR:
-      return 0x0F;
+      return 0x53;
     case EnemyType::GRASS_ASSASSIN:
       return 0x0C;
     case EnemyType::GUIL_SHARK:
@@ -956,7 +957,7 @@ uint8_t rare_table_index_for_enemy_type(EnemyType enemy_type) {
     case EnemyType::ILL_GILL:
       return 0x52;
     case EnemyType::KONDRIEU:
-      return 0x15;
+      return 0x5B;
     case EnemyType::LA_DIMENIAN:
       return 0x2A;
     case EnemyType::LOVE_RAPPY:
@@ -972,9 +973,9 @@ uint8_t rare_table_index_for_enemy_type(EnemyType enemy_type) {
     case EnemyType::MERILTAS:
       return 0x35;
     case EnemyType::MERISSA_A:
-      return 0x04;
+      return 0x46;
     case EnemyType::MERISSA_AA:
-      return 0x05;
+      return 0x47;
     case EnemyType::MIGIUM:
       return 0x16;
     case EnemyType::MONEST:
@@ -994,8 +995,9 @@ uint8_t rare_table_index_for_enemy_type(EnemyType enemy_type) {
     case EnemyType::PAN_ARMS:
       return 0x15;
     case EnemyType::PAZUZU:
+      return 0x4B;
     case EnemyType::PAZUZU_ALT:
-      return 0x08;
+      return 0x4C;
     case EnemyType::POFUILLY_SLIME:
       return 0x13;
     case EnemyType::POUILLY_SLIME:
@@ -1003,7 +1005,7 @@ uint8_t rare_table_index_for_enemy_type(EnemyType enemy_type) {
     case EnemyType::POISON_LILY:
       return 0x0D;
     case EnemyType::PYRO_GORAN:
-      return 0x10;
+      return 0x54;
     case EnemyType::RAG_RAPPY:
       return 0x05;
     case EnemyType::RECOBOX:
@@ -1013,17 +1015,19 @@ uint8_t rare_table_index_for_enemy_type(EnemyType enemy_type) {
     case EnemyType::SAINT_RAPPY:
       return 0x4F;
     case EnemyType::SAINT_MILLION:
-      return 0x13;
+      return 0x59;
     case EnemyType::SAND_RAPPY:
+      return 0x55;
     case EnemyType::SAND_RAPPY_ALT:
-      return 0x11;
+      return 0x56;
     case EnemyType::SATELLITE_LIZARD:
+      return 0x44;
     case EnemyType::SATELLITE_LIZARD_ALT:
-      return 0x03;
+      return 0x45;
     case EnemyType::SAVAGE_WOLF:
       return 0x07;
     case EnemyType::SHAMBERTIN:
-      return 0x14;
+      return 0x5A;
     case EnemyType::SINOW_BEAT:
       return 0x1A;
     case EnemyType::SINOW_BERILL:
@@ -1043,15 +1047,17 @@ uint8_t rare_table_index_for_enemy_type(EnemyType enemy_type) {
     case EnemyType::VOL_OPT_2:
       return 0x2E;
     case EnemyType::YOWIE:
+      return 0x42;
     case EnemyType::YOWIE_ALT:
-      return 0x02;
+      return 0x43;
     case EnemyType::ZE_BOOTA:
-      return 0x0A;
+      return 0x4E;
     case EnemyType::ZOL_GIBBON:
       return 0x3C;
     case EnemyType::ZU:
+      return 0x49;
     case EnemyType::ZU_ALT:
-      return 0x07;
+      return 0x4A;
     default:
       throw runtime_error(string_printf("%s does not have a rare table entry", name_for_enum(enemy_type)));
   }

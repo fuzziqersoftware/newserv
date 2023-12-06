@@ -6,176 +6,107 @@
 
 using namespace std;
 
-CommonItemSet::Table::Table(
-    shared_ptr<const string> owned_data, const StringReader& r, bool is_big_endian, bool is_v3)
-    : owned_data(owned_data),
-      r(r),
-      is_big_endian(is_big_endian),
-      is_v3(is_v3) {
+CommonItemSet::Table::Table(const StringReader& r, bool is_big_endian, bool is_v3) {
   if (is_big_endian) {
-    const auto& be_offsets = r.pget<Offsets<true>>(r.pget_u32b(this->r.size() - 0x10));
-    this->offsets.base_weapon_type_prob_table_offset = be_offsets.base_weapon_type_prob_table_offset.load();
-    this->offsets.subtype_base_table_offset = be_offsets.subtype_base_table_offset.load();
-    this->offsets.subtype_area_length_table_offset = be_offsets.subtype_area_length_table_offset.load();
-    this->offsets.grind_prob_table_offset = be_offsets.grind_prob_table_offset.load();
-    this->offsets.armor_shield_type_index_prob_table_offset = be_offsets.armor_shield_type_index_prob_table_offset.load();
-    this->offsets.armor_slot_count_prob_table_offset = be_offsets.armor_slot_count_prob_table_offset.load();
-    this->offsets.enemy_meseta_ranges_offset = be_offsets.enemy_meseta_ranges_offset.load();
-    this->offsets.enemy_type_drop_probs_offset = be_offsets.enemy_type_drop_probs_offset.load();
-    this->offsets.enemy_item_classes_offset = be_offsets.enemy_item_classes_offset.load();
-    this->offsets.box_meseta_ranges_offset = be_offsets.box_meseta_ranges_offset.load();
-    this->offsets.bonus_value_prob_table_offset = be_offsets.bonus_value_prob_table_offset.load();
-    this->offsets.nonrare_bonus_prob_spec_offset = be_offsets.nonrare_bonus_prob_spec_offset.load();
-    this->offsets.bonus_type_prob_table_offset = be_offsets.bonus_type_prob_table_offset.load();
-    this->offsets.special_mult_offset = be_offsets.special_mult_offset.load();
-    this->offsets.special_percent_offset = be_offsets.special_percent_offset.load();
-    this->offsets.tool_class_prob_table_offset = be_offsets.tool_class_prob_table_offset.load();
-    this->offsets.technique_index_prob_table_offset = be_offsets.technique_index_prob_table_offset.load();
-    this->offsets.technique_level_ranges_offset = be_offsets.technique_level_ranges_offset.load();
-    this->offsets.armor_or_shield_type_bias = be_offsets.armor_or_shield_type_bias;
-    this->offsets.unit_max_stars_offset = be_offsets.unit_max_stars_offset.load();
-    this->offsets.box_item_class_prob_table_offset = be_offsets.box_item_class_prob_table_offset.load();
+    this->parse_itempt_t<true>(r, is_v3);
   } else {
-    this->offsets = r.pget<Offsets<false>>(r.pget_u32l(this->r.size() - 0x10));
+    this->parse_itempt_t<false>(r, is_v3);
   }
 }
 
-const parray<uint8_t, 0x0C>& CommonItemSet::Table::base_weapon_type_prob_table() const {
-  return this->r.pget<parray<uint8_t, 0x0C>>(this->offsets.base_weapon_type_prob_table_offset);
-}
-const parray<int8_t, 0x0C>& CommonItemSet::Table::subtype_base_table() const {
-  return this->r.pget<parray<int8_t, 0x0C>>(this->offsets.subtype_base_table_offset);
-}
-const parray<uint8_t, 0x0C>& CommonItemSet::Table::subtype_area_length_table() const {
-  return this->r.pget<parray<uint8_t, 0x0C>>(this->offsets.subtype_area_length_table_offset);
-}
-const parray<parray<uint8_t, 4>, 9>& CommonItemSet::Table::grind_prob_table() const {
-  return this->r.pget<parray<parray<uint8_t, 4>, 9>>(this->offsets.grind_prob_table_offset);
-}
-const parray<uint8_t, 0x05>& CommonItemSet::Table::armor_shield_type_index_prob_table() const {
-  return this->r.pget<parray<uint8_t, 0x05>>(this->offsets.armor_shield_type_index_prob_table_offset);
-}
-const parray<uint8_t, 0x05>& CommonItemSet::Table::armor_slot_count_prob_table() const {
-  return this->r.pget<parray<uint8_t, 0x05>>(this->offsets.armor_slot_count_prob_table_offset);
-}
-const parray<CommonItemSet::Table::Range<uint16_t>, 0x64>& CommonItemSet::Table::enemy_meseta_ranges() const {
-  if (!this->parsed_enemy_meseta_ranges_populated) {
-    if (this->is_big_endian) {
-      const auto& data = r.pget<parray<Range<be_uint16_t>, 0x64>>(this->offsets.enemy_meseta_ranges_offset);
-      for (size_t z = 0; z < data.size(); z++) {
-        this->parsed_enemy_meseta_ranges[z] = Range<uint16_t>{data[z].min, data[z].max};
-      }
-    } else {
-      const auto& data = r.pget<parray<Range<le_uint16_t>, 0x64>>(this->offsets.enemy_meseta_ranges_offset);
-      for (size_t z = 0; z < data.size(); z++) {
-        this->parsed_enemy_meseta_ranges[z] = Range<uint16_t>{data[z].min, data[z].max};
+template <bool IsBigEndian>
+void CommonItemSet::Table::parse_itempt_t(const StringReader& r, bool is_v3) {
+  using U16T = typename std::conditional<IsBigEndian, be_uint16_t, le_uint16_t>::type;
+  using U32T = typename std::conditional<IsBigEndian, be_uint32_t, le_uint32_t>::type;
+
+  const auto& offsets = r.pget<Offsets<IsBigEndian>>(r.pget<U32T>(r.size() - 0x10));
+
+  this->base_weapon_type_prob_table = r.pget<parray<uint8_t, 0x0C>>(offsets.base_weapon_type_prob_table_offset);
+  this->subtype_base_table = r.pget<parray<int8_t, 0x0C>>(offsets.subtype_base_table_offset);
+  this->subtype_area_length_table = r.pget<parray<uint8_t, 0x0C>>(offsets.subtype_area_length_table_offset);
+  this->grind_prob_table = r.pget<parray<parray<uint8_t, 4>, 9>>(offsets.grind_prob_table_offset);
+  this->armor_shield_type_index_prob_table = r.pget<parray<uint8_t, 0x05>>(offsets.armor_shield_type_index_prob_table_offset);
+  this->armor_slot_count_prob_table = r.pget<parray<uint8_t, 0x05>>(offsets.armor_slot_count_prob_table_offset);
+  const auto& data = r.pget<parray<Range<U16T>, 0x64>>(offsets.enemy_meseta_ranges_offset);
+  for (size_t z = 0; z < data.size(); z++) {
+    this->enemy_meseta_ranges[z] = Range<uint16_t>{data[z].min, data[z].max};
+  }
+  this->enemy_type_drop_probs = r.pget<parray<uint8_t, 0x64>>(offsets.enemy_type_drop_probs_offset);
+  this->enemy_item_classes = r.pget<parray<uint8_t, 0x64>>(offsets.enemy_item_classes_offset);
+  {
+    const auto& data = r.pget<parray<Range<U16T>, 0x0A>>(offsets.box_meseta_ranges_offset);
+    for (size_t z = 0; z < data.size(); z++) {
+      this->box_meseta_ranges[z] = Range<uint16_t>{data[z].min, data[z].max};
+    }
+  }
+  this->has_rare_bonus_value_prob_table = is_v3;
+  if (!this->has_rare_bonus_value_prob_table) { // V2
+    const auto& data = r.pget<parray<parray<uint8_t, 5>, 0x17>>(offsets.bonus_value_prob_table_offset);
+    for (size_t z = 0; z < data.size(); z++) {
+      for (size_t x = 0; x < data[z].size(); x++) {
+        this->bonus_value_prob_table[z][x] = data[z][x];
       }
     }
-    this->parsed_enemy_meseta_ranges_populated = true;
-  }
-  return this->parsed_enemy_meseta_ranges;
-}
-const parray<uint8_t, 0x64>& CommonItemSet::Table::enemy_type_drop_probs() const {
-  return this->r.pget<parray<uint8_t, 0x64>>(this->offsets.enemy_type_drop_probs_offset);
-}
-const parray<uint8_t, 0x64>& CommonItemSet::Table::enemy_item_classes() const {
-  return this->r.pget<parray<uint8_t, 0x64>>(this->offsets.enemy_item_classes_offset);
-}
-const parray<CommonItemSet::Table::Range<uint16_t>, 0x0A>& CommonItemSet::Table::box_meseta_ranges() const {
-  if (!this->parsed_box_meseta_ranges_populated) {
-    if (this->is_big_endian) {
-      const auto& data = r.pget<parray<Range<be_uint16_t>, 0x0A>>(this->offsets.box_meseta_ranges_offset);
-      for (size_t z = 0; z < data.size(); z++) {
-        this->parsed_box_meseta_ranges[z] = Range<uint16_t>{data[z].min, data[z].max};
-      }
-    } else {
-      const auto& data = r.pget<parray<Range<le_uint16_t>, 0x0A>>(this->offsets.box_meseta_ranges_offset);
-      for (size_t z = 0; z < data.size(); z++) {
-        this->parsed_box_meseta_ranges[z] = Range<uint16_t>{data[z].min, data[z].max};
+  } else { // V3
+    const auto& data = r.pget<parray<parray<U16T, 6>, 0x17>>(offsets.bonus_value_prob_table_offset);
+    for (size_t z = 0; z < data.size(); z++) {
+      for (size_t x = 0; x < data[z].size(); x++) {
+        this->bonus_value_prob_table[z][x] = data[z][x];
       }
     }
-    this->parsed_box_meseta_ranges_populated = true;
   }
-  return this->parsed_box_meseta_ranges;
-}
-bool CommonItemSet::Table::has_rare_bonus_value_prob_table() const {
-  return this->is_v3;
-}
-const parray<parray<uint16_t, 6>, 0x17>& CommonItemSet::Table::bonus_value_prob_table() const {
-  if (!this->parsed_bonus_value_prob_table_populated) {
-    if (!this->is_v3) { // V2
-      const auto& data = r.pget<parray<parray<uint8_t, 5>, 0x17>>(this->offsets.bonus_value_prob_table_offset);
-      for (size_t z = 0; z < data.size(); z++) {
-        for (size_t x = 0; x < data[z].size(); x++) {
-          this->parsed_bonus_value_prob_table[z][x] = data[z][x];
-        }
-      }
-    } else if (this->is_big_endian) { // BE V3
-      const auto& data = r.pget<parray<parray<be_uint16_t, 6>, 0x17>>(this->offsets.bonus_value_prob_table_offset);
-      for (size_t z = 0; z < data.size(); z++) {
-        for (size_t x = 0; x < data[z].size(); x++) {
-          this->parsed_bonus_value_prob_table[z][x] = data[z][x];
-        }
-      }
-    } else { // LE V3
-      const auto& data = r.pget<parray<parray<le_uint16_t, 6>, 0x17>>(this->offsets.bonus_value_prob_table_offset);
-      for (size_t z = 0; z < data.size(); z++) {
-        for (size_t x = 0; x < data[z].size(); x++) {
-          this->parsed_bonus_value_prob_table[z][x] = data[z][x];
-        }
+  this->nonrare_bonus_prob_spec = r.pget<parray<parray<uint8_t, 10>, 3>>(offsets.nonrare_bonus_prob_spec_offset);
+  this->bonus_type_prob_table = r.pget<parray<parray<uint8_t, 10>, 6>>(offsets.bonus_type_prob_table_offset);
+  this->special_mult = r.pget<parray<uint8_t, 0x0A>>(offsets.special_mult_offset);
+  this->special_percent = r.pget<parray<uint8_t, 0x0A>>(offsets.special_percent_offset);
+  {
+    const auto& data = r.pget<parray<parray<U16T, 0x0A>, 0x1C>>(offsets.tool_class_prob_table_offset);
+    for (size_t z = 0; z < data.size(); z++) {
+      for (size_t x = 0; x < data[z].size(); x++) {
+        this->tool_class_prob_table[z][x] = data[z][x];
       }
     }
-    this->parsed_bonus_value_prob_table_populated = true;
   }
-  return this->parsed_bonus_value_prob_table;
+  this->technique_index_prob_table = r.pget<parray<parray<uint8_t, 0x0A>, 0x13>>(offsets.technique_index_prob_table_offset);
+  this->technique_level_ranges = r.pget<parray<parray<Range<uint8_t>, 0x0A>, 0x13>>(offsets.technique_level_ranges_offset);
+  this->armor_or_shield_type_bias = offsets.armor_or_shield_type_bias;
+  this->unit_max_stars_table = r.pget<parray<uint8_t, 0x0A>>(offsets.unit_max_stars_offset);
+  this->box_item_class_prob_table = r.pget<parray<parray<uint8_t, 10>, 7>>(offsets.box_item_class_prob_table_offset);
 }
-const parray<parray<uint8_t, 10>, 3>& CommonItemSet::Table::nonrare_bonus_prob_spec() const {
-  return this->r.pget<parray<parray<uint8_t, 10>, 3>>(this->offsets.nonrare_bonus_prob_spec_offset);
-}
-const parray<parray<uint8_t, 10>, 6>& CommonItemSet::Table::bonus_type_prob_table() const {
-  return this->r.pget<parray<parray<uint8_t, 10>, 6>>(this->offsets.bonus_type_prob_table_offset);
-}
-const parray<uint8_t, 0x0A>& CommonItemSet::Table::special_mult() const {
-  return this->r.pget<parray<uint8_t, 0x0A>>(this->offsets.special_mult_offset);
-}
-const parray<uint8_t, 0x0A>& CommonItemSet::Table::special_percent() const {
-  return this->r.pget<parray<uint8_t, 0x0A>>(this->offsets.special_percent_offset);
-}
-const parray<parray<uint16_t, 0x0A>, 0x1C>& CommonItemSet::Table::tool_class_prob_table() const {
-  if (!this->parsed_tool_class_prob_table_populated) {
-    if (this->is_big_endian) {
-      const auto& data = r.pget<parray<parray<be_uint16_t, 0x0A>, 0x1C>>(this->offsets.tool_class_prob_table_offset);
-      for (size_t z = 0; z < data.size(); z++) {
-        for (size_t x = 0; x < data[z].size(); x++) {
-          this->parsed_tool_class_prob_table[z][x] = data[z][x];
-        }
-      }
-    } else {
-      const auto& data = r.pget<parray<parray<le_uint16_t, 0x0A>, 0x1C>>(this->offsets.tool_class_prob_table_offset);
-      for (size_t z = 0; z < data.size(); z++) {
-        for (size_t x = 0; x < data[z].size(); x++) {
-          this->parsed_tool_class_prob_table[z][x] = data[z][x];
-        }
-      }
+
+void CommonItemSet::Table::print_enemy_table(FILE* stream) const {
+  const auto& meseta_ranges = this->enemy_meseta_ranges;
+  const auto& drop_probs = this->enemy_type_drop_probs;
+  const auto& item_classes = this->enemy_item_classes;
+  // const parray<Range<uint16_t>, 0x64>& enemy_meseta_ranges() const;
+  //   const parray<uint8_t, 0x64>& enemy_type_drop_probs() const;
+  //   const parray<uint8_t, 0x64>& enemy_item_classes() const;
+  fprintf(stream, "##  $_LOW  $_HIGH  DAR  ITEM\n");
+  for (size_t z = 0; z < 0x64; z++) {
+    const char* item_class_name = "__UNKNOWN__";
+    switch (item_classes[z]) {
+      case 0x00:
+        item_class_name = "WEAPON";
+        break;
+      case 0x01:
+        item_class_name = "ARMOR";
+        break;
+      case 0x02:
+        item_class_name = "SHIELD";
+        break;
+      case 0x03:
+        item_class_name = "UNIT";
+        break;
+      case 0x04:
+        item_class_name = "TOOL";
+        break;
+      case 0x05:
+        item_class_name = "MESETA";
+        break;
     }
-    this->parsed_tool_class_prob_table_populated = true;
+    fprintf(stream, "%02zX  %5hu   %5hu  %3hhu  %02hX (%s)\n",
+        z, meseta_ranges[z].min, meseta_ranges[z].max, drop_probs[z], item_classes[z], item_class_name);
   }
-  return this->parsed_tool_class_prob_table;
-}
-const parray<parray<uint8_t, 0x0A>, 0x13>& CommonItemSet::Table::technique_index_prob_table() const {
-  return this->r.pget<parray<parray<uint8_t, 0x0A>, 0x13>>(this->offsets.technique_index_prob_table_offset);
-}
-const parray<parray<CommonItemSet::Table::Range<uint8_t>, 0x0A>, 0x13>& CommonItemSet::Table::technique_level_ranges() const {
-  return this->r.pget<parray<parray<Range<uint8_t>, 0x0A>, 0x13>>(this->offsets.technique_level_ranges_offset);
-}
-uint8_t CommonItemSet::Table::armor_or_shield_type_bias() const {
-  return this->offsets.armor_or_shield_type_bias;
-}
-const parray<uint8_t, 0x0A>& CommonItemSet::Table::unit_max_stars_table() const {
-  return this->r.pget<parray<uint8_t, 0x0A>>(this->offsets.unit_max_stars_offset);
-}
-const parray<parray<uint8_t, 10>, 7>& CommonItemSet::Table::box_item_class_prob_table() const {
-  return this->r.pget<parray<parray<uint8_t, 10>, 7>>(this->offsets.box_item_class_prob_table_offset);
 }
 
 uint16_t CommonItemSet::key_for_table(Episode episode, GameMode mode, uint8_t difficulty, uint8_t secid) {
@@ -205,7 +136,7 @@ AFSV2CommonItemSet::AFSV2CommonItemSet(
     for (size_t section_id = 0; section_id < 10; section_id++) {
       auto entry = pt_afs.get(difficulty * 10 + section_id);
       StringReader r(entry.first, entry.second);
-      auto table = make_shared<Table>(pt_afs_data, r, false, false);
+      auto table = make_shared<Table>(r, false, false);
       this->tables.emplace(this->key_for_table(Episode::EP1, GameMode::NORMAL, difficulty, section_id), table);
       this->tables.emplace(this->key_for_table(Episode::EP1, GameMode::BATTLE, difficulty, section_id), table);
       this->tables.emplace(this->key_for_table(Episode::EP1, GameMode::SOLO, difficulty, section_id), table);
@@ -217,48 +148,72 @@ AFSV2CommonItemSet::AFSV2CommonItemSet(
   AFSArchive ct_afs(ct_afs_data);
   for (size_t difficulty = 0; difficulty < 4; difficulty++) {
     auto r = ct_afs.get_reader(difficulty * 10);
-    auto table = make_shared<Table>(ct_afs_data, r, false, false);
+    auto table = make_shared<Table>(r, false, false);
     for (size_t section_id = 0; section_id < 10; section_id++) {
       this->tables.emplace(this->key_for_table(Episode::EP1, GameMode::CHALLENGE, difficulty, section_id), table);
     }
   }
 }
 
-GSLV3CommonItemSet::GSLV3CommonItemSet(std::shared_ptr<const std::string> gsl_data, bool is_big_endian) {
+GSLV3V4CommonItemSet::GSLV3V4CommonItemSet(std::shared_ptr<const std::string> gsl_data, bool is_big_endian) {
   GSLArchive gsl(gsl_data, is_big_endian);
 
-  vector<Episode> episodes = {Episode::EP1, Episode::EP2};
+  auto filename_for_table = +[](Episode episode, uint8_t difficulty, uint8_t section_id, bool is_challenge) -> string {
+    const char* episode_token = "";
+    switch (episode) {
+      case Episode::EP1:
+        episode_token = "";
+        break;
+      case Episode::EP2:
+        episode_token = "l";
+        break;
+      case Episode::EP4:
+        episode_token = "s";
+        break;
+      default:
+        throw runtime_error("invalid episode");
+    }
+    return string_printf(
+        "ItemPT%s%s%c%1hhu.rel",
+        is_challenge ? "c" : "",
+        episode_token,
+        tolower(abbreviation_for_difficulty(difficulty)),
+        section_id);
+  };
+
+  vector<Episode> episodes = {Episode::EP1, Episode::EP2, Episode::EP4};
   for (Episode episode : episodes) {
     for (size_t difficulty = 0; difficulty < 4; difficulty++) {
       for (size_t section_id = 0; section_id < 10; section_id++) {
-        string filename = string_printf(
-            "ItemPT%s%c%1zu.rel",
-            ((episode == Episode::EP2) ? "l" : ""),
-            tolower(abbreviation_for_difficulty(difficulty)),
-            section_id);
-        auto r = gsl.get_reader(filename);
-        auto table = make_shared<Table>(gsl_data, r, is_big_endian, true);
+        StringReader r;
+        try {
+          r = gsl.get_reader(filename_for_table(episode, difficulty, section_id, false));
+        } catch (const exception&) {
+          // Fall back to Episode 1 if Episode 4 data is missing
+          if (episode == Episode::EP4) {
+            auto ep1_table = this->tables.at(this->key_for_table(Episode::EP1, GameMode::NORMAL, difficulty, section_id));
+            this->tables.emplace(this->key_for_table(episode, GameMode::NORMAL, difficulty, section_id), ep1_table);
+            this->tables.emplace(this->key_for_table(episode, GameMode::BATTLE, difficulty, section_id), ep1_table);
+            this->tables.emplace(this->key_for_table(episode, GameMode::SOLO, difficulty, section_id), ep1_table);
+            continue;
+          } else {
+            throw;
+          }
+        }
+        auto table = make_shared<Table>(r, is_big_endian, true);
         this->tables.emplace(this->key_for_table(episode, GameMode::NORMAL, difficulty, section_id), table);
         this->tables.emplace(this->key_for_table(episode, GameMode::BATTLE, difficulty, section_id), table);
         this->tables.emplace(this->key_for_table(episode, GameMode::SOLO, difficulty, section_id), table);
-        // TODO: These tables don't exist for Episode 4, and the GC version is
-        // the closest we have, so we use the Ep1 data from GC for Ep4.
-        if (episode == Episode::EP1) {
-          this->tables.emplace(this->key_for_table(Episode::EP4, GameMode::NORMAL, difficulty, section_id), table);
-          this->tables.emplace(this->key_for_table(Episode::EP4, GameMode::BATTLE, difficulty, section_id), table);
-          this->tables.emplace(this->key_for_table(Episode::EP4, GameMode::SOLO, difficulty, section_id), table);
-        }
       }
     }
-    for (size_t difficulty = 0; difficulty < 4; difficulty++) {
-      string filename = string_printf(
-          "ItemPTc%s%c0.rel",
-          ((episode == Episode::EP2) ? "l" : ""),
-          tolower(abbreviation_for_difficulty(difficulty)));
-      auto r = gsl.get_reader(filename);
-      auto table = make_shared<Table>(gsl_data, r, is_big_endian, true);
-      for (size_t section_id = 0; section_id < 10; section_id++) {
-        this->tables.emplace(this->key_for_table(episode, GameMode::CHALLENGE, difficulty, section_id), table);
+
+    if (episode != Episode::EP4) {
+      for (size_t difficulty = 0; difficulty < 4; difficulty++) {
+        auto r = gsl.get_reader(filename_for_table(episode, difficulty, 0, true));
+        auto table = make_shared<Table>(r, is_big_endian, true);
+        for (size_t section_id = 0; section_id < 10; section_id++) {
+          this->tables.emplace(this->key_for_table(episode, GameMode::CHALLENGE, difficulty, section_id), table);
+        }
       }
     }
   }
