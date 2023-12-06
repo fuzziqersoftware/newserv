@@ -191,7 +191,7 @@ struct Lobby : public std::enable_shared_from_this<Lobby> {
   ItemData remove_item(uint32_t item_id);
   uint32_t generate_item_id(uint8_t client_id);
   void on_item_id_generated_externally(uint32_t item_id);
-  void assign_inventory_item_ids(std::shared_ptr<Client> c);
+  void assign_inventory_and_bank_item_ids(std::shared_ptr<Client> c);
 
   QuestIndex::IncludeCondition quest_include_condition() const;
 

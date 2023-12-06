@@ -214,7 +214,7 @@ void Lobby::add_client(shared_ptr<Client> c, ssize_t required_client_id) {
   // If the lobby is a game and item tracking is enabled, assign the inventory's
   // item IDs
   if (this->is_game() && this->check_flag(Lobby::Flag::ITEM_TRACKING_ENABLED)) {
-    this->assign_inventory_item_ids(c);
+    this->assign_inventory_and_bank_item_ids(c);
   }
 
   // If the lobby is recording a battle record, add the player join event
@@ -383,13 +383,20 @@ void Lobby::on_item_id_generated_externally(uint32_t item_id) {
   }
 }
 
-void Lobby::assign_inventory_item_ids(shared_ptr<Client> c) {
+void Lobby::assign_inventory_and_bank_item_ids(shared_ptr<Client> c) {
   auto p = c->game_data.character();
   for (size_t z = 0; z < p->inventory.num_items; z++) {
     p->inventory.items[z].data.id = this->generate_item_id(c->lobby_client_id);
   }
-  c->log.info("Assigned item IDs");
+  c->log.info("Assigned inventory item IDs");
   p->print_inventory(stderr, c->version(), c->require_server_state()->item_name_index);
+  if (p->bank.num_items) {
+    p->bank.assign_ids(0x99000000 + (c->lobby_client_id << 20));
+    c->log.info("Assigned bank item IDs");
+    p->print_bank(stderr, c->version(), c->require_server_state()->item_name_index);
+  } else {
+    c->log.info("Bank is empty");
+  }
 }
 
 unordered_map<uint32_t, shared_ptr<Client>> Lobby::clients_by_serial_number() const {

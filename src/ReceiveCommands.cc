@@ -1899,7 +1899,7 @@ static void on_quest_loaded(shared_ptr<Lobby> l) {
       } else if (l->quest->challenge_template_index >= 0) {
         lc->game_data.create_challenge_overlay(lc->version(), l->quest->challenge_template_index, s->level_table);
         lc->log.info("Created challenge overlay");
-        l->assign_inventory_item_ids(lc);
+        l->assign_inventory_and_bank_item_ids(lc);
       }
     }
   }
@@ -3441,7 +3441,7 @@ static void on_DF_BB(shared_ptr<Client> c, uint16_t command, uint32_t, string& d
         if (lc) {
           lc->game_data.create_challenge_overlay(lc->version(), l->quest->challenge_template_index, s->level_table);
           lc->log.info("Created challenge overlay");
-          l->assign_inventory_item_ids(lc);
+          l->assign_inventory_and_bank_item_ids(lc);
         }
       }
       break;

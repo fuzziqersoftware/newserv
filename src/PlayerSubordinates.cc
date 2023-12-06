@@ -479,7 +479,8 @@ void PlayerBank::add_item(const ItemData& item) {
   this->num_items++;
 }
 
-ItemData PlayerBank::remove_item_by_index(size_t index, uint32_t amount) {
+ItemData PlayerBank::remove_item(uint32_t item_id, uint32_t amount) {
+  size_t index = this->find_item(item_id);
   auto& bank_item = this->items[index];
 
   ItemData ret;
@@ -678,6 +679,12 @@ size_t PlayerBank::find_item(uint32_t item_id) {
 
 void PlayerBank::sort() {
   std::sort(this->items.data(), this->items.data() + this->num_items);
+}
+
+void PlayerBank::assign_ids(uint32_t base_id) {
+  for (size_t z = 0; z < this->num_items; z++) {
+    this->items[z].data.id = base_id + z;
+  }
 }
 
 BattleRules::BattleRules(const JSON& json) {

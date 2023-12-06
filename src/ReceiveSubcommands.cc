@@ -1471,6 +1471,13 @@ static void on_ep3_private_word_select_bb_bank_action(shared_ptr<Client> c, uint
 
       } else { // Deposit item
         auto item = p->remove_item(cmd.item_id, cmd.item_amount, c->version() != Version::BB_V4);
+        // If a stack was split, the bank item retains the same item ID as the
+        // inventory item. This is annoying but doesn't cause any problems
+        // because we always generate a new item ID when withdrawing from the
+        // bank, so there's no chance of conflict later.
+        if (item.id == 0xFFFFFFFF) {
+          item.id = cmd.item_id;
+        }
         bank.add_item(item);
         send_destroy_item(c, cmd.item_id, cmd.item_amount, true);
 
@@ -1496,7 +1503,7 @@ static void on_ep3_private_word_select_bb_bank_action(shared_ptr<Client> c, uint
         }
 
       } else { // Take item
-        auto item = bank.remove_item_by_index(cmd.item_index, cmd.item_amount);
+        auto item = bank.remove_item(cmd.item_id, cmd.item_amount);
         item.id = l->generate_item_id(c->lobby_client_id);
         p->add_item(item);
         send_create_inventory_item(c, item);

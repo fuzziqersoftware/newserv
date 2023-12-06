@@ -254,6 +254,7 @@ struct PSOBBCharacterFile {
   void clear_all_material_usage();
 
   void print_inventory(FILE* stream, Version version, std::shared_ptr<const ItemNameIndex> name_index) const;
+  void print_bank(FILE* stream, Version version, std::shared_ptr<const ItemNameIndex> name_index) const;
 } __attribute__((packed));
 
 struct PSOBBGuildCardFile {
