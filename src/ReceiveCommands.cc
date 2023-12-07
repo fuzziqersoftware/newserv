@@ -2981,17 +2981,27 @@ static void on_61_98(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
     s->remove_client_from_lobby(c);
 
   } else if (command == 0x61) {
-    if (c->pending_bb_save_license) {
-      shared_ptr<License> dest_license = c->pending_bb_save_license;
-      c->pending_bb_save_license.reset();
+    if (c->pending_character_export) {
+      unique_ptr<Client::PendingCharacterExport> pending_export = std::move(c->pending_character_export);
+      c->pending_character_export.reset();
 
-      string filename = ClientGameData::character_filename(dest_license->bb_username, c->pending_bb_save_character_index);
+      string filename;
+      if (pending_export->is_bb_conversion) {
+        filename = ClientGameData::character_filename(
+            pending_export->license->bb_username,
+            pending_export->character_index);
+      } else {
+        filename = ClientGameData::backup_character_filename(
+            pending_export->license->serial_number,
+            pending_export->character_index);
+      }
+
       if (s->player_files_manager->get_character(filename)) {
         send_text_message(c, "$C6The target player\nis currently loaded.\nSign off in Blue\nBurst and try again.");
 
       } else {
         auto bb_player = PSOBBCharacterFile::create_from_config(
-            dest_license->serial_number,
+            pending_export->license->serial_number,
             c->language(),
             player->disp.visual,
             player->disp.name.decode(c->language()),
@@ -3016,12 +3026,9 @@ static void on_61_98(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
         bb_player->choice_search_config = player->choice_search_config;
         try {
           ClientGameData::save_character_file(filename, c->game_data.system(), bb_player);
-          send_text_message_printf(c,
-              "$C6BB player data saved\nas player %hhu for user\n%s",
-              static_cast<uint8_t>(c->pending_bb_save_character_index + 1),
-              dest_license->bb_username.c_str());
+          send_text_message(c, "$C6Character data saved");
         } catch (const exception& e) {
-          send_text_message_printf(c, "$C6PSOBB player data could\nnot be saved:\n%s", e.what());
+          send_text_message_printf(c, "$C6Character data could\nnot be saved:\n%s", e.what());
         }
       }
     }

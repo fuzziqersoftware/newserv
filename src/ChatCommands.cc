@@ -52,12 +52,6 @@ static void check_version(shared_ptr<Client> c, Version version) {
   }
 }
 
-static void check_not_version(shared_ptr<Client> c, Version version) {
-  if (c->version() == version) {
-    throw precondition_failed("$C6This command cannot\nbe used for your\nversion of PSO.");
-  }
-}
-
 static void check_is_game(shared_ptr<Lobby> l, bool is_game) {
   if (l->is_game() != is_game) {
     throw precondition_failed(is_game ? "$C6This command cannot\nbe used in lobbies." : "$C6This command cannot\nbe used in games.");
@@ -1024,36 +1018,72 @@ static void server_command_change_bank(shared_ptr<Client> c, const std::string& 
   send_text_message_printf(c, "%" PRIu32 " items\n%" PRIu32 " Meseta", bank.num_items.load(), bank.meseta.load());
 }
 
-// TODO: This can be implemented on the proxy server too.
-static void server_command_convert_char_to_bb(shared_ptr<Client> c, const std::string& args) {
+static void server_command_bbchar_savechar(shared_ptr<Client> c, const std::string& args, bool is_bb_conversion) {
   auto s = c->require_server_state();
   auto l = c->require_lobby();
   check_is_game(l, false);
-  check_not_version(c, Version::BB_V4);
 
-  vector<string> tokens = split(args, ' ');
-  if (tokens.size() != 3) {
-    send_text_message(c, "$C6Incorrect argument count");
-    return;
+  auto pending_export = make_unique<Client::PendingCharacterExport>();
+  pending_export->is_bb_conversion = is_bb_conversion;
+
+  if (is_bb_conversion) {
+    vector<string> tokens = split(args, ' ');
+    if (tokens.size() != 3) {
+      send_text_message(c, "$C6Incorrect argument count");
+      return;
+    }
+
+    // username/password are tokens[0] and [1]
+    pending_export->character_index = stoll(tokens[2]) - 1;
+    if ((pending_export->character_index > 3) || (pending_export->character_index < 0)) {
+      send_text_message(c, "$C6Player index must\nbe in range 1-4");
+      return;
+    }
+
+    try {
+      c->pending_character_export->license = s->license_index->verify_bb(tokens[0].c_str(), tokens[1].c_str());
+    } catch (const exception& e) {
+      send_text_message_printf(c, "$C6Login failed: %s", e.what());
+      return;
+    }
+
+  } else {
+    pending_export->character_index = stoll(args) - 1;
+    if ((pending_export->character_index > 3) || (pending_export->character_index < 0)) {
+      send_text_message(c, "$C6Player index must\nbe in range 1-4");
+      return;
+    }
+    pending_export->license = c->license;
   }
 
-  // username/password are tokens[0] and [1]
-  c->pending_bb_save_character_index = stoul(tokens[2]) - 1;
-  if (c->pending_bb_save_character_index > 3) {
-    send_text_message(c, "$C6Player index must be 1-4");
-    return;
-  }
-
-  try {
-    c->pending_bb_save_license = s->license_index->verify_bb(tokens[0].c_str(), tokens[1].c_str());
-  } catch (const exception& e) {
-    send_text_message_printf(c, "$C6Login failed: %s", e.what());
-    return;
-  }
-
+  c->pending_character_export = std::move(pending_export);
   // Request the player data. The client will respond with a 61, and the handler
   // for that command will execute the conversion
   send_get_player_info(c);
+}
+
+static void server_command_bbchar(shared_ptr<Client> c, const std::string& args) {
+  server_command_bbchar_savechar(c, args, true);
+}
+
+static void server_command_savechar(shared_ptr<Client> c, const std::string& args) {
+  server_command_bbchar_savechar(c, args, false);
+}
+
+static void server_command_loadchar(shared_ptr<Client> c, const std::string& args) {
+  if (!is_v1_or_v2(c->version())) {
+    send_text_message(c, "$C7This command can only\nbe used on v1 or v2");
+    return;
+  }
+  auto l = c->require_lobby();
+  check_is_game(l, false);
+
+  size_t index = stoull(args, nullptr, 0);
+  c->game_data.load_backup_character(c->license->serial_number, index);
+
+  auto s = c->require_server_state();
+  send_player_leave_notification(l, c->lobby_client_id);
+  s->send_lobby_join_notifications(l, c);
 }
 
 static void server_command_save(shared_ptr<Client> c, const std::string&) {
@@ -1702,12 +1732,13 @@ static const unordered_map<string, ChatCommandDefinition> chat_commands({
     {"$ax", {server_command_ax, nullptr}},
     {"$ban", {server_command_ban, nullptr}},
     {"$bank", {server_command_change_bank, nullptr}},
-    {"$bbchar", {server_command_convert_char_to_bb, nullptr}},
+    {"$bbchar", {server_command_bbchar, nullptr}},
     {"$cheat", {server_command_cheat, nullptr}},
     {"$debug", {server_command_debug, nullptr}},
     {"$defrange", {server_command_ep3_set_def_dice_range, nullptr}},
     {"$drop", {server_command_drop, nullptr}},
     {"$edit", {server_command_edit, nullptr}},
+    {"$ep3battledebug", {server_command_enable_ep3_battle_debug_menu, nullptr}},
     {"$event", {server_command_lobby_event, proxy_command_lobby_event}},
     {"$exit", {server_command_exit, proxy_command_exit}},
     {"$gc", {server_command_get_self_card, proxy_command_get_player_card}},
@@ -1720,7 +1751,7 @@ static const unordered_map<string, ChatCommandDefinition> chat_commands({
     {"$kick", {server_command_kick, nullptr}},
     {"$li", {server_command_lobby_info, proxy_command_lobby_info}},
     {"$ln", {server_command_lobby_type, proxy_command_lobby_type}},
-    {"$ep3battledebug", {server_command_enable_ep3_battle_debug_menu, nullptr}},
+    {"$loadchar", {server_command_loadchar, nullptr}},
     {"$matcount", {server_command_show_material_counts, nullptr}},
     {"$maxlevel", {server_command_max_level, nullptr}},
     {"$meseta", {server_command_meseta, nullptr}},
@@ -1739,6 +1770,7 @@ static const unordered_map<string, ChatCommandDefinition> chat_commands({
     {"$quest", {server_command_quest, nullptr}},
     {"$rand", {server_command_rand, proxy_command_rand}},
     {"$save", {server_command_save, nullptr}},
+    {"$savechar", {server_command_savechar, nullptr}},
     {"$saverec", {server_command_saverec, nullptr}},
     {"$sc", {server_command_send_client, proxy_command_send_client}},
     {"$secid", {server_command_secid, proxy_command_secid}},

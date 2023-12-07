@@ -114,6 +114,7 @@ public:
 
   std::string system_filename() const;
   static std::string character_filename(const std::string& bb_username, int8_t index);
+  static std::string backup_character_filename(uint32_t serial_number, size_t index);
   std::string character_filename(int8_t index = -1) const;
   std::string guild_card_filename() const;
   std::string shared_bank_filename() const;
@@ -130,6 +131,8 @@ public:
   // Note: This function is not const because it updates the player's play time.
   void save_character_file();
   void save_guild_card_file() const;
+
+  void load_backup_character(uint32_t serial_number, size_t index);
 
   PlayerBank& current_bank();
   std::shared_ptr<PSOBBCharacterFile> current_bank_character();

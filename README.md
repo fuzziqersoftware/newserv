@@ -274,9 +274,13 @@ Some commands only work on the game server and not on the proxy server. The chat
     * `$exit`: If you're in a lobby, sends you to the main menu (which ends your proxy session, if you're in one). If you're in a game or spectator team, sends you to the lobby (but does not end your proxy session if you're in one). Does nothing if you're in a non-Episode 3 game and no quest is in progress.
     * `$patch <name>`: Run a patch on your client. `<name>` must exactly match the name of a patch on the server.
 
-* Blue Burst player commands (game server only)
-    * `$bbchar <username> <password> <1-4>`: Use this command when playing on a non-BB version of PSO. If the username and password are correct, this command converts your current character to BB format and saves it on the server in the given slot. Any character already in that slot is overwritten. Note that the character's chat data, quick menu config, and bank contents are not copied, since there is no way for the server to request those types of data.
+* Character data commands
+    * `$savechar <slot>`: Saves your current character data on the server in the specified slot (each serial number has 4 slots, numbered 1-4). These slots are separate from BB character slots; using this command does not affect BB characters.
+    * `$loadchar <slot>` (v1 and v2 only): Loads your character data from the specified slot.
+    * `$bbchar <username> <password> <slot>`: Use this command when playing on a non-BB version of PSO. If the username and password are correct, this command converts your current character to BB format and saves it on the server in the given slot (1-4). Any character already in that slot is overwritten. (This command is similar to `$savechar`, except it overwrites a BB character slot, and can transfer characters across accounts.) Note that the character's chat data, quick menu config, and bank contents are not copied, since there is no way for the server to request those types of data.
     * `$edit <stat> <value>`: Modifies your character data. If the server does not allow cheat mode anywhere (that is, "CheatModeBehavior" is "Off" in config.json), this command does nothing.
+
+* Blue Burst player commands (game server only)
     * `$bank [number]`: Switches your current bank, so you can access your other character's banks (if `number` is 1-4) or your shared account bank (if `number` is 0). If `number` is not given, switches back to your current character's bank.
     * `$save`: Saves your character, system, and Guild Card data immediately. (By default, your character is saved every 60 seconds while online, and your account and Guild Card data are saved whenever they change.)
 

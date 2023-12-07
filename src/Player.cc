@@ -312,6 +312,10 @@ string ClientGameData::character_filename(const std::string& bb_username, int8_t
   return string_printf("system/players/player_%s_%hhd.psochar", bb_username.c_str(), index);
 }
 
+string ClientGameData::backup_character_filename(uint32_t serial_number, size_t index) {
+  return string_printf("system/players/backup_player_%" PRIu32 "_%zu.psochar", serial_number, index);
+}
+
 string ClientGameData::character_filename(int8_t index) const {
   if (this->bb_username.empty()) {
     throw logic_error("non-BB players do not have character data");
@@ -611,6 +615,23 @@ void ClientGameData::save_guild_card_file() const {
   string filename = this->guild_card_filename();
   save_object_file(filename, *this->guild_card_data);
   player_data_log.info("Saved Guild Card file %s", filename.c_str());
+}
+
+void ClientGameData::load_backup_character(uint32_t serial_number, size_t index) {
+  string filename = this->backup_character_filename(serial_number, index);
+  auto f = fopen_unique(filename, "rb");
+  auto header = freadx<PSOCommandHeaderBB>(f.get());
+  if (header.size != 0x399C) {
+    throw runtime_error("incorrect size in character file header");
+  }
+  if (header.command != 0x00E7) {
+    throw runtime_error("incorrect command in character file header");
+  }
+  if (header.flag != 0x00000000) {
+    throw runtime_error("incorrect flag in character file header");
+  }
+  this->character_data = make_shared<PSOBBCharacterFile>(freadx<PSOBBCharacterFile>(f.get()));
+  this->last_reported_disp_v1_v2.reset();
 }
 
 PlayerBank& ClientGameData::current_bank() {

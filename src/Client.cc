@@ -174,7 +174,6 @@ Client::Client(
       card_battle_table_seat_state(0),
       next_exp_value(0),
       can_chat(true),
-      pending_bb_save_character_index(0),
       dol_base_addr(0) {
 
   this->config.set_flags_for_version(version, -1);

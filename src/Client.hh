@@ -202,8 +202,12 @@ struct Client : public std::enable_shared_from_this<Client> {
   uint32_t next_exp_value; // next EXP value to give
   G_SwitchStateChanged_6x05 last_switch_enabled_command;
   bool can_chat;
-  std::shared_ptr<License> pending_bb_save_license;
-  uint8_t pending_bb_save_character_index;
+  struct PendingCharacterExport {
+    std::shared_ptr<const License> license;
+    ssize_t character_index = -1;
+    bool is_bb_conversion = false;
+  };
+  std::unique_ptr<PendingCharacterExport> pending_character_export;
   std::deque<std::function<void(uint32_t, uint32_t)>> function_call_response_queue;
 
   // File loading state
