@@ -15,7 +15,6 @@
 #include "PSOEncryption.hh"
 #include "PSOProtocol.hh"
 #include "PatchFileIndex.hh"
-#include "Player.hh"
 #include "Quest.hh"
 #include "QuestScript.hh"
 #include "TeamIndex.hh"
@@ -26,7 +25,8 @@ extern const uint64_t CLIENT_CONFIG_MAGIC;
 class Server;
 struct Lobby;
 
-struct Client : public std::enable_shared_from_this<Client> {
+class Client : public std::enable_shared_from_this<Client> {
+public:
   enum class Flag : uint64_t {
     // clang-format off
 
@@ -148,7 +148,6 @@ struct Client : public std::enable_shared_from_this<Client> {
   };
 
   std::weak_ptr<Server> server;
-  std::weak_ptr<ServerState> server_state;
   uint64_t id;
   PrefixedLogger log;
 
@@ -181,7 +180,7 @@ struct Client : public std::enable_shared_from_this<Client> {
   uint8_t lobby_client_id;
   uint8_t lobby_arrow_color;
   int64_t preferred_lobby_id; // <0 = no preference
-  ClientGameData game_data;
+
   std::unique_ptr<struct event, void (*)(struct event*)> save_game_data_event;
   std::unique_ptr<struct event, void (*)(struct event*)> send_ping_event;
   std::unique_ptr<struct event, void (*)(struct event*)> idle_timeout_event;
@@ -197,6 +196,28 @@ struct Client : public std::enable_shared_from_this<Client> {
     std::string data;
   };
   std::unique_ptr<std::deque<JoinCommand>> game_join_command_queue;
+
+  // Character / game data
+  struct PendingItemTrade {
+    uint8_t other_client_id;
+    bool confirmed; // true if client has sent a D2 command
+    std::vector<ItemData> items;
+  };
+  struct PendingCardTrade {
+    uint8_t other_client_id;
+    bool confirmed; // true if client has sent an EE D2 command
+    std::vector<std::pair<uint32_t, uint32_t>> card_to_count;
+  };
+  bool should_update_play_time;
+  std::unordered_set<uint32_t> blocked_senders;
+  std::unique_ptr<PlayerDispDataDCPCV3> v1_v2_last_reported_disp;
+  // These are null unless the client is within the trade sequence (D0-D4 or EE commands)
+  std::unique_ptr<PendingItemTrade> pending_item_trade;
+  std::unique_ptr<PendingCardTrade> pending_card_trade;
+  std::shared_ptr<Episode3::PlayerConfig> ep3_config; // Null for non-Ep3
+  int8_t bb_character_index;
+  ItemData bb_identify_result;
+  std::array<std::vector<ItemData>, 3> bb_shop_contents;
 
   // Miscellaneous (used by chat commands)
   uint32_t next_exp_value; // next EXP value to give
@@ -249,4 +270,77 @@ struct Client : public std::enable_shared_from_this<Client> {
   void idle_timeout();
 
   void suspend_timeouts();
+
+  const std::string& get_bb_username() const;
+  void set_bb_username(const std::string& bb_username);
+
+  void create_battle_overlay(std::shared_ptr<const BattleRules> rules, std::shared_ptr<const LevelTable> level_table);
+  void create_challenge_overlay(Version version, size_t template_index, std::shared_ptr<const LevelTable> level_table);
+  inline void delete_overlay() {
+    this->overlay_character_data.reset();
+  }
+  inline bool has_overlay() const {
+    return this->overlay_character_data.get() != nullptr;
+  }
+
+  void import_blocked_senders(const parray<le_uint32_t, 30>& blocked_senders);
+
+  std::shared_ptr<PSOBBBaseSystemFile> system_file(bool allow_load = true);
+  std::shared_ptr<PSOBBCharacterFile> character(bool allow_load = true, bool allow_overlay = true);
+  std::shared_ptr<PSOBBGuildCardFile> guild_card_file(bool allow_load = true);
+  std::shared_ptr<const PSOBBBaseSystemFile> system_file(bool allow_load = true) const;
+  std::shared_ptr<const PSOBBCharacterFile> character(bool allow_load = true, bool allow_overlay = true) const;
+  std::shared_ptr<const PSOBBGuildCardFile> guild_card_file(bool allow_load = true) const;
+
+  void create_character_file(
+      uint32_t guild_card_number,
+      uint8_t language,
+      const PlayerDispDataBBPreview& preview,
+      std::shared_ptr<const LevelTable> level_table);
+
+  std::string system_filename() const;
+  static std::string character_filename(const std::string& bb_username, int8_t index);
+  static std::string backup_character_filename(uint32_t serial_number, size_t index);
+  std::string character_filename(int8_t index = -1) const;
+  std::string guild_card_filename() const;
+  std::string shared_bank_filename() const;
+
+  std::string legacy_player_filename() const;
+  std::string legacy_account_filename() const;
+
+  void save_all();
+  void save_system_file() const;
+  static void save_character_file(
+      const std::string& filename,
+      std::shared_ptr<const PSOBBBaseSystemFile> sys,
+      std::shared_ptr<const PSOBBCharacterFile> character);
+  // Note: This function is not const because it updates the player's play time.
+  void save_character_file();
+  void save_guild_card_file() const;
+
+  void load_backup_character(uint32_t serial_number, size_t index);
+  void unload_character();
+
+  PlayerBank& current_bank();
+  std::shared_ptr<PSOBBCharacterFile> current_bank_character();
+  bool use_shared_bank(); // Returns true if the bank exists; false if it was created
+  void use_character_bank(int8_t bb_character_index);
+  void use_default_bank();
+
+private:
+  // The overlay character data is used in battle and challenge modes, when
+  // character data is temporarily replaced in-game. In other play modes and in
+  // lobbies, overlay_character_data is null.
+  std::shared_ptr<PSOBBBaseSystemFile> system_data;
+  std::shared_ptr<PSOBBCharacterFile> overlay_character_data;
+  std::shared_ptr<PSOBBCharacterFile> character_data;
+  std::shared_ptr<PSOBBGuildCardFile> guild_card_data;
+  std::shared_ptr<PlayerBank> external_bank;
+  std::shared_ptr<PSOBBCharacterFile> external_bank_character;
+  int8_t external_bank_character_index;
+  uint64_t last_play_time_update;
+
+  void save_and_clear_external_bank();
+
+  void load_all_files();
 };

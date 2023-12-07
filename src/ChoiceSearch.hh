@@ -8,7 +8,7 @@
 
 #include "Text.hh"
 
-struct Client;
+class Client;
 
 struct ChoiceSearchConfig {
   le_uint32_t disabled = 1; // 0 = enabled, 1 = disabled. Unused in command C3

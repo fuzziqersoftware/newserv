@@ -10,10 +10,10 @@
 #include <unordered_set>
 #include <vector>
 
-#include "../Player.hh"
+#include "DataIndexes.hh"
 
 struct Lobby;
-struct Client;
+class Client;
 struct ServerState;
 
 namespace Episode3 {

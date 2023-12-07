@@ -86,7 +86,7 @@ set(SOURCES
     src/Menu.cc
     src/NetworkAddresses.cc
     src/PatchFileIndex.cc
-    src/Player.cc
+    src/PlayerFilesManager.cc
     src/PlayerSubordinates.cc
     src/ProxyCommands.cc
     src/ProxyServer.cc

@@ -219,7 +219,7 @@ void Lobby::add_client(shared_ptr<Client> c, ssize_t required_client_id) {
 
   // If the lobby is recording a battle record, add the player join event
   if (this->battle_record) {
-    auto p = c->game_data.character();
+    auto p = c->character();
     PlayerLobbyDataDCGC lobby_data;
     lobby_data.player_tag = 0x00010000;
     lobby_data.guild_card_number = c->license->serial_number;
@@ -228,7 +228,7 @@ void Lobby::add_client(shared_ptr<Client> c, ssize_t required_client_id) {
         lobby_data,
         p->inventory,
         p->disp.to_dcpcv3(c->language(), c->language()),
-        c->game_data.ep3_config ? (c->game_data.ep3_config->online_clv_exp / 100) : 0);
+        c->ep3_config ? (c->ep3_config->online_clv_exp / 100) : 0);
   }
 
   // Send spectator count notifications if needed
@@ -318,7 +318,7 @@ shared_ptr<Client> Lobby::find_client(const string* identifier, uint64_t serial_
         (lc->license->serial_number == serial_number)) {
       return lc;
     }
-    if (identifier && (lc->game_data.character()->disp.name.eq(*identifier, lc->language()))) {
+    if (identifier && (lc->character()->disp.name.eq(*identifier, lc->language()))) {
       return lc;
     }
   }
@@ -384,7 +384,7 @@ void Lobby::on_item_id_generated_externally(uint32_t item_id) {
 }
 
 void Lobby::assign_inventory_and_bank_item_ids(shared_ptr<Client> c) {
-  auto p = c->game_data.character();
+  auto p = c->character();
   for (size_t z = 0; z < p->inventory.num_items; z++) {
     p->inventory.items[z].data.id = this->generate_item_id(c->lobby_client_id);
   }

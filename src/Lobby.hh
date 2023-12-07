@@ -16,7 +16,6 @@
 #include "Episode3/Server.hh"
 #include "ItemCreator.hh"
 #include "Map.hh"
-#include "Player.hh"
 #include "Quest.hh"
 #include "StaticGameData.hh"
 #include "Text.hh"

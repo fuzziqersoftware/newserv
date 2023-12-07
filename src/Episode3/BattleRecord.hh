@@ -9,7 +9,7 @@
 #include <string>
 #include <variant>
 
-#include "../Player.hh"
+#include "../PlayerSubordinates.hh"
 
 struct Lobby;
 

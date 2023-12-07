@@ -26,6 +26,7 @@ License::License(const JSON& json)
   this->bb_password = json.get_string("BBPassword", "");
   this->flags = json.get_int("Flags", 0);
   this->ban_end_time = json.get_int("BanEndTime", 0);
+  this->auto_reply_message = json.get_string("AutoReplyMessage", "");
   this->ep3_current_meseta = json.get_int("Ep3CurrentMeseta", 0);
   this->ep3_total_meseta_earned = json.get_int("Ep3TotalMesetaEarned", 0);
   this->bb_team_id = json.get_int("BBTeamID", 0);
@@ -43,6 +44,7 @@ JSON License::json() const {
       {"BBPassword", this->bb_password},
       {"Flags", this->flags},
       {"BanEndTime", this->ban_end_time},
+      {"AutoReplyMessage", this->auto_reply_message},
       {"Ep3CurrentMeseta", this->ep3_current_meseta},
       {"Ep3TotalMesetaEarned", this->ep3_total_meseta_earned},
       {"BBTeamID", this->bb_team_id},

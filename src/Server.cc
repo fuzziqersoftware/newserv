@@ -315,7 +315,7 @@ vector<shared_ptr<Client>> Server::get_clients_by_identifier(const string& ident
       continue;
     }
 
-    auto p = c->game_data.character(false, false);
+    auto p = c->character(false, false);
     if (p && p->disp.name.eq(ident, p->inventory.language)) {
       results.emplace_back(std::move(c));
       continue;

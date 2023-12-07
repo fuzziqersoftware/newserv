@@ -269,7 +269,7 @@ static void server_command_qcheck(shared_ptr<Client> c, const std::string& args)
 
   send_text_message_printf(c, "$C7Quest flag 0x%hX (%hu)\nis %s on %s",
       flag_num, flag_num,
-      c->game_data.character()->quest_flags.get(l->difficulty, flag_num) ? "set" : "not set",
+      c->character()->quest_flags.get(l->difficulty, flag_num) ? "set" : "not set",
       name_for_difficulty(l->difficulty));
 }
 
@@ -287,9 +287,9 @@ static void server_command_qset_qclear(shared_ptr<Client> c, const std::string& 
   uint16_t flag_num = stoul(args, nullptr, 0);
 
   if (should_set) {
-    c->game_data.character()->quest_flags.set(l->difficulty, flag_num);
+    c->character()->quest_flags.set(l->difficulty, flag_num);
   } else {
-    c->game_data.character()->quest_flags.clear(l->difficulty, flag_num);
+    c->character()->quest_flags.clear(l->difficulty, flag_num);
   }
 
   if (is_v1_or_v2(c->version())) {
@@ -364,7 +364,7 @@ static void proxy_command_qcall(shared_ptr<ProxyServer::LinkedSession> ses, cons
 }
 
 static void server_command_show_material_counts(shared_ptr<Client> c, const std::string&) {
-  auto p = c->game_data.character();
+  auto p = c->character();
   if (is_v1_or_v2(c->version())) {
     send_text_message_printf(c, "%hhu HP, %hhu TP",
         p->get_material_usage(PSOBBCharacterFile::MaterialType::HP),
@@ -903,7 +903,7 @@ static void server_command_edit(shared_ptr<Client> c, const std::string& args) {
   vector<string> tokens = split(encoded_args, ' ');
 
   try {
-    auto p = c->game_data.character();
+    auto p = c->character();
     if (tokens.at(0) == "atp") {
       p->disp.stats.char_stats.atp = stoul(tokens.at(1));
     } else if (tokens.at(0) == "mst") {
@@ -997,24 +997,24 @@ static void server_command_change_bank(shared_ptr<Client> c, const std::string& 
     throw runtime_error("cannot change banks while at the bank counter");
   }
 
-  ssize_t new_char_index = args.empty() ? (c->game_data.bb_character_index + 1) : stol(args, nullptr, 0);
+  ssize_t new_char_index = args.empty() ? (c->bb_character_index + 1) : stol(args, nullptr, 0);
 
   if (new_char_index == 0) {
-    if (c->game_data.use_shared_bank()) {
+    if (c->use_shared_bank()) {
       send_text_message_printf(c, "$C6Using shared bank (0)");
     } else {
       send_text_message_printf(c, "$C6Created shared bank (0)");
     }
   } else if (new_char_index <= 4) {
-    c->game_data.use_character_bank(new_char_index - 1);
-    auto bp = c->game_data.current_bank_character();
+    c->use_character_bank(new_char_index - 1);
+    auto bp = c->current_bank_character();
     auto name = bp->disp.name.decode(c->language());
     send_text_message_printf(c, "$C6Using %s\'s bank (%zu)", name.c_str(), new_char_index);
   } else {
     throw runtime_error("invalid bank number");
   }
 
-  const auto& bank = c->game_data.current_bank();
+  const auto& bank = c->current_bank();
   send_text_message_printf(c, "%" PRIu32 " items\n%" PRIu32 " Meseta", bank.num_items.load(), bank.meseta.load());
 }
 
@@ -1079,7 +1079,7 @@ static void server_command_loadchar(shared_ptr<Client> c, const std::string& arg
   check_is_game(l, false);
 
   size_t index = stoull(args, nullptr, 0);
-  c->game_data.load_backup_character(c->license->serial_number, index);
+  c->load_backup_character(c->license->serial_number, index);
 
   auto s = c->require_server_state();
   send_player_leave_notification(l, c->lobby_client_id);
@@ -1089,7 +1089,7 @@ static void server_command_loadchar(shared_ptr<Client> c, const std::string& arg
 static void server_command_save(shared_ptr<Client> c, const std::string&) {
   check_version(c, Version::BB_V4);
   try {
-    c->game_data.save_all();
+    c->save_all();
     send_text_message(c, "All data saved");
   } catch (const exception& e) {
     send_text_message_printf(c, "Can\'t save data:\n%s", e.what());
@@ -1101,7 +1101,7 @@ static void server_command_save(shared_ptr<Client> c, const std::string&) {
 // Administration commands
 
 static string name_for_client(shared_ptr<Client> c) {
-  auto player = c->game_data.character(false);
+  auto player = c->character(false);
   if (player.get()) {
     return player->disp.name.decode(player->inventory.language);
   }
@@ -1624,7 +1624,7 @@ static void server_command_surrender(shared_ptr<Client> c, const std::string&) {
     send_text_message(c, "$C6Battle has not\nyet started");
     return;
   }
-  const string& name = c->game_data.character()->disp.name.decode(c->language());
+  const string& name = c->character()->disp.name.decode(c->language());
   send_text_message_printf(l, "$C6%s has\nsurrendered", name.c_str());
   for (const auto& watcher_l : l->watcher_lobbies) {
     send_text_message_printf(watcher_l, "$C6%s has\nsurrendered", name.c_str());

@@ -23,6 +23,7 @@
 #include "License.hh"
 #include "Lobby.hh"
 #include "Menu.hh"
+#include "PlayerFilesManager.hh"
 #include "Quest.hh"
 #include "TeamIndex.hh"
 #include "WordSelectTable.hh"

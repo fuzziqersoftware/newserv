@@ -295,7 +295,7 @@ void on_login_complete(shared_ptr<Client> c) {
     if (c->version() == Version::BB_V4) {
       // This implicitly loads the client's account and player data
       send_complete_player_bb(c);
-      c->game_data.should_update_play_time = true;
+      c->should_update_play_time = true;
     }
 
     if (is_ep3(c->version())) {
@@ -1040,7 +1040,7 @@ static void on_93_BB(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
   }
   c->channel.language = c->config.check_flag(Client::Flag::FORCE_ENGLISH_LANGUAGE_BB) ? 1 : cmd.language;
   c->bb_connection_phase = cmd.connection_phase;
-  c->game_data.bb_character_index = cmd.character_slot;
+  c->bb_character_index = cmd.character_slot;
 
   if (cmd.menu_id == MenuID::LOBBY) {
     c->preferred_lobby_id = cmd.preferred_lobby_id;
@@ -1522,7 +1522,7 @@ static void on_CA_Ep3(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
       l->battle_record = make_shared<Episode3::BattleRecord>(s->ep3_behavior_flags);
       for (auto existing_c : l->clients) {
         if (existing_c) {
-          auto existing_p = existing_c->game_data.character();
+          auto existing_p = existing_c->character();
           PlayerLobbyDataDCGC lobby_data;
           lobby_data.name.encode(existing_p->disp.name.decode(existing_c->language()), c->language());
           lobby_data.player_tag = 0x00010000;
@@ -1531,7 +1531,7 @@ static void on_CA_Ep3(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
               lobby_data,
               existing_p->inventory,
               existing_p->disp.to_dcpcv3(c->language(), c->language()),
-              c->game_data.ep3_config ? (c->game_data.ep3_config->online_clv_exp / 100) : 0);
+              c->ep3_config ? (c->ep3_config->online_clv_exp / 100) : 0);
         }
       }
       if (s->ep3_behavior_flags & Episode3::BehaviorFlag::ENABLE_STATUS_MESSAGES) {
@@ -1707,7 +1707,7 @@ static void on_09(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
         for (size_t x = 0; x < game->max_clients; x++) {
           const auto& game_c = game->clients[x];
           if (game_c.get()) {
-            auto player = game_c->game_data.character();
+            auto player = game_c->character();
             string name = player->disp.name.decode(game_c->language());
             if (game->is_ep3()) {
               info += string_printf("%zu: $C6%s$C7 L%" PRIu32 "\n",
@@ -1892,12 +1892,12 @@ static void on_quest_loaded(shared_ptr<Lobby> l) {
     // data. On BB, this is instead done in the 6xCF handler (for battle) or
     // the 02DF handler (for challenge).
     if (l->base_version != Version::BB_V4) {
-      lc->game_data.delete_overlay();
+      lc->delete_overlay();
       if (l->quest->battle_rules) {
-        lc->game_data.create_battle_overlay(l->quest->battle_rules, s->level_table);
+        lc->create_battle_overlay(l->quest->battle_rules, s->level_table);
         lc->log.info("Created battle overlay");
       } else if (l->quest->challenge_template_index >= 0) {
-        lc->game_data.create_challenge_overlay(lc->version(), l->quest->challenge_template_index, s->level_table);
+        lc->create_challenge_overlay(lc->version(), l->quest->challenge_template_index, s->level_table);
         lc->log.info("Created challenge overlay");
         l->assign_inventory_and_bank_item_ids(lc);
       }
@@ -2044,7 +2044,7 @@ static void on_10(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
         }
 
         case MainMenuItemID::PROXY_DESTINATIONS:
-          if (!c->game_data.character(false, false)) {
+          if (!c->character(false, false)) {
             send_get_player_info(c);
           }
           send_proxy_destinations_menu(c);
@@ -2278,7 +2278,7 @@ static void on_10(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
           send_lobby_message_box(c, "$C6Incorrect password.");
           break;
         }
-        auto p = c->game_data.character();
+        auto p = c->character();
         if (p->disp.stats.level < game->min_level) {
           send_lobby_message_box(c, "$C6Your level is too\nlow to join this\ngame.");
           break;
@@ -2464,7 +2464,7 @@ static void on_10(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
         break;
       }
       if (team_name.empty()) {
-        team_name = c->game_data.character()->disp.name.decode(c->language());
+        team_name = c->character()->disp.name.decode(c->language());
         team_name += string_printf("/%" PRIX32, c->license->serial_number);
       }
       auto s = c->require_server_state();
@@ -2794,21 +2794,21 @@ static void on_13_A7_V3_BB(shared_ptr<Client> c, uint16_t command, uint32_t flag
 
 static void on_61_98(shared_ptr<Client> c, uint16_t command, uint32_t flag, string& data) {
   auto s = c->require_server_state();
-  auto player = c->game_data.character();
+  auto player = c->character();
 
   switch (c->version()) {
     case Version::DC_NTE:
     case Version::DC_V1_11_2000_PROTOTYPE:
     case Version::DC_V1: {
       const auto& cmd = check_size_t<C_CharacterData_DCv1_61_98>(data);
-      c->game_data.last_reported_disp_v1_v2 = make_unique<PlayerDispDataDCPCV3>(cmd.disp);
+      c->v1_v2_last_reported_disp = make_unique<PlayerDispDataDCPCV3>(cmd.disp);
       player->inventory = cmd.inventory;
       player->disp = cmd.disp.to_bb(player->inventory.language, player->inventory.language);
       break;
     }
     case Version::DC_V2: {
       const auto& cmd = check_size_t<C_CharacterData_DCv2_61_98>(data, 0xFFFF);
-      c->game_data.last_reported_disp_v1_v2 = make_unique<PlayerDispDataDCPCV3>(cmd.disp);
+      c->v1_v2_last_reported_disp = make_unique<PlayerDispDataDCPCV3>(cmd.disp);
       player->inventory = cmd.inventory;
       player->disp = cmd.disp.to_bb(player->inventory.language, player->inventory.language);
       player->battle_records = cmd.records.battle;
@@ -2818,15 +2818,13 @@ static void on_61_98(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
     }
     case Version::PC_V2: {
       const auto& cmd = check_size_t<C_CharacterData_PC_61_98>(data, 0xFFFF);
-      c->game_data.last_reported_disp_v1_v2 = make_unique<PlayerDispDataDCPCV3>(cmd.disp);
+      c->v1_v2_last_reported_disp = make_unique<PlayerDispDataDCPCV3>(cmd.disp);
       player->inventory = cmd.inventory;
       player->disp = cmd.disp.to_bb(player->inventory.language, player->inventory.language);
       player->battle_records = cmd.records.battle;
       player->challenge_records = cmd.records.challenge;
       player->choice_search_config = cmd.choice_search_config;
-      for (size_t z = 0; z < cmd.blocked_senders.size(); z++) {
-        c->game_data.blocked_senders.at(z) = cmd.blocked_senders[z];
-      }
+      c->import_blocked_senders(cmd.blocked_senders);
       if (cmd.auto_reply_enabled) {
         string auto_reply = data.substr(sizeof(cmd));
         strip_trailing_zeroes(auto_reply);
@@ -2841,7 +2839,7 @@ static void on_61_98(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
     }
     case Version::GC_NTE: {
       const auto& cmd = check_size_t<C_CharacterData_GCNTE_61_98>(data, 0xFFFF);
-      c->game_data.last_reported_disp_v1_v2 = make_unique<PlayerDispDataDCPCV3>(cmd.disp);
+      c->v1_v2_last_reported_disp = make_unique<PlayerDispDataDCPCV3>(cmd.disp);
 
       auto s = c->require_server_state();
       player->inventory = cmd.inventory;
@@ -2849,9 +2847,7 @@ static void on_61_98(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
       player->battle_records = cmd.records.battle;
       player->challenge_records = cmd.records.challenge;
       player->choice_search_config = cmd.choice_search_config;
-      for (size_t z = 0; z < cmd.blocked_senders.size(); z++) {
-        c->game_data.blocked_senders.at(z) = cmd.blocked_senders[z];
-      }
+      c->import_blocked_senders(cmd.blocked_senders);
       if (cmd.auto_reply_enabled) {
         string auto_reply = data.substr(sizeof(cmd), 0xAC);
         strip_trailing_zeroes(auto_reply);
@@ -2873,7 +2869,7 @@ static void on_61_98(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
           throw runtime_error("non-Episode 3 client sent Episode 3 player data");
         }
         const auto* cmd3 = &check_size_t<C_CharacterData_GC_Ep3_61_98>(data);
-        c->game_data.ep3_config = make_shared<Episode3::PlayerConfig>(cmd3->ep3_config);
+        c->ep3_config = make_shared<Episode3::PlayerConfig>(cmd3->ep3_config);
         cmd = reinterpret_cast<const C_CharacterData_V3_61_98*>(cmd3);
         if (c->config.specific_version == 0x33000000) {
           c->config.specific_version = 0x33534A30; // 3SJ0
@@ -2924,9 +2920,7 @@ static void on_61_98(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
       player->challenge_records = cmd->records.challenge;
       player->choice_search_config = cmd->choice_search_config;
       player->info_board.encode(cmd->info_board.decode(player->inventory.language), player->inventory.language);
-      for (size_t z = 0; z < cmd->blocked_senders.size(); z++) {
-        c->game_data.blocked_senders.at(z) = cmd->blocked_senders[z];
-      }
+      c->import_blocked_senders(cmd->blocked_senders);
       if (cmd->auto_reply_enabled) {
         string auto_reply = data.substr(sizeof(cmd), 0xAC);
         strip_trailing_zeroes(auto_reply);
@@ -2945,9 +2939,7 @@ static void on_61_98(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
       player->challenge_records = cmd.records.challenge;
       player->choice_search_config = cmd.choice_search_config;
       player->info_board = cmd.info_board;
-      for (size_t z = 0; z < cmd.blocked_senders.size(); z++) {
-        c->game_data.blocked_senders.at(z) = cmd.blocked_senders[z];
-      }
+      c->import_blocked_senders(cmd.blocked_senders);
       if (cmd.auto_reply_enabled) {
         string auto_reply = data.substr(sizeof(cmd), 0xAC);
         strip_trailing_zeroes(auto_reply);
@@ -2976,7 +2968,7 @@ static void on_61_98(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
   // in no lobby (they will send an 84 soon afterward to choose a lobby).
   if (command == 0x98) {
     // If the client had an overlay (for battle/challenge modes), delete it
-    c->game_data.delete_overlay();
+    c->delete_overlay();
 
     s->remove_client_from_lobby(c);
 
@@ -2987,11 +2979,11 @@ static void on_61_98(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
 
       string filename;
       if (pending_export->is_bb_conversion) {
-        filename = ClientGameData::character_filename(
+        filename = Client::character_filename(
             pending_export->license->bb_username,
             pending_export->character_index);
       } else {
-        filename = ClientGameData::backup_character_filename(
+        filename = Client::backup_character_filename(
             pending_export->license->serial_number,
             pending_export->character_index);
       }
@@ -3025,7 +3017,7 @@ static void on_61_98(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
         bb_player->challenge_records = player->challenge_records;
         bb_player->choice_search_config = player->choice_search_config;
         try {
-          ClientGameData::save_character_file(filename, c->game_data.system(), bb_player);
+          Client::save_character_file(filename, c->system_file(), bb_player);
           send_text_message(c, "$C6Character data saved");
         } catch (const exception& e) {
           send_text_message_printf(c, "$C6Character data could\nnot be saved:\n%s", e.what());
@@ -3086,7 +3078,7 @@ static void on_06(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
     return;
   }
 
-  auto p = c->game_data.character();
+  auto p = c->character();
   string from_name = p->disp.name.decode(c->language());
   if (from_name.size() >= 2 && from_name[0] == '\t' && (from_name[1] == 'E' || from_name[1] == 'J')) {
     from_name = from_name.substr(2);
@@ -3124,7 +3116,8 @@ static void on_E0_BB(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
 static void on_E3_BB(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
   const auto& cmd = check_size_t<C_PlayerPreviewRequest_BB_E3>(data);
 
-  c->game_data.bb_character_index = cmd.character_index;
+  c->bb_character_index = cmd.character_index;
+  c->unload_character();
 
   if (c->bb_connection_phase != 0x00) {
     send_approve_player_choice_bb(c);
@@ -3136,14 +3129,8 @@ static void on_E3_BB(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
     }
 
     auto s = c->require_server_state();
-
-    ClientGameData temp_gd(s->player_files_manager);
-    temp_gd.guild_card_number = c->license->serial_number;
-    temp_gd.set_bb_username(c->license->bb_username);
-    temp_gd.bb_character_index = cmd.character_index;
-
     try {
-      auto preview = temp_gd.character()->disp.to_preview();
+      auto preview = c->character()->disp.to_preview();
       send_player_preview_bb(c, cmd.character_index, &preview);
 
     } catch (const exception& e) {
@@ -3157,7 +3144,7 @@ static void on_E3_BB(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
 static void on_E8_BB(shared_ptr<Client> c, uint16_t command, uint32_t, string& data) {
   constexpr size_t max_count = sizeof(PSOBBGuildCardFile::entries) / sizeof(PSOBBGuildCardFile::Entry);
   constexpr size_t max_blocked = sizeof(PSOBBGuildCardFile::blocked) / sizeof(GuildCardBB);
-  auto gcf = c->game_data.guild_cards();
+  auto gcf = c->guild_card_file();
   bool should_save = false;
   switch (command) {
     case 0x01E8: { // Check guild card file checksum
@@ -3287,7 +3274,7 @@ static void on_E8_BB(shared_ptr<Client> c, uint16_t command, uint32_t, string& d
       throw invalid_argument("invalid command");
   }
   if (should_save) {
-    c->game_data.save_guild_card_file();
+    c->save_guild_card_file();
   }
 }
 
@@ -3322,17 +3309,17 @@ static void on_E5_BB(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
     return;
   }
 
-  if (c->game_data.character(false).get()) {
+  if (c->character(false).get()) {
     throw runtime_error("player already exists");
   }
 
-  c->game_data.bb_character_index = -1;
-  c->game_data.system(); // Ensure system file is loaded
-  c->game_data.bb_character_index = cmd.character_index;
+  c->bb_character_index = -1;
+  c->system_file(); // Ensure system file is loaded
+  c->bb_character_index = cmd.character_index;
 
   if (c->bb_connection_phase == 0x03) { // Dressing room
     try {
-      c->game_data.character()->disp.apply_dressing_room(cmd.preview);
+      c->character()->disp.apply_dressing_room(cmd.preview);
     } catch (const exception& e) {
       send_message_box(c, string_printf("$C6Character could not be modified:\n%s", e.what()));
       return;
@@ -3340,7 +3327,7 @@ static void on_E5_BB(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
   } else {
     try {
       auto s = c->require_server_state();
-      c->game_data.create_character_file(c->license->serial_number, c->language(), cmd.preview, s->level_table);
+      c->create_character_file(c->license->serial_number, c->language(), cmd.preview, s->level_table);
     } catch (const exception& e) {
       send_message_box(c, string_printf("$C6New character could not be created:\n%s", e.what()));
       return;
@@ -3351,8 +3338,8 @@ static void on_E5_BB(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
 }
 
 static void on_ED_BB(shared_ptr<Client> c, uint16_t command, uint32_t, string& data) {
-  auto p = c->game_data.character();
-  auto sys = c->game_data.system();
+  auto p = c->character();
+  auto sys = c->system_file();
   switch (command) {
     case 0x01ED: {
       const auto& cmd = check_size_t<C_UpdateOptionFlags_BB_01ED>(data);
@@ -3372,13 +3359,13 @@ static void on_ED_BB(shared_ptr<Client> c, uint16_t command, uint32_t, string& d
     case 0x04ED: {
       const auto& cmd = check_size_t<C_UpdateKeyConfig_BB_04ED>(data);
       sys->key_config = cmd.key_config;
-      c->game_data.save_system_file();
+      c->save_system_file();
       break;
     }
     case 0x05ED: {
       const auto& cmd = check_size_t<C_UpdatePadConfig_BB_05ED>(data);
       sys->joystick_config = cmd.pad_config;
-      c->game_data.save_system_file();
+      c->save_system_file();
       break;
     }
     case 0x06ED: {
@@ -3407,18 +3394,18 @@ static void on_E7_BB(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
   // TODO: In the future, we shouldn't need to trust any of the client's data
   // here. We should instead verify our copy of the player against what the
   // client sent, and alert on anything that's out of sync.
-  auto p = c->game_data.character();
+  auto p = c->character();
   p->challenge_records = cmd.char_file.challenge_records;
   p->battle_records = cmd.char_file.battle_records;
   p->death_count = cmd.char_file.death_count;
-  *c->game_data.system() = cmd.system_file.base;
+  *c->system_file() = cmd.system_file.base;
 }
 
 static void on_E2_BB(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
   auto& cmd = check_size_t<PSOBBFullSystemFile>(data);
-  auto sys = c->game_data.system();
+  auto sys = c->system_file();
   *sys = cmd.base;
-  c->game_data.save_system_file();
+  c->save_system_file();
 
   S_SystemFileCreated_00E1_BB out_cmd = {1};
   send_command_t(c, 0x00E1, 0x00000000, out_cmd);
@@ -3453,7 +3440,7 @@ static void on_DF_BB(shared_ptr<Client> c, uint16_t command, uint32_t, string& d
       }
       for (auto lc : l->clients) {
         if (lc) {
-          lc->game_data.create_challenge_overlay(lc->version(), l->quest->challenge_template_index, s->level_table);
+          lc->create_challenge_overlay(lc->version(), l->quest->challenge_template_index, s->level_table);
           lc->log.info("Created challenge overlay");
           l->assign_inventory_and_bank_item_ids(lc);
         }
@@ -3499,7 +3486,7 @@ static void on_DF_BB(shared_ptr<Client> c, uint16_t command, uint32_t, string& d
 
     case 0x07DF: {
       const auto& cmd = check_size_t<C_CreateChallengeModeAwardItem_BB_07DF>(data);
-      auto p = c->game_data.character(true, false);
+      auto p = c->character(true, false);
       auto& award_state = (l->episode == Episode::EP2)
           ? p->challenge_records.ep2_online_award_state
           : p->challenge_records.ep1_online_award_state;
@@ -3541,7 +3528,7 @@ static void on_C0(shared_ptr<Client> c, uint16_t, uint32_t, string&) {
 }
 
 static void on_C2(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
-  c->game_data.character()->choice_search_config = check_size_t<ChoiceSearchConfig>(data);
+  c->character()->choice_search_config = check_size_t<ChoiceSearchConfig>(data);
 }
 
 template <typename ResultT>
@@ -3551,7 +3538,7 @@ static void on_choice_search_t(shared_ptr<Client> c, const ChoiceSearchConfig& c
   vector<ResultT> results;
   for (const auto& l : s->all_lobbies()) {
     for (const auto& lc : l->clients) {
-      if (!lc || lc->game_data.character()->choice_search_config.disabled) {
+      if (!lc || lc->character()->choice_search_config.disabled) {
         continue;
       }
 
@@ -3572,7 +3559,7 @@ static void on_choice_search_t(shared_ptr<Client> c, const ChoiceSearchConfig& c
       }
 
       if (is_match) {
-        auto lp = lc->game_data.character();
+        auto lp = lc->character();
         auto& result = results.emplace_back();
         result.guild_card_number = lc->license->serial_number;
         result.name.encode(lp->disp.name.decode(lc->language()), c->language());
@@ -3680,15 +3667,13 @@ static void on_81(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
 
   } else {
     // If the sender is blocked, don't forward the mail
-    for (size_t y = 0; y < 30; y++) {
-      if (target->game_data.blocked_senders.data()[y] == c->license->serial_number) {
-        return;
-      }
+    if (target->blocked_senders.count(c->license->serial_number)) {
+      return;
     }
 
     // If the target has auto-reply enabled, send the autoreply. Note that we also
     // forward the message in this case.
-    auto target_p = target->game_data.character();
+    auto target_p = target->character();
     if (!target_p->auto_reply.empty()) {
       send_simple_mail(
           c,
@@ -3701,7 +3686,7 @@ static void on_81(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
     send_simple_mail(
         target,
         c->license->serial_number,
-        c->game_data.character()->disp.name.decode(c->language()),
+        c->character()->disp.name.decode(c->language()),
         message);
   }
 }
@@ -3717,7 +3702,7 @@ void on_D9(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
   if (is_w && (data.size() & 1)) {
     data.push_back(0);
   }
-  c->game_data.character(true, false)->info_board.encode(tt_decode_marked(data, c->language(), is_w), c->language());
+  c->character(true, false)->info_board.encode(tt_decode_marked(data, c->language(), is_w), c->language());
 }
 
 void on_C7(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
@@ -3726,26 +3711,22 @@ void on_C7(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
   if (is_w && (data.size() & 1)) {
     data.push_back(0);
   }
-  c->game_data.character(true, false)->auto_reply.encode(tt_decode_marked(data, c->language(), is_w), c->language());
+  c->character(true, false)->auto_reply.encode(tt_decode_marked(data, c->language(), is_w), c->language());
 }
 
 static void on_C8(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
   check_size_v(data.size(), 0);
-  c->game_data.character(true, false)->auto_reply.clear();
+  c->character(true, false)->auto_reply.clear();
 }
 
 static void on_C6(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
-  c->game_data.blocked_senders.fill(0);
+  c->blocked_senders.clear();
   if (c->version() == Version::BB_V4) {
     const auto& cmd = check_size_t<C_SetBlockedSenders_BB_C6>(data);
-    for (size_t z = 0; z < cmd.blocked_senders.size(); z++) {
-      c->game_data.blocked_senders[z] = cmd.blocked_senders[z];
-    }
+    c->import_blocked_senders(cmd.blocked_senders);
   } else {
     const auto& cmd = check_size_t<C_SetBlockedSenders_V3_C6>(data);
-    for (size_t z = 0; z < cmd.blocked_senders.size(); z++) {
-      c->game_data.blocked_senders[z] = cmd.blocked_senders[z];
-    }
+    c->import_blocked_senders(cmd.blocked_senders);
   }
 }
 
@@ -3805,7 +3786,7 @@ shared_ptr<Lobby> create_game_generic(
       throw runtime_error("invalid episode");
   }
 
-  auto p = c->game_data.character();
+  auto p = c->character();
   if (!(c->license->flags & License::Flag::FREE_JOIN_GAMES) &&
       (min_level > p->disp.stats.level)) {
     // Note: We don't throw here because this is a situation players might
@@ -4311,7 +4292,7 @@ static void on_99(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
 static void on_D0_V3_BB(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
   const auto& cmd = check_size_t<SC_TradeItems_D0_D3>(data);
 
-  if (c->game_data.pending_item_trade) {
+  if (c->pending_item_trade) {
     throw runtime_error("player started a trade when one is already pending");
   }
   if (cmd.item_count > 0x20) {
@@ -4327,10 +4308,10 @@ static void on_D0_V3_BB(shared_ptr<Client> c, uint16_t, uint32_t, string& data) 
     throw runtime_error("trade command sent to missing player");
   }
 
-  c->game_data.pending_item_trade = make_unique<PendingItemTrade>();
-  c->game_data.pending_item_trade->other_client_id = cmd.target_client_id;
+  c->pending_item_trade = make_unique<Client::PendingItemTrade>();
+  c->pending_item_trade->other_client_id = cmd.target_client_id;
   for (size_t x = 0; x < cmd.item_count; x++) {
-    auto& item = c->game_data.pending_item_trade->items.emplace_back(cmd.item_datas[x]);
+    auto& item = c->pending_item_trade->items.emplace_back(cmd.item_datas[x]);
     item.decode_for_version(c->version());
   }
 
@@ -4343,7 +4324,7 @@ static void on_D0_V3_BB(shared_ptr<Client> c, uint16_t, uint32_t, string& data) 
   // See the description of the D0 command in CommandFormats.hh for more
   // information on how this sequence is supposed to work.
   send_command(target_c, 0xD1, 0x00);
-  if (target_c->game_data.pending_item_trade) {
+  if (target_c->pending_item_trade) {
     send_command(c, 0xD1, 0x00);
   }
 }
@@ -4351,7 +4332,7 @@ static void on_D0_V3_BB(shared_ptr<Client> c, uint16_t, uint32_t, string& data) 
 static void on_D2_V3_BB(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
   check_size_v(data.size(), 0);
 
-  if (!c->game_data.pending_item_trade) {
+  if (!c->pending_item_trade) {
     throw runtime_error("player executed a trade with none pending");
   }
 
@@ -4359,11 +4340,11 @@ static void on_D2_V3_BB(shared_ptr<Client> c, uint16_t, uint32_t, string& data) 
   if (!l->is_game()) {
     throw runtime_error("trade command received in non-game lobby");
   }
-  auto target_c = l->clients.at(c->game_data.pending_item_trade->other_client_id);
+  auto target_c = l->clients.at(c->pending_item_trade->other_client_id);
   if (!target_c) {
     throw runtime_error("target player is missing");
   }
-  if (!target_c->game_data.pending_item_trade) {
+  if (!target_c->pending_item_trade) {
     throw runtime_error("player executed a trade with no other side pending");
   }
 
@@ -4371,9 +4352,9 @@ static void on_D2_V3_BB(shared_ptr<Client> c, uint16_t, uint32_t, string& data) 
     if (c->version() == Version::BB_V4) {
       // On BB, the server is expected to generate the delete item and create
       // item commands
-      auto to_p = to_c->game_data.character();
-      auto from_p = from_c->game_data.character();
-      for (const auto& trade_item : from_c->game_data.pending_item_trade->items) {
+      auto to_p = to_c->character();
+      auto from_p = from_c->character();
+      for (const auto& trade_item : from_c->pending_item_trade->items) {
         size_t amount = trade_item.stack_size();
 
         auto item = from_p->remove_item(trade_item.id, amount, false);
@@ -4396,18 +4377,18 @@ static void on_D2_V3_BB(shared_ptr<Client> c, uint16_t, uint32_t, string& data) 
     } else {
       // On V3, the clients will handle it; we just send their final trade lists
       // to each other
-      send_execute_item_trade(to_c, target_c->game_data.pending_item_trade->items);
+      send_execute_item_trade(to_c, target_c->pending_item_trade->items);
     }
 
     send_command(to_c, 0xD4, 0x01);
   };
 
-  c->game_data.pending_item_trade->confirmed = true;
-  if (target_c->game_data.pending_item_trade->confirmed) {
+  c->pending_item_trade->confirmed = true;
+  if (target_c->pending_item_trade->confirmed) {
     complete_trade_for_side(c, target_c);
     complete_trade_for_side(target_c, c);
-    c->game_data.pending_item_trade.reset();
-    target_c->game_data.pending_item_trade.reset();
+    c->pending_item_trade.reset();
+    target_c->pending_item_trade.reset();
   }
 }
 
@@ -4418,11 +4399,11 @@ static void on_D4_V3_BB(shared_ptr<Client> c, uint16_t, uint32_t, string& data) 
   // trade sequence, the client can get into a state where it sends this command
   // many times in a row. To deal with this, we just do nothing if the client
   // has no trade pending.
-  if (!c->game_data.pending_item_trade) {
+  if (!c->pending_item_trade) {
     return;
   }
-  uint8_t other_client_id = c->game_data.pending_item_trade->other_client_id;
-  c->game_data.pending_item_trade.reset();
+  uint8_t other_client_id = c->pending_item_trade->other_client_id;
+  c->pending_item_trade.reset();
   send_command(c, 0xD4, 0x00);
 
   // Cancel the other side of the trade too, if it's open
@@ -4434,10 +4415,10 @@ static void on_D4_V3_BB(shared_ptr<Client> c, uint16_t, uint32_t, string& data) 
   if (!target_c) {
     return;
   }
-  if (!target_c->game_data.pending_item_trade) {
+  if (!target_c->pending_item_trade) {
     return;
   }
-  target_c->game_data.pending_item_trade.reset();
+  target_c->pending_item_trade.reset();
   send_command(target_c, 0xD4, 0x00);
 }
 
@@ -4453,7 +4434,7 @@ static void on_EE_Ep3(shared_ptr<Client> c, uint16_t, uint32_t flag, string& dat
   if (flag == 0xD0) {
     auto& cmd = check_size_t<SC_TradeCards_GC_Ep3_EE_FlagD0_FlagD3>(data);
 
-    if (c->game_data.pending_card_trade) {
+    if (c->pending_card_trade) {
       throw runtime_error("player started a card trade when one is already pending");
     }
     if (cmd.entry_count > 4) {
@@ -4468,10 +4449,10 @@ static void on_EE_Ep3(shared_ptr<Client> c, uint16_t, uint32_t flag, string& dat
       throw runtime_error("card trade target is not Episode 3");
     }
 
-    c->game_data.pending_card_trade = make_unique<PendingCardTrade>();
-    c->game_data.pending_card_trade->other_client_id = cmd.target_client_id;
+    c->pending_card_trade = make_unique<Client::PendingCardTrade>();
+    c->pending_card_trade->other_client_id = cmd.target_client_id;
     for (size_t x = 0; x < cmd.entry_count; x++) {
-      c->game_data.pending_card_trade->card_to_count.emplace_back(
+      c->pending_card_trade->card_to_count.emplace_back(
           make_pair(cmd.entries[x].card_type, cmd.entries[x].count));
     }
 
@@ -4485,45 +4466,45 @@ static void on_EE_Ep3(shared_ptr<Client> c, uint16_t, uint32_t flag, string& dat
     // is analogous to Episodes 1&2's D0 command.)
     S_AdvanceCardTradeState_GC_Ep3_EE_FlagD1 resp = {0};
     send_command_t(target_c, 0xEE, 0xD1, resp);
-    if (target_c->game_data.pending_card_trade) {
+    if (target_c->pending_card_trade) {
       send_command_t(c, 0xEE, 0xD1, resp);
     }
 
   } else if (flag == 0xD2) {
     check_size_v(data.size(), 0);
 
-    if (!c->game_data.pending_card_trade) {
+    if (!c->pending_card_trade) {
       throw runtime_error("player executed a card trade with none pending");
     }
 
-    auto target_c = l->clients.at(c->game_data.pending_card_trade->other_client_id);
+    auto target_c = l->clients.at(c->pending_card_trade->other_client_id);
     if (!target_c) {
       throw runtime_error("card trade target player is missing");
     }
-    if (!target_c->game_data.pending_card_trade) {
+    if (!target_c->pending_card_trade) {
       throw runtime_error("player executed a card trade with no other side pending");
     }
 
-    c->game_data.pending_card_trade->confirmed = true;
-    if (target_c->game_data.pending_card_trade->confirmed) {
-      send_execute_card_trade(c, target_c->game_data.pending_card_trade->card_to_count);
-      send_execute_card_trade(target_c, c->game_data.pending_card_trade->card_to_count);
+    c->pending_card_trade->confirmed = true;
+    if (target_c->pending_card_trade->confirmed) {
+      send_execute_card_trade(c, target_c->pending_card_trade->card_to_count);
+      send_execute_card_trade(target_c, c->pending_card_trade->card_to_count);
       S_CardTradeComplete_GC_Ep3_EE_FlagD4 resp = {1};
       send_command_t(c, 0xEE, 0xD4, resp);
       send_command_t(target_c, 0xEE, 0xD4, resp);
-      c->game_data.pending_card_trade.reset();
-      target_c->game_data.pending_card_trade.reset();
+      c->pending_card_trade.reset();
+      target_c->pending_card_trade.reset();
     }
 
   } else if (flag == 0xD4) {
     check_size_v(data.size(), 0);
 
     // See the D4 handler for why this check exists (and why it doesn't throw)
-    if (!c->game_data.pending_card_trade) {
+    if (!c->pending_card_trade) {
       return;
     }
-    uint8_t other_client_id = c->game_data.pending_card_trade->other_client_id;
-    c->game_data.pending_card_trade.reset();
+    uint8_t other_client_id = c->pending_card_trade->other_client_id;
+    c->pending_card_trade.reset();
     S_CardTradeComplete_GC_Ep3_EE_FlagD4 resp = {0};
     send_command_t(c, 0xEE, 0xD4, resp);
 
@@ -4532,10 +4513,10 @@ static void on_EE_Ep3(shared_ptr<Client> c, uint16_t, uint32_t flag, string& dat
     if (!target_c) {
       return;
     }
-    if (!target_c->game_data.pending_card_trade) {
+    if (!target_c->pending_card_trade) {
       return;
     }
-    target_c->game_data.pending_card_trade.reset();
+    target_c->pending_card_trade.reset();
     send_command_t(target_c, 0xEE, 0xD4, resp);
 
   } else {
@@ -4570,7 +4551,7 @@ static void on_EA_BB(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
         // TODO: What's the right error code to use here?
         send_command(c, 0x02EA, 0x00000001);
       } else {
-        string player_name = c->game_data.character()->disp.name.decode(c->language());
+        string player_name = c->character()->disp.name.decode(c->language());
         auto team = s->team_index->create(team_name, c->license->serial_number, player_name);
         c->license->bb_team_id = team->team_id;
         c->license->save();
@@ -4611,7 +4592,7 @@ static void on_EA_BB(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
             s->team_index->add_member(
                 team->team_id,
                 added_c->license->serial_number,
-                added_c->game_data.character()->disp.name.decode(added_c->language()));
+                added_c->character()->disp.name.decode(added_c->language()));
 
             send_update_team_metadata_for_client(added_c);
             send_team_membership_info(added_c);
@@ -4811,7 +4792,7 @@ static void on_EA_BB(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
           }
         }
         if (!reward.reward_item.empty()) {
-          c->game_data.current_bank().add_item(reward.reward_item);
+          c->current_bank().add_item(reward.reward_item);
         }
       }
       break;

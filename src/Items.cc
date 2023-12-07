@@ -17,7 +17,7 @@ void player_use_item(shared_ptr<Client> c, size_t item_index) {
   bool is_v3_or_later = is_v3(c->version()) || is_v4(c->version());
   bool should_delete_item = is_v3_or_later;
 
-  auto player = c->game_data.character();
+  auto player = c->character();
   auto& item = player->inventory.items[item_index];
   uint32_t item_identifier = item.data.primary_identifier();
 
@@ -54,7 +54,7 @@ void player_use_item(shared_ptr<Client> c, size_t item_index) {
     weapon.data.data1[3] += (item.data.data1[2] + 1);
 
   } else if ((item_identifier & 0xFFFF00) == 0x030B00) { // Material
-    auto p = c->game_data.character();
+    auto p = c->character();
 
     using Type = PSOBBCharacterFile::MaterialType;
     Type type;
@@ -272,7 +272,7 @@ void player_feed_mag(std::shared_ptr<Client> c, size_t mag_item_index, size_t fe
   });
 
   auto s = c->require_server_state();
-  auto player = c->game_data.character();
+  auto player = c->character();
   auto& fed_item = player->inventory.items[fed_item_index];
   auto& mag_item = player->inventory.items[mag_item_index];
 

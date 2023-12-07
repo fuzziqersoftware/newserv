@@ -17,7 +17,7 @@
 #include "Text.hh"
 #include "Version.hh"
 
-struct Client;
+class Client;
 class ItemParameterTable;
 
 // PSO V2 stored some extra data in the character structs in a format that I'm

@@ -10,7 +10,7 @@
 #include "Episode3/MapState.hh"
 #include "Episode3/PlayerStateSubordinates.hh"
 #include "PSOProtocol.hh"
-#include "Player.hh"
+#include "PlayerSubordinates.hh"
 #include "SaveFileFormats.hh"
 #include "Text.hh"
 
@@ -1053,7 +1053,6 @@ struct C_OpenFileConfirmation_44_A6 {
 
 // 61 (C->S): Player data
 // Internal name: SndCharaDataV2 (SndCharaData in DCv1)
-// See the PSOPlayerData structs in Player.hh for this command's format.
 // header.flag specifies the format version, which is related to (but not
 // identical to) the game's major version. For example, the format version is 01
 // on DC v1, 02 on PSO PC, 03 on PSO GC, XB, and BB, and 04 on Episode 3.
