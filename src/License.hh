@@ -43,6 +43,7 @@ struct License {
 
   uint32_t flags = 0;
   uint64_t ban_end_time = 0; // 0 = not banned
+  std::string last_player_name;
   std::string auto_reply_message;
 
   uint32_t ep3_current_meseta = 0;

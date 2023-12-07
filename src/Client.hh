@@ -319,7 +319,7 @@ public:
   void save_guild_card_file() const;
 
   void load_backup_character(uint32_t serial_number, size_t index);
-  void unload_character();
+  void save_and_unload_character();
 
   PlayerBank& current_bank();
   std::shared_ptr<PSOBBCharacterFile> current_bank_character();

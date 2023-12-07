@@ -759,6 +759,11 @@ void Client::load_all_files() {
     }
   }
 
+  if (this->character_data) {
+    this->license->auto_reply_message = this->character_data->auto_reply.decode();
+    this->license->save();
+  }
+
   this->blocked_senders.clear();
   for (size_t z = 0; z < this->guild_card_data->blocked.size(); z++) {
     if (this->guild_card_data->blocked[z].present) {
@@ -874,10 +879,12 @@ void Client::load_backup_character(uint32_t serial_number, size_t index) {
   this->v1_v2_last_reported_disp.reset();
 }
 
-void Client::unload_character() {
-  this->save_character_file();
-  this->character_data.reset();
-  this->log.info("Unloaded character");
+void Client::save_and_unload_character() {
+  if (this->character_data) {
+    this->save_character_file();
+    this->character_data.reset();
+    this->log.info("Unloaded character");
+  }
 }
 
 PlayerBank& Client::current_bank() {

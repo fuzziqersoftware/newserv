@@ -2804,6 +2804,7 @@ static void on_61_98(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
       c->v1_v2_last_reported_disp = make_unique<PlayerDispDataDCPCV3>(cmd.disp);
       player->inventory = cmd.inventory;
       player->disp = cmd.disp.to_bb(player->inventory.language, player->inventory.language);
+      c->license->last_player_name = player->disp.name.decode(player->inventory.language);
       break;
     }
     case Version::DC_V2: {
@@ -2814,6 +2815,7 @@ static void on_61_98(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
       player->battle_records = cmd.records.battle;
       player->challenge_records = cmd.records.challenge;
       player->choice_search_config = cmd.choice_search_config;
+      c->license->last_player_name = player->disp.name.decode(player->inventory.language);
       break;
     }
     case Version::PC_V2: {
@@ -2832,9 +2834,12 @@ static void on_61_98(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
           auto_reply.push_back(0);
         }
         player->auto_reply.encode(tt_utf16_to_utf8(auto_reply), player->inventory.language);
+        c->license->auto_reply_message = auto_reply;
       } else {
         player->auto_reply.clear();
+        c->license->auto_reply_message.clear();
       }
+      c->license->last_player_name = player->disp.name.decode(player->inventory.language);
       break;
     }
     case Version::GC_NTE: {
@@ -2853,9 +2858,12 @@ static void on_61_98(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
         strip_trailing_zeroes(auto_reply);
         string encoded = tt_decode_marked(auto_reply, player->inventory.language, false);
         player->auto_reply.encode(encoded, player->inventory.language);
+        c->license->auto_reply_message = auto_reply;
       } else {
         player->auto_reply.clear();
+        c->license->auto_reply_message.clear();
       }
+      c->license->last_player_name = player->disp.name.decode(player->inventory.language);
       break;
     }
 
@@ -2926,9 +2934,12 @@ static void on_61_98(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
         strip_trailing_zeroes(auto_reply);
         string encoded = tt_decode_marked(auto_reply, player->inventory.language, false);
         player->auto_reply.encode(encoded, player->inventory.language);
+        c->license->auto_reply_message = auto_reply;
       } else {
         player->auto_reply.clear();
+        c->license->auto_reply_message.clear();
       }
+      c->license->last_player_name = player->disp.name.decode(player->inventory.language);
       break;
     }
     case Version::BB_V4: {
@@ -2947,9 +2958,12 @@ static void on_61_98(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
           auto_reply.push_back(0);
         }
         player->auto_reply.encode(tt_utf16_to_utf8(auto_reply), player->inventory.language);
+        c->license->auto_reply_message = auto_reply;
       } else {
         player->auto_reply.clear();
+        c->license->auto_reply_message.clear();
       }
+      c->license->last_player_name = player->disp.name.decode(player->inventory.language);
       break;
     }
     default:
@@ -2957,6 +2971,7 @@ static void on_61_98(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
   }
   player->inventory.decode_from_client(c);
   c->channel.language = player->inventory.language;
+  c->license->save();
 
   string name_str = player->disp.name.decode(c->language());
   if ((name_str.size() > 2) && (name_str[0] == '\t') && ((name_str[1] == 'E') || (name_str[1] == 'J'))) {
@@ -3116,8 +3131,8 @@ static void on_E0_BB(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
 static void on_E3_BB(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
   const auto& cmd = check_size_t<C_PlayerPreviewRequest_BB_E3>(data);
 
+  c->save_and_unload_character();
   c->bb_character_index = cmd.character_index;
-  c->unload_character();
 
   if (c->bb_connection_phase != 0x00) {
     send_approve_player_choice_bb(c);
@@ -3653,16 +3668,27 @@ static void on_81(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
       throw logic_error("invalid game version");
   }
 
+  auto s = c->require_server_state();
   shared_ptr<Client> target;
   try {
-    target = c->require_server_state()->find_client(nullptr, to_guild_card_number);
+    target = s->find_client(nullptr, to_guild_card_number);
   } catch (const out_of_range&) {
   }
 
   if (!target) {
     // TODO: We should store pending messages for accounts somewhere, and send
-    // them when the player signs on again. We should also persist the player's
-    // autoreply setting when they're offline and use it if appropriate here.
+    // them when the player signs on again.
+    try {
+      auto target_license = s->license_index->get(to_guild_card_number);
+      if (!target_license->auto_reply_message.empty()) {
+        send_simple_mail(
+            c,
+            target_license->serial_number,
+            target_license->last_player_name,
+            target_license->auto_reply_message);
+      }
+    } catch (const LicenseIndex::missing_license&) {
+    }
     send_text_message(c, "$C6Player is offline");
 
   } else {
@@ -3711,12 +3737,18 @@ void on_C7(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
   if (is_w && (data.size() & 1)) {
     data.push_back(0);
   }
-  c->character(true, false)->auto_reply.encode(tt_decode_marked(data, c->language(), is_w), c->language());
+
+  string message = tt_decode_marked(data, c->language(), is_w);
+  c->character(true, false)->auto_reply.encode(message, c->language());
+  c->license->auto_reply_message = message;
+  c->license->save();
 }
 
 static void on_C8(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
   check_size_v(data.size(), 0);
   c->character(true, false)->auto_reply.clear();
+  c->license->auto_reply_message.clear();
+  c->license->save();
 }
 
 static void on_C6(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
