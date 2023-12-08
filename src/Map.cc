@@ -294,6 +294,7 @@ void Map::add_enemy(
     }
     case 0x0042: // TObjEneBm3FlyNest
       add(EnemyType::MONEST);
+      child_type = EnemyType::MOTHMANT;
       default_num_children = 30;
       break;
     case 0x0043: // TObjEneBm5Wolf
