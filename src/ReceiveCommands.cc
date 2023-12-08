@@ -412,7 +412,7 @@ static void on_DB_V3(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
       c->should_disconnect = true;
       return;
     } else {
-      auto l = make_shared<License>();
+      auto l = s->license_index->create_license();
       l->serial_number = serial_number;
       l->access_key = cmd.access_key.decode();
       l->gc_password = cmd.password.decode();
@@ -456,7 +456,7 @@ static void on_88_DCNTE(shared_ptr<Client> c, uint16_t, uint32_t, string& data) 
       send_message_box(c, "Incorrect serial number");
       c->should_disconnect = true;
     } else {
-      auto l = make_shared<License>();
+      auto l = s->license_index->create_license();
       l->serial_number = serial_number;
       l->access_key = cmd.access_key.decode();
       s->license_index->add(l);
@@ -499,7 +499,7 @@ static void on_8B_DCNTE(shared_ptr<Client> c, uint16_t, uint32_t, string& data) 
       send_message_box(c, "Incorrect serial number");
       c->should_disconnect = true;
     } else {
-      auto l = make_shared<License>();
+      auto l = s->license_index->create_license();
       l->serial_number = serial_number;
       l->access_key = cmd.access_key.decode();
       s->license_index->add(l);
@@ -553,7 +553,7 @@ static void on_90_DC(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
       send_command(c, 0x90, 0x03);
       c->should_disconnect = true;
     } else {
-      auto l = make_shared<License>();
+      auto l = s->license_index->create_license();
       l->serial_number = serial_number;
       l->access_key = cmd.access_key.decode();
       s->license_index->add(l);
@@ -610,7 +610,7 @@ static void on_93_DC(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
       c->should_disconnect = true;
       return;
     } else {
-      auto l = make_shared<License>();
+      auto l = s->license_index->create_license();
       l->serial_number = serial_number;
       l->access_key = cmd.access_key.decode();
       s->license_index->add(l);
@@ -699,7 +699,7 @@ static void on_9A(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
       c->should_disconnect = true;
       return;
     } else if (is_v1_or_v2(c->version())) {
-      auto l = make_shared<License>();
+      auto l = s->license_index->create_license();
       l->serial_number = serial_number;
       l->access_key = cmd.access_key.decode();
       s->license_index->add(l);
@@ -759,7 +759,7 @@ static void on_9C(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
       c->should_disconnect = true;
       return;
     } else {
-      auto l = make_shared<License>();
+      auto l = s->license_index->create_license();
       l->serial_number = serial_number;
       l->access_key = cmd.access_key.decode();
       if (is_gc(c->version())) {
@@ -878,7 +878,7 @@ static void on_9D_9E(shared_ptr<Client> c, uint16_t command, uint32_t, string& d
       c->should_disconnect = true;
       return;
     } else if (is_v1_or_v2(c->version())) {
-      auto l = make_shared<License>();
+      auto l = s->license_index->create_license();
       l->serial_number = serial_number;
       l->access_key = base_cmd->access_key.decode();
       s->license_index->add(l);
@@ -947,7 +947,7 @@ static void on_9E_XB(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
     return;
 
   } catch (const LicenseIndex::missing_license& e) {
-    auto l = make_shared<License>();
+    auto l = s->license_index->create_license();
     l->serial_number = fnv1a32(xb_gamertag) & 0x7FFFFFFF;
     l->xb_gamertag = xb_gamertag;
     l->xb_user_id = xb_user_id;
@@ -1004,7 +1004,7 @@ static void on_93_BB(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
       c->should_disconnect = true;
       return;
     } else {
-      auto l = make_shared<License>();
+      auto l = s->license_index->create_license();
       l->serial_number = fnv1a32(cmd.username.decode()) & 0x7FFFFFFF;
       l->bb_username = cmd.username.decode();
       l->bb_password = cmd.password.decode();
@@ -4893,7 +4893,7 @@ static void on_04_P(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
       return;
     } else {
 
-      auto l = make_shared<License>();
+      auto l = s->license_index->create_license();
       l->serial_number = fnv1a32(cmd.username.decode()) & 0x7FFFFFFF;
       l->bb_username = cmd.username.decode();
       l->bb_password = cmd.password.decode();

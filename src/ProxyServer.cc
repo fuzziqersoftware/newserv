@@ -377,7 +377,7 @@ void ProxyServer::UnlinkedSession::on_input(Channel& ch, uint16_t command, uint3
           if (!s->allow_unregistered_users) {
             throw;
           }
-          auto l = make_shared<License>();
+          auto l = s->license_index->create_license();
           l->serial_number = fnv1a32(cmd.username.decode()) & 0x7FFFFFFF;
           l->bb_username = cmd.username.decode();
           l->bb_password = cmd.password.decode();

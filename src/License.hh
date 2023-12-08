@@ -10,7 +10,8 @@
 
 class LicenseIndex;
 
-struct License {
+class License {
+public:
   enum Flag : uint32_t {
     // clang-format off
     KICK_USER                  = 0x00000001,
@@ -53,12 +54,23 @@ struct License {
 
   License() = default;
   explicit License(const JSON& json);
+  virtual ~License() = default;
 
   JSON json() const;
-  void save() const;
-  void delete_file() const;
+  virtual void save() const;
+  virtual void delete_file() const;
 
   std::string str() const;
+};
+
+class DiskLicense : public License {
+public:
+  DiskLicense() = default;
+  explicit DiskLicense(const JSON& json);
+  virtual ~DiskLicense() = default;
+
+  virtual void save() const;
+  virtual void delete_file() const;
 };
 
 class LicenseIndex {
@@ -80,8 +92,10 @@ public:
     missing_license() : invalid_argument("missing license") {}
   };
 
-  LicenseIndex();
-  ~LicenseIndex() = default;
+  LicenseIndex() = default;
+  virtual ~LicenseIndex() = default;
+
+  virtual std::shared_ptr<License> create_license() const;
 
   size_t count() const;
   std::shared_ptr<License> get(uint32_t serial_number) const;
@@ -100,4 +114,12 @@ protected:
   std::unordered_map<std::string, std::shared_ptr<License>> bb_username_to_license;
   std::unordered_map<std::string, std::shared_ptr<License>> xb_gamertag_to_license;
   std::unordered_map<uint32_t, std::shared_ptr<License>> serial_number_to_license;
+};
+
+class DiskLicenseIndex : public LicenseIndex {
+public:
+  DiskLicenseIndex();
+  virtual ~DiskLicenseIndex() = default;
+
+  virtual std::shared_ptr<License> create_license() const;
 };

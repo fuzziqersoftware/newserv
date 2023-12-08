@@ -53,17 +53,8 @@ JSON License::json() const {
   });
 }
 
-void License::save() const {
-  auto json = this->json();
-  string json_data = json.serialize(JSON::SerializeOption::FORMAT | JSON::SerializeOption::HEX_INTEGERS);
-  string filename = string_printf("system/licenses/%010" PRIu32 ".json", this->serial_number);
-  save_file(filename, json_data);
-}
-
-void License::delete_file() const {
-  string filename = string_printf("system/licenses/%010" PRIu32 ".json", this->serial_number);
-  remove(filename.c_str());
-}
+void License::save() const {}
+void License::delete_file() const {}
 
 string License::str() const {
   vector<string> tokens;
@@ -102,53 +93,22 @@ string License::str() const {
   return "[License: " + join(tokens, ", ") + "]";
 }
 
-struct BinaryLicense {
-  pstring<TextEncoding::ASCII, 0x14> username; // BB username (max. 16 chars; should technically be Unicode)
-  pstring<TextEncoding::ASCII, 0x14> bb_password; // BB password (max. 16 chars)
-  uint32_t serial_number; // PC/GC serial number. MUST BE PRESENT FOR BB LICENSES TOO; this is also the player's guild card number.
-  pstring<TextEncoding::ASCII, 0x10> access_key; // PC/GC access key. (to log in using PC on a GC license, just enter the first 8 characters of the GC access key)
-  pstring<TextEncoding::ASCII, 0x0C> gc_password; // GC password
-  uint32_t privileges; // privilege level
-  uint64_t ban_end_time; // end time of ban (zero = not banned)
-} __attribute__((packed));
+DiskLicense::DiskLicense(const JSON& json) : License(json) {}
 
-LicenseIndex::LicenseIndex() {
-  if (!isdir("system/licenses")) {
-    mkdir("system/licenses", 0755);
-  }
+void DiskLicense::save() const {
+  auto json = this->json();
+  string json_data = json.serialize(JSON::SerializeOption::FORMAT | JSON::SerializeOption::HEX_INTEGERS);
+  string filename = string_printf("system/licenses/%010" PRIu32 ".json", this->serial_number);
+  save_file(filename, json_data);
+}
 
-  // Convert binary licenses to JSON licenses and save them
-  if (isfile("system/licenses.nsi")) {
-    auto bin_licenses = load_vector_file<BinaryLicense>("system/licenses.nsi");
-    for (const auto& bin_license : bin_licenses) {
-      // Only add licenses from the binary file if there isn't a JSON version of
-      // the same license
-      try {
-        this->get(bin_license.serial_number);
-      } catch (const missing_license&) {
-        License license;
-        license.serial_number = bin_license.serial_number;
-        license.access_key = bin_license.access_key.decode();
-        license.gc_password = bin_license.gc_password.decode();
-        license.bb_username = bin_license.username.decode();
-        license.bb_password = bin_license.bb_password.decode();
-        license.flags = bin_license.privileges;
-        license.ban_end_time = bin_license.ban_end_time;
-        license.ep3_current_meseta = 0;
-        license.ep3_total_meseta_earned = 0;
-        license.save();
-      }
-    }
-    ::remove("system/licenses.nsi");
-  }
+void DiskLicense::delete_file() const {
+  string filename = string_printf("system/licenses/%010" PRIu32 ".json", this->serial_number);
+  remove(filename.c_str());
+}
 
-  for (const auto& item : list_directory("system/licenses")) {
-    if (ends_with(item, ".json")) {
-      JSON json = JSON::parse(load_file("system/licenses/" + item));
-      auto license = make_shared<License>(json);
-      this->add(license);
-    }
-  }
+shared_ptr<License> LicenseIndex::create_license() const {
+  return make_shared<License>();
 }
 
 size_t LicenseIndex::count() const {
@@ -287,4 +247,57 @@ shared_ptr<License> LicenseIndex::verify_bb(const string& username, const string
   } catch (const out_of_range&) {
     throw missing_license();
   }
+}
+
+DiskLicenseIndex::DiskLicenseIndex() {
+  struct BinaryLicense {
+    pstring<TextEncoding::ASCII, 0x14> username; // BB username (max. 16 chars; should technically be Unicode)
+    pstring<TextEncoding::ASCII, 0x14> bb_password; // BB password (max. 16 chars)
+    uint32_t serial_number; // PC/GC serial number. MUST BE PRESENT FOR BB LICENSES TOO; this is also the player's guild card number.
+    pstring<TextEncoding::ASCII, 0x10> access_key; // PC/GC access key. (to log in using PC on a GC license, just enter the first 8 characters of the GC access key)
+    pstring<TextEncoding::ASCII, 0x0C> gc_password; // GC password
+    uint32_t privileges; // privilege level
+    uint64_t ban_end_time; // end time of ban (zero = not banned)
+  } __attribute__((packed));
+
+  if (!isdir("system/licenses")) {
+    mkdir("system/licenses", 0755);
+  }
+
+  // Convert binary licenses to JSON licenses and save them
+  if (isfile("system/licenses.nsi")) {
+    auto bin_licenses = load_vector_file<BinaryLicense>("system/licenses.nsi");
+    for (const auto& bin_license : bin_licenses) {
+      // Only add licenses from the binary file if there isn't a JSON version of
+      // the same license
+      try {
+        this->get(bin_license.serial_number);
+      } catch (const missing_license&) {
+        License license;
+        license.serial_number = bin_license.serial_number;
+        license.access_key = bin_license.access_key.decode();
+        license.gc_password = bin_license.gc_password.decode();
+        license.bb_username = bin_license.username.decode();
+        license.bb_password = bin_license.bb_password.decode();
+        license.flags = bin_license.privileges;
+        license.ban_end_time = bin_license.ban_end_time;
+        license.ep3_current_meseta = 0;
+        license.ep3_total_meseta_earned = 0;
+        license.save();
+      }
+    }
+    ::remove("system/licenses.nsi");
+  }
+
+  for (const auto& item : list_directory("system/licenses")) {
+    if (ends_with(item, ".json")) {
+      JSON json = JSON::parse(load_file("system/licenses/" + item));
+      auto license = make_shared<DiskLicense>(json);
+      this->add(license);
+    }
+  }
+}
+
+shared_ptr<License> DiskLicenseIndex::create_license() const {
+  return make_shared<DiskLicense>();
 }

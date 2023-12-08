@@ -973,7 +973,7 @@ void ServerState::load_bb_private_keys() {
 
 void ServerState::load_licenses() {
   config_log.info("Indexing licenses");
-  this->license_index = make_shared<LicenseIndex>();
+  this->license_index = this->is_replay ? make_shared<LicenseIndex>() : make_shared<DiskLicenseIndex>();
 }
 
 void ServerState::load_teams() {

@@ -321,7 +321,7 @@ Proxy session commands:\n\
     }
 
   } else if (command_name == "add-license") {
-    auto l = make_shared<License>();
+    auto l = this->state->license_index->create_license();
 
     for (const string& token : split(command_args, ' ')) {
       if (starts_with(token, "bb-username=")) {
@@ -376,7 +376,8 @@ Proxy session commands:\n\
     uint32_t serial_number = stoul(tokens[0]);
     tokens.erase(tokens.begin());
     auto orig_l = this->state->license_index->get(serial_number);
-    auto l = make_shared<License>(*orig_l);
+    auto l = this->state->license_index->create_license();
+    *l = *orig_l;
 
     this->state->license_index->remove(orig_l->serial_number);
     try {
