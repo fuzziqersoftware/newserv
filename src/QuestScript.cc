@@ -622,7 +622,7 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     {0xF889, "disable_win_pfx", {}, F_V2_V4},
     {0xF88A, "get_player_status", {REG, REG}, F_V2_V4},
     {0xF88B, "send_mail", {REG, CSTRING}, F_V2_V4 | F_ARGS},
-    {0xF88C, "get_game_version", {REG}, F_V2_V4}, // Returns 2 on DCv2/PC, 3 on GC, 4 on BB
+    {0xF88C, "get_game_version", {REG}, F_V2_V4}, // Returns 2 on DCv2/PC, 3 on GC, 4 on XB and BB
     {0xF88D, "chl_set_timerecord", {REG}, F_V2 | F_V3},
     {0xF88D, "chl_set_timerecord", {REG, REG}, F_V4},
     {0xF88E, "chl_get_timerecord", {REG}, F_V2_V4},
