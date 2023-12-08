@@ -892,7 +892,9 @@ static void server_command_edit(shared_ptr<Client> c, const std::string& args) {
   auto s = c->require_server_state();
   auto l = c->require_lobby();
   check_is_game(l, false);
-  check_version(c, Version::BB_V4);
+  if (!is_v1_or_v2(c->version()) && (c->version() != Version::BB_V4)) {
+    throw precondition_failed("$C6This command cannot\nbe used for your\nversion of PSO.");
+  }
 
   if ((s->cheat_mode_behavior == ServerState::BehaviorSwitch::OFF) && !(c->license->flags & License::Flag::CHEAT_ANYWHERE)) {
     send_text_message(l, "$C6Cheats are disabled\non this server");
@@ -986,7 +988,10 @@ static void server_command_edit(shared_ptr<Client> c, const std::string& args) {
 
   // Reload the client in the lobby
   send_player_leave_notification(l, c->lobby_client_id);
-  send_complete_player_bb(c);
+  if (c->version() == Version::BB_V4) {
+    send_complete_player_bb(c);
+  }
+  c->v1_v2_last_reported_disp.reset();
   s->send_lobby_join_notifications(l, c);
 }
 

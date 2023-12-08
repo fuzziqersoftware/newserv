@@ -1,15 +1,12 @@
 ## General
 
-- Find a way to silence audio in RunDOL.s
 - Encapsulate BB server-side random state and make replays deterministic
 - Write a simple status API
 - Implement per-game logging
-- Build an exception-handling abstraction in ChatCommands that shows formatted error messages in all cases
 - Make reloading happen on separate threads so compression doesn't block active clients
 - Implement decrypt/encrypt actions for VMS files
 - Make UI strings localizable (e.g. entries in menus, welcome message, etc.)
 - Figure out what causes the corruption message on PC proxy sessions and fix it
-- Make $edit for DC/PC
 - Add an idle connection timeout for proxy sessions
 
 ## Episode 3
@@ -22,7 +19,6 @@
 ## PSO XBOX
 
 - Fix receiving Guild Cards from non-Xbox players
-- Make the Guild Card description field in SavedPlayerDataBB longer to accommodate XB descriptions (0x200 bytes)
 - Research the F94D quest opcode
 
 ## PSOBB

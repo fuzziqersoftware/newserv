@@ -276,9 +276,9 @@ Some commands only work on the game server and not on the proxy server. The chat
 
 * Character data commands
     * `$savechar <slot>`: Saves your current character data on the server in the specified slot (each serial number has 4 slots, numbered 1-4). These slots are separate from BB character slots; using this command does not affect BB characters.
-    * `$loadchar <slot>` (v1 and v2 only): Loads your character data from the specified slot.
+    * `$loadchar <slot>` (v1 and v2 only): Loads your character data from the specified slot. The changes will be undone if you join a game - to save your changes, disconnect from the lobby.
     * `$bbchar <username> <password> <slot>`: Use this command when playing on a non-BB version of PSO. If the username and password are correct, this command converts your current character to BB format and saves it on the server in the given slot (1-4). Any character already in that slot is overwritten. (This command is similar to `$savechar`, except it overwrites a BB character slot, and can transfer characters across accounts.) Note that the character's chat data, quick menu config, and bank contents are not copied, since there is no way for the server to request those types of data.
-    * `$edit <stat> <value>`: Modifies your character data. If the server does not allow cheat mode anywhere (that is, "CheatModeBehavior" is "Off" in config.json), this command does nothing.
+    * `$edit <stat> <value>`: Modifies your character data. If you are on V3 (GameCube/Xbox), or if the server does not allow cheat mode anywhere (that is, "CheatModeBehavior" is "Off" in config.json), this command does nothing. If you are on V1 or V2 (DC or PC, not BB), your changes will be undone if you join a game - to save your changes, disconnect from the lobby.
 
 * Blue Burst player commands (game server only)
     * `$bank [number]`: Switches your current bank, so you can access your other character's banks (if `number` is 1-4) or your shared account bank (if `number` is 0). If `number` is not given, switches back to your current character's bank.
