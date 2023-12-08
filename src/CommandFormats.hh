@@ -3936,9 +3936,9 @@ struct G_DestroyNPC_6x1C {
 
 // 6x1F: Set player floor
 
-struct G_SetPlayerArea_6x1F {
+struct G_SetPlayerFloor_6x1F {
   G_ClientIDHeader header;
-  le_uint32_t floor = 0;
+  le_int32_t floor = 0;
 } __packed__;
 
 // 6x20: Set position
@@ -3947,7 +3947,7 @@ struct G_SetPlayerArea_6x1F {
 
 struct G_SetPosition_6x20 {
   G_ClientIDHeader header;
-  le_uint32_t floor = 0;
+  le_int32_t floor = 0;
   le_float x = 0.0f;
   le_float y = 0.0f;
   le_float z = 0.0f;
@@ -3958,7 +3958,7 @@ struct G_SetPosition_6x20 {
 
 struct G_InterLevelWarp_6x21 {
   G_ClientIDHeader header;
-  le_uint32_t floor = 0;
+  le_int32_t floor = 0;
 } __packed__;
 
 // 6x22: Set player invisible
@@ -4164,9 +4164,9 @@ struct G_Unknown_6x3B {
 struct G_StopAtPosition_6x3E {
   G_ClientIDHeader header;
   le_uint16_t unknown_a1 = 0;
-  le_uint16_t unknown_a2 = 0;
-  le_uint16_t floor = 0;
-  le_uint16_t unknown_a3 = 0;
+  le_uint16_t angle = 0;
+  le_int16_t floor = 0;
+  le_int16_t room = 0;
   le_float x = 0.0f;
   le_float y = 0.0f;
   le_float z = 0.0f;
@@ -4178,8 +4178,8 @@ struct G_SetPosition_6x3F {
   G_ClientIDHeader header;
   le_uint16_t unknown_a1 = 0;
   le_uint16_t angle = 0;
-  le_uint16_t floor = 0;
-  le_uint16_t room = 0;
+  le_int16_t floor = 0;
+  le_int16_t room = 0;
   le_float x = 0.0f;
   le_float y = 0.0f;
   le_float z = 0.0f;
