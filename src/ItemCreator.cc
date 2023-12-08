@@ -39,7 +39,6 @@ ItemCreator::ItemCreator(
       restrictions(restrictions),
       random_crypt(random_seed) {
   this->generate_unit_stars_tables();
-  this->pt->print_enemy_table(stderr);
 }
 
 void ItemCreator::set_random_state(uint32_t seed, uint32_t absolute_offset) {
