@@ -881,16 +881,13 @@ static void on_player_drop_item(shared_ptr<Client> c, uint8_t command, uint8_t f
     auto item = p->remove_item(cmd.item_id, 0, c->version() != Version::BB_V4);
     l->add_item(item, cmd.floor, cmd.x, cmd.z);
 
-    auto s = c->require_server_state();
-    auto name = s->describe_item(c->version(), item, false);
-    l->log.info("Player %hu dropped item %08" PRIX32 " (%s) at %hu:(%g, %g)",
-        cmd.header.client_id.load(), cmd.item_id.load(), name.c_str(), cmd.floor.load(), cmd.x.load(), cmd.z.load());
-    if (c->config.check_flag(Client::Flag::DEBUG_ENABLED)) {
-      auto name = s->describe_item(c->version(), item, true);
-      send_text_message_printf(c, "$C5DROP %08" PRIX32 "\n%s",
-          cmd.item_id.load(), name.c_str());
+    if (l->log.should_log(LogLevel::INFO)) {
+      auto s = c->require_server_state();
+      auto name = s->describe_item(c->version(), item, false);
+      l->log.info("Player %hu dropped item %08" PRIX32 " (%s) at %hu:(%g, %g)",
+          cmd.header.client_id.load(), cmd.item_id.load(), name.c_str(), cmd.floor.load(), cmd.x.load(), cmd.z.load());
+      p->print_inventory(stderr, c->version(), s->item_name_index);
     }
-    p->print_inventory(stderr, c->version(), s->item_name_index);
   }
 
   forward_subcommand(c, command, flag, data, size);
@@ -942,14 +939,12 @@ static void on_create_inventory_item_t(shared_ptr<Client> c, uint8_t command, ui
     l->on_item_id_generated_externally(item.id);
     p->add_item(item);
 
-    auto s = c->require_server_state();
-    auto name = s->describe_item(c->version(), item, false);
-    l->log.info("Player %hu created inventory item %08" PRIX32 " (%s)", c->lobby_client_id, item.id.load(), name.c_str());
-    if (c->config.check_flag(Client::Flag::DEBUG_ENABLED)) {
-      string name = s->describe_item(c->version(), item, true);
-      send_text_message_printf(c, "$C5CREATE %08" PRIX32 "\n%s", item.id.load(), name.c_str());
+    if (l->log.should_log(LogLevel::INFO)) {
+      auto s = c->require_server_state();
+      auto name = s->describe_item(c->version(), item, false);
+      l->log.info("Player %hu created inventory item %08" PRIX32 " (%s)", c->lobby_client_id, item.id.load(), name.c_str());
+      p->print_inventory(stderr, c->version(), s->item_name_index);
     }
-    p->print_inventory(stderr, c->version(), s->item_name_index);
   }
 
   forward_subcommand_with_item_transcode_t(c, command, flag, cmd);
@@ -986,16 +981,13 @@ static void on_drop_partial_stack_t(shared_ptr<Client> c, uint8_t command, uint8
     l->on_item_id_generated_externally(item.id);
     l->add_item(item, cmd.floor, cmd.x, cmd.z);
 
-    auto s = c->require_server_state();
-    auto name = s->describe_item(c->version(), item, false);
-    l->log.info("Player %hu split stack to create floor item %08" PRIX32 " (%s) at %hu:(%g, %g)",
-        cmd.header.client_id.load(), item.id.load(), name.c_str(),
-        cmd.floor.load(), cmd.x.load(), cmd.z.load());
-    if (c->config.check_flag(Client::Flag::DEBUG_ENABLED)) {
-      string name = s->describe_item(c->version(), item, true);
-      send_text_message_printf(c, "$C5SPLIT %08" PRIX32 "\n%s", item.id.load(), name.c_str());
+    if (l->log.should_log(LogLevel::INFO)) {
+      auto s = c->require_server_state();
+      auto name = s->describe_item(c->version(), item, false);
+      l->log.info("Player %hu split stack to create floor item %08" PRIX32 " (%s) at %hu:(%g, %g)",
+          cmd.header.client_id.load(), item.id.load(), name.c_str(), cmd.floor.load(), cmd.x.load(), cmd.z.load());
+      c->character()->print_inventory(stderr, c->version(), s->item_name_index);
     }
-    c->character()->print_inventory(stderr, c->version(), s->item_name_index);
   }
 
   forward_subcommand_with_item_transcode_t(c, command, flag, cmd);
@@ -1040,20 +1032,15 @@ static void on_drop_partial_stack_bb(shared_ptr<Client> c, uint8_t command, uint
     p->add_item(item);
 
     l->add_item(item, cmd.floor, cmd.x, cmd.z);
-
-    auto s = c->require_server_state();
-    auto name = s->describe_item(c->version(), item, false);
-    l->log.info("Player %hu split stack %08" PRIX32 " (removed: %s) at %hu:(%g, %g)",
-        cmd.header.client_id.load(), cmd.item_id.load(), name.c_str(),
-        cmd.floor.load(), cmd.x.load(), cmd.z.load());
-    if (c->config.check_flag(Client::Flag::DEBUG_ENABLED)) {
-      auto name = s->describe_item(c->version(), item, true);
-      send_text_message_printf(c, "$C5SPLIT/BB %08" PRIX32 "\n%s",
-          cmd.item_id.load(), name.c_str());
-    }
-    p->print_inventory(stderr, c->version(), s->item_name_index);
-
     send_drop_stacked_item(l, item, cmd.floor, cmd.x, cmd.z);
+
+    if (l->log.should_log(LogLevel::INFO)) {
+      auto s = c->require_server_state();
+      auto name = s->describe_item(c->version(), item, false);
+      l->log.info("Player %hu split stack %08" PRIX32 " (removed: %s) at %hu:(%g, %g)",
+          cmd.header.client_id.load(), cmd.item_id.load(), name.c_str(), cmd.floor.load(), cmd.x.load(), cmd.z.load());
+      p->print_inventory(stderr, c->version(), s->item_name_index);
+    }
 
   } else {
     forward_subcommand(c, command, flag, data, size);
@@ -1081,15 +1068,14 @@ static void on_buy_shop_item(shared_ptr<Client> c, uint8_t command, uint8_t flag
     p->add_item(item);
 
     size_t price = s->item_parameter_table_for_version(c->version())->price_for_item(item);
-    auto name = s->describe_item(c->version(), item, false);
-    l->log.info("Player %hu bought item %08" PRIX32 " (%s) from shop (%zu Meseta)",
-        cmd.header.client_id.load(), item.id.load(), name.c_str(), price);
-    if (c->config.check_flag(Client::Flag::DEBUG_ENABLED)) {
-      auto name = s->describe_item(c->version(), item, true);
-      send_text_message_printf(c, "$C5BUY %08" PRIX32 "\n%s", item.id.load(), name.c_str());
-    }
     p->remove_meseta(price, c->version() != Version::BB_V4);
-    p->print_inventory(stderr, c->version(), s->item_name_index);
+
+    if (l->log.should_log(LogLevel::INFO)) {
+      auto name = s->describe_item(c->version(), item, false);
+      l->log.info("Player %hu bought item %08" PRIX32 " (%s) from shop (%zu Meseta)",
+          cmd.header.client_id.load(), item.id.load(), name.c_str(), price);
+      p->print_inventory(stderr, c->version(), s->item_name_index);
+    }
   }
 
   forward_subcommand_with_item_transcode_t(c, command, flag, cmd);
@@ -1209,14 +1195,11 @@ static void on_pick_up_item(shared_ptr<Client> c, uint8_t command, uint8_t flag,
       return;
     }
 
-    auto name = s->describe_item(c->version(), item, false);
-    l->log.info("Player %hu picked up %08" PRIX32 " (%s)",
-        cmd.header.client_id.load(), cmd.item_id.load(), name.c_str());
-    if (c->config.check_flag(Client::Flag::DEBUG_ENABLED)) {
-      auto name = s->describe_item(c->version(), item, true);
-      send_text_message_printf(c, "$C5PICK %08" PRIX32 "\n%s", cmd.item_id.load(), name.c_str());
+    if (l->log.should_log(LogLevel::INFO)) {
+      auto name = s->describe_item(c->version(), item, false);
+      l->log.info("Player %hu picked up %08" PRIX32 " (%s)", cmd.header.client_id.load(), cmd.item_id.load(), name.c_str());
+      effective_p->print_inventory(stderr, c->version(), s->item_name_index);
     }
-    effective_p->print_inventory(stderr, c->version(), s->item_name_index);
   }
 
   forward_subcommand(c, command, flag, data, size);
@@ -1245,14 +1228,12 @@ static void on_pick_up_item_request(shared_ptr<Client> c, uint8_t command, uint8
     auto item = l->remove_item(cmd.item_id);
     p->add_item(item);
 
-    auto s = c->require_server_state();
-    auto name = s->describe_item(c->version(), item, false);
-    l->log.info("Player %hu picked up (BB) %08" PRIX32 " (%s)", cmd.header.client_id.load(), cmd.item_id.load(), name.c_str());
-    if (c->config.check_flag(Client::Flag::DEBUG_ENABLED)) {
-      auto name = s->describe_item(c->version(), item, true);
-      send_text_message_printf(c, "$C5PICK/BB %08" PRIX32 "\n%s", cmd.item_id.load(), name.c_str());
+    if (l->log.should_log(LogLevel::INFO)) {
+      auto s = c->require_server_state();
+      auto name = s->describe_item(c->version(), item, false);
+      l->log.info("Player %hu picked up (BB) %08" PRIX32 " (%s)", cmd.header.client_id.load(), cmd.item_id.load(), name.c_str());
+      p->print_inventory(stderr, c->version(), s->item_name_index);
     }
-    p->print_inventory(stderr, c->version(), s->item_name_index);
 
     send_pick_up_item(c, cmd.item_id, cmd.floor);
 
@@ -1316,23 +1297,20 @@ static void on_use_item(
     auto s = c->require_server_state();
     auto p = c->character();
     size_t index = p->inventory.find_item(cmd.item_id);
-    string name, colored_name;
+    string name;
     {
       // Note: We do this weird scoping thing because player_use_item will
       // likely delete the item, which will break the reference here.
       const auto& item = p->inventory.items[index].data;
       name = s->describe_item(c->version(), item, false);
-      colored_name = s->describe_item(c->version(), item, true);
     }
     player_use_item(c, index);
 
-    l->log.info("Player %hhu used item %hu:%08" PRIX32 " (%s)",
-        c->lobby_client_id, cmd.header.client_id.load(), cmd.item_id.load(), name.c_str());
-    if (c->config.check_flag(Client::Flag::DEBUG_ENABLED)) {
-      send_text_message_printf(c, "$C5USE %08" PRIX32 "\n%s",
-          cmd.item_id.load(), colored_name.c_str());
+    if (l->log.should_log(LogLevel::INFO)) {
+      l->log.info("Player %hhu used item %hu:%08" PRIX32 " (%s)",
+          c->lobby_client_id, cmd.header.client_id.load(), cmd.item_id.load(), name.c_str());
+      p->print_inventory(stderr, c->version(), s->item_name_index);
     }
-    p->print_inventory(stderr, c->version(), s->item_name_index);
   }
 
   forward_subcommand(c, command, flag, data, size);
@@ -1356,16 +1334,14 @@ static void on_feed_mag(
 
     size_t mag_index = p->inventory.find_item(cmd.mag_item_id);
     size_t fed_index = p->inventory.find_item(cmd.fed_item_id);
-    string mag_name, mag_colored_name, fed_name, fed_colored_name;
+    string mag_name, fed_name;
     {
       // Note: We do this weird scoping thing because player_feed_mag will
-      // likely delete the item, which will break the reference here.
+      // likely delete the items, which will break the references here.
       const auto& fed_item = p->inventory.items[fed_index].data;
       fed_name = s->describe_item(c->version(), fed_item, false);
-      fed_colored_name = s->describe_item(c->version(), fed_item, true);
       const auto& mag_item = p->inventory.items[mag_index].data;
       mag_name = s->describe_item(c->version(), mag_item, false);
-      mag_colored_name = s->describe_item(c->version(), mag_item, true);
     }
     player_feed_mag(c, mag_index, fed_index);
 
@@ -1377,15 +1353,12 @@ static void on_feed_mag(
       p->remove_item(cmd.fed_item_id, 1, false);
     }
 
-    l->log.info("Player %hhu fed item %hu:%08" PRIX32 " (%s) to mag %hu:%08" PRIX32 " (%s)",
-        c->lobby_client_id, cmd.header.client_id.load(), cmd.fed_item_id.load(), fed_name.c_str(),
-        cmd.header.client_id.load(), cmd.mag_item_id.load(), mag_name.c_str());
-    if (c->config.check_flag(Client::Flag::DEBUG_ENABLED)) {
-      send_text_message_printf(c, "$C5FEED %08" PRIX32 "\n%s\n...TO %08" PRIX32 "\n%s",
-          cmd.fed_item_id.load(), fed_colored_name.c_str(),
-          cmd.mag_item_id.load(), mag_colored_name.c_str());
+    if (l->log.should_log(LogLevel::INFO)) {
+      l->log.info("Player %hhu fed item %hu:%08" PRIX32 " (%s) to mag %hu:%08" PRIX32 " (%s)",
+          c->lobby_client_id, cmd.header.client_id.load(), cmd.fed_item_id.load(), fed_name.c_str(),
+          cmd.header.client_id.load(), cmd.mag_item_id.load(), mag_name.c_str());
+      p->print_inventory(stderr, c->version(), s->item_name_index);
     }
-    p->print_inventory(stderr, c->version(), s->item_name_index);
   }
 
   forward_subcommand(c, command, flag, data, size);
@@ -1484,10 +1457,12 @@ static void on_ep3_private_word_select_bb_bank_action(shared_ptr<Client> c, uint
         bank.add_item(item);
         send_destroy_item(c, cmd.item_id, cmd.item_amount, true);
 
-        string name = s->item_name_index->describe_item(Version::BB_V4, item);
-        l->log.info("Player %hu deposited item %08" PRIX32 " (x%hhu) (%s) in the bank",
-            c->lobby_client_id, cmd.item_id.load(), cmd.item_amount, name.c_str());
-        c->character()->print_inventory(stderr, c->version(), s->item_name_index);
+        if (l->log.should_log(LogLevel::INFO)) {
+          string name = s->item_name_index->describe_item(Version::BB_V4, item);
+          l->log.info("Player %hu deposited item %08" PRIX32 " (x%hhu) (%s) in the bank",
+              c->lobby_client_id, cmd.item_id.load(), cmd.item_amount, name.c_str());
+          c->character()->print_inventory(stderr, c->version(), s->item_name_index);
+        }
       }
 
     } else if (cmd.action == 1) { // Take
@@ -1511,10 +1486,12 @@ static void on_ep3_private_word_select_bb_bank_action(shared_ptr<Client> c, uint
         p->add_item(item);
         send_create_inventory_item(c, item);
 
-        string name = s->item_name_index->describe_item(Version::BB_V4, item);
-        l->log.info("Player %hu withdrew item %08" PRIX32 " (x%hhu) (%s) from the bank",
-            c->lobby_client_id, item.id.load(), cmd.item_amount, name.c_str());
-        c->character()->print_inventory(stderr, c->version(), s->item_name_index);
+        if (l->log.should_log(LogLevel::INFO)) {
+          string name = s->item_name_index->describe_item(Version::BB_V4, item);
+          l->log.info("Player %hu withdrew item %08" PRIX32 " (x%hhu) (%s) from the bank",
+              c->lobby_client_id, item.id.load(), cmd.item_amount, name.c_str());
+          c->character()->print_inventory(stderr, c->version(), s->item_name_index);
+        }
       }
 
     } else if (cmd.action == 3) { // Leave bank counter
@@ -2154,14 +2131,12 @@ void on_transfer_item_via_mail_message_bb(shared_ptr<Client> c, uint8_t command,
   auto p = c->character();
   auto item = p->remove_item(cmd.item_id, cmd.amount, c->version() != Version::BB_V4);
 
-  auto name = s->describe_item(c->version(), item, false);
-  l->log.info("Player %hhu sent inventory item %hu:%08" PRIX32 " (%s) x%" PRIu32 " to player %08" PRIX32,
-      c->lobby_client_id, cmd.header.client_id.load(), cmd.item_id.load(), name.c_str(), cmd.amount.load(), cmd.target_guild_card_number.load());
-  if (c->config.check_flag(Client::Flag::DEBUG_ENABLED)) {
-    string name = s->describe_item(c->version(), item, true);
-    send_text_message_printf(c, "$C5SEND/MAIL %08" PRIX32 " x%" PRIu32 "\n%s", cmd.item_id.load(), cmd.amount.load(), name.c_str());
+  if (l->log.should_log(LogLevel::INFO)) {
+    auto name = s->describe_item(c->version(), item, false);
+    l->log.info("Player %hhu sent inventory item %hu:%08" PRIX32 " (%s) x%" PRIu32 " to player %08" PRIX32,
+        c->lobby_client_id, cmd.header.client_id.load(), cmd.item_id.load(), name.c_str(), cmd.amount.load(), cmd.target_guild_card_number.load());
+    p->print_inventory(stderr, c->version(), s->item_name_index);
   }
-  p->print_inventory(stderr, c->version(), s->item_name_index);
 
   // To receive an item, the player must be online, using BB, have a character
   // loaded (that is, be in a lobby or game), not be at the bank counter at the
@@ -2219,14 +2194,12 @@ void on_exchange_item_for_team_points_bb(shared_ptr<Client> c, uint8_t command, 
   size_t points = s->item_parameter_table_v4->get_item_team_points(item);
   s->team_index->add_member_points(c->license->serial_number, points);
 
-  auto name = s->describe_item(c->version(), item, false);
-  l->log.info("Player %hhu exchanged inventory item %hu:%08" PRIX32 " (%s) for %zu team points",
-      c->lobby_client_id, cmd.header.client_id.load(), cmd.item_id.load(), name.c_str(), points);
-  if (c->config.check_flag(Client::Flag::DEBUG_ENABLED)) {
-    string name = s->describe_item(c->version(), item, true);
-    send_text_message_printf(c, "$C5EX/PT %08" PRIX32 "\n%s\n$C5+%zuPT", cmd.item_id.load(), name.c_str(), points);
+  if (l->log.should_log(LogLevel::INFO)) {
+    auto name = s->describe_item(c->version(), item, false);
+    l->log.info("Player %hhu exchanged inventory item %hu:%08" PRIX32 " (%s) for %zu team points",
+        c->lobby_client_id, cmd.header.client_id.load(), cmd.item_id.load(), name.c_str(), points);
+    p->print_inventory(stderr, c->version(), s->item_name_index);
   }
-  p->print_inventory(stderr, c->version(), s->item_name_index);
 
   forward_subcommand(c, command, flag, data, size);
 }
@@ -2246,15 +2219,13 @@ static void on_destroy_inventory_item(shared_ptr<Client> c, uint8_t command, uin
     auto s = c->require_server_state();
     auto p = c->character();
     auto item = p->remove_item(cmd.item_id, cmd.amount, c->version() != Version::BB_V4);
-    auto name = s->describe_item(c->version(), item, false);
-    l->log.info("Player %hhu destroyed inventory item %hu:%08" PRIX32 " (%s)",
-        c->lobby_client_id, cmd.header.client_id.load(), cmd.item_id.load(), name.c_str());
-    if (c->config.check_flag(Client::Flag::DEBUG_ENABLED)) {
-      string name = s->describe_item(c->version(), item, true);
-      send_text_message_printf(c, "$C5DESTROY %08" PRIX32 "\n%s",
-          cmd.item_id.load(), name.c_str());
+
+    if (l->log.should_log(LogLevel::INFO)) {
+      auto name = s->describe_item(c->version(), item, false);
+      l->log.info("Player %hhu destroyed inventory item %hu:%08" PRIX32 " (%s)",
+          c->lobby_client_id, cmd.header.client_id.load(), cmd.item_id.load(), name.c_str());
+      p->print_inventory(stderr, c->version(), s->item_name_index);
     }
-    p->print_inventory(stderr, c->version(), s->item_name_index);
     forward_subcommand(c, command, flag, data, size);
   }
 }
@@ -2358,14 +2329,11 @@ static void on_sell_item_at_shop_bb(shared_ptr<Client> c, uint8_t command, uint8
     size_t price = (s->item_parameter_table_for_version(c->version())->price_for_item(item) >> 3) * cmd.amount;
     p->add_meseta(price);
 
-    auto name = s->describe_item(c->version(), item, false);
-    l->log.info("Player %hhu sold inventory item %08" PRIX32 " (%s) for %zu Meseta",
-        c->lobby_client_id, cmd.item_id.load(), name.c_str(), price);
-    p->print_inventory(stderr, c->version(), s->item_name_index);
-    if (c->config.check_flag(Client::Flag::DEBUG_ENABLED)) {
-      string name = s->describe_item(c->version(), item, true);
-      send_text_message_printf(c, "$C5DESTROY/SELL %08" PRIX32 "\n+%zu Meseta\n%s",
-          cmd.item_id.load(), price, name.c_str());
+    if (l->log.should_log(LogLevel::INFO)) {
+      auto name = s->describe_item(c->version(), item, false);
+      l->log.info("Player %hhu sold inventory item %08" PRIX32 " (%s) for %zu Meseta",
+          c->lobby_client_id, cmd.item_id.load(), name.c_str(), price);
+      p->print_inventory(stderr, c->version(), s->item_name_index);
     }
 
     forward_subcommand(c, command, flag, data, size);
@@ -2397,15 +2365,12 @@ static void on_buy_shop_item_bb(shared_ptr<Client> c, uint8_t, uint8_t, const vo
     p->add_item(item);
     send_create_inventory_item(c, item);
 
-    auto s = c->require_server_state();
-    auto name = s->describe_item(c->version(), item, false);
-    l->log.info("Player %hhu purchased item %08" PRIX32 " (%s) for %zu meseta",
-        c->lobby_client_id, item.id.load(), name.c_str(), price);
-    p->print_inventory(stderr, c->version(), s->item_name_index);
-    if (c->config.check_flag(Client::Flag::DEBUG_ENABLED)) {
-      string name = s->describe_item(c->version(), item, true);
-      send_text_message_printf(c, "$C5CREATE/BUY %08" PRIX32 "\n-%zu Meseta\n%s",
-          item.id.load(), price, name.c_str());
+    if (l->log.should_log(LogLevel::INFO)) {
+      auto s = c->require_server_state();
+      auto name = s->describe_item(c->version(), item, false);
+      l->log.info("Player %hhu purchased item %08" PRIX32 " (%s) for %zu meseta",
+          c->lobby_client_id, item.id.load(), name.c_str(), price);
+      p->print_inventory(stderr, c->version(), s->item_name_index);
     }
   }
 }

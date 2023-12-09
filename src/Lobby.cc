@@ -388,14 +388,15 @@ void Lobby::assign_inventory_and_bank_item_ids(shared_ptr<Client> c) {
   for (size_t z = 0; z < p->inventory.num_items; z++) {
     p->inventory.items[z].data.id = this->generate_item_id(c->lobby_client_id);
   }
-  c->log.info("Assigned inventory item IDs");
-  p->print_inventory(stderr, c->version(), c->require_server_state()->item_name_index);
-  if (p->bank.num_items) {
-    p->bank.assign_ids(0x99000000 + (c->lobby_client_id << 20));
-    c->log.info("Assigned bank item IDs");
-    p->print_bank(stderr, c->version(), c->require_server_state()->item_name_index);
-  } else {
-    c->log.info("Bank is empty");
+  if (c->log.info("Assigned inventory item IDs")) {
+    p->print_inventory(stderr, c->version(), c->require_server_state()->item_name_index);
+    if (p->bank.num_items) {
+      p->bank.assign_ids(0x99000000 + (c->lobby_client_id << 20));
+      c->log.info("Assigned bank item IDs");
+      p->print_bank(stderr, c->version(), c->require_server_state()->item_name_index);
+    } else {
+      c->log.info("Bank is empty");
+    }
   }
 }
 
