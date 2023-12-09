@@ -327,8 +327,8 @@ void Map::add_enemy(
     }
     case 0x0064: // TObjEneSlime
       add(this->check_and_log_rare_enemy(e.uparam1 & 0x01, rare_rates->pouilly_slime)
-              ? EnemyType::POFUILLY_SLIME
-              : EnemyType::POUILLY_SLIME);
+              ? EnemyType::POUILLY_SLIME
+              : EnemyType::POFUILLY_SLIME);
       default_num_children = 4;
       break;
     case 0x0065: // TObjEnePanarms

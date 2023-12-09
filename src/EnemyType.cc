@@ -618,10 +618,10 @@ uint8_t battle_param_index_for_enemy_type(Episode episode, EnemyType enemy_type)
           return 0x20;
         case EnemyType::VOL_OPT_2:
           return 0x25;
-        case EnemyType::POUILLY_SLIME:
-          return 0x2F;
         case EnemyType::POFUILLY_SLIME:
           return 0x30;
+        case EnemyType::POUILLY_SLIME:
+          return 0x2F;
         case EnemyType::PAN_ARMS:
           return 0x31;
         case EnemyType::HIDOOM:
