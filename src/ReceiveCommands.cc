@@ -3549,9 +3549,11 @@ static void on_40(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
   try {
     auto s = c->require_server_state();
     auto result = s->find_client(nullptr, cmd.target_guild_card_number);
-    auto result_lobby = result->lobby.lock();
-    if (result_lobby) {
-      send_card_search_result(c, result, result_lobby);
+    if (!result->blocked_senders.count(c->license->serial_number)) {
+      auto result_lobby = result->lobby.lock();
+      if (result_lobby) {
+        send_card_search_result(c, result, result_lobby);
+      }
     }
   } catch (const out_of_range&) {
   }
