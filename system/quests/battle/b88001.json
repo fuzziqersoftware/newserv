@@ -35,14 +35,16 @@
   // "ChallengeTemplateIndex": 0,
 
   // Quests may be set to be unavailable until a preceding quest has been
-  // cleared. To enable this feature, set a value for RequireFlag in the quest's
-  // JSON file. This field is ignored if the player has the
-  // DISABLE_QUEST_REQUIREMENTS flag in their license.
-  // "RequireFlag": 0x01F5,
+  // cleared or a team reward has been purchased. To enable this feature, set a
+  // value for AvailableIf in the quest's JSON file. This field's value should
+  // be a boolean expression that tests one or more flags or team rewards. An
+  // example with random values is shown below. This field is ignored if the
+  // player has the DISABLE_QUEST_REQUIREMENTS flag in their license.
+  // "AvailableIf": "(F_016D || F_0171 || T_EpicCustomQuest) && !F_0173",
 
-  // Quests on BB may be set to be available only through a team reward. To
-  // enable this feature, set a value for RequireTeamRewardKey in the quest's
-  // JSON file. This field is ignored if the player has the
-  // DISABLE_QUEST_REQUIREMENTS flag in their license.
-  // "RequireTeamRewardKey": "PointOfDisasterQuest",
+  // On BB, quests may be disabled but still visible to the player. This
+  // expression controls when that should be the case. If AvailableIf evaluates
+  // to false, this is ignored. This field is also ignored if the  player has
+  // the DISABLE_QUEST_REQUIREMENTS flag in their license.
+  // "EnabledIf": "!F_0169",
 }

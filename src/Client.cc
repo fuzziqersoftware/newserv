@@ -295,21 +295,30 @@ shared_ptr<const TeamIndex::Team> Client::team() const {
   return team;
 }
 
-bool Client::can_access_quest(shared_ptr<const Quest> q, uint8_t difficulty) const {
+bool Client::can_see_quest(shared_ptr<const Quest> q, uint8_t difficulty) const {
   if (this->license && (this->license->flags & License::Flag::DISABLE_QUEST_REQUIREMENTS)) {
     return true;
   }
-  if ((q->require_flag >= 0) &&
-      !this->character()->quest_flags.get(difficulty, q->require_flag)) {
-    return false;
+  if (!q->available_expression) {
+    return true;
   }
-  if (!q->require_team_reward_key.empty()) {
-    auto team = this->team();
-    if (!team || !team->has_reward(q->require_team_reward_key)) {
-      return false;
-    }
+  string expr = q->available_expression->str();
+  bool ret = q->available_expression->evaluate(this->character()->quest_flags.data.at(difficulty), this->team());
+  this->log.info("Evaluating quest availability expression %s => %s", expr.c_str(), ret ? "TRUE" : "FALSE");
+  return ret;
+}
+
+bool Client::can_play_quest(shared_ptr<const Quest> q, uint8_t difficulty) const {
+  if (this->license && (this->license->flags & License::Flag::DISABLE_QUEST_REQUIREMENTS)) {
+    return true;
   }
-  return true;
+  if (!q->enabled_expression) {
+    return true;
+  }
+  string expr = q->enabled_expression->str();
+  bool ret = q->enabled_expression->evaluate(this->character()->quest_flags.data.at(difficulty), this->team());
+  this->log.info("Evaluating quest enabled expression %s => %s", expr.c_str(), ret ? "TRUE" : "FALSE");
+  return ret;
 }
 
 void Client::dispatch_save_game_data(evutil_socket_t, short, void* ctx) {

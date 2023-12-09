@@ -1,3 +1,3 @@
 {
-  "RequireFlag": 0x02BE,
+  "AvailableIf": "F_02BE",
 }

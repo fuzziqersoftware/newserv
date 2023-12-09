@@ -205,8 +205,8 @@ VersionedQuest::VersionedQuest(
     std::shared_ptr<const std::string> pvr_contents,
     std::shared_ptr<const BattleRules> battle_rules,
     ssize_t challenge_template_index,
-    int16_t require_flag,
-    const string& require_team_reward_key)
+    std::shared_ptr<const QuestAvailabilityExpression> available_expression,
+    std::shared_ptr<const QuestAvailabilityExpression> enabled_expression)
     : quest_number(quest_number),
       category_id(category_id),
       episode(Episode::NONE),
@@ -219,8 +219,8 @@ VersionedQuest::VersionedQuest(
       pvr_contents(pvr_contents),
       battle_rules(battle_rules),
       challenge_template_index(challenge_template_index),
-      require_flag(require_flag),
-      require_team_reward_key(require_team_reward_key) {
+      available_expression(available_expression),
+      enabled_expression(enabled_expression) {
 
   auto bin_decompressed = prs_decompress(*this->bin_contents);
 
@@ -378,8 +378,8 @@ Quest::Quest(shared_ptr<const VersionedQuest> initial_version)
       name(initial_version->name),
       battle_rules(initial_version->battle_rules),
       challenge_template_index(initial_version->challenge_template_index),
-      require_flag(initial_version->require_flag),
-      require_team_reward_key(initial_version->require_team_reward_key) {
+      available_expression(initial_version->available_expression),
+      enabled_expression(initial_version->enabled_expression) {
   this->versions.emplace(this->versions_key(initial_version->version, initial_version->language), initial_version);
 }
 
@@ -409,11 +409,17 @@ void Quest::add_version(shared_ptr<const VersionedQuest> vq) {
   if (this->challenge_template_index != vq->challenge_template_index) {
     throw runtime_error("quest version has different challenge template index");
   }
-  if (this->require_flag != vq->require_flag) {
-    throw runtime_error("quest version has different required flag");
+  if (!this->available_expression != !vq->available_expression) {
+    throw runtime_error("quest version has available expression but root quest does not, or vice versa");
   }
-  if (this->require_team_reward_key != vq->require_team_reward_key) {
-    throw runtime_error("quest version has different required team reward key");
+  if (this->available_expression && *this->available_expression != *vq->available_expression) {
+    throw runtime_error("quest version has a different available expression");
+  }
+  if (!this->enabled_expression != !vq->enabled_expression) {
+    throw runtime_error("quest version has enabled expression but root quest does not, or vice versa");
+  }
+  if (this->enabled_expression && *this->enabled_expression != *vq->enabled_expression) {
+    throw runtime_error("quest version has a different enabled expression");
   }
 
   this->versions.emplace(this->versions_key(vq->version, vq->language), vq);
@@ -639,8 +645,8 @@ QuestIndex::QuestIndex(
       JSON metadata_json = nullptr;
       shared_ptr<BattleRules> battle_rules;
       ssize_t challenge_template_index = -1;
-      int16_t require_flag = -1;
-      string require_team_reward_key;
+      shared_ptr<const QuestAvailabilityExpression> available_expression;
+      shared_ptr<const QuestAvailabilityExpression> enabled_expression;
       try {
         json_filename = basename;
         metadata_json = JSON::parse(*json_files.at(json_filename));
@@ -665,9 +671,12 @@ QuestIndex::QuestIndex(
           challenge_template_index = metadata_json.at("ChallengeTemplateIndex").as_int();
         } catch (const out_of_range&) {
         }
-        require_flag = metadata_json.get_int("RequireFlag", -1);
         try {
-          require_team_reward_key = metadata_json.get_string("RequireTeamRewardKey");
+          available_expression = make_shared<QuestAvailabilityExpression>(metadata_json.get_string("AvailableIf"));
+        } catch (const out_of_range&) {
+        }
+        try {
+          enabled_expression = make_shared<QuestAvailabilityExpression>(metadata_json.get_string("EnabledIf"));
         } catch (const out_of_range&) {
         }
       }
@@ -682,8 +691,8 @@ QuestIndex::QuestIndex(
           pvr_contents,
           battle_rules,
           challenge_template_index,
-          require_flag,
-          require_team_reward_key);
+          available_expression,
+          enabled_expression);
 
       auto category_name = this->category_index->at(vq->category_id)->name;
       string dat_str = dat_filename.empty() ? "" : (" with layout from " + dat_filename + ".dat");
@@ -737,7 +746,7 @@ vector<shared_ptr<const QuestCategoryIndex::Category>> QuestIndex::categories(
     QuestMenuType menu_type,
     Episode episode,
     Version version,
-    function<bool(std::shared_ptr<const Quest>)> include_condition) const {
+    IncludeCondition include_condition) const {
   // The episode filter should apply in normal or solo mode
   if ((menu_type != QuestMenuType::NORMAL) && (menu_type != QuestMenuType::SOLO)) {
     episode = Episode::NONE;
@@ -752,27 +761,30 @@ vector<shared_ptr<const QuestCategoryIndex::Category>> QuestIndex::categories(
   return ret;
 }
 
-vector<shared_ptr<const Quest>> QuestIndex::filter(
+vector<pair<QuestIndex::IncludeState, shared_ptr<const Quest>>> QuestIndex::filter(
     QuestMenuType menu_type,
     Episode episode,
     Version version,
     uint32_t category_id,
-    function<bool(std::shared_ptr<const Quest>)> include_condition,
+    IncludeCondition include_condition,
     size_t limit) const {
   if ((menu_type != QuestMenuType::NORMAL) && (menu_type != QuestMenuType::SOLO)) {
     episode = Episode::NONE;
   }
 
-  vector<shared_ptr<const Quest>> ret;
+  vector<pair<IncludeState, shared_ptr<const Quest>>> ret;
   auto category_it = this->quests_by_category_id_and_number.find(category_id);
   if (category_it == this->quests_by_category_id_and_number.end()) {
     return ret;
   }
   for (auto it : category_it->second) {
     if (((episode == Episode::NONE) || (it.second->episode == episode)) &&
-        it.second->has_version_any_language(version) &&
-        (!include_condition || include_condition(it.second))) {
-      ret.emplace_back(it.second);
+        it.second->has_version_any_language(version)) {
+      IncludeState state = include_condition ? include_condition(it.second) : IncludeState::AVAILABLE;
+      if (state == IncludeState::HIDDEN) {
+        continue;
+      }
+      ret.emplace_back(make_pair(state, it.second));
       if (limit && (ret.size() >= limit)) {
         break;
       }

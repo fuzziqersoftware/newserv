@@ -258,7 +258,7 @@ void send_game_menu(
 void send_quest_menu(
     std::shared_ptr<Client> c,
     uint32_t menu_id,
-    const std::vector<std::shared_ptr<const Quest>>& quests,
+    const std::vector<std::pair<QuestIndex::IncludeState, std::shared_ptr<const Quest>>>& quests,
     bool is_download_menu);
 void send_quest_categories_menu(
     std::shared_ptr<Client> c,

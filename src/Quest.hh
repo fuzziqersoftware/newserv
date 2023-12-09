@@ -9,6 +9,7 @@
 #include <vector>
 
 #include "PlayerSubordinates.hh"
+#include "QuestAvailabilityExpression.hh"
 #include "QuestScript.hh"
 #include "StaticGameData.hh"
 #include "TeamIndex.hh"
@@ -70,8 +71,8 @@ struct VersionedQuest {
   std::shared_ptr<const std::string> pvr_contents;
   std::shared_ptr<const BattleRules> battle_rules;
   ssize_t challenge_template_index;
-  int16_t require_flag; // <0 = none
-  std::string require_team_reward_key;
+  std::shared_ptr<const QuestAvailabilityExpression> available_expression;
+  std::shared_ptr<const QuestAvailabilityExpression> enabled_expression;
 
   VersionedQuest(
       uint32_t quest_number,
@@ -83,8 +84,8 @@ struct VersionedQuest {
       std::shared_ptr<const std::string> pvr_contents,
       std::shared_ptr<const BattleRules> battle_rules = nullptr,
       ssize_t challenge_template_index = -1,
-      int16_t require_flag = -1,
-      const std::string& require_team_reward_key = "");
+      std::shared_ptr<const QuestAvailabilityExpression> available_expression = nullptr,
+      std::shared_ptr<const QuestAvailabilityExpression> enabled_expression = nullptr);
 
   std::string bin_filename() const;
   std::string dat_filename() const;
@@ -117,13 +118,18 @@ public:
   std::string name;
   std::shared_ptr<const BattleRules> battle_rules;
   ssize_t challenge_template_index;
-  int16_t require_flag;
-  std::string require_team_reward_key;
+  std::shared_ptr<const QuestAvailabilityExpression> available_expression;
+  std::shared_ptr<const QuestAvailabilityExpression> enabled_expression;
   std::map<uint32_t, std::shared_ptr<const VersionedQuest>> versions;
 };
 
 struct QuestIndex {
-  using IncludeCondition = std::function<bool(std::shared_ptr<const Quest>)>;
+  enum class IncludeState {
+    HIDDEN = 0,
+    AVAILABLE,
+    DISABLED,
+  };
+  using IncludeCondition = std::function<IncludeState(std::shared_ptr<const Quest>)>;
 
   std::string directory;
   std::shared_ptr<const QuestCategoryIndex> category_index;
@@ -140,7 +146,7 @@ struct QuestIndex {
       Episode episode,
       Version version,
       IncludeCondition include_condition = nullptr) const;
-  std::vector<std::shared_ptr<const Quest>> filter(
+  std::vector<std::pair<QuestIndex::IncludeState, std::shared_ptr<const Quest>>> filter(
       QuestMenuType menu_type,
       Episode episode,
       Version version,

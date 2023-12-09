@@ -1996,6 +1996,15 @@ struct C_ChangeShipOrBlock_A0_A1 {
 
 template <TextEncoding Encoding, size_t ShortDescLength>
 struct S_QuestMenuEntry {
+  // Note: The game treats menu_id as two 8-bit fields followed by a 16-bit
+  // field. In most situations, this is opaque to the server, so we treat it as
+  // a single 32-bit field, but in the case of the quest menu, the second byte
+  // is used to determine the icon that appears to the left of the quest name.
+  // Specifically:
+  //   0 = online quest icon (green diamond)
+  //   1 = download quest icon (green square with outlined diamond)
+  //   2 = completed download quest icon (orange square with outlined diamond)
+  //   Anything else = same as 1
   le_uint32_t menu_id = 0;
   le_uint32_t item_id = 0;
   pstring<Encoding, 0x20> name;
@@ -2007,7 +2016,17 @@ struct S_QuestMenuEntry_DC_GC_A2_A4 : S_QuestMenuEntry<TextEncoding::MARKED, 0x7
 } __packed__;
 struct S_QuestMenuEntry_XB_A2_A4 : S_QuestMenuEntry<TextEncoding::MARKED, 0x80> {
 } __packed__;
-struct S_QuestMenuEntry_BB_A2_A4 : S_QuestMenuEntry<TextEncoding::UTF16, 0x7A> {
+
+struct S_QuestMenuEntry_BB_A2_A4 {
+  le_uint32_t menu_id = 0;
+  le_uint32_t item_id = 0;
+  pstring<TextEncoding::UTF16, 0x20> name;
+  pstring<TextEncoding::UTF16, 0x78> short_description;
+  // If this field is set, a yellow hex icon is displayed instead of the green
+  // or orange diamond icon, and the quest is grayed out and cannot be selected.
+  // This field is ignored if the icon type (see S_QuestMenuEntry) isn't 1 or 2.
+  uint8_t disabled = 0;
+  parray<uint8_t, 3> unused;
 } __packed__;
 
 // A3 (S->C): Quest information

@@ -410,12 +410,16 @@ unordered_map<uint32_t, shared_ptr<Client>> Lobby::clients_by_serial_number() co
 }
 
 QuestIndex::IncludeCondition Lobby::quest_include_condition() const {
-  return [this](shared_ptr<const Quest> q) -> bool {
+  return [this](shared_ptr<const Quest> q) -> QuestIndex::IncludeState {
+    bool is_enabled = true;
     for (const auto& lc : this->clients) {
-      if (lc && !lc->can_access_quest(q, this->difficulty)) {
-        return false;
+      if (lc && !lc->can_see_quest(q, this->difficulty)) {
+        return QuestIndex::IncludeState::HIDDEN;
+      }
+      if (lc && !lc->can_play_quest(q, this->difficulty)) {
+        is_enabled = false;
       }
     }
-    return true;
+    return is_enabled ? QuestIndex::IncludeState::AVAILABLE : QuestIndex::IncludeState::DISABLED;
   };
 }

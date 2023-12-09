@@ -1414,21 +1414,44 @@ template <typename EntryT>
 void send_quest_menu_t(
     shared_ptr<Client> c,
     uint32_t menu_id,
-    const vector<shared_ptr<const Quest>>& quests,
+    const vector<pair<QuestIndex::IncludeState, shared_ptr<const Quest>>>& quests,
     bool is_download_menu) {
   auto v = c->version();
   vector<EntryT> entries;
-  for (const auto& quest : quests) {
-    auto vq = quest->version(v, c->language());
+  for (const auto& it : quests) {
+    auto vq = it.second->version(v, c->language());
     if (!vq) {
       continue;
     }
 
     auto& e = entries.emplace_back();
     e.menu_id = menu_id;
-    e.item_id = quest->quest_number;
+    e.item_id = it.second->quest_number;
     e.name.encode(vq->name, c->language());
     e.short_description.encode(add_color(vq->short_description), c->language());
+  }
+  send_command_vt(c, is_download_menu ? 0xA4 : 0xA2, entries.size(), entries);
+}
+
+void send_quest_menu_bb(
+    shared_ptr<Client> c,
+    uint32_t menu_id,
+    const vector<pair<QuestIndex::IncludeState, shared_ptr<const Quest>>>& quests,
+    bool is_download_menu) {
+  auto v = c->version();
+  vector<S_QuestMenuEntry_BB_A2_A4> entries;
+  for (const auto& it : quests) {
+    auto vq = it.second->version(v, c->language());
+    if (!vq) {
+      continue;
+    }
+
+    auto& e = entries.emplace_back();
+    e.menu_id = menu_id;
+    e.item_id = it.second->quest_number;
+    e.name.encode(vq->name, c->language());
+    e.short_description.encode(add_color(vq->short_description), c->language());
+    e.disabled = (it.first == QuestIndex::IncludeState::DISABLED) ? 1 : 0;
   }
   send_command_vt(c, is_download_menu ? 0xA4 : 0xA2, entries.size(), entries);
 }
@@ -1459,8 +1482,11 @@ void send_quest_categories_menu_t(
   send_command_vt(c, is_download_menu ? 0xA4 : 0xA2, entries.size(), entries);
 }
 
-void send_quest_menu(shared_ptr<Client> c, uint32_t menu_id,
-    const vector<shared_ptr<const Quest>>& quests, bool is_download_menu) {
+void send_quest_menu(
+    shared_ptr<Client> c,
+    uint32_t menu_id,
+    const vector<pair<QuestIndex::IncludeState, shared_ptr<const Quest>>>& quests,
+    bool is_download_menu) {
   switch (c->version()) {
     case Version::PC_V2:
       send_quest_menu_t<S_QuestMenuEntry_PC_A2_A4>(c, menu_id, quests, is_download_menu);
@@ -1479,7 +1505,7 @@ void send_quest_menu(shared_ptr<Client> c, uint32_t menu_id,
       send_quest_menu_t<S_QuestMenuEntry_XB_A2_A4>(c, menu_id, quests, is_download_menu);
       break;
     case Version::BB_V4:
-      send_quest_menu_t<S_QuestMenuEntry_BB_A2_A4>(c, menu_id, quests, is_download_menu);
+      send_quest_menu_bb(c, menu_id, quests, is_download_menu);
       break;
     default:
       throw logic_error("unimplemented versioned command");
