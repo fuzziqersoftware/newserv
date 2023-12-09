@@ -631,78 +631,70 @@ void Map::add_enemies_from_map_data(
   }
 }
 
-struct DATParserRandomState {
-  PSOV2Encryption random;
-  PSOV2Encryption location_table_random;
-  std::array<uint32_t, 0x20> location_index_table;
-  uint32_t location_indexes_populated;
-  uint32_t location_indexes_used;
-  uint32_t location_entries_base_offset;
+Map::DATParserRandomState::DATParserRandomState(uint32_t rare_seed)
+    : random(rare_seed),
+      location_table_random(0),
+      location_indexes_populated(0),
+      location_indexes_used(0),
+      location_entries_base_offset(0) {
+  this->location_index_table.fill(0);
+}
 
-  DATParserRandomState(uint32_t rare_seed)
-      : random(rare_seed),
-        location_table_random(0),
-        location_indexes_populated(0),
-        location_indexes_used(0),
-        location_entries_base_offset(0) {
-    this->location_index_table.fill(0);
+size_t Map::DATParserRandomState::rand_int_biased(size_t min_v, size_t max_v) {
+  float max_f = static_cast<float>(max_v + 1);
+  uint32_t crypt_v = this->random.next();
+  float det_f = static_cast<float>(crypt_v);
+  return max<size_t>(floorf((max_f * det_f) / UINT32_MAX_AS_FLOAT), min_v);
+}
+
+uint32_t Map::DATParserRandomState::next_location_index() {
+  if (this->location_indexes_used < this->location_indexes_populated) {
+    return this->location_index_table.at(this->location_indexes_used++);
+  }
+  return 0;
+}
+
+void Map::DATParserRandomState::generate_shuffled_location_table(
+    const Map::RandomEnemyLocationsHeader& header, StringReader r, uint16_t section) {
+  if (header.num_sections == 0) {
+    throw runtime_error("no locations defined");
   }
 
-  size_t rand_int_biased(size_t min_v, size_t max_v) {
-    float max_f = static_cast<float>(max_v + 1);
-    uint32_t crypt_v = this->random.next();
-    float det_f = static_cast<float>(crypt_v);
-    return max<size_t>(floorf((max_f * det_f) / UINT32_MAX_AS_FLOAT), min_v);
+  StringReader sections_r = r.sub(header.section_table_offset, header.num_sections * sizeof(Map::RandomEnemyLocationSection));
+
+  size_t bs_min = 0;
+  size_t bs_max = header.num_sections - 1;
+  do {
+    size_t bs_mid = (bs_min + bs_max) / 2;
+    if (sections_r.pget<Map::RandomEnemyLocationSection>(bs_mid * sizeof(Map::RandomEnemyLocationSection)).section < section) {
+      bs_min = bs_mid + 1;
+    } else {
+      bs_max = bs_mid;
+    }
+  } while (bs_min < bs_max);
+
+  const auto& sec = sections_r.pget<Map::RandomEnemyLocationSection>(bs_min * sizeof(Map::RandomEnemyLocationSection));
+  if (section != sec.section) {
+    return;
   }
 
-  uint32_t next_location_index() {
-    if (this->location_indexes_used < this->location_indexes_populated) {
-      return this->location_index_table.at(this->location_indexes_used++);
-    }
-    return 0;
+  this->location_indexes_populated = sec.count;
+  this->location_indexes_used = 0;
+  this->location_entries_base_offset = sec.offset;
+  for (size_t z = 0; z < sec.count; z++) {
+    this->location_index_table.at(z) = z;
   }
 
-  void generate_shuffled_location_table(const Map::RandomEnemyLocationsHeader& header, StringReader r, uint16_t section) {
-    if (header.num_sections == 0) {
-      throw runtime_error("no locations defined");
-    }
-
-    StringReader sections_r = r.sub(header.section_table_offset, header.num_sections * sizeof(Map::RandomEnemyLocationSection));
-
-    size_t bs_min = 0;
-    size_t bs_max = header.num_sections - 1;
-    do {
-      size_t bs_mid = (bs_min + bs_max) / 2;
-      if (sections_r.pget<Map::RandomEnemyLocationSection>(bs_mid * sizeof(Map::RandomEnemyLocationSection)).section < section) {
-        bs_min = bs_mid + 1;
-      } else {
-        bs_max = bs_mid;
-      }
-    } while (bs_min < bs_max);
-
-    const auto& sec = sections_r.pget<Map::RandomEnemyLocationSection>(bs_min * sizeof(Map::RandomEnemyLocationSection));
-    if (section != sec.section) {
-      return;
-    }
-
-    this->location_indexes_populated = sec.count;
-    this->location_indexes_used = 0;
-    this->location_entries_base_offset = sec.offset;
-    for (size_t z = 0; z < sec.count; z++) {
-      this->location_index_table.at(z) = z;
-    }
-
-    for (size_t z = 0; z < 4; z++) {
-      for (size_t x = 0; x < sec.count; x++) {
-        uint32_t crypt_v = this->location_table_random.next();
-        size_t choice = floorf((static_cast<float>(sec.count) * static_cast<float>(crypt_v)) / UINT32_MAX_AS_FLOAT);
-        uint32_t t = this->location_index_table[x];
-        this->location_index_table[x] = this->location_index_table[choice];
-        this->location_index_table[choice] = t;
-      }
+  for (size_t z = 0; z < 4; z++) {
+    for (size_t x = 0; x < sec.count; x++) {
+      uint32_t crypt_v = this->location_table_random.next();
+      size_t choice = floorf((static_cast<float>(sec.count) * static_cast<float>(crypt_v)) / UINT32_MAX_AS_FLOAT);
+      uint32_t t = this->location_index_table[x];
+      this->location_index_table[x] = this->location_index_table[choice];
+      this->location_index_table[choice] = t;
     }
   }
-};
+}
 
 void Map::add_random_enemies_from_map_data(
     Episode episode,
@@ -712,7 +704,7 @@ void Map::add_random_enemies_from_map_data(
     StringReader wave_events_segment_r,
     StringReader locations_segment_r,
     StringReader definitions_segment_r,
-    uint32_t rare_seed,
+    std::shared_ptr<DATParserRandomState> random_state,
     std::shared_ptr<const RareEnemyRates> rare_rates) {
 
   static const array<uint32_t, 41> rand_enemy_base_types = {
@@ -736,14 +728,12 @@ void Map::add_random_enemies_from_map_data(
       definitions_header.weight_entries_offset,
       definitions_header.weight_entry_count * sizeof(RandomEnemyWeight));
 
-  DATParserRandomState random(rare_seed);
-
   for (size_t wave_entry_index = 0; wave_entry_index < wave_events_header.entry_count; wave_entry_index++) {
     auto entry_log = static_game_data_log.sub(string_printf("(Entry %zu/%" PRIu32 ") ", wave_entry_index, wave_events_header.entry_count.load()));
     entry_log.info("Start");
     const auto& entry = wave_events_segment_r.get<Event2Entry>();
 
-    size_t remaining_waves = random.rand_int_biased(1, entry.max_waves);
+    size_t remaining_waves = random_state->rand_int_biased(1, entry.max_waves);
     entry_log.info("Chose %zu waves (max=%hu)", remaining_waves, entry.max_waves.load());
     // Trace: at 0080E125 EAX is wave count
 
@@ -752,14 +742,14 @@ void Map::add_random_enemies_from_map_data(
       remaining_waves--;
       auto wave_log = entry_log.sub(string_printf("(Wave %zu) ", remaining_waves));
 
-      size_t remaining_enemies = random.rand_int_biased(entry.min_enemies, entry.max_enemies);
+      size_t remaining_enemies = random_state->rand_int_biased(entry.min_enemies, entry.max_enemies);
       wave_log.info("Chose %zu enemies (range=[%hhu, %hhu])", remaining_enemies, entry.min_enemies, entry.max_enemies);
       // Trace: at 0080E208 EDI is enemy count
 
-      random.generate_shuffled_location_table(locations_header, locations_segment_r, entry.section);
+      random_state->generate_shuffled_location_table(locations_header, locations_segment_r, entry.section);
       wave_log.info("Generated shuffled location table");
-      for (size_t z = 0; z < random.location_indexes_populated; z++) {
-        wave_log.info("  table[%zX] = %" PRIX32, z, random.location_index_table[z]);
+      for (size_t z = 0; z < random_state->location_indexes_populated; z++) {
+        wave_log.info("  table[%zX] = %" PRIX32, z, random_state->location_index_table[z]);
       }
       // Trace: at 0080EBB0 *(EBP + 4) points to table (0x20 uint32_ts)
 
@@ -775,7 +765,7 @@ void Map::add_random_enemies_from_map_data(
         }
         // Trace: at 0080E2C2 EBX is weight_total
 
-        size_t det = random.rand_int_biased(0, weight_total - 1);
+        size_t det = random_state->rand_int_biased(0, weight_total - 1);
         enemy_log.info("weight_total=%zX, det=%zX", weight_total, det);
         // Trace: at 0080E300 EDX is det
 
@@ -813,13 +803,13 @@ void Map::add_random_enemies_from_map_data(
                 e.fparam5 = def.fparam5;
                 e.uparam1 = def.uparam1;
                 e.uparam2 = def.uparam2;
-                e.num_children = random.rand_int_biased(def.min_children, def.max_children);
+                e.num_children = random_state->rand_int_biased(def.min_children, def.max_children);
               } else {
                 throw runtime_error("random enemy definition not found");
               }
 
               const auto& loc = locations_segment_r.pget<RandomEnemyLocationEntry>(
-                  locations_header.entries_offset + sizeof(RandomEnemyLocationEntry) * random.next_location_index());
+                  locations_header.entries_offset + sizeof(RandomEnemyLocationEntry) * random_state->next_location_index());
               e.x = loc.x;
               e.y = loc.y;
               e.z = loc.z;
@@ -844,13 +834,13 @@ void Map::add_random_enemies_from_map_data(
         // doing so, it uses one value from random to determine the delay
         // parameter of the event. To keep our state in sync with what the
         // client would do, we skip a random value here.
-        random.random.next();
+        random_state->random.next();
         wave_number++;
       }
     }
 
     // For the same reason as above, we need to skip another random value here.
-    random.random.next();
+    random_state->random.next();
   }
 }
 
@@ -928,6 +918,7 @@ void Map::add_enemies_and_objects_from_quest_data(
   auto all_floor_sections = this->collect_quest_map_data_sections(data, size);
 
   StringReader r(data, size);
+  shared_ptr<DATParserRandomState> random_state;
   for (size_t floor = 0; floor < all_floor_sections.size(); floor++) {
     const auto& floor_sections = all_floor_sections[floor];
 
@@ -962,6 +953,9 @@ void Map::add_enemies_and_objects_from_quest_data(
       const auto& wave_events_header = r.pget<SectionHeader>(floor_sections.wave_events);
       const auto& random_enemy_locations_header = r.pget<SectionHeader>(floor_sections.random_enemy_locations);
       const auto& random_enemy_definitions_header = r.pget<SectionHeader>(floor_sections.random_enemy_definitions);
+      if (!random_state) {
+        random_state = make_shared<DATParserRandomState>(rare_seed);
+      }
       this->add_random_enemies_from_map_data(
           episode,
           difficulty,
@@ -970,7 +964,7 @@ void Map::add_enemies_and_objects_from_quest_data(
           r.sub(floor_sections.wave_events + sizeof(SectionHeader), wave_events_header.data_size),
           r.sub(floor_sections.random_enemy_locations + sizeof(SectionHeader), random_enemy_locations_header.data_size),
           r.sub(floor_sections.random_enemy_definitions + sizeof(SectionHeader), random_enemy_definitions_header.data_size),
-          rare_seed,
+          random_state,
           rare_rates);
     }
   }

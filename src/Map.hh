@@ -239,6 +239,20 @@ struct Map {
     std::string str() const;
   } __attribute__((packed));
 
+  struct DATParserRandomState {
+    PSOV2Encryption random;
+    PSOV2Encryption location_table_random;
+    std::array<uint32_t, 0x20> location_index_table;
+    uint32_t location_indexes_populated;
+    uint32_t location_indexes_used;
+    uint32_t location_entries_base_offset;
+
+    DATParserRandomState(uint32_t rare_seed);
+    size_t rand_int_biased(size_t min_v, size_t max_v);
+    uint32_t next_location_index();
+    void generate_shuffled_location_table(const Map::RandomEnemyLocationsHeader& header, StringReader r, uint16_t section);
+  };
+
   std::vector<Object> objects;
   std::vector<Enemy> enemies;
   std::vector<size_t> rare_enemy_indexes;
@@ -272,7 +286,7 @@ struct Map {
       StringReader wave_events_r,
       StringReader random_enemy_locations_r,
       StringReader random_enemy_definitions_r,
-      uint32_t rare_seed,
+      std::shared_ptr<DATParserRandomState> random_state,
       std::shared_ptr<const RareEnemyRates> rare_rates = DEFAULT_RARE_ENEMIES);
 
   struct DATSectionsForFloor {

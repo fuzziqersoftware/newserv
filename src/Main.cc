@@ -1574,6 +1574,34 @@ Action a_show_ep3_maps(
       }
     });
 
+Action a_show_battle_params(
+    "show-battle-params", "\
+  show-battle-params\n\
+    Print the Blue Burst battle parameters from the system/blueburst directory\n\
+    in a human-readable format.\n",
+    +[](Arguments&) {
+      BattleParamsIndex index(
+          make_shared<string>(load_file("system/blueburst/BattleParamEntry_on.dat")),
+          make_shared<string>(load_file("system/blueburst/BattleParamEntry_lab_on.dat")),
+          make_shared<string>(load_file("system/blueburst/BattleParamEntry_ep4_on.dat")),
+          make_shared<string>(load_file("system/blueburst/BattleParamEntry.dat")),
+          make_shared<string>(load_file("system/blueburst/BattleParamEntry_lab.dat")),
+          make_shared<string>(load_file("system/blueburst/BattleParamEntry_ep4.dat")));
+
+      fprintf(stdout, "Episode 1 multi\n");
+      index.get_table(false, Episode::EP1).print(stdout);
+      fprintf(stdout, "Episode 1 solo\n");
+      index.get_table(true, Episode::EP1).print(stdout);
+      fprintf(stdout, "Episode 2 multi\n");
+      index.get_table(false, Episode::EP2).print(stdout);
+      fprintf(stdout, "Episode 2 solo\n");
+      index.get_table(true, Episode::EP2).print(stdout);
+      fprintf(stdout, "Episode 4 multi\n");
+      index.get_table(false, Episode::EP4).print(stdout);
+      fprintf(stdout, "Episode 4 solo\n");
+      index.get_table(true, Episode::EP4).print(stdout);
+    });
+
 Action a_parse_object_graph(
     "parse-object-graph", nullptr, +[](Arguments& args) {
       uint32_t root_object_address = args.get<uint32_t>("root", Arguments::IntFormat::HEX);
