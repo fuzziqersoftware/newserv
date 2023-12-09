@@ -1001,6 +1001,9 @@ static void server_command_change_bank(shared_ptr<Client> c, const std::string& 
   if (c->config.check_flag(Client::Flag::AT_BANK_COUNTER)) {
     throw runtime_error("cannot change banks while at the bank counter");
   }
+  if (c->has_overlay()) {
+    throw runtime_error("cannot change banks while Battle or Challenge is in progress");
+  }
 
   ssize_t new_char_index = args.empty() ? (c->bb_character_index + 1) : stol(args, nullptr, 0);
 

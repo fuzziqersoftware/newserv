@@ -926,13 +926,21 @@ void Client::use_default_bank() {
 
 bool Client::use_shared_bank() {
   this->use_default_bank();
+
   string filename = this->shared_bank_filename();
-  if (isfile(filename)) {
+  auto files_manager = this->require_server_state()->player_files_manager;
+  this->external_bank = files_manager->get_bank(filename);
+  if (this->external_bank) {
+    player_data_log.info("Using loaded shared bank %s", filename.c_str());
+    return true;
+  } else if (isfile(filename)) {
     this->external_bank = make_shared<PlayerBank>(load_object_file<PlayerBank>(filename));
+    files_manager->set_bank(filename, this->external_bank);
     player_data_log.info("Loaded shared bank %s", filename.c_str());
     return true;
   } else {
     this->external_bank = make_shared<PlayerBank>();
+    files_manager->set_bank(filename, this->external_bank);
     player_data_log.info("Created shared bank for %s", filename.c_str());
     return false;
   }

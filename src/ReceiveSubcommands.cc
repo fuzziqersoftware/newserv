@@ -2440,6 +2440,7 @@ static void on_battle_restart_bb(shared_ptr<Client> c, uint8_t, uint8_t, const v
     for (auto& lc : l->clients) {
       if (lc) {
         lc->delete_overlay();
+        lc->use_default_bank();
         lc->create_battle_overlay(new_rules, s->level_table);
       }
     }

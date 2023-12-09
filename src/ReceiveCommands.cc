@@ -1896,9 +1896,11 @@ static void on_quest_loaded(shared_ptr<Lobby> l) {
     if (l->base_version != Version::BB_V4) {
       lc->delete_overlay();
       if (l->quest->battle_rules) {
+        lc->use_default_bank();
         lc->create_battle_overlay(l->quest->battle_rules, s->level_table);
         lc->log.info("Created battle overlay");
       } else if (l->quest->challenge_template_index >= 0) {
+        lc->use_default_bank();
         lc->create_challenge_overlay(lc->version(), l->quest->challenge_template_index, s->level_table);
         lc->log.info("Created challenge overlay");
         l->assign_inventory_and_bank_item_ids(lc);
@@ -3463,6 +3465,7 @@ static void on_DF_BB(shared_ptr<Client> c, uint16_t command, uint32_t, string& d
 
       for (auto lc : l->clients) {
         if (lc) {
+          lc->use_default_bank();
           lc->create_challenge_overlay(lc->version(), l->quest->challenge_template_index, s->level_table);
           lc->log.info("Created challenge overlay");
           l->assign_inventory_and_bank_item_ids(lc);
