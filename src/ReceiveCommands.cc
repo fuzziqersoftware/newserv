@@ -1847,7 +1847,9 @@ static void on_quest_loaded(shared_ptr<Lobby> l) {
   }
 
   auto s = l->require_server_state();
-  if ((l->base_version == Version::BB_V4) && l->map) {
+  // For Challenge quests, don't replace the map now - the leader will send an
+  // 02DF command to create overlays, which also replaces the map.
+  if ((l->base_version == Version::BB_V4) && l->map && (l->quest->challenge_template_index < 0)) {
     auto leader_c = l->clients.at(l->leader_id);
     if (!leader_c) {
       throw logic_error("lobby leader is missing");
