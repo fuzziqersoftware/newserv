@@ -730,11 +730,9 @@ void Map::add_random_enemies_from_map_data(
 
   for (size_t wave_entry_index = 0; wave_entry_index < wave_events_header.entry_count; wave_entry_index++) {
     auto entry_log = static_game_data_log.sub(string_printf("(Entry %zu/%" PRIu32 ") ", wave_entry_index, wave_events_header.entry_count.load()));
-    entry_log.info("Start");
     const auto& entry = wave_events_segment_r.get<Event2Entry>();
 
     size_t remaining_waves = random_state->rand_int_biased(1, entry.max_waves);
-    entry_log.info("Chose %zu waves (max=%hu)", remaining_waves, entry.max_waves.load());
     // Trace: at 0080E125 EAX is wave count
 
     uint32_t wave_number = entry.wave_number;
@@ -743,14 +741,9 @@ void Map::add_random_enemies_from_map_data(
       auto wave_log = entry_log.sub(string_printf("(Wave %zu) ", remaining_waves));
 
       size_t remaining_enemies = random_state->rand_int_biased(entry.min_enemies, entry.max_enemies);
-      wave_log.info("Chose %zu enemies (range=[%hhu, %hhu])", remaining_enemies, entry.min_enemies, entry.max_enemies);
       // Trace: at 0080E208 EDI is enemy count
 
       random_state->generate_shuffled_location_table(locations_header, locations_segment_r, entry.section);
-      wave_log.info("Generated shuffled location table");
-      for (size_t z = 0; z < random_state->location_indexes_populated; z++) {
-        wave_log.info("  table[%zX] = %" PRIX32, z, random_state->location_index_table[z]);
-      }
       // Trace: at 0080EBB0 *(EBP + 4) points to table (0x20 uint32_ts)
 
       while (remaining_enemies) {
@@ -766,7 +759,6 @@ void Map::add_random_enemies_from_map_data(
         // Trace: at 0080E2C2 EBX is weight_total
 
         size_t det = random_state->rand_int_biased(0, weight_total - 1);
-        enemy_log.info("weight_total=%zX, det=%zX", weight_total, det);
         // Trace: at 0080E300 EDX is det
 
         weights_r.go(0);
@@ -817,11 +809,10 @@ void Map::add_random_enemies_from_map_data(
               e.y_angle = loc.y_angle;
               e.z_angle = loc.z_angle;
 
-              enemy_log.info("Creating enemy with base_type %04hX fparam2 %g uparam1 %04hX", e.base_type.load(), e.fparam2.load(), e.uparam1.load());
               // Trace: at 0080E6FE CX is base_type
               this->add_enemy(episode, difficulty, event, floor, 0, e, rare_rates);
             } else {
-              enemy_log.info("Cannot create enemy: parameters are missing");
+              enemy_log.warning("Cannot create enemy: parameters are missing");
             }
             break;
           } else {

@@ -3450,9 +3450,15 @@ static void on_DF_BB(shared_ptr<Client> c, uint16_t command, uint32_t, string& d
       if (!l->quest) {
         throw runtime_error("challenge mode character template config command sent in non-challenge game");
       }
-      if (l->quest->challenge_template_index != static_cast<ssize_t>(cmd.template_index)) {
+      auto vq = l->quest->version(Version::BB_V4, c->language());
+      if (vq->challenge_template_index != static_cast<ssize_t>(cmd.template_index)) {
         throw runtime_error("challenge template index in quest metadata does not match index sent by client");
       }
+
+      if (l->item_creator) {
+        l->item_creator->clear_destroyed_entities();
+      }
+
       for (auto lc : l->clients) {
         if (lc) {
           lc->create_challenge_overlay(lc->version(), l->quest->challenge_template_index, s->level_table);
@@ -3460,6 +3466,17 @@ static void on_DF_BB(shared_ptr<Client> c, uint16_t command, uint32_t, string& d
           l->assign_inventory_and_bank_item_ids(lc);
         }
       }
+
+      auto dat_contents = prs_decompress(*vq->dat_contents);
+      l->map->clear();
+      l->map->add_enemies_and_objects_from_quest_data(
+          l->episode,
+          l->difficulty,
+          l->event,
+          dat_contents.data(),
+          dat_contents.size(),
+          l->random_seed,
+          l->rare_enemy_rates ? l->rare_enemy_rates : Map::NO_RARE_ENEMIES);
       break;
     }
 
