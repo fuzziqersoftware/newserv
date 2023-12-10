@@ -1209,6 +1209,6 @@ shared_ptr<const vector<string>> ServerState::information_contents_for_client(sh
   return is_v1_or_v2(c->version()) ? this->information_contents_v2 : this->information_contents_v3;
 }
 
-shared_ptr<const QuestIndex> ServerState::quest_index_for_client(shared_ptr<const Client> c) const {
-  return is_ep3(c->version()) ? this->ep3_download_quest_index : this->default_quest_index;
+shared_ptr<const QuestIndex> ServerState::quest_index_for_version(Version version) const {
+  return is_ep3(version) ? this->ep3_download_quest_index : this->default_quest_index;
 }

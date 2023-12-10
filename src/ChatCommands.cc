@@ -257,10 +257,16 @@ static void server_command_quest(shared_ptr<Client> c, const std::string& args) 
     return;
   }
 
+  Version effective_version = is_ep3(c->version()) ? Version::GC_V3 : c->version();
+
   auto s = c->require_server_state();
   auto l = c->require_lobby();
-  auto q = s->quest_index_for_client(c)->get(stoul(args));
-  set_lobby_quest(c->require_lobby(), q);
+  auto q = s->quest_index_for_version(effective_version)->get(stoul(args));
+  if (!q) {
+    send_text_message(c, "$C6Quest not found");
+  } else {
+    set_lobby_quest(c->require_lobby(), q, true);
+  }
 }
 
 static void server_command_qcheck(shared_ptr<Client> c, const std::string& args) {

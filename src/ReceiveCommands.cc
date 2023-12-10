@@ -1670,7 +1670,7 @@ static void on_09(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
       break;
     case MenuID::QUEST: {
       bool is_download_quest = !c->lobby.lock();
-      auto quest_index = s->quest_index_for_client(c);
+      auto quest_index = s->quest_index_for_version(c->version());
       if (!quest_index) {
         send_quest_info(c, "$C6Quests are not available.", is_download_quest);
       } else {
@@ -1909,7 +1909,7 @@ static void on_quest_loaded(shared_ptr<Lobby> l) {
   }
 }
 
-void set_lobby_quest(shared_ptr<Lobby> l, shared_ptr<const Quest> q) {
+void set_lobby_quest(shared_ptr<Lobby> l, shared_ptr<const Quest> q, bool substitute_v3_for_ep3) {
   if (!l->is_game()) {
     throw logic_error("non-game lobby cannot accept a quest");
   }
@@ -1926,7 +1926,9 @@ void set_lobby_quest(shared_ptr<Lobby> l, shared_ptr<const Quest> q) {
   }
 
   l->quest = q;
-  l->episode = q->episode;
+  if (!is_ep3(l->base_version)) {
+    l->episode = q->episode;
+  }
   if (l->item_creator) {
     l->create_item_creator();
   }
@@ -1959,7 +1961,9 @@ void set_lobby_quest(shared_ptr<Lobby> l, shared_ptr<const Quest> q) {
       continue;
     }
 
-    auto vq = q->version(lc->version(), lc->language());
+    Version effective_version = (substitute_v3_for_ep3 && is_ep3(lc->version())) ? Version::GC_V3 : lc->version();
+
+    auto vq = q->version(effective_version, lc->language());
     if (!vq) {
       send_lobby_message_box(lc, "$C6Quest does not exist\nfor this game version.");
       lc->should_disconnect = true;
@@ -2063,7 +2067,7 @@ static void on_10(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
             // always the download quest menu. (Episode 3 does actually have
             // online quests, but they're served via a server data request
             // instead of the file download paradigm that other versions use.)
-            auto quest_index = s->quest_index_for_client(c);
+            auto quest_index = s->quest_index_for_version(c->version());
             const auto& categories = quest_index->categories(menu_type, Episode::EP3, c->version());
             if (categories.size() == 1) {
               auto quests = quest_index->filter(menu_type, Episode::EP3, c->version(), categories[0]->category_id);
@@ -2306,7 +2310,7 @@ static void on_10(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
 
     case MenuID::QUEST_CATEGORIES: {
       auto s = c->require_server_state();
-      auto quest_index = s->quest_index_for_client(c);
+      auto quest_index = s->quest_index_for_version(c->version());
       if (!quest_index) {
         send_lobby_message_box(c, "$C6Quests are not available.");
         break;
@@ -2346,7 +2350,7 @@ static void on_10(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
 
     case MenuID::QUEST: {
       auto s = c->require_server_state();
-      auto quest_index = s->quest_index_for_client(c);
+      auto quest_index = s->quest_index_for_version(c->version());
       if (!quest_index) {
         send_lobby_message_box(c, "$C6Quests are not\navailable.");
         break;

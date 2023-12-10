@@ -227,7 +227,7 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   std::string describe_item(Version version, const ItemData& item, bool include_color_codes) const;
 
   std::shared_ptr<const std::vector<std::string>> information_contents_for_client(std::shared_ptr<const Client> c) const;
-  std::shared_ptr<const QuestIndex> quest_index_for_client(std::shared_ptr<const Client> c) const;
+  std::shared_ptr<const QuestIndex> quest_index_for_version(Version version) const;
 
   void set_port_configuration(const std::vector<PortConfiguration>& port_configs);
 
