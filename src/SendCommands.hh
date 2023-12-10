@@ -257,12 +257,10 @@ void send_game_menu(
     bool is_tournament_game_list);
 void send_quest_menu(
     std::shared_ptr<Client> c,
-    uint32_t menu_id,
     const std::vector<std::pair<QuestIndex::IncludeState, std::shared_ptr<const Quest>>>& quests,
     bool is_download_menu);
 void send_quest_categories_menu(
     std::shared_ptr<Client> c,
-    uint32_t menu_id,
     std::shared_ptr<const QuestIndex> quest_index,
     QuestMenuType menu_type,
     Episode episode);

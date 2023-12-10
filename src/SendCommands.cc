@@ -1413,7 +1413,6 @@ void send_game_menu(
 template <typename EntryT>
 void send_quest_menu_t(
     shared_ptr<Client> c,
-    uint32_t menu_id,
     const vector<pair<QuestIndex::IncludeState, shared_ptr<const Quest>>>& quests,
     bool is_download_menu) {
   auto v = c->version();
@@ -1425,7 +1424,7 @@ void send_quest_menu_t(
     }
 
     auto& e = entries.emplace_back();
-    e.menu_id = menu_id;
+    e.menu_id = (it.second->episode == Episode::EP2) ? MenuID::QUEST_EP2 : MenuID::QUEST_EP1;
     e.item_id = it.second->quest_number;
     e.name.encode(vq->name, c->language());
     e.short_description.encode(add_color(vq->short_description), c->language());
@@ -1435,7 +1434,6 @@ void send_quest_menu_t(
 
 void send_quest_menu_bb(
     shared_ptr<Client> c,
-    uint32_t menu_id,
     const vector<pair<QuestIndex::IncludeState, shared_ptr<const Quest>>>& quests,
     bool is_download_menu) {
   auto v = c->version();
@@ -1447,7 +1445,7 @@ void send_quest_menu_bb(
     }
 
     auto& e = entries.emplace_back();
-    e.menu_id = menu_id;
+    e.menu_id = MenuID::QUEST_EP1;
     e.item_id = it.second->quest_number;
     e.name.encode(vq->name, c->language());
     e.short_description.encode(add_color(vq->short_description), c->language());
@@ -1459,7 +1457,6 @@ void send_quest_menu_bb(
 template <typename EntryT>
 void send_quest_categories_menu_t(
     shared_ptr<Client> c,
-    uint32_t menu_id,
     shared_ptr<const QuestIndex> quest_index,
     QuestMenuType menu_type,
     Episode episode) {
@@ -1472,7 +1469,7 @@ void send_quest_categories_menu_t(
   vector<EntryT> entries;
   for (const auto& cat : quest_index->categories(menu_type, episode, c->version(), include_condition)) {
     auto& e = entries.emplace_back();
-    e.menu_id = menu_id;
+    e.menu_id = MenuID::QUEST_CATEGORIES;
     e.item_id = cat->category_id;
     e.name.encode(cat->name, c->language());
     e.short_description.encode(add_color(cat->description), c->language());
@@ -1484,12 +1481,11 @@ void send_quest_categories_menu_t(
 
 void send_quest_menu(
     shared_ptr<Client> c,
-    uint32_t menu_id,
     const vector<pair<QuestIndex::IncludeState, shared_ptr<const Quest>>>& quests,
     bool is_download_menu) {
   switch (c->version()) {
     case Version::PC_V2:
-      send_quest_menu_t<S_QuestMenuEntry_PC_A2_A4>(c, menu_id, quests, is_download_menu);
+      send_quest_menu_t<S_QuestMenuEntry_PC_A2_A4>(c, quests, is_download_menu);
       break;
     case Version::DC_NTE:
     case Version::DC_V1_11_2000_PROTOTYPE:
@@ -1499,24 +1495,27 @@ void send_quest_menu(
     case Version::GC_V3:
     case Version::GC_EP3_TRIAL_EDITION:
     case Version::GC_EP3:
-      send_quest_menu_t<S_QuestMenuEntry_DC_GC_A2_A4>(c, menu_id, quests, is_download_menu);
+      send_quest_menu_t<S_QuestMenuEntry_DC_GC_A2_A4>(c, quests, is_download_menu);
       break;
     case Version::XB_V3:
-      send_quest_menu_t<S_QuestMenuEntry_XB_A2_A4>(c, menu_id, quests, is_download_menu);
+      send_quest_menu_t<S_QuestMenuEntry_XB_A2_A4>(c, quests, is_download_menu);
       break;
     case Version::BB_V4:
-      send_quest_menu_bb(c, menu_id, quests, is_download_menu);
+      send_quest_menu_bb(c, quests, is_download_menu);
       break;
     default:
       throw logic_error("unimplemented versioned command");
   }
 }
 
-void send_quest_categories_menu(shared_ptr<Client> c, uint32_t menu_id,
-    shared_ptr<const QuestIndex> quest_index, QuestMenuType menu_type, Episode episode) {
+void send_quest_categories_menu(
+    shared_ptr<Client> c,
+    shared_ptr<const QuestIndex> quest_index,
+    QuestMenuType menu_type,
+    Episode episode) {
   switch (c->version()) {
     case Version::PC_V2:
-      send_quest_categories_menu_t<S_QuestMenuEntry_PC_A2_A4>(c, menu_id, quest_index, menu_type, episode);
+      send_quest_categories_menu_t<S_QuestMenuEntry_PC_A2_A4>(c, quest_index, menu_type, episode);
       break;
     case Version::DC_NTE:
     case Version::DC_V1_11_2000_PROTOTYPE:
@@ -1526,13 +1525,13 @@ void send_quest_categories_menu(shared_ptr<Client> c, uint32_t menu_id,
     case Version::GC_V3:
     case Version::GC_EP3_TRIAL_EDITION:
     case Version::GC_EP3:
-      send_quest_categories_menu_t<S_QuestMenuEntry_DC_GC_A2_A4>(c, menu_id, quest_index, menu_type, episode);
+      send_quest_categories_menu_t<S_QuestMenuEntry_DC_GC_A2_A4>(c, quest_index, menu_type, episode);
       break;
     case Version::XB_V3:
-      send_quest_categories_menu_t<S_QuestMenuEntry_XB_A2_A4>(c, menu_id, quest_index, menu_type, episode);
+      send_quest_categories_menu_t<S_QuestMenuEntry_XB_A2_A4>(c, quest_index, menu_type, episode);
       break;
     case Version::BB_V4:
-      send_quest_categories_menu_t<S_QuestMenuEntry_BB_A2_A4>(c, menu_id, quest_index, menu_type, episode);
+      send_quest_categories_menu_t<S_QuestMenuEntry_BB_A2_A4>(c, quest_index, menu_type, episode);
       break;
     default:
       throw logic_error("unimplemented versioned command");

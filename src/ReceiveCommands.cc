@@ -1668,7 +1668,8 @@ static void on_09(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
       // descriptions included with the entries, which the client shows in the
       // usual location on the screen.
       break;
-    case MenuID::QUEST: {
+    case MenuID::QUEST_EP1:
+    case MenuID::QUEST_EP2: {
       bool is_download_quest = !c->lobby.lock();
       auto quest_index = s->quest_index_for_version(c->version());
       if (!quest_index) {
@@ -2071,12 +2072,12 @@ static void on_10(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
             const auto& categories = quest_index->categories(menu_type, Episode::EP3, c->version());
             if (categories.size() == 1) {
               auto quests = quest_index->filter(menu_type, Episode::EP3, c->version(), categories[0]->category_id);
-              send_quest_menu(c, MenuID::QUEST, quests, true);
+              send_quest_menu(c, quests, true);
               break;
             }
           }
 
-          send_quest_categories_menu(c, MenuID::QUEST_CATEGORIES, s->quest_index_for_client(c), menu_type, Episode::NONE);
+          send_quest_categories_menu(c, s->quest_index_for_version(c->version()), menu_type, Episode::NONE);
           break;
         }
 
@@ -2344,11 +2345,12 @@ static void on_10(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
       }
 
       const auto& quests = quest_index->filter(menu_type, episode, c->version(), item_id, include_condition);
-      send_quest_menu(c, MenuID::QUEST, quests, !l);
+      send_quest_menu(c, quests, !l);
       break;
     }
 
-    case MenuID::QUEST: {
+    case MenuID::QUEST_EP1:
+    case MenuID::QUEST_EP2: {
       auto s = c->require_server_state();
       auto quest_index = s->quest_index_for_version(c->version());
       if (!quest_index) {
@@ -2699,7 +2701,7 @@ static void on_A2(shared_ptr<Client> c, uint16_t, uint32_t flag, string& data) {
           throw logic_error("invalid game mode");
       }
     }
-    send_quest_categories_menu(c, MenuID::QUEST_CATEGORIES, s->quest_index_for_client(c), menu_type, l->episode);
+    send_quest_categories_menu(c, s->quest_index_for_version(c->version()), menu_type, l->episode);
   }
 }
 
