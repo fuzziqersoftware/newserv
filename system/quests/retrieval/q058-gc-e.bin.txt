@@ -1,0 +1,345 @@
+// This file documents newserv's quest assembler syntax and format.
+
+// The metadata directives specify the quest's name, description, and other
+// information.
+
+// The .version directive specifies which version of the game the quest is for.
+// The values are DC_NTE, DC_V1_11_2000_PROTOTYPE, DC_V1, DC_V2, PC_V2, GC_NTE,
+// GC_V3, GC_EP3_TRIAL_EDITION, GC_EP3, XB_V3, and BB_V4.
+.version GC_V3
+
+// The .quest_num directive specifies the internal number of the quest. This
+// has no meaning for online quests, but for download quests, the game
+// deduplicates quest files with the same number, so download quests should all
+// have unique numbers in this field. On Episodes 1&2, this field must be in
+// the range 0-255; onother versions, it can be 0-65535, but generally numbers
+// less than 1000 are recommended.
+.quest_num 58
+
+// The .language field specifies the internal language of the quest. Values:
+//   0 = Japanese
+//   1 = English
+//   2 = German
+//   3 = French
+//   4 = Spanish
+//   5 = Chinese (simplified)
+//   6 = Chinese (traditional)
+//   7 = Korean
+.language 1
+
+// The .episode directive specifies the quest's episode. The server ignores this
+// if a set_episode or set_episode2 opcode is present in the start function.
+.episode Episode1
+
+// These directives specify the quest's name, short description, and long
+// description. Non-ASCII characters can be used here and in the script below;
+// this entire file is encoded as UTF-8 and strings are transcoded to the
+// encoding the client expects based on the .version directive.
+.name "Lost HEAT SWORD"
+.short_desc "Retrieve a\nweapon from\na Dragon!"
+.long_desc "Client:  Hopkins, hunter\nQuest:\n My weapon was taken\n from me when I was\n fighting a Dragon.\nReward:  ??? Meseta\n\n\n"
+
+// The quest script begins here. A quest script is a sequence of opcodes, and
+// labels denoting positions within that sequence that can be jumped to or
+// called like a function. All labels have names, and some have numbers. (In the
+// compiled format, labels have only numbers and no names; during compilation,
+// each label that doesn't have a number is assigned a number that isn't in use
+// by another label.) To explicitly specify a label number (for example, if an
+// object or NPC refers to a label by number), use an @ sign followed by the
+// desired number. Note that numbers can be specified in decimal or hexadecimal;
+// see on_talk_to_npc1 and on_talk_to_npc2 for examples.
+
+// Every quest must have a start function; this is the main thread that starts
+// when the quest begins. The start label implicitly has a number of zero.
+start:
+  gget                            0x0091, r252
+  set_floor_handler               0, floor_handler_pioneer_2
+  set_floor_handler               1, floor_handler_forest_1
+  set_floor_handler               2, floor_handler_forest_2
+  set_floor_handler               11, floor_handler_dragon
+  set_qt_success                  on_quest_success
+  get_difficulty_level_v2         r83
+  leti                            r60, 0 // Pioneer 2
+  leti                            r61, 0
+  leti                            r62, 0
+  leti                            r63, 0
+  map_designate                   r60-r63
+  leti                            r60, 1 // Forest 1
+  leti                            r61, 0
+  leti                            r62, 0
+  leti                            r63, 0
+  map_designate                   r60-r63
+  leti                            r60, 2 // Forest 2
+  leti                            r61, 0
+  leti                            r62, 0
+  leti                            r63, 0
+  map_designate                   r60-r63
+  leti                            r60, 11  // Dragon
+  leti                            r61, 0
+  leti                            r62, 0
+  leti                            r63, 0
+  map_designate                   r60-r63
+  ret
+
+return_immediately:
+  ret
+
+floor_handler_pioneer_2:
+  switch_jmp                      r0, [floor_handler_pioneer_2_first_time, floor_handler_pioneer_2_not_first_time]
+floor_handler_pioneer_2_first_time:
+  set                             r50
+  set_mainwarp                    1
+  leti                            r60, 0x000000ED
+  leti                            r61, 0x00000000
+  leti                            r62, 0x0000014D
+  leti                            r63, 0xFFFFFFF1
+  p_setpos                        0, r60-r63
+  leti                            r60, 0x000000FF
+  leti                            r61, 0x00000000
+  leti                            r62, 0x00000152
+  leti                            r63, 0xFFFFFFD5
+  p_setpos                        1, r60-r63
+  leti                            r60, 0x000000DE
+  leti                            r61, 0x00000000
+  leti                            r62, 0x00000142
+  leti                            r63, 0x00000019
+  p_setpos                        2, r60-r63
+  leti                            r60, 0x000000F8
+  leti                            r61, 0x00000000
+  leti                            r62, 0x00000143
+  leti                            r63, 0xFFFFFFEC
+  p_setpos                        3, r60-r63
+  call                            on_talk_to_hopkins
+  ret
+floor_handler_pioneer_2_not_first_time:
+  set                             r50
+  thread_stg                      watch_for_dragon_killed_in_forest
+  thread_stg                      show_mission_complete_if_needed
+  ret
+
+label00CA:
+  clear                           r50
+  set                             r51
+  ret
+
+label00CB:
+  clear                           r51
+  set                             r50
+  ret
+
+on_quest_success:
+  jmpi_eq                         r83, 0, on_quest_success_normal
+  jmpi_eq                         r83, 1, on_quest_success_hard
+  jmpi_eq                         r83, 2, on_quest_success_very_hard
+  jmpi_eq                         r83, 3, on_quest_success_ultimate
+on_quest_success_normal:
+  window_msg                      "You\'ve been awarded\n100 Meseta."
+  bgm                             1
+  winend
+  pl_add_meseta2                  100
+  ret
+on_quest_success_hard:
+  window_msg                      "You\'ve been awarded\n5000 Meseta."
+  bgm                             1
+  winend
+  pl_add_meseta2                  5000
+  ret
+on_quest_success_very_hard:
+  window_msg                      "You\'ve been awarded\n10000 Meseta."
+  bgm                             1
+  winend
+  pl_add_meseta2                  10000
+  ret
+on_quest_success_ultimate:
+  window_msg                      "You\'ve been awarded\n15000 Meseta."
+  bgm                             1
+  winend
+  pl_add_meseta2                  15000
+  ret
+
+floor_handler_forest_1:
+  thread_stg                      watch_for_dragon_killed_in_forest
+  thread_stg                      show_mission_complete_if_needed
+  ret
+
+floor_handler_forest_2:
+  thread_stg                      watch_for_dragon_killed_in_forest
+  thread_stg                      show_mission_complete_if_needed
+  ret
+
+floor_handler_dragon:
+  thread_stg                      watch_for_dragon_zone_clear
+  thread_stg                      play_dragon_killed_cutscene_when_ready
+  thread_stg                      show_mission_complete_if_needed
+  ret
+
+watch_for_dragon_zone_clear:
+  jmpi_eq                         r15, 1, return_immediately
+  sync
+  leti                            r240, 11
+  leti                            r241, 1
+  if_zone_clear                   r242, r240-r241
+  jmpi_eq                         r242, 0, watch_for_dragon_zone_clear
+  sync_register2                  r15, 1
+  ret
+
+watch_for_dragon_killed_in_forest:
+  jmpi_eq                         r18, 1, return_immediately
+  jmpi_eq                         r19, 1, return_immediately
+watch_for_dragon_killed_in_forest_check_again:
+  sync
+  jmpi_eq                         r15, 0, watch_for_dragon_killed_in_forest_check_again
+  call                            wait_30_frames
+  p_action_disable
+  call                            on_dragon_killed
+  set                             r18
+  p_action_enable
+  ret
+
+play_dragon_killed_cutscene_when_ready:
+  jmpi_eq                         r18, 1, return_immediately
+  jmpi_eq                         r19, 1, return_immediately
+play_dragon_killed_cutscene_when_ready_check_again:
+  sync
+  jmpi_eq                         r15, 0, play_dragon_killed_cutscene_when_ready_check_again
+  call                            wait_30_frames
+  call                            start_cutscene
+  set                             r19
+  set_quest_board_handler         0, quest_board_item_handler, "HEAT SWORD"
+  set                             r74
+  set                             r254
+  call                            on_dragon_killed
+  call                            end_cutscene
+  ret
+
+on_dragon_killed:
+  jmpi_eq                         r83, 3, on_dragon_killed_ultimate
+  window_msg                      "Dragon killed!"
+  add_msg                         "Hopkins\'s HEAT SWORD found\nin Dragon\'s mouth!"
+  se                              1
+  winend
+  ret
+on_dragon_killed_ultimate:
+  window_msg                      "Sil Dragon killed!"
+  add_msg                         "Hopkins\'s HEAT SWORD found\nin Sil Dragon\'s mouth!"
+  se                              1
+  winend
+  ret
+
+quest_board_item_handler:
+  disp_msg_qb                     "My dad gave HEAT SWORD\nto me."
+  close_msg_qb
+  ret
+
+show_mission_complete_if_needed:
+  jmpi_eq                         r20, 1, return_immediately
+
+show_mission_complete_if_needed_check_again:
+  sync
+  jmpi_eq                         r16, 0, show_mission_complete_if_needed_check_again
+  jmpi_eq                         r17, 1, return_immediately
+  p_action_disable
+  window_msg                      "Mission complete!"
+  bgm                             0
+  add_msg                         "You will be taken to the lobby\nafter you receive your reward."
+  set                             r20
+  winend
+  clear_quest_board_handler       0
+  clear                           r74
+  p_action_enable
+  playbgm_epi                     1
+  ret
+
+on_talk_to_hopkins@310:
+  jmpi_eq                         r255, 1, on_talk_to_hopkins_complete_again
+  jmpi_eq                         r254, 1, on_talk_to_hopkins_complete
+  jmpi_eq                         r0, 1, on_talk_to_hopkins_incomplete_again
+  call                            start_cutscene
+  call                            wait_30_frames
+  message                         100, "Ca... can you help\nme?  Please?"
+  add_msg                         "I almost killed a\nDragon."
+  add_msg                         "But... but..."
+  add_msg                         "My HEAT SWORD...\nMy dad gave HEAT SWORD\nto me..."
+  add_msg                         "It\'s really important to\nme. I don\'t know how it\nwas taken from me."
+  add_msg                         "I cannot do my job\nwithout it!  Please\nget it back for me."
+  set                             r0
+  mesend
+  bgm                             1
+  call                            end_cutscene
+  ret
+on_talk_to_hopkins_incomplete_again:
+  message                         100, "Please get my\nHEAT SWORD\nback to me."
+  add_msg                         "Perhaps it\'s in the\nDragon\'s stomach!"
+  mesend
+  ret
+on_talk_to_hopkins_complete:
+  call                            start_cutscene
+  message                         100, "My item!\nThis is great!  Wow!"
+  add_msg                         "Thank you very much!\nYou\'re great!"
+  add_msg                         "Please get your reward\nat the counter!"
+  add_msg                         "This is all I can do to\nshow my appreciation."
+  mesend
+  set                             r17
+  sync_register2                  r16, 1
+  sync_register2                  r255, 1
+  clear_quest_board_handler       0
+  clear                           r74
+  bgm                             0
+  playbgm_epi                     1
+  call                            end_cutscene
+  ret
+on_talk_to_hopkins_complete_again:
+  message                         100, "Please go get your\nreward at the counter!\nThank you!"
+  mesend
+  ret
+
+on_talk_to_npc1@320:
+  jmpi_eq                         r254, 1, on_talk_to_npc1_complete
+  message                         104, "Did Hopkins do it again?"
+  add_msg                         "Nothing.  Forget about\nit."
+  mesend
+  ret
+on_talk_to_npc1_complete:
+  message                         104, "Well, Hopkins often\nloses his..."
+  mesend
+  ret
+
+on_talk_to_npc2@0x14A:
+  jmpi_eq                         r254, 1, on_talk_to_npc2_complete
+  message                         103, "It\'s kind of his\n\"talent,\" I think."
+  mesend
+  ret
+on_talk_to_npc2_complete:
+  message                         103, "Thanks for taking care\nof Hopkins."
+  mesend
+  ret
+
+start_cutscene:
+  p_action_disable
+  disable_movement1               0
+  disable_movement1               1
+  disable_movement1               2
+  disable_movement1               3
+  hud_hide
+  cine_enable
+  cam_zmin
+  ret
+
+end_cutscene:
+  cam_zmout
+  cine_disable
+  hud_show
+  enable_movement1                0
+  enable_movement1                1
+  enable_movement1                2
+  enable_movement1                3
+  p_action_enable
+  ret
+
+wait_30_frames:
+  leti                            r72, 0
+wait_30_frames_next_frame:
+  sync
+  addi                            r72, 1
+  jmpi_le                         r72, 30, wait_30_frames_next_frame
+  ret

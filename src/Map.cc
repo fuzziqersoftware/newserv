@@ -1028,7 +1028,7 @@ string Map::disassemble_quest_data(const void* data, size_t size) {
     }
   }
 
-  return join(ret, "\n");
+  return join(ret, "\n") + "\n";
 }
 
 SetDataTable::SetDataTable(shared_ptr<const string> data, bool big_endian) {

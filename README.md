@@ -109,6 +109,7 @@ There are multiple PSO quest formats out there; newserv supports all of them. It
 | Compressed Ep3   | .bin or .mnm          | Yes (4)    | None (1)         |
 | Uncompressed     | .bind and .datd       | Yes        | compress-prs (2) |
 | Uncompressed Ep3 | .bind or .mnmd        | Yes (4)    | compress-prs (2) |
+| Source           | .bin.txt and .dat     | Yes        | None (5)         |
 | VMS (DCv1)       | .bin.vms and .dat.vms | Yes        | decode-vms       |
 | VMS (DCv2)       | .bin.vms and .dat.vms | Decode (3) | decode-vms (3)   |
 | GCI (decrypted)  | .bin.gci and .dat.gci | Yes        | decode-gci       |
@@ -126,6 +127,7 @@ There are multiple PSO quest formats out there; newserv supports all of them. It
 2. *Similar to (1), to compress an uncompressed quest file: `newserv compress-prs FILENAME.bind FILENAME.bin` (and likewise for .datd -> .dat)*
 3. *Use the decode action to convert these quests to .bin/.dat format before putting them into the server's quests directory. If you know the encryption seed (serial number), pass it in as a hex string with the `--seed=` option. If you don't know the encryption seed, newserv will find it for you, which will likely take a long time.*
 4. *Episode 3 quests don't go in the system/quests directory. See the Episode 3 section below.*
+5. *Quest source can be assembled into a .bin or .bind file with `newserv assemble-quest-script FILENAME.txt`. See system/quests/retrieval/q058-gc-e.bin.txt for an annotated example; this is the English GameCube version of Lost HEAT SWORD.*
 
 Episode 3 download quests consist only of a .bin file - there is no corresponding .dat file. Episode 3 download quest files may be named with the .mnm extension instead of .bin, since the format is the same as the standard map files (in system/ep3/). These files can be encoded in any of the formats described above, except .qst.
 
@@ -401,7 +403,7 @@ newserv has many CLI options, which can be used to access functionality other th
 * Convert quests in .gci, .vms, .dlq, or .qst format to .bin/.dat format (`decode-gci`, `decode-vms`, `decode-dlq`, `decode-qst`)
 * Convert quests in .bin/.dat to .qst format (`encode-qst`)
 * Convert text archives (e.g. TextEnglish.pr2) to JSON and vice versa (`decode-text-archive`, `encode-text-archive`)
-* Disassemble quest scripts (`disassemble-quest-script`)
+* Compile or disassemble quest scripts (`assemble-quest-script`, `disassemble-quest-script`)
 * Format Episode 3 game data in a human-readable manner (`show-ep3-maps`, `show-ep3-cards`)
 * Convert item data to a human-readable description, or vice versa (`describe-item`, `encode-item`)
 * Connect to another PSO server and pretend to be a client (`cat-client`)

@@ -1040,8 +1040,7 @@ Action a_disassemble_quest_map(
     "disassemble-quest-map", "\
   disassemble-quest-map [INPUT-FILENAME [OUTPUT-FILENAME]]\n\
     Disassemble the input quest map (.dat file) into a text representation of\n\
-    the data it contains. Specify the quest\'s game version with one of the\n\
-    --dc-nte, --dc-v1, --dc-v2, --pc, --gc-nte, --gc, --xb, or --bb options.\n",
+    the data it contains.\n",
     +[](Arguments& args) {
       string data = read_input_data(args);
       if (!args.get<bool>("decompressed")) {
@@ -1049,6 +1048,22 @@ Action a_disassemble_quest_map(
       }
       string result = Map::disassemble_quest_data(data.data(), data.size());
       write_output_data(args, result.data(), result.size(), "txt");
+    });
+
+Action a_assemble_quest_script(
+    "assemble-quest-script", "\
+  assemble-quest-script [INPUT-FILENAME [OUTPUT-FILENAME]]\n\
+    Assemble the input quest script (.txt file) into a compressed .bin file\n\
+    usable as an online quest script. If --decompressed is given, produces an\n\
+    uncompressed .bind file instead.\n",
+    +[](Arguments& args) {
+      string text = read_input_data(args);
+      string result = assemble_quest_script(text);
+      bool compress = !args.get<bool>("decompressed");
+      if (compress) {
+        result = prs_compress_optimal(result);
+      }
+      write_output_data(args, result.data(), result.size(), compress ? "bin" : "bind");
     });
 
 void a_extract_archive_fn(Arguments& args) {

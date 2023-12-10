@@ -319,7 +319,7 @@ VersionedQuest::VersionedQuest(
         throw invalid_argument("file is too small for header");
       }
       auto* header = reinterpret_cast<const PSOQuestHeaderBB*>(bin_decompressed.data());
-      this->joinable = header->joinable_in_progress;
+      this->joinable = header->joinable;
       this->episode = find_quest_episode_from_script(bin_decompressed.data(), bin_decompressed.size(), this->version);
       if (this->quest_number == 0xFFFFFFFF) {
         this->quest_number = header->quest_number;
@@ -501,6 +501,12 @@ QuestIndex::QuestIndex(
         } else if (ends_with(filename, ".dlq")) {
           file_data = decode_dlq_data(load_file(file_path));
           filename.resize(filename.size() - 4);
+        } else if (ends_with(filename, ".txt")) {
+          file_data = assemble_quest_script(load_file(file_path));
+          filename.resize(filename.size() - 4);
+          if (ends_with(filename, ".bin")) {
+            filename.push_back('d');
+          }
         } else {
           file_data = load_file(file_path);
         }

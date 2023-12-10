@@ -72,7 +72,7 @@ struct PSOQuestHeaderBB {
   /* 0012 */ le_uint16_t unused2;
   /* 0014 */ uint8_t episode; // 0 = Ep1, 1 = Ep2, 2 = Ep4
   /* 0015 */ uint8_t max_players;
-  /* 0016 */ uint8_t joinable_in_progress;
+  /* 0016 */ uint8_t joinable;
   /* 0017 */ uint8_t unknown;
   /* 0018 */ pstring<TextEncoding::UTF16, 0x20> name;
   /* 0058 */ pstring<TextEncoding::UTF16, 0x80> short_description;
@@ -83,5 +83,6 @@ struct PSOQuestHeaderBB {
 Episode episode_for_quest_episode_number(uint8_t episode_number);
 
 std::string disassemble_quest_script(const void* data, size_t size, Version version, uint8_t language);
+std::string assemble_quest_script(const std::string& text);
 
 Episode find_quest_episode_from_script(const void* data, size_t size, Version version);
