@@ -31,12 +31,15 @@ string RareItemSet::ExpandedDrop::str(Version version, shared_ptr<const ItemName
 }
 
 uint32_t RareItemSet::expand_rate(uint8_t pc) {
-  // pc = bits SSSSS VVV
-  //   S = shift + 4 (so actual shift is 0-27)
-  //   V = value - 7 (so actual value is 7-14)
-  // take the bits 00000000 00000000 00000000 00000010
-  // shift left by shift (0-27)
-  // multiply by value
+  // To compute the actual drop rare drop rate from pc, first decode pc into
+  // shift and value:
+  //   pc = bits SSSSSVVV
+  //     shift = S - 4 (so shift is 0-27)
+  //     value = V + 7 (so value is 7-14)
+  // Then, take the value 0x00000002, shift it left by shift (0-27), and
+  // multiply the result by value (7-14) to get the actual drop rate. The result
+  // is a probability out of 0xFFFFFFFF (so 0x40000000 means the item will drop
+  // 25% of the time, for example).
   int8_t shift = ((pc >> 3) & 0x1F) - 4;
   if (shift < 0) {
     shift = 0;
