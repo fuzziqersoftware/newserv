@@ -1,22 +1,32 @@
-// This file documents newserv's quest assembler syntax and format.
+// This file documents newserv's quest assembler syntax and format. This is a
+// slightly modified copy of the English version of Sega's Lost HEAT SWORD quest
+// for PSO GC.
 
-// The metadata directives specify the quest's name, description, and other
-// information.
+// Generally the metadata directives should appear before the quest's code.
+// These specify the quest's name, description, and other information.
 
 // The .version directive specifies which version of the game the quest is for.
 // The values are DC_NTE, DC_V1_11_2000_PROTOTYPE, DC_V1, DC_V2, PC_V2, GC_NTE,
-// GC_V3, GC_EP3_TRIAL_EDITION, GC_EP3, XB_V3, and BB_V4.
+// GC_V3, GC_EP3_TRIAL_EDITION, GC_EP3, XB_V3, and BB_V4. This determines which
+// set of opcodes to use during compilation, and also specifies the header
+// format and string encoding. This does not affect where the quest appears in
+// menus, so for versions that use the same opcodes, headers, and string
+// encodings, it is OK to use a symbolic link (hence q058-xb-e.bin.txt is a link
+// to this file).
 .version GC_V3
 
 // The .quest_num directive specifies the internal number of the quest. This
-// has no meaning for online quests, but for download quests, the game
-// deduplicates quest files with the same number, so download quests should all
-// have unique numbers in this field. On Episodes 1&2, this field must be in
-// the range 0-255; onother versions, it can be 0-65535, but generally numbers
-// less than 1000 are recommended.
+// has no meaning for online quests, though it's recommended for this value to
+// match the number in the filename. For download quests, the game deduplicates
+// quest files with the same number, so download quests should all have unique
+// numbers in this field. On Episodes 1&2, this field must be in the range
+// 0-255; on other versions, it can be 0-65535, but generally numbers less than
+// 1000 are recommended.
 .quest_num 58
 
-// The .language field specifies the internal language of the quest. Values:
+// The .language field specifies the internal language of the quest. On console
+// versions (DC, GC, and XB), this affects how strings are encoded - Japanese
+// uses Shift-JIS and other languages use ISO8859. The language values are:
 //   0 = Japanese
 //   1 = English
 //   2 = German
@@ -34,10 +44,19 @@
 // These directives specify the quest's name, short description, and long
 // description. Non-ASCII characters can be used here and in the script below;
 // this entire file is encoded as UTF-8 and strings are transcoded to the
-// encoding the client expects based on the .version directive.
+// encoding the client expects based on the .version and .language directives.
+// Common escape codes (e.g. \n for a newline) are supported in these strings.
 .name "Lost HEAT SWORD"
 .short_desc "Retrieve a\nweapon from\na Dragon!"
 .long_desc "Client:  Hopkins, hunter\nQuest:\n My weapon was taken\n from me when I was\n fighting a Dragon.\nReward:  ??? Meseta\n\n\n"
+
+// On BB, quests may specify a maximum number of players with this directive. If
+// not specified, the default is 4.
+// .max_players 4
+
+// On BB, quests may be joinable while in progress. This directive enables that
+// capability.
+// .joinable
 
 // The quest script begins here. A quest script is a sequence of opcodes, and
 // labels denoting positions within that sequence that can be jumped to or
@@ -48,6 +67,13 @@
 // object or NPC refers to a label by number), use an @ sign followed by the
 // desired number. Note that numbers can be specified in decimal or hexadecimal;
 // see on_talk_to_npc1 and on_talk_to_npc2 for examples.
+
+// This quest does not contain any examples of non-script data, but such data
+// can be included in the quest script using the .data directive, like this:
+//   hello_symbol_chat:
+//     .data 28000000 FFFF 0D00 FFFF FFFF 05 18 1D 00 05 28 1D 01 36 20 2A 00 3C 00 32 00 FF 00 00 00 FF 00 00 00 FF 00 00 00 FF 00 00 02 FF 00 00 02 FF 00 00 02 FF 00 00 02 FF 00 00 02
+// There is also a directive for including a large number of zero bytes:
+//     .zero 0x400  // 1024 bytes of zeroes
 
 // Every quest must have a start function; this is the main thread that starts
 // when the quest begins. The start label implicitly has a number of zero.
