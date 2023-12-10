@@ -1971,7 +1971,7 @@ std::string assemble_quest_script(const std::string& text) {
                   start_reg = parse_reg(tokens[0]);
                 } else if (tokens.size() == 2) {
                   start_reg = parse_reg(tokens[0]);
-                  if ((parse_reg(tokens[1]) - start_reg + 1) != arg_def.count) {
+                  if (static_cast<size_t>(parse_reg(tokens[1]) - start_reg + 1) != arg_def.count) {
                     throw runtime_error("incorrect number of registers used");
                   }
                 } else {
@@ -2074,7 +2074,7 @@ std::string assemble_quest_script(const std::string& text) {
                 if (tokens.size() == 1) {
                   add_reg(tokens[0], arg_def.type == Type::REG32_SET_FIXED);
                 } else if (tokens.size() == 2) {
-                  if ((parse_reg(tokens[1]) - parse_reg(tokens[0]) + 1) != arg_def.count) {
+                  if (static_cast<size_t>(parse_reg(tokens[1]) - parse_reg(tokens[0]) + 1) != arg_def.count) {
                     throw runtime_error("incorrect number of registers used");
                   }
                   add_reg(tokens[0], arg_def.type == Type::REG32_SET_FIXED);
