@@ -131,6 +131,9 @@ string Map::Object::str(shared_ptr<const ItemNameIndex> name_index) const {
   }
 }
 
+Map::Map(uint32_t lobby_id)
+    : log(string_printf("[Lobby:%08" PRIX32 ":map] ", lobby_id), lobby_log.min_level) {}
+
 void Map::clear() {
   this->objects.clear();
   this->enemies.clear();
@@ -334,7 +337,7 @@ void Map::add_enemy(
       break;
     case 0x0065: // TObjEnePanarms
       if ((e.num_children != 0) && (e.num_children != 2)) {
-        static_game_data_log.warning("PAN_ARMS has an unusual num_children (0x%hX)", e.num_children.load());
+        this->log.warning("PAN_ARMS has an unusual num_children (0x%hX)", e.num_children.load());
       }
       default_num_children = -1; // Skip adding children (because we do it here)
       add(EnemyType::PAN_ARMS);
@@ -367,7 +370,7 @@ void Map::add_enemy(
       break;
     case 0x00A1: // TObjEneRe4Sorcerer
       if ((e.num_children != 0) && (e.num_children != 2)) {
-        static_game_data_log.warning("CHAOS_SORCERER has an unusual num_children (0x%hX)", e.num_children.load());
+        this->log.warning("CHAOS_SORCERER has an unusual num_children (0x%hX)", e.num_children.load());
       }
       default_num_children = -1; // Skip adding children (because we do it here)
       add(EnemyType::CHAOS_SORCERER);
@@ -410,7 +413,7 @@ void Map::add_enemy(
       break;
     case 0x00C1: // TBoss2DeRolLe
       if ((e.num_children != 0) && (e.num_children != 0x13)) {
-        static_game_data_log.warning("DE_ROL_LE has an unusual num_children (0x%hX)", e.num_children.load());
+        this->log.warning("DE_ROL_LE has an unusual num_children (0x%hX)", e.num_children.load());
       }
       default_num_children = -1; // Skip adding children (because we do it here)
       add(EnemyType::DE_ROL_LE);
@@ -423,7 +426,7 @@ void Map::add_enemy(
       break;
     case 0x00C2: // TBoss3Volopt
       if ((e.num_children != 0) && (e.num_children != 0x23)) {
-        static_game_data_log.warning("VOL_OPT has an unusual num_children (0x%hX)", e.num_children.load());
+        this->log.warning("VOL_OPT has an unusual num_children (0x%hX)", e.num_children.load());
       }
       default_num_children = -1; // Skip adding children (because we do it here)
       add(EnemyType::VOL_OPT_1);
@@ -445,7 +448,7 @@ void Map::add_enemy(
       break;
     case 0x00C8: // TBoss4DarkFalz
       if ((e.num_children != 0) && (e.num_children != 0x200)) {
-        static_game_data_log.warning("DARK_FALZ has an unusual num_children (0x%hX)", e.num_children.load());
+        this->log.warning("DARK_FALZ has an unusual num_children (0x%hX)", e.num_children.load());
       }
       default_num_children = -1; // Skip adding children (because we do it here)
       if (difficulty) {
@@ -588,14 +591,14 @@ void Map::add_enemy(
     case 0x00C7: // TBoss3VoloptHiraisin
     case 0x0118:
       add(EnemyType::UNKNOWN);
-      static_game_data_log.warning(
+      this->log.warning(
           "(Entry %zu, offset %zX in file) Unknown enemy type %04hX",
           index, index * sizeof(EnemyEntry), e.base_type.load());
       break;
 
     default:
       add(EnemyType::UNKNOWN);
-      static_game_data_log.warning(
+      this->log.warning(
           "(Entry %zu, offset %zX in file) Invalid enemy type %04hX",
           index, index * sizeof(EnemyEntry), e.base_type.load());
       break;
@@ -729,7 +732,7 @@ void Map::add_random_enemies_from_map_data(
       definitions_header.weight_entry_count * sizeof(RandomEnemyWeight));
 
   for (size_t wave_entry_index = 0; wave_entry_index < wave_events_header.entry_count; wave_entry_index++) {
-    auto entry_log = static_game_data_log.sub(string_printf("(Entry %zu/%" PRIu32 ") ", wave_entry_index, wave_events_header.entry_count.load()));
+    auto entry_log = this->log.sub(string_printf("(Entry %zu/%" PRIu32 ") ", wave_entry_index, wave_events_header.entry_count.load()));
     const auto& entry = wave_events_segment_r.get<Event2Entry>();
 
     size_t remaining_waves = random_state->rand_int_biased(1, entry.max_waves);
@@ -841,8 +844,6 @@ vector<Map::DATSectionsForFloor> Map::collect_quest_map_data_sections(const void
   while (!r.eof()) {
     size_t header_offset = r.where();
     const auto& header = r.get<SectionHeader>();
-    static_game_data_log.info("(DAT:%08zX) type=%08" PRIX32 " floor=%08" PRIX32 " data_size=%08" PRIX32,
-        header_offset, header.le_type.load(), header.floor.load(), header.data_size.load());
 
     if (header.type() == SectionHeader::Type::END && header.section_size == 0) {
       break;
@@ -918,7 +919,7 @@ void Map::add_enemies_and_objects_from_quest_data(
       if (header.data_size % sizeof(ObjectEntry)) {
         throw runtime_error("quest layout object section size is not a multiple of object entry size");
       }
-      static_game_data_log.info("(Floor %02zX) Adding objects", floor);
+      this->log.info("(Floor %02zX) Adding objects", floor);
       this->add_objects_from_map_data(floor, r.pgetv(floor_sections.objects + sizeof(header), header.data_size), header.data_size);
     }
 
@@ -927,7 +928,7 @@ void Map::add_enemies_and_objects_from_quest_data(
       if (header.data_size % sizeof(EnemyEntry)) {
         throw runtime_error("quest layout enemy section size is not a multiple of enemy entry size");
       }
-      static_game_data_log.info("(Floor %02zX) Adding enemies", floor);
+      this->log.info("(Floor %02zX) Adding enemies", floor);
       this->add_enemies_from_map_data(
           episode,
           difficulty,
@@ -940,7 +941,7 @@ void Map::add_enemies_and_objects_from_quest_data(
     } else if ((floor_sections.wave_events != 0xFFFFFFFF) &&
         (floor_sections.random_enemy_locations != 0xFFFFFFFF) &&
         (floor_sections.random_enemy_definitions != 0xFFFFFFFF)) {
-      static_game_data_log.info("(Floor %02zX) Adding random enemies", floor);
+      this->log.info("(Floor %02zX) Adding random enemies", floor);
       const auto& wave_events_header = r.pget<SectionHeader>(floor_sections.wave_events);
       const auto& random_enemy_locations_header = r.pget<SectionHeader>(floor_sections.random_enemy_locations);
       const auto& random_enemy_definitions_header = r.pget<SectionHeader>(floor_sections.random_enemy_definitions);

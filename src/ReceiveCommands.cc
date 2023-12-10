@@ -4000,7 +4000,7 @@ shared_ptr<Lobby> create_game_generic(
   }
 
   if (game->base_version == Version::BB_V4) {
-    game->map = make_shared<Map>();
+    game->map = make_shared<Map>(game->lobby_id);
     for (size_t floor = 0; floor < 0x10; floor++) {
       c->log.info("[Map/%zu] Using variations %" PRIX32 ", %" PRIX32,
           floor, game->variations[floor * 2].load(), game->variations[floor * 2 + 1].load());

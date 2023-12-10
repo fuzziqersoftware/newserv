@@ -253,9 +253,8 @@ struct Map {
     void generate_shuffled_location_table(const Map::RandomEnemyLocationsHeader& header, StringReader r, uint16_t section);
   };
 
-  std::vector<Object> objects;
-  std::vector<Enemy> enemies;
-  std::vector<size_t> rare_enemy_indexes;
+  explicit Map(uint32_t lobby_id);
+  ~Map() = default;
 
   void clear();
 
@@ -308,6 +307,11 @@ struct Map {
       std::shared_ptr<const RareEnemyRates> rare_rates = Map::DEFAULT_RARE_ENEMIES);
 
   static std::string disassemble_quest_data(const void* data, size_t size);
+
+  PrefixedLogger log;
+  std::vector<Object> objects;
+  std::vector<Enemy> enemies;
+  std::vector<size_t> rare_enemy_indexes;
 };
 
 // TODO: This class is currently unused. It would be nice if we could use this

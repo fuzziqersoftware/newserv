@@ -1110,10 +1110,6 @@ static void on_box_or_enemy_item_drop_t(shared_ptr<Client> c, uint8_t command, u
     auto name = s->describe_item(c->version(), item, false);
     l->log.info("Player %hhu (leader) created floor item %08" PRIX32 " (%s) at %hhu:(%g, %g)",
         l->leader_id, item.id.load(), name.c_str(), cmd.item.floor, cmd.item.x.load(), cmd.item.z.load());
-    if (c->config.check_flag(Client::Flag::DEBUG_ENABLED)) {
-      string name = s->describe_item(c->version(), item, true);
-      send_text_message_printf(c, "$C5DROP %08" PRIX32 "\n%s", item.id.load(), name.c_str());
-    }
   }
 
   for (auto& lc : l->clients) {
@@ -1188,10 +1184,6 @@ static void on_pick_up_item(shared_ptr<Client> c, uint8_t command, uint8_t flag,
       auto name = s->describe_item(c->version(), item, false);
       l->log.warning("Player %hu attempted to pick up %08" PRIX32 " (%s) but cannot (%s); ignoring command",
           cmd.header.client_id.load(), cmd.item_id.load(), name.c_str(), e.what());
-      if (c->config.check_flag(Client::Flag::DEBUG_ENABLED)) {
-        auto name = s->describe_item(c->version(), item, true);
-        send_text_message_printf(c, "$C5PICK/F %08" PRIX32 "\n%s\n$C4%s", cmd.item_id.load(), name.c_str(), e.what());
-      }
       return;
     }
 
@@ -2244,11 +2236,6 @@ static void on_destroy_ground_item(shared_ptr<Client> c, uint8_t command, uint8_
     auto name = s->describe_item(c->version(), item, false);
     l->log.info("Player %hhu destroyed floor item %08" PRIX32 " (%s)",
         c->lobby_client_id, cmd.item_id.load(), name.c_str());
-    if (c->config.check_flag(Client::Flag::DEBUG_ENABLED)) {
-      string name = s->describe_item(c->version(), item, true);
-      send_text_message_printf(c, "$C5DESTROY/GND %08" PRIX32 "\n%s",
-          cmd.item_id.load(), name.c_str());
-    }
     forward_subcommand(c, command, flag, data, size);
   }
 }
