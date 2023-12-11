@@ -207,12 +207,12 @@ public:
   struct Tool {
     using U16T = typename std::conditional<IsBigEndian, be_uint16_t, le_uint16_t>::type;
     using S32T = typename std::conditional<IsBigEndian, be_int32_t, le_int32_t>::type;
+    using U32T = typename std::conditional<IsBigEndian, be_uint32_t, le_uint32_t>::type;
     BaseT base;
     U16T amount = 0;
     U16T tech = 0;
     S32T cost = 0;
-    uint8_t item_flag = 0;
-    parray<uint8_t, 3> unused;
+    U32T item_flag = 0;
   } __attribute__((packed));
   struct ToolV2 : Tool<ItemBaseV2<false>, false> {
   } __attribute__((packed));

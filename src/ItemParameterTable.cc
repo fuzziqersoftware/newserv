@@ -381,7 +381,7 @@ const ItemParameterTable::ToolV4& ItemParameterTable::get_tool(uint8_t data1_1, 
       def_v4.amount = def_v3.amount.load();
       def_v4.tech = def_v3.tech.load();
       def_v4.cost = def_v3.cost.load();
-      def_v4.item_flag = def_v3.item_flag;
+      def_v4.item_flag = def_v3.item_flag.load();
 
     } else {
       throw logic_error("table is not v2, v3, or v4");
