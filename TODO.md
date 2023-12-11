@@ -25,5 +25,4 @@
 
 - Test all quest item subcommands
 - Check if Commander Blade effect works and implement it if not
-- Figure out which quest flags are required for solo quests and write appropriate JSON files
 - Figure out why Pouilly Slime EXP doesn't work
