@@ -2348,9 +2348,10 @@ static void on_buy_shop_item_bb(shared_ptr<Client> c, uint8_t, uint8_t, const vo
     auto p = c->character();
     p->remove_meseta(price, false);
 
-    item.id = l->generate_item_id(c->lobby_client_id);
+    item.id = cmd.shop_item_id;
+    l->on_item_id_generated_externally(item.id);
     p->add_item(item);
-    send_create_inventory_item(c, item);
+    send_create_inventory_item(c, item, true);
 
     if (l->log.should_log(LogLevel::INFO)) {
       auto s = c->require_server_state();

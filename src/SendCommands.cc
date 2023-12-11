@@ -2349,14 +2349,18 @@ void send_pick_up_item(shared_ptr<Client> c, uint32_t item_id, uint8_t floor) {
   send_command_t(l, 0x60, 0x00, cmd);
 }
 
-void send_create_inventory_item(shared_ptr<Client> c, const ItemData& item) {
+void send_create_inventory_item(shared_ptr<Client> c, const ItemData& item, bool exclude_c) {
   auto l = c->require_lobby();
   if (c->version() != Version::BB_V4) {
     throw logic_error("6xBE can only be sent to BB clients");
   }
   uint16_t client_id = c->lobby_client_id;
   G_CreateInventoryItem_BB_6xBE cmd = {{0xBE, 0x07, client_id}, item, 0};
-  send_command_t(l, 0x60, 0x00, cmd);
+  if (exclude_c) {
+    send_command_excluding_client(l, c, 0x60, 0x00, &cmd, sizeof(cmd));
+  } else {
+    send_command_t(l, 0x60, 0x00, cmd);
+  }
 }
 
 void send_destroy_item(shared_ptr<Client> c, uint32_t item_id, uint32_t amount, bool exclude_c) {
