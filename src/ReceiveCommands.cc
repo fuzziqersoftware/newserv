@@ -3687,16 +3687,18 @@ static void on_81(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
   if (!target) {
     // TODO: We should store pending messages for accounts somewhere, and send
     // them when the player signs on again.
-    try {
-      auto target_license = s->license_index->get(to_guild_card_number);
-      if (!target_license->auto_reply_message.empty()) {
-        send_simple_mail(
-            c,
-            target_license->serial_number,
-            target_license->last_player_name,
-            target_license->auto_reply_message);
+    if (!c->blocked_senders.count(to_guild_card_number)) {
+      try {
+        auto target_license = s->license_index->get(to_guild_card_number);
+        if (!target_license->auto_reply_message.empty()) {
+          send_simple_mail(
+              c,
+              target_license->serial_number,
+              target_license->last_player_name,
+              target_license->auto_reply_message);
+        }
+      } catch (const LicenseIndex::missing_license&) {
       }
-    } catch (const LicenseIndex::missing_license&) {
     }
     send_text_message(c, "$C6Player is offline");
 
@@ -3708,13 +3710,15 @@ static void on_81(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
 
     // If the target has auto-reply enabled, send the autoreply. Note that we also
     // forward the message in this case.
-    auto target_p = target->character();
-    if (!target_p->auto_reply.empty()) {
-      send_simple_mail(
-          c,
-          target->license->serial_number,
-          target_p->disp.name.decode(target_p->inventory.language),
-          target_p->auto_reply.decode(target_p->inventory.language));
+    if (!c->blocked_senders.count(target->license->serial_number)) {
+      auto target_p = target->character();
+      if (!target_p->auto_reply.empty()) {
+        send_simple_mail(
+            c,
+            target->license->serial_number,
+            target_p->disp.name.decode(target_p->inventory.language),
+            target_p->auto_reply.decode(target_p->inventory.language));
+      }
     }
 
     // Forward the message
