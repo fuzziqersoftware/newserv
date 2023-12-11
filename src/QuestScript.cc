@@ -1895,225 +1895,233 @@ std::string assemble_quest_script(const std::string& text) {
       if (line_tokens.size() < 2) {
         throw runtime_error(string_printf("(line %zu) arguments required for %s", line_num, opcode_def->name));
       }
-      auto args = split_context(line_tokens[1], ',');
-      if (args.size() != opcode_def->args.size()) {
-        throw runtime_error(string_printf("(line %zu) incorrect argument count for %s", line_num, opcode_def->name));
-      }
+      strip_trailing_whitespace(line_tokens[1]);
+      strip_leading_whitespace(line_tokens[1]);
 
-      for (size_t z = 0; z < args.size(); z++) {
-        using Type = QuestScriptOpcodeDefinition::Argument::Type;
+      if (starts_with(line_tokens[1], "...")) {
+        if (!(opcode_def->flags & F_ARGS)) {
+          throw runtime_error(string_printf("(line %zu) \'...\' can only be used with F_ARGS opcodes", line_num));
+        }
 
-        string& arg = args[z];
-        const auto& arg_def = opcode_def->args[z];
-        strip_trailing_whitespace(arg);
-        strip_leading_whitespace(arg);
+      } else { // Not "..."
+        auto args = split_context(line_tokens[1], ',');
+        if (args.size() != opcode_def->args.size()) {
+          throw runtime_error(string_printf("(line %zu) incorrect argument count for %s", line_num, opcode_def->name));
+        }
 
-        try {
-          auto parse_reg = +[](const string& name) -> uint8_t {
-            if ((name[0] != 'r') && (name[0] != 'f')) {
-              throw runtime_error("a register is required");
-            }
-            size_t reg_num = stoull(name.substr(1), nullptr, 0);
-            if (reg_num > 0xFF) {
-              throw runtime_error("invalid register number");
-            }
-            return reg_num;
-          };
-          auto add_cstr = [&](const string& text) -> void {
-            switch (quest_version) {
-              case Version::DC_NTE:
-                code_w.write(tt_utf8_to_sjis(text));
-                code_w.put_u8(0);
-                break;
-              case Version::DC_V1_11_2000_PROTOTYPE:
-              case Version::DC_V1:
-              case Version::DC_V2:
-              case Version::GC_NTE:
-              case Version::GC_V3:
-              case Version::GC_EP3_TRIAL_EDITION:
-              case Version::GC_EP3:
-              case Version::XB_V3:
-                code_w.write(quest_language ? tt_utf8_to_8859(text) : tt_utf8_to_sjis(text));
-                code_w.put_u8(0);
-                break;
-              case Version::PC_V2:
-              case Version::BB_V4:
-                code_w.write(tt_utf8_to_utf16(text));
-                code_w.put_u16(0);
-                break;
-              default:
-                throw logic_error("invalid game version");
-            }
-          };
+        for (size_t z = 0; z < args.size(); z++) {
+          using Type = QuestScriptOpcodeDefinition::Argument::Type;
 
-          if (opcode_def->flags & F_ARGS) {
-            auto label_it = labels_by_name.find(arg);
-            if (starts_with(line_tokens[1], "...")) {
-              // Args were specified by preceding arg_push calls; nothing to do here
-            } else if (arg.empty()) {
-              throw runtime_error("argument is empty");
-            } else if (label_it != labels_by_name.end()) {
-              code_w.put_u8(0x4B); // arg_pushw
-              code_w.put_u16l(label_it->second->index);
-            } else if ((arg[0] == 'r') || (arg[0] == 'f')) {
-              // If the corresponding argument is a REG or REG_SET_FIXED, push
-              // the register number, not the register's value, since it's an
-              // out-param
-              if ((arg_def.type == Type::REG) || (arg_def.type == Type::REG32)) {
-                code_w.put_u8(0x4A); // arg_pushb
-                code_w.put_u8(parse_reg(arg));
-              } else if (
-                  (arg_def.type == Type::REG_SET_FIXED) ||
-                  (arg_def.type == Type::REG32_SET_FIXED)) {
-                auto tokens = split(arg, '-');
-                uint8_t start_reg;
-                if (tokens.size() == 1) {
-                  start_reg = parse_reg(tokens[0]);
-                } else if (tokens.size() == 2) {
-                  start_reg = parse_reg(tokens[0]);
-                  if (static_cast<size_t>(parse_reg(tokens[1]) - start_reg + 1) != arg_def.count) {
-                    throw runtime_error("incorrect number of registers used");
-                  }
-                } else {
-                  throw runtime_error("invalid fixed register set syntax");
-                }
-                code_w.put_u8(0x4A); // arg_pushb
-                code_w.put_u8(start_reg);
-              } else {
-                code_w.put_u8(0x48); // arg_pushr
-                code_w.put_u8(parse_reg(arg));
+          string& arg = args[z];
+          const auto& arg_def = opcode_def->args[z];
+          strip_trailing_whitespace(arg);
+          strip_leading_whitespace(arg);
+
+          try {
+            auto parse_reg = +[](const string& name) -> uint8_t {
+              if ((name[0] != 'r') && (name[0] != 'f')) {
+                throw runtime_error("a register is required");
               }
-            } else if ((arg[0] == '@') && ((arg[1] == 'r') || (arg[1] == 'f'))) {
-              code_w.put_u8(0x4C); // arg_pusha
-              code_w.put_u8(parse_reg(arg.substr(1)));
-            } else if ((arg[0] == '@') && labels_by_name.count(arg.substr(1))) {
-              code_w.put_u8(0x4D); // arg_pusho
-              code_w.put_u16(labels_by_name.at(arg.substr(1))->index);
-            } else {
-              bool write_as_str = false;
-              try {
-                size_t end_offset;
-                uint64_t value = stoll(arg, &end_offset, 0);
-                if (end_offset != arg.size()) {
-                  write_as_str = true;
-                } else if (value > 0xFFFF) {
-                  code_w.put_u8(0x49); // arg_pushl
-                  code_w.put_u32l(value);
-                } else if (value > 0xFF) {
-                  code_w.put_u8(0x4B); // arg_pushw
-                  code_w.put_u16l(value);
-                } else {
+              size_t reg_num = stoull(name.substr(1), nullptr, 0);
+              if (reg_num > 0xFF) {
+                throw runtime_error("invalid register number");
+              }
+              return reg_num;
+            };
+            auto add_cstr = [&](const string& text) -> void {
+              switch (quest_version) {
+                case Version::DC_NTE:
+                  code_w.write(tt_utf8_to_sjis(text));
+                  code_w.put_u8(0);
+                  break;
+                case Version::DC_V1_11_2000_PROTOTYPE:
+                case Version::DC_V1:
+                case Version::DC_V2:
+                case Version::GC_NTE:
+                case Version::GC_V3:
+                case Version::GC_EP3_TRIAL_EDITION:
+                case Version::GC_EP3:
+                case Version::XB_V3:
+                  code_w.write(quest_language ? tt_utf8_to_8859(text) : tt_utf8_to_sjis(text));
+                  code_w.put_u8(0);
+                  break;
+                case Version::PC_V2:
+                case Version::BB_V4:
+                  code_w.write(tt_utf8_to_utf16(text));
+                  code_w.put_u16(0);
+                  break;
+                default:
+                  throw logic_error("invalid game version");
+              }
+            };
+
+            if (opcode_def->flags & F_ARGS) {
+              auto label_it = labels_by_name.find(arg);
+              if (arg.empty()) {
+                throw runtime_error("argument is empty");
+              } else if (label_it != labels_by_name.end()) {
+                code_w.put_u8(0x4B); // arg_pushw
+                code_w.put_u16l(label_it->second->index);
+              } else if ((arg[0] == 'r') || (arg[0] == 'f')) {
+                // If the corresponding argument is a REG or REG_SET_FIXED, push
+                // the register number, not the register's value, since it's an
+                // out-param
+                if ((arg_def.type == Type::REG) || (arg_def.type == Type::REG32)) {
                   code_w.put_u8(0x4A); // arg_pushb
-                  code_w.put_u8(value);
-                }
-              } catch (const exception&) {
-                write_as_str = true;
-              }
-              if (write_as_str) {
-                if (arg[0] == '\"') {
-                  code_w.put_u8(0x4E); // arg_pushs
-                  add_cstr(parse_data_string(arg));
-                } else {
-                  throw runtime_error("invalid argument syntax");
-                }
-              }
-            }
-
-          } else { // Not F_ARGS
-            auto add_label = [&](const string& name, bool is32) -> void {
-              if (!labels_by_name.count(name)) {
-                throw runtime_error("label not defined: " + name);
-              }
-              if (is32) {
-                code_w.put_u32(labels_by_name.at(name)->index);
-              } else {
-                code_w.put_u16(labels_by_name.at(name)->index);
-              }
-            };
-            auto add_reg = [&](const string& name, bool is32) -> void {
-              if (is32) {
-                code_w.put_u32l(parse_reg(name));
-              } else {
-                code_w.put_u8(parse_reg(name));
-              }
-            };
-
-            auto split_set = [&](const string& text) -> vector<string> {
-              if (!starts_with(text, "[") || !ends_with(text, "]")) {
-                throw runtime_error("incorrect syntax for set-valued argument");
-              }
-              auto values = split(text.substr(1, text.size() - 2), ',');
-              if (values.size() > 0xFF) {
-                throw runtime_error("too many labels in set-valued argument");
-              }
-              return values;
-            };
-
-            switch (arg_def.type) {
-              case Type::LABEL16:
-              case Type::LABEL32:
-                add_label(arg, arg_def.type == Type::LABEL32);
-                break;
-              case Type::LABEL16_SET: {
-                auto label_names = split_set(arg);
-                code_w.put_u8(label_names.size());
-                for (auto name : label_names) {
-                  strip_trailing_whitespace(name);
-                  strip_leading_whitespace(name);
-                  add_label(name, false);
-                }
-                break;
-              }
-              case Type::REG:
-              case Type::REG32:
-                add_reg(arg, arg_def.type == Type::REG32);
-                break;
-              case Type::REG_SET_FIXED:
-              case Type::REG32_SET_FIXED: {
-                auto tokens = split(arg, '-');
-                if (tokens.size() == 1) {
-                  add_reg(tokens[0], arg_def.type == Type::REG32_SET_FIXED);
-                } else if (tokens.size() == 2) {
-                  if (static_cast<size_t>(parse_reg(tokens[1]) - parse_reg(tokens[0]) + 1) != arg_def.count) {
-                    throw runtime_error("incorrect number of registers used");
+                  code_w.put_u8(parse_reg(arg));
+                } else if (
+                    (arg_def.type == Type::REG_SET_FIXED) ||
+                    (arg_def.type == Type::REG32_SET_FIXED)) {
+                  auto tokens = split(arg, '-');
+                  uint8_t start_reg;
+                  if (tokens.size() == 1) {
+                    start_reg = parse_reg(tokens[0]);
+                  } else if (tokens.size() == 2) {
+                    start_reg = parse_reg(tokens[0]);
+                    if (static_cast<size_t>(parse_reg(tokens[1]) - start_reg + 1) != arg_def.count) {
+                      throw runtime_error("incorrect number of registers used");
+                    }
+                  } else {
+                    throw runtime_error("invalid fixed register set syntax");
                   }
-                  add_reg(tokens[0], arg_def.type == Type::REG32_SET_FIXED);
+                  code_w.put_u8(0x4A); // arg_pushb
+                  code_w.put_u8(start_reg);
                 } else {
-                  throw runtime_error("invalid fixed register set syntax");
+                  code_w.put_u8(0x48); // arg_pushr
+                  code_w.put_u8(parse_reg(arg));
                 }
-                break;
-              }
-              case Type::REG_SET: {
-                auto regs = split_set(arg);
-                code_w.put_u8(regs.size());
-                for (auto reg : regs) {
-                  strip_trailing_whitespace(reg);
-                  strip_leading_whitespace(reg);
-                  add_reg(reg, false);
+              } else if ((arg[0] == '@') && ((arg[1] == 'r') || (arg[1] == 'f'))) {
+                code_w.put_u8(0x4C); // arg_pusha
+                code_w.put_u8(parse_reg(arg.substr(1)));
+              } else if ((arg[0] == '@') && labels_by_name.count(arg.substr(1))) {
+                code_w.put_u8(0x4D); // arg_pusho
+                code_w.put_u16(labels_by_name.at(arg.substr(1))->index);
+              } else {
+                bool write_as_str = false;
+                try {
+                  size_t end_offset;
+                  uint64_t value = stoll(arg, &end_offset, 0);
+                  if (end_offset != arg.size()) {
+                    write_as_str = true;
+                  } else if (value > 0xFFFF) {
+                    code_w.put_u8(0x49); // arg_pushl
+                    code_w.put_u32l(value);
+                  } else if (value > 0xFF) {
+                    code_w.put_u8(0x4B); // arg_pushw
+                    code_w.put_u16l(value);
+                  } else {
+                    code_w.put_u8(0x4A); // arg_pushb
+                    code_w.put_u8(value);
+                  }
+                } catch (const exception&) {
+                  write_as_str = true;
                 }
-                break;
+                if (write_as_str) {
+                  if (arg[0] == '\"') {
+                    code_w.put_u8(0x4E); // arg_pushs
+                    add_cstr(parse_data_string(arg));
+                  } else {
+                    throw runtime_error("invalid argument syntax");
+                  }
+                }
               }
-              case Type::INT8:
-                code_w.put_u8(stol(arg, nullptr, 0));
-                break;
-              case Type::INT16:
-                code_w.put_u16l(stol(arg, nullptr, 0));
-                break;
-              case Type::INT32:
-                code_w.put_u32l(stol(arg, nullptr, 0));
-                break;
-              case Type::FLOAT32:
-                code_w.put_u32l(stof(arg, nullptr));
-                break;
-              case Type::CSTRING:
-                add_cstr(parse_data_string(arg));
-                break;
-              default:
-                throw logic_error("unknown argument type");
+
+            } else { // Not F_ARGS
+              auto add_label = [&](const string& name, bool is32) -> void {
+                if (!labels_by_name.count(name)) {
+                  throw runtime_error("label not defined: " + name);
+                }
+                if (is32) {
+                  code_w.put_u32(labels_by_name.at(name)->index);
+                } else {
+                  code_w.put_u16(labels_by_name.at(name)->index);
+                }
+              };
+              auto add_reg = [&](const string& name, bool is32) -> void {
+                if (is32) {
+                  code_w.put_u32l(parse_reg(name));
+                } else {
+                  code_w.put_u8(parse_reg(name));
+                }
+              };
+
+              auto split_set = [&](const string& text) -> vector<string> {
+                if (!starts_with(text, "[") || !ends_with(text, "]")) {
+                  throw runtime_error("incorrect syntax for set-valued argument");
+                }
+                auto values = split(text.substr(1, text.size() - 2), ',');
+                if (values.size() > 0xFF) {
+                  throw runtime_error("too many labels in set-valued argument");
+                }
+                return values;
+              };
+
+              switch (arg_def.type) {
+                case Type::LABEL16:
+                case Type::LABEL32:
+                  add_label(arg, arg_def.type == Type::LABEL32);
+                  break;
+                case Type::LABEL16_SET: {
+                  auto label_names = split_set(arg);
+                  code_w.put_u8(label_names.size());
+                  for (auto name : label_names) {
+                    strip_trailing_whitespace(name);
+                    strip_leading_whitespace(name);
+                    add_label(name, false);
+                  }
+                  break;
+                }
+                case Type::REG:
+                case Type::REG32:
+                  add_reg(arg, arg_def.type == Type::REG32);
+                  break;
+                case Type::REG_SET_FIXED:
+                case Type::REG32_SET_FIXED: {
+                  auto tokens = split(arg, '-');
+                  if (tokens.size() == 1) {
+                    add_reg(tokens[0], arg_def.type == Type::REG32_SET_FIXED);
+                  } else if (tokens.size() == 2) {
+                    if (static_cast<size_t>(parse_reg(tokens[1]) - parse_reg(tokens[0]) + 1) != arg_def.count) {
+                      throw runtime_error("incorrect number of registers used");
+                    }
+                    add_reg(tokens[0], arg_def.type == Type::REG32_SET_FIXED);
+                  } else {
+                    throw runtime_error("invalid fixed register set syntax");
+                  }
+                  break;
+                }
+                case Type::REG_SET: {
+                  auto regs = split_set(arg);
+                  code_w.put_u8(regs.size());
+                  for (auto reg : regs) {
+                    strip_trailing_whitespace(reg);
+                    strip_leading_whitespace(reg);
+                    add_reg(reg, false);
+                  }
+                  break;
+                }
+                case Type::INT8:
+                  code_w.put_u8(stol(arg, nullptr, 0));
+                  break;
+                case Type::INT16:
+                  code_w.put_u16l(stol(arg, nullptr, 0));
+                  break;
+                case Type::INT32:
+                  code_w.put_u32l(stol(arg, nullptr, 0));
+                  break;
+                case Type::FLOAT32:
+                  code_w.put_u32l(stof(arg, nullptr));
+                  break;
+                case Type::CSTRING:
+                  add_cstr(parse_data_string(arg));
+                  break;
+                default:
+                  throw logic_error("unknown argument type");
+              }
             }
+          } catch (const exception& e) {
+            throw runtime_error(string_printf("(arg %zu) %s", z + 1, e.what()));
           }
-        } catch (const exception& e) {
-          throw runtime_error(string_printf("(arg %zu) %s", z + 1, e.what()));
         }
       }
 
