@@ -3,6 +3,8 @@
 #include <algorithm>
 #include <array>
 
+#include "Loggers.hh"
+
 using namespace std;
 
 static const array<uint8_t, 10> favored_weapon_by_section_id = {
@@ -23,7 +25,7 @@ ItemCreator::ItemCreator(
     uint8_t section_id,
     uint32_t random_seed,
     shared_ptr<const BattleRules> restrictions)
-    : log(string_printf("[ItemCreator:%s/%s/%s/%c/%hhu] ", name_for_enum(version), abbreviation_for_episode(episode), abbreviation_for_mode(mode), abbreviation_for_difficulty(difficulty), section_id)),
+    : log(string_printf("[ItemCreator:%s/%s/%s/%c/%hhu] ", name_for_enum(version), abbreviation_for_episode(episode), abbreviation_for_mode(mode), abbreviation_for_difficulty(difficulty), section_id), lobby_log.min_level),
       version(version),
       episode(episode),
       mode(mode),
