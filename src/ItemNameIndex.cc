@@ -117,12 +117,14 @@ std::string ItemNameIndex::describe_item(
 
   // For weapons, specials appear before the weapon name
   if ((item.data1[0] == 0x00) && (item.data1[4] != 0x00) && !item.is_s_rank_weapon()) {
-    // 0x80 is the unidentified flag, but we always return the identified name
-    // of the item here, so we ignore it
+    bool is_unidentified = item.data1[4] & 0x80;
     bool is_present = item.data1[4] & 0x40;
     uint8_t special_id = item.data1[4] & 0x3F;
     if (is_present) {
       ret_tokens.emplace_back("Wrapped");
+    }
+    if (is_unidentified) {
+      ret_tokens.emplace_back("????");
     }
     if (special_id) {
       try {
