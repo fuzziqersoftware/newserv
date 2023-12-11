@@ -2001,63 +2001,67 @@ static void on_enemy_exp_request_bb(shared_ptr<Client> c, uint8_t, uint8_t, cons
 
   uint8_t state_flag = Map::Enemy::Flag::EXP_REQUESTED_BY_PLAYER0 << c->lobby_client_id;
   if (e.state_flags & state_flag) {
-    throw runtime_error("duplicate EXP request");
-  }
-  e.state_flags |= state_flag;
-
-  double experience = 0.0;
-  try {
-    const auto& bp_table = s->battle_params->get_table(l->mode == GameMode::SOLO, l->episode);
-    uint32_t bp_index = battle_param_index_for_enemy_type(l->episode, e.type);
-    experience = bp_table.stats[l->difficulty][bp_index].experience;
-  } catch (const exception& e) {
     if (c->config.check_flag(Client::Flag::DEBUG_ENABLED)) {
-      send_text_message_printf(c, "$C5E-%hX __MISSING__\n%s", cmd.enemy_index.load(), e.what());
-    } else {
-      send_text_message_printf(c, "$C4Unknown enemy type killed:\n%s", e.what());
+      send_text_message_printf(c, "$C5E-%hX __CHECKED__", cmd.enemy_index.load());
     }
-  }
 
-  if (experience != 0.0) {
-    if (c->floor != e.floor) {
+  } else {
+    e.state_flags |= state_flag;
+
+    double experience = 0.0;
+    try {
+      const auto& bp_table = s->battle_params->get_table(l->mode == GameMode::SOLO, l->episode);
+      uint32_t bp_index = battle_param_index_for_enemy_type(l->episode, e.type);
+      experience = bp_table.stats[l->difficulty][bp_index].experience;
+    } catch (const exception& e) {
       if (c->config.check_flag(Client::Flag::DEBUG_ENABLED)) {
-        send_text_message_printf(c, "$C5E-%hX %s\n$C4FLOOR Y:%02" PRIX32 " E:%02hhX",
-            cmd.enemy_index.load(), name_for_enum(e.type), c->floor, e.floor);
-      }
-    } else {
-      // In PSOBB, Sega decided to add a 30% EXP boost for Episode 2. They could
-      // have done something reasonable, like edit the BattleParamEntry files so
-      // the monsters would all give more EXP, but they did something far lazier
-      // instead: they just stuck an if statement in the client's EXP request
-      // function. We, unfortunately, have to do the same here.
-      bool is_killer = (e.last_hit_by_client_id == c->lobby_client_id);
-      bool is_ep2 = (l->episode == Episode::EP2);
-      uint32_t player_exp = experience *
-          (is_killer ? 1.0 : 0.8) *
-          l->base_exp_multiplier *
-          l->challenge_exp_multiplier *
-          (is_ep2 ? 1.3 : 1.0);
-      if (c->config.check_flag(Client::Flag::DEBUG_ENABLED)) {
-        send_text_message_printf(
-            c, "$C5+%" PRIu32 " E-%hX %s%s",
-            player_exp,
-            cmd.enemy_index.load(),
-            (!cmd.is_killer == !is_killer) ? "" : "$C6!K$C5 ",
-            name_for_enum(e.type));
-      }
-      if (c->character()->disp.stats.level < 199) {
-        add_player_exp(c, player_exp);
+        send_text_message_printf(c, "$C5E-%hX __MISSING__\n%s", cmd.enemy_index.load(), e.what());
+      } else {
+        send_text_message_printf(c, "$C4Unknown enemy type killed:\n%s", e.what());
       }
     }
-  }
 
-  // Update kill counts on unsealable items
-  auto& inventory = c->character()->inventory;
-  for (size_t z = 0; z < inventory.num_items; z++) {
-    auto& item = inventory.items[z];
-    if ((item.flags & 0x08) &&
-        s->item_parameter_table_for_version(c->version())->is_unsealable_item(item.data)) {
-      item.data.set_sealed_item_kill_count(item.data.get_sealed_item_kill_count() + 1);
+    if (experience != 0.0) {
+      if (c->floor != e.floor) {
+        if (c->config.check_flag(Client::Flag::DEBUG_ENABLED)) {
+          send_text_message_printf(c, "$C5E-%hX %s\n$C4FLOOR Y:%02" PRIX32 " E:%02hhX",
+              cmd.enemy_index.load(), name_for_enum(e.type), c->floor, e.floor);
+        }
+      } else {
+        // In PSOBB, Sega decided to add a 30% EXP boost for Episode 2. They could
+        // have done something reasonable, like edit the BattleParamEntry files so
+        // the monsters would all give more EXP, but they did something far lazier
+        // instead: they just stuck an if statement in the client's EXP request
+        // function. We, unfortunately, have to do the same here.
+        bool is_killer = (e.last_hit_by_client_id == c->lobby_client_id);
+        bool is_ep2 = (l->episode == Episode::EP2);
+        uint32_t player_exp = experience *
+            (is_killer ? 1.0 : 0.8) *
+            l->base_exp_multiplier *
+            l->challenge_exp_multiplier *
+            (is_ep2 ? 1.3 : 1.0);
+        if (c->config.check_flag(Client::Flag::DEBUG_ENABLED)) {
+          send_text_message_printf(
+              c, "$C5+%" PRIu32 " E-%hX %s%s",
+              player_exp,
+              cmd.enemy_index.load(),
+              (!cmd.is_killer == !is_killer) ? "" : "$C6!K$C5 ",
+              name_for_enum(e.type));
+        }
+        if (c->character()->disp.stats.level < 199) {
+          add_player_exp(c, player_exp);
+        }
+      }
+    }
+
+    // Update kill counts on unsealable items
+    auto& inventory = c->character()->inventory;
+    for (size_t z = 0; z < inventory.num_items; z++) {
+      auto& item = inventory.items[z];
+      if ((item.flags & 0x08) &&
+          s->item_parameter_table_for_version(c->version())->is_unsealable_item(item.data)) {
+        item.data.set_sealed_item_kill_count(item.data.get_sealed_item_kill_count() + 1);
+      }
     }
   }
 }
