@@ -477,14 +477,16 @@ static void proxy_command_patch(shared_ptr<ProxyServer::LinkedSession> ses, cons
 }
 
 static void server_command_persist(shared_ptr<Client> c, const std::string&) {
-  check_license_flags(c, License::Flag::DEBUG);
   auto l = c->require_lobby();
   if (l->check_flag(Lobby::Flag::DEFAULT)) {
     send_text_message(c, "$C6Default lobbies\ncannot be marked\ntemporary");
+  } else if (!l->check_flag(Lobby::Flag::GAME)) {
+    send_text_message(c, "$C6Private lobbies\ncannot be marked\npersistent");
+  } else if (l->check_flag(Lobby::Flag::QUEST_IN_PROGRESS) || l->check_flag(Lobby::Flag::JOINABLE_QUEST_IN_PROGRESS)) {
+    send_text_message(c, "$C6Games cannot be\npersistent if a\nquest has already\nbegun");
   } else {
     l->toggle_flag(Lobby::Flag::PERSISTENT);
-    send_text_message_printf(c, "Lobby persistence\n%s",
-        l->check_flag(Lobby::Flag::PERSISTENT) ? "enabled" : "disabled");
+    send_text_message_printf(c, "Lobby persistence\n%s", l->check_flag(Lobby::Flag::PERSISTENT) ? "enabled" : "disabled");
   }
 }
 

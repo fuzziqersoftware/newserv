@@ -152,6 +152,7 @@ struct Lobby : public std::enable_shared_from_this<Lobby> {
   std::shared_ptr<ServerState> require_server_state() const;
   std::shared_ptr<ChallengeParameters> require_challenge_params() const;
   void create_item_creator();
+  void load_maps();
   void create_ep3_server();
 
   [[nodiscard]] inline bool is_game() const {

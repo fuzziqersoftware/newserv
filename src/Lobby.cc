@@ -4,6 +4,7 @@
 
 #include <phosg/Random.hh>
 
+#include "Compression.hh"
 #include "Loggers.hh"
 #include "SendCommands.hh"
 #include "Text.hh"
@@ -102,6 +103,115 @@ void Lobby::create_item_creator() {
       this->section_id,
       this->random_seed,
       this->quest ? this->quest->battle_rules : nullptr);
+}
+
+void Lobby::load_maps() {
+  auto s = this->require_server_state();
+  this->map = make_shared<Map>(this->lobby_id);
+
+  if (this->quest) {
+    auto leader_c = this->clients.at(this->leader_id);
+    if (!leader_c) {
+      throw logic_error("lobby leader is missing");
+    }
+
+    auto vq = this->quest->version(Version::BB_V4, leader_c->language());
+    auto dat_contents = prs_decompress(*vq->dat_contents);
+    this->map->clear();
+    this->map->add_enemies_and_objects_from_quest_data(
+        this->episode,
+        this->difficulty,
+        this->event,
+        dat_contents.data(),
+        dat_contents.size(),
+        this->random_seed,
+        this->rare_enemy_rates ? this->rare_enemy_rates : Map::NO_RARE_ENEMIES);
+    if (this->item_creator) {
+      this->item_creator->clear_destroyed_entities();
+    }
+
+  } else { // No quest loaded
+    for (size_t floor = 0; floor < 0x10; floor++) {
+      this->log.info("[Map/%zu] Using variations %" PRIX32 ", %" PRIX32,
+          floor, this->variations[floor * 2].load(), this->variations[floor * 2 + 1].load());
+
+      auto enemy_filenames = map_filenames_for_variation(
+          this->episode,
+          (this->mode == GameMode::SOLO),
+          floor,
+          this->variations[floor * 2],
+          this->variations[floor * 2 + 1],
+          true);
+      if (enemy_filenames.empty()) {
+        this->log.info("[Map/%zu:e] No file to load", floor);
+      } else {
+        bool any_map_loaded = false;
+        for (const string& filename : enemy_filenames) {
+          try {
+            auto map_data = s->load_bb_file(filename, "", "map/" + filename);
+            this->map->add_enemies_from_map_data(
+                this->episode,
+                this->difficulty,
+                this->event,
+                floor,
+                map_data->data(),
+                map_data->size(),
+                this->rare_enemy_rates);
+            any_map_loaded = true;
+            break;
+          } catch (const exception& e) {
+            this->log.info("[Map/%zu:e] Failed to load %s: %s", floor, filename.c_str(), e.what());
+          }
+        }
+        if (!any_map_loaded) {
+          throw runtime_error(string_printf("no enemy maps loaded for floor %zu", floor));
+        }
+      }
+
+      auto object_filenames = map_filenames_for_variation(
+          this->episode,
+          (this->mode == GameMode::SOLO),
+          floor,
+          this->variations[floor * 2],
+          this->variations[floor * 2 + 1],
+          false);
+      if (object_filenames.empty()) {
+        this->log.info("[Map/%zu:o] No file to load", floor);
+      } else {
+        bool any_map_loaded = false;
+        for (const string& filename : object_filenames) {
+          try {
+            auto map_data = s->load_bb_file(filename, "", "map/" + filename);
+            this->map->add_objects_from_map_data(floor, map_data->data(), map_data->size());
+            any_map_loaded = true;
+            break;
+          } catch (const exception& e) {
+            this->log.info("[Map/%zu:o] Failed to load %s: %s", floor, filename.c_str(), e.what());
+          }
+        }
+        if (!any_map_loaded) {
+          throw runtime_error(string_printf("no object maps loaded for floor %zu", floor));
+        }
+      }
+    }
+  }
+
+  this->log.info("Generated objects list (%zu entries):", this->map->objects.size());
+  for (size_t z = 0; z < this->map->objects.size(); z++) {
+    string o_str = this->map->objects[z].str(s->item_name_index);
+    this->log.info("(K-%zX) %s", z, o_str.c_str());
+  }
+  this->log.info("Generated enemies list (%zu entries):", this->map->enemies.size());
+  for (size_t z = 0; z < this->map->enemies.size(); z++) {
+    string e_str = this->map->enemies[z].str();
+    this->log.info("(E-%zX) %s", z, e_str.c_str());
+  }
+  this->log.info("Loaded maps contain %zu object entries and %zu enemy entries overall (%zu as rares)",
+      this->map->objects.size(), this->map->enemies.size(), this->map->rare_enemy_indexes.size());
+
+  if (this->item_creator) {
+    this->item_creator->clear_destroyed_entities();
+  }
 }
 
 void Lobby::create_ep3_server() {
@@ -212,8 +322,25 @@ void Lobby::add_client(shared_ptr<Client> c, ssize_t required_client_id) {
   }
 
   // If the lobby is a game and item tracking is enabled, assign the inventory's
-  // item IDs
+  // item IDs. If there was no one else in the lobby, reset all the next item
+  // IDs also
   if (this->is_game() && this->check_flag(Lobby::Flag::ITEM_TRACKING_ENABLED)) {
+    if (leader_index >= this->max_clients) {
+      for (size_t x = 0; x < 12; x++) {
+        this->next_item_id[x] = 0x00010000 + 0x00200000 * x;
+      }
+      this->next_game_item_id = 0x00810000;
+
+      // Reassign all floor item IDs so they won't conflict with any players'
+      // item IDs
+      unordered_map<uint32_t, FloorItem> new_item_id_to_floor_item;
+      for (const auto& it : this->item_id_to_floor_item) {
+        uint32_t new_item_id = this->generate_item_id(0xFF);
+        auto& new_fi = new_item_id_to_floor_item.emplace(new_item_id, it.second).first->second;
+        new_fi.data.id = new_item_id;
+      }
+      this->item_id_to_floor_item = std::move(new_item_id_to_floor_item);
+    }
     this->assign_inventory_and_bank_item_ids(c);
   }
 

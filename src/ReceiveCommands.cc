@@ -342,6 +342,14 @@ static void on_1D(shared_ptr<Client> c, uint16_t, uint32_t, string&) {
     }
     c->game_join_command_queue.reset();
   }
+
+  if (c->config.check_flag(Client::Flag::SHOULD_SEND_ARTIFICIAL_ITEM_STATE)) {
+    c->config.clear_flag(Client::Flag::SHOULD_SEND_ARTIFICIAL_ITEM_STATE);
+    auto l = c->require_lobby();
+    if (!is_ep3(c->version()) && l->check_flag(Lobby::Flag::ITEM_TRACKING_ENABLED)) {
+      send_artificial_item_state(c);
+    }
+  }
 }
 
 static void on_05_XB(shared_ptr<Client> c, uint16_t, uint32_t, string&) {
@@ -1851,34 +1859,7 @@ static void on_quest_loaded(shared_ptr<Lobby> l) {
   // For Challenge quests, don't replace the map now - the leader will send an
   // 02DF command to create overlays, which also replaces the map.
   if ((l->base_version == Version::BB_V4) && l->map && (l->quest->challenge_template_index < 0)) {
-    auto leader_c = l->clients.at(l->leader_id);
-    if (!leader_c) {
-      throw logic_error("lobby leader is missing");
-    }
-
-    auto vq = l->quest->version(Version::BB_V4, leader_c->language());
-    auto dat_contents = prs_decompress(*vq->dat_contents);
-    l->map->clear();
-    l->map->add_enemies_and_objects_from_quest_data(
-        l->episode,
-        l->difficulty,
-        l->event,
-        dat_contents.data(),
-        dat_contents.size(),
-        l->random_seed,
-        l->rare_enemy_rates ? l->rare_enemy_rates : Map::NO_RARE_ENEMIES);
-    l->item_creator->clear_destroyed_entities();
-
-    l->log.info("Replaced objects list with quest layout (%zu entries)", l->map->objects.size());
-    for (size_t z = 0; z < l->map->objects.size(); z++) {
-      string o_str = l->map->objects[z].str(s->item_name_index);
-      l->log.info("(K-%zX) %s", z, o_str.c_str());
-    }
-    l->log.info("Replaced enemies list with quest layout (%zu entries)", l->map->enemies.size());
-    for (size_t z = 0; z < l->map->enemies.size(); z++) {
-      string e_str = l->map->enemies[z].str();
-      l->log.info("(E-%zX) %s", z, e_str.c_str());
-    }
+    l->load_maps();
   }
 
   for (auto& lc : l->clients) {
@@ -1925,6 +1906,7 @@ void set_lobby_quest(shared_ptr<Lobby> l, shared_ptr<const Quest> q, bool substi
   } else {
     l->set_flag(Lobby::Flag::QUEST_IN_PROGRESS);
   }
+  l->clear_flag(Lobby::Flag::PERSISTENT);
 
   l->quest = q;
   if (!is_ep3(l->base_version)) {
@@ -2306,6 +2288,16 @@ static void on_10(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
         throw logic_error("client cannot join game after all preconditions satisfied");
       }
       c->config.set_flag(Client::Flag::LOADING);
+      // If no one was in the game before, then there's no leader to send the
+      // item state - send it to the joining player (who is now the leader)
+      if (game->count_clients() == 1) {
+        // No one was in the game before, so the object and enemy state is lost;
+        // regenerate it as if the game was just created
+        if ((game->base_version == Version::BB_V4) && game->map) {
+          game->load_maps();
+        }
+        c->config.set_flag(Client::Flag::SHOULD_SEND_ARTIFICIAL_ITEM_STATE);
+      }
       break;
     }
 
@@ -3465,10 +3457,6 @@ static void on_DF_BB(shared_ptr<Client> c, uint16_t command, uint32_t, string& d
         throw runtime_error("challenge template index in quest metadata does not match index sent by client");
       }
 
-      if (l->item_creator) {
-        l->item_creator->clear_destroyed_entities();
-      }
-
       for (auto lc : l->clients) {
         if (lc) {
           lc->use_default_bank();
@@ -3478,16 +3466,7 @@ static void on_DF_BB(shared_ptr<Client> c, uint16_t command, uint32_t, string& d
         }
       }
 
-      auto dat_contents = prs_decompress(*vq->dat_contents);
-      l->map->clear();
-      l->map->add_enemies_and_objects_from_quest_data(
-          l->episode,
-          l->difficulty,
-          l->event,
-          dat_contents.data(),
-          dat_contents.size(),
-          l->random_seed,
-          l->rare_enemy_rates ? l->rare_enemy_rates : Map::NO_RARE_ENEMIES);
+      l->load_maps();
       break;
     }
 
@@ -4004,89 +3983,8 @@ shared_ptr<Lobby> create_game_generic(
   } else {
     game->rare_enemy_rates = s->rare_enemy_rates_by_difficulty.at(game->difficulty);
   }
-
   if (game->base_version == Version::BB_V4) {
-    game->map = make_shared<Map>(game->lobby_id);
-    for (size_t floor = 0; floor < 0x10; floor++) {
-      c->log.info("[Map/%zu] Using variations %" PRIX32 ", %" PRIX32,
-          floor, game->variations[floor * 2].load(), game->variations[floor * 2 + 1].load());
-
-      auto enemy_filenames = map_filenames_for_variation(
-          game->episode,
-          is_solo,
-          floor,
-          game->variations[floor * 2],
-          game->variations[floor * 2 + 1],
-          true);
-      if (enemy_filenames.empty()) {
-        c->log.info("[Map/%zu:e] No file to load", floor);
-      } else {
-        bool any_map_loaded = false;
-        for (const string& filename : enemy_filenames) {
-          try {
-            auto map_data = s->load_bb_file(filename, "", "map/" + filename);
-            size_t start_offset = game->map->enemies.size();
-            game->map->add_enemies_from_map_data(
-                game->episode,
-                game->difficulty,
-                game->event,
-                floor,
-                map_data->data(),
-                map_data->size(),
-                game->rare_enemy_rates);
-            size_t entries_loaded = game->map->enemies.size() - start_offset;
-            c->log.info("[Map/%zu:e] Loaded %s (%zu entries)", floor, filename.c_str(), entries_loaded);
-            for (size_t z = start_offset; z < game->map->enemies.size(); z++) {
-              string e_str = game->map->enemies[z].str();
-              static_game_data_log.info("(E-%zX) %s", z, e_str.c_str());
-            }
-            any_map_loaded = true;
-            break;
-          } catch (const exception& e) {
-            c->log.info("[Map/%zu:e] Failed to load %s: %s", floor, filename.c_str(), e.what());
-          }
-        }
-        if (!any_map_loaded) {
-          throw runtime_error(string_printf("no enemy maps loaded for floor %zu", floor));
-        }
-      }
-
-      auto object_filenames = map_filenames_for_variation(
-          game->episode,
-          is_solo,
-          floor,
-          game->variations[floor * 2],
-          game->variations[floor * 2 + 1],
-          false);
-      if (object_filenames.empty()) {
-        c->log.info("[Map/%zu:o] No file to load", floor);
-      } else {
-        bool any_map_loaded = false;
-        for (const string& filename : object_filenames) {
-          try {
-            auto map_data = s->load_bb_file(filename, "", "map/" + filename);
-            size_t start_offset = game->map->objects.size();
-            game->map->add_objects_from_map_data(floor, map_data->data(), map_data->size());
-            size_t entries_loaded = game->map->objects.size() - start_offset;
-            c->log.info("[Map/%zu:o] Loaded %s (%zu entries)", floor, filename.c_str(), entries_loaded);
-            for (size_t z = start_offset; z < game->map->objects.size(); z++) {
-              string e_str = game->map->objects[z].str(s->item_name_index);
-              static_game_data_log.info("(K-%zX) %s", z, e_str.c_str());
-            }
-            any_map_loaded = true;
-            break;
-          } catch (const exception& e) {
-            c->log.info("[Map/%zu:o] Failed to load %s: %s", floor, filename.c_str(), e.what());
-          }
-        }
-        if (!any_map_loaded) {
-          throw runtime_error(string_printf("no object maps loaded for floor %zu", floor));
-        }
-      }
-    }
-
-    c->log.info("Loaded maps contain %zu object entries and %zu enemy entries overall (%zu as rares)",
-        game->map->objects.size(), game->map->enemies.size(), game->map->rare_enemy_indexes.size());
+    game->load_maps();
   }
   return game;
 }

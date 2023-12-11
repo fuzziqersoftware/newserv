@@ -2391,7 +2391,6 @@ static void on_battle_restart_bb(shared_ptr<Client> c, uint8_t, uint8_t, const v
     auto new_rules = make_shared<BattleRules>(cmd.rules);
     if (l->item_creator) {
       l->item_creator->set_restrictions(new_rules);
-      l->item_creator->clear_destroyed_entities();
     }
 
     for (auto& lc : l->clients) {
@@ -2401,15 +2400,7 @@ static void on_battle_restart_bb(shared_ptr<Client> c, uint8_t, uint8_t, const v
         lc->create_battle_overlay(new_rules, s->level_table);
       }
     }
-    l->map->clear();
-    l->map->add_enemies_and_objects_from_quest_data(
-        l->episode,
-        l->difficulty,
-        l->event,
-        dat_contents.data(),
-        dat_contents.size(),
-        l->random_seed,
-        l->rare_enemy_rates ? l->rare_enemy_rates : Map::NO_RARE_ENEMIES);
+    l->load_maps();
   }
 }
 

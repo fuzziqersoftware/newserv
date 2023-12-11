@@ -264,7 +264,7 @@ Some commands only work on the game server and not on the proxy server. The chat
     * `$qset <flag-num>` or `$qclear <flag-num>`: Set or clear a global quest flag for everyone in the game.
     * `$qsync <reg-num> <value>`: Set a quest register's value on your client. `<reg-num>` should be either rXX (e.g. r60) or fXX (e.g. f60); if the latter, `<value>` is parsed as a floating-point value instead of as an integer.
     * `$gc` (game server only): Send your own Guild Card to yourself.
-    * `$persist` (game server only): Enable or disable persistence for the current lobby or game. This determines whether the lobby/game is deleted when the last player leaves. You need the DEBUG permission in your user license to use this command because there are no game state checks when you do this. For example, if you make a game persistent, start a quest, then leave the game, the game can't be joined by anyone but also can't be deleted.
+    * `$persist` (game server only): Enable or disable persistence for the current game. When persistence is on, the game will not be deleted when the last player leaves. The state of enemies and objects on the map will be reset when the last player leaves.
     * `$sc <data>`: Send a command to yourself.
     * `$ss <data>` (proxy server only): Send a command to the remote server.
 

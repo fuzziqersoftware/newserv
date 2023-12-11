@@ -2296,16 +2296,69 @@ void send_ep3_change_music(Channel& ch, uint32_t song) {
   ch.send(0x60, 0x00, cmd);
 }
 
-void send_set_player_visibility(shared_ptr<Lobby> l, shared_ptr<Client> c,
-    bool visible) {
+void send_set_player_visibility(shared_ptr<Lobby> l, shared_ptr<Client> c, bool visible) {
   uint8_t subcmd = visible ? 0x23 : 0x22;
   uint16_t client_id = c->lobby_client_id;
   G_SetPlayerVisibility_6x22_6x23 cmd = {{subcmd, 0x01, client_id}};
   send_command_t(l, 0x60, 0x00, cmd);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-// BB game commands
+void send_artificial_item_state(std::shared_ptr<Client> c) {
+  auto l = c->require_lobby();
+  if (c->lobby_client_id != l->leader_id) {
+    throw runtime_error("artificial item state can only be sent to the leader");
+  }
+  if (l->count_clients() != 1) {
+    throw runtime_error("artificial item state can only be sent with no one else in the game");
+  }
+
+  array<StringWriter, 15> floor_ws;
+
+  G_SyncItemState_6x6D_Decompressed decompressed_header;
+  for (size_t z = 0; z < 12; z++) {
+    decompressed_header.next_item_id_per_player[z] = l->next_item_id[z];
+  }
+  for (const auto& it : l->item_id_to_floor_item) {
+    const auto& item = it.second;
+
+    FloorItem fi;
+    fi.floor = item.floor;
+    fi.from_enemy = 0;
+    fi.entity_id = 0xFFFF;
+    fi.x = item.x;
+    fi.z = item.z;
+    fi.unknown_a2 = 0;
+    fi.drop_number = decompressed_header.total_items_dropped_per_floor.at(item.floor)++;
+    fi.item = item.data;
+    floor_ws.at(item.floor).put(fi);
+
+    decompressed_header.floor_item_count_per_floor.at(item.floor)++;
+  }
+
+  StringWriter decompressed_w;
+  decompressed_w.put(decompressed_header);
+  for (const auto& floor_w : floor_ws) {
+    decompressed_w.write(floor_w.str());
+  }
+
+  string compressed_data = bc0_compress(decompressed_w.str());
+
+  G_SyncGameStateHeader_6x6B_6x6C_6x6D_6x6E compressed_header;
+  compressed_header.header.basic_header.subcommand = 0x6D;
+  compressed_header.header.basic_header.size = 0x00;
+  compressed_header.header.basic_header.unused = 0x0000;
+  compressed_header.header.size = (compressed_data.size() + sizeof(G_SyncGameStateHeader_6x6B_6x6C_6x6D_6x6E) + 3) & (~3);
+  compressed_header.decompressed_size = decompressed_w.size();
+  compressed_header.compressed_size = compressed_data.size();
+
+  StringWriter w;
+  w.put(compressed_header);
+  w.write(compressed_data);
+  while (w.size() & 3) {
+    w.put_u8(0x00);
+  }
+  send_command(c, 0x6D, c->lobby_client_id, w.str());
+}
 
 void send_drop_item(shared_ptr<ServerState> s, Channel& ch, const ItemData& item,
     bool from_enemy, uint8_t floor, float x, float z, uint16_t entity_id) {
