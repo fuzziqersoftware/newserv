@@ -237,8 +237,7 @@ TeamIndex::TeamIndex(const string& directory, const JSON& reward_defs_json)
     if (filename == "base.json") {
       auto json = JSON::parse(load_file(file_path));
       this->next_team_id = json.get_int("NextTeamID");
-    }
-    if (ends_with(filename, ".json")) {
+    } else if (ends_with(filename, ".json")) {
       try {
         uint32_t team_id = stoul(filename.substr(0, filename.size() - 5), nullptr, 16);
         auto team = make_shared<Team>(team_id);
