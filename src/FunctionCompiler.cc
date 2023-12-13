@@ -161,10 +161,6 @@ shared_ptr<CompiledFunctionCode> compile_function_code(
   for (const auto& it : ret->label_offsets) {
     if (starts_with(it.first, "reloc")) {
       reloc_indexes.emplace(it.second / 4);
-    } else if (starts_with(it.first, "newserv_index_")) {
-      ret->index = stoul(it.first.substr(14), nullptr, 16);
-    } else if (it.first == "hide_from_patches_menu") {
-      ret->hide_from_patches_menu = true;
     }
   }
 

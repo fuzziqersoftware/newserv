@@ -12,11 +12,9 @@
 # with the .include directive; there is an example of this in the code below.
 
 # Patches are functions that are available to run upon client request. They can
-# be made available in the Patches menu or via the $patch command. If a label
-# named hide_from_patches_menu is present anywhere in the code, the patch is
-# only usable via the $patch command and does not appear in the Patches menu.
-# Patches should be named like PATCHNAME.VXLS.patch.s, where V, X, L, and S
-# denote which specific game version the patch is for. Specifically:
+# be made available in the Patches menu or via the $patch command. Patches
+# should be named like PATCHNAME.VXLS.patch.s, where V, X, L, and S denote which
+# specific game version the patch is for. Specifically:
 #   V should be 3 for PSO GameCube
 #   X should be O for Episodes 1 & 2, and S for Episode 3
 #   L should be E, J, or P for USA, Japanese, or Europe
@@ -56,6 +54,11 @@
 # of, uses indexes E0, E1, and E2, but the WriteMemory function can also be used
 # for other purposes.
 .meta index=E1
+
+# To hide a patch from the Patches menu (so it can only be used with the $patch
+# command), this directive can be used. This has no effect if used in includes
+# or general functions.
+# .meta hide_from_patches_menu
 
 # The entry_ptr label is required for all functions. It should point to a
 # .offsetof directive that itself points to the actual entrypoint.
