@@ -1,5 +1,6 @@
 #include "ARCodeTranslator.hh"
 
+#include <array>
 #include <future>
 #include <phosg/Filesystem.hh>
 #include <phosg/Strings.hh>
