@@ -27,9 +27,10 @@ struct CompiledFunctionCode {
   std::vector<uint16_t> relocation_deltas;
   std::unordered_map<std::string, uint32_t> label_offsets;
   uint32_t entrypoint_offset_offset;
-  std::string name;
-  std::string patch_name; // Blank if not a patch
-  uint32_t index; // 0 = unused (not registered in index_to_function)
+  std::string short_name; // Based on filename
+  std::string long_name; // From .meta name directive
+  std::string description; // From .meta description directive
+  uint8_t index; // 0 = unused (not registered in index_to_function)
   uint32_t menu_item_id;
   bool hide_from_patches_menu;
   uint32_t specific_version;
@@ -60,7 +61,7 @@ struct FunctionCodeIndex {
   explicit FunctionCodeIndex(const std::string& directory);
 
   std::unordered_map<std::string, std::shared_ptr<CompiledFunctionCode>> name_to_function;
-  std::unordered_map<uint32_t, std::shared_ptr<CompiledFunctionCode>> index_to_function;
+  std::unordered_map<uint8_t, std::shared_ptr<CompiledFunctionCode>> index_to_function;
   std::unordered_map<uint64_t, std::shared_ptr<CompiledFunctionCode>> menu_item_id_and_specific_version_to_patch_function;
   // Key here is e.g. "PATCHNAME-SPECIFICVERSION", with the latter in hex
   std::map<std::string, std::shared_ptr<CompiledFunctionCode>> name_and_specific_version_to_patch_function;

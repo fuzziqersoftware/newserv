@@ -129,7 +129,7 @@ shared_ptr<CompiledFunctionCode> compile_function_code(
 #else
   auto ret = make_shared<CompiledFunctionCode>();
   ret->arch = arch;
-  ret->name = name;
+  ret->short_name = name;
   ret->index = 0;
   ret->hide_from_patches_menu = false;
 
@@ -137,6 +137,22 @@ shared_ptr<CompiledFunctionCode> compile_function_code(
     auto assembled = PPC32Emulator::assemble(text, {directory});
     ret->code = std::move(assembled.code);
     ret->label_offsets = std::move(assembled.label_offsets);
+    for (const auto& it : assembled.metadata_keys) {
+      if (it.first == "hide_from_patches_menu") {
+        ret->hide_from_patches_menu = true;
+      } else if (it.first == "index") {
+        if (it.second.size() != 1) {
+          throw runtime_error("invalid index value in .meta directive");
+        }
+        ret->index = it.second[0];
+      } else if (it.first == "name") {
+        ret->long_name = it.second;
+      } else if (it.first == "description") {
+        ret->description = it.second;
+      } else {
+        throw runtime_error("unknown metadata key: " + it.first);
+      }
+    }
   } else if (arch == CompiledFunctionCode::Architecture::X86) {
     throw runtime_error("x86 assembler is not implemented");
   }
@@ -188,7 +204,7 @@ FunctionCodeIndex::FunctionCodeIndex(const string& directory) {
 
     // Check for specific_version token
     uint32_t specific_version = 0;
-    string patch_name = name;
+    string short_name = name;
     if (is_patch &&
         (filename.size() >= 13) &&
         (filename[filename.size() - 13] == '.') &&
@@ -197,14 +213,13 @@ FunctionCodeIndex::FunctionCodeIndex(const string& directory) {
         (filename[filename.size() - 10] == 'E' || filename[filename.size() - 10] == 'J' || filename[filename.size() - 10] == 'P') &&
         (isdigit(filename[filename.size() - 9]) || filename[filename.size() - 9] == 'T')) {
       specific_version = 0x33000000 | (filename[filename.size() - 11] << 16) | (filename[filename.size() - 10] << 8) | filename[filename.size() - 9];
-      patch_name = filename.substr(0, filename.size() - 13);
+      short_name = filename.substr(0, filename.size() - 13);
     }
 
     try {
       string path = directory + "/" + filename;
       string text = load_file(path);
-      auto code = compile_function_code(
-          CompiledFunctionCode::Architecture::POWERPC, directory, name, text);
+      auto code = compile_function_code(CompiledFunctionCode::Architecture::POWERPC, directory, name, text);
       if (code->index != 0) {
         if (!this->index_to_function.emplace(code->index, code).second) {
           throw runtime_error(string_printf(
@@ -212,14 +227,14 @@ FunctionCodeIndex::FunctionCodeIndex(const string& directory) {
         }
       }
       code->specific_version = specific_version;
-      code->patch_name = patch_name;
+      code->short_name = short_name;
       this->name_to_function.emplace(name, code);
       if (is_patch) {
         code->menu_item_id = next_menu_item_id++;
         this->menu_item_id_and_specific_version_to_patch_function.emplace(
             static_cast<uint64_t>(code->menu_item_id) << 32 | specific_version, code);
         this->name_and_specific_version_to_patch_function.emplace(
-            string_printf("%s-%08" PRIX32, patch_name.c_str(), specific_version), code);
+            string_printf("%s-%08" PRIX32, short_name.c_str(), specific_version), code);
       }
 
       string index_prefix = code->index ? string_printf("%02X => ", code->index) : "";
@@ -241,7 +256,11 @@ shared_ptr<const Menu> FunctionCodeIndex::patch_menu(uint32_t specific_version) 
   for (const auto& it : this->name_and_specific_version_to_patch_function) {
     const auto& fn = it.second;
     if (!fn->hide_from_patches_menu && ends_with(it.first, suffix)) {
-      ret->items.emplace_back(fn->menu_item_id, fn->patch_name, "", MenuItem::Flag::REQUIRES_SEND_FUNCTION_CALL);
+      ret->items.emplace_back(
+          fn->menu_item_id,
+          fn->long_name.empty() ? fn->short_name : fn->long_name,
+          fn->description,
+          MenuItem::Flag::REQUIRES_SEND_FUNCTION_CALL);
     }
   }
   return ret;

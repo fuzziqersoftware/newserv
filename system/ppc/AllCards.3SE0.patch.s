@@ -7,7 +7,9 @@
 # option is disabled, the Patches menu won't appear for the client. If this
 # patch is run on a different client version, it will do nothing.
 
-hide_from_patches_menu:
+.meta hide_from_patches_menu
+.meta name="Get all cards"
+.meta description="This patch gives you\nthe maximum number\nof each card."
 
 entry_ptr:
 reloc0:

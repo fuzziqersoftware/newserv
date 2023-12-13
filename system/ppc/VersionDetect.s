@@ -11,7 +11,7 @@
 # of the above information. This value is called specific_version in the places
 # where it's used by the server.
 
-newserv_index_E3:
+.meta index=E3
 
 entry_ptr:
 reloc0:

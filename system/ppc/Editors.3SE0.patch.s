@@ -12,7 +12,9 @@
 # $patch command, since the client will likely crash if the player is not in a
 # game or lobby when the patch runs.
 
-hide_from_patches_menu:
+.meta hide_from_patches_menu
+.meta name="Editors"
+.meta description="Enables the various\ndebug menus"
 
 entry_ptr:
 reloc0:

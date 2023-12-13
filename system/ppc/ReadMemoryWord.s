@@ -1,7 +1,7 @@
 # This function is required for loading DOLs. If it's not present, newserv can't
 # serve DOL files to GameCube clients.
 
-newserv_index_E0:
+.meta index=E0
 
 entry_ptr:
 reloc0:

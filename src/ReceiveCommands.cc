@@ -2634,14 +2634,13 @@ static void on_B3(shared_ptr<Client> c, uint16_t, uint32_t flag, string& data) {
     c->function_call_response_queue.pop_front();
   } else if (c->loading_dol_file.get()) {
     auto called_fn = s->function_code_index->index_to_function.at(flag);
-    if (called_fn->name == "ReadMemoryWord") {
+    if (called_fn->short_name == "ReadMemoryWord") {
       c->dol_base_addr = (cmd.return_value - c->loading_dol_file->data.size()) & (~3);
       send_dol_file_chunk(c, c->dol_base_addr);
-    } else if (called_fn->name == "WriteMemory") {
+    } else if (called_fn->short_name == "WriteMemory") {
       if (cmd.return_value >= c->dol_base_addr + c->loading_dol_file->data.size()) {
         auto fn = s->function_code_index->name_to_function.at("RunDOL");
-        unordered_map<string, uint32_t> label_writes(
-            {{"dol_base_ptr", c->dol_base_addr}});
+        unordered_map<string, uint32_t> label_writes({{"dol_base_ptr", c->dol_base_addr}});
         send_function_call(c, fn, label_writes);
         // The client will stop running PSO after this, so disconnect them
         c->should_disconnect = true;

@@ -43,13 +43,19 @@
 # requested by the client, so those features should only be used in general
 # functions.
 
-# A label newserv_index_XX tells newserv what value to use in the flag field
+# These directives tell newserv what to show to the player in the Patches menu.
+# Neither of them is required; if the name is omitted, the filename is used
+# instead.
+.meta name="Write memory"
+.meta description="Writes data to any location in memory"
+
+# The .meta index directive tells newserv what value to use in the flag field
 # when sending the B2 command. This is needed if the server needs to do
-# something when the B3 response is received. For GameCube functions, if
-# specified, the index must be in the range 01-FF. The DOL loading
-# functionality, which this function is a part of, uses indexes E0, E1, and E2,
-# but the WriteMemory function can also be used for other purposes.
-newserv_index_E1:
+# something when the B3 response is received. If specified, the index must be in
+# the range 01-FF. The DOL loading functionality, which this function is a part
+# of, uses indexes E0, E1, and E2, but the WriteMemory function can also be used
+# for other purposes.
+.meta index=E1
 
 # The entry_ptr label is required for all functions. It should point to a
 # .offsetof directive that itself points to the actual entrypoint.
