@@ -1722,6 +1722,17 @@ Action a_ar_code_translator(
       run_ar_code_translator(dir, args.get<string>(2, false), args.get<string>(3, false));
     });
 
+Action a_diff_dol_files(
+    "diff-dol-files", nullptr, +[](Arguments& args) {
+      const string& a_filename = args.get<string>(1);
+      const string& b_filename = args.get<string>(2);
+      auto result = diff_dol_files(a_filename, b_filename);
+      for (const auto& it : result) {
+        string data = format_data_string(it.second, nullptr, FormatDataFlags::HEX_ONLY);
+        fprintf(stdout, "%08" PRIX32 " %s\n", it.first, data.c_str());
+      }
+    });
+
 Action a_run_server_replay_log(
     "", nullptr, +[](Arguments& args) {
       string config_filename = args.get<string>("config");

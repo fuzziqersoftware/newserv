@@ -11,9 +11,34 @@ class ARCodeTranslator {
 public:
   enum class ExpandMethod {
     FORWARD = 0,
+    FORWARD_WITH_BARRIER,
     BACKWARD,
+    BACKWARD_WITH_BARRIER,
     BOTH,
+    BOTH_WITH_BARRIER,
+    BOTH_IGNORE_ORIGIN,
   };
+
+  static const char* name_for_expand_method(ExpandMethod method) {
+    switch (method) {
+      case ExpandMethod::FORWARD:
+        return "FORWARD";
+      case ExpandMethod::FORWARD_WITH_BARRIER:
+        return "FORWARD_WITH_BARRIER";
+      case ExpandMethod::BACKWARD:
+        return "BACKWARD";
+      case ExpandMethod::BACKWARD_WITH_BARRIER:
+        return "BACKWARD_WITH_BARRIER";
+      case ExpandMethod::BOTH:
+        return "BOTH";
+      case ExpandMethod::BOTH_WITH_BARRIER:
+        return "BOTH_WITH_BARRIER";
+      case ExpandMethod::BOTH_IGNORE_ORIGIN:
+        return "BOTH_IGNORE_ORIGIN";
+      default:
+        throw logic_error("invalid expand method");
+    }
+  }
 
   ARCodeTranslator(const string& directory)
       : log("[ar-trans] "),
@@ -110,11 +135,14 @@ public:
     if (!src_section) {
       throw runtime_error("source address not within any section");
     }
+
+    const char* method_token = this->name_for_expand_method(expand_method);
+
     size_t src_offset = src_address - src_section->address;
-    size_t src_bytes_available_before = src_section->data.size() - src_offset;
-    size_t src_bytes_available_after = src_section->data.size() - src_offset;
-    this->log.info("(find_match) Source offset = %08zX with %zX/%zX bytes available before/after",
-        src_offset, src_bytes_available_before, src_bytes_available_after);
+    size_t src_bytes_available_before = src_offset;
+    size_t src_bytes_available_after = src_section->data.size() - src_offset - 4;
+    this->log.info("(find_match/%s) Source offset = %08zX with %zX/%zX bytes available before/after",
+        method_token, src_offset, src_bytes_available_before, src_bytes_available_after);
 
     size_t match_bytes_before = 0;
     size_t match_bytes_after = 0;
@@ -131,7 +159,10 @@ public:
           StringReader dest_r(dest_section.data.data() + dest_match_offset, match_length);
           size_t z;
           for (z = 0; z < match_length; z += 4) {
-            if (src_section->is_text) {
+            if (expand_method == ExpandMethod::BOTH_IGNORE_ORIGIN && z == match_bytes_before) {
+              src_r.skip(4);
+              dest_r.skip(4);
+            } else if (src_section->is_text) {
               uint32_t src_opcode = src_r.get_u32b();
               uint32_t dest_opcode = dest_r.get_u32b();
               uint32_t src_class = src_opcode & 0xFC000000;
@@ -142,12 +173,8 @@ public:
                 // b +-offset
                 src_opcode &= 0xFC000003;
                 dest_opcode &= 0xFC000003;
-              } else if (src_class == 0x40000000) {
-                // bc +- offset
-                src_opcode &= 0xFFFF0003;
-                dest_opcode &= 0xFFFF0003;
-              } else if (((src_opcode & 0xEC1F0000) == 0x800D0000) || ((src_opcode & 0xEC1F0000) == 0x80020000)) {
-                // lwz rXX, [r2/r13 +- offset] OR stw [r2/r13 +- offset], rXX
+              } else if (((src_opcode & 0xAC1F0000) == 0x800D0000) || ((src_opcode & 0xAC1F0000) == 0x80020000)) {
+                // lwz/lfs rXX/fXX, [r2/r13 +- offset] OR stw/stfs [r2/r13 +- offset], rXX/fXX
                 src_opcode &= 0xFFFF0000;
                 dest_opcode &= 0xFFFF0000;
               }
@@ -174,38 +201,51 @@ public:
           }
         }
       }
-      this->log.info("(find_match) For match length %zX, %zu matches found", match_length, num_matches);
+      this->log.info("(find_match/%s) For match length %zX, %zu matches found", method_token, match_length, num_matches);
       if (num_matches == 1) {
         return last_match_address;
       } else if (num_matches == 0) {
         throw runtime_error("did not find exactly one match");
       }
+      bool can_expand_backward = false;
+      bool can_expand_forward = false;
       switch (expand_method) {
+        case ExpandMethod::BACKWARD_WITH_BARRIER:
+          can_expand_backward = (src_r.pget_u32b(0) != 0x4E800020) &&
+              (src_bytes_available_before >= match_bytes_before + 4);
+          break;
         case ExpandMethod::BACKWARD:
-          match_bytes_before += 4;
-          if (src_bytes_available_before < match_bytes_before) {
-            throw runtime_error("no more source data to match");
-          }
+          can_expand_backward = (src_bytes_available_before >= match_bytes_before + 4);
+          break;
+        case ExpandMethod::FORWARD_WITH_BARRIER:
+          can_expand_forward = (src_r.pget_u32b(src_r.size() - 4) != 0x4E800020) &&
+              (src_bytes_available_after >= match_bytes_after + 4);
           break;
         case ExpandMethod::FORWARD:
-          match_bytes_after += 4;
-          if (src_bytes_available_after < match_bytes_after) {
-            throw runtime_error("no more source data to match");
-          }
+          can_expand_forward = (src_bytes_available_after >= match_bytes_after + 4);
+          break;
+        case ExpandMethod::BOTH_WITH_BARRIER:
+        case ExpandMethod::BOTH_IGNORE_ORIGIN:
+          can_expand_backward = (src_r.pget_u32b(0) != 0x4E800020) &&
+              (src_bytes_available_before >= match_bytes_before + 4);
+          can_expand_forward = (src_r.pget_u32b(src_r.size() - 4) != 0x4E800020) &&
+              (src_bytes_available_after >= match_bytes_after + 4);
           break;
         case ExpandMethod::BOTH:
-          match_bytes_before += 4;
-          match_bytes_after += 4;
-          if ((src_bytes_available_before < match_bytes_before) && (src_bytes_available_after < match_bytes_after)) {
-            throw runtime_error("no more source data to match");
-          } else if (src_bytes_available_before < match_bytes_before) {
-            match_bytes_before -= 4;
-          } else if (src_bytes_available_after < match_bytes_after) {
-            match_bytes_after -= 4;
-          }
+          can_expand_backward = (src_bytes_available_before >= match_bytes_before + 4);
+          can_expand_forward = (src_bytes_available_after >= match_bytes_after + 4);
           break;
         default:
           throw logic_error("invalid expand method");
+      }
+      if (!can_expand_backward && !can_expand_forward) {
+        throw runtime_error("no further expansion is allowed");
+      }
+      if (can_expand_backward) {
+        match_bytes_before += 4;
+      }
+      if (can_expand_forward) {
+        match_bytes_after += 4;
       }
     }
     throw runtime_error("scan field too long; too many matches");
@@ -223,41 +263,38 @@ public:
         results.emplace(it.first, src_addr);
       } else {
 
-        auto f_forward = async(&ARCodeTranslator::find_match, this, it.second, src_addr, ExpandMethod::FORWARD);
-        auto f_backward = async(&ARCodeTranslator::find_match, this, it.second, src_addr, ExpandMethod::BACKWARD);
-        auto f_both = async(&ARCodeTranslator::find_match, this, it.second, src_addr, ExpandMethod::BOTH);
-
-        uint32_t match_addr_forward = 0;
-        uint32_t match_addr_backward = 0;
-        uint32_t match_addr_both = 0;
-        try {
-          match_addr_forward = f_forward.get();
-          log.info("(%s) (forward) %08" PRIX32, it.first.c_str(), match_addr_forward);
-        } catch (const exception& e) {
-          log.error("(%s) (forward) failed: %s", it.first.c_str(), e.what());
-        }
-        try {
-          match_addr_backward = f_backward.get();
-          log.info("(%s) (backward) %08" PRIX32, it.first.c_str(), match_addr_backward);
-        } catch (const exception& e) {
-          log.error("(%s) (backward) failed: %s", it.first.c_str(), e.what());
-        }
-        try {
-          match_addr_both = f_both.get();
-          log.info("(%s) (both) %08" PRIX32, it.first.c_str(), match_addr_both);
-        } catch (const exception& e) {
-          log.error("(%s) (both) failed: %s", it.first.c_str(), e.what());
+        array<future<uint32_t>, 7> futures;
+        static const array<ExpandMethod, 7> methods = {
+            ExpandMethod::FORWARD,
+            ExpandMethod::FORWARD_WITH_BARRIER,
+            ExpandMethod::BACKWARD,
+            ExpandMethod::BACKWARD_WITH_BARRIER,
+            ExpandMethod::BOTH,
+            ExpandMethod::BOTH_WITH_BARRIER,
+            ExpandMethod::BOTH_IGNORE_ORIGIN,
+        };
+        for (size_t z = 0; z < methods.size(); z++) {
+          futures[z] = async(&ARCodeTranslator::find_match, this, it.second, src_addr, methods[z]);
         }
 
-        uint32_t all_addrs = match_addr_backward | match_addr_forward | match_addr_both;
-        if (!all_addrs) {
+        unordered_set<uint32_t> match_addrs;
+        for (size_t z = 0; z < futures.size(); z++) {
+          const char* method_name = this->name_for_expand_method(methods[z]);
+          try {
+            uint32_t ret = futures[z].get();
+            log.info("(%s) (%s) %08" PRIX32, it.first.c_str(), method_name, ret);
+            match_addrs.emplace(ret);
+          } catch (const exception& e) {
+            log.error("(%s) (%s) failed: %s", it.first.c_str(), method_name, e.what());
+          }
+        }
+
+        if (match_addrs.empty()) {
           log.error("(%s) no match found", it.first.c_str());
-        } else if ((match_addr_forward && (match_addr_forward != all_addrs)) ||
-            (match_addr_backward && (match_addr_backward != all_addrs)) ||
-            (match_addr_both && (match_addr_both != all_addrs))) {
+        } else if (match_addrs.size() > 1) {
           log.error("(%s) different matches found by different methods", it.first.c_str());
         } else {
-          results.emplace(it.first, all_addrs);
+          results.emplace(it.first, *match_addrs.begin());
         }
       }
     }
@@ -322,4 +359,42 @@ void run_ar_code_translator(const std::string& directory, const std::string& use
   } else {
     trans.run_shell();
   }
+}
+
+vector<pair<uint32_t, string>> diff_dol_files(const string& a_filename, const string& b_filename) {
+  DOLFile a(a_filename.c_str());
+  DOLFile b(b_filename.c_str());
+  auto a_mem = make_shared<MemoryContext>();
+  auto b_mem = make_shared<MemoryContext>();
+  a.load_into(a_mem);
+  b.load_into(b_mem);
+
+  uint32_t min_addr = 0xFFFFFFFF;
+  uint32_t max_addr = 0x00000000;
+  for (const auto& sec : a.sections) {
+    min_addr = min<uint32_t>(min_addr, sec.address);
+    max_addr = max<uint32_t>(max_addr, sec.address + sec.data.size());
+  }
+  for (const auto& sec : b.sections) {
+    min_addr = min<uint32_t>(min_addr, sec.address);
+    max_addr = max<uint32_t>(max_addr, sec.address + sec.data.size());
+  }
+
+  vector<pair<uint32_t, string>> ret;
+  for (uint32_t addr = min_addr; addr < max_addr; addr += 4) {
+    bool a_exists = a_mem->exists(addr, 4);
+    bool b_exists = b_mem->exists(addr, 4);
+    if (a_exists && b_exists) {
+      string a_value = a_mem->read(addr, 4);
+      string b_value = b_mem->read(addr, 4);
+      if (a_value != b_value) {
+        if (!ret.empty() && (ret.back().first + ret.back().second.size() == addr)) {
+          ret.back().second += b_value;
+        } else {
+          ret.emplace_back(make_pair(addr, b_value));
+        }
+      }
+    }
+  }
+  return ret;
 }
