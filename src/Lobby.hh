@@ -1,5 +1,6 @@
 #pragma once
 
+#include <event2/event.h>
 #include <inttypes.h>
 
 #include <array>
@@ -130,9 +131,15 @@ struct Lobby : public std::enable_shared_from_this<Lobby> {
   // Keys in this map are client_id
   std::unordered_map<size_t, std::weak_ptr<Client>> clients_to_add;
 
+  // This is only used when the PERSISTENT flag is set and idle_timeout_usecs
+  // is not zero
+  uint64_t idle_timeout_usecs;
+  std::unique_ptr<struct event, void (*)(struct event*)> idle_timeout_event;
+
   Lobby(std::shared_ptr<ServerState> s, uint32_t id);
   Lobby(const Lobby&) = delete;
   Lobby(Lobby&&) = delete;
+  ~Lobby();
   Lobby& operator=(const Lobby&) = delete;
   Lobby& operator=(Lobby&&) = delete;
 
@@ -198,4 +205,6 @@ struct Lobby : public std::enable_shared_from_this<Lobby> {
   static uint8_t game_event_for_lobby_event(uint8_t lobby_event);
 
   std::unordered_map<uint32_t, std::shared_ptr<Client>> clients_by_serial_number() const;
+
+  static void dispatch_on_idle_timeout(evutil_socket_t, short, void* ctx);
 };

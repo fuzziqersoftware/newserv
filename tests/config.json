@@ -10,6 +10,7 @@
   "ServerName": "Alexandria",
   "CatchHandlerExceptions": false,
 
+  "PersistentGameIdleTimeout": 1800000000,
   "ItemDropMode": "OnByDefault",
   "UseServerItemTables": "OffByDefault",
 

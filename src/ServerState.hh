@@ -59,6 +59,8 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
     return (b == BehaviorSwitch::OFF_BY_DEFAULT) || (b == BehaviorSwitch::ON_BY_DEFAULT);
   }
 
+  std::shared_ptr<struct event_base> base;
+
   std::string config_filename;
   bool is_replay;
 
@@ -76,6 +78,7 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   bool item_tracking_enabled;
   BehaviorSwitch enable_drops_behavior;
   BehaviorSwitch use_server_item_tables_behavior;
+  uint64_t persistent_game_idle_timeout_usecs;
   bool ep3_send_function_call_enabled;
   bool catch_handler_exceptions;
   bool ep3_infinite_meseta;
@@ -173,6 +176,8 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   std::shared_ptr<PlayerFilesManager> player_files_manager;
   std::unordered_map<Channel*, std::shared_ptr<Client>> channel_to_client;
   std::map<int64_t, std::shared_ptr<Lobby>> id_to_lobby;
+  std::unordered_set<std::shared_ptr<Lobby>> lobbies_to_destroy;
+  std::shared_ptr<struct event> destroy_lobbies_event;
   std::vector<std::shared_ptr<Lobby>> public_lobby_search_order;
   std::atomic<int32_t> next_lobby_id;
   uint8_t pre_lobby_event;
@@ -210,7 +215,8 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   std::vector<std::shared_ptr<Lobby>> all_lobbies();
 
   std::shared_ptr<Lobby> create_lobby();
-  void remove_lobby(uint32_t lobby_id);
+  void remove_lobby(std::shared_ptr<Lobby> l);
+  void on_player_left_lobby(std::shared_ptr<Lobby> l, uint8_t leaving_client_id);
 
   std::shared_ptr<Client> find_client(
       const std::string* identifier = nullptr,
@@ -252,4 +258,7 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   void load_quest_index();
   void compile_functions();
   void load_dol_files();
+
+  void enqueue_destroy_lobbies();
+  static void dispatch_destroy_lobbies(evutil_socket_t, short, void* ctx);
 };

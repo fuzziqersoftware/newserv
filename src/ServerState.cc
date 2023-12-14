@@ -18,7 +18,8 @@
 using namespace std;
 
 ServerState::ServerState(shared_ptr<struct event_base> base, const string& config_filename, bool is_replay)
-    : config_filename(config_filename),
+    : base(base),
+      config_filename(config_filename),
       is_replay(is_replay),
       dns_server_port(0),
       ip_stack_debug(false),
@@ -28,6 +29,7 @@ ServerState::ServerState(shared_ptr<struct event_base> base, const string& confi
       item_tracking_enabled(true),
       enable_drops_behavior(BehaviorSwitch::ON_BY_DEFAULT),
       use_server_item_tables_behavior(BehaviorSwitch::OFF_BY_DEFAULT),
+      persistent_game_idle_timeout_usecs(0),
       ep3_send_function_call_enabled(false),
       catch_handler_exceptions(true),
       ep3_infinite_meseta(false),
@@ -43,6 +45,7 @@ ServerState::ServerState(shared_ptr<struct event_base> base, const string& confi
       ep3_card_auction_min_size(0),
       ep3_card_auction_max_size(0),
       player_files_manager(make_shared<PlayerFilesManager>(base)),
+      destroy_lobbies_event(event_new(base.get(), -1, EV_TIMEOUT, &ServerState::dispatch_destroy_lobbies, this), event_free),
       next_lobby_id(1),
       pre_lobby_event(0),
       ep3_menu_song(-1),
@@ -173,12 +176,9 @@ void ServerState::add_client_to_available_lobby(shared_ptr<Client> c) {
 void ServerState::remove_client_from_lobby(shared_ptr<Client> c) {
   auto l = c->lobby.lock();
   if (l) {
+    uint8_t old_client_id = c->lobby_client_id;
     l->remove_client(c);
-    if (!l->check_flag(Lobby::Flag::PERSISTENT) && (l->count_clients() == 0)) {
-      this->remove_lobby(l->lobby_id);
-    } else {
-      send_player_leave_notification(l, c->lobby_client_id);
-    }
+    this->on_player_left_lobby(l, old_client_id);
   }
 }
 
@@ -201,11 +201,7 @@ bool ServerState::change_client_lobby(
   }
 
   if (current_lobby) {
-    if (!current_lobby->check_flag(Lobby::Flag::PERSISTENT) && (current_lobby->count_clients() == 0)) {
-      this->remove_lobby(current_lobby->lobby_id);
-    } else {
-      send_player_leave_notification(current_lobby, old_lobby_client_id);
-    }
+    this->on_player_left_lobby(current_lobby, old_lobby_client_id);
   }
   if (send_join_notification) {
     this->send_lobby_join_notifications(new_lobby, c);
@@ -256,19 +252,17 @@ shared_ptr<Lobby> ServerState::create_lobby() {
   }
   auto l = make_shared<Lobby>(this->shared_from_this(), this->next_lobby_id++);
   this->id_to_lobby.emplace(l->lobby_id, l);
-  l->log.info("Created lobby");
+  l->idle_timeout_usecs = this->persistent_game_idle_timeout_usecs;
   return l;
 }
 
-void ServerState::remove_lobby(uint32_t lobby_id) {
-  auto lobby_it = this->id_to_lobby.find(lobby_id);
+void ServerState::remove_lobby(shared_ptr<Lobby> l) {
+  auto lobby_it = this->id_to_lobby.find(l->lobby_id);
   if (lobby_it == this->id_to_lobby.end()) {
-    throw logic_error("attempted to remove nonexistent lobby");
+    throw logic_error("lobby not registered");
   }
-
-  auto l = lobby_it->second;
-  if (l->count_clients() != 0) {
-    throw logic_error("attempted to delete lobby with clients in it");
+  if (lobby_it->second != l) {
+    throw logic_error("incorrect lobby ID in registry");
   }
 
   if (l->check_flag(Lobby::Flag::IS_SPECTATOR_TEAM)) {
@@ -284,8 +278,20 @@ void ServerState::remove_lobby(uint32_t lobby_id) {
     send_ep3_disband_watcher_lobbies(l);
   }
 
-  l->log.info("Deleted lobby");
+  this->lobbies_to_destroy.emplace(l);
+  auto tv = usecs_to_timeval(0);
+  event_add(this->destroy_lobbies_event.get(), &tv);
+
   this->id_to_lobby.erase(lobby_it);
+  l->log.info("Enqueued for deletion");
+}
+
+void ServerState::on_player_left_lobby(shared_ptr<Lobby> l, uint8_t leaving_client_id) {
+  if (l->count_clients() > 0) {
+    send_player_leave_notification(l, leaving_client_id);
+  } else if (!l->check_flag(Lobby::Flag::PERSISTENT)) {
+    this->remove_lobby(l);
+  }
 }
 
 shared_ptr<Client> ServerState::find_client(const string* identifier, uint64_t serial_number, shared_ptr<Lobby> l) {
@@ -625,6 +631,7 @@ void ServerState::parse_config(const JSON& json, bool is_reload) {
   this->item_tracking_enabled = json.get_bool("EnableItemTracking", this->item_tracking_enabled);
   this->enable_drops_behavior = parse_behavior_switch("ItemDropMode", this->enable_drops_behavior);
   this->use_server_item_tables_behavior = parse_behavior_switch("UseServerItemTables", this->use_server_item_tables_behavior);
+  this->persistent_game_idle_timeout_usecs = json.get_int("PersistentGameIdleTimeout", this->persistent_game_idle_timeout_usecs);
   this->cheat_mode_behavior = parse_behavior_switch("CheatModeBehavior", this->cheat_mode_behavior);
   this->ep3_send_function_call_enabled = json.get_bool("EnableEpisode3SendFunctionCall", this->ep3_send_function_call_enabled);
   this->catch_handler_exceptions = json.get_bool("CatchHandlerExceptions", this->catch_handler_exceptions);
@@ -1211,4 +1218,8 @@ shared_ptr<const vector<string>> ServerState::information_contents_for_client(sh
 
 shared_ptr<const QuestIndex> ServerState::quest_index_for_version(Version version) const {
   return is_ep3(version) ? this->ep3_download_quest_index : this->default_quest_index;
+}
+
+void ServerState::dispatch_destroy_lobbies(evutil_socket_t, short, void* ctx) {
+  reinterpret_cast<ServerState*>(ctx)->lobbies_to_destroy.clear();
 }

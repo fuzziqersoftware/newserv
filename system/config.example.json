@@ -675,6 +675,14 @@
     },
   ],
 
+  // Persistent game timeout. This is the amount of time a game set to be
+  // persistent (with the $persist command) will continue to exist with no
+  // players in it before being deleted. The value is in microseconds; the
+  // default value is 30 minutes. If this is set to zero or not specified,
+  // persistent games never expire; such a game can then only deleted by joining
+  // it, running $persist again, and leaving.
+  "PersistentGameIdleTimeout": 1800000000,
+
   // Cheat mode behavior. There are three values:
   //   "Off": Cheat mode is disabled on the entire server. Cheat mode cannot be
   //       enabled in games, and the $cheat command does nothing. This also

@@ -31,10 +31,19 @@ Lobby::Lobby(shared_ptr<ServerState> s, uint32_t id)
       block(0),
       leader_id(0),
       max_clients(12),
-      enabled_flags(0) {
+      enabled_flags(0),
+      idle_timeout_usecs(0),
+      idle_timeout_event(
+          event_new(s->base.get(), -1, EV_TIMEOUT | EV_PERSIST, &Lobby::dispatch_on_idle_timeout, this),
+          event_free) {
+  this->log.info("Created");
   for (size_t x = 0; x < 12; x++) {
     this->next_item_id[x] = 0x00010000 + 0x00200000 * x;
   }
+}
+
+Lobby::~Lobby() {
+  this->log.info("Deleted");
 }
 
 shared_ptr<ServerState> Lobby::require_server_state() const {
@@ -369,6 +378,12 @@ void Lobby::add_client(shared_ptr<Client> c, ssize_t required_client_id) {
       send_ep3_update_game_metadata(this->shared_from_this());
     }
   }
+
+  // There is a player in the lobby, so it is no longer idle
+  if (event_pending(this->idle_timeout_event.get(), EV_TIMEOUT, nullptr)) {
+    event_del(this->idle_timeout_event.get());
+    this->log.info("Idle timeout cancelled");
+  }
 }
 
 void Lobby::remove_client(shared_ptr<Client> c) {
@@ -408,6 +423,14 @@ void Lobby::remove_client(shared_ptr<Client> c) {
     } else {
       send_ep3_update_game_metadata(this->shared_from_this());
     }
+  }
+
+  // If the lobby is persistent but has an idle timeout, make it expire after
+  // the specified time
+  if ((this->count_clients() == 0) && this->check_flag(Flag::PERSISTENT) && (this->idle_timeout_usecs > 0)) {
+    auto tv = usecs_to_timeval(this->idle_timeout_usecs);
+    event_add(this->idle_timeout_event.get(), &tv);
+    this->log.info("Idle timeout scheduled");
   }
 }
 
@@ -550,4 +573,16 @@ QuestIndex::IncludeCondition Lobby::quest_include_condition() const {
     }
     return is_enabled ? QuestIndex::IncludeState::AVAILABLE : QuestIndex::IncludeState::DISABLED;
   };
+}
+
+void Lobby::dispatch_on_idle_timeout(evutil_socket_t, short, void* ctx) {
+  auto l = reinterpret_cast<Lobby*>(ctx)->shared_from_this();
+  if (l->count_clients() == 0) {
+    l->log.info("Idle timeout expired");
+    auto s = l->require_server_state();
+    s->remove_lobby(l);
+  } else {
+    l->log.error("Idle timeout occurred, but clients are present in lobby");
+    event_del(l->idle_timeout_event.get());
+  }
 }
