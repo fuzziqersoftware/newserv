@@ -4,12 +4,14 @@
 #include <inttypes.h>
 #include <string.h>
 
+#include <functional>
 #include <memory>
 #include <phosg/Encoding.hh>
 #include <phosg/Hash.hh>
 #include <phosg/Random.hh>
 #include <phosg/Strings.hh>
 #include <phosg/Time.hh>
+#include <set>
 
 #include "CommandFormats.hh"
 #include "Compression.hh"
@@ -61,8 +63,7 @@ const unordered_set<string> bb_crypt_initial_client_commands({
     string("\xDC\x00\xDB\x00\x00\x00\x00\x00", 8),
 });
 
-void send_command(std::shared_ptr<Client> c, uint16_t command,
-    uint32_t flag, const std::vector<std::pair<const void*, size_t>>& blocks) {
+void send_command(shared_ptr<Client> c, uint16_t command, uint32_t flag, const vector<pair<const void*, size_t>>& blocks) {
   c->channel.send(command, flag, blocks);
 }
 
@@ -329,7 +330,7 @@ void send_quest_buffer_overflow(shared_ptr<Client> c) {
 
 void empty_function_call_response_handler(uint32_t, uint32_t) {}
 
-void prepare_client_for_patches(shared_ptr<Client> c, std::function<void()> on_complete) {
+void prepare_client_for_patches(shared_ptr<Client> c, function<void()> on_complete) {
   auto s = c->require_server_state();
 
   auto send_version_detect = [s, wc = weak_ptr<Client>(c), on_complete]() -> void {
@@ -1326,20 +1327,20 @@ void send_game_menu_t(
     e.flags = 0x04;
   }
 
+  set<shared_ptr<const Lobby>, bool (*)(const shared_ptr<const Lobby>&, const shared_ptr<const Lobby>&)> games(Lobby::compare_shared);
   for (shared_ptr<Lobby> l : s->all_lobbies()) {
-    if (!l->is_game()) {
-      continue;
+    if (l->is_game() &&
+        l->version_is_allowed(c->version()) &&
+        (l->check_flag(Lobby::Flag::IS_SPECTATOR_TEAM) == is_spectator_team_list) &&
+        (!show_tournaments_only || l->tournament_match)) {
+      games.emplace(l);
     }
-    if (!l->version_is_allowed(c->version())) {
-      continue;
-    }
-    if (l->check_flag(Lobby::Flag::IS_SPECTATOR_TEAM) != is_spectator_team_list) {
-      continue;
-    }
-    if (show_tournaments_only && !l->tournament_match) {
-      continue;
-    }
+  }
 
+  for (const auto& l : games) {
+    if (entries.size() >= 0x41) {
+      break;
+    }
     uint8_t episode_num;
     switch (l->episode) {
       case Episode::EP1:
@@ -2303,7 +2304,7 @@ void send_set_player_visibility(shared_ptr<Lobby> l, shared_ptr<Client> c, bool 
   send_command_t(l, 0x60, 0x00, cmd);
 }
 
-void send_artificial_item_state(std::shared_ptr<Client> c) {
+void send_artificial_item_state(shared_ptr<Client> c) {
   auto l = c->require_lobby();
   if (c->lobby_client_id != l->leader_id) {
     throw runtime_error("artificial item state can only be sent to the leader");
@@ -2516,7 +2517,7 @@ void send_give_experience(shared_ptr<Client> c, uint32_t amount) {
   send_command_t(l, 0x60, 0x00, cmd);
 }
 
-void send_set_exp_multiplier(std::shared_ptr<Lobby> l) {
+void send_set_exp_multiplier(shared_ptr<Lobby> l) {
   if (l->base_version != Version::BB_V4) {
     throw logic_error("6xDD can only be sent to BB clients");
   }
@@ -3442,7 +3443,7 @@ void send_all_nearby_team_metadatas_to_client(shared_ptr<Client> c, bool is_13EA
   send_command_vt(c, is_13EA ? 0x13EA : 0x15EA, entries.size(), entries);
 }
 
-void send_update_team_reward_flags(std::shared_ptr<Client> c) {
+void send_update_team_reward_flags(shared_ptr<Client> c) {
   auto team = c->team();
   send_command(c, 0x1DEA, team ? team->reward_flags : 0x00000000);
 }
@@ -3479,7 +3480,7 @@ void send_team_member_list(shared_ptr<Client> c) {
   send_command_t_vt(c, 0x09EA, 0x00000000, header, entries);
 }
 
-void send_intra_team_ranking(std::shared_ptr<Client> c) {
+void send_intra_team_ranking(shared_ptr<Client> c) {
   auto team = c->team();
   if (!team) {
     throw runtime_error("client is not in a team");
@@ -3515,7 +3516,7 @@ void send_intra_team_ranking(std::shared_ptr<Client> c) {
   send_command_t_vt(c, 0x18EA, 0x00000000, cmd, entries);
 }
 
-void send_cross_team_ranking(std::shared_ptr<Client> c) {
+void send_cross_team_ranking(shared_ptr<Client> c) {
   auto s = c->require_server_state();
 
   // TODO: At some point we should maintain a sorted index instead of sorting
@@ -3543,7 +3544,7 @@ void send_cross_team_ranking(std::shared_ptr<Client> c) {
   send_command_t_vt(c, 0x1CEA, 0x00000000, cmd, entries);
 }
 
-void send_team_reward_list(std::shared_ptr<Client> c, bool show_purchased) {
+void send_team_reward_list(shared_ptr<Client> c, bool show_purchased) {
   auto team = c->team();
   if (!team) {
     throw runtime_error("user is not in a team");

@@ -484,6 +484,8 @@ static void server_command_persist(shared_ptr<Client> c, const std::string&) {
     send_text_message(c, "$C6Private lobbies\ncannot be marked\npersistent");
   } else if (l->check_flag(Lobby::Flag::QUEST_IN_PROGRESS) || l->check_flag(Lobby::Flag::JOINABLE_QUEST_IN_PROGRESS)) {
     send_text_message(c, "$C6Games cannot be\npersistent if a\nquest has already\nbegun");
+  } else if (l->check_flag(Lobby::Flag::IS_SPECTATOR_TEAM)) {
+    send_text_message(c, "$C6Spectator teams\ncannot be marked\npersistent");
   } else {
     l->toggle_flag(Lobby::Flag::PERSISTENT);
     send_text_message_printf(l, "Lobby persistence\n%s", l->check_flag(Lobby::Flag::PERSISTENT) ? "enabled" : "disabled");

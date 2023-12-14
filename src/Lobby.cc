@@ -427,7 +427,10 @@ void Lobby::remove_client(shared_ptr<Client> c) {
 
   // If the lobby is persistent but has an idle timeout, make it expire after
   // the specified time
-  if ((this->count_clients() == 0) && this->check_flag(Flag::PERSISTENT) && (this->idle_timeout_usecs > 0)) {
+  if ((this->count_clients() == 0) &&
+      this->check_flag(Flag::PERSISTENT) &&
+      !this->check_flag(Flag::DEFAULT) &&
+      (this->idle_timeout_usecs > 0)) {
     auto tv = usecs_to_timeval(this->idle_timeout_usecs);
     event_add(this->idle_timeout_event.get(), &tv);
     this->log.info("Idle timeout scheduled");
@@ -585,4 +588,64 @@ void Lobby::dispatch_on_idle_timeout(evutil_socket_t, short, void* ctx) {
     l->log.error("Idle timeout occurred, but clients are present in lobby");
     event_del(l->idle_timeout_event.get());
   }
+}
+
+bool Lobby::compare_shared(const shared_ptr<const Lobby>& a, const shared_ptr<const Lobby>& b) {
+  // Sort keys:
+  // 1. Priority class: has free space < empty (persistent) < full < non-joinable (in quest/battle)
+  // 2. Password: public < locked
+  // 3. Game mode: Normal < Battle < Challenge < Solo
+  // 4. Episode: 1 < 2 < 4
+  // 5. Difficulty: Normal < Hard < Very Hard < Ultimate
+  // 6. Game name
+  static auto get_priority = +[](const shared_ptr<const Lobby>& l) -> size_t {
+    if (l->check_flag(Lobby::Flag::QUEST_IN_PROGRESS) || l->check_flag(Lobby::Flag::BATTLE_IN_PROGRESS)) {
+      return 4;
+    }
+    size_t num_clients = l->count_clients();
+    if (num_clients == l->max_clients) {
+      return 3;
+    }
+    if (num_clients == 0) {
+      return 2;
+    }
+    return 1;
+  };
+  size_t a_priority = get_priority(a);
+  size_t b_priority = get_priority(b);
+  if (a_priority < b_priority) {
+    return true;
+  } else if (a_priority > b_priority) {
+    return false;
+  }
+
+  if (a->password.empty() && !b->password.empty()) {
+    return true;
+  } else if (!a->password.empty() && b->password.empty()) {
+    return false;
+  }
+
+  size_t a_mode = static_cast<size_t>(a->mode);
+  size_t b_mode = static_cast<size_t>(b->mode);
+  if (a_mode < b_mode) {
+    return true;
+  } else if (a_mode > b_mode) {
+    return false;
+  }
+
+  size_t a_episode = static_cast<size_t>(a->episode);
+  size_t b_episode = static_cast<size_t>(b->episode);
+  if (a_episode < b_episode) {
+    return true;
+  } else if (a_episode > b_episode) {
+    return false;
+  }
+
+  if (a->difficulty < b->difficulty) {
+    return true;
+  } else if (a->difficulty > b->difficulty) {
+    return false;
+  }
+
+  return a->name < b->name;
 }
