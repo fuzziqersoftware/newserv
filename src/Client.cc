@@ -295,7 +295,7 @@ shared_ptr<const TeamIndex::Team> Client::team() const {
   return team;
 }
 
-bool Client::can_see_quest(shared_ptr<const Quest> q, uint8_t difficulty) const {
+bool Client::can_see_quest(shared_ptr<const Quest> q, uint8_t difficulty, size_t num_players) const {
   if (this->license && (this->license->flags & License::Flag::DISABLE_QUEST_REQUIREMENTS)) {
     return true;
   }
@@ -303,12 +303,17 @@ bool Client::can_see_quest(shared_ptr<const Quest> q, uint8_t difficulty) const 
     return true;
   }
   string expr = q->available_expression->str();
-  bool ret = q->available_expression->evaluate(this->character()->quest_flags.data.at(difficulty), this->team());
-  this->log.info("Evaluating quest availability expression %s => %s", expr.c_str(), ret ? "TRUE" : "FALSE");
+  QuestAvailabilityExpression::Env env = {
+      .flags = &this->character()->quest_flags.data.at(difficulty),
+      .team = this->team(),
+      .num_players = num_players,
+  };
+  int64_t ret = q->available_expression->evaluate(env);
+  this->log.info("Evaluated quest availability expression %s => %s", expr.c_str(), ret ? "TRUE" : "FALSE");
   return ret;
 }
 
-bool Client::can_play_quest(shared_ptr<const Quest> q, uint8_t difficulty) const {
+bool Client::can_play_quest(shared_ptr<const Quest> q, uint8_t difficulty, size_t num_players) const {
   if (this->license && (this->license->flags & License::Flag::DISABLE_QUEST_REQUIREMENTS)) {
     return true;
   }
@@ -316,7 +321,12 @@ bool Client::can_play_quest(shared_ptr<const Quest> q, uint8_t difficulty) const
     return true;
   }
   string expr = q->enabled_expression->str();
-  bool ret = q->enabled_expression->evaluate(this->character()->quest_flags.data.at(difficulty), this->team());
+  QuestAvailabilityExpression::Env env = {
+      .flags = &this->character()->quest_flags.data.at(difficulty),
+      .team = this->team(),
+      .num_players = num_players,
+  };
+  bool ret = q->enabled_expression->evaluate(env);
   this->log.info("Evaluating quest enabled expression %s => %s", expr.c_str(), ret ? "TRUE" : "FALSE");
   return ret;
 }

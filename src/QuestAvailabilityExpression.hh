@@ -15,6 +15,12 @@
 
 class QuestAvailabilityExpression {
 public:
+  struct Env {
+    const QuestFlagsForDifficulty* flags;
+    std::shared_ptr<const TeamIndex::Team> team;
+    size_t num_players;
+  };
+
   QuestAvailabilityExpression(const std::string& text);
   ~QuestAvailabilityExpression() = default;
   inline bool operator==(const QuestAvailabilityExpression& other) const {
@@ -23,8 +29,8 @@ public:
   inline bool operator!=(const QuestAvailabilityExpression& other) const {
     return !this->operator==(other);
   }
-  inline bool evaluate(const QuestFlagsForDifficulty& flags, std::shared_ptr<const TeamIndex::Team> team) const {
-    return this->root->evaluate(flags, team);
+  inline int64_t evaluate(const Env& env) const {
+    return this->root->evaluate(env);
   }
   inline std::string str() const {
     return this->root->str();
@@ -38,48 +44,62 @@ protected:
     inline bool operator!=(const Node& other) const {
       return !this->operator==(other);
     }
-    virtual bool evaluate(const QuestFlagsForDifficulty& flags, std::shared_ptr<const TeamIndex::Team> team) const = 0;
+    virtual int64_t evaluate(const Env& env) const = 0;
     virtual std::string str() const = 0;
 
   protected:
     Node() = default;
   };
 
-  class OrNode : public Node {
+  class BinaryOperatorNode : public Node {
   public:
-    OrNode(std::unique_ptr<const Node>&& left, std::unique_ptr<const Node>&& right);
-    virtual ~OrNode() = default;
+    enum class Type {
+      LOGICAL_OR = 0,
+      LOGICAL_AND,
+      BITWISE_OR,
+      BITWISE_AND,
+      BITWISE_XOR,
+      LEFT_SHIFT,
+      RIGHT_SHIFT,
+      LESS_THAN,
+      GREATER_THAN,
+      LESS_OR_EQUAL,
+      GREATER_OR_EQUAL,
+      EQUAL,
+      NOT_EQUAL,
+      ADD,
+      SUBTRACT,
+      MULTIPLY,
+      DIVIDE,
+      MODULUS,
+    };
+    BinaryOperatorNode(Type type, std::unique_ptr<const Node>&& left, std::unique_ptr<const Node>&& right);
+    virtual ~BinaryOperatorNode() = default;
     virtual bool operator==(const Node& other) const;
-    virtual bool evaluate(const QuestFlagsForDifficulty& flags, std::shared_ptr<const TeamIndex::Team> team) const;
+    virtual int64_t evaluate(const Env& env) const;
     virtual std::string str() const;
 
   protected:
+    Type type;
     std::unique_ptr<const Node> left;
     std::unique_ptr<const Node> right;
   };
 
-  class AndNode : public Node {
+  class UnaryOperatorNode : public Node {
   public:
-    AndNode(std::unique_ptr<const Node>&& left, std::unique_ptr<const Node>&& right);
-    virtual ~AndNode() = default;
+    enum class Type {
+      LOGICAL_NOT = 0,
+      BITWISE_NOT,
+      NEGATIVE,
+    };
+    UnaryOperatorNode(Type type, std::unique_ptr<const Node>&& sub);
+    virtual ~UnaryOperatorNode() = default;
     virtual bool operator==(const Node& other) const;
-    virtual bool evaluate(const QuestFlagsForDifficulty& flags, std::shared_ptr<const TeamIndex::Team> team) const;
+    virtual int64_t evaluate(const Env& env) const;
     virtual std::string str() const;
 
   protected:
-    std::unique_ptr<const Node> left;
-    std::unique_ptr<const Node> right;
-  };
-
-  class NotNode : public Node {
-  public:
-    NotNode(std::unique_ptr<const Node>&& sub);
-    virtual ~NotNode() = default;
-    virtual bool operator==(const Node& other) const;
-    virtual bool evaluate(const QuestFlagsForDifficulty& flags, std::shared_ptr<const TeamIndex::Team> team) const;
-    virtual std::string str() const;
-
-  protected:
+    Type type;
     std::unique_ptr<const Node> sub;
   };
 
@@ -88,7 +108,7 @@ protected:
     FlagLookupNode(uint16_t flag_index);
     virtual ~FlagLookupNode() = default;
     virtual bool operator==(const Node& other) const;
-    virtual bool evaluate(const QuestFlagsForDifficulty& flags, std::shared_ptr<const TeamIndex::Team> team) const;
+    virtual int64_t evaluate(const Env& env) const;
     virtual std::string str() const;
 
   protected:
@@ -100,11 +120,20 @@ protected:
     TeamRewardLookupNode(const std::string& reward_name);
     virtual ~TeamRewardLookupNode() = default;
     virtual bool operator==(const Node& other) const;
-    virtual bool evaluate(const QuestFlagsForDifficulty& flags, std::shared_ptr<const TeamIndex::Team> team) const;
+    virtual int64_t evaluate(const Env& env) const;
     virtual std::string str() const;
 
   protected:
     std::string reward_name;
+  };
+
+  class NumPlayersLookupNode : public Node {
+  public:
+    NumPlayersLookupNode();
+    virtual ~NumPlayersLookupNode() = default;
+    virtual bool operator==(const Node& other) const;
+    virtual int64_t evaluate(const Env& env) const;
+    virtual std::string str() const;
   };
 
   class ConstantNode : public Node {
@@ -112,11 +141,11 @@ protected:
     ConstantNode(bool value);
     virtual ~ConstantNode() = default;
     virtual bool operator==(const Node& other) const;
-    virtual bool evaluate(const QuestFlagsForDifficulty& flags, std::shared_ptr<const TeamIndex::Team> team) const;
+    virtual int64_t evaluate(const Env& env) const;
     virtual std::string str() const;
 
   protected:
-    bool value;
+    int64_t value;
   };
 
   std::unique_ptr<const Node> parse_expr(std::string_view text);

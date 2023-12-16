@@ -24,69 +24,144 @@ using namespace std;
 QuestAvailabilityExpression::QuestAvailabilityExpression(const string& text)
     : root(this->parse_expr(text)) {}
 
-QuestAvailabilityExpression::OrNode::OrNode(unique_ptr<const Node>&& left, unique_ptr<const Node>&& right)
-    : left(std::move(left)),
+QuestAvailabilityExpression::BinaryOperatorNode::BinaryOperatorNode(
+    Type type, unique_ptr<const Node>&& left, unique_ptr<const Node>&& right)
+    : type(type),
+      left(std::move(left)),
       right(std::move(right)) {}
 
-bool QuestAvailabilityExpression::OrNode::operator==(const Node& other) const {
+bool QuestAvailabilityExpression::BinaryOperatorNode::operator==(const Node& other) const {
   try {
-    const OrNode& other_or = dynamic_cast<const OrNode&>(other);
-    return *other_or.left == *this->left && *other_or.right == *this->right;
+    const BinaryOperatorNode& other_bin = dynamic_cast<const BinaryOperatorNode&>(other);
+    return other_bin.type == this->type && *other_bin.left == *this->left && *other_bin.right == *this->right;
   } catch (const bad_cast&) {
     return false;
   }
 }
 
-bool QuestAvailabilityExpression::OrNode::evaluate(
-    const QuestFlagsForDifficulty& flags, shared_ptr<const TeamIndex::Team> team) const {
-  return this->left->evaluate(flags, team) || this->right->evaluate(flags, team);
+int64_t QuestAvailabilityExpression::BinaryOperatorNode::evaluate(const Env& env) const {
+  switch (this->type) {
+    case Type::LOGICAL_OR:
+      return this->left->evaluate(env) || this->right->evaluate(env);
+    case Type::LOGICAL_AND:
+      return this->left->evaluate(env) && this->right->evaluate(env);
+    case Type::BITWISE_OR:
+      return this->left->evaluate(env) | this->right->evaluate(env);
+    case Type::BITWISE_AND:
+      return this->left->evaluate(env) & this->right->evaluate(env);
+    case Type::BITWISE_XOR:
+      return this->left->evaluate(env) ^ this->right->evaluate(env);
+    case Type::LEFT_SHIFT:
+      return this->left->evaluate(env) << this->right->evaluate(env);
+    case Type::RIGHT_SHIFT:
+      return this->left->evaluate(env) >> this->right->evaluate(env);
+    case Type::LESS_THAN:
+      return this->left->evaluate(env) < this->right->evaluate(env);
+    case Type::GREATER_THAN:
+      return this->left->evaluate(env) > this->right->evaluate(env);
+    case Type::LESS_OR_EQUAL:
+      return this->left->evaluate(env) <= this->right->evaluate(env);
+    case Type::GREATER_OR_EQUAL:
+      return this->left->evaluate(env) >= this->right->evaluate(env);
+    case Type::EQUAL:
+      return this->left->evaluate(env) == this->right->evaluate(env);
+    case Type::NOT_EQUAL:
+      return this->left->evaluate(env) != this->right->evaluate(env);
+    case Type::ADD:
+      return this->left->evaluate(env) + this->right->evaluate(env);
+    case Type::SUBTRACT:
+      return this->left->evaluate(env) - this->right->evaluate(env);
+    case Type::MULTIPLY:
+      return this->left->evaluate(env) * this->right->evaluate(env);
+    case Type::DIVIDE:
+      return this->left->evaluate(env) / this->right->evaluate(env);
+    case Type::MODULUS:
+      return this->left->evaluate(env) % this->right->evaluate(env);
+    default:
+      throw logic_error("invalid binary operator type");
+  }
 }
 
-string QuestAvailabilityExpression::OrNode::str() const {
-  return "(" + this->left->str() + ") || (" + this->right->str() + ")";
+string QuestAvailabilityExpression::BinaryOperatorNode::str() const {
+  switch (this->type) {
+    case Type::LOGICAL_OR:
+      return "(" + this->left->str() + ") || (" + this->right->str() + ")";
+    case Type::LOGICAL_AND:
+      return "(" + this->left->str() + ") && (" + this->right->str() + ")";
+    case Type::BITWISE_OR:
+      return "(" + this->left->str() + ") | (" + this->right->str() + ")";
+    case Type::BITWISE_AND:
+      return "(" + this->left->str() + ") & (" + this->right->str() + ")";
+    case Type::BITWISE_XOR:
+      return "(" + this->left->str() + ") ^ (" + this->right->str() + ")";
+    case Type::LEFT_SHIFT:
+      return "(" + this->left->str() + ") << (" + this->right->str() + ")";
+    case Type::RIGHT_SHIFT:
+      return "(" + this->left->str() + ") >> (" + this->right->str() + ")";
+    case Type::LESS_THAN:
+      return "(" + this->left->str() + ") < (" + this->right->str() + ")";
+    case Type::GREATER_THAN:
+      return "(" + this->left->str() + ") > (" + this->right->str() + ")";
+    case Type::LESS_OR_EQUAL:
+      return "(" + this->left->str() + ") <= (" + this->right->str() + ")";
+    case Type::GREATER_OR_EQUAL:
+      return "(" + this->left->str() + ") >= (" + this->right->str() + ")";
+    case Type::EQUAL:
+      return "(" + this->left->str() + ") == (" + this->right->str() + ")";
+    case Type::NOT_EQUAL:
+      return "(" + this->left->str() + ") != (" + this->right->str() + ")";
+    case Type::ADD:
+      return "(" + this->left->str() + ") + (" + this->right->str() + ")";
+    case Type::SUBTRACT:
+      return "(" + this->left->str() + ") - (" + this->right->str() + ")";
+    case Type::MULTIPLY:
+      return "(" + this->left->str() + ") * (" + this->right->str() + ")";
+    case Type::DIVIDE:
+      return "(" + this->left->str() + ") / (" + this->right->str() + ")";
+    case Type::MODULUS:
+      return "(" + this->left->str() + ") % (" + this->right->str() + ")";
+    default:
+      throw logic_error("invalid binary operator type");
+  }
 }
 
-QuestAvailabilityExpression::AndNode::AndNode(unique_ptr<const Node>&& left, unique_ptr<const Node>&& right)
-    : left(std::move(left)),
-      right(std::move(right)) {}
+QuestAvailabilityExpression::UnaryOperatorNode::UnaryOperatorNode(Type type, unique_ptr<const Node>&& sub)
+    : type(type),
+      sub(std::move(sub)) {}
 
-bool QuestAvailabilityExpression::AndNode::operator==(const Node& other) const {
+bool QuestAvailabilityExpression::UnaryOperatorNode::operator==(const Node& other) const {
   try {
-    const AndNode& other_and = dynamic_cast<const AndNode&>(other);
-    return *other_and.left == *this->left && *other_and.right == *this->right;
+    const UnaryOperatorNode& other_un = dynamic_cast<const UnaryOperatorNode&>(other);
+    return other_un.type == this->type && *other_un.sub == *this->sub;
   } catch (const bad_cast&) {
     return false;
   }
 }
 
-bool QuestAvailabilityExpression::AndNode::evaluate(
-    const QuestFlagsForDifficulty& flags, shared_ptr<const TeamIndex::Team> team) const {
-  return this->left->evaluate(flags, team) && this->right->evaluate(flags, team);
-}
-
-string QuestAvailabilityExpression::AndNode::str() const {
-  return "(" + this->left->str() + ") && (" + this->right->str() + ")";
-}
-
-QuestAvailabilityExpression::NotNode::NotNode(unique_ptr<const Node>&& sub)
-    : sub(std::move(sub)) {}
-
-bool QuestAvailabilityExpression::NotNode::operator==(const Node& other) const {
-  try {
-    const NotNode& other_not = dynamic_cast<const NotNode&>(other);
-    return *other_not.sub == *this->sub;
-  } catch (const bad_cast&) {
-    return false;
+int64_t QuestAvailabilityExpression::UnaryOperatorNode::evaluate(const Env& env) const {
+  switch (this->type) {
+    case Type::LOGICAL_NOT:
+      return !this->sub->evaluate(env);
+    case Type::BITWISE_NOT:
+      return ~this->sub->evaluate(env);
+    case Type::NEGATIVE:
+      return -this->sub->evaluate(env);
+    default:
+      throw logic_error("invalid unary operator type");
   }
 }
 
-bool QuestAvailabilityExpression::NotNode::evaluate(
-    const QuestFlagsForDifficulty& flags, shared_ptr<const TeamIndex::Team> team) const {
-  return !this->sub->evaluate(flags, team);
-}
-
-string QuestAvailabilityExpression::NotNode::str() const {
-  return "!(" + this->sub->str() + ")";
+string QuestAvailabilityExpression::UnaryOperatorNode::str() const {
+  switch (this->type) {
+    case Type::LOGICAL_NOT:
+      return "!(" + this->sub->str() + ")";
+    case Type::BITWISE_NOT:
+      return "~(" + this->sub->str() + ")";
+    case Type::NEGATIVE:
+      return "-(" + this->sub->str() + ")";
+    default:
+      throw logic_error("invalid unary operator type");
+  }
 }
 
 QuestAvailabilityExpression::FlagLookupNode::FlagLookupNode(uint16_t flag_index)
@@ -101,9 +176,8 @@ bool QuestAvailabilityExpression::FlagLookupNode::operator==(const Node& other) 
   }
 }
 
-bool QuestAvailabilityExpression::FlagLookupNode::evaluate(
-    const QuestFlagsForDifficulty& flags, shared_ptr<const TeamIndex::Team>) const {
-  return flags.get(this->flag_index);
+int64_t QuestAvailabilityExpression::FlagLookupNode::evaluate(const Env& env) const {
+  return env.flags->get(this->flag_index) ? 1 : 0;
 }
 
 string QuestAvailabilityExpression::FlagLookupNode::str() const {
@@ -122,13 +196,26 @@ bool QuestAvailabilityExpression::TeamRewardLookupNode::operator==(const Node& o
   }
 }
 
-bool QuestAvailabilityExpression::TeamRewardLookupNode::evaluate(
-    const QuestFlagsForDifficulty&, shared_ptr<const TeamIndex::Team> team) const {
-  return team && team->has_reward(this->reward_name);
+int64_t QuestAvailabilityExpression::TeamRewardLookupNode::evaluate(const Env& env) const {
+  return (env.team && env.team->has_reward(this->reward_name)) ? 1 : 0;
 }
 
 string QuestAvailabilityExpression::TeamRewardLookupNode::str() const {
   return "T_" + this->reward_name;
+}
+
+QuestAvailabilityExpression::NumPlayersLookupNode::NumPlayersLookupNode() {}
+
+bool QuestAvailabilityExpression::NumPlayersLookupNode::operator==(const Node& other) const {
+  return dynamic_cast<const NumPlayersLookupNode*>(&other) != nullptr;
+}
+
+int64_t QuestAvailabilityExpression::NumPlayersLookupNode::evaluate(const Env& env) const {
+  return env.num_players;
+}
+
+string QuestAvailabilityExpression::NumPlayersLookupNode::str() const {
+  return "V_NumPlayers";
 }
 
 QuestAvailabilityExpression::ConstantNode::ConstantNode(bool value)
@@ -143,13 +230,12 @@ bool QuestAvailabilityExpression::ConstantNode::operator==(const Node& other) co
   }
 }
 
-bool QuestAvailabilityExpression::ConstantNode::evaluate(
-    const QuestFlagsForDifficulty&, shared_ptr<const TeamIndex::Team>) const {
+int64_t QuestAvailabilityExpression::ConstantNode::evaluate(const Env&) const {
   return this->value;
 }
 
 string QuestAvailabilityExpression::ConstantNode::str() const {
-  return this->value ? "true" : "false";
+  return string_printf("%" PRId64, this->value);
 }
 
 unique_ptr<const QuestAvailabilityExpression::Node> QuestAvailabilityExpression::parse_expr(string_view text) {
@@ -186,48 +272,66 @@ unique_ptr<const QuestAvailabilityExpression::Node> QuestAvailabilityExpression:
       break;
     }
   }
+  if (text.empty()) {
+    throw runtime_error("invalid expression");
+  }
+
+  // Check for unary operators
+  if (text[0] == '!') {
+    return make_unique<UnaryOperatorNode>(UnaryOperatorNode::Type::LOGICAL_NOT,
+        QuestAvailabilityExpression::parse_expr(text.substr(1)));
+  } else if (text[0] == '~') {
+    return make_unique<UnaryOperatorNode>(UnaryOperatorNode::Type::BITWISE_NOT,
+        QuestAvailabilityExpression::parse_expr(text.substr(1)));
+  } else if (text[0] == '-') {
+    return make_unique<UnaryOperatorNode>(UnaryOperatorNode::Type::NEGATIVE,
+        QuestAvailabilityExpression::parse_expr(text.substr(1)));
+  }
 
   // Check for binary operators at the root level
-  size_t paren_level = 0;
-  size_t and_pos = 0;
-  size_t or_pos = 0;
-  for (size_t z = 0; z < text.size() - 1; z++) {
-    if (text[z] == '(') {
-      paren_level++;
-    } else if (text[z] == ')') {
-      paren_level--;
-    } else if ((text[z] == '&') && (text[z + 1] == '&') && !paren_level) {
-      and_pos = z;
-    } else if ((text[z] == '|') && (text[z + 1] == '|') && !paren_level) {
-      or_pos = z;
+  using BinType = BinaryOperatorNode::Type;
+  static const vector<vector<pair<std::string, BinaryOperatorNode::Type>>> binary_operator_levels = {
+      {{make_pair("*", BinType::MULTIPLY)}, {make_pair("/", BinType::DIVIDE)}, {make_pair("%", BinType::MODULUS)}},
+      {{make_pair("+", BinType::ADD)}, {make_pair("-", BinType::SUBTRACT)}},
+      {{make_pair("<<", BinType::LEFT_SHIFT)}, {make_pair(">>", BinType::RIGHT_SHIFT)}},
+      {{make_pair("<=", BinType::LESS_OR_EQUAL)}, {make_pair(">=", BinType::GREATER_OR_EQUAL)}, {make_pair("<", BinType::LESS_THAN)}, {make_pair(">", BinType::GREATER_THAN)}},
+      {{make_pair("==", BinType::EQUAL)}, {make_pair("!=", BinType::NOT_EQUAL)}},
+      {{make_pair("&", BinType::BITWISE_AND)}},
+      {{make_pair("^", BinType::BITWISE_XOR)}},
+      {{make_pair("|", BinType::BITWISE_OR)}},
+      {{make_pair("&&", BinType::LOGICAL_AND)}},
+      {{make_pair("||", BinType::LOGICAL_OR)}},
+  };
+  for (const auto& operators : binary_operator_levels) {
+    size_t paren_level = 0;
+    for (size_t z = 0; z < text.size() - 1; z++) {
+      if (text[z] == '(') {
+        paren_level++;
+        continue;
+      } else if (text[z] == ')') {
+        paren_level--;
+        continue;
+      }
+      if (!paren_level) {
+        for (const auto& oper : operators) {
+          // Awful hack (because I'm too lazy to add a tokenization step): if
+          // the operator is followed or preceded by another copy of itself,
+          // don't match it (this prevents us from matching & when the token is
+          // actually &&)
+          if ((text.size() > z + oper.first.size()) &&
+              ((z < oper.first.size()) || (text.compare(z - oper.first.size(), oper.first.size(), oper.first) != 0)) &&
+              (text.compare(z, oper.first.size(), oper.first) == 0) &&
+              (text.compare(z + oper.first.size(), oper.first.size(), oper.first) != 0)) {
+            auto left = QuestAvailabilityExpression::parse_expr(text.substr(0, z));
+            auto right = QuestAvailabilityExpression::parse_expr(text.substr(z + oper.first.size()));
+            return make_unique<BinaryOperatorNode>(oper.second, std::move(left), std::move(right));
+          }
+        }
+      }
     }
   }
-  if ((or_pos && (!and_pos || (and_pos > or_pos)))) {
-    auto left = QuestAvailabilityExpression::parse_expr(text.substr(0, or_pos));
-    auto right = QuestAvailabilityExpression::parse_expr(text.substr(or_pos + 2));
-    return make_unique<OrNode>(std::move(left), std::move(right));
-  }
-  if ((and_pos && (!or_pos || (or_pos > and_pos)))) {
-    auto left = QuestAvailabilityExpression::parse_expr(text.substr(0, and_pos));
-    auto right = QuestAvailabilityExpression::parse_expr(text.substr(and_pos + 2));
-    return make_unique<AndNode>(std::move(left), std::move(right));
-  }
 
-  // Check for not operator
-  if (text.at(0) == '!') {
-    auto sub = QuestAvailabilityExpression::parse_expr(text.substr(1));
-    return make_unique<NotNode>(std::move(sub));
-  }
-
-  // Check for constants
-  if (text == "true") {
-    return make_unique<ConstantNode>(true);
-  }
-  if (text == "false") {
-    return make_unique<ConstantNode>(false);
-  }
-
-  // Check for flag lookups
+  // Check for env lookups
   if (text.starts_with("F_")) {
     char* endptr = nullptr;
     uint64_t flag = strtoul(text.data() + 2, &endptr, 16);
@@ -239,10 +343,27 @@ unique_ptr<const QuestAvailabilityExpression::Node> QuestAvailabilityExpression:
     }
     return make_unique<FlagLookupNode>(flag);
   }
-
   if (text.starts_with("T_")) {
     return make_unique<TeamRewardLookupNode>(string(text.substr(2)));
   }
+  if (text == "V_NumPlayers") {
+    return make_unique<NumPlayersLookupNode>();
+  }
 
+  // Check for constants
+  if (text == "true") {
+    return make_unique<ConstantNode>(1);
+  }
+  if (text == "false") {
+    return make_unique<ConstantNode>(0);
+  }
+  try {
+    size_t endpos;
+    int64_t v = stoll(string(text), &endpos, 0);
+    if (endpos == text.size()) {
+      return make_unique<ConstantNode>(v);
+    }
+  } catch (const exception&) {
+  }
   throw runtime_error("unparseable expression");
 }

@@ -37,14 +37,15 @@
   // Quests may be set to be unavailable until a preceding quest has been
   // cleared or a team reward has been purchased. To enable this feature, set a
   // value for AvailableIf in the quest's JSON file. This field's value should
-  // be a boolean expression that tests one or more flags or team rewards. An
-  // example with random values is shown below. This field is ignored if the
-  // player has the DISABLE_QUEST_REQUIREMENTS flag in their license.
-  // "AvailableIf": "(F_016D || F_0171 || T_EpicCustomQuest) && !F_0173",
+  // be an integral expression that tests one or more flags or team rewards, or
+  // the number of players. An example with random values is shown below. This
+  // field is ignored if the player has the DISABLE_QUEST_REQUIREMENTS flag in
+  // their license.
+  // "AvailableIf": "(F_016D || T_EpicCustomQuest || (V_NumPlayers <= 2)) && !F_0173",
 
   // On BB, quests may be disabled but still visible to the player. This
   // expression controls when that should be the case. If AvailableIf evaluates
-  // to false, this is ignored. This field is also ignored if the  player has
+  // to false, this is ignored. This field is also ignored if the player has
   // the DISABLE_QUEST_REQUIREMENTS flag in their license.
   // "EnabledIf": "!F_0169",
 }
