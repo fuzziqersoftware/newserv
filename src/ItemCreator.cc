@@ -52,6 +52,14 @@ void ItemCreator::set_random_state(uint32_t seed, uint32_t absolute_offset) {
   }
 }
 
+void ItemCreator::set_box_destroyed(uint16_t entity_id) {
+  this->destroyed_boxes.emplace(entity_id);
+}
+
+void ItemCreator::set_monster_destroyed(uint16_t entity_id) {
+  this->destroyed_monsters.emplace(entity_id);
+}
+
 void ItemCreator::clear_destroyed_entities() {
   this->destroyed_monsters.clear();
   this->destroyed_boxes.clear();
@@ -127,15 +135,15 @@ uint8_t ItemCreator::normalize_area_number(uint8_t area) const {
 }
 
 ItemData ItemCreator::on_box_item_drop(uint16_t entity_id, uint8_t area) {
-  return this->destroyed_boxes.emplace(entity_id).second
-      ? this->on_box_item_drop_with_area_norm(this->normalize_area_number(area))
-      : ItemData();
+  return this->destroyed_boxes.count(entity_id)
+      ? ItemData()
+      : this->on_box_item_drop_with_area_norm(this->normalize_area_number(area));
 }
 
 ItemData ItemCreator::on_monster_item_drop(uint16_t entity_id, uint32_t enemy_type, uint8_t area) {
-  return this->destroyed_monsters.emplace(entity_id).second
-      ? this->on_monster_item_drop_with_area_norm(enemy_type, this->normalize_area_number(area))
-      : ItemData();
+  return this->destroyed_monsters.count(entity_id)
+      ? ItemData()
+      : this->on_monster_item_drop_with_area_norm(enemy_type, this->normalize_area_number(area));
 }
 
 ItemData ItemCreator::on_box_item_drop_with_area_norm(uint8_t area_norm) {
@@ -1656,7 +1664,7 @@ void ItemCreator::generate_weapon_shop_item_bonus2(ItemData& item, size_t player
 
 ItemData ItemCreator::on_specialized_box_item_drop(
     uint16_t entity_id, uint8_t area, float def_z, uint32_t def0, uint32_t def1, uint32_t def2) {
-  if (!this->destroyed_boxes.emplace(entity_id).second) {
+  if (this->destroyed_boxes.count(entity_id)) {
     return ItemData();
   }
 

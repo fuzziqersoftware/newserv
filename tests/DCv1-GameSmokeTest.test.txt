@@ -849,8 +849,6 @@ I 40469 2023-05-26 10:42:16 - [Commands] Received from C-2 (Tali) (version=DC co
 I 40469 2023-05-26 10:42:17 - [Commands] Received from C-2 (Tali) (version=DC command=62 flag=00)
 0000 | 62 00 10 00 5A 03 00 00 7D 01 01 06 01 00 F9 8C | b   Z   }
 I 40469 2023-05-26 10:42:17 - [Commands] Sending to C-2 (Tali) (version=DC command=62 flag=00)
-0000 | 62 00 10 00 5A 03 00 00 7D 01 01 06 01 00 F9 8C | b   Z   }
-I 40469 2023-05-26 10:42:17 - [Commands] Received from C-2 (Tali) (version=DC command=60 flag=00)
 0000 | 60 00 10 00 59 03 00 00 00 00 01 00 7D 01 01 06 | `   Y       }
 I 40469 2023-05-26 10:42:17 - [Lobby/15] Player 0 picked up 0601017D (27 Meseta)
 [PlayerInventory] Meseta: 327
@@ -901,12 +899,10 @@ I 40469 2023-05-26 10:42:20 - [Commands] Received from C-2 (Tali) (version=DC co
 0010 | 00 00 00 00                                     |
 I 40469 2023-05-26 10:42:20 - [Commands] Received from C-2 (Tali) (version=DC command=62 flag=00)
 0000 | 62 00 10 00 5A 03 00 00 7E 01 01 06 01 00 F9 8C | b   Z   ~
-I 40469 2023-05-26 10:42:20 - [Commands] Sending to C-2 (Tali) (version=DC command=62 flag=00)
-0000 | 62 00 10 00 5A 03 00 00 7E 01 01 06 01 00 F9 8C | b   Z   ~
 I 40469 2023-05-26 10:42:21 - [Commands] Received from C-2 (Tali) (version=DC command=60 flag=00)
 0000 | 60 00 14 00 40 04 00 00 DB 4D 14 44 7E 1F 03 44 | `   @    M D~  D
 0010 | 00 00 00 00                                     |
-I 40469 2023-05-26 10:42:21 - [Commands] Received from C-2 (Tali) (version=DC command=60 flag=00)
+I 40469 2023-05-26 10:42:20 - [Commands] Sending to C-2 (Tali) (version=DC command=62 flag=00)
 0000 | 60 00 10 00 59 03 00 00 00 00 01 00 7E 01 01 06 | `   Y       ~
 I 40469 2023-05-26 10:42:21 - [Lobby/15] Player 0 picked up 0601017E (Handgun 0/0/0/0/0)
 [PlayerInventory] Meseta: 327

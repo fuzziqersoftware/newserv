@@ -192,9 +192,9 @@ void player_use_item(shared_ptr<Client> c, size_t item_index) {
         item.data.data1.clear_after(3);
         should_delete_item = false;
 
-        auto l = c->lobby.lock();
-        if (l) {
-          send_create_inventory_item(c, item.data);
+        auto l = c->require_lobby();
+        if (l->base_version == Version::BB_V4) {
+          send_create_inventory_item_to_lobby(c, c->lobby_client_id, item.data);
         }
         break;
       }

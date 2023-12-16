@@ -208,18 +208,6 @@ static void send_or_enqueue_joining_player_command(shared_ptr<Client> c, uint8_t
   }
 }
 
-static void send_or_enqueue_joining_player_command(shared_ptr<Client> c, uint8_t command, uint8_t flag, string&& data) {
-  if (c->game_join_command_queue) {
-    c->log.info("Client not ready to receive join commands; adding to queue");
-    auto& cmd = c->game_join_command_queue->emplace_back();
-    cmd.command = command;
-    cmd.flag = flag;
-    cmd.data = std::move(data);
-  } else {
-    send_command(c, command, flag, data.data(), data.size());
-  }
-}
-
 static void send_or_enqueue_joining_player_command(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
   if (c->game_join_command_queue) {
     c->log.info("Client not ready to receive join commands; adding to queue");
@@ -321,53 +309,22 @@ static void on_sync_joining_player_item_state(shared_ptr<Client> c, uint8_t comm
         "decompressed 6x6D data (0x%zX bytes) is too short for all floor items (0x%zX bytes)",
         decompressed.size(), required_size));
   }
-  auto* floor_items = reinterpret_cast<FloorItem*>(decompressed.data() + sizeof(G_SyncItemState_6x6D_Decompressed));
 
   size_t target_num_items = target->character()->inventory.num_items;
   for (size_t z = 0; z < 12; z++) {
     uint32_t client_next_id = decompressed_cmd->next_item_id_per_player[z];
-    uint32_t server_next_id = l->next_item_id[z];
+    uint32_t server_next_id = l->next_item_id_for_client[z];
     if (client_next_id == server_next_id) {
-      l->log.info("Next item ID for player %zu (%08" PRIX32 ") matches expected value", z, l->next_item_id[z]);
+      l->log.info("Next item ID for player %zu (%08" PRIX32 ") matches expected value", z, l->next_item_id_for_client[z]);
     } else if ((z == target->lobby_client_id) && (client_next_id == server_next_id - target_num_items)) {
-      l->log.info("Next item ID for player %zu (%08" PRIX32 ") matches expected value before inventory item ID assignment (%08" PRIX32 ")", z, l->next_item_id[z], static_cast<uint32_t>(server_next_id - target_num_items));
+      l->log.info("Next item ID for player %zu (%08" PRIX32 ") matches expected value before inventory item ID assignment (%08" PRIX32 ")", z, l->next_item_id_for_client[z], static_cast<uint32_t>(server_next_id - target_num_items));
     } else {
       l->log.warning("Next item ID for player %zu (%08" PRIX32 ") does not match expected value (%08" PRIX32 ")",
-          z, decompressed_cmd->next_item_id_per_player[z].load(), l->next_item_id[z]);
+          z, decompressed_cmd->next_item_id_per_player[z].load(), l->next_item_id_for_client[z]);
     }
   }
 
-  // We need to byteswap mags' data2 fields if exactly one of the sender and
-  // recipient is PSO GC
-  if (is_big_endian(c->version()) == is_big_endian(target->version())) {
-    send_or_enqueue_joining_player_command(target, command, flag, data, size);
-
-  } else {
-    auto s = target->require_server_state();
-    for (size_t z = 0; z < num_floor_items; z++) {
-      floor_items[z].item.decode_for_version(c->version());
-      floor_items[z].item.encode_for_version(target->version(), s->item_parameter_table_for_version(target->version()));
-    }
-
-    string out_compressed_data = bc0_compress(decompressed);
-
-    G_SyncGameStateHeader_6x6B_6x6C_6x6D_6x6E out_cmd;
-    out_cmd.header.basic_header.subcommand = 0x6D;
-    out_cmd.header.basic_header.size = 0x00;
-    out_cmd.header.basic_header.unused = 0x0000;
-    out_cmd.header.size = ((out_compressed_data.size() + sizeof(G_SyncGameStateHeader_6x6B_6x6C_6x6D_6x6E)) + 3) & (~3);
-    out_cmd.decompressed_size = decompressed.size();
-    out_cmd.compressed_size = out_compressed_data.size();
-
-    if (c->config.check_flag(Client::Flag::DEBUG_ENABLED)) {
-      c->log.info("Transcoded and recompressed item sync data (%zX bytes)", out_compressed_data.size());
-    }
-
-    StringWriter w;
-    w.write(&out_cmd, sizeof(out_cmd));
-    w.write(out_compressed_data);
-    send_or_enqueue_joining_player_command(target, command, flag, std::move(w.str()));
-  }
+  send_game_item_state(target);
 }
 
 static void on_sync_joining_player_disp_and_inventory(
@@ -719,14 +676,12 @@ static void on_player_died(shared_ptr<Client> c, uint8_t command, uint8_t flag, 
     return;
   }
 
-  if (l->check_flag(Lobby::Flag::ITEM_TRACKING_ENABLED)) {
-    try {
-      auto& inventory = c->character()->inventory;
-      size_t mag_index = inventory.find_equipped_item(EquipSlot::MAG);
-      auto& data = inventory.items[mag_index].data;
-      data.data2[0] = max<int8_t>(static_cast<int8_t>(data.data2[0] - 5), 0);
-    } catch (const out_of_range&) {
-    }
+  try {
+    auto& inventory = c->character()->inventory;
+    size_t mag_index = inventory.find_equipped_item(EquipSlot::MAG);
+    auto& data = inventory.items[mag_index].data;
+    data.data2[0] = max<int8_t>(static_cast<int8_t>(data.data2[0] - 5), 0);
+  } catch (const out_of_range&) {
   }
 
   forward_subcommand(c, command, flag, data, size);
@@ -876,18 +831,16 @@ static void on_player_drop_item(shared_ptr<Client> c, uint8_t command, uint8_t f
   }
 
   auto l = c->require_lobby();
-  if (l->check_flag(Lobby::Flag::ITEM_TRACKING_ENABLED)) {
-    auto p = c->character();
-    auto item = p->remove_item(cmd.item_id, 0, c->version() != Version::BB_V4);
-    l->add_item(item, cmd.floor, cmd.x, cmd.z);
+  auto p = c->character();
+  auto item = p->remove_item(cmd.item_id, 0, c->version() != Version::BB_V4);
+  l->add_item(cmd.floor, item, cmd.x, cmd.z, 0x00F);
 
-    if (l->log.should_log(LogLevel::INFO)) {
-      auto s = c->require_server_state();
-      auto name = s->describe_item(c->version(), item, false);
-      l->log.info("Player %hu dropped item %08" PRIX32 " (%s) at %hu:(%g, %g)",
-          cmd.header.client_id.load(), cmd.item_id.load(), name.c_str(), cmd.floor.load(), cmd.x.load(), cmd.z.load());
-      p->print_inventory(stderr, c->version(), s->item_name_index);
-    }
+  if (l->log.should_log(LogLevel::INFO)) {
+    auto s = c->require_server_state();
+    auto name = s->describe_item(c->version(), item, false);
+    l->log.info("Player %hu dropped item %08" PRIX32 " (%s) at %hu:(%g, %g)",
+        cmd.header.client_id.load(), cmd.item_id.load(), name.c_str(), cmd.floor.load(), cmd.x.load(), cmd.z.load());
+    p->print_inventory(stderr, c->version(), s->item_name_index);
   }
 
   forward_subcommand(c, command, flag, data, size);
@@ -932,19 +885,17 @@ static void on_create_inventory_item_t(shared_ptr<Client> c, uint8_t command, ui
   }
 
   auto l = c->require_lobby();
-  if (l->check_flag(Lobby::Flag::ITEM_TRACKING_ENABLED)) {
-    auto p = c->character();
-    ItemData item = cmd.item_data;
-    item.decode_for_version(c->version());
-    l->on_item_id_generated_externally(item.id);
-    p->add_item(item);
+  auto p = c->character();
+  ItemData item = cmd.item_data;
+  item.decode_for_version(c->version());
+  l->on_item_id_generated_externally(item.id);
+  p->add_item(item);
 
-    if (l->log.should_log(LogLevel::INFO)) {
-      auto s = c->require_server_state();
-      auto name = s->describe_item(c->version(), item, false);
-      l->log.info("Player %hu created inventory item %08" PRIX32 " (%s)", c->lobby_client_id, item.id.load(), name.c_str());
-      p->print_inventory(stderr, c->version(), s->item_name_index);
-    }
+  if (l->log.should_log(LogLevel::INFO)) {
+    auto s = c->require_server_state();
+    auto name = s->describe_item(c->version(), item, false);
+    l->log.info("Player %hu created inventory item %08" PRIX32 " (%s)", c->lobby_client_id, item.id.load(), name.c_str());
+    p->print_inventory(stderr, c->version(), s->item_name_index);
   }
 
   forward_subcommand_with_item_transcode_t(c, command, flag, cmd);
@@ -973,21 +924,19 @@ static void on_drop_partial_stack_t(shared_ptr<Client> c, uint8_t command, uint8
     return;
   }
 
-  if (l->check_flag(Lobby::Flag::ITEM_TRACKING_ENABLED)) {
-    // TODO: Should we delete anything from the inventory here? Does the client
-    // send an appropriate 6x29 alongside this?
-    ItemData item = cmd.item_data;
-    item.decode_for_version(c->version());
-    l->on_item_id_generated_externally(item.id);
-    l->add_item(item, cmd.floor, cmd.x, cmd.z);
+  // TODO: Should we delete anything from the inventory here? Does the client
+  // send an appropriate 6x29 alongside this?
+  ItemData item = cmd.item_data;
+  item.decode_for_version(c->version());
+  l->on_item_id_generated_externally(item.id);
+  l->add_item(cmd.floor, item, cmd.x, cmd.z, 0x00F);
 
-    if (l->log.should_log(LogLevel::INFO)) {
-      auto s = c->require_server_state();
-      auto name = s->describe_item(c->version(), item, false);
-      l->log.info("Player %hu split stack to create floor item %08" PRIX32 " (%s) at %hu:(%g, %g)",
-          cmd.header.client_id.load(), item.id.load(), name.c_str(), cmd.floor.load(), cmd.x.load(), cmd.z.load());
-      c->character()->print_inventory(stderr, c->version(), s->item_name_index);
-    }
+  if (l->log.should_log(LogLevel::INFO)) {
+    auto s = c->require_server_state();
+    auto name = s->describe_item(c->version(), item, false);
+    l->log.info("Player %hu split stack to create floor item %08" PRIX32 " (%s) at %hu:(%g, %g)",
+        cmd.header.client_id.load(), item.id.load(), name.c_str(), cmd.floor.load(), cmd.x.load(), cmd.z.load());
+    c->character()->print_inventory(stderr, c->version(), s->item_name_index);
   }
 
   forward_subcommand_with_item_transcode_t(c, command, flag, cmd);
@@ -1012,10 +961,6 @@ static void on_drop_partial_stack_bb(shared_ptr<Client> c, uint8_t command, uint
       return;
     }
 
-    if (!l->check_flag(Lobby::Flag::ITEM_TRACKING_ENABLED)) {
-      throw logic_error("item tracking not enabled in BB game");
-    }
-
     auto p = c->character();
     auto item = p->remove_item(cmd.item_id, cmd.amount, c->version() != Version::BB_V4);
 
@@ -1031,8 +976,8 @@ static void on_drop_partial_stack_bb(shared_ptr<Client> c, uint8_t command, uint
     // removed again by the 6x29 handler)
     p->add_item(item);
 
-    l->add_item(item, cmd.floor, cmd.x, cmd.z);
-    send_drop_stacked_item(l, item, cmd.floor, cmd.x, cmd.z);
+    l->add_item(cmd.floor, item, cmd.x, cmd.z, 0x00F);
+    send_drop_stacked_item_to_lobby(l, item, cmd.floor, cmd.x, cmd.z);
 
     if (l->log.should_log(LogLevel::INFO)) {
       auto s = c->require_server_state();
@@ -1059,23 +1004,21 @@ static void on_buy_shop_item(shared_ptr<Client> c, uint8_t command, uint8_t flag
     return;
   }
 
-  if (l->check_flag(Lobby::Flag::ITEM_TRACKING_ENABLED)) {
-    auto p = c->character();
-    ItemData item = cmd.item_data;
-    item.data2d = 0; // Clear the price field
-    item.decode_for_version(c->version());
-    l->on_item_id_generated_externally(item.id);
-    p->add_item(item);
+  auto p = c->character();
+  ItemData item = cmd.item_data;
+  item.data2d = 0; // Clear the price field
+  item.decode_for_version(c->version());
+  l->on_item_id_generated_externally(item.id);
+  p->add_item(item);
 
-    size_t price = s->item_parameter_table_for_version(c->version())->price_for_item(item);
-    p->remove_meseta(price, c->version() != Version::BB_V4);
+  size_t price = s->item_parameter_table_for_version(c->version())->price_for_item(item);
+  p->remove_meseta(price, c->version() != Version::BB_V4);
 
-    if (l->log.should_log(LogLevel::INFO)) {
-      auto name = s->describe_item(c->version(), item, false);
-      l->log.info("Player %hu bought item %08" PRIX32 " (%s) from shop (%zu Meseta)",
-          cmd.header.client_id.load(), item.id.load(), name.c_str(), price);
-      p->print_inventory(stderr, c->version(), s->item_name_index);
-    }
+  if (l->log.should_log(LogLevel::INFO)) {
+    auto name = s->describe_item(c->version(), item, false);
+    l->log.info("Player %hu bought item %08" PRIX32 " (%s) from shop (%zu Meseta)",
+        cmd.header.client_id.load(), item.id.load(), name.c_str(), price);
+    p->print_inventory(stderr, c->version(), s->item_name_index);
   }
 
   forward_subcommand_with_item_transcode_t(c, command, flag, cmd);
@@ -1100,17 +1043,14 @@ static void on_box_or_enemy_item_drop_t(shared_ptr<Client> c, uint8_t command, u
     return;
   }
 
-  if (l->check_flag(Lobby::Flag::ITEM_TRACKING_ENABLED)) {
-    ItemData item = cmd.item.item;
-    item.decode_for_version(c->version());
-    l->on_item_id_generated_externally(item.id);
-    l->add_item(item, cmd.item.floor, cmd.item.x, cmd.item.z);
+  ItemData item = cmd.item.item;
+  item.decode_for_version(c->version());
+  l->on_item_id_generated_externally(item.id);
+  l->add_item(cmd.item.floor, item, cmd.item.x, cmd.item.z, 0x00F);
 
-    auto s = c->require_server_state();
-    auto name = s->describe_item(c->version(), item, false);
-    l->log.info("Player %hhu (leader) created floor item %08" PRIX32 " (%s) at %hhu:(%g, %g)",
-        l->leader_id, item.id.load(), name.c_str(), cmd.item.floor, cmd.item.x.load(), cmd.item.z.load());
-  }
+  auto name = s->describe_item(c->version(), item, false);
+  l->log.info("Player %hhu (leader) created floor item %08" PRIX32 " (%s) at %hhu:(%g, %g)",
+      l->leader_id, item.id.load(), name.c_str(), cmd.item.floor, cmd.item.x.load(), cmd.item.z.load());
 
   for (auto& lc : l->clients) {
     if (!lc || lc == c) {
@@ -1135,69 +1075,11 @@ static void on_box_or_enemy_item_drop(shared_ptr<Client> c, uint8_t command, uin
   }
 }
 
-static void on_pick_up_item(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
-  auto& cmd = check_size_t<G_PickUpItem_6x59>(data, size);
-
-  auto l = c->require_lobby();
-  if (!l->is_game()) {
-    return;
-  }
-  if (l->base_version == Version::BB_V4) {
-    // BB clients should never send this; only the server should send this
-    return;
-  }
-
-  auto effective_c = l->clients.at(cmd.header.client_id);
-  if (!effective_c.get()) {
-    return;
-  }
-
-  if (l->check_flag(Lobby::Flag::ITEM_TRACKING_ENABLED)) {
-    auto s = c->require_server_state();
-    auto effective_p = effective_c->character();
-
-    // It seems the client just plays it fast and loose with these commands.
-    // There can be multiple 6x5A (request to pick up item) commands in flight,
-    // and the leader will respond to *all* of them with 6x59 (pick up item),
-    // even if the item can't be picked up by the time the command is processed
-    // (e.g. if the player's inventory has become full due to a previous pick up
-    // request). In the case of a full inventory, the client is expected to just
-    // ignore the command; in the case of the floor item not existing, however,
-    // the client behaves strangely and eventually  disconnects, so we let
-    // l->remove_item throw in that case instead to fail faster.
-
-    // This might be a legitimate bug in the client: the logic for determining
-    // if an item can be picked up also applies to Meseta, and forbids the
-    // pickup if the client has 999999 on hand. However, some actions that
-    // affect Meseta aren't sent to other players (e.g. depositing it in the
-    // bank), so the game could get into a state where some players see a client
-    // as able to pick up a Meseta item and some see a client as unable to do
-    // so. The downstream result of this desynchronization is that if the
-    // affected player tries to pick up some Meseta, some clients will not allow
-    // the pickup and will not delete the floor item, so if someone else tries
-    // to pick it up again, they will disconnect.
-
-    auto item = l->remove_item(cmd.item_id);
-    try {
-      effective_p->add_item(item);
-    } catch (const out_of_range& e) {
-      auto name = s->describe_item(c->version(), item, false);
-      l->log.warning("Player %hu attempted to pick up %08" PRIX32 " (%s) but cannot (%s); ignoring command",
-          cmd.header.client_id.load(), cmd.item_id.load(), name.c_str(), e.what());
-      return;
-    }
-
-    if (l->log.should_log(LogLevel::INFO)) {
-      auto name = s->describe_item(c->version(), item, false);
-      l->log.info("Player %hu picked up %08" PRIX32 " (%s)", cmd.header.client_id.load(), cmd.item_id.load(), name.c_str());
-      effective_p->print_inventory(stderr, c->version(), s->item_name_index);
-    }
-  }
-
-  forward_subcommand(c, command, flag, data, size);
+static void on_pick_up_item(shared_ptr<Client>, uint8_t, uint8_t, const void*, size_t) {
+  throw runtime_error("clients should not send 6x59 commands");
 }
 
-static void on_pick_up_item_request(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
+static void on_pick_up_item_request(shared_ptr<Client> c, uint8_t, uint8_t, const void* data, size_t size) {
   auto& cmd = check_size_t<G_PickUpItemRequest_6x5A>(data, size);
 
   auto l = c->require_lobby();
@@ -1205,32 +1087,53 @@ static void on_pick_up_item_request(shared_ptr<Client> c, uint8_t command, uint8
     return;
   }
 
-  bool item_tracking_enabled = l->check_flag(Lobby::Flag::ITEM_TRACKING_ENABLED);
-  if (item_tracking_enabled && !l->item_exists(cmd.item_id)) {
+  if (!l->item_exists(cmd.floor, cmd.item_id)) {
+    // This can happen if the network is slow, and the client tries to pick up
+    // the same item multiple times. Or multiple clients could try to pick up
+    // the same item at approximately the same time; only one should get it.
     l->log.warning("Player %hu requests to pick up %08" PRIX32 ", but the item does not exist; dropping command",
         cmd.header.client_id.load(), cmd.item_id.load());
 
-  } else if (l->base_version == Version::BB_V4) {
+  } else {
     // This is handled by the server on BB, and by the leader on other versions.
-    if (!item_tracking_enabled) {
-      throw logic_error("item tracking not enabled in BB game");
-    }
+    // However, the client's logic is to simply always send a 6x59 command when
+    // it receives a 6x5A and the floor item exists, so we just implement that
+    // logic here instead of forwarding the 6x5A to the leader.
 
     auto p = c->character();
-    auto item = l->remove_item(cmd.item_id);
-    p->add_item(item);
+    auto fi = l->remove_item(cmd.floor, cmd.item_id, c->lobby_client_id);
+    try {
+      p->add_item(fi->data);
+    } catch (const out_of_range&) {
+      // Inventory is full; put the item back where it was
+      l->log.warning("Player %hu requests to pick up %08" PRIX32 ", but their inventory is full; dropping command",
+          cmd.header.client_id.load(), cmd.item_id.load());
+      l->add_item(cmd.floor, fi);
+      return;
+    }
 
     if (l->log.should_log(LogLevel::INFO)) {
       auto s = c->require_server_state();
-      auto name = s->describe_item(c->version(), item, false);
+      auto name = s->describe_item(c->version(), fi->data, false);
       l->log.info("Player %hu picked up (BB) %08" PRIX32 " (%s)", cmd.header.client_id.load(), cmd.item_id.load(), name.c_str());
       p->print_inventory(stderr, c->version(), s->item_name_index);
     }
 
-    send_pick_up_item(c, cmd.item_id, cmd.floor);
-
-  } else {
-    forward_subcommand(c, command, flag, data, size);
+    auto s = c->require_server_state();
+    for (size_t z = 0; z < 12; z++) {
+      auto lc = l->clients[z];
+      if (!lc) {
+        continue;
+      }
+      if (fi->visible_to_client(z)) {
+        send_pick_up_item_to_client(lc, cmd.header.client_id, cmd.item_id, cmd.floor);
+      } else if (lc->version() == Version::BB_V4) {
+        send_create_inventory_item_to_client(lc, cmd.header.client_id, fi->data);
+      } else {
+        send_drop_item_to_channel(s, lc->channel, fi->data, false, lc->floor, lc->x, lc->z, 0xFFFF);
+        send_pick_up_item_to_client(lc, cmd.header.client_id, cmd.item_id, cmd.floor);
+      }
+    }
   }
 }
 
@@ -1242,14 +1145,10 @@ static void on_equip_item(shared_ptr<Client> c, uint8_t command, uint8_t flag, c
   }
 
   auto l = c->require_lobby();
-  if (l->check_flag(Lobby::Flag::ITEM_TRACKING_ENABLED)) {
-    EquipSlot slot = static_cast<EquipSlot>(cmd.equip_slot.load());
-    auto p = c->character();
-    p->inventory.equip_item_id(cmd.item_id, slot);
-    c->log.info("Equipped item %08" PRIX32, cmd.item_id.load());
-  } else if (l->base_version == Version::BB_V4) {
-    throw logic_error("item tracking not enabled in BB game");
-  }
+  EquipSlot slot = static_cast<EquipSlot>(cmd.equip_slot.load());
+  auto p = c->character();
+  p->inventory.equip_item_id(cmd.item_id, slot);
+  c->log.info("Equipped item %08" PRIX32, cmd.item_id.load());
 
   forward_subcommand(c, command, flag, data, size);
 }
@@ -1262,13 +1161,9 @@ static void on_unequip_item(shared_ptr<Client> c, uint8_t command, uint8_t flag,
   }
 
   auto l = c->require_lobby();
-  if (l->check_flag(Lobby::Flag::ITEM_TRACKING_ENABLED)) {
-    auto p = c->character();
-    p->inventory.unequip_item_id(cmd.item_id);
-    c->log.info("Unequipped item %08" PRIX32, cmd.item_id.load());
-  } else if (l->base_version == Version::BB_V4) {
-    throw logic_error("item tracking not enabled in BB game");
-  }
+  auto p = c->character();
+  p->inventory.unequip_item_id(cmd.item_id);
+  c->log.info("Unequipped item %08" PRIX32, cmd.item_id.load());
 
   forward_subcommand(c, command, flag, data, size);
 }
@@ -1285,24 +1180,22 @@ static void on_use_item(
   }
 
   auto l = c->require_lobby();
-  if (l->check_flag(Lobby::Flag::ITEM_TRACKING_ENABLED)) {
-    auto s = c->require_server_state();
-    auto p = c->character();
-    size_t index = p->inventory.find_item(cmd.item_id);
-    string name;
-    {
-      // Note: We do this weird scoping thing because player_use_item will
-      // likely delete the item, which will break the reference here.
-      const auto& item = p->inventory.items[index].data;
-      name = s->describe_item(c->version(), item, false);
-    }
-    player_use_item(c, index);
+  auto s = c->require_server_state();
+  auto p = c->character();
+  size_t index = p->inventory.find_item(cmd.item_id);
+  string name;
+  {
+    // Note: We do this weird scoping thing because player_use_item will
+    // likely delete the item, which will break the reference here.
+    const auto& item = p->inventory.items[index].data;
+    name = s->describe_item(c->version(), item, false);
+  }
+  player_use_item(c, index);
 
-    if (l->log.should_log(LogLevel::INFO)) {
-      l->log.info("Player %hhu used item %hu:%08" PRIX32 " (%s)",
-          c->lobby_client_id, cmd.header.client_id.load(), cmd.item_id.load(), name.c_str());
-      p->print_inventory(stderr, c->version(), s->item_name_index);
-    }
+  if (l->log.should_log(LogLevel::INFO)) {
+    l->log.info("Player %hhu used item %hu:%08" PRIX32 " (%s)",
+        c->lobby_client_id, cmd.header.client_id.load(), cmd.item_id.load(), name.c_str());
+    p->print_inventory(stderr, c->version(), s->item_name_index);
   }
 
   forward_subcommand(c, command, flag, data, size);
@@ -1320,37 +1213,35 @@ static void on_feed_mag(
   }
 
   auto l = c->require_lobby();
-  if (l->check_flag(Lobby::Flag::ITEM_TRACKING_ENABLED)) {
-    auto s = c->require_server_state();
-    auto p = c->character();
+  auto s = c->require_server_state();
+  auto p = c->character();
 
-    size_t mag_index = p->inventory.find_item(cmd.mag_item_id);
-    size_t fed_index = p->inventory.find_item(cmd.fed_item_id);
-    string mag_name, fed_name;
-    {
-      // Note: We do this weird scoping thing because player_feed_mag will
-      // likely delete the items, which will break the references here.
-      const auto& fed_item = p->inventory.items[fed_index].data;
-      fed_name = s->describe_item(c->version(), fed_item, false);
-      const auto& mag_item = p->inventory.items[mag_index].data;
-      mag_name = s->describe_item(c->version(), mag_item, false);
-    }
-    player_feed_mag(c, mag_index, fed_index);
+  size_t mag_index = p->inventory.find_item(cmd.mag_item_id);
+  size_t fed_index = p->inventory.find_item(cmd.fed_item_id);
+  string mag_name, fed_name;
+  {
+    // Note: We do this weird scoping thing because player_feed_mag will
+    // likely delete the items, which will break the references here.
+    const auto& fed_item = p->inventory.items[fed_index].data;
+    fed_name = s->describe_item(c->version(), fed_item, false);
+    const auto& mag_item = p->inventory.items[mag_index].data;
+    mag_name = s->describe_item(c->version(), mag_item, false);
+  }
+  player_feed_mag(c, mag_index, fed_index);
 
-    // On BB, the player only sends a 6x28; on other versions, the player sends
-    // a 6x29 immediately after to destroy the fed item. So on BB, we should
-    // remove the fed item here, but on other versions, we allow the following
-    // 6x29 command to do that.
-    if (l->base_version == Version::BB_V4) {
-      p->remove_item(cmd.fed_item_id, 1, false);
-    }
+  // On BB, the player only sends a 6x28; on other versions, the player sends
+  // a 6x29 immediately after to destroy the fed item. So on BB, we should
+  // remove the fed item here, but on other versions, we allow the following
+  // 6x29 command to do that.
+  if (l->base_version == Version::BB_V4) {
+    p->remove_item(cmd.fed_item_id, 1, false);
+  }
 
-    if (l->log.should_log(LogLevel::INFO)) {
-      l->log.info("Player %hhu fed item %hu:%08" PRIX32 " (%s) to mag %hu:%08" PRIX32 " (%s)",
-          c->lobby_client_id, cmd.header.client_id.load(), cmd.fed_item_id.load(), fed_name.c_str(),
-          cmd.header.client_id.load(), cmd.mag_item_id.load(), mag_name.c_str());
-      p->print_inventory(stderr, c->version(), s->item_name_index);
-    }
+  if (l->log.should_log(LogLevel::INFO)) {
+    l->log.info("Player %hhu fed item %hu:%08" PRIX32 " (%s) to mag %hu:%08" PRIX32 " (%s)",
+        c->lobby_client_id, cmd.header.client_id.load(), cmd.fed_item_id.load(), fed_name.c_str(),
+        cmd.header.client_id.load(), cmd.mag_item_id.load(), mag_name.c_str());
+    p->print_inventory(stderr, c->version(), s->item_name_index);
   }
 
   forward_subcommand(c, command, flag, data, size);
@@ -1358,41 +1249,37 @@ static void on_feed_mag(
 
 static void on_open_shop_bb_or_ep3_battle_subs(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
   auto l = c->require_lobby();
-  if (l->is_ep3()) {
+  if (!l->is_game()) {
+    throw runtime_error("received 6xB5 command in lobby");
+  } else if (l->is_ep3()) {
     on_ep3_battle_subs(c, command, flag, data, size);
-
-  } else if (!l->item_creator.get()) {
+  } else if (l->base_version != Version::BB_V4) {
+    throw runtime_error("received BB shop subcommand in non-BB game");
+  } else if (!l->item_creator) {
     throw runtime_error("received shop subcommand without item creator present");
-
   } else {
     const auto& cmd = check_size_t<G_ShopContentsRequest_BB_6xB5>(data, size);
-    if ((l->base_version == Version::BB_V4) && l->is_game()) {
-      if (!l->item_creator) {
-        throw logic_error("item creator missing from BB game");
-      }
-
-      auto s = c->require_server_state();
-      size_t level = c->character()->disp.stats.level + 1;
-      switch (cmd.shop_type) {
-        case 0:
-          c->bb_shop_contents[0] = l->item_creator->generate_tool_shop_contents(level);
-          break;
-        case 1:
-          c->bb_shop_contents[1] = l->item_creator->generate_weapon_shop_contents(level);
-          break;
-        case 2:
-          c->bb_shop_contents[2] = l->item_creator->generate_armor_shop_contents(level);
-          break;
-        default:
-          throw runtime_error("invalid shop type");
-      }
-      for (auto& item : c->bb_shop_contents[cmd.shop_type]) {
-        item.id = 0xFFFFFFFF;
-        item.data2d = s->item_parameter_table_for_version(c->version())->price_for_item(item);
-      }
-
-      send_shop(c, cmd.shop_type);
+    auto s = c->require_server_state();
+    size_t level = c->character()->disp.stats.level + 1;
+    switch (cmd.shop_type) {
+      case 0:
+        c->bb_shop_contents[0] = l->item_creator->generate_tool_shop_contents(level);
+        break;
+      case 1:
+        c->bb_shop_contents[1] = l->item_creator->generate_weapon_shop_contents(level);
+        break;
+      case 2:
+        c->bb_shop_contents[2] = l->item_creator->generate_armor_shop_contents(level);
+        break;
+      default:
+        throw runtime_error("invalid shop type");
     }
+    for (auto& item : c->bb_shop_contents[cmd.shop_type]) {
+      item.id = 0xFFFFFFFF;
+      item.data2d = s->item_parameter_table_for_version(c->version())->price_for_item(item);
+    }
+
+    send_shop(c, cmd.shop_type);
   }
 }
 
@@ -1414,10 +1301,6 @@ static void on_ep3_private_word_select_bb_bank_action(shared_ptr<Client> c, uint
 
     if (!l->is_game()) {
       return;
-    }
-
-    if (!l->check_flag(Lobby::Flag::ITEM_TRACKING_ENABLED)) {
-      throw logic_error("item tracking not enabled in BB game");
     }
 
     auto p = c->character();
@@ -1447,7 +1330,7 @@ static void on_ep3_private_word_select_bb_bank_action(shared_ptr<Client> c, uint
           item.id = cmd.item_id;
         }
         bank.add_item(item);
-        send_destroy_item(c, cmd.item_id, cmd.item_amount, true);
+        send_destroy_item_to_lobby(c, cmd.item_id, cmd.item_amount, true);
 
         if (l->log.should_log(LogLevel::INFO)) {
           string name = s->item_name_index->describe_item(Version::BB_V4, item);
@@ -1476,7 +1359,7 @@ static void on_ep3_private_word_select_bb_bank_action(shared_ptr<Client> c, uint
         auto item = bank.remove_item(cmd.item_id, cmd.item_amount);
         item.id = l->generate_item_id(c->lobby_client_id);
         p->add_item(item);
-        send_create_inventory_item(c, item);
+        send_create_inventory_item_to_lobby(c, c->lobby_client_id, item);
 
         if (l->log.should_log(LogLevel::INFO)) {
           string name = s->item_name_index->describe_item(Version::BB_V4, item);
@@ -1499,10 +1382,6 @@ static void on_sort_inventory_bb(shared_ptr<Client> c, uint8_t, uint8_t, const v
   auto l = c->require_lobby();
   if (l->base_version == Version::BB_V4) {
     const auto& cmd = check_size_t<G_SortInventory_BB_6xC4>(data, size);
-
-    if (!l->check_flag(Lobby::Flag::ITEM_TRACKING_ENABLED)) {
-      throw logic_error("item tracking not enabled in BB game");
-    }
 
     auto p = c->character();
 
@@ -1560,12 +1439,18 @@ static void on_entity_drop_item_request(shared_ptr<Client> c, uint8_t command, u
     return;
   }
 
-  if (!l->check_flag(Lobby::Flag::DROPS_ENABLED)) {
-    return;
-  }
-  if (!l->item_creator) {
-    forward_subcommand(c, command, flag, data, size);
-    return;
+  switch (l->drop_mode) {
+    case Lobby::DropMode::CLIENT:
+      forward_subcommand(c, command, flag, data, size);
+      return;
+    case Lobby::DropMode::DISABLED:
+      return;
+    case Lobby::DropMode::SERVER_SHARED:
+    case Lobby::DropMode::SERVER_DUPLICATE:
+    case Lobby::DropMode::SERVER_PRIVATE:
+      break;
+    default:
+      throw logic_error("invalid drop mode");
   }
 
   G_SpecializableItemDropRequest_6xA2 cmd;
@@ -1600,96 +1485,124 @@ static void on_entity_drop_item_request(shared_ptr<Client> c, uint8_t command, u
     cmd.effective_area = in_cmd.floor;
   }
 
-  ItemData item;
-  if (cmd.rt_index == 0x30) {
-    if (l->map) {
-      auto& object = l->map->objects.at(cmd.entity_id);
+  auto generate_item = [&]() -> ItemData {
+    if (cmd.rt_index == 0x30) {
+      if (l->map) {
+        auto& object = l->map->objects.at(cmd.entity_id);
 
-      const char* floor_warning_token = "";
-      if (cmd.floor != object.floor) {
-        l->log.warning("Floor %02hhX from command does not match object\'s expected floor %02hhX",
-            cmd.floor, object.floor);
-        floor_warning_token = "$C6!F$C5 ";
-      }
+        if (cmd.floor != object.floor) {
+          l->log.warning("Floor %02hhX from command does not match object\'s expected floor %02hhX", cmd.floor, object.floor);
+        }
+        bool object_ignore_def = (object.param1 > 0.0);
+        if (cmd.ignore_def != object_ignore_def) {
+          l->log.warning("ignore_def value %s from command does not match object\'s expected ignore_def %s (from p1=%g)",
+              cmd.ignore_def ? "true" : "false", object_ignore_def ? "true" : "false", object.param1);
+        }
 
-      const char* ignore_def_warning_token = "";
-      bool object_ignore_def = (object.param1 > 0.0);
-      if (cmd.ignore_def != object_ignore_def) {
-        l->log.warning("ignore_def value %s from command does not match object\'s expected ignore_def %s (from p1=%g)",
-            cmd.ignore_def ? "true" : "false", object_ignore_def ? "true" : "false", object.param1);
-        ignore_def_warning_token = "$C6!I$C5 ";
-      }
-
-      if (object.item_drop_checked) {
-        l->log.warning("Object drop check has already occurred");
-        if (c->config.check_flag(Client::Flag::DEBUG_ENABLED)) {
-          send_text_message_printf(c, "$C5K-%hX %04hX %s%s__CHECKED__", cmd.entity_id.load(), object.base_type, floor_warning_token, ignore_def_warning_token);
+        if (cmd.ignore_def) {
+          l->log.info("Creating item from box %04hX (area %02hX)", cmd.entity_id.load(), cmd.effective_area);
+          return l->item_creator->on_box_item_drop(cmd.entity_id, cmd.effective_area);
+        } else {
+          l->log.info("Creating item from box %04hX (area %02hX; specialized with %g %08" PRIX32 " %08" PRIX32 " %08" PRIX32 ")",
+              cmd.entity_id.load(), cmd.effective_area, object.param3, object.param4, object.param5, object.param6);
+          return l->item_creator->on_specialized_box_item_drop(cmd.entity_id, cmd.effective_area, object.param3, object.param4, object.param5, object.param6);
         }
 
       } else if (cmd.ignore_def) {
         l->log.info("Creating item from box %04hX (area %02hX)", cmd.entity_id.load(), cmd.effective_area);
-        item = l->item_creator->on_box_item_drop(cmd.entity_id, cmd.effective_area);
-        if (c->config.check_flag(Client::Flag::DEBUG_ENABLED)) {
-          send_text_message_printf(c, "$C5K-%hX %04hX %s%sGEN %s", cmd.entity_id.load(), object.base_type, floor_warning_token, ignore_def_warning_token, item.empty() ? "EMPTY" : "ITEM");
-        }
+        return l->item_creator->on_box_item_drop(cmd.entity_id, cmd.effective_area);
 
       } else {
         l->log.info("Creating item from box %04hX (area %02hX; specialized with %g %08" PRIX32 " %08" PRIX32 " %08" PRIX32 ")",
-            cmd.entity_id.load(), cmd.effective_area, object.param3, object.param4, object.param5, object.param6);
-        item = l->item_creator->on_specialized_box_item_drop(cmd.entity_id, cmd.effective_area, object.param3, object.param4, object.param5, object.param6);
-        if (c->config.check_flag(Client::Flag::DEBUG_ENABLED)) {
-          send_text_message_printf(c, "$C5K-%hX %04hX %s%sCST %s", cmd.entity_id.load(), object.base_type, floor_warning_token, ignore_def_warning_token, item.empty() ? "EMPTY" : "ITEM");
+            cmd.entity_id.load(), cmd.effective_area, cmd.param3.load(), cmd.param4.load(), cmd.param5.load(), cmd.param6.load());
+        return l->item_creator->on_specialized_box_item_drop(
+            cmd.entity_id, cmd.effective_area, cmd.param3, cmd.param4, cmd.param5, cmd.param6);
+      }
+
+    } else {
+      l->log.info("Creating item from enemy %04hX (area %02hX)", cmd.entity_id.load(), cmd.effective_area);
+
+      uint8_t effective_rt_index = cmd.rt_index;
+      if (l->map) {
+        const auto& enemy = l->map->enemies.at(cmd.entity_id);
+        effective_rt_index = rare_table_index_for_enemy_type(enemy.type);
+        // rt_indexes in Episode 4 don't match those sent in the command; we just
+        // ignore what the client sends.
+        if ((l->episode != Episode::EP4) && (cmd.rt_index != effective_rt_index)) {
+          l->log.warning("rt_index %02hhX from command does not match entity\'s expected index %02" PRIX32,
+              cmd.rt_index, effective_rt_index);
+        }
+        if (cmd.floor != enemy.floor) {
+          l->log.warning("Floor %02hhX from command does not match entity\'s expected floor %02hhX",
+              cmd.floor, enemy.floor);
         }
       }
-      object.item_drop_checked = true;
-
-    } else if (cmd.ignore_def) {
-      l->log.info("Creating item from box %04hX (area %02hX)", cmd.entity_id.load(), cmd.effective_area);
-      item = l->item_creator->on_box_item_drop(cmd.entity_id, cmd.effective_area);
-    } else {
-      l->log.info("Creating item from box %04hX (area %02hX; specialized with %g %08" PRIX32 " %08" PRIX32 " %08" PRIX32 ")",
-          cmd.entity_id.load(), cmd.effective_area, cmd.param3.load(), cmd.param4.load(), cmd.param5.load(), cmd.param6.load());
-      item = l->item_creator->on_specialized_box_item_drop(
-          cmd.entity_id, cmd.effective_area, cmd.param3, cmd.param4, cmd.param5, cmd.param6);
+      return l->item_creator->on_monster_item_drop(cmd.entity_id, effective_rt_index, cmd.effective_area);
     }
+  };
 
-  } else {
-    l->log.info("Creating item from enemy %04hX (area %02hX)", cmd.entity_id.load(), cmd.effective_area);
+  switch (l->drop_mode) {
+    case Lobby::DropMode::DISABLED:
+    case Lobby::DropMode::CLIENT:
+      throw logic_error("unhandled simple drop mode");
+    case Lobby::DropMode::SERVER_SHARED:
+    case Lobby::DropMode::SERVER_DUPLICATE: {
+      // TODO: In SERVER_DUPLICATE mode, should we reduce the rates for rare
+      // items? Maybe by a factor of l->count_clients()?
+      auto item = generate_item();
+      if (item.empty()) {
+        l->log.info("No item was created");
+      } else {
+        string name = s->item_name_index->describe_item(l->base_version, item);
+        l->log.info("Entity %04hX (area %02hX) created item %s", cmd.entity_id.load(), cmd.effective_area, name.c_str());
+        if (l->drop_mode == Lobby::DropMode::SERVER_DUPLICATE) {
+          for (const auto& lc : l->clients) {
+            if (lc && ((cmd.rt_index == 0x30) || (lc->floor == cmd.floor))) {
+              item.id = l->generate_item_id(0xFF);
+              l->log.info("Creating item %08" PRIX32 " at %02hhX:%g,%g for %s",
+                  item.id.load(), cmd.floor, cmd.x.load(), cmd.z.load(), lc->channel.name.c_str());
+              l->add_item(cmd.floor, item, cmd.x, cmd.z, (1 << lc->lobby_client_id));
+              send_drop_item_to_channel(s, lc->channel, item, cmd.rt_index != 0x30, cmd.floor, cmd.x, cmd.z, cmd.entity_id);
+            }
+          }
 
-    uint8_t effective_rt_index = cmd.rt_index;
-    string rt_index_warning_token = "";
-    string floor_warning_token = "";
-    if (l->map) {
-      const auto& enemy = l->map->enemies.at(cmd.entity_id);
-      effective_rt_index = rare_table_index_for_enemy_type(enemy.type);
-      // rt_indexes in Episode 4 don't match those sent in the command; we just
-      // ignore what the client sends.
-      if ((l->episode != Episode::EP4) && (cmd.rt_index != effective_rt_index)) {
-        l->log.warning("rt_index %02hhX from command does not match entity\'s expected index %02" PRIX32,
-            cmd.rt_index, effective_rt_index);
-        rt_index_warning_token = string_printf("$C6!RT:%02hhX/%02" PRIX32 "$C5 ", cmd.rt_index, effective_rt_index);
+        } else {
+          item.id = l->generate_item_id(0xFF);
+          l->log.info("Creating item %08" PRIX32 " at %02hhX:%g,%g for all clients",
+              item.id.load(), cmd.floor, cmd.x.load(), cmd.z.load());
+          l->add_item(cmd.floor, item, cmd.x, cmd.z, 0x00F);
+          send_drop_item_to_lobby(l, item, cmd.rt_index != 0x30, cmd.floor, cmd.x, cmd.z, cmd.entity_id);
+        }
       }
-      if (cmd.floor != enemy.floor) {
-        l->log.warning("Floor %02hhX from command does not match entity\'s expected floor %02hhX",
-            cmd.floor, enemy.floor);
-        floor_warning_token = string_printf("$C6!F:%02hhX/%02hhX$C5 ", cmd.floor, enemy.floor);
-      }
+      break;
     }
-
-    item = l->item_creator->on_monster_item_drop(cmd.entity_id, effective_rt_index, cmd.effective_area);
+    case Lobby::DropMode::SERVER_PRIVATE: {
+      for (const auto& lc : l->clients) {
+        if (lc && ((cmd.rt_index == 0x30) || (lc->floor == cmd.floor))) {
+          auto item = generate_item();
+          if (item.empty()) {
+            l->log.info("No item was created for %s", lc->channel.name.c_str());
+          } else {
+            string name = s->item_name_index->describe_item(l->base_version, item);
+            l->log.info("Entity %04hX (area %02hX) created item %s", cmd.entity_id.load(), cmd.effective_area, name.c_str());
+            item.id = l->generate_item_id(0xFF);
+            l->log.info("Creating item %08" PRIX32 " at %02hhX:%g,%g for %s",
+                item.id.load(), cmd.floor, cmd.x.load(), cmd.z.load(), lc->channel.name.c_str());
+            l->add_item(cmd.floor, item, cmd.x, cmd.z, (1 << lc->lobby_client_id));
+            send_drop_item_to_channel(s, lc->channel, item, cmd.rt_index != 0x30, cmd.floor, cmd.x, cmd.z, cmd.entity_id);
+          }
+        }
+      }
+      break;
+    }
+    default:
+      throw logic_error("invalid drop mode");
   }
 
-  if (item.empty()) {
-    l->log.info("No item was created");
+  if (cmd.rt_index == 0x30) {
+    l->item_creator->set_box_destroyed(cmd.entity_id);
   } else {
-    item.id = l->generate_item_id(0xFF);
-    string name = s->item_name_index->describe_item(l->base_version, item);
-    l->log.info("Entity %04hX (area %02hX) created item %s", cmd.entity_id.load(), cmd.effective_area, name.c_str());
-    l->log.info("Creating item %08" PRIX32 " at %02hhX:%g,%g", item.id.load(), cmd.floor, cmd.x.load(), cmd.z.load());
-    if (l->check_flag(Lobby::Flag::ITEM_TRACKING_ENABLED)) {
-      l->add_item(item, cmd.floor, cmd.x, cmd.z);
-    }
-    send_drop_item(l, item, cmd.rt_index != 0x30, cmd.floor, cmd.x, cmd.z, cmd.entity_id);
+    l->item_creator->set_monster_destroyed(cmd.entity_id);
   }
 }
 
@@ -2084,7 +1997,7 @@ void on_meseta_reward_request_bb(shared_ptr<Client> c, uint8_t, uint8_t, const v
     item.data2d = cmd.amount.load();
     item.id = l->generate_item_id(c->lobby_client_id);
     p->add_item(item);
-    send_create_inventory_item(c, item);
+    send_create_inventory_item_to_lobby(c, c->lobby_client_id, item);
   }
 }
 
@@ -2096,7 +2009,7 @@ void on_item_reward_request_bb(shared_ptr<Client> c, uint8_t, uint8_t, const voi
   item = cmd.item_data;
   item.id = l->generate_item_id(c->lobby_client_id);
   c->character()->add_item(item);
-  send_create_inventory_item(c, item);
+  send_create_inventory_item_to_lobby(c, c->lobby_client_id, item);
 }
 
 void on_transfer_item_via_mail_message_bb(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
@@ -2115,9 +2028,6 @@ void on_transfer_item_via_mail_message_bb(shared_ptr<Client> c, uint8_t command,
   }
 
   if (l->base_version != Version::BB_V4) {
-    throw runtime_error("item tracking not enabled in BB game");
-  }
-  if (!l->check_flag(Lobby::Flag::ITEM_TRACKING_ENABLED)) {
     throw runtime_error("item tracking not enabled in BB game");
   }
 
@@ -2157,7 +2067,7 @@ void on_transfer_item_via_mail_message_bb(shared_ptr<Client> c, uint8_t command,
     // If the item failed to send, add it back to the sender's inventory
     item.id = l->generate_item_id(0xFF);
     p->add_item(item);
-    send_create_inventory_item(c, item);
+    send_create_inventory_item_to_lobby(c, c->lobby_client_id, item);
   }
 }
 
@@ -2177,9 +2087,6 @@ void on_exchange_item_for_team_points_bb(shared_ptr<Client> c, uint8_t command, 
   }
 
   if (l->base_version != Version::BB_V4) {
-    throw runtime_error("item tracking not enabled in BB game");
-  }
-  if (!l->check_flag(Lobby::Flag::ITEM_TRACKING_ENABLED)) {
     throw runtime_error("item tracking not enabled in BB game");
   }
 
@@ -2211,36 +2118,38 @@ static void on_destroy_inventory_item(shared_ptr<Client> c, uint8_t command, uin
     return;
   }
 
-  if (l->check_flag(Lobby::Flag::ITEM_TRACKING_ENABLED)) {
-    auto s = c->require_server_state();
-    auto p = c->character();
-    auto item = p->remove_item(cmd.item_id, cmd.amount, c->version() != Version::BB_V4);
+  auto s = c->require_server_state();
+  auto p = c->character();
+  auto item = p->remove_item(cmd.item_id, cmd.amount, c->version() != Version::BB_V4);
 
-    if (l->log.should_log(LogLevel::INFO)) {
-      auto name = s->describe_item(c->version(), item, false);
-      l->log.info("Player %hhu destroyed inventory item %hu:%08" PRIX32 " (%s)",
-          c->lobby_client_id, cmd.header.client_id.load(), cmd.item_id.load(), name.c_str());
-      p->print_inventory(stderr, c->version(), s->item_name_index);
-    }
-    forward_subcommand(c, command, flag, data, size);
+  if (l->log.should_log(LogLevel::INFO)) {
+    auto name = s->describe_item(c->version(), item, false);
+    l->log.info("Player %hhu destroyed inventory item %hu:%08" PRIX32 " (%s)",
+        c->lobby_client_id, cmd.header.client_id.load(), cmd.item_id.load(), name.c_str());
+    p->print_inventory(stderr, c->version(), s->item_name_index);
   }
+  forward_subcommand(c, command, flag, data, size);
 }
 
-static void on_destroy_ground_item(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
-  const auto& cmd = check_size_t<G_DestroyGroundItem_6x63>(data, size);
+static void on_destroy_floor_item(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
+  const auto& cmd = check_size_t<G_DestroyFloorItem_6x63>(data, size);
 
   auto l = c->require_lobby();
   if (!l->is_game()) {
     return;
   }
 
-  if (l->check_flag(Lobby::Flag::ITEM_TRACKING_ENABLED)) {
-    auto s = c->require_server_state();
-    auto item = l->remove_item(cmd.item_id);
-    auto name = s->describe_item(c->version(), item, false);
-    l->log.info("Player %hhu destroyed floor item %08" PRIX32 " (%s)",
-        c->lobby_client_id, cmd.item_id.load(), name.c_str());
-    forward_subcommand(c, command, flag, data, size);
+  auto s = c->require_server_state();
+  auto fi = l->remove_item(cmd.floor, cmd.item_id, 0xFF);
+  auto name = s->describe_item(c->version(), fi->data, false);
+  l->log.info("Player %hhu destroyed floor item %08" PRIX32 " (%s)", c->lobby_client_id, cmd.item_id.load(), name.c_str());
+
+  // Only forward to players for whom the item was visible
+  for (size_t z = 0; z < l->clients.size(); z++) {
+    auto lc = l->clients[z];
+    if (lc && fi->visible_to_client(z)) {
+      send_command_t(lc, command, flag, cmd);
+    }
   }
 }
 
@@ -2251,11 +2160,8 @@ static void on_identify_item_bb(shared_ptr<Client> c, uint8_t command, uint8_t f
     if (!l->is_game()) {
       return;
     }
-    if (!l->check_flag(Lobby::Flag::ITEM_TRACKING_ENABLED)) {
-      throw logic_error("item tracking not enabled in BB game");
-    }
-    if (!l->item_creator.get()) {
-      throw logic_error("received item identify subcommand without item creator present");
+    if (!l->item_creator) {
+      throw runtime_error("received item identify subcommand without item creator present");
     }
 
     auto p = c->character();
@@ -2285,10 +2191,6 @@ static void on_accept_identify_item_bb(shared_ptr<Client> c, uint8_t command, ui
   if (l->base_version == Version::BB_V4) {
     const auto& cmd = check_size_t<G_AcceptItemIdentification_BB_6xBA>(data, size);
 
-    if (!l->check_flag(Lobby::Flag::ITEM_TRACKING_ENABLED)) {
-      throw logic_error("item tracking not enabled in BB game");
-    }
-
     if (!c->bb_identify_result.id || (c->bb_identify_result.id == 0xFFFFFFFF)) {
       throw runtime_error("no identify result present");
     }
@@ -2296,7 +2198,7 @@ static void on_accept_identify_item_bb(shared_ptr<Client> c, uint8_t command, ui
       throw runtime_error("accepted item ID does not match previous identify request");
     }
     c->character()->add_item(c->bb_identify_result);
-    send_create_inventory_item(c, c->bb_identify_result);
+    send_create_inventory_item_to_lobby(c, c->lobby_client_id, c->bb_identify_result);
     c->bb_identify_result.clear();
 
   } else {
@@ -2309,10 +2211,6 @@ static void on_sell_item_at_shop_bb(shared_ptr<Client> c, uint8_t command, uint8
   auto l = c->require_lobby();
   if (l->base_version == Version::BB_V4) {
     const auto& cmd = check_size_t<G_SellItemAtShop_BB_6xC0>(data, size);
-
-    if (!l->check_flag(Lobby::Flag::ITEM_TRACKING_ENABLED)) {
-      throw logic_error("item tracking not enabled in BB game");
-    }
 
     auto s = c->require_server_state();
     auto p = c->character();
@@ -2335,9 +2233,6 @@ static void on_buy_shop_item_bb(shared_ptr<Client> c, uint8_t, uint8_t, const vo
   auto l = c->require_lobby();
   if (l->base_version == Version::BB_V4) {
     const auto& cmd = check_size_t<G_BuyShopItem_BB_6xB7>(data, size);
-    if (!l->check_flag(Lobby::Flag::ITEM_TRACKING_ENABLED)) {
-      throw logic_error("item tracking not enabled in BB game");
-    }
 
     ItemData item;
     item = c->bb_shop_contents.at(cmd.shop_type).at(cmd.item_index);
@@ -2355,7 +2250,7 @@ static void on_buy_shop_item_bb(shared_ptr<Client> c, uint8_t, uint8_t, const vo
     item.id = cmd.shop_item_id;
     l->on_item_id_generated_externally(item.id);
     p->add_item(item);
-    send_create_inventory_item(c, item, true);
+    send_create_inventory_item_to_lobby(c, c->lobby_client_id, item, true);
 
     if (l->log.should_log(LogLevel::INFO)) {
       auto s = c->require_server_state();
@@ -2441,8 +2336,8 @@ static void on_request_challenge_grave_recovery_item_bb(shared_ptr<Client> c, ui
     };
     ItemData item = items.at(cmd.item_type);
     item.id = l->generate_item_id(0xFF);
-    l->add_item(item, cmd.floor, cmd.x, cmd.z);
-    send_drop_stacked_item(l, item, cmd.floor, cmd.x, cmd.z);
+    l->add_item(cmd.floor, item, cmd.x, cmd.z, 0x00F);
+    send_drop_stacked_item_to_lobby(l, item, cmd.floor, cmd.x, cmd.z);
   }
 }
 
@@ -2458,14 +2353,14 @@ static void on_quest_exchange_item_bb(shared_ptr<Client> c, uint8_t, uint8_t, co
 
       size_t found_index = p->inventory.find_item_by_primary_identifier(cmd.find_item.primary_identifier());
       auto found_item = p->remove_item(p->inventory.items[found_index].data.id, 1, false);
-      send_destroy_item(c, found_item.id, 1);
+      send_destroy_item_to_lobby(c, found_item.id, 1);
 
       // TODO: We probably should use an allow-list here to prevent the client
       // from creating arbitrary items if cheat mode is disabled.
       ItemData new_item = cmd.replace_item;
       new_item.id = l->generate_item_id(c->lobby_client_id);
       p->add_item(new_item);
-      send_create_inventory_item(c, new_item);
+      send_create_inventory_item_to_lobby(c, c->lobby_client_id, new_item);
 
       send_quest_function_call(c, cmd.success_function_id);
 
@@ -2483,10 +2378,10 @@ static void on_wrap_item_bb(shared_ptr<Client> c, uint8_t, uint8_t, const void* 
 
     auto p = c->character();
     auto item = p->remove_item(cmd.item.id, 1, false);
-    send_destroy_item(c, item.id, 1);
+    send_destroy_item_to_lobby(c, item.id, 1);
     item.wrap();
     p->add_item(item);
-    send_create_inventory_item(c, item);
+    send_create_inventory_item_to_lobby(c, c->lobby_client_id, item);
   }
 }
 
@@ -2500,14 +2395,14 @@ static void on_photon_drop_exchange_for_item_bb(shared_ptr<Client> c, uint8_t, u
 
       size_t found_index = p->inventory.find_item_by_primary_identifier(0x031000);
       auto found_item = p->remove_item(p->inventory.items[found_index].data.id, 0, false);
-      send_destroy_item(c, found_item.id, found_item.stack_size());
+      send_destroy_item_to_lobby(c, found_item.id, found_item.stack_size());
 
       // TODO: We probably should use an allow-list here to prevent the client
       // from creating arbitrary items if cheat mode is disabled.
       ItemData new_item = cmd.new_item;
       new_item.id = l->generate_item_id(c->lobby_client_id);
       p->add_item(new_item);
-      send_create_inventory_item(c, new_item);
+      send_create_inventory_item_to_lobby(c, c->lobby_client_id, new_item);
 
       send_quest_function_call(c, cmd.success_function_id);
 
@@ -2535,13 +2430,13 @@ static void on_photon_drop_exchange_for_s_rank_special_bb(shared_ptr<Client> c, 
       p->inventory.find_item(cmd.item_id);
 
       auto payment_item = p->remove_item(p->inventory.items[payment_item_index].data.id, cost, false);
-      send_destroy_item(c, payment_item.id, cost);
+      send_destroy_item_to_lobby(c, payment_item.id, cost);
 
       auto item = p->remove_item(cmd.item_id, 1, false);
-      send_destroy_item(c, item.id, cost);
+      send_destroy_item_to_lobby(c, item.id, cost);
       item.data1[2] = cmd.special_type;
       p->add_item(item);
-      send_create_inventory_item(c, item);
+      send_create_inventory_item_to_lobby(c, c->lobby_client_id, item);
 
       send_quest_function_call(c, cmd.success_function_id);
 
@@ -2581,14 +2476,14 @@ static void on_secret_lottery_ticket_exchange_bb(shared_ptr<Client> c, uint8_t, 
       exchange_cmd.amount = 1;
       send_command_t(c, 0x60, 0x00, exchange_cmd);
 
-      send_destroy_item(c, slt_item_id, 1);
+      send_destroy_item_to_lobby(c, slt_item_id, 1);
 
       ItemData item = (s->secret_lottery_results.size() == 1)
           ? s->secret_lottery_results[0]
           : s->secret_lottery_results[random_object<uint32_t>() % s->secret_lottery_results.size()];
       item.id = l->generate_item_id(c->lobby_client_id);
       p->add_item(item);
-      send_create_inventory_item(c, item);
+      send_create_inventory_item_to_lobby(c, c->lobby_client_id, item);
     }
 
     S_ExchangeSecretLotteryTicketResult_BB_24 out_cmd;
@@ -2614,7 +2509,7 @@ static void on_photon_crystal_exchange_bb(shared_ptr<Client> c, uint8_t, uint8_t
     auto p = c->character();
     size_t index = p->inventory.find_item_by_primary_identifier(0x031002);
     auto item = p->remove_item(p->inventory.items[index].data.id, 1, false);
-    send_destroy_item(c, item.id, 1);
+    send_destroy_item_to_lobby(c, item.id, 1);
   }
 }
 
@@ -2641,9 +2536,9 @@ static void on_quest_F95E_result_bb(shared_ptr<Client> c, uint8_t, uint8_t, cons
       }
 
       item.id = l->generate_item_id(0xFF);
-      l->add_item(item, cmd.floor, cmd.x, cmd.z);
+      l->add_item(cmd.floor, item, cmd.x, cmd.z, 0x00F);
 
-      send_drop_stacked_item(l, item, cmd.floor, cmd.x, cmd.z);
+      send_drop_stacked_item_to_lobby(l, item, cmd.floor, cmd.x, cmd.z);
     }
   }
 }
@@ -2675,7 +2570,7 @@ static void on_quest_F95F_result_bb(shared_ptr<Client> c, uint8_t, uint8_t, cons
     ItemData new_item = result.second;
     new_item.id = l->generate_item_id(c->lobby_client_id);
     p->add_item(new_item);
-    send_create_inventory_item(c, new_item);
+    send_create_inventory_item_to_lobby(c, c->lobby_client_id, new_item);
 
     S_GallonPlanResult_BB_25 out_cmd;
     out_cmd.function_id = cmd.function_id1;
@@ -2699,14 +2594,14 @@ static void on_momoka_item_exchange_bb(shared_ptr<Client> c, uint8_t, uint8_t, c
       G_ExchangeItemInQuest_BB_6xDB cmd_6xDB = {{0xDB, 0x04, c->lobby_client_id}, 1, found_item.id, 1};
       send_command_t(c, 0x60, 0x00, cmd_6xDB);
 
-      send_destroy_item(c, found_item.id, 1);
+      send_destroy_item_to_lobby(c, found_item.id, 1);
 
       // TODO: We probably should use an allow-list here to prevent the client
       // from creating arbitrary items if cheat mode is disabled.
       ItemData new_item = cmd.replace_item;
       new_item.id = l->generate_item_id(c->lobby_client_id);
       p->add_item(new_item);
-      send_create_inventory_item(c, new_item);
+      send_create_inventory_item_to_lobby(c, c->lobby_client_id, new_item);
 
       send_command(c, 0x23, 0x00);
     } catch (const exception& e) {
@@ -2732,7 +2627,7 @@ static void on_upgrade_weapon_attribute_bb(shared_ptr<Client> c, uint8_t, uint8_
         throw runtime_error("not enough payment items present");
       }
       p->remove_item(payment_item.id, cmd.payment_count, false);
-      send_destroy_item(c, payment_item.id, cmd.payment_count);
+      send_destroy_item_to_lobby(c, payment_item.id, cmd.payment_count);
 
       uint8_t attribute_amount = 0;
       if (cmd.payment_type == 1 && cmd.payment_count == 1) {
@@ -2758,8 +2653,8 @@ static void on_upgrade_weapon_attribute_bb(shared_ptr<Client> c, uint8_t, uint8_
       item.data1[attribute_index] = cmd.attribute;
       item.data1[attribute_index + 1] += attribute_amount;
 
-      send_destroy_item(c, item.id, 1);
-      send_create_inventory_item(c, item);
+      send_destroy_item_to_lobby(c, item.id, 1);
+      send_create_inventory_item_to_lobby(c, c->lobby_client_id, item);
       send_quest_function_call(c, cmd.success_function_id);
 
     } catch (const exception& e) {
@@ -2883,7 +2778,7 @@ SubcommandDefinition subcommand_definitions[0x100] = {
     /* 6x60 */ {0x00, 0x00, 0x60, on_entity_drop_item_request},
     /* 6x61 */ {0x00, 0x00, 0x61, on_forward_check_size_game},
     /* 6x62 */ {0x00, 0x00, 0x62, nullptr},
-    /* 6x63 */ {0x00, 0x00, 0x63, on_destroy_ground_item},
+    /* 6x63 */ {0x00, 0x00, 0x63, on_destroy_floor_item},
     /* 6x64 */ {0x00, 0x00, 0x64, nullptr},
     /* 6x65 */ {0x00, 0x00, 0x65, nullptr},
     /* 6x66 */ {0x00, 0x00, 0x66, on_forward_check_size_game},

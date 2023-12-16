@@ -2304,43 +2304,39 @@ void send_set_player_visibility(shared_ptr<Lobby> l, shared_ptr<Client> c, bool 
   send_command_t(l, 0x60, 0x00, cmd);
 }
 
-void send_artificial_item_state(shared_ptr<Client> c) {
+void send_game_item_state(shared_ptr<Client> c) {
   auto l = c->require_lobby();
-  if (c->lobby_client_id != l->leader_id) {
-    throw runtime_error("artificial item state can only be sent to the leader");
-  }
-  if (l->count_clients() != 1) {
-    throw runtime_error("artificial item state can only be sent with no one else in the game");
-  }
-
-  array<StringWriter, 15> floor_ws;
+  auto s = c->require_server_state();
+  StringWriter floor_items_w;
 
   G_SyncItemState_6x6D_Decompressed decompressed_header;
   for (size_t z = 0; z < 12; z++) {
-    decompressed_header.next_item_id_per_player[z] = l->next_item_id[z];
+    decompressed_header.next_item_id_per_player[z] = l->next_item_id_for_client[z];
   }
-  for (const auto& it : l->item_id_to_floor_item) {
-    const auto& item = it.second;
+  for (size_t floor = 0; floor < 0x10; floor++) {
+    const auto& m = l->floor_item_managers.at(floor);
+    for (const auto& it : m.queue_for_client.at(c->lobby_client_id)) {
+      const auto& item = it.second;
 
-    FloorItem fi;
-    fi.floor = item.floor;
-    fi.from_enemy = 0;
-    fi.entity_id = 0xFFFF;
-    fi.x = item.x;
-    fi.z = item.z;
-    fi.unknown_a2 = 0;
-    fi.drop_number = decompressed_header.total_items_dropped_per_floor.at(item.floor)++;
-    fi.item = item.data;
-    floor_ws.at(item.floor).put(fi);
+      FloorItem fi;
+      fi.floor = floor;
+      fi.from_enemy = 0;
+      fi.entity_id = 0xFFFF;
+      fi.x = item->x;
+      fi.z = item->z;
+      fi.unknown_a2 = 0;
+      fi.drop_number = (floor == 0) ? 0xFFFF : (decompressed_header.next_drop_number_per_floor.at(floor - 1)++);
+      fi.item = item->data;
+      fi.item.encode_for_version(c->version(), s->item_parameter_table_for_version(c->version()));
+      floor_items_w.put(fi);
 
-    decompressed_header.floor_item_count_per_floor.at(item.floor)++;
+      decompressed_header.floor_item_count_per_floor.at(floor)++;
+    }
   }
 
   StringWriter decompressed_w;
   decompressed_w.put(decompressed_header);
-  for (const auto& floor_w : floor_ws) {
-    decompressed_w.write(floor_w.str());
-  }
+  decompressed_w.write(floor_items_w.str());
 
   string compressed_data = bc0_compress(decompressed_w.str());
 
@@ -2358,10 +2354,19 @@ void send_artificial_item_state(shared_ptr<Client> c) {
   while (w.size() & 3) {
     w.put_u8(0x00);
   }
-  send_command(c, 0x6D, c->lobby_client_id, w.str());
+
+  if (c->game_join_command_queue) {
+    c->log.info("Client not ready to receive join commands; adding to queue");
+    auto& cmd = c->game_join_command_queue->emplace_back();
+    cmd.command = 0x6D;
+    cmd.flag = c->lobby_client_id;
+    cmd.data = std::move(w.str());
+  } else {
+    send_command(c, 0x6D, c->lobby_client_id, w.str());
+  }
 }
 
-void send_drop_item(shared_ptr<ServerState> s, Channel& ch, const ItemData& item,
+void send_drop_item_to_channel(shared_ptr<ServerState> s, Channel& ch, const ItemData& item,
     bool from_enemy, uint8_t floor, float x, float z, uint16_t entity_id) {
   G_DropItem_PC_V3_BB_6x5F cmd = {
       {{0x5F, 0x0B, 0x0000}, {floor, from_enemy, entity_id, x, z, 0, 0, item}}, 0};
@@ -2369,55 +2374,63 @@ void send_drop_item(shared_ptr<ServerState> s, Channel& ch, const ItemData& item
   ch.send(0x60, 0x00, &cmd, sizeof(cmd));
 }
 
-void send_drop_item(shared_ptr<Lobby> l, const ItemData& item,
+void send_drop_item_to_lobby(shared_ptr<Lobby> l, const ItemData& item,
     bool from_enemy, uint8_t floor, float x, float z, uint16_t entity_id) {
   auto s = l->require_server_state();
   for (auto& c : l->clients) {
     if (!c) {
       continue;
     }
-    send_drop_item(s, c->channel, item, from_enemy, floor, x, z, entity_id);
+    send_drop_item_to_channel(s, c->channel, item, from_enemy, floor, x, z, entity_id);
   }
 }
 
-void send_drop_stacked_item(shared_ptr<ServerState> s, Channel& ch, const ItemData& item, uint8_t floor, float x, float z) {
+void send_drop_stacked_item_to_channel(
+    shared_ptr<ServerState> s, Channel& ch, const ItemData& item, uint8_t floor, float x, float z) {
   G_DropStackedItem_PC_V3_BB_6x5D cmd = {{{0x5D, 0x0A, 0x0000}, floor, 0, x, z, item}, 0};
   cmd.item_data.encode_for_version(ch.version, s->item_parameter_table_for_version(ch.version));
   ch.send(0x60, 0x00, &cmd, sizeof(cmd));
 }
 
-void send_drop_stacked_item(shared_ptr<Lobby> l, const ItemData& item, uint8_t floor, float x, float z) {
+void send_drop_stacked_item_to_lobby(shared_ptr<Lobby> l, const ItemData& item, uint8_t floor, float x, float z) {
   auto s = l->require_server_state();
   for (auto& c : l->clients) {
     if (!c) {
       continue;
     }
-    send_drop_stacked_item(s, c->channel, item, floor, x, z);
+    send_drop_stacked_item_to_channel(s, c->channel, item, floor, x, z);
   }
 }
 
-void send_pick_up_item(shared_ptr<Client> c, uint32_t item_id, uint8_t floor) {
-  auto l = c->require_lobby();
-  uint16_t client_id = c->lobby_client_id;
+void send_pick_up_item_to_client(shared_ptr<Client> c, uint8_t client_id, uint32_t item_id, uint8_t floor) {
   G_PickUpItem_6x59 cmd = {{0x59, 0x03, client_id}, client_id, floor, item_id};
-  send_command_t(l, 0x60, 0x00, cmd);
+  send_command_t(c, 0x60, 0x00, cmd);
 }
 
-void send_create_inventory_item(shared_ptr<Client> c, const ItemData& item, bool exclude_c) {
-  auto l = c->require_lobby();
+void send_create_inventory_item_to_client(shared_ptr<Client> c, uint8_t client_id, const ItemData& item) {
   if (c->version() != Version::BB_V4) {
     throw logic_error("6xBE can only be sent to BB clients");
   }
-  uint16_t client_id = c->lobby_client_id;
   G_CreateInventoryItem_BB_6xBE cmd = {{0xBE, 0x07, client_id}, item, 0};
-  if (exclude_c) {
-    send_command_excluding_client(l, c, 0x60, 0x00, &cmd, sizeof(cmd));
-  } else {
-    send_command_t(l, 0x60, 0x00, cmd);
+  send_command_t(c, 0x60, 0x00, cmd);
+}
+
+void send_create_inventory_item_to_lobby(shared_ptr<Client> c, uint8_t client_id, const ItemData& item, bool exclude_c) {
+  auto l = c->require_lobby();
+  for (const auto& lc : l->clients) {
+    if (!lc) {
+      continue;
+    }
+    if (lc->version() != Version::BB_V4) {
+      throw logic_error("6xBE can only be sent to BB clients");
+    }
+    if ((lc != c) || !exclude_c) {
+      send_create_inventory_item_to_client(lc, client_id, item);
+    }
   }
 }
 
-void send_destroy_item(shared_ptr<Client> c, uint32_t item_id, uint32_t amount, bool exclude_c) {
+void send_destroy_item_to_lobby(shared_ptr<Client> c, uint32_t item_id, uint32_t amount, bool exclude_c) {
   auto l = c->require_lobby();
   uint16_t client_id = c->lobby_client_id;
   G_DeleteInventoryItem_6x29 cmd = {{0x29, 0x03, client_id}, item_id, amount};
@@ -2426,6 +2439,11 @@ void send_destroy_item(shared_ptr<Client> c, uint32_t item_id, uint32_t amount, 
   } else {
     send_command_t(l, 0x60, 0x00, cmd);
   }
+}
+
+void send_destroy_floor_item_to_client(shared_ptr<Client> c, uint32_t item_id, uint32_t floor) {
+  G_DestroyFloorItem_6x63 cmd = {{0x63, 0x03, 0x0000}, item_id, floor};
+  send_command_t(c, 0x60, 0x00, cmd);
 }
 
 void send_item_identify_result(shared_ptr<Client> c) {

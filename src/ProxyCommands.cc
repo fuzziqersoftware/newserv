@@ -997,8 +997,8 @@ static HandlerResult S_6x(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t, 
       const auto& cmd = check_size_t<G_StandardDropItemRequest_DC_6x60>(
           data, sizeof(G_StandardDropItemRequest_PC_V3_BB_6x60));
       ses->next_drop_item.id = ses->next_item_id++;
-      send_drop_item(s, ses->server_channel, ses->next_drop_item, true, cmd.floor, cmd.x, cmd.z, cmd.entity_id);
-      send_drop_item(s, ses->client_channel, ses->next_drop_item, true, cmd.floor, cmd.x, cmd.z, cmd.entity_id);
+      send_drop_item_to_channel(s, ses->server_channel, ses->next_drop_item, true, cmd.floor, cmd.x, cmd.z, cmd.entity_id);
+      send_drop_item_to_channel(s, ses->client_channel, ses->next_drop_item, true, cmd.floor, cmd.x, cmd.z, cmd.entity_id);
       ses->next_drop_item.clear();
       return HandlerResult::Type::SUPPRESS;
 
@@ -1009,8 +1009,8 @@ static HandlerResult S_6x(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t, 
     } else if ((static_cast<uint8_t>(data[0]) == 0xA2) && ses->next_drop_item.data1d[0] && !is_v4(ses->version())) {
       const auto& cmd = check_size_t<G_SpecializableItemDropRequest_6xA2>(data);
       ses->next_drop_item.id = ses->next_item_id++;
-      send_drop_item(s, ses->server_channel, ses->next_drop_item, false, cmd.floor, cmd.x, cmd.z, cmd.entity_id);
-      send_drop_item(s, ses->client_channel, ses->next_drop_item, false, cmd.floor, cmd.x, cmd.z, cmd.entity_id);
+      send_drop_item_to_channel(s, ses->server_channel, ses->next_drop_item, false, cmd.floor, cmd.x, cmd.z, cmd.entity_id);
+      send_drop_item_to_channel(s, ses->client_channel, ses->next_drop_item, false, cmd.floor, cmd.x, cmd.z, cmd.entity_id);
       ses->next_drop_item.clear();
       return HandlerResult::Type::SUPPRESS;
 

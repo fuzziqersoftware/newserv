@@ -11,13 +11,137 @@
 
 using namespace std;
 
+bool Lobby::FloorItem::visible_to_client(uint8_t client_id) const {
+  return this->visibility_flags & (1 << client_id);
+}
+
+Lobby::FloorItemManager::FloorItemManager(uint32_t lobby_id, uint8_t floor)
+    : log(string_printf("[Lobby:%08" PRIX32 ":FloorItems:%02hhX] ", lobby_id, floor), lobby_log.min_level),
+      next_drop_number(0) {}
+
+bool Lobby::FloorItemManager::exists(uint32_t item_id) const {
+  return this->items.count(item_id);
+}
+
+shared_ptr<Lobby::FloorItem> Lobby::FloorItemManager::find(uint32_t item_id) const {
+  return this->items.at(item_id);
+}
+
+void Lobby::FloorItemManager::add(const ItemData& item, float x, float z, uint16_t visibility_flags) {
+  auto fi = make_shared<FloorItem>();
+  fi->data = item;
+  fi->x = x;
+  fi->z = z;
+  fi->drop_number = this->next_drop_number++;
+  fi->visibility_flags = visibility_flags & 0x0FFF;
+  this->add(fi);
+}
+
+void Lobby::FloorItemManager::add(shared_ptr<Lobby::FloorItem> fi) {
+  if (fi->visibility_flags == 0) {
+    throw logic_error("floor item is not visible to any player");
+  }
+
+  auto emplace_ret = this->items.emplace(fi->data.id, fi);
+  if (!emplace_ret.second) {
+    throw runtime_error("floor item already exists with the same ID");
+  }
+  for (size_t z = 0; z < 12; z++) {
+    if (fi->visible_to_client(z)) {
+      this->queue_for_client[z].emplace(fi->drop_number, fi);
+    }
+  }
+  this->log.info("Added floor item %08" PRIX32 " at %g, %g with drop number %" PRIu64 " visible to %03hX",
+      fi->data.id.load(), fi->x, fi->z, fi->drop_number, fi->visibility_flags);
+}
+
+std::shared_ptr<Lobby::FloorItem> Lobby::FloorItemManager::remove(uint32_t item_id, uint8_t client_id) {
+  auto item_it = this->items.find(item_id);
+  if (item_it == this->items.end()) {
+    throw out_of_range("item not present");
+  }
+  auto fi = item_it->second;
+  if ((client_id != 0xFF) && !fi->visible_to_client(client_id)) {
+    throw runtime_error("client does not have access to item");
+  }
+  for (size_t z = 0; z < 12; z++) {
+    if (fi->visible_to_client(z) && !this->queue_for_client[z].erase(fi->drop_number)) {
+      throw logic_error("item queue for client is inconsistent");
+    }
+  }
+  this->items.erase(item_it);
+  this->log.info("Removed floor item %08" PRIX32 " at %g, %g with drop number %" PRIu64 " visible to %03hX",
+      fi->data.id.load(), fi->x, fi->z, fi->drop_number, fi->visibility_flags);
+  return fi;
+}
+
+std::unordered_set<std::shared_ptr<Lobby::FloorItem>> Lobby::FloorItemManager::evict() {
+  unordered_set<shared_ptr<FloorItem>> ret;
+  for (size_t z = 0; z < 12; z++) {
+    while (this->queue_for_client[z].size() > 48) {
+      ret.emplace(this->remove(this->queue_for_client[z].begin()->second->data.id, 0xFF));
+    }
+  }
+  this->log.info("Evicted %zu items", ret.size());
+  return ret;
+}
+
+void Lobby::FloorItemManager::clear_inaccessible(uint16_t remaining_clients_mask) {
+  unordered_set<uint32_t> item_ids_to_delete;
+  for (const auto& it : this->items) {
+    if ((it.second->visibility_flags & remaining_clients_mask) == 0) {
+      item_ids_to_delete.emplace(it.first);
+    }
+  }
+  for (uint32_t item_id : item_ids_to_delete) {
+    this->remove(item_id, 0xFF);
+  }
+  this->log.info("Deleted %zu inaccessible items", item_ids_to_delete.size());
+}
+
+void Lobby::FloorItemManager::clear_private() {
+  unordered_set<uint32_t> item_ids_to_delete;
+  for (const auto& it : this->items) {
+    if ((it.second->visibility_flags & 0x00F) != 0x00F) {
+      item_ids_to_delete.emplace(it.first);
+    }
+  }
+  for (uint32_t item_id : item_ids_to_delete) {
+    this->remove(item_id, 0xFF);
+  }
+  this->log.info("Deleted %zu private items", item_ids_to_delete.size());
+}
+
+void Lobby::FloorItemManager::clear() {
+  size_t num_items = this->items.size();
+  this->items.clear();
+  for (auto& queue : this->queue_for_client) {
+    queue.clear();
+  }
+  this->next_drop_number = 0;
+  this->log.info("Deleted %zu items", num_items);
+}
+
+uint32_t Lobby::FloorItemManager::reassign_all_item_ids(uint32_t next_item_id) {
+  unordered_map<uint32_t, shared_ptr<FloorItem>> old_items;
+  old_items.swap(this->items);
+  for (auto& queue : this->queue_for_client) {
+    queue.clear();
+  }
+  for (auto& it : old_items) {
+    it.second->data.id = next_item_id++;
+    this->add(it.second);
+  }
+  return next_item_id;
+}
+
 Lobby::Lobby(shared_ptr<ServerState> s, uint32_t id)
     : server_state(s),
       log(string_printf("[Lobby:%" PRIX32 "] ", id), lobby_log.min_level),
       lobby_id(id),
       min_level(0),
       max_level(0xFFFFFFFF),
-      next_game_item_id(0x00810000),
+      next_game_item_id(0xCC000000),
       base_version(Version::GC_V3),
       allowed_versions(0x0000),
       section_id(0),
@@ -27,6 +151,7 @@ Lobby::Lobby(shared_ptr<ServerState> s, uint32_t id)
       base_exp_multiplier(1),
       challenge_exp_multiplier(1.0f),
       random_seed(random_object<uint32_t>()),
+      drop_mode(DropMode::CLIENT),
       event(0),
       block(0),
       leader_id(0),
@@ -38,7 +163,7 @@ Lobby::Lobby(shared_ptr<ServerState> s, uint32_t id)
           event_free) {
   this->log.info("Created");
   for (size_t x = 0; x < 12; x++) {
-    this->next_item_id[x] = 0x00010000 + 0x00200000 * x;
+    this->next_item_id_for_client[x] = 0x00010000 + 0x00200000 * x;
   }
 }
 
@@ -59,6 +184,18 @@ shared_ptr<Lobby::ChallengeParameters> Lobby::require_challenge_params() const {
     throw runtime_error("challenge params are missing");
   }
   return this->challenge_params;
+}
+
+void Lobby::set_drop_mode(DropMode new_mode) {
+  this->drop_mode = new_mode;
+
+  bool should_have_item_creator = (this->base_version == Version::BB_V4) ||
+      ((new_mode != DropMode::DISABLED) && (new_mode != DropMode::CLIENT));
+  if (should_have_item_creator && !this->item_creator) {
+    this->create_item_creator();
+  } else if (!should_have_item_creator && this->item_creator) {
+    this->item_creator.reset();
+  }
 }
 
 void Lobby::create_item_creator() {
@@ -135,9 +272,6 @@ void Lobby::load_maps() {
         dat_contents.size(),
         this->random_seed,
         this->rare_enemy_rates ? this->rare_enemy_rates : Map::NO_RARE_ENEMIES);
-    if (this->item_creator) {
-      this->item_creator->clear_destroyed_entities();
-    }
 
   } else { // No quest loaded
     for (size_t floor = 0; floor < 0x10; floor++) {
@@ -330,27 +464,25 @@ void Lobby::add_client(shared_ptr<Client> c, ssize_t required_client_id) {
     this->leader_id = c->lobby_client_id;
   }
 
-  // If the lobby is a game and item tracking is enabled, assign the inventory's
-  // item IDs. If there was no one else in the lobby, reset all the next item
-  // IDs also
-  if (this->is_game() && this->check_flag(Lobby::Flag::ITEM_TRACKING_ENABLED)) {
+  // If the lobby is a game and there was no one in it, reassign all the floor
+  // item IDs and reset the next item IDs
+  if (this->is_game()) {
     if (leader_index >= this->max_clients) {
       for (size_t x = 0; x < 12; x++) {
-        this->next_item_id[x] = 0x00010000 + 0x00200000 * x;
+        this->next_item_id_for_client[x] = 0x00010000 + 0x00200000 * x;
       }
-      this->next_game_item_id = 0x00810000;
+      this->next_game_item_id = 0xCC000000;
 
       // Reassign all floor item IDs so they won't conflict with any players'
       // item IDs
-      unordered_map<uint32_t, FloorItem> new_item_id_to_floor_item;
-      for (const auto& it : this->item_id_to_floor_item) {
-        uint32_t new_item_id = this->generate_item_id(0xFF);
-        auto& new_fi = new_item_id_to_floor_item.emplace(new_item_id, it.second).first->second;
-        new_fi.data.id = new_item_id;
+      for (auto& m : this->floor_item_managers) {
+        this->next_game_item_id = m.reassign_all_item_ids(this->next_game_item_id);
       }
-      this->item_id_to_floor_item = std::move(new_item_id_to_floor_item);
     }
-    this->assign_inventory_and_bank_item_ids(c);
+    // We don't consume item IDs here because the 6F handler will do it for
+    // real; we just want to see what they would be when the join command is
+    // sent
+    this->assign_inventory_and_bank_item_ids(c, false);
   }
 
   // If the lobby is recording a battle record, add the player join event
@@ -425,12 +557,31 @@ void Lobby::remove_client(shared_ptr<Client> c) {
     }
   }
 
-  // If the lobby is persistent but has an idle timeout, make it expire after
-  // the specified time
-  if ((this->count_clients() == 0) &&
+  // If there are still players left in the lobby, delete all items that only
+  // the leaving player could see. Don't do this if no one is left in the lobby,
+  // since that would mean items could not persist in empty lobbies.
+  uint16_t remaining_clients_mask = 0;
+  for (size_t z = 0; z < 12; z++) {
+    if (this->clients[z]) {
+      remaining_clients_mask |= (1 << z);
+    }
+  }
+  if (remaining_clients_mask) {
+    for (auto& m : this->floor_item_managers) {
+      m.clear_inaccessible(remaining_clients_mask);
+    }
+  } else {
+    for (auto& m : this->floor_item_managers) {
+      m.clear_private();
+    }
+  }
+
+  if (!remaining_clients_mask &&
       this->check_flag(Flag::PERSISTENT) &&
       !this->check_flag(Flag::DEFAULT) &&
       (this->idle_timeout_usecs > 0)) {
+    // If the lobby is persistent but has an idle timeout, make it expire after
+    // the specified time
     auto tv = usecs_to_timeval(this->idle_timeout_usecs);
     event_add(this->idle_timeout_event.get(), &tv);
     this->log.info("Idle timeout scheduled");
@@ -492,35 +643,52 @@ uint8_t Lobby::game_event_for_lobby_event(uint8_t lobby_event) {
   return lobby_event;
 }
 
-bool Lobby::item_exists(uint32_t item_id) const {
-  return this->item_id_to_floor_item.count(item_id);
-}
-
-const Lobby::FloorItem& Lobby::find_item(uint32_t item_id) const {
-  return this->item_id_to_floor_item.at(item_id);
-}
-
-void Lobby::add_item(const ItemData& data, uint8_t floor, float x, float z) {
-  auto& fi = this->item_id_to_floor_item[data.id];
-  fi.data = data;
-  fi.floor = floor;
-  fi.x = x;
-  fi.z = z;
-}
-
-ItemData Lobby::remove_item(uint32_t item_id) {
-  auto item_it = this->item_id_to_floor_item.find(item_id);
-  if (item_it == this->item_id_to_floor_item.end()) {
-    throw out_of_range("item not present");
+bool Lobby::item_exists(uint8_t floor, uint32_t item_id) const {
+  if (floor >= this->floor_item_managers.size()) {
+    return false;
   }
-  ItemData ret = item_it->second.data;
-  this->item_id_to_floor_item.erase(item_it);
-  return ret;
+  return this->floor_item_managers.at(floor).exists(item_id);
+}
+
+shared_ptr<Lobby::FloorItem> Lobby::find_item(uint8_t floor, uint32_t item_id) const {
+  return this->floor_item_managers.at(floor).find(item_id);
+}
+
+void Lobby::add_item(uint8_t floor, const ItemData& data, float x, float z, uint16_t visibility_flags) {
+  auto& m = this->floor_item_managers.at(floor);
+  m.add(data, x, z, visibility_flags);
+  this->evict_items_from_floor(floor);
+}
+
+void Lobby::add_item(uint8_t floor, shared_ptr<FloorItem> fi) {
+  auto& m = this->floor_item_managers.at(floor);
+  m.add(fi);
+  this->evict_items_from_floor(floor);
+}
+
+void Lobby::evict_items_from_floor(uint8_t floor) {
+  auto& m = this->floor_item_managers.at(floor);
+  auto evicted = m.evict();
+  if (!evicted.empty()) {
+    auto l = this->shared_from_this();
+    for (const auto& fi : evicted) {
+      for (size_t z = 0; z < 12; z++) {
+        auto lc = this->clients[z];
+        if (lc && fi->visible_to_client(z)) {
+          send_destroy_floor_item_to_client(lc, fi->data.id, floor);
+        }
+      }
+    }
+  }
+}
+
+shared_ptr<Lobby::FloorItem> Lobby::remove_item(uint8_t floor, uint32_t item_id, uint8_t requesting_client_id) {
+  return this->floor_item_managers.at(floor).remove(item_id, requesting_client_id);
 }
 
 uint32_t Lobby::generate_item_id(uint8_t client_id) {
   if (client_id < this->max_clients) {
-    return this->next_item_id[client_id]++;
+    return this->next_item_id_for_client[client_id]++;
   }
   return this->next_game_item_id++;
 }
@@ -531,15 +699,19 @@ void Lobby::on_item_id_generated_externally(uint32_t item_id) {
   // the range further here.
   if ((item_id > 0x00010000) && (item_id < 0x00810000)) {
     uint16_t item_client_id = (item_id >> 21) & 0x7FF;
-    uint32_t& next_item_id = this->next_item_id.at(item_client_id);
+    uint32_t& next_item_id = this->next_item_id_for_client.at(item_client_id);
     next_item_id = std::max<uint32_t>(next_item_id, item_id + 1);
   }
 }
 
-void Lobby::assign_inventory_and_bank_item_ids(shared_ptr<Client> c) {
+void Lobby::assign_inventory_and_bank_item_ids(shared_ptr<Client> c, bool consume_ids) {
   auto p = c->character();
+  uint32_t start_item_id = this->next_item_id_for_client[c->lobby_client_id];
   for (size_t z = 0; z < p->inventory.num_items; z++) {
     p->inventory.items[z].data.id = this->generate_item_id(c->lobby_client_id);
+  }
+  if (!consume_ids) {
+    this->next_item_id_for_client[c->lobby_client_id] = start_item_id;
   }
   if (c->log.info("Assigned inventory item IDs")) {
     p->print_inventory(stderr, c->version(), c->require_server_state()->item_name_index);
@@ -648,4 +820,39 @@ bool Lobby::compare_shared(const shared_ptr<const Lobby>& a, const shared_ptr<co
   }
 
   return a->name < b->name;
+}
+
+template <>
+Lobby::DropMode enum_for_name<Lobby::DropMode>(const char* name) {
+  if (!strcmp(name, "DISABLED")) {
+    return Lobby::DropMode::DISABLED;
+  } else if (!strcmp(name, "CLIENT")) {
+    return Lobby::DropMode::CLIENT;
+  } else if (!strcmp(name, "SERVER_SHARED")) {
+    return Lobby::DropMode::SERVER_SHARED;
+  } else if (!strcmp(name, "SERVER_PRIVATE")) {
+    return Lobby::DropMode::SERVER_PRIVATE;
+  } else if (!strcmp(name, "SERVER_DUPLICATE")) {
+    return Lobby::DropMode::SERVER_DUPLICATE;
+  } else {
+    throw runtime_error("invalid drop mode");
+  }
+}
+
+template <>
+const char* name_for_enum<Lobby::DropMode>(Lobby::DropMode value) {
+  switch (value) {
+    case Lobby::DropMode::DISABLED:
+      return "DISABLED";
+    case Lobby::DropMode::CLIENT:
+      return "CLIENT";
+    case Lobby::DropMode::SERVER_SHARED:
+      return "SERVER_SHARED";
+    case Lobby::DropMode::SERVER_PRIVATE:
+      return "SERVER_PRIVATE";
+    case Lobby::DropMode::SERVER_DUPLICATE:
+      return "SERVER_DUPLICATE";
+    default:
+      throw runtime_error("invalid drop mode");
+  }
 }

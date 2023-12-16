@@ -298,16 +298,20 @@ void send_ep3_change_music(Channel& ch, uint32_t song);
 void send_set_player_visibility(std::shared_ptr<Client> c, bool visible);
 void send_revive_player(std::shared_ptr<Client> c);
 
-void send_artificial_item_state(std::shared_ptr<Client> c);
-void send_drop_item(std::shared_ptr<ServerState> s, Channel& ch, const ItemData& item,
+void send_game_item_state(std::shared_ptr<Client> c);
+void send_drop_item_to_channel(std::shared_ptr<ServerState> s, Channel& ch, const ItemData& item,
     bool from_enemy, uint8_t floor, float x, float z, uint16_t request_id);
-void send_drop_item(std::shared_ptr<Lobby> l, const ItemData& item,
+void send_drop_item_to_lobby(std::shared_ptr<Lobby> l, const ItemData& item,
     bool from_enemy, uint8_t floor, float x, float z, uint16_t request_id);
-void send_drop_stacked_item(std::shared_ptr<ServerState> s, Channel& ch, const ItemData& item, uint8_t floor, float x, float z);
-void send_drop_stacked_item(std::shared_ptr<Lobby> l, const ItemData& item, uint8_t floor, float x, float z);
-void send_pick_up_item(std::shared_ptr<Client> c, uint32_t id, uint8_t floor);
-void send_create_inventory_item(std::shared_ptr<Client> c, const ItemData& item, bool exclude_c = false);
-void send_destroy_item(std::shared_ptr<Client> c, uint32_t item_id, uint32_t amount, bool exclude_c = false);
+void send_drop_stacked_item_to_channel(
+    std::shared_ptr<ServerState> s, Channel& ch, const ItemData& item, uint8_t floor, float x, float z);
+void send_drop_stacked_item_to_lobby(
+    std::shared_ptr<Lobby> l, const ItemData& item, uint8_t floor, float x, float z);
+void send_pick_up_item_to_client(std::shared_ptr<Client> c, uint8_t client_id, uint32_t id, uint8_t floor);
+void send_create_inventory_item_to_client(std::shared_ptr<Client> c, uint8_t client_id, const ItemData& item);
+void send_create_inventory_item_to_lobby(std::shared_ptr<Client> c, uint8_t client_id, const ItemData& item, bool exclude_c = false);
+void send_destroy_item_to_lobby(std::shared_ptr<Client> c, uint32_t item_id, uint32_t amount, bool exclude_c = false);
+void send_destroy_floor_item_to_client(std::shared_ptr<Client> c, uint32_t item_id, uint32_t floor);
 void send_item_identify_result(std::shared_ptr<Client> c);
 void send_bank(std::shared_ptr<Client> c);
 void send_shop(std::shared_ptr<Client> c, uint8_t shop_type);

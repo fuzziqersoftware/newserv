@@ -13,6 +13,7 @@ See TODO.md for a list of known issues and future work I've curated, or go to th
 * Setup
     * [Configuration](#configuration)
     * [Installing quests](#installing-quests)
+    * [Item tables and drop modes](#item-tables-and-drop-modes)
     * [Episode 3 features](#episode-3-features)
     * [Client patch directories for PC and BB](#client-patch-directories)
     * [Memory patches and DOL files for GC](#memory-patches-and-dol-files)
@@ -136,6 +137,23 @@ When newserv indexes the quests during startup, it will warn (but not fail) if a
 Quest contents are cached in memory, but if you've changed the contents of the quests directory, you can re-index the quests without restarting the server by running `reload quests` in the interactive shell. The new quests will be available immediately, but any games with quests already in progress will continue using the old versions of the quests until those quests end.
 
 All quests, including those originally in GCI or DLQ format, are treated as online quests unless their filenames specify the dl category. newserv allows players to download all quests, even those in non-download categories.
+
+### Item tables and drop modes
+
+newserv supports server-side item generation on all game versions, except for the earliest DC prototypes (NTE and 11/2000). By default, the game behaves as it did on the original servers - on all versions except BB, item drops are controlled by the leader client in each game, and on BB, item drops are controlled by the server.
+
+There are five different available behaviors for item drops:
+* `DISABLED` (or `NONE`): No items will drop from boxes or enemies.
+* `CLIENT`: The game leader generates items, all items are visible to all players, and any player may pick up any item. This is the default mode for all game versions, except this mode cannot be used on BB.
+* `SERVER_SHARED`: The server generates items, all items are visible to all players, and any player may pick up any item. This is the default mode for BB.
+* `SERVER_PRIVATE`: The server generates items, but each player may get a different item from any box or enemy. If a player isn't in the same area as an enemy at the time it's defeated, they won't get any item from it. Items dropped by players are visible to everyone.
+* `SERVER_DUPLICATE`: The server generates items, and each player will get the same item from any box or enemy, but there is one copy of each item for each player (and each player only sees their own copy of the item). If a player isn't in the same area as an enemy at the time it's defeated, they won't get any item from it. Items dropped by players are not duplicated and are visible to everyone.
+
+In the `SERVER_PRIVATE` and `SERVER_DUPLICATE` modes, there is no incentive to pick up items before another player, since other players cannot pick up the items you see dropped from boxes and enemies. However, if you pick up an item and drop it later, it can then be seen and picked up by any player.
+
+The drop mode can be changed at any time during a game with the `$dropmode` chat command. If the mode is changed after some items have already been dropped, the existing items retain their visibility (that is, they still can't be picked up by other players since they were dropped before the mode was changed). You can configure which drop modes are used by default, and which modes players are allowed to choose, in config.json. See the comments above the AllowedDropModes and DefaultDropMode keys.
+
+In the server drop modes, the item tables used to generate common items are in the `system/item-tables/ItemPT-*` files. (The V2 files are used for V1 as well.) The rare item tables are in the `rare-table-*.json` files. Unlike the original formats, it's possible to make each enemy drop multiple different rare items at different rates, though the default tables never do this.
 
 ### Episode 3 features
 
@@ -292,8 +310,7 @@ Some commands only work on the game server and not on the proxy server. The chat
     * `$maxlevel <level>`: Sets the maximum level for players to join the current game. (This only applies when joining; if a player joins and then levels up past this level during the game, they are not kicked out, but won't be able to rejoin if they leave.)
     * `$minlevel <level>`: Sets the minimum level for players to join the current game.
     * `$password <password>`: Sets the game's join password. To unlock the game, run `$password` with nothing after it.
-    * `$itemtable`: Switches between using the client's or the server's drop table. No effect on BB (the server's drop table is always used). The server's rare tables are defined in JSON files in the system/item-tables directory.
-    * `$drop`: Enables or disables all item drops from boxes and enemies in the current game.
+    * `$dropmode [mode]`: Changes the way item drops behave in the current game. `mode` can be `none`, `client`, `shared`, `private`, or `duplicate`. If `mode` is not given, tells you the current drop mode without changing it. See the "Item tables and drop modes" section for more information.
 
 * Episode 3 commands (game server only)
     * `$spec`: Toggles the allow spectators flag for Episode 3 games. If any players are spectating when this flag is disabled, they will be sent back to the lobby.

@@ -346,8 +346,8 @@ static void on_1D(shared_ptr<Client> c, uint16_t, uint32_t, string&) {
   if (c->config.check_flag(Client::Flag::SHOULD_SEND_ARTIFICIAL_ITEM_STATE)) {
     c->config.clear_flag(Client::Flag::SHOULD_SEND_ARTIFICIAL_ITEM_STATE);
     auto l = c->require_lobby();
-    if (!is_ep3(c->version()) && l->check_flag(Lobby::Flag::ITEM_TRACKING_ENABLED)) {
-      send_artificial_item_state(c);
+    if (!is_ep3(c->version())) {
+      send_game_item_state(c);
     }
   }
 }
@@ -1861,6 +1861,9 @@ static void on_quest_loaded(shared_ptr<Lobby> l) {
   if ((l->base_version == Version::BB_V4) && l->map && (l->quest->challenge_template_index < 0)) {
     l->load_maps();
   }
+  for (auto& m : l->floor_item_managers) {
+    m.clear();
+  }
 
   for (auto& lc : l->clients) {
     if (!lc) {
@@ -1885,7 +1888,7 @@ static void on_quest_loaded(shared_ptr<Lobby> l) {
         lc->use_default_bank();
         lc->create_challenge_overlay(lc->version(), l->quest->challenge_template_index, s->level_table);
         lc->log.info("Created challenge overlay");
-        l->assign_inventory_and_bank_item_ids(lc);
+        l->assign_inventory_and_bank_item_ids(lc, true);
       }
     }
   }
@@ -3461,7 +3464,7 @@ static void on_DF_BB(shared_ptr<Client> c, uint16_t command, uint32_t, string& d
           lc->use_default_bank();
           lc->create_challenge_overlay(lc->version(), l->quest->challenge_template_index, s->level_table);
           lc->log.info("Created challenge overlay");
-          l->assign_inventory_and_bank_item_ids(lc);
+          l->assign_inventory_and_bank_item_ids(lc, true);
         }
       }
 
@@ -3905,22 +3908,12 @@ shared_ptr<Lobby> create_game_generic(
       throw logic_error("invalid quest script version");
   }
 
-  if ((game->base_version == Version::BB_V4) || s->item_tracking_enabled) {
-    game->set_flag(Lobby::Flag::ITEM_TRACKING_ENABLED);
+  while (game->floor_item_managers.size() < 0x12) {
+    game->floor_item_managers.emplace_back(game->lobby_id, game->floor_item_managers.size());
   }
-  // Only disable drops if the config flag is set and for regular multi-mode;
-  // drops are still enabled for battle and challenge modes
-  if (s->behavior_enabled(s->enable_drops_behavior) || (mode != GameMode::NORMAL)) {
-    game->set_flag(Lobby::Flag::DROPS_ENABLED);
-  }
+
   if (s->behavior_enabled(s->cheat_mode_behavior)) {
     game->set_flag(Lobby::Flag::CHEATS_ENABLED);
-  }
-  if (!s->behavior_can_be_overridden(s->enable_drops_behavior)) {
-    game->set_flag(Lobby::Flag::CANNOT_CHANGE_DROPS_ENABLED);
-  }
-  if (!game->check_flag(Lobby::Flag::ITEM_TRACKING_ENABLED) || !s->behavior_can_be_overridden(s->use_server_item_tables_behavior)) {
-    game->set_flag(Lobby::Flag::CANNOT_CHANGE_ITEM_TABLE);
   }
   if (!s->behavior_can_be_overridden(s->cheat_mode_behavior)) {
     game->set_flag(Lobby::Flag::CANNOT_CHANGE_CHEAT_MODE);
@@ -3951,13 +3944,44 @@ shared_ptr<Lobby> create_game_generic(
     game->base_exp_multiplier = s->bb_global_exp_multiplier;
   }
 
-  for (size_t x = 0; x < 4; x++) {
-    game->next_item_id[x] = (0x00200000 * x) + 0x00010000;
+  switch (game->base_version) {
+    case Version::DC_NTE:
+    case Version::DC_V1_11_2000_PROTOTYPE:
+    case Version::DC_V1:
+    case Version::DC_V2:
+    case Version::PC_V2:
+      game->set_drop_mode(s->default_drop_mode_v1_v2);
+      game->allowed_drop_modes = s->allowed_drop_modes_v1_v2;
+      break;
+    case Version::GC_NTE:
+    case Version::GC_V3:
+    case Version::XB_V3:
+      game->set_drop_mode(s->default_drop_mode_v3);
+      game->allowed_drop_modes = s->allowed_drop_modes_v3;
+      break;
+    case Version::GC_EP3_TRIAL_EDITION:
+    case Version::GC_EP3:
+      game->set_drop_mode(Lobby::DropMode::DISABLED);
+      game->allowed_drop_modes = (1 << static_cast<size_t>(game->drop_mode));
+      break;
+    case Version::BB_V4:
+      // Disallow CLIENT mode on BB
+      if (s->default_drop_mode_v4 == Lobby::DropMode::CLIENT) {
+        // If the default is CLIENT (somehow), force it to be SERVER_SHARED
+        game->set_drop_mode(Lobby::DropMode::SERVER_SHARED);
+        game->allowed_drop_modes |= (1 << static_cast<size_t>(game->drop_mode));
+      } else {
+        game->set_drop_mode(s->default_drop_mode_v4);
+        game->allowed_drop_modes = s->allowed_drop_modes_v4 & ~(1 << static_cast<size_t>(Lobby::DropMode::CLIENT));
+      }
+      break;
+    default:
+      throw logic_error("invalid quest script version");
   }
-  game->next_game_item_id = 0x00810000;
-  if ((game->base_version == Version::BB_V4) ||
-      (game->check_flag(Lobby::Flag::ITEM_TRACKING_ENABLED) && s->behavior_enabled(s->use_server_item_tables_behavior))) {
-    game->create_item_creator();
+  // Only allow DISABLED in Normal; use the default in Battle/Challenge/Solo
+  if ((game->drop_mode == Lobby::DropMode::DISABLED) && (mode != GameMode::NORMAL)) {
+    game->set_drop_mode((game->base_version == Version::BB_V4) ? Lobby::DropMode::SERVER_SHARED : Lobby::DropMode::CLIENT);
+    game->allowed_drop_modes |= (1 << static_cast<size_t>(game->drop_mode));
   }
 
   game->event = Lobby::game_event_for_lobby_event(current_lobby->event);
@@ -4149,6 +4173,10 @@ static void on_6F(shared_ptr<Client> c, uint16_t command, uint32_t, string& data
   }
   c->config.clear_flag(Client::Flag::LOADING);
 
+  if (command == 0x006F) {
+    l->assign_inventory_and_bank_item_ids(c, true);
+  }
+
   send_server_time(c);
   if (l->base_version == Version::BB_V4) {
     send_set_exp_multiplier(l);
@@ -4333,7 +4361,7 @@ static void on_D2_V3_BB(shared_ptr<Client> c, uint16_t, uint32_t, string& data) 
         }
 
         to_p->add_item(trade_item);
-        send_create_inventory_item(to_c, item);
+        send_create_inventory_item_to_lobby(to_c, to_c->lobby_client_id, item);
       }
       send_command(to_c, 0xD3, 0x00);
 

@@ -108,14 +108,24 @@ static void server_command_lobby_info(shared_ptr<Client> c, const std::string&) 
         }
         lines.emplace_back(string_printf("$C7Section ID: $C6%s$C7", name_for_section_id(l->section_id)));
 
-        if (l->check_flag(Lobby::Flag::DROPS_ENABLED)) {
-          if (l->item_creator) {
-            lines.emplace_back("Server item table");
-          } else {
+        switch (l->drop_mode) {
+          case Lobby::DropMode::DISABLED:
+            lines.emplace_back("Drops disabled");
+            break;
+          case Lobby::DropMode::CLIENT:
             lines.emplace_back("Client item table");
-          }
-        } else {
-          lines.emplace_back("No item drops");
+            break;
+          case Lobby::DropMode::SERVER_SHARED:
+            lines.emplace_back("Server item table");
+            break;
+          case Lobby::DropMode::SERVER_PRIVATE:
+            lines.emplace_back("Server indiv items");
+            break;
+          case Lobby::DropMode::SERVER_DUPLICATE:
+            lines.emplace_back("Server dup items");
+            break;
+          default:
+            lines.emplace_back("$C4Unknown drop mode$C7");
         }
         if (l->check_flag(Lobby::Flag::CHEATS_ENABLED)) {
           lines.emplace_back("Cheats enabled");
@@ -1320,32 +1330,28 @@ static void server_command_what(shared_ptr<Client> c, const std::string&) {
   if (!episode_has_arpg_semantics(l->episode)) {
     return;
   }
-  if (!l->check_flag(Lobby::Flag::ITEM_TRACKING_ENABLED)) {
-    send_text_message(c, "$C4Item tracking is\nnot available");
-  } else {
-    float min_dist2 = 0.0f;
-    uint32_t nearest_item_id = 0xFFFFFFFF;
-    for (const auto& it : l->item_id_to_floor_item) {
-      if (it.second.floor != c->floor) {
-        continue;
-      }
-      float dx = it.second.x - c->x;
-      float dz = it.second.z - c->z;
-      float dist2 = (dx * dx) + (dz * dz);
-      if ((nearest_item_id == 0xFFFFFFFF) || (dist2 < min_dist2)) {
-        nearest_item_id = it.first;
-        min_dist2 = dist2;
-      }
-    }
 
-    if (nearest_item_id == 0xFFFFFFFF) {
-      send_text_message(c, "$C4No items are near you");
-    } else {
-      auto s = c->require_server_state();
-      const auto& item = l->item_id_to_floor_item.at(nearest_item_id);
-      string name = s->describe_item(c->version(), item.data, true);
-      send_text_message(c, name);
+  float min_dist2 = 0.0f;
+  shared_ptr<const Lobby::FloorItem> nearest_fi;
+  for (const auto& it : l->floor_item_managers.at(c->floor).items) {
+    if (!it.second->visible_to_client(c->lobby_client_id)) {
+      continue;
     }
+    float dx = it.second->x - c->x;
+    float dz = it.second->z - c->z;
+    float dist2 = (dx * dx) + (dz * dz);
+    if (!nearest_fi || (dist2 < min_dist2)) {
+      nearest_fi = it.second;
+      min_dist2 = dist2;
+    }
+  }
+
+  if (!nearest_fi) {
+    send_text_message(c, "$C4No items are near you");
+  } else {
+    auto s = c->require_server_state();
+    string name = s->describe_item(c->version(), nearest_fi->data, true);
+    send_text_message(c, name);
   }
 }
 
@@ -1420,35 +1426,69 @@ static void proxy_command_switch_assist(shared_ptr<ProxyServer::LinkedSession> s
       ses->config.check_flag(Client::Flag::SWITCH_ASSIST_ENABLED) ? "enabled" : "disabled");
 }
 
-static void server_command_drop(shared_ptr<Client> c, const std::string&) {
+static void server_command_dropmode(shared_ptr<Client> c, const std::string& args) {
   auto l = c->require_lobby();
   check_is_game(l, true);
-  check_is_leader(l, c);
-  if (l->check_flag(Lobby::Flag::CANNOT_CHANGE_DROPS_ENABLED)) {
-    send_text_message(c, "Drop mode cannot\nbe changed on this\nserver");
-  } else {
-    l->toggle_flag(Lobby::Flag::DROPS_ENABLED);
-    send_text_message_printf(l, "Drops %s", l->check_flag(Lobby::Flag::DROPS_ENABLED) ? "enabled" : "disabled");
-  }
-}
+  if (args.empty()) {
+    switch (l->drop_mode) {
+      case Lobby::DropMode::DISABLED:
+        send_text_message(c, "Drop mode: disabled");
+        break;
+      case Lobby::DropMode::CLIENT:
+        send_text_message(c, "Drop mode: client");
+        break;
+      case Lobby::DropMode::SERVER_SHARED:
+        send_text_message(c, "Drop mode: server\nshared");
+        break;
+      case Lobby::DropMode::SERVER_PRIVATE:
+        send_text_message(c, "Drop mode: server\nprivate");
+        break;
+      case Lobby::DropMode::SERVER_DUPLICATE:
+        send_text_message(c, "Drop mode: server\nduplicate");
+        break;
+    }
 
-static void server_command_itemtable(shared_ptr<Client> c, const std::string&) {
-  auto s = c->require_server_state();
-  auto l = c->require_lobby();
-  check_is_game(l, true);
-  check_is_leader(l, c);
-  if (l->check_flag(Lobby::Flag::CANNOT_CHANGE_ITEM_TABLE)) {
-    send_text_message(c, "Cannot switch item\ntables on this\nserver");
-  } else if (l->base_version == Version::BB_V4) {
-    send_text_message(c, "Cannot use client\nitem table on BB");
-  } else if (!l->check_flag(Lobby::Flag::ITEM_TRACKING_ENABLED)) {
-    send_text_message(c, "Cannot use server\nitem tables if item\ntracking is off");
-  } else if (l->item_creator) {
-    l->item_creator.reset();
-    send_text_message(l, "Game switched to\nclient item tables");
   } else {
-    l->create_item_creator();
-    send_text_message(l, "Game switched to\nserver item tables");
+    check_is_leader(l, c);
+    Lobby::DropMode new_mode;
+    if ((args == "none") || (args == "disabled")) {
+      new_mode = Lobby::DropMode::DISABLED;
+    } else if (args == "client") {
+      new_mode = Lobby::DropMode::CLIENT;
+    } else if ((args == "shared") || (args == "server")) {
+      new_mode = Lobby::DropMode::SERVER_SHARED;
+    } else if ((args == "private") || (args == "priv")) {
+      new_mode = Lobby::DropMode::SERVER_PRIVATE;
+    } else if ((args == "duplicate") || (args == "dup")) {
+      new_mode = Lobby::DropMode::SERVER_DUPLICATE;
+    } else {
+      send_text_message(c, "Invalid drop mode");
+      return;
+    }
+
+    if (!(l->allowed_drop_modes & (1 << static_cast<size_t>(new_mode)))) {
+      send_text_message(c, "Drop mode not\nallowed");
+      return;
+    }
+
+    l->set_drop_mode(new_mode);
+    switch (l->drop_mode) {
+      case Lobby::DropMode::DISABLED:
+        send_text_message(l, "Item drops disabled");
+        break;
+      case Lobby::DropMode::CLIENT:
+        send_text_message(l, "Item drops changed\nto client mode");
+        break;
+      case Lobby::DropMode::SERVER_SHARED:
+        send_text_message(l, "Item drops changed\nto server shared\nmode");
+        break;
+      case Lobby::DropMode::SERVER_PRIVATE:
+        send_text_message(l, "Item drops changed\nto server private\nmode");
+        break;
+      case Lobby::DropMode::SERVER_DUPLICATE:
+        send_text_message(l, "Item drops changed\nto server duplicate\nmode");
+        break;
+    }
   }
 }
 
@@ -1461,8 +1501,13 @@ static void server_command_item(shared_ptr<Client> c, const std::string& args) {
   ItemData item = s->item_name_index->parse_item_description(c->version(), args);
   item.id = l->generate_item_id(c->lobby_client_id);
 
-  l->add_item(item, c->floor, c->x, c->z);
-  send_drop_stacked_item(l, item, c->floor, c->x, c->z);
+  if ((l->drop_mode == Lobby::DropMode::SERVER_PRIVATE) || (l->drop_mode == Lobby::DropMode::SERVER_DUPLICATE)) {
+    l->add_item(c->floor, item, c->x, c->z, (1 << c->lobby_client_id));
+    send_drop_stacked_item_to_channel(s, c->channel, item, c->floor, c->x, c->z);
+  } else {
+    l->add_item(c->floor, item, c->x, c->z, 0x00F);
+    send_drop_stacked_item_to_lobby(l, item, c->floor, c->x, c->z);
+  }
 
   string name = s->describe_item(c->version(), item, true);
   send_text_message(c, "$C7Item created:\n" + name);
@@ -1496,8 +1541,8 @@ static void proxy_command_item(shared_ptr<ProxyServer::LinkedSession> ses, const
     send_text_message(ses->client_channel, "$C7Next drop:\n" + name);
 
   } else {
-    send_drop_stacked_item(s, ses->client_channel, item, ses->floor, ses->x, ses->z);
-    send_drop_stacked_item(s, ses->server_channel, item, ses->floor, ses->x, ses->z);
+    send_drop_stacked_item_to_channel(s, ses->client_channel, item, ses->floor, ses->x, ses->z);
+    send_drop_stacked_item_to_channel(s, ses->server_channel, item, ses->floor, ses->x, ses->z);
 
     string name = s->describe_item(ses->version(), item, true);
     send_text_message(ses->client_channel, "$C7Item created:\n" + name);
@@ -1754,7 +1799,7 @@ static const unordered_map<string, ChatCommandDefinition> chat_commands({
     {"$cheat", {server_command_cheat, nullptr}},
     {"$debug", {server_command_debug, nullptr}},
     {"$defrange", {server_command_ep3_set_def_dice_range, nullptr}},
-    {"$drop", {server_command_drop, nullptr}},
+    {"$dropmode", {server_command_dropmode, nullptr}},
     {"$edit", {server_command_edit, nullptr}},
     {"$ep3battledebug", {server_command_enable_ep3_battle_debug_menu, nullptr}},
     {"$event", {server_command_lobby_event, proxy_command_lobby_event}},
@@ -1764,7 +1809,6 @@ static const unordered_map<string, ChatCommandDefinition> chat_commands({
     {"$inftime", {server_command_ep3_infinite_time, nullptr}},
     {"$inftp", {server_command_infinite_tp, proxy_command_infinite_tp}},
     {"$item", {server_command_item, proxy_command_item}},
-    {"$itemtable", {server_command_itemtable, nullptr}},
     {"$i", {server_command_item, proxy_command_item}},
     {"$kick", {server_command_kick, nullptr}},
     {"$li", {server_command_lobby_info, proxy_command_lobby_info}},

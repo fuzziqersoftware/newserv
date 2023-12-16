@@ -4449,17 +4449,18 @@ struct G_BuyShopItem_6x5E {
 // 6x5F: Drop item from box/enemy
 
 struct FloorItem {
-  uint8_t floor = 0;
-  uint8_t from_enemy = 0;
-  le_uint16_t entity_id = 0; // < 0x0B50 if from_enemy != 0; otherwise < 0x0BA0
-  le_float x = 0.0f;
-  le_float z = 0.0f;
-  le_uint16_t unknown_a2 = 0;
+  /* 00 */ uint8_t floor = 0;
+  /* 01 */ uint8_t from_enemy = 0;
+  /* 02 */ le_uint16_t entity_id = 0; // < 0x0B50 if from_enemy != 0; otherwise < 0x0BA0
+  /* 04 */ le_float x = 0.0f;
+  /* 08 */ le_float z = 0.0f;
+  /* 0C */ le_uint16_t unknown_a2 = 0;
   // The drop number is scoped to the floor and increments by 1 each time an
   // item is dropped. The last item dropped in each floor has drop_number equal
   // to total_items_dropped_per_floor[floor - 1] - 1.
-  le_uint16_t drop_number = 0;
-  ItemData item;
+  /* 0E */ le_uint16_t drop_number = 0;
+  /* 10 */ ItemData item;
+  /* 24 */
 } __packed__;
 
 struct G_DropItem_DC_6x5F {
@@ -4500,9 +4501,9 @@ struct G_ActivateMagEffect_6x61 {
 // 6x62: Unknown
 // This subcommand is completely ignored (at least, by PSO GC).
 
-// 6x63: Destroy ground item (used when too many items have been dropped)
+// 6x63: Destroy floor item (used when too many items have been dropped)
 
-struct G_DestroyGroundItem_6x63 {
+struct G_DestroyFloorItem_6x63 {
   G_UnusedHeader header;
   le_uint32_t item_id = 0;
   le_uint32_t floor = 0;
@@ -4622,13 +4623,12 @@ struct G_SyncObjectState_6x6C_Entry_Decompressed {
 // commands cannot be processed on the same frame.
 
 struct G_SyncItemState_6x6D_Decompressed {
-  // TODO: Verify this format on DC and PC. It appears correct for GC and BB.
   // Note: 16 vs. 15 is not a bug here - there really is an extra field in the
   // total drop count vs. the floor item count. Despite this, Pioneer 2 or Lab
-  // (floor 0) isn't included in total_items_dropped_per_floor (so Forest 1 is
-  // [0] in that array) but it is included in floor_item_count_per_floor (so
-  // Forest 1 is [1] there).
-  parray<le_uint16_t, 16> total_items_dropped_per_floor;
+  // (floor 0) isn't included in next_drop_number_per_floor (so Forest 1 is [0]
+  // in that array) but it is included in floor_item_count_per_floor (so Forest
+  // 1 is [1] there).
+  parray<le_uint16_t, 16> next_drop_number_per_floor;
   // Only [0]-[3] in this array are ever actually used in normal gameplay, but
   // the client fills in all 12 of these with reasonable values.
   parray<le_uint32_t, 12> next_item_id_per_player;

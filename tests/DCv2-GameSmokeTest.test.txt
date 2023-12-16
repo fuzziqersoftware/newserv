@@ -974,12 +974,10 @@ I 40992 2023-05-26 10:54:51 - [Commands] Received from C-2 (Tali) (version=DC co
 0010 | 00 00 00 00                                     |
 I 40992 2023-05-26 10:54:51 - [Commands] Received from C-2 (Tali) (version=DC command=62 flag=00)
 0000 | 62 00 10 00 5A 03 00 00 7D 01 01 06 01 00 00 00 | b   Z   }
-I 40992 2023-05-26 10:54:51 - [Commands] Sending to C-2 (Tali) (version=DC command=62 flag=00)
-0000 | 62 00 10 00 5A 03 00 00 7D 01 01 06 01 00 00 00 | b   Z   }
 I 40992 2023-05-26 10:54:51 - [Commands] Received from C-2 (Tali) (version=DC command=60 flag=00)
 0000 | 60 00 14 00 40 04 00 00 20 F5 E6 43 F1 52 CD 43 | `   @      C R C
 0010 | 00 00 00 00                                     |
-I 40992 2023-05-26 10:54:51 - [Commands] Received from C-2 (Tali) (version=DC command=60 flag=00)
+I 40992 2023-05-26 10:54:51 - [Commands] Sending to C-2 (Tali) (version=DC command=62 flag=00)
 0000 | 60 00 10 00 59 03 00 00 00 00 01 00 7D 01 01 06 | `   Y       }
 I 40992 2023-05-26 10:54:51 - [Lobby/15] Player 0 picked up 0601017D (16 Meseta)
 [PlayerInventory] Meseta: 343
@@ -1096,12 +1094,10 @@ I 40992 2023-05-26 10:54:59 - [Commands] Received from C-2 (Tali) (version=DC co
 0010 | 00 00 00 00                                     |
 I 40992 2023-05-26 10:54:59 - [Commands] Received from C-2 (Tali) (version=DC command=62 flag=00)
 0000 | 62 00 10 00 5A 03 00 00 7B 01 01 06 01 00 00 00 | b   Z   {
-I 40992 2023-05-26 10:54:59 - [Commands] Sending to C-2 (Tali) (version=DC command=62 flag=00)
-0000 | 62 00 10 00 5A 03 00 00 7B 01 01 06 01 00 00 00 | b   Z   {
 I 40992 2023-05-26 10:54:59 - [Commands] Received from C-2 (Tali) (version=DC command=60 flag=00)
 0000 | 60 00 14 00 40 04 00 00 D8 EC 0E 44 0D 8C 0E 44 | `   @      D   D
 0010 | 00 00 00 00                                     |
-I 40992 2023-05-26 10:54:59 - [Commands] Received from C-2 (Tali) (version=DC command=60 flag=00)
+I 40992 2023-05-26 10:54:59 - [Commands] Sending to C-2 (Tali) (version=DC command=62 flag=00)
 0000 | 60 00 10 00 59 03 00 00 00 00 01 00 7B 01 01 06 | `   Y       {
 I 40992 2023-05-26 10:54:59 - [Lobby/15] Player 0 picked up 0601017B (Antidote x1)
 [PlayerInventory] Meseta: 343

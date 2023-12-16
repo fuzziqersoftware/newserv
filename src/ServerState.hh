@@ -75,9 +75,12 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   bool allow_unregistered_users;
   bool allow_dc_pc_games;
   bool allow_gc_xb_games;
-  bool item_tracking_enabled;
-  BehaviorSwitch enable_drops_behavior;
-  BehaviorSwitch use_server_item_tables_behavior;
+  uint8_t allowed_drop_modes_v1_v2;
+  uint8_t allowed_drop_modes_v3;
+  uint8_t allowed_drop_modes_v4;
+  Lobby::DropMode default_drop_mode_v1_v2;
+  Lobby::DropMode default_drop_mode_v3;
+  Lobby::DropMode default_drop_mode_v4;
   uint64_t persistent_game_idle_timeout_usecs;
   bool ep3_send_function_call_enabled;
   bool catch_handler_exceptions;

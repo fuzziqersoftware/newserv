@@ -26,9 +26,12 @@ ServerState::ServerState(shared_ptr<struct event_base> base, const string& confi
       allow_unregistered_users(false),
       allow_dc_pc_games(false),
       allow_gc_xb_games(true),
-      item_tracking_enabled(true),
-      enable_drops_behavior(BehaviorSwitch::ON_BY_DEFAULT),
-      use_server_item_tables_behavior(BehaviorSwitch::OFF_BY_DEFAULT),
+      allowed_drop_modes_v1_v2(0xFF),
+      allowed_drop_modes_v3(0xFF),
+      allowed_drop_modes_v4(0xFD), // CLIENT not allowed
+      default_drop_mode_v1_v2(Lobby::DropMode::CLIENT),
+      default_drop_mode_v3(Lobby::DropMode::CLIENT),
+      default_drop_mode_v4(Lobby::DropMode::SERVER_SHARED),
       persistent_game_idle_timeout_usecs(0),
       ep3_send_function_call_enabled(false),
       catch_handler_exceptions(true),
@@ -628,9 +631,18 @@ void ServerState::parse_config(const JSON& json, bool is_reload) {
 
   this->ip_stack_debug = json.get_bool("IPStackDebug", this->ip_stack_debug);
   this->allow_unregistered_users = json.get_bool("AllowUnregisteredUsers", this->allow_unregistered_users);
-  this->item_tracking_enabled = json.get_bool("EnableItemTracking", this->item_tracking_enabled);
-  this->enable_drops_behavior = parse_behavior_switch("ItemDropMode", this->enable_drops_behavior);
-  this->use_server_item_tables_behavior = parse_behavior_switch("UseServerItemTables", this->use_server_item_tables_behavior);
+  this->allowed_drop_modes_v1_v2 = json.get_int("AllowedDropModesV1V2", this->allowed_drop_modes_v1_v2);
+  this->allowed_drop_modes_v3 = json.get_int("AllowedDropModesV3", this->allowed_drop_modes_v3);
+  this->allowed_drop_modes_v4 = json.get_int("AllowedDropModesV4", this->allowed_drop_modes_v4);
+  this->default_drop_mode_v1_v2 = json.get_enum("DefaultDropModeV1V2", this->default_drop_mode_v1_v2);
+  this->default_drop_mode_v3 = json.get_enum("DefaultDropModeV3", this->default_drop_mode_v3);
+  this->default_drop_mode_v4 = json.get_enum("DefaultDropModeV4", this->default_drop_mode_v4);
+  if (this->default_drop_mode_v4 == Lobby::DropMode::CLIENT) {
+    throw runtime_error("default V4 drop mode cannot be CLIENT");
+  }
+  if (this->allowed_drop_modes_v4 & (1 << static_cast<size_t>(Lobby::DropMode::CLIENT))) {
+    throw runtime_error("CLIENT drop mode cannot be allowed in V4");
+  }
   this->persistent_game_idle_timeout_usecs = json.get_int("PersistentGameIdleTimeout", this->persistent_game_idle_timeout_usecs);
   this->cheat_mode_behavior = parse_behavior_switch("CheatModeBehavior", this->cheat_mode_behavior);
   this->ep3_send_function_call_enabled = json.get_bool("EnableEpisode3SendFunctionCall", this->ep3_send_function_call_enabled);

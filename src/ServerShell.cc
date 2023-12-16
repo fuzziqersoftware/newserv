@@ -816,8 +816,8 @@ Proxy session commands:\n\
       send_text_message(ses->client_channel, "$C7Next drop:\n" + name);
 
     } else {
-      send_drop_stacked_item(s, ses->client_channel, item, ses->floor, ses->x, ses->z);
-      send_drop_stacked_item(s, ses->server_channel, item, ses->floor, ses->x, ses->z);
+      send_drop_stacked_item_to_channel(s, ses->client_channel, item, ses->floor, ses->x, ses->z);
+      send_drop_stacked_item_to_channel(s, ses->server_channel, item, ses->floor, ses->x, ses->z);
 
       string name = s->describe_item(ses->version(), ses->next_drop_item, true);
       send_text_message(ses->client_channel, "$C7Item created:\n" + name);

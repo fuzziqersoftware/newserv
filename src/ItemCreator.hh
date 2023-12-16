@@ -35,6 +35,9 @@ public:
   ItemData on_box_item_drop(uint16_t entity_id, uint8_t area);
   ItemData on_specialized_box_item_drop(uint16_t entity_id, uint8_t area, float def_z, uint32_t def0, uint32_t def1, uint32_t def2);
 
+  void set_monster_destroyed(uint16_t entity_id);
+  void set_box_destroyed(uint16_t entity_id);
+
   static ItemData base_item_for_specialized_box(uint32_t def0, uint32_t def1, uint32_t def2);
 
   std::vector<ItemData> generate_armor_shop_contents(size_t player_level);

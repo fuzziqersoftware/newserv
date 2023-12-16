@@ -11,8 +11,12 @@
   "CatchHandlerExceptions": false,
 
   "PersistentGameIdleTimeout": 1800000000,
-  "ItemDropMode": "OnByDefault",
-  "UseServerItemTables": "OffByDefault",
+  "AllowedDropModesV1V2": 0x1F,
+  "AllowedDropModesV3": 0x1F,
+  "AllowedDropModesV4": 0x1D,
+  "DefaultDropModeV1V2": "CLIENT",
+  "DefaultDropModeV3": "CLIENT",
+  "DefaultDropModeV4": "SERVER_SHARED",
 
   "LocalAddress": "en0",
   "ExternalAddress": "en0",
@@ -20,7 +24,6 @@
   "DNSServerPort": 0,
   "IPStackListen": [],
   "PPPStackListen": [],
-  "EnableItemTracking": true,
   "Episode3BehaviorFlags": 0xFA,
 
   "Episode3InfiniteMeseta": false,

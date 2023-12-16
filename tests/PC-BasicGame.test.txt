@@ -752,8 +752,6 @@ I 49484 2023-05-26 16:36:40 - [Commands] Sending to C-3 (Tali) (version=PC comma
 I 49484 2023-05-26 16:36:40 - [Commands] Received from C-3 (Tali) (version=PC command=62 flag=00)
 0000 | 10 00 62 00 5A 03 00 00 05 00 01 00 01 00 00 00 |   b Z
 I 49484 2023-05-26 16:36:40 - [Commands] Sending to C-3 (Tali) (version=PC command=62 flag=00)
-0000 | 10 00 62 00 5A 03 00 00 05 00 01 00 01 00 00 00 |   b Z
-I 49484 2023-05-26 16:36:40 - [Commands] Received from C-3 (Tali) (version=PC command=60 flag=00)
 0000 | 10 00 60 00 59 03 00 00 00 00 01 00 05 00 01 00 |   ` Y
 I 49484 2023-05-26 16:36:40 - [Lobby/15] Player 0 picked up 00010005 (Monomate x4)
 [PlayerInventory] Meseta: 300
