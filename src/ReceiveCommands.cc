@@ -3950,14 +3950,30 @@ shared_ptr<Lobby> create_game_generic(
     case Version::DC_V1:
     case Version::DC_V2:
     case Version::PC_V2:
-      game->set_drop_mode(s->default_drop_mode_v1_v2);
-      game->allowed_drop_modes = s->allowed_drop_modes_v1_v2;
+      if (game->mode == GameMode::BATTLE) {
+        game->set_drop_mode(s->default_drop_mode_v1_v2_battle);
+        game->allowed_drop_modes = s->allowed_drop_modes_v1_v2_battle;
+      } else if (game->mode == GameMode::CHALLENGE) {
+        game->set_drop_mode(s->default_drop_mode_v1_v2_challenge);
+        game->allowed_drop_modes = s->allowed_drop_modes_v1_v2_challenge;
+      } else {
+        game->set_drop_mode(s->default_drop_mode_v1_v2_normal);
+        game->allowed_drop_modes = s->allowed_drop_modes_v1_v2_normal;
+      }
       break;
     case Version::GC_NTE:
     case Version::GC_V3:
     case Version::XB_V3:
-      game->set_drop_mode(s->default_drop_mode_v3);
-      game->allowed_drop_modes = s->allowed_drop_modes_v3;
+      if (game->mode == GameMode::BATTLE) {
+        game->set_drop_mode(s->default_drop_mode_v3_battle);
+        game->allowed_drop_modes = s->allowed_drop_modes_v3_battle;
+      } else if (game->mode == GameMode::CHALLENGE) {
+        game->set_drop_mode(s->default_drop_mode_v3_challenge);
+        game->allowed_drop_modes = s->allowed_drop_modes_v3_challenge;
+      } else {
+        game->set_drop_mode(s->default_drop_mode_v3_normal);
+        game->allowed_drop_modes = s->allowed_drop_modes_v3_normal;
+      }
       break;
     case Version::GC_EP3_TRIAL_EDITION:
     case Version::GC_EP3:
@@ -3965,23 +3981,26 @@ shared_ptr<Lobby> create_game_generic(
       game->allowed_drop_modes = (1 << static_cast<size_t>(game->drop_mode));
       break;
     case Version::BB_V4:
-      // Disallow CLIENT mode on BB
-      if (s->default_drop_mode_v4 == Lobby::DropMode::CLIENT) {
-        // If the default is CLIENT (somehow), force it to be SERVER_SHARED
-        game->set_drop_mode(Lobby::DropMode::SERVER_SHARED);
-        game->allowed_drop_modes |= (1 << static_cast<size_t>(game->drop_mode));
+      if (game->mode == GameMode::BATTLE) {
+        game->set_drop_mode(s->default_drop_mode_v4_battle);
+        game->allowed_drop_modes = s->allowed_drop_modes_v4_battle;
+      } else if (game->mode == GameMode::CHALLENGE) {
+        game->set_drop_mode(s->default_drop_mode_v4_challenge);
+        game->allowed_drop_modes = s->allowed_drop_modes_v4_challenge;
       } else {
-        game->set_drop_mode(s->default_drop_mode_v4);
-        game->allowed_drop_modes = s->allowed_drop_modes_v4 & ~(1 << static_cast<size_t>(Lobby::DropMode::CLIENT));
+        game->set_drop_mode(s->default_drop_mode_v4_normal);
+        game->allowed_drop_modes = s->allowed_drop_modes_v4_normal;
+      }
+      // Disallow CLIENT mode on BB
+      if (game->drop_mode == Lobby::DropMode::CLIENT) {
+        throw logic_error("CLIENT mode not allowed on BB");
+      }
+      if (game->allowed_drop_modes & (1 << static_cast<size_t>(Lobby::DropMode::CLIENT))) {
+        throw logic_error("CLIENT mode not allowed on BB");
       }
       break;
     default:
       throw logic_error("invalid quest script version");
-  }
-  // Only allow DISABLED in Normal; use the default in Battle/Challenge/Solo
-  if ((game->drop_mode == Lobby::DropMode::DISABLED) && (mode != GameMode::NORMAL)) {
-    game->set_drop_mode((game->base_version == Version::BB_V4) ? Lobby::DropMode::SERVER_SHARED : Lobby::DropMode::CLIENT);
-    game->allowed_drop_modes |= (1 << static_cast<size_t>(game->drop_mode));
   }
 
   game->event = Lobby::game_event_for_lobby_event(current_lobby->event);

@@ -26,12 +26,24 @@ ServerState::ServerState(shared_ptr<struct event_base> base, const string& confi
       allow_unregistered_users(false),
       allow_dc_pc_games(false),
       allow_gc_xb_games(true),
-      allowed_drop_modes_v1_v2(0xFF),
-      allowed_drop_modes_v3(0xFF),
-      allowed_drop_modes_v4(0xFD), // CLIENT not allowed
-      default_drop_mode_v1_v2(Lobby::DropMode::CLIENT),
-      default_drop_mode_v3(Lobby::DropMode::CLIENT),
-      default_drop_mode_v4(Lobby::DropMode::SERVER_SHARED),
+      allowed_drop_modes_v1_v2_normal(0x1F),
+      allowed_drop_modes_v1_v2_battle(0x07),
+      allowed_drop_modes_v1_v2_challenge(0x07),
+      allowed_drop_modes_v3_normal(0x1F),
+      allowed_drop_modes_v3_battle(0x07),
+      allowed_drop_modes_v3_challenge(0x07),
+      allowed_drop_modes_v4_normal(0x1D), // CLIENT not allowed
+      allowed_drop_modes_v4_battle(0x05),
+      allowed_drop_modes_v4_challenge(0x05),
+      default_drop_mode_v1_v2_normal(Lobby::DropMode::CLIENT),
+      default_drop_mode_v1_v2_battle(Lobby::DropMode::CLIENT),
+      default_drop_mode_v1_v2_challenge(Lobby::DropMode::CLIENT),
+      default_drop_mode_v3_normal(Lobby::DropMode::CLIENT),
+      default_drop_mode_v3_battle(Lobby::DropMode::CLIENT),
+      default_drop_mode_v3_challenge(Lobby::DropMode::CLIENT),
+      default_drop_mode_v4_normal(Lobby::DropMode::SERVER_SHARED),
+      default_drop_mode_v4_battle(Lobby::DropMode::SERVER_SHARED),
+      default_drop_mode_v4_challenge(Lobby::DropMode::SERVER_SHARED),
       persistent_game_idle_timeout_usecs(0),
       ep3_send_function_call_enabled(false),
       catch_handler_exceptions(true),
@@ -631,16 +643,31 @@ void ServerState::parse_config(const JSON& json, bool is_reload) {
 
   this->ip_stack_debug = json.get_bool("IPStackDebug", this->ip_stack_debug);
   this->allow_unregistered_users = json.get_bool("AllowUnregisteredUsers", this->allow_unregistered_users);
-  this->allowed_drop_modes_v1_v2 = json.get_int("AllowedDropModesV1V2", this->allowed_drop_modes_v1_v2);
-  this->allowed_drop_modes_v3 = json.get_int("AllowedDropModesV3", this->allowed_drop_modes_v3);
-  this->allowed_drop_modes_v4 = json.get_int("AllowedDropModesV4", this->allowed_drop_modes_v4);
-  this->default_drop_mode_v1_v2 = json.get_enum("DefaultDropModeV1V2", this->default_drop_mode_v1_v2);
-  this->default_drop_mode_v3 = json.get_enum("DefaultDropModeV3", this->default_drop_mode_v3);
-  this->default_drop_mode_v4 = json.get_enum("DefaultDropModeV4", this->default_drop_mode_v4);
-  if (this->default_drop_mode_v4 == Lobby::DropMode::CLIENT) {
+  this->allowed_drop_modes_v1_v2_normal = json.get_int("AllowedDropModesV1V2Normal", this->allowed_drop_modes_v1_v2_normal);
+  this->allowed_drop_modes_v1_v2_battle = json.get_int("AllowedDropModesV1V2Battle", this->allowed_drop_modes_v1_v2_battle);
+  this->allowed_drop_modes_v1_v2_challenge = json.get_int("AllowedDropModesV1V2Challenge", this->allowed_drop_modes_v1_v2_challenge);
+  this->allowed_drop_modes_v3_normal = json.get_int("AllowedDropModesV3Normal", this->allowed_drop_modes_v3_normal);
+  this->allowed_drop_modes_v3_battle = json.get_int("AllowedDropModesV3Battle", this->allowed_drop_modes_v3_battle);
+  this->allowed_drop_modes_v3_challenge = json.get_int("AllowedDropModesV3Challenge", this->allowed_drop_modes_v3_challenge);
+  this->allowed_drop_modes_v4_normal = json.get_int("AllowedDropModesV4Normal", this->allowed_drop_modes_v4_normal);
+  this->allowed_drop_modes_v4_battle = json.get_int("AllowedDropModesV4Battle", this->allowed_drop_modes_v4_battle);
+  this->allowed_drop_modes_v4_challenge = json.get_int("AllowedDropModesV4Challenge", this->allowed_drop_modes_v4_challenge);
+  this->default_drop_mode_v1_v2_normal = json.get_enum("DefaultDropModeV1V2Normal", this->default_drop_mode_v1_v2_normal);
+  this->default_drop_mode_v1_v2_battle = json.get_enum("DefaultDropModeV1V2Battle", this->default_drop_mode_v1_v2_battle);
+  this->default_drop_mode_v1_v2_challenge = json.get_enum("DefaultDropModeV1V2Challenge", this->default_drop_mode_v1_v2_challenge);
+  this->default_drop_mode_v3_normal = json.get_enum("DefaultDropModeV3Normal", this->default_drop_mode_v3_normal);
+  this->default_drop_mode_v3_battle = json.get_enum("DefaultDropModeV3Battle", this->default_drop_mode_v3_battle);
+  this->default_drop_mode_v3_challenge = json.get_enum("DefaultDropModeV3Challenge", this->default_drop_mode_v3_challenge);
+  this->default_drop_mode_v4_normal = json.get_enum("DefaultDropModeV4Normal", this->default_drop_mode_v4_normal);
+  this->default_drop_mode_v4_battle = json.get_enum("DefaultDropModeV4Battle", this->default_drop_mode_v4_battle);
+  this->default_drop_mode_v4_challenge = json.get_enum("DefaultDropModeV4Challenge", this->default_drop_mode_v4_challenge);
+  if ((this->default_drop_mode_v4_normal == Lobby::DropMode::CLIENT) ||
+      (this->default_drop_mode_v4_battle == Lobby::DropMode::CLIENT) ||
+      (this->default_drop_mode_v4_challenge == Lobby::DropMode::CLIENT)) {
     throw runtime_error("default V4 drop mode cannot be CLIENT");
   }
-  if (this->allowed_drop_modes_v4 & (1 << static_cast<size_t>(Lobby::DropMode::CLIENT))) {
+  if ((this->allowed_drop_modes_v4_normal & (1 << static_cast<size_t>(Lobby::DropMode::CLIENT))) ||
+      (this->allowed_drop_modes_v4_battle & (1 << static_cast<size_t>(Lobby::DropMode::CLIENT))) || (this->allowed_drop_modes_v4_challenge & (1 << static_cast<size_t>(Lobby::DropMode::CLIENT)))) {
     throw runtime_error("CLIENT drop mode cannot be allowed in V4");
   }
   this->persistent_game_idle_timeout_usecs = json.get_int("PersistentGameIdleTimeout", this->persistent_game_idle_timeout_usecs);

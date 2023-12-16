@@ -721,12 +721,24 @@
   //   SERVER_PRIVATE   = 0x08
   //   SERVER_DUPLICATE = 0x10
   // See README.md for more information on drop modes and item tables.
-  "AllowedDropModesV1V2": 0x1F, // DCv1, DCv2, and PCv2
-  "AllowedDropModesV3": 0x1F, // GC and Xbox
-  "AllowedDropModesV4": 0x1D, // BB; CLIENT not allowed
-  "DefaultDropModeV1V2": "CLIENT", // DCv1, DCv2, and PCv2
-  "DefaultDropModeV3": "CLIENT", // GC and Xbox
-  "DefaultDropModeV4": "SERVER_SHARED", // BB
+  "AllowedDropModesV1V2Normal": 0x1F, // All modes
+  "AllowedDropModesV1V2Battle": 0x07, // SERVER_PRIVATE and SERVER_DUPLICATE not allowed
+  "AllowedDropModesV1V2Challenge": 0x07, // SERVER_PRIVATE and SERVER_DUPLICATE not allowed
+  "AllowedDropModesV3Normal": 0x1F, // All modes allowed
+  "AllowedDropModesV3Battle": 0x07, // SERVER_PRIVATE and SERVER_DUPLICATE not allowed
+  "AllowedDropModesV3Challenge": 0x07, // SERVER_PRIVATE and SERVER_DUPLICATE not allowed
+  "AllowedDropModesV4Normal": 0x1D, // CLIENT not allowed
+  "AllowedDropModesV4Challenge": 0x05, // CLIENT, SERVER_PRIVATE, and SERVER_DUPLICATE not allowed
+  "AllowedDropModesV4Battle": 0x05, // CLIENT, SERVER_PRIVATE, and SERVER_DUPLICATE not allowed
+  "DefaultDropModeV1V2Normal": "CLIENT",
+  "DefaultDropModeV1V2Battle": "CLIENT",
+  "DefaultDropModeV1V2Challenge": "CLIENT",
+  "DefaultDropModeV3Normal": "CLIENT",
+  "DefaultDropModeV3Battle": "CLIENT",
+  "DefaultDropModeV3Challenge": "CLIENT",
+  "DefaultDropModeV4Normal": "SERVER_SHARED",
+  "DefaultDropModeV4Battle": "SERVER_SHARED",
+  "DefaultDropModeV4Challenge": "SERVER_SHARED",
 
   // Rare enemy rates for BB games. The default rates specified here match the
   // original rates on the official servers. There is a hard limit of 16 rare
