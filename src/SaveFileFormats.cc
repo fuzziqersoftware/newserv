@@ -485,7 +485,12 @@ ItemData PSOBBCharacterFile::remove_item(uint32_t item_id, uint32_t amount, bool
   ret = inventory_item.data;
   this->inventory.num_items--;
   for (size_t x = index; x < this->inventory.num_items; x++) {
-    this->inventory.items[x] = this->inventory.items[x + 1];
+    auto& to_item = this->inventory.items[x];
+    const auto& from_item = this->inventory.items[x + 1];
+    to_item.present = from_item.present;
+    to_item.unknown_a1 = from_item.unknown_a1;
+    to_item.flags = from_item.flags;
+    to_item.data = from_item.data;
   }
   auto& last_item = this->inventory.items[this->inventory.num_items];
   last_item.present = 0;
