@@ -84,8 +84,8 @@ string TextTranscoder::operator()(const void* src, size_t src_size) {
   const void* orig_src = src;
   deque<string> blocks;
   while (src_size > 0) {
-    // Assume 2x input size on average, but always allocate at least 4 bytes
-    string& block = blocks.emplace_back(max<size_t>((src_size << 2), 4), '\0');
+    // Assume 2x input size on average, but always allocate at least 8 bytes
+    string& block = blocks.emplace_back(max<size_t>((src_size << 1), 8), '\0');
     char* dest = block.data();
     size_t dest_size = block.size();
     size_t ret = iconv(
@@ -95,11 +95,6 @@ string TextTranscoder::operator()(const void* src, size_t src_size) {
         reinterpret_cast<char**>(&dest),
         &dest_size);
     block.resize(block.size() - dest_size);
-    if (block.size() == 0) {
-      // This should never happen because no character should be more than 4
-      // bytes long in any known encoding
-      throw runtime_error("block size too small for conversion");
-    }
 
     size_t bytes_read = reinterpret_cast<const char*>(src) - reinterpret_cast<const char*>(orig_src);
     if (ret == this->FAILURE_RESULT) {
@@ -113,6 +108,9 @@ string TextTranscoder::operator()(const void* src, size_t src_size) {
         default:
           throw runtime_error("transcoding failed: " + string_for_error(errno));
       }
+    }
+    if ((bytes_read == 0) && (src_size != 0)) {
+      throw runtime_error("failed to transcode input data");
     }
   }
 
