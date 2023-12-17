@@ -8,6 +8,7 @@
 - Make UI strings localizable (e.g. entries in menus, welcome message, etc.)
 - Figure out what causes the corruption message on PC proxy sessions and fix it
 - Add an idle connection timeout for proxy sessions
+- Look into JP heart symbol bug on Linux
 
 ## Episode 3
 
