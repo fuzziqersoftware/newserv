@@ -19,6 +19,65 @@
 
 using namespace std;
 
+using SubcommandHandler = void (*)(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size);
+
+struct SubcommandDefinition {
+  enum Flag {
+    ALWAYS_FORWARD_TO_WATCHERS = 0x01,
+    ALLOW_FORWARD_TO_WATCHED_LOBBY = 0x02,
+  };
+  uint8_t nte_subcommand;
+  uint8_t proto_subcommand;
+  uint8_t final_subcommand;
+  SubcommandHandler handler;
+  uint8_t flags = 0;
+};
+using SDF = SubcommandDefinition::Flag;
+
+extern const SubcommandDefinition subcommand_definitions[0x100];
+
+static const SubcommandDefinition& def_for_nte_subcommand(uint8_t subcommand) {
+  static std::array<uint8_t, 0x100> nte_to_final_map;
+  static bool nte_to_final_map_populated = false;
+  if (!nte_to_final_map_populated) {
+    for (size_t z = 0; z < 0x100; z++) {
+      nte_to_final_map[z] = 0x00;
+    }
+    for (size_t z = 0; z < 0x100; z++) {
+      const auto& def = subcommand_definitions[z];
+      if (def.nte_subcommand != 0x00) {
+        if (nte_to_final_map[def.nte_subcommand]) {
+          throw logic_error("multiple NTE subcommands map to the same final subcommand");
+        }
+        nte_to_final_map[def.nte_subcommand] = z;
+      }
+    }
+    nte_to_final_map_populated = true;
+  }
+  return subcommand_definitions[nte_to_final_map[subcommand]];
+}
+
+static const SubcommandDefinition& def_for_proto_subcommand(uint8_t subcommand) {
+  static std::array<uint8_t, 0x100> proto_to_final_map;
+  static bool proto_to_final_map_populated = false;
+  if (!proto_to_final_map_populated) {
+    for (size_t z = 0; z < 0x100; z++) {
+      proto_to_final_map[z] = 0x00;
+    }
+    for (size_t z = 0; z < 0x100; z++) {
+      const auto& def = subcommand_definitions[z];
+      if (def.proto_subcommand != 0x00) {
+        if (proto_to_final_map[def.proto_subcommand]) {
+          throw logic_error("multiple prototype subcommands map to the same final subcommand");
+        }
+        proto_to_final_map[def.proto_subcommand] = z;
+      }
+    }
+    proto_to_final_map_populated = true;
+  }
+  return subcommand_definitions[proto_to_final_map[subcommand]];
+}
+
 // The functions in this file are called when a client sends a game command
 // (60, 62, 6C, 6D, C9, or CB).
 
@@ -39,22 +98,7 @@ bool command_is_private(uint8_t command) {
   return (command == 0x62) || (command == 0x6D);
 }
 
-static const unordered_set<uint8_t> watcher_subcommands({
-    0x07, // Symbol chat
-    0x74, // Word select
-    0xBD, // Word select during battle (with private_flags)
-    0xBE, // Sound chat
-});
-
-static void forward_subcommand(
-    shared_ptr<Client> c,
-    uint8_t command,
-    uint8_t flag,
-    const void* data,
-    size_t size,
-    uint8_t dc_nte_subcommand = 0x00,
-    uint8_t dc_11_2000_proto_subcommand = 0x00) {
-
+static void forward_subcommand(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
   // If the command is an Ep3-only command, make sure an Ep3 client sent it
   bool command_is_ep3 = (command & 0xF0) == 0xC0;
   if (command_is_ep3 && !is_ep3(c->version())) {
@@ -67,6 +111,51 @@ static void forward_subcommand(
     return;
   }
 
+  auto& header = check_size_t<G_UnusedHeader>(data, size, 0xFFFF);
+  const SubcommandDefinition* def;
+  if (c->version() == Version::DC_NTE) {
+    def = &def_for_nte_subcommand(header.subcommand);
+  } else if (c->version() == Version::DC_V1_11_2000_PROTOTYPE) {
+    def = &def_for_proto_subcommand(header.subcommand);
+  } else {
+    def = &subcommand_definitions[header.subcommand];
+  }
+
+  string nte_data;
+  string proto_data;
+  string final_data;
+  Version c_version = c->version();
+  auto send_to_client = [&](shared_ptr<Client> lc) -> void {
+    Version lc_version = lc->version();
+    if (l->is_game() || (!is_pre_v1(lc_version) && !is_pre_v1(c_version)) || (lc_version == c_version)) {
+      send_command(lc, command, flag, data, size);
+    } else if (lc->version() == Version::DC_NTE) {
+      if (def->nte_subcommand) {
+        if (nte_data.empty()) {
+          nte_data.assign(reinterpret_cast<const char*>(data), size);
+          nte_data[0] = def->nte_subcommand;
+        }
+        send_command(lc, command, flag, nte_data);
+      }
+    } else if (lc->version() == Version::DC_V1_11_2000_PROTOTYPE) {
+      if (def->proto_subcommand) {
+        if (proto_data.empty()) {
+          proto_data.assign(reinterpret_cast<const char*>(data), size);
+          proto_data[0] = def->proto_subcommand;
+        }
+        send_command(lc, command, flag, proto_data);
+      }
+    } else {
+      if (def->final_subcommand) {
+        if (final_data.empty()) {
+          final_data.assign(reinterpret_cast<const char*>(data), size);
+          final_data[0] = def->final_subcommand;
+        }
+        send_command(lc, command, flag, final_data);
+      }
+    }
+  };
+
   if (command_is_private(command)) {
     if (flag >= l->max_clients) {
       return;
@@ -75,60 +164,33 @@ static void forward_subcommand(
     if (!target) {
       return;
     }
-    if (target->version() == Version::DC_NTE) {
-      if (dc_nte_subcommand) {
-        string nte_data(reinterpret_cast<const char*>(data), size);
-        nte_data[0] = dc_nte_subcommand;
-        send_command(target, command, flag, nte_data);
-      } else {
-        c->log.warning("Attempted to send unsupported target command to DC NTE client; dropping command");
-      }
-    } else if (target->version() == Version::DC_V1_11_2000_PROTOTYPE) {
-      if (dc_11_2000_proto_subcommand) {
-        string proto_data(reinterpret_cast<const char*>(data), size);
-        proto_data[0] = dc_11_2000_proto_subcommand;
-        send_command(target, command, flag, proto_data);
-      } else {
-        c->log.warning("Attempted to send unsupported target command to DC 11/2000 prototype client; dropping command");
-      }
-    } else {
-      send_command(target, command, flag, data, size);
-    }
+    send_to_client(target);
 
   } else {
     if (command_is_ep3) {
-      for (auto& target : l->clients) {
-        if (!target || (target == c) || !is_ep3(target->version())) {
+      for (auto& lc : l->clients) {
+        if (!lc || (lc == c) || !is_ep3(lc->version())) {
           continue;
         }
-        send_command(target, command, flag, data, size);
+        send_to_client(lc);
+      }
+      if ((command == 0xCB) &&
+          l->check_flag(Lobby::Flag::IS_SPECTATOR_TEAM) &&
+          (def->flags & SDF::ALLOW_FORWARD_TO_WATCHED_LOBBY)) {
+        auto watched_lobby = l->watched_lobby.lock();
+        if (watched_lobby) {
+          for (auto& lc : watched_lobby->clients) {
+            if (lc && is_ep3(lc->version())) {
+              send_to_client(lc);
+            }
+          }
+        }
       }
 
     } else {
-      string nte_data;
-      string proto_data;
       for (auto& lc : l->clients) {
-        if (!lc || (lc == c)) {
-          continue;
-        }
-        if (lc->version() == Version::DC_NTE) {
-          if (dc_nte_subcommand) {
-            if (nte_data.empty()) {
-              nte_data.assign(reinterpret_cast<const char*>(data), size);
-              nte_data[0] = dc_nte_subcommand;
-            }
-            send_command(lc, command, flag, nte_data);
-          }
-        } else if (lc->version() == Version::DC_V1_11_2000_PROTOTYPE) {
-          if (dc_11_2000_proto_subcommand) {
-            if (proto_data.empty()) {
-              proto_data.assign(reinterpret_cast<const char*>(data), size);
-              proto_data[0] = dc_11_2000_proto_subcommand;
-            }
-            send_command(lc, command, flag, proto_data);
-          }
-        } else {
-          send_command(lc, command, flag, data, size);
+        if (lc && (lc != c)) {
+          send_to_client(lc);
         }
       }
     }
@@ -138,9 +200,8 @@ static void forward_subcommand(
     // if we forward everything before battle, the blocking menu subcommands
     // cause the battle setup menu to appear in the spectator room, which looks
     // weird and is generally undesirable.)
-    uint8_t subcommand = size ? *reinterpret_cast<const uint8_t*>(data) : 0x00;
     if ((l->ep3_server && (l->ep3_server->setup_phase != Episode3::SetupPhase::REGISTRATION)) ||
-        watcher_subcommands.count(subcommand)) {
+        (def->flags & SDF::ALWAYS_FORWARD_TO_WATCHERS)) {
       for (const auto& watcher_lobby : l->watcher_lobbies) {
         for (auto& target : watcher_lobby->clients) {
           if (target && is_ep3(target->version())) {
@@ -161,9 +222,11 @@ static void forward_subcommand(
 
 static void on_invalid(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
   const auto& cmd = check_size_t<G_UnusedHeader>(data, size, 0xFFFF);
-  if (command_is_private(command)) {
-    c->log.error("Invalid subcommand: %02hhX (private to %hhu)",
-        cmd.subcommand, flag);
+  if ((c->version() == Version::DC_NTE) || c->version() == Version::DC_V1_11_2000_PROTOTYPE) {
+    c->log.error("Unrecognized DC NTE/prototype subcommand: %02hhX", cmd.subcommand);
+    forward_subcommand(c, command, flag, data, size);
+  } else if (command_is_private(command)) {
+    c->log.error("Invalid subcommand: %02hhX (private to %hhu)", cmd.subcommand, flag);
   } else {
     c->log.error("Invalid subcommand: %02hhX (public)", cmd.subcommand);
   }
@@ -171,14 +234,18 @@ static void on_invalid(shared_ptr<Client> c, uint8_t command, uint8_t flag, cons
 
 static void on_unimplemented(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
   const auto& cmd = check_size_t<G_UnusedHeader>(data, size, 0xFFFF);
-  if (command_is_private(command)) {
-    c->log.warning("Unknown subcommand: %02hhX (private to %hhu)",
-        cmd.subcommand, flag);
+  if ((c->version() == Version::DC_NTE) || c->version() == Version::DC_V1_11_2000_PROTOTYPE) {
+    c->log.error("Unimplemented DC NTE/prototype subcommand: %02hhX", cmd.subcommand);
+    forward_subcommand(c, command, flag, data, size);
   } else {
-    c->log.warning("Unknown subcommand: %02hhX (public)", cmd.subcommand);
-  }
-  if (c->config.check_flag(Client::Flag::DEBUG_ENABLED)) {
-    send_text_message_printf(c, "$C5Sub 6x%02hhX missing", cmd.subcommand);
+    if (command_is_private(command)) {
+      c->log.warning("Unknown subcommand: %02hhX (private to %hhu)", cmd.subcommand, flag);
+    } else {
+      c->log.warning("Unknown subcommand: %02hhX (public)", cmd.subcommand);
+    }
+    if (c->config.check_flag(Client::Flag::DEBUG_ENABLED)) {
+      send_text_message_printf(c, "$C5Sub 6x%02hhX missing", cmd.subcommand);
+    }
   }
 }
 
@@ -245,16 +312,26 @@ static void on_forward_sync_joining_player_state(shared_ptr<Client> c, uint8_t c
     return;
   }
 
-  const auto& cmd = check_size_t<G_SyncGameStateHeader_6x6B_6x6C_6x6D_6x6E>(data, size, 0xFFFF);
-  if (cmd.compressed_size > size - sizeof(cmd)) {
-    throw runtime_error("compressed end offset is beyond end of command");
-  }
-
-  if (c->config.check_flag(Client::Flag::DEBUG_ENABLED)) {
-    string decompressed = bc0_decompress(reinterpret_cast<const char*>(data) + sizeof(cmd), cmd.compressed_size);
-    c->log.info("Decompressed sync data (%" PRIX32 " -> %zX bytes; expected %" PRIX32 "):",
-        cmd.compressed_size.load(), decompressed.size(), cmd.decompressed_size.load());
-    print_data(stderr, decompressed);
+  if (is_pre_v1(c->version())) {
+    const auto& cmd = check_size_t<G_SyncGameStateHeader_DCNTE_6x6B_6x6C_6x6D_6x6E>(data, size, 0xFFFF);
+    size_t compressed_size = size - sizeof(cmd);
+    if (c->config.check_flag(Client::Flag::DEBUG_ENABLED)) {
+      string decompressed = bc0_decompress(reinterpret_cast<const char*>(data) + sizeof(cmd), compressed_size);
+      c->log.info("Decompressed sync data (%zX -> %zX bytes; expected %" PRIX32 "):",
+          compressed_size, decompressed.size(), cmd.decompressed_size.load());
+      print_data(stderr, decompressed);
+    }
+  } else {
+    const auto& cmd = check_size_t<G_SyncGameStateHeader_6x6B_6x6C_6x6D_6x6E>(data, size, 0xFFFF);
+    if (cmd.compressed_size > size - sizeof(cmd)) {
+      throw runtime_error("compressed end offset is beyond end of command");
+    }
+    if (c->config.check_flag(Client::Flag::DEBUG_ENABLED)) {
+      string decompressed = bc0_decompress(reinterpret_cast<const char*>(data) + sizeof(cmd), cmd.compressed_size);
+      c->log.info("Decompressed sync data (%" PRIX32 " -> %zX bytes; expected %" PRIX32 "):",
+          cmd.compressed_size.load(), decompressed.size(), cmd.decompressed_size.load());
+      print_data(stderr, decompressed);
+    }
   }
 
   on_forward_check_game_loading(c, command, flag, data, size);
@@ -279,15 +356,26 @@ static void on_sync_joining_player_item_state(shared_ptr<Client> c, uint8_t comm
     return;
   }
 
-  const auto& cmd = check_size_t<G_SyncGameStateHeader_6x6B_6x6C_6x6D_6x6E>(data, size, 0xFFFF);
-  if (cmd.compressed_size > size - sizeof(cmd)) {
-    throw runtime_error("compressed end offset is beyond end of command");
+  string decompressed;
+  size_t compressed_size;
+  size_t decompressed_size;
+  if (is_pre_v1(c->version())) {
+    const auto& cmd = check_size_t<G_SyncGameStateHeader_DCNTE_6x6B_6x6C_6x6D_6x6E>(data, size, 0xFFFF);
+    compressed_size = size - sizeof(cmd);
+    decompressed_size = cmd.decompressed_size;
+    decompressed = bc0_decompress(reinterpret_cast<const char*>(data) + sizeof(cmd), compressed_size);
+  } else {
+    const auto& cmd = check_size_t<G_SyncGameStateHeader_6x6B_6x6C_6x6D_6x6E>(data, size, 0xFFFF);
+    compressed_size = cmd.compressed_size;
+    decompressed_size = cmd.decompressed_size;
+    if (compressed_size > size - sizeof(cmd)) {
+      throw runtime_error("compressed end offset is beyond end of command");
+    }
+    decompressed = bc0_decompress(reinterpret_cast<const char*>(data) + sizeof(cmd), cmd.compressed_size);
   }
-
-  string decompressed = bc0_decompress(reinterpret_cast<const char*>(data) + sizeof(cmd), cmd.compressed_size);
   if (c->config.check_flag(Client::Flag::DEBUG_ENABLED)) {
-    c->log.info("Decompressed item sync data (%" PRIX32 " -> %zX bytes; expected %" PRIX32 "):",
-        cmd.compressed_size.load(), decompressed.size(), cmd.decompressed_size.load());
+    c->log.info("Decompressed item sync data (%zX -> %zX bytes; expected %zX):",
+        compressed_size, decompressed.size(), decompressed_size);
     print_data(stderr, decompressed);
   }
 
@@ -398,65 +486,37 @@ static void on_sync_joining_player_disp_and_inventory(
 
 static void on_forward_check_size_client(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
   const auto& cmd = check_size_t<G_ClientIDHeader>(data, size, 0xFFFF);
-  if (cmd.client_id != c->lobby_client_id) {
-    return;
+  if (cmd.client_id == c->lobby_client_id) {
+    forward_subcommand(c, command, flag, data, size);
   }
-  forward_subcommand(c, command, flag, data, size);
 }
 
 static void on_forward_check_size_game(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
   check_size_t<G_UnusedHeader>(data, size, 0xFFFF);
   auto l = c->require_lobby();
-  if (!l->is_game()) {
-    return;
+  if (l->is_game()) {
+    forward_subcommand(c, command, flag, data, size);
   }
-  forward_subcommand(c, command, flag, data, size);
 }
 
 static void on_forward_check_size_ep3_lobby(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
   check_size_t<G_UnusedHeader>(data, size, 0xFFFF);
   auto l = c->require_lobby();
-  if (l->is_game() || !l->is_ep3()) {
-    return;
+  if (!l->is_game() && l->is_ep3()) {
+    forward_subcommand(c, command, flag, data, size);
   }
-  forward_subcommand(c, command, flag, data, size);
 }
 
 static void on_forward_check_size_ep3_game(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
   check_size_t<G_UnusedHeader>(data, size, 0xFFFF);
   auto l = c->require_lobby();
-  if (!l->is_game() || !l->is_ep3()) {
-    return;
+  if (l->is_game() && l->is_ep3()) {
+    forward_subcommand(c, command, flag, data, size);
   }
-  forward_subcommand(c, command, flag, data, size);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 // Ep3 subcommands
-
-static void on_ep3_sound_chat(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
-  // Unlike the 6x and C9 commands, subcommands sent with the CB command are
-  // forwarded from spectator teams to the primary team. The client only uses
-  // this behavior for the 6xBE command (sound chat), and newserv enforces that
-  // only that command is sent via CB.
-  if (!is_ep3(c->version())) {
-    throw runtime_error("non-Episode 3 client sent sound chat command");
-  }
-
-  auto l = c->require_lobby();
-  if ((command == 0xCB) && l->check_flag(Lobby::Flag::IS_SPECTATOR_TEAM)) {
-    auto watched_lobby = l->watched_lobby.lock();
-    if (watched_lobby) {
-      for (auto& target : watched_lobby->clients) {
-        if (target && is_ep3(target->version())) {
-          send_command(target, command, flag, data, size);
-        }
-      }
-    }
-  }
-
-  forward_subcommand(c, command, flag, data, size);
-}
 
 static void on_ep3_battle_subs(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* orig_data, size_t size) {
   const auto& header = check_size_t<G_CardBattleCommandHeader>(orig_data, size, 0xFFFF);
@@ -480,11 +540,7 @@ static void on_ep3_battle_subs(shared_ptr<Client> c, uint8_t command, uint8_t fl
   }
 
   if (!(s->ep3_behavior_flags & Episode3::BehaviorFlag::DISABLE_MASKING)) {
-    uint8_t mask_key = 0;
-    while (!mask_key) {
-      mask_key = random_object<uint8_t>();
-    }
-    set_mask_for_ep3_game_command(data.data(), data.size(), mask_key);
+    set_mask_for_ep3_game_command(data.data(), data.size(), (random_object<uint32_t>() % 0xFF) + 1);
   }
 
   forward_subcommand(c, command, flag, data.data(), data.size());
@@ -540,7 +596,7 @@ static void on_send_guild_card(shared_ptr<Client> c, uint8_t command, uint8_t fl
 static void on_symbol_chat(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
   const auto& cmd = check_size_t<G_SymbolChat_6x07>(data, size);
   if (c->can_chat && (cmd.client_id == c->lobby_client_id)) {
-    forward_subcommand(c, command, flag, data, size, 0x00, 0x07);
+    forward_subcommand(c, command, flag, data, size);
   }
 }
 
@@ -587,11 +643,13 @@ static void on_word_select_t(shared_ptr<Client> c, uint8_t command, uint8_t, con
           lc_version = Version::GC_V3;
         }
 
-        uint8_t subcommand = cmd.subcommand;
+        uint8_t subcommand;
         if (lc->version() == Version::DC_NTE) {
           subcommand = 0x62;
         } else if (lc->version() == Version::DC_V1_11_2000_PROTOTYPE) {
           subcommand = 0x69;
+        } else {
+          subcommand = 0x74;
         }
 
         if (is_big_endian(lc->version())) {
@@ -616,26 +674,29 @@ static void on_word_select_t(shared_ptr<Client> c, uint8_t command, uint8_t, con
 }
 
 static void on_word_select(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
-  if (is_big_endian(c->version())) {
+  if (is_pre_v1(c->version())) {
+    // The Word Select command is a different size in final vs. NTE and
+    // proto, so handle that here by appending FFFFFFFF0000000000000000
+    string effective_data(reinterpret_cast<const char*>(data), size);
+    effective_data.resize(0x20, 0x00);
+    effective_data[0x01] = 0x08;
+    effective_data[0x14] = 0xFF;
+    effective_data[0x15] = 0xFF;
+    effective_data[0x16] = 0xFF;
+    effective_data[0x17] = 0xFF;
+    on_word_select_t<false>(c, command, flag, effective_data.data(), effective_data.size());
+  } else if (is_big_endian(c->version())) {
     on_word_select_t<true>(c, command, flag, data, size);
   } else {
     on_word_select_t<false>(c, command, flag, data, size);
   }
 }
 
-static void on_set_player_invisible(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
-  const auto& cmd = check_size_t<G_SetPlayerVisibility_6x22_6x23>(data, size);
-  if (cmd.header.client_id != c->lobby_client_id) {
-    return;
-  }
-  forward_subcommand(c, command, flag, data, size, 0x1E, 0x20);
-}
-
 static void on_set_player_visible(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
   const auto& cmd = check_size_t<G_SetPlayerVisibility_6x22_6x23>(data, size);
 
   if (cmd.header.client_id == c->lobby_client_id) {
-    forward_subcommand(c, command, flag, data, size, 0x1F, 0x21);
+    forward_subcommand(c, command, flag, data, size);
 
     auto l = c->lobby.lock();
     if (l) {
@@ -656,15 +717,33 @@ static void on_set_player_visible(shared_ptr<Client> c, uint8_t command, uint8_t
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-// Game commands used by cheat mechanisms
 
-template <typename CmdT, uint8_t DCNTESubcommand, uint8_t DC112000ProtoSubcommand>
-static void on_change_floor(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
-  const auto& cmd = check_size_t<CmdT>(data, size);
+static void on_change_floor_6x1F(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
+  if (is_pre_v1(c->version())) {
+    check_size_t<G_SetPlayerFloor_DCNTE_6x1F>(data, size);
+    // DC NTE and 11/2000 don't send 6F when they're done loading, so we do the
+    // relevant things 6F would do here instead.
+    if (c->config.check_flag(Client::Flag::LOADING)) {
+      c->config.clear_flag(Client::Flag::LOADING);
+      auto l = c->require_lobby();
+      l->assign_inventory_and_bank_item_ids(c, true);
+    }
+
+  } else {
+    const auto& cmd = check_size_t<G_SetPlayerFloor_6x1F>(data, size);
+    if (cmd.floor >= 0) {
+      c->floor = cmd.floor;
+    }
+  }
+  forward_subcommand(c, command, flag, data, size);
+}
+
+static void on_change_floor_6x21(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
+  const auto& cmd = check_size_t<G_InterLevelWarp_6x21>(data, size);
   if (cmd.floor >= 0) {
     c->floor = cmd.floor;
   }
-  forward_subcommand(c, command, flag, data, size, DCNTESubcommand, DC112000ProtoSubcommand);
+  forward_subcommand(c, command, flag, data, size);
 }
 
 // When a player dies, decrease their mag's synchro
@@ -694,7 +773,8 @@ static void on_hit_by_enemy(shared_ptr<Client> c, uint8_t command, uint8_t flag,
   auto l = c->require_lobby();
   if (l->is_game() && (cmd.client_id == c->lobby_client_id)) {
     forward_subcommand(c, command, flag, data, size);
-    bool player_cheats_enabled = l->check_flag(Lobby::Flag::CHEATS_ENABLED) || (c->license->flags & License::Flag::CHEAT_ANYWHERE);
+    bool player_cheats_enabled = !is_v1(c->version()) &&
+        (l->check_flag(Lobby::Flag::CHEATS_ENABLED) || (c->license->flags & License::Flag::CHEAT_ANYWHERE));
     if (player_cheats_enabled && c->config.check_flag(Client::Flag::INFINITE_HP_ENABLED)) {
       send_player_stats_change(c, PlayerStatsChange::ADD_HP, 2550);
     }
@@ -708,7 +788,8 @@ static void on_cast_technique_finished(shared_ptr<Client> c, uint8_t command, ui
   auto l = c->require_lobby();
   if (l->is_game() && (cmd.header.client_id == c->lobby_client_id)) {
     forward_subcommand(c, command, flag, data, size);
-    bool player_cheats_enabled = l->check_flag(Lobby::Flag::CHEATS_ENABLED) || (c->license->flags & License::Flag::CHEAT_ANYWHERE);
+    bool player_cheats_enabled = !is_v1(c->version()) &&
+        (l->check_flag(Lobby::Flag::CHEATS_ENABLED) || (c->license->flags & License::Flag::CHEAT_ANYWHERE));
     if (player_cheats_enabled && c->config.check_flag(Client::Flag::INFINITE_TP_ENABLED)) {
       send_player_stats_change(c, PlayerStatsChange::ADD_TP, 255);
     }
@@ -773,51 +854,29 @@ static void on_switch_state_changed(shared_ptr<Client> c, uint8_t command, uint8
 
 ////////////////////////////////////////////////////////////////////////////////
 
-template <typename CmdT, uint8_t DCNTESubcommand, uint8_t DC112000ProtoSubcommand>
+template <typename CmdT>
 void on_movement(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
   const auto& cmd = check_size_t<CmdT>(data, size);
   if (cmd.header.client_id != c->lobby_client_id) {
     return;
   }
-
   c->x = cmd.x;
   c->z = cmd.z;
-
-  forward_subcommand(c, command, flag, data, size, DCNTESubcommand, DC112000ProtoSubcommand);
+  forward_subcommand(c, command, flag, data, size);
 }
 
-template <typename CmdT, uint8_t DCNTESubcommand, uint8_t DC112000ProtoSubcommand>
+template <typename CmdT>
 void on_movement_with_floor(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
   const auto& cmd = check_size_t<CmdT>(data, size);
   if (cmd.header.client_id != c->lobby_client_id) {
     return;
   }
-
   c->x = cmd.x;
   c->z = cmd.z;
   if (cmd.floor >= 0) {
     c->floor = cmd.floor;
   }
-
-  forward_subcommand(c, command, flag, data, size, DCNTESubcommand, DC112000ProtoSubcommand);
-}
-
-static void on_toggle_counter_interaction(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
-  check_size_t<G_ToggleCounterInteraction_6x52>(data, size, 0xFFFF);
-  forward_subcommand(c, command, flag, data, size, 0x46, 0x4C);
-}
-
-static void on_set_or_clear_player_flags_multi(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
-  const auto& cmd = check_size_t<G_ClientIDHeader>(data, size, 0xFFFF);
-  if (cmd.client_id != c->lobby_client_id) {
-    return;
-  }
-  forward_subcommand(c, command, flag, data, size, 0x00, 0x50);
-}
-
-static void on_unknown_6x3B(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
-  check_size_t<G_UnusedHeader>(data, size, 0xFFFF);
-  forward_subcommand(c, command, flag, data, size, 0x00, 0x38);
+  forward_subcommand(c, command, flag, data, size);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1075,24 +1134,19 @@ static void on_box_or_enemy_item_drop(shared_ptr<Client> c, uint8_t command, uin
   }
 }
 
-static void on_pick_up_item(shared_ptr<Client>, uint8_t, uint8_t, const void*, size_t) {
-  throw runtime_error("clients should not send 6x59 commands");
-}
-
-static void on_pick_up_item_request(shared_ptr<Client> c, uint8_t, uint8_t, const void* data, size_t size) {
-  auto& cmd = check_size_t<G_PickUpItemRequest_6x5A>(data, size);
-
+static void on_pick_up_item_generic(
+    shared_ptr<Client> c, uint16_t client_id, uint16_t floor, uint32_t item_id, bool is_request) {
   auto l = c->require_lobby();
-  if (!l->is_game() || (cmd.header.client_id != c->lobby_client_id)) {
+  if (!l->is_game() || (client_id != c->lobby_client_id)) {
     return;
   }
 
-  if (!l->item_exists(cmd.floor, cmd.item_id)) {
+  if (!l->item_exists(floor, item_id)) {
     // This can happen if the network is slow, and the client tries to pick up
     // the same item multiple times. Or multiple clients could try to pick up
     // the same item at approximately the same time; only one should get it.
     l->log.warning("Player %hu requests to pick up %08" PRIX32 ", but the item does not exist; dropping command",
-        cmd.header.client_id.load(), cmd.item_id.load());
+        client_id, item_id);
 
   } else {
     // This is handled by the server on BB, and by the leader on other versions.
@@ -1101,40 +1155,57 @@ static void on_pick_up_item_request(shared_ptr<Client> c, uint8_t, uint8_t, cons
     // logic here instead of forwarding the 6x5A to the leader.
 
     auto p = c->character();
-    auto fi = l->remove_item(cmd.floor, cmd.item_id, c->lobby_client_id);
+    auto fi = l->remove_item(floor, item_id, c->lobby_client_id);
+    if (!fi->visible_to_client(c->lobby_client_id)) {
+      l->log.warning("Player %hu requests to pick up %08" PRIX32 ", but is it not visible to them; dropping command",
+          client_id, item_id);
+      l->add_item(floor, fi);
+      return;
+    }
+
     try {
       p->add_item(fi->data);
     } catch (const out_of_range&) {
       // Inventory is full; put the item back where it was
       l->log.warning("Player %hu requests to pick up %08" PRIX32 ", but their inventory is full; dropping command",
-          cmd.header.client_id.load(), cmd.item_id.load());
-      l->add_item(cmd.floor, fi);
+          client_id, item_id);
+      l->add_item(floor, fi);
       return;
     }
 
     if (l->log.should_log(LogLevel::INFO)) {
       auto s = c->require_server_state();
       auto name = s->describe_item(c->version(), fi->data, false);
-      l->log.info("Player %hu picked up (BB) %08" PRIX32 " (%s)", cmd.header.client_id.load(), cmd.item_id.load(), name.c_str());
+      l->log.info("Player %hu picked up %08" PRIX32 " (%s)", client_id, item_id, name.c_str());
       p->print_inventory(stderr, c->version(), s->item_name_index);
     }
 
     auto s = c->require_server_state();
     for (size_t z = 0; z < 12; z++) {
       auto lc = l->clients[z];
-      if (!lc) {
+      if ((!lc) || (!is_request && (lc == c))) {
         continue;
       }
       if (fi->visible_to_client(z)) {
-        send_pick_up_item_to_client(lc, cmd.header.client_id, cmd.item_id, cmd.floor);
+        send_pick_up_item_to_client(lc, client_id, item_id, floor);
       } else if (lc->version() == Version::BB_V4) {
-        send_create_inventory_item_to_client(lc, cmd.header.client_id, fi->data);
+        send_create_inventory_item_to_client(lc, client_id, fi->data);
       } else {
         send_drop_item_to_channel(s, lc->channel, fi->data, false, lc->floor, lc->x, lc->z, 0xFFFF);
-        send_pick_up_item_to_client(lc, cmd.header.client_id, cmd.item_id, cmd.floor);
+        send_pick_up_item_to_client(lc, client_id, item_id, floor);
       }
     }
   }
+}
+
+static void on_pick_up_item(shared_ptr<Client> c, uint8_t, uint8_t, const void* data, size_t size) {
+  auto& cmd = check_size_t<G_PickUpItem_6x59>(data, size);
+  on_pick_up_item_generic(c, cmd.client_id2, cmd.floor, cmd.item_id, false);
+}
+
+static void on_pick_up_item_request(shared_ptr<Client> c, uint8_t, uint8_t, const void* data, size_t size) {
+  auto& cmd = check_size_t<G_PickUpItemRequest_6x5A>(data, size);
+  on_pick_up_item_generic(c, cmd.header.client_id, cmd.floor, cmd.item_id, true);
 }
 
 static void on_equip_item(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
@@ -2671,131 +2742,124 @@ static void on_write_quest_global_flag_bb(shared_ptr<Client> c, uint8_t, uint8_t
 
 ////////////////////////////////////////////////////////////////////////////////
 
-struct SubcommandDefinition {
-  uint8_t nte_subcommand;
-  uint8_t proto_subcommand;
-  uint8_t subcommand;
-  void (*handler)(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size);
-};
-
-SubcommandDefinition subcommand_definitions[0x100] = {
+const SubcommandDefinition subcommand_definitions[0x100] = {
     /* 6x00 */ {0x00, 0x00, 0x00, on_invalid},
-    /* 6x01 */ {0x00, 0x00, 0x01, nullptr},
-    /* 6x02 */ {0x00, 0x00, 0x02, nullptr},
-    /* 6x03 */ {0x00, 0x00, 0x03, nullptr},
-    /* 6x04 */ {0x00, 0x00, 0x04, nullptr},
-    /* 6x05 */ {0x00, 0x00, 0x05, on_switch_state_changed},
-    /* 6x06 */ {0x00, 0x00, 0x06, on_send_guild_card},
-    /* 6x07 */ {0x00, 0x07, 0x07, on_symbol_chat},
-    /* 6x08 */ {0x00, 0x00, 0x08, nullptr},
-    /* 6x09 */ {0x00, 0x00, 0x09, nullptr},
-    /* 6x0A */ {0x00, 0x00, 0x0A, on_enemy_hit},
-    /* 6x0B */ {0x00, 0x00, 0x0B, on_forward_check_size_game},
-    /* 6x0C */ {0x00, 0x00, 0x0C, on_forward_check_size_game},
+    /* 6x01 */ {0x01, 0x01, 0x01, on_invalid},
+    /* 6x02 */ {0x02, 0x02, 0x02, nullptr},
+    /* 6x03 */ {0x03, 0x03, 0x03, nullptr},
+    /* 6x04 */ {0x04, 0x04, 0x04, nullptr},
+    /* 6x05 */ {0x05, 0x05, 0x05, on_switch_state_changed},
+    /* 6x06 */ {0x06, 0x06, 0x06, on_send_guild_card},
+    /* 6x07 */ {0x07, 0x07, 0x07, on_symbol_chat, SDF::ALWAYS_FORWARD_TO_WATCHERS},
+    /* 6x08 */ {0x08, 0x08, 0x08, nullptr},
+    /* 6x09 */ {0x09, 0x09, 0x09, nullptr},
+    /* 6x0A */ {0x0A, 0x0A, 0x0A, on_enemy_hit},
+    /* 6x0B */ {0x0B, 0x0B, 0x0B, on_forward_check_size_game},
+    /* 6x0C */ {0x0C, 0x0C, 0x0C, on_forward_check_size_game},
     /* 6x0D */ {0x00, 0x00, 0x0D, on_forward_check_size_game},
     /* 6x0E */ {0x00, 0x00, 0x0E, nullptr},
-    /* 6x0F */ {0x00, 0x00, 0x0F, nullptr},
-    /* 6x10 */ {0x00, 0x00, 0x10, nullptr},
-    /* 6x11 */ {0x00, 0x00, 0x11, nullptr},
-    /* 6x12 */ {0x00, 0x00, 0x12, on_dragon_actions},
-    /* 6x13 */ {0x00, 0x00, 0x13, on_forward_check_size_game},
-    /* 6x14 */ {0x00, 0x00, 0x14, on_forward_check_size_game},
-    /* 6x15 */ {0x00, 0x00, 0x15, on_forward_check_size_game},
-    /* 6x16 */ {0x00, 0x00, 0x16, on_forward_check_size_game},
-    /* 6x17 */ {0x00, 0x00, 0x17, on_forward_check_size_game},
-    /* 6x18 */ {0x00, 0x00, 0x18, on_forward_check_size_game},
-    /* 6x19 */ {0x00, 0x00, 0x19, on_forward_check_size_game},
-    /* 6x1A */ {0x00, 0x00, 0x1A, nullptr},
-    /* 6x1B */ {0x00, 0x00, 0x1B, on_forward_check_size_game},
-    /* 6x1C */ {0x00, 0x00, 0x1C, on_forward_check_size_game},
-    /* 6x1D */ {0x00, 0x00, 0x1D, nullptr},
-    /* 6x1E */ {0x00, 0x00, 0x1E, nullptr},
-    /* 6x1F */ {0x1B, 0x1D, 0x1F, on_change_floor<G_SetPlayerFloor_6x1F, 0x1B, 0x1D>},
-    /* 6x20 */ {0x1C, 0x1E, 0x20, on_movement_with_floor<G_SetPosition_6x20, 0x00, 0x00>},
-    /* 6x21 */ {0x1D, 0x1F, 0x21, on_change_floor<G_InterLevelWarp_6x21, 0x1D, 0x1F>},
-    /* 6x22 */ {0x1E, 0x20, 0x22, on_set_player_invisible},
+    /* 6x0F */ {0x00, 0x00, 0x0F, on_invalid},
+    /* 6x10 */ {0x0E, 0x0E, 0x10, nullptr},
+    /* 6x11 */ {0x0F, 0x0F, 0x11, nullptr},
+    /* 6x12 */ {0x10, 0x10, 0x12, on_dragon_actions},
+    /* 6x13 */ {0x11, 0x11, 0x13, on_forward_check_size_game},
+    /* 6x14 */ {0x12, 0x12, 0x14, on_forward_check_size_game},
+    /* 6x15 */ {0x13, 0x13, 0x15, on_forward_check_size_game},
+    /* 6x16 */ {0x14, 0x14, 0x16, on_forward_check_size_game},
+    /* 6x17 */ {0x15, 0x15, 0x17, on_forward_check_size_game},
+    /* 6x18 */ {0x16, 0x16, 0x18, on_forward_check_size_game},
+    /* 6x19 */ {0x17, 0x17, 0x19, on_forward_check_size_game},
+    /* 6x1A */ {0x00, 0x00, 0x1A, on_invalid},
+    /* 6x1B */ {0x00, 0x19, 0x1B, on_forward_check_size_game},
+    /* 6x1C */ {0x00, 0x1A, 0x1C, on_forward_check_size_game},
+    /* 6x1D */ {0x19, 0x1B, 0x1D, on_invalid},
+    /* 6x1E */ {0x1A, 0x1C, 0x1E, on_invalid},
+    /* 6x1F */ {0x1B, 0x1D, 0x1F, on_change_floor_6x1F},
+    /* 6x20 */ {0x1C, 0x1E, 0x20, on_movement_with_floor<G_SetPosition_6x20>},
+    /* 6x21 */ {0x1D, 0x1F, 0x21, on_change_floor_6x21},
+    /* 6x22 */ {0x1E, 0x20, 0x22, on_forward_check_size_client}, // Formerly on_set_player_invisible
     /* 6x23 */ {0x1F, 0x21, 0x23, on_set_player_visible},
-    /* 6x24 */ {0x00, 0x00, 0x24, on_forward_check_size_game},
-    /* 6x25 */ {0x00, 0x00, 0x25, on_equip_item},
-    /* 6x26 */ {0x00, 0x00, 0x26, on_unequip_item},
-    /* 6x27 */ {0x00, 0x00, 0x27, on_use_item},
-    /* 6x28 */ {0x00, 0x00, 0x28, on_feed_mag},
-    /* 6x29 */ {0x00, 0x00, 0x29, on_destroy_inventory_item},
-    /* 6x2A */ {0x00, 0x00, 0x2A, on_player_drop_item},
-    /* 6x2B */ {0x00, 0x00, 0x2B, on_create_inventory_item},
-    /* 6x2C */ {0x00, 0x00, 0x2C, on_forward_check_size},
-    /* 6x2D */ {0x00, 0x00, 0x2D, on_forward_check_size},
-    /* 6x2E */ {0x00, 0x00, 0x2E, nullptr}, // TODO: DC112000 uses this as 6x2C; should we support it?
-    /* 6x2F */ {0x00, 0x00, 0x2F, on_hit_by_enemy},
-    /* 6x30 */ {0x00, 0x00, 0x30, on_level_up},
-    /* 6x31 */ {0x00, 0x00, 0x31, on_forward_check_size_game},
+    /* 6x24 */ {0x20, 0x22, 0x24, on_forward_check_size_game},
+    /* 6x25 */ {0x21, 0x23, 0x25, on_equip_item},
+    /* 6x26 */ {0x22, 0x24, 0x26, on_unequip_item},
+    /* 6x27 */ {0x23, 0x25, 0x27, on_use_item},
+    /* 6x28 */ {0x24, 0x26, 0x28, on_feed_mag},
+    /* 6x29 */ {0x25, 0x27, 0x29, on_destroy_inventory_item},
+    /* 6x2A */ {0x26, 0x28, 0x2A, on_player_drop_item},
+    /* 6x2B */ {0x27, 0x29, 0x2B, on_create_inventory_item},
+    /* 6x2C */ {0x28, 0x2A, 0x2C, on_forward_check_size},
+    /* 6x2D */ {0x29, 0x2B, 0x2D, on_forward_check_size},
+    /* 6x2E */ {0x2A, 0x2C, 0x2E, on_forward_check_size},
+    /* 6x2F */ {0x2B, 0x2D, 0x2F, on_hit_by_enemy},
+    /* 6x30 */ {0x2C, 0x2E, 0x30, on_level_up},
+    /* 6x31 */ {0x2D, 0x2F, 0x31, on_forward_check_size_game},
     /* 6x32 */ {0x00, 0x00, 0x32, on_forward_check_size_game},
-    /* 6x33 */ {0x00, 0x00, 0x33, on_forward_check_size_game},
-    /* 6x34 */ {0x00, 0x00, 0x34, nullptr},
-    /* 6x35 */ {0x00, 0x00, 0x35, nullptr},
+    /* 6x33 */ {0x2E, 0x30, 0x33, on_forward_check_size_game},
+    /* 6x34 */ {0x2F, 0x31, 0x34, nullptr},
+    /* 6x35 */ {0x30, 0x32, 0x35, nullptr},
     /* 6x36 */ {0x00, 0x00, 0x36, on_forward_check_game},
-    /* 6x37 */ {0x00, 0x00, 0x37, on_forward_check_size_game},
-    /* 6x38 */ {0x00, 0x00, 0x38, nullptr},
-    /* 6x39 */ {0x00, 0x00, 0x39, on_forward_check_size_game},
-    /* 6x3A */ {0x00, 0x00, 0x3A, on_forward_check_size_game},
-    /* 6x3B */ {0x00, 0x38, 0x3B, on_unknown_6x3B},
-    /* 6x3C */ {0x00, 0x00, 0x3C, nullptr},
+    /* 6x37 */ {0x32, 0x33, 0x37, on_forward_check_size_game},
+    /* 6x38 */ {0x33, 0x34, 0x38, nullptr},
+    /* 6x39 */ {0x00, 0x36, 0x39, on_forward_check_size_game},
+    /* 6x3A */ {0x00, 0x37, 0x3A, on_forward_check_size_game},
+    /* 6x3B */ {0x00, 0x38, 0x3B, on_forward_check_size},
+    /* 6x3C */ {0x34, 0x39, 0x3C, nullptr},
     /* 6x3D */ {0x00, 0x00, 0x3D, nullptr},
-    /* 6x3E */ {0x00, 0x00, 0x3E, on_movement_with_floor<G_StopAtPosition_6x3E, 0x00, 0x00>},
-    /* 6x3F */ {0x36, 0x3B, 0x3F, on_movement_with_floor<G_SetPosition_6x3F, 0x36, 0x3B>},
-    /* 6x40 */ {0x37, 0x3C, 0x40, on_movement<G_WalkToPosition_6x40, 0x37, 0x3C>},
-    /* 6x41 */ {0x00, 0x00, 0x41, nullptr},
-    /* 6x42 */ {0x39, 0x3E, 0x42, on_movement<G_RunToPosition_6x42, 0x39, 0x3E>},
-    /* 6x43 */ {0x00, 0x00, 0x43, on_forward_check_size_client},
-    /* 6x44 */ {0x00, 0x00, 0x44, on_forward_check_size_client},
-    /* 6x45 */ {0x00, 0x00, 0x45, on_forward_check_size_client},
-    /* 6x46 */ {0x00, 0x00, 0x46, on_attack_finished},
-    /* 6x47 */ {0x00, 0x00, 0x47, on_cast_technique},
+    /* 6x3E */ {0x00, 0x00, 0x3E, on_movement_with_floor<G_StopAtPosition_6x3E>},
+    /* 6x3F */ {0x36, 0x3B, 0x3F, on_movement_with_floor<G_SetPosition_6x3F>},
+    /* 6x40 */ {0x37, 0x3C, 0x40, on_movement<G_WalkToPosition_6x40>},
+    /* 6x41 */ {0x38, 0x3D, 0x41, nullptr},
+    /* 6x42 */ {0x39, 0x3E, 0x42, on_movement<G_RunToPosition_6x42>},
+    /* 6x43 */ {0x3A, 0x3F, 0x43, on_forward_check_size_client},
+    /* 6x44 */ {0x3B, 0x40, 0x44, on_forward_check_size_client},
+    /* 6x45 */ {0x3C, 0x41, 0x45, on_forward_check_size_client},
+    /* 6x46 */ {0x00, 0x42, 0x46, on_attack_finished},
+    /* 6x47 */ {0x3D, 0x43, 0x47, on_cast_technique},
     /* 6x48 */ {0x00, 0x00, 0x48, on_cast_technique_finished},
-    /* 6x49 */ {0x00, 0x00, 0x49, on_subtract_pb_energy},
-    /* 6x4A */ {0x00, 0x00, 0x4A, on_forward_check_size_client},
-    /* 6x4B */ {0x00, 0x00, 0x4B, on_hit_by_enemy},
-    /* 6x4C */ {0x00, 0x00, 0x4C, on_hit_by_enemy},
-    /* 6x4D */ {0x00, 0x00, 0x4D, on_player_died},
+    /* 6x49 */ {0x3E, 0x44, 0x49, on_subtract_pb_energy},
+    /* 6x4A */ {0x3F, 0x45, 0x4A, on_forward_check_size_client},
+    /* 6x4B */ {0x40, 0x46, 0x4B, on_hit_by_enemy},
+    /* 6x4C */ {0x41, 0x47, 0x4C, on_hit_by_enemy},
+    /* 6x4D */ {0x42, 0x48, 0x4D, on_player_died},
     /* 6x4E */ {0x00, 0x00, 0x4E, on_forward_check_size_client},
-    /* 6x4F */ {0x00, 0x00, 0x4F, on_forward_check_size_client},
-    /* 6x50 */ {0x00, 0x00, 0x50, on_forward_check_size_client},
+    /* 6x4F */ {0x43, 0x49, 0x4F, on_forward_check_size_client},
+    /* 6x50 */ {0x44, 0x4A, 0x50, on_forward_check_size_client},
     /* 6x51 */ {0x00, 0x00, 0x51, nullptr},
-    /* 6x52 */ {0x46, 0x4C, 0x52, on_toggle_counter_interaction},
-    /* 6x53 */ {0x00, 0x00, 0x53, on_forward_check_size_game},
-    /* 6x54 */ {0x00, 0x00, 0x54, nullptr},
-    /* 6x55 */ {0x00, 0x00, 0x55, on_forward_check_size_client},
-    /* 6x56 */ {0x00, 0x50, 0x56, on_set_or_clear_player_flags_multi},
-    /* 6x57 */ {0x00, 0x00, 0x57, on_forward_check_size_client},
+    /* 6x52 */ {0x46, 0x4C, 0x52, on_forward_check_size},
+    /* 6x53 */ {0x47, 0x4D, 0x53, on_forward_check_size_game},
+    /* 6x54 */ {0x48, 0x4E, 0x54, nullptr},
+    /* 6x55 */ {0x49, 0x4F, 0x55, on_forward_check_size_client},
+    /* 6x56 */ {0x4A, 0x50, 0x56, on_forward_check_size_client},
+    /* 6x57 */ {0x00, 0x51, 0x57, on_forward_check_size_client},
     /* 6x58 */ {0x00, 0x00, 0x58, on_forward_check_size_client},
-    /* 6x59 */ {0x00, 0x00, 0x59, on_pick_up_item},
-    /* 6x5A */ {0x00, 0x00, 0x5A, on_pick_up_item_request},
-    /* 6x5B */ {0x00, 0x00, 0x5B, nullptr},
-    /* 6x5C */ {0x00, 0x00, 0x5C, nullptr},
-    /* 6x5D */ {0x00, 0x00, 0x5D, on_drop_partial_stack},
-    /* 6x5E */ {0x00, 0x00, 0x5E, on_buy_shop_item},
-    /* 6x5F */ {0x00, 0x00, 0x5F, on_box_or_enemy_item_drop},
-    /* 6x60 */ {0x00, 0x00, 0x60, on_entity_drop_item_request},
-    /* 6x61 */ {0x00, 0x00, 0x61, on_forward_check_size_game},
-    /* 6x62 */ {0x00, 0x00, 0x62, nullptr},
-    /* 6x63 */ {0x00, 0x00, 0x63, on_destroy_floor_item},
-    /* 6x64 */ {0x00, 0x00, 0x64, nullptr},
-    /* 6x65 */ {0x00, 0x00, 0x65, nullptr},
+    /* 6x59 */ {0x4B, 0x52, 0x59, on_pick_up_item},
+    /* 6x5A */ {0x4C, 0x53, 0x5A, on_pick_up_item_request},
+    /* 6x5B */ {0x4D, 0x54, 0x5B, nullptr},
+    /* 6x5C */ {0x4E, 0x55, 0x5C, nullptr},
+    /* 6x5D */ {0x4F, 0x56, 0x5D, on_drop_partial_stack},
+    /* 6x5E */ {0x50, 0x57, 0x5E, on_buy_shop_item},
+    /* 6x5F */ {0x51, 0x58, 0x5F, on_box_or_enemy_item_drop},
+    /* 6x60 */ {0x52, 0x59, 0x60, on_entity_drop_item_request},
+    /* 6x61 */ {0x53, 0x5A, 0x61, on_forward_check_size_game},
+    /* 6x62 */ {0x54, 0x5B, 0x62, nullptr},
+    /* 6x63 */ {0x55, 0x5C, 0x63, on_destroy_floor_item},
+    /* 6x64 */ {0x56, 0x5D, 0x64, nullptr},
+    /* 6x65 */ {0x57, 0x5E, 0x65, nullptr},
     /* 6x66 */ {0x00, 0x00, 0x66, on_forward_check_size_game},
-    /* 6x67 */ {0x00, 0x00, 0x67, on_forward_check_size_game},
-    /* 6x68 */ {0x00, 0x00, 0x68, on_forward_check_size_game},
-    /* 6x69 */ {0x00, 0x00, 0x69, on_forward_check_size_game},
-    /* 6x6A */ {0x00, 0x00, 0x6A, on_forward_check_size_game},
-    /* 6x6B */ {0x00, 0x00, 0x6B, on_forward_sync_joining_player_state},
-    /* 6x6C */ {0x00, 0x00, 0x6C, on_forward_sync_joining_player_state},
-    /* 6x6D */ {0x00, 0x00, 0x6D, on_sync_joining_player_item_state},
-    /* 6x6E */ {0x00, 0x00, 0x6E, on_forward_sync_joining_player_state},
+    /* 6x67 */ {0x58, 0x5F, 0x67, on_forward_check_size_game},
+    /* 6x68 */ {0x59, 0x60, 0x68, on_forward_check_size_game},
+    /* 6x69 */ {0x5A, 0x61, 0x69, on_forward_check_size_game},
+    /* 6x6A */ {0x5B, 0x62, 0x6A, on_forward_check_size_game},
+    /* 6x6B */ {0x5C, 0x63, 0x6B, on_forward_sync_joining_player_state},
+    /* 6x6C */ {0x5D, 0x64, 0x6C, on_forward_sync_joining_player_state},
+    /* 6x6D */ {0x5E, 0x65, 0x6D, on_sync_joining_player_item_state},
+    /* 6x6E */ {0x5F, 0x66, 0x6E, on_forward_sync_joining_player_state},
     /* 6x6F */ {0x00, 0x00, 0x6F, on_forward_check_game_loading},
-    /* 6x70 */ {0x00, 0x00, 0x70, on_sync_joining_player_disp_and_inventory},
+    /* 6x70 */ {0x60, 0x67, 0x70, on_sync_joining_player_disp_and_inventory},
     /* 6x71 */ {0x00, 0x00, 0x71, on_forward_check_game_loading},
-    /* 6x72 */ {0x00, 0x00, 0x72, on_forward_check_game_loading},
+    /* 6x72 */ {0x61, 0x68, 0x72, on_forward_check_game_loading},
     /* 6x73 */ {0x00, 0x00, 0x73, on_invalid},
-    /* 6x74 */ {0x62, 0x69, 0x74, on_word_select},
+    /* 6x74 */ {0x62, 0x69, 0x74, on_word_select, SDF::ALWAYS_FORWARD_TO_WATCHERS},
     /* 6x75 */ {0x00, 0x00, 0x75, on_set_quest_flag},
     /* 6x76 */ {0x00, 0x00, 0x76, on_forward_check_size_game},
     /* 6x77 */ {0x00, 0x00, 0x77, on_forward_check_size_game},
@@ -2868,8 +2932,8 @@ SubcommandDefinition subcommand_definitions[0x100] = {
     /* 6xBA */ {0x00, 0x00, 0xBA, on_accept_identify_item_bb},
     /* 6xBB */ {0x00, 0x00, 0xBB, on_open_bank_bb_or_card_trade_counter_ep3},
     /* 6xBC */ {0x00, 0x00, 0xBC, on_forward_check_size_ep3_game},
-    /* 6xBD */ {0x00, 0x00, 0xBD, on_ep3_private_word_select_bb_bank_action},
-    /* 6xBE */ {0x00, 0x00, 0xBE, on_ep3_sound_chat},
+    /* 6xBD */ {0x00, 0x00, 0xBD, on_ep3_private_word_select_bb_bank_action, SDF::ALWAYS_FORWARD_TO_WATCHERS},
+    /* 6xBE */ {0x00, 0x00, 0xBE, on_forward_check_size, SDF::ALWAYS_FORWARD_TO_WATCHERS | SDF::ALLOW_FORWARD_TO_WATCHED_LOBBY},
     /* 6xBF */ {0x00, 0x00, 0xBF, on_forward_check_size_ep3_lobby},
     /* 6xC0 */ {0x00, 0x00, 0xC0, on_sell_item_at_shop_bb},
     /* 6xC1 */ {0x00, 0x00, 0xC1, on_forward_check_size},
@@ -2937,111 +3001,6 @@ SubcommandDefinition subcommand_definitions[0x100] = {
     /* 6xFF */ {0x00, 0x00, 0xFF, nullptr},
 };
 
-static void handle_subcommand_dc_prototypes(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
-  auto l = c->lobby.lock();
-  if (!l) {
-    return;
-  }
-
-  if (l->is_game()) {
-    // DC NTE doesn't send 6F when it's done loading, so treat this command as
-    // 6F instead.
-    StringReader r(data, size);
-    if (r.get_u8() == 0x1F) {
-      c->config.clear_flag(Client::Flag::LOADING);
-    }
-
-    // In a game, assume all other clients are DC NTE as well and forward the
-    // subcommand without any processing
-    if (command_is_private(command)) {
-      if (flag < l->max_clients && l->clients[flag]) {
-        send_command(l->clients[flag], command, flag, data, size);
-      }
-    } else {
-      for (auto& lc : l->clients) {
-        if (lc && (lc != c)) {
-          send_command(lc, command, flag, data, size);
-        }
-      }
-    }
-
-  } else {
-    auto& header = check_size_t<G_UnusedHeader>(data, size, 0xFFFF);
-
-    // In a lobby, we have to deal with all other versions of the game having
-    // different subcommand numbers than DC NTE. We'll forward the command
-    // verbatim to other DC NTE clients, but will have to translate it for
-    // non-NTE clients. Some subcommands may not map cleanly; for those, we
-    // don't send anything at all to non-NTE clients.
-    static vector<uint8_t> nte_to_final_map;
-    static vector<uint8_t> proto_to_final_map;
-    if (nte_to_final_map.empty()) {
-      nte_to_final_map.resize(0x100, 0x00);
-      for (size_t z = 0; z < 0x100; z++) {
-        if (subcommand_definitions[z].nte_subcommand) {
-          nte_to_final_map[subcommand_definitions[z].nte_subcommand] = z;
-        }
-      }
-    }
-    if (proto_to_final_map.empty()) {
-      proto_to_final_map.resize(0x100, 0x00);
-      for (size_t z = 0; z < 0x100; z++) {
-        if (subcommand_definitions[z].proto_subcommand) {
-          proto_to_final_map[subcommand_definitions[z].proto_subcommand] = z;
-        }
-      }
-    }
-
-    const vector<uint8_t>& client_to_final_map = (c->version() == Version::DC_NTE) ? nte_to_final_map : proto_to_final_map;
-    uint8_t final_subcommand = client_to_final_map[header.subcommand];
-    uint8_t nte_subcommand = subcommand_definitions[final_subcommand].nte_subcommand;
-    uint8_t proto_subcommand = subcommand_definitions[final_subcommand].nte_subcommand;
-    uint8_t other_proto_subcommand = (c->version() == Version::DC_NTE) ? proto_subcommand : nte_subcommand;
-
-    string other_proto_data;
-    string final_data;
-    for (auto lc : l->clients) {
-      if (!lc || (lc == c)) {
-        continue;
-      }
-
-      if (lc->version() == c->version()) {
-        send_command(lc, command, flag, data, size);
-
-      } else if ((lc->version() == Version::DC_NTE) || (lc->version() == Version::DC_V1_11_2000_PROTOTYPE)) {
-        // lc is the other prototype version (e.g. lc is DC_NTE and c is
-        // DC_V1_11_2000_PROTOTYPE, or vice versa)
-        if (other_proto_subcommand) {
-          if (other_proto_data.empty()) {
-            other_proto_data.assign(reinterpret_cast<const char*>(data), size);
-            other_proto_data[0] = other_proto_subcommand;
-          }
-          if (other_proto_data[0]) {
-            send_command(lc, command, flag, other_proto_data);
-          }
-        }
-
-      } else if (final_subcommand != 0) {
-        if (final_data.empty()) {
-          final_data.assign(reinterpret_cast<const char*>(data), size);
-          final_data[0] = final_subcommand;
-          // The Word Select command is a different size in final vs. NTE and
-          // proto, so handle that here by appending FFFFFFFF0000000000000000
-          if (final_subcommand == 0x74) {
-            final_data.resize(0x20, 0x00);
-            final_data[0x01] = 0x08;
-            final_data[0x14] = 0xFF;
-            final_data[0x15] = 0xFF;
-            final_data[0x16] = 0xFF;
-            final_data[0x17] = 0xFF;
-          }
-        }
-        send_command(lc, command, flag, final_data);
-      }
-    }
-  }
-}
-
 void on_subcommand_multi(shared_ptr<Client> c, uint8_t command, uint8_t flag, const string& data) {
   if (data.empty()) {
     throw runtime_error("game command is empty");
@@ -3068,15 +3027,18 @@ void on_subcommand_multi(shared_ptr<Client> c, uint8_t command, uint8_t flag, co
     }
     const void* data = r.getv(size);
 
-    if ((c->version() == Version::DC_NTE) || (c->version() == Version::DC_V1_11_2000_PROTOTYPE)) {
-      handle_subcommand_dc_prototypes(c, command, flag, data, size);
+    const SubcommandDefinition* def;
+    if (c->version() == Version::DC_NTE) {
+      def = &def_for_nte_subcommand(header.subcommand);
+    } else if (c->version() == Version::DC_V1_11_2000_PROTOTYPE) {
+      def = &def_for_proto_subcommand(header.subcommand);
     } else {
-      const auto& def = subcommand_definitions[header.subcommand];
-      if (def.handler) {
-        def.handler(c, command, flag, data, size);
-      } else {
-        on_unimplemented(c, command, flag, data, size);
-      }
+      def = &subcommand_definitions[header.subcommand];
+    }
+    if (def->handler) {
+      def->handler(c, command, flag, data, size);
+    } else {
+      on_unimplemented(c, command, flag, data, size);
     }
   }
 }

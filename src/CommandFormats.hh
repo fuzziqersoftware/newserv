@@ -3953,7 +3953,11 @@ struct G_DestroyNPC_6x1C {
 // 6x1D: Invalid subcommand
 // 6x1E: Invalid subcommand
 
-// 6x1F: Set player floor
+// 6x1F: Set player floor and request positions
+
+struct G_SetPlayerFloor_DCNTE_6x1F {
+  G_ClientIDHeader header;
+} __packed__;
 
 struct G_SetPlayerFloor_6x1F {
   G_ClientIDHeader header;
@@ -3961,8 +3965,8 @@ struct G_SetPlayerFloor_6x1F {
 } __packed__;
 
 // 6x20: Set position
-// Existing clients send this when a new client joins a lobby/game, so the new
-// client knows where to place them.
+// Existing clients send this in response to a 6x1F command when a new client
+// joins a lobby or game, so the new client knows where to place them.
 
 struct G_SetPosition_6x20 {
   G_ClientIDHeader header;
@@ -4565,7 +4569,13 @@ struct G_UseBossWarp_6x6A {
   le_uint16_t unused = 0;
 } __packed__;
 
-// 6x6B: Sync enemy state (used while loading into game; same header format as 6E)
+// 6x6B: Sync enemy state (used while loading into game)
+
+struct G_SyncGameStateHeader_DCNTE_6x6B_6x6C_6x6D_6x6E {
+  G_ExtendedHeader<G_UnusedHeader> header;
+  le_uint32_t decompressed_size = 0;
+  // BC0-compressed data follows here (see bc0_decompress)
+} __packed__;
 
 struct G_SyncGameStateHeader_6x6B_6x6C_6x6D_6x6E {
   G_ExtendedHeader<G_UnusedHeader> header;
@@ -4576,7 +4586,6 @@ struct G_SyncGameStateHeader_6x6B_6x6C_6x6D_6x6E {
 
 // Decompressed format is a list of these
 struct G_SyncEnemyState_6x6B_Entry_Decompressed {
-  // TODO: Verify this format on DC and PC. It appears correct for GC and BB.
   le_uint32_t flags = 0;
   le_uint16_t last_attacker = 0;
   le_uint16_t remaining_hp = 0;
@@ -4591,7 +4600,6 @@ struct G_SyncEnemyState_6x6B_Entry_Decompressed {
 
 // Decompressed format is a list of these
 struct G_SyncObjectState_6x6C_Entry_Decompressed {
-  // TODO: Verify this format on DC and PC. It appears correct for GC and BB.
   le_uint16_t flags = 0;
   le_uint16_t object_index = 0;
 } __packed__;
@@ -4641,7 +4649,6 @@ struct G_SyncItemState_6x6D_Decompressed {
 // Compressed format is the same as 6x6B.
 
 struct G_SyncFlagState_6x6E_Decompressed {
-  // TODO: Verify this format on DC and PC. It appears correct for GC and BB.
   // The three unknowns here are the sizes (in bytes) of three fields
   // immediately following this structure. It is currently unknown what these
   // fields represent. The three unknown fields always sum to the size field.
@@ -4663,9 +4670,11 @@ struct G_SetQuestFlags_6x6F {
 // 6x70: Sync player disp data and inventory (used while loading into game)
 // Annoyingly, they didn't use the same format as the 65/67/68 commands here,
 // and instead rearranged a bunch of things.
-// The format appears to be the same for all pre-BB PSO versions, although
-// Episode 3 does not send this command at all since the relevant data is sent
-// to the joining player in the 64 command instead.
+// The format appears to be the same for all pre-BB PSO versions except DC NTE,
+// although Episode 3 does not send this command at all since the relevant data
+// is sent to the joining player in the 64 command instead.
+
+// TODO: Document DC NTE format, and check if DC 11/2000 format is the same.
 
 struct G_SyncPlayerDispAndInventory_DC_PC_GC_6x70 {
   // Offsets in this struct are relative to the overall command header
@@ -4682,9 +4691,9 @@ struct G_SyncPlayerDispAndInventory_DC_PC_GC_6x70 {
   /* 0024 */ le_uint32_t angle_y;
   /* 0028 */ le_uint32_t angle_z;
   /* 002C */ le_uint16_t unknown_a3a;
-  /* 002C */ le_uint16_t current_hp;
-  /* 002C */ le_uint16_t bonus_hp_from_materials;
-  /* 002C */ le_uint16_t bonus_tp_from_materials;
+  /* 002E */ le_uint16_t current_hp;
+  /* 0030 */ le_uint16_t bonus_hp_from_materials; // Missing on DC NTE
+  /* 0032 */ le_uint16_t bonus_tp_from_materials; // Missing on DC NTE
   /* 0034 */ parray<parray<le_uint32_t, 3>, 5> unknown_a4;
   /* 0070 */ le_uint32_t language = 0;
   /* 0074 */ le_uint32_t player_tag = 0;

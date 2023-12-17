@@ -295,7 +295,6 @@ void send_warp(std::shared_ptr<Client> c, uint32_t floor, bool is_private);
 void send_warp(std::shared_ptr<Lobby> l, uint32_t floor, bool is_private);
 
 void send_ep3_change_music(Channel& ch, uint32_t song);
-void send_set_player_visibility(std::shared_ptr<Client> c, bool visible);
 void send_revive_player(std::shared_ptr<Client> c);
 
 void send_game_item_state(std::shared_ptr<Client> c);

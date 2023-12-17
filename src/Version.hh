@@ -31,6 +31,9 @@ Version enum_for_name<Version>(const char* name);
 inline bool is_patch(Version version) {
   return (version == Version::PC_PATCH) || (version == Version::BB_PATCH);
 }
+inline bool is_pre_v1(Version version) {
+  return (version == Version::DC_NTE) || (version == Version::DC_V1_11_2000_PROTOTYPE);
+}
 inline bool is_v1(Version version) {
   return (version == Version::DC_NTE) || (version == Version::DC_V1_11_2000_PROTOTYPE) || (version == Version::DC_V1);
 }

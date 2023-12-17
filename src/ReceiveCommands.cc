@@ -3084,8 +3084,9 @@ static void on_06(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
     return;
   }
 
-  if (text[0] == '$') {
-    if (text[1] == '$') {
+  char command_sentinel = (c->version() == Version::DC_V1_11_2000_PROTOTYPE) ? '@' : '$';
+  if (text[0] == command_sentinel) {
+    if (text[1] == command_sentinel) {
       text = text.substr(1);
     } else {
       on_chat_command(c, text);

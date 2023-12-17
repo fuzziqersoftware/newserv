@@ -24,6 +24,16 @@ using namespace std;
 
 extern const char* QUEST_BARRIER_DISCONNECT_HOOK_NAME;
 
+inline uint8_t get_pre_v1_subcommand(Version v, uint8_t nte_subcommand, uint8_t proto_subcommand, uint8_t final_subcommand) {
+  if (v == Version::DC_NTE) {
+    return nte_subcommand;
+  } else if (v == Version::DC_V1_11_2000_PROTOTYPE) {
+    return proto_subcommand;
+  } else {
+    return final_subcommand;
+  }
+}
+
 const unordered_set<uint32_t> v2_crypt_initial_client_commands({
     0x00260088, // (17) DCNTE license check
     0x00B0008B, // (02) DCNTE login
@@ -2297,13 +2307,6 @@ void send_ep3_change_music(Channel& ch, uint32_t song) {
   ch.send(0x60, 0x00, cmd);
 }
 
-void send_set_player_visibility(shared_ptr<Lobby> l, shared_ptr<Client> c, bool visible) {
-  uint8_t subcmd = visible ? 0x23 : 0x22;
-  uint16_t client_id = c->lobby_client_id;
-  G_SetPlayerVisibility_6x22_6x23 cmd = {{subcmd, 0x01, client_id}};
-  send_command_t(l, 0x60, 0x00, cmd);
-}
-
 void send_game_item_state(shared_ptr<Client> c) {
   auto l = c->require_lobby();
   auto s = c->require_server_state();
@@ -2340,16 +2343,25 @@ void send_game_item_state(shared_ptr<Client> c) {
 
   string compressed_data = bc0_compress(decompressed_w.str());
 
-  G_SyncGameStateHeader_6x6B_6x6C_6x6D_6x6E compressed_header;
-  compressed_header.header.basic_header.subcommand = 0x6D;
-  compressed_header.header.basic_header.size = 0x00;
-  compressed_header.header.basic_header.unused = 0x0000;
-  compressed_header.header.size = (compressed_data.size() + sizeof(G_SyncGameStateHeader_6x6B_6x6C_6x6D_6x6E) + 3) & (~3);
-  compressed_header.decompressed_size = decompressed_w.size();
-  compressed_header.compressed_size = compressed_data.size();
-
   StringWriter w;
-  w.put(compressed_header);
+  if (is_pre_v1(c->version())) {
+    G_SyncGameStateHeader_DCNTE_6x6B_6x6C_6x6D_6x6E compressed_header;
+    compressed_header.header.basic_header.subcommand = (c->version() == Version::DC_NTE) ? 0x5E : 0x65;
+    compressed_header.header.basic_header.size = 0x00;
+    compressed_header.header.basic_header.unused = 0x0000;
+    compressed_header.header.size = (compressed_data.size() + sizeof(G_SyncGameStateHeader_DCNTE_6x6B_6x6C_6x6D_6x6E) + 3) & (~3);
+    compressed_header.decompressed_size = decompressed_w.size();
+    w.put(compressed_header);
+  } else {
+    G_SyncGameStateHeader_6x6B_6x6C_6x6D_6x6E compressed_header;
+    compressed_header.header.basic_header.subcommand = 0x6D;
+    compressed_header.header.basic_header.size = 0x00;
+    compressed_header.header.basic_header.unused = 0x0000;
+    compressed_header.header.size = (compressed_data.size() + sizeof(G_SyncGameStateHeader_6x6B_6x6C_6x6D_6x6E) + 3) & (~3);
+    compressed_header.decompressed_size = decompressed_w.size();
+    compressed_header.compressed_size = compressed_data.size();
+    w.put(compressed_header);
+  }
   w.write(compressed_data);
   while (w.size() & 3) {
     w.put_u8(0x00);
@@ -2368,8 +2380,9 @@ void send_game_item_state(shared_ptr<Client> c) {
 
 void send_drop_item_to_channel(shared_ptr<ServerState> s, Channel& ch, const ItemData& item,
     bool from_enemy, uint8_t floor, float x, float z, uint16_t entity_id) {
+  uint8_t subcommand = get_pre_v1_subcommand(ch.version, 0x51, 0x58, 0x5F);
   G_DropItem_PC_V3_BB_6x5F cmd = {
-      {{0x5F, 0x0B, 0x0000}, {floor, from_enemy, entity_id, x, z, 0, 0, item}}, 0};
+      {{subcommand, 0x0B, 0x0000}, {floor, from_enemy, entity_id, x, z, 0, 0, item}}, 0};
   cmd.item.item.encode_for_version(ch.version, s->item_parameter_table_for_version(ch.version));
   ch.send(0x60, 0x00, &cmd, sizeof(cmd));
 }
@@ -2387,7 +2400,8 @@ void send_drop_item_to_lobby(shared_ptr<Lobby> l, const ItemData& item,
 
 void send_drop_stacked_item_to_channel(
     shared_ptr<ServerState> s, Channel& ch, const ItemData& item, uint8_t floor, float x, float z) {
-  G_DropStackedItem_PC_V3_BB_6x5D cmd = {{{0x5D, 0x0A, 0x0000}, floor, 0, x, z, item}, 0};
+  uint8_t subcommand = get_pre_v1_subcommand(ch.version, 0x4F, 0x56, 0x5D);
+  G_DropStackedItem_PC_V3_BB_6x5D cmd = {{{subcommand, 0x0A, 0x0000}, floor, 0, x, z, item}, 0};
   cmd.item_data.encode_for_version(ch.version, s->item_parameter_table_for_version(ch.version));
   ch.send(0x60, 0x00, &cmd, sizeof(cmd));
 }
@@ -2403,7 +2417,8 @@ void send_drop_stacked_item_to_lobby(shared_ptr<Lobby> l, const ItemData& item, 
 }
 
 void send_pick_up_item_to_client(shared_ptr<Client> c, uint8_t client_id, uint32_t item_id, uint8_t floor) {
-  G_PickUpItem_6x59 cmd = {{0x59, 0x03, client_id}, client_id, floor, item_id};
+  uint8_t subcommand = get_pre_v1_subcommand(c->version(), 0x4B, 0x52, 0x59);
+  G_PickUpItem_6x59 cmd = {{subcommand, 0x03, client_id}, client_id, floor, item_id};
   send_command_t(c, 0x60, 0x00, cmd);
 }
 
@@ -2433,7 +2448,8 @@ void send_create_inventory_item_to_lobby(shared_ptr<Client> c, uint8_t client_id
 void send_destroy_item_to_lobby(shared_ptr<Client> c, uint32_t item_id, uint32_t amount, bool exclude_c) {
   auto l = c->require_lobby();
   uint16_t client_id = c->lobby_client_id;
-  G_DeleteInventoryItem_6x29 cmd = {{0x29, 0x03, client_id}, item_id, amount};
+  uint8_t subcommand = get_pre_v1_subcommand(c->version(), 0x25, 0x27, 0x29);
+  G_DeleteInventoryItem_6x29 cmd = {{subcommand, 0x03, client_id}, item_id, amount};
   if (exclude_c) {
     send_command_excluding_client(l, c, 0x60, 0x00, &cmd, sizeof(cmd));
   } else {
@@ -2442,7 +2458,8 @@ void send_destroy_item_to_lobby(shared_ptr<Client> c, uint32_t item_id, uint32_t
 }
 
 void send_destroy_floor_item_to_client(shared_ptr<Client> c, uint32_t item_id, uint32_t floor) {
-  G_DestroyFloorItem_6x63 cmd = {{0x63, 0x03, 0x0000}, item_id, floor};
+  uint8_t subcommand = get_pre_v1_subcommand(c->version(), 0x55, 0x5C, 0x63);
+  G_DestroyFloorItem_6x63 cmd = {{subcommand, 0x03, 0x0000}, item_id, floor};
   send_command_t(c, 0x60, 0x00, cmd);
 }
 
@@ -2511,8 +2528,9 @@ void send_level_up(shared_ptr<Client> c) {
   } catch (const out_of_range&) {
   }
 
+  uint8_t subcommand = get_pre_v1_subcommand(c->version(), 0x2C, 0x2E, 0x30);
   G_LevelUp_6x30 cmd = {
-      {0x30, sizeof(G_LevelUp_6x30) / 4, c->lobby_client_id},
+      {subcommand, sizeof(G_LevelUp_6x30) / 4, c->lobby_client_id},
       stats.atp + (mag ? ((mag->data1w[3] / 100) * 2) : 0),
       stats.mst + (mag ? ((mag->data1w[5] / 100) * 2) : 0),
       stats.evp,

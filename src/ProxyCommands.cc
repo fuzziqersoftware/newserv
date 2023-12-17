@@ -1595,13 +1595,14 @@ static HandlerResult C_06(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t, 
       return HandlerResult::Type::SUPPRESS;
     }
 
-    bool is_command = (text[0] == '$') ||
-        (text[0] == '\t' && text[1] != 'C' && text[2] == '$');
+    char command_sentinel = (ses->version() == Version::DC_V1_11_2000_PROTOTYPE) ? '@' : '$';
+    bool is_command = (text[0] == command_sentinel) ||
+        (text[0] == '\t' && text[1] != 'C' && text[2] == command_sentinel);
     if (is_command && ses->config.check_flag(Client::Flag::PROXY_CHAT_COMMANDS_ENABLED)) {
       size_t offset = ((text[0] & 0xF0) == 0x40) ? 1 : 0;
-      offset += (text[offset] == '$') ? 0 : 2;
+      offset += (text[offset] == command_sentinel) ? 0 : 2;
       text = text.substr(offset);
-      if (text.size() >= 2 && text[1] == '$') {
+      if (text.size() >= 2 && text[1] == command_sentinel) {
         if (ses->config.check_flag(Client::Flag::PROXY_CHAT_FILTER_ENABLED)) {
           send_chat_message_from_client(ses->server_channel, add_color(text.substr(1)), private_flags);
         } else {

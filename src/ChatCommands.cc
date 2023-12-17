@@ -1870,6 +1870,9 @@ struct SplitCommand {
 // command, and to execute the command and block the chat if it is.
 void on_chat_command(std::shared_ptr<Client> c, const std::string& text) {
   SplitCommand cmd(text);
+  if (!cmd.name.empty() && cmd.name[0] == '@') {
+    cmd.name[0] = '$';
+  }
 
   const ChatCommandDefinition* def = nullptr;
   try {
