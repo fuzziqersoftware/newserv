@@ -978,9 +978,9 @@ void ServerState::parse_config(const JSON& json, bool is_reload) {
     this->rare_enemy_rates_challenge = Map::DEFAULT_RARE_ENEMIES;
   }
 
-  this->min_levels_v4[0] = DEFAULT_MIN_LEVELS_EP1;
-  this->min_levels_v4[1] = DEFAULT_MIN_LEVELS_EP2;
-  this->min_levels_v4[2] = DEFAULT_MIN_LEVELS_EP4;
+  this->min_levels_v4[0] = DEFAULT_MIN_LEVELS_V4_EP1;
+  this->min_levels_v4[1] = DEFAULT_MIN_LEVELS_V4_EP2;
+  this->min_levels_v4[2] = DEFAULT_MIN_LEVELS_V4_EP4;
   try {
     for (const auto& ep_it : json.get_dict("BBMinimumLevels")) {
       array<size_t, 4> levels({0, 0, 0, 0});
