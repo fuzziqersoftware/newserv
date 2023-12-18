@@ -178,7 +178,7 @@ All versions of PSO can see and interact with each other in the lobby. newserv a
 *Notes:*
 1. *DC V1 players can join DC V2 games if the difficulty level isn't set to Ultimate and the creator chose to allow V1 players.*
 2. *DC and PC players can join each other's games if AllowDCPCGames is enabled in config.json.*
-3. *GC and Xbox players can join each other's games if AllowDCPCGames is enabled in config.json.*
+3. *GC and Xbox players can join each other's games if AllowGCXBGames is enabled in config.json.*
 
 ### Episode 3 features
 
