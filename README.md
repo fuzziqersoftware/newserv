@@ -36,7 +36,7 @@ See TODO.md for a list of known issues and future work I've curated, or go to th
 newserv supports several versions of PSO, including various development prototypes. Specifically:
 | Version        | Lobbies      | Games        | Proxy        |
 |----------------|--------------|--------------|--------------|
-| DC Trial       | Yes          | Yes          | No           |
+| DC NTE         | Yes          | Yes          | No           |
 | DC 11/2000     | Yes          | Yes          | No           |
 | DC 12/2000     | Yes          | Yes          | Yes          |
 | DC 01/2001     | Yes          | Yes          | Yes          |
@@ -45,10 +45,10 @@ newserv supports several versions of PSO, including various development prototyp
 | DC V2          | Yes          | Yes          | Yes          |
 | PC NTE         | Yes (3)      | Yes          | No           |
 | PC             | Yes          | Yes          | Yes          |
-| GC Ep1&2 Trial | Yes          | Yes          | Yes          |
+| GC Ep1&2 NTE   | Yes          | Yes          | Yes          |
 | GC Ep1&2       | Yes          | Yes          | Yes          |
 | GC Ep1&2 Plus  | Yes          | Yes          | Yes          |
-| GC Ep3 Trial   | Yes          | Partial (1)  | Yes          |
+| GC Ep3 NTE     | Yes          | Partial (1)  | Yes          |
 | GC Ep3         | Yes          | Yes          | Yes          |
 | Xbox Ep1&2     | Yes          | Yes          | Yes          |
 | BB (vanilla)   | Yes          | Yes (2)      | Yes          |
@@ -119,8 +119,8 @@ There are multiple PSO quest formats out there; newserv supports all of them. It
 | GCI (decrypted)  | .bin.gci and .dat.gci | Yes        | decode-gci       |
 | GCI (with key)   | .bin.gci and .dat.gci | Yes        | decode-gci       |
 | GCI (no key)     | .bin.gci and .dat.gci | Decode (3) | decode-gci (3)   |
+| GCI (Ep3 NTE)    | .bin.gci or .mnm.gci  | Decode (3) | decode-gci (3)   |
 | GCI (Ep3)        | .bin.gci or .mnm.gci  | Yes        | decode-gci       |
-| GCI (Ep3 Trial)  | .bin.gci or .mnm.gci  | Decode (3) | decode-gci (3)   |
 | DLQ              | .bin.dlq and .dat.dlq | Yes        | decode-dlq       |
 | DLQ (Ep3)        | .bin.dlq or .mnm.dlq  | Yes        | decode-dlq       |
 | QST (online)     | .qst                  | Yes        | decode-qst       |
