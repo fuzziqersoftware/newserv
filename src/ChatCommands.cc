@@ -1323,6 +1323,10 @@ static void proxy_command_next(shared_ptr<ProxyServer::LinkedSession> ses, const
   send_warp(ses->client_channel, ses->lobby_client_id, ses->floor, true);
 }
 
+static void server_command_where(shared_ptr<Client> c, const std::string&) {
+  send_text_message_printf(c, "$C7Floor: %02" PRIX32 "\nX: %g\nZ: %g", c->floor, c->x, c->z);
+}
+
 static void server_command_what(shared_ptr<Client> c, const std::string&) {
   auto l = c->require_lobby();
   check_is_game(l, true);
@@ -1848,6 +1852,7 @@ static const unordered_map<string, ChatCommandDefinition> chat_commands({
     {"$warpme", {server_command_warpme, proxy_command_warpme}},
     {"$warpall", {server_command_warpall, proxy_command_warpall}},
     {"$what", {server_command_what, nullptr}},
+    {"$where", {server_command_where, nullptr}},
 });
 
 struct SplitCommand {
