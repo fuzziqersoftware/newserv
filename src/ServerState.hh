@@ -73,6 +73,7 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   std::vector<std::string> ppp_stack_addresses;
   bool ip_stack_debug;
   bool allow_unregistered_users;
+  bool allow_pc_nte;
   bool allow_dc_pc_games;
   bool allow_gc_xb_games;
   uint8_t allowed_drop_modes_v1_v2_normal;

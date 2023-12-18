@@ -113,6 +113,7 @@ const vector<ChoiceSearchCategory> CHOICE_SEARCH_CATEGORIES({
             case Version::DC_V1:
               return (choice_id == 0x0002);
             case Version::DC_V2:
+            case Version::PC_NTE:
             case Version::PC_V2:
               return (choice_id == 0x0003);
             case Version::GC_NTE:

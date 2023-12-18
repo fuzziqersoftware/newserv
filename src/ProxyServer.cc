@@ -177,6 +177,7 @@ void ProxyServer::on_client_connect(
       case Version::DC_V1_11_2000_PROTOTYPE:
       case Version::DC_V1:
       case Version::DC_V2:
+      case Version::PC_NTE:
       case Version::PC_V2:
       case Version::GC_NTE:
       case Version::GC_V3:
@@ -308,6 +309,7 @@ void ProxyServer::UnlinkedSession::on_input(Channel& ch, uint16_t command, uint3
         }
         break;
 
+      case Version::PC_NTE:
       case Version::PC_V2: {
         // We should only get a 9D while the session is unlinked
         if (command != 0x9D) {

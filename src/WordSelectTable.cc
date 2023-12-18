@@ -51,6 +51,7 @@ uint16_t WordSelectTable::Token::value_for_version(Version version) const {
     case Version::DC_V1:
     case Version::DC_V2:
       return this->dc_value;
+    case Version::PC_NTE:
     case Version::PC_V2:
       return this->pc_value;
     case Version::GC_NTE:
@@ -81,6 +82,7 @@ WordSelectMessage WordSelectTable::translate(
     case Version::DC_V2:
       index = &this->dc_index;
       break;
+    case Version::PC_NTE:
     case Version::PC_V2:
       index = &this->pc_index;
       break;

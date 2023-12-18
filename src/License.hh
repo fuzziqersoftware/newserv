@@ -96,6 +96,7 @@ public:
   virtual ~LicenseIndex() = default;
 
   virtual std::shared_ptr<License> create_license() const;
+  virtual std::shared_ptr<License> create_temporary_license() const;
 
   size_t count() const;
   std::shared_ptr<License> get(uint32_t serial_number) const;

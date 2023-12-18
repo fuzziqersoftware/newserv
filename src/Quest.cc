@@ -257,6 +257,7 @@ VersionedQuest::VersionedQuest(
       break;
     }
 
+    case Version::PC_NTE:
     case Version::PC_V2: {
       if (bin_decompressed.size() < sizeof(PSOQuestHeaderPC)) {
         throw invalid_argument("file is too small for header");
@@ -597,6 +598,7 @@ QuestIndex::QuestIndex(
           {"dp", Version::DC_V1_11_2000_PROTOTYPE},
           {"d1", Version::DC_V1},
           {"dc", Version::DC_V2},
+          {"pcn", Version::PC_NTE},
           {"pc", Version::PC_V2},
           {"gcn", Version::GC_NTE},
           {"gc", Version::GC_V3},
@@ -863,6 +865,7 @@ shared_ptr<VersionedQuest> VersionedQuest::create_download_quest(uint8_t overrid
         reinterpret_cast<PSOQuestHeaderDC*>(data_ptr)->language = override_language;
       }
       break;
+    case Version::PC_NTE:
     case Version::PC_V2:
       if (decompressed_bin.size() < sizeof(PSOQuestHeaderPC)) {
         throw runtime_error("bin file is too small for header");
@@ -1278,6 +1281,7 @@ string encode_qst_file(
         add_write_file_commands_t<PSOCommandHeaderDCV3>(w, it.first, *it.second, is_dlq_encoded, false);
       }
       break;
+    case Version::PC_NTE:
     case Version::PC_V2:
       for (const auto& it : files) {
         add_open_file_command_t<PSOCommandHeaderPC, S_OpenFile_PC_GC_44_A6>(w, name, it.first, xb_filename, quest_number, it.second->size(), is_dlq_encoded);

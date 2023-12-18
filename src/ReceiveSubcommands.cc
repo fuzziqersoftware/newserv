@@ -568,6 +568,7 @@ static void on_send_guild_card(shared_ptr<Client> c, uint8_t command, uint8_t fl
       c->character(true, false)->guild_card.description.encode(cmd.guild_card.description.decode(c->language()), c->language());
       break;
     }
+    case Version::PC_NTE:
     case Version::PC_V2: {
       const auto& cmd = check_size_t<G_SendGuildCard_PC_6x06>(data, size);
       c->character(true, false)->guild_card.description = cmd.guild_card.description;

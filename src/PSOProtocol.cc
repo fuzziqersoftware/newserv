@@ -21,6 +21,7 @@ uint16_t PSOCommandHeader::command(Version version) const {
   switch (version) {
     case Version::PC_PATCH:
     case Version::BB_PATCH:
+    case Version::PC_NTE:
     case Version::PC_V2:
       return this->pc.command;
     case Version::DC_NTE:
@@ -46,6 +47,7 @@ void PSOCommandHeader::set_command(Version version, uint16_t command) {
   switch (version) {
     case Version::PC_PATCH:
     case Version::BB_PATCH:
+    case Version::PC_NTE:
     case Version::PC_V2:
       this->pc.command = command;
       break;
@@ -76,6 +78,7 @@ uint16_t PSOCommandHeader::size(Version version) const {
   switch (version) {
     case Version::PC_PATCH:
     case Version::BB_PATCH:
+    case Version::PC_NTE:
     case Version::PC_V2:
       return this->pc.size;
     case Version::DC_NTE:
@@ -101,6 +104,7 @@ void PSOCommandHeader::set_size(Version version, uint32_t size) {
   switch (version) {
     case Version::PC_PATCH:
     case Version::BB_PATCH:
+    case Version::PC_NTE:
     case Version::PC_V2:
       this->pc.size = size;
       break;
@@ -131,6 +135,7 @@ uint32_t PSOCommandHeader::flag(Version version) const {
   switch (version) {
     case Version::PC_PATCH:
     case Version::BB_PATCH:
+    case Version::PC_NTE:
     case Version::PC_V2:
       return this->pc.flag;
     case Version::DC_NTE:
@@ -156,6 +161,7 @@ void PSOCommandHeader::set_flag(Version version, uint32_t flag) {
   switch (version) {
     case Version::PC_PATCH:
     case Version::BB_PATCH:
+    case Version::PC_NTE:
     case Version::PC_V2:
       this->pc.flag = flag;
       break;
@@ -229,6 +235,7 @@ std::string prepend_command_header(
 
     case Version::PC_PATCH:
     case Version::BB_PATCH:
+    case Version::PC_NTE:
     case Version::PC_V2: {
       PSOCommandHeaderPC header;
       if (encryption_enabled) {

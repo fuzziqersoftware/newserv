@@ -13,13 +13,14 @@ enum class Version {
   DC_V1_11_2000_PROTOTYPE = 3,
   DC_V1 = 4,
   DC_V2 = 5,
-  PC_V2 = 6,
-  GC_NTE = 7,
-  GC_V3 = 8,
-  GC_EP3_TRIAL_EDITION = 9,
-  GC_EP3 = 10,
-  XB_V3 = 11,
-  BB_V4 = 12,
+  PC_NTE = 6,
+  PC_V2 = 7,
+  GC_NTE = 8,
+  GC_V3 = 9,
+  GC_EP3_TRIAL_EDITION = 10,
+  GC_EP3 = 11,
+  XB_V3 = 12,
+  BB_V4 = 13,
   UNKNOWN = 15,
 };
 
@@ -38,7 +39,7 @@ inline bool is_v1(Version version) {
   return (version == Version::DC_NTE) || (version == Version::DC_V1_11_2000_PROTOTYPE) || (version == Version::DC_V1);
 }
 inline bool is_v2(Version version) {
-  return (version == Version::DC_V2) || (version == Version::PC_V2) || (version == Version::GC_NTE);
+  return (version == Version::DC_V2) || (version == Version::PC_NTE) || (version == Version::PC_V2) || (version == Version::GC_NTE);
 }
 inline bool is_v1_or_v2(Version version) {
   return is_v1(version) || is_v2(version);
@@ -82,6 +83,7 @@ inline bool uses_v2_encryption(Version version) {
       (version == Version::DC_NTE) ||
       (version == Version::DC_V1) ||
       (version == Version::DC_V2) ||
+      (version == Version::PC_NTE) ||
       (version == Version::PC_V2) ||
       (version == Version::GC_NTE);
 }
@@ -98,6 +100,7 @@ inline bool uses_v4_encryption(Version version) {
 inline bool uses_utf16(Version version) {
   return (version == Version::PC_PATCH) ||
       (version == Version::BB_PATCH) ||
+      (version == Version::PC_NTE) ||
       (version == Version::PC_V2) ||
       (version == Version::BB_V4);
 }

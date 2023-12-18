@@ -23,6 +23,7 @@ const char* login_port_name_for_version(Version v) {
     case Version::GC_EP3_TRIAL_EDITION:
     case Version::GC_EP3:
       return "console-login";
+    case Version::PC_NTE:
     case Version::PC_V2:
       return "pc-login";
     case Version::XB_V3:
@@ -49,6 +50,7 @@ const char* lobby_port_name_for_version(Version v) {
     case Version::GC_EP3_TRIAL_EDITION:
     case Version::GC_EP3:
       return "console-lobby";
+    case Version::PC_NTE:
     case Version::PC_V2:
       return "pc-lobby";
     case Version::XB_V3:
@@ -76,6 +78,7 @@ const char* proxy_port_name_for_version(Version v) {
     case Version::GC_EP3_TRIAL_EDITION:
     case Version::GC_EP3:
       return "gc-proxy";
+    case Version::PC_NTE:
     case Version::PC_V2:
       return "pc-proxy";
     case Version::XB_V3:
@@ -102,6 +105,8 @@ const char* name_for_enum<Version>(Version v) {
       return "DC_V1";
     case Version::DC_V2:
       return "DC_V2";
+    case Version::PC_NTE:
+      return "PC_NTE";
     case Version::PC_V2:
       return "PC_V2";
     case Version::GC_NTE:
@@ -135,6 +140,8 @@ Version enum_for_name<Version>(const char* name) {
     return Version::DC_V1;
   } else if (!strcmp(name, "DC_V2") || !strcasecmp(name, "dc")) {
     return Version::DC_V2;
+  } else if (!strcmp(name, "PC_NTE")) {
+    return Version::PC_NTE;
   } else if (!strcmp(name, "PC_V2") || !strcasecmp(name, "pc")) {
     return Version::PC_V2;
   } else if (!strcmp(name, "GC_NTE")) {

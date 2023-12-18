@@ -445,8 +445,11 @@ Proxy session commands:\n\
 
   } else if (command_name == "set-allow-unregistered-users") {
     set_boolean(&this->state->allow_unregistered_users, command_args);
-    fprintf(stderr, "unregistered users are now %s\n",
-        this->state->allow_unregistered_users ? "allowed" : "disallowed");
+    fprintf(stderr, "unregistered users are now %s\n", this->state->allow_unregistered_users ? "allowed" : "disallowed");
+
+  } else if (command_name == "set-allow-pc-nte") {
+    set_boolean(&this->state->allow_pc_nte, command_args);
+    fprintf(stderr, "PC NTE is now %s\n", this->state->allow_pc_nte ? "allowed" : "disallowed");
 
   } else if (command_name == "set-event") {
     uint8_t event_id = event_for_name(command_args);

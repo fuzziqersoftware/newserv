@@ -217,6 +217,7 @@ void Lobby::create_item_creator() {
       rare_item_set = s->rare_item_sets.at("rare-table-v1");
       break;
     case Version::DC_V2:
+    case Version::PC_NTE:
     case Version::PC_V2:
       common_item_set = s->common_item_set_v2;
       rare_item_set = s->rare_item_sets.at("rare-table-v2");

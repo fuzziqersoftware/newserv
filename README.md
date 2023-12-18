@@ -42,6 +42,7 @@ newserv supports several versions of PSO, including various development prototyp
 | DC V1          | Yes          | Yes          | Yes          |
 | DC 08/2001     | Yes          | Yes          | Yes          |
 | DC V2          | Yes          | Yes          | Yes          |
+| PC NTE         | Yes (3)      | Yes          | No           |
 | PC             | Yes          | Yes          | Yes          |
 | GC Ep1&2 Trial | Yes          | Yes          | Yes          |
 | GC Ep1&2       | Yes          | Yes          | Yes          |
@@ -55,6 +56,7 @@ newserv supports several versions of PSO, including various development prototyp
 *Notes:*
 1. *Players can create games, edit decks, trade cards, and participate in auctions, but CARD battles don't work on Episode 3 Trial Edition on newserv.*
 2. *Some BB-specific features are not well-tested (for example, some quests that use rare commands may not work properly). Please submit a GitHub issue if you find something that doesn't work.*
+3. *This is the only version of PSO that doesn't have any way to identify the player's account - there is no serial number or username. For this reason, AllowUnregisteredUsers must be enabled in config.json to support PC NTE, and PC NTE players receive a random Guild Card number every time they connect. To prevent abuse, PC NTE support can be disabled in config.json.*
 
 ## Setup
 
@@ -88,7 +90,7 @@ newserv automatically finds quests in the subdirectories of the system/quests/ d
 
 Within the category directories, quest files should be named like `q###-VERSION-LANGUAGE.EXT` (although the `q` is ignored, and can be any letter). The fields in each filename are:
 - `###`: quest number (this doesn't really matter; it should just be unique across the PSO version)
-- `VERSION`: dn = Dreamcast NTE, dp = Dreamcast 11/2000 prototype, d1 = Dreamcast v1, dc = Dreamcast v2, pc = PC, gcn = GameCube Trial Edition, gc = GameCube Episodes 1 & 2, gc3 = Episode 3 (see below), xb = Xbox, bb = Blue Burst
+- `VERSION`: dn = Dreamcast NTE, dp = Dreamcast 11/2000 prototype, d1 = Dreamcast v1, dc = Dreamcast v2, pcn = PC NTE, pc = PC, gcn = GameCube NTE, gc = GameCube Episodes 1 & 2, gc3 = Episode 3 (see below), xb = Xbox, bb = Blue Burst
 - `LANGUAGE`: j = Japanese, e = English, g = German, f = French, s = Spanish
 - `EXT`: file extension (see table below)
 

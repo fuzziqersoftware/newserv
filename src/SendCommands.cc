@@ -124,6 +124,7 @@ void send_command_with_header(Channel& ch, const void* data, size_t size) {
   switch (ch.version) {
     case Version::PC_PATCH:
     case Version::BB_PATCH:
+    case Version::PC_NTE:
     case Version::PC_V2:
       send_command_with_header_t<PSOCommandHeaderPC>(ch, data, size);
       break;
@@ -175,6 +176,7 @@ void send_server_init_dc_pc_v3(shared_ptr<Client> c, uint8_t flags) {
   send_command_t(c, command, 0x00, cmd);
 
   switch (c->version()) {
+    case Version::PC_NTE:
     case Version::PC_V2:
       c->channel.crypt_in = make_shared<PSOV2Encryption>(client_key);
       c->channel.crypt_out = make_shared<PSOV2Encryption>(server_key);
@@ -258,6 +260,7 @@ void send_server_init(shared_ptr<Client> c, uint8_t flags) {
     case Version::DC_V1_11_2000_PROTOTYPE:
     case Version::DC_V1:
     case Version::DC_V2:
+    case Version::PC_NTE:
     case Version::PC_V2:
     case Version::GC_NTE:
     case Version::GC_V3:
@@ -284,6 +287,7 @@ void send_update_client_config(shared_ptr<Client> c) {
     case Version::DC_V1_11_2000_PROTOTYPE:
     case Version::DC_V1:
     case Version::DC_V2:
+    case Version::PC_NTE:
     case Version::PC_V2: {
       if (!c->config.check_flag(Client::Flag::HAS_GUILD_CARD_NUMBER)) {
         c->config.set_flag(Client::Flag::HAS_GUILD_CARD_NUMBER);
@@ -749,6 +753,7 @@ void send_message_box(shared_ptr<Client> c, const string& text) {
     case Version::DC_V1_11_2000_PROTOTYPE:
     case Version::DC_V1:
     case Version::DC_V2:
+    case Version::PC_NTE:
     case Version::PC_V2:
       command = 0x1A;
       break;
@@ -958,6 +963,7 @@ void send_simple_mail(shared_ptr<Client> c, uint32_t from_guild_card_number, con
     case Version::XB_V3:
       send_simple_mail_t<SC_SimpleMail_DC_V3_81>(c, from_guild_card_number, from_name, text);
       break;
+    case Version::PC_NTE:
     case Version::PC_V2:
       send_simple_mail_t<SC_SimpleMail_PC_81>(c, from_guild_card_number, from_name, text);
       break;
@@ -1027,6 +1033,7 @@ void send_choice_search_choices(shared_ptr<Client> c) {
     case Version::XB_V3:
       send_choice_search_choices_t<S_ChoiceSearchEntry_DC_V3_C0>(c);
       break;
+    case Version::PC_NTE:
     case Version::PC_V2:
     case Version::BB_V4:
       send_choice_search_choices_t<S_ChoiceSearchEntry_PC_BB_C0>(c);
@@ -1088,6 +1095,7 @@ void send_card_search_result(
     case Version::XB_V3:
       send_card_search_result_t<PSOCommandHeaderDCV3, TextEncoding::SJIS>(c, result, result_lobby);
       break;
+    case Version::PC_NTE:
     case Version::PC_V2:
       send_card_search_result_t<PSOCommandHeaderPC, TextEncoding::UTF16>(c, result, result_lobby);
       break;
@@ -1192,6 +1200,7 @@ void send_guild_card(
       send_guild_card_dc_pc_gc_t<G_SendGuildCard_DC_6x06>(
           ch, guild_card_number, name, description, language, section_id, char_class);
       break;
+    case Version::PC_NTE:
     case Version::PC_V2:
       send_guild_card_dc_pc_gc_t<G_SendGuildCard_PC_6x06>(
           ch, guild_card_number, name, description, language, section_id, char_class);
@@ -1258,17 +1267,20 @@ void send_menu_t(shared_ptr<Client> c, shared_ptr<const Menu> menu, bool is_info
     switch (c->version()) {
       case Version::DC_NTE:
       case Version::DC_V1_11_2000_PROTOTYPE:
-        is_visible &= !(item.flags & MenuItem::Flag::INVISIBLE_ON_DCNTE);
+        is_visible &= !(item.flags & MenuItem::Flag::INVISIBLE_ON_DC_NTE);
         [[fallthrough]];
       case Version::DC_V1:
       case Version::DC_V2:
         is_visible &= !(item.flags & MenuItem::Flag::INVISIBLE_ON_DC);
         break;
+      case Version::PC_NTE:
+        is_visible &= !(item.flags & MenuItem::Flag::INVISIBLE_ON_PC_NTE);
+        [[fallthrough]];
       case Version::PC_V2:
         is_visible &= !(item.flags & MenuItem::Flag::INVISIBLE_ON_PC);
         break;
       case Version::GC_NTE:
-        is_visible &= !(item.flags & MenuItem::Flag::INVISIBLE_ON_GC_TRIAL_EDITION);
+        is_visible &= !(item.flags & MenuItem::Flag::INVISIBLE_ON_GC_NTE);
         [[fallthrough]];
       case Version::GC_V3:
       case Version::GC_EP3_TRIAL_EDITION:
@@ -1495,6 +1507,7 @@ void send_quest_menu(
     const vector<pair<QuestIndex::IncludeState, shared_ptr<const Quest>>>& quests,
     bool is_download_menu) {
   switch (c->version()) {
+    case Version::PC_NTE:
     case Version::PC_V2:
       send_quest_menu_t<S_QuestMenuEntry_PC_A2_A4>(c, quests, is_download_menu);
       break;
@@ -1525,6 +1538,7 @@ void send_quest_categories_menu(
     QuestMenuType menu_type,
     Episode episode) {
   switch (c->version()) {
+    case Version::PC_NTE:
     case Version::PC_V2:
       send_quest_categories_menu_t<S_QuestMenuEntry_PC_A2_A4>(c, quest_index, menu_type, episode);
       break;
@@ -1800,6 +1814,7 @@ void send_join_game(shared_ptr<Client> c, shared_ptr<Lobby> l) {
       send_command_t(c, 0x64, player_count, cmd);
       break;
     }
+    case Version::PC_NTE:
     case Version::PC_V2: {
       S_JoinGame_PC_64 cmd;
       size_t player_count = populate_base_cmd(cmd);
@@ -2096,6 +2111,7 @@ void send_join_lobby(shared_ptr<Client> c, shared_ptr<Lobby> l) {
       case Version::DC_V2:
         send_join_lobby_t<PlayerLobbyDataDCGC, PlayerDispDataDCPCV3, PlayerRecordsEntry_DC, false>(c, l);
         break;
+      case Version::PC_NTE:
       case Version::PC_V2:
         send_join_lobby_t<PlayerLobbyDataPC, PlayerDispDataDCPCV3, PlayerRecordsEntry_PC, false>(c, l);
         break;
@@ -2135,6 +2151,7 @@ void send_player_join_notification(shared_ptr<Client> c,
     case Version::DC_V2:
       send_join_lobby_t<PlayerLobbyDataDCGC, PlayerDispDataDCPCV3, PlayerRecordsEntry_DC, false>(c, l, joining_client);
       break;
+    case Version::PC_NTE:
     case Version::PC_V2:
       send_join_lobby_t<PlayerLobbyDataPC, PlayerDispDataDCPCV3, PlayerRecordsEntry_PC, false>(c, l, joining_client);
       break;
@@ -3233,6 +3250,7 @@ void send_open_quest_file(
     case Version::GC_NTE:
       send_open_quest_file_t<S_OpenFile_DC_44_A6>(c, quest_name, filename, xb_filename, contents->size(), quest_number, type);
       break;
+    case Version::PC_NTE:
     case Version::PC_V2:
     case Version::GC_V3:
     case Version::GC_EP3_TRIAL_EDITION:

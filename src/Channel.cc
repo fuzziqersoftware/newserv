@@ -292,6 +292,7 @@ void Channel::send(uint16_t cmd, uint32_t flag, const std::vector<std::pair<cons
     }
     case Version::PC_PATCH:
     case Version::BB_PATCH:
+    case Version::PC_NTE:
     case Version::PC_V2: {
       PSOCommandHeaderPC header;
       if (this->crypt_out.get()) {

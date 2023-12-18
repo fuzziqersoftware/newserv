@@ -24,6 +24,7 @@ ServerState::ServerState(shared_ptr<struct event_base> base, const string& confi
       dns_server_port(0),
       ip_stack_debug(false),
       allow_unregistered_users(false),
+      allow_pc_nte(false),
       allow_dc_pc_games(false),
       allow_gc_xb_games(true),
       allowed_drop_modes_v1_v2_normal(0x1F),
@@ -89,6 +90,7 @@ void ServerState::init() {
         l->allow_version(Version::DC_V1);
       }
       l->allow_version(Version::DC_V2);
+      l->allow_version(Version::PC_NTE);
       l->allow_version(Version::PC_V2);
       l->allow_version(Version::GC_NTE);
       l->allow_version(Version::GC_V3);
@@ -372,6 +374,7 @@ shared_ptr<const Menu> ServerState::proxy_destinations_menu_for_version(Version 
     case Version::DC_V1:
     case Version::DC_V2:
       return this->proxy_destinations_menu_dc;
+    case Version::PC_NTE:
     case Version::PC_V2:
       return this->proxy_destinations_menu_pc;
     case Version::GC_NTE:
@@ -394,6 +397,7 @@ const vector<pair<string, uint16_t>>& ServerState::proxy_destinations_for_versio
     case Version::DC_V2:
     case Version::GC_NTE:
       return this->proxy_destinations_dc;
+    case Version::PC_NTE:
     case Version::PC_V2:
       return this->proxy_destinations_pc;
     case Version::GC_V3:
@@ -413,6 +417,7 @@ shared_ptr<const ItemParameterTable> ServerState::item_parameter_table_for_versi
     case Version::DC_V1_11_2000_PROTOTYPE:
     case Version::DC_V1:
     case Version::DC_V2:
+    case Version::PC_NTE:
     case Version::PC_V2:
       return this->item_parameter_table_v2;
     case Version::GC_NTE:
@@ -643,6 +648,7 @@ void ServerState::parse_config(const JSON& json, bool is_reload) {
 
   this->ip_stack_debug = json.get_bool("IPStackDebug", this->ip_stack_debug);
   this->allow_unregistered_users = json.get_bool("AllowUnregisteredUsers", this->allow_unregistered_users);
+  this->allow_pc_nte = json.get_bool("AllowPCNTE", this->allow_pc_nte);
   this->allowed_drop_modes_v1_v2_normal = json.get_int("AllowedDropModesV1V2Normal", this->allowed_drop_modes_v1_v2_normal);
   this->allowed_drop_modes_v1_v2_battle = json.get_int("AllowedDropModesV1V2Battle", this->allowed_drop_modes_v1_v2_battle);
   this->allowed_drop_modes_v1_v2_challenge = json.get_int("AllowedDropModesV1V2Challenge", this->allowed_drop_modes_v1_v2_challenge);

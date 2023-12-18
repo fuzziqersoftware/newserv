@@ -236,6 +236,13 @@
   // number is a hash of the username.
   "AllowUnregisteredUsers": true,
 
+  // If this option is enabled, PC NTE users will be allowed to connect. This is
+  // the only version of the game that does not have any way to identify the
+  // player (no serial number, username, etc.), so PC NTE players receive random
+  // Guild Card numbers every time they connect and cannot be banned by serial
+  // number or username.
+  "AllowPCNTE": true,
+
   // User to run the server as. If present, newserv will attempt to switch to
   // this user's permissions after loading its configuration and opening
   // listening sockets. The special value $SUDO_USER causes newserv to look up

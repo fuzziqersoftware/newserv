@@ -120,6 +120,7 @@ void ReplaySession::check_for_password(shared_ptr<const Event> ev) const {
       break;
     }
 
+    case Version::PC_NTE:
     case Version::PC_V2: {
       const auto& header = check_size_t<PSOCommandHeaderPC>(ev->data, 0xFFFF);
       if (header.command == 0x03) {
@@ -241,6 +242,7 @@ void ReplaySession::apply_default_mask(shared_ptr<Event> ev) {
     case Version::DC_V1_11_2000_PROTOTYPE:
     case Version::DC_V1:
     case Version::DC_V2:
+    case Version::PC_NTE:
     case Version::PC_V2:
     case Version::GC_NTE:
     case Version::GC_V3:
@@ -248,7 +250,7 @@ void ReplaySession::apply_default_mask(shared_ptr<Event> ev) {
     case Version::GC_EP3:
     case Version::XB_V3: {
       uint8_t command;
-      if (version == Version::PC_V2) {
+      if ((version == Version::PC_NTE) || (version == Version::PC_V2)) {
         command = check_size_t<PSOCommandHeaderPC>(ev->data, 0xFFFF).command;
       } else { // V3
         command = check_size_t<PSOCommandHeaderDCV3>(ev->data, 0xFFFF).command;
@@ -275,7 +277,7 @@ void ReplaySession::apply_default_mask(shared_ptr<Event> ev) {
           }
           break;
         case 0x41:
-          if (version == Version::PC_V2) {
+          if ((version == Version::PC_NTE) || (version == Version::PC_V2)) {
             auto& mask = check_size_t<S_GuildCardSearchResult_PC_41>(mask_data, mask_size);
             mask.reconnect_command.address = 0;
           } else { // V3
@@ -284,7 +286,7 @@ void ReplaySession::apply_default_mask(shared_ptr<Event> ev) {
           }
           break;
         case 0x64:
-          if (version == Version::PC_V2) {
+          if ((version == Version::PC_NTE) || (version == Version::PC_V2)) {
             auto& mask = check_size_t<S_JoinGame_PC_64>(mask_data, mask_size);
             mask.variations.clear(0);
             mask.rare_seed = 0;
@@ -315,7 +317,7 @@ void ReplaySession::apply_default_mask(shared_ptr<Event> ev) {
         case 0x65:
         case 0x67:
         case 0x68:
-          if (version == Version::PC_V2) {
+          if ((version == Version::PC_NTE) || (version == Version::PC_V2)) {
             for (size_t offset = offsetof(S_JoinLobby_PC_65_67_68, entries) +
                      offsetof(S_JoinLobby_PC_65_67_68::Entry, disp.visual.name_color_checksum);
                  offset + 4 <= mask_size;
@@ -731,6 +733,7 @@ void ReplaySession::on_command_received(
     case Version::DC_V1_11_2000_PROTOTYPE:
     case Version::DC_V1:
     case Version::DC_V2:
+    case Version::PC_NTE:
     case Version::PC_V2:
     case Version::GC_NTE:
     case Version::GC_V3:

@@ -40,6 +40,7 @@ void Client::Config::set_flags_for_version(Version version, int64_t sub_version)
           this->set_flag(Flag::NO_D6);
           this->set_flag(Flag::SEND_FUNCTION_CALL_NO_CACHE_PATCH);
           break;
+        case Version::PC_NTE:
         case Version::PC_V2:
           this->set_flag(Flag::NO_D6);
           this->set_flag(Flag::SEND_FUNCTION_CALL_CHECKSUM_ONLY);

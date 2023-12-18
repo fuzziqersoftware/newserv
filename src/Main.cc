@@ -100,6 +100,8 @@ Version get_cli_version(Arguments& args) {
     return Version::DC_V1;
   } else if (args.get<bool>("dc-v2") || args.get<bool>("dc")) {
     return Version::DC_V2;
+  } else if (args.get<bool>("pc-nte")) {
+    return Version::PC_NTE;
   } else if (args.get<bool>("pc")) {
     return Version::PC_V2;
   } else if (args.get<bool>("gc-nte")) {
@@ -361,6 +363,7 @@ static void a_encrypt_decrypt_fn(Arguments& args) {
     case Version::DC_V1_11_2000_PROTOTYPE:
     case Version::DC_V1:
     case Version::DC_V2:
+    case Version::PC_NTE:
     case Version::PC_V2:
     case Version::GC_NTE:
       crypt = make_shared<PSOV2Encryption>(stoul(seed, nullptr, 16));

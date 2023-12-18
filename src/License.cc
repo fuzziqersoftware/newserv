@@ -111,6 +111,10 @@ shared_ptr<License> LicenseIndex::create_license() const {
   return make_shared<License>();
 }
 
+shared_ptr<License> LicenseIndex::create_temporary_license() const {
+  return make_shared<License>();
+}
+
 size_t LicenseIndex::count() const {
   return this->serial_number_to_license.size();
 }

@@ -190,20 +190,22 @@ static constexpr uint16_t F_DC_NTE = 0x0004; // Version::DC_NTE
 static constexpr uint16_t F_DC_112000 = 0x0008; // Version::DC_V1_11_2000_PROTOTYPE
 static constexpr uint16_t F_DC_V1 = 0x0010; // Version::DC_V1
 static constexpr uint16_t F_DC_V2 = 0x0020; // Version::DC_V2
-static constexpr uint16_t F_PC_V2 = 0x0040; // Version::PC_V2
-static constexpr uint16_t F_GC_NTE = 0x0080; // Version::GC_NTE
-static constexpr uint16_t F_GC_V3 = 0x0100; // Version::GC_V3
-static constexpr uint16_t F_GC_EP3TE = 0x0200; // Version::GC_EP3_TRIAL_EDITION
-static constexpr uint16_t F_GC_EP3 = 0x0400; // Version::GC_EP3
-static constexpr uint16_t F_XB_V3 = 0x0800; // Version::XB_V3
-static constexpr uint16_t F_BB_V4 = 0x1000; // Version::BB_V4
-static constexpr uint16_t F_RET = 0x2000;
-static constexpr uint16_t F_SET_EPISODE = 0x4000;
+static constexpr uint16_t F_PC_NTE = 0x0040; // Version::PC_NTE
+static constexpr uint16_t F_PC_V2 = 0x0080; // Version::PC_V2
+static constexpr uint16_t F_GC_NTE = 0x0100; // Version::GC_NTE
+static constexpr uint16_t F_GC_V3 = 0x0200; // Version::GC_V3
+static constexpr uint16_t F_GC_EP3TE = 0x0400; // Version::GC_EP3_TRIAL_EDITION
+static constexpr uint16_t F_GC_EP3 = 0x0800; // Version::GC_EP3
+static constexpr uint16_t F_XB_V3 = 0x1000; // Version::XB_V3
+static constexpr uint16_t F_BB_V4 = 0x2000; // Version::BB_V4
+static constexpr uint16_t F_RET = 0x4000;
+static constexpr uint16_t F_SET_EPISODE = 0x8000;
 
 static_assert(F_DC_NTE == v_flag(Version::DC_NTE));
 static_assert(F_DC_112000 == v_flag(Version::DC_V1_11_2000_PROTOTYPE));
 static_assert(F_DC_V1 == v_flag(Version::DC_V1));
 static_assert(F_DC_V2 == v_flag(Version::DC_V2));
+static_assert(F_PC_NTE == v_flag(Version::PC_NTE));
 static_assert(F_PC_V2 == v_flag(Version::PC_V2));
 static_assert(F_GC_NTE == v_flag(Version::GC_NTE));
 static_assert(F_GC_V3 == v_flag(Version::GC_V3));
@@ -213,17 +215,17 @@ static_assert(F_XB_V3 == v_flag(Version::XB_V3));
 static_assert(F_BB_V4 == v_flag(Version::BB_V4));
 
 // clang-format off
-static constexpr uint16_t F_V0_V2  = F_DC_NTE | F_DC_112000 | F_DC_V1 | F_DC_V2 | F_PC_V2 | F_GC_NTE;
-static constexpr uint16_t F_V0_V4  = F_DC_NTE | F_DC_112000 | F_DC_V1 | F_DC_V2 | F_PC_V2 | F_GC_NTE | F_GC_V3 | F_GC_EP3TE | F_GC_EP3 | F_XB_V3 | F_BB_V4;
-static constexpr uint16_t F_V05_V2 =            F_DC_112000 | F_DC_V1 | F_DC_V2 | F_PC_V2 | F_GC_NTE;
-static constexpr uint16_t F_V05_V4 =            F_DC_112000 | F_DC_V1 | F_DC_V2 | F_PC_V2 | F_GC_NTE | F_GC_V3 | F_GC_EP3TE | F_GC_EP3 | F_XB_V3 | F_BB_V4;
-static constexpr uint16_t F_V1_V2  =                          F_DC_V1 | F_DC_V2 | F_PC_V2 | F_GC_NTE;
-static constexpr uint16_t F_V1_V4  =                          F_DC_V1 | F_DC_V2 | F_PC_V2 | F_GC_NTE | F_GC_V3 | F_GC_EP3TE | F_GC_EP3 | F_XB_V3 | F_BB_V4;
-static constexpr uint16_t F_V2     =                                    F_DC_V2 | F_PC_V2 | F_GC_NTE;
-static constexpr uint16_t F_V2_V4  =                                    F_DC_V2 | F_PC_V2 | F_GC_NTE | F_GC_V3 | F_GC_EP3TE | F_GC_EP3 | F_XB_V3 | F_BB_V4;
-static constexpr uint16_t F_V3     =                                                                   F_GC_V3 | F_GC_EP3TE | F_GC_EP3 | F_XB_V3;
-static constexpr uint16_t F_V3_V4  =                                                                   F_GC_V3 | F_GC_EP3TE | F_GC_EP3 | F_XB_V3 | F_BB_V4;
-static constexpr uint16_t F_V4     =                                                                                                               F_BB_V4;
+static constexpr uint16_t F_V0_V2  = F_DC_NTE | F_DC_112000 | F_DC_V1 | F_DC_V2 | F_PC_NTE | F_PC_V2 | F_GC_NTE;
+static constexpr uint16_t F_V0_V4  = F_DC_NTE | F_DC_112000 | F_DC_V1 | F_DC_V2 | F_PC_NTE | F_PC_V2 | F_GC_NTE | F_GC_V3 | F_GC_EP3TE | F_GC_EP3 | F_XB_V3 | F_BB_V4;
+static constexpr uint16_t F_V05_V2 =            F_DC_112000 | F_DC_V1 | F_DC_V2 | F_PC_NTE | F_PC_V2 | F_GC_NTE;
+static constexpr uint16_t F_V05_V4 =            F_DC_112000 | F_DC_V1 | F_DC_V2 | F_PC_NTE | F_PC_V2 | F_GC_NTE | F_GC_V3 | F_GC_EP3TE | F_GC_EP3 | F_XB_V3 | F_BB_V4;
+static constexpr uint16_t F_V1_V2  =                          F_DC_V1 | F_DC_V2 | F_PC_NTE | F_PC_V2 | F_GC_NTE;
+static constexpr uint16_t F_V1_V4  =                          F_DC_V1 | F_DC_V2 | F_PC_NTE | F_PC_V2 | F_GC_NTE | F_GC_V3 | F_GC_EP3TE | F_GC_EP3 | F_XB_V3 | F_BB_V4;
+static constexpr uint16_t F_V2     =                                    F_DC_V2 | F_PC_NTE | F_PC_V2 | F_GC_NTE;
+static constexpr uint16_t F_V2_V4  =                                    F_DC_V2 | F_PC_NTE | F_PC_V2 | F_GC_NTE | F_GC_V3 | F_GC_EP3TE | F_GC_EP3 | F_XB_V3 | F_BB_V4;
+static constexpr uint16_t F_V3     =                                                                              F_GC_V3 | F_GC_EP3TE | F_GC_EP3 | F_XB_V3;
+static constexpr uint16_t F_V3_V4  =                                                                              F_GC_V3 | F_GC_EP3TE | F_GC_EP3 | F_XB_V3 | F_BB_V4;
+static constexpr uint16_t F_V4     =                                                                                                                          F_BB_V4;
 // clang-format on
 static constexpr uint16_t F_HAS_ARGS = F_V3_V4;
 
@@ -923,6 +925,7 @@ std::string disassemble_quest_script(const void* data, size_t size, Version vers
       lines.emplace_back(".long_desc " + escape_string(header.long_description.decode(language)));
       break;
     }
+    case Version::PC_NTE:
     case Version::PC_V2: {
       use_wstrs = true;
       const auto& header = r.get<PSOQuestHeaderPC>();
@@ -1581,6 +1584,7 @@ Episode find_quest_episode_from_script(const void* data, size_t size, Version ve
     case Version::DC_V1_11_2000_PROTOTYPE:
     case Version::DC_V1:
     case Version::DC_V2:
+    case Version::PC_NTE:
     case Version::PC_V2:
       return Episode::EP1;
     case Version::GC_NTE:
@@ -1945,6 +1949,7 @@ std::string assemble_quest_script(const std::string& text) {
                   code_w.write(quest_language ? tt_utf8_to_8859(text) : tt_utf8_to_sjis(text));
                   code_w.put_u8(0);
                   break;
+                case Version::PC_NTE:
                 case Version::PC_V2:
                 case Version::BB_V4:
                   code_w.write(tt_utf8_to_utf16(text));
@@ -2194,6 +2199,7 @@ std::string assemble_quest_script(const std::string& text) {
       w.put(header);
       break;
     }
+    case Version::PC_NTE:
     case Version::PC_V2: {
       PSOQuestHeaderPC header;
       header.code_offset = sizeof(header);
