@@ -249,14 +249,6 @@ static void on_unimplemented(shared_ptr<Client> c, uint8_t command, uint8_t flag
   }
 }
 
-static void on_forward_check_game(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
-  auto l = c->require_lobby();
-  if (!l->is_game()) {
-    return;
-  }
-  forward_subcommand(c, command, flag, data, size);
-}
-
 template <typename CmdT>
 static void send_or_enqueue_joining_player_command(shared_ptr<Client> c, uint8_t command, uint8_t flag, const CmdT& data) {
   if (c->game_join_command_queue) {
@@ -491,7 +483,6 @@ static void on_forward_check_client(shared_ptr<Client> c, uint8_t command, uint8
 }
 
 static void on_forward_check_game(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
-  check_size_t<G_UnusedHeader>(data, size, 0xFFFF);
   auto l = c->require_lobby();
   if (l->is_game()) {
     forward_subcommand(c, command, flag, data, size);
@@ -708,7 +699,7 @@ static void on_word_select(shared_ptr<Client> c, uint8_t command, uint8_t flag, 
   }
 }
 
-static void on_warp(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
+static void on_warp(shared_ptr<Client>, uint8_t, uint8_t, const void* data, size_t size) {
   check_size_t<G_InterLevelWarp_6x94>(data, size);
   // Unconditionally block these. Players should use $warp instead.
 }
