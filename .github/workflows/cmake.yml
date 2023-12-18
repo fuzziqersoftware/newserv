@@ -2,9 +2,9 @@ name: CMake
 
 on:
   push:
-    branches: [ master ]
+    branches: [master]
   pull_request:
-    branches: [ master ]
+    branches: [master]
 
 env:
   BUILD_TYPE: Release
@@ -16,42 +16,42 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest]
-        with_resource_file: ['true', 'false']
+        with_resource_file: ["true", "false"]
 
     steps:
-    - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
 
-    - name: Install libraries (Linux)
-      if: ${{ matrix.os == 'ubuntu-latest' }}
-      run: sudo apt-get install -y libevent-dev
+      - name: Install libraries (Linux)
+        if: ${{ matrix.os == 'ubuntu-latest' }}
+        run: sudo apt-get install -y libevent-dev
 
-    - name: Install libraries (macOS)
-      if: ${{ matrix.os == 'macos-latest' }}
-      run: brew install libevent
+      - name: Install libraries (macOS)
+        if: ${{ matrix.os == 'macos-latest' }}
+        run: brew install libevent
 
-    - name: Install phosg
-      run: |
-        git clone https://github.com/fuzziqersoftware/phosg.git
-        cd phosg
-        cmake .
-        make
-        sudo make install
+      - name: Install phosg
+        run: |
+          git clone https://github.com/fuzziqersoftware/phosg.git
+          cd phosg
+          cmake .
+          make
+          sudo make install
 
-    - name: Install resource_file
-      if: ${{ matrix.with_resource_file == 'true' }}
-      run: |
-        git clone https://github.com/fuzziqersoftware/resource_dasm.git
-        cd resource_dasm
-        cmake .
-        make
-        sudo make install
+      - name: Install resource_file
+        if: ${{ matrix.with_resource_file == 'true' }}
+        run: |
+          git clone https://github.com/fuzziqersoftware/resource_dasm.git
+          cd resource_dasm
+          cmake .
+          make
+          sudo make install
 
-    - name: Configure CMake
-      run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
+      - name: Configure CMake
+        run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
 
-    - name: Build
-      run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
+      - name: Build
+        run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
 
-    - name: Test
-      working-directory: ${{github.workspace}}/build
-      run: ctest -C ${{env.BUILD_TYPE}} --output-on-failure
+      - name: Test
+        working-directory: ${{github.workspace}}/build
+        run: ctest -C ${{env.BUILD_TYPE}} --output-on-failure
