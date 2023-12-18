@@ -249,11 +249,6 @@ static void on_unimplemented(shared_ptr<Client> c, uint8_t command, uint8_t flag
   }
 }
 
-static void on_forward_check_size(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
-  check_size_t<G_UnusedHeader>(data, size, 0xFFFF);
-  forward_subcommand(c, command, flag, data, size);
-}
-
 static void on_forward_check_game(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
   auto l = c->require_lobby();
   if (!l->is_game()) {
@@ -488,14 +483,14 @@ static void on_sync_joining_player_disp_and_inventory(
   }
 }
 
-static void on_forward_check_size_client(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
+static void on_forward_check_client(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
   const auto& cmd = check_size_t<G_ClientIDHeader>(data, size, 0xFFFF);
   if (cmd.client_id == c->lobby_client_id) {
     forward_subcommand(c, command, flag, data, size);
   }
 }
 
-static void on_forward_check_size_game(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
+static void on_forward_check_game(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
   check_size_t<G_UnusedHeader>(data, size, 0xFFFF);
   auto l = c->require_lobby();
   if (l->is_game()) {
@@ -503,7 +498,23 @@ static void on_forward_check_size_game(shared_ptr<Client> c, uint8_t command, ui
   }
 }
 
-static void on_forward_check_size_ep3_lobby(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
+static void on_forward_check_lobby_client(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
+  const auto& cmd = check_size_t<G_ClientIDHeader>(data, size, 0xFFFF);
+  auto l = c->require_lobby();
+  if (!l->is_game() && (cmd.client_id == c->lobby_client_id)) {
+    forward_subcommand(c, command, flag, data, size);
+  }
+}
+
+static void on_forward_check_game_client(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
+  const auto& cmd = check_size_t<G_ClientIDHeader>(data, size, 0xFFFF);
+  auto l = c->require_lobby();
+  if (l->is_game() && (cmd.client_id == c->lobby_client_id)) {
+    forward_subcommand(c, command, flag, data, size);
+  }
+}
+
+static void on_forward_check_ep3_lobby(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
   check_size_t<G_UnusedHeader>(data, size, 0xFFFF);
   auto l = c->require_lobby();
   if (!l->is_game() && l->is_ep3()) {
@@ -511,7 +522,7 @@ static void on_forward_check_size_ep3_lobby(shared_ptr<Client> c, uint8_t comman
   }
 }
 
-static void on_forward_check_size_ep3_game(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
+static void on_forward_check_ep3_game(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
   check_size_t<G_UnusedHeader>(data, size, 0xFFFF);
   auto l = c->require_lobby();
   if (l->is_game() && l->is_ep3()) {
@@ -697,6 +708,11 @@ static void on_word_select(shared_ptr<Client> c, uint8_t command, uint8_t flag, 
   }
 }
 
+static void on_warp(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
+  check_size_t<G_InterLevelWarp_6x94>(data, size);
+  // Unconditionally block these. Players should use $warp instead.
+}
+
 static void on_set_player_visible(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
   const auto& cmd = check_size_t<G_SetPlayerVisibility_6x22_6x23>(data, size);
 
@@ -808,7 +824,7 @@ static void on_attack_finished(shared_ptr<Client> c, uint8_t command, uint8_t fl
   if (cmd.count > allowed_count) {
     throw runtime_error("invalid attack finished command");
   }
-  on_forward_check_size_client(c, command, flag, data, size);
+  on_forward_check_game_client(c, command, flag, data, size);
 }
 
 static void on_cast_technique(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
@@ -818,7 +834,7 @@ static void on_cast_technique(shared_ptr<Client> c, uint8_t command, uint8_t fla
   if (cmd.target_count > allowed_count) {
     throw runtime_error("invalid cast technique command");
   }
-  on_forward_check_size_client(c, command, flag, data, size);
+  on_forward_check_game_client(c, command, flag, data, size);
 }
 
 static void on_subtract_pb_energy(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
@@ -828,7 +844,7 @@ static void on_subtract_pb_energy(shared_ptr<Client> c, uint8_t command, uint8_t
   if (cmd.entry_count > allowed_count) {
     throw runtime_error("invalid subtract PB energy command");
   }
-  on_forward_check_size_client(c, command, flag, data, size);
+  on_forward_check_game_client(c, command, flag, data, size);
 }
 
 static void on_switch_state_changed(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
@@ -2767,32 +2783,32 @@ const SubcommandDefinition subcommand_definitions[0x100] = {
     /* 6x08 */ {0x08, 0x08, 0x08, nullptr},
     /* 6x09 */ {0x09, 0x09, 0x09, nullptr},
     /* 6x0A */ {0x0A, 0x0A, 0x0A, on_enemy_hit},
-    /* 6x0B */ {0x0B, 0x0B, 0x0B, on_forward_check_size_game},
-    /* 6x0C */ {0x0C, 0x0C, 0x0C, on_forward_check_size_game},
-    /* 6x0D */ {0x00, 0x00, 0x0D, on_forward_check_size_game},
+    /* 6x0B */ {0x0B, 0x0B, 0x0B, on_forward_check_game},
+    /* 6x0C */ {0x0C, 0x0C, 0x0C, on_forward_check_game},
+    /* 6x0D */ {0x00, 0x00, 0x0D, on_forward_check_game},
     /* 6x0E */ {0x00, 0x00, 0x0E, nullptr},
     /* 6x0F */ {0x00, 0x00, 0x0F, on_invalid},
     /* 6x10 */ {0x0E, 0x0E, 0x10, nullptr},
     /* 6x11 */ {0x0F, 0x0F, 0x11, nullptr},
     /* 6x12 */ {0x10, 0x10, 0x12, on_dragon_actions},
-    /* 6x13 */ {0x11, 0x11, 0x13, on_forward_check_size_game},
-    /* 6x14 */ {0x12, 0x12, 0x14, on_forward_check_size_game},
-    /* 6x15 */ {0x13, 0x13, 0x15, on_forward_check_size_game},
-    /* 6x16 */ {0x14, 0x14, 0x16, on_forward_check_size_game},
-    /* 6x17 */ {0x15, 0x15, 0x17, on_forward_check_size_game},
-    /* 6x18 */ {0x16, 0x16, 0x18, on_forward_check_size_game},
-    /* 6x19 */ {0x17, 0x17, 0x19, on_forward_check_size_game},
+    /* 6x13 */ {0x11, 0x11, 0x13, on_forward_check_game},
+    /* 6x14 */ {0x12, 0x12, 0x14, on_forward_check_game},
+    /* 6x15 */ {0x13, 0x13, 0x15, on_forward_check_game},
+    /* 6x16 */ {0x14, 0x14, 0x16, on_forward_check_game},
+    /* 6x17 */ {0x15, 0x15, 0x17, on_forward_check_game},
+    /* 6x18 */ {0x16, 0x16, 0x18, on_forward_check_game},
+    /* 6x19 */ {0x17, 0x17, 0x19, on_forward_check_game},
     /* 6x1A */ {0x00, 0x00, 0x1A, on_invalid},
-    /* 6x1B */ {0x00, 0x19, 0x1B, on_forward_check_size_game},
-    /* 6x1C */ {0x00, 0x1A, 0x1C, on_forward_check_size_game},
+    /* 6x1B */ {0x00, 0x19, 0x1B, on_forward_check_game},
+    /* 6x1C */ {0x00, 0x1A, 0x1C, on_forward_check_game},
     /* 6x1D */ {0x19, 0x1B, 0x1D, on_invalid},
     /* 6x1E */ {0x1A, 0x1C, 0x1E, on_invalid},
     /* 6x1F */ {0x1B, 0x1D, 0x1F, on_change_floor_6x1F},
     /* 6x20 */ {0x1C, 0x1E, 0x20, on_movement_with_floor<G_SetPosition_6x20>},
     /* 6x21 */ {0x1D, 0x1F, 0x21, on_change_floor_6x21},
-    /* 6x22 */ {0x1E, 0x20, 0x22, on_forward_check_size_client}, // Formerly on_set_player_invisible
+    /* 6x22 */ {0x1E, 0x20, 0x22, on_forward_check_client}, // Formerly on_set_player_invisible
     /* 6x23 */ {0x1F, 0x21, 0x23, on_set_player_visible},
-    /* 6x24 */ {0x20, 0x22, 0x24, on_forward_check_size_game},
+    /* 6x24 */ {0x20, 0x22, 0x24, on_forward_check_game},
     /* 6x25 */ {0x21, 0x23, 0x25, on_equip_item},
     /* 6x26 */ {0x22, 0x24, 0x26, on_unequip_item},
     /* 6x27 */ {0x23, 0x25, 0x27, on_use_item},
@@ -2800,22 +2816,22 @@ const SubcommandDefinition subcommand_definitions[0x100] = {
     /* 6x29 */ {0x25, 0x27, 0x29, on_destroy_inventory_item},
     /* 6x2A */ {0x26, 0x28, 0x2A, on_player_drop_item},
     /* 6x2B */ {0x27, 0x29, 0x2B, on_create_inventory_item},
-    /* 6x2C */ {0x28, 0x2A, 0x2C, on_forward_check_size},
-    /* 6x2D */ {0x29, 0x2B, 0x2D, on_forward_check_size},
-    /* 6x2E */ {0x2A, 0x2C, 0x2E, on_forward_check_size},
+    /* 6x2C */ {0x28, 0x2A, 0x2C, on_forward_check_client},
+    /* 6x2D */ {0x29, 0x2B, 0x2D, on_forward_check_client},
+    /* 6x2E */ {0x2A, 0x2C, 0x2E, on_forward_check_client},
     /* 6x2F */ {0x2B, 0x2D, 0x2F, on_hit_by_enemy},
     /* 6x30 */ {0x2C, 0x2E, 0x30, on_level_up},
-    /* 6x31 */ {0x2D, 0x2F, 0x31, on_forward_check_size_game},
-    /* 6x32 */ {0x00, 0x00, 0x32, on_forward_check_size_game},
-    /* 6x33 */ {0x2E, 0x30, 0x33, on_forward_check_size_game},
+    /* 6x31 */ {0x2D, 0x2F, 0x31, on_forward_check_game},
+    /* 6x32 */ {0x00, 0x00, 0x32, on_forward_check_game},
+    /* 6x33 */ {0x2E, 0x30, 0x33, on_forward_check_game},
     /* 6x34 */ {0x2F, 0x31, 0x34, nullptr},
     /* 6x35 */ {0x30, 0x32, 0x35, nullptr},
     /* 6x36 */ {0x00, 0x00, 0x36, on_forward_check_game},
-    /* 6x37 */ {0x32, 0x33, 0x37, on_forward_check_size_game},
+    /* 6x37 */ {0x32, 0x33, 0x37, on_forward_check_game},
     /* 6x38 */ {0x33, 0x34, 0x38, nullptr},
-    /* 6x39 */ {0x00, 0x36, 0x39, on_forward_check_size_game},
-    /* 6x3A */ {0x00, 0x37, 0x3A, on_forward_check_size_game},
-    /* 6x3B */ {0x00, 0x38, 0x3B, on_forward_check_size},
+    /* 6x39 */ {0x00, 0x36, 0x39, on_forward_check_game},
+    /* 6x3A */ {0x00, 0x37, 0x3A, on_forward_check_game},
+    /* 6x3B */ {0x00, 0x38, 0x3B, forward_subcommand},
     /* 6x3C */ {0x34, 0x39, 0x3C, nullptr},
     /* 6x3D */ {0x00, 0x00, 0x3D, nullptr},
     /* 6x3E */ {0x00, 0x00, 0x3E, on_movement_with_floor<G_StopAtPosition_6x3E>},
@@ -2823,28 +2839,28 @@ const SubcommandDefinition subcommand_definitions[0x100] = {
     /* 6x40 */ {0x37, 0x3C, 0x40, on_movement<G_WalkToPosition_6x40>},
     /* 6x41 */ {0x38, 0x3D, 0x41, nullptr},
     /* 6x42 */ {0x39, 0x3E, 0x42, on_movement<G_RunToPosition_6x42>},
-    /* 6x43 */ {0x3A, 0x3F, 0x43, on_forward_check_size_client},
-    /* 6x44 */ {0x3B, 0x40, 0x44, on_forward_check_size_client},
-    /* 6x45 */ {0x3C, 0x41, 0x45, on_forward_check_size_client},
+    /* 6x43 */ {0x3A, 0x3F, 0x43, on_forward_check_game_client},
+    /* 6x44 */ {0x3B, 0x40, 0x44, on_forward_check_game_client},
+    /* 6x45 */ {0x3C, 0x41, 0x45, on_forward_check_game_client},
     /* 6x46 */ {0x00, 0x42, 0x46, on_attack_finished},
     /* 6x47 */ {0x3D, 0x43, 0x47, on_cast_technique},
     /* 6x48 */ {0x00, 0x00, 0x48, on_cast_technique_finished},
     /* 6x49 */ {0x3E, 0x44, 0x49, on_subtract_pb_energy},
-    /* 6x4A */ {0x3F, 0x45, 0x4A, on_forward_check_size_client},
+    /* 6x4A */ {0x3F, 0x45, 0x4A, on_forward_check_game_client},
     /* 6x4B */ {0x40, 0x46, 0x4B, on_hit_by_enemy},
     /* 6x4C */ {0x41, 0x47, 0x4C, on_hit_by_enemy},
     /* 6x4D */ {0x42, 0x48, 0x4D, on_player_died},
-    /* 6x4E */ {0x00, 0x00, 0x4E, on_forward_check_size_client},
-    /* 6x4F */ {0x43, 0x49, 0x4F, on_forward_check_size_client},
-    /* 6x50 */ {0x44, 0x4A, 0x50, on_forward_check_size_client},
+    /* 6x4E */ {0x00, 0x00, 0x4E, on_forward_check_game_client},
+    /* 6x4F */ {0x43, 0x49, 0x4F, on_forward_check_game_client},
+    /* 6x50 */ {0x44, 0x4A, 0x50, on_forward_check_game_client},
     /* 6x51 */ {0x00, 0x00, 0x51, nullptr},
-    /* 6x52 */ {0x46, 0x4C, 0x52, on_forward_check_size},
-    /* 6x53 */ {0x47, 0x4D, 0x53, on_forward_check_size_game},
+    /* 6x52 */ {0x46, 0x4C, 0x52, forward_subcommand},
+    /* 6x53 */ {0x47, 0x4D, 0x53, on_forward_check_game},
     /* 6x54 */ {0x48, 0x4E, 0x54, nullptr},
-    /* 6x55 */ {0x49, 0x4F, 0x55, on_forward_check_size_client},
-    /* 6x56 */ {0x4A, 0x50, 0x56, on_forward_check_size_client},
-    /* 6x57 */ {0x00, 0x51, 0x57, on_forward_check_size_client},
-    /* 6x58 */ {0x00, 0x00, 0x58, on_forward_check_size_client},
+    /* 6x55 */ {0x49, 0x4F, 0x55, on_forward_check_game_client},
+    /* 6x56 */ {0x4A, 0x50, 0x56, on_forward_check_client},
+    /* 6x57 */ {0x00, 0x51, 0x57, on_forward_check_client},
+    /* 6x58 */ {0x00, 0x00, 0x58, on_forward_check_client},
     /* 6x59 */ {0x4B, 0x52, 0x59, on_pick_up_item},
     /* 6x5A */ {0x4C, 0x53, 0x5A, on_pick_up_item_request},
     /* 6x5B */ {0x4D, 0x54, 0x5B, nullptr},
@@ -2853,16 +2869,16 @@ const SubcommandDefinition subcommand_definitions[0x100] = {
     /* 6x5E */ {0x50, 0x57, 0x5E, on_buy_shop_item},
     /* 6x5F */ {0x51, 0x58, 0x5F, on_box_or_enemy_item_drop},
     /* 6x60 */ {0x52, 0x59, 0x60, on_entity_drop_item_request},
-    /* 6x61 */ {0x53, 0x5A, 0x61, on_forward_check_size_game},
+    /* 6x61 */ {0x53, 0x5A, 0x61, on_forward_check_game},
     /* 6x62 */ {0x54, 0x5B, 0x62, nullptr},
     /* 6x63 */ {0x55, 0x5C, 0x63, on_destroy_floor_item},
     /* 6x64 */ {0x56, 0x5D, 0x64, nullptr},
     /* 6x65 */ {0x57, 0x5E, 0x65, nullptr},
-    /* 6x66 */ {0x00, 0x00, 0x66, on_forward_check_size_game},
-    /* 6x67 */ {0x58, 0x5F, 0x67, on_forward_check_size_game},
-    /* 6x68 */ {0x59, 0x60, 0x68, on_forward_check_size_game},
-    /* 6x69 */ {0x5A, 0x61, 0x69, on_forward_check_size_game},
-    /* 6x6A */ {0x5B, 0x62, 0x6A, on_forward_check_size_game},
+    /* 6x66 */ {0x00, 0x00, 0x66, on_forward_check_game},
+    /* 6x67 */ {0x58, 0x5F, 0x67, on_forward_check_game},
+    /* 6x68 */ {0x59, 0x60, 0x68, on_forward_check_game},
+    /* 6x69 */ {0x5A, 0x61, 0x69, on_forward_check_game},
+    /* 6x6A */ {0x5B, 0x62, 0x6A, on_forward_check_game},
     /* 6x6B */ {0x5C, 0x63, 0x6B, on_forward_sync_joining_player_state},
     /* 6x6C */ {0x5D, 0x64, 0x6C, on_forward_sync_joining_player_state},
     /* 6x6D */ {0x5E, 0x65, 0x6D, on_sync_joining_player_item_state},
@@ -2874,65 +2890,65 @@ const SubcommandDefinition subcommand_definitions[0x100] = {
     /* 6x73 */ {0x00, 0x00, 0x73, on_invalid},
     /* 6x74 */ {0x62, 0x69, 0x74, on_word_select, SDF::ALWAYS_FORWARD_TO_WATCHERS},
     /* 6x75 */ {0x00, 0x00, 0x75, on_set_quest_flag},
-    /* 6x76 */ {0x00, 0x00, 0x76, on_forward_check_size_game},
-    /* 6x77 */ {0x00, 0x00, 0x77, on_forward_check_size_game},
+    /* 6x76 */ {0x00, 0x00, 0x76, on_forward_check_game},
+    /* 6x77 */ {0x00, 0x00, 0x77, on_forward_check_game},
     /* 6x78 */ {0x00, 0x00, 0x78, nullptr},
-    /* 6x79 */ {0x00, 0x00, 0x79, on_forward_check_size},
+    /* 6x79 */ {0x00, 0x00, 0x79, on_forward_check_lobby_client},
     /* 6x7A */ {0x00, 0x00, 0x7A, nullptr},
     /* 6x7B */ {0x00, 0x00, 0x7B, nullptr},
-    /* 6x7C */ {0x00, 0x00, 0x7C, on_forward_check_size_game},
-    /* 6x7D */ {0x00, 0x00, 0x7D, on_forward_check_size_game},
+    /* 6x7C */ {0x00, 0x00, 0x7C, on_forward_check_game},
+    /* 6x7D */ {0x00, 0x00, 0x7D, on_forward_check_game},
     /* 6x7E */ {0x00, 0x00, 0x7E, nullptr},
     /* 6x7F */ {0x00, 0x00, 0x7F, nullptr},
-    /* 6x80 */ {0x00, 0x00, 0x80, on_forward_check_size_game},
+    /* 6x80 */ {0x00, 0x00, 0x80, on_forward_check_game},
     /* 6x81 */ {0x00, 0x00, 0x81, nullptr},
     /* 6x82 */ {0x00, 0x00, 0x82, nullptr},
-    /* 6x83 */ {0x00, 0x00, 0x83, on_forward_check_size_game},
-    /* 6x84 */ {0x00, 0x00, 0x84, on_forward_check_size_game},
-    /* 6x85 */ {0x00, 0x00, 0x85, on_forward_check_size_game},
-    /* 6x86 */ {0x00, 0x00, 0x86, on_forward_check_size_game},
-    /* 6x87 */ {0x00, 0x00, 0x87, on_forward_check_size_game},
-    /* 6x88 */ {0x00, 0x00, 0x88, on_forward_check_size_game},
-    /* 6x89 */ {0x00, 0x00, 0x89, on_forward_check_size_game},
-    /* 6x8A */ {0x00, 0x00, 0x8A, on_forward_check_size_game},
+    /* 6x83 */ {0x00, 0x00, 0x83, on_forward_check_game},
+    /* 6x84 */ {0x00, 0x00, 0x84, on_forward_check_game},
+    /* 6x85 */ {0x00, 0x00, 0x85, on_forward_check_game},
+    /* 6x86 */ {0x00, 0x00, 0x86, on_forward_check_game},
+    /* 6x87 */ {0x00, 0x00, 0x87, on_forward_check_game},
+    /* 6x88 */ {0x00, 0x00, 0x88, on_forward_check_game},
+    /* 6x89 */ {0x00, 0x00, 0x89, on_forward_check_game},
+    /* 6x8A */ {0x00, 0x00, 0x8A, on_forward_check_game},
     /* 6x8B */ {0x00, 0x00, 0x8B, nullptr},
     /* 6x8C */ {0x00, 0x00, 0x8C, nullptr},
-    /* 6x8D */ {0x00, 0x00, 0x8D, on_forward_check_size_client},
+    /* 6x8D */ {0x00, 0x00, 0x8D, on_forward_check_game_client},
     /* 6x8E */ {0x00, 0x00, 0x8E, nullptr},
     /* 6x8F */ {0x00, 0x00, 0x8F, nullptr},
     /* 6x90 */ {0x00, 0x00, 0x90, nullptr},
-    /* 6x91 */ {0x00, 0x00, 0x91, on_forward_check_size_game},
+    /* 6x91 */ {0x00, 0x00, 0x91, on_forward_check_game},
     /* 6x92 */ {0x00, 0x00, 0x92, nullptr},
-    /* 6x93 */ {0x00, 0x00, 0x93, on_forward_check_size_game},
-    /* 6x94 */ {0x00, 0x00, 0x94, on_forward_check_size_game},
+    /* 6x93 */ {0x00, 0x00, 0x93, on_forward_check_game},
+    /* 6x94 */ {0x00, 0x00, 0x94, on_warp},
     /* 6x95 */ {0x00, 0x00, 0x95, nullptr},
     /* 6x96 */ {0x00, 0x00, 0x96, nullptr},
-    /* 6x97 */ {0x00, 0x00, 0x97, on_forward_check_size_game},
+    /* 6x97 */ {0x00, 0x00, 0x97, on_forward_check_game},
     /* 6x98 */ {0x00, 0x00, 0x98, nullptr},
     /* 6x99 */ {0x00, 0x00, 0x99, nullptr},
-    /* 6x9A */ {0x00, 0x00, 0x9A, on_forward_check_size_game},
-    /* 6x9B */ {0x00, 0x00, 0x9B, on_forward_check_size_game},
-    /* 6x9C */ {0x00, 0x00, 0x9C, on_forward_check_size_game},
-    /* 6x9D */ {0x00, 0x00, 0x9D, on_forward_check_size_game},
+    /* 6x9A */ {0x00, 0x00, 0x9A, on_forward_check_game_client},
+    /* 6x9B */ {0x00, 0x00, 0x9B, on_forward_check_game},
+    /* 6x9C */ {0x00, 0x00, 0x9C, on_forward_check_game},
+    /* 6x9D */ {0x00, 0x00, 0x9D, on_forward_check_game},
     /* 6x9E */ {0x00, 0x00, 0x9E, nullptr},
-    /* 6x9F */ {0x00, 0x00, 0x9F, on_forward_check_size_game},
-    /* 6xA0 */ {0x00, 0x00, 0xA0, on_forward_check_size_game},
-    /* 6xA1 */ {0x00, 0x00, 0xA1, on_forward_check_size_game},
+    /* 6x9F */ {0x00, 0x00, 0x9F, on_forward_check_game},
+    /* 6xA0 */ {0x00, 0x00, 0xA0, on_forward_check_game},
+    /* 6xA1 */ {0x00, 0x00, 0xA1, on_forward_check_game},
     /* 6xA2 */ {0x00, 0x00, 0xA2, on_entity_drop_item_request},
-    /* 6xA3 */ {0x00, 0x00, 0xA3, on_forward_check_size_game},
-    /* 6xA4 */ {0x00, 0x00, 0xA4, on_forward_check_size_game},
-    /* 6xA5 */ {0x00, 0x00, 0xA5, on_forward_check_size_game},
-    /* 6xA6 */ {0x00, 0x00, 0xA6, on_forward_check_size},
+    /* 6xA3 */ {0x00, 0x00, 0xA3, on_forward_check_game},
+    /* 6xA4 */ {0x00, 0x00, 0xA4, on_forward_check_game},
+    /* 6xA5 */ {0x00, 0x00, 0xA5, on_forward_check_game},
+    /* 6xA6 */ {0x00, 0x00, 0xA6, on_forward_check_game},
     /* 6xA7 */ {0x00, 0x00, 0xA7, nullptr},
     /* 6xA8 */ {0x00, 0x00, 0xA8, on_gol_dragon_actions},
-    /* 6xA9 */ {0x00, 0x00, 0xA9, on_forward_check_size_game},
-    /* 6xAA */ {0x00, 0x00, 0xAA, on_forward_check_size_game},
-    /* 6xAB */ {0x00, 0x00, 0xAB, on_forward_check_size_client},
+    /* 6xA9 */ {0x00, 0x00, 0xA9, on_forward_check_game},
+    /* 6xAA */ {0x00, 0x00, 0xAA, on_forward_check_game},
+    /* 6xAB */ {0x00, 0x00, 0xAB, on_forward_check_lobby_client},
     /* 6xAC */ {0x00, 0x00, 0xAC, nullptr},
-    /* 6xAD */ {0x00, 0x00, 0xAD, on_forward_check_size_game},
-    /* 6xAE */ {0x00, 0x00, 0xAE, on_forward_check_size_client},
-    /* 6xAF */ {0x00, 0x00, 0xAF, on_forward_check_size_client},
-    /* 6xB0 */ {0x00, 0x00, 0xB0, on_forward_check_size_client},
+    /* 6xAD */ {0x00, 0x00, 0xAD, on_forward_check_game},
+    /* 6xAE */ {0x00, 0x00, 0xAE, on_forward_check_client},
+    /* 6xAF */ {0x00, 0x00, 0xAF, on_forward_check_lobby_client},
+    /* 6xB0 */ {0x00, 0x00, 0xB0, on_forward_check_lobby_client},
     /* 6xB1 */ {0x00, 0x00, 0xB1, nullptr},
     /* 6xB2 */ {0x00, 0x00, 0xB2, nullptr},
     /* 6xB3 */ {0x00, 0x00, 0xB3, nullptr}, // Should be sent via CA instead
@@ -2944,13 +2960,13 @@ const SubcommandDefinition subcommand_definitions[0x100] = {
     /* 6xB9 */ {0x00, 0x00, 0xB9, nullptr},
     /* 6xBA */ {0x00, 0x00, 0xBA, on_accept_identify_item_bb},
     /* 6xBB */ {0x00, 0x00, 0xBB, on_open_bank_bb_or_card_trade_counter_ep3},
-    /* 6xBC */ {0x00, 0x00, 0xBC, on_forward_check_size_ep3_game},
+    /* 6xBC */ {0x00, 0x00, 0xBC, on_forward_check_ep3_game},
     /* 6xBD */ {0x00, 0x00, 0xBD, on_ep3_private_word_select_bb_bank_action, SDF::ALWAYS_FORWARD_TO_WATCHERS},
-    /* 6xBE */ {0x00, 0x00, 0xBE, on_forward_check_size, SDF::ALWAYS_FORWARD_TO_WATCHERS | SDF::ALLOW_FORWARD_TO_WATCHED_LOBBY},
-    /* 6xBF */ {0x00, 0x00, 0xBF, on_forward_check_size_ep3_lobby},
+    /* 6xBE */ {0x00, 0x00, 0xBE, forward_subcommand, SDF::ALWAYS_FORWARD_TO_WATCHERS | SDF::ALLOW_FORWARD_TO_WATCHED_LOBBY},
+    /* 6xBF */ {0x00, 0x00, 0xBF, on_forward_check_ep3_lobby},
     /* 6xC0 */ {0x00, 0x00, 0xC0, on_sell_item_at_shop_bb},
-    /* 6xC1 */ {0x00, 0x00, 0xC1, on_forward_check_size},
-    /* 6xC2 */ {0x00, 0x00, 0xC2, on_forward_check_size},
+    /* 6xC1 */ {0x00, 0x00, 0xC1, forward_subcommand},
+    /* 6xC2 */ {0x00, 0x00, 0xC2, forward_subcommand},
     /* 6xC3 */ {0x00, 0x00, 0xC3, on_drop_partial_stack_bb},
     /* 6xC4 */ {0x00, 0x00, 0xC4, on_sort_inventory_bb},
     /* 6xC5 */ {0x00, 0x00, 0xC5, on_medical_center_bb},
@@ -2961,8 +2977,8 @@ const SubcommandDefinition subcommand_definitions[0x100] = {
     /* 6xCA */ {0x00, 0x00, 0xCA, on_item_reward_request_bb},
     /* 6xCB */ {0x00, 0x00, 0xCB, on_transfer_item_via_mail_message_bb},
     /* 6xCC */ {0x00, 0x00, 0xCC, on_exchange_item_for_team_points_bb},
-    /* 6xCD */ {0x00, 0x00, 0xCD, on_forward_check_size},
-    /* 6xCE */ {0x00, 0x00, 0xCE, on_forward_check_size},
+    /* 6xCD */ {0x00, 0x00, 0xCD, forward_subcommand},
+    /* 6xCE */ {0x00, 0x00, 0xCE, forward_subcommand},
     /* 6xCF */ {0x00, 0x00, 0xCF, on_battle_restart_bb},
     /* 6xD0 */ {0x00, 0x00, 0xD0, on_battle_level_up_bb},
     /* 6xD1 */ {0x00, 0x00, 0xD1, on_request_challenge_grave_recovery_item_bb},
@@ -2976,7 +2992,7 @@ const SubcommandDefinition subcommand_definitions[0x100] = {
     /* 6xD9 */ {0x00, 0x00, 0xD9, on_momoka_item_exchange_bb},
     /* 6xDA */ {0x00, 0x00, 0xDA, on_upgrade_weapon_attribute_bb},
     /* 6xDB */ {0x00, 0x00, 0xDB, nullptr},
-    /* 6xDC */ {0x00, 0x00, 0xDC, on_forward_check_size_game},
+    /* 6xDC */ {0x00, 0x00, 0xDC, on_forward_check_game},
     /* 6xDD */ {0x00, 0x00, 0xDD, nullptr},
     /* 6xDE */ {0x00, 0x00, 0xDE, on_secret_lottery_ticket_exchange_bb},
     /* 6xDF */ {0x00, 0x00, 0xDF, on_photon_crystal_exchange_bb},
