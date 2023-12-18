@@ -14,6 +14,7 @@ See TODO.md for a list of known issues and future work I've curated, or go to th
     * [Configuration](#configuration)
     * [Installing quests](#installing-quests)
     * [Item tables and drop modes](#item-tables-and-drop-modes)
+    * [Cross-version play](#cross-version-play)
     * [Episode 3 features](#episode-3-features)
     * [Client patch directories for PC and BB](#client-patch-directories)
     * [Memory patches and DOL files for GC](#memory-patches-and-dol-files)
@@ -154,6 +155,30 @@ In the `SERVER_PRIVATE` and `SERVER_DUPLICATE` modes, there is no incentive to p
 The drop mode can be changed at any time during a game with the `$dropmode` chat command. If the mode is changed after some items have already been dropped, the existing items retain their visibility (that is, they still can't be picked up by other players since they were dropped before the mode was changed). You can configure which drop modes are used by default, and which modes players are allowed to choose, in config.json. See the comments above the AllowedDropModes and DefaultDropMode keys.
 
 In the server drop modes, the item tables used to generate common items are in the `system/item-tables/ItemPT-*` files. (The V2 files are used for V1 as well.) The rare item tables are in the `rare-table-*.json` files. Unlike the original formats, it's possible to make each enemy drop multiple different rare items at different rates, though the default tables never do this.
+
+### Cross-version play
+
+All versions of PSO can see and interact with each other in the lobby. newserv also allows some versions to play in-game with each other according to this table (game creator's version on the left, game joiner's version across the top):
+
+|         | DC NTE | 11/2000 | DC V1 | DC V2 | PC NTE | PC  | GC NTE | GC  | Xbox | Ep3 NTE | Ep3 | BB  |
+|---------|--------|---------|-------|-------|--------|-----|--------|-----|------|---------|-----|-----|
+| DC NTE  | Yes    |         |       |       |        |     |        |     |      |         |     |     |
+| 11/2000 |        | Yes     |       |       |        |     |        |     |      |         |     |     |
+| DC V1   |        |         | Yes   | Yes   |        | (2) |        |     |      |         |     |     |
+| DC V2   |        |         | (1)   | Yes   |        | (2) |        |     |      |         |     |     |
+| PC NTE  |        |         |       |       | Yes    |     |        |     |      |         |     |     |
+| PC      |        |         | (2)   | (2)   |        | Yes |        |     |      |         |     |     |
+| GC NTE  |        |         |       |       |        |     | Yes    |     |      |         |     |     |
+| GC      |        |         |       |       |        |     |        | Yes | (3)  |         |     |     |
+| Xbox    |        |         |       |       |        |     |        | (3) | Yes  |         |     |     |
+| Ep3 NTE |        |         |       |       |        |     |        |     |      | Yes     |     |     |
+| Ep3     |        |         |       |       |        |     |        |     |      |         | Yes |     |
+| BB      |        |         |       |       |        |     |        |     |      |         |     | Yes |
+
+*Notes:*
+1. *DC V1 players can join DC V2 games if the difficulty level isn't set to Ultimate and the creator chose to allow V1 players.*
+2. *DC and PC players can join each other's games if AllowDCPCGames is enabled in config.json.*
+3. *GC and Xbox players can join each other's games if AllowDCPCGames is enabled in config.json.*
 
 ### Episode 3 features
 
