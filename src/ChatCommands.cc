@@ -325,6 +325,32 @@ static void server_command_qclear(shared_ptr<Client> c, const std::string& args)
   return server_command_qset_qclear(c, args, false);
 }
 
+static void proxy_command_qset_qclear(shared_ptr<ProxyServer::LinkedSession> ses, const std::string& args, bool should_set) {
+  if (!ses->is_in_game) {
+    send_text_message(ses->client_channel, "$C6This command cannot\nbe used in the lobby");
+    return;
+  }
+
+  uint16_t flag_num = stoul(args, nullptr, 0);
+  if (is_v1_or_v2(ses->version())) {
+    G_UpdateQuestFlag_DC_PC_6x75 cmd = {{0x75, 0x02, 0x0000}, flag_num, should_set ? 0 : 1};
+    ses->client_channel.send(0x60, 0x00, &cmd, sizeof(cmd));
+    ses->server_channel.send(0x60, 0x00, &cmd, sizeof(cmd));
+  } else {
+    G_UpdateQuestFlag_V3_BB_6x75 cmd = {{{0x75, 0x03, 0x0000}, flag_num, should_set ? 0 : 1}, ses->difficulty, 0x0000};
+    ses->client_channel.send(0x60, 0x00, &cmd, sizeof(cmd));
+    ses->server_channel.send(0x60, 0x00, &cmd, sizeof(cmd));
+  }
+}
+
+static void proxy_command_qset(shared_ptr<ProxyServer::LinkedSession> ses, const std::string& args) {
+  return proxy_command_qset_qclear(ses, args, true);
+}
+
+static void proxy_command_qclear(shared_ptr<ProxyServer::LinkedSession> ses, const std::string& args) {
+  return proxy_command_qset_qclear(ses, args, false);
+}
+
 static void server_command_qsync(shared_ptr<Client> c, const std::string& args) {
   if (!c->config.check_flag(Client::Flag::DEBUG_ENABLED)) {
     send_text_message(c, "$C6This command can only\nbe run in debug mode\n(run %sdebug first)");
@@ -355,6 +381,33 @@ static void server_command_qsync(shared_ptr<Client> c, const std::string& args) 
     return;
   }
   send_command_t(c, 0x60, 0x00, cmd);
+}
+
+static void proxy_command_qsync(shared_ptr<ProxyServer::LinkedSession> ses, const std::string& args) {
+  if (!ses->is_in_game) {
+    send_text_message(ses->client_channel, "$C6This command cannot\nbe used in the lobby");
+    return;
+  }
+
+  auto tokens = split(args, ' ');
+  if (tokens.size() != 2) {
+    send_text_message(ses->client_channel, "$C6Incorrect number of\narguments");
+    return;
+  }
+
+  G_SyncQuestData_6x77 cmd;
+  cmd.header = {0x77, 0x03, 0x0000};
+  cmd.register_number = stoul(tokens[0].substr(1), nullptr, 0);
+  cmd.unused = 0;
+  if (tokens[0][0] == 'r') {
+    cmd.value.as_int = stoul(tokens[1], nullptr, 0);
+  } else if (tokens[0][0] == 'f') {
+    cmd.value.as_float = stof(tokens[1]);
+  } else {
+    send_text_message(ses->client_channel, "$C6First argument must\nbe a register");
+    return;
+  }
+  ses->client_channel.send(0x60, 0x00, cmd);
 }
 
 static void server_command_qcall(shared_ptr<Client> c, const std::string& args) {
@@ -1830,9 +1883,9 @@ static const unordered_map<string, ChatCommandDefinition> chat_commands({
     {"$playrec", {server_command_playrec, nullptr}},
     {"$qcall", {server_command_qcall, proxy_command_qcall}},
     {"$qcheck", {server_command_qcheck, nullptr}},
-    {"$qclear", {server_command_qclear, nullptr}},
-    {"$qset", {server_command_qset, nullptr}},
-    {"$qsync", {server_command_qsync, nullptr}},
+    {"$qclear", {server_command_qclear, proxy_command_qclear}},
+    {"$qset", {server_command_qset, proxy_command_qset}},
+    {"$qsync", {server_command_qsync, proxy_command_qsync}},
     {"$quest", {server_command_quest, nullptr}},
     {"$rand", {server_command_rand, proxy_command_rand}},
     {"$save", {server_command_save, nullptr}},
