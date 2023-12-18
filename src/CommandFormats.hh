@@ -3911,7 +3911,7 @@ struct G_VolOptBossActions_6x16 {
 
 // 6x17: Vol Opt phase 2 boss actions (not valid on Episode 3)
 
-struct G_Unknown_6x17 {
+struct G_VolOpt2BossActions_6x17 {
   G_ClientIDHeader header;
   le_float unknown_a2 = 0.0f;
   le_float unknown_a3 = 0.0f;
@@ -3921,7 +3921,7 @@ struct G_Unknown_6x17 {
 
 // 6x18: Vol Opt phase 2 boss actions (not valid on Episode 3)
 
-struct G_Unknown_6x18 {
+struct G_VolOpt2BossActions_6x18 {
   G_ClientIDHeader header;
   parray<le_uint16_t, 4> unknown_a2;
 } __packed__;
