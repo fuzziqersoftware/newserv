@@ -397,9 +397,7 @@ ItemData ItemNameIndex::parse_item_description(Version version, const std::strin
       }
     }
   }
-  if (ret.stack_size() == 0) {
-    ret.data1[5] = 1;
-  }
+  ret.enforce_min_stack_size();
   return ret;
 }
 

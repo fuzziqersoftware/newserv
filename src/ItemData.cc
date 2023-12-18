@@ -157,6 +157,12 @@ size_t ItemData::max_stack_size() const {
   return max_stack_size_for_item(this->data1[0], this->data1[1]);
 }
 
+void ItemData::enforce_min_stack_size() {
+  if (this->stack_size() == 0) {
+    this->data1[5] = 1;
+  }
+}
+
 bool ItemData::is_common_consumable(uint32_t primary_identifier) {
   if (primary_identifier == 0x030200) {
     return false;

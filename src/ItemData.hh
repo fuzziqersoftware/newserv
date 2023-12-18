@@ -147,6 +147,7 @@ struct ItemData { // 0x14 bytes
   bool is_stackable() const;
   size_t stack_size() const;
   size_t max_stack_size() const;
+  void enforce_min_stack_size();
 
   static bool is_common_consumable(uint32_t primary_identifier);
   bool is_common_consumable() const;
