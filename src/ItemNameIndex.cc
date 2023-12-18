@@ -363,11 +363,12 @@ std::string ItemNameIndex::describe_item(
 }
 
 ItemData ItemNameIndex::parse_item_description(Version version, const std::string& desc) const {
+  ItemData ret;
   try {
-    return this->parse_item_description_phase(version, desc, false);
+    ret = this->parse_item_description_phase(version, desc, false);
   } catch (const exception& e1) {
     try {
-      return this->parse_item_description_phase(version, desc, true);
+      ret = this->parse_item_description_phase(version, desc, true);
     } catch (const exception& e2) {
       try {
         string data = parse_data_string(desc);
@@ -381,14 +382,12 @@ ItemData ItemNameIndex::parse_item_description(Version version, const std::strin
           throw runtime_error("item code too long");
         }
 
-        ItemData ret;
         if (data.size() <= 12) {
           memcpy(ret.data1.data(), data.data(), data.size());
         } else {
           memcpy(ret.data1.data(), data.data(), 12);
           memcpy(ret.data2.data(), data.data() + 12, data.size() - 12);
         }
-        return ret;
       } catch (const exception& ed) {
         if (strcmp(e1.what(), e2.what())) {
           throw runtime_error(string_printf("cannot parse item description (as text 1: %s) (as text 2: %s) (as data: %s)", e1.what(), e2.what(), ed.what()));
@@ -398,6 +397,10 @@ ItemData ItemNameIndex::parse_item_description(Version version, const std::strin
       }
     }
   }
+  if (ret.stack_size() == 0) {
+    ret.data1[5] = 1;
+  }
+  return ret;
 }
 
 ItemData ItemNameIndex::parse_item_description_phase(Version version, const std::string& description, bool skip_special) const {
