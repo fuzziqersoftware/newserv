@@ -80,8 +80,11 @@ public:
     // clang-format on
   };
 
+  static constexpr uint64_t DEFAULT_FLAGS = static_cast<uint64_t>(Flag::PROXY_CHAT_COMMANDS_ENABLED) |
+      static_cast<uint64_t>(Flag::PROXY_CHAT_FILTER_ENABLED);
+
   struct Config {
-    uint64_t enabled_flags = 0; // Client::Flag enum
+    uint64_t enabled_flags = DEFAULT_FLAGS; // Client::Flag enum
     uint32_t specific_version = 0;
     int32_t override_random_seed = 0;
     uint8_t override_section_id = 0xFF; // FF = no override
