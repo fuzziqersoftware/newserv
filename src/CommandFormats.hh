@@ -4781,16 +4781,15 @@ struct G_WordSelect_6x74 {
   WordSelectMessage message;
 } __packed__;
 
-// 6x75: Set quest flag
+// 6x75: Update quest flag
 
-struct G_SetQuestFlag_DC_PC_6x75 {
+struct G_UpdateQuestFlag_DC_PC_6x75 {
   G_UnusedHeader header;
   le_uint16_t flag = 0; // Must be < 0x400
   le_uint16_t action = 0; // 0 = set flag, 1 = clear flag
 } __packed__;
 
-struct G_SetQuestFlag_V3_BB_6x75 {
-  G_SetQuestFlag_DC_PC_6x75 basic_cmd;
+struct G_UpdateQuestFlag_V3_BB_6x75 : G_UpdateQuestFlag_DC_PC_6x75 {
   le_uint16_t difficulty = 0;
   le_uint16_t unused = 0;
 } __packed__;

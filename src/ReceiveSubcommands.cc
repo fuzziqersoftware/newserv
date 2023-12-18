@@ -1689,14 +1689,14 @@ static void on_set_quest_flag(shared_ptr<Client> c, uint8_t command, uint8_t fla
 
   uint16_t flag_index, difficulty, action;
   if (is_v1_or_v2(c->version()) && (c->version() != Version::GC_NTE)) {
-    const auto& cmd = check_size_t<G_SetQuestFlag_DC_PC_6x75>(data, size);
+    const auto& cmd = check_size_t<G_UpdateQuestFlag_DC_PC_6x75>(data, size);
     flag_index = cmd.flag;
     action = cmd.action;
     difficulty = l->difficulty;
   } else {
-    const auto& cmd = check_size_t<G_SetQuestFlag_V3_BB_6x75>(data, size);
-    flag_index = cmd.basic_cmd.flag;
-    action = cmd.basic_cmd.action;
+    const auto& cmd = check_size_t<G_UpdateQuestFlag_V3_BB_6x75>(data, size);
+    flag_index = cmd.flag;
+    action = cmd.action;
     difficulty = cmd.difficulty;
   }
 

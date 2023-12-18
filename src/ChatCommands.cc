@@ -309,10 +309,10 @@ static void server_command_qset_qclear(shared_ptr<Client> c, const std::string& 
   }
 
   if (is_v1_or_v2(c->version())) {
-    G_SetQuestFlag_DC_PC_6x75 cmd = {{0x75, 0x02, 0x0000}, flag_num, should_set ? 0 : 1};
+    G_UpdateQuestFlag_DC_PC_6x75 cmd = {{0x75, 0x02, 0x0000}, flag_num, should_set ? 0 : 1};
     send_command_t(l, 0x60, 0x00, cmd);
   } else {
-    G_SetQuestFlag_V3_BB_6x75 cmd = {{{0x75, 0x03, 0x0000}, flag_num, should_set ? 0 : 1}, l->difficulty, 0x0000};
+    G_UpdateQuestFlag_V3_BB_6x75 cmd = {{{0x75, 0x03, 0x0000}, flag_num, should_set ? 0 : 1}, l->difficulty, 0x0000};
     send_command_t(l, 0x60, 0x00, cmd);
   }
 }
