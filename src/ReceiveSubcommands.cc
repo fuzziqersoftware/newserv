@@ -455,8 +455,11 @@ static void on_sync_joining_player_disp_and_inventory(
     send_or_enqueue_joining_player_command(target, command, flag, data, size);
 
   } else if (sender_is_gc) {
-    // Convert GC command to XB command
+    // Convert the GC command to the XB command format. There are some extra
+    // fields on the end, so we also need to adjust the size field in the
+    // extended header to account for that.
     G_SyncPlayerDispAndInventory_XB_6x70 out_cmd = {check_size_t<G_SyncPlayerDispAndInventory_DC_PC_GC_6x70>(data, size), 0, 0, 0};
+    out_cmd.header.size = sizeof(out_cmd);
     if (c->license->xb_user_id) {
       out_cmd.xb_user_id_high = static_cast<uint32_t>((c->license->xb_user_id >> 32) & 0xFFFFFFFF);
       out_cmd.xb_user_id_low = static_cast<uint32_t>(c->license->xb_user_id & 0xFFFFFFFF);
@@ -471,7 +474,8 @@ static void on_sync_joining_player_disp_and_inventory(
     send_or_enqueue_joining_player_command(target, command, flag, out_cmd);
 
   } else {
-    // Convert XB command to GC command
+    // The XB command has some extra fields on the end; PSO GC will just ignore
+    // them, so we don't bother to remove them.
     static_assert(
         sizeof(G_SyncPlayerDispAndInventory_DC_PC_GC_6x70) < sizeof(G_SyncPlayerDispAndInventory_XB_6x70),
         "GC 6x70 command is larger than XB 6x70 command");
