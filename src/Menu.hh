@@ -98,7 +98,7 @@ struct MenuItem {
   enum Flag {
     // For menu items to be visible on DC NTE, they must not have either of the
     // following two flags. (The INVISIBLE_ON_GC_NTE flag behaves similarly.)
-    INVISIBLE_ON_DC_NTE = 0x001,
+    INVISIBLE_ON_DC_PROTOS = 0x001,
     INVISIBLE_ON_DC = 0x002,
     INVISIBLE_ON_PC_NTE = 0x004,
     INVISIBLE_ON_PC = 0x008,

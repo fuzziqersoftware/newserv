@@ -1267,7 +1267,7 @@ void send_menu_t(shared_ptr<Client> c, shared_ptr<const Menu> menu, bool is_info
     switch (c->version()) {
       case Version::DC_NTE:
       case Version::DC_V1_11_2000_PROTOTYPE:
-        is_visible &= !(item.flags & MenuItem::Flag::INVISIBLE_ON_DC_NTE);
+        is_visible &= !(item.flags & MenuItem::Flag::INVISIBLE_ON_DC_PROTOS);
         [[fallthrough]];
       case Version::DC_V1:
       case Version::DC_V2:

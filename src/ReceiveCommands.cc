@@ -220,13 +220,13 @@ static void send_main_menu(shared_ptr<Client> c) {
       },
       0);
   main_menu->items.emplace_back(MainMenuItemID::INFORMATION, "Information",
-      "View server\ninformation", MenuItem::Flag::INVISIBLE_ON_DC_NTE | MenuItem::Flag::REQUIRES_MESSAGE_BOXES);
+      "View server\ninformation", MenuItem::Flag::INVISIBLE_ON_DC_PROTOS | MenuItem::Flag::REQUIRES_MESSAGE_BOXES);
 
   uint32_t proxy_destinations_menu_item_flags =
       // DC NTE and the 11/2000 prototype don't support multiple ship select
       // menus without changing servers via a 19 command apparently (the client
       // sends nothing when the player makes a choice in the second menu)
-      MenuItem::Flag::INVISIBLE_ON_DC_NTE |
+      MenuItem::Flag::INVISIBLE_ON_DC_PROTOS | MenuItem::Flag::INVISIBLE_ON_PC_NTE |
       (s->proxy_destinations_dc.empty() ? MenuItem::Flag::INVISIBLE_ON_DC : 0) |
       (s->proxy_destinations_pc.empty() ? MenuItem::Flag::INVISIBLE_ON_PC : 0) |
       (s->proxy_destinations_gc.empty() ? MenuItem::Flag::INVISIBLE_ON_GC : 0) |
@@ -236,7 +236,7 @@ static void send_main_menu(shared_ptr<Client> c) {
       "Connect to another\nserver through the\nproxy", proxy_destinations_menu_item_flags);
 
   main_menu->items.emplace_back(MainMenuItemID::DOWNLOAD_QUESTS, "Download quests",
-      "Download quests", MenuItem::Flag::INVISIBLE_ON_DC_NTE | MenuItem::Flag::INVISIBLE_ON_PC_NTE | MenuItem::Flag::INVISIBLE_ON_BB);
+      "Download quests", MenuItem::Flag::INVISIBLE_ON_DC_PROTOS | MenuItem::Flag::INVISIBLE_ON_PC_NTE | MenuItem::Flag::INVISIBLE_ON_BB);
   if (!s->is_replay) {
     if (!s->function_code_index->patch_menu_empty(c->config.specific_version)) {
       main_menu->items.emplace_back(MainMenuItemID::PATCHES, "Patches",
@@ -251,7 +251,7 @@ static void send_main_menu(shared_ptr<Client> c) {
       "Disconnect", 0);
   main_menu->items.emplace_back(MainMenuItemID::CLEAR_LICENSE, "Clear license",
       "Disconnect with an\ninvalid license error\nso you can enter a\ndifferent serial\nnumber, access key,\nor password",
-      MenuItem::Flag::INVISIBLE_ON_DC_NTE | MenuItem::Flag::INVISIBLE_ON_PC_NTE | MenuItem::Flag::INVISIBLE_ON_XB | MenuItem::Flag::INVISIBLE_ON_BB);
+      MenuItem::Flag::INVISIBLE_ON_DC_PROTOS | MenuItem::Flag::INVISIBLE_ON_PC_NTE | MenuItem::Flag::INVISIBLE_ON_XB | MenuItem::Flag::INVISIBLE_ON_BB);
 
   send_menu(c, main_menu);
 }
