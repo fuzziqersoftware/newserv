@@ -158,27 +158,13 @@ In the server drop modes, the item tables used to generate common items are in t
 
 ### Cross-version play
 
-All versions of PSO can see and interact with each other in the lobby. newserv also allows some versions to play in-game with each other according to this table (game creator's version on the left, game joiner's version across the top):
+All versions of PSO can see and interact with each other in the lobby. newserv also allows some versions to play in-game with each other:
+* DC V1 players can join DC V2 games if the difficulty level isn't set to Ultimate and the creator chose to allow V1 players.
+* DC V2 players can join DC V1 games.
+* If AllowDCPCGames is enabled in config.json, PC and DC players can join each other's games. DC V1 players cannot join PC games with the Ultimate difficulty level.
+* If AllowGCXBGames is enabled in config.json, GC and Xbox players can join each other's games.
 
-|         | DC NTE | 11/2000 | DC V1 | DC V2 | PC NTE | PC  | GC NTE | GC  | Xbox | Ep3 NTE | Ep3 | BB  |
-|---------|--------|---------|-------|-------|--------|-----|--------|-----|------|---------|-----|-----|
-| DC NTE  | Yes    |         |       |       |        |     |        |     |      |         |     |     |
-| 11/2000 |        | Yes     |       |       |        |     |        |     |      |         |     |     |
-| DC V1   |        |         | Yes   | Yes   |        | (2) |        |     |      |         |     |     |
-| DC V2   |        |         | (1)   | Yes   |        | (2) |        |     |      |         |     |     |
-| PC NTE  |        |         |       |       | Yes    |     |        |     |      |         |     |     |
-| PC      |        |         | (2)   | (2)   |        | Yes |        |     |      |         |     |     |
-| GC NTE  |        |         |       |       |        |     | Yes    |     |      |         |     |     |
-| GC      |        |         |       |       |        |     |        | Yes | (3)  |         |     |     |
-| Xbox    |        |         |       |       |        |     |        | (3) | Yes  |         |     |     |
-| Ep3 NTE |        |         |       |       |        |     |        |     |      | Yes     |     |     |
-| Ep3     |        |         |       |       |        |     |        |     |      |         | Yes |     |
-| BB      |        |         |       |       |        |     |        |     |      |         |     | Yes |
-
-*Notes:*
-1. *DC V1 players can join DC V2 games if the difficulty level isn't set to Ultimate and the creator chose to allow V1 players.*
-2. *DC and PC players can join each other's games if AllowDCPCGames is enabled in config.json.*
-3. *GC and Xbox players can join each other's games if AllowGCXBGames is enabled in config.json.*
+In V1/V2 cross-version play, when any of the server drop modes are used, the server uses the drop table corresponding to the version the game was created with. (For example, if a DC V1 player created the game, rare-table-v1.json will be used, even after V2 players join.)
 
 ### Episode 3 features
 
