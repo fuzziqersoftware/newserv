@@ -1159,7 +1159,11 @@ static void server_command_loadchar(shared_ptr<Client> c, const std::string& arg
   auto l = c->require_lobby();
   check_is_game(l, false);
 
-  size_t index = stoull(args, nullptr, 0);
+  size_t index = stoull(args, nullptr, 0) - 1;
+  if (index > 3) {
+    send_text_message(c, "$C6Player index must\nbe in range 1-4");
+    return;
+  }
   c->load_backup_character(c->license->serial_number, index);
 
   auto s = c->require_server_state();
