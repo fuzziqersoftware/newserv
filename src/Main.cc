@@ -1738,6 +1738,11 @@ Action a_diff_dol_files(
 
 Action a_run_server_replay_log(
     "", nullptr, +[](Arguments& args) {
+      if (!isdir("system/players")) {
+        config_log.info("Players directory does not exist; creating it");
+        mkdir("system/players", 0755);
+      }
+
       string config_filename = args.get<string>("config");
       const string& replay_log_filename = args.get<string>("replay-log");
       bool is_replay = !replay_log_filename.empty();
