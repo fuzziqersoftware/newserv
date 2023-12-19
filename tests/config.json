@@ -300,4 +300,11 @@
       "RewardItem": "031903",
     },
   ],
+
+  "BBMinimumLevels": {
+    "Episode1": [1, 20, 50, 90],
+    "Episode2": [1, 30, 60, 100],
+    "Episode4": [1, 40, 70, 110],
+  },
+  "PreventPersistQuestFlags": [0x0046, 0x0047, 0x0048],
 }

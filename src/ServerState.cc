@@ -676,6 +676,15 @@ void ServerState::parse_config(const JSON& json, bool is_reload) {
       (this->allowed_drop_modes_v4_battle & (1 << static_cast<size_t>(Lobby::DropMode::CLIENT))) || (this->allowed_drop_modes_v4_challenge & (1 << static_cast<size_t>(Lobby::DropMode::CLIENT)))) {
     throw runtime_error("CLIENT drop mode cannot be allowed in V4");
   }
+
+  this->quest_flag_persist_mask.update_all(true);
+  try {
+    for (const auto& flag_id_json : json.get_list("PreventPersistQuestFlags")) {
+      this->quest_flag_persist_mask.clear(flag_id_json->as_int());
+    }
+  } catch (const out_of_range&) {
+  }
+
   this->persistent_game_idle_timeout_usecs = json.get_int("PersistentGameIdleTimeout", this->persistent_game_idle_timeout_usecs);
   this->cheat_mode_behavior = parse_behavior_switch("CheatModeBehavior", this->cheat_mode_behavior);
   this->ep3_send_function_call_enabled = json.get_bool("EnableEpisode3SendFunctionCall", this->ep3_send_function_call_enabled);

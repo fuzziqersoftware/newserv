@@ -1724,19 +1724,26 @@ static void on_set_quest_flag(shared_ptr<Client> c, uint8_t command, uint8_t fla
     difficulty = cmd.difficulty;
   }
 
-  if (flag_index >= 0x400) {
+  if ((flag_index >= 0x400) || (difficulty > 3) || (action > 1)) {
     return;
   }
 
   // TODO: Should we allow overlays here?
   auto p = c->character(true, false);
 
-  // The client explicitly checks for both 0 and 1 - any other value means no
-  // operation is performed.
-  if (action == 0) {
-    p->quest_flags.set(difficulty, flag_index);
-  } else if (action == 1) {
-    p->quest_flags.clear(difficulty, flag_index);
+  auto s = c->require_server_state();
+  if (s->quest_flag_persist_mask.get(flag_index)) {
+    // The client explicitly checks for both 0 and 1 - any other value means no
+    // operation is performed.
+    if (action == 0) {
+      c->log.info("Setting quest flag %s:%03hX", name_for_difficulty(difficulty), flag_index);
+      p->quest_flags.set(difficulty, flag_index);
+    } else if (action == 1) {
+      c->log.info("Clearing quest flag %s:%03hX", name_for_difficulty(difficulty), flag_index);
+      p->quest_flags.clear(difficulty, flag_index);
+    }
+  } else {
+    c->log.info("Quest flag %s:%03hX cannot be modified", name_for_difficulty(difficulty), flag_index);
   }
 
   forward_subcommand(c, command, flag, data, size);

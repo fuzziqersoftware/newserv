@@ -508,6 +508,13 @@ struct QuestFlagsForDifficulty {
     uint8_t mask = 0x80 >> (flag_index & 7);
     this->data[byte_index] &= (~mask);
   }
+  inline void update_all(bool set) {
+    if (set) {
+      this->data.clear(0xFF);
+    } else {
+      this->data.clear(0x00);
+    }
+  }
 } __attribute__((packed));
 
 struct QuestFlags {
@@ -521,6 +528,14 @@ struct QuestFlags {
   }
   inline void clear(uint8_t difficulty, uint16_t flag_index) {
     this->data[difficulty].clear(flag_index);
+  }
+  inline void update_all(uint8_t difficulty, bool set) {
+    this->data[difficulty].update_all(set);
+  }
+  inline void update_all(bool set) {
+    for (size_t z = 0; z < 4; z++) {
+      this->update_all(z, set);
+    }
   }
 } __attribute__((packed));
 

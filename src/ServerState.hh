@@ -94,6 +94,7 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   Lobby::DropMode default_drop_mode_v4_normal;
   Lobby::DropMode default_drop_mode_v4_battle;
   Lobby::DropMode default_drop_mode_v4_challenge;
+  QuestFlagsForDifficulty quest_flag_persist_mask;
   uint64_t persistent_game_idle_timeout_usecs;
   bool ep3_send_function_call_enabled;
   bool catch_handler_exceptions;

@@ -345,10 +345,13 @@ static void on_1D(shared_ptr<Client> c, uint16_t, uint32_t, string&) {
 
   if (c->config.check_flag(Client::Flag::SHOULD_SEND_ARTIFICIAL_ITEM_STATE)) {
     c->config.clear_flag(Client::Flag::SHOULD_SEND_ARTIFICIAL_ITEM_STATE);
-    auto l = c->require_lobby();
     if (!is_ep3(c->version())) {
       send_game_item_state(c);
     }
+  }
+  if (c->config.check_flag(Client::Flag::SHOULD_SEND_ARTIFICIAL_FLAG_STATE)) {
+    c->config.clear_flag(Client::Flag::SHOULD_SEND_ARTIFICIAL_FLAG_STATE);
+    send_game_flag_state(c);
   }
 }
 

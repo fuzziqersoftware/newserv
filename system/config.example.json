@@ -781,6 +781,12 @@
     "Episode2": [1, 30, 60, 100],
     "Episode4": [1, 40, 70, 110],
   },
+  // Some quest flags should not be written to the character file when they're
+  // updated during a quest. Specify the flag IDs here to prevent those flags
+  // from being updated in saved BB character data. The default value here
+  // prevents the door locks in CCA from being deactivated in free-roam by
+  // loading a quest.
+  "PreventPersistQuestFlags": [0x0046, 0x0047, 0x0048],
 
   // Whether to enable certain exception handling. Disabling this causes
   // newserv to abort when any client causes an exception, which is generally

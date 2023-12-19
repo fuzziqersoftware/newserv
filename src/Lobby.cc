@@ -485,6 +485,11 @@ void Lobby::add_client(shared_ptr<Client> c, ssize_t required_client_id) {
     // received. For this reason, we consume item IDs here only if the client is
     // NTE or 11/2000.
     this->assign_inventory_and_bank_item_ids(c, is_pre_v1(c->version()));
+    // On BB, we send artificial flag state to fix an Episode 2 bug where the
+    // CCA door lock state is overwritten by quests.
+    if (c->version() == Version::BB_V4) {
+      c->config.set_flag(Client::Flag::SHOULD_SEND_ARTIFICIAL_FLAG_STATE);
+    }
   }
 
   // If the lobby is recording a battle record, add the player join event

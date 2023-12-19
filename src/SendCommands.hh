@@ -298,6 +298,7 @@ void send_ep3_change_music(Channel& ch, uint32_t song);
 void send_revive_player(std::shared_ptr<Client> c);
 
 void send_game_item_state(std::shared_ptr<Client> c);
+void send_game_flag_state(std::shared_ptr<Client> c);
 void send_drop_item_to_channel(std::shared_ptr<ServerState> s, Channel& ch, const ItemData& item,
     bool from_enemy, uint8_t floor, float x, float z, uint16_t request_id);
 void send_drop_item_to_lobby(std::shared_ptr<Lobby> l, const ItemData& item,

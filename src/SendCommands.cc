@@ -2395,6 +2395,31 @@ void send_game_item_state(shared_ptr<Client> c) {
   }
 }
 
+void send_game_flag_state(shared_ptr<Client> c) {
+  auto l = c->require_lobby();
+
+  G_SetQuestFlags_6x6F cmd;
+  cmd.header.subcommand = 0x6F;
+  cmd.header.size = sizeof(G_SetQuestFlags_6x6F) >> 2;
+  cmd.header.unused = 0x0000;
+  cmd.quest_flags = c->character()->quest_flags;
+
+  for (const auto& lc : l->clients) {
+    if (!lc) {
+      continue;
+    }
+    if (lc->game_join_command_queue) {
+      lc->log.info("Client not ready to receive join commands; adding to queue");
+      auto& cmd = lc->game_join_command_queue->emplace_back();
+      cmd.command = 0x0060;
+      cmd.flag = 0x00000000;
+      cmd.data.assign(reinterpret_cast<const char*>(&cmd), sizeof(cmd));
+    } else {
+      send_command_t(lc, 0x60, 0x00, cmd);
+    }
+  }
+}
+
 void send_drop_item_to_channel(shared_ptr<ServerState> s, Channel& ch, const ItemData& item,
     bool from_enemy, uint8_t floor, float x, float z, uint16_t entity_id) {
   uint8_t subcommand = get_pre_v1_subcommand(ch.version, 0x51, 0x58, 0x5F);
