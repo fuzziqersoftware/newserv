@@ -1216,11 +1216,8 @@ static void on_pick_up_item_generic(
       }
       if (fi->visible_to_client(z)) {
         send_pick_up_item_to_client(lc, client_id, item_id, floor);
-      } else if (lc->version() == Version::BB_V4) {
-        send_create_inventory_item_to_client(lc, client_id, fi->data);
       } else {
-        send_drop_item_to_channel(s, lc->channel, fi->data, false, lc->floor, lc->x, lc->z, 0xFFFF);
-        send_pick_up_item_to_client(lc, client_id, item_id, floor);
+        send_create_inventory_item_to_client(lc, client_id, fi->data);
       }
     }
   }

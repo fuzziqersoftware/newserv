@@ -2465,11 +2465,20 @@ void send_pick_up_item_to_client(shared_ptr<Client> c, uint8_t client_id, uint32
 }
 
 void send_create_inventory_item_to_client(shared_ptr<Client> c, uint8_t client_id, const ItemData& item) {
-  if (c->version() != Version::BB_V4) {
-    throw logic_error("6xBE can only be sent to BB clients");
+  if (c->version() == Version::BB_V4) {
+    G_CreateInventoryItem_BB_6xBE cmd = {{0xBE, 0x07, client_id}, item, 0};
+    send_command_t(c, 0x60, 0x00, cmd);
+  } else {
+    G_CreateInventoryItem_PC_V3_BB_6x2B cmd;
+    cmd.header.subcommand = 0x2B;
+    cmd.header.size = sizeof(cmd) >> 2;
+    cmd.header.client_id = client_id;
+    cmd.item_data = item;
+    cmd.unused1 = 0;
+    cmd.unknown_a2 = 0;
+    cmd.unused2.clear(0);
+    send_command_t(c, 0x60, 0x00, cmd);
   }
-  G_CreateInventoryItem_BB_6xBE cmd = {{0xBE, 0x07, client_id}, item, 0};
-  send_command_t(c, 0x60, 0x00, cmd);
 }
 
 void send_create_inventory_item_to_lobby(shared_ptr<Client> c, uint8_t client_id, const ItemData& item, bool exclude_c) {
@@ -2477,9 +2486,6 @@ void send_create_inventory_item_to_lobby(shared_ptr<Client> c, uint8_t client_id
   for (const auto& lc : l->clients) {
     if (!lc) {
       continue;
-    }
-    if (lc->version() != Version::BB_V4) {
-      throw logic_error("6xBE can only be sent to BB clients");
     }
     if ((lc != c) || !exclude_c) {
       send_create_inventory_item_to_client(lc, client_id, item);

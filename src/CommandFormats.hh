@@ -4066,7 +4066,7 @@ struct G_CreateInventoryItem_DC_6x2B {
 struct G_CreateInventoryItem_PC_V3_BB_6x2B : G_CreateInventoryItem_DC_6x2B {
   uint8_t unused1 = 0;
   uint8_t unknown_a2 = 0;
-  le_uint16_t unused2 = 0;
+  parray<uint8_t, 2> unused2 = 0;
 } __packed__;
 
 // 6x2C: Talk to NPC
