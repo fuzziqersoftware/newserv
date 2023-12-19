@@ -838,6 +838,22 @@ static void on_subtract_pb_energy(shared_ptr<Client> c, uint8_t command, uint8_t
   on_forward_check_game_client(c, command, flag, data, size);
 }
 
+static void on_npc_control(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
+  const auto& cmd = check_size_t<G_NPCControl_6x69>(data, size);
+  // Don't allow NPC control commands if there is a player in the relevant slot
+  const auto& l = c->require_lobby();
+  if (!l->is_game()) {
+    throw runtime_error("cannot create NPCs in the lobby");
+  }
+  if (cmd.npc_client_id >= 4) {
+    throw runtime_error("NPC client ID is not valid");
+  }
+  if (l->clients[cmd.npc_client_id]) {
+    throw runtime_error("cannot overwrite existing player with NPC");
+  }
+  forward_subcommand(c, command, flag, data, size);
+}
+
 static void on_switch_state_changed(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
   auto& cmd = check_size_t<G_SwitchStateChanged_6x05>(data, size);
 
@@ -2868,7 +2884,7 @@ const SubcommandDefinition subcommand_definitions[0x100] = {
     /* 6x66 */ {0x00, 0x00, 0x66, on_forward_check_game},
     /* 6x67 */ {0x58, 0x5F, 0x67, on_forward_check_game},
     /* 6x68 */ {0x59, 0x60, 0x68, on_forward_check_game},
-    /* 6x69 */ {0x5A, 0x61, 0x69, on_forward_check_game},
+    /* 6x69 */ {0x5A, 0x61, 0x69, on_npc_control},
     /* 6x6A */ {0x5B, 0x62, 0x6A, on_forward_check_game},
     /* 6x6B */ {0x5C, 0x63, 0x6B, on_forward_sync_joining_player_state},
     /* 6x6C */ {0x5D, 0x64, 0x6C, on_forward_sync_joining_player_state},
