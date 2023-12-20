@@ -141,9 +141,21 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   std::shared_ptr<const Map::RareEnemyRates> rare_enemy_rates_challenge;
   std::array<std::array<size_t, 4>, 3> min_levels_v4; // Indexed as [episode][difficulty]
 
+  struct QuestF960Result {
+    uint32_t meseta_cost = 0;
+    uint32_t base_probability = 0;
+    uint32_t probability_upgrade = 0;
+    std::array<std::vector<ItemData>, 7> results;
+
+    QuestF960Result() = default;
+    QuestF960Result(const JSON& json, std::shared_ptr<const ItemNameIndex> name_index);
+  };
+
   // Indexed as [type][difficulty][random_choice]
   std::vector<std::vector<std::vector<ItemData>>> quest_F95E_results;
   std::vector<std::pair<size_t, ItemData>> quest_F95F_results; // [(num_photon_tickets, item)]
+  std::vector<QuestF960Result> quest_F960_success_results;
+  QuestF960Result quest_F960_failure_results;
   std::vector<ItemData> secret_lottery_results;
   uint16_t bb_global_exp_multiplier;
 
@@ -268,6 +280,7 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   void load_patch_indexes();
   void load_battle_params();
   void load_level_table();
+  void load_item_name_index();
   void load_item_tables();
   void load_word_select_table();
   void load_ep3_data();

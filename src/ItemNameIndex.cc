@@ -390,9 +390,11 @@ ItemData ItemNameIndex::parse_item_description(Version version, const std::strin
         }
       } catch (const exception& ed) {
         if (strcmp(e1.what(), e2.what())) {
-          throw runtime_error(string_printf("cannot parse item description (as text 1: %s) (as text 2: %s) (as data: %s)", e1.what(), e2.what(), ed.what()));
+          throw runtime_error(string_printf("cannot parse item description \"%s\" in %s (as text 1: %s) (as text 2: %s) (as data: %s)",
+              desc.c_str(), name_for_enum(version), e1.what(), e2.what(), ed.what()));
         } else {
-          throw runtime_error(string_printf("cannot parse item description (as text: %s) (as data: %s)", e1.what(), ed.what()));
+          throw runtime_error(string_printf("cannot parse item description \"%s\" in %s (as text: %s) (as data: %s)",
+              desc.c_str(), name_for_enum(version), e1.what(), ed.what()));
         }
       }
     }

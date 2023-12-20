@@ -297,6 +297,7 @@ Proxy session commands:\n\
       } else if (type == "level-table") {
         this->state->load_level_table();
       } else if (type == "item-tables") {
+        this->state->load_item_name_index();
         this->state->load_item_tables();
       } else if (type == "word-select") {
         this->state->load_word_select_table();

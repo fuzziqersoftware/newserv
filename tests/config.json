@@ -190,11 +190,56 @@
     ],
   ],
   "QuestF95FResultItems": [
-    [0, ""], // Unused
+    [0, "000100"], // Unused
     [10, "00D500"],
     [15, "000A07"],
     [20, "010157"],
   ],
+  "QuestF960SuccessResultItems": [
+    {
+      "MesetaCost": 1000,
+      "BaseProbability": 0x0A3D70A3, // 4%
+      "ProbabilityUpgrade": 0x0A3D70A3, // 4%
+      "Sunday": ["God/Power", "Cure/Poison", "Cure/Paralysis", "Cure/Slow", "Cure/Confuse", "Cure/Freeze", "Cure/Shock", "Tablet"],
+      "Monday": ["Three Seals", "God/Mind", "God/Arm", "Hero/Ability", "HP/Revival", "PB/Create", "Devil/Battle", "Cure/Slow"],
+      "Tuesday": ["God/HP", "God/Body", "PB/Create", "Cure/Poison", "Cure/Paralysis", "Cure/Freeze"],
+      "Wednesday": ["God/Legs", "Hero/Ability", "TP/Revival", "Devil/Battle", "Cure/Slow", "Tablet"],
+      "Thursday": ["God/TP", "Hero/Ability", "HP/Revival", "God/Technique", "Cure/Shock"],
+      "Friday": ["God/Luck", "TP/Revival", "PB/Create", "Devil/Battle", "Cure/Paralysis", "Cure/Slow", "Cure/Shock", "Tablet"],
+      "Saturday": ["Three Seals", "Hero/Ability", "God/Ability", "HP/Revival", "PB/Create", "Cure/Poison", "Cure/Paralysis", "Cure/Freeze"],
+    }, {
+      "MesetaCost": 10000,
+      "BaseProbability": 0x0A3D70A3, // 4%
+      "ProbabilityUpgrade": 0x0A3D70A3, // 4%
+      "Sunday": ["Kaladbolg", "Durandal", "Blade Dance", "M&A60 Vise", "H&S25 Justice", "L&K14 Combat", "Club of Laconium", "Photon Claw", "Silence Claw", "Stag Cutlery", "Holy Ray", "Ancient Saber", "Elysion", "Twin Psychogun", "Guilty Light", "Red Scorpio", "DB’s Saber", "DF Field", "Morning Prayer", "S-Parts ver1.16", "Standstill Shield", "Kasami Bracer", "Secure Feet", "AddSlot", "Photon Crystal", "Dragon Scale", "Rappy’s Beak"],
+      "Monday": ["Kaladbolg", "Flowen's Sword", "Last Survivor", "Dragon Slayer", "Rianov 303SNR", "H&S25 Justice", "L&K14 Combat", "Crush Bullet", "Meteor Smash", "Final Impact", "Club of Zumiuran", "Brave Hammer", "Alive Aqhu", "Ice Staff: Dagon", "Double Saber", "Elysion", "Red Saber", "Meteor Cudgel", "Red Sword", "Panzer Faust", "Plantain Leaf", "Fatsia", "Sange", "Kamui", "Talis", "DB’s Saber", "Guardianna", "Regenerate Gear", "DB’s Shield", "AddSlot", "Photon Crystal", "Dragon Scale", "Rappy’s Beak"],
+      "Tuesday": ["Blade Dance", "Bloody Art", "Cross Scar", "Brionac", "Diska of Braveman", "M&A60 Vise", "Club of Laconium", "Mace of Adaman", "Twin Brand", "Brave Knuckle", "Angry Fist", "God Hand", "Red Dagger", "Maser Beam", "Asuka", "Talis", "DB’s Saber", "Red Coat", "Secret Gear", "Regenerate Gear", "Black Ring", "AddSlot", "Photon Crystal", "Dragon Scale", "Rappy’s Beak"],
+      "Wednesday": ["Bloody Art", "Brionac", "Vjaya", "Rianov 303SNR", "Battle Verge", "Brave Hammer", "Alive Aqhu", "Soul Banish", "Red Partisan", "Yasminkov 2000H", "Yasminkov 7000V", "Maser Beam", "Musashi", "Yamato", "Zanba", "Ruby Bullet", "Sacred Guard", "S-Parts ver1.16", "S-Parts ver2.01", "Light Relief", "Attribute Wall", "AddSlot", "Photon Crystal", "Dragon Scale", "Rappy’s Beak"],
+      "Thursday": ["Gae Bolg", "Slicer of Assassin", "Diska of Liberator", "Diska of Braveman", "Varista", "M&A60 Vise", "Mace of Adaman", "Battle Verge", "Fire Scepter: Agni", "Ice Staff: Dagon", "Storm Wand: Indra", "Twin Brand", "Spread Needle", "Holy Ray", "Inferno Bazooka", "Victor Axe", "Flight Cutter", "Red Slicer", "Branch of Pakupaku", "Heart of Poumn", "Photon Launcher", "Guilty Light", "Talis", "Demolition Comet", "Ruby Bullet", "Guard Wave", "DF Field", "Luminous Field", "Morning Prayer", "Red Coat", "Infantry Mantle", "Regenerate Gear", "AddSlot", "Photon Crystal", "Dragon Scale", "Rappy’s Beak"],
+      "Friday": ["Varista", "Custom Ray ver.OO", "Bravace", "Visk-235W", "Rianov 303SNR", "M&A60 Vise", "H&S25 Justice", "Crush Bullet", "Club of Laconium", "Fire Scepter: Agni", "Victor Axe", "Caduceus", "Sting Tip", "Ancient Saber", "Red Saber", "Red Handgun", "Twin Psychogun", "Fatsia", "The Sigh of a God", "Guilty Light", "Talis", "Mahu", "Graviton Plate", "Attribute Plate", "Aura Field", "Electro Frame", "Sacred Cloth", "Smoking Plate", "Red Coat", "AddSlot", "Photon Crystal", "Dragon Scale", "Rappy’s Beak"],
+      "Saturday": ["Kaladbolg", "Varista", "Visk-235W", "Wals-MK2", "Justy-23ST", "Rianov 303SNR", "Club of Zumiuran", "Storm Wand: Indra", "Double Saber", "Caduceus", "Sting Tip", "Suppressed Gun", "Ancient Saber", "Twin Psychogun", "Red Mechgun", "Windmill", "Plantain Leaf", "Fatsia", "Revival Garment", "Spirit Garment", "Stink Frame", "D-Parts ver1.01", "D-Parts ver2.10", "Sense Plate", "Graviton Plate", "Custom Frame ver.OO", "AddSlot", "Photon Crystal", "Dragon Scale", "Rappy’s Beak"],
+    }, {
+      "MesetaCost": 100000,
+      "BaseProbability": 0x0A3D70A3, // 4%
+      "ProbabilityUpgrade": 0x0A3D70A3, // 4%
+      "Sunday": ["Zero Divide", "Asteron Belt", "Raikiri", "Skyly Card", "Purplenum Card", "Oran Card", "Guren", "Black Odoshi Red Nimaidou", "V101"],
+      "Monday": ["Earth Wand: Brownie", "Viridia Card", "Greenill Card", "Yellowboze Card", "Yunchang", "Black Odoshi Domaru", "Revival Cuirass", "Gratia", "Regenerate Gear B.P.", "Honeycomb Reflector", "V501", "Heavenly/Battle"],
+      "Tuesday": ["Zero Divide", "Asteron Belt", "Phoenix Claw", "Skyly Card", "Pinkal Card", "Whitill Card", "Morning Glory", "Ignition Cloak", "Bunny Ears", "Cat Ears", "V502", "Smartlink"],
+      "Wednesday": ["Phoenix Claw", "Bluefull Card", "Purplenum Card", "Pinkal Card", "Morning Glory", "Cannon Rouge", "Clio", "Morning Prayer", "Sacred Guard", "Honeycomb Reflector", "Heavenly/Legs"],
+      "Thursday": ["Asteron Belt", "Earth Wand: Brownie", "Phoenix Claw", "Raikiri", "Greenill Card", "Redria Card", "Whitill Card", "Flamberge", "Cannon Rouge", "Glide Divine", "Star Cuirass", "Stink Shield"],
+      "Friday": ["Zero Divide", "Phoenix Claw", "Raikiri", "Power Maser", "Viridia Card", "Yellowboze Card", "Ophelie Seize", "Black Odoshi Domaru", "Black Odoshi Red Nimaidou"],
+      "Saturday": ["Earth Wand: Brownie", "Bluefull Card", "Redria Card", "Oran Card", "Kusanagi", "Honeycomb Reflector"],
+    },
+  ],
+  "QuestF960FailureResultItems": {
+    "Sunday": ["Monomate x1", "Dimate x1", "Trimate x1", "Monofluid x1", "Difluid x1", "Trifluid x1", "Sol Atomizer x1", "Moon Atomizer x1", "Antidote x1", "Antiparalysis x1", "Telepipe x1", "Trap Vision x1"],
+    "Monday": ["Monomate x1", "Dimate x1", "Trimate x1", "Monofluid x1", "Difluid x1", "Trifluid x1", "Sol Atomizer x1", "Moon Atomizer x1", "Antidote x1", "Antiparalysis x1", "Telepipe x1", "Trap Vision x1"],
+    "Tuesday": ["Monomate x1", "Dimate x1", "Trimate x1", "Monofluid x1", "Difluid x1", "Trifluid x1", "Sol Atomizer x1", "Moon Atomizer x1", "Antidote x1", "Antiparalysis x1", "Telepipe x1", "Trap Vision x1"],
+    "Wednesday": ["Monomate x1", "Dimate x1", "Trimate x1", "Monofluid x1", "Difluid x1", "Trifluid x1", "Sol Atomizer x1", "Moon Atomizer x1", "Antidote x1", "Antiparalysis x1", "Telepipe x1", "Trap Vision x1"],
+    "Thursday": ["Monomate x1", "Dimate x1", "Trimate x1", "Monofluid x1", "Difluid x1", "Trifluid x1", "Sol Atomizer x1", "Moon Atomizer x1", "Antidote x1", "Antiparalysis x1", "Telepipe x1", "Trap Vision x1"],
+    "Friday": ["Monomate x1", "Dimate x1", "Trimate x1", "Monofluid x1", "Difluid x1", "Trifluid x1", "Sol Atomizer x1", "Moon Atomizer x1", "Antidote x1", "Antiparalysis x1", "Telepipe x1", "Trap Vision x1"],
+    "Saturday": ["Monomate x1", "Dimate x1", "Trimate x1", "Monofluid x1", "Difluid x1", "Trifluid x1", "Sol Atomizer x1", "Moon Atomizer x1", "Antidote x1", "Antiparalysis x1", "Telepipe x1", "Trap Vision x1"],
+  },
   "SecretLotteryResultItems": [
     "000106", "000107", "000206", "000407", "000606", "000807", "000D01",
     "001300", "002000", "002700", "002C00", "003400", "003900", "003C00",

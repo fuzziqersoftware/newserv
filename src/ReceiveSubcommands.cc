@@ -2082,8 +2082,8 @@ static void on_enemy_exp_request_bb(shared_ptr<Client> c, uint8_t, uint8_t, cons
   }
 }
 
-void on_meseta_reward_request_bb(shared_ptr<Client> c, uint8_t, uint8_t, const void* data, size_t size) {
-  const auto& cmd = check_size_t<G_MesetaRewardRequest_BB_6xC9>(data, size);
+void on_adjust_player_meseta_bb(shared_ptr<Client> c, uint8_t, uint8_t, const void* data, size_t size) {
+  const auto& cmd = check_size_t<G_AdjustPlayerMeseta_BB_6xC9>(data, size);
 
   auto p = c->character();
   if (cmd.amount < 0) {
@@ -2692,6 +2692,58 @@ static void on_quest_F95F_result_bb(shared_ptr<Client> c, uint8_t, uint8_t, cons
   }
 }
 
+static void on_quest_F960_result_bb(shared_ptr<Client> c, uint8_t, uint8_t, const void* data, size_t size) {
+  auto l = c->require_lobby();
+  if (l->is_game() && (l->base_version == Version::BB_V4)) {
+    const auto& cmd = check_size_t<G_GetMesetaSlotPrize_BB_6xE2>(data, size);
+    auto s = c->require_server_state();
+    auto p = c->character();
+
+    time_t t_secs = now() / 1000000;
+    struct tm t_parsed;
+    gmtime_r(&t_secs, &t_parsed);
+    size_t weekday = t_parsed.tm_wday;
+
+    ItemData item;
+    for (size_t num_failures = 0; num_failures <= cmd.result_tier; num_failures++) {
+      size_t tier = cmd.result_tier - num_failures;
+      const auto& results = s->quest_F960_success_results.at(tier);
+      uint64_t probability = results.base_probability + num_failures * results.probability_upgrade;
+      if (random_object<uint32_t>() <= probability) {
+        c->log.info("Tier %zu yielded a prize", tier);
+        const auto& result_items = results.results.at(weekday);
+        item = result_items[random_object<uint32_t>() % result_items.size()];
+        break;
+      } else {
+        c->log.info("Tier %zu did not yield a prize", tier);
+      }
+    }
+    if (item.empty()) {
+      c->log.info("Choosing result from failure tier");
+      const auto& result_items = s->quest_F960_failure_results.results.at(weekday);
+      item = result_items[random_object<uint32_t>() % result_items.size()];
+    }
+    if (item.empty()) {
+      throw runtime_error("no item produced, even from failure tier");
+    }
+
+    // The client sends a 6xC9 to remove Meseta before sending 6xE2, so we don't
+    // have to deal with Meseta here.
+
+    item.id = l->generate_item_id(c->lobby_client_id);
+    p->add_item(item);
+    send_create_inventory_item_to_lobby(c, c->lobby_client_id, item);
+
+    G_SetMesetaSlotPrizeResult_BB_6xE3 cmd_6xE3 = {{0xE3, sizeof(G_SetMesetaSlotPrizeResult_BB_6xE3) >> 2, 0x0000}, item};
+    send_command_t(c, 0x60, 0x00, cmd_6xE3);
+
+    if (c->log.should_log(LogLevel::INFO)) {
+      string name = s->item_name_index->describe_item(c->version(), item);
+      c->log.info("Awarded item %s", name.c_str());
+    }
+  }
+}
+
 static void on_momoka_item_exchange_bb(shared_ptr<Client> c, uint8_t, uint8_t, const void* data, size_t size) {
   auto l = c->require_lobby();
   if (l->is_game() && (l->base_version == Version::BB_V4) && l->check_flag(Lobby::Flag::QUEST_IN_PROGRESS)) {
@@ -2984,7 +3036,7 @@ const SubcommandDefinition subcommand_definitions[0x100] = {
     /* 6xC6 */ {0x00, 0x00, 0xC6, on_steal_exp_bb},
     /* 6xC7 */ {0x00, 0x00, 0xC7, on_charge_attack_bb},
     /* 6xC8 */ {0x00, 0x00, 0xC8, on_enemy_exp_request_bb},
-    /* 6xC9 */ {0x00, 0x00, 0xC9, on_meseta_reward_request_bb},
+    /* 6xC9 */ {0x00, 0x00, 0xC9, on_adjust_player_meseta_bb},
     /* 6xCA */ {0x00, 0x00, 0xCA, on_item_reward_request_bb},
     /* 6xCB */ {0x00, 0x00, 0xCB, on_transfer_item_via_mail_message_bb},
     /* 6xCC */ {0x00, 0x00, 0xCC, on_exchange_item_for_team_points_bb},
@@ -3009,7 +3061,7 @@ const SubcommandDefinition subcommand_definitions[0x100] = {
     /* 6xDF */ {0x00, 0x00, 0xDF, on_photon_crystal_exchange_bb},
     /* 6xE0 */ {0x00, 0x00, 0xE0, on_quest_F95E_result_bb},
     /* 6xE1 */ {0x00, 0x00, 0xE1, on_quest_F95F_result_bb},
-    /* 6xE2 */ {0x00, 0x00, 0xE2, nullptr},
+    /* 6xE2 */ {0x00, 0x00, 0xE2, on_quest_F960_result_bb},
     /* 6xE3 */ {0x00, 0x00, 0xE3, nullptr},
     /* 6xE4 */ {0x00, 0x00, 0xE4, nullptr},
     /* 6xE5 */ {0x00, 0x00, 0xE5, nullptr},

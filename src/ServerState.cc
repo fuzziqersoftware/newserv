@@ -17,6 +17,18 @@
 
 using namespace std;
 
+ServerState::QuestF960Result::QuestF960Result(const JSON& json, std::shared_ptr<const ItemNameIndex> name_index) {
+  static const array<string, 7> day_names = {"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"};
+  this->meseta_cost = json.get_int("MesetaCost", 0);
+  this->base_probability = json.get_int("BaseProbability", 0);
+  this->probability_upgrade = json.get_int("ProbabilityUpgrade", 0);
+  for (size_t day = 0; day < 7; day++) {
+    for (const auto& item_it : json.get_list(day_names[day])) {
+      this->results[day].emplace_back(name_index->parse_item_description(Version::BB_V4, item_it->as_string()));
+    }
+  }
+}
+
 ServerState::ServerState(shared_ptr<struct event_base> base, const string& config_filename, bool is_replay)
     : base(base),
       config_filename(config_filename),
@@ -125,6 +137,7 @@ void ServerState::init() {
   // Load all the necessary data
   auto config = this->load_config();
   this->collect_network_addresses();
+  this->load_item_name_index();
   this->parse_config(config, false);
   this->load_bb_private_keys();
   this->load_licenses();
@@ -806,8 +819,7 @@ void ServerState::parse_config(const JSON& json, bool is_reload) {
       for (const auto& difficulty_it : type_it->as_list()) {
         auto& difficulty_res = type_res.emplace_back();
         for (const auto& item_it : difficulty_it->as_list()) {
-          string data = parse_data_string(item_it->as_string());
-          difficulty_res.emplace_back(ItemData::from_data(data));
+          difficulty_res.emplace_back(this->item_name_index->parse_item_description(Version::BB_V4, item_it->as_string()));
         }
       }
     }
@@ -818,16 +830,22 @@ void ServerState::parse_config(const JSON& json, bool is_reload) {
     for (const auto& it : json.get_list("QuestF95FResultItems")) {
       auto& list = it->as_list();
       size_t price = list.at(0)->as_int();
-      string data = parse_data_string(list.at(1)->as_string());
-      this->quest_F95F_results.emplace_back(make_pair(price, ItemData::from_data(data)));
+      this->quest_F95F_results.emplace_back(make_pair(price, this->item_name_index->parse_item_description(Version::BB_V4, list.at(1)->as_string())));
+    }
+  } catch (const out_of_range&) {
+  }
+  try {
+    this->quest_F960_success_results.clear();
+    this->quest_F960_failure_results = QuestF960Result(json.at("QuestF960FailureResultItems"), this->item_name_index);
+    for (const auto& it : json.get_list("QuestF960SuccessResultItems")) {
+      this->quest_F960_success_results.emplace_back(*it, this->item_name_index);
     }
   } catch (const out_of_range&) {
   }
   try {
     this->secret_lottery_results.clear();
     for (const auto& it : json.get_list("SecretLotteryResultItems")) {
-      string data = parse_data_string(it->as_string());
-      this->secret_lottery_results.emplace_back(ItemData::from_data(data));
+      this->secret_lottery_results.emplace_back(this->item_name_index->parse_item_description(Version::BB_V4, it->as_string()));
     }
   } catch (const out_of_range&) {
   }
@@ -1086,13 +1104,15 @@ void ServerState::load_word_select_table() {
   this->word_select_table = make_shared<WordSelectTable>(JSON::parse(load_file("system/word-select-table.json")));
 }
 
-void ServerState::load_item_tables() {
+void ServerState::load_item_name_index() {
   config_log.info("Loading item name index");
   this->item_name_index = make_shared<ItemNameIndex>(
       JSON::parse(load_file("system/item-tables/names-v2.json")),
       JSON::parse(load_file("system/item-tables/names-v3.json")),
       JSON::parse(load_file("system/item-tables/names-v4.json")));
+}
 
+void ServerState::load_item_tables() {
   config_log.info("Loading rare item sets");
   unordered_map<string, shared_ptr<const RareItemSet>> new_rare_item_sets;
   for (const auto& filename : list_directory_sorted("system/item-tables")) {

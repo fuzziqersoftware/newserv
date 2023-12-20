@@ -5647,9 +5647,9 @@ struct G_EnemyEXPRequest_BB_6xC8 {
   parray<uint8_t, 3> unused;
 } __packed__;
 
-// 6xC9: Request meseta reward from quest (BB; handled by server)
+// 6xC9: Adjust player Meseta (BB; handled by server)
 
-struct G_MesetaRewardRequest_BB_6xC9 {
+struct G_AdjustPlayerMeseta_BB_6xC9 {
   G_UnusedHeader header;
   le_int32_t amount = 0;
 } __packed__;
@@ -5866,19 +5866,26 @@ struct G_ExchangePhotonTickets_BB_6xE1 {
   le_uint16_t unknown_a5 = 0; // argsA[4]
 } __packed__;
 
-// 6xE2: Coren actions (BB)
+// 6xE2: Get Meseta slot prize (BB)
 // The client sends this when it executes an F960 quest opcode.
 
-struct G_CorenActions_BB_6xE2 {
+struct G_GetMesetaSlotPrize_BB_6xE2 {
   G_ClientIDHeader header;
-  parray<uint8_t, 12> unknown_a1; // TODO: There might be uint16_ts and uint32_ts in here.
+  uint8_t result_tier; // This contains the argument value from the F960 opcode
+  uint8_t floor;
+  uint8_t unknown_a2;
+  uint8_t unused;
+  le_float x; // TODO: Verify this guess
+  le_float z; // TODO: Verify this guess
 } __packed__;
 
-// 6xE3: Coren actions result (BB)
+// 6xE3: Set Meseta slot prize result (BB)
+// The client only uses this to populate the <meseta_slot_prize> quest text
+// replacement token.
 
-struct G_CorenActionsResult_BB_6xE3 {
+struct G_SetMesetaSlotPrizeResult_BB_6xE3 {
   G_ClientIDHeader header;
-  ItemData item_data;
+  ItemData item;
 } __packed__;
 
 // 6xE4: Invalid subcommand
