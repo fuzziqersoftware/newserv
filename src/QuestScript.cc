@@ -34,6 +34,11 @@ ToT as_type(const FromT& v) {
   return ret;
 }
 
+static const char* name_for_header_episode_number(uint8_t episode) {
+  static const array<const char*, 3> names = {"Episode1", "Episode2", "Episode4"};
+  return names.at(episode);
+}
+
 static TextEncoding encoding_for_language(uint8_t language) {
   return (language ? TextEncoding::ISO8859 : TextEncoding::SJIS);
 }
@@ -892,7 +897,7 @@ opcodes_by_name_for_version(Version v) {
   return index;
 }
 
-std::string disassemble_quest_script(const void* data, size_t size, Version version, uint8_t language) {
+std::string disassemble_quest_script(const void* data, size_t size, Version version, uint8_t language, bool reassembly_mode) {
   StringReader r(data, size);
   deque<string> lines;
   lines.emplace_back(string_printf(".version %s", name_for_enum(version)));
@@ -954,7 +959,7 @@ std::string disassemble_quest_script(const void* data, size_t size, Version vers
       }
       lines.emplace_back(string_printf(".quest_num %hhu", header.quest_number));
       lines.emplace_back(string_printf(".language %hhu", header.language));
-      lines.emplace_back(string_printf(".episode %hhu", header.episode));
+      lines.emplace_back(string_printf(".episode %s", name_for_header_episode_number(header.episode)));
       lines.emplace_back(".name " + escape_string(header.name.decode(language)));
       lines.emplace_back(".short_desc " + escape_string(header.short_description.decode(language)));
       lines.emplace_back(".long_desc " + escape_string(header.long_description.decode(language)));
@@ -966,7 +971,7 @@ std::string disassemble_quest_script(const void* data, size_t size, Version vers
       code_offset = header.code_offset;
       function_table_offset = header.function_table_offset;
       lines.emplace_back(string_printf(".quest_num %hu", header.quest_number.load()));
-      lines.emplace_back(string_printf(".episode %hhu", header.episode));
+      lines.emplace_back(string_printf(".episode %s", name_for_header_episode_number(header.episode)));
       lines.emplace_back(string_printf(".max_players %hhu", header.episode));
       if (header.joinable) {
         lines.emplace_back(".joinable");
@@ -1009,7 +1014,7 @@ std::string disassemble_quest_script(const void* data, size_t size, Version vers
   while (!function_table_r.eof()) {
     try {
       uint32_t function_id = function_table.size();
-      string name = string_printf("label%04" PRIX32, function_id);
+      string name = (function_id == 0) ? "start" : string_printf("label%04" PRIX32, function_id);
       uint32_t offset = function_table_r.get_u32l();
       auto l = make_shared<Label>(name, offset, function_id);
       if (function_id == 0) {
@@ -1244,113 +1249,117 @@ std::string disassemble_quest_script(const void* data, size_t size, Version vers
 
           } else { // (def->flags & F_ARGS)
             dasm_line.resize(0x20, ' ');
-            dasm_line += "... ";
-
-            if (def->args.size() != arg_stack_values.size()) {
-              dasm_line += string_printf("/* matching error: expected %zu arguments, received %zu arguments */",
-                  def->args.size(), arg_stack_values.size());
+            if (reassembly_mode) {
+              dasm_line += "...";
             } else {
-              bool is_first_arg = true;
-              for (size_t z = 0; z < def->args.size(); z++) {
-                const auto& arg_def = def->args[z];
-                const auto& arg_value = arg_stack_values[z];
+              dasm_line += "... ";
 
-                string dasm_arg;
-                switch (arg_def.type) {
-                  case Arg::Type::LABEL16:
-                  case Arg::Type::LABEL32:
-                    switch (arg_value.type) {
-                      case ArgStackValue::Type::REG:
-                        dasm_arg = string_printf("r%" PRIu32 "/* warning: cannot determine label data type */", arg_value.as_int);
-                        break;
-                      case ArgStackValue::Type::LABEL:
-                      case ArgStackValue::Type::INT:
-                        dasm_arg = string_printf("label%04" PRIX32, arg_value.as_int);
-                        try {
-                          auto l = function_table.at(arg_value.as_int);
-                          l->add_data_type(arg_def.data_type);
-                          l->references.emplace(opcode_start_offset);
-                        } catch (const out_of_range&) {
-                        }
-                        break;
-                      default:
-                        dasm_arg = "/* invalid-type */";
-                    }
-                    break;
-                  case Arg::Type::REG:
-                  case Arg::Type::REG32:
-                    switch (arg_value.type) {
-                      case ArgStackValue::Type::REG:
-                        dasm_arg = string_printf("regs[r%" PRIu32 "]", arg_value.as_int);
-                        break;
-                      case ArgStackValue::Type::INT:
-                        dasm_arg = string_printf("r%" PRIu32, arg_value.as_int);
-                        break;
-                      default:
-                        dasm_arg = "/* invalid-type */";
-                    }
-                    break;
-                  case Arg::Type::REG_SET_FIXED:
-                  case Arg::Type::REG32_SET_FIXED:
-                    switch (arg_value.type) {
-                      case ArgStackValue::Type::REG:
-                        dasm_arg = string_printf("regs[r%" PRIu32 "]-regs[r%" PRIu32 "+%hhu]", arg_value.as_int, arg_value.as_int, static_cast<uint8_t>(arg_def.count - 1));
-                        break;
-                      case ArgStackValue::Type::INT:
-                        dasm_arg = string_printf("r%" PRIu32 "-r%hhu", arg_value.as_int, static_cast<uint8_t>(arg_value.as_int + arg_def.count - 1));
-                        break;
-                      default:
-                        dasm_arg = "/* invalid-type */";
-                    }
-                    break;
-                  case Arg::Type::INT8:
-                  case Arg::Type::INT16:
-                  case Arg::Type::INT32:
-                    switch (arg_value.type) {
-                      case ArgStackValue::Type::REG:
-                        dasm_arg = string_printf("r%" PRIu32, arg_value.as_int);
-                        break;
-                      case ArgStackValue::Type::REG_PTR:
-                        dasm_arg = string_printf("&r%" PRIu32, arg_value.as_int);
-                        break;
-                      case ArgStackValue::Type::INT:
-                        dasm_arg = string_printf("0x%" PRIX32 " /* %" PRIu32 " */", arg_value.as_int, arg_value.as_int);
-                        break;
-                      default:
-                        dasm_arg = "/* invalid-type */";
-                    }
-                    break;
-                  case Arg::Type::FLOAT32:
-                    switch (arg_value.type) {
-                      case ArgStackValue::Type::REG:
-                        dasm_arg = string_printf("f%" PRIu32, arg_value.as_int);
-                        break;
-                      case ArgStackValue::Type::INT:
-                        dasm_arg = string_printf("%g", as_type<float>(arg_value.as_int));
-                        break;
-                      default:
-                        dasm_arg = "/* invalid-type */";
-                    }
-                    break;
-                  case Arg::Type::CSTRING:
-                    if (arg_value.type == ArgStackValue::Type::CSTRING) {
-                      dasm_arg = escape_string(arg_value.as_string);
-                    } else {
-                      dasm_arg = "/* invalid-type */";
-                    }
-                    break;
-                  case Arg::Type::LABEL16_SET:
-                  case Arg::Type::REG_SET:
-                  default:
-                    throw logic_error("set-type arg found on arg stack");
-                }
+              if (def->args.size() != arg_stack_values.size()) {
+                dasm_line += string_printf("/* matching error: expected %zu arguments, received %zu arguments */",
+                    def->args.size(), arg_stack_values.size());
+              } else {
+                bool is_first_arg = true;
+                for (size_t z = 0; z < def->args.size(); z++) {
+                  const auto& arg_def = def->args[z];
+                  const auto& arg_value = arg_stack_values[z];
 
-                if (!is_first_arg) {
-                  dasm_line += ", ";
-                } else {
-                  is_first_arg = false;
+                  string dasm_arg;
+                  switch (arg_def.type) {
+                    case Arg::Type::LABEL16:
+                    case Arg::Type::LABEL32:
+                      switch (arg_value.type) {
+                        case ArgStackValue::Type::REG:
+                          dasm_arg = string_printf("r%" PRIu32 "/* warning: cannot determine label data type */", arg_value.as_int);
+                          break;
+                        case ArgStackValue::Type::LABEL:
+                        case ArgStackValue::Type::INT:
+                          dasm_arg = string_printf("label%04" PRIX32, arg_value.as_int);
+                          try {
+                            auto l = function_table.at(arg_value.as_int);
+                            l->add_data_type(arg_def.data_type);
+                            l->references.emplace(opcode_start_offset);
+                          } catch (const out_of_range&) {
+                          }
+                          break;
+                        default:
+                          dasm_arg = "/* invalid-type */";
+                      }
+                      break;
+                    case Arg::Type::REG:
+                    case Arg::Type::REG32:
+                      switch (arg_value.type) {
+                        case ArgStackValue::Type::REG:
+                          dasm_arg = string_printf("regs[r%" PRIu32 "]", arg_value.as_int);
+                          break;
+                        case ArgStackValue::Type::INT:
+                          dasm_arg = string_printf("r%" PRIu32, arg_value.as_int);
+                          break;
+                        default:
+                          dasm_arg = "/* invalid-type */";
+                      }
+                      break;
+                    case Arg::Type::REG_SET_FIXED:
+                    case Arg::Type::REG32_SET_FIXED:
+                      switch (arg_value.type) {
+                        case ArgStackValue::Type::REG:
+                          dasm_arg = string_printf("regs[r%" PRIu32 "]-regs[r%" PRIu32 "+%hhu]", arg_value.as_int, arg_value.as_int, static_cast<uint8_t>(arg_def.count - 1));
+                          break;
+                        case ArgStackValue::Type::INT:
+                          dasm_arg = string_printf("r%" PRIu32 "-r%hhu", arg_value.as_int, static_cast<uint8_t>(arg_value.as_int + arg_def.count - 1));
+                          break;
+                        default:
+                          dasm_arg = "/* invalid-type */";
+                      }
+                      break;
+                    case Arg::Type::INT8:
+                    case Arg::Type::INT16:
+                    case Arg::Type::INT32:
+                      switch (arg_value.type) {
+                        case ArgStackValue::Type::REG:
+                          dasm_arg = string_printf("r%" PRIu32, arg_value.as_int);
+                          break;
+                        case ArgStackValue::Type::REG_PTR:
+                          dasm_arg = string_printf("&r%" PRIu32, arg_value.as_int);
+                          break;
+                        case ArgStackValue::Type::INT:
+                          dasm_arg = string_printf("0x%" PRIX32 " /* %" PRIu32 " */", arg_value.as_int, arg_value.as_int);
+                          break;
+                        default:
+                          dasm_arg = "/* invalid-type */";
+                      }
+                      break;
+                    case Arg::Type::FLOAT32:
+                      switch (arg_value.type) {
+                        case ArgStackValue::Type::REG:
+                          dasm_arg = string_printf("f%" PRIu32, arg_value.as_int);
+                          break;
+                        case ArgStackValue::Type::INT:
+                          dasm_arg = string_printf("%g", as_type<float>(arg_value.as_int));
+                          break;
+                        default:
+                          dasm_arg = "/* invalid-type */";
+                      }
+                      break;
+                    case Arg::Type::CSTRING:
+                      if (arg_value.type == ArgStackValue::Type::CSTRING) {
+                        dasm_arg = escape_string(arg_value.as_string);
+                      } else {
+                        dasm_arg = "/* invalid-type */";
+                      }
+                      break;
+                    case Arg::Type::LABEL16_SET:
+                    case Arg::Type::REG_SET:
+                    default:
+                      throw logic_error("set-type arg found on arg stack");
+                  }
+
+                  if (!is_first_arg) {
+                    dasm_line += ", ";
+                  } else {
+                    is_first_arg = false;
+                  }
+                  dasm_line += dasm_arg;
                 }
-                dasm_line += dasm_arg;
               }
             }
           }
@@ -1364,17 +1373,19 @@ std::string disassemble_quest_script(const void* data, size_t size, Version vers
       }
       strip_trailing_whitespace(dasm_line);
 
-      string hex_data = format_data_string(cmd_r.preadx(opcode_start_offset, cmd_r.where() - opcode_start_offset), nullptr, FormatDataFlags::HEX_ONLY);
-      if (hex_data.size() > 14) {
-        hex_data.resize(12);
-        hex_data += "...";
+      string line_text;
+      if (reassembly_mode) {
+        line_text = string_printf("  %s", dasm_line.c_str());
+      } else {
+        string hex_data = format_data_string(cmd_r.preadx(opcode_start_offset, cmd_r.where() - opcode_start_offset), nullptr, FormatDataFlags::HEX_ONLY);
+        if (hex_data.size() > 14) {
+          hex_data.resize(12);
+          hex_data += "...";
+        }
+        hex_data.resize(16, ' ');
+        line_text = string_printf("  %04zX  %s  %s", opcode_start_offset, hex_data.c_str(), dasm_line.c_str());
       }
-      hex_data.resize(16, ' ');
-
-      dasm_lines.emplace(
-          opcode_start_offset,
-          DisassemblyLine(
-              string_printf("  %04zX  %s  %s", opcode_start_offset, hex_data.c_str(), dasm_line.c_str()), cmd_r.where()));
+      dasm_lines.emplace(opcode_start_offset, DisassemblyLine(std::move(line_text), cmd_r.where()));
     }
   }
 
@@ -1386,184 +1397,201 @@ std::string disassemble_quest_script(const void* data, size_t size, Version vers
     if (size > 0) {
       lines.emplace_back();
     }
-    if (l->function_id == 0) {
+    if ((l->function_id == 0) && !reassembly_mode) {
       lines.emplace_back("start:");
     }
-    lines.emplace_back(string_printf("label%04" PRIX32 ":", l->function_id));
-    if (l->references.size() == 1) {
-      lines.emplace_back(string_printf("  // Referenced by instruction at %04zX", *l->references.begin()));
-    } else if (!l->references.empty()) {
-      vector<string> tokens;
-      tokens.reserve(l->references.size());
-      for (size_t reference_offset : l->references) {
-        tokens.emplace_back(string_printf("%04zX", reference_offset));
-      }
-      lines.emplace_back("  // Referenced by instructions at " + join(tokens, ", "));
-    }
-
-    auto print_as_struct = [&]<Arg::DataType data_type, typename StructT>(function<void(const StructT&)> print_fn) {
-      if (l->has_data_type(data_type)) {
-        if (size >= sizeof(StructT)) {
-          print_fn(cmd_r.pget<StructT>(l->offset));
-          if (size > sizeof(StructT)) {
-            size_t struct_end_offset = l->offset + sizeof(StructT);
-            size_t remaining_size = size - sizeof(StructT);
-            lines.emplace_back("  // Extra data after structure");
-            lines.emplace_back(format_and_indent_data(cmd_r.pgetv(struct_end_offset, remaining_size), remaining_size, struct_end_offset));
-          }
-        } else {
-          lines.emplace_back(string_printf("  // As raw data (0x%zX bytes; too small for referenced type)", size));
-          lines.emplace_back(format_and_indent_data(cmd_r.pgetv(l->offset, size), size, l->offset));
+    if (reassembly_mode) {
+      lines.emplace_back(string_printf("%s@0x%04" PRIX32 ":", l->name.c_str(), l->function_id));
+    } else {
+      lines.emplace_back(string_printf("%s:", l->name.c_str()));
+      if (l->references.size() == 1) {
+        lines.emplace_back(string_printf("  // Referenced by instruction at %04zX", *l->references.begin()));
+      } else if (!l->references.empty()) {
+        vector<string> tokens;
+        tokens.reserve(l->references.size());
+        for (size_t reference_offset : l->references) {
+          tokens.emplace_back(string_printf("%04zX", reference_offset));
         }
+        lines.emplace_back("  // Referenced by instructions at " + join(tokens, ", "));
       }
-    };
+    }
 
     if (l->type_flags == 0) {
       lines.emplace_back(string_printf("  // Could not determine data type; disassembling as code"));
       l->add_data_type(Arg::DataType::SCRIPT);
     }
 
-    // Print data interpretations of the label (if any)
-    if (l->has_data_type(Arg::DataType::DATA)) {
-      lines.emplace_back(string_printf("  // As raw data (0x%zX bytes)", size));
-      lines.emplace_back(format_and_indent_data(cmd_r.pgetv(l->offset, size), size, l->offset));
-    }
-    if (l->has_data_type(Arg::DataType::CSTRING)) {
-      lines.emplace_back(string_printf("  // As C string (0x%zX bytes)", size));
-      string str_data = cmd_r.pread(l->offset, size);
-      strip_trailing_zeroes(str_data);
-      if (use_wstrs) {
-        if (str_data.size() & 1) {
-          str_data.push_back(0);
-        }
-        str_data = tt_utf16_to_utf8(str_data);
-      }
-      string formatted = escape_string(str_data, use_wstrs ? TextEncoding::UTF16 : encoding_for_language(language));
-      lines.emplace_back(string_printf("  %04" PRIX32 "  %s", l->offset, formatted.c_str()));
-    }
-    print_as_struct.template operator()<Arg::DataType::PLAYER_VISUAL_CONFIG, PlayerVisualConfig>([&](const PlayerVisualConfig& visual) -> void {
-      lines.emplace_back("  // As PlayerVisualConfig");
-      string name = escape_string(visual.name.decode(language));
-      lines.emplace_back(string_printf("  %04zX  name                 %s", l->offset + offsetof(PlayerVisualConfig, name), name.c_str()));
-      lines.emplace_back(string_printf("  %04zX  name_color           %08" PRIX32, l->offset + offsetof(PlayerVisualConfig, name_color), visual.name_color.load()));
-      string a2_str = format_data_string(visual.unknown_a2.data(), sizeof(visual.unknown_a2));
-      lines.emplace_back(string_printf("  %04zX  a2                   %s", l->offset + offsetof(PlayerVisualConfig, unknown_a2), a2_str.c_str()));
-      lines.emplace_back(string_printf("  %04zX  extra_model          %02hhX", l->offset + offsetof(PlayerVisualConfig, extra_model), visual.extra_model));
-      string unused = format_data_string(visual.unused.data(), visual.unused.bytes());
-      lines.emplace_back(string_printf("  %04zX  unused               %s", l->offset + offsetof(PlayerVisualConfig, unused), unused.c_str()));
-      lines.emplace_back(string_printf("  %04zX  name_color_checksum  %08" PRIX32, l->offset + offsetof(PlayerVisualConfig, name_color_checksum), visual.name_color_checksum.load()));
-      lines.emplace_back(string_printf("  %04zX  section_id           %02hhX (%s)", l->offset + offsetof(PlayerVisualConfig, section_id), visual.section_id, name_for_section_id(visual.section_id)));
-      lines.emplace_back(string_printf("  %04zX  char_class           %02hhX (%s)", l->offset + offsetof(PlayerVisualConfig, char_class), visual.char_class, name_for_char_class(visual.char_class)));
-      lines.emplace_back(string_printf("  %04zX  validation_flags     %02hhX", l->offset + offsetof(PlayerVisualConfig, validation_flags), visual.validation_flags));
-      lines.emplace_back(string_printf("  %04zX  version              %02hhX", l->offset + offsetof(PlayerVisualConfig, version), visual.version));
-      lines.emplace_back(string_printf("  %04zX  class_flags          %08" PRIX32, l->offset + offsetof(PlayerVisualConfig, class_flags), visual.class_flags.load()));
-      lines.emplace_back(string_printf("  %04zX  costume              %04hX", l->offset + offsetof(PlayerVisualConfig, costume), visual.costume.load()));
-      lines.emplace_back(string_printf("  %04zX  skin                 %04hX", l->offset + offsetof(PlayerVisualConfig, skin), visual.skin.load()));
-      lines.emplace_back(string_printf("  %04zX  face                 %04hX", l->offset + offsetof(PlayerVisualConfig, face), visual.face.load()));
-      lines.emplace_back(string_printf("  %04zX  head                 %04hX", l->offset + offsetof(PlayerVisualConfig, head), visual.head.load()));
-      lines.emplace_back(string_printf("  %04zX  hair                 %04hX", l->offset + offsetof(PlayerVisualConfig, hair), visual.hair.load()));
-      lines.emplace_back(string_printf("  %04zX  hair_color           %04hX, %04hX, %04hX", l->offset + offsetof(PlayerVisualConfig, hair_r), visual.hair_r.load(), visual.hair_g.load(), visual.hair_b.load()));
-      lines.emplace_back(string_printf("  %04zX  proportion           %g, %g", l->offset + offsetof(PlayerVisualConfig, proportion_x), visual.proportion_x.load(), visual.proportion_y.load()));
-    });
-    print_as_struct.template operator()<Arg::DataType::PLAYER_STATS, PlayerStats>([&](const PlayerStats& stats) -> void {
-      lines.emplace_back("  // As PlayerStats");
-      lines.emplace_back(string_printf("  %04zX  atp                  %04hX /* %hu */", l->offset + offsetof(PlayerStats, char_stats.atp), stats.char_stats.atp.load(), stats.char_stats.atp.load()));
-      lines.emplace_back(string_printf("  %04zX  mst                  %04hX /* %hu */", l->offset + offsetof(PlayerStats, char_stats.mst), stats.char_stats.mst.load(), stats.char_stats.mst.load()));
-      lines.emplace_back(string_printf("  %04zX  evp                  %04hX /* %hu */", l->offset + offsetof(PlayerStats, char_stats.evp), stats.char_stats.evp.load(), stats.char_stats.evp.load()));
-      lines.emplace_back(string_printf("  %04zX  hp                   %04hX /* %hu */", l->offset + offsetof(PlayerStats, char_stats.hp), stats.char_stats.hp.load(), stats.char_stats.hp.load()));
-      lines.emplace_back(string_printf("  %04zX  dfp                  %04hX /* %hu */", l->offset + offsetof(PlayerStats, char_stats.dfp), stats.char_stats.dfp.load(), stats.char_stats.dfp.load()));
-      lines.emplace_back(string_printf("  %04zX  ata                  %04hX /* %hu */", l->offset + offsetof(PlayerStats, char_stats.ata), stats.char_stats.ata.load(), stats.char_stats.ata.load()));
-      lines.emplace_back(string_printf("  %04zX  lck                  %04hX /* %hu */", l->offset + offsetof(PlayerStats, char_stats.lck), stats.char_stats.lck.load(), stats.char_stats.lck.load()));
-      lines.emplace_back(string_printf("  %04zX  a1                   %04hX /* %hu */", l->offset + offsetof(PlayerStats, unknown_a1), stats.unknown_a1.load(), stats.unknown_a1.load()));
-      lines.emplace_back(string_printf("  %04zX  height               %08" PRIX32 " /* %g */", l->offset + offsetof(PlayerStats, height), stats.height.load_raw(), stats.height.load()));
-      lines.emplace_back(string_printf("  %04zX  a3                   %08" PRIX32 " /* %g */", l->offset + offsetof(PlayerStats, unknown_a3), stats.unknown_a3.load_raw(), stats.unknown_a3.load()));
-      lines.emplace_back(string_printf("  %04zX  level                %08" PRIX32 " /* level %" PRIu32 " */", l->offset + offsetof(PlayerStats, level), stats.level.load(), stats.level.load() + 1));
-      lines.emplace_back(string_printf("  %04zX  experience           %08" PRIX32 " /* %" PRIu32 " */", l->offset + offsetof(PlayerStats, experience), stats.experience.load(), stats.experience.load()));
-      lines.emplace_back(string_printf("  %04zX  meseta               %08" PRIX32 " /* %" PRIu32 " */", l->offset + offsetof(PlayerStats, meseta), stats.meseta.load(), stats.meseta.load()));
-    });
-    print_as_struct.template operator()<Arg::DataType::RESIST_DATA, ResistData>([&](const ResistData& resist) -> void {
-      lines.emplace_back("  // As ResistData");
-      lines.emplace_back(string_printf("  %04zX  evp_bonus            %04hX /* %hu */", l->offset + offsetof(ResistData, evp_bonus), resist.evp_bonus.load(), resist.evp_bonus.load()));
-      lines.emplace_back(string_printf("  %04zX  efr                  %04hX /* %hu */", l->offset + offsetof(ResistData, efr), resist.efr.load(), resist.efr.load()));
-      lines.emplace_back(string_printf("  %04zX  eic                  %04hX /* %hu */", l->offset + offsetof(ResistData, eic), resist.eic.load(), resist.eic.load()));
-      lines.emplace_back(string_printf("  %04zX  eth                  %04hX /* %hu */", l->offset + offsetof(ResistData, eth), resist.eth.load(), resist.eth.load()));
-      lines.emplace_back(string_printf("  %04zX  elt                  %04hX /* %hu */", l->offset + offsetof(ResistData, elt), resist.elt.load(), resist.elt.load()));
-      lines.emplace_back(string_printf("  %04zX  edk                  %04hX /* %hu */", l->offset + offsetof(ResistData, edk), resist.edk.load(), resist.edk.load()));
-      lines.emplace_back(string_printf("  %04zX  a6                   %08" PRIX32 " /* %" PRIu32 " */", l->offset + offsetof(ResistData, unknown_a6), resist.unknown_a6.load(), resist.unknown_a6.load()));
-      lines.emplace_back(string_printf("  %04zX  a7                   %08" PRIX32 " /* %" PRIu32 " */", l->offset + offsetof(ResistData, unknown_a7), resist.unknown_a7.load(), resist.unknown_a7.load()));
-      lines.emplace_back(string_printf("  %04zX  a8                   %08" PRIX32 " /* %" PRIu32 " */", l->offset + offsetof(ResistData, unknown_a8), resist.unknown_a8.load(), resist.unknown_a8.load()));
-      lines.emplace_back(string_printf("  %04zX  a9                   %08" PRIX32 " /* %" PRIu32 " */", l->offset + offsetof(ResistData, unknown_a9), resist.unknown_a9.load(), resist.unknown_a9.load()));
-      lines.emplace_back(string_printf("  %04zX  dfp_bonus            %08" PRIX32 " /* %" PRIu32 " */", l->offset + offsetof(ResistData, dfp_bonus), resist.dfp_bonus.load(), resist.dfp_bonus.load()));
-    });
-    print_as_struct.template operator()<Arg::DataType::ATTACK_DATA, AttackData>([&](const AttackData& attack) -> void {
-      lines.emplace_back("  // As AttackData");
-      lines.emplace_back(string_printf("  %04zX  a1                   %04hX /* %hd */", l->offset + offsetof(AttackData, unknown_a1), attack.unknown_a1.load(), attack.unknown_a1.load()));
-      lines.emplace_back(string_printf("  %04zX  atp                  %04hX /* %hd */", l->offset + offsetof(AttackData, atp), attack.atp.load(), attack.atp.load()));
-      lines.emplace_back(string_printf("  %04zX  ata_bonus            %04hX /* %hd */", l->offset + offsetof(AttackData, ata_bonus), attack.ata_bonus.load(), attack.ata_bonus.load()));
-      lines.emplace_back(string_printf("  %04zX  a4                   %04hX /* %hu */", l->offset + offsetof(AttackData, unknown_a4), attack.unknown_a4.load(), attack.unknown_a4.load()));
-      lines.emplace_back(string_printf("  %04zX  distance_x           %08" PRIX32 " /* %g */", l->offset + offsetof(AttackData, distance_x), attack.distance_x.load_raw(), attack.distance_x.load()));
-      lines.emplace_back(string_printf("  %04zX  angle_x              %08" PRIX32 " /* %g */", l->offset + offsetof(AttackData, angle_x), attack.angle_x.load_raw(), attack.angle_x.load()));
-      lines.emplace_back(string_printf("  %04zX  distance_y           %08" PRIX32 " /* %g */", l->offset + offsetof(AttackData, distance_y), attack.distance_y.load_raw(), attack.distance_y.load()));
-      lines.emplace_back(string_printf("  %04zX  a8                   %04hX /* %hu */", l->offset + offsetof(AttackData, unknown_a8), attack.unknown_a8.load(), attack.unknown_a8.load()));
-      lines.emplace_back(string_printf("  %04zX  a9                   %04hX /* %hu */", l->offset + offsetof(AttackData, unknown_a9), attack.unknown_a9.load(), attack.unknown_a9.load()));
-      lines.emplace_back(string_printf("  %04zX  a10                  %04hX /* %hu */", l->offset + offsetof(AttackData, unknown_a10), attack.unknown_a10.load(), attack.unknown_a10.load()));
-      lines.emplace_back(string_printf("  %04zX  a11                  %04hX /* %hu */", l->offset + offsetof(AttackData, unknown_a11), attack.unknown_a11.load(), attack.unknown_a11.load()));
-      lines.emplace_back(string_printf("  %04zX  a12                  %08" PRIX32 " /* %" PRIu32 " */", l->offset + offsetof(AttackData, unknown_a12), attack.unknown_a12.load(), attack.unknown_a12.load()));
-      lines.emplace_back(string_printf("  %04zX  a13                  %08" PRIX32 " /* %" PRIu32 " */", l->offset + offsetof(AttackData, unknown_a13), attack.unknown_a13.load(), attack.unknown_a13.load()));
-      lines.emplace_back(string_printf("  %04zX  a14                  %08" PRIX32 " /* %" PRIu32 " */", l->offset + offsetof(AttackData, unknown_a14), attack.unknown_a14.load(), attack.unknown_a14.load()));
-      lines.emplace_back(string_printf("  %04zX  a15                  %08" PRIX32 " /* %" PRIu32 " */", l->offset + offsetof(AttackData, unknown_a15), attack.unknown_a15.load(), attack.unknown_a15.load()));
-      lines.emplace_back(string_printf("  %04zX  a16                  %08" PRIX32 " /* %" PRIu32 " */", l->offset + offsetof(AttackData, unknown_a16), attack.unknown_a16.load(), attack.unknown_a16.load()));
-    });
-    print_as_struct.template operator()<Arg::DataType::MOVEMENT_DATA, MovementData>([&](const MovementData& movement) -> void {
-      lines.emplace_back("  // As MovementData");
-      lines.emplace_back(string_printf("  %04zX  idle_move_speed      %08" PRIX32 " /* %g */", l->offset + offsetof(MovementData, idle_move_speed), movement.idle_move_speed.load_raw(), movement.idle_move_speed.load()));
-      lines.emplace_back(string_printf("  %04zX  idle_animation_speed %08" PRIX32 " /* %g */", l->offset + offsetof(MovementData, idle_animation_speed), movement.idle_animation_speed.load_raw(), movement.idle_animation_speed.load()));
-      lines.emplace_back(string_printf("  %04zX  move_speed           %08" PRIX32 " /* %g */", l->offset + offsetof(MovementData, move_speed), movement.move_speed.load_raw(), movement.move_speed.load()));
-      lines.emplace_back(string_printf("  %04zX  animation_speed      %08" PRIX32 " /* %g */", l->offset + offsetof(MovementData, animation_speed), movement.animation_speed.load_raw(), movement.animation_speed.load()));
-      lines.emplace_back(string_printf("  %04zX  a1                   %08" PRIX32 " /* %g */", l->offset + offsetof(MovementData, unknown_a1), movement.unknown_a1.load_raw(), movement.unknown_a1.load()));
-      lines.emplace_back(string_printf("  %04zX  a2                   %08" PRIX32 " /* %g */", l->offset + offsetof(MovementData, unknown_a2), movement.unknown_a2.load_raw(), movement.unknown_a2.load()));
-      lines.emplace_back(string_printf("  %04zX  a3                   %08" PRIX32 " /* %" PRIu32 " */", l->offset + offsetof(MovementData, unknown_a3), movement.unknown_a3.load(), movement.unknown_a3.load()));
-      lines.emplace_back(string_printf("  %04zX  a4                   %08" PRIX32 " /* %" PRIu32 " */", l->offset + offsetof(MovementData, unknown_a4), movement.unknown_a4.load(), movement.unknown_a4.load()));
-      lines.emplace_back(string_printf("  %04zX  a5                   %08" PRIX32 " /* %" PRIu32 " */", l->offset + offsetof(MovementData, unknown_a5), movement.unknown_a5.load(), movement.unknown_a5.load()));
-      lines.emplace_back(string_printf("  %04zX  a6                   %08" PRIX32 " /* %" PRIu32 " */", l->offset + offsetof(MovementData, unknown_a6), movement.unknown_a6.load(), movement.unknown_a6.load()));
-      lines.emplace_back(string_printf("  %04zX  a7                   %08" PRIX32 " /* %" PRIu32 " */", l->offset + offsetof(MovementData, unknown_a7), movement.unknown_a7.load(), movement.unknown_a7.load()));
-      lines.emplace_back(string_printf("  %04zX  a8                   %08" PRIX32 " /* %" PRIu32 " */", l->offset + offsetof(MovementData, unknown_a8), movement.unknown_a8.load(), movement.unknown_a8.load()));
-    });
-    if (l->has_data_type(Arg::DataType::IMAGE_DATA)) {
-      const void* data = cmd_r.pgetv(l->offset, size);
-      auto decompressed = prs_decompress_with_meta(data, size);
-      lines.emplace_back(string_printf("  // As decompressed image data (0x%zX bytes)", decompressed.data.size()));
-      lines.emplace_back(format_and_indent_data(decompressed.data.data(), decompressed.data.size(), 0));
-      if (decompressed.input_bytes_used < size) {
-        size_t compressed_end_offset = l->offset + decompressed.input_bytes_used;
-        size_t remaining_size = size - decompressed.input_bytes_used;
-        lines.emplace_back("  // Extra data after compressed data");
-        lines.emplace_back(format_and_indent_data(cmd_r.pgetv(compressed_end_offset, remaining_size), remaining_size, compressed_end_offset));
-      }
-    }
-    if (l->has_data_type(Arg::DataType::UNKNOWN_F8F2_DATA)) {
-      StringReader r = cmd_r.sub(l->offset, size);
-      lines.emplace_back("  // As F8F2 entries");
-      while (r.remaining() >= sizeof(UnknownF8F2Entry)) {
-        size_t offset = l->offset + cmd_r.where();
-        const auto& e = r.get<UnknownF8F2Entry>();
-        lines.emplace_back(string_printf("  %04zX  entry        %g, %g, %g, %g", offset, e.unknown_a1[0].load(), e.unknown_a1[1].load(), e.unknown_a1[2].load(), e.unknown_a1[3].load()));
-      }
-      if (r.remaining() > 0) {
-        size_t struct_end_offset = l->offset + r.where();
-        size_t remaining_size = r.remaining();
-        lines.emplace_back("  // Extra data after structures");
-        lines.emplace_back(format_and_indent_data(r.getv(remaining_size), remaining_size, struct_end_offset));
-      }
-    }
-    if (l->has_data_type(Arg::DataType::SCRIPT)) {
-      for (size_t z = l->offset; z < l->offset + size;) {
+    auto add_disassembly_lines = [&](size_t start_offset, size_t size) -> void {
+      for (size_t z = start_offset; z < start_offset + size;) {
         const auto& l = dasm_lines.at(z);
         lines.emplace_back(l.line);
         if (l.next_offset <= z) {
           throw logic_error("line points backward or to itself");
         }
         z = l.next_offset;
+      }
+    };
+
+    // Print data interpretations of the label (if any)
+    if (reassembly_mode) {
+      if (l->has_data_type(Arg::DataType::SCRIPT)) {
+        add_disassembly_lines(l->offset, size);
+      } else {
+        lines.emplace_back(".data " + format_data_string(cmd_r.pgetv(l->offset, size), size));
+      }
+
+    } else {
+      auto print_as_struct = [&]<Arg::DataType data_type, typename StructT>(function<void(const StructT&)> print_fn) {
+        if (l->has_data_type(data_type)) {
+          if (size >= sizeof(StructT)) {
+            print_fn(cmd_r.pget<StructT>(l->offset));
+            if (size > sizeof(StructT)) {
+              size_t struct_end_offset = l->offset + sizeof(StructT);
+              size_t remaining_size = size - sizeof(StructT);
+              lines.emplace_back("  // Extra data after structure");
+              lines.emplace_back(format_and_indent_data(cmd_r.pgetv(struct_end_offset, remaining_size), remaining_size, struct_end_offset));
+            }
+          } else {
+            lines.emplace_back(string_printf("  // As raw data (0x%zX bytes; too small for referenced type)", size));
+            lines.emplace_back(format_and_indent_data(cmd_r.pgetv(l->offset, size), size, l->offset));
+          }
+        }
+      };
+
+      if (l->has_data_type(Arg::DataType::DATA)) {
+        lines.emplace_back(string_printf("  // As raw data (0x%zX bytes)", size));
+        lines.emplace_back(format_and_indent_data(cmd_r.pgetv(l->offset, size), size, l->offset));
+      }
+      if (l->has_data_type(Arg::DataType::CSTRING)) {
+        lines.emplace_back(string_printf("  // As C string (0x%zX bytes)", size));
+        string str_data = cmd_r.pread(l->offset, size);
+        strip_trailing_zeroes(str_data);
+        if (use_wstrs) {
+          if (str_data.size() & 1) {
+            str_data.push_back(0);
+          }
+          str_data = tt_utf16_to_utf8(str_data);
+        }
+        string formatted = escape_string(str_data, use_wstrs ? TextEncoding::UTF16 : encoding_for_language(language));
+        lines.emplace_back(string_printf("  %04" PRIX32 "  %s", l->offset, formatted.c_str()));
+      }
+      print_as_struct.template operator()<Arg::DataType::PLAYER_VISUAL_CONFIG, PlayerVisualConfig>([&](const PlayerVisualConfig& visual) -> void {
+        lines.emplace_back("  // As PlayerVisualConfig");
+        string name = escape_string(visual.name.decode(language));
+        lines.emplace_back(string_printf("  %04zX  name                 %s", l->offset + offsetof(PlayerVisualConfig, name), name.c_str()));
+        lines.emplace_back(string_printf("  %04zX  name_color           %08" PRIX32, l->offset + offsetof(PlayerVisualConfig, name_color), visual.name_color.load()));
+        string a2_str = format_data_string(visual.unknown_a2.data(), sizeof(visual.unknown_a2));
+        lines.emplace_back(string_printf("  %04zX  a2                   %s", l->offset + offsetof(PlayerVisualConfig, unknown_a2), a2_str.c_str()));
+        lines.emplace_back(string_printf("  %04zX  extra_model          %02hhX", l->offset + offsetof(PlayerVisualConfig, extra_model), visual.extra_model));
+        string unused = format_data_string(visual.unused.data(), visual.unused.bytes());
+        lines.emplace_back(string_printf("  %04zX  unused               %s", l->offset + offsetof(PlayerVisualConfig, unused), unused.c_str()));
+        lines.emplace_back(string_printf("  %04zX  name_color_checksum  %08" PRIX32, l->offset + offsetof(PlayerVisualConfig, name_color_checksum), visual.name_color_checksum.load()));
+        lines.emplace_back(string_printf("  %04zX  section_id           %02hhX (%s)", l->offset + offsetof(PlayerVisualConfig, section_id), visual.section_id, name_for_section_id(visual.section_id)));
+        lines.emplace_back(string_printf("  %04zX  char_class           %02hhX (%s)", l->offset + offsetof(PlayerVisualConfig, char_class), visual.char_class, name_for_char_class(visual.char_class)));
+        lines.emplace_back(string_printf("  %04zX  validation_flags     %02hhX", l->offset + offsetof(PlayerVisualConfig, validation_flags), visual.validation_flags));
+        lines.emplace_back(string_printf("  %04zX  version              %02hhX", l->offset + offsetof(PlayerVisualConfig, version), visual.version));
+        lines.emplace_back(string_printf("  %04zX  class_flags          %08" PRIX32, l->offset + offsetof(PlayerVisualConfig, class_flags), visual.class_flags.load()));
+        lines.emplace_back(string_printf("  %04zX  costume              %04hX", l->offset + offsetof(PlayerVisualConfig, costume), visual.costume.load()));
+        lines.emplace_back(string_printf("  %04zX  skin                 %04hX", l->offset + offsetof(PlayerVisualConfig, skin), visual.skin.load()));
+        lines.emplace_back(string_printf("  %04zX  face                 %04hX", l->offset + offsetof(PlayerVisualConfig, face), visual.face.load()));
+        lines.emplace_back(string_printf("  %04zX  head                 %04hX", l->offset + offsetof(PlayerVisualConfig, head), visual.head.load()));
+        lines.emplace_back(string_printf("  %04zX  hair                 %04hX", l->offset + offsetof(PlayerVisualConfig, hair), visual.hair.load()));
+        lines.emplace_back(string_printf("  %04zX  hair_color           %04hX, %04hX, %04hX", l->offset + offsetof(PlayerVisualConfig, hair_r), visual.hair_r.load(), visual.hair_g.load(), visual.hair_b.load()));
+        lines.emplace_back(string_printf("  %04zX  proportion           %g, %g", l->offset + offsetof(PlayerVisualConfig, proportion_x), visual.proportion_x.load(), visual.proportion_y.load()));
+      });
+      print_as_struct.template operator()<Arg::DataType::PLAYER_STATS, PlayerStats>([&](const PlayerStats& stats) -> void {
+        lines.emplace_back("  // As PlayerStats");
+        lines.emplace_back(string_printf("  %04zX  atp                  %04hX /* %hu */", l->offset + offsetof(PlayerStats, char_stats.atp), stats.char_stats.atp.load(), stats.char_stats.atp.load()));
+        lines.emplace_back(string_printf("  %04zX  mst                  %04hX /* %hu */", l->offset + offsetof(PlayerStats, char_stats.mst), stats.char_stats.mst.load(), stats.char_stats.mst.load()));
+        lines.emplace_back(string_printf("  %04zX  evp                  %04hX /* %hu */", l->offset + offsetof(PlayerStats, char_stats.evp), stats.char_stats.evp.load(), stats.char_stats.evp.load()));
+        lines.emplace_back(string_printf("  %04zX  hp                   %04hX /* %hu */", l->offset + offsetof(PlayerStats, char_stats.hp), stats.char_stats.hp.load(), stats.char_stats.hp.load()));
+        lines.emplace_back(string_printf("  %04zX  dfp                  %04hX /* %hu */", l->offset + offsetof(PlayerStats, char_stats.dfp), stats.char_stats.dfp.load(), stats.char_stats.dfp.load()));
+        lines.emplace_back(string_printf("  %04zX  ata                  %04hX /* %hu */", l->offset + offsetof(PlayerStats, char_stats.ata), stats.char_stats.ata.load(), stats.char_stats.ata.load()));
+        lines.emplace_back(string_printf("  %04zX  lck                  %04hX /* %hu */", l->offset + offsetof(PlayerStats, char_stats.lck), stats.char_stats.lck.load(), stats.char_stats.lck.load()));
+        lines.emplace_back(string_printf("  %04zX  a1                   %04hX /* %hu */", l->offset + offsetof(PlayerStats, unknown_a1), stats.unknown_a1.load(), stats.unknown_a1.load()));
+        lines.emplace_back(string_printf("  %04zX  height               %08" PRIX32 " /* %g */", l->offset + offsetof(PlayerStats, height), stats.height.load_raw(), stats.height.load()));
+        lines.emplace_back(string_printf("  %04zX  a3                   %08" PRIX32 " /* %g */", l->offset + offsetof(PlayerStats, unknown_a3), stats.unknown_a3.load_raw(), stats.unknown_a3.load()));
+        lines.emplace_back(string_printf("  %04zX  level                %08" PRIX32 " /* level %" PRIu32 " */", l->offset + offsetof(PlayerStats, level), stats.level.load(), stats.level.load() + 1));
+        lines.emplace_back(string_printf("  %04zX  experience           %08" PRIX32 " /* %" PRIu32 " */", l->offset + offsetof(PlayerStats, experience), stats.experience.load(), stats.experience.load()));
+        lines.emplace_back(string_printf("  %04zX  meseta               %08" PRIX32 " /* %" PRIu32 " */", l->offset + offsetof(PlayerStats, meseta), stats.meseta.load(), stats.meseta.load()));
+      });
+      print_as_struct.template operator()<Arg::DataType::RESIST_DATA, ResistData>([&](const ResistData& resist) -> void {
+        lines.emplace_back("  // As ResistData");
+        lines.emplace_back(string_printf("  %04zX  evp_bonus            %04hX /* %hu */", l->offset + offsetof(ResistData, evp_bonus), resist.evp_bonus.load(), resist.evp_bonus.load()));
+        lines.emplace_back(string_printf("  %04zX  efr                  %04hX /* %hu */", l->offset + offsetof(ResistData, efr), resist.efr.load(), resist.efr.load()));
+        lines.emplace_back(string_printf("  %04zX  eic                  %04hX /* %hu */", l->offset + offsetof(ResistData, eic), resist.eic.load(), resist.eic.load()));
+        lines.emplace_back(string_printf("  %04zX  eth                  %04hX /* %hu */", l->offset + offsetof(ResistData, eth), resist.eth.load(), resist.eth.load()));
+        lines.emplace_back(string_printf("  %04zX  elt                  %04hX /* %hu */", l->offset + offsetof(ResistData, elt), resist.elt.load(), resist.elt.load()));
+        lines.emplace_back(string_printf("  %04zX  edk                  %04hX /* %hu */", l->offset + offsetof(ResistData, edk), resist.edk.load(), resist.edk.load()));
+        lines.emplace_back(string_printf("  %04zX  a6                   %08" PRIX32 " /* %" PRIu32 " */", l->offset + offsetof(ResistData, unknown_a6), resist.unknown_a6.load(), resist.unknown_a6.load()));
+        lines.emplace_back(string_printf("  %04zX  a7                   %08" PRIX32 " /* %" PRIu32 " */", l->offset + offsetof(ResistData, unknown_a7), resist.unknown_a7.load(), resist.unknown_a7.load()));
+        lines.emplace_back(string_printf("  %04zX  a8                   %08" PRIX32 " /* %" PRIu32 " */", l->offset + offsetof(ResistData, unknown_a8), resist.unknown_a8.load(), resist.unknown_a8.load()));
+        lines.emplace_back(string_printf("  %04zX  a9                   %08" PRIX32 " /* %" PRIu32 " */", l->offset + offsetof(ResistData, unknown_a9), resist.unknown_a9.load(), resist.unknown_a9.load()));
+        lines.emplace_back(string_printf("  %04zX  dfp_bonus            %08" PRIX32 " /* %" PRIu32 " */", l->offset + offsetof(ResistData, dfp_bonus), resist.dfp_bonus.load(), resist.dfp_bonus.load()));
+      });
+      print_as_struct.template operator()<Arg::DataType::ATTACK_DATA, AttackData>([&](const AttackData& attack) -> void {
+        lines.emplace_back("  // As AttackData");
+        lines.emplace_back(string_printf("  %04zX  a1                   %04hX /* %hd */", l->offset + offsetof(AttackData, unknown_a1), attack.unknown_a1.load(), attack.unknown_a1.load()));
+        lines.emplace_back(string_printf("  %04zX  atp                  %04hX /* %hd */", l->offset + offsetof(AttackData, atp), attack.atp.load(), attack.atp.load()));
+        lines.emplace_back(string_printf("  %04zX  ata_bonus            %04hX /* %hd */", l->offset + offsetof(AttackData, ata_bonus), attack.ata_bonus.load(), attack.ata_bonus.load()));
+        lines.emplace_back(string_printf("  %04zX  a4                   %04hX /* %hu */", l->offset + offsetof(AttackData, unknown_a4), attack.unknown_a4.load(), attack.unknown_a4.load()));
+        lines.emplace_back(string_printf("  %04zX  distance_x           %08" PRIX32 " /* %g */", l->offset + offsetof(AttackData, distance_x), attack.distance_x.load_raw(), attack.distance_x.load()));
+        lines.emplace_back(string_printf("  %04zX  angle_x              %08" PRIX32 " /* %g */", l->offset + offsetof(AttackData, angle_x), attack.angle_x.load_raw(), attack.angle_x.load()));
+        lines.emplace_back(string_printf("  %04zX  distance_y           %08" PRIX32 " /* %g */", l->offset + offsetof(AttackData, distance_y), attack.distance_y.load_raw(), attack.distance_y.load()));
+        lines.emplace_back(string_printf("  %04zX  a8                   %04hX /* %hu */", l->offset + offsetof(AttackData, unknown_a8), attack.unknown_a8.load(), attack.unknown_a8.load()));
+        lines.emplace_back(string_printf("  %04zX  a9                   %04hX /* %hu */", l->offset + offsetof(AttackData, unknown_a9), attack.unknown_a9.load(), attack.unknown_a9.load()));
+        lines.emplace_back(string_printf("  %04zX  a10                  %04hX /* %hu */", l->offset + offsetof(AttackData, unknown_a10), attack.unknown_a10.load(), attack.unknown_a10.load()));
+        lines.emplace_back(string_printf("  %04zX  a11                  %04hX /* %hu */", l->offset + offsetof(AttackData, unknown_a11), attack.unknown_a11.load(), attack.unknown_a11.load()));
+        lines.emplace_back(string_printf("  %04zX  a12                  %08" PRIX32 " /* %" PRIu32 " */", l->offset + offsetof(AttackData, unknown_a12), attack.unknown_a12.load(), attack.unknown_a12.load()));
+        lines.emplace_back(string_printf("  %04zX  a13                  %08" PRIX32 " /* %" PRIu32 " */", l->offset + offsetof(AttackData, unknown_a13), attack.unknown_a13.load(), attack.unknown_a13.load()));
+        lines.emplace_back(string_printf("  %04zX  a14                  %08" PRIX32 " /* %" PRIu32 " */", l->offset + offsetof(AttackData, unknown_a14), attack.unknown_a14.load(), attack.unknown_a14.load()));
+        lines.emplace_back(string_printf("  %04zX  a15                  %08" PRIX32 " /* %" PRIu32 " */", l->offset + offsetof(AttackData, unknown_a15), attack.unknown_a15.load(), attack.unknown_a15.load()));
+        lines.emplace_back(string_printf("  %04zX  a16                  %08" PRIX32 " /* %" PRIu32 " */", l->offset + offsetof(AttackData, unknown_a16), attack.unknown_a16.load(), attack.unknown_a16.load()));
+      });
+      print_as_struct.template operator()<Arg::DataType::MOVEMENT_DATA, MovementData>([&](const MovementData& movement) -> void {
+        lines.emplace_back("  // As MovementData");
+        lines.emplace_back(string_printf("  %04zX  idle_move_speed      %08" PRIX32 " /* %g */", l->offset + offsetof(MovementData, idle_move_speed), movement.idle_move_speed.load_raw(), movement.idle_move_speed.load()));
+        lines.emplace_back(string_printf("  %04zX  idle_animation_speed %08" PRIX32 " /* %g */", l->offset + offsetof(MovementData, idle_animation_speed), movement.idle_animation_speed.load_raw(), movement.idle_animation_speed.load()));
+        lines.emplace_back(string_printf("  %04zX  move_speed           %08" PRIX32 " /* %g */", l->offset + offsetof(MovementData, move_speed), movement.move_speed.load_raw(), movement.move_speed.load()));
+        lines.emplace_back(string_printf("  %04zX  animation_speed      %08" PRIX32 " /* %g */", l->offset + offsetof(MovementData, animation_speed), movement.animation_speed.load_raw(), movement.animation_speed.load()));
+        lines.emplace_back(string_printf("  %04zX  a1                   %08" PRIX32 " /* %g */", l->offset + offsetof(MovementData, unknown_a1), movement.unknown_a1.load_raw(), movement.unknown_a1.load()));
+        lines.emplace_back(string_printf("  %04zX  a2                   %08" PRIX32 " /* %g */", l->offset + offsetof(MovementData, unknown_a2), movement.unknown_a2.load_raw(), movement.unknown_a2.load()));
+        lines.emplace_back(string_printf("  %04zX  a3                   %08" PRIX32 " /* %" PRIu32 " */", l->offset + offsetof(MovementData, unknown_a3), movement.unknown_a3.load(), movement.unknown_a3.load()));
+        lines.emplace_back(string_printf("  %04zX  a4                   %08" PRIX32 " /* %" PRIu32 " */", l->offset + offsetof(MovementData, unknown_a4), movement.unknown_a4.load(), movement.unknown_a4.load()));
+        lines.emplace_back(string_printf("  %04zX  a5                   %08" PRIX32 " /* %" PRIu32 " */", l->offset + offsetof(MovementData, unknown_a5), movement.unknown_a5.load(), movement.unknown_a5.load()));
+        lines.emplace_back(string_printf("  %04zX  a6                   %08" PRIX32 " /* %" PRIu32 " */", l->offset + offsetof(MovementData, unknown_a6), movement.unknown_a6.load(), movement.unknown_a6.load()));
+        lines.emplace_back(string_printf("  %04zX  a7                   %08" PRIX32 " /* %" PRIu32 " */", l->offset + offsetof(MovementData, unknown_a7), movement.unknown_a7.load(), movement.unknown_a7.load()));
+        lines.emplace_back(string_printf("  %04zX  a8                   %08" PRIX32 " /* %" PRIu32 " */", l->offset + offsetof(MovementData, unknown_a8), movement.unknown_a8.load(), movement.unknown_a8.load()));
+      });
+      if (l->has_data_type(Arg::DataType::IMAGE_DATA)) {
+        const void* data = cmd_r.pgetv(l->offset, size);
+        auto decompressed = prs_decompress_with_meta(data, size);
+        lines.emplace_back(string_printf("  // As decompressed image data (0x%zX bytes)", decompressed.data.size()));
+        lines.emplace_back(format_and_indent_data(decompressed.data.data(), decompressed.data.size(), 0));
+        if (decompressed.input_bytes_used < size) {
+          size_t compressed_end_offset = l->offset + decompressed.input_bytes_used;
+          size_t remaining_size = size - decompressed.input_bytes_used;
+          lines.emplace_back("  // Extra data after compressed data");
+          lines.emplace_back(format_and_indent_data(cmd_r.pgetv(compressed_end_offset, remaining_size), remaining_size, compressed_end_offset));
+        }
+      }
+      if (l->has_data_type(Arg::DataType::UNKNOWN_F8F2_DATA)) {
+        StringReader r = cmd_r.sub(l->offset, size);
+        lines.emplace_back("  // As F8F2 entries");
+        while (r.remaining() >= sizeof(UnknownF8F2Entry)) {
+          size_t offset = l->offset + cmd_r.where();
+          const auto& e = r.get<UnknownF8F2Entry>();
+          lines.emplace_back(string_printf("  %04zX  entry        %g, %g, %g, %g", offset, e.unknown_a1[0].load(), e.unknown_a1[1].load(), e.unknown_a1[2].load(), e.unknown_a1[3].load()));
+        }
+        if (r.remaining() > 0) {
+          size_t struct_end_offset = l->offset + r.where();
+          size_t remaining_size = r.remaining();
+          lines.emplace_back("  // Extra data after structures");
+          lines.emplace_back(format_and_indent_data(r.getv(remaining_size), remaining_size, struct_end_offset));
+        }
+      }
+      if (l->has_data_type(Arg::DataType::SCRIPT)) {
+        add_disassembly_lines(l->offset, size);
       }
     }
   }

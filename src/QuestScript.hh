@@ -82,7 +82,7 @@ struct PSOQuestHeaderBB {
 
 Episode episode_for_quest_episode_number(uint8_t episode_number);
 
-std::string disassemble_quest_script(const void* data, size_t size, Version version, uint8_t language);
+std::string disassemble_quest_script(const void* data, size_t size, Version version, uint8_t language, bool reassembly_mode);
 std::string assemble_quest_script(const std::string& text);
 
 Episode find_quest_episode_from_script(const void* data, size_t size, Version version);

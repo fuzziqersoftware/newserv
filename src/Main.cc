@@ -1028,7 +1028,9 @@ Action a_disassemble_quest_script(
     Disassemble the input quest script (.bin file) into a text representation\n\
     of the commands and metadata it contains. Specify the quest\'s game version\n\
     with one of the --dc-nte, --dc-v1, --dc-v2, --pc, --gc-nte, --gc, --gc-ep3,\n\
-    --xb, or --bb options.\n",
+    --xb, or --bb options. If you intend to edit and reassemble the script, use\n\
+    the --reassembly option to add explicit label numbers and remove offsets\n\
+    and data in code sections.\n",
     +[](Arguments& args) {
       string data = read_input_data(args);
       auto version = get_cli_version(args);
@@ -1036,7 +1038,8 @@ Action a_disassemble_quest_script(
         data = prs_decompress(data);
       }
       uint8_t language = args.get<bool>("japanese") ? 0 : 1;
-      string result = disassemble_quest_script(data.data(), data.size(), version, language);
+      bool reassembly_mode = args.get<bool>("reassembly");
+      string result = disassemble_quest_script(data.data(), data.size(), version, language, reassembly_mode);
       write_output_data(args, result.data(), result.size(), "txt");
     });
 Action a_disassemble_quest_map(
