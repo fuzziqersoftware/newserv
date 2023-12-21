@@ -100,7 +100,7 @@ struct PSOGCSystemFile {
   // This field stores the effective time zone offset between the server and
   // client, in frames. The default value is 1728000, which corresponds to 16
   // hours. This is recomputed when the client receives a B1 command.
-  /* 0008 */ be_uint32_t server_time_delta_frames;
+  /* 0008 */ be_int32_t server_time_delta_frames;
   /* 000C */ be_uint16_t udp_behavior; // 0 = auto, 1 = on, 2 = off
   /* 000E */ be_uint16_t surround_sound_enabled;
   /* 0010 */ parray<uint8_t, 0x100> event_flags; // Can be set by quest opcode D8 or E8
@@ -125,7 +125,7 @@ struct PSOBBMinimalSystemFile {
   /* 0004 */ be_int16_t music_volume = 0;
   /* 0006 */ int8_t sound_volume = 0;
   /* 0007 */ uint8_t language = 0;
-  /* 0008 */ be_uint32_t server_time_delta_frames = 1728000;
+  /* 0008 */ be_int32_t server_time_delta_frames = 1728000;
   /* 000C */ be_uint16_t udp_behavior = 0; // 0 = auto, 1 = on, 2 = off
   /* 000E */ be_uint16_t surround_sound_enabled = 0;
   /* 0010 */ parray<uint8_t, 0x0100> event_flags;
@@ -691,7 +691,7 @@ struct PSOPCSystemFile { // PSO______COM
   /* 0004 */ le_int16_t music_volume;
   /* 0006 */ int8_t sound_volume;
   /* 0007 */ uint8_t language;
-  /* 0008 */ le_uint32_t server_time_delta_frames;
+  /* 0008 */ le_int32_t server_time_delta_frames;
   /* 000C */ parray<le_uint16_t, 0x10> unknown_a4; // Last one is always 0x1234?
   /* 002C */ parray<uint8_t, 0x100> event_flags;
   /* 012C */ le_uint32_t round1_seed;

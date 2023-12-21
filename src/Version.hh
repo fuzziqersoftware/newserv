@@ -109,7 +109,8 @@ uint32_t default_specific_version_for_version(Version version, int64_t sub_versi
 
 enum class ServerBehavior {
   PC_CONSOLE_DETECT = 0,
-  LOGIN_SERVER,
+  INITIAL_LOGIN_SERVER,
+  SUBSEQUENT_LOGIN_SERVER,
   LOBBY_SERVER,
   PATCH_SERVER_PC,
   PATCH_SERVER_BB,

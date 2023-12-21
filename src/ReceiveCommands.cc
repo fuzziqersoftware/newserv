@@ -162,7 +162,10 @@ void on_connect(std::shared_ptr<Client> c) {
       break;
     }
 
-    case ServerBehavior::LOGIN_SERVER:
+    case ServerBehavior::SUBSEQUENT_LOGIN_SERVER:
+      c->config.set_flag(Client::Flag::SAVE_ENABLED);
+      [[fallthrough]];
+    case ServerBehavior::INITIAL_LOGIN_SERVER:
       send_server_init(c, SendServerInitFlag::IS_INITIAL_CONNECTION);
       break;
 
@@ -259,51 +262,58 @@ static void send_main_menu(shared_ptr<Client> c) {
 void on_login_complete(shared_ptr<Client> c) {
   // On BB, this function is called when the data server phase is done (and we
   // should send the ship select menu), so we don't need to check for it here.
-  if (c->server_behavior == ServerBehavior::LOGIN_SERVER) {
-    auto s = c->require_server_state();
+  switch (c->server_behavior) {
+    case ServerBehavior::INITIAL_LOGIN_SERVER:
+    case ServerBehavior::SUBSEQUENT_LOGIN_SERVER: {
+      auto s = c->require_server_state();
 
-    // On the login server, send the events/songs, ep3 updates, and the main
-    // menu or welcome message
-    if (is_ep3(c->version())) {
-      if (s->ep3_menu_song >= 0) {
-        send_ep3_change_music(c->channel, s->ep3_menu_song);
+      // On the login server, send the events/songs, ep3 updates, and the main
+      // menu or welcome message
+      if (is_ep3(c->version())) {
+        if (s->ep3_menu_song >= 0) {
+          send_ep3_change_music(c->channel, s->ep3_menu_song);
+        } else if (s->pre_lobby_event) {
+          send_change_event(c, s->pre_lobby_event);
+        }
+
+        send_ep3_rank_update(c);
+        send_get_player_info(c);
+
       } else if (s->pre_lobby_event) {
         send_change_event(c, s->pre_lobby_event);
       }
 
-      send_ep3_rank_update(c);
-      send_get_player_info(c);
-
-    } else if (s->pre_lobby_event) {
-      send_change_event(c, s->pre_lobby_event);
-    }
-
-    if (s->welcome_message.empty() ||
-        c->config.check_flag(Client::Flag::NO_D6) ||
-        !c->config.check_flag(Client::Flag::AT_WELCOME_MESSAGE)) {
-      c->config.clear_flag(Client::Flag::AT_WELCOME_MESSAGE);
-      if (send_enable_send_function_call_if_applicable(c)) {
-        send_update_client_config(c);
+      if (s->welcome_message.empty() ||
+          c->config.check_flag(Client::Flag::NO_D6) ||
+          !c->config.check_flag(Client::Flag::AT_WELCOME_MESSAGE)) {
+        c->config.clear_flag(Client::Flag::AT_WELCOME_MESSAGE);
+        if (send_enable_send_function_call_if_applicable(c)) {
+          send_update_client_config(c);
+        }
+        send_main_menu(c);
+      } else {
+        send_message_box(c, s->welcome_message.c_str());
       }
-      send_main_menu(c);
-    } else {
-      send_message_box(c, s->welcome_message.c_str());
+      break;
     }
 
-  } else if (c->server_behavior == ServerBehavior::LOBBY_SERVER) {
+    case ServerBehavior::LOBBY_SERVER:
+      if (c->version() == Version::BB_V4) {
+        // This implicitly loads the client's account and player data
+        send_complete_player_bb(c);
+        c->should_update_play_time = true;
+      }
 
-    if (c->version() == Version::BB_V4) {
-      // This implicitly loads the client's account and player data
-      send_complete_player_bb(c);
-      c->should_update_play_time = true;
-    }
+      if (is_ep3(c->version())) {
+        send_ep3_rank_update(c);
+      }
 
-    if (is_ep3(c->version())) {
-      send_ep3_rank_update(c);
-    }
+      send_lobby_list(c);
+      send_get_player_info(c);
+      break;
 
-    send_lobby_list(c);
-    send_get_player_info(c);
+    default:
+      break;
   }
 }
 
