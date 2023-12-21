@@ -3935,7 +3935,7 @@ shared_ptr<Lobby> create_game_generic(
       }
       break;
     case Version::DC_V2:
-      if (allow_v1 && (difficulty <= 2)) {
+      if (allow_v1 && (difficulty <= 2) && (mode == GameMode::NORMAL)) {
         game->allow_version(Version::DC_V1);
       }
       game->allow_version(Version::DC_V2);
@@ -3950,7 +3950,7 @@ shared_ptr<Lobby> create_game_generic(
       game->allow_version(Version::PC_V2);
       if (s->allow_dc_pc_games) {
         game->allow_version(Version::DC_V2);
-        if (allow_v1 && (difficulty <= 2)) {
+        if (allow_v1 && (difficulty <= 2) && (mode == GameMode::NORMAL)) {
           game->allow_version(Version::DC_V1);
         }
       }
