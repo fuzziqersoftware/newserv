@@ -128,7 +128,7 @@ prepare_server_init_contents_bb(
     const parray<uint8_t, 0x30>& client_key,
     uint8_t flags);
 void send_server_init(std::shared_ptr<Client> c, uint8_t flags);
-void send_update_client_config(std::shared_ptr<Client> c);
+void send_update_client_config(std::shared_ptr<Client> c, bool always_send);
 
 void empty_function_call_response_handler(uint32_t, uint32_t);
 

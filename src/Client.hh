@@ -58,6 +58,7 @@ public:
     AT_BANK_COUNTER                     = 0x0000000080000000,
     SHOULD_SEND_ARTIFICIAL_ITEM_STATE   = 0x0001000000000000,
     SHOULD_SEND_ARTIFICIAL_FLAG_STATE   = 0x0002000000000000,
+    SHOULD_SEND_ENABLE_SAVE             = 0x0004000000000000,
 
     // Cheat mode flags
     SWITCH_ASSIST_ENABLED               = 0x0000000100000000,
@@ -95,6 +96,9 @@ public:
     uint16_t proxy_destination_port = 0;
 
     Config() = default;
+
+    bool operator==(const Config& other) const = default;
+    bool operator!=(const Config& other) const = default;
 
     [[nodiscard]] static inline bool check_flag(uint64_t enabled_flags, Flag flag) {
       return !!(enabled_flags & static_cast<uint64_t>(flag));
@@ -177,6 +181,7 @@ public:
 
   // Lobby/positioning
   Config config;
+  Config synced_config;
   int32_t sub_version;
   float x;
   float z;
@@ -259,6 +264,8 @@ public:
   }
 
   void set_license(std::shared_ptr<License> l);
+
+  void sync_config();
 
   std::shared_ptr<ServerState> require_server_state() const;
   std::shared_ptr<Lobby> require_lobby() const;

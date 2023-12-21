@@ -166,10 +166,8 @@ const char* name_for_enum<ServerBehavior>(ServerBehavior behavior) {
   switch (behavior) {
     case ServerBehavior::PC_CONSOLE_DETECT:
       return "pc_console_detect";
-    case ServerBehavior::INITIAL_LOGIN_SERVER:
-      return "initial_login_server";
-    case ServerBehavior::SUBSEQUENT_LOGIN_SERVER:
-      return "subsequent_login_server";
+    case ServerBehavior::LOGIN_SERVER:
+      return "login_server";
     case ServerBehavior::LOBBY_SERVER:
       return "lobby_server";
     case ServerBehavior::PATCH_SERVER_PC:
@@ -186,12 +184,8 @@ template <>
 ServerBehavior enum_for_name<ServerBehavior>(const char* name) {
   if (!strcasecmp(name, "pc_console_detect")) {
     return ServerBehavior::PC_CONSOLE_DETECT;
-  } else if (!strcasecmp(name, "login_server")) {
-    throw invalid_argument("the login_server behavior name is not supported; replace it with initial_login_server or subsequent_login_server");
-  } else if (!strcasecmp(name, "initial_login_server")) {
-    return ServerBehavior::INITIAL_LOGIN_SERVER;
-  } else if (!strcasecmp(name, "subsequent_login_server") || !strcasecmp(name, "data_server_bb")) {
-    return ServerBehavior::SUBSEQUENT_LOGIN_SERVER;
+  } else if (!strcasecmp(name, "login_server") || !strcasecmp(name, "login") || !strcasecmp(name, "data_server_bb")) {
+    return ServerBehavior::LOGIN_SERVER;
   } else if (!strcasecmp(name, "lobby_server") || !strcasecmp(name, "lobby")) {
     return ServerBehavior::LOBBY_SERVER;
   } else if (!strcasecmp(name, "patch_server_pc") || !strcasecmp(name, "patch_pc")) {

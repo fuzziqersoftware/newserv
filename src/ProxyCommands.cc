@@ -142,7 +142,8 @@ static HandlerResult S_97(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t, 
   } else {
     // Update the newserv client config so we'll know not to show the Programs
     // menu if they return to newserv
-    ses->config.set_flag(Client::Flag::PROXY_SUPPRESS_CLIENT_PINGS);
+    ses->config.clear_flag(Client::Flag::SHOULD_SEND_ENABLE_SAVE);
+    ses->config.set_flag(Client::Flag::SAVE_ENABLED);
     // Trap any 97 command that would have triggered cheat protection, and
     // always send 97 01 04 00
     if (flag == 0) {

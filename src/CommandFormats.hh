@@ -1765,6 +1765,9 @@ struct C_CharSaveInfo_DCv2_PC_V3_BB_96 {
 // "character data was improperly saved", and will delete the character's items
 // and challenge mode records. newserv (and all other unofficial servers) always
 // send this command with flag == 1, which causes the client to save normally.
+// If a PSO PC client receives this command multiple times during a session, the
+// player will see the "character data may be damaged" message and be asked if
+// they want to restore the pre-session backup data.
 // Client will respond with a B1 command if header.flag is nonzero.
 
 // 98 (C->S): Leave game

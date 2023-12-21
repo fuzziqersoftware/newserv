@@ -281,38 +281,41 @@ void send_server_init(shared_ptr<Client> c, uint8_t flags) {
   }
 }
 
-void send_update_client_config(shared_ptr<Client> c) {
-  switch (c->version()) {
-    case Version::DC_NTE:
-    case Version::DC_V1_11_2000_PROTOTYPE:
-    case Version::DC_V1:
-    case Version::DC_V2:
-    case Version::PC_NTE:
-    case Version::PC_V2: {
-      if (!c->config.check_flag(Client::Flag::HAS_GUILD_CARD_NUMBER)) {
+void send_update_client_config(shared_ptr<Client> c, bool always_send) {
+  if (always_send || (is_v3(c->version()) && (c->config != c->synced_config))) {
+    switch (c->version()) {
+      case Version::DC_NTE:
+      case Version::DC_V1_11_2000_PROTOTYPE:
+      case Version::DC_V1:
+      case Version::DC_V2:
+      case Version::PC_NTE:
+      case Version::PC_V2: {
+        if (!c->config.check_flag(Client::Flag::HAS_GUILD_CARD_NUMBER)) {
+          c->config.set_flag(Client::Flag::HAS_GUILD_CARD_NUMBER);
+          S_UpdateClientConfig_DC_PC_04 cmd;
+          cmd.player_tag = 0x00010000;
+          cmd.guild_card_number = c->license->serial_number;
+          send_command_t(c, 0x04, 0x00, cmd);
+        }
+        break;
+      }
+      case Version::GC_NTE:
+      case Version::GC_V3:
+      case Version::GC_EP3_TRIAL_EDITION:
+      case Version::GC_EP3:
+      case Version::XB_V3: {
         c->config.set_flag(Client::Flag::HAS_GUILD_CARD_NUMBER);
-        S_UpdateClientConfig_DC_PC_04 cmd;
+        S_UpdateClientConfig_V3_04 cmd;
         cmd.player_tag = 0x00010000;
         cmd.guild_card_number = c->license->serial_number;
+        c->config.serialize_into(cmd.client_config);
         send_command_t(c, 0x04, 0x00, cmd);
+        break;
       }
-      break;
+      default:
+        throw logic_error("send_update_client_config called on incorrect game version");
     }
-    case Version::GC_NTE:
-    case Version::GC_V3:
-    case Version::GC_EP3_TRIAL_EDITION:
-    case Version::GC_EP3:
-    case Version::XB_V3: {
-      c->config.set_flag(Client::Flag::HAS_GUILD_CARD_NUMBER);
-      S_UpdateClientConfig_V3_04 cmd;
-      cmd.player_tag = 0x00010000;
-      cmd.guild_card_number = c->license->serial_number;
-      c->config.serialize_into(cmd.client_config);
-      send_command_t(c, 0x04, 0x00, cmd);
-      break;
-    }
-    default:
-      throw logic_error("send_update_client_config called on incorrect game version");
+    c->synced_config = c->config;
   }
 }
 
@@ -390,7 +393,7 @@ void prepare_client_for_patches(shared_ptr<Client> c, function<void()> on_comple
         }
         c->log.info("Client cache behavior patched");
         c->config.set_flag(Client::Flag::SEND_FUNCTION_CALL_NO_CACHE_PATCH);
-        send_update_client_config(c);
+        send_update_client_config(c, false);
         send_version_detect();
       });
     });
@@ -2136,7 +2139,7 @@ void send_join_lobby(shared_ptr<Client> c, shared_ptr<Lobby> l) {
   // joining any lobby, set the appropriate flag and update the client config
   if (c->config.check_flag(Client::Flag::NO_D6_AFTER_LOBBY) && !c->config.check_flag(Client::Flag::NO_D6)) {
     c->config.set_flag(Client::Flag::NO_D6);
-    send_update_client_config(c);
+    send_update_client_config(c, false);
   }
 }
 

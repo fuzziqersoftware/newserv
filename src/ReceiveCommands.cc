@@ -162,10 +162,7 @@ void on_connect(std::shared_ptr<Client> c) {
       break;
     }
 
-    case ServerBehavior::SUBSEQUENT_LOGIN_SERVER:
-      c->config.set_flag(Client::Flag::SAVE_ENABLED);
-      [[fallthrough]];
-    case ServerBehavior::INITIAL_LOGIN_SERVER:
+    case ServerBehavior::LOGIN_SERVER:
       send_server_init(c, SendServerInitFlag::IS_INITIAL_CONNECTION);
       break;
 
@@ -263,8 +260,7 @@ void on_login_complete(shared_ptr<Client> c) {
   // On BB, this function is called when the data server phase is done (and we
   // should send the ship select menu), so we don't need to check for it here.
   switch (c->server_behavior) {
-    case ServerBehavior::INITIAL_LOGIN_SERVER:
-    case ServerBehavior::SUBSEQUENT_LOGIN_SERVER: {
+    case ServerBehavior::LOGIN_SERVER: {
       auto s = c->require_server_state();
 
       // On the login server, send the events/songs, ep3 updates, and the main
@@ -287,9 +283,8 @@ void on_login_complete(shared_ptr<Client> c) {
           c->config.check_flag(Client::Flag::NO_D6) ||
           !c->config.check_flag(Client::Flag::AT_WELCOME_MESSAGE)) {
         c->config.clear_flag(Client::Flag::AT_WELCOME_MESSAGE);
-        if (send_enable_send_function_call_if_applicable(c)) {
-          send_update_client_config(c);
-        }
+        send_enable_send_function_call_if_applicable(c);
+        send_update_client_config(c, false);
         send_main_menu(c);
       } else {
         send_message_box(c, s->welcome_message.c_str());
@@ -541,7 +536,7 @@ static void on_8B_DCNTE(shared_ptr<Client> c, uint16_t, uint32_t, string& data) 
   }
 
   if (!c->should_disconnect) {
-    send_update_client_config(c);
+    send_update_client_config(c, true);
     on_login_complete(c);
   }
 }
@@ -651,7 +646,7 @@ static void on_93_DC(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
     }
   }
 
-  send_update_client_config(c);
+  send_update_client_config(c, true);
 
   // The first time we receive a 93 from a DC client, we set this flag and send
   // a 92. The IS_DC_V1_PROTOTYPE flag will be removed if the client sends a 92
@@ -973,7 +968,7 @@ static void on_9D_9E(shared_ptr<Client> c, uint16_t command, uint32_t, string& d
     }
   }
 
-  send_update_client_config(c);
+  send_update_client_config(c, true);
   on_login_complete(c);
 }
 
@@ -1167,7 +1162,7 @@ static void on_9F(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
       } catch (const invalid_argument&) {
         c->config.set_flag(Client::Flag::AT_WELCOME_MESSAGE);
       }
-      send_update_client_config(c);
+      send_update_client_config(c, true);
       on_login_complete(c);
       break;
     }
@@ -1183,6 +1178,8 @@ static void on_9F(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
 
 static void on_96(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
   check_size_t<C_CharSaveInfo_DCv2_PC_V3_BB_96>(data);
+  c->config.set_flag(Client::Flag::SHOULD_SEND_ENABLE_SAVE);
+  send_update_client_config(c, false);
   send_server_time(c);
 }
 
@@ -1731,9 +1728,9 @@ static void on_D6_V3(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
     auto s = c->require_server_state();
     send_menu(c, s->information_menu_for_version(c->version()));
   } else if (c->config.check_flag(Client::Flag::AT_WELCOME_MESSAGE)) {
-    send_enable_send_function_call_if_applicable(c);
     c->config.clear_flag(Client::Flag::AT_WELCOME_MESSAGE);
-    send_update_client_config(c);
+    send_enable_send_function_call_if_applicable(c);
+    send_update_client_config(c, false);
     send_main_menu(c);
   }
 }
@@ -2086,15 +2083,17 @@ static void on_10(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
       switch (item_id) {
         case MainMenuItemID::GO_TO_LOBBY: {
           c->should_send_to_lobby_server = true;
-          if (!c->config.check_flag(Client::Flag::SAVE_ENABLED)) {
+          if (!c->config.check_flag(Client::Flag::SAVE_ENABLED) &&
+              c->config.check_flag(Client::Flag::SHOULD_SEND_ENABLE_SAVE)) {
             c->config.set_flag(Client::Flag::SAVE_ENABLED);
+            c->config.clear_flag(Client::Flag::SHOULD_SEND_ENABLE_SAVE);
             // DC NTE and the v1 prototype crash if they receive a 97 command,
             // so we instead do the redirect immediately
             if ((c->version() == Version::DC_NTE) || (c->version() == Version::DC_V1_11_2000_PROTOTYPE)) {
               send_client_to_lobby_server(c);
             } else {
               send_command(c, 0x97, 0x01);
-              send_update_client_config(c);
+              send_update_client_config(c, false);
             }
           } else {
             send_client_to_lobby_server(c);
@@ -2289,13 +2288,15 @@ static void on_10(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
 
           c->config.proxy_destination_address = resolve_ipv4(dest->first);
           c->config.proxy_destination_port = dest->second;
-          if (!c->config.check_flag(Client::Flag::SAVE_ENABLED)) {
+          if (!c->config.check_flag(Client::Flag::SAVE_ENABLED) &&
+              c->config.check_flag(Client::Flag::SHOULD_SEND_ENABLE_SAVE)) {
             c->should_send_to_proxy_server = true;
             c->config.set_flag(Client::Flag::SAVE_ENABLED);
+            c->config.clear_flag(Client::Flag::SHOULD_SEND_ENABLE_SAVE);
             send_command(c, 0x97, 0x01);
-            send_update_client_config(c);
+            send_update_client_config(c, false);
           } else {
-            send_update_client_config(c);
+            send_update_client_config(c, false);
             send_client_to_proxy_server(c);
           }
         }
@@ -2980,23 +2981,18 @@ static void on_61_98(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
       // to delay sending them until now, instead of sending them during the
       // login sequence.
       if (is_ep3(c->version())) {
-        bool flags_changed = false;
         if (!c->config.check_flag(Client::Flag::HAS_EP3_CARD_DEFS)) {
           send_ep3_card_list_update(c);
           c->config.set_flag(Client::Flag::HAS_EP3_CARD_DEFS);
-          flags_changed = true;
         }
         if (!c->config.check_flag(Client::Flag::HAS_EP3_MEDIA_UPDATES)) {
           for (const auto& banner : s->ep3_lobby_banners) {
             send_ep3_media_update(c, banner.type, banner.which, banner.data);
             c->config.set_flag(Client::Flag::HAS_EP3_MEDIA_UPDATES);
-            flags_changed = true;
           }
         }
         s->ep3_tournament_index->link_client(c);
-        if (flags_changed) {
-          send_update_client_config(c);
-        }
+        send_update_client_config(c, false);
       }
 
       player->inventory = cmd->inventory;

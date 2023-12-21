@@ -58,32 +58,32 @@
     // Note: It is not an error that no ports appear here with "dc" in their
     // definitions. DC clients use the same ports as GC clients, and newserv can
     // tell them apart at the time they connect.
-    "gc-jp10":       [9000,  "gc",    "initial_login_server"],
-    "gc-jp11":       [9001,  "gc",    "initial_login_server"],
-    "gc-jp3te":      [9002,  "gc",    "initial_login_server"],
-    "gc-jp3":        [9003,  "gc",    "initial_login_server"],
-    "gc-us12t1":     [9064,  "gc",    "initial_login_server"],
+    "gc-jp10":       [9000,  "gc",    "login_server"],
+    "gc-jp11":       [9001,  "gc",    "login_server"],
+    "gc-jp3te":      [9002,  "gc",    "login_server"],
+    "gc-jp3":        [9003,  "gc",    "login_server"],
+    "gc-us12t1":     [9064,  "gc",    "login_server"],
     "gc-us10":       [9100,  "pc",    "pc_console_detect"],
-    "gc-us3":        [9103,  "gc",    "initial_login_server"],
-    "gc-eu10":       [9200,  "gc",    "initial_login_server"],
-    "gc-eu11":       [9201,  "gc",    "initial_login_server"],
-    "gc-eu3-50":     [9202,  "gc",    "initial_login_server"],
-    "gc-eu3-60a":    [9203,  "gc",    "initial_login_server"],
-    "gc-eu3-60b":    [9204,  "gc",    "initial_login_server"],
-    "pc":            [9300,  "pc",    "initial_login_server"],
+    "gc-us3":        [9103,  "gc",    "login_server"],
+    "gc-eu10":       [9200,  "gc",    "login_server"],
+    "gc-eu11":       [9201,  "gc",    "login_server"],
+    "gc-eu3-50":     [9202,  "gc",    "login_server"],
+    "gc-eu3-60a":    [9203,  "gc",    "login_server"],
+    "gc-eu3-60b":    [9204,  "gc",    "login_server"],
+    "pc":            [9300,  "pc",    "login_server"],
     "pc-patch":      [10000, "patch", "patch_server_pc"],
     "bb-patch":      [11000, "patch", "patch_server_bb"],
-    "bb-init":       [12000, "bb",    "initial_login_server"],
+    "bb-init":       [12000, "bb",    "login_server"],
 
     // PSO Xbox tunnels its connections through the Xbox Live service (or, in
     // modern times, Insignia), and that service determines which port the
     // connection goes to on the server side. By default, newserv uses 9500 for
     // PSO Xbox connections, but this is not hardcoded in the client.
-    "xb-login":      [9500,  "xb", "initial_login_server"],
+    "xb-login":      [9500,  "xb", "login_server"],
 
     // Schthack PSOBB uses these ports.
     // "bb-patch2":     [10500, "patch", "patch_server_bb"],
-    // "bb-init2":      [13000, "bb",    "initial_login_server"],
+    // "bb-init2":      [13000, "bb",    "login_server"],
 
     // Ephinea PSOBB uses these ports. Note that 13000 is also used by Schthack
     // PSOBB, but not for the patch server; this means you unfortunately can't
@@ -91,7 +91,7 @@
     // may be fixed in the future using a similar technique as the
     // pc_console_detect behavior, but this isn't implemented yet.
     // "bb-patch3":     [13000, "patch", "patch_server_bb"],
-    // "bb-init3":      [14000, "bb",    "initial_login_server"],
+    // "bb-init3":      [14000, "bb",    "login_server"],
 
     // newserv uses these ports, but there is no external reason that these
     // numbers were chosen. You can change the port numbers here without any
@@ -112,10 +112,10 @@
     // - The proxy ports do not need to be defined unless the proxy server is
     //   enabled for the respective version via the ProxyDestinations fields
     //   (below).
-    "console-login": [5100,  "gc",    "subsequent_login_server"],
-    "pc-login":      [5101,  "pc",    "subsequent_login_server"],
-    "xb-login":      [5102,  "xb",    "subsequent_login_server"],
-    "xb-lobby":      [5105,  "xb",    "subsequent_login_server"],
+    "console-login": [5100,  "gc",    "login_server"],
+    "pc-login":      [5101,  "pc",    "login_server"],
+    "xb-login":      [5102,  "xb",    "login_server"],
+    "xb-lobby":      [5105,  "xb",    "login_server"],
     "console-lobby": [5110,  "gc",    "lobby_server"],
     "pc-lobby":      [5111,  "pc",    "lobby_server"],
     "bb-lobby":      [5112,  "bb",    "lobby_server"],
@@ -124,8 +124,8 @@
     "gc-proxy":      [5122,  "gc",    "proxy_server"],
     "xb-proxy":      [5123,  "xb",    "proxy_server"],
     "bb-proxy":      [5124,  "bb",    "proxy_server"],
-    "bb-data1":      [12004, "bb",    "subsequent_login_server"],
-    "bb-data2":      [12005, "bb",    "subsequent_login_server"],
+    "bb-data1":      [12004, "bb",    "login_server"],
+    "bb-data2":      [12005, "bb",    "login_server"],
   },
 
   // Where to listen for IP and PPP stack clients. This exists to interface with
