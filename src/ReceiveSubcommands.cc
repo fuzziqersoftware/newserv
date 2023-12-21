@@ -2731,6 +2731,11 @@ static void on_quest_F960_result_bb(shared_ptr<Client> c, uint8_t, uint8_t, cons
     // have to deal with Meseta here.
 
     item.id = l->generate_item_id(c->lobby_client_id);
+    // If it's a weapon, make it unidentified
+    auto item_parameter_table = s->item_parameter_table_for_version(c->version());
+    if ((item.data1[0] == 0x00) && (item_parameter_table->is_item_rare(item) || (item.data1[4] != 0))) {
+      item.data1[4] |= 0x80;
+    }
 
     // The 6xE3 handler on the client fails if the item already exists, so we
     // need to send 6xE3 before we call send_create_inventory_item_to_lobby.
