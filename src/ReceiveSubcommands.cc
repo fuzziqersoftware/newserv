@@ -2731,11 +2731,14 @@ static void on_quest_F960_result_bb(shared_ptr<Client> c, uint8_t, uint8_t, cons
     // have to deal with Meseta here.
 
     item.id = l->generate_item_id(c->lobby_client_id);
-    p->add_item(item);
-    send_create_inventory_item_to_lobby(c, c->lobby_client_id, item);
 
+    // The 6xE3 handler on the client fails if the item already exists, so we
+    // need to send 6xE3 before we call send_create_inventory_item_to_lobby.
     G_SetMesetaSlotPrizeResult_BB_6xE3 cmd_6xE3 = {{0xE3, sizeof(G_SetMesetaSlotPrizeResult_BB_6xE3) >> 2, 0x0000}, item};
     send_command_t(c, 0x60, 0x00, cmd_6xE3);
+
+    p->add_item(item);
+    send_create_inventory_item_to_lobby(c, c->lobby_client_id, item);
 
     if (c->log.should_log(LogLevel::INFO)) {
       string name = s->item_name_index->describe_item(c->version(), item);
