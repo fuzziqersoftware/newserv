@@ -451,12 +451,11 @@ static void on_sync_joining_player_disp_and_inventory(
       break;
     case Version::GC_NTE:
     case Version::GC_V3:
+    case Version::GC_EP3_TRIAL_EDITION:
+    case Version::GC_EP3:
       gc_cmd = &check_size_t<G_SyncPlayerDispAndInventory_GC_6x70>(data, size);
       base = &gc_cmd->base;
       break;
-    case Version::GC_EP3_TRIAL_EDITION:
-    case Version::GC_EP3:
-      throw runtime_error("Episode 3 should not send 6x70 commands");
     case Version::XB_V3:
       xb_cmd = &check_size_t<G_SyncPlayerDispAndInventory_XB_6x70>(data, size);
       base = &xb_cmd->base;
