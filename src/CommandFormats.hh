@@ -4673,8 +4673,6 @@ struct G_SetQuestFlags_6x6F {
 // 6x70: Sync player disp data and inventory (used while loading into game)
 // Annoyingly, they didn't use the same format as the 65/67/68 commands here,
 // and instead rearranged a bunch of things.
-// Episode 3 does not send this command, since the relevant data is sent to the
-// joining player in the 64 command instead.
 
 struct Telepipe {
   /* 00 */ le_uint16_t client_id;
