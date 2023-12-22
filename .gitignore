@@ -24,6 +24,7 @@ system/players/*.psosys
 system/players/*.psocard
 system/players/*.nsc
 system/players/*.nsa
+system/teams/*.json
 system/patch-pc/.metadata-cache.json
 system/patch-bb/.metadata-cache.json
 

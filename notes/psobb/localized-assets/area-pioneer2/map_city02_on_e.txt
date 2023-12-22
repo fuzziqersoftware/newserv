@@ -1,0 +1,829 @@
+.version BB_V4
+.quest_num 65535
+.episode Episode1
+.max_players 0
+.name "title dummy"
+.short_desc "intro dummy"
+.long_desc "detail dummy"
+
+start@0x0000:
+  ret
+
+label0001@0x0001:
+  // Could not determine data type; disassembling as code
+  arg_pushl                       0x000003E9
+  arg_pushs                       "Greetings."
+  message                         ...
+  arg_pushs                       "We\'ve got an emergency\nsituation happening on\nRagol."
+  add_msg                         ...
+  arg_pushs                       "We need skilled hunters\nsuch as yourself to help\nus out."
+  add_msg                         ...
+  mesend
+  ret
+
+label0002@0x0002:
+  // Could not determine data type; disassembling as code
+  arg_pushl                       0x000003E9
+  arg_pushs                       "NO_TEXT"
+  message                         ...
+  mesend
+  ret
+
+label0003@0x0003:
+  // Could not determine data type; disassembling as code
+  arg_pushl                       0x000003E9
+  arg_pushs                       "NO_TEXT"
+  message                         ...
+  mesend
+  ret
+
+label0004@0x0004:
+  // Could not determine data type; disassembling as code
+  arg_pushl                       0x000003E9
+  arg_pushs                       "NO_TEXT"
+  message                         ...
+  mesend
+  ret
+
+label0005@0x0005:
+  // Could not determine data type; disassembling as code
+  arg_pushl                       0x000003E9
+  arg_pushs                       "NO_TEXT"
+  message                         ...
+  mesend
+  ret
+
+label0006@0x0006:
+  // Could not determine data type; disassembling as code
+  arg_pushl                       0x000003E9
+  arg_pushs                       "NO_TEXT"
+  message                         ...
+  mesend
+  ret
+
+label0007@0x0007:
+  // Could not determine data type; disassembling as code
+  arg_pushl                       0x000003E9
+  arg_pushs                       "NO_TEXT"
+  message                         ...
+  mesend
+  ret
+
+label0008@0x0008:
+  // Could not determine data type; disassembling as code
+  arg_pushl                       0x000003E9
+  arg_pushs                       "NO_TEXT"
+  message                         ...
+  mesend
+  ret
+
+label0009@0x0009:
+  // Could not determine data type; disassembling as code
+  arg_pushl                       0x000003E9
+  arg_pushs                       "NO_TEXT"
+  message                         ...
+  mesend
+  ret
+
+label0014@0x0014:
+  // Could not determine data type; disassembling as code
+  arg_pushl                       0x000003EA
+  arg_pushs                       "A meteor impact formed\nan enormous Crater on\nRagol\'s surface."
+  message                         ...
+  arg_pushs                       "We believe that it may\nhold some clues as to\nwhat\'s going on, now."
+  add_msg                         ...
+  arg_pushs                       "Please, help us in\nwhatever way you can."
+  add_msg                         ...
+  mesend
+  ret
+
+label0015@0x0015:
+  // Could not determine data type; disassembling as code
+  arg_pushl                       0x000003EA
+  arg_pushs                       "NO_TEXT"
+  message                         ...
+  mesend
+  ret
+
+label0016@0x0016:
+  // Could not determine data type; disassembling as code
+  arg_pushl                       0x000003EA
+  arg_pushs                       "NO_TEXT"
+  message                         ...
+  mesend
+  ret
+
+label0017@0x0017:
+  // Could not determine data type; disassembling as code
+  arg_pushl                       0x000003EA
+  arg_pushs                       "NO_TEXT"
+  message                         ...
+  mesend
+  ret
+
+label0018@0x0018:
+  // Could not determine data type; disassembling as code
+  arg_pushl                       0x000003EA
+  arg_pushs                       "NO_TEXT"
+  message                         ...
+  mesend
+  ret
+
+label0019@0x0019:
+  // Could not determine data type; disassembling as code
+  arg_pushl                       0x000003EA
+  arg_pushs                       "NO_TEXT"
+  message                         ...
+  mesend
+  ret
+
+label001E@0x001E:
+  // Could not determine data type; disassembling as code
+  arg_pushl                       0x000003EB
+  arg_pushs                       "I\'ve been thinking for a\nwhile, now, and I find\nit strange."
+  message                         ...
+  arg_pushs                       "We had already detected\nthe meteor beforehand,\nright?"
+  add_msg                         ...
+  arg_pushs                       "So, then, how come..."
+  add_msg                         ...
+  mesend
+  ret
+
+label001F@0x001F:
+  // Could not determine data type; disassembling as code
+  arg_pushl                       0x000003EB
+  arg_pushs                       "NO_TEXT"
+  message                         ...
+  mesend
+  ret
+
+label0020@0x0020:
+  // Could not determine data type; disassembling as code
+  arg_pushl                       0x000003EB
+  arg_pushs                       "NO_TEXT"
+  message                         ...
+  mesend
+  ret
+
+label0021@0x0021:
+  // Could not determine data type; disassembling as code
+  arg_pushl                       0x000003EB
+  arg_pushs                       "NO_TEXT"
+  message                         ...
+  mesend
+  ret
+
+label0022@0x0022:
+  // Could not determine data type; disassembling as code
+  arg_pushl                       0x000003EB
+  arg_pushs                       "NO_TEXT"
+  message                         ...
+  mesend
+  ret
+
+label0023@0x0023:
+  // Could not determine data type; disassembling as code
+  arg_pushl                       0x000003EB
+  arg_pushs                       "NO_TEXT"
+  message                         ...
+  mesend
+  ret
+
+label0024@0x0024:
+  // Could not determine data type; disassembling as code
+  arg_pushl                       0x000003EB
+  arg_pushs                       "NO_TEXT"
+  message                         ...
+  mesend
+  ret
+
+label0025@0x0025:
+  // Could not determine data type; disassembling as code
+  arg_pushl                       0x000003EB
+  arg_pushs                       "NO_TEXT"
+  message                         ...
+  mesend
+  ret
+
+label0026@0x0026:
+  // Could not determine data type; disassembling as code
+  arg_pushl                       0x000003EB
+  arg_pushs                       "NO_TEXT"
+  message                         ...
+  mesend
+  ret
+
+label0032@0x0032:
+  // Could not determine data type; disassembling as code
+  arg_pushl                       0x000003EC
+  arg_pushs                       "There\'s been a meteor\nstrike!"
+  message                         ...
+  arg_pushs                       "A meteor!"
+  add_msg                         ...
+  arg_pushs                       "It looks like we were\nokay this time, but\nwhat if more come?"
+  add_msg                         ...
+  arg_pushs                       "We need to leave this\nplanet now!"
+  add_msg                         ...
+  arg_pushs                       "Err...  Sorry, I guess\nI\'m overreacting."
+  add_msg                         ...
+  mesend
+  ret
+
+label0033@0x0033:
+  // Could not determine data type; disassembling as code
+  arg_pushl                       0x000003EC
+  arg_pushs                       "NO_TEXT"
+  message                         ...
+  mesend
+  ret
+
+label0034@0x0034:
+  // Could not determine data type; disassembling as code
+  arg_pushl                       0x000003EC
+  arg_pushs                       "NO_TEXT"
+  message                         ...
+  mesend
+  ret
+
+label0035@0x0035:
+  // Could not determine data type; disassembling as code
+  arg_pushl                       0x000003EC
+  arg_pushs                       "NO_TEXT"
+  message                         ...
+  mesend
+  ret
+
+label0036@0x0036:
+  // Could not determine data type; disassembling as code
+  arg_pushl                       0x000003EC
+  arg_pushs                       "NO_TEXT"
+  message                         ...
+  mesend
+  ret
+
+label0037@0x0037:
+  // Could not determine data type; disassembling as code
+  arg_pushl                       0x000003EC
+  arg_pushs                       "NO_TEXT"
+  message                         ...
+  mesend
+  ret
+
+label003C@0x003C:
+  // Could not determine data type; disassembling as code
+  arg_pushl                       0x000003F4
+  arg_pushs                       "There\'s been a lot of\nmovement from people in\nuniform recently."
+  message                         ...
+  arg_pushs                       "There\'s talk of a simple\ninvestigation of the\nCrater, but..."
+  add_msg                         ...
+  arg_pushs                       "They seem a bit too tense\nfor such a \"simple\"\ninvestigation."
+  add_msg                         ...
+  mesend
+  ret
+
+label0046@0x0046:
+  // Could not determine data type; disassembling as code
+  arg_pushl                       0x000003F5
+  arg_pushs                       "Have you heard?"
+  message                         ...
+  arg_pushs                       "That shockwave was caused\nby a meteor that almost\nhit Pioneer 2!"
+  add_msg                         ...
+  arg_pushs                       "Evidently, it impacted\non the surface of\nRagol."
+  add_msg                         ...
+  arg_pushs                       "The whole situation\nseems weird."
+  add_msg                         ...
+  mesend
+  ret
+
+label0050@0x0050:
+  // Could not determine data type; disassembling as code
+  arg_pushl                       0x000003F6
+  arg_pushs                       "The people coming through\nhere seem to be getting\nmore and more nervous."
+  message                         ...
+  arg_pushs                       "Things on Pioneer 2 seem\nokay, but what\'s going on\ndown on Ragol?"
+  add_msg                         ...
+  mesend
+  ret
+
+label005A@0x005A:
+  // Could not determine data type; disassembling as code
+  arg_pushl                       0x000003F7
+  arg_pushs                       "That shaking we felt was\nbecause of the meteor!"
+  message                         ...
+  arg_pushs                       "It gave me quite a\nshock, but I\'m glad\neveryone\'s okay!"
+  add_msg                         ...
+  mesend
+  ret
+
+label0064@0x0064:
+  // Could not determine data type; disassembling as code
+  arg_pushl                       0x000003F8
+  arg_pushs                       "You!\nYou!\nYou!"
+  message                         ...
+  arg_pushs                       "This is no time to\ngoof off!"
+  add_msg                         ...
+  arg_pushs                       "That shaking had my\neyes popping out of\nmy head!"
+  add_msg                         ...
+  arg_pushs                       "Aw, I\'m just teasing you.\nStill, this situation is\njust incredible!"
+  add_msg                         ...
+  mesend
+  ret
+
+label006E@0x006E:
+  // Could not determine data type; disassembling as code
+  arg_pushl                       0x000003FA
+  arg_pushs                       "If you\'re hurt, head to\nthe Medical Center for\nsome aid!"
+  message                         ...
+  arg_pushs                       "Sometimes, courage is\nknowing when it\'s\nbetter to retreat."
+  add_msg                         ...
+  arg_pushs                       "Do your best, but\ndon\'t overdo it!"
+  add_msg                         ...
+  mesend
+  ret
+
+label0078@0x0078:
+  // Could not determine data type; disassembling as code
+  arg_pushl                       0x000003FB
+  arg_pushs                       "This teleporter will take\nyou down to the surface\nof Ragol."
+  message                         ...
+  arg_pushs                       "The investigation of the\nmeteor impact is not\nyet complete."
+  add_msg                         ...
+  arg_pushs                       "Please be prepared for\nany and all possible\ncontingencies."
+  add_msg                         ...
+  mesend
+  ret
+
+label0082@0x0082:
+  // Could not determine data type; disassembling as code
+  arg_pushl                       0x000003FC
+  arg_pushs                       "The military must be\ndispatched to deal with\nthis crisis."
+  message                         ...
+  arg_pushs                       "We must give our all,\nfor the sake of the\npeople."
+  add_msg                         ...
+  arg_pushs                       "That is a soldier\'s\nultimate duty."
+  add_msg                         ...
+  mesend
+  ret
+
+label008C@0x008C:
+  // Could not determine data type; disassembling as code
+  arg_pushl                       0x000003FD
+  arg_pushs                       "It\'s shopping day!\nAnd yet again, I end\nup here..."
+  message                         ...
+  arg_pushs                       "..."
+  add_msg                         ...
+  arg_pushs                       "...hey, were you\njust listening in\non me?"
+  add_msg                         ...
+  mesend
+  ret
+
+label0096@0x0096:
+  // Could not determine data type; disassembling as code
+  arg_pushl                       0x000003FF
+  arg_pushs                       "This teleporter leads to\na battle training\nsimulator."
+  message                         ...
+  arg_pushs                       "The goal is to defeat as\nmany opponents as\npossible in a set time."
+  add_msg                         ...
+  arg_pushs                       "The simulator has been\ndesigned by the\ngovernment itself."
+  add_msg                         ...
+  mesend
+  ret
+
+label00A0@0x00A0:
+  // Could not determine data type; disassembling as code
+  arg_pushl                       0x00000400
+  arg_pushs                       "I wonder which one of\nus is stronger, between\nyou and I."
+  message                         ...
+  arg_pushs                       "I mean, I don\'t bear you\nany ill will, I\'m just\ncurious."
+  add_msg                         ...
+  arg_pushs                       "The simulator can make\nfor a good test of your\ntrue abilities."
+  add_msg                         ...
+  arg_pushs                       "In a real contest,\nthough, it all comes\ndown to luck."
+  add_msg                         ...
+  arg_pushs                       "The stronger opponent\ndoesn\'t always\nnecessarily succeed."
+  add_msg                         ...
+  mesend
+  ret
+
+label00AA@0x00AA:
+  // Could not determine data type; disassembling as code
+  arg_pushl                       0x00000401
+  arg_pushs                       "Experience and items here\ncan\'t be used elsewhere."
+  message                         ...
+  arg_pushs                       "My dad said that you\ncan\'t save them, and you\ncan\'t take them with you."
+  add_msg                         ...
+  arg_pushs                       "But I\'m just a kid. I\nreally don\'t know what\nhe\'s talking about."
+  add_msg                         ...
+  mesend
+  ret
+
+label00B4@0x00B4:
+  // Could not determine data type; disassembling as code
+  arg_pushl                       0x00000402
+  arg_pushs                       "Make sure that you don\'t\nget caught in your own\nTraps!"
+  message                         ...
+  arg_pushs                       "That\'s why my grandpa\nsaid. But I\'m just a kid,\nso I don\'t get it."
+  add_msg                         ...
+  mesend
+  ret
+
+label00BE@0x00BE:
+  // Could not determine data type; disassembling as code
+  arg_pushl                       0x00000404
+  arg_pushs                       "This teleporter won\'t \ntake you to Ragol."
+  message                         ...
+  arg_pushs                       "It\'ll bring you to a\ngovernment-designed\ntraining simulator."
+  add_msg                         ...
+  arg_pushs                       "I heard that it ranks\nhunters."
+  add_msg                         ...
+  arg_pushs                       "What a great simulator!"
+  add_msg                         ...
+  mesend
+  ret
+
+label00C8@0x00C8:
+  // Could not determine data type; disassembling as code
+  arg_pushl                       0x00000405
+  arg_pushs                       "Each stage has its own\nset of rules. Read them\nbefore starting a game."
+  message                         ...
+  arg_pushs                       "When a stage has been\ncleared, a title is given\nto allow you to progress."
+  add_msg                         ...
+  arg_pushs                       "You can play the same\nstages even after you\nhave cleared them."
+  add_msg                         ...
+  arg_pushs                       "I\'ve heard you\'ll receive\nwonderful rewards after\nclearing all the stages."
+  add_msg                         ...
+  arg_pushs                       "Good luck!"
+  add_msg                         ...
+  mesend
+  ret
+
+label00D2@0x00D2:
+  // Could not determine data type; disassembling as code
+  arg_pushl                       0x00000406
+  arg_pushs                       "Experience and items only\napply to the stage they\nwere earned on."
+  message                         ...
+  arg_pushs                       "That\'s what my dad told\nme, but I\'m just a kid.\nI don\'t understand."
+  add_msg                         ...
+  mesend
+  ret
+
+label00DC@0x00DC:
+  // Could not determine data type; disassembling as code
+  arg_pushl                       0x00000407
+  arg_pushs                       "Press TAB to see the\ntitle that you received."
+  message                         ...
+  arg_pushs                       "My grandpa told me that\nbefore, but I didn\'t pay\nattention then."
+  add_msg                         ...
+  mesend
+  ret
+
+label00E6@0x00E6:
+  // Could not determine data type; disassembling as code
+  arg_pushl                       0x00000408
+  arg_pushs                       "The emphasis of this\nsimulation is to help\nothers!"
+  message                         ...
+  arg_pushs                       "The simulation will end\nwhen any player in your\ngroup is dead."
+  add_msg                         ...
+  arg_pushs                       "Pay attention to each\nother\'s condition and\nhelp each other."
+  add_msg                         ...
+  arg_pushs                       "For example, when you\nhave a Force, give health\nitems to him or her."
+  add_msg                         ...
+  arg_pushs                       "Good luck!"
+  add_msg                         ...
+  mesend
+  ret
+
+label00E7@0x00E7:
+  // Could not determine data type; disassembling as code
+  arg_pushl                       0x00000408
+  arg_pushs                       "The emphasis of this\nsimulation is to help\nothers!"
+  message                         ...
+  arg_pushs                       "The simulation will end\nwhen all players in the\ngroup are dead."
+  add_msg                         ...
+  arg_pushs                       "Pay attention to each\nother\'s condition and\nhelp each other."
+  add_msg                         ...
+  arg_pushs                       "For example, when you\nhave a Force, give health\nitems to him or her."
+  add_msg                         ...
+  arg_pushs                       "Good luck!"
+  add_msg                         ...
+  mesend
+  ret
+
+label0320@0x0320:
+  // Could not determine data type; disassembling as code
+  arg_pushl                       0x00000000
+  bb_p2_menu                      ...
+  ret
+
+label032A@0x032A:
+  // Could not determine data type; disassembling as code
+  arg_pushl                       0x00000002
+  bb_p2_menu                      ...
+  ret
+
+label0334@0x0334:
+  // Could not determine data type; disassembling as code
+  arg_pushl                       0x00000003
+  bb_p2_menu                      ...
+  ret
+
+label033E@0x033E:
+  // Could not determine data type; disassembling as code
+  gget                            0x000B, r200
+  gget                            0x000C, r201
+  gget                            0x000D, r202
+  gget                            0x000E, r203
+  gget                            0x000F, r204
+  gget                            0x0010, r205
+  gget                            0x0011, r206
+  gget                            0x0012, r207
+  gget                            0x0013, r208
+  gget                            0x0014, r209
+  gget                            0x0015, r210
+  gget                            0x0016, r211
+  gget                            0x0017, r212
+  gget                            0x0018, r213
+  gget                            0x0019, r214
+  gget                            0x001A, r215
+  gget                            0x001E, r216
+  gget                            0x001F, r217
+  gget                            0x0020, r218
+  gget                            0x0021, r219
+  gget                            0x0022, r220
+  gget                            0x0028, r221
+  gget                            0x0029, r222
+  gget                            0x002A, r223
+  gget                            0x002B, r224
+  gget                            0x002C, r225
+  gget                            0x002D, r226
+  gget                            0x002E, r227
+  gget                            0x002F, r228
+  gget                            0x0030, r229
+  jmpi_eq                         r208, 0x00000001, label033F /* 22F7 */
+  arg_pushl                       0x00000006
+  bb_p2_menu                      ...
+  gset                            0x0013
+  ret
+
+label033F@0x033F:
+  arg_pushl                       0x00000006
+  bb_p2_menu                      ...
+  ret
+
+label0348@0x0348:
+  // Could not determine data type; disassembling as code
+  arg_pushl                       0x00000005
+  bb_p2_menu                      ...
+  ret
+
+label0352@0x0352:
+  // Could not determine data type; disassembling as code
+  arg_pushl                       0x00000004
+  bb_p2_menu                      ...
+  ret
+
+label035C@0x035C:
+  // Could not determine data type; disassembling as code
+  arg_pushl                       0x00000001
+  bb_p2_menu                      ...
+  ret
+
+label0366@0x0366:
+  // Could not determine data type; disassembling as code
+  gget                            0x000B, r200
+  gget                            0x000C, r201
+  gget                            0x000D, r202
+  gget                            0x000E, r203
+  gget                            0x000F, r204
+  gget                            0x0010, r205
+  gget                            0x0011, r206
+  gget                            0x0012, r207
+  gget                            0x0013, r208
+  gget                            0x0014, r209
+  gget                            0x0015, r210
+  gget                            0x0016, r211
+  gget                            0x0017, r212
+  gget                            0x0018, r213
+  gget                            0x0019, r214
+  gget                            0x001A, r215
+  gget                            0x001E, r216
+  gget                            0x001F, r217
+  gget                            0x0020, r218
+  gget                            0x0021, r219
+  gget                            0x0022, r220
+  gget                            0x0028, r221
+  gget                            0x0029, r222
+  gget                            0x002A, r223
+  gget                            0x002B, r224
+  gget                            0x002C, r225
+  gget                            0x002D, r226
+  gget                            0x002E, r227
+  gget                            0x002F, r228
+  gget                            0x0030, r229
+  gget                            0x03FA, r230
+  jmpi_eq                         r230, 0x00000001, label0367 /* 24F6 */
+  arg_pushl                       0x00000419
+  arg_pushs                       "How do you do?\nI\'m the new receptionist\nclerk, here!"
+  message                         ...
+  arg_pushs                       "My name is <color 5>Momoka<color 0>."
+  add_msg                         ...
+  arg_pushs                       "If you need help or would\nlike to see what we\'re\noffering, come see me."
+  add_msg                         ...
+  mesend
+  gset                            0x03FA
+  arg_pushl                       0x00000007
+  bb_p2_menu                      ...
+  ret
+
+label0367@0x0367:
+  arg_pushl                       0x00000007
+  bb_p2_menu                      ...
+  ret
+
+label0370@0x0370:
+  // Could not determine data type; disassembling as code
+  arg_pushl                       0x00000418
+  arg_pushs                       "I am Coren Tsu, a wandering merchant,\nyou could say."
+  message                         ...
+  arg_pushs                       "Please take some time to look at\nthe rare and wonderous goods\nI have been collecting."
+  add_msg                         ...
+  arg_pushs                       "If you spend a little meseta,\nyou could win a wonderful prize."
+  add_msg                         ...
+  arg_pushs                       "Well? Wanna try?"
+  add_msg                         ...
+  mesend
+  arg_pushb                       0x64
+  arg_pushs                       "Yes\nNo"
+  list                            ...
+  switch_jmp                      r100, [label0371 /* 1750 */, label0372 /* 18C1 */]
+  ret
+
+label0371@0x0371:
+  bb_get_number_in_pack           r100
+  jmpi_eq                         r100, 0x0000001E, label0373 /* 1984 */
+  arg_pushl                       0x00000418
+  arg_pushs                       "You may win,\nyou may lose."
+  message                         ...
+  arg_pushs                       "But if you don't win,\ndon't take it out on me."
+  add_msg                         ...
+  arg_pushs                       "That's just the way\ngambling is, yes?"
+  add_msg                         ...
+  arg_pushs                       "Well then, how much\nmeseta do you want to pay?"
+  add_msg                         ...
+  arg_pushs                       "As long as you pay me,\nI'll give you a great service."
+  add_msg                         ...
+  mesend
+  arg_pushb                       0x65
+  arg_pushs                       "1000 Meseta\n10000 Meseta\n100000 Meseta\nI'll stop"
+  list                            ...
+  switch_jmp                      r101, [label0374 /* 19FD */, label0375 /* 1A12 */, label0376 /* 1A27 */, label0377 /* 1A3C */]
+  ret
+
+label0372@0x0372:
+  arg_pushl                       0x00000418
+  arg_pushs                       "Huh?"
+  message                         ...
+  arg_pushs                       "That's too bad..."
+  add_msg                         ...
+  arg_pushs                       "Well, these kind of things usually\nhave a chance to lose money. "
+  add_msg                         ...
+  arg_pushs                       "Let's keep this discreet."
+  add_msg                         ...
+  arg_pushs                       "If you feel up to it,\ntalk to me again."
+  add_msg                         ...
+  mesend
+  ret
+
+label0373@0x0373:
+  arg_pushl                       0x00000418
+  arg_pushs                       "It seems you have\ntoo many items."
+  message                         ...
+  arg_pushs                       "First, go and\norganize your items,"
+  add_msg                         ...
+  arg_pushs                       "Then speak to me again."
+  add_msg                         ...
+  mesend
+  ret
+
+label0374@0x0374:
+  get_slot_meseta                 r102
+  jmpi_lt                         r102, 0x000003E8, label0378 /* 1AA3 */
+  leti                            r102, 0x000003E8
+  jmp                             label0379 /* 1B02 */
+  ret
+
+label0375@0x0375:
+  get_slot_meseta                 r102
+  jmpi_lt                         r102, 0x00002710, label0378 /* 1AA3 */
+  leti                            r102, 0x00002710
+  jmp                             label0379 /* 1B02 */
+  ret
+
+label0376@0x0376:
+  get_slot_meseta                 r102
+  jmpi_lt                         r102, 0x000186A0, label0378 /* 1AA3 */
+  leti                            r102, 0x000186A0
+  jmp                             label0379 /* 1B02 */
+  ret
+
+label0377@0x0377:
+  arg_pushl                       0x00000418
+  arg_pushs                       "What?"
+  message                         ...
+  arg_pushs                       "You said you'd try,\nthen you said no."
+  add_msg                         ...
+  arg_pushs                       "People like that\nfail at everything."
+  add_msg                         ...
+  mesend
+  ret
+
+label0378@0x0378:
+  arg_pushl                       0x00000418
+  arg_pushs                       "What the...?"
+  message                         ...
+  arg_pushs                       "You don't have the\nmeseta to pay me?"
+  add_msg                         ...
+  arg_pushs                       "I won't work with such\ncold hearted people."
+  add_msg                         ...
+  mesend
+  ret
+
+label0379@0x0379:
+  get_client_id                   r100
+  let                             r103, r100
+  let                             r104, r102
+  clear                           r105
+  take_slot_meseta                r103-r104, r105
+  jmpi_eq                         r105, 0x00000000, label0378 /* 1AA3 */
+  arg_pushl                       0x00000418
+  arg_pushs                       "You better pray..."
+  message                         ...
+  arg_pushs                       "for something good..."
+  add_msg                         ...
+  mesend
+  clear                           r100
+
+label037A@0x037A:
+  arg_pushl                       0x00000010
+  se                              ...
+  sync
+  sync
+  sync
+  sync
+  sync
+  sync
+  sync
+  sync
+  sync
+  sync
+  sync
+  sync
+  sync
+  sync
+  addi                            r100, 0x0000000F
+  jmpi_le                         r100, 0x0000005A, label037A /* 1B84 */
+  arg_pushr                       r101
+  bb_send_6xE2                    ...
+  clear                           r106
+  clear                           r100
+
+label037B@0x037B:
+  sync
+  bb_get_6xE3_status              r106
+  jmpi_eq                         r106, 0x00000001, label037C /* 1BEA */
+  jmpi_eq                         r106, 0x00000002, label037D /* 1D24 */
+  addi                            r100, 0x00000001
+  jmpi_le                         r100, 0x0000012C, label037B /* 1BAE */
+  arg_pushs                       "SERVER SEND ERROR"
+  window_msg                      ...
+  winend
+  ret
+
+label037C@0x037C:
+  sync
+  arg_pushl                       0x00000001
+  bgm                             ...
+  arg_pushs                       "<bk>\nObtained <color 4><meseta_slot_prize><color 0>!"
+  window_msg                      ...
+  winend
+  sync
+  arg_pushl                       0x00000418
+  arg_pushs                       "Look here!\nTake it!"
+  message                         ...
+  arg_pushs                       "Even if you had bad luck,\nsomething good will come out of it."
+  add_msg                         ...
+  arg_pushs                       "You'll win someday!"
+  add_msg                         ...
+  arg_pushs                       "In case you want to try again,\ncome back to me once more."
+  add_msg                         ...
+  mesend
+  ret
+
+label037D@0x037D:
+  arg_pushs                       "COMMAND EXECUTION ERROR"
+  window_msg                      ...
+  winend
+  ret
+
+  nop
+  nop

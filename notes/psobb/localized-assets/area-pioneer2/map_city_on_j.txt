@@ -1,0 +1,1920 @@
+.version BB_V4
+.quest_num 65535
+.episode Episode1
+.max_players 0
+.name "title dummy"
+.short_desc "intro dummy"
+.long_desc "detail dummy"
+
+start@0x0000:
+  ret
+
+label0001@0x0001:
+  // Could not determine data type; disassembling as code
+  gget                            0x000B, r200
+  gget                            0x000C, r201
+  gget                            0x000D, r202
+  gget                            0x000E, r203
+  gget                            0x000F, r204
+  gget                            0x0010, r205
+  gget                            0x0011, r206
+  gget                            0x0012, r207
+  gget                            0x0013, r208
+  gget                            0x0014, r209
+  gget                            0x0015, r210
+  gget                            0x0016, r211
+  gget                            0x0017, r212
+  gget                            0x0018, r213
+  gget                            0x0019, r214
+  gget                            0x001A, r215
+  gget                            0x001E, r216
+  gget                            0x001F, r217
+  gget                            0x0020, r218
+  gget                            0x0021, r219
+  gget                            0x0022, r220
+  gget                            0x0028, r221
+  gget                            0x0029, r222
+  gget                            0x002A, r223
+  gget                            0x002B, r224
+  gget                            0x002C, r225
+  gget                            0x002D, r226
+  gget                            0x002E, r227
+  gget                            0x002F, r228
+  gget                            0x0030, r229
+  gget                            0x01F9, r230
+  jmpi_eq                         r230, 0x00000001, label0013 /* 5153 */
+  jmp                             label000F /* 50E5 */
+  jmpi_eq                         r229, 0x00000001, label000E /* 0B3B */
+  jmpi_eq                         r224, 0x00000001, label000D /* 0A8A */
+  jmpi_eq                         r223, 0x00000001, label000C /* 09CB */
+  jmpi_eq                         r221, 0x00000001, label000B /* 0926 */
+  jmpi_eq                         r219, 0x00000001, label000A /* 08F3 */
+  jmpi_eq                         r218, 0x00000001, label0009 /* 0777 */
+  jmpi_eq                         r213, 0x00000001, label0008 /* 0728 */
+  jmpi_eq                         r212, 0x00000001, label0007 /* 0622 */
+  jmpi_eq                         r211, 0x00000001, label0006 /* 05DF */
+  jmpi_eq                         r210, 0x00000001, label0005 /* 054C */
+  jmpi_eq                         r209, 0x00000001, label0004 /* 0521 */
+  jmpi_eq                         r201, 0x00000001, label0003 /* 046C */
+  jmpi_eq                         r200, 0x00000001, label0002 /* 0421 */
+  arg_pushl                       0x000003E9
+  arg_pushs                       "…ごくろう。\n<name job>の <name hero>だな。\n私が 総督のタイレルだ。"
+  message                         ...
+  arg_pushs                       "事態は 一刻を争う。\n手短に話すので よく聞いてくれ。"
+  add_msg                         ...
+  arg_pushs                       "惑星ラグオルの\n爆発事故は 知っているな？"
+  add_msg                         ...
+  arg_pushs                       "…うむ。\nならば 話が早い。\n実は…"
+  add_msg                         ...
+  arg_pushs                       "今もってパイオニア１とは\n連絡がつかず、詳しい様子や\n事故の原因など、すべてが不明なのだ。"
+  add_msg                         ...
+  arg_pushs                       "無人の探査機を出しても、\n地表近くに到達すると\nみな 信号が途絶えてしまう…。"
+  add_msg                         ...
+  arg_pushs                       "惑星ラグオル上で\nいったい 何が起こっているのか…\nパイオニア１の皆は無事なのか…！"
+  add_msg                         ...
+  arg_pushs                       "評議会は 有人探査の実行を決定した。"
+  add_msg                         ...
+  arg_pushs                       "その第一陣を、優秀な<name job>である\n君に 頼みたい。"
+  add_msg                         ...
+  arg_pushs                       "後戻りはできない。\n我々には 大地が必要なのだ。"
+  add_msg                         ...
+  mesend
+  jmp                             label0012 /* 0391 */
+
+label0012@0x0012:
+  arg_pushl                       0x000003E9
+  arg_pushs                       "…あとは 秘書のアイリーンに\n聞いてくれたまえ。"
+  message                         ...
+  arg_pushs                       "あ、ついては…"
+  add_msg                         ...
+  arg_pushs                       "… … …"
+  add_msg                         ...
+  arg_pushs                       "…いや、いい。何でもない。\n…よろしく 頼む。"
+  add_msg                         ...
+  mesend
+  gset                            0x000B
+  ret
+
+label0002@0x0002:
+  arg_pushl                       0x000003E9
+  arg_pushs                       "何でもないと言っている。"
+  message                         ...
+  arg_pushs                       "秘書のアイリーンに\n話を聞いてくれ。"
+  add_msg                         ...
+  mesend
+  ret
+
+label0003@0x0003:
+  arg_pushl                       0x000003E9
+  arg_pushs                       "我々に 戻る星はない。\n惑星ラグオルに\n移住するより他に 方法はないのだ。"
+  message                         ...
+  arg_pushs                       "ラグオルがダメなら、\n我々は 永遠に宇宙をさまよう\n漂流者に なってしまう！"
+  add_msg                         ...
+  arg_pushs                       "…たのむぞ。"
+  add_msg                         ...
+  mesend
+  ret
+
+label0004@0x0004:
+  arg_pushl                       0x000003E9
+  arg_pushs                       "ラグオル地表は どうであったか？"
+  message                         ...
+  mesend
+  ret
+
+label0005@0x0005:
+  arg_pushl                       0x000003E9
+  arg_pushs                       "パイオニア１からは、人間に\n危害を加えるエネミーの存在など\nこれまで 報告されていない！"
+  message                         ...
+  arg_pushs                       "惑星ラグオルに\nエネミーが徘徊しているとは…"
+  add_msg                         ...
+  mesend
+  ret
+
+label0006@0x0006:
+  arg_pushl                       0x000003E9
+  arg_pushs                       "巨大な ドラゴンだと…\nそんなものまで いるというのか！"
+  message                         ...
+  mesend
+  ret
+
+label0007@0x0007:
+  arg_pushl                       0x000003E9
+  arg_pushs                       "巨大な ドラゴンが\n襲いかかってきたというのか？"
+  message                         ...
+  arg_pushs                       "惑星ラグオルの原生生物たちが、\n自分たちのテリトリーを侵す者として\nパイオニア１を襲撃した…"
+  add_msg                         ...
+  arg_pushs                       "そういう仮説も成り立つが、\nなぜ、突然そんなことが起きたのか…"
+  add_msg                         ...
+  arg_pushs                       "引き続き 調査を続けてくれたまえ。"
+  add_msg                         ...
+  mesend
+  gset                            0x0018
+  ret
+
+label0008@0x0008:
+  arg_pushl                       0x000003E9
+  arg_pushs                       "リコ…"
+  message                         ...
+  arg_pushs                       "い…いや、何でもない。\n引き続き 調査を続けてくれたまえ。"
+  add_msg                         ...
+  mesend
+  ret
+
+label0009@0x0009:
+  arg_pushl                       0x000003E9
+  arg_pushs                       "君の出会った\n巨大生物については\nラボの人間に聞いてもらうとして…"
+  message                         ...
+  arg_pushs                       "我々は どうも誤解をしていたようだ。"
+  add_msg                         ...
+  arg_pushs                       "これまでのところ、惑星ラグオルは\nパイオニア１の報告にあったような\n「楽園」では 決してない。"
+  add_msg                         ...
+  arg_pushs                       "あの爆発事故の原因も\nいまだ 不明のままだ。"
+  add_msg                         ...
+  arg_pushs                       "そして、パイオニア１の\n人員の消息も…！"
+  add_msg                         ...
+  arg_pushs                       "<name hero>…無理を承知で言う。\n引き続き 調査を頼む。"
+  add_msg                         ...
+  mesend
+  gset                            0x0021
+  ret
+
+label000A@0x000A:
+  arg_pushl                       0x000003E9
+  arg_pushs                       "頼む…\nパイオニア１の 人員の消息を…！"
+  message                         ...
+  mesend
+  ret
+
+label000B@0x000B:
+  arg_pushl                       0x000003E9
+  arg_pushs                       "…私は 信じたくない。"
+  message                         ...
+  arg_pushs                       "メカが襲ってきたということは、\nその裏に 知的生命体の存在が\nあるということではないか？"
+  add_msg                         ...
+  arg_pushs                       "何かの間違いだ。\nそう 信じたい…！"
+  add_msg                         ...
+  mesend
+  ret
+
+label000C@0x000C:
+  arg_pushl                       0x000003E9
+  arg_pushs                       "私は パイオニア２市民\n三万人の命を 預かる身。"
+  message                         ...
+  arg_pushs                       "何もかも捨てて、早く ここを\n引き上げた方が いいのだろうか。"
+  add_msg                         ...
+  arg_pushs                       "しかし、かといって\n第二の故郷たる惑星に\n当てがあるでなし…。"
+  add_msg                         ...
+  mesend
+  ret
+
+label000D@0x000D:
+  arg_pushl                       0x000003E9
+  arg_pushs                       "地下に眠る遺跡…\nそれが すべての元凶なのだろうか。"
+  message                         ...
+  arg_pushs                       "パイオニア１のメンバーは\nそこに 入っていったのだろうか。"
+  add_msg                         ...
+  arg_pushs                       "<name hero>、\n引き続き 調査を頼む。"
+  add_msg                         ...
+  mesend
+  ret
+
+label000E@0x000E:
+  arg_pushl                       0x000003E9
+  arg_pushs                       "古代の文明が眠る遺跡…\nそこにも 謎のエネミーが\nいるとは…！"
+  message                         ...
+  mesend
+  ret
+  arg_pushs                       "ＩＤカードを 手に入れた。"
+  window_msg                      ...
+  winend
+  jmp                             label0010 /* 0BAC */
+  arg_pushl                       0x00000002
+  se                              ...
+
+label0010@0x0010:
+  arg_pushs                       "クエストボードを 手に入れた。"
+  window_msg                      ...
+  winend
+  jmp                             label0011 /* 0BD8 */
+  arg_pushl                       0x00000002
+  se                              ...
+
+label0011@0x0011:
+  arg_pushs                       "マッパーを 手に入れた。"
+  window_msg                      ...
+  winend
+  jmp                             label0012 /* 0391 */
+  arg_pushl                       0x00000002
+  se                              ...
+
+label0014@0x0014:
+  // Could not determine data type; disassembling as code
+  gget                            0x000B, r200
+  gget                            0x000C, r201
+  gget                            0x000D, r202
+  gget                            0x000E, r203
+  gget                            0x000F, r204
+  gget                            0x0010, r205
+  gget                            0x0011, r206
+  gget                            0x0012, r207
+  gget                            0x0013, r208
+  gget                            0x0014, r209
+  gget                            0x0015, r210
+  gget                            0x0016, r211
+  gget                            0x0017, r212
+  gget                            0x0018, r213
+  gget                            0x0019, r214
+  gget                            0x001A, r215
+  gget                            0x001E, r216
+  gget                            0x001F, r217
+  gget                            0x0020, r218
+  gget                            0x0021, r219
+  gget                            0x0022, r220
+  gget                            0x0028, r221
+  gget                            0x0029, r222
+  gget                            0x002A, r223
+  gget                            0x002B, r224
+  gget                            0x002C, r225
+  gget                            0x002D, r226
+  gget                            0x002E, r227
+  gget                            0x002F, r228
+  gget                            0x0030, r229
+  gget                            0x01F9, r230
+  jmpi_eq                         r230, 0x00000001, label001D /* 5275 */
+  jmp                             label001C /* 51CA */
+  jmpi_eq                         r205, 0x00000001, label0017 /* 10DC */
+  jmpi_eq                         r223, 0x00000001, label0016 /* 0EBE */
+  jmpi_eq                         r218, 0x00000001, label0016 /* 0EBE */
+  jmpi_eq                         r212, 0x00000001, label0016 /* 0EBE */
+  jmpi_eq                         r201, 0x00000001, label0016 /* 0EBE */
+  jmpi_eq                         r200, 0x00000001, label0015 /* 0CF4 */
+  arg_pushl                       0x000003EA
+  arg_pushs                       "総督が お待ちです。\nどうぞ 総督とお話しください。"
+  message                         ...
+  mesend
+  ret
+
+label0015@0x0015:
+  arg_pushl                       0x000003EA
+  arg_pushs                       "では、私より\n詳細を お伝えいたします。"
+  message                         ...
+  arg_pushs                       "指令は、惑星ラグオル地表に降下し\nパイオニア１居住ベースの状況を\n調査・報告することです。"
+  add_msg                         ...
+  arg_pushs                       "中心地であるセントラルドームの\n様子が 確認できれば良いでしょう。"
+  add_msg                         ...
+  arg_pushs                       "すでに 転送装置を射出済みです。\nシティから 惑星ラグオル地表に\n降下することが 可能です。"
+  add_msg                         ...
+  arg_pushs                       "危険が 予想されます。\n充分に 気をつけてください。"
+  add_msg                         ...
+  arg_pushs                       "以上です。"
+  add_msg                         ...
+  arg_pushs                       "… … …"
+  add_msg                         ...
+  arg_pushs                       "あの…"
+  add_msg                         ...
+  arg_pushs                       "…いえ、何でもありません。\nどうか ご無事で…"
+  add_msg                         ...
+  mesend
+  gset                            0x000C
+  ret
+
+label0016@0x0016:
+  arg_pushl                       0x000003EA
+  arg_pushs                       "ところで、ここだけの話ですが…"
+  message                         ...
+  arg_pushs                       "パイオニア１に\n総督のお子さんが いらっしゃるのです。"
+  add_msg                         ...
+  arg_pushs                       "総督は 爆発事故以来、\nその安否を気遣って\n夜も 眠れない御様子。"
+  add_msg                         ...
+  arg_pushs                       "これは 私からの\n個人的な お願いなのですが…"
+  add_msg                         ...
+  arg_pushs                       "もし、総督のお子さんの様子がわかれば\n教えていただきたいのです。"
+  add_msg                         ...
+  arg_pushs                       "立場上、総督はそんな命令は出せません。\nお辛いと思います。"
+  add_msg                         ...
+  arg_pushs                       "「赤い輪のリコ」、知ってますか？"
+  add_msg                         ...
+  arg_pushs                       "パイオニア１のトップハンターにして\n優秀な科学者でもある、あのリコですよ。"
+  add_msg                         ...
+  arg_pushs                       "実は、彼女が 総督のひとり娘なのです。"
+  add_msg                         ...
+  arg_pushs                       "どうか よろしくお願いします。"
+  add_msg                         ...
+  mesend
+  gset                            0x0010
+  ret
+
+label0017@0x0017:
+  jmpi_eq                         r206, 0x00000001, label0018 /* 1139 */
+  arg_pushl                       0x000003EA
+  arg_pushs                       "「赤い輪のリコ」こそ\n総督の ひとり娘。"
+  message                         ...
+  arg_pushs                       "無事であれば いいのですが…。"
+  add_msg                         ...
+  mesend
+  ret
+
+label0018@0x0018:
+  jmpi_eq                         r212, 0x00000001, label0019 /* 117E */
+  arg_pushl                       0x000003EA
+  arg_pushs                       "どうですか。\nリコの手がかりは\n見つかりましたか？"
+  message                         ...
+  mesend
+  ret
+
+label0019@0x0019:
+  arg_pushl                       0x000003EA
+  arg_pushs                       "リコのメッセージが\n見つかったとか。"
+  message                         ...
+  arg_pushs                       "ですが、依然\n行方は わからぬまま…"
+  add_msg                         ...
+  arg_pushs                       "お願いです。\nはやく 彼女を\n見つけだしてあげて！"
+  add_msg                         ...
+  mesend
+  ret
+
+label001E@0x001E:
+  // Could not determine data type; disassembling as code
+  gget                            0x000B, r200
+  gget                            0x000C, r201
+  gget                            0x000D, r202
+  gget                            0x000E, r203
+  gget                            0x000F, r204
+  gget                            0x0010, r205
+  gget                            0x0011, r206
+  gget                            0x0012, r207
+  gget                            0x0013, r208
+  gget                            0x0014, r209
+  gget                            0x0015, r210
+  gget                            0x0016, r211
+  gget                            0x0017, r212
+  gget                            0x0018, r213
+  gget                            0x0019, r214
+  gget                            0x001A, r215
+  gget                            0x001E, r216
+  gget                            0x001F, r217
+  gget                            0x0020, r218
+  gget                            0x0021, r219
+  gget                            0x0022, r220
+  gget                            0x0028, r221
+  gget                            0x0029, r222
+  gget                            0x002A, r223
+  gget                            0x002B, r224
+  gget                            0x002C, r225
+  gget                            0x002D, r226
+  gget                            0x002E, r227
+  gget                            0x002F, r228
+  gget                            0x0030, r229
+  gget                            0x01F9, r230
+  jmpi_eq                         r230, 0x00000001, label0028 /* 5357 */
+  jmp                             label0027 /* 52FA */
+  jmpi_eq                         r224, 0x00000001, label0026 /* 1A76 */
+  jmpi_eq                         r221, 0x00000001, label0025 /* 1951 */
+  jmpi_eq                         r218, 0x00000001, label0024 /* 17D4 */
+  jmpi_eq                         r216, 0x00000001, label0023 /* 1701 */
+  jmpi_eq                         r214, 0x00000001, label0022 /* 1690 */
+  jmpi_eq                         r212, 0x00000001, label0021 /* 15F4 */
+  jmpi_eq                         r210, 0x00000001, label0020 /* 150D */
+  jmpi_eq                         r202, 0x00000001, label001F /* 149A */
+  arg_pushl                       0x000003EB
+  arg_pushs                       "我々の惑星は 環境破壊が進み、\n人の住めない星になりつつあります。"
+  message                         ...
+  arg_pushs                       "そこで 第二の故郷を求め 調査を開始。\n無人探査機が発見してきたのが\n惑星ラグオルでした。"
+  add_msg                         ...
+  arg_pushs                       "我々は 新たな大地に向け、\n巨大な宇宙移民船を発進させました。\nそれがパイオニア１…。"
+  add_msg                         ...
+  arg_pushs                       "パイオニア１が実地調査を終え、\n安全と適性が確認されたところで\n移民船の第二陣が 出発しました。"
+  add_msg                         ...
+  arg_pushs                       "それが 我々です。\nパイオニア２と呼称しています。"
+  add_msg                         ...
+  arg_pushs                       "おっと、\n常識ですね こんなこと。"
+  add_msg                         ...
+  mesend
+  gset                            0x000D
+  ret
+
+label001F@0x001F:
+  arg_pushl                       0x000003EB
+  arg_pushs                       "パイオニアの１と２は\n同型艦です。"
+  message                         ...
+  arg_pushs                       "３万人の人間を乗せて\n恒星間航行ができるように\n設計されています。"
+  add_msg                         ...
+  mesend
+  ret
+
+label0020@0x0020:
+  arg_pushl                       0x000003EB
+  arg_pushs                       "報告は受けています。"
+  message                         ...
+  arg_pushs                       "あなた方が戦闘を行ったエネミーは\nパイオニア１からのデータにある、\nラグオルの 原生生物でしょう。"
+  add_msg                         ...
+  arg_pushs                       "しかし、報告では\nどれも 温厚で おとなしい生物とあり、\nとても人を襲うとは思えないのですが…"
+  add_msg                         ...
+  mesend
+  ret
+
+label0021@0x0021:
+  arg_pushl                       0x000003EB
+  arg_pushs                       "巨大な ドラゴン！？"
+  message                         ...
+  arg_pushs                       "そんな報告は パイオニア１の\nデータには ありませんが…"
+  add_msg                         ...
+  arg_pushs                       "そんなものがいる\n惑星だったのでしょうか、\nラグオルは…！"
+  add_msg                         ...
+  mesend
+  gset                            0x0019
+  ret
+
+label0022@0x0022:
+  arg_pushl                       0x000003EB
+  arg_pushs                       "科学者としては\nラグオルの生態系に\n興味を 禁じ得ませんが…"
+  message                         ...
+  arg_pushs                       "一個人としては、\nぞっとしない話です。"
+  add_msg                         ...
+  mesend
+  ret
+
+label0023@0x0023:
+  arg_pushl                       0x000003EB
+  arg_pushs                       "うーむむむ。\nなんということでしょう！"
+  message                         ...
+  arg_pushs                       "あなた方が 新しく\n報告してきた エネミーは、全く\nこれまでのデータに ないものです。"
+  add_msg                         ...
+  arg_pushs                       "パイオニア１の調査に\nそんなにも 穴があったとは\n思えないのですが…"
+  add_msg                         ...
+  mesend
+  ret
+
+label0024@0x0024:
+  arg_pushl                       0x000003EB
+  arg_pushs                       "あなた方が洞窟で出会ったエネミーは\nこれまで ラグオルの原生生物と\n報告されたものの変異体と思われます。"
+  message                         ...
+  arg_pushs                       "そして、巨大な甲殻動物…"
+  add_msg                         ...
+  arg_pushs                       "これには、その体液を\n他に注入するためと思われる\n針のような器官が 確認されました。"
+  add_msg                         ...
+  arg_pushs                       "これを 直接結びつけるのは\n早計ですが…"
+  add_msg                         ...
+  arg_pushs                       "この生物が 原生生物を凶暴化させたり\n突然変異体を生んでいたのだとしたら\n今までの事に説明がつきます。"
+  add_msg                         ...
+  mesend
+  ret
+
+label0025@0x0025:
+  arg_pushl                       0x000003EB
+  arg_pushs                       "データを分析したところ、\nあなた方の戦闘した \nメカエネミーらは…"
+  message                         ...
+  arg_pushs                       "パイオニア１で使用されていた\nメカニックが 改造されたものと\n判明しました。"
+  add_msg                         ...
+  arg_pushs                       "わたしの仕事は ここまでです。\n情報から 推論を組み立てるのは\n別の人間の仕事です。"
+  add_msg                         ...
+  arg_pushs                       "しかし…"
+  add_msg                         ...
+  arg_pushs                       "恐ろしい。\nわたしは 恐ろしい。"
+  add_msg                         ...
+  mesend
+  ret
+
+label0026@0x0026:
+  arg_pushl                       0x000003EB
+  arg_pushs                       "地中の遺跡…"
+  message                         ...
+  arg_pushs                       "惑星ラグオルの\n過去の文明のものでしょうか…"
+  add_msg                         ...
+  arg_pushs                       "しかし、パイオニア１の報告では、\n惑星表面上に それを示唆するものは\n無かったはず。"
+  add_msg                         ...
+  arg_pushs                       "謎は 深まるばかりです…"
+  add_msg                         ...
+  mesend
+  ret
+  arg_pushl                       0x000003EB
+  arg_pushs                       "地下遺跡内のデータを解析しましたが、\n明らかに 我々と異なる文明の\n所産と思われます。"
+  message                         ...
+  arg_pushs                       "偉大な発見…と、普段なら\n興奮するところですが\n今は とても そんな気になれません。"
+  add_msg                         ...
+  mesend
+  ret
+
+label0032@0x0032:
+  // Could not determine data type; disassembling as code
+  gget                            0x000B, r200
+  gget                            0x000C, r201
+  gget                            0x000D, r202
+  gget                            0x000E, r203
+  gget                            0x000F, r204
+  gget                            0x0010, r205
+  gget                            0x0011, r206
+  gget                            0x0012, r207
+  gget                            0x0013, r208
+  gget                            0x0014, r209
+  gget                            0x0015, r210
+  gget                            0x0016, r211
+  gget                            0x0017, r212
+  gget                            0x0018, r213
+  gget                            0x0019, r214
+  gget                            0x001A, r215
+  gget                            0x001E, r216
+  gget                            0x001F, r217
+  gget                            0x0020, r218
+  gget                            0x0021, r219
+  gget                            0x0022, r220
+  gget                            0x0028, r221
+  gget                            0x0029, r222
+  gget                            0x002A, r223
+  gget                            0x002B, r224
+  gget                            0x002C, r225
+  gget                            0x002D, r226
+  gget                            0x002E, r227
+  gget                            0x002F, r228
+  gget                            0x0030, r229
+  gget                            0x01F9, r230
+  jmpi_eq                         r230, 0x00000001, label003B /* 5433 */
+  jmp                             label003A /* 53A6 */
+  jmpi_eq                         r229, 0x00000001, label0039 /* 223D */
+  jmpi_eq                         r224, 0x00000001, label0038 /* 218A */
+  jmpi_eq                         r221, 0x00000001, label0037 /* 20C7 */
+  jmpi_eq                         r218, 0x00000001, label0036 /* 1F52 */
+  jmpi_eq                         r216, 0x00000001, label0035 /* 1ECB */
+  jmpi_eq                         r210, 0x00000001, label0034 /* 1DF8 */
+  jmpi_eq                         r203, 0x00000001, label0033 /* 1D7B */
+  arg_pushl                       0x000003EC
+  arg_pushs                       "我々の船が パイオニア１の誘導で\n惑星ラグオル着陸のため\n接近したとき…"
+  message                         ...
+  arg_pushs                       "謎の爆発事故は 発生した！"
+  add_msg                         ...
+  arg_pushs                       "現在 パイオニア２は\n惑星ラグオル大気圏突入を延期。\n衛星軌道上にあって 情報を収集中だ。"
+  add_msg                         ...
+  mesend
+  gset                            0x000E
+  ret
+
+label0033@0x0033:
+  arg_pushl                       0x000003EC
+  arg_pushs                       "だから 移民など 反対したのだ！"
+  message                         ...
+  arg_pushs                       "惑星が滅ぶなら、その住民は\n星と運命をともにするべきだ。\n…そうは 思わんか？"
+  add_msg                         ...
+  mesend
+  ret
+
+label0034@0x0034:
+  arg_pushl                       0x000003EC
+  arg_pushs                       "何が おとなしい生物を\n凶暴化させたのか？"
+  message                         ...
+  arg_pushs                       "普通なら そう考えるが、\n可能性は もうひとつある。"
+  add_msg                         ...
+  arg_pushs                       "それは、パイオニア１が\n虚偽の報告をしていたという\n可能性だ。"
+  add_msg                         ...
+  arg_pushs                       "絶対に無い話とは 言えんだろう？"
+  add_msg                         ...
+  mesend
+  ret
+
+label0035@0x0035:
+  arg_pushl                       0x000003EC
+  arg_pushs                       "報告は受けている。"
+  message                         ...
+  arg_pushs                       "惑星ラグオルは、\n我々に適合した環境ではあったが…"
+  add_msg                         ...
+  arg_pushs                       "その生態系の調査が\n不十分であったということさ。"
+  add_msg                         ...
+  mesend
+  ret
+
+label0036@0x0036:
+  arg_pushl                       0x000003EC
+  arg_pushs                       "しかし、考えてみろ。"
+  message                         ...
+  arg_pushs                       "あの巨大生物が これまでの事態を\n引き起こしたのだとすれば、\nもう 安心だ。"
+  add_msg                         ...
+  arg_pushs                       "災いの元凶は、腕利きの<name job>である\n<name hero>が 倒したのだからな！"
+  add_msg                         ...
+  arg_pushs                       "…と、本当に そう思うか？"
+  add_msg                         ...
+  arg_pushs                       "あの巨大生物が 最後の一匹だと\n誰が 保証してくれるね？"
+  add_msg                         ...
+  arg_pushs                       "クックック…いるのさ。\nあんなヤツが 何千も 何万もな…\nクックック…"
+  add_msg                         ...
+  mesend
+  ret
+
+label0037@0x0037:
+  arg_pushl                       0x000003EC
+  arg_pushs                       "これで 判っただろう。\n惑星ラグオルには 何かがある。\n危険きわまる星だ。"
+  message                         ...
+  arg_pushs                       "パイオニア１の人間など\nもう誰も 生きちゃいない。"
+  add_msg                         ...
+  arg_pushs                       "一刻も早く、この惑星から\n遠く 離れるべきなんだよ。"
+  add_msg                         ...
+  mesend
+  ret
+
+label0038@0x0038:
+  arg_pushl                       0x000003EC
+  arg_pushs                       "パイオニア１のメンバーは\n何らかの方法で\n古代遺跡の存在を 知ったのだろう。"
+  message                         ...
+  arg_pushs                       "そして それを調べるため、\n発掘しようとした…"
+  add_msg                         ...
+  arg_pushs                       "そこで 何かが起きたのだ。\n何かが…！"
+  add_msg                         ...
+  mesend
+  ret
+
+label0039@0x0039:
+  arg_pushl                       0x000003EC
+  arg_pushs                       "遺跡の奥深く 眠るもの…"
+  message                         ...
+  arg_pushs                       "それが すべての鍵を\n握っているに違いない。"
+  add_msg                         ...
+  arg_pushs                       "科学者としての探求心が\nそれを求めるが、理性が\n危険信号を発している。"
+  add_msg                         ...
+  arg_pushs                       "やはり 一刻も早く\nここを去ることを\nお勧めするね。"
+  add_msg                         ...
+  mesend
+  ret
+
+label003C@0x003C:
+  // Could not determine data type; disassembling as code
+  gget                            0x000B, r200
+  gget                            0x000C, r201
+  gget                            0x000D, r202
+  gget                            0x000E, r203
+  gget                            0x000F, r204
+  gget                            0x0010, r205
+  gget                            0x0011, r206
+  gget                            0x0012, r207
+  gget                            0x0013, r208
+  gget                            0x0014, r209
+  gget                            0x0015, r210
+  gget                            0x0016, r211
+  gget                            0x0017, r212
+  gget                            0x0018, r213
+  gget                            0x0019, r214
+  gget                            0x001A, r215
+  gget                            0x001E, r216
+  gget                            0x001F, r217
+  gget                            0x0020, r218
+  gget                            0x0021, r219
+  gget                            0x0022, r220
+  gget                            0x0028, r221
+  gget                            0x0029, r222
+  gget                            0x002A, r223
+  gget                            0x002B, r224
+  gget                            0x002C, r225
+  gget                            0x002D, r226
+  gget                            0x002E, r227
+  gget                            0x002F, r228
+  gget                            0x0030, r229
+  jmpi_eq                         r223, 0x00000001, label0040 /* 26AD */
+  jmpi_eq                         r218, 0x00000001, label003F /* 264C */
+  jmpi_eq                         r212, 0x00000001, label003D /* 24D8 */
+  arg_pushl                       0x000003F4
+  arg_pushs                       "ああ…ファンだったのになぁ。"
+  message                         ...
+  arg_pushs                       "知っているか？\n「赤い輪のリコ」は\nパイオニア１に乗ってたんだぜ。"
+  add_msg                         ...
+  arg_pushs                       "凄腕のハンターとして 有名だが、\n科学者としての頭脳を認められて\n先遣隊に編入されたんだろうな。"
+  add_msg                         ...
+  arg_pushs                       "彼女がいれば 大抵のことは\n心配ないと思うけど、\nあの爆発じゃあ…"
+  add_msg                         ...
+  arg_pushs                       "…ファンだったのになぁ。"
+  add_msg                         ...
+  mesend
+  gset                            0x0012
+  ret
+
+label003D@0x003D:
+  jmpi_eq                         r206, 0x00000001, label003E /* 2575 */
+  arg_pushl                       0x000003F4
+  arg_pushs                       "知っているか？"
+  message                         ...
+  arg_pushs                       "何でも、政府から\n惑星ラグオルの調査を\n命じられたヤツが いるらしいぜ。"
+  add_msg                         ...
+  arg_pushs                       "これで「赤い輪のリコ」の消息も\nわかるかな？"
+  add_msg                         ...
+  mesend
+  ret
+
+label003E@0x003E:
+  arg_pushl                       0x000003F4
+  arg_pushs                       "知っているか？"
+  message                         ...
+  arg_pushs                       "ウワサでは、政府から\nラグオルの調査を命じられた\nヤツがいて…"
+  add_msg                         ...
+  arg_pushs                       "「赤い輪のリコ」が残した\nメッセージを 見つけたって話だぜ！"
+  add_msg                         ...
+  arg_pushs                       "リコは 生きてるんだよ。\nなっ、あんたも そう思うだろ？"
+  add_msg                         ...
+  mesend
+  ret
+
+label003F@0x003F:
+  arg_pushl                       0x000003F4
+  arg_pushs                       "知っているか？"
+  message                         ...
+  arg_pushs                       "転送装置の打ち下ろしも\n何回もやって ようやく\n成功したって話だぜ。"
+  add_msg                         ...
+  mesend
+  ret
+
+label0040@0x0040:
+  arg_pushl                       0x000003F4
+  arg_pushs                       "知っているか？"
+  message                         ...
+  arg_pushs                       "ウワサでは、\nリコのメッセージは\nいくつも あったらしい。"
+  add_msg                         ...
+  arg_pushs                       "その内容は、この事件をひもとく\n重要なヒントなんじゃないかと\nオレは 思うねぇ。"
+  add_msg                         ...
+  mesend
+  ret
+
+label0046@0x0046:
+  // Could not determine data type; disassembling as code
+  gget                            0x000B, r200
+  gget                            0x000C, r201
+  gget                            0x000D, r202
+  gget                            0x000E, r203
+  gget                            0x000F, r204
+  gget                            0x0010, r205
+  gget                            0x0011, r206
+  gget                            0x0012, r207
+  gget                            0x0013, r208
+  gget                            0x0014, r209
+  gget                            0x0015, r210
+  gget                            0x0016, r211
+  gget                            0x0017, r212
+  gget                            0x0018, r213
+  gget                            0x0019, r214
+  gget                            0x001A, r215
+  gget                            0x001E, r216
+  gget                            0x001F, r217
+  gget                            0x0020, r218
+  gget                            0x0021, r219
+  gget                            0x0022, r220
+  gget                            0x0028, r221
+  gget                            0x0029, r222
+  gget                            0x002A, r223
+  gget                            0x002B, r224
+  gget                            0x002C, r225
+  gget                            0x002D, r226
+  gget                            0x002E, r227
+  gget                            0x002F, r228
+  gget                            0x0030, r229
+  jmpi_eq                         r223, 0x00000001, label004A /* 2A03 */
+  jmpi_eq                         r218, 0x00000001, label0049 /* 295A */
+  jmpi_eq                         r212, 0x00000001, label0048 /* 28C7 */
+  jmpi_eq                         r204, 0x00000001, label0047 /* 288A */
+  arg_pushl                       0x000003F5
+  arg_pushs                       "知りたい知りたい知りたいよう。"
+  message                         ...
+  arg_pushs                       "原因不明、詳細不明。\nとにかく 何も判らない。"
+  add_msg                         ...
+  arg_pushs                       "判らなければ 動きようがない。\n君たちの任務は 重要だ！"
+  add_msg                         ...
+  mesend
+  gset                            0x000F
+  ret
+
+label0047@0x0047:
+  arg_pushl                       0x000003F5
+  arg_pushs                       "パイオニア１のみんなは\nだいじょうぶなんだろうか。"
+  message                         ...
+  mesend
+  ret
+
+label0048@0x0048:
+  arg_pushl                       0x000003F5
+  arg_pushs                       "惑星表面上にはパイオニア１の\nみんなが 誰一人 見あたらないって？"
+  message                         ...
+  arg_pushs                       "どこかに避難しているのか、\nそれとも…"
+  add_msg                         ...
+  arg_pushs                       "いやいや そんなまさか。"
+  add_msg                         ...
+  mesend
+  ret
+
+label0049@0x0049:
+  arg_pushl                       0x000003F5
+  arg_pushs                       "地下に 洞窟があったらしいね。"
+  message                         ...
+  arg_pushs                       "天然のものではなく、明らかに\n人間の手の入ったものみたいだよね。"
+  add_msg                         ...
+  arg_pushs                       "パイオニア１の人は、\nそこで 何をしようとしてたんだろ。"
+  add_msg                         ...
+  mesend
+  ret
+
+label004A@0x004A:
+  arg_pushl                       0x000003F5
+  arg_pushs                       "あまり 大きな声では\n言えませんが…"
+  message                         ...
+  arg_pushs                       "地中の遺跡を発見し、\n発掘しようとしていたことを\nパイオニア１は 報告しなかった…"
+  add_msg                         ...
+  arg_pushs                       "なにか あるとは思いませんか？"
+  add_msg                         ...
+  mesend
+  ret
+
+label0050@0x0050:
+  // Could not determine data type; disassembling as code
+  gget                            0x000B, r200
+  gget                            0x000C, r201
+  gget                            0x000D, r202
+  gget                            0x000E, r203
+  gget                            0x000F, r204
+  gget                            0x0010, r205
+  gget                            0x0011, r206
+  gget                            0x0012, r207
+  gget                            0x0013, r208
+  gget                            0x0014, r209
+  gget                            0x0015, r210
+  gget                            0x0016, r211
+  gget                            0x0017, r212
+  gget                            0x0018, r213
+  gget                            0x0019, r214
+  gget                            0x001A, r215
+  gget                            0x001E, r216
+  gget                            0x001F, r217
+  gget                            0x0020, r218
+  gget                            0x0021, r219
+  gget                            0x0022, r220
+  gget                            0x0028, r221
+  gget                            0x0029, r222
+  gget                            0x002A, r223
+  gget                            0x002B, r224
+  gget                            0x002C, r225
+  gget                            0x002D, r226
+  gget                            0x002E, r227
+  gget                            0x002F, r228
+  gget                            0x0030, r229
+  jmpi_eq                         r223, 0x00000001, label0053 /* 2CCF */
+  jmpi_eq                         r218, 0x00000001, label0052 /* 2C2E */
+  jmpi_eq                         r212, 0x00000001, label0051 /* 2BE7 */
+  arg_pushl                       0x000003F6
+  arg_pushs                       "ようやく到着って、\n放送してた矢先の あの事故でしょ？"
+  message                         ...
+  arg_pushs                       "隠しようもなく、\n一般階層は 大騒ぎ！"
+  add_msg                         ...
+  arg_pushs                       "パイオニア１に身内がいる人なんか、\n気が気じゃないでしょうね。"
+  add_msg                         ...
+  mesend
+  ret
+
+label0051@0x0051:
+  arg_pushl                       0x000003F6
+  arg_pushs                       "その後 何の発表もないけど、\n政府は 何やってんのかしらね。"
+  message                         ...
+  mesend
+  ret
+
+label0052@0x0052:
+  arg_pushl                       0x000003F6
+  arg_pushs                       "パイオニア２が出航して\nもう 二年。"
+  message                         ...
+  arg_pushs                       "ようやく 土の大地を\n踏みしめられると思ったのに。"
+  add_msg                         ...
+  arg_pushs                       "あんなに、手が届きそうなほど近くに\nあの星は あるのに。"
+  add_msg                         ...
+  mesend
+  ret
+
+label0053@0x0053:
+  arg_pushl                       0x000003F6
+  arg_pushs                       "もしも あの星がだめなら\nあたしたち どうなるの？"
+  message                         ...
+  arg_pushs                       "行くことも 帰ることもできず、\nさまようしか なくなるのよね…"
+  add_msg                         ...
+  mesend
+  ret
+
+label005A@0x005A:
+  // Could not determine data type; disassembling as code
+  gget                            0x000B, r200
+  gget                            0x000C, r201
+  gget                            0x000D, r202
+  gget                            0x000E, r203
+  gget                            0x000F, r204
+  gget                            0x0010, r205
+  gget                            0x0011, r206
+  gget                            0x0012, r207
+  gget                            0x0013, r208
+  gget                            0x0014, r209
+  gget                            0x0015, r210
+  gget                            0x0016, r211
+  gget                            0x0017, r212
+  gget                            0x0018, r213
+  gget                            0x0019, r214
+  gget                            0x001A, r215
+  gget                            0x001E, r216
+  gget                            0x001F, r217
+  gget                            0x0020, r218
+  gget                            0x0021, r219
+  gget                            0x0022, r220
+  gget                            0x0028, r221
+  gget                            0x0029, r222
+  gget                            0x002A, r223
+  gget                            0x002B, r224
+  gget                            0x002C, r225
+  gget                            0x002D, r226
+  gget                            0x002E, r227
+  gget                            0x002F, r228
+  gget                            0x0030, r229
+  jmpi_eq                         r223, 0x00000001, label005D /* 2F99 */
+  jmpi_eq                         r218, 0x00000001, label005C /* 2F40 */
+  jmpi_eq                         r212, 0x00000001, label005B /* 2EBF */
+  arg_pushl                       0x000003F7
+  arg_pushs                       "よほど 赤が好きなんだろうな。\nリコは いつも\n赤いものを 身につけていたよ。"
+  message                         ...
+  arg_pushs                       "特に 左腕の赤い腕輪が目立ってね。"
+  add_msg                         ...
+  arg_pushs                       "だから「赤い輪のリコ」って\n呼ばれてるんだ。"
+  add_msg                         ...
+  arg_pushs                       "なに、あのリコのことだ。\n無事に決まってるさ。"
+  add_msg                         ...
+  mesend
+  ret
+
+label005B@0x005B:
+  arg_pushl                       0x000003F7
+  arg_pushs                       "リコにならって、\n赤い腕輪をつければ\nオレも 勇気が出るかもなんて…"
+  message                         ...
+  arg_pushs                       "そんな 子供じみたことを\n考えたりもするのさ。"
+  add_msg                         ...
+  mesend
+  ret
+
+label005C@0x005C:
+  arg_pushl                       0x000003F7
+  arg_pushs                       "あんたは 行ったのかい？\n下へ。"
+  message                         ...
+  arg_pushs                       "そうか。勇気があるな。\nけっこうなことだ。"
+  add_msg                         ...
+  mesend
+  ret
+
+label005D@0x005D:
+  arg_pushl                       0x000003F7
+  arg_pushs                       "リコは見つかったのかい？"
+  message                         ...
+  arg_pushs                       "さすがの「レッドリング・リコ」も\n今度ばかりは ダメなのかなぁ。"
+  add_msg                         ...
+  mesend
+  ret
+
+label0064@0x0064:
+  // Could not determine data type; disassembling as code
+  gget                            0x000B, r200
+  gget                            0x000C, r201
+  gget                            0x000D, r202
+  gget                            0x000E, r203
+  gget                            0x000F, r204
+  gget                            0x0010, r205
+  gget                            0x0011, r206
+  gget                            0x0012, r207
+  gget                            0x0013, r208
+  gget                            0x0014, r209
+  gget                            0x0015, r210
+  gget                            0x0016, r211
+  gget                            0x0017, r212
+  gget                            0x0018, r213
+  gget                            0x0019, r214
+  gget                            0x001A, r215
+  gget                            0x001E, r216
+  gget                            0x001F, r217
+  gget                            0x0020, r218
+  gget                            0x0021, r219
+  gget                            0x0022, r220
+  gget                            0x0028, r221
+  gget                            0x0029, r222
+  gget                            0x002A, r223
+  gget                            0x002B, r224
+  gget                            0x002C, r225
+  gget                            0x002D, r226
+  gget                            0x002E, r227
+  gget                            0x002F, r228
+  gget                            0x0030, r229
+  gget                            0x01F5, r230
+  jmpi_eq                         r230, 0x00000000, label0068 /* 549C */
+  jmpi_eq                         r223, 0x00000001, label0067 /* 33E9 */
+  jmpi_eq                         r218, 0x00000001, label0066 /* 3356 */
+  jmpi_eq                         r212, 0x00000001, label0065 /* 3227 */
+  arg_pushl                       0x000003F8
+  arg_pushs                       "あそこは ハンターズギルド。"
+  message                         ...
+  arg_pushs                       "ハンター、レンジャー、フォースの\nみんなを総称して ハンターズと\n呼ぶことがあるけど…"
+  add_msg                         ...
+  arg_pushs                       "そのハンターズの\n情報交換、交流をお手伝いする\n組合なのよ。"
+  add_msg                         ...
+  arg_pushs                       "カウンターでは、\n仕事の紹介もしているわ。"
+  add_msg                         ...
+  arg_pushs                       "ちなみに、ギルドは\n総督府とは 全く関係ない\n独立運営！"
+  add_msg                         ...
+  arg_pushs                       "このエリアは 一般人立入禁止の\n特務エリアだけど、ギルドの中だけは\n治外法権になってるのよ。"
+  add_msg                         ...
+  mesend
+  ret
+
+label0065@0x0065:
+  arg_pushl                       0x000003F8
+  arg_pushs                       "大なり 小なり\n一般的な困りごとは、\nだいたい ハンターズの仕事。"
+  message                         ...
+  arg_pushs                       "軍が動くような大事件なんて\nそうは 無いものね。"
+  add_msg                         ...
+  arg_pushs                       "そもそもパイオニア２には\n軍人が多くはないから、大きい事件も\n回ってくることがあるわ。"
+  add_msg                         ...
+  arg_pushs                       "そんなときは\n普段いがみ合ってる ライバル同士も、\n手を組んだりしてるみたいよ。"
+  add_msg                         ...
+  mesend
+  ret
+
+label0066@0x0066:
+  arg_pushl                       0x000003F8
+  arg_pushs                       "総督府から仕事をもらってる\nハンターズも いるみたいね。"
+  message                         ...
+  arg_pushs                       "パイオニア２には\nロクな軍備もないから、\n総督府としても苦肉の策なんでしょ。"
+  add_msg                         ...
+  mesend
+  ret
+
+label0067@0x0067:
+  arg_pushl                       0x000003F8
+  arg_pushs                       "あまり仕事を選ばなければ、\nいろんな仕事が あるものよ。"
+  message                         ...
+  arg_pushs                       "何でもやってみると、\nいい経験になるかもね。"
+  add_msg                         ...
+  mesend
+  ret
+
+label006E@0x006E:
+  // Could not determine data type; disassembling as code
+  gget                            0x000B, r200
+  gget                            0x000C, r201
+  gget                            0x000D, r202
+  gget                            0x000E, r203
+  gget                            0x000F, r204
+  gget                            0x0010, r205
+  gget                            0x0011, r206
+  gget                            0x0012, r207
+  gget                            0x0013, r208
+  gget                            0x0014, r209
+  gget                            0x0015, r210
+  gget                            0x0016, r211
+  gget                            0x0017, r212
+  gget                            0x0018, r213
+  gget                            0x0019, r214
+  gget                            0x001A, r215
+  gget                            0x001E, r216
+  gget                            0x001F, r217
+  gget                            0x0020, r218
+  gget                            0x0021, r219
+  gget                            0x0022, r220
+  gget                            0x0028, r221
+  gget                            0x0029, r222
+  gget                            0x002A, r223
+  gget                            0x002B, r224
+  gget                            0x002C, r225
+  gget                            0x002D, r226
+  gget                            0x002E, r227
+  gget                            0x002F, r228
+  gget                            0x0030, r229
+  gget                            0x01F5, r230
+  jmpi_eq                         r230, 0x00000000, label0072 /* 5525 */
+  jmpi_eq                         r223, 0x00000001, label0071 /* 3663 */
+  jmpi_eq                         r218, 0x00000001, label0070 /* 35D4 */
+  jmpi_eq                         r212, 0x00000001, label006F /* 3577 */
+  arg_pushl                       0x000003FA
+  arg_pushs                       "忙しい 忙しい。"
+  message                         ...
+  arg_pushs                       "この区画の人って、ホント\n生傷が 絶えないんだもの。"
+  add_msg                         ...
+  arg_pushs                       "傷くらいですめば\nまだ いい方だけどね。"
+  add_msg                         ...
+  mesend
+  ret
+
+label006F@0x006F:
+  arg_pushl                       0x000003FA
+  arg_pushs                       "忙しい 忙しい。"
+  message                         ...
+  arg_pushs                       "なんだか 最近 ますます\nケガ人 増えてない？\nどういうこと？"
+  add_msg                         ...
+  mesend
+  ret
+
+label0070@0x0070:
+  arg_pushl                       0x000003FA
+  arg_pushs                       "惑星ラグオルに\nエネミーが出るんですって？"
+  message                         ...
+  arg_pushs                       "やーねぇ、患者さんの話が\n勝手に 聞こえちゃうのよ。\n耳を澄ましてなんか いないわよ。"
+  add_msg                         ...
+  mesend
+  ret
+
+label0071@0x0071:
+  arg_pushl                       0x000003FA
+  arg_pushs                       "ハンターズのみんな、\nエネミーと戦ってたんじゃ\nここが忙しいのも 無理ないわ。"
+  message                         ...
+  arg_pushs                       "人間同士の小競り合いとは、\nワケが違うものね。"
+  add_msg                         ...
+  mesend
+  ret
+
+label0078@0x0078:
+  // Could not determine data type; disassembling as code
+  gget                            0x000B, r200
+  gget                            0x000C, r201
+  gget                            0x000D, r202
+  gget                            0x000E, r203
+  gget                            0x000F, r204
+  gget                            0x0010, r205
+  gget                            0x0011, r206
+  gget                            0x0012, r207
+  gget                            0x0013, r208
+  gget                            0x0014, r209
+  gget                            0x0015, r210
+  gget                            0x0016, r211
+  gget                            0x0017, r212
+  gget                            0x0018, r213
+  gget                            0x0019, r214
+  gget                            0x001A, r215
+  gget                            0x001E, r216
+  gget                            0x001F, r217
+  gget                            0x0020, r218
+  gget                            0x0021, r219
+  gget                            0x0022, r220
+  gget                            0x0028, r221
+  gget                            0x0029, r222
+  gget                            0x002A, r223
+  gget                            0x002B, r224
+  gget                            0x002C, r225
+  gget                            0x002D, r226
+  gget                            0x002E, r227
+  gget                            0x002F, r228
+  gget                            0x0030, r229
+  jmpi_eq                         r223, 0x00000001, label007B /* 39B9 */
+  jmpi_eq                         r218, 0x00000001, label007A /* 3964 */
+  jmpi_eq                         r212, 0x00000001, label0079 /* 3897 */
+  arg_pushl                       0x000003FB
+  arg_pushs                       "この区画は\nある程度の機密もまかせられる\n優秀なハンターズのエリア。"
+  message                         ...
+  arg_pushs                       "情報漏洩を未然に防ぐため、\n他の区画とは 隔離されている。\n悪く思うなよ。"
+  add_msg                         ...
+  arg_pushs                       "なかでも これは\n惑星ラグオルに通ずる\n転送装置。超重要機密だ。"
+  add_msg                         ...
+  arg_pushs                       "ごく限られたハンターズのみ\n使用が 許可されている。"
+  add_msg                         ...
+  mesend
+  ret
+
+label0079@0x0079:
+  arg_pushl                       0x000003FB
+  arg_pushs                       "危機感が 足りないんじゃないのか、\nこの区画の人間は？"
+  message                         ...
+  arg_pushs                       "我々の未来が、この移住計画には\nかかっているんだぞ。"
+  add_msg                         ...
+  arg_pushs                       "なのに、どこか 近所に\n買い物に行くかのような風情だ、\nハンターズという連中は！"
+  add_msg                         ...
+  mesend
+  ret
+
+label007A@0x007A:
+  arg_pushl                       0x000003FB
+  arg_pushs                       "この艦に 軍人がもっと乗っておれば、\nおまえらなぞに頼らずにすむものを…！"
+  message                         ...
+  mesend
+  ret
+
+label007B@0x007B:
+  arg_pushl                       0x000003FB
+  arg_pushs                       "もっと 強力な武器があれば\nオレだって…！"
+  message                         ...
+  mesend
+  ret
+
+label0082@0x0082:
+  // Could not determine data type; disassembling as code
+  gget                            0x000B, r200
+  gget                            0x000C, r201
+  gget                            0x000D, r202
+  gget                            0x000E, r203
+  gget                            0x000F, r204
+  gget                            0x0010, r205
+  gget                            0x0011, r206
+  gget                            0x0012, r207
+  gget                            0x0013, r208
+  gget                            0x0014, r209
+  gget                            0x0015, r210
+  gget                            0x0016, r211
+  gget                            0x0017, r212
+  gget                            0x0018, r213
+  gget                            0x0019, r214
+  gget                            0x001A, r215
+  gget                            0x001E, r216
+  gget                            0x001F, r217
+  gget                            0x0020, r218
+  gget                            0x0021, r219
+  gget                            0x0022, r220
+  gget                            0x0028, r221
+  gget                            0x0029, r222
+  gget                            0x002A, r223
+  gget                            0x002B, r224
+  gget                            0x002C, r225
+  gget                            0x002D, r226
+  gget                            0x002E, r227
+  gget                            0x002F, r228
+  gget                            0x0030, r229
+  jmpi_eq                         r223, 0x00000001, label0085 /* 3C6F */
+  jmpi_eq                         r218, 0x00000001, label0084 /* 3C18 */
+  jmpi_eq                         r212, 0x00000001, label0083 /* 3B67 */
+  arg_pushl                       0x000003FC
+  arg_pushs                       "パイオニア２の出航は\nパイオニア１によって、ラグオルの\n安全が確認されてから 行われた。"
+  message                         ...
+  arg_pushs                       "よって、移民を優先するため、\n正規の軍は 人員も武装も 貧弱だ。\nパイオニア１と違ってな。"
+  add_msg                         ...
+  arg_pushs                       "その英断が\n裏目に出たかもしれんな。"
+  add_msg                         ...
+  mesend
+  ret
+
+label0083@0x0083:
+  arg_pushl                       0x000003FC
+  arg_pushs                       "しかめっツラしていれば\n危機感持ってるという\nもんでもないだろ。"
+  message                         ...
+  arg_pushs                       "どんなに キツくても、\nそれを おくびにも出さない…"
+  add_msg                         ...
+  arg_pushs                       "オレは そういうの、\nカッコイイと思うぜ。"
+  add_msg                         ...
+  mesend
+  ret
+
+label0084@0x0084:
+  arg_pushl                       0x000003FC
+  arg_pushs                       "できる者が できる事をする…"
+  message                         ...
+  arg_pushs                       "どんなときも、それが合理的だ。\n気にするな。"
+  add_msg                         ...
+  mesend
+  ret
+
+label0085@0x0085:
+  arg_pushl                       0x000003FC
+  arg_pushs                       "パイオニア１には、より\n強力な武器が 配備されていたはず。"
+  message                         ...
+  arg_pushs                       "どうせ ラグオルに降りるのなら、\nそれが何とか 手に入らないものかね？"
+  add_msg                         ...
+  mesend
+  ret
+
+label008C@0x008C:
+  // Could not determine data type; disassembling as code
+  gget                            0x000B, r200
+  gget                            0x000C, r201
+  gget                            0x000D, r202
+  gget                            0x000E, r203
+  gget                            0x000F, r204
+  gget                            0x0010, r205
+  gget                            0x0011, r206
+  gget                            0x0012, r207
+  gget                            0x0013, r208
+  gget                            0x0014, r209
+  gget                            0x0015, r210
+  gget                            0x0016, r211
+  gget                            0x0017, r212
+  gget                            0x0018, r213
+  gget                            0x0019, r214
+  gget                            0x001A, r215
+  gget                            0x001E, r216
+  gget                            0x001F, r217
+  gget                            0x0020, r218
+  gget                            0x0021, r219
+  gget                            0x0022, r220
+  gget                            0x0028, r221
+  gget                            0x0029, r222
+  gget                            0x002A, r223
+  gget                            0x002B, r224
+  gget                            0x002C, r225
+  gget                            0x002D, r226
+  gget                            0x002E, r227
+  gget                            0x002F, r228
+  gget                            0x0030, r229
+  jmpi_eq                         r208, 0x00000001, label008D /* 3E4B */
+  arg_pushl                       0x000003FD
+  arg_pushs                       "鑑定屋さんに もう行った？"
+  message                         ...
+  arg_pushs                       "拾った 謎のアイテムは、鑑定屋さんで\n鑑定してもらうことにより、\nその真価を 発揮するのよ。"
+  add_msg                         ...
+  arg_pushs                       "でも人によって\n得意不得意があるみたい。\n信じてばかりは 損かもね。"
+  add_msg                         ...
+  mesend
+  ret
+
+label008D@0x008D:
+  arg_pushl                       0x000003FD
+  arg_pushs                       "お店の品揃えは、\nイロイロ 変わるみたいね。"
+  message                         ...
+  mesend
+  ret
+
+label0091@0x0091:
+  // Could not determine data type; disassembling as code
+  arg_pushl                       0x000003F3
+  arg_pushs                       "いらっしゃいませ！\nあなたのハンターズ人生を 豊かに彩る\nハンターズギルド、受付はこちら！"
+  message                         ...
+  arg_pushs                       "…と言いたいところなんだけど、\n残念ながら ハンターズギルドは\n営業していません。"
+  add_msg                         ...
+  arg_pushs                       "ごめんなさいね。"
+  add_msg                         ...
+  mesend
+  ret
+
+label0096@0x0096:
+  // Could not determine data type; disassembling as code
+  arg_pushl                       0x000003FF
+  arg_pushs                       "バトルの申し込みをしたら、\n政府が 訓練のために作った\nシミュレータに転送されるよ。"
+  message                         ...
+  arg_pushs                       "決められた時間内に、どれだけ\n相手を倒したかを競うんだってさ。"
+  add_msg                         ...
+  arg_pushs                       "よくできた シミュレータだよねぇ！"
+  add_msg                         ...
+  mesend
+  ret
+
+label00A0@0x00A0:
+  // Could not determine data type; disassembling as code
+  arg_pushl                       0x00000400
+  arg_pushs                       "オレとお前、\nどっちが強いんだろう？"
+  message                         ...
+  arg_pushs                       "…って、ハンターズ同士で\n思ったことない？"
+  add_msg                         ...
+  arg_pushs                       "そんなときは、この訓練用\nシミュレータを使えば、\nあなたの 今の実力が判るわよ。"
+  add_msg                         ...
+  arg_pushs                       "勝負は 時の運…"
+  add_msg                         ...
+  arg_pushs                       "実力だけで\nおしはかれないことも あるけどね。"
+  add_msg                         ...
+  mesend
+  ret
+
+label00AA@0x00AA:
+  // Could not determine data type; disassembling as code
+  arg_pushl                       0x00000401
+  arg_pushs                       "経験値やアイテムは その場限り。"
+  message                         ...
+  arg_pushs                       "セーブされないし\n持ち込んでも\n無くなることはねぇぜ。"
+  add_msg                         ...
+  arg_pushs                       "…って 父ちゃんが言ってたけど、\nボク 子供だから 何のことだか\nよく わからないや。"
+  add_msg                         ...
+  mesend
+  ret
+
+label00B4@0x00B4:
+  // Could not determine data type; disassembling as code
+  arg_pushl                       0x00000402
+  arg_pushs                       "トラップは、置いてしばらくすると\n起動するから、自分で\n巻き込まれないよう 気をつけるんじゃぞ。"
+  message                         ...
+  arg_pushs                       "…って おじいちゃんが言ってたけど、\nボク 子供だから 何のことだか\nよく わからないや。"
+  add_msg                         ...
+  mesend
+  ret
+
+label00BE@0x00BE:
+  // Could not determine data type; disassembling as code
+  arg_pushl                       0x00000404
+  arg_pushs                       "このエリアの転送装置は\nラグオルへ向かうものじゃないよ。"
+  message                         ...
+  arg_pushs                       "政府が 訓練のために作った\nシミュレータなんだ。"
+  add_msg                         ...
+  arg_pushs                       "ハンターのランク付けをするための\nものらしいよ。"
+  add_msg                         ...
+  arg_pushs                       "よくできた シミュレータだよねぇ！"
+  add_msg                         ...
+  mesend
+  ret
+
+label00C8@0x00C8:
+  // Could not determine data type; disassembling as code
+  arg_pushl                       0x00000405
+  arg_pushs                       "ステージごとに設定された状態から\nゲームをスタート！"
+  message                         ...
+  arg_pushs                       "ステージを制覇すると\nその証明に 称号が与えられ、\n次のステージに 進めるようになるの。"
+  add_msg                         ...
+  arg_pushs                       "一度クリアしたステージも、\n何度でも挑戦できるんだって。"
+  add_msg                         ...
+  arg_pushs                       "で、全ステージを制覇すると\n素敵なごほうびがもらえるらしいわ。"
+  add_msg                         ...
+  arg_pushs                       "がんばってね！"
+  add_msg                         ...
+  mesend
+  ret
+
+label00D2@0x00D2:
+  // Could not determine data type; disassembling as code
+  arg_pushl                       0x00000406
+  arg_pushs                       "経験値やアイテムは その場限り。\nセーブはされないよ。"
+  message                         ...
+  arg_pushs                       "…って 父ちゃんが言ってたけど、\nボク 子供だから 何のことだか\nよく わからないや。"
+  add_msg                         ...
+  mesend
+  ret
+
+label00DC@0x00DC:
+  // Could not determine data type; disassembling as code
+  arg_pushl                       0x00000407
+  arg_pushs                       "与えられた称号は、ロビーで\nTabキーを押すと見ることが\nできるんじゃよ。"
+  message                         ...
+  arg_pushs                       "…って おじいちゃんが言ってたけど、\nボク 子供だから 何のことだか\nよく わからないや。"
+  add_msg                         ...
+  mesend
+  ret
+
+label00E6@0x00E6:
+  // Could not determine data type; disassembling as code
+  arg_pushl                       0x00000408
+  arg_pushs                       "このシミュレータのテーマは\n「助け合いの試練」であぁる！"
+  message                         ...
+  arg_pushs                       "参加者のうち １人でも\n戦えなくなったら、その時点で\nシミュレーションは終了となぁる！"
+  add_msg                         ...
+  arg_pushs                       "他の参加者のステータスに注意し、\nお互い助けあいながら\n進むがよかろう！"
+  add_msg                         ...
+  arg_pushs                       "フォースのように体力の弱い者が\n参加する場合は、回復系アイテム等を\nマメに渡してあげたりするといいぞぉ。"
+  add_msg                         ...
+  arg_pushs                       "では、健闘を祈る！"
+  add_msg                         ...
+  mesend
+  ret
+
+label00E7@0x00E7:
+  // Could not determine data type; disassembling as code
+  arg_pushl                       0x00000408
+  arg_pushs                       "このシミュレータのテーマは\n「助け合いの試練」であぁる！"
+  message                         ...
+  arg_pushs                       "参加者 全員が\n戦えなくなったら、その時点で\nシミュレーションは終了となぁる！"
+  add_msg                         ...
+  arg_pushs                       "他の参加者のステータスに注意し、\nお互い助けあいながら\n進むがよかろう！"
+  add_msg                         ...
+  arg_pushs                       "フォースのように体力の弱い者が\n参加する場合は、回復系アイテム等を\nマメに渡してあげたりするといいぞぉ。"
+  add_msg                         ...
+  arg_pushs                       "では、健闘を祈る！"
+  add_msg                         ...
+  mesend
+  ret
+
+label0320@0x0320:
+  // Could not determine data type; disassembling as code
+  arg_pushl                       0x00000000
+  bb_p2_menu                      ...
+  ret
+
+label032A@0x032A:
+  // Could not determine data type; disassembling as code
+  arg_pushl                       0x00000002
+  bb_p2_menu                      ...
+  ret
+
+label0334@0x0334:
+  // Could not determine data type; disassembling as code
+  arg_pushl                       0x00000003
+  bb_p2_menu                      ...
+  ret
+
+label033E@0x033E:
+  // Could not determine data type; disassembling as code
+  gget                            0x000B, r200
+  gget                            0x000C, r201
+  gget                            0x000D, r202
+  gget                            0x000E, r203
+  gget                            0x000F, r204
+  gget                            0x0010, r205
+  gget                            0x0011, r206
+  gget                            0x0012, r207
+  gget                            0x0013, r208
+  gget                            0x0014, r209
+  gget                            0x0015, r210
+  gget                            0x0016, r211
+  gget                            0x0017, r212
+  gget                            0x0018, r213
+  gget                            0x0019, r214
+  gget                            0x001A, r215
+  gget                            0x001E, r216
+  gget                            0x001F, r217
+  gget                            0x0020, r218
+  gget                            0x0021, r219
+  gget                            0x0022, r220
+  gget                            0x0028, r221
+  gget                            0x0029, r222
+  gget                            0x002A, r223
+  gget                            0x002B, r224
+  gget                            0x002C, r225
+  gget                            0x002D, r226
+  gget                            0x002E, r227
+  gget                            0x002F, r228
+  gget                            0x0030, r229
+  jmpi_eq                         r208, 0x00000001, label033F /* 4952 */
+  arg_pushl                       0x00000006
+  bb_p2_menu                      ...
+  gset                            0x0013
+  ret
+
+label033F@0x033F:
+  arg_pushl                       0x00000006
+  bb_p2_menu                      ...
+  ret
+
+label0348@0x0348:
+  // Could not determine data type; disassembling as code
+  arg_pushl                       0x00000005
+  bb_p2_menu                      ...
+  ret
+
+label0352@0x0352:
+  // Could not determine data type; disassembling as code
+  arg_pushl                       0x00000004
+  bb_p2_menu                      ...
+  ret
+
+label035C@0x035C:
+  // Could not determine data type; disassembling as code
+  arg_pushl                       0x00000001
+  bb_p2_menu                      ...
+  ret
+
+label0366@0x0366:
+  // Could not determine data type; disassembling as code
+  gget                            0x000B, r200
+  gget                            0x000C, r201
+  gget                            0x000D, r202
+  gget                            0x000E, r203
+  gget                            0x000F, r204
+  gget                            0x0010, r205
+  gget                            0x0011, r206
+  gget                            0x0012, r207
+  gget                            0x0013, r208
+  gget                            0x0014, r209
+  gget                            0x0015, r210
+  gget                            0x0016, r211
+  gget                            0x0017, r212
+  gget                            0x0018, r213
+  gget                            0x0019, r214
+  gget                            0x001A, r215
+  gget                            0x001E, r216
+  gget                            0x001F, r217
+  gget                            0x0020, r218
+  gget                            0x0021, r219
+  gget                            0x0022, r220
+  gget                            0x0028, r221
+  gget                            0x0029, r222
+  gget                            0x002A, r223
+  gget                            0x002B, r224
+  gget                            0x002C, r225
+  gget                            0x002D, r226
+  gget                            0x002E, r227
+  gget                            0x002F, r228
+  gget                            0x0030, r229
+  gget                            0x03FA, r230
+  jmpi_eq                         r230, 0x00000001, label0367 /* 4AC1 */
+  arg_pushl                       0x00000419
+  arg_pushs                       "はじめましてぇ。\n新しく総督府の受付事務員として\n配属となりました…"
+  message                         ...
+  arg_pushs                       "<color 5>モモカ<color 0>です。"
+  add_msg                         ...
+  arg_pushs                       "ふつつかものですが、\n今後とも よろしくお願いしますねぇ。"
+  add_msg                         ...
+  mesend
+  gset                            0x03FA
+  arg_pushl                       0x00000007
+  bb_p2_menu                      ...
+  ret
+
+label0367@0x0367:
+  arg_pushl                       0x00000007
+  bb_p2_menu                      ...
+  ret
+
+label0370@0x0370:
+  // Could not determine data type; disassembling as code
+  arg_pushl                       0x00000418
+  arg_pushs                       "オレが 放浪商人こと、\nコレン・ツだ。"
+  message                         ...
+  arg_pushs                       "オレがかき集めた\nアレでレアな商品を\nここらで少しサバきたくてな。"
+  add_msg                         ...
+  arg_pushs                       "ちょっとメセタを払ってくれりゃ、\n豪華商品が当たるカモしれない。"
+  add_msg                         ...
+  arg_pushs                       "どうだ？ヤッてみるか？"
+  add_msg                         ...
+  mesend
+  arg_pushb                       0x64
+  arg_pushs                       "はい\nいいえ"
+  list                            ...
+  switch_jmp                      r100, [label0371 /* 4BB7 */, label0372 /* 4D04 */]
+  ret
+
+label0371@0x0371:
+  bb_get_number_in_pack           r100
+  jmpi_eq                         r100, 0x0000001E, label0373 /* 4DA1 */
+  arg_pushl                       0x00000418
+  arg_pushs                       "当たるも八卦、\n当たらぬも八卦。"
+  message                         ...
+  arg_pushs                       "ロクなものが当たらなくても\nオレにアタるなよ。"
+  add_msg                         ...
+  arg_pushs                       "ギャンブルなんて\nそんなモンだからな。"
+  add_msg                         ...
+  arg_pushs                       "で、どのくらいメセタを\n払ってくれるんだい？"
+  add_msg                         ...
+  arg_pushs                       "メセタさえもらえりゃ、\nそれなりにサービスするぜ？"
+  add_msg                         ...
+  mesend
+  arg_pushb                       0x65
+  arg_pushs                       "１０００メセタ\n１００００メセタ\n１０００００メセタ\nやっぱり止める"
+  list                            ...
+  switch_jmp                      r101, [label0374 /* 4E0A */, label0375 /* 4E1F */, label0376 /* 4E34 */, label0377 /* 4E49 */]
+  ret
+
+label0372@0x0372:
+  arg_pushl                       0x00000418
+  arg_pushs                       "ん？"
+  message                         ...
+  arg_pushs                       "ざんねんだな。"
+  add_msg                         ...
+  arg_pushs                       "まあ、こういうモンはたいてい\n損をするかもしれないからな。"
+  add_msg                         ...
+  arg_pushs                       "慎重なのもいいモンだ。\n気が向いたら、また話しかけてくれ。"
+  add_msg                         ...
+  mesend
+  ret
+
+label0373@0x0373:
+  arg_pushl                       0x00000418
+  arg_pushs                       "アイテムが\nいっぱいみたいだな。"
+  message                         ...
+  arg_pushs                       "まずは、アイテムを\n整理してきてくれ。"
+  add_msg                         ...
+  arg_pushs                       "話はソレからだ。"
+  add_msg                         ...
+  mesend
+  ret
+
+label0374@0x0374:
+  get_slot_meseta                 r102
+  jmpi_lt                         r102, 0x000003E8, label0378 /* 4EB0 */
+  leti                            r102, 0x000003E8
+  jmp                             label0379 /* 4F0F */
+  ret
+
+label0375@0x0375:
+  get_slot_meseta                 r102
+  jmpi_lt                         r102, 0x00002710, label0378 /* 4EB0 */
+  leti                            r102, 0x00002710
+  jmp                             label0379 /* 4F0F */
+  ret
+
+label0376@0x0376:
+  get_slot_meseta                 r102
+  jmpi_lt                         r102, 0x000186A0, label0378 /* 4EB0 */
+  leti                            r102, 0x000186A0
+  jmp                             label0379 /* 4F0F */
+  ret
+
+label0377@0x0377:
+  arg_pushl                       0x00000418
+  arg_pushs                       "なんだ？"
+  message                         ...
+  arg_pushs                       "一度、やると言ったのに\n止めるのか。"
+  add_msg                         ...
+  arg_pushs                       "そういうヤツは\nなにやっても失敗するぞ。"
+  add_msg                         ...
+  mesend
+  ret
+
+label0378@0x0378:
+  arg_pushl                       0x00000418
+  arg_pushs                       "なんだ？"
+  message                         ...
+  arg_pushs                       "払うといった額のメセタを\n満たしてないのか？"
+  add_msg                         ...
+  arg_pushs                       "冷やかしならお断りだよ。"
+  add_msg                         ...
+  mesend
+  ret
+
+label0379@0x0379:
+  get_client_id                   r100
+  let                             r103, r100
+  let                             r104, r102
+  clear                           r105
+  take_slot_meseta                r103-r104, r105
+  jmpi_eq                         r105, 0x00000000, label0378 /* 4EB0 */
+  arg_pushl                       0x00000418
+  arg_pushs                       "では、いクぞ。"
+  message                         ...
+  arg_pushs                       "いいモンが当たる様に\n念じるんだな。"
+  add_msg                         ...
+  mesend
+  clear                           r100
+
+label037A@0x037A:
+  arg_pushl                       0x00000010
+  se                              ...
+  sync
+  sync
+  sync
+  sync
+  sync
+  sync
+  sync
+  sync
+  sync
+  sync
+  sync
+  sync
+  sync
+  sync
+  addi                            r100, 0x0000000F
+  jmpi_le                         r100, 0x0000005A, label037A /* 4F67 */
+  arg_pushr                       r101
+  bb_send_6xE2                    ...
+  clear                           r106
+  clear                           r100
+
+label037B@0x037B:
+  sync
+  bb_get_6xE3_status              r106
+  jmpi_eq                         r106, 0x00000001, label037C /* 4FCD */
+  jmpi_eq                         r106, 0x00000002, label037D /* 50CD */
+  addi                            r100, 0x00000001
+  jmpi_le                         r100, 0x0000012C, label037B /* 4F91 */
+  arg_pushs                       "サーバーセンドエラー"
+  window_msg                      ...
+  winend
+  ret
+
+label037C@0x037C:
+  sync
+  arg_pushl                       0x00000001
+  bgm                             ...
+  arg_pushs                       "<bk>\n<color 4><meseta_slot_prize><color 0>を入手した！"
+  window_msg                      ...
+  winend
+  sync
+  arg_pushl                       0x00000418
+  arg_pushs                       "ほらよ！\nもっていきな！"
+  message                         ...
+  arg_pushs                       "ロクなモンが当たらなくても\nそのうちイイものが"
+  add_msg                         ...
+  arg_pushs                       "必ず当たる！"
+  add_msg                         ...
+  arg_pushs                       "カモしれないからな、\nまたやってくれよな。"
+  add_msg                         ...
+  mesend
+  ret
+
+label037D@0x037D:
+  arg_pushs                       "コマンド実行エラー"
+  window_msg                      ...
+  winend
+  ret
+
+label000F@0x000F:
+  arg_pushl                       0x000003E9
+  arg_pushs                       "私が 総督のタイレルだ。"
+  message                         ...
+  arg_pushs                       "…なにか 用か？"
+  add_msg                         ...
+  arg_pushs                       "用があるなら、そこのモモカを\n通してくれたまえ。"
+  add_msg                         ...
+  mesend
+  gset                            0x000B
+  ret
+
+label0013@0x0013:
+  arg_pushl                       0x000003E9
+  arg_pushs                       "私が 総督のタイレルだ。"
+  message                         ...
+  arg_pushs                       "調子は どうだ？"
+  add_msg                         ...
+  arg_pushs                       "君には 期待しているんでな。"
+  add_msg                         ...
+  arg_pushs                       "依頼の方、よろしくたのむぞ。"
+  add_msg                         ...
+  mesend
+  ret
+
+label001C@0x001C:
+  arg_pushl                       0x000003EA
+  arg_pushs                       "こんにちは。\n私はパイオニア２総督府に\n所属する事務官。"
+  message                         ...
+  arg_pushs                       "秘書のアイリーンです。"
+  add_msg                         ...
+  arg_pushs                       "なにか ご用でしょうか？"
+  add_msg                         ...
+  arg_pushs                       "ご用でしたら 受付のモモカに\nお話しください。"
+  add_msg                         ...
+  mesend
+  ret
+
+label001D@0x001D:
+  arg_pushl                       0x000003EA
+  arg_pushs                       "こんにちは。\n調子のほうは どうですか？"
+  message                         ...
+  arg_pushs                       "みなさんが あなたに\n期待しています。"
+  add_msg                         ...
+  arg_pushs                       "依頼をどうか\nよろしくお願いします。"
+  add_msg                         ...
+  mesend
+  ret
+
+label0027@0x0027:
+  arg_pushl                       0x000003EB
+  arg_pushs                       "新しく来た受付員ですが、\nこんな時期に ここに\n配属されるなんて 大変そうですね。"
+  message                         ...
+  mesend
+  ret
+
+label0028@0x0028:
+  arg_pushl                       0x000003EB
+  arg_pushs                       "あなた方の活躍は\n聞いております。"
+  message                         ...
+  arg_pushs                       "この調子で\n頑張ってください。"
+  add_msg                         ...
+  mesend
+  ret
+
+label003A@0x003A:
+  arg_pushl                       0x000003EC
+  arg_pushs                       "例の爆発事故のおかげで\n忙しくなり、総督府も新しく人を\n雇うことになった。"
+  message                         ...
+  arg_pushs                       "そこにいる 受付担当の彼女が\nその１人というわけだ。"
+  add_msg                         ...
+  mesend
+  ret
+
+label003B@0x003B:
+  arg_pushl                       0x000003EC
+  arg_pushs                       "我々も忙しい。"
+  message                         ...
+  arg_pushs                       "ここで無駄口を\nたたいている暇があるなら、\nさっさと依頼を 受けたらどうだ？"
+  add_msg                         ...
+  mesend
+  ret
+
+label0068@0x0068:
+  arg_pushl                       0x000003F8
+  arg_pushs                       "ちょっと小耳に\n挟んだ噂なんだけど、"
+  message                         ...
+  arg_pushs                       "総督府が 優秀なハンターズを\n集めて、なにかを\n依頼しているらしいわ。"
+  add_msg                         ...
+  arg_pushs                       "本当かしら？"
+  add_msg                         ...
+  mesend
+  ret
+
+label0072@0x0072:
+  arg_pushl                       0x000003FA
+  arg_pushs                       "疲れて傷ついた身体は\nメディカルセンターで リフレッシュ！"
+  message                         ...
+  arg_pushs                       "そこのお姉さんに 話しかければ、\nちょっぴりメセタが 必要だけど\n回復させてもらえるわ！"
+  add_msg                         ...
+  mesend
+  ret
+  nop
+  nop

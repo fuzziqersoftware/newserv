@@ -1,0 +1,96 @@
+###########################################################
+
+NPC: Coren Tsu - The Wanderer
+AREAS: Pioneer 2
+
+Translations by: apexseals (discord: apexseals)
+Proofing & Debugging by: nolrinale (github.com/nolrinale)
+
+###########################################################
+
+presentation:
+
+I am Coren Tsu, a wandering merchant,
+you could say.
+
+Please take some time to look at
+the rare and wonderous goods
+I have been collecting.
+
+If you spend a little meseta,
+you could win a wonderful prize.
+
+Well? Wanna try?
+
+
+You may win,
+you may lose.
+
+But if you don't win,
+don't take it out on me.
+
+That's just the way
+gambling is, yes?
+
+Well then, how much
+meseta do you want to pay?
+
+As long as you pay me,
+I'll give you a great service.
+
+
+Huh?
+
+That's too bad...
+
+Well, these kind of things usually
+have a chance to lose money. 
+
+Let's keep this discreet.
+If you feel up to it, talk to me again.
+
+
+It seems you have
+too many items.
+
+First, go and
+organize your items,
+
+Then speak to me again.
+
+What?
+
+You said you'd try,
+then you said no.
+
+People like that
+fail at everything.
+
+
+What the...?
+
+You don't have the 
+meseta to pay me?
+
+I won't work with such
+cold hearted people.
+
+
+Alright, let's do it.
+
+You better pray
+for something good...
+
+
+Look here!
+Take it!
+
+Even if you had bad luck,
+something good will come out of it.
+
+You'll win someday!
+
+In case you want to try again,
+come back to me once more.
+
+

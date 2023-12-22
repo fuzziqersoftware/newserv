@@ -1,0 +1,1994 @@
+########################################################################
+           PSOBB Localization Notes for English/Japanese Mode
+########################################################################
+
+PSOBB has an internal switch which allows the client to be set into 
+English or Japanese modes, this was the hidden switch Sega of America
+used to localize the game from Japanese.
+
+To enable it open the decompressed psobb.exe (it should be about 7MB) 
+in a hex editor and try the following:
+
+search for: 
+
+E82B91F4FF83F8017506B805000000C385C0750333C0C3B801000000C3
+
+replace with:
+
+B800000000C39090909090909090909090909090909090909090909090 for Japanese
+B801000000C39090909090909090909090909090909090909090909090 for English
+
+This has been tested mostly with an untouched Tethealla Client
+
+
+Usually for testing we recommend creating just the English exe to play
+in English while keeping the original to play in Japanese (for testing 
+purposes) so you can have 2 exes named like:
+
+PSOBB_LOCAL_EN.exe (For English)
+PSOBB_LOCAL_JP.exe (for Japanese)  
+
+
+You will notice the client might crash upon starting the game, this is 
+because the client is now expecting the localized english files, these
+files usually end with "_e", so for a correct setup please source the
+required files from the "usbb-resources" folder in this repo and use
+the following tree as a reference.
+
+Make sure to delete any extra files in your "data" folder which are 
+not in the list at the end of this file.
+
+########################################################################
+DATA FOLDER TREE:
+########################################################################
+
+data/
+├── bm_ene_astark.bml
+├── bm_ene_boota.bml
+├── bm_ene_boss09.bml
+├── bm_ene_boss09_tentacle.bml
+├── bm_ene_dolphon.bml
+├── bm_ene_girtablulu.bml
+├── bm_ene_golan.bml
+├── bm_ene_lappy_es4.bml
+├── bm_ene_lappy_hw4.bml
+├── bm_ene_lappy_xs4.bml
+├── bm_ene_melissa.bml
+├── bm_ene_re7_berura_a.bml
+├── bm_ene_re7_berura.bml
+├── bm_ene_sandlappy.bml
+├── bm_ene_yowie.bml
+├── bm_ene_zu.bml
+├── bm_obj_ep4_bee_a.bml
+├── bm_obj_ep4_bee_b.bml
+├── bm_obj_ep4_bee_nest.bml
+├── bm_obj_ep4_bohu.bml
+├── bm_obj_ep4_boss09_bossiwa.bml
+├── bm_obj_ep4_boss09_core.bml
+├── bm_obj_ep4_boss09_core_tex.xvm
+├── bm_obj_ep4_boss09_kabe01.bml
+├── bm_obj_ep4_boss09_kabe02.bml
+├── bm_obj_ep4_boss09_kabe03.bml
+├── bm_obj_ep4_boss09_kabe.bml
+├── bm_obj_ep4_boss09_laser.bml
+├── bm_obj_ep4_boss09_missile.bml
+├── bm_obj_ep4_boss09_nemesis.bml
+├── bm_obj_ep4_boss09_ptcl_anim.bml
+├── bm_obj_ep4_boss09_sandsonic.bml
+├── bm_obj_ep4_boss09_sonic.bml
+├── bm_obj_ep4_boss09_storm.bml
+├── bm_obj_ep4_container.bml
+├── bm_obj_ep4_container_red.bml
+├── bm_obj_ep4_crystal.bml
+├── bm_obj_ep4_door.bml
+├── bm_obj_ep4_flower.bml
+├── bm_obj_ep4_iwa_crater.bml
+├── bm_obj_ep4_iwa_crater_brk.bml
+├── bm_obj_ep4_iwa_desert.bml
+├── bm_obj_ep4_kogomi.bml
+├── bm_obj_ep4_nameko.bml
+├── bm_obj_ep4_sabotenA.bml
+├── bm_obj_ep4_sakana.bml
+├── bm_obj_ep4_syounyuuseki.bml
+├── bm_obj_ep4_umiyuri.bml
+├── cam_boss09_demo.rel
+├── data.gsl
+├── dummy.txt
+├── eff_boss09_saint_emilion.dat
+├── ending_jp.pae
+├── fogentry.dat
+├── ggerr_ja.bin
+├── help0-0-en.png
+├── help0-0-ja.png
+├── help0-1-en.png
+├── help0-1-ja.png
+├── help0-2-en.png
+├── help0-2-ja.png
+├── help0-3-en.png
+├── help0-3-ja.png
+├── help0-4-en.png
+├── help0-4-ja.png
+├── help0-5-en.png
+├── help0-5-ja.png
+├── help0-7-en.png
+├── help0-7-ja.png
+├── help1-0-en.png
+├── help1-0-ja.png
+├── help1-1-en.png
+├── help1-1-ja.png
+├── help2-0-en.png
+├── help2-0-ja.png
+├── help_city_en.lst
+├── help_city_ja.lst
+├── help_lobby_en.lst
+├── help_lobby_ja.lst
+├── help_prompt_city_en.lst
+├── help_prompt_city_ja.lst
+├── help_prompt_lobby_en.lst
+├── help_prompt_lobby_ja.lst
+├── indirect_base.xvr
+├── indtex.xvr
+├── ItemKT.afs
+├── ItemKTep4.afs
+├── ItemModel.afs
+├── ItemModelEp4.afs
+├── ItemTexture.afs
+├── ItemTextureEp4.afs
+├── lightentry.bin
+├── lobby_billboard.prc
+├── lobby_billboard.xvm
+├── LogoEP4.prs
+├── map_boss04_offo.dat
+├── map_boss06_offo.dat
+├── map_boss09_00_00e.dat
+├── map_boss09_00_00.evt
+├── map_boss09_00_00o.dat
+├── map_boss09_00d.dat
+├── map_city00_00e.dat
+├── map_city00_00e_s.dat
+├── map_city00_00o.dat
+├── map_city00_00o_s.dat
+├── map_city02_00_00e.dat
+├── map_city02_00_00e_s.dat
+├── map_city02_00_00o.dat
+├── map_city02_00_00o_s.dat
+├── map_city02_00d.dat
+├── map_city02_off_e.bin
+├── map_city02_off_j.bin
+├── map_city02_on_e.bin
+├── map_city02_on_j.bin
+├── map_city_on_e.bin
+├── map_city_on_j.bin
+├── map_crater01_00_00e.dat
+├── map_crater01_00_00.evt
+├── map_crater01_00_00o.dat
+├── map_crater01_00_01e.dat
+├── map_crater01_00_01.evt
+├── map_crater01_00_01o.dat
+├── map_crater01_00_02e.dat
+├── map_crater01_00_02.evt
+├── map_crater01_00_02o.dat
+├── map_crater01_00d.dat
+├── map_desert01_00_00e.dat
+├── map_desert01_00_00.evt
+├── map_desert01_00_00o.dat
+├── map_desert01_00d.dat
+├── map_desert01_01_00e.dat
+├── map_desert01_01_00.evt
+├── map_desert01_01_00o.dat
+├── map_desert01_01d.dat
+├── map_desert01_02_00e.dat
+├── map_desert01_02_00.evt
+├── map_desert01_02_00o.dat
+├── map_desert01_02d.dat
+├── map_desert02_00_00e.dat
+├── map_desert02_00_00.evt
+├── map_desert02_00_00o.dat
+├── map_desert02_00_01e.dat
+├── map_desert02_00_01.evt
+├── map_desert02_00_01o.dat
+├── map_desert02_00_02e.dat
+├── map_desert02_00_02.evt
+├── map_desert02_00_02o.dat
+├── map_desert02_00d.dat
+├── map_desert03_00_00e.dat
+├── map_desert03_00_00.evt
+├── map_desert03_00_00o.dat
+├── map_desert03_00d.dat
+├── map_desert03_01_00e.dat
+├── map_desert03_01_00.evt
+├── map_desert03_01_00o.dat
+├── map_desert03_01d.dat
+├── map_desert03_02_00e.dat
+├── map_desert03_02_00.evt
+├── map_desert03_02_00o.dat
+├── map_desert03_02d.dat
+├── map_jungle_j.bin
+├── map_jungle_j_u.bin
+├── map_labo00_00e.dat
+├── map_labo00_00e_s.dat
+├── map_labo00_00o.dat
+├── map_labo00_00_offo.dat
+├── map_labo00_00_offo_s.dat
+├── map_labo00_00o_s.dat
+├── map_labo_on_b.bin
+├── map_labo_on_b_u.bin
+├── map_labo_on_e.bin
+├── map_labo_on_e_u.bin
+├── map_labo_on_f.bin
+├── map_labo_on_f_u.bin
+├── map_labo_on_g.bin
+├── map_labo_on_g_u.bin
+├── map_labo_on_j.bin
+├── map_labo_on_j_u.bin
+├── map_labo_on_k.bin
+├── map_labo_on_k_u.bin
+├── map_labo_on_s.bin
+├── map_labo_on_s_u.bin
+├── map_labo_on_t.bin
+├── map_labo_on_t_u.bin
+├── map_lobby_green_be00o.dat
+├── map_lobby_red_be00o.dat
+├── map_lobby_yellow_be00o.dat
+├── map_ruin_j.bin
+├── map_ruin_j_u.bin
+├── map_seabed_j.bin
+├── map_seabed_j_u.bin
+├── map_space_j.bin
+├── map_space_j_u.bin
+├── map_wilds01_00_00e.dat
+├── map_wilds01_00_00.evt
+├── map_wilds01_00_00o.dat
+├── map_wilds01_00_01e.dat
+├── map_wilds01_00_01.evt
+├── map_wilds01_00_01o.dat
+├── map_wilds01_00_02e.dat
+├── map_wilds01_00_02.evt
+├── map_wilds01_00_02o.dat
+├── map_wilds01_01_00e.dat
+├── map_wilds01_01_00o.dat
+├── map_wilds01_01_01e.dat
+├── map_wilds01_01_01.evt
+├── map_wilds01_01_01o.dat
+├── map_wilds01_01_02e.dat
+├── map_wilds01_01_02.evt
+├── map_wilds01_01_02o.dat
+├── map_wilds01_02_00e.dat
+├── map_wilds01_02_00.evt
+├── map_wilds01_02_00o.dat
+├── map_wilds01_02_01e.dat
+├── map_wilds01_02_01.evt
+├── map_wilds01_02_01o.dat
+├── map_wilds01_02_02e.dat
+├── map_wilds01_02_02.evt
+├── map_wilds01_02_02o.dat
+├── map_wilds01_03_00e.dat
+├── map_wilds01_03_00.evt
+├── map_wilds01_03_00o.dat
+├── map_wilds01_03_01e.dat
+├── map_wilds01_03_01.evt
+├── map_wilds01_03_01o.dat
+├── map_wilds01_03_02e.dat
+├── map_wilds01_03_02.evt
+├── map_wilds01_03_02o.dat
+├── newserv-test-bb.txt
+├── NpcApcMot.bml
+├── npcplayerchar.dat
+├── ogg
+│   ├── ADVR.ogg
+│   ├── BASS.ogg
+│   ├── CARNAVAL.ogg
+│   ├── CHARA.ogg
+│   ├── CHU_F.ogg
+│   ├── CITY.ogg
+│   ├── clear.ogg
+│   ├── CLEAR_ST.ogg
+│   ├── CUBE_ENDING_LOOP.ogg
+│   ├── CUBE_ENDING.ogg
+│   ├── CUBE_OPENING.ogg
+│   ├── DARK1.ogg
+│   ├── DARK2.ogg
+│   ├── DEATH.ogg
+│   ├── DELDEATH.ogg
+│   ├── DELO2.ogg
+│   ├── DELO.ogg
+│   ├── DELORURE.ogg
+│   ├── DFDEATH.ogg
+│   ├── DRADEATH.ogg
+│   ├── DRAGON2.ogg
+│   ├── DRAGON.ogg
+│   ├── DRAROAR.ogg
+│   ├── DREAMS_KIDS.ogg
+│   ├── DREAMS.ogg
+│   ├── DUEL1.ogg
+│   ├── DUEL2.ogg
+│   ├── dummy.txt
+│   ├── EASTER.ogg
+│   ├── ED_PIANO.ogg
+│   ├── ENDING_LOOP.ogg
+│   ├── ENDING.ogg
+│   ├── END.ogg
+│   ├── EP4_ENDING_FO.ogg
+│   ├── EP4_ENDING_LOOP.ogg
+│   ├── EPI1.ogg
+│   ├── EPI2.ogg
+│   ├── ESCAPE.ogg
+│   ├── ESTLA2.ogg
+│   ├── ESTRA.ogg
+│   ├── EVENT.ogg
+│   ├── FARLA2.ogg
+│   ├── FARLA.ogg
+│   ├── GOLDEATH.ogg
+│   ├── GOULA2.ogg
+│   ├── GOULA.ogg
+│   ├── GRYPHON.ogg
+│   ├── GUILD.ogg
+│   ├── HALL.ogg
+│   ├── HALLOWEEN.ogg
+│   ├── HEART2HEART_LOOP.ogg
+│   ├── HEARTS.ogg
+│   ├── InTheSPACESHIP_LOOP.ogg
+│   ├── JINGLEBELL.ogg
+│   ├── J_KANTEI.ogg
+│   ├── j_levelup.ogg
+│   ├── LABO.ogg
+│   ├── LIVE.ogg
+│   ├── LOBBY.ogg
+│   ├── LOSE.ogg
+│   ├── MAILA2.ogg
+│   ├── MAILA.ogg
+│   ├── MAMBO.ogg
+│   ├── MAP1.ogg
+│   ├── MAP2.ogg
+│   ├── MATTER.ogg
+│   ├── MEDICAL.ogg
+│   ├── MILES.ogg
+│   ├── MINICLEAR.ogg
+│   ├── NOMAL.ogg
+│   ├── OPENING.ogg
+│   ├── OPEN.ogg
+│   ├── PAILA2.ogg
+│   ├── PAILA.ogg
+│   ├── pinnacles_LOOP.ogg
+│   ├── PROTO1.ogg
+│   ├── PROTO2.ogg
+│   ├── QUEST.ogg
+│   ├── REILA2.ogg
+│   ├── REILA.ogg
+│   ├── ReunionSystem_LOOP.ogg
+│   ├── SHOP.ogg
+│   ├── slbgm_ancient.ogg
+│   ├── slbgm_boss09b.ogg
+│   ├── slbgm_boss09.ogg
+│   ├── slbgm_cave.ogg
+│   ├── slbgm_crater.ogg
+│   ├── slbgm_dark.ogg
+│   ├── slbgm_desert.ogg
+│   ├── slbgm_forest.ogg
+│   ├── slbgm_jungle.ogg
+│   ├── slbgm_machine.ogg
+│   ├── slbgm_ruin.ogg
+│   ├── slbgm_seabed.ogg
+│   ├── slbgm_space.ogg
+│   ├── slbgm_wilds.ogg
+│   ├── SMILE.ogg
+│   ├── SOUTOKU.ogg
+│   ├── START.ogg
+│   ├── strangeblue_LOOP.ogg
+│   ├── T1.ogg
+│   ├── T2.ogg
+│   ├── test_bgm.ogg
+│   ├── test_se.ogg
+│   ├── TITLE.ogg
+│   ├── VALENTINE.ogg
+│   ├── VOL_OPT1.ogg
+│   ├── VOL_OPT2.ogg
+│   ├── vssver.scc
+│   ├── WEDDING.ogg
+│   ├── WIN.ogg
+│   └── ZARATHUSTRA.ogg
+├── openning_e.pae
+├── openning_j.pae
+├── plAbdy00.nj
+├── plAcap06.nj
+├── plAhai00.nj
+├── plAhai01.nj
+├── plAhai02.nj
+├── plAhai03.nj
+├── plAhai04.nj
+├── plAhai05.nj
+├── plAhai06.nj
+├── plAhai07.nj
+├── plAhai08.nj
+├── plAhai09.nj
+├── plAhed00.nj
+├── plAnj.bml
+├── plAsmp.rel
+├── plAtex.afs
+├── plBbdy00.nj
+├── plBhai00.nj
+├── plBhai01.nj
+├── plBhai02.nj
+├── plBhai03.nj
+├── plBhai04.nj
+├── plBhai05.nj
+├── plBhai06.nj
+├── plBhai07.nj
+├── plBhai08.nj
+├── plBhai09.nj
+├── plBhed00.nj
+├── plBnj.bml
+├── plBsmp.rel
+├── plBtex.afs
+├── plCbdy00.nj
+├── plChed00.nj
+├── plChed01.nj
+├── plChed02.nj
+├── plChed03.nj
+├── plChed04.nj
+├── plCnj.bml
+├── plCsmp.rel
+├── plCtex.afs
+├── plDbdy00.nj
+├── plDcap00.nj
+├── plDcap01.nj
+├── plDcap02.nj
+├── plDcap03.nj
+├── plDcap04.nj
+├── plDcap05.nj
+├── plDcap06.nj
+├── plDcap07.nj
+├── plDcap08.nj
+├── plDcap09.nj
+├── plDhai00.nj
+├── plDhai01.nj
+├── plDhai02.nj
+├── plDhai03.nj
+├── plDhai04.nj
+├── plDhai05.nj
+├── plDhai06.nj
+├── plDhai07.nj
+├── plDhai08.nj
+├── plDhai09.nj
+├── plDhed00.nj
+├── plDnj.bml
+├── plDsmp.rel
+├── plDtex.afs
+├── plEbdy00.nj
+├── plEhed00.nj
+├── plEhed01.nj
+├── plEhed02.nj
+├── plEhed03.nj
+├── plEhed04.nj
+├── plEnj.bml
+├── plEsmp.rel
+├── plEtex.afs
+├── plFbdy00.nj
+├── plFhed00.nj
+├── plFhed01.nj
+├── plFhed02.nj
+├── plFhed03.nj
+├── plFhed04.nj
+├── plFnj.bml
+├── plFsmp.rel
+├── plFtex.afs
+├── plGbdy00.nj
+├── plGcap00.nj
+├── plGcap01.nj
+├── plGcap02.nj
+├── plGcap03.nj
+├── plGcap04.nj
+├── plGcap05.nj
+├── plGcap06.nj
+├── plGcap07.nj
+├── plGcap08.nj
+├── plGcap09.nj
+├── plGhai00.nj
+├── plGhai01.nj
+├── plGhai02.nj
+├── plGhai03.nj
+├── plGhai04.nj
+├── plGhai05.nj
+├── plGhai06.nj
+├── plGhai07.nj
+├── plGhai08.nj
+├── plGhai09.nj
+├── plGhed00.nj
+├── plGnj.bml
+├── plGsmp.rel
+├── plGtex.afs
+├── plHbdy00.nj
+├── plHcap00.nj
+├── plHcap01.nj
+├── plHcap02.nj
+├── plHcap03.nj
+├── plHcap04.nj
+├── plHcap05.nj
+├── plHcap06.nj
+├── plHcap07.nj
+├── plHcap08.nj
+├── plHcap09.nj
+├── plHhai00.nj
+├── plHhai01.nj
+├── plHhai02.nj
+├── plHhai03.nj
+├── plHhai04.nj
+├── plHhai05.nj
+├── plHhai06.nj
+├── plHhai07.nj
+├── plHhai08.nj
+├── plHhai09.nj
+├── plHhed00.nj
+├── plHnj.bml
+├── plHsmp.rel
+├── plHtex.afs
+├── plIbdy00.nj
+├── plIcap00.nj
+├── plIcap01.nj
+├── plIcap02.nj
+├── plIcap03.nj
+├── plIcap04.nj
+├── plIcap05.nj
+├── plIcap06.nj
+├── plIcap07.nj
+├── plIcap08.nj
+├── plIcap09.nj
+├── plIhai00.nj
+├── plIhai01.nj
+├── plIhai02.nj
+├── plIhai03.nj
+├── plIhai04.nj
+├── plIhai05.nj
+├── plIhai06.nj
+├── plIhai07.nj
+├── plIhai08.nj
+├── plIhai09.nj
+├── plIhed00.nj
+├── plInj.bml
+├── plIsmp.rel
+├── plItex.afs
+├── plJbdy00.nj
+├── plJhed00.nj
+├── plJhed01.nj
+├── plJhed02.nj
+├── plJhed03.nj
+├── plJhed04.nj
+├── plJnj.bml
+├── plJsmp.rel
+├── plJtex.afs
+├── plKbdy00.nj
+├── plKcap00.nj
+├── plKcap01.nj
+├── plKcap02.nj
+├── plKcap03.nj
+├── plKcap04.nj
+├── plKcap05.nj
+├── plKcap06.nj
+├── plKcap07.nj
+├── plKcap08.nj
+├── plKcap09.nj
+├── plKhai00.nj
+├── plKhai01.nj
+├── plKhai02.nj
+├── plKhai03.nj
+├── plKhai04.nj
+├── plKhai05.nj
+├── plKhai06.nj
+├── plKhai07.nj
+├── plKhai08.nj
+├── plKhai09.nj
+├── plKhed00.nj
+├── plKnj.bml
+├── plKsmp.rel
+├── plKtex.afs
+├── plLbdy00.nj
+├── plLcap00.nj
+├── plLcap01.nj
+├── plLcap02.nj
+├── plLcap03.nj
+├── plLcap04.nj
+├── plLcap05.nj
+├── plLcap06.nj
+├── plLcap07.nj
+├── plLcap08.nj
+├── plLcap09.nj
+├── plLhai00.nj
+├── plLhai01.nj
+├── plLhai02.nj
+├── plLhai03.nj
+├── plLhai04.nj
+├── plLhai05.nj
+├── plLhai06.nj
+├── plLhai07.nj
+├── plLhai08.nj
+├── plLhai09.nj
+├── plLhed00.nj
+├── plLnj.bml
+├── plLsmp.rel
+├── plLtex.afs
+├── plObdy00.nj
+├── plOhai00.nj
+├── plOhed00.nj
+├── plOnj.bml
+├── plOsmp.rel
+├── plOtex.afs
+├── plPbdy00.nj
+├── plPhai00.nj
+├── plPhed00.nj
+├── plPnj.bml
+├── plPsmp.rel
+├── plPtex.afs
+├── plQbdy00.nj
+├── plQhai00.nj
+├── plQhed00.nj
+├── plQnj.bml
+├── plQsmp.rel
+├── plQtex.afs
+├── plRbdy00.nj
+├── plRhai00.nj
+├── plRhed00.nj
+├── plRnj.bml
+├── plRsmp.rel
+├── plRtex.afs
+├── plSbdy00.nj
+├── plShai00.nj
+├── plShed00.nj
+├── plSnj.bml
+├── plSsmp.rel
+├── plStex.afs
+├── plTbdy00.nj
+├── plThai00.nj
+├── plThed00.nj
+├── plTnj.bml
+├── plTsmp.rel
+├── plTtex.afs
+├── plUbdy00.nj
+├── plUhed00.nj
+├── plUnj.bml
+├── plUsmp.rel
+├── plUtex.afs
+├── plVbdy00.nj
+├── plVhed00.nj
+├── plVnj.bml
+├── plVsmp.rel
+├── plVtex.afs
+├── plWbdy00.nj
+├── plWhed00.nj
+├── plWnj.bml
+├── plWsmp.rel
+├── plWtex.afs
+├── plXbdy00.nj
+├── plXhed00.nj
+├── plXnj.bml
+├── plXsmp.rel
+├── plXtex.afs
+├── plYbdy00.nj
+├── plYhed00.nj
+├── plYnj.bml
+├── plYsmp.rel
+├── plYtex.afs
+├── plZsmpnj.afs
+├── quickref_ja.lst
+├── scene
+│   ├── dummy.txt
+│   ├── map_aancient01_00bm.bin
+│   ├── map_aancient01_00c.rel
+│   ├── map_aancient01_00n.rel
+│   ├── map_aancient01_00r.rel
+│   ├── map_aancient01_00s.nj
+│   ├── map_aancient01_00s.xj
+│   ├── map_aancient01_00s.xvm
+│   ├── map_aancient01_00.tam
+│   ├── map_aancient01_01bm.bin
+│   ├── map_aancient01_01c.rel
+│   ├── map_aancient01_01n.rel
+│   ├── map_aancient01_01r.rel
+│   ├── map_aancient01_01s.xj
+│   ├── map_aancient01_01s.xvm
+│   ├── map_aancient01_01.tam
+│   ├── map_aancient01_02bm.bin
+│   ├── map_aancient01_02c.rel
+│   ├── map_aancient01_02n.rel
+│   ├── map_aancient01_02r.rel
+│   ├── map_aancient01_02s.xj
+│   ├── map_aancient01_02s.xvm
+│   ├── map_aancient01_02.tam
+│   ├── map_aancient01_03bm.bin
+│   ├── map_aancient01_03c.rel
+│   ├── map_aancient01_03n.rel
+│   ├── map_aancient01_03r.rel
+│   ├── map_aancient01_03s.xj
+│   ├── map_aancient01_03s.xvm
+│   ├── map_aancient01_03.tam
+│   ├── map_aancient01_04bm.bin
+│   ├── map_aancient01_04c.rel
+│   ├── map_aancient01_04n.rel
+│   ├── map_aancient01_04r.rel
+│   ├── map_aancient01_04s.xj
+│   ├── map_aancient01_04s.xvm
+│   ├── map_aancient01_04.tam
+│   ├── map_aancient01.xvm
+│   ├── map_aancient02_00bm.bin
+│   ├── map_aancient02_00c.rel
+│   ├── map_aancient02_00n.rel
+│   ├── map_aancient02_00r.rel
+│   ├── map_aancient02_00s.xvm
+│   ├── map_aancient02_01bm.bin
+│   ├── map_aancient02_01c.rel
+│   ├── map_aancient02_01n.rel
+│   ├── map_aancient02_01r.rel
+│   ├── map_aancient02_02bm.bin
+│   ├── map_aancient02_02c.rel
+│   ├── map_aancient02_02n.rel
+│   ├── map_aancient02_02r.rel
+│   ├── map_aancient02_03bm.bin
+│   ├── map_aancient02_03c.rel
+│   ├── map_aancient02_03n.rel
+│   ├── map_aancient02_03r.rel
+│   ├── map_aancient02_04bm.bin
+│   ├── map_aancient02_04c.rel
+│   ├── map_aancient02_04n.rel
+│   ├── map_aancient02_04r.rel
+│   ├── map_aancient02.xvm
+│   ├── map_aancient03_00bm.bin
+│   ├── map_aancient03_00c.rel
+│   ├── map_aancient03_00n.rel
+│   ├── map_aancient03_00r.rel
+│   ├── map_aancient03_00s.xvm
+│   ├── map_aancient03_01bm.bin
+│   ├── map_aancient03_01c.rel
+│   ├── map_aancient03_01n.rel
+│   ├── map_aancient03_01r.rel
+│   ├── map_aancient03_02bm.bin
+│   ├── map_aancient03_02c.rel
+│   ├── map_aancient03_02n.rel
+│   ├── map_aancient03_02r.rel
+│   ├── map_aancient03_03bm.bin
+│   ├── map_aancient03_03c.rel
+│   ├── map_aancient03_03n.rel
+│   ├── map_aancient03_03r.rel
+│   ├── map_aancient03_04bm.bin
+│   ├── map_aancient03_04c.rel
+│   ├── map_aancient03_04n.rel
+│   ├── map_aancient03_04r.rel
+│   ├── map_aancient03.xvm
+│   ├── map_aancient04_00s.xvm
+│   ├── map_aancient05_00s.xvm
+│   ├── map_aboss01c.rel
+│   ├── map_aboss01n.rel
+│   ├── map_aboss01r.rel
+│   ├── map_aboss01.tam
+│   ├── map_aboss01.xvm
+│   ├── map_aboss02c.rel
+│   ├── map_aboss02n.rel
+│   ├── map_aboss02r.rel
+│   ├── map_aboss02.xvm
+│   ├── map_aboss03c.rel
+│   ├── map_aboss03n.rel
+│   ├── map_aboss03r.rel
+│   ├── map_aboss03.xvm
+│   ├── map_acave01_00bm.bin
+│   ├── map_acave01_00c.rel
+│   ├── map_acave01_00n.rel
+│   ├── map_acave01_00r.rel
+│   ├── map_acave01_00s.nj
+│   ├── map_acave01_00s.xj
+│   ├── map_acave01_00s.xvm
+│   ├── map_acave01_00.tam
+│   ├── map_acave01_01bm.bin
+│   ├── map_acave01_01c.rel
+│   ├── map_acave01_01n.rel
+│   ├── map_acave01_01r.rel
+│   ├── map_acave01_01s.nj
+│   ├── map_acave01_01s.xj
+│   ├── map_acave01_01s.xvm
+│   ├── map_acave01_01.tam
+│   ├── map_acave01_02bm.bin
+│   ├── map_acave01_02c.rel
+│   ├── map_acave01_02n.rel
+│   ├── map_acave01_02r.rel
+│   ├── map_acave01_02s.nj
+│   ├── map_acave01_02s.xj
+│   ├── map_acave01_02s.xvm
+│   ├── map_acave01_02.tam
+│   ├── map_acave01_03bm.bin
+│   ├── map_acave01_03c.rel
+│   ├── map_acave01_03n.rel
+│   ├── map_acave01_03r.rel
+│   ├── map_acave01_03s.nj
+│   ├── map_acave01_03s.xj
+│   ├── map_acave01_03s.xvm
+│   ├── map_acave01_03.tam
+│   ├── map_acave01_04bm.bin
+│   ├── map_acave01_04c.rel
+│   ├── map_acave01_04n.rel
+│   ├── map_acave01_04r.rel
+│   ├── map_acave01_04s.nj
+│   ├── map_acave01_04s.xj
+│   ├── map_acave01_04s.xvm
+│   ├── map_acave01_04.tam
+│   ├── map_acave01_05c.rel
+│   ├── map_acave01_05n.rel
+│   ├── map_acave01_05r.rel
+│   ├── map_acave01_05s.nj
+│   ├── map_acave01_05s.xj
+│   ├── map_acave01_05s.xvm
+│   ├── map_acave01_05.tam
+│   ├── map_acave01.xvm
+│   ├── map_acave02_00bm.bin
+│   ├── map_acave02_00c.rel
+│   ├── map_acave02_00n.rel
+│   ├── map_acave02_00r.rel
+│   ├── map_acave02_00s.nj
+│   ├── map_acave02_00s.xj
+│   ├── map_acave02_00s.xvm
+│   ├── map_acave02_00.tam
+│   ├── map_acave02_01bm.bin
+│   ├── map_acave02_01c.rel
+│   ├── map_acave02_01n.rel
+│   ├── map_acave02_01r.rel
+│   ├── map_acave02_01s.nj
+│   ├── map_acave02_01s.xj
+│   ├── map_acave02_01s.xvm
+│   ├── map_acave02_01.tam
+│   ├── map_acave02_02bm.bin
+│   ├── map_acave02_02c.rel
+│   ├── map_acave02_02n.rel
+│   ├── map_acave02_02r.rel
+│   ├── map_acave02_02s.nj
+│   ├── map_acave02_02s.xj
+│   ├── map_acave02_02s.xvm
+│   ├── map_acave02_02.tam
+│   ├── map_acave02_03bm.bin
+│   ├── map_acave02_03c.rel
+│   ├── map_acave02_03n.rel
+│   ├── map_acave02_03r.rel
+│   ├── map_acave02_03s.nj
+│   ├── map_acave02_03s.xj
+│   ├── map_acave02_03s.xvm
+│   ├── map_acave02_03.tam
+│   ├── map_acave02_04bm.bin
+│   ├── map_acave02_04c.rel
+│   ├── map_acave02_04n.rel
+│   ├── map_acave02_04r.rel
+│   ├── map_acave02_04s.nj
+│   ├── map_acave02_04s.xj
+│   ├── map_acave02_04s.xvm
+│   ├── map_acave02_04.tam
+│   ├── map_acave02.xvm
+│   ├── map_acave03_00bm.bin
+│   ├── map_acave03_00c.rel
+│   ├── map_acave03_00n.rel
+│   ├── map_acave03_00r.rel
+│   ├── map_acave03_00s.nj
+│   ├── map_acave03_00s.xj
+│   ├── map_acave03_00s.xvm
+│   ├── map_acave03_00.tam
+│   ├── map_acave03_01bm.bin
+│   ├── map_acave03_01c.rel
+│   ├── map_acave03_01n.rel
+│   ├── map_acave03_01r.rel
+│   ├── map_acave03_01s.nj
+│   ├── map_acave03_01s.xj
+│   ├── map_acave03_01s.xvm
+│   ├── map_acave03_01.tam
+│   ├── map_acave03_02bm.bin
+│   ├── map_acave03_02c.rel
+│   ├── map_acave03_02n.rel
+│   ├── map_acave03_02r.rel
+│   ├── map_acave03_02s.nj
+│   ├── map_acave03_02s.xj
+│   ├── map_acave03_02s.xvm
+│   ├── map_acave03_02.tam
+│   ├── map_acave03_03bm.bin
+│   ├── map_acave03_03c.rel
+│   ├── map_acave03_03n.rel
+│   ├── map_acave03_03r.rel
+│   ├── map_acave03_03s.nj
+│   ├── map_acave03_03s.xj
+│   ├── map_acave03_03s.xvm
+│   ├── map_acave03_03.tam
+│   ├── map_acave03_04bm.bin
+│   ├── map_acave03_04c.rel
+│   ├── map_acave03_04n.rel
+│   ├── map_acave03_04r.rel
+│   ├── map_acave03_04s.nj
+│   ├── map_acave03_04s.xj
+│   ├── map_acave03_04s.xvm
+│   ├── map_acave03_04.tam
+│   ├── map_acave03_05c.rel
+│   ├── map_acave03_05n.rel
+│   ├── map_acave03_05r.rel
+│   ├── map_acave03_05s.nj
+│   ├── map_acave03_05s.xj
+│   ├── map_acave03_05s.xvm
+│   ├── map_acave03_05.tam
+│   ├── map_acave03.xvm
+│   ├── map_acity00_00c.rel
+│   ├── map_acity00_00n.rel
+│   ├── map_acity00_00.tam
+│   ├── map_acity00.xvm
+│   ├── map_aforest01bm.bin
+│   ├── map_aforest01c.rel
+│   ├── map_aforest01n.rel
+│   ├── map_aforest01r.rel
+│   ├── map_aforest01s.nj
+│   ├── map_aforest01s.xj
+│   ├── map_aforest01s.xvm
+│   ├── map_aforest01t.rel
+│   ├── map_aforest01.xvm
+│   ├── map_aforest02bm.bin
+│   ├── map_aforest02c.rel
+│   ├── map_aforest02n.rel
+│   ├── map_aforest02r.rel
+│   ├── map_aforest02s.nj
+│   ├── map_aforest02s.xj
+│   ├── map_aforest02s.xvm
+│   ├── map_aforest02.tam
+│   ├── map_aforest02.xvm
+│   ├── map_amachine01_00bm.bin
+│   ├── map_amachine01_00c.rel
+│   ├── map_amachine01_00nm.rel
+│   ├── map_amachine01_00n.rel
+│   ├── map_amachine01_00r.rel
+│   ├── map_amachine01_00s.nj
+│   ├── map_amachine01_00s.xj
+│   ├── map_amachine01_00s.xvm
+│   ├── map_amachine01_00.tam
+│   ├── map_amachine01_01bm.bin
+│   ├── map_amachine01_01c.rel
+│   ├── map_amachine01_01nm.rel
+│   ├── map_amachine01_01n.rel
+│   ├── map_amachine01_01r.rel
+│   ├── map_amachine01_01s.nj
+│   ├── map_amachine01_01s.xj
+│   ├── map_amachine01_01s.xvm
+│   ├── map_amachine01_01.tam
+│   ├── map_amachine01_02bm.bin
+│   ├── map_amachine01_02c.rel
+│   ├── map_amachine01_02nm.rel
+│   ├── map_amachine01_02n.rel
+│   ├── map_amachine01_02r.rel
+│   ├── map_amachine01_02s.nj
+│   ├── map_amachine01_02s.xj
+│   ├── map_amachine01_02s.xvm
+│   ├── map_amachine01_02.tam
+│   ├── map_amachine01_03bm.bin
+│   ├── map_amachine01_03c.rel
+│   ├── map_amachine01_03nm.rel
+│   ├── map_amachine01_03n.rel
+│   ├── map_amachine01_03r.rel
+│   ├── map_amachine01_03s.nj
+│   ├── map_amachine01_03s.xj
+│   ├── map_amachine01_03s.xvm
+│   ├── map_amachine01_03.tam
+│   ├── map_amachine01_04bm.bin
+│   ├── map_amachine01_04c.rel
+│   ├── map_amachine01_04nm.rel
+│   ├── map_amachine01_04n.rel
+│   ├── map_amachine01_04r.rel
+│   ├── map_amachine01_04s.nj
+│   ├── map_amachine01_04s.xj
+│   ├── map_amachine01_04s.xvm
+│   ├── map_amachine01_04.tam
+│   ├── map_amachine01_05c.rel
+│   ├── map_amachine01_05nm.rel
+│   ├── map_amachine01_05n.rel
+│   ├── map_amachine01_05r.rel
+│   ├── map_amachine01_05s.nj
+│   ├── map_amachine01_05s.xj
+│   ├── map_amachine01_05s.xvm
+│   ├── map_amachine01_05.tam
+│   ├── map_amachine01m.xvm
+│   ├── map_amachine01.xvm
+│   ├── map_amachine02_00bm.bin
+│   ├── map_amachine02_00c.rel
+│   ├── map_amachine02_00nm.rel
+│   ├── map_amachine02_00n.rel
+│   ├── map_amachine02_00r.rel
+│   ├── map_amachine02_00s.nj
+│   ├── map_amachine02_00s.xj
+│   ├── map_amachine02_00s.xvm
+│   ├── map_amachine02_00.tam
+│   ├── map_amachine02_01bm.bin
+│   ├── map_amachine02_01c.rel
+│   ├── map_amachine02_01nm.rel
+│   ├── map_amachine02_01n.rel
+│   ├── map_amachine02_01r.rel
+│   ├── map_amachine02_01s.nj
+│   ├── map_amachine02_01s.xj
+│   ├── map_amachine02_01s.xvm
+│   ├── map_amachine02_01.tam
+│   ├── map_amachine02_02bm.bin
+│   ├── map_amachine02_02c.rel
+│   ├── map_amachine02_02nm.rel
+│   ├── map_amachine02_02n.rel
+│   ├── map_amachine02_02r.rel
+│   ├── map_amachine02_02s.nj
+│   ├── map_amachine02_02s.xj
+│   ├── map_amachine02_02s.xvm
+│   ├── map_amachine02_02.tam
+│   ├── map_amachine02_03bm.bin
+│   ├── map_amachine02_03c.rel
+│   ├── map_amachine02_03nm.rel
+│   ├── map_amachine02_03n.rel
+│   ├── map_amachine02_03r.rel
+│   ├── map_amachine02_03s.nj
+│   ├── map_amachine02_03s.xj
+│   ├── map_amachine02_03s.xvm
+│   ├── map_amachine02_03.tam
+│   ├── map_amachine02_04bm.bin
+│   ├── map_amachine02_04c.rel
+│   ├── map_amachine02_04nm.rel
+│   ├── map_amachine02_04n.rel
+│   ├── map_amachine02_04r.rel
+│   ├── map_amachine02_04s.nj
+│   ├── map_amachine02_04s.xj
+│   ├── map_amachine02_04s.xvm
+│   ├── map_amachine02_04.tam
+│   ├── map_amachine02_05c.rel
+│   ├── map_amachine02_05nm.rel
+│   ├── map_amachine02_05n.rel
+│   ├── map_amachine02_05r.rel
+│   ├── map_amachine02_05s.nj
+│   ├── map_amachine02_05s.xj
+│   ├── map_amachine02_05s.xvm
+│   ├── map_amachine02_05.tam
+│   ├── map_amachine02m.xvm
+│   ├── map_amachine02.xvm
+│   ├── map_ancient01_00bm.bin
+│   ├── map_ancient01_00c.rel
+│   ├── map_ancient01_00n.rel
+│   ├── map_ancient01_00r.rel
+│   ├── map_ancient01_00s.nj
+│   ├── map_ancient01_00s.xj
+│   ├── map_ancient01_00s.xvm
+│   ├── map_ancient01_00.tam
+│   ├── map_ancient01_01bm.bin
+│   ├── map_ancient01_01c.rel
+│   ├── map_ancient01_01n.rel
+│   ├── map_ancient01_01r.rel
+│   ├── map_ancient01_01s.xj
+│   ├── map_ancient01_01s.xvm
+│   ├── map_ancient01_01.tam
+│   ├── map_ancient01_02bm.bin
+│   ├── map_ancient01_02c.rel
+│   ├── map_ancient01_02n.rel
+│   ├── map_ancient01_02r.rel
+│   ├── map_ancient01_02s.xj
+│   ├── map_ancient01_02s.xvm
+│   ├── map_ancient01_02.tam
+│   ├── map_ancient01_03bm.bin
+│   ├── map_ancient01_03c.rel
+│   ├── map_ancient01_03n.rel
+│   ├── map_ancient01_03r.rel
+│   ├── map_ancient01_03s.xj
+│   ├── map_ancient01_03s.xvm
+│   ├── map_ancient01_03.tam
+│   ├── map_ancient01_04bm.bin
+│   ├── map_ancient01_04c.rel
+│   ├── map_ancient01_04n.rel
+│   ├── map_ancient01_04r.rel
+│   ├── map_ancient01_04s.xj
+│   ├── map_ancient01_04s.xvm
+│   ├── map_ancient01_04.tam
+│   ├── map_ancient01.xvm
+│   ├── map_ancient02_00bm.bin
+│   ├── map_ancient02_00c.rel
+│   ├── map_ancient02_00n.rel
+│   ├── map_ancient02_00r.rel
+│   ├── map_ancient02_00s.xvm
+│   ├── map_ancient02_01bm.bin
+│   ├── map_ancient02_01c.rel
+│   ├── map_ancient02_01n.rel
+│   ├── map_ancient02_01r.rel
+│   ├── map_ancient02_02bm.bin
+│   ├── map_ancient02_02c.rel
+│   ├── map_ancient02_02n.rel
+│   ├── map_ancient02_02r.rel
+│   ├── map_ancient02_03bm.bin
+│   ├── map_ancient02_03c.rel
+│   ├── map_ancient02_03n.rel
+│   ├── map_ancient02_03r.rel
+│   ├── map_ancient02_04bm.bin
+│   ├── map_ancient02_04c.rel
+│   ├── map_ancient02_04n.rel
+│   ├── map_ancient02_04r.rel
+│   ├── map_ancient02.xvm
+│   ├── map_ancient03_00bm.bin
+│   ├── map_ancient03_00c.rel
+│   ├── map_ancient03_00n.rel
+│   ├── map_ancient03_00r.rel
+│   ├── map_ancient03_00s.xvm
+│   ├── map_ancient03_01bm.bin
+│   ├── map_ancient03_01c.rel
+│   ├── map_ancient03_01n.rel
+│   ├── map_ancient03_01r.rel
+│   ├── map_ancient03_02bm.bin
+│   ├── map_ancient03_02c.rel
+│   ├── map_ancient03_02n.rel
+│   ├── map_ancient03_02r.rel
+│   ├── map_ancient03_03bm.bin
+│   ├── map_ancient03_03c.rel
+│   ├── map_ancient03_03n.rel
+│   ├── map_ancient03_03r.rel
+│   ├── map_ancient03_04bm.bin
+│   ├── map_ancient03_04c.rel
+│   ├── map_ancient03_04n.rel
+│   ├── map_ancient03_04r.rel
+│   ├── map_ancient03.xvm
+│   ├── map_ancient04_00s.xvm
+│   ├── map_ancient05_00s.xvm
+│   ├── map_boss01c.rel
+│   ├── map_boss01n.rel
+│   ├── map_boss01r.rel
+│   ├── map_boss01sw.tam
+│   ├── map_boss01.xvm
+│   ├── map_boss02c.rel
+│   ├── map_boss02n.rel
+│   ├── map_boss02r.rel
+│   ├── map_boss02.xvm
+│   ├── map_boss03c.rel
+│   ├── map_boss03n.rel
+│   ├── map_boss03r.rel
+│   ├── map_boss03.xvm
+│   ├── map_boss05c.rel
+│   ├── map_boss05m.xvm
+│   ├── map_boss05nm.rel
+│   ├── map_boss05n.rel
+│   ├── map_boss05r.rel
+│   ├── map_boss05s.nj
+│   ├── map_boss05s.xj
+│   ├── map_boss05s.xvm
+│   ├── map_boss05.tam
+│   ├── map_boss05.xvm
+│   ├── map_boss06c.rel
+│   ├── map_boss06i.bin
+│   ├── map_boss06n.rel
+│   ├── map_boss06r.rel
+│   ├── map_boss06.tam
+│   ├── map_boss06.xvm
+│   ├── map_boss07c.rel
+│   ├── map_boss07i.bin
+│   ├── map_boss07n.rel
+│   ├── map_boss07r.rel
+│   ├── map_boss07.tam
+│   ├── map_boss07.xvm
+│   ├── map_boss08c.rel
+│   ├── map_boss08m.xvm
+│   ├── map_boss08nm.rel
+│   ├── map_boss08n.rel
+│   ├── map_boss08r.rel
+│   ├── map_boss08s.nj
+│   ├── map_boss08s.xj
+│   ├── map_boss08s.xvm
+│   ├── map_boss08.tam
+│   ├── map_boss08.xvm
+│   ├── map_boss09_00c.rel
+│   ├── map_boss09_00n.rel
+│   ├── map_boss09_00r.rel
+│   ├── map_boss09_00.tam
+│   ├── map_boss09_00.tls
+│   ├── map_boss09.xvm
+│   ├── map_cave01_00bm.bin
+│   ├── map_cave01_00c.rel
+│   ├── map_cave01_00n.rel
+│   ├── map_cave01_00r.rel
+│   ├── map_cave01_00s.nj
+│   ├── map_cave01_00s.xj
+│   ├── map_cave01_00s.xvm
+│   ├── map_cave01_00.tam
+│   ├── map_cave01_01bm.bin
+│   ├── map_cave01_01c.rel
+│   ├── map_cave01_01n.rel
+│   ├── map_cave01_01r.rel
+│   ├── map_cave01_01s.nj
+│   ├── map_cave01_01s.xj
+│   ├── map_cave01_01s.xvm
+│   ├── map_cave01_01.tam
+│   ├── map_cave01_02bm.bin
+│   ├── map_cave01_02c.rel
+│   ├── map_cave01_02n.rel
+│   ├── map_cave01_02r.rel
+│   ├── map_cave01_02s.nj
+│   ├── map_cave01_02s.xj
+│   ├── map_cave01_02s.xvm
+│   ├── map_cave01_02.tam
+│   ├── map_cave01_03bm.bin
+│   ├── map_cave01_03c.rel
+│   ├── map_cave01_03n.rel
+│   ├── map_cave01_03r.rel
+│   ├── map_cave01_03s.nj
+│   ├── map_cave01_03s.xj
+│   ├── map_cave01_03s.xvm
+│   ├── map_cave01_03.tam
+│   ├── map_cave01_04bm.bin
+│   ├── map_cave01_04c.rel
+│   ├── map_cave01_04n.rel
+│   ├── map_cave01_04r.rel
+│   ├── map_cave01_04s.nj
+│   ├── map_cave01_04s.xj
+│   ├── map_cave01_04s.xvm
+│   ├── map_cave01_04.tam
+│   ├── map_cave01_05c.rel
+│   ├── map_cave01_05n.rel
+│   ├── map_cave01_05r.rel
+│   ├── map_cave01_05s.nj
+│   ├── map_cave01_05s.xj
+│   ├── map_cave01_05s.xvm
+│   ├── map_cave01_05.tam
+│   ├── map_cave01.xvm
+│   ├── map_cave02_00bm.bin
+│   ├── map_cave02_00c.rel
+│   ├── map_cave02_00n.rel
+│   ├── map_cave02_00r.rel
+│   ├── map_cave02_00s.nj
+│   ├── map_cave02_00s.xj
+│   ├── map_cave02_00s.xvm
+│   ├── map_cave02_00.tam
+│   ├── map_cave02_01bm.bin
+│   ├── map_cave02_01c.rel
+│   ├── map_cave02_01n.rel
+│   ├── map_cave02_01r.rel
+│   ├── map_cave02_01s.nj
+│   ├── map_cave02_01s.xj
+│   ├── map_cave02_01s.xvm
+│   ├── map_cave02_01.tam
+│   ├── map_cave02_02bm.bin
+│   ├── map_cave02_02c.rel
+│   ├── map_cave02_02n.rel
+│   ├── map_cave02_02r.rel
+│   ├── map_cave02_02s.nj
+│   ├── map_cave02_02s.xj
+│   ├── map_cave02_02s.xvm
+│   ├── map_cave02_02.tam
+│   ├── map_cave02_03bm.bin
+│   ├── map_cave02_03c.rel
+│   ├── map_cave02_03n.rel
+│   ├── map_cave02_03r.rel
+│   ├── map_cave02_03s.nj
+│   ├── map_cave02_03s.xj
+│   ├── map_cave02_03s.xvm
+│   ├── map_cave02_03.tam
+│   ├── map_cave02_04bm.bin
+│   ├── map_cave02_04c.rel
+│   ├── map_cave02_04n.rel
+│   ├── map_cave02_04r.rel
+│   ├── map_cave02_04s.nj
+│   ├── map_cave02_04s.xj
+│   ├── map_cave02_04s.xvm
+│   ├── map_cave02_04.tam
+│   ├── map_cave02.xvm
+│   ├── map_cave03_00bm.bin
+│   ├── map_cave03_00c.rel
+│   ├── map_cave03_00n.rel
+│   ├── map_cave03_00r.rel
+│   ├── map_cave03_00s.nj
+│   ├── map_cave03_00s.xj
+│   ├── map_cave03_00s.xvm
+│   ├── map_cave03_00.tam
+│   ├── map_cave03_01bm.bin
+│   ├── map_cave03_01c.rel
+│   ├── map_cave03_01n.rel
+│   ├── map_cave03_01r.rel
+│   ├── map_cave03_01s.nj
+│   ├── map_cave03_01s.xj
+│   ├── map_cave03_01s.xvm
+│   ├── map_cave03_01.tam
+│   ├── map_cave03_02bm.bin
+│   ├── map_cave03_02c.rel
+│   ├── map_cave03_02n.rel
+│   ├── map_cave03_02r.rel
+│   ├── map_cave03_02s.nj
+│   ├── map_cave03_02s.xj
+│   ├── map_cave03_02s.xvm
+│   ├── map_cave03_02.tam
+│   ├── map_cave03_03bm.bin
+│   ├── map_cave03_03c.rel
+│   ├── map_cave03_03n.rel
+│   ├── map_cave03_03r.rel
+│   ├── map_cave03_03s.nj
+│   ├── map_cave03_03s.xj
+│   ├── map_cave03_03s.xvm
+│   ├── map_cave03_03.tam
+│   ├── map_cave03_04bm.bin
+│   ├── map_cave03_04c.rel
+│   ├── map_cave03_04n.rel
+│   ├── map_cave03_04r.rel
+│   ├── map_cave03_04s.nj
+│   ├── map_cave03_04s.xj
+│   ├── map_cave03_04s.xvm
+│   ├── map_cave03_04.tam
+│   ├── map_cave03_05c.rel
+│   ├── map_cave03_05n.rel
+│   ├── map_cave03_05r.rel
+│   ├── map_cave03_05s.nj
+│   ├── map_cave03_05s.xj
+│   ├── map_cave03_05s.xvm
+│   ├── map_cave03_05.tam
+│   ├── map_cave03.xvm
+│   ├── map_city00_00c.rel
+│   ├── map_city00_00n.rel
+│   ├── map_city00_00.tam
+│   ├── map_city00.xvm
+│   ├── map_city02_00c.rel
+│   ├── map_city02_00n.rel
+│   ├── map_city02_00.tam
+│   ├── map_city02.xvm
+│   ├── map_crater01_00c.rel
+│   ├── map_crater01_00n.rel
+│   ├── map_crater01_00r.rel
+│   ├── map_crater01_00s.nj
+│   ├── map_crater01_00s.njm
+│   ├── map_crater01_00s.xj
+│   ├── map_crater01_00s.xvm
+│   ├── map_crater01_00.tam
+│   ├── map_crater01.xvm
+│   ├── map_darkfalz00c.rel
+│   ├── map_darkfalz00n.rel
+│   ├── map_darkfalz00r.rel
+│   ├── map_darkfalz00.tam
+│   ├── map_darkfalz00.xvm
+│   ├── map_desert01_00bm.bin
+│   ├── map_desert01_00c.rel
+│   ├── map_desert01_00n.rel
+│   ├── map_desert01_00r.rel
+│   ├── map_desert01_00.tam
+│   ├── map_desert01_01bm.bin
+│   ├── map_desert01_01c.rel
+│   ├── map_desert01_01n.rel
+│   ├── map_desert01_01r.rel
+│   ├── map_desert01_01.tam
+│   ├── map_desert01_02bm.bin
+│   ├── map_desert01_02c.rel
+│   ├── map_desert01_02n.rel
+│   ├── map_desert01_02r.rel
+│   ├── map_desert01_02.tam
+│   ├── map_desert01.xvm
+│   ├── map_desert02_00c.rel
+│   ├── map_desert02_00n.rel
+│   ├── map_desert02_00r.rel
+│   ├── map_desert02_00.tam
+│   ├── map_desert02_01c.rel
+│   ├── map_desert02_01n.rel
+│   ├── map_desert02_01r.rel
+│   ├── map_desert02_02c.rel
+│   ├── map_desert02_02n.rel
+│   ├── map_desert02_02r.rel
+│   ├── map_desert02.xvm
+│   ├── map_desert03_00bm.bin
+│   ├── map_desert03_00c.rel
+│   ├── map_desert03_00n.rel
+│   ├── map_desert03_00r.rel
+│   ├── map_desert03_00.tam
+│   ├── map_desert03_01bm.bin
+│   ├── map_desert03_01c.rel
+│   ├── map_desert03_01n.rel
+│   ├── map_desert03_01r.rel
+│   ├── map_desert03_01.tam
+│   ├── map_desert03_02bm.bin
+│   ├── map_desert03_02c.rel
+│   ├── map_desert03_02n.rel
+│   ├── map_desert03_02r.rel
+│   ├── map_desert03_02.tam
+│   ├── map_desert03.xvm
+│   ├── map_forest01bm.bin
+│   ├── map_forest01c.rel
+│   ├── map_forest01n.rel
+│   ├── map_forest01r.rel
+│   ├── map_forest01s.nj
+│   ├── map_forest01s.xj
+│   ├── map_forest01s.xvm
+│   ├── map_forest01t.rel
+│   ├── map_forest01.xvm
+│   ├── map_forest02bm.bin
+│   ├── map_forest02c.rel
+│   ├── map_forest02n.rel
+│   ├── map_forest02r.rel
+│   ├── map_forest02s.nj
+│   ├── map_forest02s.xj
+│   ├── map_forest02s.xvm
+│   ├── map_forest02.tam
+│   ├── map_forest02.xvm
+│   ├── map_jungle01_00bm.bin
+│   ├── map_jungle01_00c.rel
+│   ├── map_jungle01_00m.tam
+│   ├── map_jungle01_00nm.rel
+│   ├── map_jungle01_00n.rel
+│   ├── map_jungle01_00r.rel
+│   ├── map_jungle01_00s.nj
+│   ├── map_jungle01_00s.njm
+│   ├── map_jungle01_00s.xj
+│   ├── map_jungle01_00s.xvm
+│   ├── map_jungle01_00.tam
+│   ├── map_jungle01m.xvm
+│   ├── map_jungle01.xvm
+│   ├── map_jungle02_00b.bin
+│   ├── map_jungle02_00bm.bin
+│   ├── map_jungle02_00c.rel
+│   ├── map_jungle02_00i.bin
+│   ├── map_jungle02_00m.tam
+│   ├── map_jungle02_00nm.rel
+│   ├── map_jungle02_00n.rel
+│   ├── map_jungle02_00r.rel
+│   ├── map_jungle02_00s.nj
+│   ├── map_jungle02_00s.njm
+│   ├── map_jungle02_00s.xj
+│   ├── map_jungle02_00s.xvm
+│   ├── map_jungle02_00.tam
+│   ├── map_jungle02m.xvm
+│   ├── map_jungle02.xvm
+│   ├── map_jungle03_00b.bin
+│   ├── map_jungle03_00bm.bin
+│   ├── map_jungle03_00c.rel
+│   ├── map_jungle03_00i.bin
+│   ├── map_jungle03_00m.tam
+│   ├── map_jungle03_00nm.rel
+│   ├── map_jungle03_00n.rel
+│   ├── map_jungle03_00r.rel
+│   ├── map_jungle03_00s.nj
+│   ├── map_jungle03_00s.njm
+│   ├── map_jungle03_00s.xj
+│   ├── map_jungle03_00s.xvm
+│   ├── map_jungle03_00.tam
+│   ├── map_jungle03m.xvm
+│   ├── map_jungle03.xvm
+│   ├── map_jungle04_00b.bin
+│   ├── map_jungle04_00bm.bin
+│   ├── map_jungle04_00c.rel
+│   ├── map_jungle04_00nm.rel
+│   ├── map_jungle04_00n.rel
+│   ├── map_jungle04_00r.rel
+│   ├── map_jungle04_00s.nj
+│   ├── map_jungle04_00s.njm
+│   ├── map_jungle04_00s.xj
+│   ├── map_jungle04_00s.xvm
+│   ├── map_jungle04_01b.bin
+│   ├── map_jungle04_01bm.bin
+│   ├── map_jungle04_01c.rel
+│   ├── map_jungle04_01nm.rel
+│   ├── map_jungle04_01n.rel
+│   ├── map_jungle04_01r.rel
+│   ├── map_jungle04_01s.njm
+│   ├── map_jungle04_01s.xj
+│   ├── map_jungle04_01s.xvm
+│   ├── map_jungle04_02b.bin
+│   ├── map_jungle04_02bm.bin
+│   ├── map_jungle04_02c.rel
+│   ├── map_jungle04_02nm.rel
+│   ├── map_jungle04_02n.rel
+│   ├── map_jungle04_02r.rel
+│   ├── map_jungle04_02s.njm
+│   ├── map_jungle04_02s.xj
+│   ├── map_jungle04_02s.xvm
+│   ├── map_jungle04m.xvm
+│   ├── map_jungle04.xvm
+│   ├── map_jungle05_00b.bin
+│   ├── map_jungle05_00bm.bin
+│   ├── map_jungle05_00c.rel
+│   ├── map_jungle05_00i.bin
+│   ├── map_jungle05_00m.tam
+│   ├── map_jungle05_00nm.rel
+│   ├── map_jungle05_00n.rel
+│   ├── map_jungle05_00r.rel
+│   ├── map_jungle05_00s.nj
+│   ├── map_jungle05_00s.njm
+│   ├── map_jungle05_00s.xj
+│   ├── map_jungle05_00s.xvm
+│   ├── map_jungle05_00.tam
+│   ├── map_jungle05m.xvm
+│   ├── map_jungle05.xvm
+│   ├── map_jungle06_00b.bin
+│   ├── map_jungle06_00bm.bin
+│   ├── map_jungle06_00c.rel
+│   ├── map_jungle06_00i.bin
+│   ├── map_jungle06_00n.rel
+│   ├── map_jungle06_00r.rel
+│   ├── map_jungle06_00s.nj
+│   ├── map_jungle06_00s.njm
+│   ├── map_jungle06_00s.xj
+│   ├── map_jungle06_00s.xvm
+│   ├── map_jungle06_00.tam
+│   ├── map_jungle06.xvm
+│   ├── map_jungle07_00c.rel
+│   ├── map_jungle07_00i.bin
+│   ├── map_jungle07_00n.rel
+│   ├── map_jungle07_00r.rel
+│   ├── map_jungle07_00.tam
+│   ├── map_jungle07_01c.rel
+│   ├── map_jungle07_01i.bin
+│   ├── map_jungle07_01n.rel
+│   ├── map_jungle07_01r.rel
+│   ├── map_jungle07_01.tam
+│   ├── map_jungle07_02c.rel
+│   ├── map_jungle07_02i.bin
+│   ├── map_jungle07_02n.rel
+│   ├── map_jungle07_02r.rel
+│   ├── map_jungle07_02.tam
+│   ├── map_jungle07_03c.rel
+│   ├── map_jungle07_03i.bin
+│   ├── map_jungle07_03n.rel
+│   ├── map_jungle07_03r.rel
+│   ├── map_jungle07_03.tam
+│   ├── map_jungle07_04c.rel
+│   ├── map_jungle07_04i.bin
+│   ├── map_jungle07_04n.rel
+│   ├── map_jungle07_04r.rel
+│   ├── map_jungle07_04.tam
+│   ├── map_jungle07.xvm
+│   ├── map_labo00_00bm.bin
+│   ├── map_labo00_00c.rel
+│   ├── map_labo00_00nm.rel
+│   ├── map_labo00_00n.rel
+│   ├── map_labo00_00.tam
+│   ├── map_labo00m.xvm
+│   ├── map_labo00.xvm
+│   ├── map_lobby_01c.rel
+│   ├── map_lobby_01n.rel
+│   ├── map_lobby_01.tam
+│   ├── map_lobby_01.xvm
+│   ├── map_lobby_02c.rel
+│   ├── map_lobby_02n.rel
+│   ├── map_lobby_02.tam
+│   ├── map_lobby_02.xvm
+│   ├── map_lobby_03c.rel
+│   ├── map_lobby_03n.rel
+│   ├── map_lobby_03.tam
+│   ├── map_lobby_03.xvm
+│   ├── map_lobby_04c.rel
+│   ├── map_lobby_04n.rel
+│   ├── map_lobby_04.tam
+│   ├── map_lobby_04.xvm
+│   ├── map_lobby_05c.rel
+│   ├── map_lobby_05n.rel
+│   ├── map_lobby_05.tam
+│   ├── map_lobby_05.xvm
+│   ├── map_lobby_06c.rel
+│   ├── map_lobby_06n.rel
+│   ├── map_lobby_06.tam
+│   ├── map_lobby_06.xvm
+│   ├── map_lobby_07c.rel
+│   ├── map_lobby_07n.rel
+│   ├── map_lobby_07.tam
+│   ├── map_lobby_07.xvm
+│   ├── map_lobby_08c.rel
+│   ├── map_lobby_08n.rel
+│   ├── map_lobby_08.tam
+│   ├── map_lobby_08.xvm
+│   ├── map_lobby_09c.rel
+│   ├── map_lobby_09n.rel
+│   ├── map_lobby_09.tam
+│   ├── map_lobby_09.xvm
+│   ├── map_lobby_10c.rel
+│   ├── map_lobby_10n.rel
+│   ├── map_lobby_10.tam
+│   ├── map_lobby_10.xvm
+│   ├── map_lobby_green_be00c.rel
+│   ├── map_lobby_green_be00n.rel
+│   ├── map_lobby_green_be00.tam
+│   ├── map_lobby_green_be00.xvm
+│   ├── map_lobby_red_be00c.rel
+│   ├── map_lobby_red_be00n.rel
+│   ├── map_lobby_red_be00.tam
+│   ├── map_lobby_red_be00.xvm
+│   ├── map_lobby_yellow_be00c.rel
+│   ├── map_lobby_yellow_be00n.rel
+│   ├── map_lobby_yellow_be00.tam
+│   ├── map_lobby_yellow_be00.xvm
+│   ├── map_machine01_00bm.bin
+│   ├── map_machine01_00c.rel
+│   ├── map_machine01_00nm.rel
+│   ├── map_machine01_00n.rel
+│   ├── map_machine01_00r.rel
+│   ├── map_machine01_00s.nj
+│   ├── map_machine01_00s.xj
+│   ├── map_machine01_00s.xvm
+│   ├── map_machine01_00.tam
+│   ├── map_machine01_01bm.bin
+│   ├── map_machine01_01c.rel
+│   ├── map_machine01_01nm.rel
+│   ├── map_machine01_01n.rel
+│   ├── map_machine01_01r.rel
+│   ├── map_machine01_01s.nj
+│   ├── map_machine01_01s.xj
+│   ├── map_machine01_01s.xvm
+│   ├── map_machine01_01.tam
+│   ├── map_machine01_02bm.bin
+│   ├── map_machine01_02c.rel
+│   ├── map_machine01_02nm.rel
+│   ├── map_machine01_02n.rel
+│   ├── map_machine01_02r.rel
+│   ├── map_machine01_02s.nj
+│   ├── map_machine01_02s.xj
+│   ├── map_machine01_02s.xvm
+│   ├── map_machine01_02.tam
+│   ├── map_machine01_03bm.bin
+│   ├── map_machine01_03c.rel
+│   ├── map_machine01_03nm.rel
+│   ├── map_machine01_03n.rel
+│   ├── map_machine01_03r.rel
+│   ├── map_machine01_03s.nj
+│   ├── map_machine01_03s.xj
+│   ├── map_machine01_03s.xvm
+│   ├── map_machine01_03.tam
+│   ├── map_machine01_04bm.bin
+│   ├── map_machine01_04c.rel
+│   ├── map_machine01_04nm.rel
+│   ├── map_machine01_04n.rel
+│   ├── map_machine01_04r.rel
+│   ├── map_machine01_04s.nj
+│   ├── map_machine01_04s.xj
+│   ├── map_machine01_04s.xvm
+│   ├── map_machine01_04.tam
+│   ├── map_machine01_05c.rel
+│   ├── map_machine01_05nm.rel
+│   ├── map_machine01_05n.rel
+│   ├── map_machine01_05r.rel
+│   ├── map_machine01_05s.nj
+│   ├── map_machine01_05s.xj
+│   ├── map_machine01_05s.xvm
+│   ├── map_machine01_05.tam
+│   ├── map_machine01m.xvm
+│   ├── map_machine01.xvm
+│   ├── map_machine02_00bm.bin
+│   ├── map_machine02_00c.rel
+│   ├── map_machine02_00nm.rel
+│   ├── map_machine02_00n.rel
+│   ├── map_machine02_00r.rel
+│   ├── map_machine02_00s.nj
+│   ├── map_machine02_00s.xj
+│   ├── map_machine02_00s.xvm
+│   ├── map_machine02_00.tam
+│   ├── map_machine02_01bm.bin
+│   ├── map_machine02_01c.rel
+│   ├── map_machine02_01nm.rel
+│   ├── map_machine02_01n.rel
+│   ├── map_machine02_01r.rel
+│   ├── map_machine02_01s.nj
+│   ├── map_machine02_01s.xj
+│   ├── map_machine02_01s.xvm
+│   ├── map_machine02_01.tam
+│   ├── map_machine02_02bm.bin
+│   ├── map_machine02_02c.rel
+│   ├── map_machine02_02nm.rel
+│   ├── map_machine02_02n.rel
+│   ├── map_machine02_02r.rel
+│   ├── map_machine02_02s.nj
+│   ├── map_machine02_02s.xj
+│   ├── map_machine02_02s.xvm
+│   ├── map_machine02_02.tam
+│   ├── map_machine02_03bm.bin
+│   ├── map_machine02_03c.rel
+│   ├── map_machine02_03nm.rel
+│   ├── map_machine02_03n.rel
+│   ├── map_machine02_03r.rel
+│   ├── map_machine02_03s.nj
+│   ├── map_machine02_03s.xj
+│   ├── map_machine02_03s.xvm
+│   ├── map_machine02_03.tam
+│   ├── map_machine02_04bm.bin
+│   ├── map_machine02_04c.rel
+│   ├── map_machine02_04nm.rel
+│   ├── map_machine02_04n.rel
+│   ├── map_machine02_04r.rel
+│   ├── map_machine02_04s.nj
+│   ├── map_machine02_04s.xj
+│   ├── map_machine02_04s.xvm
+│   ├── map_machine02_04.tam
+│   ├── map_machine02_05c.rel
+│   ├── map_machine02_05nm.rel
+│   ├── map_machine02_05n.rel
+│   ├── map_machine02_05r.rel
+│   ├── map_machine02_05s.nj
+│   ├── map_machine02_05s.xj
+│   ├── map_machine02_05s.xvm
+│   ├── map_machine02_05.tam
+│   ├── map_machine02m.xvm
+│   ├── map_machine02.xvm
+│   ├── map_ruins01_00b.bin
+│   ├── map_ruins01_00bm.bin
+│   ├── map_ruins01_00c.rel
+│   ├── map_ruins01_00n.rel
+│   ├── map_ruins01_00r.rel
+│   ├── map_ruins01_00.tam
+│   ├── map_ruins01_01b.bin
+│   ├── map_ruins01_01bm.bin
+│   ├── map_ruins01_01c.rel
+│   ├── map_ruins01_01n.rel
+│   ├── map_ruins01_01r.rel
+│   ├── map_ruins01_01.tam
+│   ├── map_ruins01_02c.rel
+│   ├── map_ruins01_02n.rel
+│   ├── map_ruins01_02r.rel
+│   ├── map_ruins01_02.tam
+│   ├── map_ruins01.xvm
+│   ├── map_ruins02_00b.bin
+│   ├── map_ruins02_00bm.bin
+│   ├── map_ruins02_00c.rel
+│   ├── map_ruins02_00n.rel
+│   ├── map_ruins02_00r.rel
+│   ├── map_ruins02_00s.nj
+│   ├── map_ruins02_00s.xj
+│   ├── map_ruins02_00s.xvm
+│   ├── map_ruins02_00.tam
+│   ├── map_ruins02_01b.bin
+│   ├── map_ruins02_01bm.bin
+│   ├── map_ruins02_01c.rel
+│   ├── map_ruins02_01n.rel
+│   ├── map_ruins02_01r.rel
+│   ├── map_ruins02_01s.nj
+│   ├── map_ruins02_01s.xj
+│   ├── map_ruins02_01s.xvm
+│   ├── map_ruins02_01.tam
+│   ├── map_ruins02_02c.rel
+│   ├── map_ruins02_02n.rel
+│   ├── map_ruins02_02r.rel
+│   ├── map_ruins02_02s.nj
+│   ├── map_ruins02_02s.xj
+│   ├── map_ruins02_02s.xvm
+│   ├── map_ruins02_02.tam
+│   ├── map_ruins02.xvm
+│   ├── map_seabed01_00b.bin
+│   ├── map_seabed01_00bm.bin
+│   ├── map_seabed01_00c.rel
+│   ├── map_seabed01_00i.bin
+│   ├── map_seabed01_00m.tam
+│   ├── map_seabed01_00nm.rel
+│   ├── map_seabed01_00n.rel
+│   ├── map_seabed01_00r.rel
+│   ├── map_seabed01_00s.nj
+│   ├── map_seabed01_00s.xj
+│   ├── map_seabed01_00s.xvm
+│   ├── map_seabed01_00.tam
+│   ├── map_seabed01_01b.bin
+│   ├── map_seabed01_01bm.bin
+│   ├── map_seabed01_01c.rel
+│   ├── map_seabed01_01i.bin
+│   ├── map_seabed01_01m.tam
+│   ├── map_seabed01_01nm.rel
+│   ├── map_seabed01_01n.rel
+│   ├── map_seabed01_01r.rel
+│   ├── map_seabed01_01s.nj
+│   ├── map_seabed01_01s.xj
+│   ├── map_seabed01_01s.xvm
+│   ├── map_seabed01_01.tam
+│   ├── map_seabed01_02b.bin
+│   ├── map_seabed01_02bm.bin
+│   ├── map_seabed01_02c.rel
+│   ├── map_seabed01_02i.bin
+│   ├── map_seabed01_02nm.rel
+│   ├── map_seabed01_02n.rel
+│   ├── map_seabed01_02r.rel
+│   ├── map_seabed01_02s.nj
+│   ├── map_seabed01_02s.xj
+│   ├── map_seabed01_02s.xvm
+│   ├── map_seabed01_02.tam
+│   ├── map_seabed01m.xvm
+│   ├── map_seabed01.xvm
+│   ├── map_seabed02_00b.bin
+│   ├── map_seabed02_00bm.bin
+│   ├── map_seabed02_00c.rel
+│   ├── map_seabed02_00i.bin
+│   ├── map_seabed02_00m.tam
+│   ├── map_seabed02_00nm.rel
+│   ├── map_seabed02_00n.rel
+│   ├── map_seabed02_00r.rel
+│   ├── map_seabed02_00s.nj
+│   ├── map_seabed02_00s.xj
+│   ├── map_seabed02_00s.xvm
+│   ├── map_seabed02_00.tam
+│   ├── map_seabed02_01b.bin
+│   ├── map_seabed02_01bm.bin
+│   ├── map_seabed02_01c.rel
+│   ├── map_seabed02_01i.bin
+│   ├── map_seabed02_01m.tam
+│   ├── map_seabed02_01nm.rel
+│   ├── map_seabed02_01n.rel
+│   ├── map_seabed02_01r.rel
+│   ├── map_seabed02_01s.nj
+│   ├── map_seabed02_01s.xj
+│   ├── map_seabed02_01s.xvm
+│   ├── map_seabed02_01.tam
+│   ├── map_seabed02_02c.rel
+│   ├── map_seabed02_02i.bin
+│   ├── map_seabed02_02nm.rel
+│   ├── map_seabed02_02n.rel
+│   ├── map_seabed02_02r.rel
+│   ├── map_seabed02_02s.nj
+│   ├── map_seabed02_02s.xj
+│   ├── map_seabed02_02s.xvm
+│   ├── map_seabed02_02.tam
+│   ├── map_seabed02m.xvm
+│   ├── map_seabed02.xvm
+│   ├── map_soccer11c.rel
+│   ├── map_soccer11n.rel
+│   ├── map_soccer11.tam
+│   ├── map_soccer11.xvm
+│   ├── map_soccer12c.rel
+│   ├── map_soccer12n.rel
+│   ├── map_soccer12.tam
+│   ├── map_soccer12.xvm
+│   ├── map_space01_00b.bin
+│   ├── map_space01_00bm.bin
+│   ├── map_space01_00c.rel
+│   ├── map_space01_00n.rel
+│   ├── map_space01_00r.rel
+│   ├── map_space01_00s.nj
+│   ├── map_space01_00s.xj
+│   ├── map_space01_00s.xvm
+│   ├── map_space01_00.tam
+│   ├── map_space01_01b.bin
+│   ├── map_space01_01bm.bin
+│   ├── map_space01_01c.rel
+│   ├── map_space01_01n.rel
+│   ├── map_space01_01r.rel
+│   ├── map_space01_01s.nj
+│   ├── map_space01_01s.xj
+│   ├── map_space01_01s.xvm
+│   ├── map_space01_01.tam
+│   ├── map_space01_02c.rel
+│   ├── map_space01_02n.rel
+│   ├── map_space01_02r.rel
+│   ├── map_space01_02s.nj
+│   ├── map_space01_02s.xj
+│   ├── map_space01_02s.xvm
+│   ├── map_space01_02.tam
+│   ├── map_space01.xvm
+│   ├── map_space02_00b.bin
+│   ├── map_space02_00bm.bin
+│   ├── map_space02_00c.rel
+│   ├── map_space02_00n.rel
+│   ├── map_space02_00r.rel
+│   ├── map_space02_00s.nj
+│   ├── map_space02_00s.xj
+│   ├── map_space02_00s.xvm
+│   ├── map_space02_00.tam
+│   ├── map_space02_01b.bin
+│   ├── map_space02_01bm.bin
+│   ├── map_space02_01c.rel
+│   ├── map_space02_01n.rel
+│   ├── map_space02_01r.rel
+│   ├── map_space02_01s.nj
+│   ├── map_space02_01s.xj
+│   ├── map_space02_01s.xvm
+│   ├── map_space02_01.tam
+│   ├── map_space02_02c.rel
+│   ├── map_space02_02n.rel
+│   ├── map_space02_02r.rel
+│   ├── map_space02_02s.nj
+│   ├── map_space02_02s.xj
+│   ├── map_space02_02s.xvm
+│   ├── map_space02_02.tam
+│   ├── map_space02.xvm
+│   ├── map_test01_00c.rel
+│   ├── map_test01_00n.rel
+│   ├── map_test01_00r.rel
+│   ├── map_test01_00s.xj
+│   ├── map_test01_00s.xvm
+│   ├── map_test01.xvm
+│   ├── map_vs01_00bm.bin
+│   ├── map_vs01_00c.rel
+│   ├── map_vs01_00n.rel
+│   ├── map_vs01_00r.rel
+│   ├── map_vs01_00s.nj
+│   ├── map_vs01_00s.xj
+│   ├── map_vs01_00s.xvm
+│   ├── map_vs01_00.tam
+│   ├── map_vs01_01bm.bin
+│   ├── map_vs01_01c.rel
+│   ├── map_vs01_01n.rel
+│   ├── map_vs01_01r.rel
+│   ├── map_vs01_01s.xj
+│   ├── map_vs01_01s.xvm
+│   ├── map_vs01_01.tam
+│   ├── map_vs01_02bm.bin
+│   ├── map_vs01_02c.rel
+│   ├── map_vs01_02n.rel
+│   ├── map_vs01_02r.rel
+│   ├── map_vs01_02s.xj
+│   ├── map_vs01_02s.xvm
+│   ├── map_vs01_02.tam
+│   ├── map_vs01.xvm
+│   ├── map_vs02_00bm.bin
+│   ├── map_vs02_00c.rel
+│   ├── map_vs02_00n.rel
+│   ├── map_vs02_00r.rel
+│   ├── map_vs02_00s.nj
+│   ├── map_vs02_00s.xj
+│   ├── map_vs02_00s.xvm
+│   ├── map_vs02_00.tam
+│   ├── map_vs02_01bm.bin
+│   ├── map_vs02_01c.rel
+│   ├── map_vs02_01n.rel
+│   ├── map_vs02_01r.rel
+│   ├── map_vs02_01s.xj
+│   ├── map_vs02_01s.xvm
+│   ├── map_vs02_01.tam
+│   ├── map_vs02_02bm.bin
+│   ├── map_vs02_02c.rel
+│   ├── map_vs02_02n.rel
+│   ├── map_vs02_02r.rel
+│   ├── map_vs02_02s.xj
+│   ├── map_vs02_02s.xvm
+│   ├── map_vs02_02.tam
+│   ├── map_vs02.xvm
+│   ├── map_wilds01_00b.bin
+│   ├── map_wilds01_00bm.bin
+│   ├── map_wilds01_00c.rel
+│   ├── map_wilds01_00n.rel
+│   ├── map_wilds01_00r.rel
+│   ├── map_wilds01_00s.nj
+│   ├── map_wilds01_00s.njm
+│   ├── map_wilds01_00s.xj
+│   ├── map_wilds01_00s.xvm
+│   ├── map_wilds01_00.tam
+│   ├── map_wilds01_01b.bin
+│   ├── map_wilds01_01bm.bin
+│   ├── map_wilds01_01c.rel
+│   ├── map_wilds01_01n.rel
+│   ├── map_wilds01_01r.rel
+│   ├── map_wilds01_01s.nj
+│   ├── map_wilds01_01s.njm
+│   ├── map_wilds01_01s.xj
+│   ├── map_wilds01_01s.xvm
+│   ├── map_wilds01_01.tam
+│   ├── map_wilds01_02b.bin
+│   ├── map_wilds01_02bm.bin
+│   ├── map_wilds01_02c.rel
+│   ├── map_wilds01_02n.rel
+│   ├── map_wilds01_02r.rel
+│   ├── map_wilds01_02s.nj
+│   ├── map_wilds01_02s.njm
+│   ├── map_wilds01_02s.xj
+│   ├── map_wilds01_02s.xvm
+│   ├── map_wilds01_02.tam
+│   ├── map_wilds01_03b.bin
+│   ├── map_wilds01_03bm.bin
+│   ├── map_wilds01_03c.rel
+│   ├── map_wilds01_03n.rel
+│   ├── map_wilds01_03r.rel
+│   ├── map_wilds01_03s.nj
+│   ├── map_wilds01_03s.njm
+│   ├── map_wilds01_03s.xj
+│   ├── map_wilds01_03s.xvm
+│   ├── map_wilds01_03.tam
+│   ├── map_wilds01.xvm
+│   └── vssver.scc
+├── SetDataTableOff.rel
+├── SetDataTableOn.rel
+├── sound
+│   ├── ancient.pac
+│   ├── beach.pac
+│   ├── boss01.pac
+│   ├── boss02.pac
+│   ├── boss03.pac
+│   ├── boss04.pac
+│   ├── boss05.pac
+│   ├── boss06.pac
+│   ├── boss07.pac
+│   ├── boss08.pac
+│   ├── boss09.pac
+│   ├── cave.pac
+│   ├── city.pac
+│   ├── common.pac
+│   ├── crater.pac
+│   ├── desert.pac
+│   ├── duel01.pac
+│   ├── duel02.pac
+│   ├── dummy.txt
+│   ├── forest.pac
+│   ├── jungle.pac
+│   ├── machine.pac
+│   ├── ruin.pac
+│   ├── ship.pac
+│   ├── sonicteamfx.bin
+│   ├── tower.pac
+│   ├── vssver.scc
+│   ├── water.pac
+│   └── wilds.pac
+├── TitleEP4.prs
+├── unitxt_e.prs
+├── unitxt_j.prs
+├── unitxt_shop_e.prs
+└── unitxt_shop_j.prs
+
