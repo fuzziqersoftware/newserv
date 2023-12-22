@@ -4559,7 +4559,7 @@ struct G_CreateTelepipe_6x68 {
 struct G_NPCControl_6x69 {
   G_UnusedHeader header;
   le_uint16_t state = 0;
-  le_uint16_t npc_client_id = 0;
+  le_uint16_t npc_entity_id = 0;
   le_uint16_t command = 0; // 0 = create follower NPC, 1 = stop acting, 2 = start acting, 3 = create attacker NPC
   le_uint16_t npc_template_index = 0; // Specifies which NPC to create if command == 0 or 3; unused otherwise
 } __packed__;

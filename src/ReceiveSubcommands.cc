@@ -1017,10 +1017,7 @@ static void on_npc_control(shared_ptr<Client> c, uint8_t command, uint8_t flag, 
   if (!l->is_game()) {
     throw runtime_error("cannot create NPCs in the lobby");
   }
-  if (cmd.npc_client_id >= 4) {
-    throw runtime_error("NPC client ID is not valid");
-  }
-  if (l->clients[cmd.npc_client_id]) {
+  if ((cmd.npc_entity_id < 4) && l->clients[cmd.npc_entity_id]) {
     throw runtime_error("cannot overwrite existing player with NPC");
   }
   forward_subcommand(c, command, flag, data, size);
