@@ -19,7 +19,7 @@
 
 using namespace std;
 
-using SubcommandHandler = void (*)(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size);
+using SubcommandHandler = void (*)(shared_ptr<Client> c, uint8_t command, uint8_t flag, void* data, size_t size);
 
 struct SubcommandDefinition {
   enum Flag {
@@ -98,7 +98,7 @@ bool command_is_private(uint8_t command) {
   return (command == 0x62) || (command == 0x6D);
 }
 
-static void forward_subcommand(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
+static void forward_subcommand(shared_ptr<Client> c, uint8_t command, uint8_t flag, void* data, size_t size) {
   // If the command is an Ep3-only command, make sure an Ep3 client sent it
   bool command_is_ep3 = (command & 0xF0) == 0xC0;
   if (command_is_ep3 && !is_ep3(c->version())) {
@@ -220,7 +220,7 @@ static void forward_subcommand(shared_ptr<Client> c, uint8_t command, uint8_t fl
   }
 }
 
-static void on_invalid(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
+static void on_invalid(shared_ptr<Client> c, uint8_t command, uint8_t flag, void* data, size_t size) {
   const auto& cmd = check_size_t<G_UnusedHeader>(data, size, 0xFFFF);
   if ((c->version() == Version::DC_NTE) || c->version() == Version::DC_V1_11_2000_PROTOTYPE) {
     c->log.error("Unrecognized DC NTE/prototype subcommand: %02hhX", cmd.subcommand);
@@ -232,7 +232,7 @@ static void on_invalid(shared_ptr<Client> c, uint8_t command, uint8_t flag, cons
   }
 }
 
-static void on_unimplemented(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
+static void on_unimplemented(shared_ptr<Client> c, uint8_t command, uint8_t flag, void* data, size_t size) {
   const auto& cmd = check_size_t<G_UnusedHeader>(data, size, 0xFFFF);
   if ((c->version() == Version::DC_NTE) || c->version() == Version::DC_V1_11_2000_PROTOTYPE) {
     c->log.error("Unimplemented DC NTE/prototype subcommand: %02hhX", cmd.subcommand);
@@ -262,7 +262,7 @@ static void send_or_enqueue_joining_player_command(shared_ptr<Client> c, uint8_t
   }
 }
 
-static void send_or_enqueue_joining_player_command(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
+static void send_or_enqueue_joining_player_command(shared_ptr<Client> c, uint8_t command, uint8_t flag, void* data, size_t size) {
   if (c->game_join_command_queue) {
     c->log.info("Client not ready to receive join commands; adding to queue");
     auto& cmd = c->game_join_command_queue->emplace_back();
@@ -274,7 +274,7 @@ static void send_or_enqueue_joining_player_command(shared_ptr<Client> c, uint8_t
   }
 }
 
-static void on_forward_check_game_loading(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
+static void on_forward_check_game_loading(shared_ptr<Client> c, uint8_t command, uint8_t flag, void* data, size_t size) {
   auto l = c->require_lobby();
   if (!l->is_game() || !l->any_client_loading()) {
     return;
@@ -293,7 +293,7 @@ static void on_forward_check_game_loading(shared_ptr<Client> c, uint8_t command,
   }
 }
 
-static void on_forward_sync_joining_player_state(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
+static void on_forward_sync_joining_player_state(shared_ptr<Client> c, uint8_t command, uint8_t flag, void* data, size_t size) {
   auto l = c->require_lobby();
   if (!l->is_game() || !l->any_client_loading()) {
     return;
@@ -324,7 +324,7 @@ static void on_forward_sync_joining_player_state(shared_ptr<Client> c, uint8_t c
   on_forward_check_game_loading(c, command, flag, data, size);
 }
 
-static void on_sync_joining_player_item_state(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
+static void on_sync_joining_player_item_state(shared_ptr<Client> c, uint8_t command, uint8_t flag, void* data, size_t size) {
   auto l = c->require_lobby();
   if (!l->is_game() || !l->any_client_loading()) {
     return;
@@ -403,7 +403,7 @@ static void on_sync_joining_player_item_state(shared_ptr<Client> c, uint8_t comm
 }
 
 static void on_sync_joining_player_disp_and_inventory(
-    shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
+    shared_ptr<Client> c, uint8_t command, uint8_t flag, void* data, size_t size) {
   auto s = c->require_server_state();
 
   // In V1/V2 games, this command sometimes is sent after the new client has
@@ -413,9 +413,9 @@ static void on_sync_joining_player_disp_and_inventory(
     return;
   }
 
-  // I'm lazy and this should never happen (this command should always be
-  // private to the joining player)
   if (!command_is_private(command)) {
+    // I'm lazy and this should never happen (this command should always be
+    // private to the joining player)
     throw runtime_error("6x70 sent via public command");
   }
   if (flag >= l->max_clients) {
@@ -426,70 +426,243 @@ static void on_sync_joining_player_disp_and_inventory(
     return;
   }
 
-  // This command's format is different on BB and non-BB
-  bool sender_is_bb = (c->version() == Version::BB_V4);
-  bool target_is_bb = (target->version() == Version::BB_V4);
-  if (sender_is_bb != target_is_bb) {
-    // TODO: Figure out the BB 6x70 format and implement this
-    throw runtime_error("6x70 command cannot be translated across BB boundary");
+  // Exactly one of the versioned pointers will be valid, and base will be valid
+  // if and only if neither dc_nte_cmd nor dc_112000_cmd are valid.
+  G_SyncPlayerDispAndInventory_Base* base = nullptr;
+  G_SyncPlayerDispAndInventory_DCNTE_6x70* dc_nte_cmd = nullptr;
+  G_SyncPlayerDispAndInventory_DC112000_6x70* dc_112000_cmd = nullptr;
+  G_SyncPlayerDispAndInventory_DC_PC_6x70* v2_cmd = nullptr;
+  G_SyncPlayerDispAndInventory_GC_6x70* gc_cmd = nullptr;
+  G_SyncPlayerDispAndInventory_XB_6x70* xb_cmd = nullptr;
+  G_SyncPlayerDispAndInventory_BB_6x70* bb_cmd = nullptr;
+  switch (c->version()) {
+    case Version::DC_NTE:
+      dc_nte_cmd = &check_size_t<G_SyncPlayerDispAndInventory_DCNTE_6x70>(data, size);
+      break;
+    case Version::DC_V1_11_2000_PROTOTYPE:
+      dc_112000_cmd = &check_size_t<G_SyncPlayerDispAndInventory_DC112000_6x70>(data, size);
+      break;
+    case Version::DC_V1:
+    case Version::DC_V2:
+    case Version::PC_NTE:
+    case Version::PC_V2:
+      v2_cmd = &check_size_t<G_SyncPlayerDispAndInventory_DC_PC_6x70>(data, size);
+      base = &v2_cmd->base;
+      break;
+    case Version::GC_NTE:
+    case Version::GC_V3:
+      gc_cmd = &check_size_t<G_SyncPlayerDispAndInventory_GC_6x70>(data, size);
+      base = &gc_cmd->base;
+      break;
+    case Version::GC_EP3_TRIAL_EDITION:
+    case Version::GC_EP3:
+      throw runtime_error("Episode 3 should not send 6x70 commands");
+    case Version::XB_V3:
+      xb_cmd = &check_size_t<G_SyncPlayerDispAndInventory_XB_6x70>(data, size);
+      base = &xb_cmd->base;
+      break;
+    case Version::BB_V4:
+      bb_cmd = &check_size_t<G_SyncPlayerDispAndInventory_BB_6x70>(data, size);
+      base = &bb_cmd->base;
+      break;
+    default:
+      throw logic_error("6x70 command from unknown game version");
   }
 
-  // We need to byteswap mags' data2 fields if exactly one of the sender and
-  // recipient are PSO GC
-  bool sender_is_gc = is_gc(c->version());
-  bool target_is_gc = is_gc(target->version());
-  if (target_is_gc == sender_is_gc) {
-    send_or_enqueue_joining_player_command(target, command, flag, data, size);
+  auto transcode_inventory_items = [&]<typename CmdT>(CmdT* cmd) -> void {
+    if (cmd->num_items > 30) {
+      throw runtime_error("invalid inventory item count");
+    }
+    if (c->version() != target->version()) {
+      auto item_parameter_table = s->item_parameter_table_for_version(target->version());
+      for (size_t z = 0; z < cmd->num_items; z++) {
+        cmd->items[z].data.decode_for_version(c->version());
+        cmd->items[z].data.encode_for_version(c->version(), item_parameter_table);
+      }
+    }
+    for (size_t z = cmd->num_items; z < 30; z++) {
+      auto& item = cmd->items[z];
+      item.present = 0;
+      item.unknown_a1 = 0;
+      item.flags = 0;
+      item.data.clear();
+    }
+    for (size_t z = 20; z < 30; z++) {
+      cmd->items[z].extension_data1 = 0x00;
+    }
+    for (size_t z = 16; z < 30; z++) {
+      cmd->items[z].extension_data2 = 0x00;
+    }
+  };
 
-  } else if (sender_is_gc) {
-    // Convert the GC command to the XB command format. There are some extra
-    // fields on the end, so we also need to adjust the size field in the
-    // extended header to account for that.
-    G_SyncPlayerDispAndInventory_XB_6x70 out_cmd = {check_size_t<G_SyncPlayerDispAndInventory_DC_PC_GC_6x70>(data, size), 0, 0, 0};
-    out_cmd.header.size = sizeof(out_cmd);
-    if (c->license->xb_user_id) {
-      out_cmd.xb_user_id_high = static_cast<uint32_t>((c->license->xb_user_id >> 32) & 0xFFFFFFFF);
-      out_cmd.xb_user_id_low = static_cast<uint32_t>(c->license->xb_user_id & 0xFFFFFFFF);
-    } else {
-      out_cmd.xb_user_id_high = 0xAE000000;
-      out_cmd.xb_user_id_low = c->license->serial_number;
-    }
-    for (size_t z = 0; z < out_cmd.inventory.num_items; z++) {
-      out_cmd.inventory.items[z].data.decode_for_version(c->version());
-      out_cmd.inventory.items[z].data.encode_for_version(target->version(), s->item_parameter_table_for_version(target->version()));
-    }
-    send_or_enqueue_joining_player_command(target, command, flag, out_cmd);
+  switch (target->version()) {
+    case Version::DC_NTE:
+      if (!dc_nte_cmd) {
+        throw runtime_error("target player is not the same version as sender");
+      }
+      transcode_inventory_items(dc_nte_cmd);
+      send_or_enqueue_joining_player_command(target, command, flag, *dc_nte_cmd);
+      break;
 
-  } else {
-    // The XB command has some extra fields on the end; PSO GC will just ignore
-    // them, so we don't bother to remove them.
-    static_assert(
-        sizeof(G_SyncPlayerDispAndInventory_DC_PC_GC_6x70) < sizeof(G_SyncPlayerDispAndInventory_XB_6x70),
-        "GC 6x70 command is larger than XB 6x70 command");
-    auto out_cmd = check_size_t<G_SyncPlayerDispAndInventory_XB_6x70>(data, size);
-    for (size_t z = 0; z < out_cmd.inventory.num_items; z++) {
-      out_cmd.inventory.items[z].data.decode_for_version(c->version());
-      out_cmd.inventory.items[z].data.encode_for_version(target->version(), s->item_parameter_table_for_version(target->version()));
-    }
-    send_or_enqueue_joining_player_command(target, command, flag, out_cmd);
+    case Version::DC_V1_11_2000_PROTOTYPE:
+      if (!dc_112000_cmd) {
+        throw runtime_error("target player is not the same version as sender");
+      }
+      transcode_inventory_items(dc_112000_cmd);
+      send_or_enqueue_joining_player_command(target, command, flag, *dc_112000_cmd);
+      break;
+
+    case Version::DC_V1:
+    case Version::DC_V2:
+    case Version::PC_NTE:
+    case Version::PC_V2:
+      if (v2_cmd) {
+        transcode_inventory_items(v2_cmd);
+        send_or_enqueue_joining_player_command(target, command, flag, *v2_cmd);
+      } else {
+        G_SyncPlayerDispAndInventory_DC_PC_6x70 out_cmd;
+        out_cmd.base = *base;
+        if (gc_cmd) {
+          out_cmd.stats = gc_cmd->stats;
+          out_cmd.num_items = gc_cmd->num_items;
+          out_cmd.items = gc_cmd->items;
+        } else if (xb_cmd) {
+          out_cmd.stats = xb_cmd->stats;
+          out_cmd.num_items = xb_cmd->num_items;
+          out_cmd.items = xb_cmd->items;
+        } else if (bb_cmd) {
+          out_cmd.stats = bb_cmd->stats;
+          out_cmd.num_items = bb_cmd->num_items;
+          out_cmd.items = bb_cmd->items;
+        } else {
+          throw logic_error("no source data can be converted to the required format");
+        }
+        transcode_inventory_items(&out_cmd);
+        send_or_enqueue_joining_player_command(target, command, flag, out_cmd);
+      }
+      break;
+
+    case Version::GC_NTE:
+    case Version::GC_V3:
+      if (gc_cmd) {
+        transcode_inventory_items(gc_cmd);
+        send_or_enqueue_joining_player_command(target, command, flag, *gc_cmd);
+      } else {
+        G_SyncPlayerDispAndInventory_GC_6x70 out_cmd;
+        out_cmd.base = *base;
+        if (v2_cmd) {
+          out_cmd.stats = v2_cmd->stats;
+          out_cmd.num_items = v2_cmd->num_items;
+          out_cmd.items = v2_cmd->items;
+          out_cmd.floor = c->floor;
+        } else if (xb_cmd) {
+          out_cmd.stats = xb_cmd->stats;
+          out_cmd.num_items = xb_cmd->num_items;
+          out_cmd.items = xb_cmd->items;
+          out_cmd.floor = xb_cmd->floor;
+        } else if (bb_cmd) {
+          out_cmd.stats = bb_cmd->stats;
+          out_cmd.num_items = bb_cmd->num_items;
+          out_cmd.items = bb_cmd->items;
+          out_cmd.floor = bb_cmd->floor;
+        } else {
+          throw logic_error("no source data can be converted to the required format");
+        }
+        transcode_inventory_items(&out_cmd);
+        send_or_enqueue_joining_player_command(target, command, flag, out_cmd);
+      }
+      break;
+
+    case Version::GC_EP3_TRIAL_EDITION:
+    case Version::GC_EP3:
+      throw runtime_error("Episode 3 should not send 6x70 commands");
+
+    case Version::XB_V3:
+      if (xb_cmd) {
+        transcode_inventory_items(xb_cmd);
+        send_or_enqueue_joining_player_command(target, command, flag, *xb_cmd);
+      } else {
+        uint64_t xb_user_id = (c->license->xb_user_id)
+            ? c->license->xb_user_id
+            : (0xAE00000000000000 | c->license->serial_number);
+        G_SyncPlayerDispAndInventory_XB_6x70 out_cmd;
+        out_cmd.base = *base;
+        out_cmd.xb_user_id_high = (xb_user_id >> 32) & 0xFFFFFFFF;
+        out_cmd.xb_user_id_low = xb_user_id & 0xFFFFFFFF;
+        if (v2_cmd) {
+          out_cmd.stats = v2_cmd->stats;
+          out_cmd.num_items = v2_cmd->num_items;
+          out_cmd.items = v2_cmd->items;
+          out_cmd.floor = c->floor;
+        } else if (gc_cmd) {
+          out_cmd.stats = gc_cmd->stats;
+          out_cmd.num_items = gc_cmd->num_items;
+          out_cmd.items = gc_cmd->items;
+          out_cmd.floor = gc_cmd->floor;
+        } else if (bb_cmd) {
+          out_cmd.stats = bb_cmd->stats;
+          out_cmd.num_items = bb_cmd->num_items;
+          out_cmd.items = bb_cmd->items;
+          out_cmd.floor = bb_cmd->floor;
+        } else {
+          throw logic_error("no source data can be converted to the required format");
+        }
+        transcode_inventory_items(&out_cmd);
+        send_or_enqueue_joining_player_command(target, command, flag, out_cmd);
+      }
+      break;
+
+    case Version::BB_V4:
+      if (bb_cmd) {
+        transcode_inventory_items(bb_cmd);
+        send_or_enqueue_joining_player_command(target, command, flag, *bb_cmd);
+      } else {
+        G_SyncPlayerDispAndInventory_BB_6x70 out_cmd;
+        out_cmd.base = *base;
+        out_cmd.name.encode(base->visual.name.decode(c->language()), target->language());
+        if (v2_cmd) {
+          out_cmd.stats = v2_cmd->stats;
+          out_cmd.num_items = v2_cmd->num_items;
+          out_cmd.items = v2_cmd->items;
+          out_cmd.floor = c->floor;
+        } else if (gc_cmd) {
+          out_cmd.stats = gc_cmd->stats;
+          out_cmd.num_items = gc_cmd->num_items;
+          out_cmd.items = gc_cmd->items;
+          out_cmd.floor = gc_cmd->floor;
+        } else if (xb_cmd) {
+          out_cmd.stats = xb_cmd->stats;
+          out_cmd.num_items = xb_cmd->num_items;
+          out_cmd.items = xb_cmd->items;
+          out_cmd.floor = xb_cmd->floor;
+        } else {
+          throw logic_error("no source data can be converted to the required format");
+        }
+        transcode_inventory_items(&out_cmd);
+        send_or_enqueue_joining_player_command(target, command, flag, out_cmd);
+      }
+      break;
+
+    default:
+      throw logic_error("6x70 command from unknown game version");
   }
 }
 
-static void on_forward_check_client(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
+static void on_forward_check_client(shared_ptr<Client> c, uint8_t command, uint8_t flag, void* data, size_t size) {
   const auto& cmd = check_size_t<G_ClientIDHeader>(data, size, 0xFFFF);
   if (cmd.client_id == c->lobby_client_id) {
     forward_subcommand(c, command, flag, data, size);
   }
 }
 
-static void on_forward_check_game(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
+static void on_forward_check_game(shared_ptr<Client> c, uint8_t command, uint8_t flag, void* data, size_t size) {
   auto l = c->require_lobby();
   if (l->is_game()) {
     forward_subcommand(c, command, flag, data, size);
   }
 }
 
-static void on_forward_check_lobby_client(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
+static void on_forward_check_lobby_client(shared_ptr<Client> c, uint8_t command, uint8_t flag, void* data, size_t size) {
   const auto& cmd = check_size_t<G_ClientIDHeader>(data, size, 0xFFFF);
   auto l = c->require_lobby();
   if (!l->is_game() && (cmd.client_id == c->lobby_client_id)) {
@@ -497,7 +670,7 @@ static void on_forward_check_lobby_client(shared_ptr<Client> c, uint8_t command,
   }
 }
 
-static void on_forward_check_game_client(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
+static void on_forward_check_game_client(shared_ptr<Client> c, uint8_t command, uint8_t flag, void* data, size_t size) {
   const auto& cmd = check_size_t<G_ClientIDHeader>(data, size, 0xFFFF);
   auto l = c->require_lobby();
   if (l->is_game() && (cmd.client_id == c->lobby_client_id)) {
@@ -505,7 +678,7 @@ static void on_forward_check_game_client(shared_ptr<Client> c, uint8_t command, 
   }
 }
 
-static void on_forward_check_ep3_lobby(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
+static void on_forward_check_ep3_lobby(shared_ptr<Client> c, uint8_t command, uint8_t flag, void* data, size_t size) {
   check_size_t<G_UnusedHeader>(data, size, 0xFFFF);
   auto l = c->require_lobby();
   if (!l->is_game() && l->is_ep3()) {
@@ -513,7 +686,7 @@ static void on_forward_check_ep3_lobby(shared_ptr<Client> c, uint8_t command, ui
   }
 }
 
-static void on_forward_check_ep3_game(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
+static void on_forward_check_ep3_game(shared_ptr<Client> c, uint8_t command, uint8_t flag, void* data, size_t size) {
   check_size_t<G_UnusedHeader>(data, size, 0xFFFF);
   auto l = c->require_lobby();
   if (l->is_game() && l->is_ep3()) {
@@ -555,7 +728,7 @@ static void on_ep3_battle_subs(shared_ptr<Client> c, uint8_t command, uint8_t fl
 ////////////////////////////////////////////////////////////////////////////////
 // Chat commands and the like
 
-static void on_send_guild_card(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
+static void on_send_guild_card(shared_ptr<Client> c, uint8_t command, uint8_t flag, void* data, size_t size) {
   auto l = c->require_lobby();
   if (!command_is_private(command) || (flag >= l->max_clients) || (!l->clients[flag])) {
     return;
@@ -600,7 +773,7 @@ static void on_send_guild_card(shared_ptr<Client> c, uint8_t command, uint8_t fl
   send_guild_card(l->clients[flag], c);
 }
 
-static void on_symbol_chat(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
+static void on_symbol_chat(shared_ptr<Client> c, uint8_t command, uint8_t flag, void* data, size_t size) {
   const auto& cmd = check_size_t<G_SymbolChat_6x07>(data, size);
   if (c->can_chat && (cmd.client_id == c->lobby_client_id)) {
     forward_subcommand(c, command, flag, data, size);
@@ -608,7 +781,7 @@ static void on_symbol_chat(shared_ptr<Client> c, uint8_t command, uint8_t flag, 
 }
 
 template <bool SenderIsBigEndian>
-static void on_word_select_t(shared_ptr<Client> c, uint8_t command, uint8_t, const void* data, size_t size) {
+static void on_word_select_t(shared_ptr<Client> c, uint8_t command, uint8_t, void* data, size_t size) {
   const auto& cmd = check_size_t<G_WordSelect_6x74<SenderIsBigEndian>>(data, size);
   if (c->can_chat && (cmd.client_id == c->lobby_client_id)) {
     if (command_is_private(command)) {
@@ -680,7 +853,7 @@ static void on_word_select_t(shared_ptr<Client> c, uint8_t command, uint8_t, con
   }
 }
 
-static void on_word_select(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
+static void on_word_select(shared_ptr<Client> c, uint8_t command, uint8_t flag, void* data, size_t size) {
   if (is_pre_v1(c->version())) {
     // The Word Select command is a different size in final vs. NTE and
     // proto, so handle that here by appending FFFFFFFF0000000000000000
@@ -699,12 +872,12 @@ static void on_word_select(shared_ptr<Client> c, uint8_t command, uint8_t flag, 
   }
 }
 
-static void on_warp(shared_ptr<Client>, uint8_t, uint8_t, const void* data, size_t size) {
+static void on_warp(shared_ptr<Client>, uint8_t, uint8_t, void* data, size_t size) {
   check_size_t<G_InterLevelWarp_6x94>(data, size);
   // Unconditionally block these. Players should use $warp instead.
 }
 
-static void on_set_player_visible(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
+static void on_set_player_visible(shared_ptr<Client> c, uint8_t command, uint8_t flag, void* data, size_t size) {
   const auto& cmd = check_size_t<G_SetPlayerVisibility_6x22_6x23>(data, size);
 
   if (cmd.header.client_id == c->lobby_client_id) {
@@ -730,7 +903,7 @@ static void on_set_player_visible(shared_ptr<Client> c, uint8_t command, uint8_t
 
 ////////////////////////////////////////////////////////////////////////////////
 
-static void on_change_floor_6x1F(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
+static void on_change_floor_6x1F(shared_ptr<Client> c, uint8_t command, uint8_t flag, void* data, size_t size) {
   if (is_pre_v1(c->version())) {
     check_size_t<G_SetPlayerFloor_DCNTE_6x1F>(data, size);
     // DC NTE and 11/2000 don't send 6F when they're done loading, so we do the
@@ -750,7 +923,7 @@ static void on_change_floor_6x1F(shared_ptr<Client> c, uint8_t command, uint8_t 
   forward_subcommand(c, command, flag, data, size);
 }
 
-static void on_change_floor_6x21(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
+static void on_change_floor_6x21(shared_ptr<Client> c, uint8_t command, uint8_t flag, void* data, size_t size) {
   const auto& cmd = check_size_t<G_InterLevelWarp_6x21>(data, size);
   if (cmd.floor >= 0) {
     c->floor = cmd.floor;
@@ -759,7 +932,7 @@ static void on_change_floor_6x21(shared_ptr<Client> c, uint8_t command, uint8_t 
 }
 
 // When a player dies, decrease their mag's synchro
-static void on_player_died(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
+static void on_player_died(shared_ptr<Client> c, uint8_t command, uint8_t flag, void* data, size_t size) {
   const auto& cmd = check_size_t<G_ClientIDHeader>(data, size, 0xFFFF);
 
   auto l = c->require_lobby();
@@ -779,7 +952,7 @@ static void on_player_died(shared_ptr<Client> c, uint8_t command, uint8_t flag, 
 }
 
 // When a player is hit by an enemy, heal them if infinite HP is enabled
-static void on_hit_by_enemy(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
+static void on_hit_by_enemy(shared_ptr<Client> c, uint8_t command, uint8_t flag, void* data, size_t size) {
   const auto& cmd = check_size_t<G_ClientIDHeader>(data, size, 0xFFFF);
 
   auto l = c->require_lobby();
@@ -794,7 +967,7 @@ static void on_hit_by_enemy(shared_ptr<Client> c, uint8_t command, uint8_t flag,
 }
 
 // When a player casts a tech, restore TP if infinite TP is enabled
-static void on_cast_technique_finished(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
+static void on_cast_technique_finished(shared_ptr<Client> c, uint8_t command, uint8_t flag, void* data, size_t size) {
   const auto& cmd = check_size_t<G_CastTechniqueComplete_6x48>(data, size);
 
   auto l = c->require_lobby();
@@ -808,7 +981,7 @@ static void on_cast_technique_finished(shared_ptr<Client> c, uint8_t command, ui
   }
 }
 
-static void on_attack_finished(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
+static void on_attack_finished(shared_ptr<Client> c, uint8_t command, uint8_t flag, void* data, size_t size) {
   const auto& cmd = check_size_t<G_AttackFinished_6x46>(data, size,
       offsetof(G_AttackFinished_6x46, targets), sizeof(G_AttackFinished_6x46));
   size_t allowed_count = min<size_t>(cmd.header.size - 2, 11);
@@ -818,7 +991,7 @@ static void on_attack_finished(shared_ptr<Client> c, uint8_t command, uint8_t fl
   on_forward_check_game_client(c, command, flag, data, size);
 }
 
-static void on_cast_technique(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
+static void on_cast_technique(shared_ptr<Client> c, uint8_t command, uint8_t flag, void* data, size_t size) {
   const auto& cmd = check_size_t<G_CastTechnique_6x47>(data, size,
       offsetof(G_CastTechnique_6x47, targets), sizeof(G_CastTechnique_6x47));
   size_t allowed_count = min<size_t>(cmd.header.size - 2, 10);
@@ -828,7 +1001,7 @@ static void on_cast_technique(shared_ptr<Client> c, uint8_t command, uint8_t fla
   on_forward_check_game_client(c, command, flag, data, size);
 }
 
-static void on_subtract_pb_energy(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
+static void on_subtract_pb_energy(shared_ptr<Client> c, uint8_t command, uint8_t flag, void* data, size_t size) {
   const auto& cmd = check_size_t<G_SubtractPBEnergy_6x49>(data, size,
       offsetof(G_SubtractPBEnergy_6x49, entries), sizeof(G_SubtractPBEnergy_6x49));
   size_t allowed_count = min<size_t>(cmd.header.size - 3, 14);
@@ -838,7 +1011,7 @@ static void on_subtract_pb_energy(shared_ptr<Client> c, uint8_t command, uint8_t
   on_forward_check_game_client(c, command, flag, data, size);
 }
 
-static void on_npc_control(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
+static void on_npc_control(shared_ptr<Client> c, uint8_t command, uint8_t flag, void* data, size_t size) {
   const auto& cmd = check_size_t<G_NPCControl_6x69>(data, size);
   // Don't allow NPC control commands if there is a player in the relevant slot
   const auto& l = c->require_lobby();
@@ -854,7 +1027,7 @@ static void on_npc_control(shared_ptr<Client> c, uint8_t command, uint8_t flag, 
   forward_subcommand(c, command, flag, data, size);
 }
 
-static void on_switch_state_changed(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
+static void on_switch_state_changed(shared_ptr<Client> c, uint8_t command, uint8_t flag, void* data, size_t size) {
   auto& cmd = check_size_t<G_SwitchStateChanged_6x05>(data, size);
 
   auto l = c->require_lobby();
@@ -883,7 +1056,7 @@ static void on_switch_state_changed(shared_ptr<Client> c, uint8_t command, uint8
 ////////////////////////////////////////////////////////////////////////////////
 
 template <typename CmdT>
-void on_movement(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
+void on_movement(shared_ptr<Client> c, uint8_t command, uint8_t flag, void* data, size_t size) {
   const auto& cmd = check_size_t<CmdT>(data, size);
   if (cmd.header.client_id != c->lobby_client_id) {
     return;
@@ -894,7 +1067,7 @@ void on_movement(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void
 }
 
 template <typename CmdT>
-void on_movement_with_floor(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
+void on_movement_with_floor(shared_ptr<Client> c, uint8_t command, uint8_t flag, void* data, size_t size) {
   const auto& cmd = check_size_t<CmdT>(data, size);
   if (cmd.header.client_id != c->lobby_client_id) {
     return;
@@ -910,7 +1083,7 @@ void on_movement_with_floor(shared_ptr<Client> c, uint8_t command, uint8_t flag,
 ////////////////////////////////////////////////////////////////////////////////
 // Item commands
 
-static void on_player_drop_item(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
+static void on_player_drop_item(shared_ptr<Client> c, uint8_t command, uint8_t flag, void* data, size_t size) {
   const auto& cmd = check_size_t<G_DropItem_6x2A>(data, size);
 
   if ((cmd.header.client_id != c->lobby_client_id)) {
@@ -959,7 +1132,7 @@ void forward_subcommand_with_item_transcode_t(shared_ptr<Client> c, uint8_t comm
 }
 
 template <typename CmdT>
-static void on_create_inventory_item_t(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
+static void on_create_inventory_item_t(shared_ptr<Client> c, uint8_t command, uint8_t flag, void* data, size_t size) {
   const auto& cmd = check_size_t<CmdT>(data, size);
 
   if ((cmd.header.client_id != c->lobby_client_id)) {
@@ -988,7 +1161,7 @@ static void on_create_inventory_item_t(shared_ptr<Client> c, uint8_t command, ui
   forward_subcommand_with_item_transcode_t(c, command, flag, cmd);
 }
 
-static void on_create_inventory_item(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
+static void on_create_inventory_item(shared_ptr<Client> c, uint8_t command, uint8_t flag, void* data, size_t size) {
   if (size == sizeof(G_CreateInventoryItem_PC_V3_BB_6x2B)) {
     on_create_inventory_item_t<G_CreateInventoryItem_PC_V3_BB_6x2B>(c, command, flag, data, size);
   } else if (size == sizeof(G_CreateInventoryItem_DC_6x2B)) {
@@ -999,7 +1172,7 @@ static void on_create_inventory_item(shared_ptr<Client> c, uint8_t command, uint
 }
 
 template <typename CmdT>
-static void on_drop_partial_stack_t(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
+static void on_drop_partial_stack_t(shared_ptr<Client> c, uint8_t command, uint8_t flag, void* data, size_t size) {
   const auto& cmd = check_size_t<CmdT>(data, size);
 
   // TODO: Should we check the client ID here too?
@@ -1029,7 +1202,7 @@ static void on_drop_partial_stack_t(shared_ptr<Client> c, uint8_t command, uint8
   forward_subcommand_with_item_transcode_t(c, command, flag, cmd);
 }
 
-static void on_drop_partial_stack(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
+static void on_drop_partial_stack(shared_ptr<Client> c, uint8_t command, uint8_t flag, void* data, size_t size) {
   if (size == sizeof(G_DropStackedItem_PC_V3_BB_6x5D)) {
     on_drop_partial_stack_t<G_DropStackedItem_PC_V3_BB_6x5D>(c, command, flag, data, size);
   } else if (size == sizeof(G_DropStackedItem_DC_6x5D)) {
@@ -1039,7 +1212,7 @@ static void on_drop_partial_stack(shared_ptr<Client> c, uint8_t command, uint8_t
   }
 }
 
-static void on_drop_partial_stack_bb(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
+static void on_drop_partial_stack_bb(shared_ptr<Client> c, uint8_t command, uint8_t flag, void* data, size_t size) {
   auto l = c->require_lobby();
   if (l->base_version == Version::BB_V4) {
     const auto& cmd = check_size_t<G_SplitStackedItem_BB_6xC3>(data, size);
@@ -1079,7 +1252,7 @@ static void on_drop_partial_stack_bb(shared_ptr<Client> c, uint8_t command, uint
   }
 }
 
-static void on_buy_shop_item(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
+static void on_buy_shop_item(shared_ptr<Client> c, uint8_t command, uint8_t flag, void* data, size_t size) {
   const auto& cmd = check_size_t<G_BuyShopItem_6x5E>(data, size);
 
   auto s = c->require_server_state();
@@ -1112,7 +1285,7 @@ static void on_buy_shop_item(shared_ptr<Client> c, uint8_t command, uint8_t flag
 }
 
 template <typename CmdT>
-static void on_box_or_enemy_item_drop_t(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
+static void on_box_or_enemy_item_drop_t(shared_ptr<Client> c, uint8_t command, uint8_t flag, void* data, size_t size) {
   // I'm lazy and this should never happen for item commands (since all players
   // need to stay in sync)
   if (command_is_private(command)) {
@@ -1152,7 +1325,7 @@ static void on_box_or_enemy_item_drop_t(shared_ptr<Client> c, uint8_t command, u
   }
 }
 
-static void on_box_or_enemy_item_drop(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
+static void on_box_or_enemy_item_drop(shared_ptr<Client> c, uint8_t command, uint8_t flag, void* data, size_t size) {
   if (size == sizeof(G_DropItem_DC_6x5F)) {
     on_box_or_enemy_item_drop_t<G_DropItem_DC_6x5F>(c, command, flag, data, size);
   } else if (size == sizeof(G_DropItem_PC_V3_BB_6x5F)) {
@@ -1223,17 +1396,17 @@ static void on_pick_up_item_generic(
   }
 }
 
-static void on_pick_up_item(shared_ptr<Client> c, uint8_t, uint8_t, const void* data, size_t size) {
+static void on_pick_up_item(shared_ptr<Client> c, uint8_t, uint8_t, void* data, size_t size) {
   auto& cmd = check_size_t<G_PickUpItem_6x59>(data, size);
   on_pick_up_item_generic(c, cmd.client_id2, cmd.floor, cmd.item_id, false);
 }
 
-static void on_pick_up_item_request(shared_ptr<Client> c, uint8_t, uint8_t, const void* data, size_t size) {
+static void on_pick_up_item_request(shared_ptr<Client> c, uint8_t, uint8_t, void* data, size_t size) {
   auto& cmd = check_size_t<G_PickUpItemRequest_6x5A>(data, size);
   on_pick_up_item_generic(c, cmd.header.client_id, cmd.floor, cmd.item_id, true);
 }
 
-static void on_equip_item(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
+static void on_equip_item(shared_ptr<Client> c, uint8_t command, uint8_t flag, void* data, size_t size) {
   const auto& cmd = check_size_t<G_EquipItem_6x25>(data, size);
 
   if (cmd.header.client_id != c->lobby_client_id) {
@@ -1249,7 +1422,7 @@ static void on_equip_item(shared_ptr<Client> c, uint8_t command, uint8_t flag, c
   forward_subcommand(c, command, flag, data, size);
 }
 
-static void on_unequip_item(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
+static void on_unequip_item(shared_ptr<Client> c, uint8_t command, uint8_t flag, void* data, size_t size) {
   const auto& cmd = check_size_t<G_UnequipItem_6x26>(data, size);
 
   if (cmd.header.client_id != c->lobby_client_id) {
@@ -1268,7 +1441,7 @@ static void on_use_item(
     shared_ptr<Client> c,
     uint8_t command,
     uint8_t flag,
-    const void* data, size_t size) {
+    void* data, size_t size) {
   const auto& cmd = check_size_t<G_UseItem_6x27>(data, size);
 
   if (cmd.header.client_id != c->lobby_client_id) {
@@ -1301,7 +1474,7 @@ static void on_feed_mag(
     shared_ptr<Client> c,
     uint8_t command,
     uint8_t flag,
-    const void* data, size_t size) {
+    void* data, size_t size) {
   const auto& cmd = check_size_t<G_FeedMAG_6x28>(data, size);
 
   if (cmd.header.client_id != c->lobby_client_id) {
@@ -1343,7 +1516,7 @@ static void on_feed_mag(
   forward_subcommand(c, command, flag, data, size);
 }
 
-static void on_open_shop_bb_or_ep3_battle_subs(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
+static void on_open_shop_bb_or_ep3_battle_subs(shared_ptr<Client> c, uint8_t command, uint8_t flag, void* data, size_t size) {
   auto l = c->require_lobby();
   if (!l->is_game()) {
     throw runtime_error("received 6xB5 command in lobby");
@@ -1379,7 +1552,7 @@ static void on_open_shop_bb_or_ep3_battle_subs(shared_ptr<Client> c, uint8_t com
   }
 }
 
-static void on_open_bank_bb_or_card_trade_counter_ep3(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
+static void on_open_bank_bb_or_card_trade_counter_ep3(shared_ptr<Client> c, uint8_t command, uint8_t flag, void* data, size_t size) {
   auto l = c->require_lobby();
   if ((l->base_version == Version::BB_V4) && l->is_game()) {
     c->config.set_flag(Client::Flag::AT_BANK_COUNTER);
@@ -1389,7 +1562,7 @@ static void on_open_bank_bb_or_card_trade_counter_ep3(shared_ptr<Client> c, uint
   }
 }
 
-static void on_ep3_private_word_select_bb_bank_action(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
+static void on_ep3_private_word_select_bb_bank_action(shared_ptr<Client> c, uint8_t command, uint8_t flag, void* data, size_t size) {
   auto s = c->require_server_state();
   auto l = c->require_lobby();
   if (l->base_version == Version::BB_V4) {
@@ -1474,7 +1647,7 @@ static void on_ep3_private_word_select_bb_bank_action(shared_ptr<Client> c, uint
   }
 }
 
-static void on_sort_inventory_bb(shared_ptr<Client> c, uint8_t, uint8_t, const void* data, size_t size) {
+static void on_sort_inventory_bb(shared_ptr<Client> c, uint8_t, uint8_t, void* data, size_t size) {
   auto l = c->require_lobby();
   if (l->base_version == Version::BB_V4) {
     const auto& cmd = check_size_t<G_SortInventory_BB_6xC4>(data, size);
@@ -1528,7 +1701,7 @@ static void on_sort_inventory_bb(shared_ptr<Client> c, uint8_t, uint8_t, const v
 ////////////////////////////////////////////////////////////////////////////////
 // EXP/Drop Item commands
 
-static void on_entity_drop_item_request(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
+static void on_entity_drop_item_request(shared_ptr<Client> c, uint8_t command, uint8_t flag, void* data, size_t size) {
   auto s = c->require_server_state();
   auto l = c->require_lobby();
   if (!l->is_game()) {
@@ -1702,7 +1875,7 @@ static void on_entity_drop_item_request(shared_ptr<Client> c, uint8_t command, u
   }
 }
 
-static void on_set_quest_flag(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
+static void on_set_quest_flag(shared_ptr<Client> c, uint8_t command, uint8_t flag, void* data, size_t size) {
   auto l = c->require_lobby();
   if (!l->is_game()) {
     return;
@@ -1782,7 +1955,7 @@ static void on_set_quest_flag(shared_ptr<Client> c, uint8_t command, uint8_t fla
   }
 }
 
-static void on_dragon_actions(shared_ptr<Client> c, uint8_t command, uint8_t, const void* data, size_t size) {
+static void on_dragon_actions(shared_ptr<Client> c, uint8_t command, uint8_t, void* data, size_t size) {
   const auto& cmd = check_size_t<G_DragonBossActions_DC_PC_XB_BB_6x12>(data, size);
 
   if (command_is_private(command)) {
@@ -1807,7 +1980,7 @@ static void on_dragon_actions(shared_ptr<Client> c, uint8_t command, uint8_t, co
   }
 }
 
-static void on_gol_dragon_actions(shared_ptr<Client> c, uint8_t command, uint8_t, const void* data, size_t size) {
+static void on_gol_dragon_actions(shared_ptr<Client> c, uint8_t command, uint8_t, void* data, size_t size) {
   const auto& cmd = check_size_t<G_GolDragonBossActions_XB_BB_6xA8>(data, size);
 
   if (command_is_private(command)) {
@@ -1838,7 +2011,7 @@ static void on_gol_dragon_actions(shared_ptr<Client> c, uint8_t command, uint8_t
   }
 }
 
-static void on_enemy_hit(shared_ptr<Client> c, uint8_t command, uint8_t, const void* data, size_t size) {
+static void on_enemy_hit(shared_ptr<Client> c, uint8_t command, uint8_t, void* data, size_t size) {
   const auto& cmd = check_size_t<G_EnemyHitByPlayer_DC_PC_XB_BB_6x0A>(data, size);
 
   if (command_is_private(command)) {
@@ -1877,7 +2050,7 @@ static void on_enemy_hit(shared_ptr<Client> c, uint8_t command, uint8_t, const v
   }
 }
 
-static void on_charge_attack_bb(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
+static void on_charge_attack_bb(shared_ptr<Client> c, uint8_t command, uint8_t flag, void* data, size_t size) {
   auto l = c->require_lobby();
   if (l->base_version != Version::BB_V4) {
     throw runtime_error("BB-only command sent in non-BB game");
@@ -1894,7 +2067,7 @@ static void on_charge_attack_bb(shared_ptr<Client> c, uint8_t command, uint8_t f
   }
 }
 
-static void on_level_up(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
+static void on_level_up(shared_ptr<Client> c, uint8_t command, uint8_t flag, void* data, size_t size) {
   const auto& cmd = check_size_t<G_LevelUp_6x30>(data, size);
 
   auto l = c->require_lobby();
@@ -1938,7 +2111,7 @@ static void add_player_exp(shared_ptr<Client> c, uint32_t exp) {
   }
 }
 
-static void on_steal_exp_bb(shared_ptr<Client> c, uint8_t, uint8_t, const void* data, size_t size) {
+static void on_steal_exp_bb(shared_ptr<Client> c, uint8_t, uint8_t, void* data, size_t size) {
   auto s = c->require_server_state();
   auto l = c->require_lobby();
 
@@ -1987,7 +2160,7 @@ static void on_steal_exp_bb(shared_ptr<Client> c, uint8_t, uint8_t, const void* 
   add_player_exp(c, stolen_exp);
 }
 
-static void on_enemy_exp_request_bb(shared_ptr<Client> c, uint8_t, uint8_t, const void* data, size_t size) {
+static void on_enemy_exp_request_bb(shared_ptr<Client> c, uint8_t, uint8_t, void* data, size_t size) {
   auto s = c->require_server_state();
   auto l = c->require_lobby();
 
@@ -2082,7 +2255,7 @@ static void on_enemy_exp_request_bb(shared_ptr<Client> c, uint8_t, uint8_t, cons
   }
 }
 
-void on_adjust_player_meseta_bb(shared_ptr<Client> c, uint8_t, uint8_t, const void* data, size_t size) {
+void on_adjust_player_meseta_bb(shared_ptr<Client> c, uint8_t, uint8_t, void* data, size_t size) {
   const auto& cmd = check_size_t<G_AdjustPlayerMeseta_BB_6xC9>(data, size);
 
   auto p = c->character();
@@ -2104,7 +2277,7 @@ void on_adjust_player_meseta_bb(shared_ptr<Client> c, uint8_t, uint8_t, const vo
   }
 }
 
-void on_item_reward_request_bb(shared_ptr<Client> c, uint8_t, uint8_t, const void* data, size_t size) {
+void on_item_reward_request_bb(shared_ptr<Client> c, uint8_t, uint8_t, void* data, size_t size) {
   const auto& cmd = check_size_t<G_ItemRewardRequest_BB_6xCA>(data, size);
   auto l = c->require_lobby();
 
@@ -2116,7 +2289,7 @@ void on_item_reward_request_bb(shared_ptr<Client> c, uint8_t, uint8_t, const voi
   send_create_inventory_item_to_lobby(c, c->lobby_client_id, item);
 }
 
-void on_transfer_item_via_mail_message_bb(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
+void on_transfer_item_via_mail_message_bb(shared_ptr<Client> c, uint8_t command, uint8_t flag, void* data, size_t size) {
   const auto& cmd = check_size_t<G_TransferItemViaMailMessage_BB_6xCB>(data, size);
 
   auto team = c->team();
@@ -2175,7 +2348,7 @@ void on_transfer_item_via_mail_message_bb(shared_ptr<Client> c, uint8_t command,
   }
 }
 
-void on_exchange_item_for_team_points_bb(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
+void on_exchange_item_for_team_points_bb(shared_ptr<Client> c, uint8_t command, uint8_t flag, void* data, size_t size) {
   const auto& cmd = check_size_t<G_ExchangeItemForTeamPoints_BB_6xCC>(data, size);
 
   auto team = c->team();
@@ -2211,7 +2384,7 @@ void on_exchange_item_for_team_points_bb(shared_ptr<Client> c, uint8_t command, 
   forward_subcommand(c, command, flag, data, size);
 }
 
-static void on_destroy_inventory_item(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
+static void on_destroy_inventory_item(shared_ptr<Client> c, uint8_t command, uint8_t flag, void* data, size_t size) {
   const auto& cmd = check_size_t<G_DeleteInventoryItem_6x29>(data, size);
 
   auto l = c->require_lobby();
@@ -2235,7 +2408,7 @@ static void on_destroy_inventory_item(shared_ptr<Client> c, uint8_t command, uin
   forward_subcommand(c, command, flag, data, size);
 }
 
-static void on_destroy_floor_item(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
+static void on_destroy_floor_item(shared_ptr<Client> c, uint8_t command, uint8_t flag, void* data, size_t size) {
   const auto& cmd = check_size_t<G_DestroyFloorItem_6x63>(data, size);
 
   auto l = c->require_lobby();
@@ -2257,7 +2430,7 @@ static void on_destroy_floor_item(shared_ptr<Client> c, uint8_t command, uint8_t
   }
 }
 
-static void on_identify_item_bb(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
+static void on_identify_item_bb(shared_ptr<Client> c, uint8_t command, uint8_t flag, void* data, size_t size) {
   auto l = c->require_lobby();
   if (l->base_version == Version::BB_V4) {
     const auto& cmd = check_size_t<G_IdentifyItemRequest_6xB8>(data, size);
@@ -2290,7 +2463,7 @@ static void on_identify_item_bb(shared_ptr<Client> c, uint8_t command, uint8_t f
   }
 }
 
-static void on_accept_identify_item_bb(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
+static void on_accept_identify_item_bb(shared_ptr<Client> c, uint8_t command, uint8_t flag, void* data, size_t size) {
   auto l = c->require_lobby();
   if (l->base_version == Version::BB_V4) {
     const auto& cmd = check_size_t<G_AcceptItemIdentification_BB_6xBA>(data, size);
@@ -2310,7 +2483,7 @@ static void on_accept_identify_item_bb(shared_ptr<Client> c, uint8_t command, ui
   }
 }
 
-static void on_sell_item_at_shop_bb(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
+static void on_sell_item_at_shop_bb(shared_ptr<Client> c, uint8_t command, uint8_t flag, void* data, size_t size) {
   auto s = c->require_server_state();
   auto l = c->require_lobby();
   if (l->base_version == Version::BB_V4) {
@@ -2333,7 +2506,7 @@ static void on_sell_item_at_shop_bb(shared_ptr<Client> c, uint8_t command, uint8
   }
 }
 
-static void on_buy_shop_item_bb(shared_ptr<Client> c, uint8_t, uint8_t, const void* data, size_t size) {
+static void on_buy_shop_item_bb(shared_ptr<Client> c, uint8_t, uint8_t, void* data, size_t size) {
   auto l = c->require_lobby();
   if (l->base_version == Version::BB_V4) {
     const auto& cmd = check_size_t<G_BuyShopItem_BB_6xB7>(data, size);
@@ -2366,14 +2539,14 @@ static void on_buy_shop_item_bb(shared_ptr<Client> c, uint8_t, uint8_t, const vo
   }
 }
 
-static void on_medical_center_bb(shared_ptr<Client> c, uint8_t, uint8_t, const void*, size_t) {
+static void on_medical_center_bb(shared_ptr<Client> c, uint8_t, uint8_t, void*, size_t) {
   auto l = c->require_lobby();
   if (l->is_game() && (l->base_version == Version::BB_V4)) {
     c->character()->remove_meseta(10, false);
   }
 }
 
-static void on_battle_restart_bb(shared_ptr<Client> c, uint8_t, uint8_t, const void* data, size_t size) {
+static void on_battle_restart_bb(shared_ptr<Client> c, uint8_t, uint8_t, void* data, size_t size) {
   auto s = c->require_server_state();
   auto l = c->require_lobby();
   if (l->is_game() &&
@@ -2403,7 +2576,7 @@ static void on_battle_restart_bb(shared_ptr<Client> c, uint8_t, uint8_t, const v
   }
 }
 
-static void on_battle_level_up_bb(shared_ptr<Client> c, uint8_t, uint8_t, const void* data, size_t size) {
+static void on_battle_level_up_bb(shared_ptr<Client> c, uint8_t, uint8_t, void* data, size_t size) {
   auto l = c->require_lobby();
   if (l->is_game() &&
       (l->base_version == Version::BB_V4) &&
@@ -2423,7 +2596,7 @@ static void on_battle_level_up_bb(shared_ptr<Client> c, uint8_t, uint8_t, const 
   }
 }
 
-static void on_request_challenge_grave_recovery_item_bb(shared_ptr<Client> c, uint8_t, uint8_t, const void* data, size_t size) {
+static void on_request_challenge_grave_recovery_item_bb(shared_ptr<Client> c, uint8_t, uint8_t, void* data, size_t size) {
   auto l = c->require_lobby();
   if (l->is_game() &&
       (l->base_version == Version::BB_V4) &&
@@ -2445,7 +2618,7 @@ static void on_request_challenge_grave_recovery_item_bb(shared_ptr<Client> c, ui
   }
 }
 
-static void on_quest_exchange_item_bb(shared_ptr<Client> c, uint8_t, uint8_t, const void* data, size_t size) {
+static void on_quest_exchange_item_bb(shared_ptr<Client> c, uint8_t, uint8_t, void* data, size_t size) {
   auto l = c->require_lobby();
   if (l->is_game() &&
       (l->base_version == Version::BB_V4) &&
@@ -2476,7 +2649,7 @@ static void on_quest_exchange_item_bb(shared_ptr<Client> c, uint8_t, uint8_t, co
   }
 }
 
-static void on_wrap_item_bb(shared_ptr<Client> c, uint8_t, uint8_t, const void* data, size_t size) {
+static void on_wrap_item_bb(shared_ptr<Client> c, uint8_t, uint8_t, void* data, size_t size) {
   auto l = c->require_lobby();
   if (l->is_game() && (l->base_version == Version::BB_V4)) {
     const auto& cmd = check_size_t<G_WrapItem_BB_6xD6>(data, size);
@@ -2490,7 +2663,7 @@ static void on_wrap_item_bb(shared_ptr<Client> c, uint8_t, uint8_t, const void* 
   }
 }
 
-static void on_photon_drop_exchange_for_item_bb(shared_ptr<Client> c, uint8_t, uint8_t, const void* data, size_t size) {
+static void on_photon_drop_exchange_for_item_bb(shared_ptr<Client> c, uint8_t, uint8_t, void* data, size_t size) {
   auto l = c->require_lobby();
   if (l->is_game() && (l->base_version == Version::BB_V4)) {
     const auto& cmd = check_size_t<G_PaganiniPhotonDropExchange_BB_6xD7>(data, size);
@@ -2519,7 +2692,7 @@ static void on_photon_drop_exchange_for_item_bb(shared_ptr<Client> c, uint8_t, u
   }
 }
 
-static void on_photon_drop_exchange_for_s_rank_special_bb(shared_ptr<Client> c, uint8_t, uint8_t, const void* data, size_t size) {
+static void on_photon_drop_exchange_for_s_rank_special_bb(shared_ptr<Client> c, uint8_t, uint8_t, void* data, size_t size) {
   auto l = c->require_lobby();
   if (l->is_game() && (l->base_version == Version::BB_V4)) {
     const auto& cmd = check_size_t<G_AddSRankWeaponSpecial_BB_6xD8>(data, size);
@@ -2553,7 +2726,7 @@ static void on_photon_drop_exchange_for_s_rank_special_bb(shared_ptr<Client> c, 
   }
 }
 
-static void on_secret_lottery_ticket_exchange_bb(shared_ptr<Client> c, uint8_t, uint8_t, const void* data, size_t size) {
+static void on_secret_lottery_ticket_exchange_bb(shared_ptr<Client> c, uint8_t, uint8_t, void* data, size_t size) {
   auto s = c->require_server_state();
   auto l = c->require_lobby();
   if (l->is_game() && (l->base_version == Version::BB_V4) && l->check_flag(Lobby::Flag::QUEST_IN_PROGRESS)) {
@@ -2609,7 +2782,7 @@ static void on_secret_lottery_ticket_exchange_bb(shared_ptr<Client> c, uint8_t, 
   }
 }
 
-static void on_photon_crystal_exchange_bb(shared_ptr<Client> c, uint8_t, uint8_t, const void* data, size_t size) {
+static void on_photon_crystal_exchange_bb(shared_ptr<Client> c, uint8_t, uint8_t, void* data, size_t size) {
   auto l = c->require_lobby();
   if (l->is_game() && (l->base_version == Version::BB_V4) && l->check_flag(Lobby::Flag::QUEST_IN_PROGRESS)) {
     check_size_t<G_ExchangePhotonCrystals_BB_6xDF>(data, size);
@@ -2620,7 +2793,7 @@ static void on_photon_crystal_exchange_bb(shared_ptr<Client> c, uint8_t, uint8_t
   }
 }
 
-static void on_quest_F95E_result_bb(shared_ptr<Client> c, uint8_t, uint8_t, const void* data, size_t size) {
+static void on_quest_F95E_result_bb(shared_ptr<Client> c, uint8_t, uint8_t, void* data, size_t size) {
   auto l = c->require_lobby();
   if (l->is_game() && (l->base_version == Version::BB_V4) && l->check_flag(Lobby::Flag::QUEST_IN_PROGRESS)) {
     const auto& cmd = check_size_t<G_RequestItemDropFromQuest_BB_6xE0>(data, size);
@@ -2652,7 +2825,7 @@ static void on_quest_F95E_result_bb(shared_ptr<Client> c, uint8_t, uint8_t, cons
   }
 }
 
-static void on_quest_F95F_result_bb(shared_ptr<Client> c, uint8_t, uint8_t, const void* data, size_t size) {
+static void on_quest_F95F_result_bb(shared_ptr<Client> c, uint8_t, uint8_t, void* data, size_t size) {
   auto l = c->require_lobby();
   if (l->is_game() && (l->base_version == Version::BB_V4) && l->check_flag(Lobby::Flag::QUEST_IN_PROGRESS)) {
     const auto& cmd = check_size_t<G_ExchangePhotonTickets_BB_6xE1>(data, size);
@@ -2692,7 +2865,7 @@ static void on_quest_F95F_result_bb(shared_ptr<Client> c, uint8_t, uint8_t, cons
   }
 }
 
-static void on_quest_F960_result_bb(shared_ptr<Client> c, uint8_t, uint8_t, const void* data, size_t size) {
+static void on_quest_F960_result_bb(shared_ptr<Client> c, uint8_t, uint8_t, void* data, size_t size) {
   auto l = c->require_lobby();
   if (l->is_game() && (l->base_version == Version::BB_V4)) {
     const auto& cmd = check_size_t<G_GetMesetaSlotPrize_BB_6xE2>(data, size);
@@ -2752,7 +2925,7 @@ static void on_quest_F960_result_bb(shared_ptr<Client> c, uint8_t, uint8_t, cons
   }
 }
 
-static void on_momoka_item_exchange_bb(shared_ptr<Client> c, uint8_t, uint8_t, const void* data, size_t size) {
+static void on_momoka_item_exchange_bb(shared_ptr<Client> c, uint8_t, uint8_t, void* data, size_t size) {
   auto l = c->require_lobby();
   if (l->is_game() && (l->base_version == Version::BB_V4) && l->check_flag(Lobby::Flag::QUEST_IN_PROGRESS)) {
     const auto& cmd = check_size_t<G_MomokaItemExchange_BB_6xD9>(data, size);
@@ -2782,7 +2955,7 @@ static void on_momoka_item_exchange_bb(shared_ptr<Client> c, uint8_t, uint8_t, c
   }
 }
 
-static void on_upgrade_weapon_attribute_bb(shared_ptr<Client> c, uint8_t, uint8_t, const void* data, size_t size) {
+static void on_upgrade_weapon_attribute_bb(shared_ptr<Client> c, uint8_t, uint8_t, void* data, size_t size) {
   auto l = c->require_lobby();
   if (l->is_game() && (l->base_version == Version::BB_V4) && l->check_flag(Lobby::Flag::QUEST_IN_PROGRESS)) {
     const auto& cmd = check_size_t<G_UpgradeWeaponAttribute_BB_6xDA>(data, size);
@@ -2835,7 +3008,7 @@ static void on_upgrade_weapon_attribute_bb(shared_ptr<Client> c, uint8_t, uint8_
   }
 }
 
-static void on_write_quest_global_flag_bb(shared_ptr<Client> c, uint8_t, uint8_t, const void* data, size_t size) {
+static void on_write_quest_global_flag_bb(shared_ptr<Client> c, uint8_t, uint8_t, void* data, size_t size) {
   const auto& cmd = check_size_t<G_SetQuestGlobalFlag_BB_6xD2>(data, size);
   c->character()->quest_global_flags[cmd.index] = cmd.value;
 }
@@ -3101,45 +3274,52 @@ const SubcommandDefinition subcommand_definitions[0x100] = {
     /* 6xFF */ {0x00, 0x00, 0xFF, nullptr},
 };
 
-void on_subcommand_multi(shared_ptr<Client> c, uint8_t command, uint8_t flag, const string& data) {
+void on_subcommand_multi(shared_ptr<Client> c, uint8_t command, uint8_t flag, string& data) {
   if (data.empty()) {
     throw runtime_error("game command is empty");
   }
 
-  StringReader r(data);
-  while (!r.eof()) {
-    size_t size;
-    const auto& header = r.get<G_UnusedHeader>(false);
-    if (header.size != 0) {
-      size = header.size << 2;
+  size_t offset = 0;
+  while (offset < data.size()) {
+    size_t cmd_size = 0;
+    if (offset + sizeof(G_UnusedHeader) > data.size()) {
+      throw runtime_error("insufficient data remaining for next subcommand header");
+    }
+    const auto* header = reinterpret_cast<const G_UnusedHeader*>(data.data() + offset);
+    if (header->size != 0) {
+      cmd_size = header->size << 2;
     } else {
-      const auto& ext_header = r.get<G_ExtendedHeader<G_UnusedHeader>>(false);
-      size = ext_header.size;
-      if (size < 8) {
+      if (offset + sizeof(G_ExtendedHeader<G_UnusedHeader>) > data.size()) {
+        throw runtime_error("insufficient data remaining for next extended subcommand header");
+      }
+      const auto* ext_header = reinterpret_cast<const G_ExtendedHeader<G_UnusedHeader>*>(data.data() + offset);
+      cmd_size = ext_header->size;
+      if (cmd_size < 8) {
         throw runtime_error("extended subcommand header has size < 8");
       }
-      if (size & 3) {
+      if (cmd_size & 3) {
         throw runtime_error("extended subcommand size is not a multiple of 4");
       }
     }
-    if (size == 0) {
+    if (cmd_size == 0) {
       throw runtime_error("invalid subcommand size");
     }
-    const void* data = r.getv(size);
+    void* cmd_data = data.data() + offset;
 
     const SubcommandDefinition* def;
     if (c->version() == Version::DC_NTE) {
-      def = &def_for_nte_subcommand(header.subcommand);
+      def = &def_for_nte_subcommand(header->subcommand);
     } else if (c->version() == Version::DC_V1_11_2000_PROTOTYPE) {
-      def = &def_for_proto_subcommand(header.subcommand);
+      def = &def_for_proto_subcommand(header->subcommand);
     } else {
-      def = &subcommand_definitions[header.subcommand];
+      def = &subcommand_definitions[header->subcommand];
     }
     if (def->handler) {
-      def->handler(c, command, flag, data, size);
+      def->handler(c, command, flag, cmd_data, cmd_size);
     } else {
-      on_unimplemented(c, command, flag, data, size);
+      on_unimplemented(c, command, flag, cmd_data, cmd_size);
     }
+    offset += cmd_size;
   }
 }
 
