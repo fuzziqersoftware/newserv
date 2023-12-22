@@ -133,24 +133,11 @@ static HandlerResult S_1D(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t, 
   }
 }
 
-static HandlerResult S_97(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t, uint32_t flag, string&) {
-  // If the client has already received a 97 command, block this one and
-  // immediately respond with a B1.
-  if (ses->config.check_flag(Client::Flag::SAVE_ENABLED)) {
-    ses->server_channel.send(0xB1, 0x00);
-    return HandlerResult::Type::SUPPRESS;
-  } else {
-    // Update the newserv client config so we'll know not to show the Programs
-    // menu if they return to newserv
-    ses->config.clear_flag(Client::Flag::SHOULD_SEND_ENABLE_SAVE);
-    ses->config.set_flag(Client::Flag::SAVE_ENABLED);
-    // Trap any 97 command that would have triggered cheat protection, and
-    // always send 97 01 04 00
-    if (flag == 0) {
-      return HandlerResult(HandlerResult::Type::MODIFIED, 0x97, 0x01);
-    }
-    return HandlerResult::Type::FORWARD;
-  }
+static HandlerResult S_97(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t, uint32_t, string&) {
+  // We always assume a 97 has already been received by the client - we should
+  // have sent 97 01 before sending the client to the proxy server.
+  ses->server_channel.send(0xB1, 0x00);
+  return HandlerResult::Type::SUPPRESS;
 }
 
 static HandlerResult C_G_9E(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t, uint32_t, string&) {
