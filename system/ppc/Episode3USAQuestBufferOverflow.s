@@ -148,7 +148,7 @@ handle_B2:
   stw     [r1 + 0x44], r0
 
   # Arguments:
-  # r3 = PSONetworkContext* ctx (we use this to call the send function)
+  # r3 = TProtocol* proto (we use this to call the send function)
   # r4 = void* data
   # Returns: void
 
@@ -244,7 +244,7 @@ handle_B2_skip_code:
   mtctr   r4
   addi    r4, r1, 0x08
   li      r5, 0x0C
-  bctrl   # PSONetworkContext::send_command(ctx, &reply_data, 0x0C)
+  bctrl   # TProtocol::send_command(ctx, &reply_data, 0x0C)
 
   # Clean up stack and return
   lwz     r0, [r1 + 0x44]
