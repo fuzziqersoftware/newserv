@@ -1,0 +1,1922 @@
+.version BB_V4
+.quest_num 65535
+.episode Episode1
+.max_players 0
+.name "title dummy"
+.short_desc "intro dummy"
+.long_desc "detail dummy"
+
+start@0x0000:
+  ret
+
+label0001@0x0001:
+  // Could not determine data type; disassembling as code
+  gget                            0x000B, r200
+  gget                            0x000C, r201
+  gget                            0x000D, r202
+  gget                            0x000E, r203
+  gget                            0x000F, r204
+  gget                            0x0010, r205
+  gget                            0x0011, r206
+  gget                            0x0012, r207
+  gget                            0x0013, r208
+  gget                            0x0014, r209
+  gget                            0x0015, r210
+  gget                            0x0016, r211
+  gget                            0x0017, r212
+  gget                            0x0018, r213
+  gget                            0x0019, r214
+  gget                            0x001A, r215
+  gget                            0x001E, r216
+  gget                            0x001F, r217
+  gget                            0x0020, r218
+  gget                            0x0021, r219
+  gget                            0x0022, r220
+  gget                            0x0028, r221
+  gget                            0x0029, r222
+  gget                            0x002A, r223
+  gget                            0x002B, r224
+  gget                            0x002C, r225
+  gget                            0x002D, r226
+  gget                            0x002E, r227
+  gget                            0x002F, r228
+  gget                            0x0030, r229
+  gget                            0x01F9, r230
+  jmpi_eq                         r230, 0x00000001, label0013 /* 79BB */
+  jmp                             label000F /* 78DF */
+  jmpi_eq                         r229, 0x00000001, label000E /* 133B */
+  jmpi_eq                         r224, 0x00000001, label000D /* 11FA */
+  jmpi_eq                         r223, 0x00000001, label000C /* 10B3 */
+  jmpi_eq                         r221, 0x00000001, label000B /* 0F8C */
+  jmpi_eq                         r219, 0x00000001, label000A /* 0F19 */
+  jmpi_eq                         r218, 0x00000001, label0009 /* 0C3D */
+  jmpi_eq                         r213, 0x00000001, label0008 /* 0BAC */
+  jmpi_eq                         r212, 0x00000001, label0007 /* 0A14 */
+  jmpi_eq                         r211, 0x00000001, label0006 /* 09A9 */
+  jmpi_eq                         r210, 0x00000001, label0005 /* 08AA */
+  jmpi_eq                         r209, 0x00000001, label0004 /* 0865 */
+  jmpi_eq                         r201, 0x00000001, label0003 /* 0712 */
+  jmpi_eq                         r200, 0x00000001, label0002 /* 067D */
+  arg_pushl                       0x000003E9
+  arg_pushs                       "Are you <name hero>,\nthe <name job>?\nI\'m Principal Tyrell."
+  message                         ...
+  arg_pushs                       "We have a bad \nsituation... We need to\nact quickly."
+  add_msg                         ...
+  arg_pushs                       "Did you hear about the\nexplosion on Ragol?"
+  add_msg                         ...
+  arg_pushs                       "Very well.\nPay attention and\nlisten to me."
+  add_msg                         ...
+  arg_pushs                       "We\'ve lost contact with\nPioneer 1. We have no\nidea what has happened."
+  add_msg                         ...
+  arg_pushs                       "We\'ve sent probes, but\ncommunication seems to\ncut off near the surface."
+  add_msg                         ...
+  arg_pushs                       "What happened on Ragol?\nWhat occurred on Pioneer\n1? Are the people alive?"
+  add_msg                         ...
+  arg_pushs                       "The council made a\ndecision to send a manned\nsearch team."
+  add_msg                         ...
+  arg_pushs                       "You are a skilled\n<name job>. We need\nyour help."
+  add_msg                         ...
+  arg_pushs                       "We have no choice...\nWe need a place to settle\non."
+  add_msg                         ...
+  mesend
+  jmp                             label0012 /* 0583 */
+
+label0012@0x0012:
+  arg_pushl                       0x000003E9
+  arg_pushs                       "Ask Irene, my secretary,\nfor further details."
+  message                         ...
+  arg_pushs                       "Uh, could you..."
+  add_msg                         ...
+  arg_pushs                       "......"
+  add_msg                         ...
+  arg_pushs                       "...No, it\'s nothing.\nTake care and good\nluck."
+  add_msg                         ...
+  mesend
+  gset                            0x000B
+  ret
+
+label0002@0x0002:
+  arg_pushl                       0x000003E9
+  arg_pushs                       "I didn\'t say anything."
+  message                         ...
+  arg_pushs                       "Go talk to my secretary.\nIrene will help you."
+  add_msg                         ...
+  mesend
+  ret
+
+label0003@0x0003:
+  arg_pushl                       0x000003E9
+  arg_pushs                       "We can\'t return to our\nplanet.  Now we must\nemigrate to Ragol."
+  message                         ...
+  arg_pushs                       "If we don\'t settle on\nRagol, then we\'d drift\nabout in space forever..."
+  add_msg                         ...
+  arg_pushs                       "I\'m putting my trust in\nyou."
+  add_msg                         ...
+  mesend
+  ret
+
+label0004@0x0004:
+  arg_pushl                       0x000003E9
+  arg_pushs                       "How was the surface of\nRagol?"
+  message                         ...
+  mesend
+  ret
+
+label0005@0x0005:
+  arg_pushl                       0x000003E9
+  arg_pushs                       "Pioneer 1 never reported\ndangerous creatures on\nRagol!"
+  message                         ...
+  arg_pushs                       "Monsters are wandering\nabout on Ragol? What\nhave we gotten into..."
+  add_msg                         ...
+  mesend
+  ret
+
+label0006@0x0006:
+  arg_pushl                       0x000003E9
+  arg_pushs                       "A huge dragon? You\nactually saw such a\ncreature?"
+  message                         ...
+  mesend
+  ret
+
+label0007@0x0007:
+  arg_pushl                       0x000003E9
+  arg_pushs                       "The... The dragon, did it\nattack you!?"
+  message                         ...
+  arg_pushs                       "You think the native\nanimals attacked Pioneer\n1 to protect their..."
+  add_msg                         ...
+  arg_pushs                       "It\'s possible...  But why\ndid it happen all of a\nsudden?"
+  add_msg                         ...
+  arg_pushs                       "Continue investigating\nplease."
+  add_msg                         ...
+  mesend
+  gset                            0x0018
+  ret
+
+label0008@0x0008:
+  arg_pushl                       0x000003E9
+  arg_pushs                       "Rico...!"
+  message                         ...
+  arg_pushs                       "No, I didn\'t say\nanything. Please continue\nyour research."
+  add_msg                         ...
+  mesend
+  ret
+
+label0009@0x0009:
+  arg_pushl                       0x000003E9
+  arg_pushs                       "I heard about the\ncreatures you\'ve seen\nfrom our Lab scientists."
+  message                         ...
+  arg_pushs                       "It seems that our initial\nperception of Ragol was\nwrong."
+  add_msg                         ...
+  arg_pushs                       "What you\'ve said doesn\'t\nmatch what Pioneer 1 told\nus... A paradise... Ha!"
+  add_msg                         ...
+  arg_pushs                       "And we still don\'t know\nthe cause of the\nexplosion."
+  add_msg                         ...
+  arg_pushs                       "On top of that, we\nhaven\'t heard anything\nfrom Pioneer 1!"
+  add_msg                         ...
+  arg_pushs                       "<name hero>, please...!\nContinue investigating!"
+  add_msg                         ...
+  mesend
+  gset                            0x0021
+  ret
+
+label000A@0x000A:
+  arg_pushl                       0x000003E9
+  arg_pushs                       "Where are they?  Where is\nPioneer 1? I need to\nknow!"
+  message                         ...
+  mesend
+  ret
+
+label000B@0x000B:
+  arg_pushl                       0x000003E9
+  arg_pushs                       "I don\'t want to believe\nit."
+  message                         ...
+  arg_pushs                       "If machines attacked,\nthen there must be\nintelligent life here!"
+  add_msg                         ...
+  arg_pushs                       "This must be some\nmistake... I don\'t\nbelieve it."
+  add_msg                         ...
+  mesend
+  ret
+
+label000C@0x000C:
+  arg_pushl                       0x000003E9
+  arg_pushs                       "I am responsible for\n30,000 people on\nPioneer 2."
+  message                         ...
+  arg_pushs                       "Should we abandon Ragol\nand just depart?"
+  add_msg                         ...
+  arg_pushs                       "But we don\'t have any\nother planet to settle\non. We need a home..."
+  add_msg                         ...
+  mesend
+  ret
+
+label000D@0x000D:
+  arg_pushl                       0x000003E9
+  arg_pushs                       "The underground ruins...\n Are they the cause of\neverything?"
+  message                         ...
+  arg_pushs                       "Did people from Pioneer 1\ngo down into the ruins?"
+  add_msg                         ...
+  arg_pushs                       "<name hero>, Please\ncontinue investigating."
+  add_msg                         ...
+  mesend
+  ret
+
+label000E@0x000E:
+  arg_pushl                       0x000003E9
+  arg_pushs                       "I don\'t believe it!\nUndiscovered monsters\nalso roam the ruins?!"
+  message                         ...
+  mesend
+  ret
+  arg_pushs                       ""
+  window_msg                      ...
+  winend
+  jmp                             label0010 /* 13D2 */
+  arg_pushl                       0x00000002
+  se                              ...
+
+label0010@0x0010:
+  arg_pushs                       ""
+  window_msg                      ...
+  winend
+  jmp                             label0011 /* 13E0 */
+  arg_pushl                       0x00000002
+  se                              ...
+
+label0011@0x0011:
+  arg_pushs                       ""
+  window_msg                      ...
+  winend
+  jmp                             label0012 /* 0583 */
+  arg_pushl                       0x00000002
+  se                              ...
+
+label0014@0x0014:
+  // Could not determine data type; disassembling as code
+  gget                            0x000B, r200
+  gget                            0x000C, r201
+  gget                            0x000D, r202
+  gget                            0x000E, r203
+  gget                            0x000F, r204
+  gget                            0x0010, r205
+  gget                            0x0011, r206
+  gget                            0x0012, r207
+  gget                            0x0013, r208
+  gget                            0x0014, r209
+  gget                            0x0015, r210
+  gget                            0x0016, r211
+  gget                            0x0017, r212
+  gget                            0x0018, r213
+  gget                            0x0019, r214
+  gget                            0x001A, r215
+  gget                            0x001E, r216
+  gget                            0x001F, r217
+  gget                            0x0020, r218
+  gget                            0x0021, r219
+  gget                            0x0022, r220
+  gget                            0x0028, r221
+  gget                            0x0029, r222
+  gget                            0x002A, r223
+  gget                            0x002B, r224
+  gget                            0x002C, r225
+  gget                            0x002D, r226
+  gget                            0x002E, r227
+  gget                            0x002F, r228
+  gget                            0x0030, r229
+  gget                            0x01F9, r230
+  jmpi_eq                         r230, 0x00000001, label001D /* 7C25 */
+  jmp                             label001C /* 7A88 */
+  jmpi_eq                         r205, 0x00000001, label0017 /* 1B3C */
+  jmpi_eq                         r223, 0x00000001, label0016 /* 17EE */
+  jmpi_eq                         r218, 0x00000001, label0016 /* 17EE */
+  jmpi_eq                         r212, 0x00000001, label0016 /* 17EE */
+  jmpi_eq                         r201, 0x00000001, label0016 /* 17EE */
+  jmpi_eq                         r200, 0x00000001, label0015 /* 14E2 */
+  arg_pushl                       0x000003EA
+  arg_pushs                       "Please see the Principal."
+  message                         ...
+  mesend
+  ret
+
+label0015@0x0015:
+  arg_pushl                       0x000003EA
+  arg_pushs                       "Well, let me brief you on\nyour mission."
+  message                         ...
+  arg_pushs                       "Once you\'re on the\nsurface, check the status\nof the residential area."
+  add_msg                         ...
+  arg_pushs                       "Checking the status of\nthe Central Dome is a\ngood idea."
+  add_msg                         ...
+  arg_pushs                       "A teleporter\'s been set\ndown on Ragol, so you can\ngo directly from here."
+  add_msg                         ...
+  arg_pushs                       "It may be a little risky,\nso please be careful."
+  add_msg                         ...
+  arg_pushs                       "That\'s all."
+  add_msg                         ...
+  arg_pushs                       "..."
+  add_msg                         ...
+  arg_pushs                       "Um, excuse me..."
+  add_msg                         ...
+  arg_pushs                       "Oh, sorry..., no,\nnothing. I wish you the\nbest of luck."
+  add_msg                         ...
+  mesend
+  gset                            0x000C
+  ret
+
+label0016@0x0016:
+  arg_pushl                       0x000003EA
+  arg_pushs                       "This is just between us,\nOK?"
+  message                         ...
+  arg_pushs                       "The principal\'s daughter\nwas on Pioneer 1."
+  add_msg                         ...
+  arg_pushs                       "After the explosion, he\'s\nbeen constantly worrying\nabout her.  "
+  add_msg                         ...
+  arg_pushs                       "He can\'t even sleep. This\nis a personal request. If\nit\'s possible..."
+  add_msg                         ...
+  arg_pushs                       "Find out what happened to\nher."
+  add_msg                         ...
+  arg_pushs                       "He isn\'t in a position to\nask you such a personal\nfavor."
+  add_msg                         ...
+  arg_pushs                       "Red Ring Rico..."
+  add_msg                         ...
+  arg_pushs                       "A famous hunter and a top\nscientist on Pioneer 1."
+  add_msg                         ...
+  arg_pushs                       "Rico\'s his only daughter."
+  add_msg                         ...
+  arg_pushs                       "Please, look for her!"
+  add_msg                         ...
+  mesend
+  gset                            0x0010
+  ret
+
+label0017@0x0017:
+  jmpi_eq                         r206, 0x00000001, label0018 /* 1BCF */
+  arg_pushl                       0x000003EA
+  arg_pushs                       "Red Ring Rico is\nthe principal\'s daughter."
+  message                         ...
+  arg_pushs                       "I hope she\'s safe..."
+  add_msg                         ...
+  mesend
+  ret
+
+label0018@0x0018:
+  jmpi_eq                         r212, 0x00000001, label0019 /* 1C6E */
+  arg_pushl                       0x000003EA
+  arg_pushs                       "How is everything?  Have\nyou found any clues leading\nto Red Ring Rico?"
+  message                         ...
+  mesend
+  ret
+
+label0019@0x0019:
+  arg_pushl                       0x000003EA
+  arg_pushs                       "I heard that you found\nmessages from Rico."
+  message                         ...
+  arg_pushs                       "But she\'s still missing."
+  add_msg                         ...
+  arg_pushs                       "Please, please find her\nas soon as you possibly\ncan! Please!"
+  add_msg                         ...
+  mesend
+  ret
+
+label001E@0x001E:
+  // Could not determine data type; disassembling as code
+  gget                            0x000B, r200
+  gget                            0x000C, r201
+  gget                            0x000D, r202
+  gget                            0x000E, r203
+  gget                            0x000F, r204
+  gget                            0x0010, r205
+  gget                            0x0011, r206
+  gget                            0x0012, r207
+  gget                            0x0013, r208
+  gget                            0x0014, r209
+  gget                            0x0015, r210
+  gget                            0x0016, r211
+  gget                            0x0017, r212
+  gget                            0x0018, r213
+  gget                            0x0019, r214
+  gget                            0x001A, r215
+  gget                            0x001E, r216
+  gget                            0x001F, r217
+  gget                            0x0020, r218
+  gget                            0x0021, r219
+  gget                            0x0022, r220
+  gget                            0x0028, r221
+  gget                            0x0029, r222
+  gget                            0x002A, r223
+  gget                            0x002B, r224
+  gget                            0x002C, r225
+  gget                            0x002D, r226
+  gget                            0x002E, r227
+  gget                            0x002F, r228
+  gget                            0x0030, r229
+  gget                            0x01F9, r230
+  jmpi_eq                         r230, 0x00000001, label0028 /* 7D93 */
+  jmp                             label0027 /* 7CF6 */
+  jmpi_eq                         r224, 0x00000001, label0026 /* 2B1C */
+  jmpi_eq                         r221, 0x00000001, label0025 /* 292B */
+  jmpi_eq                         r218, 0x00000001, label0024 /* 26A8 */
+  jmpi_eq                         r216, 0x00000001, label0023 /* 254B */
+  jmpi_eq                         r214, 0x00000001, label0022 /* 246A */
+  jmpi_eq                         r212, 0x00000001, label0021 /* 233C */
+  jmpi_eq                         r210, 0x00000001, label0020 /* 21E3 */
+  jmpi_eq                         r202, 0x00000001, label001F /* 2112 */
+  arg_pushl                       0x000003EB
+  arg_pushs                       "Our planet was tearing\nitself apart. We couldn\'t\nstop it."
+  message                         ...
+  arg_pushs                       "So we searched for a new\nplanet, and found Ragol\nwith our unmanned probes."
+  add_msg                         ...
+  arg_pushs                       "A huge interstellar ship\nwas sent to Ragol. That\nwas Pioneer 1."
+  add_msg                         ...
+  arg_pushs                       "Pioneer 1 confirmed Ragol\nas a suitable location to\nsettle on."
+  add_msg                         ...
+  arg_pushs                       "And a second ship\ndeparted. That was us...\nPioneer 2."
+  add_msg                         ...
+  arg_pushs                       "Oh, sorry. You already\nknew that."
+  add_msg                         ...
+  mesend
+  gset                            0x000D
+  ret
+
+label001F@0x001F:
+  arg_pushl                       0x000003EB
+  arg_pushs                       "Pioneer 1 and 2 are\nidentical spaceships."
+  message                         ...
+  arg_pushs                       "Each Pioneer can travel\nin space, holding 30,000\npeople."
+  add_msg                         ...
+  mesend
+  ret
+
+label0020@0x0020:
+  arg_pushl                       0x000003EB
+  arg_pushs                       "Yes, I\'ve heard it."
+  message                         ...
+  arg_pushs                       "I assume the monsters you\nencountered are native\nanimals living on Ragol."
+  add_msg                         ...
+  arg_pushs                       "But Pioneer 1\'s report\nsaid the native animals\nwere quiet and peaceful."
+  add_msg                         ...
+  mesend
+  ret
+
+label0021@0x0021:
+  arg_pushl                       0x000003EB
+  arg_pushs                       "A huge dragon!?"
+  message                         ...
+  arg_pushs                       "We have no data on this.\nPioneer 1 didn\'t mention\nit in their report..."
+  add_msg                         ...
+  arg_pushs                       "We didn\'t know that Ragol\nwas such a dangerous\nplanet!"
+  add_msg                         ...
+  mesend
+  gset                            0x0019
+  ret
+
+label0022@0x0022:
+  arg_pushl                       0x000003EB
+  arg_pushs                       "As a scientist, I\'m very\ninterested in Ragol\'s\necological system..."
+  message                         ...
+  arg_pushs                       "But as a citizen, I\'m\nvery frightened."
+  add_msg                         ...
+  mesend
+  ret
+
+label0023@0x0023:
+  arg_pushl                       0x000003EB
+  arg_pushs                       "Hmm...\nThis is unbelievable!"
+  message                         ...
+  arg_pushs                       "The creatures you\'re\nreporting on now, we have\nabsolutely no info on."
+  add_msg                         ...
+  arg_pushs                       "I don\'t believe Pioneer 1\ncould have made such \ncritical mistakes..."
+  add_msg                         ...
+  mesend
+  ret
+
+label0024@0x0024:
+  arg_pushl                       0x000003EB
+  arg_pushs                       "The creatures you saw in\nthe cave might be mutant\nforms of the native life."
+  message                         ...
+  arg_pushs                       "And this enormous\ncrustacean..."
+  add_msg                         ...
+  arg_pushs                       "It has a needle shaped\norgan, to inject its sap\ninto other animals."
+  add_msg                         ...
+  arg_pushs                       "I\'m probably being too\nhasty, but I think I have\na theory..."
+  add_msg                         ...
+  arg_pushs                       "I think that this sap is\nchanging the animals into\nthese mutant life forms."
+  add_msg                         ...
+  mesend
+  ret
+
+label0025@0x0025:
+  arg_pushl                       0x000003EB
+  arg_pushs                       "Based on our analysis, \nthese robots that you\nfought against were\n"
+  message                         ...
+  arg_pushs                       "restructured mechanisms\nthat were used on Pioneer\n1."
+  add_msg                         ...
+  arg_pushs                       "It\'s my job to find\nfacts. Finding the reason\nis someone else\'s job."
+  add_msg                         ...
+  arg_pushs                       "But..."
+  add_msg                         ...
+  arg_pushs                       "To tell the truth, I\'m\nscared. Very scared."
+  add_msg                         ...
+  mesend
+  ret
+
+label0026@0x0026:
+  arg_pushl                       0x000003EB
+  arg_pushs                       "Ruins found\nunderground..."
+  message                         ...
+  arg_pushs                       "Did sentient life exist\non Ragol at one time?"
+  add_msg                         ...
+  arg_pushs                       "But Pioneer 1 didn\'t find\nany traces of sentient\nlife on the surface."
+  add_msg                         ...
+  arg_pushs                       "It\'s a perplexing\nquestion..."
+  add_msg                         ...
+  mesend
+  ret
+  arg_pushl                       0x000003EB
+  arg_pushs                       "The data from the ruins\nconfirms that we\'ve found\nanother civilization."
+  message                         ...
+  arg_pushs                       "A great discovery... but\nI\'m not in the mood to\nget excited right now..."
+  add_msg                         ...
+  mesend
+  ret
+
+label0032@0x0032:
+  // Could not determine data type; disassembling as code
+  gget                            0x000B, r200
+  gget                            0x000C, r201
+  gget                            0x000D, r202
+  gget                            0x000E, r203
+  gget                            0x000F, r204
+  gget                            0x0010, r205
+  gget                            0x0011, r206
+  gget                            0x0012, r207
+  gget                            0x0013, r208
+  gget                            0x0014, r209
+  gget                            0x0015, r210
+  gget                            0x0016, r211
+  gget                            0x0017, r212
+  gget                            0x0018, r213
+  gget                            0x0019, r214
+  gget                            0x001A, r215
+  gget                            0x001E, r216
+  gget                            0x001F, r217
+  gget                            0x0020, r218
+  gget                            0x0021, r219
+  gget                            0x0022, r220
+  gget                            0x0028, r221
+  gget                            0x0029, r222
+  gget                            0x002A, r223
+  gget                            0x002B, r224
+  gget                            0x002C, r225
+  gget                            0x002D, r226
+  gget                            0x002E, r227
+  gget                            0x002F, r228
+  gget                            0x0030, r229
+  gget                            0x01F9, r230
+  jmpi_eq                         r230, 0x00000001, label003B /* 7F2B */
+  jmp                             label003A /* 7E26 */
+  jmpi_eq                         r229, 0x00000001, label0039 /* 37EF */
+  jmpi_eq                         r224, 0x00000001, label0038 /* 36B4 */
+  jmpi_eq                         r221, 0x00000001, label0037 /* 3597 */
+  jmpi_eq                         r218, 0x00000001, label0036 /* 3356 */
+  jmpi_eq                         r216, 0x00000001, label0035 /* 3247 */
+  jmpi_eq                         r210, 0x00000001, label0034 /* 309A */
+  jmpi_eq                         r203, 0x00000001, label0033 /* 2FC5 */
+  arg_pushl                       0x000003EC
+  arg_pushs                       "When our ship was led by\nPioneer 1\'s signal to\nland on Ragol, we saw..."
+  message                         ...
+  arg_pushs                       "that strange explosion!"
+  add_msg                         ...
+  arg_pushs                       "Pioneer 2 decided to\norbit Ragol and collect\ndata before landing."
+  add_msg                         ...
+  mesend
+  gset                            0x000E
+  ret
+
+label0033@0x0033:
+  arg_pushl                       0x000003EC
+  arg_pushs                       "I was against the\nimmigration!"
+  message                         ...
+  arg_pushs                       "If a planet dies, the\npeople have to die with\nit. Don\'t you think so?"
+  add_msg                         ...
+  mesend
+  ret
+
+label0034@0x0034:
+  arg_pushl                       0x000003EC
+  arg_pushs                       "What made the normally\npeaceful native animals\ngo berserk?"
+  message                         ...
+  arg_pushs                       "It\'s a natural question\nto ask. It may seem too\nobvious an answer..."
+  add_msg                         ...
+  arg_pushs                       "But could Pioneer 1 have\nmade a false report? But\nwhy?"
+  add_msg                         ...
+  arg_pushs                       "It\'s possible though..."
+  add_msg                         ...
+  mesend
+  ret
+
+label0035@0x0035:
+  arg_pushl                       0x000003EC
+  arg_pushs                       "I\'ve read your report."
+  message                         ...
+  arg_pushs                       "The general environment\nof Ragol is agreeable to\nus..."
+  add_msg                         ...
+  arg_pushs                       "but its ecological\nsystem... It\'s not.\nThat\'s all."
+  add_msg                         ...
+  mesend
+  ret
+
+label0036@0x0036:
+  arg_pushl                       0x000003EC
+  arg_pushs                       "If that huge creature was\nthe reason, we should be\nsafe now."
+  message                         ...
+  arg_pushs                       "It was defeated by\n<name hero>, the\nskilled <name job>!"
+  add_msg                         ...
+  arg_pushs                       "Could there have been\nmore of these creatures?"
+  add_msg                         ...
+  arg_pushs                       "Was it really the last\none? Nobody knows!"
+  add_msg                         ...
+  arg_pushs                       "Ha, ha... there must be\nmore. Hundreds of them \nmust exist... ha, ha, ha!"
+  add_msg                         ...
+  mesend
+  ret
+
+label0037@0x0037:
+  arg_pushl                       0x000003EC
+  arg_pushs                       "By now, you know that\nRagol\'s a dangerous\nplanet."
+  message                         ...
+  arg_pushs                       "And it\'s unlikely that\nanyone on Pioneer 1\nsurvived."
+  add_msg                         ...
+  arg_pushs                       "We have to leave here\nright now."
+  add_msg                         ...
+  mesend
+  ret
+
+label0038@0x0038:
+  arg_pushl                       0x000003EC
+  arg_pushs                       "Pioneer 1 somehow knew \nthese ancient underground\nruins existed."
+  message                         ...
+  arg_pushs                       "And they were going to\nexcavate it for\nresearch..."
+  add_msg                         ...
+  arg_pushs                       "And something happened.\nBut what!?"
+  add_msg                         ...
+  mesend
+  ret
+
+label0039@0x0039:
+  arg_pushl                       0x000003EC
+  arg_pushs                       "In the depths of the\nruins..."
+  message                         ...
+  arg_pushs                       "a key must be lying\ndormant, the key to\neverything."
+  add_msg                         ...
+  arg_pushs                       "I\'m a scientist. I want\nto know the truth, but\nI have a bad feeling!"
+  add_msg                         ...
+  arg_pushs                       "Well, again I suggest you\nleave here. Yes, as soon\nas possible."
+  add_msg                         ...
+  mesend
+  ret
+
+label003C@0x003C:
+  // Could not determine data type; disassembling as code
+  gget                            0x000B, r200
+  gget                            0x000C, r201
+  gget                            0x000D, r202
+  gget                            0x000E, r203
+  gget                            0x000F, r204
+  gget                            0x0010, r205
+  gget                            0x0011, r206
+  gget                            0x0012, r207
+  gget                            0x0013, r208
+  gget                            0x0014, r209
+  gget                            0x0015, r210
+  gget                            0x0016, r211
+  gget                            0x0017, r212
+  gget                            0x0018, r213
+  gget                            0x0019, r214
+  gget                            0x001A, r215
+  gget                            0x001E, r216
+  gget                            0x001F, r217
+  gget                            0x0020, r218
+  gget                            0x0021, r219
+  gget                            0x0022, r220
+  gget                            0x0028, r221
+  gget                            0x0029, r222
+  gget                            0x002A, r223
+  gget                            0x002B, r224
+  gget                            0x002C, r225
+  gget                            0x002D, r226
+  gget                            0x002E, r227
+  gget                            0x002F, r228
+  gget                            0x0030, r229
+  jmpi_eq                         r223, 0x00000001, label0040 /* 3F13 */
+  jmpi_eq                         r218, 0x00000001, label003F /* 3E76 */
+  jmpi_eq                         r212, 0x00000001, label003D /* 3C14 */
+  arg_pushl                       0x000003F4
+  arg_pushs                       "Ah, I miss her..."
+  message                         ...
+  arg_pushs                       "Did you know that\nRed Ring Rico was\non board Pioneer 1?"
+  add_msg                         ...
+  arg_pushs                       "They asked her because\nshe\'s both a great\nscientist and hunter."
+  add_msg                         ...
+  arg_pushs                       "She\'s a survivor, and\nquick on her feet, but\nthat explosion..."
+  add_msg                         ...
+  arg_pushs                       "Ah, I really miss her..."
+  add_msg                         ...
+  mesend
+  gset                            0x0012
+  ret
+
+label003D@0x003D:
+  jmpi_eq                         r206, 0x00000001, label003E /* 3D0D */
+  arg_pushl                       0x000003F4
+  arg_pushs                       "Did you hear?"
+  message                         ...
+  arg_pushs                       "They say the government\nhired somebody to check\nout Ragol."
+  add_msg                         ...
+  arg_pushs                       "I hope whoever it is can\nfind Rico, too."
+  add_msg                         ...
+  mesend
+  ret
+
+label003E@0x003E:
+  arg_pushl                       0x000003F4
+  arg_pushs                       "Did you know?"
+  message                         ...
+  arg_pushs                       "I heard that somebody was\nsent to explore Ragol and\nthat they finally..."
+  add_msg                         ...
+  arg_pushs                       "found a message from\nRed Ring Rico!!"
+  add_msg                         ...
+  arg_pushs                       "She must be alive, she\nmust! Don\'t you think so?"
+  add_msg                         ...
+  mesend
+  ret
+
+label003F@0x003F:
+  arg_pushl                       0x000003F4
+  arg_pushs                       "Did you know?"
+  message                         ...
+  arg_pushs                       "They finally got a\nteleporter set on the\nsurface of Ragol."
+  add_msg                         ...
+  mesend
+  ret
+
+label0040@0x0040:
+  arg_pushl                       0x000003F4
+  arg_pushs                       "Did you know?"
+  message                         ...
+  arg_pushs                       "It\'s been rumored that\nRico left a lot of\nmessages on Ragol."
+  add_msg                         ...
+  arg_pushs                       "Her messages must be\nimportant clues that\'ll\nhelp solve this mystery."
+  add_msg                         ...
+  mesend
+  ret
+
+label0046@0x0046:
+  // Could not determine data type; disassembling as code
+  gget                            0x000B, r200
+  gget                            0x000C, r201
+  gget                            0x000D, r202
+  gget                            0x000E, r203
+  gget                            0x000F, r204
+  gget                            0x0010, r205
+  gget                            0x0011, r206
+  gget                            0x0012, r207
+  gget                            0x0013, r208
+  gget                            0x0014, r209
+  gget                            0x0015, r210
+  gget                            0x0016, r211
+  gget                            0x0017, r212
+  gget                            0x0018, r213
+  gget                            0x0019, r214
+  gget                            0x001A, r215
+  gget                            0x001E, r216
+  gget                            0x001F, r217
+  gget                            0x0020, r218
+  gget                            0x0021, r219
+  gget                            0x0022, r220
+  gget                            0x0028, r221
+  gget                            0x0029, r222
+  gget                            0x002A, r223
+  gget                            0x002B, r224
+  gget                            0x002C, r225
+  gget                            0x002D, r226
+  gget                            0x002E, r227
+  gget                            0x002F, r228
+  gget                            0x0030, r229
+  jmpi_eq                         r223, 0x00000001, label004A /* 4451 */
+  jmpi_eq                         r218, 0x00000001, label0049 /* 4338 */
+  jmpi_eq                         r212, 0x00000001, label0048 /* 4243 */
+  jmpi_eq                         r204, 0x00000001, label0047 /* 41F2 */
+  arg_pushl                       0x000003F5
+  arg_pushs                       "Tell me, tell me!"
+  message                         ...
+  arg_pushs                       "What happened? Where are\nthey? We have no info at\nall!"
+  add_msg                         ...
+  arg_pushs                       "Without any info, we\ncan\'t go on! Your mission\nis crucial."
+  add_msg                         ...
+  mesend
+  gset                            0x000F
+  ret
+
+label0047@0x0047:
+  arg_pushl                       0x000003F5
+  arg_pushs                       "Pioneer 1... is anyone\nstill alive?"
+  message                         ...
+  mesend
+  ret
+
+label0048@0x0048:
+  arg_pushl                       0x000003F5
+  arg_pushs                       "Nobody on Pioneer 1 was\nfound on the surface?"
+  message                         ...
+  arg_pushs                       "Perhaps they\'re taking\nrefuge somewhere... Or..."
+  add_msg                         ...
+  arg_pushs                       "No, no! It can\'t be."
+  add_msg                         ...
+  mesend
+  ret
+
+label0049@0x0049:
+  arg_pushl                       0x000003F5
+  arg_pushs                       "An underground cave was\ndiscovered?"
+  message                         ...
+  arg_pushs                       "It\'s not a natural\noccurrence, it\'s an\nartificial creation."
+  add_msg                         ...
+  arg_pushs                       "Could Pioneer 1 have\ncreated it? Why?"
+  add_msg                         ...
+  mesend
+  ret
+
+label004A@0x004A:
+  arg_pushl                       0x000003F5
+  arg_pushs                       "It\'s just a hunch, but\ntell me what you think..."
+  message                         ...
+  arg_pushs                       "Pioneer 1 didn\'t want to\nreport the ruins, or\ntheir plan to excavate."
+  add_msg                         ...
+  arg_pushs                       "Someone\'s intentionally\nhiding something."
+  add_msg                         ...
+  mesend
+  ret
+
+label0050@0x0050:
+  // Could not determine data type; disassembling as code
+  gget                            0x000B, r200
+  gget                            0x000C, r201
+  gget                            0x000D, r202
+  gget                            0x000E, r203
+  gget                            0x000F, r204
+  gget                            0x0010, r205
+  gget                            0x0011, r206
+  gget                            0x0012, r207
+  gget                            0x0013, r208
+  gget                            0x0014, r209
+  gget                            0x0015, r210
+  gget                            0x0016, r211
+  gget                            0x0017, r212
+  gget                            0x0018, r213
+  gget                            0x0019, r214
+  gget                            0x001A, r215
+  gget                            0x001E, r216
+  gget                            0x001F, r217
+  gget                            0x0020, r218
+  gget                            0x0021, r219
+  gget                            0x0022, r220
+  gget                            0x0028, r221
+  gget                            0x0029, r222
+  gget                            0x002A, r223
+  gget                            0x002B, r224
+  gget                            0x002C, r225
+  gget                            0x002D, r226
+  gget                            0x002E, r227
+  gget                            0x002F, r228
+  gget                            0x0030, r229
+  jmpi_eq                         r223, 0x00000001, label0053 /* 494B */
+  jmpi_eq                         r218, 0x00000001, label0052 /* 4816 */
+  jmpi_eq                         r212, 0x00000001, label0051 /* 4797 */
+  arg_pushl                       0x000003F6
+  arg_pushs                       "The explosion occurred\njust after our landing\nannouncement."
+  message                         ...
+  arg_pushs                       "The news spread very\nquickly among the citizen\nlevels."
+  add_msg                         ...
+  arg_pushs                       "The people who have\nfamily on Pioneer 1 are\nvery worried."
+  add_msg                         ...
+  mesend
+  ret
+
+label0051@0x0051:
+  arg_pushl                       0x000003F6
+  arg_pushs                       "The government hasn\'t \ngiven any official\nstatement! Why!?"
+  message                         ...
+  mesend
+  ret
+
+label0052@0x0052:
+  arg_pushl                       0x000003F6
+  arg_pushs                       "2 years have passed since\nPioneer 2 left home."
+  message                         ...
+  arg_pushs                       "I thought that I could\nfinally stand on real\nground now..."
+  add_msg                         ...
+  arg_pushs                       "The planet is just in\nfront of us, but..."
+  add_msg                         ...
+  mesend
+  ret
+
+label0053@0x0053:
+  arg_pushl                       0x000003F6
+  arg_pushs                       "What should we do if\nRagol isn\'t the place for\nus?"
+  message                         ...
+  arg_pushs                       "We can\'t go back, and we\ncan\'t proceed.  Where is\nhome now?"
+  add_msg                         ...
+  mesend
+  ret
+
+label005A@0x005A:
+  // Could not determine data type; disassembling as code
+  gget                            0x000B, r200
+  gget                            0x000C, r201
+  gget                            0x000D, r202
+  gget                            0x000E, r203
+  gget                            0x000F, r204
+  gget                            0x0010, r205
+  gget                            0x0011, r206
+  gget                            0x0012, r207
+  gget                            0x0013, r208
+  gget                            0x0014, r209
+  gget                            0x0015, r210
+  gget                            0x0016, r211
+  gget                            0x0017, r212
+  gget                            0x0018, r213
+  gget                            0x0019, r214
+  gget                            0x001A, r215
+  gget                            0x001E, r216
+  gget                            0x001F, r217
+  gget                            0x0020, r218
+  gget                            0x0021, r219
+  gget                            0x0022, r220
+  gget                            0x0028, r221
+  gget                            0x0029, r222
+  gget                            0x002A, r223
+  gget                            0x002B, r224
+  gget                            0x002C, r225
+  gget                            0x002D, r226
+  gget                            0x002E, r227
+  gget                            0x002F, r228
+  gget                            0x0030, r229
+  jmpi_eq                         r223, 0x00000001, label005D /* 4E07 */
+  jmpi_eq                         r218, 0x00000001, label005C /* 4D6A */
+  jmpi_eq                         r212, 0x00000001, label005B /* 4C97 */
+  arg_pushl                       0x000003F7
+  arg_pushs                       "Rico loved the color red,\nthat\'s why she always\nwore something red."
+  message                         ...
+  arg_pushs                       "The red armlet on her\nleft arm really left an\nimpression on people."
+  add_msg                         ...
+  arg_pushs                       "That\'s why we called her\nRed Ring Rico."
+  add_msg                         ...
+  arg_pushs                       "Well, she must be alive.\nI know how tough she is."
+  add_msg                         ...
+  mesend
+  ret
+
+label005B@0x005B:
+  arg_pushl                       0x000003F7
+  arg_pushs                       "Maybe if I wear a red\narmlet I\'ll have the same\ncourage as Rico."
+  message                         ...
+  arg_pushs                       "I know, it\'s a silly\nidea. Ha, ha."
+  add_msg                         ...
+  mesend
+  ret
+
+label005C@0x005C:
+  arg_pushl                       0x000003F7
+  arg_pushs                       "Did you go down to Ragol?"
+  message                         ...
+  arg_pushs                       "Wow, you\'re really brave.\nI envy your courage."
+  add_msg                         ...
+  mesend
+  ret
+
+label005D@0x005D:
+  arg_pushl                       0x000003F7
+  arg_pushs                       "Have you found Rico yet?"
+  message                         ...
+  arg_pushs                       "That unfortunate accident...\nWith Rico there..."
+  add_msg                         ...
+  mesend
+  ret
+
+label0064@0x0064:
+  // Could not determine data type; disassembling as code
+  gget                            0x000B, r200
+  gget                            0x000C, r201
+  gget                            0x000D, r202
+  gget                            0x000E, r203
+  gget                            0x000F, r204
+  gget                            0x0010, r205
+  gget                            0x0011, r206
+  gget                            0x0012, r207
+  gget                            0x0013, r208
+  gget                            0x0014, r209
+  gget                            0x0015, r210
+  gget                            0x0016, r211
+  gget                            0x0017, r212
+  gget                            0x0018, r213
+  gget                            0x0019, r214
+  gget                            0x001A, r215
+  gget                            0x001E, r216
+  gget                            0x001F, r217
+  gget                            0x0020, r218
+  gget                            0x0021, r219
+  gget                            0x0022, r220
+  gget                            0x0028, r221
+  gget                            0x0029, r222
+  gget                            0x002A, r223
+  gget                            0x002B, r224
+  gget                            0x002C, r225
+  gget                            0x002D, r226
+  gget                            0x002E, r227
+  gget                            0x002F, r228
+  gget                            0x0030, r229
+  gget                            0x01F5, r230
+  jmpi_eq                         r230, 0x00000000, label0068 /* 7FEC */
+  jmpi_eq                         r223, 0x00000001, label0067 /* 54D7 */
+  jmpi_eq                         r218, 0x00000001, label0066 /* 53E0 */
+  jmpi_eq                         r212, 0x00000001, label0065 /* 51DF */
+  arg_pushl                       0x000003F8
+  arg_pushs                       "The Hunter\'s Guild..."
+  message                         ...
+  arg_pushs                       "We generally call all\nHunters, Rangers and\nForces just \"hunters.\""
+  add_msg                         ...
+  arg_pushs                       "The Guild is a place for\nhunters to get a lot\nof information."
+  add_msg                         ...
+  arg_pushs                       "They also assist hunters\nby finding jobs at\nthe counter."
+  add_msg                         ...
+  arg_pushs                       "They aren\'t part of the\ngovernment. They\'re\ntotally independent."
+  add_msg                         ...
+  arg_pushs                       "They have total\nextraterritoriality\ninside the Guild."
+  add_msg                         ...
+  mesend
+  ret
+
+label0065@0x0065:
+  arg_pushl                       0x000003F8
+  arg_pushs                       "Most of our problems have\nbeen solved by hunters."
+  message                         ...
+  arg_pushs                       "Because of this, cases\nthat need an army rarely\noccur."
+  add_msg                         ...
+  arg_pushs                       "\'Sides, Pioneer 2 doesn\'t\nhave a large army, so we\nmust depend on hunters."
+  add_msg                         ...
+  arg_pushs                       "Hunters work together\nwhen necessary, but they\nprefer working alone."
+  add_msg                         ...
+  mesend
+  ret
+
+label0066@0x0066:
+  arg_pushl                       0x000003F8
+  arg_pushs                       "Some hunters get their\njobs directly from the\ngovernment."
+  message                         ...
+  arg_pushs                       "The government usually\noffers jobs as a last\nresort though."
+  add_msg                         ...
+  mesend
+  ret
+
+label0067@0x0067:
+  arg_pushl                       0x000003F8
+  arg_pushs                       "There are probably other\nways to make money,\nanyway."
+  message                         ...
+  arg_pushs                       "Increasing your\nexperience is probably\nmore important."
+  add_msg                         ...
+  mesend
+  ret
+
+label006E@0x006E:
+  // Could not determine data type; disassembling as code
+  gget                            0x000B, r200
+  gget                            0x000C, r201
+  gget                            0x000D, r202
+  gget                            0x000E, r203
+  gget                            0x000F, r204
+  gget                            0x0010, r205
+  gget                            0x0011, r206
+  gget                            0x0012, r207
+  gget                            0x0013, r208
+  gget                            0x0014, r209
+  gget                            0x0015, r210
+  gget                            0x0016, r211
+  gget                            0x0017, r212
+  gget                            0x0018, r213
+  gget                            0x0019, r214
+  gget                            0x001A, r215
+  gget                            0x001E, r216
+  gget                            0x001F, r217
+  gget                            0x0020, r218
+  gget                            0x0021, r219
+  gget                            0x0022, r220
+  gget                            0x0028, r221
+  gget                            0x0029, r222
+  gget                            0x002A, r223
+  gget                            0x002B, r224
+  gget                            0x002C, r225
+  gget                            0x002D, r226
+  gget                            0x002E, r227
+  gget                            0x002F, r228
+  gget                            0x0030, r229
+  gget                            0x01F5, r230
+  jmpi_eq                         r230, 0x00000000, label0072 /* 80FD */
+  jmpi_eq                         r223, 0x00000001, label0071 /* 591F */
+  jmpi_eq                         r218, 0x00000001, label0070 /* 5836 */
+  jmpi_eq                         r212, 0x00000001, label006F /* 5763 */
+  arg_pushl                       0x000003FA
+  arg_pushs                       "We\'re always so busy!"
+  message                         ...
+  arg_pushs                       "People seem to find ways\nto get themselves hurt."
+  add_msg                         ...
+  arg_pushs                       "It\'s OK though.  If it\'s\njust a wound, we can heal\nthem."
+  add_msg                         ...
+  mesend
+  ret
+
+label006F@0x006F:
+  arg_pushl                       0x000003FA
+  arg_pushs                       "It\'s busier than normal\nlately."
+  message                         ...
+  arg_pushs                       "Why\'re we getting so many\ninjured people these\ndays? What happened?"
+  add_msg                         ...
+  mesend
+  ret
+
+label0070@0x0070:
+  arg_pushl                       0x000003FA
+  arg_pushs                       "Have you heard about the\nmonsters on Ragol?"
+  message                         ...
+  arg_pushs                       "I just happened to hear\nabout this rumor from one\nof our patients."
+  add_msg                         ...
+  mesend
+  ret
+
+label0071@0x0071:
+  arg_pushl                       0x000003FA
+  arg_pushs                       "Now I understand why\nwe\'ve been so busy these\ndays."
+  message                         ...
+  arg_pushs                       "Fighting monsters must\nbe totally different\nfrom fighting a person."
+  add_msg                         ...
+  mesend
+  ret
+
+label0078@0x0078:
+  // Could not determine data type; disassembling as code
+  gget                            0x000B, r200
+  gget                            0x000C, r201
+  gget                            0x000D, r202
+  gget                            0x000E, r203
+  gget                            0x000F, r204
+  gget                            0x0010, r205
+  gget                            0x0011, r206
+  gget                            0x0012, r207
+  gget                            0x0013, r208
+  gget                            0x0014, r209
+  gget                            0x0015, r210
+  gget                            0x0016, r211
+  gget                            0x0017, r212
+  gget                            0x0018, r213
+  gget                            0x0019, r214
+  gget                            0x001A, r215
+  gget                            0x001E, r216
+  gget                            0x001F, r217
+  gget                            0x0020, r218
+  gget                            0x0021, r219
+  gget                            0x0022, r220
+  gget                            0x0028, r221
+  gget                            0x0029, r222
+  gget                            0x002A, r223
+  gget                            0x002B, r224
+  gget                            0x002C, r225
+  gget                            0x002D, r226
+  gget                            0x002E, r227
+  gget                            0x002F, r228
+  gget                            0x0030, r229
+  jmpi_eq                         r223, 0x00000001, label007B /* 5E99 */
+  jmpi_eq                         r218, 0x00000001, label007A /* 5E1C */
+  jmpi_eq                         r212, 0x00000001, label0079 /* 5CBD */
+  arg_pushl                       0x000003FB
+  arg_pushs                       "This area is for A rank\nhunters who take part in\ncritical missions."
+  message                         ...
+  arg_pushs                       "It is isolated from other\nareas for security\nreasons."
+  add_msg                         ...
+  arg_pushs                       "Take this teleporter for\ninstance. It has direct\naccess to Ragol."
+  add_msg                         ...
+  arg_pushs                       "But access is restricted.\nOnly a few hunters are\npermitted to use it."
+  add_msg                         ...
+  mesend
+  ret
+
+label0079@0x0079:
+  arg_pushl                       0x000003FB
+  arg_pushs                       "People in this area have\nno sense of this crisis\nat all!"
+  message                         ...
+  arg_pushs                       "This immigration plan is\nthe key to our future!!"
+  add_msg                         ...
+  arg_pushs                       "I don\'t trust hunters.\nThey don\'t treat their\ntasks seriously."
+  add_msg                         ...
+  mesend
+  ret
+
+label007A@0x007A:
+  arg_pushl                       0x000003FB
+  arg_pushs                       "If we had more soldiers,\nwe wouldn\'t need to use\nhunters!"
+  message                         ...
+  mesend
+  ret
+
+label007B@0x007B:
+  arg_pushl                       0x000003FB
+  arg_pushs                       "Well, I\'d handle\neverything if I had\nstronger weapons!"
+  message                         ...
+  mesend
+  ret
+
+label0082@0x0082:
+  // Could not determine data type; disassembling as code
+  gget                            0x000B, r200
+  gget                            0x000C, r201
+  gget                            0x000D, r202
+  gget                            0x000E, r203
+  gget                            0x000F, r204
+  gget                            0x0010, r205
+  gget                            0x0011, r206
+  gget                            0x0012, r207
+  gget                            0x0013, r208
+  gget                            0x0014, r209
+  gget                            0x0015, r210
+  gget                            0x0016, r211
+  gget                            0x0017, r212
+  gget                            0x0018, r213
+  gget                            0x0019, r214
+  gget                            0x001A, r215
+  gget                            0x001E, r216
+  gget                            0x001F, r217
+  gget                            0x0020, r218
+  gget                            0x0021, r219
+  gget                            0x0022, r220
+  gget                            0x0028, r221
+  gget                            0x0029, r222
+  gget                            0x002A, r223
+  gget                            0x002B, r224
+  gget                            0x002C, r225
+  gget                            0x002D, r226
+  gget                            0x002E, r227
+  gget                            0x002F, r228
+  gget                            0x0030, r229
+  jmpi_eq                         r223, 0x00000001, label0085 /* 62FD */
+  jmpi_eq                         r218, 0x00000001, label0084 /* 624A */
+  jmpi_eq                         r212, 0x00000001, label0083 /* 60E1 */
+  arg_pushl                       0x000003FC
+  arg_pushs                       "Pioneer 2 departed after\nPioneer 1 confirmed Ragol\nwas suitable."
+  message                         ...
+  arg_pushs                       "Because of Pioneer 1\'s\nreport, we only brought a\nsmall army."
+  add_msg                         ...
+  arg_pushs                       "Did we take too big a\nrisk?"
+  add_msg                         ...
+  mesend
+  ret
+
+label0083@0x0083:
+  arg_pushl                       0x000003FC
+  arg_pushs                       "Do we always need to look\nsad or serious when we\'re\nin trouble?"
+  message                         ...
+  arg_pushs                       "Even when you\'re in a lot\nof trouble, remain calm."
+  add_msg                         ...
+  arg_pushs                       "I like it. It makes you\nseem professional. It\'s\nvery cool."
+  add_msg                         ...
+  mesend
+  ret
+
+label0084@0x0084:
+  arg_pushl                       0x000003FC
+  arg_pushs                       "Do only what you can do."
+  message                         ...
+  arg_pushs                       "That\'s the best way to deal\nwith everything... Never mind."
+  add_msg                         ...
+  mesend
+  ret
+
+label0085@0x0085:
+  arg_pushl                       0x000003FC
+  arg_pushs                       "Pioneer 1 carried a lot\nmore weaponry than we\ndid."
+  message                         ...
+  arg_pushs                       "If we really have to\nland on Ragol, we should\ntry to find it."
+  add_msg                         ...
+  mesend
+  ret
+
+label008C@0x008C:
+  // Could not determine data type; disassembling as code
+  gget                            0x000B, r200
+  gget                            0x000C, r201
+  gget                            0x000D, r202
+  gget                            0x000E, r203
+  gget                            0x000F, r204
+  gget                            0x0010, r205
+  gget                            0x0011, r206
+  gget                            0x0012, r207
+  gget                            0x0013, r208
+  gget                            0x0014, r209
+  gget                            0x0015, r210
+  gget                            0x0016, r211
+  gget                            0x0017, r212
+  gget                            0x0018, r213
+  gget                            0x0019, r214
+  gget                            0x001A, r215
+  gget                            0x001E, r216
+  gget                            0x001F, r217
+  gget                            0x0020, r218
+  gget                            0x0021, r219
+  gget                            0x0022, r220
+  gget                            0x0028, r221
+  gget                            0x0029, r222
+  gget                            0x002A, r223
+  gget                            0x002B, r224
+  gget                            0x002C, r225
+  gget                            0x002D, r226
+  gget                            0x002E, r227
+  gget                            0x002F, r228
+  gget                            0x0030, r229
+  jmpi_eq                         r208, 0x00000001, label008D /* 65C5 */
+  arg_pushl                       0x000003FD
+  arg_pushs                       "Have you met the tekkers?"
+  message                         ...
+  arg_pushs                       "To discover the true\npower of an unknown item,\nthey must examine it."
+  add_msg                         ...
+  arg_pushs                       "But you can\'t always\nbelieve them. Each tekker\nhas their own specialty."
+  add_msg                         ...
+  mesend
+  ret
+
+label008D@0x008D:
+  arg_pushl                       0x000003FD
+  arg_pushs                       "Items found in the shops\nchange. So keep an eye\nout for cool stuff."
+  message                         ...
+  mesend
+  ret
+
+label0091@0x0091:
+  // Could not determine data type; disassembling as code
+  arg_pushl                       0x000003F3
+  arg_pushs                       "Enrich your life! This is\nthe Hunter\'s Guild.\nWelcome!"
+  message                         ...
+  arg_pushs                       "Oops!! Sorry! My mistake!\nThe Hunter\'s Guild is not\nopen."
+  add_msg                         ...
+  arg_pushs                       "Please come back later!"
+  add_msg                         ...
+  mesend
+  ret
+
+label0096@0x0096:
+  // Could not determine data type; disassembling as code
+  arg_pushl                       0x000003FF
+  arg_pushs                       "When joining a battle,\nyou will be transferred\nto a training simulator."
+  message                         ...
+  arg_pushs                       "Defeat your opponent as\nmany times as possible\nin this timed contest."
+  add_msg                         ...
+  arg_pushs                       "What a great simulator!"
+  add_msg                         ...
+  mesend
+  ret
+
+label00A0@0x00A0:
+  // Could not determine data type; disassembling as code
+  arg_pushl                       0x00000400
+  arg_pushs                       "Who is stronger?"
+  message                         ...
+  arg_pushs                       "Have you ever thought\nabout it?"
+  add_msg                         ...
+  arg_pushs                       "You\'ll find out how\nstrong you are by using\nthe training simulators."
+  add_msg                         ...
+  arg_pushs                       "Still, I believe victory\nis a matter of chance."
+  add_msg                         ...
+  arg_pushs                       "You can\'t win all of the\ntime."
+  add_msg                         ...
+  mesend
+  ret
+
+label00AA@0x00AA:
+  // Could not determine data type; disassembling as code
+  arg_pushl                       0x00000401
+  arg_pushs                       "Experience and items here\ncannot be used elsewhere."
+  message                         ...
+  arg_pushs                       "My dad said that you\ncan\'t save them, and you\ncan\'t take them with you."
+  add_msg                         ...
+  arg_pushs                       "But I\'m just a kid. I\nreally don\'t know what\nhe\'s talking about."
+  add_msg                         ...
+  mesend
+  ret
+
+label00B4@0x00B4:
+  // Could not determine data type; disassembling as code
+  arg_pushl                       0x00000402
+  arg_pushs                       "My grandpa told me to be\ncareful when setting\ntraps."
+  message                         ...
+  arg_pushs                       "\"They blow up quickly,\"\nhe said. But I don\'t know\nwhat he means."
+  add_msg                         ...
+  mesend
+  ret
+
+label00BE@0x00BE:
+  // Could not determine data type; disassembling as code
+  arg_pushl                       0x00000404
+  arg_pushs                       "This teleporter will not\ntake you to Ragol."
+  message                         ...
+  arg_pushs                       "The government created\nthese training\nsimulators."
+  add_msg                         ...
+  arg_pushs                       "I heard that it ranks\nhunters."
+  add_msg                         ...
+  arg_pushs                       "What a great simulator!"
+  add_msg                         ...
+  mesend
+  ret
+
+label00C8@0x00C8:
+  // Could not determine data type; disassembling as code
+  arg_pushl                       0x00000405
+  arg_pushs                       "Each stage has its own\nset of rules. Read them\nbefore starting a game."
+  message                         ...
+  arg_pushs                       "When a stage has been\ncleared, a title is given\nto allow you to progress."
+  add_msg                         ...
+  arg_pushs                       "You can play the same\nstages even after you\nhave cleared them."
+  add_msg                         ...
+  arg_pushs                       "You will receive\nwonderful rewards after\nyou cleared all stages."
+  add_msg                         ...
+  arg_pushs                       "Good luck!"
+  add_msg                         ...
+  mesend
+  ret
+
+label00D2@0x00D2:
+  // Could not determine data type; disassembling as code
+  arg_pushl                       0x00000406
+  arg_pushs                       "Experience and items only\napply to the stage they\nwere earned on."
+  message                         ...
+  arg_pushs                       "That\'s what my dad told\nme, but I\'m just a kid.\nI don\'t understand."
+  add_msg                         ...
+  mesend
+  ret
+
+label00DC@0x00DC:
+  // Could not determine data type; disassembling as code
+  arg_pushl                       0x00000407
+  arg_pushs                       "Press TAB to see\nthe title that you\nreceived."
+  message                         ...
+  arg_pushs                       "My grandpa told me that\nbefore, but I didn\'t pay\nattention."
+  add_msg                         ...
+  mesend
+  ret
+
+label00E6@0x00E6:
+  // Could not determine data type; disassembling as code
+  arg_pushl                       0x00000408
+  arg_pushs                       "The emphasis of this\nsimulation is to help\nothers!"
+  message                         ...
+  arg_pushs                       "The simulation will end\nwhen any player in your\ngroup is dead."
+  add_msg                         ...
+  arg_pushs                       "Pay attention to each\nother\'s condition and\nhelp each other."
+  add_msg                         ...
+  arg_pushs                       "For example, when you\nhave a Force, give health\nitems to him/her."
+  add_msg                         ...
+  arg_pushs                       "Good luck!"
+  add_msg                         ...
+  mesend
+  ret
+
+label00E7@0x00E7:
+  // Could not determine data type; disassembling as code
+  arg_pushl                       0x00000408
+  arg_pushs                       "The emphasis of this\nsimulation is to help\nothers!"
+  message                         ...
+  arg_pushs                       "The simulation will end\nwhen all players in the\ngroup are dead."
+  add_msg                         ...
+  arg_pushs                       "Pay attention to each\nother\'s condition and\nhelp each other."
+  add_msg                         ...
+  arg_pushs                       "For example, when you\nhave a Force, give health\nitems to him/her."
+  add_msg                         ...
+  arg_pushs                       "Good luck!"
+  add_msg                         ...
+  mesend
+  ret
+
+label0320@0x0320:
+  // Could not determine data type; disassembling as code
+  arg_pushl                       0x00000000
+  bb_p2_menu                      ...
+  ret
+
+label032A@0x032A:
+  // Could not determine data type; disassembling as code
+  arg_pushl                       0x00000002
+  bb_p2_menu                      ...
+  ret
+
+label0334@0x0334:
+  // Could not determine data type; disassembling as code
+  arg_pushl                       0x00000003
+  bb_p2_menu                      ...
+  ret
+
+label033E@0x033E:
+  // Could not determine data type; disassembling as code
+  gget                            0x000B, r200
+  gget                            0x000C, r201
+  gget                            0x000D, r202
+  gget                            0x000E, r203
+  gget                            0x000F, r204
+  gget                            0x0010, r205
+  gget                            0x0011, r206
+  gget                            0x0012, r207
+  gget                            0x0013, r208
+  gget                            0x0014, r209
+  gget                            0x0015, r210
+  gget                            0x0016, r211
+  gget                            0x0017, r212
+  gget                            0x0018, r213
+  gget                            0x0019, r214
+  gget                            0x001A, r215
+  gget                            0x001E, r216
+  gget                            0x001F, r217
+  gget                            0x0020, r218
+  gget                            0x0021, r219
+  gget                            0x0022, r220
+  gget                            0x0028, r221
+  gget                            0x0029, r222
+  gget                            0x002A, r223
+  gget                            0x002B, r224
+  gget                            0x002C, r225
+  gget                            0x002D, r226
+  gget                            0x002E, r227
+  gget                            0x002F, r228
+  gget                            0x0030, r229
+  jmpi_eq                         r208, 0x00000001, label033F /* 7716 */
+  arg_pushl                       0x00000006
+  bb_p2_menu                      ...
+  gset                            0x0013
+  ret
+
+label033F@0x033F:
+  arg_pushl                       0x00000006
+  bb_p2_menu                      ...
+  ret
+
+label0348@0x0348:
+  // Could not determine data type; disassembling as code
+  arg_pushl                       0x00000005
+  bb_p2_menu                      ...
+  ret
+
+label0352@0x0352:
+  // Could not determine data type; disassembling as code
+  arg_pushl                       0x00000004
+  bb_p2_menu                      ...
+  ret
+
+label035C@0x035C:
+  // Could not determine data type; disassembling as code
+  arg_pushl                       0x00000001
+  bb_p2_menu                      ...
+  ret
+
+label0366@0x0366:
+  // Could not determine data type; disassembling as code
+  gget                            0x000B, r200
+  gget                            0x000C, r201
+  gget                            0x000D, r202
+  gget                            0x000E, r203
+  gget                            0x000F, r204
+  gget                            0x0010, r205
+  gget                            0x0011, r206
+  gget                            0x0012, r207
+  gget                            0x0013, r208
+  gget                            0x0014, r209
+  gget                            0x0015, r210
+  gget                            0x0016, r211
+  gget                            0x0017, r212
+  gget                            0x0018, r213
+  gget                            0x0019, r214
+  gget                            0x001A, r215
+  gget                            0x001E, r216
+  gget                            0x001F, r217
+  gget                            0x0020, r218
+  gget                            0x0021, r219
+  gget                            0x0022, r220
+  gget                            0x0028, r221
+  gget                            0x0029, r222
+  gget                            0x002A, r223
+  gget                            0x002B, r224
+  gget                            0x002C, r225
+  gget                            0x002D, r226
+  gget                            0x002E, r227
+  gget                            0x002F, r228
+  gget                            0x0030, r229
+  gget                            0x03FA, r230
+  jmpi_eq                         r230, 0x00000001, label0367 /* 78D7 */
+  arg_pushl                       0x00000419
+  arg_pushs                       "How do you do?\nI\'m the new receptionist \nhere!"
+  message                         ...
+  arg_pushs                       "My name is <color 5>Momoka<color 0>."
+  add_msg                         ...
+  arg_pushs                       "Please let me know if\nI can ever help you out."
+  add_msg                         ...
+  mesend
+  gset                            0x03FA
+  arg_pushl                       0x00000007
+  bb_p2_menu                      ...
+  ret
+
+label0367@0x0367:
+  arg_pushl                       0x00000007
+  bb_p2_menu                      ...
+  ret
+
+label0370@0x0370:
+  // Could not determine data type; disassembling as code
+  arg_pushl                       0x00000418
+  arg_pushs                       "I am Coren Tsu, a wandering merchant,\nyou could say."
+  message                         ...
+  arg_pushs                       "Please take some time to look at\nthe rare and wonderous goods\nI have been collecting."
+  add_msg                         ...
+  arg_pushs                       "If you spend a little meseta,\nyou could win a wonderful prize."
+  add_msg                         ...
+  arg_pushs                       "Well? Wanna try?"
+  add_msg                         ...
+  mesend
+  arg_pushb                       0x64
+  arg_pushs                       "Yes\nNo"
+  list                            ...
+  switch_jmp                      r100, [label0371 /* 1750 */, label0372 /* 18C1 */]
+  ret
+
+label0371@0x0371:
+  bb_get_number_in_pack           r100
+  jmpi_eq                         r100, 0x0000001E, label0373 /* 1984 */
+  arg_pushl                       0x00000418
+  arg_pushs                       "You may win,\nyou may lose."
+  message                         ...
+  arg_pushs                       "But if you don't win,\ndon't take it out on me."
+  add_msg                         ...
+  arg_pushs                       "That's just the way\ngambling is, yes?"
+  add_msg                         ...
+  arg_pushs                       "Well then, how much\nmeseta do you want to pay?"
+  add_msg                         ...
+  arg_pushs                       "As long as you pay me,\nI'll give you a great service."
+  add_msg                         ...
+  mesend
+  arg_pushb                       0x65
+  arg_pushs                       "1000 Meseta\n10000 Meseta\n100000 Meseta\nI'll stop"
+  list                            ...
+  switch_jmp                      r101, [label0374 /* 19FD */, label0375 /* 1A12 */, label0376 /* 1A27 */, label0377 /* 1A3C */]
+  ret
+
+label0372@0x0372:
+  arg_pushl                       0x00000418
+  arg_pushs                       "Huh?"
+  message                         ...
+  arg_pushs                       "That's too bad..."
+  add_msg                         ...
+  arg_pushs                       "Well, these kind of things usually\nhave a chance to lose money. "
+  add_msg                         ...
+  arg_pushs                       "Let's keep this discreet."
+  add_msg                         ...
+  arg_pushs                       "If you feel up to it,\ntalk to me again."
+  add_msg                         ...
+  mesend
+  ret
+
+label0373@0x0373:
+  arg_pushl                       0x00000418
+  arg_pushs                       "It seems you have\ntoo many items."
+  message                         ...
+  arg_pushs                       "First, go and\norganize your items,"
+  add_msg                         ...
+  arg_pushs                       "Then speak to me again."
+  add_msg                         ...
+  mesend
+  ret
+
+label0374@0x0374:
+  get_slot_meseta                 r102
+  jmpi_lt                         r102, 0x000003E8, label0378 /* 1AA3 */
+  leti                            r102, 0x000003E8
+  jmp                             label0379 /* 1B02 */
+  ret
+
+label0375@0x0375:
+  get_slot_meseta                 r102
+  jmpi_lt                         r102, 0x00002710, label0378 /* 1AA3 */
+  leti                            r102, 0x00002710
+  jmp                             label0379 /* 1B02 */
+  ret
+
+label0376@0x0376:
+  get_slot_meseta                 r102
+  jmpi_lt                         r102, 0x000186A0, label0378 /* 1AA3 */
+  leti                            r102, 0x000186A0
+  jmp                             label0379 /* 1B02 */
+  ret
+
+label0377@0x0377:
+  arg_pushl                       0x00000418
+  arg_pushs                       "What?"
+  message                         ...
+  arg_pushs                       "You said you'd try,\nthen you said no."
+  add_msg                         ...
+  arg_pushs                       "People like that\nfail at everything."
+  add_msg                         ...
+  mesend
+  ret
+
+label0378@0x0378:
+  arg_pushl                       0x00000418
+  arg_pushs                       "What the...?"
+  message                         ...
+  arg_pushs                       "You don't have the\nmeseta to pay me?"
+  add_msg                         ...
+  arg_pushs                       "I won't work with such\ncold hearted people."
+  add_msg                         ...
+  mesend
+  ret
+
+label0379@0x0379:
+  get_client_id                   r100
+  let                             r103, r100
+  let                             r104, r102
+  clear                           r105
+  take_slot_meseta                r103-r104, r105
+  jmpi_eq                         r105, 0x00000000, label0378 /* 1AA3 */
+  arg_pushl                       0x00000418
+  arg_pushs                       "You better pray..."
+  message                         ...
+  arg_pushs                       "for something good..."
+  add_msg                         ...
+  mesend
+  clear                           r100
+
+label037A@0x037A:
+  arg_pushl                       0x00000010
+  se                              ...
+  sync
+  sync
+  sync
+  sync
+  sync
+  sync
+  sync
+  sync
+  sync
+  sync
+  sync
+  sync
+  sync
+  sync
+  addi                            r100, 0x0000000F
+  jmpi_le                         r100, 0x0000005A, label037A /* 1B84 */
+  arg_pushr                       r101
+  bb_send_6xE2                    ...
+  clear                           r106
+  clear                           r100
+
+label037B@0x037B:
+  sync
+  bb_get_6xE3_status              r106
+  jmpi_eq                         r106, 0x00000001, label037C /* 1BEA */
+  jmpi_eq                         r106, 0x00000002, label037D /* 1D24 */
+  addi                            r100, 0x00000001
+  jmpi_le                         r100, 0x0000012C, label037B /* 1BAE */
+  arg_pushs                       "SERVER SEND ERROR"
+  window_msg                      ...
+  winend
+  ret
+
+label037C@0x037C:
+  sync
+  arg_pushl                       0x00000001
+  bgm                             ...
+  arg_pushs                       "<bk>\nObtained <color 4><meseta_slot_prize><color 0>!"
+  window_msg                      ...
+  winend
+  sync
+  arg_pushl                       0x00000418
+  arg_pushs                       "Look here!\nTake it!"
+  message                         ...
+  arg_pushs                       "Even if you had bad luck,\nsomething good will come out of it."
+  add_msg                         ...
+  arg_pushs                       "You'll win someday!"
+  add_msg                         ...
+  arg_pushs                       "In case you want to try again,\ncome back to me once more."
+  add_msg                         ...
+  mesend
+  ret
+
+label037D@0x037D:
+  arg_pushs                       "COMMAND EXECUTION ERROR"
+  window_msg                      ...
+  winend
+  ret
+
+label000F@0x000F:
+  arg_pushl                       0x000003E9
+  arg_pushs                       "I\'m Principal Tyrell."
+  message                         ...
+  arg_pushs                       "Can I help you?"
+  add_msg                         ...
+  arg_pushs                       "If there\'s something you\nneed, please ask\nMomoka to assist you."
+  add_msg                         ...
+  mesend
+  gset                            0x000B
+  ret
+
+label0013@0x0013:
+  arg_pushl                       0x000003E9
+  arg_pushs                       "I\'m Principal Tyrell."
+  message                         ...
+  arg_pushs                       "How are things going?"
+  add_msg                         ...
+  arg_pushs                       "I\'m counting on you."
+  add_msg                         ...
+  arg_pushs                       "I know you won\'t\nlet me down."
+  add_msg                         ...
+  mesend
+  ret
+
+label001C@0x001C:
+  arg_pushl                       0x000003EA
+  arg_pushs                       "Hello! I\'m a member of\nthe Pioneer 2\nAdministration Office."
+  message                         ...
+  arg_pushs                       "I\'m Irene, Principal\nTyrell\'s secretary."
+  add_msg                         ...
+  arg_pushs                       "Is there some sort of\nbusiness you have\nwith us?"
+  add_msg                         ...
+  arg_pushs                       "Please take it up with\nMomoka, our receptionist."
+  add_msg                         ...
+  mesend
+  ret
+
+label001D@0x001D:
+  arg_pushl                       0x000003EA
+  arg_pushs                       "Hello.\nHow are you doing?"
+  message                         ...
+  arg_pushs                       "Everyone\'s got\ntheir hopes with you."
+  add_msg                         ...
+  arg_pushs                       "Thanks so much\nfor helping us out."
+  add_msg                         ...
+  mesend
+  ret
+
+label0027@0x0027:
+  arg_pushl                       0x000003EB
+  arg_pushs                       "I\'m still new, here, but\nit\'s been really rough\nwith everything going on!"
+  message                         ...
+  mesend
+  ret
+
+label0028@0x0028:
+  arg_pushl                       0x000003EB
+  arg_pushs                       "I\'ve heard about what\nyou\'ve all been doing."
+  message                         ...
+  arg_pushs                       "Keep up the good work!"
+  add_msg                         ...
+  mesend
+  ret
+
+label003A@0x003A:
+  arg_pushl                       0x000003EC
+  arg_pushs                       "The office has become so\nbusy since the explosion\nincident."
+  message                         ...
+  arg_pushs                       "We\'ve taken on new staff,\nincluding our\nreceptionist over there."
+  add_msg                         ...
+  mesend
+  ret
+
+label003B@0x003B:
+  arg_pushl                       0x000003EC
+  arg_pushs                       "We\'re really busy!"
+  message                         ...
+  arg_pushs                       "If you\'ve got the time to\nchat, do you have the\ntime to take some jobs?"
+  add_msg                         ...
+  mesend
+  ret
+
+label0068@0x0068:
+  arg_pushl                       0x000003F8
+  arg_pushs                       "This is all just hearsay,\nbut..."
+  message                         ...
+  arg_pushs                       "The Principal\'s evidently\nseeking help from the\nbest hunters he can find."
+  add_msg                         ...
+  arg_pushs                       "I wonder if it\'s true."
+  add_msg                         ...
+  mesend
+  ret
+
+label0072@0x0072:
+  arg_pushl                       0x000003FA
+  arg_pushs                       "If you\'re hurt or tired,\nrush over to the\nMedical Center!"
+  message                         ...
+  arg_pushs                       "Talk to the woman there,\nand for the cost of just\na few Meseta, you\'ll be"
+  add_msg                         ...
+  arg_pushs                       "as good as new!"
+  add_msg                         ...
+  mesend
+  ret
+  nop
+  nop

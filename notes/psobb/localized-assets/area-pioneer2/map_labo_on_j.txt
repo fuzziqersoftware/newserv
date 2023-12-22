@@ -1,0 +1,1930 @@
+.version BB_V4
+.quest_num 65535
+.episode Episode1
+.max_players 0
+.name "title dummy"
+.short_desc "intro dummy"
+.long_desc "detail dummy"
+
+start@0x0000:
+  call                            label01F4 /* 0062 */
+  jmp_on                          label0003 /* 0028 */, [r39, r40, r41]
+  ret
+
+label0001@0x0001:
+  // Could not determine data type; disassembling as code
+  ret
+
+label0002@0x0002:
+  // Could not determine data type; disassembling as code
+  leti                            r200, 0x00000000
+  leti                            r201, 0x0000002A
+  leti                            r202, 0x00000001
+  unhide_ene                      r200-r202
+  switch_jmp                      r11, [label000C /* 0054 */, label000D /* 005B */]
+  ret
+
+label0003@0x0003:
+  gset                            0x0049
+  ret
+
+label0004@0x0004:
+  leti                            r200, 0x00000000
+  leti                            r201, 0x0000002A
+  leti                            r202, 0x00000001
+  unhide_ene                      r200-r202
+  switch_jmp                      r11, [label000C /* 0054 */, label000D /* 005B */]
+  ret
+
+label0005@0x0005:
+  // Could not determine data type; disassembling as code
+  call                            label01F4 /* 0062 */
+  jmpi_eq                         r9, 0x00000001, label0004 /* 002C */
+  ret
+
+label000C@0x000C:
+  arg_pushl                       0x00000001
+  switch_off                      ...
+  ret
+
+label000D@0x000D:
+  arg_pushl                       0x00000001
+  switch_on                       ...
+  ret
+
+label01F4@0x01F4:
+  gget                            0x005B, r1
+  gget                            0x004A, r2
+  gget                            0x004D, r3
+  gget                            0x0058, r4
+  gget                            0x004C, r5
+  gget                            0x004D, r6
+  gget                            0x004E, r7
+  gget                            0x0059, r8
+  gget                            0x004F, r9
+  gget                            0x005C, r10
+  gget                            0x0050, r11
+  gget                            0x0051, r12
+  gget                            0x0049, r13
+  gget                            0x005A, r14
+  gget                            0x0052, r15
+  gget                            0x005D, r16
+  gget                            0x0053, r17
+  gget                            0x0054, r18
+  gget                            0x0055, r19
+  gget                            0x0056, r20
+  gget                            0x0057, r21
+  gget                            0x005E, r22
+  gget                            0x005F, r23
+  gget                            0x0060, r24
+  gget                            0x0061, r25
+  gget                            0x0062, r26
+  gget                            0x0063, r27
+  gget                            0x01A4, r28
+  gget                            0x01A5, r29
+  gget                            0x01A6, r30
+  gget                            0x01A7, r31
+  gget                            0x01C2, r32
+  gget                            0x01C3, r33
+  gget                            0x01C4, r34
+  gget                            0x01C5, r35
+  gget                            0x01CC, r37
+  gget                            0x01CD, r38
+  gget                            0x0046, r39
+  gget                            0x0047, r40
+  gget                            0x0048, r41
+  gget                            0x0049, r42
+  gget                            0x01D5, r43
+  gget                            0x01D0, r44
+  gget                            0x01D1, r45
+  gget                            0x01D6, r46
+  gget                            0x03FB, r47
+  gget                            0x006D, r48
+  gget                            0x021B, r49
+  gget                            0x0225, r50
+  gget                            0x022F, r51
+  ret
+
+label01F5@0x01F5:
+  // Could not determine data type; disassembling as code
+  call                            label01F4 /* 0062 */
+  jmpi_eq                         r49, 0x00000001, label0204 /* 641B */
+  jmp                             label0203 /* 6390 */
+  jmpi_eq                         r23, 0x00000001, label0201 /* 13C9 */
+  jmpi_eq                         r19, 0x00000001, label0200 /* 122B */
+  jmpi_eq                         r18, 0x00000001, label0202 /* 11A0 */
+  jmpi_eq                         r18, 0x00000001, label01FF /* 101A */
+  jmpi_eq                         r17, 0x00000001, label01FE /* 0F57 */
+  jmpi_eq                         r16, 0x00000001, label01FD /* 0EE8 */
+  jmpi_eq                         r15, 0x00000001, label01FC /* 0C34 */
+  jmpi_eq                         r11, 0x00000001, label01FA /* 0BD9 */
+  jmpi_eq                         r10, 0x00000001, label01F9 /* 0B5A */
+  jmpi_eq                         r9, 0x00000001, label01F8 /* 07F4 */
+  jmpi_eq                         r5, 0x00000001, label01F7 /* 0794 */
+  jmpi_eq                         r1, 0x00000001, label01F6 /* 073D */
+  arg_pushl                       0x0000041A
+  arg_pushs                       "<name job> <hero name>!\nThank you for coming."
+  message                         ...
+  arg_pushs                       "I am Natasha Milarose,\nGeneral Chief of Pioneer\n2 Research Facilities."
+  add_msg                         ...
+  arg_pushs                       "This is your first time\nin the Lab, right?"
+  add_msg                         ...
+  arg_pushs                       "This is the center\nof all Pioneer 2 research\nfacilities."
+  add_msg                         ...
+  arg_pushs                       "We simply call it\nthe Lab."
+  add_msg                         ...
+  arg_pushs                       "The incident on Ragol,\nthe mysterious\nunderground ruins,"
+  add_msg                         ...
+  arg_pushs                       "And ferocious\nlifeforms..."
+  add_msg                         ...
+  arg_pushs                       "I am sure you, as a\nhunter, have experienced\nthem all."
+  add_msg                         ...
+  arg_pushs                       "Here, we conduct research\nbased on data collected\nby hunters."
+  add_msg                         ...
+  arg_pushs                       "Then, we report our\nfindings to the\nAdministration."
+  add_msg                         ...
+  arg_pushs                       "What we would like to\ndiscuss with you today,"
+  add_msg                         ...
+  arg_pushs                       "is not an direct order\nfrom the Administration.\nYou can think of it as"
+  add_msg                         ...
+  arg_pushs                       "a mission request from\nthe Lab to all available\nhunters."
+  add_msg                         ...
+  arg_pushs                       "I will explain briefly."
+  add_msg                         ...
+  arg_pushs                       "We discovered a new point\non Ragol\'s surface from\nour own research."
+  add_msg                         ...
+  arg_pushs                       "It all started with a\ncommunication we recently\nreceived from a man."
+  add_msg                         ...
+  arg_pushs                       "This man was a high\nranking official from\nPioneer 1."
+  add_msg                         ...
+  arg_pushs                       "But here is something\nthat really bothers me..."
+  add_msg                         ...
+  arg_pushs                       "Based on the log we\nreceived while we were\ntraveling,"
+  add_msg                         ...
+  arg_pushs                       "this man had passed away\na few years ago on the\nsurface of Ragol."
+  add_msg                         ...
+  arg_pushs                       "So we want to find out\nwhat happened to him."
+  add_msg                         ...
+  arg_pushs                       "But... This mission \ninvolves a high amount\nof risk."
+  add_msg                         ...
+  arg_pushs                       "And this mission must\nremain a secret."
+  add_msg                         ...
+  arg_pushs                       "In order for us to\nmeasure your ability\nas a hunter,"
+  add_msg                         ...
+  arg_pushs                       "You will have to go\nthrough a series of\nexams."
+  add_msg                         ...
+  arg_pushs                       "An aide will assist you\nwith further details\nabout the hunter\'s exam."
+  add_msg                         ...
+  arg_pushs                       "I look forward to seeing\nyour great results!"
+  add_msg                         ...
+  mesend
+  gset                            0x005B
+  ret
+
+label01F6@0x01F6:
+  arg_pushl                       0x0000041A
+  arg_pushs                       "We are not forcing you\nto take this mission."
+  message                         ...
+  arg_pushs                       "Accept or decline, it\'s\nup to you."
+  add_msg                         ...
+  mesend
+  ret
+
+label01F7@0x01F7:
+  arg_pushl                       0x0000041A
+  arg_pushs                       "Impressive..."
+  message                         ...
+  arg_pushs                       "We will see how you\nwill do in the next VR\nfield."
+  add_msg                         ...
+  arg_pushs                       "Good luck."
+  add_msg                         ...
+  mesend
+  gset                            0x01D6
+  ret
+
+label01F8@0x01F8:
+  arg_pushl                       0x0000041A
+  arg_pushs                       "<name job> <name hero>,\nCongratulations!"
+  message                         ...
+  arg_pushs                       "You have passed the\nexam."
+  add_msg                         ...
+  arg_pushs                       "We couldn\'t have asked\nfor a better result."
+  add_msg                         ...
+  arg_pushs                       "We\'ve decided to assign\nyou to a new point. \nIt\'s located..."
+  add_msg                         ...
+  arg_pushs                       "On a solitary island\nin the waters south of\nthe Central Dome."
+  add_msg                         ...
+  arg_pushs                       "We call it \"Gal Da Val.\""
+  add_msg                         ...
+  arg_pushs                       "You will go to \nGal Da Val Island to\nbegin your mission."
+  add_msg                         ...
+  arg_pushs                       "One more thing..."
+  add_msg                         ...
+  arg_pushs                       "We need you to find a\nman."
+  add_msg                         ...
+  arg_pushs                       "\"Deputy Commander,\nHeathcliff Flowen.\""
+  add_msg                         ...
+  arg_pushs                       "He\'s one of the\nmilitary\'s most famous\nheroes."
+  add_msg                         ...
+  arg_pushs                       "He is the one who sent\nthe message we\nintercepted."
+  add_msg                         ...
+  arg_pushs                       "However, he has been\nofficially announced\ndead."
+  add_msg                         ...
+  arg_pushs                       "We need you to find out\nwhether he is alive,\nand report back."
+  add_msg                         ...
+  arg_pushs                       "And...\nOne more thing."
+  add_msg                         ...
+  arg_pushs                       "The operator you worked\nwith during your\nhunter\'s exam"
+  add_msg                         ...
+  arg_pushs                       "has been assigned to be\nyour operator for this\nnew mission."
+  add_msg                         ...
+  arg_pushs                       "I hope it goes well."
+  add_msg                         ...
+  mesend
+  gset                            0x005C
+  ret
+
+label01F9@0x01F9:
+  arg_pushl                       0x0000041A
+  arg_pushs                       "Oh, and, the operator\nyou worked with during\nyour hunter\'s exam"
+  message                         ...
+  arg_pushs                       "has been assigned to\nbe the operator for\nyour new mission."
+  add_msg                         ...
+  arg_pushs                       "I hope it goes\nwell."
+  add_msg                         ...
+  mesend
+  ret
+
+label01FA@0x01FA:
+  arg_pushl                       0x0000041A
+  arg_pushs                       "Heathcliff..."
+  message                         ...
+  arg_pushs                       "I never thought I would\ncome across that name\nagain..."
+  add_msg                         ...
+  arg_pushs                       "Fascinating..."
+  add_msg                         ...
+  mesend
+  ret
+
+label01FC@0x01FC:
+  arg_pushl                       0x0000041A
+  arg_pushs                       "It\'s hard to believe such\na huge Altered Beast\nwasn\'t found before..."
+  message                         ...
+  arg_pushs                       "... ... Hmm."
+  add_msg                         ...
+  arg_pushs                       "We need you to continue\nwith the mission."
+  add_msg                         ...
+  arg_pushs                       "We pulled an unknown set\nof coordinates from the\nteleporter you used"
+  add_msg                         ...
+  arg_pushs                       "to get to the cliffs."
+  add_msg                         ...
+  arg_pushs                       "The last known\ncoordinates from the\ncliffs\' teleporter..."
+  add_msg                         ...
+  arg_pushs                       "The coordinates with some\nhighly unusual Photon\nreadings..."
+  add_msg                         ...
+  arg_pushs                       "And the origin of that\ntransmission..."
+  add_msg                         ...
+  arg_pushs                       "All three coordinates are\nin the same area."
+  add_msg                         ...
+  arg_pushs                       "These coordinates are\nunder the island...\nin the seabed."
+  add_msg                         ...
+  arg_pushs                       "There\'s no doubt that\nthere\'s some sort of \nfacility there."
+  add_msg                         ...
+  arg_pushs                       "... ... ..."
+  add_msg                         ...
+  arg_pushs                       "<name job> <name hero>,"
+  add_msg                         ...
+  arg_pushs                       "please continue with the\nmission."
+  add_msg                         ...
+  mesend
+  gset                            0x005D
+  ret
+
+label01FD@0x01FD:
+  arg_pushl                       0x0000041A
+  arg_pushs                       "We\'ve collected some\nbasic information on the\nSeabed facility."
+  message                         ...
+  arg_pushs                       "Your operator will\nprovide you with the\ndetails."
+  add_msg                         ...
+  mesend
+  ret
+
+label01FE@0x01FE:
+  arg_pushl                       0x0000041A
+  arg_pushs                       "The violent behavior of\nthe wildlife, the\nappearance of mutations,"
+  message                         ...
+  arg_pushs                       "and the same abnormal\nPhoton readings as in the\nruins under Ragol..."
+  add_msg                         ...
+  arg_pushs                       "Hmm..."
+  add_msg                         ...
+  arg_pushs                       "The whole island seems\nlike a recreation of\nRagol\'s underground..."
+  add_msg                         ...
+  mesend
+  ret
+
+label01FF@0x01FF:
+  arg_pushl                       0x0000041A
+  arg_pushs                       "You made it into the\nresearch facility on the\nseabed."
+  message                         ...
+  arg_pushs                       "The place may look empty\nnow, but there\'s no doubt"
+  add_msg                         ...
+  arg_pushs                       "that this used to be a\nresearch facility for\nPioneer 1."
+  add_msg                         ...
+  arg_pushs                       "Please continue\ninvestigating."
+  add_msg                         ...
+  arg_pushs                       "And, Heathcliff Flowen."
+  add_msg                         ...
+  arg_pushs                       "About his survival\nverification..."
+  add_msg                         ...
+  arg_pushs                       "His transmission\noriginated from within\nthis facility."
+  add_msg                         ...
+  arg_pushs                       "He should be there."
+  add_msg                         ...
+  arg_pushs                       "Whether he is still\nalive or not..."
+  add_msg                         ...
+  mesend
+  gset                            0x0060
+  ret
+
+label0202@0x0202:
+  arg_pushl                       0x0000041A
+  arg_pushs                       "His transmission\noriginated from within\nthis facility."
+  message                         ...
+  arg_pushs                       "He should be there."
+  add_msg                         ...
+  arg_pushs                       "Whether he is still\nalive or not..."
+  add_msg                         ...
+  mesend
+  ret
+
+label0200@0x0200:
+  arg_pushl                       0x0000041A
+  arg_pushs                       "\"I am... powerless, \nyet... I have...\""
+  message                         ...
+  arg_pushs                       "\"I wait...abyss...\ndestruction...savior of\n...the red captive...\""
+  add_msg                         ...
+  arg_pushs                       "?"
+  add_msg                         ...
+  arg_pushs                       "...is this it?"
+  add_msg                         ...
+  arg_pushs                       "This is the message\nfrom Flowen."
+  add_msg                         ...
+  arg_pushs                       "It was mostly static\nwhen we first intercepted\nit."
+  add_msg                         ...
+  arg_pushs                       "But we were able to\nanalyze the message to\nget some of the content."
+  add_msg                         ...
+  arg_pushs                       "Red..."
+  add_msg                         ...
+  arg_pushs                       "..."
+  add_msg                         ...
+  arg_pushs                       "Reminds me of that\ngirl..."
+  add_msg                         ...
+  mesend
+  gset                            0x005F
+  ret
+
+label0201@0x0201:
+  arg_pushl                       0x0000041A
+  arg_pushs                       "\"Savior of...the red\ncaptive...\""
+  message                         ...
+  arg_pushs                       "Hmm..."
+  add_msg                         ...
+  mesend
+  ret
+
+label0208@0x0208:
+  // Could not determine data type; disassembling as code
+  call                            label01F4 /* 0062 */
+  jmpi_eq                         r49, 0x00000001, label0215 /* 6539 */
+  jmp                             label0214 /* 6474 */
+  jmpi_eq                         r19, 0x00000001, label0213 /* 20A8 */
+  jmpi_eq                         r17, 0x00000001, label0212 /* 1F73 */
+  jmpi_eq                         r22, 0x00000001, label0211 /* 1F08 */
+  jmpi_eq                         r15, 0x00000001, label0210 /* 1C0E */
+  jmpi_eq                         r11, 0x00000001, label020F /* 1B8D */
+  jmpi_eq                         r10, 0x00000001, label020E /* 1A7E */
+  jmpi_eq                         r9, 0x00000001, label020D /* 19D7 */
+  jmpi_eq                         r6, 0x00000001, label020C /* 1966 */
+  jmpi_eq                         r5, 0x00000001, label020B /* 1886 */
+  jmpi_eq                         r2, 0x00000001, label020A /* 17D1 */
+  jmpi_eq                         r1, 0x00000001, label0209 /* 1499 */
+  arg_pushl                       0x0000041B
+  arg_pushs                       "チーフがお待ちです。\nどうぞお話しください。"
+  message                         ...
+  mesend
+  ret
+
+label0209@0x0209:
+  arg_pushl                       0x0000041B
+  arg_pushs                       "I will explain further\nabout the hunter\'s\nexam."
+  message                         ...
+  arg_pushs                       "The exam will take place\nin a Virtual Reality\nsystem in the Lab."
+  add_msg                         ...
+  arg_pushs                       "There are two VR fields\nfor the hunter\'s exam:"
+  add_msg                         ...
+  arg_pushs                       "\"Temple\" and \"Spaceship.\""
+  add_msg                         ...
+  arg_pushs                       "These two VR fields are\ndivided up into three\nareas:"
+  add_msg                         ...
+  arg_pushs                       "Alpha, Beta, and Final area."
+  add_msg                         ...
+  arg_pushs                       "Once you finish Alpha,\nBeta, and Final, you will\nhave cleared the Temple."
+  add_msg                         ...
+  arg_pushs                       "Then you will return to\nthe Lab, and we will\nreset the field."
+  add_msg                         ...
+  arg_pushs                       "You may come back to the\nLab before completing\nthe field, if you want."
+  add_msg                         ...
+  arg_pushs                       "But we recommend that\nyou complete the exam as\nquickly as possible."
+  add_msg                         ...
+  arg_pushs                       "So don\'t waste too\nmuch time."
+  add_msg                         ...
+  arg_pushs                       "To get to the VR field..."
+  add_msg                         ...
+  arg_pushs                       "Go down the slope, turn\nleft, and you will see\na blue gate in the back."
+  add_msg                         ...
+  arg_pushs                       "Go through the gate\nand you\'ll see a\nteleporter. Good luck!"
+  add_msg                         ...
+  mesend
+  gset                            0x004A
+  ret
+
+label020A@0x020A:
+  arg_pushl                       0x0000041B
+  arg_pushs                       "The Chief is a great\nleader."
+  message                         ...
+  arg_pushs                       "Research should be\ndirected by the Lab, not\nthe Administration."
+  add_msg                         ...
+  arg_pushs                       "We should have taken\ncharge from the very\nbeginning."
+  add_msg                         ...
+  mesend
+  ret
+
+label020B@0x020B:
+  arg_pushl                       0x0000041B
+  arg_pushs                       "So, you defeated the\nBarba Ray! Good work!"
+  message                         ...
+  arg_pushs                       "The teleporter is set\nfor the next VR field."
+  add_msg                         ...
+  arg_pushs                       "It is ready to take you\nto the starting point of\nSpaceship area Alpha."
+  add_msg                         ...
+  arg_pushs                       "Good luck!"
+  add_msg                         ...
+  mesend
+  gset                            0x004D
+  ret
+
+label020C@0x020C:
+  arg_pushl                       0x0000041B
+  arg_pushs                       "The difficulty level for\nthe Spaceship field is\nmuch higher."
+  message                         ...
+  arg_pushs                       "Please be careful!"
+  add_msg                         ...
+  mesend
+  ret
+
+label020D@0x020D:
+  arg_pushl                       0x0000041B
+  arg_pushs                       "I see you defeated the\nGol Dragon."
+  message                         ...
+  arg_pushs                       "I had not expected you\nto do this well."
+  add_msg                         ...
+  arg_pushs                       "Oh....!\nsorry."
+  add_msg                         ...
+  arg_pushs                       "The Chief is waiting\nfor you.\nPlease talk to her."
+  add_msg                         ...
+  mesend
+  ret
+
+label020E@0x020E:
+  arg_pushl                       0x0000041B
+  arg_pushs                       "As the Chief\nmentioned,"
+  message                         ...
+  arg_pushs                       "Elly Person will be your\nofficial operator for\nthis mission."
+  add_msg                         ...
+  arg_pushs                       "She will help you with\nfurther details about\nthe mission."
+  add_msg                         ...
+  arg_pushs                       "She is over there by the\noperator booth. Please\ngo talk to her."
+  add_msg                         ...
+  mesend
+  ret
+
+label020F@0x020F:
+  arg_pushl                       0x0000041B
+  arg_pushs                       "Elly...\nShe was only recently\nassigned to the Lab."
+  message                         ...
+  arg_pushs                       "We are a little bit\nworried about her."
+  add_msg                         ...
+  arg_pushs                       "But it\'s an official\ndecision, so...\nOh well."
+  add_msg                         ...
+  mesend
+  ret
+
+label0210@0x0210:
+  arg_pushl                       0x0000041B
+  arg_pushs                       "We think... What you \nencountered at the cliff,"
+  message                         ...
+  arg_pushs                       "the giant creature, is a\nmutation, or an\nAltered Beast."
+  add_msg                         ...
+  arg_pushs                       "This conclusion is based\non local data from Cal,"
+  add_msg                         ...
+  arg_pushs                       "and data on the mutant\nlifeforms in Ragol\'s\nunderground."
+  add_msg                         ...
+  arg_pushs                       "For now, we\'re calling\nit a worm-type mutant\nlifeform."
+  add_msg                         ...
+  arg_pushs                       "The outbreak of\nmutations under Ragol\nwas traced to..."
+  add_msg                         ...
+  arg_pushs                       "Injections of body fluids\nfrom the giant crustacean\nlifeforms found there."
+  add_msg                         ...
+  arg_pushs                       "On the surface of Gal Da\nVal, the mutations also \nfollow the same pattern."
+  add_msg                         ...
+  arg_pushs                       "But,"
+  add_msg                         ...
+  arg_pushs                       "This giant creature seems\nto be a slightly different\ntype of mutation."
+  add_msg                         ...
+  arg_pushs                       "Not only has its mutation\noccurred independently of\nother lifeforms,"
+  add_msg                         ...
+  arg_pushs                       "but the scale of the\noriginal mutation is\nequivalent to"
+  add_msg                         ...
+  arg_pushs                       "that found in the giant\ncrustacean lifeform."
+  add_msg                         ...
+  arg_pushs                       "I wonder what this means?\nI wonder what the Chief\nthinks...?"
+  add_msg                         ...
+  mesend
+  gset                            0x005E
+  ret
+
+label0211@0x0211:
+  arg_pushl                       0x0000041B
+  arg_pushs                       "A mutant lifeform of a\ndifferent type from the\ngiant crustacean lifeform"
+  message                         ...
+  arg_pushs                       "was found in Ragol\'s\nunderground. I wonder\nwhat this means?"
+  add_msg                         ...
+  mesend
+  ret
+
+label0212@0x0212:
+  arg_pushl                       0x0000041B
+  arg_pushs                       "Altered Beasts are\nfound both in the\nunderground mining site,"
+  message                         ...
+  arg_pushs                       "and the Seabed facility.\nAnd both were secretly\nconstructed by Pioneer 1."
+  add_msg                         ...
+  arg_pushs                       "Could an experiment have\ncaused this outbreak of\nmutant lifeforms...?"
+  add_msg                         ...
+  arg_pushs                       "I wonder if the Chief\nknew about the existence\nof this facility..."
+  add_msg                         ...
+  arg_pushs                       "...No!"
+  add_msg                         ...
+  arg_pushs                       "She couldn\'t have..."
+  add_msg                         ...
+  mesend
+  ret
+
+label0213@0x0213:
+  arg_pushl                       0x0000041B
+  arg_pushs                       "D-cellular sub lifeforms\nhave been found in the\nSeabed facility."
+  message                         ...
+  arg_pushs                       "Just like the Ragol\nunderground..."
+  add_msg                         ...
+  arg_pushs                       "All the data we\'ve\nreceived so far matches\nperfectly."
+  add_msg                         ...
+  arg_pushs                       "Everything seems\nidentical to the Ragol\nunderground!"
+  add_msg                         ...
+  arg_pushs                       "I am getting very\nscared..."
+  add_msg                         ...
+  arg_pushs                       "These similarities can\'t\nbe a coincidence..."
+  add_msg                         ...
+  arg_pushs                       "Did someone plan this\nwhole thing?"
+  add_msg                         ...
+  arg_pushs                       "The Chief..."
+  add_msg                         ...
+  mesend
+  ret
+
+label0258@0x0258:
+  // Could not determine data type; disassembling as code
+  call                            label01F4 /* 0062 */
+  jmpi_eq                         r51, 0x00000001, label0269 /* 6A02 */
+  jmpi_eq                         r50, 0x00000001, label0267 /* 6872 */
+  arg_pushl                       0x0000041F
+  arg_pushs                       "… … …"
+  message                         ...
+  mesend
+  ret
+  jmpi_eq                         r43, 0x00000001, label0266 /* 3899 */
+  jmpi_eq                         r45, 0x00000001, label0266 /* 3899 */
+  jmpi_eq                         r44, 0x00000001, label0265 /* 368D */
+  jmpi_eq                         r19, 0x00000001, label0262 /* 35F7 */
+  jmpi_eq                         r18, 0x00000001, label0261 /* 3549 */
+  jmpi_eq                         r17, 0x00000001, label0260 /* 34F1 */
+  jmpi_eq                         r16, 0x00000001, label025F /* 3244 */
+  jmpi_eq                         r25, 0x00000001, label0264 /* 3200 */
+  jmpi_eq                         r15, 0x00000001, label025E /* 314E */
+  jmpi_eq                         r27, 0x00000001, label025C /* 2CE4 */
+  jmp_on                          label025D /* 2EFB */, [r28, r29]
+  jmp_on                          label025D /* 2EFB */, [r28, r30]
+  jmp_on                          label025D /* 2EFB */, [r28, r31]
+  jmp_on                          label025D /* 2EFB */, [r29, r30]
+  jmp_on                          label025D /* 2EFB */, [r29, r31]
+  jmp_on                          label025D /* 2EFB */, [r30, r31]
+  jmpi_eq                         r26, 0x00000001, label0263 /* 30BC */
+  jmpi_eq                         r13, 0x00000001, label025C /* 2CE4 */
+  jmpi_eq                         r12, 0x00000001, label025B /* 2B0B */
+  jmpi_eq                         r11, 0x00000001, label025A /* 2A8B */
+  jmpi_eq                         r10, 0x00000001, label0259 /* 22FE */
+  ret
+
+label0259@0x0259:
+  call                            label01F4 /* 0062 */
+  arg_pushl                       0x0000041F
+  arg_pushs                       "<name hero>!\nWe finally meet\nface to face!"
+  message                         ...
+  arg_pushs                       "I\'m Elly!"
+  add_msg                         ...
+  arg_pushs                       "To be honest with you,"
+  add_msg                         ...
+  arg_pushs                       "that hunter\'s exam also\nhas another purpose."
+  add_msg                         ...
+  arg_pushs                       "It\'s used to match a\nhunter with a compatible\noperator."
+  add_msg                         ...
+  arg_pushs                       "So... That means that\nI still get to be your\noperator!"
+  add_msg                         ...
+  arg_pushs                       "Aren\'t you glad?"
+  add_msg                         ...
+  arg_pushs                       "... !? ..."
+  add_msg                         ...
+  arg_pushs                       "Oh yeah, look at this!"
+  add_msg                         ...
+  arg_pushs                       "What you see is the real\n\"Calus.\" \"He\'s\" the\nLab\'s newest AI system!!"
+  add_msg                         ...
+  arg_pushs                       "I worked with him during\nthe exam,"
+  add_msg                         ...
+  arg_pushs                       "But I never really got\nto interface with him.\nBut now..."
+  add_msg                         ...
+  arg_pushs                       "Now I get to talk to him\nall I want!"
+  add_msg                         ...
+  arg_pushs                       "It\'s great!"
+  add_msg                         ...
+  arg_pushs                       "…素敵です。"
+  add_msg                         ...
+  arg_pushs                       "..."
+  add_msg                         ...
+  arg_pushs                       "... ..."
+  add_msg                         ...
+  arg_pushs                       "... ... ..."
+  add_msg                         ...
+  arg_pushs                       "Anyway..."
+  add_msg                         ...
+  arg_pushs                       "Let\'s see."
+  add_msg                         ...
+  arg_pushs                       "The Chief went over the\nbasic details of the\nmission with you, right?"
+  add_msg                         ...
+  arg_pushs                       "According to the data\ncollected by an auto\nreconnaissance device,"
+  add_msg                         ...
+  arg_pushs                       "architecture from our\ncivilization, meaning\nfrom Pioneer 1,"
+  add_msg                         ...
+  arg_pushs                       "was discovered on\nGal Da Val Island.\nThe structures..."
+  add_msg                         ...
+  arg_pushs                       "They\'re very large,\nwhich is unusual since\nthey\'re so far away "
+  add_msg                         ...
+  arg_pushs                       "from the Central Dome,\nwhere most of the \nresidential areas are."
+  add_msg                         ...
+  arg_pushs                       "None of the data sent\nfrom Pioneer 1 shows\nany record of this."
+  add_msg                         ...
+  arg_pushs                       "Same with the underground\nmining site on Ragol."
+  add_msg                         ...
+  arg_pushs                       "There must have been a\nreason that they kept\nthis hidden."
+  add_msg                         ...
+  arg_pushs                       "Cal will continue on\nwith an on-site scan."
+  add_msg                         ...
+  arg_pushs                       "It\'s the same\ncommunication terminal\nfrom the VR field."
+  add_msg                         ...
+  arg_pushs                       "So cute....!"
+  add_msg                         ...
+  arg_pushs                       "... Oh..."
+  add_msg                         ...
+  arg_pushs                       "Uh,\nI will restate your\nmission."
+  add_msg                         ...
+  arg_pushs                       "\"Investigate and report\nfindings of Gal Da Val\nIsland\""
+  add_msg                         ...
+  arg_pushs                       "\"Search for Deputy\nCommander, Heathcliff\nFlowen\""
+  add_msg                         ...
+  arg_pushs                       "That\'s it."
+  add_msg                         ...
+  arg_pushs                       "When you collect data\nduring your mission\non Gal Da Val,"
+  add_msg                         ...
+  arg_pushs                       "You may transfer them\nhere by accessing Cal\non-site."
+  add_msg                         ...
+  arg_pushs                       "So that\'s basically\nthe whole mission."
+  add_msg                         ...
+  arg_pushs                       "OK?"
+  add_msg                         ...
+  arg_pushs                       "To get to the VR field,"
+  add_msg                         ...
+  arg_pushs                       "Go down the slope, turn\nright, and go through the\nyellow gate"
+  add_msg                         ...
+  arg_pushs                       "Then you\'ll see a\nteleporter. Good luck!"
+  add_msg                         ...
+  mesend
+  gset                            0x0050
+  arg_pushl                       0x00000001
+  switch_on                       ...
+  ret
+
+label025A@0x025A:
+  call                            label01F4 /* 0062 */
+  arg_pushl                       0x0000041F
+  arg_pushs                       "Go down the slope, turn\nright, and go through the\nyellow gate."
+  message                         ...
+  arg_pushs                       "Then you\'ll see a\nteleporter. Good luck!"
+  add_msg                         ...
+  mesend
+  ret
+
+label025B@0x025B:
+  call                            label01F4 /* 0062 */
+  arg_pushl                       0x0000041F
+  arg_pushs                       "According to Cal..."
+  message                         ...
+  arg_pushs                       "The gate is locked\nbecause the entire island\nis in Security Mode."
+  add_msg                         ...
+  arg_pushs                       "Let\'s see..."
+  add_msg                         ...
+  arg_pushs                       "To unlock the gate..."
+  add_msg                         ...
+  arg_pushs                       "You\'ll need to disarm the\nsecurity locks in each of\nthe surrounding areas."
+  add_msg                         ...
+  arg_pushs                       "That should deactivate\nthe Security Mode."
+  add_msg                         ...
+  arg_pushs                       "That\'s what Cal says,\nanyway."
+  add_msg                         ...
+  arg_pushs                       "But that means..."
+  add_msg                         ...
+  arg_pushs                       "If the entire island\nis in Security Mode,"
+  add_msg                         ...
+  arg_pushs                       "then the security\nlevel must be really\nhigh."
+  add_msg                         ...
+  arg_pushs                       "It must be very\ndangerous. Please be\nextra careful."
+  add_msg                         ...
+  mesend
+  gset                            0x01AD
+  ret
+
+label025C@0x025C:
+  call                            label01F4 /* 0062 */
+  jmpi_eq                         r26, 0x00000001, label0263 /* 30BC */
+  arg_pushl                       0x0000041F
+  arg_pushs                       "All security locks have\nbeen disengaged."
+  message                         ...
+  arg_pushs                       "You can enter the\nfacility through the gate"
+  add_msg                         ...
+  arg_pushs                       "in the Central Control\narea."
+  add_msg                         ...
+  arg_pushs                       "We\'re getting reports\nof abnormal Photon\nreadings..."
+  add_msg                         ...
+  arg_pushs                       "On Gal Da Val Island."
+  add_msg                         ...
+  arg_pushs                       "That\'s right!"
+  add_msg                         ...
+  arg_pushs                       "They\'re the same abnormal\nreadings as those from\nthe ruins under Ragol!"
+  add_msg                         ...
+  arg_pushs                       "This is a definite sign\nthat somewhere in that\narea..."
+  add_msg                         ...
+  arg_pushs                       "There is a large number\nof D-cellular sub\nlifeforms."
+  add_msg                         ...
+  arg_pushs                       "Please be careful."
+  add_msg                         ...
+  arg_pushs                       "We\'re still continuing\nour analysis on the\ninformation..."
+  add_msg                         ...
+  arg_pushs                       "I will update you\nlater."
+  add_msg                         ...
+  mesend
+  gset                            0x0062
+  ret
+
+label025D@0x025D:
+  call                            label01F4 /* 0062 */
+  arg_pushl                       0x0000041F
+  arg_pushs                       "I knew we would find more\nof that message!"
+  message                         ...
+  arg_pushs                       "And the result of the\nanalysis is just as we\nthought, too."
+  add_msg                         ...
+  arg_pushs                       "This data was recorded\non the same day as the\nprevious data."
+  add_msg                         ...
+  arg_pushs                       "It seems that the data\nhas been segmented..."
+  add_msg                         ...
+  arg_pushs                       "The parts were then\nhidden in the database."
+  add_msg                         ...
+  arg_pushs                       "If you can find another\nterminal,"
+  add_msg                         ...
+  arg_pushs                       "you may be able to access\nanother fragment of the\nmessage log."
+  add_msg                         ...
+  arg_pushs                       "Please continue\ninvestigating."
+  add_msg                         ...
+  arg_pushs                       "Good luck!"
+  add_msg                         ...
+  mesend
+  gset                            0x0063
+  ret
+
+label0263@0x0263:
+  call                            label01F4 /* 0062 */
+  arg_pushl                       0x0000041F
+  arg_pushs                       "The abnormal Photon\nreadings indicate..."
+  message                         ...
+  arg_pushs                       "A high concentration of\nD-cellular sub lifeforms"
+  add_msg                         ...
+  arg_pushs                       "somewhere in the\nvicinity."
+  add_msg                         ...
+  arg_pushs                       "Please be careful."
+  add_msg                         ...
+  mesend
+  ret
+
+label025E@0x025E:
+  call                            label01F4 /* 0062 */
+  arg_pushl                       0x0000041F
+  arg_pushs                       "<name hero>!\nWelcome back!"
+  message                         ...
+  arg_pushs                       "I\'m so glad you\'re OK."
+  add_msg                         ...
+  arg_pushs                       "... ... ..."
+  add_msg                         ...
+  arg_pushs                       "Oh!"
+  add_msg                         ...
+  arg_pushs                       "The Chief has been\nanxious to see you."
+  add_msg                         ...
+  arg_pushs                       "Please go see her!"
+  add_msg                         ...
+  mesend
+  gset                            0x0061
+  gset                            0x01B7
+  ret
+
+label0264@0x0264:
+  call                            label01F4 /* 0062 */
+  arg_pushl                       0x0000041F
+  arg_pushs                       "The Chief has been\nanxiously waiting\nfor you."
+  message                         ...
+  arg_pushs                       "Please go see her!"
+  add_msg                         ...
+  mesend
+  ret
+
+label025F@0x025F:
+  call                            label01F4 /* 0062 */
+  arg_pushl                       0x0000041F
+  arg_pushs                       "Have you heard about the\nfacility on the seabed?"
+  message                         ...
+  arg_pushs                       "I never imagined..."
+  add_msg                         ...
+  arg_pushs                       "That such a large\nresearch facility would"
+  add_msg                         ...
+  arg_pushs                       "exist in a place\nlike that."
+  add_msg                         ...
+  arg_pushs                       "According to the\nreconaissance, unlike\nthe one on the surface,"
+  add_msg                         ...
+  arg_pushs                       "this facility was built\nonly for research\nand development."
+  add_msg                         ...
+  arg_pushs                       "It\'s so large, it\'s\nalmost a factory."
+  add_msg                         ...
+  arg_pushs                       "I imagine that there\nwere a lot of researchers\nworking inside it, too."
+  add_msg                         ...
+  arg_pushs                       "But we haven\'t seen any\nsigns of life anywhere..."
+  add_msg                         ...
+  arg_pushs                       "But..."
+  add_msg                         ...
+  arg_pushs                       "Being pessimistic won\'t\nhelp."
+  add_msg                         ...
+  arg_pushs                       "Cal has calculated the\nexact coordinates."
+  add_msg                         ...
+  arg_pushs                       "So I\'ve entered them into\nthe teleporter.\nGood luck! "
+  add_msg                         ...
+  mesend
+  gset                            0x0053
+  ret
+
+label0260@0x0260:
+  call                            label01F4 /* 0062 */
+  arg_pushl                       0x0000041F
+  arg_pushs                       "I am a little bit\nworried."
+  message                         ...
+  arg_pushs                       "What if there\'s no\none left there,\neither?"
+  add_msg                         ...
+  mesend
+  ret
+
+label0261@0x0261:
+  call                            label01F4 /* 0062 */
+  arg_pushl                       0x0000041F
+  arg_pushs                       "The abnormal Photon\nreadings get stronger\nas you go down."
+  message                         ...
+  arg_pushs                       "We still don\'t know\nwhat is down there..."
+  add_msg                         ...
+  arg_pushs                       "Cal is sending a\nwarning signal too.\nPlease be careful!"
+  add_msg                         ...
+  mesend
+  ret
+
+label0262@0x0262:
+  call                            label01F4 /* 0062 */
+  arg_pushl                       0x0000041F
+  arg_pushs                       "Damage in the lower\nsections seem much\nworse."
+  message                         ...
+  arg_pushs                       "Seawater is pouring\nin..."
+  add_msg                         ...
+  arg_pushs                       "I wonder if Mr. Flowen is\nstill alive."
+  add_msg                         ...
+  mesend
+  ret
+
+label0265@0x0265:
+  call                            label01F4 /* 0062 */
+  arg_pushl                       0x0000041F
+  arg_pushs                       "<hero name>, you\'re\nOK!"
+  message                         ...
+  arg_pushs                       "I was so worried, since\nthe communication got\ndisconnected."
+  add_msg                         ...
+  arg_pushs                       "I checked with Cal,\nand..."
+  add_msg                         ...
+  arg_pushs                       "The communication link\nwas cut off by some\nsort of jamming signal."
+  add_msg                         ...
+  arg_pushs                       "Also..."
+  add_msg                         ...
+  arg_pushs                       "That message wasn\'t a\nlog."
+  add_msg                         ...
+  arg_pushs                       "It wasn\'t a previously\nrecorded message!"
+  add_msg                         ...
+  arg_pushs                       "It was received in real\ntime,"
+  add_msg                         ...
+  arg_pushs                       "just like the first one\nthe Lab received."
+  add_msg                         ...
+  arg_pushs                       "Not only that, it\noriginated way below the\nlower section."
+  add_msg                         ...
+  arg_pushs                       "There\'s a deep vertical\nshaft connected to the\nlower section."
+  add_msg                         ...
+  arg_pushs                       "That\'s where the message\nwas sent..."
+  add_msg                         ...
+  mesend
+  gset                            0x01D1
+  gset                            0x01D5
+  ret
+
+label0266@0x0266:
+  call                            label01F4 /* 0062 */
+  arg_pushl                       0x0000041F
+  arg_pushs                       "According to the data\ncollected from the\nfacility,"
+  message                         ...
+  arg_pushs                       "that vertical hole is an"
+  add_msg                         ...
+  arg_pushs                       "\"Elevator Shaft\""
+  add_msg                         ...
+  arg_pushs                       "And further down below..."
+  add_msg                         ...
+  arg_pushs                       "\"Test Subject Disposal\nSite\""
+  add_msg                         ...
+  arg_pushs                       "That\'s what they called\nit."
+  add_msg                         ...
+  mesend
+  ret
+
+label021C@0x021C:
+  // Could not determine data type; disassembling as code
+  call                            label01F4 /* 0062 */
+  jmpi_eq                         r50, 0x00000001, label0220 /* 6659 */
+  jmp                             label021F /* 65CE */
+  jmpi_eq                         r17, 0x00000001, label021E /* 3AF9 */
+  jmpi_eq                         r11, 0x00000001, label021D /* 3A64 */
+  arg_pushl                       0x0000041C
+  arg_pushs                       "There is a teleporter\nto the surface here."
+  message                         ...
+  arg_pushs                       "You may not use this\nuntil the Chief gives\nher permission."
+  add_msg                         ...
+  arg_pushs                       "So stay away!"
+  add_msg                         ...
+  mesend
+  ret
+
+label021D@0x021D:
+  arg_pushl                       0x0000041C
+  arg_pushs                       "There is a teleporter\nto the surface here."
+  message                         ...
+  arg_pushs                       "The Chief has already\ngiven permission to\nuse it."
+  add_msg                         ...
+  arg_pushs                       "Understood?\nNow go! Continue your\ninvestigation!"
+  add_msg                         ...
+  mesend
+  ret
+
+label021E@0x021E:
+  arg_pushl                       0x0000041C
+  arg_pushs                       "The teleporter in the\nback is set to the Seabed\nfacility\'s coordinates."
+  message                         ...
+  arg_pushs                       "I adjusted the settings\nmyself. "
+  add_msg                         ...
+  arg_pushs                       "Now go! Go and get some\nmore useful data!"
+  add_msg                         ...
+  mesend
+  ret
+
+label0230@0x0230:
+  // Could not determine data type; disassembling as code
+  call                            label01F4 /* 0062 */
+  jmpi_eq                         r50, 0x00000001, label0235 /* 6801 */
+  jmp                             label0234 /* 66FE */
+  jmpi_eq                         r17, 0x00000001, label0233 /* 3E91 */
+  jmpi_eq                         r11, 0x00000001, label0232 /* 3D96 */
+  jmpi_eq                         r6, 0x00000001, label0231 /* 3CA5 */
+  arg_pushl                       0x0000041D
+  arg_pushs                       "Hello!"
+  message                         ...
+  arg_pushs                       "What\'s behind the gate is\nthe Lab\'s latest VR\nsystem!"
+  add_msg                         ...
+  arg_pushs                       "The Administration and\nthe military have no \nknowledge about this."
+  add_msg                         ...
+  arg_pushs                       "The examination will\nstart from that moment\nyou\'re transported"
+  add_msg                         ...
+  arg_pushs                       "to the VR field through\nthe teleporter.\nSo be careful!"
+  add_msg                         ...
+  mesend
+  ret
+
+label0231@0x0231:
+  arg_pushl                       0x0000041D
+  arg_pushs                       "Looks like you\'re doing\npretty well!"
+  message                         ...
+  arg_pushs                       "The Chief was very\npleased with your\nperformance!"
+  add_msg                         ...
+  arg_pushs                       "Her assistant, Dan,\ndidn\'t look happy,\nbut..."
+  add_msg                         ...
+  arg_pushs                       "Don\'t worry about it,\nhe\'s just jealous!"
+  add_msg                         ...
+  arg_pushs                       "Good luck on the next\nround!"
+  add_msg                         ...
+  mesend
+  ret
+
+label0232@0x0232:
+  arg_pushl                       0x0000041D
+  arg_pushs                       "I heard that you were\nassigned a mission\nto explore the surface!"
+  message                         ...
+  arg_pushs                       "I\'m sure you\'ll do well,"
+  add_msg                         ...
+  arg_pushs                       "considering your high\nscores on the VR exam."
+  add_msg                         ...
+  arg_pushs                       "Oh, and one more thing!"
+  add_msg                         ...
+  arg_pushs                       "I\'ll leave the VR field\nopen for you to use for\ntraining, if you want."
+  add_msg                         ...
+  arg_pushs                       "Good luck!"
+  add_msg                         ...
+  mesend
+  ret
+
+label0233@0x0233:
+  arg_pushl                       0x0000041D
+  arg_pushs                       "How\'s the investigation\ngoing? There\'s an uproar\nin the Lab"
+  message                         ...
+  arg_pushs                       "every time the data you\nsend gets analyzed!"
+  add_msg                         ...
+  arg_pushs                       "If only the results were\nalways positive..."
+  add_msg                         ...
+  arg_pushs                       "There\'s an unpleasant\nfeeling in the Lab these\ndays..."
+  add_msg                         ...
+  arg_pushs                       "But it\'s nothing you\nshould worry about!\nKeep up the good work!"
+  add_msg                         ...
+  mesend
+  ret
+
+label0244@0x0244:
+  // Could not determine data type; disassembling as code
+  call                            label01F4 /* 0062 */
+  jmpi_eq                         r17, 0x00000001, label0247 /* 4214 */
+  jmpi_eq                         r11, 0x00000001, label0246 /* 412F */
+  jmpi_eq                         r6, 0x00000001, label0245 /* 406C */
+  arg_pushl                       0x0000041E
+  arg_pushs                       "Research on machines,\nDNA, and Photons are\nbeing performed here."
+  message                         ...
+  arg_pushs                       "Yes, I know..."
+  add_msg                         ...
+  arg_pushs                       "I wish the researchers\nwould get along better\nwith one another."
+  add_msg                         ...
+  mesend
+  ret
+
+label0245@0x0245:
+  arg_pushl                       0x0000041E
+  arg_pushs                       "Designing the Temple\nfield was really fun!"
+  message                         ...
+  arg_pushs                       "We got to be really\ncreative in the process."
+  add_msg                         ...
+  arg_pushs                       "But the Spaceship field\nmay be a bit too\ndifficult for you."
+  add_msg                         ...
+  arg_pushs                       "It was built for real\ncombat training."
+  add_msg                         ...
+  mesend
+  ret
+
+label0246@0x0246:
+  arg_pushl                       0x0000041E
+  arg_pushs                       "パイオニア１ラボも\n随分と大規模に\n怪しいことやってたみたいね。"
+  message                         ...
+  arg_pushs                       "ラボってどこもそうだけど\n政府から研究資金が出てるから\nかなり癒着も激しいのよ。"
+  add_msg                         ...
+  arg_pushs                       "そうね。"
+  add_msg                         ...
+  arg_pushs                       "実際に裏世界の組織とも\nつながりが深かったりするしね。"
+  add_msg                         ...
+  mesend
+  ret
+
+label0247@0x0247:
+  arg_pushl                       0x0000041E
+  arg_pushs                       "パイオニア１ラボの\nチーフは当代一と名高い\nオスト博士だったわ。"
+  message                         ...
+  arg_pushs                       "たぶん\nそれが失敗だったわね。"
+  add_msg                         ...
+  arg_pushs                       "その点 ウチが違うのは\nチーフ・ナターシャは\n政府からの天下りなのよね。"
+  add_msg                         ...
+  arg_pushs                       "政府で何をしてたのかは\nいまだに謎なんだけど。"
+  add_msg                         ...
+  arg_pushs                       "そうね。"
+  add_msg                         ...
+  arg_pushs                       "リーダーには 研究者以外が\nいいと思うわ。"
+  add_msg                         ...
+  arg_pushs                       "研究者にそういうのはダメよ。\n自分もそうだからわかるの。"
+  add_msg                         ...
+  mesend
+  ret
+
+label026C@0x026C:
+  // Could not determine data type; disassembling as code
+  call                            label01F4 /* 0062 */
+  jmpi_eq                         r11, 0x00000001, label026E /* 45E6 */
+  jmpi_eq                         r6, 0x00000001, label026D /* 4473 */
+  arg_pushl                       0x00000420
+  arg_pushs                       "こんなところで\nハンターズさんを見るのは\n珍しいですわね。"
+  message                         ...
+  arg_pushs                       "ここはパイオニア２の中でも\n政府施設が多い区画。"
+  add_msg                         ...
+  arg_pushs                       "有名な施設になると\nラボもございますわ。"
+  add_msg                         ...
+  arg_pushs                       "身分の高い方たちが\n通ることも多いから\n礼儀に気をつけなくてはね。"
+  add_msg                         ...
+  mesend
+  ret
+
+label026D@0x026D:
+  arg_pushl                       0x00000420
+  arg_pushs                       "この区画には 政府や\n研究所のお仕事をしてる方が\nたくさんいますわ。"
+  message                         ...
+  arg_pushs                       "私も ラボのお手伝いを\nすることがよくありますのよ。"
+  add_msg                         ...
+  arg_pushs                       "パイオニア１の親類とも\n連絡が取れない今、"
+  add_msg                         ...
+  arg_pushs                       "妹と２人で暮らしてゆくのも\n大変ですわ。"
+  add_msg                         ...
+  arg_pushs                       "聞けば、\nパイオニア１の人たちは\n未だに行方不明とか…"
+  add_msg                         ...
+  arg_pushs                       "あれだけのハンターズさん達が\n出動しながら…"
+  add_msg                         ...
+  arg_pushs                       "まだなんの\n発表もないんですものね。"
+  add_msg                         ...
+  mesend
+  ret
+
+label026E@0x026E:
+  arg_pushl                       0x00000420
+  arg_pushs                       "ラボのお仕事は\n大変ですけど、"
+  message                         ...
+  arg_pushs                       "身分の高い殿方も\nたくさんお見えになるし。\n素敵なお仕事ですのよ。"
+  add_msg                         ...
+  arg_pushs                       "でも この間\n見かけた女性の方なんて！"
+  add_msg                         ...
+  arg_pushs                       "殿方よりも\n機械のほうがお好きみたいで。"
+  add_msg                         ...
+  arg_pushs                       "機械に触りたいからって\nラボの中まで\n押しかけてきたんですのよ！"
+  add_msg                         ...
+  arg_pushs                       "ラボでもしようがないから\n彼女を引き取ったらしいけれど…"
+  add_msg                         ...
+  arg_pushs                       "でも あんな変な人\n引き取ったりして\n大丈夫なのかしら。"
+  add_msg                         ...
+  mesend
+  ret
+
+label0280@0x0280:
+  // Could not determine data type; disassembling as code
+  call                            label01F4 /* 0062 */
+  jmpi_eq                         r11, 0x00000001, label0282 /* 48CE */
+  jmpi_eq                         r6, 0x00000001, label0281 /* 481B */
+  arg_pushl                       0x00000421
+  arg_pushs                       "フンフフン。"
+  message                         ...
+  arg_pushs                       "大人の人はいっつも\n文句ばかり言ってるの。"
+  add_msg                         ...
+  arg_pushs                       "パイオニア１のみんなも\n今は見つからないだけで\nまたすぐに帰ってくるわ。"
+  add_msg                         ...
+  arg_pushs                       "フフンフン。"
+  add_msg                         ...
+  mesend
+  ret
+
+label0281@0x0281:
+  arg_pushl                       0x00000421
+  arg_pushs                       "フンフフン。"
+  message                         ...
+  arg_pushs                       "ねえねえ。\nそーとくふ、って何？"
+  add_msg                         ...
+  arg_pushs                       "大人の人がね。\nそーとくふは\nむのうだって言うの。"
+  add_msg                         ...
+  arg_pushs                       "大人の世界は\n難しくって\nよくわかんないなあ。"
+  add_msg                         ...
+  arg_pushs                       "フンフフン。"
+  add_msg                         ...
+  mesend
+  ret
+
+label0282@0x0282:
+  arg_pushl                       0x00000421
+  arg_pushs                       "フンフフン。"
+  message                         ...
+  arg_pushs                       "エリお姉ちゃんは\n最近 私と遊んでくれないの。"
+  add_msg                         ...
+  arg_pushs                       "お仕事が\n忙しいんだって。"
+  add_msg                         ...
+  arg_pushs                       "でもいいの！"
+  add_msg                         ...
+  arg_pushs                       "お仕事が終わったら\nエリお姉ちゃんの友達も一緒に\n遊べるかもしれないから！"
+  add_msg                         ...
+  arg_pushs                       "カル君って言うんだって！"
+  add_msg                         ...
+  arg_pushs                       "フンフフン。"
+  add_msg                         ...
+  mesend
+  ret
+
+label0294@0x0294:
+  // Could not determine data type; disassembling as code
+  call                            label01F4 /* 0062 */
+  jmpi_eq                         r11, 0x00000001, label0296 /* 4C4A */
+  jmpi_eq                         r6, 0x00000001, label0295 /* 4A9D */
+  arg_pushl                       0x00000422
+  arg_pushs                       "あの爆発からしばらく経つけど…"
+  message                         ...
+  arg_pushs                       "総督府からは\n未だに何の発表もないし。"
+  add_msg                         ...
+  arg_pushs                       "何かわかったのなら\n発表してくれないと 不安になるよ。"
+  add_msg                         ...
+  arg_pushs                       "やっぱり噂通り\nなにかまずいことでも\n起こってるのかなあ。"
+  add_msg                         ...
+  mesend
+  ret
+
+label0295@0x0295:
+  arg_pushl                       0x00000422
+  arg_pushs                       "オレの仕事って\n機材の搬入だったりするからさ、"
+  message                         ...
+  arg_pushs                       "色んな施設の中に\n入る機会も多いんだけど。"
+  add_msg                         ...
+  arg_pushs                       "総督府と軍とラボ。\nなんであんなに\n仲が悪いんだろうね。"
+  add_msg                         ...
+  arg_pushs                       "ラボから最新のＶＲ装置を\n軍の施設に持ってった時なんて、"
+  add_msg                         ...
+  arg_pushs                       "折角 搬入したものを\nそっくりそのままラボに\n持ち帰らなきゃなんなくなってさ。"
+  add_msg                         ...
+  arg_pushs                       "仲が悪いのもいいけど\nこっちはいい迷惑さ。"
+  add_msg                         ...
+  arg_pushs                       "それに皆で協力すれば\nラグオルの事件も早く\n解決できると思うんだけどなあ。"
+  add_msg                         ...
+  mesend
+  ret
+
+label0296@0x0296:
+  arg_pushl                       0x00000422
+  arg_pushs                       "けっこう前にラボ内が\n大騒ぎになってたことがあってさ。"
+  message                         ...
+  arg_pushs                       "なんか大掛かりな設備が\n導入されるらしくって\nいろいろ搬入したんだけど。"
+  add_msg                         ...
+  arg_pushs                       "半分壊れかけの機械やら\nなんやら運ばされたよ。"
+  add_msg                         ...
+  arg_pushs                       "あれってもしかして\nパイオニア１のものかな？"
+  add_msg                         ...
+  mesend
+  ret
+
+label02A8@0x02A8:
+  // Could not determine data type; disassembling as code
+  call                            label01F4 /* 0062 */
+  jmpi_eq                         r17, 0x00000001, label02AA /* 4EFA */
+  jmpi_eq                         r11, 0x00000001, label02A9 /* 4E05 */
+  arg_pushl                       0x00000423
+  arg_pushs                       "最近 ラボの様子が慌しいな。"
+  message                         ...
+  arg_pushs                       "フン！\n総督府はともかくとして、"
+  add_msg                         ...
+  arg_pushs                       "軍が動けんからとは言え\n政府の飼い犬ごときが\n調子に乗って良いわけはない！"
+  add_msg                         ...
+  arg_pushs                       "今に泣きを見るに違いないさ。"
+  add_msg                         ...
+  mesend
+  ret
+
+label02A9@0x02A9:
+  arg_pushl                       0x00000423
+  arg_pushs                       "最近パイオニア２内で\n軍の人間を馬鹿にする奴が多くて困る。"
+  message                         ...
+  arg_pushs                       "科学者連中や\nハンターズ風情が\nのさばりおって！"
+  add_msg                         ...
+  arg_pushs                       "もし軍の英雄と名高い\nヒースクリフ・フロウウェン殿が\n存命であったならば…"
+  add_msg                         ...
+  arg_pushs                       "このようなことには\nならなかっただろうさ！"
+  add_msg                         ...
+  mesend
+  ret
+
+label02AA@0x02AA:
+  arg_pushl                       0x00000423
+  arg_pushs                       "故フロウウェン殿は\n陸軍副司令官として\nパイオニア１に乗船されたと聞く。"
+  message                         ...
+  arg_pushs                       "かなりの高齢にも関わらず\nその剣技たるや\nすさまじいものだったというぞ。"
+  add_msg                         ...
+  arg_pushs                       "しかも あの\nレッドリングリコの師でも\nあったという噂もある。"
+  add_msg                         ...
+  arg_pushs                       "かく言う僕も\n彼に憧れて 軍に入ったんだがね…"
+  add_msg                         ...
+  mesend
+  ret
+
+label02BC@0x02BC:
+  // Could not determine data type; disassembling as code
+  call                            label01F4 /* 0062 */
+  jmpi_eq                         r17, 0x00000001, label02BF /* 52A1 */
+  jmpi_eq                         r11, 0x00000001, label02BE /* 51F4 */
+  jmpi_eq                         r6, 0x00000001, label02BD /* 5119 */
+  arg_pushl                       0x00000424
+  arg_pushs                       "あまりこの区画で\n目立つ行動を取らんほうがいい。"
+  message                         ...
+  arg_pushs                       "ここは政府の息がかかった区画。"
+  add_msg                         ...
+  arg_pushs                       "色々な情報が\n飛びかっているが故に…"
+  add_msg                         ...
+  arg_pushs                       "裏では 軍も総督府も\n入り混じって\nスパイ活動も激しい。"
+  add_msg                         ...
+  arg_pushs                       "お前の行動も\n見張られて\nいるかもしれんぞ？"
+  add_msg                         ...
+  mesend
+  ret
+
+label02BD@0x02BD:
+  arg_pushl                       0x00000424
+  arg_pushs                       "総督府もだいぶ\n慌てているらしい。"
+  message                         ...
+  arg_pushs                       "最近では\n一部のハンターズを集めて\n調査団を再結成したと聞くが、"
+  add_msg                         ...
+  arg_pushs                       "…どうだろうな。"
+  add_msg                         ...
+  arg_pushs                       "ラボからの情報ですら\n信じる以外に道がない彼らに\n何ができるのか…"
+  add_msg                         ...
+  arg_pushs                       "見ものだよ。"
+  add_msg                         ...
+  mesend
+  ret
+
+label02BE@0x02BE:
+  arg_pushl                       0x00000424
+  arg_pushs                       "今回 ラボから受けた依頼は\n外に漏らさんほうが身のためだ…"
+  message                         ...
+  arg_pushs                       "あれは政府にとっても\n重要な機密事項。"
+  add_msg                         ...
+  arg_pushs                       "機密も守れんハンターズなどを\n雇っておく義理はないからな…"
+  add_msg                         ...
+  mesend
+  ret
+
+label02BF@0x02BF:
+  arg_pushl                       0x00000424
+  arg_pushs                       "チーフ・ナターシャの\n出自を気にしている奴は多い。"
+  message                         ...
+  arg_pushs                       "彼女のことには あまり\n首を突っ込まんほうがいい。"
+  add_msg                         ...
+  arg_pushs                       "知らぬことは\n知らぬままでいたほうが\nよいこともあるだろうよ…"
+  add_msg                         ...
+  mesend
+  ret
+
+label02D0@0x02D0:
+  // Could not determine data type; disassembling as code
+  call                            label01F4 /* 0062 */
+  jmpi_eq                         r17, 0x00000001, label02D3 /* 573E */
+  jmpi_eq                         r11, 0x00000001, label02D2 /* 55EF */
+  jmpi_eq                         r6, 0x00000001, label02D1 /* 54A0 */
+  arg_pushl                       0x00000425
+  arg_pushs                       "こんな堅苦しい区画にも\nギルドカウンターが\nあるなんてビックリだろ？"
+  message                         ...
+  arg_pushs                       "ハンターズギルドは\nパイオニア２クルー全員の味方！"
+  add_msg                         ...
+  arg_pushs                       "総督府のバックアップで\n船内にもギルドカウンターは\nどんどん設置していく予定だ。"
+  add_msg                         ...
+  arg_pushs                       "高貴なお方も\n大勢いらっしゃるとは言え、"
+  add_msg                         ...
+  arg_pushs                       "こんなご時世\n悩み事は尽きないものさ！"
+  add_msg                         ...
+  mesend
+  ret
+
+label02D1@0x02D1:
+  arg_pushl                       0x00000425
+  arg_pushs                       "とは言え…"
+  message                         ...
+  arg_pushs                       "政府施設の多いこの区画に\nギルドカウンターを作ったのは\n失敗だったかもしれん。"
+  add_msg                         ...
+  arg_pushs                       "もともと、君たちハンターズを\n信用してない奴ばかりだからな。\nこの区画は…"
+  add_msg                         ...
+  arg_pushs                       "実のところ\nあまり依頼もこないのだよ。"
+  add_msg                         ...
+  arg_pushs                       "一般の居住区画に\n作ってみたほうが\nよかったのかもしれんなあ。"
+  add_msg                         ...
+  arg_pushs                       "… … …"
+  add_msg                         ...
+  arg_pushs                       "まあ ゆっくり待つとするさ！"
+  add_msg                         ...
+  mesend
+  ret
+
+label02D2@0x02D2:
+  arg_pushl                       0x00000425
+  arg_pushs                       "ハンターズの君たちには\n頑張ってもらってはいるが。"
+  message                         ...
+  arg_pushs                       "実際はどうにも\nならんのが現状だよ。"
+  add_msg                         ...
+  arg_pushs                       "ラグオルがあんな状態で\n着陸を許可するわけにもいかんし。"
+  add_msg                         ...
+  arg_pushs                       "とは言っても\n一般層の不満は 広がるばかり。"
+  add_msg                         ...
+  arg_pushs                       "ハンターズの英雄\nレッドリングリコ。"
+  add_msg                         ...
+  arg_pushs                       "軍の英雄\n白髭公フロウウェン。"
+  add_msg                         ...
+  arg_pushs                       "彼ら英雄の帰還や復活を\n願っている人は多いがね。"
+  add_msg                         ...
+  mesend
+  ret
+
+label02D3@0x02D3:
+  arg_pushl                       0x00000425
+  arg_pushs                       "実は ワシは総督府の下で\nラボとのやり取りをやってるのさ。"
+  message                         ...
+  arg_pushs                       "だが どうも最近 ラボ側の\n情報の締めつけがきつくてな。"
+  add_msg                         ...
+  arg_pushs                       "ウチの総督とあそこのチーフは\nもともと仲も良くはないがね。"
+  add_msg                         ...
+  arg_pushs                       "あれは 本星政府内に\n一緒にいた時かららしいが。"
+  add_msg                         ...
+  arg_pushs                       "困ったもんだよ。"
+  add_msg                         ...
+  mesend
+  ret
+
+label0370@0x0370:
+  // Could not determine data type; disassembling as code
+  arg_pushl                       0x00000418
+  arg_pushs                       "オレはコレン・ツ。\n流浪の商人ってヤツだ。"
+  message                         ...
+  arg_pushs                       "今日はオレがかき集めた\nアレでレアな商品を\nここらで少しサバきたくてな。"
+  add_msg                         ...
+  arg_pushs                       "メセタをたんまりくれルッてんなら、\n豪華商品が当たるカモしれない、\nスゲェくじを引かせてやルぜ。"
+  add_msg                         ...
+  mesend
+  arg_pushb                       0x64
+  arg_pushs                       "はい\nいいえ"
+  list                            ...
+  switch_jmp                      r100, [label0371 /* 5943 */, label0372 /* 5A90 */]
+  ret
+
+label0371@0x0371:
+  bb_get_number_in_pack           r100
+  jmpi_eq                         r100, 0x0000001E, label0373 /* 5B2D */
+  arg_pushl                       0x00000418
+  arg_pushs                       "当たルも八卦、\n当たラヌも八卦。"
+  message                         ...
+  arg_pushs                       "ロクなものが当たらなくても\nオレにあたルなよ。"
+  add_msg                         ...
+  arg_pushs                       "ギャンブルなんて\nそんなモンだからな。"
+  add_msg                         ...
+  arg_pushs                       "で、どのくらいメセタを\n払ってくれルンだい？"
+  add_msg                         ...
+  arg_pushs                       "メセタさえもらえりゃ、\nそれナリにサービスすルぜ？"
+  add_msg                         ...
+  mesend
+  arg_pushb                       0x65
+  arg_pushs                       "１０００メセタ\n１００００メセタ\n１０００００メセタ\nやっぱり止める"
+  list                            ...
+  switch_jmp                      r101, [label0374 /* 5B96 */, label0375 /* 5BAB */, label0376 /* 5BC0 */, label0377 /* 5BD5 */]
+  ret
+
+label0372@0x0372:
+  arg_pushl                       0x00000418
+  arg_pushs                       "ん？"
+  message                         ...
+  arg_pushs                       "ざんねんダナ。"
+  add_msg                         ...
+  arg_pushs                       "まあ、こういうモンはたいてい\n損をするかもしレナイからな。"
+  add_msg                         ...
+  arg_pushs                       "慎重なのもいいモンだ。\n気が向いタラ、また話しかけテクれ。"
+  add_msg                         ...
+  mesend
+  ret
+
+label0373@0x0373:
+  arg_pushl                       0x00000418
+  arg_pushs                       "アイテムが\nいっぱいみタイだな。"
+  message                         ...
+  arg_pushs                       "マズは、アイテムを\n整理してきテクれ。"
+  add_msg                         ...
+  arg_pushs                       "話はソレからだ。"
+  add_msg                         ...
+  mesend
+  ret
+
+label0374@0x0374:
+  get_slot_meseta                 r102
+  jmpi_lt                         r102, 0x000003E8, label0378 /* 5C3C */
+  leti                            r102, 0x000003E8
+  jmp                             label0379 /* 5C9B */
+  ret
+
+label0375@0x0375:
+  get_slot_meseta                 r102
+  jmpi_lt                         r102, 0x00002710, label0378 /* 5C3C */
+  leti                            r102, 0x00002710
+  jmp                             label0379 /* 5C9B */
+  ret
+
+label0376@0x0376:
+  get_slot_meseta                 r102
+  jmpi_lt                         r102, 0x000186A0, label0378 /* 5C3C */
+  leti                            r102, 0x000186A0
+  jmp                             label0379 /* 5C9B */
+  ret
+
+label0377@0x0377:
+  arg_pushl                       0x00000418
+  arg_pushs                       "ナンだ？"
+  message                         ...
+  arg_pushs                       "一度、ヤルと言ったのに\n止めルのか。"
+  add_msg                         ...
+  arg_pushs                       "そういうヤツは\nなにヤッても失敗するぞ。"
+  add_msg                         ...
+  mesend
+  ret
+
+label0378@0x0378:
+  arg_pushl                       0x00000418
+  arg_pushs                       "ナンだ？"
+  message                         ...
+  arg_pushs                       "払うといった額のメセタを\n満たしてナイのか？"
+  add_msg                         ...
+  arg_pushs                       "冷やかしナラお断りだよ。"
+  add_msg                         ...
+  mesend
+  ret
+
+label0379@0x0379:
+  get_client_id                   r100
+  let                             r103, r100
+  let                             r104, r102
+  clear                           r105
+  take_slot_meseta                r103-r104, r105
+  jmpi_eq                         r105, 0x00000000, label0378 /* 5C3C */
+  arg_pushl                       0x00000418
+  arg_pushs                       "では、いくゾ。"
+  message                         ...
+  arg_pushs                       "いいモンが当たル様に\n念じルンだな。"
+  add_msg                         ...
+  mesend
+  clear                           r100
+
+label037A@0x037A:
+  arg_pushl                       0x00000010
+  se                              ...
+  sync
+  sync
+  sync
+  sync
+  sync
+  sync
+  sync
+  sync
+  sync
+  sync
+  sync
+  sync
+  sync
+  sync
+  addi                            r100, 0x0000000F
+  jmpi_le                         r100, 0x0000005A, label037A /* 5CF3 */
+  arg_pushr                       r101
+  bb_send_6xE2                    ...
+  clear                           r106
+  clear                           r100
+
+label037B@0x037B:
+  sync
+  bb_get_6xE3_status              r106
+  jmpi_eq                         r106, 0x00000001, label037C /* 5D59 */
+  jmpi_eq                         r106, 0x00000002, label037D /* 5E59 */
+  addi                            r100, 0x00000001
+  jmpi_le                         r100, 0x0000012C, label037B /* 5D1D */
+  arg_pushs                       "サーバーセンドエラー"
+  window_msg                      ...
+  winend
+  ret
+
+label037C@0x037C:
+  sync
+  arg_pushl                       0x00000001
+  bgm                             ...
+  arg_pushs                       "<bk>\n<color 4><meseta_slot_prize><color 0>を入手した！"
+  window_msg                      ...
+  winend
+  sync
+  arg_pushl                       0x00000418
+  arg_pushs                       "ほらよ！\nもっていきな！"
+  message                         ...
+  arg_pushs                       "ロクなモンが当たらなくても\nそのうちイイものが"
+  add_msg                         ...
+  arg_pushs                       "必ず当たる！"
+  add_msg                         ...
+  arg_pushs                       "カモしれないからな、\nマタやってくれよな。"
+  add_msg                         ...
+  mesend
+  ret
+
+label037D@0x037D:
+  arg_pushs                       "コマンド実行エラー"
+  window_msg                      ...
+  winend
+  ret
+
+label0384@0x0384:
+  // Could not determine data type; disassembling as code
+  arg_pushl                       0x00000000
+  bb_p2_menu                      ...
+  ret
+
+label038E@0x038E:
+  // Could not determine data type; disassembling as code
+  arg_pushl                       0x00000002
+  bb_p2_menu                      ...
+  ret
+
+label0398@0x0398:
+  // Could not determine data type; disassembling as code
+  arg_pushl                       0x00000003
+  bb_p2_menu                      ...
+  ret
+
+label03A2@0x03A2:
+  // Could not determine data type; disassembling as code
+  arg_pushl                       0x00000006
+  bb_p2_menu                      ...
+  ret
+
+label03AC@0x03AC:
+  // Could not determine data type; disassembling as code
+  arg_pushl                       0x00000005
+  bb_p2_menu                      ...
+  ret
+
+label03B6@0x03B6:
+  // Could not determine data type; disassembling as code
+  arg_pushl                       0x00000004
+  bb_p2_menu                      ...
+  ret
+
+label03C0@0x03C0:
+  // Could not determine data type; disassembling as code
+  arg_pushl                       0x00000001
+  bb_p2_menu                      ...
+  ret
+
+label03CA@0x03CA:
+  // Could not determine data type; disassembling as code
+  call                            label01F4 /* 0062 */
+  jmpi_eq                         r47, 0x00000001, label03CC /* 6388 */
+  jmpi_eq                         r48, 0x00000001, label03CB /* 60F5 */
+  arg_pushl                       0x0000044B
+  arg_pushs                       "はじめまして！\n<color 1>ノル・リネイル<color 0>です。"
+  message                         ...
+  arg_pushs                       "あら？\nあなた、新顔？"
+  add_msg                         ...
+  arg_pushs                       "私も最近、ここに来たばかりで\nラボの臨時の人員募集で\n採用されて、ここで働いているのよ！"
+  add_msg                         ...
+  arg_pushs                       "以前は ジャーナリストの職に\nついてたんだけど、パイオニア２の\n情報管理体制に嫌気がさしてね…"
+  add_msg                         ...
+  arg_pushs                       "自分たちの直面している\n出来事の真実を見極めたい！"
+  add_msg                         ...
+  arg_pushs                       "と、思って たくさん勉強して\nここに ようやく採用されたってわけ！"
+  add_msg                         ...
+  arg_pushs                       "採用されたからには\nどんどん夢に向かって\n突き進むわ！"
+  add_msg                         ...
+  arg_pushs                       "さて、私の話はこれくらいにして…"
+  add_msg                         ...
+  arg_pushs                       "ん、ごほん！"
+  add_msg                         ...
+  arg_pushs                       "では、あらためまして！"
+  add_msg                         ...
+  mesend
+  gset                            0x03FB
+  arg_pushl                       0x00000007
+  bb_p2_menu                      ...
+  ret
+
+label03CB@0x03CB:
+  arg_pushl                       0x0000044B
+  arg_pushs                       "お久しぶり！\n覚えてるかしら？\nジャーナリストの<color 1>ノル・リネイル<color 0>です。"
+  message                         ...
+  arg_pushs                       "あの時は、\nラグオルに連れて行って\nもらってありがとう。"
+  add_msg                         ...
+  arg_pushs                       "あそこで見た現実が\n私の人生を変えたわ。"
+  add_msg                         ...
+  arg_pushs                       "気付いたのよ。"
+  add_msg                         ...
+  arg_pushs                       "一般市民のままでは\n真実を知ることも、"
+  add_msg                         ...
+  arg_pushs                       "それをみんなに伝えることも\nできないって。"
+  add_msg                         ...
+  arg_pushs                       "あの日見たことは、\n今でも自分の胸にしまってある。"
+  add_msg                         ...
+  arg_pushs                       "私、たくさん勉強したわ。\n自己流だった文章も\nずいぶん上達したのよ。"
+  add_msg                         ...
+  arg_pushs                       "そしてようやく\nラボに採用されたの！"
+  add_msg                         ...
+  arg_pushs                       "もうこっそりシティに\n潜りこむ必要もないのよ。"
+  add_msg                         ...
+  arg_pushs                       "夢に向かって\n突き進むわ！"
+  add_msg                         ...
+  arg_pushs                       "さて、私の話はこれくらいにして…"
+  add_msg                         ...
+  arg_pushs                       "ん、ごほん！"
+  add_msg                         ...
+  arg_pushs                       "では、あらためまして！"
+  add_msg                         ...
+  mesend
+  gset                            0x03FB
+  arg_pushl                       0x00000007
+  bb_p2_menu                      ...
+  ret
+
+label03CC@0x03CC:
+  arg_pushl                       0x00000007
+  bb_p2_menu                      ...
+  ret
+
+label0203@0x0203:
+  arg_pushl                       0x0000041A
+  arg_pushs                       "私はパイオニア２研究施設\n統括チーフの\nナターシャ・ミラローズ。"
+  message                         ...
+  arg_pushs                       "用があるなら直接でなく、\nそこの受付員に\n用件を伝えてくれ。"
+  add_msg                         ...
+  mesend
+  ret
+
+label0204@0x0204:
+  arg_pushl                       0x0000041A
+  arg_pushs                       "調子はどうだい？"
+  message                         ...
+  arg_pushs                       "なかなかやると\n聞いているが…"
+  add_msg                         ...
+  arg_pushs                       "君には 期待しているよ。"
+  add_msg                         ...
+  mesend
+  ret
+
+label0214@0x0214:
+  arg_pushl                       0x0000041B
+  arg_pushs                       "ノル・リネイルが\n受付担当員となります。"
+  message                         ...
+  arg_pushs                       "ラボの依頼については\n今後、彼女から\n受けることになります。"
+  add_msg                         ...
+  arg_pushs                       "そちらの受付カウンターに\nおりますので、詳しいことは\n彼女からお聞きください。"
+  add_msg                         ...
+  mesend
+  ret
+
+label0215@0x0215:
+  arg_pushl                       0x0000041B
+  arg_pushs                       "なかなか調子が\nいいみたいですね。"
+  message                         ...
+  arg_pushs                       "この調子で\n頑張ってもらいたいものですな。"
+  add_msg                         ...
+  arg_pushs                       "くれぐれも 足元をすくわれぬよう\nお気をつけください。"
+  add_msg                         ...
+  mesend
+  ret
+
+label021F@0x021F:
+  arg_pushl                       0x0000041C
+  arg_pushs                       "ここには\n地表への転送装置が\n設置されている。"
+  message                         ...
+  arg_pushs                       "チーフの許可がおりるまでは\n使用を禁じられている。"
+  add_msg                         ...
+  arg_pushs                       "無断で近寄らぬようにな。"
+  add_msg                         ...
+  mesend
+  ret
+
+label0220@0x0220:
+  arg_pushl                       0x0000041C
+  arg_pushs                       "ここには\n地表への転送装置が\n設置されている。"
+  message                         ...
+  arg_pushs                       "もうすでに\nチーフの許可は\nおりているぞ。"
+  add_msg                         ...
+  arg_pushs                       "地表に行くなら\n有益な情報のひとつでも\n持ってくるんだな。"
+  add_msg                         ...
+  mesend
+  ret
+
+label0234@0x0234:
+  arg_pushl                       0x0000041D
+  arg_pushs                       "こんにちは\nハンターズの方！"
+  message                         ...
+  arg_pushs                       "このゲートの奥にあるのは\n総督府や軍にも渡っていない\nラボの最新式ＶＲシステム！"
+  add_msg                         ...
+  arg_pushs                       "現在は 最終テストの段階に\n入っていて ハンターズなら\n誰でも利用できるわ！"
+  add_msg                         ...
+  arg_pushs                       "ただし、何が起きるか\nわからないから\n気をつけてね！"
+  add_msg                         ...
+  mesend
+  ret
+
+label0235@0x0235:
+  arg_pushl                       0x0000041D
+  arg_pushs                       "そうそう！"
+  message                         ...
+  arg_pushs                       "ＶＲフィールドは今後も\n利用可能にしておくから\n訓練用に使ってもいいわ。"
+  add_msg                         ...
+  arg_pushs                       "よろしくね！"
+  add_msg                         ...
+  mesend
+  ret
+
+label0267@0x0267:
+  get_client_id                   r52
+  get_gender                      r52, r53
+  jmpi_eq                         r53, 0x00000001, label0268 /* 697F */
+  arg_pushl                       0x0000041F
+  arg_pushs                       "こんにちは！\n<name hero>さん。"
+  message                         ...
+  arg_pushs                       "… … …"
+  add_msg                         ...
+  arg_pushs                       "…？"
+  add_msg                         ...
+  arg_pushs                       "わたしの顔に\nなにかついてます？"
+  add_msg                         ...
+  arg_pushs                       "なにも ついて…"
+  add_msg                         ...
+  arg_pushs                       "ないですよね？"
+  add_msg                         ...
+  arg_pushs                       "…もう！"
+  add_msg                         ...
+  arg_pushs                       "いろいろと大変なのは\nわかりますけど、"
+  add_msg                         ...
+  arg_pushs                       "ぼーっと してないで\n気を引き締めてくださいね！"
+  add_msg                         ...
+  mesend
+  ret
+
+label0268@0x0268:
+  arg_pushl                       0x0000041F
+  arg_pushs                       "こんにちは！\n<name hero>さん。"
+  message                         ...
+  arg_pushs                       "だいぶ順調みたいですね。"
+  add_msg                         ...
+  arg_pushs                       "わたし 応援してますので\n頑張ってくださいね！"
+  add_msg                         ...
+  mesend
+  ret
+
+label0269@0x0269:
+  arg_pushl                       0x0000041F
+  arg_pushs                       "こんにちは！\n<name hero>さん。"
+  message                         ...
+  arg_pushs                       "調子はどうですか？"
+  add_msg                         ...
+  arg_pushs                       "わたしは ラボで\n機械に触りたい放題ですので\n幸せです。"
+  add_msg                         ...
+  arg_pushs                       "… … …"
+  add_msg                         ...
+  arg_pushs                       "あっ…"
+  add_msg                         ...
+  arg_pushs                       "…えーと。"
+  add_msg                         ...
+  arg_pushs                       "わ… わたしの事は\n気にしないでください。"
+  add_msg                         ...
+  arg_pushs                       "ともかく！\n<name hero>さんも\nいろいろと頑張ってくださいね！"
+  add_msg                         ...
+  mesend
+  ret
+  nop
+  nop
+  nop
