@@ -2083,8 +2083,7 @@ static void on_10(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
       switch (item_id) {
         case MainMenuItemID::GO_TO_LOBBY: {
           c->should_send_to_lobby_server = true;
-          if (!c->config.check_flag(Client::Flag::SAVE_ENABLED) &&
-              c->config.check_flag(Client::Flag::SHOULD_SEND_ENABLE_SAVE)) {
+          if (c->config.check_flag(Client::Flag::SHOULD_SEND_ENABLE_SAVE)) {
             c->config.set_flag(Client::Flag::SAVE_ENABLED);
             c->config.clear_flag(Client::Flag::SHOULD_SEND_ENABLE_SAVE);
             // DC NTE and the v1 prototype crash if they receive a 97 command,
@@ -2288,8 +2287,7 @@ static void on_10(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
 
           c->config.proxy_destination_address = resolve_ipv4(dest->first);
           c->config.proxy_destination_port = dest->second;
-          if (!c->config.check_flag(Client::Flag::SAVE_ENABLED) &&
-              c->config.check_flag(Client::Flag::SHOULD_SEND_ENABLE_SAVE)) {
+          if (c->config.check_flag(Client::Flag::SHOULD_SEND_ENABLE_SAVE)) {
             c->should_send_to_proxy_server = true;
             c->config.set_flag(Client::Flag::SAVE_ENABLED);
             c->config.clear_flag(Client::Flag::SHOULD_SEND_ENABLE_SAVE);
