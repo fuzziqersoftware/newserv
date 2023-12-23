@@ -38,6 +38,12 @@ find_package(resource_file QUIET)
 
 
 
+# Git metadata
+
+add_custom_target(newserv-Revision-cc ALL COMMAND ./Revision-generate.sh WORKING_DIRECTORY src)
+
+
+
 # Executable definition
 
 set(SOURCES
@@ -100,6 +106,7 @@ set(SOURCES
     src/ReceiveCommands.cc
     src/ReceiveSubcommands.cc
     src/ReplaySession.cc
+    src/Revision.cc
     src/SaveFileFormats.cc
     src/SendCommands.cc
     src/Server.cc
@@ -122,6 +129,7 @@ endif()
 add_executable(newserv ${SOURCES})
 target_include_directories(newserv PUBLIC ${LIBEVENT_INCLUDE_DIR} ${Iconv_INCLUDE_DIRS})
 target_link_libraries(newserv phosg ${LIBEVENT_LIBRARIES} ${Iconv_LIBRARIES} pthread)
+add_dependencies(newserv newserv-Revision-cc)
 
 if(resource_file_FOUND)
     target_compile_definitions(newserv PUBLIC HAVE_RESOURCE_FILE)

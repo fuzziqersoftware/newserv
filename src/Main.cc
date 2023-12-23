@@ -35,6 +35,7 @@
 #include "Quest.hh"
 #include "QuestScript.hh"
 #include "ReplaySession.hh"
+#include "Revision.hh"
 #include "SaveFileFormats.hh"
 #include "SendCommands.hh"
 #include "Server.hh"
@@ -49,6 +50,7 @@ using namespace std;
 
 bool use_terminal_colors = false;
 
+void print_version_info();
 void print_usage();
 
 template <typename T>
@@ -202,6 +204,14 @@ Action a_help(
     You\'re reading it now.\n",
     +[](Arguments&) -> void {
       print_usage();
+    });
+
+Action a_version(
+    "version", "\
+  version\n\
+    Show newserv\'s revision and build date.\n",
+    +[](Arguments&) -> void {
+      print_version_info();
     });
 
 static void a_compress_decompress_fn(Arguments& args) {
@@ -1890,8 +1900,14 @@ Action a_run_server_replay_log(
       state->proxy_server.reset(); // Break reference cycle
     });
 
+void print_version_info() {
+  string build_date = format_time(BUILD_TIMESTAMP);
+  fprintf(stderr, "newserv-%s built %s UTC\n", GIT_REVISION_HASH, build_date.c_str());
+}
+
 void print_usage() {
-  fputs("\
+  print_version_info();
+  fputs("\n\
 Usage:\n\
   newserv [ACTION] [OPTIONS...]\n\
 \n\

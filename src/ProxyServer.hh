@@ -190,6 +190,8 @@ public:
   void delete_session(uint64_t id);
   void delete_session(struct bufferevent* bev);
 
+  size_t num_sessions() const;
+
   size_t delete_disconnected_sessions();
 
 private:

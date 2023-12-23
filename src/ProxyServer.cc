@@ -910,6 +910,10 @@ void ProxyServer::destroy_sessions() {
   this->unlinked_sessions_to_destroy.clear();
 }
 
+size_t ProxyServer::num_sessions() const {
+  return this->id_to_session.size();
+}
+
 size_t ProxyServer::delete_disconnected_sessions() {
   size_t count = 0;
   for (auto it = this->id_to_session.begin(); it != this->id_to_session.end();) {

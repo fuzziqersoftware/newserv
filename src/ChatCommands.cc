@@ -14,6 +14,7 @@
 #include "Loggers.hh"
 #include "ProxyServer.hh"
 #include "ReceiveCommands.hh"
+#include "Revision.hh"
 #include "SendCommands.hh"
 #include "Server.hh"
 #include "StaticGameData.hh"
@@ -90,6 +91,20 @@ static void check_is_leader(shared_ptr<Lobby> l, shared_ptr<Client> c) {
 
 ////////////////////////////////////////////////////////////////////////////////
 // Message commands
+
+static void server_command_server_info(shared_ptr<Client> c, const std::string&) {
+  auto s = c->require_server_state();
+  string uptime_str = format_duration(now() - s->creation_time);
+  string build_date = format_time(BUILD_TIMESTAMP);
+  send_text_message_printf(c,
+      "Revision: $C6%s$C7\n$C6%s$C7\nUptime: $C6%s$C7\nLobbies: $C6%zu$C7\nClients: $C6%zu$C7(g) $C6%zu$C7(p)",
+      GIT_REVISION_HASH,
+      build_date.c_str(),
+      uptime_str.c_str(),
+      s->id_to_lobby.size(),
+      s->channel_to_client.size(),
+      s->proxy_server->num_sessions());
+}
 
 static void server_command_lobby_info(shared_ptr<Client> c, const std::string&) {
   vector<string> lines;
@@ -1906,6 +1921,7 @@ static const unordered_map<string, ChatCommandDefinition> chat_commands({
     {"$saverec", {server_command_saverec, nullptr}},
     {"$sc", {server_command_send_client, proxy_command_send_client}},
     {"$secid", {server_command_secid, proxy_command_secid}},
+    {"$si", {server_command_server_info, nullptr}},
     {"$silence", {server_command_silence, nullptr}},
     {"$song", {server_command_song, proxy_command_song}},
     {"$spec", {server_command_toggle_spectator_flag, nullptr}},

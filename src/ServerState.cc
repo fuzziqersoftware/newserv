@@ -30,7 +30,8 @@ ServerState::QuestF960Result::QuestF960Result(const JSON& json, std::shared_ptr<
 }
 
 ServerState::ServerState(shared_ptr<struct event_base> base, const string& config_filename, bool is_replay)
-    : base(base),
+    : creation_time(now()),
+      base(base),
       config_filename(config_filename),
       is_replay(is_replay),
       dns_server_port(0),

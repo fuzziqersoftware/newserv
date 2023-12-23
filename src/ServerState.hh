@@ -59,6 +59,7 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
     return (b == BehaviorSwitch::OFF_BY_DEFAULT) || (b == BehaviorSwitch::ON_BY_DEFAULT);
   }
 
+  uint64_t creation_time;
   std::shared_ptr<struct event_base> base;
 
   std::string config_filename;
