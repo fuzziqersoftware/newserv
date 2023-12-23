@@ -543,6 +543,8 @@ static void on_sync_joining_player_disp_and_inventory(
 
     case Version::GC_NTE:
     case Version::GC_V3:
+    case Version::GC_EP3_TRIAL_EDITION:
+    case Version::GC_EP3:
       if (gc_cmd) {
         transcode_inventory_items(gc_cmd);
         send_or_enqueue_joining_player_command(target, command, flag, *gc_cmd);
@@ -571,10 +573,6 @@ static void on_sync_joining_player_disp_and_inventory(
         send_or_enqueue_joining_player_command(target, command, flag, out_cmd);
       }
       break;
-
-    case Version::GC_EP3_TRIAL_EDITION:
-    case Version::GC_EP3:
-      throw runtime_error("Episode 3 should not send 6x70 commands");
 
     case Version::XB_V3:
       if (xb_cmd) {
