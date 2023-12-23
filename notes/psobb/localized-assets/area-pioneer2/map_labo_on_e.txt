@@ -1482,9 +1482,9 @@ label02D3@0x02D3:
   mesend
   ret
 
-label0370@0x0370:
+label0370@0x03D4:
   // Could not determine data type; disassembling as code
-  arg_pushl                       0x00000418
+  arg_pushl                       0x00000426
   arg_pushs                       "I am Coren Tsu, a wandering merchant,\nyou could say."
   message                         ...
   arg_pushs                       "Please take some time to look at\nthe rare and wonderous goods\nI have been collecting."
@@ -1503,7 +1503,7 @@ label0370@0x0370:
 label0371@0x0371:
   bb_get_number_in_pack           r100
   jmpi_eq                         r100, 0x0000001E, label0373 /* 1984 */
-  arg_pushl                       0x00000418
+  arg_pushl                       0x00000426
   arg_pushs                       "You may win,\nyou may lose."
   message                         ...
   arg_pushs                       "But if you don't win,\ndon't take it out on me."
@@ -1522,7 +1522,7 @@ label0371@0x0371:
   ret
 
 label0372@0x0372:
-  arg_pushl                       0x00000418
+  arg_pushl                       0x00000426
   arg_pushs                       "Huh?"
   message                         ...
   arg_pushs                       "That's too bad..."
@@ -1537,7 +1537,7 @@ label0372@0x0372:
   ret
 
 label0373@0x0373:
-  arg_pushl                       0x00000418
+  arg_pushl                       0x00000426
   arg_pushs                       "It seems you have\ntoo many items."
   message                         ...
   arg_pushs                       "First, go and\norganize your items,"
@@ -1569,7 +1569,7 @@ label0376@0x0376:
   ret
 
 label0377@0x0377:
-  arg_pushl                       0x00000418
+  arg_pushl                       0x00000426
   arg_pushs                       "What?"
   message                         ...
   arg_pushs                       "You said you'd try,\nthen you said no."
@@ -1580,7 +1580,7 @@ label0377@0x0377:
   ret
 
 label0378@0x0378:
-  arg_pushl                       0x00000418
+  arg_pushl                       0x00000426
   arg_pushs                       "What the...?"
   message                         ...
   arg_pushs                       "You don't have the\nmeseta to pay me?"
@@ -1597,7 +1597,7 @@ label0379@0x0379:
   clear                           r105
   take_slot_meseta                r103-r104, r105
   jmpi_eq                         r105, 0x00000000, label0378 /* 1AA3 */
-  arg_pushl                       0x00000418
+  arg_pushl                       0x00000426
   arg_pushs                       "You better pray..."
   message                         ...
   arg_pushs                       "for something good..."
@@ -1649,7 +1649,7 @@ label037C@0x037C:
   window_msg                      ...
   winend
   sync
-  arg_pushl                       0x00000418
+  arg_pushl                       0x00000426
   arg_pushs                       "Look here!\nTake it!"
   message                         ...
   arg_pushs                       "Even if you had bad luck,\nsomething good will come out of it."
