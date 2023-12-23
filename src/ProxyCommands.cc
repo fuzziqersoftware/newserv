@@ -119,6 +119,12 @@ static HandlerResult C_05(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t, 
 }
 
 static HandlerResult C_1D(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t, uint32_t, string&) {
+  if (ses->client_ping_start_time) {
+    uint64_t ping_usecs = now() - ses->client_ping_start_time;
+    ses->client_ping_start_time = 0;
+    double ping_ms = static_cast<double>(ping_usecs) / 1000.0;
+    send_text_message_printf(ses->client_channel, "To proxy: %gms", ping_ms);
+  }
   return ses->config.check_flag(Client::Flag::PROXY_SUPPRESS_CLIENT_PINGS)
       ? HandlerResult::Type::SUPPRESS
       : HandlerResult::Type::FORWARD;
@@ -566,19 +572,32 @@ static HandlerResult S_V123_06(shared_ptr<ProxyServer::LinkedSession> ses, uint1
 
 template <typename CmdT>
 static HandlerResult S_41(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t, uint32_t, string& data) {
-  bool modified = false;
   if (ses->license) {
     auto& cmd = check_size_t<CmdT>(data);
-    if (cmd.searcher_guild_card_number == ses->remote_guild_card_number) {
-      cmd.searcher_guild_card_number = ses->license->serial_number;
-      modified = true;
+    if ((cmd.searcher_guild_card_number == ses->remote_guild_card_number) &&
+        (cmd.result_guild_card_number == ses->remote_guild_card_number) &&
+        ses->server_ping_start_time) {
+      uint64_t ping_usecs = now() - ses->server_ping_start_time;
+      ses->server_ping_start_time = 0;
+      double ping_ms = static_cast<double>(ping_usecs) / 1000.0;
+      send_text_message_printf(ses->client_channel, "To server: %gms", ping_ms);
+      return HandlerResult::Type::SUPPRESS;
+
+    } else {
+      bool modified = false;
+      if (cmd.searcher_guild_card_number == ses->remote_guild_card_number) {
+        cmd.searcher_guild_card_number = ses->license->serial_number;
+        modified = true;
+      }
+      if (cmd.result_guild_card_number == ses->remote_guild_card_number) {
+        cmd.result_guild_card_number = ses->license->serial_number;
+        modified = true;
+      }
+      return modified ? HandlerResult::Type::MODIFIED : HandlerResult::Type::FORWARD;
     }
-    if (cmd.result_guild_card_number == ses->remote_guild_card_number) {
-      cmd.result_guild_card_number = ses->license->serial_number;
-      modified = true;
-    }
+  } else {
+    return HandlerResult::Type::FORWARD;
   }
-  return modified ? HandlerResult::Type::MODIFIED : HandlerResult::Type::FORWARD;
 }
 
 constexpr on_command_t S_DGX_41 = &S_41<S_GuildCardSearchResult_DC_V3_41>;
