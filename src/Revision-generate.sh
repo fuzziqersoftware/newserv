@@ -1,5 +1,7 @@
 #!/bin/sh
 
+OUTPUT_FILENAME="$1"
+
 GIT_REVISION_HASH=$(git rev-parse --short HEAD)
 TIMESTAMP_SECS=$(date +%s)
 
@@ -11,7 +13,7 @@ else
   fi
 fi
 
-cat > Revision.cc <<EOF
+cat > $OUTPUT_FILENAME <<EOF
 #include "Revision.hh"
 
 const char* GIT_REVISION_HASH = "$GIT_REVISION_HASH";

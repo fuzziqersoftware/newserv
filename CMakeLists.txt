@@ -40,13 +40,23 @@ find_package(resource_file QUIET)
 
 # Git metadata
 
-add_custom_target(newserv-Revision-cc ALL COMMAND ./Revision-generate.sh WORKING_DIRECTORY src)
+add_custom_command(
+    OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/src/Revision.cc ${CMAKE_CURRENT_BINARY_DIR}/src/__Revision__.cc
+    COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/src/Revision-generate.sh ${CMAKE_CURRENT_BINARY_DIR}/src/Revision.cc
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/src
+)
+add_custom_target(
+    newserv-Revision-cc
+    ALL
+    DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/src/Revision.cc ${CMAKE_CURRENT_BINARY_DIR}/src/__Revision__.cc
+)
 
 
 
 # Executable definition
 
 set(SOURCES
+    ${CMAKE_CURRENT_BINARY_DIR}/src/Revision.cc
     src/AFSArchive.cc
     src/BattleParamsIndex.cc
     src/BMLArchive.cc
