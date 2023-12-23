@@ -427,7 +427,7 @@ struct pstring {
           return std::string(reinterpret_cast<const char*>(&this->data[0]), this->used_chars_8());
         case TextEncoding::CHALLENGE16: {
           std::string decrypted(reinterpret_cast<const char*>(&this->data[0]), this->used_chars_16() * 2);
-          decrypt_challenge_rank_text_t<le_uint16_t>(decrypted.data(), decrypted.size());
+          decrypt_challenge_rank_text_t<le_uint16_t>(decrypted.data(), decrypted.size() / 2);
           return tt_utf16_to_utf8(decrypted.data(), decrypted.size());
         }
         case TextEncoding::MARKED: {
