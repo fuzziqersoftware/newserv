@@ -69,6 +69,8 @@ static shared_ptr<const Menu> proxy_options_menu_for_client(shared_ptr<const Cli
           "Infinite Meseta", "Fix Meseta value\nat 1,000,000");
       add_option(ProxyOptionsMenuItemID::EP3_INFINITE_TIME, Client::Flag::PROXY_EP3_INFINITE_TIME_ENABLED,
           "Infinite time", "Disable overall and\nper-phase time limits\nin battle");
+      add_option(ProxyOptionsMenuItemID::EP3_UNMASK_WHISPERS, Client::Flag::PROXY_EP3_UNMASK_WHISPERS,
+          "Unmask whispers", "Show contents of\nwhisper messages even\nif they are not for\nyou");
     }
   }
   add_bool_option(ProxyOptionsMenuItemID::BLOCK_EVENTS, (c->config.override_lobby_event != 0xFF),
@@ -2229,6 +2231,9 @@ static void on_10(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
         case ProxyOptionsMenuItemID::EP3_INFINITE_TIME:
           c->config.toggle_flag(Client::Flag::PROXY_EP3_INFINITE_TIME_ENABLED);
           goto resend_proxy_options_menu;
+        case ProxyOptionsMenuItemID::EP3_UNMASK_WHISPERS:
+          c->config.toggle_flag(Client::Flag::PROXY_EP3_UNMASK_WHISPERS);
+          goto resend_proxy_options_menu;
         case ProxyOptionsMenuItemID::BLOCK_EVENTS:
           c->config.override_lobby_event = (c->config.override_lobby_event == 0xFF) ? 0x00 : 0xFF;
           goto resend_proxy_options_menu;
@@ -3172,7 +3177,11 @@ static void on_06(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
   }
   for (size_t x = 0; x < l->max_clients; x++) {
     if (l->clients[x]) {
-      send_chat_message(l->clients[x], c->license->serial_number, from_name, text, private_flags);
+      if (private_flags & (1 << x)) {
+        send_chat_message(l->clients[x], c->license->serial_number, from_name, "(whisper)", private_flags);
+      } else {
+        send_chat_message(l->clients[x], c->license->serial_number, from_name, text, private_flags);
+      }
     }
   }
   for (const auto& watcher_l : l->watcher_lobbies) {

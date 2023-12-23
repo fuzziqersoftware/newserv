@@ -560,14 +560,28 @@ static HandlerResult S_V123_04(shared_ptr<ProxyServer::LinkedSession> ses, uint1
 }
 
 static HandlerResult S_V123_06(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t, uint32_t, string& data) {
+  bool modified = false;
   if (ses->license) {
     auto& cmd = check_size_t<SC_TextHeader_01_06_11_B0_EE>(data, 0xFFFF);
     if (cmd.guild_card_number == ses->remote_guild_card_number) {
       cmd.guild_card_number = ses->license->serial_number;
-      return HandlerResult::Type::MODIFIED;
+      modified = true;
     }
   }
-  return HandlerResult::Type::FORWARD;
+
+  // If the session is Ep3, and Unmask Whispers is on, and there's enough data,
+  // and the message has private_flags, and the private_flags say that you
+  // shouldn't see the message, then change the private_flags
+  if (is_ep3(ses->version()) &&
+      ses->config.check_flag(Client::Flag::PROXY_EP3_UNMASK_WHISPERS) &&
+      (data.size() >= 12) &&
+      (data[sizeof(SC_TextHeader_01_06_11_B0_EE)] != '\t') &&
+      (data[sizeof(SC_TextHeader_01_06_11_B0_EE)] & (1 << ses->lobby_client_id))) {
+    data[sizeof(SC_TextHeader_01_06_11_B0_EE)] &= ~(1 << ses->lobby_client_id);
+    modified = true;
+  }
+
+  return modified ? HandlerResult::Type::MODIFIED : HandlerResult::Type::FORWARD;
 }
 
 template <typename CmdT>
@@ -1030,6 +1044,15 @@ static HandlerResult S_6x(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t, 
         if (ses->is_in_game && (cmd.client_id >= 4)) {
           return HandlerResult::Type::SUPPRESS;
         }
+      }
+
+    } else if ((static_cast<uint8_t>(data[0]) == 0xBD) &&
+        ses->config.check_flag(Client::Flag::PROXY_EP3_UNMASK_WHISPERS) &&
+        is_ep3(ses->version())) {
+      auto& cmd = check_size_t<G_WordSelectDuringBattle_GC_Ep3_6xBD>(data);
+      if (cmd.private_flags & (1 << ses->lobby_client_id)) {
+        cmd.private_flags &= ~(1 << ses->lobby_client_id);
+        modified = true;
       }
     }
   }

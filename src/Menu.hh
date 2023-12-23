@@ -75,6 +75,7 @@ constexpr uint32_t SUPPRESS_LOGIN = 0xAA0D0DAA;
 constexpr uint32_t SKIP_CARD = 0xAA0E0EAA;
 constexpr uint32_t EP3_INFINITE_MESETA = 0xAA0F0FAA;
 constexpr uint32_t EP3_INFINITE_TIME = 0xAA1010AA;
+constexpr uint32_t EP3_UNMASK_WHISPERS = 0xAA1111AA;
 } // namespace ProxyOptionsMenuItemID
 
 namespace TeamRewardMenuItemID {

@@ -5,6 +5,7 @@
 #include <stddef.h>
 #include <string.h>
 
+#include <initializer_list>
 #include <phosg/Encoding.hh>
 #include <phosg/Strings.hh>
 #include <stdexcept>
@@ -57,6 +58,12 @@ struct parray {
 
   parray(ItemT v) {
     this->clear(v);
+  }
+  parray(std::initializer_list<ItemT> init_items) {
+    for (size_t z = 0; z < init_items.size(); z++) {
+      this->items[z] = std::data(init_items)[z];
+    }
+    this->clear_after(init_items.size());
   }
   template <typename ArgT = ItemT>
     requires(std::is_arithmetic_v<ArgT> || is_converted_endian_sc_v<ArgT>)
