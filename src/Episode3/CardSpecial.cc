@@ -789,13 +789,16 @@ CardSpecial::AttackEnvStats CardSpecial::compute_attack_env_stats(
   ast.card_cost = ce->def.self_cost;
   ast.defined_max_hp = ast.max_hp;
 
-  size_t z;
+  size_t z = 0;
+
+  uint16_t z_ref = pa.attacker_card_ref;
   // Note: The (z < 9) conditions in these two loops are not present in the
   // original code.
   for (z = 0;
-       ((target_card_ref != pa.attacker_card_ref) && (z < 9) && (pa.action_card_refs[z] != 0xFFFF));
+       ((target_card_ref != z_ref) && (z < 9) && ((z_ref = pa.action_card_refs[z]) != 0xFFFF));
        z++) {
   }
+
   ast.action_cards_ap = 0;
   ast.action_cards_tp = 0;
   for (; (z < 9) && (pa.action_card_refs[z] != 0xFFFF); z++) {

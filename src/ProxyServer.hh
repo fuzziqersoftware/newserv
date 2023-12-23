@@ -91,6 +91,8 @@ public:
     bool is_in_game;
     bool is_in_quest;
     uint8_t difficulty;
+    uint64_t client_ping_start_time = 0;
+    uint64_t server_ping_start_time = 0;
 
     std::shared_ptr<PSOBBMultiKeyDetectorEncryption> detector_crypt;
 

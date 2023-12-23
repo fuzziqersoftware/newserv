@@ -1637,7 +1637,57 @@ static void on_ep3_private_word_select_bb_bank_action(shared_ptr<Client> c, uint
     }
 
   } else if (is_ep3(c->version())) {
-    forward_subcommand(c, command, flag, data, size);
+
+    const auto& cmd = check_size_t<G_WordSelectDuringBattle_GC_Ep3_6xBD>(data, size);
+    G_WordSelectDuringBattle_GC_Ep3_6xBD masked_cmd = {
+        {0xBD, sizeof(G_WordSelectDuringBattle_GC_Ep3_6xBD) >> 2, cmd.header.client_id},
+        0x0001,
+        0x0001,
+        // "Please use the Whispers function."
+        {0x00C1, 0x02C7, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF},
+        0x0000,
+        0x0000,
+        cmd.private_flags,
+        {0, 0, 0}};
+
+    auto send_to_client = [&](shared_ptr<Client> lc) -> void {
+      if (cmd.private_flags & (1 << lc->lobby_client_id)) {
+        send_command_t(lc, command, flag, masked_cmd);
+      } else {
+        send_command_t(lc, command, flag, cmd);
+      }
+    };
+
+    if (command_is_private(command)) {
+      if (flag >= l->max_clients) {
+        return;
+      }
+      auto target = l->clients[flag];
+      if (target) {
+        send_to_client(target);
+      }
+    } else {
+      for (auto& lc : l->clients) {
+        if (lc && (lc != c) && is_ep3(lc->version())) {
+          send_to_client(lc);
+        }
+      }
+    }
+
+    for (const auto& watcher_lobby : l->watcher_lobbies) {
+      for (auto& target : watcher_lobby->clients) {
+        if (target && is_ep3(target->version())) {
+          send_command(target, command, flag, data, size);
+        }
+      }
+    }
+
+    if (l->battle_record && l->battle_record->battle_in_progress()) {
+      auto type = ((command & 0xF0) == 0xC0)
+          ? Episode3::BattleRecord::Event::Type::EP3_GAME_COMMAND
+          : Episode3::BattleRecord::Event::Type::GAME_COMMAND;
+      l->battle_record->add_command(type, data, size);
+    }
   }
 }
 

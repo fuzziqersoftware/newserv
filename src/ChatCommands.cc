@@ -168,6 +168,15 @@ static void server_command_ping(shared_ptr<Client> c, const std::string&) {
   send_command(c, 0x1D, 0x00);
 }
 
+static void proxy_command_ping(shared_ptr<ProxyServer::LinkedSession> ses, const std::string&) {
+  ses->client_ping_start_time = now();
+  ses->server_ping_start_time = now();
+
+  C_GuildCardSearch_40 cmd = {0x00010000, ses->remote_guild_card_number, ses->remote_guild_card_number};
+  ses->client_channel.send(0x1D, 0x00);
+  ses->server_channel.send(0x40, 0x00, &cmd, sizeof(cmd));
+}
+
 static void proxy_command_lobby_info(shared_ptr<ProxyServer::LinkedSession> ses, const std::string&) {
   string msg;
   // On non-masked-GC sessions (BB), there is no remote Guild Card number, so we
@@ -1883,7 +1892,7 @@ static const unordered_map<string, ChatCommandDefinition> chat_commands({
     {"$password", {server_command_password, nullptr}},
     {"$patch", {server_command_patch, proxy_command_patch}},
     {"$persist", {server_command_persist, nullptr}},
-    {"$ping", {server_command_ping, nullptr}},
+    {"$ping", {server_command_ping, proxy_command_ping}},
     {"$playrec", {server_command_playrec, nullptr}},
     {"$qcall", {server_command_qcall, proxy_command_qcall}},
     {"$qcheck", {server_command_qcheck, nullptr}},
