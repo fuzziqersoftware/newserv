@@ -131,8 +131,9 @@ string Map::Object::str(shared_ptr<const ItemNameIndex> name_index) const {
   }
 }
 
-Map::Map(uint32_t lobby_id)
-    : log(string_printf("[Lobby:%08" PRIX32 ":map] ", lobby_id), lobby_log.min_level) {}
+Map::Map(uint32_t lobby_id, std::shared_ptr<PSOLFGEncryption> random_crypt)
+    : log(string_printf("[Lobby:%08" PRIX32 ":map] ", lobby_id), lobby_log.min_level),
+      random_crypt(random_crypt) {}
 
 void Map::clear() {
   this->objects.clear();
@@ -167,7 +168,7 @@ bool Map::check_and_log_rare_enemy(bool default_is_rare, uint32_t rare_rate) {
   if (default_is_rare) {
     return true;
   }
-  if ((this->rare_enemy_indexes.size() < 0x10) && (random_object<uint32_t>() < rare_rate)) {
+  if ((this->rare_enemy_indexes.size() < 0x10) && (this->random_crypt->next() < rare_rate)) {
     this->rare_enemy_indexes.emplace_back(this->enemies.size());
     return true;
   }

@@ -253,7 +253,7 @@ struct Map {
     void generate_shuffled_location_table(const Map::RandomEnemyLocationsHeader& header, StringReader r, uint16_t section);
   };
 
-  explicit Map(uint32_t lobby_id);
+  Map(uint32_t lobby_id, std::shared_ptr<PSOLFGEncryption> random_crypt);
   ~Map() = default;
 
   void clear();
@@ -309,6 +309,7 @@ struct Map {
   static std::string disassemble_quest_data(const void* data, size_t size);
 
   PrefixedLogger log;
+  std::shared_ptr<PSOLFGEncryption> random_crypt;
   std::vector<Object> objects;
   std::vector<Enemy> enemies;
   std::vector<size_t> rare_enemy_indexes;

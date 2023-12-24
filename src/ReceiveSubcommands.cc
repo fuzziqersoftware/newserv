@@ -1453,7 +1453,7 @@ static void on_use_item(
     const auto& item = p->inventory.items[index].data;
     name = s->describe_item(c->version(), item, false);
   }
-  player_use_item(c, index);
+  player_use_item(c, index, l->random_crypt);
 
   if (l->log.should_log(LogLevel::INFO)) {
     l->log.info("Player %hhu used item %hu:%08" PRIX32 " (%s)",
@@ -2803,7 +2803,7 @@ static void on_secret_lottery_ticket_exchange_bb(shared_ptr<Client> c, uint8_t, 
 
       ItemData item = (s->secret_lottery_results.size() == 1)
           ? s->secret_lottery_results[0]
-          : s->secret_lottery_results[random_object<uint32_t>() % s->secret_lottery_results.size()];
+          : s->secret_lottery_results[l->random_crypt->next() % s->secret_lottery_results.size()];
       item.enforce_min_stack_size();
       item.id = l->generate_item_id(c->lobby_client_id);
       p->add_item(item);
@@ -2819,7 +2819,7 @@ static void on_secret_lottery_ticket_exchange_bb(shared_ptr<Client> c, uint8_t, 
       out_cmd.unknown_a3.clear(1);
     } else {
       for (size_t z = 0; z < out_cmd.unknown_a3.size(); z++) {
-        out_cmd.unknown_a3[z] = random_object<uint32_t>() % s->secret_lottery_results.size();
+        out_cmd.unknown_a3[z] = l->random_crypt->next() % s->secret_lottery_results.size();
       }
     }
     send_command_t(c, 0x24, (slt_index >= 0) ? 0 : 1, out_cmd);
@@ -2849,7 +2849,7 @@ static void on_quest_F95E_result_bb(shared_ptr<Client> c, uint8_t, uint8_t, void
       if (results.empty()) {
         throw runtime_error("invalid result type");
       }
-      ItemData item = (results.size() == 1) ? results[0] : results[random_object<uint32_t>() % results.size()];
+      ItemData item = (results.size() == 1) ? results[0] : results[l->random_crypt->next() % results.size()];
       if (item.data1[0] == 0x04) { // Meseta
         // TODO: What is the right amount of Meseta to use here? Presumably it
         // should be random within a certain range, but it's not obvious what
@@ -2926,10 +2926,10 @@ static void on_quest_F960_result_bb(shared_ptr<Client> c, uint8_t, uint8_t, void
       size_t tier = cmd.result_tier - num_failures;
       const auto& results = s->quest_F960_success_results.at(tier);
       uint64_t probability = results.base_probability + num_failures * results.probability_upgrade;
-      if (random_object<uint32_t>() <= probability) {
+      if (l->random_crypt->next() <= probability) {
         c->log.info("Tier %zu yielded a prize", tier);
         const auto& result_items = results.results.at(weekday);
-        item = result_items[random_object<uint32_t>() % result_items.size()];
+        item = result_items[l->random_crypt->next() % result_items.size()];
         break;
       } else {
         c->log.info("Tier %zu did not yield a prize", tier);
@@ -2938,7 +2938,7 @@ static void on_quest_F960_result_bb(shared_ptr<Client> c, uint8_t, uint8_t, void
     if (item.empty()) {
       c->log.info("Choosing result from failure tier");
       const auto& result_items = s->quest_F960_failure_results.results.at(weekday);
-      item = result_items[random_object<uint32_t>() % result_items.size()];
+      item = result_items[l->random_crypt->next() % result_items.size()];
     }
     if (item.empty()) {
       throw runtime_error("no item produced, even from failure tier");

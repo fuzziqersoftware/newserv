@@ -1617,7 +1617,7 @@ static void proxy_command_item(shared_ptr<ProxyServer::LinkedSession> ses, const
   bool set_drop = (!args.empty() && (args[0] == '!'));
 
   ItemData item = s->item_name_index->parse_item_description(ses->version(), (set_drop ? args.substr(1) : args));
-  item.id = random_object<uint32_t>();
+  item.id = random_object<uint32_t>() | 0x80000000;
 
   if (set_drop) {
     ses->next_drop_item = item;

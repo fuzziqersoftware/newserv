@@ -254,7 +254,7 @@ void Lobby::create_item_creator() {
 
 void Lobby::load_maps() {
   auto s = this->require_server_state();
-  this->map = make_shared<Map>(this->lobby_id);
+  this->map = make_shared<Map>(this->lobby_id, this->random_crypt);
 
   if (this->quest) {
     auto leader_c = this->clients.at(this->leader_id);

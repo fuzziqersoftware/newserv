@@ -811,7 +811,7 @@ Proxy session commands:\n\
 
     auto s = ses->require_server_state();
     ItemData item = s->item_name_index->parse_item_description(ses->version(), command_args);
-    item.id = random_object<uint32_t>();
+    item.id = random_object<uint32_t>() | 0x80000000;
 
     if (command_name == "set-next-item") {
       ses->next_drop_item = item;

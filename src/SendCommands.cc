@@ -501,11 +501,12 @@ void send_pc_console_split_reconnect(shared_ptr<Client> c, uint32_t address,
 }
 
 void send_client_init_bb(shared_ptr<Client> c, uint32_t error_code) {
+  auto team = c->team();
   S_ClientInit_BB_00E6 cmd;
   cmd.error_code = error_code;
   cmd.player_tag = 0x00010000;
   cmd.guild_card_number = c->license->serial_number;
-  cmd.team_id = static_cast<uint32_t>(random_object<uint32_t>());
+  cmd.team_id = team ? team->team_id : 0;
   c->config.serialize_into(cmd.client_config);
   cmd.can_create_team = 1;
   cmd.episode_4_unlocked = 1;
