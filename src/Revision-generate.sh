@@ -1,6 +1,7 @@
 #!/bin/sh
 
 OUTPUT_FILENAME="$1"
+OUTPUT_DIRNAME=$(dirname $OUTPUT_FILENAME)
 
 GIT_REVISION_HASH=$(git rev-parse --short HEAD)
 TIMESTAMP_SECS=$(date +%s)
@@ -13,6 +14,7 @@ else
   fi
 fi
 
+mkdir -p "$OUTPUT_DIRNAME"
 cat > $OUTPUT_FILENAME <<EOF
 #include "Revision.hh"
 
