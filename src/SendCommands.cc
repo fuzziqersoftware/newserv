@@ -3206,7 +3206,8 @@ void send_quest_file_chunk(
   cmd.data_size = size;
 
   c->log.info("Sending quest file chunk %s:%zu", filename.c_str(), chunk_index);
-  c->channel.send(is_download_quest ? 0xA7 : 0x13, chunk_index, &cmd, sizeof(cmd), true);
+  const auto& s = c->require_server_state();
+  c->channel.send(is_download_quest ? 0xA7 : 0x13, chunk_index, &cmd, sizeof(cmd), s->hide_download_commands);
 }
 
 template <typename CommandT>

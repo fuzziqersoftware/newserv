@@ -105,6 +105,7 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   uint32_t ep3_final_round_meseta_bonus;
   bool ep3_jukebox_is_free;
   uint32_t ep3_behavior_flags;
+  bool hide_download_commands;
   RunShellBehavior run_shell_behavior;
   BehaviorSwitch cheat_mode_behavior;
   std::vector<std::shared_ptr<const PSOBBEncryption::KeyFile>> bb_private_keys;

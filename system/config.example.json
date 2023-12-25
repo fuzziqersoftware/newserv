@@ -226,6 +226,11 @@
     // Static game data messages describe the loading of any kind of game data.
     "StaticGameData": "INFO",
   },
+  // Some large commands (especially during the BB login sequence) can clutter
+  // up logs, so we hide these commands by default. If you're investigating or
+  // submitting a bug report that occurs on BB clients, set this to false to get
+  // a full session log before submitting your report.
+  "HideDownloadCommands": true,
 
   // If this option is disabled, the server only allows users who have licenses
   // on the server to connect. If this is enabled, all users will be allowed to
