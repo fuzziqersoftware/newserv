@@ -1081,7 +1081,7 @@ static HandlerResult C_GXB_61(shared_ptr<ProxyServer::LinkedSession> ses, uint16
       modified = true;
     }
     if (!ses->challenge_rank_title_override.empty()) {
-      pd.records.challenge.title_color = encode_xrgb8888_to_xrgb1555(ses->challenge_rank_color_override);
+      pd.records.challenge.title_color = encode_rgba8888_to_argb1555(ses->challenge_rank_color_override);
       pd.records.challenge.rank_title.encode(ses->challenge_rank_title_override, ses->language());
     }
 
@@ -1120,7 +1120,7 @@ static HandlerResult C_GXB_61(shared_ptr<ProxyServer::LinkedSession> ses, uint16
       modified = true;
     }
     if (!ses->challenge_rank_title_override.empty()) {
-      pd->records.challenge.stats.title_color = encode_xrgb8888_to_xrgb1555(ses->challenge_rank_color_override);
+      pd->records.challenge.stats.title_color = encode_rgba8888_to_argb1555(ses->challenge_rank_color_override);
       pd->records.challenge.rank_title.encode(ses->challenge_rank_title_override, ses->language());
     }
   }

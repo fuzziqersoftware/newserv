@@ -4279,6 +4279,7 @@ static void on_6F(shared_ptr<Client> c, uint16_t command, uint32_t, string& data
     send_set_exp_multiplier(l);
   }
   if (c->version() == Version::BB_V4) {
+    send_update_team_reward_flags(c);
     send_all_nearby_team_metadatas_to_client(c, false);
   }
 

@@ -3374,9 +3374,12 @@ struct S_TeamInfoForPlayer_BB_13EA_15EA_Entry {
   // team or not - if they are all zero, the player is not in a team.
   /* 0000 */ le_uint32_t guild_card_number = 0;
   /* 0004 */ le_uint32_t team_id = 0;
-  /* 0008 */ le_uint32_t unknown_a3 = 0;
-  /* 000C */ le_uint32_t unknown_a4 = 0;
-  /* 0010 */ le_uint32_t privilege_level = 0;
+  /* 0008 */ le_uint32_t reward_flags = 0;
+  /* 000C */ le_uint32_t unknown_a6 = 0;
+  /* 0010 */ uint8_t privilege_level = 0;
+  /* 0011 */ uint8_t unknown_a7 = 0;
+  /* 0012 */ uint8_t unknown_a8 = 0;
+  /* 0013 */ uint8_t unknown_a9 = 0;
   /* 0014 */ pstring<TextEncoding::UTF16, 0x10> team_name;
   /* 0034 */ le_uint32_t guild_card_number2 = 0;
   /* 0038 */ le_uint32_t lobby_client_id = 0;

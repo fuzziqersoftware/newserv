@@ -283,24 +283,26 @@ struct PlayerLobbyDataDCGC {
 } __attribute__((packed));
 
 struct XBNetworkLocation {
-  le_uint32_t internal_ipv4_address = 0x0A0A0A0A;
-  le_uint32_t external_ipv4_address = 0x23232323;
-  le_uint16_t port = 9500;
-  parray<uint8_t, 6> mac_address = 0x77;
-  le_uint32_t unknown_a1;
-  le_uint32_t unknown_a2;
-  le_uint64_t account_id = 0xFFFFFFFFFFFFFFFF;
-  parray<le_uint32_t, 4> unknown_a3;
+  /* 00 */ le_uint32_t internal_ipv4_address = 0x0A0A0A0A;
+  /* 04 */ le_uint32_t external_ipv4_address = 0x23232323;
+  /* 08 */ le_uint16_t port = 9500;
+  /* 0A */ parray<uint8_t, 6> mac_address = 0x77;
+  /* 10 */ le_uint32_t unknown_a1;
+  /* 14 */ le_uint32_t unknown_a2;
+  /* 18 */ le_uint64_t account_id = 0xFFFFFFFFFFFFFFFF;
+  /* 20 */ parray<le_uint32_t, 4> unknown_a3;
+  /* 24 */
 
   void clear();
 } __attribute__((packed));
 
 struct PlayerLobbyDataXB {
-  le_uint32_t player_tag = 0;
-  le_uint32_t guild_card_number = 0;
-  XBNetworkLocation netloc;
-  le_uint32_t client_id = 0;
-  pstring<TextEncoding::ASCII, 0x10> name;
+  /* 00 */ le_uint32_t player_tag = 0;
+  /* 04 */ le_uint32_t guild_card_number = 0;
+  /* 08 */ XBNetworkLocation netloc;
+  /* 2C */ le_uint32_t client_id = 0;
+  /* 30 */ pstring<TextEncoding::ASCII, 0x10> name;
+  /* 40 */
 
   void clear();
 } __attribute__((packed));

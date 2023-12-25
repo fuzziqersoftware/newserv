@@ -96,7 +96,7 @@ void TeamIndex::Team::load_flag() {
   this->flag_data.reset(new parray<le_uint16_t, 0x20 * 0x20>());
   for (size_t y = 0; y < 32; y++) {
     for (size_t x = 0; x < 32; x++) {
-      this->flag_data->at(y * 0x20 + x) = encode_rgbx8888_to_xrgb1555(img.read_pixel(x, y));
+      this->flag_data->at(y * 0x20 + x) = encode_rgba8888_to_argb1555(img.read_pixel(x, y));
     }
   }
 }
@@ -108,7 +108,7 @@ void TeamIndex::Team::save_flag() const {
   Image img(32, 32, false);
   for (size_t y = 0; y < 32; y++) {
     for (size_t x = 0; x < 32; x++) {
-      img.write_pixel(x, y, decode_xrgb1555_to_rgba8888(this->flag_data->at(y * 0x20 + x)));
+      img.write_pixel(x, y, decode_argb1555_to_rgba8888(this->flag_data->at(y * 0x20 + x)));
     }
   }
   img.save(this->flag_filename(), Image::Format::WINDOWS_BITMAP);
@@ -127,9 +127,9 @@ PSOBBTeamMembership TeamIndex::Team::membership_for_member(uint32_t serial_numbe
   PSOBBTeamMembership ret;
   ret.guild_card_number = serial_number;
   ret.team_id = this->team_id;
-  ret.unknown_a4 = 0;
-  ret.privilege_level = m.privilege_level();
+  ret.unknown_a5 = 0;
   ret.unknown_a6 = 0;
+  ret.privilege_level = m.privilege_level();
   ret.unknown_a7 = 0;
   ret.unknown_a8 = 0;
   ret.unknown_a9 = 0;

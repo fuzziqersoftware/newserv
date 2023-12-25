@@ -891,6 +891,7 @@ static void on_set_player_visible(shared_ptr<Client> c, uint8_t command, uint8_t
           send_lobby_message_box(c, "");
         }
         if (c->version() == Version::BB_V4) {
+          send_update_team_reward_flags(c);
           send_all_nearby_team_metadatas_to_client(c, false);
         }
       }
