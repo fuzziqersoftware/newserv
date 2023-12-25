@@ -3335,8 +3335,9 @@ struct C_SetTeamFlag_BB_0FEA {
   parray<le_uint16_t, 0x20 * 0x20> flag_data;
 } __packed__;
 
-// 10EA: Delete team result
-// No arguments except header.flag
+// 10EA: Delete team (C->S) and result (S->C)
+// No arguments (C->S)
+// No arguments except header.flag (S->C)
 
 // 11EA: Change team member privilege level
 // The format below is used only when the client sends this command; when the
@@ -3371,16 +3372,17 @@ struct S_TeamMembershipInformation_BB_12EA {
 struct S_TeamInfoForPlayer_BB_13EA_15EA_Entry {
   // The client uses the first four of these to determine if the player is in a
   // team or not - if they are all zero, the player is not in a team.
-  le_uint32_t guild_card_number = 0;
-  le_uint32_t team_id = 0;
-  le_uint32_t unknown_a3 = 0;
-  le_uint32_t unknown_a4 = 0;
-  le_uint32_t privilege_level = 0;
-  pstring<TextEncoding::UTF16, 0x10> team_name;
-  le_uint32_t guild_card_number2 = 0;
-  le_uint32_t lobby_client_id = 0;
-  pstring<TextEncoding::UTF16, 0x10> player_name;
-  parray<le_uint16_t, 0x20 * 0x20> flag_data;
+  /* 0000 */ le_uint32_t guild_card_number = 0;
+  /* 0004 */ le_uint32_t team_id = 0;
+  /* 0008 */ le_uint32_t unknown_a3 = 0;
+  /* 000C */ le_uint32_t unknown_a4 = 0;
+  /* 0010 */ le_uint32_t privilege_level = 0;
+  /* 0014 */ pstring<TextEncoding::UTF16, 0x10> team_name;
+  /* 0034 */ le_uint32_t guild_card_number2 = 0;
+  /* 0038 */ le_uint32_t lobby_client_id = 0;
+  /* 003C */ pstring<TextEncoding::UTF16, 0x10> player_name;
+  /* 005C */ parray<le_uint16_t, 0x20 * 0x20> flag_data;
+  /* 085C */
 } __packed__;
 
 // 14EA (C->S): Get team info for lobby players
@@ -3455,16 +3457,15 @@ struct S_CrossTeamRanking_BB_1CEA {
 // 1DEA (S->C): Update team rewards bitmask
 // header.flag specifies the new rewards bitmask.
 
-// 1EEA (C->S): Unknown
+// 1EEA (C->S): Rename team
 // header.flag is used, but it's unknown what the value means.
 
-struct C_Unknown_BB_1EEA {
-  pstring<TextEncoding::UTF16, 0x10> unknown_a1;
+struct C_RenameTeam_BB_1EEA {
+  pstring<TextEncoding::UTF16, 0x10> new_team_name;
 } __packed__;
 
-// 1FEA (S->C): Action result
-// This command behaves exactly like 02EA. This command is presumably the
-// response to whatever 1EEA does.
+// 1FEA (S->C): Rename team result
+// This command behaves like 02EA, but is sent in response to 1EEA instead.
 
 // 20EA: Unknown
 // header.flag is used, but no other arguments. When sent by the server,

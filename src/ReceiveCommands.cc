@@ -4888,6 +4888,29 @@ static void on_EA_BB(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
     case 0x1CEA:
       send_cross_team_ranking(c);
       break;
+    case 0x1EEA: {
+      const auto& cmd = check_size_t<C_RenameTeam_BB_1EEA>(data);
+      auto team = c->team();
+      string new_team_name = cmd.new_team_name.decode(c->language());
+      if (!team) {
+        // TODO: What's the right error code to use here?
+        send_command(c, 0x1FEA, 0x00000001);
+      } else if (s->team_index->get_by_name(new_team_name)) {
+        send_command(c, 0x1FEA, 0x00000002);
+      } else {
+        s->team_index->rename(team->team_id, new_team_name);
+        send_command(c, 0x1FEA, 0x00000000);
+        for (const auto& it : team->members) {
+          try {
+            auto member_c = s->find_client(nullptr, it.second.serial_number);
+            send_update_team_metadata_for_client(c);
+            send_team_membership_info(c);
+          } catch (const out_of_range&) {
+          }
+        }
+      }
+      break;
+    }
     default:
       throw runtime_error("invalid team command");
   }

@@ -292,7 +292,7 @@ vector<shared_ptr<const TeamIndex::Team>> TeamIndex::all() const {
   return ret;
 }
 
-shared_ptr<const TeamIndex::Team> TeamIndex::create(string& name, uint32_t master_serial_number, const string& master_name) {
+shared_ptr<const TeamIndex::Team> TeamIndex::create(const string& name, uint32_t master_serial_number, const string& master_name) {
   auto team = make_shared<Team>(this->next_team_id++);
   save_file(this->directory + "/base.json", JSON::dict({{"NextTeamID", this->next_team_id}}).serialize());
 
@@ -314,6 +314,16 @@ void TeamIndex::disband(uint32_t team_id) {
   auto team = this->id_to_team.at(team_id);
   this->remove_from_indexes(team);
   team->delete_files();
+}
+
+void TeamIndex::rename(uint32_t team_id, const std::string& new_team_name) {
+  auto team = this->id_to_team.at(team_id);
+  if (!this->name_to_team.emplace(new_team_name, team).second) {
+    throw runtime_error("team name is already in use");
+  }
+  this->name_to_team.erase(team->name);
+  team->name = new_team_name;
+  team->save_config();
 }
 
 void TeamIndex::add_member(uint32_t team_id, uint32_t serial_number, const string& name) {

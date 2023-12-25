@@ -127,8 +127,9 @@ public:
   std::shared_ptr<const Team> get_by_serial_number(uint32_t serial_number) const;
   std::vector<std::shared_ptr<const Team>> all() const;
 
-  std::shared_ptr<const Team> create(std::string& name, uint32_t master_serial_number, const std::string& master_name);
+  std::shared_ptr<const Team> create(const std::string& name, uint32_t master_serial_number, const std::string& master_name);
   void disband(uint32_t team_id);
+  void rename(uint32_t team_id, const std::string& new_name);
 
   void add_member(uint32_t team_id, uint32_t serial_number, const std::string& name);
   void remove_member(uint32_t serial_number);
