@@ -1,7 +1,5 @@
 ## General
 
-- Write a simple status API
-- Implement per-game logging
 - Make reloading happen on separate threads so compression doesn't block active clients
 - Implement decrypt/encrypt actions for VMS files
 - Make UI strings localizable (e.g. entries in menus, welcome message, etc.)
@@ -22,5 +20,6 @@
 ## PSOBB
 
 - Test all quest item subcommands
+- Team flags don't show in the lobby by default; fix this (probably we're sending the wrong metadata command, or sending it at the wrong time)
 - Check if Commander Blade effect works and implement it if not
 - Figure out why Pouilly Slime EXP doesn't work
