@@ -58,7 +58,7 @@ I 16332 2023-09-17 10:14:34 - [Commands] Received from C-1 (version=GC command=9
 0140 | 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 |
 I 16332 2023-09-17 10:14:34 - [Commands] Sending to C-1 (version=GC command=04 flag=00)
 0000 | 04 00 2C 00 00 00 01 00 11 11 11 11 32 AC 99 83 |   ,         2
-0010 | 30 45 53 33 00 91 00 42 60 00 00 00 00 00 00 00 | 0ES3@   `
+0010 | 30 45 53 33 00 91 00 42 20 00 00 00 00 00 00 00 | 0ES3@   `
 0020 | 00 00 00 00 00 00 FF FF 80 FF FF FF             |
 I 16332 2023-09-17 10:14:34 - [Commands] Sending to C-1 (version=GC command=B7 flag=00)
 0000 | B7 00 20 00 00 00 00 00 00 00 00 00 00 00 00 00 |
@@ -73,7 +73,7 @@ I 16332 2023-09-17 10:14:34 - [Commands] Received from C-1 (version=GC command=9
 0000 | 96 00 0C 00 03 1B 8F 2C C0 00 00 00             |        ,
 I 16332 2023-09-17 10:14:34 - [Commands] Sending to C-1 (version=GC command=04 flag=00)
 0000 | 04 00 2C 00 00 00 01 00 11 11 11 11 32 AC 99 83 |   ,         2
-0010 | 30 45 53 33 00 91 00 42 60 00 04 00 00 00 00 00 | 0ES3@   `
+0010 | 30 45 53 33 00 91 00 42 20 00 04 00 00 00 00 00 | 0ES3@   `
 0020 | 00 00 00 00 00 00 FF FF 80 FF FF FF             |
 I 16332 2023-09-17 10:14:34 - [Commands] Sending to C-1 (version=GC command=B1 flag=00)
 0000 | B1 00 1C 00 32 30 32 33 3A 30 39 3A 31 37 3A 20 |     2023:09:17:
@@ -2623,7 +2623,7 @@ I 16332 2023-09-17 10:14:34 - [Commands] Sending to C-1 (version=GC command=CC f
 0500 | 00 00 00 00 00 00 00 00 00 00 00 00             |
 I 16332 2023-09-17 10:14:34 - [Commands] Sending to C-1 (version=GC command=04 flag=00)
 0000 | 04 00 2C 00 00 00 01 00 11 11 11 11 32 AC 99 83 |   ,         2
-0010 | 30 45 53 33 00 91 00 4A 60 00 04 00 00 00 00 00 | 0ES3@   `
+0010 | 30 45 53 33 00 91 00 4A 20 00 04 00 00 00 00 00 | 0ES3@   `
 0020 | 00 00 00 00 00 00 FF FF 80 FF FF FF             |
 I 16332 2023-09-17 10:14:34 - [Commands] Received from C-1 (Tali) (version=GC command=99 flag=00)
 0000 | 99 00 04 00                                     |
@@ -2631,7 +2631,7 @@ I 16332 2023-09-17 10:14:34 - [Commands] Received from C-1 (Tali) (version=GC co
 0000 | D6 00 04 00                                     |
 I 16332 2023-09-17 10:14:34 - [Commands] Sending to C-1 (Tali) (version=GC command=04 flag=00)
 0000 | 04 00 2C 00 00 00 01 00 11 11 11 11 32 AC 99 83 |   ,         2
-0010 | 30 45 53 33 00 91 00 48 60 00 04 00 00 00 00 00 | 0ES3@   `
+0010 | 30 45 53 33 00 91 00 48 20 00 04 00 00 00 00 00 | 0ES3@   `
 0020 | 00 00 00 00 00 00 FF FF 80 FF FF FF             |
 I 16332 2023-09-17 10:14:34 - [Commands] Sending to C-1 (Tali) (version=GC command=07 flag=06)
 0000 | 07 06 C8 00 11 00 00 11 FF FF FF FF 04 00 41 6C |               Al
@@ -2655,7 +2655,7 @@ I 16332 2023-09-17 10:14:35 - [Commands] Sending to C-1 (Tali) (version=GC comma
 0000 | 97 01 04 00                                     |
 I 16332 2023-09-17 10:14:35 - [Commands] Sending to C-1 (Tali) (version=GC command=04 flag=00)
 0000 | 04 00 2C 00 00 00 01 00 11 11 11 11 32 AC 99 83 |   ,         2
-0010 | 30 45 53 33 00 91 00 4C 60 00 00 00 00 00 00 00 | 0ES3@   `
+0010 | 30 45 53 33 00 91 00 4C 20 00 00 00 00 00 00 00 | 0ES3@   `
 0020 | 00 00 00 00 00 00 FF FF 80 FF FF FF             |
 I 16332 2023-09-17 10:14:35 - [Commands] Received from C-1 (Tali) (version=GC command=B1 flag=00)
 0000 | B1 00 04 00                                     |
@@ -2706,11 +2706,11 @@ I 16332 2023-09-17 10:14:37 - [Commands] Received from C-2 (version=GC command=9
 00A0 | 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 |
 00B0 | 00 00 00 00 00 00 00 00 00 00 00 00 54 61 6C 69 |             Tali
 00C0 | 00 00 00 00 00 00 00 00 00 00 00 00 32 AC 99 83 |   ,         2
-00D0 | 30 45 53 33 00 91 00 4C 60 00 00 00 00 00 00 00 | 0ES3@   `
+00D0 | 30 45 53 33 00 91 00 4C 20 00 00 00 00 00 00 00 | 0ES3@   `
 00E0 | 00 00 00 00 00 00 FF FF 80 FF FF FF             |
 I 16332 2023-09-17 10:14:37 - [Commands] Sending to C-2 (version=GC command=04 flag=00)
 0000 | 04 00 2C 00 00 00 01 00 11 11 11 11 32 AC 99 83 |   ,         2
-0010 | 30 45 53 33 00 91 00 4C 60 00 00 00 00 00 00 00 | 0ES3@   `
+0010 | 30 45 53 33 00 91 00 4C 20 00 00 00 00 00 00 00 | 0ES3@   `
 0020 | 00 00 00 00 00 00 FF FF 80 FF FF FF             |
 I 16332 2023-09-17 10:14:37 - [Commands] Sending to C-2 (version=GC command=83 flag=14)
 0000 | B7 00 20 00 00 00 00 00 00 00 00 00 00 00 00 00 |
@@ -3588,7 +3588,7 @@ I 16332 2023-09-17 10:14:37 - [Commands] Sending to C-2 (Tali) (version=GC comma
 0440 | FF FF FF FF FF FF FF FF FF FF FF FF             |
 I 16332 2023-09-17 10:14:37 - [Commands] Sending to C-2 (Tali) (version=GC command=04 flag=00)
 0000 | 04 00 2C 00 00 00 01 00 11 11 11 11 32 AC 99 83 |   ,         2
-0010 | 30 45 53 33 00 93 00 4C 60 00 00 00 00 00 00 00 | 0ES3@   `
+0010 | 30 45 53 33 00 93 00 4C 20 00 00 00 00 00 00 00 | 0ES3@   `
 0020 | 00 00 00 00 00 00 FF FF 80 FF FF FF             |
 I 16332 2023-09-17 10:14:39 - [Commands] Received from C-2 (Tali) (version=GC command=60 flag=00)
 0000 | 60 00 1C 00 3F 06 00 00 00 00 00 00 0F 00 FF FF | `   ?
