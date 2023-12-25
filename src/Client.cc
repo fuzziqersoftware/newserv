@@ -23,7 +23,6 @@ static atomic<uint64_t> next_id(1);
 
 void Client::Config::set_flags_for_version(Version version, int64_t sub_version) {
   this->set_flag(Flag::PROXY_CHAT_COMMANDS_ENABLED);
-  this->set_flag(Flag::PROXY_CHAT_FILTER_ENABLED);
 
   switch (sub_version) {
     case -1: // Initial check (before sub_version recognition)

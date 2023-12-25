@@ -1067,9 +1067,7 @@ static HandlerResult C_GXB_61(shared_ptr<ProxyServer::LinkedSession> ses, uint16
 
   if (is_v4(ses->version())) {
     auto& pd = check_size_t<C_CharacterData_BB_61_98>(data, 0xFFFF);
-    if (ses->config.check_flag(Client::Flag::PROXY_CHAT_FILTER_ENABLED)) {
-      pd.info_board.encode(add_color(pd.info_board.decode(ses->language())), ses->language());
-    }
+    pd.info_board.encode(add_color(pd.info_board.decode(ses->language())), ses->language());
     if (ses->config.check_flag(Client::Flag::PROXY_BLANK_NAME_ENABLED)) {
       pd.disp.name.encode(" ", ses->language());
       modified = true;
@@ -1108,9 +1106,7 @@ static HandlerResult C_GXB_61(shared_ptr<ProxyServer::LinkedSession> ses, uint16
       }
       pd = &check_size_t<C_CharacterData_V3_61_98>(data, 0xFFFF);
     }
-    if (ses->config.check_flag(Client::Flag::PROXY_CHAT_FILTER_ENABLED)) {
-      pd->info_board.encode(add_color(pd->info_board.decode(ses->language())), ses->language());
-    }
+    pd->info_board.encode(add_color(pd->info_board.decode(ses->language())), ses->language());
     if (ses->config.check_flag(Client::Flag::PROXY_BLANK_NAME_ENABLED)) {
       pd->disp.visual.name.encode(" ", ses->language());
       modified = true;
@@ -1132,28 +1128,24 @@ static HandlerResult C_GXB_61(shared_ptr<ProxyServer::LinkedSession> ses, uint16
   return modified ? HandlerResult::Type::MODIFIED : HandlerResult::Type::FORWARD;
 }
 
-static HandlerResult C_GX_D9(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t, uint32_t, string& data) {
-  if (ses->config.check_flag(Client::Flag::PROXY_CHAT_FILTER_ENABLED)) {
-    data = add_color(data);
-    // TODO: We should check if the info board text was actually modified and
-    // return MODIFIED if so.
-  }
-  return HandlerResult::Type::FORWARD;
+static HandlerResult C_GX_D9(shared_ptr<ProxyServer::LinkedSession>, uint16_t, uint32_t, string& data) {
+  data = add_color(data);
+  // TODO: We should check if the info board text was actually modified and
+  // return FORWARD if not.
+  return HandlerResult::Type::MODIFIED;
 }
 
 static HandlerResult C_B_D9(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t, uint32_t, string& data) {
-  if (ses->config.check_flag(Client::Flag::PROXY_CHAT_FILTER_ENABLED)) {
-    try {
-      string decoded = tt_utf16_to_utf8(data.data(), data.size());
-      add_color_inplace(decoded);
-      data = tt_utf8_to_utf16(data.data(), data.size());
-    } catch (const runtime_error& e) {
-      ses->log.warning("Failed to replace escape characters in D9 command: %s", e.what());
-    }
-    // TODO: We should check if the info board text was actually modified and
-    // return HandlerResult::MODIFIED if so.
+  try {
+    string decoded = tt_utf16_to_utf8(data.data(), data.size());
+    add_color_inplace(decoded);
+    data = tt_utf8_to_utf16(data.data(), data.size());
+  } catch (const runtime_error& e) {
+    ses->log.warning("Failed to replace escape characters in D9 command: %s", e.what());
   }
-  return HandlerResult::Type::FORWARD;
+  // TODO: We should check if the info board text was actually modified and
+  // return HandlerResult::FORWARD if not.
+  return HandlerResult::Type::MODIFIED;
 }
 
 template <typename T>
@@ -1638,20 +1630,12 @@ static HandlerResult C_06(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t, 
       offset += (text[offset] == command_sentinel) ? 0 : 2;
       text = text.substr(offset);
       if (text.size() >= 2 && text[1] == command_sentinel) {
-        if (ses->config.check_flag(Client::Flag::PROXY_CHAT_FILTER_ENABLED)) {
-          send_chat_message_from_client(ses->server_channel, add_color(text.substr(1)), private_flags);
-        } else {
-          send_chat_message_from_client(ses->server_channel, text.substr(1), private_flags);
-        }
+        send_chat_message_from_client(ses->server_channel, text.substr(1), private_flags);
         return HandlerResult::Type::SUPPRESS;
       } else {
         on_chat_command(ses, text);
         return HandlerResult::Type::SUPPRESS;
       }
-
-    } else if (ses->config.check_flag(Client::Flag::PROXY_CHAT_FILTER_ENABLED)) {
-      send_chat_message_from_client(ses->server_channel, add_color(text), private_flags);
-      return HandlerResult::Type::SUPPRESS;
 
     } else {
       return HandlerResult::Type::FORWARD;

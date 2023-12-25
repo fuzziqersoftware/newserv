@@ -49,8 +49,6 @@ static shared_ptr<const Menu> proxy_options_menu_for_client(shared_ptr<const Cli
 
   add_option(ProxyOptionsMenuItemID::CHAT_COMMANDS, Client::Flag::PROXY_CHAT_COMMANDS_ENABLED,
       "Chat commands", "Enable chat\ncommands");
-  add_option(ProxyOptionsMenuItemID::CHAT_FILTER, Client::Flag::PROXY_CHAT_FILTER_ENABLED,
-      "Chat filter", "Enable escape\nsequences in\nchat messages\nand info board");
   add_option(ProxyOptionsMenuItemID::PLAYER_NOTIFICATIONS, Client::Flag::PROXY_PLAYER_NOTIFICATIONS_ENABLED,
       "Player notifs", "Show a message\nwhen other players\njoin or leave");
   add_option(ProxyOptionsMenuItemID::BLOCK_PINGS, Client::Flag::PROXY_SUPPRESS_CLIENT_PINGS,
@@ -2206,9 +2204,6 @@ static void on_10(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
           break;
         case ProxyOptionsMenuItemID::CHAT_COMMANDS:
           c->config.toggle_flag(Client::Flag::PROXY_CHAT_COMMANDS_ENABLED);
-          goto resend_proxy_options_menu;
-        case ProxyOptionsMenuItemID::CHAT_FILTER:
-          c->config.toggle_flag(Client::Flag::PROXY_CHAT_FILTER_ENABLED);
           goto resend_proxy_options_menu;
         case ProxyOptionsMenuItemID::PLAYER_NOTIFICATIONS:
           c->config.toggle_flag(Client::Flag::PROXY_PLAYER_NOTIFICATIONS_ENABLED);

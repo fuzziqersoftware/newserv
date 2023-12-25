@@ -772,10 +772,6 @@ Proxy session commands:\n\
     auto ses = this->get_proxy_session(session_name);
     ses->challenge_rank_color_override = stoul(command_args, nullptr, 16);
 
-  } else if (command_name == "set-chat-filter") {
-    auto ses = this->get_proxy_session(session_name);
-    set_flag(ses->config, Client::Flag::PROXY_CHAT_FILTER_ENABLED, command_args);
-
   } else if (command_name == "set-infinite-hp") {
     auto ses = this->get_proxy_session(session_name);
     set_flag(ses->config, Client::Flag::INFINITE_HP_ENABLED, command_args);
