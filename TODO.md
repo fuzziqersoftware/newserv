@@ -20,6 +20,5 @@
 ## PSOBB
 
 - Test all quest item subcommands
-- Team flags don't show in the lobby by default; fix this (probably we're sending the wrong metadata command, or sending it at the wrong time)
 - Check if Commander Blade effect works and implement it if not
 - Figure out why Pouilly Slime EXP doesn't work
