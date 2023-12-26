@@ -1957,7 +1957,7 @@ static void on_quest_loaded(shared_ptr<Lobby> l) {
         lc->use_default_bank();
         lc->create_challenge_overlay(lc->version(), l->quest->challenge_template_index, s->level_table);
         lc->log.info("Created challenge overlay");
-        l->assign_inventory_and_bank_item_ids(lc, true);
+        l->assign_inventory_and_bank_item_ids(lc);
       }
     }
   }
@@ -3536,7 +3536,7 @@ static void on_DF_BB(shared_ptr<Client> c, uint16_t command, uint32_t, string& d
           lc->use_default_bank();
           lc->create_challenge_overlay(lc->version(), l->quest->challenge_template_index, s->level_table);
           lc->log.info("Created challenge overlay");
-          l->assign_inventory_and_bank_item_ids(lc, true);
+          l->assign_inventory_and_bank_item_ids(lc);
         }
       }
 
@@ -4269,10 +4269,6 @@ static void on_6F(shared_ptr<Client> c, uint16_t command, uint32_t, string& data
     throw runtime_error("client sent ready command outside of game");
   }
   c->config.clear_flag(Client::Flag::LOADING);
-
-  if (command == 0x006F) {
-    l->assign_inventory_and_bank_item_ids(c, true);
-  }
 
   send_server_time(c);
   if (l->base_version == Version::BB_V4) {

@@ -904,12 +904,13 @@ static void on_set_player_visible(shared_ptr<Client> c, uint8_t command, uint8_t
 static void on_change_floor_6x1F(shared_ptr<Client> c, uint8_t command, uint8_t flag, void* data, size_t size) {
   if (is_pre_v1(c->version())) {
     check_size_t<G_SetPlayerFloor_DCNTE_6x1F>(data, size);
-    // DC NTE and 11/2000 don't send 6F when they're done loading, so we do the
-    // relevant things 6F would do here instead.
+    // DC NTE and 11/2000 don't send 6F when they're done loading, so we clear
+    // the loading flag here instead. On these versions, it also seems to be
+    // necessary to assign item IDs again here.
     if (c->config.check_flag(Client::Flag::LOADING)) {
       c->config.clear_flag(Client::Flag::LOADING);
       auto l = c->require_lobby();
-      l->assign_inventory_and_bank_item_ids(c, true);
+      l->assign_inventory_and_bank_item_ids(c);
     }
 
   } else {

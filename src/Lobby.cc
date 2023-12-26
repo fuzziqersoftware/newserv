@@ -480,11 +480,7 @@ void Lobby::add_client(shared_ptr<Client> c, ssize_t required_client_id) {
         this->next_game_item_id = m.reassign_all_item_ids(this->next_game_item_id);
       }
     }
-    // On DC NTE and 11/2000, the game assigns item IDs immediately when a
-    // player joins a game, then assigns them again after the 6x6D equivalent is
-    // received. For this reason, we consume item IDs here only if the client is
-    // NTE or 11/2000.
-    this->assign_inventory_and_bank_item_ids(c, is_pre_v1(c->version()));
+    this->assign_inventory_and_bank_item_ids(c);
     // On BB, we send artificial flag state to fix an Episode 2 bug where the
     // CCA door lock state is overwritten by quests.
     if (c->version() == Version::BB_V4) {
@@ -711,16 +707,12 @@ void Lobby::on_item_id_generated_externally(uint32_t item_id) {
   }
 }
 
-void Lobby::assign_inventory_and_bank_item_ids(shared_ptr<Client> c, bool consume_ids) {
+void Lobby::assign_inventory_and_bank_item_ids(shared_ptr<Client> c) {
   auto p = c->character();
-  uint32_t start_item_id = this->next_item_id_for_client[c->lobby_client_id];
   for (size_t z = 0; z < p->inventory.num_items; z++) {
     p->inventory.items[z].data.id = this->generate_item_id(c->lobby_client_id);
   }
-  if (!consume_ids) {
-    this->next_item_id_for_client[c->lobby_client_id] = start_item_id;
-  }
-  if (c->log.info("Assigned inventory item IDs%s", consume_ids ? "" : " but did not mark IDs as used")) {
+  if (c->log.info("Assigned inventory item IDs")) {
     p->print_inventory(stderr, c->version(), c->require_server_state()->item_name_index);
     if (p->bank.num_items) {
       p->bank.assign_ids(0x99000000 + (c->lobby_client_id << 20));
