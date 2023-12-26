@@ -311,7 +311,9 @@ static HandlerResult S_V123P_02_17(
         cmd.sub_version = ses->sub_version;
         cmd.serial_number.encode(string_printf("%08" PRIX32 "", ses->license->serial_number));
         cmd.access_key.encode(ses->license->access_key);
-        cmd.access_key.clear_after_bytes(8);
+        if (ses->version() != Version::GC_NTE) {
+          cmd.access_key.clear_after_bytes(8);
+        }
         cmd.serial_number2 = cmd.serial_number;
         cmd.access_key2 = cmd.access_key;
         // TODO: We probably should set email_address, but we currently don't
@@ -335,7 +337,9 @@ static HandlerResult S_V123P_02_17(
         cmd.language = ses->language();
         cmd.serial_number.encode(string_printf("%08" PRIX32 "", ses->license->serial_number));
         cmd.access_key.encode(ses->license->access_key);
-        cmd.access_key.clear_after_bytes(8);
+        if (ses->version() != Version::GC_NTE) {
+          cmd.access_key.clear_after_bytes(8);
+        }
         cmd.serial_number2 = cmd.serial_number;
         cmd.access_key2 = cmd.access_key;
         if (ses->config.check_flag(Client::Flag::PROXY_BLANK_NAME_ENABLED)) {
@@ -1450,7 +1454,7 @@ static HandlerResult S_64(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t, 
     // use it here, so we allow it to be omitted.
     cmd = &check_size_t<CmdT>(data.data(), data.size(), sizeof(CmdT) - 0x18, sizeof(CmdT));
   } else {
-    cmd = &check_size_t<CmdT>(data);
+    cmd = &check_size_t<CmdT>(data, 0xFFFF);
   }
 
   ses->clear_lobby_players(4);
