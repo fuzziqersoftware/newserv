@@ -115,7 +115,7 @@ void RareItemSet::ParsedRELData::parse_t(StringReader r, bool is_v1) {
 }
 
 template <bool IsBigEndian>
-std::string RareItemSet::ParsedRELData::serialize_t() const {
+std::string RareItemSet::ParsedRELData::serialize_t(bool is_v1) const {
   using U32T = typename std::conditional<IsBigEndian, be_uint32_t, le_uint32_t>::type;
   using U16T = typename std::conditional<IsBigEndian, be_uint16_t, le_uint16_t>::type;
 
@@ -129,7 +129,7 @@ std::string RareItemSet::ParsedRELData::serialize_t() const {
   for (const auto& drop : this->monster_rares) {
     w.put(PackedDrop(drop));
   }
-  while (w.size() < root.monster_rares_offset + 0x65 * sizeof(PackedDrop)) {
+  while (w.size() < root.monster_rares_offset + (is_v1 ? 0x33 : 0x65) * sizeof(PackedDrop)) {
     w.put(empty_drop);
   }
   root.box_areas_offset = w.size();
@@ -198,11 +198,11 @@ RareItemSet::ParsedRELData::ParsedRELData(const SpecCollection& collection) {
   }
 }
 
-std::string RareItemSet::ParsedRELData::serialize(bool big_endian) const {
+std::string RareItemSet::ParsedRELData::serialize(bool big_endian, bool is_v1) const {
   if (big_endian) {
-    return this->serialize_t<true>();
+    return this->serialize_t<true>(is_v1);
   } else {
-    return this->serialize_t<false>();
+    return this->serialize_t<false>(is_v1);
   }
 }
 
@@ -378,12 +378,12 @@ RareItemSet::RareItemSet(const JSON& json, Version version, shared_ptr<const Ite
   }
 }
 
-std::string RareItemSet::serialize_afs() const {
+std::string RareItemSet::serialize_afs(bool is_v1) const {
   vector<string> files;
   for (uint8_t difficulty = 0; difficulty < 4; difficulty++) {
     for (uint8_t section_id = 0; section_id < 10; section_id++) {
       ParsedRELData rel(this->get_collection(GameMode::NORMAL, Episode::EP1, difficulty, section_id));
-      files.emplace_back(rel.serialize(false));
+      files.emplace_back(rel.serialize(false, is_v1));
     }
   }
   return AFSArchive::generate(files, false);
@@ -399,7 +399,7 @@ std::string RareItemSet::serialize_gsl(bool big_endian) const {
         try {
           string filename = this->gsl_entry_name_for_table(GameMode::NORMAL, episode, difficulty, section_id);
           ParsedRELData rel(this->get_collection(GameMode::NORMAL, episode, difficulty, section_id));
-          files.emplace(filename, rel.serialize(big_endian));
+          files.emplace(filename, rel.serialize(big_endian, false));
         } catch (const out_of_range&) {
           // Collection does not exist; skip it
         }
@@ -412,7 +412,7 @@ std::string RareItemSet::serialize_gsl(bool big_endian) const {
       try {
         string filename = this->gsl_entry_name_for_table(GameMode::CHALLENGE, Episode::EP1, difficulty, section_id);
         ParsedRELData rel(this->get_collection(GameMode::CHALLENGE, Episode::EP1, difficulty, section_id));
-        files.emplace(filename, rel.serialize(big_endian));
+        files.emplace(filename, rel.serialize(big_endian, false));
       } catch (const out_of_range&) {
         // Collection does not exist; skip it
       }

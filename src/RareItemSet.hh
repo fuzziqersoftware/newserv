@@ -35,7 +35,7 @@ public:
   std::vector<ExpandedDrop> get_enemy_specs(GameMode mode, Episode episode, uint8_t difficulty, uint8_t secid, uint8_t rt_index) const;
   std::vector<ExpandedDrop> get_box_specs(GameMode mode, Episode episode, uint8_t difficulty, uint8_t secid, uint8_t area) const;
 
-  std::string serialize_afs() const;
+  std::string serialize_afs(bool is_v1) const;
   std::string serialize_gsl(bool big_endian) const;
   std::string serialize_json(Version version, std::shared_ptr<const ItemNameIndex> name_index = nullptr) const;
 
@@ -86,12 +86,12 @@ protected:
     ParsedRELData() = default;
     ParsedRELData(StringReader r, bool big_endian, bool is_v1);
     explicit ParsedRELData(const SpecCollection& collection);
-    std::string serialize(bool big_endian) const;
+    std::string serialize(bool big_endian, bool is_v1) const;
 
     template <bool IsBigEndian>
     void parse_t(StringReader r, bool is_v1);
     template <bool IsBigEndian>
-    std::string serialize_t() const;
+    std::string serialize_t(bool is_v1) const;
 
     SpecCollection as_collection() const;
   };
