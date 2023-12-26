@@ -219,9 +219,6 @@ static void proxy_command_lobby_info(shared_ptr<ProxyServer::LinkedSession> ses,
   }
 
   vector<const char*> cheats_tokens;
-  if (ses->config.check_flag(Client::Flag::SWITCH_ASSIST_ENABLED)) {
-    cheats_tokens.emplace_back("SWA");
-  }
   if (ses->config.check_flag(Client::Flag::INFINITE_HP_ENABLED)) {
     cheats_tokens.emplace_back("HP");
   }
@@ -234,14 +231,17 @@ static void proxy_command_lobby_info(shared_ptr<ProxyServer::LinkedSession> ses,
   }
 
   vector<const char*> behaviors_tokens;
+  if (ses->config.check_flag(Client::Flag::SWITCH_ASSIST_ENABLED)) {
+    behaviors_tokens.emplace_back("SWA");
+  }
   if (ses->config.check_flag(Client::Flag::PROXY_SAVE_FILES)) {
-    behaviors_tokens.emplace_back("SAVE");
+    behaviors_tokens.emplace_back("SF");
   }
   if (ses->config.check_flag(Client::Flag::PROXY_SUPPRESS_REMOTE_LOGIN)) {
     behaviors_tokens.emplace_back("SL");
   }
   if (ses->config.check_flag(Client::Flag::PROXY_BLOCK_FUNCTION_CALLS)) {
-    behaviors_tokens.emplace_back("BFC");
+    behaviors_tokens.emplace_back("BF");
   }
   if (!behaviors_tokens.empty()) {
     msg += "\n$C7Flags: $C6";
@@ -1504,7 +1504,6 @@ static void server_command_switch_assist(shared_ptr<Client> c, const std::string
   auto s = c->require_server_state();
   auto l = c->require_lobby();
   check_is_game(l, true);
-  check_cheats_enabled(l, c);
 
   c->config.toggle_flag(Client::Flag::SWITCH_ASSIST_ENABLED);
   send_text_message_printf(c, "$C6Switch assist %s",
@@ -1513,7 +1512,6 @@ static void server_command_switch_assist(shared_ptr<Client> c, const std::string
 
 static void proxy_command_switch_assist(shared_ptr<ProxyServer::LinkedSession> ses, const std::string&) {
   auto s = ses->require_server_state();
-  check_cheats_allowed(s, ses);
   ses->config.toggle_flag(Client::Flag::SWITCH_ASSIST_ENABLED);
   send_text_message_printf(ses->client_channel, "$C6Switch assist %s",
       ses->config.check_flag(Client::Flag::SWITCH_ASSIST_ENABLED) ? "enabled" : "disabled");

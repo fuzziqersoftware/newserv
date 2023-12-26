@@ -1047,8 +1047,7 @@ static void on_switch_state_changed(shared_ptr<Client> c, uint8_t command, uint8
   forward_subcommand(c, command, flag, data, size);
 
   if (cmd.flags && cmd.header.object_id != 0xFFFF) {
-    bool player_cheats_enabled = l->check_flag(Lobby::Flag::CHEATS_ENABLED) || (c->license->flags & License::Flag::CHEAT_ANYWHERE);
-    if (player_cheats_enabled &&
+    if (!l->quest &&
         c->config.check_flag(Client::Flag::SWITCH_ASSIST_ENABLED) &&
         (c->last_switch_enabled_command.header.subcommand == 0x05)) {
       c->log.info("[Switch assist] Replaying previous enable command");

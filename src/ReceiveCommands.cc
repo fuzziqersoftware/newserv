@@ -53,14 +53,18 @@ static shared_ptr<const Menu> proxy_options_menu_for_client(shared_ptr<const Cli
       "Player notifs", "Show a message\nwhen other players\njoin or leave");
   add_option(ProxyOptionsMenuItemID::BLOCK_PINGS, Client::Flag::PROXY_SUPPRESS_CLIENT_PINGS,
       "Block pings", "Block ping commands\nsent by the client");
+  add_bool_option(ProxyOptionsMenuItemID::BLOCK_EVENTS, (c->config.override_lobby_event != 0xFF),
+      "Block events", "Disable seasonal\nevents in the lobby\nand in games");
+  add_option(ProxyOptionsMenuItemID::BLOCK_PATCHES, Client::Flag::PROXY_BLOCK_FUNCTION_CALLS,
+      "Block patches", "Disable patches sent\nby the remote server");
+  add_option(ProxyOptionsMenuItemID::SWITCH_ASSIST, Client::Flag::SWITCH_ASSIST_ENABLED,
+      "Switch assist", "Automatically try\nto unlock 2-player\ndoors when you step\non both switches\nsequentially");
   if ((s->cheat_mode_behavior != ServerState::BehaviorSwitch::OFF) || (c->license->flags & License::Flag::CHEAT_ANYWHERE)) {
     if (!is_ep3(c->version())) {
       add_option(ProxyOptionsMenuItemID::INFINITE_HP, Client::Flag::INFINITE_HP_ENABLED,
           "Infinite HP", "Enable automatic HP\nrestoration when\nyou are hit by an\nenemy or trap\n\nCannot revive you\nfrom one-hit kills");
       add_option(ProxyOptionsMenuItemID::INFINITE_TP, Client::Flag::INFINITE_TP_ENABLED,
           "Infinite TP", "Enable automatic TP\nrestoration when\nyou cast any\ntechnique");
-      add_option(ProxyOptionsMenuItemID::SWITCH_ASSIST, Client::Flag::SWITCH_ASSIST_ENABLED,
-          "Switch assist", "Automatically try\nto unlock 2-player\ndoors when you step\non both switches\nsequentially");
     } else {
       // Note: This option's text is the maximum possible length for any menu item
       add_option(ProxyOptionsMenuItemID::EP3_INFINITE_MESETA, Client::Flag::PROXY_EP3_INFINITE_MESETA_ENABLED,
@@ -71,10 +75,6 @@ static shared_ptr<const Menu> proxy_options_menu_for_client(shared_ptr<const Cli
           "Unmask whispers", "Show contents of\nwhisper messages even\nif they are not for\nyou");
     }
   }
-  add_bool_option(ProxyOptionsMenuItemID::BLOCK_EVENTS, (c->config.override_lobby_event != 0xFF),
-      "Block events", "Disable seasonal\nevents in the lobby\nand in games");
-  add_option(ProxyOptionsMenuItemID::BLOCK_PATCHES, Client::Flag::PROXY_BLOCK_FUNCTION_CALLS,
-      "Block patches", "Disable patches sent\nby the remote server");
   if (s->proxy_allow_save_files) {
     add_option(ProxyOptionsMenuItemID::SAVE_FILES, Client::Flag::PROXY_SAVE_FILES,
         "Save files", "Save local copies of\nfiles from the\nremote server\n(quests, etc.)");
