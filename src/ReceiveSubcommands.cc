@@ -950,7 +950,21 @@ static void on_player_died(shared_ptr<Client> c, uint8_t command, uint8_t flag, 
   forward_subcommand(c, command, flag, data, size);
 }
 
-// When a player is hit by an enemy, heal them if infinite HP is enabled
+static void on_received_condition(shared_ptr<Client> c, uint8_t command, uint8_t flag, void* data, size_t size) {
+  const auto& cmd = check_size_t<G_ClientIDHeader>(data, size, 0xFFFF);
+
+  auto l = c->require_lobby();
+  if (l->is_game()) {
+    forward_subcommand(c, command, flag, data, size);
+    if (cmd.client_id == c->lobby_client_id) {
+      bool player_cheats_enabled = l->check_flag(Lobby::Flag::CHEATS_ENABLED) || (c->license->flags & License::Flag::CHEAT_ANYWHERE);
+      if (player_cheats_enabled && c->config.check_flag(Client::Flag::INFINITE_HP_ENABLED)) {
+        send_remove_conditions(c);
+      }
+    }
+  }
+}
+
 static void on_hit_by_enemy(shared_ptr<Client> c, uint8_t command, uint8_t flag, void* data, size_t size) {
   const auto& cmd = check_size_t<G_ClientIDHeader>(data, size, 0xFFFF);
 
@@ -965,7 +979,6 @@ static void on_hit_by_enemy(shared_ptr<Client> c, uint8_t command, uint8_t flag,
   }
 }
 
-// When a player casts a tech, restore TP if infinite TP is enabled
 static void on_cast_technique_finished(shared_ptr<Client> c, uint8_t command, uint8_t flag, void* data, size_t size) {
   const auto& cmd = check_size_t<G_CastTechniqueComplete_6x48>(data, size);
 
@@ -3080,7 +3093,7 @@ const SubcommandDefinition subcommand_definitions[0x100] = {
     /* 6x09 */ {0x09, 0x09, 0x09, nullptr},
     /* 6x0A */ {0x0A, 0x0A, 0x0A, on_enemy_hit},
     /* 6x0B */ {0x0B, 0x0B, 0x0B, on_forward_check_game},
-    /* 6x0C */ {0x0C, 0x0C, 0x0C, on_forward_check_game},
+    /* 6x0C */ {0x0C, 0x0C, 0x0C, on_received_condition},
     /* 6x0D */ {0x00, 0x00, 0x0D, on_forward_check_game},
     /* 6x0E */ {0x00, 0x00, 0x0E, nullptr},
     /* 6x0F */ {0x00, 0x00, 0x0F, on_invalid},

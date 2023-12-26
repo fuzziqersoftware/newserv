@@ -2310,6 +2310,26 @@ void send_player_stats_change(Channel& ch, uint16_t client_id, PlayerStatsChange
   send_command_vt(ch, (subs.size() > 0x400 / sizeof(G_UpdatePlayerStat_6x9A)) ? 0x6C : 0x60, 0x00, subs);
 }
 
+void send_remove_conditions(shared_ptr<Client> c) {
+  auto l = c->require_lobby();
+  for (auto& lc : l->clients) {
+    if (lc) {
+      send_remove_conditions(lc->channel, c->lobby_client_id);
+    }
+  }
+}
+
+void send_remove_conditions(Channel& ch, uint16_t client_id) {
+  parray<G_AddOrRemoveCondition_6x0C_6x0D, 4> cmds;
+  for (size_t z = 0; z < 4; z++) {
+    auto& cmd = cmds[z];
+    cmd.header = {0x0D, sizeof(G_AddOrRemoveCondition_6x0C_6x0D) >> 2, client_id};
+    cmd.unknown_a1 = z;
+    cmd.unknown_a2 = 0;
+  }
+  ch.send(0x60, 0x00, &cmds, sizeof(cmds));
+}
+
 void send_warp(Channel& ch, uint8_t client_id, uint32_t floor, bool is_private) {
   G_InterLevelWarp_6x94 cmd = {{0x94, 0x02, 0}, floor, {}};
   ch.send(is_private ? 0x62 : 0x60, client_id, &cmd, sizeof(cmd));
