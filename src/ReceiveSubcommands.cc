@@ -842,7 +842,7 @@ static void on_word_select_t(shared_ptr<Client> c, uint8_t command, uint8_t, voi
         }
 
       } catch (const exception& e) {
-        string name = c->character()->disp.name.decode(c->language());
+        string name = escape_player_name(c->character()->disp.name.decode(c->language()));
         lc->log.warning("Untranslatable Word Select message: %s", e.what());
         send_text_message_printf(lc, "$C4Untranslatable Word\nSelect message from\n%s", name.c_str());
       }

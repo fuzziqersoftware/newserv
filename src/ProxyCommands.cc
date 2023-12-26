@@ -1400,8 +1400,7 @@ static HandlerResult S_65_67_68_EB(shared_ptr<ProxyServer::LinkedSession> ses, u
     if (index >= ses->lobby_players.size()) {
       ses->log.warning("Ignoring invalid player index %zu at position %zu", index, x);
     } else {
-      string name = entry.disp.visual.name.decode(entry.inventory.language);
-
+      string name = escape_player_name(entry.disp.visual.name.decode(entry.inventory.language));
       if (ses->license && (entry.lobby_data.guild_card_number == ses->remote_guild_card_number)) {
         entry.lobby_data.guild_card_number = ses->license->serial_number;
         num_replacements++;
@@ -1578,9 +1577,10 @@ static HandlerResult S_66_69_E9(shared_ptr<ProxyServer::LinkedSession> ses, uint
     ses->log.warning("Lobby leave command references missing position");
   } else {
     auto& p = ses->lobby_players[index];
+    string name = escape_player_name(p.name);
     if (ses->config.check_flag(Client::Flag::PROXY_PLAYER_NOTIFICATIONS_ENABLED)) {
       send_text_message_printf(ses->client_channel, "$C4Leave: %zu/%" PRIu32 "\n%s",
-          index, p.guild_card_number, p.name.c_str());
+          index, p.guild_card_number, name.c_str());
     }
     p.guild_card_number = 0;
     p.name.clear();

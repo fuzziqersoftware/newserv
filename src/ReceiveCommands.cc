@@ -1786,7 +1786,7 @@ static void on_09(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
           const auto& game_c = game->clients[x];
           if (game_c.get()) {
             auto player = game_c->character();
-            string name = player->disp.name.decode(game_c->language());
+            string name = escape_player_name(player->disp.name.decode(game_c->language()));
             if (game->is_ep3()) {
               info += string_printf("%zu: $C6%s$C7 L%" PRIu32 "\n",
                   x + 1, name.c_str(), player->disp.stats.level + 1);
@@ -1808,16 +1808,16 @@ static void on_09(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
         bool cheats_enabled = game->check_flag(Lobby::Flag::CHEATS_ENABLED);
         bool locked = !game->password.empty();
         if (cheats_enabled && locked) {
-          info += "$C4Locked$C7, $C6cheats enabled$C7\n";
+          info += "$C4Locked$C7, $C6cheats on$C7\n";
         } else if (cheats_enabled) {
-          info += "$C6Cheats enabled$C7\n";
+          info += "$C6Cheats on$C7\n";
         } else if (locked) {
           info += "$C4Locked$C7\n";
         }
 
         if (game->quest) {
           info += (game->check_flag(Lobby::Flag::JOINABLE_QUEST_IN_PROGRESS)) ? "$C6Quest: " : "$C4Quest: ";
-          info += game->quest->name;
+          info += remove_color(game->quest->name);
           info += "\n";
         } else if (game->check_flag(Lobby::Flag::JOINABLE_QUEST_IN_PROGRESS)) {
           info += "$C6Quest in progress\n";
@@ -1862,17 +1862,18 @@ static void on_09(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
         auto team = tourn->get_team(team_index);
         if (team) {
           string message;
-          if (team->name.empty()) {
+          string team_name = escape_player_name(team->name);
+          if (team_name.empty()) {
             message = "(No registrant)";
           } else if (team->max_players == 1) {
             message = string_printf("$C6%s$C7\n%zu %s (%s)\nPlayers:",
-                team->name.c_str(),
+                team_name.c_str(),
                 team->num_rounds_cleared,
                 team->num_rounds_cleared == 1 ? "win" : "wins",
                 team->is_active ? "active" : "defeated");
           } else {
             message = string_printf("$C6%s$C7\n%zu %s (%s)%s\nPlayers:",
-                team->name.c_str(),
+                team_name.c_str(),
                 team->num_rounds_cleared,
                 team->num_rounds_cleared == 1 ? "win" : "wins",
                 team->is_active ? "active" : "defeated",
@@ -1883,10 +1884,13 @@ static void on_09(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
               if (player.player_name.empty()) {
                 message += string_printf("\n  $C6%08" PRIX32 "$C7", player.serial_number);
               } else {
-                message += string_printf("\n  $C6%s$C7 (%08" PRIX32 ")", player.player_name.c_str(), player.serial_number);
+                string player_name = escape_player_name(player.player_name);
+                message += string_printf("\n  $C6%s$C7 (%08" PRIX32 ")", player_name.c_str(), player.serial_number);
               }
             } else {
-              message += string_printf("\n  $C3%s \"%s\"$C7", player.com_deck->player_name.c_str(), player.com_deck->deck_name.c_str());
+              string player_name = escape_player_name(player.com_deck->player_name);
+              string deck_name = escape_player_name(player.com_deck->deck_name);
+              message += string_printf("\n  $C3%s \"%s\"$C7", player_name.c_str(), deck_name.c_str());
             }
           }
           send_ship_info(c, message);
