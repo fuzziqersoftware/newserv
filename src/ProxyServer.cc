@@ -181,7 +181,7 @@ void ProxyServer::on_client_connect(
       case Version::PC_V2:
       case Version::GC_NTE:
       case Version::GC_V3:
-      case Version::GC_EP3_TRIAL_EDITION:
+      case Version::GC_EP3_NTE:
       case Version::GC_EP3:
       case Version::XB_V3: {
         uint32_t server_key = random_object<uint32_t>();
@@ -324,7 +324,7 @@ void ProxyServer::UnlinkedSession::on_input(Channel& ch, uint16_t command, uint3
       }
 
       case Version::GC_V3:
-      case Version::GC_EP3_TRIAL_EDITION:
+      case Version::GC_EP3_NTE:
       case Version::GC_EP3:
         // We should only get a 9E while the session is unlinked
         if (command == 0x9E) {

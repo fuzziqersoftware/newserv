@@ -152,7 +152,7 @@ void ReplaySession::check_for_password(shared_ptr<const Event> ev) const {
     case Version::DC_V2:
     case Version::GC_NTE:
     case Version::GC_V3:
-    case Version::GC_EP3_TRIAL_EDITION:
+    case Version::GC_EP3_NTE:
     case Version::GC_EP3:
     case Version::XB_V3: {
       const auto& header = check_size_t<PSOCommandHeaderDCV3>(ev->data, 0xFFFF);
@@ -246,7 +246,7 @@ void ReplaySession::apply_default_mask(shared_ptr<Event> ev) {
     case Version::PC_V2:
     case Version::GC_NTE:
     case Version::GC_V3:
-    case Version::GC_EP3_TRIAL_EDITION:
+    case Version::GC_EP3_NTE:
     case Version::GC_EP3:
     case Version::XB_V3: {
       uint8_t command;
@@ -737,7 +737,7 @@ void ReplaySession::on_command_received(
     case Version::PC_V2:
     case Version::GC_NTE:
     case Version::GC_V3:
-    case Version::GC_EP3_TRIAL_EDITION:
+    case Version::GC_EP3_NTE:
     case Version::GC_EP3:
     case Version::XB_V3:
       if (command == 0x02 || command == 0x17 || command == 0x91 || command == 0x9B) {

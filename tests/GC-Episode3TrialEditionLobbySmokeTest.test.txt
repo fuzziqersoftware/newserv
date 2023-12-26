@@ -189,8 +189,8 @@ I 25793 2023-11-24 23:03:38 - [Commands] Received from C-4 (version=GC_EP3 comma
 0650 | 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 |
 0660 | 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 |
 0670 | 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 |
-I 25793 2023-11-24 23:03:38 - [C-4] Game version changed to GC_EP3_TRIAL_EDITION
-I 25793 2023-11-24 23:03:38 - [Commands] Sending to C-4 (version=GC_EP3_TRIAL_EDITION command=B8 flag=00)
+I 25793 2023-11-24 23:03:38 - [C-4] Game version changed to GC_EP3_NTE
+I 25793 2023-11-24 23:03:38 - [Commands] Sending to C-4 (version=GC_EP3_NTE command=B8 flag=00)
 0000 | B8 00 44 79 3A 79 00 00 21 00 FF 01 3A FC F8 FF |   Dy:y  !   :
 0010 | 40 03 F7 C6 FC EA FC E8 D8 FC EB 40 FF 09 01 8F | @          @
 0020 | 02 03 05 06 F8 D5 02 30 FE 18 08 FC 09 B5 FF 04 |        0
@@ -2132,19 +2132,19 @@ I 25793 2023-11-24 23:03:38 - [Commands] Sending to C-4 (version=GC_EP3_TRIAL_ED
 7920 | C2 73 40 BF 71 75 59 C0 FF 0D FC FF AD BB D5 48 |  s@ quY        H
 7930 | FE 1F 3B 88 FA EF 7C EF 02 55 B6 71 59 F8 FF 09 |   ;   |  U qY
 7940 | 00 00 00 00                                     |
-I 25793 2023-11-24 23:03:38 - [Commands] Sending to C-4 (version=GC_EP3_TRIAL_EDITION command=04 flag=00)
+I 25793 2023-11-24 23:03:38 - [Commands] Sending to C-4 (version=GC_EP3_NTE command=04 flag=00)
 0000 | 04 00 2C 00 00 00 01 00 11 11 11 11 32 AC 99 83 |   ,         2
 0010 | 54 4A 53 33 00 81 00 4A 20 00 04 00 00 00 00 00 | TJS3   J`
 0020 | 00 00 00 00 00 00 FF FF 80 FF FF FF             |
-I 25793 2023-11-24 23:03:38 - [Commands] Received from C-4 (Tali) (version=GC_EP3_TRIAL_EDITION command=99 flag=00)
+I 25793 2023-11-24 23:03:38 - [Commands] Received from C-4 (Tali) (version=GC_EP3_NTE command=99 flag=00)
 0000 | 99 00 04 00                                     |
-I 25793 2023-11-24 23:03:38 - [Commands] Received from C-4 (Tali) (version=GC_EP3_TRIAL_EDITION command=D6 flag=00)
+I 25793 2023-11-24 23:03:38 - [Commands] Received from C-4 (Tali) (version=GC_EP3_NTE command=D6 flag=00)
 0000 | D6 00 04 00                                     |
-I 25793 2023-11-24 23:03:38 - [Commands] Sending to C-4 (version=GC_EP3_TRIAL_EDITION command=04 flag=00)
+I 25793 2023-11-24 23:03:38 - [Commands] Sending to C-4 (version=GC_EP3_NTE command=04 flag=00)
 0000 | 04 00 2C 00 00 00 01 00 11 11 11 11 32 AC 99 83 |   ,         2
 0010 | 54 4A 53 33 00 81 00 48 20 00 04 00 00 00 00 00 | TJS3   J`
 0020 | 00 00 00 00 00 00 FF FF 80 FF FF FF             |
-I 25793 2023-11-24 23:03:38 - [Commands] Sending to C-4 (Tali) (version=GC_EP3_TRIAL_EDITION command=07 flag=08)
+I 25793 2023-11-24 23:03:38 - [Commands] Sending to C-4 (Tali) (version=GC_EP3_NTE command=07 flag=08)
 0000 | 07 06 C8 00 11 00 00 11 FF FF FF FF 04 00 41 6C |               Al
 0010 | 65 78 61 6E 64 72 69 61 00 00 00 00 00 00 00 00 | exandria
 0020 | 11 00 00 11 11 22 22 11 04 0F 47 6F 20 74 6F 20 |      ""   Go to
@@ -2158,32 +2158,32 @@ I 25793 2023-11-24 23:03:38 - [Commands] Sending to C-4 (Tali) (version=GC_EP3_T
 00A0 | 6E 65 63 74 00 00 00 00 00 00 00 00 11 00 00 11 | nect
 00B0 | 11 99 99 11 04 0F 43 6C 65 61 72 20 6C 69 63 65 |       Clear lice
 00C0 | 6E 73 65 00 00 00 00 00                         | nse
-I 25793 2023-11-24 23:03:38 - [Commands] Received from C-4 (Tali) (version=GC_EP3_TRIAL_EDITION command=B8 flag=00)
+I 25793 2023-11-24 23:03:38 - [Commands] Received from C-4 (Tali) (version=GC_EP3_NTE command=B8 flag=00)
 0000 | B8 00 04 00                                     |
-I 25793 2023-11-24 23:03:40 - [Commands] Received from C-4 (Tali) (version=GC_EP3_TRIAL_EDITION command=09 flag=00)
+I 25793 2023-11-24 23:03:40 - [Commands] Received from C-4 (Tali) (version=GC_EP3_NTE command=09 flag=00)
 0000 | 09 00 0C 00 11 00 00 11 11 22 22 11             |          ""
-I 25793 2023-11-24 23:03:40 - [Commands] Sending to C-4 (Tali) (version=GC_EP3_TRIAL_EDITION command=11 flag=00)
+I 25793 2023-11-24 23:03:40 - [Commands] Sending to C-4 (Tali) (version=GC_EP3_NTE command=11 flag=00)
 0000 | 11 00 4C 00 00 00 00 00 00 00 00 00 09 43 36 30 |   L          C60
 0010 | 09 43 37 20 70 6C 61 79 65 72 73 20 6F 6E 6C 69 |  C7 players onli
 0020 | 6E 65 0A 09 43 36 30 09 43 37 20 67 61 6D 65 73 | ne  C60 C7 games
 0030 | 0A 09 43 36 30 09 43 37 20 63 6F 6D 70 61 74 69 |   C60 C7 compati
 0040 | 62 6C 65 20 67 61 6D 65 73 00 00 00             | ble games
-I 25793 2023-11-24 23:03:41 - [Commands] Received from C-4 (Tali) (version=GC_EP3_TRIAL_EDITION command=10 flag=00)
+I 25793 2023-11-24 23:03:41 - [Commands] Received from C-4 (Tali) (version=GC_EP3_NTE command=10 flag=00)
 0000 | 10 00 0C 00 11 00 00 11 11 22 22 11             |          ""
-I 25793 2023-11-24 23:03:41 - [Commands] Sending to C-4 (Tali) (version=GC_EP3_TRIAL_EDITION command=97 flag=01)
+I 25793 2023-11-24 23:03:41 - [Commands] Sending to C-4 (Tali) (version=GC_EP3_NTE command=97 flag=01)
 0000 | 97 01 04 00                                     |
-I 25793 2023-11-24 23:03:41 - [Commands] Sending to C-4 (Tali) (version=GC_EP3_TRIAL_EDITION command=04 flag=00)
+I 25793 2023-11-24 23:03:41 - [Commands] Sending to C-4 (Tali) (version=GC_EP3_NTE command=04 flag=00)
 0000 | 04 00 2C 00 00 00 01 00 11 11 11 11 32 AC 99 83 |   ,         2
 0010 | 54 4A 53 33 00 81 00 4C 20 00 00 00 00 00 00 00 | TJS3   L`
 0020 | 00 00 00 00 00 00 FF FF 80 FF FF FF             |
-I 25793 2023-11-24 23:03:42 - [Commands] Received from C-4 (Tali) (version=GC_EP3_TRIAL_EDITION command=B1 flag=00)
+I 25793 2023-11-24 23:03:42 - [Commands] Received from C-4 (Tali) (version=GC_EP3_NTE command=B1 flag=00)
 0000 | B1 00 04 00                                     |
-I 25793 2023-11-24 23:03:42 - [Commands] Sending to C-4 (Tali) (version=GC_EP3_TRIAL_EDITION command=B1 flag=00)
+I 25793 2023-11-24 23:03:42 - [Commands] Sending to C-4 (Tali) (version=GC_EP3_NTE command=B1 flag=00)
 0000 | B1 00 1C 00 32 30 32 33 3A 31 31 3A 32 35 3A 20 |     2023:11:25:
 0010 | 30 37 3A 30 33 3A 34 32 2E 30 30 30             | 07:03:42.000
-I 25793 2023-11-24 23:03:43 - [Commands] Received from C-4 (Tali) (version=GC_EP3_TRIAL_EDITION command=99 flag=00)
+I 25793 2023-11-24 23:03:43 - [Commands] Received from C-4 (Tali) (version=GC_EP3_NTE command=99 flag=00)
 0000 | 99 00 04 00                                     |
-I 25793 2023-11-24 23:03:43 - [Commands] Sending to C-4 (Tali) (version=GC_EP3_TRIAL_EDITION command=19 flag=00)
+I 25793 2023-11-24 23:03:43 - [Commands] Sending to C-4 (Tali) (version=GC_EP3_NTE command=19 flag=00)
 0000 | 19 00 0C 00 23 23 23 23 F6 13 00 00             |     ####
 I 25793 2023-11-24 23:03:43 - [IPStackSimulator] Client closed TCP connection 44+23232323232A0414 (10.0.1.5:1044 -> 35.35.35.35:9002)
 I 25793 2023-11-24 23:03:43 - [Server] Client disconnected: C-4 on virtual connection 0x1025044d0
@@ -2359,12 +2359,12 @@ I 25793 2023-11-24 23:03:44 - [Commands] Received from C-5 (version=GC_EP3 comma
 0650 | 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 |
 0660 | 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 |
 0670 | 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 |
-I 25793 2023-11-24 23:03:44 - [C-5] Game version changed to GC_EP3_TRIAL_EDITION
-I 25793 2023-11-24 23:03:44 - [Commands] Sending to C-5 (Tali) (version=GC_EP3_TRIAL_EDITION command=C5 flag=01)
+I 25793 2023-11-24 23:03:44 - [C-5] Game version changed to GC_EP3_NTE
+I 25793 2023-11-24 23:03:44 - [Commands] Sending to C-5 (Tali) (version=GC_EP3_NTE command=C5 flag=01)
 0000 | 04 00 2C 00 00 00 01 00 11 11 11 11 32 AC 99 83 |   ,         2
 0010 | 54 4A 53 33 00 81 00 4C 20 00 00 00 00 00 00 00 | TJS3   L`
 0020 | 00 00 00 00 00 00 FF FF 80 FF FF FF             |
-I 25793 2023-11-24 23:03:44 - [Commands] Sending to C-5 (Tali) (version=GC_EP3_TRIAL_EDITION command=C5 flag=01)
+I 25793 2023-11-24 23:03:44 - [Commands] Sending to C-5 (Tali) (version=GC_EP3_NTE command=C5 flag=01)
 0000 | C5 01 20 01 00 00 00 00 FF 7F 00 00 00 00 00 00 |
 0010 | 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 |
 0020 | 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 |
@@ -2383,7 +2383,7 @@ I 25793 2023-11-24 23:03:44 - [Commands] Sending to C-5 (Tali) (version=GC_EP3_T
 00F0 | 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 |
 0100 | 00 00 00 00 00 00 00 00 04 00 00 00 00 00 00 00 |
 0110 | 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 |
-I 25793 2023-11-24 23:03:44 - [Commands] Sending to C-5 (Tali) (version=GC_EP3_TRIAL_EDITION command=67 flag=01)
+I 25793 2023-11-24 23:03:44 - [Commands] Sending to C-5 (Tali) (version=GC_EP3_NTE command=67 flag=01)
 0000 | 67 01 4C 04 00 00 01 0F 10 00 00 00 00 00 00 00 | g L
 0010 | 00 00 01 00 11 11 11 11 7F 00 00 01 00 00 00 00 |
 0020 | 54 61 6C 69 00 00 00 00 00 00 00 00 00 00 00 00 | Tali
@@ -2453,183 +2453,183 @@ I 25793 2023-11-24 23:03:44 - [Commands] Sending to C-5 (Tali) (version=GC_EP3_T
 0420 | 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 |
 0430 | 00 00 00 00 00 00 00 00 FF FF FF FF FF FF FF FF |
 0440 | FF FF FF FF FF FF FF FF FF FF FF FF             |
-I 25793 2023-11-24 23:03:44 - [Commands] Sending to C-5 (Tali) (version=GC_EP3_TRIAL_EDITION command=04 flag=00)
+I 25793 2023-11-24 23:03:44 - [Commands] Sending to C-5 (Tali) (version=GC_EP3_NTE command=04 flag=00)
 0000 | 04 00 2C 00 00 00 01 00 11 11 11 11 32 AC 99 83 |   ,         2
 0010 | 54 4A 53 33 00 83 00 4C 20 00 00 00 00 00 00 00 | TJS3   L`
 0020 | 00 00 00 00 00 00 FF FF 80 FF FF FF             |
-I 25793 2023-11-24 23:03:45 - [Commands] Received from C-5 (Tali) (version=GC_EP3_TRIAL_EDITION command=60 flag=00)
+I 25793 2023-11-24 23:03:45 - [Commands] Received from C-5 (Tali) (version=GC_EP3_NTE command=60 flag=00)
 0000 | 60 00 1C 00 3F 06 00 00 00 00 00 00 0F 00 FF FF | `   ?
 0010 | B2 84 1C BF 00 00 00 00 53 88 BA C2             |         S
-I 25793 2023-11-24 23:03:45 - [Commands] Received from C-5 (Tali) (version=GC_EP3_TRIAL_EDITION command=60 flag=00)
+I 25793 2023-11-24 23:03:45 - [Commands] Received from C-5 (Tali) (version=GC_EP3_NTE command=60 flag=00)
 0000 | 60 00 0C 00 1F 02 00 00 0F 00 00 00             | `
-I 25793 2023-11-24 23:03:45 - [Commands] Received from C-5 (Tali) (version=GC_EP3_TRIAL_EDITION command=60 flag=00)
+I 25793 2023-11-24 23:03:45 - [Commands] Received from C-5 (Tali) (version=GC_EP3_NTE command=60 flag=00)
 0000 | 60 00 08 00 23 01 00 00                         | `   #
-I 25793 2023-11-24 23:03:45 - [Commands] Sending to C-5 (Tali) (version=GC_EP3_TRIAL_EDITION command=88 flag=01)
+I 25793 2023-11-24 23:03:45 - [Commands] Sending to C-5 (Tali) (version=GC_EP3_NTE command=88 flag=01)
 0000 | 88 01 10 00 00 00 01 00 11 11 11 11 00 00 00 00 |
-I 25793 2023-11-24 23:03:48 - [Commands] Received from C-5 (Tali) (version=GC_EP3_TRIAL_EDITION command=60 flag=00)
+I 25793 2023-11-24 23:03:48 - [Commands] Received from C-5 (Tali) (version=GC_EP3_NTE command=60 flag=00)
 0000 | 60 00 14 00 40 04 00 00 EA 6F A1 40 BD 37 AF C2 | `   @    o @ 7
 0010 | 00 00 00 00                                     |
-I 25793 2023-11-24 23:03:48 - [Commands] Received from C-5 (Tali) (version=GC_EP3_TRIAL_EDITION command=60 flag=00)
+I 25793 2023-11-24 23:03:48 - [Commands] Received from C-5 (Tali) (version=GC_EP3_NTE command=60 flag=00)
 0000 | 60 00 14 00 40 04 00 00 6F 06 31 41 08 0F A5 C2 | `   @   o 1A
 0010 | 00 00 00 00                                     |
-I 25793 2023-11-24 23:03:48 - [Commands] Received from C-5 (Tali) (version=GC_EP3_TRIAL_EDITION command=60 flag=00)
+I 25793 2023-11-24 23:03:48 - [Commands] Received from C-5 (Tali) (version=GC_EP3_NTE command=60 flag=00)
 0000 | 60 00 14 00 40 04 00 00 A5 F5 8F 41 29 11 9D C2 | `   @      A)
 0010 | 00 00 00 00                                     |
-I 25793 2023-11-24 23:03:48 - [Commands] Received from C-5 (Tali) (version=GC_EP3_TRIAL_EDITION command=60 flag=00)
+I 25793 2023-11-24 23:03:48 - [Commands] Received from C-5 (Tali) (version=GC_EP3_NTE command=60 flag=00)
 0000 | 60 00 10 00 42 03 00 00 CE D4 AA 41 9A 85 8E C2 | `   B      A
-I 25793 2023-11-24 23:03:49 - [Commands] Received from C-5 (Tali) (version=GC_EP3_TRIAL_EDITION command=60 flag=00)
+I 25793 2023-11-24 23:03:49 - [Commands] Received from C-5 (Tali) (version=GC_EP3_NTE command=60 flag=00)
 0000 | 60 00 10 00 42 03 00 00 E4 39 CB 41 70 F6 81 C2 | `   B    9 Ap
-I 25793 2023-11-24 23:03:49 - [Commands] Received from C-5 (Tali) (version=GC_EP3_TRIAL_EDITION command=60 flag=00)
+I 25793 2023-11-24 23:03:49 - [Commands] Received from C-5 (Tali) (version=GC_EP3_NTE command=60 flag=00)
 0000 | 60 00 10 00 42 03 00 00 56 90 E8 41 48 C2 69 C2 | `   B   V  AH i
-I 25793 2023-11-24 23:03:49 - [Commands] Received from C-5 (Tali) (version=GC_EP3_TRIAL_EDITION command=60 flag=00)
+I 25793 2023-11-24 23:03:49 - [Commands] Received from C-5 (Tali) (version=GC_EP3_NTE command=60 flag=00)
 0000 | 60 00 10 00 42 03 00 00 1B 05 03 42 EE A0 4F C2 | `   B      B  O
-I 25793 2023-11-24 23:03:49 - [Commands] Received from C-5 (Tali) (version=GC_EP3_TRIAL_EDITION command=60 flag=00)
+I 25793 2023-11-24 23:03:49 - [Commands] Received from C-5 (Tali) (version=GC_EP3_NTE command=60 flag=00)
 0000 | 60 00 10 00 42 03 00 00 57 C7 11 42 93 82 35 C2 | `   B   W  B  5
-I 25793 2023-11-24 23:03:49 - [Commands] Received from C-5 (Tali) (version=GC_EP3_TRIAL_EDITION command=60 flag=00)
+I 25793 2023-11-24 23:03:49 - [Commands] Received from C-5 (Tali) (version=GC_EP3_NTE command=60 flag=00)
 0000 | 60 00 10 00 42 03 00 00 0A 88 20 42 5B 63 1B C2 | `   B      B[c
-I 25793 2023-11-24 23:03:49 - [Commands] Received from C-5 (Tali) (version=GC_EP3_TRIAL_EDITION command=60 flag=00)
+I 25793 2023-11-24 23:03:49 - [Commands] Received from C-5 (Tali) (version=GC_EP3_NTE command=60 flag=00)
 0000 | 60 00 10 00 42 03 00 00 2B 49 2F 42 62 44 01 C2 | `   B   +I/BbD
-I 25793 2023-11-24 23:03:50 - [Commands] Received from C-5 (Tali) (version=GC_EP3_TRIAL_EDITION command=60 flag=00)
+I 25793 2023-11-24 23:03:50 - [Commands] Received from C-5 (Tali) (version=GC_EP3_NTE command=60 flag=00)
 0000 | 60 00 10 00 42 03 00 00 4C 0A 3E 42 D2 4A CE C1 | `   B   L >B J
-I 25793 2023-11-24 23:03:50 - [Commands] Received from C-5 (Tali) (version=GC_EP3_TRIAL_EDITION command=60 flag=00)
+I 25793 2023-11-24 23:03:50 - [Commands] Received from C-5 (Tali) (version=GC_EP3_NTE command=60 flag=00)
 0000 | 60 00 10 00 42 03 00 00 6D CB 4C 42 DC 0C 9A C1 | `   B   m LB
-I 25793 2023-11-24 23:03:50 - [Commands] Received from C-5 (Tali) (version=GC_EP3_TRIAL_EDITION command=60 flag=00)
+I 25793 2023-11-24 23:03:50 - [Commands] Received from C-5 (Tali) (version=GC_EP3_NTE command=60 flag=00)
 0000 | 60 00 10 00 42 03 00 00 DD 3C 43 42 D2 BE 3F C1 | `   B    <CB  ?
-I 25793 2023-11-24 23:03:50 - [Commands] Received from C-5 (Tali) (version=GC_EP3_TRIAL_EDITION command=60 flag=00)
+I 25793 2023-11-24 23:03:50 - [Commands] Received from C-5 (Tali) (version=GC_EP3_NTE command=60 flag=00)
 0000 | 60 00 10 00 42 03 00 00 01 59 3B 42 EE 3F 9C C0 | `   B    Y;B ?
-I 25793 2023-11-24 23:03:50 - [Commands] Received from C-5 (Tali) (version=GC_EP3_TRIAL_EDITION command=60 flag=00)
+I 25793 2023-11-24 23:03:50 - [Commands] Received from C-5 (Tali) (version=GC_EP3_NTE command=60 flag=00)
 0000 | 60 00 10 00 42 03 00 00 22 83 2E 42 60 F1 F1 3F | `   B   " .B`  ?
-I 25793 2023-11-24 23:03:50 - [Commands] Received from C-5 (Tali) (version=GC_EP3_TRIAL_EDITION command=60 flag=00)
+I 25793 2023-11-24 23:03:50 - [Commands] Received from C-5 (Tali) (version=GC_EP3_NTE command=60 flag=00)
 0000 | 60 00 10 00 42 03 00 00 A3 C6 1E 42 56 48 04 41 | `   B      BVH A
-I 25793 2023-11-24 23:03:51 - [Commands] Received from C-5 (Tali) (version=GC_EP3_TRIAL_EDITION command=60 flag=00)
+I 25793 2023-11-24 23:03:51 - [Commands] Received from C-5 (Tali) (version=GC_EP3_NTE command=60 flag=00)
 0000 | 60 00 10 00 42 03 00 00 C0 C3 23 42 63 31 7D 41 | `   B     #Bc1}A
-I 25793 2023-11-24 23:03:51 - [Commands] Received from C-5 (Tali) (version=GC_EP3_TRIAL_EDITION command=60 flag=00)
+I 25793 2023-11-24 23:03:51 - [Commands] Received from C-5 (Tali) (version=GC_EP3_NTE command=60 flag=00)
 0000 | 60 00 10 00 42 03 00 00 05 5D 23 42 52 4B BA 41 | `   B    ]#BRK A
-I 25793 2023-11-24 23:03:51 - [Commands] Received from C-5 (Tali) (version=GC_EP3_TRIAL_EDITION command=60 flag=00)
+I 25793 2023-11-24 23:03:51 - [Commands] Received from C-5 (Tali) (version=GC_EP3_NTE command=60 flag=00)
 0000 | 60 00 10 00 42 03 00 00 47 01 25 42 CA 33 F6 41 | `   B   G %B 3 A
-I 25793 2023-11-24 23:03:51 - [Commands] Received from C-5 (Tali) (version=GC_EP3_TRIAL_EDITION command=60 flag=00)
+I 25793 2023-11-24 23:03:51 - [Commands] Received from C-5 (Tali) (version=GC_EP3_NTE command=60 flag=00)
 0000 | 60 00 10 00 42 03 00 00 D2 74 0F 42 70 DA 10 42 | `   B    t Bp  B
-I 25793 2023-11-24 23:03:51 - [Commands] Received from C-5 (Tali) (version=GC_EP3_TRIAL_EDITION command=60 flag=00)
+I 25793 2023-11-24 23:03:51 - [Commands] Received from C-5 (Tali) (version=GC_EP3_NTE command=60 flag=00)
 0000 | 60 00 10 00 42 03 00 00 9C 61 F7 41 42 B9 26 42 | `   B    a AB &B
-I 25793 2023-11-24 23:03:51 - [Commands] Received from C-5 (Tali) (version=GC_EP3_TRIAL_EDITION command=60 flag=00)
+I 25793 2023-11-24 23:03:51 - [Commands] Received from C-5 (Tali) (version=GC_EP3_NTE command=60 flag=00)
 0000 | 60 00 10 00 42 03 00 00 74 29 C8 41 95 32 39 42 | `   B   t) A 29B
-I 25793 2023-11-24 23:03:52 - [Commands] Received from C-5 (Tali) (version=GC_EP3_TRIAL_EDITION command=60 flag=00)
+I 25793 2023-11-24 23:03:52 - [Commands] Received from C-5 (Tali) (version=GC_EP3_NTE command=60 flag=00)
 0000 | 60 00 10 00 42 03 00 00 7B DA BC 41 B0 4E 57 42 | `   B   {  A NWB
-I 25793 2023-11-24 23:03:52 - [Commands] Received from C-5 (Tali) (version=GC_EP3_TRIAL_EDITION command=60 flag=00)
+I 25793 2023-11-24 23:03:52 - [Commands] Received from C-5 (Tali) (version=GC_EP3_NTE command=60 flag=00)
 0000 | 60 00 10 00 42 03 00 00 B2 C9 A7 41 49 3B 73 42 | `   B      AI;sB
-I 25793 2023-11-24 23:03:52 - [Commands] Received from C-5 (Tali) (version=GC_EP3_TRIAL_EDITION command=60 flag=00)
+I 25793 2023-11-24 23:03:52 - [Commands] Received from C-5 (Tali) (version=GC_EP3_NTE command=60 flag=00)
 0000 | 60 00 10 00 42 03 00 00 B4 7B 96 41 59 FA 87 42 | `   B    { AY  B
-I 25793 2023-11-24 23:03:52 - [Commands] Received from C-5 (Tali) (version=GC_EP3_TRIAL_EDITION command=60 flag=00)
+I 25793 2023-11-24 23:03:52 - [Commands] Received from C-5 (Tali) (version=GC_EP3_NTE command=60 flag=00)
 0000 | 60 00 10 00 42 03 00 00 3D F6 84 41 F8 52 96 42 | `   B   =  A R B
-I 25793 2023-11-24 23:03:52 - [Commands] Received from C-5 (Tali) (version=GC_EP3_TRIAL_EDITION command=60 flag=00)
+I 25793 2023-11-24 23:03:52 - [Commands] Received from C-5 (Tali) (version=GC_EP3_NTE command=60 flag=00)
 0000 | 60 00 10 00 42 03 00 00 7F DC 66 41 66 AB A4 42 | `   B     fAf  B
-I 25793 2023-11-24 23:03:52 - [Commands] Received from C-5 (Tali) (version=GC_EP3_TRIAL_EDITION command=60 flag=00)
+I 25793 2023-11-24 23:03:52 - [Commands] Received from C-5 (Tali) (version=GC_EP3_NTE command=60 flag=00)
 0000 | 60 00 10 00 42 03 00 00 DB C6 43 41 9B 03 B3 42 | `   B     CA   B
-I 25793 2023-11-24 23:03:53 - [Commands] Received from C-5 (Tali) (version=GC_EP3_TRIAL_EDITION command=60 flag=00)
+I 25793 2023-11-24 23:03:53 - [Commands] Received from C-5 (Tali) (version=GC_EP3_NTE command=60 flag=00)
 0000 | 60 00 10 00 42 03 00 00 9B AE 20 41 B6 5B C1 42 | `   B      A [ B
-I 25793 2023-11-24 23:03:53 - [Commands] Received from C-5 (Tali) (version=GC_EP3_TRIAL_EDITION command=60 flag=00)
+I 25793 2023-11-24 23:03:53 - [Commands] Received from C-5 (Tali) (version=GC_EP3_NTE command=60 flag=00)
 0000 | 60 00 10 00 42 03 00 00 CF 1E FB 40 8D B3 CF 42 | `   B      @   B
-I 25793 2023-11-24 23:03:53 - [Commands] Received from C-5 (Tali) (version=GC_EP3_TRIAL_EDITION command=60 flag=00)
+I 25793 2023-11-24 23:03:53 - [Commands] Received from C-5 (Tali) (version=GC_EP3_NTE command=60 flag=00)
 0000 | 60 00 10 00 42 03 00 00 8E F6 3B 41 F6 DF DC 42 | `   B     ;A   B
-I 25793 2023-11-24 23:03:53 - [Commands] Received from C-5 (Tali) (version=GC_EP3_TRIAL_EDITION command=60 flag=00)
+I 25793 2023-11-24 23:03:53 - [Commands] Received from C-5 (Tali) (version=GC_EP3_NTE command=60 flag=00)
 0000 | 60 00 10 00 42 03 00 00 B0 45 73 41 9F E4 E9 42 | `   B    EsA   B
-I 25793 2023-11-24 23:03:53 - [Commands] Received from C-5 (Tali) (version=GC_EP3_TRIAL_EDITION command=60 flag=00)
+I 25793 2023-11-24 23:03:53 - [Commands] Received from C-5 (Tali) (version=GC_EP3_NTE command=60 flag=00)
 0000 | 60 00 10 00 42 03 00 00 F3 50 5E 41 9A FA F8 42 | `   B    P^A   B
-I 25793 2023-11-24 23:03:53 - [Commands] Received from C-5 (Tali) (version=GC_EP3_TRIAL_EDITION command=60 flag=00)
+I 25793 2023-11-24 23:03:53 - [Commands] Received from C-5 (Tali) (version=GC_EP3_NTE command=60 flag=00)
 0000 | 60 00 10 00 42 03 00 00 3D 4E 5E 41 CD F2 03 43 | `   B   =N^A   C
-I 25793 2023-11-24 23:03:54 - [Commands] Received from C-5 (Tali) (version=GC_EP3_TRIAL_EDITION command=60 flag=00)
+I 25793 2023-11-24 23:03:54 - [Commands] Received from C-5 (Tali) (version=GC_EP3_NTE command=60 flag=00)
 0000 | 60 00 10 00 42 03 00 00 C7 36 56 41 61 6E 0B 43 | `   B    6VAan C
-I 25793 2023-11-24 23:03:54 - [Commands] Received from C-5 (Tali) (version=GC_EP3_TRIAL_EDITION command=60 flag=00)
+I 25793 2023-11-24 23:03:54 - [Commands] Received from C-5 (Tali) (version=GC_EP3_NTE command=60 flag=00)
 0000 | 60 00 10 00 42 03 00 00 55 7B 4E 41 63 EA 12 43 | `   B   U{NAc  C
-I 25793 2023-11-24 23:03:54 - [Commands] Received from C-5 (Tali) (version=GC_EP3_TRIAL_EDITION command=60 flag=00)
+I 25793 2023-11-24 23:03:54 - [Commands] Received from C-5 (Tali) (version=GC_EP3_NTE command=60 flag=00)
 0000 | 60 00 10 00 42 03 00 00 BF C7 46 41 6E 66 1A 43 | `   B     FAnf C
-I 25793 2023-11-24 23:03:54 - [Commands] Received from C-5 (Tali) (version=GC_EP3_TRIAL_EDITION command=60 flag=00)
+I 25793 2023-11-24 23:03:54 - [Commands] Received from C-5 (Tali) (version=GC_EP3_NTE command=60 flag=00)
 0000 | 60 00 10 00 42 03 00 00 4C 16 3F 41 7A E2 21 43 | `   B   L ?Az !C
-I 25793 2023-11-24 23:03:54 - [Commands] Received from C-5 (Tali) (version=GC_EP3_TRIAL_EDITION command=60 flag=00)
+I 25793 2023-11-24 23:03:54 - [Commands] Received from C-5 (Tali) (version=GC_EP3_NTE command=60 flag=00)
 0000 | 60 00 10 00 42 03 00 00 AA 64 37 41 87 5E 29 43 | `   B    d7A ^)C
-I 25793 2023-11-24 23:03:54 - [Commands] Received from C-5 (Tali) (version=GC_EP3_TRIAL_EDITION command=60 flag=00)
+I 25793 2023-11-24 23:03:54 - [Commands] Received from C-5 (Tali) (version=GC_EP3_NTE command=60 flag=00)
 0000 | 60 00 10 00 42 03 00 00 14 94 AF 40 4C 27 2E 43 | `   B      @L'.C
-I 25793 2023-11-24 23:03:55 - [Commands] Received from C-5 (Tali) (version=GC_EP3_TRIAL_EDITION command=60 flag=00)
+I 25793 2023-11-24 23:03:55 - [Commands] Received from C-5 (Tali) (version=GC_EP3_NTE command=60 flag=00)
 0000 | 60 00 10 00 42 03 00 00 80 2E 43 BD E1 99 31 43 | `   B    .C   1C
-I 25793 2023-11-24 23:03:55 - [Commands] Received from C-5 (Tali) (version=GC_EP3_TRIAL_EDITION command=60 flag=00)
+I 25793 2023-11-24 23:03:55 - [Commands] Received from C-5 (Tali) (version=GC_EP3_NTE command=60 flag=00)
 0000 | 60 00 10 00 42 03 00 00 22 30 FF C0 29 FD 30 43 | `   B   "0  ) 0C
-I 25793 2023-11-24 23:03:55 - [Commands] Received from C-5 (Tali) (version=GC_EP3_TRIAL_EDITION command=60 flag=00)
+I 25793 2023-11-24 23:03:55 - [Commands] Received from C-5 (Tali) (version=GC_EP3_NTE command=60 flag=00)
 0000 | 60 00 10 00 42 03 00 00 F4 5B 82 C1 33 4C 30 43 | `   B    [  3L0C
-I 25793 2023-11-24 23:03:55 - [Commands] Received from C-5 (Tali) (version=GC_EP3_TRIAL_EDITION command=60 flag=00)
+I 25793 2023-11-24 23:03:55 - [Commands] Received from C-5 (Tali) (version=GC_EP3_NTE command=60 flag=00)
 0000 | 60 00 10 00 42 03 00 00 B0 6B C4 C1 8A 39 2F 43 | `   B    k   9/C
-I 25793 2023-11-24 23:03:55 - [Commands] Received from C-5 (Tali) (version=GC_EP3_TRIAL_EDITION command=60 flag=00)
+I 25793 2023-11-24 23:03:55 - [Commands] Received from C-5 (Tali) (version=GC_EP3_NTE command=60 flag=00)
 0000 | 60 00 10 00 42 03 00 00 E9 61 E8 C1 CE 18 26 43 | `   B    a    &C
-I 25793 2023-11-24 23:03:55 - [Commands] Received from C-5 (Tali) (version=GC_EP3_TRIAL_EDITION command=60 flag=00)
+I 25793 2023-11-24 23:03:55 - [Commands] Received from C-5 (Tali) (version=GC_EP3_NTE command=60 flag=00)
 0000 | 60 00 10 00 42 03 00 00 4D FF 07 C2 65 90 20 43 | `   B   M   e  C
-I 25793 2023-11-24 23:03:56 - [Commands] Received from C-5 (Tali) (version=GC_EP3_TRIAL_EDITION command=60 flag=00)
+I 25793 2023-11-24 23:03:56 - [Commands] Received from C-5 (Tali) (version=GC_EP3_NTE command=60 flag=00)
 0000 | 60 00 10 00 42 03 00 00 C8 BB 16 C2 9D 25 1A 43 | `   B        % C
-I 25793 2023-11-24 23:03:56 - [Commands] Received from C-5 (Tali) (version=GC_EP3_TRIAL_EDITION command=60 flag=00)
+I 25793 2023-11-24 23:03:56 - [Commands] Received from C-5 (Tali) (version=GC_EP3_NTE command=60 flag=00)
 0000 | 60 00 10 00 42 03 00 00 73 2B 22 C2 BC 40 13 43 | `   B   s+"  @ C
-I 25793 2023-11-24 23:03:56 - [Commands] Received from C-5 (Tali) (version=GC_EP3_TRIAL_EDITION command=60 flag=00)
+I 25793 2023-11-24 23:03:56 - [Commands] Received from C-5 (Tali) (version=GC_EP3_NTE command=60 flag=00)
 0000 | 60 00 10 00 42 03 00 00 93 F0 25 C2 DA 42 0C 43 | `   B     %  B C
-I 25793 2023-11-24 23:03:56 - [Commands] Received from C-5 (Tali) (version=GC_EP3_TRIAL_EDITION command=60 flag=00)
+I 25793 2023-11-24 23:03:56 - [Commands] Received from C-5 (Tali) (version=GC_EP3_NTE command=60 flag=00)
 0000 | 60 00 10 00 42 03 00 00 E5 8B 21 C2 4F D8 03 43 | `   B     ! O  C
-I 25793 2023-11-24 23:03:56 - [Commands] Received from C-5 (Tali) (version=GC_EP3_TRIAL_EDITION command=60 flag=00)
+I 25793 2023-11-24 23:03:56 - [Commands] Received from C-5 (Tali) (version=GC_EP3_NTE command=60 flag=00)
 0000 | 60 00 10 00 42 03 00 00 92 C6 1D C2 E6 57 F9 42 | `   B        W B
-I 25793 2023-11-24 23:03:56 - [Commands] Received from C-5 (Tali) (version=GC_EP3_TRIAL_EDITION command=60 flag=00)
+I 25793 2023-11-24 23:03:56 - [Commands] Received from C-5 (Tali) (version=GC_EP3_NTE command=60 flag=00)
 0000 | 60 00 10 00 42 03 00 00 53 1B 1A C2 6A 88 EA 42 | `   B   S   j  B
-I 25793 2023-11-24 23:03:57 - [Commands] Received from C-5 (Tali) (version=GC_EP3_TRIAL_EDITION command=60 flag=00)
+I 25793 2023-11-24 23:03:57 - [Commands] Received from C-5 (Tali) (version=GC_EP3_NTE command=60 flag=00)
 0000 | 60 00 10 00 42 03 00 00 C6 3B 14 C2 0D DC DB 42 | `   B    ;     B
-I 25793 2023-11-24 23:03:57 - [Commands] Received from C-5 (Tali) (version=GC_EP3_TRIAL_EDITION command=60 flag=00)
+I 25793 2023-11-24 23:03:57 - [Commands] Received from C-5 (Tali) (version=GC_EP3_NTE command=60 flag=00)
 0000 | 60 00 10 00 42 03 00 00 A1 8B 0A C2 EC AF CD 42 | `   B          B
-I 25793 2023-11-24 23:03:57 - [Commands] Received from C-5 (Tali) (version=GC_EP3_TRIAL_EDITION command=60 flag=00)
+I 25793 2023-11-24 23:03:57 - [Commands] Received from C-5 (Tali) (version=GC_EP3_NTE command=60 flag=00)
 0000 | 60 00 10 00 42 03 00 00 30 BE FA C1 4F 3B C0 42 | `   B   0   O; B
-I 25793 2023-11-24 23:03:57 - [Commands] Received from C-5 (Tali) (version=GC_EP3_TRIAL_EDITION command=60 flag=00)
+I 25793 2023-11-24 23:03:57 - [Commands] Received from C-5 (Tali) (version=GC_EP3_NTE command=60 flag=00)
 0000 | 60 00 10 00 42 03 00 00 BC EB D9 C1 63 B2 B3 42 | `   B       c  B
-I 25793 2023-11-24 23:03:57 - [Commands] Received from C-5 (Tali) (version=GC_EP3_TRIAL_EDITION command=60 flag=00)
+I 25793 2023-11-24 23:03:57 - [Commands] Received from C-5 (Tali) (version=GC_EP3_NTE command=60 flag=00)
 0000 | 60 00 10 00 42 03 00 00 5E 26 B3 C1 D8 45 A8 42 | `   B   ^&   E B
-I 25793 2023-11-24 23:03:57 - [Commands] Received from C-5 (Tali) (version=GC_EP3_TRIAL_EDITION command=60 flag=00)
+I 25793 2023-11-24 23:03:57 - [Commands] Received from C-5 (Tali) (version=GC_EP3_NTE command=60 flag=00)
 0000 | 60 00 10 00 42 03 00 00 D2 08 87 C1 F9 21 9E 42 | `   B        ! B
-I 25793 2023-11-24 23:03:58 - [Commands] Received from C-5 (Tali) (version=GC_EP3_TRIAL_EDITION command=60 flag=00)
+I 25793 2023-11-24 23:03:58 - [Commands] Received from C-5 (Tali) (version=GC_EP3_NTE command=60 flag=00)
 0000 | 60 00 10 00 42 03 00 00 23 84 2C C1 AC 6D 95 42 | `   B   # ,  m B
-I 25793 2023-11-24 23:03:58 - [Commands] Received from C-5 (Tali) (version=GC_EP3_TRIAL_EDITION command=60 flag=00)
+I 25793 2023-11-24 23:03:58 - [Commands] Received from C-5 (Tali) (version=GC_EP3_NTE command=60 flag=00)
 0000 | 60 00 10 00 42 03 00 00 A5 43 86 C0 9D 4A 8E 42 | `   B    C   J B
-I 25793 2023-11-24 23:03:58 - [Commands] Received from C-5 (Tali) (version=GC_EP3_TRIAL_EDITION command=60 flag=00)
+I 25793 2023-11-24 23:03:58 - [Commands] Received from C-5 (Tali) (version=GC_EP3_NTE command=60 flag=00)
 0000 | 60 00 10 00 42 03 00 00 32 E0 31 40 C3 D3 88 42 | `   B   2 1@   B
-I 25793 2023-11-24 23:03:58 - [Commands] Received from C-5 (Tali) (version=GC_EP3_TRIAL_EDITION command=60 flag=00)
+I 25793 2023-11-24 23:03:58 - [Commands] Received from C-5 (Tali) (version=GC_EP3_NTE command=60 flag=00)
 0000 | 60 00 10 00 42 03 00 00 84 0F A2 3E 3B 12 73 42 | `   B      >; sB
-I 25793 2023-11-24 23:03:58 - [Commands] Received from C-5 (Tali) (version=GC_EP3_TRIAL_EDITION command=60 flag=00)
+I 25793 2023-11-24 23:03:58 - [Commands] Received from C-5 (Tali) (version=GC_EP3_NTE command=60 flag=00)
 0000 | 60 00 10 00 42 03 00 00 B0 97 0C BF B5 B5 55 42 | `   B         UB
-I 25793 2023-11-24 23:03:58 - [Commands] Received from C-5 (Tali) (version=GC_EP3_TRIAL_EDITION command=60 flag=00)
+I 25793 2023-11-24 23:03:58 - [Commands] Received from C-5 (Tali) (version=GC_EP3_NTE command=60 flag=00)
 0000 | 60 00 1C 00 3E 06 00 00 00 00 96 88 0F 00 00 00 | `   >
 0010 | CF F4 E1 BE 00 00 B5 B4 AB A9 57 42             |           WB
-I 25793 2023-11-24 23:03:59 - [Commands] Received from C-5 (Tali) (version=GC_EP3_TRIAL_EDITION command=60 flag=00)
+I 25793 2023-11-24 23:03:59 - [Commands] Received from C-5 (Tali) (version=GC_EP3_NTE command=60 flag=00)
 0000 | 60 00 14 00 40 04 00 00 46 84 05 C0 B3 58 38 42 | `   @   F    X8B
 0010 | 00 00 00 00                                     |
-I 25793 2023-11-24 23:03:59 - [Commands] Received from C-5 (Tali) (version=GC_EP3_TRIAL_EDITION command=60 flag=00)
+I 25793 2023-11-24 23:03:59 - [Commands] Received from C-5 (Tali) (version=GC_EP3_NTE command=60 flag=00)
 0000 | 60 00 14 00 40 04 00 00 66 89 6E C0 E3 06 19 42 | `   @   f n    B
 0010 | 00 00 00 00                                     |
-I 25793 2023-11-24 23:04:00 - [Commands] Received from C-5 (Tali) (version=GC_EP3_TRIAL_EDITION command=60 flag=00)
+I 25793 2023-11-24 23:04:00 - [Commands] Received from C-5 (Tali) (version=GC_EP3_NTE command=60 flag=00)
 0000 | 60 00 14 00 40 04 00 00 B5 01 A5 C0 D0 3B FB 41 | `   @        ; A
 0010 | 00 00 00 00                                     |
-I 25793 2023-11-24 23:04:00 - [Commands] Received from C-5 (Tali) (version=GC_EP3_TRIAL_EDITION command=60 flag=00)
+I 25793 2023-11-24 23:04:00 - [Commands] Received from C-5 (Tali) (version=GC_EP3_NTE command=60 flag=00)
 0000 | 60 00 1C 00 3E 06 00 00 00 00 66 88 0F 00 00 00 | `   >     f
 0010 | F9 97 7B C0 00 00 B5 B4 6C 1C 15 42             |   {     l  B
-I 25793 2023-11-24 23:04:00 - [Commands] Received from C-5 (Tali) (version=GC_EP3_TRIAL_EDITION command=60 flag=00)
+I 25793 2023-11-24 23:04:00 - [Commands] Received from C-5 (Tali) (version=GC_EP3_NTE command=60 flag=00)
 0000 | 60 00 10 00 52 03 00 00 00 00 00 00 66 88 FF FF | `   R       f
-I 25793 2023-11-24 23:04:03 - [Commands] Received from C-5 (Tali) (version=GC_EP3_TRIAL_EDITION command=E6 flag=00)
+I 25793 2023-11-24 23:04:03 - [Commands] Received from C-5 (Tali) (version=GC_EP3_NTE command=E6 flag=00)
 0000 | E6 00 04 00                                     |
-I 25793 2023-11-24 23:04:03 - [Commands] Sending to C-5 (Tali) (version=GC_EP3_TRIAL_EDITION command=E6 flag=00)
+I 25793 2023-11-24 23:04:03 - [Commands] Sending to C-5 (Tali) (version=GC_EP3_NTE command=E6 flag=00)
 0000 | E6 00 20 00 44 00 00 44 00 00 00 00 00 00 41 6C |     D  D      Al
 0010 | 65 78 61 6E 64 72 69 61 00 00 00 00 00 00 00 04 | exandria
-I 25793 2023-11-24 23:04:05 - [Commands] Received from C-5 (Tali) (version=GC_EP3_TRIAL_EDITION command=60 flag=00)
+I 25793 2023-11-24 23:04:05 - [Commands] Received from C-5 (Tali) (version=GC_EP3_NTE command=60 flag=00)
 0000 | 60 00 10 00 52 03 00 00 00 00 00 00 66 88 FF FF | `   R       f
-I 25793 2023-11-24 23:04:05 - [Commands] Received from C-5 (Tali) (version=GC_EP3_TRIAL_EDITION command=60 flag=00)
+I 25793 2023-11-24 23:04:05 - [Commands] Received from C-5 (Tali) (version=GC_EP3_NTE command=60 flag=00)
 0000 | 60 00 1C 00 3F 06 00 00 00 00 66 88 0F 00 00 00 | `   ?     f
 0010 | F9 97 7B C0 00 00 13 B5 6C 1C 15 42             |   {     l  B
-I 25793 2023-11-24 23:04:06 - [Commands] Received from C-5 (Tali) (version=GC_EP3_TRIAL_EDITION command=60 flag=00)
+I 25793 2023-11-24 23:04:06 - [Commands] Received from C-5 (Tali) (version=GC_EP3_NTE command=60 flag=00)
 0000 | 60 00 10 00 52 03 00 00 00 00 00 00 66 88 FF FF | `   R       f
-I 25793 2023-11-24 23:04:08 - [Commands] Received from C-5 (Tali) (version=GC_EP3_TRIAL_EDITION command=A0 flag=00)
+I 25793 2023-11-24 23:04:08 - [Commands] Received from C-5 (Tali) (version=GC_EP3_NTE command=A0 flag=00)
 0000 | A0 00 1C 00 00 00 01 00 11 11 11 11 00 00 00 00 |
 0010 | 00 00 00 00 00 00 00 00 00 00 00 00             |
-I 25793 2023-11-24 23:04:08 - [Commands] Sending to C-5 (Tali) (version=GC_EP3_TRIAL_EDITION command=69 flag=00)
+I 25793 2023-11-24 23:04:08 - [Commands] Sending to C-5 (Tali) (version=GC_EP3_NTE command=69 flag=00)
 0000 | 69 00 08 00 00 00 01 00                         | i
-I 25793 2023-11-24 23:04:08 - [Commands] Sending to C-5 (Tali) (version=GC_EP3_TRIAL_EDITION command=19 flag=00)
+I 25793 2023-11-24 23:04:08 - [Commands] Sending to C-5 (Tali) (version=GC_EP3_NTE command=19 flag=00)
 0000 | 19 00 0C 00 23 23 23 23 EC 13 00 00             |     ####
 I 25793 2023-11-24 23:04:08 - [IPStackSimulator] Client closed TCP connection 44+2323232313EF0415 (10.0.1.5:1045 -> 35.35.35.35:5103)
 I 25793 2023-11-24 23:04:08 - [IPStackSimulator] Client opened TCP connection 44+2323232313EC0416 (10.0.1.5:1046 -> 35.35.35.35:5100) (acked_server_seq=655F9802, next_client_seq=20A7C1D9)
@@ -2823,8 +2823,8 @@ I 25793 2023-11-24 23:04:08 - [Commands] Received from C-6 (version=GC_EP3 comma
 0650 | 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 |
 0660 | 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 |
 0670 | 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 |
-I 25793 2023-11-24 23:04:08 - [C-6] Game version changed to GC_EP3_TRIAL_EDITION
-I 25793 2023-11-24 23:04:09 - [Commands] Received from C-6 (Tali) (version=GC_EP3_TRIAL_EDITION command=10 flag=00)
+I 25793 2023-11-24 23:04:08 - [C-6] Game version changed to GC_EP3_NTE
+I 25793 2023-11-24 23:04:09 - [Commands] Received from C-6 (Tali) (version=GC_EP3_NTE command=10 flag=00)
 0000 | 10 00 0C 00 11 00 00 11 11 88 88 11             |
 I 25793 2023-11-24 23:04:09 - [Server] Client disconnected: C-6 on virtual connection 0x1024042b0
 I 25793 2023-11-24 23:04:09 - [IPStackSimulator] Server closed TCP connection 44+2323232313EC0416 (10.0.1.5:1046 -> 35.35.35.35:5100)

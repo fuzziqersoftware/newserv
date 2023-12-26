@@ -60,7 +60,7 @@ uint16_t WordSelectTable::Token::value_for_version(Version version) const {
       // TODO: Which index does GC_NTE use? Here we presume it's the same as GC,
       // but this may not be true
       return this->gc_value;
-    case Version::GC_EP3_TRIAL_EDITION:
+    case Version::GC_EP3_NTE:
     case Version::GC_EP3:
       return this->ep3_value;
     case Version::BB_V4:
@@ -93,7 +93,7 @@ WordSelectMessage WordSelectTable::translate(
       // but this may not be true
       index = &this->gc_index;
       break;
-    case Version::GC_EP3_TRIAL_EDITION:
+    case Version::GC_EP3_NTE:
     case Version::GC_EP3:
       index = &this->ep3_index;
       break;

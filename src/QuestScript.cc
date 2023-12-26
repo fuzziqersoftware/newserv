@@ -199,7 +199,7 @@ static constexpr uint16_t F_PC_NTE = 0x0040; // Version::PC_NTE
 static constexpr uint16_t F_PC_V2 = 0x0080; // Version::PC_V2
 static constexpr uint16_t F_GC_NTE = 0x0100; // Version::GC_NTE
 static constexpr uint16_t F_GC_V3 = 0x0200; // Version::GC_V3
-static constexpr uint16_t F_GC_EP3TE = 0x0400; // Version::GC_EP3_TRIAL_EDITION
+static constexpr uint16_t F_GC_EP3TE = 0x0400; // Version::GC_EP3_NTE
 static constexpr uint16_t F_GC_EP3 = 0x0800; // Version::GC_EP3
 static constexpr uint16_t F_XB_V3 = 0x1000; // Version::XB_V3
 static constexpr uint16_t F_BB_V4 = 0x2000; // Version::BB_V4
@@ -214,7 +214,7 @@ static_assert(F_PC_NTE == v_flag(Version::PC_NTE));
 static_assert(F_PC_V2 == v_flag(Version::PC_V2));
 static_assert(F_GC_NTE == v_flag(Version::GC_NTE));
 static_assert(F_GC_V3 == v_flag(Version::GC_V3));
-static_assert(F_GC_EP3TE == v_flag(Version::GC_EP3_TRIAL_EDITION));
+static_assert(F_GC_EP3TE == v_flag(Version::GC_EP3_NTE));
 static_assert(F_GC_EP3 == v_flag(Version::GC_EP3));
 static_assert(F_XB_V3 == v_flag(Version::XB_V3));
 static_assert(F_BB_V4 == v_flag(Version::BB_V4));
@@ -948,7 +948,7 @@ std::string disassemble_quest_script(const void* data, size_t size, Version vers
     }
     case Version::GC_NTE:
     case Version::GC_V3:
-    case Version::GC_EP3_TRIAL_EDITION:
+    case Version::GC_EP3_NTE:
     case Version::GC_EP3:
     case Version::XB_V3: {
       const auto& header = r.get<PSOQuestHeaderGC>();
@@ -1617,7 +1617,7 @@ Episode find_quest_episode_from_script(const void* data, size_t size, Version ve
       return Episode::EP1;
     case Version::GC_NTE:
     case Version::GC_V3:
-    case Version::GC_EP3_TRIAL_EDITION:
+    case Version::GC_EP3_NTE:
     case Version::GC_EP3:
     case Version::XB_V3: {
       const auto& header = r.get<PSOQuestHeaderGC>();
@@ -1971,7 +1971,7 @@ std::string assemble_quest_script(const std::string& text) {
                 case Version::DC_V2:
                 case Version::GC_NTE:
                 case Version::GC_V3:
-                case Version::GC_EP3_TRIAL_EDITION:
+                case Version::GC_EP3_NTE:
                 case Version::GC_EP3:
                 case Version::XB_V3:
                   code_w.write(quest_language ? tt_utf8_to_8859(text) : tt_utf8_to_sjis(text));
@@ -2245,7 +2245,7 @@ std::string assemble_quest_script(const std::string& text) {
     }
     case Version::GC_NTE:
     case Version::GC_V3:
-    case Version::GC_EP3_TRIAL_EDITION:
+    case Version::GC_EP3_NTE:
     case Version::GC_EP3:
     case Version::XB_V3: {
       PSOQuestHeaderGC header;

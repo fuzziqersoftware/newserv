@@ -31,7 +31,7 @@ uint16_t PSOCommandHeader::command(Version version) const {
       return this->dc.command;
     case Version::GC_NTE:
     case Version::GC_V3:
-    case Version::GC_EP3_TRIAL_EDITION:
+    case Version::GC_EP3_NTE:
     case Version::GC_EP3:
       return this->gc.command;
     case Version::XB_V3:
@@ -59,7 +59,7 @@ void PSOCommandHeader::set_command(Version version, uint16_t command) {
       break;
     case Version::GC_NTE:
     case Version::GC_V3:
-    case Version::GC_EP3_TRIAL_EDITION:
+    case Version::GC_EP3_NTE:
     case Version::GC_EP3:
       this->gc.command = command;
       break;
@@ -88,7 +88,7 @@ uint16_t PSOCommandHeader::size(Version version) const {
       return this->dc.size;
     case Version::GC_NTE:
     case Version::GC_V3:
-    case Version::GC_EP3_TRIAL_EDITION:
+    case Version::GC_EP3_NTE:
     case Version::GC_EP3:
       return this->gc.size;
     case Version::XB_V3:
@@ -116,7 +116,7 @@ void PSOCommandHeader::set_size(Version version, uint32_t size) {
       break;
     case Version::GC_NTE:
     case Version::GC_V3:
-    case Version::GC_EP3_TRIAL_EDITION:
+    case Version::GC_EP3_NTE:
     case Version::GC_EP3:
       this->gc.size = size;
       break;
@@ -145,7 +145,7 @@ uint32_t PSOCommandHeader::flag(Version version) const {
       return this->dc.flag;
     case Version::GC_NTE:
     case Version::GC_V3:
-    case Version::GC_EP3_TRIAL_EDITION:
+    case Version::GC_EP3_NTE:
     case Version::GC_EP3:
       return this->gc.flag;
     case Version::XB_V3:
@@ -173,7 +173,7 @@ void PSOCommandHeader::set_flag(Version version, uint32_t flag) {
       break;
     case Version::GC_NTE:
     case Version::GC_V3:
-    case Version::GC_EP3_TRIAL_EDITION:
+    case Version::GC_EP3_NTE:
     case Version::GC_EP3:
       this->gc.flag = flag;
       break;
@@ -218,7 +218,7 @@ std::string prepend_command_header(
     case Version::DC_V2:
     case Version::GC_NTE:
     case Version::GC_V3:
-    case Version::GC_EP3_TRIAL_EDITION:
+    case Version::GC_EP3_NTE:
     case Version::GC_EP3:
     case Version::XB_V3: {
       PSOCommandHeaderDCV3 header;

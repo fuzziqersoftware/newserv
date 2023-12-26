@@ -815,7 +815,7 @@ void ItemCreator::generate_unit_stars_tables() {
     case Version::BB_PATCH:
     case Version::GC_NTE:
       throw logic_error("unknown parameters for version");
-    case Version::GC_EP3_TRIAL_EDITION:
+    case Version::GC_EP3_NTE:
     case Version::GC_EP3:
       throw logic_error("ItemCreator cannot be created for Episode 3 games");
     case Version::DC_NTE:

@@ -206,7 +206,7 @@ void Lobby::create_item_creator() {
   switch (this->base_version) {
     case Version::PC_PATCH:
     case Version::BB_PATCH:
-    case Version::GC_EP3_TRIAL_EDITION:
+    case Version::GC_EP3_NTE:
     case Version::GC_EP3:
       throw runtime_error("cannot create item creator for this base version");
     case Version::DC_NTE:
@@ -366,7 +366,7 @@ void Lobby::create_ep3_server() {
     this->log.info("Recreating Episode 3 server state");
   }
   auto tourn = this->tournament_match ? this->tournament_match->tournament.lock() : nullptr;
-  bool is_trial = this->base_version == Version::GC_EP3_TRIAL_EDITION;
+  bool is_trial = this->base_version == Version::GC_EP3_NTE;
   Episode3::Server::Options options = {
       .card_index = is_trial ? s->ep3_card_index_trial : s->ep3_card_index,
       .map_index = s->ep3_map_index,

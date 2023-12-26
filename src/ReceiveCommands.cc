@@ -708,7 +708,7 @@ static void on_9A(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
       }
       case Version::GC_NTE:
       case Version::GC_V3:
-      case Version::GC_EP3_TRIAL_EDITION:
+      case Version::GC_EP3_NTE:
       case Version::GC_EP3: {
         serial_number = stoul(cmd.serial_number.decode(), nullptr, 16);
         l = s->license_index->verify_gc(serial_number, cmd.access_key.decode());
@@ -777,7 +777,7 @@ static void on_9C(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
         break;
       case Version::GC_NTE:
       case Version::GC_V3:
-      case Version::GC_EP3_TRIAL_EDITION:
+      case Version::GC_EP3_NTE:
       case Version::GC_EP3:
         l = s->license_index->verify_gc(serial_number, cmd.access_key.decode(), cmd.password.decode());
         break;
@@ -916,7 +916,7 @@ static void on_9D_9E(shared_ptr<Client> c, uint16_t command, uint32_t, string& d
         break;
       case Version::GC_NTE:
       case Version::GC_V3:
-      case Version::GC_EP3_TRIAL_EDITION:
+      case Version::GC_EP3_NTE:
       case Version::GC_EP3:
         serial_number = stoul(base_cmd->serial_number.decode(), nullptr, 16);
         l = s->license_index->verify_gc(serial_number, base_cmd->access_key.decode());
@@ -1145,7 +1145,7 @@ static void on_93_BB(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
 static void on_9F(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
   switch (c->version()) {
     case Version::GC_V3:
-    case Version::GC_EP3_TRIAL_EDITION:
+    case Version::GC_EP3_NTE:
     case Version::GC_EP3: {
       const auto& cmd = check_size_t<C_ClientConfig_V3_9F>(data);
       c->config.parse_from(cmd.data);
@@ -2948,7 +2948,7 @@ static void on_61_98(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
     }
 
     case Version::GC_V3:
-    case Version::GC_EP3_TRIAL_EDITION:
+    case Version::GC_EP3_NTE:
     case Version::GC_EP3:
     case Version::XB_V3: {
       const C_CharacterData_V3_61_98* cmd;
@@ -2964,8 +2964,8 @@ static void on_61_98(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
         }
       } else {
         if (is_ep3(c->version())) {
-          c->channel.version = Version::GC_EP3_TRIAL_EDITION;
-          c->log.info("Game version changed to GC_EP3_TRIAL_EDITION");
+          c->channel.version = Version::GC_EP3_NTE;
+          c->log.info("Game version changed to GC_EP3_NTE");
           c->config.clear_flag(Client::Flag::ENCRYPTED_SEND_FUNCTION_CALL);
           if (c->config.specific_version == 0x33000000) {
             c->config.specific_version = 0x33534A54; // 3SJT
@@ -3705,7 +3705,7 @@ static void on_C3(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
     case Version::DC_V2:
     case Version::GC_NTE:
     case Version::GC_V3:
-    case Version::GC_EP3_TRIAL_EDITION:
+    case Version::GC_EP3_NTE:
     case Version::GC_EP3:
     case Version::XB_V3:
       on_choice_search_t<S_ChoiceSearchResultEntry_DC_V3_C4>(c, cmd);
@@ -3732,7 +3732,7 @@ static void on_81(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
     case Version::DC_V2:
     case Version::GC_NTE:
     case Version::GC_V3:
-    case Version::GC_EP3_TRIAL_EDITION:
+    case Version::GC_EP3_NTE:
     case Version::GC_EP3:
     case Version::XB_V3: {
       const auto& cmd = check_size_t<SC_SimpleMail_DC_V3_81>(data);
@@ -3970,8 +3970,8 @@ shared_ptr<Lobby> create_game_generic(
         game->allow_version(Version::XB_V3);
       }
       break;
-    case Version::GC_EP3_TRIAL_EDITION:
-      game->allow_version(Version::GC_EP3_TRIAL_EDITION);
+    case Version::GC_EP3_NTE:
+      game->allow_version(Version::GC_EP3_NTE);
       break;
     case Version::GC_EP3:
       game->allow_version(Version::GC_EP3);
@@ -4057,7 +4057,7 @@ shared_ptr<Lobby> create_game_generic(
         game->allowed_drop_modes = s->allowed_drop_modes_v3_normal;
       }
       break;
-    case Version::GC_EP3_TRIAL_EDITION:
+    case Version::GC_EP3_NTE:
     case Version::GC_EP3:
       game->set_drop_mode(Lobby::DropMode::DISABLED);
       game->allowed_drop_modes = (1 << static_cast<size_t>(game->drop_mode));
@@ -5382,7 +5382,7 @@ static void check_unlicensed_command(Version version, uint8_t command) {
       break;
     case Version::GC_NTE:
     case Version::GC_V3:
-    case Version::GC_EP3_TRIAL_EDITION:
+    case Version::GC_EP3_NTE:
     case Version::GC_EP3:
       // See comment in the DC case above for why DC commands are included here.
       if (command != 0x88 && // DC NTE
@@ -5443,7 +5443,7 @@ void on_command_with_header(shared_ptr<Client> c, const string& data) {
     case Version::DC_V2:
     case Version::GC_NTE:
     case Version::GC_V3:
-    case Version::GC_EP3_TRIAL_EDITION:
+    case Version::GC_EP3_NTE:
     case Version::GC_EP3:
     case Version::XB_V3: {
       auto& header = check_size_t<PSOCommandHeaderDCV3>(data, 0xFFFF);

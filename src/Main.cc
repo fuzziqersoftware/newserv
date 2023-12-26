@@ -113,7 +113,7 @@ Version get_cli_version(Arguments& args, Version default_value = Version::UNKNOW
   } else if (args.get<bool>("xb")) {
     return Version::XB_V3;
   } else if (args.get<bool>("ep3-trial")) {
-    return Version::GC_EP3_TRIAL_EDITION;
+    return Version::GC_EP3_NTE;
   } else if (args.get<bool>("ep3")) {
     return Version::GC_EP3;
   } else if (args.get<bool>("bb")) {
@@ -382,7 +382,7 @@ static void a_encrypt_decrypt_fn(Arguments& args) {
       break;
     case Version::GC_V3:
     case Version::XB_V3:
-    case Version::GC_EP3_TRIAL_EDITION:
+    case Version::GC_EP3_NTE:
     case Version::GC_EP3:
       crypt = make_shared<PSOV3Encryption>(stoul(seed, nullptr, 16));
       break;

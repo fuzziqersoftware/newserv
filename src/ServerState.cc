@@ -111,7 +111,7 @@ void ServerState::init() {
       l->allow_version(Version::XB_V3);
       l->allow_version(Version::BB_V4);
     }
-    l->allow_version(Version::GC_EP3_TRIAL_EDITION);
+    l->allow_version(Version::GC_EP3_NTE);
     l->allow_version(Version::GC_EP3);
 
     l->block = x + 1;
@@ -394,7 +394,7 @@ shared_ptr<const Menu> ServerState::proxy_destinations_menu_for_version(Version 
       return this->proxy_destinations_menu_pc;
     case Version::GC_NTE:
     case Version::GC_V3:
-    case Version::GC_EP3_TRIAL_EDITION:
+    case Version::GC_EP3_NTE:
     case Version::GC_EP3:
       return this->proxy_destinations_menu_gc;
     case Version::XB_V3:
@@ -416,7 +416,7 @@ const vector<pair<string, uint16_t>>& ServerState::proxy_destinations_for_versio
     case Version::PC_V2:
       return this->proxy_destinations_pc;
     case Version::GC_V3:
-    case Version::GC_EP3_TRIAL_EDITION:
+    case Version::GC_EP3_NTE:
     case Version::GC_EP3:
       return this->proxy_destinations_gc;
     case Version::XB_V3:
@@ -437,7 +437,7 @@ shared_ptr<const ItemParameterTable> ServerState::item_parameter_table_for_versi
       return this->item_parameter_table_v2;
     case Version::GC_NTE:
     case Version::GC_V3:
-    case Version::GC_EP3_TRIAL_EDITION:
+    case Version::GC_EP3_NTE:
     case Version::GC_EP3:
     case Version::XB_V3:
       return this->item_parameter_table_v3;

@@ -47,7 +47,7 @@ void Client::Config::set_flags_for_version(Version version, int64_t sub_version)
           break;
         case Version::GC_NTE:
         case Version::GC_V3:
-        case Version::GC_EP3_TRIAL_EDITION:
+        case Version::GC_EP3_NTE:
         case Version::GC_EP3:
           break;
         case Version::XB_V3:

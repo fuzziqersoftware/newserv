@@ -451,7 +451,7 @@ static void on_sync_joining_player_disp_and_inventory(
       break;
     case Version::GC_NTE:
     case Version::GC_V3:
-    case Version::GC_EP3_TRIAL_EDITION:
+    case Version::GC_EP3_NTE:
     case Version::GC_EP3:
       gc_cmd = &check_size_t<G_SyncPlayerDispAndInventory_GC_6x70>(data, size);
       base = &gc_cmd->base;
@@ -543,7 +543,7 @@ static void on_sync_joining_player_disp_and_inventory(
 
     case Version::GC_NTE:
     case Version::GC_V3:
-    case Version::GC_EP3_TRIAL_EDITION:
+    case Version::GC_EP3_NTE:
     case Version::GC_EP3:
       if (gc_cmd) {
         transcode_inventory_items(gc_cmd);
@@ -748,7 +748,7 @@ static void on_send_guild_card(shared_ptr<Client> c, uint8_t command, uint8_t fl
     }
     case Version::GC_NTE:
     case Version::GC_V3:
-    case Version::GC_EP3_TRIAL_EDITION:
+    case Version::GC_EP3_NTE:
     case Version::GC_EP3: {
       const auto& cmd = check_size_t<G_SendGuildCard_GC_6x06>(data, size);
       c->character(true, false)->guild_card.description.encode(cmd.guild_card.description.decode(c->language()), c->language());

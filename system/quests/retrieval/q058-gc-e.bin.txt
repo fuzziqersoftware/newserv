@@ -7,12 +7,11 @@
 
 // The .version directive specifies which version of the game the quest is for.
 // The values are DC_NTE, DC_V1_11_2000_PROTOTYPE, DC_V1, DC_V2, PC_V2, GC_NTE,
-// GC_V3, GC_EP3_TRIAL_EDITION, GC_EP3, XB_V3, and BB_V4. This determines which
-// set of opcodes to use during compilation, and also specifies the header
-// format and string encoding. This does not affect where the quest appears in
-// menus, so for versions that use the same opcodes, headers, and string
-// encodings, it is OK to use a symbolic link (hence q058-xb-e.bin.txt is a link
-// to this file).
+// GC_V3, GC_EP3_NTE, GC_EP3, XB_V3, and BB_V4. This determines which set of
+// opcodes to use during compilation, and also specifies the header format and
+// string encoding. This does not affect where the quest appears in menus, so
+// for versions that use the same opcodes, headers, and string encodings, it is
+// OK to use a symbolic link (hence q058-xb-e.bin.txt is a link to this file).
 .version GC_V3
 
 // The .quest_num directive specifies the internal number of the quest. This
@@ -26,7 +25,8 @@
 
 // The .language field specifies the internal language of the quest. On console
 // versions (DC, GC, and XB), this affects how strings are encoded - Japanese
-// uses Shift-JIS and other languages use ISO8859. The language values are:
+// uses Shift-JIS and other languages use ISO8859. (On PC V2 and BB, UTF-16 is
+// used for strings in all languages.) The language values are:
 //   0 = Japanese
 //   1 = English
 //   2 = German
@@ -38,7 +38,8 @@
 .language 1
 
 // The .episode directive specifies the quest's episode. The server ignores this
-// if a set_episode or set_episode2 opcode is present in the start function.
+// if a set_episode or set_episode2 opcode is present in the code following the
+// start label.
 .episode Episode1
 
 // These directives specify the quest's name, short description, and long
@@ -51,7 +52,7 @@
 .long_desc "Client:  Hopkins, hunter\nQuest:\n My weapon was taken\n from me when I was\n fighting a Dragon.\nReward:  ??? Meseta\n\n\n"
 
 // On BB, quests may specify a maximum number of players with this directive. If
-// not specified, the default is 4.
+// not given, the default is 4. On non-BB versions, this directive is ignored.
 // .max_players 4
 
 // On BB, quests may be joinable while in progress. This directive enables that
@@ -73,10 +74,11 @@
 //   hello_symbol_chat:
 //     .data 28000000 FFFF 0D00 FFFF FFFF 05 18 1D 00 05 28 1D 01 36 20 2A 00 3C 00 32 00 FF 00 00 00 FF 00 00 00 FF 00 00 00 FF 00 00 02 FF 00 00 02 FF 00 00 02 FF 00 00 02 FF 00 00 02
 // There is also a directive for including a large number of zero bytes:
+//   lots_of_zeroes:
 //     .zero 0x400  // 1024 bytes of zeroes
 
-// Every quest must have a start function; this is the main thread that starts
-// when the quest begins. The start label implicitly has a number of zero.
+// Every quest must have a start label; this is the main thread that starts when
+// the quest begins. The start label is always assigned number 0.
 start:
   gget                            0x0091, r252
   set_floor_handler               0, floor_handler_pioneer_2
@@ -143,12 +145,12 @@ floor_handler_pioneer_2_not_first_time:
   thread_stg                      show_mission_complete_if_needed
   ret
 
-label00CA:
+label00CA@0x00CA:
   clear                           r50
   set                             r51
   ret
 
-label00CB:
+label00CB@0x00CB:
   clear                           r51
   set                             r50
   ret
