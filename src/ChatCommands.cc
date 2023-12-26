@@ -14,6 +14,7 @@
 #include "Loggers.hh"
 #include "ProxyServer.hh"
 #include "ReceiveCommands.hh"
+#include "Revision.hh"
 #include "SendCommands.hh"
 #include "Server.hh"
 #include "StaticGameData.hh"
@@ -90,6 +91,20 @@ static void check_is_leader(shared_ptr<Lobby> l, shared_ptr<Client> c) {
 
 ////////////////////////////////////////////////////////////////////////////////
 // Message commands
+
+static void server_command_server_info(shared_ptr<Client> c, const std::string&) {
+  auto s = c->require_server_state();
+  string uptime_str = format_duration(now() - s->creation_time);
+  string build_date = format_time(BUILD_TIMESTAMP);
+  send_text_message_printf(c,
+      "Revision: $C6%s$C7\n$C6%s$C7\nUptime: $C6%s$C7\nLobbies: $C6%zu$C7\nClients: $C6%zu$C7(g) $C6%zu$C7(p)",
+      GIT_REVISION_HASH,
+      build_date.c_str(),
+      uptime_str.c_str(),
+      s->id_to_lobby.size(),
+      s->channel_to_client.size(),
+      s->proxy_server->num_sessions());
+}
 
 static void server_command_lobby_info(shared_ptr<Client> c, const std::string&) {
   vector<string> lines;
@@ -204,9 +219,6 @@ static void proxy_command_lobby_info(shared_ptr<ProxyServer::LinkedSession> ses,
   }
 
   vector<const char*> cheats_tokens;
-  if (ses->config.check_flag(Client::Flag::SWITCH_ASSIST_ENABLED)) {
-    cheats_tokens.emplace_back("SWA");
-  }
   if (ses->config.check_flag(Client::Flag::INFINITE_HP_ENABLED)) {
     cheats_tokens.emplace_back("HP");
   }
@@ -219,14 +231,17 @@ static void proxy_command_lobby_info(shared_ptr<ProxyServer::LinkedSession> ses,
   }
 
   vector<const char*> behaviors_tokens;
+  if (ses->config.check_flag(Client::Flag::SWITCH_ASSIST_ENABLED)) {
+    behaviors_tokens.emplace_back("SWA");
+  }
   if (ses->config.check_flag(Client::Flag::PROXY_SAVE_FILES)) {
-    behaviors_tokens.emplace_back("SAVE");
+    behaviors_tokens.emplace_back("SF");
   }
   if (ses->config.check_flag(Client::Flag::PROXY_SUPPRESS_REMOTE_LOGIN)) {
     behaviors_tokens.emplace_back("SL");
   }
   if (ses->config.check_flag(Client::Flag::PROXY_BLOCK_FUNCTION_CALLS)) {
-    behaviors_tokens.emplace_back("BFC");
+    behaviors_tokens.emplace_back("BF");
   }
   if (!behaviors_tokens.empty()) {
     msg += "\n$C7Flags: $C6";
@@ -1448,15 +1463,23 @@ static void server_command_infinite_hp(shared_ptr<Client> c, const std::string&)
   check_cheats_enabled(l, c);
 
   c->config.toggle_flag(Client::Flag::INFINITE_HP_ENABLED);
-  send_text_message_printf(c, "$C6Infinite HP %s", c->config.check_flag(Client::Flag::INFINITE_HP_ENABLED) ? "enabled" : "disabled");
+  bool enabled = c->config.check_flag(Client::Flag::INFINITE_HP_ENABLED);
+  send_text_message_printf(c, "$C6Infinite HP %s", enabled ? "enabled" : "disabled");
+  if (enabled && l->is_game()) {
+    send_remove_conditions(c);
+  }
 }
 
 static void proxy_command_infinite_hp(shared_ptr<ProxyServer::LinkedSession> ses, const std::string&) {
   auto s = ses->require_server_state();
   check_cheats_allowed(s, ses);
   ses->config.toggle_flag(Client::Flag::INFINITE_HP_ENABLED);
-  send_text_message_printf(ses->client_channel, "$C6Infinite HP %s",
-      ses->config.check_flag(Client::Flag::INFINITE_HP_ENABLED) ? "enabled" : "disabled");
+  bool enabled = ses->config.check_flag(Client::Flag::INFINITE_HP_ENABLED);
+  send_text_message_printf(ses->client_channel, "$C6Infinite HP %s", enabled ? "enabled" : "disabled");
+  if (enabled && ses->is_in_game) {
+    send_remove_conditions(ses->client_channel, ses->lobby_client_id);
+    send_remove_conditions(ses->server_channel, ses->lobby_client_id);
+  }
 }
 
 static void server_command_infinite_tp(shared_ptr<Client> c, const std::string&) {
@@ -1481,7 +1504,6 @@ static void server_command_switch_assist(shared_ptr<Client> c, const std::string
   auto s = c->require_server_state();
   auto l = c->require_lobby();
   check_is_game(l, true);
-  check_cheats_enabled(l, c);
 
   c->config.toggle_flag(Client::Flag::SWITCH_ASSIST_ENABLED);
   send_text_message_printf(c, "$C6Switch assist %s",
@@ -1490,7 +1512,6 @@ static void server_command_switch_assist(shared_ptr<Client> c, const std::string
 
 static void proxy_command_switch_assist(shared_ptr<ProxyServer::LinkedSession> ses, const std::string&) {
   auto s = ses->require_server_state();
-  check_cheats_allowed(s, ses);
   ses->config.toggle_flag(Client::Flag::SWITCH_ASSIST_ENABLED);
   send_text_message_printf(ses->client_channel, "$C6Switch assist %s",
       ses->config.check_flag(Client::Flag::SWITCH_ASSIST_ENABLED) ? "enabled" : "disabled");
@@ -1602,7 +1623,7 @@ static void proxy_command_item(shared_ptr<ProxyServer::LinkedSession> ses, const
   bool set_drop = (!args.empty() && (args[0] == '!'));
 
   ItemData item = s->item_name_index->parse_item_description(ses->version(), (set_drop ? args.substr(1) : args));
-  item.id = random_object<uint32_t>();
+  item.id = random_object<uint32_t>() | 0x80000000;
 
   if (set_drop) {
     ses->next_drop_item = item;
@@ -1906,6 +1927,7 @@ static const unordered_map<string, ChatCommandDefinition> chat_commands({
     {"$saverec", {server_command_saverec, nullptr}},
     {"$sc", {server_command_send_client, proxy_command_send_client}},
     {"$secid", {server_command_secid, proxy_command_secid}},
+    {"$si", {server_command_server_info, nullptr}},
     {"$silence", {server_command_silence, nullptr}},
     {"$song", {server_command_song, proxy_command_song}},
     {"$spec", {server_command_toggle_spectator_flag, nullptr}},

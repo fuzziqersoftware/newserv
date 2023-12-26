@@ -772,10 +772,6 @@ Proxy session commands:\n\
     auto ses = this->get_proxy_session(session_name);
     ses->challenge_rank_color_override = stoul(command_args, nullptr, 16);
 
-  } else if (command_name == "set-chat-filter") {
-    auto ses = this->get_proxy_session(session_name);
-    set_flag(ses->config, Client::Flag::PROXY_CHAT_FILTER_ENABLED, command_args);
-
   } else if (command_name == "set-infinite-hp") {
     auto ses = this->get_proxy_session(session_name);
     set_flag(ses->config, Client::Flag::INFINITE_HP_ENABLED, command_args);
@@ -811,7 +807,7 @@ Proxy session commands:\n\
 
     auto s = ses->require_server_state();
     ItemData item = s->item_name_index->parse_item_description(ses->version(), command_args);
-    item.id = random_object<uint32_t>();
+    item.id = random_object<uint32_t>() | 0x80000000;
 
     if (command_name == "set-next-item") {
       ses->next_drop_item = item;

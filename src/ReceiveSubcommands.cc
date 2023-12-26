@@ -891,6 +891,7 @@ static void on_set_player_visible(shared_ptr<Client> c, uint8_t command, uint8_t
           send_lobby_message_box(c, "");
         }
         if (c->version() == Version::BB_V4) {
+          send_update_team_reward_flags(c);
           send_all_nearby_team_metadatas_to_client(c, false);
         }
       }
@@ -903,12 +904,13 @@ static void on_set_player_visible(shared_ptr<Client> c, uint8_t command, uint8_t
 static void on_change_floor_6x1F(shared_ptr<Client> c, uint8_t command, uint8_t flag, void* data, size_t size) {
   if (is_pre_v1(c->version())) {
     check_size_t<G_SetPlayerFloor_DCNTE_6x1F>(data, size);
-    // DC NTE and 11/2000 don't send 6F when they're done loading, so we do the
-    // relevant things 6F would do here instead.
+    // DC NTE and 11/2000 don't send 6F when they're done loading, so we clear
+    // the loading flag here instead. On these versions, it also seems to be
+    // necessary to assign item IDs again here.
     if (c->config.check_flag(Client::Flag::LOADING)) {
       c->config.clear_flag(Client::Flag::LOADING);
       auto l = c->require_lobby();
-      l->assign_inventory_and_bank_item_ids(c, true);
+      l->assign_inventory_and_bank_item_ids(c);
     }
 
   } else {
@@ -948,7 +950,21 @@ static void on_player_died(shared_ptr<Client> c, uint8_t command, uint8_t flag, 
   forward_subcommand(c, command, flag, data, size);
 }
 
-// When a player is hit by an enemy, heal them if infinite HP is enabled
+static void on_received_condition(shared_ptr<Client> c, uint8_t command, uint8_t flag, void* data, size_t size) {
+  const auto& cmd = check_size_t<G_ClientIDHeader>(data, size, 0xFFFF);
+
+  auto l = c->require_lobby();
+  if (l->is_game()) {
+    forward_subcommand(c, command, flag, data, size);
+    if (cmd.client_id == c->lobby_client_id) {
+      bool player_cheats_enabled = l->check_flag(Lobby::Flag::CHEATS_ENABLED) || (c->license->flags & License::Flag::CHEAT_ANYWHERE);
+      if (player_cheats_enabled && c->config.check_flag(Client::Flag::INFINITE_HP_ENABLED)) {
+        send_remove_conditions(c);
+      }
+    }
+  }
+}
+
 static void on_hit_by_enemy(shared_ptr<Client> c, uint8_t command, uint8_t flag, void* data, size_t size) {
   const auto& cmd = check_size_t<G_ClientIDHeader>(data, size, 0xFFFF);
 
@@ -963,7 +979,6 @@ static void on_hit_by_enemy(shared_ptr<Client> c, uint8_t command, uint8_t flag,
   }
 }
 
-// When a player casts a tech, restore TP if infinite TP is enabled
 static void on_cast_technique_finished(shared_ptr<Client> c, uint8_t command, uint8_t flag, void* data, size_t size) {
   const auto& cmd = check_size_t<G_CastTechniqueComplete_6x48>(data, size);
 
@@ -1032,8 +1047,7 @@ static void on_switch_state_changed(shared_ptr<Client> c, uint8_t command, uint8
   forward_subcommand(c, command, flag, data, size);
 
   if (cmd.flags && cmd.header.object_id != 0xFFFF) {
-    bool player_cheats_enabled = l->check_flag(Lobby::Flag::CHEATS_ENABLED) || (c->license->flags & License::Flag::CHEAT_ANYWHERE);
-    if (player_cheats_enabled &&
+    if (!l->quest &&
         c->config.check_flag(Client::Flag::SWITCH_ASSIST_ENABLED) &&
         (c->last_switch_enabled_command.header.subcommand == 0x05)) {
       c->log.info("[Switch assist] Replaying previous enable command");
@@ -1453,7 +1467,7 @@ static void on_use_item(
     const auto& item = p->inventory.items[index].data;
     name = s->describe_item(c->version(), item, false);
   }
-  player_use_item(c, index);
+  player_use_item(c, index, l->random_crypt);
 
   if (l->log.should_log(LogLevel::INFO)) {
     l->log.info("Player %hhu used item %hu:%08" PRIX32 " (%s)",
@@ -2803,7 +2817,7 @@ static void on_secret_lottery_ticket_exchange_bb(shared_ptr<Client> c, uint8_t, 
 
       ItemData item = (s->secret_lottery_results.size() == 1)
           ? s->secret_lottery_results[0]
-          : s->secret_lottery_results[random_object<uint32_t>() % s->secret_lottery_results.size()];
+          : s->secret_lottery_results[l->random_crypt->next() % s->secret_lottery_results.size()];
       item.enforce_min_stack_size();
       item.id = l->generate_item_id(c->lobby_client_id);
       p->add_item(item);
@@ -2819,7 +2833,7 @@ static void on_secret_lottery_ticket_exchange_bb(shared_ptr<Client> c, uint8_t, 
       out_cmd.unknown_a3.clear(1);
     } else {
       for (size_t z = 0; z < out_cmd.unknown_a3.size(); z++) {
-        out_cmd.unknown_a3[z] = random_object<uint32_t>() % s->secret_lottery_results.size();
+        out_cmd.unknown_a3[z] = l->random_crypt->next() % s->secret_lottery_results.size();
       }
     }
     send_command_t(c, 0x24, (slt_index >= 0) ? 0 : 1, out_cmd);
@@ -2849,7 +2863,7 @@ static void on_quest_F95E_result_bb(shared_ptr<Client> c, uint8_t, uint8_t, void
       if (results.empty()) {
         throw runtime_error("invalid result type");
       }
-      ItemData item = (results.size() == 1) ? results[0] : results[random_object<uint32_t>() % results.size()];
+      ItemData item = (results.size() == 1) ? results[0] : results[l->random_crypt->next() % results.size()];
       if (item.data1[0] == 0x04) { // Meseta
         // TODO: What is the right amount of Meseta to use here? Presumably it
         // should be random within a certain range, but it's not obvious what
@@ -2926,10 +2940,10 @@ static void on_quest_F960_result_bb(shared_ptr<Client> c, uint8_t, uint8_t, void
       size_t tier = cmd.result_tier - num_failures;
       const auto& results = s->quest_F960_success_results.at(tier);
       uint64_t probability = results.base_probability + num_failures * results.probability_upgrade;
-      if (random_object<uint32_t>() <= probability) {
+      if (l->random_crypt->next() <= probability) {
         c->log.info("Tier %zu yielded a prize", tier);
         const auto& result_items = results.results.at(weekday);
-        item = result_items[random_object<uint32_t>() % result_items.size()];
+        item = result_items[l->random_crypt->next() % result_items.size()];
         break;
       } else {
         c->log.info("Tier %zu did not yield a prize", tier);
@@ -2938,7 +2952,7 @@ static void on_quest_F960_result_bb(shared_ptr<Client> c, uint8_t, uint8_t, void
     if (item.empty()) {
       c->log.info("Choosing result from failure tier");
       const auto& result_items = s->quest_F960_failure_results.results.at(weekday);
-      item = result_items[random_object<uint32_t>() % result_items.size()];
+      item = result_items[l->random_crypt->next() % result_items.size()];
     }
     if (item.empty()) {
       throw runtime_error("no item produced, even from failure tier");
@@ -2959,12 +2973,18 @@ static void on_quest_F960_result_bb(shared_ptr<Client> c, uint8_t, uint8_t, void
     G_SetMesetaSlotPrizeResult_BB_6xE3 cmd_6xE3 = {{0xE3, sizeof(G_SetMesetaSlotPrizeResult_BB_6xE3) >> 2, 0x0000}, item};
     send_command_t(c, 0x60, 0x00, cmd_6xE3);
 
-    p->add_item(item);
-    send_create_inventory_item_to_lobby(c, c->lobby_client_id, item);
-
-    if (c->log.should_log(LogLevel::INFO)) {
-      string name = s->item_name_index->describe_item(c->version(), item);
-      c->log.info("Awarded item %s", name.c_str());
+    try {
+      p->add_item(item);
+      send_create_inventory_item_to_lobby(c, c->lobby_client_id, item);
+      if (c->log.should_log(LogLevel::INFO)) {
+        string name = s->item_name_index->describe_item(c->version(), item);
+        c->log.info("Awarded item %s", name.c_str());
+      }
+    } catch (const out_of_range&) {
+      if (c->log.should_log(LogLevel::INFO)) {
+        string name = s->item_name_index->describe_item(c->version(), item);
+        c->log.info("Attempted to award item %s, but inventory was full", name.c_str());
+      }
     }
   }
 }
@@ -3072,7 +3092,7 @@ const SubcommandDefinition subcommand_definitions[0x100] = {
     /* 6x09 */ {0x09, 0x09, 0x09, nullptr},
     /* 6x0A */ {0x0A, 0x0A, 0x0A, on_enemy_hit},
     /* 6x0B */ {0x0B, 0x0B, 0x0B, on_forward_check_game},
-    /* 6x0C */ {0x0C, 0x0C, 0x0C, on_forward_check_game},
+    /* 6x0C */ {0x0C, 0x0C, 0x0C, on_received_condition},
     /* 6x0D */ {0x00, 0x00, 0x0D, on_forward_check_game},
     /* 6x0E */ {0x00, 0x00, 0x0E, nullptr},
     /* 6x0F */ {0x00, 0x00, 0x0F, on_invalid},

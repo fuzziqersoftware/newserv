@@ -23,7 +23,6 @@ static atomic<uint64_t> next_id(1);
 
 void Client::Config::set_flags_for_version(Version version, int64_t sub_version) {
   this->set_flag(Flag::PROXY_CHAT_COMMANDS_ENABLED);
-  this->set_flag(Flag::PROXY_CHAT_FILTER_ENABLED);
 
   switch (sub_version) {
     case -1: // Initial check (before sub_version recognition)
@@ -191,7 +190,8 @@ Client::Client(
   // Don't print data sent to patch clients to the logs. The patch server
   // protocol is fully understood and data logs for patch clients are generally
   // more annoying than helpful at this point.
-  if ((this->channel.version == Version::PC_PATCH) || (this->channel.version == Version::BB_PATCH)) {
+  if ((server->get_state()->hide_download_commands) &&
+      ((this->channel.version == Version::PC_PATCH) || (this->channel.version == Version::BB_PATCH))) {
     this->channel.terminal_recv_color = TerminalFormat::END;
     this->channel.terminal_send_color = TerminalFormat::END;
   }

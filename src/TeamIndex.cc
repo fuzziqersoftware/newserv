@@ -58,6 +58,9 @@ void TeamIndex::Team::load_config() {
     Member m(*member_it);
     this->points += m.points;
     uint32_t serial_number = m.serial_number;
+    if (m.check_flag(Member::Flag::IS_MASTER)) {
+      this->master_serial_number = serial_number;
+    }
     this->members.emplace(serial_number, std::move(m));
   }
   try {
@@ -96,7 +99,7 @@ void TeamIndex::Team::load_flag() {
   this->flag_data.reset(new parray<le_uint16_t, 0x20 * 0x20>());
   for (size_t y = 0; y < 32; y++) {
     for (size_t x = 0; x < 32; x++) {
-      this->flag_data->at(y * 0x20 + x) = encode_rgbx8888_to_xrgb1555(img.read_pixel(x, y));
+      this->flag_data->at(y * 0x20 + x) = encode_rgba8888_to_argb1555(img.read_pixel(x, y));
     }
   }
 }
@@ -108,7 +111,7 @@ void TeamIndex::Team::save_flag() const {
   Image img(32, 32, false);
   for (size_t y = 0; y < 32; y++) {
     for (size_t x = 0; x < 32; x++) {
-      img.write_pixel(x, y, decode_xrgb1555_to_rgba8888(this->flag_data->at(y * 0x20 + x)));
+      img.write_pixel(x, y, decode_argb1555_to_rgba8888(this->flag_data->at(y * 0x20 + x)));
     }
   }
   img.save(this->flag_filename(), Image::Format::WINDOWS_BITMAP);
@@ -125,11 +128,11 @@ PSOBBTeamMembership TeamIndex::Team::membership_for_member(uint32_t serial_numbe
   const auto& m = this->members.at(serial_number);
 
   PSOBBTeamMembership ret;
-  ret.guild_card_number = serial_number;
+  ret.team_master_guild_card_number = this->master_serial_number;
   ret.team_id = this->team_id;
-  ret.unknown_a4 = 0;
-  ret.privilege_level = m.privilege_level();
+  ret.unknown_a5 = 0;
   ret.unknown_a6 = 0;
+  ret.privilege_level = m.privilege_level();
   ret.unknown_a7 = 0;
   ret.unknown_a8 = 0;
   ret.unknown_a9 = 0;
@@ -292,7 +295,7 @@ vector<shared_ptr<const TeamIndex::Team>> TeamIndex::all() const {
   return ret;
 }
 
-shared_ptr<const TeamIndex::Team> TeamIndex::create(string& name, uint32_t master_serial_number, const string& master_name) {
+shared_ptr<const TeamIndex::Team> TeamIndex::create(const string& name, uint32_t master_serial_number, const string& master_name) {
   auto team = make_shared<Team>(this->next_team_id++);
   save_file(this->directory + "/base.json", JSON::dict({{"NextTeamID", this->next_team_id}}).serialize());
 
@@ -314,6 +317,16 @@ void TeamIndex::disband(uint32_t team_id) {
   auto team = this->id_to_team.at(team_id);
   this->remove_from_indexes(team);
   team->delete_files();
+}
+
+void TeamIndex::rename(uint32_t team_id, const std::string& new_team_name) {
+  auto team = this->id_to_team.at(team_id);
+  if (!this->name_to_team.emplace(new_team_name, team).second) {
+    throw runtime_error("team name is already in use");
+  }
+  this->name_to_team.erase(team->name);
+  team->name = new_team_name;
+  team->save_config();
 }
 
 void TeamIndex::add_member(uint32_t team_id, uint32_t serial_number, const string& name) {
@@ -411,6 +424,7 @@ void TeamIndex::change_master(uint32_t master_serial_number, uint32_t new_master
   master_m.set_flag(TeamIndex::Team::Member::Flag::IS_LEADER);
   new_master_m.clear_flag(TeamIndex::Team::Member::Flag::IS_LEADER);
   new_master_m.set_flag(TeamIndex::Team::Member::Flag::IS_MASTER);
+  team->master_serial_number = new_master_serial_number;
   team->save_config();
 }
 

@@ -38,9 +38,24 @@ find_package(resource_file QUIET)
 
 
 
+# Git metadata
+
+add_custom_command(
+    OUTPUT ${CMAKE_CURRENT_SOURCE_DIR}/src/Revision.cc ${CMAKE_CURRENT_SOURCE_DIR}/src/__Revision__.cc
+    COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/src/Revision-generate.sh ${CMAKE_CURRENT_SOURCE_DIR}/src/Revision.cc
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/src
+)
+add_custom_target(
+    newserv-Revision-cc
+    DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/src/Revision.cc ${CMAKE_CURRENT_SOURCE_DIR}/src/__Revision__.cc
+)
+
+
+
 # Executable definition
 
 set(SOURCES
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/Revision.cc
     src/AFSArchive.cc
     src/BattleParamsIndex.cc
     src/BMLArchive.cc
@@ -100,6 +115,7 @@ set(SOURCES
     src/ReceiveCommands.cc
     src/ReceiveSubcommands.cc
     src/ReplaySession.cc
+    src/Revision.cc
     src/SaveFileFormats.cc
     src/SendCommands.cc
     src/Server.cc
@@ -122,6 +138,7 @@ endif()
 add_executable(newserv ${SOURCES})
 target_include_directories(newserv PUBLIC ${LIBEVENT_INCLUDE_DIR} ${Iconv_INCLUDE_DIRS})
 target_link_libraries(newserv phosg ${LIBEVENT_LIBRARIES} ${Iconv_LIBRARIES} pthread)
+add_dependencies(newserv newserv-Revision-cc)
 
 if(resource_file_FOUND)
     target_compile_definitions(newserv PUBLIC HAVE_RESOURCE_FILE)

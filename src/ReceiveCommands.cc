@@ -49,20 +49,22 @@ static shared_ptr<const Menu> proxy_options_menu_for_client(shared_ptr<const Cli
 
   add_option(ProxyOptionsMenuItemID::CHAT_COMMANDS, Client::Flag::PROXY_CHAT_COMMANDS_ENABLED,
       "Chat commands", "Enable chat\ncommands");
-  add_option(ProxyOptionsMenuItemID::CHAT_FILTER, Client::Flag::PROXY_CHAT_FILTER_ENABLED,
-      "Chat filter", "Enable escape\nsequences in\nchat messages\nand info board");
   add_option(ProxyOptionsMenuItemID::PLAYER_NOTIFICATIONS, Client::Flag::PROXY_PLAYER_NOTIFICATIONS_ENABLED,
       "Player notifs", "Show a message\nwhen other players\njoin or leave");
   add_option(ProxyOptionsMenuItemID::BLOCK_PINGS, Client::Flag::PROXY_SUPPRESS_CLIENT_PINGS,
       "Block pings", "Block ping commands\nsent by the client");
+  add_bool_option(ProxyOptionsMenuItemID::BLOCK_EVENTS, (c->config.override_lobby_event != 0xFF),
+      "Block events", "Disable seasonal\nevents in the lobby\nand in games");
+  add_option(ProxyOptionsMenuItemID::BLOCK_PATCHES, Client::Flag::PROXY_BLOCK_FUNCTION_CALLS,
+      "Block patches", "Disable patches sent\nby the remote server");
+  add_option(ProxyOptionsMenuItemID::SWITCH_ASSIST, Client::Flag::SWITCH_ASSIST_ENABLED,
+      "Switch assist", "Automatically try\nto unlock 2-player\ndoors when you step\non both switches\nsequentially");
   if ((s->cheat_mode_behavior != ServerState::BehaviorSwitch::OFF) || (c->license->flags & License::Flag::CHEAT_ANYWHERE)) {
     if (!is_ep3(c->version())) {
       add_option(ProxyOptionsMenuItemID::INFINITE_HP, Client::Flag::INFINITE_HP_ENABLED,
           "Infinite HP", "Enable automatic HP\nrestoration when\nyou are hit by an\nenemy or trap\n\nCannot revive you\nfrom one-hit kills");
       add_option(ProxyOptionsMenuItemID::INFINITE_TP, Client::Flag::INFINITE_TP_ENABLED,
           "Infinite TP", "Enable automatic TP\nrestoration when\nyou cast any\ntechnique");
-      add_option(ProxyOptionsMenuItemID::SWITCH_ASSIST, Client::Flag::SWITCH_ASSIST_ENABLED,
-          "Switch assist", "Automatically try\nto unlock 2-player\ndoors when you step\non both switches\nsequentially");
     } else {
       // Note: This option's text is the maximum possible length for any menu item
       add_option(ProxyOptionsMenuItemID::EP3_INFINITE_MESETA, Client::Flag::PROXY_EP3_INFINITE_MESETA_ENABLED,
@@ -73,10 +75,6 @@ static shared_ptr<const Menu> proxy_options_menu_for_client(shared_ptr<const Cli
           "Unmask whispers", "Show contents of\nwhisper messages even\nif they are not for\nyou");
     }
   }
-  add_bool_option(ProxyOptionsMenuItemID::BLOCK_EVENTS, (c->config.override_lobby_event != 0xFF),
-      "Block events", "Disable seasonal\nevents in the lobby\nand in games");
-  add_option(ProxyOptionsMenuItemID::BLOCK_PATCHES, Client::Flag::PROXY_BLOCK_FUNCTION_CALLS,
-      "Block patches", "Disable patches sent\nby the remote server");
   if (s->proxy_allow_save_files) {
     add_option(ProxyOptionsMenuItemID::SAVE_FILES, Client::Flag::PROXY_SAVE_FILES,
         "Save files", "Save local copies of\nfiles from the\nremote server\n(quests, etc.)");
@@ -1135,7 +1133,7 @@ static void on_93_BB(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
     // command.
     on_login_complete(c);
 
-  } else {
+  } else if (s->hide_download_commands) {
     // The BB data server protocol is fairly well-understood and has some large
     // commands, so we omit data logging for clients on the data server.
     c->log.info("Client is in the BB data server phase; disabling command data logging for the rest of this client\'s session");
@@ -1959,7 +1957,7 @@ static void on_quest_loaded(shared_ptr<Lobby> l) {
         lc->use_default_bank();
         lc->create_challenge_overlay(lc->version(), l->quest->challenge_template_index, s->level_table);
         lc->log.info("Created challenge overlay");
-        l->assign_inventory_and_bank_item_ids(lc, true);
+        l->assign_inventory_and_bank_item_ids(lc);
       }
     }
   }
@@ -2206,9 +2204,6 @@ static void on_10(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
           break;
         case ProxyOptionsMenuItemID::CHAT_COMMANDS:
           c->config.toggle_flag(Client::Flag::PROXY_CHAT_COMMANDS_ENABLED);
-          goto resend_proxy_options_menu;
-        case ProxyOptionsMenuItemID::CHAT_FILTER:
-          c->config.toggle_flag(Client::Flag::PROXY_CHAT_FILTER_ENABLED);
           goto resend_proxy_options_menu;
         case ProxyOptionsMenuItemID::PLAYER_NOTIFICATIONS:
           c->config.toggle_flag(Client::Flag::PROXY_PLAYER_NOTIFICATIONS_ENABLED);
@@ -3541,7 +3536,7 @@ static void on_DF_BB(shared_ptr<Client> c, uint16_t command, uint32_t, string& d
           lc->use_default_bank();
           lc->create_challenge_overlay(lc->version(), l->quest->challenge_template_index, s->level_table);
           lc->log.info("Created challenge overlay");
-          l->assign_inventory_and_bank_item_ids(lc, true);
+          l->assign_inventory_and_bank_item_ids(lc);
         }
       }
 
@@ -4275,15 +4270,12 @@ static void on_6F(shared_ptr<Client> c, uint16_t command, uint32_t, string& data
   }
   c->config.clear_flag(Client::Flag::LOADING);
 
-  if (command == 0x006F) {
-    l->assign_inventory_and_bank_item_ids(c, true);
-  }
-
   send_server_time(c);
   if (l->base_version == Version::BB_V4) {
     send_set_exp_multiplier(l);
   }
   if (c->version() == Version::BB_V4) {
+    send_update_team_reward_flags(c);
     send_all_nearby_team_metadatas_to_client(c, false);
   }
 
@@ -4893,6 +4885,29 @@ static void on_EA_BB(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
     case 0x1CEA:
       send_cross_team_ranking(c);
       break;
+    case 0x1EEA: {
+      const auto& cmd = check_size_t<C_RenameTeam_BB_1EEA>(data);
+      auto team = c->team();
+      string new_team_name = cmd.new_team_name.decode(c->language());
+      if (!team) {
+        // TODO: What's the right error code to use here?
+        send_command(c, 0x1FEA, 0x00000001);
+      } else if (s->team_index->get_by_name(new_team_name)) {
+        send_command(c, 0x1FEA, 0x00000002);
+      } else {
+        s->team_index->rename(team->team_id, new_team_name);
+        send_command(c, 0x1FEA, 0x00000000);
+        for (const auto& it : team->members) {
+          try {
+            auto member_c = s->find_client(nullptr, it.second.serial_number);
+            send_update_team_metadata_for_client(c);
+            send_team_membership_info(c);
+          } catch (const out_of_range&) {
+          }
+        }
+      }
+      break;
+    }
     default:
       throw runtime_error("invalid team command");
   }

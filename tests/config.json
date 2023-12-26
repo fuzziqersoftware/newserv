@@ -105,6 +105,7 @@
     "GameServer": "INFO",
     "StaticGameData": "INFO",
   },
+  "HideDownloadCommands": true,
 
   "AllowUnregisteredUsers": true,
   "AllowPCNTE": true,

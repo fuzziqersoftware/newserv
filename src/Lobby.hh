@@ -233,7 +233,7 @@ struct Lobby : public std::enable_shared_from_this<Lobby> {
 
   uint32_t generate_item_id(uint8_t client_id);
   void on_item_id_generated_externally(uint32_t item_id);
-  void assign_inventory_and_bank_item_ids(std::shared_ptr<Client> c, bool consume_ids);
+  void assign_inventory_and_bank_item_ids(std::shared_ptr<Client> c);
 
   QuestIndex::IncludeCondition quest_include_condition() const;
 

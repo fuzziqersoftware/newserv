@@ -3335,8 +3335,9 @@ struct C_SetTeamFlag_BB_0FEA {
   parray<le_uint16_t, 0x20 * 0x20> flag_data;
 } __packed__;
 
-// 10EA: Delete team result
-// No arguments except header.flag
+// 10EA: Delete team (C->S) and result (S->C)
+// No arguments (C->S)
+// No arguments except header.flag (S->C)
 
 // 11EA: Change team member privilege level
 // The format below is used only when the client sends this command; when the
@@ -3371,16 +3372,20 @@ struct S_TeamMembershipInformation_BB_12EA {
 struct S_TeamInfoForPlayer_BB_13EA_15EA_Entry {
   // The client uses the first four of these to determine if the player is in a
   // team or not - if they are all zero, the player is not in a team.
-  le_uint32_t guild_card_number = 0;
-  le_uint32_t team_id = 0;
-  le_uint32_t unknown_a3 = 0;
-  le_uint32_t unknown_a4 = 0;
-  le_uint32_t privilege_level = 0;
-  pstring<TextEncoding::UTF16, 0x10> team_name;
-  le_uint32_t guild_card_number2 = 0;
-  le_uint32_t lobby_client_id = 0;
-  pstring<TextEncoding::UTF16, 0x10> player_name;
-  parray<le_uint16_t, 0x20 * 0x20> flag_data;
+  /* 0000 */ le_uint32_t guild_card_number = 0;
+  /* 0004 */ le_uint32_t team_id = 0;
+  /* 0008 */ le_uint32_t reward_flags = 0;
+  /* 000C */ le_uint32_t unknown_a6 = 0;
+  /* 0010 */ uint8_t privilege_level = 0;
+  /* 0011 */ uint8_t unknown_a7 = 0;
+  /* 0012 */ uint8_t unknown_a8 = 0;
+  /* 0013 */ uint8_t unknown_a9 = 0;
+  /* 0014 */ pstring<TextEncoding::UTF16, 0x10> team_name;
+  /* 0034 */ le_uint32_t guild_card_number2 = 0;
+  /* 0038 */ le_uint32_t lobby_client_id = 0;
+  /* 003C */ pstring<TextEncoding::UTF16, 0x10> player_name;
+  /* 005C */ parray<le_uint16_t, 0x20 * 0x20> flag_data;
+  /* 085C */
 } __packed__;
 
 // 14EA (C->S): Get team info for lobby players
@@ -3455,16 +3460,15 @@ struct S_CrossTeamRanking_BB_1CEA {
 // 1DEA (S->C): Update team rewards bitmask
 // header.flag specifies the new rewards bitmask.
 
-// 1EEA (C->S): Unknown
+// 1EEA (C->S): Rename team
 // header.flag is used, but it's unknown what the value means.
 
-struct C_Unknown_BB_1EEA {
-  pstring<TextEncoding::UTF16, 0x10> unknown_a1;
+struct C_RenameTeam_BB_1EEA {
+  pstring<TextEncoding::UTF16, 0x10> new_team_name;
 } __packed__;
 
-// 1FEA (S->C): Action result
-// This command behaves exactly like 02EA. This command is presumably the
-// response to whatever 1EEA does.
+// 1FEA (S->C): Rename team result
+// This command behaves like 02EA, but is sent in response to 1EEA instead.
 
 // 20EA: Unknown
 // header.flag is used, but no other arguments. When sent by the server,
@@ -3702,6 +3706,15 @@ struct S_SetShutdownCommand_BB_01EF {
 // commands must be used. The 60 and 62 commands exhibit undefined behavior if
 // this limit is exceeded.
 
+// Some subcommands are "protected" on V3 and later (not including GC NTE);
+// these commands are blocked by the client if they affect the local player. If
+// a V3 or later client receives a protected subcommand that would affect its
+// own player, it instead ignores the entire subcommand. This means that the
+// server or other players cannot send these subcommands to affect other
+// players; they can only send these commands to inform other clients about
+// changes or actions from their own player.
+// The protected subcommands are marked (protected) in the listings below.
+
 // These common structures are used my many subcommands.
 struct G_ClientIDHeader {
   uint8_t subcommand = 0;
@@ -3836,8 +3849,8 @@ struct G_BoxDestroyed_6x0B {
   le_uint32_t object_index = 0;
 } __packed__;
 
-// 6x0C: Add condition (poison/slow/etc.)
-// 6x0D: Remove condition (poison/slow/etc.)
+// 6x0C: Add condition (poison/slow/etc.) (protected on V3/V4)
+// 6x0D: Remove condition (poison/slow/etc.) (protected on V3/V4)
 
 struct G_AddOrRemoveCondition_6x0C_6x0D {
   G_ClientIDHeader header;
@@ -3845,7 +3858,7 @@ struct G_AddOrRemoveCondition_6x0C_6x0D {
   le_uint32_t unknown_a2 = 0;
 } __packed__;
 
-// 6x0E: Unknown
+// 6x0E: Unknown (protected on V3/V4)
 
 struct G_Unknown_6x0E {
   G_ClientIDHeader header;
@@ -3941,13 +3954,13 @@ struct G_DarkFalzActions_6x19 {
 
 // 6x1A: Invalid subcommand
 
-// 6x1B: Unknown (not valid on Episode 3)
+// 6x1B: Unknown (not valid on Episode 3) (protected on V3/V4)
 
 struct G_Unknown_6x1B {
   G_ClientIDHeader header;
 } __packed__;
 
-// 6x1C: Destroy NPC
+// 6x1C: Destroy NPC (protected on V3/V4)
 
 struct G_DestroyNPC_6x1C {
   G_ClientIDHeader header;
@@ -3967,7 +3980,7 @@ struct G_SetPlayerFloor_6x1F {
   le_int32_t floor = 0;
 } __packed__;
 
-// 6x20: Set position
+// 6x20: Set position (protected on V3/V4)
 // Existing clients send this in response to a 6x1F command when a new client
 // joins a lobby or game, so the new client knows where to place them.
 
@@ -3980,22 +3993,22 @@ struct G_SetPosition_6x20 {
   le_uint32_t unknown_a1 = 0;
 } __packed__;
 
-// 6x21: Inter-level warp
+// 6x21: Inter-level warp (protected on V3/V4)
 
 struct G_InterLevelWarp_6x21 {
   G_ClientIDHeader header;
   le_int32_t floor = 0;
 } __packed__;
 
-// 6x22: Set player invisible
-// 6x23: Set player visible
+// 6x22: Set player invisible (protected on V3/V4)
+// 6x23: Set player visible (protected on V3/V4)
 // These are generally used while a player is in the process of changing floors.
 
 struct G_SetPlayerVisibility_6x22_6x23 {
   G_ClientIDHeader header;
 } __packed__;
 
-// 6x24: Teleport player
+// 6x24: Teleport player (protected on V3/V4)
 
 struct G_TeleportPlayer_6x24 {
   G_ClientIDHeader header;
@@ -4005,7 +4018,7 @@ struct G_TeleportPlayer_6x24 {
   le_float z = 0.0f;
 } __packed__;
 
-// 6x25: Equip item
+// 6x25: Equip item (protected on V3/V4)
 
 struct G_EquipItem_6x25 {
   G_ClientIDHeader header;
@@ -4014,7 +4027,7 @@ struct G_EquipItem_6x25 {
   le_uint32_t equip_slot = 0;
 } __packed__;
 
-// 6x26: Unequip item
+// 6x26: Unequip item (protected on V3/V4)
 
 struct G_UnequipItem_6x26 {
   G_ClientIDHeader header;
@@ -4022,14 +4035,14 @@ struct G_UnequipItem_6x26 {
   le_uint32_t unused = 0;
 } __packed__;
 
-// 6x27: Use item
+// 6x27: Use item (protected on V3/V4)
 
 struct G_UseItem_6x27 {
   G_ClientIDHeader header;
   le_uint32_t item_id = 0;
 } __packed__;
 
-// 6x28: Feed MAG
+// 6x28: Feed MAG (protected on V3/V4)
 
 struct G_FeedMAG_6x28 {
   G_ClientIDHeader header;
@@ -4037,7 +4050,7 @@ struct G_FeedMAG_6x28 {
   le_uint32_t fed_item_id = 0;
 } __packed__;
 
-// 6x29: Delete inventory item (via bank deposit / sale / feeding MAG)
+// 6x29: Delete inventory item (via bank deposit / sale / feeding MAG) (protected on V3 but not V4)
 // This subcommand is also used for reducing the size of stacks - if amount is
 // less than the stack count, the item is not deleted and its ID remains valid.
 
@@ -4047,7 +4060,7 @@ struct G_DeleteInventoryItem_6x29 {
   le_uint32_t amount = 0;
 } __packed__;
 
-// 6x2A: Drop item
+// 6x2A: Drop item (protected on V3/V4)
 
 struct G_DropItem_6x2A {
   G_ClientIDHeader header;
@@ -4059,7 +4072,8 @@ struct G_DropItem_6x2A {
   le_float z = 0.0f;
 } __packed__;
 
-// 6x2B: Create item in inventory (e.g. via tekker or bank withdraw)
+// 6x2B: Create item in inventory (e.g. via tekker or bank withdraw) (protected on V3/V4)
+// On BB, the 6xBE command is used instead of 6x2B to create inventory items.
 
 struct G_CreateInventoryItem_DC_6x2B {
   G_ClientIDHeader header;
@@ -4072,7 +4086,7 @@ struct G_CreateInventoryItem_PC_V3_BB_6x2B : G_CreateInventoryItem_DC_6x2B {
   parray<uint8_t, 2> unused2 = 0;
 } __packed__;
 
-// 6x2C: Talk to NPC
+// 6x2C: Talk to NPC (protected on V3/V4)
 
 struct G_TalkToNPC_6x2C {
   G_ClientIDHeader header;
@@ -4083,13 +4097,13 @@ struct G_TalkToNPC_6x2C {
   le_float unknown_a5 = 0.0f;
 } __packed__;
 
-// 6x2D: Done talking to NPC
+// 6x2D: Done talking to NPC (protected on V3/V4)
 
 struct G_EndTalkToNPC_6x2D {
   G_ClientIDHeader header;
 } __packed__;
 
-// 6x2E: Set and/or clear player flags
+// 6x2E: Set and/or clear player flags (protected on V3/V4)
 
 struct G_SetOrClearPlayerFlags_6x2E {
   G_ClientIDHeader header;
@@ -4120,7 +4134,7 @@ struct G_LevelUp_6x30 {
   le_uint16_t unknown_a1 = 0; // Must be 0 or 1
 } __packed__;
 
-// 6x31: Resurrect player
+// 6x31: Resurrect player (protected on V3/V4)
 
 struct G_UseMedicalCenter_6x31 {
   G_ClientIDHeader header;
@@ -4132,7 +4146,7 @@ struct G_Unknown_6x32 {
   G_UnusedHeader header;
 } __packed__;
 
-// 6x33: Resurrect player (with Moon Atomizer)
+// 6x33: Resurrect player (with Moon Atomizer) (protected on V3/V4)
 
 struct G_RevivePlayer_6x33 {
   G_ClientIDHeader header;
@@ -4148,7 +4162,7 @@ struct G_RevivePlayer_6x33 {
 // 6x36: Unknown (supported; game only)
 // This subcommand is completely ignored (at least, by PSO GC).
 
-// 6x37: Photon blast
+// 6x37: Photon blast (protected on V3/V4)
 
 struct G_PhotonBlast_6x37 {
   G_ClientIDHeader header;
@@ -4156,7 +4170,7 @@ struct G_PhotonBlast_6x37 {
   le_uint16_t unused = 0;
 } __packed__;
 
-// 6x38: Donate to photon blast
+// 6x38: Donate to photon blast (protected on V3/V4)
 
 struct G_Unknown_6x38 {
   G_ClientIDHeader header;
@@ -4164,19 +4178,19 @@ struct G_Unknown_6x38 {
   le_uint16_t unused = 0;
 } __packed__;
 
-// 6x39: Photon blast ready
+// 6x39: Photon blast ready (protected on V3/V4)
 
 struct G_PhotonBlastReady_6x38 {
   G_ClientIDHeader header;
 } __packed__;
 
-// 6x3A: Unknown (supported; game only)
+// 6x3A: Unknown (supported; game only) (protected on V3/V4)
 
 struct G_Unknown_6x3A {
   G_ClientIDHeader header;
 } __packed__;
 
-// 6x3B: Unknown (supported; lobby & game)
+// 6x3B: Unknown (supported; lobby & game) (protected on V3/V4)
 
 struct G_Unknown_6x3B {
   G_ClientIDHeader header;
@@ -4185,7 +4199,7 @@ struct G_Unknown_6x3B {
 // 6x3C: Invalid subcommand
 // 6x3D: Invalid subcommand
 
-// 6x3E: Stop moving
+// 6x3E: Stop moving (protected on V3/V4)
 
 struct G_StopAtPosition_6x3E {
   G_ClientIDHeader header;
@@ -4198,7 +4212,7 @@ struct G_StopAtPosition_6x3E {
   le_float z = 0.0f;
 } __packed__;
 
-// 6x3F: Set position
+// 6x3F: Set position (protected on V3/V4)
 
 struct G_SetPosition_6x3F {
   G_ClientIDHeader header;
@@ -4211,7 +4225,7 @@ struct G_SetPosition_6x3F {
   le_float z = 0.0f;
 } __packed__;
 
-// 6x40: Walk
+// 6x40: Walk (protected on V3/V4)
 
 struct G_WalkToPosition_6x40 {
   G_ClientIDHeader header;
@@ -4223,7 +4237,7 @@ struct G_WalkToPosition_6x40 {
 // 6x41: Unknown
 // This subcommand is completely ignored (at least, by PSO GC).
 
-// 6x42: Run
+// 6x42: Run (protected on V3/V4)
 
 struct G_RunToPosition_6x42 {
   G_ClientIDHeader header;
@@ -4231,9 +4245,9 @@ struct G_RunToPosition_6x42 {
   le_float z = 0.0f;
 } __packed__;
 
-// 6x43: First attack
-// 6x44: Second attack
-// 6x45: Third attack
+// 6x43: First attack (protected on V3/V4)
+// 6x44: Second attack (protected on V3/V4)
+// 6x45: Third attack (protected on V3/V4)
 
 struct G_Attack_6x43_6x44_6x45 {
   G_ClientIDHeader header;
@@ -4241,7 +4255,7 @@ struct G_Attack_6x43_6x44_6x45 {
   le_uint16_t unknown_a2 = 0;
 } __packed__;
 
-// 6x46: Attack finished (sent after each of 43, 44, and 45)
+// 6x46: Attack finished (sent after each of 43, 44, and 45) (protected on V3/V4)
 
 struct G_AttackFinished_6x46 {
   G_ClientIDHeader header;
@@ -4254,7 +4268,7 @@ struct G_AttackFinished_6x46 {
   parray<TargetEntry, 10> targets;
 } __packed__;
 
-// 6x47: Cast technique
+// 6x47: Cast technique (protected on V3/V4)
 
 struct G_CastTechnique_6x47 {
   G_ClientIDHeader header;
@@ -4275,7 +4289,7 @@ struct G_CastTechnique_6x47 {
   parray<TargetEntry, 10> targets;
 } __packed__;
 
-// 6x48: Cast technique complete
+// 6x48: Cast technique complete (protected on V3/V4)
 
 struct G_CastTechniqueComplete_6x48 {
   G_ClientIDHeader header;
@@ -4285,7 +4299,7 @@ struct G_CastTechniqueComplete_6x48 {
   le_uint16_t level = 0;
 } __packed__;
 
-// 6x49: Subtract photon blast energy
+// 6x49: Subtract photon blast energy (protected on V3/V4)
 
 struct G_SubtractPBEnergy_6x49 {
   G_ClientIDHeader header;
@@ -4302,14 +4316,14 @@ struct G_SubtractPBEnergy_6x49 {
   parray<Entry, 14> entries;
 } __packed__;
 
-// 6x4A: Fully shield attack
+// 6x4A: Fully shield attack (protected on V3/V4)
 
 struct G_ShieldAttack_6x4A {
   G_ClientIDHeader header;
 } __packed__;
 
-// 6x4B: Hit by enemy
-// 6x4C: Hit by enemy
+// 6x4B: Hit by enemy (protected on V3/V4)
+// 6x4C: Hit by enemy (protected on V3/V4)
 
 struct G_HitByEnemy_6x4B_6x4C {
   G_ClientIDHeader header;
@@ -4319,26 +4333,26 @@ struct G_HitByEnemy_6x4B_6x4C {
   le_float z_velocity = 0.0f;
 } __packed__;
 
-// 6x4D: Player died
+// 6x4D: Player died (protected on V3/V4)
 
 struct G_PlayerDied_6x4D {
   G_ClientIDHeader header;
   le_uint32_t unknown_a1 = 0;
 } __packed__;
 
-// 6x4E: Player died
+// 6x4E: Player died (protected on V3/V4)
 
 struct G_PlayerDied_6x4E {
   G_ClientIDHeader header;
 } __packed__;
 
-// 6x4F: Player resurrected (via Scape Doll)
+// 6x4F: Player resurrected (via Scape Doll) (protected on V3/V4)
 
 struct G_PlayerUsedScapeDoll_6x4F {
   G_ClientIDHeader header;
 } __packed__;
 
-// 6x50: Switch interaction
+// 6x50: Switch interaction (protected on V3/V4)
 
 struct G_SwitchInteraction_6x50 {
   G_ClientIDHeader header;
@@ -4347,7 +4361,7 @@ struct G_SwitchInteraction_6x50 {
 
 // 6x51: Invalid subcommand
 
-// 6x52: Toggle counter (shop/bank) interaction
+// 6x52: Toggle counter (shop/bank) interaction (protected on V3/V4)
 
 struct G_ToggleCounterInteraction_6x52 {
   G_ClientIDHeader header;
@@ -4356,7 +4370,7 @@ struct G_ToggleCounterInteraction_6x52 {
   le_uint32_t unknown_a3 = 0;
 } __packed__;
 
-// 6x53: Unknown (supported; game only)
+// 6x53: Unknown (supported; game only) (protected on V3/V4)
 
 struct G_Unknown_6x53 {
   G_ClientIDHeader header;
@@ -4365,7 +4379,7 @@ struct G_Unknown_6x53 {
 // 6x54: Unknown
 // This subcommand is completely ignored (at least, by PSO GC).
 
-// 6x55: Intra-map warp
+// 6x55: Intra-map warp (protected on V3/V4)
 
 struct G_IntraMapWarp_6x55 {
   G_ClientIDHeader header;
@@ -4378,7 +4392,7 @@ struct G_IntraMapWarp_6x55 {
   le_float z2 = 0.0f;
 } __packed__;
 
-// 6x56: Unknown (supported; lobby & game)
+// 6x56: Unknown (supported; lobby & game) (protected on V3/V4)
 
 struct G_Unknown_6x56 {
   G_ClientIDHeader header;
@@ -4388,13 +4402,13 @@ struct G_Unknown_6x56 {
   le_float z = 0.0f;
 } __packed__;
 
-// 6x57: Unknown (supported; lobby & game)
+// 6x57: Unknown (supported; lobby & game) (protected on V3/V4)
 
 struct G_Unknown_6x57 {
   G_ClientIDHeader header;
 } __packed__;
 
-// 6x58: Lobby animation
+// 6x58: Lobby animation (protected on V3/V4)
 
 struct G_LobbyAnimation_6x58 {
   G_ClientIDHeader header;
@@ -4925,13 +4939,13 @@ struct G_GogoBall_6x79 {
   parray<uint8_t, 3> unused;
 } __packed__;
 
-// 6x7A: Unknown
+// 6x7A: Unknown (protected on V3/V4)
 
 struct G_Unknown_6x7A {
   G_ClientIDHeader header;
 } __packed__;
 
-// 6x7B: Unknown
+// 6x7B: Unknown (protected on V3/V4)
 
 struct G_Unknown_6x7B {
   G_ClientIDHeader header;
@@ -4989,19 +5003,19 @@ struct G_TriggerTrap_6x80 {
   le_uint16_t unknown_a2 = 0;
 } __packed__;
 
-// 6x81: Unknown
+// 6x81: Unknown (protected on V3/V4)
 
 struct G_Unknown_6x81 {
   G_ClientIDHeader header;
 } __packed__;
 
-// 6x82: Unknown
+// 6x82: Unknown (protected on V3/V4)
 
 struct G_Unknown_6x82 {
   G_ClientIDHeader header;
 } __packed__;
 
-// 6x83: Place trap
+// 6x83: Place trap (protected on V3/V4)
 
 struct G_PlaceTrap_6x83 {
   G_ClientIDHeader header;
@@ -5037,20 +5051,20 @@ struct G_HitDestructibleObject_6x86 {
   le_uint16_t unknown_a4 = 0;
 } __packed__;
 
-// 6x87: Shrink player
+// 6x87: Shrink player (protected on V3/V4)
 
 struct G_ShrinkPlayer_6x87 {
   G_ClientIDHeader header;
   le_float unknown_a1 = 0.0f;
 } __packed__;
 
-// 6x88: Restore shrunken player
+// 6x88: Restore shrunken player (protected on V3/V4)
 
 struct G_RestoreShrunkenPlayer_6x88 {
   G_ClientIDHeader header;
 } __packed__;
 
-// 6x89: Player killed by monster
+// 6x89: Player killed by monster (protected on V3/V4)
 
 struct G_PlayerKilledByMonster_6x89 {
   G_ClientIDHeader header;
@@ -5071,7 +5085,7 @@ struct G_Unknown_6x8A {
 // 6x8C: Unknown (not valid on Episode 3)
 // This subcommand is completely ignored (at least, by PSO GC).
 
-// 6x8D: Set technique level override
+// 6x8D: Set technique level override (protected on V3/V4)
 // This command is sent immediately before 6x47 if the technique level is above
 // 15. Presumably this was done for compatibility between v1 and v2.
 
@@ -5093,7 +5107,7 @@ struct G_Unknown_6x8F {
   le_uint16_t unknown_a1 = 0;
 } __packed__;
 
-// 6x90: Unknown (not valid on Episode 3)
+// 6x90: Unknown (not valid on Episode 3) (protected on V3/V4)
 
 struct G_Unknown_6x90 {
   G_ClientIDHeader header;
@@ -5182,7 +5196,7 @@ struct G_UpdatePlayerStat_6x9A {
   uint8_t amount = 0;
 } __packed__;
 
-// 6x9B: Unknown
+// 6x9B: Unknown (protected on V3/V4)
 
 struct G_Unknown_6x9B {
   G_UnusedHeader header;
@@ -5229,7 +5243,7 @@ struct G_GalGryphonBossActions_6xA0 {
   parray<le_uint32_t, 4> unknown_a4;
 } __packed__;
 
-// 6xA1: Unknown (not valid on pre-V3)
+// 6xA1: Unknown (not valid on pre-V3) (protected on V3/V4)
 // Part of revive process. Occurs right after revive command; function unclear.
 
 struct G_Unknown_6xA1 {
@@ -5322,7 +5336,7 @@ struct G_BarbaRayBossActions_6xAA {
   le_uint32_t unknown_a3 = 0;
 } __packed__;
 
-// 6xAB: Create lobby chair (not valid on pre-V3)
+// 6xAB: Create lobby chair (not valid on pre-V3) (protected on V3/V4)
 
 struct G_CreateLobbyChair_6xAB {
   G_ClientIDHeader header;
@@ -5330,7 +5344,7 @@ struct G_CreateLobbyChair_6xAB {
   le_uint16_t unknown_a2 = 0;
 } __packed__;
 
-// 6xAC: Unknown (not valid on pre-V3)
+// 6xAC: Unknown (not valid on pre-V3) (protected on V3/V4)
 // This command's appears to be different on GC NTE than on any other version.
 // It also seems that no version (other than perhaps GC NTE) ever sends this
 // command.
@@ -5368,14 +5382,14 @@ struct G_SetLobbyChairState_6xAE {
   le_uint32_t unknown_a4 = 0;
 } __packed__;
 
-// 6xAF: Turn lobby chair (not valid on pre-V3 or GC Trial Edition)
+// 6xAF: Turn lobby chair (not valid on pre-V3 or GC Trial Edition) (protected on V3/V4)
 
 struct G_TurnLobbyChair_6xAF {
   G_ClientIDHeader header;
   le_uint32_t angle = 0; // In range [0x0000, 0xFFFF]
 } __packed__;
 
-// 6xB0: Move lobby chair (not valid on pre-V3 or GC Trial Edition)
+// 6xB0: Move lobby chair (not valid on pre-V3 or GC Trial Edition) (protected on V3/V4)
 
 struct G_MoveLobbyChair_6xB0 {
   G_ClientIDHeader header;
@@ -5664,7 +5678,7 @@ struct G_GiveExperience_BB_6xBF {
   le_uint32_t amount = 0;
 } __packed__;
 
-// 6xC0: BB sell item at shop
+// 6xC0: Sell item at shop (BB) (protected on V3/V4)
 
 struct G_SellItemAtShop_BB_6xC0 {
   G_UnusedHeader header;
@@ -5759,7 +5773,7 @@ struct G_TransferItemViaMailMessage_BB_6xCB {
   le_uint32_t target_guild_card_number = 0;
 } __packed__;
 
-// 6xCC: Exchange item for team points (BB)
+// 6xCC: Exchange item for team points (BB) (protected on V3/V4)
 
 struct G_ExchangeItemForTeamPoints_BB_6xCC {
   G_ClientIDHeader header;

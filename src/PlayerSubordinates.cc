@@ -265,7 +265,7 @@ void PlayerLobbyDataXB::clear() {
 void PlayerLobbyDataBB::clear() {
   this->player_tag = 0;
   this->guild_card_number = 0;
-  this->team_guild_card_number = 0;
+  this->team_master_guild_card_number = 0;
   this->team_id = 0;
   this->unknown_a1.clear(0);
   this->client_id = 0;

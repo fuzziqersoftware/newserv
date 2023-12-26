@@ -30,7 +30,8 @@ ServerState::QuestF960Result::QuestF960Result(const JSON& json, std::shared_ptr<
 }
 
 ServerState::ServerState(shared_ptr<struct event_base> base, const string& config_filename, bool is_replay)
-    : base(base),
+    : creation_time(now()),
+      base(base),
       config_filename(config_filename),
       is_replay(is_replay),
       dns_server_port(0),
@@ -66,6 +67,7 @@ ServerState::ServerState(shared_ptr<struct event_base> base, const string& confi
       ep3_final_round_meseta_bonus(300),
       ep3_jukebox_is_free(false),
       ep3_behavior_flags(0),
+      hide_download_commands(true),
       run_shell_behavior(RunShellBehavior::DEFAULT),
       cheat_mode_behavior(BehaviorSwitch::OFF_BY_DEFAULT),
       bb_global_exp_multiplier(1),
@@ -718,6 +720,7 @@ void ServerState::parse_config(const JSON& json, bool is_reload) {
   this->ep3_jukebox_is_free = json.get_bool("Episode3JukeboxIsFree", this->ep3_jukebox_is_free);
   this->ep3_behavior_flags = json.get_int("Episode3BehaviorFlags", this->ep3_behavior_flags);
   this->ep3_card_auction_points = json.get_int("CardAuctionPoints", this->ep3_card_auction_points);
+  this->hide_download_commands = json.get_bool("HideDownloadCommands", this->hide_download_commands);
   this->proxy_allow_save_files = json.get_bool("ProxyAllowSaveFiles", this->proxy_allow_save_files);
   this->proxy_enable_login_options = json.get_bool("ProxyEnableLoginOptions", this->proxy_enable_login_options);
 

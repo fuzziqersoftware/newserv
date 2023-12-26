@@ -59,9 +59,9 @@ public:
     SHOULD_SEND_ARTIFICIAL_ITEM_STATE   = 0x0001000000000000,
     SHOULD_SEND_ARTIFICIAL_FLAG_STATE   = 0x0002000000000000,
     SHOULD_SEND_ENABLE_SAVE             = 0x0004000000000000,
+    SWITCH_ASSIST_ENABLED               = 0x0000000100000000,
 
     // Cheat mode flags
-    SWITCH_ASSIST_ENABLED               = 0x0000000100000000,
     INFINITE_HP_ENABLED                 = 0x0000000200000000,
     INFINITE_TP_ENABLED                 = 0x0000000400000000,
     DEBUG_ENABLED                       = 0x0000000800000000,
@@ -69,7 +69,6 @@ public:
     // Proxy option flags
     PROXY_SAVE_FILES                    = 0x0000001000000000,
     PROXY_CHAT_COMMANDS_ENABLED         = 0x0000002000000000,
-    PROXY_CHAT_FILTER_ENABLED           = 0x0000004000000000,
     PROXY_PLAYER_NOTIFICATIONS_ENABLED  = 0x0000008000000000,
     PROXY_SUPPRESS_CLIENT_PINGS         = 0x0000010000000000,
     PROXY_SUPPRESS_REMOTE_LOGIN         = 0x0000020000000000,
@@ -83,8 +82,7 @@ public:
     // clang-format on
   };
 
-  static constexpr uint64_t DEFAULT_FLAGS = static_cast<uint64_t>(Flag::PROXY_CHAT_COMMANDS_ENABLED) |
-      static_cast<uint64_t>(Flag::PROXY_CHAT_FILTER_ENABLED);
+  static constexpr uint64_t DEFAULT_FLAGS = static_cast<uint64_t>(Flag::PROXY_CHAT_COMMANDS_ENABLED);
 
   struct Config {
     uint64_t enabled_flags = DEFAULT_FLAGS; // Client::Flag enum

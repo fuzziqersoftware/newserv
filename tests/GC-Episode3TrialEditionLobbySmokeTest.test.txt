@@ -62,7 +62,7 @@ I 25793 2023-11-24 23:03:38 - [Commands] Received from C-4 (version=GC_EP3 comma
 0140 | 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 |
 I 25793 2023-11-24 23:03:38 - [Commands] Sending to C-4 (version=GC_EP3 command=04 flag=00)
 0000 | 04 00 2C 00 00 00 01 00 11 11 11 11 32 AC 99 83 |   ,         2
-0010 | 00 00 00 33 00 A1 00 42 60 00 00 00 00 00 00 00 |    3   B`
+0010 | 00 00 00 33 00 A1 00 42 20 00 00 00 00 00 00 00 |    3   B`
 0020 | 00 00 00 00 00 00 FF FF 80 FF FF FF             |
 I 25793 2023-11-24 23:03:38 - [Commands] Sending to C-4 (version=GC_EP3 command=B7 flag=00)
 0000 | B7 00 20 00 00 00 00 00 00 00 00 00 00 00 00 00 |
@@ -77,7 +77,7 @@ I 25793 2023-11-24 23:03:38 - [Commands] Received from C-4 (version=GC_EP3 comma
 0000 | 96 00 0C 00 5C E6 6B 2C 3B 00 00 00             |     \ k,;
 I 25793 2023-11-24 23:03:38 - [Commands] Sending to C-4 (version=GC_EP3 command=04 flag=00)
 0000 | 04 00 2C 00 00 00 01 00 11 11 11 11 32 AC 99 83 |   ,         2
-0010 | 00 00 00 33 00 A1 00 42 60 00 04 00 00 00 00 00 |    3   B`
+0010 | 00 00 00 33 00 A1 00 42 20 00 04 00 00 00 00 00 |    3   B`
 0020 | 00 00 00 00 00 00 FF FF 80 FF FF FF             |
 I 25793 2023-11-24 23:03:38 - [Commands] Sending to C-4 (version=GC_EP3 command=B1 flag=00)
 0000 | B1 00 1C 00 32 30 32 33 3A 31 31 3A 32 35 3A 20 |     2023:11:25:
@@ -2134,7 +2134,7 @@ I 25793 2023-11-24 23:03:38 - [Commands] Sending to C-4 (version=GC_EP3_TRIAL_ED
 7940 | 00 00 00 00                                     |
 I 25793 2023-11-24 23:03:38 - [Commands] Sending to C-4 (version=GC_EP3_TRIAL_EDITION command=04 flag=00)
 0000 | 04 00 2C 00 00 00 01 00 11 11 11 11 32 AC 99 83 |   ,         2
-0010 | 54 4A 53 33 00 81 00 4A 60 00 04 00 00 00 00 00 | TJS3   J`
+0010 | 54 4A 53 33 00 81 00 4A 20 00 04 00 00 00 00 00 | TJS3   J`
 0020 | 00 00 00 00 00 00 FF FF 80 FF FF FF             |
 I 25793 2023-11-24 23:03:38 - [Commands] Received from C-4 (Tali) (version=GC_EP3_TRIAL_EDITION command=99 flag=00)
 0000 | 99 00 04 00                                     |
@@ -2142,7 +2142,7 @@ I 25793 2023-11-24 23:03:38 - [Commands] Received from C-4 (Tali) (version=GC_EP
 0000 | D6 00 04 00                                     |
 I 25793 2023-11-24 23:03:38 - [Commands] Sending to C-4 (version=GC_EP3_TRIAL_EDITION command=04 flag=00)
 0000 | 04 00 2C 00 00 00 01 00 11 11 11 11 32 AC 99 83 |   ,         2
-0010 | 54 4A 53 33 00 81 00 48 60 00 04 00 00 00 00 00 | TJS3   J`
+0010 | 54 4A 53 33 00 81 00 48 20 00 04 00 00 00 00 00 | TJS3   J`
 0020 | 00 00 00 00 00 00 FF FF 80 FF FF FF             |
 I 25793 2023-11-24 23:03:38 - [Commands] Sending to C-4 (Tali) (version=GC_EP3_TRIAL_EDITION command=07 flag=08)
 0000 | 07 06 C8 00 11 00 00 11 FF FF FF FF 04 00 41 6C |               Al
@@ -2174,7 +2174,7 @@ I 25793 2023-11-24 23:03:41 - [Commands] Sending to C-4 (Tali) (version=GC_EP3_T
 0000 | 97 01 04 00                                     |
 I 25793 2023-11-24 23:03:41 - [Commands] Sending to C-4 (Tali) (version=GC_EP3_TRIAL_EDITION command=04 flag=00)
 0000 | 04 00 2C 00 00 00 01 00 11 11 11 11 32 AC 99 83 |   ,         2
-0010 | 54 4A 53 33 00 81 00 4C 60 00 00 00 00 00 00 00 | TJS3   L`
+0010 | 54 4A 53 33 00 81 00 4C 20 00 00 00 00 00 00 00 | TJS3   L`
 0020 | 00 00 00 00 00 00 FF FF 80 FF FF FF             |
 I 25793 2023-11-24 23:03:42 - [Commands] Received from C-4 (Tali) (version=GC_EP3_TRIAL_EDITION command=B1 flag=00)
 0000 | B1 00 04 00                                     |
@@ -2223,12 +2223,12 @@ I 25793 2023-11-24 23:03:44 - [Commands] Received from C-5 (version=GC_V3 comman
 00A0 | 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 |
 00B0 | 00 00 00 00 00 00 00 00 00 00 00 00 54 61 6C 69 |             Tali
 00C0 | 00 00 00 00 00 00 00 00 00 00 00 00 32 AC 99 83 |             2
-00D0 | 54 4A 53 33 00 81 00 4C 60 00 00 00 00 00 00 00 | TJS3   L`
+00D0 | 54 4A 53 33 00 81 00 4C 20 00 00 00 00 00 00 00 | TJS3   L`
 00E0 | 00 00 00 00 00 00 FF FF 80 FF FF FF             |
 I 25793 2023-11-24 23:03:44 - [C-5] Game version changed to GC_EP3
 I 25793 2023-11-24 23:03:44 - [Commands] Sending to C-5 (version=GC_EP3 command=04 flag=00)
 0000 | 04 00 2C 00 00 00 01 00 11 11 11 11 32 AC 99 83 |   ,         2
-0010 | 54 4A 53 33 00 A1 00 4C 60 00 00 00 00 00 00 00 | TJS3   L`
+0010 | 54 4A 53 33 00 A1 00 4C 20 00 00 00 00 00 00 00 | TJS3   L`
 0020 | 00 00 00 00 00 00 FF FF 80 FF FF FF             |
 I 25793 2023-11-24 23:03:44 - [Commands] Sending to C-5 (version=GC_EP3 command=B7 flag=00)
 0000 | B7 00 20 00 00 00 00 00 00 00 00 00 00 00 00 00 |
@@ -2362,7 +2362,7 @@ I 25793 2023-11-24 23:03:44 - [Commands] Received from C-5 (version=GC_EP3 comma
 I 25793 2023-11-24 23:03:44 - [C-5] Game version changed to GC_EP3_TRIAL_EDITION
 I 25793 2023-11-24 23:03:44 - [Commands] Sending to C-5 (Tali) (version=GC_EP3_TRIAL_EDITION command=C5 flag=01)
 0000 | 04 00 2C 00 00 00 01 00 11 11 11 11 32 AC 99 83 |   ,         2
-0010 | 54 4A 53 33 00 81 00 4C 60 00 00 00 00 00 00 00 | TJS3   L`
+0010 | 54 4A 53 33 00 81 00 4C 20 00 00 00 00 00 00 00 | TJS3   L`
 0020 | 00 00 00 00 00 00 FF FF 80 FF FF FF             |
 I 25793 2023-11-24 23:03:44 - [Commands] Sending to C-5 (Tali) (version=GC_EP3_TRIAL_EDITION command=C5 flag=01)
 0000 | C5 01 20 01 00 00 00 00 FF 7F 00 00 00 00 00 00 |
@@ -2455,7 +2455,7 @@ I 25793 2023-11-24 23:03:44 - [Commands] Sending to C-5 (Tali) (version=GC_EP3_T
 0440 | FF FF FF FF FF FF FF FF FF FF FF FF             |
 I 25793 2023-11-24 23:03:44 - [Commands] Sending to C-5 (Tali) (version=GC_EP3_TRIAL_EDITION command=04 flag=00)
 0000 | 04 00 2C 00 00 00 01 00 11 11 11 11 32 AC 99 83 |   ,         2
-0010 | 54 4A 53 33 00 83 00 4C 60 00 00 00 00 00 00 00 | TJS3   L`
+0010 | 54 4A 53 33 00 83 00 4C 20 00 00 00 00 00 00 00 | TJS3   L`
 0020 | 00 00 00 00 00 00 FF FF 80 FF FF FF             |
 I 25793 2023-11-24 23:03:45 - [Commands] Received from C-5 (Tali) (version=GC_EP3_TRIAL_EDITION command=60 flag=00)
 0000 | 60 00 1C 00 3F 06 00 00 00 00 00 00 0F 00 FF FF | `   ?
@@ -2687,7 +2687,7 @@ I 25793 2023-11-24 23:04:08 - [Commands] Received from C-6 (version=GC_EP3 comma
 00A0 | 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 |
 00B0 | 00 00 00 00 00 00 00 00 00 00 00 00 54 61 6C 69 |             Tali
 00C0 | 00 00 00 00 00 00 00 00 00 00 00 00 32 AC 99 83 |             2
-00D0 | 54 4A 53 33 00 83 00 4C 60 00 00 00 00 00 00 00 | TJS3   L`
+00D0 | 54 4A 53 33 00 83 00 4C 20 00 00 00 00 00 00 00 | TJS3   L`
 00E0 | 00 00 00 00 00 00 FF FF 80 FF FF FF 00 00 00 00 |
 00F0 | 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 |
 0100 | 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 |
@@ -2697,7 +2697,7 @@ I 25793 2023-11-24 23:04:08 - [Commands] Received from C-6 (version=GC_EP3 comma
 0140 | 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 |
 I 25793 2023-11-24 23:04:08 - [Commands] Sending to C-6 (version=GC_EP3 command=04 flag=00)
 0000 | 04 00 2C 00 00 00 01 00 11 11 11 11 32 AC 99 83 |   ,         2
-0010 | 54 4A 53 33 00 A3 00 4C 60 00 00 00 00 00 00 00 | TJS3   L`
+0010 | 54 4A 53 33 00 A3 00 4C 20 00 00 00 00 00 00 00 | TJS3   L`
 0020 | 00 00 00 00 00 00 FF FF 80 FF FF FF             |
 I 25793 2023-11-24 23:04:08 - [Commands] Sending to C-6 (version=GC_EP3 command=B7 flag=00)
 0000 | B7 00 20 00 00 00 00 00 00 00 00 00 00 00 00 00 |
