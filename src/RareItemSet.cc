@@ -185,9 +185,7 @@ RareItemSet::ParsedRELData::ParsedRELData(const SpecCollection& collection) {
         throw runtime_error("monster spec cannot be converted to ItemRT format");
       }
     }
-    if (!effective_spec.item_code.is_filled_with(0)) {
-      this->monster_rares.emplace_back(specs.empty() ? ExpandedDrop() : specs[0]);
-    }
+    this->monster_rares.emplace_back(specs.empty() ? ExpandedDrop() : specs[0]);
   }
 
   if (collection.box_area_to_specs.size() > 0xFF) {
