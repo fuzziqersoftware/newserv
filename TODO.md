@@ -20,5 +20,4 @@
 ## PSOBB
 
 - Test all quest item subcommands
-- Check if Commander Blade effect works and implement it if not
 - Figure out why Pouilly Slime EXP doesn't work

@@ -1617,6 +1617,48 @@ void send_player_records_t(shared_ptr<Client> c, shared_ptr<Lobby> l, shared_ptr
   send_command_vt(c->channel, 0xC5, entries.size(), entries);
 }
 
+template <typename LobbyDataT>
+void populate_lobby_data_for_client(LobbyDataT& ret, shared_ptr<const Client> c, shared_ptr<const Client> viewer_c) {
+  ret.player_tag = 0x00010000;
+  ret.guild_card_number = c->license->serial_number;
+  ret.client_id = c->lobby_client_id;
+  string name = c->character()->disp.name.decode(c->language());
+  ret.name.encode(name, viewer_c->language());
+}
+
+template <>
+void populate_lobby_data_for_client(PlayerLobbyDataXB& ret, shared_ptr<const Client> c, shared_ptr<const Client> viewer_c) {
+  ret.player_tag = 0x00010000;
+  ret.guild_card_number = c->license->serial_number;
+  if (c->xb_netloc) {
+    ret.netloc = *c->xb_netloc;
+  } else {
+    ret.netloc.account_id = 0xAE00000000000000 | c->license->serial_number;
+  }
+  ret.client_id = c->lobby_client_id;
+  string name = c->character()->disp.name.decode(c->language());
+  ret.name.encode(name, viewer_c->language());
+}
+
+template <>
+void populate_lobby_data_for_client<PlayerLobbyDataBB>(PlayerLobbyDataBB& ret, shared_ptr<const Client> c, shared_ptr<const Client> viewer_c) {
+  ret.player_tag = 0x00010000;
+  ret.guild_card_number = c->license->serial_number;
+  ret.sys_guild_card_number = viewer_c->license->serial_number;
+  ret.client_id = c->lobby_client_id;
+  auto team = c->team();
+  if (team) {
+    ret.team_id = team->team_id;
+  }
+  string name = c->character()->disp.name.decode(c->language());
+  if ((name.size() >= 2) && (name[0] == '\t') && (name[1] != 'C')) {
+    ret.name.encode(name, viewer_c->language());
+  } else {
+    const char* marker = c->language() ? "\tE" : "\tJ";
+    ret.name.encode(marker + name, viewer_c->language());
+  }
+}
+
 static void send_join_spectator_team(shared_ptr<Client> c, shared_ptr<Lobby> l) {
   if (!is_ep3(c->version())) {
     throw runtime_error("client is not Episode 3");
@@ -1651,10 +1693,7 @@ static void send_join_spectator_team(shared_ptr<Client> c, shared_ptr<Lobby> l) 
       }
       auto wc_p = wc->character();
       auto& p = cmd.players[z];
-      p.lobby_data.player_tag = 0x00010000;
-      p.lobby_data.guild_card_number = wc->license->serial_number;
-      p.lobby_data.client_id = wc->lobby_client_id;
-      p.lobby_data.name.encode(wc_p->disp.name.decode(wc_p->inventory.language), c->language());
+      populate_lobby_data_for_client(p.lobby_data, wc, c);
       p.inventory = wc_p->inventory;
       p.inventory.encode_for_client(c);
       p.disp = wc_p->disp.to_dcpcv3(c->language(), p.inventory.language);
@@ -1719,10 +1758,7 @@ static void send_join_spectator_team(shared_ptr<Client> c, shared_ptr<Lobby> l) 
       auto other_p = other_c->character();
       auto& cmd_p = cmd.spectator_players[z - 4];
       auto& cmd_e = cmd.entries[z];
-      cmd_p.lobby_data.player_tag = 0x00010000;
-      cmd_p.lobby_data.guild_card_number = other_c->license->serial_number;
-      cmd_p.lobby_data.client_id = other_c->lobby_client_id;
-      cmd_p.lobby_data.name.encode(other_p->disp.name.decode(other_p->inventory.language), c->language());
+      populate_lobby_data_for_client(cmd_p.lobby_data, other_c, c);
       cmd_p.inventory = other_p->inventory;
       cmd_p.disp = other_p->disp.to_dcpcv3(c->language(), cmd_p.inventory.language);
       cmd_p.disp.enforce_lobby_join_limits_for_client(c);
@@ -1755,10 +1791,7 @@ void send_join_game(shared_ptr<Client> c, shared_ptr<Lobby> l) {
     for (size_t x = 0; x < 4; x++) {
       auto lc = l->clients[x];
       if (lc) {
-        cmd.lobby_data[x].player_tag = 0x00010000;
-        cmd.lobby_data[x].guild_card_number = lc->license->serial_number;
-        cmd.lobby_data[x].client_id = lc->lobby_client_id;
-        cmd.lobby_data[x].name.encode(lc->character()->disp.name.decode(lc->language()), c->language());
+        populate_lobby_data_for_client(cmd.lobby_data[x], lc, c);
         player_count++;
       } else {
         cmd.lobby_data[x].clear();
@@ -1852,16 +1885,6 @@ void send_join_game(shared_ptr<Client> c, shared_ptr<Lobby> l) {
     case Version::XB_V3: {
       S_JoinGame_XB_64 cmd;
       size_t player_count = populate_v3_cmd(cmd);
-      for (size_t x = 0; x < 4; x++) {
-        auto lc = l->clients[x];
-        if (lc) {
-          if (lc->xb_netloc) {
-            cmd.lobby_data[x].netloc = *lc->xb_netloc;
-          } else {
-            cmd.lobby_data[x].netloc.account_id = 0xAE00000000000000 | lc->license->serial_number;
-          }
-        }
-      }
       send_command_t(c, 0x64, player_count, cmd);
       break;
     }
@@ -1883,7 +1906,7 @@ void send_join_game(shared_ptr<Client> c, shared_ptr<Lobby> l) {
   send_command(c, 0x1D, 0x00);
 }
 
-template <typename LobbyDataT, typename DispDataT, typename RecordsT, bool UseLanguageMarkerInName>
+template <typename LobbyDataT, typename DispDataT, typename RecordsT>
 void send_join_lobby_t(shared_ptr<Client> c, shared_ptr<Lobby> l, shared_ptr<Client> joining_client = nullptr) {
   auto s = c->require_server_state();
 
@@ -1957,17 +1980,7 @@ void send_join_lobby_t(shared_ptr<Client> c, shared_ptr<Lobby> l, shared_ptr<Cli
   for (const auto& lc : lobby_clients) {
     auto lp = lc->character();
     auto& e = cmd.entries[used_entries++];
-    e.lobby_data.player_tag = 0x00010000;
-    e.lobby_data.guild_card_number = lc->license->serial_number;
-    e.lobby_data.client_id = lc->lobby_client_id;
-    string name = lp->disp.name.decode(lp->inventory.language);
-    bool name_has_marker = (name.size() >= 2) && (name[0] == '\t') && (name[1] != 'C');
-    if (UseLanguageMarkerInName && !name_has_marker) {
-      const char* marker = c->language() ? "\tE" : "\tJ";
-      e.lobby_data.name.encode(marker + name, c->language());
-    } else {
-      e.lobby_data.name.encode(name, c->language());
-    }
+    populate_lobby_data_for_client(e.lobby_data, lc, c);
     e.inventory = lp->inventory;
     e.inventory.encode_for_client(c);
     if ((lc == c) && is_v1_or_v2(c->version()) && lc->v1_v2_last_reported_disp) {
@@ -2036,15 +2049,7 @@ void send_join_lobby_xb(shared_ptr<Client> c, shared_ptr<Lobby> l, shared_ptr<Cl
   for (const auto& lc : lobby_clients) {
     auto lp = lc->character();
     auto& e = cmd.entries[used_entries++];
-    e.lobby_data.player_tag = 0x00010000;
-    e.lobby_data.guild_card_number = lc->license->serial_number;
-    if (lc->xb_netloc) {
-      e.lobby_data.netloc = *lc->xb_netloc;
-    } else {
-      e.lobby_data.netloc.account_id = 0xAE00000000000000 | lc->license->serial_number;
-    }
-    e.lobby_data.client_id = lc->lobby_client_id;
-    e.lobby_data.name.encode(lp->disp.name.decode(lp->inventory.language), c->language());
+    populate_lobby_data_for_client(e.lobby_data, lc, c);
     e.inventory = lp->inventory;
     e.inventory.encode_for_client(c);
     e.disp = convert_player_disp_data<PlayerDispDataDCPCV3>(lp->disp, c->language(), lp->inventory.language);
@@ -2089,10 +2094,7 @@ void send_join_lobby_dc_nte(shared_ptr<Client> c, shared_ptr<Lobby> l,
   for (const auto& lc : lobby_clients) {
     auto lp = lc->character();
     auto& e = cmd.entries[used_entries++];
-    e.lobby_data.player_tag = 0x00010000;
-    e.lobby_data.guild_card_number = lc->license->serial_number;
-    e.lobby_data.client_id = lc->lobby_client_id;
-    e.lobby_data.name.encode(lp->disp.name.decode(lp->inventory.language), c->language());
+    populate_lobby_data_for_client(e.lobby_data, lc, c);
     e.inventory = lp->inventory;
     e.inventory.encode_for_client(c);
     e.disp = convert_player_disp_data<PlayerDispDataDCPCV3>(lp->disp, c->language(), lp->inventory.language);
@@ -2113,23 +2115,23 @@ void send_join_lobby(shared_ptr<Client> c, shared_ptr<Lobby> l) {
         break;
       case Version::DC_V1:
       case Version::DC_V2:
-        send_join_lobby_t<PlayerLobbyDataDCGC, PlayerDispDataDCPCV3, PlayerRecordsEntry_DC, false>(c, l);
+        send_join_lobby_t<PlayerLobbyDataDCGC, PlayerDispDataDCPCV3, PlayerRecordsEntry_DC>(c, l);
         break;
       case Version::PC_NTE:
       case Version::PC_V2:
-        send_join_lobby_t<PlayerLobbyDataPC, PlayerDispDataDCPCV3, PlayerRecordsEntry_PC, false>(c, l);
+        send_join_lobby_t<PlayerLobbyDataPC, PlayerDispDataDCPCV3, PlayerRecordsEntry_PC>(c, l);
         break;
       case Version::GC_NTE:
       case Version::GC_V3:
       case Version::GC_EP3_TRIAL_EDITION:
       case Version::GC_EP3:
-        send_join_lobby_t<PlayerLobbyDataDCGC, PlayerDispDataDCPCV3, PlayerRecordsEntry_V3, false>(c, l);
+        send_join_lobby_t<PlayerLobbyDataDCGC, PlayerDispDataDCPCV3, PlayerRecordsEntry_V3>(c, l);
         break;
       case Version::XB_V3:
         send_join_lobby_xb(c, l);
         break;
       case Version::BB_V4:
-        send_join_lobby_t<PlayerLobbyDataBB, PlayerDispDataBB, PlayerRecordsEntry_BB, true>(c, l);
+        send_join_lobby_t<PlayerLobbyDataBB, PlayerDispDataBB, PlayerRecordsEntry_BB>(c, l);
         break;
       default:
         throw logic_error("unimplemented versioned command");
@@ -2153,23 +2155,23 @@ void send_player_join_notification(shared_ptr<Client> c,
       break;
     case Version::DC_V1:
     case Version::DC_V2:
-      send_join_lobby_t<PlayerLobbyDataDCGC, PlayerDispDataDCPCV3, PlayerRecordsEntry_DC, false>(c, l, joining_client);
+      send_join_lobby_t<PlayerLobbyDataDCGC, PlayerDispDataDCPCV3, PlayerRecordsEntry_DC>(c, l, joining_client);
       break;
     case Version::PC_NTE:
     case Version::PC_V2:
-      send_join_lobby_t<PlayerLobbyDataPC, PlayerDispDataDCPCV3, PlayerRecordsEntry_PC, false>(c, l, joining_client);
+      send_join_lobby_t<PlayerLobbyDataPC, PlayerDispDataDCPCV3, PlayerRecordsEntry_PC>(c, l, joining_client);
       break;
     case Version::GC_NTE:
     case Version::GC_V3:
     case Version::GC_EP3_TRIAL_EDITION:
     case Version::GC_EP3:
-      send_join_lobby_t<PlayerLobbyDataDCGC, PlayerDispDataDCPCV3, PlayerRecordsEntry_V3, false>(c, l, joining_client);
+      send_join_lobby_t<PlayerLobbyDataDCGC, PlayerDispDataDCPCV3, PlayerRecordsEntry_V3>(c, l, joining_client);
       break;
     case Version::XB_V3:
       send_join_lobby_xb(c, l, joining_client);
       break;
     case Version::BB_V4:
-      send_join_lobby_t<PlayerLobbyDataBB, PlayerDispDataBB, PlayerRecordsEntry_BB, true>(c, l, joining_client);
+      send_join_lobby_t<PlayerLobbyDataBB, PlayerDispDataBB, PlayerRecordsEntry_BB>(c, l, joining_client);
       break;
     default:
       throw logic_error("unimplemented versioned command");
