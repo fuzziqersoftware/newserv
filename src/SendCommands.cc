@@ -1644,11 +1644,14 @@ template <>
 void populate_lobby_data_for_client<PlayerLobbyDataBB>(PlayerLobbyDataBB& ret, shared_ptr<const Client> c, shared_ptr<const Client> viewer_c) {
   ret.player_tag = 0x00010000;
   ret.guild_card_number = c->license->serial_number;
-  ret.sys_guild_card_number = viewer_c->license->serial_number;
   ret.client_id = c->lobby_client_id;
   auto team = c->team();
   if (team) {
+    ret.team_master_guild_card_number = team->master_serial_number;
     ret.team_id = team->team_id;
+  } else {
+    ret.team_master_guild_card_number = 0;
+    ret.team_id = 0;
   }
   string name = c->character()->disp.name.decode(c->language());
   if ((name.size() >= 2) && (name[0] == '\t') && (name[1] != 'C')) {

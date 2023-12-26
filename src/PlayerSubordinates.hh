@@ -310,7 +310,7 @@ struct PlayerLobbyDataXB {
 struct PlayerLobbyDataBB {
   /* 00 */ le_uint32_t player_tag = 0;
   /* 04 */ le_uint32_t guild_card_number = 0;
-  /* 08 */ le_uint32_t sys_guild_card_number = 0;
+  /* 08 */ le_uint32_t team_master_guild_card_number = 0;
   /* 0C */ le_uint32_t team_id = 0;
   /* 10 */ parray<uint8_t, 0x0C> unknown_a1;
   /* 1C */ le_uint32_t client_id = 0;

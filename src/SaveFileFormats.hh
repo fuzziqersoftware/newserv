@@ -134,7 +134,7 @@ struct PSOBBMinimalSystemFile {
 } __attribute__((packed));
 
 struct PSOBBTeamMembership {
-  /* 0000 */ le_uint32_t guild_card_number = 0;
+  /* 0000 */ le_uint32_t team_master_guild_card_number = 0;
   /* 0004 */ le_uint32_t team_id = 0;
   /* 0008 */ le_uint32_t unknown_a5 = 0;
   /* 000C */ le_uint32_t unknown_a6 = 0;

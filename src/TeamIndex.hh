@@ -60,6 +60,7 @@ public:
     uint32_t points = 0;
     uint32_t spent_points = 0;
     std::string name;
+    uint32_t master_serial_number = 0;
     std::unordered_map<uint32_t, Member> members;
     uint32_t reward_flags = 0;
     std::unordered_set<std::string> reward_keys;

@@ -58,6 +58,9 @@ void TeamIndex::Team::load_config() {
     Member m(*member_it);
     this->points += m.points;
     uint32_t serial_number = m.serial_number;
+    if (m.check_flag(Member::Flag::IS_MASTER)) {
+      this->master_serial_number = serial_number;
+    }
     this->members.emplace(serial_number, std::move(m));
   }
   try {
@@ -125,7 +128,7 @@ PSOBBTeamMembership TeamIndex::Team::membership_for_member(uint32_t serial_numbe
   const auto& m = this->members.at(serial_number);
 
   PSOBBTeamMembership ret;
-  ret.guild_card_number = serial_number;
+  ret.team_master_guild_card_number = this->master_serial_number;
   ret.team_id = this->team_id;
   ret.unknown_a5 = 0;
   ret.unknown_a6 = 0;
@@ -421,6 +424,7 @@ void TeamIndex::change_master(uint32_t master_serial_number, uint32_t new_master
   master_m.set_flag(TeamIndex::Team::Member::Flag::IS_LEADER);
   new_master_m.clear_flag(TeamIndex::Team::Member::Flag::IS_LEADER);
   new_master_m.set_flag(TeamIndex::Team::Member::Flag::IS_MASTER);
+  team->master_serial_number = new_master_serial_number;
   team->save_config();
 }
 
