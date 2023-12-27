@@ -462,10 +462,14 @@ QuestIndex::QuestIndex(
     : directory(directory),
       category_index(category_index) {
 
-  map<string, shared_ptr<const string>> bin_files;
-  map<string, shared_ptr<const string>> dat_files;
-  map<string, shared_ptr<const string>> pvr_files;
-  map<string, shared_ptr<const string>> json_files;
+  struct FileData {
+    std::string filename;
+    shared_ptr<const string> data;
+  };
+  map<string, FileData> bin_files;
+  map<string, FileData> dat_files;
+  map<string, FileData> pvr_files;
+  map<string, FileData> json_files;
   map<string, uint32_t> categories;
   for (const auto& cat : this->category_index->categories) {
     // Don't index Ep3 download categories for non-Ep3 quest indexing, and vice
@@ -474,13 +478,13 @@ QuestIndex::QuestIndex(
       continue;
     }
 
-    auto add_file = [&](map<string, shared_ptr<const string>>& files, const string& name, string&& value) {
-      if (categories.emplace(name, cat->category_id).first->second != cat->category_id) {
-        throw runtime_error("file " + name + " exists in multiple categories");
+    auto add_file = [&](map<string, FileData>& files, const string& basename, const string& filename, string&& value) {
+      if (categories.emplace(basename, cat->category_id).first->second != cat->category_id) {
+        throw runtime_error("file " + basename + " exists in multiple categories");
       }
       auto data_ptr = make_shared<string>(std::move(value));
-      if (!files.emplace(name, data_ptr).second) {
-        throw runtime_error("file " + name + " already exists");
+      if (!files.emplace(basename, FileData{filename, data_ptr}).second) {
+        throw runtime_error("file " + basename + " already exists");
       }
     };
 
@@ -492,6 +496,7 @@ QuestIndex::QuestIndex(
     for (string filename : list_directory_sorted(cat_path)) {
       string file_path = cat_path + "/" + filename;
       try {
+        string orig_filename = filename;
         string file_data;
         if (ends_with(filename, ".gci")) {
           file_data = decode_gci_data(load_file(file_path));
@@ -523,26 +528,26 @@ QuestIndex::QuestIndex(
         }
 
         if (extension == "json") {
-          add_file(json_files, file_basename, std::move(file_data));
+          add_file(json_files, file_basename, orig_filename, std::move(file_data));
         } else if (extension == "bin" || extension == "mnm") {
-          add_file(bin_files, file_basename, std::move(file_data));
+          add_file(bin_files, file_basename, orig_filename, std::move(file_data));
         } else if (extension == "bind" || extension == "mnmd") {
-          add_file(bin_files, file_basename, prs_compress_optimal(file_data));
+          add_file(bin_files, file_basename, orig_filename, prs_compress_optimal(file_data));
         } else if (extension == "dat") {
-          add_file(dat_files, file_basename, std::move(file_data));
+          add_file(dat_files, file_basename, orig_filename, std::move(file_data));
         } else if (extension == "datd") {
-          add_file(dat_files, file_basename, prs_compress_optimal(file_data));
+          add_file(dat_files, file_basename, orig_filename, prs_compress_optimal(file_data));
         } else if (extension == "pvr") {
-          add_file(pvr_files, file_basename, std::move(file_data));
+          add_file(pvr_files, file_basename, orig_filename, std::move(file_data));
         } else if (extension == "qst") {
           auto files = decode_qst_data(file_data);
           for (auto& it : files) {
             if (ends_with(it.first, ".bin")) {
-              add_file(bin_files, file_basename, std::move(it.second));
+              add_file(bin_files, file_basename, orig_filename, std::move(it.second));
             } else if (ends_with(it.first, ".dat")) {
-              add_file(dat_files, file_basename, std::move(it.second));
+              add_file(dat_files, file_basename, orig_filename, std::move(it.second));
             } else if (ends_with(it.first, ".pvr")) {
-              add_file(pvr_files, file_basename, std::move(it.second));
+              add_file(pvr_files, file_basename, orig_filename, std::move(it.second));
             } else {
               throw runtime_error("qst file contains unsupported file type: " + it.first);
             }
@@ -562,7 +567,7 @@ QuestIndex::QuestIndex(
   // should be indexed
   for (auto& bin_it : bin_files) {
     const string& basename = bin_it.first;
-    shared_ptr<const string> bin_contents = bin_it.second;
+    const auto* bin_filedata = &bin_it.second;
 
     try {
       // Quest .bin filenames are like K###-VERS-LANG.EXT, where:
@@ -616,31 +621,25 @@ QuestIndex::QuestIndex(
       uint8_t language = language_code_for_char(language_token[0]);
 
       // Find the corresponding dat and pvr files
-      string dat_filename;
-      string pvr_filename;
-      shared_ptr<const string> dat_contents;
-      shared_ptr<const string> pvr_contents;
+      const FileData* dat_filedata = nullptr;
+      const FileData* pvr_filedata = nullptr;
       if (!::is_ep3(version)) {
         // Look for dat and pvr files with the same basename as the bin file; if
         // not found, look for them without the language suffix
         try {
-          dat_filename = basename;
-          dat_contents = dat_files.at(dat_filename);
+          dat_filedata = &dat_files.at(basename);
         } catch (const out_of_range&) {
           try {
-            dat_filename = quest_number_token + "-" + version_token;
-            dat_contents = dat_files.at(dat_filename);
+            dat_filedata = &dat_files.at(quest_number_token + "-" + version_token);
           } catch (const out_of_range&) {
             throw runtime_error("no dat file found for bin file " + basename);
           }
         }
         try {
-          pvr_filename = basename;
-          pvr_contents = pvr_files.at(pvr_filename);
+          pvr_filedata = &pvr_files.at(basename);
         } catch (const out_of_range&) {
           try {
-            pvr_filename = quest_number_token + "-" + version_token;
-            pvr_contents = pvr_files.at(pvr_filename);
+            pvr_filedata = &pvr_files.at(quest_number_token + "-" + version_token);
           } catch (const out_of_range&) {
             // pvr files aren't required (and most quests do not have them), so
             // don't fail if it's missing
@@ -649,28 +648,25 @@ QuestIndex::QuestIndex(
       }
 
       // Load the quest's metadata JSON file, if it exists
-      string json_filename;
-      JSON metadata_json = nullptr;
+      const FileData* json_filedata = nullptr;
       shared_ptr<BattleRules> battle_rules;
       ssize_t challenge_template_index = -1;
       shared_ptr<const QuestAvailabilityExpression> available_expression;
       shared_ptr<const QuestAvailabilityExpression> enabled_expression;
       try {
-        json_filename = basename;
-        metadata_json = JSON::parse(*json_files.at(json_filename));
+        json_filedata = &json_files.at(basename);
       } catch (const out_of_range&) {
         try {
-          json_filename = quest_number_token + "-" + version_token;
-          metadata_json = JSON::parse(*json_files.at(json_filename));
+          json_filedata = &json_files.at(quest_number_token + "-" + version_token);
         } catch (const out_of_range&) {
           try {
-            json_filename = quest_number_token;
-            metadata_json = JSON::parse(*json_files.at(json_filename));
+            json_filedata = &json_files.at(quest_number_token);
           } catch (const out_of_range&) {
           }
         }
       }
-      if (!metadata_json.is_null()) {
+      if (json_filedata) {
+        auto metadata_json = JSON::parse(*json_filedata->data);
         try {
           battle_rules = make_shared<BattleRules>(metadata_json.at("BattleRules"));
         } catch (const out_of_range&) {
@@ -694,36 +690,40 @@ QuestIndex::QuestIndex(
           category_id,
           version,
           language,
-          bin_contents,
-          dat_contents,
-          pvr_contents,
+          bin_filedata->data,
+          dat_filedata ? dat_filedata->data : nullptr,
+          pvr_filedata ? pvr_filedata->data : nullptr,
           battle_rules,
           challenge_template_index,
           available_expression,
           enabled_expression);
 
       auto category_name = this->category_index->at(vq->category_id)->name;
-      string dat_str = dat_filename.empty() ? "" : (" with layout from " + dat_filename + ".dat");
-      string battle_rules_str = battle_rules ? (" with battle rules from " + json_filename + ".json") : "";
-      string challenge_template_str = (challenge_template_index >= 0) ? string_printf(" with challenge template index %zd", vq->challenge_template_index) : "";
+      string filenames_str = bin_filedata->filename;
+      if (dat_filedata) {
+        filenames_str += string_printf("/%s", dat_filedata->filename.c_str());
+      }
+      if (pvr_filedata) {
+        filenames_str += string_printf("/%s", pvr_filedata->filename.c_str());
+      }
+      if (json_filedata) {
+        filenames_str += string_printf("/%s", json_filedata->filename.c_str());
+      }
       auto q_it = this->quests_by_number.find(vq->quest_number);
       if (q_it != this->quests_by_number.end()) {
         q_it->second->add_version(vq);
-        static_game_data_log.info("(%s) Added %s %c version of quest %" PRIu32 " (%s)%s%s%s",
-            basename.c_str(),
+        static_game_data_log.info("(%s) Added %s %c version of quest %" PRIu32 " (%s)",
+            filenames_str.c_str(),
             name_for_enum(vq->version),
             char_for_language_code(vq->language),
             vq->quest_number,
-            vq->name.c_str(),
-            dat_str.c_str(),
-            battle_rules_str.c_str(),
-            challenge_template_str.c_str());
+            vq->name.c_str());
       } else {
         auto q = make_shared<Quest>(vq);
         this->quests_by_number.emplace(vq->quest_number, q);
         this->quests_by_category_id_and_number[q->category_id].emplace(vq->quest_number, q);
-        static_game_data_log.info("(%s) Created %s %c quest %" PRIu32 " (%s) (%s, %s (%" PRIu32 "), %s)%s%s%s",
-            basename.c_str(),
+        static_game_data_log.info("(%s) Created %s %c quest %" PRIu32 " (%s) (%s, %s (%" PRIu32 "), %s)",
+            filenames_str.c_str(),
             name_for_enum(vq->version),
             char_for_language_code(vq->language),
             vq->quest_number,
@@ -731,10 +731,7 @@ QuestIndex::QuestIndex(
             name_for_episode(vq->episode),
             category_name.c_str(),
             vq->category_id,
-            vq->joinable ? "joinable" : "not joinable",
-            dat_str.c_str(),
-            battle_rules_str.c_str(),
-            challenge_template_str.c_str());
+            vq->joinable ? "joinable" : "not joinable");
       }
     } catch (const exception& e) {
       static_game_data_log.warning("(%s) Failed to index quest file: (%s)", basename.c_str(), e.what());
