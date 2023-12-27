@@ -3091,15 +3091,22 @@ static void on_61_98(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
         bb_player->disp.visual.version = 4;
         bb_player->disp.visual.name_color_checksum = 0x00000000;
         bb_player->inventory = player->inventory;
-        bb_player->disp.stats.advance_to_level(bb_player->disp.visual.char_class, player->disp.stats.level, s->level_table);
-        bb_player->disp.stats.char_stats.atp += bb_player->get_material_usage(PSOBBCharacterFile::MaterialType::POWER) * 2;
-        bb_player->disp.stats.char_stats.mst += bb_player->get_material_usage(PSOBBCharacterFile::MaterialType::MIND) * 2;
-        bb_player->disp.stats.char_stats.evp += bb_player->get_material_usage(PSOBBCharacterFile::MaterialType::EVADE) * 2;
-        bb_player->disp.stats.char_stats.dfp += bb_player->get_material_usage(PSOBBCharacterFile::MaterialType::DEF) * 2;
-        bb_player->disp.stats.char_stats.lck += bb_player->get_material_usage(PSOBBCharacterFile::MaterialType::LUCK) * 2;
-        bb_player->disp.stats.char_stats.hp += bb_player->get_material_usage(PSOBBCharacterFile::MaterialType::HP) * 2;
-        bb_player->disp.stats.experience = player->disp.stats.experience;
-        bb_player->disp.stats.meseta = player->disp.stats.meseta;
+        // Before V3, player stats can't be correctly computed from other fields
+        // because material usage isn't stored anywhere. For these versions, we
+        // have to trust the stats field from the player's data.
+        if (is_v1_or_v2(c->version())) {
+          bb_player->disp.stats = player->disp.stats;
+        } else {
+          bb_player->disp.stats.advance_to_level(bb_player->disp.visual.char_class, player->disp.stats.level, s->level_table);
+          bb_player->disp.stats.char_stats.atp += bb_player->get_material_usage(PSOBBCharacterFile::MaterialType::POWER) * 2;
+          bb_player->disp.stats.char_stats.mst += bb_player->get_material_usage(PSOBBCharacterFile::MaterialType::MIND) * 2;
+          bb_player->disp.stats.char_stats.evp += bb_player->get_material_usage(PSOBBCharacterFile::MaterialType::EVADE) * 2;
+          bb_player->disp.stats.char_stats.dfp += bb_player->get_material_usage(PSOBBCharacterFile::MaterialType::DEF) * 2;
+          bb_player->disp.stats.char_stats.lck += bb_player->get_material_usage(PSOBBCharacterFile::MaterialType::LUCK) * 2;
+          bb_player->disp.stats.char_stats.hp += bb_player->get_material_usage(PSOBBCharacterFile::MaterialType::HP) * 2;
+          bb_player->disp.stats.experience = player->disp.stats.experience;
+          bb_player->disp.stats.meseta = player->disp.stats.meseta;
+        }
         bb_player->disp.technique_levels_v1 = player->disp.technique_levels_v1;
         bb_player->auto_reply = player->auto_reply;
         bb_player->info_board = player->info_board;
