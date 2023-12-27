@@ -267,7 +267,7 @@ void Server::send_commands_for_joining_spectator(Channel& ch) const {
 
   if (this->last_chosen_map) {
     string data = this->prepare_6xB6x41_map_definition(
-        this->last_chosen_map, ch.language, (ch.version == Version::GC_EP3_TRIAL_EDITION));
+        this->last_chosen_map, ch.language, (ch.version == Version::GC_EP3_NTE));
     this->log().info("Sending %c version of map %08" PRIX32, char_for_language_code(ch.language), this->last_chosen_map->map_number);
     ch.send(0x6C, 0x00, data);
   }
@@ -2349,7 +2349,7 @@ void Server::send_6xB6x41_to_all_clients() const {
     }
     if (map_commands_by_language[c->language()].empty()) {
       map_commands_by_language[c->language()] = this->prepare_6xB6x41_map_definition(
-          this->last_chosen_map, c->language(), (l->base_version == Version::GC_EP3_TRIAL_EDITION));
+          this->last_chosen_map, c->language(), (l->base_version == Version::GC_EP3_NTE));
     }
     this->log().info("Sending %c version of map %08" PRIX32, char_for_language_code(c->language()), this->last_chosen_map->map_number);
     send_command(c, 0x6C, 0x00, map_commands_by_language[c->language()]);

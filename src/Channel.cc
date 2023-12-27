@@ -271,7 +271,7 @@ void Channel::send(uint16_t cmd, uint32_t flag, const std::vector<std::pair<cons
     case Version::DC_V2:
     case Version::GC_NTE:
     case Version::GC_V3:
-    case Version::GC_EP3_TRIAL_EDITION:
+    case Version::GC_EP3_NTE:
     case Version::GC_EP3:
     case Version::XB_V3: {
       PSOCommandHeaderDCV3 header;

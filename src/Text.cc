@@ -281,12 +281,40 @@ void add_color(StringWriter& w, const char* src, size_t max_input_chars) {
     }
     src++;
   }
-  w.put<char>(0);
 }
 
 string add_color(const string& s) {
   StringWriter w;
   add_color(w, s.data(), s.size());
+  return std::move(w.str());
+}
+
+void remove_color(StringWriter& w, const char* src, size_t max_input_chars) {
+  for (size_t x = 0; (x < max_input_chars) && *src; x++) {
+    if (*src == '$') {
+      w.put<char>('%');
+      w.put<char>('s');
+    } else if (*src == '%') {
+      w.put<char>('%');
+      w.put<char>('%');
+    } else if (*src == '#') {
+      w.put<char>('%');
+      w.put<char>('n');
+    } else if (*src == '\t') {
+      w.put<char>('$');
+    } else if (*src == '\n') {
+      w.put<char>('#');
+    } else {
+      w.put<char>(*src);
+    }
+    src++;
+  }
+  w.put<char>(0);
+}
+
+string remove_color(const string& s) {
+  StringWriter w;
+  remove_color(w, s.data(), s.size());
   return std::move(w.str());
 }
 
@@ -301,4 +329,12 @@ string strip_color(const string& s) {
     }
   }
   return ret;
+}
+
+string escape_player_name(const string& name) {
+  if (name.size() > 2 && name[0] == '\t' && name[1] != 'C') {
+    return remove_color(name.substr(2));
+  } else {
+    return remove_color(name);
+  }
 }

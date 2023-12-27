@@ -89,7 +89,7 @@ void drop_privileges(const string& username) {
   config_log.info("Switched to user %s (%d:%d)", username.c_str(), pw->pw_uid, pw->pw_gid);
 }
 
-Version get_cli_version(Arguments& args) {
+Version get_cli_version(Arguments& args, Version default_value = Version::UNKNOWN) {
   if (args.get<bool>("pc-patch")) {
     return Version::PC_PATCH;
   } else if (args.get<bool>("bb-patch")) {
@@ -113,11 +113,13 @@ Version get_cli_version(Arguments& args) {
   } else if (args.get<bool>("xb")) {
     return Version::XB_V3;
   } else if (args.get<bool>("ep3-trial")) {
-    return Version::GC_EP3_TRIAL_EDITION;
+    return Version::GC_EP3_NTE;
   } else if (args.get<bool>("ep3")) {
     return Version::GC_EP3;
   } else if (args.get<bool>("bb")) {
     return Version::BB_V4;
+  } else if (default_value != Version::UNKNOWN) {
+    return default_value;
   } else {
     throw runtime_error("a version option is required");
   }
@@ -380,7 +382,7 @@ static void a_encrypt_decrypt_fn(Arguments& args) {
       break;
     case Version::GC_V3:
     case Version::XB_V3:
-    case Version::GC_EP3_TRIAL_EDITION:
+    case Version::GC_EP3_NTE:
     case Version::GC_EP3:
       crypt = make_shared<PSOV3Encryption>(stoul(seed, nullptr, 16));
       break;
@@ -1313,7 +1315,8 @@ Action a_convert_rare_item_set(
         string data = rs->serialize_gsl(true);
         write_output_data(args, data.data(), data.size(), nullptr);
       } else if (ends_with(output_filename, ".afs")) {
-        string data = rs->serialize_afs();
+        bool is_v1 = ::is_v1(get_cli_version(args, Version::GC_V3));
+        string data = rs->serialize_afs(is_v1);
         write_output_data(args, data.data(), data.size(), nullptr);
       } else {
         throw runtime_error("cannot determine output format; use a filename ending with .json, .gsl, .gslb, or .afs");

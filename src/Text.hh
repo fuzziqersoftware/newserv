@@ -549,4 +549,11 @@ std::string add_color(const std::string& s);
 size_t add_color_inplace(char* a, size_t max_chars);
 void add_color_inplace(std::string& s);
 
+// remove_color does the opposite of add_color (it changes \t into $, for
+// example). strip_color is irreversible; it deletes color escape sequences.
+void remove_color(StringWriter& w, const char* src, size_t max_input_chars);
+std::string remove_color(const std::string& s);
+
 std::string strip_color(const std::string& s);
+
+std::string escape_player_name(const std::string& name);

@@ -17,7 +17,7 @@ enum class Version {
   PC_V2 = 7,
   GC_NTE = 8,
   GC_V3 = 9,
-  GC_EP3_TRIAL_EDITION = 10,
+  GC_EP3_NTE = 10,
   GC_EP3 = 11,
   XB_V3 = 12,
   BB_V4 = 13,
@@ -46,7 +46,7 @@ inline bool is_v1_or_v2(Version version) {
 }
 inline bool is_v3(Version version) {
   return (version == Version::GC_V3) ||
-      (version == Version::GC_EP3_TRIAL_EDITION) ||
+      (version == Version::GC_EP3_NTE) ||
       (version == Version::GC_EP3) ||
       (version == Version::XB_V3);
 }
@@ -55,7 +55,7 @@ inline bool is_v4(Version version) {
 }
 
 inline bool is_ep3(Version version) {
-  return (version == Version::GC_EP3_TRIAL_EDITION) || (version == Version::GC_EP3);
+  return (version == Version::GC_EP3_NTE) || (version == Version::GC_EP3);
 }
 
 inline bool is_dc(Version version) {
@@ -67,14 +67,14 @@ inline bool is_dc(Version version) {
 inline bool is_gc(Version version) {
   return (version == Version::GC_NTE) ||
       (version == Version::GC_V3) ||
-      (version == Version::GC_EP3_TRIAL_EDITION) ||
+      (version == Version::GC_EP3_NTE) ||
       (version == Version::GC_EP3);
 }
 
 inline bool is_big_endian(Version version) {
   return (version == Version::GC_NTE) ||
       (version == Version::GC_V3) ||
-      (version == Version::GC_EP3_TRIAL_EDITION) ||
+      (version == Version::GC_EP3_NTE) ||
       (version == Version::GC_EP3);
 }
 inline bool uses_v2_encryption(Version version) {
@@ -89,7 +89,7 @@ inline bool uses_v2_encryption(Version version) {
 }
 inline bool uses_v3_encryption(Version version) {
   return (version == Version::GC_V3) ||
-      (version == Version::GC_EP3_TRIAL_EDITION) ||
+      (version == Version::GC_EP3_NTE) ||
       (version == Version::GC_EP3) ||
       (version == Version::XB_V3);
 }

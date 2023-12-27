@@ -134,7 +134,7 @@ void send_command_with_header(Channel& ch, const void* data, size_t size) {
     case Version::DC_V2:
     case Version::GC_NTE:
     case Version::GC_V3:
-    case Version::GC_EP3_TRIAL_EDITION:
+    case Version::GC_EP3_NTE:
     case Version::GC_EP3:
     case Version::XB_V3:
       send_command_with_header_t<PSOCommandHeaderDCV3>(ch, data, size);
@@ -187,7 +187,7 @@ void send_server_init_dc_pc_v3(shared_ptr<Client> c, uint8_t flags) {
     case Version::DC_V2:
     case Version::GC_NTE:
     case Version::GC_V3:
-    case Version::GC_EP3_TRIAL_EDITION:
+    case Version::GC_EP3_NTE:
     case Version::GC_EP3: {
       auto det_crypt = make_shared<PSOV2OrV3DetectorEncryption>(
           client_key, v2_crypt_initial_client_commands, v3_crypt_initial_client_commands);
@@ -264,7 +264,7 @@ void send_server_init(shared_ptr<Client> c, uint8_t flags) {
     case Version::PC_V2:
     case Version::GC_NTE:
     case Version::GC_V3:
-    case Version::GC_EP3_TRIAL_EDITION:
+    case Version::GC_EP3_NTE:
     case Version::GC_EP3:
     case Version::XB_V3:
       send_server_init_dc_pc_v3(c, flags);
@@ -301,7 +301,7 @@ void send_update_client_config(shared_ptr<Client> c, bool always_send) {
       }
       case Version::GC_NTE:
       case Version::GC_V3:
-      case Version::GC_EP3_TRIAL_EDITION:
+      case Version::GC_EP3_NTE:
       case Version::GC_EP3:
       case Version::XB_V3: {
         c->config.set_flag(Client::Flag::HAS_GUILD_CARD_NUMBER);
@@ -763,7 +763,7 @@ void send_message_box(shared_ptr<Client> c, const string& text) {
       break;
     case Version::GC_NTE:
     case Version::GC_V3:
-    case Version::GC_EP3_TRIAL_EDITION:
+    case Version::GC_EP3_NTE:
     case Version::GC_EP3:
     case Version::XB_V3:
     case Version::BB_V4:
@@ -962,7 +962,7 @@ void send_simple_mail(shared_ptr<Client> c, uint32_t from_guild_card_number, con
     case Version::DC_V2:
     case Version::GC_NTE:
     case Version::GC_V3:
-    case Version::GC_EP3_TRIAL_EDITION:
+    case Version::GC_EP3_NTE:
     case Version::GC_EP3:
     case Version::XB_V3:
       send_simple_mail_t<SC_SimpleMail_DC_V3_81>(c, from_guild_card_number, from_name, text);
@@ -1032,7 +1032,7 @@ void send_choice_search_choices(shared_ptr<Client> c) {
     case Version::DC_V2:
     case Version::GC_NTE:
     case Version::GC_V3:
-    case Version::GC_EP3_TRIAL_EDITION:
+    case Version::GC_EP3_NTE:
     case Version::GC_EP3:
     case Version::XB_V3:
       send_choice_search_choices_t<S_ChoiceSearchEntry_DC_V3_C0>(c);
@@ -1094,7 +1094,7 @@ void send_card_search_result(
     case Version::DC_V2:
     case Version::GC_NTE:
     case Version::GC_V3:
-    case Version::GC_EP3_TRIAL_EDITION:
+    case Version::GC_EP3_NTE:
     case Version::GC_EP3:
     case Version::XB_V3:
       send_card_search_result_t<PSOCommandHeaderDCV3, TextEncoding::SJIS>(c, result, result_lobby);
@@ -1211,7 +1211,7 @@ void send_guild_card(
       break;
     case Version::GC_NTE:
     case Version::GC_V3:
-    case Version::GC_EP3_TRIAL_EDITION:
+    case Version::GC_EP3_NTE:
     case Version::GC_EP3:
       send_guild_card_dc_pc_gc_t<G_SendGuildCard_GC_6x06>(
           ch, guild_card_number, name, description, language, section_id, char_class);
@@ -1287,7 +1287,7 @@ void send_menu_t(shared_ptr<Client> c, shared_ptr<const Menu> menu, bool is_info
         is_visible &= !(item.flags & MenuItem::Flag::INVISIBLE_ON_GC_NTE);
         [[fallthrough]];
       case Version::GC_V3:
-      case Version::GC_EP3_TRIAL_EDITION:
+      case Version::GC_EP3_NTE:
       case Version::GC_EP3:
         is_visible &= !(item.flags & MenuItem::Flag::INVISIBLE_ON_GC);
         break;
@@ -1521,7 +1521,7 @@ void send_quest_menu(
     case Version::DC_V2:
     case Version::GC_NTE:
     case Version::GC_V3:
-    case Version::GC_EP3_TRIAL_EDITION:
+    case Version::GC_EP3_NTE:
     case Version::GC_EP3:
       send_quest_menu_t<S_QuestMenuEntry_DC_GC_A2_A4>(c, quests, is_download_menu);
       break;
@@ -1552,7 +1552,7 @@ void send_quest_categories_menu(
     case Version::DC_V2:
     case Version::GC_NTE:
     case Version::GC_V3:
-    case Version::GC_EP3_TRIAL_EDITION:
+    case Version::GC_EP3_NTE:
     case Version::GC_EP3:
       send_quest_categories_menu_t<S_QuestMenuEntry_DC_GC_A2_A4>(c, quest_index, menu_type, episode);
       break;
@@ -1868,7 +1868,7 @@ void send_join_game(shared_ptr<Client> c, shared_ptr<Lobby> l) {
       send_command_t(c, 0x64, player_count, cmd);
       break;
     }
-    case Version::GC_EP3_TRIAL_EDITION:
+    case Version::GC_EP3_NTE:
     case Version::GC_EP3: {
       S_JoinGame_GC_Ep3_64 cmd;
       size_t player_count = populate_v3_cmd(cmd);
@@ -1940,7 +1940,7 @@ void send_join_lobby_t(shared_ptr<Client> c, shared_ptr<Lobby> l, shared_ptr<Cli
   // Allow non-canonical lobby types on GC. They may work on other versions too,
   // but I haven't verified which values don't crash on each version.
   switch (c->version()) {
-    case Version::GC_EP3_TRIAL_EDITION:
+    case Version::GC_EP3_NTE:
     case Version::GC_EP3:
       if ((lobby_type > 0x14) && (lobby_type < 0xE9)) {
         lobby_type = l->block - 1;
@@ -2126,7 +2126,7 @@ void send_join_lobby(shared_ptr<Client> c, shared_ptr<Lobby> l) {
         break;
       case Version::GC_NTE:
       case Version::GC_V3:
-      case Version::GC_EP3_TRIAL_EDITION:
+      case Version::GC_EP3_NTE:
       case Version::GC_EP3:
         send_join_lobby_t<PlayerLobbyDataDCGC, PlayerDispDataDCPCV3, PlayerRecordsEntry_V3>(c, l);
         break;
@@ -2166,7 +2166,7 @@ void send_player_join_notification(shared_ptr<Client> c,
       break;
     case Version::GC_NTE:
     case Version::GC_V3:
-    case Version::GC_EP3_TRIAL_EDITION:
+    case Version::GC_EP3_NTE:
     case Version::GC_EP3:
       send_join_lobby_t<PlayerLobbyDataDCGC, PlayerDispDataDCPCV3, PlayerRecordsEntry_V3>(c, l, joining_client);
       break;
@@ -2669,7 +2669,7 @@ void send_quest_function_call(shared_ptr<Client> c, uint16_t function_id) {
 void send_ep3_card_list_update(shared_ptr<Client> c) {
   if (!c->config.check_flag(Client::Flag::HAS_EP3_CARD_DEFS)) {
     auto s = c->require_server_state();
-    const auto& data = (c->version() == Version::GC_EP3_TRIAL_EDITION)
+    const auto& data = (c->version() == Version::GC_EP3_NTE)
         ? s->ep3_card_index_trial->get_compressed_definitions()
         : s->ep3_card_index->get_compressed_definitions();
 
@@ -2743,7 +2743,7 @@ void send_ep3_set_context_token(shared_ptr<Client> c, uint32_t context_token) {
 void send_ep3_confirm_tournament_entry(
     shared_ptr<Client> c,
     shared_ptr<const Episode3::Tournament> tourn) {
-  if (c->version() == Version::GC_EP3_TRIAL_EDITION) {
+  if (c->version() == Version::GC_EP3_NTE) {
     throw runtime_error("cannot send tournament entry command to Episode 3 Trial Edition client");
   }
 
@@ -3314,7 +3314,7 @@ void send_open_quest_file(
     case Version::PC_NTE:
     case Version::PC_V2:
     case Version::GC_V3:
-    case Version::GC_EP3_TRIAL_EDITION:
+    case Version::GC_EP3_NTE:
     case Version::GC_EP3:
       send_open_quest_file_t<S_OpenFile_PC_GC_44_A6>(c, quest_name, filename, xb_filename, contents->size(), quest_number, type);
       break;
@@ -3434,7 +3434,7 @@ void send_ep3_card_auction(shared_ptr<Lobby> l) {
     distribution_size += e.probability;
   }
 
-  auto card_index = (l->base_version == Version::GC_EP3_TRIAL_EDITION)
+  auto card_index = (l->base_version == Version::GC_EP3_NTE)
       ? s->ep3_card_index_trial
       : s->ep3_card_index;
 

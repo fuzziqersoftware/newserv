@@ -274,7 +274,7 @@ VersionedQuest::VersionedQuest(
       break;
     }
 
-    case Version::GC_EP3_TRIAL_EDITION:
+    case Version::GC_EP3_NTE:
     case Version::GC_EP3: {
       // Note: This codepath handles Episode 3 download quests, which are not
       // the same as Episode 3 quest scripts. The latter are only used offline
@@ -602,7 +602,7 @@ QuestIndex::QuestIndex(
           {"pc", Version::PC_V2},
           {"gcn", Version::GC_NTE},
           {"gc", Version::GC_V3},
-          {"gc3t", Version::GC_EP3_TRIAL_EDITION},
+          {"gc3t", Version::GC_EP3_NTE},
           {"gc3", Version::GC_EP3},
           {"xb", Version::XB_V3},
           {"bb", Version::BB_V4},
@@ -1292,7 +1292,7 @@ string encode_qst_file(
       break;
     case Version::GC_NTE:
     case Version::GC_V3:
-    case Version::GC_EP3_TRIAL_EDITION:
+    case Version::GC_EP3_NTE:
     case Version::GC_EP3:
       for (const auto& it : files) {
         add_open_file_command_t<PSOCommandHeaderDCV3, S_OpenFile_PC_GC_44_A6>(w, name, it.first, xb_filename, quest_number, it.second->size(), is_dlq_encoded);

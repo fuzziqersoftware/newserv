@@ -639,7 +639,7 @@ static void proxy_command_get_player_card(shared_ptr<ProxyServer::LinkedSession>
         send_guild_card(ses->client_channel, p.guild_card_number, p.guild_card_number, p.name, "", "", p.language, p.section_id, p.char_class);
       }
     } catch (const exception& e) {
-      send_text_message_printf(ses->client_channel, "Error: %s", e.what());
+      send_text_message(ses->client_channel, "Error: " + remove_color(e.what()));
     }
   }
 }
@@ -685,7 +685,7 @@ static void server_command_lobby_event(shared_ptr<Client> c, const std::string& 
 
   uint8_t new_event = event_for_name(args);
   if (new_event == 0xFF) {
-    send_text_message(c, "$C6No such lobby event.");
+    send_text_message(c, "$C6No such lobby event");
     return;
   }
 
@@ -699,7 +699,7 @@ static void proxy_command_lobby_event(shared_ptr<ProxyServer::LinkedSession> ses
   } else {
     uint8_t new_event = event_for_name(args);
     if (new_event == 0xFF) {
-      send_text_message(ses->client_channel, "$C6No such lobby event.");
+      send_text_message(ses->client_channel, "$C6No such lobby event");
     } else {
       ses->config.override_lobby_event = new_event;
       if (!is_v1_or_v2(ses->version())) {
@@ -714,7 +714,7 @@ static void server_command_lobby_event_all(shared_ptr<Client> c, const std::stri
 
   uint8_t new_event = event_for_name(args);
   if (new_event == 0xFF) {
-    send_text_message(c, "$C6No such lobby event.");
+    send_text_message(c, "$C6No such lobby event");
     return;
   }
 
@@ -919,7 +919,8 @@ static void server_command_password(shared_ptr<Client> c, const std::string& arg
 
   } else {
     l->password = args;
-    send_text_message_printf(l, "$C6Game password:\n%s", l->password.c_str());
+    string escaped = remove_color(l->password);
+    send_text_message_printf(l, "$C6Game password:\n%s", escaped.c_str());
   }
 }
 
@@ -1113,7 +1114,8 @@ static void server_command_change_bank(shared_ptr<Client> c, const std::string& 
   } else if (new_char_index <= 4) {
     c->use_character_bank(new_char_index - 1);
     auto bp = c->current_bank_character();
-    auto name = bp->disp.name.decode(c->language());
+
+    auto name = escape_player_name(bp->disp.name.decode(c->language()));
     send_text_message_printf(c, "$C6Using %s\'s bank (%zu)", name.c_str(), new_char_index);
   } else {
     throw runtime_error("invalid bank number");
@@ -1201,7 +1203,7 @@ static void server_command_save(shared_ptr<Client> c, const std::string&) {
     c->save_all();
     send_text_message(c, "All data saved");
   } catch (const exception& e) {
-    send_text_message_printf(c, "Can\'t save data:\n%s", e.what());
+    send_text_message(c, "Can\'t save data:\n" + remove_color(e.what()));
   }
   c->reschedule_save_game_data_event();
 }
@@ -1212,7 +1214,7 @@ static void server_command_save(shared_ptr<Client> c, const std::string&) {
 static string name_for_client(shared_ptr<Client> c) {
   auto player = c->character(false);
   if (player.get()) {
-    return player->disp.name.decode(player->inventory.language);
+    return escape_player_name(player->disp.name.decode(player->inventory.language));
   }
 
   if (c->license.get()) {
@@ -1778,7 +1780,7 @@ static void server_command_surrender(shared_ptr<Client> c, const std::string&) {
     send_text_message(c, "$C6Battle has not\nyet started");
     return;
   }
-  const string& name = c->character()->disp.name.decode(c->language());
+  string name = remove_color(c->character()->disp.name.decode(c->language()));
   send_text_message_printf(l, "$C6%s has\nsurrendered", name.c_str());
   for (const auto& watcher_l : l->watcher_lobbies) {
     send_text_message_printf(watcher_l, "$C6%s has\nsurrendered", name.c_str());
@@ -1983,7 +1985,7 @@ void on_chat_command(std::shared_ptr<Client> c, const std::string& text) {
     } catch (const precondition_failed& e) {
       send_text_message(c, e.what());
     } catch (const exception& e) {
-      send_text_message_printf(c, "$C6Failed:\n%s", e.what());
+      send_text_message(c, "$C6Failed:\n" + remove_color(e.what()));
     }
   }
 }
@@ -2007,7 +2009,7 @@ void on_chat_command(shared_ptr<ProxyServer::LinkedSession> ses, const std::stri
     } catch (const precondition_failed& e) {
       send_text_message(ses->client_channel, e.what());
     } catch (const exception& e) {
-      send_text_message_printf(ses->client_channel, "$C6Failed:\n%s", e.what());
+      send_text_message(ses->client_channel, "$C6Failed:\n" + remove_color(e.what()));
     }
   }
 }

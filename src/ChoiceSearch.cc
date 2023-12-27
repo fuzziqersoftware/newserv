@@ -120,7 +120,7 @@ const vector<ChoiceSearchCategory> CHOICE_SEARCH_CATEGORIES({
             case Version::GC_V3:
             case Version::XB_V3:
               return (choice_id == 0x0004);
-            case Version::GC_EP3_TRIAL_EDITION:
+            case Version::GC_EP3_NTE:
             case Version::GC_EP3:
               return (choice_id == 0x0005);
             case Version::BB_V4:

@@ -20,7 +20,7 @@ const char* login_port_name_for_version(Version v) {
     case Version::DC_V2:
     case Version::GC_NTE:
     case Version::GC_V3:
-    case Version::GC_EP3_TRIAL_EDITION:
+    case Version::GC_EP3_NTE:
     case Version::GC_EP3:
       return "console-login";
     case Version::PC_NTE:
@@ -47,7 +47,7 @@ const char* lobby_port_name_for_version(Version v) {
     case Version::DC_V2:
     case Version::GC_NTE:
     case Version::GC_V3:
-    case Version::GC_EP3_TRIAL_EDITION:
+    case Version::GC_EP3_NTE:
     case Version::GC_EP3:
       return "console-lobby";
     case Version::PC_NTE:
@@ -75,7 +75,7 @@ const char* proxy_port_name_for_version(Version v) {
     case Version::GC_NTE:
       return "dc-proxy";
     case Version::GC_V3:
-    case Version::GC_EP3_TRIAL_EDITION:
+    case Version::GC_EP3_NTE:
     case Version::GC_EP3:
       return "gc-proxy";
     case Version::PC_NTE:
@@ -113,8 +113,8 @@ const char* name_for_enum<Version>(Version v) {
       return "GC_NTE";
     case Version::GC_V3:
       return "GC_V3";
-    case Version::GC_EP3_TRIAL_EDITION:
-      return "GC_EP3_TRIAL_EDITION";
+    case Version::GC_EP3_NTE:
+      return "GC_EP3_NTE";
     case Version::GC_EP3:
       return "GC_EP3";
     case Version::XB_V3:
@@ -148,8 +148,8 @@ Version enum_for_name<Version>(const char* name) {
     return Version::GC_NTE;
   } else if (!strcmp(name, "GC_V3") || !strcasecmp(name, "gc")) {
     return Version::GC_V3;
-  } else if (!strcmp(name, "GC_EP3_TRIAL_EDITION")) {
-    return Version::GC_EP3_TRIAL_EDITION;
+  } else if (!strcmp(name, "GC_EP3_NTE")) {
+    return Version::GC_EP3_NTE;
   } else if (!strcmp(name, "GC_EP3")) {
     return Version::GC_EP3;
   } else if (!strcmp(name, "XB_V3") || !strcasecmp(name, "xb")) {
@@ -228,7 +228,7 @@ uint32_t default_specific_version_for_version(Version version, int64_t sub_versi
           return 0x33000000;
       }
       throw logic_error("this should be impossible");
-    case Version::GC_EP3_TRIAL_EDITION:
+    case Version::GC_EP3_NTE:
       return 0x33534A54; // 3SJT
     case Version::GC_EP3:
       switch (sub_version) {
