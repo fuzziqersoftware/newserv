@@ -887,6 +887,13 @@ I 25793 2023-11-24 23:08:15 - [Commands] Sending to C-A (ABCDEFGHIJKL) (version=
 I 25793 2023-11-24 23:08:15 - [Commands] Received from C-A (ABCDEFGHIJKL) (version=DC_NTE command=1D flag=00)
 0000 | 1D 00 04 00                                     |
 I 25793 2023-11-24 23:08:15 - [C-A] Sending 0 queued command(s)
+I 58396 2023-12-27 10:39:54 - [Lobby:15] Sending next item IDs to client: 00010000 00210000 00410000 00610000
+I 58396 2023-12-27 10:39:54 - [Commands] Sending to C-A (ABCDEFGHIJKL) (version=DC_NTE command=6D flag=00)
+0000 | 6D 00 44 00 5E 00 00 00 40 00 00 00 8C 00 00 00 | m D ^   @
+0010 | A9 00 EE FF 00 0C 01 0D 00 21 11 00 41 AA 15 00 |          !  A
+0020 | 61 19 00 81 1D 00 A1 21 00 C1 52 25 00 E1 0D 01 | a      !  R%
+0030 | 10 00 21 31 00 41 35 00 01 61 10 01 40 0F 52 0F |   !1 A5  a  @ R
+0040 | 64 0F 29 00                                     | d )
 I 25793 2023-11-24 23:08:27 - [Commands] Received from C-A (ABCDEFGHIJKL) (version=DC_NTE command=60 flag=00)
 0000 | 60 00 1C 00 36 06 00 00 00 00 00 00 00 00 00 00 | `   6
 0010 | 5C 0F C6 43 00 00 00 00 C3 75 95 42             | \  C     u B

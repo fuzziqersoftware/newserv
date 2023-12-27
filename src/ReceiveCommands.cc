@@ -4203,6 +4203,17 @@ static void on_0C_C1_E7_EC(shared_ptr<Client> c, uint16_t command, uint32_t, str
   if (game) {
     s->change_client_lobby(c, game);
     c->config.set_flag(Client::Flag::LOADING);
+
+    // There is a bug in DC NTE and 11/2000 that causes them to assign item IDs
+    // twice when joining a game. If there are other players in the game, this
+    // isn't an issue because the equivalent of the 6x6D command resets the next
+    // item ID before the second assignment, so the item IDs stay in sync with
+    // the server. If there was no one else in the game, however (as in this
+    // case, when it was just created), we need to artificially change the next
+    // item IDs during the client's loading procedure.
+    if (is_pre_v1(c->version())) {
+      c->config.set_flag(Client::Flag::SHOULD_SEND_ARTIFICIAL_ITEM_STATE);
+    }
   }
 }
 

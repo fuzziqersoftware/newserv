@@ -2360,8 +2360,25 @@ void send_game_item_state(shared_ptr<Client> c) {
 
   G_SyncItemState_6x6D_Decompressed decompressed_header;
   for (size_t z = 0; z < 12; z++) {
-    decompressed_header.next_item_id_per_player[z] = l->next_item_id_for_client[z];
+    if (z == c->lobby_client_id) {
+      // If the player is joining, adjust the next item ID to use the value
+      // before inventory item IDs are assigned
+      size_t num_items = c->character()->inventory.num_items;
+      uint32_t next_id = l->next_item_id_for_client[z] - num_items;
+      if ((next_id & 0xFFE00000) != (l->next_item_id_for_client[z] & 0xFFE00000)) {
+        throw runtime_error("next item ID underflow during joining player item state generation");
+      }
+      decompressed_header.next_item_id_per_player[z] = next_id;
+    } else {
+      decompressed_header.next_item_id_per_player[z] = l->next_item_id_for_client[z];
+    }
   }
+  l->log.info("Sending next item IDs to client: %08" PRIX32 " %08" PRIX32 " %08" PRIX32 " %08" PRIX32,
+      decompressed_header.next_item_id_per_player[0].load(),
+      decompressed_header.next_item_id_per_player[1].load(),
+      decompressed_header.next_item_id_per_player[2].load(),
+      decompressed_header.next_item_id_per_player[3].load());
+
   for (size_t floor = 0; floor < 0x10; floor++) {
     const auto& m = l->floor_item_managers.at(floor);
     for (const auto& it : m.queue_for_client.at(c->lobby_client_id)) {
