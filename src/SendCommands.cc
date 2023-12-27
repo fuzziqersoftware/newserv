@@ -2381,8 +2381,16 @@ void send_game_item_state(shared_ptr<Client> c) {
 
   for (size_t floor = 0; floor < 0x10; floor++) {
     const auto& m = l->floor_item_managers.at(floor);
-    for (const auto& it : m.queue_for_client.at(c->lobby_client_id)) {
+    // It's important that these are added in increasing order of item_id (hence
+    // why items is a map and not an unordered_map), since the game uses binary
+    // search to find floor items when picking them up. If items aren't in the
+    // correct order, the game may fail to find an item when attempting to pick
+    // it up, causing "ghost items" which are visible but can't be picked up.
+    for (const auto& it : m.items) {
       const auto& item = it.second;
+      if (!item->visible_to_client(c->lobby_client_id)) {
+        continue;
+      }
 
       FloorItem fi;
       fi.floor = floor;
