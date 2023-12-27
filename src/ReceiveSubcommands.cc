@@ -2126,21 +2126,36 @@ static void on_charge_attack_bb(shared_ptr<Client> c, uint8_t command, uint8_t f
 }
 
 static void on_level_up(shared_ptr<Client> c, uint8_t command, uint8_t flag, void* data, size_t size) {
-  const auto& cmd = check_size_t<G_LevelUp_6x30>(data, size);
-
   auto l = c->require_lobby();
   if (!l->is_game()) {
     return;
   }
 
+  // On the DC prototypes, this command doesn't include any stats - it just
+  // increments the player's level by 1.
   auto p = c->character();
-  p->disp.stats.char_stats.atp = cmd.atp;
-  p->disp.stats.char_stats.mst = cmd.mst;
-  p->disp.stats.char_stats.evp = cmd.evp;
-  p->disp.stats.char_stats.hp = cmd.hp;
-  p->disp.stats.char_stats.dfp = cmd.dfp;
-  p->disp.stats.char_stats.ata = cmd.ata;
-  p->disp.stats.level = cmd.level.load();
+  if (is_pre_v1(c->version())) {
+    check_size_t<G_LevelUp_DCNTE_6x30>(data, size);
+    auto s = c->require_server_state();
+    const auto& level_incrs = s->level_table->stats_delta_for_level(p->disp.visual.char_class, p->disp.stats.level + 1);
+    p->disp.stats.char_stats.atp += level_incrs.atp;
+    p->disp.stats.char_stats.mst += level_incrs.mst;
+    p->disp.stats.char_stats.evp += level_incrs.evp;
+    p->disp.stats.char_stats.hp += level_incrs.hp;
+    p->disp.stats.char_stats.dfp += level_incrs.dfp;
+    p->disp.stats.char_stats.ata += level_incrs.ata;
+    p->disp.stats.char_stats.lck += level_incrs.lck;
+    p->disp.stats.level++;
+  } else {
+    const auto& cmd = check_size_t<G_LevelUp_6x30>(data, size);
+    p->disp.stats.char_stats.atp = cmd.atp;
+    p->disp.stats.char_stats.mst = cmd.mst;
+    p->disp.stats.char_stats.evp = cmd.evp;
+    p->disp.stats.char_stats.hp = cmd.hp;
+    p->disp.stats.char_stats.dfp = cmd.dfp;
+    p->disp.stats.char_stats.ata = cmd.ata;
+    p->disp.stats.level = cmd.level.load();
+  }
 
   forward_subcommand(c, command, flag, data, size);
 }

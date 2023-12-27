@@ -4122,6 +4122,10 @@ struct G_HitByEnemy_6x2F {
 
 // 6x30: Level up
 
+struct G_LevelUp_DCNTE_6x30 {
+  G_ClientIDHeader header;
+} __packed__;
+
 struct G_LevelUp_6x30 {
   G_ClientIDHeader header;
   le_uint16_t atp = 0;
