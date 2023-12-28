@@ -4581,7 +4581,7 @@ struct G_CreateTelepipe_6x68 {
 
 struct G_NPCControl_6x69 {
   G_UnusedHeader header;
-  le_uint16_t param1; // Commands 0/3: state; commands 1/2: npc_entity_id
+  le_uint16_t param1; // Commands 0/3: state; command 1: npc_entity_id; command 2: unknown
   le_uint16_t param2; // Commands 0/3: npc_entity_id; commands 1/2: unused
   le_uint16_t command = 0; // 0 = create follower NPC, 1 = stop acting, 2 = start acting, 3 = create attacker NPC
   le_uint16_t param3; // Commands 0/3: npc_template_index; commands 1/2: unused
