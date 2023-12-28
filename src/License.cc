@@ -127,6 +127,14 @@ shared_ptr<License> LicenseIndex::get(uint32_t serial_number) const {
   }
 }
 
+shared_ptr<License> LicenseIndex::get_by_bb_username(const string& bb_username) const {
+  try {
+    return this->bb_username_to_license.at(bb_username);
+  } catch (const out_of_range&) {
+    throw missing_license();
+  }
+}
+
 vector<shared_ptr<License>> LicenseIndex::all() const {
   vector<shared_ptr<License>> ret;
   ret.reserve(this->serial_number_to_license.size());

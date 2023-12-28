@@ -100,6 +100,7 @@ public:
 
   size_t count() const;
   std::shared_ptr<License> get(uint32_t serial_number) const;
+  std::shared_ptr<License> get_by_bb_username(const std::string& bb_username) const;
   std::vector<std::shared_ptr<License>> all() const;
 
   void add(std::shared_ptr<License> l);
