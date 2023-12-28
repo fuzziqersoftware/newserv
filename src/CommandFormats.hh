@@ -1684,12 +1684,12 @@ struct C_LoginExtendedV1_DC_93 : C_LoginV1_DC_93 {
 
 // 93 (C->S): Log in (BB)
 
-struct C_Login_BB_93 {
+struct C_LoginBase_BB_93 {
   le_uint32_t player_tag = 0x00010000;
   le_uint32_t guild_card_number = 0;
   le_uint32_t sub_version = 0;
-  uint8_t language;
-  int8_t character_slot;
+  uint8_t language = 0;
+  int8_t character_slot = 0;
   // Values for connection_phase:
   // 00 - initial connection (client will request system file, characters, etc.)
   // 01 - choose character
@@ -1697,9 +1697,9 @@ struct C_Login_BB_93 {
   // 03 - apply updates from dressing room
   // 04 - login server
   // 05 - lobby server (and beyond)
-  uint8_t connection_phase;
-  uint8_t client_code;
-  le_uint32_t team_id = 0;
+  uint8_t connection_phase = 0;
+  uint8_t client_code = 0;
+  le_uint32_t security_token = 0;
   pstring<TextEncoding::ASCII, 0x30> username;
   pstring<TextEncoding::ASCII, 0x30> password;
 
@@ -1708,20 +1708,21 @@ struct C_Login_BB_93 {
   // doesn't use it anyway).
   le_uint32_t menu_id = 0;
   le_uint32_t preferred_lobby_id = 0;
+} __packed__;
 
+struct C_LoginWithoutHardwareInfo_BB_93 : C_LoginBase_BB_93 {
   // Note: Unlike other versions, BB puts the version string in the client
   // config at connect time. So the first time the server gets this command, it
-  // will be something like "Ver. 1.24.3". Note also that some old versions
-  // (before 1.23.8?) omit the hardware_info field before the client config, so
-  // the client config starts 8 bytes earlier on those versions and the entire
-  // command is 8 bytes shorter, hence this odd-looking union.
-  union VariableLengthSection {
-    parray<uint8_t, 0x28> old_client_config;
-    struct NewFormat {
-      parray<le_uint32_t, 2> hardware_info;
-      parray<uint8_t, 0x28> client_config;
-    } __packed__ new_clients;
-  } __packed__ var;
+  // will be something like "Ver. 1.24.3". This format is used on older client
+  // versions (before 1.23.8?)
+  parray<uint8_t, 0x28> client_config;
+} __packed__;
+
+struct C_LoginWithHardwareInfo_BB_93 : C_LoginBase_BB_93 {
+  // See the comment in the above structure. This format is used on newer client
+  // versions.
+  parray<le_uint32_t, 2> hardware_info;
+  parray<uint8_t, 0x28> client_config;
 } __packed__;
 
 // 94: Invalid command
@@ -3080,7 +3081,7 @@ struct S_ClientInit_BB_00E6 {
   le_uint32_t error_code = 0;
   le_uint32_t player_tag = 0x00010000;
   le_uint32_t guild_card_number = 0;
-  le_uint32_t team_id = 0;
+  le_uint32_t security_token = 0;
   parray<uint8_t, 0x28> client_config;
   uint8_t can_create_team = 1;
   uint8_t episode_4_unlocked = 1;
@@ -4122,6 +4123,10 @@ struct G_HitByEnemy_6x2F {
 
 // 6x30: Level up
 
+struct G_LevelUp_DCNTE_6x30 {
+  G_ClientIDHeader header;
+} __packed__;
+
 struct G_LevelUp_6x30 {
   G_ClientIDHeader header;
   le_uint16_t atp = 0;
@@ -4569,13 +4574,14 @@ struct G_CreateTelepipe_6x68 {
 } __packed__;
 
 // 6x69: NPC control
+// Note: NPCs cannot be destroyed with 6x69; 6x1C is used instead for that.
 
 struct G_NPCControl_6x69 {
   G_UnusedHeader header;
-  le_uint16_t state = 0;
-  le_uint16_t npc_entity_id = 0;
+  le_uint16_t param1; // Commands 0/3: state; commands 1/2: npc_entity_id
+  le_uint16_t param2; // Commands 0/3: npc_entity_id; commands 1/2: unused
   le_uint16_t command = 0; // 0 = create follower NPC, 1 = stop acting, 2 = start acting, 3 = create attacker NPC
-  le_uint16_t npc_template_index = 0; // Specifies which NPC to create if command == 0 or 3; unused otherwise
+  le_uint16_t param3; // Commands 0/3: npc_template_index; commands 1/2: unused
 } __packed__;
 
 // 6x6A: Use boss warp (not valid on Episode 3)

@@ -123,7 +123,7 @@ void Lobby::FloorItemManager::clear() {
 }
 
 uint32_t Lobby::FloorItemManager::reassign_all_item_ids(uint32_t next_item_id) {
-  unordered_map<uint32_t, shared_ptr<FloorItem>> old_items;
+  ::map<uint32_t, shared_ptr<FloorItem>> old_items;
   old_items.swap(this->items);
   for (auto& queue : this->queue_for_client) {
     queue.clear();

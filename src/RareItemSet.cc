@@ -136,9 +136,15 @@ std::string RareItemSet::ParsedRELData::serialize_t(bool is_v1) const {
   for (const auto& drop : this->box_rares) {
     w.put_u8(drop.area);
   }
+  for (size_t z = this->box_rares.size(); z < 30; z++) {
+    w.put_u8(0xFF);
+  }
   root.box_rares_offset = w.size();
   for (const auto& drop : this->box_rares) {
     w.put(PackedDrop(drop.drop));
+  }
+  for (size_t z = this->box_rares.size(); z < 30; z++) {
+    w.put_u32l(0x00000000);
   }
   while (w.size() & 3) {
     w.put_u8(0);

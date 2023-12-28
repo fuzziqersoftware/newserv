@@ -1043,24 +1043,58 @@ static void on_9E_XB(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
   send_command(c, 0x9F, 0x00);
 }
 
+static void scramble_bb_security_data(parray<uint8_t, 0x28>& data, uint8_t which, bool reverse) {
+  static const uint8_t forward_orders[8][5] = {
+      {2, 0, 1, 4, 3},
+      {3, 4, 0, 1, 2},
+      {2, 3, 4, 0, 1},
+      {2, 3, 0, 1, 4},
+      {0, 2, 3, 4, 1},
+      {1, 4, 2, 3, 0},
+      {2, 0, 1, 4, 3},
+      {1, 0, 3, 4, 2},
+  };
+  static const uint8_t reverse_orders[8][5] = {
+      {1, 2, 0, 4, 3},
+      {2, 3, 4, 0, 1},
+      {3, 4, 0, 1, 2},
+      {2, 3, 0, 1, 4},
+      {0, 4, 1, 2, 3},
+      {4, 0, 2, 3, 1},
+      {1, 2, 0, 4, 3},
+      {1, 0, 4, 2, 3},
+  };
+  const auto& order = reverse ? reverse_orders[which & 7] : forward_orders[which & 7];
+  parray<uint8_t, 0x28> scrambled_data;
+  for (size_t z = 0; z < 5; z++) {
+    for (size_t x = 0; x < 8; x++) {
+      scrambled_data[(z * 8) + x] = data[(order[z] * 8) + x];
+    }
+  }
+  data = scrambled_data;
+}
+
 static void on_93_BB(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
-  const auto& cmd = check_size_t<C_Login_BB_93>(data, sizeof(C_Login_BB_93) - 8, sizeof(C_Login_BB_93));
+  const auto& base_cmd = check_size_t<C_LoginBase_BB_93>(data, 0xFFFF);
   auto s = c->require_server_state();
 
-  bool is_old_format;
-  if (data.size() == sizeof(C_Login_BB_93) - 8) {
-    is_old_format = true;
-  } else if (data.size() == sizeof(C_Login_BB_93)) {
-    is_old_format = false;
-  } else {
-    throw runtime_error("invalid size for 93 command");
+  parray<uint8_t, 0x28> config_data = (data.size() == sizeof(C_LoginWithoutHardwareInfo_BB_93))
+      ? check_size_t<C_LoginWithoutHardwareInfo_BB_93>(data).client_config
+      : check_size_t<C_LoginWithHardwareInfo_BB_93>(data).client_config;
+
+  // If security_token is zero, the game scrambles the client config data based
+  // on the first character in the username. We undo the scramble here.
+  if (base_cmd.security_token == 0) {
+    scramble_bb_security_data(config_data, base_cmd.username.at(0), true);
   }
 
-  c->config.set_flags_for_version(c->version(), -1);
-  c->channel.language = cmd.language;
+  c->config.set_flags_for_version(c->version(), base_cmd.sub_version);
+  c->channel.language = base_cmd.language;
+  string username = base_cmd.username.decode();
+  string password = base_cmd.password.decode();
 
   try {
-    auto l = s->license_index->verify_bb(cmd.username.decode(), cmd.password.decode());
+    auto l = s->license_index->verify_bb(username, password);
     c->set_license(l);
 
   } catch (const LicenseIndex::no_username& e) {
@@ -1080,9 +1114,9 @@ static void on_93_BB(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
       return;
     } else {
       auto l = s->license_index->create_license();
-      l->serial_number = fnv1a32(cmd.username.decode()) & 0x7FFFFFFF;
-      l->bb_username = cmd.username.decode();
-      l->bb_password = cmd.password.decode();
+      l->serial_number = fnv1a32(username) & 0x7FFFFFFF;
+      l->bb_username = username;
+      l->bb_password = password;
       s->license_index->add(l);
       if (!s->is_replay) {
         l->save();
@@ -1093,16 +1127,10 @@ static void on_93_BB(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
     }
   }
 
-  try {
-    if (is_old_format) {
-      c->config.parse_from(cmd.var.old_client_config);
-    } else {
-      c->config.parse_from(cmd.var.new_clients.client_config);
-    }
-  } catch (const invalid_argument&) {
-    string version_string = is_old_format
-        ? cmd.var.old_client_config.as_string()
-        : cmd.var.new_clients.client_config.as_string();
+  if (base_cmd.guild_card_number != 0) {
+    c->config.parse_from(config_data);
+  } else {
+    string version_string = config_data.as_string();
     strip_trailing_zeroes(version_string);
     // Note: Tethealla PSOBB is actually Japanese PSOBB, but with most of the
     // files replaced with English text/graphics/etc. For this reason, it still
@@ -1113,17 +1141,17 @@ static void on_93_BB(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
       c->config.set_flag(Client::Flag::FORCE_ENGLISH_LANGUAGE_BB);
     }
   }
-  c->channel.language = c->config.check_flag(Client::Flag::FORCE_ENGLISH_LANGUAGE_BB) ? 1 : cmd.language;
-  c->bb_connection_phase = cmd.connection_phase;
-  c->bb_character_index = cmd.character_slot;
+  c->channel.language = c->config.check_flag(Client::Flag::FORCE_ENGLISH_LANGUAGE_BB) ? 1 : base_cmd.language;
+  c->bb_connection_phase = base_cmd.connection_phase;
+  c->bb_character_index = base_cmd.character_slot;
 
-  if (cmd.menu_id == MenuID::LOBBY) {
-    c->preferred_lobby_id = cmd.preferred_lobby_id;
+  if (base_cmd.menu_id == MenuID::LOBBY) {
+    c->preferred_lobby_id = base_cmd.preferred_lobby_id;
   }
 
   send_client_init_bb(c, 0);
 
-  if (cmd.guild_card_number == 0) {
+  if (base_cmd.guild_card_number == 0) {
     // On first login, send the client to the data server port
     send_reconnect(c, s->connect_address_for_client(c), s->name_to_port_config.at("bb-data1")->port);
 
@@ -3091,15 +3119,22 @@ static void on_61_98(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
         bb_player->disp.visual.version = 4;
         bb_player->disp.visual.name_color_checksum = 0x00000000;
         bb_player->inventory = player->inventory;
-        bb_player->disp.stats.advance_to_level(bb_player->disp.visual.char_class, player->disp.stats.level, s->level_table);
-        bb_player->disp.stats.char_stats.atp += bb_player->get_material_usage(PSOBBCharacterFile::MaterialType::POWER) * 2;
-        bb_player->disp.stats.char_stats.mst += bb_player->get_material_usage(PSOBBCharacterFile::MaterialType::MIND) * 2;
-        bb_player->disp.stats.char_stats.evp += bb_player->get_material_usage(PSOBBCharacterFile::MaterialType::EVADE) * 2;
-        bb_player->disp.stats.char_stats.dfp += bb_player->get_material_usage(PSOBBCharacterFile::MaterialType::DEF) * 2;
-        bb_player->disp.stats.char_stats.lck += bb_player->get_material_usage(PSOBBCharacterFile::MaterialType::LUCK) * 2;
-        bb_player->disp.stats.char_stats.hp += bb_player->get_material_usage(PSOBBCharacterFile::MaterialType::HP) * 2;
-        bb_player->disp.stats.experience = player->disp.stats.experience;
-        bb_player->disp.stats.meseta = player->disp.stats.meseta;
+        // Before V3, player stats can't be correctly computed from other fields
+        // because material usage isn't stored anywhere. For these versions, we
+        // have to trust the stats field from the player's data.
+        if (is_v1_or_v2(c->version())) {
+          bb_player->disp.stats = player->disp.stats;
+        } else {
+          bb_player->disp.stats.advance_to_level(bb_player->disp.visual.char_class, player->disp.stats.level, s->level_table);
+          bb_player->disp.stats.char_stats.atp += bb_player->get_material_usage(PSOBBCharacterFile::MaterialType::POWER) * 2;
+          bb_player->disp.stats.char_stats.mst += bb_player->get_material_usage(PSOBBCharacterFile::MaterialType::MIND) * 2;
+          bb_player->disp.stats.char_stats.evp += bb_player->get_material_usage(PSOBBCharacterFile::MaterialType::EVADE) * 2;
+          bb_player->disp.stats.char_stats.dfp += bb_player->get_material_usage(PSOBBCharacterFile::MaterialType::DEF) * 2;
+          bb_player->disp.stats.char_stats.lck += bb_player->get_material_usage(PSOBBCharacterFile::MaterialType::LUCK) * 2;
+          bb_player->disp.stats.char_stats.hp += bb_player->get_material_usage(PSOBBCharacterFile::MaterialType::HP) * 2;
+          bb_player->disp.stats.experience = player->disp.stats.experience;
+          bb_player->disp.stats.meseta = player->disp.stats.meseta;
+        }
         bb_player->disp.technique_levels_v1 = player->disp.technique_levels_v1;
         bb_player->auto_reply = player->auto_reply;
         bb_player->info_board = player->info_board;
@@ -4203,6 +4238,17 @@ static void on_0C_C1_E7_EC(shared_ptr<Client> c, uint16_t command, uint32_t, str
   if (game) {
     s->change_client_lobby(c, game);
     c->config.set_flag(Client::Flag::LOADING);
+
+    // There is a bug in DC NTE and 11/2000 that causes them to assign item IDs
+    // twice when joining a game. If there are other players in the game, this
+    // isn't an issue because the equivalent of the 6x6D command resets the next
+    // item ID before the second assignment, so the item IDs stay in sync with
+    // the server. If there was no one else in the game, however (as in this
+    // case, when it was just created), we need to artificially change the next
+    // item IDs during the client's loading procedure.
+    if (is_pre_v1(c->version())) {
+      c->config.set_flag(Client::Flag::SHOULD_SEND_ARTIFICIAL_ITEM_STATE);
+    }
   }
 }
 

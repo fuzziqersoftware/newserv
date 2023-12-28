@@ -506,7 +506,7 @@ void send_client_init_bb(shared_ptr<Client> c, uint32_t error_code) {
   cmd.error_code = error_code;
   cmd.player_tag = 0x00010000;
   cmd.guild_card_number = c->license->serial_number;
-  cmd.team_id = team ? team->team_id : 0;
+  cmd.security_token = team ? team->team_id : 0;
   c->config.serialize_into(cmd.client_config);
   cmd.can_create_team = 1;
   cmd.episode_4_unlocked = 1;
@@ -2360,12 +2360,37 @@ void send_game_item_state(shared_ptr<Client> c) {
 
   G_SyncItemState_6x6D_Decompressed decompressed_header;
   for (size_t z = 0; z < 12; z++) {
-    decompressed_header.next_item_id_per_player[z] = l->next_item_id_for_client[z];
+    if (z == c->lobby_client_id) {
+      // If the player is joining, adjust the next item ID to use the value
+      // before inventory item IDs are assigned
+      size_t num_items = c->character()->inventory.num_items;
+      uint32_t next_id = l->next_item_id_for_client[z] - num_items;
+      if ((next_id & 0xFFE00000) != (l->next_item_id_for_client[z] & 0xFFE00000)) {
+        throw runtime_error("next item ID underflow during joining player item state generation");
+      }
+      decompressed_header.next_item_id_per_player[z] = next_id;
+    } else {
+      decompressed_header.next_item_id_per_player[z] = l->next_item_id_for_client[z];
+    }
   }
+  l->log.info("Sending next item IDs to client: %08" PRIX32 " %08" PRIX32 " %08" PRIX32 " %08" PRIX32,
+      decompressed_header.next_item_id_per_player[0].load(),
+      decompressed_header.next_item_id_per_player[1].load(),
+      decompressed_header.next_item_id_per_player[2].load(),
+      decompressed_header.next_item_id_per_player[3].load());
+
   for (size_t floor = 0; floor < 0x10; floor++) {
     const auto& m = l->floor_item_managers.at(floor);
-    for (const auto& it : m.queue_for_client.at(c->lobby_client_id)) {
+    // It's important that these are added in increasing order of item_id (hence
+    // why items is a map and not an unordered_map), since the game uses binary
+    // search to find floor items when picking them up. If items aren't in the
+    // correct order, the game may fail to find an item when attempting to pick
+    // it up, causing "ghost items" which are visible but can't be picked up.
+    for (const auto& it : m.items) {
       const auto& item = it.second;
+      if (!item->visible_to_client(c->lobby_client_id)) {
+        continue;
+      }
 
       FloorItem fi;
       fi.floor = floor;

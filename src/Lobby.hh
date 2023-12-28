@@ -36,7 +36,9 @@ struct Lobby : public std::enable_shared_from_this<Lobby> {
   struct FloorItemManager {
     PrefixedLogger log;
     uint64_t next_drop_number;
-    std::unordered_map<uint32_t, std::shared_ptr<FloorItem>> items; // Keyed on item_id
+    // It's important that this is a map and not an unordered_map. See the
+    // comment in send_game_item_state for more details.
+    std::map<uint32_t, std::shared_ptr<FloorItem>> items; // Keyed on item_id
     std::array<std::map<uint64_t, std::shared_ptr<FloorItem>>, 12> queue_for_client;
 
     FloorItemManager(uint32_t lobby_id, uint8_t floor);

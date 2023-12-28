@@ -116,8 +116,11 @@ struct PlayerVisualConfig {
   /* 18 */ le_uint32_t name_color = 0xFFFFFFFF; // ARGB
   /* 1C */ uint8_t extra_model = 0;
   /* 1D */ parray<uint8_t, 0x0F> unused;
-  // See compute_name_color_checksum for details on how this is computed. This
-  // field is ignored on V3.
+  // See compute_name_color_checksum for details on how this is computed. If the
+  // value is incorrect, V1 and V2 will ignore the name_color field and use the
+  // default color instead. This field is ignored on GC; on BB (and presumably
+  // Xbox), if this has a nonzero value, the "Change Name" option appears in the
+  // character selection menu.
   /* 2C */ le_uint32_t name_color_checksum = 0;
   /* 30 */ uint8_t section_id = 0;
   /* 31 */ uint8_t char_class = 0;

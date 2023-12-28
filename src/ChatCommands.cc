@@ -375,7 +375,7 @@ static void proxy_command_qclear(shared_ptr<ProxyServer::LinkedSession> ses, con
   return proxy_command_qset_qclear(ses, args, false);
 }
 
-static void server_command_qsync(shared_ptr<Client> c, const std::string& args) {
+static void server_command_qsync_qsyncall(shared_ptr<Client> c, const std::string& args, bool send_to_lobby) {
   if (!c->config.check_flag(Client::Flag::DEBUG_ENABLED)) {
     send_text_message(c, "$C6This command can only\nbe run in debug mode\n(run %sdebug first)");
     return;
@@ -404,10 +404,22 @@ static void server_command_qsync(shared_ptr<Client> c, const std::string& args) 
     send_text_message(c, "$C6First argument must\nbe a register");
     return;
   }
-  send_command_t(c, 0x60, 0x00, cmd);
+  if (send_to_lobby) {
+    send_command_t(l, 0x60, 0x00, cmd);
+  } else {
+    send_command_t(c, 0x60, 0x00, cmd);
+  }
 }
 
-static void proxy_command_qsync(shared_ptr<ProxyServer::LinkedSession> ses, const std::string& args) {
+static void server_command_qsync(shared_ptr<Client> c, const std::string& args) {
+  server_command_qsync_qsyncall(c, args, false);
+}
+
+static void server_command_qsyncall(shared_ptr<Client> c, const std::string& args) {
+  server_command_qsync_qsyncall(c, args, true);
+}
+
+static void proxy_command_qsync_qsyncall(shared_ptr<ProxyServer::LinkedSession> ses, const std::string& args, bool send_to_lobby) {
   if (!ses->is_in_game) {
     send_text_message(ses->client_channel, "$C6This command cannot\nbe used in the lobby");
     return;
@@ -432,6 +444,17 @@ static void proxy_command_qsync(shared_ptr<ProxyServer::LinkedSession> ses, cons
     return;
   }
   ses->client_channel.send(0x60, 0x00, cmd);
+  if (send_to_lobby) {
+    ses->server_channel.send(0x60, 0x00, cmd);
+  }
+}
+
+static void proxy_command_qsync(shared_ptr<ProxyServer::LinkedSession> ses, const std::string& args) {
+  proxy_command_qsync_qsyncall(ses, args, false);
+}
+
+static void proxy_command_qsyncall(shared_ptr<ProxyServer::LinkedSession> ses, const std::string& args) {
+  proxy_command_qsync_qsyncall(ses, args, true);
 }
 
 static void server_command_qcall(shared_ptr<Client> c, const std::string& args) {
@@ -1922,6 +1945,7 @@ static const unordered_map<string, ChatCommandDefinition> chat_commands({
     {"$qclear", {server_command_qclear, proxy_command_qclear}},
     {"$qset", {server_command_qset, proxy_command_qset}},
     {"$qsync", {server_command_qsync, proxy_command_qsync}},
+    {"$qsyncall", {server_command_qsyncall, proxy_command_qsyncall}},
     {"$quest", {server_command_quest, nullptr}},
     {"$rand", {server_command_rand, proxy_command_rand}},
     {"$save", {server_command_save, nullptr}},

@@ -283,23 +283,31 @@ Some commands only work on the game server and not on the proxy server. The chat
 
 * Information commands
     * `$li`: Shows basic information about the lobby or game you're in. If you're on the proxy server, shows information about your connection instead (remote Guild Card number, client ID, etc.).
-    * `$si`: Shows basic information about the server.
+    * `$si` (game server only): Shows basic information about the server.
     * `$ping`: Shows round-trip ping time from the server to you. On the proxy server, shows the ping time from you to the proxy and from the proxy to the server.
     * `$matcount` (game server only): Shows how many of each type of material you've used.
     * `$what` (game server only): Shows the type, name, and stats of the nearest item on the ground.
     * `$where` (game server only): Shows your current floor number and coordinates. Mainly useful for debugging.
 
 * Debugging commands
-    * `$debug` (game server only): Enable or disable debug. You need the DEBUG permission in your user license to use this command. When debug is enabled, you'll see in-game messages from the server when you take certain actions. You'll also be placed into the highest available slot in lobbies and games instead of the lowest, which is useful for finding commands for which newserv doesn't handle client IDs properly. This setting also disables certain safeguards and allows you to do some things that might crash your client.
-    * `$quest <number>`: Load a quest by quest number. Can be used to load battle or challenge quests with only one player present.
+    * `$debug` (game server only): Enable or disable debug. You need the DEBUG permission in your user license to use this command. Enabling debug does a few things:
+        * You'll see in-game messages from the server when you take certain actions, like killing an enemy in BB.
+        * You'll see the rare seed value and floor variations when you join a game.
+        * You'll be placed into the highest available slot in lobbies and games instead of the lowest, unless you're joining a BB solo-mode game.
+        * The rest of the commands in this section are enabled on the game server. (They are always enabled on the proxy server.)
+    * `$quest <number>` (game server only): Load a quest by quest number. Can be used to load battle or challenge quests with only one player present.
     * `$qcall <function-id>`: Call a quest function on your client.
-    * `$qcheck <flag-num>`: Show the value of a quest flag.
+    * `$qcheck <flag-num>` (game server only): Show the value of a quest flag.
     * `$qset <flag-num>` or `$qclear <flag-num>`: Set or clear a global quest flag for everyone in the game.
-    * `$qsync <reg-num> <value>`: Set a quest register's value on your client. `<reg-num>` should be either rXX (e.g. r60) or fXX (e.g. f60); if the latter, `<value>` is parsed as a floating-point value instead of as an integer.
+    * `$qsync <reg-num> <value>`: Set a quest register's value for yourself only. `<reg-num>` should be either rXX (e.g. r60) or fXX (e.g. f60); if the latter, `<value>` is parsed as a floating-point value instead of as an integer.
+    * `$qsyncall <reg-num> <value>`: Set a quest register's value for everyone in the game. `<reg-num>` should be either rXX (e.g. r60) or fXX (e.g. f60); if the latter, `<value>` is parsed as a floating-point value instead of as an integer.
     * `$gc` (game server only): Send your own Guild Card to yourself.
     * `$persist` (game server only): Enable or disable persistence for the current game. When persistence is on, the game will not be deleted when the last player leaves. The state of enemies and objects on the map will be reset when the last player leaves.
     * `$sc <data>`: Send a command to yourself.
     * `$ss <data>` (proxy server only): Send a command to the remote server.
+    * `$meseta <amount>` (game server only; Episode 3 only): Add the given amount to your Meseta total.
+    * `$auction` (Episode 3 only): Bring up the CARD Auction menu, regardless of how many players are in the game or if you have a VIP card.
+    * `$ep3battledebug` (game server only; Episode 3 only): Enable or disable TCard00_Select. If enabled, the game will enter the debug menu when you start a battle.
 
 * Personal state commands
     * `$arrow <color-id>`: Changes your lobby arrow color.
@@ -310,7 +318,7 @@ Some commands only work on the game server and not on the proxy server. The chat
     * `$exit`: If you're in a lobby, sends you to the main menu (which ends your proxy session, if you're in one). If you're in a game or spectator team, sends you to the lobby (but does not end your proxy session if you're in one). Does nothing if you're in a non-Episode 3 game and no quest is in progress.
     * `$patch <name>`: Run a patch on your client. `<name>` must exactly match the name of a patch on the server.
 
-* Character data commands
+* Character data commands (game server only)
     * `$savechar <slot>`: Saves your current character data on the server in the specified slot (each serial number has 4 slots, numbered 1-4). These slots are separate from BB character slots; using this command does not affect BB characters.
     * `$loadchar <slot>` (v1 and v2 only): Loads your character data from the specified slot. The changes will be undone if you join a game - to save your changes, disconnect from the lobby.
     * `$bbchar <username> <password> <slot>`: Use this command when playing on a non-BB version of PSO. If the username and password are correct, this command converts your current character to BB format and saves it on the server in the given slot (1-4). Any character already in that slot is overwritten. (This command is similar to `$savechar`, except it overwrites a BB character slot, and can transfer characters across accounts.) Note that the character's chat data, quick menu config, and bank contents are not copied, since there is no way for the server to request those types of data.
@@ -336,13 +344,13 @@ Some commands only work on the game server and not on the proxy server. The chat
     * `$playrec <name>`: Plays a battle recording. This command creates a spectator team and replays the specified battle log within it. There is a bug in Dolphin that makes use of this command unstable in emulation (see the "Battle records" section above).
 
 * Cheat mode commands
-    * `$cheat`: Enables or disables cheat mode for the current game. All other cheat mode commands do nothing if cheat mode is disabled. By default, cheat mode is off in new games but can be enabled; there is an option in config.json that allows you to disable cheat mode entirely, or set it to on by default in new games.
-    * `$infhp` / `$inftp`: Enables or disables infinite HP or TP mode. Applies to only you. In infinite HP mode, one-hit KO attacks will still kill you.
-    * `$warpme <floor-id>`: Warps yourself to the given floor.
+    * `$cheat` (game server only): Enables or disables cheat mode for the current game. All other cheat mode commands do nothing if cheat mode is disabled. By default, cheat mode is off in new games but can be enabled; there is an option in config.json that allows you to disable cheat mode entirely, or set it to on by default in new games. Cheat mode is always enabled on the proxy server, unless cheat mode is disabled on the entire server.
+    * `$infhp` / `$inftp`: Enables or disables infinite HP or TP mode. Applies to only you. In infinite HP mode, one-hit KO attacks will still kill you. On V1 and V2, infinite HP also automatically cures status ailments.
+    * `$warpme <floor-id>` (or `$warp <floor-id>`): Warps yourself to the given floor.
     * `$warpall <floor-id>`: Warps everyone in the game to the given floor. You must be the leader to use this command, unless you're on the proxy server.
     * `$next`: Warps yourself to the next floor.
     * `$item <desc>` (or `$i <desc>`): Create an item. `desc` may be a description of the item (e.g. "Hell Saber +5 0/10/25/0/10") or a string of hex data specifying the item code. Item codes are 16 hex bytes; at least 2 bytes must be specified, and all unspecified bytes are zeroes. If you are on the proxy server, you must not be using Blue Burst for this command to work. On the game server, this command works for all versions.
-    * `$unset <index>`: In an Episode 3 battle, removes one of your set cards from the field. `<index>` is the index of the set card as it appears on your screen - 1 is the card next to your SC's icon, 2 is the card to the right of 1, etc. This does not cause a Hunters-side SC to lose HP, as they normally do when their items are destroyed.
+    * `$unset <index>` (game server only): In an Episode 3 battle, removes one of your set cards from the field. `<index>` is the index of the set card as it appears on your screen - 1 is the card next to your SC's icon, 2 is the card to the right of 1, etc. This does not cause a Hunters-side SC to lose HP, as they normally do when their items are destroyed.
 
 * Configuration commands
     * `$event <event>`: Sets the current holiday event in the current lobby. Holiday events are documented in the "Using $event" item in the information menu. If you're on the proxy server, this applies to all lobbies and games you join, but only you will see the new event - other players will not.

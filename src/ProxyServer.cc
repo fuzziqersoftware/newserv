@@ -372,7 +372,7 @@ void ProxyServer::UnlinkedSession::on_input(Channel& ch, uint16_t command, uint3
         if (command != 0x93) {
           throw runtime_error("command is not 93");
         }
-        const auto& cmd = check_size_t<C_Login_BB_93>(data);
+        const auto& cmd = check_size_t<C_LoginBase_BB_93>(data, 0xFFFF);
         try {
           ses->license = s->license_index->verify_bb(cmd.username.decode(), cmd.password.decode());
         } catch (const LicenseIndex::missing_license&) {

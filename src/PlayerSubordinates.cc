@@ -33,8 +33,8 @@ PlayerInventoryItem::PlayerInventoryItem(const ItemData& item, bool equipped)
 uint32_t PlayerVisualConfig::compute_name_color_checksum(uint32_t name_color) {
   uint8_t x = (random_object<uint32_t>() % 0xFF) + 1;
   uint8_t y = (random_object<uint32_t>() % 0xFF) + 1;
-  // name_color          = ABCDEFGHabcdefghIJKLMNOPijklmnop
-  // name_color_checksum = ---------ijklmabcdeIJKLM-------- ^ (xxxxxxxxyyyyyyyyxxxxxxxxyyyyyyyy)
+  // name_color (ARGB)   = ABCDEFGHabcdefghIJKLMNOPijklmnop
+  // name_color_checksum = 000000000ijklmabcdeIJKLM00000000 ^ xxxxxxxxyyyyyyyyxxxxxxxxyyyyyyyy
   uint32_t xbrgx95558 = ((name_color << 15) & 0x007C0000) | ((name_color >> 6) & 0x0003E000) | ((name_color >> 3) & 0x00001F00);
   uint32_t mask = (x << 24) | (y << 16) | (x << 8) | y;
   return xbrgx95558 ^ mask;
