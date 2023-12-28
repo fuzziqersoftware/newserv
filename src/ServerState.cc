@@ -327,6 +327,10 @@ void ServerState::on_player_left_lobby(shared_ptr<Lobby> l, uint8_t leaving_clie
 }
 
 shared_ptr<Client> ServerState::find_client(const string* identifier, uint64_t serial_number, shared_ptr<Lobby> l) {
+  // WARNING: There are multiple callsites where we assume this function never
+  // returns a client that isn't in any lobby. If this behavior changes, we will
+  // need to audit all callsites to ensure correctness.
+
   if ((serial_number == 0) && identifier) {
     try {
       serial_number = stoull(*identifier, nullptr, 0);
