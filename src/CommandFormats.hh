@@ -4573,13 +4573,14 @@ struct G_CreateTelepipe_6x68 {
 } __packed__;
 
 // 6x69: NPC control
+// Note: NPCs cannot be destroyed with 6x69; 6x1C is used instead for that.
 
 struct G_NPCControl_6x69 {
   G_UnusedHeader header;
-  le_uint16_t state = 0;
-  le_uint16_t npc_entity_id = 0;
+  le_uint16_t param1; // Commands 0/3: state; commands 1/2: npc_entity_id
+  le_uint16_t param2; // Commands 0/3: npc_entity_id; commands 1/2: unused
   le_uint16_t command = 0; // 0 = create follower NPC, 1 = stop acting, 2 = start acting, 3 = create attacker NPC
-  le_uint16_t npc_template_index = 0; // Specifies which NPC to create if command == 0 or 3; unused otherwise
+  le_uint16_t param3; // Commands 0/3: npc_template_index; commands 1/2: unused
 } __packed__;
 
 // 6x6A: Use boss warp (not valid on Episode 3)

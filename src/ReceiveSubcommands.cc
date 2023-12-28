@@ -1025,11 +1025,26 @@ static void on_npc_control(shared_ptr<Client> c, uint8_t command, uint8_t flag, 
   // Don't allow NPC control commands if there is a player in the relevant slot
   const auto& l = c->require_lobby();
   if (!l->is_game()) {
-    throw runtime_error("cannot create NPCs in the lobby");
+    throw runtime_error("cannot create or modify NPC in the lobby");
   }
-  if ((cmd.npc_entity_id < 4) && l->clients[cmd.npc_entity_id]) {
-    throw runtime_error("cannot overwrite existing player with NPC");
+
+  uint16_t npc_entity_id = 0xFFFF;
+  switch (cmd.command) {
+    case 0:
+    case 3:
+      npc_entity_id = cmd.param2;
+      break;
+    case 1:
+    case 2:
+      npc_entity_id = cmd.param1;
+      break;
+    default:
+      throw runtime_error("invalid 6x69 command");
   }
+  if ((npc_entity_id < 4) && l->clients[npc_entity_id]) {
+    throw runtime_error("cannot create or modify NPC in existing player slot");
+  }
+
   forward_subcommand(c, command, flag, data, size);
 }
 
