@@ -203,7 +203,7 @@ void ReplaySession::check_for_password(shared_ptr<const Event> ev) const {
       if (header.command == 0x04) {
         check_pw(check_size_t<C_LegacyLogin_BB_04>(cmd_data, cmd_size).password.decode());
       } else if (header.command == 0x93) {
-        check_pw(check_size_t<C_Login_BB_93>(cmd_data, cmd_size).password.decode());
+        check_pw(check_size_t<C_LoginBase_BB_93>(cmd_data, cmd_size, 0xFFFF).password.decode());
       } else if (header.command == 0x9C) {
         check_pw(check_size_t<C_Register_BB_9C>(cmd_data, cmd_size).password.decode());
       } else if (header.command == 0x9E) {
@@ -420,7 +420,7 @@ void ReplaySession::apply_default_mask(shared_ptr<Event> ev) {
         }
         case 0x00E6: {
           auto& mask = check_size_t<S_ClientInit_BB_00E6>(mask_data, mask_size);
-          mask.team_id = 0;
+          mask.security_token = 0;
           break;
         }
       }

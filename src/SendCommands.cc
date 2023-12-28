@@ -506,7 +506,7 @@ void send_client_init_bb(shared_ptr<Client> c, uint32_t error_code) {
   cmd.error_code = error_code;
   cmd.player_tag = 0x00010000;
   cmd.guild_card_number = c->license->serial_number;
-  cmd.team_id = team ? team->team_id : 0;
+  cmd.security_token = team ? team->team_id : 0;
   c->config.serialize_into(cmd.client_config);
   cmd.can_create_team = 1;
   cmd.episode_4_unlocked = 1;
