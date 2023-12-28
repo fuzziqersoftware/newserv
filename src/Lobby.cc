@@ -465,27 +465,24 @@ void Lobby::add_client(shared_ptr<Client> c, ssize_t required_client_id) {
     this->leader_id = c->lobby_client_id;
   }
 
-  // If the lobby is a game and there was no one in it, reassign all the floor
+  // If this is a lobby or no one was here before this, reassign all the floor
   // item IDs and reset the next item IDs
-  if (this->is_game()) {
-    if (leader_index >= this->max_clients) {
-      for (size_t x = 0; x < 12; x++) {
-        this->next_item_id_for_client[x] = 0x00010000 + 0x00200000 * x;
-      }
-      this->next_game_item_id = 0xCC000000;
+  if (!this->is_game() || (leader_index >= this->max_clients)) {
+    for (size_t x = 0; x < 12; x++) {
+      this->next_item_id_for_client[x] = 0x00010000 + 0x00200000 * x;
+    }
+    this->next_game_item_id = 0xCC000000;
+    for (auto& m : this->floor_item_managers) {
+      this->next_game_item_id = m.reassign_all_item_ids(this->next_game_item_id);
+    }
+  }
 
-      // Reassign all floor item IDs so they won't conflict with any players'
-      // item IDs
-      for (auto& m : this->floor_item_managers) {
-        this->next_game_item_id = m.reassign_all_item_ids(this->next_game_item_id);
-      }
-    }
-    this->assign_inventory_and_bank_item_ids(c);
-    // On BB, we send artificial flag state to fix an Episode 2 bug where the
-    // CCA door lock state is overwritten by quests.
-    if (c->version() == Version::BB_V4) {
-      c->config.set_flag(Client::Flag::SHOULD_SEND_ARTIFICIAL_FLAG_STATE);
-    }
+  this->assign_inventory_and_bank_item_ids(c);
+
+  // On BB, we send artificial flag state to fix an Episode 2 bug where the
+  // CCA door lock state is overwritten by quests.
+  if (this->is_game() && (c->version() == Version::BB_V4)) {
+    c->config.set_flag(Client::Flag::SHOULD_SEND_ARTIFICIAL_FLAG_STATE);
   }
 
   // If the lobby is recording a battle record, add the player join event

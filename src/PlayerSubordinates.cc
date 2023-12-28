@@ -563,11 +563,11 @@ bool PlayerInventory::has_equipped_item(EquipSlot slot) const {
   }
 }
 
-void PlayerInventory::equip_item_id(uint32_t item_id, EquipSlot slot) {
-  this->equip_item_index(this->find_item(item_id), slot);
+void PlayerInventory::equip_item_id(uint32_t item_id, EquipSlot slot, bool allow_overwrite) {
+  this->equip_item_index(this->find_item(item_id), slot, allow_overwrite);
 }
 
-void PlayerInventory::equip_item_index(size_t index, EquipSlot slot) {
+void PlayerInventory::equip_item_index(size_t index, EquipSlot slot, bool allow_overwrite) {
   auto& item = this->items[index];
 
   if (slot == EquipSlot::UNKNOWN) {
@@ -578,7 +578,11 @@ void PlayerInventory::equip_item_index(size_t index, EquipSlot slot) {
     throw runtime_error("incorrect item type for equip slot");
   }
   if (this->has_equipped_item(slot)) {
-    throw runtime_error("equip slot is already in use");
+    if (allow_overwrite) {
+      this->unequip_item_slot(slot);
+    } else {
+      throw runtime_error("equip slot is already in use");
+    }
   }
 
   item.flags |= 0x00000008;

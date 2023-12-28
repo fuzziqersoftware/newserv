@@ -3081,6 +3081,9 @@ struct S_ClientInit_BB_00E6 {
   le_uint32_t error_code = 0;
   le_uint32_t player_tag = 0x00010000;
   le_uint32_t guild_card_number = 0;
+  // If security_token is zero, the client scrambles client_config before
+  // sending it back in a later 93 command. See scramble_bb_security_data in
+  // ReceiveCommands.cc for details on how this is done.
   le_uint32_t security_token = 0;
   parray<uint8_t, 0x28> client_config;
   uint8_t can_create_team = 1;

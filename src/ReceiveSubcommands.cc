@@ -1436,7 +1436,7 @@ static void on_equip_item(shared_ptr<Client> c, uint8_t command, uint8_t flag, v
   auto l = c->require_lobby();
   EquipSlot slot = static_cast<EquipSlot>(cmd.equip_slot.load());
   auto p = c->character();
-  p->inventory.equip_item_id(cmd.item_id, slot);
+  p->inventory.equip_item_id(cmd.item_id, slot, is_pre_v1(c->version()));
   c->log.info("Equipped item %08" PRIX32, cmd.item_id.load());
 
   forward_subcommand(c, command, flag, data, size);

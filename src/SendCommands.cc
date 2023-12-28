@@ -2181,6 +2181,17 @@ void send_player_join_notification(shared_ptr<Client> c,
   }
 }
 
+void send_update_lobby_data_bb(std::shared_ptr<Client> c) {
+  auto l = c->require_lobby();
+  for (auto lc : l->clients) {
+    if (lc) {
+      PlayerLobbyDataBB cmd;
+      populate_lobby_data_for_client(cmd, c, lc);
+      send_command_t(lc, 0x00F0, 0x00000000, cmd);
+    }
+  }
+}
+
 void send_player_leave_notification(shared_ptr<Lobby> l, uint8_t leaving_client_id) {
   S_LeaveLobby_66_69_Ep3_E9 cmd = {leaving_client_id, l->leader_id, 1, 0};
   uint8_t cmd_num;

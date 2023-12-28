@@ -4845,6 +4845,7 @@ static void on_EA_BB(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
         // The client only sends this command with flag = 0x00, 0x30, or 0x40
         bool send_updates_for_this_m = false;
         bool send_updates_for_other_m = false;
+        bool send_master_transfer_updates = false;
         switch (flag) {
           case 0x00: // Demote member
             if (s->team_index->demote_leader(c->license->serial_number, cmd.guild_card_number)) {
@@ -4867,11 +4868,21 @@ static void on_EA_BB(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
             send_command(c, 0x11EA, 0x00000000);
             send_updates_for_this_m = true;
             send_updates_for_other_m = true;
+            send_master_transfer_updates = true;
             break;
           default:
             throw runtime_error("invalid privilege level");
         }
 
+        if (send_master_transfer_updates) {
+          for (const auto& it : team->members) {
+            try {
+              auto other_c = s->find_client(nullptr, it.second.serial_number);
+              send_update_lobby_data_bb(other_c);
+            } catch (const out_of_range&) {
+            }
+          }
+        }
         if (send_updates_for_this_m) {
           send_update_team_metadata_for_client(c);
           send_team_membership_info(c);
@@ -5003,34 +5014,60 @@ static void on_04_P(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
   const auto& cmd = check_size_t<C_Login_Patch_04>(data);
   auto s = c->require_server_state();
 
-  try {
-    auto l = s->license_index->verify_bb(cmd.username.decode(), cmd.password.decode());
-    c->set_license(l);
+  string username = cmd.username.decode();
+  string password = cmd.password.decode();
 
-  } catch (const LicenseIndex::incorrect_password& e) {
-    send_message_box(c, string_printf("Login failed: %s", e.what()));
-    c->should_disconnect = true;
-    return;
+  // There are 3 cases here:
+  // - No login information at all: just proceed without checking license
+  // - Username only: check that license exists if allow_unregistered_users is off
+  // - Username and password: call verify_bb
+  if (!username.empty() && !password.empty()) {
+    try {
+      auto l = s->license_index->verify_bb(username, password);
+      c->set_license(l);
 
-  } catch (const LicenseIndex::missing_license& e) {
-    if (!s->allow_unregistered_users) {
+    } catch (const LicenseIndex::incorrect_password& e) {
       send_message_box(c, string_printf("Login failed: %s", e.what()));
       c->should_disconnect = true;
       return;
-    } else {
 
-      auto l = s->license_index->create_license();
-      l->serial_number = fnv1a32(cmd.username.decode()) & 0x7FFFFFFF;
-      l->bb_username = cmd.username.decode();
-      l->bb_password = cmd.password.decode();
-      s->license_index->add(l);
-      if (!s->is_replay) {
-        l->save();
+    } catch (const LicenseIndex::missing_license& e) {
+      if (!s->allow_unregistered_users) {
+        send_message_box(c, string_printf("Login failed: %s", e.what()));
+        c->should_disconnect = true;
+        return;
+      } else {
+
+        auto l = s->license_index->create_license();
+        l->serial_number = fnv1a32(cmd.username.decode()) & 0x7FFFFFFF;
+        l->bb_username = cmd.username.decode();
+        l->bb_password = cmd.password.decode();
+        s->license_index->add(l);
+        if (!s->is_replay) {
+          l->save();
+        }
+        c->set_license(l);
+        string l_str = l->str();
+        c->log.info("Created license %s", l_str.c_str());
       }
-      c->set_license(l);
-      string l_str = l->str();
-      c->log.info("Created license %s", l_str.c_str());
     }
+
+  } else if (!username.empty() && !s->allow_unregistered_users) {
+    try {
+      auto l = s->license_index->get_by_bb_username(username);
+      c->set_license(l);
+    } catch (const LicenseIndex::missing_license& e) {
+      send_message_box(c, string_printf("Login failed: %s", e.what()));
+      c->should_disconnect = true;
+      return;
+    }
+
+  } else {
+    auto l = s->license_index->create_temporary_license();
+    l->serial_number = random_object<uint32_t>() & 0x7FFFFFFF;
+    l->bb_username = "__unknown__";
+    l->bb_password = "__unknown__";
+    c->set_license(l);
   }
 
   // On BB we can use colors and newlines should be \n; on PC we can't use
