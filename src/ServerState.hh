@@ -245,7 +245,7 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   std::shared_ptr<Lobby> find_lobby(uint32_t lobby_id);
   std::vector<std::shared_ptr<Lobby>> all_lobbies();
 
-  std::shared_ptr<Lobby> create_lobby();
+  std::shared_ptr<Lobby> create_lobby(bool is_game);
   void remove_lobby(std::shared_ptr<Lobby> l);
   void on_player_left_lobby(std::shared_ptr<Lobby> l, uint8_t leaving_client_id);
 

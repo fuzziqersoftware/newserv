@@ -93,7 +93,7 @@ void ServerState::init() {
     bool allow_v1 = (x <= 9);
     bool allow_non_ep3 = (x <= 14);
 
-    shared_ptr<Lobby> l = this->create_lobby();
+    shared_ptr<Lobby> l = this->create_lobby(false);
     l->set_flag(Lobby::Flag::PUBLIC);
     l->set_flag(Lobby::Flag::DEFAULT);
     l->set_flag(Lobby::Flag::PERSISTENT);
@@ -190,7 +190,7 @@ void ServerState::add_client_to_available_lobby(shared_ptr<Client> c) {
   }
 
   if (!added_to_lobby) {
-    added_to_lobby = this->create_lobby();
+    added_to_lobby = this->create_lobby(false);
     added_to_lobby->set_flag(Lobby::Flag::PUBLIC);
     added_to_lobby->set_flag(Lobby::Flag::IS_OVERFLOW);
     added_to_lobby->block = 100;
@@ -278,11 +278,11 @@ vector<shared_ptr<Lobby>> ServerState::all_lobbies() {
   return ret;
 }
 
-shared_ptr<Lobby> ServerState::create_lobby() {
+shared_ptr<Lobby> ServerState::create_lobby(bool is_game) {
   while (this->id_to_lobby.count(this->next_lobby_id)) {
     this->next_lobby_id++;
   }
-  auto l = make_shared<Lobby>(this->shared_from_this(), this->next_lobby_id++);
+  auto l = make_shared<Lobby>(this->shared_from_this(), this->next_lobby_id++, is_game);
   this->id_to_lobby.emplace(l->lobby_id, l);
   l->idle_timeout_usecs = this->persistent_game_idle_timeout_usecs;
   return l;

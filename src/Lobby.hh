@@ -169,12 +169,14 @@ struct Lobby : public std::enable_shared_from_this<Lobby> {
   uint64_t idle_timeout_usecs;
   std::unique_ptr<struct event, void (*)(struct event*)> idle_timeout_event;
 
-  Lobby(std::shared_ptr<ServerState> s, uint32_t id);
+  Lobby(std::shared_ptr<ServerState> s, uint32_t id, bool is_game);
   Lobby(const Lobby&) = delete;
   Lobby(Lobby&&) = delete;
   ~Lobby();
   Lobby& operator=(const Lobby&) = delete;
   Lobby& operator=(Lobby&&) = delete;
+
+  void reset_next_item_ids();
 
   [[nodiscard]] inline bool check_flag(Flag flag) const {
     return !!(this->enabled_flags & static_cast<uint32_t>(flag));

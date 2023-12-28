@@ -590,7 +590,7 @@ static void server_command_persist(shared_ptr<Client> c, const std::string&) {
   auto l = c->require_lobby();
   if (l->check_flag(Lobby::Flag::DEFAULT)) {
     send_text_message(c, "$C6Default lobbies\ncannot be marked\ntemporary");
-  } else if (!l->check_flag(Lobby::Flag::GAME)) {
+  } else if (!l->is_game()) {
     send_text_message(c, "$C6Private lobbies\ncannot be marked\npersistent");
   } else if (l->check_flag(Lobby::Flag::QUEST_IN_PROGRESS) || l->check_flag(Lobby::Flag::JOINABLE_QUEST_IN_PROGRESS)) {
     send_text_message(c, "$C6Games cannot be\npersistent if a\nquest has already\nbegun");

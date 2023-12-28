@@ -3955,10 +3955,8 @@ shared_ptr<Lobby> create_game_generic(
     return nullptr;
   }
 
-  shared_ptr<Lobby> game = s->create_lobby();
+  shared_ptr<Lobby> game = s->create_lobby(true);
   game->name = name;
-  game->set_flag(Lobby::Flag::GAME);
-
   game->base_version = c->version();
   game->allowed_versions = 0;
   switch (game->base_version) {
