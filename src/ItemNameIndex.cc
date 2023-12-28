@@ -371,23 +371,7 @@ ItemData ItemNameIndex::parse_item_description(Version version, const std::strin
       ret = this->parse_item_description_phase(version, desc, true);
     } catch (const exception& e2) {
       try {
-        string data = parse_data_string(desc);
-        if (data.size() < 2) {
-          throw runtime_error("item code too short");
-        }
-        if (data[0] > 4) {
-          throw runtime_error("invalid item class");
-        }
-        if (data.size() > 16) {
-          throw runtime_error("item code too long");
-        }
-
-        if (data.size() <= 12) {
-          memcpy(ret.data1.data(), data.data(), data.size());
-        } else {
-          memcpy(ret.data1.data(), data.data(), 12);
-          memcpy(ret.data2.data(), data.data() + 12, data.size() - 12);
-        }
+        ret = ItemData::from_data(parse_data_string(desc));
       } catch (const exception& ed) {
         if (strcmp(e1.what(), e2.what())) {
           throw runtime_error(string_printf("cannot parse item description \"%s\" in %s (as text 1: %s) (as text 2: %s) (as data: %s)",
