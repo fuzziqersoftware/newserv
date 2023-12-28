@@ -431,7 +431,7 @@ For GC clients, you'll have to use newserv's built-in DNS server or set up your 
 
 newserv has many CLI options, which can be used to access functionality other than the game and proxy server. Run `newserv help` to see these options and how to use them. The non-server things newserv can do are:
 
-* Compress or decompress data in PRS, PR2, or BC0 format (`compress-prs`, `compress-pr2`, `compress-bc0`, `decompress-prs`, `decompress-pr2`, `decompress-bc0`)
+* Compress or decompress data in PRS, PR2/PRC, or BC0 format (`compress-prs`, `compress-pr2`, `compress-bc0`, `decompress-prs`, `decompress-pr2`, `decompress-bc0`)
 * Compute the decompressed size of compressed PRS data without decompressing it (`prs-size`)
 * Encrypt or decrypt data using any PSO version's network encryption scheme (`encrypt-data`, `decrypt-data`)
 * Encrypt or decrypt data using Episode 3's trivial scheme (`encrypt-trivial-data`, `decrypt-trivial-data`)

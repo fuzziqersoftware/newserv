@@ -221,6 +221,7 @@ static void a_compress_decompress_fn(Arguments& args) {
   bool is_prs = ends_with(action, "-prs");
   bool is_bc0 = ends_with(action, "-bc0");
   bool is_pr2 = ends_with(action, "-pr2");
+  bool is_prc = ends_with(action, "-prc");
   bool is_decompress = starts_with(action, "decompress-");
   bool is_big_endian = args.get<bool>("big-endian");
   bool is_optimal = args.get<bool>("optimal");
@@ -231,7 +232,7 @@ static void a_compress_decompress_fn(Arguments& args) {
   string data = read_input_data(args);
 
   size_t pr2_expected_size = 0;
-  if (is_decompress && is_pr2) {
+  if (is_decompress && (is_pr2 || is_prc)) {
     auto decrypted = is_big_endian ? decrypt_pr2_data<true>(data) : decrypt_pr2_data<false>(data);
     pr2_expected_size = decrypted.decompressed_size;
     data = std::move(decrypted.compressed_data);
@@ -253,13 +254,13 @@ static void a_compress_decompress_fn(Arguments& args) {
   };
 
   uint64_t start = now();
-  if (!is_decompress && (is_prs || is_pr2)) {
+  if (!is_decompress && (is_prs || is_pr2 || is_prc)) {
     if (is_optimal) {
       data = prs_compress_optimal(data.data(), data.size(), optimal_progress_fn);
     } else {
       data = prs_compress(data, compression_level, progress_fn);
     }
-  } else if (is_decompress && (is_prs || is_pr2)) {
+  } else if (is_decompress && (is_prs || is_pr2 || is_prc)) {
     data = prs_decompress(data, bytes, (bytes != 0));
   } else if (!is_decompress && is_bc0) {
     if (is_optimal) {
@@ -283,13 +284,15 @@ static void a_compress_decompress_fn(Arguments& args) {
   log_info("%zu (0x%zX) bytes input => %zu (0x%zX) bytes output (%g%%) in %s (%s / sec)",
       input_bytes, input_bytes, data.size(), data.size(), size_ratio, time_str.c_str(), bytes_per_sec_str.c_str());
 
-  if (is_decompress && is_pr2 && (data.size() != pr2_expected_size)) {
-    log_warning("Result data size (%zu bytes) does not match expected size from PR2 header (%zu bytes)", data.size(), pr2_expected_size);
-  } else if (!is_decompress && is_pr2) {
-    uint32_t pr2_seed = seed.empty() ? random_object<uint32_t>() : stoul(seed, nullptr, 16);
-    data = is_big_endian
-        ? encrypt_pr2_data<true>(data, input_bytes, pr2_seed)
-        : encrypt_pr2_data<false>(data, input_bytes, pr2_seed);
+  if (is_pr2 || is_prc) {
+    if (is_decompress && (data.size() != pr2_expected_size)) {
+      log_warning("Result data size (%zu bytes) does not match expected size from PR2 header (%zu bytes)", data.size(), pr2_expected_size);
+    } else if (!is_decompress) {
+      uint32_t pr2_seed = seed.empty() ? random_object<uint32_t>() : stoul(seed, nullptr, 16);
+      data = is_big_endian
+          ? encrypt_pr2_data<true>(data, input_bytes, pr2_seed)
+          : encrypt_pr2_data<false>(data, input_bytes, pr2_seed);
+    }
   }
 
   const char* extension;
@@ -299,6 +302,8 @@ static void a_compress_decompress_fn(Arguments& args) {
     extension = "prs";
   } else if (is_bc0) {
     extension = "bc0";
+  } else if (is_prc) {
+    extension = "prc";
   } else if (is_pr2) {
     extension = "pr2";
   } else {
@@ -309,11 +314,13 @@ static void a_compress_decompress_fn(Arguments& args) {
 
 Action a_compress_prs("compress-prs", nullptr, a_compress_decompress_fn);
 Action a_compress_bc0("compress-bc0", nullptr, a_compress_decompress_fn);
-Action a_compress_pr2("compress-pr2", "\
+Action a_compress_pr2("compress-pr2", nullptr, a_compress_decompress_fn);
+Action a_compress_prc("compress-prc", "\
   compress-prs [INPUT-FILENAME [OUTPUT-FILENAME]]\n\
   compress-pr2 [INPUT-FILENAME [OUTPUT-FILENAME]]\n\
+  compress-prc [INPUT-FILENAME [OUTPUT-FILENAME]]\n\
   compress-bc0 [INPUT-FILENAME [OUTPUT-FILENAME]]\n\
-    Compress data using the PRS, PR2, or BC0 algorithms. By default, the\n\
+    Compress data using the PRS, PR2, PRC, or BC0 algorithms. By default, the\n\
     heuristic-based compressor is used, which gives a good balance between\n\
     memory usage, CPU usage, and output size. For PRS and PR2, this compressor\n\
     can be tuned with the --compression-level=N option, which specifies how\n\
@@ -328,11 +335,13 @@ Action a_compress_pr2("compress-pr2", "\
     a_compress_decompress_fn);
 Action a_decompress_prs("decompress-prs", nullptr, a_compress_decompress_fn);
 Action a_decompress_bc0("decompress-bc0", nullptr, a_compress_decompress_fn);
-Action a_decompress_pr2("decompress-pr2", "\
+Action a_decompress_pr2("decompress-pr2", nullptr, a_compress_decompress_fn);
+Action a_decompress_prc("decompress-prc", "\
   decompress-prs [INPUT-FILENAME [OUTPUT-FILENAME]]\n\
   decompress-pr2 [INPUT-FILENAME [OUTPUT-FILENAME]]\n\
+  decompress-prc [INPUT-FILENAME [OUTPUT-FILENAME]]\n\
   decompress-bc0 [INPUT-FILENAME [OUTPUT-FILENAME]]\n\
-    Decompress data compressed using the PRS, PR2, or BC0 algorithms.\n",
+    Decompress data compressed using the PRS, PR2, PRC, or BC0 algorithms.\n",
     a_compress_decompress_fn);
 
 Action a_prs_size(
