@@ -24,6 +24,15 @@ static atomic<uint64_t> next_id(1);
 void Client::Config::set_flags_for_version(Version version, int64_t sub_version) {
   this->set_flag(Flag::PROXY_CHAT_COMMANDS_ENABLED);
 
+  // BB shares some sub_version values with GC Episode 3, so we handle it
+  // separately first.
+  if (version == Version::BB_V4) {
+    this->set_flag(Flag::NO_D6);
+    this->set_flag(Flag::SAVE_ENABLED);
+    this->set_flag(Flag::SEND_FUNCTION_CALL_NO_CACHE_PATCH);
+    return;
+  }
+
   switch (sub_version) {
     case -1: // Initial check (before sub_version recognition)
       switch (version) {
@@ -53,11 +62,6 @@ void Client::Config::set_flags_for_version(Version version, int64_t sub_version)
         case Version::XB_V3:
           // TODO: Do all versions of XB need this flag? US does, at least.
           this->set_flag(Flag::NO_D6_AFTER_LOBBY);
-          this->set_flag(Flag::SEND_FUNCTION_CALL_NO_CACHE_PATCH);
-          break;
-        case Version::BB_V4:
-          this->set_flag(Flag::NO_D6);
-          this->set_flag(Flag::SAVE_ENABLED);
           this->set_flag(Flag::SEND_FUNCTION_CALL_NO_CACHE_PATCH);
           break;
         default:
@@ -108,7 +112,7 @@ void Client::Config::set_flags_for_version(Version version, int64_t sub_version)
       this->set_flag(Flag::NO_D6_AFTER_LOBBY);
       this->set_flag(Flag::NO_SEND_FUNCTION_CALL);
       break;
-    case 0x40: // GC Ep3 JP and Trial Edition
+    case 0x40: // GC Ep3 JP and Trial Edition (and BB)
       this->set_flag(Flag::NO_D6_AFTER_LOBBY);
       this->set_flag(Flag::ENCRYPTED_SEND_FUNCTION_CALL);
       this->set_flag(Flag::SEND_FUNCTION_CALL_NO_CACHE_PATCH);
@@ -116,7 +120,7 @@ void Client::Config::set_flags_for_version(Version version, int64_t sub_version)
       // instead look at header.flag in the 61 command and set the
       // IS_EP3_TRIAL_EDITION flag there.
       break;
-    case 0x41: // GC Ep3 US
+    case 0x41: // GC Ep3 US (and BB)
       this->set_flag(Flag::NO_D6_AFTER_LOBBY);
       this->set_flag(Flag::USE_OVERFLOW_FOR_SEND_FUNCTION_CALL);
       this->set_flag(Flag::SEND_FUNCTION_CALL_NO_CACHE_PATCH);

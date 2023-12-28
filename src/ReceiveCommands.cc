@@ -1056,7 +1056,7 @@ static void on_93_BB(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
     throw runtime_error("invalid size for 93 command");
   }
 
-  c->config.set_flags_for_version(c->version(), -1);
+  c->config.set_flags_for_version(c->version(), cmd.sub_version);
   c->channel.language = cmd.language;
 
   try {
