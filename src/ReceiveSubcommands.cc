@@ -659,6 +659,13 @@ static void on_forward_check_game(shared_ptr<Client> c, uint8_t command, uint8_t
   }
 }
 
+static void on_forward_check_lobby(shared_ptr<Client> c, uint8_t command, uint8_t flag, void* data, size_t size) {
+  auto l = c->require_lobby();
+  if (!l->is_game()) {
+    forward_subcommand(c, command, flag, data, size);
+  }
+}
+
 static void on_forward_check_lobby_client(shared_ptr<Client> c, uint8_t command, uint8_t flag, void* data, size_t size) {
   const auto& cmd = check_size_t<G_ClientIDHeader>(data, size, 0xFFFF);
   auto l = c->require_lobby();
@@ -3229,7 +3236,7 @@ const SubcommandDefinition subcommand_definitions[0x100] = {
     /* 6x76 */ {0x00, 0x00, 0x76, on_forward_check_game},
     /* 6x77 */ {0x00, 0x00, 0x77, on_forward_check_game},
     /* 6x78 */ {0x00, 0x00, 0x78, nullptr},
-    /* 6x79 */ {0x00, 0x00, 0x79, on_forward_check_lobby_client},
+    /* 6x79 */ {0x00, 0x00, 0x79, on_forward_check_lobby},
     /* 6x7A */ {0x00, 0x00, 0x7A, nullptr},
     /* 6x7B */ {0x00, 0x00, 0x7B, nullptr},
     /* 6x7C */ {0x00, 0x00, 0x7C, on_forward_check_game},
