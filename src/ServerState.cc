@@ -1099,7 +1099,7 @@ void ServerState::load_battle_params() {
 
 void ServerState::load_level_table() {
   config_log.info("Loading level table");
-  this->level_table = make_shared<LevelTable>(this->load_bb_file("PlyLevelTbl.prs"), true);
+  this->level_table = make_shared<LevelTableV4>(*this->load_bb_file("PlyLevelTbl.prs"), true);
 }
 
 void ServerState::load_word_select_table() {
