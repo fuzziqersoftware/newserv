@@ -44,7 +44,7 @@ void PlayerVisualConfig::compute_name_color_checksum() {
   this->name_color_checksum = this->compute_name_color_checksum(this->name_color);
 }
 
-void PlayerDispDataDCPCV3::enforce_lobby_join_limits_for_client(shared_ptr<Client> c) {
+void PlayerVisualConfig::enforce_lobby_join_limits_for_version(Version v) {
   struct ClassMaxes {
     uint16_t costume;
     uint16_t skin;
@@ -90,9 +90,9 @@ void PlayerDispDataDCPCV3::enforce_lobby_join_limits_for_client(shared_ptr<Clien
       {0x0000, 0x0000, 0x0000, 0x0000, 0x0000}};
 
   const ClassMaxes* maxes;
-  if (is_v1_or_v2(c->version())) {
+  if (is_v1_or_v2(v)) {
     // V1/V2 have fewer classes, so we'll substitute some here
-    switch (this->visual.char_class) {
+    switch (this->char_class) {
       case 0: // HUmar
       case 1: // HUnewearl
       case 2: // HUcast
@@ -106,53 +106,60 @@ void PlayerDispDataDCPCV3::enforce_lobby_join_limits_for_client(shared_ptr<Clien
       case 13: // V3 custom 2
         break;
       case 9: // HUcaseal
-        this->visual.char_class = 5; // HUcaseal -> RAcaseal
+        this->char_class = 5; // HUcaseal -> RAcaseal
         break;
       case 10: // FOmar
-        this->visual.char_class = 0; // FOmar -> HUmar
+        this->char_class = 0; // FOmar -> HUmar
         break;
       case 11: // RAmarl
-        this->visual.char_class = 1; // RAmarl -> HUnewearl
+        this->char_class = 1; // RAmarl -> HUnewearl
         break;
       case 14: // V2 custom 1 / V3 custom 3
       case 15: // V2 custom 2 / V3 custom 4
       case 16: // V2 custom 3 / V3 custom 5
       case 17: // V2 custom 4 / V3 custom 6
       case 18: // V2 custom 5 / V3 custom 7
-        this->visual.char_class -= 5;
+        this->char_class -= 5;
         break;
       default:
-        this->visual.char_class = 0; // Invalid classes -> HUmar
+        this->char_class = 0; // Invalid classes -> HUmar
     }
 
-    this->visual.version = min<uint8_t>(this->visual.version, is_v1(c->version()) ? 0 : 2);
-    maxes = &v1_v2_class_maxes[this->visual.char_class];
+    this->version = min<uint8_t>(this->version, is_v1(v) ? 0 : 2);
+    maxes = &v1_v2_class_maxes[this->char_class];
 
   } else {
-    if (this->visual.char_class >= 19) {
-      this->visual.char_class = 0; // Invalid classes -> HUmar
+    if (this->char_class >= 19) {
+      this->char_class = 0; // Invalid classes -> HUmar
     }
-    this->visual.version = min<uint8_t>(this->visual.version, 3);
-    maxes = &v3_v4_class_maxes[this->visual.char_class];
+    this->version = min<uint8_t>(this->version, 3);
+    maxes = &v3_v4_class_maxes[this->char_class];
   }
 
   // V1/V2 has fewer costumes and android skins, so substitute them here
-  this->visual.costume = maxes->costume ? (this->visual.costume % maxes->costume) : 0;
-  this->visual.skin = maxes->skin ? (this->visual.skin % maxes->skin) : 0;
-  this->visual.face = maxes->face ? (this->visual.face % maxes->face) : 0;
-  this->visual.head = maxes->head ? (this->visual.head % maxes->head) : 0;
-  this->visual.hair = maxes->hair ? (this->visual.hair % maxes->hair) : 0;
+  this->costume = maxes->costume ? (this->costume % maxes->costume) : 0;
+  this->skin = maxes->skin ? (this->skin % maxes->skin) : 0;
+  this->face = maxes->face ? (this->face % maxes->face) : 0;
+  this->head = maxes->head ? (this->head % maxes->head) : 0;
+  this->hair = maxes->hair ? (this->hair % maxes->hair) : 0;
 
-  this->visual.compute_name_color_checksum();
-  this->visual.class_flags = class_flags_for_class(this->visual.char_class);
+  if (is_v1_or_v2(v)) {
+    this->compute_name_color_checksum();
+  }
+  this->class_flags = class_flags_for_class(this->char_class);
 
-  if (this->visual.name.at(0) == '\t' && (this->visual.name.at(1) == 'J' || this->visual.name.at(1) == 'E')) {
-    this->visual.name.encode(this->visual.name.decode().substr(2));
+  if (is_v4(v) && (this->name.at(0) == '\t') && (this->name.at(1) == 'J' || this->name.at(1) == 'E')) {
+    this->name.encode(this->name.decode().substr(2));
   }
 }
 
-void PlayerDispDataBB::enforce_lobby_join_limits_for_client(shared_ptr<Client> c) {
-  if (!is_v4(c->version())) {
+void PlayerDispDataDCPCV3::enforce_lobby_join_limits_for_version(Version v) {
+  this->visual.enforce_lobby_join_limits_for_version(v);
+}
+
+void PlayerDispDataBB::enforce_lobby_join_limits_for_version(Version v) {
+  this->visual.enforce_lobby_join_limits_for_version(v);
+  if (!is_v4(v)) {
     throw logic_error("PlayerDispDataBB being sent to non-BB client");
   }
   this->play_time = 0;

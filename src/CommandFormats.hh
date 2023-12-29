@@ -4698,46 +4698,61 @@ struct G_SetQuestFlags_6x6F {
 // and instead rearranged a bunch of things.
 
 struct Telepipe {
-  /* 00 */ le_uint16_t client_id;
-  /* 02 */ le_uint16_t unknown_a1;
-  /* 04 */ le_uint32_t unknown_a2;
-  /* 08 */ le_float x;
-  /* 0C */ le_float y;
-  /* 10 */ le_float z;
-  /* 14 */ le_uint32_t unknown_a3;
-  /* 18 */ parray<uint8_t, 4> unknown_a4;
+  /* 00 */ le_uint16_t client_id = 0xFFFF;
+  /* 02 */ le_uint16_t unknown_a1 = 0;
+  /* 04 */ le_uint32_t unknown_a2 = 0;
+  /* 08 */ le_float x = 0.0f;
+  /* 0C */ le_float y = 0.0f;
+  /* 10 */ le_float z = 0.0f;
+  /* 14 */ le_uint32_t unknown_a3 = 0;
+  /* 18 */ le_uint32_t unknown_a4 = 0x0000FFFF;
   /* 1C */
 } __packed__;
 
-struct G_Unknown_6x70_Sub {
+struct G_Unknown_6x70_SubA1 {
   // This is used in all versions of this command except DCNTE and 11/2000.
-  /* 00 */ le_uint16_t unknown_a1;
-  /* 02 */ le_uint16_t unknown_a2;
-  /* 04 */ le_uint32_t unknown_a3;
-  /* 08 */ le_uint32_t unknown_a4;
-  /* 0C */ le_uint32_t unknown_a5;
-  /* 10 */ le_uint32_t unknown_a6;
+  /* 00 */ le_uint16_t unknown_a1 = 0;
+  /* 02 */ le_uint16_t unknown_a2 = 0;
+  /* 04 */ le_uint32_t unknown_a3 = 0;
+  /* 08 */ le_float unknown_a4 = 0.0f;
+  /* 0C */ le_uint32_t unknown_a5 = 0;
+  /* 10 */ le_uint32_t unknown_a6 = 0;
   /* 14 */
+} __packed__;
+
+struct G_Unknown_6x70_SubA2 {
+  // This is used in all versions of this command except DCNTE and 11/2000.
+  /* 00 */ le_uint32_t unknown_a1 = 0;
+  /* 04 */ le_float unknown_a2 = 0.0f;
+  /* 08 */ le_uint32_t unknown_a3 = 0;
+  /* 0C */
+} __packed__;
+
+struct G_SyncPlayerDispAndInventory_BaseDCNTE {
+  /* 0000 */ le_uint16_t client_id = 0;
+  /* 0002 */ le_uint16_t unknown_a1 = 0;
+  /* 0004 */ le_uint32_t flags1 = 0;
+  /* 0008 */ le_float x = 0.0f;
+  /* 000C */ le_float y = 0.0f;
+  /* 0010 */ le_float z = 0.0f;
+  /* 0014 */ le_uint32_t angle_x = 0;
+  /* 0018 */ le_uint32_t angle_y = 0;
+  /* 001C */ le_uint32_t angle_z = 0;
+  /* 0020 */ le_uint16_t unknown_a3a = 0;
+  /* 0022 */ le_uint16_t current_hp = 0;
 } __packed__;
 
 struct G_SyncPlayerDispAndInventory_DCNTE_6x70 {
   // Offsets in this struct are relative to the overall command header
-  /* 0004 */ G_ExtendedHeader<G_UnusedHeader> header = {{0x70, 0x00, 0x0000}, sizeof(G_SyncPlayerDispAndInventory_DCNTE_6x70)};
-  /* 000C */ le_uint16_t client_id = 0;
-  /* 000E */ le_uint16_t unknown_a1 = 0;
-  /* 0010 */ le_uint32_t flags1;
-  /* 0014 */ le_float x;
-  /* 0018 */ le_float y;
-  /* 001C */ le_float z;
-  /* 0020 */ le_uint32_t angle_x;
-  /* 0024 */ le_uint32_t angle_y;
-  /* 0028 */ le_uint32_t angle_z;
-  /* 002C */ le_uint16_t unknown_a3a;
-  /* 002E */ le_uint16_t current_hp;
-  /* 0030 */ le_uint32_t unknown_a5;
-  /* 0034 */ le_uint32_t unknown_a6;
+  /* 0004 */ G_ExtendedHeader<G_ClientIDHeader> header = {{0x60, 0x00, 0x0000}, sizeof(G_SyncPlayerDispAndInventory_DCNTE_6x70)};
+  /* 000C */ G_SyncPlayerDispAndInventory_BaseDCNTE base;
+  // The following two fields appear to contain uninitialized data
+  /* 0030 */ le_uint32_t unknown_a5 = 0;
+  /* 0034 */ le_uint32_t unknown_a6 = 0;
   /* 0038 */ Telepipe telepipe;
-  /* 0054 */ parray<uint8_t, 0x18> unknown_a7;
+  /* 0054 */ le_uint32_t unknown_a8 = 0;
+  /* 0058 */ parray<uint8_t, 0x10> unknown_a9;
+  /* 0068 */ le_uint32_t area = 0;
   /* 006C */ le_uint32_t flags2 = 0;
   /* 0070 */ PlayerVisualConfig visual;
   /* 00C0 */ PlayerStats stats;
@@ -4748,23 +4763,15 @@ struct G_SyncPlayerDispAndInventory_DCNTE_6x70 {
 
 struct G_SyncPlayerDispAndInventory_DC112000_6x70 {
   // Offsets in this struct are relative to the overall command header
-  /* 0004 */ G_ExtendedHeader<G_UnusedHeader> header = {{0x70, 0x00, 0x0000}, sizeof(G_SyncPlayerDispAndInventory_DC112000_6x70)};
-  /* 000C */ le_uint16_t client_id = 0;
-  /* 000E */ le_uint16_t unknown_a1 = 0;
-  /* 0010 */ le_uint32_t flags1;
-  /* 0014 */ le_float x;
-  /* 0018 */ le_float y;
-  /* 001C */ le_float z;
-  /* 0020 */ le_uint32_t angle_x;
-  /* 0024 */ le_uint32_t angle_y;
-  /* 0028 */ le_uint32_t angle_z;
-  /* 002C */ le_uint16_t unknown_a3a;
-  /* 002E */ le_uint16_t current_hp;
-  /* 0030 */ le_uint16_t bonus_hp_from_materials;
-  /* 0032 */ le_uint16_t bonus_tp_from_materials;
+  /* 0004 */ G_ExtendedHeader<G_ClientIDHeader> header = {{0x67, 0x00, 0x0000}, sizeof(G_SyncPlayerDispAndInventory_DC112000_6x70)};
+  /* 000C */ G_SyncPlayerDispAndInventory_BaseDCNTE base;
+  /* 0030 */ le_uint16_t bonus_hp_from_materials = 0;
+  /* 0032 */ le_uint16_t bonus_tp_from_materials = 0;
   /* 0034 */ parray<uint8_t, 0x10> unknown_a5;
   /* 0044 */ Telepipe telepipe;
-  /* 0060 */ parray<uint8_t, 0x18> unknown_a6;
+  /* 0060 */ le_uint32_t unknown_a8 = 0;
+  /* 0064 */ parray<uint8_t, 0x10> unknown_a9;
+  /* 0074 */ le_uint32_t area = 0;
   /* 0078 */ le_uint32_t flags2 = 0;
   /* 007C */ PlayerVisualConfig visual;
   /* 00CC */ PlayerStats stats;
@@ -4773,40 +4780,30 @@ struct G_SyncPlayerDispAndInventory_DC112000_6x70 {
   /* 043C */
 } __packed__;
 
-struct G_SyncPlayerDispAndInventory_Base {
-  /* 0000 */ le_uint16_t client_id = 0;
-  /* 0002 */ le_uint16_t unknown_a1 = 0;
-  /* 0004 */ le_uint32_t flags1;
-  /* 0008 */ le_float x;
-  /* 000C */ le_float y;
-  /* 0010 */ le_float z;
-  /* 0014 */ le_uint32_t angle_x;
-  /* 0018 */ le_uint32_t angle_y;
-  /* 001C */ le_uint32_t angle_z;
-  /* 0020 */ le_uint16_t unknown_a3a;
-  /* 0022 */ le_uint16_t current_hp;
-  /* 0024 */ le_uint16_t bonus_hp_from_materials;
-  /* 0026 */ le_uint16_t bonus_tp_from_materials;
-  /* 0028 */ parray<parray<le_uint32_t, 3>, 5> unknown_a4;
+struct G_SyncPlayerDispAndInventory_BaseV1 {
+  /* 0000 */ G_SyncPlayerDispAndInventory_BaseDCNTE base;
+  /* 0024 */ le_uint16_t bonus_hp_from_materials = 0;
+  /* 0026 */ le_uint16_t bonus_tp_from_materials = 0;
+  /* 0028 */ parray<G_Unknown_6x70_SubA2, 5> unknown_a4;
   /* 0064 */ le_uint32_t language = 0;
   /* 0068 */ le_uint32_t player_tag = 0;
   /* 006C */ le_uint32_t guild_card_number = 0;
-  /* 0070 */ le_uint32_t unknown_a6;
-  /* 0074 */ le_uint32_t battle_team_number;
+  /* 0070 */ le_uint32_t unknown_a6 = 0;
+  /* 0074 */ le_uint32_t battle_team_number = 0;
   /* 0078 */ Telepipe telepipe;
   /* 0094 */ le_uint32_t unknown_a8 = 0;
-  /* 0098 */ G_Unknown_6x70_Sub unknown_a9;
+  /* 0098 */ G_Unknown_6x70_SubA1 unknown_a9;
   /* 00AC */ le_uint32_t area = 0;
   /* 00B0 */ le_uint32_t flags2 = 0;
-  /* 00B4 */ parray<uint8_t, 0x14> technique_levels_v1; // Last byte is uninitialized
+  /* 00B4 */ parray<uint8_t, 0x14> technique_levels_v1 = 0xFF; // Last byte is uninitialized
   /* 00C8 */ PlayerVisualConfig visual;
   /* 0118 */
 } __packed__;
 
 struct G_SyncPlayerDispAndInventory_DC_PC_6x70 {
   // Offsets in this struct are relative to the overall command header
-  /* 0004 */ G_ExtendedHeader<G_UnusedHeader> header = {{0x70, 0x00, 0x0000}, sizeof(G_SyncPlayerDispAndInventory_DC_PC_6x70)};
-  /* 000C */ G_SyncPlayerDispAndInventory_Base base;
+  /* 0004 */ G_ExtendedHeader<G_ClientIDHeader> header = {{0x70, 0x00, 0x0000}, sizeof(G_SyncPlayerDispAndInventory_DC_PC_6x70)};
+  /* 000C */ G_SyncPlayerDispAndInventory_BaseV1 base;
   /* 0124 */ PlayerStats stats;
   /* 0148 */ le_uint32_t num_items = 0;
   /* 014C */ parray<PlayerInventoryItem, 0x1E> items;
@@ -4816,8 +4813,8 @@ struct G_SyncPlayerDispAndInventory_DC_PC_6x70 {
 // GC NTE also uses this format.
 struct G_SyncPlayerDispAndInventory_GC_6x70 {
   // Offsets in this struct are relative to the overall command header
-  /* 0004 */ G_ExtendedHeader<G_UnusedHeader> header = {{0x70, 0x00, 0x0000}, sizeof(G_SyncPlayerDispAndInventory_GC_6x70)};
-  /* 000C */ G_SyncPlayerDispAndInventory_Base base;
+  /* 0004 */ G_ExtendedHeader<G_ClientIDHeader> header = {{0x70, 0x00, 0x0000}, sizeof(G_SyncPlayerDispAndInventory_GC_6x70)};
+  /* 000C */ G_SyncPlayerDispAndInventory_BaseV1 base;
   /* 0124 */ PlayerStats stats;
   /* 0148 */ le_uint32_t num_items = 0;
   /* 014C */ parray<PlayerInventoryItem, 0x1E> items;
@@ -4827,8 +4824,8 @@ struct G_SyncPlayerDispAndInventory_GC_6x70 {
 
 struct G_SyncPlayerDispAndInventory_XB_6x70 {
   // Offsets in this struct are relative to the overall command header
-  /* 0004 */ G_ExtendedHeader<G_UnusedHeader> header = {{0x70, 0x00, 0x0000}, sizeof(G_SyncPlayerDispAndInventory_XB_6x70)};
-  /* 000C */ G_SyncPlayerDispAndInventory_Base base;
+  /* 0004 */ G_ExtendedHeader<G_ClientIDHeader> header = {{0x70, 0x00, 0x0000}, sizeof(G_SyncPlayerDispAndInventory_XB_6x70)};
+  /* 000C */ G_SyncPlayerDispAndInventory_BaseV1 base;
   /* 0124 */ PlayerStats stats;
   /* 0148 */ le_uint32_t num_items = 0;
   /* 014C */ parray<PlayerInventoryItem, 0x1E> items;
@@ -4841,8 +4838,8 @@ struct G_SyncPlayerDispAndInventory_XB_6x70 {
 
 struct G_SyncPlayerDispAndInventory_BB_6x70 {
   // Offsets in this struct are relative to the overall command header
-  /* 0008 */ G_ExtendedHeader<G_UnusedHeader> header = {{0x70, 0x00, 0x0000}, sizeof(G_SyncPlayerDispAndInventory_BB_6x70)};
-  /* 0010 */ G_SyncPlayerDispAndInventory_Base base;
+  /* 0008 */ G_ExtendedHeader<G_ClientIDHeader> header = {{0x70, 0x00, 0x0000}, sizeof(G_SyncPlayerDispAndInventory_BB_6x70)};
+  /* 0010 */ G_SyncPlayerDispAndInventory_BaseV1 base;
   /* 0128 */ pstring<TextEncoding::UTF16, 0x10> name;
   /* 0148 */ PlayerStats stats;
   /* 016C */ le_uint32_t num_items = 0;
