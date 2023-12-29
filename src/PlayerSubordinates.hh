@@ -152,6 +152,8 @@ struct PlayerVisualConfig {
 
   static uint32_t compute_name_color_checksum(uint32_t name_color);
   void compute_name_color_checksum();
+
+  void enforce_lobby_join_limits_for_version(Version v);
 } __attribute__((packed));
 
 struct PlayerDispDataDCPCV3 {
@@ -161,7 +163,7 @@ struct PlayerDispDataDCPCV3 {
   /* BC */ parray<uint8_t, 0x14> technique_levels_v1;
   /* D0 */
 
-  void enforce_lobby_join_limits_for_client(std::shared_ptr<Client> c);
+  void enforce_lobby_join_limits_for_version(Version v);
   PlayerDispDataBB to_bb(uint8_t to_language, uint8_t from_language) const;
 } __attribute__((packed));
 
@@ -187,7 +189,7 @@ struct PlayerDispDataBB {
   /* 017C */ parray<uint8_t, 0x14> technique_levels_v1;
   /* 0190 */
 
-  void enforce_lobby_join_limits_for_client(std::shared_ptr<Client> c);
+  void enforce_lobby_join_limits_for_version(Version v);
   PlayerDispDataDCPCV3 to_dcpcv3(uint8_t to_language, uint8_t from_language) const;
   PlayerDispDataBBPreview to_preview() const;
   void apply_preview(const PlayerDispDataBBPreview&);

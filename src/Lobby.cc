@@ -135,9 +135,9 @@ uint32_t Lobby::FloorItemManager::reassign_all_item_ids(uint32_t next_item_id) {
   return next_item_id;
 }
 
-Lobby::Lobby(shared_ptr<ServerState> s, uint32_t id)
+Lobby::Lobby(shared_ptr<ServerState> s, uint32_t id, bool is_game)
     : server_state(s),
-      log(string_printf("[Lobby:%" PRIX32 "] ", id), lobby_log.min_level),
+      log(string_printf("[%s:%" PRIX32 "] ", is_game ? "Game" : "Lobby", id), lobby_log.min_level),
       lobby_id(id),
       min_level(0),
       max_level(0xFFFFFFFF),
@@ -162,13 +162,22 @@ Lobby::Lobby(shared_ptr<ServerState> s, uint32_t id)
           event_new(s->base.get(), -1, EV_TIMEOUT | EV_PERSIST, &Lobby::dispatch_on_idle_timeout, this),
           event_free) {
   this->log.info("Created");
-  for (size_t x = 0; x < 12; x++) {
-    this->next_item_id_for_client[x] = 0x00010000 + 0x00200000 * x;
+  if (is_game) {
+    this->set_flag(Flag::GAME);
   }
+  this->reset_next_item_ids();
 }
 
 Lobby::~Lobby() {
   this->log.info("Deleted");
+}
+
+void Lobby::reset_next_item_ids() {
+  uint32_t base_item_id = this->is_game() ? 0x00010000 : 0x10010000;
+  for (size_t x = 0; x < 12; x++) {
+    this->next_item_id_for_client[x] = base_item_id + 0x00200000 * x;
+  }
+  this->next_game_item_id = 0xCC000000;
 }
 
 shared_ptr<ServerState> Lobby::require_server_state() const {
@@ -468,10 +477,7 @@ void Lobby::add_client(shared_ptr<Client> c, ssize_t required_client_id) {
   // If this is a lobby or no one was here before this, reassign all the floor
   // item IDs and reset the next item IDs
   if (!this->is_game() || (leader_index >= this->max_clients)) {
-    for (size_t x = 0; x < 12; x++) {
-      this->next_item_id_for_client[x] = 0x00010000 + 0x00200000 * x;
-    }
-    this->next_game_item_id = 0xCC000000;
+    this->reset_next_item_ids();
     for (auto& m : this->floor_item_managers) {
       this->next_game_item_id = m.reassign_all_item_ids(this->next_game_item_id);
     }

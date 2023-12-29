@@ -294,6 +294,7 @@ Some commands only work on the game server and not on the proxy server. The chat
         * You'll see in-game messages from the server when you take certain actions, like killing an enemy in BB.
         * You'll see the rare seed value and floor variations when you join a game.
         * You'll be placed into the highest available slot in lobbies and games instead of the lowest, unless you're joining a BB solo-mode game.
+        * You'll be able to join games with any PSO version, not only those for which crossplay is normally supported. Be prepared for client crashes and other client-side brokenness if you do this. Please do not submit any issues for broken behaviors in crossplay, unless the situation is explicitly supported (see the "Cross-version play" section above).
         * The rest of the commands in this section are enabled on the game server. (They are always enabled on the proxy server.)
     * `$quest <number>` (game server only): Load a quest by quest number. Can be used to load battle or challenge quests with only one player present.
     * `$qcall <function-id>`: Call a quest function on your client.

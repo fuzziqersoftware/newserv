@@ -1354,9 +1354,10 @@ void send_game_menu_t(
   }
 
   set<shared_ptr<const Lobby>, bool (*)(const shared_ptr<const Lobby>&, const shared_ptr<const Lobby>&)> games(Lobby::compare_shared);
+  bool client_has_debug = c->config.check_flag(Client::Flag::DEBUG_ENABLED);
   for (shared_ptr<Lobby> l : s->all_lobbies()) {
     if (l->is_game() &&
-        l->version_is_allowed(c->version()) &&
+        (client_has_debug || l->version_is_allowed(c->version())) &&
         (l->check_flag(Lobby::Flag::IS_SPECTATOR_TEAM) == is_spectator_team_list) &&
         (!show_tournaments_only || l->tournament_match)) {
       games.emplace(l);
@@ -1700,7 +1701,7 @@ static void send_join_spectator_team(shared_ptr<Client> c, shared_ptr<Lobby> l) 
       p.inventory = wc_p->inventory;
       p.inventory.encode_for_client(c);
       p.disp = wc_p->disp.to_dcpcv3(c->language(), p.inventory.language);
-      p.disp.enforce_lobby_join_limits_for_client(c);
+      p.disp.enforce_lobby_join_limits_for_version(c->version());
 
       auto& e = cmd.entries[z];
       e.player_tag = 0x00010000;
@@ -1738,7 +1739,7 @@ static void send_join_spectator_team(shared_ptr<Client> c, shared_ptr<Lobby> l) 
       p.inventory = entry.inventory;
       p.inventory.encode_for_client(c);
       p.disp = entry.disp;
-      p.disp.enforce_lobby_join_limits_for_client(c);
+      p.disp.enforce_lobby_join_limits_for_version(c->version());
 
       auto& e = cmd.entries[client_id];
       e.player_tag = 0x00010000;
@@ -1764,7 +1765,7 @@ static void send_join_spectator_team(shared_ptr<Client> c, shared_ptr<Lobby> l) 
       populate_lobby_data_for_client(cmd_p.lobby_data, other_c, c);
       cmd_p.inventory = other_p->inventory;
       cmd_p.disp = other_p->disp.to_dcpcv3(c->language(), cmd_p.inventory.language);
-      cmd_p.disp.enforce_lobby_join_limits_for_client(c);
+      cmd_p.disp.enforce_lobby_join_limits_for_version(c->version());
 
       cmd_e.player_tag = 0x00010000;
       cmd_e.guild_card_number = other_c->license->serial_number;
@@ -1879,7 +1880,7 @@ void send_join_game(shared_ptr<Client> c, shared_ptr<Lobby> l) {
           cmd.players_ep3[x].inventory = other_p->inventory;
           cmd.players_ep3[x].inventory.encode_for_client(c);
           cmd.players_ep3[x].disp = convert_player_disp_data<PlayerDispDataDCPCV3>(other_p->disp, c->language(), other_p->inventory.language);
-          cmd.players_ep3[x].disp.enforce_lobby_join_limits_for_client(c);
+          cmd.players_ep3[x].disp.enforce_lobby_join_limits_for_version(c->version());
         }
       }
       send_command_t(c, 0x64, player_count, cmd);
@@ -1990,7 +1991,7 @@ void send_join_lobby_t(shared_ptr<Client> c, shared_ptr<Lobby> l, shared_ptr<Cli
       e.disp = convert_player_disp_data<DispDataT>(*lc->v1_v2_last_reported_disp, c->language(), lp->inventory.language);
     } else {
       e.disp = convert_player_disp_data<DispDataT>(lp->disp, c->language(), lp->inventory.language);
-      e.disp.enforce_lobby_join_limits_for_client(c);
+      e.disp.enforce_lobby_join_limits_for_version(c->version());
     }
   }
 
@@ -2056,7 +2057,7 @@ void send_join_lobby_xb(shared_ptr<Client> c, shared_ptr<Lobby> l, shared_ptr<Cl
     e.inventory = lp->inventory;
     e.inventory.encode_for_client(c);
     e.disp = convert_player_disp_data<PlayerDispDataDCPCV3>(lp->disp, c->language(), lp->inventory.language);
-    e.disp.enforce_lobby_join_limits_for_client(c);
+    e.disp.enforce_lobby_join_limits_for_version(c->version());
   }
 
   send_command(c, command, used_entries, &cmd, cmd.size(used_entries));
@@ -2101,7 +2102,7 @@ void send_join_lobby_dc_nte(shared_ptr<Client> c, shared_ptr<Lobby> l,
     e.inventory = lp->inventory;
     e.inventory.encode_for_client(c);
     e.disp = convert_player_disp_data<PlayerDispDataDCPCV3>(lp->disp, c->language(), lp->inventory.language);
-    e.disp.enforce_lobby_join_limits_for_client(c);
+    e.disp.enforce_lobby_join_limits_for_version(c->version());
   }
 
   send_command(c, command, used_entries, &cmd, cmd.size(used_entries));
@@ -2287,8 +2288,12 @@ void send_arrow_update(shared_ptr<Lobby> l) {
 
 // tells the player that the joining player is done joining, and the game can resume
 void send_resume_game(shared_ptr<Lobby> l, shared_ptr<Client> ready_client) {
-  static const be_uint32_t data = 0x72010000;
-  send_command_excluding_client(l, ready_client, 0x60, 0x00, &data, sizeof(be_uint32_t));
+  for (auto lc : l->clients) {
+    if (lc && (lc != ready_client) && !is_pre_v1(lc->version())) {
+      static const be_uint32_t data = 0x72010000;
+      send_command(lc, 0x60, 0x00, &data, sizeof(be_uint32_t));
+    }
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2667,14 +2672,15 @@ void send_give_experience(shared_ptr<Client> c, uint32_t amount) {
 }
 
 void send_set_exp_multiplier(shared_ptr<Lobby> l) {
-  if (l->base_version != Version::BB_V4) {
-    throw logic_error("6xDD can only be sent to BB clients");
-  }
   if (!l->is_game()) {
     throw logic_error("6xDD can only be sent in games (not in lobbies)");
   }
   G_SetEXPMultiplier_BB_6xDD cmd = {{0xDD, sizeof(G_SetEXPMultiplier_BB_6xDD) / 4, (l->mode == GameMode::CHALLENGE) ? 1 : l->base_exp_multiplier}};
-  send_command_t(l, 0x60, 0x00, cmd);
+  for (auto lc : l->clients) {
+    if (lc && (lc->version() == Version::BB_V4)) {
+      send_command_t(l, 0x60, 0x00, cmd);
+    }
+  }
 }
 
 void send_rare_enemy_index_list(shared_ptr<Client> c, const vector<size_t>& indexes) {

@@ -647,6 +647,9 @@ bool ItemData::compare_for_sort(const ItemData& a, const ItemData& b) {
 }
 
 ItemData ItemData::from_data(const string& data) {
+  if (data.size() < 2) {
+    throw runtime_error("data is too short");
+  }
   if (data.size() > 0x10) {
     throw runtime_error("data is too long");
   }
@@ -657,6 +660,9 @@ ItemData ItemData::from_data(const string& data) {
   }
   for (size_t z = 12; z < min<size_t>(data.size(), 16); z++) {
     ret.data2[z - 12] = data[z];
+  }
+  if (ret.data1[0] > 4) {
+    throw runtime_error("invalid item class");
   }
   return ret;
 }

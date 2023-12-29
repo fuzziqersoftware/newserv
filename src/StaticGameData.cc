@@ -109,6 +109,9 @@ static const array<const char*, 10> section_id_to_name = {
     "Viridia", "Greennill", "Skyly", "Bluefull", "Purplenum",
     "Pinkal", "Redria", "Oran", "Yellowboze", "Whitill"};
 
+static const array<const char*, 10> section_id_to_abbreviation = {
+    "Vir", "Grn", "Sky", "Blu", "Prp", "Pnk", "Red", "Orn", "Ylw", "Wht"};
+
 const unordered_map<string, uint8_t> name_to_section_id({
     {"viridia", 0},
     {"greennill", 1},
@@ -220,6 +223,14 @@ const vector<string> npc_id_to_name({"ninja", "rico", "sonic", "knuckles", "tail
 
 const unordered_map<string, uint8_t> name_to_npc_id = {
     {"ninja", 0}, {"rico", 1}, {"sonic", 2}, {"knuckles", 3}, {"tails", 4}, {"flowen", 5}, {"elly", 6}};
+
+const char* abbreviation_for_section_id(uint8_t section_id) {
+  if (section_id < section_id_to_abbreviation.size()) {
+    return section_id_to_abbreviation[section_id];
+  } else {
+    return "<Unknown>";
+  }
+}
 
 const char* name_for_section_id(uint8_t section_id) {
   if (section_id < section_id_to_name.size()) {

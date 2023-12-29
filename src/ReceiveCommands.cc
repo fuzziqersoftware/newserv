@@ -1831,32 +1831,68 @@ static void on_09(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
             abbreviation_for_episode(game->episode),
             abbreviation_for_difficulty(game->difficulty),
             abbreviation_for_mode(game->mode),
-            name_for_section_id(game->section_id));
+            abbreviation_for_section_id(game->section_id));
 
-        bool cheats_enabled = game->check_flag(Lobby::Flag::CHEATS_ENABLED);
-        bool locked = !game->password.empty();
-        if (cheats_enabled && locked) {
-          info += "$C4Locked$C7, $C6cheats on$C7\n";
-        } else if (cheats_enabled) {
-          info += "$C6Cheats on$C7\n";
-        } else if (locked) {
-          info += "$C4Locked$C7\n";
-        }
+        if (c->config.check_flag(Client::Flag::DEBUG_ENABLED)) {
+          vector<const char*> flags_tokens;
+          string quest_name;
+          if (game->check_flag(Lobby::Flag::CHEATS_ENABLED)) {
+            flags_tokens.emplace_back("$C6C$C7");
+          }
+          if (game->check_flag(Lobby::Flag::PERSISTENT)) {
+            flags_tokens.emplace_back("$C6P$C7");
+          }
+          if (!game->password.empty()) {
+            flags_tokens.emplace_back("$C4L$C7");
+          }
+          if (game->check_flag(Lobby::Flag::IS_SPECTATOR_TEAM)) {
+            flags_tokens.emplace_back("$C8ST$C7");
+          }
+          if (game->check_flag(Lobby::Flag::SPECTATORS_FORBIDDEN)) {
+            flags_tokens.emplace_back("$C8NS$C7");
+          }
+          if (game->quest) {
+            flags_tokens.emplace_back(game->check_flag(Lobby::Flag::JOINABLE_QUEST_IN_PROGRESS) ? "$C3JQ$C7" : "$C3Q$C7");
+            quest_name = remove_color(game->quest->name);
+          } else if (game->check_flag(Lobby::Flag::JOINABLE_QUEST_IN_PROGRESS)) {
+            flags_tokens.emplace_back("$C3JQ$C7");
+          } else if (game->check_flag(Lobby::Flag::QUEST_IN_PROGRESS)) {
+            flags_tokens.emplace_back("$C3Q$C7");
+          } else if (game->check_flag(Lobby::Flag::BATTLE_IN_PROGRESS)) {
+            flags_tokens.emplace_back("$C3B$C7");
+          }
+          info += ("Flags: " + join(flags_tokens, ",") + "\n");
+          if (!quest_name.empty()) {
+            info += ("Q: $C6" + quest_name + "$C7\n");
+          }
+          info += string_printf("Version: %s\n", name_for_enum(game->base_version));
 
-        if (game->quest) {
-          info += (game->check_flag(Lobby::Flag::JOINABLE_QUEST_IN_PROGRESS)) ? "$C6Quest: " : "$C4Quest: ";
-          info += remove_color(game->quest->name);
-          info += "\n";
-        } else if (game->check_flag(Lobby::Flag::JOINABLE_QUEST_IN_PROGRESS)) {
-          info += "$C6Quest in progress\n";
-        } else if (game->check_flag(Lobby::Flag::QUEST_IN_PROGRESS)) {
-          info += "$C4Quest in progress\n";
-        } else if (game->check_flag(Lobby::Flag::BATTLE_IN_PROGRESS)) {
-          info += "$C4Battle in progress\n";
-        }
+        } else {
+          bool cheats_enabled = game->check_flag(Lobby::Flag::CHEATS_ENABLED);
+          bool locked = !game->password.empty();
+          if (cheats_enabled && locked) {
+            info += "$C4Locked$C7, $C6cheats on$C7\n";
+          } else if (cheats_enabled) {
+            info += "$C6Cheats on$C7\n";
+          } else if (locked) {
+            info += "$C4Locked$C7\n";
+          }
 
-        if (game->check_flag(Lobby::Flag::SPECTATORS_FORBIDDEN)) {
-          info += "$C4View Battle forbidden\n";
+          if (game->quest) {
+            info += (game->check_flag(Lobby::Flag::JOINABLE_QUEST_IN_PROGRESS)) ? "$C6Quest: " : "$C4Quest: ";
+            info += remove_color(game->quest->name);
+            info += "\n";
+          } else if (game->check_flag(Lobby::Flag::JOINABLE_QUEST_IN_PROGRESS)) {
+            info += "$C6Quest in progress\n";
+          } else if (game->check_flag(Lobby::Flag::QUEST_IN_PROGRESS)) {
+            info += "$C4Quest in progress\n";
+          } else if (game->check_flag(Lobby::Flag::BATTLE_IN_PROGRESS)) {
+            info += "$C4Battle in progress\n";
+          }
+
+          if (game->check_flag(Lobby::Flag::SPECTATORS_FORBIDDEN)) {
+            info += "$C4View Battle forbidden\n";
+          }
         }
 
         strip_trailing_whitespace(info);
@@ -2349,7 +2385,7 @@ static void on_10(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
         send_lobby_message_box(c, "$C6You cannot join this\ngame because it is\nfull.");
         break;
       }
-      if (!game->version_is_allowed(c->version())) {
+      if (!game->version_is_allowed(c->version()) && !c->config.check_flag(Client::Flag::DEBUG_ENABLED)) {
         send_lobby_message_box(c, "$C6You cannot join this\ngame because it is\nfor a different\nversion of PSO.");
         break;
       }
@@ -3955,10 +3991,8 @@ shared_ptr<Lobby> create_game_generic(
     return nullptr;
   }
 
-  shared_ptr<Lobby> game = s->create_lobby();
+  shared_ptr<Lobby> game = s->create_lobby(true);
   game->name = name;
-  game->set_flag(Lobby::Flag::GAME);
-
   game->base_version = c->version();
   game->allowed_versions = 0;
   switch (game->base_version) {
