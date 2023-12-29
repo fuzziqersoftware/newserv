@@ -937,7 +937,7 @@ static void server_command_password(shared_ptr<Client> c, const std::string& arg
   check_is_leader(l, c);
 
   if (!args[0]) {
-    l->password[0] = 0;
+    l->password.clear();
     send_text_message(l, "$C6Game unlocked");
 
   } else {
