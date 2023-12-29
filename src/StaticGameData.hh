@@ -40,6 +40,7 @@ extern const std::unordered_map<std::string, uint8_t> name_to_tech_id;
 const std::string& name_for_technique(uint8_t tech);
 uint8_t technique_for_name(const std::string& name);
 
+const char* abbreviation_for_section_id(uint8_t section_id);
 const char* name_for_section_id(uint8_t section_id);
 uint8_t section_id_for_name(const std::string& name);
 

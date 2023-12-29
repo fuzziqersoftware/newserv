@@ -1354,9 +1354,10 @@ void send_game_menu_t(
   }
 
   set<shared_ptr<const Lobby>, bool (*)(const shared_ptr<const Lobby>&, const shared_ptr<const Lobby>&)> games(Lobby::compare_shared);
+  bool client_has_debug = c->config.check_flag(Client::Flag::DEBUG_ENABLED);
   for (shared_ptr<Lobby> l : s->all_lobbies()) {
     if (l->is_game() &&
-        l->version_is_allowed(c->version()) &&
+        (client_has_debug || l->version_is_allowed(c->version())) &&
         (l->check_flag(Lobby::Flag::IS_SPECTATOR_TEAM) == is_spectator_team_list) &&
         (!show_tournaments_only || l->tournament_match)) {
       games.emplace(l);
@@ -2667,14 +2668,15 @@ void send_give_experience(shared_ptr<Client> c, uint32_t amount) {
 }
 
 void send_set_exp_multiplier(shared_ptr<Lobby> l) {
-  if (l->base_version != Version::BB_V4) {
-    throw logic_error("6xDD can only be sent to BB clients");
-  }
   if (!l->is_game()) {
     throw logic_error("6xDD can only be sent in games (not in lobbies)");
   }
   G_SetEXPMultiplier_BB_6xDD cmd = {{0xDD, sizeof(G_SetEXPMultiplier_BB_6xDD) / 4, (l->mode == GameMode::CHALLENGE) ? 1 : l->base_exp_multiplier}};
-  send_command_t(l, 0x60, 0x00, cmd);
+  for (auto lc : l->clients) {
+    if (lc && (lc->version() == Version::BB_V4)) {
+      send_command_t(l, 0x60, 0x00, cmd);
+    }
+  }
 }
 
 void send_rare_enemy_index_list(shared_ptr<Client> c, const vector<size_t>& indexes) {

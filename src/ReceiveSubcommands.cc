@@ -530,6 +530,7 @@ static void on_sync_joining_player_disp_and_inventory(
           out_cmd.num_items = xb_cmd->num_items;
           out_cmd.items = xb_cmd->items;
         } else if (bb_cmd) {
+          out_cmd.base.visual.name.encode(bb_cmd->name.decode(c->language()), target->language());
           out_cmd.stats = bb_cmd->stats;
           out_cmd.num_items = bb_cmd->num_items;
           out_cmd.items = bb_cmd->items;
@@ -562,6 +563,7 @@ static void on_sync_joining_player_disp_and_inventory(
           out_cmd.items = xb_cmd->items;
           out_cmd.floor = xb_cmd->floor;
         } else if (bb_cmd) {
+          out_cmd.base.visual.name.encode(bb_cmd->name.decode(c->language()), target->language());
           out_cmd.stats = bb_cmd->stats;
           out_cmd.num_items = bb_cmd->num_items;
           out_cmd.items = bb_cmd->items;
@@ -597,6 +599,7 @@ static void on_sync_joining_player_disp_and_inventory(
           out_cmd.items = gc_cmd->items;
           out_cmd.floor = gc_cmd->floor;
         } else if (bb_cmd) {
+          out_cmd.base.visual.name.encode(bb_cmd->name.decode(c->language()), target->language());
           out_cmd.stats = bb_cmd->stats;
           out_cmd.num_items = bb_cmd->num_items;
           out_cmd.items = bb_cmd->items;
@@ -616,6 +619,7 @@ static void on_sync_joining_player_disp_and_inventory(
       } else {
         G_SyncPlayerDispAndInventory_BB_6x70 out_cmd;
         out_cmd.base = *base;
+        out_cmd.base.visual.name.encode(string_printf("%10" PRIu32, c->license->serial_number), target->language());
         out_cmd.name.encode(base->visual.name.decode(c->language()), target->language());
         if (v2_cmd) {
           out_cmd.stats = v2_cmd->stats;
