@@ -1244,6 +1244,60 @@ Action a_encode_unicode_text_set(
       write_output_data(args, encoded.data(), encoded.size(), "prs");
     });
 
+Action a_decode_word_select_set(
+    "decode-word-select-set", "\
+  decode-word-select-set [INPUT-FILENAME]\n\
+    Decode a Word Select data file and print all the tokens. A version option\n\
+    (e.g. --gc-ep3) is required. If the Word Select set is for PC or BB, the\n\
+    --unitxt option is also required, and must point to a unitxt file in prs\n\
+    or JSON format. For PC (V2), the unitxt_e.prs file should be used; for BB,\n\
+    the unitxt_ws_e.prs file should be used.\n",
+    +[](Arguments& args) {
+      auto version = get_cli_version(args);
+
+      string unitxt_filename = args.get<string>("unitxt");
+      vector<string> unitxt_collection;
+      if (!unitxt_filename.empty()) {
+        vector<vector<string>> unitxt_data;
+        if (ends_with(unitxt_filename, ".prs")) {
+          unitxt_data = parse_unicode_text_set(load_file(unitxt_filename));
+        } else if (ends_with(unitxt_filename, ".json")) {
+          auto json = JSON::parse(load_file(unitxt_filename));
+          for (const auto& coll_it : json.as_list()) {
+            auto& coll = unitxt_data.emplace_back();
+            for (const auto& str_it : coll_it->as_list()) {
+              coll.emplace_back(str_it->as_string());
+            }
+          }
+        } else {
+          throw runtime_error("unitxt filename must end in .prs or .json");
+        }
+        if (version == Version::BB_V4) {
+          unitxt_collection = std::move(unitxt_data.at(0));
+        } else {
+          unitxt_collection = std::move(unitxt_data.at(35));
+        }
+      }
+
+      WordSelectSet ws(read_input_data(args), version, &unitxt_collection, args.get<bool>("japanese"));
+      ws.print(stdout);
+    });
+
+Action a_generate_word_select_table(
+    "generate-word-select-table", nullptr, +[](Arguments& args) {
+      auto table = ServerState::load_word_select_table_from_system();
+      Version v = Version::UNKNOWN;
+      try {
+        v = get_cli_version(args);
+      } catch (const runtime_error&) {}
+
+      if (v != Version::UNKNOWN) {
+      table->print_index(stdout, v);
+      } else {
+      table->print(stdout);
+      }
+    });
+
 Action a_cat_client(
     "cat-client", "\
   cat-client ADDR:PORT\n\

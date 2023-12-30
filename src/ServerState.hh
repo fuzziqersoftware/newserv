@@ -284,6 +284,7 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   void load_level_table();
   void load_item_name_index();
   void load_item_tables();
+  static std::shared_ptr<WordSelectTable> load_word_select_table_from_system();
   void load_word_select_table();
   void load_ep3_data();
   void resolve_ep3_card_names();
