@@ -96,7 +96,7 @@ Version get_cli_version(Arguments& args, Version default_value = Version::UNKNOW
     return Version::BB_PATCH;
   } else if (args.get<bool>("dc-nte")) {
     return Version::DC_NTE;
-  } else if (args.get<bool>("dc-proto")) {
+  } else if (args.get<bool>("dc-proto") || args.get<bool>("dc-11-2000")) {
     return Version::DC_V1_11_2000_PROTOTYPE;
   } else if (args.get<bool>("dc-v1")) {
     return Version::DC_V1;
@@ -1282,9 +1282,13 @@ Action a_decode_word_select_set(
       WordSelectSet ws(read_input_data(args), version, &unitxt_collection, args.get<bool>("japanese"));
       ws.print(stdout);
     });
-
-Action a_generate_word_select_table(
-    "generate-word-select-table", nullptr, +[](Arguments& args) {
+Action a_print_word_select_table(
+    "print-word-select-table", "\
+  print-word-select-table\n\
+    Print the Word Select token translation table. If a version option is\n\
+    given, prints the table sorted by token ID for that version. If no version\n\
+    option is given, prints the token table sorted by canonical name.\n",
+    +[](Arguments& args) {
       auto table = ServerState::load_word_select_table_from_system();
       Version v = Version::UNKNOWN;
       try {
