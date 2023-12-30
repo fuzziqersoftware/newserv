@@ -7192,13 +7192,6 @@ I 94381 2023-12-29 15:41:22 - [Commands] Received from C-2 (Jess) (version=GC_V3
 I 94381 2023-12-29 15:41:22 - [Commands] Sending to C-5 (Jonah) (version=GC_V3 command=60 flag=00)
 0000 | 60 00 1C 00 3E 06 00 00 00 00 D1 72 02 00 3C 00 | `   >      r  <
 0010 | EC 58 1E 44 00 00 E8 34 C2 59 F3 43             |  X D   4 Y C
-I 94381 2023-12-29 15:41:29 - [Commands] Received from C-5 (Jonah) (version=GC_V3 command=06 flag=00)
-0000 | 06 00 14 00 00 00 00 00 00 00 00 00 09 45 24 77 |              E$w
-0010 | 61 72 70 00                                     | arp
-I 94381 2023-12-29 15:41:29 - [Commands] Sending to C-5 (Jonah) (version=GC_V3 command=B0 flag=00)
-0000 | B0 00 2C 00 00 00 00 00 00 00 00 00 09 43 36 46 |   ,          C6F
-0010 | 61 69 6C 65 64 3A 0A 73 74 6F 75 6C 3A 20 6E 6F | ailed: stoul: no
-0020 | 20 63 6F 6E 76 65 72 73 69 6F 6E 00             |  conversion
 I 94381 2023-12-29 15:41:39 - [Commands] Received from C-5 (Jonah) (version=GC_V3 command=06 flag=00)
 0000 | 06 00 18 00 00 00 00 00 00 00 00 00 09 45 24 77 |              E$w
 0010 | 61 72 70 20 30 00 00 00                         | arp 0
