@@ -915,24 +915,7 @@ BattleRules::MesetaMode enum_for_name<BattleRules::MesetaMode>(const char* name)
 }
 
 static PlayerInventoryItem make_template_item(bool equipped, uint64_t first_data, uint64_t second_data) {
-  PlayerInventoryItem ret(ItemData(), equipped);
-  ret.data.data1[0] = first_data >> 56;
-  ret.data.data1[1] = first_data >> 48;
-  ret.data.data1[2] = first_data >> 40;
-  ret.data.data1[3] = first_data >> 32;
-  ret.data.data1[4] = first_data >> 24;
-  ret.data.data1[5] = first_data >> 16;
-  ret.data.data1[6] = first_data >> 8;
-  ret.data.data1[7] = first_data >> 0;
-  ret.data.data1[8] = second_data >> 56;
-  ret.data.data1[9] = second_data >> 48;
-  ret.data.data1[10] = second_data >> 40;
-  ret.data.data1[11] = second_data >> 32;
-  ret.data.data2[0] = second_data >> 24;
-  ret.data.data2[1] = second_data >> 16;
-  ret.data.data2[2] = second_data >> 8;
-  ret.data.data2[3] = second_data >> 0;
-  return ret;
+  return PlayerInventoryItem(ItemData(first_data, second_data), equipped);
 }
 
 static PlayerInventoryItem v2_item(bool equipped, uint64_t first_data, uint64_t second_data) {
