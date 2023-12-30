@@ -1785,15 +1785,19 @@ static void server_command_ep3_replace_assist_card(shared_ptr<Client> c, const s
     return;
   }
 
-  uint8_t client_id;
+  size_t client_id;
   string card_name;
   if (isdigit(args[0])) {
     auto tokens = split(args, ' ', 1);
-    client_id = stoul(tokens.at(0), nullptr, 0);
+    client_id = stoul(tokens.at(0), nullptr, 0) - 1;
     card_name = tokens.at(1);
   } else {
     client_id = c->lobby_client_id;
     card_name = args;
+  }
+  if (client_id >= 4) {
+    send_text_message(c, "$C6Invalid client ID");
+    return;
   }
 
   shared_ptr<const Episode3::CardIndex::CardEntry> ce;
