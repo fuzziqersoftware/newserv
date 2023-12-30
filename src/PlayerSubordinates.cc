@@ -143,8 +143,13 @@ void PlayerVisualConfig::enforce_lobby_join_limits_for_version(Version v) {
   this->head = maxes->head ? (this->head % maxes->head) : 0;
   this->hair = maxes->hair ? (this->hair % maxes->hair) : 0;
 
+  if (this->name_color == 0) {
+    this->name_color = 0xFFFFFFFF;
+  }
   if (is_v1_or_v2(v)) {
     this->compute_name_color_checksum();
+  } else {
+    this->name_color_checksum = 0;
   }
   this->class_flags = class_flags_for_class(this->char_class);
 
