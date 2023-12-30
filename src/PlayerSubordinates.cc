@@ -143,12 +143,17 @@ void PlayerVisualConfig::enforce_lobby_join_limits_for_version(Version v) {
   this->head = maxes->head ? (this->head % maxes->head) : 0;
   this->hair = maxes->hair ? (this->hair % maxes->hair) : 0;
 
+  if (this->name_color == 0) {
+    this->name_color = 0xFFFFFFFF;
+  }
   if (is_v1_or_v2(v)) {
     this->compute_name_color_checksum();
+  } else {
+    this->name_color_checksum = 0;
   }
   this->class_flags = class_flags_for_class(this->char_class);
 
-  if (is_v4(v) && (this->name.at(0) == '\t') && (this->name.at(1) == 'J' || this->name.at(1) == 'E')) {
+  if (!is_v4(v) && (this->name.at(0) == '\t') && (this->name.at(1) == 'J' || this->name.at(1) == 'E')) {
     this->name.encode(this->name.decode().substr(2));
   }
 }
@@ -910,24 +915,7 @@ BattleRules::MesetaMode enum_for_name<BattleRules::MesetaMode>(const char* name)
 }
 
 static PlayerInventoryItem make_template_item(bool equipped, uint64_t first_data, uint64_t second_data) {
-  PlayerInventoryItem ret(ItemData(), equipped);
-  ret.data.data1[0] = first_data >> 56;
-  ret.data.data1[1] = first_data >> 48;
-  ret.data.data1[2] = first_data >> 40;
-  ret.data.data1[3] = first_data >> 32;
-  ret.data.data1[4] = first_data >> 24;
-  ret.data.data1[5] = first_data >> 16;
-  ret.data.data1[6] = first_data >> 8;
-  ret.data.data1[7] = first_data >> 0;
-  ret.data.data1[8] = second_data >> 56;
-  ret.data.data1[9] = second_data >> 48;
-  ret.data.data1[10] = second_data >> 40;
-  ret.data.data1[11] = second_data >> 32;
-  ret.data.data2[0] = second_data >> 24;
-  ret.data.data2[1] = second_data >> 16;
-  ret.data.data2[2] = second_data >> 8;
-  ret.data.data2[3] = second_data >> 0;
-  return ret;
+  return PlayerInventoryItem(ItemData(first_data, second_data), equipped);
 }
 
 static PlayerInventoryItem v2_item(bool equipped, uint64_t first_data, uint64_t second_data) {

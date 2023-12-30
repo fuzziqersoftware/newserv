@@ -58,7 +58,7 @@ I 49108 2023-05-26 16:18:01 - [Commands] Received from C-1 (version=GC command=9
 0140 | 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 |
 I 49108 2023-05-26 16:18:01 - [Commands] Sending to C-1 (version=GC command=04 flag=00)
 0000 | 04 00 2C 00 00 00 01 00 11 11 11 11 32 AC 99 83 |   ,         2
-0010 | 30 50 4F 33 00 01 00 42 20 00 00 00 00 00 00 00 |    3    `
+0010 | 30 50 4F 33 00 01 00 40 20 00 00 00 00 00 00 00 |    3    `
 0020 | 00 00 00 00 00 00 FF FF 80 FF FF FF             |
 I 49108 2023-05-26 16:18:01 - [Commands] Sending to C-1 (version=GC command=D5 flag=00)
 0000 | D5 00 2C 00 59 6F 75 20 61 72 65 20 63 6F 6E 6E |   , You are conn
@@ -68,7 +68,7 @@ I 49108 2023-05-26 16:18:01 - [Commands] Received from C-1 (version=GC command=9
 0000 | 96 00 0C 00 C7 32 CE 2A 57 00 00 00             |      2 *W
 I 49108 2023-05-26 16:18:01 - [Commands] Sending to C-1 (version=GC command=04 flag=00)
 0000 | 04 00 2C 00 00 00 01 00 11 11 11 11 32 AC 99 83 |   ,         2
-0010 | 30 50 4F 33 00 01 00 42 20 00 04 00 00 00 00 00 |    3    `
+0010 | 30 50 4F 33 00 01 00 40 20 00 04 00 00 00 00 00 |    3    `
 0020 | 00 00 00 00 00 00 FF FF 80 FF FF FF             |
 I 49108 2023-05-26 16:18:01 - [Commands] Sending to C-1 (version=GC command=B1 flag=00)
 0000 | B1 00 1C 00 32 30 32 33 3A 30 35 3A 32 36 3A 20 |     2023:05:26:
@@ -77,10 +77,6 @@ I 49108 2023-05-26 16:18:01 - [Commands] Received from C-1 (version=GC command=9
 0000 | 99 00 04 00                                     |
 I 49108 2023-05-26 16:18:02 - [Commands] Received from C-1 (version=GC command=D6 flag=00)
 0000 | D6 00 04 00                                     |
-I 49108 2023-05-26 16:18:02 - [Commands] Sending to C-1 (version=GC command=04 flag=00)
-0000 | 04 00 2C 00 00 00 01 00 11 11 11 11 32 AC 99 83 |   ,         2
-0010 | 30 50 4F 33 00 01 00 40 20 00 04 00 00 00 00 00 |    3    `
-0020 | 00 00 00 00 00 00 FF FF 80 FF FF FF             |
 I 49108 2023-05-26 16:18:02 - [Commands] Sending to C-1 (version=GC command=07 flag=08)
 0000 | 07 06 C8 00 11 00 00 11 FF FF FF FF 04 00 41 6C |               Al
 0010 | 65 78 61 6E 64 72 69 61 00 00 00 00 00 00 00 00 | exandria
@@ -1198,20 +1194,6 @@ I 49108 2023-05-26 16:19:05 - [Commands] Received from C-2 (Jess) (version=GC co
 0000 | 60 00 1C 00 3E 06 00 00 00 00 7D 96 01 00 10 00 | `   >     }
 0010 | E0 DF 7B 43 EE 9E D0 41 CC D5 03 44             |   {C   A   D
 I 49108 2023-05-26 16:19:11 - [Commands] Received from C-2 (Jess) (version=GC command=06 flag=00)
-0000 | 06 00 18 00 00 00 00 00 00 00 00 00 09 45 24 69 |              E$i
-0010 | 6E 66 68 70 00 00 00 00                         | nfhp
-I 49108 2023-05-26 16:19:11 - [Commands] Sending to C-2 (Jess) (version=GC command=B0 flag=00)
-0000 | B0 00 3C 00 00 00 00 00 00 00 00 00 09 43 36 54 |   @          C6T
-0010 | 68 69 73 20 63 6F 6D 6D 61 6E 64 20 63 61 6E 0A | his command can
-0020 | 6F 6E 6C 79 20 62 65 20 75 73 65 64 20 69 6E 0A | only be used in
-0030 | 63 68 65 61 74 20 6D 6F 64 65 2E 00             | cheat mode.
-I 49108 2023-05-26 16:19:13 - [Commands] Received from C-2 (Jess) (version=GC command=06 flag=00)
-0000 | 06 00 18 00 00 00 00 00 00 00 00 00 09 45 24 63 |              E$c
-0010 | 68 65 61 74 00 00 00 00                         | heat
-I 49108 2023-05-26 16:19:13 - [Commands] Sending to C-2 (Jess) (version=GC command=B0 flag=00)
-0000 | B0 00 20 00 00 00 00 00 00 00 00 00 43 68 65 61 |             Chea
-0010 | 74 20 6D 6F 64 65 20 65 6E 61 62 6C 65 64 00 00 | t mode enabled
-I 49108 2023-05-26 16:19:14 - [Commands] Received from C-2 (Jess) (version=GC command=06 flag=00)
 0000 | 06 00 18 00 00 00 00 00 00 00 00 00 09 45 24 69 |              E$i
 0010 | 6E 66 68 70 00 00 00 00                         | nfhp
 I 49108 2023-05-26 16:19:14 - [Commands] Sending to C-2 (Jess) (version=GC command=B0 flag=00)

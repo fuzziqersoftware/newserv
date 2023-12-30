@@ -257,6 +257,8 @@ static void send_main_menu(shared_ptr<Client> c) {
 }
 
 void on_login_complete(shared_ptr<Client> c) {
+  c->convert_license_to_temporary_if_nte();
+
   // On BB, this function is called when the data server phase is done (and we
   // should send the ship select menu), so we don't need to check for it here.
   switch (c->server_behavior) {
@@ -428,6 +430,7 @@ static void on_DB_V3(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
       c->should_disconnect = true;
       return;
     } else {
+      c->config.set_flag(Client::Flag::LICENSE_WAS_CREATED);
       auto l = s->license_index->create_license();
       l->serial_number = serial_number;
       l->access_key = cmd.access_key.decode();
@@ -472,6 +475,7 @@ static void on_88_DCNTE(shared_ptr<Client> c, uint16_t, uint32_t, string& data) 
       send_message_box(c, "Incorrect serial number");
       c->should_disconnect = true;
     } else {
+      c->config.set_flag(Client::Flag::LICENSE_WAS_CREATED);
       auto l = s->license_index->create_license();
       l->serial_number = serial_number;
       l->access_key = cmd.access_key.decode();
@@ -515,6 +519,7 @@ static void on_8B_DCNTE(shared_ptr<Client> c, uint16_t, uint32_t, string& data) 
       send_message_box(c, "Incorrect serial number");
       c->should_disconnect = true;
     } else {
+      c->config.set_flag(Client::Flag::LICENSE_WAS_CREATED);
       auto l = s->license_index->create_license();
       l->serial_number = serial_number;
       l->access_key = cmd.access_key.decode();
@@ -569,6 +574,7 @@ static void on_90_DC(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
       send_command(c, 0x90, 0x03);
       c->should_disconnect = true;
     } else {
+      c->config.set_flag(Client::Flag::LICENSE_WAS_CREATED);
       auto l = s->license_index->create_license();
       l->serial_number = serial_number;
       l->access_key = cmd.access_key.decode();
@@ -626,6 +632,7 @@ static void on_93_DC(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
       c->should_disconnect = true;
       return;
     } else {
+      c->config.set_flag(Client::Flag::LICENSE_WAS_CREATED);
       auto l = s->license_index->create_license();
       l->serial_number = serial_number;
       l->access_key = cmd.access_key.decode();
@@ -743,6 +750,7 @@ static void on_9A(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
       c->should_disconnect = true;
 
     } else if (is_v1_or_v2(c->version())) {
+      c->config.set_flag(Client::Flag::LICENSE_WAS_CREATED);
       auto l = s->license_index->create_license();
       l->serial_number = serial_number;
       l->access_key = cmd.access_key.decode();
@@ -805,6 +813,7 @@ static void on_9C(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
       c->should_disconnect = true;
       return;
     } else {
+      c->config.set_flag(Client::Flag::LICENSE_WAS_CREATED);
       auto l = s->license_index->create_license();
       l->serial_number = serial_number;
       l->access_key = cmd.access_key.decode();
@@ -942,16 +951,13 @@ static void on_9D_9E(shared_ptr<Client> c, uint16_t command, uint32_t, string& d
     return;
 
   } catch (const LicenseIndex::missing_license& e) {
-    // On GC, the client should have sent a different command containing the
-    // password already, which should have created and added a license. So, if
-    // no license exists at this point, disconnect the client even if
-    // unregistered clients are allowed.
-    if (is_v3(c->version()) || !s->allow_unregistered_users || (serial_number == 0)) {
+    if (!s->allow_unregistered_users || (serial_number == 0)) {
       send_command(c, 0x04, 0x04);
       c->should_disconnect = true;
       return;
 
-    } else if (is_v1_or_v2(c->version())) {
+    } else if (is_v1_or_v2(c->version()) || is_v3(c->version())) {
+      c->config.set_flag(Client::Flag::LICENSE_WAS_CREATED);
       auto l = s->license_index->create_license();
       l->serial_number = serial_number;
       l->access_key = base_cmd->access_key.decode();
@@ -1022,6 +1028,7 @@ static void on_9E_XB(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
     return;
 
   } catch (const LicenseIndex::missing_license& e) {
+    c->config.set_flag(Client::Flag::LICENSE_WAS_CREATED);
     auto l = s->license_index->create_license();
     l->serial_number = fnv1a32(xb_gamertag) & 0x7FFFFFFF;
     l->xb_gamertag = xb_gamertag;
@@ -1113,6 +1120,7 @@ static void on_93_BB(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
       c->should_disconnect = true;
       return;
     } else {
+      c->config.set_flag(Client::Flag::LICENSE_WAS_CREATED);
       auto l = s->license_index->create_license();
       l->serial_number = fnv1a32(username) & 0x7FFFFFFF;
       l->bb_username = username;
@@ -3034,6 +3042,7 @@ static void on_61_98(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
           if (c->config.specific_version == 0x33000000) {
             c->config.specific_version = 0x33534A54; // 3SJT
           }
+          c->convert_license_to_temporary_if_nte();
         }
         cmd = &check_size_t<C_CharacterData_V3_61_98>(data, 0xFFFF);
       }
@@ -5071,7 +5080,7 @@ static void on_04_P(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
         c->should_disconnect = true;
         return;
       } else {
-
+        c->config.set_flag(Client::Flag::LICENSE_WAS_CREATED);
         auto l = s->license_index->create_license();
         l->serial_number = fnv1a32(cmd.username.decode()) & 0x7FFFFFFF;
         l->bb_username = cmd.username.decode();

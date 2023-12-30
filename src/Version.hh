@@ -29,6 +29,14 @@ const char* name_for_enum<Version>(Version v);
 template <>
 Version enum_for_name<Version>(const char* name);
 
+inline bool is_any_nte(Version version) {
+  return (version == Version::DC_NTE) ||
+      (version == Version::DC_V1_11_2000_PROTOTYPE) ||
+      (version == Version::PC_NTE) ||
+      (version == Version::GC_NTE) ||
+      (version == Version::GC_EP3_NTE);
+}
+
 inline bool is_patch(Version version) {
   return (version == Version::PC_PATCH) || (version == Version::BB_PATCH);
 }

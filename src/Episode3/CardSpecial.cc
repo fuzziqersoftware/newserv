@@ -1850,7 +1850,7 @@ bool CardSpecial::execute_effect(
         if (client_id == 0xFF) {
           return false;
         }
-        auto ps = this->server()->player_states[client_id];
+        auto ps = this->server()->player_states.at(client_id);
         if (!ps) {
           return false;
         }
@@ -1993,7 +1993,7 @@ bool CardSpecial::execute_effect(
       if (client_id == 0xFF) {
         return false;
       }
-      auto ps = this->server()->player_states[client_id];
+      auto ps = this->server()->player_states.at(client_id);
       if (!ps) {
         return false;
       }
@@ -2034,8 +2034,8 @@ bool CardSpecial::execute_effect(
         uint8_t attacker_client_id = client_id_for_card_ref(cond.card_ref);
         uint8_t target_client_id = client_id_for_card_ref(card->get_card_ref());
         if ((attacker_client_id != 0xFF) && (target_client_id != 0xFF)) {
-          auto attacker_ps = this->server()->player_states[attacker_client_id];
-          auto target_ps = this->server()->player_states[target_client_id];
+          auto attacker_ps = this->server()->player_states.at(attacker_client_id);
+          auto target_ps = this->server()->player_states.at(target_client_id);
           if (attacker_ps && target_ps) {
             uint8_t attacker_team_id = attacker_ps->get_team_id();
             uint8_t target_team_id = target_ps->get_team_id();
@@ -2157,8 +2157,8 @@ bool CardSpecial::execute_effect(
     case ConditionType::GIVE_OR_TAKE_EXP:
       if (unknown_p7 & 4) {
         uint8_t client_id = client_id_for_card_ref(card->get_card_ref());
-        if ((client_id != 0xFF) && this->server()->player_states[client_id]) {
-          uint8_t team_id = this->server()->player_states[client_id]->get_team_id();
+        if ((client_id != 0xFF) && this->server()->player_states.at(client_id)) {
+          uint8_t team_id = this->server()->player_states.at(client_id)->get_team_id();
           int32_t existing_exp = this->server()->team_exp[team_id];
           if ((clamped_expr_value + existing_exp) < 0) {
             clamped_expr_value = -existing_exp;
@@ -3672,7 +3672,7 @@ void CardSpecial::evaluate_and_apply_effects(
 
   DiceRoll dice_roll;
   uint8_t client_id = client_id_for_card_ref(dice_cmd.effect.target_card_ref);
-  auto set_card_ps = (client_id == 0xFF) ? nullptr : this->server()->player_states[client_id];
+  auto set_card_ps = (client_id == 0xFF) ? nullptr : this->server()->player_states.at(client_id);
 
   dice_roll.value = 1;
   if (set_card_ps) {

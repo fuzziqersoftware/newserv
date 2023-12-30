@@ -14,6 +14,7 @@
 #include "NetworkAddresses.hh"
 #include "SendCommands.hh"
 #include "Text.hh"
+#include "UnicodeTextSet.hh"
 
 using namespace std;
 
@@ -38,6 +39,7 @@ ServerState::ServerState(shared_ptr<struct event_base> base, const string& confi
       ip_stack_debug(false),
       allow_unregistered_users(false),
       allow_pc_nte(false),
+      use_temp_licenses_for_prototypes(true),
       allow_dc_pc_games(false),
       allow_gc_xb_games(true),
       allowed_drop_modes_v1_v2_normal(0x1F),
@@ -668,6 +670,7 @@ void ServerState::parse_config(const JSON& json, bool is_reload) {
   this->ip_stack_debug = json.get_bool("IPStackDebug", this->ip_stack_debug);
   this->allow_unregistered_users = json.get_bool("AllowUnregisteredUsers", this->allow_unregistered_users);
   this->allow_pc_nte = json.get_bool("AllowPCNTE", this->allow_pc_nte);
+  this->use_temp_licenses_for_prototypes = json.get_bool("UseTemporaryLicensesForPrototypes", this->use_temp_licenses_for_prototypes);
   this->allowed_drop_modes_v1_v2_normal = json.get_int("AllowedDropModesV1V2Normal", this->allowed_drop_modes_v1_v2_normal);
   this->allowed_drop_modes_v1_v2_battle = json.get_int("AllowedDropModesV1V2Battle", this->allowed_drop_modes_v1_v2_battle);
   this->allowed_drop_modes_v1_v2_challenge = json.get_int("AllowedDropModesV1V2Challenge", this->allowed_drop_modes_v1_v2_challenge);
@@ -1106,9 +1109,59 @@ void ServerState::load_level_table() {
   this->level_table = make_shared<LevelTableV4>(*this->load_bb_file("PlyLevelTbl.prs"), true);
 }
 
+shared_ptr<WordSelectTable> ServerState::load_word_select_table_from_system() {
+  vector<vector<string>> name_alias_lists;
+  auto json = JSON::parse(load_file("system/word-select/name-alias-lists.json"));
+  for (const auto& coll_it : json.as_list()) {
+    auto& coll = name_alias_lists.emplace_back();
+    for (const auto& str_it : coll_it->as_list()) {
+      coll.emplace_back(str_it->as_string());
+    }
+  }
+
+  config_log.info("(Word select) Loading pc_unitxt.prs");
+  vector<vector<string>> pc_unitxt_data = parse_unicode_text_set(load_file("system/word-select/pc_unitxt.prs"));
+  config_log.info("(Word select) Loading bb_unitxt_ws.prs");
+  vector<vector<string>> bb_unitxt_data = parse_unicode_text_set(load_file("system/word-select/bb_unitxt_ws.prs"));
+  vector<string> pc_unitxt_collection = std::move(pc_unitxt_data.at(35));
+  vector<string> bb_unitxt_collection = std::move(bb_unitxt_data.at(0));
+
+  config_log.info("(Word select) Loading DC_NTE data");
+  WordSelectSet dc_nte_ws(load_file("system/word-select/dc_nte_ws_data.bin"), Version::DC_NTE, nullptr, true);
+  config_log.info("(Word select) Loading DC_V1_11_2000_PROTOTYPE data");
+  WordSelectSet dc_112000_ws(load_file("system/word-select/dc_112000_ws_data.bin"), Version::DC_V1_11_2000_PROTOTYPE, nullptr, false);
+  config_log.info("(Word select) Loading DC_V1 data");
+  WordSelectSet dc_v1_ws(load_file("system/word-select/dcv1_ws_data.bin"), Version::DC_V1, nullptr, false);
+  config_log.info("(Word select) Loading DC_V2 data");
+  WordSelectSet dc_v2_ws(load_file("system/word-select/dcv2_ws_data.bin"), Version::DC_V2, nullptr, false);
+  config_log.info("(Word select) Loading PC_NTE data");
+  WordSelectSet pc_nte_ws(load_file("system/word-select/pc_nte_ws_data.bin"), Version::PC_NTE, &pc_unitxt_collection, false);
+  config_log.info("(Word select) Loading PC_V2 data");
+  WordSelectSet pc_v2_ws(load_file("system/word-select/pc_ws_data.bin"), Version::PC_V2, &pc_unitxt_collection, false);
+  config_log.info("(Word select) Loading GC_NTE data");
+  WordSelectSet gc_nte_ws(load_file("system/word-select/gc_nte_ws_data.bin"), Version::GC_NTE, nullptr, false);
+  config_log.info("(Word select) Loading GC_V3 data");
+  WordSelectSet gc_v3_ws(load_file("system/word-select/gc_ws_data.bin"), Version::GC_V3, nullptr, false);
+  config_log.info("(Word select) Loading GC_EP3_NTE data");
+  WordSelectSet gc_ep3_nte_ws(load_file("system/word-select/gc_ep3_nte_ws_data.bin"), Version::GC_EP3_NTE, nullptr, false);
+  config_log.info("(Word select) Loading GC_EP3 data");
+  WordSelectSet gc_ep3_ws(load_file("system/word-select/gc_ep3_ws_data.bin"), Version::GC_EP3, nullptr, false);
+  config_log.info("(Word select) Loading XB_V3 data");
+  WordSelectSet xb_v3_ws(load_file("system/word-select/xb_ws_data.bin"), Version::XB_V3, nullptr, false);
+  config_log.info("(Word select) Loading BB_V4 data");
+  WordSelectSet bb_v4_ws(load_file("system/word-select/bb_ws_data.bin"), Version::BB_V4, &bb_unitxt_collection, false);
+
+  config_log.info("(Word select) Generating table");
+  return make_shared<WordSelectTable>(
+      dc_nte_ws, dc_112000_ws, dc_v1_ws, dc_v2_ws,
+      pc_nte_ws, pc_v2_ws, gc_nte_ws, gc_v3_ws,
+      gc_ep3_nte_ws, gc_ep3_ws, xb_v3_ws, bb_v4_ws,
+      name_alias_lists);
+}
+
 void ServerState::load_word_select_table() {
   config_log.info("Loading Word Select table");
-  this->word_select_table = make_shared<WordSelectTable>(JSON::parse(load_file("system/word-select-table.json")));
+  this->word_select_table = this->load_word_select_table_from_system();
 }
 
 void ServerState::load_item_name_index() {

@@ -298,8 +298,8 @@ void ItemData::add_mag_photon_blast(uint8_t pb_num) {
     }
     if (pb_num >= 4) {
       throw runtime_error("left photon blast number is too high");
-      pb_nums |= (pb_num << 6);
     }
+    pb_nums |= (pb_num << 6);
     flags |= 4;
   }
 }

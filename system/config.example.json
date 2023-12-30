@@ -241,6 +241,12 @@
   // number is a hash of the username.
   "AllowUnregisteredUsers": true,
 
+  // If this option is enabled and AllowUnregisteredUsers is enabled, the server
+  // will use temporary licenses for the prototype versions (DC NTE, DC 11/2000,
+  // GC NTE, and Ep3 NTE) instead of permanent licenses. In this case, you can
+  // still manually create permanent licenses for NTE players.
+  "UseTemporaryLicensesForPrototypes": true,
+
   // If this option is enabled, PC NTE users will be allowed to connect. This is
   // the only version of the game that does not have any way to identify the
   // player (no serial number, username, etc.), so PC NTE players receive random

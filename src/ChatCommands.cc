@@ -1017,35 +1017,32 @@ static void server_command_edit(shared_ptr<Client> c, const std::string& args) {
     throw precondition_failed("$C6This command cannot\nbe used for your\nversion of PSO.");
   }
 
-  if ((s->cheat_mode_behavior == ServerState::BehaviorSwitch::OFF) && !(c->license->flags & License::Flag::CHEAT_ANYWHERE)) {
-    send_text_message(l, "$C6Cheats are disabled\non this server");
-    return;
-  }
+  bool cheats_allowed = ((s->cheat_mode_behavior != ServerState::BehaviorSwitch::OFF) || (c->license->flags & License::Flag::CHEAT_ANYWHERE));
 
   string encoded_args = tolower(args);
   vector<string> tokens = split(encoded_args, ' ');
 
   try {
     auto p = c->character();
-    if (tokens.at(0) == "atp") {
+    if (tokens.at(0) == "atp" && cheats_allowed) {
       p->disp.stats.char_stats.atp = stoul(tokens.at(1));
-    } else if (tokens.at(0) == "mst") {
+    } else if (tokens.at(0) == "mst" && cheats_allowed) {
       p->disp.stats.char_stats.mst = stoul(tokens.at(1));
-    } else if (tokens.at(0) == "evp") {
+    } else if (tokens.at(0) == "evp" && cheats_allowed) {
       p->disp.stats.char_stats.evp = stoul(tokens.at(1));
-    } else if (tokens.at(0) == "hp") {
+    } else if (tokens.at(0) == "hp" && cheats_allowed) {
       p->disp.stats.char_stats.hp = stoul(tokens.at(1));
-    } else if (tokens.at(0) == "dfp") {
+    } else if (tokens.at(0) == "dfp" && cheats_allowed) {
       p->disp.stats.char_stats.dfp = stoul(tokens.at(1));
-    } else if (tokens.at(0) == "ata") {
+    } else if (tokens.at(0) == "ata" && cheats_allowed) {
       p->disp.stats.char_stats.ata = stoul(tokens.at(1));
-    } else if (tokens.at(0) == "lck") {
+    } else if (tokens.at(0) == "lck" && cheats_allowed) {
       p->disp.stats.char_stats.lck = stoul(tokens.at(1));
-    } else if (tokens.at(0) == "meseta") {
+    } else if (tokens.at(0) == "meseta" && cheats_allowed) {
       p->disp.stats.meseta = stoul(tokens.at(1));
-    } else if (tokens.at(0) == "exp") {
+    } else if (tokens.at(0) == "exp" && cheats_allowed) {
       p->disp.stats.experience = stoul(tokens.at(1));
-    } else if (tokens.at(0) == "level") {
+    } else if (tokens.at(0) == "level" && cheats_allowed) {
       uint32_t level = stoul(tokens.at(1)) - 1;
       p->disp.stats.reset_to_base(p->disp.visual.char_class, s->level_table);
       p->disp.stats.advance_to_level(p->disp.visual.char_class, level, s->level_table);
@@ -1053,7 +1050,7 @@ static void server_command_edit(shared_ptr<Client> c, const std::string& args) {
       uint32_t new_color;
       sscanf(tokens.at(1).c_str(), "%8X", &new_color);
       p->disp.visual.name_color = new_color;
-    } else if (tokens.at(0) == "secid") {
+    } else if (tokens.at(0) == "secid" && cheats_allowed) {
       uint8_t secid = section_id_for_name(tokens.at(1));
       if (secid == 0xFF) {
         send_text_message(c, "$C6No such section ID");
@@ -1079,7 +1076,7 @@ static void server_command_edit(shared_ptr<Client> c, const std::string& args) {
         p->disp.visual.extra_model = npc;
         p->disp.visual.validation_flags |= 0x02;
       }
-    } else if (tokens.at(0) == "tech") {
+    } else if (tokens.at(0) == "tech" && cheats_allowed) {
       uint8_t level = stoul(tokens.at(2)) - 1;
       if (tokens.at(1) == "all") {
         for (size_t x = 0; x < 0x14; x++) {
@@ -1765,6 +1762,58 @@ static void server_command_ep3_set_def_dice_range(shared_ptr<Client> c, const st
   }
 }
 
+static void server_command_ep3_replace_assist_card(shared_ptr<Client> c, const std::string& args) {
+  auto s = c->require_server_state();
+  auto l = c->require_lobby();
+  check_is_game(l, true);
+  check_is_ep3(c, true);
+  check_cheats_enabled(l, c);
+
+  if (l->episode != Episode::EP3) {
+    throw logic_error("non-Ep3 client in Ep3 game");
+  }
+  if (!l->ep3_server) {
+    send_text_message(c, "$C6Episode 3 server\nis not initialized");
+    return;
+  }
+  if (l->ep3_server->setup_phase != Episode3::SetupPhase::MAIN_BATTLE) {
+    send_text_message(c, "$C6Battle has not\nyet begun");
+    return;
+  }
+  if (args.empty()) {
+    send_text_message(c, "$C6Missing arguments");
+    return;
+  }
+
+  size_t client_id;
+  string card_name;
+  if (isdigit(args[0])) {
+    auto tokens = split(args, ' ', 1);
+    client_id = stoul(tokens.at(0), nullptr, 0) - 1;
+    card_name = tokens.at(1);
+  } else {
+    client_id = c->lobby_client_id;
+    card_name = args;
+  }
+  if (client_id >= 4) {
+    send_text_message(c, "$C6Invalid client ID");
+    return;
+  }
+
+  shared_ptr<const Episode3::CardIndex::CardEntry> ce;
+  try {
+    ce = l->ep3_server->options.card_index->definition_for_name_normalized(card_name);
+  } catch (const out_of_range&) {
+    send_text_message(c, "$C6Card not found");
+    return;
+  }
+  if (ce->def.type != Episode3::CardType::ASSIST) {
+    send_text_message(c, "$C6Card is not an\nAssist card");
+    return;
+  }
+  l->ep3_server->force_replace_assist_card(client_id, ce->def.card_id);
+}
+
 static void server_command_ep3_unset_field_character(shared_ptr<Client> c, const std::string& args) {
   auto s = c->require_server_state();
   auto l = c->require_lobby();
@@ -1826,10 +1875,7 @@ static void server_command_get_ep3_battle_stat(shared_ptr<Client> c, const std::
     send_text_message(c, "$C6Battle has not\nyet started");
     return;
   }
-  if (c->lobby_client_id >= 4) {
-    throw logic_error("client ID is too large");
-  }
-  auto ps = l->ep3_server->player_states[c->lobby_client_id];
+  auto ps = l->ep3_server->player_states.at(c->lobby_client_id);
   if (!ps) {
     send_text_message(c, "$C6Player is missing");
     return;
@@ -1953,6 +1999,7 @@ static const unordered_map<string, ChatCommandDefinition> chat_commands({
     {"$saverec", {server_command_saverec, nullptr}},
     {"$sc", {server_command_send_client, proxy_command_send_client}},
     {"$secid", {server_command_secid, proxy_command_secid}},
+    {"$setassist", {server_command_ep3_replace_assist_card, nullptr}},
     {"$si", {server_command_server_info, nullptr}},
     {"$silence", {server_command_silence, nullptr}},
     {"$song", {server_command_song, proxy_command_song}},

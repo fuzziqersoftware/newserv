@@ -26,6 +26,7 @@ struct SubcommandDefinition {
   enum Flag {
     ALWAYS_FORWARD_TO_WATCHERS = 0x01,
     ALLOW_FORWARD_TO_WATCHED_LOBBY = 0x02,
+    USE_JOIN_COMMAND_QUEUE = 0x04,
   };
   uint8_t nte_subcommand;
   uint8_t proto_subcommand;
@@ -37,7 +38,7 @@ using SDF = SubcommandDefinition::Flag;
 
 extern const SubcommandDefinition subcommand_definitions[0x100];
 
-static const SubcommandDefinition& def_for_nte_subcommand(uint8_t subcommand) {
+static const SubcommandDefinition* def_for_nte_subcommand(uint8_t subcommand) {
   static std::array<uint8_t, 0x100> nte_to_final_map;
   static bool nte_to_final_map_populated = false;
   if (!nte_to_final_map_populated) {
@@ -55,10 +56,11 @@ static const SubcommandDefinition& def_for_nte_subcommand(uint8_t subcommand) {
     }
     nte_to_final_map_populated = true;
   }
-  return subcommand_definitions[nte_to_final_map[subcommand]];
+  uint8_t final_subcommand = nte_to_final_map[subcommand];
+  return final_subcommand ? &subcommand_definitions[final_subcommand] : nullptr;
 }
 
-static const SubcommandDefinition& def_for_proto_subcommand(uint8_t subcommand) {
+static const SubcommandDefinition* def_for_proto_subcommand(uint8_t subcommand) {
   static std::array<uint8_t, 0x100> proto_to_final_map;
   static bool proto_to_final_map_populated = false;
   if (!proto_to_final_map_populated) {
@@ -76,7 +78,31 @@ static const SubcommandDefinition& def_for_proto_subcommand(uint8_t subcommand) 
     }
     proto_to_final_map_populated = true;
   }
-  return subcommand_definitions[proto_to_final_map[subcommand]];
+  uint8_t final_subcommand = proto_to_final_map[subcommand];
+  return final_subcommand ? &subcommand_definitions[final_subcommand] : nullptr;
+}
+
+const SubcommandDefinition* def_for_subcommand(Version version, uint8_t subcommand) {
+  if (version == Version::DC_NTE) {
+    return def_for_nte_subcommand(subcommand);
+  } else if (version == Version::DC_V1_11_2000_PROTOTYPE) {
+    return def_for_proto_subcommand(subcommand);
+  } else {
+    return &subcommand_definitions[subcommand];
+  }
+}
+
+uint8_t translate_subcommand_number(Version to_version, Version from_version, uint8_t subcommand) {
+  const auto* def = def_for_subcommand(from_version, subcommand);
+  if (!def) {
+    return 0x00;
+  } else if (to_version == Version::DC_NTE) {
+    return def->nte_subcommand;
+  } else if (to_version == Version::DC_V1_11_2000_PROTOTYPE) {
+    return def->proto_subcommand;
+  } else {
+    return def->final_subcommand;
+  }
 }
 
 // The functions in this file are called when a client sends a game command
@@ -99,7 +125,7 @@ bool command_is_private(uint8_t command) {
   return (command == 0x62) || (command == 0x6D);
 }
 
-static void forward_subcommand(shared_ptr<Client> c, uint8_t command, uint8_t flag, void* data, size_t size) {
+static void forward_subcommand(shared_ptr<Client> c, uint8_t command, uint8_t flag, const void* data, size_t size) {
   // If the command is an Ep3-only command, make sure an Ep3 client sent it
   bool command_is_ep3 = (command & 0xF0) == 0xC0;
   if (command_is_ep3 && !is_ep3(c->version())) {
@@ -113,14 +139,8 @@ static void forward_subcommand(shared_ptr<Client> c, uint8_t command, uint8_t fl
   }
 
   auto& header = check_size_t<G_UnusedHeader>(data, size, 0xFFFF);
-  const SubcommandDefinition* def;
-  if (c->version() == Version::DC_NTE) {
-    def = &def_for_nte_subcommand(header.subcommand);
-  } else if (c->version() == Version::DC_V1_11_2000_PROTOTYPE) {
-    def = &def_for_proto_subcommand(header.subcommand);
-  } else {
-    def = &subcommand_definitions[header.subcommand];
-  }
+  const auto* def = def_for_subcommand(c->version(), header.subcommand);
+  uint8_t def_flags = def ? def->flags : 0;
 
   string nte_data;
   string proto_data;
@@ -128,32 +148,50 @@ static void forward_subcommand(shared_ptr<Client> c, uint8_t command, uint8_t fl
   Version c_version = c->version();
   auto send_to_client = [&](shared_ptr<Client> lc) -> void {
     Version lc_version = lc->version();
+    const void* data_to_send = nullptr;
+    size_t size_to_send = 0;
     if ((!is_pre_v1(lc_version) && !is_pre_v1(c_version)) || (lc_version == c_version)) {
-      send_command(lc, command, flag, data, size);
+      data_to_send = data;
+      size_to_send = size;
     } else if (lc->version() == Version::DC_NTE) {
-      if (def->nte_subcommand) {
+      if (def && def->nte_subcommand) {
         if (nte_data.empty()) {
           nte_data.assign(reinterpret_cast<const char*>(data), size);
           nte_data[0] = def->nte_subcommand;
         }
-        send_command(lc, command, flag, nte_data);
+        data_to_send = nte_data.data();
+        size_to_send = nte_data.size();
       }
     } else if (lc->version() == Version::DC_V1_11_2000_PROTOTYPE) {
-      if (def->proto_subcommand) {
+      if (def && def->proto_subcommand) {
         if (proto_data.empty()) {
           proto_data.assign(reinterpret_cast<const char*>(data), size);
           proto_data[0] = def->proto_subcommand;
         }
-        send_command(lc, command, flag, proto_data);
+        data_to_send = proto_data.data();
+        size_to_send = proto_data.size();
       }
     } else {
-      if (def->final_subcommand) {
+      if (def && def->final_subcommand) {
         if (final_data.empty()) {
           final_data.assign(reinterpret_cast<const char*>(data), size);
           final_data[0] = def->final_subcommand;
         }
-        send_command(lc, command, flag, final_data);
+        data_to_send = final_data.data();
+        size_to_send = final_data.size();
       }
+    }
+
+    if (!data_to_send || !size_to_send) {
+      lc->log.info("Command cannot be translated to client\'s version");
+    } else if ((def_flags & SDF::USE_JOIN_COMMAND_QUEUE) && lc->game_join_command_queue) {
+      lc->log.info("Client not ready to receive join commands; adding to queue");
+      auto& cmd = lc->game_join_command_queue->emplace_back();
+      cmd.command = command;
+      cmd.flag = flag;
+      cmd.data.assign(reinterpret_cast<const char*>(data_to_send), size_to_send);
+    } else {
+      send_command(lc, command, flag, data_to_send, size_to_send);
     }
   };
 
@@ -177,7 +215,7 @@ static void forward_subcommand(shared_ptr<Client> c, uint8_t command, uint8_t fl
       }
       if ((command == 0xCB) &&
           l->check_flag(Lobby::Flag::IS_SPECTATOR_TEAM) &&
-          (def->flags & SDF::ALLOW_FORWARD_TO_WATCHED_LOBBY)) {
+          (def_flags & SDF::ALLOW_FORWARD_TO_WATCHED_LOBBY)) {
         auto watched_lobby = l->watched_lobby.lock();
         if (watched_lobby) {
           for (auto& lc : watched_lobby->clients) {
@@ -202,7 +240,7 @@ static void forward_subcommand(shared_ptr<Client> c, uint8_t command, uint8_t fl
     // cause the battle setup menu to appear in the spectator room, which looks
     // weird and is generally undesirable.)
     if ((l->ep3_server && (l->ep3_server->setup_phase != Episode3::SetupPhase::REGISTRATION)) ||
-        (def->flags & SDF::ALWAYS_FORWARD_TO_WATCHERS)) {
+        (def_flags & SDF::ALWAYS_FORWARD_TO_WATCHERS)) {
       for (const auto& watcher_lobby : l->watcher_lobbies) {
         for (auto& target : watcher_lobby->clients) {
           if (target && is_ep3(target->version())) {
@@ -219,6 +257,15 @@ static void forward_subcommand(shared_ptr<Client> c, uint8_t command, uint8_t fl
       l->battle_record->add_command(type, data, size);
     }
   }
+}
+
+static void forward_subcommand_m(shared_ptr<Client> c, uint8_t command, uint8_t flag, void* data, size_t size) {
+  forward_subcommand(c, command, flag, data, size);
+}
+
+template <typename CmdT>
+static void forward_subcommand_t(shared_ptr<Client> c, uint8_t command, uint8_t flag, const CmdT& cmd) {
+  forward_subcommand(c, command, flag, &cmd, sizeof(cmd));
 }
 
 static void on_invalid(shared_ptr<Client> c, uint8_t command, uint8_t flag, void* data, size_t size) {
@@ -250,99 +297,98 @@ static void on_unimplemented(shared_ptr<Client> c, uint8_t command, uint8_t flag
   }
 }
 
-template <typename CmdT>
-static void send_or_enqueue_joining_player_command(shared_ptr<Client> c, uint8_t command, uint8_t flag, const CmdT& data) {
-  if (c->game_join_command_queue) {
-    c->log.info("Client not ready to receive join commands; adding to queue");
-    auto& cmd = c->game_join_command_queue->emplace_back();
-    cmd.command = command;
-    cmd.flag = flag;
-    cmd.data.assign(reinterpret_cast<const char*>(&data), sizeof(data));
-  } else {
-    send_command(c, command, flag, &data, sizeof(data));
-  }
-}
-
-static void send_or_enqueue_joining_player_command(shared_ptr<Client> c, uint8_t command, uint8_t flag, void* data, size_t size) {
-  if (c->game_join_command_queue) {
-    c->log.info("Client not ready to receive join commands; adding to queue");
-    auto& cmd = c->game_join_command_queue->emplace_back();
-    cmd.command = command;
-    cmd.flag = flag;
-    cmd.data.assign(reinterpret_cast<const char*>(data), size);
-  } else {
-    send_command(c, command, flag, data, size);
-  }
-}
-
 static void on_forward_check_game_loading(shared_ptr<Client> c, uint8_t command, uint8_t flag, void* data, size_t size) {
   auto l = c->require_lobby();
-  if (!l->is_game() || !l->any_client_loading()) {
-    return;
+  if (l->is_game() && l->any_client_loading()) {
+    forward_subcommand(c, command, flag, data, size);
   }
-  if (command_is_private(command)) {
-    auto target = l->clients.at(flag);
-    if (target) {
-      send_or_enqueue_joining_player_command(target, command, flag, data, size);
-    }
-  } else {
-    for (auto lc : l->clients) {
-      if (lc) {
-        send_or_enqueue_joining_player_command(lc, command, flag, data, size);
-      }
-    }
+}
+
+static shared_ptr<Client> get_sync_target(shared_ptr<Client> sender_c, uint8_t command, uint8_t flag, bool allow_if_not_loading) {
+  if (!command_is_private(command)) {
+    throw runtime_error("sync data sent via public command");
   }
+  auto l = sender_c->require_lobby();
+  if (l->is_game() && (allow_if_not_loading || l->any_client_loading()) && (flag < l->max_clients)) {
+    return l->clients[flag];
+  }
+  return nullptr;
 }
 
 static void on_forward_sync_joining_player_state(shared_ptr<Client> c, uint8_t command, uint8_t flag, void* data, size_t size) {
-  auto l = c->require_lobby();
-  if (!l->is_game() || !l->any_client_loading()) {
+  auto target = get_sync_target(c, command, flag, false);
+  if (!target) {
     return;
   }
 
+  uint8_t subcommand;
+  size_t decompressed_size;
+  size_t compressed_size;
+  const void* compressed_data;
   if (is_pre_v1(c->version())) {
     const auto& cmd = check_size_t<G_SyncGameStateHeader_DCNTE_6x6B_6x6C_6x6D_6x6E>(data, size, 0xFFFF);
-    size_t compressed_size = size - sizeof(cmd);
-    if (c->config.check_flag(Client::Flag::DEBUG_ENABLED)) {
-      string decompressed = bc0_decompress(reinterpret_cast<const char*>(data) + sizeof(cmd), compressed_size);
-      c->log.info("Decompressed sync data (%zX -> %zX bytes; expected %" PRIX32 "):",
-          compressed_size, decompressed.size(), cmd.decompressed_size.load());
-      print_data(stderr, decompressed);
-    }
+    subcommand = cmd.header.basic_header.subcommand;
+    decompressed_size = cmd.decompressed_size;
+    compressed_size = size - sizeof(cmd);
+    compressed_data = reinterpret_cast<const char*>(data) + sizeof(cmd);
   } else {
     const auto& cmd = check_size_t<G_SyncGameStateHeader_6x6B_6x6C_6x6D_6x6E>(data, size, 0xFFFF);
     if (cmd.compressed_size > size - sizeof(cmd)) {
       throw runtime_error("compressed end offset is beyond end of command");
     }
-    if (c->config.check_flag(Client::Flag::DEBUG_ENABLED)) {
-      string decompressed = bc0_decompress(reinterpret_cast<const char*>(data) + sizeof(cmd), cmd.compressed_size);
-      c->log.info("Decompressed sync data (%" PRIX32 " -> %zX bytes; expected %" PRIX32 "):",
-          cmd.compressed_size.load(), decompressed.size(), cmd.decompressed_size.load());
-      print_data(stderr, decompressed);
-    }
+    subcommand = cmd.header.basic_header.subcommand;
+    decompressed_size = cmd.decompressed_size;
+    compressed_size = cmd.compressed_size;
+    compressed_data = reinterpret_cast<const char*>(data) + sizeof(cmd);
   }
 
-  on_forward_check_game_loading(c, command, flag, data, size);
+  if (c->config.check_flag(Client::Flag::DEBUG_ENABLED)) {
+    string decompressed = bc0_decompress(compressed_data, compressed_size);
+    c->log.info("Decompressed sync data (%zX -> %zX bytes; expected %zX):",
+        compressed_size, decompressed.size(), decompressed_size);
+    print_data(stderr, decompressed);
+  }
+
+  if (is_pre_v1(c->version()) == is_pre_v1(target->version())) {
+    on_forward_check_game_loading(c, command, flag, data, size);
+
+  } else if (is_pre_v1(target->version())) {
+    StringWriter w;
+    uint32_t cmd_size = ((compressed_size + sizeof(G_SyncGameStateHeader_DCNTE_6x6B_6x6C_6x6D_6x6E)) + 3) & (~3);
+    w.put(G_SyncGameStateHeader_DCNTE_6x6B_6x6C_6x6D_6x6E{
+        .header = {{subcommand, 0x00, 0x0000}, cmd_size},
+        .decompressed_size = decompressed_size,
+    });
+    w.write(compressed_data, compressed_size);
+    while (w.size() & 3) {
+      w.put_u8(0);
+    }
+    const string& data_to_send = w.str();
+    forward_subcommand(c, command, flag, data_to_send.data(), data_to_send.size());
+
+  } else {
+    StringWriter w;
+    uint32_t cmd_size = ((compressed_size + sizeof(G_SyncGameStateHeader_6x6B_6x6C_6x6D_6x6E)) + 3) & (~3);
+    w.put(G_SyncGameStateHeader_6x6B_6x6C_6x6D_6x6E{
+        .header = {{subcommand, 0x00, 0x0000}, cmd_size},
+        .decompressed_size = decompressed_size,
+        .compressed_size = compressed_size,
+    });
+    w.write(compressed_data, compressed_size);
+    while (w.size() & 3) {
+      w.put_u8(0);
+    }
+    const string& data_to_send = w.str();
+    forward_subcommand(c, command, flag, data_to_send.data(), data_to_send.size());
+  }
 }
 
 static void on_sync_joining_player_item_state(shared_ptr<Client> c, uint8_t command, uint8_t flag, void* data, size_t size) {
-  auto l = c->require_lobby();
-  if (!l->is_game() || !l->any_client_loading()) {
-    return;
-  }
-
-  // I'm lazy and this should never happen (this command should always be
-  // private to the joining player)
-  if (!command_is_private(command)) {
-    throw runtime_error("6x6D sent via public command");
-  }
-  if (flag >= l->max_clients) {
-    return;
-  }
-  auto target = l->clients[flag];
+  auto target = get_sync_target(c, command, flag, false);
   if (!target) {
     return;
   }
+  const auto& l = c->require_lobby();
 
   string decompressed;
   size_t compressed_size;
@@ -401,16 +447,6 @@ static void on_sync_joining_player_item_state(shared_ptr<Client> c, uint8_t comm
   }
 
   send_game_item_state(target);
-}
-
-template <typename CmdT>
-void clear_dc_protos_unused_6x70_item_fields(CmdT& cmd) {
-  for (size_t z = 0; z < min<uint32_t>(cmd.num_items, 30); z++) {
-    auto& item = cmd.items[z];
-    item.unknown_a1 = 0;
-    item.extension_data1 = 0;
-    item.extension_data2 = 0;
-  }
 }
 
 class Parsed6x70Data {
@@ -630,12 +666,22 @@ public:
     return (0xAE00000000000000 | this->guild_card_number);
   }
 
+  void clear_v1_unused_item_fields() {
+    for (size_t z = 0; z < min<uint32_t>(this->num_items, 30); z++) {
+      auto& item = this->items[z];
+      item.unknown_a1 = 0;
+      item.extension_data1 = 0;
+      item.extension_data2 = 0;
+    }
+  }
+
   void clear_dc_protos_unused_item_fields() {
     for (size_t z = 0; z < min<uint32_t>(this->num_items, 30); z++) {
       auto& item = this->items[z];
       item.unknown_a1 = 0;
       item.extension_data1 = 0;
       item.extension_data2 = 0;
+      item.data.data2d = 0;
     }
   }
 
@@ -723,22 +769,18 @@ static void on_sync_joining_player_disp_and_inventory(
 
   // In V1/V2 games, this command sometimes is sent after the new client has
   // finished loading, so we don't check l->any_client_loading() here.
-  auto l = c->require_lobby();
-  if (!l->is_game()) {
+  auto target = get_sync_target(c, command, flag, true);
+  if (!target) {
     return;
   }
 
-  if (!command_is_private(command)) {
-    // I'm lazy and this should never happen (this command should always be
-    // private to the joining player)
-    throw runtime_error("6x70 sent via public command");
-  }
-  if (flag >= l->max_clients) {
-    return;
-  }
-  auto target = l->clients[flag];
-  if (!target) {
-    return;
+  // If the sender is the leader and is pre-V1, and the target is V1 or later,
+  // we need to synthesize a 6x71 command to tell the target all state has been
+  // sent. (If both are pre-V1, the target won't expect this command; if both
+  // are V1 or later, the leader will send this command itself.)
+  if (is_pre_v1(c->version()) && !is_pre_v1(target->version())) {
+    static const be_uint32_t data = 0x71010000;
+    send_command(target, 0x62, target->lobby_client_id, &data, sizeof(data));
   }
 
   unique_ptr<Parsed6x70Data> parsed;
@@ -764,6 +806,9 @@ static void on_sync_joining_player_disp_and_inventory(
       parsed = make_unique<Parsed6x70Data>(
           check_size_t<G_SyncPlayerDispAndInventory_DC_PC_6x70>(data, size),
           c->license->serial_number);
+      if (c->version() == Version::DC_V1) {
+        parsed->clear_v1_unused_item_fields();
+      }
       break;
     case Version::GC_NTE:
     case Version::GC_V3:
@@ -792,28 +837,28 @@ static void on_sync_joining_player_disp_and_inventory(
 
   switch (target->version()) {
     case Version::DC_NTE:
-      send_or_enqueue_joining_player_command(target, command, flag, parsed->as_dc_nte());
+      forward_subcommand_t(target, command, flag, parsed->as_dc_nte());
       break;
     case Version::DC_V1_11_2000_PROTOTYPE:
-      send_or_enqueue_joining_player_command(target, command, flag, parsed->as_dc_112000());
+      forward_subcommand_t(target, command, flag, parsed->as_dc_112000());
       break;
     case Version::DC_V1:
     case Version::DC_V2:
     case Version::PC_NTE:
     case Version::PC_V2:
-      send_or_enqueue_joining_player_command(target, command, flag, parsed->as_dc_pc());
+      forward_subcommand_t(target, command, flag, parsed->as_dc_pc());
       break;
     case Version::GC_NTE:
     case Version::GC_V3:
     case Version::GC_EP3_NTE:
     case Version::GC_EP3:
-      send_or_enqueue_joining_player_command(target, command, flag, parsed->as_gc());
+      forward_subcommand_t(target, command, flag, parsed->as_gc());
       break;
     case Version::XB_V3:
-      send_or_enqueue_joining_player_command(target, command, flag, parsed->as_xb());
+      forward_subcommand_t(target, command, flag, parsed->as_xb());
       break;
     case Version::BB_V4:
-      send_or_enqueue_joining_player_command(target, command, flag, parsed->as_bb(target->language()));
+      forward_subcommand_t(target, command, flag, parsed->as_bb(target->language()));
       break;
     default:
       throw logic_error("6x70 command from unknown game version");
@@ -1320,17 +1365,22 @@ void forward_subcommand_with_item_transcode_t(shared_ptr<Client> c, uint8_t comm
 
   auto l = c->require_lobby();
   auto s = c->require_server_state();
-  for (auto& other_c : l->clients) {
-    if (!other_c || other_c == c) {
+  for (auto& lc : l->clients) {
+    if (!lc || lc == c) {
       continue;
     }
-    if (c->version() != other_c->version()) {
+    if (c->version() != lc->version()) {
       CmdT out_cmd = cmd;
-      out_cmd.item_data.decode_for_version(c->version());
-      out_cmd.item_data.encode_for_version(other_c->version(), s->item_parameter_table_for_version(other_c->version()));
-      send_command_t(other_c, command, flag, out_cmd);
+      out_cmd.header.subcommand = translate_subcommand_number(lc->version(), c->version(), out_cmd.header.subcommand);
+      if (out_cmd.header.subcommand) {
+        out_cmd.item_data.decode_for_version(c->version());
+        out_cmd.item_data.encode_for_version(lc->version(), s->item_parameter_table_for_version(lc->version()));
+        send_command_t(lc, command, flag, out_cmd);
+      } else {
+        lc->log.info("Subcommand cannot be translated to client\'s version");
+      }
     } else {
-      send_command_t(other_c, command, flag, cmd);
+      send_command_t(lc, command, flag, cmd);
     }
   }
 }
@@ -1520,12 +1570,19 @@ static void on_box_or_enemy_item_drop_t(shared_ptr<Client> c, uint8_t command, u
     if (!lc || lc == c) {
       continue;
     }
-    CmdT out_cmd = cmd;
     if (c->version() != lc->version()) {
-      out_cmd.item.item.decode_for_version(c->version());
-      out_cmd.item.item.encode_for_version(lc->version(), s->item_parameter_table_for_version(lc->version()));
+      CmdT out_cmd = cmd;
+      out_cmd.header.subcommand = translate_subcommand_number(lc->version(), c->version(), out_cmd.header.subcommand);
+      if (out_cmd.header.subcommand) {
+        out_cmd.item.item.decode_for_version(c->version());
+        out_cmd.item.item.encode_for_version(lc->version(), s->item_parameter_table_for_version(lc->version()));
+        send_command_t(lc, command, flag, out_cmd);
+      } else {
+        lc->log.info("Subcommand cannot be translated to client\'s version");
+      }
+    } else {
+      send_command_t(lc, command, flag, cmd);
     }
-    send_command_t(lc, command, flag, out_cmd);
   }
 }
 
@@ -2694,7 +2751,22 @@ static void on_destroy_floor_item(shared_ptr<Client> c, uint8_t command, uint8_t
   for (size_t z = 0; z < l->clients.size(); z++) {
     auto lc = l->clients[z];
     if (lc && fi->visible_to_client(z)) {
-      send_command_t(lc, command, flag, cmd);
+      if (lc->version() != c->version()) {
+        G_DestroyFloorItem_6x63 out_cmd = cmd;
+        switch (lc->version()) {
+          case Version::DC_NTE:
+            out_cmd.header.subcommand = 0x55;
+            break;
+          case Version::DC_V1_11_2000_PROTOTYPE:
+            out_cmd.header.subcommand = 0x5C;
+            break;
+          default:
+            out_cmd.header.subcommand = 0x63;
+        }
+        send_command_t(lc, command, flag, out_cmd);
+      } else {
+        send_command_t(lc, command, flag, cmd);
+      }
     }
   }
 }
@@ -3350,7 +3422,7 @@ const SubcommandDefinition subcommand_definitions[0x100] = {
     /* 6x38 */ {0x33, 0x34, 0x38, nullptr},
     /* 6x39 */ {0x00, 0x36, 0x39, on_forward_check_game},
     /* 6x3A */ {0x00, 0x37, 0x3A, on_forward_check_game},
-    /* 6x3B */ {0x00, 0x38, 0x3B, forward_subcommand},
+    /* 6x3B */ {0x00, 0x38, 0x3B, forward_subcommand_m},
     /* 6x3C */ {0x34, 0x39, 0x3C, nullptr},
     /* 6x3D */ {0x00, 0x00, 0x3D, nullptr},
     /* 6x3E */ {0x00, 0x00, 0x3E, on_movement_with_floor<G_StopAtPosition_6x3E>},
@@ -3373,7 +3445,7 @@ const SubcommandDefinition subcommand_definitions[0x100] = {
     /* 6x4F */ {0x43, 0x49, 0x4F, on_forward_check_game_client},
     /* 6x50 */ {0x44, 0x4A, 0x50, on_forward_check_game_client},
     /* 6x51 */ {0x00, 0x00, 0x51, nullptr},
-    /* 6x52 */ {0x46, 0x4C, 0x52, forward_subcommand},
+    /* 6x52 */ {0x46, 0x4C, 0x52, forward_subcommand_m},
     /* 6x53 */ {0x47, 0x4D, 0x53, on_forward_check_game},
     /* 6x54 */ {0x48, 0x4E, 0x54, nullptr},
     /* 6x55 */ {0x49, 0x4F, 0x55, on_forward_check_game_client},
@@ -3481,11 +3553,11 @@ const SubcommandDefinition subcommand_definitions[0x100] = {
     /* 6xBB */ {0x00, 0x00, 0xBB, on_open_bank_bb_or_card_trade_counter_ep3},
     /* 6xBC */ {0x00, 0x00, 0xBC, on_forward_check_ep3_game},
     /* 6xBD */ {0x00, 0x00, 0xBD, on_ep3_private_word_select_bb_bank_action, SDF::ALWAYS_FORWARD_TO_WATCHERS},
-    /* 6xBE */ {0x00, 0x00, 0xBE, forward_subcommand, SDF::ALWAYS_FORWARD_TO_WATCHERS | SDF::ALLOW_FORWARD_TO_WATCHED_LOBBY},
+    /* 6xBE */ {0x00, 0x00, 0xBE, forward_subcommand_m, SDF::ALWAYS_FORWARD_TO_WATCHERS | SDF::ALLOW_FORWARD_TO_WATCHED_LOBBY},
     /* 6xBF */ {0x00, 0x00, 0xBF, on_forward_check_ep3_lobby},
     /* 6xC0 */ {0x00, 0x00, 0xC0, on_sell_item_at_shop_bb},
-    /* 6xC1 */ {0x00, 0x00, 0xC1, forward_subcommand},
-    /* 6xC2 */ {0x00, 0x00, 0xC2, forward_subcommand},
+    /* 6xC1 */ {0x00, 0x00, 0xC1, forward_subcommand_m},
+    /* 6xC2 */ {0x00, 0x00, 0xC2, forward_subcommand_m},
     /* 6xC3 */ {0x00, 0x00, 0xC3, on_drop_partial_stack_bb},
     /* 6xC4 */ {0x00, 0x00, 0xC4, on_sort_inventory_bb},
     /* 6xC5 */ {0x00, 0x00, 0xC5, on_medical_center_bb},
@@ -3496,8 +3568,8 @@ const SubcommandDefinition subcommand_definitions[0x100] = {
     /* 6xCA */ {0x00, 0x00, 0xCA, on_item_reward_request_bb},
     /* 6xCB */ {0x00, 0x00, 0xCB, on_transfer_item_via_mail_message_bb},
     /* 6xCC */ {0x00, 0x00, 0xCC, on_exchange_item_for_team_points_bb},
-    /* 6xCD */ {0x00, 0x00, 0xCD, forward_subcommand},
-    /* 6xCE */ {0x00, 0x00, 0xCE, forward_subcommand},
+    /* 6xCD */ {0x00, 0x00, 0xCD, forward_subcommand_m},
+    /* 6xCE */ {0x00, 0x00, 0xCE, forward_subcommand_m},
     /* 6xCF */ {0x00, 0x00, 0xCF, on_battle_restart_bb},
     /* 6xD0 */ {0x00, 0x00, 0xD0, on_battle_level_up_bb},
     /* 6xD1 */ {0x00, 0x00, 0xD1, on_request_challenge_grave_recovery_item_bb},
@@ -3581,15 +3653,8 @@ void on_subcommand_multi(shared_ptr<Client> c, uint8_t command, uint8_t flag, st
     }
     void* cmd_data = data.data() + offset;
 
-    const SubcommandDefinition* def;
-    if (c->version() == Version::DC_NTE) {
-      def = &def_for_nte_subcommand(header->subcommand);
-    } else if (c->version() == Version::DC_V1_11_2000_PROTOTYPE) {
-      def = &def_for_proto_subcommand(header->subcommand);
-    } else {
-      def = &subcommand_definitions[header->subcommand];
-    }
-    if (def->handler) {
+    const auto* def = def_for_subcommand(c->version(), header->subcommand);
+    if (def && def->handler) {
       def->handler(c, command, flag, cmd_data, cmd_size);
     } else {
       on_unimplemented(c, command, flag, cmd_data, cmd_size);

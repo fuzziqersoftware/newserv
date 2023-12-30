@@ -135,6 +135,18 @@ void Client::Config::set_flags_for_version(Version version, int64_t sub_version)
   }
 }
 
+bool Client::Config::should_update_vs(const Config& other) const {
+  constexpr uint64_t mask = static_cast<uint64_t>(Flag::CLIENT_SIDE_MASK);
+  return ((this->enabled_flags ^ other.enabled_flags) & mask) ||
+      (this->specific_version != other.specific_version) ||
+      (this->override_random_seed != other.override_random_seed) ||
+      (this->override_section_id != other.override_section_id) ||
+      (this->override_lobby_event != other.override_lobby_event) ||
+      (this->override_lobby_number != other.override_lobby_number) ||
+      (this->proxy_destination_address != other.proxy_destination_address) ||
+      (this->proxy_destination_port != other.proxy_destination_port);
+}
+
 Client::Client(
     shared_ptr<Server> server,
     struct bufferevent* bev,
@@ -241,6 +253,23 @@ void Client::set_license(shared_ptr<License> l) {
     }
   }
   this->license = l;
+}
+
+void Client::convert_license_to_temporary_if_nte() {
+  // If the session is a prototype version and the license was created and we
+  // should use a temporary license instead, delete the permanent license and
+  // replace it with a temporary license.
+  auto s = this->require_server_state();
+  if (s->use_temp_licenses_for_prototypes &&
+      this->config.check_flag(Client::Flag::LICENSE_WAS_CREATED) &&
+      is_any_nte(this->version())) {
+    this->log.info("Client is a prototype version and the license was created during this session; converting permanent license to temporary license");
+    s->license_index->remove(this->license->serial_number);
+    auto new_l = s->license_index->create_temporary_license();
+    this->license->delete_file();
+    *new_l = std::move(*this->license);
+    this->set_license(new_l);
+  }
 }
 
 shared_ptr<ServerState> Client::require_server_state() const {

@@ -30,8 +30,15 @@ public:
   enum class Flag : uint64_t {
     // clang-format off
 
+    // This mask specifies which flags are sent to the client
+    // TODO: It'd be nice to use a pattern here (e.g. all server-side flags are
+    // in the high bits) but that would require re-recording or manually
+    // rewriting all the tests
+    CLIENT_SIDE_MASK                    = 0xFFFFFFFFFC0FFFFB,
+
     // Version-related flags
     CHECKED_FOR_DC_V1_PROTOTYPE         = 0x0000000000000002,
+    LICENSE_WAS_CREATED                 = 0x0000000000000004, // Server-side only
     NO_D6_AFTER_LOBBY                   = 0x0000000000000100,
     NO_D6                               = 0x0000000000000200,
     FORCE_ENGLISH_LANGUAGE_BB           = 0x0000000000000400,
@@ -44,20 +51,20 @@ public:
     USE_OVERFLOW_FOR_SEND_FUNCTION_CALL = 0x0000000000010000,
 
     // State flags
-    LOADING                             = 0x0000000000100000,
-    LOADING_QUEST                       = 0x0000000000200000,
-    LOADING_RUNNING_JOINABLE_QUEST      = 0x0000000000400000,
-    LOADING_TOURNAMENT                  = 0x0000000000800000,
-    IN_INFORMATION_MENU                 = 0x0000000001000000,
-    AT_WELCOME_MESSAGE                  = 0x0000000002000000,
+    LOADING                             = 0x0000000000100000, // Server-side only
+    LOADING_QUEST                       = 0x0000000000200000, // Server-side only
+    LOADING_RUNNING_JOINABLE_QUEST      = 0x0000000000400000, // Server-side only
+    LOADING_TOURNAMENT                  = 0x0000000000800000, // Server-side only
+    IN_INFORMATION_MENU                 = 0x0000000001000000, // Server-side only
+    AT_WELCOME_MESSAGE                  = 0x0000000002000000, // Server-side only
     SAVE_ENABLED                        = 0x0000000004000000,
     HAS_EP3_CARD_DEFS                   = 0x0000000008000000,
     HAS_EP3_MEDIA_UPDATES               = 0x0000000010000000,
     USE_OVERRIDE_RANDOM_SEED            = 0x0000000020000000,
     HAS_GUILD_CARD_NUMBER               = 0x0000000040000000,
-    AT_BANK_COUNTER                     = 0x0000000080000000,
-    SHOULD_SEND_ARTIFICIAL_ITEM_STATE   = 0x0001000000000000,
-    SHOULD_SEND_ARTIFICIAL_FLAG_STATE   = 0x0002000000000000,
+    AT_BANK_COUNTER                     = 0x0000000080000000, // Server-side only
+    SHOULD_SEND_ARTIFICIAL_ITEM_STATE   = 0x0001000000000000, // Server-side only
+    SHOULD_SEND_ARTIFICIAL_FLAG_STATE   = 0x0002000000000000, // Server-side only
     SHOULD_SEND_ENABLE_SAVE             = 0x0004000000000000,
     SWITCH_ASSIST_ENABLED               = 0x0000000100000000,
 
@@ -99,6 +106,8 @@ public:
     bool operator==(const Config& other) const = default;
     bool operator!=(const Config& other) const = default;
 
+    bool should_update_vs(const Config& other) const;
+
     [[nodiscard]] static inline bool check_flag(uint64_t enabled_flags, Flag flag) {
       return !!(enabled_flags & static_cast<uint64_t>(flag));
     }
@@ -139,7 +148,7 @@ public:
       StringWriter w;
       w.put_u32l(CLIENT_CONFIG_MAGIC);
       w.put_u32l(this->specific_version);
-      w.put_u64l(this->enabled_flags);
+      w.put_u64l(this->enabled_flags & static_cast<uint64_t>(Flag::CLIENT_SIDE_MASK));
       w.put_u32l(this->override_random_seed);
       w.put_u32b(this->proxy_destination_address);
       w.put_u16l(this->proxy_destination_port);
@@ -263,6 +272,7 @@ public:
   }
 
   void set_license(std::shared_ptr<License> l);
+  void convert_license_to_temporary_if_nte();
 
   void sync_config();
 

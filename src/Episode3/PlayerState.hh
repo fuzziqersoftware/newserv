@@ -139,7 +139,7 @@ public:
   int16_t get_assist_turns_remaining();
   bool set_action_cards_for_action_state(const ActionState& pa);
   void unknown_8023C174();
-  void handle_homesick_assist_effect(std::shared_ptr<Card> card);
+  void handle_homesick_assist_effect_from_bomb(std::shared_ptr<Card> card);
   void apply_main_die_assist_effects(uint8_t* die_value) const;
   void roll_main_dice();
   void unknown_8023C110();

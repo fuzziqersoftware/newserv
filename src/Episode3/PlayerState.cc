@@ -42,7 +42,7 @@ PlayerState::PlayerState(uint8_t client_id, shared_ptr<Server> server)
 void PlayerState::init() {
   auto s = this->server();
 
-  if (s->player_states[this->client_id].get() != this) {
+  if (s->player_states.at(this->client_id).get() != this) {
     // Note: The original code handles this, but we don't. This appears not to
     // ever happen, so we didn't bother implementing it.
     throw logic_error("replacing a player state object is not permitted");
@@ -1267,7 +1267,7 @@ bool PlayerState::set_card_from_hand(
       return false;
     }
 
-    auto target_ps = s->player_states[assist_target_client_id];
+    auto target_ps = s->player_states.at(assist_target_client_id);
     if (target_ps) {
       uint16_t prev_assist_card_ref = target_ps->card_refs[6];
       target_ps->discard_set_assist_card();
@@ -1752,7 +1752,7 @@ void PlayerState::unknown_8023C174() {
   this->send_set_card_updates(0);
 }
 
-void PlayerState::handle_homesick_assist_effect(shared_ptr<Card> card) {
+void PlayerState::handle_homesick_assist_effect_from_bomb(shared_ptr<Card> card) {
   if (!card) {
     return;
   }

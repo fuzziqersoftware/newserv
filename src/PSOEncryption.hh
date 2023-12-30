@@ -5,10 +5,12 @@
 
 #include <memory>
 #include <phosg/Encoding.hh>
+#include <stdexcept>
 #include <string>
 #include <vector>
 
-#include "Text.hh" // for parray
+#include "Compression.hh"
+#include "Text.hh"
 
 class PSOEncryption {
 public:
@@ -275,6 +277,16 @@ DecryptedPR2 decrypt_pr2_data(const std::string& data) {
     crypt.decrypt(ret.compressed_data.data(), ret.compressed_data.size());
   }
   return ret;
+}
+
+template <bool IsBigEndian>
+std::string decrypt_and_decompress_pr2_data(const std::string& data) {
+  auto decrypted = decrypt_pr2_data<IsBigEndian>(data);
+  std::string decompressed = prs_decompress(decrypted.compressed_data);
+  if (decompressed.size() != decrypted.decompressed_size) {
+    throw std::runtime_error("decompressed size does not match expected size");
+  }
+  return decompressed;
 }
 
 template <bool IsBigEndian>

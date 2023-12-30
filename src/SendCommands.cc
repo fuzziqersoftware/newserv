@@ -282,7 +282,7 @@ void send_server_init(shared_ptr<Client> c, uint8_t flags) {
 }
 
 void send_update_client_config(shared_ptr<Client> c, bool always_send) {
-  if (always_send || (is_v3(c->version()) && (c->config != c->synced_config))) {
+  if (always_send || (is_v3(c->version()) && (c->config.should_update_vs(c->synced_config)))) {
     switch (c->version()) {
       case Version::DC_NTE:
       case Version::DC_V1_11_2000_PROTOTYPE:
@@ -1929,33 +1929,38 @@ void send_join_lobby_t(shared_ptr<Client> c, shared_ptr<Lobby> l, shared_ptr<Cli
     send_player_records_t<RecordsT>(c, l, joining_client);
   }
 
-  uint8_t lobby_type;
-  if (c->config.override_lobby_number != 0x80) {
-    lobby_type = c->config.override_lobby_number;
-  } else if (l->check_flag(Lobby::Flag::IS_OVERFLOW)) {
-    lobby_type = is_ep3(c->version()) ? 15 : 0;
+  uint8_t lobby_type, lobby_block;
+  if (l->is_game()) {
+    lobby_type = 0;
+    lobby_block = 0;
   } else {
-    lobby_type = l->block - 1;
-  }
-
-  // Allow non-canonical lobby types on GC. They may work on other versions too,
-  // but I haven't verified which values don't crash on each version.
-  switch (c->version()) {
-    case Version::GC_EP3_NTE:
-    case Version::GC_EP3:
-      if ((lobby_type > 0x14) && (lobby_type < 0xE9)) {
-        lobby_type = l->block - 1;
-      }
-      break;
-    case Version::GC_V3:
-      if ((lobby_type > 0x11) && (lobby_type != 0x67) && (lobby_type != 0xD4) && (lobby_type < 0xFC)) {
-        lobby_type = l->block - 1;
-      }
-      break;
-    default:
-      if (lobby_type > 0x0E) {
-        lobby_type = l->block - 1;
-      }
+    if (c->config.override_lobby_number != 0x80) {
+      lobby_type = c->config.override_lobby_number;
+    } else if (l->check_flag(Lobby::Flag::IS_OVERFLOW)) {
+      lobby_type = is_ep3(c->version()) ? 15 : 0;
+    } else {
+      lobby_type = l->block - 1;
+    }
+    // Allow non-canonical lobby types on GC. They may work on other versions too,
+    // but I haven't verified which values don't crash on each version.
+    switch (c->version()) {
+      case Version::GC_EP3_NTE:
+      case Version::GC_EP3:
+        if ((lobby_type > 0x14) && (lobby_type < 0xE9)) {
+          lobby_type = l->block - 1;
+        }
+        break;
+      case Version::GC_V3:
+        if ((lobby_type > 0x11) && (lobby_type != 0x67) && (lobby_type != 0xD4) && (lobby_type < 0xFC)) {
+          lobby_type = l->block - 1;
+        }
+        break;
+      default:
+        if (lobby_type > 0x0E) {
+          lobby_type = l->block - 1;
+        }
+    }
+    lobby_block = l->block;
   }
 
   S_JoinLobby<LobbyFlags, LobbyDataT, DispDataT> cmd;
@@ -1963,7 +1968,7 @@ void send_join_lobby_t(shared_ptr<Client> c, shared_ptr<Lobby> l, shared_ptr<Cli
   cmd.lobby_flags.leader_id = l->leader_id;
   cmd.lobby_flags.disable_udp = 0x01;
   cmd.lobby_flags.lobby_number = lobby_type;
-  cmd.lobby_flags.block_number = l->block;
+  cmd.lobby_flags.block_number = lobby_block;
   cmd.lobby_flags.unknown_a1 = 0;
   cmd.lobby_flags.event = l->event;
   cmd.lobby_flags.unknown_a2 = 0;
@@ -2101,8 +2106,12 @@ void send_join_lobby_dc_nte(shared_ptr<Client> c, shared_ptr<Lobby> l,
     populate_lobby_data_for_client(e.lobby_data, lc, c);
     e.inventory = lp->inventory;
     e.inventory.encode_for_client(c);
-    e.disp = convert_player_disp_data<PlayerDispDataDCPCV3>(lp->disp, c->language(), lp->inventory.language);
-    e.disp.enforce_lobby_join_limits_for_version(c->version());
+    if ((lc == c) && is_v1_or_v2(c->version()) && lc->v1_v2_last_reported_disp) {
+      e.disp = convert_player_disp_data<PlayerDispDataDCPCV3>(*lc->v1_v2_last_reported_disp, c->language(), lp->inventory.language);
+    } else {
+      e.disp = convert_player_disp_data<PlayerDispDataDCPCV3>(lp->disp, c->language(), lp->inventory.language);
+      e.disp.enforce_lobby_join_limits_for_version(c->version());
+    }
   }
 
   send_command(c, command, used_entries, &cmd, cmd.size(used_entries));
