@@ -1017,35 +1017,32 @@ static void server_command_edit(shared_ptr<Client> c, const std::string& args) {
     throw precondition_failed("$C6This command cannot\nbe used for your\nversion of PSO.");
   }
 
-  if ((s->cheat_mode_behavior == ServerState::BehaviorSwitch::OFF) && !(c->license->flags & License::Flag::CHEAT_ANYWHERE)) {
-    send_text_message(l, "$C6Cheats are disabled\non this server");
-    return;
-  }
+  bool cheats_allowed = ((s->cheat_mode_behavior != ServerState::BehaviorSwitch::OFF) || (c->license->flags & License::Flag::CHEAT_ANYWHERE));
 
   string encoded_args = tolower(args);
   vector<string> tokens = split(encoded_args, ' ');
 
   try {
     auto p = c->character();
-    if (tokens.at(0) == "atp") {
+    if (tokens.at(0) == "atp" && cheats_allowed) {
       p->disp.stats.char_stats.atp = stoul(tokens.at(1));
-    } else if (tokens.at(0) == "mst") {
+    } else if (tokens.at(0) == "mst" && cheats_allowed) {
       p->disp.stats.char_stats.mst = stoul(tokens.at(1));
-    } else if (tokens.at(0) == "evp") {
+    } else if (tokens.at(0) == "evp" && cheats_allowed) {
       p->disp.stats.char_stats.evp = stoul(tokens.at(1));
-    } else if (tokens.at(0) == "hp") {
+    } else if (tokens.at(0) == "hp" && cheats_allowed) {
       p->disp.stats.char_stats.hp = stoul(tokens.at(1));
-    } else if (tokens.at(0) == "dfp") {
+    } else if (tokens.at(0) == "dfp" && cheats_allowed) {
       p->disp.stats.char_stats.dfp = stoul(tokens.at(1));
-    } else if (tokens.at(0) == "ata") {
+    } else if (tokens.at(0) == "ata" && cheats_allowed) {
       p->disp.stats.char_stats.ata = stoul(tokens.at(1));
-    } else if (tokens.at(0) == "lck") {
+    } else if (tokens.at(0) == "lck" && cheats_allowed) {
       p->disp.stats.char_stats.lck = stoul(tokens.at(1));
-    } else if (tokens.at(0) == "meseta") {
+    } else if (tokens.at(0) == "meseta" && cheats_allowed) {
       p->disp.stats.meseta = stoul(tokens.at(1));
-    } else if (tokens.at(0) == "exp") {
+    } else if (tokens.at(0) == "exp" && cheats_allowed) {
       p->disp.stats.experience = stoul(tokens.at(1));
-    } else if (tokens.at(0) == "level") {
+    } else if (tokens.at(0) == "level" && cheats_allowed) {
       uint32_t level = stoul(tokens.at(1)) - 1;
       p->disp.stats.reset_to_base(p->disp.visual.char_class, s->level_table);
       p->disp.stats.advance_to_level(p->disp.visual.char_class, level, s->level_table);
@@ -1053,7 +1050,7 @@ static void server_command_edit(shared_ptr<Client> c, const std::string& args) {
       uint32_t new_color;
       sscanf(tokens.at(1).c_str(), "%8X", &new_color);
       p->disp.visual.name_color = new_color;
-    } else if (tokens.at(0) == "secid") {
+    } else if (tokens.at(0) == "secid" && cheats_allowed) {
       uint8_t secid = section_id_for_name(tokens.at(1));
       if (secid == 0xFF) {
         send_text_message(c, "$C6No such section ID");
@@ -1079,7 +1076,7 @@ static void server_command_edit(shared_ptr<Client> c, const std::string& args) {
         p->disp.visual.extra_model = npc;
         p->disp.visual.validation_flags |= 0x02;
       }
-    } else if (tokens.at(0) == "tech") {
+    } else if (tokens.at(0) == "tech" && cheats_allowed) {
       uint8_t level = stoul(tokens.at(2)) - 1;
       if (tokens.at(1) == "all") {
         for (size_t x = 0; x < 0x14; x++) {
