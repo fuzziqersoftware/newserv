@@ -1289,12 +1289,13 @@ Action a_generate_word_select_table(
       Version v = Version::UNKNOWN;
       try {
         v = get_cli_version(args);
-      } catch (const runtime_error&) {}
+      } catch (const runtime_error&) {
+      }
 
       if (v != Version::UNKNOWN) {
-      table->print_index(stdout, v);
+        table->print_index(stdout, v);
       } else {
-      table->print(stdout);
+        table->print(stdout);
       }
     });
 
