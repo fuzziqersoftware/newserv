@@ -108,6 +108,7 @@
   "HideDownloadCommands": true,
 
   "AllowUnregisteredUsers": true,
+  "UseTemporaryLicensesForPrototypes": true,
   "AllowPCNTE": true,
   "AllowDCPCGames": true,
   "AllowGCXBGames": true,

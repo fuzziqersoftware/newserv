@@ -39,6 +39,7 @@ ServerState::ServerState(shared_ptr<struct event_base> base, const string& confi
       ip_stack_debug(false),
       allow_unregistered_users(false),
       allow_pc_nte(false),
+      use_temp_licenses_for_prototypes(true),
       allow_dc_pc_games(false),
       allow_gc_xb_games(true),
       allowed_drop_modes_v1_v2_normal(0x1F),
@@ -669,6 +670,7 @@ void ServerState::parse_config(const JSON& json, bool is_reload) {
   this->ip_stack_debug = json.get_bool("IPStackDebug", this->ip_stack_debug);
   this->allow_unregistered_users = json.get_bool("AllowUnregisteredUsers", this->allow_unregistered_users);
   this->allow_pc_nte = json.get_bool("AllowPCNTE", this->allow_pc_nte);
+  this->use_temp_licenses_for_prototypes = json.get_bool("UseTemporaryLicensesForPrototypes", this->use_temp_licenses_for_prototypes);
   this->allowed_drop_modes_v1_v2_normal = json.get_int("AllowedDropModesV1V2Normal", this->allowed_drop_modes_v1_v2_normal);
   this->allowed_drop_modes_v1_v2_battle = json.get_int("AllowedDropModesV1V2Battle", this->allowed_drop_modes_v1_v2_battle);
   this->allowed_drop_modes_v1_v2_challenge = json.get_int("AllowedDropModesV1V2Challenge", this->allowed_drop_modes_v1_v2_challenge);

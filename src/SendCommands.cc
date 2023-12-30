@@ -282,7 +282,7 @@ void send_server_init(shared_ptr<Client> c, uint8_t flags) {
 }
 
 void send_update_client_config(shared_ptr<Client> c, bool always_send) {
-  if (always_send || (is_v3(c->version()) && (c->config != c->synced_config))) {
+  if (always_send || (is_v3(c->version()) && (c->config.should_update_vs(c->synced_config)))) {
     switch (c->version()) {
       case Version::DC_NTE:
       case Version::DC_V1_11_2000_PROTOTYPE:
