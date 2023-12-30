@@ -153,7 +153,7 @@ void PlayerVisualConfig::enforce_lobby_join_limits_for_version(Version v) {
   }
   this->class_flags = class_flags_for_class(this->char_class);
 
-  if (is_v4(v) && (this->name.at(0) == '\t') && (this->name.at(1) == 'J' || this->name.at(1) == 'E')) {
+  if (!is_v4(v) && (this->name.at(0) == '\t') && (this->name.at(1) == 'J' || this->name.at(1) == 'E')) {
     this->name.encode(this->name.decode().substr(2));
   }
 }
