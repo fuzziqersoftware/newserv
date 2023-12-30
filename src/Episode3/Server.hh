@@ -115,6 +115,7 @@ public:
   void send_commands_for_joining_spectator(Channel& ch) const;
 
   void force_battle_result(uint8_t surrendered_client_id, bool set_winner);
+  void force_replace_assist_card(uint8_t client_id, uint16_t card_id);
   void force_destroy_field_character(uint8_t client_id, size_t set_index);
 
   __attribute__((format(printf, 2, 3))) void send_debug_message_printf(const char* fmt, ...) const;
@@ -288,7 +289,7 @@ public:
   uint32_t should_copy_prev_states_to_current_states;
   std::shared_ptr<CardSpecial> card_special;
   std::shared_ptr<StateFlags> state_flags;
-  std::shared_ptr<PlayerState> player_states[4];
+  std::array<std::shared_ptr<PlayerState>, 4> player_states;
   parray<uint32_t, 4> clients_done_in_mulligan_phase;
   uint32_t num_pending_attacks_with_cards;
   std::shared_ptr<Card> attack_cards[0x20];

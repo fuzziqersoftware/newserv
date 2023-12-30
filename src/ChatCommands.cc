@@ -1762,6 +1762,54 @@ static void server_command_ep3_set_def_dice_range(shared_ptr<Client> c, const st
   }
 }
 
+static void server_command_ep3_replace_assist_card(shared_ptr<Client> c, const std::string& args) {
+  auto s = c->require_server_state();
+  auto l = c->require_lobby();
+  check_is_game(l, true);
+  check_is_ep3(c, true);
+  check_cheats_enabled(l, c);
+
+  if (l->episode != Episode::EP3) {
+    throw logic_error("non-Ep3 client in Ep3 game");
+  }
+  if (!l->ep3_server) {
+    send_text_message(c, "$C6Episode 3 server\nis not initialized");
+    return;
+  }
+  if (l->ep3_server->setup_phase != Episode3::SetupPhase::MAIN_BATTLE) {
+    send_text_message(c, "$C6Battle has not\nyet begun");
+    return;
+  }
+  if (args.empty()) {
+    send_text_message(c, "$C6Missing arguments");
+    return;
+  }
+
+  uint8_t client_id;
+  string card_name;
+  if (isdigit(args[0])) {
+    auto tokens = split(args, ' ', 1);
+    client_id = stoul(tokens.at(0), nullptr, 0);
+    card_name = tokens.at(1);
+  } else {
+    client_id = c->lobby_client_id;
+    card_name = args;
+  }
+
+  shared_ptr<const Episode3::CardIndex::CardEntry> ce;
+  try {
+    ce = l->ep3_server->options.card_index->definition_for_name_normalized(card_name);
+  } catch (const out_of_range&) {
+    send_text_message(c, "$C6Card not found");
+    return;
+  }
+  if (ce->def.type != Episode3::CardType::ASSIST) {
+    send_text_message(c, "$C6Card is not an\nAssist card");
+    return;
+  }
+  l->ep3_server->force_replace_assist_card(client_id, ce->def.card_id);
+}
+
 static void server_command_ep3_unset_field_character(shared_ptr<Client> c, const std::string& args) {
   auto s = c->require_server_state();
   auto l = c->require_lobby();
@@ -1823,10 +1871,7 @@ static void server_command_get_ep3_battle_stat(shared_ptr<Client> c, const std::
     send_text_message(c, "$C6Battle has not\nyet started");
     return;
   }
-  if (c->lobby_client_id >= 4) {
-    throw logic_error("client ID is too large");
-  }
-  auto ps = l->ep3_server->player_states[c->lobby_client_id];
+  auto ps = l->ep3_server->player_states.at(c->lobby_client_id);
   if (!ps) {
     send_text_message(c, "$C6Player is missing");
     return;
@@ -1950,6 +1995,7 @@ static const unordered_map<string, ChatCommandDefinition> chat_commands({
     {"$saverec", {server_command_saverec, nullptr}},
     {"$sc", {server_command_send_client, proxy_command_send_client}},
     {"$secid", {server_command_secid, proxy_command_secid}},
+    {"$setassist", {server_command_ep3_replace_assist_card, nullptr}},
     {"$si", {server_command_server_info, nullptr}},
     {"$silence", {server_command_silence, nullptr}},
     {"$song", {server_command_song, proxy_command_song}},

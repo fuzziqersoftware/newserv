@@ -418,7 +418,7 @@ shared_ptr<Card> Server::card_for_set_card_ref(uint16_t card_ref) {
   if (client_id == 0xFF) {
     return nullptr;
   }
-  auto ps = this->player_states[client_id];
+  auto ps = this->player_states.at(client_id);
   if (!ps) {
     return nullptr;
   }
@@ -444,7 +444,7 @@ shared_ptr<const Card> Server::card_for_set_card_ref(uint16_t card_ref) const {
   if (client_id == 0xFF) {
     return nullptr;
   }
-  auto ps = this->player_states[client_id];
+  auto ps = this->player_states.at(client_id);
   if (!ps) {
     return nullptr;
   }
@@ -464,10 +464,11 @@ shared_ptr<const Card> Server::card_for_set_card_ref(uint16_t card_ref) const {
 uint16_t Server::card_id_for_card_ref(uint16_t card_ref) const {
   uint8_t client_id = client_id_for_card_ref(card_ref);
   if (client_id != 0xFF) {
-    if (!this->player_states[client_id]) {
+    auto ps = this->player_states.at(client_id);
+    if (!ps) {
       return 0xFFFF;
     }
-    auto deck = this->player_states[client_id]->get_deck();
+    auto deck = ps->get_deck();
     if (deck) {
       return deck->card_id_for_card_ref(card_ref);
     }
@@ -558,8 +559,19 @@ bool Server::check_for_battle_end() {
   return ret;
 }
 
+void Server::force_replace_assist_card(uint8_t client_id, uint16_t card_id) {
+  auto ps = this->player_states.at(client_id);
+  if (!ps) {
+    throw runtime_error("player does not exist");
+  }
+  ps->replace_assist_card_by_id(card_id);
+}
+
 void Server::force_destroy_field_character(uint8_t client_id, size_t visible_index) {
-  auto ps = this->player_states[client_id];
+  auto ps = this->player_states.at(client_id);
+  if (!ps) {
+    throw runtime_error("player does not exist");
+  }
 
   // TODO: Is it possible for there to be gaps in the set cards array? If not,
   // we could just do a direct array lookup here instead of this loop
@@ -584,7 +596,7 @@ void Server::force_destroy_field_character(uint8_t client_id, size_t visible_ind
 }
 
 void Server::force_battle_result(uint8_t specified_client_id, bool set_winner) {
-  auto specified_ps = this->player_states[specified_client_id];
+  auto specified_ps = this->player_states.at(specified_client_id);
   for (size_t z = 0; z < 4; z++) {
     auto ps = this->player_states[z];
     if (ps) {
@@ -824,7 +836,7 @@ void Server::end_attack_list_for_client(uint8_t client_id) {
     return;
   }
 
-  auto ps = this->player_states[client_id];
+  auto ps = this->player_states.at(client_id);
   if (!ps) {
     return;
   }
@@ -1670,10 +1682,11 @@ void Server::handle_CAx0B_mulligan_hand(shared_ptr<Client>, const string& data) 
     error_code = -0x78;
   }
   if (error_code == 0) {
-    if (!this->player_states[in_cmd.client_id]) {
+    auto ps = this->player_states.at(in_cmd.client_id);
+    if (!ps) {
       error_code = -0x72;
     } else {
-      this->player_states[in_cmd.client_id]->do_mulligan();
+      ps->do_mulligan();
     }
   }
 
@@ -1709,18 +1722,17 @@ void Server::handle_CAx0C_end_mulligan_phase(shared_ptr<Client>, const string& d
   this->send(out_cmd_ack);
 
   if (error_code == 0) {
-    if (!this->player_states[in_cmd.client_id]) {
+    auto ps = this->player_states.at(in_cmd.client_id);
+    if (!ps) {
       error_code = -0x72;
     } else {
       this->clients_done_in_mulligan_phase[in_cmd.client_id] = true;
-      auto ps = this->player_states[in_cmd.client_id];
       ps->assist_flags |= AssistFlag::READY_TO_END_PHASE;
       ps->update_hand_and_equip_state_and_send_6xB4x02_if_needed();
 
       bool all_clients_ready = true;
       for (size_t z = 0; z < 4; z++) {
-        if (this->player_states[z] &&
-            !this->clients_done_in_mulligan_phase[z]) {
+        if (this->player_states[z] && !this->clients_done_in_mulligan_phase[z]) {
           all_clients_ready = false;
           break;
         }
@@ -1781,7 +1793,7 @@ void Server::handle_CAx0E_discard_card_from_hand(shared_ptr<Client>, const strin
   }
 
   if (error_code == 0) {
-    auto ps = this->player_states[in_cmd.client_id];
+    auto ps = this->player_states.at(in_cmd.client_id);
     if (!ps) {
       error_code = -0x72;
     } else if (!(ps->assist_flags & AssistFlag::IS_SKIPPING_TURN)) {
@@ -1824,11 +1836,11 @@ void Server::handle_CAx0F_set_card_from_hand(shared_ptr<Client>, const string& d
   }
   if (error_code == 0) {
     this->ruler_server->error_code1 = 0;
-    if (!this->player_states[in_cmd.client_id]) {
+    auto ps = this->player_states.at(in_cmd.client_id);
+    if (!ps) {
       this->ruler_server->error_code1 = -0x72;
     } else {
-      this->player_states[in_cmd.client_id]->set_card_from_hand(
-          in_cmd.card_ref, in_cmd.set_index, &in_cmd.loc, in_cmd.assist_target_player, 0);
+      ps->set_card_from_hand(in_cmd.card_ref, in_cmd.set_index, &in_cmd.loc, in_cmd.assist_target_player, 0);
     }
   } else {
     this->ruler_server->error_code1 = error_code;
@@ -1861,12 +1873,12 @@ void Server::handle_CAx10_move_fc_to_location(shared_ptr<Client>, const string& 
     error_code = -0x78;
   }
   if (error_code == 0) {
-    if (!this->player_states[in_cmd.client_id]) {
+    auto ps = this->player_states.at(in_cmd.client_id);
+    if (!ps) {
       this->ruler_server->error_code2 = -0x72;
     } else {
       this->ruler_server->error_code2 = 0;
-      this->player_states[in_cmd.client_id]->move_card_to_location_by_card_index(
-          in_cmd.set_index, in_cmd.loc);
+      ps->move_card_to_location_by_card_index(in_cmd.set_index, in_cmd.loc);
     }
   } else {
     this->ruler_server->error_code2 = error_code;
@@ -2655,7 +2667,7 @@ void Server::execute_bomb_assist_effect() {
         auto card = ps->get_set_card(set_index);
         if (card && !(card->card_flags & 2) &&
             ((card->get_current_hp() == max_hp) || (card->get_current_hp() == min_hp))) {
-          card->player_state()->handle_homesick_assist_effect(card);
+          card->player_state()->handle_homesick_assist_effect_from_bomb(card);
         }
       }
     }
