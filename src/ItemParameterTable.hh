@@ -55,7 +55,8 @@ public:
     uint8_t photon = 0;
     uint8_t special = 0;
     uint8_t ata = 0;
-    parray<uint8_t, 4> unknown_a9;
+    uint8_t stat_boost = 0; // TODO: This could be larger (16 or 32 bits)
+    parray<uint8_t, 3> unknown_a9;
   } __attribute__((packed));
 
   template <bool IsBigEndian>
