@@ -2385,9 +2385,14 @@ void send_game_item_state(shared_ptr<Client> c) {
 
   G_SyncItemState_6x6D_Decompressed decompressed_header;
   for (size_t z = 0; z < 12; z++) {
-    if (z == c->lobby_client_id) {
-      // If the player is joining, adjust the next item ID to use the value
-      // before inventory item IDs are assigned
+    // If the player is the leader, they will construct their TObjPlayer BEFORE
+    // they handle the 6x6D, so we should send an appropriate next item ID for
+    // after that has occurred. (We have already done this assignment, so we can
+    // just send our next item ID for the player.) If the player is not the
+    // leader, they will construct their TObjPlayer when they receive a 6x71
+    // command from the leader, so we should adjust the next item ID to what it
+    // should have been before they will assign their inventory item IDs.
+    if ((z == c->lobby_client_id) && (c->lobby_client_id != l->leader_id)) {
       size_t num_items = c->character()->inventory.num_items;
       uint32_t next_id = l->next_item_id_for_client[z] - num_items;
       if ((next_id & 0xFFE00000) != (l->next_item_id_for_client[z] & 0xFFE00000)) {
