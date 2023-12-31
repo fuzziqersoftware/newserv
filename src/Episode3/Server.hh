@@ -98,7 +98,7 @@ public:
   int8_t get_winner_team_id() const;
 
   template <typename T>
-  void send(const T& cmd) const {
+  void send(const T& cmd, uint8_t command = 0xC9, bool enable_masking = true) const {
     if (cmd.header.size != sizeof(cmd) / 4) {
       throw std::logic_error("outbound command size field is incorrect");
     }
@@ -109,9 +109,9 @@ public:
         return;
       }
     }
-    this->send(&cmd, cmd.header.size * 4);
+    this->send(&cmd, cmd.header.size * 4, command, enable_masking);
   }
-  void send(const void* data, size_t size) const;
+  void send(const void* data, size_t size, uint8_t command = 0xC9, bool enable_masking = true) const;
   void send_commands_for_joining_spectator(Channel& ch) const;
 
   void force_battle_result(uint8_t surrendered_client_id, bool set_winner);
@@ -242,6 +242,7 @@ private:
 public:
   // These fields are not part of the original implementation
   std::weak_ptr<Lobby> lobby;
+  bool has_lobby;
   Options options;
   std::shared_ptr<const MapIndex::Map> last_chosen_map;
   bool tournament_match_result_sent;

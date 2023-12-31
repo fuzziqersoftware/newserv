@@ -1827,6 +1827,32 @@ Action a_diff_dol_files(
       }
     });
 
+Action a_replay_ep3_battle_commands(
+    "replay-ep3-battle-commands", nullptr, +[](Arguments& args) {
+      auto card_index = make_shared<Episode3::CardIndex>("system/ep3/card-definitions.mnr", "system/ep3/card-definitions.mnrd");
+      auto map_index = make_shared<Episode3::MapIndex>("system/ep3/maps");
+      auto random_crypt = make_shared<PSOV2Encryption>(args.get<uint32_t>("seed", 0, Arguments::IntFormat::HEX));
+      Episode3::Server::Options options = {
+          .card_index = card_index,
+          .map_index = map_index,
+          .behavior_flags = 0x0092,
+          .random_crypt = random_crypt,
+          .tournament = nullptr,
+          .trap_card_ids = {},
+      };
+      auto server = make_shared<Episode3::Server>(nullptr, std::move(options));
+      server->init();
+
+      auto input = read_input_data(args);
+      auto lines = split(input, '\n');
+      for (const auto& line : lines) {
+        string data = parse_data_string(line);
+        if (!data.empty()) {
+          server->on_server_data_input(nullptr, data);
+        }
+      }
+    });
+
 Action a_run_server_replay_log(
     "", nullptr, +[](Arguments& args) {
       if (!isdir("system/players")) {
