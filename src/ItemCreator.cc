@@ -134,46 +134,49 @@ uint8_t ItemCreator::normalize_area_number(uint8_t area) const {
   }
 }
 
-ItemData ItemCreator::on_box_item_drop(uint16_t entity_id, uint8_t area) {
+ItemCreator::DropResult ItemCreator::on_box_item_drop(uint16_t entity_id, uint8_t area) {
   return this->destroyed_boxes.count(entity_id)
-      ? ItemData()
+      ? DropResult()
       : this->on_box_item_drop_with_area_norm(this->normalize_area_number(area));
 }
 
-ItemData ItemCreator::on_monster_item_drop(uint16_t entity_id, uint32_t enemy_type, uint8_t area) {
+ItemCreator::DropResult ItemCreator::on_monster_item_drop(uint16_t entity_id, uint32_t enemy_type, uint8_t area) {
   return this->destroyed_monsters.count(entity_id)
-      ? ItemData()
+      ? DropResult()
       : this->on_monster_item_drop_with_area_norm(enemy_type, this->normalize_area_number(area));
 }
 
-ItemData ItemCreator::on_box_item_drop_with_area_norm(uint8_t area_norm) {
+ItemCreator::DropResult ItemCreator::on_box_item_drop_with_area_norm(uint8_t area_norm) {
   this->log.info("Box drop checks for area_norm %02hhX; random state: %08" PRIX32 " %08" PRIX32,
       area_norm, this->random_crypt.seed(), this->random_crypt.absolute_offset());
-  ItemData item = this->check_rare_specs_and_create_rare_box_item(area_norm);
-  if (item.empty()) {
+  DropResult res;
+  res.item = this->check_rare_specs_and_create_rare_box_item(area_norm);
+  if (!res.item.empty()) {
+    res.is_from_rare_table = true;
+  } else {
     uint8_t item_class = this->get_rand_from_weighted_tables_2d_vertical(this->pt->box_item_class_prob_table, area_norm);
     this->log.info("Item class is %02hhX", item_class);
     switch (item_class) {
       case 0: // Weapon
-        item.data1[0] = 0;
+        res.item.data1[0] = 0;
         break;
       case 1: // Armor
-        item.data1[0] = 1;
-        item.data1[1] = 1;
+        res.item.data1[0] = 1;
+        res.item.data1[1] = 1;
         break;
       case 2: // Shield
-        item.data1[0] = 1;
-        item.data1[1] = 2;
+        res.item.data1[0] = 1;
+        res.item.data1[1] = 2;
         break;
       case 3: // Unit
-        item.data1[0] = 1;
-        item.data1[1] = 3;
+        res.item.data1[0] = 1;
+        res.item.data1[1] = 3;
         break;
       case 4: // Tool
-        item.data1[0] = 3;
+        res.item.data1[0] = 3;
         break;
       case 5: // Meseta
-        item.data1[0] = 4;
+        res.item.data1[0] = 4;
         break;
       case 6: // Nothing
         break;
@@ -181,16 +184,16 @@ ItemData ItemCreator::on_box_item_drop_with_area_norm(uint8_t area_norm) {
         throw logic_error("this should be impossible");
     }
     if (item_class < 6) {
-      this->generate_common_item_variances(area_norm, item);
+      this->generate_common_item_variances(area_norm, res.item);
     }
   }
-  return item;
+  return res;
 }
 
-ItemData ItemCreator::on_monster_item_drop_with_area_norm(uint32_t enemy_type, uint8_t area_norm) {
+ItemCreator::DropResult ItemCreator::on_monster_item_drop_with_area_norm(uint32_t enemy_type, uint8_t area_norm) {
   if (enemy_type > 0x58) {
     this->log.warning("Invalid enemy type: %" PRIX32, enemy_type);
-    return ItemData();
+    return DropResult();
   }
   this->log.info("Enemy type: %" PRIX32 "; random state: %08" PRIX32 " %08" PRIX32, enemy_type, this->random_crypt.seed(), this->random_crypt.absolute_offset());
 
@@ -198,13 +201,16 @@ ItemData ItemCreator::on_monster_item_drop_with_area_norm(uint32_t enemy_type, u
   uint8_t drop_sample = this->rand_int(100);
   if (drop_sample >= type_drop_prob) {
     this->log.info("Drop not chosen (%hhu >= %hhu)", drop_sample, type_drop_prob);
-    return ItemData();
+    return DropResult();
   } else {
     this->log.info("Drop chosen (%hhu < %hhu)", drop_sample, type_drop_prob);
   }
 
-  ItemData item = this->check_rare_spec_and_create_rare_enemy_item(enemy_type, area_norm);
-  if (item.empty()) {
+  DropResult res;
+  res.item = this->check_rare_spec_and_create_rare_enemy_item(enemy_type, area_norm);
+  if (!res.item.empty()) {
+    res.is_from_rare_table = true;
+  } else {
     uint32_t item_class_determinant =
         this->should_allow_meseta_drops()
         ? this->rand_int(3)
@@ -229,34 +235,34 @@ ItemData ItemCreator::on_monster_item_drop_with_area_norm(uint32_t enemy_type, u
 
     switch (item_class) {
       case 0: // Weapon
-        item.data1[0] = 0x00;
+        res.item.data1[0] = 0x00;
         break;
       case 1: // Armor
-        item.data1w[0] = 0x0101;
+        res.item.data1w[0] = 0x0101;
         break;
       case 2: // Shield
-        item.data1w[0] = 0x0201;
+        res.item.data1w[0] = 0x0201;
         break;
       case 3: // Unit
-        item.data1w[0] = 0x0301;
+        res.item.data1w[0] = 0x0301;
         break;
       case 4: // Tool
-        item.data1[0] = 0x03;
+        res.item.data1[0] = 0x03;
         break;
       case 5: // Meseta
-        item.data1[0] = 0x04;
-        item.data2d = this->choose_meseta_amount(this->pt->enemy_meseta_ranges, enemy_type) & 0xFFFF;
+        res.item.data1[0] = 0x04;
+        res.item.data2d = this->choose_meseta_amount(this->pt->enemy_meseta_ranges, enemy_type) & 0xFFFF;
         break;
       default:
-        return item;
+        return res;
     }
 
-    if (item.data1[0] != 0x04) {
-      this->generate_common_item_variances(area_norm, item);
+    if (res.item.data1[0] != 0x04) {
+      this->generate_common_item_variances(area_norm, res.item);
     }
   }
 
-  return item;
+  return res;
 }
 
 ItemData ItemCreator::check_rare_specs_and_create_rare_box_item(uint8_t area_norm) {
@@ -1663,20 +1669,21 @@ void ItemCreator::generate_weapon_shop_item_bonus2(ItemData& item, size_t player
   }
 }
 
-ItemData ItemCreator::on_specialized_box_item_drop(
+ItemCreator::DropResult ItemCreator::on_specialized_box_item_drop(
     uint16_t entity_id, uint8_t area, float def_z, uint32_t def0, uint32_t def1, uint32_t def2) {
   if (this->destroyed_boxes.count(entity_id)) {
-    return ItemData();
+    return DropResult();
   }
 
-  ItemData item = this->base_item_for_specialized_box(def0, def1, def2);
+  DropResult res;
+  res.item = this->base_item_for_specialized_box(def0, def1, def2);
   if (def_z == 0.0f) {
-    uint16_t type = item.data1w[0];
-    item.clear();
-    item.data1w[0] = type;
-    this->generate_common_item_variances(this->normalize_area_number(area), item);
+    uint16_t type = res.item.data1w[0];
+    res.item.clear();
+    res.item.data1w[0] = type;
+    this->generate_common_item_variances(this->normalize_area_number(area), res.item);
   }
-  return item;
+  return res;
 }
 
 ItemData ItemCreator::base_item_for_specialized_box(uint32_t def0, uint32_t def1, uint32_t def2) {

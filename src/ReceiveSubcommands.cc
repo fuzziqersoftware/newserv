@@ -2113,7 +2113,7 @@ static void on_entity_drop_item_request(shared_ptr<Client> c, uint8_t command, u
     cmd.effective_area = in_cmd.floor;
   }
 
-  auto generate_item = [&]() -> ItemData {
+  auto generate_item = [&]() -> ItemCreator::DropResult {
     if (cmd.rt_index == 0x30) {
       if (l->map) {
         auto& object = l->map->objects.at(cmd.entity_id);
@@ -2177,33 +2177,37 @@ static void on_entity_drop_item_request(shared_ptr<Client> c, uint8_t command, u
     case Lobby::DropMode::SERVER_DUPLICATE: {
       // TODO: In SERVER_DUPLICATE mode, should we reduce the rates for rare
       // items? Maybe by a factor of l->count_clients()?
-      auto item = generate_item();
-      if (item.empty()) {
+      auto res = generate_item();
+      if (res.item.empty()) {
         l->log.info("No item was created");
       } else {
-        string name = s->describe_item(l->base_version, item, false);
+        string name = s->describe_item(l->base_version, res.item, false);
         l->log.info("Entity %04hX (area %02hX) created item %s", cmd.entity_id.load(), cmd.effective_area, name.c_str());
         if (l->drop_mode == Lobby::DropMode::SERVER_DUPLICATE) {
           for (const auto& lc : l->clients) {
             if (lc && ((cmd.rt_index == 0x30) || (lc->floor == cmd.floor))) {
-              item.id = l->generate_item_id(0xFF);
+              res.item.id = l->generate_item_id(0xFF);
               l->log.info("Creating item %08" PRIX32 " at %02hhX:%g,%g for %s",
-                  item.id.load(), cmd.floor, cmd.x.load(), cmd.z.load(), lc->channel.name.c_str());
-              l->add_item(cmd.floor, item, cmd.x, cmd.z, (1 << lc->lobby_client_id));
-              send_drop_item_to_channel(s, lc->channel, item, cmd.rt_index != 0x30, cmd.floor, cmd.x, cmd.z, cmd.entity_id);
-              send_rare_notification_if_needed(lc, item);
+                  res.item.id.load(), cmd.floor, cmd.x.load(), cmd.z.load(), lc->channel.name.c_str());
+              l->add_item(cmd.floor, res.item, cmd.x, cmd.z, (1 << lc->lobby_client_id));
+              send_drop_item_to_channel(s, lc->channel, res.item, cmd.rt_index != 0x30, cmd.floor, cmd.x, cmd.z, cmd.entity_id);
+              if (res.is_from_rare_table) {
+                send_rare_notification_if_needed(lc, res.item);
+              }
             }
           }
 
         } else {
-          item.id = l->generate_item_id(0xFF);
+          res.item.id = l->generate_item_id(0xFF);
           l->log.info("Creating item %08" PRIX32 " at %02hhX:%g,%g for all clients",
-              item.id.load(), cmd.floor, cmd.x.load(), cmd.z.load());
-          l->add_item(cmd.floor, item, cmd.x, cmd.z, 0x00F);
-          send_drop_item_to_lobby(l, item, cmd.rt_index != 0x30, cmd.floor, cmd.x, cmd.z, cmd.entity_id);
-          for (auto lc : l->clients) {
-            if (lc) {
-              send_rare_notification_if_needed(lc, item);
+              res.item.id.load(), cmd.floor, cmd.x.load(), cmd.z.load());
+          l->add_item(cmd.floor, res.item, cmd.x, cmd.z, 0x00F);
+          send_drop_item_to_lobby(l, res.item, cmd.rt_index != 0x30, cmd.floor, cmd.x, cmd.z, cmd.entity_id);
+          if (res.is_from_rare_table) {
+            for (auto lc : l->clients) {
+              if (lc) {
+                send_rare_notification_if_needed(lc, res.item);
+              }
             }
           }
         }
@@ -2213,18 +2217,20 @@ static void on_entity_drop_item_request(shared_ptr<Client> c, uint8_t command, u
     case Lobby::DropMode::SERVER_PRIVATE: {
       for (const auto& lc : l->clients) {
         if (lc && ((cmd.rt_index == 0x30) || (lc->floor == cmd.floor))) {
-          auto item = generate_item();
-          if (item.empty()) {
+          auto res = generate_item();
+          if (res.item.empty()) {
             l->log.info("No item was created for %s", lc->channel.name.c_str());
           } else {
-            string name = s->describe_item(l->base_version, item, false);
+            string name = s->describe_item(l->base_version, res.item, false);
             l->log.info("Entity %04hX (area %02hX) created item %s", cmd.entity_id.load(), cmd.effective_area, name.c_str());
-            item.id = l->generate_item_id(0xFF);
+            res.item.id = l->generate_item_id(0xFF);
             l->log.info("Creating item %08" PRIX32 " at %02hhX:%g,%g for %s",
-                item.id.load(), cmd.floor, cmd.x.load(), cmd.z.load(), lc->channel.name.c_str());
-            l->add_item(cmd.floor, item, cmd.x, cmd.z, (1 << lc->lobby_client_id));
-            send_drop_item_to_channel(s, lc->channel, item, cmd.rt_index != 0x30, cmd.floor, cmd.x, cmd.z, cmd.entity_id);
-            send_rare_notification_if_needed(lc, item);
+                res.item.id.load(), cmd.floor, cmd.x.load(), cmd.z.load(), lc->channel.name.c_str());
+            l->add_item(cmd.floor, res.item, cmd.x, cmd.z, (1 << lc->lobby_client_id));
+            send_drop_item_to_channel(s, lc->channel, res.item, cmd.rt_index != 0x30, cmd.floor, cmd.x, cmd.z, cmd.entity_id);
+            if (res.is_from_rare_table) {
+              send_rare_notification_if_needed(lc, res.item);
+            }
           }
         }
       }
