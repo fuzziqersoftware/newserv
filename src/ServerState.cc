@@ -1058,7 +1058,7 @@ void ServerState::load_word_select_table() {
   config_log.info("Loading Word Select table");
 
   vector<vector<string>> name_alias_lists;
-  auto json = JSON::parse(load_file("system/word-select/name-alias-lists.json"));
+  auto json = JSON::parse(load_file("system/text-sets/ws-name-alias-lists.json"));
   for (const auto& coll_it : json.as_list()) {
     auto& coll = name_alias_lists.emplace_back();
     for (const auto& str_it : coll_it->as_list()) {
@@ -1074,37 +1074,37 @@ void ServerState::load_word_select_table() {
     pc_unitxt_collection = &this->text_index->get(Version::PC_V2, 1, 35);
   } else {
     config_log.info("(Word select) Loading PC_V2 unitxt_e.prs");
-    pc_unitxt_data = make_unique<UnicodeTextSet>(load_file("system/word-select/pc_unitxt.prs"));
+    pc_unitxt_data = make_unique<UnicodeTextSet>(load_file("system/text-sets/pc-v2/unitxt_e.prs"));
     pc_unitxt_collection = &pc_unitxt_data->get(35);
   }
-  config_log.info("(Word select) Loading bb_unitxt_ws.prs");
-  auto bb_unitxt_data = make_unique<UnicodeTextSet>(load_file("system/word-select/bb_unitxt_ws.prs"));
+  config_log.info("(Word select) Loading BB_V4 unitxt_ws_e.prs");
+  auto bb_unitxt_data = make_unique<UnicodeTextSet>(load_file("system/text-sets/bb-v4/unitxt_ws_e.prs"));
   bb_unitxt_collection = &bb_unitxt_data->get(0);
 
   config_log.info("(Word select) Loading DC_NTE data");
-  WordSelectSet dc_nte_ws(load_file("system/word-select/dc_nte_ws_data.bin"), Version::DC_NTE, nullptr, true);
+  WordSelectSet dc_nte_ws(load_file("system/text-sets/dc-nte/ws_data.bin"), Version::DC_NTE, nullptr, true);
   config_log.info("(Word select) Loading DC_V1_11_2000_PROTOTYPE data");
-  WordSelectSet dc_112000_ws(load_file("system/word-select/dc_112000_ws_data.bin"), Version::DC_V1_11_2000_PROTOTYPE, nullptr, false);
+  WordSelectSet dc_112000_ws(load_file("system/text-sets/dc-11-2000/ws_data.bin"), Version::DC_V1_11_2000_PROTOTYPE, nullptr, false);
   config_log.info("(Word select) Loading DC_V1 data");
-  WordSelectSet dc_v1_ws(load_file("system/word-select/dcv1_ws_data.bin"), Version::DC_V1, nullptr, false);
+  WordSelectSet dc_v1_ws(load_file("system/text-sets/dc-v1/ws_data.bin"), Version::DC_V1, nullptr, false);
   config_log.info("(Word select) Loading DC_V2 data");
-  WordSelectSet dc_v2_ws(load_file("system/word-select/dcv2_ws_data.bin"), Version::DC_V2, nullptr, false);
+  WordSelectSet dc_v2_ws(load_file("system/text-sets/dc-v2/ws_data.bin"), Version::DC_V2, nullptr, false);
   config_log.info("(Word select) Loading PC_NTE data");
-  WordSelectSet pc_nte_ws(load_file("system/word-select/pc_nte_ws_data.bin"), Version::PC_NTE, pc_unitxt_collection, false);
+  WordSelectSet pc_nte_ws(load_file("system/text-sets/pc-nte/ws_data.bin"), Version::PC_NTE, pc_unitxt_collection, false);
   config_log.info("(Word select) Loading PC_V2 data");
-  WordSelectSet pc_v2_ws(load_file("system/word-select/pc_ws_data.bin"), Version::PC_V2, pc_unitxt_collection, false);
+  WordSelectSet pc_v2_ws(load_file("system/text-sets/pc-v2/ws_data.bin"), Version::PC_V2, pc_unitxt_collection, false);
   config_log.info("(Word select) Loading GC_NTE data");
-  WordSelectSet gc_nte_ws(load_file("system/word-select/gc_nte_ws_data.bin"), Version::GC_NTE, nullptr, false);
+  WordSelectSet gc_nte_ws(load_file("system/text-sets/gc-nte/ws_data.bin"), Version::GC_NTE, nullptr, false);
   config_log.info("(Word select) Loading GC_V3 data");
-  WordSelectSet gc_v3_ws(load_file("system/word-select/gc_ws_data.bin"), Version::GC_V3, nullptr, false);
+  WordSelectSet gc_v3_ws(load_file("system/text-sets/gc-v3/ws_data.bin"), Version::GC_V3, nullptr, false);
   config_log.info("(Word select) Loading GC_EP3_NTE data");
-  WordSelectSet gc_ep3_nte_ws(load_file("system/word-select/gc_ep3_nte_ws_data.bin"), Version::GC_EP3_NTE, nullptr, false);
+  WordSelectSet gc_ep3_nte_ws(load_file("system/text-sets/gc-ep3-nte/ws_data.bin"), Version::GC_EP3_NTE, nullptr, false);
   config_log.info("(Word select) Loading GC_EP3 data");
-  WordSelectSet gc_ep3_ws(load_file("system/word-select/gc_ep3_ws_data.bin"), Version::GC_EP3, nullptr, false);
+  WordSelectSet gc_ep3_ws(load_file("system/text-sets/gc-ep3/ws_data.bin"), Version::GC_EP3, nullptr, false);
   config_log.info("(Word select) Loading XB_V3 data");
-  WordSelectSet xb_v3_ws(load_file("system/word-select/xb_ws_data.bin"), Version::XB_V3, nullptr, false);
+  WordSelectSet xb_v3_ws(load_file("system/text-sets/xb-v3/ws_data.bin"), Version::XB_V3, nullptr, false);
   config_log.info("(Word select) Loading BB_V4 data");
-  WordSelectSet bb_v4_ws(load_file("system/word-select/bb_ws_data.bin"), Version::BB_V4, bb_unitxt_collection, false);
+  WordSelectSet bb_v4_ws(load_file("system/text-sets/bb-v4/ws_data.bin"), Version::BB_V4, bb_unitxt_collection, false);
 
   config_log.info("(Word select) Generating table");
   this->word_select_table = make_shared<WordSelectTable>(
