@@ -396,7 +396,7 @@ PSOBBCharacterFile::SymbolChatEntry PSOBBCharacterFile::DefaultSymbolChatEntry::
 
 // TODO: Eliminate duplication between this function and the parallel function
 // in PlayerBank
-void PSOBBCharacterFile::add_item(const ItemData& item) {
+void PSOBBCharacterFile::add_item(const ItemData& item, Version version) {
   uint32_t pid = item.primary_identifier();
 
   // Annoyingly, meseta is in the disp data, not in the inventory struct. If the
@@ -407,7 +407,7 @@ void PSOBBCharacterFile::add_item(const ItemData& item) {
   }
 
   // Handle combinable items
-  size_t combine_max = item.max_stack_size();
+  size_t combine_max = item.max_stack_size(version);
   if (combine_max > 1) {
     // Get the item index if there's already a stack of the same item in the
     // player's inventory
@@ -444,13 +444,13 @@ void PSOBBCharacterFile::add_item(const ItemData& item) {
 
 // TODO: Eliminate code duplication between this function and the parallel
 // function in PlayerBank
-ItemData PSOBBCharacterFile::remove_item(uint32_t item_id, uint32_t amount, bool allow_meseta_overdraft) {
+ItemData PSOBBCharacterFile::remove_item(uint32_t item_id, uint32_t amount, Version version) {
   ItemData ret;
 
   // If we're removing meseta (signaled by an invalid item ID), then create a
   // meseta item.
   if (item_id == 0xFFFFFFFF) {
-    this->remove_meseta(amount, allow_meseta_overdraft);
+    this->remove_meseta(amount, !is_v4(version));
     ret.data1[0] = 0x04;
     ret.data2d = amount;
     return ret;
@@ -464,7 +464,7 @@ ItemData PSOBBCharacterFile::remove_item(uint32_t item_id, uint32_t amount, bool
   // then create a new item and reduce the amount of the existing stack. Note
   // that passing amount == 0 means to remove the entire stack, so this only
   // applies if amount is nonzero.
-  if (amount && (inventory_item.data.stack_size() > 1) &&
+  if (amount && (inventory_item.data.stack_size(version) > 1) &&
       (amount < inventory_item.data.data1[5])) {
     if (is_equipped) {
       throw runtime_error("character has a combine item equipped");

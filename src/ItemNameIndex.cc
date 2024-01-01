@@ -21,9 +21,11 @@ using namespace std;
 // };
 
 ItemNameIndex::ItemNameIndex(
+    Version version,
     std::shared_ptr<const ItemParameterTable> item_parameter_table,
     const std::vector<std::string>& name_coll)
-    : item_parameter_table(item_parameter_table) {
+    : version(version),
+      item_parameter_table(item_parameter_table) {
 
   auto find_items_1d = [&](uint64_t data1, size_t position) -> size_t {
     ItemData item(data1, 0);
@@ -176,7 +178,7 @@ std::string ItemNameIndex::describe_item(
   // flags in a different location.
   if (((item.data1[1] == 0x01) && (item.data1[4] & 0x40)) ||
       ((item.data1[0] == 0x02) && (item.data2[2] & 0x40)) ||
-      ((item.data1[0] == 0x03) && !item.is_stackable() && (item.data1[3] & 0x40))) {
+      ((item.data1[0] == 0x03) && !item.is_stackable(this->version) && (item.data1[3] & 0x40))) {
     ret_tokens.emplace_back("Wrapped");
   }
 
@@ -359,7 +361,7 @@ std::string ItemNameIndex::describe_item(
 
     // For tools, add the amount (if applicable)
   } else if (item.data1[0] == 0x03) {
-    if (item.max_stack_size() > 1) {
+    if (item.max_stack_size(this->version) > 1) {
       ret_tokens.emplace_back(string_printf("x%hhu", item.data1[5]));
     }
   }
@@ -401,7 +403,7 @@ ItemData ItemNameIndex::parse_item_description(const std::string& desc) const {
       }
     }
   }
-  ret.enforce_min_stack_size();
+  ret.enforce_min_stack_size(this->version);
   return ret;
 }
 
@@ -635,7 +637,7 @@ ItemData ItemNameIndex::parse_item_description_phase(const std::string& descript
       ret.data2[2] |= 0x40;
     }
   } else if (ret.data1[0] == 0x03) {
-    if (ret.max_stack_size() > 1) {
+    if (ret.max_stack_size(this->version) > 1) {
       if (starts_with(desc, "x")) {
         ret.data1[5] = stoul(desc.substr(1), nullptr, 10);
       } else {
@@ -646,7 +648,7 @@ ItemData ItemNameIndex::parse_item_description_phase(const std::string& descript
     }
 
     if (is_wrapped) {
-      if (ret.is_stackable()) {
+      if (ret.is_stackable(this->version)) {
         throw runtime_error("stackable items cannot be wrapped");
       } else {
         ret.data1[3] |= 0x40;

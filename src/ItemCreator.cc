@@ -480,7 +480,7 @@ void ItemCreator::set_item_unidentified_flag_if_not_challenge(ItemData& item) co
 
 void ItemCreator::set_tool_item_amount_to_1(ItemData& item) const {
   if (item.data1[0] == 0x03) {
-    item.set_tool_item_amount(1);
+    item.set_tool_item_amount(this->version, 1);
   }
 }
 
@@ -1686,7 +1686,7 @@ ItemCreator::DropResult ItemCreator::on_specialized_box_item_drop(
   return res;
 }
 
-ItemData ItemCreator::base_item_for_specialized_box(uint32_t def0, uint32_t def1, uint32_t def2) {
+ItemData ItemCreator::base_item_for_specialized_box(uint32_t def0, uint32_t def1, uint32_t def2) const {
   ItemData item;
   item.data1[0] = (def0 >> 0x18) & 0x0F;
   item.data1[1] = (def0 >> 0x10) + ((item.data1[0] == 0x00) || (item.data1[0] == 0x01));
@@ -1715,7 +1715,7 @@ ItemData ItemCreator::base_item_for_specialized_box(uint32_t def0, uint32_t def1
       if (item.data1[1] == 0x02) {
         item.data1[4] = def0 & 0xFF;
       }
-      item.set_tool_item_amount(1);
+      item.set_tool_item_amount(this->version, 1);
       break;
     case 0x04:
       item.data2d = ((def1 >> 0x10) & 0xFFFF) * 10;

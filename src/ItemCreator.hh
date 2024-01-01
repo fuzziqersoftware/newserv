@@ -43,7 +43,7 @@ public:
   void set_monster_destroyed(uint16_t entity_id);
   void set_box_destroyed(uint16_t entity_id);
 
-  static ItemData base_item_for_specialized_box(uint32_t def0, uint32_t def1, uint32_t def2);
+  ItemData base_item_for_specialized_box(uint32_t def0, uint32_t def1, uint32_t def2) const;
 
   std::vector<ItemData> generate_armor_shop_contents(size_t player_level);
   std::vector<ItemData> generate_tool_shop_contents(size_t player_level);

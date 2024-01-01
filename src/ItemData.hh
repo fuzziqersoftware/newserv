@@ -140,14 +140,14 @@ struct ItemData { // 0x14 bytes
   std::string hex() const;
   uint32_t primary_identifier() const;
 
-  bool is_wrapped() const;
-  void wrap();
-  void unwrap();
+  bool is_wrapped(Version version) const;
+  void wrap(Version version);
+  void unwrap(Version version);
 
-  bool is_stackable() const;
-  size_t stack_size() const;
-  size_t max_stack_size() const;
-  void enforce_min_stack_size();
+  bool is_stackable(Version version) const;
+  size_t stack_size(Version version) const;
+  size_t max_stack_size(Version version) const;
+  void enforce_min_stack_size(Version version);
 
   static bool is_common_consumable(uint32_t primary_identifier);
   bool is_common_consumable() const;
@@ -166,8 +166,8 @@ struct ItemData { // 0x14 bytes
 
   uint16_t get_sealed_item_kill_count() const;
   void set_sealed_item_kill_count(uint16_t v);
-  uint8_t get_tool_item_amount() const;
-  void set_tool_item_amount(uint8_t amount);
+  uint8_t get_tool_item_amount(Version version) const;
+  void set_tool_item_amount(Version version, uint8_t amount);
   int16_t get_armor_or_shield_defense_bonus() const;
   void set_armor_or_shield_defense_bonus(int16_t bonus);
   int16_t get_common_armor_evasion_bonus() const;

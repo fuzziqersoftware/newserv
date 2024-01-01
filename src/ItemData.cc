@@ -84,7 +84,7 @@ uint32_t ItemData::primary_identifier() const {
   }
 }
 
-bool ItemData::is_wrapped() const {
+bool ItemData::is_wrapped(Version version) const {
   switch (this->data1[0]) {
     case 0:
     case 1:
@@ -92,7 +92,7 @@ bool ItemData::is_wrapped() const {
     case 2:
       return this->data2[2] & 0x40;
     case 3:
-      return !this->is_stackable() && (this->data1[3] & 0x40);
+      return !this->is_stackable(version) && (this->data1[3] & 0x40);
     case 4:
       return false;
     default:
@@ -100,7 +100,7 @@ bool ItemData::is_wrapped() const {
   }
 }
 
-void ItemData::wrap() {
+void ItemData::wrap(Version version) {
   switch (this->data1[0]) {
     case 0:
     case 1:
@@ -110,7 +110,7 @@ void ItemData::wrap() {
       this->data2[2] |= 0x40;
       break;
     case 3:
-      if (!this->is_stackable()) {
+      if (!this->is_stackable(version)) {
         this->data1[3] |= 0x40;
       }
       break;
@@ -121,7 +121,7 @@ void ItemData::wrap() {
   }
 }
 
-void ItemData::unwrap() {
+void ItemData::unwrap(Version version) {
   switch (this->data1[0]) {
     case 0:
     case 1:
@@ -131,7 +131,7 @@ void ItemData::unwrap() {
       this->data2[2] &= 0xBF;
       break;
     case 3:
-      if (!this->is_stackable()) {
+      if (!this->is_stackable(version)) {
         this->data1[3] &= 0xBF;
       }
       break;
@@ -142,23 +142,23 @@ void ItemData::unwrap() {
   }
 }
 
-bool ItemData::is_stackable() const {
-  return this->max_stack_size() > 1;
+bool ItemData::is_stackable(Version version) const {
+  return this->max_stack_size(version) > 1;
 }
 
-size_t ItemData::stack_size() const {
-  if (max_stack_size_for_item(this->data1[0], this->data1[1]) > 1) {
+size_t ItemData::stack_size(Version version) const {
+  if (max_stack_size_for_item(version, this->data1[0], this->data1[1]) > 1) {
     return this->data1[5];
   }
   return 1;
 }
 
-size_t ItemData::max_stack_size() const {
-  return max_stack_size_for_item(this->data1[0], this->data1[1]);
+size_t ItemData::max_stack_size(Version version) const {
+  return max_stack_size_for_item(version, this->data1[0], this->data1[1]);
 }
 
-void ItemData::enforce_min_stack_size() {
-  if (this->stack_size() == 0) {
+void ItemData::enforce_min_stack_size(Version version) {
+  if (this->stack_size(version) == 0) {
     this->data1[5] = 1;
   }
 }
@@ -502,12 +502,12 @@ void ItemData::set_sealed_item_kill_count(uint16_t v) {
   }
 }
 
-uint8_t ItemData::get_tool_item_amount() const {
-  return this->is_stackable() ? this->data1[5] : 1;
+uint8_t ItemData::get_tool_item_amount(Version version) const {
+  return this->is_stackable(version) ? this->data1[5] : 1;
 }
 
-void ItemData::set_tool_item_amount(uint8_t amount) {
-  if (this->is_stackable()) {
+void ItemData::set_tool_item_amount(Version version, uint8_t amount) {
+  if (this->is_stackable(version)) {
     this->data1[5] = amount;
   } else if (this->data1[0] == 0x03) {
     this->data1[5] = 0x00;

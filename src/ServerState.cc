@@ -1146,25 +1146,25 @@ shared_ptr<ItemNameIndex> ServerState::create_item_name_index_for_version(
     Version version, shared_ptr<const ItemParameterTable> pmt, shared_ptr<const TextIndex> text_index) {
   switch (version) {
     case Version::DC_NTE:
-      return make_shared<ItemNameIndex>(pmt, text_index->get(Version::DC_NTE, 0, 2));
+      return make_shared<ItemNameIndex>(version, pmt, text_index->get(Version::DC_NTE, 0, 2));
     case Version::DC_V1_11_2000_PROTOTYPE:
-      return make_shared<ItemNameIndex>(pmt, text_index->get(Version::DC_V1_11_2000_PROTOTYPE, 1, 2));
+      return make_shared<ItemNameIndex>(version, pmt, text_index->get(Version::DC_V1_11_2000_PROTOTYPE, 1, 2));
     case Version::DC_V1:
-      return make_shared<ItemNameIndex>(pmt, text_index->get(Version::DC_V1, 1, 2));
+      return make_shared<ItemNameIndex>(version, pmt, text_index->get(Version::DC_V1, 1, 2));
     case Version::DC_V2:
-      return make_shared<ItemNameIndex>(pmt, text_index->get(Version::DC_V2, 1, 3));
+      return make_shared<ItemNameIndex>(version, pmt, text_index->get(Version::DC_V2, 1, 3));
     case Version::PC_NTE:
-      return make_shared<ItemNameIndex>(pmt, text_index->get(Version::PC_NTE, 1, 3));
+      return make_shared<ItemNameIndex>(version, pmt, text_index->get(Version::PC_NTE, 1, 3));
     case Version::PC_V2:
-      return make_shared<ItemNameIndex>(pmt, text_index->get(Version::PC_V2, 1, 3));
+      return make_shared<ItemNameIndex>(version, pmt, text_index->get(Version::PC_V2, 1, 3));
     case Version::GC_NTE:
-      return make_shared<ItemNameIndex>(pmt, text_index->get(Version::GC_NTE, 1, 0));
+      return make_shared<ItemNameIndex>(version, pmt, text_index->get(Version::GC_NTE, 1, 0));
     case Version::GC_V3:
-      return make_shared<ItemNameIndex>(pmt, text_index->get(Version::GC_V3, 1, 0));
+      return make_shared<ItemNameIndex>(version, pmt, text_index->get(Version::GC_V3, 1, 0));
     case Version::XB_V3:
-      return make_shared<ItemNameIndex>(pmt, text_index->get(Version::XB_V3, 1, 0));
+      return make_shared<ItemNameIndex>(version, pmt, text_index->get(Version::XB_V3, 1, 0));
     case Version::BB_V4:
-      return make_shared<ItemNameIndex>(pmt, text_index->get(Version::BB_V4, 1, 1));
+      return make_shared<ItemNameIndex>(version, pmt, text_index->get(Version::BB_V4, 1, 1));
     default:
       return nullptr;
   }
@@ -1180,11 +1180,18 @@ void ServerState::load_item_name_indexes() {
   auto pc_v2_index = create_item_name_index_for_version(
       Version::PC_V2, this->item_parameter_table(Version::PC_V2), this->text_index);
   this->set_item_name_index(Version::DC_NTE, pc_v2_index);
-  this->set_item_name_index(Version::DC_V1_11_2000_PROTOTYPE, pc_v2_index);
   this->set_item_name_index(Version::DC_V1, pc_v2_index);
   this->set_item_name_index(Version::DC_V2, pc_v2_index);
   this->set_item_name_index(Version::PC_NTE, pc_v2_index);
   this->set_item_name_index(Version::PC_V2, pc_v2_index);
+
+  // All tools are stackable on 11/2000, so make a separate index (still using
+  // V2 data) with the correct version
+  auto dc_112000_index = make_shared<ItemNameIndex>(
+      Version::DC_V1_11_2000_PROTOTYPE,
+      this->item_parameter_table(Version::PC_V2),
+      this->text_index->get(Version::PC_V2, 1, 3));
+  this->set_item_name_index(Version::DC_V1_11_2000_PROTOTYPE, dc_112000_index);
 
   auto gc_v3_index = create_item_name_index_for_version(
       Version::GC_V3, this->item_parameter_table(Version::GC_V3), this->text_index);
