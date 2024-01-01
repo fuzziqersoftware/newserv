@@ -195,6 +195,9 @@ Client::Client(
       external_bank_character_index(-1),
       last_play_time_update(0) {
   this->config.set_flags_for_version(version, -1);
+  if (server->get_state()->default_rare_notifs_enabled) {
+    this->config.set_flag(Flag::RARE_DROP_NOTIFICATIONS_ENABLED);
+  }
   this->config.specific_version = default_specific_version_for_version(version, -1);
 
   this->last_switch_enabled_command.header.subcommand = 0;

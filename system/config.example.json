@@ -775,6 +775,10 @@
   //       available on the proxy server.
   "CheatModeBehavior": "OnByDefault",
 
+  // Whether to enable rare drop notifications by default. Players can toggle
+  // this behavior for themselves with the $rarenotifs command.
+  "RareNotificationsEnabledByDefault": false,
+
   // Whether to enable patches on Episode 3 USA. This functionality depends on
   // exploiting a bug in Episode 3, and while it seems to work reliably on
   // Dolphin, it hasn't been tested on a real GameCube. So, newserv doesn't
