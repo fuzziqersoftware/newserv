@@ -1493,24 +1493,20 @@ Action a_show_ep3_cards(
     +[](Arguments& args) {
       bool one_line = args.get<bool>("one-line");
 
-      Episode3::CardIndex card_index(
-          "system/ep3/card-definitions.mnr",
-          "system/ep3/card-definitions.mnrd",
-          "system/ep3/card-text.mnr",
-          "system/ep3/card-text.mnrd",
-          "system/ep3/card-dice-text.mnr",
-          "system/ep3/card-dice-text.mnrd");
-      unique_ptr<TextArchive> text_english;
+      ServerState s;
+      s.load_objects("ep3_data");
+
+      unique_ptr<BinaryTextSet> text_english;
       try {
         JSON json = JSON::parse(load_file("system/ep3/text-english.json"));
-        text_english = make_unique<TextArchive>(json);
+        text_english = make_unique<BinaryTextSet>(json);
       } catch (const exception& e) {
       }
 
-      auto card_ids = card_index.all_ids();
+      auto card_ids = s.ep3_card_index->all_ids();
       log_info("%zu card definitions", card_ids.size());
       for (uint32_t card_id : card_ids) {
-        auto entry = card_index.definition_for_id(card_id);
+        auto entry = s.ep3_card_index->definition_for_id(card_id);
         string s = entry->def.str(one_line, text_english.get());
         if (one_line) {
           fprintf(stdout, "%s\n", s.c_str());
@@ -1544,18 +1540,14 @@ Action a_generate_ep3_cards_html(
     +[](Arguments& args) {
       size_t num_threads = args.get<size_t>("threads", 0);
 
-      Episode3::CardIndex card_index(
-          "system/ep3/card-definitions.mnr",
-          "system/ep3/card-definitions.mnrd",
-          "system/ep3/card-text.mnr",
-          "system/ep3/card-text.mnrd",
-          "system/ep3/card-dice-text.mnr",
-          "system/ep3/card-dice-text.mnrd");
-      unique_ptr<TextArchive> text_english;
+      ServerState s;
+      s.load_objects("ep3_data");
+      s.load_objects("text_index");
+
+      shared_ptr<const TextSet> text_english;
       try {
-        JSON json = JSON::parse(load_file("system/ep3/text-english.json"));
-        text_english = make_unique<TextArchive>(json);
-      } catch (const exception& e) {
+        text_english = s.text_index->get(Version::GC_EP3, 1);
+      } catch (const out_of_range&) {
       }
 
       struct CardInfo {
@@ -1572,11 +1564,11 @@ Action a_generate_ep3_cards_html(
         }
       };
       vector<CardInfo> infos;
-      for (uint32_t card_id : card_index.all_ids()) {
+      for (uint32_t card_id : s.ep3_card_index->all_ids()) {
         if (infos.size() <= card_id) {
           infos.resize(card_id + 1);
         }
-        infos[card_id].ce = card_index.definition_for_id(card_id);
+        infos[card_id].ce = s.ep3_card_index->definition_for_id(card_id);
       }
       for (const auto& filename : list_directory_sorted("system/ep3/cardtex")) {
         if ((filename[0] == 'C' || filename[0] == 'M' || filename[0] == 'L') && (filename[1] == '_')) {
@@ -1684,20 +1676,21 @@ Action a_show_ep3_maps(
     human-readable format.\n",
     +[](Arguments&) {
       config_log.info("Collecting Episode 3 data");
-      Episode3::MapIndex map_index("system/ep3/maps");
-      Episode3::CardIndex card_index("system/ep3/card-definitions.mnr", "system/ep3/card-definitions.mnrd");
 
-      auto map_ids = map_index.all_numbers();
+      ServerState s;
+      s.load_objects("ep3_data");
+
+      auto map_ids = s.ep3_map_index->all_numbers();
       log_info("%zu maps", map_ids.size());
       for (uint32_t map_id : map_ids) {
-        auto map = map_index.for_number(map_id);
+        auto map = s.ep3_map_index->for_number(map_id);
         const auto& vms = map->all_versions();
         for (size_t language = 0; language < vms.size(); language++) {
           if (!vms[language]) {
             continue;
           }
-          string s = vms[language]->map->str(&card_index, language);
-          fprintf(stdout, "(%c) %s\n", char_for_language_code(language), s.c_str());
+          string map_s = vms[language]->map->str(s.ep3_card_index.get(), language);
+          fprintf(stdout, "(%c) %s\n", char_for_language_code(language), map_s.c_str());
         }
       }
     });
@@ -1708,26 +1701,21 @@ Action a_show_battle_params(
     Print the Blue Burst battle parameters from the system/blueburst directory\n\
     in a human-readable format.\n",
     +[](Arguments&) {
-      BattleParamsIndex index(
-          make_shared<string>(load_file("system/blueburst/BattleParamEntry_on.dat")),
-          make_shared<string>(load_file("system/blueburst/BattleParamEntry_lab_on.dat")),
-          make_shared<string>(load_file("system/blueburst/BattleParamEntry_ep4_on.dat")),
-          make_shared<string>(load_file("system/blueburst/BattleParamEntry.dat")),
-          make_shared<string>(load_file("system/blueburst/BattleParamEntry_lab.dat")),
-          make_shared<string>(load_file("system/blueburst/BattleParamEntry_ep4.dat")));
+      ServerState s;
+      s.load_objects("battle_params");
 
       fprintf(stdout, "Episode 1 multi\n");
-      index.get_table(false, Episode::EP1).print(stdout);
+      s.battle_params->get_table(false, Episode::EP1).print(stdout);
       fprintf(stdout, "Episode 1 solo\n");
-      index.get_table(true, Episode::EP1).print(stdout);
+      s.battle_params->get_table(true, Episode::EP1).print(stdout);
       fprintf(stdout, "Episode 2 multi\n");
-      index.get_table(false, Episode::EP2).print(stdout);
+      s.battle_params->get_table(false, Episode::EP2).print(stdout);
       fprintf(stdout, "Episode 2 solo\n");
-      index.get_table(true, Episode::EP2).print(stdout);
+      s.battle_params->get_table(true, Episode::EP2).print(stdout);
       fprintf(stdout, "Episode 4 multi\n");
-      index.get_table(false, Episode::EP4).print(stdout);
+      s.battle_params->get_table(false, Episode::EP4).print(stdout);
       fprintf(stdout, "Episode 4 solo\n");
-      index.get_table(true, Episode::EP4).print(stdout);
+      s.battle_params->get_table(true, Episode::EP4).print(stdout);
     });
 
 Action a_parse_object_graph(
@@ -1848,12 +1836,13 @@ Action a_diff_dol_files(
 
 Action a_replay_ep3_battle_commands(
     "replay-ep3-battle-commands", nullptr, +[](Arguments& args) {
-      auto card_index = make_shared<Episode3::CardIndex>("system/ep3/card-definitions.mnr", "system/ep3/card-definitions.mnrd");
-      auto map_index = make_shared<Episode3::MapIndex>("system/ep3/maps");
+      ServerState s;
+      s.load_objects("ep3_data");
+
       auto random_crypt = make_shared<PSOV2Encryption>(args.get<uint32_t>("seed", 0, Arguments::IntFormat::HEX));
       Episode3::Server::Options options = {
-          .card_index = card_index,
-          .map_index = map_index,
+          .card_index = s.ep3_card_index,
+          .map_index = s.ep3_map_index,
           .behavior_flags = 0x0092,
           .random_crypt = random_crypt,
           .tournament = nullptr,
@@ -1897,7 +1886,7 @@ Action a_run_server_replay_log(
 
       shared_ptr<struct event_base> base(event_base_new(), event_base_free);
       auto state = make_shared<ServerState>(base, config_filename, is_replay);
-      state->init();
+      state->load_objects("all");
 
       shared_ptr<DNSServer> dns_server;
       if (state->dns_server_port && !is_replay) {

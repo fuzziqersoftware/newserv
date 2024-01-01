@@ -25,9 +25,13 @@ ServerState::QuestF960Result::QuestF960Result(const JSON& json, std::shared_ptr<
   this->probability_upgrade = json.get_int("ProbabilityUpgrade", 0);
   for (size_t day = 0; day < 7; day++) {
     for (const auto& item_it : json.get_list(day_names[day])) {
-      this->results[day].emplace_back(name_index->parse_item_description(Version::BB_V4, item_it->as_string()));
+      this->results[day].emplace_back(name_index->parse_item_description(item_it->as_string()));
     }
   }
+}
+
+ServerState::ServerState() : creation_time(now()) {
+  this->create_load_step_graph();
 }
 
 ServerState::ServerState(shared_ptr<struct event_base> base, const string& config_filename, bool is_replay)
@@ -35,127 +39,17 @@ ServerState::ServerState(shared_ptr<struct event_base> base, const string& confi
       base(base),
       config_filename(config_filename),
       is_replay(is_replay),
-      dns_server_port(0),
-      ip_stack_debug(false),
-      allow_unregistered_users(false),
-      allow_pc_nte(false),
-      use_temp_licenses_for_prototypes(true),
-      allow_dc_pc_games(false),
-      allow_gc_xb_games(true),
-      allowed_drop_modes_v1_v2_normal(0x1F),
-      allowed_drop_modes_v1_v2_battle(0x07),
-      allowed_drop_modes_v1_v2_challenge(0x07),
-      allowed_drop_modes_v3_normal(0x1F),
-      allowed_drop_modes_v3_battle(0x07),
-      allowed_drop_modes_v3_challenge(0x07),
-      allowed_drop_modes_v4_normal(0x1D), // CLIENT not allowed
-      allowed_drop_modes_v4_battle(0x05),
-      allowed_drop_modes_v4_challenge(0x05),
-      default_drop_mode_v1_v2_normal(Lobby::DropMode::CLIENT),
-      default_drop_mode_v1_v2_battle(Lobby::DropMode::CLIENT),
-      default_drop_mode_v1_v2_challenge(Lobby::DropMode::CLIENT),
-      default_drop_mode_v3_normal(Lobby::DropMode::CLIENT),
-      default_drop_mode_v3_battle(Lobby::DropMode::CLIENT),
-      default_drop_mode_v3_challenge(Lobby::DropMode::CLIENT),
-      default_drop_mode_v4_normal(Lobby::DropMode::SERVER_SHARED),
-      default_drop_mode_v4_battle(Lobby::DropMode::SERVER_SHARED),
-      default_drop_mode_v4_challenge(Lobby::DropMode::SERVER_SHARED),
-      persistent_game_idle_timeout_usecs(0),
-      ep3_send_function_call_enabled(false),
-      catch_handler_exceptions(true),
-      ep3_infinite_meseta(false),
-      ep3_defeat_player_meseta_rewards({400, 500, 600, 700, 800}),
-      ep3_defeat_com_meseta_rewards({100, 200, 300, 400, 500}),
-      ep3_final_round_meseta_bonus(300),
-      ep3_jukebox_is_free(false),
-      ep3_behavior_flags(0),
-      hide_download_commands(true),
-      run_shell_behavior(RunShellBehavior::DEFAULT),
-      cheat_mode_behavior(BehaviorSwitch::OFF_BY_DEFAULT),
-      bb_global_exp_multiplier(1),
-      ep3_card_auction_points(0),
-      ep3_card_auction_min_size(0),
-      ep3_card_auction_max_size(0),
-      player_files_manager(make_shared<PlayerFilesManager>(base)),
-      destroy_lobbies_event(event_new(base.get(), -1, EV_TIMEOUT, &ServerState::dispatch_destroy_lobbies, this), event_free),
-      next_lobby_id(1),
-      pre_lobby_event(0),
-      ep3_menu_song(-1),
-      local_address(0),
-      external_address(0),
-      proxy_allow_save_files(true),
-      proxy_enable_login_options(false) {}
+      player_files_manager(this->base ? make_shared<PlayerFilesManager>(base) : nullptr),
+      destroy_lobbies_event(this->base ? event_new(base.get(), -1, EV_TIMEOUT, &ServerState::dispatch_destroy_lobbies, this) : nullptr, event_free) {
+  this->create_load_step_graph();
+}
 
-void ServerState::init() {
-  vector<shared_ptr<Lobby>> non_v1_only_lobbies;
-  vector<shared_ptr<Lobby>> ep3_only_lobbies;
+void ServerState::load_objects(const std::string& what) {
+  this->load_step_graph.run(what);
+}
 
-  for (size_t x = 0; x < 20; x++) {
-    auto lobby_name = string_printf("LOBBY%zu", x + 1);
-    bool allow_v1 = (x <= 9);
-    bool allow_non_ep3 = (x <= 14);
-
-    shared_ptr<Lobby> l = this->create_lobby(false);
-    l->set_flag(Lobby::Flag::PUBLIC);
-    l->set_flag(Lobby::Flag::DEFAULT);
-    l->set_flag(Lobby::Flag::PERSISTENT);
-    if (allow_non_ep3) {
-      if (allow_v1) {
-        l->allow_version(Version::DC_NTE);
-        l->allow_version(Version::DC_V1_11_2000_PROTOTYPE);
-        l->allow_version(Version::DC_V1);
-      }
-      l->allow_version(Version::DC_V2);
-      l->allow_version(Version::PC_NTE);
-      l->allow_version(Version::PC_V2);
-      l->allow_version(Version::GC_NTE);
-      l->allow_version(Version::GC_V3);
-      l->allow_version(Version::XB_V3);
-      l->allow_version(Version::BB_V4);
-    }
-    l->allow_version(Version::GC_EP3_NTE);
-    l->allow_version(Version::GC_EP3);
-
-    l->block = x + 1;
-    l->name = lobby_name;
-    l->max_clients = 12;
-    if (!allow_non_ep3) {
-      l->episode = Episode::EP3;
-    }
-
-    if (allow_non_ep3) {
-      this->public_lobby_search_order.emplace_back(l);
-    } else {
-      ep3_only_lobbies.emplace_back(l);
-    }
-  }
-
-  // Annoyingly, the CARD lobbies should be searched first, but are sent at the
-  // end of the lobby list command, so we have to change the search order
-  // manually here.
-  this->public_lobby_search_order.insert(
-      this->public_lobby_search_order.begin(),
-      ep3_only_lobbies.begin(),
-      ep3_only_lobbies.end());
-
-  // Load all the necessary data
-  auto config = this->load_config();
-  this->collect_network_addresses();
-  this->load_item_name_index();
-  this->parse_config(config, false);
-  this->load_bb_private_keys();
-  this->load_licenses();
-  this->load_teams();
-  this->load_patch_indexes();
-  this->load_battle_params();
-  this->load_level_table();
-  this->load_item_tables();
-  this->load_word_select_table();
-  this->load_ep3_data();
-  this->resolve_ep3_card_names();
-  this->load_quest_index();
-  this->compile_functions();
-  this->load_dol_files();
+void ServerState::load_objects(const std::vector<std::string>& what) {
+  this->load_step_graph.run(what);
 }
 
 void ServerState::add_client_to_available_lobby(shared_ptr<Client> c) {
@@ -578,20 +472,6 @@ shared_ptr<const string> ServerState::load_bb_file(
   }
 }
 
-void ServerState::collect_network_addresses() {
-  config_log.info("Reading network addresses");
-  this->all_addresses = get_local_addresses();
-  for (const auto& it : this->all_addresses) {
-    string addr_str = string_for_address(it.second);
-    config_log.info("Found interface: %s = %s", it.first.c_str(), addr_str.c_str());
-  }
-}
-
-JSON ServerState::load_config() const {
-  config_log.info("Loading configuration");
-  return JSON::parse(load_file(this->config_filename));
-}
-
 static vector<PortConfiguration> parse_port_configuration(const JSON& json) {
   vector<PortConfiguration> ret;
   for (const auto& item_json_it : json.as_dict()) {
@@ -605,8 +485,22 @@ static vector<PortConfiguration> parse_port_configuration(const JSON& json) {
   return ret;
 }
 
-void ServerState::parse_config(const JSON& json, bool is_reload) {
-  config_log.info("Parsing configuration");
+void ServerState::collect_network_addresses() {
+  config_log.info("Reading network addresses");
+  this->all_addresses = get_local_addresses();
+  for (const auto& it : this->all_addresses) {
+    string addr_str = string_for_address(it.second);
+    config_log.info("Found interface: %s = %s", it.first.c_str(), addr_str.c_str());
+  }
+}
+
+void ServerState::load_config() {
+  if (this->config_filename.empty()) {
+    throw logic_error("configuration filename is missing");
+  }
+
+  config_log.info("Loading configuration");
+  auto json = JSON::parse(load_file(this->config_filename));
 
   auto parse_behavior_switch = [&](const string& json_key, BehaviorSwitch default_value) -> ServerState::BehaviorSwitch {
     try {
@@ -629,7 +523,7 @@ void ServerState::parse_config(const JSON& json, bool is_reload) {
 
   this->name = json.at("ServerName").as_string();
 
-  if (!is_reload) {
+  if (!this->config_loaded) {
     try {
       this->username = json.at("User").as_string();
       if (this->username == "$SUDO_USER") {
@@ -772,12 +666,17 @@ void ServerState::parse_config(const JSON& json, bool is_reload) {
 
   try {
     for (const auto& it : json.get_dict("CardAuctionPool")) {
+      uint16_t card_id;
+      try {
+        card_id = this->ep3_card_index->definition_for_name_normalized(it.first)->def.card_id;
+      } catch (const out_of_range&) {
+        throw runtime_error(string_printf("Ep3 card \"%s\" in auction pool does not exist", it.first.c_str()));
+      }
       this->ep3_card_auction_pool.emplace_back(
           CardAuctionPoolEntry{
               .probability = static_cast<uint64_t>(it.second->at(0).as_int()),
-              .card_id = 0,
-              .min_price = static_cast<uint16_t>(it.second->at(1).as_int()),
-              .card_name = it.first});
+              .card_id = card_id,
+              .min_price = static_cast<uint16_t>(it.second->at(1).as_int())});
     }
   } catch (const out_of_range&) {
   }
@@ -788,11 +687,18 @@ void ServerState::parse_config(const JSON& json, bool is_reload) {
       if (ep3_trap_cards_json.size() != 5) {
         throw runtime_error("Episode3TrapCards must be a list of 5 lists");
       }
-      this->ep3_trap_card_names.clear();
-      for (const auto& trap_type_it : ep3_trap_cards_json) {
-        auto& names = this->ep3_trap_card_names.emplace_back();
-        for (const auto& card_it : trap_type_it->as_list()) {
-          names.emplace_back(card_it->as_string());
+      for (size_t trap_type = 0; trap_type < 5; trap_type++) {
+        auto& trap_card_ids = this->ep3_trap_card_ids[trap_type];
+        for (const auto& card_it : ep3_trap_cards_json.at(trap_type)->as_list()) {
+          try {
+            const auto& card = this->ep3_card_index->definition_for_name_normalized(card_it->as_string());
+            if (card->def.type != Episode3::CardType::ASSIST) {
+              throw runtime_error(string_printf("Ep3 card \"%s\" in trap card list is not an assist card", name.c_str()));
+            }
+            trap_card_ids.emplace_back(card->def.card_id);
+          } catch (const out_of_range&) {
+            throw runtime_error(string_printf("Ep3 card \"%s\" in trap card list does not exist", name.c_str()));
+          }
         }
       }
     }
@@ -800,6 +706,7 @@ void ServerState::parse_config(const JSON& json, bool is_reload) {
   }
 
   if (!this->is_replay) {
+    this->ep3_lobby_banners.clear();
     for (const auto& it : json.get("Episode3LobbyBanners", JSON::list()).as_list()) {
       Image img("system/ep3/banners/" + it->at(2).as_string());
       string gvm = encode_gvm(img, img.get_has_alpha() ? GVRDataFormat::RGB5A3 : GVRDataFormat::RGB565);
@@ -889,13 +796,11 @@ void ServerState::parse_config(const JSON& json, bool is_reload) {
 
   set_log_levels_from_json(json.get("LogLevels", JSON::dict()));
 
-  if (!is_reload) {
-    try {
-      this->run_shell_behavior = json.at("RunInteractiveShell").as_bool()
-          ? ServerState::RunShellBehavior::ALWAYS
-          : ServerState::RunShellBehavior::NEVER;
-    } catch (const out_of_range&) {
-    }
+  try {
+    this->run_shell_behavior = json.at("RunInteractiveShell").as_bool()
+        ? ServerState::RunShellBehavior::ALWAYS
+        : ServerState::RunShellBehavior::NEVER;
+  } catch (const out_of_range&) {
   }
 
   this->allow_dc_pc_games = json.get_bool("AllowDCPCGames", this->allow_dc_pc_games);
@@ -913,13 +818,11 @@ void ServerState::parse_config(const JSON& json, bool is_reload) {
 
   this->ep3_menu_song = json.get_int("Episode3MenuSong", this->ep3_menu_song);
 
-  if (!is_reload) {
-    try {
-      this->quest_category_index = make_shared<QuestCategoryIndex>(json.at("QuestCategories"));
-    } catch (const exception& e) {
-      throw runtime_error(string_printf(
-          "QuestCategories is missing or invalid in config.json (%s) - see config.example.json for an example", e.what()));
-    }
+  try {
+    this->quest_category_index = make_shared<QuestCategoryIndex>(json.at("QuestCategories"));
+  } catch (const exception& e) {
+    throw runtime_error(string_printf(
+        "QuestCategories is missing or invalid in config.json (%s) - see config.example.json for an example", e.what()));
   }
 
   config_log.info("Creating menus");
@@ -1071,6 +974,8 @@ void ServerState::parse_config(const JSON& json, bool is_reload) {
     }
   } catch (const out_of_range&) {
   }
+
+  this->config_loaded = true;
 }
 
 void ServerState::load_bb_private_keys() {
@@ -1093,7 +998,6 @@ void ServerState::load_licenses() {
 void ServerState::load_teams() {
   config_log.info("Indexing teams");
   this->team_index = make_shared<TeamIndex>("system/teams", this->team_reward_defs_json);
-  this->team_reward_defs_json = nullptr;
 }
 
 void ServerState::load_patch_indexes() {
@@ -1393,37 +1297,6 @@ void ServerState::load_ep3_data() {
   config_log.info("Loaded Episode 3 tournament state");
 }
 
-void ServerState::resolve_ep3_card_names() {
-  config_log.info("Resolving Episode 3 card names");
-  for (auto& e : this->ep3_card_auction_pool) {
-    try {
-      const auto& card = this->ep3_card_index->definition_for_name_normalized(e.card_name);
-      e.card_id = card->def.card_id;
-    } catch (const out_of_range&) {
-      throw runtime_error(string_printf("Ep3 card \"%s\" in auction pool does not exist", e.card_name.c_str()));
-    }
-  }
-
-  for (size_t z = 0; z < this->ep3_trap_card_ids.size(); z++) {
-    auto& ids = this->ep3_trap_card_ids[z];
-    ids.clear();
-    if (z < this->ep3_trap_card_names.size()) {
-      auto& names = this->ep3_trap_card_names[z];
-      for (const auto& name : names) {
-        try {
-          const auto& card = this->ep3_card_index->definition_for_name_normalized(name);
-          if (card->def.type != Episode3::CardType::ASSIST) {
-            throw runtime_error(string_printf("Ep3 card \"%s\" in trap card list is not an assist card", name.c_str()));
-          }
-          ids.emplace_back(card->def.card_id);
-        } catch (const out_of_range&) {
-          throw runtime_error(string_printf("Ep3 card \"%s\" in trap card list does not exist", name.c_str()));
-        }
-      }
-    }
-  }
-}
-
 void ServerState::load_quest_index() {
   config_log.info("Collecting quests");
   this->default_quest_index = make_shared<QuestIndex>("system/quests", this->quest_category_index, false);
@@ -1441,14 +1314,137 @@ void ServerState::load_dol_files() {
   this->dol_file_index = make_shared<DOLFileIndex>("system/dol");
 }
 
-shared_ptr<const vector<string>> ServerState::information_contents_for_client(shared_ptr<const Client> c) const {
-  return is_v1_or_v2(c->version()) ? this->information_contents_v2 : this->information_contents_v3;
+void ServerState::create_default_lobbies() {
+  if (this->default_lobbies_created) {
+    return;
+  }
+  this->default_lobbies_created = true;
+
+  vector<shared_ptr<Lobby>> non_v1_only_lobbies;
+  vector<shared_ptr<Lobby>> ep3_only_lobbies;
+
+  for (size_t x = 0; x < 20; x++) {
+    auto lobby_name = string_printf("LOBBY%zu", x + 1);
+    bool allow_v1 = (x <= 9);
+    bool allow_non_ep3 = (x <= 14);
+
+    shared_ptr<Lobby> l = this->create_lobby(false);
+    l->event = this->pre_lobby_event;
+    l->set_flag(Lobby::Flag::PUBLIC);
+    l->set_flag(Lobby::Flag::DEFAULT);
+    l->set_flag(Lobby::Flag::PERSISTENT);
+    if (allow_non_ep3) {
+      if (allow_v1) {
+        l->allow_version(Version::DC_NTE);
+        l->allow_version(Version::DC_V1_11_2000_PROTOTYPE);
+        l->allow_version(Version::DC_V1);
+      }
+      l->allow_version(Version::DC_V2);
+      l->allow_version(Version::PC_NTE);
+      l->allow_version(Version::PC_V2);
+      l->allow_version(Version::GC_NTE);
+      l->allow_version(Version::GC_V3);
+      l->allow_version(Version::XB_V3);
+      l->allow_version(Version::BB_V4);
+    }
+    l->allow_version(Version::GC_EP3_NTE);
+    l->allow_version(Version::GC_EP3);
+
+    l->block = x + 1;
+    l->name = lobby_name;
+    l->max_clients = 12;
+    if (!allow_non_ep3) {
+      l->episode = Episode::EP3;
+    }
+
+    if (allow_non_ep3) {
+      this->public_lobby_search_order.emplace_back(l);
+    } else {
+      ep3_only_lobbies.emplace_back(l);
+    }
+  }
+
+  // Annoyingly, the CARD lobbies should be searched first, but are sent at the
+  // end of the lobby list command, so we have to change the search order
+  // manually here.
+  this->public_lobby_search_order.insert(
+      this->public_lobby_search_order.begin(),
+      ep3_only_lobbies.begin(),
+      ep3_only_lobbies.end());
 }
 
-shared_ptr<const QuestIndex> ServerState::quest_index_for_version(Version version) const {
-  return is_ep3(version) ? this->ep3_download_quest_index : this->default_quest_index;
-}
+void ServerState::create_load_step_graph() {
+  this->load_step_graph.add_step("all", {}, nullptr);
 
-void ServerState::dispatch_destroy_lobbies(evutil_socket_t, short, void* ctx) {
-  reinterpret_cast<ServerState*>(ctx)->lobbies_to_destroy.clear();
+  // In: none
+  // Out: all_addresses
+  this->load_step_graph.add_step("network_addresses", {"all"}, bind(&ServerState::collect_network_addresses, this));
+
+  // In: none
+  // Out: bb_private_keys
+  this->load_step_graph.add_step("bb_private_keys", {"all"}, bind(&ServerState::load_bb_private_keys, this));
+
+  // In: none
+  // Out: license_index
+  this->load_step_graph.add_step("licenses", {"all"}, bind(&ServerState::load_licenses, this));
+
+  // In: none
+  // Out: pc_patch_file_index, bb_patch_file_index, bb_data_gsl
+  this->load_step_graph.add_step("patch_indexes", {"all"}, bind(&ServerState::load_patch_indexes, this));
+
+  // In: none
+  // Out: ep3_map_index, ep3_card_index, ep3_card_index_trial, ep3_com_deck_index, ep3_tournament_index
+  this->load_step_graph.add_step("ep3_data", {"all"}, bind(&ServerState::load_ep3_data, this));
+
+  // In: none
+  // Out: function_code_index
+  this->load_step_graph.add_step("functions", {"all"}, bind(&ServerState::compile_functions, this));
+
+  // In: none
+  // Out: dol_file_index
+  this->load_step_graph.add_step("dol_files", {"all"}, bind(&ServerState::load_dol_files, this));
+
+  // In: none
+  // Out: lobbies
+  this->load_step_graph.add_step("lobbies", {"all"}, bind(&ServerState::create_default_lobbies, this));
+
+  // In: bb_patch_file_index
+  // Out: battle_params
+  this->load_step_graph.add_step("battle_params", {"all", "patch_indexes"}, bind(&ServerState::load_battle_params, this));
+
+  // In: bb_patch_file_index
+  // Out: level_table
+  this->load_step_graph.add_step("level_table", {"all", "patch_indexes"}, bind(&ServerState::load_level_table, this));
+
+  // In: bb_patch_file_index
+  // Out: text_index
+  this->load_step_graph.add_step("text_index", {"all", "patch_indexes"}, bind(&ServerState::load_text_index, this));
+
+  // In: text_index (optional)
+  // Out: word_select_table
+  this->load_step_graph.add_step("word_select_table", {"all"}, bind(&ServerState::load_word_select_table, this));
+
+  // In: none
+  // Out: item_parameter_tables, mag_evolution_table
+  this->load_step_graph.add_step("item_definitions", {"all"}, bind(&ServerState::load_item_definitions, this));
+
+  // In: text_index, item_parameter_tables
+  // Out: item_name_indexes
+  this->load_step_graph.add_step("item_name_indexes", {"all", "text_index", "item_definitions"}, bind(&ServerState::load_item_name_indexes, this));
+
+  // In: none
+  // Out: rare_item_sets, common_item_sets, armor_random_set, tool_random_set, weapon_random_sets, tekker_adjustment_set
+  this->load_step_graph.add_step("drop_tables", {"all", "item_definitions", "item_name_indexes"}, bind(&ServerState::load_drop_tables, this));
+
+  // In: all_addresses, ep3_card_index, item_name_indexes
+  // Out: config, ep3_lobby_banners, quest_category_index, information menus, proxy destinations menus, team_reward_defs_json
+  this->load_step_graph.add_step("config", {"all", "network_addresses", "ep3_data", "item_name_indexes"}, bind(&ServerState::load_config, this));
+
+  // In: team_reward_defs_json
+  // Out: team_index
+  this->load_step_graph.add_step("teams", {"all", "config"}, bind(&ServerState::load_teams, this));
+
+  // In: quest_category_index
+  // Out: default_quest_index, ep3_download_quest_index
+  this->load_step_graph.add_step("quest_index", {"all", "config"}, bind(&ServerState::load_quest_index, this));
 }

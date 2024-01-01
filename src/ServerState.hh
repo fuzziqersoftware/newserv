@@ -25,6 +25,7 @@
 #include "Menu.hh"
 #include "PlayerFilesManager.hh"
 #include "Quest.hh"
+#include "StepGraph.hh"
 #include "TeamIndex.hh"
 #include "WordSelectTable.hh"
 
@@ -63,52 +64,56 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   std::shared_ptr<struct event_base> base;
 
   std::string config_filename;
-  bool is_replay;
+  bool is_replay = false;
+  bool config_loaded = false;
+  bool default_lobbies_created = false;
+
+  StepGraph load_step_graph;
 
   std::string name;
   std::unordered_map<std::string, std::shared_ptr<PortConfiguration>> name_to_port_config;
   std::unordered_map<uint16_t, std::shared_ptr<PortConfiguration>> number_to_port_config;
   std::string username;
-  uint16_t dns_server_port;
+  uint16_t dns_server_port = 0;
   std::vector<std::string> ip_stack_addresses;
   std::vector<std::string> ppp_stack_addresses;
-  bool ip_stack_debug;
-  bool allow_unregistered_users;
-  bool allow_pc_nte;
-  bool use_temp_licenses_for_prototypes;
-  bool allow_dc_pc_games;
-  bool allow_gc_xb_games;
-  uint8_t allowed_drop_modes_v1_v2_normal;
-  uint8_t allowed_drop_modes_v1_v2_battle;
-  uint8_t allowed_drop_modes_v1_v2_challenge;
-  uint8_t allowed_drop_modes_v3_normal;
-  uint8_t allowed_drop_modes_v3_battle;
-  uint8_t allowed_drop_modes_v3_challenge;
-  uint8_t allowed_drop_modes_v4_normal;
-  uint8_t allowed_drop_modes_v4_battle;
-  uint8_t allowed_drop_modes_v4_challenge;
-  Lobby::DropMode default_drop_mode_v1_v2_normal;
-  Lobby::DropMode default_drop_mode_v1_v2_battle;
-  Lobby::DropMode default_drop_mode_v1_v2_challenge;
-  Lobby::DropMode default_drop_mode_v3_normal;
-  Lobby::DropMode default_drop_mode_v3_battle;
-  Lobby::DropMode default_drop_mode_v3_challenge;
-  Lobby::DropMode default_drop_mode_v4_normal;
-  Lobby::DropMode default_drop_mode_v4_battle;
-  Lobby::DropMode default_drop_mode_v4_challenge;
+  bool ip_stack_debug = false;
+  bool allow_unregistered_users = false;
+  bool allow_pc_nte = false;
+  bool use_temp_licenses_for_prototypes = true;
+  bool allow_dc_pc_games = true;
+  bool allow_gc_xb_games = true;
+  uint8_t allowed_drop_modes_v1_v2_normal = 0x1F;
+  uint8_t allowed_drop_modes_v1_v2_battle = 0x07;
+  uint8_t allowed_drop_modes_v1_v2_challenge = 0x07;
+  uint8_t allowed_drop_modes_v3_normal = 0x1F;
+  uint8_t allowed_drop_modes_v3_battle = 0x07;
+  uint8_t allowed_drop_modes_v3_challenge = 0x07;
+  uint8_t allowed_drop_modes_v4_normal = 0x1D; // CLIENT not allowed
+  uint8_t allowed_drop_modes_v4_battle = 0x05;
+  uint8_t allowed_drop_modes_v4_challenge = 0x05;
+  Lobby::DropMode default_drop_mode_v1_v2_normal = Lobby::DropMode::CLIENT;
+  Lobby::DropMode default_drop_mode_v1_v2_battle = Lobby::DropMode::CLIENT;
+  Lobby::DropMode default_drop_mode_v1_v2_challenge = Lobby::DropMode::CLIENT;
+  Lobby::DropMode default_drop_mode_v3_normal = Lobby::DropMode::CLIENT;
+  Lobby::DropMode default_drop_mode_v3_battle = Lobby::DropMode::CLIENT;
+  Lobby::DropMode default_drop_mode_v3_challenge = Lobby::DropMode::CLIENT;
+  Lobby::DropMode default_drop_mode_v4_normal = Lobby::DropMode::SERVER_SHARED;
+  Lobby::DropMode default_drop_mode_v4_battle = Lobby::DropMode::SERVER_SHARED;
+  Lobby::DropMode default_drop_mode_v4_challenge = Lobby::DropMode::SERVER_SHARED;
   QuestFlagsForDifficulty quest_flag_persist_mask;
-  uint64_t persistent_game_idle_timeout_usecs;
-  bool ep3_send_function_call_enabled;
-  bool catch_handler_exceptions;
-  bool ep3_infinite_meseta;
-  std::vector<uint32_t> ep3_defeat_player_meseta_rewards;
-  std::vector<uint32_t> ep3_defeat_com_meseta_rewards;
-  uint32_t ep3_final_round_meseta_bonus;
-  bool ep3_jukebox_is_free;
-  uint32_t ep3_behavior_flags;
-  bool hide_download_commands;
-  RunShellBehavior run_shell_behavior;
-  BehaviorSwitch cheat_mode_behavior;
+  uint64_t persistent_game_idle_timeout_usecs = 0;
+  bool ep3_send_function_call_enabled = false;
+  bool catch_handler_exceptions = true;
+  bool ep3_infinite_meseta = false;
+  std::vector<uint32_t> ep3_defeat_player_meseta_rewards = {400, 500, 600, 700, 800};
+  std::vector<uint32_t> ep3_defeat_com_meseta_rewards = {100, 200, 300, 400, 500};
+  uint32_t ep3_final_round_meseta_bonus = 300;
+  bool ep3_jukebox_is_free = false;
+  uint32_t ep3_behavior_flags = 0;
+  bool hide_download_commands = true;
+  RunShellBehavior run_shell_behavior = RunShellBehavior::DEFAULT;
+  BehaviorSwitch cheat_mode_behavior = BehaviorSwitch::OFF_BY_DEFAULT;
   std::vector<std::shared_ptr<const PSOBBEncryption::KeyFile>> bb_private_keys;
   std::shared_ptr<const FunctionCodeIndex> function_code_index;
   std::shared_ptr<const PatchFileIndex> pc_patch_file_index;
@@ -161,21 +166,19 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   std::vector<QuestF960Result> quest_F960_success_results;
   QuestF960Result quest_F960_failure_results;
   std::vector<ItemData> secret_lottery_results;
-  uint16_t bb_global_exp_multiplier;
+  uint16_t bb_global_exp_multiplier = 1;
 
   std::shared_ptr<Episode3::TournamentIndex> ep3_tournament_index;
 
-  uint16_t ep3_card_auction_points;
-  uint16_t ep3_card_auction_min_size;
-  uint16_t ep3_card_auction_max_size;
+  uint16_t ep3_card_auction_points = 0;
+  uint16_t ep3_card_auction_min_size = 0;
+  uint16_t ep3_card_auction_max_size = 0;
   struct CardAuctionPoolEntry {
     uint64_t probability;
     uint16_t card_id;
     uint16_t min_price;
-    std::string card_name;
   };
   std::vector<CardAuctionPoolEntry> ep3_card_auction_pool;
-  std::vector<std::vector<std::string>> ep3_trap_card_names;
   std::array<std::vector<uint16_t>, 5> ep3_trap_card_ids;
   struct Ep3LobbyBannerEntry {
     uint32_t type = 1;
@@ -212,26 +215,28 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   std::unordered_set<std::shared_ptr<Lobby>> lobbies_to_destroy;
   std::shared_ptr<struct event> destroy_lobbies_event;
   std::vector<std::shared_ptr<Lobby>> public_lobby_search_order;
-  std::atomic<int32_t> next_lobby_id;
-  uint8_t pre_lobby_event;
-  int32_t ep3_menu_song;
+  std::atomic<int32_t> next_lobby_id = 1;
+  uint8_t pre_lobby_event = 0;
+  int32_t ep3_menu_song = -1;
 
   std::map<std::string, uint32_t> all_addresses;
-  uint32_t local_address;
-  uint32_t external_address;
+  uint32_t local_address = 0;
+  uint32_t external_address = 0;
 
-  bool proxy_allow_save_files;
-  bool proxy_enable_login_options;
+  bool proxy_allow_save_files = true;
+  bool proxy_enable_login_options = false;
 
   std::shared_ptr<ProxyServer> proxy_server;
   std::shared_ptr<Server> game_server;
 
+  ServerState();
   ServerState(std::shared_ptr<struct event_base> base, const std::string& config_filename, bool is_replay);
   ServerState(const ServerState&) = delete;
   ServerState(ServerState&&) = delete;
   ServerState& operator=(const ServerState&) = delete;
   ServerState& operator=(ServerState&&) = delete;
-  void init();
+  void load_objects(const std::string& what);
+  void load_objects(const std::vector<std::string>& what);
 
   void add_client_to_available_lobby(std::shared_ptr<Client> c);
   void remove_client_from_lobby(std::shared_ptr<Client> c);
@@ -278,21 +283,24 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
       const std::string& gsl_filename = "",
       const std::string& bb_directory_filename = "") const;
 
-  JSON load_config() const;
+  void create_load_step_graph();
+  void create_default_lobbies();
   void collect_network_addresses();
-  void parse_config(const JSON& config_json, bool is_reload);
+  void load_config();
   void load_bb_private_keys();
   void load_licenses();
   void load_teams();
   void load_patch_indexes();
   void load_battle_params();
   void load_level_table();
-  void load_item_name_index();
-  void load_item_tables();
-  static std::shared_ptr<WordSelectTable> load_word_select_table_from_system();
+  void load_text_index();
+  static std::shared_ptr<ItemNameIndex> create_item_name_index_for_version(
+      Version version, std::shared_ptr<const ItemParameterTable> pmt, std::shared_ptr<const TextIndex> text_index);
+  void load_item_name_indexes();
+  void load_drop_tables();
+  void load_item_definitions();
   void load_word_select_table();
   void load_ep3_data();
-  void resolve_ep3_card_names();
   void load_quest_index();
   void compile_functions();
   void load_dol_files();

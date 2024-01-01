@@ -120,17 +120,24 @@ General commands:\n\
 \n\
 Server commands:\n\
   reload ITEM [ITEM...]\n\
-    Reload various parts of the server configuration. ITEMs can be:\n\
-      licenses - reload the license index file\n\
-      patches - reindex the PC and BB patch directories\n\
-      battle-params - reload the enemy stats files\n\
-      level-table - reload the level-up tables\n\
-      item-tables - reload the item generation tables\n\
-      ep3 - reload Episode 3 card definitions and maps (not download quests)\n\
-      quests - reindex all quests (including Episode 3 download quests)\n\
-      functions - recompile all client-side functions\n\
-      dol-files - reindex all DOL files\n\
+    Reload various parts of the server configuration. When you reload any item,\n\
+    any other item that depends on it will be reloaded as well. The items are:\n\
+      all - reindex/reload everything\n\
+      battle-params - reload the BB enemy stats files\n\
+      bb-private-keys - reload BB private keys\n\
       config - reload most fields from config.json\n\
+      dol-files - reindex all DOL files\n\
+      drop-tables - reload drop tables\n\
+      ep3-data - reload Episode 3 cards and maps (not download quests)\n\
+      functions - recompile all client-side patches and functions\n\
+      item-definitions - reload item definitions files\n\
+      level-table - reload the level-up tables\n\
+      licenses - reindex user licenses\n\
+      patch-indexes - reindex the PC and BB patch directories\n\
+      quest-index - reindex all quests (including Episode3 download quests)\n\
+      teams - reindex all BB teams\n\
+      text-index - reload in-game text\n\
+      word-select-table - regenerate the Word Select translation table\n\
     Reloading will not affect items that are in use; for example, if an Episode\n\
     3 battle is in progress, it will continue to use the previous map and card\n\
     definitions. Similarly, BB clients are not forced to disconnect or reload\n\
@@ -285,41 +292,14 @@ Proxy session commands:\n\
     if (types.empty()) {
       throw invalid_argument("no data type given");
     }
-    for (const string& type : types) {
-      if (type == "licenses") {
-        this->state->load_licenses();
-      } else if (type == "teams") {
-        this->state->load_teams();
-      } else if (type == "patches") {
-        this->state->load_patch_indexes();
-      } else if (type == "battle-params") {
-        this->state->load_battle_params();
-      } else if (type == "level-table") {
-        this->state->load_level_table();
-      } else if (type == "item-tables") {
-        this->state->load_item_name_index();
-        this->state->load_item_tables();
-      } else if (type == "word-select") {
-        this->state->load_word_select_table();
-      } else if (type == "ep3") {
-        this->state->load_ep3_data();
-      } else if (type == "quests") {
-        this->state->load_quest_index();
-      } else if (type == "functions") {
-        auto config_json = this->state->load_config();
-        this->state->compile_functions();
-      } else if (type == "dol-files") {
-        auto config_json = this->state->load_config();
-        this->state->load_dol_files();
-      } else if (type == "config") {
-        auto config_json = this->state->load_config();
-        this->state->parse_config(config_json, true);
-        this->state->resolve_ep3_card_names();
-        this->state->load_teams();
-      } else {
-        throw invalid_argument("incorrect data type");
+    for (auto& type : types) {
+      for (char& ch : type) {
+        if (ch == '-') {
+          ch = '_';
+        }
       }
     }
+    this->state->load_objects(types);
 
   } else if (command_name == "add-license") {
     auto l = this->state->license_index->create_license();
