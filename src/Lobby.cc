@@ -483,7 +483,16 @@ void Lobby::add_client(shared_ptr<Client> c, ssize_t required_client_id) {
     }
   }
 
-  this->assign_inventory_and_bank_item_ids(c);
+  // If this is not a game or the joining client is the leader, they will assign
+  // their item IDs BEFORE they process any inbound commands (therefore a 6x6D
+  // command, which we will send during loading, should reflect the item state
+  // AFTER their IDs are assigned). If the joining client is not the leader,
+  // they will not assign their item IDs until they receive a 6x71 command,
+  // which is sent AFTER the 6x6D command, so the 6x6D should reflect the item
+  // state BEFORE their IDs are assigned. (In the latter case, we'll assign the
+  // IDs for real when they send a 6F command, or 6x1F equivalent in the case of
+  // DC NTE and 11/2000.)
+  this->assign_inventory_and_bank_item_ids(c, (!this->is_game() || (c->lobby_client_id == this->leader_id)));
 
   // On BB, we send artificial flag state to fix an Episode 2 bug where the
   // CCA door lock state is overwritten by quests.
@@ -710,17 +719,22 @@ void Lobby::on_item_id_generated_externally(uint32_t item_id) {
   }
 }
 
-void Lobby::assign_inventory_and_bank_item_ids(shared_ptr<Client> c) {
+void Lobby::assign_inventory_and_bank_item_ids(shared_ptr<Client> c, bool consume_ids) {
   auto p = c->character();
+  uint32_t orig_next_item_id = this->next_item_id_for_client.at(c->lobby_client_id);
   for (size_t z = 0; z < p->inventory.num_items; z++) {
     p->inventory.items[z].data.id = this->generate_item_id(c->lobby_client_id);
   }
-  if (c->log.info("Assigned inventory item IDs")) {
-    p->print_inventory(stderr, c->version(), c->require_server_state()->item_name_index);
+  if (!consume_ids) {
+    this->next_item_id_for_client[c->lobby_client_id] = orig_next_item_id;
+  }
+
+  if (c->log.info("Assigned inventory item IDs%s", consume_ids ? "" : " but did not mark IDs as used")) {
+    c->print_inventory(stderr);
     if (p->bank.num_items) {
       p->bank.assign_ids(0x99000000 + (c->lobby_client_id << 20));
       c->log.info("Assigned bank item IDs");
-      p->print_bank(stderr, c->version(), c->require_server_state()->item_name_index);
+      c->print_bank(stderr);
     } else {
       c->log.info("Bank is empty");
     }

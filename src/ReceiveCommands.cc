@@ -2033,7 +2033,7 @@ static void on_quest_loaded(shared_ptr<Lobby> l) {
         lc->use_default_bank();
         lc->create_challenge_overlay(lc->version(), l->quest->challenge_template_index, s->level_table);
         lc->log.info("Created challenge overlay");
-        l->assign_inventory_and_bank_item_ids(lc);
+        l->assign_inventory_and_bank_item_ids(lc, true);
       }
     }
   }
@@ -3620,7 +3620,7 @@ static void on_DF_BB(shared_ptr<Client> c, uint16_t command, uint32_t, string& d
           lc->use_default_bank();
           lc->create_challenge_overlay(lc->version(), l->quest->challenge_template_index, s->level_table);
           lc->log.info("Created challenge overlay");
-          l->assign_inventory_and_bank_item_ids(lc);
+          l->assign_inventory_and_bank_item_ids(lc, true);
         }
       }
 
@@ -4361,17 +4361,23 @@ static void on_6F(shared_ptr<Client> c, uint16_t command, uint32_t, string& data
   if (!l->is_game()) {
     throw runtime_error("client sent ready command outside of game");
   }
-  c->config.clear_flag(Client::Flag::LOADING);
+
+  // Episode 3 sends a 6F after a CAx21 (end battle) command, so we shouldn't
+  // reassign the items IDs again in that case (even though item IDs really
+  // don't matter for Ep3)
+  if (c->config.check_flag(Client::Flag::LOADING)) {
+    c->config.clear_flag(Client::Flag::LOADING);
+
+    // The client sends 6F when it has created its TObjPlayer and assigned its
+    // item IDs. For the leader, however, this happens before any inbound commands
+    // are processed, so we already did it when the client was added to the lobby.
+    // So, we only assign item IDs here if the client is not the leader.
+    if ((command == 0x006F) && (c->lobby_client_id != l->leader_id)) {
+      l->assign_inventory_and_bank_item_ids(c, true);
+    }
+  }
 
   send_server_time(c);
-  if (l->base_version == Version::BB_V4) {
-    send_set_exp_multiplier(l);
-  }
-  if (c->version() == Version::BB_V4) {
-    send_update_team_reward_flags(c);
-    send_all_nearby_team_metadatas_to_client(c, false);
-  }
-
   if (c->config.check_flag(Client::Flag::DEBUG_ENABLED)) {
     string variations_str;
     for (size_t z = 0; z < l->variations.size(); z++) {
@@ -4382,6 +4388,10 @@ static void on_6F(shared_ptr<Client> c, uint16_t command, uint32_t, string& data
 
   bool should_resume_game = true;
   if (c->version() == Version::BB_V4) {
+    send_set_exp_multiplier(l);
+    send_update_team_reward_flags(c);
+    send_all_nearby_team_metadatas_to_client(c, false);
+
     // BB sends 016F when the client is done loading a quest. In that case, we
     // shouldn't send the quest to them again!
     if ((command == 0x006F) && l->check_flag(Lobby::Flag::JOINABLE_QUEST_IN_PROGRESS)) {

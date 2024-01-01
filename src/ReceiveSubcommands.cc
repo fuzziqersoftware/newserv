@@ -1136,6 +1136,7 @@ static void on_change_floor_6x1F(shared_ptr<Client> c, uint8_t command, uint8_t 
     if (c->config.check_flag(Client::Flag::LOADING)) {
       c->config.clear_flag(Client::Flag::LOADING);
       send_resume_game(c->require_lobby(), c);
+      c->require_lobby()->assign_inventory_and_bank_item_ids(c, true);
     }
 
   } else {
