@@ -1478,6 +1478,12 @@ static void proxy_command_song(shared_ptr<ProxyServer::LinkedSession> ses, const
   send_ep3_change_music(ses->client_channel, song);
 }
 
+static void server_command_rare_notifs(shared_ptr<Client> c, const std::string&) {
+  c->config.toggle_flag(Client::Flag::RARE_DROP_NOTIFICATIONS_ENABLED);
+  bool enabled = c->config.check_flag(Client::Flag::RARE_DROP_NOTIFICATIONS_ENABLED);
+  send_text_message_printf(c, "$C6Rare notifications\n%s", enabled ? "enabled" : "disabled");
+}
+
 static void server_command_infinite_hp(shared_ptr<Client> c, const std::string&) {
   auto s = c->require_server_state();
   auto l = c->require_lobby();
@@ -1994,6 +2000,7 @@ static const unordered_map<string, ChatCommandDefinition> chat_commands({
     {"$qsyncall", {server_command_qsyncall, proxy_command_qsyncall}},
     {"$quest", {server_command_quest, nullptr}},
     {"$rand", {server_command_rand, proxy_command_rand}},
+    {"$rarenotifs", {server_command_rare_notifs, nullptr}},
     {"$save", {server_command_save, nullptr}},
     {"$savechar", {server_command_savechar, nullptr}},
     {"$saverec", {server_command_saverec, nullptr}},

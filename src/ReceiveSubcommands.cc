@@ -1539,6 +1539,16 @@ static void on_buy_shop_item(shared_ptr<Client> c, uint8_t command, uint8_t flag
   forward_subcommand_with_item_transcode_t(c, command, flag, cmd);
 }
 
+static void send_rare_notification_if_needed(shared_ptr<Client> to_c, const ItemData& item) {
+  auto s = to_c->require_server_state();
+  if (!to_c->config.check_flag(Client::Flag::RARE_DROP_NOTIFICATIONS_ENABLED) ||
+      !s->item_parameter_table(to_c->version())->is_item_rare(item)) {
+    return;
+  }
+  string name = s->describe_item(to_c->version(), item, true);
+  send_text_message_printf(to_c, "$C6Rare item dropped:\n%s", name.c_str());
+}
+
 template <typename CmdT>
 static void on_box_or_enemy_item_drop_t(shared_ptr<Client> c, uint8_t command, uint8_t flag, void* data, size_t size) {
   // I'm lazy and this should never happen for item commands (since all players
@@ -1568,22 +1578,25 @@ static void on_box_or_enemy_item_drop_t(shared_ptr<Client> c, uint8_t command, u
       l->leader_id, item.id.load(), name.c_str(), cmd.item.floor, cmd.item.x.load(), cmd.item.z.load());
 
   for (auto& lc : l->clients) {
-    if (!lc || lc == c) {
+    if (!lc) {
       continue;
     }
-    if (c->version() != lc->version()) {
-      CmdT out_cmd = cmd;
-      out_cmd.header.subcommand = translate_subcommand_number(lc->version(), c->version(), out_cmd.header.subcommand);
-      if (out_cmd.header.subcommand) {
-        out_cmd.item.item.decode_for_version(c->version());
-        out_cmd.item.item.encode_for_version(lc->version(), s->item_parameter_table(lc->version()));
-        send_command_t(lc, command, flag, out_cmd);
+    if (lc != c) {
+      if (c->version() != lc->version()) {
+        CmdT out_cmd = cmd;
+        out_cmd.header.subcommand = translate_subcommand_number(lc->version(), c->version(), out_cmd.header.subcommand);
+        if (out_cmd.header.subcommand) {
+          out_cmd.item.item.decode_for_version(c->version());
+          out_cmd.item.item.encode_for_version(lc->version(), s->item_parameter_table(lc->version()));
+          send_command_t(lc, command, flag, out_cmd);
+        } else {
+          lc->log.info("Subcommand cannot be translated to client\'s version");
+        }
       } else {
-        lc->log.info("Subcommand cannot be translated to client\'s version");
+        send_command_t(lc, command, flag, cmd);
       }
-    } else {
-      send_command_t(lc, command, flag, cmd);
     }
+    send_rare_notification_if_needed(lc, item);
   }
 }
 
@@ -2144,6 +2157,7 @@ static void on_entity_drop_item_request(shared_ptr<Client> c, uint8_t command, u
                   item.id.load(), cmd.floor, cmd.x.load(), cmd.z.load(), lc->channel.name.c_str());
               l->add_item(cmd.floor, item, cmd.x, cmd.z, (1 << lc->lobby_client_id));
               send_drop_item_to_channel(s, lc->channel, item, cmd.rt_index != 0x30, cmd.floor, cmd.x, cmd.z, cmd.entity_id);
+              send_rare_notification_if_needed(lc, item);
             }
           }
 
@@ -2153,6 +2167,11 @@ static void on_entity_drop_item_request(shared_ptr<Client> c, uint8_t command, u
               item.id.load(), cmd.floor, cmd.x.load(), cmd.z.load());
           l->add_item(cmd.floor, item, cmd.x, cmd.z, 0x00F);
           send_drop_item_to_lobby(l, item, cmd.rt_index != 0x30, cmd.floor, cmd.x, cmd.z, cmd.entity_id);
+          for (auto lc : l->clients) {
+            if (lc) {
+              send_rare_notification_if_needed(lc, item);
+            }
+          }
         }
       }
       break;
@@ -2171,6 +2190,7 @@ static void on_entity_drop_item_request(shared_ptr<Client> c, uint8_t command, u
                 item.id.load(), cmd.floor, cmd.x.load(), cmd.z.load(), lc->channel.name.c_str());
             l->add_item(cmd.floor, item, cmd.x, cmd.z, (1 << lc->lobby_client_id));
             send_drop_item_to_channel(s, lc->channel, item, cmd.rt_index != 0x30, cmd.floor, cmd.x, cmd.z, cmd.entity_id);
+            send_rare_notification_if_needed(lc, item);
           }
         }
       }

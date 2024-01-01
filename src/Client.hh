@@ -68,10 +68,11 @@ public:
     SHOULD_SEND_ENABLE_SAVE             = 0x0004000000000000,
     SWITCH_ASSIST_ENABLED               = 0x0000000100000000,
 
-    // Cheat mode flags
+    // Cheat mode and option flags
     INFINITE_HP_ENABLED                 = 0x0000000200000000,
     INFINITE_TP_ENABLED                 = 0x0000000400000000,
     DEBUG_ENABLED                       = 0x0000000800000000,
+    RARE_DROP_NOTIFICATIONS_ENABLED     = 0x0010000000000000,
 
     // Proxy option flags
     PROXY_SAVE_FILES                    = 0x0000001000000000,
