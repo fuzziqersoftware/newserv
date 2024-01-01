@@ -1783,7 +1783,8 @@ static HandlerResult C_V123_A0_A1(shared_ptr<ProxyServer::LinkedSession> ses, ui
 }
 
 // Indexed as [command][version][is_from_client]
-static on_command_t handlers[0x100][14][2] = {
+static_assert(NUM_VERSIONS == 14, "Don\'t forget to update the ProxyCommands handlers table");
+static on_command_t handlers[0x100][NUM_VERSIONS][2] = {
     // clang-format off
 // CMD     S_PC_PATCH     C          S_BB_PATCH        C       S_DC_NTE C          S_DC_V1_12_2000_PROTO C          S_DC_V1           C              S_DC_V2           C               S_PC_NTE       C               S_PC_V2        C               S_GC_NTE          C              S_GC_V3           C               S_GC_EP3_NTE      C               S_GC_EP3          C               S_XB_V3        C               S_BB_V4       C
 /* 00 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr}, {nullptr, nullptr}, {S_invalid,        nullptr},     {S_invalid,        nullptr},     {S_invalid,        nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,        nullptr},     {S_invalid,        nullptr},      {S_invalid,        nullptr},      {S_invalid,        nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},

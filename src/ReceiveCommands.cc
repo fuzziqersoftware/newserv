@@ -5216,9 +5216,10 @@ typedef void (*on_command_t)(shared_ptr<Client> c, uint16_t command, uint32_t fl
 // Command handler table, indexed by command number and game version. Null
 // entries in this table cause on_unimplemented_command to be called, which
 // disconnects the client.
-static on_command_t handlers[0x100][14] = {
+static_assert(NUM_VERSIONS == 14, "Don\'t forget to update the ReceiveCommands handler table");
+static on_command_t handlers[0x100][NUM_VERSIONS] = {
     // clang-format off
-//        PC_PATCH BB_PATCH DC_NTE         DC_PROTO       DCV1           DCV2            PC-NTE       PC           GCNTE           GC              EP3TE           EP3             XB              BB
+//        PC_PATCH BB_PATCH DC_NTE         DC_112000      DCV1           DCV2            PC_NTE       PC           GCNTE           GC              EP3TE           EP3             XB              BB
 /* 00 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
 /* 01 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
 /* 02 */ {on_02_P, on_02_P, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},

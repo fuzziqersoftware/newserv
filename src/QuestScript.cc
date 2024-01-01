@@ -189,6 +189,8 @@ constexpr uint16_t v_flag(Version v) {
 
 using Arg = QuestScriptOpcodeDefinition::Argument;
 
+static_assert(NUM_VERSIONS == 14, "Don\'t forget to update the QuestScript flags and opcode definitions table");
+
 static constexpr uint16_t F_PASS = 0x0001; // Version::PC_PATCH (unused for quests)
 static constexpr uint16_t F_ARGS = 0x0002; // Version::BB_PATCH (unused for quests)
 static constexpr uint16_t F_DC_NTE = 0x0004; // Version::DC_NTE
