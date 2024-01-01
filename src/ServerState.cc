@@ -44,12 +44,20 @@ ServerState::ServerState(shared_ptr<struct event_base> base, const string& confi
   this->create_load_step_graph();
 }
 
-void ServerState::load_objects(const std::string& what) {
-  this->load_step_graph.run(what);
+void ServerState::load_objects_and_downstream_dependents(const std::string& what) {
+  this->load_step_graph.run(what, false);
 }
 
-void ServerState::load_objects(const std::vector<std::string>& what) {
-  this->load_step_graph.run(what);
+void ServerState::load_objects_and_downstream_dependents(const std::vector<std::string>& what) {
+  this->load_step_graph.run(what, false);
+}
+
+void ServerState::load_objects_and_upstream_dependents(const std::string& what) {
+  this->load_step_graph.run(what, true);
+}
+
+void ServerState::load_objects_and_upstream_dependents(const std::vector<std::string>& what) {
+  this->load_step_graph.run(what, true);
 }
 
 void ServerState::add_client_to_available_lobby(shared_ptr<Client> c) {

@@ -10,15 +10,16 @@ void StepGraph::add_step(const string& name, const vector<string>& depends_on_na
   for (const auto& depends_on_name : depends_on_names) {
     auto upstream_step = this->steps.at(depends_on_name);
     upstream_step->downstream_dependencies.emplace_back(new_step);
+    new_step->upstream_dependencies.emplace_back(upstream_step);
   }
 }
 
-void StepGraph::run(const string& start_step_name) {
+void StepGraph::run(const string& start_step_name, bool run_upstreams) {
   vector<string> start_step_names({start_step_name});
-  this->run(start_step_names);
+  this->run(start_step_names, run_upstreams);
 }
 
-void StepGraph::run(const vector<string>& start_step_names) {
+void StepGraph::run(const vector<string>& start_step_names, bool run_upstreams) {
   // Collect all steps to run
   deque<shared_ptr<Step>> steps_to_visit;
   try {
@@ -33,8 +34,18 @@ void StepGraph::run(const vector<string>& start_step_names) {
     auto step = std::move(steps_to_visit.front());
     steps_to_visit.pop_front();
     if (steps_to_run.emplace(step).second) {
-      for (const auto& downstream_step : step->downstream_dependencies) {
-        steps_to_visit.emplace_back(downstream_step);
+      if (run_upstreams) {
+        for (const auto& w_other_step : step->upstream_dependencies) {
+          auto other_step = w_other_step.lock();
+          if (!other_step) {
+            throw runtime_error("upstream step is deleted");
+          }
+          steps_to_visit.emplace_back(other_step);
+        }
+      } else {
+        for (const auto& other_step : step->downstream_dependencies) {
+          steps_to_visit.emplace_back(other_step);
+        }
       }
     }
   }

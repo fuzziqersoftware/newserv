@@ -1278,7 +1278,7 @@ Action a_print_word_select_table(
     option is given, prints the token table sorted by canonical name.\n",
     +[](Arguments& args) {
       ServerState s;
-      s.load_objects("word_select_table");
+      s.load_objects_and_upstream_dependents("word_select_table");
       Version v;
       try {
         v = get_cli_version(args);
@@ -1335,7 +1335,7 @@ Action a_convert_rare_item_set(
       auto version = get_cli_version(args);
 
       ServerState s;
-      s.load_objects("item_name_indexes");
+      s.load_objects_and_upstream_dependents("item_name_indexes");
 
       string input_filename = args.get<string>(1, false);
       if (input_filename.empty() || (input_filename == "-")) {
@@ -1390,7 +1390,7 @@ Action a_describe_item(
       auto version = get_cli_version(args);
 
       ServerState s;
-      s.load_objects("item_name_indexes");
+      s.load_objects_and_upstream_dependents("item_name_indexes");
       auto name_index = s.item_name_index(version);
 
       ItemData item = name_index->parse_item_description(description);
@@ -1450,7 +1450,7 @@ Action a_describe_item(
 Action a_name_all_items(
     "name-all-items", nullptr, +[](Arguments&) {
       ServerState s;
-      s.load_objects("item_name_indexes");
+      s.load_objects_and_upstream_dependents("item_name_indexes");
 
       set<uint32_t> all_primary_identifiers;
       for (const auto& index : s.item_name_indexes) {
@@ -1494,7 +1494,7 @@ Action a_show_ep3_cards(
       bool one_line = args.get<bool>("one-line");
 
       ServerState s;
-      s.load_objects("ep3_data");
+      s.load_objects_and_upstream_dependents("ep3_data");
 
       unique_ptr<BinaryTextSet> text_english;
       try {
@@ -1541,8 +1541,8 @@ Action a_generate_ep3_cards_html(
       size_t num_threads = args.get<size_t>("threads", 0);
 
       ServerState s;
-      s.load_objects("ep3_data");
-      s.load_objects("text_index");
+      s.load_objects_and_upstream_dependents("ep3_data");
+      s.load_objects_and_upstream_dependents("text_index");
 
       shared_ptr<const TextSet> text_english;
       try {
@@ -1678,7 +1678,7 @@ Action a_show_ep3_maps(
       config_log.info("Collecting Episode 3 data");
 
       ServerState s;
-      s.load_objects("ep3_data");
+      s.load_objects_and_upstream_dependents("ep3_data");
 
       auto map_ids = s.ep3_map_index->all_numbers();
       log_info("%zu maps", map_ids.size());
@@ -1702,7 +1702,7 @@ Action a_show_battle_params(
     in a human-readable format.\n",
     +[](Arguments&) {
       ServerState s;
-      s.load_objects("battle_params");
+      s.load_objects_and_upstream_dependents("battle_params");
 
       fprintf(stdout, "Episode 1 multi\n");
       s.battle_params->get_table(false, Episode::EP1).print(stdout);
@@ -1837,7 +1837,7 @@ Action a_diff_dol_files(
 Action a_replay_ep3_battle_commands(
     "replay-ep3-battle-commands", nullptr, +[](Arguments& args) {
       ServerState s;
-      s.load_objects("ep3_data");
+      s.load_objects_and_upstream_dependents("ep3_data");
 
       auto random_crypt = make_shared<PSOV2Encryption>(args.get<uint32_t>("seed", 0, Arguments::IntFormat::HEX));
       Episode3::Server::Options options = {
@@ -1886,7 +1886,7 @@ Action a_run_server_replay_log(
 
       shared_ptr<struct event_base> base(event_base_new(), event_base_free);
       auto state = make_shared<ServerState>(base, config_filename, is_replay);
-      state->load_objects("all");
+      state->load_objects_and_downstream_dependents("all");
 
       shared_ptr<DNSServer> dns_server;
       if (state->dns_server_port && !is_replay) {

@@ -299,7 +299,7 @@ Proxy session commands:\n\
         }
       }
     }
-    this->state->load_objects(types);
+    this->state->load_objects_and_downstream_dependents(types);
 
   } else if (command_name == "add-license") {
     auto l = this->state->license_index->create_license();

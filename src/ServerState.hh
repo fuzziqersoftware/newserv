@@ -237,8 +237,11 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   ServerState(ServerState&&) = delete;
   ServerState& operator=(const ServerState&) = delete;
   ServerState& operator=(ServerState&&) = delete;
-  void load_objects(const std::string& what);
-  void load_objects(const std::vector<std::string>& what);
+
+  void load_objects_and_downstream_dependents(const std::string& what);
+  void load_objects_and_downstream_dependents(const std::vector<std::string>& what);
+  void load_objects_and_upstream_dependents(const std::string& what);
+  void load_objects_and_upstream_dependents(const std::vector<std::string>& what);
 
   void add_client_to_available_lobby(std::shared_ptr<Client> c);
   void remove_client_from_lobby(std::shared_ptr<Client> c);
