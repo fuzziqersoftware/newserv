@@ -3,6 +3,7 @@
 #include <phosg/Random.hh>
 #include <phosg/Time.hh>
 
+#include "../Loggers.hh"
 #include "../SendCommands.hh"
 
 using namespace std;
@@ -26,6 +27,7 @@ void Server::PresenceEntry::clear() {
 
 Server::Server(shared_ptr<Lobby> lobby, Options&& options)
     : lobby(lobby),
+      has_lobby(lobby != nullptr),
       options(std::move(options)),
       last_chosen_map(this->options.tournament ? this->options.tournament->get_map() : nullptr),
       tournament_match_result_sent(false),
@@ -64,7 +66,11 @@ Server::Server(shared_ptr<Lobby> lobby, Options&& options)
       has_done_pb(0),
       num_6xB4x06_commands_sent(0),
       prev_num_6xB4x06_commands_sent(0) {
-  new StackLogger(this, lobby->log.prefix + "[Ep3::Server] ", lobby->log.min_level);
+  if (this->has_lobby) {
+    new StackLogger(this, lobby->log.prefix + "[Ep3::Server] ", lobby->log.min_level);
+  } else {
+    new StackLogger(this, "[Ep3::Server] ", lobby_log.min_level);
+  }
 }
 
 Server::~Server() noexcept(false) {
@@ -187,52 +193,50 @@ int8_t Server::get_winner_team_id() const {
   return -1; // No team has won (yet)
 }
 
-void Server::send(const void* data, size_t size) const {
+void Server::send(const void* data, size_t size, uint8_t command, bool enable_masking) const {
   // Note: This function is (obviously) not part of the original implementation.
-  auto l = this->lobby.lock();
-  if (!l) {
-    throw runtime_error("lobby is deleted");
-  }
+  if (this->has_lobby) {
+    auto l = this->lobby.lock();
+    if (!l) {
+      throw runtime_error("lobby is deleted");
+    }
 
-  string masked_data;
-  if (!(this->options.behavior_flags & BehaviorFlag::DISABLE_MASKING)) {
-    if (size >= 8) {
+    string masked_data;
+    if (enable_masking &&
+        !(this->options.behavior_flags & BehaviorFlag::DISABLE_MASKING) &&
+        (size >= 8)) {
       masked_data.assign(reinterpret_cast<const char*>(data), size);
       uint8_t mask_key = (random_object<uint32_t>() % 0xFF) + 1;
       set_mask_for_ep3_game_command(masked_data.data(), masked_data.size(), mask_key);
       data = masked_data.data();
       size = masked_data.size();
     }
-  }
 
-  // Note: Sega's servers sent battle commands with the 60 command. The handlers
-  // for 60, 62, and C9 on the client are identical, so we choose to use C9
-  // instead because it's unique to Episode 3, and therefore seems more
-  // appropriate to convey battle commands.
-  send_command(l, 0xC9, 0x00, data, size);
-  for (auto watcher_l : l->watcher_lobbies) {
-    send_command_if_not_loading(watcher_l, 0xC9, 0x00, data, size);
-  }
-  if (l->battle_record && l->battle_record->writable()) {
-    l->battle_record->add_command(
-        BattleRecord::Event::Type::BATTLE_COMMAND, data, size);
+    // Note: Sega's servers sent battle commands with the 60 command. The handlers
+    // for 60, 62, and C9 on the client are identical, so we choose to use C9
+    // instead because it's unique to Episode 3, and therefore seems more
+    // appropriate to convey battle commands.
+    send_command(l, command, 0x00, data, size);
+    for (auto watcher_l : l->watcher_lobbies) {
+      send_command_if_not_loading(watcher_l, command, 0x00, data, size);
+    }
+    if (l->battle_record && l->battle_record->writable()) {
+      l->battle_record->add_command(BattleRecord::Event::Type::BATTLE_COMMAND, data, size);
+    }
+
+  } else if (this->log().info("Generated command")) {
+    print_data(stderr, data, size);
   }
 }
 
 void Server::send_6xB4x46() const {
   // Note: This function is not part of the original implementation; it was
   // factored out from its callsites in this file and the strings were changed.
-  auto l = this->lobby.lock();
-  if (!l) {
-    throw runtime_error("lobby is deleted");
-  }
-
   G_ServerVersionStrings_GC_Ep3_6xB4x46 cmd46;
   cmd46.version_signature.encode(VERSION_SIGNATURE, 1);
   cmd46.date_str1.encode(format_time(this->options.card_index->definitions_mtime() * 1000000), 1);
   string date_str2 = string_printf(
-      "Lobby:%08" PRIX32 " Random:%08" PRIX32 "+%08" PRIX32,
-      l->lobby_id,
+      "Random:%08" PRIX32 "+%08" PRIX32,
       this->options.random_crypt->seed(),
       this->options.random_crypt->absolute_offset());
   if (this->last_chosen_map) {
@@ -2110,17 +2114,15 @@ void Server::handle_CAx1D_start_battle(shared_ptr<Client>, const string& data) {
       this->battle_in_progress = false;
     } else {
       auto l = this->lobby.lock();
-      if (!l) {
-        throw runtime_error("lobby is deleted");
-      }
-      if (l->battle_record) {
-        l->battle_record->set_battle_start_timestamp();
-      }
-
-      // Note: Sega's implementation doesn't set EX results values here; they
-      // did it at game join time instead. We do it here for code simplicity.
-      if (l->ep3_ex_result_values) {
-        this->send(*l->ep3_ex_result_values);
+      if (l) {
+        if (l->battle_record) {
+          l->battle_record->set_battle_start_timestamp();
+        }
+        // Note: Sega's implementation doesn't set EX results values here; they
+        // did it at game join time instead. We do it here for code simplicity.
+        if (l->ep3_ex_result_values) {
+          this->send(*l->ep3_ex_result_values);
+        }
       }
 
       this->setup_and_start_battle();
@@ -2327,65 +2329,66 @@ void Server::handle_CAx40_map_list_request(shared_ptr<Client> sender_c, const st
     throw runtime_error("lobby is deleted");
   }
 
-  const auto& list_data = this->options.map_index->get_compressed_list(l->count_clients(), sender_c->language());
+  size_t num_players = l ? l->count_clients() : 1;
+  uint8_t language = sender_c ? sender_c->language() : 1;
+  const auto& list_data = this->options.map_index->get_compressed_list(num_players, language);
 
   StringWriter w;
   uint32_t subcommand_size = (list_data.size() + sizeof(G_MapList_GC_Ep3_6xB6x40) + 3) & (~3);
   w.put<G_MapList_GC_Ep3_6xB6x40>(
       G_MapList_GC_Ep3_6xB6x40{{{{0xB6, 0, 0}, subcommand_size}, 0x40, {}}, list_data.size(), 0});
   w.write(list_data);
-  send_command(l, 0x6C, 0x00, w.str());
-  for (auto watcher_l : l->watcher_lobbies) {
-    send_command_if_not_loading(watcher_l, 0x6C, 0x00, w.str());
+  while (w.size() & 3) {
+    w.put_u8(0);
   }
 
-  if (l->battle_record && l->battle_record->writable()) {
-    l->battle_record->add_command(
-        BattleRecord::Event::Type::BATTLE_COMMAND, std::move(w.str()));
-  }
+  const auto& out_data = w.str();
+  this->send(out_data.data(), out_data.size(), 0x6C, false);
 }
 
 void Server::send_6xB6x41_to_all_clients() const {
   auto l = this->lobby.lock();
-  if (!l) {
-    throw runtime_error("lobby is deleted");
-  }
-
-  vector<string> map_commands_by_language;
-  auto send_to_client = [&](shared_ptr<Client> c) -> void {
-    if (!c) {
-      return;
-    }
-    if (map_commands_by_language.size() <= c->language()) {
-      map_commands_by_language.resize(c->language() + 1);
-    }
-    if (map_commands_by_language[c->language()].empty()) {
-      map_commands_by_language[c->language()] = this->prepare_6xB6x41_map_definition(
-          this->last_chosen_map, c->language(), (l->base_version == Version::GC_EP3_NTE));
-    }
-    this->log().info("Sending %c version of map %08" PRIX32, char_for_language_code(c->language()), this->last_chosen_map->map_number);
-    send_command(c, 0x6C, 0x00, map_commands_by_language[c->language()]);
-  };
-  for (const auto& c : l->clients) {
-    send_to_client(c);
-  }
-  for (auto watcher_l : l->watcher_lobbies) {
-    for (const auto& c : watcher_l->clients) {
+  if (l) {
+    vector<string> map_commands_by_language;
+    auto send_to_client = [&](shared_ptr<Client> c) -> void {
+      if (!c) {
+        return;
+      }
+      if (map_commands_by_language.size() <= c->language()) {
+        map_commands_by_language.resize(c->language() + 1);
+      }
+      if (map_commands_by_language[c->language()].empty()) {
+        map_commands_by_language[c->language()] = this->prepare_6xB6x41_map_definition(
+            this->last_chosen_map, c->language(), (l->base_version == Version::GC_EP3_NTE));
+      }
+      this->log().info("Sending %c version of map %08" PRIX32, char_for_language_code(c->language()), this->last_chosen_map->map_number);
+      send_command(c, 0x6C, 0x00, map_commands_by_language[c->language()]);
+    };
+    for (const auto& c : l->clients) {
       send_to_client(c);
     }
-  }
-
-  if (l->battle_record && l->battle_record->writable()) {
-    // TODO: It's not great that we just pick the first one; ideally we'd put
-    // all of them in the recording and send the appropriate one to the client
-    // in the playback lobby
-    for (string& data : map_commands_by_language) {
-      if (!data.empty()) {
-        l->battle_record->add_command(
-            BattleRecord::Event::Type::BATTLE_COMMAND, std::move(data));
-        break;
+    for (auto watcher_l : l->watcher_lobbies) {
+      for (const auto& c : watcher_l->clients) {
+        send_to_client(c);
       }
     }
+
+    if (l->battle_record && l->battle_record->writable()) {
+      // TODO: It's not great that we just pick the first one; ideally we'd put
+      // all of them in the recording and send the appropriate one to the client
+      // in the playback lobby
+      for (string& data : map_commands_by_language) {
+        if (!data.empty()) {
+          l->battle_record->add_command(
+              BattleRecord::Event::Type::BATTLE_COMMAND, std::move(data));
+          break;
+        }
+      }
+    }
+
+  } else {
+    auto out_data = this->prepare_6xB6x41_map_definition(this->last_chosen_map, 1, false);
+    this->send(out_data.data(), out_data.size(), 0x6C, false);
   }
 }
 

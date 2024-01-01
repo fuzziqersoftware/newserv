@@ -31,14 +31,19 @@ public:
   void set_random_state(uint32_t seed, uint32_t absolute_offset);
   void clear_destroyed_entities();
 
-  ItemData on_monster_item_drop(uint16_t entity_id, uint32_t enemy_type, uint8_t area);
-  ItemData on_box_item_drop(uint16_t entity_id, uint8_t area);
-  ItemData on_specialized_box_item_drop(uint16_t entity_id, uint8_t area, float def_z, uint32_t def0, uint32_t def1, uint32_t def2);
+  struct DropResult {
+    ItemData item;
+    bool is_from_rare_table = false;
+  };
+
+  DropResult on_monster_item_drop(uint16_t entity_id, uint32_t enemy_type, uint8_t area);
+  DropResult on_box_item_drop(uint16_t entity_id, uint8_t area);
+  DropResult on_specialized_box_item_drop(uint16_t entity_id, uint8_t area, float def_z, uint32_t def0, uint32_t def1, uint32_t def2);
 
   void set_monster_destroyed(uint16_t entity_id);
   void set_box_destroyed(uint16_t entity_id);
 
-  static ItemData base_item_for_specialized_box(uint32_t def0, uint32_t def1, uint32_t def2);
+  ItemData base_item_for_specialized_box(uint32_t def0, uint32_t def1, uint32_t def2) const;
 
   std::vector<ItemData> generate_armor_shop_contents(size_t player_level);
   std::vector<ItemData> generate_tool_shop_contents(size_t player_level);
@@ -87,8 +92,8 @@ private:
   bool are_rare_drops_allowed() const;
   uint8_t normalize_area_number(uint8_t area) const;
 
-  ItemData on_monster_item_drop_with_area_norm(uint32_t enemy_type, uint8_t area_norm);
-  ItemData on_box_item_drop_with_area_norm(uint8_t area_norm);
+  DropResult on_monster_item_drop_with_area_norm(uint32_t enemy_type, uint8_t area_norm);
+  DropResult on_box_item_drop_with_area_norm(uint8_t area_norm);
 
   uint32_t rand_int(uint64_t max);
   float rand_float_0_1_from_crypt();
@@ -116,7 +121,7 @@ private:
   void generate_common_armor_or_shield_type_and_variances(char area_norm, ItemData& item);
   void generate_common_tool_variances(uint32_t area_norm, ItemData& item);
   uint8_t generate_tech_disk_level(uint32_t tech_num, uint32_t area_norm);
-  void generate_common_mag_variances(ItemData& item) const;
+  void generate_common_mag_variances(ItemData& item);
   void generate_common_weapon_variances(uint8_t area_norm, ItemData& item);
   void generate_common_weapon_grind(ItemData& item, uint8_t offset_within_subtype_range);
   void generate_common_weapon_bonuses(ItemData& item, uint8_t area_norm);

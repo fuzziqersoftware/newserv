@@ -29,26 +29,15 @@ enum class EquipSlot {
 };
 
 struct ItemMagStats {
-  uint16_t iq;
-  uint16_t synchro;
-  uint16_t def;
-  uint16_t pow;
-  uint16_t dex;
-  uint16_t mind;
-  uint8_t flags;
-  uint8_t photon_blasts;
-  uint8_t color;
-
-  ItemMagStats()
-      : iq(0),
-        synchro(40),
-        def(500),
-        pow(0),
-        dex(0),
-        mind(0),
-        flags(0),
-        photon_blasts(0),
-        color(14) {}
+  uint16_t iq = 0;
+  uint16_t synchro = 40;
+  uint16_t def = 500;
+  uint16_t pow = 0;
+  uint16_t dex = 0;
+  uint16_t mind = 0;
+  uint8_t flags = 0;
+  uint8_t photon_blasts = 0;
+  uint8_t color = 14;
 
   inline uint16_t def_level() const {
     return this->def / 100;
@@ -140,14 +129,14 @@ struct ItemData { // 0x14 bytes
   std::string hex() const;
   uint32_t primary_identifier() const;
 
-  bool is_wrapped() const;
-  void wrap();
-  void unwrap();
+  bool is_wrapped(Version version) const;
+  void wrap(Version version);
+  void unwrap(Version version);
 
-  bool is_stackable() const;
-  size_t stack_size() const;
-  size_t max_stack_size() const;
-  void enforce_min_stack_size();
+  bool is_stackable(Version version) const;
+  size_t stack_size(Version version) const;
+  size_t max_stack_size(Version version) const;
+  void enforce_min_stack_size(Version version);
 
   static bool is_common_consumable(uint32_t primary_identifier);
   bool is_common_consumable() const;
@@ -166,8 +155,8 @@ struct ItemData { // 0x14 bytes
 
   uint16_t get_sealed_item_kill_count() const;
   void set_sealed_item_kill_count(uint16_t v);
-  uint8_t get_tool_item_amount() const;
-  void set_tool_item_amount(uint8_t amount);
+  uint8_t get_tool_item_amount(Version version) const;
+  void set_tool_item_amount(Version version, uint8_t amount);
   int16_t get_armor_or_shield_defense_bonus() const;
   void set_armor_or_shield_defense_bonus(int16_t bonus);
   int16_t get_common_armor_evasion_bonus() const;

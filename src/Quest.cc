@@ -494,6 +494,10 @@ QuestIndex::QuestIndex(
       continue;
     }
     for (string filename : list_directory_sorted(cat_path)) {
+      if (filename == ".DS_Store") {
+        continue;
+      }
+
       string file_path = cat_path + "/" + filename;
       try {
         string orig_filename = filename;

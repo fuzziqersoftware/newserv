@@ -832,7 +832,7 @@ static void on_sync_joining_player_disp_and_inventory(
       throw logic_error("6x70 command from unknown game version");
   }
 
-  parsed->transcode_inventory_items(c->version(), target->version(), s->item_parameter_table_for_version(target->version()));
+  parsed->transcode_inventory_items(c->version(), target->version(), s->item_parameter_table(target->version()));
   parsed->visual.enforce_lobby_join_limits_for_version(target->version());
 
   switch (target->version()) {
@@ -1136,6 +1136,7 @@ static void on_change_floor_6x1F(shared_ptr<Client> c, uint8_t command, uint8_t 
     if (c->config.check_flag(Client::Flag::LOADING)) {
       c->config.clear_flag(Client::Flag::LOADING);
       send_resume_game(c->require_lobby(), c);
+      c->require_lobby()->assign_inventory_and_bank_item_ids(c, true);
     }
 
   } else {
@@ -1329,6 +1330,40 @@ void on_movement_with_floor(shared_ptr<Client> c, uint8_t command, uint8_t flag,
   forward_subcommand(c, command, flag, data, size);
 }
 
+void on_set_animation_state(shared_ptr<Client> c, uint8_t command, uint8_t flag, void* data, size_t size) {
+  auto& cmd = check_size_t<G_SetAnimationState_6x52>(data, size);
+  if (cmd.header.client_id != c->lobby_client_id) {
+    return;
+  }
+  if (command_is_private(command)) {
+    return;
+  }
+  auto l = c->require_lobby();
+  if (l->is_game()) {
+    forward_subcommand(c, command, flag, data, size);
+    return;
+  }
+
+  // The animation numbers were changed on V3. This is the most common one to
+  // see in the lobby (it occurs when a player talks to the counter), so we
+  // take care to translate it specifically.
+  bool c_is_v1_or_v2 = is_v1_or_v2(c->version());
+  if (!((c_is_v1_or_v2 && (cmd.animation == 0x000A)) || (!c_is_v1_or_v2 && (cmd.animation == 0x0000)))) {
+    forward_subcommand(c, command, flag, data, size);
+    return;
+  }
+
+  G_SetAnimationState_6x52 other_cmd = cmd;
+  other_cmd.animation = 0x000A - cmd.animation;
+  for (auto lc : l->clients) {
+    if (lc && (lc != c)) {
+      auto& out_cmd = (is_v1_or_v2(lc->version()) != c_is_v1_or_v2) ? other_cmd : cmd;
+      out_cmd.header.subcommand = translate_subcommand_number(lc->version(), Version::BB_V4, 0x52);
+      send_command_t(lc, command, flag, out_cmd);
+    }
+  }
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 // Item commands
 
@@ -1341,7 +1376,7 @@ static void on_player_drop_item(shared_ptr<Client> c, uint8_t command, uint8_t f
 
   auto l = c->require_lobby();
   auto p = c->character();
-  auto item = p->remove_item(cmd.item_id, 0, c->version() != Version::BB_V4);
+  auto item = p->remove_item(cmd.item_id, 0, c->version());
   l->add_item(cmd.floor, item, cmd.x, cmd.z, 0x00F);
 
   if (l->log.should_log(LogLevel::INFO)) {
@@ -1349,7 +1384,7 @@ static void on_player_drop_item(shared_ptr<Client> c, uint8_t command, uint8_t f
     auto name = s->describe_item(c->version(), item, false);
     l->log.info("Player %hu dropped item %08" PRIX32 " (%s) at %hu:(%g, %g)",
         cmd.header.client_id.load(), cmd.item_id.load(), name.c_str(), cmd.floor.load(), cmd.x.load(), cmd.z.load());
-    p->print_inventory(stderr, c->version(), s->item_name_index);
+    c->print_inventory(stderr);
   }
 
   forward_subcommand(c, command, flag, data, size);
@@ -1374,7 +1409,7 @@ void forward_subcommand_with_item_transcode_t(shared_ptr<Client> c, uint8_t comm
       out_cmd.header.subcommand = translate_subcommand_number(lc->version(), c->version(), out_cmd.header.subcommand);
       if (out_cmd.header.subcommand) {
         out_cmd.item_data.decode_for_version(c->version());
-        out_cmd.item_data.encode_for_version(lc->version(), s->item_parameter_table_for_version(lc->version()));
+        out_cmd.item_data.encode_for_version(lc->version(), s->item_parameter_table(lc->version()));
         send_command_t(lc, command, flag, out_cmd);
       } else {
         lc->log.info("Subcommand cannot be translated to client\'s version");
@@ -1403,13 +1438,13 @@ static void on_create_inventory_item_t(shared_ptr<Client> c, uint8_t command, ui
   ItemData item = cmd.item_data;
   item.decode_for_version(c->version());
   l->on_item_id_generated_externally(item.id);
-  p->add_item(item);
+  p->add_item(item, c->version());
 
   if (l->log.should_log(LogLevel::INFO)) {
     auto s = c->require_server_state();
     auto name = s->describe_item(c->version(), item, false);
     l->log.info("Player %hu created inventory item %08" PRIX32 " (%s)", c->lobby_client_id, item.id.load(), name.c_str());
-    p->print_inventory(stderr, c->version(), s->item_name_index);
+    c->print_inventory(stderr);
   }
 
   forward_subcommand_with_item_transcode_t(c, command, flag, cmd);
@@ -1450,7 +1485,7 @@ static void on_drop_partial_stack_t(shared_ptr<Client> c, uint8_t command, uint8
     auto name = s->describe_item(c->version(), item, false);
     l->log.info("Player %hu split stack to create floor item %08" PRIX32 " (%s) at %hu:(%g, %g)",
         cmd.header.client_id.load(), item.id.load(), name.c_str(), cmd.floor.load(), cmd.x.load(), cmd.z.load());
-    c->character()->print_inventory(stderr, c->version(), s->item_name_index);
+    c->print_inventory(stderr);
   }
 
   forward_subcommand_with_item_transcode_t(c, command, flag, cmd);
@@ -1476,7 +1511,7 @@ static void on_drop_partial_stack_bb(shared_ptr<Client> c, uint8_t command, uint
     }
 
     auto p = c->character();
-    auto item = p->remove_item(cmd.item_id, cmd.amount, c->version() != Version::BB_V4);
+    auto item = p->remove_item(cmd.item_id, cmd.amount, c->version());
 
     // If a stack was split, the original item still exists, so the dropped item
     // needs a new ID. remove_item signals this by returning an item with an ID
@@ -1488,7 +1523,7 @@ static void on_drop_partial_stack_bb(shared_ptr<Client> c, uint8_t command, uint
     // PSOBB sends a 6x29 command after it receives the 6x5D, so we need to add
     // the item back to the player's inventory to correct for this (it will get
     // removed again by the 6x29 handler)
-    p->add_item(item);
+    p->add_item(item, c->version());
 
     l->add_item(cmd.floor, item, cmd.x, cmd.z, 0x00F);
     send_drop_stacked_item_to_lobby(l, item, cmd.floor, cmd.x, cmd.z);
@@ -1498,7 +1533,7 @@ static void on_drop_partial_stack_bb(shared_ptr<Client> c, uint8_t command, uint
       auto name = s->describe_item(c->version(), item, false);
       l->log.info("Player %hu split stack %08" PRIX32 " (removed: %s) at %hu:(%g, %g)",
           cmd.header.client_id.load(), cmd.item_id.load(), name.c_str(), cmd.floor.load(), cmd.x.load(), cmd.z.load());
-      p->print_inventory(stderr, c->version(), s->item_name_index);
+      c->print_inventory(stderr);
     }
 
   } else {
@@ -1523,19 +1558,29 @@ static void on_buy_shop_item(shared_ptr<Client> c, uint8_t command, uint8_t flag
   item.data2d = 0; // Clear the price field
   item.decode_for_version(c->version());
   l->on_item_id_generated_externally(item.id);
-  p->add_item(item);
+  p->add_item(item, c->version());
 
-  size_t price = s->item_parameter_table_for_version(c->version())->price_for_item(item);
+  size_t price = s->item_parameter_table(c->version())->price_for_item(item);
   p->remove_meseta(price, c->version() != Version::BB_V4);
 
   if (l->log.should_log(LogLevel::INFO)) {
     auto name = s->describe_item(c->version(), item, false);
     l->log.info("Player %hu bought item %08" PRIX32 " (%s) from shop (%zu Meseta)",
         cmd.header.client_id.load(), item.id.load(), name.c_str(), price);
-    p->print_inventory(stderr, c->version(), s->item_name_index);
+    c->print_inventory(stderr);
   }
 
   forward_subcommand_with_item_transcode_t(c, command, flag, cmd);
+}
+
+static void send_rare_notification_if_needed(shared_ptr<Client> to_c, const ItemData& item) {
+  auto s = to_c->require_server_state();
+  if (!to_c->config.check_flag(Client::Flag::RARE_DROP_NOTIFICATIONS_ENABLED) ||
+      !s->item_parameter_table(to_c->version())->is_item_rare(item)) {
+    return;
+  }
+  string name = s->describe_item(to_c->version(), item, true);
+  send_text_message_printf(to_c, "$C6Rare item dropped:\n%s", name.c_str());
 }
 
 template <typename CmdT>
@@ -1567,22 +1612,25 @@ static void on_box_or_enemy_item_drop_t(shared_ptr<Client> c, uint8_t command, u
       l->leader_id, item.id.load(), name.c_str(), cmd.item.floor, cmd.item.x.load(), cmd.item.z.load());
 
   for (auto& lc : l->clients) {
-    if (!lc || lc == c) {
+    if (!lc) {
       continue;
     }
-    if (c->version() != lc->version()) {
-      CmdT out_cmd = cmd;
-      out_cmd.header.subcommand = translate_subcommand_number(lc->version(), c->version(), out_cmd.header.subcommand);
-      if (out_cmd.header.subcommand) {
-        out_cmd.item.item.decode_for_version(c->version());
-        out_cmd.item.item.encode_for_version(lc->version(), s->item_parameter_table_for_version(lc->version()));
-        send_command_t(lc, command, flag, out_cmd);
+    if (lc != c) {
+      if (c->version() != lc->version()) {
+        CmdT out_cmd = cmd;
+        out_cmd.header.subcommand = translate_subcommand_number(lc->version(), c->version(), out_cmd.header.subcommand);
+        if (out_cmd.header.subcommand) {
+          out_cmd.item.item.decode_for_version(c->version());
+          out_cmd.item.item.encode_for_version(lc->version(), s->item_parameter_table(lc->version()));
+          send_command_t(lc, command, flag, out_cmd);
+        } else {
+          lc->log.info("Subcommand cannot be translated to client\'s version");
+        }
       } else {
-        lc->log.info("Subcommand cannot be translated to client\'s version");
+        send_command_t(lc, command, flag, cmd);
       }
-    } else {
-      send_command_t(lc, command, flag, cmd);
     }
+    send_rare_notification_if_needed(lc, item);
   }
 }
 
@@ -1626,7 +1674,7 @@ static void on_pick_up_item_generic(
     }
 
     try {
-      p->add_item(fi->data);
+      p->add_item(fi->data, c->version());
     } catch (const out_of_range&) {
       // Inventory is full; put the item back where it was
       l->log.warning("Player %hu requests to pick up %08" PRIX32 ", but their inventory is full; dropping command",
@@ -1639,7 +1687,7 @@ static void on_pick_up_item_generic(
       auto s = c->require_server_state();
       auto name = s->describe_item(c->version(), fi->data, false);
       l->log.info("Player %hu picked up %08" PRIX32 " (%s)", client_id, item_id, name.c_str());
-      p->print_inventory(stderr, c->version(), s->item_name_index);
+      c->print_inventory(stderr);
     }
 
     auto s = c->require_server_state();
@@ -1725,7 +1773,7 @@ static void on_use_item(
   if (l->log.should_log(LogLevel::INFO)) {
     l->log.info("Player %hhu used item %hu:%08" PRIX32 " (%s)",
         c->lobby_client_id, cmd.header.client_id.load(), cmd.item_id.load(), name.c_str());
-    p->print_inventory(stderr, c->version(), s->item_name_index);
+    c->print_inventory(stderr);
   }
 
   forward_subcommand(c, command, flag, data, size);
@@ -1763,15 +1811,15 @@ static void on_feed_mag(
   // a 6x29 immediately after to destroy the fed item. So on BB, we should
   // remove the fed item here, but on other versions, we allow the following
   // 6x29 command to do that.
-  if (l->base_version == Version::BB_V4) {
-    p->remove_item(cmd.fed_item_id, 1, false);
+  if (c->version() == Version::BB_V4) {
+    p->remove_item(cmd.fed_item_id, 1, c->version());
   }
 
   if (l->log.should_log(LogLevel::INFO)) {
     l->log.info("Player %hhu fed item %hu:%08" PRIX32 " (%s) to mag %hu:%08" PRIX32 " (%s)",
         c->lobby_client_id, cmd.header.client_id.load(), cmd.fed_item_id.load(), fed_name.c_str(),
         cmd.header.client_id.load(), cmd.mag_item_id.load(), mag_name.c_str());
-    p->print_inventory(stderr, c->version(), s->item_name_index);
+    c->print_inventory(stderr);
   }
 
   forward_subcommand(c, command, flag, data, size);
@@ -1806,7 +1854,7 @@ static void on_open_shop_bb_or_ep3_battle_subs(shared_ptr<Client> c, uint8_t com
     }
     for (auto& item : c->bb_shop_contents[cmd.shop_type]) {
       item.id = 0xFFFFFFFF;
-      item.data2d = s->item_parameter_table_for_version(c->version())->price_for_item(item);
+      item.data2d = s->item_parameter_table(c->version())->price_for_item(item);
     }
 
     send_shop(c, cmd.shop_type);
@@ -1851,7 +1899,7 @@ static void on_ep3_private_word_select_bb_bank_action(shared_ptr<Client> c, uint
         }
 
       } else { // Deposit item
-        auto item = p->remove_item(cmd.item_id, cmd.item_amount, c->version() != Version::BB_V4);
+        auto item = p->remove_item(cmd.item_id, cmd.item_amount, c->version());
         // If a stack was split, the bank item retains the same item ID as the
         // inventory item. This is annoying but doesn't cause any problems
         // because we always generate a new item ID when withdrawing from the
@@ -1859,14 +1907,14 @@ static void on_ep3_private_word_select_bb_bank_action(shared_ptr<Client> c, uint
         if (item.id == 0xFFFFFFFF) {
           item.id = cmd.item_id;
         }
-        bank.add_item(item);
+        bank.add_item(item, c->version());
         send_destroy_item_to_lobby(c, cmd.item_id, cmd.item_amount, true);
 
         if (l->log.should_log(LogLevel::INFO)) {
-          string name = s->item_name_index->describe_item(Version::BB_V4, item);
+          string name = s->describe_item(Version::BB_V4, item, false);
           l->log.info("Player %hu deposited item %08" PRIX32 " (x%hhu) (%s) in the bank",
               c->lobby_client_id, cmd.item_id.load(), cmd.item_amount, name.c_str());
-          c->character()->print_inventory(stderr, c->version(), s->item_name_index);
+          c->print_inventory(stderr);
         }
       }
 
@@ -1886,16 +1934,16 @@ static void on_ep3_private_word_select_bb_bank_action(shared_ptr<Client> c, uint
         }
 
       } else { // Take item
-        auto item = bank.remove_item(cmd.item_id, cmd.item_amount);
+        auto item = bank.remove_item(cmd.item_id, cmd.item_amount, c->version());
         item.id = l->generate_item_id(c->lobby_client_id);
-        p->add_item(item);
+        p->add_item(item, c->version());
         send_create_inventory_item_to_lobby(c, c->lobby_client_id, item);
 
         if (l->log.should_log(LogLevel::INFO)) {
-          string name = s->item_name_index->describe_item(Version::BB_V4, item);
+          string name = s->describe_item(Version::BB_V4, item, false);
           l->log.info("Player %hu withdrew item %08" PRIX32 " (x%hhu) (%s) from the bank",
               c->lobby_client_id, item.id.load(), cmd.item_amount, name.c_str());
-          c->character()->print_inventory(stderr, c->version(), s->item_name_index);
+          c->print_inventory(stderr);
         }
       }
 
@@ -2065,7 +2113,7 @@ static void on_entity_drop_item_request(shared_ptr<Client> c, uint8_t command, u
     cmd.effective_area = in_cmd.floor;
   }
 
-  auto generate_item = [&]() -> ItemData {
+  auto generate_item = [&]() -> ItemCreator::DropResult {
     if (cmd.rt_index == 0x30) {
       if (l->map) {
         auto& object = l->map->objects.at(cmd.entity_id);
@@ -2129,29 +2177,39 @@ static void on_entity_drop_item_request(shared_ptr<Client> c, uint8_t command, u
     case Lobby::DropMode::SERVER_DUPLICATE: {
       // TODO: In SERVER_DUPLICATE mode, should we reduce the rates for rare
       // items? Maybe by a factor of l->count_clients()?
-      auto item = generate_item();
-      if (item.empty()) {
+      auto res = generate_item();
+      if (res.item.empty()) {
         l->log.info("No item was created");
       } else {
-        string name = s->item_name_index->describe_item(l->base_version, item);
+        string name = s->describe_item(l->base_version, res.item, false);
         l->log.info("Entity %04hX (area %02hX) created item %s", cmd.entity_id.load(), cmd.effective_area, name.c_str());
         if (l->drop_mode == Lobby::DropMode::SERVER_DUPLICATE) {
           for (const auto& lc : l->clients) {
             if (lc && ((cmd.rt_index == 0x30) || (lc->floor == cmd.floor))) {
-              item.id = l->generate_item_id(0xFF);
+              res.item.id = l->generate_item_id(0xFF);
               l->log.info("Creating item %08" PRIX32 " at %02hhX:%g,%g for %s",
-                  item.id.load(), cmd.floor, cmd.x.load(), cmd.z.load(), lc->channel.name.c_str());
-              l->add_item(cmd.floor, item, cmd.x, cmd.z, (1 << lc->lobby_client_id));
-              send_drop_item_to_channel(s, lc->channel, item, cmd.rt_index != 0x30, cmd.floor, cmd.x, cmd.z, cmd.entity_id);
+                  res.item.id.load(), cmd.floor, cmd.x.load(), cmd.z.load(), lc->channel.name.c_str());
+              l->add_item(cmd.floor, res.item, cmd.x, cmd.z, (1 << lc->lobby_client_id));
+              send_drop_item_to_channel(s, lc->channel, res.item, cmd.rt_index != 0x30, cmd.floor, cmd.x, cmd.z, cmd.entity_id);
+              if (res.is_from_rare_table) {
+                send_rare_notification_if_needed(lc, res.item);
+              }
             }
           }
 
         } else {
-          item.id = l->generate_item_id(0xFF);
+          res.item.id = l->generate_item_id(0xFF);
           l->log.info("Creating item %08" PRIX32 " at %02hhX:%g,%g for all clients",
-              item.id.load(), cmd.floor, cmd.x.load(), cmd.z.load());
-          l->add_item(cmd.floor, item, cmd.x, cmd.z, 0x00F);
-          send_drop_item_to_lobby(l, item, cmd.rt_index != 0x30, cmd.floor, cmd.x, cmd.z, cmd.entity_id);
+              res.item.id.load(), cmd.floor, cmd.x.load(), cmd.z.load());
+          l->add_item(cmd.floor, res.item, cmd.x, cmd.z, 0x00F);
+          send_drop_item_to_lobby(l, res.item, cmd.rt_index != 0x30, cmd.floor, cmd.x, cmd.z, cmd.entity_id);
+          if (res.is_from_rare_table) {
+            for (auto lc : l->clients) {
+              if (lc) {
+                send_rare_notification_if_needed(lc, res.item);
+              }
+            }
+          }
         }
       }
       break;
@@ -2159,17 +2217,20 @@ static void on_entity_drop_item_request(shared_ptr<Client> c, uint8_t command, u
     case Lobby::DropMode::SERVER_PRIVATE: {
       for (const auto& lc : l->clients) {
         if (lc && ((cmd.rt_index == 0x30) || (lc->floor == cmd.floor))) {
-          auto item = generate_item();
-          if (item.empty()) {
+          auto res = generate_item();
+          if (res.item.empty()) {
             l->log.info("No item was created for %s", lc->channel.name.c_str());
           } else {
-            string name = s->item_name_index->describe_item(l->base_version, item);
+            string name = s->describe_item(l->base_version, res.item, false);
             l->log.info("Entity %04hX (area %02hX) created item %s", cmd.entity_id.load(), cmd.effective_area, name.c_str());
-            item.id = l->generate_item_id(0xFF);
+            res.item.id = l->generate_item_id(0xFF);
             l->log.info("Creating item %08" PRIX32 " at %02hhX:%g,%g for %s",
-                item.id.load(), cmd.floor, cmd.x.load(), cmd.z.load(), lc->channel.name.c_str());
-            l->add_item(cmd.floor, item, cmd.x, cmd.z, (1 << lc->lobby_client_id));
-            send_drop_item_to_channel(s, lc->channel, item, cmd.rt_index != 0x30, cmd.floor, cmd.x, cmd.z, cmd.entity_id);
+                res.item.id.load(), cmd.floor, cmd.x.load(), cmd.z.load(), lc->channel.name.c_str());
+            l->add_item(cmd.floor, res.item, cmd.x, cmd.z, (1 << lc->lobby_client_id));
+            send_drop_item_to_channel(s, lc->channel, res.item, cmd.rt_index != 0x30, cmd.floor, cmd.x, cmd.z, cmd.entity_id);
+            if (res.is_from_rare_table) {
+              send_rare_notification_if_needed(lc, res.item);
+            }
           }
         }
       }
@@ -2455,7 +2516,7 @@ static void on_steal_exp_bb(shared_ptr<Client> c, uint8_t, uint8_t, void* data, 
   const auto& inventory = p->inventory;
   const auto& weapon = inventory.items[inventory.find_equipped_item(EquipSlot::WEAPON)];
 
-  auto item_parameter_table = s->item_parameter_table_for_version(c->version());
+  auto item_parameter_table = s->item_parameter_table(c->version());
 
   uint8_t special_id = 0;
   if (((weapon.data.data1[1] < 0x0A) && (weapon.data.data1[2] < 0x05)) ||
@@ -2574,7 +2635,7 @@ static void on_enemy_exp_request_bb(shared_ptr<Client> c, uint8_t, uint8_t, void
     for (size_t z = 0; z < inventory.num_items; z++) {
       auto& item = inventory.items[z];
       if ((item.flags & 0x08) &&
-          s->item_parameter_table_for_version(c->version())->is_unsealable_item(item.data)) {
+          s->item_parameter_table(c->version())->is_unsealable_item(item.data)) {
         item.data.set_sealed_item_kill_count(item.data.get_sealed_item_kill_count() + 1);
       }
     }
@@ -2598,7 +2659,7 @@ void on_adjust_player_meseta_bb(shared_ptr<Client> c, uint8_t, uint8_t, void* da
     item.data1[0] = 0x04;
     item.data2d = cmd.amount.load();
     item.id = l->generate_item_id(c->lobby_client_id);
-    p->add_item(item);
+    p->add_item(item, c->version());
     send_create_inventory_item_to_lobby(c, c->lobby_client_id, item);
   }
 }
@@ -2609,9 +2670,9 @@ void on_item_reward_request_bb(shared_ptr<Client> c, uint8_t, uint8_t, void* dat
 
   ItemData item;
   item = cmd.item_data;
-  item.enforce_min_stack_size();
+  item.enforce_min_stack_size(c->version());
   item.id = l->generate_item_id(c->lobby_client_id);
-  c->character()->add_item(item);
+  c->character()->add_item(item, c->version());
   send_create_inventory_item_to_lobby(c, c->lobby_client_id, item);
 }
 
@@ -2638,13 +2699,13 @@ void on_transfer_item_via_mail_message_bb(shared_ptr<Client> c, uint8_t command,
 
   auto s = c->require_server_state();
   auto p = c->character();
-  auto item = p->remove_item(cmd.item_id, cmd.amount, c->version() != Version::BB_V4);
+  auto item = p->remove_item(cmd.item_id, cmd.amount, c->version());
 
   if (l->log.should_log(LogLevel::INFO)) {
     auto name = s->describe_item(c->version(), item, false);
     l->log.info("Player %hhu sent inventory item %hu:%08" PRIX32 " (%s) x%" PRIu32 " to player %08" PRIX32,
         c->lobby_client_id, cmd.header.client_id.load(), cmd.item_id.load(), name.c_str(), cmd.amount.load(), cmd.target_guild_card_number.load());
-    p->print_inventory(stderr, c->version(), s->item_name_index);
+    c->print_inventory(stderr);
   }
 
   // To receive an item, the player must be online, using BB, have a character
@@ -2657,7 +2718,7 @@ void on_transfer_item_via_mail_message_bb(shared_ptr<Client> c, uint8_t command,
       (target_c->character(false) != nullptr) &&
       !target_c->config.check_flag(Client::Flag::AT_BANK_COUNTER)) {
     try {
-      target_c->current_bank().add_item(item);
+      target_c->current_bank().add_item(item, target_c->version());
       item_sent = true;
     } catch (const runtime_error&) {
     }
@@ -2669,7 +2730,7 @@ void on_transfer_item_via_mail_message_bb(shared_ptr<Client> c, uint8_t command,
     send_command(c, 0x16EA, 0x00000000);
     // If the item failed to send, add it back to the sender's inventory
     item.id = l->generate_item_id(0xFF);
-    p->add_item(item);
+    p->add_item(item, c->version());
     send_create_inventory_item_to_lobby(c, c->lobby_client_id, item);
   }
 }
@@ -2695,7 +2756,7 @@ void on_exchange_item_for_team_points_bb(shared_ptr<Client> c, uint8_t command, 
 
   auto s = c->require_server_state();
   auto p = c->character();
-  auto item = p->remove_item(cmd.item_id, cmd.amount, c->version() != Version::BB_V4);
+  auto item = p->remove_item(cmd.item_id, cmd.amount, c->version());
 
   size_t points = s->item_parameter_table_v4->get_item_team_points(item);
   s->team_index->add_member_points(c->license->serial_number, points);
@@ -2704,7 +2765,7 @@ void on_exchange_item_for_team_points_bb(shared_ptr<Client> c, uint8_t command, 
     auto name = s->describe_item(c->version(), item, false);
     l->log.info("Player %hhu exchanged inventory item %hu:%08" PRIX32 " (%s) for %zu team points",
         c->lobby_client_id, cmd.header.client_id.load(), cmd.item_id.load(), name.c_str(), points);
-    p->print_inventory(stderr, c->version(), s->item_name_index);
+    c->print_inventory(stderr);
   }
 
   forward_subcommand(c, command, flag, data, size);
@@ -2723,13 +2784,13 @@ static void on_destroy_inventory_item(shared_ptr<Client> c, uint8_t command, uin
 
   auto s = c->require_server_state();
   auto p = c->character();
-  auto item = p->remove_item(cmd.item_id, cmd.amount, c->version() != Version::BB_V4);
+  auto item = p->remove_item(cmd.item_id, cmd.amount, c->version());
 
   if (l->log.should_log(LogLevel::INFO)) {
     auto name = s->describe_item(c->version(), item, false);
     l->log.info("Player %hhu destroyed inventory item %hu:%08" PRIX32 " (%s)",
         c->lobby_client_id, cmd.header.client_id.load(), cmd.item_id.load(), name.c_str());
-    p->print_inventory(stderr, c->version(), s->item_name_index);
+    c->print_inventory(stderr);
   }
   forward_subcommand(c, command, flag, data, size);
 }
@@ -2815,7 +2876,7 @@ static void on_accept_identify_item_bb(shared_ptr<Client> c, uint8_t command, ui
     if (c->bb_identify_result.id != cmd.item_id) {
       throw runtime_error("accepted item ID does not match previous identify request");
     }
-    c->character()->add_item(c->bb_identify_result);
+    c->character()->add_item(c->bb_identify_result, c->version());
     send_create_inventory_item_to_lobby(c, c->lobby_client_id, c->bb_identify_result);
     c->bb_identify_result.clear();
 
@@ -2832,15 +2893,15 @@ static void on_sell_item_at_shop_bb(shared_ptr<Client> c, uint8_t command, uint8
 
     auto s = c->require_server_state();
     auto p = c->character();
-    auto item = p->remove_item(cmd.item_id, cmd.amount, c->version() != Version::BB_V4);
-    size_t price = (s->item_parameter_table_for_version(c->version())->price_for_item(item) >> 3) * cmd.amount;
+    auto item = p->remove_item(cmd.item_id, cmd.amount, c->version());
+    size_t price = (s->item_parameter_table(c->version())->price_for_item(item) >> 3) * cmd.amount;
     p->add_meseta(price);
 
     if (l->log.should_log(LogLevel::INFO)) {
       auto name = s->describe_item(c->version(), item, false);
       l->log.info("Player %hhu sold inventory item %08" PRIX32 " (%s) for %zu Meseta",
           c->lobby_client_id, cmd.item_id.load(), name.c_str(), price);
-      p->print_inventory(stderr, c->version(), s->item_name_index);
+      c->print_inventory(stderr);
     }
 
     forward_subcommand(c, command, flag, data, size);
@@ -2854,7 +2915,7 @@ static void on_buy_shop_item_bb(shared_ptr<Client> c, uint8_t, uint8_t, void* da
 
     ItemData item;
     item = c->bb_shop_contents.at(cmd.shop_type).at(cmd.item_index);
-    if (item.is_stackable()) {
+    if (item.is_stackable(c->version())) {
       item.data1[5] = cmd.amount;
     } else if (cmd.amount != 1) {
       throw runtime_error("item is not stackable");
@@ -2867,7 +2928,7 @@ static void on_buy_shop_item_bb(shared_ptr<Client> c, uint8_t, uint8_t, void* da
 
     item.id = cmd.shop_item_id;
     l->on_item_id_generated_externally(item.id);
-    p->add_item(item);
+    p->add_item(item, c->version());
     send_create_inventory_item_to_lobby(c, c->lobby_client_id, item, true);
 
     if (l->log.should_log(LogLevel::INFO)) {
@@ -2875,7 +2936,7 @@ static void on_buy_shop_item_bb(shared_ptr<Client> c, uint8_t, uint8_t, void* da
       auto name = s->describe_item(c->version(), item, false);
       l->log.info("Player %hhu purchased item %08" PRIX32 " (%s) for %zu meseta",
           c->lobby_client_id, item.id.load(), name.c_str(), price);
-      p->print_inventory(stderr, c->version(), s->item_name_index);
+      c->print_inventory(stderr);
     }
   }
 }
@@ -2970,15 +3031,15 @@ static void on_quest_exchange_item_bb(shared_ptr<Client> c, uint8_t, uint8_t, vo
       auto p = c->character();
 
       size_t found_index = p->inventory.find_item_by_primary_identifier(cmd.find_item.primary_identifier());
-      auto found_item = p->remove_item(p->inventory.items[found_index].data.id, 1, false);
+      auto found_item = p->remove_item(p->inventory.items[found_index].data.id, 1, c->version());
       send_destroy_item_to_lobby(c, found_item.id, 1);
 
       // TODO: We probably should use an allow-list here to prevent the client
       // from creating arbitrary items if cheat mode is disabled.
       ItemData new_item = cmd.replace_item;
-      new_item.enforce_min_stack_size();
+      new_item.enforce_min_stack_size(c->version());
       new_item.id = l->generate_item_id(c->lobby_client_id);
-      p->add_item(new_item);
+      p->add_item(new_item, c->version());
       send_create_inventory_item_to_lobby(c, c->lobby_client_id, new_item);
 
       send_quest_function_call(c, cmd.success_function_id);
@@ -2996,10 +3057,10 @@ static void on_wrap_item_bb(shared_ptr<Client> c, uint8_t, uint8_t, void* data, 
     const auto& cmd = check_size_t<G_WrapItem_BB_6xD6>(data, size);
 
     auto p = c->character();
-    auto item = p->remove_item(cmd.item.id, 1, false);
+    auto item = p->remove_item(cmd.item.id, 1, c->version());
     send_destroy_item_to_lobby(c, item.id, 1);
-    item.wrap();
-    p->add_item(item);
+    item.wrap(c->version());
+    p->add_item(item, c->version());
     send_create_inventory_item_to_lobby(c, c->lobby_client_id, item);
   }
 }
@@ -3013,15 +3074,15 @@ static void on_photon_drop_exchange_for_item_bb(shared_ptr<Client> c, uint8_t, u
       auto p = c->character();
 
       size_t found_index = p->inventory.find_item_by_primary_identifier(0x031000);
-      auto found_item = p->remove_item(p->inventory.items[found_index].data.id, 0, false);
-      send_destroy_item_to_lobby(c, found_item.id, found_item.stack_size());
+      auto found_item = p->remove_item(p->inventory.items[found_index].data.id, 0, c->version());
+      send_destroy_item_to_lobby(c, found_item.id, found_item.stack_size(c->version()));
 
       // TODO: We probably should use an allow-list here to prevent the client
       // from creating arbitrary items if cheat mode is disabled.
       ItemData new_item = cmd.new_item;
-      new_item.enforce_min_stack_size();
+      new_item.enforce_min_stack_size(c->version());
       new_item.id = l->generate_item_id(c->lobby_client_id);
-      p->add_item(new_item);
+      p->add_item(new_item, c->version());
       send_create_inventory_item_to_lobby(c, c->lobby_client_id, new_item);
 
       send_quest_function_call(c, cmd.success_function_id);
@@ -3049,13 +3110,13 @@ static void on_photon_drop_exchange_for_s_rank_special_bb(shared_ptr<Client> c, 
       // consistent in case of error
       p->inventory.find_item(cmd.item_id);
 
-      auto payment_item = p->remove_item(p->inventory.items[payment_item_index].data.id, cost, false);
+      auto payment_item = p->remove_item(p->inventory.items[payment_item_index].data.id, cost, c->version());
       send_destroy_item_to_lobby(c, payment_item.id, cost);
 
-      auto item = p->remove_item(cmd.item_id, 1, false);
+      auto item = p->remove_item(cmd.item_id, 1, c->version());
       send_destroy_item_to_lobby(c, item.id, cost);
       item.data1[2] = cmd.special_type;
-      p->add_item(item);
+      p->add_item(item, c->version());
       send_create_inventory_item_to_lobby(c, c->lobby_client_id, item);
 
       send_quest_function_call(c, cmd.success_function_id);
@@ -3096,14 +3157,14 @@ static void on_secret_lottery_ticket_exchange_bb(shared_ptr<Client> c, uint8_t, 
       exchange_cmd.amount = 1;
       send_command_t(c, 0x60, 0x00, exchange_cmd);
 
-      send_destroy_item_to_lobby(c, slt_item_id, 1);
+      p->remove_item(slt_item_id, 1, c->version());
 
       ItemData item = (s->secret_lottery_results.size() == 1)
           ? s->secret_lottery_results[0]
           : s->secret_lottery_results[l->random_crypt->next() % s->secret_lottery_results.size()];
-      item.enforce_min_stack_size();
+      item.enforce_min_stack_size(c->version());
       item.id = l->generate_item_id(c->lobby_client_id);
-      p->add_item(item);
+      p->add_item(item, c->version());
       send_create_inventory_item_to_lobby(c, c->lobby_client_id, item);
     }
 
@@ -3129,7 +3190,7 @@ static void on_photon_crystal_exchange_bb(shared_ptr<Client> c, uint8_t, uint8_t
     check_size_t<G_ExchangePhotonCrystals_BB_6xDF>(data, size);
     auto p = c->character();
     size_t index = p->inventory.find_item_by_primary_identifier(0x031002);
-    auto item = p->remove_item(p->inventory.items[index].data.id, 1, false);
+    auto item = p->remove_item(p->inventory.items[index].data.id, 1, c->version());
     send_destroy_item_to_lobby(c, item.id, 1);
   }
 }
@@ -3155,7 +3216,7 @@ static void on_quest_F95E_result_bb(shared_ptr<Client> c, uint8_t, uint8_t, void
       } else if (item.data1[0] == 0x00) {
         item.data1[4] |= 0x80; // Unidentified
       } else {
-        item.enforce_min_stack_size();
+        item.enforce_min_stack_size(c->version());
       }
 
       item.id = l->generate_item_id(0xFF);
@@ -3179,7 +3240,7 @@ static void on_quest_F95F_result_bb(shared_ptr<Client> c, uint8_t, uint8_t, void
     }
 
     size_t index = p->inventory.find_item_by_primary_identifier(0x031004); // Photon Ticket
-    auto ticket_item = p->remove_item(p->inventory.items[index].data.id, result.first, false);
+    auto ticket_item = p->remove_item(p->inventory.items[index].data.id, result.first, c->version());
     // TODO: Shouldn't we send a 6x29 here? Check if this causes desync in an
     // actual game
 
@@ -3191,9 +3252,9 @@ static void on_quest_F95F_result_bb(shared_ptr<Client> c, uint8_t, uint8_t, void
     send_command_t(c, 0x60, 0x00, cmd_6xDB);
 
     ItemData new_item = result.second;
-    new_item.enforce_min_stack_size();
+    new_item.enforce_min_stack_size(c->version());
     new_item.id = l->generate_item_id(c->lobby_client_id);
-    p->add_item(new_item);
+    p->add_item(new_item, c->version());
     send_create_inventory_item_to_lobby(c, c->lobby_client_id, new_item);
 
     S_GallonPlanResult_BB_25 out_cmd;
@@ -3246,7 +3307,7 @@ static void on_quest_F960_result_bb(shared_ptr<Client> c, uint8_t, uint8_t, void
 
     item.id = l->generate_item_id(c->lobby_client_id);
     // If it's a weapon, make it unidentified
-    auto item_parameter_table = s->item_parameter_table_for_version(c->version());
+    auto item_parameter_table = s->item_parameter_table(c->version());
     if ((item.data1[0] == 0x00) && (item_parameter_table->is_item_rare(item) || (item.data1[4] != 0))) {
       item.data1[4] |= 0x80;
     }
@@ -3257,15 +3318,15 @@ static void on_quest_F960_result_bb(shared_ptr<Client> c, uint8_t, uint8_t, void
     send_command_t(c, 0x60, 0x00, cmd_6xE3);
 
     try {
-      p->add_item(item);
+      p->add_item(item, c->version());
       send_create_inventory_item_to_lobby(c, c->lobby_client_id, item);
       if (c->log.should_log(LogLevel::INFO)) {
-        string name = s->item_name_index->describe_item(c->version(), item);
+        string name = s->describe_item(c->version(), item, false);
         c->log.info("Awarded item %s", name.c_str());
       }
     } catch (const out_of_range&) {
       if (c->log.should_log(LogLevel::INFO)) {
-        string name = s->item_name_index->describe_item(c->version(), item);
+        string name = s->describe_item(c->version(), item, false);
         c->log.info("Attempted to award item %s, but inventory was full", name.c_str());
       }
     }
@@ -3279,7 +3340,7 @@ static void on_momoka_item_exchange_bb(shared_ptr<Client> c, uint8_t, uint8_t, v
     auto p = c->character();
     try {
       size_t found_index = p->inventory.find_item_by_primary_identifier(cmd.find_item.primary_identifier());
-      auto found_item = p->remove_item(p->inventory.items[found_index].data.id, 1, false);
+      auto found_item = p->remove_item(p->inventory.items[found_index].data.id, 1, c->version());
 
       G_ExchangeItemInQuest_BB_6xDB cmd_6xDB = {{0xDB, 0x04, c->lobby_client_id}, 1, found_item.id, 1};
       send_command_t(c, 0x60, 0x00, cmd_6xDB);
@@ -3289,9 +3350,9 @@ static void on_momoka_item_exchange_bb(shared_ptr<Client> c, uint8_t, uint8_t, v
       // TODO: We probably should use an allow-list here to prevent the client
       // from creating arbitrary items if cheat mode is disabled.
       ItemData new_item = cmd.replace_item;
-      new_item.enforce_min_stack_size();
+      new_item.enforce_min_stack_size(c->version());
       new_item.id = l->generate_item_id(c->lobby_client_id);
-      p->add_item(new_item);
+      p->add_item(new_item, c->version());
       send_create_inventory_item_to_lobby(c, c->lobby_client_id, new_item);
 
       send_command(c, 0x23, 0x00);
@@ -3314,10 +3375,10 @@ static void on_upgrade_weapon_attribute_bb(shared_ptr<Client> c, uint8_t, uint8_
       uint32_t payment_primary_identifier = cmd.payment_type ? 0x031001 : 0x031000;
       size_t payment_index = p->inventory.find_item_by_primary_identifier(payment_primary_identifier);
       auto& payment_item = p->inventory.items[payment_index].data;
-      if (payment_item.stack_size() < cmd.payment_count) {
+      if (payment_item.stack_size(c->version()) < cmd.payment_count) {
         throw runtime_error("not enough payment items present");
       }
-      p->remove_item(payment_item.id, cmd.payment_count, false);
+      p->remove_item(payment_item.id, cmd.payment_count, c->version());
       send_destroy_item_to_lobby(c, payment_item.id, cmd.payment_count);
 
       uint8_t attribute_amount = 0;
@@ -3445,7 +3506,7 @@ const SubcommandDefinition subcommand_definitions[0x100] = {
     /* 6x4F */ {0x43, 0x49, 0x4F, on_forward_check_game_client},
     /* 6x50 */ {0x44, 0x4A, 0x50, on_forward_check_game_client},
     /* 6x51 */ {0x00, 0x00, 0x51, nullptr},
-    /* 6x52 */ {0x46, 0x4C, 0x52, forward_subcommand_m},
+    /* 6x52 */ {0x46, 0x4C, 0x52, on_set_animation_state},
     /* 6x53 */ {0x47, 0x4D, 0x53, on_forward_check_game},
     /* 6x54 */ {0x48, 0x4E, 0x54, nullptr},
     /* 6x55 */ {0x49, 0x4F, 0x55, on_forward_check_game_client},

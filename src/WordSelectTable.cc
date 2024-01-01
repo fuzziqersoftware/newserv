@@ -205,7 +205,8 @@ WordSelectTable::WordSelectTable(
     this->name_to_token.emplace(token->canonical_name, token);
   }
 
-  array<const WordSelectSet*, 12> ws_sets = {
+  static_assert(NUM_NON_PATCH_VERSIONS == 12, "Don\'t forget to update the WordSelectTable constructor");
+  array<const WordSelectSet*, NUM_NON_PATCH_VERSIONS> ws_sets = {
       &dc_nte_ws, &dc_112000_ws, &dc_v1_ws, &dc_v2_ws,
       &pc_nte_ws, &pc_v2_ws, &gc_nte_ws, &gc_v3_ws,
       &gc_ep3_nte_ws, &gc_ep3_ws, &xb_v3_ws, &bb_v4_ws};

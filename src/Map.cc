@@ -113,17 +113,10 @@ string Map::Enemy::str() const {
       this->source_index, name_for_enum(this->type), this->floor, this->state_flags, this->last_hit_by_client_id);
 }
 
-string Map::Object::str(shared_ptr<const ItemNameIndex> name_index) const {
+string Map::Object::str() const {
   if (this->param1 <= 0.0f) {
-    string item_name;
-    try {
-      auto item = ItemCreator::base_item_for_specialized_box(this->param4, this->param5, this->param6);
-      item_name = name_index ? name_index->describe_item(Version::BB_V4, item) : item.hex();
-    } catch (const exception& e) {
-      item_name = string_printf("(failed: %s)", e.what());
-    }
-    return string_printf("[Map::Object source %zX %04hX @%04hX p1=%g (specialized: %s) floor=%02hhX item_drop_checked=%s]",
-        this->source_index, this->base_type, this->section, this->param1, item_name.c_str(), this->floor, this->item_drop_checked ? "true" : "false");
+    return string_printf("[Map::Object source %zX %04hX @%04hX p1=%g (specialized: %08" PRIX32 " %08" PRIX32 " %08" PRIX32 ") floor=%02hhX item_drop_checked=%s]",
+        this->source_index, this->base_type, this->section, this->param1, this->param4, this->param5, this->param6, this->floor, this->item_drop_checked ? "true" : "false");
   } else {
     return string_printf("[Map::Object source %zX %04hX @%04hX p1=%g (generic) p456=[%08" PRIX32 " %08" PRIX32 " %08" PRIX32 "] floor=%02hhX item_drop_checked=%s]",
         this->source_index, this->base_type, this->section, this->param1, this->param4, this->param5, this->param6,

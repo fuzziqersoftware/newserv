@@ -55,7 +55,8 @@ public:
     uint8_t photon = 0;
     uint8_t special = 0;
     uint8_t ata = 0;
-    parray<uint8_t, 4> unknown_a9;
+    uint8_t stat_boost = 0; // TODO: This could be larger (16 or 32 bits)
+    parray<uint8_t, 3> unknown_a9;
   } __attribute__((packed));
 
   template <bool IsBigEndian>
@@ -367,6 +368,9 @@ private:
     /* 3C / 58DC */ le_uint32_t stat_boost_table; // -> [StatBoost]
     /* 40 / 5704 */ le_uint32_t shield_effect_table; // -> [8-byte structs]
   } __attribute__((packed));
+
+  // TODO: The GC NTE ItemPMT format is intermediate between V2 and V3 - the
+  // Offsets struct is 0x50 bytes. Figure it out and add support here.
 
   template <bool IsBigEndian>
   struct TableOffsetsV3V4 {

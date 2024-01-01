@@ -43,20 +43,23 @@ ProxyServer::ProxyServer(
       state(state),
       next_unlicensed_session_id(0xFF00000000000001) {}
 
-void ProxyServer::listen(uint16_t port, Version version, const struct sockaddr_storage* default_destination) {
-  auto socket_obj = make_shared<ListeningSocket>(this, port, version, default_destination);
-  auto l = this->listeners.emplace(port, socket_obj).first->second;
+void ProxyServer::listen(const std::string& addr, uint16_t port, Version version, const struct sockaddr_storage* default_destination) {
+  auto socket_obj = make_shared<ListeningSocket>(this, addr, port, version, default_destination);
+  if (!this->listeners.emplace(port, socket_obj).second) {
+    throw runtime_error("duplicate port in proxy server configuration");
+  }
 }
 
 ProxyServer::ListeningSocket::ListeningSocket(
     ProxyServer* server,
+    const std::string& addr,
     uint16_t port,
     Version version,
     const struct sockaddr_storage* default_destination)
     : server(server),
       log(string_printf("[ProxyServer:ListeningSocket:%hu] ", port), proxy_server_log.min_level),
       port(port),
-      fd(::listen("", port, SOMAXCONN)),
+      fd(::listen(addr, port, SOMAXCONN)),
       listener(nullptr, evconnlistener_free),
       version(version) {
   if (!this->fd.is_open()) {

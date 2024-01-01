@@ -132,7 +132,7 @@ void send_client_to_proxy_server(shared_ptr<Client> c) {
 
 static void send_proxy_destinations_menu(shared_ptr<Client> c) {
   auto s = c->require_server_state();
-  send_menu(c, s->proxy_destinations_menu_for_version(c->version()));
+  send_menu(c, s->proxy_destinations_menu(c->version()));
 }
 
 static bool send_enable_send_function_call_if_applicable(shared_ptr<Client> c) {
@@ -1762,7 +1762,7 @@ static void on_D6_V3(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
   check_size_v(data.size(), 0);
   if (c->config.check_flag(Client::Flag::IN_INFORMATION_MENU)) {
     auto s = c->require_server_state();
-    send_menu(c, s->information_menu_for_version(c->version()));
+    send_menu(c, s->information_menu(c->version()));
   } else if (c->config.check_flag(Client::Flag::AT_WELCOME_MESSAGE)) {
     c->config.clear_flag(Client::Flag::AT_WELCOME_MESSAGE);
     send_enable_send_function_call_if_applicable(c);
@@ -1784,7 +1784,7 @@ static void on_09(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
     case MenuID::QUEST_EP1:
     case MenuID::QUEST_EP2: {
       bool is_download_quest = !c->lobby.lock();
-      auto quest_index = s->quest_index_for_version(c->version());
+      auto quest_index = s->quest_index(c->version());
       if (!quest_index) {
         send_quest_info(c, "$C6Quests are not available.", is_download_quest);
       } else {
@@ -2033,7 +2033,7 @@ static void on_quest_loaded(shared_ptr<Lobby> l) {
         lc->use_default_bank();
         lc->create_challenge_overlay(lc->version(), l->quest->challenge_template_index, s->level_table);
         lc->log.info("Created challenge overlay");
-        l->assign_inventory_and_bank_item_ids(lc);
+        l->assign_inventory_and_bank_item_ids(lc, true);
       }
     }
   }
@@ -2178,7 +2178,7 @@ static void on_10(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
 
         case MainMenuItemID::INFORMATION: {
           auto s = c->require_server_state();
-          send_menu(c, s->information_menu_for_version(c->version()));
+          send_menu(c, s->information_menu(c->version()));
           c->config.set_flag(Client::Flag::IN_INFORMATION_MENU);
           break;
         }
@@ -2199,7 +2199,7 @@ static void on_10(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
             // always the download quest menu. (Episode 3 does actually have
             // online quests, but they're served via a server data request
             // instead of the file download paradigm that other versions use.)
-            auto quest_index = s->quest_index_for_version(c->version());
+            auto quest_index = s->quest_index(c->version());
             const auto& categories = quest_index->categories(menu_type, Episode::EP3, c->version());
             if (categories.size() == 1) {
               auto quests = quest_index->filter(menu_type, Episode::EP3, c->version(), categories[0]->category_id);
@@ -2208,7 +2208,7 @@ static void on_10(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
             }
           }
 
-          send_quest_categories_menu(c, s->quest_index_for_version(c->version()), menu_type, Episode::NONE);
+          send_quest_categories_menu(c, s->quest_index(c->version()), menu_type, Episode::NONE);
           break;
         }
 
@@ -2346,7 +2346,7 @@ static void on_10(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
         auto s = c->require_server_state();
         const pair<string, uint16_t>* dest = nullptr;
         try {
-          dest = &s->proxy_destinations_for_version(c->version()).at(item_id);
+          dest = &s->proxy_destinations(c->version()).at(item_id);
         } catch (const out_of_range&) {
         }
 
@@ -2453,7 +2453,7 @@ static void on_10(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
 
     case MenuID::QUEST_CATEGORIES: {
       auto s = c->require_server_state();
-      auto quest_index = s->quest_index_for_version(c->version());
+      auto quest_index = s->quest_index(c->version());
       if (!quest_index) {
         send_lobby_message_box(c, "$C6Quests are not available.");
         break;
@@ -2494,7 +2494,7 @@ static void on_10(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
     case MenuID::QUEST_EP1:
     case MenuID::QUEST_EP2: {
       auto s = c->require_server_state();
-      auto quest_index = s->quest_index_for_version(c->version());
+      auto quest_index = s->quest_index(c->version());
       if (!quest_index) {
         send_lobby_message_box(c, "$C6Quests are not\navailable.");
         break;
@@ -2707,7 +2707,7 @@ static void on_08_E6(shared_ptr<Client> c, uint16_t command, uint32_t, string& d
 static void on_1F(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
   check_size_v(data.size(), 0);
   auto s = c->require_server_state();
-  send_menu(c, s->information_menu_for_version(c->version()), true);
+  send_menu(c, s->information_menu(c->version()), true);
 }
 
 static void on_A0(shared_ptr<Client> c, uint16_t, uint32_t, string&) {
@@ -2842,7 +2842,7 @@ static void on_A2(shared_ptr<Client> c, uint16_t, uint32_t flag, string& data) {
           throw logic_error("invalid game mode");
       }
     }
-    send_quest_categories_menu(c, s->quest_index_for_version(c->version()), menu_type, l->episode);
+    send_quest_categories_menu(c, s->quest_index(c->version()), menu_type, l->episode);
   }
 }
 
@@ -3620,7 +3620,7 @@ static void on_DF_BB(shared_ptr<Client> c, uint16_t command, uint32_t, string& d
           lc->use_default_bank();
           lc->create_challenge_overlay(lc->version(), l->quest->challenge_template_index, s->level_table);
           lc->log.info("Created challenge overlay");
-          l->assign_inventory_and_bank_item_ids(lc);
+          l->assign_inventory_and_bank_item_ids(lc, true);
         }
       }
 
@@ -3671,7 +3671,7 @@ static void on_DF_BB(shared_ptr<Client> c, uint16_t command, uint32_t, string& d
           ? p->challenge_records.ep2_online_award_state
           : p->challenge_records.ep1_online_award_state;
       award_state.rank_award_flags |= cmd.rank_bitmask;
-      p->add_item(cmd.item);
+      p->add_item(cmd.item, c->version());
       l->on_item_id_generated_externally(cmd.item.id);
       string desc = s->describe_item(Version::BB_V4, cmd.item, false);
       l->log.info("(Challenge mode) Item awarded to player %hhu: %s", c->lobby_client_id, desc.c_str());
@@ -4361,17 +4361,23 @@ static void on_6F(shared_ptr<Client> c, uint16_t command, uint32_t, string& data
   if (!l->is_game()) {
     throw runtime_error("client sent ready command outside of game");
   }
-  c->config.clear_flag(Client::Flag::LOADING);
+
+  // Episode 3 sends a 6F after a CAx21 (end battle) command, so we shouldn't
+  // reassign the items IDs again in that case (even though item IDs really
+  // don't matter for Ep3)
+  if (c->config.check_flag(Client::Flag::LOADING)) {
+    c->config.clear_flag(Client::Flag::LOADING);
+
+    // The client sends 6F when it has created its TObjPlayer and assigned its
+    // item IDs. For the leader, however, this happens before any inbound commands
+    // are processed, so we already did it when the client was added to the lobby.
+    // So, we only assign item IDs here if the client is not the leader.
+    if ((command == 0x006F) && (c->lobby_client_id != l->leader_id)) {
+      l->assign_inventory_and_bank_item_ids(c, true);
+    }
+  }
 
   send_server_time(c);
-  if (l->base_version == Version::BB_V4) {
-    send_set_exp_multiplier(l);
-  }
-  if (c->version() == Version::BB_V4) {
-    send_update_team_reward_flags(c);
-    send_all_nearby_team_metadatas_to_client(c, false);
-  }
-
   if (c->config.check_flag(Client::Flag::DEBUG_ENABLED)) {
     string variations_str;
     for (size_t z = 0; z < l->variations.size(); z++) {
@@ -4382,6 +4388,10 @@ static void on_6F(shared_ptr<Client> c, uint16_t command, uint32_t, string& data
 
   bool should_resume_game = true;
   if (c->version() == Version::BB_V4) {
+    send_set_exp_multiplier(l);
+    send_update_team_reward_flags(c);
+    send_all_nearby_team_metadatas_to_client(c, false);
+
     // BB sends 016F when the client is done loading a quest. In that case, we
     // shouldn't send the quest to them again!
     if ((command == 0x006F) && l->check_flag(Lobby::Flag::JOINABLE_QUEST_IN_PROGRESS)) {
@@ -4533,9 +4543,9 @@ static void on_D2_V3_BB(shared_ptr<Client> c, uint16_t, uint32_t, string& data) 
       auto to_p = to_c->character();
       auto from_p = from_c->character();
       for (const auto& trade_item : from_c->pending_item_trade->items) {
-        size_t amount = trade_item.stack_size();
+        size_t amount = trade_item.stack_size(from_c->version());
 
-        auto item = from_p->remove_item(trade_item.id, amount, false);
+        auto item = from_p->remove_item(trade_item.id, amount, from_c->version());
         // This is a special case: when the trade is executed, the client
         // deletes the traded items from its own inventory automatically, so we
         // should NOT send the 6x29 to that client; we should only send it to
@@ -4547,7 +4557,7 @@ static void on_D2_V3_BB(shared_ptr<Client> c, uint16_t, uint32_t, string& data) 
           }
         }
 
-        to_p->add_item(trade_item);
+        to_p->add_item(trade_item, to_c->version());
         send_create_inventory_item_to_lobby(to_c, to_c->lobby_client_id, item);
       }
       send_command(to_c, 0xD3, 0x00);
@@ -4981,7 +4991,7 @@ static void on_EA_BB(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
           }
         }
         if (!reward.reward_item.empty()) {
-          c->current_bank().add_item(reward.reward_item);
+          c->current_bank().add_item(reward.reward_item, c->version());
         }
       }
       break;
@@ -5206,9 +5216,10 @@ typedef void (*on_command_t)(shared_ptr<Client> c, uint16_t command, uint32_t fl
 // Command handler table, indexed by command number and game version. Null
 // entries in this table cause on_unimplemented_command to be called, which
 // disconnects the client.
-static on_command_t handlers[0x100][14] = {
+static_assert(NUM_VERSIONS == 14, "Don\'t forget to update the ReceiveCommands handler table");
+static on_command_t handlers[0x100][NUM_VERSIONS] = {
     // clang-format off
-//        PC_PATCH BB_PATCH DC_NTE         DC_PROTO       DCV1           DCV2            PC-NTE       PC           GCNTE           GC              EP3TE           EP3             XB              BB
+//        PC_PATCH BB_PATCH DC_NTE         DC_112000      DCV1           DCV2            PC_NTE       PC           GCNTE           GC              EP3TE           EP3             XB              BB
 /* 00 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
 /* 01 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
 /* 02 */ {on_02_P, on_02_P, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},

@@ -2239,7 +2239,7 @@ void send_execute_item_trade(shared_ptr<Client> c, const vector<ItemData>& items
   cmd.item_count = items.size();
   for (size_t x = 0; x < items.size(); x++) {
     cmd.item_datas[x] = items[x];
-    cmd.item_datas[x].encode_for_version(c->version(), s->item_parameter_table_for_version(c->version()));
+    cmd.item_datas[x].encode_for_version(c->version(), s->item_parameter_table(c->version()));
   }
   send_command_t(c, 0xD3, 0x00, cmd);
 }
@@ -2385,18 +2385,7 @@ void send_game_item_state(shared_ptr<Client> c) {
 
   G_SyncItemState_6x6D_Decompressed decompressed_header;
   for (size_t z = 0; z < 12; z++) {
-    if (z == c->lobby_client_id) {
-      // If the player is joining, adjust the next item ID to use the value
-      // before inventory item IDs are assigned
-      size_t num_items = c->character()->inventory.num_items;
-      uint32_t next_id = l->next_item_id_for_client[z] - num_items;
-      if ((next_id & 0xFFE00000) != (l->next_item_id_for_client[z] & 0xFFE00000)) {
-        throw runtime_error("next item ID underflow during joining player item state generation");
-      }
-      decompressed_header.next_item_id_per_player[z] = next_id;
-    } else {
-      decompressed_header.next_item_id_per_player[z] = l->next_item_id_for_client[z];
-    }
+    decompressed_header.next_item_id_per_player[z] = l->next_item_id_for_client[z];
   }
   l->log.info("Sending next item IDs to client: %08" PRIX32 " %08" PRIX32 " %08" PRIX32 " %08" PRIX32,
       decompressed_header.next_item_id_per_player[0].load(),
@@ -2426,7 +2415,7 @@ void send_game_item_state(shared_ptr<Client> c) {
       fi.unknown_a2 = 0;
       fi.drop_number = (floor == 0) ? 0xFFFF : (decompressed_header.next_drop_number_per_floor.at(floor - 1)++);
       fi.item = item->data;
-      fi.item.encode_for_version(c->version(), s->item_parameter_table_for_version(c->version()));
+      fi.item.encode_for_version(c->version(), s->item_parameter_table(c->version()));
       floor_items_w.put(fi);
 
       decompressed_header.floor_item_count_per_floor.at(floor)++;
@@ -2504,7 +2493,7 @@ void send_drop_item_to_channel(shared_ptr<ServerState> s, Channel& ch, const Ite
   uint8_t subcommand = get_pre_v1_subcommand(ch.version, 0x51, 0x58, 0x5F);
   G_DropItem_PC_V3_BB_6x5F cmd = {
       {{subcommand, 0x0B, 0x0000}, {floor, from_enemy, entity_id, x, z, 0, 0, item}}, 0};
-  cmd.item.item.encode_for_version(ch.version, s->item_parameter_table_for_version(ch.version));
+  cmd.item.item.encode_for_version(ch.version, s->item_parameter_table(ch.version));
   ch.send(0x60, 0x00, &cmd, sizeof(cmd));
 }
 
@@ -2523,7 +2512,7 @@ void send_drop_stacked_item_to_channel(
     shared_ptr<ServerState> s, Channel& ch, const ItemData& item, uint8_t floor, float x, float z) {
   uint8_t subcommand = get_pre_v1_subcommand(ch.version, 0x4F, 0x56, 0x5D);
   G_DropStackedItem_PC_V3_BB_6x5D cmd = {{{subcommand, 0x0A, 0x0000}, floor, 0, x, z, item}, 0};
-  cmd.item_data.encode_for_version(ch.version, s->item_parameter_table_for_version(ch.version));
+  cmd.item_data.encode_for_version(ch.version, s->item_parameter_table(ch.version));
   ch.send(0x60, 0x00, &cmd, sizeof(cmd));
 }
 

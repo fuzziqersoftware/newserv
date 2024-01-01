@@ -26,7 +26,7 @@ public:
       std::shared_ptr<ServerState> state);
   virtual ~ProxyServer() = default;
 
-  void listen(uint16_t port, Version version, const struct sockaddr_storage* default_destination = nullptr);
+  void listen(const std::string& addr, uint16_t port, Version version, const struct sockaddr_storage* default_destination = nullptr);
 
   void connect_client(struct bufferevent* bev, uint16_t server_port);
 
@@ -207,6 +207,7 @@ private:
 
     ListeningSocket(
         ProxyServer* server,
+        const std::string& addr,
         uint16_t port,
         Version version,
         const struct sockaddr_storage* default_destination);

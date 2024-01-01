@@ -52,13 +52,13 @@ ItemParameterTable::ItemParameterTable(shared_ptr<const string> data, Version ve
 
 const ItemParameterTable::WeaponV4& ItemParameterTable::get_weapon(uint8_t data1_1, uint8_t data1_2) const {
   if (data1_1 >= this->num_weapon_classes) {
-    throw runtime_error("weapon ID out of range");
+    throw out_of_range("weapon ID out of range");
   }
 
   if (this->offsets_v4) {
     const auto& co = this->r.pget<ArrayRefLE>(this->offsets_v4->weapon_table + sizeof(ArrayRefLE) * data1_1);
     if (data1_2 >= co.count) {
-      throw runtime_error("weapon ID out of range");
+      throw out_of_range("weapon ID out of range");
     }
     return this->r.pget<WeaponV4>(co.offset + sizeof(WeaponV4) * data1_2);
   }
@@ -67,12 +67,12 @@ const ItemParameterTable::WeaponV4& ItemParameterTable::get_weapon(uint8_t data1
   try {
     return this->parsed_weapons.at(key);
   } catch (const std::out_of_range&) {
-    auto& def_v4 = this->parsed_weapons.emplace(key, WeaponV4{}).first->second;
+    WeaponV4 def_v4;
 
     if (this->offsets_v2) {
       const auto& co = this->r.pget<ArrayRefLE>(this->offsets_v2->weapon_table + sizeof(ArrayRefLE) * data1_1);
       if (data1_2 >= co.count) {
-        throw runtime_error("weapon ID out of range");
+        throw out_of_range("weapon ID out of range");
       }
       const auto& def_v2 = this->r.pget<WeaponV2>(co.offset + sizeof(WeaponV2) * data1_2);
       def_v4.base.id = def_v2.base.id;
@@ -90,7 +90,7 @@ const ItemParameterTable::WeaponV4& ItemParameterTable::get_weapon(uint8_t data1
     } else if (this->offsets_v3) {
       const auto& co = this->r.pget<ArrayRefBE>(this->offsets_v3->weapon_table + sizeof(ArrayRefBE) * data1_1);
       if (data1_2 >= co.count) {
-        throw runtime_error("weapon ID out of range");
+        throw out_of_range("weapon ID out of range");
       }
       const auto& def_v3 = this->r.pget<WeaponV3<true>>(co.offset + sizeof(WeaponV3<true>) * data1_2);
       def_v4.base.id = def_v3.base.id.load();
@@ -126,19 +126,19 @@ const ItemParameterTable::WeaponV4& ItemParameterTable::get_weapon(uint8_t data1
       throw logic_error("table is not v2, v3, or v4");
     }
 
-    return def_v4;
+    return this->parsed_weapons.emplace(key, def_v4).first->second;
   }
 }
 
 const ItemParameterTable::ArmorOrShieldV4& ItemParameterTable::get_armor_or_shield(uint8_t data1_1, uint8_t data1_2) const {
   if ((data1_1 < 1) || (data1_1 > 2)) {
-    throw runtime_error("armor/shield class ID out of range");
+    throw out_of_range("armor/shield class ID out of range");
   }
 
   if (this->offsets_v4) {
     const auto& co = this->r.pget<ArrayRefLE>(this->offsets_v4->armor_table + sizeof(ArrayRefLE) * (data1_1 - 1));
     if (data1_2 >= co.count) {
-      throw runtime_error("armor/shield ID out of range");
+      throw out_of_range("armor/shield ID out of range");
     }
     return this->r.pget<ArmorOrShieldV4>(co.offset + sizeof(ArmorOrShieldV4) * data1_2);
   }
@@ -151,15 +151,12 @@ const ItemParameterTable::ArmorOrShieldV4& ItemParameterTable::get_armor_or_shie
     }
     return ret;
   } catch (const std::out_of_range&) {
-    if (data1_2 >= parsed_vec.size()) {
-      parsed_vec.resize(data1_2 + 1);
-    }
-    auto& def_v4 = parsed_vec[data1_2];
+    ArmorOrShieldV4 def_v4;
 
     if (this->offsets_v2) {
       const auto& co = this->r.pget<ArrayRefLE>(this->offsets_v2->armor_table + sizeof(ArrayRefLE) * (data1_1 - 1));
       if (data1_2 >= co.count) {
-        throw runtime_error("armor/shield ID out of range");
+        throw out_of_range("armor/shield ID out of range");
       }
       const auto& def_v2 = this->r.pget<ArmorOrShieldV2>(co.offset + sizeof(ArmorOrShieldV2) * data1_2);
       def_v4.base.id = def_v2.base.id;
@@ -183,7 +180,7 @@ const ItemParameterTable::ArmorOrShieldV4& ItemParameterTable::get_armor_or_shie
     } else if (this->offsets_v3) {
       const auto& co = this->r.pget<ArrayRefBE>(this->offsets_v3->armor_table + sizeof(ArrayRefBE) * (data1_1 - 1));
       if (data1_2 >= co.count) {
-        throw runtime_error("armor/shield ID out of range");
+        throw out_of_range("armor/shield ID out of range");
       }
       const auto& def_v3 = this->r.pget<ArmorOrShieldV3>(co.offset + sizeof(ArmorOrShieldV3) * data1_2);
       def_v4.base.id = def_v3.base.id.load();
@@ -210,7 +207,11 @@ const ItemParameterTable::ArmorOrShieldV4& ItemParameterTable::get_armor_or_shie
       throw logic_error("table is not v2, v3, or v4");
     }
 
-    return def_v4;
+    if (data1_2 >= parsed_vec.size()) {
+      parsed_vec.resize(data1_2 + 1);
+    }
+    parsed_vec[data1_2] = def_v4;
+    return parsed_vec[data1_2];
   }
 }
 
@@ -218,7 +219,7 @@ const ItemParameterTable::UnitV4& ItemParameterTable::get_unit(uint8_t data1_2) 
   if (this->offsets_v4) {
     const auto& co = this->r.pget<ArrayRefLE>(this->offsets_v4->unit_table);
     if (data1_2 >= co.count) {
-      throw runtime_error("unit ID out of range");
+      throw out_of_range("unit ID out of range");
     }
     return this->r.pget<UnitV4>(co.offset + sizeof(UnitV4) * data1_2);
   }
@@ -230,15 +231,12 @@ const ItemParameterTable::UnitV4& ItemParameterTable::get_unit(uint8_t data1_2) 
     }
     return ret;
   } catch (const std::out_of_range&) {
-    if (data1_2 >= this->parsed_units.size()) {
-      this->parsed_units.resize(data1_2 + 1);
-    }
-    auto& def_v4 = this->parsed_units[data1_2];
+    UnitV4 def_v4;
 
     if (this->offsets_v2) {
       const auto& co = this->r.pget<ArrayRefLE>(this->offsets_v2->unit_table);
       if (data1_2 >= co.count) {
-        throw runtime_error("unit ID out of range");
+        throw out_of_range("unit ID out of range");
       }
       const auto& def_v2 = this->r.pget<UnitV2>(co.offset + sizeof(UnitV2) * data1_2);
       def_v4.base.id = def_v2.base.id;
@@ -249,7 +247,7 @@ const ItemParameterTable::UnitV4& ItemParameterTable::get_unit(uint8_t data1_2) 
     } else if (this->offsets_v3) {
       const auto& co = this->r.pget<ArrayRefBE>(this->offsets_v3->unit_table);
       if (data1_2 >= co.count) {
-        throw runtime_error("unit ID out of range");
+        throw out_of_range("unit ID out of range");
       }
       const auto& def_v3 = this->r.pget<UnitV3>(co.offset + sizeof(UnitV3) * data1_2);
       def_v4.base.id = def_v3.base.id.load();
@@ -263,7 +261,11 @@ const ItemParameterTable::UnitV4& ItemParameterTable::get_unit(uint8_t data1_2) 
       throw logic_error("table is not v2, v3, or v4");
     }
 
-    return def_v4;
+    if (data1_2 >= this->parsed_units.size()) {
+      this->parsed_units.resize(data1_2 + 1);
+    }
+    this->parsed_units[data1_2] = def_v4;
+    return this->parsed_units[data1_2];
   }
 }
 
@@ -271,7 +273,7 @@ const ItemParameterTable::MagV4& ItemParameterTable::get_mag(uint8_t data1_1) co
   if (this->offsets_v4) {
     const auto& co = this->r.pget<ArrayRefLE>(this->offsets_v4->mag_table);
     if (data1_1 >= co.count) {
-      throw runtime_error("mag ID out of range");
+      throw out_of_range("mag ID out of range");
     }
     return this->r.pget<MagV4>(co.offset + sizeof(MagV4) * data1_1);
   }
@@ -283,15 +285,12 @@ const ItemParameterTable::MagV4& ItemParameterTable::get_mag(uint8_t data1_1) co
     }
     return ret;
   } catch (const std::out_of_range&) {
-    if (data1_1 >= this->parsed_mags.size()) {
-      this->parsed_mags.resize(data1_1 + 1);
-    }
-    auto& def_v4 = this->parsed_mags[data1_1];
+    MagV4 def_v4;
 
     if (this->offsets_v2) {
       const auto& co = this->r.pget<ArrayRefLE>(this->offsets_v2->mag_table);
       if (data1_1 >= co.count) {
-        throw runtime_error("mag ID out of range");
+        throw out_of_range("mag ID out of range");
       }
       const auto& def_v2 = this->r.pget<MagV2>(co.offset + sizeof(MagV2) * data1_1);
       def_v4.base.id = def_v2.base.id;
@@ -311,7 +310,7 @@ const ItemParameterTable::MagV4& ItemParameterTable::get_mag(uint8_t data1_1) co
     } else if (this->offsets_v3) {
       const auto& co = this->r.pget<ArrayRefBE>(this->offsets_v3->mag_table);
       if (data1_1 >= co.count) {
-        throw runtime_error("mag ID out of range");
+        throw out_of_range("mag ID out of range");
       }
       const auto& def_v3 = this->r.pget<MagV3>(co.offset + sizeof(MagV3) * data1_1);
       def_v4.base.id = def_v3.base.id.load();
@@ -334,19 +333,23 @@ const ItemParameterTable::MagV4& ItemParameterTable::get_mag(uint8_t data1_1) co
       throw logic_error("table is not v2, v3, or v4");
     }
 
-    return def_v4;
+    if (data1_1 >= this->parsed_mags.size()) {
+      this->parsed_mags.resize(data1_1 + 1);
+    }
+    this->parsed_mags[data1_1] = def_v4;
+    return this->parsed_mags[data1_1];
   }
 }
 
 const ItemParameterTable::ToolV4& ItemParameterTable::get_tool(uint8_t data1_1, uint8_t data1_2) const {
   if (data1_1 >= this->num_tool_classes) {
-    throw runtime_error("tool class ID out of range");
+    throw out_of_range("tool class ID out of range");
   }
 
   if (this->offsets_v4) {
     const auto& co = this->r.pget<ArrayRefLE>(this->offsets_v4->tool_table + sizeof(ArrayRefLE) * data1_1);
     if (data1_2 >= co.count) {
-      throw runtime_error("tool ID out of range");
+      throw out_of_range("tool ID out of range");
     }
     return this->r.pget<ToolV4>(co.offset + sizeof(ToolV4) * data1_2);
   }
@@ -355,12 +358,12 @@ const ItemParameterTable::ToolV4& ItemParameterTable::get_tool(uint8_t data1_1, 
   try {
     return this->parsed_tools.at(key);
   } catch (const std::out_of_range&) {
-    auto& def_v4 = this->parsed_tools.emplace(key, ToolV4{}).first->second;
+    ToolV4 def_v4;
 
     if (this->offsets_v2) {
       const auto& co = this->r.pget<ArrayRefLE>(this->offsets_v2->tool_table + sizeof(ArrayRefLE) * data1_1);
       if (data1_2 >= co.count) {
-        throw runtime_error("tool ID out of range");
+        throw out_of_range("tool ID out of range");
       }
       const auto& def_v2 = this->r.pget<ToolV2>(co.offset + sizeof(ToolV2) * data1_2);
       def_v4.base.id = def_v2.base.id;
@@ -372,7 +375,7 @@ const ItemParameterTable::ToolV4& ItemParameterTable::get_tool(uint8_t data1_1, 
     } else if (this->offsets_v3) {
       const auto& co = this->r.pget<ArrayRefBE>(this->offsets_v3->tool_table + sizeof(ArrayRefBE) * data1_1);
       if (data1_2 >= co.count) {
-        throw runtime_error("tool ID out of range");
+        throw out_of_range("tool ID out of range");
       }
       const auto& def_v3 = this->r.pget<ToolV3>(co.offset + sizeof(ToolV3) * data1_2);
       def_v4.base.id = def_v3.base.id.load();
@@ -387,7 +390,7 @@ const ItemParameterTable::ToolV4& ItemParameterTable::get_tool(uint8_t data1_1, 
       throw logic_error("table is not v2, v3, or v4");
     }
 
-    return def_v4;
+    return this->parsed_tools.emplace(key, def_v4).first->second;
   }
 }
 
@@ -472,10 +475,10 @@ float ItemParameterTable::get_sale_divisor(uint8_t data1_0, uint8_t data1_1) con
 const ItemParameterTable::MagFeedResult& ItemParameterTable::get_mag_feed_result(
     uint8_t table_index, uint8_t item_index) const {
   if (table_index >= 8) {
-    throw runtime_error("invalid mag feed table index");
+    throw out_of_range("invalid mag feed table index");
   }
   if (item_index >= 11) {
-    throw runtime_error("invalid mag feed item index");
+    throw out_of_range("invalid mag feed item index");
   }
 
   uint32_t offset;
@@ -521,7 +524,7 @@ uint8_t ItemParameterTable::get_special_stars(uint8_t det) const {
 const ItemParameterTable::Special<false>& ItemParameterTable::get_special(uint8_t special) const {
   special &= 0x3F;
   if (special >= this->num_specials) {
-    throw runtime_error("invalid special index");
+    throw out_of_range("invalid special index");
   }
 
   if (this->offsets_v2) {
@@ -545,10 +548,10 @@ const ItemParameterTable::Special<false>& ItemParameterTable::get_special(uint8_
 
 uint8_t ItemParameterTable::get_max_tech_level(uint8_t char_class, uint8_t tech_num) const {
   if (char_class >= 12) {
-    throw runtime_error("invalid character class");
+    throw out_of_range("invalid character class");
   }
   if (tech_num >= 19) {
-    throw runtime_error("invalid technique number");
+    throw out_of_range("invalid technique number");
   }
 
   if (this->offsets_v2) {
@@ -762,7 +765,7 @@ std::pair<const ItemParameterTable::EventItem*, size_t> ItemParameterTable::get_
     uint32_t base_offset, uint8_t event_number) const {
   const auto& co = this->r.pget<ArrayRef<IsBigEndian>>(base_offset);
   if (event_number >= co.count) {
-    throw runtime_error("invalid event number");
+    throw out_of_range("invalid event number");
   }
   const auto& event_co = this->r.pget<ArrayRef<IsBigEndian>>(co.offset + sizeof(ArrayRef<IsBigEndian>) * event_number);
   const auto* defs = &this->r.pget<EventItem>(event_co.offset, event_co.count * sizeof(EventItem));

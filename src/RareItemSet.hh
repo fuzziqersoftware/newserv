@@ -22,14 +22,14 @@ public:
     parray<uint8_t, 3> item_code;
 
     std::string str() const;
-    std::string str(Version version, std::shared_ptr<const ItemNameIndex> name_index) const;
+    std::string str(std::shared_ptr<const ItemNameIndex> name_index) const;
   };
 
   RareItemSet();
   RareItemSet(const AFSArchive& afs, bool is_v1);
   RareItemSet(const GSLArchive& gsl, bool is_big_endian);
   RareItemSet(const std::string& rel, bool is_big_endian);
-  RareItemSet(const JSON& json, Version version, std::shared_ptr<const ItemNameIndex> name_index = nullptr);
+  RareItemSet(const JSON& json, std::shared_ptr<const ItemNameIndex> name_index = nullptr);
   ~RareItemSet() = default;
 
   std::vector<ExpandedDrop> get_enemy_specs(GameMode mode, Episode episode, uint8_t difficulty, uint8_t secid, uint8_t rt_index) const;
@@ -37,17 +37,16 @@ public:
 
   std::string serialize_afs(bool is_v1) const;
   std::string serialize_gsl(bool big_endian) const;
-  std::string serialize_json(Version version, std::shared_ptr<const ItemNameIndex> name_index = nullptr) const;
+  std::string serialize_json(std::shared_ptr<const ItemNameIndex> name_index = nullptr) const;
 
   void print_collection(
       FILE* stream,
-      Version version,
       GameMode mode,
       Episode episode,
       uint8_t difficulty,
       uint8_t section_id,
       std::shared_ptr<const ItemNameIndex> name_index = nullptr) const;
-  void print_all_collections(FILE* stream, Version version, std::shared_ptr<const ItemNameIndex> name_index = nullptr) const;
+  void print_all_collections(FILE* stream, std::shared_ptr<const ItemNameIndex> name_index = nullptr) const;
 
 protected:
   struct SpecCollection {

@@ -4,37 +4,69 @@
 
 using namespace std;
 
-ItemNameIndex::ItemNameIndex(JSON&& v2_names, JSON&& v3_names, JSON&& v4_names) {
-  auto get_or_create_meta = [&](uint32_t primary_identifier) {
-    shared_ptr<ItemMetadata> meta;
-    try {
-      return this->primary_identifier_index.at(primary_identifier);
-    } catch (const out_of_range&) {
-      auto meta = make_shared<ItemMetadata>();
-      meta->primary_identifier = primary_identifier;
-      this->primary_identifier_index.emplace(primary_identifier, meta);
-      return meta;
+// class ItemNameIndex {
+// public:
+//   ItemNameIndex(std::shared_ptr<const ItemParameterTable> pmt, const std::vector<std::string>& name_coll);
+//   std::string describe_item(const ItemData& item, bool include_color_escapes = false) const;
+//   ItemData parse_item_description(const std::string& description) const;
+// private:
+//   ItemData parse_item_description_phase(const std::string& description, bool skip_special) const;
+//   std::shared_ptr<const ItemParameterTable> item_parameter_table;
+//   struct ItemMetadata {
+//     uint32_t primary_identifier;
+//     std::string name;
+//   };
+//   std::unordered_map<uint32_t, std::shared_ptr<ItemMetadata>> primary_identifier_indexes;
+//   std::map<std::string, std::shared_ptr<ItemMetadata>> name_indexes;
+// };
+
+ItemNameIndex::ItemNameIndex(
+    Version version,
+    std::shared_ptr<const ItemParameterTable> item_parameter_table,
+    const std::vector<std::string>& name_coll)
+    : version(version),
+      item_parameter_table(item_parameter_table) {
+
+  auto find_items_1d = [&](uint64_t data1, size_t position) -> size_t {
+    ItemData item(data1, 0);
+    for (size_t x = 0; x < 0x100; x++) {
+      item.data1[position] = x;
+      uint32_t id;
+      try {
+        id = this->item_parameter_table->get_item_id(item);
+      } catch (const out_of_range&) {
+        return x;
+      }
+      const string* name = nullptr;
+      try {
+        name = &name_coll.at(id);
+      } catch (const out_of_range&) {
+      }
+
+      if (name) {
+        auto meta = make_shared<ItemMetadata>();
+        meta->primary_identifier = item.primary_identifier();
+        meta->name = *name;
+        this->primary_identifier_index.emplace(meta->primary_identifier, meta);
+        this->name_index.emplace(tolower(meta->name), meta);
+      }
+    }
+    return 0x100;
+  };
+  auto find_items_2d = [&](uint64_t data1) {
+    for (size_t x = 0; x < 0x100; x++) {
+      if (find_items_1d(data1 | (static_cast<uint64_t>(x) << 48), 2) == 0) {
+        break;
+      }
     }
   };
 
-  for (const auto& it : v2_names.as_dict()) {
-    uint32_t primary_identifier = stoul(it.first, nullptr, 16);
-    auto meta = get_or_create_meta(primary_identifier);
-    meta->v2_name = std::move(it.second->as_string());
-    this->v2_name_index.emplace(tolower(meta->v2_name), meta);
-  }
-  for (const auto& it : v3_names.as_dict()) {
-    uint32_t primary_identifier = stoul(it.first, nullptr, 16);
-    auto meta = get_or_create_meta(primary_identifier);
-    meta->v3_name = std::move(it.second->as_string());
-    this->v3_name_index.emplace(tolower(meta->v3_name), meta);
-  }
-  for (const auto& it : v4_names.as_dict()) {
-    uint32_t primary_identifier = stoul(it.first, nullptr, 16);
-    auto meta = get_or_create_meta(primary_identifier);
-    meta->v4_name = std::move(it.second->as_string());
-    this->v4_name_index.emplace(tolower(meta->v4_name), meta);
-  }
+  find_items_2d(0x0000000000000000);
+  find_items_1d(0x0101000000000000, 2);
+  find_items_1d(0x0102000000000000, 2);
+  find_items_1d(0x0103000000000000, 2);
+  find_items_1d(0x0200000000000000, 1);
+  find_items_2d(0x0300000000000000);
 }
 
 static const char* s_rank_name_characters = "\0ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_";
@@ -106,11 +138,10 @@ const array<const char*, 0x11> name_for_s_rank_special = {
 };
 
 std::string ItemNameIndex::describe_item(
-    Version version,
     const ItemData& item,
-    std::shared_ptr<const ItemParameterTable> item_parameter_table) const {
+    bool include_color_escapes) const {
   if (item.data1[0] == 0x04) {
-    return string_printf("%s%" PRIu32 " Meseta", item_parameter_table ? "$C7" : "", item.data2d.load());
+    return string_printf("%s%" PRIu32 " Meseta", include_color_escapes ? "$C7" : "", item.data2d.load());
   }
 
   vector<string> ret_tokens;
@@ -147,7 +178,7 @@ std::string ItemNameIndex::describe_item(
   // flags in a different location.
   if (((item.data1[1] == 0x01) && (item.data1[4] & 0x40)) ||
       ((item.data1[0] == 0x02) && (item.data2[2] & 0x40)) ||
-      ((item.data1[0] == 0x03) && !item.is_stackable() && (item.data1[3] & 0x40))) {
+      ((item.data1[0] == 0x03) && !item.is_stackable(this->version) && (item.data1[3] & 0x40))) {
     ret_tokens.emplace_back("Wrapped");
   }
 
@@ -172,18 +203,7 @@ std::string ItemNameIndex::describe_item(
   } else {
     try {
       auto meta = this->primary_identifier_index.at(primary_identifier);
-      const string* name;
-      if (is_v4(version)) {
-        name = &meta->v4_name;
-      } else if (is_v3(version)) {
-        name = &meta->v3_name;
-      } else {
-        name = &meta->v2_name;
-      }
-      if (name->empty()) {
-        throw out_of_range("item does not exist");
-      }
-      ret_tokens.emplace_back(*name);
+      ret_tokens.emplace_back(meta->name);
 
     } catch (const out_of_range&) {
       ret_tokens.emplace_back(string_printf("!ID:%06" PRIX32, primary_identifier));
@@ -341,16 +361,16 @@ std::string ItemNameIndex::describe_item(
 
     // For tools, add the amount (if applicable)
   } else if (item.data1[0] == 0x03) {
-    if (item.max_stack_size() > 1) {
+    if (item.max_stack_size(this->version) > 1) {
       ret_tokens.emplace_back(string_printf("x%hhu", item.data1[5]));
     }
   }
 
   string ret = join(ret_tokens, " ");
-  if (item_parameter_table) {
+  if (include_color_escapes) {
     if (item.is_s_rank_weapon()) {
       return "$C4" + ret;
-    } else if (item_parameter_table->is_item_rare(item)) {
+    } else if (this->item_parameter_table->is_item_rare(item)) {
       return "$C6" + ret;
     } else if (item.has_bonuses()) {
       return "$C2" + ret;
@@ -362,32 +382,32 @@ std::string ItemNameIndex::describe_item(
   }
 }
 
-ItemData ItemNameIndex::parse_item_description(Version version, const std::string& desc) const {
+ItemData ItemNameIndex::parse_item_description(const std::string& desc) const {
   ItemData ret;
   try {
-    ret = this->parse_item_description_phase(version, desc, false);
+    ret = this->parse_item_description_phase(desc, false);
   } catch (const exception& e1) {
     try {
-      ret = this->parse_item_description_phase(version, desc, true);
+      ret = this->parse_item_description_phase(desc, true);
     } catch (const exception& e2) {
       try {
         ret = ItemData::from_data(parse_data_string(desc));
       } catch (const exception& ed) {
         if (strcmp(e1.what(), e2.what())) {
-          throw runtime_error(string_printf("cannot parse item description \"%s\" in %s (as text 1: %s) (as text 2: %s) (as data: %s)",
-              desc.c_str(), name_for_enum(version), e1.what(), e2.what(), ed.what()));
+          throw runtime_error(string_printf("cannot parse item description \"%s\" (as text 1: %s) (as text 2: %s) (as data: %s)",
+              desc.c_str(), e1.what(), e2.what(), ed.what()));
         } else {
-          throw runtime_error(string_printf("cannot parse item description \"%s\" in %s (as text: %s) (as data: %s)",
-              desc.c_str(), name_for_enum(version), e1.what(), ed.what()));
+          throw runtime_error(string_printf("cannot parse item description \"%s\" (as text: %s) (as data: %s)",
+              desc.c_str(), e1.what(), ed.what()));
         }
       }
     }
   }
-  ret.enforce_min_stack_size();
+  ret.enforce_min_stack_size(this->version);
   return ret;
 }
 
-ItemData ItemNameIndex::parse_item_description_phase(Version version, const std::string& description, bool skip_special) const {
+ItemData ItemNameIndex::parse_item_description_phase(const std::string& description, bool skip_special) const {
   ItemData ret;
   ret.data1d.clear(0);
   ret.id = 0xFFFFFFFF;
@@ -448,24 +468,15 @@ ItemData ItemNameIndex::parse_item_description_phase(Version version, const std:
     }
   }
 
-  const map<string, shared_ptr<ItemMetadata>>* name_index;
-  if (is_v4(version)) {
-    name_index = &this->v4_name_index;
-  } else if (is_v3(version)) {
-    name_index = &this->v3_name_index;
-  } else {
-    name_index = &this->v2_name_index;
-  }
-
-  auto name_it = name_index->lower_bound(desc);
+  auto name_it = this->name_index.lower_bound(desc);
   // Look up to 3 places before the lower bound. We have to do this to catch
   // cases like Sange vs. Sange & Yasha - if the input is like "Sange 0/...",
   // then we'll see Sange & Yasha first, which we should skip.
   size_t lookback = 0;
   while (lookback < 4) {
-    if (name_it != name_index->end() && desc.starts_with(name_it->first)) {
+    if (name_it != this->name_index.end() && desc.starts_with(name_it->first)) {
       break;
-    } else if (name_it == name_index->begin()) {
+    } else if (name_it == this->name_index.begin()) {
       throw runtime_error("no such item");
     } else {
       name_it--;
@@ -626,7 +637,7 @@ ItemData ItemNameIndex::parse_item_description_phase(Version version, const std:
       ret.data2[2] |= 0x40;
     }
   } else if (ret.data1[0] == 0x03) {
-    if (ret.max_stack_size() > 1) {
+    if (ret.max_stack_size(this->version) > 1) {
       if (starts_with(desc, "x")) {
         ret.data1[5] = stoul(desc.substr(1), nullptr, 10);
       } else {
@@ -637,7 +648,7 @@ ItemData ItemNameIndex::parse_item_description_phase(Version version, const std:
     }
 
     if (is_wrapped) {
-      if (ret.is_stackable()) {
+      if (ret.is_stackable(this->version)) {
         throw runtime_error("stackable items cannot be wrapped");
       } else {
         ret.data1[3] |= 0x40;

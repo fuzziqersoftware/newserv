@@ -37,13 +37,21 @@
   "ExternalAddress": "10.0.1.5",
 
   // Port to listen for DNS queries on. To disable the DNS server, comment this
-  // out or set it to zero.
+  // out or set it to zero. By default, the DNS server listens on all
+  // interfaces, but you can specify an interface by replacing this with a list
+  // of [interface_addr_or_name, port].
   "DNSServerPort": 53,
 
   // Ports to listen for game connections on.
   "PortConfiguration": {
     // Format of entries in this dictionary:
     // name: [port, version, behavior]
+
+    // port is normally just an integer (which will cause the server to listen
+    // on that port on all interfaces), but you can also replace the integer
+    // with a 2-list of [address, port] to listen in a specific port. For
+    // example, that might look like:
+    // "xb-login": [["en0", 9500], "xb", "login_server"],
 
     // Various versions of PSO hardcode these ports in the clients. Don't change
     // these unless you don't want to support certain versions of PSO.
@@ -766,6 +774,10 @@
   //       disabled in each game with the $cheat command. Cheat options are
   //       available on the proxy server.
   "CheatModeBehavior": "OnByDefault",
+
+  // Whether to enable rare drop notifications by default. Players can toggle
+  // this behavior for themselves with the $rarenotifs command.
+  "RareNotificationsEnabledByDefault": false,
 
   // Whether to enable patches on Episode 3 USA. This functionality depends on
   // exploiting a bug in Episode 3, and while it seems to work reliably on

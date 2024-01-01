@@ -14,7 +14,7 @@
 #include "NetworkAddresses.hh"
 #include "SendCommands.hh"
 #include "Text.hh"
-#include "UnicodeTextSet.hh"
+#include "TextIndex.hh"
 
 using namespace std;
 
@@ -25,9 +25,13 @@ ServerState::QuestF960Result::QuestF960Result(const JSON& json, std::shared_ptr<
   this->probability_upgrade = json.get_int("ProbabilityUpgrade", 0);
   for (size_t day = 0; day < 7; day++) {
     for (const auto& item_it : json.get_list(day_names[day])) {
-      this->results[day].emplace_back(name_index->parse_item_description(Version::BB_V4, item_it->as_string()));
+      this->results[day].emplace_back(name_index->parse_item_description(item_it->as_string()));
     }
   }
+}
+
+ServerState::ServerState() : creation_time(now()) {
+  this->create_load_step_graph();
 }
 
 ServerState::ServerState(shared_ptr<struct event_base> base, const string& config_filename, bool is_replay)
@@ -35,127 +39,25 @@ ServerState::ServerState(shared_ptr<struct event_base> base, const string& confi
       base(base),
       config_filename(config_filename),
       is_replay(is_replay),
-      dns_server_port(0),
-      ip_stack_debug(false),
-      allow_unregistered_users(false),
-      allow_pc_nte(false),
-      use_temp_licenses_for_prototypes(true),
-      allow_dc_pc_games(false),
-      allow_gc_xb_games(true),
-      allowed_drop_modes_v1_v2_normal(0x1F),
-      allowed_drop_modes_v1_v2_battle(0x07),
-      allowed_drop_modes_v1_v2_challenge(0x07),
-      allowed_drop_modes_v3_normal(0x1F),
-      allowed_drop_modes_v3_battle(0x07),
-      allowed_drop_modes_v3_challenge(0x07),
-      allowed_drop_modes_v4_normal(0x1D), // CLIENT not allowed
-      allowed_drop_modes_v4_battle(0x05),
-      allowed_drop_modes_v4_challenge(0x05),
-      default_drop_mode_v1_v2_normal(Lobby::DropMode::CLIENT),
-      default_drop_mode_v1_v2_battle(Lobby::DropMode::CLIENT),
-      default_drop_mode_v1_v2_challenge(Lobby::DropMode::CLIENT),
-      default_drop_mode_v3_normal(Lobby::DropMode::CLIENT),
-      default_drop_mode_v3_battle(Lobby::DropMode::CLIENT),
-      default_drop_mode_v3_challenge(Lobby::DropMode::CLIENT),
-      default_drop_mode_v4_normal(Lobby::DropMode::SERVER_SHARED),
-      default_drop_mode_v4_battle(Lobby::DropMode::SERVER_SHARED),
-      default_drop_mode_v4_challenge(Lobby::DropMode::SERVER_SHARED),
-      persistent_game_idle_timeout_usecs(0),
-      ep3_send_function_call_enabled(false),
-      catch_handler_exceptions(true),
-      ep3_infinite_meseta(false),
-      ep3_defeat_player_meseta_rewards({400, 500, 600, 700, 800}),
-      ep3_defeat_com_meseta_rewards({100, 200, 300, 400, 500}),
-      ep3_final_round_meseta_bonus(300),
-      ep3_jukebox_is_free(false),
-      ep3_behavior_flags(0),
-      hide_download_commands(true),
-      run_shell_behavior(RunShellBehavior::DEFAULT),
-      cheat_mode_behavior(BehaviorSwitch::OFF_BY_DEFAULT),
-      bb_global_exp_multiplier(1),
-      ep3_card_auction_points(0),
-      ep3_card_auction_min_size(0),
-      ep3_card_auction_max_size(0),
-      player_files_manager(make_shared<PlayerFilesManager>(base)),
-      destroy_lobbies_event(event_new(base.get(), -1, EV_TIMEOUT, &ServerState::dispatch_destroy_lobbies, this), event_free),
-      next_lobby_id(1),
-      pre_lobby_event(0),
-      ep3_menu_song(-1),
-      local_address(0),
-      external_address(0),
-      proxy_allow_save_files(true),
-      proxy_enable_login_options(false) {}
+      player_files_manager(this->base ? make_shared<PlayerFilesManager>(base) : nullptr),
+      destroy_lobbies_event(this->base ? event_new(base.get(), -1, EV_TIMEOUT, &ServerState::dispatch_destroy_lobbies, this) : nullptr, event_free) {
+  this->create_load_step_graph();
+}
 
-void ServerState::init() {
-  vector<shared_ptr<Lobby>> non_v1_only_lobbies;
-  vector<shared_ptr<Lobby>> ep3_only_lobbies;
+void ServerState::load_objects_and_downstream_dependents(const std::string& what) {
+  this->load_step_graph.run(what, false);
+}
 
-  for (size_t x = 0; x < 20; x++) {
-    auto lobby_name = string_printf("LOBBY%zu", x + 1);
-    bool allow_v1 = (x <= 9);
-    bool allow_non_ep3 = (x <= 14);
+void ServerState::load_objects_and_downstream_dependents(const std::vector<std::string>& what) {
+  this->load_step_graph.run(what, false);
+}
 
-    shared_ptr<Lobby> l = this->create_lobby(false);
-    l->set_flag(Lobby::Flag::PUBLIC);
-    l->set_flag(Lobby::Flag::DEFAULT);
-    l->set_flag(Lobby::Flag::PERSISTENT);
-    if (allow_non_ep3) {
-      if (allow_v1) {
-        l->allow_version(Version::DC_NTE);
-        l->allow_version(Version::DC_V1_11_2000_PROTOTYPE);
-        l->allow_version(Version::DC_V1);
-      }
-      l->allow_version(Version::DC_V2);
-      l->allow_version(Version::PC_NTE);
-      l->allow_version(Version::PC_V2);
-      l->allow_version(Version::GC_NTE);
-      l->allow_version(Version::GC_V3);
-      l->allow_version(Version::XB_V3);
-      l->allow_version(Version::BB_V4);
-    }
-    l->allow_version(Version::GC_EP3_NTE);
-    l->allow_version(Version::GC_EP3);
+void ServerState::load_objects_and_upstream_dependents(const std::string& what) {
+  this->load_step_graph.run(what, true);
+}
 
-    l->block = x + 1;
-    l->name = lobby_name;
-    l->max_clients = 12;
-    if (!allow_non_ep3) {
-      l->episode = Episode::EP3;
-    }
-
-    if (allow_non_ep3) {
-      this->public_lobby_search_order.emplace_back(l);
-    } else {
-      ep3_only_lobbies.emplace_back(l);
-    }
-  }
-
-  // Annoyingly, the CARD lobbies should be searched first, but are sent at the
-  // end of the lobby list command, so we have to change the search order
-  // manually here.
-  this->public_lobby_search_order.insert(
-      this->public_lobby_search_order.begin(),
-      ep3_only_lobbies.begin(),
-      ep3_only_lobbies.end());
-
-  // Load all the necessary data
-  auto config = this->load_config();
-  this->collect_network_addresses();
-  this->load_item_name_index();
-  this->parse_config(config, false);
-  this->load_bb_private_keys();
-  this->load_licenses();
-  this->load_teams();
-  this->load_patch_indexes();
-  this->load_battle_params();
-  this->load_level_table();
-  this->load_item_tables();
-  this->load_word_select_table();
-  this->load_ep3_data();
-  this->resolve_ep3_card_names();
-  this->load_quest_index();
-  this->compile_functions();
-  this->load_dol_files();
+void ServerState::load_objects_and_upstream_dependents(const std::vector<std::string>& what) {
+  this->load_step_graph.run(what, true);
 }
 
 void ServerState::add_client_to_available_lobby(shared_ptr<Client> c) {
@@ -379,7 +281,7 @@ uint32_t ServerState::connect_address_for_client(shared_ptr<Client> c) const {
   }
 }
 
-shared_ptr<const Menu> ServerState::information_menu_for_version(Version version) const {
+shared_ptr<const Menu> ServerState::information_menu(Version version) const {
   if (is_v1_or_v2(version)) {
     return this->information_menu_v2;
   } else if (is_v3(version)) {
@@ -388,7 +290,7 @@ shared_ptr<const Menu> ServerState::information_menu_for_version(Version version
   throw out_of_range("no information menu exists for this version");
 }
 
-shared_ptr<const Menu> ServerState::proxy_destinations_menu_for_version(Version version) const {
+shared_ptr<const Menu> ServerState::proxy_destinations_menu(Version version) const {
   switch (version) {
     case Version::DC_NTE:
     case Version::DC_V1_11_2000_PROTOTYPE:
@@ -410,7 +312,7 @@ shared_ptr<const Menu> ServerState::proxy_destinations_menu_for_version(Version 
   }
 }
 
-const vector<pair<string, uint16_t>>& ServerState::proxy_destinations_for_version(Version version) const {
+const vector<pair<string, uint16_t>>& ServerState::proxy_destinations(Version version) const {
   switch (version) {
     case Version::DC_NTE:
     case Version::DC_V1_11_2000_PROTOTYPE:
@@ -432,7 +334,19 @@ const vector<pair<string, uint16_t>>& ServerState::proxy_destinations_for_versio
   }
 }
 
-shared_ptr<const ItemParameterTable> ServerState::item_parameter_table_for_version(Version version) const {
+shared_ptr<const vector<string>> ServerState::information_contents_for_client(shared_ptr<const Client> c) const {
+  return is_v1_or_v2(c->version()) ? this->information_contents_v2 : this->information_contents_v3;
+}
+
+shared_ptr<const QuestIndex> ServerState::quest_index(Version version) const {
+  return is_ep3(version) ? this->ep3_download_quest_index : this->default_quest_index;
+}
+
+void ServerState::dispatch_destroy_lobbies(evutil_socket_t, short, void* ctx) {
+  reinterpret_cast<ServerState*>(ctx)->lobbies_to_destroy.clear();
+}
+
+shared_ptr<const ItemParameterTable> ServerState::item_parameter_table(Version version) const {
   switch (version) {
     case Version::DC_NTE:
     case Version::DC_V1_11_2000_PROTOTYPE:
@@ -454,11 +368,24 @@ shared_ptr<const ItemParameterTable> ServerState::item_parameter_table_for_versi
   }
 }
 
+shared_ptr<const ItemNameIndex> ServerState::item_name_index(Version version) const {
+  auto ret = this->item_name_indexes.at(static_cast<size_t>(version));
+  if (ret == nullptr) {
+    throw runtime_error("no item name index exists for this version");
+  }
+  return ret;
+}
+
+void ServerState::set_item_name_index(Version version, shared_ptr<const ItemNameIndex> new_index) {
+  this->item_name_indexes.at(static_cast<size_t>(version)) = new_index;
+}
+
 string ServerState::describe_item(Version version, const ItemData& item, bool include_color_codes) const {
-  return this->item_name_index->describe_item(
-      version,
-      item,
-      include_color_codes ? this->item_parameter_table_for_version(version) : nullptr);
+  return this->item_name_index(version)->describe_item(item, include_color_codes);
+}
+
+ItemData ServerState::parse_item_description(Version version, const string& description) const {
+  return this->item_name_index(version)->parse_item_description(description);
 }
 
 void ServerState::set_port_configuration(
@@ -553,6 +480,34 @@ shared_ptr<const string> ServerState::load_bb_file(
   }
 }
 
+pair<string, uint16_t> ServerState::parse_port_spec(const JSON& json) const {
+  if (json.is_list()) {
+    string addr = json.at(0).as_string();
+    try {
+      addr = string_for_address(this->all_addresses.at(addr));
+    } catch (const out_of_range&) {
+    }
+    return make_pair(addr, json.at(1).as_int());
+  } else {
+    return make_pair("", json.as_int());
+  }
+}
+
+vector<PortConfiguration> ServerState::parse_port_configuration(const JSON& json) const {
+  vector<PortConfiguration> ret;
+  for (const auto& item_json_it : json.as_dict()) {
+    const auto& item_list = item_json_it.second;
+    PortConfiguration& pc = ret.emplace_back();
+    pc.name = item_json_it.first;
+    auto spec = this->parse_port_spec(item_list->at(0));
+    pc.addr = std::move(spec.first);
+    pc.port = spec.second;
+    pc.version = enum_for_name<Version>(item_list->at(1).as_string().c_str());
+    pc.behavior = enum_for_name<ServerBehavior>(item_list->at(2).as_string().c_str());
+  }
+  return ret;
+}
+
 void ServerState::collect_network_addresses() {
   config_log.info("Reading network addresses");
   this->all_addresses = get_local_addresses();
@@ -562,26 +517,13 @@ void ServerState::collect_network_addresses() {
   }
 }
 
-JSON ServerState::load_config() const {
-  config_log.info("Loading configuration");
-  return JSON::parse(load_file(this->config_filename));
-}
-
-static vector<PortConfiguration> parse_port_configuration(const JSON& json) {
-  vector<PortConfiguration> ret;
-  for (const auto& item_json_it : json.as_dict()) {
-    const auto& item_list = item_json_it.second;
-    PortConfiguration& pc = ret.emplace_back();
-    pc.name = item_json_it.first;
-    pc.port = item_list->at(0).as_int();
-    pc.version = enum_for_name<Version>(item_list->at(1).as_string().c_str());
-    pc.behavior = enum_for_name<ServerBehavior>(item_list->at(2).as_string().c_str());
+void ServerState::load_config() {
+  if (this->config_filename.empty()) {
+    throw logic_error("configuration filename is missing");
   }
-  return ret;
-}
 
-void ServerState::parse_config(const JSON& json, bool is_reload) {
-  config_log.info("Parsing configuration");
+  config_log.info("Loading configuration");
+  auto json = JSON::parse(load_file(this->config_filename));
 
   auto parse_behavior_switch = [&](const string& json_key, BehaviorSwitch default_value) -> ServerState::BehaviorSwitch {
     try {
@@ -604,7 +546,7 @@ void ServerState::parse_config(const JSON& json, bool is_reload) {
 
   this->name = json.at("ServerName").as_string();
 
-  if (!is_reload) {
+  if (!this->config_loaded) {
     try {
       this->username = json.at("User").as_string();
       if (this->username == "$SUDO_USER") {
@@ -618,7 +560,12 @@ void ServerState::parse_config(const JSON& json, bool is_reload) {
     }
 
     this->set_port_configuration(parse_port_configuration(json.at("PortConfiguration")));
-    this->dns_server_port = json.get_int("DNSServerPort", this->dns_server_port);
+    try {
+      auto spec = this->parse_port_spec(json.at("DNSServerPort"));
+      this->dns_server_addr = std::move(spec.first);
+      this->dns_server_port = spec.second;
+    } catch (const out_of_range&) {
+    }
     try {
       for (const auto& item : json.at("IPStackListen").as_list()) {
         if (item->is_int()) {
@@ -709,6 +656,7 @@ void ServerState::parse_config(const JSON& json, bool is_reload) {
 
   this->persistent_game_idle_timeout_usecs = json.get_int("PersistentGameIdleTimeout", this->persistent_game_idle_timeout_usecs);
   this->cheat_mode_behavior = parse_behavior_switch("CheatModeBehavior", this->cheat_mode_behavior);
+  this->default_rare_notifs_enabled = json.get_bool("RareNotificationsEnabledByDefault", this->default_rare_notifs_enabled);
   this->ep3_send_function_call_enabled = json.get_bool("EnableEpisode3SendFunctionCall", this->ep3_send_function_call_enabled);
   this->catch_handler_exceptions = json.get_bool("CatchHandlerExceptions", this->catch_handler_exceptions);
 
@@ -747,12 +695,17 @@ void ServerState::parse_config(const JSON& json, bool is_reload) {
 
   try {
     for (const auto& it : json.get_dict("CardAuctionPool")) {
+      uint16_t card_id;
+      try {
+        card_id = this->ep3_card_index->definition_for_name_normalized(it.first)->def.card_id;
+      } catch (const out_of_range&) {
+        throw runtime_error(string_printf("Ep3 card \"%s\" in auction pool does not exist", it.first.c_str()));
+      }
       this->ep3_card_auction_pool.emplace_back(
           CardAuctionPoolEntry{
               .probability = static_cast<uint64_t>(it.second->at(0).as_int()),
-              .card_id = 0,
-              .min_price = static_cast<uint16_t>(it.second->at(1).as_int()),
-              .card_name = it.first});
+              .card_id = card_id,
+              .min_price = static_cast<uint16_t>(it.second->at(1).as_int())});
     }
   } catch (const out_of_range&) {
   }
@@ -763,11 +716,18 @@ void ServerState::parse_config(const JSON& json, bool is_reload) {
       if (ep3_trap_cards_json.size() != 5) {
         throw runtime_error("Episode3TrapCards must be a list of 5 lists");
       }
-      this->ep3_trap_card_names.clear();
-      for (const auto& trap_type_it : ep3_trap_cards_json) {
-        auto& names = this->ep3_trap_card_names.emplace_back();
-        for (const auto& card_it : trap_type_it->as_list()) {
-          names.emplace_back(card_it->as_string());
+      for (size_t trap_type = 0; trap_type < 5; trap_type++) {
+        auto& trap_card_ids = this->ep3_trap_card_ids[trap_type];
+        for (const auto& card_it : ep3_trap_cards_json.at(trap_type)->as_list()) {
+          try {
+            const auto& card = this->ep3_card_index->definition_for_name_normalized(card_it->as_string());
+            if (card->def.type != Episode3::CardType::ASSIST) {
+              throw runtime_error(string_printf("Ep3 card \"%s\" in trap card list is not an assist card", name.c_str()));
+            }
+            trap_card_ids.emplace_back(card->def.card_id);
+          } catch (const out_of_range&) {
+            throw runtime_error(string_printf("Ep3 card \"%s\" in trap card list does not exist", name.c_str()));
+          }
         }
       }
     }
@@ -775,6 +735,7 @@ void ServerState::parse_config(const JSON& json, bool is_reload) {
   }
 
   if (!this->is_replay) {
+    this->ep3_lobby_banners.clear();
     for (const auto& it : json.get("Episode3LobbyBanners", JSON::list()).as_list()) {
       Image img("system/ep3/banners/" + it->at(2).as_string());
       string gvm = encode_gvm(img, img.get_has_alpha() ? GVRDataFormat::RGB5A3 : GVRDataFormat::RGB565);
@@ -829,7 +790,7 @@ void ServerState::parse_config(const JSON& json, bool is_reload) {
       for (const auto& difficulty_it : type_it->as_list()) {
         auto& difficulty_res = type_res.emplace_back();
         for (const auto& item_it : difficulty_it->as_list()) {
-          difficulty_res.emplace_back(this->item_name_index->parse_item_description(Version::BB_V4, item_it->as_string()));
+          difficulty_res.emplace_back(this->parse_item_description(Version::BB_V4, item_it->as_string()));
         }
       }
     }
@@ -840,22 +801,22 @@ void ServerState::parse_config(const JSON& json, bool is_reload) {
     for (const auto& it : json.get_list("QuestF95FResultItems")) {
       auto& list = it->as_list();
       size_t price = list.at(0)->as_int();
-      this->quest_F95F_results.emplace_back(make_pair(price, this->item_name_index->parse_item_description(Version::BB_V4, list.at(1)->as_string())));
+      this->quest_F95F_results.emplace_back(make_pair(price, this->parse_item_description(Version::BB_V4, list.at(1)->as_string())));
     }
   } catch (const out_of_range&) {
   }
   try {
     this->quest_F960_success_results.clear();
-    this->quest_F960_failure_results = QuestF960Result(json.at("QuestF960FailureResultItems"), this->item_name_index);
+    this->quest_F960_failure_results = QuestF960Result(json.at("QuestF960FailureResultItems"), this->item_name_index(Version::BB_V4));
     for (const auto& it : json.get_list("QuestF960SuccessResultItems")) {
-      this->quest_F960_success_results.emplace_back(*it, this->item_name_index);
+      this->quest_F960_success_results.emplace_back(*it, this->item_name_index(Version::BB_V4));
     }
   } catch (const out_of_range&) {
   }
   try {
     this->secret_lottery_results.clear();
     for (const auto& it : json.get_list("SecretLotteryResultItems")) {
-      this->secret_lottery_results.emplace_back(this->item_name_index->parse_item_description(Version::BB_V4, it->as_string()));
+      this->secret_lottery_results.emplace_back(this->parse_item_description(Version::BB_V4, it->as_string()));
     }
   } catch (const out_of_range&) {
   }
@@ -864,13 +825,11 @@ void ServerState::parse_config(const JSON& json, bool is_reload) {
 
   set_log_levels_from_json(json.get("LogLevels", JSON::dict()));
 
-  if (!is_reload) {
-    try {
-      this->run_shell_behavior = json.at("RunInteractiveShell").as_bool()
-          ? ServerState::RunShellBehavior::ALWAYS
-          : ServerState::RunShellBehavior::NEVER;
-    } catch (const out_of_range&) {
-    }
+  try {
+    this->run_shell_behavior = json.at("RunInteractiveShell").as_bool()
+        ? ServerState::RunShellBehavior::ALWAYS
+        : ServerState::RunShellBehavior::NEVER;
+  } catch (const out_of_range&) {
   }
 
   this->allow_dc_pc_games = json.get_bool("AllowDCPCGames", this->allow_dc_pc_games);
@@ -888,13 +847,11 @@ void ServerState::parse_config(const JSON& json, bool is_reload) {
 
   this->ep3_menu_song = json.get_int("Episode3MenuSong", this->ep3_menu_song);
 
-  if (!is_reload) {
-    try {
-      this->quest_category_index = make_shared<QuestCategoryIndex>(json.at("QuestCategories"));
-    } catch (const exception& e) {
-      throw runtime_error(string_printf(
-          "QuestCategories is missing or invalid in config.json (%s) - see config.example.json for an example", e.what()));
-    }
+  try {
+    this->quest_category_index = make_shared<QuestCategoryIndex>(json.at("QuestCategories"));
+  } catch (const exception& e) {
+    throw runtime_error(string_printf(
+        "QuestCategories is missing or invalid in config.json (%s) - see config.example.json for an example", e.what()));
   }
 
   config_log.info("Creating menus");
@@ -1046,6 +1003,8 @@ void ServerState::parse_config(const JSON& json, bool is_reload) {
     }
   } catch (const out_of_range&) {
   }
+
+  this->config_loaded = true;
 }
 
 void ServerState::load_bb_private_keys() {
@@ -1068,7 +1027,6 @@ void ServerState::load_licenses() {
 void ServerState::load_teams() {
   config_log.info("Indexing teams");
   this->team_index = make_shared<TeamIndex>("system/teams", this->team_reward_defs_json);
-  this->team_reward_defs_json = nullptr;
 }
 
 void ServerState::load_patch_indexes() {
@@ -1109,9 +1067,27 @@ void ServerState::load_level_table() {
   this->level_table = make_shared<LevelTableV4>(*this->load_bb_file("PlyLevelTbl.prs"), true);
 }
 
-shared_ptr<WordSelectTable> ServerState::load_word_select_table_from_system() {
+void ServerState::load_text_index() {
+  this->text_index = make_shared<TextIndex>("system/text-sets", [&](Version version, const string& filename) -> shared_ptr<const string> {
+    try {
+      if (version == Version::BB_V4) {
+        return this->load_bb_file(filename);
+      } else {
+        return this->pc_patch_file_index->get("Media/PSO/" + filename)->load_data();
+      }
+    } catch (const out_of_range&) {
+      return nullptr;
+    } catch (const cannot_open_file&) {
+      return nullptr;
+    }
+  });
+}
+
+void ServerState::load_word_select_table() {
+  config_log.info("Loading Word Select table");
+
   vector<vector<string>> name_alias_lists;
-  auto json = JSON::parse(load_file("system/word-select/name-alias-lists.json"));
+  auto json = JSON::parse(load_file("system/text-sets/ws-name-alias-lists.json"));
   for (const auto& coll_it : json.as_list()) {
     auto& coll = name_alias_lists.emplace_back();
     for (const auto& str_it : coll_it->as_list()) {
@@ -1119,60 +1095,117 @@ shared_ptr<WordSelectTable> ServerState::load_word_select_table_from_system() {
     }
   }
 
-  config_log.info("(Word select) Loading pc_unitxt.prs");
-  vector<vector<string>> pc_unitxt_data = parse_unicode_text_set(load_file("system/word-select/pc_unitxt.prs"));
-  config_log.info("(Word select) Loading bb_unitxt_ws.prs");
-  vector<vector<string>> bb_unitxt_data = parse_unicode_text_set(load_file("system/word-select/bb_unitxt_ws.prs"));
-  vector<string> pc_unitxt_collection = std::move(pc_unitxt_data.at(35));
-  vector<string> bb_unitxt_collection = std::move(bb_unitxt_data.at(0));
+  const vector<string>* pc_unitxt_collection = nullptr;
+  const vector<string>* bb_unitxt_collection = nullptr;
+  unique_ptr<UnicodeTextSet> pc_unitxt_data;
+  if (this->text_index) {
+    config_log.info("(Word select) Using PC_V2 unitxt_e.prs from text index");
+    pc_unitxt_collection = &this->text_index->get(Version::PC_V2, 1, 35);
+  } else {
+    config_log.info("(Word select) Loading PC_V2 unitxt_e.prs");
+    pc_unitxt_data = make_unique<UnicodeTextSet>(load_file("system/text-sets/pc-v2/unitxt_e.prs"));
+    pc_unitxt_collection = &pc_unitxt_data->get(35);
+  }
+  config_log.info("(Word select) Loading BB_V4 unitxt_ws_e.prs");
+  auto bb_unitxt_data = make_unique<UnicodeTextSet>(load_file("system/text-sets/bb-v4/unitxt_ws_e.prs"));
+  bb_unitxt_collection = &bb_unitxt_data->get(0);
 
   config_log.info("(Word select) Loading DC_NTE data");
-  WordSelectSet dc_nte_ws(load_file("system/word-select/dc_nte_ws_data.bin"), Version::DC_NTE, nullptr, true);
+  WordSelectSet dc_nte_ws(load_file("system/text-sets/dc-nte/ws_data.bin"), Version::DC_NTE, nullptr, true);
   config_log.info("(Word select) Loading DC_V1_11_2000_PROTOTYPE data");
-  WordSelectSet dc_112000_ws(load_file("system/word-select/dc_112000_ws_data.bin"), Version::DC_V1_11_2000_PROTOTYPE, nullptr, false);
+  WordSelectSet dc_112000_ws(load_file("system/text-sets/dc-11-2000/ws_data.bin"), Version::DC_V1_11_2000_PROTOTYPE, nullptr, false);
   config_log.info("(Word select) Loading DC_V1 data");
-  WordSelectSet dc_v1_ws(load_file("system/word-select/dcv1_ws_data.bin"), Version::DC_V1, nullptr, false);
+  WordSelectSet dc_v1_ws(load_file("system/text-sets/dc-v1/ws_data.bin"), Version::DC_V1, nullptr, false);
   config_log.info("(Word select) Loading DC_V2 data");
-  WordSelectSet dc_v2_ws(load_file("system/word-select/dcv2_ws_data.bin"), Version::DC_V2, nullptr, false);
+  WordSelectSet dc_v2_ws(load_file("system/text-sets/dc-v2/ws_data.bin"), Version::DC_V2, nullptr, false);
   config_log.info("(Word select) Loading PC_NTE data");
-  WordSelectSet pc_nte_ws(load_file("system/word-select/pc_nte_ws_data.bin"), Version::PC_NTE, &pc_unitxt_collection, false);
+  WordSelectSet pc_nte_ws(load_file("system/text-sets/pc-nte/ws_data.bin"), Version::PC_NTE, pc_unitxt_collection, false);
   config_log.info("(Word select) Loading PC_V2 data");
-  WordSelectSet pc_v2_ws(load_file("system/word-select/pc_ws_data.bin"), Version::PC_V2, &pc_unitxt_collection, false);
+  WordSelectSet pc_v2_ws(load_file("system/text-sets/pc-v2/ws_data.bin"), Version::PC_V2, pc_unitxt_collection, false);
   config_log.info("(Word select) Loading GC_NTE data");
-  WordSelectSet gc_nte_ws(load_file("system/word-select/gc_nte_ws_data.bin"), Version::GC_NTE, nullptr, false);
+  WordSelectSet gc_nte_ws(load_file("system/text-sets/gc-nte/ws_data.bin"), Version::GC_NTE, nullptr, false);
   config_log.info("(Word select) Loading GC_V3 data");
-  WordSelectSet gc_v3_ws(load_file("system/word-select/gc_ws_data.bin"), Version::GC_V3, nullptr, false);
+  WordSelectSet gc_v3_ws(load_file("system/text-sets/gc-v3/ws_data.bin"), Version::GC_V3, nullptr, false);
   config_log.info("(Word select) Loading GC_EP3_NTE data");
-  WordSelectSet gc_ep3_nte_ws(load_file("system/word-select/gc_ep3_nte_ws_data.bin"), Version::GC_EP3_NTE, nullptr, false);
+  WordSelectSet gc_ep3_nte_ws(load_file("system/text-sets/gc-ep3-nte/ws_data.bin"), Version::GC_EP3_NTE, nullptr, false);
   config_log.info("(Word select) Loading GC_EP3 data");
-  WordSelectSet gc_ep3_ws(load_file("system/word-select/gc_ep3_ws_data.bin"), Version::GC_EP3, nullptr, false);
+  WordSelectSet gc_ep3_ws(load_file("system/text-sets/gc-ep3/ws_data.bin"), Version::GC_EP3, nullptr, false);
   config_log.info("(Word select) Loading XB_V3 data");
-  WordSelectSet xb_v3_ws(load_file("system/word-select/xb_ws_data.bin"), Version::XB_V3, nullptr, false);
+  WordSelectSet xb_v3_ws(load_file("system/text-sets/xb-v3/ws_data.bin"), Version::XB_V3, nullptr, false);
   config_log.info("(Word select) Loading BB_V4 data");
-  WordSelectSet bb_v4_ws(load_file("system/word-select/bb_ws_data.bin"), Version::BB_V4, &bb_unitxt_collection, false);
+  WordSelectSet bb_v4_ws(load_file("system/text-sets/bb-v4/ws_data.bin"), Version::BB_V4, bb_unitxt_collection, false);
 
   config_log.info("(Word select) Generating table");
-  return make_shared<WordSelectTable>(
+  this->word_select_table = make_shared<WordSelectTable>(
       dc_nte_ws, dc_112000_ws, dc_v1_ws, dc_v2_ws,
       pc_nte_ws, pc_v2_ws, gc_nte_ws, gc_v3_ws,
       gc_ep3_nte_ws, gc_ep3_ws, xb_v3_ws, bb_v4_ws,
       name_alias_lists);
 }
 
-void ServerState::load_word_select_table() {
-  config_log.info("Loading Word Select table");
-  this->word_select_table = this->load_word_select_table_from_system();
+shared_ptr<ItemNameIndex> ServerState::create_item_name_index_for_version(
+    Version version, shared_ptr<const ItemParameterTable> pmt, shared_ptr<const TextIndex> text_index) {
+  switch (version) {
+    case Version::DC_NTE:
+      return make_shared<ItemNameIndex>(version, pmt, text_index->get(Version::DC_NTE, 0, 2));
+    case Version::DC_V1_11_2000_PROTOTYPE:
+      return make_shared<ItemNameIndex>(version, pmt, text_index->get(Version::DC_V1_11_2000_PROTOTYPE, 1, 2));
+    case Version::DC_V1:
+      return make_shared<ItemNameIndex>(version, pmt, text_index->get(Version::DC_V1, 1, 2));
+    case Version::DC_V2:
+      return make_shared<ItemNameIndex>(version, pmt, text_index->get(Version::DC_V2, 1, 3));
+    case Version::PC_NTE:
+      return make_shared<ItemNameIndex>(version, pmt, text_index->get(Version::PC_NTE, 1, 3));
+    case Version::PC_V2:
+      return make_shared<ItemNameIndex>(version, pmt, text_index->get(Version::PC_V2, 1, 3));
+    case Version::GC_NTE:
+      return make_shared<ItemNameIndex>(version, pmt, text_index->get(Version::GC_NTE, 1, 0));
+    case Version::GC_V3:
+      return make_shared<ItemNameIndex>(version, pmt, text_index->get(Version::GC_V3, 1, 0));
+    case Version::XB_V3:
+      return make_shared<ItemNameIndex>(version, pmt, text_index->get(Version::XB_V3, 1, 0));
+    case Version::BB_V4:
+      return make_shared<ItemNameIndex>(version, pmt, text_index->get(Version::BB_V4, 1, 1));
+    default:
+      return nullptr;
+  }
 }
 
-void ServerState::load_item_name_index() {
-  config_log.info("Loading item name index");
-  this->item_name_index = make_shared<ItemNameIndex>(
-      JSON::parse(load_file("system/item-tables/names-v2.json")),
-      JSON::parse(load_file("system/item-tables/names-v3.json")),
-      JSON::parse(load_file("system/item-tables/names-v4.json")));
+void ServerState::load_item_name_indexes() {
+  config_log.info("Generating item name indexes");
+  // TODO: Get ItemPMT files for the versions for which we don't have them
+  // (especially DC_V1) and add support for them. Currently we only have three
+  // ItemPMTs (PC, GC, and BB), so we can't use them to generate all the name
+  // indexes.
+
+  auto pc_v2_index = create_item_name_index_for_version(
+      Version::PC_V2, this->item_parameter_table(Version::PC_V2), this->text_index);
+  this->set_item_name_index(Version::DC_NTE, pc_v2_index);
+  this->set_item_name_index(Version::DC_V1, pc_v2_index);
+  this->set_item_name_index(Version::DC_V2, pc_v2_index);
+  this->set_item_name_index(Version::PC_NTE, pc_v2_index);
+  this->set_item_name_index(Version::PC_V2, pc_v2_index);
+
+  // All tools are stackable on 11/2000, so make a separate index (still using
+  // V2 data) with the correct version
+  auto dc_112000_index = make_shared<ItemNameIndex>(
+      Version::DC_V1_11_2000_PROTOTYPE,
+      this->item_parameter_table(Version::PC_V2),
+      this->text_index->get(Version::PC_V2, 1, 3));
+  this->set_item_name_index(Version::DC_V1_11_2000_PROTOTYPE, dc_112000_index);
+
+  auto gc_v3_index = create_item_name_index_for_version(
+      Version::GC_V3, this->item_parameter_table(Version::GC_V3), this->text_index);
+  this->set_item_name_index(Version::GC_NTE, gc_v3_index);
+  this->set_item_name_index(Version::GC_V3, gc_v3_index);
+  this->set_item_name_index(Version::XB_V3, gc_v3_index);
+
+  auto bb_v4_index = create_item_name_index_for_version(
+      Version::BB_V4, this->item_parameter_table(Version::BB_V4), this->text_index);
+  this->set_item_name_index(Version::BB_V4, bb_v4_index);
 }
 
-void ServerState::load_item_tables() {
+void ServerState::load_drop_tables() {
   config_log.info("Loading rare item sets");
   unordered_map<string, shared_ptr<const RareItemSet>> new_rare_item_sets;
   for (const auto& filename : list_directory_sorted("system/item-tables")) {
@@ -1186,16 +1219,16 @@ void ServerState::load_item_tables() {
 
     if (ends_with(filename, "-v1.json")) {
       config_log.info("Loading v1 JSON rare item table %s", filename.c_str());
-      new_rare_item_sets.emplace(basename, make_shared<RareItemSet>(JSON::parse(load_file(path)), Version::DC_V1, this->item_name_index));
+      new_rare_item_sets.emplace(basename, make_shared<RareItemSet>(JSON::parse(load_file(path)), this->item_name_index(Version::DC_V1)));
     } else if (ends_with(filename, "-v2.json")) {
       config_log.info("Loading v2 JSON rare item table %s", filename.c_str());
-      new_rare_item_sets.emplace(basename, make_shared<RareItemSet>(JSON::parse(load_file(path)), Version::PC_V2, this->item_name_index));
+      new_rare_item_sets.emplace(basename, make_shared<RareItemSet>(JSON::parse(load_file(path)), this->item_name_index(Version::PC_V2)));
     } else if (ends_with(filename, "-v3.json")) {
       config_log.info("Loading v3 JSON rare item table %s", filename.c_str());
-      new_rare_item_sets.emplace(basename, make_shared<RareItemSet>(JSON::parse(load_file(path)), Version::GC_V3, this->item_name_index));
+      new_rare_item_sets.emplace(basename, make_shared<RareItemSet>(JSON::parse(load_file(path)), this->item_name_index(Version::GC_V3)));
     } else if (ends_with(filename, "-v4.json")) {
       config_log.info("Loading v4 JSON rare item table %s", filename.c_str());
-      new_rare_item_sets.emplace(basename, make_shared<RareItemSet>(JSON::parse(load_file(path)), Version::BB_V4, this->item_name_index));
+      new_rare_item_sets.emplace(basename, make_shared<RareItemSet>(JSON::parse(load_file(path)), this->item_name_index(Version::BB_V4)));
 
     } else if (ends_with(filename, ".afs")) {
       config_log.info("Loading AFS rare item table %s", filename.c_str());
@@ -1255,7 +1288,9 @@ void ServerState::load_item_tables() {
   config_log.info("Loading tekker adjustment table");
   auto tekker_data = make_shared<string>(load_file("system/item-tables/JudgeItem-gc.rel"));
   this->tekker_adjustment_set = make_shared<TekkerAdjustmentSet>(tekker_data);
+}
 
+void ServerState::load_item_definitions() {
   config_log.info("Loading item definition tables");
   auto pmt_data_v2 = make_shared<string>(prs_decompress(load_file("system/item-tables/ItemPMT-v2.prs")));
   this->item_parameter_table_v2 = make_shared<ItemParameterTable>(pmt_data_v2, ItemParameterTable::Version::V2);
@@ -1298,37 +1333,6 @@ void ServerState::load_ep3_data() {
   config_log.info("Loaded Episode 3 tournament state");
 }
 
-void ServerState::resolve_ep3_card_names() {
-  config_log.info("Resolving Episode 3 card names");
-  for (auto& e : this->ep3_card_auction_pool) {
-    try {
-      const auto& card = this->ep3_card_index->definition_for_name_normalized(e.card_name);
-      e.card_id = card->def.card_id;
-    } catch (const out_of_range&) {
-      throw runtime_error(string_printf("Ep3 card \"%s\" in auction pool does not exist", e.card_name.c_str()));
-    }
-  }
-
-  for (size_t z = 0; z < this->ep3_trap_card_ids.size(); z++) {
-    auto& ids = this->ep3_trap_card_ids[z];
-    ids.clear();
-    if (z < this->ep3_trap_card_names.size()) {
-      auto& names = this->ep3_trap_card_names[z];
-      for (const auto& name : names) {
-        try {
-          const auto& card = this->ep3_card_index->definition_for_name_normalized(name);
-          if (card->def.type != Episode3::CardType::ASSIST) {
-            throw runtime_error(string_printf("Ep3 card \"%s\" in trap card list is not an assist card", name.c_str()));
-          }
-          ids.emplace_back(card->def.card_id);
-        } catch (const out_of_range&) {
-          throw runtime_error(string_printf("Ep3 card \"%s\" in trap card list does not exist", name.c_str()));
-        }
-      }
-    }
-  }
-}
-
 void ServerState::load_quest_index() {
   config_log.info("Collecting quests");
   this->default_quest_index = make_shared<QuestIndex>("system/quests", this->quest_category_index, false);
@@ -1346,14 +1350,137 @@ void ServerState::load_dol_files() {
   this->dol_file_index = make_shared<DOLFileIndex>("system/dol");
 }
 
-shared_ptr<const vector<string>> ServerState::information_contents_for_client(shared_ptr<const Client> c) const {
-  return is_v1_or_v2(c->version()) ? this->information_contents_v2 : this->information_contents_v3;
+void ServerState::create_default_lobbies() {
+  if (this->default_lobbies_created) {
+    return;
+  }
+  this->default_lobbies_created = true;
+
+  vector<shared_ptr<Lobby>> non_v1_only_lobbies;
+  vector<shared_ptr<Lobby>> ep3_only_lobbies;
+
+  for (size_t x = 0; x < 20; x++) {
+    auto lobby_name = string_printf("LOBBY%zu", x + 1);
+    bool allow_v1 = (x <= 9);
+    bool allow_non_ep3 = (x <= 14);
+
+    shared_ptr<Lobby> l = this->create_lobby(false);
+    l->event = this->pre_lobby_event;
+    l->set_flag(Lobby::Flag::PUBLIC);
+    l->set_flag(Lobby::Flag::DEFAULT);
+    l->set_flag(Lobby::Flag::PERSISTENT);
+    if (allow_non_ep3) {
+      if (allow_v1) {
+        l->allow_version(Version::DC_NTE);
+        l->allow_version(Version::DC_V1_11_2000_PROTOTYPE);
+        l->allow_version(Version::DC_V1);
+      }
+      l->allow_version(Version::DC_V2);
+      l->allow_version(Version::PC_NTE);
+      l->allow_version(Version::PC_V2);
+      l->allow_version(Version::GC_NTE);
+      l->allow_version(Version::GC_V3);
+      l->allow_version(Version::XB_V3);
+      l->allow_version(Version::BB_V4);
+    }
+    l->allow_version(Version::GC_EP3_NTE);
+    l->allow_version(Version::GC_EP3);
+
+    l->block = x + 1;
+    l->name = lobby_name;
+    l->max_clients = 12;
+    if (!allow_non_ep3) {
+      l->episode = Episode::EP3;
+    }
+
+    if (allow_non_ep3) {
+      this->public_lobby_search_order.emplace_back(l);
+    } else {
+      ep3_only_lobbies.emplace_back(l);
+    }
+  }
+
+  // Annoyingly, the CARD lobbies should be searched first, but are sent at the
+  // end of the lobby list command, so we have to change the search order
+  // manually here.
+  this->public_lobby_search_order.insert(
+      this->public_lobby_search_order.begin(),
+      ep3_only_lobbies.begin(),
+      ep3_only_lobbies.end());
 }
 
-shared_ptr<const QuestIndex> ServerState::quest_index_for_version(Version version) const {
-  return is_ep3(version) ? this->ep3_download_quest_index : this->default_quest_index;
-}
+void ServerState::create_load_step_graph() {
+  this->load_step_graph.add_step("all", {}, nullptr);
 
-void ServerState::dispatch_destroy_lobbies(evutil_socket_t, short, void* ctx) {
-  reinterpret_cast<ServerState*>(ctx)->lobbies_to_destroy.clear();
+  // In: none
+  // Out: all_addresses
+  this->load_step_graph.add_step("network_addresses", {"all"}, bind(&ServerState::collect_network_addresses, this));
+
+  // In: none
+  // Out: bb_private_keys
+  this->load_step_graph.add_step("bb_private_keys", {"all"}, bind(&ServerState::load_bb_private_keys, this));
+
+  // In: none
+  // Out: license_index
+  this->load_step_graph.add_step("licenses", {"all"}, bind(&ServerState::load_licenses, this));
+
+  // In: none
+  // Out: pc_patch_file_index, bb_patch_file_index, bb_data_gsl
+  this->load_step_graph.add_step("patch_indexes", {"all"}, bind(&ServerState::load_patch_indexes, this));
+
+  // In: none
+  // Out: ep3_map_index, ep3_card_index, ep3_card_index_trial, ep3_com_deck_index, ep3_tournament_index
+  this->load_step_graph.add_step("ep3_data", {"all"}, bind(&ServerState::load_ep3_data, this));
+
+  // In: none
+  // Out: function_code_index
+  this->load_step_graph.add_step("functions", {"all"}, bind(&ServerState::compile_functions, this));
+
+  // In: none
+  // Out: dol_file_index
+  this->load_step_graph.add_step("dol_files", {"all"}, bind(&ServerState::load_dol_files, this));
+
+  // In: none
+  // Out: lobbies
+  this->load_step_graph.add_step("lobbies", {"all"}, bind(&ServerState::create_default_lobbies, this));
+
+  // In: bb_patch_file_index
+  // Out: battle_params
+  this->load_step_graph.add_step("battle_params", {"all", "patch_indexes"}, bind(&ServerState::load_battle_params, this));
+
+  // In: bb_patch_file_index
+  // Out: level_table
+  this->load_step_graph.add_step("level_table", {"all", "patch_indexes"}, bind(&ServerState::load_level_table, this));
+
+  // In: bb_patch_file_index
+  // Out: text_index
+  this->load_step_graph.add_step("text_index", {"all", "patch_indexes"}, bind(&ServerState::load_text_index, this));
+
+  // In: text_index (optional)
+  // Out: word_select_table
+  this->load_step_graph.add_step("word_select_table", {"all"}, bind(&ServerState::load_word_select_table, this));
+
+  // In: none
+  // Out: item_parameter_tables, mag_evolution_table
+  this->load_step_graph.add_step("item_definitions", {"all"}, bind(&ServerState::load_item_definitions, this));
+
+  // In: text_index, item_parameter_tables
+  // Out: item_name_indexes
+  this->load_step_graph.add_step("item_name_indexes", {"all", "text_index", "item_definitions"}, bind(&ServerState::load_item_name_indexes, this));
+
+  // In: none
+  // Out: rare_item_sets, common_item_sets, armor_random_set, tool_random_set, weapon_random_sets, tekker_adjustment_set
+  this->load_step_graph.add_step("drop_tables", {"all", "item_definitions", "item_name_indexes"}, bind(&ServerState::load_drop_tables, this));
+
+  // In: all_addresses, ep3_card_index, item_name_indexes
+  // Out: config, ep3_lobby_banners, quest_category_index, information menus, proxy destinations menus, team_reward_defs_json
+  this->load_step_graph.add_step("config", {"all", "network_addresses", "ep3_data", "item_name_indexes"}, bind(&ServerState::load_config, this));
+
+  // In: team_reward_defs_json
+  // Out: team_index
+  this->load_step_graph.add_step("teams", {"all", "config"}, bind(&ServerState::load_teams, this));
+
+  // In: quest_category_index
+  // Out: default_quest_index, ep3_download_quest_index
+  this->load_step_graph.add_step("quest_index", {"all", "config"}, bind(&ServerState::load_quest_index, this));
 }

@@ -295,7 +295,7 @@ static void server_command_quest(shared_ptr<Client> c, const std::string& args) 
 
   auto s = c->require_server_state();
   auto l = c->require_lobby();
-  auto q = s->quest_index_for_version(effective_version)->get(stoul(args));
+  auto q = s->quest_index(effective_version)->get(stoul(args));
   if (!q) {
     send_text_message(c, "$C6Quest not found");
   } else {
@@ -1478,6 +1478,12 @@ static void proxy_command_song(shared_ptr<ProxyServer::LinkedSession> ses, const
   send_ep3_change_music(ses->client_channel, song);
 }
 
+static void server_command_rare_notifs(shared_ptr<Client> c, const std::string&) {
+  c->config.toggle_flag(Client::Flag::RARE_DROP_NOTIFICATIONS_ENABLED);
+  bool enabled = c->config.check_flag(Client::Flag::RARE_DROP_NOTIFICATIONS_ENABLED);
+  send_text_message_printf(c, "$C6Rare notifications\n%s", enabled ? "enabled" : "disabled");
+}
+
 static void server_command_infinite_hp(shared_ptr<Client> c, const std::string&) {
   auto s = c->require_server_state();
   auto l = c->require_lobby();
@@ -1611,7 +1617,7 @@ static void server_command_item(shared_ptr<Client> c, const std::string& args) {
   check_is_game(l, true);
   check_cheats_enabled(l, c);
 
-  ItemData item = s->item_name_index->parse_item_description(c->version(), args);
+  ItemData item = s->parse_item_description(c->version(), args);
   item.id = l->generate_item_id(c->lobby_client_id);
 
   if ((l->drop_mode == Lobby::DropMode::SERVER_PRIVATE) || (l->drop_mode == Lobby::DropMode::SERVER_DUPLICATE)) {
@@ -1644,7 +1650,7 @@ static void proxy_command_item(shared_ptr<ProxyServer::LinkedSession> ses, const
 
   bool set_drop = (!args.empty() && (args[0] == '!'));
 
-  ItemData item = s->item_name_index->parse_item_description(ses->version(), (set_drop ? args.substr(1) : args));
+  ItemData item = s->parse_item_description(ses->version(), (set_drop ? args.substr(1) : args));
   item.id = random_object<uint32_t>() | 0x80000000;
 
   if (set_drop) {
@@ -1994,6 +2000,7 @@ static const unordered_map<string, ChatCommandDefinition> chat_commands({
     {"$qsyncall", {server_command_qsyncall, proxy_command_qsyncall}},
     {"$quest", {server_command_quest, nullptr}},
     {"$rand", {server_command_rand, proxy_command_rand}},
+    {"$rarenotifs", {server_command_rare_notifs, nullptr}},
     {"$save", {server_command_save, nullptr}},
     {"$savechar", {server_command_savechar, nullptr}},
     {"$saverec", {server_command_saverec, nullptr}},

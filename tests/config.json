@@ -30,6 +30,7 @@
   "DefaultDropModeV4Battle": "SERVER_SHARED",
   "DefaultDropModeV4Challenge": "SERVER_SHARED",
   "CheatModeBehavior": "OnByDefault",
+  "RareNotificationsEnabledByDefault": false,
 
   "LocalAddress": "en0",
   "ExternalAddress": "en0",

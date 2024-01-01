@@ -450,7 +450,7 @@ PlayerRecordsBB_Challenge::operator PlayerRecordsV3_Challenge<false>() const {
   return ret;
 }
 
-void PlayerBank::add_item(const ItemData& item) {
+void PlayerBank::add_item(const ItemData& item, Version version) {
   uint32_t pid = item.primary_identifier();
 
   if (pid == MESETA_IDENTIFIER) {
@@ -461,7 +461,7 @@ void PlayerBank::add_item(const ItemData& item) {
     return;
   }
 
-  size_t combine_max = item.max_stack_size();
+  size_t combine_max = item.max_stack_size(version);
   if (combine_max > 1) {
     size_t y;
     for (y = 0; y < this->num_items; y++) {
@@ -486,17 +486,17 @@ void PlayerBank::add_item(const ItemData& item) {
   }
   auto& last_item = this->items[this->num_items];
   last_item.data = item;
-  last_item.amount = (item.max_stack_size() > 1) ? item.data1[5] : 1;
+  last_item.amount = (item.max_stack_size(version) > 1) ? item.data1[5] : 1;
   last_item.present = 1;
   this->num_items++;
 }
 
-ItemData PlayerBank::remove_item(uint32_t item_id, uint32_t amount) {
+ItemData PlayerBank::remove_item(uint32_t item_id, uint32_t amount, Version version) {
   size_t index = this->find_item(item_id);
   auto& bank_item = this->items[index];
 
   ItemData ret;
-  if (amount && (bank_item.data.stack_size() > 1) && (amount < bank_item.data.data1[5])) {
+  if (amount && (bank_item.data.stack_size(version) > 1) && (amount < bank_item.data.data1[5])) {
     ret = bank_item.data;
     ret.data1[5] = amount;
     bank_item.data.data1[5] -= amount;
@@ -678,7 +678,7 @@ void PlayerInventory::encode_for_client(shared_ptr<Client> c) {
     }
   }
 
-  auto item_parameter_table = c->require_server_state()->item_parameter_table_for_version(c->version());
+  auto item_parameter_table = c->require_server_state()->item_parameter_table(c->version());
   for (size_t z = 0; z < this->items.size(); z++) {
     this->items[z].data.encode_for_version(c->version(), item_parameter_table);
   }

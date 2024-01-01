@@ -286,6 +286,7 @@ Some commands only work on the game server and not on the proxy server. The chat
     * `$si` (game server only): Shows basic information about the server.
     * `$ping`: Shows round-trip ping time from the server to you. On the proxy server, shows the ping time from you to the proxy and from the proxy to the server.
     * `$matcount` (game server only): Shows how many of each type of material you've used.
+    * `$rarenotifs` (game server only): Enables or disables rare drop notifications. When enabled, you'll see a message whenever a rare item drops. In private drop mode, you will only see a notification if the item is visible to you; you won't be notified of other players' rare drops.
     * `$what` (game server only): Shows the type, name, and stats of the nearest item on the ground.
     * `$where` (game server only): Shows your current floor number and coordinates. Mainly useful for debugging.
 
