@@ -390,7 +390,19 @@ void ReplaySession::apply_default_mask(shared_ptr<Event> ev) {
           }
           break;
         case 0x6D:
-          if (!is_pre_v1(version)) {
+          if (version == Version::DC_NTE) {
+            const auto& header = check_size_t<G_UnusedHeader>(cmd_data, cmd_size, 0xFFFF);
+            if (header.subcommand == 0x60) {
+              auto& mask = check_size_t<G_SyncPlayerDispAndInventory_DCNTE_6x70>(mask_data, mask_size, 0xFFFF);
+              mask.visual.name_color_checksum = 0;
+            }
+          } else if (version == Version::DC_V1_11_2000_PROTOTYPE) {
+            const auto& header = check_size_t<G_UnusedHeader>(cmd_data, cmd_size, 0xFFFF);
+            if (header.subcommand == 0x67) {
+              auto& mask = check_size_t<G_SyncPlayerDispAndInventory_DC112000_6x70>(mask_data, mask_size, 0xFFFF);
+              mask.visual.name_color_checksum = 0;
+            }
+          } else if (!is_pre_v1(version)) {
             const auto& header = check_size_t<G_UnusedHeader>(cmd_data, cmd_size, 0xFFFF);
             if (header.subcommand == 0x70) {
               auto& mask = check_size_t<G_SyncPlayerDispAndInventory_DC_PC_6x70>(mask_data, mask_size, 0xFFFF);
