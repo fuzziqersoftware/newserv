@@ -35,6 +35,7 @@ class Server;
 
 struct PortConfiguration {
   std::string name;
+  std::string addr; // Blank = listen on all interfaces (default)
   uint16_t port;
   Version version;
   ServerBehavior behavior;
@@ -74,6 +75,7 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   std::unordered_map<std::string, std::shared_ptr<PortConfiguration>> name_to_port_config;
   std::unordered_map<uint16_t, std::shared_ptr<PortConfiguration>> number_to_port_config;
   std::string username;
+  std::string dns_server_addr;
   uint16_t dns_server_port = 0;
   std::vector<std::string> ip_stack_addresses;
   std::vector<std::string> ppp_stack_addresses;
@@ -282,6 +284,9 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
       const std::string& patch_index_filename,
       const std::string& gsl_filename = "",
       const std::string& bb_directory_filename = "") const;
+
+  std::pair<std::string, uint16_t> parse_port_spec(const JSON& json) const;
+  std::vector<PortConfiguration> parse_port_configuration(const JSON& json) const;
 
   void create_load_step_graph();
   void create_default_lobbies();

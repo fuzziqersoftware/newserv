@@ -472,13 +472,28 @@ shared_ptr<const string> ServerState::load_bb_file(
   }
 }
 
-static vector<PortConfiguration> parse_port_configuration(const JSON& json) {
+pair<string, uint16_t> ServerState::parse_port_spec(const JSON& json) const {
+  if (json.is_list()) {
+    string addr = json.at(0).as_string();
+    try {
+      addr = string_for_address(this->all_addresses.at(addr));
+    } catch (const out_of_range&) {
+    }
+    return make_pair(addr, json.at(1).as_int());
+  } else {
+    return make_pair("", json.as_int());
+  }
+}
+
+vector<PortConfiguration> ServerState::parse_port_configuration(const JSON& json) const {
   vector<PortConfiguration> ret;
   for (const auto& item_json_it : json.as_dict()) {
     const auto& item_list = item_json_it.second;
     PortConfiguration& pc = ret.emplace_back();
     pc.name = item_json_it.first;
-    pc.port = item_list->at(0).as_int();
+    auto spec = this->parse_port_spec(item_list->at(0));
+    pc.addr = std::move(spec.first);
+    pc.port = spec.second;
     pc.version = enum_for_name<Version>(item_list->at(1).as_string().c_str());
     pc.behavior = enum_for_name<ServerBehavior>(item_list->at(2).as_string().c_str());
   }
@@ -537,7 +552,12 @@ void ServerState::load_config() {
     }
 
     this->set_port_configuration(parse_port_configuration(json.at("PortConfiguration")));
-    this->dns_server_port = json.get_int("DNSServerPort", this->dns_server_port);
+    try {
+      auto spec = this->parse_port_spec(json.at("DNSServerPort"));
+      this->dns_server_addr = std::move(spec.first);
+      this->dns_server_port = spec.second;
+    } catch (const out_of_range&) {
+    }
     try {
       for (const auto& item : json.at("IPStackListen").as_list()) {
         if (item->is_int()) {

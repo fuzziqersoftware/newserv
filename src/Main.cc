@@ -1890,9 +1890,13 @@ Action a_run_server_replay_log(
 
       shared_ptr<DNSServer> dns_server;
       if (state->dns_server_port && !is_replay) {
-        config_log.info("Starting DNS server on port %hu", state->dns_server_port);
+        if (!state->dns_server_addr.empty()) {
+          config_log.info("Starting DNS server on %s:%hu", state->dns_server_addr.c_str(), state->dns_server_port);
+        } else {
+          config_log.info("Starting DNS server on port %hu", state->dns_server_port);
+        }
         dns_server = make_shared<DNSServer>(base, state->local_address, state->external_address);
-        dns_server->listen("", state->dns_server_port);
+        dns_server->listen(state->dns_server_addr, state->dns_server_port);
       } else {
         config_log.info("DNS server is disabled");
       }
@@ -1934,14 +1938,14 @@ Action a_run_server_replay_log(
                 auto [ss, size] = make_sockaddr_storage(
                     state->proxy_destination_patch.first,
                     state->proxy_destination_patch.second);
-                state->proxy_server->listen(pc->port, pc->version, &ss);
+                state->proxy_server->listen(pc->addr, pc->port, pc->version, &ss);
               } else if (is_v4(pc->version)) {
                 auto [ss, size] = make_sockaddr_storage(
                     state->proxy_destination_bb.first,
                     state->proxy_destination_bb.second);
-                state->proxy_server->listen(pc->port, pc->version, &ss);
+                state->proxy_server->listen(pc->addr, pc->port, pc->version, &ss);
               } else {
-                state->proxy_server->listen(pc->port, pc->version);
+                state->proxy_server->listen(pc->addr, pc->port, pc->version);
               }
             }
           } else {
@@ -1950,7 +1954,7 @@ Action a_run_server_replay_log(
               state->game_server = make_shared<Server>(base, state);
             }
             string spec = string_printf("T-%hu-%s-%s-%s", pc->port, name_for_enum(pc->version), pc->name.c_str(), name_for_enum(pc->behavior));
-            state->game_server->listen(spec, "", pc->port, pc->version, pc->behavior);
+            state->game_server->listen(spec, pc->addr, pc->port, pc->version, pc->behavior);
           }
         }
 
