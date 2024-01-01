@@ -3,7 +3,8 @@
 using namespace std;
 
 void StepGraph::add_step(const string& name, const vector<string>& depends_on_names, function<void()>&& execute) {
-  auto new_step = make_shared<Step>(Step{.execute = std::move(execute)});
+  auto new_step = make_shared<Step>();
+  new_step->execute = std::move(execute);
   this->steps.emplace(name, new_step);
 
   for (const auto& depends_on_name : depends_on_names) {
