@@ -764,7 +764,7 @@ string CardDefinition::Effect::str_for_arg(const string& arg) {
   }
 }
 
-string CardDefinition::Effect::str(const char* separator, const TextArchive* text_archive) const {
+string CardDefinition::Effect::str(const char* separator, const TextSet* text_archive) const {
   vector<string> tokens;
   tokens.emplace_back(string_printf("%hhu:", this->effect_num));
   {
@@ -802,7 +802,7 @@ string CardDefinition::Effect::str(const char* separator, const TextArchive* tex
   const char* name = nullptr;
   if (this->name_index && text_archive) {
     try {
-      name = text_archive->get_string(45, this->name_index).c_str();
+      name = text_archive->get(45, this->name_index).c_str();
     } catch (const exception&) {
     }
   }
@@ -1061,7 +1061,7 @@ static const char* name_for_assist_ai_param_target(uint8_t target) {
   }
 }
 
-string CardDefinition::str(bool single_line, const TextArchive* text_archive) const {
+string CardDefinition::str(bool single_line, const TextSet* text_archive) const {
   string type_str;
   try {
     type_str = name_for_card_type(this->type);

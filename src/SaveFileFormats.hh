@@ -252,9 +252,6 @@ struct PSOBBCharacterFile {
   uint8_t get_material_usage(MaterialType which) const;
   void set_material_usage(MaterialType which, uint8_t usage);
   void clear_all_material_usage();
-
-  void print_inventory(FILE* stream, Version version, std::shared_ptr<const ItemNameIndex> name_index) const;
-  void print_bank(FILE* stream, Version version, std::shared_ptr<const ItemNameIndex> name_index) const;
 } __attribute__((packed));
 
 struct PSOBBGuildCardFile {

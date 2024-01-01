@@ -251,7 +251,7 @@ void Lobby::create_item_creator() {
       s->tool_random_set,
       s->weapon_random_sets.at(this->difficulty),
       s->tekker_adjustment_set,
-      s->item_parameter_table_for_version(this->base_version),
+      s->item_parameter_table(this->base_version),
       this->base_version,
       this->episode,
       (this->mode == GameMode::SOLO) ? GameMode::NORMAL : this->mode,
@@ -351,7 +351,7 @@ void Lobby::load_maps() {
 
   this->log.info("Generated objects list (%zu entries):", this->map->objects.size());
   for (size_t z = 0; z < this->map->objects.size(); z++) {
-    string o_str = this->map->objects[z].str(s->item_name_index);
+    string o_str = this->map->objects[z].str();
     this->log.info("(K-%zX) %s", z, o_str.c_str());
   }
   this->log.info("Generated enemies list (%zu entries):", this->map->enemies.size());

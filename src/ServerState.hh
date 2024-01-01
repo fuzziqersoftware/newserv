@@ -138,7 +138,8 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   std::shared_ptr<const ItemParameterTable> item_parameter_table_v3;
   std::shared_ptr<const ItemParameterTable> item_parameter_table_v4;
   std::shared_ptr<const MagEvolutionTable> mag_evolution_table;
-  std::shared_ptr<const ItemNameIndex> item_name_index;
+  std::shared_ptr<const TextIndex> text_index;
+  std::array<std::shared_ptr<const ItemNameIndex>, NUM_VERSIONS> item_name_indexes;
   std::shared_ptr<const WordSelectTable> word_select_table;
   std::array<std::shared_ptr<const Map::RareEnemyRates>, 4> rare_enemy_rates_by_difficulty;
   std::shared_ptr<const Map::RareEnemyRates> rare_enemy_rates_challenge;
@@ -257,15 +258,18 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
 
   uint32_t connect_address_for_client(std::shared_ptr<Client> c) const;
 
-  std::shared_ptr<const Menu> information_menu_for_version(Version version) const;
-  std::shared_ptr<const Menu> proxy_destinations_menu_for_version(Version version) const;
-  const std::vector<std::pair<std::string, uint16_t>>& proxy_destinations_for_version(Version version) const;
+  std::shared_ptr<const Menu> information_menu(Version version) const;
+  std::shared_ptr<const Menu> proxy_destinations_menu(Version version) const;
+  const std::vector<std::pair<std::string, uint16_t>>& proxy_destinations(Version version) const;
 
-  std::shared_ptr<const ItemParameterTable> item_parameter_table_for_version(Version version) const;
+  std::shared_ptr<const ItemParameterTable> item_parameter_table(Version version) const;
+  std::shared_ptr<const ItemNameIndex> item_name_index(Version version) const;
+  void set_item_name_index(Version version, std::shared_ptr<const ItemNameIndex>);
   std::string describe_item(Version version, const ItemData& item, bool include_color_codes) const;
+  ItemData parse_item_description(Version version, const std::string& description) const;
 
   std::shared_ptr<const std::vector<std::string>> information_contents_for_client(std::shared_ptr<const Client> c) const;
-  std::shared_ptr<const QuestIndex> quest_index_for_version(Version version) const;
+  std::shared_ptr<const QuestIndex> quest_index(Version version) const;
 
   void set_port_configuration(const std::vector<PortConfiguration>& port_configs);
 

@@ -14,7 +14,7 @@
 #include "NetworkAddresses.hh"
 #include "SendCommands.hh"
 #include "Text.hh"
-#include "UnicodeTextSet.hh"
+#include "TextIndex.hh"
 
 using namespace std;
 
@@ -379,7 +379,7 @@ uint32_t ServerState::connect_address_for_client(shared_ptr<Client> c) const {
   }
 }
 
-shared_ptr<const Menu> ServerState::information_menu_for_version(Version version) const {
+shared_ptr<const Menu> ServerState::information_menu(Version version) const {
   if (is_v1_or_v2(version)) {
     return this->information_menu_v2;
   } else if (is_v3(version)) {
@@ -388,7 +388,7 @@ shared_ptr<const Menu> ServerState::information_menu_for_version(Version version
   throw out_of_range("no information menu exists for this version");
 }
 
-shared_ptr<const Menu> ServerState::proxy_destinations_menu_for_version(Version version) const {
+shared_ptr<const Menu> ServerState::proxy_destinations_menu(Version version) const {
   switch (version) {
     case Version::DC_NTE:
     case Version::DC_V1_11_2000_PROTOTYPE:
@@ -410,7 +410,7 @@ shared_ptr<const Menu> ServerState::proxy_destinations_menu_for_version(Version 
   }
 }
 
-const vector<pair<string, uint16_t>>& ServerState::proxy_destinations_for_version(Version version) const {
+const vector<pair<string, uint16_t>>& ServerState::proxy_destinations(Version version) const {
   switch (version) {
     case Version::DC_NTE:
     case Version::DC_V1_11_2000_PROTOTYPE:
@@ -432,7 +432,19 @@ const vector<pair<string, uint16_t>>& ServerState::proxy_destinations_for_versio
   }
 }
 
-shared_ptr<const ItemParameterTable> ServerState::item_parameter_table_for_version(Version version) const {
+shared_ptr<const vector<string>> ServerState::information_contents_for_client(shared_ptr<const Client> c) const {
+  return is_v1_or_v2(c->version()) ? this->information_contents_v2 : this->information_contents_v3;
+}
+
+shared_ptr<const QuestIndex> ServerState::quest_index(Version version) const {
+  return is_ep3(version) ? this->ep3_download_quest_index : this->default_quest_index;
+}
+
+void ServerState::dispatch_destroy_lobbies(evutil_socket_t, short, void* ctx) {
+  reinterpret_cast<ServerState*>(ctx)->lobbies_to_destroy.clear();
+}
+
+shared_ptr<const ItemParameterTable> ServerState::item_parameter_table(Version version) const {
   switch (version) {
     case Version::DC_NTE:
     case Version::DC_V1_11_2000_PROTOTYPE:
@@ -454,11 +466,24 @@ shared_ptr<const ItemParameterTable> ServerState::item_parameter_table_for_versi
   }
 }
 
+shared_ptr<const ItemNameIndex> ServerState::item_name_index(Version version) const {
+  auto ret = this->item_name_indexes.at(static_cast<size_t>(version));
+  if (ret == nullptr) {
+    throw runtime_error("no item name index exists for this version");
+  }
+  return ret;
+}
+
+void ServerState::set_item_name_index(Version version, shared_ptr<const ItemNameIndex> new_index) {
+  this->item_name_indexes.at(static_cast<size_t>(version)) = new_index;
+}
+
 string ServerState::describe_item(Version version, const ItemData& item, bool include_color_codes) const {
-  return this->item_name_index->describe_item(
-      version,
-      item,
-      include_color_codes ? this->item_parameter_table_for_version(version) : nullptr);
+  return this->item_name_index(version)->describe_item(item, include_color_codes);
+}
+
+ItemData ServerState::parse_item_description(Version version, const string& description) const {
+  return this->item_name_index(version)->parse_item_description(description);
 }
 
 void ServerState::set_port_configuration(
@@ -829,7 +854,7 @@ void ServerState::parse_config(const JSON& json, bool is_reload) {
       for (const auto& difficulty_it : type_it->as_list()) {
         auto& difficulty_res = type_res.emplace_back();
         for (const auto& item_it : difficulty_it->as_list()) {
-          difficulty_res.emplace_back(this->item_name_index->parse_item_description(Version::BB_V4, item_it->as_string()));
+          difficulty_res.emplace_back(this->parse_item_description(Version::BB_V4, item_it->as_string()));
         }
       }
     }
@@ -840,22 +865,22 @@ void ServerState::parse_config(const JSON& json, bool is_reload) {
     for (const auto& it : json.get_list("QuestF95FResultItems")) {
       auto& list = it->as_list();
       size_t price = list.at(0)->as_int();
-      this->quest_F95F_results.emplace_back(make_pair(price, this->item_name_index->parse_item_description(Version::BB_V4, list.at(1)->as_string())));
+      this->quest_F95F_results.emplace_back(make_pair(price, this->parse_item_description(Version::BB_V4, list.at(1)->as_string())));
     }
   } catch (const out_of_range&) {
   }
   try {
     this->quest_F960_success_results.clear();
-    this->quest_F960_failure_results = QuestF960Result(json.at("QuestF960FailureResultItems"), this->item_name_index);
+    this->quest_F960_failure_results = QuestF960Result(json.at("QuestF960FailureResultItems"), this->item_name_index(Version::BB_V4));
     for (const auto& it : json.get_list("QuestF960SuccessResultItems")) {
-      this->quest_F960_success_results.emplace_back(*it, this->item_name_index);
+      this->quest_F960_success_results.emplace_back(*it, this->item_name_index(Version::BB_V4));
     }
   } catch (const out_of_range&) {
   }
   try {
     this->secret_lottery_results.clear();
     for (const auto& it : json.get_list("SecretLotteryResultItems")) {
-      this->secret_lottery_results.emplace_back(this->item_name_index->parse_item_description(Version::BB_V4, it->as_string()));
+      this->secret_lottery_results.emplace_back(this->parse_item_description(Version::BB_V4, it->as_string()));
     }
   } catch (const out_of_range&) {
   }
@@ -1109,7 +1134,25 @@ void ServerState::load_level_table() {
   this->level_table = make_shared<LevelTableV4>(*this->load_bb_file("PlyLevelTbl.prs"), true);
 }
 
-shared_ptr<WordSelectTable> ServerState::load_word_select_table_from_system() {
+void ServerState::load_text_index() {
+  this->text_index = make_shared<TextIndex>("system/text-sets", [&](Version version, const string& filename) -> shared_ptr<const string> {
+    try {
+      if (version == Version::BB_V4) {
+        return this->load_bb_file(filename);
+      } else {
+        return this->pc_patch_file_index->get("Media/PSO/" + filename)->load_data();
+      }
+    } catch (const out_of_range&) {
+      return nullptr;
+    } catch (const cannot_open_file&) {
+      return nullptr;
+    }
+  });
+}
+
+void ServerState::load_word_select_table() {
+  config_log.info("Loading Word Select table");
+
   vector<vector<string>> name_alias_lists;
   auto json = JSON::parse(load_file("system/word-select/name-alias-lists.json"));
   for (const auto& coll_it : json.as_list()) {
@@ -1119,12 +1162,20 @@ shared_ptr<WordSelectTable> ServerState::load_word_select_table_from_system() {
     }
   }
 
-  config_log.info("(Word select) Loading pc_unitxt.prs");
-  vector<vector<string>> pc_unitxt_data = parse_unicode_text_set(load_file("system/word-select/pc_unitxt.prs"));
+  const vector<string>* pc_unitxt_collection = nullptr;
+  const vector<string>* bb_unitxt_collection = nullptr;
+  unique_ptr<UnicodeTextSet> pc_unitxt_data;
+  if (this->text_index) {
+    config_log.info("(Word select) Using PC_V2 unitxt_e.prs from text index");
+    pc_unitxt_collection = &this->text_index->get(Version::PC_V2, 1, 35);
+  } else {
+    config_log.info("(Word select) Loading PC_V2 unitxt_e.prs");
+    pc_unitxt_data = make_unique<UnicodeTextSet>(load_file("system/word-select/pc_unitxt.prs"));
+    pc_unitxt_collection = &pc_unitxt_data->get(35);
+  }
   config_log.info("(Word select) Loading bb_unitxt_ws.prs");
-  vector<vector<string>> bb_unitxt_data = parse_unicode_text_set(load_file("system/word-select/bb_unitxt_ws.prs"));
-  vector<string> pc_unitxt_collection = std::move(pc_unitxt_data.at(35));
-  vector<string> bb_unitxt_collection = std::move(bb_unitxt_data.at(0));
+  auto bb_unitxt_data = make_unique<UnicodeTextSet>(load_file("system/word-select/bb_unitxt_ws.prs"));
+  bb_unitxt_collection = &bb_unitxt_data->get(0);
 
   config_log.info("(Word select) Loading DC_NTE data");
   WordSelectSet dc_nte_ws(load_file("system/word-select/dc_nte_ws_data.bin"), Version::DC_NTE, nullptr, true);
@@ -1135,9 +1186,9 @@ shared_ptr<WordSelectTable> ServerState::load_word_select_table_from_system() {
   config_log.info("(Word select) Loading DC_V2 data");
   WordSelectSet dc_v2_ws(load_file("system/word-select/dcv2_ws_data.bin"), Version::DC_V2, nullptr, false);
   config_log.info("(Word select) Loading PC_NTE data");
-  WordSelectSet pc_nte_ws(load_file("system/word-select/pc_nte_ws_data.bin"), Version::PC_NTE, &pc_unitxt_collection, false);
+  WordSelectSet pc_nte_ws(load_file("system/word-select/pc_nte_ws_data.bin"), Version::PC_NTE, pc_unitxt_collection, false);
   config_log.info("(Word select) Loading PC_V2 data");
-  WordSelectSet pc_v2_ws(load_file("system/word-select/pc_ws_data.bin"), Version::PC_V2, &pc_unitxt_collection, false);
+  WordSelectSet pc_v2_ws(load_file("system/word-select/pc_ws_data.bin"), Version::PC_V2, pc_unitxt_collection, false);
   config_log.info("(Word select) Loading GC_NTE data");
   WordSelectSet gc_nte_ws(load_file("system/word-select/gc_nte_ws_data.bin"), Version::GC_NTE, nullptr, false);
   config_log.info("(Word select) Loading GC_V3 data");
@@ -1149,30 +1200,72 @@ shared_ptr<WordSelectTable> ServerState::load_word_select_table_from_system() {
   config_log.info("(Word select) Loading XB_V3 data");
   WordSelectSet xb_v3_ws(load_file("system/word-select/xb_ws_data.bin"), Version::XB_V3, nullptr, false);
   config_log.info("(Word select) Loading BB_V4 data");
-  WordSelectSet bb_v4_ws(load_file("system/word-select/bb_ws_data.bin"), Version::BB_V4, &bb_unitxt_collection, false);
+  WordSelectSet bb_v4_ws(load_file("system/word-select/bb_ws_data.bin"), Version::BB_V4, bb_unitxt_collection, false);
 
   config_log.info("(Word select) Generating table");
-  return make_shared<WordSelectTable>(
+  this->word_select_table = make_shared<WordSelectTable>(
       dc_nte_ws, dc_112000_ws, dc_v1_ws, dc_v2_ws,
       pc_nte_ws, pc_v2_ws, gc_nte_ws, gc_v3_ws,
       gc_ep3_nte_ws, gc_ep3_ws, xb_v3_ws, bb_v4_ws,
       name_alias_lists);
 }
 
-void ServerState::load_word_select_table() {
-  config_log.info("Loading Word Select table");
-  this->word_select_table = this->load_word_select_table_from_system();
+shared_ptr<ItemNameIndex> ServerState::create_item_name_index_for_version(
+    Version version, shared_ptr<const ItemParameterTable> pmt, shared_ptr<const TextIndex> text_index) {
+  switch (version) {
+    case Version::DC_NTE:
+      return make_shared<ItemNameIndex>(pmt, text_index->get(Version::DC_NTE, 0, 2));
+    case Version::DC_V1_11_2000_PROTOTYPE:
+      return make_shared<ItemNameIndex>(pmt, text_index->get(Version::DC_V1_11_2000_PROTOTYPE, 1, 2));
+    case Version::DC_V1:
+      return make_shared<ItemNameIndex>(pmt, text_index->get(Version::DC_V1, 1, 2));
+    case Version::DC_V2:
+      return make_shared<ItemNameIndex>(pmt, text_index->get(Version::DC_V2, 1, 3));
+    case Version::PC_NTE:
+      return make_shared<ItemNameIndex>(pmt, text_index->get(Version::PC_NTE, 1, 3));
+    case Version::PC_V2:
+      return make_shared<ItemNameIndex>(pmt, text_index->get(Version::PC_V2, 1, 3));
+    case Version::GC_NTE:
+      return make_shared<ItemNameIndex>(pmt, text_index->get(Version::GC_NTE, 1, 0));
+    case Version::GC_V3:
+      return make_shared<ItemNameIndex>(pmt, text_index->get(Version::GC_V3, 1, 0));
+    case Version::XB_V3:
+      return make_shared<ItemNameIndex>(pmt, text_index->get(Version::XB_V3, 1, 0));
+    case Version::BB_V4:
+      return make_shared<ItemNameIndex>(pmt, text_index->get(Version::BB_V4, 1, 1));
+    default:
+      return nullptr;
+  }
 }
 
-void ServerState::load_item_name_index() {
-  config_log.info("Loading item name index");
-  this->item_name_index = make_shared<ItemNameIndex>(
-      JSON::parse(load_file("system/item-tables/names-v2.json")),
-      JSON::parse(load_file("system/item-tables/names-v3.json")),
-      JSON::parse(load_file("system/item-tables/names-v4.json")));
+void ServerState::load_item_name_indexes() {
+  config_log.info("Generating item name indexes");
+  // TODO: Get ItemPMT files for the versions for which we don't have them
+  // (especially DC_V1) and add support for them. Currently we only have three
+  // ItemPMTs (PC, GC, and BB), so we can't use them to generate all the name
+  // indexes.
+
+  auto pc_v2_index = create_item_name_index_for_version(
+      Version::PC_V2, this->item_parameter_table(Version::PC_V2), this->text_index);
+  this->set_item_name_index(Version::DC_NTE, pc_v2_index);
+  this->set_item_name_index(Version::DC_V1_11_2000_PROTOTYPE, pc_v2_index);
+  this->set_item_name_index(Version::DC_V1, pc_v2_index);
+  this->set_item_name_index(Version::DC_V2, pc_v2_index);
+  this->set_item_name_index(Version::PC_NTE, pc_v2_index);
+  this->set_item_name_index(Version::PC_V2, pc_v2_index);
+
+  auto gc_v3_index = create_item_name_index_for_version(
+      Version::GC_V3, this->item_parameter_table(Version::GC_V3), this->text_index);
+  this->set_item_name_index(Version::GC_NTE, gc_v3_index);
+  this->set_item_name_index(Version::GC_V3, gc_v3_index);
+  this->set_item_name_index(Version::XB_V3, gc_v3_index);
+
+  auto bb_v4_index = create_item_name_index_for_version(
+      Version::BB_V4, this->item_parameter_table(Version::BB_V4), this->text_index);
+  this->set_item_name_index(Version::BB_V4, bb_v4_index);
 }
 
-void ServerState::load_item_tables() {
+void ServerState::load_drop_tables() {
   config_log.info("Loading rare item sets");
   unordered_map<string, shared_ptr<const RareItemSet>> new_rare_item_sets;
   for (const auto& filename : list_directory_sorted("system/item-tables")) {
@@ -1186,16 +1279,16 @@ void ServerState::load_item_tables() {
 
     if (ends_with(filename, "-v1.json")) {
       config_log.info("Loading v1 JSON rare item table %s", filename.c_str());
-      new_rare_item_sets.emplace(basename, make_shared<RareItemSet>(JSON::parse(load_file(path)), Version::DC_V1, this->item_name_index));
+      new_rare_item_sets.emplace(basename, make_shared<RareItemSet>(JSON::parse(load_file(path)), this->item_name_index(Version::DC_V1)));
     } else if (ends_with(filename, "-v2.json")) {
       config_log.info("Loading v2 JSON rare item table %s", filename.c_str());
-      new_rare_item_sets.emplace(basename, make_shared<RareItemSet>(JSON::parse(load_file(path)), Version::PC_V2, this->item_name_index));
+      new_rare_item_sets.emplace(basename, make_shared<RareItemSet>(JSON::parse(load_file(path)), this->item_name_index(Version::PC_V2)));
     } else if (ends_with(filename, "-v3.json")) {
       config_log.info("Loading v3 JSON rare item table %s", filename.c_str());
-      new_rare_item_sets.emplace(basename, make_shared<RareItemSet>(JSON::parse(load_file(path)), Version::GC_V3, this->item_name_index));
+      new_rare_item_sets.emplace(basename, make_shared<RareItemSet>(JSON::parse(load_file(path)), this->item_name_index(Version::GC_V3)));
     } else if (ends_with(filename, "-v4.json")) {
       config_log.info("Loading v4 JSON rare item table %s", filename.c_str());
-      new_rare_item_sets.emplace(basename, make_shared<RareItemSet>(JSON::parse(load_file(path)), Version::BB_V4, this->item_name_index));
+      new_rare_item_sets.emplace(basename, make_shared<RareItemSet>(JSON::parse(load_file(path)), this->item_name_index(Version::BB_V4)));
 
     } else if (ends_with(filename, ".afs")) {
       config_log.info("Loading AFS rare item table %s", filename.c_str());
@@ -1255,7 +1348,9 @@ void ServerState::load_item_tables() {
   config_log.info("Loading tekker adjustment table");
   auto tekker_data = make_shared<string>(load_file("system/item-tables/JudgeItem-gc.rel"));
   this->tekker_adjustment_set = make_shared<TekkerAdjustmentSet>(tekker_data);
+}
 
+void ServerState::load_item_definitions() {
   config_log.info("Loading item definition tables");
   auto pmt_data_v2 = make_shared<string>(prs_decompress(load_file("system/item-tables/ItemPMT-v2.prs")));
   this->item_parameter_table_v2 = make_shared<ItemParameterTable>(pmt_data_v2, ItemParameterTable::Version::V2);

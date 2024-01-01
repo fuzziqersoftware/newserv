@@ -349,6 +349,9 @@ public:
   void use_character_bank(int8_t bb_character_index);
   void use_default_bank();
 
+  void print_inventory(FILE* stream) const;
+  void print_bank(FILE* stream) const;
+
 private:
   // The overlay character data is used in battle and challenge modes, when
   // character data is temporarily replaced in-game. In other play modes and in

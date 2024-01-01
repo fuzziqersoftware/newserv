@@ -369,6 +369,9 @@ private:
     /* 40 / 5704 */ le_uint32_t shield_effect_table; // -> [8-byte structs]
   } __attribute__((packed));
 
+  // TODO: The GC NTE ItemPMT format is intermediate between V2 and V3 - the
+  // Offsets struct is 0x50 bytes. Figure it out and add support here.
+
   template <bool IsBigEndian>
   struct TableOffsetsV3V4 {
     using U32T = typename std::conditional<IsBigEndian, be_uint32_t, le_uint32_t>::type;

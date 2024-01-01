@@ -132,7 +132,7 @@ void send_client_to_proxy_server(shared_ptr<Client> c) {
 
 static void send_proxy_destinations_menu(shared_ptr<Client> c) {
   auto s = c->require_server_state();
-  send_menu(c, s->proxy_destinations_menu_for_version(c->version()));
+  send_menu(c, s->proxy_destinations_menu(c->version()));
 }
 
 static bool send_enable_send_function_call_if_applicable(shared_ptr<Client> c) {
@@ -1762,7 +1762,7 @@ static void on_D6_V3(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
   check_size_v(data.size(), 0);
   if (c->config.check_flag(Client::Flag::IN_INFORMATION_MENU)) {
     auto s = c->require_server_state();
-    send_menu(c, s->information_menu_for_version(c->version()));
+    send_menu(c, s->information_menu(c->version()));
   } else if (c->config.check_flag(Client::Flag::AT_WELCOME_MESSAGE)) {
     c->config.clear_flag(Client::Flag::AT_WELCOME_MESSAGE);
     send_enable_send_function_call_if_applicable(c);
@@ -1784,7 +1784,7 @@ static void on_09(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
     case MenuID::QUEST_EP1:
     case MenuID::QUEST_EP2: {
       bool is_download_quest = !c->lobby.lock();
-      auto quest_index = s->quest_index_for_version(c->version());
+      auto quest_index = s->quest_index(c->version());
       if (!quest_index) {
         send_quest_info(c, "$C6Quests are not available.", is_download_quest);
       } else {
@@ -2178,7 +2178,7 @@ static void on_10(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
 
         case MainMenuItemID::INFORMATION: {
           auto s = c->require_server_state();
-          send_menu(c, s->information_menu_for_version(c->version()));
+          send_menu(c, s->information_menu(c->version()));
           c->config.set_flag(Client::Flag::IN_INFORMATION_MENU);
           break;
         }
@@ -2199,7 +2199,7 @@ static void on_10(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
             // always the download quest menu. (Episode 3 does actually have
             // online quests, but they're served via a server data request
             // instead of the file download paradigm that other versions use.)
-            auto quest_index = s->quest_index_for_version(c->version());
+            auto quest_index = s->quest_index(c->version());
             const auto& categories = quest_index->categories(menu_type, Episode::EP3, c->version());
             if (categories.size() == 1) {
               auto quests = quest_index->filter(menu_type, Episode::EP3, c->version(), categories[0]->category_id);
@@ -2208,7 +2208,7 @@ static void on_10(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
             }
           }
 
-          send_quest_categories_menu(c, s->quest_index_for_version(c->version()), menu_type, Episode::NONE);
+          send_quest_categories_menu(c, s->quest_index(c->version()), menu_type, Episode::NONE);
           break;
         }
 
@@ -2346,7 +2346,7 @@ static void on_10(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
         auto s = c->require_server_state();
         const pair<string, uint16_t>* dest = nullptr;
         try {
-          dest = &s->proxy_destinations_for_version(c->version()).at(item_id);
+          dest = &s->proxy_destinations(c->version()).at(item_id);
         } catch (const out_of_range&) {
         }
 
@@ -2453,7 +2453,7 @@ static void on_10(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
 
     case MenuID::QUEST_CATEGORIES: {
       auto s = c->require_server_state();
-      auto quest_index = s->quest_index_for_version(c->version());
+      auto quest_index = s->quest_index(c->version());
       if (!quest_index) {
         send_lobby_message_box(c, "$C6Quests are not available.");
         break;
@@ -2494,7 +2494,7 @@ static void on_10(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
     case MenuID::QUEST_EP1:
     case MenuID::QUEST_EP2: {
       auto s = c->require_server_state();
-      auto quest_index = s->quest_index_for_version(c->version());
+      auto quest_index = s->quest_index(c->version());
       if (!quest_index) {
         send_lobby_message_box(c, "$C6Quests are not\navailable.");
         break;
@@ -2707,7 +2707,7 @@ static void on_08_E6(shared_ptr<Client> c, uint16_t command, uint32_t, string& d
 static void on_1F(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
   check_size_v(data.size(), 0);
   auto s = c->require_server_state();
-  send_menu(c, s->information_menu_for_version(c->version()), true);
+  send_menu(c, s->information_menu(c->version()), true);
 }
 
 static void on_A0(shared_ptr<Client> c, uint16_t, uint32_t, string&) {
@@ -2842,7 +2842,7 @@ static void on_A2(shared_ptr<Client> c, uint16_t, uint32_t flag, string& data) {
           throw logic_error("invalid game mode");
       }
     }
-    send_quest_categories_menu(c, s->quest_index_for_version(c->version()), menu_type, l->episode);
+    send_quest_categories_menu(c, s->quest_index(c->version()), menu_type, l->episode);
   }
 }
 

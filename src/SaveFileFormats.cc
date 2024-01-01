@@ -578,29 +578,6 @@ void PSOBBCharacterFile::clear_all_material_usage() {
   }
 }
 
-void PSOBBCharacterFile::print_inventory(FILE* stream, Version version, shared_ptr<const ItemNameIndex> name_index) const {
-  fprintf(stream, "[PlayerInventory] Meseta: %" PRIu32 "\n", this->disp.stats.meseta.load());
-  fprintf(stream, "[PlayerInventory] %hhu items\n", this->inventory.num_items);
-  for (size_t x = 0; x < this->inventory.num_items; x++) {
-    const auto& item = this->inventory.items[x];
-    auto name = name_index->describe_item(version, item.data);
-    auto hex = item.data.hex();
-    fprintf(stream, "[PlayerInventory]   %2zu: [+%08" PRIX32 "] %s (%s)\n", x, item.flags.load(), hex.c_str(), name.c_str());
-  }
-}
-
-void PSOBBCharacterFile::print_bank(FILE* stream, Version version, shared_ptr<const ItemNameIndex> name_index) const {
-  fprintf(stream, "[PlayerBank] Meseta: %" PRIu32 "\n", this->bank.meseta.load());
-  fprintf(stream, "[PlayerBank] %" PRIu32 " items\n", this->bank.num_items.load());
-  for (size_t x = 0; x < this->bank.num_items; x++) {
-    const auto& item = this->bank.items[x];
-    const char* present_token = item.present ? "" : " (missing present flag)";
-    auto name = name_index->describe_item(version, item.data);
-    auto hex = item.data.hex();
-    fprintf(stream, "[PlayerBank]   %3zu: %s (%s) (x%hu) %s\n", x, hex.c_str(), name.c_str(), item.amount.load(), present_token);
-  }
-}
-
 const array<PSOBBCharacterFile::DefaultSymbolChatEntry, 6> PSOBBCharacterFile::DEFAULT_SYMBOL_CHATS = {
     DefaultSymbolChatEntry{"\tEHello", 0x28, {0xFFFF, 0x000D, 0xFFFF, 0xFFFF}, {SymbolChat::FacePart{0x05, 0x18, 0x1D, 0x00}, {0x05, 0x28, 0x1D, 0x01}, {0x36, 0x20, 0x2A, 0x00}, {0x3C, 0x00, 0x32, 0x00}, {0xFF, 0x00, 0x00, 0x00}, {0xFF, 0x00, 0x00, 0x00}, {0xFF, 0x00, 0x00, 0x00}, {0xFF, 0x00, 0x00, 0x02}, {0xFF, 0x00, 0x00, 0x02}, {0xFF, 0x00, 0x00, 0x02}, {0xFF, 0x00, 0x00, 0x02}, {0xFF, 0x00, 0x00, 0x02}}},
     DefaultSymbolChatEntry{"\tEGood-bye", 0x74, {0x0476, 0x000C, 0xFFFF, 0xFFFF}, {SymbolChat::FacePart{0x06, 0x15, 0x14, 0x00}, {0x06, 0x2B, 0x14, 0x01}, {0x05, 0x18, 0x1F, 0x00}, {0x05, 0x28, 0x1F, 0x01}, {0x36, 0x20, 0x2A, 0x00}, {0x3C, 0x00, 0x32, 0x00}, {0xFF, 0x00, 0x00, 0x00}, {0xFF, 0x00, 0x00, 0x02}, {0xFF, 0x00, 0x00, 0x02}, {0xFF, 0x00, 0x00, 0x02}, {0xFF, 0x00, 0x00, 0x02}, {0xFF, 0x00, 0x00, 0x02}}},

@@ -295,7 +295,7 @@ static void server_command_quest(shared_ptr<Client> c, const std::string& args) 
 
   auto s = c->require_server_state();
   auto l = c->require_lobby();
-  auto q = s->quest_index_for_version(effective_version)->get(stoul(args));
+  auto q = s->quest_index(effective_version)->get(stoul(args));
   if (!q) {
     send_text_message(c, "$C6Quest not found");
   } else {
@@ -1611,7 +1611,7 @@ static void server_command_item(shared_ptr<Client> c, const std::string& args) {
   check_is_game(l, true);
   check_cheats_enabled(l, c);
 
-  ItemData item = s->item_name_index->parse_item_description(c->version(), args);
+  ItemData item = s->parse_item_description(c->version(), args);
   item.id = l->generate_item_id(c->lobby_client_id);
 
   if ((l->drop_mode == Lobby::DropMode::SERVER_PRIVATE) || (l->drop_mode == Lobby::DropMode::SERVER_DUPLICATE)) {
@@ -1644,7 +1644,7 @@ static void proxy_command_item(shared_ptr<ProxyServer::LinkedSession> ses, const
 
   bool set_drop = (!args.empty() && (args[0] == '!'));
 
-  ItemData item = s->item_name_index->parse_item_description(ses->version(), (set_drop ? args.substr(1) : args));
+  ItemData item = s->parse_item_description(ses->version(), (set_drop ? args.substr(1) : args));
   item.id = random_object<uint32_t>() | 0x80000000;
 
   if (set_drop) {

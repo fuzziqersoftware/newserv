@@ -832,7 +832,7 @@ static void on_sync_joining_player_disp_and_inventory(
       throw logic_error("6x70 command from unknown game version");
   }
 
-  parsed->transcode_inventory_items(c->version(), target->version(), s->item_parameter_table_for_version(target->version()));
+  parsed->transcode_inventory_items(c->version(), target->version(), s->item_parameter_table(target->version()));
   parsed->visual.enforce_lobby_join_limits_for_version(target->version());
 
   switch (target->version()) {
@@ -1349,7 +1349,7 @@ static void on_player_drop_item(shared_ptr<Client> c, uint8_t command, uint8_t f
     auto name = s->describe_item(c->version(), item, false);
     l->log.info("Player %hu dropped item %08" PRIX32 " (%s) at %hu:(%g, %g)",
         cmd.header.client_id.load(), cmd.item_id.load(), name.c_str(), cmd.floor.load(), cmd.x.load(), cmd.z.load());
-    p->print_inventory(stderr, c->version(), s->item_name_index);
+    c->print_inventory(stderr);
   }
 
   forward_subcommand(c, command, flag, data, size);
@@ -1374,7 +1374,7 @@ void forward_subcommand_with_item_transcode_t(shared_ptr<Client> c, uint8_t comm
       out_cmd.header.subcommand = translate_subcommand_number(lc->version(), c->version(), out_cmd.header.subcommand);
       if (out_cmd.header.subcommand) {
         out_cmd.item_data.decode_for_version(c->version());
-        out_cmd.item_data.encode_for_version(lc->version(), s->item_parameter_table_for_version(lc->version()));
+        out_cmd.item_data.encode_for_version(lc->version(), s->item_parameter_table(lc->version()));
         send_command_t(lc, command, flag, out_cmd);
       } else {
         lc->log.info("Subcommand cannot be translated to client\'s version");
@@ -1409,7 +1409,7 @@ static void on_create_inventory_item_t(shared_ptr<Client> c, uint8_t command, ui
     auto s = c->require_server_state();
     auto name = s->describe_item(c->version(), item, false);
     l->log.info("Player %hu created inventory item %08" PRIX32 " (%s)", c->lobby_client_id, item.id.load(), name.c_str());
-    p->print_inventory(stderr, c->version(), s->item_name_index);
+    c->print_inventory(stderr);
   }
 
   forward_subcommand_with_item_transcode_t(c, command, flag, cmd);
@@ -1450,7 +1450,7 @@ static void on_drop_partial_stack_t(shared_ptr<Client> c, uint8_t command, uint8
     auto name = s->describe_item(c->version(), item, false);
     l->log.info("Player %hu split stack to create floor item %08" PRIX32 " (%s) at %hu:(%g, %g)",
         cmd.header.client_id.load(), item.id.load(), name.c_str(), cmd.floor.load(), cmd.x.load(), cmd.z.load());
-    c->character()->print_inventory(stderr, c->version(), s->item_name_index);
+    c->print_inventory(stderr);
   }
 
   forward_subcommand_with_item_transcode_t(c, command, flag, cmd);
@@ -1498,7 +1498,7 @@ static void on_drop_partial_stack_bb(shared_ptr<Client> c, uint8_t command, uint
       auto name = s->describe_item(c->version(), item, false);
       l->log.info("Player %hu split stack %08" PRIX32 " (removed: %s) at %hu:(%g, %g)",
           cmd.header.client_id.load(), cmd.item_id.load(), name.c_str(), cmd.floor.load(), cmd.x.load(), cmd.z.load());
-      p->print_inventory(stderr, c->version(), s->item_name_index);
+      c->print_inventory(stderr);
     }
 
   } else {
@@ -1525,14 +1525,14 @@ static void on_buy_shop_item(shared_ptr<Client> c, uint8_t command, uint8_t flag
   l->on_item_id_generated_externally(item.id);
   p->add_item(item);
 
-  size_t price = s->item_parameter_table_for_version(c->version())->price_for_item(item);
+  size_t price = s->item_parameter_table(c->version())->price_for_item(item);
   p->remove_meseta(price, c->version() != Version::BB_V4);
 
   if (l->log.should_log(LogLevel::INFO)) {
     auto name = s->describe_item(c->version(), item, false);
     l->log.info("Player %hu bought item %08" PRIX32 " (%s) from shop (%zu Meseta)",
         cmd.header.client_id.load(), item.id.load(), name.c_str(), price);
-    p->print_inventory(stderr, c->version(), s->item_name_index);
+    c->print_inventory(stderr);
   }
 
   forward_subcommand_with_item_transcode_t(c, command, flag, cmd);
@@ -1575,7 +1575,7 @@ static void on_box_or_enemy_item_drop_t(shared_ptr<Client> c, uint8_t command, u
       out_cmd.header.subcommand = translate_subcommand_number(lc->version(), c->version(), out_cmd.header.subcommand);
       if (out_cmd.header.subcommand) {
         out_cmd.item.item.decode_for_version(c->version());
-        out_cmd.item.item.encode_for_version(lc->version(), s->item_parameter_table_for_version(lc->version()));
+        out_cmd.item.item.encode_for_version(lc->version(), s->item_parameter_table(lc->version()));
         send_command_t(lc, command, flag, out_cmd);
       } else {
         lc->log.info("Subcommand cannot be translated to client\'s version");
@@ -1639,7 +1639,7 @@ static void on_pick_up_item_generic(
       auto s = c->require_server_state();
       auto name = s->describe_item(c->version(), fi->data, false);
       l->log.info("Player %hu picked up %08" PRIX32 " (%s)", client_id, item_id, name.c_str());
-      p->print_inventory(stderr, c->version(), s->item_name_index);
+      c->print_inventory(stderr);
     }
 
     auto s = c->require_server_state();
@@ -1725,7 +1725,7 @@ static void on_use_item(
   if (l->log.should_log(LogLevel::INFO)) {
     l->log.info("Player %hhu used item %hu:%08" PRIX32 " (%s)",
         c->lobby_client_id, cmd.header.client_id.load(), cmd.item_id.load(), name.c_str());
-    p->print_inventory(stderr, c->version(), s->item_name_index);
+    c->print_inventory(stderr);
   }
 
   forward_subcommand(c, command, flag, data, size);
@@ -1771,7 +1771,7 @@ static void on_feed_mag(
     l->log.info("Player %hhu fed item %hu:%08" PRIX32 " (%s) to mag %hu:%08" PRIX32 " (%s)",
         c->lobby_client_id, cmd.header.client_id.load(), cmd.fed_item_id.load(), fed_name.c_str(),
         cmd.header.client_id.load(), cmd.mag_item_id.load(), mag_name.c_str());
-    p->print_inventory(stderr, c->version(), s->item_name_index);
+    c->print_inventory(stderr);
   }
 
   forward_subcommand(c, command, flag, data, size);
@@ -1806,7 +1806,7 @@ static void on_open_shop_bb_or_ep3_battle_subs(shared_ptr<Client> c, uint8_t com
     }
     for (auto& item : c->bb_shop_contents[cmd.shop_type]) {
       item.id = 0xFFFFFFFF;
-      item.data2d = s->item_parameter_table_for_version(c->version())->price_for_item(item);
+      item.data2d = s->item_parameter_table(c->version())->price_for_item(item);
     }
 
     send_shop(c, cmd.shop_type);
@@ -1863,10 +1863,10 @@ static void on_ep3_private_word_select_bb_bank_action(shared_ptr<Client> c, uint
         send_destroy_item_to_lobby(c, cmd.item_id, cmd.item_amount, true);
 
         if (l->log.should_log(LogLevel::INFO)) {
-          string name = s->item_name_index->describe_item(Version::BB_V4, item);
+          string name = s->describe_item(Version::BB_V4, item, false);
           l->log.info("Player %hu deposited item %08" PRIX32 " (x%hhu) (%s) in the bank",
               c->lobby_client_id, cmd.item_id.load(), cmd.item_amount, name.c_str());
-          c->character()->print_inventory(stderr, c->version(), s->item_name_index);
+          c->print_inventory(stderr);
         }
       }
 
@@ -1892,10 +1892,10 @@ static void on_ep3_private_word_select_bb_bank_action(shared_ptr<Client> c, uint
         send_create_inventory_item_to_lobby(c, c->lobby_client_id, item);
 
         if (l->log.should_log(LogLevel::INFO)) {
-          string name = s->item_name_index->describe_item(Version::BB_V4, item);
+          string name = s->describe_item(Version::BB_V4, item, false);
           l->log.info("Player %hu withdrew item %08" PRIX32 " (x%hhu) (%s) from the bank",
               c->lobby_client_id, item.id.load(), cmd.item_amount, name.c_str());
-          c->character()->print_inventory(stderr, c->version(), s->item_name_index);
+          c->print_inventory(stderr);
         }
       }
 
@@ -2133,7 +2133,7 @@ static void on_entity_drop_item_request(shared_ptr<Client> c, uint8_t command, u
       if (item.empty()) {
         l->log.info("No item was created");
       } else {
-        string name = s->item_name_index->describe_item(l->base_version, item);
+        string name = s->describe_item(l->base_version, item, false);
         l->log.info("Entity %04hX (area %02hX) created item %s", cmd.entity_id.load(), cmd.effective_area, name.c_str());
         if (l->drop_mode == Lobby::DropMode::SERVER_DUPLICATE) {
           for (const auto& lc : l->clients) {
@@ -2163,7 +2163,7 @@ static void on_entity_drop_item_request(shared_ptr<Client> c, uint8_t command, u
           if (item.empty()) {
             l->log.info("No item was created for %s", lc->channel.name.c_str());
           } else {
-            string name = s->item_name_index->describe_item(l->base_version, item);
+            string name = s->describe_item(l->base_version, item, false);
             l->log.info("Entity %04hX (area %02hX) created item %s", cmd.entity_id.load(), cmd.effective_area, name.c_str());
             item.id = l->generate_item_id(0xFF);
             l->log.info("Creating item %08" PRIX32 " at %02hhX:%g,%g for %s",
@@ -2455,7 +2455,7 @@ static void on_steal_exp_bb(shared_ptr<Client> c, uint8_t, uint8_t, void* data, 
   const auto& inventory = p->inventory;
   const auto& weapon = inventory.items[inventory.find_equipped_item(EquipSlot::WEAPON)];
 
-  auto item_parameter_table = s->item_parameter_table_for_version(c->version());
+  auto item_parameter_table = s->item_parameter_table(c->version());
 
   uint8_t special_id = 0;
   if (((weapon.data.data1[1] < 0x0A) && (weapon.data.data1[2] < 0x05)) ||
@@ -2574,7 +2574,7 @@ static void on_enemy_exp_request_bb(shared_ptr<Client> c, uint8_t, uint8_t, void
     for (size_t z = 0; z < inventory.num_items; z++) {
       auto& item = inventory.items[z];
       if ((item.flags & 0x08) &&
-          s->item_parameter_table_for_version(c->version())->is_unsealable_item(item.data)) {
+          s->item_parameter_table(c->version())->is_unsealable_item(item.data)) {
         item.data.set_sealed_item_kill_count(item.data.get_sealed_item_kill_count() + 1);
       }
     }
@@ -2644,7 +2644,7 @@ void on_transfer_item_via_mail_message_bb(shared_ptr<Client> c, uint8_t command,
     auto name = s->describe_item(c->version(), item, false);
     l->log.info("Player %hhu sent inventory item %hu:%08" PRIX32 " (%s) x%" PRIu32 " to player %08" PRIX32,
         c->lobby_client_id, cmd.header.client_id.load(), cmd.item_id.load(), name.c_str(), cmd.amount.load(), cmd.target_guild_card_number.load());
-    p->print_inventory(stderr, c->version(), s->item_name_index);
+    c->print_inventory(stderr);
   }
 
   // To receive an item, the player must be online, using BB, have a character
@@ -2704,7 +2704,7 @@ void on_exchange_item_for_team_points_bb(shared_ptr<Client> c, uint8_t command, 
     auto name = s->describe_item(c->version(), item, false);
     l->log.info("Player %hhu exchanged inventory item %hu:%08" PRIX32 " (%s) for %zu team points",
         c->lobby_client_id, cmd.header.client_id.load(), cmd.item_id.load(), name.c_str(), points);
-    p->print_inventory(stderr, c->version(), s->item_name_index);
+    c->print_inventory(stderr);
   }
 
   forward_subcommand(c, command, flag, data, size);
@@ -2729,7 +2729,7 @@ static void on_destroy_inventory_item(shared_ptr<Client> c, uint8_t command, uin
     auto name = s->describe_item(c->version(), item, false);
     l->log.info("Player %hhu destroyed inventory item %hu:%08" PRIX32 " (%s)",
         c->lobby_client_id, cmd.header.client_id.load(), cmd.item_id.load(), name.c_str());
-    p->print_inventory(stderr, c->version(), s->item_name_index);
+    c->print_inventory(stderr);
   }
   forward_subcommand(c, command, flag, data, size);
 }
@@ -2833,14 +2833,14 @@ static void on_sell_item_at_shop_bb(shared_ptr<Client> c, uint8_t command, uint8
     auto s = c->require_server_state();
     auto p = c->character();
     auto item = p->remove_item(cmd.item_id, cmd.amount, c->version() != Version::BB_V4);
-    size_t price = (s->item_parameter_table_for_version(c->version())->price_for_item(item) >> 3) * cmd.amount;
+    size_t price = (s->item_parameter_table(c->version())->price_for_item(item) >> 3) * cmd.amount;
     p->add_meseta(price);
 
     if (l->log.should_log(LogLevel::INFO)) {
       auto name = s->describe_item(c->version(), item, false);
       l->log.info("Player %hhu sold inventory item %08" PRIX32 " (%s) for %zu Meseta",
           c->lobby_client_id, cmd.item_id.load(), name.c_str(), price);
-      p->print_inventory(stderr, c->version(), s->item_name_index);
+      c->print_inventory(stderr);
     }
 
     forward_subcommand(c, command, flag, data, size);
@@ -2875,7 +2875,7 @@ static void on_buy_shop_item_bb(shared_ptr<Client> c, uint8_t, uint8_t, void* da
       auto name = s->describe_item(c->version(), item, false);
       l->log.info("Player %hhu purchased item %08" PRIX32 " (%s) for %zu meseta",
           c->lobby_client_id, item.id.load(), name.c_str(), price);
-      p->print_inventory(stderr, c->version(), s->item_name_index);
+      c->print_inventory(stderr);
     }
   }
 }
@@ -3246,7 +3246,7 @@ static void on_quest_F960_result_bb(shared_ptr<Client> c, uint8_t, uint8_t, void
 
     item.id = l->generate_item_id(c->lobby_client_id);
     // If it's a weapon, make it unidentified
-    auto item_parameter_table = s->item_parameter_table_for_version(c->version());
+    auto item_parameter_table = s->item_parameter_table(c->version());
     if ((item.data1[0] == 0x00) && (item_parameter_table->is_item_rare(item) || (item.data1[4] != 0))) {
       item.data1[4] |= 0x80;
     }
@@ -3260,12 +3260,12 @@ static void on_quest_F960_result_bb(shared_ptr<Client> c, uint8_t, uint8_t, void
       p->add_item(item);
       send_create_inventory_item_to_lobby(c, c->lobby_client_id, item);
       if (c->log.should_log(LogLevel::INFO)) {
-        string name = s->item_name_index->describe_item(c->version(), item);
+        string name = s->describe_item(c->version(), item, false);
         c->log.info("Awarded item %s", name.c_str());
       }
     } catch (const out_of_range&) {
       if (c->log.should_log(LogLevel::INFO)) {
-        string name = s->item_name_index->describe_item(c->version(), item);
+        string name = s->describe_item(c->version(), item, false);
         c->log.info("Attempted to award item %s, but inventory was full", name.c_str());
       }
     }

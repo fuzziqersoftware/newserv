@@ -17,7 +17,7 @@ string RareItemSet::ExpandedDrop::str() const {
       this->probability, frac.first, frac.second, this->item_code[0], this->item_code[1], this->item_code[2]);
 }
 
-string RareItemSet::ExpandedDrop::str(Version version, shared_ptr<const ItemNameIndex> name_index) const {
+string RareItemSet::ExpandedDrop::str(shared_ptr<const ItemNameIndex> name_index) const {
   ItemData item;
   item.data1[0] = this->item_code[0];
   item.data1[1] = this->item_code[1];
@@ -25,7 +25,7 @@ string RareItemSet::ExpandedDrop::str(Version version, shared_ptr<const ItemName
 
   string ret = this->str();
   ret += " (";
-  ret += name_index->describe_item(version, item);
+  ret += name_index->describe_item(item);
   ret += ")";
   return ret;
 }
@@ -303,7 +303,7 @@ RareItemSet::RareItemSet(const string& rel_data, bool is_big_endian) {
   }
 }
 
-RareItemSet::RareItemSet(const JSON& json, Version version, shared_ptr<const ItemNameIndex> name_index) {
+RareItemSet::RareItemSet(const JSON& json, shared_ptr<const ItemNameIndex> name_index) {
   for (const auto& mode_it : json.as_dict()) {
     static const unordered_map<string, GameMode> mode_keys(
         {{"Normal", GameMode::NORMAL}, {"Battle", GameMode::BATTLE}, {"Challenge", GameMode::CHALLENGE}, {"Solo", GameMode::SOLO}});
@@ -369,7 +369,7 @@ RareItemSet::RareItemSet(const JSON& json, Version version, shared_ptr<const Ite
                 if (!name_index) {
                   throw runtime_error("item name index is not available");
                 }
-                ItemData data = name_index->parse_item_description(version, item_desc.as_string());
+                ItemData data = name_index->parse_item_description(item_desc.as_string());
                 d.item_code[0] = data.data1[0];
                 d.item_code[1] = data.data1[1];
                 d.item_code[2] = data.data1[2];
@@ -427,7 +427,7 @@ std::string RareItemSet::serialize_gsl(bool big_endian) const {
   return GSLArchive::generate(files, big_endian);
 }
 
-std::string RareItemSet::serialize_json(Version version, shared_ptr<const ItemNameIndex> name_index) const {
+std::string RareItemSet::serialize_json(shared_ptr<const ItemNameIndex> name_index) const {
   auto modes_dict = JSON::dict();
   static const array<GameMode, 4> modes = {GameMode::NORMAL, GameMode::BATTLE, GameMode::CHALLENGE, GameMode::SOLO};
   for (const auto& mode : modes) {
@@ -458,7 +458,7 @@ std::string RareItemSet::serialize_json(Version version, shared_ptr<const ItemNa
                 data.data1[0] = spec.item_code[0];
                 data.data1[1] = spec.item_code[1];
                 data.data1[2] = spec.item_code[2];
-                spec_json.emplace_back(name_index->describe_item(version, data));
+                spec_json.emplace_back(name_index->describe_item(data));
               }
               for (const auto& enemy_type : enemy_types) {
                 if (enemy_type_valid_for_episode(episode, enemy_type)) {
@@ -485,7 +485,7 @@ std::string RareItemSet::serialize_json(Version version, shared_ptr<const ItemNa
                 data.data1[0] = spec.item_code[0];
                 data.data1[1] = spec.item_code[1];
                 data.data1[2] = spec.item_code[2];
-                area_list.back().emplace_back(name_index->describe_item(version, data));
+                area_list.back().emplace_back(name_index->describe_item(data));
               }
             }
 
@@ -512,7 +512,6 @@ std::string RareItemSet::serialize_json(Version version, shared_ptr<const ItemNa
 
 void RareItemSet::print_collection(
     FILE* stream,
-    Version version,
     GameMode mode,
     Episode episode,
     uint8_t difficulty,
@@ -544,7 +543,7 @@ void RareItemSet::print_collection(
     }
 
     for (const auto& spec : collection->rt_index_to_specs[z]) {
-      string s = name_index ? spec.str(version, name_index) : spec.str();
+      string s = name_index ? spec.str(name_index) : spec.str();
       fprintf(stream, "    %02zX: %s (%s)\n", z, s.c_str(), enemy_types_str.c_str());
     }
   }
@@ -552,14 +551,13 @@ void RareItemSet::print_collection(
   fprintf(stream, "  Box rares:\n");
   for (size_t area = 0; area < collection->box_area_to_specs.size(); area++) {
     for (const auto& spec : collection->box_area_to_specs[area]) {
-      string s = name_index ? spec.str(version, name_index) : spec.str();
+      string s = name_index ? spec.str(name_index) : spec.str();
       fprintf(stream, "    (area %02zX) %s\n", area, s.c_str());
     }
   }
 }
 
-void RareItemSet::print_all_collections(
-    FILE* stream, Version version, std::shared_ptr<const ItemNameIndex> name_index) const {
+void RareItemSet::print_all_collections(FILE* stream, std::shared_ptr<const ItemNameIndex> name_index) const {
   static const array<GameMode, 4> modes = {GameMode::NORMAL, GameMode::BATTLE, GameMode::CHALLENGE, GameMode::SOLO};
   static const array<Episode, 3> episodes = {Episode::EP1, Episode::EP2, Episode::EP4};
   for (GameMode mode : modes) {
@@ -567,7 +565,7 @@ void RareItemSet::print_all_collections(
       for (uint8_t difficulty = 0; difficulty < 4; difficulty++) {
         for (uint8_t section_id = 0; section_id < 10; section_id++) {
           try {
-            this->print_collection(stream, version, mode, episode, difficulty, section_id, name_index);
+            this->print_collection(stream, mode, episode, difficulty, section_id, name_index);
           } catch (const out_of_range& e) {
           }
         }

@@ -1021,3 +1021,46 @@ void Client::use_character_bank(int8_t index) {
     }
   }
 }
+
+void Client::print_inventory(FILE* stream) const {
+  auto p = this->character();
+  shared_ptr<const ItemNameIndex> name_index;
+  try {
+    name_index = this->require_server_state()->item_name_index(this->version());
+  } catch (const runtime_error&) {
+  }
+  fprintf(stream, "[PlayerInventory] Meseta: %" PRIu32 "\n", p->disp.stats.meseta.load());
+  fprintf(stream, "[PlayerInventory] %hhu items\n", p->inventory.num_items);
+  for (size_t x = 0; x < p->inventory.num_items; x++) {
+    const auto& item = p->inventory.items[x];
+    auto hex = item.data.hex();
+    if (name_index) {
+      auto name = name_index->describe_item(item.data);
+      fprintf(stream, "[PlayerInventory]   %2zu: [+%08" PRIX32 "] %s (%s)\n", x, item.flags.load(), hex.c_str(), name.c_str());
+    } else {
+      fprintf(stream, "[PlayerInventory]   %2zu: [+%08" PRIX32 "] %s\n", x, item.flags.load(), hex.c_str());
+    }
+  }
+}
+
+void Client::print_bank(FILE* stream) const {
+  auto p = this->character();
+  shared_ptr<const ItemNameIndex> name_index;
+  try {
+    name_index = this->require_server_state()->item_name_index(this->version());
+  } catch (const runtime_error&) {
+  }
+  fprintf(stream, "[PlayerBank] Meseta: %" PRIu32 "\n", p->bank.meseta.load());
+  fprintf(stream, "[PlayerBank] %" PRIu32 " items\n", p->bank.num_items.load());
+  for (size_t x = 0; x < p->bank.num_items; x++) {
+    const auto& item = p->bank.items[x];
+    const char* present_token = item.present ? "" : " (missing present flag)";
+    auto hex = item.data.hex();
+    if (name_index) {
+      auto name = name_index->describe_item(item.data);
+      fprintf(stream, "[PlayerBank]   %3zu: %s (%s) (x%hu)%s\n", x, hex.c_str(), name.c_str(), item.amount.load(), present_token);
+    } else {
+      fprintf(stream, "[PlayerBank]   %3zu: %s (x%hu)%s\n", x, hex.c_str(), item.amount.load(), present_token);
+    }
+  }
+}

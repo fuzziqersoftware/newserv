@@ -23,7 +23,7 @@ void player_use_item(shared_ptr<Client> c, size_t item_index, shared_ptr<PSOLFGE
     // Nothing to do (it should be deleted)
 
   } else if (item_identifier == 0x030200) { // Technique disk
-    auto item_parameter_table = s->item_parameter_table_for_version(c->version());
+    auto item_parameter_table = s->item_parameter_table(c->version());
     uint8_t max_level = item_parameter_table->get_max_tech_level(player->disp.visual.char_class, item.data.data1[4]);
     if (item.data.data1[2] > max_level) {
       throw runtime_error("technique level too high");
@@ -43,7 +43,7 @@ void player_use_item(shared_ptr<Client> c, size_t item_index, shared_ptr<PSOLFGE
     // get an accurate picture of what's actually in the player's inventory, so
     // there's no way to know if we would be enforcing the correct grind limit.
     if (is_v3_or_later) {
-      auto item_parameter_table = s->item_parameter_table_for_version(c->version());
+      auto item_parameter_table = s->item_parameter_table(c->version());
       auto weapon_def = item_parameter_table->get_weapon(weapon.data.data1[1], weapon.data.data1[2]);
       if (weapon.data.data1[3] >= weapon_def.max_grind) {
         throw runtime_error("weapon already at maximum grind");
@@ -168,7 +168,7 @@ void player_use_item(shared_ptr<Client> c, size_t item_index, shared_ptr<PSOLFGE
 
   } else if ((item_identifier & 0xFFFF00) == 0x031500) {
     // Christmas Present, etc. - use unwrap_table + probabilities therein
-    auto item_parameter_table = s->item_parameter_table_for_version(c->version());
+    auto item_parameter_table = s->item_parameter_table(c->version());
     auto table = item_parameter_table->get_event_items(item.data.data1[2]);
     size_t sum = 0;
     for (size_t z = 0; z < table.second; z++) {
@@ -207,7 +207,7 @@ void player_use_item(shared_ptr<Client> c, size_t item_index, shared_ptr<PSOLFGE
         continue;
       }
       try {
-        auto item_parameter_table = s->item_parameter_table_for_version(c->version());
+        auto item_parameter_table = s->item_parameter_table(c->version());
         const auto& combo = item_parameter_table->get_item_combination(item.data, inv_item.data);
         if (combo.char_class != 0xFF && combo.char_class != player->disp.visual.char_class) {
           throw runtime_error("item combination requires specific char_class");
@@ -497,7 +497,7 @@ void player_feed_mag(std::shared_ptr<Client> c, size_t mag_item_index, size_t fe
   apply_mag_feed_result(
       player->inventory.items[mag_item_index].data,
       player->inventory.items[fed_item_index].data,
-      s->item_parameter_table_for_version(c->version()),
+      s->item_parameter_table(c->version()),
       s->mag_evolution_table,
       player->disp.visual.char_class,
       player->disp.visual.section_id,

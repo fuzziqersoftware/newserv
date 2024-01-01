@@ -43,8 +43,7 @@
 #include "ServerState.hh"
 #include "StaticGameData.hh"
 #include "Text.hh"
-#include "TextArchive.hh"
-#include "UnicodeTextSet.hh"
+#include "TextIndex.hh"
 
 using namespace std;
 
@@ -955,7 +954,7 @@ Action a_decode_gci(
       auto decoded = decode_gci_data(read_input_data(args), num_threads, dec_seed, skip_checksum);
       save_file(input_filename + ".dec", decoded);
     });
-Action a_decode_vmg(
+Action a_decode_vms(
     "decode-vms", nullptr, +[](Arguments& args) {
       string input_filename = args.get<string>(1, false);
       if (input_filename.empty() || (input_filename == "-")) {
@@ -1171,25 +1170,35 @@ Action a_decode_sjis(
     });
 
 Action a_decode_text_archive(
-    "decode-text-archive", nullptr, +[](Arguments& args) {
+    "decode-text-archive", "\
+  decode-text-archive [INPUT-FILENAME [OUTPUT-FILENAME]]\n\
+    Decode a text archive to JSON. --collections=NUM_COLLECTIONS is given,\n\
+    expects a fixed number of collections in the input. If --has-pr3 is given,\n\
+    expects the input not to have a REL footer.\n",
+    +[](Arguments& args) {
       string data = read_input_data(args);
-      TextArchive a(data, args.get<bool>("big-endian"));
-      JSON j = a.json();
+
+      unique_ptr<TextSet> ts;
+      size_t collection_count = args.get<size_t>("collections", 0);
+      if (collection_count) {
+        ts = make_unique<BinaryTextSet>(data, collection_count, !args.get<bool>("has-pr3"));
+      } else {
+        ts = make_unique<BinaryTextAndKeyboardsSet>(data, args.get<bool>("big-endian"));
+      }
+      JSON j = ts->json();
       string out_data = j.serialize(JSON::SerializeOption::FORMAT);
       write_output_data(args, out_data.data(), out_data.size(), "json");
     });
 Action a_encode_text_archive(
     "encode-text-archive", "\
   decode-text-archive [INPUT-FILENAME [OUTPUT-FILENAME]]\n\
-  encode-text-archive [INPUT-FILENAME [OUTPUT-FILENAME]]\n\
-    Decode a text archive (e.g. TextEnglish.pr2) to JSON for easy editing, or\n\
-    encode a JSON file to a text archive.\n",
+    Encode a text archive. Currently only supports GC and Xbox format.\n",
     +[](Arguments& args) {
       const string& input_filename = args.get<string>(1, false);
       const string& output_filename = args.get<string>(2, false);
 
       auto json = JSON::parse(read_input_data(args));
-      TextArchive a(json);
+      BinaryTextAndKeyboardsSet a(json);
       auto result = a.serialize(args.get<bool>("big-endian"));
       if (output_filename.empty()) {
         if (input_filename.empty() || (input_filename == "-")) {
@@ -1214,14 +1223,8 @@ Action a_encode_text_archive(
 
 Action a_decode_unicode_text_set(
     "decode-unicode-text-set", nullptr, +[](Arguments& args) {
-      auto collections = parse_unicode_text_set(read_input_data(args));
-      JSON j = JSON::list();
-      for (const auto& collection : collections) {
-        JSON& coll_j = j.emplace_back(JSON::list());
-        for (const auto& s : collection) {
-          coll_j.emplace_back(s);
-        }
-      }
+      UnicodeTextSet uts(read_input_data(args));
+      JSON j = uts.json();
       string out_data = j.serialize(JSON::SerializeOption::FORMAT);
       write_output_data(args, out_data.data(), out_data.size(), "json");
     });
@@ -1232,15 +1235,8 @@ Action a_encode_unicode_text_set(
     Decode a Unicode text set (e.g. unitxt_e.prs) to JSON for easy editing, or\n\
     encode a JSON file to a Unicode text set.\n",
     +[](Arguments& args) {
-      auto json = JSON::parse(read_input_data(args));
-      vector<vector<string>> collections;
-      for (const auto& coll_json : json.as_list()) {
-        auto& collection = collections.emplace_back();
-        for (const auto& s_json : coll_json->as_list()) {
-          collection.emplace_back(std::move(s_json->as_string()));
-        }
-      }
-      string encoded = serialize_unicode_text_set(collections);
+      UnicodeTextSet uts(JSON::parse(read_input_data(args)));
+      string encoded = uts.serialize();
       write_output_data(args, encoded.data(), encoded.size(), "prs");
     });
 
@@ -1256,30 +1252,22 @@ Action a_decode_word_select_set(
       auto version = get_cli_version(args);
 
       string unitxt_filename = args.get<string>("unitxt");
-      vector<string> unitxt_collection;
+      const vector<string>* unitxt_collection;
       if (!unitxt_filename.empty()) {
-        vector<vector<string>> unitxt_data;
+        unique_ptr<UnicodeTextSet> uts;
         if (ends_with(unitxt_filename, ".prs")) {
-          unitxt_data = parse_unicode_text_set(load_file(unitxt_filename));
+          uts = make_unique<UnicodeTextSet>(load_file(unitxt_filename));
         } else if (ends_with(unitxt_filename, ".json")) {
-          auto json = JSON::parse(load_file(unitxt_filename));
-          for (const auto& coll_it : json.as_list()) {
-            auto& coll = unitxt_data.emplace_back();
-            for (const auto& str_it : coll_it->as_list()) {
-              coll.emplace_back(str_it->as_string());
-            }
-          }
+          uts = make_unique<UnicodeTextSet>(JSON::parse(load_file(unitxt_filename)));
         } else {
           throw runtime_error("unitxt filename must end in .prs or .json");
         }
-        if (version == Version::BB_V4) {
-          unitxt_collection = std::move(unitxt_data.at(0));
-        } else {
-          unitxt_collection = std::move(unitxt_data.at(35));
-        }
+        unitxt_collection = &uts->get((version == Version::BB_V4) ? 0 : 35);
+      } else {
+        unitxt_collection = nullptr;
       }
 
-      WordSelectSet ws(read_input_data(args), version, &unitxt_collection, args.get<bool>("japanese"));
+      WordSelectSet ws(read_input_data(args), version, unitxt_collection, args.get<bool>("japanese"));
       ws.print(stdout);
     });
 Action a_print_word_select_table(
@@ -1289,17 +1277,18 @@ Action a_print_word_select_table(
     given, prints the table sorted by token ID for that version. If no version\n\
     option is given, prints the token table sorted by canonical name.\n",
     +[](Arguments& args) {
-      auto table = ServerState::load_word_select_table_from_system();
-      Version v = Version::UNKNOWN;
+      ServerState s;
+      s.load_objects("word_select_table");
+      Version v;
       try {
         v = get_cli_version(args);
       } catch (const runtime_error&) {
+        v = Version::UNKNOWN;
       }
-
       if (v != Version::UNKNOWN) {
-        table->print_index(stdout, v);
+        s.word_select_table->print_index(stdout, v);
       } else {
-        table->print(stdout);
+        s.word_select_table->print(stdout);
       }
     });
 
@@ -1343,21 +1332,20 @@ Action a_convert_rare_item_set(
       .afs (PSO V2 little-endian AFS archive)\n\
       .rel (Schtserv rare table; cannot be used in output filename)\n",
     +[](Arguments& args) {
-      auto name_index = make_shared<ItemNameIndex>(
-          JSON::parse(load_file("system/item-tables/names-v2.json")),
-          JSON::parse(load_file("system/item-tables/names-v3.json")),
-          JSON::parse(load_file("system/item-tables/names-v4.json")));
+      auto version = get_cli_version(args);
+
+      ServerState s;
+      s.load_objects("item_name_indexes");
 
       string input_filename = args.get<string>(1, false);
       if (input_filename.empty() || (input_filename == "-")) {
         throw runtime_error("input filename must be given");
       }
-      auto version = get_cli_version(args);
 
       auto data = make_shared<string>(read_input_data(args));
       shared_ptr<RareItemSet> rs;
       if (ends_with(input_filename, ".json")) {
-        rs = make_shared<RareItemSet>(JSON::parse(*data), version, name_index);
+        rs = make_shared<RareItemSet>(JSON::parse(*data), s.item_name_index(version));
       } else if (ends_with(input_filename, ".gsl")) {
         rs = make_shared<RareItemSet>(GSLArchive(data, false), false);
       } else if (ends_with(input_filename, ".gslb")) {
@@ -1372,9 +1360,9 @@ Action a_convert_rare_item_set(
 
       string output_filename = args.get<string>(2, false);
       if (output_filename.empty() || (output_filename == "-")) {
-        rs->print_all_collections(stdout, version, name_index);
+        rs->print_all_collections(stdout, s.item_name_index(version));
       } else if (ends_with(output_filename, ".json")) {
-        string data = rs->serialize_json(version, name_index);
+        string data = rs->serialize_json(s.item_name_index(version));
         write_output_data(args, data.data(), data.size(), nullptr);
       } else if (ends_with(output_filename, ".gsl")) {
         string data = rs->serialize_gsl(args.get<bool>("big-endian"));
@@ -1401,20 +1389,13 @@ Action a_describe_item(
       string description = args.get<string>(1);
       auto version = get_cli_version(args);
 
-      auto name_index = make_shared<ItemNameIndex>(
-          JSON::parse(load_file("system/item-tables/names-v2.json")),
-          JSON::parse(load_file("system/item-tables/names-v3.json")),
-          JSON::parse(load_file("system/item-tables/names-v4.json")));
-      auto pmt_data_v2 = make_shared<string>(prs_decompress(load_file("system/item-tables/ItemPMT-v2.prs")));
-      auto pmt_v2 = make_shared<ItemParameterTable>(pmt_data_v2, ItemParameterTable::Version::V2);
-      auto pmt_data_v3 = make_shared<string>(prs_decompress(load_file("system/item-tables/ItemPMT-gc.prs")));
-      auto pmt_v3 = make_shared<ItemParameterTable>(pmt_data_v3, ItemParameterTable::Version::V3);
-      auto pmt_data_v4 = make_shared<string>(prs_decompress(load_file("system/item-tables/ItemPMT-bb.prs")));
-      auto pmt_v4 = make_shared<ItemParameterTable>(pmt_data_v4, ItemParameterTable::Version::V4);
+      ServerState s;
+      s.load_objects("item_name_indexes");
+      auto name_index = s.item_name_index(version);
 
-      ItemData item = name_index->parse_item_description(version, description);
+      ItemData item = name_index->parse_item_description(description);
 
-      string desc = name_index->describe_item(version, item);
+      string desc = name_index->describe_item(item);
       log_info("Data (decoded):    %02hhX%02hhX%02hhX%02hhX %02hhX%02hhX%02hhX%02hhX %02hhX%02hhX%02hhX%02hhX -------- %02hhX%02hhX%02hhX%02hhX",
           item.data1[0], item.data1[1], item.data1[2], item.data1[3],
           item.data1[4], item.data1[5], item.data1[6], item.data1[7],
@@ -1422,7 +1403,7 @@ Action a_describe_item(
           item.data2[0], item.data2[1], item.data2[2], item.data2[3]);
 
       ItemData item_v1 = item;
-      item_v1.encode_for_version(Version::PC_V2, pmt_v2);
+      item_v1.encode_for_version(Version::PC_V2, s.item_parameter_table(Version::PC_V2));
       ItemData item_v1_decoded = item_v1;
       item_v1_decoded.decode_for_version(Version::PC_V2);
 
@@ -1441,7 +1422,7 @@ Action a_describe_item(
       }
 
       ItemData item_gc = item;
-      item_gc.encode_for_version(Version::GC_V3, pmt_v3);
+      item_gc.encode_for_version(Version::GC_V3, s.item_parameter_table(Version::GC_V3));
       ItemData item_gc_decoded = item_gc;
       item_gc_decoded.decode_for_version(Version::GC_V3);
 
@@ -1461,9 +1442,47 @@ Action a_describe_item(
 
       log_info("Description: %s", desc.c_str());
 
-      size_t purchase_price = pmt_v4->price_for_item(item);
+      size_t purchase_price = s.item_parameter_table(Version::BB_V4)->price_for_item(item);
       size_t sale_price = purchase_price >> 3;
       log_info("Purchase price: %zu; sale price: %zu", purchase_price, sale_price);
+    });
+
+Action a_name_all_items(
+    "name-all-items", nullptr, +[](Arguments&) {
+      ServerState s;
+      s.load_objects("item_name_indexes");
+
+      set<uint32_t> all_primary_identifiers;
+      for (const auto& index : s.item_name_indexes) {
+        if (index) {
+          for (const auto& it : index->all_by_primary_identifier()) {
+            all_primary_identifiers.emplace(it.first);
+          }
+        }
+      }
+
+      fprintf(stderr, "IDENT :");
+      for (size_t v_s = 0; v_s < NUM_VERSIONS; v_s++) {
+        Version version = static_cast<Version>(v_s);
+        const auto& index = s.item_name_indexes.at(v_s);
+        if (index) {
+          fprintf(stderr, " %30s", name_for_enum(version));
+        }
+      }
+      fputc('\n', stderr);
+
+      for (uint32_t primary_identifier : all_primary_identifiers) {
+        fprintf(stderr, "%06" PRIX32 ":", primary_identifier);
+        for (size_t v_s = 0; v_s < NUM_VERSIONS; v_s++) {
+          const auto& index = s.item_name_indexes.at(v_s);
+          if (index) {
+            ItemData item(static_cast<uint64_t>(primary_identifier) << 40);
+            string name = index->describe_item(item);
+            fprintf(stderr, " %30s", name.c_str());
+          }
+        }
+        fputc('\n', stderr);
+      }
     });
 
 Action a_show_ep3_cards(
