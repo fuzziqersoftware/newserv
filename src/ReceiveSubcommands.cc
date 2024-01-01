@@ -1330,6 +1330,40 @@ void on_movement_with_floor(shared_ptr<Client> c, uint8_t command, uint8_t flag,
   forward_subcommand(c, command, flag, data, size);
 }
 
+void on_set_animation_state(shared_ptr<Client> c, uint8_t command, uint8_t flag, void* data, size_t size) {
+  auto& cmd = check_size_t<G_SetAnimationState_6x52>(data, size);
+  if (cmd.header.client_id != c->lobby_client_id) {
+    return;
+  }
+  if (command_is_private(command)) {
+    return;
+  }
+  auto l = c->require_lobby();
+  if (l->is_game()) {
+    forward_subcommand(c, command, flag, data, size);
+    return;
+  }
+
+  // The animation numbers were changed on V3. This is the most common one to
+  // see in the lobby (it occurs when a player talks to the counter), so we
+  // take care to translate it specifically.
+  bool c_is_v1_or_v2 = is_v1_or_v2(c->version());
+  if (!((c_is_v1_or_v2 && (cmd.animation == 0x000A)) || (!c_is_v1_or_v2 && (cmd.animation == 0x0000)))) {
+    forward_subcommand(c, command, flag, data, size);
+    return;
+  }
+
+  G_SetAnimationState_6x52 other_cmd = cmd;
+  other_cmd.animation = 0x000A - cmd.animation;
+  for (auto lc : l->clients) {
+    if (lc && (lc != c)) {
+      auto& out_cmd = (is_v1_or_v2(lc->version()) != c_is_v1_or_v2) ? other_cmd : cmd;
+      out_cmd.header.subcommand = translate_subcommand_number(lc->version(), Version::BB_V4, 0x52);
+      send_command_t(lc, command, flag, out_cmd);
+    }
+  }
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 // Item commands
 
@@ -3466,7 +3500,7 @@ const SubcommandDefinition subcommand_definitions[0x100] = {
     /* 6x4F */ {0x43, 0x49, 0x4F, on_forward_check_game_client},
     /* 6x50 */ {0x44, 0x4A, 0x50, on_forward_check_game_client},
     /* 6x51 */ {0x00, 0x00, 0x51, nullptr},
-    /* 6x52 */ {0x46, 0x4C, 0x52, forward_subcommand_m},
+    /* 6x52 */ {0x46, 0x4C, 0x52, on_set_animation_state},
     /* 6x53 */ {0x47, 0x4D, 0x53, on_forward_check_game},
     /* 6x54 */ {0x48, 0x4E, 0x54, nullptr},
     /* 6x55 */ {0x49, 0x4F, 0x55, on_forward_check_game_client},

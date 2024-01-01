@@ -4369,13 +4369,13 @@ struct G_SwitchInteraction_6x50 {
 
 // 6x51: Invalid subcommand
 
-// 6x52: Toggle counter (shop/bank) interaction (protected on V3/V4)
+// 6x52: Set animation state (protected on V3/V4)
 
-struct G_ToggleCounterInteraction_6x52 {
+struct G_SetAnimationState_6x52 {
   G_ClientIDHeader header;
-  le_uint16_t unknown_a1 = 0;
+  le_uint16_t animation = 0;
   le_uint16_t unknown_a2 = 0;
-  le_uint32_t unknown_a3 = 0;
+  le_uint32_t angle = 0;
 } __packed__;
 
 // 6x53: Unknown (supported; game only) (protected on V3/V4)
