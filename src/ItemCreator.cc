@@ -701,10 +701,20 @@ uint8_t ItemCreator::generate_tech_disk_level(uint32_t tech_num, uint32_t area_n
   return range.min;
 }
 
-void ItemCreator::generate_common_mag_variances(ItemData& item) const {
+void ItemCreator::generate_common_mag_variances(ItemData& item) {
   if (item.data1[0] == 0x02) {
     item.data1[1] = 0x00;
     item.assign_mag_stats(ItemMagStats());
+
+    // The original code (on PSO GC) assigns the mag color as 0x0E. We assign
+    // a random color instead.
+    if (this->version == Version::DC_NTE) {
+      item.data2[3] = 0x00;
+    } else if (is_v1_or_v2(this->version)) {
+      item.data2[3] = this->random_crypt.next() % 0x0E;
+    } else {
+      item.data2[3] = this->random_crypt.next() % 0x12;
+    }
   }
 }
 

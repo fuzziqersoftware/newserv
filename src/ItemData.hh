@@ -29,26 +29,15 @@ enum class EquipSlot {
 };
 
 struct ItemMagStats {
-  uint16_t iq;
-  uint16_t synchro;
-  uint16_t def;
-  uint16_t pow;
-  uint16_t dex;
-  uint16_t mind;
-  uint8_t flags;
-  uint8_t photon_blasts;
-  uint8_t color;
-
-  ItemMagStats()
-      : iq(0),
-        synchro(40),
-        def(500),
-        pow(0),
-        dex(0),
-        mind(0),
-        flags(0),
-        photon_blasts(0),
-        color(14) {}
+  uint16_t iq = 0;
+  uint16_t synchro = 40;
+  uint16_t def = 500;
+  uint16_t pow = 0;
+  uint16_t dex = 0;
+  uint16_t mind = 0;
+  uint8_t flags = 0;
+  uint8_t photon_blasts = 0;
+  uint8_t color = 14;
 
   inline uint16_t def_level() const {
     return this->def / 100;
