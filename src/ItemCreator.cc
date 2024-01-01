@@ -708,7 +708,7 @@ void ItemCreator::generate_common_mag_variances(ItemData& item) {
 
     // The original code (on PSO GC) assigns the mag color as 0x0E. We assign
     // a random color instead.
-    if (this->version == Version::DC_NTE) {
+    if (is_pre_v1(this->version)) {
       item.data2[3] = 0x00;
     } else if (is_v1_or_v2(this->version)) {
       item.data2[3] = this->random_crypt.next() % 0x0E;
