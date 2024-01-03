@@ -1683,15 +1683,15 @@ struct AreaMapFileInfo {
         variation2_values(variation2_values) {}
 };
 
-static const vector<AreaMapFileInfo> map_file_info_dc_protos = {
+static const vector<AreaMapFileInfo> map_file_info_dc_nte = {
     {"city00", {}, {0}},
-    {"forest01", {}, {0, 1}},
-    {"forest02", {}, {0, 1}},
-    {"cave01", {0, 1}, {0, 1}},
-    {"cave02", {0, 1}, {0, 1}},
-    {"cave03", {0, 1}, {0, 1}},
-    {"machine01", {0}, {0, 1}},
-    {"machine02", {0}, {0, 1}},
+    {"forest01", {}, {0, 1, 2, 3, 4}},
+    {"forest02", {}, {0, 1, 2, 3, 4}},
+    {"cave01", {0, 1, 2}, {0, 1}},
+    {"cave02", {0, 1, 2}, {0, 1}},
+    {"cave03", {0, 1, 3}, {0, 1}},
+    {"machine01", {0, 1}, {0, 1}},
+    {"machine02", {0, 1}, {0, 1}},
     {"ancient01", {0, 1}, {0, 1}},
     {"ancient02", {0, 1}, {0, 1}},
     {"ancient03", {0, 1}, {0, 1}},
@@ -1833,8 +1833,8 @@ const AreaMapFileInfo& file_info_for_variation(
     Version version, Episode episode, uint8_t area, bool is_solo) {
   const vector<AreaMapFileInfo>* multi_index = nullptr;
   const vector<AreaMapFileInfo>* solo_index = nullptr;
-  if (is_pre_v1(version)) {
-    multi_index = &map_file_info_dc_protos;
+  if (version == Version::DC_NTE) {
+    multi_index = &map_file_info_dc_nte;
   } else {
     switch (episode) {
       case Episode::EP1:
