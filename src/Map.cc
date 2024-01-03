@@ -1689,7 +1689,7 @@ static const vector<AreaMapFileInfo> map_file_info_dc_nte = {
     {"forest02", {}, {0, 1, 2, 3, 4}},
     {"cave01", {0, 1, 2}, {0, 1}},
     {"cave02", {0, 1, 2}, {0, 1}},
-    {"cave03", {0, 1, 3}, {0, 1}},
+    {"cave03", {0, 1, 2}, {0, 1}},
     {"machine01", {0, 1}, {0, 1}},
     {"machine02", {0, 1}, {0, 1}},
     {"ancient01", {0, 1}, {0, 1}},

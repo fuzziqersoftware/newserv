@@ -318,7 +318,7 @@ void Lobby::load_maps() {
           this->log.info("[Map/%zu:e] Loaded %s from default maps", floor, filename.c_str());
           return ret;
         } catch (const exception& e) {
-          this->log.info("[Map/%zu:e] Failed to load %s from PC patch tree: %s", floor, filename.c_str(), e.what());
+          this->log.info("[Map/%zu:e] Failed to load %s default maps: %s", floor, filename.c_str(), e.what());
         }
         return nullptr;
       };
