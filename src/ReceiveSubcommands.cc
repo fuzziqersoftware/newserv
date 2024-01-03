@@ -2117,7 +2117,8 @@ static void on_entity_drop_item_request(shared_ptr<Client> c, uint8_t command, u
   Map::Enemy* map_enemy = nullptr;
   bool ignore_def = (cmd.ignore_def != 0);
   uint8_t effective_rt_index = 0xFF;
-  if (cmd.rt_index == 0x30) {
+  bool is_box = (cmd.rt_index == 0x30);
+  if (is_box) {
     if (l->map) {
       map_object = &l->map->objects.at(cmd.entity_id);
       l->log.info("Drop check for K-%hX %c %s",
@@ -2188,7 +2189,7 @@ static void on_entity_drop_item_request(shared_ptr<Client> c, uint8_t command, u
 
   if (should_drop) {
     auto generate_item = [&]() -> ItemCreator::DropResult {
-      if (cmd.rt_index == 0x30) {
+      if (is_box) {
         if (ignore_def) {
           l->log.info("Creating item from box %04hX (area %02hX)", cmd.entity_id.load(), cmd.effective_area);
           return l->item_creator->on_box_item_drop(cmd.effective_area);
@@ -2219,12 +2220,12 @@ static void on_entity_drop_item_request(shared_ptr<Client> c, uint8_t command, u
           l->log.info("Entity %04hX (area %02hX) created item %s", cmd.entity_id.load(), cmd.effective_area, name.c_str());
           if (l->drop_mode == Lobby::DropMode::SERVER_DUPLICATE) {
             for (const auto& lc : l->clients) {
-              if (lc && ((cmd.rt_index == 0x30) || (lc->floor == cmd.floor))) {
+              if (lc && (is_box || (lc->floor == cmd.floor))) {
                 res.item.id = l->generate_item_id(0xFF);
                 l->log.info("Creating item %08" PRIX32 " at %02hhX:%g,%g for %s",
                     res.item.id.load(), cmd.floor, cmd.x.load(), cmd.z.load(), lc->channel.name.c_str());
                 l->add_item(cmd.floor, res.item, cmd.x, cmd.z, (1 << lc->lobby_client_id));
-                send_drop_item_to_channel(s, lc->channel, res.item, cmd.rt_index != 0x30, cmd.floor, cmd.x, cmd.z, cmd.entity_id);
+                send_drop_item_to_channel(s, lc->channel, res.item, !is_box, cmd.floor, cmd.x, cmd.z, cmd.entity_id);
                 if (res.is_from_rare_table) {
                   send_rare_notification_if_needed(lc, res.item);
                 }
@@ -2236,7 +2237,7 @@ static void on_entity_drop_item_request(shared_ptr<Client> c, uint8_t command, u
             l->log.info("Creating item %08" PRIX32 " at %02hhX:%g,%g for all clients",
                 res.item.id.load(), cmd.floor, cmd.x.load(), cmd.z.load());
             l->add_item(cmd.floor, res.item, cmd.x, cmd.z, 0x00F);
-            send_drop_item_to_lobby(l, res.item, cmd.rt_index != 0x30, cmd.floor, cmd.x, cmd.z, cmd.entity_id);
+            send_drop_item_to_lobby(l, res.item, !is_box, cmd.floor, cmd.x, cmd.z, cmd.entity_id);
             if (res.is_from_rare_table) {
               for (auto lc : l->clients) {
                 if (lc) {
@@ -2250,7 +2251,7 @@ static void on_entity_drop_item_request(shared_ptr<Client> c, uint8_t command, u
       }
       case Lobby::DropMode::SERVER_PRIVATE: {
         for (const auto& lc : l->clients) {
-          if (lc && ((cmd.rt_index == 0x30) || (lc->floor == cmd.floor))) {
+          if (lc && (is_box || (lc->floor == cmd.floor))) {
             auto res = generate_item();
             if (res.item.empty()) {
               l->log.info("No item was created for %s", lc->channel.name.c_str());
@@ -2261,7 +2262,7 @@ static void on_entity_drop_item_request(shared_ptr<Client> c, uint8_t command, u
               l->log.info("Creating item %08" PRIX32 " at %02hhX:%g,%g for %s",
                   res.item.id.load(), cmd.floor, cmd.x.load(), cmd.z.load(), lc->channel.name.c_str());
               l->add_item(cmd.floor, res.item, cmd.x, cmd.z, (1 << lc->lobby_client_id));
-              send_drop_item_to_channel(s, lc->channel, res.item, cmd.rt_index != 0x30, cmd.floor, cmd.x, cmd.z, cmd.entity_id);
+              send_drop_item_to_channel(s, lc->channel, res.item, !is_box, cmd.floor, cmd.x, cmd.z, cmd.entity_id);
               if (res.is_from_rare_table) {
                 send_rare_notification_if_needed(lc, res.item);
               }
