@@ -1,0 +1,32 @@
+########################################################################
+                Restore JP PSOBB original IME Behavior
+########################################################################
+
+The default Tethealla client included a custom patch to disable the IME
+system in-game which allows you to type in Japanese (presumably to allow
+English versions of Windows to type properly)
+
+However, if you plan to play PSOBB in it's original Japanese language it 
+is recommended you remove this patch to restore the original functions
+
+
+Open a unpacked PSOBB.exe in a hex editor and:
+
+FIND 9CC38E
+
+REPLACE WITH A8838F
+
+
+Make sure to install Japanese Language Support in Windows 10/11 to enable
+the Japanese keyboard and IME.
+
+If there's a problem, you can also use the Legacy IME by heading into the 
+options of the Japanese Language settings and scroll down to the bottom of 
+the page to enable Legacy IME Support to restore the original Pre-Windows 7
+IME system. 
+
+Last but not least, remember the default Tethealla client is the original 
+Japanese client, so you don't need to apply any other special patch but this
+one and make sure you have the original Japanese files set in your data folder
+the game should start entirely in Japanese.
+
