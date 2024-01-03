@@ -5224,8 +5224,14 @@ struct G_Unknown_6x9D {
   le_uint32_t client_id2 = 0;
 } __packed__;
 
-// 6x9E: Unknown (not valid on Episode 3)
-// This subcommand is completely ignored (at least, by PSO GC).
+// 6x9E: Play camera shutter sound
+// This subcommand is only used on PSO PC and PC NTE. It is not implemented (and
+// therefore ignored) by all prior versions, and all later versions have
+// handlers for this command, but the handlers do nothing.
+
+struct G_PlayerCameraShutterSound_6x9E {
+  G_ClientIDHeader header;
+} __packed__;
 
 // 6x9F: Gal Gryphon boss actions (not valid on pre-V3 or Episode 3)
 
@@ -5405,16 +5411,16 @@ struct G_MoveLobbyChair_6xB0 {
 // 6xB1: Unknown (not valid on pre-V3 or GC Trial Edition)
 // This subcommand is completely ignored (at least, by PSO V3).
 
-// 6xB2: Unknown (not valid on pre-V3 or GC Trial Edition)
-// TODO: It appears this command is sent when the snapshot file is written on
-// PSO GC. Verify this.
+// 6xB2: Play sound from player (not valid on pre-V3 or GC Trial Edition)
+// This command is sent when a snapshot is taken on PSO GC, but it can be used
+// to play any sound, centered on the player identified by client_id.
 
-struct G_Unknown_6xB2 {
+struct G_PlaySoundFromPlayer_6xB2 {
   G_UnusedHeader header;
   uint8_t floor = 0;
   uint8_t unused = 0;
   le_uint16_t client_id = 0;
-  le_uint32_t unknown_a3 = 0; // PSO GC puts 0x00051720 (333600) here
+  le_uint32_t sound_id = 0; // 0x00051720 = camera shutter sound
 } __packed__;
 
 // 6xB3: Unknown (Xbox; voice chat)
