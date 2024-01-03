@@ -1737,6 +1737,10 @@ static void server_command_ep3_set_def_dice_range(shared_ptr<Client> c, const st
     send_text_message(c, "$C6Battle is already\nin progress");
     return;
   }
+  if (l->tournament_match) {
+    send_text_message(c, "$C6Cannot override\nDEF range in a\ntournament");
+    return;
+  }
 
   if (args.empty()) {
     l->ep3_server->map_and_rules->rules.def_dice_range = 0;
