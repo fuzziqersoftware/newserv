@@ -1352,16 +1352,20 @@ void PlayerState::set_initial_location() {
   this->start_facing_direction = facing_direction;
   mr->start_facing_directions |= (static_cast<uint16_t>(this->start_facing_direction) << (this->client_id << 2));
 
-  for (size_t y = 0; y < 0x10; y++) {
-    for (size_t x = 0; x < 0x10; x++) {
+  bool start_tile_found = false;
+  for (size_t y = 0; (y < 0x10) && !start_tile_found; y++) {
+    for (size_t x = 0; (x < 0x10) && !start_tile_found; x++) {
       if (mr->map.tiles[y][x] == (player_start_tile & 0x3F)) {
         this->sc_card->loc.x = x;
         this->sc_card->loc.y = y;
         this->sc_card->loc.direction = facing_direction;
-        y = 0x10;
+        start_tile_found = true;
         break;
       }
     }
+  }
+  if (!start_tile_found) {
+    throw runtime_error("player start location not set");
   }
 }
 
