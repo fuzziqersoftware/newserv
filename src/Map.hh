@@ -15,6 +15,8 @@
 #include "Text.hh"
 
 struct Map {
+  static const char* name_for_object_type(uint16_t type);
+
   struct SectionHeader {
     enum class Type {
       END = 0,
@@ -206,6 +208,8 @@ struct Map {
     // TODO: Add more fields in here if we ever care about them. Currently we
     // only care about boxes with fixed item drops.
     size_t source_index;
+    uint16_t object_id;
+    uint8_t floor;
     uint16_t base_type;
     uint16_t section;
     float param1; // If <= 0, this is a specialized box, and the specialization is in param4/5/6
@@ -213,7 +217,6 @@ struct Map {
     uint32_t param4;
     uint32_t param5;
     uint32_t param6;
-    uint8_t floor;
     bool item_drop_checked;
 
     std::string str() const;
@@ -228,12 +231,13 @@ struct Map {
       ITEM_DROPPED = 0x10,
     };
     size_t source_index;
+    uint16_t enemy_id;
     EnemyType type;
     uint8_t floor;
     uint8_t state_flags;
     uint8_t last_hit_by_client_id;
 
-    Enemy(size_t source_index, uint8_t floor, EnemyType type);
+    Enemy(uint16_t enemy_id, size_t source_index, uint8_t floor, EnemyType type);
 
     std::string str() const;
   } __attribute__((packed));
@@ -305,6 +309,9 @@ struct Map {
       uint32_t rare_seed,
       std::shared_ptr<const RareEnemyRates> rare_rates = Map::DEFAULT_RARE_ENEMIES);
 
+  const Enemy& find_enemy(uint8_t floor, EnemyType type) const;
+  Enemy& find_enemy(uint8_t floor, EnemyType type);
+
   static std::string disassemble_quest_data(const void* data, size_t size);
 
   PrefixedLogger log;
@@ -346,10 +353,8 @@ private:
 void generate_variations(
     parray<le_uint32_t, 0x20>& variations,
     std::shared_ptr<PSOLFGEncryption> random,
+    Version version,
     Episode episode,
     bool is_solo);
-void generate_variations_dc_nte(
-    parray<le_uint32_t, 0x20>& variations,
-    std::shared_ptr<PSOLFGEncryption> random);
 std::vector<std::string> map_filenames_for_variation(
-    Episode episode, bool is_solo, uint8_t floor, uint32_t var1, uint32_t var2, bool is_enemies);
+    Version version, Episode episode, GameMode mode, uint8_t floor, uint32_t var1, uint32_t var2, bool is_enemies);

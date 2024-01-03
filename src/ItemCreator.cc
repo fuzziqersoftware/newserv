@@ -52,19 +52,6 @@ void ItemCreator::set_random_state(uint32_t seed, uint32_t absolute_offset) {
   }
 }
 
-void ItemCreator::set_box_destroyed(uint16_t entity_id) {
-  this->destroyed_boxes.emplace(entity_id);
-}
-
-void ItemCreator::set_monster_destroyed(uint16_t entity_id) {
-  this->destroyed_monsters.emplace(entity_id);
-}
-
-void ItemCreator::clear_destroyed_entities() {
-  this->destroyed_monsters.clear();
-  this->destroyed_boxes.clear();
-}
-
 bool ItemCreator::are_rare_drops_allowed() const {
   // Note: The client has an additional check here, which appears to be a subtle
   // anti-cheating measure. There is a flag on the client, initially zero, which
@@ -134,16 +121,12 @@ uint8_t ItemCreator::normalize_area_number(uint8_t area) const {
   }
 }
 
-ItemCreator::DropResult ItemCreator::on_box_item_drop(uint16_t entity_id, uint8_t area) {
-  return this->destroyed_boxes.count(entity_id)
-      ? DropResult()
-      : this->on_box_item_drop_with_area_norm(this->normalize_area_number(area));
+ItemCreator::DropResult ItemCreator::on_box_item_drop(uint8_t area) {
+  return this->on_box_item_drop_with_area_norm(this->normalize_area_number(area));
 }
 
-ItemCreator::DropResult ItemCreator::on_monster_item_drop(uint16_t entity_id, uint32_t enemy_type, uint8_t area) {
-  return this->destroyed_monsters.count(entity_id)
-      ? DropResult()
-      : this->on_monster_item_drop_with_area_norm(enemy_type, this->normalize_area_number(area));
+ItemCreator::DropResult ItemCreator::on_monster_item_drop(uint32_t enemy_type, uint8_t area) {
+  return this->on_monster_item_drop_with_area_norm(enemy_type, this->normalize_area_number(area));
 }
 
 ItemCreator::DropResult ItemCreator::on_box_item_drop_with_area_norm(uint8_t area_norm) {
@@ -1680,11 +1663,7 @@ void ItemCreator::generate_weapon_shop_item_bonus2(ItemData& item, size_t player
 }
 
 ItemCreator::DropResult ItemCreator::on_specialized_box_item_drop(
-    uint16_t entity_id, uint8_t area, float def_z, uint32_t def0, uint32_t def1, uint32_t def2) {
-  if (this->destroyed_boxes.count(entity_id)) {
-    return DropResult();
-  }
-
+    uint8_t area, float def_z, uint32_t def0, uint32_t def1, uint32_t def2) {
   DropResult res;
   res.item = this->base_item_for_specialized_box(def0, def1, def2);
   if (def_z == 0.0f) {

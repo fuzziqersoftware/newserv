@@ -2001,11 +2001,16 @@ static void on_quest_loaded(shared_ptr<Lobby> l) {
   }
 
   auto s = l->require_server_state();
-  // For Challenge quests, don't replace the map now - the leader will send an
-  // 02DF command to create overlays, which also replaces the map.
-  if ((l->base_version == Version::BB_V4) && l->map && (l->quest->challenge_template_index < 0)) {
+
+  // For BB Challenge quests, don't replace the map now - the leader will send
+  // an 02DF command to create overlays, which also replaces the map. (We do
+  // this because 02DF is also sent when a challenge is failed and retried,
+  // which reloads the map and recreates character overlays anyway.)
+  if ((l->base_version != Version::BB_V4) || (l->quest->challenge_template_index < 0)) {
     l->load_maps();
   }
+
+  // Delete all floor items
   for (auto& m : l->floor_item_managers) {
     m.clear();
   }
@@ -2443,9 +2448,7 @@ static void on_10(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
       if (game->count_clients() == 1) {
         // No one was in the game before, so the object and enemy state is lost;
         // regenerate it as if the game was just created
-        if ((game->base_version == Version::BB_V4) && game->map) {
-          game->load_maps();
-        }
+        game->load_maps();
         c->config.set_flag(Client::Flag::SHOULD_SEND_ARTIFICIAL_ITEM_STATE);
       }
       break;
@@ -4175,23 +4178,15 @@ shared_ptr<Lobby> create_game_generic(
 
   bool is_solo = (game->mode == GameMode::SOLO);
 
-  // Generate the map variations
-  if (game->is_ep3()) {
-    game->variations.clear(0);
-  } else if ((c->version() == Version::DC_NTE) || (c->version() == Version::DC_V1_11_2000_PROTOTYPE)) {
-    generate_variations_dc_nte(game->variations, game->random_crypt);
-  } else {
-    generate_variations(game->variations, game->random_crypt, game->episode, is_solo);
-  }
-
   if (game->mode == GameMode::CHALLENGE) {
     game->rare_enemy_rates = s->rare_enemy_rates_challenge;
   } else {
     game->rare_enemy_rates = s->rare_enemy_rates_by_difficulty.at(game->difficulty);
   }
-  if (game->base_version == Version::BB_V4) {
-    game->load_maps();
-  }
+
+  generate_variations(game->variations, game->random_crypt, game->base_version, game->episode, is_solo);
+  game->load_maps();
+
   return game;
 }
 

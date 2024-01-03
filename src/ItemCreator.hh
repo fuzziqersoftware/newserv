@@ -29,19 +29,15 @@ public:
   ~ItemCreator() = default;
 
   void set_random_state(uint32_t seed, uint32_t absolute_offset);
-  void clear_destroyed_entities();
 
   struct DropResult {
     ItemData item;
     bool is_from_rare_table = false;
   };
 
-  DropResult on_monster_item_drop(uint16_t entity_id, uint32_t enemy_type, uint8_t area);
-  DropResult on_box_item_drop(uint16_t entity_id, uint8_t area);
-  DropResult on_specialized_box_item_drop(uint16_t entity_id, uint8_t area, float def_z, uint32_t def0, uint32_t def1, uint32_t def2);
-
-  void set_monster_destroyed(uint16_t entity_id);
-  void set_box_destroyed(uint16_t entity_id);
+  DropResult on_monster_item_drop(uint32_t enemy_type, uint8_t area);
+  DropResult on_box_item_drop(uint8_t area);
+  DropResult on_specialized_box_item_drop(uint8_t area, float def_z, uint32_t def0, uint32_t def1, uint32_t def2);
 
   ItemData base_item_for_specialized_box(uint32_t def0, uint32_t def1, uint32_t def2) const;
 
@@ -82,8 +78,6 @@ private:
   // Note: The original implementation uses 17 different random states for some
   // reason. We forego that and use only one for simplicity.
   PSOV2Encryption random_crypt;
-  std::unordered_set<uint16_t> destroyed_monsters;
-  std::unordered_set<uint16_t> destroyed_boxes;
 
   inline bool is_v3() const {
     return !is_v1_or_v2(this->version);

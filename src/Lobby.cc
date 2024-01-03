@@ -262,16 +262,20 @@ void Lobby::create_item_creator() {
 }
 
 void Lobby::load_maps() {
-  auto s = this->require_server_state();
   this->map = make_shared<Map>(this->lobby_id, this->random_crypt);
 
+  auto rare_rates = ((this->base_version == Version::BB_V4) && this->rare_enemy_rates)
+      ? this->rare_enemy_rates
+      : Map::DEFAULT_RARE_ENEMIES;
+
+  auto s = this->require_server_state();
   if (this->quest) {
     auto leader_c = this->clients.at(this->leader_id);
     if (!leader_c) {
       throw logic_error("lobby leader is missing");
     }
 
-    auto vq = this->quest->version(Version::BB_V4, leader_c->language());
+    auto vq = this->quest->version(this->base_version, leader_c->language());
     auto dat_contents = prs_decompress(*vq->dat_contents);
     this->map->clear();
     this->map->add_enemies_and_objects_from_quest_data(
@@ -281,16 +285,48 @@ void Lobby::load_maps() {
         dat_contents.data(),
         dat_contents.size(),
         this->random_seed,
-        this->rare_enemy_rates ? this->rare_enemy_rates : Map::NO_RARE_ENEMIES);
+        rare_rates);
 
-  } else { // No quest loaded
+  } else if (this->mode != GameMode::CHALLENGE) {
+    // No quest loaded - load free-roam maps instead. Don't load free-roam maps
+    // in Challenge mode, since players can't go to Ragol without a quest loaded
+
     for (size_t floor = 0; floor < 0x10; floor++) {
       this->log.info("[Map/%zu] Using variations %" PRIX32 ", %" PRIX32,
           floor, this->variations[floor * 2].load(), this->variations[floor * 2 + 1].load());
 
+      auto get_file_data = [&](const string& filename) -> shared_ptr<const string> {
+        if (this->base_version == Version::BB_V4) {
+          try {
+            return s->load_bb_file(filename);
+          } catch (const exception& e) {
+            this->log.info("[Map/%zu:e] Failed to load %s from BB patch tree: %s", floor, filename.c_str(), e.what());
+          }
+        } else if (this->base_version == Version::PC_V2) {
+          try {
+            string path = "system/patch-pc/Media/PSO/" + filename;
+            auto ret = make_shared<string>(load_file(path));
+            this->log.info("[Map/%zu:e] Loaded %s from PC patch tree", floor, filename.c_str());
+            return ret;
+          } catch (const exception& e) {
+            this->log.info("[Map/%zu:e] Failed to load %s from PC patch tree: %s", floor, filename.c_str(), e.what());
+          }
+        }
+        try {
+          string path = string_printf("system/maps/%s/%s", file_path_token_for_version(this->base_version), filename.c_str());
+          auto ret = make_shared<string>(load_file(path));
+          this->log.info("[Map/%zu:e] Loaded %s from default maps", floor, filename.c_str());
+          return ret;
+        } catch (const exception& e) {
+          this->log.info("[Map/%zu:e] Failed to load %s from PC patch tree: %s", floor, filename.c_str(), e.what());
+        }
+        return nullptr;
+      };
+
       auto enemy_filenames = map_filenames_for_variation(
+          this->base_version,
           this->episode,
-          (this->mode == GameMode::SOLO),
+          this->mode,
           floor,
           this->variations[floor * 2],
           this->variations[floor * 2 + 1],
@@ -300,8 +336,8 @@ void Lobby::load_maps() {
       } else {
         bool any_map_loaded = false;
         for (const string& filename : enemy_filenames) {
-          try {
-            auto map_data = s->load_bb_file(filename, "", "map/" + filename);
+          auto map_data = get_file_data(filename);
+          if (map_data) {
             this->map->add_enemies_from_map_data(
                 this->episode,
                 this->difficulty,
@@ -309,11 +345,9 @@ void Lobby::load_maps() {
                 floor,
                 map_data->data(),
                 map_data->size(),
-                this->rare_enemy_rates);
+                rare_rates);
             any_map_loaded = true;
             break;
-          } catch (const exception& e) {
-            this->log.info("[Map/%zu:e] Failed to load %s: %s", floor, filename.c_str(), e.what());
           }
         }
         if (!any_map_loaded) {
@@ -322,8 +356,9 @@ void Lobby::load_maps() {
       }
 
       auto object_filenames = map_filenames_for_variation(
+          this->base_version,
           this->episode,
-          (this->mode == GameMode::SOLO),
+          this->mode,
           floor,
           this->variations[floor * 2],
           this->variations[floor * 2 + 1],
@@ -333,13 +368,11 @@ void Lobby::load_maps() {
       } else {
         bool any_map_loaded = false;
         for (const string& filename : object_filenames) {
-          try {
-            auto map_data = s->load_bb_file(filename, "", "map/" + filename);
+          auto map_data = get_file_data(filename);
+          if (map_data) {
             this->map->add_objects_from_map_data(floor, map_data->data(), map_data->size());
             any_map_loaded = true;
             break;
-          } catch (const exception& e) {
-            this->log.info("[Map/%zu:o] Failed to load %s: %s", floor, filename.c_str(), e.what());
           }
         }
         if (!any_map_loaded) {
@@ -361,10 +394,6 @@ void Lobby::load_maps() {
   }
   this->log.info("Loaded maps contain %zu object entries and %zu enemy entries overall (%zu as rares)",
       this->map->objects.size(), this->map->enemies.size(), this->map->rare_enemy_indexes.size());
-
-  if (this->item_creator) {
-    this->item_creator->clear_destroyed_entities();
-  }
 }
 
 void Lobby::create_ep3_server() {

@@ -2097,7 +2097,7 @@ static void on_entity_drop_item_request(shared_ptr<Client> c, uint8_t command, u
     cmd.rt_index = in_cmd.rt_index;
     cmd.x = in_cmd.x;
     cmd.z = in_cmd.z;
-    cmd.ignore_def = 1;
+    cmd.ignore_def = in_cmd.ignore_def;
     cmd.effective_area = in_cmd.effective_area;
   } else {
     const auto& in_cmd = check_size_t<G_StandardDropItemRequest_DC_6x60>(data, size);
@@ -2109,83 +2109,154 @@ static void on_entity_drop_item_request(shared_ptr<Client> c, uint8_t command, u
     cmd.rt_index = in_cmd.rt_index;
     cmd.x = in_cmd.x;
     cmd.z = in_cmd.z;
-    cmd.ignore_def = 1;
+    cmd.ignore_def = in_cmd.ignore_def;
     cmd.effective_area = in_cmd.floor;
   }
 
-  auto generate_item = [&]() -> ItemCreator::DropResult {
-    if (cmd.rt_index == 0x30) {
-      if (l->map) {
-        auto& object = l->map->objects.at(cmd.entity_id);
+  Map::Object* map_object = nullptr;
+  Map::Enemy* map_enemy = nullptr;
+  bool ignore_def = (cmd.ignore_def != 0);
+  uint8_t effective_rt_index = 0xFF;
+  if (cmd.rt_index == 0x30) {
+    if (l->map) {
+      map_object = &l->map->objects.at(cmd.entity_id);
+      l->log.info("Drop check for K-%hX %c %s",
+          map_object->object_id, ignore_def ? 'G' : 'S', Map::name_for_object_type(map_object->base_type));
+      if (cmd.floor != map_object->floor) {
+        l->log.warning("Floor %02hhX from command does not match object\'s expected floor %02hhX", cmd.floor, map_object->floor);
+      }
+      if (is_v1_or_v2(l->base_version) && (l->base_version != Version::GC_NTE)) {
+        // V1 and V2 don't have 6xA2, so we can't get ignore_def or the object
+        // parameters from the client on those versions
+        cmd.param3 = map_object->param3;
+        cmd.param4 = map_object->param4;
+        cmd.param5 = map_object->param5;
+        cmd.param6 = map_object->param6;
+      }
+      bool object_ignore_def = (map_object->param1 > 0.0);
+      if (ignore_def != object_ignore_def) {
+        l->log.warning("ignore_def value %s from command does not match object\'s expected ignore_def %s (from p1=%g)",
+            ignore_def ? "true" : "false", object_ignore_def ? "true" : "false", map_object->param1);
+      }
+      if (c->config.check_flag(Client::Flag::DEBUG_ENABLED)) {
+        send_text_message_printf(c, "$C5K-%hX %c %s",
+            map_object->object_id, ignore_def ? 'G' : 'S', Map::name_for_object_type(map_object->base_type));
+      }
+    }
 
-        if (cmd.floor != object.floor) {
-          l->log.warning("Floor %02hhX from command does not match object\'s expected floor %02hhX", cmd.floor, object.floor);
+  } else {
+    if (l->map) {
+      map_enemy = &l->map->enemies.at(cmd.entity_id);
+      l->log.info("Drop check for E-%hX %s", map_enemy->enemy_id, name_for_enum(map_enemy->type));
+      effective_rt_index = rare_table_index_for_enemy_type(map_enemy->type);
+      // rt_indexes in Episode 4 don't match those sent in the command; we just
+      // ignore what the client sends.
+      if ((l->episode != Episode::EP4) && (cmd.rt_index != effective_rt_index)) {
+        l->log.warning("rt_index %02hhX from command does not match entity\'s expected index %02" PRIX32,
+            cmd.rt_index, effective_rt_index);
+        if (!is_v4(l->base_version)) {
+          effective_rt_index = cmd.rt_index;
         }
-        bool object_ignore_def = (object.param1 > 0.0);
-        if (cmd.ignore_def != object_ignore_def) {
-          l->log.warning("ignore_def value %s from command does not match object\'s expected ignore_def %s (from p1=%g)",
-              cmd.ignore_def ? "true" : "false", object_ignore_def ? "true" : "false", object.param1);
-        }
+      }
+      if (cmd.floor != map_enemy->floor) {
+        l->log.warning("Floor %02hhX from command does not match entity\'s expected floor %02hhX",
+            cmd.floor, map_enemy->floor);
+      }
+      if (c->config.check_flag(Client::Flag::DEBUG_ENABLED)) {
+        send_text_message_printf(c, "$C5E-%hX %s", map_enemy->enemy_id, name_for_enum(map_enemy->type));
+      }
+    }
+  }
 
-        if (cmd.ignore_def) {
+  bool should_drop = true;
+  if (map_object) {
+    if (map_object->item_drop_checked) {
+      l->log.info("Drop check has already occurred for K-%04hX; skipping it", map_object->object_id);
+      should_drop = false;
+    } else {
+      map_object->item_drop_checked = true;
+    }
+  }
+  if (map_enemy) {
+    if (map_enemy->state_flags & Map::Enemy::Flag::ITEM_DROPPED) {
+      l->log.info("Drop check has already occurred for E-%04hX; skipping it", map_enemy->enemy_id);
+      should_drop = false;
+    } else {
+      map_enemy->state_flags |= Map::Enemy::Flag::ITEM_DROPPED;
+    }
+  }
+
+  if (should_drop) {
+    auto generate_item = [&]() -> ItemCreator::DropResult {
+      if (cmd.rt_index == 0x30) {
+        if (ignore_def) {
           l->log.info("Creating item from box %04hX (area %02hX)", cmd.entity_id.load(), cmd.effective_area);
-          return l->item_creator->on_box_item_drop(cmd.entity_id, cmd.effective_area);
+          return l->item_creator->on_box_item_drop(cmd.effective_area);
         } else {
           l->log.info("Creating item from box %04hX (area %02hX; specialized with %g %08" PRIX32 " %08" PRIX32 " %08" PRIX32 ")",
-              cmd.entity_id.load(), cmd.effective_area, object.param3, object.param4, object.param5, object.param6);
-          return l->item_creator->on_specialized_box_item_drop(cmd.entity_id, cmd.effective_area, object.param3, object.param4, object.param5, object.param6);
+              cmd.entity_id.load(), cmd.effective_area, cmd.param3.load(), cmd.param4.load(), cmd.param5.load(), cmd.param6.load());
+          return l->item_creator->on_specialized_box_item_drop(cmd.effective_area, cmd.param3, cmd.param4, cmd.param5, cmd.param6);
         }
-
-      } else if (cmd.ignore_def) {
-        l->log.info("Creating item from box %04hX (area %02hX)", cmd.entity_id.load(), cmd.effective_area);
-        return l->item_creator->on_box_item_drop(cmd.entity_id, cmd.effective_area);
-
       } else {
-        l->log.info("Creating item from box %04hX (area %02hX; specialized with %g %08" PRIX32 " %08" PRIX32 " %08" PRIX32 ")",
-            cmd.entity_id.load(), cmd.effective_area, cmd.param3.load(), cmd.param4.load(), cmd.param5.load(), cmd.param6.load());
-        return l->item_creator->on_specialized_box_item_drop(
-            cmd.entity_id, cmd.effective_area, cmd.param3, cmd.param4, cmd.param5, cmd.param6);
+        l->log.info("Creating item from enemy %04hX (area %02hX)", cmd.entity_id.load(), cmd.effective_area);
+        return l->item_creator->on_monster_item_drop(effective_rt_index, cmd.effective_area);
       }
+    };
 
-    } else {
-      l->log.info("Creating item from enemy %04hX (area %02hX)", cmd.entity_id.load(), cmd.effective_area);
+    switch (l->drop_mode) {
+      case Lobby::DropMode::DISABLED:
+      case Lobby::DropMode::CLIENT:
+        throw logic_error("unhandled simple drop mode");
+      case Lobby::DropMode::SERVER_SHARED:
+      case Lobby::DropMode::SERVER_DUPLICATE: {
+        // TODO: In SERVER_DUPLICATE mode, should we reduce the rates for rare
+        // items? Maybe by a factor of l->count_clients()?
+        auto res = generate_item();
+        if (res.item.empty()) {
+          l->log.info("No item was created");
+        } else {
+          string name = s->describe_item(l->base_version, res.item, false);
+          l->log.info("Entity %04hX (area %02hX) created item %s", cmd.entity_id.load(), cmd.effective_area, name.c_str());
+          if (l->drop_mode == Lobby::DropMode::SERVER_DUPLICATE) {
+            for (const auto& lc : l->clients) {
+              if (lc && ((cmd.rt_index == 0x30) || (lc->floor == cmd.floor))) {
+                res.item.id = l->generate_item_id(0xFF);
+                l->log.info("Creating item %08" PRIX32 " at %02hhX:%g,%g for %s",
+                    res.item.id.load(), cmd.floor, cmd.x.load(), cmd.z.load(), lc->channel.name.c_str());
+                l->add_item(cmd.floor, res.item, cmd.x, cmd.z, (1 << lc->lobby_client_id));
+                send_drop_item_to_channel(s, lc->channel, res.item, cmd.rt_index != 0x30, cmd.floor, cmd.x, cmd.z, cmd.entity_id);
+                if (res.is_from_rare_table) {
+                  send_rare_notification_if_needed(lc, res.item);
+                }
+              }
+            }
 
-      uint8_t effective_rt_index = cmd.rt_index;
-      if (l->map) {
-        const auto& enemy = l->map->enemies.at(cmd.entity_id);
-        effective_rt_index = rare_table_index_for_enemy_type(enemy.type);
-        // rt_indexes in Episode 4 don't match those sent in the command; we just
-        // ignore what the client sends.
-        if ((l->episode != Episode::EP4) && (cmd.rt_index != effective_rt_index)) {
-          l->log.warning("rt_index %02hhX from command does not match entity\'s expected index %02" PRIX32,
-              cmd.rt_index, effective_rt_index);
+          } else {
+            res.item.id = l->generate_item_id(0xFF);
+            l->log.info("Creating item %08" PRIX32 " at %02hhX:%g,%g for all clients",
+                res.item.id.load(), cmd.floor, cmd.x.load(), cmd.z.load());
+            l->add_item(cmd.floor, res.item, cmd.x, cmd.z, 0x00F);
+            send_drop_item_to_lobby(l, res.item, cmd.rt_index != 0x30, cmd.floor, cmd.x, cmd.z, cmd.entity_id);
+            if (res.is_from_rare_table) {
+              for (auto lc : l->clients) {
+                if (lc) {
+                  send_rare_notification_if_needed(lc, res.item);
+                }
+              }
+            }
+          }
         }
-        if (cmd.floor != enemy.floor) {
-          l->log.warning("Floor %02hhX from command does not match entity\'s expected floor %02hhX",
-              cmd.floor, enemy.floor);
-        }
+        break;
       }
-      return l->item_creator->on_monster_item_drop(cmd.entity_id, effective_rt_index, cmd.effective_area);
-    }
-  };
-
-  switch (l->drop_mode) {
-    case Lobby::DropMode::DISABLED:
-    case Lobby::DropMode::CLIENT:
-      throw logic_error("unhandled simple drop mode");
-    case Lobby::DropMode::SERVER_SHARED:
-    case Lobby::DropMode::SERVER_DUPLICATE: {
-      // TODO: In SERVER_DUPLICATE mode, should we reduce the rates for rare
-      // items? Maybe by a factor of l->count_clients()?
-      auto res = generate_item();
-      if (res.item.empty()) {
-        l->log.info("No item was created");
-      } else {
-        string name = s->describe_item(l->base_version, res.item, false);
-        l->log.info("Entity %04hX (area %02hX) created item %s", cmd.entity_id.load(), cmd.effective_area, name.c_str());
-        if (l->drop_mode == Lobby::DropMode::SERVER_DUPLICATE) {
-          for (const auto& lc : l->clients) {
-            if (lc && ((cmd.rt_index == 0x30) || (lc->floor == cmd.floor))) {
+      case Lobby::DropMode::SERVER_PRIVATE: {
+        for (const auto& lc : l->clients) {
+          if (lc && ((cmd.rt_index == 0x30) || (lc->floor == cmd.floor))) {
+            auto res = generate_item();
+            if (res.item.empty()) {
+              l->log.info("No item was created for %s", lc->channel.name.c_str());
+            } else {
+              string name = s->describe_item(l->base_version, res.item, false);
+              l->log.info("Entity %04hX (area %02hX) created item %s", cmd.entity_id.load(), cmd.effective_area, name.c_str());
               res.item.id = l->generate_item_id(0xFF);
               l->log.info("Creating item %08" PRIX32 " at %02hhX:%g,%g for %s",
                   res.item.id.load(), cmd.floor, cmd.x.load(), cmd.z.load(), lc->channel.name.c_str());
@@ -2196,54 +2267,12 @@ static void on_entity_drop_item_request(shared_ptr<Client> c, uint8_t command, u
               }
             }
           }
-
-        } else {
-          res.item.id = l->generate_item_id(0xFF);
-          l->log.info("Creating item %08" PRIX32 " at %02hhX:%g,%g for all clients",
-              res.item.id.load(), cmd.floor, cmd.x.load(), cmd.z.load());
-          l->add_item(cmd.floor, res.item, cmd.x, cmd.z, 0x00F);
-          send_drop_item_to_lobby(l, res.item, cmd.rt_index != 0x30, cmd.floor, cmd.x, cmd.z, cmd.entity_id);
-          if (res.is_from_rare_table) {
-            for (auto lc : l->clients) {
-              if (lc) {
-                send_rare_notification_if_needed(lc, res.item);
-              }
-            }
-          }
         }
+        break;
       }
-      break;
+      default:
+        throw logic_error("invalid drop mode");
     }
-    case Lobby::DropMode::SERVER_PRIVATE: {
-      for (const auto& lc : l->clients) {
-        if (lc && ((cmd.rt_index == 0x30) || (lc->floor == cmd.floor))) {
-          auto res = generate_item();
-          if (res.item.empty()) {
-            l->log.info("No item was created for %s", lc->channel.name.c_str());
-          } else {
-            string name = s->describe_item(l->base_version, res.item, false);
-            l->log.info("Entity %04hX (area %02hX) created item %s", cmd.entity_id.load(), cmd.effective_area, name.c_str());
-            res.item.id = l->generate_item_id(0xFF);
-            l->log.info("Creating item %08" PRIX32 " at %02hhX:%g,%g for %s",
-                res.item.id.load(), cmd.floor, cmd.x.load(), cmd.z.load(), lc->channel.name.c_str());
-            l->add_item(cmd.floor, res.item, cmd.x, cmd.z, (1 << lc->lobby_client_id));
-            send_drop_item_to_channel(s, lc->channel, res.item, cmd.rt_index != 0x30, cmd.floor, cmd.x, cmd.z, cmd.entity_id);
-            if (res.is_from_rare_table) {
-              send_rare_notification_if_needed(lc, res.item);
-            }
-          }
-        }
-      }
-      break;
-    }
-    default:
-      throw logic_error("invalid drop mode");
-  }
-
-  if (cmd.rt_index == 0x30) {
-    l->item_creator->set_box_destroyed(cmd.entity_id);
-  } else {
-    l->item_creator->set_monster_destroyed(cmd.entity_id);
   }
 }
 
@@ -2290,30 +2319,45 @@ static void on_set_quest_flag(shared_ptr<Client> c, uint8_t command, uint8_t fla
 
   forward_subcommand(c, command, flag, data, size);
 
-  if (is_v3(c->version())) {
-    bool should_send_boss_drop_req = false;
+  if (is_v3(c->version()) && (l->drop_mode != Lobby::DropMode::DISABLED)) {
+    EnemyType boss_enemy_type = EnemyType::NONE;
     bool is_ep2 = (l->episode == Episode::EP2);
     if ((l->episode == Episode::EP1) && (c->floor == 0x0E)) {
       // On Normal, Dark Falz does not have a third phase, so send the drop
       // request after the end of the second phase. On all other difficulty
       // levels, send it after the third phase.
-      if (((difficulty == 0) && (flag_index == 0x0035)) ||
-          ((difficulty != 0) && (flag_index == 0x0037))) {
-        should_send_boss_drop_req = true;
+      if ((difficulty == 0) && (flag_index == 0x0035)) {
+        boss_enemy_type = EnemyType::DARK_FALZ_2;
+      } else if ((difficulty != 0) && (flag_index == 0x0037)) {
+        boss_enemy_type = EnemyType::DARK_FALZ_3;
       }
     } else if (is_ep2 && (flag_index == 0x0057) && (c->floor == 0x0D)) {
-      should_send_boss_drop_req = true;
+      boss_enemy_type = EnemyType::OLGA_FLOW_2;
     }
 
-    if (should_send_boss_drop_req) {
-      auto c = l->clients.at(l->leader_id);
-      if (c) {
-        G_StandardDropItemRequest_PC_V3_BB_6x60 req = {
+    if (boss_enemy_type != EnemyType::NONE) {
+      l->log.info("Creating item from final boss (%s)", name_for_enum(boss_enemy_type));
+      uint16_t enemy_id = 0xFFFF;
+      if (l->map) {
+        try {
+          const auto& enemy = l->map->find_enemy(c->floor, boss_enemy_type);
+          enemy_id = enemy.enemy_id;
+          if (c->floor != enemy.floor) {
+            l->log.warning("Floor %02" PRIX32 " from client does not match entity\'s expected floor %02hhX", c->floor, enemy.floor);
+          }
+          l->log.info("Found enemy E-%hX on floor %" PRIX32, enemy_id, enemy.floor);
+        } catch (const out_of_range&) {
+          l->log.warning("Could not find enemy on floor %" PRIX32 "; unable to determine enemy type", c->floor);
+        }
+      }
+
+      if (boss_enemy_type != EnemyType::NONE) {
+        G_StandardDropItemRequest_PC_V3_BB_6x60 drop_req = {
             {
                 {0x60, 0x06, 0x0000},
                 static_cast<uint8_t>(c->floor),
-                static_cast<uint8_t>(is_ep2 ? 0x4E : 0x2F),
-                0x0B4F,
+                rare_table_index_for_enemy_type(boss_enemy_type),
+                enemy_id == 0xFFFF ? 0x0B4F : enemy_id,
                 is_ep2 ? -9999.0f : 10160.58984375f,
                 0.0f,
                 2,
@@ -2321,7 +2365,7 @@ static void on_set_quest_flag(shared_ptr<Client> c, uint8_t command, uint8_t fla
             },
             0x01,
             {}};
-        send_command_t(c, 0x62, l->leader_id, req);
+        on_entity_drop_item_request(c, 0x62, l->leader_id, &drop_req, sizeof(drop_req));
       }
     }
   }

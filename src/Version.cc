@@ -246,3 +246,38 @@ uint32_t default_specific_version_for_version(Version version, int64_t sub_versi
       return 0x00000000;
   }
 }
+
+const char* file_path_token_for_version(Version version) {
+  switch (version) {
+    case Version::PC_PATCH:
+      return "pc-patch";
+    case Version::BB_PATCH:
+      return "bb-patch";
+    case Version::DC_NTE:
+      return "dc-nte";
+    case Version::DC_V1_11_2000_PROTOTYPE:
+      return "dc-11-2000";
+    case Version::DC_V1:
+      return "dc-v1";
+    case Version::DC_V2:
+      return "dc-v2";
+    case Version::PC_NTE:
+      return "pc-nte";
+    case Version::PC_V2:
+      return "pc-v2";
+    case Version::GC_NTE:
+      return "gc-nte";
+    case Version::GC_V3:
+      return "gc-v3";
+    case Version::GC_EP3_NTE:
+      return "gc-ep3-nte";
+    case Version::GC_EP3:
+      return "gc-ep3";
+    case Version::XB_V3:
+      return "xb-v3";
+    case Version::BB_V4:
+      return "bb-v4";
+    default:
+      throw runtime_error("invalid game version");
+  }
+}

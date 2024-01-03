@@ -14,6 +14,561 @@ using namespace std;
 
 static constexpr float UINT32_MAX_AS_FLOAT = 4294967296.0f;
 
+const char* Map::name_for_object_type(uint16_t type) {
+  switch (type) {
+    case 0x0000:
+      return "TObjPlayerSet";
+    case 0x0001:
+      return "TObjParticle";
+    case 0x0002:
+      return "TObjAreaWarpForest";
+    case 0x0003:
+      return "TObjMapWarpForest";
+    case 0x0004:
+      return "TObjLight";
+    case 0x0006:
+      return "TObjEnvSound";
+    case 0x0007:
+      return "TObjFogCollision";
+    case 0x0008:
+      return "TObjEvtCollision";
+    case 0x0009:
+      return "TObjCollision";
+    case 0x000A:
+      return "TOMineIcon01";
+    case 0x000B:
+      return "TOMineIcon02";
+    case 0x000C:
+      return "TOMineIcon03";
+    case 0x000D:
+      return "TOMineIcon04";
+    case 0x000E:
+      return "TObjRoomId";
+    case 0x000F:
+      return "TOSensorGeneral01";
+    case 0x0011:
+      return "TEF_LensFlare";
+    case 0x0012:
+      return "TObjQuestCol";
+    case 0x0013:
+      return "TOHealGeneral";
+    case 0x0014:
+      return "TObjMapCsn";
+    case 0x0015:
+      return "TObjQuestColA";
+    case 0x0016:
+      return "TObjItemLight";
+    case 0x0017:
+      return "TObjRaderCol";
+    case 0x0018:
+      return "TObjFogCollisionSwitch";
+    case 0x0019:
+      return "TObjWarpBossMulti(off)/TObjWarpBoss(on)";
+    case 0x001A:
+      return "TObjSinBoard";
+    case 0x001B:
+      return "TObjAreaWarpQuest";
+    case 0x001C:
+      return "TObjAreaWarpEnding";
+    case 0x001D:
+      return "__UNNAMED_001D__";
+    case 0x001E:
+      return "__UNNAMED_001E__";
+    case 0x001F:
+      return "TObjRaderHideCol";
+    case 0x0020:
+      return "TOSwitchItem";
+    case 0x0021:
+      return "TOSymbolchatColli";
+    case 0x0022:
+      return "TOKeyCol";
+    case 0x0023:
+      return "TOAttackableCol";
+    case 0x0024:
+      return "TOSwitchAttack";
+    case 0x0025:
+      return "TOSwitchTimer";
+    case 0x0026:
+      return "TOChatSensor";
+    case 0x0027:
+      return "TObjRaderIcon";
+    case 0x0028:
+      return "TObjEnvSoundEx";
+    case 0x0029:
+      return "TObjEnvSoundGlobal";
+    case 0x0040:
+      return "TShopGenerator";
+    case 0x0041:
+      return "TObjLuker";
+    case 0x0042:
+      return "TObjBgmCol";
+    case 0x0043:
+      return "TObjCityMainWarp";
+    case 0x0044:
+      return "TObjCityAreaWarp";
+    case 0x0045:
+      return "TObjCityMapWarp";
+    case 0x0046:
+      return "TObjCityDoor_Shop";
+    case 0x0047:
+      return "TObjCityDoor_Guild";
+    case 0x0048:
+      return "TObjCityDoor_Warp";
+    case 0x0049:
+      return "TObjCityDoor_Med";
+    case 0x004A:
+      return "__UNNAMED_004A__";
+    case 0x004B:
+      return "TObjCity_Season_EasterEgg";
+    case 0x004C:
+      return "TObjCity_Season_ValentineHeart";
+    case 0x004D:
+      return "TObjCity_Season_XmasTree";
+    case 0x004E:
+      return "TObjCity_Season_XmasWreath";
+    case 0x004F:
+      return "TObjCity_Season_HalloweenPumpkin";
+    case 0x0050:
+      return "TObjCity_Season_21_21";
+    case 0x0051:
+      return "TObjCity_Season_SonicAdv2";
+    case 0x0052:
+      return "TObjCity_Season_Board";
+    case 0x0053:
+      return "TObjCity_Season_FireWorkCtrl";
+    case 0x0054:
+      return "TObjCityDoor_Lobby";
+    case 0x0055:
+      return "TObjCityMainWarpChallenge";
+    case 0x0056:
+      return "TODoorLabo";
+    case 0x0057:
+      return "TObjTradeCollision";
+    case 0x0080:
+      return "TObjDoor";
+    case 0x0081:
+      return "TObjDoorKey";
+    case 0x0082:
+      return "TObjLazerFenceNorm";
+    case 0x0083:
+      return "TObjLazerFence4";
+    case 0x0084:
+      return "TLazerFenceSw";
+    case 0x0085:
+      return "TKomorebi";
+    case 0x0086:
+      return "TButterfly";
+    case 0x0087:
+      return "TMotorcycle";
+    case 0x0088:
+      return "TObjContainerItem";
+    case 0x0089:
+      return "TObjTank";
+    case 0x008B:
+      return "TObjComputer";
+    case 0x008C:
+      return "TObjContainerIdo";
+    case 0x008D:
+      return "TOCapsuleAncient01";
+    case 0x008E:
+      return "TOBarrierEnergy01";
+    case 0x008F:
+      return "TObjHashi";
+    case 0x0090:
+      return "TOKeyGenericSw";
+    case 0x0091:
+      return "TObjContainerEnemy";
+    case 0x0092:
+      return "TObjContainerBase";
+    case 0x0093:
+      return "TObjContainerAbeEnemy";
+    case 0x0095:
+      return "TObjContainerNoItem";
+    case 0x0096:
+      return "TObjLazerFenceExtra";
+    case 0x00C0:
+      return "TOKeyCave01";
+    case 0x00C1:
+      return "TODoorCave01";
+    case 0x00C2:
+      return "TODoorCave02";
+    case 0x00C3:
+      return "TOHangceilingCave01Key/TOHangceilingCave01Normal/TOHangceilingCave01KeyQuick";
+    case 0x00C4:
+      return "TOSignCave01";
+    case 0x00C5:
+      return "TOSignCave02";
+    case 0x00C6:
+      return "TOSignCave03";
+    case 0x00C7:
+      return "TOAirconCave01";
+    case 0x00C8:
+      return "TOAirconCave02";
+    case 0x00C9:
+      return "TORevlightCave01";
+    case 0x00CB:
+      return "TORainbowCave01";
+    case 0x00CC:
+      return "TOKurage";
+    case 0x00CD:
+      return "TODragonflyCave01";
+    case 0x00CE:
+      return "TODoorCave03";
+    case 0x00CF:
+      return "TOBind";
+    case 0x00D0:
+      return "TOCakeshopCave01";
+    case 0x00D1:
+      return "TORockCaveS01";
+    case 0x00D2:
+      return "TORockCaveM01";
+    case 0x00D3:
+      return "TORockCaveL01";
+    case 0x00D4:
+      return "TORockCaveS02";
+    case 0x00D5:
+      return "TORockCaveM02";
+    case 0x00D6:
+      return "TORockCaveL02";
+    case 0x00D7:
+      return "TORockCaveSS02";
+    case 0x00D8:
+      return "TORockCaveSM02";
+    case 0x00D9:
+      return "TORockCaveSL02";
+    case 0x00DA:
+      return "TORockCaveS03";
+    case 0x00DB:
+      return "TORockCaveM03";
+    case 0x00DC:
+      return "TORockCaveL03";
+    case 0x00DE:
+      return "TODummyKeyCave01";
+    case 0x00DF:
+      return "TORockCaveBL01";
+    case 0x00E0:
+      return "TORockCaveBL02";
+    case 0x00E1:
+      return "TORockCaveBL03";
+    case 0x0100:
+      return "TODoorMachine01";
+    case 0x0101:
+      return "TOKeyMachine01";
+    case 0x0102:
+      return "TODoorMachine02";
+    case 0x0103:
+      return "TOCapsuleMachine01";
+    case 0x0104:
+      return "TOComputerMachine01";
+    case 0x0105:
+      return "TOMonitorMachine01";
+    case 0x0106:
+      return "TODragonflyMachine01";
+    case 0x0107:
+      return "TOLightMachine01";
+    case 0x0108:
+      return "TOExplosiveMachine01";
+    case 0x0109:
+      return "TOExplosiveMachine02";
+    case 0x010A:
+      return "TOExplosiveMachine03";
+    case 0x010B:
+      return "TOSparkMachine01";
+    case 0x010C:
+      return "TOHangerMachine01";
+    case 0x0130:
+      return "TODoorVoShip";
+    case 0x0140:
+      return "TObjGoalWarpAncient";
+    case 0x0141:
+      return "TObjMapWarpAncient";
+    case 0x0142:
+      return "TOKeyAncient02";
+    case 0x0143:
+      return "TOKeyAncient03";
+    case 0x0144:
+      return "TODoorAncient01";
+    case 0x0145:
+      return "TODoorAncient03";
+    case 0x0146:
+      return "TODoorAncient04";
+    case 0x0147:
+      return "TODoorAncient05";
+    case 0x0148:
+      return "TODoorAncient06";
+    case 0x0149:
+      return "TODoorAncient07";
+    case 0x014A:
+      return "TODoorAncient08";
+    case 0x014B:
+      return "TODoorAncient09";
+    case 0x014C:
+      return "TOSensorAncient01";
+    case 0x014D:
+      return "TOKeyAncient01";
+    case 0x014E:
+      return "TOFenceAncient01";
+    case 0x014F:
+      return "TOFenceAncient02";
+    case 0x0150:
+      return "TOFenceAncient03";
+    case 0x0151:
+      return "TOFenceAncient04";
+    case 0x0152:
+      return "TContainerAncient01";
+    case 0x0153:
+      return "TOTrapAncient01";
+    case 0x0154:
+      return "TOTrapAncient02";
+    case 0x0155:
+      return "TOMonumentAncient01";
+    case 0x0156:
+      return "TOMonumentAncient02";
+    case 0x0159:
+      return "TOWreckAncient01";
+    case 0x015A:
+      return "TOWreckAncient02";
+    case 0x015B:
+      return "TOWreckAncient03";
+    case 0x015C:
+      return "TOWreckAncient04";
+    case 0x015D:
+      return "TOWreckAncient05";
+    case 0x015E:
+      return "TOWreckAncient06";
+    case 0x015F:
+      return "TOWreckAncient07";
+    case 0x0160:
+      return "TObjFogCollisionPoison/TObjWarpBoss03";
+    case 0x0161:
+      return "TOContainerAncientItemCommon";
+    case 0x0162:
+      return "TOContainerAncientItemRare";
+    case 0x0163:
+      return "TOContainerAncientEnemyCommon";
+    case 0x0164:
+      return "TOContainerAncientEnemyRare";
+    case 0x0165:
+      return "TOContainerAncientItemNone";
+    case 0x0166:
+      return "TOWreckAncientBrakable05";
+    case 0x0167:
+      return "TOTrapAncient02R";
+    case 0x0170:
+      return "TOBoss4Bird";
+    case 0x0171:
+      return "TOBoss4Tower";
+    case 0x0172:
+      return "TOBoss4Rock";
+    case 0x0180:
+      return "TObjInfoCol";
+    case 0x0181:
+      return "TObjWarpLobby";
+    case 0x0182:
+      return "TObjLobbyMain";
+    case 0x0183:
+      return "__TObjPathObj_subclass_0183__";
+    case 0x0184:
+      return "TObjButterflyLobby";
+    case 0x0185:
+      return "TObjRainbowLobby";
+    case 0x0186:
+      return "TObjKabochaLobby";
+    case 0x0187:
+      return "TObjStendGlassLobby";
+    case 0x0188:
+      return "TObjCurtainLobby";
+    case 0x0189:
+      return "TObjWeddingLobby";
+    case 0x018A:
+      return "TObjTreeLobby";
+    case 0x018B:
+      return "TObjSuisouLobby";
+    case 0x018C:
+      return "TObjParticleLobby";
+    case 0x0190:
+      return "TObjCamera";
+    case 0x0191:
+      return "TObjTuitate";
+    case 0x0192:
+      return "TObjDoaEx01";
+    case 0x0193:
+      return "TObjBigTuitate";
+    case 0x01A0:
+      return "TODoorVS2Door01";
+    case 0x01A1:
+      return "TOVS2Wreck01";
+    case 0x01A2:
+      return "TOVS2Wreck02";
+    case 0x01A3:
+      return "TOVS2Wreck03";
+    case 0x01A4:
+      return "TOVS2Wreck04";
+    case 0x01A5:
+      return "TOVS2Wreck05";
+    case 0x01A6:
+      return "TOVS2Wreck06";
+    case 0x01A7:
+      return "TOVS2Wall01";
+    case 0x01A8:
+      return "__UNNAMED_01A8__";
+    case 0x01A9:
+      return "TObjHashiVersus1";
+    case 0x01AA:
+      return "TObjHashiVersus2";
+    case 0x01AB:
+      return "TODoorFourLightRuins";
+    case 0x01C0:
+      return "TODoorFourLightSpace";
+    case 0x0200:
+      return "TObjContainerJung";
+    case 0x0201:
+      return "TObjWarpJung";
+    case 0x0202:
+      return "TObjDoorJung";
+    case 0x0203:
+      return "TObjContainerJungEx";
+    case 0x0204:
+      return "TODoorJungleMain";
+    case 0x0205:
+      return "TOKeyJungleMain";
+    case 0x0206:
+      return "TORockJungleS01";
+    case 0x0207:
+      return "TORockJungleM01";
+    case 0x0208:
+      return "TORockJungleL01";
+    case 0x0209:
+      return "TOGrassJungle";
+    case 0x020A:
+      return "TObjWarpJungMain";
+    case 0x020B:
+      return "TBGLightningCtrl";
+    case 0x020C:
+      return "__TObjPathObj_subclass_020C__";
+    case 0x020D:
+      return "__TObjPathObj_subclass_020D__";
+    case 0x020E:
+      return "TObjContainerJungEnemy";
+    case 0x020F:
+      return "TOTrapChainSawDamage";
+    case 0x0210:
+      return "TOTrapChainSawKey";
+    case 0x0211:
+      return "TOBiwaMushi";
+    case 0x0212:
+      return "__TObjPathObj_subclass_0212__";
+    case 0x0213:
+      return "TOJungleDesign";
+    case 0x0220:
+      return "TObjFish";
+    case 0x0221:
+      return "TODoorFourLightSeabed";
+    case 0x0222:
+      return "TODoorFourLightSeabedU";
+    case 0x0223:
+      return "TObjSeabedSuiso_CH";
+    case 0x0224:
+      return "TObjSeabedSuisoBrakable";
+    case 0x0225:
+      return "TOMekaFish00";
+    case 0x0226:
+      return "TOMekaFish01";
+    case 0x0227:
+      return "__TObjPathObj_subclass_0227__";
+    case 0x0228:
+      return "TOTrapSeabed01";
+    case 0x0229:
+      return "TOCapsuleLabo";
+    case 0x0240:
+      return "TObjParticle";
+    case 0x0280:
+      return "__TObjAreaWarpForest_subclass_0280__";
+    case 0x02A0:
+      return "TObjLiveCamera";
+    case 0x02B0:
+      return "TContainerAncient01R";
+    case 0x02B1:
+      return "TObjLaboDesignBase";
+    case 0x02B2:
+      return "TObjLaboDesignBase";
+    case 0x02B3:
+      return "TObjLaboDesignBase";
+    case 0x02B4:
+      return "TObjLaboDesignBase";
+    case 0x02B5:
+      return "TObjLaboDesignBase";
+    case 0x02B6:
+      return "TObjLaboDesignBase";
+    case 0x02B7:
+      return "TObjGbAdvance";
+    case 0x02B8:
+      return "TObjQuestColALock2";
+    case 0x02B9:
+      return "TObjMapForceWarp";
+    case 0x02BA:
+      return "TObjQuestCol2";
+    case 0x02BB:
+      return "TODoorLaboNormal";
+    case 0x02BC:
+      return "TObjAreaWarpEndingJung";
+    case 0x02BD:
+      return "TObjLaboMapWarp";
+    case 0x0300:
+      return "__UNKNOWN_0300__";
+    case 0x0301:
+      return "__UNKNOWN_0301__";
+    case 0x0302:
+      return "__UNKNOWN_0302__";
+    case 0x0303:
+      return "__UNKNOWN_0303__";
+    case 0x0340:
+      return "__UNKNOWN_0340__";
+    case 0x0341:
+      return "__UNKNOWN_0341__";
+    case 0x0380:
+      return "__UNKNOWN_0380__";
+    case 0x0381:
+      return "__UNKNOWN_0381__";
+    case 0x0382:
+      return "__UNKNOWN_0382__";
+    case 0x0383:
+      return "__UNKNOWN_0383__";
+    case 0x0385:
+      return "__UNKNOWN_0385__";
+    case 0x0386:
+      return "__UNKNOWN_0386__";
+    case 0x0387:
+      return "__UNKNOWN_0387__";
+    case 0x0388:
+      return "__UNKNOWN_0388__";
+    case 0x0389:
+      return "__UNKNOWN_0389__";
+    case 0x038A:
+      return "__UNKNOWN_038A__";
+    case 0x038B:
+      return "__UNKNOWN_038B__";
+    case 0x038C:
+      return "__UNKNOWN_038C__";
+    case 0x038D:
+      return "__UNKNOWN_038D__";
+    case 0x038E:
+      return "__UNKNOWN_038E__";
+    case 0x038F:
+      return "__UNKNOWN_038F__";
+    case 0x0390:
+      return "__UNKNOWN_0390__";
+    case 0x0391:
+      return "__UNKNOWN_0391__";
+    case 0x03C0:
+      return "__UNKNOWN_03C0__";
+    case 0x03C1:
+      return "__UNKNOWN_03C1__";
+    default:
+      return "__UNKNOWN__";
+  }
+}
+
 Map::RareEnemyRates::RareEnemyRates(uint32_t enemy_rate, uint32_t boss_rate)
     : hildeblue(enemy_rate),
       rappy(enemy_rate),
@@ -100,8 +655,9 @@ string Map::EnemyEntry::str() const {
       this->unused.load());
 }
 
-Map::Enemy::Enemy(size_t source_index, uint8_t floor, EnemyType type)
+Map::Enemy::Enemy(uint16_t enemy_id, size_t source_index, uint8_t floor, EnemyType type)
     : source_index(source_index),
+      enemy_id(enemy_id),
       type(type),
       floor(floor),
       state_flags(0),
@@ -109,19 +665,22 @@ Map::Enemy::Enemy(size_t source_index, uint8_t floor, EnemyType type)
 }
 
 string Map::Enemy::str() const {
-  return string_printf("[Map::Enemy source %zX %s floor=%02hhX flags=%02hhX last_hit_by_client_id=%hu]",
-      this->source_index, name_for_enum(this->type), this->floor, this->state_flags, this->last_hit_by_client_id);
+  return string_printf("[Map::Enemy E-%hX source %zX %s floor=%02hhX flags=%02hhX last_hit_by_client_id=%hu]",
+      this->enemy_id, this->source_index, name_for_enum(this->type), this->floor, this->state_flags, this->last_hit_by_client_id);
 }
 
 string Map::Object::str() const {
-  if (this->param1 <= 0.0f) {
-    return string_printf("[Map::Object source %zX %04hX @%04hX p1=%g (specialized: %08" PRIX32 " %08" PRIX32 " %08" PRIX32 ") floor=%02hhX item_drop_checked=%s]",
-        this->source_index, this->base_type, this->section, this->param1, this->param4, this->param5, this->param6, this->floor, this->item_drop_checked ? "true" : "false");
-  } else {
-    return string_printf("[Map::Object source %zX %04hX @%04hX p1=%g (generic) p456=[%08" PRIX32 " %08" PRIX32 " %08" PRIX32 "] floor=%02hhX item_drop_checked=%s]",
-        this->source_index, this->base_type, this->section, this->param1, this->param4, this->param5, this->param6,
-        this->floor, this->item_drop_checked ? "true" : "false");
-  }
+  return string_printf("[Map::Object source %zX %04hX(%s) @%04hX p1=%g p456=[%08" PRIX32 " %08" PRIX32 " %08" PRIX32 "] floor=%02hhX item_drop_checked=%s]",
+      this->source_index,
+      this->base_type,
+      Map::name_for_object_type(this->base_type),
+      this->section,
+      this->param1,
+      this->param4,
+      this->param5,
+      this->param6,
+      this->floor,
+      this->item_drop_checked ? "true" : "false");
 }
 
 Map::Map(uint32_t lobby_id, std::shared_ptr<PSOLFGEncryption> random_crypt)
@@ -142,8 +701,11 @@ void Map::add_objects_from_map_data(uint8_t floor, const void* data, size_t size
 
   const auto* objects = reinterpret_cast<const ObjectEntry*>(data);
   for (size_t z = 0; z < entry_count; z++) {
+    uint16_t object_id = this->objects.size();
     this->objects.emplace_back(Object{
         .source_index = z,
+        .object_id = object_id,
+        .floor = floor,
         .base_type = objects[z].base_type,
         .section = objects[z].section,
         .param1 = objects[z].param1,
@@ -151,7 +713,6 @@ void Map::add_objects_from_map_data(uint8_t floor, const void* data, size_t size
         .param4 = objects[z].param4,
         .param5 = objects[z].param5,
         .param6 = objects[z].param6,
-        .floor = floor,
         .item_drop_checked = false,
     });
   }
@@ -177,7 +738,8 @@ void Map::add_enemy(
     const EnemyEntry& e,
     std::shared_ptr<const RareEnemyRates> rare_rates) {
   auto add = [&](EnemyType type) -> void {
-    this->enemies.emplace_back(index, floor, type);
+    uint16_t enemy_id = this->enemies.size();
+    this->enemies.emplace_back(enemy_id, index, floor, type);
   };
 
   EnemyType child_type = EnemyType::UNKNOWN;
@@ -956,6 +1518,24 @@ void Map::add_enemies_and_objects_from_quest_data(
   }
 }
 
+const Map::Enemy& Map::find_enemy(uint8_t floor, EnemyType type) const {
+  return const_cast<Map*>(this)->find_enemy(floor, type);
+}
+
+Map::Enemy& Map::find_enemy(uint8_t floor, EnemyType type) {
+  if (enemies.empty()) {
+    throw out_of_range("no enemies defined");
+  }
+  // TODO: Linear search is bad here. Do something better, like binary search
+  // for the floor start and just linear search through the floor enemies.
+  for (auto& e : this->enemies) {
+    if (e.floor == floor && e.type == type) {
+      return e;
+    }
+  }
+  throw out_of_range("enemy not found");
+}
+
 string Map::disassemble_quest_data(const void* data, size_t size) {
   auto all_floor_sections = Map::collect_quest_map_data_sections(data, size);
 
@@ -1089,12 +1669,12 @@ void SetDataTable::print(FILE* stream) const {
   }
 }
 
-struct AreaMapFileIndex {
+struct AreaMapFileInfo {
   const char* name_token;
   vector<uint32_t> variation1_values;
   vector<uint32_t> variation2_values;
 
-  AreaMapFileIndex(
+  AreaMapFileInfo(
       const char* name_token,
       vector<uint32_t> variation1_values,
       vector<uint32_t> variation2_values)
@@ -1103,8 +1683,27 @@ struct AreaMapFileIndex {
         variation2_values(variation2_values) {}
 };
 
+static const vector<AreaMapFileInfo> map_file_info_dc_protos = {
+    {"city00", {}, {0}},
+    {"forest01", {}, {0, 1}},
+    {"forest02", {}, {0, 1}},
+    {"cave01", {0, 1}, {0, 1}},
+    {"cave02", {0, 1}, {0, 1}},
+    {"cave03", {0, 1}, {0, 1}},
+    {"machine01", {0}, {0, 1}},
+    {"machine02", {0}, {0, 1}},
+    {"ancient01", {0, 1}, {0, 1}},
+    {"ancient02", {0, 1}, {0, 1}},
+    {"ancient03", {0, 1}, {0, 1}},
+    {"boss01", {}, {}},
+    {"boss02", {}, {}},
+    {"boss03", {}, {}},
+    {"boss04", {}, {}},
+    {nullptr, {}, {}},
+};
+
 // These are indexed as [episode][is_solo][floor], where episode is 0-2
-static const vector<vector<vector<AreaMapFileIndex>>> map_file_info = {
+static const vector<vector<vector<AreaMapFileInfo>>> map_file_info = {
     {
         // Episode 1
         {
@@ -1230,96 +1829,116 @@ static const vector<vector<vector<AreaMapFileIndex>>> map_file_info = {
     },
 };
 
-const vector<vector<AreaMapFileIndex>>& map_file_info_for_episode(Episode ep) {
-  switch (ep) {
-    case Episode::EP1:
-      return map_file_info.at(0);
-    case Episode::EP2:
-      return map_file_info.at(1);
-    case Episode::EP4:
-      return map_file_info.at(2);
-    default:
-      throw invalid_argument("episode has no maps");
+const AreaMapFileInfo& file_info_for_variation(
+    Version version, Episode episode, uint8_t area, bool is_solo) {
+  const vector<AreaMapFileInfo>* multi_index = nullptr;
+  const vector<AreaMapFileInfo>* solo_index = nullptr;
+  if (is_pre_v1(version)) {
+    multi_index = &map_file_info_dc_protos;
+  } else {
+    switch (episode) {
+      case Episode::EP1:
+        multi_index = &map_file_info.at(0).at(0);
+        solo_index = &map_file_info.at(0).at(1);
+        break;
+      case Episode::EP2:
+        multi_index = &map_file_info.at(1).at(0);
+        solo_index = &map_file_info.at(1).at(1);
+        break;
+      case Episode::EP3: {
+        static const AreaMapFileInfo blank_info = {nullptr, {}, {}};
+        return blank_info;
+      }
+      case Episode::EP4:
+        multi_index = &map_file_info.at(2).at(0);
+        solo_index = &map_file_info.at(2).at(1);
+        break;
+      default:
+        throw invalid_argument("episode has no maps");
+    }
   }
+
+  if (is_solo && solo_index) {
+    const auto& ret = solo_index->at(area);
+    if (ret.name_token) {
+      return ret;
+    }
+  }
+  return multi_index->at(area);
 }
 
 void generate_variations(
     parray<le_uint32_t, 0x20>& variations,
     shared_ptr<PSOLFGEncryption> random_crypt,
+    Version version,
     Episode episode,
     bool is_solo) {
-  const auto& ep_index = map_file_info_for_episode(episode);
   for (size_t z = 0; z < 0x10; z++) {
-    const AreaMapFileIndex* a = nullptr;
-    if (is_solo) {
-      a = &ep_index.at(true).at(z);
-    }
-    if (!a || !a->name_token) {
-      a = &ep_index.at(false).at(z);
-    }
-    if (!a->name_token) {
+    const auto& a = file_info_for_variation(version, episode, z, is_solo);
+    if (!a.name_token) {
       variations[z * 2 + 0] = 0;
       variations[z * 2 + 1] = 0;
     } else {
-      variations[z * 2 + 0] = (a->variation1_values.size() < 2) ? 0 : (random_crypt->next() % a->variation1_values.size());
-      variations[z * 2 + 1] = (a->variation2_values.size() < 2) ? 0 : (random_crypt->next() % a->variation2_values.size());
+      variations[z * 2 + 0] = (a.variation1_values.size() < 2) ? 0 : (random_crypt->next() % a.variation1_values.size());
+      variations[z * 2 + 1] = (a.variation2_values.size() < 2) ? 0 : (random_crypt->next() % a.variation2_values.size());
     }
-  }
-}
-
-void generate_variations_dc_nte(
-    parray<le_uint32_t, 0x20>& variations,
-    shared_ptr<PSOLFGEncryption> random_crypt) {
-  static const std::array<uint32_t, 0x20> maxes(
-      {1, 1, 1, 2, 1, 2, 2, 2, 2, 2, 2, 2, 1, 2, 1, 2, 2, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1});
-  for (size_t z = 0; z < 0x20; z++) {
-    variations[z] = (maxes[z] < 2) ? 0 : (random_crypt->next() % maxes[z]);
   }
 }
 
 vector<string> map_filenames_for_variation(
-    Episode episode, bool is_solo, uint8_t floor, uint32_t var1, uint32_t var2, bool is_enemies) {
-  // Map filenames are like map_<name_token>[_VV][_VV][_off]<e|o>[_s].dat
-  //   name_token comes from AreaMapFileIndex
+    Version version,
+    Episode episode,
+    GameMode mode,
+    uint8_t floor,
+    uint32_t var1,
+    uint32_t var2,
+    bool is_enemies) {
+  // Map filenames are like map_<name_token>_<VV>_<VV>(_off)?(e|o)(_s|_c1)?.dat
+  //   name_token comes from AreaMapFileInfo
   //   _VV are the values from the variation<1|2>_values vector (in contrast to
   //     the values sent in the 64 command, which are INDEXES INTO THAT VECTOR)
   //   _off or _s are used for solo mode (try both - city uses _s whereas levels
   //     use _off apparently)
+  //   _c1 is used for the city map in Challenge mode (which we don't load,
+  //     since it contains only NPCs and not enemies)
   //   e|o specifies what kind of data: e = enemies, o = objects
-  const auto& ep_index = map_file_info_for_episode(episode);
-  const AreaMapFileIndex* a = nullptr;
-  if (is_solo) {
-    a = &ep_index.at(true).at(floor);
-  }
-  if (!a || !a->name_token) {
-    a = &ep_index.at(false).at(floor);
-  }
-  if (!a->name_token) {
+  const auto& a = file_info_for_variation(version, episode, floor, mode == GameMode::SOLO);
+  if (!a.name_token) {
     return vector<string>();
   }
 
   string filename = "map_";
-  filename += a->name_token;
-  if (!a->variation1_values.empty()) {
-    filename += string_printf("_%02" PRIX32, a->variation1_values.at(var1));
+  filename += a.name_token;
+  if (!a.variation1_values.empty()) {
+    filename += string_printf("_%02" PRIX32, a.variation1_values.at(var1));
   }
-  if (!a->variation2_values.empty()) {
-    filename += string_printf("_%02" PRIX32, a->variation2_values.at(var2));
+  if (!a.variation2_values.empty()) {
+    filename += string_printf("_%02" PRIX32, a.variation2_values.at(var2));
   }
 
-  // Try both _off<e|o>.dat and <e|o>_s.dat suffixes first before falling back
-  // to non-solo version
   vector<string> ret;
   if (is_enemies) {
-    if (is_solo) {
+    if (mode == GameMode::SOLO) {
       ret.emplace_back(filename + "_offe.dat");
       ret.emplace_back(filename + "e_s.dat");
+    } else if (floor == 0) {
+      if (mode == GameMode::BATTLE) {
+        ret.emplace_back(filename + "e_d.dat");
+      } else if (mode == GameMode::CHALLENGE) {
+        ret.emplace_back(filename + "e_c1.dat");
+      }
     }
     ret.emplace_back(filename + "e.dat");
   } else {
-    if (is_solo) {
+    if (mode == GameMode::SOLO) {
       ret.emplace_back(filename + "_offo.dat");
       ret.emplace_back(filename + "o_s.dat");
+    } else if (floor == 0) {
+      if (mode == GameMode::BATTLE) {
+        ret.emplace_back(filename + "o_d.dat");
+      } else if (mode == GameMode::CHALLENGE) {
+        ret.emplace_back(filename + "o_c1.dat");
+      }
     }
     ret.emplace_back(filename + "o.dat");
   }

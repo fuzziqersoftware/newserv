@@ -136,3 +136,5 @@ template <>
 const char* name_for_enum<ServerBehavior>(ServerBehavior behavior);
 template <>
 ServerBehavior enum_for_name<ServerBehavior>(const char* name);
+
+const char* file_path_token_for_version(Version version);
