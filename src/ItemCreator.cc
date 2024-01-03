@@ -285,16 +285,17 @@ uint32_t ItemCreator::choose_meseta_amount(
   uint16_t min = ranges[table_index].min;
   uint16_t max = ranges[table_index].max;
 
-  // Note: The original code seems like it has a bug here: it compares to 0xFF
-  // instead of 0xFFFF (and returns 0xFF if either limit matches 0xFF).
-  uint32_t ret = 0;
-  if (((min == 0xFFFF) || (max == 0xFFFF)) || (max < min)) {
-    ret = 0xFFFF;
-  } else if (min != max) {
-    ret = this->rand_int((max - min) + 1) + min;
-  } else {
+  // Note: The original code returns 0xFF here if either limit is equal to 0xFF
+  // (despite them being 16-bit integers!)
+  uint16_t ret;
+  if (min == max) {
     ret = min;
+  } else if (max < min) {
+    ret = this->rand_int((min - max) + 1) + max;
+  } else {
+    ret = this->rand_int((max - min) + 1) + min;
   }
+
   this->log.info("Chose %" PRIu32 " Meseta from range [%hu, %hu]", ret, min, max);
   return ret;
 }
