@@ -262,7 +262,7 @@ void Lobby::create_item_creator() {
 }
 
 void Lobby::load_maps() {
-  this->map = make_shared<Map>(this->lobby_id, this->random_crypt);
+  this->map = make_shared<Map>(this->base_version, this->lobby_id, this->random_crypt);
 
   auto rare_rates = ((this->base_version == Version::BB_V4) && this->rare_enemy_rates)
       ? this->rare_enemy_rates

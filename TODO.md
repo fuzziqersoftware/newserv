@@ -5,6 +5,7 @@
 - Make UI strings localizable (e.g. entries in menus, welcome message, etc.)
 - Add an idle connection timeout for proxy sessions
 - Look into JP heart symbol bug on Linux
+- Check server's rare enemy logic against GC's logic
 
 ## Episode 3
 
