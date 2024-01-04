@@ -117,7 +117,7 @@ void PSOLFGEncryption::encrypt_both_endian(
 }
 
 PSOV2Encryption::PSOV2Encryption(uint32_t seed)
-    : PSOLFGEncryption(seed, this->STREAM_LENGTH + 1, this->STREAM_LENGTH) {
+    : PSOLFGEncryption(seed, STREAM_LENGTH + 1, STREAM_LENGTH) {
   uint32_t a = 1, b = this->initial_seed;
   this->stream[0x37] = b;
   for (uint16_t virtual_index = 0x15; virtual_index <= 0x36 * 0x15; virtual_index += 0x15) {
@@ -149,7 +149,7 @@ PSOEncryption::Type PSOV2Encryption::type() const {
 }
 
 PSOV3Encryption::PSOV3Encryption(uint32_t seed)
-    : PSOLFGEncryption(seed, this->STREAM_LENGTH, this->STREAM_LENGTH) {
+    : PSOLFGEncryption(seed, STREAM_LENGTH, STREAM_LENGTH) {
   uint32_t x, y, basekey, source1, source2, source3;
   basekey = 0;
 
@@ -172,7 +172,7 @@ PSOV3Encryption::PSOV3Encryption(uint32_t seed)
   source1 = 0;
   source2 = 1;
   source3 = this->offset - 1;
-  while (this->offset != this->STREAM_LENGTH) {
+  while (this->offset != STREAM_LENGTH) {
     this->stream[this->offset++] = (this->stream[source3++] ^ (((this->stream[source1++] << 23) & 0xFF800000) ^ ((this->stream[source2++] >> 9) & 0x007FFFFF)));
   }
 
@@ -183,19 +183,13 @@ PSOV3Encryption::PSOV3Encryption(uint32_t seed)
 }
 
 void PSOV3Encryption::update_stream() {
-  uint32_t r5, r6, r7;
-  r5 = 0;
-  r6 = 489;
-  r7 = 0;
-
-  while (r6 != this->STREAM_LENGTH) {
-    this->stream[r5++] ^= this->stream[r6++];
+  static constexpr size_t PHASE2_OFFSET = STREAM_LENGTH - 489;
+  for (size_t z = 489; z < STREAM_LENGTH; z++) {
+    this->stream[z - 489] ^= this->stream[z];
   }
-
-  while (r5 != this->STREAM_LENGTH) {
-    this->stream[r5++] ^= this->stream[r7++];
+  for (size_t z = PHASE2_OFFSET; z < STREAM_LENGTH; z++) {
+    this->stream[z] ^= this->stream[z - PHASE2_OFFSET];
   }
-
   this->offset = 0;
   this->cycles++;
 }

@@ -81,7 +81,7 @@ public:
 protected:
   virtual void update_stream();
 
-  static constexpr size_t STREAM_LENGTH = 56;
+  static constexpr size_t STREAM_LENGTH = 0x38;
 };
 
 class PSOV3Encryption : public PSOLFGEncryption {
