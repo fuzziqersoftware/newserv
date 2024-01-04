@@ -674,6 +674,51 @@ shared_ptr<Client> Lobby::find_client(const string* identifier, uint64_t serial_
   throw out_of_range("client not found");
 }
 
+Lobby::JoinError Lobby::join_error_for_client(std::shared_ptr<Client> c, const std::string* password) const {
+  if (this->count_clients() >= this->max_clients) {
+    return JoinError::FULL;
+  }
+  if (!this->version_is_allowed(c->version()) && !c->config.check_flag(Client::Flag::DEBUG_ENABLED)) {
+    return JoinError::VERSION_CONFLICT;
+  }
+  if (this->is_game()) {
+    if (this->check_flag(Flag::QUEST_IN_PROGRESS)) {
+      return JoinError::QUEST_IN_PROGRESS;
+    }
+    if (this->check_flag(Flag::BATTLE_IN_PROGRESS)) {
+      return JoinError::BATTLE_IN_PROGRESS;
+    }
+    if (this->mode == GameMode::SOLO) {
+      return JoinError::SOLO;
+    }
+    if (!(c->license->flags & License::Flag::FREE_JOIN_GAMES)) {
+      if (password && !this->password.empty() && (*password != this->password)) {
+        return JoinError::INCORRECT_PASSWORD;
+      }
+      auto p = c->character();
+      if (p->disp.stats.level < this->min_level) {
+        return JoinError::LEVEL_TOO_LOW;
+      }
+      if (p->disp.stats.level > this->max_level) {
+        return JoinError::LEVEL_TOO_HIGH;
+      }
+      if (this->quest) {
+        size_t num_clients = this->count_clients() + 1;
+        if (!c->can_see_quest(this->quest, this->difficulty, num_clients) ||
+            !c->can_play_quest(this->quest, this->difficulty, num_clients)) {
+          return JoinError::NO_ACCESS_TO_QUEST;
+        }
+      }
+    }
+    // Only prevent joining during loading if the client is actually trying to
+    // join (not just loading the game list)
+    if (password && this->any_client_loading()) {
+      return JoinError::LOADING;
+    }
+  }
+  return JoinError::ALLOWED;
+}
+
 uint8_t Lobby::game_event_for_lobby_event(uint8_t lobby_event) {
   if (lobby_event > 7) {
     return 0;

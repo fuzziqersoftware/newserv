@@ -2390,66 +2390,56 @@ static void on_10(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
         send_lobby_message_box(c, "$C6You cannot join this\ngame because it no\nlonger exists.");
         break;
       }
-      if (!game->is_game()) {
-        send_lobby_message_box(c, "$C6You cannot join this\ngame because it is\nnot a game.");
-        break;
-      }
-      if (game->count_clients() >= game->max_clients) {
-        send_lobby_message_box(c, "$C6You cannot join this\ngame because it is\nfull.");
-        break;
-      }
-      if (!game->version_is_allowed(c->version()) && !c->config.check_flag(Client::Flag::DEBUG_ENABLED)) {
-        send_lobby_message_box(c, "$C6You cannot join this\ngame because it is\nfor a different\nversion of PSO.");
-        break;
-      }
-      if (game->check_flag(Lobby::Flag::QUEST_IN_PROGRESS)) {
-        send_lobby_message_box(c, "$C6You cannot join this\ngame because a\nquest is already\nin progress.");
-        break;
-      }
-      if (game->check_flag(Lobby::Flag::BATTLE_IN_PROGRESS)) {
-        send_lobby_message_box(c, "$C6You cannot join this\ngame because a\nbattle is already\nin progress.");
-        break;
-      }
-      if (game->any_client_loading()) {
-        send_lobby_message_box(c, "$C6You cannot join this\ngame because\nanother player is\ncurrently loading.\nTry again soon.");
-        break;
-      }
-      if (game->mode == GameMode::SOLO) {
-        send_lobby_message_box(c, "$C6You cannot join this\n game because it is\na Solo Mode game.");
-        break;
-      }
-
-      if (!(c->license->flags & License::Flag::FREE_JOIN_GAMES)) {
-        if (!game->password.empty() && (password != game->password)) {
+      switch (game->join_error_for_client(c, &password)) {
+        case Lobby::JoinError::ALLOWED:
+          if (!s->change_client_lobby(c, game)) {
+            throw logic_error("client cannot join game after all preconditions satisfied");
+          }
+          if (game->is_game()) {
+            c->config.set_flag(Client::Flag::LOADING);
+            // If no one was in the game before, then there's no leader to send the
+            // item state - send it to the joining player (who is now the leader)
+            if (game->count_clients() == 1) {
+              // No one was in the game before, so the object and enemy state is lost;
+              // regenerate it as if the game was just created
+              game->load_maps();
+              c->config.set_flag(Client::Flag::SHOULD_SEND_ARTIFICIAL_ITEM_STATE);
+            }
+          }
+          break;
+        case Lobby::JoinError::FULL:
+          send_lobby_message_box(c, "$C6You cannot join this\ngame because it is\nfull.");
+          break;
+        case Lobby::JoinError::VERSION_CONFLICT:
+          send_lobby_message_box(c, "$C6You cannot join this\ngame because it is\nfor a different\nversion of PSO.");
+          break;
+        case Lobby::JoinError::QUEST_IN_PROGRESS:
+          send_lobby_message_box(c, "$C6You cannot join this\ngame because a\nquest is already\nin progress.");
+          break;
+        case Lobby::JoinError::BATTLE_IN_PROGRESS:
+          send_lobby_message_box(c, "$C6You cannot join this\ngame because a\nbattle is already\nin progress.");
+          break;
+        case Lobby::JoinError::LOADING:
+          send_lobby_message_box(c, "$C6You cannot join this\ngame because\nanother player is\ncurrently loading.\nTry again soon.");
+          break;
+        case Lobby::JoinError::SOLO:
+          send_lobby_message_box(c, "$C6You cannot join this\ngame because it is\na Solo Mode game.");
+          break;
+        case Lobby::JoinError::INCORRECT_PASSWORD:
           send_lobby_message_box(c, "$C6Incorrect password.");
           break;
-        }
-        auto p = c->character();
-        if (p->disp.stats.level < game->min_level) {
+        case Lobby::JoinError::LEVEL_TOO_LOW:
           send_lobby_message_box(c, "$C6Your level is too\nlow to join this\ngame.");
           break;
-        }
-        if (p->disp.stats.level > game->max_level) {
+        case Lobby::JoinError::LEVEL_TOO_HIGH:
           send_lobby_message_box(c, "$C6Your level is too\nhigh to join this\ngame.");
           break;
-        }
-        if (game->quest && !c->can_play_quest(game->quest, game->difficulty, game->count_clients() + 1)) {
+        case Lobby::JoinError::NO_ACCESS_TO_QUEST:
           send_lobby_message_box(c, "$C6You don't have access\nto the quest in progress\nin this game, or there\nis no space for another\nplayer in the quest.");
           break;
-        }
-      }
-
-      if (!s->change_client_lobby(c, game)) {
-        throw logic_error("client cannot join game after all preconditions satisfied");
-      }
-      c->config.set_flag(Client::Flag::LOADING);
-      // If no one was in the game before, then there's no leader to send the
-      // item state - send it to the joining player (who is now the leader)
-      if (game->count_clients() == 1) {
-        // No one was in the game before, so the object and enemy state is lost;
-        // regenerate it as if the game was just created
-        game->load_maps();
-        c->config.set_flag(Client::Flag::SHOULD_SEND_ARTIFICIAL_ITEM_STATE);
+        default:
+          send_lobby_message_box(c, "$C6You cannot join this\ngame.");
+          break;
       }
       break;
     }

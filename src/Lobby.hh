@@ -228,6 +228,21 @@ struct Lobby : public std::enable_shared_from_this<Lobby> {
       const std::string* identifier = nullptr,
       uint64_t serial_number = 0);
 
+  enum class JoinError {
+    ALLOWED = 0,
+    FULL,
+    VERSION_CONFLICT,
+    QUEST_IN_PROGRESS,
+    BATTLE_IN_PROGRESS,
+    LOADING,
+    SOLO,
+    INCORRECT_PASSWORD,
+    LEVEL_TOO_LOW,
+    LEVEL_TOO_HIGH,
+    NO_ACCESS_TO_QUEST,
+  };
+  JoinError join_error_for_client(std::shared_ptr<Client> c, const std::string* password) const;
+
   bool item_exists(uint8_t floor, uint32_t item_id) const;
   std::shared_ptr<FloorItem> find_item(uint8_t floor, uint32_t item_id) const;
   void add_item(uint8_t floor, const ItemData& item, float x, float z, uint16_t visibility_flags);

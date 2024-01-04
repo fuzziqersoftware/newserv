@@ -1413,12 +1413,14 @@ void send_game_menu_t(
           e.flags |= 0x20;
           break;
         case GameMode::SOLO:
-          // These should only be visible to other BB clients
-          e.flags |= 0x04; // Grayed (but not disabled apparently)
           e.episode = 0x10 | episode_num;
           break;
         default:
           throw logic_error("invalid game mode");
+      }
+      // On BB, gray out games that can't be joined
+      if ((c->version() == Version::BB_V4) && (l->join_error_for_client(c, nullptr) != Lobby::JoinError::ALLOWED)) {
+        e.flags |= 0x04;
       }
     }
     e.name.encode(l->name, c->language());
