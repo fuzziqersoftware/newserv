@@ -30,7 +30,7 @@ void player_use_item(shared_ptr<Client> c, size_t item_index, shared_ptr<PSOLFGE
     }
     player->set_technique_level(item.data.data1[4], item.data.data1[2]);
 
-  } else if ((primary_identifier & 0xFFFF00) == 0x030A0000) { // Grinder
+  } else if ((primary_identifier & 0xFFFF0000) == 0x030A0000) { // Grinder
     if (item.data.data1[2] > 2) {
       throw runtime_error("incorrect grinder value");
     }
