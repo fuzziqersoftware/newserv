@@ -3059,7 +3059,7 @@ static void on_request_challenge_grave_recovery_item_bb(shared_ptr<Client> c, ui
         ItemData(0x0301020000010000), // Trifluid x1
     };
     ItemData item = items.at(cmd.item_type);
-    item.id = l->generate_item_id(0xFF);
+    item.id = l->generate_item_id(cmd.header.client_id);
     l->add_item(cmd.floor, item, cmd.x, cmd.z, 0x00F);
     send_drop_stacked_item_to_lobby(l, item, cmd.floor, cmd.x, cmd.z);
   }

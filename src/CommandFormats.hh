@@ -5818,7 +5818,7 @@ struct G_BattleModeLevelUp_BB_6xD0 {
 struct G_ChallengeModeGraveRecoveryItemRequest_BB_6xD1 {
   G_ClientIDHeader header;
   le_uint16_t floor = 0;
-  le_uint16_t unknown_a2 = 0;
+  le_uint16_t unknown_a1 = 0;
   le_float x = 0;
   le_float z = 0;
   le_uint32_t item_type = 0; // Should be < 6
