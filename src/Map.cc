@@ -829,12 +829,15 @@ void Map::add_enemy(
       break;
 
     case 0x0040: // TObjEneMoja
-      add(this->check_and_log_rare_enemy(e.uparam1 & 0x01, rare_rates->hildeblue)
+      add(this->check_and_log_rare_enemy(e.uparam1 != 0, rare_rates->hildeblue)
               ? EnemyType::HILDEBLUE
               : EnemyType::HILDEBEAR);
       break;
     case 0x0041: { // TObjEneLappy
-      bool is_rare = this->check_and_log_rare_enemy(e.uparam1 & 0x01, rare_rates->rappy);
+      // On BB, the set rare condition is uparam1 & 1; on other versions it's
+      // simply uparam1 != 0.
+      bool default_is_rare = rare_rates ? (e.uparam1 & 1) : (e.uparam1 != 0);
+      bool is_rare = this->check_and_log_rare_enemy(default_is_rare, rare_rates->rappy);
       switch (episode) {
         case Episode::EP1:
           add(is_rare ? EnemyType::AL_RAPPY : EnemyType::RAG_RAPPY);
@@ -842,13 +845,13 @@ void Map::add_enemy(
         case Episode::EP2:
           if (is_rare) {
             switch (event) {
-              case 0x01:
+              case 0x01: // rappy_type 1
                 add(EnemyType::SAINT_RAPPY);
                 break;
-              case 0x04:
+              case 0x04: // rappy_type 2
                 add(EnemyType::EGG_RAPPY);
                 break;
-              case 0x05:
+              case 0x05: // rappy_type 3
                 add(EnemyType::HALLO_RAPPY);
                 break;
               default:
@@ -887,10 +890,10 @@ void Map::add_enemy(
       add(EnemyType::GRASS_ASSASSIN);
       break;
     case 0x0061: // TObjEneRe2Flower
-      if ((episode == Episode::EP2) && (e.floor > 0x0F)) {
+      if ((episode == Episode::EP2) && (e.floor == 0x11)) {
         add(EnemyType::DEL_LILY);
       } else {
-        add(this->check_and_log_rare_enemy(e.uparam1 & 0x01, rare_rates->nar_lily)
+        add(this->check_and_log_rare_enemy(e.uparam1 != 0, rare_rates->nar_lily)
                 ? EnemyType::NAR_LILY
                 : EnemyType::POISON_LILY);
       }
@@ -904,7 +907,7 @@ void Map::add_enemy(
       break;
     }
     case 0x0064: // TObjEneSlime
-      add(this->check_and_log_rare_enemy(e.uparam1 & 0x01, rare_rates->pouilly_slime)
+      add(this->check_and_log_rare_enemy(e.uparam1 != 0, rare_rates->pouilly_slime)
               ? EnemyType::POUILLY_SLIME
               : EnemyType::POFUILLY_SLIME);
       default_num_children = 4;
