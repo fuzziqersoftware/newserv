@@ -118,21 +118,14 @@ void PSOLFGEncryption::encrypt_both_endian(
 
 PSOV2Encryption::PSOV2Encryption(uint32_t seed)
     : PSOLFGEncryption(seed, this->STREAM_LENGTH + 1, this->STREAM_LENGTH) {
-  uint32_t esi, ebx, edi, eax, edx, var1;
-  esi = 1;
-  ebx = this->initial_seed;
-  edi = 0x15;
-  this->stream[56] = ebx;
-  this->stream[55] = ebx;
-  while (edi <= 0x46E) {
-    eax = edi;
-    var1 = eax / 55;
-    edx = eax - (var1 * 55);
-    ebx = ebx - esi;
-    edi = edi + 0x15;
-    this->stream[edx] = esi;
-    esi = ebx;
-    ebx = this->stream[edx];
+  uint32_t a = 1, b = this->initial_seed;
+  this->stream[0x37] = b;
+  for (uint16_t virtual_index = 0x15; virtual_index <= 0x36 * 0x15; virtual_index += 0x15) {
+    b -= a;
+    this->stream[virtual_index % 0x37] = a;
+    uint32_t c = a;
+    a = b;
+    b = c;
   }
   for (size_t x = 0; x < 5; x++) {
     this->update_stream();
@@ -141,26 +134,11 @@ PSOV2Encryption::PSOV2Encryption(uint32_t seed)
 }
 
 void PSOV2Encryption::update_stream() {
-  uint32_t esi, edi, eax, ebp, edx;
-  edi = 1;
-  edx = 0x18;
-  eax = edi;
-  while (edx > 0) {
-    esi = this->stream[eax + 0x1F];
-    ebp = this->stream[eax] - esi;
-    this->stream[eax] = ebp;
-    eax++;
-    edx--;
+  for (size_t z = 1; z < 0x19; z++) {
+    this->stream[z] -= this->stream[z + 0x1F];
   }
-  edi = 0x19;
-  edx = 0x1F;
-  eax = edi;
-  while (edx > 0) {
-    esi = this->stream[eax - 0x18];
-    ebp = this->stream[eax] - esi;
-    this->stream[eax] = ebp;
-    eax++;
-    edx--;
+  for (size_t z = 0x19; z < 0x38; z++) {
+    this->stream[z] -= this->stream[z - 0x18];
   }
   this->offset = 1;
   this->cycles++;
