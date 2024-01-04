@@ -17,12 +17,12 @@ void player_use_item(shared_ptr<Client> c, size_t item_index, shared_ptr<PSOLFGE
 
   auto player = c->character();
   auto& item = player->inventory.items[item_index];
-  uint32_t item_identifier = item.data.primary_identifier();
+  uint32_t primary_identifier = item.data.primary_identifier();
 
   if (item.data.is_common_consumable()) { // Monomate, etc.
     // Nothing to do (it should be deleted)
 
-  } else if (item_identifier == 0x030200) { // Technique disk
+  } else if ((primary_identifier & 0xFFFF0000) == 0x03020000) { // Technique disk
     auto item_parameter_table = s->item_parameter_table(c->version());
     uint8_t max_level = item_parameter_table->get_max_tech_level(player->disp.visual.char_class, item.data.data1[4]);
     if (item.data.data1[2] > max_level) {
@@ -30,7 +30,7 @@ void player_use_item(shared_ptr<Client> c, size_t item_index, shared_ptr<PSOLFGE
     }
     player->set_technique_level(item.data.data1[4], item.data.data1[2]);
 
-  } else if ((item_identifier & 0xFFFF00) == 0x030A00) { // Grinder
+  } else if ((primary_identifier & 0xFFFF00) == 0x030A0000) { // Grinder
     if (item.data.data1[2] > 2) {
       throw runtime_error("incorrect grinder value");
     }
@@ -51,7 +51,7 @@ void player_use_item(shared_ptr<Client> c, size_t item_index, shared_ptr<PSOLFGE
     }
     weapon.data.data1[3] += (item.data.data1[2] + 1);
 
-  } else if ((item_identifier & 0xFFFF00) == 0x030B00) { // Material
+  } else if ((primary_identifier & 0xFFFF0000) == 0x030B0000) { // Material
     auto p = c->character();
 
     using Type = PSOBBCharacterFile::MaterialType;
@@ -104,7 +104,7 @@ void player_use_item(shared_ptr<Client> c, size_t item_index, shared_ptr<PSOLFGE
       p->set_material_usage(type, p->get_material_usage(type) + 1);
     }
 
-  } else if ((item_identifier & 0xFFFF00) == 0x030F00) { // AddSlot
+  } else if ((primary_identifier & 0xFFFF0000) == 0x030F0000) { // AddSlot
     auto& armor = player->inventory.items[player->inventory.find_equipped_item(EquipSlot::ARMOR)];
     if (armor.data.data1[5] >= 4) {
       throw runtime_error("armor already at maximum slot count");
@@ -116,57 +116,57 @@ void player_use_item(shared_ptr<Client> c, size_t item_index, shared_ptr<PSOLFGE
     item.data.unwrap(c->version());
     should_delete_item = false;
 
-  } else if (item_identifier == 0x003300) {
+  } else if (primary_identifier == 0x00330000) {
     // Unseal Sealed J-Sword => Tsumikiri J-Sword
     item.data.data1[1] = 0x32;
     should_delete_item = false;
 
-  } else if (item_identifier == 0x00AB00) {
+  } else if (primary_identifier == 0x00AB0000) {
     // Unseal Lame d'Argent => Excalibur
     item.data.data1[1] = 0xAC;
     should_delete_item = false;
 
-  } else if (item_identifier == 0x01034D) {
+  } else if (primary_identifier == 0x01034D00) {
     // Unseal Limiter => Adept
     item.data.data1[2] = 0x4E;
     should_delete_item = false;
 
-  } else if (item_identifier == 0x01034F) {
+  } else if (primary_identifier == 0x01034F00) {
     // Unseal Swordsman Lore => Proof of Sword-Saint
     item.data.data1[2] = 0x50;
     should_delete_item = false;
 
-  } else if (item_identifier == 0x030C00) {
+  } else if (primary_identifier == 0x030C0000) {
     // Cell of MAG 502
     auto& mag = player->inventory.items[player->inventory.find_equipped_item(EquipSlot::MAG)];
     mag.data.data1[1] = (player->disp.visual.section_id & 1) ? 0x1D : 0x21;
 
-  } else if (item_identifier == 0x030C01) {
+  } else if (primary_identifier == 0x030C0100) {
     // Cell of MAG 213
     auto& mag = player->inventory.items[player->inventory.find_equipped_item(EquipSlot::MAG)];
     mag.data.data1[1] = (player->disp.visual.section_id & 1) ? 0x27 : 0x22;
 
-  } else if (item_identifier == 0x030C02) {
+  } else if (primary_identifier == 0x030C0200) {
     // Parts of RoboChao
     auto& mag = player->inventory.items[player->inventory.find_equipped_item(EquipSlot::MAG)];
     mag.data.data1[1] = 0x28;
 
-  } else if (item_identifier == 0x030C03) {
+  } else if (primary_identifier == 0x030C0300) {
     // Heart of Opa Opa
     auto& mag = player->inventory.items[player->inventory.find_equipped_item(EquipSlot::MAG)];
     mag.data.data1[1] = 0x29;
 
-  } else if (item_identifier == 0x030C04) {
+  } else if (primary_identifier == 0x030C0400) {
     // Heart of Pian
     auto& mag = player->inventory.items[player->inventory.find_equipped_item(EquipSlot::MAG)];
     mag.data.data1[1] = 0x2A;
 
-  } else if (item_identifier == 0x030C05) {
+  } else if (primary_identifier == 0x030C0500) {
     // Heart of Chao
     auto& mag = player->inventory.items[player->inventory.find_equipped_item(EquipSlot::MAG)];
     mag.data.data1[1] = 0x2B;
 
-  } else if ((item_identifier & 0xFFFF00) == 0x031500) {
+  } else if ((primary_identifier & 0xFFFF0000) == 0x03150000) {
     // Christmas Present, etc. - use unwrap_table + probabilities therein
     auto item_parameter_table = s->item_parameter_table(c->version());
     auto table = item_parameter_table->get_event_items(item.data.data1[2]);

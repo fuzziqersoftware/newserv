@@ -987,7 +987,7 @@ bool ItemCreator::shop_does_not_contain_duplicate_or_too_many_similar_weapons(
   return true;
 }
 
-bool ItemCreator::shop_does_not_contain_duplicate_item_by_primary_identifier(
+bool ItemCreator::shop_does_not_contain_duplicate_item_by_data1_0_1_2(
     const vector<ItemData>& shop, const ItemData& item) {
   for (const auto& shop_item : shop) {
     if ((shop_item.data1[0] == item.data1[0]) &&
@@ -1080,7 +1080,7 @@ void ItemCreator::generate_armor_shop_shields(vector<ItemData>& shop, size_t pla
       }
     }
 
-    if (this->shop_does_not_contain_duplicate_item_by_primary_identifier(shop, item)) {
+    if (this->shop_does_not_contain_duplicate_item_by_data1_0_1_2(shop, item)) {
       shop.emplace_back(std::move(item));
       items_generated++;
     }
@@ -1114,7 +1114,7 @@ void ItemCreator::generate_armor_shop_units(vector<ItemData>& shop, size_t playe
     item.data1[0] = 1;
     item.data1[1] = 3;
     item.data1[2] = pt.pop();
-    if (this->shop_does_not_contain_duplicate_item_by_primary_identifier(shop, item)) {
+    if (this->shop_does_not_contain_duplicate_item_by_data1_0_1_2(shop, item)) {
       shop.emplace_back(std::move(item));
       items_generated++;
     }
@@ -1225,7 +1225,7 @@ void ItemCreator::generate_rare_tool_shop_recovery_items(
       item.data1[0] = 3;
       item.data1[1] = tool_item_defs[type].first;
       item.data1[2] = tool_item_defs[type].second;
-      if (this->shop_does_not_contain_duplicate_item_by_primary_identifier(shop, item)) {
+      if (this->shop_does_not_contain_duplicate_item_by_data1_0_1_2(shop, item)) {
         shop.emplace_back(std::move(item));
         items_generated++;
       }

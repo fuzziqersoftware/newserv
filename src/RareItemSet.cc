@@ -446,13 +446,13 @@ std::string RareItemSet::serialize_json(shared_ptr<const ItemNameIndex> name_ind
             }
 
             for (const auto& spec : this->get_enemy_specs(GameMode::NORMAL, episode, difficulty, section_id, rt_index)) {
-              uint32_t primary_identifier = (spec.item_code[0] << 16) | (spec.item_code[1] << 8) | spec.item_code[2];
-              if (primary_identifier == 0) {
+              uint32_t data1_0_1_2 = (spec.item_code[0] << 16) | (spec.item_code[1] << 8) | spec.item_code[2];
+              if (data1_0_1_2 == 0) {
                 continue;
               }
 
               auto frac = reduce_fraction<uint64_t>(spec.probability, 0x100000000);
-              auto spec_json = JSON::list({string_printf("%" PRIu64 "/%" PRIu64, frac.first, frac.second), primary_identifier});
+              auto spec_json = JSON::list({string_printf("%" PRIu64 "/%" PRIu64, frac.first, frac.second), data1_0_1_2});
               if (name_index) {
                 ItemData data;
                 data.data1[0] = spec.item_code[0];
@@ -473,13 +473,13 @@ std::string RareItemSet::serialize_json(shared_ptr<const ItemNameIndex> name_ind
             auto area_list = JSON::list();
 
             for (const auto& spec : this->get_box_specs(GameMode::NORMAL, episode, difficulty, section_id, area)) {
-              uint32_t primary_identifier = (spec.item_code[0] << 16) | (spec.item_code[1] << 8) | spec.item_code[2];
-              if (primary_identifier == 0) {
+              uint32_t data1_0_1_2 = (spec.item_code[0] << 16) | (spec.item_code[1] << 8) | spec.item_code[2];
+              if (data1_0_1_2 == 0) {
                 continue;
               }
 
               auto frac = reduce_fraction<uint64_t>(spec.probability, 0x100000000);
-              area_list.emplace_back(JSON::list({string_printf("%" PRIu64 "/%" PRIu64, frac.first, frac.second), std::move(primary_identifier)}));
+              area_list.emplace_back(JSON::list({string_printf("%" PRIu64 "/%" PRIu64, frac.first, frac.second), data1_0_1_2}));
               if (name_index) {
                 ItemData data;
                 data.data1[0] = spec.item_code[0];

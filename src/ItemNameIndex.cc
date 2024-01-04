@@ -4,22 +4,6 @@
 
 using namespace std;
 
-// class ItemNameIndex {
-// public:
-//   ItemNameIndex(std::shared_ptr<const ItemParameterTable> pmt, const std::vector<std::string>& name_coll);
-//   std::string describe_item(const ItemData& item, bool include_color_escapes = false) const;
-//   ItemData parse_item_description(const std::string& description) const;
-// private:
-//   ItemData parse_item_description_phase(const std::string& description, bool skip_special) const;
-//   std::shared_ptr<const ItemParameterTable> item_parameter_table;
-//   struct ItemMetadata {
-//     uint32_t primary_identifier;
-//     std::string name;
-//   };
-//   std::unordered_map<uint32_t, std::shared_ptr<ItemMetadata>> primary_identifier_indexes;
-//   std::map<std::string, std::shared_ptr<ItemMetadata>> name_indexes;
-// };
-
 ItemNameIndex::ItemNameIndex(
     Version version,
     std::shared_ptr<const ItemParameterTable> item_parameter_table,
@@ -55,7 +39,9 @@ ItemNameIndex::ItemNameIndex(
   };
   auto find_items_2d = [&](uint64_t data1) {
     for (size_t x = 0; x < 0x100; x++) {
-      if (find_items_1d(data1 | (static_cast<uint64_t>(x) << 48), 2) == 0) {
+      size_t effective_data1 = data1 | (static_cast<uint64_t>(x) << 48);
+      size_t data2_position = (effective_data1 == 0x0302000000000000) ? 4 : 2;
+      if (find_items_1d(effective_data1, data2_position) == 0) {
         break;
       }
     }
@@ -182,17 +168,15 @@ std::string ItemNameIndex::describe_item(
     ret_tokens.emplace_back("Wrapped");
   }
 
-  // Add the item name. Technique disks are special because the level is part of
-  // the primary identifier, so we manually generate the name instead of looking
-  // it up.
+  // Add the item name
   uint32_t primary_identifier = item.primary_identifier();
-  if ((primary_identifier & 0xFFFFFF00) == 0x00030200) {
+  if ((primary_identifier & 0xFFFF0000) == 0x03020000) {
     string technique_name;
     try {
       technique_name = tech_id_to_name.at(item.data1[4]);
       technique_name[0] = toupper(technique_name[0]);
     } catch (const out_of_range&) {
-      technique_name = string_printf("!TECH:%02hhX", item.data1[4]);
+      technique_name = string_printf("!TD:%02hhX", item.data1[4]);
     }
     // Hide the level for Reverser and Ryuker, unless the level isn't 1
     if ((item.data1[2] == 0) && ((item.data1[4] == 0x0E) || (item.data1[4] == 0x11))) {
@@ -204,9 +188,8 @@ std::string ItemNameIndex::describe_item(
     try {
       auto meta = this->primary_identifier_index.at(primary_identifier);
       ret_tokens.emplace_back(meta->name);
-
     } catch (const out_of_range&) {
-      ret_tokens.emplace_back(string_printf("!ID:%06" PRIX32, primary_identifier));
+      ret_tokens.emplace_back(string_printf("!ID:%08" PRIX32, primary_identifier));
     }
   }
 
@@ -492,10 +475,12 @@ ItemData ItemNameIndex::parse_item_description_phase(const std::string& descript
     desc = desc.substr(1);
   }
 
+  // Tech disks should have already been handled above, so we don't need to
+  // special-case 0302xxxx identifiers here.
   uint32_t primary_identifier = name_it->second->primary_identifier;
-  ret.data1[0] = (primary_identifier >> 16) & 0xFF;
-  ret.data1[1] = (primary_identifier >> 8) & 0xFF;
-  ret.data1[2] = primary_identifier & 0xFF;
+  ret.data1[0] = (primary_identifier >> 24) & 0xFF;
+  ret.data1[1] = (primary_identifier >> 16) & 0xFF;
+  ret.data1[2] = (primary_identifier >> 8) & 0xFF;
 
   if (ret.data1[0] == 0x00) {
     // Weapons: add special, grind and percentages (or name, if S-rank)

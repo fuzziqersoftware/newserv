@@ -71,16 +71,17 @@ uint32_t ItemData::primary_identifier() const {
   // The game treats any item starting with 04 as Meseta, and ignores the rest
   // of data1 (the value is in data2)
   if (this->data1[0] == 0x04) {
-    return 0x040000;
+    return 0x04000000;
   }
   if (this->data1[0] == 0x03 && this->data1[1] == 0x02) {
-    return 0x030200; // Tech disk (data1[2] is level, so omit it)
+    // Tech disk (tech ID is data1[4], not [2])
+    return 0x03020000 | (this->data1[4] << 8) | this->data1[2];
   } else if (this->data1[0] == 0x02) {
-    return 0x020000 | (this->data1[1] << 8); // Mag
+    return 0x02000000 | (this->data1[1] << 16); // Mag
   } else if (this->is_s_rank_weapon()) {
-    return (this->data1[0] << 16) | (this->data1[1] << 8);
+    return (this->data1[0] << 24) | (this->data1[1] << 16);
   } else {
-    return (this->data1[0] << 16) | (this->data1[1] << 8) | this->data1[2];
+    return (this->data1[0] << 24) | (this->data1[1] << 16) | (this->data1[2] << 8);
   }
 }
 
@@ -164,10 +165,9 @@ void ItemData::enforce_min_stack_size(Version version) {
 }
 
 bool ItemData::is_common_consumable(uint32_t primary_identifier) {
-  if (primary_identifier == 0x030200) {
-    return false;
-  }
-  return (primary_identifier >= 0x030000) && (primary_identifier < 0x030A00);
+  return (primary_identifier >= 0x03000000) &&
+      (primary_identifier < 0x030A0000) &&
+      ((primary_identifier & 0xFFFF0000) != 0x03020000);
 }
 
 bool ItemData::is_common_consumable() const {
@@ -664,6 +664,23 @@ ItemData ItemData::from_data(const string& data) {
   if (ret.data1[0] > 4) {
     throw runtime_error("invalid item class");
   }
+  return ret;
+}
+
+ItemData ItemData::from_primary_identifier(Version version, uint32_t primary_identifier) {
+  ItemData ret;
+  if (primary_identifier > 0x04000000) {
+    throw runtime_error("invalid item class");
+  }
+  ret.data1[0] = (primary_identifier >> 24) & 0xFF;
+  ret.data1[1] = (primary_identifier >> 16) & 0xFF;
+  if ((primary_identifier & 0xFFFF0000) == 0x03020000) {
+    ret.data1[4] = (primary_identifier >> 8) & 0xFF;
+    ret.data1[2] = primary_identifier & 0xFF;
+  } else {
+    ret.data1[2] = (primary_identifier >> 8) & 0xFF;
+  }
+  ret.set_tool_item_amount(version, 1);
   return ret;
 }
 

@@ -134,7 +134,7 @@ private:
       const std::vector<ItemData>& shop, const ItemData& item);
   static bool shop_does_not_contain_duplicate_or_too_many_similar_weapons(
       const std::vector<ItemData>& shop, const ItemData& item);
-  static bool shop_does_not_contain_duplicate_item_by_primary_identifier(
+  static bool shop_does_not_contain_duplicate_item_by_data1_0_1_2(
       const std::vector<ItemData>& shop, const ItemData& item);
   void generate_armor_shop_armors(
       std::vector<ItemData>& shop, size_t player_level);

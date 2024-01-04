@@ -397,11 +397,11 @@ PSOBBCharacterFile::SymbolChatEntry PSOBBCharacterFile::DefaultSymbolChatEntry::
 // TODO: Eliminate duplication between this function and the parallel function
 // in PlayerBank
 void PSOBBCharacterFile::add_item(const ItemData& item, Version version) {
-  uint32_t pid = item.primary_identifier();
+  uint32_t primary_identifier = item.primary_identifier();
 
   // Annoyingly, meseta is in the disp data, not in the inventory struct. If the
   // item is meseta, we have to modify disp instead.
-  if (pid == MESETA_IDENTIFIER) {
+  if (primary_identifier == 0x04000000) {
     this->add_meseta(item.data2d);
     return;
   }
@@ -413,7 +413,7 @@ void PSOBBCharacterFile::add_item(const ItemData& item, Version version) {
     // player's inventory
     size_t y;
     for (y = 0; y < this->inventory.num_items; y++) {
-      if (this->inventory.items[y].data.primary_identifier() == item.primary_identifier()) {
+      if (this->inventory.items[y].data.primary_identifier() == primary_identifier) {
         break;
       }
     }

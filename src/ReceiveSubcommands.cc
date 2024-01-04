@@ -3118,7 +3118,7 @@ static void on_photon_drop_exchange_for_item_bb(shared_ptr<Client> c, uint8_t, u
     try {
       auto p = c->character();
 
-      size_t found_index = p->inventory.find_item_by_primary_identifier(0x031000);
+      size_t found_index = p->inventory.find_item_by_primary_identifier(0x03100000);
       auto found_item = p->remove_item(p->inventory.items[found_index].data.id, 0, c->version());
       send_destroy_item_to_lobby(c, found_item.id, found_item.stack_size(c->version()));
 
@@ -3150,7 +3150,7 @@ static void on_photon_drop_exchange_for_s_rank_special_bb(shared_ptr<Client> c, 
       static const array<uint8_t, 0x10> costs({60, 60, 20, 20, 30, 30, 30, 50, 40, 50, 40, 40, 50, 40, 40, 40});
       uint8_t cost = costs.at(cmd.special_type);
 
-      size_t payment_item_index = p->inventory.find_item_by_primary_identifier(0x031000);
+      size_t payment_item_index = p->inventory.find_item_by_primary_identifier(0x03100000);
       // Ensure weapon exists before removing PDs, so inventory state will be
       // consistent in case of error
       p->inventory.find_item(cmd.item_id);
@@ -3186,7 +3186,7 @@ static void on_secret_lottery_ticket_exchange_bb(shared_ptr<Client> c, uint8_t, 
     auto p = c->character();
     ssize_t slt_index = -1;
     try {
-      slt_index = p->inventory.find_item_by_primary_identifier(0x031003); // Secret Lottery Ticket
+      slt_index = p->inventory.find_item_by_primary_identifier(0x03100300); // Secret Lottery Ticket
     } catch (const out_of_range&) {
     }
 
@@ -3234,7 +3234,7 @@ static void on_photon_crystal_exchange_bb(shared_ptr<Client> c, uint8_t, uint8_t
   if (l->is_game() && (l->base_version == Version::BB_V4) && l->check_flag(Lobby::Flag::QUEST_IN_PROGRESS)) {
     check_size_t<G_ExchangePhotonCrystals_BB_6xDF>(data, size);
     auto p = c->character();
-    size_t index = p->inventory.find_item_by_primary_identifier(0x031002);
+    size_t index = p->inventory.find_item_by_primary_identifier(0x03100200);
     auto item = p->remove_item(p->inventory.items[index].data.id, 1, c->version());
     send_destroy_item_to_lobby(c, item.id, 1);
   }
@@ -3284,7 +3284,7 @@ static void on_quest_F95F_result_bb(shared_ptr<Client> c, uint8_t, uint8_t, void
       throw runtime_error("invalid result index");
     }
 
-    size_t index = p->inventory.find_item_by_primary_identifier(0x031004); // Photon Ticket
+    size_t index = p->inventory.find_item_by_primary_identifier(0x03100400); // Photon Ticket
     auto ticket_item = p->remove_item(p->inventory.items[index].data.id, result.first, c->version());
     // TODO: Shouldn't we send a 6x29 here? Check if this causes desync in an
     // actual game
@@ -3417,7 +3417,7 @@ static void on_upgrade_weapon_attribute_bb(shared_ptr<Client> c, uint8_t, uint8_
       size_t item_index = p->inventory.find_item(cmd.item_id);
       auto& item = p->inventory.items[item_index].data;
 
-      uint32_t payment_primary_identifier = cmd.payment_type ? 0x031001 : 0x031000;
+      uint32_t payment_primary_identifier = cmd.payment_type ? 0x03100100 : 0x03100000;
       size_t payment_index = p->inventory.find_item_by_primary_identifier(payment_primary_identifier);
       auto& payment_item = p->inventory.items[payment_index].data;
       if (payment_item.stack_size(c->version()) < cmd.payment_count) {

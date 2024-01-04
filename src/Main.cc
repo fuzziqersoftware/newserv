@@ -1472,11 +1472,12 @@ Action a_name_all_items(
       fputc('\n', stderr);
 
       for (uint32_t primary_identifier : all_primary_identifiers) {
-        fprintf(stderr, "%06" PRIX32 ":", primary_identifier);
+        fprintf(stderr, "%08" PRIX32 ":", primary_identifier);
         for (size_t v_s = 0; v_s < NUM_VERSIONS; v_s++) {
           const auto& index = s.item_name_indexes.at(v_s);
           if (index) {
-            ItemData item(static_cast<uint64_t>(primary_identifier) << 40);
+            Version version = static_cast<Version>(v_s);
+            ItemData item = ItemData::from_primary_identifier(version, primary_identifier);
             string name = index->describe_item(item);
             fprintf(stderr, " %30s", name.c_str());
           }

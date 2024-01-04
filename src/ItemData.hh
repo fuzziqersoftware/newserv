@@ -6,8 +6,6 @@
 #include "Text.hh"
 #include "Version.hh"
 
-constexpr uint32_t MESETA_IDENTIFIER = 0x040000;
-
 class ItemParameterTable;
 
 enum class EquipSlot {
@@ -126,6 +124,7 @@ struct ItemData { // 0x14 bytes
   void clear();
 
   static ItemData from_data(const std::string& data);
+  static ItemData from_primary_identifier(Version version, uint32_t primary_identifier);
   std::string hex() const;
   uint32_t primary_identifier() const;
 

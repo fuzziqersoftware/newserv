@@ -451,9 +451,9 @@ PlayerRecordsBB_Challenge::operator PlayerRecordsV3_Challenge<false>() const {
 }
 
 void PlayerBank::add_item(const ItemData& item, Version version) {
-  uint32_t pid = item.primary_identifier();
+  uint32_t primary_identifier = item.primary_identifier();
 
-  if (pid == MESETA_IDENTIFIER) {
+  if (primary_identifier == 0x04000000) {
     this->meseta += item.data2d;
     if (this->meseta > 999999) {
       this->meseta = 999999;
@@ -465,7 +465,7 @@ void PlayerBank::add_item(const ItemData& item, Version version) {
   if (combine_max > 1) {
     size_t y;
     for (y = 0; y < this->num_items; y++) {
-      if (this->items[y].data.primary_identifier() == item.primary_identifier()) {
+      if (this->items[y].data.primary_identifier() == primary_identifier) {
         break;
       }
     }
