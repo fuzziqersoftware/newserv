@@ -3422,30 +3422,38 @@ static void on_E8_BB(shared_ptr<Client> c, uint16_t command, uint32_t, string& d
       }
       break;
     }
-    case 0x0AE8: { // Move guild card in list
-      auto& cmd = check_size_t<C_MoveGuildCard_BB_0AE8>(data);
-      if (cmd.position >= max_count) {
-        throw invalid_argument("invalid new position");
-      }
-      size_t index;
-      for (index = 0; index < max_count; index++) {
-        if (gcf->entries[index].data.guild_card_number == cmd.guild_card_number) {
-          break;
+    case 0x0AE8: { // Swap guild card positions in list
+      auto& cmd = check_size_t<C_SwapGuildCardPositions_BB_0AE8>(data);
+      size_t index1 = max_count;
+      size_t index2 = max_count;
+      for (size_t z = 0; z < max_count; z++) {
+        if (gcf->entries[z].data.guild_card_number == cmd.guild_card_number1) {
+          if (index1 >= max_count) {
+            index1 = z;
+          } else {
+            throw runtime_error("guild card 1 appears multiple times in file");
+          }
+        }
+        if (gcf->entries[z].data.guild_card_number == cmd.guild_card_number2) {
+          if (index2 >= max_count) {
+            index2 = z;
+          } else {
+            throw runtime_error("guild card 2 appears multiple times in file");
+          }
         }
       }
-      if (index >= max_count) {
-        throw invalid_argument("player does not have requested guild card");
+      if ((index1 >= max_count) || (index2 >= max_count)) {
+        throw runtime_error("player does not have both requested guild cards");
       }
-      auto moved_gc = gcf->entries[index];
-      for (; index < cmd.position; index++) {
-        gcf->entries[index] = gcf->entries[index + 1];
+
+      if (index1 != index2) {
+        PSOBBGuildCardFile::Entry displaced_entry = gcf->entries[index1];
+        gcf->entries[index1] = gcf->entries[index2];
+        gcf->entries[index2] = displaced_entry;
+        c->log.info("Swapped positions of guild cards %" PRIu32 " and %" PRIu32,
+            cmd.guild_card_number1.load(), cmd.guild_card_number2.load());
+        should_save = true;
       }
-      for (; index > cmd.position; index--) {
-        gcf->entries[index] = gcf->entries[index - 1];
-      }
-      gcf->entries[index] = moved_gc;
-      c->log.info("Moved guild card %" PRIu32 " to position %zu", cmd.guild_card_number.load(), index);
-      should_save = true;
       break;
     }
     default:

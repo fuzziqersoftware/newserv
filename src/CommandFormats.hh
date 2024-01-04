@@ -3222,11 +3222,11 @@ struct C_WriteGuildCardComment_BB_09E8 {
   pstring<TextEncoding::UTF16, 0x58> comment;
 } __packed__;
 
-// 0AE8 (C->S): Set guild card position in list
+// 0AE8 (C->S): Swap positions of guild cards in list
 
-struct C_MoveGuildCard_BB_0AE8 {
-  le_uint32_t guild_card_number = 0;
-  le_uint32_t position = 0;
+struct C_SwapGuildCardPositions_BB_0AE8 {
+  le_uint32_t guild_card_number1 = 0;
+  le_uint32_t guild_card_number2 = 0;
 } __packed__;
 
 // E9 (S->C): Remove player from spectator team (Episode 3)
