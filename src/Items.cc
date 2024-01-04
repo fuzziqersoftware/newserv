@@ -264,17 +264,17 @@ void apply_mag_feed_result(
     bool version_has_rare_mags) {
 
   static const unordered_map<uint32_t, size_t> result_index_for_fed_item({
-      {0x030000, 0}, // Monomate
-      {0x030001, 1}, // Dimate
-      {0x030002, 2}, // Trimate
-      {0x030100, 3}, // Monofluid
-      {0x030101, 4}, // Difluid
-      {0x030102, 5}, // Trifluid
-      {0x030600, 6}, // Antidote
-      {0x030601, 7}, // Antiparalysis
-      {0x030300, 8}, // Sol Atomizer
-      {0x030400, 9}, // Moon Atomizer
-      {0x030500, 10}, // Star Atomizer
+      {0x03000000, 0}, // Monomate
+      {0x03000100, 1}, // Dimate
+      {0x03000200, 2}, // Trimate
+      {0x03010000, 3}, // Monofluid
+      {0x03010100, 4}, // Difluid
+      {0x03010200, 5}, // Trifluid
+      {0x03060000, 6}, // Antidote
+      {0x03060100, 7}, // Antiparalysis
+      {0x03030000, 8}, // Sol Atomizer
+      {0x03040000, 9}, // Moon Atomizer
+      {0x03050000, 10}, // Star Atomizer
   });
 
   size_t result_index = result_index_for_fed_item.at(fed_item.primary_identifier());
