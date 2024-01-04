@@ -1750,13 +1750,15 @@ ssize_t ItemCreator::apply_tekker_deltas(ItemData& item, uint8_t section_id) {
       } else {
         new_special = item.data1[4];
       }
-      if ((new_special != item.data1[4]) &&
-          (this->item_parameter_table->get_special(item.data1[4]).type ==
-              this->item_parameter_table->get_special(new_special).type)) {
-        this->log.info("(Special) Delta canceled because it would change special category");
-        item.data1[4] = new_special;
+      if (new_special != item.data1[4]) {
+        if (this->item_parameter_table->get_special(item.data1[4]).type ==
+            this->item_parameter_table->get_special(new_special).type) {
+          item.data1[4] = new_special;
+        } else {
+          this->log.info("(Special) Delta canceled because it would change special category");
+        }
       }
-    } catch (const runtime_error&) {
+    } catch (const out_of_range&) {
       // Invalid special number passed to get_special; just ignore it
     }
     luck += this->tekker_adjustment_set->get_luck_for_special_upgrade(delta_index);
