@@ -11,27 +11,20 @@ See TODO.md for a list of known issues and future work I've curated, or go to th
 **Table of contents**
 * [Compatibility](#compatibility)
 * Setup
-    * [Configuration](#configuration)
+    * [Server setup](#server-setup)
+    * [How to connect](#how-to-connect)
+    * [Client patch directories for PC and BB](#client-patch-directories)
+* Features and configuration
     * [Installing quests](#installing-quests)
     * [Item tables and drop modes](#item-tables-and-drop-modes)
     * [Cross-version play](#cross-version-play)
     * [Episode 3 features](#episode-3-features)
-    * [Client patch directories for PC and BB](#client-patch-directories)
     * [Memory patches and DOL files for GC](#memory-patches-and-dol-files)
     * [Using newserv as a proxy](#using-newserv-as-a-proxy)
     * [Chat commands](#chat-commands)
-* How to connect
-    * Connecting local clients
-        * [PSO DC](#pso-dc)
-        * [PSO DC on Flycast](#pso-dc-on-flycast)
-        * [PSO PC](#pso-pc)
-        * [PSO GC on a real GameCube](#pso-gc-on-a-real-gamecube)
-        * [PSO GC on Dolphin](#pso-gc-on-dolphin)
-        * [PSO BB](#pso-bb)
-    * [Connecting external clients](#connecting-external-clients)
 * [Non-server features](#non-server-features)
 
-## Compatibility
+# Compatibility
 
 newserv supports several versions of PSO, including various development prototypes. Specifically:
 | Version        | Lobbies      | Games        | Proxy        |
@@ -59,15 +52,25 @@ newserv supports several versions of PSO, including various development prototyp
 2. *Some BB-specific features are not well-tested (for example, some quests that use rare commands may not work properly). Please submit a GitHub issue if you find something that doesn't work.*
 3. *This is the only version of PSO that doesn't have any way to identify the player's account - there is no serial number or username. For this reason, AllowUnregisteredUsers must be enabled in config.json to support PC NTE, and PC NTE players receive a random Guild Card number every time they connect. To prevent abuse, PC NTE support can be disabled in config.json.*
 
-## Setup
+# Setup
 
-### Configuration
+## Server setup
 
 Currently newserv works on macOS, Windows, and Ubuntu Linux. It will likely work on other Linux flavors too.
 
-There is a fairly recent macOS ARM64 release on the newserv GitHub repository. You may need to install libevent manually even if you use this release (run `brew install libevent`).
+### Windows/macOS
 
-There is a fairly recent Windows release on the newserv GitHub repository also. It's built with Cygwin, and all the necessary DLL files should be included. That said, I've only tested it on my own machine and there is no CI for Windows builds like there is for macOS and Linux, so if it doesn't work for you, please open a GitHub issue to let me know.
+1. Download the latest `release-windows-amd64.zip` (Windows) or `release-macos-arm64.zip` (macOS) file from the [releases page](https://github.com/fuzziqersoftware/newserv/releases).
+2. Extract the contents of the `release` folder to a location on your computer.
+3. Edit the `config.example.json` file in the `system` folder as needed, then rename it to `config.json`.
+4. If you plan to play Blue Burst on newserv, set up the patch directory. See [client patch directories](#client-patch-directories) for more information.
+5. Run `newserv.exe` (Windows) or `newserv` (macOS).
+
+### Linux
+
+To run newserv on Linux, see the building section below.
+
+### Building
 
 If you're not using a release from the GitHub repository, do this to build newserv:
 1. If you're on Windows, install Cygwin. While doing so, install the `cmake`, `gcc-core`, `gcc-g++`, `git`, `libevent2.1_7`, `make`, `libiconv-devel`, and `zlib` packages. Do the rest of these steps inside a Cygwin shell (not a Windows cmd shell or PowerShell).
@@ -76,16 +79,95 @@ If you're not using a release from the GitHub repository, do this to build newse
 4. Optionally, install resource_dasm (https://github.com/fuzziqersoftware/resource_dasm). This will enable newserv to send memory patches and load DOL files on PSO GC clients. PSO GC clients can play PSO normally on newserv without this.
 5. Run `cmake . && make` in the newserv directory.
 
-After building newserv or downloading a release, do this to set it up and use it:
-1. In the system/ directory, make a copy of config.example.json named config.json, and edit it appropriately.
-2. If you plan to play PSO Blue Burst on newserv, set up the patch directory. See the "Client patch directories" section below.
-3. Run `./newserv` in the newserv directory. This will start the game server and run the interactive shell. You may need `sudo` if newserv's built-in DNS server is enabled.
-4. If you set AllowUnregisteredUsers to false in config.json, use the interactive shell to add your license. Run `help` in the shell to see how to do this.
-5. Set your client's network settings appropriately and start an online game. See the "Connecting local clients" or "Connecting remote clients" section to see how to get your game client to connect.
-
 To use newserv in other ways (e.g. for translating data), see the end of this document.
 
-### Installing quests
+## How to connect
+
+### PSO DC
+
+Depending on the version of PSO DC that you have, the instructions to connect to a newserv instance will vary.
+
+If you have NTE, USv1, EUv1, or EUv2 and a Broadband Adapter, edit the broadband DNS address to newserv's IP address with newserv's DNS server running. Otherwise, it is necessary to patch the disc or use a codebreaker code to remove the Hunter License server check and/or redirect PSO to the newserv instance. Patching the disc or creating a codebreaker code is beyond the scope of this document.
+
+### PSO DC on Flycast
+
+If you're emulating PSO DC, NTE, USv1, EUv1, and EUv2 will connect to newserv by setting the following options in Flycast's `emu.cfg` file under `[network]`:
+- DNS = Your newserv's server address (newserv's DNS server must be running on port 53)
+- EmulateBBA = yes
+- Enable = yes
+
+It is also necessary to save any DNS information to the flash memory of the Dreamcast to use the BBA - the easiest way to do this is to use the website option in USv2 and then choose the save to flash option.
+
+If the server is running on the same machine as Flycast, this might not work, even if you point Flycast's DNS queries at your local IP address (instead of 127.0.0.1). In this case, you can modify the loaded executable in memory to make it connect anywhere you want. There is a script included with newserv that can do this on macOS; a similar technique could be done manually using scanmem on Linux or Cheat Engine on Windows. To use the script, do this:
+1. Build and install memwatch (https://github.com/fuzziqersoftware/memwatch).
+2. Start Flycast and run PSO. (You must start PSO before running the script; it won't work if you run the script before loading the game.)
+3. Run `sudo patch_flycast_memory.py <original-destination>`. Replace `<original-destination>` with the hostname that PSO wants to connect to (you can find this out by using Wireshark and looking for DNS queries). The script may take up to a minute; you can continue using Flycast while it runs, but don't start an online game until the script is done.
+4. Run newserv and start an online game in PSO.
+
+If you use this method, you'll have to run the script every time you start PSO in Flycast, but you won't have to run it again if you start another online game without restarting emulation.
+
+If using JPv1, JPv2, or USv2, it is also necessary to remove the Hunter Licence server check, either with a disc patch or codebreaker code. Patching the disc or creating a codebreaker code is beyond the scope of this document.
+
+### PSO PC
+
+PSO PC has its connection addresses in `pso.exe`. Hex edit the executable with the connection address you want to connect to. Common server addresses to search for to replace are:
+- pso20.sonic.isao.net
+- sg207634.sonicteam.com
+- pso-mp01.sonic.isao.net
+- gsproduc.ath.cx
+- sylverant.net 
+The version of PSO PC I have has the server addresses starting at offset 0x29CB34 in pso.exe. Change those addresses to "localhost" (without quotes) if you just want to connect to a locally-running newserv instance. Alternatively, you can add an entry to the Windows hosts file (C:\Windows\System32\drivers\etc\hosts) to redirect the connection to 127.0.0.1 (localhost) or any other IP address.
+
+### PSO GC on a real GameCube
+
+You can make PSO connect to newserv by setting its default gateway and DNS server addresses in network settings to newserv's address. newserv's DNS server must be running on port 53 and must be accessible to the GameCube.
+
+If you have PSO Plus or Episode III, it won't want to connect to a server on the same local network as the GameCube itself, as determined by the GameCube's IP address and subnet mask. In the old days, one way to get around this was to create a fake network adapter on the server (or use an existing real one) that has an IP address on a different subnet, tell the GameCube that the server is the default gateway (as above), and have the server reply to the DNS request with its non-local IP address. To do this with newserv, just set LocalAddress in the config file to a different interface. For example, if the GameCube is on the 192.168.0.x network and your other adapter has address 10.0.1.6, set newserv's LocalAddress to 10.0.1.6 and set PSO's DNS server and default gateway addresses to the server's 192.168.0.x address. This may not work on modern systems or on non-Windows machines - I haven't tested it in many years.
+
+### PSO GC on Dolphin
+
+If you're using the HLE BBA type, set the BBA's DNS server address to newserv's IP address and it should work. (If newserv is on the same machine as Dolphin, you will need to use an action replay code directed at 127.0.0.1 to connect, as PSO rejects DNS queries from the same IP address.) Set PSO's network settings the same as listed below.
+
+If you're using the TAP BBA type, you'll have to set PSO's network settings appropriately for your tap interface. Set the DNS server address in PSO's network settings to newserv's IP address.
+
+If you're using a version of Dolphin with tapserver support, you can make it connect to a newserv instance running on the same machine via the tapserver interface. You do not need to install or run tapserver. To do this:
+1. Set Dolphin's BBA type to tapserver (Config -> GameCube -> SP1).
+2. Enable newserv's IP stack simulator according to the comments in config.json and start newserv.
+3. In PSO's network settings, enable DHCP ("Automatically obtain an IP address"), set DNS server address to "Automatic", and leave DHCP Hostname as "Not set". Leave the proxy server settings blank.
+4. Start an online game.
+
+### PSO BB
+
+The PSO BB client has been modified and distributed in many different forms. newserv supports most, but not all, of the common distributions. Unlike other versions, it's important that the client and server have the same map files, so make sure to set up the patch directory based on the client you'll be using with newserv. (See the "Client patch directories" section for instructions on setting this up.)
+
+The original Japanese and US versions of PSO BB should work, but you'll have to modify your hosts file or edit psobb.exe to point to your newserv instance. The original versions are packed, so this is a more involved process than simply opening the executable in a hex editor and finding/replacing some strings.
+
+Alternatively, you can use the Tethealla client (https://archive.org/details/psobb-tethealla-client); you can find the connection addresses starting at 0x56D724 in psobb.exe. Overwrite these addresses with your server's hostname or IP address, and you should be able to connect.
+
+### Connecting external clients
+
+If you want to accept connections from outside your local network, you'll need to set ExternalAddress to your public IP address in the configuration file, and you'll likely need to open some ports in your router's NAT configuration - specifically, all the TCP ports listed in PortConfiguration in config.json.
+
+For GC clients, you'll have to use newserv's built-in DNS server or set up your own DNS server as well. If you want external clients to be able to use your DNS server, you'll have to forward UDP port 53 to your newserv instance. Remote players can then connect to your server by entering your DNS server's IP address in their client's network configuration.
+
+## Client patch directories
+
+newserv implements a patch server for PSO PC and PSO BB game data. Any file or directory you put in the system/patch-bb or system/patch-pc directories will be synced to clients when they connect to the patch server.
+
+For Blue Burst set up, the below is mandatory for a smooth experience:
+
+1. Browse to your chosen client's data directory.
+2. Copy all the map_*.dat files and data.gsl file and place them in `system/patch-bb/data`
+
+For BB clients, newserv reads some files out of the patch data to implement game logic, so it's important that certain game files are synchronized between the server and the client. newserv contains defaults for these files in the system/blueburst/map directory, but if these don't match the client's copies of the files, odd behavior will occur in games.
+
+To make server startup faster, newserv caches the modification times, sizes, and checksums of the files in the patch directories. If the patch server appears to be misbehaving, try deleting the .metadata-cache.json file in the relevant patch directory to force newserv to recompute all the checksums. Also, in the case when checksums are cached, newserv may not actually load the data for a patch file until it's needed by a client. Therefore, modifying any part of the patch tree while newserv is running can cause clients to see an inconsistent view of it.
+
+Patch directory contents are cached in memory. If you've changed any of these files, you can run `reload patches` in the interactive shell to make the changes take effect without restarting the server.
+
+# Server feature configuration
+
+## Installing quests
 
 newserv automatically finds quests in the subdirectories of the system/quests/ directory. To install your own quests, or to use quests you've saved using the proxy's Save Files option, just put them in one of the subdirectories there and name them appropriately. The subdirectories and their behaviors (e.g. in which game modes they should appear and for which PSO versions) is defined in the QuestCategories field in config.json.
 
@@ -139,7 +221,7 @@ When newserv indexes the quests during startup, it will warn (but not fail) if a
 
 Quest contents are cached in memory, but if you've changed the contents of the quests directory, you can re-index the quests without restarting the server by running `reload quests` in the interactive shell. The new quests will be available immediately, but any games with quests already in progress will continue using the old versions of the quests until those quests end.
 
-### Item tables and drop modes
+## Item tables and drop modes
 
 newserv supports server-side item generation on all game versions, except for the earliest DC prototypes (NTE and 11/2000). By default, the game behaves as it did on the original servers - on all versions except BB, item drops are controlled by the leader client in each game, and on BB, item drops are controlled by the server.
 
@@ -156,7 +238,7 @@ The drop mode can be changed at any time during a game with the `$dropmode` chat
 
 In the server drop modes, the item tables used to generate common items are in the `system/item-tables/ItemPT-*` files. (The V2 files are used for V1 as well.) The rare item tables are in the `rare-table-*.json` files. Unlike the original formats, it's possible to make each enemy drop multiple different rare items at different rates, though the default tables never do this.
 
-### Cross-version play
+## Cross-version play
 
 All versions of PSO can see and interact with each other in the lobby. newserv also allows some versions to play in-game with each other:
 * DC V1 players can join DC V2 games if the difficulty level isn't set to Ultimate and the creator chose to allow V1 players.
@@ -166,7 +248,7 @@ All versions of PSO can see and interact with each other in the lobby. newserv a
 
 In V1/V2 cross-version play, when any of the server drop modes are used, the server uses the drop table corresponding to the version the game was created with. (For example, if a DC V1 player created the game, rare-table-v1.json will be used, even after V2 players join.)
 
-### Episode 3 features
+## Episode 3 features
 
 newserv supports many features unique to Episode 3:
 * CARD battles. Not every combination of abilities has been tested yet, so if you find a feature or card ability that doesn't work like it's supposed to, please make a GitHub issue and describe the situation (the attacking card(s), defending card(s), and ability or condition that didn't work).
@@ -177,11 +259,11 @@ newserv supports many features unique to Episode 3:
 * Participating in card auctions. (The auction contents must be configured in config.json.)
 * Decorations in lobbies. Currently only images are supported; the game also supports loading custom 3D models in lobbies, but newserv does not implement this (yet).
 
-#### Battle records
+### Battle records
 
 After playing a battle, you can save the record of the battle with the `$saverec` command. You can then replay the battle later by using the `$playrec` command in a lobby - this will create a spectator team and play the recording of the battle as if it were happening in realtime. Note that there is a bug in older versions of Dolphin that seems to be frequently triggered when playing battle records, which causes the emulator to crash with the message `QObject::~QObject: Timers cannot be stopped from another thread`. To avoid this, use the latest version of Dolphin.
 
-#### Tournaments
+### Tournaments
 
 Tournaments work differently than they did on Sega's servers. Tournaments can be created with the `create-tournament` shell command, which enables players to register for them. (Use `help` to see all the arguments - there are many!) The `start-tournament` shell command starts the tournament (and prevents further registrations), but this doesn't schedule any matches. Instead, players who are ready to play their next match can all stand at the 4-player battle table near the lobby warp in the same CARD lobby, and the tournament match will start automatically.
 
@@ -189,7 +271,7 @@ These tournament semantics mean that there can be multiple matches in the same t
 
 The Meseta rewards for winning tournament matches can be configured in config.json.
 
-#### Episode 3 files
+### Episode 3 files
 
 Episode 3 state and game data is stored in the system/ep3 directory. The files in there are:
 * card-definitions.mnr: Compressed card definition list, sent to Episode 3 clients at connect time. Card stats and abilities can be changed by editing this file.
@@ -205,21 +287,7 @@ There is no public editor for Episode 3 maps and quests, but the format is descr
 
 Like quests, Episode 3 card definitions, maps, and quests are cached in memory. If you've changed any of these files, you can run `reload ep3` in the interactive shell to make the changes take effect without restarting the server.
 
-### Client patch directories
-
-If you're not playing PSO Blue Burst on newserv, you can skip these steps.
-
-newserv implements a patch server for PSO PC and PSO BB game data. Any file or directory you put in the system/patch-bb or system/patch-pc directories will be synced to clients when they connect to the patch server.
-
-To make server startup faster, newserv caches the modification times, sizes, and checksums of the files in the patch directories. If the patch server appears to be misbehaving, try deleting the .metadata-cache.json file in the relevant patch directory to force newserv to recompute all the checksums. Also, in the case when checksums are cached, newserv may not actually load the data for a patch file until it's needed by a client. Therefore, modifying any part of the patch tree while newserv is running can cause clients to see an inconsistent view of it.
-
-For BB clients, newserv reads some files out of the patch data to implement game logic, so it's important that certain game files are synchronized between the server and the client. newserv contains defaults for these files in the system/blueburst/map directory, but if these don't match the client's copies of the files, odd behavior will occur in games.
-
-Specifically, the patch-bb directory should contain at least the data.gsl file and all map_*.dat files from the version of PSOBB that you want to play on newserv. You can copy these files out of the client's data directory from a clean installation, and put them in system/patch-bb/data.
-
-Patch directory contents are cached in memory. If you've changed any of these files, you can run `reload patches` in the interactive shell to make the changes take effect without restarting the server.
-
-### Memory patches and DOL files
+## Memory patches and DOL files
 
 Everything in this section requires resource_dasm to be installed, so newserv can use the PowerPC assembler and disassembler from its libresource_file library. If resource_dasm is not installed, newserv will still build and run, but these features will not be available.
 
@@ -240,7 +308,7 @@ Like other kinds of data, functions and DOL files are cached in memory. If you'v
 
 I mainly built the DOL loading functionality for documentation purposes. By now, there are many better ways to load homebrew code on an unmodified GameCube, but to my knowledge there isn't another open-source implementation of this method in existence.
 
-### Using newserv as a proxy
+## Using newserv as a proxy
 
 If you want to play online on remote servers rather than running your own server, newserv also includes a PSO proxy. Currently this works with PSO GC and may work with PC and DC; it also works with some BB clients in specific situations.
 
@@ -275,7 +343,7 @@ The remote server will probably try to assign you a Guild Card number that doesn
 
 Some chat commands (see below) have the same basic function on the proxy server but have different effects or conditions. In addition, there are some server shell commands that affect clients on the proxy (run `help` in the shell to see what they are). If there's only one proxy session open, the shell's proxy commands will affect that session. Otherwise, you'll have to specify which session to affect with the `on` prefix - to send a chat message in LinkedSession:17205AE4, for example, you would run `on 17205AE4 chat ...`.
 
-### Chat commands
+## Chat commands
 
 newserv supports a variety of commands players can use by chatting in-game. Any chat message that begins with `$` is treated as a chat command. (If you actually want to send a chat message starting with `$`, type `$$` instead.) On the DC 11/2000 prototype, `@` is used instead of `$` for all chat commands, since `$` does not appear on the English virtual keyboard.
 
@@ -365,70 +433,7 @@ Some commands only work on the game server and not on the proxy server. The chat
     * `$kick <identifier>`: Disconnects a player. The identifier may be the player's name or Guild Card number.
     * `$ban <identifier>`: Bans a player. The identifier may be the player's name or Guild Card number.
 
-### Connecting local clients
-
-#### PSO DC
-
-Some versions of PSO DC will connect to a private server if you just set their DNS server address (in the network configuration) to newserv's address, and enable newserv's DNS server. This will not work for other versions; for those, you'll need a cheat code. Creating such a code is beyond the scope of this document.
-
-If you're emulating PSO DC or have a disc image, you can patch the appropriate files within the disc image to make it connect to any address you want. Creating such a patch is also beyond the scope of this document.
-
-#### PSO DC on Flycast
-
-If you're emulating PSO DC, all versions will connect to newserv by setting the following options in Flycast's `emu.cfg` file under `[network]`:
-- DNS = Your newserv's server address (newserv's DNS server must be running on port 53)
-- EmulateBBA = yes
-- Enable = yes
-
-It is also necessary to save any DNS information to the flash memory of the Dreamcast to use the BBA - the easiest way to do this is to use the website option in USv2 and then choose the save to flash option.
-
-Once set up, the EU and US versions will work without any extra set up (other than the HL Check Disable code for USv2), while the JP versions require HL Check Disable codes to be running.
-
-If the server is running on the same machine as Flycast, this might not work, even if you point Flycast's DNS queries at your local IP address (instead of 127.0.0.1). In this case, you can modify the loaded executable in memory to make it connect anywhere you want. There is a script included with newserv that can do this on macOS; a similar technique could be done manually using scanmem on Linux or Cheat Engine on Windows. To use the script, do this:
-1. Build and install memwatch (https://github.com/fuzziqersoftware/memwatch).
-2. Start Flycast and run PSO. (You must start PSO before running the script; it won't work if you run the script before loading the game.)
-3. Run `sudo patch_flycast_memory.py <original-destination>`. Replace `<original-destination>` with the hostname that PSO wants to connect to (you can find this out by using Wireshark and looking for DNS queries). The script may take up to a minute; you can continue using Flycast while it runs, but don't start an online game until the script is done.
-4. Run newserv and start an online game in PSO.
-
-If you use this method, you'll have to run the script every time you start PSO in Flycast, but you won't have to run it again if you start another online game without restarting emulation.
-
-#### PSO PC
-
-The version of PSO PC I have has the server addresses starting at offset 0x29CB34 in pso.exe. Using a hex editor, change those to "localhost" (without quotes) if you just want to connect to a locally-running newserv instance. Alternatively, you can add an entry to the Windows hosts file (C:\Windows\System32\drivers\etc\hosts) to redirect the connection to 127.0.0.1 (localhost) or any other IP address.
-
-#### PSO GC on a real GameCube
-
-You can make PSO connect to newserv by setting its default gateway and DNS server addresses to newserv's address. newserv's DNS server must be running on port 53 and must be accessible to the GameCube.
-
-If you have PSO Plus or Episode III, it won't want to connect to a server on the same local network as the GameCube itself, as determined by the GameCube's IP address and subnet mask. In the old days, one way to get around this was to create a fake network adapter on the server (or use an existing real one) that has an IP address on a different subnet, tell the GameCube that the server is the default gateway (as above), and have the server reply to the DNS request with its non-local IP address. To do this with newserv, just set LocalAddress in the config file to a different interface. For example, if the GameCube is on the 192.168.0.x network and your other adapter has address 10.0.1.6, set newserv's LocalAddress to 10.0.1.6 and set PSO's DNS server and default gateway addresses to the server's 192.168.0.x address. This may not work on modern systems or on non-Windows machines - I haven't tested it in many years.
-
-#### PSO GC on Dolphin
-
-If you're using the HLE BBA type, set the BBA's DNS server address to newserv's IP address and it should work. (If newserv is on the same machine as Dolphin, try your local IP address or 127.0.0.1.) In PSO, use the example values below in PSO's network configuration.
-
-If you're using the TAP BBA type, you'll have to set PSO's network settings appropriately for your tap interface. Set the DNS server address in PSO's network settings to newserv's IP address.
-
-If you're using a version of Dolphin with tapserver support, you can make it connect to a newserv instance running on the same machine via the tapserver interface. You do not need to install or run tapserver. To do this:
-1. Set Dolphin's BBA type to tapserver (Config -> GameCube -> SP1).
-2. Enable newserv's IP stack simulator according to the comments in config.json and start newserv.
-3. In PSO's network settings, enable DHCP ("Automatically obtain an IP address"), set DNS server address to "Automatic", and leave DHCP Hostname as "Not set". Leave the proxy server settings blank.
-4. Start an online game.
-
-#### PSO BB
-
-The PSO BB client has been modified and distributed in many different forms. newserv supports most, but not all, of the common distributions. Unlike other versions, it's important that the client and server have the same map files, so make sure to set up the patch directory based on the client you'll be using with newserv. (See the "Client patch directories" section for instructions on setting this up.)
-
-The original Japanese and US versions of PSO BB should work, but you'll have to modify your hosts file or edit psobb.exe to point to your newserv instance. The original versions are packed, so this is a more involved process than simply opening the executable in a hex editor and finding/replacing some strings.
-
-Alternatively, you can use the Tethealla client (https://archive.org/details/psobb-tethealla-client); you can find the connection addresses starting at 0x56D724 in psobb.exe. Overwrite these addresses with your server's hostname or IP address, and you should be able to connect.
-
-### Connecting external clients
-
-If you want to accept connections from outside your local network, you'll need to set ExternalAddress to your public IP address in the configuration file, and you'll likely need to open some ports in your router's NAT configuration - specifically, all the TCP ports listed in PortConfiguration in config.json.
-
-For GC clients, you'll have to use newserv's built-in DNS server or set up your own DNS server as well. If you want external clients to be able to use your DNS server, you'll have to forward UDP port 53 to your newserv instance. Remote players can then connect to your server by entering your DNS server's IP address in their client's network configuration.
-
-### Non-server features
+# Non-server features
 
 newserv has many CLI options, which can be used to access functionality other than the game and proxy server. Run `newserv help` to see these options and how to use them. The non-server things newserv can do are:
 
