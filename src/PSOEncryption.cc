@@ -121,11 +121,10 @@ PSOV2Encryption::PSOV2Encryption(uint32_t seed)
   uint32_t a = 1, b = this->initial_seed;
   this->stream[0x37] = b;
   for (uint16_t virtual_index = 0x15; virtual_index <= 0x36 * 0x15; virtual_index += 0x15) {
-    b -= a;
     this->stream[virtual_index % 0x37] = a;
-    uint32_t c = a;
-    a = b;
-    b = c;
+    uint32_t c = b - a;
+    b = a;
+    a = c;
   }
   for (size_t x = 0; x < 5; x++) {
     this->update_stream();
