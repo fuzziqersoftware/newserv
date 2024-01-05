@@ -3966,31 +3966,7 @@ shared_ptr<Lobby> create_game_generic(
 
   auto current_lobby = c->require_lobby();
 
-  size_t min_level;
-  // A player's actual level is their displayed level - 1, so the minimums for
-  // Episode 1 (for example) are actually 1, 20, 40, 80.
-  switch (episode) {
-    case Episode::EP1: {
-      const auto& min_levels = (c->version() == Version::BB_V4) ? s->min_levels_v4[0] : DEFAULT_MIN_LEVELS_V3;
-      min_level = min_levels[difficulty];
-      break;
-    }
-    case Episode::EP2: {
-      const auto& min_levels = (c->version() == Version::BB_V4) ? s->min_levels_v4[1] : DEFAULT_MIN_LEVELS_V3;
-      min_level = min_levels[difficulty];
-      break;
-    }
-    case Episode::EP3:
-      min_level = 0;
-      break;
-    case Episode::EP4: {
-      const auto& min_levels = (c->version() == Version::BB_V4) ? s->min_levels_v4[2] : DEFAULT_MIN_LEVELS_V3;
-      min_level = min_levels[difficulty];
-      break;
-    }
-    default:
-      throw runtime_error("invalid episode");
-  }
+  size_t min_level = s->default_min_level_for_game(c->version(), episode, difficulty);
 
   auto p = c->character();
   if (!(c->license->flags & License::Flag::FREE_JOIN_GAMES) &&

@@ -342,6 +342,29 @@ shared_ptr<const QuestIndex> ServerState::quest_index(Version version) const {
   return is_ep3(version) ? this->ep3_download_quest_index : this->default_quest_index;
 }
 
+size_t ServerState::default_min_level_for_game(Version version, Episode episode, uint8_t difficulty) const {
+  // A player's actual level is their displayed level - 1, so the minimums for
+  // Episode 1 (for example) are actually 1, 20, 40, 80.
+  switch (episode) {
+    case Episode::EP1: {
+      const auto& min_levels = (version == Version::BB_V4) ? this->min_levels_v4[0] : DEFAULT_MIN_LEVELS_V3;
+      return min_levels.at(difficulty);
+    }
+    case Episode::EP2: {
+      const auto& min_levels = (version == Version::BB_V4) ? this->min_levels_v4[1] : DEFAULT_MIN_LEVELS_V3;
+      return min_levels.at(difficulty);
+    }
+    case Episode::EP3:
+      return 0;
+    case Episode::EP4: {
+      const auto& min_levels = (version == Version::BB_V4) ? this->min_levels_v4[2] : DEFAULT_MIN_LEVELS_V3;
+      return min_levels.at(difficulty);
+    }
+    default:
+      throw runtime_error("invalid episode");
+  }
+}
+
 void ServerState::dispatch_destroy_lobbies(evutil_socket_t, short, void* ctx) {
   reinterpret_cast<ServerState*>(ctx)->lobbies_to_destroy.clear();
 }

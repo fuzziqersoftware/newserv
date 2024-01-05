@@ -698,6 +698,14 @@ static void server_command_cheat(shared_ptr<Client> c, const std::string&) {
   } else {
     l->toggle_flag(Lobby::Flag::CHEATS_ENABLED);
     send_text_message_printf(l, "Cheat mode %s", l->check_flag(Lobby::Flag::CHEATS_ENABLED) ? "enabled" : "disabled");
+
+    if (!(c->license->flags & License::Flag::CHEAT_ANYWHERE)) {
+      size_t default_min_level = s->default_min_level_for_game(l->base_version, l->episode, l->difficulty);
+      if (l->min_level < default_min_level) {
+        l->min_level = default_min_level;
+        send_text_message_printf(l, "$C6Minimum level set\nto %" PRIu32, l->min_level + 1);
+      }
+    }
   }
 }
 
@@ -985,7 +993,19 @@ static void server_command_min_level(shared_ptr<Client> c, const std::string& ar
   check_is_game(l, true);
   check_is_leader(l, c);
 
-  l->min_level = stoull(args) - 1;
+  size_t new_min_level = stoull(args) - 1;
+
+  auto s = c->require_server_state();
+  bool cheats_allowed = (l->check_flag(Lobby::Flag::CHEATS_ENABLED) || (c->license->flags & License::Flag::CHEAT_ANYWHERE));
+  if (!cheats_allowed) {
+    size_t default_min_level = s->default_min_level_for_game(l->base_version, l->episode, l->difficulty);
+    if (new_min_level < default_min_level) {
+      send_text_message_printf(c, "$C6Cannot set minimum\nlevel below %zu", default_min_level + 1);
+      return;
+    }
+  }
+
+  l->min_level = new_min_level;
   send_text_message_printf(l, "$C6Minimum level set\nto %" PRIu32, l->min_level + 1);
 }
 

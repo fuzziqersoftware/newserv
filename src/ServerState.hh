@@ -282,6 +282,8 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   std::shared_ptr<const std::vector<std::string>> information_contents_for_client(std::shared_ptr<const Client> c) const;
   std::shared_ptr<const QuestIndex> quest_index(Version version) const;
 
+  size_t default_min_level_for_game(Version version, Episode episode, uint8_t difficulty) const;
+
   void set_port_configuration(const std::vector<PortConfiguration>& port_configs);
 
   std::shared_ptr<const std::string> load_bb_file(
