@@ -665,8 +665,14 @@ Map::Enemy::Enemy(uint16_t enemy_id, size_t source_index, uint8_t floor, EnemyTy
 }
 
 string Map::Enemy::str() const {
-  return string_printf("[Map::Enemy E-%hX source %zX %s floor=%02hhX flags=%02hhX last_hit_by_client_id=%hu]",
-      this->enemy_id, this->source_index, name_for_enum(this->type), this->floor, this->state_flags, this->last_hit_by_client_id);
+  return string_printf("[Map::Enemy E-%hX source %zX %s%s floor=%02hhX flags=%02hhX last_hit_by_client_id=%hu]",
+      this->enemy_id,
+      this->source_index,
+      name_for_enum(this->type),
+      enemy_type_is_rare(this->type) ? " RARE" : "",
+      this->floor,
+      this->state_flags,
+      this->last_hit_by_client_id);
 }
 
 string Map::Object::str() const {
@@ -738,8 +744,9 @@ bool Map::check_and_log_rare_enemy(bool default_is_rare, uint32_t rare_rate) {
     // TODO: We only need the first value from this crypt, so it's unfortunate
     // that we have to initialize the entire thing. Find a way to make this
     // faster.
-    PSOV2Encryption crypt(this->random_crypt->seed());
+    PSOV2Encryption crypt(this->random_crypt->seed() + 0x1000 + this->enemies.size());
     if ((static_cast<float>((crypt.next() >> 16) & 0xFFFF) / 65536.0f) < 0.002f) {
+      this->rare_enemy_indexes.emplace_back(this->enemies.size());
       return true;
     }
   }
@@ -828,15 +835,15 @@ void Map::add_enemy(
       add(EnemyType::NON_ENEMY_NPC);
       break;
 
-    case 0x0040: // TObjEneMoja
-      add(this->check_and_log_rare_enemy(e.uparam1 != 0, rare_rates->hildeblue)
+    case 0x0040: { // TObjEneMoja
+      bool default_is_rare = (this->version == Version::BB_V4) ? (e.uparam1 & 1) : (e.uparam1 != 0);
+      add(this->check_and_log_rare_enemy(default_is_rare, rare_rates->hildeblue)
               ? EnemyType::HILDEBLUE
               : EnemyType::HILDEBEAR);
       break;
+    }
     case 0x0041: { // TObjEneLappy
-      // On BB, the set rare condition is uparam1 & 1; on other versions it's
-      // simply uparam1 != 0.
-      bool default_is_rare = rare_rates ? (e.uparam1 & 1) : (e.uparam1 != 0);
+      bool default_is_rare = (this->version == Version::BB_V4) ? (e.uparam1 & 1) : (e.uparam1 != 0);
       bool is_rare = this->check_and_log_rare_enemy(default_is_rare, rare_rates->rappy);
       switch (episode) {
         case Episode::EP1:
@@ -893,7 +900,7 @@ void Map::add_enemy(
       if ((episode == Episode::EP2) && (e.floor == 0x11)) {
         add(EnemyType::DEL_LILY);
       } else {
-        add(this->check_and_log_rare_enemy(e.uparam1 != 0, rare_rates->nar_lily)
+        add(this->check_and_log_rare_enemy((this->version == Version::BB_V4) && (e.uparam1 & 1), rare_rates->nar_lily)
                 ? EnemyType::NAR_LILY
                 : EnemyType::POISON_LILY);
       }
@@ -907,7 +914,7 @@ void Map::add_enemy(
       break;
     }
     case 0x0064: // TObjEneSlime
-      add(this->check_and_log_rare_enemy(e.uparam1 != 0, rare_rates->pouilly_slime)
+      add(this->check_and_log_rare_enemy((this->version == Version::BB_V4) && (e.uparam1 & 1), rare_rates->pouilly_slime)
               ? EnemyType::POUILLY_SLIME
               : EnemyType::POFUILLY_SLIME);
       default_num_children = 4;

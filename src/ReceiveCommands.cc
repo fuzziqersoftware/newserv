@@ -4394,7 +4394,8 @@ static void on_6F(shared_ptr<Client> c, uint16_t command, uint32_t, string& data
     for (size_t z = 0; z < l->variations.size(); z++) {
       variations_str += string_printf("%" PRIX32, l->variations[z].load());
     }
-    send_text_message_printf(c, "Rare seed: %08" PRIX32 "\nVariations: %s", l->random_seed, variations_str.c_str());
+    send_text_message_printf(c, "Rare seed: %08" PRIX32 "\nRare enemies: %zu\nVariations: %s\n",
+        l->random_seed, l->map->rare_enemy_indexes.size(), variations_str.c_str());
   }
 
   bool should_resume_game = true;

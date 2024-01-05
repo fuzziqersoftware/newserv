@@ -1094,3 +1094,14 @@ const vector<EnemyType>& enemy_types_for_rare_table_index(Episode episode, uint8
     return empty_vec;
   }
 }
+
+bool enemy_type_is_rare(EnemyType type) {
+  return ((type == EnemyType::HILDEBLUE) ||
+      (type == EnemyType::AL_RAPPY) ||
+      (type == EnemyType::NAR_LILY) ||
+      (type == EnemyType::POUILLY_SLIME) ||
+      (type == EnemyType::MERISSA_AA) ||
+      (type == EnemyType::PAZUZU_ALT) ||
+      (type == EnemyType::DORPHON_ECLAIR) ||
+      (type == EnemyType::KONDRIEU));
+}

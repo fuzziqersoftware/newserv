@@ -4,7 +4,6 @@
 - Implement decrypt/encrypt actions for VMS files
 - Make UI strings localizable (e.g. entries in menus, welcome message, etc.)
 - Add an idle connection timeout for proxy sessions
-- Check server's rare enemy logic against GC's logic
 
 ## Episode 3
 
