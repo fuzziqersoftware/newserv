@@ -711,16 +711,21 @@ static void send_text(
     color_mode = ColorMode::STRIP;
   }
 
-  switch (color_mode) {
-    case ColorMode::NONE:
-      w.write(tt_encode_marked_optional(text, ch.language, is_w));
-      break;
-    case ColorMode::ADD:
-      w.write(tt_encode_marked_optional(add_color(text), ch.language, is_w));
-      break;
-    case ColorMode::STRIP:
-      w.write(tt_encode_marked_optional(strip_color(text), ch.language, is_w));
-      break;
+  try {
+    switch (color_mode) {
+      case ColorMode::NONE:
+        w.write(tt_encode_marked_optional(text, ch.language, is_w));
+        break;
+      case ColorMode::ADD:
+        w.write(tt_encode_marked_optional(add_color(text), ch.language, is_w));
+        break;
+      case ColorMode::STRIP:
+        w.write(tt_encode_marked_optional(strip_color(text), ch.language, is_w));
+        break;
+    }
+  } catch (const runtime_error& e) {
+    log_warning("Failed to encode message for %02hX command: %s", command, e.what());
+    return;
   }
 
   if (is_w) {
@@ -776,7 +781,13 @@ void send_message_box(shared_ptr<Client> c, const string& text) {
 }
 
 void send_ep3_timed_message_box(Channel& ch, uint32_t frames, const string& message) {
-  string encoded = tt_encode_marked(add_color(message), ch.language, false);
+  string encoded;
+  try {
+    encoded = tt_encode_marked(add_color(message), ch.language, false);
+  } catch (const runtime_error& e) {
+    log_warning("Failed to encode message for EA command: %s", e.what());
+    return;
+  }
   StringWriter w;
   w.put<S_TimedMessageBoxHeader_GC_Ep3_EA>({frames});
   w.write(encoded);
@@ -921,7 +932,12 @@ void send_prepared_chat_message(shared_ptr<Lobby> l, uint32_t from_guild_card_nu
   }
 }
 
-void send_chat_message(shared_ptr<Client> c, uint32_t from_guild_card_number, const string& from_name, const string& text, char private_flags) {
+void send_chat_message(
+    shared_ptr<Client> c,
+    uint32_t from_guild_card_number,
+    const string& from_name,
+    const string& text,
+    char private_flags) {
   string prepared_data = prepare_chat_data(
       c->version(),
       c->language(),

@@ -2978,7 +2978,11 @@ static void on_61_98(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
         if (auto_reply.size() & 1) {
           auto_reply.push_back(0);
         }
-        player->auto_reply.encode(tt_utf16_to_utf8(auto_reply), player->inventory.language);
+        try {
+          player->auto_reply.encode(tt_utf16_to_utf8(auto_reply), player->inventory.language);
+        } catch (const runtime_error& e) {
+          c->log.warning("Failed to decode auto-reply message: %s", e.what());
+        }
         c->license->auto_reply_message = auto_reply;
       } else {
         player->auto_reply.clear();
@@ -3001,8 +3005,12 @@ static void on_61_98(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
       if (cmd.auto_reply_enabled) {
         string auto_reply = data.substr(sizeof(cmd), 0xAC);
         strip_trailing_zeroes(auto_reply);
-        string encoded = tt_decode_marked(auto_reply, player->inventory.language, false);
-        player->auto_reply.encode(encoded, player->inventory.language);
+        try {
+          string encoded = tt_decode_marked(auto_reply, player->inventory.language, false);
+          player->auto_reply.encode(encoded, player->inventory.language);
+        } catch (const runtime_error& e) {
+          c->log.warning("Failed to decode auto-reply message: %s", e.what());
+        }
         c->license->auto_reply_message = auto_reply;
       } else {
         player->auto_reply.clear();
@@ -3073,8 +3081,12 @@ static void on_61_98(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
       if (cmd->auto_reply_enabled) {
         string auto_reply = data.substr(sizeof(cmd), 0xAC);
         strip_trailing_zeroes(auto_reply);
-        string encoded = tt_decode_marked(auto_reply, player->inventory.language, false);
-        player->auto_reply.encode(encoded, player->inventory.language);
+        try {
+          string encoded = tt_decode_marked(auto_reply, player->inventory.language, false);
+          player->auto_reply.encode(encoded, player->inventory.language);
+        } catch (const runtime_error& e) {
+          c->log.warning("Failed to decode auto-reply message: %s", e.what());
+        }
         c->license->auto_reply_message = auto_reply;
       } else {
         player->auto_reply.clear();
@@ -3098,7 +3110,11 @@ static void on_61_98(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
         if (auto_reply.size() & 1) {
           auto_reply.push_back(0);
         }
-        player->auto_reply.encode(tt_utf16_to_utf8(auto_reply), player->inventory.language);
+        try {
+          player->auto_reply.encode(tt_utf16_to_utf8(auto_reply), player->inventory.language);
+        } catch (const runtime_error& e) {
+          c->log.warning("Failed to decode auto-reply message: %s", e.what());
+        }
         c->license->auto_reply_message = auto_reply;
       } else {
         player->auto_reply.clear();
@@ -3223,7 +3239,13 @@ static void on_06(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
     text = text.substr(1);
   }
 
-  text = tt_decode_marked(text, c->language(), is_w);
+  try {
+    text = tt_decode_marked(text, c->language(), is_w);
+  } catch (const runtime_error& e) {
+    c->log.warning("Failed to decode chat message: %s", e.what());
+    send_text_message_printf(c, "$C4Failed to decode\nchat message:\n%s", e.what());
+    return;
+  }
   if (text.empty()) {
     return;
   }
@@ -3247,32 +3269,42 @@ static void on_06(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
   if (from_name.size() >= 2 && from_name[0] == '\t' && (from_name[1] == 'E' || from_name[1] == 'J')) {
     from_name = from_name.substr(2);
   }
+  static const string whisper_text = "(whisper)";
   for (size_t x = 0; x < l->max_clients; x++) {
     if (l->clients[x]) {
-      if (private_flags & (1 << x)) {
-        send_chat_message(l->clients[x], c->license->serial_number, from_name, "(whisper)", private_flags);
-      } else {
-        send_chat_message(l->clients[x], c->license->serial_number, from_name, text, private_flags);
+      const string& effective_text = (private_flags & (1 << x)) ? whisper_text : text;
+      try {
+        send_chat_message(l->clients[x], c->license->serial_number, from_name, effective_text, private_flags);
+      } catch (const runtime_error& e) {
+        l->clients[x]->log.warning("Failed to encode chat message: %s", e.what());
       }
     }
   }
   for (const auto& watcher_l : l->watcher_lobbies) {
     for (size_t x = 0; x < watcher_l->max_clients; x++) {
       if (watcher_l->clients[x]) {
-        send_chat_message(watcher_l->clients[x], c->license->serial_number, from_name, text, private_flags);
+        try {
+          send_chat_message(watcher_l->clients[x], c->license->serial_number, from_name, text, private_flags);
+        } catch (const runtime_error& e) {
+          watcher_l->clients[x]->log.warning("Failed to encode chat message: %s", e.what());
+        }
       }
     }
   }
 
   if (l->battle_record && l->battle_record->battle_in_progress()) {
-    auto prepared_message = prepare_chat_data(
-        c->version(),
-        c->language(),
-        c->lobby_client_id,
-        p->disp.name.decode(c->language()),
-        text,
-        private_flags);
-    l->battle_record->add_chat_message(c->license->serial_number, std::move(prepared_message));
+    try {
+      auto prepared_message = prepare_chat_data(
+          c->version(),
+          c->language(),
+          c->lobby_client_id,
+          p->disp.name.decode(c->language()),
+          text,
+          private_flags);
+      l->battle_record->add_chat_message(c->license->serial_number, std::move(prepared_message));
+    } catch (const runtime_error& e) {
+      l->log.warning("Failed to encode chat message for battle record: %s", e.what());
+    }
   }
 }
 
@@ -3902,7 +3934,11 @@ void on_D9(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
   if (is_w && (data.size() & 1)) {
     data.push_back(0);
   }
-  c->character(true, false)->info_board.encode(tt_decode_marked(data, c->language(), is_w), c->language());
+  try {
+    c->character(true, false)->info_board.encode(tt_decode_marked(data, c->language(), is_w), c->language());
+  } catch (const runtime_error& e) {
+    c->log.warning("Failed to decode info board message: %s", e.what());
+  }
 }
 
 void on_C7(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
@@ -3912,8 +3948,14 @@ void on_C7(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
     data.push_back(0);
   }
 
-  string message = tt_decode_marked(data, c->language(), is_w);
-  c->character(true, false)->auto_reply.encode(message, c->language());
+  string message;
+  try {
+    message = tt_decode_marked(data, c->language(), is_w);
+    c->character(true, false)->auto_reply.encode(message, c->language());
+  } catch (const runtime_error& e) {
+    c->log.warning("Failed to decode auto-reply message: %s", e.what());
+    return;
+  }
   c->license->auto_reply_message = message;
   c->license->save();
 }

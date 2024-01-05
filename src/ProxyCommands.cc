@@ -1145,7 +1145,7 @@ static HandlerResult C_B_D9(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t
     add_color_inplace(decoded);
     data = tt_utf8_to_utf16(data.data(), data.size());
   } catch (const runtime_error& e) {
-    ses->log.warning("Failed to replace escape characters in D9 command: %s", e.what());
+    ses->log.warning("Failed to decode and unescape D9 command: %s", e.what());
   }
   // TODO: We should check if the info board text was actually modified and
   // return HandlerResult::FORWARD if not.
@@ -1610,16 +1610,21 @@ static HandlerResult C_06(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t, 
     strip_trailing_zeroes(text);
 
     uint8_t private_flags = 0;
-    if (uses_utf16(ses->version())) {
-      if (text.size() & 1) {
-        text.push_back(0);
+    try {
+      if (uses_utf16(ses->version())) {
+        if (text.size() & 1) {
+          text.push_back(0);
+        }
+        text = tt_decode_marked(text, ses->language(), true);
+      } else if (!text.empty() && (text[0] != '\t') && is_ep3(ses->version())) {
+        private_flags = text[0];
+        text = tt_decode_marked(text.substr(1), ses->language(), false);
+      } else {
+        text = tt_decode_marked(text, ses->language(), false);
       }
-      text = tt_decode_marked(text, ses->language(), true);
-    } else if (!text.empty() && (text[0] != '\t') && is_ep3(ses->version())) {
-      private_flags = text[0];
-      text = tt_decode_marked(text.substr(1), ses->language(), false);
-    } else {
-      text = tt_decode_marked(text, ses->language(), false);
+    } catch (const runtime_error& e) {
+      ses->log.warning("Failed to decode and unescape chat text: %s", e.what());
+      return HandlerResult::Type::FORWARD;
     }
 
     if (text.empty()) {
