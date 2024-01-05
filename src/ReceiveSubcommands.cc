@@ -1,5 +1,6 @@
 #include "ReceiveSubcommands.hh"
 
+#include <math.h>
 #include <string.h>
 
 #include <memory>
@@ -2557,6 +2558,10 @@ static void on_steal_exp_bb(shared_ptr<Client> c, uint8_t, uint8_t, void* data, 
   const auto& cmd = check_size_t<G_StealEXP_BB_6xC6>(data, size);
 
   auto p = c->character();
+  if (c->character()->disp.stats.level >= 199) {
+    return;
+  }
+
   const auto& enemy = l->map->enemies.at(cmd.enemy_index);
   const auto& inventory = p->inventory;
   const auto& weapon = inventory.items[inventory.find_equipped_item(EquipSlot::WEAPON)];
@@ -2583,9 +2588,12 @@ static void on_steal_exp_bb(shared_ptr<Client> c, uint8_t, uint8_t, void* data, 
   // Note: The original code checks if special.type is 9, 10, or 11, and skips
   // applying the android bonus if so. We don't do anything for those special
   // types, so we don't check for that here.
-  uint32_t percent = special.amount + (char_class_is_android(p->disp.visual.char_class) ? 30 : 0);
-  uint32_t stolen_exp = min<uint32_t>((enemy_exp * percent) / 100, (l->difficulty + 1) * 20);
+  float percent = special.amount + ((l->difficulty == 3) && char_class_is_android(p->disp.visual.char_class) ? 30 : 0);
+  float ep2_factor = (l->episode == Episode::EP2) ? 1.3 : 1.0;
+  uint32_t stolen_exp = max<uint32_t>(min<uint32_t>((enemy_exp * percent * ep2_factor) / 100.0f, (l->difficulty + 1) * 20), 1);
   if (c->config.check_flag(Client::Flag::DEBUG_ENABLED)) {
+    c->log.info("Stolen EXP with bp_index=%" PRIX32 " enemy_exp=%" PRIu32 " percent=%g stolen_exp=%" PRIu32,
+        bp_index, enemy_exp, percent, stolen_exp);
     send_text_message_printf(c, "$C5+%" PRIu32 " E-%hX %s",
         stolen_exp, cmd.enemy_index.load(), name_for_enum(enemy.type));
   }
