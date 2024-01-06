@@ -68,18 +68,19 @@ Currently newserv works on macOS, Windows, and Ubuntu Linux. It will likely work
 
 ### Linux
 
-To run newserv on Linux, see the building section below.
+There are currently no precompiled releases for Linux. To run newserv on Linux, see the "Building from source" section below.
 
-### Building
+### Building from source
 
-If you're not using a release from the GitHub repository, do this to build newserv:
-1. If you're on Windows, install Cygwin. While doing so, install the `cmake`, `gcc-core`, `gcc-g++`, `git`, `libevent2.1_7`, `make`, `libiconv-devel`, and `zlib` packages. Do the rest of these steps inside a Cygwin shell (not a Windows cmd shell or PowerShell).
-2. Make sure you have CMake, libevent, and libiconv installed. (On macOS, `brew install cmake libevent libiconv`; on most Linuxes, `sudo apt-get install cmake libevent-dev`; on Windows, you already did this in step 1.)
-3. Build and install phosg (https://github.com/fuzziqersoftware/phosg).
-4. Optionally, install resource_dasm (https://github.com/fuzziqersoftware/resource_dasm). This will enable newserv to send memory patches and load DOL files on PSO GC clients. PSO GC clients can play PSO normally on newserv without this.
+1. Install the packages newserv depends on.
+    * If you're on Windows, install [Cygwin](https://www.cygwin.com/). While doing so, install the `cmake`, `gcc-core`, `gcc-g++`, `git`, `libevent2.1_7`, `make`, `libiconv-devel`, and `zlib` packages. Do the rest of these steps inside a Cygwin shell (not a Windows cmd shell or PowerShell).
+    * If you're on macOS, run `brew install cmake libevent libiconv`.
+    * If you're on Linux, run `sudo apt-get install cmake libevent-dev` (or use your Linux distribution's package manager).
+3. Build and install [phosg](https://github.com/fuzziqersoftware/phosg).
+4. Optionally, install [resource_dasm](https://github.com/fuzziqersoftware/resource_dasm). This will enable newserv to send memory patches and load DOL files on PSO GC clients. PSO GC clients can play PSO normally on newserv without this.
 5. Run `cmake . && make` in the newserv directory.
 
-After building newserv, edit system/config.example.json as needed, set up [client patch directories](#client-patch-directories) is planning to play Blue Burst, then run `./newserv` in newserv's directory.
+After building newserv, edit system/config.example.json as needed and rename it to system/config.json, set up [client patch directories](#client-patch-directories) if you're planning to play Blue Burst, then run `./newserv` in newserv's directory.
 
 To use newserv in other ways (e.g. for translating data), see the end of this document.
 
@@ -90,9 +91,9 @@ newserv implements a patch server for PSO PC and PSO BB game data. Any file or d
 For Blue Burst set up, the below is mandatory for a smooth experience:
 
 1. Browse to your chosen client's data directory.
-2. Copy all the map_*.dat files and data.gsl file and place them in `system/patch-bb/data`
+2. Copy all the map_*.dat files and the data.gsl file and place them in `system/patch-bb/data`
 
-For BB clients, newserv reads some files out of the patch data to implement game logic, so it's important that certain game files are synchronized between the server and the client. newserv contains defaults for these files in the system/blueburst/map directory, but if these don't match the client's copies of the files, odd behavior will occur in games.
+For BB clients, newserv reads some files out of the patch data to implement game logic, so it's important that certain game files are synchronized between the server and the client. newserv contains defaults for these files in the system/maps/bb-v4 directory, but if these don't match the client's copies of the files, odd behavior will occur in games.
 
 To make server startup faster, newserv caches the modification times, sizes, and checksums of the files in the patch directories. If the patch server appears to be misbehaving, try deleting the .metadata-cache.json file in the relevant patch directory to force newserv to recompute all the checksums. Also, in the case when checksums are cached, newserv may not actually load the data for a patch file until it's needed by a client. Therefore, modifying any part of the patch tree while newserv is running can cause clients to see an inconsistent view of it.
 
@@ -108,7 +109,7 @@ If you have NTE, USv1, EUv1, or EUv2 and a Broadband Adapter, edit the broadband
 
 ### PSO DC on Flycast
 
-If you're emulating PSO DC, NTE, USv1, EUv1, and EUv2 will connect to newserv by setting the following options in Flycast's `emu.cfg` file under `[network]`:
+If you're emulating PSO DC, the NTE, USv1, EUv1, and EUv2 versions will connect to newserv by setting the following options in Flycast's `emu.cfg` file under `[network]`:
 - DNS = Your newserv's server address (newserv's DNS server must be running on port 53)
 - EmulateBBA = yes
 - Enable = yes
@@ -116,7 +117,7 @@ If you're emulating PSO DC, NTE, USv1, EUv1, and EUv2 will connect to newserv by
 It is also necessary to save any DNS information to the flash memory of the Dreamcast to use the BBA - the easiest way to do this is to use the website option in USv2 and then choose the save to flash option.
 
 If the server is running on the same machine as Flycast, this might not work, even if you point Flycast's DNS queries at your local IP address (instead of 127.0.0.1). In this case, you can modify the loaded executable in memory to make it connect anywhere you want. There is a script included with newserv that can do this on macOS; a similar technique could be done manually using scanmem on Linux or Cheat Engine on Windows. To use the script, do this:
-1. Build and install memwatch (https://github.com/fuzziqersoftware/memwatch).
+1. Build and install [memwatch](https://github.com/fuzziqersoftware/memwatch).
 2. Start Flycast and run PSO. (You must start PSO before running the script; it won't work if you run the script before loading the game.)
 3. Run `sudo patch_flycast_memory.py <original-destination>`. Replace `<original-destination>` with the hostname that PSO wants to connect to (you can find this out by using Wireshark and looking for DNS queries). The script may take up to a minute; you can continue using Flycast while it runs, but don't start an online game until the script is done.
 4. Run newserv and start an online game in PSO.
