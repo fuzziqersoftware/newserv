@@ -12,8 +12,8 @@ See TODO.md for a list of known issues and future work I've curated, or go to th
 * [Compatibility](#compatibility)
 * Setup
     * [Server setup](#server-setup)
-    * [How to connect](#how-to-connect)
     * [Client patch directories for PC and BB](#client-patch-directories)
+    * [How to connect](#how-to-connect)
 * Features and configuration
     * [Installing quests](#installing-quests)
     * [Item tables and drop modes](#item-tables-and-drop-modes)
@@ -82,6 +82,21 @@ If you're not using a release from the GitHub repository, do this to build newse
 After building newserv, edit system/config.example.json as needed, set up [client patch directories](#client-patch-directories) is planning to play Blue Burst, then run `./newserv` in newserv's directory.
 
 To use newserv in other ways (e.g. for translating data), see the end of this document.
+
+## Client patch directories
+
+newserv implements a patch server for PSO PC and PSO BB game data. Any file or directory you put in the system/patch-bb or system/patch-pc directories will be synced to clients when they connect to the patch server.
+
+For Blue Burst set up, the below is mandatory for a smooth experience:
+
+1. Browse to your chosen client's data directory.
+2. Copy all the map_*.dat files and data.gsl file and place them in `system/patch-bb/data`
+
+For BB clients, newserv reads some files out of the patch data to implement game logic, so it's important that certain game files are synchronized between the server and the client. newserv contains defaults for these files in the system/blueburst/map directory, but if these don't match the client's copies of the files, odd behavior will occur in games.
+
+To make server startup faster, newserv caches the modification times, sizes, and checksums of the files in the patch directories. If the patch server appears to be misbehaving, try deleting the .metadata-cache.json file in the relevant patch directory to force newserv to recompute all the checksums. Also, in the case when checksums are cached, newserv may not actually load the data for a patch file until it's needed by a client. Therefore, modifying any part of the patch tree while newserv is running can cause clients to see an inconsistent view of it.
+
+Patch directory contents are cached in memory. If you've changed any of these files, you can run `reload patches` in the interactive shell to make the changes take effect without restarting the server.
 
 ## How to connect
 
@@ -152,21 +167,6 @@ Alternatively, you can use the Tethealla client (https://archive.org/details/pso
 If you want to accept connections from outside your local network, you'll need to set ExternalAddress to your public IP address in the configuration file, and you'll likely need to open some ports in your router's NAT configuration - specifically, all the TCP ports listed in PortConfiguration in config.json.
 
 For GC clients, you'll have to use newserv's built-in DNS server or set up your own DNS server as well. If you want external clients to be able to use your DNS server, you'll have to forward UDP port 53 to your newserv instance. Remote players can then connect to your server by entering your DNS server's IP address in their client's network configuration.
-
-## Client patch directories
-
-newserv implements a patch server for PSO PC and PSO BB game data. Any file or directory you put in the system/patch-bb or system/patch-pc directories will be synced to clients when they connect to the patch server.
-
-For Blue Burst set up, the below is mandatory for a smooth experience:
-
-1. Browse to your chosen client's data directory.
-2. Copy all the map_*.dat files and data.gsl file and place them in `system/patch-bb/data`
-
-For BB clients, newserv reads some files out of the patch data to implement game logic, so it's important that certain game files are synchronized between the server and the client. newserv contains defaults for these files in the system/blueburst/map directory, but if these don't match the client's copies of the files, odd behavior will occur in games.
-
-To make server startup faster, newserv caches the modification times, sizes, and checksums of the files in the patch directories. If the patch server appears to be misbehaving, try deleting the .metadata-cache.json file in the relevant patch directory to force newserv to recompute all the checksums. Also, in the case when checksums are cached, newserv may not actually load the data for a patch file until it's needed by a client. Therefore, modifying any part of the patch tree while newserv is running can cause clients to see an inconsistent view of it.
-
-Patch directory contents are cached in memory. If you've changed any of these files, you can run `reload patches` in the interactive shell to make the changes take effect without restarting the server.
 
 # Server feature configuration
 
