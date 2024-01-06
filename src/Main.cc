@@ -1864,6 +1864,11 @@ Action a_replay_ep3_battle_commands(
 
 Action a_run_server_replay_log(
     "", nullptr, +[](Arguments& args) {
+      {
+        string build_date = format_time(BUILD_TIMESTAMP);
+        config_log.info("newserv %s compiled at %s", GIT_REVISION_HASH, build_date.c_str());
+      }
+
       if (!isdir("system/players")) {
         config_log.info("Players directory does not exist; creating it");
         mkdir("system/players", 0755);
