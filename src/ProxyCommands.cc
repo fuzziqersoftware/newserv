@@ -1717,7 +1717,7 @@ static HandlerResult C_6x(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t c
       ses->floor = cmd.floor;
 
     } else if (data[0] == 0x0C) {
-      if (ses->config.check_flag(Client::Flag::INFINITE_HP_ENABLED)) {
+      if (is_v1_or_v2(ses->version()) && ses->config.check_flag(Client::Flag::INFINITE_HP_ENABLED)) {
         send_remove_conditions(ses->client_channel, ses->lobby_client_id);
         send_remove_conditions(ses->server_channel, ses->lobby_client_id);
       }

@@ -1183,7 +1183,7 @@ static void on_received_condition(shared_ptr<Client> c, uint8_t command, uint8_t
   auto l = c->require_lobby();
   if (l->is_game()) {
     forward_subcommand(c, command, flag, data, size);
-    if (cmd.client_id == c->lobby_client_id) {
+    if (is_v1_or_v2(c->version()) && (cmd.client_id == c->lobby_client_id)) {
       bool player_cheats_enabled = l->check_flag(Lobby::Flag::CHEATS_ENABLED) || (c->license->flags & License::Flag::CHEAT_ANYWHERE);
       if (player_cheats_enabled && c->config.check_flag(Client::Flag::INFINITE_HP_ENABLED)) {
         send_remove_conditions(c);

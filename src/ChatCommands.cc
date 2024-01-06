@@ -1513,7 +1513,7 @@ static void server_command_infinite_hp(shared_ptr<Client> c, const std::string&)
   c->config.toggle_flag(Client::Flag::INFINITE_HP_ENABLED);
   bool enabled = c->config.check_flag(Client::Flag::INFINITE_HP_ENABLED);
   send_text_message_printf(c, "$C6Infinite HP %s", enabled ? "enabled" : "disabled");
-  if (enabled && l->is_game()) {
+  if (enabled && l->is_game() && is_v1_or_v2(c->version())) {
     send_remove_conditions(c);
   }
 }
@@ -1524,7 +1524,7 @@ static void proxy_command_infinite_hp(shared_ptr<ProxyServer::LinkedSession> ses
   ses->config.toggle_flag(Client::Flag::INFINITE_HP_ENABLED);
   bool enabled = ses->config.check_flag(Client::Flag::INFINITE_HP_ENABLED);
   send_text_message_printf(ses->client_channel, "$C6Infinite HP %s", enabled ? "enabled" : "disabled");
-  if (enabled && ses->is_in_game) {
+  if (enabled && ses->is_in_game && is_v1_or_v2(ses->version())) {
     send_remove_conditions(ses->client_channel, ses->lobby_client_id);
     send_remove_conditions(ses->server_channel, ses->lobby_client_id);
   }
