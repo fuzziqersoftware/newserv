@@ -60,11 +60,11 @@ Currently newserv works on macOS, Windows, and Ubuntu Linux. It will likely work
 
 ### Windows/macOS
 
-1. Download the latest `release-windows-amd64.zip` (Windows) or `release-macos-arm64.zip` (macOS) file from the [releases page](https://github.com/fuzziqersoftware/newserv/releases).
-2. Extract the contents of the `release` folder to a location on your computer.
-3. Edit the `config.example.json` file in the `system` folder as needed, then rename it to `config.json`.
+1. Download the latest release-windows-amd64.zip or release-macos-arm64.zip file from the [releases page](https://github.com/fuzziqersoftware/newserv/releases).
+2. Extract the contents of the release folder to a location on your computer.
+3. Edit the config.example.json file in the system folder as needed, then rename it to config.json.
 4. If you plan to play Blue Burst on newserv, set up the patch directory. See [client patch directories](#client-patch-directories) for more information.
-5. Run `newserv.exe` (Windows) or `newserv` (macOS).
+5. Run the newserv executable.
 
 ### Linux
 
@@ -78,6 +78,8 @@ If you're not using a release from the GitHub repository, do this to build newse
 3. Build and install phosg (https://github.com/fuzziqersoftware/phosg).
 4. Optionally, install resource_dasm (https://github.com/fuzziqersoftware/resource_dasm). This will enable newserv to send memory patches and load DOL files on PSO GC clients. PSO GC clients can play PSO normally on newserv without this.
 5. Run `cmake . && make` in the newserv directory.
+
+After building newserv, edit system/config.example.json as needed, set up [client patch directories](#client-patch-directories) is planning to play Blue Burst, then run `./newserv` in newserv's directory.
 
 To use newserv in other ways (e.g. for translating data), see the end of this document.
 
@@ -115,7 +117,8 @@ PSO PC has its connection addresses in `pso.exe`. Hex edit the executable with t
 - sg207634.sonicteam.com
 - pso-mp01.sonic.isao.net
 - gsproduc.ath.cx
-- sylverant.net 
+- sylverant.net
+
 The version of PSO PC I have has the server addresses starting at offset 0x29CB34 in pso.exe. Change those addresses to "localhost" (without quotes) if you just want to connect to a locally-running newserv instance. Alternatively, you can add an entry to the Windows hosts file (C:\Windows\System32\drivers\etc\hosts) to redirect the connection to 127.0.0.1 (localhost) or any other IP address.
 
 ### PSO GC on a real GameCube
