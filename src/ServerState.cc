@@ -1352,7 +1352,16 @@ void ServerState::load_ep3_data() {
   const string& tournament_state_filename = "system/ep3/tournament-state.json";
   this->ep3_tournament_index = make_shared<Episode3::TournamentIndex>(
       this->ep3_map_index, this->ep3_com_deck_index, tournament_state_filename);
-  this->ep3_tournament_index->link_all_clients(this->shared_from_this());
+
+  shared_ptr<ServerState> s;
+  try {
+    s = this->shared_from_this();
+  } catch (const bad_weak_ptr&) {
+  }
+  if (s) {
+    this->ep3_tournament_index->link_all_clients(s);
+  }
+
   config_log.info("Loaded Episode 3 tournament state");
 }
 
