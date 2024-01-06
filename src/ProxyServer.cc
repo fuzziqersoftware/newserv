@@ -439,29 +439,25 @@ void ProxyServer::UnlinkedSession::on_input(Channel& ch, uint16_t command, uint3
 
     if (linked_ses.get()) {
       server->id_to_session.emplace(ses->license->serial_number, linked_ses);
-      if (linked_ses->version() != ses->version()) {
-        linked_ses->log.error("Linked session has different game version");
-      } else {
-        // Resume the linked session using the unlinked session
-        try {
-          if (ses->version() == Version::BB_V4) {
-            linked_ses->resume(
-                std::move(ses->channel),
-                ses->detector_crypt,
-                std::move(ses->login_command_bb));
-          } else {
-            linked_ses->resume(
-                std::move(ses->channel),
-                ses->detector_crypt,
-                ses->sub_version,
-                ses->character_name,
-                ses->hardware_id,
-                ses->xb_netloc,
-                ses->xb_9E_unknown_a1a);
-          }
-        } catch (const exception& e) {
-          linked_ses->log.error("Failed to resume linked session: %s", e.what());
+      // Resume the linked session using the unlinked session
+      try {
+        if (ses->version() == Version::BB_V4) {
+          linked_ses->resume(
+              std::move(ses->channel),
+              ses->detector_crypt,
+              std::move(ses->login_command_bb));
+        } else {
+          linked_ses->resume(
+              std::move(ses->channel),
+              ses->detector_crypt,
+              ses->sub_version,
+              ses->character_name,
+              ses->hardware_id,
+              ses->xb_netloc,
+              ses->xb_9E_unknown_a1a);
         }
+      } catch (const exception& e) {
+        linked_ses->log.error("Failed to resume linked session: %s", e.what());
       }
     }
   }
