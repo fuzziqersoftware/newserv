@@ -1477,9 +1477,15 @@ Action a_name_all_items(
           const auto& index = s.item_name_indexes.at(v_s);
           if (index) {
             Version version = static_cast<Version>(v_s);
+            auto pmt = s.item_parameter_table(version);
             ItemData item = ItemData::from_primary_identifier(version, primary_identifier);
             string name = index->describe_item(item);
-            fprintf(stderr, " %30s", name.c_str());
+            try {
+              bool is_rare = pmt->is_item_rare(item);
+              fprintf(stderr, " %30s%s", name.c_str(), is_rare ? " (*)" : "    ");
+            } catch (const out_of_range&) {
+              fprintf(stderr, "                                   ");
+            }
           }
         }
         fputc('\n', stderr);

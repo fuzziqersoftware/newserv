@@ -1574,9 +1574,10 @@ static void on_buy_shop_item(shared_ptr<Client> c, uint8_t command, uint8_t flag
   forward_subcommand_with_item_transcode_t(c, command, flag, cmd);
 }
 
-static void send_rare_notification_if_needed(shared_ptr<Client> to_c, const ItemData& item) {
+static void send_rare_notification_if_needed(shared_ptr<Client> to_c, const ItemData& item, bool is_from_rare_table) {
   auto s = to_c->require_server_state();
   if (!to_c->config.check_flag(Client::Flag::RARE_DROP_NOTIFICATIONS_ENABLED) ||
+      (!is_from_rare_table && (item.data1[0] != 0x03)) ||
       !s->item_parameter_table(to_c->version())->is_item_rare(item)) {
     return;
   }
@@ -1631,7 +1632,10 @@ static void on_box_or_enemy_item_drop_t(shared_ptr<Client> c, uint8_t command, u
         send_command_t(lc, command, flag, cmd);
       }
     }
-    send_rare_notification_if_needed(lc, item);
+    // TODO: Make rare drop notifications work in client drop mode. The problem
+    // is that we can't know if items are from the rare table or not when the
+    // client generates them, and some common items like Celestial Shield have
+    // 9 stars on v2 so they would be considered rare without that check.
   }
 }
 
@@ -2227,9 +2231,7 @@ static void on_entity_drop_item_request(shared_ptr<Client> c, uint8_t command, u
                     res.item.id.load(), cmd.floor, cmd.x.load(), cmd.z.load(), lc->channel.name.c_str());
                 l->add_item(cmd.floor, res.item, cmd.x, cmd.z, (1 << lc->lobby_client_id));
                 send_drop_item_to_channel(s, lc->channel, res.item, !is_box, cmd.floor, cmd.x, cmd.z, cmd.entity_id);
-                if (res.is_from_rare_table) {
-                  send_rare_notification_if_needed(lc, res.item);
-                }
+                send_rare_notification_if_needed(lc, res.item, res.is_from_rare_table);
               }
             }
 
@@ -2239,11 +2241,9 @@ static void on_entity_drop_item_request(shared_ptr<Client> c, uint8_t command, u
                 res.item.id.load(), cmd.floor, cmd.x.load(), cmd.z.load());
             l->add_item(cmd.floor, res.item, cmd.x, cmd.z, 0x00F);
             send_drop_item_to_lobby(l, res.item, !is_box, cmd.floor, cmd.x, cmd.z, cmd.entity_id);
-            if (res.is_from_rare_table) {
-              for (auto lc : l->clients) {
-                if (lc) {
-                  send_rare_notification_if_needed(lc, res.item);
-                }
+            for (auto lc : l->clients) {
+              if (lc) {
+                send_rare_notification_if_needed(lc, res.item, res.is_from_rare_table);
               }
             }
           }
@@ -2264,9 +2264,7 @@ static void on_entity_drop_item_request(shared_ptr<Client> c, uint8_t command, u
                   res.item.id.load(), cmd.floor, cmd.x.load(), cmd.z.load(), lc->channel.name.c_str());
               l->add_item(cmd.floor, res.item, cmd.x, cmd.z, (1 << lc->lobby_client_id));
               send_drop_item_to_channel(s, lc->channel, res.item, !is_box, cmd.floor, cmd.x, cmd.z, cmd.entity_id);
-              if (res.is_from_rare_table) {
-                send_rare_notification_if_needed(lc, res.item);
-              }
+              send_rare_notification_if_needed(lc, res.item, res.is_from_rare_table);
             }
           }
         }
