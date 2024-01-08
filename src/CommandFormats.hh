@@ -2293,8 +2293,8 @@ struct S_UpdateMediaHeader_GC_Ep3_B9 {
   // 00004000: Same as 00001000, but further right and at a slight inward angle
   // 00008000: Same as 00002000, but further left and at a slight inward angle
   // 00010000: Banners at west AND east ends of lobby, next to battle tables
-  // 00020000: Immediately left of 00001000 (2 banners)
-  // 00040000: Immediately right of 00001000 (2 banners)
+  // 00020000: Immediately left of 00010000 (2 banners)
+  // 00040000: Immediately right of 00010000 (2 banners)
   // 00080000: Banners on southwest AND southeast ends of the lobby
   // 00100000: Banners on south-southwest AND south-southeast ends of the lobby
   // 00200000: Floor banners in front of the counter (4 banners)
