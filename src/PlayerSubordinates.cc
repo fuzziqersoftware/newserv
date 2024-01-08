@@ -659,7 +659,8 @@ void PlayerInventory::decode_from_client(shared_ptr<Client> c) {
 }
 
 void PlayerInventory::encode_for_client(shared_ptr<Client> c) {
-  if (c->version() == Version::DC_NTE) {
+  Version v = c->version();
+  if (v == Version::DC_NTE) {
     // DC NTE has the item count as a 32-bit value here, whereas every other
     // version uses a single byte. To stop DC NTE from crashing by trying to
     // construct far more than 30 TItem objects, we clear the fields DC NTE
@@ -668,7 +669,7 @@ void PlayerInventory::encode_for_client(shared_ptr<Client> c) {
     this->hp_from_materials = 0;
     this->tp_from_materials = 0;
     this->language = 0;
-  } else if ((c->version() != Version::PC_NTE) && (c->version() != Version::PC_V2)) {
+  } else if ((v != Version::PC_NTE) && (v != Version::PC_V2)) {
     if (this->language > 4) {
       this->language = 0;
     }
@@ -678,9 +679,11 @@ void PlayerInventory::encode_for_client(shared_ptr<Client> c) {
     }
   }
 
-  auto item_parameter_table = c->require_server_state()->item_parameter_table(c->version());
+  // For pre-V2 clients, use the V2 parameter table, since the V1 table doesn't
+  // have correct encodings for backward-compatible V2 items.
+  auto item_parameter_table = c->require_server_state()->item_parameter_table_for_encode(v);
   for (size_t z = 0; z < this->items.size(); z++) {
-    this->items[z].data.encode_for_version(c->version(), item_parameter_table);
+    this->items[z].data.encode_for_version(v, item_parameter_table);
   }
 }
 

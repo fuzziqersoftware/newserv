@@ -1402,27 +1402,27 @@ Action a_describe_item(
           item.data1[8], item.data1[9], item.data1[10], item.data1[11],
           item.data2[0], item.data2[1], item.data2[2], item.data2[3]);
 
-      ItemData item_v1 = item;
-      item_v1.encode_for_version(Version::PC_V2, s.item_parameter_table(Version::PC_V2));
-      ItemData item_v1_decoded = item_v1;
-      item_v1_decoded.decode_for_version(Version::PC_V2);
+      ItemData item_v2 = item;
+      item_v2.encode_for_version(Version::PC_V2, s.item_parameter_table_for_encode(Version::PC_V2));
+      ItemData item_v2_decoded = item_v2;
+      item_v2_decoded.decode_for_version(Version::PC_V2);
 
-      log_info("Data (V1-encoded): %02hhX%02hhX%02hhX%02hhX %02hhX%02hhX%02hhX%02hhX %02hhX%02hhX%02hhX%02hhX -------- %02hhX%02hhX%02hhX%02hhX",
-          item_v1.data1[0], item_v1.data1[1], item_v1.data1[2], item_v1.data1[3],
-          item_v1.data1[4], item_v1.data1[5], item_v1.data1[6], item_v1.data1[7],
-          item_v1.data1[8], item_v1.data1[9], item_v1.data1[10], item_v1.data1[11],
-          item_v1.data2[0], item_v1.data2[1], item_v1.data2[2], item_v1.data2[3]);
-      if (item_v1_decoded != item) {
-        log_warning("V1-decoded data does not match original data");
-        log_warning("Data (V1-decoded): %02hhX%02hhX%02hhX%02hhX %02hhX%02hhX%02hhX%02hhX %02hhX%02hhX%02hhX%02hhX -------- %02hhX%02hhX%02hhX%02hhX",
-            item_v1_decoded.data1[0], item_v1_decoded.data1[1], item_v1_decoded.data1[2], item_v1_decoded.data1[3],
-            item_v1_decoded.data1[4], item_v1_decoded.data1[5], item_v1_decoded.data1[6], item_v1_decoded.data1[7],
-            item_v1_decoded.data1[8], item_v1_decoded.data1[9], item_v1_decoded.data1[10], item_v1_decoded.data1[11],
-            item_v1_decoded.data2[0], item_v1_decoded.data2[1], item_v1_decoded.data2[2], item_v1_decoded.data2[3]);
+      log_info("Data (V2-encoded): %02hhX%02hhX%02hhX%02hhX %02hhX%02hhX%02hhX%02hhX %02hhX%02hhX%02hhX%02hhX -------- %02hhX%02hhX%02hhX%02hhX",
+          item_v2.data1[0], item_v2.data1[1], item_v2.data1[2], item_v2.data1[3],
+          item_v2.data1[4], item_v2.data1[5], item_v2.data1[6], item_v2.data1[7],
+          item_v2.data1[8], item_v2.data1[9], item_v2.data1[10], item_v2.data1[11],
+          item_v2.data2[0], item_v2.data2[1], item_v2.data2[2], item_v2.data2[3]);
+      if (item_v2_decoded != item) {
+        log_warning("V2-decoded data does not match original data");
+        log_warning("Data (V2-decoded): %02hhX%02hhX%02hhX%02hhX %02hhX%02hhX%02hhX%02hhX %02hhX%02hhX%02hhX%02hhX -------- %02hhX%02hhX%02hhX%02hhX",
+            item_v2_decoded.data1[0], item_v2_decoded.data1[1], item_v2_decoded.data1[2], item_v2_decoded.data1[3],
+            item_v2_decoded.data1[4], item_v2_decoded.data1[5], item_v2_decoded.data1[6], item_v2_decoded.data1[7],
+            item_v2_decoded.data1[8], item_v2_decoded.data1[9], item_v2_decoded.data1[10], item_v2_decoded.data1[11],
+            item_v2_decoded.data2[0], item_v2_decoded.data2[1], item_v2_decoded.data2[2], item_v2_decoded.data2[3]);
       }
 
       ItemData item_gc = item;
-      item_gc.encode_for_version(Version::GC_V3, s.item_parameter_table(Version::GC_V3));
+      item_gc.encode_for_version(Version::GC_V3, s.item_parameter_table_for_encode(Version::GC_V3));
       ItemData item_gc_decoded = item_gc;
       item_gc_decoded.decode_for_version(Version::GC_V3);
 
@@ -1461,12 +1461,12 @@ Action a_name_all_items(
         }
       }
 
-      fprintf(stderr, "IDENT :");
+      fprintf(stderr, "IDENT   :");
       for (size_t v_s = 0; v_s < NUM_VERSIONS; v_s++) {
         Version version = static_cast<Version>(v_s);
         const auto& index = s.item_name_indexes.at(v_s);
         if (index) {
-          fprintf(stderr, " %30s", name_for_enum(version));
+          fprintf(stderr, " %30s    ", name_for_enum(version));
         }
       }
       fputc('\n', stderr);
@@ -1489,6 +1489,20 @@ Action a_name_all_items(
           }
         }
         fputc('\n', stderr);
+      }
+    });
+
+Action a_print_item_parameter_tables(
+    "print-item-tables", nullptr, +[](Arguments&) {
+      ServerState s;
+      s.load_objects_and_upstream_dependents("item_name_indexes");
+      for (size_t v_s = 0; v_s < NUM_VERSIONS; v_s++) {
+        const auto& index = s.item_name_indexes.at(v_s);
+        if (index) {
+          Version v = static_cast<Version>(v_s);
+          fprintf(stdout, "======== %s\n", name_for_enum(v));
+          index->print_table(stdout);
+        }
       }
     });
 

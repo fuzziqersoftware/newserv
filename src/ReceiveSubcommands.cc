@@ -779,14 +779,16 @@ static void on_sync_joining_player_disp_and_inventory(
   // we need to synthesize a 6x71 command to tell the target all state has been
   // sent. (If both are pre-V1, the target won't expect this command; if both
   // are V1 or later, the leader will send this command itself.)
-  if (is_pre_v1(c->version()) && !is_pre_v1(target->version())) {
+  Version target_v = target->version();
+  Version c_v = c->version();
+  if (is_pre_v1(c_v) && !is_pre_v1(target_v)) {
     static const be_uint32_t data = 0x71010000;
     send_command(target, 0x62, target->lobby_client_id, &data, sizeof(data));
   }
 
   unique_ptr<Parsed6x70Data> parsed;
 
-  switch (c->version()) {
+  switch (c_v) {
     case Version::DC_NTE:
       parsed = make_unique<Parsed6x70Data>(
           check_size_t<G_SyncPlayerDispAndInventory_DCNTE_6x70>(data, size),
@@ -807,7 +809,7 @@ static void on_sync_joining_player_disp_and_inventory(
       parsed = make_unique<Parsed6x70Data>(
           check_size_t<G_SyncPlayerDispAndInventory_DC_PC_6x70>(data, size),
           c->license->serial_number);
-      if (c->version() == Version::DC_V1) {
+      if (c_v == Version::DC_V1) {
         parsed->clear_v1_unused_item_fields();
       }
       break;
@@ -833,10 +835,10 @@ static void on_sync_joining_player_disp_and_inventory(
       throw logic_error("6x70 command from unknown game version");
   }
 
-  parsed->transcode_inventory_items(c->version(), target->version(), s->item_parameter_table(target->version()));
-  parsed->visual.enforce_lobby_join_limits_for_version(target->version());
+  parsed->transcode_inventory_items(c_v, target_v, s->item_parameter_table_for_encode(target_v));
+  parsed->visual.enforce_lobby_join_limits_for_version(target_v);
 
-  switch (target->version()) {
+  switch (target_v) {
     case Version::DC_NTE:
       forward_subcommand_t(target, command, flag, parsed->as_dc_nte());
       break;
@@ -1410,7 +1412,7 @@ void forward_subcommand_with_item_transcode_t(shared_ptr<Client> c, uint8_t comm
       out_cmd.header.subcommand = translate_subcommand_number(lc->version(), c->version(), out_cmd.header.subcommand);
       if (out_cmd.header.subcommand) {
         out_cmd.item_data.decode_for_version(c->version());
-        out_cmd.item_data.encode_for_version(lc->version(), s->item_parameter_table(lc->version()));
+        out_cmd.item_data.encode_for_version(lc->version(), s->item_parameter_table_for_encode(lc->version()));
         send_command_t(lc, command, flag, out_cmd);
       } else {
         lc->log.info("Subcommand cannot be translated to client\'s version");
@@ -1623,7 +1625,7 @@ static void on_box_or_enemy_item_drop_t(shared_ptr<Client> c, uint8_t command, u
         out_cmd.header.subcommand = translate_subcommand_number(lc->version(), c->version(), out_cmd.header.subcommand);
         if (out_cmd.header.subcommand) {
           out_cmd.item.item.decode_for_version(c->version());
-          out_cmd.item.item.encode_for_version(lc->version(), s->item_parameter_table(lc->version()));
+          out_cmd.item.item.encode_for_version(lc->version(), s->item_parameter_table_for_encode(lc->version()));
           send_command_t(lc, command, flag, out_cmd);
         } else {
           lc->log.info("Subcommand cannot be translated to client\'s version");
@@ -2809,7 +2811,7 @@ void on_exchange_item_for_team_points_bb(shared_ptr<Client> c, uint8_t command, 
   auto p = c->character();
   auto item = p->remove_item(cmd.item_id, cmd.amount, c->version());
 
-  size_t points = s->item_parameter_table_v4->get_item_team_points(item);
+  size_t points = s->item_parameter_table(Version::BB_V4)->get_item_team_points(item);
   s->team_index->add_member_points(c->license->serial_number, points);
 
   if (l->log.should_log(LogLevel::INFO)) {

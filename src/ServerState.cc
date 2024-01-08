@@ -370,25 +370,19 @@ void ServerState::dispatch_destroy_lobbies(evutil_socket_t, short, void* ctx) {
 }
 
 shared_ptr<const ItemParameterTable> ServerState::item_parameter_table(Version version) const {
-  switch (version) {
-    case Version::DC_NTE:
-    case Version::DC_V1_11_2000_PROTOTYPE:
-    case Version::DC_V1:
-    case Version::DC_V2:
-    case Version::PC_NTE:
-    case Version::PC_V2:
-      return this->item_parameter_table_v2;
-    case Version::GC_NTE:
-    case Version::GC_V3:
-    case Version::GC_EP3_NTE:
-    case Version::GC_EP3:
-    case Version::XB_V3:
-      return this->item_parameter_table_v3;
-    case Version::BB_V4:
-      return this->item_parameter_table_v4;
-    default:
-      throw out_of_range("no item parameter table exists for this version");
+  auto ret = this->item_parameter_tables.at(static_cast<size_t>(version));
+  if (ret == nullptr) {
+    throw runtime_error("no item parameter table exists for this version");
   }
+  return ret;
+}
+
+shared_ptr<const ItemParameterTable> ServerState::item_parameter_table_for_encode(Version version) const {
+  return this->item_parameter_table(is_v1(version) ? Version::PC_V2 : version);
+}
+
+void ServerState::set_item_parameter_table(Version version, shared_ptr<const ItemParameterTable> table) {
+  this->item_parameter_tables.at(static_cast<size_t>(version)) = table;
 }
 
 shared_ptr<const ItemNameIndex> ServerState::item_name_index(Version version) const {
@@ -1195,37 +1189,11 @@ shared_ptr<ItemNameIndex> ServerState::create_item_name_index_for_version(
 }
 
 void ServerState::load_item_name_indexes() {
-  config_log.info("Generating item name indexes");
-  // TODO: Get ItemPMT files for the versions for which we don't have them
-  // (especially DC_V1) and add support for them. Currently we only have three
-  // ItemPMTs (PC, GC, and BB), so we can't use them to generate all the name
-  // indexes.
-
-  auto pc_v2_index = create_item_name_index_for_version(
-      Version::PC_V2, this->item_parameter_table(Version::PC_V2), this->text_index);
-  this->set_item_name_index(Version::DC_NTE, pc_v2_index);
-  this->set_item_name_index(Version::DC_V1, pc_v2_index);
-  this->set_item_name_index(Version::DC_V2, pc_v2_index);
-  this->set_item_name_index(Version::PC_NTE, pc_v2_index);
-  this->set_item_name_index(Version::PC_V2, pc_v2_index);
-
-  // All tools are stackable on 11/2000, so make a separate index (still using
-  // V2 data) with the correct version
-  auto dc_112000_index = make_shared<ItemNameIndex>(
-      Version::DC_V1_11_2000_PROTOTYPE,
-      this->item_parameter_table(Version::PC_V2),
-      this->text_index->get(Version::PC_V2, 1, 3));
-  this->set_item_name_index(Version::DC_V1_11_2000_PROTOTYPE, dc_112000_index);
-
-  auto gc_v3_index = create_item_name_index_for_version(
-      Version::GC_V3, this->item_parameter_table(Version::GC_V3), this->text_index);
-  this->set_item_name_index(Version::GC_NTE, gc_v3_index);
-  this->set_item_name_index(Version::GC_V3, gc_v3_index);
-  this->set_item_name_index(Version::XB_V3, gc_v3_index);
-
-  auto bb_v4_index = create_item_name_index_for_version(
-      Version::BB_V4, this->item_parameter_table(Version::BB_V4), this->text_index);
-  this->set_item_name_index(Version::BB_V4, bb_v4_index);
+  for (size_t v_s = NUM_PATCH_VERSIONS; v_s < NUM_VERSIONS; v_s++) {
+    Version v = static_cast<Version>(v_s);
+    config_log.info("Generating item name index for %s", name_for_enum(v));
+    this->set_item_name_index(v, this->create_item_name_index_for_version(v, this->item_parameter_table(v), this->text_index));
+  }
 }
 
 void ServerState::load_drop_tables() {
@@ -1281,27 +1249,27 @@ void ServerState::load_drop_tables() {
   this->rare_item_sets.swap(new_rare_item_sets);
 
   config_log.info("Loading v2 common item table");
-  auto ct_data_v2 = make_shared<string>(load_file("system/item-tables/ItemCT-v2.afs"));
-  auto pt_data_v2 = make_shared<string>(load_file("system/item-tables/ItemPT-v2.afs"));
+  auto ct_data_v2 = make_shared<string>(load_file("system/item-tables/ItemCT-pc-v2.afs"));
+  auto pt_data_v2 = make_shared<string>(load_file("system/item-tables/ItemPT-pc-v2.afs"));
   this->common_item_set_v2 = make_shared<AFSV2CommonItemSet>(pt_data_v2, ct_data_v2);
   config_log.info("Loading v3+v4 common item table");
-  auto pt_data_v3_v4 = make_shared<string>(load_file("system/item-tables/ItemPT-gc-v4.gsl"));
+  auto pt_data_v3_v4 = make_shared<string>(load_file("system/item-tables/ItemPT-gc-v3.gsl"));
   this->common_item_set_v3_v4 = make_shared<GSLV3V4CommonItemSet>(pt_data_v3_v4, true);
 
   config_log.info("Loading armor table");
-  auto armor_data = make_shared<string>(load_file("system/item-tables/ArmorRandom-gc.rel"));
+  auto armor_data = make_shared<string>(load_file("system/item-tables/ArmorRandom-gc-v3.rel"));
   this->armor_random_set = make_shared<ArmorRandomSet>(armor_data);
 
   config_log.info("Loading tool table");
-  auto tool_data = make_shared<string>(load_file("system/item-tables/ToolRandom-gc.rel"));
+  auto tool_data = make_shared<string>(load_file("system/item-tables/ToolRandom-gc-v3.rel"));
   this->tool_random_set = make_shared<ToolRandomSet>(tool_data);
 
   config_log.info("Loading weapon tables");
   const char* filenames[4] = {
-      "system/item-tables/WeaponRandomNormal-gc.rel",
-      "system/item-tables/WeaponRandomHard-gc.rel",
-      "system/item-tables/WeaponRandomVeryHard-gc.rel",
-      "system/item-tables/WeaponRandomUltimate-gc.rel",
+      "system/item-tables/WeaponRandomNormal-gc-v3.rel",
+      "system/item-tables/WeaponRandomHard-gc-v3.rel",
+      "system/item-tables/WeaponRandomVeryHard-gc-v3.rel",
+      "system/item-tables/WeaponRandomUltimate-gc-v3.rel",
   };
   for (size_t z = 0; z < 4; z++) {
     auto weapon_data = make_shared<string>(load_file(filenames[z]));
@@ -1309,21 +1277,22 @@ void ServerState::load_drop_tables() {
   }
 
   config_log.info("Loading tekker adjustment table");
-  auto tekker_data = make_shared<string>(load_file("system/item-tables/JudgeItem-gc.rel"));
+  auto tekker_data = make_shared<string>(load_file("system/item-tables/JudgeItem-gc-v3.rel"));
   this->tekker_adjustment_set = make_shared<TekkerAdjustmentSet>(tekker_data);
 }
 
 void ServerState::load_item_definitions() {
-  config_log.info("Loading item definition tables");
-  auto pmt_data_v2 = make_shared<string>(prs_decompress(load_file("system/item-tables/ItemPMT-v2.prs")));
-  this->item_parameter_table_v2 = make_shared<ItemParameterTable>(pmt_data_v2, ItemParameterTable::Version::V2);
-  auto pmt_data_v3 = make_shared<string>(prs_decompress(load_file("system/item-tables/ItemPMT-gc.prs")));
-  this->item_parameter_table_v3 = make_shared<ItemParameterTable>(pmt_data_v3, ItemParameterTable::Version::V3);
-  auto pmt_data_v4 = make_shared<string>(prs_decompress(load_file("system/item-tables/ItemPMT-bb.prs")));
-  this->item_parameter_table_v4 = make_shared<ItemParameterTable>(pmt_data_v4, ItemParameterTable::Version::V4);
+  for (size_t v_s = NUM_PATCH_VERSIONS; v_s < NUM_VERSIONS; v_s++) {
+    Version v = static_cast<Version>(v_s);
+    string path = string_printf("system/item-tables/ItemPMT-%s.prs", file_path_token_for_version(v));
+    config_log.info("Loading item definition table %s", path.c_str());
+    auto data = make_shared<string>(prs_decompress(load_file(path)));
+    this->set_item_parameter_table(v, make_shared<ItemParameterTable>(data, v));
+  }
 
+  // TODO: We should probably load the tables for other versions too.
   config_log.info("Loading mag evolution table");
-  auto mag_data = make_shared<string>(prs_decompress(load_file("system/item-tables/ItemMagEdit-bb.prs")));
+  auto mag_data = make_shared<string>(prs_decompress(load_file("system/item-tables/ItemMagEdit-bb-v4.prs")));
   this->mag_evolution_table = make_shared<MagEvolutionTable>(mag_data);
 }
 

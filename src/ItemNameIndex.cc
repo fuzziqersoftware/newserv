@@ -11,48 +11,22 @@ ItemNameIndex::ItemNameIndex(
     : version(version),
       item_parameter_table(item_parameter_table) {
 
-  auto find_items_1d = [&](uint64_t data1, size_t position) -> size_t {
-    ItemData item(data1, 0);
-    for (size_t x = 0; x < 0x100; x++) {
-      item.data1[position] = x;
-      uint32_t id;
-      try {
-        id = this->item_parameter_table->get_item_id(item);
-      } catch (const out_of_range&) {
-        return x;
-      }
-      const string* name = nullptr;
-      try {
-        name = &name_coll.at(id);
-      } catch (const out_of_range&) {
-      }
-
-      if (name) {
-        auto meta = make_shared<ItemMetadata>();
-        meta->primary_identifier = item.primary_identifier();
-        meta->name = *name;
-        this->primary_identifier_index.emplace(meta->primary_identifier, meta);
-        this->name_index.emplace(tolower(meta->name), meta);
-      }
+  for (uint32_t primary_identifier : item_parameter_table->compute_all_valid_primary_identifiers()) {
+    const string* name = nullptr;
+    try {
+      ItemData item = ItemData::from_primary_identifier(this->version, primary_identifier);
+      name = &name_coll.at(item_parameter_table->get_item_id(item));
+    } catch (const out_of_range&) {
     }
-    return 0x100;
-  };
-  auto find_items_2d = [&](uint64_t data1) {
-    for (size_t x = 0; x < 0x100; x++) {
-      size_t effective_data1 = data1 | (static_cast<uint64_t>(x) << 48);
-      size_t data2_position = (effective_data1 == 0x0302000000000000) ? 4 : 2;
-      if (find_items_1d(effective_data1, data2_position) == 0) {
-        break;
-      }
-    }
-  };
 
-  find_items_2d(0x0000000000000000);
-  find_items_1d(0x0101000000000000, 2);
-  find_items_1d(0x0102000000000000, 2);
-  find_items_1d(0x0103000000000000, 2);
-  find_items_1d(0x0200000000000000, 1);
-  find_items_2d(0x0300000000000000);
+    if (name) {
+      auto meta = make_shared<ItemMetadata>();
+      meta->primary_identifier = primary_identifier;
+      meta->name = *name;
+      this->primary_identifier_index.emplace(meta->primary_identifier, meta);
+      this->name_index.emplace(tolower(meta->name), meta);
+    }
+  }
 }
 
 static const char* s_rank_name_characters = "\0ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_";
@@ -644,4 +618,310 @@ ItemData ItemNameIndex::parse_item_description_phase(const std::string& descript
   }
 
   return ret;
+}
+
+void ItemNameIndex::print_table(FILE* stream) const {
+  auto pmt = this->item_parameter_table;
+
+  fprintf(stream, "WEAPON => ---ID--- TYPE SKIN POINTS FLAG ATPLO ATPHI ATPRQ MSTRQ ATARQ -MST- GND PH SP ATA SB PJ 1X 1Y 2X 2Y CL A1 A2 A3 A4 A5 TB CT V1 ST* USL ---DIVISOR--- NAME\n");
+  for (size_t data1_1 = 0; data1_1 < pmt->num_weapon_classes; data1_1++) {
+    uint8_t v1_replacement = pmt->get_weapon_v1_replacement(data1_1);
+    float sale_divisor = pmt->get_sale_divisor(0x00, data1_1);
+    string divisor_str = string_printf("%g", sale_divisor);
+    divisor_str.resize(13, ' ');
+
+    size_t data1_2_limit = pmt->num_weapons_in_class(data1_1);
+    for (size_t data1_2 = 0; data1_2 < data1_2_limit; data1_2++) {
+      const auto& w = pmt->get_weapon(data1_1, data1_2);
+      uint8_t stars = pmt->get_item_stars(w.base.id);
+      bool is_unsealable = pmt->is_unsealable_item(0x00, data1_1, data1_2);
+
+      ItemData item;
+      item.data1[0] = 0x00;
+      item.data1[1] = data1_1;
+      item.data1[2] = data1_2;
+      string name = this->describe_item(item);
+
+      fprintf(stream, "00%02zX%02zX => %08" PRIX32 " %04hX %04hX %6" PRIu32 " %04hX %5hu %5hu %5hu %5hu %5hu %5hu %3hhu %02hhX %02hhX %3hhu %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX %2hhu* %s %s %s\n",
+          data1_1,
+          data1_2,
+          w.base.id.load(),
+          w.base.type.load(),
+          w.base.skin.load(),
+          w.base.team_points.load(),
+          w.class_flags.load(),
+          w.atp_min.load(),
+          w.atp_max.load(),
+          w.atp_required.load(),
+          w.mst_required.load(),
+          w.ata_required.load(),
+          w.mst.load(),
+          w.max_grind,
+          w.photon,
+          w.special,
+          w.ata,
+          w.stat_boost,
+          w.projectile,
+          w.trail1_x,
+          w.trail1_y,
+          w.trail2_x,
+          w.trail2_y,
+          w.color,
+          w.unknown_a1,
+          w.unknown_a2,
+          w.unknown_a3,
+          w.unknown_a4,
+          w.unknown_a5,
+          w.tech_boost,
+          w.combo_type,
+          v1_replacement,
+          stars,
+          is_unsealable ? "YES" : " no",
+          divisor_str.c_str(),
+          name.c_str());
+    }
+  }
+
+  fprintf(stream, "ARMOR  => ---ID--- TYPE SKIN POINTS -DFP- -EVP- BP BE FLAG LVL EFR ETH EIC EDK ELT DFR EVR SB TB -A2- ST* ---DIVISOR--- NAME\n");
+  for (size_t data1_1 = 1; data1_1 < 3; data1_1++) {
+    float sale_divisor = pmt->get_sale_divisor(0x01, data1_1);
+    string divisor_str = string_printf("%g", sale_divisor);
+    divisor_str.resize(13, ' ');
+
+    size_t data1_2_limit = pmt->num_armors_or_shields_in_class(data1_1);
+    for (size_t data1_2 = 0; data1_2 < data1_2_limit; data1_2++) {
+      const auto& a = pmt->get_armor_or_shield(data1_1, data1_2);
+      uint8_t stars = pmt->get_item_stars(a.base.id);
+
+      ItemData item;
+      item.data1[0] = 0x01;
+      item.data1[1] = data1_1;
+      item.data1[2] = data1_2;
+      string name = this->describe_item(item);
+
+      fprintf(stream, "01%02zX%02zX => %08" PRIX32 " %04hX %04hX %6" PRIu32 " %5hu %5hu %02hhX %02hhX %04hX %3hhu %3hhu %3hhu %3hhu %3hhu %3hhu %3hhu %3hhu %02hhX %02hhX %04hX %2hhu* %s %s\n",
+          data1_1,
+          data1_2,
+          a.base.id.load(),
+          a.base.type.load(),
+          a.base.skin.load(),
+          a.base.team_points.load(),
+          a.dfp.load(),
+          a.evp.load(),
+          a.block_particle,
+          a.block_effect,
+          a.class_flags.load(),
+          static_cast<uint8_t>(a.required_level + 1),
+          a.efr,
+          a.eth,
+          a.eic,
+          a.edk,
+          a.elt,
+          a.dfp_range,
+          a.evp_range,
+          a.stat_boost,
+          a.tech_boost,
+          a.unknown_a2.load(),
+          stars,
+          divisor_str.c_str(),
+          name.c_str());
+    }
+  }
+
+  fprintf(stream, "UNIT   => ---ID--- TYPE SKIN POINTS STAT COUNT ST-MOD ST* ---DIVISOR--- NAME\n");
+  {
+    float sale_divisor = pmt->get_sale_divisor(0x01, 0x03);
+    string divisor_str = string_printf("%g", sale_divisor);
+    divisor_str.resize(13, ' ');
+
+    size_t data1_2_limit = pmt->num_units();
+    for (size_t data1_2 = 0; data1_2 < data1_2_limit; data1_2++) {
+      const auto& u = pmt->get_unit(data1_2);
+      uint8_t stars = pmt->get_item_stars(u.base.id);
+
+      ItemData item;
+      item.data1[0] = 0x01;
+      item.data1[1] = 0x03;
+      item.data1[2] = data1_2;
+      string name = this->describe_item(item);
+
+      fprintf(stream, "0103%02zX => %08" PRIX32 " %04hX %04hX %6" PRIu32 " %04hX %5hu %6hd %2hhu* %s %s\n",
+          data1_2,
+          u.base.id.load(),
+          u.base.type.load(),
+          u.base.skin.load(),
+          u.base.team_points.load(),
+          u.stat.load(),
+          u.stat_amount.load(),
+          u.modifier_amount.load(),
+          stars,
+          divisor_str.c_str(),
+          name.c_str());
+    }
+  }
+
+  fprintf(stream, "MAG    => ---ID--- TYPE SKIN POINTS FTBL PB AC E1 E2 E3 E4 C1 C2 C3 C4 FLAG ST* ---DIVISOR--- NAME\n");
+  {
+    size_t data1_1_limit = pmt->num_mags();
+    for (size_t data1_1 = 0; data1_1 < data1_1_limit; data1_1++) {
+      const auto& m = pmt->get_mag(data1_1);
+      uint8_t stars = pmt->get_item_stars(m.base.id);
+
+      float sale_divisor = pmt->get_sale_divisor(0x02, data1_1);
+      string divisor_str = string_printf("%g", sale_divisor);
+      divisor_str.resize(13, ' ');
+
+      ItemData item;
+      item.data1[0] = 0x02;
+      item.data1[1] = data1_1;
+      item.data1[2] = 0x00;
+      string name = this->describe_item(item);
+
+      fprintf(stream, "02%02zX00 => %08" PRIX32 " %04hX %04hX %6" PRIu32 " %04hX %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX %04hX %2hhu* %s %s\n",
+          data1_1,
+          m.base.id.load(),
+          m.base.type.load(),
+          m.base.skin.load(),
+          m.base.team_points.load(),
+          m.feed_table.load(),
+          m.photon_blast,
+          m.activation,
+          m.on_pb_full,
+          m.on_low_hp,
+          m.on_death,
+          m.on_boss,
+          m.on_pb_full_flag,
+          m.on_low_hp_flag,
+          m.on_death_flag,
+          m.on_boss_flag,
+          m.class_flags.load(),
+          stars,
+          divisor_str.c_str(),
+          name.c_str());
+    }
+  }
+
+  fprintf(stream, "TOOL   => ---ID--- TYPE SKIN POINTS COUNT TECH -COST- ITEMFLAG ST* ---DIVISOR--- NAME\n");
+  for (size_t data1_1 = 0; data1_1 < pmt->num_tool_classes; data1_1++) {
+    float sale_divisor = pmt->get_sale_divisor(0x03, data1_1);
+    string divisor_str = string_printf("%g", sale_divisor);
+    divisor_str.resize(13, ' ');
+
+    size_t data1_2_limit = pmt->num_tools_in_class(data1_1);
+    for (size_t data1_2 = 0; data1_2 < data1_2_limit; data1_2++) {
+      const auto& t = pmt->get_tool(data1_1, data1_2);
+      uint8_t stars = pmt->get_item_stars(t.base.id);
+
+      ItemData item;
+      item.data1[0] = 0x03;
+      item.data1[1] = data1_1;
+      item.data1[(data1_1 == 0x02) ? 4 : 2] = data1_2;
+      item.set_tool_item_amount(this->version, 1);
+      string name = this->describe_item(item);
+
+      fprintf(stream, "03%02zX%02zX => %08" PRIX32 " %04hX %04hX %6" PRIu32 " %5hu %04hX %6" PRId32 " %08" PRIX32 " %2hhu* %s %s\n",
+          data1_1,
+          data1_2,
+          t.base.id.load(),
+          t.base.type.load(),
+          t.base.skin.load(),
+          t.base.team_points.load(),
+          t.amount.load(),
+          t.tech.load(),
+          t.cost.load(),
+          t.item_flag.load(),
+          stars,
+          divisor_str.c_str(),
+          name.c_str());
+    }
+  }
+
+  fprintf(stream, "CLASS     =>  F GF RF  B GB RB  Z GZ RZ GR DB JL ZL SH RY RS AT RV MG\n");
+  for (size_t char_class = 0; char_class < 12; char_class++) {
+    fprintf(stream, "%9s =>", name_for_char_class(char_class));
+    for (size_t tech_num = 0; tech_num < 0x13; tech_num++) {
+      uint8_t max_level = pmt->get_max_tech_level(char_class, tech_num) + 1;
+      if (max_level == 0x00) {
+        fprintf(stream, "   ");
+      } else {
+        fprintf(stream, " %2hhu", max_level);
+      }
+    }
+    fprintf(stream, "\n");
+  }
+
+  fprintf(stream, "CLASS     =>  F GF RF  B GB RB  Z GZ RZ GR DB JL ZL SH RY RS AT RV MG\n");
+  for (size_t char_class = 0; char_class < 12; char_class++) {
+    fprintf(stream, "%9s =>", name_for_char_class(char_class));
+    for (size_t tech_num = 0; tech_num < 0x13; tech_num++) {
+      uint8_t max_level = pmt->get_max_tech_level(char_class, tech_num) + 1;
+      if (max_level == 0x00) {
+        fprintf(stream, "   ");
+      } else {
+        fprintf(stream, " %2hhu", max_level);
+      }
+    }
+    fprintf(stream, "\n");
+  }
+
+  for (size_t table_index = 0; table_index < 8; table_index++) {
+    static const char* names[11] = {
+        "Monomate", "Dimate", "Trimate", "Monofluid",
+        "Difluid", "Trifluid", "Antidote", "Antiparalysis",
+        "Sol Atomizer", "Moon Atomizer", "Star Atomizer"};
+    fprintf(stream, "TABLE %02zX       => -DEF -POW -DEX MIND -IQ- SYNC\n", table_index);
+    for (size_t which = 0; which < 11; which++) {
+      const auto& res = pmt->get_mag_feed_result(table_index, which);
+      fprintf(stream, "%14s => %4hhd %4hhd %4hhd %4hhd %4hhd %4hhd\n",
+          names[which], res.def, res.pow, res.dex, res.mind, res.iq, res.synchro);
+    }
+  }
+
+  fprintf(stream, "SPECIAL => TYPE COUNT ST*\n");
+  for (size_t index = 0; index < pmt->num_specials; index++) {
+    const auto& sp = pmt->get_special(index);
+    uint8_t stars = pmt->get_special_stars(index);
+    fprintf(stream, "     %02zX => %04hX %5hu %2hu*\n", index, sp.type.load(), sp.amount.load(), stars);
+  }
+
+  fprintf(stream, "---USE + -EQUIP => RESULT MLV GND LVL CLS\n");
+  for (const auto& combo_list_it : pmt->get_all_item_combinations()) {
+    for (const auto& combo : combo_list_it.second) {
+      fprintf(stream, "%02hhX%02hhX%02hhX + %02hhX%02hhX%02hhX => %02hhX%02hhX%02hhX",
+          combo.used_item[0], combo.used_item[1], combo.used_item[2],
+          combo.equipped_item[0], combo.equipped_item[1], combo.equipped_item[2],
+          combo.result_item[0], combo.result_item[1], combo.result_item[2]);
+      if (combo.mag_level != 0xFF) {
+        fprintf(stream, " %3hu", combo.mag_level);
+      } else {
+        fprintf(stream, "    ");
+      }
+      if (combo.grind != 0xFF) {
+        fprintf(stream, " %3hu", combo.grind);
+      } else {
+        fprintf(stream, "    ");
+      }
+      if (combo.level != 0xFF) {
+        fprintf(stream, " %3hu", combo.level);
+      } else {
+        fprintf(stream, "    ");
+      }
+      if (combo.char_class != 0xFF) {
+        fprintf(stream, " %3hu\n", combo.char_class);
+      } else {
+        fprintf(stream, "    \n");
+      }
+    }
+  }
+
+  size_t num_events = pmt->num_events();
+  for (size_t event_number = 0; event_number < num_events; event_number++) {
+    fprintf(stream, "EV %3zu => PRB\n", event_number);
+    auto events_list = pmt->get_event_items(event_number);
+    for (size_t z = 0; z < events_list.second; z++) {
+      const auto& event_item = events_list.first[z];
+      fprintf(stream, "%02hhX%02hhX%02hhX => %3hhu\n",
+          event_item.item[0], event_item.item[1], event_item.item[2], event_item.probability);
+    }
+  }
 }

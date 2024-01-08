@@ -38,6 +38,8 @@ public:
   std::string describe_item(const ItemData& item, bool include_color_escapes = false) const;
   ItemData parse_item_description(const std::string& description) const;
 
+  void print_table(FILE* stream) const;
+
 private:
   ItemData parse_item_description_phase(const std::string& description, bool skip_special) const;
 

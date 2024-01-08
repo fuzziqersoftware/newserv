@@ -142,9 +142,7 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   std::shared_ptr<const ToolRandomSet> tool_random_set;
   std::array<std::shared_ptr<const WeaponRandomSet>, 4> weapon_random_sets;
   std::shared_ptr<const TekkerAdjustmentSet> tekker_adjustment_set;
-  std::shared_ptr<const ItemParameterTable> item_parameter_table_v2;
-  std::shared_ptr<const ItemParameterTable> item_parameter_table_v3;
-  std::shared_ptr<const ItemParameterTable> item_parameter_table_v4;
+  std::array<std::shared_ptr<const ItemParameterTable>, NUM_VERSIONS> item_parameter_tables;
   std::shared_ptr<const MagEvolutionTable> mag_evolution_table;
   std::shared_ptr<const TextIndex> text_index;
   std::array<std::shared_ptr<const ItemNameIndex>, NUM_VERSIONS> item_name_indexes;
@@ -274,8 +272,10 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   const std::vector<std::pair<std::string, uint16_t>>& proxy_destinations(Version version) const;
 
   std::shared_ptr<const ItemParameterTable> item_parameter_table(Version version) const;
+  std::shared_ptr<const ItemParameterTable> item_parameter_table_for_encode(Version version) const;
+  void set_item_parameter_table(Version version, std::shared_ptr<const ItemParameterTable> table);
   std::shared_ptr<const ItemNameIndex> item_name_index(Version version) const;
-  void set_item_name_index(Version version, std::shared_ptr<const ItemNameIndex>);
+  void set_item_name_index(Version version, std::shared_ptr<const ItemNameIndex> index);
   std::string describe_item(Version version, const ItemData& item, bool include_color_codes) const;
   ItemData parse_item_description(Version version, const std::string& description) const;
 
