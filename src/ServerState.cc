@@ -1241,11 +1241,6 @@ void ServerState::load_drop_tables() {
       new_rare_item_sets.emplace(basename, make_shared<RareItemSet>(load_file(path), true));
     }
   }
-
-  if (!new_rare_item_sets.count("rare-table-v4")) {
-    config_log.info("rare-table-v4 rare item set is not available; loading from BB data");
-    new_rare_item_sets.emplace("rare-table-v4", make_shared<RareItemSet>(load_file("system/blueburst/ItemRT.rel"), true));
-  }
   this->rare_item_sets.swap(new_rare_item_sets);
 
   config_log.info("Loading v2 common item table");
