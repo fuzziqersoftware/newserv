@@ -754,20 +754,39 @@ void ServerState::load_config() {
   if (!this->is_replay) {
     this->ep3_lobby_banners.clear();
     for (const auto& it : json.get("Episode3LobbyBanners", JSON::list()).as_list()) {
-      Image img("system/ep3/banners/" + it->at(2).as_string());
-      string gvm = encode_gvm(img, img.get_has_alpha() ? GVRDataFormat::RGB5A3 : GVRDataFormat::RGB565);
-      if (gvm.size() > 0x37000) {
-        throw runtime_error(string_printf("banner %s is too large (0x%zX bytes; maximum size is 0x37000 bytes)", it->at(2).as_string().c_str(), gvm.size()));
+      string path = "system/ep3/banners/" + it->at(2).as_string();
+
+      string compressed_gvm_data;
+      string decompressed_gvm_data;
+      if (ends_with(path, ".gvm.prs")) {
+        compressed_gvm_data = load_file(path);
+      } else if (ends_with(path, ".gvm")) {
+        decompressed_gvm_data = load_file(path);
+      } else if (ends_with(path, ".bmp")) {
+        Image img(path);
+        decompressed_gvm_data = encode_gvm(img, img.get_has_alpha() ? GVRDataFormat::RGB5A3 : GVRDataFormat::RGB565);
+      } else {
+        throw runtime_error(string_printf("banner %s is in an unknown format", path.c_str()));
       }
-      string compressed = prs_compress_optimal(gvm.data(), gvm.size());
-      if (compressed.size() > 0x3800) {
-        throw runtime_error(string_printf("banner %s cannot be compressed small enough (0x%zX bytes; maximum size is 0x3800 bytes compressed)", it->at(2).as_string().c_str(), compressed.size()));
+
+      size_t decompressed_size = decompressed_gvm_data.empty()
+          ? prs_decompress_size(compressed_gvm_data)
+          : decompressed_gvm_data.size();
+      if (decompressed_size > 0x37000) {
+        throw runtime_error(string_printf("banner %s is too large (0x%zX bytes; maximum size is 0x37000 bytes)", path.c_str(), decompressed_size));
       }
-      config_log.info("Loaded Episode 3 lobby banner %s (0x%zX -> 0x%zX bytes)", it->at(2).as_string().c_str(), gvm.size(), compressed.size());
+
+      if (compressed_gvm_data.empty()) {
+        compressed_gvm_data = prs_compress_optimal(decompressed_gvm_data);
+      }
+      if (compressed_gvm_data.size() > 0x3800) {
+        throw runtime_error(string_printf("banner %s cannot be compressed small enough (0x%zX bytes; maximum size is 0x3800 bytes compressed)", it->at(2).as_string().c_str(), compressed_gvm_data.size()));
+      }
+      config_log.info("Loaded Episode 3 lobby banner %s (0x%zX -> 0x%zX bytes)", path.c_str(), decompressed_size, compressed_gvm_data.size());
       this->ep3_lobby_banners.emplace_back(
           Ep3LobbyBannerEntry{.type = static_cast<uint32_t>(it->at(0).as_int()),
               .which = static_cast<uint32_t>(it->at(1).as_int()),
-              .data = std::move(compressed)});
+              .data = std::move(compressed_gvm_data)});
     }
   }
 

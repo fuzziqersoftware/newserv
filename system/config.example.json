@@ -448,12 +448,13 @@
   },
 
   // Episode 3 lobby banners. Currently only images are supported.
-  // Image files are expected to be in BMP or PPM format, and should be placed
-  // in the system/ep3/banners directory. Image sizes must be a multiple of 4
-  // pixels in both dimensions, must be no larger than 0x37000 bytes when
-  // encoded as a GVM file (newserv will do this encoding internally), and must
-  // compress to no larger than 0x3800 bytes. newserv will fail on startup if
-  // any of these constraints aren't satisfied.
+  // Image files are expected to be in .bmp, .ppm, .gvm, or .gvm.prs format,
+  // and should be placed in the system/ep3/banners directory. Image sizes must
+  // be a multiple of 4 pixels in both dimensions, must be no larger than
+  // 0x37000 bytes when encoded as a GVM file (newserv will do this encoding
+  // internally if it's not a .gvm or .gvm.prs file), and must compress to no
+  // larger than 0x3800 bytes. newserv will fail on startup if any of these
+  // constraints aren't satisfied.
   // Banners are specified as lists of [type, where, filename]. type should be
   // 1 for image files. where is a bitmask specifying where in the lobby the
   // banner should appear; the bits are:
