@@ -134,10 +134,18 @@ void empty_function_call_response_handler(uint32_t, uint32_t);
 
 void send_quest_buffer_overflow(std::shared_ptr<Client> c);
 void prepare_client_for_patches(std::shared_ptr<Client> c, std::function<void()> on_complete);
+std::string prepare_send_function_call_data(
+    std::shared_ptr<const CompiledFunctionCode> code,
+    const std::unordered_map<std::string, uint32_t>& label_writes,
+    const std::string& suffix,
+    uint32_t checksum_addr,
+    uint32_t checksum_size,
+    uint32_t override_relocations_offset,
+    bool use_encrypted_format);
 void send_function_call(
     Channel& ch,
     const Client::Config& client_config,
-    std::shared_ptr<CompiledFunctionCode> code,
+    std::shared_ptr<const CompiledFunctionCode> code,
     const std::unordered_map<std::string, uint32_t>& label_writes = {},
     const std::string& suffix = "",
     uint32_t checksum_addr = 0,
@@ -145,7 +153,7 @@ void send_function_call(
     uint32_t override_relocations_offset = 0);
 void send_function_call(
     std::shared_ptr<Client> c,
-    std::shared_ptr<CompiledFunctionCode> code,
+    std::shared_ptr<const CompiledFunctionCode> code,
     const std::unordered_map<std::string, uint32_t>& label_writes = {},
     const std::string& suffix = "",
     uint32_t checksum_addr = 0,

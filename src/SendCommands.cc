@@ -402,48 +402,19 @@ void prepare_client_for_patches(shared_ptr<Client> c, function<void()> on_comple
   }
 }
 
-void send_function_call(
-    shared_ptr<Client> c,
-    shared_ptr<CompiledFunctionCode> code,
+string prepare_send_function_call_data(
+    shared_ptr<const CompiledFunctionCode> code,
     const unordered_map<string, uint32_t>& label_writes,
     const string& suffix,
     uint32_t checksum_addr,
     uint32_t checksum_size,
-    uint32_t override_relocations_offset) {
-  return send_function_call(
-      c->channel,
-      c->config,
-      code,
-      label_writes,
-      suffix,
-      checksum_addr,
-      checksum_size,
-      override_relocations_offset);
-}
-
-void send_function_call(
-    Channel& ch,
-    const Client::Config& client_config,
-    shared_ptr<CompiledFunctionCode> code,
-    const unordered_map<string, uint32_t>& label_writes,
-    const string& suffix,
-    uint32_t checksum_addr,
-    uint32_t checksum_size,
-    uint32_t override_relocations_offset) {
-  if (client_config.check_flag(Client::Flag::NO_SEND_FUNCTION_CALL)) {
-    throw logic_error("client does not support function calls");
-  }
-  if (code.get() && client_config.check_flag(Client::Flag::SEND_FUNCTION_CALL_CHECKSUM_ONLY)) {
-    throw logic_error("client only supports checksums in send_function_call");
-  }
-
+    uint32_t override_relocations_offset,
+    bool use_encrypted_format) {
   string data;
-  uint32_t index = 0;
   if (code.get()) {
     data = code->generate_client_command(label_writes, suffix, override_relocations_offset);
-    index = code->index;
 
-    if (client_config.check_flag(Client::Flag::ENCRYPTED_SEND_FUNCTION_CALL)) {
+    if (use_encrypted_format) {
       uint32_t key = random_object<uint32_t>();
 
       // This format was probably never used on any little-endian system, but we
@@ -473,13 +444,52 @@ void send_function_call(
     }
   }
 
-  S_ExecuteCode_B2 header = {data.size(), checksum_addr, checksum_size};
-
   StringWriter w;
-  w.put(header);
+  w.put(S_ExecuteCode_B2{data.size(), checksum_addr, checksum_size});
   w.write(data);
+  return std::move(w.str());
+}
 
-  ch.send(0xB2, index, w.str());
+void send_function_call(
+    shared_ptr<Client> c,
+    shared_ptr<const CompiledFunctionCode> code,
+    const unordered_map<string, uint32_t>& label_writes,
+    const string& suffix,
+    uint32_t checksum_addr,
+    uint32_t checksum_size,
+    uint32_t override_relocations_offset) {
+  return send_function_call(
+      c->channel,
+      c->config,
+      code,
+      label_writes,
+      suffix,
+      checksum_addr,
+      checksum_size,
+      override_relocations_offset);
+}
+
+void send_function_call(
+    Channel& ch,
+    const Client::Config& client_config,
+    shared_ptr<const CompiledFunctionCode> code,
+    const unordered_map<string, uint32_t>& label_writes,
+    const string& suffix,
+    uint32_t checksum_addr,
+    uint32_t checksum_size,
+    uint32_t override_relocations_offset) {
+  if (client_config.check_flag(Client::Flag::NO_SEND_FUNCTION_CALL)) {
+    throw logic_error("client does not support function calls");
+  }
+  if (code.get() && client_config.check_flag(Client::Flag::SEND_FUNCTION_CALL_CHECKSUM_ONLY)) {
+    throw logic_error("client only supports checksums in send_function_call");
+  }
+
+  string data = prepare_send_function_call_data(
+      code, label_writes, suffix, checksum_addr, checksum_size, override_relocations_offset,
+      client_config.check_flag(Client::Flag::ENCRYPTED_SEND_FUNCTION_CALL));
+
+  ch.send(0xB2, code ? code->index : 0x00, data);
 }
 
 void send_reconnect(shared_ptr<Client> c, uint32_t address, uint16_t port) {

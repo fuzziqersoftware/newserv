@@ -27,6 +27,7 @@ struct CompiledFunctionCode {
   std::vector<uint16_t> relocation_deltas;
   std::unordered_map<std::string, uint32_t> label_offsets;
   uint32_t entrypoint_offset_offset;
+  std::string source_path; // Path to source file from newserv root
   std::string short_name; // Based on filename
   std::string long_name; // From .meta name directive
   std::string description; // From .meta description directive

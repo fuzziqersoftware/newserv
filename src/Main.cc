@@ -31,6 +31,7 @@
 #include "Loggers.hh"
 #include "NetworkAddresses.hh"
 #include "PSOGCObjectGraph.hh"
+#include "PSOProtocol.hh"
 #include "ProxyServer.hh"
 #include "Quest.hh"
 #include "QuestScript.hh"
@@ -1090,6 +1091,49 @@ Action a_assemble_quest_script(
         result = prs_compress_optimal(result);
       }
       write_output_data(args, result.data(), result.size(), compress ? "bin" : "bind");
+    });
+
+Action a_assemble_all_patches(
+    "assemble-all-patches", "\
+  assemble-all-patches\n\
+    Assemble all patches in the system/ppc directory, and produce two compiled\n\
+    .bin files for each patch (one unencrypted, for most PSO versions, and one\n\
+    encrypted, for PSO JP v1.04, JP Ep3, and Ep3 Trial Edition). The output\n\
+    files are written to the system/ppc directory.\n",
+    +[](Arguments&) {
+      ServerState s;
+      s.load_objects_and_upstream_dependents("functions");
+
+      auto process_code = +[](shared_ptr<const CompiledFunctionCode> code,
+                               uint32_t checksum_addr,
+                               uint32_t checksum_size,
+                               uint32_t override_start_addr) -> void {
+        for (uint8_t encrypted = 0; encrypted < 2; encrypted++) {
+          StringWriter w;
+          string data = prepare_send_function_call_data(code, {}, "", checksum_addr, checksum_size, override_start_addr, encrypted);
+          w.put(PSOCommandHeaderDCV3{.command = 0xB2, .flag = code->index, .size = data.size() + 4});
+          w.write(data);
+          string out_path = code->source_path + (encrypted ? ".enc.bin" : ".std.bin");
+          save_file(out_path, w.str());
+          fprintf(stderr, "... %s\n", out_path.c_str());
+        }
+      };
+
+      for (const auto& it : s.function_code_index->name_and_specific_version_to_patch_function) {
+        process_code(it.second, 0, 0, 0);
+      }
+      try {
+        process_code(s.function_code_index->name_to_function.at("VersionDetect"), 0, 0, 0);
+      } catch (const out_of_range&) {
+      }
+      try {
+        process_code(s.function_code_index->name_to_function.at("CacheClearFix-Phase1"), 0x80000000, 8, 0x7F2734EC);
+      } catch (const out_of_range&) {
+      }
+      try {
+        process_code(s.function_code_index->name_to_function.at("CacheClearFix-Phase2"), 0, 0, 0);
+      } catch (const out_of_range&) {
+      }
     });
 
 void a_extract_archive_fn(Arguments& args) {

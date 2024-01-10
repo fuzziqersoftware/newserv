@@ -223,6 +223,7 @@ FunctionCodeIndex::FunctionCodeIndex(const string& directory) {
         }
       }
       code->specific_version = specific_version;
+      code->source_path = path;
       code->short_name = short_name;
       this->name_to_function.emplace(name, code);
       if (is_patch) {
