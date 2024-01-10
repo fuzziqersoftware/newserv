@@ -4658,7 +4658,7 @@ struct G_SyncObjectState_6x6C_Entry_Decompressed {
 
 struct G_SyncItemState_6x6D_Decompressed {
   // Note: 16 vs. 15 is not a bug here - there really is an extra field in the
-  // total drop count vs. the floor item count. Despite this, Pioneer 2 or Lab
+  // next drop number vs. the floor item count. Despite this, Pioneer 2 or Lab
   // (floor 0) isn't included in next_drop_number_per_floor (so Forest 1 is [0]
   // in that array) but it is included in floor_item_count_per_floor (so Forest
   // 1 is [1] there).
