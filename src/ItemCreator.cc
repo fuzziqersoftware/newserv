@@ -821,6 +821,9 @@ void ItemCreator::generate_unit_stars_tables() {
     case Version::DC_NTE:
     case Version::DC_V1_11_2000_PROTOTYPE:
     case Version::DC_V1:
+      star_base_index = 0x128;
+      num_units = 0x44;
+      break;
     case Version::DC_V2:
     case Version::PC_NTE:
     case Version::PC_V2:
