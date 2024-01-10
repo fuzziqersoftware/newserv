@@ -1,4 +1,4 @@
-.meta name="DrawDistance"
+.meta name="Draw Distance"
 .meta description="Extend the draw\ndistance of many\nobjects"
 # Original code by Ralf @ GC-Forever
 

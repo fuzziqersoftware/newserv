@@ -718,8 +718,8 @@ JP12------------- JP13------------- JP14------------- JP15------------- US10----
 80267EC8 4BDA57D8 80268B74 4BDA4B2C 80269BD0 4BDA3AD0 80269984 4BDA3D1C 80268874 4BDA4E2C 80268874 4BDA4E2C 80269C48 4BDA3A58 80269490 4BDA4210 b         -0x0025B1D4 /* 8000D6A0 */
 
 Improved Draw Distance of most objects
-DrawDistance
-*** name=DrawDistance
+Draw Distance
+*** name=Draw Distance
 *** desc=Extend the draw\ndistance of many\nobjects
 JP12------------- JP13------------- JP14------------- JP15------------- US10------------- US11------------- US12------------- EU--------------- DISASSEMBLY (US10)
 8000DFA0 C3C2C1F8 8000DFA0 C3C2C1F8 8000DFA0 C3C2C1F8 8000DFA0 C3C2C1F8 8000DFA0 C3C2C200 8000DFA0 C3C2C200 8000DFA0 C3C2C200 8000DFA0 C3C2C200 lfs       f30, [r2 - 0x3E00]
