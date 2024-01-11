@@ -813,12 +813,13 @@ void ItemCreator::generate_unit_stars_tables() {
   switch (this->version) {
     case Version::PC_PATCH:
     case Version::BB_PATCH:
-    case Version::GC_NTE:
-      throw logic_error("unknown parameters for version");
     case Version::GC_EP3_NTE:
     case Version::GC_EP3:
       throw logic_error("ItemCreator cannot be created for Episode 3 games");
     case Version::DC_NTE:
+      star_base_index = 0x124;
+      num_units = 0x43;
+      break;
     case Version::DC_V1_11_2000_PROTOTYPE:
     case Version::DC_V1:
       star_base_index = 0x128;
@@ -829,6 +830,10 @@ void ItemCreator::generate_unit_stars_tables() {
     case Version::PC_V2:
       star_base_index = 0x1D1;
       num_units = 0x44;
+      break;
+    case Version::GC_NTE:
+      star_base_index = 0x251;
+      num_units = 0x47;
       break;
     case Version::GC_V3:
     case Version::XB_V3:

@@ -472,48 +472,50 @@ public:
 
 private:
   struct TableOffsetsDCProtos {
-    /* 00 */ le_uint32_t unknown_a0;
-    /* 04 */ le_uint32_t weapon_table;
-    /* 08 */ le_uint32_t armor_table;
-    /* 0C */ le_uint32_t unit_table;
-    /* 10 */ le_uint32_t tool_table;
-    /* 14 */ le_uint32_t mag_table;
-    /* 18 */ le_uint32_t v1_replacement_table;
-    /* 1C */ le_uint32_t photon_color_table;
-    /* 20 */ le_uint32_t weapon_range_table;
-    /* 24 */ le_uint32_t weapon_sale_divisor_table;
-    /* 28 */ le_uint32_t sale_divisor_table;
-    /* 2C */ le_uint32_t mag_feed_table;
-    /* 30 */ le_uint32_t star_value_table;
-    /* 34 */ le_uint32_t unknown_a1;
-    /* 38 */ le_uint32_t special_data_table;
-    /* 3C */ le_uint32_t stat_boost_table;
-    /* 40 */ le_uint32_t shield_effect_table;
-    /* 44 */ le_uint32_t unknown_a2;
-    /* 48 */ le_uint32_t unknown_a3;
-    /* 4C */ le_uint32_t unknown_a4;
+    /* ## / NTE  / 11/2000 */
+    /* 00 / 0013 / 0013 */ le_uint32_t unknown_a0;
+    /* 04 / 2E1C / 2EB8 */ le_uint32_t weapon_table;
+    /* 08 / 2D94 / 2E28 */ le_uint32_t armor_table;
+    /* 0C / 2DA4 / 2E38 */ le_uint32_t unit_table;
+    /* 10 / 2DB4 / 2E48 */ le_uint32_t tool_table;
+    /* 14 / 2DAC / 2E40 */ le_uint32_t mag_table;
+    /* 18 / 1F98 / 202C */ le_uint32_t v1_replacement_table;
+    /* 1C / 1994 / 1A28 */ le_uint32_t photon_color_table;
+    /* 20 / 1C64 / 1CF8 */ le_uint32_t weapon_range_table;
+    /* 24 / 1FBF / 2053 */ le_uint32_t weapon_sale_divisor_table;
+    /* 28 / 1FE6 / 207A */ le_uint32_t sale_divisor_table;
+    /* 2C / 2F54 / 2FF0 */ le_uint32_t mag_feed_table;
+    /* 30 / 22A9 / 233D */ le_uint32_t star_value_table;
+    /* 34 / 23EE / 2484 */ le_uint32_t unknown_a1;
+    /* 38 / 275E / 27F4 */ le_uint32_t special_data_table;
+    /* 3C / 2804 / 2898 */ le_uint32_t stat_boost_table;
+    /* 40 / 1908 / 199C */ le_uint32_t shield_effect_table;
+    /* 44 / 0668 / 0668 */ le_uint32_t unknown_a2;
+    /* 48 / 030C / 030C */ le_uint32_t unknown_a3;
+    /* 4C / 2CE4 / 2D78 */ le_uint32_t unknown_a4;
   } __attribute__((packed));
 
   struct TableOffsetsV1V2 {
     // TODO: Is weapon count 0x89 or 0x8A? It could be that the last entry in
     // weapon_table is used for ???? items.
-    /* 00 / 0013 */ le_uint32_t unknown_a0;
-    /* 04 / 5AFC */ le_uint32_t weapon_table; // -> [{count, offset -> [WeaponV2]}](0x89)
-    /* 08 / 5A5C */ le_uint32_t armor_table; // -> [{count, offset -> [ArmorOrShieldV2]}](2; armors and shields)
-    /* 0C / 5A6C */ le_uint32_t unit_table; // -> {count, offset -> [UnitV2]} (last if out of range)
-    /* 10 / 5A7C */ le_uint32_t tool_table; // -> [{count, offset -> [ToolV2]}](0x10) (last if out of range)
-    /* 14 / 5A74 */ le_uint32_t mag_table; // -> {count, offset -> [MagV2]}
-    /* 18 / 3DF8 */ le_uint32_t v1_replacement_table; // -> [uint8_t](0x89)
-    /* 1C / 2E4C */ le_uint32_t photon_color_table; // -> [0x24-byte structs](0x20)
-    /* 20 / 32CC */ le_uint32_t weapon_range_table; // -> ???
-    /* 24 / 3E84 */ le_uint32_t weapon_sale_divisor_table; // -> [float](0x89)
-    /* 28 / 40A8 */ le_uint32_t sale_divisor_table; // -> NonWeaponSaleDivisors
-    /* 2C / 5F4C */ le_uint32_t mag_feed_table; // -> MagFeedResultsTable
-    /* 30 / 4378 */ le_uint32_t star_value_table; // -> [uint8_t](0x1C7)
-    /* 34 / 45E4 */ le_uint32_t unknown_a1;
-    /* 38 / 4540 */ le_uint32_t special_data_table; // -> [Special](0x29)
-    /* 3C / 58DC */ le_uint32_t stat_boost_table; // -> [StatBoost]
-    /* 40 / 5704 */ le_uint32_t shield_effect_table; // -> [8-byte structs]
+    /* ## / V1   / V2*/
+    /* 00 / 0013 / 0013 */ le_uint32_t unknown_a0;
+    /* 04 / 32E8 / 5AFC */ le_uint32_t weapon_table; // -> [{count, offset -> [WeaponV2]}](0x89)
+    /* 08 / 3258 / 5A5C */ le_uint32_t armor_table; // -> [{count, offset -> [ArmorOrShieldV2]}](2; armors and shields)
+    /* 0C / 3268 / 5A6C */ le_uint32_t unit_table; // -> {count, offset -> [UnitV2]} (last if out of range)
+    /* 10 / 3278 / 5A7C */ le_uint32_t tool_table; // -> [{count, offset -> [ToolV2]}](0x10) (last if out of range)
+    /* 14 / 3270 / 5A74 */ le_uint32_t mag_table; // -> {count, offset -> [MagV2]}
+    /* 18 / 23C8 / 3DF8 */ le_uint32_t v1_replacement_table; // -> [uint8_t](0x89)
+    /* 1C / 1DB0 / 2E4C */ le_uint32_t photon_color_table; // -> [0x24-byte structs](0x20)
+    /* 20 / 2080 / 32CC */ le_uint32_t weapon_range_table; // -> ???
+    /* 24 / 23F0 / 3E84 */ le_uint32_t weapon_sale_divisor_table; // -> [float](0x89)
+    /* 28 / 248C / 40A8 */ le_uint32_t sale_divisor_table; // -> NonWeaponSaleDivisors
+    /* 2C / 3420 / 5F4C */ le_uint32_t mag_feed_table; // -> MagFeedResultsTable
+    /* 30 / 275C / 4378 */ le_uint32_t star_value_table; // -> [uint8_t](0x1C7)
+    /* 34 / 28A2 / 45E4 */ le_uint32_t unknown_a1;
+    /* 38 / 2C12 / 4540 */ le_uint32_t special_data_table; // -> [Special](0x29)
+    /* 3C / 2CB8 / 58DC */ le_uint32_t stat_boost_table; // -> [StatBoost]
+    /* 40 / 3198 / 5704 */ le_uint32_t shield_effect_table; // -> [8-byte structs]
   } __attribute__((packed));
 
   struct TableOffsetsGCNTE {
