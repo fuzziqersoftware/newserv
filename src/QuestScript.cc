@@ -1399,9 +1399,6 @@ std::string disassemble_quest_script(const void* data, size_t size, Version vers
     if (size > 0) {
       lines.emplace_back();
     }
-    if ((l->function_id == 0) && !reassembly_mode) {
-      lines.emplace_back("start:");
-    }
     if (reassembly_mode) {
       lines.emplace_back(string_printf("%s@0x%04" PRIX32 ":", l->name.c_str(), l->function_id));
     } else {
