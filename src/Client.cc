@@ -272,6 +272,7 @@ void Client::convert_license_to_temporary_if_nte() {
     this->license->delete_file();
     *new_l = std::move(*this->license);
     this->set_license(new_l);
+    this->config.clear_flag(Client::Flag::LICENSE_WAS_CREATED);
   }
 }
 
