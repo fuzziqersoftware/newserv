@@ -270,14 +270,16 @@ shared_ptr<Map> Lobby::load_maps(
     shared_ptr<const Map::RareEnemyRates> rare_rates,
     shared_ptr<PSOLFGEncryption> random_crypt,
     shared_ptr<const VersionedQuest> vq) {
+  if (!vq->dat_contents_decompressed) {
+    throw runtime_error("quest does not have DAT data");
+  }
   auto map = make_shared<Map>(version, lobby_id, random_crypt);
-  auto dat_contents = prs_decompress(*vq->dat_contents);
   map->add_enemies_and_objects_from_quest_data(
       episode,
       difficulty,
       event,
-      dat_contents.data(),
-      dat_contents.size(),
+      vq->dat_contents_decompressed->data(),
+      vq->dat_contents_decompressed->size(),
       rare_rates);
   return map;
 }

@@ -222,6 +222,10 @@ VersionedQuest::VersionedQuest(
       available_expression(available_expression),
       enabled_expression(enabled_expression) {
 
+  if (this->dat_contents) {
+    this->dat_contents_decompressed = make_shared<string>(prs_decompress(*this->dat_contents));
+  }
+
   auto bin_decompressed = prs_decompress(*this->bin_contents);
 
   switch (this->version) {

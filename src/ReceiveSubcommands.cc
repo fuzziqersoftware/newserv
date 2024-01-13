@@ -3012,9 +3012,6 @@ static void on_battle_restart_bb(shared_ptr<Client> c, uint8_t, uint8_t, void* d
       l->leader_id == c->lobby_client_id) {
     const auto& cmd = check_size_t<G_StartBattle_BB_6xCF>(data, size);
 
-    auto vq = l->quest->version(Version::BB_V4, c->language());
-    auto dat_contents = prs_decompress(*vq->dat_contents);
-
     auto new_rules = make_shared<BattleRules>(cmd.rules);
     if (l->item_creator) {
       l->item_creator->set_restrictions(new_rules);

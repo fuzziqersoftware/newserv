@@ -68,6 +68,7 @@ struct VersionedQuest {
   std::string long_description;
   std::shared_ptr<const std::string> bin_contents;
   std::shared_ptr<const std::string> dat_contents;
+  std::shared_ptr<const std::string> dat_contents_decompressed;
   std::shared_ptr<const std::string> pvr_contents;
   std::shared_ptr<const BattleRules> battle_rules;
   ssize_t challenge_template_index;
