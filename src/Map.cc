@@ -914,10 +914,15 @@ void Map::add_enemy(
       break;
     }
     case 0x0064: // TObjEneSlime
-      add(this->check_and_log_rare_enemy((this->version == Version::BB_V4) && (e.uparam1 & 1), rare_rates->pouilly_slime)
-              ? EnemyType::POUILLY_SLIME
-              : EnemyType::POFUILLY_SLIME);
-      default_num_children = 4;
+      if ((e.num_children != 0) && (e.num_children != 4)) {
+        this->log.warning("POFUILLY_SLIME has an unusual num_children (0x%hX)", e.num_children.load());
+      }
+      default_num_children = -1; // Skip adding children (because we do it here)
+      for (size_t z = 0; z < 5; z++) {
+        add(this->check_and_log_rare_enemy((this->version == Version::BB_V4) && (e.uparam2 & 1), rare_rates->pouilly_slime)
+                ? EnemyType::POUILLY_SLIME
+                : EnemyType::POFUILLY_SLIME);
+      }
       break;
     case 0x0065: // TObjEnePanarms
       if ((e.num_children != 0) && (e.num_children != 2)) {
@@ -1489,7 +1494,6 @@ void Map::add_enemies_and_objects_from_quest_data(
     uint8_t event,
     const void* data,
     size_t size,
-    uint32_t rare_seed,
     std::shared_ptr<const RareEnemyRates> rare_rates) {
   auto all_floor_sections = this->collect_quest_map_data_sections(data, size);
 
@@ -1503,7 +1507,6 @@ void Map::add_enemies_and_objects_from_quest_data(
       if (header.data_size % sizeof(ObjectEntry)) {
         throw runtime_error("quest layout object section size is not a multiple of object entry size");
       }
-      this->log.info("(Floor %02zX) Adding objects", floor);
       this->add_objects_from_map_data(floor, r.pgetv(floor_sections.objects + sizeof(header), header.data_size), header.data_size);
     }
 
@@ -1512,7 +1515,6 @@ void Map::add_enemies_and_objects_from_quest_data(
       if (header.data_size % sizeof(EnemyEntry)) {
         throw runtime_error("quest layout enemy section size is not a multiple of enemy entry size");
       }
-      this->log.info("(Floor %02zX) Adding enemies", floor);
       this->add_enemies_from_map_data(
           episode,
           difficulty,
@@ -1525,12 +1527,11 @@ void Map::add_enemies_and_objects_from_quest_data(
     } else if ((floor_sections.wave_events != 0xFFFFFFFF) &&
         (floor_sections.random_enemy_locations != 0xFFFFFFFF) &&
         (floor_sections.random_enemy_definitions != 0xFFFFFFFF)) {
-      this->log.info("(Floor %02zX) Adding random enemies", floor);
       const auto& wave_events_header = r.pget<SectionHeader>(floor_sections.wave_events);
       const auto& random_enemy_locations_header = r.pget<SectionHeader>(floor_sections.random_enemy_locations);
       const auto& random_enemy_definitions_header = r.pget<SectionHeader>(floor_sections.random_enemy_definitions);
       if (!random_state) {
-        random_state = make_shared<DATParserRandomState>(rare_seed);
+        random_state = make_shared<DATParserRandomState>(this->random_crypt->seed());
       }
       this->add_random_enemies_from_map_data(
           episode,
@@ -1907,10 +1908,47 @@ void generate_variations(
       variations[z * 2 + 0] = 0;
       variations[z * 2 + 1] = 0;
     } else {
-      variations[z * 2 + 0] = (a.variation1_values.size() < 2) ? 0 : (random_crypt->next() % a.variation1_values.size());
-      variations[z * 2 + 1] = (a.variation2_values.size() < 2) ? 0 : (random_crypt->next() % a.variation2_values.size());
+      variations[z * 2 + 0] = (a.variation1_values.size() <= 1) ? 0 : (random_crypt->next() % a.variation1_values.size());
+      variations[z * 2 + 1] = (a.variation2_values.size() <= 1) ? 0 : (random_crypt->next() % a.variation2_values.size());
     }
   }
+}
+
+vector<parray<le_uint32_t, 0x20>> generate_all_possible_variations(Version version, Episode episode, bool is_solo) {
+  parray<uint32_t, 0x20> maxes;
+  for (size_t z = 0; z < 0x10; z++) {
+    const auto& a = file_info_for_variation(version, episode, z, is_solo);
+    if (!a.name_token) {
+      maxes[z * 2 + 0] = 0;
+      maxes[z * 2 + 1] = 0;
+    } else {
+      maxes[z * 2 + 0] = (a.variation1_values.size() <= 1) ? 0 : (a.variation1_values.size() - 1);
+      maxes[z * 2 + 1] = (a.variation2_values.size() <= 1) ? 0 : (a.variation2_values.size() - 1);
+    }
+  }
+
+  vector<parray<le_uint32_t, 0x20>> ret;
+  parray<le_uint32_t, 0x20> current;
+  for (;;) {
+    ret.emplace_back(current);
+
+    // Increment current by 1 as if it were an 0x20-place integer, with each
+    // "place" having a base of maxes[x] + 1
+    ssize_t x;
+    for (x = 0x1F; x >= 0; x--) {
+      if (current[x] < maxes[x]) {
+        current[x]++;
+        break;
+      } else {
+        current[x] = 0;
+      }
+    }
+    if (x < 0) {
+      break;
+    }
+  }
+
+  return ret;
 }
 
 vector<string> map_filenames_for_variation(

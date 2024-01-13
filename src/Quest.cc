@@ -725,6 +725,7 @@ QuestIndex::QuestIndex(
       } else {
         auto q = make_shared<Quest>(vq);
         this->quests_by_number.emplace(vq->quest_number, q);
+        this->quests_by_name.emplace(vq->name, q);
         this->quests_by_category_id_and_number[q->category_id].emplace(vq->quest_number, q);
         static_game_data_log.info("(%s) Created %s %c quest %" PRIu32 " (%s) (%s, %s (%" PRIu32 "), %s)",
             filenames_str.c_str(),
@@ -746,6 +747,14 @@ QuestIndex::QuestIndex(
 shared_ptr<const Quest> QuestIndex::get(uint32_t quest_number) const {
   try {
     return this->quests_by_number.at(quest_number);
+  } catch (const out_of_range&) {
+    return nullptr;
+  }
+}
+
+shared_ptr<const Quest> QuestIndex::get(const std::string& name) const {
+  try {
+    return this->quests_by_name.at(name);
   } catch (const out_of_range&) {
     return nullptr;
   }

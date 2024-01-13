@@ -306,7 +306,6 @@ struct Map {
       uint8_t event,
       const void* data,
       size_t size,
-      uint32_t rare_seed,
       std::shared_ptr<const RareEnemyRates> rare_rates = Map::DEFAULT_RARE_ENEMIES);
 
   const Enemy& find_enemy(uint8_t floor, EnemyType type) const;
@@ -357,5 +356,8 @@ void generate_variations(
     Version version,
     Episode episode,
     bool is_solo);
+std::vector<parray<le_uint32_t, 0x20>> generate_all_possible_variations(
+    Version version, Episode episode, bool is_solo);
+
 std::vector<std::string> map_filenames_for_variation(
     Version version, Episode episode, GameMode mode, uint8_t floor, uint32_t var1, uint32_t var2, bool is_enemies);

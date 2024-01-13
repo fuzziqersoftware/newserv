@@ -82,7 +82,9 @@ struct parray {
   parray(const parray& other) {
     this->operator=(other);
   }
-  parray(parray&& s) = delete;
+  parray(parray&& other) {
+    this->operator=(std::move(other));
+  }
 
   template <size_t OtherCount>
   parray(const parray<ItemT, OtherCount>& s) {
@@ -168,7 +170,12 @@ struct parray {
     }
     return *this;
   }
-  parray& operator=(parray&& s) = delete;
+  parray& operator=(parray&& s) {
+    for (size_t x = 0; x < Count; x++) {
+      this->items[x] = s.items[x];
+    }
+    return *this;
+  }
 
   template <size_t OtherCount>
   parray& operator=(const parray<ItemT, OtherCount>& s) {

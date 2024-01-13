@@ -195,6 +195,26 @@ struct Lobby : public std::enable_shared_from_this<Lobby> {
   std::shared_ptr<ChallengeParameters> require_challenge_params() const;
   void set_drop_mode(DropMode new_mode);
   void create_item_creator();
+  static std::shared_ptr<Map> load_maps(
+      Version version,
+      Episode episode,
+      uint8_t difficulty,
+      uint8_t event,
+      uint32_t lobby_id,
+      std::shared_ptr<const Map::RareEnemyRates> rare_rates,
+      std::shared_ptr<PSOLFGEncryption> random_crypt,
+      std::shared_ptr<const VersionedQuest> vq);
+  static std::shared_ptr<Map> load_maps(
+      Version version,
+      Episode episode,
+      GameMode mode,
+      uint8_t difficulty,
+      uint8_t event,
+      uint32_t lobby_id,
+      std::function<std::shared_ptr<const std::string>(Version, const std::string&)> get_file_data,
+      std::shared_ptr<const Map::RareEnemyRates> rare_rates,
+      std::shared_ptr<PSOLFGEncryption> random_crypt,
+      const parray<le_uint32_t, 0x20>& variations);
   void load_maps();
   void create_ep3_server();
 

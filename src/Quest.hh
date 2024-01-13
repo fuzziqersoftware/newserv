@@ -135,11 +135,13 @@ struct QuestIndex {
   std::shared_ptr<const QuestCategoryIndex> category_index;
 
   std::map<uint32_t, std::shared_ptr<Quest>> quests_by_number;
+  std::map<std::string, std::shared_ptr<Quest>> quests_by_name;
   std::map<uint32_t, std::map<uint32_t, std::shared_ptr<Quest>>> quests_by_category_id_and_number;
 
   QuestIndex(const std::string& directory, std::shared_ptr<const QuestCategoryIndex> category_index, bool is_ep3);
 
   std::shared_ptr<const Quest> get(uint32_t quest_number) const;
+  std::shared_ptr<const Quest> get(const std::string& name) const;
 
   std::vector<std::shared_ptr<const QuestCategoryIndex::Category>> categories(
       QuestMenuType menu_type,

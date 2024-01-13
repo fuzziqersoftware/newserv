@@ -30,7 +30,9 @@ ServerState::QuestF960Result::QuestF960Result(const JSON& json, std::shared_ptr<
   }
 }
 
-ServerState::ServerState() : creation_time(now()) {
+ServerState::ServerState(const string& config_filename)
+  : creation_time(now()),
+    config_filename(config_filename) {
   this->create_load_step_graph();
 }
 
@@ -495,6 +497,39 @@ shared_ptr<const string> ServerState::load_bb_file(
     static_game_data_log.error("%s not found in any source", patch_index_filename.c_str());
     throw cannot_open_file(patch_index_filename);
   }
+}
+
+shared_ptr<const string> ServerState::load_map_file(Version version, const string& filename) const {
+  auto& cache = this->map_file_caches.at(static_cast<size_t>(version));
+  return cache->get(filename, bind(&ServerState::load_map_file_uncached, this, version, placeholders::_1));
+}
+
+shared_ptr<const string> ServerState::load_map_file_uncached(Version version, const string& filename) const {
+  if (version == Version::BB_V4) {
+    try {
+      return this->load_bb_file(filename);
+    } catch (const exception& e) {
+      static_game_data_log.info("Failed to load %s from BB patch tree: %s", filename.c_str(), e.what());
+    }
+  } else if (version == Version::PC_V2) {
+    try {
+      string path = "system/patch-pc/Media/PSO/" + filename;
+      auto ret = make_shared<string>(load_file(path));
+      static_game_data_log.info("Loaded %s from PC patch tree", filename.c_str());
+      return ret;
+    } catch (const exception& e) {
+      static_game_data_log.info("Failed to load %s from PC patch tree: %s", filename.c_str(), e.what());
+    }
+  }
+  try {
+    string path = string_printf("system/maps/%s/%s", file_path_token_for_version(version), filename.c_str());
+    auto ret = make_shared<string>(load_file(path));
+    static_game_data_log.info("Loaded %s from default maps", filename.c_str());
+    return ret;
+  } catch (const exception& e) {
+    static_game_data_log.info("Failed to load %s from default maps: %s", filename.c_str(), e.what());
+  }
+  return nullptr;
 }
 
 pair<string, uint16_t> ServerState::parse_port_spec(const JSON& json) const {
@@ -1087,6 +1122,13 @@ void ServerState::load_patch_indexes() {
   }
 }
 
+void ServerState::clear_map_file_caches() {
+  config_log.info("Clearing map file caches");
+  for (auto& cache : this->map_file_caches) {
+    cache = make_shared<ThreadSafeFileCache>();
+  }
+}
+
 void ServerState::load_battle_params() {
   config_log.info("Loading battle parameters");
   this->battle_params = make_shared<BattleParamsIndex>(
@@ -1440,8 +1482,12 @@ void ServerState::create_load_step_graph() {
   this->load_step_graph.add_step("licenses", {"all"}, bind(&ServerState::load_licenses, this));
 
   // In: none
+  // Out: map_file_caches
+  this->load_step_graph.add_step("map_file_caches", {"all"}, bind(&ServerState::clear_map_file_caches, this));
+
+  // In: none
   // Out: pc_patch_file_index, bb_patch_file_index, bb_data_gsl
-  this->load_step_graph.add_step("patch_indexes", {"all"}, bind(&ServerState::load_patch_indexes, this));
+  this->load_step_graph.add_step("patch_indexes", {"all", "map_file_caches"}, bind(&ServerState::load_patch_indexes, this));
 
   // In: none
   // Out: ep3_map_index, ep3_card_index, ep3_card_index_trial, ep3_com_deck_index, ep3_tournament_index

@@ -261,14 +261,109 @@ void Lobby::create_item_creator() {
       this->quest ? this->quest->battle_rules : nullptr);
 }
 
-void Lobby::load_maps() {
-  this->map = make_shared<Map>(this->base_version, this->lobby_id, this->random_crypt);
+shared_ptr<Map> Lobby::load_maps(
+    Version version,
+    Episode episode,
+    uint8_t difficulty,
+    uint8_t event,
+    uint32_t lobby_id,
+    shared_ptr<const Map::RareEnemyRates> rare_rates,
+    shared_ptr<PSOLFGEncryption> random_crypt,
+    shared_ptr<const VersionedQuest> vq) {
+  auto map = make_shared<Map>(version, lobby_id, random_crypt);
+  auto dat_contents = prs_decompress(*vq->dat_contents);
+  map->add_enemies_and_objects_from_quest_data(
+      episode,
+      difficulty,
+      event,
+      dat_contents.data(),
+      dat_contents.size(),
+      rare_rates);
+  return map;
+}
 
+shared_ptr<Map> Lobby::load_maps(
+    Version version,
+    Episode episode,
+    GameMode mode,
+    uint8_t difficulty,
+    uint8_t event,
+    uint32_t lobby_id,
+    function<shared_ptr<const string>(Version, const string&)> get_file_data,
+    shared_ptr<const Map::RareEnemyRates> rare_rates,
+    shared_ptr<PSOLFGEncryption> random_crypt,
+    const parray<le_uint32_t, 0x20>& variations) {
+  auto map = make_shared<Map>(version, lobby_id, random_crypt);
+
+  // Don't load free-roam maps in Challenge mode, since players can't go to
+  // Ragol without a quest loaded
+  if (mode == GameMode::CHALLENGE) {
+    return map;
+  }
+
+  for (size_t floor = 0; floor < 0x10; floor++) {
+    auto enemy_filenames = map_filenames_for_variation(
+        version,
+        episode,
+        mode,
+        floor,
+        variations[floor * 2],
+        variations[floor * 2 + 1],
+        true);
+    if (!enemy_filenames.empty()) {
+      bool any_map_loaded = false;
+      for (const string& filename : enemy_filenames) {
+        auto map_data = get_file_data(version, filename);
+        if (map_data) {
+          map->add_enemies_from_map_data(
+              episode,
+              difficulty,
+              event,
+              floor,
+              map_data->data(),
+              map_data->size(),
+              rare_rates);
+          any_map_loaded = true;
+          break;
+        }
+      }
+      if (!any_map_loaded) {
+        throw runtime_error(string_printf("no enemy maps loaded for floor %zu", floor));
+      }
+    }
+
+    auto object_filenames = map_filenames_for_variation(
+        version,
+        episode,
+        mode,
+        floor,
+        variations[floor * 2],
+        variations[floor * 2 + 1],
+        false);
+    if (!object_filenames.empty()) {
+      bool any_map_loaded = false;
+      for (const string& filename : object_filenames) {
+        auto map_data = get_file_data(version, filename);
+        if (map_data) {
+          map->add_objects_from_map_data(floor, map_data->data(), map_data->size());
+          any_map_loaded = true;
+          break;
+        }
+      }
+      if (!any_map_loaded) {
+        throw runtime_error(string_printf("no object maps loaded for floor %zu", floor));
+      }
+    }
+  }
+
+  return map;
+}
+
+void Lobby::load_maps() {
   auto rare_rates = ((this->base_version == Version::BB_V4) && this->rare_enemy_rates)
       ? this->rare_enemy_rates
       : Map::DEFAULT_RARE_ENEMIES;
 
-  auto s = this->require_server_state();
   if (this->quest) {
     auto leader_c = this->clients.at(this->leader_id);
     if (!leader_c) {
@@ -276,110 +371,32 @@ void Lobby::load_maps() {
     }
 
     auto vq = this->quest->version(this->base_version, leader_c->language());
-    auto dat_contents = prs_decompress(*vq->dat_contents);
-    this->map->clear();
-    this->map->add_enemies_and_objects_from_quest_data(
+    this->map = this->load_maps(
+        this->base_version,
         this->episode,
         this->difficulty,
         this->event,
-        dat_contents.data(),
-        dat_contents.size(),
-        this->random_seed,
-        rare_rates);
+        this->lobby_id,
+        rare_rates,
+        this->random_crypt,
+        vq);
 
   } else if (this->mode != GameMode::CHALLENGE) {
-    // No quest loaded - load free-roam maps instead. Don't load free-roam maps
-    // in Challenge mode, since players can't go to Ragol without a quest loaded
+    auto s = this->require_server_state();
+    this->map = this->load_maps(
+        this->base_version,
+        this->episode,
+        this->mode,
+        this->difficulty,
+        this->event,
+        this->lobby_id,
+        bind(&ServerState::load_map_file, s.get(), placeholders::_1, placeholders::_2),
+        rare_rates,
+        this->random_crypt,
+        this->variations);
 
-    for (size_t floor = 0; floor < 0x10; floor++) {
-      this->log.info("[Map/%zu] Using variations %" PRIX32 ", %" PRIX32,
-          floor, this->variations[floor * 2].load(), this->variations[floor * 2 + 1].load());
-
-      auto get_file_data = [&](const string& filename) -> shared_ptr<const string> {
-        if (this->base_version == Version::BB_V4) {
-          try {
-            return s->load_bb_file(filename);
-          } catch (const exception& e) {
-            this->log.info("[Map/%zu:e] Failed to load %s from BB patch tree: %s", floor, filename.c_str(), e.what());
-          }
-        } else if (this->base_version == Version::PC_V2) {
-          try {
-            string path = "system/patch-pc/Media/PSO/" + filename;
-            auto ret = make_shared<string>(load_file(path));
-            this->log.info("[Map/%zu:e] Loaded %s from PC patch tree", floor, filename.c_str());
-            return ret;
-          } catch (const exception& e) {
-            this->log.info("[Map/%zu:e] Failed to load %s from PC patch tree: %s", floor, filename.c_str(), e.what());
-          }
-        }
-        try {
-          string path = string_printf("system/maps/%s/%s", file_path_token_for_version(this->base_version), filename.c_str());
-          auto ret = make_shared<string>(load_file(path));
-          this->log.info("[Map/%zu:e] Loaded %s from default maps", floor, filename.c_str());
-          return ret;
-        } catch (const exception& e) {
-          this->log.info("[Map/%zu:e] Failed to load %s default maps: %s", floor, filename.c_str(), e.what());
-        }
-        return nullptr;
-      };
-
-      auto enemy_filenames = map_filenames_for_variation(
-          this->base_version,
-          this->episode,
-          this->mode,
-          floor,
-          this->variations[floor * 2],
-          this->variations[floor * 2 + 1],
-          true);
-      if (enemy_filenames.empty()) {
-        this->log.info("[Map/%zu:e] No file to load", floor);
-      } else {
-        bool any_map_loaded = false;
-        for (const string& filename : enemy_filenames) {
-          auto map_data = get_file_data(filename);
-          if (map_data) {
-            this->map->add_enemies_from_map_data(
-                this->episode,
-                this->difficulty,
-                this->event,
-                floor,
-                map_data->data(),
-                map_data->size(),
-                rare_rates);
-            any_map_loaded = true;
-            break;
-          }
-        }
-        if (!any_map_loaded) {
-          throw runtime_error(string_printf("no enemy maps loaded for floor %zu", floor));
-        }
-      }
-
-      auto object_filenames = map_filenames_for_variation(
-          this->base_version,
-          this->episode,
-          this->mode,
-          floor,
-          this->variations[floor * 2],
-          this->variations[floor * 2 + 1],
-          false);
-      if (object_filenames.empty()) {
-        this->log.info("[Map/%zu:o] No file to load", floor);
-      } else {
-        bool any_map_loaded = false;
-        for (const string& filename : object_filenames) {
-          auto map_data = get_file_data(filename);
-          if (map_data) {
-            this->map->add_objects_from_map_data(floor, map_data->data(), map_data->size());
-            any_map_loaded = true;
-            break;
-          }
-        }
-        if (!any_map_loaded) {
-          throw runtime_error(string_printf("no object maps loaded for floor %zu", floor));
-        }
-      }
-    }
+  } else {
+    this->map = make_shared<Map>(this->base_version, this->lobby_id, this->random_crypt);
   }
 
   this->log.info("Generated objects list (%zu entries):", this->map->objects.size());

@@ -125,6 +125,44 @@ Version get_cli_version(Arguments& args, Version default_value = Version::UNKNOW
   }
 }
 
+Episode get_cli_episode(Arguments& args) {
+  if (args.get<bool>("ep1")) {
+    return Episode::EP1;
+  } else if (args.get<bool>("ep2")) {
+    return Episode::EP2;
+  } else if (args.get<bool>("ep3")) {
+    return Episode::EP3;
+  } else if (args.get<bool>("ep4")) {
+    return Episode::EP4;
+  } else {
+    throw runtime_error("an episode option is required");
+  }
+}
+
+GameMode get_cli_game_mode(Arguments& args) {
+  if (args.get<bool>("battle")) {
+    return GameMode::BATTLE;
+  } else if (args.get<bool>("challenge")) {
+    return GameMode::CHALLENGE;
+  } else if (args.get<bool>("solo")) {
+    return GameMode::SOLO;
+  } else {
+    return GameMode::NORMAL;
+  }
+}
+
+uint8_t get_cli_difficulty(Arguments& args) {
+  if (args.get<bool>("hard")) {
+    return 1;
+  } else if (args.get<bool>("very-hard")) {
+    return 2;
+  } else if (args.get<bool>("ultimate")) {
+    return 3;
+  } else {
+    return 0;
+  }
+}
+
 string read_input_data(Arguments& args) {
   const string& input_filename = args.get<string>(1, false);
 
@@ -1783,6 +1821,103 @@ Action a_show_battle_params(
       s.battle_params->get_table(true, Episode::EP4).print(stdout);
     });
 
+Action a_find_rare_enemy_seeds(
+    "find-rare-enemy-seeds", "\
+  find-rare-enemy-seeds OPTIONS...\n\
+    Search all possible rare seeds to find those that produce one or more rare\n\
+    enemies in any set of variations. A version option (e.g. --gc) is required;\n\
+    an episode option (--ep1, --ep2, or --ep4) is also required. A difficulty\n\
+    option (--normal, --hard, --very-hard, or --ultimate) may be given; this\n\
+    affects which rare rates from config.json are used if --bb was given.\n\
+    Similarly, --battle, --challenge, or --solo may also be given; this affects\n\
+    which variations are used on all versions and which rare rates to use for\n\
+    BB. --threads=COUNT controls the number of threads to use for the search\n\
+    by default, one thread per CPU core is used. --min-count specifies how many\n\
+    rare enemies must be found to output the seed. Finally, --quest=NAME may be\n\
+    given to use that quest\'s map instead of the free-roam maps.\n",
+    +[](Arguments& args) {
+      auto version = get_cli_version(args);
+      auto episode = get_cli_episode(args);
+      auto difficulty = get_cli_difficulty(args);
+      auto mode = get_cli_game_mode(args);
+      size_t num_threads = args.get<size_t>("threads", 0);
+      size_t min_count = args.get<size_t>("min-count", 1);
+      string quest_name = args.get<string>("quest", false);
+
+      ServerState s("system/config.json");
+      shared_ptr<const VersionedQuest> vq;
+      if (!quest_name.empty()) {
+        s.load_objects_and_upstream_dependents("quest_index");
+        auto q = s.quest_index(version)->get(quest_name);
+        if (!q) {
+          throw runtime_error("quest does not exist");
+        }
+        vq = q->version(version, 1);
+        if (!vq) {
+          throw runtime_error("quest version does not exist");
+        }
+      } else if (version == Version::BB_V4) {
+        s.load_objects_and_upstream_dependents("config");
+      } else if (version == Version::PC_V2) {
+        s.load_objects_and_upstream_dependents("patch_indexes");
+      } else {
+        s.load_objects_and_upstream_dependents("map_file_caches");
+      }
+
+      shared_ptr<const Map::RareEnemyRates> rare_rates;
+      if (version != Version::BB_V4) {
+        rare_rates = Map::DEFAULT_RARE_ENEMIES;
+      } else if (mode == GameMode::CHALLENGE) {
+        rare_rates = s.rare_enemy_rates_challenge;
+      } else {
+        rare_rates = s.rare_enemy_rates_by_difficulty[difficulty];
+      }
+
+      mutex output_lock;
+      auto thread_fn = [&](uint64_t seed, size_t) -> bool {
+        auto random_crypt = make_shared<PSOV2Encryption>(seed);
+        parray<le_uint32_t, 0x20> variations;
+
+        shared_ptr<Map> map;
+        if (vq) {
+          map = Lobby::load_maps(version, episode, difficulty, 0, 0, rare_rates, random_crypt, vq);
+
+        } else {
+          generate_variations(variations, random_crypt, version, episode, (mode == GameMode::SOLO));
+          map = Lobby::load_maps(
+              version,
+              episode,
+              mode,
+              difficulty,
+              0,
+              0,
+              bind(&ServerState::load_map_file, &s, placeholders::_1, placeholders::_2),
+              rare_rates,
+              random_crypt,
+              variations);
+        }
+
+        vector<size_t> rare_indexes;
+        for (size_t z = 0; z < map->enemies.size(); z++) {
+          if (enemy_type_is_rare(map->enemies[z].type)) {
+            rare_indexes.emplace_back(z);
+          }
+        }
+
+        if (rare_indexes.size() >= min_count) {
+          fprintf(stdout, "%08" PRIX64 ":", seed);
+          for (size_t index : rare_indexes) {
+            fprintf(stdout, " E-%zX:%s", index, name_for_enum(map->enemies[index].type));
+          }
+          fprintf(stdout, "\n");
+        }
+
+        return false;
+      };
+
+      parallel_range<uint64_t>(thread_fn, 0, 0x100000000, num_threads);
+    });
+
 Action a_parse_object_graph(
     "parse-object-graph", nullptr, +[](Arguments& args) {
       uint32_t root_object_address = args.get<uint32_t>("root", Arguments::IntFormat::HEX);
@@ -2117,6 +2252,22 @@ Most options that take data as input also accept the following option:\n\
   --parse-data\n\
       For modes that take input (from a file or from stdin), parse the input as\n\
       a hex string before encrypting/decoding/etc.\n\
+\n\
+Many versions also accept or require a version option. The version options are:\n\
+  --pc-patch: PC patch server\n\
+  --bb-patch: BB patch server\n\
+  --dc-nte: DC Network Trial Edition\n\
+  --dc-proto or --dc-11-2000: DC 11/2000 prototype\n\
+  --dc-v1: DC v1\n\
+  --dc-v2 or --dc: DC v2\n\
+  --pc-nte: PC Network Trial Edition\n\
+  --pc: PC v2\n\
+  --gc-nte: GC Episodes 1&2 Trial Edition\n\
+  --gc: GC Episodes 1&2\n\
+  --xb: Xbox Episodes 1&2\n\
+  --ep3-trial: GC Episode 3 Trial Edition\n\
+  --ep3: GC Episode 3\n\
+  --bb: Blue Burst\n\
 \n",
       stderr);
 }

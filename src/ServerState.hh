@@ -121,6 +121,7 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   std::shared_ptr<const FunctionCodeIndex> function_code_index;
   std::shared_ptr<const PatchFileIndex> pc_patch_file_index;
   std::shared_ptr<const PatchFileIndex> bb_patch_file_index;
+  std::array<std::shared_ptr<ThreadSafeFileCache>, NUM_VERSIONS> map_file_caches;
   std::shared_ptr<const DOLFileIndex> dol_file_index;
   std::shared_ptr<const Episode3::CardIndex> ep3_card_index;
   std::shared_ptr<const Episode3::CardIndex> ep3_card_index_trial;
@@ -230,7 +231,7 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   std::shared_ptr<ProxyServer> proxy_server;
   std::shared_ptr<Server> game_server;
 
-  ServerState();
+  explicit ServerState(const std::string& config_filename = "");
   ServerState(std::shared_ptr<struct event_base> base, const std::string& config_filename, bool is_replay);
   ServerState(const ServerState&) = delete;
   ServerState(ServerState&&) = delete;
@@ -290,6 +291,8 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
       const std::string& patch_index_filename,
       const std::string& gsl_filename = "",
       const std::string& bb_directory_filename = "") const;
+  std::shared_ptr<const std::string> load_map_file(Version version, const std::string& filename) const;
+  std::shared_ptr<const std::string> load_map_file_uncached(Version version, const std::string& filename) const;
 
   std::pair<std::string, uint16_t> parse_port_spec(const JSON& json) const;
   std::vector<PortConfiguration> parse_port_configuration(const JSON& json) const;
@@ -302,6 +305,7 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   void load_licenses();
   void load_teams();
   void load_patch_indexes();
+  void clear_map_file_caches();
   void load_battle_params();
   void load_level_table();
   void load_text_index();
