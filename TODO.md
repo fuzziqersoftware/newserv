@@ -11,6 +11,7 @@
 - Enforce tournament deck restrictions (e.g. rank checks, No Assist option) when populating COMs at tournament start time
 - Make `reload licenses` not vulnerable to online players' licenses overwriting licenses on disk somehow
 - Implement ranks (based on total Meseta earned)
+- Support Trial Edition battles
 
 ## PSO XBOX
 
