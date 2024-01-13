@@ -1905,6 +1905,7 @@ Action a_find_rare_enemy_seeds(
         }
 
         if (rare_indexes.size() >= min_count) {
+          lock_guard g(output_lock);
           fprintf(stdout, "%08" PRIX64 ":", seed);
           for (size_t index : rare_indexes) {
             fprintf(stdout, " E-%zX:%s", index, name_for_enum(map->enemies[index].type));
@@ -1915,7 +1916,7 @@ Action a_find_rare_enemy_seeds(
         return false;
       };
 
-      parallel_range<uint64_t>(thread_fn, 0, 0x100000000, num_threads);
+      parallel_range<uint64_t>(thread_fn, 0, 0x100000000, num_threads, nullptr);
     });
 
 Action a_parse_object_graph(
