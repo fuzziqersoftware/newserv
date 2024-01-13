@@ -745,7 +745,10 @@ bool Map::check_and_log_rare_enemy(bool default_is_rare, uint32_t rare_rate) {
     // that we have to initialize the entire thing. Find a way to make this
     // faster.
     PSOV2Encryption crypt(this->random_crypt->seed() + 0x1000 + this->enemies.size());
-    if ((static_cast<float>((crypt.next() >> 16) & 0xFFFF) / 65536.0f) < 0.002f) {
+    float det = (static_cast<float>((crypt.next() >> 16) & 0xFFFF) / 65536.0f);
+    // On v1 and v2 (and GC NTE), the rare rate is 0.1% instead of 0.2%.
+    float threshold = is_v1_or_v2(this->version) ? 0.001f : 0.002f;
+    if (det < threshold) {
       this->rare_enemy_indexes.emplace_back(this->enemies.size());
       return true;
     }
