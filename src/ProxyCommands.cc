@@ -1240,7 +1240,19 @@ static HandlerResult S_13_A7(shared_ptr<ProxyServer::LinkedSession> ses, uint16_
   if (sf->remaining_bytes == 0) {
     if (ses->config.check_flag(Client::Flag::PROXY_SAVE_FILES)) {
       ses->log.info("Writing file %s => %s", sf->basename.c_str(), sf->output_filename.c_str());
-      sf->write();
+      string data = join(sf->blocks);
+      if (sf->is_download && (ends_with(sf->basename, ".bin") || ends_with(sf->basename, ".dat") || ends_with(sf->basename, ".pvr"))) {
+        data = decode_dlq_data(data);
+      }
+      save_file(sf->output_filename, data);
+      if (ends_with(sf->basename, ".bin")) {
+        try {
+          auto disassembly = disassemble_quest_script(data.data(), data.size(), ses->version(), ses->language(), false);
+          save_file(sf->output_filename + ".txt", disassembly);
+        } catch (const exception& e) {
+          ses->log.warning("Failed to disassemble quest file: %s", e.what());
+        }
+      }
     } else {
       ses->log.info("Download complete for file %s", sf->basename.c_str());
     }

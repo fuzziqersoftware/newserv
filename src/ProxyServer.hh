@@ -108,8 +108,6 @@ public:
           const std::string& output_filename,
           size_t remaining_bytes,
           bool is_download);
-
-      void write() const;
     };
     std::unordered_map<std::string, SavingFile> saving_files;
 
