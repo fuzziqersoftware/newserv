@@ -17,6 +17,7 @@ class QuestAvailabilityExpression {
 public:
   struct Env {
     const QuestFlagsForDifficulty* flags;
+    const PlayerRecordsBB_Challenge* challenge_records;
     std::shared_ptr<const TeamIndex::Team> team;
     size_t num_players;
   };
@@ -113,6 +114,19 @@ protected:
 
   protected:
     uint16_t flag_index;
+  };
+
+  class ChallengeCompletionLookupNode : public Node {
+  public:
+    ChallengeCompletionLookupNode(Episode episode, uint8_t stage_index);
+    virtual ~ChallengeCompletionLookupNode() = default;
+    virtual bool operator==(const Node& other) const;
+    virtual int64_t evaluate(const Env& env) const;
+    virtual std::string str() const;
+
+  protected:
+    Episode episode;
+    uint8_t stage_index;
   };
 
   class TeamRewardLookupNode : public Node {

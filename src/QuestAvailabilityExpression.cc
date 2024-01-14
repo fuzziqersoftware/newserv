@@ -184,6 +184,33 @@ string QuestAvailabilityExpression::FlagLookupNode::str() const {
   return string_printf("F_%04hX", this->flag_index);
 }
 
+QuestAvailabilityExpression::ChallengeCompletionLookupNode::ChallengeCompletionLookupNode(
+    Episode episode, uint8_t stage_index)
+    : episode(episode),
+      stage_index(stage_index) {}
+
+bool QuestAvailabilityExpression::ChallengeCompletionLookupNode::operator==(const Node& other) const {
+  try {
+    const ChallengeCompletionLookupNode& other_cc = dynamic_cast<const ChallengeCompletionLookupNode&>(other);
+    return other_cc.episode == this->episode && other_cc.stage_index == this->stage_index;
+  } catch (const bad_cast&) {
+    return false;
+  }
+}
+
+int64_t QuestAvailabilityExpression::ChallengeCompletionLookupNode::evaluate(const Env& env) const {
+  if (this->episode == Episode::EP1) {
+    return env.challenge_records->times_ep1_online.at(this->stage_index).has_value();
+  } else if (this->episode == Episode::EP2) {
+    return env.challenge_records->times_ep2_online.at(this->stage_index).has_value();
+  }
+  return false;
+}
+
+string QuestAvailabilityExpression::ChallengeCompletionLookupNode::str() const {
+  return string_printf("CC_%s_%hhu", abbreviation_for_episode(this->episode), static_cast<uint8_t>(this->stage_index + 1));
+}
+
 QuestAvailabilityExpression::TeamRewardLookupNode::TeamRewardLookupNode(const string& reward_name)
     : reward_name(reward_name) {}
 
@@ -342,6 +369,25 @@ unique_ptr<const QuestAvailabilityExpression::Node> QuestAvailabilityExpression:
       throw runtime_error("invalid flag index");
     }
     return make_unique<FlagLookupNode>(flag);
+  }
+  if (text.starts_with("CC_")) {
+    Episode episode;
+    if (text.starts_with("CC_Ep1_")) {
+      episode = Episode::EP1;
+    } else if (text.starts_with("CC_Ep2_")) {
+      episode = Episode::EP2;
+    } else {
+      throw runtime_error("invalid challenge episode");
+    }
+    char* endptr = nullptr;
+    uint64_t stage_index = strtoul(text.data() + 7, &endptr, 0) - 1;
+    if (endptr != text.data() + text.size()) {
+      throw runtime_error("invalid challenge completion lookup token");
+    }
+    if ((episode == Episode::EP1 && stage_index > 8) || (episode == Episode::EP2 && stage_index > 4)) {
+      throw runtime_error("invalid challenge stage index");
+    }
+    return make_unique<ChallengeCompletionLookupNode>(episode, stage_index);
   }
   if (text.starts_with("T_")) {
     return make_unique<TeamRewardLookupNode>(string(text.substr(2)));

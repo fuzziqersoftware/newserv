@@ -6736,6 +6736,15 @@ struct G_ServerVersionStrings_GC_Ep3_6xB4x46 {
   le_uint32_t unused = 0;
 } __packed__;
 
+struct G_ServerVersionStrings_GC_Ep3_NTE_6xB4x46 {
+  G_CardBattleCommandHeader header = {0xB4, sizeof(G_ServerVersionStrings_GC_Ep3_NTE_6xB4x46) / 4, 0, 0x46, 0, 0, 0};
+  // Ep3 NTE uses the following strings:
+  // "03/05/29 18:00 by K.Toya"
+  pstring<TextEncoding::MARKED, 0x40> version_signature;
+  // "Jun 11 2003 05:02:36"
+  pstring<TextEncoding::MARKED, 0x40> date_str1;
+} __packed__;
+
 // 6xB5x47: Set spectator's CARD level
 // header.sender_client_id is the spectator's client ID.
 

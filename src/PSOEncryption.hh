@@ -252,6 +252,41 @@ void decrypt_trivial_gci_data(void* data, size_t size, uint8_t basis);
 uint32_t encrypt_challenge_time(uint16_t value);
 uint16_t decrypt_challenge_time(uint32_t value);
 
+template <bool IsBigEndian>
+class ChallengeTime {
+private:
+  using U32T = typename std::conditional<IsBigEndian, be_uint32_t, le_uint32_t>::type;
+  U32T value;
+
+public:
+  ChallengeTime() = default;
+  ChallengeTime(uint16_t v) {
+    this->store(v);
+  }
+  ChallengeTime(const ChallengeTime& other) = default;
+  ChallengeTime(ChallengeTime&& other) = default;
+  ChallengeTime& operator=(const ChallengeTime& other) = default;
+  ChallengeTime& operator=(ChallengeTime&& other) = default;
+
+  bool has_value() const {
+    return this->value != 0;
+  }
+
+  uint16_t load() const {
+    return decrypt_challenge_time(this->value);
+  }
+  operator uint16_t() const {
+    return this->load();
+  }
+  void store(uint16_t v) {
+    this->value = ((v == 0) || (v == 0xFFFF)) ? 0 : encrypt_challenge_time(v);
+  }
+  ChallengeTime& operator=(uint16_t v) {
+    this->store(v);
+    return *this;
+  }
+} __attribute__((packed));
+
 std::string decrypt_v2_registry_value(const void* data, size_t size);
 
 struct DecryptedPR2 {

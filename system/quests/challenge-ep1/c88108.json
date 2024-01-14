@@ -1,3 +1,5 @@
 {
-  "ChallengeTemplateIndex": 7
+  "ChallengeTemplateIndex": 7,
+  "AvailableIf": "CC_Ep1_7",
+  "EnabledIf": "CC_Ep1_7"
 }

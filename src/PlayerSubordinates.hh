@@ -14,6 +14,7 @@
 #include "FileContentsCache.hh"
 #include "ItemData.hh"
 #include "LevelTable.hh"
+#include "PSOEncryption.hh"
 #include "Text.hh"
 #include "Version.hh"
 
@@ -332,7 +333,7 @@ template <bool IsBigEndian>
 struct ChallengeAwardState {
   using U32T = typename std::conditional<IsBigEndian, be_uint32_t, le_uint32_t>::type;
   U32T rank_award_flags = 0;
-  U32T maximum_rank = 0; // Encrypted; see decrypt_challenge_time
+  ChallengeTime<IsBigEndian> maximum_rank;
 } __attribute__((packed));
 
 template <TextEncoding UnencryptedEncoding, TextEncoding EncryptedEncoding>
@@ -340,7 +341,7 @@ struct PlayerRecordsDCPC_Challenge {
   /* 00 */ le_uint16_t title_color = 0x7FFF;
   /* 02 */ parray<uint8_t, 2> unknown_u0;
   /* 04 */ pstring<EncryptedEncoding, 0x0C> rank_title;
-  /* 10 */ parray<le_uint32_t, 9> times_ep1_online; // Encrypted; see decrypt_challenge_time. TODO: This might be offline times
+  /* 10 */ parray<ChallengeTime<false>, 9> times_ep1_online; // TODO: This might be offline times
   /* 34 */ uint8_t grave_stage_num = 0;
   /* 35 */ uint8_t grave_floor = 0;
   /* 36 */ le_uint16_t grave_deaths = 0;
@@ -358,7 +359,7 @@ struct PlayerRecordsDCPC_Challenge {
   /* 48 */ le_float grave_z = 0.0f;
   /* 4C */ pstring<UnencryptedEncoding, 0x14> grave_team;
   /* 60 */ pstring<UnencryptedEncoding, 0x18> grave_message;
-  /* 78 */ parray<le_uint32_t, 9> times_ep1_offline; // Encrypted; see decrypt_challenge_time. TODO: This might be online times
+  /* 78 */ parray<ChallengeTime<false>, 9> times_ep1_offline; // TODO: This might be online times
   /* 9C */ parray<uint8_t, 4> unknown_l4;
   /* A0 */
 } __attribute__((packed));
@@ -380,9 +381,9 @@ struct PlayerRecordsV3_Challenge {
   struct Stats {
     /* 00:1C */ U16T title_color = 0x7FFF; // XRGB1555
     /* 02:1E */ parray<uint8_t, 2> unknown_u0;
-    /* 04:20 */ parray<U32T, 9> times_ep1_online; // Encrypted; see decrypt_challenge_time
-    /* 28:44 */ parray<U32T, 5> times_ep2_online; // Encrypted; see decrypt_challenge_time
-    /* 3C:58 */ parray<U32T, 9> times_ep1_offline; // Encrypted; see decrypt_challenge_time
+    /* 04:20 */ parray<ChallengeTime<IsBigEndian>, 9> times_ep1_online;
+    /* 28:44 */ parray<ChallengeTime<IsBigEndian>, 5> times_ep2_online;
+    /* 3C:58 */ parray<ChallengeTime<IsBigEndian>, 9> times_ep1_offline;
     /* 60:7C */ uint8_t grave_is_ep2 = 0;
     /* 61:7D */ uint8_t grave_stage_num = 0;
     /* 62:7E */ uint8_t grave_floor = 0;
@@ -419,9 +420,9 @@ struct PlayerRecordsV3_Challenge {
 struct PlayerRecordsBB_Challenge {
   /* 0000 */ le_uint16_t title_color = 0x7FFF; // XRGB1555
   /* 0002 */ parray<uint8_t, 2> unknown_u0;
-  /* 0004 */ parray<le_uint32_t, 9> times_ep1_online; // Encrypted; see decrypt_challenge_time
-  /* 0028 */ parray<le_uint32_t, 5> times_ep2_online; // Encrypted; see decrypt_challenge_time
-  /* 003C */ parray<le_uint32_t, 9> times_ep1_offline; // Encrypted; see decrypt_challenge_time
+  /* 0004 */ parray<ChallengeTime<false>, 9> times_ep1_online;
+  /* 0028 */ parray<ChallengeTime<false>, 5> times_ep2_online;
+  /* 003C */ parray<ChallengeTime<false>, 9> times_ep1_offline;
   /* 0060 */ uint8_t grave_is_ep2 = 0;
   /* 0061 */ uint8_t grave_stage_num = 0;
   /* 0062 */ uint8_t grave_floor = 0;

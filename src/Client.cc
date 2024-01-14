@@ -340,9 +340,11 @@ bool Client::can_see_quest(shared_ptr<const Quest> q, uint8_t difficulty, size_t
   if (!q->available_expression) {
     return true;
   }
+  auto p = this->character();
   string expr = q->available_expression->str();
   QuestAvailabilityExpression::Env env = {
-      .flags = &this->character()->quest_flags.data.at(difficulty),
+      .flags = &p->quest_flags.data.at(difficulty),
+      .challenge_records = &p->challenge_records,
       .team = this->team(),
       .num_players = num_players,
   };
@@ -358,9 +360,11 @@ bool Client::can_play_quest(shared_ptr<const Quest> q, uint8_t difficulty, size_
   if (!q->enabled_expression) {
     return true;
   }
+  auto p = this->character();
   string expr = q->enabled_expression->str();
   QuestAvailabilityExpression::Env env = {
-      .flags = &this->character()->quest_flags.data.at(difficulty),
+      .flags = &p->quest_flags.data.at(difficulty),
+      .challenge_records = &p->challenge_records,
       .team = this->team(),
       .num_players = num_players,
   };
