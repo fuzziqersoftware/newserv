@@ -3836,7 +3836,7 @@ template <bool IsBigEndian>
 struct G_EnemyHitByPlayer_6x0A {
   G_EnemyIDHeader header;
   le_uint16_t enemy_index = 0; // [0, 0xB50)
-  le_uint16_t remaining_hp = 0;
+  le_uint16_t total_damage = 0;
   typename std::conditional<IsBigEndian, be_uint32_t, le_uint32_t>::type flags = 0;
 } __packed__;
 

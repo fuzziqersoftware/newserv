@@ -2455,7 +2455,7 @@ static void on_enemy_hit(shared_ptr<Client> c, uint8_t command, uint8_t, void* d
     enemy.last_hit_by_client_id = c->lobby_client_id;
   }
 
-  G_EnemyHitByPlayer_GC_6x0A sw_cmd = {{{cmd.header.subcommand, cmd.header.size, cmd.header.enemy_id}, cmd.enemy_index, cmd.remaining_hp, cmd.flags.load()}};
+  G_EnemyHitByPlayer_GC_6x0A sw_cmd = {{{cmd.header.subcommand, cmd.header.size, cmd.header.enemy_id}, cmd.enemy_index, cmd.total_damage, cmd.flags.load()}};
   bool sender_is_gc = is_big_endian(c->version());
   for (auto lc : l->clients) {
     if (lc && (lc != c)) {
