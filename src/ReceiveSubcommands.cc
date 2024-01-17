@@ -2321,7 +2321,7 @@ static void on_set_quest_flag(shared_ptr<Client> c, uint8_t command, uint8_t fla
 
   forward_subcommand(c, command, flag, data, size);
 
-  if (is_v3(c->version()) && (l->drop_mode != Lobby::DropMode::DISABLED)) {
+  if (l->drop_mode != Lobby::DropMode::DISABLED) {
     EnemyType boss_enemy_type = EnemyType::NONE;
     bool is_ep2 = (l->episode == Episode::EP2);
     if ((l->episode == Episode::EP1) && (c->floor == 0x0E)) {
@@ -2350,6 +2350,7 @@ static void on_set_quest_flag(shared_ptr<Client> c, uint8_t command, uint8_t fla
           l->log.info("Found enemy E-%hX on floor %" PRIX32, enemy_id, enemy.floor);
         } catch (const out_of_range&) {
           l->log.warning("Could not find enemy on floor %" PRIX32 "; unable to determine enemy type", c->floor);
+          boss_enemy_type = EnemyType::NONE;
         }
       }
 
