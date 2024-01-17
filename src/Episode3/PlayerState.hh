@@ -143,7 +143,7 @@ public:
   void apply_main_die_assist_effects(uint8_t* die_value) const;
   void roll_main_dice();
   void unknown_8023C110();
-  void compute_team_dice_boost_after_draw_phase();
+  void compute_team_dice_bonus_after_draw_phase();
 
 private:
   std::weak_ptr<Server> w_server;

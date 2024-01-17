@@ -143,7 +143,7 @@ public:
   bool check_presence_entry(uint8_t client_id) const;
   void clear_player_flags_after_dice_phase();
   void compute_all_map_occupied_bits();
-  void compute_team_dice_boost(uint8_t team_id);
+  void compute_team_dice_bonus(uint8_t team_id);
   void copy_player_states_to_prev_states();
   std::shared_ptr<const CardIndex::CardEntry> definition_for_card_id(uint16_t card_id) const;
   void destroy_cards_with_zero_hp();
@@ -303,7 +303,7 @@ public:
   std::shared_ptr<RulerServer> ruler_server;
   parray<parray<parray<uint8_t, 2>, 2>, 5> warp_positions; // Array indexes are (type, end, x/y)
   parray<int16_t, 2> team_exp;
-  parray<int16_t, 2> team_dice_boost;
+  parray<int16_t, 2> team_dice_bonus;
   parray<uint32_t, 2> team_client_count;
   parray<uint32_t, 2> team_num_ally_fcs_destroyed;
   parray<uint32_t, 2> team_num_cards_destroyed;

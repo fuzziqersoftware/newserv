@@ -72,7 +72,7 @@ void CardSpecial::AttackEnvStats::clear() {
   this->num_gun_type_items = 0;
   this->num_cane_type_items = 0;
   this->effective_ap_if_not_tech2 = 0;
-  this->team_dice_boost = 0;
+  this->team_dice_bonus = 0;
   this->sc_effective_ap = 0;
   this->attack_bonus = 0;
   this->num_sword_type_items_on_team = 0;
@@ -115,7 +115,7 @@ void CardSpecial::AttackEnvStats::print(FILE* stream) const {
   fprintf(stream, "(kap) action_cards_ap                    = %" PRIu32 "\n", this->action_cards_ap);
   fprintf(stream, "(ktp) action_cards_tp                    = %" PRIu32 "\n", this->action_cards_tp);
   fprintf(stream, "(ldm) last_attack_preliminary_damage     = %" PRIu32 "\n", this->last_attack_preliminary_damage);
-  fprintf(stream, "(lv)  team_dice_boost                    = %" PRIu32 "\n", this->team_dice_boost);
+  fprintf(stream, "(lv)  team_dice_bonus                    = %" PRIu32 "\n", this->team_dice_bonus);
   fprintf(stream, "(mc)  num_machine_creatures              = %" PRIu32 "\n", this->num_machine_creatures);
   fprintf(stream, "(mhp) max_hp                             = %" PRIu32 "\n", this->max_hp);
   fprintf(stream, "(ndm) last_attack_damage_count           = %" PRIu32 "\n", this->last_attack_damage_count);
@@ -195,7 +195,7 @@ void CardSpecial::adjust_attack_damage_due_to_conditions(
           }
           this->send_6xB4x06_for_exp_change(
               target_card, attacker_card_ref, -exp_deduction, true);
-          this->compute_team_dice_boost(target_team_id);
+          this->compute_team_dice_bonus(target_team_id);
         }
         break;
       }
@@ -753,7 +753,7 @@ CardSpecial::AttackEnvStats CardSpecial::compute_attack_env_stats(
   ast.effective_tp = card->action_chain.chain.effective_tp;
   ast.current_hp = card->get_current_hp();
   ast.max_hp = card->get_max_hp();
-  ast.team_dice_boost = card ? this->server()->team_dice_boost[card->get_team_id()] : 0;
+  ast.team_dice_bonus = card ? this->server()->team_dice_bonus[card->get_team_id()] : 0;
 
   ast.effective_ap_if_not_tech = (!attacker_card || (attacker_card->action_chain.chain.attack_medium == AttackMedium::TECH))
       ? 0
@@ -1180,10 +1180,10 @@ StatSwapType CardSpecial::compute_stat_swap_type(shared_ptr<const Card> card) co
   return ret;
 }
 
-void CardSpecial::compute_team_dice_boost(uint8_t team_id) {
+void CardSpecial::compute_team_dice_bonus(uint8_t team_id) {
   uint8_t value = this->server()->team_exp[team_id] / (this->server()->team_client_count[team_id] * 12);
   this->adjust_dice_boost_if_team_has_condition_52(team_id, &value, 0);
-  this->server()->team_dice_boost[team_id] = min<uint8_t>(value, 8);
+  this->server()->team_dice_bonus[team_id] = min<uint8_t>(value, 8);
 }
 
 bool CardSpecial::condition_has_when_20_or_21(const Condition& cond) const {
@@ -2047,8 +2047,8 @@ bool CardSpecial::execute_effect(
               this->server()->team_exp[attacker_team_id] += this->server()->team_exp[target_team_id];
               this->server()->team_exp[target_team_id] = 0;
             }
-            this->compute_team_dice_boost(attacker_team_id);
-            this->compute_team_dice_boost(target_team_id);
+            this->compute_team_dice_bonus(attacker_team_id);
+            this->compute_team_dice_bonus(target_team_id);
             this->send_6xB4x06_for_exp_change(card, attacker_card_ref, -positive_expr_value, 1);
             this->server()->update_battle_state_flags_and_send_6xB4x03_if_needed();
           }
@@ -2090,7 +2090,7 @@ bool CardSpecial::execute_effect(
             delta = -3;
             this->server()->team_exp[team_id] -= 3;
           }
-          this->compute_team_dice_boost(team_id);
+          this->compute_team_dice_bonus(team_id);
           this->send_6xB4x06_for_exp_change(card, attacker_card_ref, delta, 1);
         }
       }
@@ -2167,7 +2167,7 @@ bool CardSpecial::execute_effect(
             this->server()->team_exp[team_id] = existing_exp + clamped_expr_value;
           }
           this->send_6xB4x06_for_exp_change(card, attacker_card_ref, clamped_expr_value, 1);
-          this->compute_team_dice_boost(team_id);
+          this->compute_team_dice_bonus(team_id);
           this->server()->update_battle_state_flags_and_send_6xB4x03_if_needed();
         }
       }

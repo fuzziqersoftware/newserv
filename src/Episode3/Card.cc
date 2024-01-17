@@ -264,7 +264,7 @@ void Card::commit_attack(
       int16_t exp_amount = clamp<int16_t>(this->server()->team_exp[team_id], 0, effective_damage);
       this->server()->team_exp[team_id] -= exp_amount;
       effective_damage -= exp_amount;
-      this->server()->compute_team_dice_boost(team_id);
+      this->server()->compute_team_dice_bonus(team_id);
       this->server()->update_battle_state_flags_and_send_6xB4x03_if_needed();
       if (cmd) {
         cmd->effect.ap += exp_amount;

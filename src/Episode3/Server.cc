@@ -57,7 +57,7 @@ Server::Server(shared_ptr<Lobby> lobby, Options&& options)
       defense_list_ended_for_client(false),
       next_assist_card_set_number(1),
       team_exp(0),
-      team_dice_boost(0),
+      team_dice_bonus(0),
       team_client_count(0),
       team_num_ally_fcs_destroyed(0),
       team_num_cards_destroyed(0),
@@ -362,7 +362,7 @@ void Server::add_team_exp(uint8_t team_id, int32_t exp) {
 
   uint8_t dice_boost = this->team_exp[team_id] / (this->team_client_count[team_id] * 12);
   this->card_special->adjust_dice_boost_if_team_has_condition_52(team_id, &dice_boost, 0);
-  this->team_dice_boost[team_id] = min<uint8_t>(dice_boost, 8);
+  this->team_dice_bonus[team_id] = min<uint8_t>(dice_boost, 8);
 }
 
 bool Server::advance_battle_phase() {
@@ -657,8 +657,8 @@ void Server::compute_all_map_occupied_bits() {
   }
 }
 
-void Server::compute_team_dice_boost(uint8_t team_id) {
-  this->team_dice_boost[team_id] = clamp<int16_t>(
+void Server::compute_team_dice_bonus(uint8_t team_id) {
+  this->team_dice_bonus[team_id] = clamp<int16_t>(
       this->team_exp[team_id] / (this->team_client_count[team_id] * 12), 0, 8);
 }
 
@@ -775,7 +775,7 @@ void Server::draw_phase_after() {
         ps->draw_hand(0);
       }
       if (ps->is_team_turn()) {
-        ps->compute_team_dice_boost_after_draw_phase();
+        ps->compute_team_dice_bonus_after_draw_phase();
       }
     }
   }
@@ -1562,8 +1562,8 @@ G_SetStateFlags_GC_Ep3_6xB4x03 Server::prepare_6xB4x03() const {
   cmd.state.registration_phase = this->registration_phase;
   cmd.state.team_exp[0] = this->team_exp[0];
   cmd.state.team_exp[1] = this->team_exp[1];
-  cmd.state.team_dice_boost[0] = this->team_dice_boost[0];
-  cmd.state.team_dice_boost[1] = this->team_dice_boost[1];
+  cmd.state.team_dice_bonus[0] = this->team_dice_bonus[0];
+  cmd.state.team_dice_bonus[1] = this->team_dice_bonus[1];
   cmd.state.first_team_turn = this->first_team_turn;
   cmd.state.tournament_flag = this->options.tournament ? 1 : 0;
   for (size_t z = 0; z < 4; z++) {

@@ -74,7 +74,7 @@ public:
     uint32_t num_gun_type_items; // "gn" in expr
     uint32_t num_cane_type_items; // "wd" in expr
     uint32_t effective_ap_if_not_tech2; // "tt" in expr
-    uint32_t team_dice_boost; // "lv" in expr
+    uint32_t team_dice_bonus; // "lv" in expr
     uint32_t sc_effective_ap; // "adm" in expr
     uint32_t attack_bonus; // "ddm" in expr
     uint32_t num_sword_type_items_on_team; // "sat" in expr
@@ -159,7 +159,7 @@ public:
       uint32_t* unknown_p11,
       uint16_t sc_card_ref);
   StatSwapType compute_stat_swap_type(std::shared_ptr<const Card> card) const;
-  void compute_team_dice_boost(uint8_t team_id);
+  void compute_team_dice_bonus(uint8_t team_id);
   bool condition_has_when_20_or_21(const Condition& cond) const;
   size_t count_action_cards_with_condition_for_all_current_attacks(
       ConditionType cond_type, uint16_t card_ref) const;

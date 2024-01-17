@@ -979,12 +979,11 @@ struct Rules {
 } __attribute__((packed));
 
 struct RulesTrial {
-  // The fields here have the same meaning as in the final version. The only
-  // difference is that Dice Boost does not exist in the trial version.
+  // Most fields here have the same meanings as in the final version.
   /* 00 */ uint8_t overall_time_limit = 0;
   /* 01 */ uint8_t phase_time_limit = 0;
   /* 02 */ AllowedCards allowed_cards = AllowedCards::ALL;
-  /* 03 */ uint8_t atk_dice_max = 1;
+  /* 03 */ uint8_t atk_dice_max = 1; // TODO: Are these actually maxes? Look at the dice roll function
   /* 04 */ uint8_t def_dice_max = 6;
   /* 05 */ uint8_t disable_deck_shuffle = 0;
   /* 06 */ uint8_t disable_deck_loop = 0;
@@ -1009,7 +1008,7 @@ struct StateFlags {
   /* 06 */ SetupPhase setup_phase;
   /* 07 */ RegistrationPhase registration_phase;
   /* 08 */ parray<le_uint32_t, 2> team_exp;
-  /* 10 */ parray<uint8_t, 2> team_dice_boost;
+  /* 10 */ parray<uint8_t, 2> team_dice_bonus;
   /* 12 */ uint8_t first_team_turn;
   /* 13 */ uint8_t tournament_flag;
   /* 14 */ parray<CardType, 4> client_sc_card_types;

@@ -1498,7 +1498,7 @@ bool StateFlags::operator==(const StateFlags& other) const {
       (this->setup_phase == other.setup_phase) &&
       (this->registration_phase == other.registration_phase) &&
       (this->team_exp == other.team_exp) &&
-      (this->team_dice_boost == other.team_dice_boost) &&
+      (this->team_dice_bonus == other.team_dice_bonus) &&
       (this->first_team_turn == other.first_team_turn) &&
       (this->tournament_flag == other.tournament_flag) &&
       (this->client_sc_card_types == other.client_sc_card_types);
@@ -1516,7 +1516,7 @@ void StateFlags::clear() {
   this->setup_phase = SetupPhase::REGISTRATION;
   this->registration_phase = RegistrationPhase::AWAITING_NUM_PLAYERS;
   this->team_exp.clear(0);
-  this->team_dice_boost.clear(0);
+  this->team_dice_bonus.clear(0);
   this->first_team_turn = 0;
   this->tournament_flag = 0;
   this->client_sc_card_types.clear(CardType::HUNTERS_SC);
@@ -1531,7 +1531,7 @@ void StateFlags::clear_FF() {
   this->setup_phase = SetupPhase::INVALID_FF;
   this->registration_phase = RegistrationPhase::INVALID_FF;
   this->team_exp.clear(0xFFFFFFFF);
-  this->team_dice_boost.clear(0xFF);
+  this->team_dice_bonus.clear(0xFF);
   this->first_team_turn = 0xFF;
   this->tournament_flag = 0xFF;
   this->client_sc_card_types.clear(CardType::INVALID_FF);

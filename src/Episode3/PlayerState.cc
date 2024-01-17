@@ -1884,8 +1884,8 @@ void PlayerState::roll_main_dice() {
   this->dice_results[0] = this->atk_points;
   this->dice_results[1] = this->def_points;
 
-  this->atk_points += s->team_dice_boost[this->team_id];
-  this->def_points += s->team_dice_boost[this->team_id];
+  this->atk_points += s->team_dice_bonus[this->team_id];
+  this->def_points += s->team_dice_bonus[this->team_id];
   this->atk_points = clamp<uint8_t>(this->atk_points, 1, 9);
   this->def_points = clamp<uint8_t>(this->def_points, 1, 9);
   this->atk_bonuses = this->atk_points - atk_before_bonuses;
@@ -1906,7 +1906,7 @@ void PlayerState::unknown_8023C110() {
   }
 }
 
-void PlayerState::compute_team_dice_boost_after_draw_phase() {
+void PlayerState::compute_team_dice_bonus_after_draw_phase() {
   auto s = this->server();
 
   if (this->sc_card) {
@@ -1924,7 +1924,7 @@ void PlayerState::compute_team_dice_boost_after_draw_phase() {
       (s->team_client_count[current_team_turn] * 12);
   s->card_special->adjust_dice_boost_if_team_has_condition_52(
       current_team_turn, &dice_boost, 0);
-  s->team_dice_boost[current_team_turn] = clamp<int16_t>(dice_boost, 0, 8);
+  s->team_dice_bonus[current_team_turn] = clamp<int16_t>(dice_boost, 0, 8);
   this->update_hand_and_equip_state_and_send_6xB4x02_if_needed();
 }
 

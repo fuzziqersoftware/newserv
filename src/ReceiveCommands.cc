@@ -1287,7 +1287,7 @@ static bool add_next_game_client(shared_ptr<Lobby> l) {
     state_cmd.state.setup_phase = Episode3::SetupPhase::REGISTRATION;
     state_cmd.state.registration_phase = Episode3::RegistrationPhase::AWAITING_NUM_PLAYERS;
     state_cmd.state.team_exp.clear(0);
-    state_cmd.state.team_dice_boost.clear(0);
+    state_cmd.state.team_dice_bonus.clear(0);
     state_cmd.state.first_team_turn = 0xFF;
     state_cmd.state.tournament_flag = 0x01;
     state_cmd.state.client_sc_card_types.clear(Episode3::CardType::INVALID_FF);
