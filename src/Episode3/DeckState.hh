@@ -11,27 +11,29 @@
 namespace Episode3 {
 
 struct NameEntry {
-  parray<char, 0x10> name;
-  uint8_t client_id;
-  uint8_t present;
-  uint8_t is_cpu_player;
-  uint8_t unused;
+  /* 00 */ parray<char, 0x10> name;
+  /* 10 */ uint8_t client_id;
+  /* 11 */ uint8_t present;
+  /* 12 */ uint8_t is_cpu_player;
+  /* 13 */ uint8_t unused;
+  /* 14 */
 
   NameEntry();
   void clear();
 } __attribute__((packed));
 
 struct DeckEntry {
-  pstring<TextEncoding::SJIS, 0x10> name;
-  le_uint32_t team_id;
-  parray<le_uint16_t, 31> card_ids;
+  /* 00 */ pstring<TextEncoding::SJIS, 0x10> name;
+  /* 10 */ le_uint32_t team_id;
+  /* 14 */ parray<le_uint16_t, 31> card_ids;
   // If the following flag is not set to 3, then the God Whim assist effect can
   // use cards that are hidden from the player during deck building. The client
   // always sets this to 3, and it's not clear why this even exists.
-  uint8_t god_whim_flag;
-  uint8_t unused1;
-  le_uint16_t player_level;
-  parray<uint8_t, 2> unused2;
+  /* 52 */ uint8_t god_whim_flag;
+  /* 53 */ uint8_t unused1;
+  /* 54 */ le_uint16_t player_level;
+  /* 56 */ parray<uint8_t, 2> unused2;
+  /* 58 */
 
   DeckEntry();
   void clear();

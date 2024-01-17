@@ -13,19 +13,20 @@ class Server;
 class Card;
 
 struct Condition {
-  ConditionType type;
-  uint8_t remaining_turns;
-  int8_t a_arg_value;
-  uint8_t dice_roll_value;
-  uint8_t flags;
-  uint8_t card_definition_effect_index;
-  le_uint16_t card_ref;
-  le_int16_t value;
-  le_uint16_t condition_giver_card_ref;
-  uint8_t random_percent;
-  int8_t value8;
-  uint8_t order;
-  uint8_t unknown_a8;
+  /* 00 */ ConditionType type;
+  /* 01 */ uint8_t remaining_turns;
+  /* 02 */ int8_t a_arg_value;
+  /* 03 */ uint8_t dice_roll_value;
+  /* 04 */ uint8_t flags;
+  /* 05 */ uint8_t card_definition_effect_index;
+  /* 06 */ le_uint16_t card_ref;
+  /* 08 */ le_int16_t value;
+  /* 0A */ le_uint16_t condition_giver_card_ref;
+  /* 0C */ uint8_t random_percent;
+  /* 0D */ int8_t value8;
+  /* 0E */ uint8_t order;
+  /* 0F */ uint8_t unknown_a8;
+  /* 10 */
 
   Condition();
   bool operator==(const Condition& other) const;
@@ -38,16 +39,17 @@ struct Condition {
 } __attribute__((packed));
 
 struct EffectResult {
-  le_uint16_t attacker_card_ref;
-  le_uint16_t target_card_ref;
-  int8_t value;
-  int8_t current_hp;
-  int8_t ap;
-  int8_t tp;
-  uint8_t flags;
-  int8_t operation; // May be a negative condition number
-  uint8_t condition_index;
-  uint8_t dice_roll_value;
+  /* 00 */ le_uint16_t attacker_card_ref;
+  /* 02 */ le_uint16_t target_card_ref;
+  /* 04 */ int8_t value;
+  /* 05 */ int8_t current_hp;
+  /* 06 */ int8_t ap;
+  /* 07 */ int8_t tp;
+  /* 08 */ uint8_t flags;
+  /* 09 */ int8_t operation; // May be a negative condition number
+  /* 0A */ uint8_t condition_index;
+  /* 0B */ uint8_t dice_roll_value;
+  /* 0C */
 
   EffectResult();
   bool operator==(const EffectResult& other) const;
@@ -59,13 +61,14 @@ struct EffectResult {
 } __attribute__((packed));
 
 struct CardShortStatus {
-  le_uint16_t card_ref;
-  le_uint16_t current_hp;
-  le_uint32_t card_flags;
-  Location loc;
-  le_uint16_t unused1;
-  int8_t max_hp;
-  uint8_t unused2;
+  /* 00 */ le_uint16_t card_ref;
+  /* 02 */ le_uint16_t current_hp;
+  /* 04 */ le_uint32_t card_flags;
+  /* 08 */ Location loc;
+  /* 0C */ le_uint16_t unused1;
+  /* 0E */ int8_t max_hp;
+  /* 0F */ uint8_t unused2;
+  /* 10 */
 
   CardShortStatus();
   bool operator==(const CardShortStatus& other) const;
@@ -78,14 +81,15 @@ struct CardShortStatus {
 } __attribute__((packed));
 
 struct ActionState {
-  le_uint16_t client_id;
-  uint8_t unused;
-  Direction facing_direction;
-  le_uint16_t attacker_card_ref;
-  le_uint16_t defense_card_ref;
-  parray<le_uint16_t, 4 * 9> target_card_refs;
-  parray<le_uint16_t, 9> action_card_refs;
-  le_uint16_t original_attacker_card_ref;
+  /* 00 */ le_uint16_t client_id;
+  /* 02 */ uint8_t unused;
+  /* 03 */ Direction facing_direction;
+  /* 04 */ le_uint16_t attacker_card_ref;
+  /* 06 */ le_uint16_t defense_card_ref;
+  /* 08 */ parray<le_uint16_t, 4 * 9> target_card_refs;
+  /* 50 */ parray<le_uint16_t, 9> action_card_refs;
+  /* 62 */ le_uint16_t original_attacker_card_ref;
+  /* 64 */
 
   ActionState();
   bool operator==(const ActionState& other) const;
@@ -97,27 +101,28 @@ struct ActionState {
 } __attribute__((packed));
 
 struct ActionChain {
-  int8_t effective_ap;
-  int8_t effective_tp;
-  int8_t ap_effect_bonus;
-  int8_t damage;
-  le_uint16_t acting_card_ref;
-  le_uint16_t unknown_card_ref_a3;
-  parray<le_uint16_t, 8> attack_action_card_refs;
-  uint8_t attack_action_card_ref_count;
-  AttackMedium attack_medium;
-  uint8_t target_card_ref_count;
-  ActionSubphase action_subphase;
-  uint8_t strike_count;
-  int8_t damage_multiplier;
-  uint8_t attack_number;
-  int8_t tp_effect_bonus;
-  uint8_t unused1;
-  uint8_t unused2;
-  int8_t card_ap;
-  int8_t card_tp;
-  le_uint32_t flags;
-  parray<le_uint16_t, 4 * 9> target_card_refs;
+  /* 00 */ int8_t effective_ap;
+  /* 01 */ int8_t effective_tp;
+  /* 02 */ int8_t ap_effect_bonus;
+  /* 03 */ int8_t damage;
+  /* 04 */ le_uint16_t acting_card_ref;
+  /* 06 */ le_uint16_t unknown_card_ref_a3;
+  /* 08 */ parray<le_uint16_t, 8> attack_action_card_refs;
+  /* 18 */ uint8_t attack_action_card_ref_count;
+  /* 19 */ AttackMedium attack_medium;
+  /* 1A */ uint8_t target_card_ref_count;
+  /* 1B */ ActionSubphase action_subphase;
+  /* 1C */ uint8_t strike_count;
+  /* 1D */ int8_t damage_multiplier;
+  /* 1E */ uint8_t attack_number;
+  /* 1F */ int8_t tp_effect_bonus;
+  /* 20 */ uint8_t unused1;
+  /* 21 */ uint8_t unused2;
+  /* 22 */ int8_t card_ap;
+  /* 23 */ int8_t card_tp;
+  /* 24 */ le_uint32_t flags;
+  /* 28 */ parray<le_uint16_t, 4 * 9> target_card_refs;
+  /* 70 */
 
   ActionChain();
   bool operator==(const ActionChain& other) const;
@@ -130,8 +135,9 @@ struct ActionChain {
 } __attribute__((packed));
 
 struct ActionChainWithConds {
-  ActionChain chain;
-  parray<Condition, 9> conditions;
+  /* 0000 */ ActionChain chain;
+  /* 0070 */ parray<Condition, 9> conditions;
+  /* 0100 */
 
   ActionChainWithConds();
   bool operator==(const ActionChainWithConds& other) const;
@@ -165,17 +171,18 @@ struct ActionChainWithConds {
 } __attribute__((packed));
 
 struct ActionMetadata {
-  le_uint16_t card_ref;
-  uint8_t target_card_ref_count;
-  uint8_t defense_card_ref_count;
-  ActionSubphase action_subphase;
-  int8_t defense_power;
-  int8_t defense_bonus;
-  int8_t attack_bonus;
-  le_uint32_t flags;
-  parray<le_uint16_t, 4 * 9> target_card_refs;
-  parray<le_uint16_t, 8> defense_card_refs;
-  parray<le_uint16_t, 8> original_attacker_card_refs;
+  /* 00 */ le_uint16_t card_ref;
+  /* 02 */ uint8_t target_card_ref_count;
+  /* 03 */ uint8_t defense_card_ref_count;
+  /* 04 */ ActionSubphase action_subphase;
+  /* 05 */ int8_t defense_power;
+  /* 06 */ int8_t defense_bonus;
+  /* 07 */ int8_t attack_bonus;
+  /* 08 */ le_uint32_t flags;
+  /* 0C */ parray<le_uint16_t, 4 * 9> target_card_refs;
+  /* 54 */ parray<le_uint16_t, 8> defense_card_refs;
+  /* 64 */ parray<le_uint16_t, 8> original_attacker_card_refs;
+  /* 74 */
 
   ActionMetadata();
   bool operator==(const ActionMetadata& other) const;
@@ -200,28 +207,29 @@ struct ActionMetadata {
 } __attribute__((packed));
 
 struct HandAndEquipState {
-  parray<uint8_t, 2> dice_results;
-  uint8_t atk_points;
-  uint8_t def_points;
-  uint8_t atk_points2; // TODO: rename this to something more appropriate
-  uint8_t unknown_a1;
-  uint8_t total_set_cards_cost;
-  uint8_t is_cpu_player;
-  le_uint32_t assist_flags;
-  parray<le_uint16_t, 6> hand_card_refs;
-  le_uint16_t assist_card_ref;
-  parray<le_uint16_t, 8> set_card_refs;
-  le_uint16_t sc_card_ref;
-  parray<le_uint16_t, 6> hand_card_refs2;
-  parray<le_uint16_t, 8> set_card_refs2;
-  le_uint16_t assist_card_ref2;
-  le_uint16_t assist_card_set_number;
-  le_uint16_t assist_card_id;
-  uint8_t assist_remaining_turns;
-  uint8_t assist_delay_turns;
-  uint8_t atk_bonuses;
-  uint8_t def_bonuses;
-  parray<uint8_t, 2> unused2;
+  /* 00 */ parray<uint8_t, 2> dice_results;
+  /* 02 */ uint8_t atk_points;
+  /* 03 */ uint8_t def_points;
+  /* 04 */ uint8_t atk_points2; // TODO: rename this to something more appropriate
+  /* 05 */ uint8_t unknown_a1;
+  /* 06 */ uint8_t total_set_cards_cost;
+  /* 07 */ uint8_t is_cpu_player;
+  /* 08 */ le_uint32_t assist_flags;
+  /* 0C */ parray<le_uint16_t, 6> hand_card_refs;
+  /* 18 */ le_uint16_t assist_card_ref;
+  /* 1A */ parray<le_uint16_t, 8> set_card_refs;
+  /* 2A */ le_uint16_t sc_card_ref;
+  /* 2C */ parray<le_uint16_t, 6> hand_card_refs2;
+  /* 38 */ parray<le_uint16_t, 8> set_card_refs2;
+  /* 48 */ le_uint16_t assist_card_ref2;
+  /* 4A */ le_uint16_t assist_card_set_number;
+  /* 4C */ le_uint16_t assist_card_id;
+  /* 4E */ uint8_t assist_remaining_turns;
+  /* 4F */ uint8_t assist_delay_turns;
+  /* 50 */ uint8_t atk_bonuses;
+  /* 51 */ uint8_t def_bonuses;
+  /* 52 */ parray<uint8_t, 2> unused2;
+  /* 54 */
 
   HandAndEquipState();
   bool operator==(const HandAndEquipState& other) const;
@@ -234,26 +242,27 @@ struct HandAndEquipState {
 } __attribute__((packed));
 
 struct PlayerBattleStats {
-  le_uint16_t damage_given;
-  le_uint16_t damage_taken;
-  le_uint16_t num_opponent_cards_destroyed;
-  le_uint16_t num_owned_cards_destroyed;
-  le_uint16_t total_move_distance;
-  le_uint16_t num_cards_set;
-  le_uint16_t num_item_or_creature_cards_set;
-  le_uint16_t num_attack_actions_set;
-  le_uint16_t num_tech_cards_set;
-  le_uint16_t num_assist_cards_set;
-  le_uint16_t defense_actions_set_on_self;
-  le_uint16_t defense_actions_set_on_ally;
-  le_uint16_t num_cards_drawn;
-  le_uint16_t max_attack_damage;
-  le_uint16_t max_attack_combo_size;
-  le_uint16_t num_attacks_given;
-  le_uint16_t num_attacks_taken;
-  le_uint16_t sc_damage_taken;
-  le_uint16_t action_card_negated_damage;
-  le_uint16_t unused;
+  /* 00 */ le_uint16_t damage_given;
+  /* 02 */ le_uint16_t damage_taken;
+  /* 04 */ le_uint16_t num_opponent_cards_destroyed;
+  /* 06 */ le_uint16_t num_owned_cards_destroyed;
+  /* 08 */ le_uint16_t total_move_distance;
+  /* 0A */ le_uint16_t num_cards_set;
+  /* 0C */ le_uint16_t num_item_or_creature_cards_set;
+  /* 0E */ le_uint16_t num_attack_actions_set;
+  /* 10 */ le_uint16_t num_tech_cards_set;
+  /* 12 */ le_uint16_t num_assist_cards_set;
+  /* 14 */ le_uint16_t defense_actions_set_on_self;
+  /* 16 */ le_uint16_t defense_actions_set_on_ally;
+  /* 18 */ le_uint16_t num_cards_drawn;
+  /* 1A */ le_uint16_t max_attack_damage;
+  /* 1C */ le_uint16_t max_attack_combo_size;
+  /* 1E */ le_uint16_t num_attacks_given;
+  /* 20 */ le_uint16_t num_attacks_taken;
+  /* 22 */ le_uint16_t sc_damage_taken;
+  /* 24 */ le_uint16_t action_card_negated_damage;
+  /* 26 */ le_uint16_t unused;
+  /* 28 */
 
   PlayerBattleStats();
   void clear();
