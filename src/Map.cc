@@ -1734,6 +1734,47 @@ static const vector<AreaMapFileInfo> map_file_info_dc_nte = {
     {nullptr, {}, {}},
 };
 
+static const vector<vector<AreaMapFileInfo>> map_file_info_gc_nte = {
+    {
+        // Episode 1 Non-solo
+        {"city00", {}, {0}},
+        {"forest01", {}, {0, 1, 2, 3, 4}},
+        {"forest02", {}, {0, 1, 2, 3, 4}},
+        {"cave01", {0, 1, 2}, {0, 1}},
+        {"cave02", {0, 1, 2}, {0, 1}},
+        {"cave03", {0, 1, 2}, {0, 1}},
+        {"machine01", {0, 1, 2}, {0, 1}},
+        {"machine02", {0, 1, 2}, {0, 1}},
+        {"ancient01", {0, 1, 2}, {0, 1}},
+        {"ancient02", {0, 1, 2}, {0, 1}},
+        {"ancient03", {0, 1, 2}, {0, 1}},
+        {"boss01", {}, {}},
+        {"boss02", {}, {}},
+        {"boss03", {}, {}},
+        {"boss04", {}, {}},
+        {nullptr, {}, {}},
+    },
+    {
+        // Episode 2 Non-solo
+        {"labo00", {}, {0}},
+        {"ruins01", {0, 1}, {0}},
+        {"ruins02", {0, 1}, {0}},
+        {"space01", {0, 1}, {0}},
+        {"space02", {0, 1}, {0}},
+        {"jungle01", {}, {0, 1}},
+        {"jungle02", {}, {0, 1}},
+        {"jungle03", {}, {0, 1}},
+        {"jungle04", {0, 1}, {0}},
+        {"jungle05", {}, {0, 1}},
+        {nullptr, {}, {}},
+        {nullptr, {}, {}},
+        {"boss05", {}, {}},
+        {"boss06", {}, {}},
+        {"boss07", {}, {}},
+        {"boss08", {}, {}},
+    },
+};
+
 // These are indexed as [episode][is_solo][floor], where episode is 0-2
 static const vector<vector<vector<AreaMapFileInfo>>> map_file_info = {
     {
@@ -1867,7 +1908,19 @@ const AreaMapFileInfo& file_info_for_variation(
   const vector<AreaMapFileInfo>* solo_index = nullptr;
   if (version == Version::DC_NTE) {
     multi_index = &map_file_info_dc_nte;
-  } else {
+  } else if (version == Version::GC_NTE) {
+    switch (episode) {
+      case Episode::EP1:
+        multi_index = &map_file_info_gc_nte.at(0);
+        break;
+      case Episode::EP2:
+        multi_index = &map_file_info_gc_nte.at(1);
+        break;
+      default:
+        throw invalid_argument("episode has no maps");
+    }
+  }
+   else {
     switch (episode) {
       case Episode::EP1:
         multi_index = &map_file_info.at(0).at(0);
