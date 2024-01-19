@@ -74,8 +74,8 @@ I 94381 2023-12-29 15:36:14 - [Commands] Sending to C-1 (version=GC_V3 command=0
 0010 | 30 50 4F 33 00 01 00 40 20 00 04 00 00 00 00 00 | 0PO3   B
 0020 | 00 00 00 00 00 00 FF FF 80 FF FF FF             |
 I 94381 2023-12-29 15:36:14 - [Commands] Sending to C-1 (version=GC_V3 command=B1 flag=00)
-0000 | B1 00 1C 00 32 30 32 33 3A 31 32 3A 32 39 3A 20 |     2023:12:29:
-0010 | 32 33 3A 33 36 3A 31 34 2E 30 30 30             | 23:36:14.000
+0000 | B1 00 20 00 32 30 32 33 3A 31 32 3A 32 39 3A 20 |     2023:12:29:
+0010 | 32 33 3A 33 36 3A 31 34 2E 30 30 30 00 01 00 00 | 23:36:14.000
 I 94381 2023-12-29 15:36:14 - [Commands] Received from C-1 (version=GC_V3 command=99 flag=00)
 0000 | 99 00 04 00                                     |
 I 94381 2023-12-29 15:36:14 - [Commands] Received from C-1 (version=GC_V3 command=D6 flag=00)
@@ -105,8 +105,8 @@ I 94381 2023-12-29 15:36:15 - [Commands] Sending to C-1 (version=GC_V3 command=0
 I 94381 2023-12-29 15:36:15 - [Commands] Received from C-1 (version=GC_V3 command=B1 flag=00)
 0000 | B1 00 04 00                                     |
 I 94381 2023-12-29 15:36:15 - [Commands] Sending to C-1 (version=GC_V3 command=B1 flag=00)
-0000 | B1 00 1C 00 32 30 32 33 3A 31 32 3A 32 39 3A 20 |     2023:12:29:
-0010 | 32 33 3A 33 36 3A 31 35 2E 30 30 30             | 23:36:15.000
+0000 | B1 00 20 00 32 30 32 33 3A 31 32 3A 32 39 3A 20 |     2023:12:29:
+0010 | 32 33 3A 33 36 3A 31 35 2E 30 30 30 00 01 00 00 | 23:36:15.000
 I 94381 2023-12-29 15:36:15 - [Commands] Received from C-1 (version=GC_V3 command=99 flag=00)
 0000 | 99 00 04 00                                     |
 I 94381 2023-12-29 15:36:15 - [Commands] Sending to C-1 (version=GC_V3 command=19 flag=00)
@@ -480,8 +480,8 @@ I 94381 2023-12-29 15:36:19 - [Commands] Sending to C-4 (version=GC_V3 command=0
 0010 | 00 00 00 33 00 00 00 40 20 00 04 00 00 00 00 00 |    3   B
 0020 | 00 00 00 00 00 00 FF FF 80 FF FF FF             |
 I 94381 2023-12-29 15:36:19 - [Commands] Sending to C-4 (version=GC_V3 command=B1 flag=00)
-0000 | B1 00 1C 00 32 30 32 33 3A 31 32 3A 32 39 3A 20 |     2023:12:29:
-0010 | 32 33 3A 33 36 3A 31 39 2E 30 30 30             | 23:36:19.000
+0000 | B1 00 20 00 32 30 32 33 3A 31 32 3A 32 39 3A 20 |     2023:12:29:
+0010 | 32 33 3A 33 36 3A 31 39 2E 30 30 30 00 01 00 00 | 23:36:19.000
 I 94381 2023-12-29 15:36:19 - [Commands] Received from C-4 (version=GC_V3 command=99 flag=00)
 0000 | 99 00 04 00                                     |
 I 94381 2023-12-29 15:36:19 - [Commands] Received from C-4 (version=GC_V3 command=D6 flag=00)
@@ -511,8 +511,8 @@ I 94381 2023-12-29 15:36:19 - [Commands] Sending to C-4 (version=GC_V3 command=0
 I 94381 2023-12-29 15:36:19 - [Commands] Received from C-4 (version=GC_V3 command=B1 flag=00)
 0000 | B1 00 04 00                                     |
 I 94381 2023-12-29 15:36:19 - [Commands] Sending to C-4 (version=GC_V3 command=B1 flag=00)
-0000 | B1 00 1C 00 32 30 32 33 3A 31 32 3A 32 39 3A 20 |     2023:12:29:
-0010 | 32 33 3A 33 36 3A 31 39 2E 30 30 30             | 23:36:19.000
+0000 | B1 00 20 00 32 30 32 33 3A 31 32 3A 32 39 3A 20 |     2023:12:29:
+0010 | 32 33 3A 33 36 3A 31 39 2E 30 30 30 00 01 00 00 | 23:36:19.000
 I 94381 2023-12-29 15:36:20 - [Commands] Received from C-4 (version=GC_V3 command=99 flag=00)
 0000 | 99 00 04 00                                     |
 I 94381 2023-12-29 15:36:20 - [Commands] Sending to C-4 (version=GC_V3 command=19 flag=00)
@@ -1193,8 +1193,8 @@ I 94381 2023-12-29 15:36:44 - [Commands] Received from C-2 (Jess) (version=GC_V3
 I 94381 2023-12-29 15:36:44 - [Commands] Received from C-2 (Jess) (version=GC_V3 command=6F flag=00)
 0000 | 6F 00 04 00                                     | o
 I 94381 2023-12-29 15:36:44 - [Commands] Sending to C-2 (Jess) (version=GC_V3 command=B1 flag=00)
-0000 | B1 00 1C 00 32 30 32 33 3A 31 32 3A 32 39 3A 20 |     2023:12:29:
-0010 | 32 33 3A 33 36 3A 34 34 2E 30 30 30             | 23:36:44.000
+0000 | B1 00 20 00 32 30 32 33 3A 31 32 3A 32 39 3A 20 |     2023:12:29:
+0010 | 32 33 3A 33 36 3A 34 34 2E 30 30 30 00 01 00 00 | 23:36:44.000
 I 94381 2023-12-29 15:36:45 - [Commands] Received from C-5 (Jonah) (version=GC_V3 command=09 flag=00)
 0000 | 09 00 0C 00 44 00 00 44 15 00 00 00             |     D  D
 I 94381 2023-12-29 15:36:45 - [Commands] Sending to C-5 (Jonah) (version=GC_V3 command=11 flag=00)
@@ -3393,8 +3393,8 @@ I 94381 2023-12-29 15:36:52 - [Commands] Sending to C-2 (Jess) (version=GC_V3 co
 I 94381 2023-12-29 15:36:52 - [Commands] Received from C-5 (Jonah) (version=GC_V3 command=6F flag=00)
 0000 | 6F 00 04 00                                     | o
 I 94381 2023-12-29 15:36:52 - [Commands] Sending to C-5 (Jonah) (version=GC_V3 command=B1 flag=00)
-0000 | B1 00 1C 00 32 30 32 33 3A 31 32 3A 32 39 3A 20 |     2023:12:29:
-0010 | 32 33 3A 33 36 3A 35 32 2E 30 30 30             | 23:36:52.000
+0000 | B1 00 20 00 32 30 32 33 3A 31 32 3A 32 39 3A 20 |     2023:12:29:
+0010 | 32 33 3A 33 36 3A 35 32 2E 30 30 30 00 01 00 00 | 23:36:52.000
 I 94381 2023-12-29 15:36:52 - [Commands] Sending to C-2 (Jess) (version=GC_V3 command=60 flag=00)
 0000 | 60 00 08 00 72 01 00 00                         | `   r
 I 94381 2023-12-29 15:36:52 - [Commands] Received from C-2 (Jess) (version=GC_V3 command=60 flag=00)
@@ -12697,8 +12697,8 @@ I 94381 2023-12-29 15:42:31 - [Commands] Sending to C-2 (Jess) (version=GC_V3 co
 I 94381 2023-12-29 15:42:31 - [Commands] Received from C-5 (Jonah) (version=GC_V3 command=6F flag=00)
 0000 | 6F 00 04 00                                     | o
 I 94381 2023-12-29 15:42:31 - [Commands] Sending to C-5 (Jonah) (version=GC_V3 command=B1 flag=00)
-0000 | B1 00 1C 00 32 30 32 33 3A 31 32 3A 32 39 3A 20 |     2023:12:29:
-0010 | 32 33 3A 34 32 3A 33 31 2E 30 30 30             | 23:42:31.000
+0000 | B1 00 20 00 32 30 32 33 3A 31 32 3A 32 39 3A 20 |     2023:12:29:
+0010 | 32 33 3A 34 32 3A 33 31 2E 30 30 30 00 01 00 00 | 23:42:31.000
 I 94381 2023-12-29 15:42:31 - [Commands] Sending to C-2 (Jess) (version=GC_V3 command=60 flag=00)
 0000 | 60 00 08 00 72 01 00 00                         | `   r
 I 94381 2023-12-29 15:42:31 - [Commands] Received from C-2 (Jess) (version=GC_V3 command=60 flag=00)

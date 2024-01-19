@@ -79,8 +79,8 @@ I 97037 2023-12-29 15:55:52 - [Commands] Sending to C-2 (version=PC_V2 command=0
 I 97037 2023-12-29 15:55:52 - [Commands] Received from C-2 (version=PC_V2 command=96 flag=00)
 0000 | 0C 00 96 00 47 F1 E1 63 4E 00 00 00             |     G  cN
 I 97037 2023-12-29 15:55:52 - [Commands] Sending to C-2 (version=PC_V2 command=B1 flag=00)
-0000 | 1C 00 B1 00 32 30 32 33 3A 31 32 3A 32 39 3A 20 |     2023:12:29:
-0010 | 32 33 3A 35 35 3A 35 32 2E 30 30 30             | 23:55:52.000
+0000 | 20 00 B1 00 32 30 32 33 3A 31 32 3A 32 39 3A 20 |     2023:12:29:
+0010 | 32 33 3A 35 35 3A 35 32 2E 30 30 30 00 01 00 00 | 23:55:52.000
 I 97037 2023-12-29 15:55:52 - [Commands] Received from C-2 (version=PC_V2 command=99 flag=00)
 0000 | 04 00 99 00                                     |
 I 97037 2023-12-29 15:55:53 - [Commands] Received from C-2 (version=PC_V2 command=10 flag=00)
@@ -90,8 +90,8 @@ I 97037 2023-12-29 15:55:53 - [Commands] Sending to C-2 (version=PC_V2 command=9
 I 97037 2023-12-29 15:55:53 - [Commands] Received from C-2 (version=PC_V2 command=B1 flag=00)
 0000 | 04 00 B1 00                                     |
 I 97037 2023-12-29 15:55:53 - [Commands] Sending to C-2 (version=PC_V2 command=B1 flag=00)
-0000 | 1C 00 B1 00 32 30 32 33 3A 31 32 3A 32 39 3A 20 |     2023:12:29:
-0010 | 32 33 3A 35 35 3A 35 33 2E 30 30 30             | 23:55:53.000
+0000 | 20 00 B1 00 32 30 32 33 3A 31 32 3A 32 39 3A 20 |     2023:12:29:
+0010 | 32 33 3A 35 35 3A 35 33 2E 30 30 30 00 01 00 00 | 23:55:53.000
 I 97037 2023-12-29 15:55:53 - [Commands] Received from C-2 (version=PC_V2 command=99 flag=00)
 0000 | 04 00 99 00                                     |
 I 97037 2023-12-29 15:55:53 - [Commands] Sending to C-2 (version=PC_V2 command=19 flag=00)
@@ -449,8 +449,8 @@ I 97037 2023-12-29 15:56:33 - [Commands] Received from C-3 (Tali) (version=PC_V2
 I 97037 2023-12-29 15:56:33 - [Commands] Received from C-3 (Tali) (version=PC_V2 command=6F flag=00)
 0000 | 04 00 6F 00                                     |   o
 I 97037 2023-12-29 15:56:33 - [Commands] Sending to C-3 (Tali) (version=PC_V2 command=B1 flag=00)
-0000 | 1C 00 B1 00 32 30 32 33 3A 31 32 3A 32 39 3A 20 |     2023:12:29:
-0010 | 32 33 3A 35 36 3A 33 33 2E 30 30 30             | 23:56:33.000
+0000 | 20 00 B1 00 32 30 32 33 3A 31 32 3A 32 39 3A 20 |     2023:12:29:
+0010 | 32 33 3A 35 36 3A 33 33 2E 30 30 30 00 01 00 00 | 23:56:33.000
 I 97037 2023-12-29 15:56:33 - [Commands] Received from C-3 (Tali) (version=PC_V2 command=99 flag=00)
 0000 | 04 00 99 00                                     |
 I 97037 2023-12-29 15:56:50 - [C-4] Created
@@ -507,8 +507,8 @@ I 97037 2023-12-29 15:56:50 - [C-4] Game version changed to DC_V1_11_2000_PROTOT
 I 97037 2023-12-29 15:56:51 - [Commands] Received from C-4 (version=DC_V1_11_2000_PROTOTYPE command=96 flag=00)
 0000 | 96 00 0C 00 8D C3 16 8B 05 00 00 00             |
 I 97037 2023-12-29 15:56:51 - [Commands] Sending to C-4 (version=DC_V1_11_2000_PROTOTYPE command=B1 flag=00)
-0000 | B1 00 1C 00 32 30 32 33 3A 31 32 3A 32 39 3A 20 |     2023:12:29:
-0010 | 32 33 3A 35 36 3A 35 31 2E 30 30 30             | 23:56:51.000
+0000 | B1 00 20 00 32 30 32 33 3A 31 32 3A 32 39 3A 20 |     2023:12:29:
+0010 | 32 33 3A 35 36 3A 35 31 2E 30 30 30 00 01 00 00 | 23:56:51.000
 I 97037 2023-12-29 15:56:51 - [Commands] Received from C-4 (version=DC_V1_11_2000_PROTOTYPE command=92 flag=00)
 0000 | 92 00 A4 00 00 00 13 2B 64 B2 2C B2 21 00 00 00 |        +d , !
 0010 | 00 01 00 00 38 41 30 46 32 39 36 45 00 00 00 00 |     8A0F296E
@@ -568,8 +568,8 @@ I 97037 2023-12-29 15:56:57 - [Commands] Sending to C-4 (version=DC_V1 command=9
 I 97037 2023-12-29 15:56:57 - [Commands] Received from C-4 (version=DC_V1 command=B1 flag=00)
 0000 | B1 00 04 00                                     |
 I 97037 2023-12-29 15:56:57 - [Commands] Sending to C-4 (version=DC_V1 command=B1 flag=00)
-0000 | B1 00 1C 00 32 30 32 33 3A 31 32 3A 32 39 3A 20 |     2023:12:29:
-0010 | 32 33 3A 35 36 3A 35 37 2E 30 30 30             | 23:56:57.000
+0000 | B1 00 20 00 32 30 32 33 3A 31 32 3A 32 39 3A 20 |     2023:12:29:
+0010 | 32 33 3A 35 36 3A 35 37 2E 30 30 30 00 01 00 00 | 23:56:57.000
 I 97037 2023-12-29 15:56:57 - [Commands] Received from C-4 (version=DC_V1 command=99 flag=00)
 0000 | 99 00 04 00                                     |
 I 97037 2023-12-29 15:56:57 - [Commands] Sending to C-4 (version=DC_V1 command=19 flag=00)
@@ -3042,8 +3042,8 @@ I 97037 2023-12-29 15:57:18 - [Commands] Sending to C-3 (Tali) (version=PC_V2 co
 I 97037 2023-12-29 15:57:18 - [Commands] Received from C-5 (88888888) (version=DC_V1 command=6F flag=00)
 0000 | 6F 00 04 00                                     | o
 I 97037 2023-12-29 15:57:18 - [Commands] Sending to C-5 (88888888) (version=DC_V1 command=B1 flag=00)
-0000 | B1 00 1C 00 32 30 32 33 3A 31 32 3A 32 39 3A 20 |     2023:12:29:
-0010 | 32 33 3A 35 37 3A 31 38 2E 30 30 30             | 23:57:18.000
+0000 | B1 00 20 00 32 30 32 33 3A 31 32 3A 32 39 3A 20 |     2023:12:29:
+0010 | 32 33 3A 35 37 3A 31 38 2E 30 30 30 00 01 00 00 | 23:57:18.000
 I 97037 2023-12-29 15:57:18 - [Commands] Sending to C-3 (Tali) (version=PC_V2 command=60 flag=00)
 0000 | 08 00 60 00 72 01 00 00                         |   ` r
 I 97037 2023-12-29 15:57:18 - [Commands] Received from C-3 (Tali) (version=PC_V2 command=60 flag=00)
@@ -7232,8 +7232,8 @@ I 97037 2023-12-29 15:59:37 - [Commands] Sending to C-5 (88888888) (version=DC_V
 I 97037 2023-12-29 15:59:37 - [Commands] Received from C-3 (Tali) (version=PC_V2 command=6F flag=00)
 0000 | 04 00 6F 00                                     |   o
 I 97037 2023-12-29 15:59:37 - [Commands] Sending to C-3 (Tali) (version=PC_V2 command=B1 flag=00)
-0000 | 1C 00 B1 00 32 30 32 33 3A 31 32 3A 32 39 3A 20 |     2023:12:29:
-0010 | 32 33 3A 35 39 3A 33 37 2E 30 30 30             | 23:59:37.000
+0000 | 20 00 B1 00 32 30 32 33 3A 31 32 3A 32 39 3A 20 |     2023:12:29:
+0010 | 32 33 3A 35 39 3A 33 37 2E 30 30 30 00 01 00 00 | 23:59:37.000
 I 97037 2023-12-29 15:59:37 - [Commands] Sending to C-5 (88888888) (version=DC_V1 command=60 flag=00)
 0000 | 60 00 08 00 72 01 00 00                         | `   r
 I 97037 2023-12-29 15:59:37 - [Commands] Received from C-3 (Tali) (version=PC_V2 command=99 flag=00)

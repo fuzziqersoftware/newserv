@@ -65,8 +65,8 @@ I 16496 2023-11-08 01:54:09 - [Commands] Sending to C-1 (version=XB command=04 f
 0010 | 00 00 00 00 00 81 00 40 20 00 04 00 00 00 00 00 |    4   @`
 0020 | 00 00 00 00 00 00 FF FF 80 FF FF FF             |
 I 16496 2023-11-08 01:54:09 - [Commands] Sending to C-1 (version=XB command=B1 flag=00)
-0000 | B1 00 1C 00 32 30 32 33 3A 31 31 3A 30 38 3A 20 |     2023:11:08:
-0010 | 30 31 3A 35 34 3A 30 39 2E 30 30 30             | 01:54:09.000
+0000 | B1 00 20 00 32 30 32 33 3A 31 31 3A 30 38 3A 20 |     2023:11:08:
+0010 | 30 31 3A 35 34 3A 30 39 2E 30 30 30 00 01 00 00 | 01:54:09.000
 I 16496 2023-11-08 01:54:09 - [Commands] Received from C-1 (version=XB command=99 flag=00)
 0000 | 99 00 04 00                                     |
 I 16496 2023-11-08 01:54:13 - [Commands] Received from C-1 (version=XB command=D6 flag=00)
@@ -92,8 +92,8 @@ I 16496 2023-11-08 01:54:15 - [Commands] Sending to C-1 (version=XB command=04 f
 I 16496 2023-11-08 01:54:16 - [Commands] Received from C-1 (version=XB command=B1 flag=00)
 0000 | B1 00 04 00                                     |
 I 16496 2023-11-08 01:54:16 - [Commands] Sending to C-1 (version=XB command=B1 flag=00)
-0000 | B1 00 1C 00 32 30 32 33 3A 31 31 3A 30 38 3A 20 |     2023:11:08:
-0010 | 30 31 3A 35 34 3A 31 36 2E 30 30 30             | 01:54:16.000
+0000 | B1 00 20 00 32 30 32 33 3A 31 31 3A 30 38 3A 20 |     2023:11:08:
+0010 | 30 31 3A 35 34 3A 31 36 2E 30 30 30 00 01 00 00 | 01:54:16.000
 I 16496 2023-11-08 01:54:17 - [Commands] Received from C-1 (version=XB command=99 flag=00)
 0000 | 99 00 04 00                                     |
 I 16496 2023-11-08 01:54:17 - [Commands] Sending to C-1 (version=XB command=19 flag=00)
@@ -470,8 +470,8 @@ I 16496 2023-11-08 01:54:49 - [Commands] Received from C-2 (Tali) (version=XB co
 I 16496 2023-11-08 01:54:49 - [Commands] Received from C-2 (Tali) (version=XB command=6F flag=00)
 0000 | 6F 00 04 00                                     | o
 I 16496 2023-11-08 01:54:49 - [Commands] Sending to C-2 (Tali) (version=XB command=B1 flag=00)
-0000 | B1 00 1C 00 32 30 32 33 3A 31 31 3A 30 38 3A 20 |     2023:11:08:
-0010 | 30 31 3A 35 34 3A 34 39 2E 30 30 30             | 01:54:49.000
+0000 | B1 00 20 00 32 30 32 33 3A 31 31 3A 30 38 3A 20 |     2023:11:08:
+0010 | 30 31 3A 35 34 3A 34 39 2E 30 30 30 00 01 00 00 | 01:54:49.000
 I 16496 2023-11-08 01:54:49 - [Commands] Received from C-2 (Tali) (version=XB command=99 flag=00)
 0000 | 99 00 04 00                                     |
 I 16496 2023-11-08 01:54:51 - [Commands] Received from C-2 (Tali) (version=XB command=60 flag=00)

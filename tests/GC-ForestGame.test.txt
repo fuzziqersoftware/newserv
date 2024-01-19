@@ -71,8 +71,8 @@ I 49108 2023-05-26 16:18:01 - [Commands] Sending to C-1 (version=GC command=04 f
 0010 | 30 50 4F 33 00 01 00 40 20 00 04 00 00 00 00 00 |    3    `
 0020 | 00 00 00 00 00 00 FF FF 80 FF FF FF             |
 I 49108 2023-05-26 16:18:01 - [Commands] Sending to C-1 (version=GC command=B1 flag=00)
-0000 | B1 00 1C 00 32 30 32 33 3A 30 35 3A 32 36 3A 20 |     2023:05:26:
-0010 | 32 33 3A 31 38 3A 30 31 2E 30 30 30             | 23:18:01.000
+0000 | B1 00 20 00 32 30 32 33 3A 30 35 3A 32 36 3A 20 |     2023:05:26:
+0010 | 32 33 3A 31 38 3A 30 31 2E 30 30 30 00 01 00 00 | 23:18:01.000
 I 49108 2023-05-26 16:18:01 - [Commands] Received from C-1 (version=GC command=99 flag=00)
 0000 | 99 00 04 00                                     |
 I 49108 2023-05-26 16:18:02 - [Commands] Received from C-1 (version=GC command=D6 flag=00)
@@ -102,8 +102,8 @@ I 49108 2023-05-26 16:18:06 - [Commands] Sending to C-1 (version=GC command=04 f
 I 49108 2023-05-26 16:18:06 - [Commands] Received from C-1 (version=GC command=B1 flag=00)
 0000 | B1 00 04 00                                     |
 I 49108 2023-05-26 16:18:06 - [Commands] Sending to C-1 (version=GC command=B1 flag=00)
-0000 | B1 00 1C 00 32 30 32 33 3A 30 35 3A 32 36 3A 20 |     2023:05:26:
-0010 | 32 33 3A 31 38 3A 30 36 2E 30 30 30             | 23:18:06.000
+0000 | B1 00 20 00 32 30 32 33 3A 30 35 3A 32 36 3A 20 |     2023:05:26:
+0010 | 32 33 3A 31 38 3A 30 36 2E 30 30 30 00 01 00 00 | 23:18:06.000
 I 49108 2023-05-26 16:18:07 - [Commands] Received from C-1 (version=GC command=99 flag=00)
 0000 | 99 00 04 00                                     |
 I 49108 2023-05-26 16:18:06 - [Commands] Sending to C-1 (version=GC command=19 flag=00)
@@ -672,8 +672,8 @@ I 49108 2023-05-26 16:18:34 - [Commands] Received from C-2 (Jess) (version=GC co
 I 49108 2023-05-26 16:18:34 - [Commands] Received from C-2 (Jess) (version=GC command=6F flag=00)
 0000 | 6F 00 04 00                                     | o
 I 49108 2023-05-26 16:18:34 - [Commands] Sending to C-2 (Jess) (version=GC command=B1 flag=00)
-0000 | B1 00 1C 00 32 30 32 33 3A 30 35 3A 32 36 3A 20 |     2023:05:26:
-0010 | 32 33 3A 31 38 3A 33 34 2E 30 30 30             | 23:18:34.000
+0000 | B1 00 20 00 32 30 32 33 3A 30 35 3A 32 36 3A 20 |     2023:05:26:
+0010 | 32 33 3A 31 38 3A 33 34 2E 30 30 30 00 01 00 00 | 23:18:34.000
 I 49108 2023-05-26 16:18:35 - [Commands] Received from C-2 (Jess) (version=GC command=99 flag=00)
 0000 | 99 00 04 00                                     |
 I 49108 2023-05-26 16:18:36 - [Commands] Received from C-2 (Jess) (version=GC command=60 flag=00)

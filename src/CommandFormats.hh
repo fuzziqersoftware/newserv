@@ -2141,7 +2141,23 @@ struct S_CallQuestFunction_V3_BB_AB {
 // hour, minute, and second fields are actually used.
 // This command can be sent even if it's not requested by the client (with B1).
 // For example, some servers send this command every time a client joins a game.
+// The time_flags fields are used on V3 and later. Time flags are a 24-bit
+// little-endian integer, only 2 bits of which are used:
+//   time_flags_low & 1 specifies whether the client should send a ping (1D)
+//     every 900 frames (30 seconds).
+//   time_flags_low & 2 disables system interrupts during a part of the GBA game
+//     loading procedure. (Predictably, this is only used on GC versions.) It's
+//     not clear what the downstream effects of this are, or why the server
+//     should have any control over this behavior in the first place.
 // Client will respond with a 99 command.
+
+struct S_ServerTime_B1 {
+  /* 00 */ pstring<TextEncoding::ASCII, 0x19> time_str;
+  /* 19 */ uint8_t time_flags_low = 0x01;
+  /* 1A */ uint8_t time_flags_mid = 0x00;
+  /* 1B */ uint8_t time_flags_high = 0x00;
+  /* 1C */
+} __packed__;
 
 // B2 (S->C): Execute code and/or checksum memory (DCv2 and all later versions)
 // Internal name: RcvProgramPatch

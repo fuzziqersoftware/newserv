@@ -3549,7 +3549,12 @@ void send_server_time(shared_ptr<Client> c) {
   }
   time_str.resize(len);
 
-  send_command(c, 0xB1, 0x00, time_str);
+  S_ServerTime_B1 cmd;
+  cmd.time_str.encode(time_str);
+  cmd.time_flags_low = 0x01;
+  cmd.time_flags_mid = 0x00;
+  cmd.time_flags_high = 0x00;
+  send_command_t(c, 0xB1, 0x00, cmd);
 }
 
 void send_change_event(shared_ptr<Client> c, uint8_t new_event) {

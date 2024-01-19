@@ -72,8 +72,8 @@ I 40469 2023-05-26 10:40:55 - [Commands] Sending to C-1 (version=DC command=07 f
 I 40469 2023-05-26 10:40:56 - [Commands] Received from C-1 (version=DC command=96 flag=00)
 0000 | 96 00 0C 00 FB 28 0F 8A 02 00 00 00             |      (
 I 40469 2023-05-26 10:40:56 - [Commands] Sending to C-1 (version=DC command=B1 flag=00)
-0000 | B1 00 1C 00 32 30 32 33 3A 30 35 3A 32 36 3A 20 |     2023:05:26:
-0010 | 31 37 3A 34 30 3A 35 36 2E 30 30 30             | 17:40:56.000
+0000 | B1 00 20 00 32 30 32 33 3A 30 35 3A 32 36 3A 20 |     2023:05:26:
+0010 | 31 37 3A 34 30 3A 35 36 2E 30 30 30 00 01 00 00 | 17:40:56.000
 I 40469 2023-05-26 10:40:56 - [Commands] Received from C-1 (version=DC command=99 flag=00)
 0000 | 99 00 04 00                                     |
 I 40469 2023-05-26 10:40:58 - [Commands] Received from C-1 (version=DC command=10 flag=00)
@@ -83,8 +83,8 @@ I 40469 2023-05-26 10:40:58 - [Commands] Sending to C-1 (version=DC command=97 f
 I 40469 2023-05-26 10:40:58 - [Commands] Received from C-1 (version=DC command=B1 flag=00)
 0000 | B1 00 04 00                                     |
 I 40469 2023-05-26 10:40:58 - [Commands] Sending to C-1 (version=DC command=B1 flag=00)
-0000 | B1 00 1C 00 32 30 32 33 3A 30 35 3A 32 36 3A 20 |     2023:05:26:
-0010 | 31 37 3A 34 30 3A 35 38 2E 30 30 30             | 17:40:58.000
+0000 | B1 00 20 00 32 30 32 33 3A 30 35 3A 32 36 3A 20 |     2023:05:26:
+0010 | 31 37 3A 34 30 3A 35 38 2E 30 30 30 00 01 00 00 | 17:40:58.000
 I 40469 2023-05-26 10:40:58 - [Commands] Received from C-1 (version=DC command=99 flag=00)
 0000 | 99 00 04 00                                     |
 I 40469 2023-05-26 10:40:58 - [Commands] Sending to C-1 (version=DC command=19 flag=00)
@@ -531,8 +531,8 @@ I 40469 2023-05-26 10:41:42 - [Commands] Received from C-2 (Tali) (version=DC co
 I 40469 2023-05-26 10:41:42 - [Commands] Received from C-2 (Tali) (version=DC command=6F flag=00)
 0000 | 6F 00 04 00                                     | o
 I 40469 2023-05-26 10:41:42 - [Commands] Sending to C-2 (Tali) (version=DC command=B1 flag=00)
-0000 | B1 00 1C 00 32 30 32 33 3A 30 35 3A 32 36 3A 20 |     2023:05:26:
-0010 | 31 37 3A 34 31 3A 34 32 2E 30 30 30             | 17:41:42.000
+0000 | B1 00 20 00 32 30 32 33 3A 30 35 3A 32 36 3A 20 |     2023:05:26:
+0010 | 31 37 3A 34 31 3A 34 32 2E 30 30 30 00 01 00 00 | 17:41:42.000
 I 40469 2023-05-26 10:41:42 - [Commands] Received from C-2 (Tali) (version=DC command=99 flag=00)
 0000 | 99 00 04 00                                     |
 I 40469 2023-05-26 10:41:42 - [Commands] Received from C-2 (Tali) (version=DC command=60 flag=00)
