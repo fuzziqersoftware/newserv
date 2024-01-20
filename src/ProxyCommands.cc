@@ -24,6 +24,7 @@
 #include <phosg/Time.hh>
 #ifdef HAVE_RESOURCE_FILE
 #include <resource_file/Emulators/PPC32Emulator.hh>
+#include <resource_file/Emulators/X86Emulator.hh>
 #endif
 
 #include "ChatCommands.hh"
@@ -666,6 +667,7 @@ static HandlerResult S_B1(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t, 
   return HandlerResult::Type::SUPPRESS;
 }
 
+template <bool IsBigEndian>
 static HandlerResult S_B2(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t, uint32_t flag, string& data) {
   const auto& cmd = check_size_t<S_ExecuteCode_B2>(data, 0xFFFF);
 
@@ -711,33 +713,51 @@ static HandlerResult S_B2(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t, 
     ses->log.info("Wrote code from server to file %s", output_filename.c_str());
 
 #ifdef HAVE_RESOURCE_FILE
-    if (is_gc(ses->version())) {
+    using FooterT = S_ExecuteCode_Footer_B2<IsBigEndian>;
+    using U16T = typename std::conditional<IsBigEndian, be_uint16_t, le_uint16_t>::type;
+    using U32T = typename std::conditional<IsBigEndian, be_uint32_t, le_uint32_t>::type;
+    // TODO: Support SH-4 disassembly too
+    bool is_ppc = ::is_ppc(ses->version());
+    bool is_x86 = ::is_x86(ses->version());
+    if (is_ppc || is_x86) {
       try {
-        if (code.size() < sizeof(S_ExecuteCode_Footer_GC_B2)) {
+        if (code.size() < sizeof(FooterT)) {
           throw runtime_error("code section is too small");
         }
 
-        size_t footer_offset = code.size() - sizeof(S_ExecuteCode_Footer_GC_B2);
+        size_t footer_offset = code.size() - sizeof(FooterT);
 
         StringReader r(code.data(), code.size());
-        const auto& footer = r.pget<S_ExecuteCode_Footer_GC_B2>(footer_offset);
+        const auto& footer = r.pget<FooterT>(footer_offset);
 
         multimap<uint32_t, string> labels;
         r.go(footer.relocations_offset);
         uint32_t reloc_offset = 0;
         for (size_t x = 0; x < footer.num_relocations; x++) {
-          reloc_offset += (r.get_u16b() * 4);
+          reloc_offset += (r.get<U16T>() * 4);
           labels.emplace(reloc_offset, string_printf("reloc%zu", x));
         }
         labels.emplace(footer.entrypoint_addr_offset.load(), "entry_ptr");
         labels.emplace(footer_offset, "footer");
-        labels.emplace(r.pget_u32b(footer.entrypoint_addr_offset), "start");
+        labels.emplace(r.pget<U32T>(footer.entrypoint_addr_offset), "start");
 
-        string disassembly = PPC32Emulator::disassemble(
-            &r.pget<uint8_t>(0, code.size()),
-            code.size(),
-            0,
-            &labels);
+        string disassembly;
+        if (is_ppc) {
+          disassembly = PPC32Emulator::disassemble(
+              &r.pget<uint8_t>(0, code.size()),
+              code.size(),
+              0,
+              &labels);
+        } else if (is_x86) {
+          disassembly = X86Emulator::disassemble(
+              &r.pget<uint8_t>(0, code.size()),
+              code.size(),
+              0,
+              &labels);
+        } else {
+          // We shouldn't have entered the outer if statement if this happens
+          throw logic_error("unsupported architecture");
+        }
 
         output_filename = string_printf("code.%" PRId64 ".txt", filename_timestamp);
         {
@@ -1247,7 +1267,8 @@ static HandlerResult S_13_A7(shared_ptr<ProxyServer::LinkedSession> ses, uint16_
       save_file(sf->output_filename, data);
       if (ends_with(sf->basename, ".bin")) {
         try {
-          auto disassembly = disassemble_quest_script(data.data(), data.size(), ses->version(), ses->language(), false);
+          string decompressed = prs_decompress(data);
+          auto disassembly = disassemble_quest_script(decompressed.data(), decompressed.size(), ses->version(), ses->language(), false);
           save_file(sf->output_filename + ".txt", disassembly);
         } catch (const exception& e) {
           ses->log.warning("Failed to disassemble quest file: %s", e.what());
@@ -1992,9 +2013,9 @@ static on_command_t handlers[0x100][NUM_VERSIONS][2] = {
 /* AF */ {{S_invalid,     nullptr}, {S_invalid,     nullptr}, {nullptr, nullptr}, {S_invalid,        nullptr},     {S_invalid,        nullptr},     {S_invalid,        nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,        nullptr},     {S_invalid,        nullptr},      {S_invalid,        nullptr},      {S_invalid,        nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
 // CMD     S_PC_PATCH     C          S_BB_PATCH        C       S_DC_NTE C          S_DC_V1_12_2000_PROTO C          S_DC_V1           C              S_DC_V2           C               S_PC_NTE       C               S_PC_V2        C               S_GC_NTE          C              S_GC_V3           C               S_GC_EP3_NTE      C               S_GC_EP3          C               S_XB_V3        C               S_BB_V4       C
 /* B0 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr}, {nullptr, nullptr}, {nullptr,          nullptr},     {nullptr,          nullptr},     {nullptr,          nullptr},      {nullptr,       nullptr},      {nullptr,       nullptr},      {nullptr,          nullptr},     {nullptr,          nullptr},      {nullptr,          nullptr},      {nullptr,          nullptr},      {nullptr,       nullptr},      {nullptr,      nullptr}},
-/* B1 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr}, {nullptr, nullptr}, {S_B1,             nullptr},     {S_B1,             nullptr},     {S_B1,             nullptr},      {S_B1,          nullptr},      {S_B1,          nullptr},      {S_B1,             nullptr},     {S_B1,             nullptr},      {S_B1,             nullptr},      {S_B1,             nullptr},      {S_B1,          nullptr},      {S_B1,         nullptr}},
-/* B2 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr}, {nullptr, nullptr}, {nullptr,          nullptr},     {nullptr,          nullptr},     {nullptr,          nullptr},      {nullptr,       nullptr},      {nullptr,       nullptr},      {nullptr,          nullptr},     {S_B2,             nullptr},      {S_B2,             nullptr},      {S_B2,             nullptr},      {S_B2,          nullptr},      {S_B2,         nullptr}},
-/* B3 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr}, {nullptr, nullptr}, {S_invalid,        C_B3},        {S_invalid,        C_B3},        {S_invalid,        C_B3},         {S_invalid,     C_B3},         {S_invalid,     C_B3},         {S_invalid,        C_B3},        {S_invalid,        C_B3},         {S_invalid,        C_B3},         {S_invalid,        C_B3},         {S_invalid,     C_B3},         {S_invalid,    C_B3}},
+/* B1 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr}, {nullptr, nullptr}, {nullptr,          nullptr},     {S_B1,             nullptr},     {S_B1,             nullptr},      {S_B1,          nullptr},      {S_B1,          nullptr},      {S_B1,             nullptr},     {S_B1,             nullptr},      {S_B1,             nullptr},      {S_B1,             nullptr},      {S_B1,          nullptr},      {S_B1,         nullptr}},
+/* B2 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr}, {nullptr, nullptr}, {nullptr,          nullptr},     {nullptr,          nullptr},     {S_B2<false>,      nullptr},      {S_B2<false>,   nullptr},      {S_B2<false>,   nullptr},      {S_B2<true>,       nullptr},     {S_B2<true>,       nullptr},      {S_B2<true>,       nullptr},      {S_B2<true>,       nullptr},      {S_B2<false>,   nullptr},      {S_B2<false>,  nullptr}},
+/* B3 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr}, {nullptr, nullptr}, {S_invalid,        nullptr},     {S_invalid,        nullptr},     {S_invalid,        C_B3},         {S_invalid,     C_B3},         {S_invalid,     C_B3},         {S_invalid,        C_B3},        {S_invalid,        C_B3},         {S_invalid,        C_B3},         {S_invalid,        C_B3},         {S_invalid,     C_B3},         {S_invalid,    C_B3}},
 /* B4 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr}, {nullptr, nullptr}, {S_invalid,        nullptr},     {S_invalid,        nullptr},     {S_invalid,        nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,        nullptr},     {S_invalid,        nullptr},      {S_invalid,        nullptr},      {S_invalid,        nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
 /* B5 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr}, {nullptr, nullptr}, {S_invalid,        nullptr},     {S_invalid,        nullptr},     {S_invalid,        nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,        nullptr},     {S_invalid,        nullptr},      {S_invalid,        nullptr},      {S_invalid,        nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
 /* B6 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr}, {nullptr, nullptr}, {S_invalid,        nullptr},     {S_invalid,        nullptr},     {S_invalid,        nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,        nullptr},     {S_invalid,        nullptr},      {S_invalid,        nullptr},      {S_invalid,        nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},

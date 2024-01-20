@@ -83,6 +83,27 @@ inline bool is_gc(Version version) {
       (version == Version::GC_EP3);
 }
 
+inline bool is_sh4(Version version) {
+  return (version == Version::DC_NTE) ||
+      (version == Version::DC_V1_11_2000_PROTOTYPE) ||
+      (version == Version::DC_V1) ||
+      (version == Version::DC_V2);
+}
+inline bool is_x86(Version version) {
+  return (version == Version::PC_PATCH) ||
+      (version == Version::BB_PATCH) ||
+      (version == Version::PC_NTE) ||
+      (version == Version::PC_V2) ||
+      (version == Version::XB_V3) ||
+      (version == Version::BB_V4);
+}
+inline bool is_ppc(Version version) {
+  return (version == Version::GC_NTE) ||
+      (version == Version::GC_V3) ||
+      (version == Version::GC_EP3_NTE) ||
+      (version == Version::GC_EP3);
+}
+
 inline bool is_big_endian(Version version) {
   return (version == Version::GC_NTE) ||
       (version == Version::GC_V3) ||

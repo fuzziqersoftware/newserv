@@ -2795,7 +2795,7 @@ static void on_B3(shared_ptr<Client> c, uint16_t, uint32_t flag, string& data) {
       throw logic_error("unknown function called during DOL loading");
     }
   } else {
-    throw runtime_error("function call response queue is empty, and no program is being sent");
+    c->log.warning("Received patch response but function call response queue is empty and no program is being sent");
   }
 }
 
