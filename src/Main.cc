@@ -1114,6 +1114,196 @@ Action a_disassemble_quest_map(
       string result = Map::disassemble_quest_data(data.data(), data.size());
       write_output_data(args, result.data(), result.size(), "txt");
     });
+Action a_disassemble_set_data_table(
+    "disassemble-set-data-table", "\
+  disassemble-set-data-table [INPUT-FILENAME]\n\
+    Show the contents of a SetDataTable.rel file. A version option is required.\n",
+    +[](Arguments& args) {
+      Version version = get_cli_version(args);
+      SetDataTable sdt(version, read_input_data(args));
+      string str = sdt.str();
+      write_output_data(args, str.data(), str.size(), "txt");
+    });
+Action a_check_set_data_table(
+    "check-set-data-tables", nullptr, +[](Arguments&) {
+      ServerState s;
+      s.load_objects_and_upstream_dependents("set_data_tables");
+      static_game_data_log.min_level = LogLevel::DISABLED;
+
+      auto get_file_data = [&](Version version, const string& filename) -> shared_ptr<const string> {
+        try {
+          return s.load_map_file(version, filename);
+        } catch (const cannot_open_file&) {
+          return nullptr;
+        }
+      };
+
+      auto check_filenames = [&](Version version, const string& sdt_filename, const vector<string>& ns_filenames) -> string {
+        for (size_t z = 0; z < ns_filenames.size(); z++) {
+          const auto& ns_filename = ns_filenames[z];
+          auto data = get_file_data(version, ns_filename);
+          if (data) {
+            if (sdt_filename != ns_filename) {
+              string ns_filenames_str = join(ns_filenames, ", ");
+              return string_printf("SDT => %s, NS => [%s]", sdt_filename.c_str(), ns_filenames_str.c_str());
+            }
+            return "OK";
+          }
+          if (!data && (sdt_filename == ns_filename)) {
+            string ns_filenames_str = join(ns_filenames, ", ");
+            return string_printf("SDT => %s (missing)", sdt_filename.c_str());
+          }
+        }
+        if (ns_filenames.empty() && sdt_filename.empty()) {
+          return "OK (no files)";
+        } else if (ns_filenames.empty()) {
+          auto data = get_file_data(version, sdt_filename);
+          if (data) {
+            return string_printf("NS blank, SDT => %s", sdt_filename.c_str());
+          } else {
+            return string_printf("NS blank, SDT => %s (missing)", sdt_filename.c_str());
+          }
+        } else if (sdt_filename.empty()) {
+          string ns_filenames_str = join(ns_filenames, ", ");
+          return string_printf("SDT blank, NS => [%s] (all missing)", ns_filenames_str.c_str());
+        } else {
+          string ns_filenames_str = join(ns_filenames, ", ");
+          return string_printf("SDT => %s (missing), NS => [%s] (all missing)", sdt_filename.c_str(), ns_filenames_str.c_str());
+        }
+      };
+
+      size_t num_checks = 0;
+      size_t num_errors = 0;
+      auto check_table = [&](Version version) {
+        vector<Episode> episodes({Episode::EP1});
+        if (!is_v1_or_v2(version) || (version == Version::GC_NTE)) {
+          episodes.emplace_back(Episode::EP2);
+          if (is_v4(version)) {
+            episodes.emplace_back(Episode::EP4);
+          }
+        }
+
+        vector<GameMode> modes({GameMode::NORMAL});
+        if (!is_v1(version)) {
+          modes.emplace_back(GameMode::BATTLE);
+          modes.emplace_back(GameMode::CHALLENGE);
+        }
+        if (is_v4(version)) {
+          modes.emplace_back(GameMode::SOLO);
+        }
+
+        uint8_t max_difficulty = is_v1(version) ? 2 : 3;
+
+        for (Episode episode : episodes) {
+          for (GameMode mode : modes) {
+            for (uint8_t difficulty = 0; difficulty <= max_difficulty; difficulty++) {
+              auto sdt = s.set_data_table(version, episode, mode, difficulty);
+              auto ns_var_maxes = variation_maxes_deprecated(version, episode, (mode == GameMode::SOLO));
+              size_t num_floors;
+              if (episode == Episode::EP4) {
+                num_floors = 0x0B;
+              } else if (episode == Episode::EP2) {
+                num_floors = 0x10;
+              } else {
+                num_floors = 0x0F;
+              }
+              for (size_t floor = 0; floor < num_floors; floor++) {
+                auto sdt_var_avail = sdt->num_available_variations_for_floor(episode, floor);
+                auto sdt_var_maxes = sdt->num_free_roam_variations_for_floor(episode, mode == GameMode::SOLO, floor);
+                size_t sdt_var1_max_avail = sdt_var_avail.first - 1;
+                size_t sdt_var2_max_avail = sdt_var_avail.second - 1;
+                size_t sdt_var1_max = sdt_var_maxes.first - 1;
+                size_t sdt_var2_max = sdt_var_maxes.second - 1;
+                size_t ns_var1_max = ns_var_maxes[floor * 2];
+                size_t ns_var2_max = ns_var_maxes[floor * 2 + 1];
+                num_checks += 4;
+                if (sdt_var1_max > sdt_var1_max_avail) {
+                  fprintf(stdout, "## %-8s %-10s %-10s %-10s %02zX VAR1:[SDT:%02zX SDTA:%02zX]\n",
+                      name_for_enum(version),
+                      name_for_episode(episode),
+                      name_for_mode(mode),
+                      name_for_difficulty(difficulty),
+                      floor,
+                      sdt_var1_max,
+                      sdt_var1_max_avail);
+                  num_errors++;
+                }
+                if (sdt_var2_max > sdt_var2_max_avail) {
+                  fprintf(stdout, "## %-8s %-10s %-10s %-10s %02zX VAR2:[SDT:%02zX SDTA:%02zX]\n",
+                      name_for_enum(version),
+                      name_for_episode(episode),
+                      name_for_mode(mode),
+                      name_for_difficulty(difficulty),
+                      floor,
+                      sdt_var2_max,
+                      sdt_var2_max_avail);
+                  num_errors++;
+                }
+                if (sdt_var1_max < ns_var1_max) {
+                  fprintf(stdout, "## %-8s %-10s %-10s %-10s %02zX VAR1:[SDT:%02zX NS:%02zX]\n",
+                      name_for_enum(version),
+                      name_for_episode(episode),
+                      name_for_mode(mode),
+                      name_for_difficulty(difficulty),
+                      floor,
+                      sdt_var1_max,
+                      ns_var1_max);
+                  num_errors++;
+                }
+                if (sdt_var2_max < ns_var2_max) {
+                  fprintf(stdout, "## %-8s %-10s %-10s %-10s %02zX VAR2:[SDT:%02zX NS:%02zX]\n",
+                      name_for_enum(version),
+                      name_for_episode(episode),
+                      name_for_mode(mode),
+                      name_for_difficulty(difficulty),
+                      floor,
+                      sdt_var2_max,
+                      ns_var2_max);
+                  num_errors++;
+                }
+                for (size_t var1 = 0; var1 <= ns_var1_max; var1++) {
+                  for (size_t var2 = 0; var2 <= ns_var2_max; var2++) {
+                    auto sdt_enemy_filename = sdt->map_filename_for_variation(floor, var1, var2, episode, mode, true);
+                    auto sdt_object_filename = sdt->map_filename_for_variation(floor, var1, var2, episode, mode, false);
+                    auto ns_enemy_filenames = map_filenames_for_variation_deprecated(floor, var1, var2, version, episode, mode, true);
+                    auto ns_object_filenames = map_filenames_for_variation_deprecated(floor, var1, var2, version, episode, mode, false);
+                    string enemies_error = check_filenames(version, sdt_enemy_filename, ns_enemy_filenames);
+                    string objects_error = check_filenames(version, sdt_object_filename, ns_object_filenames);
+                    num_checks += 2;
+                    num_errors += (enemies_error != "OK") + (objects_error != "OK");
+                    fprintf(stdout, "%s %-8s %-10s %-10s %-10s %02zX %02zX %02zX E:[%s] O:[%s] E:%-30s O:%-30s\n",
+                        ((enemies_error != "OK") || (objects_error != "OK")) ? "##" : "  ",
+                        name_for_enum(version),
+                        name_for_episode(episode),
+                        name_for_mode(mode),
+                        name_for_difficulty(difficulty),
+                        floor,
+                        var1,
+                        var2,
+                        enemies_error.c_str(),
+                        objects_error.c_str(),
+                        sdt_enemy_filename.c_str(),
+                        sdt_object_filename.c_str());
+                  }
+                }
+              }
+            }
+          }
+        }
+      };
+
+      check_table(Version::DC_NTE);
+      check_table(Version::DC_V1_11_2000_PROTOTYPE);
+      check_table(Version::DC_V1);
+      check_table(Version::DC_V2);
+      check_table(Version::PC_NTE);
+      check_table(Version::PC_V2);
+      check_table(Version::GC_NTE);
+      check_table(Version::GC_V3);
+      check_table(Version::XB_V3);
+      check_table(Version::BB_V4);
+      fprintf(stdout, "%zu/%zu errors\n", num_errors, num_checks);
+    });
 
 Action a_assemble_quest_script(
     "assemble-quest-script", "\
@@ -1883,7 +2073,7 @@ Action a_find_rare_enemy_seeds(
           map = Lobby::load_maps(version, episode, difficulty, 0, 0, rare_rates, random_crypt, vq);
 
         } else {
-          generate_variations(variations, random_crypt, version, episode, (mode == GameMode::SOLO));
+          generate_variations_deprecated(variations, random_crypt, version, episode, (mode == GameMode::SOLO));
           map = Lobby::load_maps(
               version,
               episode,
@@ -1891,6 +2081,7 @@ Action a_find_rare_enemy_seeds(
               difficulty,
               0,
               0,
+              s.set_data_table(version, episode, mode, difficulty),
               bind(&ServerState::load_map_file, &s, placeholders::_1, placeholders::_2),
               rare_rates,
               random_crypt,

@@ -79,19 +79,12 @@ shared_ptr<const string> ThreadSafeFileCache::get(
     const string& name, std::function<shared_ptr<const string>(const std::string&)> generate) {
   try {
     shared_lock g(this->lock);
-    auto ret = this->name_to_file.at(name);
-    if (!ret) {
-      throw cannot_open_file(name);
-    }
-    return ret;
+    return this->name_to_file.at(name);
   } catch (const out_of_range&) {
     unique_lock g(this->lock);
     auto it = this->name_to_file.find(name);
     if (it == this->name_to_file.end()) {
       it = this->name_to_file.emplace(name, generate(name)).first;
-    }
-    if (!it->second) {
-      throw cannot_open_file(name);
     }
     return it->second;
   }

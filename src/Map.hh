@@ -321,11 +321,28 @@ struct Map {
   std::vector<size_t> rare_enemy_indexes;
 };
 
-// TODO: This class is currently unused. It would be nice if we could use this
-// to generate variations and link to the corresponding map filenames, but it
-// seems that SetDataTable.rel files link to map filenames that don't actually
-// exist in some cases, so we can't just directly use this data structure.
-class SetDataTable {
+class SetDataTableBase {
+public:
+  virtual ~SetDataTableBase() = default;
+
+  parray<le_uint32_t, 0x20> generate_variations(Episode episode, bool is_solo, std::shared_ptr<PSOLFGEncryption> random_crypt) const;
+  virtual std::pair<uint32_t, uint32_t> num_available_variations_for_floor(Episode episode, uint8_t floor) const = 0;
+  virtual std::pair<uint32_t, uint32_t> num_free_roam_variations_for_floor(Episode episode, bool is_solo, uint8_t floor) const = 0;
+
+  virtual std::string map_filename_for_variation(
+      uint8_t floor, uint32_t var1, uint32_t var2, Episode episode, GameMode mode, bool is_enemies) const = 0;
+  std::vector<std::string> map_filenames_for_variations(
+      const parray<le_uint32_t, 0x20>& variations, Episode episode, GameMode mode, bool is_enemies) const;
+
+  uint8_t default_area_for_floor(Episode episode, uint8_t floor) const;
+
+protected:
+  explicit SetDataTableBase(Version version);
+
+  Version version;
+};
+
+class SetDataTable : public SetDataTableBase {
 public:
   struct SetEntry {
     std::string object_list_basename;
@@ -333,31 +350,68 @@ public:
     std::string event_list_basename;
   };
 
-  SetDataTable(std::shared_ptr<const std::string> data, bool big_endian);
+  SetDataTable(Version version, const std::string& data);
+  virtual ~SetDataTable() = default;
 
-  inline const std::vector<std::vector<std::vector<SetEntry>>> get() const {
-    return this->entries;
-  }
+  virtual std::pair<uint32_t, uint32_t> num_available_variations_for_floor(Episode episode, uint8_t floor) const;
+  virtual std::pair<uint32_t, uint32_t> num_free_roam_variations_for_floor(Episode episode, bool is_solo, uint8_t floor) const;
+  virtual std::string map_filename_for_variation(
+      uint8_t floor, uint32_t var1, uint32_t var2, Episode episode, GameMode mode, bool is_enemies) const;
 
-  void print(FILE* stream) const;
+  std::string str() const;
 
 private:
   template <bool IsBigEndian>
-  void load_table_t(std::shared_ptr<const std::string> data);
+  void load_table_t(const std::string& data);
 
   // Indexes are [floor][variation1][variation2]
   // floor is cumulative per episode, so Ep2 starts at floor=18.
   std::vector<std::vector<std::vector<SetEntry>>> entries;
 };
 
-void generate_variations(
+class SetDataTableDCNTE : public SetDataTableBase {
+public:
+  SetDataTableDCNTE();
+  virtual ~SetDataTableDCNTE() = default;
+
+  virtual std::pair<uint32_t, uint32_t> num_available_variations_for_floor(Episode episode, uint8_t floor) const;
+  virtual std::pair<uint32_t, uint32_t> num_free_roam_variations_for_floor(Episode episode, bool is_solo, uint8_t floor) const;
+  virtual std::string map_filename_for_variation(
+      uint8_t floor, uint32_t var1, uint32_t var2, Episode episode, GameMode mode, bool is_enemies) const;
+
+private:
+  static const std::array<std::vector<std::vector<std::string>>, 0x10> NAMES;
+};
+
+class SetDataTableDC112000 : public SetDataTableBase {
+public:
+  SetDataTableDC112000();
+  virtual ~SetDataTableDC112000() = default;
+
+  virtual std::pair<uint32_t, uint32_t> num_available_variations_for_floor(Episode episode, uint8_t floor) const;
+  virtual std::pair<uint32_t, uint32_t> num_free_roam_variations_for_floor(Episode episode, bool is_solo, uint8_t floor) const;
+  virtual std::string map_filename_for_variation(
+      uint8_t floor, uint32_t var1, uint32_t var2, Episode episode, GameMode mode, bool is_enemies) const;
+
+private:
+  static const std::array<std::vector<std::vector<std::string>>, 0x10> NAMES;
+};
+
+void generate_variations_deprecated(
     parray<le_uint32_t, 0x20>& variations,
     std::shared_ptr<PSOLFGEncryption> random,
     Version version,
     Episode episode,
     bool is_solo);
-std::vector<parray<le_uint32_t, 0x20>> generate_all_possible_variations(
-    Version version, Episode episode, bool is_solo);
 
-std::vector<std::string> map_filenames_for_variation(
-    Version version, Episode episode, GameMode mode, uint8_t floor, uint32_t var1, uint32_t var2, bool is_enemies);
+parray<le_uint32_t, 0x20> variation_maxes_deprecated(Version version, Episode episode, bool is_solo);
+bool next_variation_deprecated(parray<le_uint32_t, 0x20>& variations, Version version, Episode episode, bool is_solo);
+
+std::vector<std::string> map_filenames_for_variation_deprecated(
+    uint8_t floor, uint32_t var1, uint32_t var2, Version version, Episode episode, GameMode mode, bool is_enemies);
+std::vector<std::vector<std::string>> map_filenames_for_variations_deprecated(
+    const parray<le_uint32_t, 0x20>& variations,
+    Version version,
+    Episode episode,
+    GameMode mode,
+    bool is_enemies);

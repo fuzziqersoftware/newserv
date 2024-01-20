@@ -4200,8 +4200,19 @@ shared_ptr<Lobby> create_game_generic(
     game->rare_enemy_rates = s->rare_enemy_rates_by_difficulty.at(game->difficulty);
   }
 
-  generate_variations(game->variations, game->random_crypt, game->base_version, game->episode, is_solo);
-  game->load_maps();
+  if (game->episode != Episode::EP3) {
+    // GC NTE ignores the passed-in variations and always uses all zeroes
+    if (game->base_version != Version::GC_NTE) {
+      auto sdt = s->set_data_table(game->base_version, game->episode, game->mode, game->difficulty);
+      game->variations = sdt->generate_variations(game->episode, is_solo, game->random_crypt);
+    } else {
+      game->variations.clear(0);
+    }
+    game->load_maps();
+  } else {
+    game->variations.clear(0);
+    game->map = make_shared<Map>(game->base_version, game->lobby_id, game->random_crypt);
+  }
 
   return game;
 }

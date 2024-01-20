@@ -148,6 +148,10 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   std::shared_ptr<const TextIndex> text_index;
   std::array<std::shared_ptr<const ItemNameIndex>, NUM_VERSIONS> item_name_indexes;
   std::shared_ptr<const WordSelectTable> word_select_table;
+  std::array<std::shared_ptr<const SetDataTableBase>, NUM_VERSIONS> set_data_tables;
+  std::array<std::shared_ptr<const SetDataTableBase>, NUM_VERSIONS> set_data_tables_ep1_ult;
+  std::shared_ptr<const SetDataTableBase> bb_solo_set_data_table;
+  std::shared_ptr<const SetDataTableBase> bb_solo_set_data_table_ep1_ult;
   std::array<std::shared_ptr<const Map::RareEnemyRates>, 4> rare_enemy_rates_by_difficulty;
   std::shared_ptr<const Map::RareEnemyRates> rare_enemy_rates_challenge;
   std::array<std::array<size_t, 4>, 3> min_levels_v4; // Indexed as [episode][difficulty]
@@ -272,6 +276,8 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   std::shared_ptr<const Menu> proxy_destinations_menu(Version version) const;
   const std::vector<std::pair<std::string, uint16_t>>& proxy_destinations(Version version) const;
 
+  std::shared_ptr<const SetDataTableBase> set_data_table(Version version, Episode episode, GameMode mode, uint8_t difficulty) const;
+
   std::shared_ptr<const ItemParameterTable> item_parameter_table(Version version) const;
   std::shared_ptr<const ItemParameterTable> item_parameter_table_for_encode(Version version) const;
   void set_item_parameter_table(Version version, std::shared_ptr<const ItemParameterTable> table);
@@ -314,6 +320,7 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   void load_item_name_indexes();
   void load_drop_tables();
   void load_item_definitions();
+  void load_set_data_tables();
   void load_word_select_table();
   void load_ep3_data();
   void load_quest_index();

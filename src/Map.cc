@@ -1637,8 +1637,59 @@ string Map::disassemble_quest_data(const void* data, size_t size) {
   return join(ret, "\n") + "\n";
 }
 
-SetDataTable::SetDataTable(shared_ptr<const string> data, bool big_endian) {
-  if (big_endian) {
+SetDataTableBase::SetDataTableBase(Version version) : version(version) {}
+
+parray<le_uint32_t, 0x20> SetDataTableBase::generate_variations(
+    Episode episode, bool is_solo, std::shared_ptr<PSOLFGEncryption> random_crypt) const {
+  parray<le_uint32_t, 0x20> ret;
+  for (size_t floor = 0; floor < 0x10; floor++) {
+    auto num_vars = this->num_free_roam_variations_for_floor(episode, is_solo, floor);
+    ret[floor * 2] = (num_vars.first > 1) ? (random_crypt->next() % num_vars.first) : 0;
+    ret[floor * 2 + 1] = (num_vars.second > 1) ? (random_crypt->next() % num_vars.second) : 0;
+  }
+  return ret;
+}
+
+vector<string> SetDataTableBase::map_filenames_for_variations(
+    const parray<le_uint32_t, 0x20>& variations, Episode episode, GameMode mode, bool is_enemies) const {
+  vector<string> ret;
+  for (uint8_t floor = 0; floor < 0x10; floor++) {
+    ret.emplace_back(this->map_filename_for_variation(
+        floor, variations[floor * 2], variations[floor * 2 + 1], episode, mode, is_enemies));
+  }
+  for (uint8_t floor = 0x10; floor < 0x12; floor++) {
+    ret.emplace_back(this->map_filename_for_variation(floor, 0, 0, episode, mode, is_enemies));
+  }
+  return ret;
+}
+
+uint8_t SetDataTableBase::default_area_for_floor(Episode episode, uint8_t floor) const {
+  // For some inscrutable reason, Pioneer 2's area number in Episode 4 is
+  // discontiguous with all the rest. Why, Sega??
+  static const std::array<uint8_t, 0x12> areas_ep1 = {
+      0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F, 0x10, 0x11};
+  static const std::array<uint8_t, 0x12> areas_ep2_gc_nte = {
+      0x00, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1A, 0x1B, 0x1C, 0x1D, 0x1E, 0x1F, 0x20, 0x21, 0xFF, 0xFF};
+  static const std::array<uint8_t, 0x12> areas_ep2 = {
+      0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1A, 0x1B, 0x1C, 0x1D, 0x1E, 0x1F, 0x20, 0x21, 0x22, 0x23};
+  static const std::array<uint8_t, 0x12> areas_ep4 = {
+      0x2D, 0x24, 0x25, 0x26, 0x27, 0x28, 0x29, 0x2A, 0x2B, 0x2C, 0x2E, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
+  switch (episode) {
+    case Episode::EP1:
+      return areas_ep1.at(floor);
+    case Episode::EP2: {
+      const auto& areas = ((this->version == Version::GC_NTE) ? areas_ep2_gc_nte : areas_ep2);
+      return areas.at(floor);
+    }
+    case Episode::EP4:
+      return areas_ep4.at(floor);
+    default:
+      throw logic_error("incorrect episode");
+  }
+}
+
+SetDataTable::SetDataTable(Version version, const string& data) : SetDataTableBase(version) {
+  if (is_big_endian(this->version)) {
     this->load_table_t<true>(data);
   } else {
     this->load_table_t<false>(data);
@@ -1646,10 +1697,10 @@ SetDataTable::SetDataTable(shared_ptr<const string> data, bool big_endian) {
 }
 
 template <bool IsBigEndian>
-void SetDataTable::load_table_t(shared_ptr<const string> data) {
+void SetDataTable::load_table_t(const string& data) {
   using U32T = typename conditional<IsBigEndian, be_uint32_t, le_uint32_t>::type;
 
-  StringReader r(*data);
+  StringReader r(data);
 
   struct Footer {
     U32T table3_offset;
@@ -1688,17 +1739,99 @@ void SetDataTable::load_table_t(shared_ptr<const string> data) {
   }
 }
 
-void SetDataTable::print(FILE* stream) const {
+pair<uint32_t, uint32_t> SetDataTable::num_available_variations_for_floor(Episode episode, uint8_t floor) const {
+  uint8_t area = this->default_area_for_floor(episode, floor);
+  if (area == 0xFF) {
+    return make_pair(1, 1);
+  } else {
+    const auto& e = this->entries.at(area);
+    return make_pair(e.size(), e.at(0).size());
+  }
+}
+
+pair<uint32_t, uint32_t> SetDataTable::num_free_roam_variations_for_floor(Episode episode, bool is_solo, uint8_t floor) const {
+  uint8_t area = this->default_area_for_floor(episode, floor);
+  if (area == 0xFF) {
+    return make_pair(1, 1);
+  }
+  static const array<uint32_t, 0x2F * 2> counts_on = {
+      // Episode 1 (00-11)
+      // P2 -F1-, -F2-, -C1-, -C2-, -C3-, -M1-, -M2-, -R1-, -R2-, -R3-, DRGN, DRL-, -VO-, -DF-, LOBBY, VS1-, VS2-,
+      1, 1, 1, 5, 1, 5, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 1, 1, 1, 1, 1, 1, 1, 1, 10, 1, 1, 1, 1, 1,
+      // Episode 2 (12-23)
+      // P2 VRTA, VRTB, VRSA, VRSB, CCA-, -JN-, -JS-, MNTN, SEAS, SBU-, SBL-, -GG-, -OF-, -BR-, -GD-, SSN-, TWR-,
+      1, 1, 2, 1, 2, 1, 2, 1, 2, 1, 1, 3, 1, 3, 1, 3, 2, 2, 1, 3, 2, 2, 2, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+      // Episode 4 (24-2E)
+      // CE -CW-, -CS-, -CN-, -CI-, DES1, DES2, DES3, SMIL, -P2-, TEST
+      1, 3, 1, 3, 1, 3, 1, 3, 1, 3, 3, 1, 1, 3, 3, 1, 1, 1, 1, 1, 1, 1};
+  static const array<uint32_t, 0x2F * 2> counts_off = {
+      // Episode 1 (00-11)
+      // P2 -F1-, -F2-, -C1-, -C2-, -C3-, -M1-, -M2-, -R1-, -R2-, -R3-, DRGN, DRL-, -VO-, -DF-, LOBBY, VS1-, VS2-,
+      1, 1, 1, 3, 1, 3, 3, 1, 3, 1, 3, 1, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 1, 1, 1, 1, 1, 1, 1, 1, 10, 1, 1, 1, 1, 1,
+      // Episode 2 (12-23)
+      // P2 VRTA, VRTB, VRSA, VRSB, CCA-, -JN-, -JS-, MNTN, SEAS, SBU-, SBL-, -GG-, -OF-, -BR-, -GD-, SSN-, TWR-,
+      1, 1, 2, 1, 2, 1, 2, 1, 2, 1, 1, 3, 1, 3, 1, 3, 2, 2, 1, 3, 2, 1, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+      // Episode 4 (24-2E)
+      // CE -CW-, -CS-, -CN-, -CI-, DES1, DES2, DES3, SMIL, -P2-, TEST
+      1, 3, 1, 3, 1, 3, 1, 3, 1, 3, 3, 1, 1, 3, 3, 1, 1, 1, 1, 1, 1, 1};
+  const auto& data = is_solo ? counts_off : counts_on;
+  if ((floor * 2 + 1) < data.size()) {
+    auto available = this->num_available_variations_for_floor(episode, floor);
+    return make_pair(min<uint32_t>(available.first, data[area * 2]), min<uint32_t>(available.second, data[area * 2 + 1]));
+  }
+  throw runtime_error("invalid area");
+}
+
+string SetDataTable::map_filename_for_variation(
+    uint8_t floor, uint32_t var1, uint32_t var2, Episode episode, GameMode mode, bool is_enemies) const {
+  uint8_t area = this->default_area_for_floor(episode, floor);
+  if (area == 0xFF) {
+    return "";
+  }
+
+  if (area >= this->entries.size()) {
+    return "";
+  }
+
+  const auto& entry = this->entries.at(area).at(var1).at(var2);
+  string filename = is_enemies ? entry.enemy_list_basename : entry.object_list_basename;
+
+  filename += (is_enemies ? "e" : "o");
+
+  switch ((floor != 0) ? GameMode::NORMAL : mode) {
+    case GameMode::NORMAL:
+      filename += ".dat";
+      break;
+    case GameMode::SOLO:
+      filename += "_s.dat";
+      break;
+    case GameMode::CHALLENGE:
+      filename += "_c1.dat";
+      break;
+    case GameMode::BATTLE:
+      filename += "_d.dat";
+      break;
+    default:
+      throw logic_error("invalid game mode");
+  }
+
+  return filename;
+}
+
+string SetDataTable::str() const {
+  vector<string> lines;
+  lines.emplace_back(string_printf("FL/V1/V2 => ----------------------OBJECT -----------------------ENEMY -----------------------EVENT\n"));
   for (size_t a = 0; a < this->entries.size(); a++) {
     const auto& v1_v = this->entries[a];
     for (size_t v1 = 0; v1 < v1_v.size(); v1++) {
       const auto& v2_v = v1_v[v1];
       for (size_t v2 = 0; v2 < v2_v.size(); v2++) {
         const auto& e = v2_v[v2];
-        fprintf(stream, "[%02zX/%02zX/%02zX] %s %s %s\n", a, v1, v2, e.object_list_basename.c_str(), e.enemy_list_basename.c_str(), e.event_list_basename.c_str());
+        lines.emplace_back(string_printf("%02zX/%02zX/%02zX => %28s %28s %28s\n", a, v1, v2, e.object_list_basename.c_str(), e.enemy_list_basename.c_str(), e.event_list_basename.c_str()));
       }
     }
   }
+  return join(lines, "");
 }
 
 struct AreaMapFileInfo {
@@ -1715,23 +1848,97 @@ struct AreaMapFileInfo {
         variation2_values(variation2_values) {}
 };
 
+const array<vector<vector<string>>, 0x10> SetDataTableDCNTE::NAMES = {{
+    /* 00 */ {{"map_city00_00"}},
+    /* 01 */ {{"map_forest01_00", "map_forest01_01"}},
+    /* 02 */ {{"map_forest02_00", "map_forest02_03"}},
+    /* 03 */ {{"map_cave01_00_00", "map_cave01_00_01"}, {"map_cave01_01_00", "map_cave01_01_01"}},
+    /* 04 */ {{"map_cave02_00_00", "map_cave02_00_01"}, {"map_cave02_01_00", "map_cave02_01_01"}},
+    /* 05 */ {{"map_cave03_00_00", "map_cave03_00_01"}, {"map_cave03_01_00", "map_cave03_01_01"}},
+    /* 06 */ {{"map_machine01_00_00", "map_machine01_00_01"}},
+    /* 07 */ {{"map_machine02_00_00", "map_machine02_00_01"}},
+    /* 08 */ {{"map_ancient01_00_00", "map_ancient01_00_01"}, {"map_ancient01_01_00", "map_ancient01_01_01"}},
+    /* 09 */ {{"map_ancient02_00_00", "map_ancient02_00_01"}, {"map_ancient02_01_00", "map_ancient02_01_01"}},
+    /* 0A */ {{"map_ancient03_00_00", "map_ancient03_00_01"}, {"map_ancient03_01_00", "map_ancient03_01_01"}},
+    /* 0B */ {{"map_boss01"}},
+    /* 0C */ {{"map_boss02"}},
+    /* 0D */ {{"map_boss03"}},
+    /* 0E */ {{"map_boss04"}},
+    /* 0F */ {{"map_visuallobby"}, {"map_visuallobby"}, {"map_visuallobby"}, {"map_visuallobby"}, {"map_visuallobby"}, {"map_visuallobby"}, {"map_visuallobby"}, {"map_visuallobby"}, {"map_visuallobby"}, {"map_visuallobby"}},
+}};
+
+SetDataTableDCNTE::SetDataTableDCNTE() : SetDataTableBase(Version::DC_NTE) {}
+
+pair<uint32_t, uint32_t> SetDataTableDCNTE::num_available_variations_for_floor(Episode, uint8_t floor) const {
+  return make_pair(this->NAMES[floor].size(), this->NAMES[floor][0].size());
+}
+
+pair<uint32_t, uint32_t> SetDataTableDCNTE::num_free_roam_variations_for_floor(Episode episode, bool, uint8_t floor) const {
+  return this->num_available_variations_for_floor(episode, floor);
+}
+
+string SetDataTableDCNTE::map_filename_for_variation(
+    uint8_t floor, uint32_t var1, uint32_t var2, Episode, GameMode, bool is_enemies) const {
+  if (floor >= this->NAMES.size()) {
+    return "";
+  }
+  return this->NAMES.at(floor).at(var1).at(var2) + (is_enemies ? "e.dat" : "o.dat");
+}
+
+const array<vector<vector<string>>, 0x10> SetDataTableDC112000::NAMES = {{
+    /* 00 */ {{"map_city00_00"}},
+    /* 01 */ {{"map_forest01_00", "map_forest01_01", "map_forest01_02", "map_forest01_03", "map_forest01_04"}},
+    /* 02 */ {{"map_forest02_00", "map_forest02_01", "map_forest02_02", "map_forest02_03", "map_forest02_04"}},
+    /* 03 */ {{"map_cave01_00_00", "map_cave01_00_01"}, {"map_cave01_01_00", "map_cave01_01_01"}, {"map_cave01_02_00", "map_cave01_02_01"}},
+    /* 04 */ {{"map_cave02_00_00", "map_cave02_00_01"}, {"map_cave02_01_00", "map_cave02_01_01"}, {"map_cave02_02_00", "map_cave02_02_01"}},
+    /* 05 */ {{"map_cave03_00_00", "map_cave03_00_01"}, {"map_cave03_01_00", "map_cave03_01_01"}, {"map_cave03_02_00", "map_cave03_02_01"}},
+    /* 06 */ {{"map_machine01_00_00", "map_machine01_00_01"}, {"map_machine01_01_00", "map_machine01_01_01"}, {"map_machine01_02_00", "map_machine01_02_01"}},
+    /* 07 */ {{"map_machine02_00_00", "map_machine02_00_01"}, {"map_machine02_01_00", "map_machine02_01_01"}, {"map_machine02_02_00", "map_machine02_02_01"}},
+    /* 08 */ {{"map_ancient01_00_00", "map_ancient01_00_01"}, {"map_ancient01_01_00", "map_ancient01_01_01"}, {"map_ancient01_02_00", "map_ancient01_02_01"}},
+    /* 09 */ {{"map_ancient02_00_00", "map_ancient02_00_01"}, {"map_ancient02_01_00", "map_ancient02_01_01"}, {"map_ancient02_02_00", "map_ancient02_02_01"}},
+    /* 0A */ {{"map_ancient03_00_00", "map_ancient03_00_01"}, {"map_ancient03_01_00", "map_ancient03_01_01"}, {"map_ancient03_02_00", "map_ancient03_02_01"}},
+    /* 0B */ {{"map_boss01"}},
+    /* 0C */ {{"map_boss02"}},
+    /* 0D */ {{"map_boss03"}},
+    /* 0E */ {{"map_boss04"}},
+    /* 0F */ {{"map_visuallobby"}, {"map_visuallobby"}, {"map_visuallobby"}, {"map_visuallobby"}, {"map_visuallobby"}, {"map_visuallobby"}, {"map_visuallobby"}, {"map_visuallobby"}, {"map_visuallobby"}, {"map_visuallobby"}},
+}};
+
+SetDataTableDC112000::SetDataTableDC112000() : SetDataTableBase(Version::DC_V1_11_2000_PROTOTYPE) {}
+
+pair<uint32_t, uint32_t> SetDataTableDC112000::num_available_variations_for_floor(Episode, uint8_t floor) const {
+  return make_pair(this->NAMES[floor].size(), this->NAMES[floor][0].size());
+}
+
+pair<uint32_t, uint32_t> SetDataTableDC112000::num_free_roam_variations_for_floor(Episode episode, bool, uint8_t floor) const {
+  return this->num_available_variations_for_floor(episode, floor);
+}
+
+string SetDataTableDC112000::map_filename_for_variation(
+    uint8_t floor, uint32_t var1, uint32_t var2, Episode, GameMode, bool is_enemies) const {
+  if (floor >= this->NAMES.size()) {
+    return "";
+  }
+  return this->NAMES.at(floor).at(var1).at(var2) + (is_enemies ? "e.dat" : "o.dat");
+}
+
 static const vector<AreaMapFileInfo> map_file_info_dc_nte = {
     {"city00", {}, {0}},
-    {"forest01", {}, {0, 1, 2, 3, 4}},
-    {"forest02", {}, {0, 1, 2, 3, 4}},
-    {"cave01", {0, 1, 2}, {0, 1}},
-    {"cave02", {0, 1, 2}, {0, 1}},
-    {"cave03", {0, 1, 2}, {0, 1}},
-    {"machine01", {0, 1}, {0, 1}},
-    {"machine02", {0, 1}, {0, 1}},
-    {"ancient01", {0, 1}, {0, 1}},
-    {"ancient02", {0, 1}, {0, 1}},
-    {"ancient03", {0, 1}, {0, 1}},
+    {"forest01", {}, {0, 1}},
+    {"forest02", {}, {0, 3}},
+    {"cave01", {0, 1}, {0, 1}},
+    {"cave02", {0, 1}, {0, 1}},
+    {"cave03", {0, 1}, {0, 1}},
+    {"machine01", {0}, {0, 1}},
+    {"machine02", {0}, {0, 1}},
+    {"ancient01", {0}, {0, 1}},
+    {"ancient02", {0}, {0, 1}},
+    {"ancient03", {0}, {0, 1}},
     {"boss01", {}, {}},
     {"boss02", {}, {}},
     {"boss03", {}, {}},
     {"boss04", {}, {}},
-    {nullptr, {}, {}},
+    {"map_visuallobby", {}, {}},
 };
 
 static const vector<vector<AreaMapFileInfo>> map_file_info_gc_nte = {
@@ -1752,13 +1959,13 @@ static const vector<vector<AreaMapFileInfo>> map_file_info_gc_nte = {
         {"boss02", {}, {}},
         {"boss03", {}, {}},
         {"boss04", {}, {}},
-        {nullptr, {}, {}},
+        {"lobby_01", {}, {}},
     },
     {
         // Episode 2 Non-solo
         {"labo00", {}, {0}},
-        {"ruins01", {0, 1}, {0}},
-        {"ruins02", {0, 1}, {0}},
+        {"ruins01", {0}, {0}},
+        {"ruins02", {0}, {0}},
         {"space01", {0, 1}, {0}},
         {"space02", {0, 1}, {0}},
         {"jungle01", {}, {0, 1}},
@@ -1766,8 +1973,8 @@ static const vector<vector<AreaMapFileInfo>> map_file_info_gc_nte = {
         {"jungle03", {}, {0, 1}},
         {"jungle04", {0, 1}, {0}},
         {"jungle05", {}, {0, 1}},
-        {nullptr, {}, {}},
-        {nullptr, {}, {}},
+        {"seabed01", {0, 1}, {0}},
+        {"seabed02", {0}, {0}},
         {"boss05", {}, {}},
         {"boss06", {}, {}},
         {"boss07", {}, {}},
@@ -1796,7 +2003,7 @@ static const vector<vector<vector<AreaMapFileInfo>>> map_file_info = {
             {"boss02", {}, {}},
             {"boss03", {}, {}},
             {"boss04", {}, {}},
-            {nullptr, {}, {}},
+            {"lobby_01", {}, {}},
         },
         {
             // Solo
@@ -1873,7 +2080,7 @@ static const vector<vector<vector<AreaMapFileInfo>>> map_file_info = {
             {"desert02", {0}, {0, 1, 2}},
             {"desert03", {0, 1, 2}, {0}},
             {"boss09", {0}, {0}},
-            {nullptr, {}, {}},
+            {"test01", {0}, {0}},
             {nullptr, {}, {}},
             {nullptr, {}, {}},
             {nullptr, {}, {}},
@@ -1892,7 +2099,7 @@ static const vector<vector<vector<AreaMapFileInfo>>> map_file_info = {
             {"desert02", {0}, {0, 1, 2}},
             {"desert03", {0, 1, 2}, {0}},
             {"boss09", {0}, {0}},
-            {nullptr, {}, {}},
+            {"test01", {0}, {0}},
             {nullptr, {}, {}},
             {nullptr, {}, {}},
             {nullptr, {}, {}},
@@ -1902,7 +2109,7 @@ static const vector<vector<vector<AreaMapFileInfo>>> map_file_info = {
     },
 };
 
-const AreaMapFileInfo& file_info_for_variation(
+const AreaMapFileInfo& file_info_for_variation_deprecated(
     Version version, Episode episode, uint8_t area, bool is_solo) {
   const vector<AreaMapFileInfo>* multi_index = nullptr;
   const vector<AreaMapFileInfo>* solo_index = nullptr;
@@ -1919,8 +2126,7 @@ const AreaMapFileInfo& file_info_for_variation(
       default:
         throw invalid_argument("episode has no maps");
     }
-  }
-   else {
+  } else {
     switch (episode) {
       case Episode::EP1:
         multi_index = &map_file_info.at(0).at(0);
@@ -1952,14 +2158,14 @@ const AreaMapFileInfo& file_info_for_variation(
   return multi_index->at(area);
 }
 
-void generate_variations(
+void generate_variations_deprecated(
     parray<le_uint32_t, 0x20>& variations,
     shared_ptr<PSOLFGEncryption> random_crypt,
     Version version,
     Episode episode,
     bool is_solo) {
   for (size_t z = 0; z < 0x10; z++) {
-    const auto& a = file_info_for_variation(version, episode, z, is_solo);
+    const auto& a = file_info_for_variation_deprecated(version, episode, z, is_solo);
     if (!a.name_token) {
       variations[z * 2 + 0] = 0;
       variations[z * 2 + 1] = 0;
@@ -1970,10 +2176,10 @@ void generate_variations(
   }
 }
 
-vector<parray<le_uint32_t, 0x20>> generate_all_possible_variations(Version version, Episode episode, bool is_solo) {
-  parray<uint32_t, 0x20> maxes;
+parray<le_uint32_t, 0x20> variation_maxes_deprecated(Version version, Episode episode, bool is_solo) {
+  parray<le_uint32_t, 0x20> maxes;
   for (size_t z = 0; z < 0x10; z++) {
-    const auto& a = file_info_for_variation(version, episode, z, is_solo);
+    const auto& a = file_info_for_variation_deprecated(version, episode, z, is_solo);
     if (!a.name_token) {
       maxes[z * 2 + 0] = 0;
       maxes[z * 2 + 1] = 0;
@@ -1982,38 +2188,32 @@ vector<parray<le_uint32_t, 0x20>> generate_all_possible_variations(Version versi
       maxes[z * 2 + 1] = (a.variation2_values.size() <= 1) ? 0 : (a.variation2_values.size() - 1);
     }
   }
-
-  vector<parray<le_uint32_t, 0x20>> ret;
-  parray<le_uint32_t, 0x20> current;
-  for (;;) {
-    ret.emplace_back(current);
-
-    // Increment current by 1 as if it were an 0x20-place integer, with each
-    // "place" having a base of maxes[x] + 1
-    ssize_t x;
-    for (x = 0x1F; x >= 0; x--) {
-      if (current[x] < maxes[x]) {
-        current[x]++;
-        break;
-      } else {
-        current[x] = 0;
-      }
-    }
-    if (x < 0) {
-      break;
-    }
-  }
-
-  return ret;
+  return maxes;
 }
 
-vector<string> map_filenames_for_variation(
-    Version version,
-    Episode episode,
-    GameMode mode,
+bool next_variation_deprecated(parray<le_uint32_t, 0x20>& variations, Version version, Episode episode, bool is_solo) {
+  auto maxes = variation_maxes_deprecated(version, episode, is_solo);
+
+  // Increment variations by 1 as if it were an 0x20-place integer, with each
+  // "place" having a base of maxes[x] + 1
+  for (ssize_t x = 0x1F; x >= 0; x--) {
+    if (variations[x] < maxes[x]) {
+      variations[x]++;
+      return true;
+    } else {
+      variations[x] = 0;
+    }
+  }
+  return false;
+}
+
+vector<string> map_filenames_for_variation_deprecated(
     uint8_t floor,
     uint32_t var1,
     uint32_t var2,
+    Version version,
+    Episode episode,
+    GameMode mode,
     bool is_enemies) {
   // Map filenames are like map_<name_token>_<VV>_<VV>(_off)?(e|o)(_s|_c1)?.dat
   //   name_token comes from AreaMapFileInfo
@@ -2024,7 +2224,7 @@ vector<string> map_filenames_for_variation(
   //   _c1 is used for the city map in Challenge mode (which we don't load,
   //     since it contains only NPCs and not enemies)
   //   e|o specifies what kind of data: e = enemies, o = objects
-  const auto& a = file_info_for_variation(version, episode, floor, mode == GameMode::SOLO);
+  const auto& a = file_info_for_variation_deprecated(version, episode, floor, mode == GameMode::SOLO);
   if (!a.name_token) {
     return vector<string>();
   }
@@ -2063,6 +2263,19 @@ vector<string> map_filenames_for_variation(
       }
     }
     ret.emplace_back(filename + "o.dat");
+  }
+  return ret;
+}
+
+vector<vector<string>> map_filenames_for_variations_deprecated(
+    const parray<le_uint32_t, 0x20>& variations,
+    Version version,
+    Episode episode,
+    GameMode mode,
+    bool is_enemies) {
+  vector<vector<string>> ret;
+  for (size_t z = 0; z < 0x10; z++) {
+    ret.emplace_back(map_filenames_for_variation_deprecated(z, variations[z * 2], variations[z * 2 + 1], version, episode, mode, is_enemies));
   }
   return ret;
 }

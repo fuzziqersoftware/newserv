@@ -291,10 +291,30 @@ shared_ptr<Map> Lobby::load_maps(
     uint8_t difficulty,
     uint8_t event,
     uint32_t lobby_id,
+    shared_ptr<const SetDataTableBase> sdt,
     function<shared_ptr<const string>(Version, const string&)> get_file_data,
     shared_ptr<const Map::RareEnemyRates> rare_rates,
     shared_ptr<PSOLFGEncryption> random_crypt,
-    const parray<le_uint32_t, 0x20>& variations) {
+    const parray<le_uint32_t, 0x20>& variations,
+    const PrefixedLogger* log) {
+  auto enemy_filenames = sdt->map_filenames_for_variations(variations, episode, mode, true);
+  auto object_filenames = sdt->map_filenames_for_variations(variations, episode, mode, false);
+  return Lobby::load_maps(enemy_filenames, object_filenames, version, episode, mode, difficulty, event, lobby_id, get_file_data, rare_rates, random_crypt, log);
+}
+
+shared_ptr<Map> Lobby::load_maps(
+    const vector<string>& enemy_filenames,
+    const vector<string>& object_filenames,
+    Version version,
+    Episode episode,
+    GameMode mode,
+    uint8_t difficulty,
+    uint8_t event,
+    uint32_t lobby_id,
+    function<shared_ptr<const string>(Version, const string&)> get_file_data,
+    shared_ptr<const Map::RareEnemyRates> rare_rates,
+    shared_ptr<PSOLFGEncryption> random_crypt,
+    const PrefixedLogger* log) {
   auto map = make_shared<Map>(version, lobby_id, random_crypt);
 
   // Don't load free-roam maps in Challenge mode, since players can't go to
@@ -303,58 +323,42 @@ shared_ptr<Map> Lobby::load_maps(
     return map;
   }
 
-  for (size_t floor = 0; floor < 0x10; floor++) {
-    auto enemy_filenames = map_filenames_for_variation(
-        version,
-        episode,
-        mode,
-        floor,
-        variations[floor * 2],
-        variations[floor * 2 + 1],
-        true);
-    if (!enemy_filenames.empty()) {
-      bool any_map_loaded = false;
-      for (const string& filename : enemy_filenames) {
-        auto map_data = get_file_data(version, filename);
-        if (map_data) {
-          map->add_enemies_from_map_data(
-              episode,
-              difficulty,
-              event,
-              floor,
-              map_data->data(),
-              map_data->size(),
-              rare_rates);
-          any_map_loaded = true;
-          break;
+  for (size_t floor = 0; floor < 0x12; floor++) {
+    const auto& floor_enemy_filename = enemy_filenames.at(floor);
+    if (!floor_enemy_filename.empty()) {
+      auto map_data = get_file_data(version, floor_enemy_filename);
+      if (map_data) {
+        map->add_enemies_from_map_data(
+            episode,
+            difficulty,
+            event,
+            floor,
+            map_data->data(),
+            map_data->size(),
+            rare_rates);
+        if (log) {
+          log->info("Loaded enemies map %s for floor %02zX", floor_enemy_filename.c_str(), floor);
         }
+      } else if (log) {
+        log->info("Enemies map %s for floor %02zX cannot be used; skipping", floor_enemy_filename.c_str(), floor);
       }
-      if (!any_map_loaded) {
-        throw runtime_error(string_printf("no enemy maps loaded for floor %zu", floor));
-      }
+    } else if (log) {
+      log->info("No enemies to load for floor %02zX", floor);
     }
 
-    auto object_filenames = map_filenames_for_variation(
-        version,
-        episode,
-        mode,
-        floor,
-        variations[floor * 2],
-        variations[floor * 2 + 1],
-        false);
-    if (!object_filenames.empty()) {
-      bool any_map_loaded = false;
-      for (const string& filename : object_filenames) {
-        auto map_data = get_file_data(version, filename);
-        if (map_data) {
-          map->add_objects_from_map_data(floor, map_data->data(), map_data->size());
-          any_map_loaded = true;
-          break;
+    const auto& floor_object_filename = object_filenames.at(floor);
+    if (!floor_object_filename.empty()) {
+      auto map_data = get_file_data(version, floor_object_filename);
+      if (map_data) {
+        map->add_objects_from_map_data(floor, map_data->data(), map_data->size());
+        if (log) {
+          log->info("Loaded objects map %s for floor %02zX", floor_object_filename.c_str(), floor);
         }
+      } else if (log) {
+        log->info("Objects map %s for floor %02zX cannot be used; skipping", floor_object_filename.c_str(), floor);
       }
-      if (!any_map_loaded) {
-        throw runtime_error(string_printf("no object maps loaded for floor %zu", floor));
-      }
+    } else if (log) {
+      log->info("No objects to load for floor %02zX", floor);
     }
   }
 
@@ -392,10 +396,12 @@ void Lobby::load_maps() {
         this->difficulty,
         this->event,
         this->lobby_id,
+        s->set_data_table(this->base_version, this->episode, this->mode, this->difficulty),
         bind(&ServerState::load_map_file, s.get(), placeholders::_1, placeholders::_2),
         rare_rates,
         this->random_crypt,
-        this->variations);
+        this->variations,
+        &this->log);
 
   } else {
     this->map = make_shared<Map>(this->base_version, this->lobby_id, this->random_crypt);

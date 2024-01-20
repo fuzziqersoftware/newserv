@@ -31,8 +31,8 @@ ServerState::QuestF960Result::QuestF960Result(const JSON& json, std::shared_ptr<
 }
 
 ServerState::ServerState(const string& config_filename)
-  : creation_time(now()),
-    config_filename(config_filename) {
+    : creation_time(now()),
+      config_filename(config_filename) {
   this->create_load_step_graph();
 }
 
@@ -371,6 +371,21 @@ void ServerState::dispatch_destroy_lobbies(evutil_socket_t, short, void* ctx) {
   reinterpret_cast<ServerState*>(ctx)->lobbies_to_destroy.clear();
 }
 
+shared_ptr<const SetDataTableBase> ServerState::set_data_table(
+    Version version, Episode episode, GameMode mode, uint8_t difficulty) const {
+  bool use_ult_tables = ((episode == Episode::EP1) && (difficulty == 3) && !is_v1(version) && (version != Version::PC_NTE));
+  if (mode == GameMode::SOLO && is_v4(version)) {
+    return use_ult_tables ? this->bb_solo_set_data_table_ep1_ult : this->bb_solo_set_data_table;
+  }
+
+  const auto& tables = use_ult_tables ? this->set_data_tables_ep1_ult : this->set_data_tables;
+  auto ret = tables.at(static_cast<size_t>(version));
+  if (ret == nullptr) {
+    throw runtime_error("no set data table exists for this version");
+  }
+  return ret;
+}
+
 shared_ptr<const ItemParameterTable> ServerState::item_parameter_table(Version version) const {
   auto ret = this->item_parameter_tables.at(static_cast<size_t>(version));
   if (ret == nullptr) {
@@ -450,11 +465,8 @@ shared_ptr<const string> ServerState::load_bb_file(
     // First, look in the patch tree's data directory
     string patch_index_path = "./data/" + patch_index_filename;
     try {
-      auto ret = this->bb_patch_file_index->get(patch_index_path)->load_data();
-      static_game_data_log.info("Loaded %s from file in BB patch tree", patch_index_path.c_str());
-      return ret;
+      return this->bb_patch_file_index->get(patch_index_path)->load_data();
     } catch (const out_of_range&) {
-      static_game_data_log.info("%s missing from BB patch tree", patch_index_path.c_str());
     }
   }
 
@@ -464,11 +476,8 @@ shared_ptr<const string> ServerState::load_bb_file(
     try {
       // TODO: It's kinda not great that we copy the data here; find a way to
       // avoid doing this (also in the below case)
-      auto ret = make_shared<string>(this->bb_data_gsl->get_copy(effective_gsl_filename));
-      static_game_data_log.info("Loaded %s from data.gsl in BB patch tree", effective_gsl_filename.c_str());
-      return ret;
+      return make_shared<string>(this->bb_data_gsl->get_copy(effective_gsl_filename));
     } catch (const out_of_range&) {
-      static_game_data_log.info("%s missing from data.gsl in BB patch tree", effective_gsl_filename.c_str());
     }
 
     // Third, look in data.gsl without the filename extension
@@ -476,11 +485,8 @@ shared_ptr<const string> ServerState::load_bb_file(
     if (dot_offset != string::npos) {
       string no_ext_gsl_filename = effective_gsl_filename.substr(0, dot_offset);
       try {
-        auto ret = make_shared<string>(this->bb_data_gsl->get_copy(no_ext_gsl_filename));
-        static_game_data_log.info("Loaded %s from data.gsl in BB patch tree", no_ext_gsl_filename.c_str());
-        return ret;
+        return make_shared<string>(this->bb_data_gsl->get_copy(no_ext_gsl_filename));
       } catch (const out_of_range&) {
-        static_game_data_log.info("%s missing from data.gsl in BB patch tree", no_ext_gsl_filename.c_str());
       }
     }
   }
@@ -490,11 +496,8 @@ shared_ptr<const string> ServerState::load_bb_file(
   static FileContentsCache cache(10 * 60 * 1000 * 1000); // 10 minutes
   try {
     auto ret = cache.get_or_load("system/blueburst/" + effective_bb_directory_filename);
-    static_game_data_log.info("Loaded %s", effective_bb_directory_filename.c_str());
     return ret.file->data;
   } catch (const exception& e) {
-    static_game_data_log.info("%s missing from system/blueburst", effective_bb_directory_filename.c_str());
-    static_game_data_log.error("%s not found in any source", patch_index_filename.c_str());
     throw cannot_open_file(patch_index_filename);
   }
 }
@@ -509,25 +512,20 @@ shared_ptr<const string> ServerState::load_map_file_uncached(Version version, co
     try {
       return this->load_bb_file(filename);
     } catch (const exception& e) {
-      static_game_data_log.info("Failed to load %s from BB patch tree: %s", filename.c_str(), e.what());
     }
   } else if (version == Version::PC_V2) {
     try {
       string path = "system/patch-pc/Media/PSO/" + filename;
       auto ret = make_shared<string>(load_file(path));
-      static_game_data_log.info("Loaded %s from PC patch tree", filename.c_str());
       return ret;
     } catch (const exception& e) {
-      static_game_data_log.info("Failed to load %s from PC patch tree: %s", filename.c_str(), e.what());
     }
   }
   try {
     string path = string_printf("system/maps/%s/%s", file_path_token_for_version(version), filename.c_str());
     auto ret = make_shared<string>(load_file(path));
-    static_game_data_log.info("Loaded %s from default maps", filename.c_str());
     return ret;
   } catch (const exception& e) {
-    static_game_data_log.info("Failed to load %s from default maps: %s", filename.c_str(), e.what());
   }
   return nullptr;
 }
@@ -1129,6 +1127,36 @@ void ServerState::clear_map_file_caches() {
   }
 }
 
+void ServerState::load_set_data_tables() {
+  config_log.info("Loading set data tables");
+  std::array<std::shared_ptr<const SetDataTableBase>, NUM_VERSIONS> set_data_tables;
+
+  auto load_table = [this](Version version) -> void {
+    auto data = this->load_map_file(version, "SetDataTableOn.rel");
+    this->set_data_tables[static_cast<size_t>(version)] = make_shared<SetDataTable>(version, *data);
+    if (!is_v1(version) && (version != Version::PC_NTE)) {
+      auto data_ep1_ult = this->load_map_file(version, "SetDataTableOnUlti.rel");
+      this->set_data_tables_ep1_ult[static_cast<size_t>(version)] = make_shared<SetDataTable>(version, *data_ep1_ult);
+    }
+  };
+
+  this->set_data_tables[static_cast<size_t>(Version::DC_NTE)] = make_shared<SetDataTableDCNTE>();
+  this->set_data_tables[static_cast<size_t>(Version::DC_V1_11_2000_PROTOTYPE)] = make_shared<SetDataTableDC112000>();
+  load_table(Version::DC_V1);
+  load_table(Version::DC_V2);
+  load_table(Version::PC_NTE);
+  load_table(Version::PC_V2);
+  load_table(Version::GC_NTE);
+  load_table(Version::GC_V3);
+  load_table(Version::XB_V3);
+  load_table(Version::BB_V4);
+
+  auto bb_solo_data = this->load_map_file(Version::BB_V4, "SetDataTableOff.rel");
+  this->bb_solo_set_data_table = make_shared<SetDataTable>(Version::BB_V4, *bb_solo_data);
+  auto bb_solo_data_ep1_ult = this->load_map_file(Version::BB_V4, "SetDataTableOffUlti.rel");
+  this->bb_solo_set_data_table_ep1_ult = make_shared<SetDataTable>(Version::BB_V4, *bb_solo_data_ep1_ult);
+}
+
 void ServerState::load_battle_params() {
   config_log.info("Loading battle parameters");
   this->battle_params = make_shared<BattleParamsIndex>(
@@ -1504,6 +1532,10 @@ void ServerState::create_load_step_graph() {
   // In: none
   // Out: lobbies
   this->load_step_graph.add_step("lobbies", {"all"}, bind(&ServerState::create_default_lobbies, this));
+
+  // In: bb_patch_file_index
+  // Out: set_data_tables
+  this->load_step_graph.add_step("set_data_tables", {"all", "patch_indexes"}, bind(&ServerState::load_set_data_tables, this));
 
   // In: bb_patch_file_index
   // Out: battle_params

@@ -211,10 +211,25 @@ struct Lobby : public std::enable_shared_from_this<Lobby> {
       uint8_t difficulty,
       uint8_t event,
       uint32_t lobby_id,
+      std::shared_ptr<const SetDataTableBase> sdt,
       std::function<std::shared_ptr<const std::string>(Version, const std::string&)> get_file_data,
       std::shared_ptr<const Map::RareEnemyRates> rare_rates,
       std::shared_ptr<PSOLFGEncryption> random_crypt,
-      const parray<le_uint32_t, 0x20>& variations);
+      const parray<le_uint32_t, 0x20>& variations,
+      const PrefixedLogger* log = nullptr);
+  static std::shared_ptr<Map> load_maps(
+      const std::vector<std::string>& enemy_filenames,
+      const std::vector<std::string>& object_filenames,
+      Version version,
+      Episode episode,
+      GameMode mode,
+      uint8_t difficulty,
+      uint8_t event,
+      uint32_t lobby_id,
+      std::function<std::shared_ptr<const std::string>(Version, const std::string&)> get_file_data,
+      std::shared_ptr<const Map::RareEnemyRates> rare_rates,
+      std::shared_ptr<PSOLFGEncryption> random_crypt,
+      const PrefixedLogger* log = nullptr);
   void load_maps();
   void create_ep3_server();
 
