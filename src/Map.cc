@@ -1775,7 +1775,7 @@ pair<uint32_t, uint32_t> SetDataTable::num_free_roam_variations_for_floor(Episod
       // CE -CW-, -CS-, -CN-, -CI-, DES1, DES2, DES3, SMIL, -P2-, TEST
       1, 3, 1, 3, 1, 3, 1, 3, 1, 3, 3, 1, 1, 3, 3, 1, 1, 1, 1, 1, 1, 1};
   const auto& data = is_solo ? counts_off : counts_on;
-  if ((floor * 2 + 1) < data.size()) {
+  if (static_cast<size_t>(floor * 2 + 1) < data.size()) {
     auto available = this->num_available_variations_for_floor(episode, floor);
     return make_pair(min<uint32_t>(available.first, data[area * 2]), min<uint32_t>(available.second, data[area * 2 + 1]));
   }
