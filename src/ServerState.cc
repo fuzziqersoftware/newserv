@@ -1427,7 +1427,7 @@ void ServerState::load_quest_index() {
 
 void ServerState::compile_functions() {
   config_log.info("Compiling client functions");
-  this->function_code_index = make_shared<FunctionCodeIndex>("system/ppc");
+  this->function_code_index = make_shared<FunctionCodeIndex>("system/client-functions");
 }
 
 void ServerState::load_dol_files() {

@@ -555,13 +555,15 @@ static void proxy_command_patch(shared_ptr<ProxyServer::LinkedSession> ses, cons
   };
 
   auto send_version_detect_or_send_call = [args, ses, send_call]() {
-    if (is_gc(ses->version()) &&
+    bool is_gc = ::is_gc(ses->version());
+    bool is_xb = (ses->version() == Version::XB_V3);
+    if ((is_gc || is_xb) &&
         ses->config.specific_version == default_specific_version_for_version(ses->version(), -1)) {
       auto s = ses->require_server_state();
       send_function_call(
           ses->client_channel,
           ses->config,
-          s->function_code_index->name_to_function.at("VersionDetect"));
+          s->function_code_index->name_to_function.at(is_xb ? "VersionDetectXB" : "VersionDetectGC"));
       ses->function_call_return_handler_queue.emplace_back(send_call);
     } else {
       send_call(ses->config.specific_version, 0);

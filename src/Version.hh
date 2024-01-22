@@ -139,6 +139,9 @@ inline bool uses_utf16(Version version) {
 }
 
 uint32_t default_specific_version_for_version(Version version, int64_t sub_version);
+bool specific_version_is_gc(uint32_t specific_version);
+bool specific_version_is_xb(uint32_t specific_version);
+bool specific_version_is_bb(uint32_t specific_version);
 
 enum class ServerBehavior {
   PC_CONSOLE_DETECT = 0,

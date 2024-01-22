@@ -10,6 +10,7 @@
 
 #ifdef HAVE_RESOURCE_FILE
 #include <resource_file/Emulators/PPC32Emulator.hh>
+#include <resource_file/Emulators/X86Emulator.hh>
 #endif
 
 #include "CommandFormats.hh"
@@ -133,28 +134,74 @@ shared_ptr<CompiledFunctionCode> compile_function_code(
   ret->index = 0;
   ret->hide_from_patches_menu = false;
 
-  if (arch == CompiledFunctionCode::Architecture::POWERPC) {
-    auto assembled = PPC32Emulator::assemble(text, {directory});
-    ret->code = std::move(assembled.code);
-    ret->label_offsets = std::move(assembled.label_offsets);
-    for (const auto& it : assembled.metadata_keys) {
-      if (it.first == "hide_from_patches_menu") {
-        ret->hide_from_patches_menu = true;
-      } else if (it.first == "index") {
-        if (it.second.size() != 1) {
-          throw runtime_error("invalid index value in .meta directive");
-        }
-        ret->index = it.second[0];
-      } else if (it.first == "name") {
-        ret->long_name = it.second;
-      } else if (it.first == "description") {
-        ret->description = it.second;
-      } else {
-        throw runtime_error("unknown metadata key: " + it.first);
-      }
+  unordered_set<string> get_include_stack;
+  function<string(const string&)> get_include = [&](const string& name) -> string {
+    const char* arch_name_token;
+    switch (arch) {
+      case CompiledFunctionCode::Architecture::POWERPC:
+        arch_name_token = "ppc";
+        break;
+      case CompiledFunctionCode::Architecture::X86:
+        arch_name_token = "x86";
+        break;
+      case CompiledFunctionCode::Architecture::SH4:
+        arch_name_token = "sh4";
+        break;
+      default:
+        throw runtime_error("unknown architecture");
     }
+
+    string asm_filename = string_printf("%s/%s.%s.inc.s", directory.c_str(), name.c_str(), arch_name_token);
+    if (isfile(asm_filename)) {
+      if (!get_include_stack.emplace(name).second) {
+        throw runtime_error("mutual recursion between includes: " + name);
+      }
+      EmulatorBase::AssembleResult ret;
+      switch (arch) {
+        case CompiledFunctionCode::Architecture::POWERPC:
+          ret = PPC32Emulator::assemble(load_file(asm_filename), get_include);
+          break;
+        case CompiledFunctionCode::Architecture::X86:
+          ret = X86Emulator::assemble(load_file(asm_filename), get_include);
+          break;
+        case CompiledFunctionCode::Architecture::SH4:
+          throw runtime_error("cannot compuile SH-4 assembly");
+        default:
+          throw runtime_error("unknown architecture");
+      }
+      get_include_stack.erase(name);
+      return ret.code;
+    }
+    string bin_filename = directory + "/" + name + ".inc.bin";
+    if (isfile(bin_filename)) {
+      return load_file(bin_filename);
+    }
+    throw runtime_error("data not found for include: " + name + " (from " + asm_filename + " or " + bin_filename + ")");
+  };
+
+  EmulatorBase::AssembleResult assembled;
+  if (arch == CompiledFunctionCode::Architecture::POWERPC) {
+    assembled = PPC32Emulator::assemble(text, get_include);
   } else if (arch == CompiledFunctionCode::Architecture::X86) {
-    throw runtime_error("x86 assembler is not implemented");
+    assembled = X86Emulator::assemble(text, get_include);
+  }
+  ret->code = std::move(assembled.code);
+  ret->label_offsets = std::move(assembled.label_offsets);
+  for (const auto& it : assembled.metadata_keys) {
+    if (it.first == "hide_from_patches_menu") {
+      ret->hide_from_patches_menu = true;
+    } else if (it.first == "index") {
+      if (it.second.size() != 1) {
+        throw runtime_error("invalid index value in .meta directive");
+      }
+      ret->index = it.second[0];
+    } else if (it.first == "name") {
+      ret->long_name = it.second;
+    } else if (it.first == "description") {
+      ret->description = it.second;
+    } else {
+      throw runtime_error("unknown metadata key: " + it.first);
+    }
   }
 
   set<uint32_t> reloc_indexes;
@@ -191,31 +238,57 @@ FunctionCodeIndex::FunctionCodeIndex(const string& directory) {
   }
 
   uint32_t next_menu_item_id = 0;
-  for (const auto& filename : list_directory(directory)) {
-    if (!ends_with(filename, ".s") || ends_with(filename, ".inc.s")) {
-      continue;
-    }
-    bool is_patch = ends_with(filename, ".patch.s");
-    string name = filename.substr(0, filename.size() - (is_patch ? 8 : 2));
-
-    // Check for specific_version token
-    uint32_t specific_version = 0;
-    string short_name = name;
-    if (is_patch &&
-        (filename.size() >= 13) &&
-        (filename[filename.size() - 13] == '.') &&
-        isdigit(filename[filename.size() - 12]) &&
-        (filename[filename.size() - 11] == 'O' || filename[filename.size() - 11] == 'S') &&
-        (filename[filename.size() - 10] == 'E' || filename[filename.size() - 10] == 'J' || filename[filename.size() - 10] == 'P') &&
-        (isdigit(filename[filename.size() - 9]) || filename[filename.size() - 9] == 'T')) {
-      specific_version = 0x33000000 | (filename[filename.size() - 11] << 16) | (filename[filename.size() - 10] << 8) | filename[filename.size() - 9];
-      short_name = filename.substr(0, filename.size() - 13);
-    }
-
+  for (const auto& filename : list_directory_sorted(directory)) {
     try {
+      if (!ends_with(filename, ".s")) {
+        continue;
+      }
+
+      string name = filename.substr(0, filename.size() - 2);
+      if (ends_with(name, ".inc")) {
+        continue;
+      }
+
+      bool is_patch = ends_with(name, ".patch");
+      if (is_patch) {
+        name.resize(name.size() - 6);
+      }
+
+      // Figure out the version or specific_version
+      CompiledFunctionCode::Architecture arch = CompiledFunctionCode::Architecture::UNKNOWN;
+      uint32_t specific_version = 0;
+      string short_name = name;
+      if (ends_with(name, ".ppc")) {
+        arch = CompiledFunctionCode::Architecture::POWERPC;
+        name.resize(name.size() - 4);
+        short_name = name;
+      } else if (ends_with(name, ".x86")) {
+        arch = CompiledFunctionCode::Architecture::X86;
+        name.resize(name.size() - 4);
+        short_name = name;
+      } else if (ends_with(name, ".sh4")) {
+        arch = CompiledFunctionCode::Architecture::SH4;
+        name.resize(name.size() - 4);
+        short_name = name;
+      } else if (is_patch && (name.size() >= 5) && (name[name.size() - 5] == '.')) {
+        specific_version = (name[name.size() - 4] << 24) | (name[name.size() - 3] << 16) | (name[name.size() - 2] << 8) | name[name.size() - 1];
+        if (specific_version_is_gc(specific_version)) {
+          arch = CompiledFunctionCode::Architecture::POWERPC;
+        } else if (specific_version_is_xb(specific_version) || specific_version_is_bb(specific_version)) {
+          arch = CompiledFunctionCode::Architecture::X86;
+        } else {
+          throw runtime_error("unable to determine architecture from specific_version");
+        }
+        short_name = name.substr(0, name.size() - 5);
+      }
+
+      if (arch == CompiledFunctionCode::Architecture::UNKNOWN) {
+        throw runtime_error("unable to determine architecture");
+      }
+
       string path = directory + "/" + filename;
       string text = load_file(path);
-      auto code = compile_function_code(CompiledFunctionCode::Architecture::POWERPC, directory, name, text);
+      auto code = compile_function_code(arch, directory, name, text);
       if (code->index != 0) {
         if (!this->index_to_function.emplace(code->index, code).second) {
           throw runtime_error(string_printf(
@@ -240,7 +313,7 @@ FunctionCodeIndex::FunctionCodeIndex(const string& directory) {
           index_prefix.c_str(), patch_prefix.c_str(), name.c_str(), name_for_architecture(code->arch));
 
     } catch (const exception& e) {
-      function_compiler_log.warning("Failed to compile function %s: %s", name.c_str(), e.what());
+      function_compiler_log.warning("Failed to compile function %s: %s", filename.c_str(), e.what());
     }
   }
 }
@@ -252,6 +325,7 @@ shared_ptr<const Menu> FunctionCodeIndex::patch_menu(uint32_t specific_version) 
   ret->items.emplace_back(PatchesMenuItemID::GO_BACK, "Go back", "Return to the\nmain menu", 0);
   for (const auto& it : this->name_and_specific_version_to_patch_function) {
     const auto& fn = it.second;
+    fprintf(stderr, "patch: [%s] vs [%s]\n", it.first.c_str(), suffix.c_str());
     if (!fn->hide_from_patches_menu && ends_with(it.first, suffix)) {
       ret->items.emplace_back(
           fn->menu_item_id,

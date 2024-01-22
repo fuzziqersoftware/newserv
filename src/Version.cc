@@ -204,7 +204,7 @@ uint32_t default_specific_version_for_version(Version version, int64_t sub_versi
   // to set the specific_version based on sub_version. Fortunately, all
   // versions that share sub_version values also support send_function_call,
   // so for those versions we get the specific_version later by sending the
-  // VersionDetect call.
+  // VersionDetectGC or VersionDetectXB call.
   switch (version) {
     case Version::GC_NTE:
       return 0x334F4A54; // 3OJT
@@ -242,9 +242,50 @@ uint32_t default_specific_version_for_version(Version version, int64_t sub_versi
         default:
           return 0x33000000;
       }
+    case Version::XB_V3:
+      return 0x344F0000;
+    case Version::BB_V4:
+      return 0x354F3030;
     default:
       return 0x00000000;
   }
+}
+
+bool specific_version_is_gc(uint32_t specific_version) {
+  // GC specific_versions are 3GRV, where G is [OE], R is [JEP], V is [0-9T]
+  if ((specific_version & 0xFF000000) != 0x33000000) {
+    return false;
+  }
+  char game = specific_version >> 16;
+  if ((game != 'O') && (game != 'S')) {
+    return false;
+  }
+  char region = specific_version >> 8;
+  if ((region != 'J') && (region != 'E') && (region != 'P')) {
+    return false;
+  }
+  char revision = specific_version;
+  return (isdigit(revision) || (revision == 'T'));
+}
+
+bool specific_version_is_xb(uint32_t specific_version) {
+  // XB specific_versions are 4ORV, where R is [JEP], V is [BDU]
+  if ((specific_version & 0xFFFF0000) != 0x344F0000) {
+    return false;
+  }
+  char region = specific_version >> 8;
+  if ((region != 'J') && (region != 'E') && (region != 'P')) {
+    return false;
+  }
+  char revision = specific_version;
+  return ((revision == 'B') || (revision == 'D') || (revision == 'U'));
+}
+
+bool specific_version_is_bb(uint32_t specific_version) {
+  // TODO: We should actually find a way to determine BB specific_versions, but
+  // there are so many mods out there, and there's a patch server anyway, so it
+  // seems not worth the effort
+  return specific_version == 0x35303030;
 }
 
 const char* file_path_token_for_version(Version version) {

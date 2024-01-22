@@ -240,7 +240,7 @@ static void send_main_menu(shared_ptr<Client> c) {
   if (!s->is_replay) {
     if (!s->function_code_index->patch_menu_empty(c->config.specific_version)) {
       main_menu->items.emplace_back(MainMenuItemID::PATCHES, "Patches",
-          "Change game\nbehaviors", MenuItem::Flag::GC_ONLY | MenuItem::Flag::REQUIRES_SEND_FUNCTION_CALL);
+          "Change game\nbehaviors", MenuItem::Flag::INVISIBLE_ON_DC | MenuItem::Flag::INVISIBLE_ON_PC | MenuItem::Flag::REQUIRES_SEND_FUNCTION_CALL);
     }
     if (!s->dol_file_index->empty()) {
       main_menu->items.emplace_back(MainMenuItemID::PROGRAMS, "Programs",
@@ -877,10 +877,10 @@ static void on_9D_9E(shared_ptr<Client> c, uint16_t command, uint32_t, string& d
   c->channel.language = base_cmd->language;
   set_console_client_flags(c, base_cmd->sub_version);
 
-  // See system/ppc/Episode3USAQuestBufferOverflow.s for where this value gets
-  // set. We use this to determine if the client has already run the code or
-  // not; sending it again when the client has already run it will likely cause
-  // the client to crash.
+  // See system/client-functions/Episode3USAQuestBufferOverflow.ppc.s for where
+  // this value gets set. We use this to determine if the client has already run
+  // the code or not; sending it again when the client has already run it will
+  // likely cause the client to crash.
   if (base_cmd->unused1 == 0x5F5CA297) {
     c->config.clear_flag(Client::Flag::USE_OVERFLOW_FOR_SEND_FUNCTION_CALL);
     c->config.clear_flag(Client::Flag::NO_SEND_FUNCTION_CALL);

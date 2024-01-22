@@ -2177,7 +2177,8 @@ struct S_ServerTime_B1 {
 
 // newserv supports exploiting a bug in the USA version of Episode 3, which
 // re-enables the use of this command on that version of the game. See
-// system/ppc/Episode3USAQuestBufferOverflow.s for further details.
+// system/client-functions/Episode3USAQuestBufferOverflow.ppc.s for further
+// details.
 
 struct S_ExecuteCode_B2 {
   // If code_size == 0, no code is executed, but checksumming may still occur.

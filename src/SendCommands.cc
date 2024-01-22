@@ -322,7 +322,7 @@ void send_update_client_config(shared_ptr<Client> c, bool always_send) {
 void send_quest_buffer_overflow(shared_ptr<Client> c) {
   // PSO Episode 3 USA doesn't natively support the B2 command, but we can add
   // it back to the game with some tricky commands. For details on how this
-  // works, see system/ppc/Episode3USAQuestBufferOverflow.s.
+  // works, see system/client-functions/Episode3USAQuestBufferOverflow.ppc.s.
   auto fn = c->require_server_state()->function_code_index->name_to_function.at("Episode3USAQuestBufferOverflow");
   if (fn->code.size() > 0x400) {
     throw runtime_error("Episode 3 buffer overflow code must be a single segment");
@@ -355,9 +355,11 @@ void prepare_client_for_patches(shared_ptr<Client> c, function<void()> on_comple
     if (!c) {
       return;
     }
-    if (is_gc(c->version()) &&
+    bool is_gc = ::is_gc(c->version());
+    bool is_xb = (c->version() == Version::XB_V3);
+    if ((is_gc || is_xb) &&
         c->config.specific_version == default_specific_version_for_version(c->version(), -1)) {
-      send_function_call(c, s->function_code_index->name_to_function.at("VersionDetect"));
+      send_function_call(c, s->function_code_index->name_to_function.at(is_xb ? "VersionDetectXB" : "VersionDetectGC"));
       c->function_call_response_queue.emplace_back([wc = weak_ptr<Client>(c), on_complete](uint32_t specific_version, uint32_t) -> void {
         auto c = wc.lock();
         if (!c) {

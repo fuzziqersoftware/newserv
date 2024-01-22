@@ -72,7 +72,7 @@ def write_patches_for_code(
                 f.write("reloc0:\n")
                 f.write("  .offsetof start\n")
                 f.write("start:\n")
-                f.write("  .include  WriteCodeBlocks\n")
+                f.write("  .include  WriteCodeBlocksGC\n")
                 for region in write_regions:
                     f.write(
                         f"  # region @ {region.address:08X} ({len(region.data) * 4} bytes)\n"

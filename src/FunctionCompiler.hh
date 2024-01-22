@@ -18,7 +18,8 @@ void set_function_compiler_available(bool is_available);
 
 struct CompiledFunctionCode {
   enum class Architecture {
-    POWERPC = 0, // GC
+    UNKNOWN = 0,
+    POWERPC, // GC
     X86, // PC, XB, BB
     SH4, // Dreamcast
   };

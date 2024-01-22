@@ -1324,10 +1324,10 @@ Action a_assemble_quest_script(
 Action a_assemble_all_patches(
     "assemble-all-patches", "\
   assemble-all-patches\n\
-    Assemble all patches in the system/ppc directory, and produce two compiled\n\
-    .bin files for each patch (one unencrypted, for most PSO versions, and one\n\
-    encrypted, for PSO JP v1.04, JP Ep3, and Ep3 Trial Edition). The output\n\
-    files are written to the system/ppc directory.\n",
+    Assemble all patches in the system/client-functions directory, and produce\n\
+    two compiled .bin files for each patch (one unencrypted, for most PSO\n\
+    versions, and one encrypted, for PSO GC JP v1.04, JP Ep3, and Ep3 Trial\n\
+    Edition). The output files are saved in system/client-functions.\n",
     +[](Arguments&) {
       ServerState s;
       s.load_objects_and_upstream_dependents("functions");
@@ -1351,7 +1351,11 @@ Action a_assemble_all_patches(
         process_code(it.second, 0, 0, 0);
       }
       try {
-        process_code(s.function_code_index->name_to_function.at("VersionDetect"), 0, 0, 0);
+        process_code(s.function_code_index->name_to_function.at("VersionDetectGC"), 0, 0, 0);
+      } catch (const out_of_range&) {
+      }
+      try {
+        process_code(s.function_code_index->name_to_function.at("VersionDetectXB"), 0, 0, 0);
       } catch (const out_of_range&) {
       }
       try {
