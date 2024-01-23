@@ -1,6 +1,8 @@
 .meta name="Invisible MAG"
 .meta description="Make MAGs invisible"
-# Original code by Ralf @ GC-Forever
+# Original code by Ralf @ GC-Forever and Aleron Ives
+# https://www.gc-forever.com/forums/viewtopic.php?t=2050
+# https://www.gc-forever.com/forums/viewtopic.php?t=2049
 
 entry_ptr:
 reloc0:

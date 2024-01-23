@@ -1,6 +1,8 @@
 .meta name="Common bank"
 .meta description="Hold L and open\nthe bank to use a\ncommon bank stored\nin temp character\n3's data"
-# Original code by Ralf @ GC-Forever
+# Original code by Ralf @ GC-Forever and Aleron Ives
+# https://www.gc-forever.com/forums/viewtopic.php?t=2050
+# https://www.gc-forever.com/forums/viewtopic.php?t=2049
 
 entry_ptr:
 reloc0:
