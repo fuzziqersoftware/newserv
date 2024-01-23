@@ -6,6 +6,10 @@
 - Add an idle connection timeout for proxy sessions
 - Clean up ItemParameterTable implementation (see comment ad the top of the class definition)
 
+## PSO DC
+
+- Investigate if https://crates.io/crates/blaze-ssl-async can be used to implement the HL check server
+
 ## Episode 3
 
 - Enforce tournament deck restrictions (e.g. rank checks, No Assist option) when populating COMs at tournament start time
