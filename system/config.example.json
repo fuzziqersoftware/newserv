@@ -90,8 +90,8 @@
     "xb-login":      [9500,  "xb", "login_server"],
 
     // The official PSOBB Japanese client uses these ports.
-    // "bb-patch2":     [11100, "patch", "patch_server_bb"],
-    // "bb-init2":      [11101, "bb",    "login_server"],
+    "bb-patch2":     [11100, "patch", "patch_server_bb"],
+    "bb-init2":      [11101, "bb",    "login_server"],
 
     // Schthack PSOBB uses these ports.
     // "bb-patch3":     [10500, "patch", "patch_server_bb"],
