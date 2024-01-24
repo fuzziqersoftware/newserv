@@ -89,17 +89,21 @@
     // PSO Xbox connections, but this is not hardcoded in the client.
     "xb-login":      [9500,  "xb", "login_server"],
 
+    // The official PSOBB Japanese client uses these ports.
+    // "bb-patch2":     [11100, "patch", "patch_server_bb"],
+    // "bb-init2":      [11101, "bb",    "login_server"],
+
     // Schthack PSOBB uses these ports.
-    // "bb-patch2":     [10500, "patch", "patch_server_bb"],
-    // "bb-init2":      [13000, "bb",    "login_server"],
+    // "bb-patch3":     [10500, "patch", "patch_server_bb"],
+    // "bb-init3":      [13000, "bb",    "login_server"],
 
     // Ephinea PSOBB uses these ports. Note that 13000 is also used by Schthack
     // PSOBB, but not for the patch server; this means you unfortunately can't
     // support both Schthack and Ephinea PSOBB clients at the same time. This
     // may be fixed in the future using a similar technique as the
     // pc_console_detect behavior, but this isn't implemented yet.
-    // "bb-patch3":     [13000, "patch", "patch_server_bb"],
-    // "bb-init3":      [14000, "bb",    "login_server"],
+    // "bb-patch4":     [13000, "patch", "patch_server_bb"],
+    // "bb-init4":      [14000, "bb",    "login_server"],
 
     // newserv uses these ports, but there is no external reason that these
     // numbers were chosen. You can change the port numbers here without any
