@@ -2606,7 +2606,7 @@ void send_destroy_item_to_lobby(shared_ptr<Client> c, uint32_t item_id, uint32_t
 
 void send_destroy_floor_item_to_client(shared_ptr<Client> c, uint32_t item_id, uint32_t floor) {
   uint8_t subcommand = get_pre_v1_subcommand(c->version(), 0x55, 0x5C, 0x63);
-  G_DestroyFloorItem_6x63 cmd = {{subcommand, 0x03, 0x0000}, item_id, floor};
+  G_DestroyFloorItem_6x5C_6x63 cmd = {{subcommand, 0x03, 0x0000}, item_id, floor};
   send_command_t(c, 0x60, 0x00, cmd);
 }
 

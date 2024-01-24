@@ -4221,7 +4221,9 @@ struct G_Unknown_6x3B {
   G_ClientIDHeader header;
 } __packed__;
 
-// 6x3C: Invalid subcommand
+// 6x3C: Unknown (DCv1 and earlier)
+// This command has a handler, but it does nothing, even on DC NTE.
+
 // 6x3D: Invalid subcommand
 
 // 6x3E: Stop moving (protected on V3/V4)
@@ -4260,7 +4262,13 @@ struct G_WalkToPosition_6x40 {
 } __packed__;
 
 // 6x41: Unknown
-// This subcommand is completely ignored (at least, by PSO GC).
+// This subcommand is completely ignored by v2 and later.
+
+struct G_Unknown_6x41 {
+  G_ClientIDHeader header;
+  le_float x = 0.0f;
+  le_float z = 0.0f;
+} __packed__;
 
 // 6x42: Run (protected on V3/V4)
 
@@ -4404,6 +4412,10 @@ struct G_Unknown_6x53 {
 // 6x54: Unknown
 // This subcommand is completely ignored (at least, by PSO GC).
 
+struct G_Unknown_6x54 {
+  G_ClientIDHeader header;
+} __packed__;
+
 // 6x55: Intra-map warp (protected on V3/V4)
 
 struct G_IntraMapWarp_6x55 {
@@ -4417,7 +4429,7 @@ struct G_IntraMapWarp_6x55 {
   le_float z2 = 0.0f;
 } __packed__;
 
-// 6x56: Unknown (supported; lobby & game) (protected on V3/V4)
+// 6x56: Unknown (supported; game) (protected on V3/V4)
 
 struct G_Unknown_6x56 {
   G_ClientIDHeader header;
@@ -4459,15 +4471,13 @@ struct G_PickUpItemRequest_6x5A {
   le_uint16_t unused = 0;
 } __packed__;
 
-// 6x5B: Invalid subcommand
+// 6x5B: Unknown (DCv1 and earlier)
+// This command has a handler, but it does nothing, even on DC NTE.
 
-// 6x5C: Unknown
-
-struct G_Unknown_6x5C {
-  G_UnusedHeader header;
-  le_uint32_t unknown_a1 = 0;
-  le_uint32_t unknown_a2 = 0;
-} __packed__;
+// 6x5C: Destroy floor item
+// Same format as 6x63. It appears this version should not be used because it
+// removes the item from the floor just like 6x63 does, but 6x5C doesn't call
+// the item's destructor.
 
 // 6x5D: Drop meseta or stacked item
 // On DC NTE, this command has the same format, but is subcommand 6x4F instead.
@@ -4545,21 +4555,21 @@ struct G_ActivateMagEffect_6x61 {
 } __packed__;
 
 // 6x62: Unknown
-// This subcommand is completely ignored (at least, by PSO GC).
+// This command has a handler, but it does nothing even on DC NTE.
 
 // 6x63: Destroy floor item (used when too many items have been dropped)
 
-struct G_DestroyFloorItem_6x63 {
+struct G_DestroyFloorItem_6x5C_6x63 {
   G_UnusedHeader header;
   le_uint32_t item_id = 0;
   le_uint32_t floor = 0;
 } __packed__;
 
 // 6x64: Unknown (not valid on Episode 3)
-// This subcommand is completely ignored (at least, by PSO GC).
+// This command has a handler, but it does nothing even on DC NTE.
 
 // 6x65: Unknown (not valid on Episode 3)
-// This subcommand is completely ignored (at least, by PSO GC).
+// This command has a handler, but it does nothing even on DC NTE.
 
 // 6x66: Use star atomizer
 
@@ -5011,11 +5021,19 @@ struct G_SetBattleModeData_6x7D {
 // 6x7E: Unknown (not valid on Episode 3)
 // This subcommand is completely ignored (at least, by PSO GC).
 
-// 6x7F: Unknown (not valid on Episode 3)
+// 6x7F: Battle scores and places (not valid on Episode 3)
 
-struct G_Unknown_6x7F {
+template <bool IsBigEndian>
+struct G_BattleScores_6x7F {
+  using U16T = typename std::conditional<IsBigEndian, be_uint16_t, le_uint16_t>::type;
+  using U32T = typename std::conditional<IsBigEndian, be_uint32_t, le_uint32_t>::type;
+  struct Entry {
+    U16T client_id = 0;
+    U16T place = 0;
+    U32T score = 0;
+  } __packed__;
   G_UnusedHeader header;
-  parray<uint8_t, 0x20> unknown_a1;
+  parray<Entry, 4> entries;
 } __packed__;
 
 // 6x80: Trigger trap (not valid on Episode 3)
@@ -5026,15 +5044,15 @@ struct G_TriggerTrap_6x80 {
   le_uint16_t unknown_a2 = 0;
 } __packed__;
 
-// 6x81: Unknown (protected on V3/V4)
+// 6x81: Set drop weapon on death flag (protected on V3/V4)
 
-struct G_Unknown_6x81 {
+struct G_SetDropWeaponOnDeathFlag_6x81 {
   G_ClientIDHeader header;
 } __packed__;
 
-// 6x82: Unknown (protected on V3/V4)
+// 6x82: Clear drop weapon on death flag (protected on V3/V4)
 
-struct G_Unknown_6x82 {
+struct G_ClearDropWeaponOnDeathFlag_6x82 {
   G_ClientIDHeader header;
 } __packed__;
 
@@ -5046,9 +5064,10 @@ struct G_PlaceTrap_6x83 {
   le_uint16_t unknown_a2 = 0;
 } __packed__;
 
-// 6x84: Unknown (supported; game only; not valid on Episode 3)
+// 6x84: Vol Opt boss actions (not valid on Episode 3)
+// Same format and usage as 6x16, except unknown_a2 is ignored in 6x84.
 
-struct G_Unknown_6x84 {
+struct G_VolOptBossActions_6x84 {
   G_UnusedHeader header;
   parray<uint8_t, 6> unknown_a1;
   le_uint16_t unknown_a2 = 0;
@@ -5103,10 +5122,10 @@ struct G_Unknown_6x8A {
 } __packed__;
 
 // 6x8B: Unknown (not valid on Episode 3)
-// This subcommand is completely ignored (at least, by PSO GC).
+// This command has a handler, but it does nothing.
 
 // 6x8C: Unknown (not valid on Episode 3)
-// This subcommand is completely ignored (at least, by PSO GC).
+// This command has a handler, but it does nothing.
 
 // 6x8D: Set technique level override (protected on V3/V4)
 // This command is sent immediately before 6x47 if the technique level is above
@@ -5120,7 +5139,7 @@ struct G_SetTechniqueLevelOverride_6x8D {
 } __packed__;
 
 // 6x8E: Unknown (not valid on Episode 3)
-// This subcommand is completely ignored (at least, by PSO GC).
+// This command has a handler, but it does nothing.
 
 // 6x8F: Unknown (not valid on Episode 3)
 
@@ -5180,13 +5199,13 @@ struct G_InterLevelWarp_6x94 {
 struct G_Unknown_6x95 {
   G_UnusedHeader header;
   le_uint32_t client_id = 0;
-  le_uint32_t unknown_a1 = 0;
-  le_uint32_t unknown_a2 = 0;
-  le_uint32_t unknown_a3 = 0;
+  ChallengeTime<false> challenge_time = 0;
+  le_uint32_t unused1 = 0;
+  le_uint32_t unused2 = 0;
 } __packed__;
 
 // 6x96: Unknown (not valid on Episode 3)
-// This subcommand is completely ignored (at least, by PSO GC).
+// This command has a handler, but it does nothing.
 
 // 6x97: Unknown (not valid on Episode 3)
 
@@ -5326,7 +5345,7 @@ struct G_ModifyTradeProposal_6xA6 {
 } __packed__;
 
 // 6xA7: Unknown (not valid on pre-V3)
-// This subcommand is completely ignored (at least, by PSO GC).
+// This subcommand is completely ignored.
 
 // 6xA8: Gol Dragon boss actions (not valid on pre-V3 or Episode 3)
 
@@ -5366,6 +5385,14 @@ struct G_BarbaRayBossActions_6xAA {
 } __packed__;
 
 // 6xAB: Create lobby chair (not valid on pre-V3) (protected on V3/V4)
+// This command's appears to be different on GC NTE than on any other version.
+// It's not known what it does.
+
+struct G_Unknown_GCNTE_6xAB {
+  G_EnemyIDHeader header;
+  le_uint16_t unknown_a1 = 0;
+  le_uint16_t unknown_a2 = 0;
+} __packed__;
 
 struct G_CreateLobbyChair_6xAB {
   G_ClientIDHeader header;
@@ -5378,7 +5405,7 @@ struct G_CreateLobbyChair_6xAB {
 // It also seems that no version (other than perhaps GC NTE) ever sends this
 // command.
 
-struct G_Unknown_6xAC_GCNTE {
+struct G_Unknown_GCNTE_6xAC {
   G_EnemyIDHeader header;
   le_uint16_t unknown_a1 = 0;
   le_uint16_t unknown_a2 = 0;
@@ -5426,7 +5453,7 @@ struct G_MoveLobbyChair_6xB0 {
 } __packed__;
 
 // 6xB1: Unknown (not valid on pre-V3 or GC Trial Edition)
-// This subcommand is completely ignored (at least, by PSO V3).
+// This subcommand is completely ignored.
 
 // 6xB2: Play sound from player (not valid on pre-V3 or GC Trial Edition)
 // This command is sent when a snapshot is taken on PSO GC, but it can be used
@@ -5856,7 +5883,7 @@ struct G_SetQuestGlobalFlag_BB_6xD2 {
 
 struct G_Unknown_BB_6xD4 {
   G_UnusedHeader header;
-  le_uint16_t action = 0; // Must be in [0, 4]
+  le_uint16_t action = 0; // Must be in [0, 5]
   uint8_t unknown_a1 = 0; // Must be in [0, 15]
   uint8_t unused = 0;
 } __packed__;
