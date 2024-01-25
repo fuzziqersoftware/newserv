@@ -88,7 +88,7 @@ void TeamIndex::Team::save_config() const {
       {"RewardKeys", std::move(reward_keys_json)},
       {"RewardFlags", this->reward_flags},
   });
-  save_file(this->json_filename(), root.serialize(JSON::SerializeOption::FORMAT | JSON::SerializeOption::HEX_INTEGERS));
+  save_file(this->json_filename(), root.serialize(JSON::SerializeOption::FORMAT | JSON::SerializeOption::HEX_INTEGERS | JSON::SerializeOption::ESCAPE_CONTROLS_ONLY));
 }
 
 void TeamIndex::Team::load_flag() {

@@ -842,7 +842,7 @@ void TournamentIndex::save() const {
   for (const auto& it : this->name_to_tournament) {
     json.emplace(it.second->get_name(), it.second->json());
   }
-  save_file(this->state_filename, json.serialize(JSON::SerializeOption::FORMAT | JSON::SerializeOption::HEX_INTEGERS));
+  save_file(this->state_filename, json.serialize(JSON::SerializeOption::FORMAT | JSON::SerializeOption::HEX_INTEGERS | JSON::SerializeOption::ESCAPE_CONTROLS_ONLY));
 }
 
 shared_ptr<Tournament> TournamentIndex::create_tournament(

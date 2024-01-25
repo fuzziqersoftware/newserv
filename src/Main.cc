@@ -1462,7 +1462,7 @@ Action a_decode_text_archive(
         ts = make_unique<BinaryTextAndKeyboardsSet>(data, args.get<bool>("big-endian"));
       }
       JSON j = ts->json();
-      string out_data = j.serialize(JSON::SerializeOption::FORMAT);
+      string out_data = j.serialize(JSON::SerializeOption::FORMAT | JSON::SerializeOption::ESCAPE_CONTROLS_ONLY);
       write_output_data(args, out_data.data(), out_data.size(), "json");
     });
 Action a_encode_text_archive(
@@ -1501,7 +1501,7 @@ Action a_decode_unicode_text_set(
     "decode-unicode-text-set", nullptr, +[](Arguments& args) {
       UnicodeTextSet uts(read_input_data(args));
       JSON j = uts.json();
-      string out_data = j.serialize(JSON::SerializeOption::FORMAT);
+      string out_data = j.serialize(JSON::SerializeOption::FORMAT | JSON::SerializeOption::ESCAPE_CONTROLS_ONLY);
       write_output_data(args, out_data.data(), out_data.size(), "json");
     });
 Action a_encode_unicode_text_set(

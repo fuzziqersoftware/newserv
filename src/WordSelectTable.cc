@@ -256,7 +256,7 @@ void WordSelectTable::print(FILE* stream) const {
         fprintf(stream, "%04hX ", token->values_by_version[z]);
       }
     }
-    string serialized = JSON(token->canonical_name).serialize();
+    string serialized = JSON(token->canonical_name).serialize(JSON::SerializeOption::ESCAPE_CONTROLS_ONLY);
     fprintf(stream, "%s\n", serialized.c_str());
   }
 }
@@ -274,7 +274,7 @@ void WordSelectTable::print_index(FILE* stream, Version v) const {
         fprintf(stream, "%04hX ", token->values_by_version[z]);
       }
     }
-    string serialized = JSON(token->canonical_name).serialize();
+    string serialized = JSON(token->canonical_name).serialize(JSON::SerializeOption::ESCAPE_CONTROLS_ONLY);
     fprintf(stream, "%s\n", serialized.c_str());
   }
 }
