@@ -1275,22 +1275,9 @@ static void on_npc_control(shared_ptr<Client> c, uint8_t command, uint8_t flag, 
     throw runtime_error("cannot create or modify NPC in the lobby");
   }
 
-  int32_t npc_entity_id = -1;
-  switch (cmd.command) {
-    case 0:
-    case 3:
-      npc_entity_id = cmd.param2;
-      break;
-    case 1:
-      npc_entity_id = cmd.param1;
-      break;
-    case 2:
-      break;
-    default:
-      throw runtime_error("invalid 6x69 command");
-  }
-  if ((npc_entity_id >= 0) && (npc_entity_id < 4) && l->clients[npc_entity_id]) {
-    throw runtime_error("cannot create or modify NPC in existing player slot");
+  if ((cmd.command == 0 || cmd.command == 3) &&
+      ((cmd.param2 >= 0) && (cmd.param2 < 4) && l->clients[cmd.param2])) {
+    throw runtime_error("cannot create NPC in existing player slot");
   }
 
   forward_subcommand(c, command, flag, data, size);
