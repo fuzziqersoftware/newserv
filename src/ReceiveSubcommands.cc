@@ -1275,8 +1275,7 @@ static void on_npc_control(shared_ptr<Client> c, uint8_t command, uint8_t flag, 
     throw runtime_error("cannot create or modify NPC in the lobby");
   }
 
-  if ((cmd.command == 0 || cmd.command == 3) &&
-      ((cmd.param2 >= 0) && (cmd.param2 < 4) && l->clients[cmd.param2])) {
+  if ((cmd.command == 0 || cmd.command == 3) && ((cmd.param2 < 4) && l->clients[cmd.param2])) {
     throw runtime_error("cannot create NPC in existing player slot");
   }
 
