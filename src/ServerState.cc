@@ -664,6 +664,9 @@ void ServerState::load_config() {
   this->all_addresses.erase("<external>");
   this->all_addresses.emplace("<external>", this->external_address);
 
+  this->client_ping_interval_usecs = json.get_int("ClientPingInterval", this->client_ping_interval_usecs);
+  this->client_idle_timeout_usecs = json.get_int("ClientIdleTimeout", this->client_idle_timeout_usecs);
+
   this->ip_stack_debug = json.get_bool("IPStackDebug", this->ip_stack_debug);
   this->allow_unregistered_users = json.get_bool("AllowUnregisteredUsers", this->allow_unregistered_users);
   this->allow_pc_nte = json.get_bool("AllowPCNTE", this->allow_pc_nte);

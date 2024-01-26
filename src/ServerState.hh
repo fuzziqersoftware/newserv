@@ -79,6 +79,8 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   uint16_t dns_server_port = 0;
   std::vector<std::string> ip_stack_addresses;
   std::vector<std::string> ppp_stack_addresses;
+  uint64_t client_ping_interval_usecs = 30000000;
+  uint64_t client_idle_timeout_usecs = 60000000;
   bool ip_stack_debug = false;
   bool allow_unregistered_users = false;
   bool allow_pc_nte = false;

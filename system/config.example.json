@@ -174,6 +174,15 @@
   // connect to newserv will be proxied to this destination.
   // "ProxyDestination-BB": "",
 
+  // The server automatically pings clients if they haven't sent anything for a
+  // while to make sure they're still alive. This option specifies how long a
+  // client must be idle for the server to send a ping.
+  "ClientPingInterval": 30000000, // 30 seconds
+  // If a client doesn't send anything for this long, they will be disconnected.
+  // This should always be longer than ClientPingInterval, since an alive client
+  // should have a chance to respond to the server's ping.
+  "ClientIdleTimeout": 60000000, // 1 minute
+
   // There is a proxy option that allows users to save copies of various game
   // files on the server side. If you have external clients connecting to your
   // server, you can disable this option to prevent clients from generating

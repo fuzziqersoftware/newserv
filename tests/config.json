@@ -93,6 +93,9 @@
     "Sylverant": "sylverant.net:9100",
   },
 
+  "ClientPingInterval": 30000000,
+  "ClientIdleTimeout": 60000000,
+
   "LogLevels": {
     "AXMessages": "INFO",
     "ChannelExceptions": "INFO",

@@ -240,9 +240,10 @@ void Client::reschedule_save_game_data_event() {
 }
 
 void Client::reschedule_ping_and_timeout_events() {
-  struct timeval ping_tv = usecs_to_timeval(30000000); // 30 seconds
+  auto s = this->require_server_state();
+  struct timeval ping_tv = usecs_to_timeval(s->client_ping_interval_usecs);
   event_add(this->send_ping_event.get(), &ping_tv);
-  struct timeval idle_tv = usecs_to_timeval(60000000); // 1 minute
+  struct timeval idle_tv = usecs_to_timeval(s->client_idle_timeout_usecs);
   event_add(this->idle_timeout_event.get(), &idle_tv);
 }
 

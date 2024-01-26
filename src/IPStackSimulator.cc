@@ -187,7 +187,8 @@ IPStackSimulator::IPClient::IPClient(shared_ptr<IPStackSimulator> sim, FrameInfo
       mac_addr(0),
       ipv4_addr(0),
       idle_timeout_event(event_new(sim->base.get(), -1, EV_TIMEOUT, &IPStackSimulator::IPClient::dispatch_on_idle_timeout, this), event_free) {
-  struct timeval tv = usecs_to_timeval(60 * 1000 * 1000);
+  uint64_t idle_timeout_usecs = sim->state->client_idle_timeout_usecs;
+  struct timeval tv = usecs_to_timeval(idle_timeout_usecs);
   event_add(this->idle_timeout_event.get(), &tv);
 }
 
@@ -294,7 +295,9 @@ void IPStackSimulator::on_client_input(struct bufferevent* bev) {
     return;
   }
 
-  struct timeval tv = usecs_to_timeval(60 * 1000 * 1000);
+  auto sim = c->sim.lock();
+  uint64_t idle_timeout_usecs = sim ? sim->state->client_idle_timeout_usecs : 60000000;
+  struct timeval tv = usecs_to_timeval(idle_timeout_usecs);
   event_add(c->idle_timeout_event.get(), &tv);
 
   while (evbuffer_get_length(buf) >= 2) {
@@ -1426,7 +1429,9 @@ void IPStackSimulator::on_server_input(shared_ptr<IPClient> c, IPClient::TCPConn
   ip_stack_simulator_log.debug("Server input event: 0x%zX bytes to read",
       evbuffer_get_length(buf));
 
-  struct timeval tv = usecs_to_timeval(60 * 1000 * 1000);
+  auto sim = c->sim.lock();
+  uint64_t idle_timeout_usecs = sim ? sim->state->client_idle_timeout_usecs : 60000000;
+  struct timeval tv = usecs_to_timeval(idle_timeout_usecs);
   event_add(c->idle_timeout_event.get(), &tv);
 
   evbuffer_add_buffer(conn.pending_data.get(), buf);
