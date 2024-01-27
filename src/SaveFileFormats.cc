@@ -165,15 +165,17 @@ static uint32_t decode_rgb565(uint16_t c) {
 }
 
 Image PSOGCSnapshotFile::decode_image() const {
-  if (this->width != 256) {
+  size_t width = this->width ? this->width.load() : 256;
+  size_t height = this->height ? this->height.load() : 192;
+  if (width != 256) {
     throw runtime_error("width is incorrect");
   }
-  if (this->height != 192) {
+  if (height != 192) {
     throw runtime_error("height is incorrect");
   }
 
   // 4x4 blocks of pixels
-  Image ret(this->width, this->height, false);
+  Image ret(width, height, false);
   size_t offset = 0;
   for (size_t y = 0; y < this->height; y += 4) {
     for (size_t x = 0; x < this->width; x += 4) {
