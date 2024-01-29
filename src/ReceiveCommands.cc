@@ -3272,7 +3272,8 @@ static void on_06(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
   static const string whisper_text = "(whisper)";
   for (size_t x = 0; x < l->max_clients; x++) {
     if (l->clients[x]) {
-      const string& effective_text = (private_flags & (1 << x)) ? whisper_text : text;
+      bool should_hide_contents = (!(l->check_flag(Lobby::Flag::IS_SPECTATOR_TEAM))) && (private_flags & (1 << x));
+      const string& effective_text = should_hide_contents ? whisper_text : text;
       try {
         send_chat_message(l->clients[x], c->license->serial_number, from_name, effective_text, private_flags);
       } catch (const runtime_error& e) {
