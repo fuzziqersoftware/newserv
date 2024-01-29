@@ -222,7 +222,7 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   std::map<int64_t, std::shared_ptr<Lobby>> id_to_lobby;
   std::unordered_set<std::shared_ptr<Lobby>> lobbies_to_destroy;
   std::shared_ptr<struct event> destroy_lobbies_event;
-  std::vector<std::shared_ptr<Lobby>> public_lobby_search_order;
+  std::array<std::vector<uint32_t>, NUM_VERSIONS> public_lobby_search_orders;
   std::atomic<int32_t> next_lobby_id = 1;
   uint8_t pre_lobby_event = 0;
   int32_t ep3_menu_song = -1;
@@ -287,6 +287,8 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   void set_item_name_index(Version version, std::shared_ptr<const ItemNameIndex> index);
   std::string describe_item(Version version, const ItemData& item, bool include_color_codes) const;
   ItemData parse_item_description(Version version, const std::string& description) const;
+
+  const std::vector<uint32_t> public_lobby_search_order(Version version) const;
 
   std::shared_ptr<const std::vector<std::string>> information_contents_for_client(std::shared_ptr<const Client> c) const;
   std::shared_ptr<const QuestIndex> quest_index(Version version) const;

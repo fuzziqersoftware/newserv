@@ -323,16 +323,124 @@
   "PCPatchServerMessage": "newserv patch server\r\n\r\nThis server is not affiliated with, sponsored by, or in any other way connected to SEGA or Sonic Team, and is owned and operated completely independently.",
   "BBPatchServerMessage": "$C7newserv patch server\n\nThis server is not affiliated with, sponsored by, or in any\nother way connected to SEGA or Sonic Team, and is owned\nand operated completely independently.",
 
-  // Default lobby event. If set, this sets the holiday event in all lobbies at
-  // server start time, as well as the pre-lobby holiday event. The event can be
-  // changed in each lobby independently with the $event command, or in all
-  // lobbies with the $allevent command. When a game is created, it inherits the
-  // holiday event from the lobby from which it was created.
-  // The value for this field can be a string like "xmas" (the names used here
-  // are the same as for the $event command), or an integer.
-  // "LobbyEvent": "xmas",
+  // Lobby search orders. When a player joins the lobby from the main menu, they
+  // are placed into the first lobby in the list that has empty spaces. In these
+  // lists, CARD lobbies C1-C5 are referenced as lobbies 16-20.
+  // The number of lobbies is hardcoded in the client and cannot be changed, so
+  // the server enforces these limits as well. Thus, the server will not add
+  // DCv1 players to lobbies above 10, for example, even if they are specified
+  // in these lists. Removing lobbies from these lists also does not prevent
+  // players from joining those lobbies via the lobby teleporter.
+  "LobbySearchOrders": [
+    [], // PC patch server (unused)
+    [], // BB patch server (unused)
+    [1, 2, 3, 4, 5, 6, 7, 8, 9, 10], // DC NTE
+    [1, 2, 3, 4, 5, 6, 7, 8, 9, 10], // DC 11/2000 prototype
+    [1, 2, 3, 4, 5, 6, 7, 8, 9, 10], // DC V1
+    [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15], // DC V2
+    [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15], // PC NTE
+    [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15], // PC
+    [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15], // GC NTE
+    [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15], // GC
+    [16, 17, 18, 19, 20, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15], // GC Ep3 NTE
+    [16, 17, 18, 19, 20, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15], // GC Ep3
+    [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15], // Xbox
+    [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15], // BB
+  ],
+
+  // Lobby holiday events. The event can be changed in each lobby independently
+  // with the $event command, or in all lobbies with the $allevent command. When
+  // a game is created, it inherits the holiday event from the lobby from which
+  // it was created.
+  // The values in this list can be strings like "xmas" (the names used here are
+  // the same as for the $event command), or an integer.
+  // There are always 20 lobbies; if a player can't be added to any public
+  // lobby, they are added to a dynamically-created private overflow lobby
+  // instead, which uses the event specified in MenuEvent below.
+  // The events are: "none", "xmas", "val", "easter", "hallo", "sonic",
+  // "newyear", "summer", "white", "wedding", "fall", "s-spring", "s-summer",
+  // and "spring".
+  "LobbyEvents": [
+    "none", // Lobby 1
+    "none", // Lobby 2
+    "none", // Lobby 3
+    "none", // Lobby 4
+    "none", // Lobby 5
+    "none", // Lobby 6
+    "none", // Lobby 7
+    "none", // Lobby 8
+    "none", // Lobby 9
+    "none", // Lobby 10 (or Lobby 0 on early versions)
+    "none", // Lobby 11 (DCv2 and later only)
+    "none", // Lobby 12 (DCv2 and later only)
+    "none", // Lobby 13 (DCv2 and later only)
+    "none", // Lobby 14 (DCv2 and later only)
+    "none", // Lobby 15 (DCv2 and later only)
+    "none", // Lobby C1 (Episode 3 only)
+    "none", // Lobby C2 (Episode 3 only)
+    "none", // Lobby C3 (Episode 3 only)
+    "none", // Lobby C4 (Episode 3 only)
+    "none", // Lobby C5 (Episode 3 only)
+  ],
+
+  // Menu event. This is the holiday event during the lobby overview while at
+  // the main menu.
+  "MenuEvent": "none",
+
   // Episode 3 menu song. If set, Episode 3 clients will hear this song when
-  // they are at the newserv main menu. If set, this value must be an integer.
+  // they are at the newserv main menu. The values are:
+  // 0: "Let the winds blow  - Theme of PSO Episode3 -"
+  // 1: "Gate"
+  // 2: "Tune"
+  // 3: "Code"
+  // 4: "NEW LIFES"
+  // 5: "RIDE ON"
+  // 6: "ADVICES"
+  // 7: "Morgue PART1"
+  // 8: "Unguis lapis"
+  // 9: "Via Tubus "
+  // 10: "Tower of Caelum"
+  // 11: "Mortis Fons"
+  // 12: "Lupus Silva PART1 from Mother earth of dishonesty"
+  // 13: "Lupus Silva PART2 from Mother earth of dishonesty"
+  // 14: "Molae Venti "
+  // 15: "Tener Sinus"
+  // 16: "The whole new world - PSO OPENING THEME -"
+  // 17: "World with me  - PSO EP2 ENDING THEME -"
+  // 18: "Can still see the light  - PSO ENDING THEME -"
+  // 19: "Day dawns"
+  // 20: "Nebula Montana PART1 from Jungle -A forest cage-"
+  // 21: "Nebula Montana PART2 from Jungle -A forest cage-"
+  // 22: "Morgue PART2"
+  // 23: "Dolor Odor"
+  // 24: "Ravum Aedes Sacra"
+  // 25: "IDOLA the strange fruits"
+  // 26: "Cyber"
+  // 27: "Special Relaxies"
+  // 28: "Let the winds blow -Remix Version-"
+  // 29: "Leavin flow"
+  // 30: "Rose Confession"
+  // 31: "Day light"
+  // 32: "Versus1 -Tricktrack-"
+  // 33: "Versus2 -A longing to ancient times-"
+  // 34: "Burning Hearts - Burning Ranger -"
+  // 35: "Wedding March   - SAMBA de AMIGO -"
+  // 36: "VAMOS A CARNAVAL  - SAMBA de AMIGO -"
+  // 37: "dreams dreams  - Nights -"
+  // 38: "dreams dreams (kids ver)  - Nights -"
+  // 39: "CHANT THIS CHARM  - BILLY HATCHER -"
+  // 40: "Let Mom Sleep  - Jet Grind Radio -"
+  // 41: "THE CONCEPT OF LOVE  - Jet Grind Radio Future -"
+  // 42: "Where is smiley?  - NEW ROOMMANIA -"
+  // 43: "Buggie Running Beeps 01  - Rez -"
+  // 44: "Skies of Arcadia Opening Theme  - Skies of Arcadia -"
+  // 45: "Shinobi :boutan  - Shinobi -"
+  // 46: "Tsuioku  - Panzer Dragoon ZWEI -"
+  // 47: "Sona mi areru ec sancitu  - AZEL Panzer Dragoon RPG -"
+  // 48: "ANU ORTA VENIYA  - Panzer Dragoon ORTA -"
+  // 49: "LET'S GO AWAY  - DAYTONA 53! -"
+  // 50: "MAIN THEME-SPACE HARRIER  - SPACE HARRIER -"
+  // 51: "OPA-OPA!  - Fantasy Zone -"
   // "Episode3MenuSong": 0,
 
   // If this is enabled, all players will have infinite Meseta, effectively

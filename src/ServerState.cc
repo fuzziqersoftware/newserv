@@ -80,8 +80,9 @@ void ServerState::add_client_to_available_lobby(shared_ptr<Client> c) {
   }
 
   if (!added_to_lobby.get()) {
-    for (const auto& l : this->public_lobby_search_order) {
+    for (const auto& lobby_id : this->public_lobby_search_order(c->version())) {
       try {
+        auto l = this->find_lobby(lobby_id);
         if (l &&
             !l->is_game() &&
             l->check_flag(Lobby::Flag::PUBLIC) &&
@@ -334,6 +335,11 @@ const vector<pair<string, uint16_t>>& ServerState::proxy_destinations(Version ve
     default:
       throw out_of_range("no proxy destinations menu exists for this version");
   }
+}
+
+const vector<uint32_t> ServerState::public_lobby_search_order(Version version) const {
+  static_assert(NUM_VERSIONS == 14, "Don\'t forget to update the public lobby search orders in config.json");
+  return this->public_lobby_search_orders.at(static_cast<size_t>(version));
 }
 
 shared_ptr<const vector<string>> ServerState::information_contents_for_client(shared_ptr<const Client> c) const {
@@ -664,31 +670,31 @@ void ServerState::load_config() {
   this->all_addresses.erase("<external>");
   this->all_addresses.emplace("<external>", this->external_address);
 
-  this->client_ping_interval_usecs = json.get_int("ClientPingInterval", this->client_ping_interval_usecs);
-  this->client_idle_timeout_usecs = json.get_int("ClientIdleTimeout", this->client_idle_timeout_usecs);
+  this->client_ping_interval_usecs = json.get_int("ClientPingInterval", 30000000);
+  this->client_idle_timeout_usecs = json.get_int("ClientIdleTimeout", 60000000);
 
-  this->ip_stack_debug = json.get_bool("IPStackDebug", this->ip_stack_debug);
-  this->allow_unregistered_users = json.get_bool("AllowUnregisteredUsers", this->allow_unregistered_users);
-  this->allow_pc_nte = json.get_bool("AllowPCNTE", this->allow_pc_nte);
-  this->use_temp_licenses_for_prototypes = json.get_bool("UseTemporaryLicensesForPrototypes", this->use_temp_licenses_for_prototypes);
-  this->allowed_drop_modes_v1_v2_normal = json.get_int("AllowedDropModesV1V2Normal", this->allowed_drop_modes_v1_v2_normal);
-  this->allowed_drop_modes_v1_v2_battle = json.get_int("AllowedDropModesV1V2Battle", this->allowed_drop_modes_v1_v2_battle);
-  this->allowed_drop_modes_v1_v2_challenge = json.get_int("AllowedDropModesV1V2Challenge", this->allowed_drop_modes_v1_v2_challenge);
-  this->allowed_drop_modes_v3_normal = json.get_int("AllowedDropModesV3Normal", this->allowed_drop_modes_v3_normal);
-  this->allowed_drop_modes_v3_battle = json.get_int("AllowedDropModesV3Battle", this->allowed_drop_modes_v3_battle);
-  this->allowed_drop_modes_v3_challenge = json.get_int("AllowedDropModesV3Challenge", this->allowed_drop_modes_v3_challenge);
-  this->allowed_drop_modes_v4_normal = json.get_int("AllowedDropModesV4Normal", this->allowed_drop_modes_v4_normal);
-  this->allowed_drop_modes_v4_battle = json.get_int("AllowedDropModesV4Battle", this->allowed_drop_modes_v4_battle);
-  this->allowed_drop_modes_v4_challenge = json.get_int("AllowedDropModesV4Challenge", this->allowed_drop_modes_v4_challenge);
-  this->default_drop_mode_v1_v2_normal = json.get_enum("DefaultDropModeV1V2Normal", this->default_drop_mode_v1_v2_normal);
-  this->default_drop_mode_v1_v2_battle = json.get_enum("DefaultDropModeV1V2Battle", this->default_drop_mode_v1_v2_battle);
-  this->default_drop_mode_v1_v2_challenge = json.get_enum("DefaultDropModeV1V2Challenge", this->default_drop_mode_v1_v2_challenge);
-  this->default_drop_mode_v3_normal = json.get_enum("DefaultDropModeV3Normal", this->default_drop_mode_v3_normal);
-  this->default_drop_mode_v3_battle = json.get_enum("DefaultDropModeV3Battle", this->default_drop_mode_v3_battle);
-  this->default_drop_mode_v3_challenge = json.get_enum("DefaultDropModeV3Challenge", this->default_drop_mode_v3_challenge);
-  this->default_drop_mode_v4_normal = json.get_enum("DefaultDropModeV4Normal", this->default_drop_mode_v4_normal);
-  this->default_drop_mode_v4_battle = json.get_enum("DefaultDropModeV4Battle", this->default_drop_mode_v4_battle);
-  this->default_drop_mode_v4_challenge = json.get_enum("DefaultDropModeV4Challenge", this->default_drop_mode_v4_challenge);
+  this->ip_stack_debug = json.get_bool("IPStackDebug", false);
+  this->allow_unregistered_users = json.get_bool("AllowUnregisteredUsers", false);
+  this->allow_pc_nte = json.get_bool("AllowPCNTE", false);
+  this->use_temp_licenses_for_prototypes = json.get_bool("UseTemporaryLicensesForPrototypes", true);
+  this->allowed_drop_modes_v1_v2_normal = json.get_int("AllowedDropModesV1V2Normal", 0x1F);
+  this->allowed_drop_modes_v1_v2_battle = json.get_int("AllowedDropModesV1V2Battle", 0x07);
+  this->allowed_drop_modes_v1_v2_challenge = json.get_int("AllowedDropModesV1V2Challenge", 0x07);
+  this->allowed_drop_modes_v3_normal = json.get_int("AllowedDropModesV3Normal", 0x1F);
+  this->allowed_drop_modes_v3_battle = json.get_int("AllowedDropModesV3Battle", 0x07);
+  this->allowed_drop_modes_v3_challenge = json.get_int("AllowedDropModesV3Challenge", 0x07);
+  this->allowed_drop_modes_v4_normal = json.get_int("AllowedDropModesV4Normal", 0x1D);
+  this->allowed_drop_modes_v4_battle = json.get_int("AllowedDropModesV4Battle", 0x05);
+  this->allowed_drop_modes_v4_challenge = json.get_int("AllowedDropModesV4Challenge", 0x05);
+  this->default_drop_mode_v1_v2_normal = json.get_enum("DefaultDropModeV1V2Normal", Lobby::DropMode::CLIENT);
+  this->default_drop_mode_v1_v2_battle = json.get_enum("DefaultDropModeV1V2Battle", Lobby::DropMode::CLIENT);
+  this->default_drop_mode_v1_v2_challenge = json.get_enum("DefaultDropModeV1V2Challenge", Lobby::DropMode::CLIENT);
+  this->default_drop_mode_v3_normal = json.get_enum("DefaultDropModeV3Normal", Lobby::DropMode::CLIENT);
+  this->default_drop_mode_v3_battle = json.get_enum("DefaultDropModeV3Battle", Lobby::DropMode::CLIENT);
+  this->default_drop_mode_v3_challenge = json.get_enum("DefaultDropModeV3Challenge", Lobby::DropMode::CLIENT);
+  this->default_drop_mode_v4_normal = json.get_enum("DefaultDropModeV4Normal", Lobby::DropMode::SERVER_SHARED);
+  this->default_drop_mode_v4_battle = json.get_enum("DefaultDropModeV4Battle", Lobby::DropMode::SERVER_SHARED);
+  this->default_drop_mode_v4_challenge = json.get_enum("DefaultDropModeV4Challenge", Lobby::DropMode::SERVER_SHARED);
   if ((this->default_drop_mode_v4_normal == Lobby::DropMode::CLIENT) ||
       (this->default_drop_mode_v4_battle == Lobby::DropMode::CLIENT) ||
       (this->default_drop_mode_v4_challenge == Lobby::DropMode::CLIENT)) {
@@ -707,11 +713,11 @@ void ServerState::load_config() {
   } catch (const out_of_range&) {
   }
 
-  this->persistent_game_idle_timeout_usecs = json.get_int("PersistentGameIdleTimeout", this->persistent_game_idle_timeout_usecs);
-  this->cheat_mode_behavior = parse_behavior_switch("CheatModeBehavior", this->cheat_mode_behavior);
-  this->default_rare_notifs_enabled = json.get_bool("RareNotificationsEnabledByDefault", this->default_rare_notifs_enabled);
-  this->ep3_send_function_call_enabled = json.get_bool("EnableEpisode3SendFunctionCall", this->ep3_send_function_call_enabled);
-  this->catch_handler_exceptions = json.get_bool("CatchHandlerExceptions", this->catch_handler_exceptions);
+  this->persistent_game_idle_timeout_usecs = json.get_int("PersistentGameIdleTimeout", 0);
+  this->cheat_mode_behavior = parse_behavior_switch("CheatModeBehavior", BehaviorSwitch::OFF_BY_DEFAULT);
+  this->default_rare_notifs_enabled = json.get_bool("RareNotificationsEnabledByDefault", false);
+  this->ep3_send_function_call_enabled = json.get_bool("EnableEpisode3SendFunctionCall", false);
+  this->catch_handler_exceptions = json.get_bool("CatchHandlerExceptions", true);
 
   auto parse_int_list = +[](const JSON& json) -> vector<uint32_t> {
     vector<uint32_t> ret;
@@ -721,16 +727,24 @@ void ServerState::load_config() {
     return ret;
   };
 
-  this->ep3_infinite_meseta = json.get_bool("Episode3InfiniteMeseta", this->ep3_infinite_meseta);
-  this->ep3_defeat_player_meseta_rewards = parse_int_list(json.get("Episode3DefeatPlayerMeseta", JSON::list()));
-  this->ep3_defeat_com_meseta_rewards = parse_int_list(json.get("Episode3DefeatCOMMeseta", JSON::list()));
-  this->ep3_final_round_meseta_bonus = json.get_int("Episode3FinalRoundMesetaBonus", this->ep3_final_round_meseta_bonus);
-  this->ep3_jukebox_is_free = json.get_bool("Episode3JukeboxIsFree", this->ep3_jukebox_is_free);
-  this->ep3_behavior_flags = json.get_int("Episode3BehaviorFlags", this->ep3_behavior_flags);
-  this->ep3_card_auction_points = json.get_int("CardAuctionPoints", this->ep3_card_auction_points);
-  this->hide_download_commands = json.get_bool("HideDownloadCommands", this->hide_download_commands);
-  this->proxy_allow_save_files = json.get_bool("ProxyAllowSaveFiles", this->proxy_allow_save_files);
-  this->proxy_enable_login_options = json.get_bool("ProxyEnableLoginOptions", this->proxy_enable_login_options);
+  this->ep3_infinite_meseta = json.get_bool("Episode3InfiniteMeseta", false);
+  try {
+    this->ep3_defeat_player_meseta_rewards = parse_int_list(json.at("Episode3DefeatPlayerMeseta"));
+  } catch (const out_of_range&) {
+    this->ep3_defeat_player_meseta_rewards = {300, 400, 500, 600, 700};
+  }
+  try {
+    this->ep3_defeat_com_meseta_rewards = parse_int_list(json.get("Episode3DefeatCOMMeseta", JSON::list()));
+  } catch (const out_of_range&) {
+    this->ep3_defeat_com_meseta_rewards = {100, 200, 300, 400, 500};
+  }
+  this->ep3_final_round_meseta_bonus = json.get_int("Episode3FinalRoundMesetaBonus", 300);
+  this->ep3_jukebox_is_free = json.get_bool("Episode3JukeboxIsFree", false);
+  this->ep3_behavior_flags = json.get_int("Episode3BehaviorFlags", false);
+  this->ep3_card_auction_points = json.get_int("CardAuctionPoints", 0);
+  this->hide_download_commands = json.get_bool("HideDownloadCommands", true);
+  this->proxy_allow_save_files = json.get_bool("ProxyAllowSaveFiles", true);
+  this->proxy_enable_login_options = json.get_bool("ProxyEnableLoginOptions", false);
 
   try {
     const auto& i = json.at("CardAuctionSize");
@@ -746,6 +760,7 @@ void ServerState::load_config() {
     this->ep3_card_auction_max_size = 0;
   }
 
+  this->ep3_card_auction_pool.clear();
   try {
     for (const auto& it : json.get_dict("CardAuctionPool")) {
       uint16_t card_id;
@@ -763,6 +778,9 @@ void ServerState::load_config() {
   } catch (const out_of_range&) {
   }
 
+  for (auto& trap_card_ids : this->ep3_trap_card_ids) {
+    trap_card_ids.clear();
+  }
   try {
     const auto& ep3_trap_cards_json = json.get_list("Episode3TrapCards");
     if (!ep3_trap_cards_json.empty()) {
@@ -855,8 +873,8 @@ void ServerState::load_config() {
     }
   }
 
+  this->quest_F95E_results.clear();
   try {
-    this->quest_F95E_results.clear();
     for (const auto& type_it : json.get_list("QuestF95EResultItems")) {
       auto& type_res = this->quest_F95E_results.emplace_back();
       for (const auto& difficulty_it : type_it->as_list()) {
@@ -868,8 +886,8 @@ void ServerState::load_config() {
     }
   } catch (const out_of_range&) {
   }
+  this->quest_F95F_results.clear();
   try {
-    this->quest_F95F_results.clear();
     for (const auto& it : json.get_list("QuestF95FResultItems")) {
       auto& list = it->as_list();
       size_t price = list.at(0)->as_int();
@@ -877,23 +895,24 @@ void ServerState::load_config() {
     }
   } catch (const out_of_range&) {
   }
+  this->quest_F960_success_results.clear();
+  this->quest_F960_failure_results = QuestF960Result();
   try {
-    this->quest_F960_success_results.clear();
     this->quest_F960_failure_results = QuestF960Result(json.at("QuestF960FailureResultItems"), this->item_name_index(Version::BB_V4));
     for (const auto& it : json.get_list("QuestF960SuccessResultItems")) {
       this->quest_F960_success_results.emplace_back(*it, this->item_name_index(Version::BB_V4));
     }
   } catch (const out_of_range&) {
   }
+  this->secret_lottery_results.clear();
   try {
-    this->secret_lottery_results.clear();
     for (const auto& it : json.get_list("SecretLotteryResultItems")) {
       this->secret_lottery_results.emplace_back(this->parse_item_description(Version::BB_V4, it->as_string()));
     }
   } catch (const out_of_range&) {
   }
 
-  this->bb_global_exp_multiplier = json.get_int("BBGlobalEXPMultiplier", this->bb_global_exp_multiplier);
+  this->bb_global_exp_multiplier = json.get_int("BBGlobalEXPMultiplier", 1);
 
   set_log_levels_from_json(json.get("LogLevels", JSON::dict()));
 
@@ -904,20 +923,51 @@ void ServerState::load_config() {
   } catch (const out_of_range&) {
   }
 
-  this->allow_dc_pc_games = json.get_bool("AllowDCPCGames", this->allow_dc_pc_games);
-  this->allow_gc_xb_games = json.get_bool("AllowGCXBGames", this->allow_gc_xb_games);
+  this->allow_dc_pc_games = json.get_bool("AllowDCPCGames", true);
+  this->allow_gc_xb_games = json.get_bool("AllowGCXBGames", true);
 
+  for (auto& order : this->public_lobby_search_orders) {
+    order.clear();
+  }
   try {
-    auto v = json.at("LobbyEvent");
-    uint8_t event = v.is_int() ? v.as_int() : event_for_name(v.as_string());
-    this->pre_lobby_event = event;
-    for (const auto& l : this->all_lobbies()) {
-      l->event = event;
+    const auto& orders_json = json.get_list("LobbySearchOrders");
+    for (size_t v_s = 0; v_s < orders_json.size(); v_s++) {
+      auto& order = this->public_lobby_search_orders.at(v_s);
+      const auto& order_json = orders_json.at(v_s);
+      for (const auto& it : order_json->as_list()) {
+        order.emplace_back(it->as_int());
+      }
     }
   } catch (const out_of_range&) {
   }
 
-  this->ep3_menu_song = json.get_int("Episode3MenuSong", this->ep3_menu_song);
+  for (size_t z = 1; z <= 20; z++) {
+    auto l = this->find_lobby(z);
+    if (l) {
+      l->event = 0;
+    }
+  }
+  try {
+    const auto& events_json = json.get_list("LobbyEvents");
+    for (size_t z = 0; z < events_json.size(); z++) {
+      const auto& v = events_json.at(z);
+      uint8_t event = v->is_int() ? v->as_int() : event_for_name(v->as_string());
+      const auto& l = this->find_lobby(z + 1);
+      if (l && l->check_flag(Lobby::Flag::DEFAULT)) {
+        l->event = event;
+      }
+    }
+  } catch (const out_of_range&) {
+  }
+
+  this->pre_lobby_event = 0;
+  try {
+    auto v = json.at("MenuEvent");
+    this->pre_lobby_event = v.is_int() ? v.as_int() : event_for_name(v.as_string());
+  } catch (const out_of_range&) {
+  }
+
+  this->ep3_menu_song = json.get_int("Episode3MenuSong", -1);
 
   try {
     this->quest_category_index = make_shared<QuestCategoryIndex>(json.at("QuestCategories"));
@@ -1028,6 +1078,7 @@ void ServerState::load_config() {
   this->pc_patch_server_message = json.get_string("PCPatchServerMessage", "");
   this->bb_patch_server_message = json.get_string("BBPatchServerMessage", "");
 
+  this->team_reward_defs_json = nullptr;
   try {
     this->team_reward_defs_json = std::move(json.at("TeamRewards"));
   } catch (const out_of_range&) {
@@ -1480,21 +1531,7 @@ void ServerState::create_default_lobbies() {
     if (!allow_non_ep3) {
       l->episode = Episode::EP3;
     }
-
-    if (allow_non_ep3) {
-      this->public_lobby_search_order.emplace_back(l);
-    } else {
-      ep3_only_lobbies.emplace_back(l);
-    }
   }
-
-  // Annoyingly, the CARD lobbies should be searched first, but are sent at the
-  // end of the lobby list command, so we have to change the search order
-  // manually here.
-  this->public_lobby_search_order.insert(
-      this->public_lobby_search_order.begin(),
-      ep3_only_lobbies.begin(),
-      ep3_only_lobbies.end());
 }
 
 void ServerState::create_load_step_graph() {
