@@ -325,7 +325,6 @@ shared_ptr<const Menu> FunctionCodeIndex::patch_menu(uint32_t specific_version) 
   ret->items.emplace_back(PatchesMenuItemID::GO_BACK, "Go back", "Return to the\nmain menu", 0);
   for (const auto& it : this->name_and_specific_version_to_patch_function) {
     const auto& fn = it.second;
-    fprintf(stderr, "patch: [%s] vs [%s]\n", it.first.c_str(), suffix.c_str());
     if (!fn->hide_from_patches_menu && ends_with(it.first, suffix)) {
       ret->items.emplace_back(
           fn->menu_item_id,
