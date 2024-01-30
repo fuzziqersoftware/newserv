@@ -3,7 +3,7 @@
 04368960 38600001
 04368964 4E800020
 
-(Ep1&2 USA v1.01) Play lobby (and event) music on Pioneer 2 also
+(Ep1&2 USA v1.1) Play lobby (and event) music on Pioneer 2 also
 0417E0F0 60000000
 
 (Ep3 USA) Play lobby (and event) music in Morgue also
@@ -11,12 +11,12 @@
 
 (Ep3 USA) Skip white logo screens during startup
 0409D774 38000007
-(Episodes 1&2 USA v1.01) Skip white logo screens during startup
+(Episodes 1&2 USA v1.1) Skip white logo screens during startup
 0413F190 38000007
 
 (Ep3 USA) Skip agreement prompts before online game
 041B50C8 38000003
-(Episodes 1&2 USA v1.01) Skip agreement prompt before online game
+(Episodes 1&2 USA v1.1) Skip agreement prompt before online game
 04327D80 38000003
 
 (Ep3 USA) Disable rate limit for pressing A during loading screens
@@ -155,7 +155,7 @@
 0400BEAC 7C0803A6
 0400BEB0 482E9FC0
 
-(Episodes 1&2 USA v1.01) Press L for enemy debug; enable various other debug messages
+(Episodes 1&2 USA v1.1) Press L for enemy debug; enable various other debug messages
 040FD9D8 38600001  # Various enemy debug messages
 00153E53 00000001  # Poison fog debug 1
 00153E4B 00000001  # Poison fog debug 2

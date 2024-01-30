@@ -91,9 +91,9 @@ void Client::Config::set_flags_for_version(Version version, int64_t sub_version)
       this->set_flag(Flag::SEND_FUNCTION_CALL_CHECKSUM_ONLY);
       this->set_flag(Flag::SEND_FUNCTION_CALL_NO_CACHE_PATCH);
       break;
-    case 0x30: // GC Ep1&2 GameJam demo, GC Ep1&2 Trial Edition, GC Ep1&2 JP v1.02, at least one version of XB
-    case 0x31: // GC Ep1&2 US v1.00, GC US v1.01, XB US
-    case 0x34: // GC Ep1&2 JP v1.03
+    case 0x30: // GC Ep1&2 GameJam demo, GC Ep1&2 Trial Edition, GC Ep1&2 JP v1.2, at least one version of XB
+    case 0x31: // GC Ep1&2 US v1.0, GC US v1.1, XB US
+    case 0x34: // GC Ep1&2 JP v1.3
       // In the case of GC Trial Edition, the IS_GC_TRIAL_EDITION flag is
       // already set when we get here (because the client has used V2 encryption
       // instead of V3)
@@ -102,13 +102,13 @@ void Client::Config::set_flags_for_version(Version version, int64_t sub_version)
     case 0x33: // GC Ep1&2 EU 60Hz
       this->set_flag(Flag::NO_D6_AFTER_LOBBY);
       break;
-    case 0x35: // GC Ep1&2 JP v1.04 (Plus)
+    case 0x35: // GC Ep1&2 JP v1.4 (Plus)
       this->set_flag(Flag::NO_D6_AFTER_LOBBY);
       this->set_flag(Flag::ENCRYPTED_SEND_FUNCTION_CALL);
       this->set_flag(Flag::SEND_FUNCTION_CALL_NO_CACHE_PATCH);
       break;
-    case 0x36: // GC Ep1&2 US v1.02 (Plus)
-    case 0x39: // GC Ep1&2 JP v1.05 (Plus)
+    case 0x36: // GC Ep1&2 US v1.2 (Plus)
+    case 0x39: // GC Ep1&2 JP v1.5 (Plus)
       this->set_flag(Flag::NO_D6_AFTER_LOBBY);
       this->set_flag(Flag::NO_SEND_FUNCTION_CALL);
       break;

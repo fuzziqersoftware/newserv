@@ -5,8 +5,7 @@
 #   S = 33 (which represents PSO GC)
 #   G = game (4F (O) = Ep1&2, 53 (S) = Ep3)
 #   R = region (45 (E), 4A (J), or 50 (P))
-#   V = minor version | 30 (30 = 1.00, 31 = 1.01, 32 = 1.02, etc.), or 54 for
-#       Trial Edition
+#   V = minor version | 30 (30 = 1.0, 31 = 1.1, 32 = 1.2, etc.), or 54 for NTE
 # This results in a 4-character ASCII-printable version code which encodes all
 # of the above information. This value is called specific_version in the places
 # where it's used by the server.

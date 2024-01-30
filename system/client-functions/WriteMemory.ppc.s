@@ -18,7 +18,7 @@
 #   V should be 3 for PSO GameCube, 4 for PSO Xbox, 5 for PSO BB
 #   X should be O for GC Episodes 1 & 2, S for GC Episode 3, 0 for Xbox
 #   L should be E, J, or P for USA, Japanese, or Europe
-#   S should be 0, 1, 2, etc. for the GC disc version (0 = 1.00, 1 = 1.01, etc.)
+#   S should be 0, 1, 2, etc. for the GC disc version (0 = 1.0, 1 = 1.1, etc.)
 #     On Xbox, S is B (beta), D (disc), or U (title update)
 # (For the curious, these four-character version codes directly match the
 # values returned by the VersionDetectGC or VersionDetectXB functions; see

@@ -293,11 +293,14 @@ Like quests, Episode 3 card definitions, maps, and quests are cached in memory. 
 
 ## Memory patches, client functions, and DOL files
 
+*Note: newserv uses the shorter GameCube versioning convention, where discs labeled DOL-XXXX-0-0Y are version 1.Y. The PSO community seems to use the convention 1.0Y in some places instead, but these are the same version. For example, the version that newserv calls v1.4 is the same as v1.04, and is labeled DOL-GPOJ-0-04 on the underside of the disc.*
+
 Everything in this section requires resource_dasm to be installed, so newserv can use the assemblers and disassemblers from its libresource_file library. If resource_dasm is not installed, newserv will still build and run, but these features will not be available.
 
 In addition, these features are only supported for the following game versions:
-* PSO GameCube Episodes 1&2 JP, USA, and EU (not Plus)
-* PSO GameCube Episodes 1&2 Plus JP v1.04 (not v1.05)
+* PSO GameCube Episodes 1&2 Trial Edition
+* PSO GameCube Episodes 1&2 JP, USA, and EU but not Plus
+* PSO GameCube Episodes 1&2 Plus JP v1.4 but not v1.5
 * PSO GameCube Episode 3 Trial Edition
 * PSO GameCube Episode 3 JP
 * PSO GameCube Episode 3 USA (experimental; must be manually enabled in config.json)

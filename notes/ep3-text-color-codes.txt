@@ -81,7 +81,7 @@ blr
 
 
 
-Ep1&2 v1.01 version of the above code
+Ep1&2 v1.1 version of the above code
 
 send_D9
 ./m68kdasm --assemble-ppc32 --ppc32 --start-address=801DA398

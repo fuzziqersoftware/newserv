@@ -1326,7 +1326,7 @@ Action a_assemble_all_patches(
   assemble-all-patches\n\
     Assemble all patches in the system/client-functions directory, and produce\n\
     two compiled .bin files for each patch (one unencrypted, for most PSO\n\
-    versions, and one encrypted, for PSO GC JP v1.04, JP Ep3, and Ep3 Trial\n\
+    versions, and one encrypted, for PSO GC JP v1.4, JP Ep3, and Ep3 Trial\n\
     Edition). The output files are saved in system/client-functions.\n",
     +[](Arguments&) {
       ServerState s;

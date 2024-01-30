@@ -213,17 +213,17 @@ uint32_t default_specific_version_for_version(Version version, int64_t sub_versi
         case 0x32: // GC Ep1&2 EU 50Hz
         case 0x33: // GC Ep1&2 EU 60Hz
           return 0x334F5030; // 3OP0
-        case 0x36: // GC Ep1&2 US v1.02 (Plus)
+        case 0x36: // GC Ep1&2 US v1.2 (Plus)
           return 0x334F4532; // 3OE2
-        case 0x39: // GC Ep1&2 JP v1.05 (Plus)
+        case 0x39: // GC Ep1&2 JP v1.5 (Plus)
           return 0x334F4A35; // 3OJ5
-        case 0x34: // GC Ep1&2 JP v1.03
+        case 0x34: // GC Ep1&2 JP v1.3
           return 0x334F4A33; // 3OJ3
-        case 0x35: // GC Ep1&2 JP v1.04 (Plus)
+        case 0x35: // GC Ep1&2 JP v1.4 (Plus)
           return 0x334F4A34; // 3OJ4
         case -1: // Initial check (before sub_version recognition)
-        case 0x30: // GC Ep1&2 GameJam demo, GC Ep1&2 Trial Edition, GC Ep1&2 JP v1.02, at least one version of PSO XB
-        case 0x31: // GC Ep1&2 US v1.00, GC US v1.01, XB US
+        case 0x30: // GC Ep1&2 GameJam demo, GC Ep1&2 Trial Edition, GC Ep1&2 JP v1.2, at least one version of PSO XB
+        case 0x31: // GC Ep1&2 US v1.0, GC US v1.1, XB US
         default:
           return 0x33000000;
       }
