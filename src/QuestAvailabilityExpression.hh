@@ -20,6 +20,7 @@ public:
     const PlayerRecordsBB_Challenge* challenge_records;
     std::shared_ptr<const TeamIndex::Team> team;
     size_t num_players;
+    uint8_t event;
   };
 
   QuestAvailabilityExpression(const std::string& text);
@@ -145,6 +146,15 @@ protected:
   public:
     NumPlayersLookupNode();
     virtual ~NumPlayersLookupNode() = default;
+    virtual bool operator==(const Node& other) const;
+    virtual int64_t evaluate(const Env& env) const;
+    virtual std::string str() const;
+  };
+
+  class EventLookupNode : public Node {
+  public:
+    EventLookupNode();
+    virtual ~EventLookupNode() = default;
     virtual bool operator==(const Node& other) const;
     virtual int64_t evaluate(const Env& env) const;
     virtual std::string str() const;

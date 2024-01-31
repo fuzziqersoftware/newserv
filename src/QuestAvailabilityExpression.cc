@@ -245,6 +245,20 @@ string QuestAvailabilityExpression::NumPlayersLookupNode::str() const {
   return "V_NumPlayers";
 }
 
+QuestAvailabilityExpression::EventLookupNode::EventLookupNode() {}
+
+bool QuestAvailabilityExpression::EventLookupNode::operator==(const Node& other) const {
+  return dynamic_cast<const EventLookupNode*>(&other) != nullptr;
+}
+
+int64_t QuestAvailabilityExpression::EventLookupNode::evaluate(const Env& env) const {
+  return env.num_players;
+}
+
+string QuestAvailabilityExpression::EventLookupNode::str() const {
+  return "V_Event";
+}
+
 QuestAvailabilityExpression::ConstantNode::ConstantNode(bool value)
     : value(value) {}
 
@@ -394,6 +408,9 @@ unique_ptr<const QuestAvailabilityExpression::Node> QuestAvailabilityExpression:
   }
   if (text == "V_NumPlayers") {
     return make_unique<NumPlayersLookupNode>();
+  }
+  if (text == "V_Event") {
+    return make_unique<EventLookupNode>();
   }
 
   // Check for constants

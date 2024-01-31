@@ -729,8 +729,8 @@ Lobby::JoinError Lobby::join_error_for_client(std::shared_ptr<Client> c, const s
       }
       if (this->quest) {
         size_t num_clients = this->count_clients() + 1;
-        if (!c->can_see_quest(this->quest, this->difficulty, num_clients) ||
-            !c->can_play_quest(this->quest, this->difficulty, num_clients)) {
+        if (!c->can_see_quest(this->quest, this->event, this->difficulty, num_clients) ||
+            !c->can_play_quest(this->quest, this->event, this->difficulty, num_clients)) {
           return JoinError::NO_ACCESS_TO_QUEST;
         }
       }
@@ -855,10 +855,10 @@ QuestIndex::IncludeCondition Lobby::quest_include_condition() const {
   return [this, num_players](shared_ptr<const Quest> q) -> QuestIndex::IncludeState {
     bool is_enabled = true;
     for (const auto& lc : this->clients) {
-      if (lc && !lc->can_see_quest(q, this->difficulty, num_players)) {
+      if (lc && !lc->can_see_quest(q, this->event, this->difficulty, num_players)) {
         return QuestIndex::IncludeState::HIDDEN;
       }
-      if (lc && !lc->can_play_quest(q, this->difficulty, num_players)) {
+      if (lc && !lc->can_play_quest(q, this->event, this->difficulty, num_players)) {
         is_enabled = false;
       }
     }
