@@ -293,8 +293,6 @@ Like quests, Episode 3 card definitions, maps, and quests are cached in memory. 
 
 ## Memory patches, client functions, and DOL files
 
-*Note: newserv uses the shorter GameCube versioning convention, where discs labeled DOL-XXXX-0-0Y are version 1.Y. The PSO community seems to use the convention 1.0Y in some places instead, but these are the same version. For example, the version that newserv calls v1.4 is the same as v1.04, and is labeled DOL-GPOJ-0-04 on the underside of the disc.*
-
 Everything in this section requires resource_dasm to be installed, so newserv can use the assemblers and disassemblers from its libresource_file library. If resource_dasm is not installed, newserv will still build and run, but these features will not be available.
 
 In addition, these features are only supported for the following game versions:
@@ -306,6 +304,8 @@ In addition, these features are only supported for the following game versions:
 * PSO GameCube Episode 3 USA (experimental; must be manually enabled in config.json)
 * PSO Xbox (all versions)
 * PSO BB
+
+*Note: newserv uses the shorter GameCube versioning convention, where discs labeled DOL-XXXX-0-0Y are version 1.Y. The PSO community seems to use the convention 1.0Y in some places instead, but these are the same version. For example, the version that newserv calls v1.4 is the same as v1.04, and is labeled DOL-GPOJ-0-04 on the underside of the disc.*
 
 You can put memory patches in the system/client-functions directory with filenames like PatchName.patch.s and they will appear in the Patches menu for PSO GC, XB, and BB clients that support patching. Memory patches are written in PowerPC or x86 assembly and are compiled when newserv is started. The assembly system's features are documented in the comments in system/client-functions/WriteMemory.ppc.s.
 
@@ -444,23 +444,45 @@ Some commands only work on the game server and not on the proxy server. The chat
 
 # Non-server features
 
-newserv has many CLI options, which can be used to access functionality other than the game and proxy server. Run `newserv help` to see these options and how to use them. The non-server things newserv can do are:
+newserv has many CLI options, which can be used to access functionality other than the game and proxy server. Run `newserv help` to see a full list of the options and how to use each one.
 
-* Compress or decompress data in PRS, PR2/PRC, or BC0 format (`compress-prs`, `compress-pr2`, `compress-bc0`, `decompress-prs`, `decompress-pr2`, `decompress-bc0`)
+The data formats that newserv can convert to/from are:
+
+| Format                         | Encode/compress action    | Decode/extract action        |
+|--------------------------------|---------------------------|------------------------------|
+| PRS compression                | `compress-prs`            | `decompress-prs`             |
+| PR2/PRC compression            | `compress-pr2`            | `decompress-pr2`             |
+| BC0 compression                | `compress-bc0`            | `decompress-bc0`             |
+| Raw encrypted data             | `encrypt-data`            | `decrypt-data`               |
+| Episode 3 command mask         | `encrypt-trivial-data`    | `decrypt-trivial-data`       |
+| Challenge Mode rank text       | `encrypt-challenge-data`  | `decrypt-challenge-data`     |
+| PSO DC quest file (.vms)       | None                      | `decode-vms`                 |
+| PSO GC quest file (.gci)       | None                      | `decode-gci`                 |
+| Download quest file (.dlq)     | None                      | `decode-dlq`                 |
+| Server quest file (.qst)       | `encode-qst`              | `decode-qst`                 |
+| PSO PC save file               | `encrypt-pc-save`         | `decrypt-pc-save`            |
+| PSO GC save file (.gci)        | `encrypt-gci-save`        | `decrypt-gci-save`           |
+| PSO GC snapshot file           | None                      | `decode-gci-snapshot`        |
+| Quest script (.bin)            | `assemble-quest-script`   | `disassemble-quest-script`   |
+| Quest map (.dat)               | None                      | `disassemble-quest-map`      |
+| AFS archive                    | None                      | `extract-afs`                |
+| BML archive                    | None                      | `extract-bml`                |
+| GSL archive                    | None                      | `extract-gsl`                |
+| GVM texture                    | `encode-gvm`              | None                         |
+| Text archive                   | `encode-text-archive`     | `decode-text-archive`        |
+| Unicode text set               | `encode-unicode-text-set` | `decode-unicode-text-set`    |
+| Word Select data set           | None                      | `decode-word-select-set`     |
+| Set data table                 | None                      | `disassemble-set-data-table` |
+| Rare item table (AFS/GSL/JSON) | `convert-rare-item-set`   | `convert-rare-item-set`      |
+
+There are several actions that don't fit well into the table above, which let you do other things:
+
 * Compute the decompressed size of compressed PRS data without decompressing it (`prs-size`)
-* Encrypt or decrypt data using any PSO version's network encryption scheme (`encrypt-data`, `decrypt-data`)
-* Encrypt or decrypt data using Episode 3's trivial scheme (`encrypt-trivial-data`, `decrypt-trivial-data`)
-* Encrypt or decrypt data using the Challenge Mode text algorithm (`encrypt-challenge-data`, `decrypt-challenge-data`)
-* Encrypt or decrypt PSO GC save data (.gci files) (`encrypt-gci-save`, `decrypt-gci-save`)
-* Convert a PSO GC or Episode 3 snapshot file to a BMP image (`decode-gci-snapshot`)
 * Find the likely round1 or round2 seed for a corrupt save file (`salvage-gci`)
 * Run a brute-force search for a decryption seed (`find-decryption-seed`)
-* Convert quests in .gci, .vms, .dlq, or .qst format to .bin/.dat format (`decode-gci`, `decode-vms`, `decode-dlq`, `decode-qst`)
-* Convert quests in .bin/.dat to .qst format (`encode-qst`)
-* Convert text archives (e.g. TextEnglish.pr2) to JSON and vice versa (`decode-text-archive`, `encode-text-archive`)
-* Compile or disassemble quest scripts (`assemble-quest-script`, `disassemble-quest-script`)
-* Format Episode 3 game data in a human-readable manner (`show-ep3-maps`, `show-ep3-cards`)
-* Convert item data to a human-readable description, or vice versa (`describe-item`, `encode-item`)
+* Format Episode 3 game data in a human-readable manner (`show-ep3-maps`, `show-ep3-cards`, `generate-ep3-cards-html`)
+* Format Blue Burst battle parameter files in a human-readable manner (`show-battle-params`)
+* Search for rare enemy seeds that result in rare enemies on console versions (`find-rare-enemy-seeds`)
+* Convert item data to a human-readable description, or vice versa (`describe-item`)
 * Connect to another PSO server and pretend to be a client (`cat-client`)
-* Replay a session log for testing (`replay-log`)
-* Extract the contents of a .gsl or .bml archive (`extract-gsl`, `extract-bml`)
+* Generate or describe DC serial numbers (`generate-dc-serial-number`, `inspect-dc-serial-number`)

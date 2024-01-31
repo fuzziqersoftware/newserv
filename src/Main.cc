@@ -1467,7 +1467,7 @@ Action a_decode_text_archive(
     });
 Action a_encode_text_archive(
     "encode-text-archive", "\
-  decode-text-archive [INPUT-FILENAME [OUTPUT-FILENAME]]\n\
+  encode-text-archive [INPUT-FILENAME [OUTPUT-FILENAME]]\n\
     Encode a text archive. Currently only supports GC and Xbox format.\n",
     +[](Arguments& args) {
       const string& input_filename = args.get<string>(1, false);
