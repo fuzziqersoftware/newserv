@@ -117,7 +117,7 @@ uint8_t ItemCreator::normalize_area_number(uint8_t area) const {
     }
 
   } else {
-    return this->restrictions->box_drop_area;
+    return this->restrictions->box_drop_area - 1;
   }
 }
 

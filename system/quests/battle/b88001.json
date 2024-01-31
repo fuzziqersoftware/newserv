@@ -10,7 +10,7 @@
     "MagMode": "ALLOW",
     "ToolMode": "ALLOW",
     "TrapMode": "ALL_PLAYERS",
-    "RespawnMode": 0,
+    "RespawnMode": "ALLOW",
     "ReplaceChar": 0,
     "DropWeapon": 1,
     "IsTeams": 1,

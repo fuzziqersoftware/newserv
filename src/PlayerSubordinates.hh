@@ -577,6 +577,11 @@ struct BattleRules {
     FORBID_ALL = 1,
     CLEAR_AND_ALLOW = 2,
   };
+  enum class RespawnMode : uint8_t {
+    ALLOW = 0,
+    FORBID = 1,
+    LIMIT_LIVES = 2,
+  };
 
   // Set by quest opcode F812, but values are remapped.
   //   F812 00 => FORBID_ALL
@@ -608,8 +613,7 @@ struct BattleRules {
   //   F818 00 => 01
   //   F818 01 => 00
   //   F818 02 => 02
-  // TODO: Define an enum class for this field.
-  /* 06 */ uint8_t respawn_mode = 0;
+  /* 06 */ RespawnMode respawn_mode = RespawnMode::ALLOW;
   // Set by quest opcode F819.
   /* 07 */ uint8_t replace_char = 0;
   // Set by quest opcode F81A, but value is inverted.

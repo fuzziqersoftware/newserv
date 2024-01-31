@@ -4531,19 +4531,21 @@ struct G_DropItem_PC_V3_BB_6x5F : G_DropItem_DC_6x5F {
 // 6x60: Request for item drop (handled by the server on BB)
 
 struct G_StandardDropItemRequest_DC_6x60 {
-  G_UnusedHeader header;
-  uint8_t floor = 0;
-  uint8_t rt_index = 0;
-  le_uint16_t entity_id = 0;
-  le_float x = 0.0f;
-  le_float z = 0.0f;
-  le_uint16_t section = 0;
-  le_uint16_t ignore_def = 0;
+  /* 00 */ G_UnusedHeader header;
+  /* 04 */ uint8_t floor = 0;
+  /* 05 */ uint8_t rt_index = 0;
+  /* 06 */ le_uint16_t entity_id = 0;
+  /* 08 */ le_float x = 0.0f;
+  /* 0C */ le_float z = 0.0f;
+  /* 10 */ le_uint16_t section = 0;
+  /* 12 */ le_uint16_t ignore_def = 0;
+  /* 14 */
 } __packed__;
 
 struct G_StandardDropItemRequest_PC_V3_BB_6x60 : G_StandardDropItemRequest_DC_6x60 {
-  uint8_t effective_area = 0;
-  parray<uint8_t, 3> unused;
+  /* 14 */ uint8_t effective_area = 0;
+  /* 15 */ parray<uint8_t, 3> unused;
+  /* 18 */
 } __packed__;
 
 // 6x61: Activate MAG effect
@@ -5013,9 +5015,19 @@ struct G_SetChallengeModeData_6x7C {
 
 struct G_SetBattleModeData_6x7D {
   G_UnusedHeader header;
-  uint8_t unknown_a1 = 0; // Must be < 7; used in jump table
-  parray<uint8_t, 3> unused;
-  parray<le_uint32_t, 4> unknown_a2;
+  // Values for what (0-6; values 7 and above are not valid):
+  // 0 = Unknown (params[0] and [1] are used)
+  // 1 = Does nothing
+  // 2 = Unknown (no params are used)
+  // 3 = Set player meseta score (params[0] = client ID, [1] = score)
+  // 4 = Unknown (params[0] = client ID)
+  // 5 = Unknown (no params are used)
+  // 6 = Unknown (all params are used)
+  uint8_t what = 0;
+  uint8_t unknown_a1 = 0; // Only used when what == 0
+  uint8_t unused = 0;
+  uint8_t is_alive = 0; // Only used when what == 3
+  parray<le_uint32_t, 4> params;
 } __packed__;
 
 // 6x7E: Unknown (not valid on Episode 3)
@@ -5302,10 +5314,11 @@ struct G_Unknown_6xA1 {
 // server on BB)
 
 struct G_SpecializableItemDropRequest_6xA2 : G_StandardDropItemRequest_PC_V3_BB_6x60 {
-  le_float param3 = 0.0f;
-  le_uint32_t param4 = 0;
-  le_uint32_t param5 = 0;
-  le_uint32_t param6 = 0;
+  /* 18 */ le_float param3 = 0.0f;
+  /* 1C */ le_uint32_t param4 = 0;
+  /* 20 */ le_uint32_t param5 = 0;
+  /* 24 */ le_uint32_t param6 = 0;
+  /* 28 */
 } __packed__;
 
 // 6xA3: Olga Flow boss actions (not valid on pre-V3 or Episode 3)

@@ -715,7 +715,7 @@ BattleRules::BattleRules(const JSON& json) {
   this->tool_mode = json.get_enum("ToolMode", this->tool_mode);
   this->trap_mode = json.get_enum("TrapMode", this->trap_mode);
   this->unused_F817 = json.get_int("UnusedF817", this->unused_F817);
-  this->respawn_mode = json.get_int("RespawnMode", this->respawn_mode);
+  this->respawn_mode = json.get_enum("RespawnMode", this->respawn_mode);
   this->replace_char = json.get_int("ReplaceChar", this->replace_char);
   this->drop_weapon = json.get_int("DropWeapon", this->drop_weapon);
   this->is_teams = json.get_int("IsTeams", this->is_teams);
@@ -912,6 +912,32 @@ BattleRules::MesetaMode enum_for_name<BattleRules::MesetaMode>(const char* name)
     return BattleRules::MesetaMode::FORBID_ALL;
   } else if (!strcmp(name, "CLEAR_AND_ALLOW")) {
     return BattleRules::MesetaMode::CLEAR_AND_ALLOW;
+  } else {
+    throw invalid_argument("invalid BattleRules::MesetaDropMode name");
+  }
+}
+
+template <>
+const char* name_for_enum<BattleRules::RespawnMode>(BattleRules::RespawnMode v) {
+  switch (v) {
+    case BattleRules::RespawnMode::ALLOW:
+      return "ALLOW";
+    case BattleRules::RespawnMode::FORBID:
+      return "FORBID";
+    case BattleRules::RespawnMode::LIMIT_LIVES:
+      return "LIMIT_LIVES";
+    default:
+      throw invalid_argument("invalid BattleRules::MesetaDropMode value");
+  }
+}
+template <>
+BattleRules::RespawnMode enum_for_name<BattleRules::RespawnMode>(const char* name) {
+  if (!strcmp(name, "ALLOW")) {
+    return BattleRules::RespawnMode::ALLOW;
+  } else if (!strcmp(name, "FORBID")) {
+    return BattleRules::RespawnMode::FORBID;
+  } else if (!strcmp(name, "LIMIT_LIVES")) {
+    return BattleRules::RespawnMode::LIMIT_LIVES;
   } else {
     throw invalid_argument("invalid BattleRules::MesetaDropMode name");
   }

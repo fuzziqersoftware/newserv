@@ -5,7 +5,7 @@
     "MagMode": "FORBID_ALL",
     "ToolMode": "CLEAR_AND_ALLOW",
     "TrapMode": "ALL_PLAYERS",
-    "RespawnMode": 2,
+    "RespawnMode": "LIMIT_LIVES",
     "ReplaceChar": 1,
     "DropWeapon": 0,
     "IsTeams": 0,
