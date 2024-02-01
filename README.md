@@ -376,12 +376,13 @@ Some commands only work on the game server and not on the proxy server. The chat
         * The rest of the commands in this section are enabled on the game server. (They are always enabled on the proxy server.)
     * `$quest <number>` (game server only): Load a quest by quest number. Can be used to load battle or challenge quests with only one player present.
     * `$qcall <function-id>`: Call a quest function on your client.
-    * `$qcheck <flag-num>` (game server only): Show the value of a quest flag.
-    * `$qset <flag-num>` or `$qclear <flag-num>`: Set or clear a global quest flag for everyone in the game.
+    * `$qcheck <flag-num>` (game server only): Show the value of a quest flag. This command can be used without debug mode enabled.
+    * `$qset <flag-num>` or `$qclear <flag-num>`: Set or clear a quest flag for everyone in the game.
+    * `$qgread <flag-num>` (game server only): Get the value of a quest counter ("global flag"). This command can be used without debug mode enabled.
+    * `$qgwrite <flag-num> <value>` (game server only): Set the value of a quest counter ("global flag") for yourself.
     * `$qsync <reg-num> <value>`: Set a quest register's value for yourself only. `<reg-num>` should be either rXX (e.g. r60) or fXX (e.g. f60); if the latter, `<value>` is parsed as a floating-point value instead of as an integer.
     * `$qsyncall <reg-num> <value>`: Set a quest register's value for everyone in the game. `<reg-num>` should be either rXX (e.g. r60) or fXX (e.g. f60); if the latter, `<value>` is parsed as a floating-point value instead of as an integer.
     * `$gc` (game server only): Send your own Guild Card to yourself.
-    * `$persist` (game server only): Enable or disable persistence for the current game. When persistence is on, the game will not be deleted when the last player leaves. The state of enemies and objects on the map will be reset when the last player leaves.
     * `$sc <data>`: Send a command to yourself.
     * `$ss <data>` (proxy server only): Send a command to the remote server.
     * `$meseta <amount>` (game server only; Episode 3 only): Add the given amount to your Meseta total.
@@ -402,6 +403,7 @@ Some commands only work on the game server and not on the proxy server. The chat
     * `$loadchar <slot>` (v1 and v2 only): Loads your character data from the specified slot. The changes will be undone if you join a game - to save your changes, disconnect from the lobby.
     * `$bbchar <username> <password> <slot>`: Use this command when playing on a non-BB version of PSO. If the username and password are correct, this command converts your current character to BB format and saves it on the server in the given slot (1-4). Any character already in that slot is overwritten. (This command is similar to `$savechar`, except it overwrites a BB character slot, and can transfer characters across accounts.) Note that the character's chat data, quick menu config, and bank contents are not copied, since there is no way for the server to request those types of data.
     * `$edit <stat> <value>`: Modifies your character data. If you are on V3 (GameCube/Xbox), this command does nothing. If you are on V1 or V2 (DC or PC, not BB), your changes will be undone if you join a game - to save your changes, disconnect from the lobby. If cheats are allowed on the server, `<stat>` can be any of `atp`, `mst`, `evp`, `hp`, `dfp`, `ata`, `lck`, `meseta`, `exp`, `level`, `namecolor`, `secid`, `name`, `npc`, or `tech`. If cheats are not allowed, only `namecolor`, `name`, and `npc` can be used.
+
 * Blue Burst player commands (game server only)
     * `$bank [number]`: Switches your current bank, so you can access your other character's banks (if `number` is 1-4) or your shared account bank (if `number` is 0). If `number` is not given, switches back to your current character's bank.
     * `$save`: Saves your character, system, and Guild Card data immediately. (By default, your character is saved every 60 seconds while online, and your account and Guild Card data are saved whenever they change.)
@@ -411,6 +413,7 @@ Some commands only work on the game server and not on the proxy server. The chat
     * `$minlevel <level>`: Sets the minimum level for players to join the current game.
     * `$password <password>`: Sets the game's join password. To unlock the game, run `$password` with nothing after it.
     * `$dropmode [mode]`: Changes the way item drops behave in the current game. `mode` can be `none`, `client`, `shared`, `private`, or `duplicate`. If `mode` is not given, tells you the current drop mode without changing it. See the "Item tables and drop modes" section for more information.
+    * `$persist`: Enable or disable persistence for the current game. When persistence is on, the game will not be deleted when the last player leaves. The state of enemies and objects on the map will be reset when the last player leaves, but dropped items will not be deleted. If the game is empty for too long (15 minutes by default), it is then deleted.
 
 * Episode 3 commands (game server only)
     * `$spec`: Toggles the allow spectators flag for Episode 3 games. If any players are spectating when this flag is disabled, they will be sent back to the lobby.

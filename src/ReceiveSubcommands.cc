@@ -3567,9 +3567,9 @@ static void on_upgrade_weapon_attribute_bb(shared_ptr<Client> c, uint8_t, uint8_
   }
 }
 
-static void on_write_quest_global_flag_bb(shared_ptr<Client> c, uint8_t, uint8_t, void* data, size_t size) {
-  const auto& cmd = check_size_t<G_SetQuestGlobalFlag_BB_6xD2>(data, size);
-  c->character()->quest_global_flags[cmd.index] = cmd.value;
+static void on_write_quest_counter_bb(shared_ptr<Client> c, uint8_t, uint8_t, void* data, size_t size) {
+  const auto& cmd = check_size_t<G_SetQuestCounter_BB_6xD2>(data, size);
+  c->character()->quest_counters[cmd.index] = cmd.value;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3785,7 +3785,7 @@ const SubcommandDefinition subcommand_definitions[0x100] = {
     /* 6xCF */ {0x00, 0x00, 0xCF, on_battle_restart_bb},
     /* 6xD0 */ {0x00, 0x00, 0xD0, on_battle_level_up_bb},
     /* 6xD1 */ {0x00, 0x00, 0xD1, on_request_challenge_grave_recovery_item_bb},
-    /* 6xD2 */ {0x00, 0x00, 0xD2, on_write_quest_global_flag_bb},
+    /* 6xD2 */ {0x00, 0x00, 0xD2, on_write_quest_counter_bb},
     /* 6xD3 */ {0x00, 0x00, 0xD3, on_invalid},
     /* 6xD4 */ {0x00, 0x00, 0xD4, on_forward_check_game},
     /* 6xD5 */ {0x00, 0x00, 0xD5, on_quest_exchange_item_bb},

@@ -811,7 +811,7 @@ void Client::load_all_files() {
       this->character_data->battle_records = nsc_data.battle_records;
       this->character_data->challenge_records = nsc_data.challenge_records;
       this->character_data->tech_menu_config = nsc_data.tech_menu_config;
-      this->character_data->quest_global_flags = nsc_data.quest_global_flags;
+      this->character_data->quest_counters = nsc_data.quest_counters;
       if (nsa_data) {
         this->character_data->option_flags = nsa_data->option_flags;
         this->character_data->symbol_chats = nsa_data->symbol_chats;

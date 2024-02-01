@@ -5881,10 +5881,10 @@ struct G_ChallengeModeGraveRecoveryItemRequest_BB_6xD1 {
   le_uint32_t item_type = 0; // Should be < 6
 } __packed__;
 
-// 6xD2: Set quest global flag (BB)
+// 6xD2: Set quest counter (BB)
 // Writes 4 bytes to the 32-bit field specified by index.
 
-struct G_SetQuestGlobalFlag_BB_6xD2 {
+struct G_SetQuestCounter_BB_6xD2 {
   G_ClientIDHeader header;
   le_uint32_t index = 0; // There are 0x10 of them (0x00-0x0F)
   le_uint32_t value = 0;

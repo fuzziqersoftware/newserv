@@ -279,11 +279,11 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     {0x0010, "set", {REG}, F_V0_V4}, // Sets a register to 1
     {0x0011, "clear", {REG}, F_V0_V4}, // Sets a register to 0
     {0x0012, "rev", {REG}, F_V0_V4}, // Sets a register to 0 if it's nonzero and vice versa
-    {0x0013, "gset", {INT16}, F_V0_V4}, // Sets a global flag
-    {0x0014, "gclear", {INT16}, F_V0_V4}, // Clears a global flag
-    {0x0015, "grev", {INT16}, F_V0_V4}, // Flips a global flag
-    {0x0016, "glet", {INT16, REG}, F_V0_V4}, // Sets a global flag to a specific value
-    {0x0017, "gget", {INT16, REG}, F_V0_V4}, // Gets a global flag
+    {0x0013, "gset", {INT16}, F_V0_V4}, // Sets a quest flag
+    {0x0014, "gclear", {INT16}, F_V0_V4}, // Clears a quest flag
+    {0x0015, "grev", {INT16}, F_V0_V4}, // Flips a quest flag
+    {0x0016, "glet", {INT16, REG}, F_V0_V4}, // Sets a quest flag to a specific value
+    {0x0017, "gget", {INT16, REG}, F_V0_V4}, // Gets a quest flag
     {0x0018, "add", {REG, REG}, F_V0_V4}, // regA += regB
     {0x0019, "addi", {REG, INT32}, F_V0_V4}, // regA += imm
     {0x001A, "sub", {REG, REG}, F_V0_V4}, // regA -= regB
@@ -779,8 +779,8 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     {0xF922, "get_player_hp", {CLIENT_ID, {REG_SET_FIXED, 4}}, F_V3_V4 | F_ARGS},
     {0xF923, "get_floor_number", {CLIENT_ID, {REG_SET_FIXED, 2}}, F_V3_V4 | F_ARGS},
     {0xF924, "get_coord_player_detect", {{REG_SET_FIXED, 3}, {REG_SET_FIXED, 4}}, F_V3_V4},
-    {0xF925, "read_global_flag", {INT32, REG}, F_V3_V4 | F_ARGS},
-    {0xF926, "write_global_flag", {INT32, INT32}, F_V3_V4 | F_ARGS},
+    {0xF925, "read_counter", {INT32, REG}, F_V3_V4 | F_ARGS},
+    {0xF926, "write_counter", {INT32, INT32}, F_V3_V4 | F_ARGS},
     {0xF927, "item_detect_bank2", {{REG_SET_FIXED, 4}, REG}, F_V3_V4},
     {0xF928, "floor_player_detect", {{REG_SET_FIXED, 4}}, F_V3_V4},
     {0xF929, "prepare_gba_rom_from_disk", {CSTRING}, F_V3 | F_ARGS}, // Prepares to load a GBA ROM from a local GSL file

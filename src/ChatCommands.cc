@@ -375,6 +375,51 @@ static void proxy_command_qclear(shared_ptr<ProxyServer::LinkedSession> ses, con
   return proxy_command_qset_qclear(ses, args, false);
 }
 
+static void server_command_qgread(shared_ptr<Client> c, const std::string& args) {
+  uint8_t flag_num = stoul(args, nullptr, 0);
+  const auto& flags = c->character()->quest_counters;
+  if (flag_num >= flags.size()) {
+    send_text_message_printf(c, "$C7Flag number must be\nless than %zu", flags.size());
+  } else {
+    send_text_message_printf(c, "$C7Quest counter %hhu\nhas value %" PRIu32,
+        flag_num, flags[flag_num].load());
+  }
+}
+
+static void server_command_qgwrite(shared_ptr<Client> c, const std::string& args) {
+  if (c->version() != Version::BB_V4) {
+    send_text_message(c, "$C6This command can\nonly be used on BB");
+    return;
+  }
+  if (!c->config.check_flag(Client::Flag::DEBUG_ENABLED)) {
+    send_text_message(c, "$C6This command can only\nbe run in debug mode\n(run %sdebug first)");
+    return;
+  }
+  auto l = c->require_lobby();
+  if (!l->is_game()) {
+    send_text_message(c, "$C6This command cannot\nbe used in the lobby");
+    return;
+  }
+
+  auto tokens = split(args, ' ');
+  if (tokens.size() != 2) {
+    send_text_message(c, "$C6Incorrect number\nof arguments");
+    return;
+  }
+
+  uint8_t flag_num = stoul(tokens[0], nullptr, 0);
+  uint32_t value = stoul(tokens[1], nullptr, 0);
+  auto& flags = c->character()->quest_counters;
+  if (flag_num >= flags.size()) {
+    send_text_message_printf(c, "$C7Flag number must be\nless than %zu", flags.size());
+  } else {
+    c->character()->quest_counters[flag_num] = value;
+    G_SetQuestCounter_BB_6xD2 cmd = {{0xD2, sizeof(G_SetQuestCounter_BB_6xD2) / 4, c->lobby_client_id}, flag_num, value};
+    send_command_t(c, 0x60, 0x00, cmd);
+    send_text_message_printf(c, "$C7Quest counter %hhu\nset to %" PRIu32, flag_num, value);
+  }
+}
+
 static void server_command_qsync_qsyncall(shared_ptr<Client> c, const std::string& args, bool send_to_lobby) {
   if (!c->config.check_flag(Client::Flag::DEBUG_ENABLED)) {
     send_text_message(c, "$C6This command can only\nbe run in debug mode\n(run %sdebug first)");
@@ -2021,6 +2066,8 @@ static const unordered_map<string, ChatCommandDefinition> chat_commands({
     {"$qcall", {server_command_qcall, proxy_command_qcall}},
     {"$qcheck", {server_command_qcheck, nullptr}},
     {"$qclear", {server_command_qclear, proxy_command_qclear}},
+    {"$qgread", {server_command_qgread, nullptr}},
+    {"$qgwrite", {server_command_qgwrite, nullptr}},
     {"$qset", {server_command_qset, proxy_command_qset}},
     {"$qsync", {server_command_qsync, proxy_command_qsync}},
     {"$qsyncall", {server_command_qsyncall, proxy_command_qsyncall}},

@@ -210,7 +210,7 @@ struct PSOBBCharacterFile {
   /* 2DF8 */ parray<le_uint16_t, 0x0014> tech_menu_config;
   /* 2E20 */ ChoiceSearchConfig choice_search_config;
   /* 2E38 */ parray<uint8_t, 0x0010> unknown_a6;
-  /* 2E48 */ parray<le_uint32_t, 0x0010> quest_global_flags;
+  /* 2E48 */ parray<le_uint32_t, 0x0010> quest_counters;
   /* 2E88 */ parray<uint8_t, 0x1C> unknown_a7;
   /* 2EA4 */
 
@@ -360,7 +360,7 @@ struct PSOGCCharacterFile {
     /* 25E0:21C4 */ PlayerRecordsV3_Challenge<true> challenge_records;
     /* 26E0:22C4 */ parray<be_uint16_t, 20> tech_menu_shortcut_entries;
     /* 2708:22EC */ parray<uint8_t, 0x28> unknown_a6;
-    /* 2730:2314 */ parray<be_uint32_t, 0x10> quest_global_flags;
+    /* 2730:2314 */ parray<be_uint32_t, 0x10> quest_counters;
     /* 2770:2354 */ PlayerRecords_Battle<true> offline_battle_records;
     /* 2788:236C */ parray<uint8_t, 4> unknown_f5;
     /* 278C:2370 */ be_uint32_t unknown_f6;
@@ -766,7 +766,7 @@ struct LegacySavedPlayerDataBB { // .nsc file format
   /* 1D00 */ parray<uint8_t, 4> unknown_a2;
   /* 1D04 */ QuestFlags quest_flags;
   /* 1F04 */ le_uint32_t death_count;
-  /* 1F08 */ parray<le_uint32_t, 0x0016> quest_global_flags;
+  /* 1F08 */ parray<le_uint32_t, 0x0016> quest_counters;
   /* 1F60 */ parray<le_uint16_t, 0x0014> tech_menu_config;
   /* 1F88 */
 } __attribute__((packed));
