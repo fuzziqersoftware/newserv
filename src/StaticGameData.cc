@@ -115,6 +115,7 @@ static const array<const char*, 10> section_id_to_abbreviation = {
 const unordered_map<string, uint8_t> name_to_section_id({
     {"viridia", 0},
     {"greennill", 1},
+    {"greenill", 1},
     {"skyly", 2},
     {"bluefull", 3},
     {"purplenum", 4},
