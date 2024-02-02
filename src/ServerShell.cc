@@ -251,10 +251,10 @@ Proxy session commands:\n\
     the current session only.\n\
   marker COLOR-ID\n\
     Change your lobby marker color.\n\
-  warp AREA-ID\n\
-  warpme AREA-ID\n\
+  warp FLOOR-ID\n\
+  warpme FLOOR-ID\n\
     Send yourself to a specific floor.\n\
-  warpall AREA-ID\n\
+  warpall FLOOR-ID\n\
     Send everyone to a specific floor.\n\
   set-override-section-id [SECTION-ID]\n\
     Override the section ID for games you create or join. This affects the\n\
