@@ -1,0 +1,28 @@
+This is a list of common shared serials for the Dreamcast version of the game.
+These serials are listed in decimal format for use with newserv and are not valid
+for use in the game itself.
+
+If you are looking for a serial number to use for your Dreamcast copy of the game,
+please use newserv's DC serial number generator, or PSO Tool GUI at
+https://segaxtreme.net/resources/pso-tool-gui-by-razorx.224/
+
+To allow the below shared serials to be used on your server by multiple users, use
+the below command (this works if the serial is already registered too):
+
+add-license serial=<serial-number> flags=80000000
+
+---
+
+144243108
+297233506
+400533035
+446310728
+532044219
+1315107383
+1567634924
+1748940599
+2004318071
+2309795986
+3811232030
+3828776100
+4098754580
