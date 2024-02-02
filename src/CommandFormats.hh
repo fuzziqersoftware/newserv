@@ -4650,7 +4650,7 @@ struct G_SyncEnemyState_6x6B_Entry_Decompressed {
   uint8_t blue_buff_level = 0;
 } __packed__;
 
-// 6x6C: Sync object state (used while loading into game; same header format as 6E)
+// 6x6C: Sync object state (used while loading into game)
 // Compressed format is the same as 6x6B.
 
 // Decompressed format is a list of these
@@ -4659,7 +4659,7 @@ struct G_SyncObjectState_6x6C_Entry_Decompressed {
   le_uint16_t object_index = 0;
 } __packed__;
 
-// 6x6D: Sync item state (used while loading into game; same header format as 6E)
+// 6x6D: Sync item state (used while loading into game)
 // Internal name: RcvItemCondition
 // Compressed format is the same as 6x6B.
 

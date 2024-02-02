@@ -716,7 +716,7 @@ Lobby::JoinError Lobby::join_error_for_client(std::shared_ptr<Client> c, const s
     if (this->mode == GameMode::SOLO) {
       return JoinError::SOLO;
     }
-    if (!(c->license->flags & License::Flag::FREE_JOIN_GAMES)) {
+    if (!c->license->check_flag(License::Flag::FREE_JOIN_GAMES)) {
       if (password && !this->password.empty() && (*password != this->password)) {
         return JoinError::INCORRECT_PASSWORD;
       }

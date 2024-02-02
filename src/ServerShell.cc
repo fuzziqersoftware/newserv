@@ -154,7 +154,23 @@ Server commands:\n\
       gc-password=<password> (GC password)\n\
       access-key=<access-key> (DC/GC/PC access key)\n\
       serial=<serial-number> (decimal serial number; required for all licenses)\n\
-      flags=<privilege-mask> (can be normal, mod, admin, root, or numeric)\n\
+      flags=<privilege-mask> (see below)\n\
+    If flags is specified in hex, the meanings of bits are:\n\
+      00000001 = Can kick other users offline\n\
+      00000002 = Can ban other users\n\
+      00000004 = Can silence other users\n\
+      00000010 = Can change lobby events\n\
+      00000020 = Can make server-wide announcements\n\
+      00000040 = Ignores game join restrictions (e.g. level/quest requirements)\n\
+      01000000 = Can use debugging commands\n\
+      02000000 = Can use cheat commands even if cheat mode is disabled\n\
+      04000000 = Can play any quest without progression/flags restrictions\n\
+      80000000 = License is a shared serial (disables Access Key and password\n\
+        checks; players will get Guild Cards based on their player names)\n\
+    There are also shorthands for some general privilege levels:\n\
+      flags=moderator = 00000007\n\
+      flags=admin = 000000FF\n\
+      flags=root = 7FFFFFFF\n\
   update-license SERIAL-NUMBER PARAMETERS...\n\
     Update an existing license. <serial-number> specifies which license to\n\
     update. The options in <parameters> are the same as for the add-license\n\
@@ -327,11 +343,11 @@ Proxy session commands:\n\
         if (mask == "normal") {
           l->flags = 0;
         } else if (mask == "mod") {
-          l->flags = License::Flag::MODERATOR;
+          l->replace_all_flags(License::Flag::MODERATOR);
         } else if (mask == "admin") {
-          l->flags = License::Flag::ADMINISTRATOR;
+          l->replace_all_flags(License::Flag::ADMINISTRATOR);
         } else if (mask == "root") {
-          l->flags = License::Flag::ROOT;
+          l->replace_all_flags(License::Flag::ROOT);
         } else {
           l->flags = stoul(mask, nullptr, 16);
         }
@@ -385,11 +401,11 @@ Proxy session commands:\n\
           if (mask == "normal") {
             l->flags = 0;
           } else if (mask == "mod") {
-            l->flags = License::Flag::MODERATOR;
+            l->replace_all_flags(License::Flag::MODERATOR);
           } else if (mask == "admin") {
-            l->flags = License::Flag::ADMINISTRATOR;
+            l->replace_all_flags(License::Flag::ADMINISTRATOR);
           } else if (mask == "root") {
-            l->flags = License::Flag::ROOT;
+            l->replace_all_flags(License::Flag::ROOT);
           } else {
             l->flags = stoul(mask, nullptr, 16);
           }

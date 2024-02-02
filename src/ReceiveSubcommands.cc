@@ -1201,7 +1201,7 @@ static void on_received_condition(shared_ptr<Client> c, uint8_t command, uint8_t
   if (l->is_game()) {
     forward_subcommand(c, command, flag, data, size);
     if (is_v1_or_v2(c->version()) && (cmd.client_id == c->lobby_client_id)) {
-      bool player_cheats_enabled = l->check_flag(Lobby::Flag::CHEATS_ENABLED) || (c->license->flags & License::Flag::CHEAT_ANYWHERE);
+      bool player_cheats_enabled = l->check_flag(Lobby::Flag::CHEATS_ENABLED) || (c->license->check_flag(License::Flag::CHEAT_ANYWHERE));
       if (player_cheats_enabled && c->config.check_flag(Client::Flag::INFINITE_HP_ENABLED)) {
         send_remove_conditions(c);
       }
@@ -1216,7 +1216,7 @@ static void on_hit_by_enemy(shared_ptr<Client> c, uint8_t command, uint8_t flag,
   if (l->is_game() && (cmd.client_id == c->lobby_client_id)) {
     forward_subcommand(c, command, flag, data, size);
     bool player_cheats_enabled = !is_v1(c->version()) &&
-        (l->check_flag(Lobby::Flag::CHEATS_ENABLED) || (c->license->flags & License::Flag::CHEAT_ANYWHERE));
+        (l->check_flag(Lobby::Flag::CHEATS_ENABLED) || (c->license->check_flag(License::Flag::CHEAT_ANYWHERE)));
     if (player_cheats_enabled && c->config.check_flag(Client::Flag::INFINITE_HP_ENABLED)) {
       send_player_stats_change(c, PlayerStatsChange::ADD_HP, 2550);
     }
@@ -1230,7 +1230,7 @@ static void on_cast_technique_finished(shared_ptr<Client> c, uint8_t command, ui
   if (l->is_game() && (cmd.header.client_id == c->lobby_client_id)) {
     forward_subcommand(c, command, flag, data, size);
     bool player_cheats_enabled = !is_v1(c->version()) &&
-        (l->check_flag(Lobby::Flag::CHEATS_ENABLED) || (c->license->flags & License::Flag::CHEAT_ANYWHERE));
+        (l->check_flag(Lobby::Flag::CHEATS_ENABLED) || (c->license->check_flag(License::Flag::CHEAT_ANYWHERE)));
     if (player_cheats_enabled && c->config.check_flag(Client::Flag::INFINITE_TP_ENABLED)) {
       send_player_stats_change(c, PlayerStatsChange::ADD_TP, 255);
     }

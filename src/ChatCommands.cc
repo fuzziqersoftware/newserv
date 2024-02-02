@@ -38,11 +38,11 @@ private:
   std::string user_msg;
 };
 
-static void check_license_flags(shared_ptr<Client> c, uint32_t mask) {
+static void check_license_flag(shared_ptr<Client> c, License::Flag flag) {
   if (!c->license) {
     throw precondition_failed("$C6You are not\nlogged in.");
   }
-  if ((c->license->flags & mask) != mask) {
+  if (!c->license->check_flag(flag)) {
     throw precondition_failed("$C6You do not have\npermission to\nrun this command.");
   }
 }
@@ -66,19 +66,20 @@ static void check_is_ep3(shared_ptr<Client> c, bool is_ep3) {
 }
 
 static void check_cheats_enabled(shared_ptr<Lobby> l, shared_ptr<Client> c) {
-  if (!l->check_flag(Lobby::Flag::CHEATS_ENABLED) && !(c->license->flags & License::Flag::CHEAT_ANYWHERE)) {
+  if (!l->check_flag(Lobby::Flag::CHEATS_ENABLED) && !c->license->check_flag(License::Flag::CHEAT_ANYWHERE)) {
     throw precondition_failed("$C6This command can\nonly be used in\ncheat mode.");
   }
 }
 
 static void check_cheats_allowed(shared_ptr<ServerState> s, shared_ptr<Client> c) {
-  if ((s->cheat_mode_behavior == ServerState::BehaviorSwitch::OFF) && !(c->license->flags & License::Flag::CHEAT_ANYWHERE)) {
+  if ((s->cheat_mode_behavior == ServerState::BehaviorSwitch::OFF) && !c->license->check_flag(License::Flag::CHEAT_ANYWHERE)) {
     throw precondition_failed("$C6Cheats are disabled\non this server.");
   }
 }
 
 static void check_cheats_allowed(shared_ptr<ServerState> s, shared_ptr<ProxyServer::LinkedSession> ses) {
-  if ((s->cheat_mode_behavior == ServerState::BehaviorSwitch::OFF) && (!ses->license || !(ses->license->flags & License::Flag::CHEAT_ANYWHERE))) {
+  if ((s->cheat_mode_behavior == ServerState::BehaviorSwitch::OFF) &&
+      (!ses->license || !ses->license->check_flag(License::Flag::CHEAT_ANYWHERE))) {
     throw precondition_failed("$C6Cheats are disabled\non this proxy.");
   }
 }
@@ -257,13 +258,13 @@ static void proxy_command_lobby_info(shared_ptr<ProxyServer::LinkedSession> ses,
 }
 
 static void server_command_ax(shared_ptr<Client> c, const std::string& args) {
-  check_license_flags(c, License::Flag::ANNOUNCE);
+  check_license_flag(c, License::Flag::ANNOUNCE);
   ax_messages_log.info("%s", args.c_str());
 }
 
 static void server_command_announce(shared_ptr<Client> c, const std::string& args) {
   auto s = c->require_server_state();
-  check_license_flags(c, License::Flag::ANNOUNCE);
+  check_license_flag(c, License::Flag::ANNOUNCE);
   send_text_message(s, args);
 }
 
@@ -280,7 +281,7 @@ static void proxy_command_arrow(shared_ptr<ProxyServer::LinkedSession> ses, cons
 }
 
 static void server_command_debug(shared_ptr<Client> c, const std::string&) {
-  check_license_flags(c, License::Flag::DEBUG);
+  check_license_flag(c, License::Flag::DEBUG);
   c->config.toggle_flag(Client::Flag::DEBUG_ENABLED);
   send_text_message_printf(c, "Debug %s", (c->config.check_flag(Client::Flag::DEBUG_ENABLED) ? "enabled" : "disabled"));
 }
@@ -543,7 +544,7 @@ static void server_command_show_material_counts(shared_ptr<Client> c, const std:
 }
 
 static void server_command_auction(shared_ptr<Client> c, const std::string&) {
-  check_license_flags(c, License::Flag::DEBUG);
+  check_license_flag(c, License::Flag::DEBUG);
   auto l = c->require_lobby();
   if (l->is_game() && l->is_ep3()) {
     G_InitiateCardAuction_GC_Ep3_6xB5x42 cmd;
@@ -746,7 +747,7 @@ static void server_command_cheat(shared_ptr<Client> c, const std::string&) {
     l->toggle_flag(Lobby::Flag::CHEATS_ENABLED);
     send_text_message_printf(l, "Cheat mode %s", l->check_flag(Lobby::Flag::CHEATS_ENABLED) ? "enabled" : "disabled");
 
-    if (!(c->license->flags & License::Flag::CHEAT_ANYWHERE)) {
+    if (!c->license->check_flag(License::Flag::CHEAT_ANYWHERE)) {
       size_t default_min_level = s->default_min_level_for_game(l->base_version, l->episode, l->difficulty);
       if (l->min_level < default_min_level) {
         l->min_level = default_min_level;
@@ -759,7 +760,7 @@ static void server_command_cheat(shared_ptr<Client> c, const std::string&) {
 static void server_command_lobby_event(shared_ptr<Client> c, const std::string& args) {
   auto l = c->require_lobby();
   check_is_game(l, false);
-  check_license_flags(c, License::Flag::CHANGE_EVENT);
+  check_license_flag(c, License::Flag::CHANGE_EVENT);
 
   uint8_t new_event = event_for_name(args);
   if (new_event == 0xFF) {
@@ -788,7 +789,7 @@ static void proxy_command_lobby_event(shared_ptr<ProxyServer::LinkedSession> ses
 }
 
 static void server_command_lobby_event_all(shared_ptr<Client> c, const std::string& args) {
-  check_license_flags(c, License::Flag::CHANGE_EVENT);
+  check_license_flag(c, License::Flag::CHANGE_EVENT);
 
   uint8_t new_event = event_for_name(args);
   if (new_event == 0xFF) {
@@ -1043,7 +1044,7 @@ static void server_command_min_level(shared_ptr<Client> c, const std::string& ar
   size_t new_min_level = stoull(args) - 1;
 
   auto s = c->require_server_state();
-  bool cheats_allowed = (l->check_flag(Lobby::Flag::CHEATS_ENABLED) || (c->license->flags & License::Flag::CHEAT_ANYWHERE));
+  bool cheats_allowed = (l->check_flag(Lobby::Flag::CHEATS_ENABLED) || c->license->check_flag(License::Flag::CHEAT_ANYWHERE));
   if (!cheats_allowed) {
     size_t default_min_level = s->default_min_level_for_game(l->base_version, l->episode, l->difficulty);
     if (new_min_level < default_min_level) {
@@ -1084,7 +1085,8 @@ static void server_command_edit(shared_ptr<Client> c, const std::string& args) {
     throw precondition_failed("$C6This command cannot\nbe used for your\nversion of PSO.");
   }
 
-  bool cheats_allowed = ((s->cheat_mode_behavior != ServerState::BehaviorSwitch::OFF) || (c->license->flags & License::Flag::CHEAT_ANYWHERE));
+  bool cheats_allowed = ((s->cheat_mode_behavior != ServerState::BehaviorSwitch::OFF) ||
+      c->license->check_flag(License::Flag::CHEAT_ANYWHERE));
 
   string encoded_args = tolower(args);
   vector<string> tokens = split(encoded_args, ' ');
@@ -1261,12 +1263,20 @@ static void server_command_bbchar(shared_ptr<Client> c, const std::string& args)
 }
 
 static void server_command_savechar(shared_ptr<Client> c, const std::string& args) {
+  if (c->license->check_flag(License::Flag::IS_SHARED_SERIAL)) {
+    send_text_message(c, "$C7This command cannot\nbe used on a shared\nserial number");
+    return;
+  }
   server_command_bbchar_savechar(c, args, false);
 }
 
 static void server_command_loadchar(shared_ptr<Client> c, const std::string& args) {
   if (!is_v1_or_v2(c->version())) {
     send_text_message(c, "$C7This command can only\nbe used on v1 or v2");
+    return;
+  }
+  if (c->license->check_flag(License::Flag::IS_SHARED_SERIAL)) {
+    send_text_message(c, "$C7This command cannot\nbe used on a shared\nserial number");
     return;
   }
   auto l = c->require_lobby();
@@ -1314,7 +1324,7 @@ static string name_for_client(shared_ptr<Client> c) {
 static void server_command_silence(shared_ptr<Client> c, const std::string& args) {
   auto s = c->require_server_state();
   auto l = c->require_lobby();
-  check_license_flags(c, License::Flag::SILENCE_USER);
+  check_license_flag(c, License::Flag::SILENCE_USER);
 
   auto target = s->find_client(&args);
   if (!target->license) {
@@ -1323,7 +1333,7 @@ static void server_command_silence(shared_ptr<Client> c, const std::string& args
     return;
   }
 
-  if (target->license->flags & License::Flag::MODERATOR) {
+  if (target->license->check_flag(License::Flag::SILENCE_USER)) {
     send_text_message(c, "$C6You do not have\nsufficient privileges.");
     return;
   }
@@ -1337,7 +1347,7 @@ static void server_command_silence(shared_ptr<Client> c, const std::string& args
 static void server_command_kick(shared_ptr<Client> c, const std::string& args) {
   auto s = c->require_server_state();
   auto l = c->require_lobby();
-  check_license_flags(c, License::Flag::KICK_USER);
+  check_license_flag(c, License::Flag::KICK_USER);
 
   auto target = s->find_client(&args);
   if (!target->license) {
@@ -1346,7 +1356,7 @@ static void server_command_kick(shared_ptr<Client> c, const std::string& args) {
     return;
   }
 
-  if (target->license->flags & License::Flag::MODERATOR) {
+  if (target->license->check_flag(License::Flag::KICK_USER)) {
     send_text_message(c, "$C6You do not have\nsufficient privileges.");
     return;
   }
@@ -1360,7 +1370,7 @@ static void server_command_kick(shared_ptr<Client> c, const std::string& args) {
 static void server_command_ban(shared_ptr<Client> c, const std::string& args) {
   auto s = c->require_server_state();
   auto l = c->require_lobby();
-  check_license_flags(c, License::Flag::BAN_USER);
+  check_license_flag(c, License::Flag::BAN_USER);
 
   size_t space_pos = args.find(' ');
   if (space_pos == string::npos) {
@@ -1376,7 +1386,7 @@ static void server_command_ban(shared_ptr<Client> c, const std::string& args) {
     return;
   }
 
-  if (target->license->flags & License::Flag::BAN_USER) {
+  if (target->license->check_flag(License::Flag::BAN_USER)) {
     send_text_message(c, "$C6You do not have\nsufficient privileges.");
     return;
   }

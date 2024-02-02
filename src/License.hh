@@ -12,22 +12,23 @@ class LicenseIndex;
 
 class License {
 public:
-  enum Flag : uint32_t {
+  enum class Flag : uint32_t {
     // clang-format off
     KICK_USER                  = 0x00000001,
     BAN_USER                   = 0x00000002,
     SILENCE_USER               = 0x00000004,
-    CHANGE_LOBBY_INFO          = 0x00000008,
     CHANGE_EVENT               = 0x00000010,
     ANNOUNCE                   = 0x00000020,
     FREE_JOIN_GAMES            = 0x00000040,
-    UNLOCK_GAMES               = 0x00000080,
     DEBUG                      = 0x01000000,
     CHEAT_ANYWHERE             = 0x02000000,
     DISABLE_QUEST_REQUIREMENTS = 0x04000000,
     MODERATOR                  = 0x00000007,
     ADMINISTRATOR              = 0x000000FF,
     ROOT                       = 0x7FFFFFFF,
+    IS_SHARED_SERIAL           = 0x80000000,
+    // NOTE: When adding or changing license flags, don't forget to change the
+    // documentation in the shell's help text.
 
     UNUSED_BITS                = 0x78FFFF00,
     // clang-format on
@@ -59,6 +60,22 @@ public:
   JSON json() const;
   virtual void save() const;
   virtual void delete_file() const;
+
+  [[nodiscard]] inline bool check_flag(Flag flag) const {
+    return !!(this->flags & static_cast<uint32_t>(flag));
+  }
+  inline void set_flag(Flag flag) {
+    this->flags |= static_cast<uint32_t>(flag);
+  }
+  inline void clear_flag(Flag flag) {
+    this->flags &= (~static_cast<uint32_t>(flag));
+  }
+  inline void toggle_flag(Flag flag) {
+    this->flags ^= static_cast<uint32_t>(flag);
+  }
+  inline void replace_all_flags(Flag mask) {
+    this->flags = static_cast<uint32_t>(mask);
+  }
 
   std::string str() const;
 };
@@ -106,9 +123,19 @@ public:
   void add(std::shared_ptr<License> l);
   void remove(uint32_t serial_number);
 
-  std::shared_ptr<License> verify_v1_v2(uint32_t serial_number, const std::string& access_key) const;
-  std::shared_ptr<License> verify_gc(uint32_t serial_number, const std::string& access_key) const;
-  std::shared_ptr<License> verify_gc(uint32_t serial_number, const std::string& access_key, const std::string& password) const;
+  std::shared_ptr<License> verify_v1_v2(
+      uint32_t serial_number,
+      const std::string& access_key,
+      const std::string& character_name) const;
+  std::shared_ptr<License> verify_gc_no_password(
+      uint32_t serial_number,
+      const std::string& access_key,
+      const std::string& character_name) const;
+  std::shared_ptr<License> verify_gc_with_password(
+      uint32_t serial_number,
+      const std::string& access_key,
+      const std::string& password,
+      const std::string& character_name) const;
   std::shared_ptr<License> verify_xb(const std::string& gamertag, uint64_t user_id, uint64_t account_id) const;
   std::shared_ptr<License> verify_bb(const std::string& username, const std::string& password) const;
 
@@ -116,6 +143,13 @@ protected:
   std::unordered_map<std::string, std::shared_ptr<License>> bb_username_to_license;
   std::unordered_map<std::string, std::shared_ptr<License>> xb_gamertag_to_license;
   std::unordered_map<uint32_t, std::shared_ptr<License>> serial_number_to_license;
+
+  std::shared_ptr<License> create_temporary_license_for_shared_license(
+      uint32_t base_flags,
+      uint32_t serial_number,
+      const std::string& access_key,
+      const std::string& password,
+      const std::string& character_name) const;
 };
 
 class DiskLicenseIndex : public LicenseIndex {

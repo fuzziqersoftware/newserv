@@ -1519,7 +1519,7 @@ void send_quest_categories_menu_t(
     QuestMenuType menu_type,
     Episode episode) {
   QuestIndex::IncludeCondition include_condition = nullptr;
-  if (!(c->license->flags & License::Flag::DISABLE_QUEST_REQUIREMENTS)) {
+  if (!c->license->check_flag(License::Flag::DISABLE_QUEST_REQUIREMENTS)) {
     auto l = c->lobby.lock();
     include_condition = l ? l->quest_include_condition() : nullptr;
   }

@@ -57,7 +57,7 @@ static shared_ptr<const Menu> proxy_options_menu_for_client(shared_ptr<const Cli
       "Block patches", "Disable patches sent\nby the remote server");
   add_option(ProxyOptionsMenuItemID::SWITCH_ASSIST, Client::Flag::SWITCH_ASSIST_ENABLED,
       "Switch assist", "Automatically try\nto unlock 2-player\ndoors when you step\non both switches\nsequentially");
-  if ((s->cheat_mode_behavior != ServerState::BehaviorSwitch::OFF) || (c->license->flags & License::Flag::CHEAT_ANYWHERE)) {
+  if ((s->cheat_mode_behavior != ServerState::BehaviorSwitch::OFF) || c->license->check_flag(License::Flag::CHEAT_ANYWHERE)) {
     if (!is_ep3(c->version())) {
       add_option(ProxyOptionsMenuItemID::INFINITE_HP, Client::Flag::INFINITE_HP_ENABLED,
           "Infinite HP", "Enable automatic HP\nrestoration when\nyou are hit by an\nenemy or trap\n\nCannot revive you\nfrom one-hit kills");
@@ -397,7 +397,7 @@ static void on_DB_V3(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
 
   uint32_t serial_number = stoul(cmd.serial_number.decode(), nullptr, 16);
   try {
-    auto l = s->license_index->verify_gc(serial_number, cmd.access_key.decode(), cmd.password.decode());
+    auto l = s->license_index->verify_gc_with_password(serial_number, cmd.access_key.decode(), cmd.password.decode(), "");
     c->set_license(l);
     send_command(c, 0x9A, 0x02);
 
@@ -448,7 +448,7 @@ static void on_88_DCNTE(shared_ptr<Client> c, uint16_t, uint32_t, string& data) 
 
   uint32_t serial_number = stoul(cmd.serial_number.decode(), nullptr, 16);
   try {
-    shared_ptr<License> l = s->license_index->verify_v1_v2(serial_number, cmd.access_key.decode());
+    shared_ptr<License> l = s->license_index->verify_v1_v2(serial_number, cmd.access_key.decode(), "");
     c->set_license(l);
     send_command(c, 0x88, 0x00);
 
@@ -493,7 +493,7 @@ static void on_8B_DCNTE(shared_ptr<Client> c, uint16_t, uint32_t, string& data) 
 
   uint32_t serial_number = stoul(cmd.serial_number.decode(), nullptr, 16);
   try {
-    shared_ptr<License> l = s->license_index->verify_v1_v2(serial_number, cmd.access_key.decode());
+    shared_ptr<License> l = s->license_index->verify_v1_v2(serial_number, cmd.access_key.decode(), cmd.name.decode());
     c->set_license(l);
 
   } catch (const LicenseIndex::no_username& e) {
@@ -547,7 +547,7 @@ static void on_90_DC(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
 
   uint32_t serial_number = stoul(cmd.serial_number.decode(), nullptr, 16);
   try {
-    shared_ptr<License> l = s->license_index->verify_v1_v2(serial_number, cmd.access_key.decode());
+    shared_ptr<License> l = s->license_index->verify_v1_v2(serial_number, cmd.access_key.decode(), "");
     c->set_license(l);
     send_command(c, 0x90, 0x02);
 
@@ -604,7 +604,7 @@ static void on_93_DC(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
 
   uint32_t serial_number = stoul(cmd.serial_number.decode(), nullptr, 16);
   try {
-    shared_ptr<License> l = s->license_index->verify_v1_v2(serial_number, cmd.access_key.decode());
+    shared_ptr<License> l = s->license_index->verify_v1_v2(serial_number, cmd.access_key.decode(), cmd.name.decode());
     c->set_license(l);
 
   } catch (const LicenseIndex::no_username& e) {
@@ -700,7 +700,7 @@ static void on_9A(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
           }
         } else {
           serial_number = stoul(cmd.serial_number.decode(), nullptr, 16);
-          l = s->license_index->verify_v1_v2(serial_number, cmd.access_key.decode());
+          l = s->license_index->verify_v1_v2(serial_number, cmd.access_key.decode(), "");
         }
         break;
       }
@@ -709,7 +709,7 @@ static void on_9A(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
       case Version::GC_EP3_NTE:
       case Version::GC_EP3: {
         serial_number = stoul(cmd.serial_number.decode(), nullptr, 16);
-        l = s->license_index->verify_gc(serial_number, cmd.access_key.decode());
+        l = s->license_index->verify_gc_no_password(serial_number, cmd.access_key.decode(), "");
         break;
       }
       default:
@@ -772,13 +772,13 @@ static void on_9C(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
     switch (c->version()) {
       case Version::DC_V2:
       case Version::PC_V2:
-        l = s->license_index->verify_v1_v2(serial_number, cmd.access_key.decode());
+        l = s->license_index->verify_v1_v2(serial_number, cmd.access_key.decode(), "");
         break;
       case Version::GC_NTE:
       case Version::GC_V3:
       case Version::GC_EP3_NTE:
       case Version::GC_EP3:
-        l = s->license_index->verify_gc(serial_number, cmd.access_key.decode(), cmd.password.decode());
+        l = s->license_index->verify_gc_with_password(serial_number, cmd.access_key.decode(), cmd.password.decode(), "");
         break;
       default:
         // TODO: PC_NTE can probably send 9C, but due to the way we've
@@ -911,7 +911,7 @@ static void on_9D_9E(shared_ptr<Client> c, uint16_t command, uint32_t, string& d
           }
         } else {
           serial_number = stoul(base_cmd->serial_number.decode(), nullptr, 16);
-          l = s->license_index->verify_v1_v2(serial_number, base_cmd->access_key.decode());
+          l = s->license_index->verify_v1_v2(serial_number, base_cmd->access_key.decode(), base_cmd->name.decode());
         }
         break;
       case Version::GC_NTE:
@@ -919,7 +919,7 @@ static void on_9D_9E(shared_ptr<Client> c, uint16_t command, uint32_t, string& d
       case Version::GC_EP3_NTE:
       case Version::GC_EP3:
         serial_number = stoul(base_cmd->serial_number.decode(), nullptr, 16);
-        l = s->license_index->verify_gc(serial_number, base_cmd->access_key.decode());
+        l = s->license_index->verify_gc_no_password(serial_number, base_cmd->access_key.decode(), base_cmd->name.decode());
         break;
       default:
         throw logic_error("unsupported versioned command");
@@ -2477,7 +2477,7 @@ static void on_10(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
             break;
           }
         }
-        if (!(c->license->flags & License::Flag::DISABLE_QUEST_REQUIREMENTS)) {
+        if (!c->license->check_flag(License::Flag::DISABLE_QUEST_REQUIREMENTS)) {
           include_condition = l->quest_include_condition();
         }
       }
@@ -4015,8 +4015,7 @@ shared_ptr<Lobby> create_game_generic(
   size_t min_level = s->default_min_level_for_game(c->version(), episode, difficulty);
 
   auto p = c->character();
-  if (!(c->license->flags & License::Flag::FREE_JOIN_GAMES) &&
-      (min_level > p->disp.stats.level)) {
+  if (!c->license->check_flag(License::Flag::FREE_JOIN_GAMES) && (min_level > p->disp.stats.level)) {
     // Note: We don't throw here because this is a situation players might
     // actually encounter while playing the game normally
     send_lobby_message_box(c, "Your level is too\nlow for this\ndifficulty");

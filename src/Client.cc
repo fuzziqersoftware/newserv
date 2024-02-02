@@ -335,7 +335,7 @@ shared_ptr<const TeamIndex::Team> Client::team() const {
 }
 
 bool Client::can_see_quest(shared_ptr<const Quest> q, uint8_t event, uint8_t difficulty, size_t num_players) const {
-  if (this->license && (this->license->flags & License::Flag::DISABLE_QUEST_REQUIREMENTS)) {
+  if (this->license && this->license->check_flag(License::Flag::DISABLE_QUEST_REQUIREMENTS)) {
     return true;
   }
   if (!q->available_expression) {
@@ -356,7 +356,7 @@ bool Client::can_see_quest(shared_ptr<const Quest> q, uint8_t event, uint8_t dif
 }
 
 bool Client::can_play_quest(shared_ptr<const Quest> q, uint8_t event, uint8_t difficulty, size_t num_players) const {
-  if (this->license && (this->license->flags & License::Flag::DISABLE_QUEST_REQUIREMENTS)) {
+  if (this->license && this->license->check_flag(License::Flag::DISABLE_QUEST_REQUIREMENTS)) {
     return true;
   }
   if (!q->enabled_expression) {

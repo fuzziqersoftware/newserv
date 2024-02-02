@@ -3,6 +3,7 @@
 #include <string.h>
 
 #include <phosg/Filesystem.hh>
+#include <phosg/Hash.hh>
 #include <phosg/Time.hh>
 
 #include "License.hh"
@@ -165,56 +166,75 @@ void LicenseIndex::remove(uint32_t serial_number) {
   }
 }
 
-shared_ptr<License> LicenseIndex::verify_v1_v2(uint32_t serial_number, const string& access_key) const {
+shared_ptr<License> LicenseIndex::verify_v1_v2(
+    uint32_t serial_number,
+    const string& access_key,
+    const string& character_name) const {
   if (serial_number == 0) {
     throw no_username();
   }
   try {
     auto& license = this->serial_number_to_license.at(serial_number);
+    if (license->ban_end_time && (license->ban_end_time >= now())) {
+      throw invalid_argument("user is banned");
+    }
+    if (license->check_flag(License::Flag::IS_SHARED_SERIAL)) {
+      return this->create_temporary_license_for_shared_license(license->flags, serial_number, access_key, "", character_name);
+    }
     if (license->access_key.compare(0, 8, access_key) != 0) {
       throw incorrect_access_key();
     }
-    if (license->ban_end_time && (license->ban_end_time >= now())) {
-      throw invalid_argument("user is banned");
-    }
     return license;
   } catch (const out_of_range&) {
     throw missing_license();
   }
 }
 
-shared_ptr<License> LicenseIndex::verify_gc(uint32_t serial_number, const string& access_key) const {
+shared_ptr<License> LicenseIndex::verify_gc_no_password(
+    uint32_t serial_number,
+    const string& access_key,
+    const string& character_name) const {
   if (serial_number == 0) {
     throw no_username();
   }
   try {
     auto& license = this->serial_number_to_license.at(serial_number);
+    if (license->ban_end_time && (license->ban_end_time >= now())) {
+      throw invalid_argument("user is banned");
+    }
+    if (license->check_flag(License::Flag::IS_SHARED_SERIAL)) {
+      return this->create_temporary_license_for_shared_license(license->flags, serial_number, access_key, "", character_name);
+    }
     if (license->access_key != access_key) {
       throw incorrect_access_key();
     }
-    if (license->ban_end_time && (license->ban_end_time >= now())) {
-      throw invalid_argument("user is banned");
-    }
     return license;
   } catch (const out_of_range&) {
     throw missing_license();
   }
 }
 
-shared_ptr<License> LicenseIndex::verify_gc(uint32_t serial_number, const string& access_key, const string& password) const {
+shared_ptr<License> LicenseIndex::verify_gc_with_password(
+    uint32_t serial_number,
+    const string& access_key,
+    const string& password,
+    const string& character_name) const {
   if (serial_number == 0) {
     throw no_username();
   }
   try {
     auto& license = this->serial_number_to_license.at(serial_number);
+    if (license->ban_end_time && (license->ban_end_time >= now())) {
+      throw invalid_argument("user is banned");
+    }
+    if (license->check_flag(License::Flag::IS_SHARED_SERIAL)) {
+      return this->create_temporary_license_for_shared_license(license->flags, serial_number, access_key, password, character_name);
+    }
     if (license->access_key != access_key) {
       throw incorrect_access_key();
     }
     if (license->gc_password != password) {
       throw incorrect_password();
-    }
-    if (license->ban_end_time && (license->ban_end_time >= now())) {
-      throw invalid_argument("user is banned");
     }
     return license;
   } catch (const out_of_range&) {
@@ -228,14 +248,17 @@ shared_ptr<License> LicenseIndex::verify_xb(const string& gamertag, uint64_t use
   }
   try {
     auto& license = this->xb_gamertag_to_license.at(gamertag);
+    if (license->check_flag(License::Flag::IS_SHARED_SERIAL)) {
+      throw missing_license(); // XB users cannot use shared serials
+    }
+    if (license->ban_end_time && (license->ban_end_time >= now())) {
+      throw invalid_argument("user is banned");
+    }
     if (license->xb_user_id && (license->xb_user_id != user_id)) {
       throw incorrect_access_key();
     }
     if (license->xb_account_id && (license->xb_account_id != account_id)) {
       throw incorrect_access_key();
-    }
-    if (license->ban_end_time && (license->ban_end_time >= now())) {
-      throw invalid_argument("user is banned");
     }
     return license;
   } catch (const out_of_range&) {
@@ -249,16 +272,36 @@ shared_ptr<License> LicenseIndex::verify_bb(const string& username, const string
   }
   try {
     auto& license = this->bb_username_to_license.at(username);
-    if (license->bb_password != password) {
-      throw incorrect_password();
+    if (license->check_flag(License::Flag::IS_SHARED_SERIAL)) {
+      throw missing_license(); // BB users cannot use shared serials
     }
     if (license->ban_end_time && (license->ban_end_time >= now())) {
       throw invalid_argument("user is banned");
+    }
+    if (license->bb_password != password) {
+      throw incorrect_password();
     }
     return license;
   } catch (const out_of_range&) {
     throw missing_license();
   }
+}
+
+shared_ptr<License> LicenseIndex::create_temporary_license_for_shared_license(
+    uint32_t base_flags,
+    uint32_t serial_number,
+    const string& access_key,
+    const string& password,
+    const string& character_name) const {
+  uint32_t temp_serial_number = fnv1a32(&serial_number, sizeof(serial_number));
+  temp_serial_number = fnv1a32(access_key, temp_serial_number);
+  temp_serial_number = fnv1a32(password, temp_serial_number);
+  temp_serial_number = fnv1a32(character_name, temp_serial_number);
+  auto ret = this->create_temporary_license();
+  ret->serial_number = temp_serial_number & 0x7FFFFFFF;
+  ret->flags = base_flags;
+  ret->set_flag(License::Flag::IS_SHARED_SERIAL);
+  return ret;
 }
 
 DiskLicenseIndex::DiskLicenseIndex() {

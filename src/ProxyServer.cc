@@ -278,7 +278,8 @@ void ProxyServer::UnlinkedSession::on_input(Channel& ch, uint16_t command, uint3
           ses->channel.version = Version::DC_NTE;
           ses->log.info("Version changed to DC_NTE");
           const auto& cmd = check_size_t<C_Login_DCNTE_8B>(data, sizeof(C_LoginExtended_DCNTE_8B));
-          ses->license = s->license_index->verify_v1_v2(stoul(cmd.serial_number.decode(), nullptr, 16), cmd.access_key.decode());
+          ses->license = s->license_index->verify_v1_v2(
+              stoul(cmd.serial_number.decode(), nullptr, 16), cmd.access_key.decode(), cmd.name.decode());
           ses->sub_version = cmd.sub_version;
           ses->channel.language = cmd.language;
           ses->character_name = cmd.name.decode(ses->channel.language);
@@ -287,7 +288,8 @@ void ProxyServer::UnlinkedSession::on_input(Channel& ch, uint16_t command, uint3
           ses->channel.version = Version::DC_V1;
           ses->log.info("Version changed to DC_V1");
           const auto& cmd = check_size_t<C_LoginV1_DC_93>(data);
-          ses->license = s->license_index->verify_v1_v2(stoul(cmd.serial_number.decode(), nullptr, 16), cmd.access_key.decode());
+          ses->license = s->license_index->verify_v1_v2(
+              stoul(cmd.serial_number.decode(), nullptr, 16), cmd.access_key.decode(), cmd.name.decode());
           ses->sub_version = cmd.sub_version;
           ses->channel.language = cmd.language;
           ses->character_name = cmd.name.decode(ses->channel.language);
@@ -297,11 +299,13 @@ void ProxyServer::UnlinkedSession::on_input(Channel& ch, uint16_t command, uint3
           if (cmd.sub_version >= 0x30) {
             ses->log.info("Version changed to GC_NTE");
             ses->channel.version = Version::GC_NTE;
-            ses->license = s->license_index->verify_gc(stoul(cmd.serial_number.decode(), nullptr, 16), cmd.access_key.decode());
+            ses->license = s->license_index->verify_gc_no_password(
+                stoul(cmd.serial_number.decode(), nullptr, 16), cmd.access_key.decode(), cmd.name.decode());
           } else { // DC V2
             ses->log.info("Version changed to DC_V2");
             ses->channel.version = Version::DC_V2;
-            ses->license = s->license_index->verify_v1_v2(stoul(cmd.serial_number.decode(), nullptr, 16), cmd.access_key.decode());
+            ses->license = s->license_index->verify_v1_v2(
+                stoul(cmd.serial_number.decode(), nullptr, 16), cmd.access_key.decode(), cmd.name.decode());
           }
           ses->sub_version = cmd.sub_version;
           ses->channel.language = cmd.language;
@@ -319,7 +323,8 @@ void ProxyServer::UnlinkedSession::on_input(Channel& ch, uint16_t command, uint3
           throw runtime_error("command is not 9D");
         }
         const auto& cmd = check_size_t<C_Login_DC_PC_GC_9D>(data, sizeof(C_LoginExtended_PC_9D));
-        ses->license = s->license_index->verify_v1_v2(stoul(cmd.serial_number.decode(), nullptr, 16), cmd.access_key.decode());
+        ses->license = s->license_index->verify_v1_v2(
+            stoul(cmd.serial_number.decode(), nullptr, 16), cmd.access_key.decode(), cmd.name.decode());
         ses->sub_version = cmd.sub_version;
         ses->channel.language = cmd.language;
         ses->character_name = cmd.name.decode(ses->channel.language);
@@ -332,7 +337,8 @@ void ProxyServer::UnlinkedSession::on_input(Channel& ch, uint16_t command, uint3
         // We should only get a 9E while the session is unlinked
         if (command == 0x9E) {
           const auto& cmd = check_size_t<C_Login_GC_9E>(data, sizeof(C_LoginExtended_GC_9E));
-          ses->license = s->license_index->verify_gc(stoul(cmd.serial_number.decode(), nullptr, 16), cmd.access_key.decode());
+          ses->license = s->license_index->verify_gc_no_password(
+              stoul(cmd.serial_number.decode(), nullptr, 16), cmd.access_key.decode(), cmd.name.decode());
           ses->sub_version = cmd.sub_version;
           ses->channel.language = cmd.language;
           ses->character_name = cmd.name.decode(ses->channel.language);
