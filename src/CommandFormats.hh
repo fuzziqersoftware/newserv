@@ -5506,6 +5506,8 @@ struct G_CardBattleCommandHeader {
   // set_mask_for_ep3_game_command in SendCommands.cc. The Episode 3 client
   // never sends commands that have a nonzero value in this field, but it does
   // properly handle received commands with nonzero values in this field.
+  // This only applies to Episode 3 final - the Trial Edition does not support
+  // masking and may send uninitialized data in this field.
   uint8_t mask_key = 0x00;
   uint8_t unused2 = 0x00;
 } __packed__;

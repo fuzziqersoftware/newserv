@@ -987,7 +987,7 @@ static HandlerResult S_6x(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t, 
             (static_cast<uint8_t>(data[0]) == 0xB4) ||
             (static_cast<uint8_t>(data[0]) == 0xB5))) {
       const auto& header = check_size_t<G_CardBattleCommandHeader>(data, 0xFFFF);
-      if (header.mask_key) {
+      if (header.mask_key && (ses->version() != Version::GC_EP3_NTE)) {
         set_mask_for_ep3_game_command(data.data(), data.size(), 0);
         modified = true;
       }

@@ -1294,7 +1294,7 @@ static bool add_next_game_client(shared_ptr<Lobby> l) {
     state_cmd.state.first_team_turn = 0xFF;
     state_cmd.state.tournament_flag = 0x01;
     state_cmd.state.client_sc_card_types.clear(Episode3::CardType::INVALID_FF);
-    if (!(s->ep3_behavior_flags & Episode3::BehaviorFlag::DISABLE_MASKING)) {
+    if ((c->version() != Version::GC_EP3_NTE) && !(s->ep3_behavior_flags & Episode3::BehaviorFlag::DISABLE_MASKING)) {
       uint8_t mask_key = (random_object<uint32_t>() % 0xFF) + 1;
       set_mask_for_ep3_game_command(&state_cmd, sizeof(state_cmd), mask_key);
     }

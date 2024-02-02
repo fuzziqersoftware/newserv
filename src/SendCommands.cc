@@ -3109,7 +3109,8 @@ void send_ep3_set_tournament_player_decks(shared_ptr<Client> c) {
   add_entries_for_team(match->preceding_a->winner_team, 0);
   add_entries_for_team(match->preceding_b->winner_team, 2);
 
-  if (!(s->ep3_behavior_flags & Episode3::BehaviorFlag::DISABLE_MASKING)) {
+  if ((c->version() != Version::GC_EP3_NTE) &&
+      !(s->ep3_behavior_flags & Episode3::BehaviorFlag::DISABLE_MASKING)) {
     uint8_t mask_key = (random_object<uint32_t>() % 0xFF) + 1;
     set_mask_for_ep3_game_command(&cmd, sizeof(cmd), mask_key);
   }
@@ -3170,7 +3171,8 @@ void send_ep3_tournament_match_result(shared_ptr<Lobby> l, uint32_t meseta_rewar
     cmd.winner_team_id = (match->preceding_b->winner_team == match->winner_team);
     cmd.meseta_amount = meseta_reward;
     cmd.meseta_reward_text.encode("You got %s meseta!", 1);
-    if (!(s->ep3_behavior_flags & Episode3::BehaviorFlag::DISABLE_MASKING)) {
+    if ((lc->version() != Version::GC_EP3_NTE) &&
+        !(s->ep3_behavior_flags & Episode3::BehaviorFlag::DISABLE_MASKING)) {
       uint8_t mask_key = (random_object<uint32_t>() % 0xFF) + 1;
       set_mask_for_ep3_game_command(&cmd, sizeof(cmd), mask_key);
     }
@@ -3197,7 +3199,8 @@ void send_ep3_update_game_metadata(shared_ptr<Lobby> l) {
   {
     G_SetGameMetadata_GC_Ep3_6xB4x52 cmd;
     cmd.total_spectators = total_spectators;
-    if (!(s->ep3_behavior_flags & Episode3::BehaviorFlag::DISABLE_MASKING)) {
+    if ((l->base_version != Version::GC_EP3_NTE) &&
+        !(s->ep3_behavior_flags & Episode3::BehaviorFlag::DISABLE_MASKING)) {
       uint8_t mask_key = (random_object<uint32_t>() % 0xFF) + 1;
       set_mask_for_ep3_game_command(&cmd, sizeof(cmd), mask_key);
     }
@@ -3235,7 +3238,8 @@ void send_ep3_update_game_metadata(shared_ptr<Lobby> l) {
       cmd.total_spectators = total_spectators;
       cmd.text_size = text.size();
       cmd.text.encode(text, 1);
-      if (!(s->ep3_behavior_flags & Episode3::BehaviorFlag::DISABLE_MASKING)) {
+      if ((watcher_l->base_version != Version::GC_EP3_NTE) &&
+          !(s->ep3_behavior_flags & Episode3::BehaviorFlag::DISABLE_MASKING)) {
         uint8_t mask_key = (random_object<uint32_t>() % 0xFF) + 1;
         set_mask_for_ep3_game_command(&cmd, sizeof(cmd), mask_key);
       }

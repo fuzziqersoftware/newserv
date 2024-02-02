@@ -203,6 +203,7 @@ void Server::send(const void* data, size_t size, uint8_t command, bool enable_ma
 
     string masked_data;
     if (enable_masking &&
+        (l->base_version != Version::GC_EP3_NTE) &&
         !(this->options.behavior_flags & BehaviorFlag::DISABLE_MASKING) &&
         (size >= 8)) {
       masked_data.assign(reinterpret_cast<const char*>(data), size);
