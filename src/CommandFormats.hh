@@ -3661,6 +3661,16 @@ struct S_SetShutdownCommand_BB_01EF {
 // overwrites the lobby data for the player given by .client_id without
 // reloading the game or lobby.
 
+// This command probably exists to handle cases like the following:
+// 1. Player A is in a team and is not the team master. Player A creates a game.
+// 2. The master of the team changes to player B during this game.
+// 3. Player B then joins the game that A is in.
+// Some effects (e.g. Commander Blade) depend on the team master ID in the
+// PlayerLobbyDataBB structure, and this is the only way to update that
+// structure without reloading the lobby or game. If this command did not exist,
+// then player A would not know that B was the master when they join the game,
+// so A would not see the bonus from Commander Blade if B uses it.
+
 // F1: Invalid command
 // F2: Invalid command
 // F3: Invalid command
