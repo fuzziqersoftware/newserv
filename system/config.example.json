@@ -898,8 +898,9 @@
   "CheatModeBehavior": "OnByDefault",
 
   // Whether to enable rare drop notifications by default. Players can toggle
-  // this behavior for themselves with the $rarenotifs command.
-  "RareNotificationsEnabledByDefault": false,
+  // this behavior for themselves with the $itemnotifs command.
+  "RareNotificationsEnabledByDefaultV1V2": false,
+  "RareNotificationsEnabledByDefaultV3V4": false,
 
   // Whether to enable patches on Episode 3 USA. This functionality depends on
   // exploiting a bug in Episode 3, and while it seems to work reliably on

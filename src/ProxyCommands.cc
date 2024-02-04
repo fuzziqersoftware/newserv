@@ -1048,6 +1048,10 @@ static HandlerResult S_6x(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t, 
         return HandlerResult::Type::SUPPRESS;
       }
 
+    } else if (data[0] == 0x5F) {
+      const auto& cmd = check_size_t<G_DropItem_DC_6x5F>(data, sizeof(G_DropItem_PC_V3_BB_6x5F));
+      send_item_notification_if_needed(ses->require_server_state(), ses->client_channel, ses->config, cmd.item.item, true);
+
     } else if ((data[0] == 0x60) && ses->next_drop_item.data1d[0] && !is_v4(ses->version())) {
       const auto& cmd = check_size_t<G_StandardDropItemRequest_DC_6x60>(
           data, sizeof(G_StandardDropItemRequest_PC_V3_BB_6x60));
@@ -1785,6 +1789,9 @@ static HandlerResult C_6x(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t c
         send_player_stats_change(ses->server_channel,
             ses->lobby_client_id, PlayerStatsChange::ADD_TP, 255);
       }
+    } else if (data[0] == 0x5F) {
+      const auto& cmd = check_size_t<G_DropItem_DC_6x5F>(data, sizeof(G_DropItem_PC_V3_BB_6x5F));
+      send_item_notification_if_needed(ses->require_server_state(), ses->client_channel, ses->config, cmd.item.item, true);
     }
   }
   return C_6x<void>(ses, command, flag, data);

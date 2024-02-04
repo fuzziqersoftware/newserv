@@ -195,7 +195,8 @@ Client::Client(
       external_bank_character_index(-1),
       last_play_time_update(0) {
   this->config.set_flags_for_version(version, -1);
-  if (server->get_state()->default_rare_notifs_enabled) {
+  auto s = server->get_state();
+  if (is_v1_or_v2(this->version()) ? s->default_rare_notifs_enabled_v1_v2 : s->default_rare_notifs_enabled_v3_v4) {
     this->config.set_flag(Flag::RARE_DROP_NOTIFICATIONS_ENABLED);
   }
   this->config.specific_version = default_specific_version_for_version(version, -1);
@@ -209,7 +210,7 @@ Client::Client(
   // Don't print data sent to patch clients to the logs. The patch server
   // protocol is fully understood and data logs for patch clients are generally
   // more annoying than helpful at this point.
-  if ((server->get_state()->hide_download_commands) &&
+  if ((s->hide_download_commands) &&
       ((this->channel.version == Version::PC_PATCH) || (this->channel.version == Version::BB_PATCH))) {
     this->channel.terminal_recv_color = TerminalFormat::END;
     this->channel.terminal_send_color = TerminalFormat::END;

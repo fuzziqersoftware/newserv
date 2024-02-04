@@ -1555,10 +1555,30 @@ static void proxy_command_song(shared_ptr<ProxyServer::LinkedSession> ses, const
   send_ep3_change_music(ses->client_channel, song);
 }
 
-static void server_command_rare_notifs(shared_ptr<Client> c, const std::string&) {
-  c->config.toggle_flag(Client::Flag::RARE_DROP_NOTIFICATIONS_ENABLED);
-  bool enabled = c->config.check_flag(Client::Flag::RARE_DROP_NOTIFICATIONS_ENABLED);
-  send_text_message_printf(c, "$C6Rare notifications\n%s", enabled ? "enabled" : "disabled");
+static void command_item_notifs(Channel& ch, Client::Config& config, const std::string& args) {
+  if (args == "all" || args == "on") {
+    config.clear_flag(Client::Flag::RARE_DROP_NOTIFICATIONS_ENABLED);
+    config.set_flag(Client::Flag::ALL_DROP_NOTIFICATIONS_ENABLED);
+    send_text_message_printf(ch, "$C6Notifications enabled\nfor all items");
+  } else if (args == "rare" || args == "rares") {
+    config.set_flag(Client::Flag::RARE_DROP_NOTIFICATIONS_ENABLED);
+    config.clear_flag(Client::Flag::ALL_DROP_NOTIFICATIONS_ENABLED);
+    send_text_message_printf(ch, "$C6Notifications enabled\nfor rare items only");
+  } else if (args == "none" || args == "off") {
+    config.clear_flag(Client::Flag::RARE_DROP_NOTIFICATIONS_ENABLED);
+    config.clear_flag(Client::Flag::ALL_DROP_NOTIFICATIONS_ENABLED);
+    send_text_message_printf(ch, "$C6Notifications disabled\nfor all items");
+  } else {
+    send_text_message_printf(ch, "$C6You must specify\n$C6off$C7, $C6rare$C7, or $C6on$C7");
+  }
+}
+
+static void server_command_item_notifs(shared_ptr<Client> c, const std::string& args) {
+  command_item_notifs(c->channel, c->config, args);
+}
+
+static void proxy_command_item_notifs(shared_ptr<ProxyServer::LinkedSession> ses, const std::string& args) {
+  command_item_notifs(ses->client_channel, ses->config, args);
 }
 
 static void server_command_infinite_hp(shared_ptr<Client> c, const std::string&) {
@@ -2058,6 +2078,7 @@ static const unordered_map<string, ChatCommandDefinition> chat_commands({
     {"$inftime", {server_command_ep3_infinite_time, nullptr}},
     {"$inftp", {server_command_infinite_tp, proxy_command_infinite_tp}},
     {"$item", {server_command_item, proxy_command_item}},
+    {"$itemnotifs", {server_command_item_notifs, proxy_command_item_notifs}},
     {"$i", {server_command_item, proxy_command_item}},
     {"$kick", {server_command_kick, nullptr}},
     {"$li", {server_command_lobby_info, proxy_command_lobby_info}},
@@ -2083,7 +2104,6 @@ static const unordered_map<string, ChatCommandDefinition> chat_commands({
     {"$qsyncall", {server_command_qsyncall, proxy_command_qsyncall}},
     {"$quest", {server_command_quest, nullptr}},
     {"$rand", {server_command_rand, proxy_command_rand}},
-    {"$rarenotifs", {server_command_rare_notifs, nullptr}},
     {"$save", {server_command_save, nullptr}},
     {"$savechar", {server_command_savechar, nullptr}},
     {"$saverec", {server_command_saverec, nullptr}},

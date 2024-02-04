@@ -41,51 +41,59 @@ static shared_ptr<const Menu> proxy_options_menu_for_client(shared_ptr<const Cli
     option += text;
     ret->items.emplace_back(item_id, option, description, 0);
   };
-  auto add_option = [&](uint32_t item_id, Client::Flag flag, const char* text, const char* description) -> void {
+  auto add_flag_option = [&](uint32_t item_id, Client::Flag flag, const char* text, const char* description) -> void {
     add_bool_option(item_id, c->config.check_flag(flag), text, description);
   };
 
-  add_option(ProxyOptionsMenuItemID::CHAT_COMMANDS, Client::Flag::PROXY_CHAT_COMMANDS_ENABLED,
+  add_flag_option(ProxyOptionsMenuItemID::CHAT_COMMANDS, Client::Flag::PROXY_CHAT_COMMANDS_ENABLED,
       "Chat commands", "Enable chat\ncommands");
-  add_option(ProxyOptionsMenuItemID::PLAYER_NOTIFICATIONS, Client::Flag::PROXY_PLAYER_NOTIFICATIONS_ENABLED,
+  add_flag_option(ProxyOptionsMenuItemID::PLAYER_NOTIFICATIONS, Client::Flag::PROXY_PLAYER_NOTIFICATIONS_ENABLED,
       "Player notifs", "Show a message\nwhen other players\njoin or leave");
-  add_option(ProxyOptionsMenuItemID::BLOCK_PINGS, Client::Flag::PROXY_SUPPRESS_CLIENT_PINGS,
+  static const char* item_drop_notifs_description = "Enable item drop\nnotifications\n\nYou can change this\nduring the game with\nthe %sitemnotifs\ncommand";
+  if (c->config.check_flag(Client::Flag::ALL_DROP_NOTIFICATIONS_ENABLED)) {
+    ret->items.emplace_back(ProxyOptionsMenuItemID::DROP_NOTIFICATIONS, "All drop notifs", item_drop_notifs_description, 0);
+  } else if (c->config.check_flag(Client::Flag::RARE_DROP_NOTIFICATIONS_ENABLED)) {
+    ret->items.emplace_back(ProxyOptionsMenuItemID::DROP_NOTIFICATIONS, "Rare drop notifs", item_drop_notifs_description, 0);
+  } else {
+    ret->items.emplace_back(ProxyOptionsMenuItemID::DROP_NOTIFICATIONS, "No drop notifs", item_drop_notifs_description, 0);
+  }
+  add_flag_option(ProxyOptionsMenuItemID::BLOCK_PINGS, Client::Flag::PROXY_SUPPRESS_CLIENT_PINGS,
       "Block pings", "Block ping commands\nsent by the client");
   add_bool_option(ProxyOptionsMenuItemID::BLOCK_EVENTS, (c->config.override_lobby_event != 0xFF),
       "Block events", "Disable seasonal\nevents in the lobby\nand in games");
-  add_option(ProxyOptionsMenuItemID::BLOCK_PATCHES, Client::Flag::PROXY_BLOCK_FUNCTION_CALLS,
+  add_flag_option(ProxyOptionsMenuItemID::BLOCK_PATCHES, Client::Flag::PROXY_BLOCK_FUNCTION_CALLS,
       "Block patches", "Disable patches sent\nby the remote server");
-  add_option(ProxyOptionsMenuItemID::SWITCH_ASSIST, Client::Flag::SWITCH_ASSIST_ENABLED,
+  add_flag_option(ProxyOptionsMenuItemID::SWITCH_ASSIST, Client::Flag::SWITCH_ASSIST_ENABLED,
       "Switch assist", "Automatically try\nto unlock 2-player\ndoors when you step\non both switches\nsequentially");
   if ((s->cheat_mode_behavior != ServerState::BehaviorSwitch::OFF) || c->license->check_flag(License::Flag::CHEAT_ANYWHERE)) {
     if (!is_ep3(c->version())) {
-      add_option(ProxyOptionsMenuItemID::INFINITE_HP, Client::Flag::INFINITE_HP_ENABLED,
+      add_flag_option(ProxyOptionsMenuItemID::INFINITE_HP, Client::Flag::INFINITE_HP_ENABLED,
           "Infinite HP", "Enable automatic HP\nrestoration when\nyou are hit by an\nenemy or trap\n\nCannot revive you\nfrom one-hit kills");
-      add_option(ProxyOptionsMenuItemID::INFINITE_TP, Client::Flag::INFINITE_TP_ENABLED,
+      add_flag_option(ProxyOptionsMenuItemID::INFINITE_TP, Client::Flag::INFINITE_TP_ENABLED,
           "Infinite TP", "Enable automatic TP\nrestoration when\nyou cast any\ntechnique");
     } else {
       // Note: This option's text is the maximum possible length for any menu item
-      add_option(ProxyOptionsMenuItemID::EP3_INFINITE_MESETA, Client::Flag::PROXY_EP3_INFINITE_MESETA_ENABLED,
+      add_flag_option(ProxyOptionsMenuItemID::EP3_INFINITE_MESETA, Client::Flag::PROXY_EP3_INFINITE_MESETA_ENABLED,
           "Infinite Meseta", "Fix Meseta value\nat 1,000,000");
-      add_option(ProxyOptionsMenuItemID::EP3_INFINITE_TIME, Client::Flag::PROXY_EP3_INFINITE_TIME_ENABLED,
+      add_flag_option(ProxyOptionsMenuItemID::EP3_INFINITE_TIME, Client::Flag::PROXY_EP3_INFINITE_TIME_ENABLED,
           "Infinite time", "Disable overall and\nper-phase time limits\nin battle");
-      add_option(ProxyOptionsMenuItemID::EP3_UNMASK_WHISPERS, Client::Flag::PROXY_EP3_UNMASK_WHISPERS,
+      add_flag_option(ProxyOptionsMenuItemID::EP3_UNMASK_WHISPERS, Client::Flag::PROXY_EP3_UNMASK_WHISPERS,
           "Unmask whispers", "Show contents of\nwhisper messages even\nif they are not for\nyou");
     }
   }
   if (s->proxy_allow_save_files) {
-    add_option(ProxyOptionsMenuItemID::SAVE_FILES, Client::Flag::PROXY_SAVE_FILES,
+    add_flag_option(ProxyOptionsMenuItemID::SAVE_FILES, Client::Flag::PROXY_SAVE_FILES,
         "Save files", "Save local copies of\nfiles from the\nremote server\n(quests, etc.)");
   }
   if (s->proxy_enable_login_options) {
-    add_option(ProxyOptionsMenuItemID::RED_NAME, Client::Flag::PROXY_RED_NAME_ENABLED,
+    add_flag_option(ProxyOptionsMenuItemID::RED_NAME, Client::Flag::PROXY_RED_NAME_ENABLED,
         "Red name", "Set the colors\nof your name and\nChallenge Mode\nrank to red");
-    add_option(ProxyOptionsMenuItemID::BLANK_NAME, Client::Flag::PROXY_BLANK_NAME_ENABLED,
+    add_flag_option(ProxyOptionsMenuItemID::BLANK_NAME, Client::Flag::PROXY_BLANK_NAME_ENABLED,
         "Blank name", "Suppress your\ncharacter name\nduring login");
     if (c->version() != Version::XB_V3) {
-      add_option(ProxyOptionsMenuItemID::SUPPRESS_LOGIN, Client::Flag::PROXY_SUPPRESS_REMOTE_LOGIN,
+      add_flag_option(ProxyOptionsMenuItemID::SUPPRESS_LOGIN, Client::Flag::PROXY_SUPPRESS_REMOTE_LOGIN,
           "Skip login", "Use an alternate\nlogin sequence");
-      add_option(ProxyOptionsMenuItemID::SKIP_CARD, Client::Flag::PROXY_ZERO_REMOTE_GUILD_CARD,
+      add_flag_option(ProxyOptionsMenuItemID::SKIP_CARD, Client::Flag::PROXY_ZERO_REMOTE_GUILD_CARD,
           "Skip card", "Use an alternate\nvalue for your initial\nGuild Card");
     }
   }
@@ -2291,6 +2299,18 @@ static void on_10(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
           goto resend_proxy_options_menu;
         case ProxyOptionsMenuItemID::PLAYER_NOTIFICATIONS:
           c->config.toggle_flag(Client::Flag::PROXY_PLAYER_NOTIFICATIONS_ENABLED);
+          goto resend_proxy_options_menu;
+        case ProxyOptionsMenuItemID::DROP_NOTIFICATIONS:
+          if (c->config.check_flag(Client::Flag::ALL_DROP_NOTIFICATIONS_ENABLED)) {
+            c->config.clear_flag(Client::Flag::ALL_DROP_NOTIFICATIONS_ENABLED);
+            c->config.clear_flag(Client::Flag::RARE_DROP_NOTIFICATIONS_ENABLED);
+          } else if (c->config.check_flag(Client::Flag::RARE_DROP_NOTIFICATIONS_ENABLED)) {
+            c->config.set_flag(Client::Flag::ALL_DROP_NOTIFICATIONS_ENABLED);
+            c->config.clear_flag(Client::Flag::RARE_DROP_NOTIFICATIONS_ENABLED);
+          } else {
+            c->config.clear_flag(Client::Flag::ALL_DROP_NOTIFICATIONS_ENABLED);
+            c->config.set_flag(Client::Flag::RARE_DROP_NOTIFICATIONS_ENABLED);
+          }
           goto resend_proxy_options_menu;
         case ProxyOptionsMenuItemID::BLOCK_PINGS:
           c->config.toggle_flag(Client::Flag::PROXY_SUPPRESS_CLIENT_PINGS);

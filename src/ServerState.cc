@@ -715,7 +715,10 @@ void ServerState::load_config() {
 
   this->persistent_game_idle_timeout_usecs = json.get_int("PersistentGameIdleTimeout", 0);
   this->cheat_mode_behavior = parse_behavior_switch("CheatModeBehavior", BehaviorSwitch::OFF_BY_DEFAULT);
-  this->default_rare_notifs_enabled = json.get_bool("RareNotificationsEnabledByDefault", false);
+  this->default_rare_notifs_enabled_v1_v2 = json.get_bool("RareNotificationsEnabledByDefault", false);
+  this->default_rare_notifs_enabled_v3_v4 = this->default_rare_notifs_enabled_v1_v2;
+  this->default_rare_notifs_enabled_v1_v2 = json.get_bool("RareNotificationsEnabledByDefaultV1V2", this->default_rare_notifs_enabled_v1_v2);
+  this->default_rare_notifs_enabled_v3_v4 = json.get_bool("RareNotificationsEnabledByDefaultV3V4", this->default_rare_notifs_enabled_v3_v4);
   this->ep3_send_function_call_enabled = json.get_bool("EnableEpisode3SendFunctionCall", false);
   this->catch_handler_exceptions = json.get_bool("CatchHandlerExceptions", true);
 
