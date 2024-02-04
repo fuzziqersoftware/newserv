@@ -49,12 +49,9 @@ public:
   std::shared_ptr<Server> server();
   std::shared_ptr<const Server> server() const;
 
-  ActionChainWithConds* action_chain_with_conds_for_card_ref(
-      uint16_t card_ref);
-  const ActionChainWithConds* action_chain_with_conds_for_card_ref(
-      uint16_t card_ref) const;
-  bool any_attack_action_card_is_support_tech_or_support_pb(
-      const ActionState& pa) const;
+  ActionChainWithConds* action_chain_with_conds_for_card_ref(uint16_t card_ref);
+  const ActionChainWithConds* action_chain_with_conds_for_card_ref(uint16_t card_ref) const;
+  bool any_attack_action_card_is_support_tech_or_support_pb(const ActionState& pa) const;
   bool card_has_pierce_or_rampage(
       uint8_t client_id,
       ConditionType cond_type,
@@ -63,27 +60,21 @@ public:
       uint16_t action_card_ref,
       uint8_t def_effect_index,
       AttackMedium attack_medium) const;
-  bool attack_action_has_rampage_and_not_pierce(
-      const ActionState& pa, uint16_t card_ref) const;
-  bool attack_action_has_pierce_and_not_rampage(
-      const ActionState& pa, uint8_t client_id);
+  bool attack_action_has_rampage_and_not_pierce(const ActionState& pa, uint16_t card_ref) const;
+  bool attack_action_has_pierce_and_not_rampage(const ActionState& pa, uint8_t client_id);
   bool card_exists_by_status(const CardShortStatus& stat) const;
   bool card_has_mighty_knuckle(uint32_t card_ref) const;
   uint16_t card_id_for_card_ref(uint16_t card_ref) const;
   static bool card_id_is_boss_sc(uint16_t card_id);
   static bool card_id_is_support_tech_or_support_pb(uint16_t card_id);
   bool card_ref_can_attack(uint16_t card_ref);
-  bool card_ref_can_move(
-      uint8_t client_id, uint16_t card_ref, bool ignore_atk_points) const;
-  bool card_ref_has_class_usability_condition(
-      uint16_t card_ref) const;
+  bool card_ref_can_move(uint8_t client_id, uint16_t card_ref, bool ignore_atk_points) const;
+  bool card_ref_has_class_usability_condition(uint16_t card_ref) const;
   bool card_ref_has_free_maneuver(uint16_t card_ref) const;
   bool card_ref_is_aerial(uint16_t card_ref) const;
-  bool card_ref_is_aerial_or_has_free_maneuver(
-      uint16_t card_ref) const;
+  bool card_ref_is_aerial_or_has_free_maneuver(uint16_t card_ref) const;
   bool card_ref_is_boss_sc(uint32_t card_ref) const;
-  bool card_ref_or_any_set_card_has_condition_46(
-      uint16_t card_ref) const;
+  bool card_ref_or_any_set_card_has_condition_46(uint16_t card_ref) const;
   bool card_ref_or_sc_has_fixed_range(uint16_t card_ref) const;
   bool check_move_path_and_get_cost(
       uint8_t client_id,
@@ -123,14 +114,12 @@ public:
       uint16_t* out_effective_card_id,
       TargetMode* out_effective_target_mode,
       uint16_t* out_orig_card_ref) const;
-  size_t count_rampage_targets_for_attack(
-      const ActionState& pa, uint8_t client_id) const;
+  size_t count_rampage_targets_for_attack(const ActionState& pa, uint8_t client_id) const;
   bool defense_card_can_apply_to_attack(
       uint16_t defense_card_ref,
       uint16_t attacker_card_ref,
       uint16_t attacker_sc_card_ref) const;
-  bool defense_card_matches_any_attack_card_top_color(
-      const ActionState& pa) const;
+  bool defense_card_matches_any_attack_card_top_color(const ActionState& pa) const;
   std::shared_ptr<const CardIndex::CardEntry> definition_for_card_ref(uint16_t card_ref) const;
   int32_t error_code_for_client_setting_card(
       uint8_t client_id,
@@ -157,17 +146,14 @@ public:
       size_t num_occupied_tiles,
       size_t num_vacant_tiles) const;
   uint16_t get_ally_sc_card_ref(uint16_t card_ref) const;
-  std::shared_ptr<const CardIndex::CardEntry> definition_for_card_id(
-      uint32_t card_id) const;
+  std::shared_ptr<const CardIndex::CardEntry> definition_for_card_id(uint32_t card_id) const;
   uint32_t get_card_id_with_effective_range(
       uint16_t card_ref, uint16_t card_id_override, TargetMode* out_target_mode) const;
   uint8_t get_card_ref_max_hp(uint16_t card_ref) const;
   bool get_creature_summon_area(
       uint8_t client_id, Location* out_loc, uint8_t* out_region_size) const;
-  std::shared_ptr<HandAndEquipState> get_hand_and_equip_state_for_client_id(
-      uint8_t client_id);
-  std::shared_ptr<const HandAndEquipState> get_hand_and_equip_state_for_client_id(
-      uint8_t client_id) const;
+  std::shared_ptr<HandAndEquipState> get_hand_and_equip_state_for_client_id(uint8_t client_id);
+  std::shared_ptr<const HandAndEquipState> get_hand_and_equip_state_for_client_id(uint8_t client_id) const;
   bool get_move_path_length_and_cost(
       uint32_t client_id,
       uint32_t card_ref,
@@ -188,8 +174,7 @@ public:
       std::shared_ptr<StateFlags> state_flags,
       std::shared_ptr<AssistServer> assist_server);
   size_t max_move_distance_for_card_ref(uint32_t card_ref) const;
-  static void offsets_for_direction(
-      const Location& loc, int32_t* out_x_offset, int32_t* out_y_offset);
+  static void offsets_for_direction(const Location& loc, int32_t* out_x_offset, int32_t* out_y_offset);
   void register_player(
       uint8_t client_id,
       std::shared_ptr<HandAndEquipState> hes,

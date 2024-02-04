@@ -954,7 +954,7 @@ static void on_ep3_battle_subs(shared_ptr<Client> c, uint8_t command, uint8_t fl
   if (header.subsubcommand == 0x1A) {
     return;
   } else if (header.subsubcommand == 0x36) {
-    const auto& cmd = check_size_t<G_RecreatePlayer_GC_Ep3_6xB5x36>(data, size);
+    const auto& cmd = check_size_t<G_RecreatePlayer_Ep3_6xB5x36>(data, size);
     if (l->is_game() && (cmd.client_id >= 4)) {
       return;
     }
@@ -2015,9 +2015,9 @@ static void on_ep3_private_word_select_bb_bank_action(shared_ptr<Client> c, uint
 
   } else if (is_ep3(c->version())) {
 
-    const auto& cmd = check_size_t<G_WordSelectDuringBattle_GC_Ep3_6xBD>(data, size);
-    G_WordSelectDuringBattle_GC_Ep3_6xBD masked_cmd = {
-        {0xBD, sizeof(G_WordSelectDuringBattle_GC_Ep3_6xBD) >> 2, cmd.header.client_id},
+    const auto& cmd = check_size_t<G_WordSelectDuringBattle_Ep3_6xBD>(data, size);
+    G_WordSelectDuringBattle_Ep3_6xBD masked_cmd = {
+        {0xBD, sizeof(G_WordSelectDuringBattle_Ep3_6xBD) >> 2, cmd.header.client_id},
         0x0001,
         0x0001,
         // "Please use the Whispers function."

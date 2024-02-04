@@ -58,8 +58,7 @@ public:
   void discard_all_attack_action_cards_from_hand();
   void discard_all_item_and_creature_cards_from_hand();
   void discard_and_redraw_hand();
-  bool discard_card_or_add_to_draw_pile(
-      uint16_t card_ref, bool add_to_draw_pile);
+  bool discard_card_or_add_to_draw_pile(uint16_t card_ref, bool add_to_draw_pile);
   void discard_random_hand_card();
   bool discard_ref_from_hand(uint16_t card_ref);
   void discard_set_assist_card();
@@ -76,8 +75,7 @@ public:
       const Location& loc,
       uint8_t target_team_id) const;
   uint8_t get_atk_points() const;
-  void get_short_status_for_card_index_in_hand(
-      size_t hand_index, CardShortStatus* stat) const;
+  void get_short_status_for_card_index_in_hand(size_t hand_index, CardShortStatus* stat) const;
   std::shared_ptr<DeckState> get_deck();
   uint8_t get_def_points() const;
   uint8_t get_dice_result(size_t which) const;
@@ -96,8 +94,7 @@ public:
   bool is_mulligan_allowed() const;
   bool is_team_turn() const;
   void log_discard(uint16_t card_ref, uint16_t reason);
-  bool move_card_to_location_by_card_index(
-      size_t card_index, const Location& new_loc);
+  bool move_card_to_location_by_card_index(size_t card_index, const Location& new_loc);
   void move_null_hand_refs_to_end();
   void on_cards_destroyed();
   void replace_all_set_assists_with_random_assists();
@@ -115,18 +112,15 @@ public:
       uint8_t assist_target_client_id,
       bool skip_error_checks_and_atk_sub);
   void set_initial_location();
-  void set_map_occupied_bit_for_card_on_warp_tile(
-      std::shared_ptr<const Card> card);
+  void set_map_occupied_bit_for_card_on_warp_tile(std::shared_ptr<const Card> card);
   void set_map_occupied_bits_for_sc_and_creatures();
   void subtract_def_points(uint8_t cost);
-  bool subtract_or_check_atk_or_def_points_for_action(
-      const ActionState& pa, bool deduct_points);
+  bool subtract_or_check_atk_or_def_points_for_action(const ActionState& pa, bool deduct_points);
   void subtract_atk_points(uint8_t cost);
-  G_UpdateHand_GC_Ep3_6xB4x02 prepare_6xB4x02() const;
-  void update_hand_and_equip_state_and_send_6xB4x02_if_needed(
-      bool always_send = false);
+  G_UpdateHand_Ep3_6xB4x02 prepare_6xB4x02() const;
+  void update_hand_and_equip_state_and_send_6xB4x02_if_needed(bool always_send = false);
   void set_random_assist_card_from_hand_for_free();
-  G_UpdateShortStatuses_GC_Ep3_6xB4x04 prepare_6xB4x04() const;
+  G_UpdateShortStatuses_Ep3_6xB4x04 prepare_6xB4x04() const;
   void send_6xB4x04_if_needed(bool always_send = false);
   std::vector<uint16_t> get_card_refs_within_range_from_all_players(
       const parray<uint8_t, 9 * 9>& range,

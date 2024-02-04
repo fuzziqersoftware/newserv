@@ -129,9 +129,9 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   std::shared_ptr<const Episode3::CardIndex> ep3_card_index_trial;
   std::shared_ptr<const Episode3::MapIndex> ep3_map_index;
   std::shared_ptr<const Episode3::COMDeckIndex> ep3_com_deck_index;
-  std::shared_ptr<const G_SetEXResultValues_GC_Ep3_6xB4x4B> ep3_default_ex_values;
-  std::shared_ptr<const G_SetEXResultValues_GC_Ep3_6xB4x4B> ep3_tournament_ex_values;
-  std::shared_ptr<const G_SetEXResultValues_GC_Ep3_6xB4x4B> ep3_tournament_final_round_ex_values;
+  std::shared_ptr<const G_SetEXResultValues_Ep3_6xB4x4B> ep3_default_ex_values;
+  std::shared_ptr<const G_SetEXResultValues_Ep3_6xB4x4B> ep3_tournament_ex_values;
+  std::shared_ptr<const G_SetEXResultValues_Ep3_6xB4x4B> ep3_tournament_final_round_ex_values;
   std::shared_ptr<const QuestCategoryIndex> quest_category_index;
   std::shared_ptr<const QuestIndex> default_quest_index;
   std::shared_ptr<const QuestIndex> ep3_download_quest_index;

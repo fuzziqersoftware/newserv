@@ -838,7 +838,7 @@ constexpr on_command_t S_P_C4 = &S_C4<S_ChoiceSearchResultEntry_PC_C4>;
 constexpr on_command_t S_B_C4 = &S_C4<S_ChoiceSearchResultEntry_BB_C4>;
 
 static HandlerResult S_G_E4(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t, uint32_t, string& data) {
-  auto& cmd = check_size_t<S_CardBattleTableState_GC_Ep3_E4>(data);
+  auto& cmd = check_size_t<S_CardBattleTableState_Ep3_E4>(data);
   bool modified = false;
   for (size_t x = 0; x < 4; x++) {
     if (cmd.entries[x].guild_card_number == ses->remote_guild_card_number) {
@@ -960,9 +960,9 @@ static HandlerResult S_6x(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t, 
   if (ses->config.check_flag(Client::Flag::PROXY_SAVE_FILES)) {
     if (is_ep3(ses->version()) && (data.size() >= 0x14)) {
       if (static_cast<uint8_t>(data[0]) == 0xB6) {
-        const auto& header = check_size_t<G_MapSubsubcommand_GC_Ep3_6xB6>(data, 0xFFFF);
+        const auto& header = check_size_t<G_MapSubsubcommand_Ep3_6xB6>(data, 0xFFFF);
         if (header.subsubcommand == 0x00000041) {
-          const auto& cmd = check_size_t<G_MapData_GC_Ep3_6xB6x41>(data, 0xFFFF);
+          const auto& cmd = check_size_t<G_MapData_Ep3_6xB6x41>(data, 0xFFFF);
           string filename = string_printf("map%08" PRIX32 ".%" PRIu64 ".mnmd",
               cmd.map_number.load(), now());
           string map_data = prs_decompress(
@@ -994,18 +994,27 @@ static HandlerResult S_6x(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t, 
 
       if (ses->config.check_flag(Client::Flag::PROXY_EP3_INFINITE_TIME_ENABLED) && (header.subcommand == 0xB4)) {
         if (header.subsubcommand == 0x3D) {
-          auto& cmd = check_size_t<G_SetTournamentPlayerDecks_GC_Ep3_6xB4x3D>(data);
+          auto& cmd = check_size_t<G_SetTournamentPlayerDecks_Ep3_6xB4x3D>(data);
           if (cmd.rules.overall_time_limit || cmd.rules.phase_time_limit) {
             cmd.rules.overall_time_limit = 0;
             cmd.rules.phase_time_limit = 0;
             modified = true;
           }
         } else if (header.subsubcommand == 0x05) {
-          auto& cmd = check_size_t<G_UpdateMap_GC_Ep3_6xB4x05>(data);
-          if (cmd.state.rules.overall_time_limit || cmd.state.rules.phase_time_limit) {
-            cmd.state.rules.overall_time_limit = 0;
-            cmd.state.rules.phase_time_limit = 0;
-            modified = true;
+          if (ses->version() == Version::GC_EP3_NTE) {
+            auto& cmd = check_size_t<G_UpdateMap_Ep3NTE_6xB4x05>(data);
+            if (cmd.state.rules.overall_time_limit || cmd.state.rules.phase_time_limit) {
+              cmd.state.rules.overall_time_limit = 0;
+              cmd.state.rules.phase_time_limit = 0;
+              modified = true;
+            }
+          } else {
+            auto& cmd = check_size_t<G_UpdateMap_Ep3_6xB4x05>(data);
+            if (cmd.state.rules.overall_time_limit || cmd.state.rules.phase_time_limit) {
+              cmd.state.rules.overall_time_limit = 0;
+              cmd.state.rules.phase_time_limit = 0;
+              modified = true;
+            }
           }
         }
       }
@@ -1064,7 +1073,7 @@ static HandlerResult S_6x(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t, 
       if (data[4] == 0x1A) {
         return HandlerResult::Type::SUPPRESS;
       } else if (data[4] == 0x36) {
-        const auto& cmd = check_size_t<G_RecreatePlayer_GC_Ep3_6xB5x36>(data);
+        const auto& cmd = check_size_t<G_RecreatePlayer_Ep3_6xB5x36>(data);
         if (ses->is_in_game && (cmd.client_id >= 4)) {
           return HandlerResult::Type::SUPPRESS;
         }
@@ -1073,7 +1082,7 @@ static HandlerResult S_6x(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t, 
     } else if ((static_cast<uint8_t>(data[0]) == 0xBD) &&
         ses->config.check_flag(Client::Flag::PROXY_EP3_UNMASK_WHISPERS) &&
         is_ep3(ses->version())) {
-      auto& cmd = check_size_t<G_WordSelectDuringBattle_GC_Ep3_6xBD>(data);
+      auto& cmd = check_size_t<G_WordSelectDuringBattle_Ep3_6xBD>(data);
       if (cmd.private_flags & (1 << ses->lobby_client_id)) {
         cmd.private_flags &= ~(1 << ses->lobby_client_id);
         modified = true;
@@ -1112,7 +1121,7 @@ static HandlerResult C_GXB_61(shared_ptr<ProxyServer::LinkedSession> ses, uint16
   } else {
     C_CharacterData_V3_61_98* pd;
     if (flag == 4) { // Episode 3
-      auto& ep3_pd = check_size_t<C_CharacterData_GC_Ep3_61_98>(data);
+      auto& ep3_pd = check_size_t<C_CharacterData_Ep3_61_98>(data);
       if (ep3_pd.ep3_config.is_encrypted) {
         decrypt_trivial_gci_data(
             &ep3_pd.ep3_config.card_counts,
@@ -1286,7 +1295,7 @@ static HandlerResult S_13_A7(shared_ptr<ProxyServer::LinkedSession> ses, uint16_
 static HandlerResult S_G_B7(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t, uint32_t, string& data) {
   if (is_ep3(ses->version())) {
     if (ses->config.check_flag(Client::Flag::PROXY_EP3_INFINITE_MESETA_ENABLED)) {
-      auto& cmd = check_size_t<S_RankUpdate_GC_Ep3_B7>(data);
+      auto& cmd = check_size_t<S_RankUpdate_Ep3_B7>(data);
       if (cmd.current_meseta != 1000000) {
         cmd.current_meseta = 1000000;
         return HandlerResult::Type::MODIFIED;
@@ -1328,7 +1337,7 @@ static HandlerResult S_G_B8(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t
 static HandlerResult S_G_B9(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t, uint32_t, string& data) {
   if (ses->config.check_flag(Client::Flag::PROXY_SAVE_FILES)) {
     try {
-      const auto& header = check_size_t<S_UpdateMediaHeader_GC_Ep3_B9>(data, 0xFFFF);
+      const auto& header = check_size_t<S_UpdateMediaHeader_Ep3_B9>(data, 0xFFFF);
 
       if (data.size() - sizeof(header) < header.size) {
         throw runtime_error("Media data size extends beyond end of command; not saving file");
@@ -1363,8 +1372,8 @@ static HandlerResult S_G_B9(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t
 static HandlerResult S_G_EF(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t, uint32_t, string& data) {
   if (is_ep3(ses->version())) {
     if (ses->config.check_flag(Client::Flag::PROXY_EP3_INFINITE_MESETA_ENABLED)) {
-      auto& cmd = check_size_t<S_StartCardAuction_GC_Ep3_EF>(data,
-          offsetof(S_StartCardAuction_GC_Ep3_EF, unused), 0xFFFF);
+      auto& cmd = check_size_t<S_StartCardAuction_Ep3_EF>(data,
+          offsetof(S_StartCardAuction_Ep3_EF, unused), 0xFFFF);
       if (cmd.points_available != 0x7FFF) {
         cmd.points_available = 0x7FFF;
         return HandlerResult::Type::MODIFIED;
@@ -1382,7 +1391,7 @@ static HandlerResult S_B_EF(shared_ptr<ProxyServer::LinkedSession>, uint16_t, ui
 
 static HandlerResult S_G_BA(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t, uint32_t, string& data) {
   if (ses->config.check_flag(Client::Flag::PROXY_EP3_INFINITE_MESETA_ENABLED)) {
-    auto& cmd = check_size_t<S_MesetaTransaction_GC_Ep3_BA>(data);
+    auto& cmd = check_size_t<S_MesetaTransaction_Ep3_BA>(data);
     if (cmd.current_meseta != 1000000) {
       cmd.current_meseta = 1000000;
       return HandlerResult::Type::MODIFIED;
@@ -1477,10 +1486,10 @@ constexpr on_command_t S_B_65_67_68 = &S_65_67_68_EB<S_JoinLobby_BB_65_67_68>;
 template <typename CmdT>
 static HandlerResult S_64(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t, uint32_t flag, string& data) {
   CmdT* cmd;
-  S_JoinGame_GC_Ep3_64* cmd_ep3 = nullptr;
+  S_JoinGame_Ep3_64* cmd_ep3 = nullptr;
   if (ses->sub_version >= 0x40) {
-    cmd = &check_size_t<CmdT>(data, sizeof(S_JoinGame_GC_Ep3_64));
-    cmd_ep3 = &check_size_t<S_JoinGame_GC_Ep3_64>(data);
+    cmd = &check_size_t<CmdT>(data, sizeof(S_JoinGame_Ep3_64));
+    cmd_ep3 = &check_size_t<S_JoinGame_Ep3_64>(data);
   } else if (ses->version() == Version::XB_V3) {
     // Schtserv doesn't send the unknown_a1 field in this command, and we don't
     // use it here, so we allow it to be omitted.
@@ -1541,7 +1550,7 @@ constexpr on_command_t S_X_64 = &S_64<S_JoinGame_XB_64>;
 constexpr on_command_t S_B_64 = &S_64<S_JoinGame_BB_64>;
 
 static HandlerResult S_E8(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t, uint32_t, string& data) {
-  auto& cmd = check_size_t<S_JoinSpectatorTeam_GC_Ep3_E8>(data);
+  auto& cmd = check_size_t<S_JoinSpectatorTeam_Ep3_E8>(data);
 
   ses->clear_lobby_players(12);
   ses->floor = 0;

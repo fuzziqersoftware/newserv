@@ -43,7 +43,7 @@ public:
   void commit_attack(
       int16_t damage,
       std::shared_ptr<Card> attacker_card,
-      G_ApplyConditionEffect_GC_Ep3_6xB4x06* cmd,
+      G_ApplyConditionEffect_Ep3_6xB4x06* cmd,
       size_t strike_number,
       int16_t* out_effective_damage);
   int16_t compute_defense_power_for_attacker_card(

@@ -45,45 +45,49 @@ public:
   };
 
   struct AttackEnvStats {
-    uint32_t num_set_cards; // "f" in expr
-    uint32_t dice_roll_value1; // "d" in expr
-    uint32_t effective_ap; // "ap" in expr
-    uint32_t effective_tp; // "tp" in expr
-    uint32_t current_hp; // "hp" in expr
-    uint32_t max_hp; // "mhp" in expr
-    uint32_t effective_ap_if_not_tech; // "dm" in expr
-    uint32_t effective_ap_if_not_physical; // "tdm" in expr
-    uint32_t player_num_destroyed_fcs; // "tf" in expr
-    uint32_t player_num_atk_points; // "ac" in expr
-    uint32_t defined_max_hp; // "php" in expr
-    uint32_t dice_roll_value2; // "dc" in expr
-    uint32_t card_cost; // "cs" in expr
-    uint32_t total_num_set_cards; // "a" in expr
-    uint32_t action_cards_ap; // "kap" in expr
-    uint32_t action_cards_tp; // "ktp" in expr
-    uint32_t unknown_a1; // "dn" in expr
-    uint32_t num_item_or_creature_cards_in_hand; // "hf" in expr
-    uint32_t num_destroyed_ally_fcs; // "df" in expr
-    uint32_t target_team_num_set_cards; // "ff" in expr
-    uint32_t condition_giver_team_num_set_cards; // "ef" in expr
-    uint32_t num_native_creatures; // "bi" in expr
-    uint32_t num_a_beast_creatures; // "ab" in expr
-    uint32_t num_machine_creatures; // "mc" in expr
-    uint32_t num_dark_creatures; // "dk" in expr
-    uint32_t num_sword_type_items; // "sa" in expr
-    uint32_t num_gun_type_items; // "gn" in expr
-    uint32_t num_cane_type_items; // "wd" in expr
-    uint32_t effective_ap_if_not_tech2; // "tt" in expr
-    uint32_t team_dice_bonus; // "lv" in expr
-    uint32_t sc_effective_ap; // "adm" in expr
-    uint32_t attack_bonus; // "ddm" in expr
-    uint32_t num_sword_type_items_on_team; // "sat" in expr
-    uint32_t target_attack_bonus; // "edm" in expr
-    uint32_t last_attack_preliminary_damage; // "ldm" in expr
-    uint32_t last_attack_damage; // "rdm" in expr
-    uint32_t total_last_attack_damage; // "fdm" in expr
-    uint32_t last_attack_damage_count; // "ndm" in expr
-    uint32_t target_current_hp; // "ehp" in expr
+    /* 00 */ uint32_t num_set_cards; // "f" in expr
+    /* 04 */ uint32_t dice_roll_value1; // "d" in expr
+    /* 08 */ uint32_t effective_ap; // "ap" in expr
+    /* 0C */ uint32_t effective_tp; // "tp" in expr
+    /* 10 */ uint32_t current_hp; // "hp" in expr
+    /* 14 */ uint32_t max_hp; // "mhp" in expr
+    /* 18 */ uint32_t effective_ap_if_not_tech; // "dm" in expr
+    /* 1C */ uint32_t effective_ap_if_not_physical; // "tdm" in expr
+    /* 20 */ uint32_t player_num_destroyed_fcs; // "tf" in expr
+    /* 24 */ uint32_t player_num_atk_points; // "ac" in expr
+    /* 28 */ uint32_t defined_max_hp; // "php" in expr
+    /* 2C */ uint32_t dice_roll_value2; // "dc" in expr
+    /* 30 */ uint32_t card_cost; // "cs" in expr
+    /* 34 */ uint32_t total_num_set_cards; // "a" in expr
+    /* 38 */ uint32_t action_cards_ap; // "kap" in expr
+    /* 3C */ uint32_t action_cards_tp; // "ktp" in expr
+    /* 40 */ uint32_t unknown_a1; // "dn" in expr
+    /* 44 */ uint32_t num_item_or_creature_cards_in_hand; // "hf" in expr
+    /* 48 */ uint32_t num_destroyed_ally_fcs; // "df" in expr
+    /* 4C */ uint32_t target_team_num_set_cards; // "ff" in expr
+    /* 50 */ uint32_t non_target_team_num_set_cards; // "ef" in expr
+    /* 54 */ uint32_t num_native_creatures; // "bi" in expr
+    /* 58 */ uint32_t num_a_beast_creatures; // "ab" in expr
+    /* 5C */ uint32_t num_machine_creatures; // "mc" in expr
+    /* 60 */ uint32_t num_dark_creatures; // "dk" in expr
+    /* 64 */ uint32_t num_sword_type_items; // "sa" in expr
+    /* 68 */ uint32_t num_gun_type_items; // "gn" in expr
+    /* 6C */ uint32_t num_cane_type_items; // "wd" in expr
+    /* 70 */ uint32_t effective_ap_if_not_tech2; // "tt" in expr
+    /* 74 */ uint32_t team_dice_bonus; // "lv" in expr
+    /* 78 */ uint32_t sc_effective_ap; // "adm" in expr
+    // The following fields do not exist in Trial Edition. Because this struct
+    // is never sent to the client, we use the full struct even when playing
+    // Trial Edition, just for simplicity.
+    /* 7C */ uint32_t attack_bonus; // "ddm" in expr
+    /* 80 */ uint32_t num_sword_type_items_on_team; // "sat" in expr
+    /* 84 */ uint32_t target_attack_bonus; // "edm" in expr
+    /* 88 */ uint32_t last_attack_preliminary_damage; // "ldm" in expr
+    /* 8C */ uint32_t last_attack_damage; // "rdm" in expr
+    /* 90 */ uint32_t total_last_attack_damage; // "fdm" in expr
+    /* 94 */ uint32_t last_attack_damage_count; // "ndm" in expr
+    /* 98 */ uint32_t target_current_hp; // "ehp" in expr
+    /* 9C */
 
     AttackEnvStats();
     void clear();
@@ -333,9 +337,6 @@ public:
 
 private:
   std::weak_ptr<Server> w_server;
-  ActionState unknown_action_state_a1;
-  ActionState action_state;
-  uint16_t unknown_a2;
 };
 
 } // namespace Episode3

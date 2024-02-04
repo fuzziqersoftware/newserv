@@ -438,6 +438,11 @@ void Lobby::create_ep3_server() {
       .tournament = tourn,
       .trap_card_ids = s->ep3_trap_card_ids,
   };
+  if (this->base_version == Version::GC_EP3_NTE) {
+    options.behavior_flags |= Episode3::BehaviorFlag::IS_TRIAL_EDITION;
+  } else {
+    options.behavior_flags &= (~Episode3::BehaviorFlag::IS_TRIAL_EDITION);
+  }
   this->ep3_server = make_shared<Episode3::Server>(this->shared_from_this(), std::move(options));
   this->ep3_server->init();
 }

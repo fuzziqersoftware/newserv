@@ -13,9 +13,8 @@ namespace Episode3 {
 
 class Server;
 
-extern const std::vector<uint16_t> ALL_ASSIST_CARD_IDS;
-
-AssistEffect assist_effect_number_for_card_id(uint16_t card_id);
+const std::vector<uint16_t>& all_assist_card_ids(bool is_trial);
+AssistEffect assist_effect_number_for_card_id(uint16_t card_id, bool is_trial);
 
 class AssistServer {
 public:

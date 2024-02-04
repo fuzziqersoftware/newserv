@@ -1228,7 +1228,7 @@ static void on_B7_Ep3(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
 }
 
 static void on_BA_Ep3(shared_ptr<Client> c, uint16_t command, uint32_t, string& data) {
-  const auto& in_cmd = check_size_t<C_MesetaTransaction_GC_Ep3_BA>(data);
+  const auto& in_cmd = check_size_t<C_MesetaTransaction_Ep3_BA>(data);
   auto s = c->require_server_state();
   auto l = c->lobby.lock();
   bool is_lobby = l && !l->is_game();
@@ -1252,7 +1252,7 @@ static void on_BA_Ep3(shared_ptr<Client> c, uint16_t command, uint32_t, string& 
     total_meseta_earned = c->license->ep3_total_meseta_earned;
   }
 
-  S_MesetaTransaction_GC_Ep3_BA out_cmd = {current_meseta, total_meseta_earned, in_cmd.request_token};
+  S_MesetaTransaction_Ep3_BA out_cmd = {current_meseta, total_meseta_earned, in_cmd.request_token};
   send_command(c, command, 0x03, &out_cmd, sizeof(out_cmd));
 }
 
@@ -1281,7 +1281,7 @@ static bool add_next_game_client(shared_ptr<Lobby> l) {
 
   auto s = c->require_server_state();
   if (tourn) {
-    G_SetStateFlags_GC_Ep3_6xB4x03 state_cmd;
+    G_SetStateFlags_Ep3_6xB4x03 state_cmd;
     state_cmd.state.turn_num = 1;
     state_cmd.state.battle_phase = Episode3::BattlePhase::INVALID_00;
     state_cmd.state.current_team_turn1 = 0xFF;
@@ -1498,7 +1498,7 @@ static void on_ep3_battle_table_state_updated(shared_ptr<Lobby> l, int16_t table
 }
 
 static void on_E4_Ep3(shared_ptr<Client> c, uint16_t, uint32_t flag, string& data) {
-  const auto& cmd = check_size_t<C_CardBattleTableState_GC_Ep3_E4>(data);
+  const auto& cmd = check_size_t<C_CardBattleTableState_Ep3_E4>(data);
   auto l = c->require_lobby();
 
   if (cmd.seat_number >= 4) {
@@ -1539,7 +1539,7 @@ static void on_E4_Ep3(shared_ptr<Client> c, uint16_t, uint32_t flag, string& dat
 }
 
 static void on_E5_Ep3(shared_ptr<Client> c, uint16_t, uint32_t flag, string& data) {
-  check_size_t<S_CardBattleTableConfirmation_GC_Ep3_E5>(data);
+  check_size_t<S_CardBattleTableConfirmation_Ep3_E5>(data);
   auto l = c->require_lobby();
   if (l->is_game() || !l->is_ep3()) {
     throw runtime_error("battle table command sent in non-CARD lobby");
@@ -3032,7 +3032,7 @@ static void on_61_98(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
         if (!is_ep3(c->version())) {
           throw runtime_error("non-Episode 3 client sent Episode 3 player data");
         }
-        const auto* cmd3 = &check_size_t<C_CharacterData_GC_Ep3_61_98>(data);
+        const auto* cmd3 = &check_size_t<C_CharacterData_Ep3_61_98>(data);
         c->ep3_config = make_shared<Episode3::PlayerConfig>(cmd3->ep3_config);
         cmd = reinterpret_cast<const C_CharacterData_V3_61_98*>(cmd3);
         if (c->config.specific_version == 0x33000000) {
@@ -4646,7 +4646,7 @@ static void on_EE_Ep3(shared_ptr<Client> c, uint16_t, uint32_t flag, string& dat
   }
 
   if (flag == 0xD0) {
-    auto& cmd = check_size_t<SC_TradeCards_GC_Ep3_EE_FlagD0_FlagD3>(data);
+    auto& cmd = check_size_t<SC_TradeCards_Ep3_EE_FlagD0_FlagD3>(data);
 
     if (c->pending_card_trade) {
       throw runtime_error("player started a card trade when one is already pending");
@@ -4678,7 +4678,7 @@ static void on_EE_Ep3(shared_ptr<Client> c, uint16_t, uint32_t flag, string& dat
     // See the description of the D0 command in CommandFormats.hh for more
     // information on how this sequence is supposed to work. (The EE D0 command
     // is analogous to Episodes 1&2's D0 command.)
-    S_AdvanceCardTradeState_GC_Ep3_EE_FlagD1 resp = {0};
+    S_AdvanceCardTradeState_Ep3_EE_FlagD1 resp = {0};
     send_command_t(target_c, 0xEE, 0xD1, resp);
     if (target_c->pending_card_trade) {
       send_command_t(c, 0xEE, 0xD1, resp);
@@ -4703,7 +4703,7 @@ static void on_EE_Ep3(shared_ptr<Client> c, uint16_t, uint32_t flag, string& dat
     if (target_c->pending_card_trade->confirmed) {
       send_execute_card_trade(c, target_c->pending_card_trade->card_to_count);
       send_execute_card_trade(target_c, c->pending_card_trade->card_to_count);
-      S_CardTradeComplete_GC_Ep3_EE_FlagD4 resp = {1};
+      S_CardTradeComplete_Ep3_EE_FlagD4 resp = {1};
       send_command_t(c, 0xEE, 0xD4, resp);
       send_command_t(target_c, 0xEE, 0xD4, resp);
       c->pending_card_trade.reset();
@@ -4719,7 +4719,7 @@ static void on_EE_Ep3(shared_ptr<Client> c, uint16_t, uint32_t flag, string& dat
     }
     uint8_t other_client_id = c->pending_card_trade->other_client_id;
     c->pending_card_trade.reset();
-    S_CardTradeComplete_GC_Ep3_EE_FlagD4 resp = {0};
+    S_CardTradeComplete_Ep3_EE_FlagD4 resp = {0};
     send_command_t(c, 0xEE, 0xD4, resp);
 
     // Cancel the other side of the trade too, if it's open

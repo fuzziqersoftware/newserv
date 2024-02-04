@@ -63,7 +63,7 @@ void CardSpecial::AttackEnvStats::clear() {
   this->num_item_or_creature_cards_in_hand = 0;
   this->num_destroyed_ally_fcs = 0;
   this->target_team_num_set_cards = 0;
-  this->condition_giver_team_num_set_cards = 0;
+  this->non_target_team_num_set_cards = 0;
   this->num_native_creatures = 0;
   this->num_a_beast_creatures = 0;
   this->num_machine_creatures = 0;
@@ -104,7 +104,7 @@ void CardSpecial::AttackEnvStats::print(FILE* stream) const {
   fprintf(stream, "(dm)  effective_ap_if_not_tech           = %" PRIu32 "\n", this->effective_ap_if_not_tech);
   fprintf(stream, "(dn)  unknown_a1                         = %" PRIu32 "\n", this->unknown_a1);
   fprintf(stream, "(edm) target_attack_bonus                = %" PRIu32 "\n", this->target_attack_bonus);
-  fprintf(stream, "(ef)  condition_giver_team_num_set_cards = %" PRIu32 "\n", this->condition_giver_team_num_set_cards);
+  fprintf(stream, "(ef)  non_target_team_num_set_cards      = %" PRIu32 "\n", this->non_target_team_num_set_cards);
   fprintf(stream, "(ehp) target_current_hp                  = %" PRIu32 "\n", this->target_current_hp);
   fprintf(stream, "(f)   num_set_cards                      = %" PRIu32 "\n", this->num_set_cards);
   fprintf(stream, "(fdm) total_last_attack_damage           = %" PRIu32 "\n", this->total_last_attack_damage);
@@ -130,9 +130,7 @@ void CardSpecial::AttackEnvStats::print(FILE* stream) const {
   fprintf(stream, "(wd)  num_cane_type_items                = %" PRIu32 "\n", this->num_cane_type_items);
 }
 
-CardSpecial::CardSpecial(shared_ptr<Server> server)
-    : w_server(server),
-      unknown_a2(0) {}
+CardSpecial::CardSpecial(shared_ptr<Server> server) : w_server(server) {}
 
 shared_ptr<Server> CardSpecial::server() {
   auto s = this->w_server.lock();
@@ -229,7 +227,7 @@ void CardSpecial::adjust_dice_boost_if_team_has_condition_52(
   }
 
   for (size_t z = 0; z < 9; z++) {
-    if (!this->card_ref_has_ability_trap(card->action_chain.conditions[z]) &&
+    if ((this->server()->options.is_trial() || !this->card_ref_has_ability_trap(card->action_chain.conditions[z])) &&
         (card->action_chain.conditions[z].type == ConditionType::UNKNOWN_52)) {
       *inout_dice_boost = *inout_dice_boost * card->action_chain.conditions[z].value8;
     }
@@ -313,7 +311,7 @@ bool CardSpecial::apply_defense_condition(
     if ((when == 2) && (defender_cond->type == ConditionType::GUOM) && (flags & 4)) {
       CardShortStatus stat = defender_card->get_short_status();
       if (stat.card_flags & 4) {
-        G_ApplyConditionEffect_GC_Ep3_6xB4x06 cmd;
+        G_ApplyConditionEffect_Ep3_6xB4x06 cmd;
         cmd.effect.flags = 0x04;
         cmd.effect.attacker_card_ref = this->send_6xB4x06_if_card_ref_invalid(attacker_card_ref, 0x0E);
         cmd.effect.target_card_ref = defender_card->get_card_ref();
@@ -374,7 +372,7 @@ bool CardSpecial::apply_defense_condition(
 
     if (dice_roll.value_used_in_expr && !(original_cond_flags & 1) && !unknown_p8) {
       defender_cond->flags |= 1;
-      G_ApplyConditionEffect_GC_Ep3_6xB4x06 cmd;
+      G_ApplyConditionEffect_Ep3_6xB4x06 cmd;
       cmd.effect.flags = 0x08;
       cmd.effect.attacker_card_ref = this->send_6xB4x06_if_card_ref_invalid(attacker_card_ref, 0x10);
       cmd.effect.target_card_ref = defender_cond->card_ref;
@@ -385,7 +383,7 @@ bool CardSpecial::apply_defense_condition(
 
   } else {
     if (defender_cond->type != ConditionType::NONE) {
-      G_ApplyConditionEffect_GC_Ep3_6xB4x06 cmd;
+      G_ApplyConditionEffect_Ep3_6xB4x06 cmd;
       cmd.effect.flags = 0x04;
       cmd.effect.attacker_card_ref = this->send_6xB4x06_if_card_ref_invalid(attacker_card_ref, 0x0D);
       cmd.effect.target_card_ref = defender_card->get_card_ref();
@@ -438,7 +436,8 @@ bool CardSpecial::apply_stat_deltas_to_all_cards_from_all_conditions_with_card_r
 }
 
 bool CardSpecial::apply_stat_deltas_to_card_from_condition_and_clear_cond(Condition& cond, shared_ptr<Card> card) {
-  auto log = this->server()->log_stack(string_printf("apply_stat_deltas_to_card_from_condition_and_clear_cond(@%04hX #%04hX): ", card->get_card_ref(), card->get_card_id()));
+  auto s = this->server();
+  auto log = s->log_stack(string_printf("apply_stat_deltas_to_card_from_condition_and_clear_cond(@%04hX #%04hX): ", card->get_card_ref(), card->get_card_id()));
   string cond_str = cond.str();
   log.debug("cond: %s", cond_str.c_str());
 
@@ -454,8 +453,10 @@ bool CardSpecial::apply_stat_deltas_to_card_from_condition_and_clear_cond(Condit
         int16_t ap = clamp<int16_t>(card->ap, -99, 99);
         int16_t tp = clamp<int16_t>(card->tp, -99, 99);
         log.debug("A_T_SWAP_0C: swapping AP (%hd) and TP (%hd)", ap, tp);
-        this->send_6xB4x06_for_stat_delta(card, cond_card_ref, 0xA0, tp - ap, 0, 0);
-        this->send_6xB4x06_for_stat_delta(card, cond_card_ref, 0x80, ap - tp, 0, 0);
+        if (!s->options.is_trial()) {
+          this->send_6xB4x06_for_stat_delta(card, cond_card_ref, 0xA0, tp - ap, 0, 0);
+          this->send_6xB4x06_for_stat_delta(card, cond_card_ref, 0x80, ap - tp, 0, 0);
+        }
         card->ap = tp;
         card->tp = ap;
       } else {
@@ -468,8 +469,10 @@ bool CardSpecial::apply_stat_deltas_to_card_from_condition_and_clear_cond(Condit
         int16_t hp = clamp<int16_t>(card->get_current_hp(), -99, 99);
         if (hp != ap) {
           log.debug("A_H_SWAP: swapping AP (%hd) and HP (%hd)", ap, hp);
-          this->send_6xB4x06_for_stat_delta(card, cond_card_ref, 0xA0, hp - ap, 0, 0);
-          this->send_6xB4x06_for_stat_delta(card, cond_card_ref, 0x20, ap - hp, 0, 0);
+          if (!s->options.is_trial()) {
+            this->send_6xB4x06_for_stat_delta(card, cond_card_ref, 0xA0, hp - ap, 0, 0);
+            this->send_6xB4x06_for_stat_delta(card, cond_card_ref, 0x20, ap - hp, 0, 0);
+          }
           card->set_current_hp(ap, true, true);
           card->ap = hp;
           this->destroy_card_if_hp_zero(card, cond_card_ref);
@@ -492,8 +495,9 @@ bool CardSpecial::apply_stat_deltas_to_card_from_condition_and_clear_cond(Condit
         // late-development intentional change.
         Condition* other_cond = nullptr; // return_null???(card, ConditionType::AP_OVERRIDE);
         if (!other_cond) {
-          this->send_6xB4x06_for_stat_delta(
-              card, cond_card_ref, 0xA0, -cond_value, 0, 0);
+          if (!s->options.is_trial()) {
+            this->send_6xB4x06_for_stat_delta(card, cond_card_ref, 0xA0, -cond_value, 0, 0);
+          }
           card->ap = max<int16_t>(card->ap - cond_value, 0);
           log.debug("AP_OVERRIDE: subtracting %hd from AP => %hd", cond_value, card->ap);
         } else {
@@ -509,7 +513,9 @@ bool CardSpecial::apply_stat_deltas_to_card_from_condition_and_clear_cond(Condit
         // original code as well.
         Condition* other_cond = nullptr; // return_null???(card, ConditionType::TP_OVERRIDE)
         if (!other_cond) {
-          this->send_6xB4x06_for_stat_delta(card, cond_card_ref, 0x80, -cond_value, 0, 0);
+          if (!s->options.is_trial()) {
+            this->send_6xB4x06_for_stat_delta(card, cond_card_ref, 0x80, -cond_value, 0, 0);
+          }
           card->tp = max<int16_t>(card->tp - cond_value, 0);
           log.debug("TP_OVERRIDE: subtracting %hd from TP => %hd", cond_value, card->tp);
         } else {
@@ -521,7 +527,9 @@ bool CardSpecial::apply_stat_deltas_to_card_from_condition_and_clear_cond(Condit
       break;
     case ConditionType::MISC_AP_BONUSES:
       if (cond_flags & 2) {
-        this->send_6xB4x06_for_stat_delta(card, cond_card_ref, 0xA0, -cond_value, 0, 0);
+        if (!s->options.is_trial()) {
+          this->send_6xB4x06_for_stat_delta(card, cond_card_ref, 0xA0, -cond_value, 0, 0);
+        }
         card->ap = max<int16_t>(card->ap - cond_value, 0);
         log.debug("MISC_AP_BONUSES: subtracting %hd from AP => %hd", cond_value, card->ap);
       } else {
@@ -530,7 +538,9 @@ bool CardSpecial::apply_stat_deltas_to_card_from_condition_and_clear_cond(Condit
       break;
     case ConditionType::MISC_TP_BONUSES:
       if (cond_flags & 2) {
-        this->send_6xB4x06_for_stat_delta(card, cond_card_ref, 0x80, -cond_value, 0, 0);
+        if (!s->options.is_trial()) {
+          this->send_6xB4x06_for_stat_delta(card, cond_card_ref, 0x80, -cond_value, 0, 0);
+        }
         card->tp = max<int16_t>(card->tp - cond_value, 0);
         log.debug("MISC_TP_BONUSES: subtracting %hd from TP => %hd", cond_value, card->tp);
       } else {
@@ -538,6 +548,9 @@ bool CardSpecial::apply_stat_deltas_to_card_from_condition_and_clear_cond(Condit
       }
       break;
     case ConditionType::AP_SILENCE:
+      if (!s->options.is_trial()) {
+        goto trial_unimplemented;
+      }
       if (cond_flags & 2) {
         this->send_6xB4x06_for_stat_delta(card, cond_card_ref, 0xA0, cond_value, 0, 0);
         card->ap = max<int16_t>(card->ap + cond_value, 0);
@@ -547,6 +560,9 @@ bool CardSpecial::apply_stat_deltas_to_card_from_condition_and_clear_cond(Condit
       }
       break;
     case ConditionType::TP_SILENCE:
+      if (!s->options.is_trial()) {
+        goto trial_unimplemented;
+      }
       if (cond_flags & 2) {
         this->send_6xB4x06_for_stat_delta(card, cond_card_ref, 0x80, cond_value, 0, 0);
         card->tp = max<int16_t>(card->tp + cond_value, 0);
@@ -555,6 +571,7 @@ bool CardSpecial::apply_stat_deltas_to_card_from_condition_and_clear_cond(Condit
         log.debug("TP_SILENCE: required flag is missing");
       }
       break;
+    trial_unimplemented:
     default:
       log.debug("%s: no adjustments for condition type", name_for_condition_type(cond_type));
       break;
@@ -666,15 +683,15 @@ CardSpecial::AttackEnvStats CardSpecial::compute_attack_env_stats(
     const DiceRoll& dice_roll,
     uint16_t target_card_ref,
     uint16_t condition_giver_card_ref) {
-  auto log = this->server()->log_stack("compute_attack_env_stats: ");
+  auto s = this->server();
+  auto log = s->log_stack("compute_attack_env_stats: ");
 
   string pa_str = pa.str();
   log.debug("pa=%s, card=@%04hX #%04hX, dice_roll=%hhu, target=@%04hX, condition_giver=@%04hX", pa_str.c_str(), card->get_card_ref(), card->get_card_id(), dice_roll.value, target_card_ref, condition_giver_card_ref);
 
-  this->action_state = pa;
-  auto attacker_card = this->server()->card_for_set_card_ref(pa.attacker_card_ref);
+  auto attacker_card = s->card_for_set_card_ref(pa.attacker_card_ref);
   if (!attacker_card && (pa.original_attacker_card_ref != 0xFFFF)) {
-    attacker_card = this->server()->card_for_set_card_ref(pa.original_attacker_card_ref);
+    attacker_card = s->card_for_set_card_ref(pa.original_attacker_card_ref);
     log.debug("attacker=@%04hX #%04hX (from original)", attacker_card->get_card_ref(), attacker_card->get_card_id());
   } else if (attacker_card) {
     log.debug("attacker=@%04hX #%04hX (from set)", attacker_card->get_card_ref(), attacker_card->get_card_id());
@@ -687,15 +704,15 @@ CardSpecial::AttackEnvStats CardSpecial::compute_attack_env_stats(
   auto ps = card->player_state();
   log.debug("base ps = %hhu", ps->client_id);
   ast.num_set_cards = ps->count_set_cards();
-  auto condition_giver_card = this->server()->card_for_set_card_ref(condition_giver_card_ref);
-  auto target_card = this->server()->card_for_set_card_ref(target_card_ref);
+  auto condition_giver_card = s->card_for_set_card_ref(condition_giver_card_ref);
+  auto target_card = s->card_for_set_card_ref(target_card_ref);
   if (!target_card) {
     target_card = condition_giver_card;
   }
 
   size_t ps_num_set_cards = 0;
   for (size_t z = 0; z < 4; z++) {
-    auto other_ps = this->server()->get_player_state(z);
+    auto other_ps = s->get_player_state(z);
     if (other_ps) {
       ps_num_set_cards += other_ps->count_set_cards();
     }
@@ -707,19 +724,19 @@ CardSpecial::AttackEnvStats CardSpecial::compute_attack_env_stats(
       : 0xFF;
 
   size_t target_team_num_set_cards = 0;
-  size_t condition_giver_team_num_set_cards = 0;
+  size_t non_target_team_num_set_cards = 0;
   for (size_t z = 0; z < 4; z++) {
-    auto other_ps = this->server()->get_player_state(z);
+    auto other_ps = s->get_player_state(z);
     if (other_ps) {
       if (target_card_team_id == other_ps->get_team_id()) {
         target_team_num_set_cards += other_ps->count_set_cards();
       } else {
-        condition_giver_team_num_set_cards += other_ps->count_set_cards();
+        non_target_team_num_set_cards += other_ps->count_set_cards();
       }
     }
   }
   ast.target_team_num_set_cards = target_team_num_set_cards;
-  ast.condition_giver_team_num_set_cards = condition_giver_team_num_set_cards;
+  ast.non_target_team_num_set_cards = non_target_team_num_set_cards;
 
   ast.num_native_creatures = this->get_all_set_cards_by_team_and_class(CardClass::NATIVE_CREATURE, 0xFF, true).size();
   ast.num_a_beast_creatures = this->get_all_set_cards_by_team_and_class(CardClass::A_BEAST_CREATURE, 0xFF, true).size();
@@ -736,14 +753,19 @@ CardSpecial::AttackEnvStats CardSpecial::compute_attack_env_stats(
     if (card_ref == 0xFFFF) {
       continue;
     }
-    auto ce = this->server()->definition_for_card_id(card_ref);
+    auto ce = s->definition_for_card_id(card_ref);
     if (ce && ((ce->def.type == CardType::ITEM) || (ce->def.type == CardType::CREATURE))) {
       num_item_or_creature_cards_in_hand++;
     }
   }
   ast.num_item_or_creature_cards_in_hand = num_item_or_creature_cards_in_hand;
 
-  ast.num_destroyed_ally_fcs = card->num_destroyed_ally_fcs;
+  if (s->options.is_trial()) {
+    ast.num_destroyed_ally_fcs = s->team_num_cards_destroyed[ps->get_team_id()] - card->num_ally_fcs_destroyed_at_set_time;
+  } else {
+    ast.num_destroyed_ally_fcs = card->num_destroyed_ally_fcs;
+  }
+
   // Note: The original implementation has dice_roll as optional, but since it's
   // provided at all callsites, we require it (and hence don't check for nullptr
   // here)
@@ -753,7 +775,7 @@ CardSpecial::AttackEnvStats CardSpecial::compute_attack_env_stats(
   ast.effective_tp = card->action_chain.chain.effective_tp;
   ast.current_hp = card->get_current_hp();
   ast.max_hp = card->get_max_hp();
-  ast.team_dice_bonus = card ? this->server()->team_dice_bonus[card->get_team_id()] : 0;
+  ast.team_dice_bonus = card ? s->team_dice_bonus[card->get_team_id()] : 0;
 
   ast.effective_ap_if_not_tech = (!attacker_card || (attacker_card->action_chain.chain.attack_medium == AttackMedium::TECH))
       ? 0
@@ -802,8 +824,7 @@ CardSpecial::AttackEnvStats CardSpecial::compute_attack_env_stats(
   ast.action_cards_ap = 0;
   ast.action_cards_tp = 0;
   for (; (z < 9) && (pa.action_card_refs[z] != 0xFFFF); z++) {
-    this->unknown_a2 = pa.action_card_refs[z];
-    auto ce = this->server()->definition_for_card_ref(pa.action_card_refs[z]);
+    auto ce = s->definition_for_card_ref(pa.action_card_refs[z]);
     if (ce) {
       if (ce->def.ap.type != CardDefinition::Stat::Type::MINUS_STAT) {
         ast.action_cards_ap += ce->def.ap.stat;
@@ -1271,6 +1292,10 @@ size_t CardSpecial::count_cards_with_card_id_except_card_ref(
 
 vector<shared_ptr<const Card>> CardSpecial::get_all_set_cards_by_team_and_class(
     CardClass card_class, uint8_t team_id, bool exclude_destroyed_cards) const {
+  if (this->server()->options.is_trial()) {
+    team_id = 0xFF;
+    exclude_destroyed_cards = false;
+  }
   vector<shared_ptr<const Card>> ret;
   auto check_card = [&](shared_ptr<const Card> card) -> void {
     if (card &&
@@ -1941,7 +1966,7 @@ bool CardSpecial::execute_effect(
               (cond.type == ConditionType::FREEZE) ||
               (cond.type == ConditionType::UNKNOWN_1E) ||
               (cond.type == ConditionType::DROP)) {
-            G_ApplyConditionEffect_GC_Ep3_6xB4x06 cmd;
+            G_ApplyConditionEffect_Ep3_6xB4x06 cmd;
             cmd.effect.flags = 0x04;
             cmd.effect.attacker_card_ref = this->send_6xB4x06_if_card_ref_invalid(attacker_card_ref, 0x0C);
             cmd.effect.target_card_ref = card->get_card_ref();
@@ -3254,7 +3279,7 @@ void CardSpecial::send_6xB4x06_for_exp_change(
     uint16_t attacker_card_ref,
     uint8_t dice_roll_value,
     bool unknown_p5) const {
-  G_ApplyConditionEffect_GC_Ep3_6xB4x06 cmd;
+  G_ApplyConditionEffect_Ep3_6xB4x06 cmd;
   cmd.effect.flags = 0x02;
   cmd.effect.attacker_card_ref = this->send_6xB4x06_if_card_ref_invalid(attacker_card_ref, 10);
   cmd.effect.target_card_ref = card->get_card_ref();
@@ -3274,27 +3299,29 @@ void CardSpecial::send_6xB4x06_for_exp_change(
 
 void CardSpecial::send_6xB4x06_for_card_destroyed(
     shared_ptr<const Card> destroyed_card, uint16_t attacker_card_ref) const {
-  G_ApplyConditionEffect_GC_Ep3_6xB4x06 cmd;
+  auto s = this->server();
+  G_ApplyConditionEffect_Ep3_6xB4x06 cmd;
   cmd.effect.flags = 0x04;
   cmd.effect.attacker_card_ref = this->send_6xB4x06_if_card_ref_invalid(
       attacker_card_ref, 0x13);
   cmd.effect.target_card_ref = destroyed_card->get_card_ref();
   cmd.effect.value = 0;
-  cmd.effect.operation = 0x7E;
+  cmd.effect.operation = s->options.is_trial() ? 0x78 : 0x7E;
   this->server()->send(cmd);
 }
 
 uint16_t CardSpecial::send_6xB4x06_if_card_ref_invalid(
     uint16_t card_ref, int16_t value) const {
-  if (!this->server()->card_ref_is_empty_or_has_valid_card_id(card_ref)) {
+  auto s = this->server();
+  if (!s->options.is_trial() && !s->card_ref_is_empty_or_has_valid_card_id(card_ref)) {
     if (value != 0) {
-      G_ApplyConditionEffect_GC_Ep3_6xB4x06 cmd;
+      G_ApplyConditionEffect_Ep3_6xB4x06 cmd;
       cmd.effect.flags = 0x04;
       cmd.effect.attacker_card_ref = 0xFFFF;
       cmd.effect.target_card_ref = 0xFFFF;
       cmd.effect.value = value;
       cmd.effect.operation = 0x7E;
-      this->server()->send(cmd);
+      s->send(cmd);
     }
     card_ref = 0xFFFF;
   }
@@ -3323,7 +3350,7 @@ void CardSpecial::send_6xB4x06_for_stat_delta(
     }
   }
 
-  G_ApplyConditionEffect_GC_Ep3_6xB4x06 cmd;
+  G_ApplyConditionEffect_Ep3_6xB4x06 cmd;
   cmd.effect.flags = flags | 2;
   cmd.effect.attacker_card_ref = this->send_6xB4x06_if_card_ref_invalid(attacker_card_ref, 10);
   cmd.effect.target_card_ref = card->get_card_ref();
@@ -3611,7 +3638,7 @@ void CardSpecial::check_for_defense_interference(
 
   target_ps->unknown_a17++;
 
-  G_ApplyConditionEffect_GC_Ep3_6xB4x06 cmd;
+  G_ApplyConditionEffect_Ep3_6xB4x06 cmd;
   cmd.effect.flags = 0x04;
   cmd.effect.attacker_card_ref = this->send_6xB4x06_if_card_ref_invalid(attacker_card->get_card_ref(), 0x12);
   cmd.effect.target_card_ref = target_card->get_card_ref();
@@ -3631,26 +3658,32 @@ void CardSpecial::evaluate_and_apply_effects(
     uint16_t sc_card_ref,
     bool apply_defense_condition_to_all_cards,
     uint16_t apply_defense_condition_to_card_ref) {
-  auto log = this->server()->log_stack(string_printf("evaluate_and_apply_effects(%02hhX, @%04hX, @%04hX): ", when, set_card_ref, sc_card_ref));
+  auto s = this->server();
+  auto log = s->log_stack(string_printf("evaluate_and_apply_effects(%02hhX, @%04hX, @%04hX): ", when, set_card_ref, sc_card_ref));
   {
     string as_str = as.str();
     log.debug("when=%02hhX, set_card_ref=@%04hX, as=%s, sc_card_ref=@%04hX, apply_defense_condition_to_all_cards=%s, apply_defense_condition_to_card_ref=@%04hX",
         when, set_card_ref, as_str.c_str(), sc_card_ref, apply_defense_condition_to_all_cards ? "true" : "false", apply_defense_condition_to_card_ref);
   }
 
-  set_card_ref = this->send_6xB4x06_if_card_ref_invalid(set_card_ref, 1);
+  if (!s->options.is_trial()) {
+    set_card_ref = this->send_6xB4x06_if_card_ref_invalid(set_card_ref, 1);
+  }
+
   auto ce = this->server()->definition_for_card_ref(set_card_ref);
   if (!ce) {
     log.debug("ce missing");
     return;
   }
 
+  // TODO: NTE has an extra check here. Implement it.
+
   uint16_t as_attacker_card_ref = this->send_6xB4x06_if_card_ref_invalid(as.attacker_card_ref, 2);
   if (as_attacker_card_ref == 0xFFFF) {
     as_attacker_card_ref = this->send_6xB4x06_if_card_ref_invalid(as.original_attacker_card_ref, 3);
   }
 
-  G_ApplyConditionEffect_GC_Ep3_6xB4x06 dice_cmd;
+  G_ApplyConditionEffect_Ep3_6xB4x06 dice_cmd;
   dice_cmd.effect.target_card_ref = set_card_ref;
   bool as_action_card_refs_contains_set_card_ref = false;
   bool as_action_card_refs_contains_duplicate_of_set_card = false;
@@ -3659,7 +3692,7 @@ void CardSpecial::evaluate_and_apply_effects(
       as_action_card_refs_contains_set_card_ref = true;
       break;
     }
-    auto action_ce = this->server()->definition_for_card_ref(as.action_card_refs[z]);
+    auto action_ce = s->definition_for_card_ref(as.action_card_refs[z]);
     if (action_ce && (action_ce->def.card_id == ce->def.card_id)) {
       as_action_card_refs_contains_duplicate_of_set_card = true;
     }
@@ -3667,12 +3700,12 @@ void CardSpecial::evaluate_and_apply_effects(
 
   bool unknown_v1 = as_action_card_refs_contains_duplicate_of_set_card && as_action_card_refs_contains_set_card_ref;
 
-  uint8_t random_percent = this->server() ? this->server()->get_random(99) : 0;
+  uint8_t random_percent = s->get_random(99);
   bool any_expr_used_dice_roll = false;
 
   DiceRoll dice_roll;
   uint8_t client_id = client_id_for_card_ref(dice_cmd.effect.target_card_ref);
-  auto set_card_ps = (client_id == 0xFF) ? nullptr : this->server()->player_states.at(client_id);
+  auto set_card_ps = (client_id == 0xFF) ? nullptr : s->player_states.at(client_id);
 
   dice_roll.value = 1;
   if (set_card_ps) {
@@ -3705,7 +3738,8 @@ void CardSpecial::evaluate_and_apply_effects(
     string refs_str = refs_str_for_cards_vector(targeted_cards);
     effect_log.debug("targeted_cards=[%s]", refs_str.c_str());
     bool all_targets_matched = false;
-    if (!targeted_cards.empty() &&
+    if (!s->options.is_trial() &&
+        !targeted_cards.empty() &&
         ((card_effect.type == ConditionType::UNKNOWN_64) ||
             (card_effect.type == ConditionType::MISC_DEFENSE_BONUSES) ||
             (card_effect.type == ConditionType::MOSTLY_HALFGUARDS))) {
@@ -3724,9 +3758,9 @@ void CardSpecial::evaluate_and_apply_effects(
         }
       }
       if (count == targeted_cards.size()) {
-        auto set_card = this->server()->card_for_set_card_ref(set_card_ref);
+        auto set_card = s->card_for_set_card_ref(set_card_ref);
         if (!set_card) {
-          set_card = this->server()->card_for_set_card_ref(sc_card_ref);
+          set_card = s->card_for_set_card_ref(sc_card_ref);
         }
         targeted_cards.clear();
         if (set_card != nullptr) {
@@ -3784,13 +3818,13 @@ void CardSpecial::evaluate_and_apply_effects(
         }
 
         if (applied_cond_index >= 0) {
-          G_ApplyConditionEffect_GC_Ep3_6xB4x06 cmd;
+          G_ApplyConditionEffect_Ep3_6xB4x06 cmd;
           cmd.effect.flags = 0x04;
           cmd.effect.attacker_card_ref = this->send_6xB4x06_if_card_ref_invalid(as_attacker_card_ref, 0x14);
           cmd.effect.target_card_ref = target_card->get_card_ref();
           cmd.effect.value = (target_card->action_chain).conditions[applied_cond_index].remaining_turns;
           cmd.effect.operation = static_cast<int8_t>(card_effect.type);
-          this->server()->send(cmd);
+          s->send(cmd);
 
           // Note: The original code has this check outside of the if
           // (applied_cond_index >= 0) block, but this is a bug since
@@ -3826,7 +3860,7 @@ void CardSpecial::evaluate_and_apply_effects(
     dice_cmd.effect.attacker_card_ref = this->send_6xB4x06_if_card_ref_invalid(
         as_attacker_card_ref, 0x15);
     dice_cmd.effect.dice_roll_value = dice_roll.value;
-    this->server()->send(dice_cmd);
+    s->send(dice_cmd);
   }
 }
 
@@ -3903,7 +3937,7 @@ void CardSpecial::clear_invalid_conditions_on_card(
     if (cond.type != ConditionType::NONE) {
       if (!this->is_card_targeted_by_condition(cond, as, card)) {
         if (cond.type != ConditionType::NONE) {
-          G_ApplyConditionEffect_GC_Ep3_6xB4x06 cmd;
+          G_ApplyConditionEffect_Ep3_6xB4x06 cmd;
           cmd.effect.flags = 0x04;
           cmd.effect.attacker_card_ref = 0xFFFF;
           cmd.effect.target_card_ref = card->get_card_ref();
@@ -4350,7 +4384,6 @@ void CardSpecial::unknown_8024AAB8(const ActionState& as) {
   auto log = this->server()->log_stack("unknown_8024AAB8: ");
   string as_str = as.str();
   log.debug("as=%s", as_str.c_str());
-  this->unknown_action_state_a1 = as;
 
   for (size_t z = 0; (z < 8) && (as.action_card_refs[z] != 0xFFFF); z++) {
     uint16_t card_ref = this->send_6xB4x06_if_card_ref_invalid(
@@ -4614,7 +4647,7 @@ void CardSpecial::check_for_attack_interference(shared_ptr<Card> unknown_p2) {
   ps->unknown_a16++;
   unknown_p2->action_chain.set_flags(0x100);
 
-  G_ApplyConditionEffect_GC_Ep3_6xB4x06 cmd;
+  G_ApplyConditionEffect_Ep3_6xB4x06 cmd;
   cmd.effect.flags = 0x04;
   cmd.effect.attacker_card_ref = this->send_6xB4x06_if_card_ref_invalid(
       unknown_p2->get_card_ref(), 0x11);

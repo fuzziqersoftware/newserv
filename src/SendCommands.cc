@@ -801,7 +801,7 @@ void send_ep3_timed_message_box(Channel& ch, uint32_t frames, const string& mess
     return;
   }
   StringWriter w;
-  w.put<S_TimedMessageBoxHeader_GC_Ep3_EA>({frames});
+  w.put<S_TimedMessageBoxHeader_Ep3_EA>({frames});
   w.write(encoded);
   w.put_u8(0);
   while (w.size() & 3) {
@@ -1706,7 +1706,7 @@ static void send_join_spectator_team(shared_ptr<Client> c, shared_ptr<Lobby> l) 
 
   auto s = c->require_server_state();
 
-  S_JoinSpectatorTeam_GC_Ep3_E8 cmd;
+  S_JoinSpectatorTeam_Ep3_E8 cmd;
 
   cmd.variations.clear(0);
   cmd.client_id = c->lobby_client_id;
@@ -1901,7 +1901,7 @@ void send_join_game(shared_ptr<Client> c, shared_ptr<Lobby> l) {
     }
     case Version::GC_EP3_NTE:
     case Version::GC_EP3: {
-      S_JoinGame_GC_Ep3_64 cmd;
+      S_JoinGame_Ep3_64 cmd;
       size_t player_count = populate_v3_cmd(cmd);
       auto s = c->require_server_state();
       for (size_t x = 0; x < 4; x++) {
@@ -2280,7 +2280,7 @@ void send_execute_card_trade(shared_ptr<Client> c, const vector<pair<uint32_t, u
     throw logic_error("cannot send trade cards command to non-Ep3 client");
   }
 
-  SC_TradeCards_GC_Ep3_EE_FlagD0_FlagD3 cmd;
+  SC_TradeCards_Ep3_EE_FlagD0_FlagD3 cmd;
   constexpr size_t max_entries = sizeof(cmd.entries) / sizeof(cmd.entries[0]);
   if (card_to_count.size() > max_entries) {
     throw logic_error("too many items in execute card trade command");
@@ -2405,7 +2405,7 @@ void send_warp(shared_ptr<Lobby> l, uint32_t floor, bool is_private) {
 }
 
 void send_ep3_change_music(Channel& ch, uint32_t song) {
-  G_ChangeLobbyMusic_GC_Ep3_6xBF cmd = {{0xBF, 0x02, 0}, song};
+  G_ChangeLobbyMusic_Ep3_6xBF cmd = {{0xBF, 0x02, 0}, song};
   ch.send(0x60, 0x00, cmd);
 }
 
@@ -2758,7 +2758,7 @@ void send_ep3_media_update(
     uint32_t which,
     const string& compressed_data) {
   StringWriter w;
-  w.put<S_UpdateMediaHeader_GC_Ep3_B9>({type, which, compressed_data.size(), 0});
+  w.put<S_UpdateMediaHeader_Ep3_B9>({type, which, compressed_data.size(), 0});
   w.write(compressed_data);
   while (w.size() & 3) {
     w.put_u8(0);
@@ -2770,12 +2770,12 @@ void send_ep3_rank_update(shared_ptr<Client> c) {
   auto s = c->require_server_state();
   uint32_t current_meseta = s->ep3_infinite_meseta ? 1000000 : c->license->ep3_current_meseta;
   uint32_t total_meseta_earned = s->ep3_infinite_meseta ? 1000000 : c->license->ep3_total_meseta_earned;
-  S_RankUpdate_GC_Ep3_B7 cmd = {0, {}, current_meseta, total_meseta_earned, 0xFFFFFFFF};
+  S_RankUpdate_Ep3_B7 cmd = {0, {}, current_meseta, total_meseta_earned, 0xFFFFFFFF};
   send_command_t(c, 0xB7, 0x00, cmd);
 }
 
 void send_ep3_card_battle_table_state(shared_ptr<Lobby> l, uint16_t table_number) {
-  S_CardBattleTableState_GC_Ep3_E4 cmd;
+  S_CardBattleTableState_Ep3_E4 cmd;
   for (size_t z = 0; z < 4; z++) {
     cmd.entries[z].state = 0;
     cmd.entries[z].unknown_a1 = 0;
@@ -2806,7 +2806,7 @@ void send_ep3_card_battle_table_state(shared_ptr<Lobby> l, uint16_t table_number
 }
 
 void send_ep3_set_context_token(shared_ptr<Client> c, uint32_t context_token) {
-  G_SetContextToken_GC_Ep3_6xB4x1F cmd;
+  G_SetContextToken_Ep3_6xB4x1F cmd;
   cmd.context_token = context_token;
   send_command_t(c, 0xC9, 0x00, cmd);
 }
@@ -2818,7 +2818,7 @@ void send_ep3_confirm_tournament_entry(
     throw runtime_error("cannot send tournament entry command to Episode 3 Trial Edition client");
   }
 
-  S_ConfirmTournamentEntry_GC_Ep3_CC cmd;
+  S_ConfirmTournamentEntry_Ep3_CC cmd;
   if (tourn) {
     auto s = c->require_server_state();
     cmd.tournament_name.encode(tourn->get_name(), c->language());
@@ -2842,7 +2842,7 @@ void send_ep3_tournament_list(
     bool is_for_spectator_team_create) {
   auto s = c->require_server_state();
 
-  S_TournamentList_GC_Ep3_E0 cmd;
+  S_TournamentList_Ep3_E0 cmd;
   size_t z = 0;
   for (const auto& it : s->ep3_tournament_index->all_tournaments()) {
     const auto& tourn = it.second;
@@ -2884,7 +2884,7 @@ void send_ep3_tournament_entry_list(
     shared_ptr<Client> c,
     shared_ptr<const Episode3::Tournament> tourn,
     bool is_for_spectator_team_create) {
-  S_TournamentEntryList_GC_Ep3_E2 cmd;
+  S_TournamentEntryList_Ep3_E2 cmd;
   cmd.players_per_team = (tourn->get_flags() & Episode3::Tournament::Flag::IS_2V2) ? 2 : 1;
   size_t z = 0;
   for (const auto& team : tourn->all_teams()) {
@@ -2914,7 +2914,7 @@ void send_ep3_tournament_entry_list(
 void send_ep3_tournament_details(
     shared_ptr<Client> c,
     shared_ptr<const Episode3::Tournament> tourn) {
-  S_TournamentGameDetails_GC_Ep3_E3 cmd;
+  S_TournamentGameDetails_Ep3_E3 cmd;
   auto vm = tourn->get_map()->version(c->language());
   cmd.name.encode(tourn->get_name(), c->language());
   cmd.map_name.encode(vm->map->name.decode(vm->language), c->language());
@@ -2955,7 +2955,7 @@ void send_ep3_game_details(shared_ptr<Client> c, shared_ptr<Lobby> l) {
   auto tourn = tourn_match ? tourn_match->tournament.lock() : nullptr;
 
   if (tourn) {
-    S_TournamentGameDetails_GC_Ep3_E3 cmd;
+    S_TournamentGameDetails_Ep3_E3 cmd;
     cmd.name.encode(l->name, c->language());
 
     auto vm = tourn->get_map()->version(c->language());
@@ -2974,7 +2974,7 @@ void send_ep3_game_details(shared_ptr<Client> c, shared_ptr<Lobby> l) {
 
     if (primary_lobby) {
       auto serial_number_to_client = primary_lobby->clients_by_serial_number();
-      auto describe_team = [&](S_TournamentGameDetails_GC_Ep3_E3::TeamEntry& team_entry, shared_ptr<const Episode3::Tournament::Team> team) -> void {
+      auto describe_team = [&](S_TournamentGameDetails_Ep3_E3::TeamEntry& team_entry, shared_ptr<const Episode3::Tournament::Team> team) -> void {
         team_entry.team_name.encode(team->name, c->language());
         for (size_t z = 0; z < team->players.size(); z++) {
           auto& entry = team_entry.players[z];
@@ -3014,7 +3014,7 @@ void send_ep3_game_details(shared_ptr<Client> c, shared_ptr<Lobby> l) {
     send_command_t(c, 0xE3, flag, cmd);
 
   } else {
-    S_GameInformation_GC_Ep3_E1 cmd;
+    S_GameInformation_Ep3_E1 cmd;
     cmd.game_name.encode(l->name, c->language());
     if (primary_lobby) {
       size_t num_players = 0;
@@ -3043,7 +3043,7 @@ void send_ep3_game_details(shared_ptr<Client> c, shared_ptr<Lobby> l) {
       // spectator count in the info window object. To account for this, we send
       // a mostly-blank E3 to set the spectator count, followed by an E1 with
       // the correct data.
-      S_TournamentGameDetails_GC_Ep3_E3 cmd_E3;
+      S_TournamentGameDetails_Ep3_E3 cmd_E3;
       cmd_E3.num_spectators = num_spectators;
       send_command_t(c, 0xE3, 0x04, cmd_E3);
 
@@ -3073,7 +3073,7 @@ void send_ep3_set_tournament_player_decks(shared_ptr<Client> c) {
     throw runtime_error("tournament is deleted");
   }
 
-  G_SetTournamentPlayerDecks_GC_Ep3_6xB4x3D cmd;
+  G_SetTournamentPlayerDecks_Ep3_6xB4x3D cmd;
   cmd.rules = tourn->get_rules();
   cmd.map_number = tourn->get_map()->map_number;
   cmd.player_slot = 0xFF;
@@ -3139,7 +3139,7 @@ void send_ep3_tournament_match_result(shared_ptr<Lobby> l, uint32_t meseta_rewar
     if (!lc) {
       continue;
     }
-    auto write_player_names = [&](G_TournamentMatchResult_GC_Ep3_6xB4x51::NamesEntry& entry, shared_ptr<const Episode3::Tournament::Team> team) -> void {
+    auto write_player_names = [&](G_TournamentMatchResult_Ep3_6xB4x51::NamesEntry& entry, shared_ptr<const Episode3::Tournament::Team> team) -> void {
       for (size_t z = 0; z < team->players.size(); z++) {
         const auto& player = team->players[z];
         if (player.is_human()) {
@@ -3155,7 +3155,7 @@ void send_ep3_tournament_match_result(shared_ptr<Lobby> l, uint32_t meseta_rewar
       }
     };
 
-    G_TournamentMatchResult_GC_Ep3_6xB4x51 cmd;
+    G_TournamentMatchResult_Ep3_6xB4x51 cmd;
     cmd.match_description.encode((match == tourn->get_final_match())
             ? string_printf("(%s) Final match", tourn->get_name().c_str())
             : string_printf("(%s) Round %zu", tourn->get_name().c_str(), match->round_num),
@@ -3197,7 +3197,7 @@ void send_ep3_update_game_metadata(shared_ptr<Lobby> l) {
   auto s = l->require_server_state();
 
   {
-    G_SetGameMetadata_GC_Ep3_6xB4x52 cmd;
+    G_SetGameMetadata_Ep3_6xB4x52 cmd;
     cmd.total_spectators = total_spectators;
     if ((l->base_version != Version::GC_EP3_NTE) &&
         !(s->ep3_behavior_flags & Episode3::BehaviorFlag::DISABLE_MASKING)) {
@@ -3230,7 +3230,7 @@ void send_ep3_update_game_metadata(shared_ptr<Lobby> l) {
     }
     add_color_inplace(text);
     for (auto watcher_l : l->watcher_lobbies) {
-      G_SetGameMetadata_GC_Ep3_6xB4x52 cmd;
+      G_SetGameMetadata_Ep3_6xB4x52 cmd;
       cmd.local_spectators = 0;
       for (auto c : watcher_l->clients) {
         cmd.local_spectators += (c.get() != nullptr);
@@ -3513,7 +3513,7 @@ void send_ep3_card_auction(shared_ptr<Lobby> l) {
       ? s->ep3_card_index_trial
       : s->ep3_card_index;
 
-  S_StartCardAuction_GC_Ep3_EF cmd;
+  S_StartCardAuction_Ep3_EF cmd;
   cmd.points_available = s->ep3_card_auction_points;
   for (size_t z = 0; z < num_cards; z++) {
     uint64_t v = random_object<uint64_t>() % distribution_size;

@@ -14,6 +14,8 @@ namespace Episode3 {
 // "[V1][FINAL2.0] 03/09/13 15:30 by K.Toya"
 static const char* VERSION_SIGNATURE =
     "newserv Ep3 based on [V1][FINAL2.0] 03/09/13 15:30 by K.Toya";
+static const char* VERSION_SIGNATURE_NTE =
+    "newserv Ep3 NTE based on 03/05/29 18:00 by K.Toya";
 
 Server::PresenceEntry::PresenceEntry() {
   this->clear();
@@ -203,7 +205,7 @@ void Server::send(const void* data, size_t size, uint8_t command, bool enable_ma
 
     string masked_data;
     if (enable_masking &&
-        (l->base_version != Version::GC_EP3_NTE) &&
+        !this->options.is_trial() &&
         !(this->options.behavior_flags & BehaviorFlag::DISABLE_MASKING) &&
         (size >= 8)) {
       masked_data.assign(reinterpret_cast<const char*>(data), size);
@@ -233,18 +235,25 @@ void Server::send(const void* data, size_t size, uint8_t command, bool enable_ma
 void Server::send_6xB4x46() const {
   // Note: This function is not part of the original implementation; it was
   // factored out from its callsites in this file and the strings were changed.
-  G_ServerVersionStrings_GC_Ep3_6xB4x46 cmd46;
-  cmd46.version_signature.encode(VERSION_SIGNATURE, 1);
-  cmd46.date_str1.encode(format_time(this->options.card_index->definitions_mtime() * 1000000), 1);
-  string date_str2 = string_printf(
-      "Random:%08" PRIX32 "+%08" PRIX32,
-      this->options.random_crypt->seed(),
-      this->options.random_crypt->absolute_offset());
-  if (this->last_chosen_map) {
-    date_str2 += string_printf(" Map:%08" PRIX32, this->last_chosen_map->map_number);
+  if (this->options.is_trial()) {
+    G_ServerVersionStrings_Ep3NTE_6xB4x46 cmd;
+    cmd.version_signature.encode(VERSION_SIGNATURE_NTE, 1);
+    cmd.date_str1.encode(format_time(this->options.card_index->definitions_mtime() * 1000000), 1);
+    this->send(cmd);
+  } else {
+    G_ServerVersionStrings_Ep3_6xB4x46 cmd;
+    cmd.version_signature.encode(VERSION_SIGNATURE, 1);
+    cmd.date_str1.encode(format_time(this->options.card_index->definitions_mtime() * 1000000), 1);
+    string date_str2 = string_printf(
+        "Random:%08" PRIX32 "+%08" PRIX32,
+        this->options.random_crypt->seed(),
+        this->options.random_crypt->absolute_offset());
+    if (this->last_chosen_map) {
+      date_str2 += string_printf(" Map:%08" PRIX32, this->last_chosen_map->map_number);
+    }
+    cmd.date_str2.encode(date_str2, 1);
+    this->send(cmd);
   }
-  cmd46.date_str2.encode(date_str2, 1);
-  this->send(cmd46);
 }
 
 string Server::prepare_6xB6x41_map_definition(shared_ptr<const MapIndex::Map> map, uint8_t language, bool is_trial) {
@@ -253,8 +262,8 @@ string Server::prepare_6xB6x41_map_definition(shared_ptr<const MapIndex::Map> ma
   const auto& compressed = vm->compressed(is_trial);
 
   StringWriter w;
-  uint32_t subcommand_size = (compressed.size() + sizeof(G_MapData_GC_Ep3_6xB6x41) + 3) & (~3);
-  w.put<G_MapData_GC_Ep3_6xB6x41>({{{{0xB6, 0, 0}, subcommand_size}, 0x41, {}}, vm->map->map_number.load(), compressed.size(), 0});
+  uint32_t subcommand_size = (compressed.size() + sizeof(G_MapData_Ep3_6xB6x41) + 3) & (~3);
+  w.put<G_MapData_Ep3_6xB6x41>({{{{0xB6, 0, 0}, subcommand_size}, 0x41, {}}, vm->map->map_number.load(), compressed.size(), 0});
   w.write(compressed);
   return std::move(w.str());
 }
@@ -271,8 +280,7 @@ void Server::send_commands_for_joining_spectator(Channel& ch) const {
   }
 
   if (this->last_chosen_map) {
-    string data = this->prepare_6xB6x41_map_definition(
-        this->last_chosen_map, ch.language, (ch.version == Version::GC_EP3_NTE));
+    string data = this->prepare_6xB6x41_map_definition(this->last_chosen_map, ch.language, this->options.is_trial());
     this->log().info("Sending %c version of map %08" PRIX32, char_for_language_code(ch.language), this->last_chosen_map->map_number);
     ch.send(0x6C, 0x00, data);
   }
@@ -286,10 +294,14 @@ void Server::send_commands_for_joining_spectator(Channel& ch) const {
         ch.send(0xC9, 0x00, ps->prepare_6xB4x04());
       }
     }
-    {
-      G_UpdateMap_GC_Ep3_6xB4x05 cmd_05;
-      cmd_05.state = *this->map_and_rules;
-      ch.send(0xC9, 0x00, cmd_05);
+    if (ch.version == Version::GC_EP3_NTE) {
+      G_UpdateMap_Ep3NTE_6xB4x05 cmd;
+      cmd.state = *this->map_and_rules;
+      ch.send(0xC9, 0x00, cmd);
+    } else {
+      G_UpdateMap_Ep3_6xB4x05 cmd;
+      cmd.state = *this->map_and_rules;
+      ch.send(0xC9, 0x00, cmd);
     }
     // TODO: Sega does something like this; do we have to do this too?
     // for (uint8_t client_id = 0; client_id < 4; client_id++) {
@@ -302,7 +314,7 @@ void Server::send_commands_for_joining_spectator(Channel& ch) const {
     ch.send(0xC9, 0x00, this->prepare_6xB4x1C_names_update());
     ch.send(0xC9, 0x00, this->prepare_6xB4x50_trap_tile_locations());
     {
-      G_LoadCurrentEnvironment_GC_Ep3_6xB4x3B cmd_3B;
+      G_LoadCurrentEnvironment_Ep3_6xB4x3B cmd_3B;
       ch.send(0xC9, 0x00, &cmd_3B, sizeof(cmd_3B));
     }
   }
@@ -740,7 +752,7 @@ void Server::dice_phase_after() {
     size_t num_assists = this->assist_server->compute_num_assist_effects_for_client(client_id);
     for (size_t z = 0; z < num_assists; z++) {
       auto eff = this->assist_server->get_active_assist_by_index(z);
-      if ((eff == AssistEffect::CHARITY_PLUS) || (eff == AssistEffect::CHARITY)) {
+      if ((eff == AssistEffect::CHARITY) || (!this->options.is_trial() && (eff == AssistEffect::CHARITY_PLUS))) {
         int16_t exp_delta = (eff == AssistEffect::CHARITY_PLUS) ? -1 : 1;
         for (size_t other_client_id = 0; other_client_id < 4; other_client_id++) {
           auto other_ps = this->player_states[other_client_id];
@@ -798,7 +810,8 @@ void Server::draw_phase_after() {
       }
     }
 
-    if (this->overall_time_expired || (this->round_num >= 1000)) {
+    // Apparently the hard limit of 1000 was added after NTE was released
+    if (this->overall_time_expired || (!this->options.is_trial() && (this->round_num >= 1000))) {
       bool no_winner_specified = true;
       for (size_t z = 0; z < 4; z++) {
         auto ps = this->player_states[z];
@@ -808,7 +821,12 @@ void Server::draw_phase_after() {
         }
       }
       if (no_winner_specified) {
-        this->compute_losing_team_id_and_add_winner_flags(0);
+        if (this->options.is_trial()) {
+          // TODO: This looks like an incomplete version of compute_losing_team_id_and_add_winner_flags; reconcile this
+          throw runtime_error("unimplemented NTE condition");
+        } else {
+          this->compute_losing_team_id_and_add_winner_flags(0);
+        }
       }
       this->round_num--;
       this->set_battle_ended();
@@ -1009,106 +1027,108 @@ bool Server::is_registration_complete() const {
 }
 
 void Server::move_phase_after() {
-  for (size_t trap_type = 0; trap_type < 5; trap_type++) {
-    uint8_t trap_tile_index = this->chosen_trap_tile_index_of_type[trap_type];
-    if (trap_tile_index == 0xFF) {
-      continue;
-    }
-
-    bool should_trigger = false;
-    int16_t trap_x = this->trap_tile_locs[trap_type][trap_tile_index][0];
-    int16_t trap_y = this->trap_tile_locs[trap_type][trap_tile_index][1];
-    for (size_t client_id = 0; client_id < 4; client_id++) {
-      auto ps = this->player_states[client_id];
-      if (ps) {
-        auto sc_card = ps->get_sc_card();
-        if (sc_card && (sc_card->card_flags & 0x80) &&
-            (sc_card->loc.x == trap_x) && (sc_card->loc.y == trap_y)) {
-          should_trigger = true;
-          break;
-        }
+  if (!this->options.is_trial()) {
+    for (size_t trap_type = 0; trap_type < 5; trap_type++) {
+      uint8_t trap_tile_index = this->chosen_trap_tile_index_of_type[trap_type];
+      if (trap_tile_index == 0xFF) {
+        continue;
       }
-    }
-    if (!should_trigger) {
-      continue;
-    }
 
-    static const array<vector<uint16_t>, 5> default_trap_card_ids = {
-        // Red: Dice Fever, Heavy Fog, Muscular, Immortality, Snail Pace
-        vector<uint16_t>{0x00F7, 0x010F, 0x012E, 0x013B, 0x013C},
-        // Blue: Gold Rush, Charity, Requiem
-        vector<uint16_t>{0x0131, 0x012B, 0x0133},
-        // Purple: Powerless Rain, Trash 1, Empty Hand, Skip Draw
-        vector<uint16_t>{0x00FA, 0x0125, 0x0126, 0x0137},
-        // Green: Brave Wind, Homesick, Fly
-        vector<uint16_t>{0x00FB, 0x014E, 0x0107},
-        // Yellow: Dice+1, Battle Royale, Reverse Card, Giant Garden, Fix
-        vector<uint16_t>{0x00F6, 0x0242, 0x014B, 0x0145, 0x012D}};
-
-    const vector<uint16_t>* trap_card_ids = &this->options.trap_card_ids.at(trap_type);
-    if (trap_card_ids->empty()) {
-      trap_card_ids = &default_trap_card_ids.at(trap_type);
-    }
-
-    // This is the original implementation. We do something smarter instead.
-    // uint16_t trap_card_id = 0;
-    // while (trap_card_id == 0) {
-    //   trap_card_id = TRAP_CARD_IDS[trap_type][this->get_random(5)];
-    // }
-    uint16_t trap_card_id = 0xFFFF;
-    if (trap_card_ids->size() == 1) {
-      trap_card_id = trap_card_ids->at(0);
-    } else if (trap_card_ids->size() > 1) {
-      trap_card_id = trap_card_ids->at(this->get_random(trap_card_ids->size()));
-    }
-
-    if (trap_card_id != 0xFFFF) {
+      bool should_trigger = false;
+      int16_t trap_x = this->trap_tile_locs[trap_type][trap_tile_index][0];
+      int16_t trap_y = this->trap_tile_locs[trap_type][trap_tile_index][1];
       for (size_t client_id = 0; client_id < 4; client_id++) {
         auto ps = this->player_states[client_id];
         if (ps) {
           auto sc_card = ps->get_sc_card();
-          if (sc_card &&
-              (abs(sc_card->loc.x - trap_x) < 2) &&
-              (abs(sc_card->loc.y - trap_y) < 2) &&
-              ps->replace_assist_card_by_id(trap_card_id)) {
-            G_Unknown_GC_Ep3_6xB4x2C cmd;
-            cmd.change_type = 0x01;
-            cmd.client_id = client_id;
-            cmd.card_refs.clear(0xFFFF);
-            cmd.loc.x = trap_x;
-            cmd.loc.y = trap_y;
-            cmd.loc.direction = static_cast<Direction>(trap_type);
-            cmd.unknown_a2[0] = trap_card_id;
-            cmd.unknown_a2[1] = 0xFFFFFFFF;
-            this->send(cmd);
+          if (sc_card && (sc_card->card_flags & 0x80) &&
+              (sc_card->loc.x == trap_x) && (sc_card->loc.y == trap_y)) {
+            should_trigger = true;
+            break;
           }
         }
       }
-    }
-
-    // Note: This is the original implementation:
-    // if (this->num_trap_tiles_of_type[trap_type] > 1) {
-    //   uint8_t new_index = this->chosen_trap_tile_index_of_type[trap_type];
-    //   while (new_index == this->chosen_trap_tile_index_of_type[trap_type]) {
-    //     new_index = this->get_random(this->num_trap_tiles_of_type[trap_type]);
-    //   }
-    //   this->chosen_trap_tile_index_of_type[trap_type] = new_index;
-    //   this->send_6xB4x50();
-    // }
-    // We instead use an implementation that consumes a constant amount of
-    // randomness per pass.
-    if (this->num_trap_tiles_of_type[trap_type] == 2) {
-      this->chosen_trap_tile_index_of_type[trap_type] ^= 1;
-      this->send_6xB4x50_trap_tile_locations();
-    } else if (this->num_trap_tiles_of_type[trap_type] > 2) {
-      // Generate a new random index, but forbid it from matching the existing
-      // index
-      uint8_t new_index = this->get_random(this->num_trap_tiles_of_type[trap_type] - 1);
-      if (new_index >= this->chosen_trap_tile_index_of_type[trap_type]) {
-        new_index++;
+      if (!should_trigger) {
+        continue;
       }
-      this->chosen_trap_tile_index_of_type[trap_type] = new_index;
-      this->send_6xB4x50_trap_tile_locations();
+
+      static const array<vector<uint16_t>, 5> default_trap_card_ids = {
+          // Red: Dice Fever, Heavy Fog, Muscular, Immortality, Snail Pace
+          vector<uint16_t>{0x00F7, 0x010F, 0x012E, 0x013B, 0x013C},
+          // Blue: Gold Rush, Charity, Requiem
+          vector<uint16_t>{0x0131, 0x012B, 0x0133},
+          // Purple: Powerless Rain, Trash 1, Empty Hand, Skip Draw
+          vector<uint16_t>{0x00FA, 0x0125, 0x0126, 0x0137},
+          // Green: Brave Wind, Homesick, Fly
+          vector<uint16_t>{0x00FB, 0x014E, 0x0107},
+          // Yellow: Dice+1, Battle Royale, Reverse Card, Giant Garden, Fix
+          vector<uint16_t>{0x00F6, 0x0242, 0x014B, 0x0145, 0x012D}};
+
+      const vector<uint16_t>* trap_card_ids = &this->options.trap_card_ids.at(trap_type);
+      if (trap_card_ids->empty()) {
+        trap_card_ids = &default_trap_card_ids.at(trap_type);
+      }
+
+      // This is the original implementation. We do something smarter instead.
+      // uint16_t trap_card_id = 0;
+      // while (trap_card_id == 0) {
+      //   trap_card_id = TRAP_CARD_IDS[trap_type][this->get_random(5)];
+      // }
+      uint16_t trap_card_id = 0xFFFF;
+      if (trap_card_ids->size() == 1) {
+        trap_card_id = trap_card_ids->at(0);
+      } else if (trap_card_ids->size() > 1) {
+        trap_card_id = trap_card_ids->at(this->get_random(trap_card_ids->size()));
+      }
+
+      if (trap_card_id != 0xFFFF) {
+        for (size_t client_id = 0; client_id < 4; client_id++) {
+          auto ps = this->player_states[client_id];
+          if (ps) {
+            auto sc_card = ps->get_sc_card();
+            if (sc_card &&
+                (abs(sc_card->loc.x - trap_x) < 2) &&
+                (abs(sc_card->loc.y - trap_y) < 2) &&
+                ps->replace_assist_card_by_id(trap_card_id)) {
+              G_Unknown_Ep3_6xB4x2C cmd;
+              cmd.change_type = 0x01;
+              cmd.client_id = client_id;
+              cmd.card_refs.clear(0xFFFF);
+              cmd.loc.x = trap_x;
+              cmd.loc.y = trap_y;
+              cmd.loc.direction = static_cast<Direction>(trap_type);
+              cmd.unknown_a2[0] = trap_card_id;
+              cmd.unknown_a2[1] = 0xFFFFFFFF;
+              this->send(cmd);
+            }
+          }
+        }
+      }
+
+      // Note: This is the original implementation:
+      // if (this->num_trap_tiles_of_type[trap_type] > 1) {
+      //   uint8_t new_index = this->chosen_trap_tile_index_of_type[trap_type];
+      //   while (new_index == this->chosen_trap_tile_index_of_type[trap_type]) {
+      //     new_index = this->get_random(this->num_trap_tiles_of_type[trap_type]);
+      //   }
+      //   this->chosen_trap_tile_index_of_type[trap_type] = new_index;
+      //   this->send_6xB4x50();
+      // }
+      // We instead use an implementation that consumes a constant amount of
+      // randomness per pass.
+      if (this->num_trap_tiles_of_type[trap_type] == 2) {
+        this->chosen_trap_tile_index_of_type[trap_type] ^= 1;
+        this->send_6xB4x50_trap_tile_locations();
+      } else if (this->num_trap_tiles_of_type[trap_type] > 2) {
+        // Generate a new random index, but forbid it from matching the existing
+        // index
+        uint8_t new_index = this->get_random(this->num_trap_tiles_of_type[trap_type] - 1);
+        if (new_index >= this->chosen_trap_tile_index_of_type[trap_type]) {
+          new_index++;
+        }
+        this->chosen_trap_tile_index_of_type[trap_type] = new_index;
+        this->send_6xB4x50_trap_tile_locations();
+      }
     }
   }
 
@@ -1127,8 +1147,8 @@ void Server::action_phase_before() {
   }
 }
 
-G_SetPlayerNames_GC_Ep3_6xB4x1C Server::prepare_6xB4x1C_names_update() const {
-  G_SetPlayerNames_GC_Ep3_6xB4x1C cmd;
+G_SetPlayerNames_Ep3_6xB4x1C Server::prepare_6xB4x1C_names_update() const {
+  G_SetPlayerNames_Ep3_6xB4x1C cmd;
   cmd.entries = this->name_entries;
   return cmd;
 }
@@ -1138,7 +1158,7 @@ void Server::send_6xB4x1C_names_update() {
 }
 
 int8_t Server::send_6xB4x33_remove_ally_atk_if_needed(const ActionState& pa) {
-  G_SubtractAllyATKPoints_GC_Ep3_6xB4x33 cmd;
+  G_SubtractAllyATKPoints_Ep3_6xB4x33 cmd;
 
   bool has_ally_cost = false;
   uint8_t ally_cost = 0;
@@ -1194,8 +1214,8 @@ int8_t Server::send_6xB4x33_remove_ally_atk_if_needed(const ActionState& pa) {
   return 1;
 }
 
-G_UpdateDecks_GC_Ep3_6xB4x07 Server::prepare_6xB4x07_decks_update() const {
-  G_UpdateDecks_GC_Ep3_6xB4x07 cmd07;
+G_UpdateDecks_Ep3_6xB4x07 Server::prepare_6xB4x07_decks_update() const {
+  G_UpdateDecks_Ep3_6xB4x07 cmd07;
   for (size_t z = 0; z < 4; z++) {
     if (!this->check_presence_entry(z)) {
       cmd07.entries_present[z] = 0;
@@ -1212,9 +1232,15 @@ G_UpdateDecks_GC_Ep3_6xB4x07 Server::prepare_6xB4x07_decks_update() const {
 void Server::send_all_state_updates() {
   this->send(this->prepare_6xB4x07_decks_update());
 
-  G_UpdateMap_GC_Ep3_6xB4x05 cmd;
-  cmd.state = *this->map_and_rules;
-  this->send(cmd);
+  if (this->options.is_trial()) {
+    G_UpdateMap_Ep3NTE_6xB4x05 cmd;
+    cmd.state = *this->map_and_rules;
+    this->send(cmd);
+  } else {
+    G_UpdateMap_Ep3_6xB4x05 cmd;
+    cmd.state = *this->map_and_rules;
+    this->send(cmd);
+  }
 
   this->send_6xB4x02_for_all_players_if_needed();
 }
@@ -1535,10 +1561,17 @@ void Server::setup_and_start_battle() {
   this->update_battle_state_flags_and_send_6xB4x03_if_needed(true);
   this->send_6xB4x50_trap_tile_locations();
 
-  G_UpdateMap_GC_Ep3_6xB4x05 cmd05;
-  cmd05.state = *this->map_and_rules;
-  cmd05.start_battle = 1;
-  this->send(cmd05);
+  if (this->options.is_trial()) {
+    G_UpdateMap_Ep3NTE_6xB4x05 cmd;
+    cmd.state = *this->map_and_rules;
+    cmd.start_battle = 1;
+    this->send(cmd);
+  } else {
+    G_UpdateMap_Ep3_6xB4x05 cmd;
+    cmd.state = *this->map_and_rules;
+    cmd.start_battle = 1;
+    this->send(cmd);
+  }
 
   this->battle_start_usecs = now();
 
@@ -1552,8 +1585,8 @@ void Server::setup_and_start_battle() {
   }
 }
 
-G_SetStateFlags_GC_Ep3_6xB4x03 Server::prepare_6xB4x03() const {
-  G_SetStateFlags_GC_Ep3_6xB4x03 cmd;
+G_SetStateFlags_Ep3_6xB4x03 Server::prepare_6xB4x03() const {
+  G_SetStateFlags_Ep3_6xB4x03 cmd;
   cmd.state.turn_num = this->round_num;
   cmd.state.battle_phase = this->battle_phase;
   cmd.state.current_team_turn1 = this->current_team_turn1;
@@ -1579,7 +1612,7 @@ G_SetStateFlags_GC_Ep3_6xB4x03 Server::prepare_6xB4x03() const {
 }
 
 void Server::update_battle_state_flags_and_send_6xB4x03_if_needed(bool always_send) {
-  G_SetStateFlags_GC_Ep3_6xB4x03 cmd = this->prepare_6xB4x03();
+  G_SetStateFlags_Ep3_6xB4x03 cmd = this->prepare_6xB4x03();
   if (always_send || (*this->state_flags != cmd.state)) {
     *this->state_flags = cmd.state;
     this->send(cmd);
@@ -1672,7 +1705,7 @@ void Server::on_server_data_input(shared_ptr<Client> sender_c, const string& dat
 }
 
 void Server::handle_CAx0B_mulligan_hand(shared_ptr<Client>, const string& data) {
-  const auto& in_cmd = check_size_t<G_RedrawInitialHand_GC_Ep3_6xB3x0B_CAx0B>(data);
+  const auto& in_cmd = check_size_t<G_RedrawInitialHand_Ep3_6xB3x0B_CAx0B>(data);
   this->send_debug_command_received_message(
       in_cmd.client_id, in_cmd.header.subsubcommand, "REDRAW");
   if (in_cmd.client_id >= 4) {
@@ -1695,16 +1728,17 @@ void Server::handle_CAx0B_mulligan_hand(shared_ptr<Client>, const string& data) 
     }
   }
 
-  G_ActionResult_GC_Ep3_6xB4x1E out_cmd;
-  out_cmd.sequence_num = in_cmd.header.sequence_num.load();
-  out_cmd.error_code = error_code;
-  this->send(out_cmd);
-
-  this->send_debug_message_if_error_code_nonzero(in_cmd.client_id, out_cmd.error_code);
+  if (!this->options.is_trial() || (error_code == 0)) {
+    G_ActionResult_Ep3_6xB4x1E out_cmd;
+    out_cmd.sequence_num = in_cmd.header.sequence_num.load();
+    out_cmd.error_code = error_code;
+    this->send(out_cmd);
+  }
+  this->send_debug_message_if_error_code_nonzero(in_cmd.client_id, error_code);
 }
 
 void Server::handle_CAx0C_end_mulligan_phase(shared_ptr<Client>, const string& data) {
-  const auto& in_cmd = check_size_t<G_EndInitialRedrawPhase_GC_Ep3_6xB3x0C_CAx0C>(data);
+  const auto& in_cmd = check_size_t<G_EndInitialRedrawPhase_Ep3_6xB3x0C_CAx0C>(data);
   this->send_debug_command_received_message(
       in_cmd.client_id, in_cmd.header.subsubcommand, "SETUP ADV 2");
   if (in_cmd.client_id >= 4) {
@@ -1721,7 +1755,11 @@ void Server::handle_CAx0C_end_mulligan_phase(shared_ptr<Client>, const string& d
     error_code = -0x78;
   }
 
-  G_ActionResult_GC_Ep3_6xB4x1E out_cmd_ack;
+  if (this->options.is_trial() && error_code) {
+    return;
+  }
+
+  G_ActionResult_Ep3_6xB4x1E out_cmd_ack;
   out_cmd_ack.sequence_num = in_cmd.header.sequence_num;
   out_cmd_ack.response_phase = 1;
   this->send(out_cmd_ack);
@@ -1748,7 +1786,7 @@ void Server::handle_CAx0C_end_mulligan_phase(shared_ptr<Client>, const string& d
     }
   }
 
-  G_ActionResult_GC_Ep3_6xB4x1E out_cmd_fin;
+  G_ActionResult_Ep3_6xB4x1E out_cmd_fin;
   out_cmd_fin.sequence_num = in_cmd.header.sequence_num;
   out_cmd_fin.response_phase = 2;
   out_cmd_fin.error_code = error_code;
@@ -1758,28 +1796,27 @@ void Server::handle_CAx0C_end_mulligan_phase(shared_ptr<Client>, const string& d
 }
 
 void Server::handle_CAx0D_end_non_action_phase(shared_ptr<Client>, const string& data) {
-  const auto& in_cmd = check_size_t<G_EndNonAttackPhase_GC_Ep3_6xB3x0D_CAx0D>(data);
-  this->send_debug_command_received_message(
-      in_cmd.client_id, in_cmd.header.subsubcommand, "END PHASE");
+  const auto& in_cmd = check_size_t<G_EndNonAttackPhase_Ep3_6xB3x0D_CAx0D>(data);
+  this->send_debug_command_received_message(in_cmd.client_id, in_cmd.header.subsubcommand, "END PHASE");
   if (in_cmd.client_id >= 4) {
     throw runtime_error("invalid client ID");
   }
 
-  G_ActionResult_GC_Ep3_6xB4x1E out_cmd_ack;
+  G_ActionResult_Ep3_6xB4x1E out_cmd_ack;
   out_cmd_ack.sequence_num = in_cmd.header.sequence_num;
   out_cmd_ack.response_phase = 1;
   this->send(out_cmd_ack);
 
   this->set_client_id_ready_to_advance_phase(in_cmd.client_id);
 
-  G_ActionResult_GC_Ep3_6xB4x1E out_cmd_fin;
+  G_ActionResult_Ep3_6xB4x1E out_cmd_fin;
   out_cmd_fin.sequence_num = in_cmd.header.sequence_num;
   out_cmd_fin.response_phase = 2;
   this->send(out_cmd_fin);
 }
 
 void Server::handle_CAx0E_discard_card_from_hand(shared_ptr<Client>, const string& data) {
-  const auto& in_cmd = check_size_t<G_DiscardCardFromHand_GC_Ep3_6xB3x0E_CAx0E>(data);
+  const auto& in_cmd = check_size_t<G_DiscardCardFromHand_Ep3_6xB3x0E_CAx0E>(data);
   this->send_debug_command_received_message(
       in_cmd.client_id, in_cmd.header.subsubcommand, "DISCARD");
   if (in_cmd.client_id >= 4) {
@@ -1809,18 +1846,18 @@ void Server::handle_CAx0E_discard_card_from_hand(shared_ptr<Client>, const strin
     }
   }
 
-  G_ActionResult_GC_Ep3_6xB4x1E out_cmd;
-  out_cmd.sequence_num = in_cmd.header.sequence_num;
-  out_cmd.error_code = error_code;
-  this->send(out_cmd);
-
-  this->send_debug_message_if_error_code_nonzero(in_cmd.client_id, out_cmd.error_code);
+  if (!this->options.is_trial() || (error_code == 0)) {
+    G_ActionResult_Ep3_6xB4x1E out_cmd;
+    out_cmd.sequence_num = in_cmd.header.sequence_num;
+    out_cmd.error_code = error_code;
+    this->send(out_cmd);
+  }
+  this->send_debug_message_if_error_code_nonzero(in_cmd.client_id, error_code);
 }
 
 void Server::handle_CAx0F_set_card_from_hand(shared_ptr<Client>, const string& data) {
-  const auto& in_cmd = check_size_t<G_SetCardFromHand_GC_Ep3_6xB3x0F_CAx0F>(data);
-  this->send_debug_command_received_message(
-      in_cmd.client_id, in_cmd.header.subsubcommand, "SET FC");
+  const auto& in_cmd = check_size_t<G_SetCardFromHand_Ep3_6xB3x0F_CAx0F>(data);
+  this->send_debug_command_received_message(in_cmd.client_id, in_cmd.header.subsubcommand, "SET FC");
   if (in_cmd.client_id >= 4) {
     throw runtime_error("invalid client ID");
   }
@@ -1836,6 +1873,7 @@ void Server::handle_CAx0F_set_card_from_hand(shared_ptr<Client>, const string& d
     error_code = -0x78;
   }
 
+  bool was_set = false;
   if (in_cmd.client_id >= 4) {
     error_code = -0x78;
   }
@@ -1845,22 +1883,22 @@ void Server::handle_CAx0F_set_card_from_hand(shared_ptr<Client>, const string& d
     if (!ps) {
       this->ruler_server->error_code1 = -0x72;
     } else {
-      ps->set_card_from_hand(in_cmd.card_ref, in_cmd.set_index, &in_cmd.loc, in_cmd.assist_target_player, 0);
+      was_set = ps->set_card_from_hand(in_cmd.card_ref, in_cmd.set_index, &in_cmd.loc, in_cmd.assist_target_player, 0);
     }
   } else {
     this->ruler_server->error_code1 = error_code;
   }
 
-  G_ActionResult_GC_Ep3_6xB4x1E out_cmd;
+  G_ActionResult_Ep3_6xB4x1E out_cmd;
   out_cmd.sequence_num = in_cmd.header.sequence_num;
-  out_cmd.error_code = this->ruler_server->error_code1;
+  out_cmd.error_code = this->options.is_trial() ? (was_set ? 0 : 1) : this->ruler_server->error_code1;
   this->send(out_cmd);
 
   this->send_debug_message_if_error_code_nonzero(in_cmd.client_id, out_cmd.error_code);
 }
 
 void Server::handle_CAx10_move_fc_to_location(shared_ptr<Client>, const string& data) {
-  const auto& in_cmd = check_size_t<G_MoveFieldCharacter_GC_Ep3_6xB3x10_CAx10>(data);
+  const auto& in_cmd = check_size_t<G_MoveFieldCharacter_Ep3_6xB3x10_CAx10>(data);
   this->send_debug_command_received_message(
       in_cmd.client_id, in_cmd.header.subsubcommand, "MOVE");
   if (in_cmd.client_id >= 4) {
@@ -1889,7 +1927,7 @@ void Server::handle_CAx10_move_fc_to_location(shared_ptr<Client>, const string& 
     this->ruler_server->error_code2 = error_code;
   }
 
-  G_ActionResult_GC_Ep3_6xB4x1E out_cmd;
+  G_ActionResult_Ep3_6xB4x1E out_cmd;
   out_cmd.sequence_num = in_cmd.header.sequence_num;
   out_cmd.error_code = this->ruler_server->error_code2;
   this->send(out_cmd);
@@ -1898,7 +1936,7 @@ void Server::handle_CAx10_move_fc_to_location(shared_ptr<Client>, const string& 
 }
 
 void Server::handle_CAx11_enqueue_attack_or_defense(shared_ptr<Client>, const string& data) {
-  const auto& in_cmd = check_size_t<G_EnqueueAttackOrDefense_GC_Ep3_6xB3x11_CAx11>(data);
+  const auto& in_cmd = check_size_t<G_EnqueueAttackOrDefense_Ep3_6xB3x11_CAx11>(data);
   this->send_debug_command_received_message(
       in_cmd.client_id, in_cmd.header.subsubcommand, "ENQUEUE ACT");
   if (in_cmd.client_id >= 4) {
@@ -1916,7 +1954,7 @@ void Server::handle_CAx11_enqueue_attack_or_defense(shared_ptr<Client>, const st
     this->ruler_server->error_code3 = 0;
     ActionState pa = in_cmd.entry;
     if (this->enqueue_attack_or_defense(in_cmd.client_id, &pa)) {
-      G_SetActionState_GC_Ep3_6xB4x09 out_cmd;
+      G_SetActionState_Ep3_6xB4x09 out_cmd;
       out_cmd.client_id = in_cmd.client_id;
       out_cmd.state = in_cmd.entry;
       this->send(out_cmd);
@@ -1925,7 +1963,7 @@ void Server::handle_CAx11_enqueue_attack_or_defense(shared_ptr<Client>, const st
     this->ruler_server->error_code3 = error_code;
   }
 
-  G_ActionResult_GC_Ep3_6xB4x1E out_cmd;
+  G_ActionResult_Ep3_6xB4x1E out_cmd;
   out_cmd.sequence_num = in_cmd.header.sequence_num;
   out_cmd.error_code = this->ruler_server->error_code3;
   this->send(out_cmd);
@@ -1934,7 +1972,7 @@ void Server::handle_CAx11_enqueue_attack_or_defense(shared_ptr<Client>, const st
 }
 
 void Server::handle_CAx12_end_attack_list(shared_ptr<Client>, const string& data) {
-  const auto& in_cmd = check_size_t<G_EndAttackList_GC_Ep3_6xB3x12_CAx12>(data);
+  const auto& in_cmd = check_size_t<G_EndAttackList_Ep3_6xB3x12_CAx12>(data);
   this->send_debug_command_received_message(
       in_cmd.client_id, in_cmd.header.subsubcommand, "END ATK LIST");
   if (in_cmd.client_id >= 4) {
@@ -1949,7 +1987,7 @@ void Server::handle_CAx12_end_attack_list(shared_ptr<Client>, const string& data
     this->end_attack_list_for_client(in_cmd.client_id);
   }
 
-  G_ActionResult_GC_Ep3_6xB4x1E out_cmd;
+  G_ActionResult_Ep3_6xB4x1E out_cmd;
   out_cmd.sequence_num = in_cmd.header.sequence_num;
   this->send(out_cmd);
 
@@ -1957,7 +1995,7 @@ void Server::handle_CAx12_end_attack_list(shared_ptr<Client>, const string& data
 }
 
 void Server::handle_CAx13_update_map_during_setup(shared_ptr<Client>, const string& data) {
-  const auto& in_cmd = check_size_t<G_SetMapState_GC_Ep3_6xB3x13_CAx13>(data);
+  const auto& in_cmd = check_size_t<G_SetMapState_Ep3_6xB3x13_CAx13>(data);
   this->send_debug_command_received_message(
       in_cmd.header.subsubcommand, "UPDATE MAP");
 
@@ -1999,7 +2037,7 @@ void Server::handle_CAx13_update_map_during_setup(shared_ptr<Client>, const stri
 }
 
 void Server::handle_CAx14_update_deck_during_setup(shared_ptr<Client>, const string& data) {
-  const auto& in_cmd = check_size_t<G_SetPlayerDeck_GC_Ep3_6xB3x14_CAx14>(data);
+  const auto& in_cmd = check_size_t<G_SetPlayerDeck_Ep3_6xB3x14_CAx14>(data);
   this->send_debug_command_received_message(
       in_cmd.client_id, in_cmd.header.subsubcommand, "UPDATE DECK");
 
@@ -2046,7 +2084,7 @@ void Server::handle_CAx14_update_deck_during_setup(shared_ptr<Client>, const str
 }
 
 void Server::handle_CAx15_unused_hard_reset_server_state(shared_ptr<Client>, const string& data) {
-  const auto& in_cmd = check_size_t<G_HardResetServerState_GC_Ep3_6xB3x15_CAx15>(data);
+  const auto& in_cmd = check_size_t<G_HardResetServerState_Ep3_6xB3x15_CAx15>(data);
   this->send_debug_command_received_message(
       in_cmd.header.subsubcommand, "HARD RESET");
 
@@ -2064,7 +2102,7 @@ void Server::handle_CAx15_unused_hard_reset_server_state(shared_ptr<Client>, con
 }
 
 void Server::handle_CAx1B_update_player_name(shared_ptr<Client>, const string& data) {
-  const auto& in_cmd = check_size_t<G_SetPlayerName_GC_Ep3_6xB3x1B_CAx1B>(data);
+  const auto& in_cmd = check_size_t<G_SetPlayerName_Ep3_6xB3x1B_CAx1B>(data);
   this->send_debug_command_received_message(
       in_cmd.entry.client_id, in_cmd.header.subsubcommand, "UPDATE NAME");
 
@@ -2088,7 +2126,7 @@ void Server::handle_CAx1B_update_player_name(shared_ptr<Client>, const string& d
     }
   }
 
-  G_SetPlayerNames_GC_Ep3_6xB4x1C out_cmd;
+  G_SetPlayerNames_Ep3_6xB4x1C out_cmd;
   for (size_t z = 0; z < 4; z++) {
     out_cmd.entries[z] = this->name_entries[z];
   }
@@ -2096,13 +2134,13 @@ void Server::handle_CAx1B_update_player_name(shared_ptr<Client>, const string& d
 }
 
 void Server::handle_CAx1D_start_battle(shared_ptr<Client>, const string& data) {
-  const auto& in_cmd = check_size_t<G_StartBattle_GC_Ep3_6xB3x1D_CAx1D>(data);
+  const auto& in_cmd = check_size_t<G_StartBattle_Ep3_6xB3x1D_CAx1D>(data);
   this->send_debug_command_received_message(
       in_cmd.header.subsubcommand, "START BATTLE");
 
   if (!this->battle_in_progress) {
     if (!this->update_registration_phase()) {
-      G_RejectBattleStartRequest_GC_Ep3_6xB4x53 out_cmd;
+      G_RejectBattleStartRequest_Ep3_6xB4x53 out_cmd;
       out_cmd.setup_phase = this->setup_phase;
       out_cmd.registration_phase = this->registration_phase;
       out_cmd.state = *this->map_and_rules;
@@ -2121,7 +2159,7 @@ void Server::handle_CAx1D_start_battle(shared_ptr<Client>, const string& data) {
         }
         // Note: Sega's implementation doesn't set EX results values here; they
         // did it at game join time instead. We do it here for code simplicity.
-        if (l->ep3_ex_result_values) {
+        if ((l->base_version != Version::GC_EP3_NTE) && l->ep3_ex_result_values) {
           this->send(*l->ep3_ex_result_values);
         }
       }
@@ -2133,7 +2171,7 @@ void Server::handle_CAx1D_start_battle(shared_ptr<Client>, const string& data) {
 }
 
 void Server::handle_CAx21_end_battle(shared_ptr<Client>, const string& data) {
-  const auto& in_cmd = check_size_t<G_EndBattle_GC_Ep3_6xB3x21_CAx21>(data);
+  const auto& in_cmd = check_size_t<G_EndBattle_Ep3_6xB3x21_CAx21>(data);
   this->send_debug_command_received_message(
       in_cmd.header.subsubcommand, "END BATTLE");
   if (this->setup_phase == SetupPhase::BATTLE_ENDED) {
@@ -2148,14 +2186,14 @@ void Server::handle_CAx21_end_battle(shared_ptr<Client>, const string& data) {
 }
 
 void Server::handle_CAx28_end_defense_list(shared_ptr<Client>, const string& data) {
-  const auto& in_cmd = check_size_t<G_EndDefenseList_GC_Ep3_6xB3x28_CAx28>(data);
+  const auto& in_cmd = check_size_t<G_EndDefenseList_Ep3_6xB3x28_CAx28>(data);
   this->send_debug_command_received_message(
       in_cmd.client_id, in_cmd.header.subsubcommand, "END DEF LIST");
   if (in_cmd.client_id >= 4) {
     throw runtime_error("invalid client ID");
   }
 
-  G_ActionResult_GC_Ep3_6xB4x1E out_cmd_ack;
+  G_ActionResult_Ep3_6xB4x1E out_cmd_ack;
   out_cmd_ack.sequence_num = in_cmd.header.sequence_num;
   out_cmd_ack.response_phase = 1;
   this->send(out_cmd_ack);
@@ -2194,20 +2232,20 @@ void Server::handle_CAx28_end_defense_list(shared_ptr<Client>, const string& dat
     this->unknown_a10 = 0;
   }
 
-  G_ActionResult_GC_Ep3_6xB4x1E out_cmd_fin;
+  G_ActionResult_Ep3_6xB4x1E out_cmd_fin;
   out_cmd_fin.sequence_num = in_cmd.header.sequence_num;
   out_cmd_fin.response_phase = 2;
   this->send(out_cmd_fin);
 }
 
 void Server::handle_CAx2B_legacy_set_card(shared_ptr<Client>, const string& data) {
-  const auto& in_cmd = check_size_t<G_ExecLegacyCard_GC_Ep3_6xB3x2B_CAx2B>(data);
+  const auto& in_cmd = check_size_t<G_ExecLegacyCard_Ep3_6xB3x2B_CAx2B>(data);
   this->send_debug_command_received_message(in_cmd.header.subsubcommand, "EXEC LEGACY");
   // Sega's original implementation does nothing here, so we do nothing as well.
 }
 
 void Server::handle_CAx34_subtract_ally_atk_points(shared_ptr<Client>, const string& data) {
-  const auto& in_cmd = check_size_t<G_PhotonBlastRequest_GC_Ep3_6xB3x34_CAx34>(data);
+  const auto& in_cmd = check_size_t<G_PhotonBlastRequest_Ep3_6xB3x34_CAx34>(data);
 
   uint8_t card_ref_client_id = client_id_for_card_ref(in_cmd.card_ref);
   this->send_debug_command_received_message(
@@ -2237,7 +2275,7 @@ void Server::handle_CAx34_subtract_ally_atk_points(shared_ptr<Client>, const str
           }
         }
         if (accepted) {
-          G_PhotonBlastStatus_GC_Ep3_6xB4x35 out_cmd;
+          G_PhotonBlastStatus_Ep3_6xB4x35 out_cmd;
           out_cmd.accepted = 0;
           out_cmd.card_ref = in_cmd.card_ref;
           out_cmd.client_id = card_ref_client_id;
@@ -2271,7 +2309,7 @@ void Server::handle_CAx34_subtract_ally_atk_points(shared_ptr<Client>, const str
             }
             this->has_done_pb[card_ref_client_id] = false;
 
-            G_PhotonBlastStatus_GC_Ep3_6xB4x35 out_cmd;
+            G_PhotonBlastStatus_Ep3_6xB4x35 out_cmd;
             out_cmd.client_id = card_ref_client_id;
             out_cmd.accepted = 1;
             out_cmd.card_ref = in_cmd.card_ref;
@@ -2284,7 +2322,7 @@ void Server::handle_CAx34_subtract_ally_atk_points(shared_ptr<Client>, const str
 }
 
 void Server::handle_CAx37_client_ready_to_advance_from_starter_roll_phase(shared_ptr<Client>, const string& data) {
-  const auto& in_cmd = check_size_t<G_AdvanceFromStartingRollsPhase_GC_Ep3_6xB3x37_CAx37>(data);
+  const auto& in_cmd = check_size_t<G_AdvanceFromStartingRollsPhase_Ep3_6xB3x37_CAx37>(data);
   this->send_debug_command_received_message(
       in_cmd.client_id, in_cmd.header.subsubcommand, "SETUP ADV 1");
   if (in_cmd.client_id >= 4) {
@@ -2314,14 +2352,14 @@ void Server::handle_CAx37_client_ready_to_advance_from_starter_roll_phase(shared
 }
 
 void Server::handle_CAx3A_time_limit_expired(shared_ptr<Client>, const string& data) {
-  const auto& in_cmd = check_size_t<G_OverallTimeLimitExpired_GC_Ep3_6xB3x3A_CAx3A>(data);
+  const auto& in_cmd = check_size_t<G_OverallTimeLimitExpired_Ep3_6xB3x3A_CAx3A>(data);
   this->send_debug_command_received_message(in_cmd.header.subsubcommand, "TIME EXPIRED");
   // We don't need to do anything here because the overall time limit is tracked
   // server-side instead.
 }
 
 void Server::handle_CAx40_map_list_request(shared_ptr<Client> sender_c, const string& data) {
-  const auto& in_cmd = check_size_t<G_MapListRequest_GC_Ep3_6xB3x40_CAx40>(data);
+  const auto& in_cmd = check_size_t<G_MapListRequest_Ep3_6xB3x40_CAx40>(data);
   this->send_debug_command_received_message(
       in_cmd.header.subsubcommand, "MAP LIST");
 
@@ -2335,9 +2373,8 @@ void Server::handle_CAx40_map_list_request(shared_ptr<Client> sender_c, const st
   const auto& list_data = this->options.map_index->get_compressed_list(num_players, language);
 
   StringWriter w;
-  uint32_t subcommand_size = (list_data.size() + sizeof(G_MapList_GC_Ep3_6xB6x40) + 3) & (~3);
-  w.put<G_MapList_GC_Ep3_6xB6x40>(
-      G_MapList_GC_Ep3_6xB6x40{{{{0xB6, 0, 0}, subcommand_size}, 0x40, {}}, list_data.size(), 0});
+  uint32_t subcommand_size = (list_data.size() + sizeof(G_MapList_Ep3_6xB6x40) + 3) & (~3);
+  w.put<G_MapList_Ep3_6xB6x40>(G_MapList_Ep3_6xB6x40{{{{0xB6, 0, 0}, subcommand_size}, 0x40, {}}, list_data.size(), 0});
   w.write(list_data);
   while (w.size() & 3) {
     w.put_u8(0);
@@ -2360,7 +2397,7 @@ void Server::send_6xB6x41_to_all_clients() const {
       }
       if (map_commands_by_language[c->language()].empty()) {
         map_commands_by_language[c->language()] = this->prepare_6xB6x41_map_definition(
-            this->last_chosen_map, c->language(), (l->base_version == Version::GC_EP3_NTE));
+            this->last_chosen_map, c->language(), this->options.is_trial());
       }
       this->log().info("Sending %c version of map %08" PRIX32, char_for_language_code(c->language()), this->last_chosen_map->map_number);
       send_command(c, 0x6C, 0x00, map_commands_by_language[c->language()]);
@@ -2394,7 +2431,7 @@ void Server::send_6xB6x41_to_all_clients() const {
 }
 
 void Server::handle_CAx41_map_request(shared_ptr<Client>, const string& data) {
-  const auto& cmd = check_size_t<G_MapDataRequest_GC_Ep3_6xB3x41_CAx41>(data);
+  const auto& cmd = check_size_t<G_MapDataRequest_Ep3_6xB3x41_CAx41>(data);
   this->send_debug_command_received_message(
       cmd.header.subsubcommand, "MAP DATA");
 
@@ -2403,7 +2440,7 @@ void Server::handle_CAx41_map_request(shared_ptr<Client>, const string& data) {
 }
 
 void Server::handle_CAx48_end_turn(shared_ptr<Client>, const string& data) {
-  const auto& in_cmd = check_size_t<G_EndTurn_GC_Ep3_6xB3x48_CAx48>(data);
+  const auto& in_cmd = check_size_t<G_EndTurn_Ep3_6xB3x48_CAx48>(data);
   this->send_debug_command_received_message(
       in_cmd.client_id, in_cmd.header.subsubcommand, "END TURN");
   if (in_cmd.client_id >= 4) {
@@ -2415,13 +2452,13 @@ void Server::handle_CAx48_end_turn(shared_ptr<Client>, const string& data) {
     ps->draw_hand(0);
   }
 
-  G_ActionResult_GC_Ep3_6xB4x1E out_cmd;
+  G_ActionResult_Ep3_6xB4x1E out_cmd;
   out_cmd.sequence_num = in_cmd.header.sequence_num;
   this->send(out_cmd);
 }
 
 void Server::handle_CAx49_card_counts(shared_ptr<Client>, const string& data) {
-  const auto& in_cmd = check_size_t<G_CardCounts_GC_Ep3_6xB3x49_CAx49>(data);
+  const auto& in_cmd = check_size_t<G_CardCounts_Ep3_6xB3x49_CAx49>(data);
   this->send_debug_command_received_message(
       in_cmd.header.sender_client_id, in_cmd.header.subsubcommand, "CARD COUNTS");
 
@@ -2601,7 +2638,7 @@ void Server::unknown_8023EEF4() {
     log.debug("a14 (%" PRIu32 ") < num_pending_attacks_with_cards (%" PRIu32 ")", this->unknown_a14, this->num_pending_attacks_with_cards);
     this->defense_list_ended_for_client.clear(false);
 
-    G_SetActionState_GC_Ep3_6xB4x29 cmd;
+    G_SetActionState_Ep3_6xB4x29 cmd;
     cmd.unknown_a1 = this->unknown_a14;
     cmd.state = this->pending_attacks_with_cards[this->unknown_a14];
     this->replace_targets_due_to_destruction_or_conditions(&cmd.state);
@@ -2877,20 +2914,36 @@ vector<shared_ptr<Card>> Server::const_cast_set_cards_v(
 }
 
 void Server::send_6xB4x39() const {
-  G_UpdateAllPlayerStatistics_GC_Ep3_6xB4x39 cmd;
-  for (size_t z = 0; z < 4; z++) {
-    if (this->player_states[z]) {
-      cmd.stats[z] = this->player_states[z]->stats;
+  if (this->options.is_trial()) {
+    G_UpdateAllPlayerStatistics_Ep3NTE_6xB4x39 cmd;
+    for (size_t z = 0; z < 4; z++) {
+      if (this->player_states[z]) {
+        cmd.stats[z] = this->player_states[z]->stats;
+      }
     }
+    this->send(cmd);
+  } else {
+    G_UpdateAllPlayerStatistics_Ep3_6xB4x39 cmd;
+    for (size_t z = 0; z < 4; z++) {
+      if (this->player_states[z]) {
+        cmd.stats[z] = this->player_states[z]->stats;
+      }
+    }
+    this->send(cmd);
   }
-  this->send(cmd);
 }
 
 void Server::send_6xB4x05() {
   this->compute_all_map_occupied_bits();
-  G_UpdateMap_GC_Ep3_6xB4x05 cmd;
-  cmd.state = *this->map_and_rules;
-  this->send(cmd);
+  if (this->options.is_trial()) {
+    G_UpdateMap_Ep3NTE_6xB4x05 cmd;
+    cmd.state = *this->map_and_rules;
+    this->send(cmd);
+  } else {
+    G_UpdateMap_Ep3_6xB4x05 cmd;
+    cmd.state = *this->map_and_rules;
+    this->send(cmd);
+  }
 }
 
 void Server::send_6xB4x02_for_all_players_if_needed(bool always_send) {
@@ -2902,8 +2955,8 @@ void Server::send_6xB4x02_for_all_players_if_needed(bool always_send) {
   }
 }
 
-G_SetTrapTileLocations_GC_Ep3_6xB4x50 Server::prepare_6xB4x50_trap_tile_locations() const {
-  G_SetTrapTileLocations_GC_Ep3_6xB4x50 cmd;
+G_SetTrapTileLocations_Ep3_6xB4x50 Server::prepare_6xB4x50_trap_tile_locations() const {
+  G_SetTrapTileLocations_Ep3_6xB4x50 cmd;
   for (size_t trap_type = 0; trap_type < 5; trap_type++) {
     uint8_t trap_index = this->chosen_trap_tile_index_of_type[trap_type];
     if (trap_index != 0xFF) {

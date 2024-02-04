@@ -547,14 +547,14 @@ static void server_command_auction(shared_ptr<Client> c, const std::string&) {
   check_license_flag(c, License::Flag::DEBUG);
   auto l = c->require_lobby();
   if (l->is_game() && l->is_ep3()) {
-    G_InitiateCardAuction_GC_Ep3_6xB5x42 cmd;
+    G_InitiateCardAuction_Ep3_6xB5x42 cmd;
     cmd.header.sender_client_id = c->lobby_client_id;
     send_command_t(l, 0xC9, 0x00, cmd);
   }
 }
 
 static void proxy_command_auction(shared_ptr<ProxyServer::LinkedSession> ses, const std::string&) {
-  G_InitiateCardAuction_GC_Ep3_6xB5x42 cmd;
+  G_InitiateCardAuction_Ep3_6xB5x42 cmd;
   cmd.header.sender_client_id = ses->lobby_client_id;
   ses->client_channel.send(0xC9, 0x00, &cmd, sizeof(cmd));
   ses->server_channel.send(0xC9, 0x00, &cmd, sizeof(cmd));

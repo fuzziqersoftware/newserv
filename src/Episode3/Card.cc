@@ -31,9 +31,12 @@ Card::Card(
       current_defense_power(0) {}
 
 void Card::init() {
+  auto s = this->server();
+  auto ps = this->player_state();
+
   this->clear_action_chain_and_metadata_and_most_flags();
-  this->team_id = this->player_state()->get_team_id();
-  this->def_entry = this->server()->definition_for_card_id(this->card_id);
+  this->team_id = ps->get_team_id();
+  this->def_entry = s->definition_for_card_id(this->card_id);
   if (!this->def_entry) {
     // The original implementation replaces the card ID and definition with 0009
     // (Saber) if the SC is Hunters-side, and 0056 (Booma) if the SC is
@@ -42,27 +45,39 @@ void Card::init() {
     // prevent it instead.
     throw runtime_error("card definition is missing");
   }
-  this->sc_card_ref = this->player_state()->get_sc_card_ref();
-  this->sc_def_entry = this->server()->definition_for_card_id(
-      this->player_state()->get_sc_card_id());
-  this->sc_card_type = this->player_state()->get_sc_card_type();
-  this->max_hp = this->def_entry->def.hp.stat;
-  this->current_hp = this->def_entry->def.hp.stat;
+  this->sc_card_ref = ps->get_sc_card_ref();
+  this->sc_def_entry = s->definition_for_card_id(ps->get_sc_card_id());
+  this->sc_card_type = ps->get_sc_card_type();
   if (this->sc_card_ref == this->card_ref) {
-    int16_t rules_char_hp = this->server()->map_and_rules->rules.char_hp;
-    int16_t base_char_hp = (rules_char_hp == 0) ? 15 : rules_char_hp;
-    int16_t hp = clamp<int16_t>(base_char_hp + this->def_entry->def.hp.stat, 1, 99);
-    this->max_hp = hp;
-    this->current_hp = hp;
+    if (s->options.is_trial()) {
+      if (s->map_and_rules->rules.char_hp) {
+        this->max_hp = s->map_and_rules->rules.char_hp;
+        this->current_hp = s->map_and_rules->rules.char_hp;
+      } else {
+        this->max_hp = this->def_entry->def.hp.stat;
+        this->current_hp = this->def_entry->def.hp.stat;
+      }
+    } else {
+      int16_t rules_char_hp = s->map_and_rules->rules.char_hp;
+      int16_t base_char_hp = (rules_char_hp == 0) ? 15 : rules_char_hp;
+      int16_t hp = clamp<int16_t>(base_char_hp + this->def_entry->def.hp.stat, 1, 99);
+      this->max_hp = hp;
+      this->current_hp = hp;
+    }
+  } else {
+    this->max_hp = this->def_entry->def.hp.stat;
+    this->current_hp = this->def_entry->def.hp.stat;
   }
   this->ap = this->def_entry->def.ap.stat;
   this->tp = this->def_entry->def.tp.stat;
-  this->num_ally_fcs_destroyed_at_set_time = this->server()->team_num_ally_fcs_destroyed[this->team_id];
-  this->num_cards_destroyed_by_team_at_set_time = this->server()->team_num_cards_destroyed[this->team_id];
+  this->num_ally_fcs_destroyed_at_set_time = s->team_num_ally_fcs_destroyed[this->team_id];
+  this->num_cards_destroyed_by_team_at_set_time = s->team_num_cards_destroyed[this->team_id];
   this->action_chain.chain.card_ap = this->ap;
   this->action_chain.chain.card_tp = this->tp;
-  this->loc.direction = this->player_state()->start_facing_direction;
-  if (this->sc_card_ref != this->card_ref) {
+  this->loc.direction = ps->start_facing_direction;
+  // Ep3 NTE always sends 6xB4x0A at construction time; final only does for
+  // non-SC cards
+  if (s->options.is_trial() || (this->sc_card_ref != this->card_ref)) {
     this->send_6xB4x4E_4C_4D_if_needed();
   }
 }
@@ -245,7 +260,7 @@ bool Card::check_card_flag(uint32_t flags) const {
 void Card::commit_attack(
     int16_t damage,
     shared_ptr<Card> attacker_card,
-    G_ApplyConditionEffect_GC_Ep3_6xB4x06* cmd,
+    G_ApplyConditionEffect_Ep3_6xB4x06* cmd,
     size_t strike_number,
     int16_t* out_effective_damage) {
   auto log = this->server()->log_stack(string_printf("commit_attack(@%04hX #%04hX, @%04hX #%04hX => %hd (str%zu)): ", this->get_card_ref(), this->get_card_id(), attacker_card->get_card_ref(), attacker_card->get_card_id(), damage, strike_number));
@@ -303,7 +318,7 @@ void Card::commit_attack(
     log.debug("card destroyed");
   }
 
-  G_ApplyConditionEffect_GC_Ep3_6xB4x06 cmd_to_send;
+  G_ApplyConditionEffect_Ep3_6xB4x06 cmd_to_send;
   if (cmd) {
     cmd_to_send = *cmd;
   }
@@ -376,7 +391,7 @@ void Card::destroy_set_card(shared_ptr<Card> attacker_card) {
           sc_card->set_current_hp(hp - 1);
           sc_card->player_state()->stats.sc_damage_taken++;
           if (attacker_card && (attacker_card->team_id != this->team_id)) {
-            G_ApplyConditionEffect_GC_Ep3_6xB4x06 cmd;
+            G_ApplyConditionEffect_Ep3_6xB4x06 cmd;
             cmd.effect.flags = 0x41;
             cmd.effect.attacker_card_ref = attacker_card->card_ref;
             cmd.effect.target_card_ref = sc_card->card_ref;
@@ -465,7 +480,7 @@ void Card::execute_attack(shared_ptr<Card> attacker_card) {
     log.debug("ap != 0 or flag 0x20 set; continuing...");
   }
 
-  G_ApplyConditionEffect_GC_Ep3_6xB4x06 cmd;
+  G_ApplyConditionEffect_Ep3_6xB4x06 cmd;
   cmd.effect.flags = 0x01;
   cmd.effect.attacker_card_ref = attacker_card->card_ref;
   cmd.effect.target_card_ref = this->card_ref;
@@ -618,7 +633,7 @@ int32_t Card::move_to_location(const Location& loc) {
     for (size_t warp_end = 0; warp_end < 2; warp_end++) {
       if ((this->server()->warp_positions[warp_type][warp_end][0] == this->loc.x) &&
           (this->server()->warp_positions[warp_type][warp_end][1] == this->loc.y)) {
-        G_Unknown_GC_Ep3_6xB4x2C cmd;
+        G_Unknown_Ep3_6xB4x2C cmd;
         cmd.loc.x = this->loc.x;
         cmd.loc.y = this->loc.y;
         this->loc.x = this->server()->warp_positions[warp_type][warp_end ^ 1][0];
@@ -650,12 +665,14 @@ void Card::propagate_shared_hp_if_needed() {
 }
 
 void Card::send_6xB4x4E_4C_4D_if_needed(bool always_send) {
+  auto ps = this->player_state();
+
   ssize_t index = -1;
-  if (this->card_ref == this->player_state()->get_sc_card_ref()) {
+  if (this->card_ref == ps->get_sc_card_ref()) {
     index = 0;
   } else {
     for (size_t set_index = 0; set_index < 8; set_index++) {
-      if (this->card_ref == this->player_state()->get_set_ref(set_index)) {
+      if (this->card_ref == ps->get_set_ref(set_index)) {
         index = set_index + 1;
         break;
       }
@@ -668,28 +685,44 @@ void Card::send_6xB4x4E_4C_4D_if_needed(bool always_send) {
 
   this->action_chain.chain.card_ap = this->ap;
   this->action_chain.chain.card_tp = this->tp;
-  this->send_6xB4x4E_if_needed(always_send);
 
-  auto& chain = this->player_state()->set_card_action_chains->at(index);
-  if (always_send || (chain != this->action_chain)) {
+  auto& chain = ps->set_card_action_chains->at(index);
+  auto& metadata = ps->set_card_action_metadatas->at(index);
+
+  auto s = this->server();
+  if (s->options.is_trial()) {
     chain = this->action_chain;
-    if (!this->server()->get_should_copy_prev_states_to_current_states()) {
-      G_UpdateActionChain_GC_Ep3_6xB4x4C cmd;
-      cmd.client_id = this->client_id;
-      cmd.index = index;
-      cmd.chain = this->action_chain.chain;
-      this->server()->send(cmd);
-    }
-  }
-
-  auto& metadata = this->player_state()->set_card_action_metadatas->at(index);
-  if (always_send || (metadata != this->action_metadata)) {
     metadata = this->action_metadata;
-    G_UpdateActionMetadata_GC_Ep3_6xB4x4D cmd;
+
+    G_UpdateActionChainAndMetadata_Ep3NTE_6xB4x0A cmd;
     cmd.client_id = this->client_id;
     cmd.index = index;
+    cmd.chain = this->action_chain;
     cmd.metadata = this->action_metadata;
-    this->server()->send(cmd);
+    s->send(cmd);
+
+  } else {
+    this->send_6xB4x4E_if_needed(always_send);
+
+    if (always_send || (chain != this->action_chain)) {
+      chain = this->action_chain;
+      if (!s->get_should_copy_prev_states_to_current_states()) {
+        G_UpdateActionChain_Ep3_6xB4x4C cmd;
+        cmd.client_id = this->client_id;
+        cmd.index = index;
+        cmd.chain = this->action_chain.chain;
+        s->send(cmd);
+      }
+    }
+
+    if (always_send || (metadata != this->action_metadata)) {
+      metadata = this->action_metadata;
+      G_UpdateActionMetadata_Ep3_6xB4x4D cmd;
+      cmd.client_id = this->client_id;
+      cmd.index = index;
+      cmd.metadata = this->action_metadata;
+      s->send(cmd);
+    }
   }
 }
 
@@ -712,7 +745,7 @@ void Card::send_6xB4x4E_if_needed(bool always_send) {
     if ((prev_conds != curr_conds) || (always_send != 0)) {
       prev_conds = curr_conds;
       if (!this->server()->get_should_copy_prev_states_to_current_states()) {
-        G_UpdateCardConditions_GC_Ep3_6xB4x4E cmd;
+        G_UpdateCardConditions_Ep3_6xB4x4E cmd;
         cmd.client_id = this->client_id;
         cmd.index = chain_index;
         cmd.conditions = this->action_chain.conditions;
@@ -745,12 +778,13 @@ void Card::set_current_hp(
 }
 
 void Card::update_stats_on_destruction() {
+  auto s = this->server();
   this->player_state()->num_destroyed_fcs++;
-  this->server()->team_num_ally_fcs_destroyed[this->team_id]++;
-  this->server()->team_num_cards_destroyed[this->team_id]++;
+  s->team_num_ally_fcs_destroyed[this->team_id]++;
+  s->team_num_cards_destroyed[this->team_id]++;
 
   for (size_t client_id = 0; client_id < 4; client_id++) {
-    auto other_ps = this->server()->player_states[client_id];
+    auto other_ps = s->player_states[client_id];
     if (other_ps && (other_ps->get_team_id() == this->team_id)) {
       auto card = other_ps->get_sc_card();
       if (card) {

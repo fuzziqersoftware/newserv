@@ -94,7 +94,7 @@ public:
 
   void restart();
   void shuffle();
-  void do_mulligan();
+  void do_mulligan(bool is_trial);
 
   void print(FILE* stream, std::shared_ptr<const CardIndex> card_index = nullptr) const;
 

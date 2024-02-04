@@ -101,6 +101,8 @@ struct ActionState {
 } __attribute__((packed));
 
 struct ActionChain {
+  // Note: Episode 3 Trial Edition has a different format for this structure.
+  // See ActionChainWithCondsTrial for details.
   /* 00 */ int8_t effective_ap;
   /* 01 */ int8_t effective_tp;
   /* 02 */ int8_t ap_effect_bonus;
@@ -168,6 +170,38 @@ struct ActionChainWithConds {
   bool can_apply_attack() const;
 
   std::string str() const;
+} __attribute__((packed));
+
+struct ActionChainWithCondsTrial {
+  /* 0000 */ int8_t effective_ap;
+  /* 0001 */ int8_t effective_tp;
+  /* 0002 */ int8_t ap_effect_bonus;
+  /* 0003 */ int8_t damage;
+  /* 0004 */ le_uint16_t acting_card_ref;
+  /* 0006 */ le_uint16_t unknown_card_ref_a3;
+  /* 0008 */ parray<le_uint16_t, 8> attack_action_card_refs;
+  /* 0018 */ uint8_t attack_action_card_ref_count;
+  /* 0019 */ AttackMedium attack_medium;
+  /* 001A */ uint8_t target_card_ref_count;
+  /* 001B */ ActionSubphase action_subphase;
+  /* 001C */ uint8_t strike_count;
+  /* 001D */ int8_t damage_multiplier;
+  /* 001E */ uint8_t attack_number;
+  /* 001F */ int8_t tp_effect_bonus;
+  /* 0020 */ uint8_t unused1;
+  /* 0021 */ uint8_t unused2;
+  /* 0022 */ int8_t card_ap;
+  /* 0023 */ int8_t card_tp;
+  /* 0024 */ le_uint32_t flags;
+  // The only difference between this structure and ActionChainWithConds is that
+  // these two fields have changed orders.
+  /* 0028 */ parray<Condition, 9> conditions;
+  /* 00B8 */ parray<le_uint16_t, 4 * 9> target_card_refs;
+  /* 0100 */
+
+  ActionChainWithCondsTrial() = default;
+  ActionChainWithCondsTrial(const ActionChainWithConds& src);
+  operator ActionChainWithConds() const;
 } __attribute__((packed));
 
 struct ActionMetadata {
@@ -273,6 +307,19 @@ struct PlayerBattleStats {
 
   static uint8_t rank_for_score(float score);
   static const char* name_for_rank(uint8_t rank);
+} __attribute__((packed));
+
+struct PlayerBattleStatsTrial {
+  /* 00 */ le_uint32_t damage_given = 0;
+  /* 04 */ le_uint32_t damage_taken = 0;
+  /* 08 */ le_uint32_t num_opponent_cards_destroyed = 0;
+  /* 0C */ le_uint32_t num_owned_cards_destroyed = 0;
+  /* 10 */ le_uint32_t total_move_distance = 0;
+  /* 14 */
+
+  PlayerBattleStatsTrial() = default;
+  PlayerBattleStatsTrial(const PlayerBattleStats& data);
+  operator PlayerBattleStats() const;
 } __attribute__((packed));
 
 std::vector<uint16_t> get_card_refs_within_range(

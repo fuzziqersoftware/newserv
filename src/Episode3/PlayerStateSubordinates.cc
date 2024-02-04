@@ -481,6 +481,83 @@ bool ActionChainWithConds::can_apply_attack() const {
   return this->check_flag(4) ? false : (this->chain.target_card_ref_count != 0);
 }
 
+/* 0000 */ int8_t effective_ap;
+/* 0001 */ int8_t effective_tp;
+/* 0002 */ int8_t ap_effect_bonus;
+/* 0003 */ int8_t damage;
+/* 0004 */ le_uint16_t acting_card_ref;
+/* 0006 */ le_uint16_t unknown_card_ref_a3;
+/* 0008 */ parray<le_uint16_t, 8> attack_action_card_refs;
+/* 0018 */ uint8_t attack_action_card_ref_count;
+/* 0019 */ AttackMedium attack_medium;
+/* 001A */ uint8_t target_card_ref_count;
+/* 001B */ ActionSubphase action_subphase;
+/* 001C */ uint8_t strike_count;
+/* 001D */ int8_t damage_multiplier;
+/* 001E */ uint8_t attack_number;
+/* 001F */ int8_t tp_effect_bonus;
+/* 0020 */ uint8_t unused1;
+/* 0021 */ uint8_t unused2;
+/* 0022 */ int8_t card_ap;
+/* 0023 */ int8_t card_tp;
+/* 0024 */ le_uint32_t flags;
+// The only difference between this structure and ActionChainWithConds is that
+// these two fields have changed orders.
+/* 0028 */ parray<Condition, 9> conditions;
+/* 00B8 */ parray<le_uint16_t, 4 * 9> target_card_refs;
+/* 0100 */
+
+ActionChainWithCondsTrial::ActionChainWithCondsTrial(const ActionChainWithConds& src)
+    : effective_ap(src.chain.effective_ap),
+      effective_tp(src.chain.effective_tp),
+      ap_effect_bonus(src.chain.ap_effect_bonus),
+      damage(src.chain.damage),
+      acting_card_ref(src.chain.acting_card_ref),
+      unknown_card_ref_a3(src.chain.unknown_card_ref_a3),
+      attack_action_card_refs(src.chain.attack_action_card_refs),
+      attack_action_card_ref_count(src.chain.attack_action_card_ref_count),
+      attack_medium(src.chain.attack_medium),
+      target_card_ref_count(src.chain.target_card_ref_count),
+      action_subphase(src.chain.action_subphase),
+      strike_count(src.chain.strike_count),
+      damage_multiplier(src.chain.damage_multiplier),
+      attack_number(src.chain.attack_number),
+      tp_effect_bonus(src.chain.tp_effect_bonus),
+      unused1(src.chain.unused1),
+      unused2(src.chain.unused2),
+      card_ap(src.chain.card_ap),
+      card_tp(src.chain.card_tp),
+      flags(src.chain.flags),
+      conditions(src.conditions),
+      target_card_refs(src.chain.target_card_refs) {}
+
+ActionChainWithCondsTrial::operator ActionChainWithConds() const {
+  ActionChainWithConds ret;
+  ret.chain.effective_ap = this->effective_ap;
+  ret.chain.effective_tp = this->effective_tp;
+  ret.chain.ap_effect_bonus = this->ap_effect_bonus;
+  ret.chain.damage = this->damage;
+  ret.chain.acting_card_ref = this->acting_card_ref;
+  ret.chain.unknown_card_ref_a3 = this->unknown_card_ref_a3;
+  ret.chain.attack_action_card_refs = this->attack_action_card_refs;
+  ret.chain.attack_action_card_ref_count = this->attack_action_card_ref_count;
+  ret.chain.attack_medium = this->attack_medium;
+  ret.chain.target_card_ref_count = this->target_card_ref_count;
+  ret.chain.action_subphase = this->action_subphase;
+  ret.chain.strike_count = this->strike_count;
+  ret.chain.damage_multiplier = this->damage_multiplier;
+  ret.chain.attack_number = this->attack_number;
+  ret.chain.tp_effect_bonus = this->tp_effect_bonus;
+  ret.chain.unused1 = this->unused1;
+  ret.chain.unused2 = this->unused2;
+  ret.chain.card_ap = this->card_ap;
+  ret.chain.card_tp = this->card_tp;
+  ret.chain.flags = this->flags;
+  ret.chain.target_card_refs = this->target_card_refs;
+  ret.conditions = this->conditions;
+  return ret;
+}
+
 ActionMetadata::ActionMetadata() {
   this->clear();
 }
@@ -531,6 +608,8 @@ void ActionMetadata::clear() {
   this->action_subphase = ActionSubphase::INVALID_FF;
   this->defense_power = 0;
   this->defense_bonus = 0;
+  // TODO: Ep3 NTE doesn't set attack_bonus to zero here. Is the field just
+  // unused in NTE?
   this->attack_bonus = 0;
   this->flags = 0;
   this->target_card_refs.clear(0xFFFF);
@@ -757,6 +836,23 @@ const char* PlayerBattleStats::name_for_rank(uint8_t rank) {
     throw invalid_argument("invalid rank");
   }
   return RANK_NAMES[rank];
+}
+
+PlayerBattleStatsTrial::PlayerBattleStatsTrial(const PlayerBattleStats& data)
+    : damage_given(data.damage_given.load()),
+      damage_taken(data.damage_taken.load()),
+      num_opponent_cards_destroyed(data.num_opponent_cards_destroyed.load()),
+      num_owned_cards_destroyed(data.num_owned_cards_destroyed.load()),
+      total_move_distance(data.total_move_distance.load()) {}
+
+PlayerBattleStatsTrial::operator PlayerBattleStats() const {
+  PlayerBattleStats ret;
+  ret.damage_given = this->damage_given.load();
+  ret.damage_taken = this->damage_taken.load();
+  ret.num_opponent_cards_destroyed = this->num_opponent_cards_destroyed.load();
+  ret.num_owned_cards_destroyed = this->num_owned_cards_destroyed.load();
+  ret.total_move_distance = this->total_move_distance.load();
+  return ret;
 }
 
 static bool is_card_within_range(

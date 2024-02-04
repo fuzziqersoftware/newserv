@@ -88,15 +88,16 @@ bool DeckState::draw_card_by_ref(uint16_t card_ref) {
     return false;
   }
 
-  // If the card is discarded, then it should be before the draw index, and we
-  // can just change its state.
   if (this->entries[index].state == CardState::DISCARDED) {
+    // If the card is discarded, then it should be before the draw index, and we
+    // can just change its state.
     this->entries[index].state = CardState::IN_HAND;
     return true;
 
-    // If the card is still drawable, we need to move it so it's just in front of
-    // the draw index, then immediately draw it
   } else if (this->entries[index].state == CardState::DRAWABLE) {
+    // If the card is still drawable, we need to move it so it's just in front
+    // of the draw index, then immediately draw it. Ep3 NTE does not handle this
+    // case, but we do even when playing NTE.
     ssize_t ref_index;
     for (ref_index = this->card_refs.size(); ref_index >= 0; ref_index--) {
       if (this->card_refs[ref_index] == card_ref) {
@@ -182,7 +183,7 @@ void DeckState::restart() {
   this->shuffle();
 }
 
-void DeckState::do_mulligan() {
+void DeckState::do_mulligan(bool is_trial) {
   for (size_t z = 0; z < this->entries.size(); z++) {
     if (this->entries[z].state == CardState::DISCARDED) {
       this->entries[z].state = CardState::DRAWABLE;
@@ -190,7 +191,7 @@ void DeckState::do_mulligan() {
   }
   this->draw_index = 1;
 
-  if (this->shuffle_enabled) {
+  if (is_trial || this->shuffle_enabled) {
     // Get the next 5 cards from the deck, and put the previous 5 cards after
     // them (so they will be shuffled back in).
     for (uint8_t z = 0; z < 5; z++) {

@@ -91,6 +91,10 @@ void PlayerState::init() {
   this->sc_card = make_shared<Card>(this->deck_state->sc_card_id(), this->sc_card_ref, this->client_id, s);
   this->sc_card->init();
   this->draw_initial_hand();
+  if (s->options.is_trial()) {
+    this->update_hand_and_equip_state_and_send_6xB4x02_if_needed();
+    // TODO: NTE calls 80243310(1) here
+  }
 
   s->assist_server->hand_and_equip_states[this->client_id] = this->hand_and_equip;
   s->assist_server->card_short_statuses[this->client_id] = this->card_short_statuses;
@@ -152,7 +156,7 @@ void PlayerState::apply_assist_card_effect_on_set(
     assist_card_id = s->card_id_for_card_ref(this->card_refs[6]);
   }
 
-  auto assist_effect = assist_effect_number_for_card_id(assist_card_id);
+  auto assist_effect = assist_effect_number_for_card_id(assist_card_id, s->options.is_trial());
   if ((assist_effect == AssistEffect::RESISTANCE) ||
       (assist_effect == AssistEffect::INDEPENDENT)) {
     this->assist_card_set_number = 0;
@@ -415,7 +419,7 @@ void PlayerState::apply_dice_effects() {
       case AssistEffect::DICE_FEVER:
         for (size_t die_index = 0; die_index < 2; die_index++) {
           if (this->dice_results[die_index] > 0) {
-            this->dice_results[die_index] = 5;
+            this->dice_results[die_index] = s->options.is_trial() ? 6 : 5;
           }
         }
         break;
@@ -434,6 +438,9 @@ void PlayerState::apply_dice_effects() {
         }
         break;
       case AssistEffect::DICE_FEVER_PLUS:
+        if (s->options.is_trial()) {
+          break;
+        }
         for (size_t die_index = 0; die_index < 2; die_index++) {
           if (this->dice_results[die_index] > 0) {
             this->dice_results[die_index] = 6;
@@ -475,10 +482,18 @@ void PlayerState::compute_total_set_cards_cost() {
 
 size_t PlayerState::count_set_cards() const {
   size_t ret = 0;
-  for (size_t set_index = 0; set_index < 8; set_index++) {
-    auto card = this->set_cards[set_index];
-    if (card && !(card->card_flags & 2)) {
-      ret++;
+  if (this->server()->options.is_trial()) {
+    for (size_t set_index = 0; set_index < 8; set_index++) {
+      if (this->card_refs[8 + set_index] != 0xFFFF) {
+        ret++;
+      }
+    }
+  } else {
+    for (size_t set_index = 0; set_index < 8; set_index++) {
+      auto card = this->set_cards[set_index];
+      if (card && !(card->card_flags & 2)) {
+        ret++;
+      }
     }
   }
   return ret;
@@ -559,7 +574,7 @@ void PlayerState::discard_and_redraw_hand() {
     this->discard_ref_from_hand(this->card_refs[0]);
   }
 
-  G_Unknown_GC_Ep3_6xB4x2C cmd;
+  G_Unknown_Ep3_6xB4x2C cmd;
   cmd.change_type = 3;
   cmd.client_id = this->client_id;
   cmd.card_refs.clear(0xFFFF);
@@ -654,17 +669,21 @@ bool PlayerState::do_mulligan() {
     this->discard_ref_from_hand(this->card_refs[0]);
   }
 
-  G_Unknown_GC_Ep3_6xB4x2C cmd;
-  cmd.change_type = 3;
-  cmd.client_id = this->client_id;
-  cmd.card_refs.clear(0xFFFF);
-  cmd.unknown_a2.clear(0xFFFFFFFF);
-  s->send(cmd);
+  if (!s->options.is_trial()) {
+    G_Unknown_Ep3_6xB4x2C cmd;
+    cmd.change_type = 3;
+    cmd.client_id = this->client_id;
+    cmd.card_refs.clear(0xFFFF);
+    cmd.unknown_a2.clear(0xFFFFFFFF);
+    s->send(cmd);
+  }
 
-  this->deck_state->do_mulligan();
+  this->deck_state->do_mulligan(s->options.is_trial());
   this->draw_hand(5);
 
-  this->discard_log_card_refs.clear(0xFFFF);
+  if (!s->options.is_trial()) {
+    this->discard_log_card_refs.clear(0xFFFF);
+  }
   return true;
 }
 
@@ -675,7 +694,7 @@ void PlayerState::draw_hand(ssize_t override_count) {
   size_t num_assists = s->assist_server->compute_num_assist_effects_for_client(this->client_id);
   for (size_t z = 0; z < num_assists; z++) {
     auto eff = s->assist_server->get_active_assist_by_index(z);
-    if (eff == AssistEffect::RICH_PLUS) {
+    if ((eff == AssistEffect::RICH_PLUS) && !s->options.is_trial()) {
       count = 4 - this->get_hand_size();
     } else if (eff == AssistEffect::RICH) {
       count = 6 - this->get_hand_size();
@@ -694,7 +713,7 @@ void PlayerState::draw_hand(ssize_t override_count) {
         break;
       }
     }
-    if (s->get_setup_phase() == SetupPhase::MAIN_BATTLE) {
+    if (!s->options.is_trial() && (s->get_setup_phase() == SetupPhase::MAIN_BATTLE)) {
       this->stats.num_cards_drawn++;
     }
   }
@@ -893,8 +912,7 @@ void PlayerState::log_discard(uint16_t card_ref, uint16_t reason) {
   this->discard_log_reasons[0] = reason;
 }
 
-bool PlayerState::move_card_to_location_by_card_index(
-    size_t card_index, const Location& new_loc) {
+bool PlayerState::move_card_to_location_by_card_index(size_t card_index, const Location& new_loc) {
   auto s = this->server();
 
   shared_ptr<Card> card;
@@ -1015,14 +1033,15 @@ void PlayerState::on_cards_destroyed() {
 void PlayerState::replace_all_set_assists_with_random_assists() {
   auto s = this->server();
 
+  const auto& assist_card_ids = all_assist_card_ids(s->options.is_trial());
   for (size_t client_id = 0; client_id < 4; client_id++) {
     auto other_ps = s->get_player_state(client_id);
     if (other_ps &&
         ((other_ps->card_refs[6] != 0xFFFF) || (other_ps->set_assist_card_id != 0xFFFF))) {
       uint16_t card_id = 0x0130;
       while (card_id == 0x0130) { // God Whim
-        size_t index = s->get_random(ALL_ASSIST_CARD_IDS.size());
-        card_id = ALL_ASSIST_CARD_IDS[index];
+        size_t index = s->get_random(assist_card_ids.size());
+        card_id = assist_card_ids[index];
         if (!this->god_whim_can_use_hidden_cards) {
           auto ce = s->definition_for_card_id(card_id);
           if (!ce || ce->def.cannot_drop) {
@@ -1171,7 +1190,7 @@ void PlayerState::send_set_card_updates(bool always_send) {
   }
 
   if (mask && !s->get_should_copy_prev_states_to_current_states()) {
-    G_ClearSetCardConditions_GC_Ep3_6xB4x4F cmd;
+    G_ClearSetCardConditions_Ep3_6xB4x4F cmd;
     cmd.client_id = this->client_id;
     cmd.clear_mask = mask;
     s->send(cmd);
@@ -1307,7 +1326,7 @@ bool PlayerState::set_card_from_hand(
   this->update_hand_and_equip_state_and_send_6xB4x02_if_needed();
   s->send_6xB4x05();
 
-  G_Unknown_GC_Ep3_6xB4x4A cmd;
+  G_Unknown_Ep3_6xB4x4A cmd;
   cmd.card_refs.clear(0xFFFF);
   cmd.card_refs[0] = card_ref;
   cmd.client_id = this->client_id;
@@ -1442,8 +1461,8 @@ void PlayerState::subtract_atk_points(uint8_t cost) {
   this->atk_points2 = min<uint8_t>(this->atk_points, this->atk_points2_max);
 }
 
-G_UpdateHand_GC_Ep3_6xB4x02 PlayerState::prepare_6xB4x02() const {
-  G_UpdateHand_GC_Ep3_6xB4x02 cmd;
+G_UpdateHand_Ep3_6xB4x02 PlayerState::prepare_6xB4x02() const {
+  G_UpdateHand_Ep3_6xB4x02 cmd;
   cmd.client_id = this->client_id;
   cmd.state.dice_results = this->dice_results;
   cmd.state.atk_points = this->atk_points;
@@ -1487,13 +1506,14 @@ void PlayerState::update_hand_and_equip_state_and_send_6xB4x02_if_needed(
 
 void PlayerState::set_random_assist_card_from_hand_for_free() {
   auto s = this->server();
+  bool is_trial = s->options.is_trial();
 
   vector<uint16_t> candidate_card_refs;
   for (size_t hand_index = 0; hand_index < 6; hand_index++) {
     uint16_t card_ref = this->card_refs[hand_index];
     auto ce = s->definition_for_card_ref(card_ref);
     if (ce && (ce->def.type == CardType::ASSIST) &&
-        (assist_effect_number_for_card_id(ce->def.card_id) != AssistEffect::SQUEEZE)) {
+        (assist_effect_number_for_card_id(ce->def.card_id, is_trial) != AssistEffect::SQUEEZE)) {
       candidate_card_refs.emplace_back(card_ref);
     }
   }
@@ -1506,8 +1526,8 @@ void PlayerState::set_random_assist_card_from_hand_for_free() {
   }
 }
 
-G_UpdateShortStatuses_GC_Ep3_6xB4x04 PlayerState::prepare_6xB4x04() const {
-  G_UpdateShortStatuses_GC_Ep3_6xB4x04 cmd;
+G_UpdateShortStatuses_Ep3_6xB4x04 PlayerState::prepare_6xB4x04() const {
+  G_UpdateShortStatuses_Ep3_6xB4x04 cmd;
   cmd.client_id = this->client_id;
   // Note: The original code calls memset to clear all the short status structs
   // at once. We don't do this because the default constructor has already
@@ -1550,7 +1570,7 @@ void PlayerState::send_6xB4x04_if_needed(bool always_send) {
   if (always_send || (cmd.card_statuses != *this->card_short_statuses)) {
     auto s = this->server();
     *this->card_short_statuses = cmd.card_statuses;
-    if (!s->get_should_copy_prev_states_to_current_states()) {
+    if (s->options.is_trial() || !s->get_should_copy_prev_states_to_current_states()) {
       s->send(cmd);
     }
   }
@@ -1654,7 +1674,7 @@ bool PlayerState::set_action_cards_for_action_state(const ActionState& pa) {
   this->subtract_or_check_atk_or_def_points_for_action(pa, 1);
 
   if (action_type == ActionType::ATTACK) {
-    G_Unknown_GC_Ep3_6xB4x4A cmd;
+    G_Unknown_Ep3_6xB4x4A cmd;
     cmd.card_refs.clear(0xFFFF);
     cmd.client_id = this->client_id;
     cmd.round_num = s->get_round_num();
@@ -1693,7 +1713,7 @@ bool PlayerState::set_action_cards_for_action_state(const ActionState& pa) {
     }
 
   } else if (action_type == ActionType::DEFENSE) {
-    G_Unknown_GC_Ep3_6xB4x4A cmd;
+    G_Unknown_Ep3_6xB4x4A cmd;
     cmd.card_refs.clear(0xFFFF);
     cmd.client_id = this->client_id;
     cmd.round_num = s->get_round_num();
@@ -1777,14 +1797,26 @@ void PlayerState::handle_homesick_assist_effect_from_bomb(shared_ptr<Card> card)
       if (s->assist_server->get_active_assist_by_index(z) == AssistEffect::HOMESICK) {
         this->return_set_card_to_hand2(card_ref);
         this->log_discard(card_ref, 1);
-        this->set_cards[set_index]->card_flags |= 2;
+        // On NTE, the card is destroyed immediately
+        if (s->options.is_trial()) {
+          this->set_cards[set_index]->update_stats_on_destruction();
+          this->set_cards[set_index].reset();
+        } else {
+          this->set_cards[set_index]->card_flags |= 2;
+        }
         return;
       }
     }
 
     if (this->deck_state->set_card_ref_drawable_next(card_ref)) {
       this->log_discard(card_ref, 1);
-      this->set_cards[set_index]->card_flags |= 2;
+      // On NTE, the card is destroyed immediately
+      if (s->options.is_trial()) {
+        this->set_cards[set_index]->update_stats_on_destruction();
+        this->set_cards[set_index].reset();
+      } else {
+        this->set_cards[set_index]->card_flags |= 2;
+      }
     }
   }
 }

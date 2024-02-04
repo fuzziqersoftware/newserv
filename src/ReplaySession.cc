@@ -298,13 +298,13 @@ void ReplaySession::apply_default_mask(shared_ptr<Event> ev) {
             auto& mask = check_size_t<S_JoinGame_DCNTE_64>(mask_data, mask_size);
             mask.variations.clear(0);
           } else {
-            auto& mask = check_size_t<S_JoinGame_DC_64>(mask_data, mask_size, sizeof(S_JoinGame_GC_Ep3_64));
+            auto& mask = check_size_t<S_JoinGame_DC_64>(mask_data, mask_size, sizeof(S_JoinGame_Ep3_64));
             mask.variations.clear(0);
             mask.rare_seed = 0;
             for (size_t offset = sizeof(S_JoinGame_GC_64) +
-                     offsetof(S_JoinGame_GC_Ep3_64::Ep3PlayerEntry, disp.visual.name_color_checksum);
+                     offsetof(S_JoinGame_Ep3_64::Ep3PlayerEntry, disp.visual.name_color_checksum);
                  offset + 4 <= mask_size;
-                 offset += sizeof(S_JoinGame_GC_Ep3_64::Ep3PlayerEntry)) {
+                 offset += sizeof(S_JoinGame_Ep3_64::Ep3PlayerEntry)) {
               *reinterpret_cast<uint32_t*>(reinterpret_cast<char*>(mask_data) + offset) = 0;
             }
           }
@@ -349,7 +349,7 @@ void ReplaySession::apply_default_mask(shared_ptr<Event> ev) {
           break;
         case 0xE8:
           if (is_gc(version)) {
-            auto& mask = check_size_t<S_JoinSpectatorTeam_GC_Ep3_E8>(mask_data, mask_size);
+            auto& mask = check_size_t<S_JoinSpectatorTeam_Ep3_E8>(mask_data, mask_size);
             mask.rare_seed = 0;
             for (size_t z = 0; z < 4; z++) {
               mask.players[z].disp.visual.name_color_checksum = 0;
@@ -365,9 +365,12 @@ void ReplaySession::apply_default_mask(shared_ptr<Event> ev) {
           }
           break;
         case 0xC9:
-          if (mask_size == 0xCC) {
-            auto& mask = check_size_t<G_ServerVersionStrings_GC_Ep3_6xB4x46>(
-                mask_data, mask_size);
+          if (mask_size == sizeof(G_ServerVersionStrings_Ep3NTE_6xB4x46)) {
+            auto& mask = check_size_t<G_ServerVersionStrings_Ep3NTE_6xB4x46>(mask_data, mask_size);
+            mask.version_signature.clear(0);
+            mask.date_str1.clear(0);
+          } else if (mask_size == sizeof(G_ServerVersionStrings_Ep3_6xB4x46)) {
+            auto& mask = check_size_t<G_ServerVersionStrings_Ep3_6xB4x46>(mask_data, mask_size);
             mask.version_signature.clear(0);
             mask.date_str1.clear(0);
             mask.date_str2.clear(0);
@@ -375,15 +378,15 @@ void ReplaySession::apply_default_mask(shared_ptr<Event> ev) {
           break;
         case 0x6C:
           if (is_gc(version) && mask_size >= 0x14) {
-            const auto& cmd = check_size_t<G_MapList_GC_Ep3_6xB6x40>(cmd_data, cmd_size, 0xFFFF);
+            const auto& cmd = check_size_t<G_MapList_Ep3_6xB6x40>(cmd_data, cmd_size, 0xFFFF);
             if ((cmd.header.header.basic_header.subcommand == 0xB6) &&
                 (cmd.header.subsubcommand == 0x40)) {
               check_size_t<PSOCommandHeaderDCV3>(ev->mask, 0xFFFF).size = 0;
-              auto& mask = check_size_t<G_MapList_GC_Ep3_6xB6x40>(mask_data, mask_size, 0xFFFF);
+              auto& mask = check_size_t<G_MapList_Ep3_6xB6x40>(mask_data, mask_size, 0xFFFF);
               mask.header.header.size = 0;
               mask.compressed_data_size = 0;
               ev->allow_size_disparity = true;
-              for (size_t z = sizeof(PSOCommandHeaderDCV3) + sizeof(G_MapList_GC_Ep3_6xB6x40); z < ev->mask.size(); z++) {
+              for (size_t z = sizeof(PSOCommandHeaderDCV3) + sizeof(G_MapList_Ep3_6xB6x40); z < ev->mask.size(); z++) {
                 ev->mask[z] = 0;
               }
             }

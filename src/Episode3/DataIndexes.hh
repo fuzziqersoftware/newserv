@@ -36,6 +36,7 @@ enum BehaviorFlag : uint32_t {
   DISABLE_MASKING = 0x00000080,
   DISABLE_INTERFERENCE = 0x00000100,
   ALLOW_NON_COM_INTERFERENCE = 0x00000200,
+  IS_TRIAL_EDITION = 0x00000400,
 };
 
 enum class StatSwapType : uint8_t {

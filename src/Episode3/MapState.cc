@@ -68,6 +68,37 @@ void MapAndRulesState::clear_occupied_bit_for_tile(uint8_t x, uint8_t y) {
   this->map.tiles[y][x] &= 0xEF;
 }
 
+MapAndRulesStateTrial::MapAndRulesStateTrial(const MapAndRulesState& state)
+    : map(state.map),
+      num_players(state.num_players),
+      unused1(state.unused1),
+      environment_number(state.environment_number),
+      num_players_per_team(state.num_players_per_team),
+      num_team0_players(state.num_team0_players),
+      unused2(state.unused2),
+      unused5(state.start_facing_directions),
+      unknown_a3(state.unused3),
+      map_number(state.map_number),
+      unused4(state.unused4),
+      rules(state.rules) {}
+
+MapAndRulesStateTrial::operator MapAndRulesState() const {
+  MapAndRulesState ret;
+  ret.map = this->map;
+  ret.num_players = this->num_players;
+  ret.unused1 = this->unused1;
+  ret.environment_number = this->environment_number;
+  ret.num_players_per_team = this->num_players_per_team;
+  ret.num_team0_players = this->num_team0_players;
+  ret.unused2 = this->unused2;
+  ret.start_facing_directions = this->unused5;
+  ret.unused3 = this->unknown_a3;
+  ret.map_number = this->map_number;
+  ret.unused4 = this->unused4;
+  ret.rules = this->rules;
+  return ret;
+}
+
 OverlayState::OverlayState() {
   this->clear();
 }

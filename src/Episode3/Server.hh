@@ -74,6 +74,10 @@ public:
     std::shared_ptr<PSOLFGEncryption> random_crypt;
     std::shared_ptr<const Tournament> tournament;
     std::array<std::vector<uint16_t>, 5> trap_card_ids;
+
+    inline bool is_trial() const {
+      return (this->behavior_flags & BehaviorFlag::IS_TRIAL_EDITION);
+    }
   };
   Server(std::shared_ptr<Lobby> lobby, Options&& options);
   ~Server() noexcept(false);
@@ -102,7 +106,7 @@ public:
     if (cmd.header.size != sizeof(cmd) / 4) {
       throw std::logic_error("outbound command size field is incorrect");
     }
-    if (cmd.header.subsubcommand == 0x06) {
+    if (!this->options.is_trial() && (cmd.header.subsubcommand == 0x06)) {
       this->num_6xB4x06_commands_sent++;
       this->prev_num_6xB4x06_commands_sent = this->num_6xB4x06_commands_sent;
       if (this->num_6xB4x06_commands_sent > 0x100) {
@@ -179,9 +183,8 @@ public:
   void move_phase_before();
   void set_player_deck_valid(uint8_t client_id);
   void setup_and_start_battle();
-  G_SetStateFlags_GC_Ep3_6xB4x03 prepare_6xB4x03() const;
-  void update_battle_state_flags_and_send_6xB4x03_if_needed(
-      bool always_send = false);
+  G_SetStateFlags_Ep3_6xB4x03 prepare_6xB4x03() const;
+  void update_battle_state_flags_and_send_6xB4x03_if_needed(bool always_send = false);
   bool update_registration_phase();
   void on_server_data_input(std::shared_ptr<Client> sender_c, const std::string& data);
   void handle_CAx0B_mulligan_hand(std::shared_ptr<Client> sender_c, const std::string& data);
@@ -209,12 +212,10 @@ public:
   void handle_CAx49_card_counts(std::shared_ptr<Client> sender_c, const std::string& data);
   void compute_losing_team_id_and_add_winner_flags(uint32_t flags);
   uint32_t get_team_exp(uint8_t team_id) const;
-  uint32_t send_6xB4x06_if_card_ref_invalid(
-      uint16_t card_ref, int16_t negative_value);
+  uint32_t send_6xB4x06_if_card_ref_invalid(uint16_t card_ref, int16_t negative_value);
   void unknown_8023EEF4();
   void execute_bomb_assist_effect();
-  void replace_targets_due_to_destruction_or_conditions(
-      ActionState* as);
+  void replace_targets_due_to_destruction_or_conditions(ActionState* as);
   bool any_target_exists_for_attack(const ActionState& as);
   uint8_t get_current_team_turn2() const;
   void unknown_8023EE48();
@@ -225,12 +226,11 @@ public:
   void send_6xB4x02_for_all_players_if_needed(bool always_send = false);
   void send_6xB4x50_trap_tile_locations() const;
 
-  G_UpdateDecks_GC_Ep3_6xB4x07 prepare_6xB4x07_decks_update() const;
-  G_SetPlayerNames_GC_Ep3_6xB4x1C prepare_6xB4x1C_names_update() const;
-  static std::string prepare_6xB6x41_map_definition(
-      std::shared_ptr<const MapIndex::Map> map, uint8_t language, bool is_trial);
+  G_UpdateDecks_Ep3_6xB4x07 prepare_6xB4x07_decks_update() const;
+  G_SetPlayerNames_Ep3_6xB4x1C prepare_6xB4x1C_names_update() const;
+  static std::string prepare_6xB6x41_map_definition(std::shared_ptr<const MapIndex::Map> map, uint8_t language, bool is_trial);
   void send_6xB6x41_to_all_clients() const;
-  G_SetTrapTileLocations_GC_Ep3_6xB4x50 prepare_6xB4x50_trap_tile_locations() const;
+  G_SetTrapTileLocations_Ep3_6xB4x50 prepare_6xB4x50_trap_tile_locations() const;
 
   std::vector<std::shared_ptr<Card>> const_cast_set_cards_v(
       const std::vector<std::shared_ptr<const Card>>& cards);

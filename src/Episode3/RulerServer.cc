@@ -204,6 +204,8 @@ const ActionChainWithConds* RulerServer::action_chain_with_conds_for_card_ref(
     uint16_t card_ref) const {
   uint8_t client_id = client_id_for_card_ref(card_ref);
   if (client_id != 0xFF) {
+    // There appears to be a bug in Trial Edition: the bound on this loop is
+    // 0x10, not 9.
     for (size_t z = 0; z < 9; z++) {
       const auto* chain = &this->set_card_action_chains[client_id]->at(z);
       if (card_ref == chain->chain.acting_card_ref) {
@@ -1672,7 +1674,7 @@ int32_t RulerServer::error_code_for_client_setting_card(
     }
 
     // Check for assists that can only be set on yourself
-    auto eff = assist_effect_number_for_card_id(ce->def.card_id);
+    auto eff = assist_effect_number_for_card_id(ce->def.card_id, this->server()->options.is_trial());
     if (((eff == AssistEffect::LEGACY) || (eff == AssistEffect::EXCHANGE)) &&
         (assist_target_client_id != 0xFF) &&
         (assist_target_client_id != client_id_for_card_ref(card_ref))) {

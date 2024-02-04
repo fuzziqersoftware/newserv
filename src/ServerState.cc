@@ -845,8 +845,8 @@ void ServerState::load_config() {
   }
 
   {
-    auto parse_ep3_ex_result_cmd = [&](const JSON& src) -> shared_ptr<G_SetEXResultValues_GC_Ep3_6xB4x4B> {
-      auto ret = make_shared<G_SetEXResultValues_GC_Ep3_6xB4x4B>();
+    auto parse_ep3_ex_result_cmd = [&](const JSON& src) -> shared_ptr<G_SetEXResultValues_Ep3_6xB4x4B> {
+      auto ret = make_shared<G_SetEXResultValues_Ep3_6xB4x4B>();
       const auto& win_json = src.at("Win");
       for (size_t z = 0; z < min<size_t>(win_json.size(), 10); z++) {
         ret->win_entries[z].threshold = win_json.at(z).at(0).as_int();
