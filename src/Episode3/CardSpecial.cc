@@ -3527,6 +3527,7 @@ bool CardSpecial::should_cancel_condition_due_to_anti_abnormality(
       if (s->options.is_trial()) {
         return false;
       }
+      [[fallthrough]];
     case ConditionType::IMMOBILE:
     case ConditionType::HOLD:
     case ConditionType::PARALYZE:
