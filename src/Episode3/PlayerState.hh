@@ -138,6 +138,7 @@ public:
   void roll_main_dice();
   void unknown_8023C110();
   void compute_team_dice_bonus_after_draw_phase();
+  void send_6xB4x0A_for_set_card(size_t set_index);
 
 private:
   std::weak_ptr<Server> w_server;

@@ -439,7 +439,7 @@ void ActionChainWithConds::compute_attack_medium(shared_ptr<Server> server) {
     if (!ce) {
       continue;
     }
-    if (card_class_is_tech_like(ce->def.card_class())) {
+    if (card_class_is_tech_like(ce->def.card_class(), server->options.is_trial())) {
       this->chain.attack_medium = AttackMedium::TECH;
     }
   }

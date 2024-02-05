@@ -6230,16 +6230,16 @@ struct G_UpdateActionChainAndMetadata_Ep3_6xB4x0A {
 
 // 6xB3x0B / CAx0B: Redraw initial hand (immediately before battle)
 
-struct G_RedrawInitialHand_Ep3_6xB3x0B_CAx0B {
-  G_CardServerDataCommandHeader header = {0xB3, sizeof(G_RedrawInitialHand_Ep3_6xB3x0B_CAx0B) / 4, 0, 0x0B, 0, 0, 0, 0, 0};
+struct G_RedrawInitialHand_Ep3_CAx0B {
+  G_CardServerDataCommandHeader header = {0xB3, sizeof(G_RedrawInitialHand_Ep3_CAx0B) / 4, 0, 0x0B, 0, 0, 0, 0, 0};
   le_uint16_t client_id = 0;
   parray<uint8_t, 2> unused2;
 } __packed__;
 
 // 6xB3x0C / CAx0C: End initial redraw phase
 
-struct G_EndInitialRedrawPhase_Ep3_6xB3x0C_CAx0C {
-  G_CardServerDataCommandHeader header = {0xB3, sizeof(G_EndInitialRedrawPhase_Ep3_6xB3x0C_CAx0C) / 4, 0, 0x0C, 0, 0, 0, 0, 0};
+struct G_EndInitialRedrawPhase_Ep3_CAx0C {
+  G_CardServerDataCommandHeader header = {0xB3, sizeof(G_EndInitialRedrawPhase_Ep3_CAx0C) / 4, 0, 0x0C, 0, 0, 0, 0, 0};
   le_uint16_t client_id = 0;
   parray<uint8_t, 2> unused2;
 } __packed__;
@@ -6249,24 +6249,24 @@ struct G_EndInitialRedrawPhase_Ep3_6xB3x0C_CAx0C {
 // current phase. This command isn't used for ending the attack or defense
 // phases; for those phases, CAx12 and CAx28 are used instead.
 
-struct G_EndNonAttackPhase_Ep3_6xB3x0D_CAx0D {
-  G_CardServerDataCommandHeader header = {0xB3, sizeof(G_EndNonAttackPhase_Ep3_6xB3x0D_CAx0D) / 4, 0, 0x0D, 0, 0, 0, 0, 0};
+struct G_EndNonAttackPhase_Ep3_CAx0D {
+  G_CardServerDataCommandHeader header = {0xB3, sizeof(G_EndNonAttackPhase_Ep3_CAx0D) / 4, 0, 0x0D, 0, 0, 0, 0, 0};
   le_uint16_t client_id = 0;
   parray<le_uint16_t, 5> unused2;
 } __packed__;
 
 // 6xB3x0E / CAx0E: Discard card from hand
 
-struct G_DiscardCardFromHand_Ep3_6xB3x0E_CAx0E {
-  G_CardServerDataCommandHeader header = {0xB3, sizeof(G_DiscardCardFromHand_Ep3_6xB3x0E_CAx0E) / 4, 0, 0x0E, 0, 0, 0, 0, 0};
+struct G_DiscardCardFromHand_Ep3_CAx0E {
+  G_CardServerDataCommandHeader header = {0xB3, sizeof(G_DiscardCardFromHand_Ep3_CAx0E) / 4, 0, 0x0E, 0, 0, 0, 0, 0};
   le_uint16_t client_id = 0;
   le_uint16_t card_ref = 0xFFFF;
 } __packed__;
 
 // 6xB3x0F / CAx0F: Set card from hand
 
-struct G_SetCardFromHand_Ep3_6xB3x0F_CAx0F {
-  G_CardServerDataCommandHeader header = {0xB3, sizeof(G_SetCardFromHand_Ep3_6xB3x0F_CAx0F) / 4, 0, 0x0F, 0, 0, 0, 0, 0};
+struct G_SetCardFromHand_Ep3_CAx0F {
+  G_CardServerDataCommandHeader header = {0xB3, sizeof(G_SetCardFromHand_Ep3_CAx0F) / 4, 0, 0x0F, 0, 0, 0, 0, 0};
   le_uint16_t client_id = 0;
   le_uint16_t card_ref = 0xFFFF;
   le_uint16_t set_index = 0;
@@ -6276,8 +6276,8 @@ struct G_SetCardFromHand_Ep3_6xB3x0F_CAx0F {
 
 // 6xB3x10 / CAx10: Move field character
 
-struct G_MoveFieldCharacter_Ep3_6xB3x10_CAx10 {
-  G_CardServerDataCommandHeader header = {0xB3, sizeof(G_MoveFieldCharacter_Ep3_6xB3x10_CAx10) / 4, 0, 0x10, 0, 0, 0, 0, 0};
+struct G_MoveFieldCharacter_Ep3_CAx10 {
+  G_CardServerDataCommandHeader header = {0xB3, sizeof(G_MoveFieldCharacter_Ep3_CAx10) / 4, 0, 0x10, 0, 0, 0, 0, 0};
   le_uint16_t client_id = 0;
   le_uint16_t set_index = 0;
   Episode3::Location loc;
@@ -6289,8 +6289,8 @@ struct G_MoveFieldCharacter_Ep3_6xB3x10_CAx10 {
 // sent once for each attack (even if it includes multiple cards); in the
 // defense case, this command is sent once for each defense card.
 
-struct G_EnqueueAttackOrDefense_Ep3_6xB3x11_CAx11 {
-  G_CardServerDataCommandHeader header = {0xB3, sizeof(G_EnqueueAttackOrDefense_Ep3_6xB3x11_CAx11) / 4, 0, 0x11, 0, 0, 0, 0, 0};
+struct G_EnqueueAttackOrDefense_Ep3_CAx11 {
+  G_CardServerDataCommandHeader header = {0xB3, sizeof(G_EnqueueAttackOrDefense_Ep3_CAx11) / 4, 0, 0x11, 0, 0, 0, 0, 0};
   le_uint16_t client_id = 0;
   parray<uint8_t, 2> unused2;
   Episode3::ActionState entry;
@@ -6300,24 +6300,30 @@ struct G_EnqueueAttackOrDefense_Ep3_6xB3x11_CAx11 {
 // This command informs the server that the client is done playing attacks in
 // the current round. (In the defense phase, CAx28 is used instead.)
 
-struct G_EndAttackList_Ep3_6xB3x12_CAx12 {
-  G_CardServerDataCommandHeader header = {0xB3, sizeof(G_EndAttackList_Ep3_6xB3x12_CAx12) / 4, 0, 0x12, 0, 0, 0, 0, 0};
+struct G_EndAttackList_Ep3_CAx12 {
+  G_CardServerDataCommandHeader header = {0xB3, sizeof(G_EndAttackList_Ep3_CAx12) / 4, 0, 0x12, 0, 0, 0, 0, 0};
   le_uint16_t client_id = 0;
   parray<uint8_t, 2> unused2;
 } __packed__;
 
 // 6xB3x13 / CAx13: Set map state during setup
 
-struct G_SetMapState_Ep3_6xB3x13_CAx13 {
-  G_CardServerDataCommandHeader header = {0xB3, sizeof(G_SetMapState_Ep3_6xB3x13_CAx13) / 4, 0, 0x13, 0, 0, 0, 0, 0};
+struct G_SetMapState_Ep3NTE_CAx13 {
+  G_CardServerDataCommandHeader header = {0xB3, sizeof(G_SetMapState_Ep3NTE_CAx13) / 4, 0, 0x13, 0, 0, 0, 0, 0};
+  Episode3::MapAndRulesStateTrial map_and_rules_state;
+  Episode3::OverlayState overlay_state;
+} __packed__;
+
+struct G_SetMapState_Ep3_CAx13 {
+  G_CardServerDataCommandHeader header = {0xB3, sizeof(G_SetMapState_Ep3_CAx13) / 4, 0, 0x13, 0, 0, 0, 0, 0};
   Episode3::MapAndRulesState map_and_rules_state;
   Episode3::OverlayState overlay_state;
 } __packed__;
 
 // 6xB3x14 / CAx14: Set player deck during setup
 
-struct G_SetPlayerDeck_Ep3_6xB3x14_CAx14 {
-  G_CardServerDataCommandHeader header = {0xB3, sizeof(G_SetPlayerDeck_Ep3_6xB3x14_CAx14) / 4, 0, 0x14, 0, 0, 0, 0, 0};
+struct G_SetPlayerDeck_Ep3_CAx14 {
+  G_CardServerDataCommandHeader header = {0xB3, sizeof(G_SetPlayerDeck_Ep3_CAx14) / 4, 0, 0x14, 0, 0, 0, 0, 0};
   le_uint16_t client_id = 0;
   uint8_t is_cpu_player = 0;
   uint8_t unused2 = 0;
@@ -6327,8 +6333,8 @@ struct G_SetPlayerDeck_Ep3_6xB3x14_CAx14 {
 // 6xB3x15 / CAx15: Hard-reset server state
 // This command appears to be completely unused; the client never sends it.
 
-struct G_HardResetServerState_Ep3_6xB3x15_CAx15 {
-  G_CardServerDataCommandHeader header = {0xB3, sizeof(G_HardResetServerState_Ep3_6xB3x15_CAx15) / 4, 0, 0x15, 0, 0, 0, 0, 0};
+struct G_HardResetServerState_Ep3_CAx15 {
+  G_CardServerDataCommandHeader header = {0xB3, sizeof(G_HardResetServerState_Ep3_CAx15) / 4, 0, 0x15, 0, 0, 0, 0, 0};
   // No arguments
 } __packed__;
 
@@ -6356,8 +6362,8 @@ struct G_ForceDisconnect_Ep3_6xB5x1A {
 // Curiously, this command can be used during a non-setup phase; the server
 // should ignore the command's contents but still send a 6xB4x1C in response.
 
-struct G_SetPlayerName_Ep3_6xB3x1B_CAx1B {
-  G_CardServerDataCommandHeader header = {0xB3, sizeof(G_SetPlayerName_Ep3_6xB3x1B_CAx1B) / 4, 0, 0x1B, 0, 0, 0, 0, 0};
+struct G_SetPlayerName_Ep3_CAx1B {
+  G_CardServerDataCommandHeader header = {0xB3, sizeof(G_SetPlayerName_Ep3_CAx1B) / 4, 0, 0x1B, 0, 0, 0, 0, 0};
   Episode3::NameEntry entry;
 } __packed__;
 
@@ -6373,8 +6379,8 @@ struct G_SetPlayerNames_Ep3_6xB4x1C {
 // response to this command) that includes RegistrationPhase::BATTLE_STARTED and
 // a SetupPhase value other than REGISTRATION.
 
-struct G_StartBattle_Ep3_6xB3x1D_CAx1D {
-  G_CardServerDataCommandHeader header = {0xB3, sizeof(G_StartBattle_Ep3_6xB3x1D_CAx1D) / 4, 0, 0x1D, 0, 0, 0, 0, 0};
+struct G_StartBattle_Ep3_CAx1D {
+  G_CardServerDataCommandHeader header = {0xB3, sizeof(G_StartBattle_Ep3_CAx1D) / 4, 0, 0x1D, 0, 0, 0, 0, 0};
 } __packed__;
 
 // 6xB4x1E: Action result
@@ -6412,8 +6418,8 @@ struct G_Unknown_Ep3_6xB5x20 {
 
 // 6xB3x21 / CAx21: End battle
 
-struct G_EndBattle_Ep3_6xB3x21_CAx21 {
-  G_CardServerDataCommandHeader header = {0xB3, sizeof(G_EndBattle_Ep3_6xB3x21_CAx21) / 4, 0, 0x21, 0, 0, 0, 0, 0};
+struct G_EndBattle_Ep3_CAx21 {
+  G_CardServerDataCommandHeader header = {0xB3, sizeof(G_EndBattle_Ep3_CAx21) / 4, 0, 0x21, 0, 0, 0, 0, 0};
   le_uint32_t unused2 = 0;
 } __packed__;
 
@@ -6455,8 +6461,8 @@ struct G_Unknown_Ep3_6xB5x27 {
 // This command informs the server that the client is done playing defense
 // cards. (In the attack phase, CAx12 is used instead.)
 
-struct G_EndDefenseList_Ep3_6xB3x28_CAx28 {
-  G_CardServerDataCommandHeader header = {0xB3, sizeof(G_EndDefenseList_Ep3_6xB3x28_CAx28) / 4, 0, 0x28, 0, 0, 0, 0, 0};
+struct G_EndDefenseList_Ep3_CAx28 {
+  G_CardServerDataCommandHeader header = {0xB3, sizeof(G_EndDefenseList_Ep3_CAx28) / 4, 0, 0x28, 0, 0, 0, 0, 0};
   uint8_t unused1 = 0;
   uint8_t client_id = 0;
   parray<uint8_t, 2> unused2;
@@ -6488,8 +6494,8 @@ struct G_Unknown_Ep3_6xB4x2A {
 // It seems Sega's servers completely ignored this command. The command name is
 // based on a debug message found nearby.
 
-struct G_ExecLegacyCard_Ep3_6xB3x2B_CAx2B {
-  G_CardServerDataCommandHeader header = {0xB3, sizeof(G_ExecLegacyCard_Ep3_6xB3x2B_CAx2B) / 4, 0, 0x2B, 0, 0, 0, 0, 0};
+struct G_ExecLegacyCard_Ep3_CAx2B {
+  G_CardServerDataCommandHeader header = {0xB3, sizeof(G_ExecLegacyCard_Ep3_CAx2B) / 4, 0, 0x2B, 0, 0, 0, 0, 0};
   le_uint16_t unused2 = 0;
   parray<uint8_t, 2> unused3;
 } __packed__;
@@ -6592,8 +6598,8 @@ struct G_SubtractAllyATKPoints_Ep3_6xB4x33 {
 
 // 6xB3x34 / CAx34: Photon blast request
 
-struct G_PhotonBlastRequest_Ep3_6xB3x34_CAx34 {
-  G_CardServerDataCommandHeader header = {0xB3, sizeof(G_PhotonBlastRequest_Ep3_6xB3x34_CAx34) / 4, 0, 0x34, 0, 0, 0, 0, 0};
+struct G_PhotonBlastRequest_Ep3_CAx34 {
+  G_CardServerDataCommandHeader header = {0xB3, sizeof(G_PhotonBlastRequest_Ep3_CAx34) / 4, 0, 0x34, 0, 0, 0, 0, 0};
   uint8_t ally_client_id = 0;
   uint8_t reason = 0;
   le_uint16_t card_ref = 0xFFFF;
@@ -6624,8 +6630,8 @@ struct G_RecreatePlayer_Ep3_6xB5x36 {
 
 // 6xB3x37 / CAx37: Ready to advance from starting rolls phase
 
-struct G_AdvanceFromStartingRollsPhase_Ep3_6xB3x37_CAx37 {
-  G_CardServerDataCommandHeader header = {0xB3, sizeof(G_AdvanceFromStartingRollsPhase_Ep3_6xB3x37_CAx37) / 4, 0, 0x37, 0, 0, 0, 0, 0};
+struct G_AdvanceFromStartingRollsPhase_Ep3_CAx37 {
+  G_CardServerDataCommandHeader header = {0xB3, sizeof(G_AdvanceFromStartingRollsPhase_Ep3_CAx37) / 4, 0, 0x37, 0, 0, 0, 0, 0};
   uint8_t client_id = 0;
   parray<uint8_t, 3> unused2;
 } __packed__;
@@ -6661,8 +6667,8 @@ struct G_UpdateAllPlayerStatistics_Ep3_6xB4x39 {
 // It seems Sega's servers completely ignored this command and used server-side
 // timing instead. newserv does the same.
 
-struct G_OverallTimeLimitExpired_Ep3_6xB3x3A_CAx3A {
-  G_CardServerDataCommandHeader header = {0xB3, sizeof(G_OverallTimeLimitExpired_Ep3_6xB3x3A_CAx3A) / 4, 0, 0x3A, 0, 0, 0, 0, 0};
+struct G_OverallTimeLimitExpired_Ep3_CAx3A {
+  G_CardServerDataCommandHeader header = {0xB3, sizeof(G_OverallTimeLimitExpired_Ep3_CAx3A) / 4, 0, 0x3A, 0, 0, 0, 0, 0};
 } __packed__;
 
 // 6xB4x3B: Load current environment
@@ -6748,16 +6754,16 @@ struct G_OpenBlockingMenu_Ep3_6xB5x3F {
 // 6xB3x40 / CAx40: Request map list
 // The server should respond with a 6xB6x40 command.
 
-struct G_MapListRequest_Ep3_6xB3x40_CAx40 {
-  G_CardServerDataCommandHeader header = {0xB3, sizeof(G_MapListRequest_Ep3_6xB3x40_CAx40) / 4, 0, 0x40, 0, 0, 0, 0, 0};
+struct G_MapListRequest_Ep3_CAx40 {
+  G_CardServerDataCommandHeader header = {0xB3, sizeof(G_MapListRequest_Ep3_CAx40) / 4, 0, 0x40, 0, 0, 0, 0, 0};
 } __packed__;
 
 // 6xB3x41 / CAx41: Request map data
 // The server should respond with a 6xB6x41 command containing the definition of
 // the specified map.
 
-struct G_MapDataRequest_Ep3_6xB3x41_CAx41 {
-  G_CardServerDataCommandHeader header = {0xB3, sizeof(G_MapDataRequest_Ep3_6xB3x41_CAx41) / 4, 0, 0x41, 0, 0, 0, 0, 0};
+struct G_MapDataRequest_Ep3_CAx41 {
+  G_CardServerDataCommandHeader header = {0xB3, sizeof(G_MapDataRequest_Ep3_CAx41) / 4, 0, 0x41, 0, 0, 0, 0, 0};
   le_uint32_t map_number = 0;
 } __packed__;
 
@@ -6865,8 +6871,8 @@ struct G_SetSpectatorCARDLevel_Ep3_6xB5x47 {
 
 // 6xB3x48 / CAx48: End turn
 
-struct G_EndTurn_Ep3_6xB3x48_CAx48 {
-  G_CardServerDataCommandHeader header = {0xB3, sizeof(G_EndTurn_Ep3_6xB3x48_CAx48) / 4, 0, 0x48, 0, 0, 0, 0, 0};
+struct G_EndTurn_Ep3_CAx48 {
+  G_CardServerDataCommandHeader header = {0xB3, sizeof(G_EndTurn_Ep3_CAx48) / 4, 0, 0x48, 0, 0, 0, 0, 0};
   uint8_t client_id = 0;
   parray<uint8_t, 3> unused2;
 } __packed__;
@@ -6883,8 +6889,8 @@ struct G_EndTurn_Ep3_6xB3x48_CAx48 {
 // that callsite to implement one of the deck validity checks.
 // Episode 3 Trial Edition does not send this command.
 
-struct G_CardCounts_Ep3_6xB3x49_CAx49 {
-  G_CardServerDataCommandHeader header = {0xB3, sizeof(G_CardCounts_Ep3_6xB3x49_CAx49) / 4, 0, 0x49, 0, 0, 0, 0, 0};
+struct G_CardCounts_Ep3_CAx49 {
+  G_CardServerDataCommandHeader header = {0xB3, sizeof(G_CardCounts_Ep3_CAx49) / 4, 0, 0x49, 0, 0, 0, 0, 0};
   uint8_t basis = 0;
   parray<uint8_t, 3> unused;
   // This is encrypted with the trivial algorithm (see decrypt_trivial_gci_data)

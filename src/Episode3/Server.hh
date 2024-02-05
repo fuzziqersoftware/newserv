@@ -195,6 +195,8 @@ public:
   void handle_CAx10_move_fc_to_location(std::shared_ptr<Client> sender_c, const std::string& data);
   void handle_CAx11_enqueue_attack_or_defense(std::shared_ptr<Client> sender_c, const std::string& data);
   void handle_CAx12_end_attack_list(std::shared_ptr<Client> sender_c, const std::string& data);
+  template <typename CmdT>
+  void handle_CAx13_update_map_during_setup_t(std::shared_ptr<Client> sender_c, const std::string& data);
   void handle_CAx13_update_map_during_setup(std::shared_ptr<Client> sender_c, const std::string& data);
   void handle_CAx14_update_deck_during_setup(std::shared_ptr<Client> sender_c, const std::string& data);
   void handle_CAx15_unused_hard_reset_server_state(std::shared_ptr<Client> sender_c, const std::string& data);

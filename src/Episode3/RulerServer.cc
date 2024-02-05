@@ -636,9 +636,11 @@ bool RulerServer::card_ref_has_free_maneuver(uint16_t card_ref) const {
 }
 
 bool RulerServer::card_ref_is_aerial(uint16_t card_ref) const {
-  const auto* stat = this->short_status_for_card_ref(card_ref);
-  if (!stat || !this->card_exists_by_status(*stat)) {
-    return false;
+  if (!this->server()->options.is_trial()) {
+    const auto* stat = this->short_status_for_card_ref(card_ref);
+    if (!stat || !this->card_exists_by_status(*stat)) {
+      return false;
+    }
   }
 
   uint8_t client_id = client_id_for_card_ref(card_ref);
@@ -905,7 +907,8 @@ bool RulerServer::check_usability_or_condition_apply(
     uint8_t def_effect_index,
     bool is_item_usability_check,
     AttackMedium attack_medium) const {
-  auto log = this->server()->log_stack(string_printf("check_usability_or_condition_apply(%02hhX, #%04hX, %02hhX, #%04hX, #%04hX, %02hhX, %s, %s): ", client_id1, card_id1, client_id2, card_id2, card_id3, def_effect_index, is_item_usability_check ? "true" : "false", name_for_attack_medium(attack_medium)));
+  auto s = this->server();
+  auto log = s->log_stack(string_printf("check_usability_or_condition_apply(%02hhX, #%04hX, %02hhX, #%04hX, #%04hX, %02hhX, %s, %s): ", client_id1, card_id1, client_id2, card_id2, card_id3, def_effect_index, is_item_usability_check ? "true" : "false", name_for_attack_medium(attack_medium)));
 
   if (static_cast<uint8_t>(attack_medium) & 0x80) {
     attack_medium = AttackMedium::UNKNOWN;
@@ -918,7 +921,7 @@ bool RulerServer::check_usability_or_condition_apply(
     log.debug("ce1 missing");
     return false;
   }
-  if ((ce1->def.type == CardType::ITEM) && this->card_id_is_boss_sc(card_id2)) {
+  if (!s->options.is_trial() && (ce1->def.type == CardType::ITEM) && this->card_id_is_boss_sc(card_id2)) {
     log.debug("ce1 is item and card_id2 is boss sc");
     return false;
   }
@@ -954,8 +957,8 @@ bool RulerServer::check_usability_or_condition_apply(
   // creature card is usable, the two client IDs should be the same or the
   // second should not be given, so we'd return true if the criterion passes. If
   // neither of these cases apply, we should return false as a failsafe even if
-  // the criterion passes.
-  bool ret = (!(def_effect_index & 0x80) || (client_id1 == client_id2)) || (client_id2 == 0xFF);
+  // the criterion passes. NTE did not have such a check.
+  bool ret = s->options.is_trial() || (!(def_effect_index & 0x80) || (client_id1 == client_id2)) || (client_id2 == 0xFF);
   switch (criterion_code) {
     case CriterionCode::NONE:
       return ret;
@@ -1371,13 +1374,14 @@ uint16_t RulerServer::compute_attack_or_defense_costs(
       tech_cost_bias = -1;
     }
 
+    auto s = this->server();
     for (size_t z = 0; pa.action_card_refs[z] != 0xFFFF; z++) {
       auto ce = this->definition_for_card_ref(pa.action_card_refs[z]);
       if (has_mighty_knuckle || !ce || (ce->def.type != CardType::ACTION)) {
         return 99;
       }
       total_cost += (ce->def.self_cost + cost_bias);
-      if (card_class_is_tech_like(ce->def.card_class())) {
+      if (card_class_is_tech_like(ce->def.card_class(), s->options.is_trial())) {
         total_cost += tech_cost_bias;
       }
       total_ally_cost += ce->def.ally_cost;
@@ -2520,13 +2524,14 @@ void RulerServer::replace_D1_D2_rank_cards_with_Attack(
 }
 
 AttackMedium RulerServer::get_attack_medium(const ActionState& pa) const {
+  bool is_trial = this->server()->options.is_trial();
   for (size_t z = 0; z < 8; z++) {
     uint16_t card_ref = pa.action_card_refs[z];
     if (card_ref == 0xFFFF) {
       return AttackMedium::PHYSICAL;
     }
     auto ce = this->definition_for_card_ref(card_ref);
-    if (ce && card_class_is_tech_like(ce->def.card_class())) {
+    if (ce && card_class_is_tech_like(ce->def.card_class(), is_trial)) {
       return AttackMedium::TECH;
     }
   }

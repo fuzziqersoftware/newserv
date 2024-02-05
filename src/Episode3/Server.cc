@@ -822,7 +822,6 @@ void Server::draw_phase_after() {
       }
       if (no_winner_specified) {
         if (this->options.is_trial()) {
-          // TODO: This looks like an incomplete version of compute_losing_team_id_and_add_winner_flags; reconcile this
           throw runtime_error("unimplemented NTE condition");
         } else {
           this->compute_losing_team_id_and_add_winner_flags(0);
@@ -1705,7 +1704,7 @@ void Server::on_server_data_input(shared_ptr<Client> sender_c, const string& dat
 }
 
 void Server::handle_CAx0B_mulligan_hand(shared_ptr<Client>, const string& data) {
-  const auto& in_cmd = check_size_t<G_RedrawInitialHand_Ep3_6xB3x0B_CAx0B>(data);
+  const auto& in_cmd = check_size_t<G_RedrawInitialHand_Ep3_CAx0B>(data);
   this->send_debug_command_received_message(
       in_cmd.client_id, in_cmd.header.subsubcommand, "REDRAW");
   if (in_cmd.client_id >= 4) {
@@ -1738,7 +1737,7 @@ void Server::handle_CAx0B_mulligan_hand(shared_ptr<Client>, const string& data) 
 }
 
 void Server::handle_CAx0C_end_mulligan_phase(shared_ptr<Client>, const string& data) {
-  const auto& in_cmd = check_size_t<G_EndInitialRedrawPhase_Ep3_6xB3x0C_CAx0C>(data);
+  const auto& in_cmd = check_size_t<G_EndInitialRedrawPhase_Ep3_CAx0C>(data);
   this->send_debug_command_received_message(
       in_cmd.client_id, in_cmd.header.subsubcommand, "SETUP ADV 2");
   if (in_cmd.client_id >= 4) {
@@ -1796,7 +1795,7 @@ void Server::handle_CAx0C_end_mulligan_phase(shared_ptr<Client>, const string& d
 }
 
 void Server::handle_CAx0D_end_non_action_phase(shared_ptr<Client>, const string& data) {
-  const auto& in_cmd = check_size_t<G_EndNonAttackPhase_Ep3_6xB3x0D_CAx0D>(data);
+  const auto& in_cmd = check_size_t<G_EndNonAttackPhase_Ep3_CAx0D>(data);
   this->send_debug_command_received_message(in_cmd.client_id, in_cmd.header.subsubcommand, "END PHASE");
   if (in_cmd.client_id >= 4) {
     throw runtime_error("invalid client ID");
@@ -1816,7 +1815,7 @@ void Server::handle_CAx0D_end_non_action_phase(shared_ptr<Client>, const string&
 }
 
 void Server::handle_CAx0E_discard_card_from_hand(shared_ptr<Client>, const string& data) {
-  const auto& in_cmd = check_size_t<G_DiscardCardFromHand_Ep3_6xB3x0E_CAx0E>(data);
+  const auto& in_cmd = check_size_t<G_DiscardCardFromHand_Ep3_CAx0E>(data);
   this->send_debug_command_received_message(
       in_cmd.client_id, in_cmd.header.subsubcommand, "DISCARD");
   if (in_cmd.client_id >= 4) {
@@ -1856,7 +1855,7 @@ void Server::handle_CAx0E_discard_card_from_hand(shared_ptr<Client>, const strin
 }
 
 void Server::handle_CAx0F_set_card_from_hand(shared_ptr<Client>, const string& data) {
-  const auto& in_cmd = check_size_t<G_SetCardFromHand_Ep3_6xB3x0F_CAx0F>(data);
+  const auto& in_cmd = check_size_t<G_SetCardFromHand_Ep3_CAx0F>(data);
   this->send_debug_command_received_message(in_cmd.client_id, in_cmd.header.subsubcommand, "SET FC");
   if (in_cmd.client_id >= 4) {
     throw runtime_error("invalid client ID");
@@ -1898,7 +1897,7 @@ void Server::handle_CAx0F_set_card_from_hand(shared_ptr<Client>, const string& d
 }
 
 void Server::handle_CAx10_move_fc_to_location(shared_ptr<Client>, const string& data) {
-  const auto& in_cmd = check_size_t<G_MoveFieldCharacter_Ep3_6xB3x10_CAx10>(data);
+  const auto& in_cmd = check_size_t<G_MoveFieldCharacter_Ep3_CAx10>(data);
   this->send_debug_command_received_message(
       in_cmd.client_id, in_cmd.header.subsubcommand, "MOVE");
   if (in_cmd.client_id >= 4) {
@@ -1936,7 +1935,7 @@ void Server::handle_CAx10_move_fc_to_location(shared_ptr<Client>, const string& 
 }
 
 void Server::handle_CAx11_enqueue_attack_or_defense(shared_ptr<Client>, const string& data) {
-  const auto& in_cmd = check_size_t<G_EnqueueAttackOrDefense_Ep3_6xB3x11_CAx11>(data);
+  const auto& in_cmd = check_size_t<G_EnqueueAttackOrDefense_Ep3_CAx11>(data);
   this->send_debug_command_received_message(
       in_cmd.client_id, in_cmd.header.subsubcommand, "ENQUEUE ACT");
   if (in_cmd.client_id >= 4) {
@@ -1972,7 +1971,7 @@ void Server::handle_CAx11_enqueue_attack_or_defense(shared_ptr<Client>, const st
 }
 
 void Server::handle_CAx12_end_attack_list(shared_ptr<Client>, const string& data) {
-  const auto& in_cmd = check_size_t<G_EndAttackList_Ep3_6xB3x12_CAx12>(data);
+  const auto& in_cmd = check_size_t<G_EndAttackList_Ep3_CAx12>(data);
   this->send_debug_command_received_message(
       in_cmd.client_id, in_cmd.header.subsubcommand, "END ATK LIST");
   if (in_cmd.client_id >= 4) {
@@ -1994,8 +1993,9 @@ void Server::handle_CAx12_end_attack_list(shared_ptr<Client>, const string& data
   this->send_debug_message_if_error_code_nonzero(in_cmd.client_id, error_code);
 }
 
-void Server::handle_CAx13_update_map_during_setup(shared_ptr<Client>, const string& data) {
-  const auto& in_cmd = check_size_t<G_SetMapState_Ep3_6xB3x13_CAx13>(data);
+template <typename CmdT>
+void Server::handle_CAx13_update_map_during_setup_t(shared_ptr<Client>, const string& data) {
+  const auto& in_cmd = check_size_t<CmdT>(data);
   this->send_debug_command_received_message(
       in_cmd.header.subsubcommand, "UPDATE MAP");
 
@@ -2036,8 +2036,16 @@ void Server::handle_CAx13_update_map_during_setup(shared_ptr<Client>, const stri
   }
 }
 
+void Server::handle_CAx13_update_map_during_setup(shared_ptr<Client> c, const string& data) {
+  if (this->options.is_trial()) {
+    this->handle_CAx13_update_map_during_setup_t<G_SetMapState_Ep3NTE_CAx13>(c, data);
+  } else {
+    this->handle_CAx13_update_map_during_setup_t<G_SetMapState_Ep3_CAx13>(c, data);
+  }
+}
+
 void Server::handle_CAx14_update_deck_during_setup(shared_ptr<Client>, const string& data) {
-  const auto& in_cmd = check_size_t<G_SetPlayerDeck_Ep3_6xB3x14_CAx14>(data);
+  const auto& in_cmd = check_size_t<G_SetPlayerDeck_Ep3_CAx14>(data);
   this->send_debug_command_received_message(
       in_cmd.client_id, in_cmd.header.subsubcommand, "UPDATE DECK");
 
@@ -2062,7 +2070,7 @@ void Server::handle_CAx14_update_deck_during_setup(shared_ptr<Client>, const str
       if (verify_error) {
         throw runtime_error(string_printf("invalid deck: -0x%" PRIX32, verify_error));
       }
-      if (!(this->options.behavior_flags & BehaviorFlag::SKIP_D1_D2_REPLACE)) {
+      if (!this->options.is_trial() && !(this->options.behavior_flags & BehaviorFlag::SKIP_D1_D2_REPLACE)) {
         this->ruler_server->replace_D1_D2_rank_cards_with_Attack(entry.card_ids);
       }
       *this->deck_entries[in_cmd.client_id] = in_cmd.entry;
@@ -2084,7 +2092,7 @@ void Server::handle_CAx14_update_deck_during_setup(shared_ptr<Client>, const str
 }
 
 void Server::handle_CAx15_unused_hard_reset_server_state(shared_ptr<Client>, const string& data) {
-  const auto& in_cmd = check_size_t<G_HardResetServerState_Ep3_6xB3x15_CAx15>(data);
+  const auto& in_cmd = check_size_t<G_HardResetServerState_Ep3_CAx15>(data);
   this->send_debug_command_received_message(
       in_cmd.header.subsubcommand, "HARD RESET");
 
@@ -2102,7 +2110,7 @@ void Server::handle_CAx15_unused_hard_reset_server_state(shared_ptr<Client>, con
 }
 
 void Server::handle_CAx1B_update_player_name(shared_ptr<Client>, const string& data) {
-  const auto& in_cmd = check_size_t<G_SetPlayerName_Ep3_6xB3x1B_CAx1B>(data);
+  const auto& in_cmd = check_size_t<G_SetPlayerName_Ep3_CAx1B>(data);
   this->send_debug_command_received_message(
       in_cmd.entry.client_id, in_cmd.header.subsubcommand, "UPDATE NAME");
 
@@ -2134,7 +2142,7 @@ void Server::handle_CAx1B_update_player_name(shared_ptr<Client>, const string& d
 }
 
 void Server::handle_CAx1D_start_battle(shared_ptr<Client>, const string& data) {
-  const auto& in_cmd = check_size_t<G_StartBattle_Ep3_6xB3x1D_CAx1D>(data);
+  const auto& in_cmd = check_size_t<G_StartBattle_Ep3_CAx1D>(data);
   this->send_debug_command_received_message(
       in_cmd.header.subsubcommand, "START BATTLE");
 
@@ -2171,7 +2179,7 @@ void Server::handle_CAx1D_start_battle(shared_ptr<Client>, const string& data) {
 }
 
 void Server::handle_CAx21_end_battle(shared_ptr<Client>, const string& data) {
-  const auto& in_cmd = check_size_t<G_EndBattle_Ep3_6xB3x21_CAx21>(data);
+  const auto& in_cmd = check_size_t<G_EndBattle_Ep3_CAx21>(data);
   this->send_debug_command_received_message(
       in_cmd.header.subsubcommand, "END BATTLE");
   if (this->setup_phase == SetupPhase::BATTLE_ENDED) {
@@ -2186,7 +2194,7 @@ void Server::handle_CAx21_end_battle(shared_ptr<Client>, const string& data) {
 }
 
 void Server::handle_CAx28_end_defense_list(shared_ptr<Client>, const string& data) {
-  const auto& in_cmd = check_size_t<G_EndDefenseList_Ep3_6xB3x28_CAx28>(data);
+  const auto& in_cmd = check_size_t<G_EndDefenseList_Ep3_CAx28>(data);
   this->send_debug_command_received_message(
       in_cmd.client_id, in_cmd.header.subsubcommand, "END DEF LIST");
   if (in_cmd.client_id >= 4) {
@@ -2239,13 +2247,13 @@ void Server::handle_CAx28_end_defense_list(shared_ptr<Client>, const string& dat
 }
 
 void Server::handle_CAx2B_legacy_set_card(shared_ptr<Client>, const string& data) {
-  const auto& in_cmd = check_size_t<G_ExecLegacyCard_Ep3_6xB3x2B_CAx2B>(data);
+  const auto& in_cmd = check_size_t<G_ExecLegacyCard_Ep3_CAx2B>(data);
   this->send_debug_command_received_message(in_cmd.header.subsubcommand, "EXEC LEGACY");
   // Sega's original implementation does nothing here, so we do nothing as well.
 }
 
 void Server::handle_CAx34_subtract_ally_atk_points(shared_ptr<Client>, const string& data) {
-  const auto& in_cmd = check_size_t<G_PhotonBlastRequest_Ep3_6xB3x34_CAx34>(data);
+  const auto& in_cmd = check_size_t<G_PhotonBlastRequest_Ep3_CAx34>(data);
 
   uint8_t card_ref_client_id = client_id_for_card_ref(in_cmd.card_ref);
   this->send_debug_command_received_message(
@@ -2322,7 +2330,7 @@ void Server::handle_CAx34_subtract_ally_atk_points(shared_ptr<Client>, const str
 }
 
 void Server::handle_CAx37_client_ready_to_advance_from_starter_roll_phase(shared_ptr<Client>, const string& data) {
-  const auto& in_cmd = check_size_t<G_AdvanceFromStartingRollsPhase_Ep3_6xB3x37_CAx37>(data);
+  const auto& in_cmd = check_size_t<G_AdvanceFromStartingRollsPhase_Ep3_CAx37>(data);
   this->send_debug_command_received_message(
       in_cmd.client_id, in_cmd.header.subsubcommand, "SETUP ADV 1");
   if (in_cmd.client_id >= 4) {
@@ -2352,14 +2360,14 @@ void Server::handle_CAx37_client_ready_to_advance_from_starter_roll_phase(shared
 }
 
 void Server::handle_CAx3A_time_limit_expired(shared_ptr<Client>, const string& data) {
-  const auto& in_cmd = check_size_t<G_OverallTimeLimitExpired_Ep3_6xB3x3A_CAx3A>(data);
+  const auto& in_cmd = check_size_t<G_OverallTimeLimitExpired_Ep3_CAx3A>(data);
   this->send_debug_command_received_message(in_cmd.header.subsubcommand, "TIME EXPIRED");
   // We don't need to do anything here because the overall time limit is tracked
   // server-side instead.
 }
 
 void Server::handle_CAx40_map_list_request(shared_ptr<Client> sender_c, const string& data) {
-  const auto& in_cmd = check_size_t<G_MapListRequest_Ep3_6xB3x40_CAx40>(data);
+  const auto& in_cmd = check_size_t<G_MapListRequest_Ep3_CAx40>(data);
   this->send_debug_command_received_message(
       in_cmd.header.subsubcommand, "MAP LIST");
 
@@ -2431,7 +2439,7 @@ void Server::send_6xB6x41_to_all_clients() const {
 }
 
 void Server::handle_CAx41_map_request(shared_ptr<Client>, const string& data) {
-  const auto& cmd = check_size_t<G_MapDataRequest_Ep3_6xB3x41_CAx41>(data);
+  const auto& cmd = check_size_t<G_MapDataRequest_Ep3_CAx41>(data);
   this->send_debug_command_received_message(
       cmd.header.subsubcommand, "MAP DATA");
 
@@ -2440,7 +2448,7 @@ void Server::handle_CAx41_map_request(shared_ptr<Client>, const string& data) {
 }
 
 void Server::handle_CAx48_end_turn(shared_ptr<Client>, const string& data) {
-  const auto& in_cmd = check_size_t<G_EndTurn_Ep3_6xB3x48_CAx48>(data);
+  const auto& in_cmd = check_size_t<G_EndTurn_Ep3_CAx48>(data);
   this->send_debug_command_received_message(
       in_cmd.client_id, in_cmd.header.subsubcommand, "END TURN");
   if (in_cmd.client_id >= 4) {
@@ -2458,7 +2466,7 @@ void Server::handle_CAx48_end_turn(shared_ptr<Client>, const string& data) {
 }
 
 void Server::handle_CAx49_card_counts(shared_ptr<Client>, const string& data) {
-  const auto& in_cmd = check_size_t<G_CardCounts_Ep3_6xB3x49_CAx49>(data);
+  const auto& in_cmd = check_size_t<G_CardCounts_Ep3_CAx49>(data);
   this->send_debug_command_received_message(
       in_cmd.header.sender_client_id, in_cmd.header.subsubcommand, "CARD COUNTS");
 

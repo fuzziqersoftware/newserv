@@ -122,14 +122,16 @@ ssize_t Card::apply_abnormal_condition(
     int16_t value,
     int8_t dice_roll_value,
     int8_t random_percent) {
-  auto log = this->server()->log_stack(string_printf("apply_abnormal_condition(%02hhX, @%04X, @%04X, %hd, %hhd, %hhd): ", def_effect_index, target_card_ref, sc_card_ref, value, dice_roll_value, random_percent));
+  auto s = this->server();
+  auto log = s->log_stack(string_printf("apply_abnormal_condition(%02hhX, @%04X, @%04X, %hd, %hhd, %hhd): ", def_effect_index, target_card_ref, sc_card_ref, value, dice_roll_value, random_percent));
+  bool is_trial = s->options.is_trial();
 
   ssize_t existing_cond_index;
   for (size_t z = 0; z < this->action_chain.conditions.size(); z++) {
     const auto& cond = this->action_chain.conditions[z];
     if (cond.type == eff.type) {
       existing_cond_index = z;
-      if (eff.type == ConditionType::MV_BONUS ||
+      if ((!is_trial && eff.type == ConditionType::MV_BONUS) ||
           ((cond.card_definition_effect_index == def_effect_index) &&
               (cond.card_ref == target_card_ref))) {
         break;
@@ -165,7 +167,7 @@ ssize_t Card::apply_abnormal_condition(
     log.debug("MV_BONUS combines => existing_cond_value = %hd", existing_cond_value);
   }
 
-  this->server()->card_special->apply_stat_deltas_to_card_from_condition_and_clear_cond(cond, this->shared_from_this());
+  s->card_special->apply_stat_deltas_to_card_from_condition_and_clear_cond(cond, this->shared_from_this());
   cond.type = eff.type;
   cond.card_ref = target_card_ref;
   cond.condition_giver_card_ref = sc_card_ref;
@@ -205,14 +207,15 @@ ssize_t Card::apply_abnormal_condition(
   string cond_str = cond.str();
   log.debug("wrote condition %zd => %s", cond_index, cond_str.c_str());
 
-  this->server()->card_special->update_condition_orders(this->shared_from_this());
-
-  for (size_t z = 0; z < this->action_chain.conditions.size(); z++) {
-    if (this->action_chain.conditions[z].type == ConditionType::NONE) {
-      continue;
+  if (!is_trial) {
+    s->card_special->update_condition_orders(this->shared_from_this());
+    for (size_t z = 0; z < this->action_chain.conditions.size(); z++) {
+      if (this->action_chain.conditions[z].type == ConditionType::NONE) {
+        continue;
+      }
+      string cond_str = cond.str();
+      log.debug("sorted conditions: [%zu] => %s", z, cond_str.c_str());
     }
-    string cond_str = cond.str();
-    log.debug("sorted conditions: [%zu] => %s", z, cond_str.c_str());
   }
 
   return cond_index;
@@ -368,25 +371,27 @@ int16_t Card::compute_defense_power_for_attacker_card(
 }
 
 void Card::destroy_set_card(shared_ptr<Card> attacker_card) {
+  auto s = this->server();
+  auto ps = this->player_state();
+
   this->current_hp = 0;
   if (!(this->card_flags & 2)) {
-    if (!this->server()->ruler_server->card_ref_or_any_set_card_has_condition_46(this->card_ref)) {
-      this->server()->card_special->on_card_destroyed(
+    if (!s->ruler_server->card_ref_or_any_set_card_has_condition_46(this->card_ref)) {
+      s->card_special->on_card_destroyed(
           attacker_card, this->shared_from_this());
 
       this->card_flags = this->card_flags | 2;
       this->update_stats_on_destruction();
-      this->player_state()->stats.num_owned_cards_destroyed++;
+      ps->stats.num_owned_cards_destroyed++;
 
       if (attacker_card && (attacker_card->team_id != this->team_id)) {
         attacker_card->player_state()->stats.num_opponent_cards_destroyed++;
-        this->server()->add_team_exp(this->team_id ^ 1, 3);
+        s->add_team_exp(this->team_id ^ 1, 3);
       }
 
       if ((this->sc_card_type == CardType::HUNTERS_SC) && (this->def_entry->def.type == CardType::ITEM)) {
-        auto sc_card = this->player_state()->get_sc_card();
-        if (!(sc_card->card_flags & 2) &&
-            !sc_card->get_attack_condition_value(ConditionType::ELUDE, 0xFFFF, 0xFF, 0xFFFF, nullptr)) {
+        auto sc_card = ps->get_sc_card();
+        if (!(sc_card->card_flags & 2) && !sc_card->get_condition_value(ConditionType::ELUDE)) {
           int16_t hp = sc_card->get_current_hp();
           sc_card->set_current_hp(hp - 1);
           sc_card->player_state()->stats.sc_damage_taken++;
@@ -396,7 +401,7 @@ void Card::destroy_set_card(shared_ptr<Card> attacker_card) {
             cmd.effect.attacker_card_ref = attacker_card->card_ref;
             cmd.effect.target_card_ref = sc_card->card_ref;
             cmd.effect.value = 1;
-            this->server()->send(cmd);
+            s->send(cmd);
           }
           if (sc_card->get_current_hp() < 1) {
             sc_card->destroy_set_card(attacker_card);
@@ -404,10 +409,10 @@ void Card::destroy_set_card(shared_ptr<Card> attacker_card) {
         }
       }
 
-      if ((this->server()->map_and_rules->rules.hp_type == HPType::DEFEAT_TEAM) &&
-          (this->player_state()->get_sc_card().get() == this)) {
+      if ((s->map_and_rules->rules.hp_type == HPType::DEFEAT_TEAM) &&
+          (ps->get_sc_card().get() == this)) {
         for (size_t set_index = 0; set_index < 8; set_index++) {
-          auto card = this->player_state()->get_set_card(set_index);
+          auto card = ps->get_set_card(set_index);
           if (card) {
             card->card_flags |= 2;
           }
@@ -415,27 +420,27 @@ void Card::destroy_set_card(shared_ptr<Card> attacker_card) {
       }
 
       for (size_t client_id = 0; client_id < 4; client_id++) {
-        if (!this->server()->player_states[client_id]) {
+        if (!s->player_states[client_id]) {
           continue;
         }
-        size_t num_assists = this->server()->assist_server->compute_num_assist_effects_for_client(client_id);
+        size_t num_assists = s->assist_server->compute_num_assist_effects_for_client(client_id);
         for (size_t z = 0; z < num_assists; z++) {
-          auto eff = this->server()->assist_server->get_active_assist_by_index(z);
+          auto eff = s->assist_server->get_active_assist_by_index(z);
           if (eff == AssistEffect::HOMESICK) {
             if (client_id == this->client_id) {
-              this->player_state()->return_set_card_to_hand2(this->card_ref);
+              ps->return_set_card_to_hand2(this->card_ref);
             }
           } else if (eff == AssistEffect::INHERITANCE) {
-            uint8_t other_team_id = this->server()->player_states[client_id]->get_team_id();
-            uint8_t this_team_id = this->player_state()->get_team_id();
+            uint8_t other_team_id = s->player_states[client_id]->get_team_id();
+            uint8_t this_team_id = ps->get_team_id();
             if (this_team_id == other_team_id) {
-              this->server()->add_team_exp(team_id, this->max_hp);
+              s->add_team_exp(team_id, this->max_hp);
             }
           }
         }
       }
 
-    } else if (this->w_destroyer_sc_card.expired() && attacker_card) {
+    } else if (!this->w_destroyer_sc_card.lock() && attacker_card) {
       this->w_destroyer_sc_card = attacker_card->player_state()->get_sc_card();
     }
   }
@@ -560,14 +565,27 @@ void Card::execute_attack(shared_ptr<Card> attacker_card) {
   }
 }
 
-bool Card::get_attack_condition_value(
+bool Card::get_condition_value(
     ConditionType cond_type,
     uint16_t card_ref,
     uint8_t def_effect_index,
     uint16_t value,
     uint16_t* out_value) const {
-  return this->action_chain.get_condition_value(
-      cond_type, card_ref, def_effect_index, value, out_value);
+  return this->action_chain.get_condition_value(cond_type, card_ref, def_effect_index, value, out_value);
+}
+
+Condition* Card::find_condition(ConditionType cond_type) {
+  for (size_t z = 0; z < this->action_chain.conditions.size(); z++) {
+    auto& cond = this->action_chain.conditions[z];
+    if (cond.type == cond_type) {
+      return &cond;
+    }
+  }
+  return nullptr;
+}
+
+const Condition* Card::find_condition(ConditionType cond_type) const {
+  return const_cast<Card*>(this)->find_condition(cond_type);
 }
 
 shared_ptr<const CardIndex::CardEntry> Card::get_definition() const {
@@ -808,10 +826,12 @@ void Card::clear_action_chain_and_metadata_and_most_flags() {
   this->action_metadata.card_ref = this->card_ref;
 }
 
-void Card::compute_action_chain_results(
-    bool apply_action_conditions, bool ignore_this_card_ap_tp) {
-  auto log = this->server()->log_stack(string_printf("compute_action_chain_results(@%04hX #%04hX): ", this->get_card_ref(), this->get_card_id()));
-  this->action_chain.compute_attack_medium(this->server());
+void Card::compute_action_chain_results(bool apply_action_conditions, bool ignore_this_card_ap_tp) {
+  auto s = this->server();
+  auto log = s->log_stack(string_printf("compute_action_chain_results(@%04hX #%04hX): ", this->get_card_ref(), this->get_card_id()));
+  bool is_trial = s->options.is_trial();
+
+  this->action_chain.compute_attack_medium(s);
   this->action_chain.chain.strike_count = 1;
   this->action_chain.chain.ap_effect_bonus = 0;
   this->action_chain.chain.tp_effect_bonus = 0;
@@ -824,16 +844,19 @@ void Card::compute_action_chain_results(
 
   int16_t card_ap;
   int16_t card_tp;
-  auto stat_swap_type = this->server()->card_special->compute_stat_swap_type(this->shared_from_this());
+  auto stat_swap_type = is_trial ? StatSwapType::NONE : s->card_special->compute_stat_swap_type(this->shared_from_this());
   log.debug("stat_swap_type = %zu (0=none, 1=a/t, 2=a/h)", static_cast<size_t>(stat_swap_type));
-  this->server()->card_special->get_effective_ap_tp(
-      stat_swap_type, &card_ap, &card_tp, this->get_current_hp(), this->ap, this->tp);
+  s->card_special->get_effective_ap_tp(stat_swap_type, &card_ap, &card_tp, this->get_current_hp(), this->ap, this->tp);
   log.debug("card_ap = %hd, card_tp = %hd", card_ap, card_tp);
 
-  int16_t effective_ap = card_ap;
-  int16_t effective_tp = card_tp;
+  int16_t effective_ap = this->ap;
+  int16_t effective_tp = this->tp;
+
+  // This option doesn't exist in NTE
+  ignore_this_card_ap_tp &= !is_trial;
+
   for (size_t z = 0; (!ignore_this_card_ap_tp && (z < 8) && (z < this->action_chain.chain.attack_action_card_ref_count)); z++) {
-    auto ce = this->server()->definition_for_card_ref(this->action_chain.chain.attack_action_card_refs[z]);
+    auto ce = s->definition_for_card_ref(this->action_chain.chain.attack_action_card_refs[z]);
     if (ce) {
       effective_ap += ce->def.ap.stat;
       effective_tp += ce->def.tp.stat;
@@ -842,11 +865,12 @@ void Card::compute_action_chain_results(
   }
 
   // Add AP/TP from MAG items to SC's AP/TP
+  auto ps = this->player_state();
   if (this->def_entry->def.is_sc()) {
     for (size_t set_index = 0; set_index < 8; set_index++) {
-      auto card = this->player_state()->get_set_card(set_index);
+      auto card = ps->get_set_card(set_index);
       if ((card && (card->def_entry->def.card_class() == CardClass::MAG_ITEM)) && !(card->card_flags & 2)) {
-        this->server()->card_special->get_effective_ap_tp(
+        s->card_special->get_effective_ap_tp(
             stat_swap_type, &card_ap, &card_tp, card->get_current_hp(), card->ap, card->tp);
         effective_ap += card_ap;
         effective_tp += card_tp;
@@ -857,7 +881,7 @@ void Card::compute_action_chain_results(
   }
 
   if ((this->def_entry->def.type == CardType::ITEM) && this->sc_def_entry) {
-    auto sc_card = this->player_state()->get_sc_card();
+    auto sc_card = ps->get_sc_card();
     sc_card->compute_action_chain_results(apply_action_conditions, true);
     effective_ap += sc_card->action_chain.chain.effective_ap + sc_card->action_chain.chain.ap_effect_bonus;
     effective_tp += sc_card->action_chain.chain.effective_tp + sc_card->action_chain.chain.tp_effect_bonus;
@@ -866,50 +890,58 @@ void Card::compute_action_chain_results(
   }
 
   if (!this->action_chain.check_flag(0x10)) {
-    this->action_chain.chain.effective_ap = min<int16_t>(effective_ap, 99);
+    this->action_chain.chain.effective_ap = is_trial ? effective_ap : min<int16_t>(effective_ap, 99);
     log.debug("set chain effective_ap = %hd", this->action_chain.chain.effective_ap);
   }
   if (!this->action_chain.check_flag(0x20)) {
-    this->action_chain.chain.effective_tp = min<int16_t>(effective_tp, 99);
+    this->action_chain.chain.effective_tp = is_trial ? effective_tp : min<int16_t>(effective_tp, 99);
     log.debug("set chain effective_tp = %hd", this->action_chain.chain.effective_tp);
   }
 
   if (apply_action_conditions) {
-    this->server()->card_special->apply_action_conditions(
-        3, this->shared_from_this(), this->shared_from_this(), 1, nullptr);
+    auto this_sh = this->shared_from_this();
+    s->card_special->apply_action_conditions(3, this_sh, this_sh, 1, nullptr);
     log.debug("applied action conditions (1)");
   } else {
     log.debug("skipped applying action conditions (1)");
   }
 
-  size_t num_assists = this->server()->assist_server->compute_num_assist_effects_for_client(this->client_id);
+  size_t num_assists = s->assist_server->compute_num_assist_effects_for_client(this->client_id);
   for (size_t z = 0; z < num_assists; z++) {
-    switch (this->server()->assist_server->get_active_assist_by_index(z)) {
+    switch (s->assist_server->get_active_assist_by_index(z)) {
       case AssistEffect::POWERLESS_RAIN:
-        if (this->card_type_is_sc_or_creature() &&
+        if (!is_trial &&
+            this->card_type_is_sc_or_creature() &&
             (this->action_chain.chain.attack_medium == AttackMedium::PHYSICAL)) {
           this->action_chain.chain.ap_effect_bonus -= 2;
         }
         break;
       case AssistEffect::BRAVE_WIND:
-        if (this->card_type_is_sc_or_creature() &&
+        if (!is_trial &&
+            this->card_type_is_sc_or_creature() &&
             (this->action_chain.chain.attack_medium == AttackMedium::PHYSICAL)) {
           this->action_chain.chain.ap_effect_bonus += 2;
         }
         break;
       case AssistEffect::INFLUENCE:
-        if (this->card_type_is_sc_or_creature()) {
-          int16_t count = this->player_state()->count_set_refs();
+        if (!is_trial &&
+            this->card_type_is_sc_or_creature()) {
+          int16_t count = ps->count_set_refs();
           this->action_chain.chain.ap_effect_bonus += (count >> 1);
         }
         break;
       case AssistEffect::AP_ABSORPTION:
-        if (this->action_chain.chain.attack_medium == AttackMedium::TECH) {
+        if (!is_trial && (this->action_chain.chain.attack_medium == AttackMedium::TECH)) {
           this->action_chain.chain.tp_effect_bonus += 2;
         }
         break;
+      case AssistEffect::FIX:
+        if (is_trial && !this->def_entry->def.is_sc()) {
+          this->action_chain.chain.ap_effect_bonus = 2 - this->action_chain.chain.card_ap;
+        }
+        break;
       case AssistEffect::TECH_FIELD:
-        if (this->card_type_is_sc_or_creature()) {
+        if (is_trial ? this->def_entry->def.is_sc() : this->card_type_is_sc_or_creature()) {
           this->action_chain.chain.tp_effect_bonus += 2;
         }
         break;
@@ -962,7 +994,7 @@ void Card::compute_action_chain_results(
         if (this->def_entry->def.is_sc()) {
           size_t num_scs_in_range = 0;
           for (size_t client_id = 0; client_id < 4; client_id++) {
-            auto other_ps = this->server()->get_player_state(client_id);
+            auto other_ps = s->get_player_state(client_id);
             if (!other_ps || (client_id == this->client_id) || (other_ps->get_team_id() != this->team_id)) {
               continue;
             }
@@ -980,8 +1012,8 @@ void Card::compute_action_chain_results(
         break;
       case AssistEffect::VENGEANCE:
         if (!this->def_entry->def.is_sc()) {
-          this->action_chain.chain.ap_effect_bonus +=
-              (this->server()->team_num_ally_fcs_destroyed[this->team_id] / 3);
+          size_t denom = is_trial ? 2 : 3;
+          this->action_chain.chain.ap_effect_bonus += (s->team_num_ally_fcs_destroyed[this->team_id] / denom);
         }
         break;
       default:
@@ -999,42 +1031,46 @@ void Card::compute_action_chain_results(
   } else {
     log.debug("(unknown attack medium) damage = 0");
   }
-  this->action_chain.chain.damage = min<int16_t>(
-      damage * this->action_chain.chain.damage_multiplier, 99);
+
+  this->action_chain.chain.damage = is_trial
+      ? (damage * this->action_chain.chain.damage_multiplier)
+      : min<int16_t>(damage * this->action_chain.chain.damage_multiplier, 99);
   log.debug("overall chain damage = %hd (base) * %hhd (mult) = %hhd", damage, this->action_chain.chain.damage_multiplier, this->action_chain.chain.damage);
 
   if (apply_action_conditions) {
-    this->server()->card_special->apply_action_conditions(
-        0x03, this->shared_from_this(), this->shared_from_this(), 2, nullptr);
+    auto this_sh = this->shared_from_this();
+    s->card_special->apply_action_conditions(0x03, this_sh, this_sh, 2, nullptr);
     log.debug("applied action conditions (2)");
-    if (this->action_chain.check_flag(0x100)) {
+    if (!is_trial && this->action_chain.check_flag(0x100)) {
       this->action_chain.chain.damage = min<int16_t>(this->action_chain.chain.damage + 5, 99);
       log.debug("(has flag 0x100) chain damage = %hhd", this->action_chain.chain.damage);
     }
   } else {
-    log.debug("applied action conditions (2)");
+    log.debug("skipped applying action conditions (2)");
   }
 
-  num_assists = this->server()->assist_server->compute_num_assist_effects_for_client(this->get_client_id());
-  for (size_t z = 0; z < num_assists; z++) {
-    switch (this->server()->assist_server->get_active_assist_by_index(z)) {
-      case AssistEffect::AP_ABSORPTION:
-        if (this->action_chain.chain.attack_medium == AttackMedium::PHYSICAL) {
-          this->action_chain.chain.damage = 0;
-        }
-        break;
-      case AssistEffect::SILENT_COLOSSEUM:
-        if (this->action_chain.chain.damage >= 7) {
-          this->action_chain.chain.damage = 0;
-        }
-        break;
-      case AssistEffect::FIX:
-        if (!this->def_entry->def.is_sc()) {
-          this->action_chain.chain.damage = 2;
-        }
-        break;
-      default:
-        break;
+  if (!is_trial) {
+    num_assists = s->assist_server->compute_num_assist_effects_for_client(this->get_client_id());
+    for (size_t z = 0; z < num_assists; z++) {
+      switch (s->assist_server->get_active_assist_by_index(z)) {
+        case AssistEffect::AP_ABSORPTION:
+          if (this->action_chain.chain.attack_medium == AttackMedium::PHYSICAL) {
+            this->action_chain.chain.damage = 0;
+          }
+          break;
+        case AssistEffect::SILENT_COLOSSEUM:
+          if (this->action_chain.chain.damage >= 7) {
+            this->action_chain.chain.damage = 0;
+          }
+          break;
+        case AssistEffect::FIX:
+          if (!this->def_entry->def.is_sc()) {
+            this->action_chain.chain.damage = 2;
+          }
+          break;
+        default:
+          break;
+      }
     }
   }
 }

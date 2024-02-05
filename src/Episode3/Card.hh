@@ -51,12 +51,14 @@ public:
   void destroy_set_card(std::shared_ptr<Card> attacker_card);
   int32_t error_code_for_move_to_location(const Location& loc) const;
   void execute_attack(std::shared_ptr<Card> attacker_card);
-  bool get_attack_condition_value(
+  bool get_condition_value(
       ConditionType cond_type,
-      uint16_t card_ref,
-      uint8_t def_effect_index,
-      uint16_t value,
-      uint16_t* out_value) const;
+      uint16_t card_ref = 0xFFFF,
+      uint8_t def_effect_index = 0xFF,
+      uint16_t value = 0xFFFF,
+      uint16_t* out_value = nullptr) const;
+  Condition* find_condition(ConditionType cond_type);
+  const Condition* find_condition(ConditionType cond_type) const;
   std::shared_ptr<const CardIndex::CardEntry> get_definition() const;
   uint16_t get_card_ref() const;
   uint16_t get_card_id() const;

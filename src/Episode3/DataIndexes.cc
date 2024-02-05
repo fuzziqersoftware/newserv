@@ -341,10 +341,15 @@ const char* name_for_direction(Direction d) {
   }
 }
 
-bool card_class_is_tech_like(CardClass cc) {
-  return (cc == CardClass::TECH) ||
-      (cc == CardClass::PHOTON_BLAST) ||
-      (cc == CardClass::BOSS_TECH);
+bool card_class_is_tech_like(CardClass cc, bool is_trial) {
+  // NTE does not consider BOSS_TECH to be a tech-like card class, but that's
+  // probably because that card class just doesn't exist on NTE. Still, we
+  // handle
+  if (is_trial) {
+    return (cc == CardClass::TECH) || (cc == CardClass::PHOTON_BLAST);
+  } else {
+    return (cc == CardClass::TECH) || (cc == CardClass::PHOTON_BLAST) || (cc == CardClass::BOSS_TECH);
+  }
 }
 
 static const unordered_map<string, const char*> description_for_expr_token({
@@ -745,8 +750,14 @@ string CardDefinition::Effect::str_for_arg(const string& arg) {
       } catch (const out_of_range&) {
         return arg + " (Req. condition: unknown)";
       }
-    case 'o':
-      return arg + " (Req. prev effect conditions passed)";
+    case 'o': {
+      const char* suffix = ((value / 10) == 1) ? " on opponent card" : " on self";
+      if (value == 0) {
+        return string_printf("%s (Req. any previous effect%s)", arg.c_str(), suffix);
+      } else {
+        return string_printf("%s (Req. effect %zu passed%s)", arg.c_str(), static_cast<size_t>(value % 10), suffix);
+      }
+    }
     case 'p':
       try {
         return string_printf("%s (Target: %s)", arg.c_str(), description_for_p_target.at(value));
@@ -1456,7 +1467,7 @@ RulesTrial::RulesTrial(const Rules& r)
       phase_time_limit(r.phase_time_limit),
       allowed_cards(r.allowed_cards),
       atk_dice_max(r.max_dice),
-      def_dice_max(r.max_dice),
+      def_dice_max(r.def_dice_range ? (r.def_dice_range & 0x0F) : r.max_dice),
       disable_deck_shuffle(r.disable_deck_shuffle),
       disable_deck_loop(r.disable_deck_loop),
       char_hp(r.char_hp),

@@ -93,7 +93,7 @@ void PlayerState::init() {
   this->draw_initial_hand();
   if (s->options.is_trial()) {
     this->update_hand_and_equip_state_and_send_6xB4x02_if_needed();
-    // TODO: NTE calls 80243310(1) here
+    this->send_set_card_updates(true);
   }
 
   s->assist_server->hand_and_equip_states[this->client_id] = this->hand_and_equip;
@@ -1167,25 +1167,29 @@ uint8_t PlayerState::roll_dice_with_effects(size_t num_dice) {
 
 void PlayerState::send_set_card_updates(bool always_send) {
   auto s = this->server();
+  bool is_trial = s->options.is_trial();
 
-  uint16_t mask;
-  if (!this->sc_card) {
+  uint16_t mask = 0;
+  if (this->sc_card) {
+    this->sc_card->send_6xB4x4E_4C_4D_if_needed(always_send);
+  } else if (is_trial) {
+    this->send_6xB4x0A_for_set_card(0);
+  } else {
     this->set_card_action_chains->at(0).clear();
     this->set_card_action_metadatas->at(0).clear();
-    mask = 1;
-  } else {
-    this->sc_card->send_6xB4x4E_4C_4D_if_needed(always_send);
-    mask = 0;
+    mask |= 1;
   }
 
   for (size_t set_index = 0; set_index < 8; set_index++) {
     auto card = this->set_cards[set_index];
-    if (!card) {
+    if (card) {
+      card->send_6xB4x4E_4C_4D_if_needed(always_send);
+    } else if (is_trial) {
+      this->send_6xB4x0A_for_set_card(set_index + 1);
+    } else {
       mask |= 1 << (set_index + 1);
       this->set_card_action_chains->at(set_index + 1).clear();
       this->set_card_action_metadatas->at(set_index + 1).clear();
-    } else {
-      card->send_6xB4x4E_4C_4D_if_needed(always_send);
     }
   }
 
@@ -1773,7 +1777,7 @@ void PlayerState::unknown_8023C174() {
       AssistFlag::ELIGIBLE_FOR_DICE_BOOST);
   this->set_assist_flags_from_assist_effects();
   this->update_hand_and_equip_state_and_send_6xB4x02_if_needed(0);
-  this->send_set_card_updates(0);
+  this->send_set_card_updates();
 }
 
 void PlayerState::handle_homesick_assist_effect_from_bomb(shared_ptr<Card> card) {
@@ -1958,6 +1962,38 @@ void PlayerState::compute_team_dice_bonus_after_draw_phase() {
       current_team_turn, &dice_boost, 0);
   s->team_dice_bonus[current_team_turn] = clamp<int16_t>(dice_boost, 0, 8);
   this->update_hand_and_equip_state_and_send_6xB4x02_if_needed();
+}
+
+void PlayerState::send_6xB4x0A_for_set_card(size_t set_index) {
+  if (set_index >= 9) {
+    return;
+  }
+
+  auto s = this->server();
+
+  // The original code (in NTE) calls memcmp here, but then ignores the results
+  // and always copies the chain and metadata.
+  // this->set_card_action_chains->at(set_index) == this->unknown_a12;
+  // this->set_card_action_metadatas->at(set_index) == this->unknown_a13;
+  this->set_card_action_chains->at(set_index) = this->unknown_a12;
+  this->set_card_action_metadatas->at(set_index) = this->unknown_a13;
+
+  if (s->options.is_trial()) {
+    G_UpdateActionChainAndMetadata_Ep3NTE_6xB4x0A cmd;
+    cmd.client_id = this->client_id;
+    cmd.index = set_index;
+    cmd.chain = this->unknown_a12;
+    cmd.metadata = this->unknown_a13;
+    s->send(cmd);
+
+  } else {
+    G_UpdateActionChainAndMetadata_Ep3_6xB4x0A cmd;
+    cmd.client_id = this->client_id;
+    cmd.index = set_index;
+    cmd.chain = this->unknown_a12;
+    cmd.metadata = this->unknown_a13;
+    s->send(cmd);
+  }
 }
 
 } // namespace Episode3

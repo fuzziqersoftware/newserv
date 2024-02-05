@@ -164,7 +164,7 @@ enum class CardClass : uint16_t {
 };
 
 const char* name_for_card_class(CardClass cc);
-bool card_class_is_tech_like(CardClass cc);
+bool card_class_is_tech_like(CardClass cc, bool is_trial);
 
 enum class TargetMode : uint8_t {
   NONE = 0x00, // Used for defense cards, mags, shields, etc.
@@ -300,7 +300,7 @@ enum class ConditionType : uint8_t {
   UNKNOWN_75 = 0x75,
   REFLECT = 0x76, // Generate reverse attack
   UNKNOWN_77 = 0x77,
-  ANY = 0x78, // Not a real condition; used as a wildcard in search functions
+  ANY = 0x78, // Not a real condition; used as a wildcard in search functions. Has value 0x64 on NTE
   UNKNOWN_79 = 0x79,
   UNKNOWN_7A = 0x7A,
   UNKNOWN_7B = 0x7B,
@@ -984,7 +984,7 @@ struct RulesTrial {
   /* 00 */ uint8_t overall_time_limit = 0;
   /* 01 */ uint8_t phase_time_limit = 0;
   /* 02 */ AllowedCards allowed_cards = AllowedCards::ALL;
-  /* 03 */ uint8_t atk_dice_max = 1; // TODO: Are these actually maxes? Look at the dice roll function
+  /* 03 */ uint8_t atk_dice_max = 6;
   /* 04 */ uint8_t def_dice_max = 6;
   /* 05 */ uint8_t disable_deck_shuffle = 0;
   /* 06 */ uint8_t disable_deck_loop = 0;
