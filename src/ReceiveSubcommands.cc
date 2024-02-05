@@ -3179,7 +3179,8 @@ static void on_challenge_mode_retry_or_quit(shared_ptr<Client> c, uint8_t comman
   const auto& cmd = check_size_t<G_SelectChallengeModeFailureOption_6x97>(data, size);
 
   auto l = c->require_lobby();
-  if ((cmd.is_retry == 1) && l->is_game() && l->quest && (l->quest->challenge_template_index >= 0)) {
+  // On BB, we use 02DF to restart the quest instead
+  if (l->is_game() && (cmd.is_retry == 1) && (l->base_version != Version::BB_V4) && l->quest && (l->quest->challenge_template_index >= 0)) {
     auto s = l->require_server_state();
 
     for (auto& m : l->floor_item_managers) {
