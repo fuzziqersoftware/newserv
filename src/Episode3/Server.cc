@@ -414,7 +414,7 @@ void Server::action_phase_after() {
 void Server::draw_phase_before() {
   for (size_t z = 0; z < 4; z++) {
     if (this->player_states[z]) {
-      this->player_states[z]->unknown_80239460();
+      this->player_states[z]->draw_phase_before();
     }
   }
 }
@@ -516,7 +516,17 @@ bool Server::check_for_battle_end() {
       }
     }
 
-    if (!teams_defeated[0] || !teams_defeated[1]) {
+    if (this->options.is_trial()) {
+      if (teams_defeated[0] || teams_defeated[1]) {
+        ret = true;
+        for (size_t client_id = 0; client_id < 4; client_id++) {
+          auto ps = this->player_states[client_id];
+          if (ps && teams_defeated[ps->get_team_id()] == 0) {
+            ps->assist_flags |= AssistFlag::HAS_WON_BATTLE;
+          }
+        }
+      }
+    } else if (!teams_defeated[0] || !teams_defeated[1]) {
       if (teams_defeated[0] || teams_defeated[1]) {
         ret = true;
         for (size_t client_id = 0; client_id < 4; client_id++) {
@@ -537,36 +547,58 @@ bool Server::check_for_battle_end() {
     }
 
   } else { // Not DEFEAT_TEAM
-    bool teams_alive[2] = {false, false};
-    for (size_t client_id = 0; client_id < 4; client_id++) {
-      auto ps = this->player_states[client_id];
-      if (!ps) {
-        continue;
-      }
-      auto sc_card = ps->get_sc_card();
-      if (sc_card && sc_card->check_card_flag(2)) {
-        teams_alive[ps->get_team_id()] = true;
-      }
-    }
 
-    if (!teams_alive[0] || !teams_alive[1]) {
-      if (teams_alive[0] || teams_alive[1]) {
-        ret = true;
-        for (size_t client_id = 0; client_id < 4; client_id++) {
-          auto ps = this->player_states[client_id];
-          if (ps) {
-            ps->assist_flags &= ~(AssistFlag::HAS_WON_BATTLE |
-                AssistFlag::WINNER_DECIDED_BY_DEFEAT |
-                AssistFlag::BATTLE_DID_NOT_END_DUE_TO_TIME_LIMIT);
-            if (!teams_alive[ps->get_team_id()]) {
-              ps->assist_flags |= AssistFlag::HAS_WON_BATTLE;
-            }
+    if (this->options.is_trial()) {
+      uint8_t loser_team_id = 0;
+      for (size_t z = 0; z < 4; z++) {
+        auto ps = this->player_states[z];
+        if (ps && ps->get_sc_card() && ps->get_sc_card()->check_card_flag(2)) {
+          ret = true;
+          loser_team_id = ps->get_team_id();
+          break;
+        }
+      }
+      if (ret) {
+        for (size_t z = 0; z < 4; z++) {
+          auto ps = this->player_states[z];
+          if (ps && (ps->get_team_id() != loser_team_id)) {
+            ps->assist_flags |= AssistFlag::HAS_WON_BATTLE;
           }
         }
       }
+
     } else {
-      ret = true;
-      this->compute_losing_team_id_and_add_winner_flags(AssistFlag::BATTLE_DID_NOT_END_DUE_TO_TIME_LIMIT);
+      bool teams_alive[2] = {false, false};
+      for (size_t client_id = 0; client_id < 4; client_id++) {
+        auto ps = this->player_states[client_id];
+        if (!ps) {
+          continue;
+        }
+        auto sc_card = ps->get_sc_card();
+        if (sc_card && sc_card->check_card_flag(2)) {
+          teams_alive[ps->get_team_id()] = true;
+        }
+      }
+
+      if (!teams_alive[0] || !teams_alive[1]) {
+        if (teams_alive[0] || teams_alive[1]) {
+          ret = true;
+          for (size_t client_id = 0; client_id < 4; client_id++) {
+            auto ps = this->player_states[client_id];
+            if (ps) {
+              ps->assist_flags &= ~(AssistFlag::HAS_WON_BATTLE |
+                  AssistFlag::WINNER_DECIDED_BY_DEFEAT |
+                  AssistFlag::BATTLE_DID_NOT_END_DUE_TO_TIME_LIMIT);
+              if (!teams_alive[ps->get_team_id()]) {
+                ps->assist_flags |= AssistFlag::HAS_WON_BATTLE;
+              }
+            }
+          }
+        }
+      } else {
+        ret = true;
+        this->compute_losing_team_id_and_add_winner_flags(AssistFlag::BATTLE_DID_NOT_END_DUE_TO_TIME_LIMIT);
+      }
     }
   }
 
@@ -706,7 +738,7 @@ void Server::destroy_cards_with_zero_hp() {
       for (ssize_t set_index = -1; set_index < 8; set_index++) {
         auto card = (set_index < 0) ? ps->get_sc_card() : ps->get_set_card(set_index);
         if (card && !(card->card_flags & 2) && (card->get_current_hp() < 1)) {
-          card->destroy_set_card(card->w_destroyer_sc_card.lock());
+          card->destroy_set_card(this->options.is_trial() ? nullptr : card->w_destroyer_sc_card.lock());
           any_card_destroyed = true;
         }
       }
@@ -837,7 +869,7 @@ void Server::dice_phase_before() {
   for (size_t z = 0; z < 4; z++) {
     auto ps = this->player_states[z];
     if (ps) {
-      ps->unknown_8023C174();
+      ps->dice_phase_before();
     }
     this->client_done_enqueuing_attacks[z] = 0;
   }
@@ -1140,7 +1172,7 @@ void Server::action_phase_before() {
   for (size_t client_id = 0; client_id < 4; client_id++) {
     auto ps = this->player_states[client_id];
     if (ps) {
-      ps->unknown_802394C4();
+      ps->action_phase_before();
     }
     this->has_done_pb[client_id] = false;
   }
@@ -1285,21 +1317,24 @@ void Server::set_battle_started() {
   this->send_6xB4x05();
 }
 
-void Server::set_client_id_ready_to_advance_phase(uint8_t client_id) {
+void Server::set_client_id_ready_to_advance_phase(uint8_t client_id, BattlePhase battle_phase) {
   if (client_id >= 4) {
     return;
   }
 
+  bool is_trial = this->options.is_trial();
   auto ps = this->player_states[client_id];
-  if (ps && (this->current_team_turn1 == ps->get_team_id()) &&
+  if (ps &&
+      (this->current_team_turn1 == ps->get_team_id()) &&
+      (!is_trial || (this->battle_phase == battle_phase)) &&
       (this->setup_phase == SetupPhase::MAIN_BATTLE)) {
     ps->assist_flags |= AssistFlag::READY_TO_END_PHASE;
     ps->update_hand_and_equip_state_and_send_6xB4x02_if_needed();
     if (this->battle_phase == BattlePhase::DICE) {
-      if (!(ps->assist_flags & AssistFlag::ELIGIBLE_FOR_DICE_BOOST) || this->map_and_rules->rules.disable_dice_boost) {
+      if (is_trial || !(ps->assist_flags & AssistFlag::ELIGIBLE_FOR_DICE_BOOST) || this->map_and_rules->rules.disable_dice_boost) {
         ps->assist_flags &= (~AssistFlag::ELIGIBLE_FOR_DICE_BOOST);
-        ps->roll_main_dice();
-        if ((ps->get_atk_points() < 3) && (ps->get_def_points() < 3)) {
+        ps->roll_main_dice_or_apply_after_effects();
+        if (!is_trial && (ps->get_atk_points() < 3) && (ps->get_def_points() < 3)) {
           ps->assist_flags |= AssistFlag::ELIGIBLE_FOR_DICE_BOOST;
         }
       } else {
@@ -1309,7 +1344,7 @@ void Server::set_client_id_ready_to_advance_phase(uint8_t client_id) {
         // one in the range [3, N], and one in the range [1, 2] to decide
         // whether to swap the first two results.
         for (size_t z = 0; z < 200; z++) {
-          ps->roll_main_dice();
+          ps->roll_main_dice_or_apply_after_effects();
           if ((ps->get_atk_points() >= 3) || (ps->get_def_points() >= 3)) {
             break;
           }
@@ -1336,9 +1371,13 @@ void Server::set_client_id_ready_to_advance_phase(uint8_t client_id) {
     }
 
     if (should_advance_phase) {
-      this->copy_player_states_to_prev_states();
+      if (!this->options.is_trial()) {
+        this->copy_player_states_to_prev_states();
+      }
       this->advance_battle_phase();
-      this->send_set_card_updates_and_6xB4x04_if_needed();
+      if (!this->options.is_trial()) {
+        this->send_set_card_updates_and_6xB4x04_if_needed();
+      }
       this->clear_player_flags_after_dice_phase();
       this->update_battle_state_flags_and_send_6xB4x03_if_needed();
       this->send_6xB4x39();
@@ -1347,17 +1386,19 @@ void Server::set_client_id_ready_to_advance_phase(uint8_t client_id) {
 }
 
 void Server::set_phase_after() {
+  bool is_trial = this->options.is_trial();
+
   for (size_t client_id = 0; client_id < 4; client_id++) {
     auto ps = this->player_states[client_id];
     if (ps) {
       auto card = ps->get_sc_card();
       if (card) {
-        this->card_special->apply_action_conditions(6, nullptr, card, 4, nullptr);
+        this->card_special->apply_action_conditions(0x06, nullptr, card, is_trial ? 0x1F : 0x04, nullptr);
       }
       for (size_t set_index = 0; set_index < 8; set_index++) {
         auto card = ps->get_set_card(set_index);
         if (card) {
-          this->card_special->apply_action_conditions(6, nullptr, card, 4, nullptr);
+          this->card_special->apply_action_conditions(0x06, nullptr, card, is_trial ? 0x1F : 0x04, nullptr);
         }
       }
     }
@@ -1376,8 +1417,8 @@ void Server::set_phase_after() {
       switch (this->assist_server->get_active_assist_by_index(z)) {
         case AssistEffect::SHUFFLE_ALL:
         case AssistEffect::SHUFFLE_GROUP:
-          if (!this->map_and_rules->rules.disable_deck_shuffle &&
-              !this->map_and_rules->rules.disable_deck_loop) {
+          if (is_trial ||
+              (!this->map_and_rules->rules.disable_deck_shuffle && !this->map_and_rules->rules.disable_deck_loop)) {
             ps->discard_and_redraw_hand();
           }
           break;
@@ -1394,7 +1435,11 @@ void Server::set_phase_after() {
           ps->discard_all_assist_cards_from_hand();
           break;
         case AssistEffect::ASSIST_VANISH:
-          clients_with_assist_vanish[client_id] = true;
+          if (!is_trial) {
+            clients_with_assist_vanish[client_id] = true;
+          } else if (ps->get_assist_turns_remaining() != 90) {
+            ps->discard_set_assist_card();
+          }
           break;
         default:
           break;
@@ -1426,7 +1471,7 @@ void Server::move_phase_before() {
   for (size_t client_id = 0; client_id < 4; client_id++) {
     auto ps = this->player_states[client_id];
     if (ps) {
-      ps->unknown_80239528();
+      ps->move_phase_before();
     }
   }
 }
@@ -1785,13 +1830,15 @@ void Server::handle_CAx0C_end_mulligan_phase(shared_ptr<Client>, const string& d
     }
   }
 
-  G_ActionResult_Ep3_6xB4x1E out_cmd_fin;
-  out_cmd_fin.sequence_num = in_cmd.header.sequence_num;
-  out_cmd_fin.response_phase = 2;
-  out_cmd_fin.error_code = error_code;
-  this->send(out_cmd_fin);
+  if (!this->options.is_trial() || !error_code) {
+    G_ActionResult_Ep3_6xB4x1E out_cmd_fin;
+    out_cmd_fin.sequence_num = in_cmd.header.sequence_num;
+    out_cmd_fin.response_phase = 2;
+    out_cmd_fin.error_code = error_code;
+    this->send(out_cmd_fin);
+  }
 
-  this->send_debug_message_if_error_code_nonzero(in_cmd.client_id, out_cmd_fin.error_code);
+  this->send_debug_message_if_error_code_nonzero(in_cmd.client_id, error_code);
 }
 
 void Server::handle_CAx0D_end_non_action_phase(shared_ptr<Client>, const string& data) {
@@ -1806,7 +1853,7 @@ void Server::handle_CAx0D_end_non_action_phase(shared_ptr<Client>, const string&
   out_cmd_ack.response_phase = 1;
   this->send(out_cmd_ack);
 
-  this->set_client_id_ready_to_advance_phase(in_cmd.client_id);
+  this->set_client_id_ready_to_advance_phase(in_cmd.client_id, static_cast<BattlePhase>(in_cmd.battle_phase.load()));
 
   G_ActionResult_Ep3_6xB4x1E out_cmd_fin;
   out_cmd_fin.sequence_num = in_cmd.header.sequence_num;
@@ -2615,6 +2662,7 @@ uint32_t Server::send_6xB4x06_if_card_ref_invalid(
 
 void Server::unknown_8023EEF4() {
   auto log = this->log_stack("unknown_8023EEF4: ");
+
   if (this->unknown_a14 >= 0x20) {
     log.debug("unknown_a14 too large (0x%" PRIX32 ")", this->unknown_a14);
     return;
@@ -2679,7 +2727,7 @@ void Server::unknown_8023EEF4() {
     for (size_t z = 0; z < 4; z++) {
       auto ps = this->player_states[z];
       if (ps && (this->current_team_turn1 == ps->get_team_id())) {
-        this->set_client_id_ready_to_advance_phase(z);
+        this->set_client_id_ready_to_advance_phase(z, this->battle_phase);
       }
     }
     this->update_battle_state_flags_and_send_6xB4x03_if_needed();

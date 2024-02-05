@@ -377,8 +377,7 @@ void Card::destroy_set_card(shared_ptr<Card> attacker_card) {
   this->current_hp = 0;
   if (!(this->card_flags & 2)) {
     if (!s->ruler_server->card_ref_or_any_set_card_has_condition_46(this->card_ref)) {
-      s->card_special->on_card_destroyed(
-          attacker_card, this->shared_from_this());
+      s->card_special->on_card_destroyed(attacker_card, this->shared_from_this());
 
       this->card_flags = this->card_flags | 2;
       this->update_stats_on_destruction();
@@ -1118,18 +1117,22 @@ void Card::unknown_80237F88() {
   this->card_flags &= 0xFFFFF8FF;
 }
 
-void Card::unknown_80235AA0() {
-  this->facing_direction = Direction::INVALID_FF;
-  this->server()->card_special->unknown_80249060(this->shared_from_this());
+void Card::draw_phase_before() {
+  if (!this->server()->options.is_trial()) {
+    this->facing_direction = Direction::INVALID_FF;
+  }
+  this->server()->card_special->draw_phase_before_for_card(this->shared_from_this());
 }
 
-void Card::unknown_80235AD4() {
-  this->clear_action_chain_and_metadata_and_most_flags();
-  this->server()->card_special->unknown_80249254(this->shared_from_this());
+void Card::action_phase_before() {
+  if (!this->server()->options.is_trial()) {
+    this->clear_action_chain_and_metadata_and_most_flags();
+  }
+  this->server()->card_special->action_phase_before_for_card(this->shared_from_this());
 }
 
-void Card::unknown_80235B10() {
-  this->server()->card_special->unknown_80244BE4(this->shared_from_this());
+void Card::move_phase_before() {
+  this->server()->card_special->move_phase_before_for_card(this->shared_from_this());
 }
 
 void Card::unknown_80236374(shared_ptr<Card> other_card, const ActionState* as) {
@@ -1229,14 +1232,15 @@ void Card::unknown_80237A90(const ActionState& pa, uint16_t action_card_ref) {
   this->send_6xB4x4E_4C_4D_if_needed();
 }
 
-void Card::unknown_8023813C() {
+void Card::dice_phase_before() {
+  auto s = this->server();
   this->unknown_a9++;
   for (ssize_t z = 8; z >= 0; z--) {
     auto& cond = this->action_chain.conditions[z];
     if (cond.type != ConditionType::NONE) {
       ActionState as;
       if ((this->card_flags & 2) ||
-          !this->server()->card_special->is_card_targeted_by_condition(cond, as, this->shared_from_this())) {
+          !s->card_special->is_card_targeted_by_condition(cond, as, this->shared_from_this())) {
         cond.remaining_turns = 1;
       }
       if (cond.remaining_turns < 99) {
@@ -1249,13 +1253,16 @@ void Card::unknown_8023813C() {
           cond.remaining_turns--;
         }
         if (cond.remaining_turns < 1) {
-          this->server()->card_special->apply_stat_deltas_to_card_from_condition_and_clear_cond(
+          s->card_special->apply_stat_deltas_to_card_from_condition_and_clear_cond(
               cond, this->shared_from_this());
         }
       }
     }
   }
-  this->server()->card_special->unknown_80244CA8(this->shared_from_this());
+  if (s->options.is_trial()) {
+    this->clear_action_chain_and_metadata_and_most_flags();
+  }
+  s->card_special->dice_phase_before_for_card(this->shared_from_this());
 }
 
 bool Card::is_guard_item() const {

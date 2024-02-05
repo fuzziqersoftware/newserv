@@ -178,7 +178,7 @@ public:
   void send_set_card_updates_and_6xB4x04_if_needed();
   void set_battle_ended();
   void set_battle_started();
-  void set_client_id_ready_to_advance_phase(uint8_t client_id);
+  void set_client_id_ready_to_advance_phase(uint8_t client_id, BattlePhase battle_phase);
   void set_phase_after();
   void move_phase_before();
   void set_player_deck_valid(uint8_t client_id);

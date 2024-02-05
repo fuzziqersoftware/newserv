@@ -81,14 +81,14 @@ public:
   void unknown_802380C0();
   void unknown_80237F98(bool require_condition_20_or_21);
   void unknown_80237F88();
-  void unknown_80235AA0();
-  void unknown_80235AD4();
-  void unknown_80235B10();
+  void draw_phase_before();
+  void action_phase_before();
+  void move_phase_before();
   void unknown_80236374(std::shared_ptr<Card> other_card, const ActionState* as);
   void unknown_802379BC(uint16_t card_ref);
   void unknown_802379DC(const ActionState& pa);
   void unknown_80237A90(const ActionState& pa, uint16_t action_card_ref);
-  void unknown_8023813C();
+  void dice_phase_before();
   bool is_guard_item() const;
   bool unknown_80236554(std::shared_ptr<Card> other_card, const ActionState* as);
   void unknown_802362D8(std::shared_ptr<Card> other_card);

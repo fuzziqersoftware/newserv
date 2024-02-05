@@ -574,20 +574,21 @@ void PlayerState::discard_and_redraw_hand() {
     this->discard_ref_from_hand(this->card_refs[0]);
   }
 
-  G_Unknown_Ep3_6xB4x2C cmd;
-  cmd.change_type = 3;
-  cmd.client_id = this->client_id;
-  cmd.card_refs.clear(0xFFFF);
-  cmd.unknown_a2.clear(0xFFFFFFFF);
-  s->send(cmd);
+  if (!s->options.is_trial()) {
+    G_Unknown_Ep3_6xB4x2C cmd;
+    cmd.change_type = 3;
+    cmd.client_id = this->client_id;
+    cmd.card_refs.clear(0xFFFF);
+    cmd.unknown_a2.clear(0xFFFFFFFF);
+    s->send(cmd);
+  }
 
   this->deck_state->restart();
   this->draw_hand();
   this->update_hand_and_equip_state_and_send_6xB4x02_if_needed();
 }
 
-bool PlayerState::discard_card_or_add_to_draw_pile(
-    uint16_t card_ref, bool add_to_draw_pile) {
+bool PlayerState::discard_card_or_add_to_draw_pile(uint16_t card_ref, bool add_to_draw_pile) {
   ssize_t set_index = this->set_index_for_card_ref(card_ref);
   if (set_index < 0) {
     return false;
@@ -595,7 +596,15 @@ bool PlayerState::discard_card_or_add_to_draw_pile(
 
   this->deck_state->set_card_discarded(card_ref);
   this->card_refs[set_index + 8] = 0xFFFF;
-  this->set_cards[set_index]->card_flags |= 2;
+  auto card = this->set_cards[set_index];
+  if (card) {
+    if (this->server()->options.is_trial()) {
+      card->update_stats_on_destruction();
+      this->set_cards[set_index].reset();
+    } else {
+      this->set_cards[set_index]->card_flags |= 2;
+    }
+  }
   if (add_to_draw_pile) {
     this->deck_state->set_card_ref_drawable_at_end(card_ref);
   }
@@ -1127,7 +1136,12 @@ bool PlayerState::return_set_card_to_hand1(uint16_t card_ref) {
       if (card && (card->get_card_ref() == card_ref)) {
         uint16_t set_card_ref = this->card_refs[set_index + 8];
         this->card_refs[set_index + 8] = 0xFFFF;
-        card->card_flags |= 2;
+        if (this->server()->options.is_trial()) {
+          card->update_stats_on_destruction();
+          this->set_cards[set_index].reset();
+        } else {
+          card->card_flags |= 2;
+        }
         this->deck_state->set_card_discarded(set_card_ref);
         if (this->deck_state->draw_card_by_ref(set_card_ref)) {
           this->card_refs[hand_index] = set_card_ref;
@@ -1597,35 +1611,35 @@ vector<uint16_t> PlayerState::get_card_refs_within_range_from_all_players(
   return ret;
 }
 
-void PlayerState::unknown_80239460() {
+void PlayerState::draw_phase_before() {
   if (this->sc_card) {
-    this->sc_card->unknown_80235AA0();
+    this->sc_card->draw_phase_before();
   }
   for (size_t set_index = 0; set_index < 8; set_index++) {
     if (this->set_cards[set_index]) {
-      this->set_cards[set_index]->unknown_80235AA0();
+      this->set_cards[set_index]->draw_phase_before();
     }
   }
 }
 
-void PlayerState::unknown_802394C4() {
+void PlayerState::action_phase_before() {
   if (this->sc_card) {
-    this->sc_card->unknown_80235AD4();
+    this->sc_card->action_phase_before();
   }
   for (size_t set_index = 0; set_index < 8; set_index++) {
     if (this->set_cards[set_index]) {
-      this->set_cards[set_index]->unknown_80235AD4();
+      this->set_cards[set_index]->action_phase_before();
     }
   }
 }
 
-void PlayerState::unknown_80239528() {
+void PlayerState::move_phase_before() {
   if (this->sc_card) {
-    this->sc_card->unknown_80235B10();
+    this->sc_card->move_phase_before();
   }
   for (size_t set_index = 0; set_index < 8; set_index++) {
     if (this->set_cards[set_index]) {
-      this->set_cards[set_index]->unknown_80235B10();
+      this->set_cards[set_index]->move_phase_before();
     }
   }
 }
@@ -1744,13 +1758,13 @@ bool PlayerState::set_action_cards_for_action_state(const ActionState& pa) {
   return true;
 }
 
-void PlayerState::unknown_8023C174() {
+void PlayerState::dice_phase_before() {
   if (this->sc_card) {
-    this->sc_card->unknown_8023813C();
+    this->sc_card->dice_phase_before();
   }
   for (size_t set_index = 0; set_index < 8; set_index++) {
     if (this->set_cards[set_index]) {
-      this->set_cards[set_index]->unknown_8023813C();
+      this->set_cards[set_index]->dice_phase_before();
     }
   }
 
@@ -1774,7 +1788,7 @@ void PlayerState::unknown_8023C174() {
   this->assist_flags &= (AssistFlag::HAS_WON_BATTLE |
       AssistFlag::WINNER_DECIDED_BY_DEFEAT |
       AssistFlag::WINNER_DECIDED_BY_RANDOM |
-      AssistFlag::ELIGIBLE_FOR_DICE_BOOST);
+      (this->server()->options.is_trial() ? 0 : AssistFlag::ELIGIBLE_FOR_DICE_BOOST));
   this->set_assist_flags_from_assist_effects();
   this->update_hand_and_equip_state_and_send_6xB4x02_if_needed(0);
   this->send_set_card_updates();
@@ -1832,7 +1846,7 @@ void PlayerState::apply_main_die_assist_effects(uint8_t* die_value) const {
   for (size_t z = 0; z < num_assists; z++) {
     switch (s->assist_server->get_active_assist_by_index(z)) {
       case AssistEffect::DICE_FEVER:
-        *die_value = 5;
+        *die_value = s->options.is_trial() ? 6 : 5;
         break;
       case AssistEffect::DICE_HALF:
         *die_value = ((*die_value + 1) >> 1);
@@ -1841,7 +1855,9 @@ void PlayerState::apply_main_die_assist_effects(uint8_t* die_value) const {
         (*die_value)++;
         break;
       case AssistEffect::DICE_FEVER_PLUS:
-        *die_value = 6;
+        if (!s->options.is_trial()) {
+          *die_value = 6;
+        }
         break;
       default:
         break;
@@ -1849,7 +1865,7 @@ void PlayerState::apply_main_die_assist_effects(uint8_t* die_value) const {
   }
 }
 
-void PlayerState::roll_main_dice() {
+void PlayerState::roll_main_dice_or_apply_after_effects() {
   auto s = this->server();
   const auto& rules = s->map_and_rules->rules;
 
@@ -1866,12 +1882,6 @@ void PlayerState::roll_main_dice() {
     max_atk_dice = min_atk_dice;
     min_atk_dice = t;
   }
-  uint8_t atk_dice_range_width = (max_atk_dice - min_atk_dice) + 1;
-  if (atk_dice_range_width < 2) {
-    this->dice_results[0] = min_atk_dice;
-  } else {
-    this->dice_results[0] = min_atk_dice + s->get_random(atk_dice_range_width);
-  }
 
   uint8_t min_def_dice = rules.min_def_dice() ? rules.min_def_dice() : rules.min_dice;
   uint8_t max_def_dice = rules.max_def_dice() ? rules.max_def_dice() : rules.max_dice;
@@ -1886,11 +1896,23 @@ void PlayerState::roll_main_dice() {
     max_def_dice = min_def_dice;
     min_def_dice = t;
   }
-  uint8_t def_dice_range_width = (max_def_dice - min_def_dice) + 1;
-  if (def_dice_range_width < 2) {
-    this->dice_results[1] = min_def_dice;
-  } else {
-    this->dice_results[1] = min_def_dice + s->get_random(def_dice_range_width);
+
+  // In NTE, the dice aren't actually rolled here; they are instead rolled in
+  // dice_phase_before, and only the after effects are processed here.
+  if (!s->options.is_trial()) {
+    uint8_t atk_dice_range_width = (max_atk_dice - min_atk_dice) + 1;
+    if (atk_dice_range_width < 2) {
+      this->dice_results[0] = min_atk_dice;
+    } else {
+      this->dice_results[0] = min_atk_dice + s->get_random(atk_dice_range_width);
+    }
+
+    uint8_t def_dice_range_width = (max_def_dice - min_def_dice) + 1;
+    if (def_dice_range_width < 2) {
+      this->dice_results[1] = min_def_dice;
+    } else {
+      this->dice_results[1] = min_def_dice + s->get_random(def_dice_range_width);
+    }
   }
 
   bool should_exchange = false;
@@ -1920,12 +1942,18 @@ void PlayerState::roll_main_dice() {
   this->dice_results[0] = this->atk_points;
   this->dice_results[1] = this->def_points;
 
+  if (s->options.is_trial()) {
+    this->atk_bonuses = this->atk_points - atk_before_bonuses;
+    this->def_bonuses = this->def_points - def_before_bonuses;
+  }
   this->atk_points += s->team_dice_bonus[this->team_id];
   this->def_points += s->team_dice_bonus[this->team_id];
   this->atk_points = clamp<uint8_t>(this->atk_points, 1, 9);
   this->def_points = clamp<uint8_t>(this->def_points, 1, 9);
-  this->atk_bonuses = this->atk_points - atk_before_bonuses;
-  this->def_bonuses = this->def_points - def_before_bonuses;
+  if (!s->options.is_trial()) {
+    this->atk_bonuses = this->atk_points - atk_before_bonuses;
+    this->def_bonuses = this->def_points - def_before_bonuses;
+  }
   this->atk_points2 = min<uint8_t>(this->atk_points2_max, this->atk_points);
   this->update_hand_and_equip_state_and_send_6xB4x02_if_needed();
 }

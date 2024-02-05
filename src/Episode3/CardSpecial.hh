@@ -313,13 +313,12 @@ public:
       const Location& card1_loc,
       std::shared_ptr<const Card> card2) const;
   void unknown_8024AAB8(const ActionState& as);
-  void unknown_80244BE4(std::shared_ptr<Card> unknown_p2);
-  void unknown_80244CA8(std::shared_ptr<Card> card);
+  void move_phase_before_for_card(std::shared_ptr<Card> unknown_p2);
+  void dice_phase_before_for_card(std::shared_ptr<Card> card);
   template <uint8_t When1, uint8_t When2>
-  void unknown1_t(
-      std::shared_ptr<Card> unknown_p2, const ActionState* existing_as = nullptr);
-  void unknown_80249060(std::shared_ptr<Card> unknown_p2);
-  void unknown_80249254(std::shared_ptr<Card> unknown_p2);
+  void apply_effects_on_phase_change_t(std::shared_ptr<Card> unknown_p2, const ActionState* existing_as = nullptr);
+  void draw_phase_before_for_card(std::shared_ptr<Card> unknown_p2);
+  void action_phase_before_for_card(std::shared_ptr<Card> unknown_p2);
   void unknown_8024945C(std::shared_ptr<Card> unknown_p2, const ActionState& existing_as);
   void unknown_8024966C(std::shared_ptr<Card> unknown_p2, const ActionState* existing_as);
   static std::shared_ptr<Card> sc_card_for_card(std::shared_ptr<Card> unknown_p2);

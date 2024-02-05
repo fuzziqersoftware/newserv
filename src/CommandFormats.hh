@@ -6252,7 +6252,8 @@ struct G_EndInitialRedrawPhase_Ep3_CAx0C {
 struct G_EndNonAttackPhase_Ep3_CAx0D {
   G_CardServerDataCommandHeader header = {0xB3, sizeof(G_EndNonAttackPhase_Ep3_CAx0D) / 4, 0, 0x0D, 0, 0, 0, 0, 0};
   le_uint16_t client_id = 0;
-  parray<le_uint16_t, 5> unused2;
+  le_uint16_t battle_phase = 0; // Only used on NTE
+  parray<le_uint16_t, 4> unused2;
 } __packed__;
 
 // 6xB3x0E / CAx0E: Discard card from hand
