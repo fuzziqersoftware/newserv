@@ -1788,7 +1788,7 @@ void PlayerState::dice_phase_before() {
   this->assist_flags &= (AssistFlag::HAS_WON_BATTLE |
       AssistFlag::WINNER_DECIDED_BY_DEFEAT |
       AssistFlag::WINNER_DECIDED_BY_RANDOM |
-      (this->server()->options.is_trial() ? 0 : AssistFlag::ELIGIBLE_FOR_DICE_BOOST));
+      (this->server()->options.is_trial() ? AssistFlag::NONE : AssistFlag::ELIGIBLE_FOR_DICE_BOOST));
   this->set_assist_flags_from_assist_effects();
   this->update_hand_and_equip_state_and_send_6xB4x02_if_needed(0);
   this->send_set_card_updates();

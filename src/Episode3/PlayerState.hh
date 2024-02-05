@@ -20,6 +20,7 @@ enum AssistFlag : uint32_t {
   // be bits used only by the client which are not documented here.
 
   // clang-format off
+  NONE                                 = 0x0000,
   READY_TO_END_PHASE                   = 0x0001,
   DICE_WERE_EXCHANGED                  = 0x0002,
   HAS_WON_BATTLE                       = 0x0004,
