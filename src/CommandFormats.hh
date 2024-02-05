@@ -5229,12 +5229,12 @@ struct G_Unknown_6x95 {
 // 6x96: Unknown (not valid on Episode 3)
 // This command has a handler, but it does nothing.
 
-// 6x97: Unknown (not valid on Episode 3)
+// 6x97: Select Challenge Mode failure option (not valid on Episode 3)
 
-struct G_Unknown_6x97 {
+struct G_SelectChallengeModeFailureOption_6x97 {
   G_UnusedHeader header;
   le_uint32_t unused1 = 0;
-  le_uint32_t unknown_a1 = 0; // Must be 0 or 1
+  le_uint32_t is_retry = 0;
   le_uint32_t unused2 = 0;
   le_uint32_t unused3 = 0;
 } __packed__;

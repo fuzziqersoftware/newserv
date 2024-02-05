@@ -3175,6 +3175,32 @@ static void on_request_challenge_grave_recovery_item_bb(shared_ptr<Client> c, ui
   }
 }
 
+static void on_challenge_mode_retry_or_quit(shared_ptr<Client> c, uint8_t command, uint8_t flag, void* data, size_t size) {
+  const auto& cmd = check_size_t<G_SelectChallengeModeFailureOption_6x97>(data, size);
+
+  auto l = c->require_lobby();
+  if ((cmd.is_retry == 1) && l->is_game() && l->quest && (l->quest->challenge_template_index >= 0)) {
+    auto s = l->require_server_state();
+
+    for (auto& m : l->floor_item_managers) {
+      m.clear();
+    }
+
+    for (auto lc : l->clients) {
+      if (lc) {
+        lc->use_default_bank();
+        lc->create_challenge_overlay(lc->version(), l->quest->challenge_template_index, s->level_table);
+        lc->log.info("Created challenge overlay");
+        l->assign_inventory_and_bank_item_ids(lc, true);
+      }
+    }
+
+    l->load_maps();
+  }
+
+  forward_subcommand(c, command, flag, data, size);
+}
+
 static void on_quest_exchange_item_bb(shared_ptr<Client> c, uint8_t, uint8_t, void* data, size_t size) {
   auto l = c->require_lobby();
   if (l->is_game() &&
@@ -3730,7 +3756,7 @@ const SubcommandDefinition subcommand_definitions[0x100] = {
     /* 6x94 */ {0x00, 0x00, 0x94, on_warp},
     /* 6x95 */ {0x00, 0x00, 0x95, on_forward_check_game},
     /* 6x96 */ {0x00, 0x00, 0x96, on_forward_check_game},
-    /* 6x97 */ {0x00, 0x00, 0x97, on_forward_check_game},
+    /* 6x97 */ {0x00, 0x00, 0x97, on_challenge_mode_retry_or_quit},
     /* 6x98 */ {0x00, 0x00, 0x98, on_forward_check_game},
     /* 6x99 */ {0x00, 0x00, 0x99, on_forward_check_game},
     /* 6x9A */ {0x00, 0x00, 0x9A, on_forward_check_game_client},

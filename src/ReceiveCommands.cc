@@ -3672,6 +3672,10 @@ static void on_DF_BB(shared_ptr<Client> c, uint16_t command, uint32_t, string& d
         throw runtime_error("challenge template index in quest metadata does not match index sent by client");
       }
 
+      for (auto& m : l->floor_item_managers) {
+        m.clear();
+      }
+
       for (auto lc : l->clients) {
         if (lc) {
           lc->use_default_bank();
