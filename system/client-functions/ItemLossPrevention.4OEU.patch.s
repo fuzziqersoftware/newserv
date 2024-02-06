@@ -49,6 +49,9 @@ start:
   .data     0x00241AEC
   .data     0x00000002
   .binary   EB08
+  .data     0x002A2B34
+  .data     0x00000001
+  .binary   00
   .data     0x002A2BAC
   .data     0x00000002
   .binary   EB08
