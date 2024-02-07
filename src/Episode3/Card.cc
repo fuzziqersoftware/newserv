@@ -446,6 +446,11 @@ void Card::destroy_set_card(shared_ptr<Card> attacker_card) {
 }
 
 int32_t Card::error_code_for_move_to_location(const Location& loc) const {
+  // TODO: NTE has different logic here, which appears to be similar enough to
+  // the final logic that I didn't bother to reverse-engineer it completely.
+  // Eventually, we should revisit this, but I suspect doing so would be a lot
+  // of tedium for little to no benefit.
+
   if (this->player_state()->assist_flags & AssistFlag::IS_SKIPPING_TURN) {
     return -0x76;
   }
@@ -629,6 +634,8 @@ uint8_t Card::get_team_id() const {
 }
 
 int32_t Card::move_to_location(const Location& loc) {
+  auto s = this->server();
+
   int32_t code = this->error_code_for_move_to_location(loc);
   if (code) {
     return code;
@@ -636,7 +643,7 @@ int32_t Card::move_to_location(const Location& loc) {
 
   uint32_t path_cost;
   uint32_t path_length;
-  if (!this->server()->ruler_server->get_move_path_length_and_cost(
+  if (!s->ruler_server->get_move_path_length_and_cost(
           this->client_id, this->card_ref, loc, &path_length, &path_cost)) {
     return -0x79;
   }
@@ -646,20 +653,48 @@ int32_t Card::move_to_location(const Location& loc) {
   this->loc = loc;
   this->card_flags = this->card_flags | 0x80;
 
+  // On NTE, traps happen now, not after the Move phase
+  if (s->options.is_trial() &&
+      this->def_entry->def.is_sc() &&
+      ((s->overlay_state.tiles[loc.y][loc.x] & 0xF0) == 0x40)) {
+    for (size_t z = 0; z < 4; z++) {
+      auto other_ps = s->player_states[z];
+      if (!other_ps) {
+        continue;
+      }
+      auto other_sc = other_ps->get_sc_card();
+      if (!other_sc) {
+        continue;
+      }
+
+      if ((abs(other_sc->loc.x - loc.x) < 2) && (abs(other_sc->loc.y - loc.y) < 2)) {
+        uint8_t trap_type = s->overlay_state.tiles[loc.y][loc.x] & 0x0F;
+        uint16_t trap_card_id = s->overlay_state.trap_card_ids_nte[trap_type];
+        if (other_ps->replace_assist_card_by_id(trap_card_id)) {
+          G_Unknown_Ep3_6xB4x2C cmd;
+          cmd.change_type = 1;
+          cmd.client_id = other_ps->client_id;
+          cmd.unknown_a2[0] = trap_card_id;
+          s->send(cmd);
+        }
+      }
+    }
+  }
+
   for (size_t warp_type = 0; warp_type < 5; warp_type++) {
     for (size_t warp_end = 0; warp_end < 2; warp_end++) {
-      if ((this->server()->warp_positions[warp_type][warp_end][0] == this->loc.x) &&
-          (this->server()->warp_positions[warp_type][warp_end][1] == this->loc.y)) {
+      if ((s->warp_positions[warp_type][warp_end][0] == this->loc.x) &&
+          (s->warp_positions[warp_type][warp_end][1] == this->loc.y)) {
         G_Unknown_Ep3_6xB4x2C cmd;
         cmd.loc.x = this->loc.x;
         cmd.loc.y = this->loc.y;
-        this->loc.x = this->server()->warp_positions[warp_type][warp_end ^ 1][0];
-        this->loc.y = this->server()->warp_positions[warp_type][warp_end ^ 1][1];
+        this->loc.x = s->warp_positions[warp_type][warp_end ^ 1][0];
+        this->loc.y = s->warp_positions[warp_type][warp_end ^ 1][1];
         cmd.change_type = 0;
         cmd.card_refs.clear(0xFFFF);
         cmd.card_refs[0] = this->card_ref;
         cmd.unknown_a2.clear(0xFFFFFFFF);
-        this->server()->send(cmd);
+        s->send(cmd);
         return 0;
       }
     }
@@ -1197,17 +1232,25 @@ void Card::unknown_80237A90(const ActionState& pa, uint16_t action_card_ref) {
   this->facing_direction = pa.facing_direction;
   this->action_chain.add_attack_action_card_ref(action_card_ref, s);
 
-  for (size_t z = 0; z < 4; z++) {
-    if (s->ruler_server->count_rampage_targets_for_attack(pa, z) != 0) {
-      this->action_chain.set_flags(0x200 << z);
+  if (s->options.is_trial()) {
+    if (s->ruler_server->count_targets_with_rampage_and_not_pierce_nte(pa)) {
+      this->action_chain.set_flags(0x02);
     }
-    if (s->ruler_server->attack_action_has_pierce_and_not_rampage(pa, z)) {
-      this->action_chain.set_flags(0x2000 << z);
+    if (s->ruler_server->count_targets_with_pierce_and_not_rampage_nte(pa)) {
+      this->action_chain.set_flags(0x80);
     }
-  }
-
-  if (s->ruler_server->any_attack_action_card_is_support_tech_or_support_pb(pa)) {
-    this->action_chain.set_flags(0x20000);
+  } else {
+    for (size_t z = 0; z < 4; z++) {
+      if (s->ruler_server->count_rampage_targets_for_attack(pa, z) != 0) {
+        this->action_chain.set_flags(0x200 << z);
+      }
+      if (s->ruler_server->attack_action_has_pierce_and_not_rampage(pa, z)) {
+        this->action_chain.set_flags(0x2000 << z);
+      }
+    }
+    if (s->ruler_server->any_attack_action_card_is_support_tech_or_support_pb(pa)) {
+      this->action_chain.set_flags(0x20000);
+    }
   }
 
   if (this->action_chain.chain.target_card_ref_count == 0) {

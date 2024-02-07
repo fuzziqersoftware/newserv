@@ -938,9 +938,15 @@ void Server::end_action_phase() {
   // that this can only ever be 0 or 2, but we may have to delete the enum if
   // that turns out to be false.
   this->action_subphase = static_cast<ActionSubphase>(static_cast<uint8_t>(this->action_subphase) + 2);
-  this->copy_player_states_to_prev_states();
-  this->unknown_8023EEF4();
-  this->send_set_card_updates_and_6xB4x04_if_needed();
+  if (this->options.is_trial()) {
+    this->unknown_8023EEF4();
+    this->update_battle_state_flags_and_send_6xB4x03_if_needed(0);
+    this->send_6xB4x02_for_all_players_if_needed();
+  } else {
+    this->copy_player_states_to_prev_states();
+    this->unknown_8023EEF4();
+    this->send_set_card_updates_and_6xB4x04_if_needed();
+  }
 }
 
 bool Server::enqueue_attack_or_defense(uint8_t client_id, ActionState* pa) {
@@ -982,8 +988,7 @@ bool Server::enqueue_attack_or_defense(uint8_t client_id, ActionState* pa) {
   size_t attack_index = this->num_pending_attacks++;
   this->pending_attacks[attack_index] = *pa;
   ps->set_action_cards_for_action_state(*pa);
-  auto card = this->card_for_set_card_ref(this->send_6xB4x06_if_card_ref_invalid(
-      pa->attacker_card_ref, 1));
+  auto card = this->card_for_set_card_ref(this->send_6xB4x06_if_card_ref_invalid(pa->attacker_card_ref, 1));
   if (card) {
     card->card_flags |= 0x400;
     auto card_ps = card->player_state();
@@ -1481,6 +1486,8 @@ void Server::set_player_deck_valid(uint8_t client_id) {
 }
 
 void Server::setup_and_start_battle() {
+  bool is_trial = this->options.is_trial();
+
   this->setup_phase = SetupPhase::STARTER_ROLLS;
 
   // Note: This is where original implementation re-seeds random_crypt (it uses
@@ -1488,14 +1495,16 @@ void Server::setup_and_start_battle() {
 
   for (size_t z = 0; z < 4; z++) {
     if (!this->check_presence_entry(z)) {
-      this->name_entries[z].clear();
+      if (!is_trial) {
+        this->name_entries[z].clear();
+      }
     } else {
       this->player_states[z] = make_shared<PlayerState>(z, this->shared_from_this());
       this->player_states[z]->init();
     }
   }
 
-  if (this->map_and_rules->rules.hp_type == HPType::COMMON_HP) {
+  if (!is_trial && (this->map_and_rules->rules.hp_type == HPType::COMMON_HP)) {
     int16_t team_hp[2] = {99, 99};
     for (size_t z = 0; z < 4; z++) {
       auto ps = this->player_states[z];
@@ -1542,11 +1551,20 @@ void Server::setup_and_start_battle() {
     }
   }
 
-  // this->__unused6__ = 0;
+  // Non-NTE:
+  //   this->__unused6__ = 0;
+  // NTE:
+  //   this->unknown_a1 = 0;
+  //   this->unknown_a2 = 0;
 
   for (size_t warp_type = 0; warp_type < 5; warp_type++) {
     this->warp_positions[warp_type][0].clear(0xFF);
     this->warp_positions[warp_type][1].clear(0xFF);
+  }
+
+  this->num_trap_tiles_nte = 0;
+  for (size_t z = 0; z < 0x10; z++) {
+    this->trap_tile_locs_nte[z].clear(0xFF);
   }
 
   for (size_t y = 0; y < 0x10; y++) {
@@ -1564,59 +1582,71 @@ void Server::setup_and_start_battle() {
         }
       } else if ((tile_type == 0x10) || (tile_type == 0x20) || (tile_type == 0x50)) {
         this->map_and_rules->map.tiles[y][x] = 0;
+      } else if (is_trial && (tile_type == 0x40) && (this->num_trap_tiles_nte < 0x10)) {
+        this->trap_tile_locs_nte[this->num_trap_tiles_nte][0] = x;
+        this->trap_tile_locs_nte[this->num_trap_tiles_nte][1] = y;
+        this->num_trap_tiles_nte++;
       }
     }
   }
 
-  for (size_t trap_type = 0; trap_type < 5; trap_type++) {
-    this->chosen_trap_tile_index_of_type[trap_type] = 0xFF;
+  if (!is_trial) {
+    for (size_t trap_type = 0; trap_type < 5; trap_type++) {
+      this->chosen_trap_tile_index_of_type[trap_type] = 0xFF;
 
-    size_t num_trap_tiles = 0;
-    for (size_t y = 0; y < 0x10; y++) {
-      for (size_t x = 0; x < 0x10; x++) {
-        if ((this->overlay_state.tiles[y][x] == (trap_type | 0x40)) &&
-            (num_trap_tiles < 8)) {
-          this->trap_tile_locs[trap_type][num_trap_tiles][0] = x;
-          this->trap_tile_locs[trap_type][num_trap_tiles][1] = y;
-          num_trap_tiles++;
+      size_t num_trap_tiles = 0;
+      for (size_t y = 0; y < 0x10; y++) {
+        for (size_t x = 0; x < 0x10; x++) {
+          if ((this->overlay_state.tiles[y][x] == (trap_type | 0x40)) &&
+              (num_trap_tiles < 8)) {
+            this->trap_tile_locs[trap_type][num_trap_tiles][0] = x;
+            this->trap_tile_locs[trap_type][num_trap_tiles][1] = y;
+            num_trap_tiles++;
+          }
         }
       }
-    }
-    this->num_trap_tiles_of_type[trap_type] = num_trap_tiles;
+      this->num_trap_tiles_of_type[trap_type] = num_trap_tiles;
 
-    if (num_trap_tiles > 0) {
-      this->chosen_trap_tile_index_of_type[trap_type] = this->get_random(num_trap_tiles);
-    }
-  }
-
-  this->send_6xB4x02_for_all_players_if_needed(true);
-  this->send_6xB4x05();
-
-  for (size_t z = 0; z < 4; z++) {
-    auto ps = this->player_states[z];
-    if (ps) {
-      ps->send_set_card_updates(true);
+      if (num_trap_tiles > 0) {
+        this->chosen_trap_tile_index_of_type[trap_type] = this->get_random(num_trap_tiles);
+      }
     }
   }
 
-  this->send_all_state_updates();
-  this->send_6xB4x1C_names_update();
-  this->registration_phase = RegistrationPhase::BATTLE_STARTED;
-  this->update_battle_state_flags_and_send_6xB4x03_if_needed(true);
-  this->send_6xB4x50_trap_tile_locations();
+  if (is_trial) {
+    this->send_all_state_updates();
+    this->send_6xB4x02_for_all_players_if_needed();
 
-  if (this->options.is_trial()) {
     G_UpdateMap_Ep3NTE_6xB4x05 cmd;
     cmd.state = *this->map_and_rules;
     cmd.start_battle = 1;
     this->send(cmd);
+
   } else {
+    this->send_6xB4x02_for_all_players_if_needed(true);
+    this->send_6xB4x05();
+
+    for (size_t z = 0; z < 4; z++) {
+      auto ps = this->player_states[z];
+      if (ps) {
+        ps->send_set_card_updates(true);
+      }
+    }
+
+    this->send_all_state_updates();
+    this->send_6xB4x1C_names_update();
+  }
+
+  this->registration_phase = RegistrationPhase::BATTLE_STARTED;
+  this->update_battle_state_flags_and_send_6xB4x03_if_needed(true);
+
+  if (!is_trial) {
+    this->send_6xB4x50_trap_tile_locations();
     G_UpdateMap_Ep3_6xB4x05 cmd;
     cmd.state = *this->map_and_rules;
     cmd.start_battle = 1;
     this->send(cmd);
   }
-
   this->battle_start_usecs = now();
 
   this->send_6xB4x46();
@@ -1848,16 +1878,18 @@ void Server::handle_CAx0D_end_non_action_phase(shared_ptr<Client>, const string&
     throw runtime_error("invalid client ID");
   }
 
-  G_ActionResult_Ep3_6xB4x1E out_cmd_ack;
-  out_cmd_ack.sequence_num = in_cmd.header.sequence_num;
-  out_cmd_ack.response_phase = 1;
-  this->send(out_cmd_ack);
+  if (!this->options.is_trial()) {
+    G_ActionResult_Ep3_6xB4x1E out_cmd_ack;
+    out_cmd_ack.sequence_num = in_cmd.header.sequence_num;
+    out_cmd_ack.response_phase = 1;
+    this->send(out_cmd_ack);
+  }
 
   this->set_client_id_ready_to_advance_phase(in_cmd.client_id, static_cast<BattlePhase>(in_cmd.battle_phase.load()));
 
   G_ActionResult_Ep3_6xB4x1E out_cmd_fin;
   out_cmd_fin.sequence_num = in_cmd.header.sequence_num;
-  out_cmd_fin.response_phase = 2;
+  out_cmd_fin.response_phase = this->options.is_trial() ? 0 : 2;
   this->send(out_cmd_fin);
 }
 
@@ -1923,7 +1955,9 @@ void Server::handle_CAx0F_set_card_from_hand(shared_ptr<Client>, const string& d
   if (in_cmd.client_id >= 4) {
     error_code = -0x78;
   }
-  if (error_code == 0) {
+
+  bool always_send_response = (error_code == 0);
+  if (always_send_response) {
     this->ruler_server->error_code1 = 0;
     auto ps = this->player_states.at(in_cmd.client_id);
     if (!ps) {
@@ -1935,12 +1969,14 @@ void Server::handle_CAx0F_set_card_from_hand(shared_ptr<Client>, const string& d
     this->ruler_server->error_code1 = error_code;
   }
 
-  G_ActionResult_Ep3_6xB4x1E out_cmd;
-  out_cmd.sequence_num = in_cmd.header.sequence_num;
-  out_cmd.error_code = this->options.is_trial() ? (was_set ? 0 : 1) : this->ruler_server->error_code1;
-  this->send(out_cmd);
+  if (!this->options.is_trial() || always_send_response) {
+    G_ActionResult_Ep3_6xB4x1E out_cmd;
+    out_cmd.sequence_num = in_cmd.header.sequence_num;
+    out_cmd.error_code = this->options.is_trial() ? (was_set ? 0 : 1) : this->ruler_server->error_code1;
+    this->send(out_cmd);
+  }
 
-  this->send_debug_message_if_error_code_nonzero(in_cmd.client_id, out_cmd.error_code);
+  this->send_debug_message_if_error_code_nonzero(in_cmd.client_id, this->ruler_server->error_code1);
 }
 
 void Server::handle_CAx10_move_fc_to_location(shared_ptr<Client>, const string& data) {
@@ -1961,6 +1997,7 @@ void Server::handle_CAx10_move_fc_to_location(shared_ptr<Client>, const string& 
   if (in_cmd.client_id >= 4) {
     error_code = -0x78;
   }
+
   if (error_code == 0) {
     auto ps = this->player_states.at(in_cmd.client_id);
     if (!ps) {
@@ -1973,12 +2010,14 @@ void Server::handle_CAx10_move_fc_to_location(shared_ptr<Client>, const string& 
     this->ruler_server->error_code2 = error_code;
   }
 
-  G_ActionResult_Ep3_6xB4x1E out_cmd;
-  out_cmd.sequence_num = in_cmd.header.sequence_num;
-  out_cmd.error_code = this->ruler_server->error_code2;
-  this->send(out_cmd);
+  if (!this->options.is_trial() || (this->ruler_server->error_code2 == 0)) {
+    G_ActionResult_Ep3_6xB4x1E out_cmd;
+    out_cmd.sequence_num = in_cmd.header.sequence_num;
+    out_cmd.error_code = this->options.is_trial() ? 0 : this->ruler_server->error_code2;
+    this->send(out_cmd);
+  }
 
-  this->send_debug_message_if_error_code_nonzero(in_cmd.client_id, out_cmd.error_code);
+  this->send_debug_message_if_error_code_nonzero(in_cmd.client_id, this->ruler_server->error_code2);
 }
 
 void Server::handle_CAx11_enqueue_attack_or_defense(shared_ptr<Client>, const string& data) {
@@ -2009,12 +2048,15 @@ void Server::handle_CAx11_enqueue_attack_or_defense(shared_ptr<Client>, const st
     this->ruler_server->error_code3 = error_code;
   }
 
-  G_ActionResult_Ep3_6xB4x1E out_cmd;
-  out_cmd.sequence_num = in_cmd.header.sequence_num;
-  out_cmd.error_code = this->ruler_server->error_code3;
-  this->send(out_cmd);
+  bool is_trial = this->options.is_trial();
+  if (!is_trial || (error_code == 0)) {
+    G_ActionResult_Ep3_6xB4x1E out_cmd;
+    out_cmd.sequence_num = in_cmd.header.sequence_num;
+    out_cmd.error_code = is_trial ? !!this->ruler_server->error_code3 : this->ruler_server->error_code3;
+    this->send(out_cmd);
+  }
 
-  this->send_debug_message_if_error_code_nonzero(in_cmd.client_id, out_cmd.error_code);
+  this->send_debug_message_if_error_code_nonzero(in_cmd.client_id, this->ruler_server->error_code3);
 }
 
 void Server::handle_CAx12_end_attack_list(shared_ptr<Client>, const string& data) {
@@ -2033,9 +2075,11 @@ void Server::handle_CAx12_end_attack_list(shared_ptr<Client>, const string& data
     this->end_attack_list_for_client(in_cmd.client_id);
   }
 
-  G_ActionResult_Ep3_6xB4x1E out_cmd;
-  out_cmd.sequence_num = in_cmd.header.sequence_num;
-  this->send(out_cmd);
+  if (!this->options.is_trial() || (error_code == 0)) {
+    G_ActionResult_Ep3_6xB4x1E out_cmd;
+    out_cmd.sequence_num = in_cmd.header.sequence_num;
+    this->send(out_cmd);
+  }
 
   this->send_debug_message_if_error_code_nonzero(in_cmd.client_id, error_code);
 }
@@ -2194,7 +2238,14 @@ void Server::handle_CAx1D_start_battle(shared_ptr<Client>, const string& data) {
       in_cmd.header.subsubcommand, "START BATTLE");
 
   if (!this->battle_in_progress) {
-    if (!this->update_registration_phase()) {
+    bool is_trial = this->options.is_trial();
+
+    bool should_start = false;
+    if (is_trial) {
+      should_start = (this->registration_phase == RegistrationPhase::REGISTERED);
+    } else if (this->update_registration_phase()) {
+      should_start = true;
+    } else {
       G_RejectBattleStartRequest_Ep3_6xB4x53 out_cmd;
       out_cmd.setup_phase = this->setup_phase;
       out_cmd.registration_phase = this->registration_phase;
@@ -2206,7 +2257,9 @@ void Server::handle_CAx1D_start_battle(shared_ptr<Client>, const string& data) {
         this->presence_entries[z].clear();
       }
       this->battle_in_progress = false;
-    } else {
+    }
+
+    if (should_start) {
       auto l = this->lobby.lock();
       if (l) {
         if (l->battle_record) {
@@ -2668,6 +2721,7 @@ void Server::unknown_8023EEF4() {
     return;
   }
 
+  bool is_trial = this->options.is_trial();
   while (this->unknown_a14 < this->num_pending_attacks_with_cards) {
     auto card = this->attack_cards[this->unknown_a14];
     if (this->get_current_team_turn() == card->get_team_id()) {
@@ -2675,7 +2729,11 @@ void Server::unknown_8023EEF4() {
       log.debug("card @%04hX #%04hX can attack", card->get_card_ref(), card->get_card_id());
       string as_str = as.str();
       log.debug("as: %s", as_str.c_str());
-      this->replace_targets_due_to_destruction_or_conditions(&as);
+      if (is_trial) {
+        this->replace_targets_due_to_destruction_nte(&as);
+      } else {
+        this->replace_targets_due_to_destruction_or_conditions(&as);
+      }
       as_str = as.str();
       log.debug("as after target replacement: %s", as_str.c_str());
       if (this->any_target_exists_for_attack(as)) {
@@ -2697,28 +2755,35 @@ void Server::unknown_8023EEF4() {
     G_SetActionState_Ep3_6xB4x29 cmd;
     cmd.unknown_a1 = this->unknown_a14;
     cmd.state = this->pending_attacks_with_cards[this->unknown_a14];
-    this->replace_targets_due_to_destruction_or_conditions(&cmd.state);
+    if (is_trial) {
+      this->replace_targets_due_to_destruction_nte(&cmd.state);
+    } else {
+      this->replace_targets_due_to_destruction_or_conditions(&cmd.state);
+    }
     ActionState as = cmd.state;
     this->send(cmd);
 
     this->card_special->unknown_8024AAB8(as);
-    this->attack_cards[this->unknown_a14]->compute_action_chain_results(1, 0);
-    this->attack_cards[this->unknown_a14]->unknown_80236374(this->attack_cards[this->unknown_a14], &as);
-    if (!this->attack_cards[this->unknown_a14]->action_chain.check_flag(0x40)) {
-      this->card_special->unknown_8024945C(this->attack_cards[this->unknown_a14], as);
-    }
-    this->attack_cards[this->unknown_a14]->compute_action_chain_results(1, 0);
-    this->attack_cards[this->unknown_a14]->unknown_80236374(this->attack_cards[this->unknown_a14], &as);
-    if (!this->attack_cards[this->unknown_a14]->action_chain.check_flag(0x40)) {
-      this->card_special->unknown_8024966C(this->attack_cards[this->unknown_a14], &as);
-    }
-    this->attack_cards[this->unknown_a14]->compute_action_chain_results(1, 0);
-    this->attack_cards[this->unknown_a14]->unknown_80236374(this->attack_cards[this->unknown_a14], &as);
-    this->attack_cards[this->unknown_a14]->send_6xB4x4E_4C_4D_if_needed();
-    for (size_t z = 0; z < 4; z++) {
-      auto ps = this->player_states[z];
-      if (ps) {
-        ps->send_set_card_updates();
+
+    if (!is_trial) {
+      this->attack_cards[this->unknown_a14]->compute_action_chain_results(1, 0);
+      this->attack_cards[this->unknown_a14]->unknown_80236374(this->attack_cards[this->unknown_a14], &as);
+      if (!this->attack_cards[this->unknown_a14]->action_chain.check_flag(0x40)) {
+        this->card_special->unknown_8024945C(this->attack_cards[this->unknown_a14], as);
+      }
+      this->attack_cards[this->unknown_a14]->compute_action_chain_results(1, 0);
+      this->attack_cards[this->unknown_a14]->unknown_80236374(this->attack_cards[this->unknown_a14], &as);
+      if (!this->attack_cards[this->unknown_a14]->action_chain.check_flag(0x40)) {
+        this->card_special->unknown_8024966C(this->attack_cards[this->unknown_a14], &as);
+      }
+      this->attack_cards[this->unknown_a14]->compute_action_chain_results(1, 0);
+      this->attack_cards[this->unknown_a14]->unknown_80236374(this->attack_cards[this->unknown_a14], &as);
+      this->attack_cards[this->unknown_a14]->send_6xB4x4E_4C_4D_if_needed();
+      for (size_t z = 0; z < 4; z++) {
+        auto ps = this->player_states[z];
+        if (ps) {
+          ps->send_set_card_updates();
+        }
       }
     }
 
@@ -2733,8 +2798,11 @@ void Server::unknown_8023EEF4() {
     this->update_battle_state_flags_and_send_6xB4x03_if_needed();
     this->send_6xB4x02_for_all_players_if_needed();
   }
-  this->update_battle_state_flags_and_send_6xB4x03_if_needed();
-  this->send_6xB4x02_for_all_players_if_needed();
+
+  if (!is_trial) {
+    this->update_battle_state_flags_and_send_6xB4x03_if_needed();
+    this->send_6xB4x02_for_all_players_if_needed();
+  }
 }
 
 void Server::execute_bomb_assist_effect() {
@@ -2771,10 +2839,58 @@ void Server::execute_bomb_assist_effect() {
   }
 }
 
-void Server::replace_targets_due_to_destruction_or_conditions(
-    ActionState* as) {
-  auto attacker_card = this->card_for_set_card_ref(
-      this->send_6xB4x06_if_card_ref_invalid(as->attacker_card_ref, 3));
+void Server::replace_targets_due_to_destruction_nte(ActionState* as) {
+  auto attacker_card = this->card_for_set_card_ref(this->send_6xB4x06_if_card_ref_invalid(as->attacker_card_ref, 3));
+
+  for (size_t z = 0; z < 0x24; z++) {
+    auto target_card = this->card_for_set_card_ref(as->target_card_refs[z]);
+    if (!target_card) {
+      break;
+    }
+    if ((target_card->card_flags & 2) ||
+        (target_card->get_definition()->def.type != CardType::ITEM) ||
+        attacker_card->action_chain.check_flag(0x02)) {
+      continue;
+    }
+    auto ps = target_card->player_state();
+    shared_ptr<Card> found_guard_item;
+    for (size_t z = 0; z < 8; z++) {
+      auto set_card = ps->get_set_card(z);
+      if (set_card &&
+          (set_card != target_card) &&
+          !(set_card->card_flags & 2) &&
+          set_card->is_guard_item()) {
+        found_guard_item = set_card;
+        break;
+      }
+    }
+    auto replaced_target = found_guard_item;
+    if (!found_guard_item) {
+      for (size_t z = 0; z < 8; z++) {
+        auto set_card = ps->get_set_card(z);
+        if (set_card && (set_card != target_card) && !(set_card->card_flags & 2)) {
+          replaced_target = set_card;
+          break;
+        }
+      }
+    }
+    as->target_card_refs[z] = replaced_target ? replaced_target->get_card_ref() : ps->get_sc_card()->get_card_ref();
+  }
+
+  size_t write_offset = 0;
+  for (size_t z = 0; z < as->target_card_refs.size(); z++) {
+    if (as->target_card_refs[z] != 0xFFFF) {
+      if (z != write_offset) {
+        as->target_card_refs[write_offset] = as->target_card_refs[z];
+      }
+      write_offset++;
+    }
+  }
+  as->target_card_refs.clear_after(write_offset, 0xFFFF);
+}
+
+void Server::replace_targets_due_to_destruction_or_conditions(ActionState* as) {
+  auto attacker_card = this->card_for_set_card_ref(this->send_6xB4x06_if_card_ref_invalid(as->attacker_card_ref, 3));
   if (!attacker_card) {
     as->target_card_refs[0] = 0xFFFF;
     return;

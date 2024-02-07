@@ -481,31 +481,33 @@ bool ActionChainWithConds::can_apply_attack() const {
   return this->check_flag(4) ? false : (this->chain.target_card_ref_count != 0);
 }
 
-/* 0000 */ int8_t effective_ap;
-/* 0001 */ int8_t effective_tp;
-/* 0002 */ int8_t ap_effect_bonus;
-/* 0003 */ int8_t damage;
-/* 0004 */ le_uint16_t acting_card_ref;
-/* 0006 */ le_uint16_t unknown_card_ref_a3;
-/* 0008 */ parray<le_uint16_t, 8> attack_action_card_refs;
-/* 0018 */ uint8_t attack_action_card_ref_count;
-/* 0019 */ AttackMedium attack_medium;
-/* 001A */ uint8_t target_card_ref_count;
-/* 001B */ ActionSubphase action_subphase;
-/* 001C */ uint8_t strike_count;
-/* 001D */ int8_t damage_multiplier;
-/* 001E */ uint8_t attack_number;
-/* 001F */ int8_t tp_effect_bonus;
-/* 0020 */ uint8_t unused1;
-/* 0021 */ uint8_t unused2;
-/* 0022 */ int8_t card_ap;
-/* 0023 */ int8_t card_tp;
-/* 0024 */ le_uint32_t flags;
-// The only difference between this structure and ActionChainWithConds is that
-// these two fields have changed orders.
-/* 0028 */ parray<Condition, 9> conditions;
-/* 00B8 */ parray<le_uint16_t, 4 * 9> target_card_refs;
-/* 0100 */
+uint8_t ActionChainWithConds::get_adjusted_move_ability_nte(uint8_t ability) const {
+  for (size_t z = 0; z < this->conditions.size(); z++) {
+    const auto& cond = this->conditions[z];
+    switch (cond.type) {
+      case ConditionType::IMMOBILE:
+      case ConditionType::FREEZE:
+        ability = 0;
+        break;
+      case ConditionType::SET_MV_COST_TO_0:
+        ability = 99;
+        break;
+      case ConditionType::ADD_1_TO_MV_COST:
+        ability--;
+        break;
+      case ConditionType::SCALE_MV_COST:
+        if (cond.value == 0) {
+          ability = 99;
+        } else {
+          ability /= cond.value;
+        }
+        break;
+      default:
+        break;
+    }
+  }
+  return ability;
+}
 
 ActionChainWithCondsTrial::ActionChainWithCondsTrial(const ActionChainWithConds& src)
     : effective_ap(src.chain.effective_ap),

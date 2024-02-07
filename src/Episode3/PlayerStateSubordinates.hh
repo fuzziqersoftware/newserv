@@ -169,6 +169,8 @@ struct ActionChainWithConds {
   void set_action_subphase_from_card(std::shared_ptr<const Card> card);
   bool can_apply_attack() const;
 
+  uint8_t get_adjusted_move_ability_nte(uint8_t ability) const;
+
   std::string str() const;
 } __attribute__((packed));
 

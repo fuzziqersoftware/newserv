@@ -76,6 +76,7 @@ public:
       const Location& loc,
       uint8_t target_team_id) const;
   uint8_t get_atk_points() const;
+  uint8_t get_atk_points_nte() const;
   void get_short_status_for_card_index_in_hand(size_t hand_index, CardShortStatus* stat) const;
   std::shared_ptr<DeckState> get_deck();
   uint8_t get_def_points() const;
@@ -95,6 +96,7 @@ public:
   bool is_mulligan_allowed() const;
   bool is_team_turn() const;
   void log_discard(uint16_t card_ref, uint16_t reason);
+  uint16_t pop_from_discard_log(uint16_t reason);
   bool move_card_to_location_by_card_index(size_t card_index, const Location& new_loc);
   void move_null_hand_refs_to_end();
   void on_cards_destroyed();

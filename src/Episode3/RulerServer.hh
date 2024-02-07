@@ -61,7 +61,9 @@ public:
       uint8_t def_effect_index,
       AttackMedium attack_medium) const;
   bool attack_action_has_rampage_and_not_pierce(const ActionState& pa, uint16_t card_ref) const;
-  bool attack_action_has_pierce_and_not_rampage(const ActionState& pa, uint8_t client_id);
+  bool attack_action_has_pierce_and_not_rampage(const ActionState& pa, uint8_t client_id) const;
+  size_t count_targets_with_rampage_and_not_pierce_nte(const ActionState& as) const;
+  size_t count_targets_with_pierce_and_not_rampage_nte(const ActionState& as) const;
   bool card_exists_by_status(const CardShortStatus& stat) const;
   bool card_has_mighty_knuckle(uint32_t card_ref) const;
   uint16_t card_id_for_card_ref(uint16_t card_ref) const;

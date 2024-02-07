@@ -237,19 +237,25 @@ bool RulerServer::card_has_pierce_or_rampage(
     uint16_t action_card_ref,
     uint8_t def_effect_index,
     AttackMedium attack_medium) const {
-  auto short_statuses = (client_id != 0xFF) ? this->short_statuses[client_id] : nullptr;
+  auto short_statuses = (client_id < 4) ? this->short_statuses[client_id] : nullptr;
   *out_has_rampage = false;
 
-  if (cond_type == ConditionType::NONE) {
-    return false;
+  bool ret;
+  bool is_trial = this->server()->options.is_trial();
+  if (is_trial) {
+    ret = true;
+  } else {
+    if (cond_type == ConditionType::NONE) {
+      return false;
+    }
+    ret = this->check_usability_or_apply_condition_for_card_refs(
+        action_card_ref,
+        attacker_card_ref,
+        // Original code omitted this null check and presumably could crash here
+        short_statuses ? short_statuses->at(0).card_ref.load() : 0xFFFF,
+        def_effect_index,
+        attack_medium);
   }
-  bool ret = this->check_usability_or_apply_condition_for_card_refs(
-      action_card_ref,
-      attacker_card_ref,
-      // Original code omitted this null check and presumably could crash here
-      short_statuses ? short_statuses->at(0).card_ref.load() : 0xFFFF,
-      def_effect_index,
-      attack_medium);
 
   switch (cond_type) {
     case ConditionType::RAMPAGE:
@@ -282,7 +288,10 @@ bool RulerServer::card_has_pierce_or_rampage(
       if (short_statuses) {
         const auto& sc_status = short_statuses->at(0);
         auto ce = this->definition_for_card_ref(sc_status.card_ref);
-        if (ce && (this->get_card_ref_max_hp(sc_status.card_ref) <= sc_status.current_hp * 2)) {
+        // This appears to be an NTE bug: Major Pierce doesn't work on Arkz SCs.
+        if (ce &&
+            (!is_trial || (ce->def.type == CardType::HUNTERS_SC)) &&
+            (this->get_card_ref_max_hp(sc_status.card_ref) <= sc_status.current_hp * 2)) {
           return ret;
         }
       }
@@ -292,8 +301,7 @@ bool RulerServer::card_has_pierce_or_rampage(
   }
 }
 
-bool RulerServer::attack_action_has_rampage_and_not_pierce(
-    const ActionState& pa, uint16_t card_ref) const {
+bool RulerServer::attack_action_has_rampage_and_not_pierce(const ActionState& pa, uint16_t card_ref) const {
   uint16_t orig_card_ref;
   uint16_t effective_range_card_id;
   TargetMode effective_target_mode;
@@ -367,15 +375,15 @@ bool RulerServer::attack_action_has_rampage_and_not_pierce(
   return false;
 }
 
-bool RulerServer::attack_action_has_pierce_and_not_rampage(
-    const ActionState& pa, uint8_t client_id) {
-  if ((client_id_for_card_ref(pa.attacker_card_ref) == 0xFF) || (client_id == 0xFF)) {
+bool RulerServer::attack_action_has_pierce_and_not_rampage(const ActionState& pa, uint8_t client_id) const {
+  if ((client_id_for_card_ref(pa.attacker_card_ref) == 0xFF) || (client_id >= 4)) {
     return false;
   }
 
+  bool is_trial = this->server()->options.is_trial();
   auto attack_medium = this->get_attack_medium(pa);
   auto stat = this->short_statuses[client_id];
-  if (!stat || !this->card_exists_by_status(stat->at(0)) || (stat->at(0).card_ref == 0xFFFF)) {
+  if (!stat || (!is_trial && !this->card_exists_by_status(stat->at(0))) || (stat->at(0).card_ref == 0xFFFF)) {
     return false;
   }
 
@@ -392,6 +400,33 @@ bool RulerServer::attack_action_has_pierce_and_not_rampage(
   ssize_t last_action_card_index = -1;
   for (size_t z = 0; (z < 8) && (pa.action_card_refs[z] != 0xFFFF); z++) {
     last_action_card_index = z;
+  }
+
+  auto check_chain = [&]() -> optional<bool> {
+    const auto* chain = this->action_chain_with_conds_for_card_ref(pa.attacker_card_ref);
+    if (chain) {
+      for (ssize_t cond_index = 8; cond_index >= 0; cond_index--) {
+        bool has_rampage = false;
+        if (this->card_has_pierce_or_rampage(
+                client_id, chain->conditions[cond_index].type, &has_rampage,
+                pa.attacker_card_ref, chain->conditions[cond_index].card_ref,
+                chain->conditions[cond_index].card_definition_effect_index,
+                attack_medium)) {
+          return true;
+        }
+        if (has_rampage) {
+          return false;
+        }
+      }
+    }
+    return nullopt;
+  };
+
+  if (is_trial) {
+    auto res = check_chain();
+    if (res.has_value()) {
+      return res.value();
+    }
   }
 
   for (; last_action_card_index >= 0; last_action_card_index--) {
@@ -420,20 +455,10 @@ bool RulerServer::attack_action_has_pierce_and_not_rampage(
     }
   }
 
-  const auto* chain = this->action_chain_with_conds_for_card_ref(pa.attacker_card_ref);
-  if (chain) {
-    for (ssize_t cond_index = 8; cond_index >= 0; cond_index--) {
-      bool has_rampage = false;
-      if (this->card_has_pierce_or_rampage(
-              client_id, chain->conditions[cond_index].type, &has_rampage,
-              pa.attacker_card_ref, chain->conditions[cond_index].card_ref,
-              chain->conditions[cond_index].card_definition_effect_index,
-              attack_medium)) {
-        return true;
-      }
-      if (has_rampage) {
-        return false;
-      }
+  if (!is_trial) {
+    auto res = check_chain();
+    if (res.has_value()) {
+      return res.value();
     }
   }
 
@@ -795,10 +820,13 @@ bool RulerServer::check_pierce_and_rampage(
     uint16_t action_card_ref,
     uint8_t def_effect_index,
     AttackMedium attack_medium) const {
+  bool is_trial = this->server()->options.is_trial();
+
+  // Note: NTE doesn't set this to zero; it apparently expects the caller to.
   *out_has_pierce = false;
 
   const auto* card_short_status = this->short_status_for_card_ref(card_ref);
-  if (cond_type == ConditionType::NONE) {
+  if (!is_trial && (cond_type == ConditionType::NONE)) {
     return false;
   }
 
@@ -820,8 +848,9 @@ bool RulerServer::check_pierce_and_rampage(
     client_short_statuses = nullptr;
   }
 
-  bool apply_check_result = this->check_usability_or_apply_condition_for_card_refs(
-      action_card_ref, attacker_card_ref, card_ref, def_effect_index, attack_medium);
+  bool apply_check_result = (is_trial ||
+      this->check_usability_or_apply_condition_for_card_refs(
+          action_card_ref, attacker_card_ref, card_ref, def_effect_index, attack_medium));
 
   switch (cond_type) {
     case ConditionType::PIERCE:
@@ -1366,6 +1395,7 @@ uint16_t RulerServer::compute_attack_or_defense_costs(
     cost_bias++;
   }
 
+  bool is_trial = this->server()->options.is_trial();
   if (pa.action_card_refs[0] == 0xFFFF) {
     total_cost = cost_bias + 1;
   } else {
@@ -1388,13 +1418,15 @@ uint16_t RulerServer::compute_attack_or_defense_costs(
       if (this->card_has_mighty_knuckle(pa.action_card_refs[z])) {
         has_mighty_knuckle = true;
       }
-      size_t num_assists = this->assist_server->compute_num_assist_effects_for_client(pa.client_id);
-      for (size_t w = 0; w < num_assists; w++) {
-        auto assist_effect = this->assist_server->get_active_assist_by_index(w);
-        if (assist_effect == AssistEffect::INFLATION) {
-          assist_cost_bias++;
-        } else if (assist_effect == AssistEffect::DEFLATION) {
-          assist_cost_bias--;
+      if (!is_trial) {
+        size_t num_assists = this->assist_server->compute_num_assist_effects_for_client(pa.client_id);
+        for (size_t w = 0; w < num_assists; w++) {
+          auto assist_effect = this->assist_server->get_active_assist_by_index(w);
+          if (assist_effect == AssistEffect::INFLATION) {
+            assist_cost_bias++;
+          } else if (assist_effect == AssistEffect::DEFLATION) {
+            assist_cost_bias--;
+          }
         }
       }
     }
@@ -1403,7 +1435,11 @@ uint16_t RulerServer::compute_attack_or_defense_costs(
   size_t num_assists = this->assist_server->compute_num_assist_effects_for_client(pa.client_id);
   for (size_t w = 0; w < num_assists; w++) {
     auto assist_effect = this->assist_server->get_active_assist_by_index(w);
-    if ((assist_effect == AssistEffect::BATTLE_ROYALE) &&
+    if (!is_trial && (assist_effect == AssistEffect::INFLATION)) {
+      assist_cost_bias++;
+    } else if (!is_trial && (assist_effect == AssistEffect::DEFLATION)) {
+      assist_cost_bias--;
+    } else if ((assist_effect == AssistEffect::BATTLE_ROYALE) &&
         (pa.action_card_refs[0] == 0xFFFF)) {
       total_cost = 0;
       final_cost = 0;
@@ -1412,7 +1448,9 @@ uint16_t RulerServer::compute_attack_or_defense_costs(
 
   if (has_mighty_knuckle) {
     if (!allow_mighty_knuckle) {
-      final_cost = 0;
+      if (!is_trial) {
+        final_cost = 0;
+      }
     } else {
       final_cost = max<int16_t>(final_cost, this->hand_and_equip_states[pa.client_id]->atk_points);
     }
@@ -1455,9 +1493,11 @@ bool RulerServer::compute_effective_range_and_target_mode_for_attack(
   auto target_mode = ce->def.target_mode;
   if (this->card_ref_or_sc_has_fixed_range(pa.attacker_card_ref)) {
     card_id = this->card_id_for_card_ref(pa.attacker_card_ref);
-    auto sc_ce = this->definition_for_card_id(card_id);
-    if (sc_ce && (static_cast<uint8_t>(target_mode) < 6)) {
-      target_mode = sc_ce->def.target_mode;
+    if (!this->server()->options.is_trial()) {
+      auto sc_ce = this->definition_for_card_id(card_id);
+      if (sc_ce && (static_cast<uint8_t>(target_mode) < 6)) {
+        target_mode = sc_ce->def.target_mode;
+      }
     }
   }
 
@@ -1480,8 +1520,7 @@ bool RulerServer::compute_effective_range_and_target_mode_for_attack(
   return true;
 }
 
-size_t RulerServer::count_rampage_targets_for_attack(
-    const ActionState& pa, uint8_t client_id) const {
+size_t RulerServer::count_rampage_targets_for_attack(const ActionState& pa, uint8_t client_id) const {
   if (client_id == 0xFF) {
     return 0;
   }
@@ -1638,7 +1677,8 @@ int32_t RulerServer::error_code_for_client_setting_card(
     return -0x76;
   }
 
-  if (!this->is_card_ref_in_hand(card_ref)) {
+  bool is_trial = this->server()->options.is_trial();
+  if (!is_trial && !this->is_card_ref_in_hand(card_ref)) {
     return -0x5E;
   }
 
@@ -1679,7 +1719,7 @@ int32_t RulerServer::error_code_for_client_setting_card(
 
     // Check for assists that can only be set on yourself
     auto eff = assist_effect_number_for_card_id(ce->def.card_id, this->server()->options.is_trial());
-    if (((eff == AssistEffect::LEGACY) || (eff == AssistEffect::EXCHANGE)) &&
+    if (((eff == AssistEffect::LEGACY) || (!is_trial && (eff == AssistEffect::EXCHANGE))) &&
         (assist_target_client_id != 0xFF) &&
         (assist_target_client_id != client_id_for_card_ref(card_ref))) {
       return -0x75;
@@ -1718,8 +1758,8 @@ int32_t RulerServer::error_code_for_client_setting_card(
 
   if ((ce->def.type == CardType::ITEM) || (ce->def.type == CardType::CREATURE)) {
     int16_t existing_fcs_cost = 0;
-    bool limit_summoning_by_count = this->find_condition_on_card_ref(
-        short_statuses->at(0).card_ref, ConditionType::FC_LIMIT_BY_COUNT);
+    bool limit_summoning_by_count = !is_trial &&
+        this->find_condition_on_card_ref(short_statuses->at(0).card_ref, ConditionType::FC_LIMIT_BY_COUNT);
     for (size_t z = 7; z < 15; z++) {
       const auto& this_status = short_statuses->at(z);
       if ((this_status.card_ref != 0xFFFF) && this->card_exists_by_status(this_status)) {
@@ -1758,71 +1798,91 @@ int32_t RulerServer::error_code_for_client_setting_card(
       return 0;
     }
 
-    Location summon_area_loc;
-    uint8_t summon_area_size;
-    if (!this->get_creature_summon_area(
-            client_id, &summon_area_loc, &summon_area_size)) {
-      if (team_id != 1) {
-        if ((loc->x > 0) && (loc->x < this->map_and_rules->map.width - 1)) {
-          if ((loc->y < this->map_and_rules->map.height - summon_cost - 1) &&
-              (loc->y > 0)) {
-            return 0;
+    if (is_trial) {
+      // It seems NTE assumes that teams always start on the same ends of the
+      // map; non-NTE removes this restriction.
+      if (team_id == 1) {
+        if (((loc->x < 1) ||
+                (loc->x >= this->map_and_rules->map.width - 1) ||
+                (loc->y < summon_cost + 1) ||
+                (loc->y >= this->map_and_rules->map.height - 1)) &&
+            (loc->y != this->map_and_rules->map.height - 2)) {
+          return -0x7E;
+        }
+      } else if (((loc->x < 1) ||
+                     (loc->x >= this->map_and_rules->map.width - 1) ||
+                     (loc->y < 1) ||
+                     (loc->y >= this->map_and_rules->map.height - summon_cost - 1)) &&
+          (loc->y != 1)) {
+        return -0x7E;
+      }
+
+    } else {
+      Location summon_area_loc;
+      uint8_t summon_area_size;
+      if (!this->get_creature_summon_area(client_id, &summon_area_loc, &summon_area_size)) {
+        if (team_id != 1) {
+          if ((loc->x > 0) && (loc->x < this->map_and_rules->map.width - 1)) {
+            if ((loc->y < this->map_and_rules->map.height - summon_cost - 1) &&
+                (loc->y > 0)) {
+              return 0;
+            }
+            if (loc->y == 1) {
+              return 0;
+            }
           }
-          if (loc->y == 1) {
-            return 0;
+        } else {
+          if ((loc->x > 0) &&
+              (loc->x < this->map_and_rules->map.width - 1)) {
+            if ((summon_cost + 1 <= loc->y) && (loc->y < this->map_and_rules->map.height - 1)) {
+              return 0;
+            }
+            if (loc->y == this->map_and_rules->map.height - 2) {
+              return 0;
+            }
           }
+        }
+        return -0x7E;
+      }
+
+      int32_t x_offset, y_offset;
+      this->offsets_for_direction(summon_area_loc, &x_offset, &y_offset);
+      if (x_offset == 0) {
+        if ((loc->x < 1) && (loc->x >= this->map_and_rules->map.width - 1)) {
+          return -0x7E;
         }
       } else {
-        if ((loc->x > 0) &&
-            (loc->x < this->map_and_rules->map.width - 1)) {
-          if ((summon_cost + 1 <= loc->y) && (loc->y < this->map_and_rules->map.height - 1)) {
-            return 0;
+        int16_t diff = max<int16_t>(summon_area_size - summon_cost, 0);
+        if (x_offset > 0) {
+          if (loc->x < summon_area_loc.x) {
+            return -0x7E;
           }
-          if (loc->y == this->map_and_rules->map.height - 2) {
-            return 0;
+          if (loc->x > summon_area_loc.x + diff) {
+            return -0x7E;
+          }
+        } else if (x_offset < 0) {
+          if ((loc->x > summon_area_loc.x) || (loc->x < summon_area_loc.x - diff)) {
+            return -0x7E;
           }
         }
       }
-      return -0x7E;
-    }
-
-    int32_t x_offset, y_offset;
-    this->offsets_for_direction(summon_area_loc, &x_offset, &y_offset);
-    if (x_offset == 0) {
-      if ((loc->x < 1) && (loc->x >= this->map_and_rules->map.width - 1)) {
-        return -0x7E;
-      }
-    } else {
-      int16_t diff = max<int16_t>(summon_area_size - summon_cost, 0);
-      if (x_offset > 0) {
-        if (loc->x < summon_area_loc.x) {
+      if (y_offset == 0) {
+        if ((loc->y < 1) && (loc->y >= this->map_and_rules->map.height - 1)) {
           return -0x7E;
         }
-        if (loc->x > summon_area_loc.x + diff) {
-          return -0x7E;
-        }
-      } else if (x_offset < 0) {
-        if ((loc->x > summon_area_loc.x) || (loc->x < summon_area_loc.x - diff)) {
-          return -0x7E;
-        }
-      }
-    }
-    if (y_offset == 0) {
-      if ((loc->y < 1) && (loc->y >= this->map_and_rules->map.height - 1)) {
-        return -0x7E;
-      }
-    } else {
-      int16_t diff = max<int16_t>(summon_area_size - summon_cost, 0);
-      if (y_offset > 0) {
-        if (loc->y < summon_area_loc.y) {
-          return -0x7E;
-        }
-        if (loc->y > summon_area_loc.y + diff) {
-          return -0x7E;
-        }
-      } else if (y_offset < 0) {
-        if ((loc->y > summon_area_loc.y) || (loc->y < summon_area_loc.y - diff)) {
-          return -0x7E;
+      } else {
+        int16_t diff = max<int16_t>(summon_area_size - summon_cost, 0);
+        if (y_offset > 0) {
+          if (loc->y < summon_area_loc.y) {
+            return -0x7E;
+          }
+          if (loc->y > summon_area_loc.y + diff) {
+            return -0x7E;
+          }
+        } else if (y_offset < 0) {
+          if ((loc->y > summon_area_loc.y) || (loc->y < summon_area_loc.y - diff)) {
+            return -0x7E;
+          }
         }
       }
     }
@@ -2026,7 +2086,7 @@ uint8_t RulerServer::get_card_ref_max_hp(uint16_t card_ref) const {
     return 0;
   } else if (((ce->def.type == CardType::HUNTERS_SC) || (ce->def.type == CardType::ARKZ_SC)) &&
       (this->map_and_rules->rules.char_hp > 0) &&
-      !this->card_ref_is_boss_sc(card_ref)) {
+      (this->server()->options.is_trial() || !this->card_ref_is_boss_sc(card_ref))) {
     return this->map_and_rules->rules.char_hp;
   } else {
     return ce->def.hp.stat;
@@ -2175,7 +2235,7 @@ bool RulerServer::is_attack_valid(const ActionState& pa) {
     return false;
   }
 
-  if (attacker_card_status->card_flags & 2) {
+  if (!this->server()->options.is_trial() && (attacker_card_status->card_flags & 2)) {
     this->error_code3 = -0x60;
     return false;
   }
@@ -2291,7 +2351,9 @@ bool RulerServer::is_attack_or_defense_valid(const ActionState& pa) {
     return false;
   }
 
-  int16_t cost = this->compute_attack_or_defense_costs(pa, false, nullptr);
+  // NTE apparently does not check the action's cost here
+  bool is_trial = this->server()->options.is_trial();
+  int16_t cost = is_trial ? 0 : this->compute_attack_or_defense_costs(pa, false, nullptr);
 
   switch (this->get_pending_action_type(pa)) {
     case ActionType::ATTACK:
@@ -2387,8 +2449,9 @@ bool RulerServer::is_defense_valid(const ActionState& pa) {
     }
   }
 
-  if (this->find_condition_on_card_ref(pa.target_card_refs[0], ConditionType::HOLD) ||
-      this->find_condition_on_card_ref(pa.target_card_refs[0], ConditionType::CANNOT_DEFEND)) {
+  if (!this->server()->options.is_trial() &&
+      (this->find_condition_on_card_ref(pa.target_card_refs[0], ConditionType::HOLD) ||
+          this->find_condition_on_card_ref(pa.target_card_refs[0], ConditionType::CANNOT_DEFEND))) {
     this->error_code3 = -0x63;
     return false;
   }
@@ -2417,30 +2480,53 @@ size_t RulerServer::max_move_distance_for_card_ref(uint32_t card_ref) const {
     return 0;
   }
 
-  ssize_t ret = ce->def.mv.stat;
-
-  Condition cond;
-  if (this->find_condition_on_card_ref(card_ref, ConditionType::MV_BONUS, &cond, nullptr, true)) {
-    ret += cond.value;
-  }
-  if (this->find_condition_on_card_ref(card_ref, ConditionType::SET_MV, &cond, nullptr, true)) {
-    ret = cond.value;
-  }
-  ret = max<ssize_t>(0, ret);
-
-  size_t num_assists = this->assist_server->compute_num_assist_effects_for_client(client_id);
-  bool has_stamina_effect = false;
-  for (size_t z = 0; z < num_assists; z++) {
-    auto eff = this->assist_server->get_active_assist_by_index(z);
-    if (eff == AssistEffect::SNAIL_PACE) {
-      return 1;
+  if (this->server()->options.is_trial()) {
+    if (ce->def.type == CardType::ITEM) {
+      return ce->def.mv.stat;
     }
-    if (eff == AssistEffect::STAMINA) {
-      has_stamina_effect = true;
-    }
-  }
 
-  return (has_stamina_effect) ? 9 : min<ssize_t>(9, ret);
+    Condition cond;
+    if (this->find_condition_on_card_ref(card_ref, ConditionType::SET_MV, &cond)) {
+      return cond.value;
+    }
+
+    size_t num_assists = this->assist_server->compute_num_assist_effects_for_client(client_id);
+    bool has_stamina_effect = false;
+    for (size_t z = 0; z < num_assists; z = z + 1) {
+      auto assist = this->assist_server->get_active_assist_by_index(z);
+      if (assist == AssistEffect::SNAIL_PACE) {
+        return 1;
+      } else if (assist == AssistEffect::STAMINA) {
+        has_stamina_effect = true;
+      }
+    }
+    return has_stamina_effect ? 99 : ce->def.mv.stat;
+
+  } else {
+    ssize_t ret = ce->def.mv.stat;
+    Condition cond;
+    if (this->find_condition_on_card_ref(card_ref, ConditionType::MV_BONUS, &cond, nullptr, true)) {
+      ret += cond.value;
+    }
+    if (this->find_condition_on_card_ref(card_ref, ConditionType::SET_MV, &cond, nullptr, true)) {
+      ret = cond.value;
+    }
+    ret = max<ssize_t>(0, ret);
+
+    size_t num_assists = this->assist_server->compute_num_assist_effects_for_client(client_id);
+    bool has_stamina_effect = false;
+    for (size_t z = 0; z < num_assists; z++) {
+      auto eff = this->assist_server->get_active_assist_by_index(z);
+      if (eff == AssistEffect::SNAIL_PACE) {
+        return 1;
+      }
+      if (eff == AssistEffect::STAMINA) {
+        has_stamina_effect = true;
+      }
+    }
+
+    return has_stamina_effect ? 9 : min<ssize_t>(9, ret);
+  }
 }
 
 RulerServer::MovePath::MovePath()
@@ -2552,9 +2638,11 @@ int32_t RulerServer::set_cost_for_card(uint8_t client_id, uint16_t card_ref) con
     return -0x7D;
   }
 
+  bool is_trial = this->server()->options.is_trial();
   auto short_statuses = this->short_statuses[client_id];
   int32_t ret = ce->def.self_cost;
-  if (short_statuses &&
+  if (!is_trial &&
+      short_statuses &&
       this->card_exists_by_status(short_statuses->at(0)) &&
       this->find_condition_on_card_ref(short_statuses->at(0).card_ref, ConditionType::UNKNOWN_69)) {
     ret = 0;
@@ -2587,9 +2675,8 @@ int32_t RulerServer::set_cost_for_card(uint8_t client_id, uint16_t card_ref) con
   for (size_t z = 0; z < num_assists; z++) {
     auto eff = this->assist_server->get_active_assist_by_index(z);
     if (eff == AssistEffect::LAND_PRICE) {
-      // Note: Original code had an extra addend (ret < 0 && (ret & 1) != 0),
-      // but ret cannot be negatve here, so we omit it.
-      ret += ret >> 1;
+      // In NTE, Land Price is apparently 2x rather than 1.5x
+      ret = is_trial ? (ret << 1) : (ret + (ret >> 1));
     } else if (eff == AssistEffect::DEFLATION) {
       ret = max<int32_t>(0, ret - 1);
     } else if (eff == AssistEffect::INFLATION) {
@@ -2672,6 +2759,26 @@ int32_t RulerServer::verify_deck(
   }
 
   return 0;
+}
+
+size_t RulerServer::count_targets_with_rampage_and_not_pierce_nte(const ActionState& as) const {
+  size_t ret = 0;
+  for (size_t z = 0; (z < as.target_card_refs.size()) && (as.target_card_refs[z] != 0xFFFF); z++) {
+    if (this->attack_action_has_rampage_and_not_pierce(as, as.target_card_refs[z])) {
+      ret++;
+    }
+  }
+  return ret;
+}
+
+size_t RulerServer::count_targets_with_pierce_and_not_rampage_nte(const ActionState& as) const {
+  size_t ret = 0;
+  for (size_t z = 0; (z < as.target_card_refs.size()) && (as.target_card_refs[z] != 0xFFFF); z++) {
+    if (this->attack_action_has_pierce_and_not_rampage(as, client_id_for_card_ref(as.target_card_refs[z]))) {
+      ret++;
+    }
+  }
+  return ret;
 }
 
 } // namespace Episode3

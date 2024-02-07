@@ -43,7 +43,7 @@ void MapAndRulesState::clear() {
   this->num_team0_players = 0;
   this->unused2 = 0;
   this->start_facing_directions = 0;
-  this->unused3 = 0;
+  this->unknown_a3 = 0;
   this->map_number = 0;
   this->unused4 = 0;
   this->rules.clear();
@@ -77,7 +77,7 @@ MapAndRulesStateTrial::MapAndRulesStateTrial(const MapAndRulesState& state)
       num_team0_players(state.num_team0_players),
       unused2(state.unused2),
       unused5(state.start_facing_directions),
-      unknown_a3(state.unused3),
+      unknown_a3(state.unknown_a3),
       map_number(state.map_number),
       unused4(state.unused4),
       rules(state.rules) {}
@@ -92,7 +92,7 @@ MapAndRulesStateTrial::operator MapAndRulesState() const {
   ret.num_team0_players = this->num_team0_players;
   ret.unused2 = this->unused2;
   ret.start_facing_directions = this->unused5;
-  ret.unused3 = this->unknown_a3;
+  ret.unknown_a3 = this->unknown_a3;
   ret.map_number = this->map_number;
   ret.unused4 = this->unused4;
   ret.rules = this->rules;
@@ -109,7 +109,7 @@ void OverlayState::clear() {
   }
   this->unused1.clear(0);
   this->unused2.clear(0);
-  this->unused3.clear(0);
+  this->trap_card_ids_nte.clear(0);
 }
 
 } // namespace Episode3

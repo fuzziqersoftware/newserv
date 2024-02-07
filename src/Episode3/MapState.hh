@@ -31,7 +31,7 @@ struct MapAndRulesState {
   /* 0114 */ uint8_t num_team0_players = 0;
   /* 0115 */ uint8_t unused2 = 0;
   /* 0116 */ le_uint16_t start_facing_directions = 0;
-  /* 0118 */ be_uint32_t unused3 = 0;
+  /* 0118 */ be_uint32_t unknown_a3 = 0;
   /* 011C */ le_uint32_t map_number = 0;
   /* 0120 */ be_uint32_t unused4 = 0;
   /* 0124 */ Rules rules;
@@ -71,7 +71,7 @@ struct OverlayState {
   parray<parray<uint8_t, 0x10>, 0x10> tiles;
   parray<le_uint32_t, 5> unused1;
   parray<le_uint32_t, 0x10> unused2;
-  parray<le_uint16_t, 0x10> unused3;
+  parray<le_uint16_t, 0x10> trap_card_ids_nte; // Unused on non-NTE
 
   OverlayState();
   void clear();

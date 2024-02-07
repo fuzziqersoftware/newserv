@@ -984,8 +984,11 @@ struct RulesTrial {
   /* 00 */ uint8_t overall_time_limit = 0;
   /* 01 */ uint8_t phase_time_limit = 0;
   /* 02 */ AllowedCards allowed_cards = AllowedCards::ALL;
-  /* 03 */ uint8_t atk_dice_max = 6;
-  /* 04 */ uint8_t def_dice_max = 6;
+  // In NTE, the dice behave differently than in non-NTE. A zero in either of
+  // these fields means the corresponding die is random in the range [1, 6];
+  // any nonzero value means that die will always take that value.
+  /* 03 */ uint8_t atk_die_behavior = 0;
+  /* 04 */ uint8_t def_die_behavior = 0;
   /* 05 */ uint8_t disable_deck_shuffle = 0;
   /* 06 */ uint8_t disable_deck_loop = 0;
   /* 07 */ uint8_t char_hp = 15;
@@ -1185,6 +1188,7 @@ struct MapDefinition { // .mnmd format; also the format of (decompressed) quests
   // 30-34 = teleporters (2 of each value may be present)
   // 40-44 = traps (one of each type is chosen at random to be a real trap at
   //         battle start time)
+  // 40-4F = traps on NTE
   // 50 = blocked by metal box (appears as improperly-z-buffered teal cube in
   //      preview; behaves like 10 and 20 in game)
   // The assist cards that each trap type can contain are:

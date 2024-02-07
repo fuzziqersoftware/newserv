@@ -217,6 +217,7 @@ public:
   uint32_t send_6xB4x06_if_card_ref_invalid(uint16_t card_ref, int16_t negative_value);
   void unknown_8023EEF4();
   void execute_bomb_assist_effect();
+  void replace_targets_due_to_destruction_nte(ActionState* as);
   void replace_targets_due_to_destruction_or_conditions(ActionState* as);
   bool any_target_exists_for_attack(const ActionState& as);
   uint8_t get_current_team_turn2() const;
@@ -312,6 +313,8 @@ public:
   parray<uint8_t, 5> num_trap_tiles_of_type;
   parray<uint8_t, 5> chosen_trap_tile_index_of_type;
   parray<parray<parray<uint8_t, 2>, 8>, 5> trap_tile_locs;
+  parray<parray<uint8_t, 2>, 0x10> trap_tile_locs_nte;
+  size_t num_trap_tiles_nte;
   ActionState pb_action_states[4];
   parray<uint8_t, 4> has_done_pb;
   parray<parray<uint8_t, 4>, 4> has_done_pb_with_client;

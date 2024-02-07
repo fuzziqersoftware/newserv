@@ -3810,25 +3810,28 @@ int16_t CardSpecial::max_all_attack_bonuses(size_t* out_count) const {
 void CardSpecial::unknown_80244AA8(shared_ptr<Card> card) {
   ActionState as = this->create_attack_state_from_card_action_chain(card);
 
-  for (size_t client_id = 0; client_id < 4; client_id++) {
-    auto ps = this->server()->player_states[client_id];
-    if (ps) {
-      auto other_card = ps->get_sc_card();
-      if (other_card) {
-        this->clear_invalid_conditions_on_card(other_card, as);
-      }
-      for (size_t set_index = 0; set_index < 8; set_index++) {
-        auto other_card = ps->get_set_card(set_index);
+  bool is_trial = this->server()->options.is_trial();
+  if (!is_trial) {
+    for (size_t client_id = 0; client_id < 4; client_id++) {
+      auto ps = this->server()->player_states[client_id];
+      if (ps) {
+        auto other_card = ps->get_sc_card();
         if (other_card) {
           this->clear_invalid_conditions_on_card(other_card, as);
         }
+        for (size_t set_index = 0; set_index < 8; set_index++) {
+          auto other_card = ps->get_set_card(set_index);
+          if (other_card) {
+            this->clear_invalid_conditions_on_card(other_card, as);
+          }
+        }
       }
     }
+    this->apply_defense_conditions(as, 0x27, card, 0x04);
+    this->evaluate_and_apply_effects(0x27, card->get_card_ref(), as, 0xFFFF);
   }
 
-  this->apply_defense_conditions(as, 0x27, card, 4);
-  this->evaluate_and_apply_effects(0x27, card->get_card_ref(), as, 0xFFFF);
-  this->apply_defense_conditions(as, 0x13, card, 4);
+  this->apply_defense_conditions(as, 0x13, card, is_trial ? 0x1F : 0x04);
   this->evaluate_and_apply_effects(0x13, card->get_card_ref(), as, 0xFFFF);
 }
 
@@ -4661,15 +4664,9 @@ void CardSpecial::unknown_8024AAB8(const ActionState& as) {
 
     if (this->send_6xB4x06_if_card_ref_invalid(as.original_attacker_card_ref, 0x1F) == 0xFFFF) {
       this->evaluate_and_apply_effects(
-          0x01,
-          as.action_card_refs[z],
-          as,
-          this->send_6xB4x06_if_card_ref_invalid(as.attacker_card_ref, 0x21));
+          0x01, as.action_card_refs[z], as, this->send_6xB4x06_if_card_ref_invalid(as.attacker_card_ref, 0x21));
       this->evaluate_and_apply_effects(
-          0x0B,
-          as.action_card_refs[z],
-          as,
-          this->send_6xB4x06_if_card_ref_invalid(as.attacker_card_ref, 0x22));
+          0x0B, as.action_card_refs[z], as, this->send_6xB4x06_if_card_ref_invalid(as.attacker_card_ref, 0x22));
     } else {
       uint16_t card_ref = this->send_6xB4x06_if_card_ref_invalid(as.target_card_refs[0], 0x20);
       if (card_ref != 0xFFFF) {
@@ -4851,7 +4848,7 @@ shared_ptr<Card> CardSpecial::sc_card_for_card(shared_ptr<Card> unknown_p2) {
 
 void CardSpecial::unknown_8024A9D8(const ActionState& pa, uint16_t action_card_ref) {
   for (size_t z = 0; (z < 8) && (pa.action_card_refs[z] != 0xFFFF); z++) {
-    if ((action_card_ref == 0xFFFF) || (action_card_ref == pa.action_card_refs[z])) {
+    if (this->server()->options.is_trial() || (action_card_ref == 0xFFFF) || (action_card_ref == pa.action_card_refs[z])) {
       if (pa.original_attacker_card_ref == 0xFFFF) {
         this->evaluate_and_apply_effects(0x29, pa.action_card_refs[z], pa, pa.attacker_card_ref);
         this->evaluate_and_apply_effects(0x2A, pa.action_card_refs[z], pa, pa.attacker_card_ref);

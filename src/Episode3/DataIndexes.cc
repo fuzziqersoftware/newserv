@@ -1466,8 +1466,8 @@ RulesTrial::RulesTrial(const Rules& r)
     : overall_time_limit(r.overall_time_limit),
       phase_time_limit(r.phase_time_limit),
       allowed_cards(r.allowed_cards),
-      atk_dice_max(r.max_dice),
-      def_dice_max(r.def_dice_range ? (r.def_dice_range & 0x0F) : r.max_dice),
+      atk_die_behavior((r.max_dice == r.min_dice) ? r.max_dice : 0),
+      def_die_behavior((r.min_def_dice() == r.max_def_dice()) ? r.max_def_dice() : 0),
       disable_deck_shuffle(r.disable_deck_shuffle),
       disable_deck_loop(r.disable_deck_loop),
       char_hp(r.char_hp),
@@ -1481,8 +1481,13 @@ RulesTrial::operator Rules() const {
   ret.overall_time_limit = this->overall_time_limit;
   ret.phase_time_limit = this->phase_time_limit;
   ret.allowed_cards = this->allowed_cards;
-  ret.min_dice = 1;
-  ret.max_dice = this->atk_dice_max;
+  if (this->atk_die_behavior) {
+    ret.min_dice = this->atk_die_behavior;
+    ret.max_dice = this->atk_die_behavior;
+  } else {
+    ret.min_dice = 1;
+    ret.max_dice = 6;
+  }
   ret.disable_deck_shuffle = this->disable_deck_shuffle;
   ret.disable_deck_loop = this->disable_deck_loop;
   ret.char_hp = this->char_hp;
@@ -1491,7 +1496,11 @@ RulesTrial::operator Rules() const {
   ret.disable_dialogue = this->disable_dialogue;
   ret.dice_exchange_mode = this->dice_exchange_mode;
   ret.disable_dice_boost = 0;
-  ret.def_dice_range = 0x10 | (this->def_dice_max ? this->def_dice_max : 0x06);
+  if (this->def_die_behavior) {
+    ret.def_dice_range = (this->def_die_behavior << 4) | this->def_die_behavior;
+  } else {
+    ret.def_dice_range = 0x16;
+  }
   ret.unused.clear(0);
   return ret;
 }

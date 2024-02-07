@@ -78,7 +78,7 @@ static shared_ptr<const Menu> proxy_options_menu_for_client(shared_ptr<const Cli
       add_flag_option(ProxyOptionsMenuItemID::EP3_INFINITE_TIME, Client::Flag::PROXY_EP3_INFINITE_TIME_ENABLED,
           "Infinite time", "Disable overall and\nper-phase time limits\nin battle");
       add_flag_option(ProxyOptionsMenuItemID::EP3_UNMASK_WHISPERS, Client::Flag::PROXY_EP3_UNMASK_WHISPERS,
-          "Unmask whispers", "Show contents of\nwhisper messages even\nif they are not for\nyou");
+          "Unmask whispers", "Show contents of\nwhisper messages\neven if they are not\nfor you");
     }
   }
   if (s->proxy_allow_save_files) {
