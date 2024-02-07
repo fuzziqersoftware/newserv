@@ -1,5 +1,7 @@
 #include "RulerServer.hh"
 
+#include <optional>
+
 #include "Server.hh"
 
 using namespace std;
