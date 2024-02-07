@@ -2564,7 +2564,7 @@ static void on_10(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
           send_open_quest_file(c, q->name, vq->bin_filename(), xb_filename, vq->quest_number, type, vq->bin_contents);
           send_open_quest_file(c, q->name, vq->dat_filename(), xb_filename, vq->quest_number, type, vq->dat_contents);
           if (vq->pvr_contents) {
-            send_open_quest_file(c, q->name, vq->dat_filename(), xb_filename, vq->quest_number, type, vq->pvr_contents);
+            send_open_quest_file(c, q->name, vq->pvr_filename(), xb_filename, vq->quest_number, type, vq->pvr_contents);
           }
         }
       }

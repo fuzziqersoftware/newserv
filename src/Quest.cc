@@ -356,6 +356,14 @@ string VersionedQuest::dat_filename() const {
   }
 }
 
+string VersionedQuest::pvr_filename() const {
+  if (this->episode == Episode::EP3) {
+    throw logic_error("Episode 3 quests do not have .pvr files");
+  } else {
+    return string_printf("quest%" PRIu32 ".pvr", this->quest_number);
+  }
+}
+
 string VersionedQuest::xb_filename() const {
   if (this->episode == Episode::EP3) {
     throw logic_error("Episode 3 quests do not have Xbox filenames");
@@ -911,9 +919,7 @@ shared_ptr<VersionedQuest> VersionedQuest::create_download_quest(uint8_t overrid
   auto dlq = make_shared<VersionedQuest>(*this);
   dlq->bin_contents = make_shared<string>(encode_download_quest_data(compressed_bin, decompressed_bin.size()));
   dlq->dat_contents = make_shared<string>(encode_download_quest_data(*this->dat_contents));
-  if (this->pvr_contents) {
-    dlq->pvr_contents = make_shared<string>(encode_download_quest_data(*this->pvr_contents));
-  }
+  dlq->pvr_contents = this->pvr_contents;
   dlq->is_dlq_encoded = true;
   return dlq;
 }
