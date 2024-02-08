@@ -3063,7 +3063,8 @@ void send_ep3_game_details(shared_ptr<Client> c, shared_ptr<Lobby> l) {
   }
 }
 
-void send_ep3_set_tournament_player_decks(shared_ptr<Client> c) {
+template <typename CmdT>
+void send_ep3_set_tournament_player_decks_t(shared_ptr<Client> c) {
   auto s = c->require_server_state();
   auto l = c->require_lobby();
 
@@ -3073,7 +3074,7 @@ void send_ep3_set_tournament_player_decks(shared_ptr<Client> c) {
     throw runtime_error("tournament is deleted");
   }
 
-  G_SetTournamentPlayerDecks_Ep3_6xB4x3D cmd;
+  CmdT cmd;
   cmd.rules = tourn->get_rules();
   cmd.map_number = tourn->get_map()->map_number;
   cmd.player_slot = 0xFF;
@@ -3183,6 +3184,14 @@ void send_ep3_tournament_match_result(shared_ptr<Lobby> l, uint32_t meseta_rewar
     send_text_message_printf(l, "$C5TOURN/%" PRIX32 "/%zu WIN %c",
         tourn->get_menu_item_id(), match->round_num,
         match->winner_team == match->preceding_a->winner_team ? 'A' : 'B');
+  }
+}
+
+void send_ep3_set_tournament_player_decks(shared_ptr<Client> c) {
+  if (c->version() == Version::GC_EP3_NTE) {
+    send_ep3_set_tournament_player_decks_t<G_SetTournamentPlayerDecks_Ep3NTE_6xB4x3D>(c);
+  } else {
+    send_ep3_set_tournament_player_decks_t<G_SetTournamentPlayerDecks_Ep3_6xB4x3D>(c);
   }
 }
 

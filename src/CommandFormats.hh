@@ -6701,26 +6701,41 @@ struct G_SetPlayerSubstatus_Ep3_6xB5x3C {
 // This is sent before the counter sequence in a tournament game, to reserve the
 // player and COM slots and set the map number.
 
+struct G_SetTournamentPlayerDecks_Ep3_6xB4x3D_Entry {
+  /* 00 */ uint8_t type = 0; // 0 = no player, 1 = human, 2 = COM
+  /* 01 */ pstring<TextEncoding::MARKED, 0x10> player_name;
+  /* 11 */ pstring<TextEncoding::MARKED, 0x10> deck_name; // Only used for COM players
+  /* 21 */ parray<uint8_t, 5> unknown_a1;
+  /* 26 */ parray<le_uint16_t, 0x1F> card_ids; // Can be blank for human players
+  /* 64 */ uint8_t client_id = 0; // Unused for COMs
+  /* 65 */ uint8_t unknown_a4 = 0;
+  /* 66 */ le_uint16_t unknown_a2 = 0;
+  /* 68 */ le_uint16_t unknown_a3 = 0;
+  /* 6A */
+} __packed__;
+
+struct G_SetTournamentPlayerDecks_Ep3NTE_6xB4x3D {
+  /* 0000 */ G_CardBattleCommandHeader header = {0xB4, sizeof(G_SetTournamentPlayerDecks_Ep3NTE_6xB4x3D) / 4, 0, 0x3D, 0, 0, 0};
+  /* 0008 */ Episode3::Rules rules;
+  /* 0014 */ parray<G_SetTournamentPlayerDecks_Ep3_6xB4x3D_Entry, 4> entries;
+  /* 01BC */ le_uint32_t map_number = 0;
+  /* 01C0 */ uint8_t player_slot = 0; // Which deck slot is editable by the client
+  /* 01C1 */ uint8_t unknown_a3 = 0;
+  /* 01C2 */ uint8_t unknown_a4 = 0;
+  /* 01C3 */ uint8_t unknown_a5 = 0;
+  /* 01C4 */
+} __packed__;
+
 struct G_SetTournamentPlayerDecks_Ep3_6xB4x3D {
-  G_CardBattleCommandHeader header = {0xB4, sizeof(G_SetTournamentPlayerDecks_Ep3_6xB4x3D) / 4, 0, 0x3D, 0, 0, 0};
-  Episode3::Rules rules;
-  struct Entry {
-    uint8_t type = 0; // 0 = no player, 1 = human, 2 = COM
-    pstring<TextEncoding::MARKED, 0x10> player_name;
-    pstring<TextEncoding::MARKED, 0x10> deck_name; // Only used for COM players
-    parray<uint8_t, 5> unknown_a1;
-    parray<le_uint16_t, 0x1F> card_ids; // Can be blank for human players
-    uint8_t client_id = 0; // Unused for COMs
-    uint8_t unknown_a4 = 0;
-    le_uint16_t unknown_a2 = 0;
-    le_uint16_t unknown_a3 = 0;
-  } __packed__;
-  parray<Entry, 4> entries;
-  le_uint32_t map_number = 0;
-  uint8_t player_slot = 0; // Which deck slot is editable by the client
-  uint8_t unknown_a3 = 0;
-  uint8_t unknown_a4 = 0;
-  uint8_t unknown_a5 = 0;
+  /* 0000 */ G_CardBattleCommandHeader header = {0xB4, sizeof(G_SetTournamentPlayerDecks_Ep3_6xB4x3D) / 4, 0, 0x3D, 0, 0, 0};
+  /* 0008 */ Episode3::Rules rules;
+  /* 001C */ parray<G_SetTournamentPlayerDecks_Ep3_6xB4x3D_Entry, 4> entries;
+  /* 01C4 */ le_uint32_t map_number = 0;
+  /* 01C8 */ uint8_t player_slot = 0; // Which deck slot is editable by the client
+  /* 01C9 */ uint8_t unknown_a3 = 0;
+  /* 01CA */ uint8_t unknown_a4 = 0;
+  /* 01CB */ uint8_t unknown_a5 = 0;
+  /* 01CC */
 } __packed__;
 
 // 6xB5x3E: Make card auction bid

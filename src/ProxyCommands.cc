@@ -994,11 +994,20 @@ static HandlerResult S_6x(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t, 
 
       if (ses->config.check_flag(Client::Flag::PROXY_EP3_INFINITE_TIME_ENABLED) && (header.subcommand == 0xB4)) {
         if (header.subsubcommand == 0x3D) {
-          auto& cmd = check_size_t<G_SetTournamentPlayerDecks_Ep3_6xB4x3D>(data);
-          if (cmd.rules.overall_time_limit || cmd.rules.phase_time_limit) {
-            cmd.rules.overall_time_limit = 0;
-            cmd.rules.phase_time_limit = 0;
-            modified = true;
+          if (ses->version() == Version::GC_EP3_NTE) {
+            auto& cmd = check_size_t<G_SetTournamentPlayerDecks_Ep3NTE_6xB4x3D>(data);
+            if (cmd.rules.overall_time_limit || cmd.rules.phase_time_limit) {
+              cmd.rules.overall_time_limit = 0;
+              cmd.rules.phase_time_limit = 0;
+              modified = true;
+            }
+          } else {
+            auto& cmd = check_size_t<G_SetTournamentPlayerDecks_Ep3_6xB4x3D>(data);
+            if (cmd.rules.overall_time_limit || cmd.rules.phase_time_limit) {
+              cmd.rules.overall_time_limit = 0;
+              cmd.rules.phase_time_limit = 0;
+              modified = true;
+            }
           }
         } else if (header.subsubcommand == 0x05) {
           if (ses->version() == Version::GC_EP3_NTE) {
