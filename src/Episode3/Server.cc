@@ -2596,7 +2596,7 @@ void Server::compute_losing_team_id_and_add_winner_flags(uint32_t flags) {
     // First, check which team has more dead SCs
     for (size_t z = 0; z < 4; z++) {
       auto ps = this->player_states[z];
-      if (!ps) {
+      if (ps) {
         auto sc_card = ps->get_sc_card();
         if (sc_card && (sc_card->card_flags & 2)) {
           team_counts.at(ps->get_team_id())++;
@@ -2615,7 +2615,7 @@ void Server::compute_losing_team_id_and_add_winner_flags(uint32_t flags) {
       team_counts[1] = 0;
       for (size_t z = 0; z < 4; z++) {
         auto ps = this->player_states[z];
-        if (!ps) {
+        if (ps) {
           auto sc_card = ps->get_sc_card();
           if (sc_card) {
             team_counts.at(ps->get_team_id()) += sc_card->get_current_hp();
@@ -2636,7 +2636,7 @@ void Server::compute_losing_team_id_and_add_winner_flags(uint32_t flags) {
     team_counts[1] = 0;
     for (size_t z = 0; z < 4; z++) {
       auto ps = this->player_states[z];
-      if (!ps) {
+      if (ps) {
         team_counts.at(ps->get_team_id()) += ps->stats.num_opponent_cards_destroyed;
       }
     }
@@ -2653,7 +2653,7 @@ void Server::compute_losing_team_id_and_add_winner_flags(uint32_t flags) {
     team_counts[1] = 0;
     for (size_t z = 0; z < 4; z++) {
       auto ps = this->player_states[z];
-      if (!ps) {
+      if (ps) {
         team_counts.at(ps->get_team_id()) += ps->stats.damage_given;
       }
     }
@@ -2671,7 +2671,7 @@ void Server::compute_losing_team_id_and_add_winner_flags(uint32_t flags) {
       team_counts[0] = 0;
       for (size_t z = 0; z < 4; z++) {
         auto ps = this->player_states[z];
-        if (!ps) {
+        if (ps) {
           team_counts.at(ps->get_team_id()) += ps->roll_dice(1);
         }
       }
@@ -2688,7 +2688,7 @@ void Server::compute_losing_team_id_and_add_winner_flags(uint32_t flags) {
 
   for (size_t z = 0; z < 4; z++) {
     auto ps = this->player_states[z];
-    if (!ps) {
+    if (ps) {
       if (losing_team_id != ps->get_team_id()) {
         ps->assist_flags |= winner_flags;
       }
