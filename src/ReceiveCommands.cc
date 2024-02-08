@@ -1332,11 +1332,18 @@ static bool start_ep3_battle_table_game_if_ready(shared_ptr<Lobby> l, int16_t ta
   // Figure out which clients are at this table. If any client has declined, we
   // never start a match, but we may start a match even if all clients have not
   // yet accepted (in case of a tournament match).
+  Version base_version = Version::UNKNOWN;
   unordered_map<size_t, shared_ptr<Client>> table_clients;
   bool all_clients_accepted = true;
   for (const auto& c : l->clients) {
     if (!c || (c->card_battle_table_number != table_number)) {
       continue;
+    }
+    // Prevent match from starting unless all players are on the same version
+    if (base_version == Version::UNKNOWN) {
+      base_version = c->version();
+    } else if (base_version != c->version()) {
+      return false;
     }
     if (c->card_battle_table_seat_number >= 4) {
       throw runtime_error("invalid seat number");

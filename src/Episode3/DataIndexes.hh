@@ -999,7 +999,7 @@ struct RulesTrial {
   /* 0C */
 
   RulesTrial() = default;
-  explicit RulesTrial(const Rules&);
+  RulesTrial(const Rules&);
   operator Rules() const;
 } __attribute__((packed));
 

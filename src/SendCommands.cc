@@ -2775,14 +2775,11 @@ void send_ep3_rank_update(shared_ptr<Client> c) {
 }
 
 void send_ep3_card_battle_table_state(shared_ptr<Lobby> l, uint16_t table_number) {
-  S_CardBattleTableState_Ep3_E4 cmd;
-  for (size_t z = 0; z < 4; z++) {
-    cmd.entries[z].state = 0;
-    cmd.entries[z].unknown_a1 = 0;
-    cmd.entries[z].guild_card_number = 0;
-  }
+  S_CardBattleTableState_Ep3_E4 cmd_nte;
+  S_CardBattleTableState_Ep3_E4 cmd_final;
 
-  set<shared_ptr<Client>> clients;
+  set<shared_ptr<Client>> clients_nte;
+  set<shared_ptr<Client>> clients_final;
   for (const auto& c : l->clients) {
     if (!c) {
       continue;
@@ -2791,17 +2788,23 @@ void send_ep3_card_battle_table_state(shared_ptr<Lobby> l, uint16_t table_number
       if (c->card_battle_table_seat_number > 3) {
         throw runtime_error("invalid battle table seat number");
       }
-      auto& e = cmd.entries[c->card_battle_table_seat_number];
+
+      bool is_trial = (c->version() == Version::GC_EP3_NTE);
+      auto& e = is_trial ? cmd_nte.entries[c->card_battle_table_seat_number] : cmd_final.entries[c->card_battle_table_seat_number];
       if (e.state == 0) {
         e.state = c->card_battle_table_seat_state;
         e.guild_card_number = c->license->serial_number;
+        auto& clients = is_trial ? clients_nte : clients_final;
         clients.emplace(c);
       }
     }
   }
 
-  for (const auto& c : clients) {
-    send_command_t(c, 0xE4, table_number, cmd);
+  for (const auto& c : clients_nte) {
+    send_command_t(c, 0xE4, table_number, cmd_nte);
+  }
+  for (const auto& c : clients_final) {
+    send_command_t(c, 0xE4, table_number, cmd_final);
   }
 }
 
@@ -2911,10 +2914,11 @@ void send_ep3_tournament_entry_list(
   send_command_t(c, is_for_spectator_team_create ? 0xE7 : 0xE2, z, cmd);
 }
 
-void send_ep3_tournament_details(
+template <typename RulesT>
+void send_ep3_tournament_details_t(
     shared_ptr<Client> c,
     shared_ptr<const Episode3::Tournament> tourn) {
-  S_TournamentGameDetails_Ep3_E3 cmd;
+  S_TournamentGameDetailsBase_Ep3_E3<RulesT> cmd;
   auto vm = tourn->get_map()->version(c->language());
   cmd.name.encode(tourn->get_name(), c->language());
   cmd.map_name.encode(vm->map->name.decode(vm->language), c->language());
@@ -2930,6 +2934,16 @@ void send_ep3_tournament_details(
   send_command_t(c, 0xE3, 0x02, cmd);
 }
 
+void send_ep3_tournament_details(
+    shared_ptr<Client> c,
+    shared_ptr<const Episode3::Tournament> tourn) {
+  if (c->version() == Version::GC_EP3_NTE) {
+    send_ep3_tournament_details_t<Episode3::RulesTrial>(c, tourn);
+  } else {
+    send_ep3_tournament_details_t<Episode3::Rules>(c, tourn);
+  }
+}
+
 string ep3_description_for_client(shared_ptr<Client> c) {
   if (!is_ep3(c->version())) {
     throw runtime_error("client is not Episode 3");
@@ -2942,7 +2956,8 @@ string ep3_description_for_client(shared_ptr<Client> c) {
       char_for_language_code(p->inventory.language));
 }
 
-void send_ep3_game_details(shared_ptr<Client> c, shared_ptr<Lobby> l) {
+template <typename RulesT>
+void send_ep3_game_details_t(shared_ptr<Client> c, shared_ptr<Lobby> l) {
 
   shared_ptr<Lobby> primary_lobby;
   if (l->check_flag(Lobby::Flag::IS_SPECTATOR_TEAM)) {
@@ -2955,7 +2970,7 @@ void send_ep3_game_details(shared_ptr<Client> c, shared_ptr<Lobby> l) {
   auto tourn = tourn_match ? tourn_match->tournament.lock() : nullptr;
 
   if (tourn) {
-    S_TournamentGameDetails_Ep3_E3 cmd;
+    S_TournamentGameDetailsBase_Ep3_E3<RulesT> cmd;
     cmd.name.encode(l->name, c->language());
 
     auto vm = tourn->get_map()->version(c->language());
@@ -2974,7 +2989,8 @@ void send_ep3_game_details(shared_ptr<Client> c, shared_ptr<Lobby> l) {
 
     if (primary_lobby) {
       auto serial_number_to_client = primary_lobby->clients_by_serial_number();
-      auto describe_team = [&](S_TournamentGameDetails_Ep3_E3::TeamEntry& team_entry, shared_ptr<const Episode3::Tournament::Team> team) -> void {
+      using TeamEntryT = typename S_TournamentGameDetailsBase_Ep3_E3<RulesT>::TeamEntry;
+      auto describe_team = [&](TeamEntryT& team_entry, shared_ptr<const Episode3::Tournament::Team> team) -> void {
         team_entry.team_name.encode(team->name, c->language());
         for (size_t z = 0; z < team->players.size(); z++) {
           auto& entry = team_entry.players[z];
@@ -3014,7 +3030,7 @@ void send_ep3_game_details(shared_ptr<Client> c, shared_ptr<Lobby> l) {
     send_command_t(c, 0xE3, flag, cmd);
 
   } else {
-    S_GameInformation_Ep3_E1 cmd;
+    S_GameInformationBase_Ep3_E1<RulesT> cmd;
     cmd.game_name.encode(l->name, c->language());
     if (primary_lobby) {
       size_t num_players = 0;
@@ -3043,7 +3059,7 @@ void send_ep3_game_details(shared_ptr<Client> c, shared_ptr<Lobby> l) {
       // spectator count in the info window object. To account for this, we send
       // a mostly-blank E3 to set the spectator count, followed by an E1 with
       // the correct data.
-      S_TournamentGameDetails_Ep3_E3 cmd_E3;
+      S_TournamentGameDetailsBase_Ep3_E3<RulesT> cmd_E3;
       cmd_E3.num_spectators = num_spectators;
       send_command_t(c, 0xE3, 0x04, cmd_E3);
 
@@ -3060,6 +3076,14 @@ void send_ep3_game_details(shared_ptr<Client> c, shared_ptr<Lobby> l) {
     }
 
     send_command_t(c, 0xE1, flag, cmd);
+  }
+}
+
+void send_ep3_game_details(shared_ptr<Client> c, shared_ptr<Lobby> l) {
+  if (c->version() == Version::GC_EP3_NTE) {
+    send_ep3_game_details_t<Episode3::RulesTrial>(c, l);
+  } else {
+    send_ep3_game_details_t<Episode3::Rules>(c, l);
   }
 }
 

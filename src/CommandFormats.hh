@@ -2874,7 +2874,8 @@ struct S_TournamentList_Ep3_E0 {
 // used with the E3 command. See the E3 command for descriptions of what each
 // flag value means.
 
-struct S_GameInformation_Ep3_E1 {
+template <typename RulesT>
+struct S_GameInformationBase_Ep3_E1 {
   /* 0004 */ pstring<TextEncoding::MARKED, 0x20> game_name;
   struct PlayerEntry {
     pstring<TextEncoding::ASCII, 0x10> name; // From disp.name
@@ -2882,9 +2883,14 @@ struct S_GameInformation_Ep3_E1 {
   } __packed__;
   /* 0024 */ parray<PlayerEntry, 4> player_entries;
   /* 00E4 */ pstring<TextEncoding::MARKED, 0x20> map_name;
-  /* 0104 */ Episode3::Rules rules;
+  /* 0104 */ RulesT rules;
   /* 0118 */ parray<PlayerEntry, 8> spectator_entries;
   /* 0298 */
+} __packed__;
+
+struct S_GameInformation_Ep3NTE_E1 : S_GameInformationBase_Ep3_E1<Episode3::RulesTrial> {
+} __packed__;
+struct S_GameInformation_Ep3_E1 : S_GameInformationBase_Ep3_E1<Episode3::Rules> {
 } __packed__;
 
 // E1 (S->C): System file created (BB)
@@ -2973,11 +2979,12 @@ struct S_TournamentEntryList_Ep3_E2 {
 // The 00, 01, and 04 cases don't really make sense, because the E1 command is
 // more appropriate for inspecting non-tournament games.
 
-struct S_TournamentGameDetails_Ep3_E3 {
+template <typename RulesT>
+struct S_TournamentGameDetailsBase_Ep3_E3 {
   // These fields are used only if the Rules pane is shown
   /* 0004 */ pstring<TextEncoding::MARKED, 0x20> name;
   /* 0024 */ pstring<TextEncoding::MARKED, 0x20> map_name;
-  /* 0044 */ Episode3::Rules rules;
+  /* 0044 */ RulesT rules;
 
   // This field is used only if the bracket pane is shown
   struct BracketEntry {
@@ -3007,6 +3014,11 @@ struct S_TournamentGameDetails_Ep3_E3 {
   /* 05BE */ le_uint16_t num_spectators = 0;
   /* 05C0 */ parray<PlayerEntry, 8> spectator_entries;
   /* 0740 */
+} __packed__;
+
+struct S_TournamentGameDetails_Ep3NTE_E3 : S_TournamentGameDetailsBase_Ep3_E3<Episode3::RulesTrial> {
+} __packed__;
+struct S_TournamentGameDetails_Ep3_E3 : S_TournamentGameDetailsBase_Ep3_E3<Episode3::Rules> {
 } __packed__;
 
 // E3 (C->S): Player preview request (BB)
