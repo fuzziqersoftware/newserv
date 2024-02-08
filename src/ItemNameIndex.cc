@@ -224,16 +224,16 @@ std::string ItemNameIndex::describe_item(
     // For armors, add the slots, unit modifiers, and/or DEF/EVP bonuses
   } else if (item.data1[0] == 0x01) {
     if (item.data1[1] == 0x03) { // Units
-      uint16_t modifier = item.data1w[3];
-      if (modifier == 0x0001 || modifier == 0x0002) {
+      int16_t modifier = item.data1w[3];
+      if (modifier == 1 || modifier == 2) {
         ret_tokens.back().append("+");
-      } else if (modifier == 0x0003 || modifier == 0x0004) {
+      } else if (modifier >= 3) {
         ret_tokens.back().append("++");
-      } else if (modifier == 0xFFFF || modifier == 0xFFFE) {
+      } else if (modifier == -1 || modifier == -2) {
         ret_tokens.back().append("-");
-      } else if (modifier == 0xFFFD || modifier == 0xFFFC) {
+      } else if (modifier <= -3) {
         ret_tokens.back().append("--");
-      } else if (modifier != 0x0000) {
+      } else if (modifier != 0) {
         ret_tokens.emplace_back(string_printf("!MD:%04hX", modifier));
       }
 
