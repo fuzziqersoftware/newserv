@@ -150,7 +150,10 @@ shared_ptr<const Server> CardSpecial::server() const {
 
 void CardSpecial::adjust_attack_damage_due_to_conditions(
     shared_ptr<const Card> target_card, int16_t* inout_damage, uint16_t attacker_card_ref) {
-  shared_ptr<const Card> attacker_card = this->server()->card_for_set_card_ref(attacker_card_ref);
+  auto s = this->server();
+  bool is_trial = s->options.is_trial();
+
+  shared_ptr<const Card> attacker_card = s->card_for_set_card_ref(attacker_card_ref);
   auto attack_medium = attacker_card ? attacker_card->action_chain.chain.attack_medium : AttackMedium::UNKNOWN;
 
   for (size_t z = 0; z < 9; z++) {
@@ -158,11 +161,11 @@ void CardSpecial::adjust_attack_damage_due_to_conditions(
     if (cond.type == ConditionType::NONE) {
       continue;
     }
-    if (this->card_ref_has_ability_trap(cond)) {
+    if (!is_trial && this->card_ref_has_ability_trap(cond)) {
       continue;
     }
 
-    if (!this->server()->ruler_server->check_usability_or_apply_condition_for_card_refs(
+    if (!s->ruler_server->check_usability_or_apply_condition_for_card_refs(
             cond.card_ref,
             target_card->get_card_ref(),
             attacker_card_ref,
@@ -173,7 +176,7 @@ void CardSpecial::adjust_attack_damage_due_to_conditions(
 
     switch (cond.type) {
       case ConditionType::WEAK_HIT_BLOCK:
-        if (*inout_damage <= cond.value) {
+        if (!is_trial && (*inout_damage <= cond.value)) {
           *inout_damage = 0;
         }
         break;
@@ -182,30 +185,31 @@ void CardSpecial::adjust_attack_damage_due_to_conditions(
         auto target_ps = target_card->player_state();
         if (target_ps) {
           uint8_t target_team_id = target_ps->get_team_id();
-          int16_t exp_deduction = this->server()->team_exp[target_team_id];
+          int16_t exp_deduction = s->team_exp[target_team_id];
           if (exp_deduction < *inout_damage) {
             *inout_damage = *inout_damage - exp_deduction;
-            this->server()->team_exp[target_team_id] = 0;
+            s->team_exp[target_team_id] = 0;
           } else {
-            this->server()->team_exp[target_team_id] = exp_deduction - *inout_damage;
+            s->team_exp[target_team_id] = exp_deduction - *inout_damage;
             exp_deduction = *inout_damage;
             *inout_damage = 0;
           }
-          this->send_6xB4x06_for_exp_change(
-              target_card, attacker_card_ref, -exp_deduction, true);
+          if (!is_trial) {
+            this->send_6xB4x06_for_exp_change(target_card, attacker_card_ref, -exp_deduction, true);
+          }
           this->compute_team_dice_bonus(target_team_id);
         }
         break;
       }
 
       case ConditionType::UNKNOWN_73:
-        if (cond.value <= *inout_damage) {
+        if (!is_trial && (cond.value <= *inout_damage)) {
           *inout_damage = 0;
         }
         break;
 
       case ConditionType::HALFGUARD:
-        if (cond.value <= *inout_damage) {
+        if (!is_trial && (cond.value <= *inout_damage)) {
           *inout_damage /= 2;
         }
         break;
@@ -635,7 +639,10 @@ void CardSpecial::compute_attack_ap(
     shared_ptr<const Card> target_card,
     int16_t* out_value,
     uint16_t attacker_card_ref) {
-  auto attacker_card = this->server()->card_for_set_card_ref(attacker_card_ref);
+  auto s = this->server();
+  auto is_trial = s->options.is_trial();
+
+  auto attacker_card = s->card_for_set_card_ref(attacker_card_ref);
   AttackMedium attacker_sc_attack_medium = attacker_card
       ? attacker_card->action_chain.chain.attack_medium
       : AttackMedium::UNKNOWN;
@@ -648,8 +655,8 @@ void CardSpecial::compute_attack_ap(
     for (size_t cond_index = 0; cond_index < 9; cond_index++) {
       auto& cond = card->action_chain.conditions[cond_index];
       if (cond.type == ConditionType::NONE ||
-          this->card_ref_has_ability_trap(cond) ||
-          !this->server()->ruler_server->check_usability_or_apply_condition_for_card_refs(
+          (!is_trial && this->card_ref_has_ability_trap(cond)) ||
+          !s->ruler_server->check_usability_or_apply_condition_for_card_refs(
               card->action_chain.conditions[cond_index].card_ref,
               target_card->get_card_ref(),
               attacker_card_ref,
@@ -669,7 +676,7 @@ void CardSpecial::compute_attack_ap(
   };
 
   for (size_t client_id = 0; client_id < 4; client_id++) {
-    auto ps = this->server()->get_player_state(client_id);
+    auto ps = s->get_player_state(client_id);
     if (ps) {
       for (size_t set_index = 0; set_index < 8; set_index++) {
         check_card(ps->get_set_card(set_index));
@@ -678,11 +685,13 @@ void CardSpecial::compute_attack_ap(
     }
   }
 
-  if (attacker_card && attacker_card->get_condition_value(ConditionType::UNKNOWN_7D)) {
-    *out_value = *out_value * 1.5f;
-  }
-  if (target_card && target_card->get_condition_value(ConditionType::UNKNOWN_7D)) {
-    *out_value = 0;
+  if (!is_trial) {
+    if (attacker_card && attacker_card->get_condition_value(ConditionType::UNKNOWN_7D)) {
+      *out_value = *out_value * 1.5f;
+    }
+    if (target_card && target_card->get_condition_value(ConditionType::UNKNOWN_7D)) {
+      *out_value = 0;
+    }
   }
 }
 
@@ -694,6 +703,7 @@ CardSpecial::AttackEnvStats CardSpecial::compute_attack_env_stats(
     uint16_t condition_giver_card_ref) {
   auto s = this->server();
   auto log = s->log_stack("compute_attack_env_stats: ");
+  bool is_trial = s->options.is_trial();
 
   string pa_str = pa.str();
   log.debug("pa=%s, card=@%04hX #%04hX, dice_roll=%hhu, target=@%04hX, condition_giver=@%04hX", pa_str.c_str(), card->get_card_ref(), card->get_card_id(), dice_roll.value, target_card_ref, condition_giver_card_ref);
@@ -712,7 +722,7 @@ CardSpecial::AttackEnvStats CardSpecial::compute_attack_env_stats(
 
   auto ps = card->player_state();
   log.debug("base ps = %hhu", ps->client_id);
-  ast.num_set_cards = ps->count_set_cards();
+  ast.num_set_cards = is_trial ? ps->count_set_cards_for_env_stats_nte() : ps->count_set_cards();
   auto condition_giver_card = s->card_for_set_card_ref(condition_giver_card_ref);
   auto target_card = s->card_for_set_card_ref(target_card_ref);
   if (!target_card) {
@@ -723,7 +733,7 @@ CardSpecial::AttackEnvStats CardSpecial::compute_attack_env_stats(
   for (size_t z = 0; z < 4; z++) {
     auto other_ps = s->get_player_state(z);
     if (other_ps) {
-      ps_num_set_cards += other_ps->count_set_cards();
+      ps_num_set_cards += is_trial ? other_ps->count_set_cards_for_env_stats_nte() : other_ps->count_set_cards();
     }
   }
   ast.total_num_set_cards = ps_num_set_cards;
@@ -738,9 +748,9 @@ CardSpecial::AttackEnvStats CardSpecial::compute_attack_env_stats(
     auto other_ps = s->get_player_state(z);
     if (other_ps) {
       if (target_card_team_id == other_ps->get_team_id()) {
-        target_team_num_set_cards += other_ps->count_set_cards();
+        target_team_num_set_cards += is_trial ? other_ps->count_set_cards_for_env_stats_nte() : other_ps->count_set_cards();
       } else {
-        non_target_team_num_set_cards += other_ps->count_set_cards();
+        non_target_team_num_set_cards += is_trial ? other_ps->count_set_cards_for_env_stats_nte() : other_ps->count_set_cards();
       }
     }
   }
@@ -769,7 +779,7 @@ CardSpecial::AttackEnvStats CardSpecial::compute_attack_env_stats(
   }
   ast.num_item_or_creature_cards_in_hand = num_item_or_creature_cards_in_hand;
 
-  if (s->options.is_trial()) {
+  if (is_trial) {
     ast.num_destroyed_ally_fcs = s->team_num_cards_destroyed[ps->get_team_id()] - card->num_ally_fcs_destroyed_at_set_time;
   } else {
     ast.num_destroyed_ally_fcs = card->num_destroyed_ally_fcs;
@@ -4785,8 +4795,8 @@ void CardSpecial::action_phase_before_for_card(shared_ptr<Card> unknown_p2) {
   }
 }
 
-void CardSpecial::unknown_8024945C(shared_ptr<Card> unknown_p2, const ActionState& existing_as) {
-  this->apply_effects_on_phase_change_t<0x0A, 0x0A>(unknown_p2, this->server()->options.is_trial() ? nullptr : &existing_as);
+void CardSpecial::unknown_8024945C(shared_ptr<Card> unknown_p2, const ActionState* existing_as) {
+  this->apply_effects_on_phase_change_t<0x0A, 0x0A>(unknown_p2, this->server()->options.is_trial() ? nullptr : existing_as);
 }
 
 void CardSpecial::unknown_8024966C(shared_ptr<Card> unknown_p2, const ActionState* existing_as) {
@@ -4937,7 +4947,8 @@ void CardSpecial::check_for_attack_interference(shared_ptr<Card> unknown_p2) {
 
 template <uint8_t When1, uint8_t When2, uint8_t When3, uint8_t When4>
 void CardSpecial::unknown_t2(shared_ptr<Card> unknown_p2) {
-  auto log = this->server()->log_stack(string_printf("unknown_t2<%02hhX, %02hhX, %02hhX, %02hhX>(@%04hX #%04hX): ", When1, When2, When3, When4, unknown_p2->get_card_ref(), unknown_p2->get_card_id()));
+  auto s = this->server();
+  auto log = s->log_stack(string_printf("unknown_t2<%02hhX, %02hhX, %02hhX, %02hhX>(@%04hX #%04hX): ", When1, When2, When3, When4, unknown_p2->get_card_ref(), unknown_p2->get_card_id()));
 
   ActionState as = this->create_attack_state_from_card_action_chain(unknown_p2);
 
@@ -4948,25 +4959,23 @@ void CardSpecial::unknown_t2(shared_ptr<Card> unknown_p2) {
   }
 
   auto defender_card = unknown_p2;
-  if (unknown_p2->get_definition() &&
-      (unknown_p2->get_definition()->def.type == CardType::ITEM) &&
-      sc_card) {
+  if (unknown_p2->get_definition() && (unknown_p2->get_definition()->def.type == CardType::ITEM) && sc_card) {
     defender_card = sc_card;
   }
 
-  this->apply_defense_conditions(as, When1, unknown_p2, 4);
-  this->apply_defense_conditions(as, When2, unknown_p2, 4);
+  uint8_t apply_defense_conditions_flags = s->options.is_trial() ? 0x1F : 0x04;
+  this->apply_defense_conditions(as, When1, unknown_p2, apply_defense_conditions_flags);
+  this->apply_defense_conditions(as, When2, unknown_p2, apply_defense_conditions_flags);
   if (defender_card) {
-    this->apply_defense_conditions(as, When3, defender_card, 4);
+    this->apply_defense_conditions(as, When3, defender_card, apply_defense_conditions_flags);
   }
 
   for (size_t z = 0; (z < 4 * 9) && (as.target_card_refs[z] != 0xFFFF); z++) {
-    auto set_card = this->server()->card_for_set_card_ref(as.target_card_refs[z]);
+    auto set_card = s->card_for_set_card_ref(as.target_card_refs[z]);
     if (set_card) {
-      ActionState target_as = this->create_defense_state_for_card_pair_action_chains(
-          unknown_p2, set_card);
-      this->apply_defense_conditions(target_as, When1, set_card, 4);
-      this->apply_defense_conditions(target_as, When4, set_card, 4);
+      ActionState target_as = this->create_defense_state_for_card_pair_action_chains(unknown_p2, set_card);
+      this->apply_defense_conditions(target_as, When1, set_card, apply_defense_conditions_flags);
+      this->apply_defense_conditions(target_as, When4, set_card, apply_defense_conditions_flags);
     }
   }
 
@@ -4980,7 +4989,7 @@ void CardSpecial::unknown_t2(shared_ptr<Card> unknown_p2) {
     this->evaluate_and_apply_effects(When2, as.action_card_refs[z], as, unknown_p2->get_card_ref());
   }
   for (size_t z = 0; (z < 4 * 9) && (as.target_card_refs[z] != 0xFFFF); z++) {
-    auto set_card = this->server()->card_for_set_card_ref(as.target_card_refs[z]);
+    auto set_card = s->card_for_set_card_ref(as.target_card_refs[z]);
     if (set_card) {
       ActionState target_as = this->create_defense_state_for_card_pair_action_chains(unknown_p2, set_card);
       this->evaluate_and_apply_effects(When1, set_card->get_card_ref(), target_as, unknown_p2->get_card_ref());
@@ -5031,8 +5040,7 @@ bool CardSpecial::client_has_atk_dice_boost_condition(uint8_t client_id) {
   return false;
 }
 
-void CardSpecial::unknown_8024A6DC(
-    shared_ptr<Card> unknown_p2, shared_ptr<Card> unknown_p3) {
+void CardSpecial::unknown_8024A6DC(shared_ptr<Card> unknown_p2, shared_ptr<Card> unknown_p3) {
   ActionState as = this->create_defense_state_for_card_pair_action_chains(
       unknown_p2, unknown_p3);
   for (size_t z = 0; (z < 8) && (as.action_card_refs[z] != 0xFFFF); z++) {

@@ -319,7 +319,7 @@ public:
   void apply_effects_on_phase_change_t(std::shared_ptr<Card> unknown_p2, const ActionState* existing_as = nullptr);
   void draw_phase_before_for_card(std::shared_ptr<Card> unknown_p2);
   void action_phase_before_for_card(std::shared_ptr<Card> unknown_p2);
-  void unknown_8024945C(std::shared_ptr<Card> unknown_p2, const ActionState& existing_as);
+  void unknown_8024945C(std::shared_ptr<Card> unknown_p2, const ActionState* existing_as);
   void unknown_8024966C(std::shared_ptr<Card> unknown_p2, const ActionState* existing_as);
   static std::shared_ptr<Card> sc_card_for_card(std::shared_ptr<Card> unknown_p2);
   void unknown_8024A9D8(const ActionState& pa, uint16_t action_card_ref);

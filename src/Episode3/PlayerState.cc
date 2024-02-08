@@ -511,20 +511,22 @@ void PlayerState::compute_total_set_cards_cost() {
   }
 }
 
+size_t PlayerState::count_set_cards_for_env_stats_nte() const {
+  size_t ret = 0;
+  for (size_t set_index = 0; set_index < 8; set_index++) {
+    if (this->card_refs[8 + set_index] != 0xFFFF) {
+      ret++;
+    }
+  }
+  return ret;
+}
+
 size_t PlayerState::count_set_cards() const {
   size_t ret = 0;
-  if (this->server()->options.is_trial()) {
-    for (size_t set_index = 0; set_index < 8; set_index++) {
-      if (this->card_refs[8 + set_index] != 0xFFFF) {
-        ret++;
-      }
-    }
-  } else {
-    for (size_t set_index = 0; set_index < 8; set_index++) {
-      auto card = this->set_cards[set_index];
-      if (card && !(card->card_flags & 2)) {
-        ret++;
-      }
+  for (size_t set_index = 0; set_index < 8; set_index++) {
+    auto card = this->set_cards[set_index];
+    if (card && !(card->card_flags & 2)) {
+      ret++;
     }
   }
   return ret;

@@ -34,10 +34,11 @@ public:
       int16_t value,
       int8_t dice_roll_value,
       int8_t random_percent);
-  void apply_ap_adjust_assists_to_attack(
+  void apply_ap_and_tp_adjust_assists_to_attack(
       std::shared_ptr<const Card> attacker_card,
       int16_t* inout_attacker_ap,
-      int16_t* in_defense_power) const;
+      int16_t* in_defense_power,
+      int16_t* inout_attacker_tp) const;
   bool card_type_is_sc_or_creature() const;
   bool check_card_flag(uint32_t flags) const;
   void commit_attack(

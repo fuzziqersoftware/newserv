@@ -53,6 +53,7 @@ public:
   uint16_t card_ref_for_hand_index(size_t hand_index) const;
   int16_t compute_attack_or_defense_atk_costs(const ActionState& pa) const;
   void compute_total_set_cards_cost();
+  size_t count_set_cards_for_env_stats_nte() const;
   size_t count_set_cards() const;
   size_t count_set_refs() const;
   void discard_all_assist_cards_from_hand();

@@ -853,11 +853,7 @@ void Server::draw_phase_after() {
         }
       }
       if (no_winner_specified) {
-        if (this->options.is_trial()) {
-          throw runtime_error("unimplemented NTE condition");
-        } else {
-          this->compute_losing_team_id_and_add_winner_flags(0);
-        }
+        this->compute_losing_team_id_and_add_winner_flags(0);
       }
       this->round_num--;
       this->set_battle_ended();
@@ -2578,54 +2574,59 @@ void Server::handle_CAx49_card_counts(shared_ptr<Client>, const string& data) {
 }
 
 void Server::compute_losing_team_id_and_add_winner_flags(uint32_t flags) {
-  for (size_t z = 0; z < 4; z++) {
-    auto ps = this->player_states[z];
-    if (ps) {
-      ps->assist_flags &= ~(AssistFlag::HAS_WON_BATTLE |
-          AssistFlag::WINNER_DECIDED_BY_DEFEAT |
-          AssistFlag::BATTLE_DID_NOT_END_DUE_TO_TIME_LIMIT);
+  bool is_trial = this->options.is_trial();
+
+  if (!is_trial) {
+    for (size_t z = 0; z < 4; z++) {
+      auto ps = this->player_states[z];
+      if (ps) {
+        ps->assist_flags &= ~(AssistFlag::HAS_WON_BATTLE |
+            AssistFlag::WINNER_DECIDED_BY_DEFEAT |
+            AssistFlag::BATTLE_DID_NOT_END_DUE_TO_TIME_LIMIT);
+      }
     }
   }
 
-  uint32_t flags_to_add = flags | AssistFlag::HAS_WON_BATTLE | AssistFlag::WINNER_DECIDED_BY_DEFEAT;
+  uint32_t winner_flags = flags | AssistFlag::HAS_WON_BATTLE | AssistFlag::WINNER_DECIDED_BY_DEFEAT;
 
-  // First, check which team has more dead SCs
   int8_t losing_team_id = -1;
-  uint32_t team_counts[2] = {0, 0};
-  for (size_t z = 0; z < 4; z++) {
-    auto ps = this->player_states[z];
-    if (!ps) {
-      continue;
-    }
-    auto sc_card = ps->get_sc_card();
-    if (sc_card && (sc_card->card_flags & 2)) {
-      team_counts[ps->get_team_id()]++;
-    }
-  }
-  if (team_counts[1] < team_counts[0]) {
-    losing_team_id = 0;
-  } else if (team_counts[0] < team_counts[1]) {
-    losing_team_id = 1;
-  }
+  array<uint32_t, 2> team_counts = {0, 0};
 
-  // If the SC counts match, break ties by remaining SC HP
-  if (losing_team_id == -1) {
-    team_counts[0] = 0;
-    team_counts[1] = 0;
+  if (!is_trial) {
+    // First, check which team has more dead SCs
     for (size_t z = 0; z < 4; z++) {
       auto ps = this->player_states[z];
       if (!ps) {
-        continue;
-      }
-      auto sc_card = ps->get_sc_card();
-      if (sc_card) {
-        team_counts[ps->get_team_id()] += sc_card->get_current_hp();
+        auto sc_card = ps->get_sc_card();
+        if (sc_card && (sc_card->card_flags & 2)) {
+          team_counts.at(ps->get_team_id())++;
+        }
       }
     }
-    if (team_counts[0] < team_counts[1]) {
+    if (team_counts[1] < team_counts[0]) {
       losing_team_id = 0;
-    } else if (team_counts[1] < team_counts[0]) {
+    } else if (team_counts[0] < team_counts[1]) {
       losing_team_id = 1;
+    }
+
+    // If the SC counts match, break ties by remaining SC HP
+    if (losing_team_id == -1) {
+      team_counts[0] = 0;
+      team_counts[1] = 0;
+      for (size_t z = 0; z < 4; z++) {
+        auto ps = this->player_states[z];
+        if (!ps) {
+          auto sc_card = ps->get_sc_card();
+          if (sc_card) {
+            team_counts.at(ps->get_team_id()) += sc_card->get_current_hp();
+          }
+        }
+      }
+      if (team_counts[0] < team_counts[1]) {
+        losing_team_id = 0;
+      } else if (team_counts[1] < team_counts[0]) {
+        losing_team_id = 1;
+      }
     }
   }
 
@@ -2636,9 +2637,8 @@ void Server::compute_losing_team_id_and_add_winner_flags(uint32_t flags) {
     for (size_t z = 0; z < 4; z++) {
       auto ps = this->player_states[z];
       if (!ps) {
-        continue;
+        team_counts.at(ps->get_team_id()) += ps->stats.num_opponent_cards_destroyed;
       }
-      team_counts[ps->get_team_id()] += ps->stats.num_opponent_cards_destroyed;
     }
     if (team_counts[0] < team_counts[1]) {
       losing_team_id = 0;
@@ -2654,9 +2654,8 @@ void Server::compute_losing_team_id_and_add_winner_flags(uint32_t flags) {
     for (size_t z = 0; z < 4; z++) {
       auto ps = this->player_states[z];
       if (!ps) {
-        continue;
+        team_counts.at(ps->get_team_id()) += ps->stats.damage_given;
       }
-      team_counts[ps->get_team_id()] += ps->stats.damage_given;
     }
     if (team_counts[0] < team_counts[1]) {
       losing_team_id = 0;
@@ -2673,9 +2672,8 @@ void Server::compute_losing_team_id_and_add_winner_flags(uint32_t flags) {
       for (size_t z = 0; z < 4; z++) {
         auto ps = this->player_states[z];
         if (!ps) {
-          continue;
+          team_counts.at(ps->get_team_id()) += ps->roll_dice(1);
         }
-        team_counts[ps->get_team_id()] += ps->roll_dice(1);
       }
       team_counts[0] *= this->team_client_count[1];
       team_counts[1] *= this->team_client_count[0];
@@ -2685,18 +2683,19 @@ void Server::compute_losing_team_id_and_add_winner_flags(uint32_t flags) {
         losing_team_id = 1;
       }
     }
-    flags_to_add = flags | AssistFlag::HAS_WON_BATTLE | AssistFlag::WINNER_DECIDED_BY_RANDOM;
+    winner_flags = flags | AssistFlag::HAS_WON_BATTLE | AssistFlag::WINNER_DECIDED_BY_RANDOM;
   }
 
   for (size_t z = 0; z < 4; z++) {
     auto ps = this->player_states[z];
     if (!ps) {
-      continue;
+      if (losing_team_id != ps->get_team_id()) {
+        ps->assist_flags |= winner_flags;
+      }
+      if (!is_trial || (losing_team_id != ps->get_team_id())) {
+        ps->update_hand_and_equip_state_and_send_6xB4x02_if_needed();
+      }
     }
-    if (losing_team_id != ps->get_team_id()) {
-      ps->assist_flags |= flags_to_add;
-    }
-    ps->update_hand_and_equip_state_and_send_6xB4x02_if_needed();
   }
 }
 
@@ -2769,7 +2768,7 @@ void Server::unknown_8023EEF4() {
       this->attack_cards[this->unknown_a14]->compute_action_chain_results(1, 0);
       this->attack_cards[this->unknown_a14]->unknown_80236374(this->attack_cards[this->unknown_a14], &as);
       if (!this->attack_cards[this->unknown_a14]->action_chain.check_flag(0x40)) {
-        this->card_special->unknown_8024945C(this->attack_cards[this->unknown_a14], as);
+        this->card_special->unknown_8024945C(this->attack_cards[this->unknown_a14], &as);
       }
       this->attack_cards[this->unknown_a14]->compute_action_chain_results(1, 0);
       this->attack_cards[this->unknown_a14]->unknown_80236374(this->attack_cards[this->unknown_a14], &as);
@@ -3038,16 +3037,32 @@ void Server::unknown_8023EE48() {
 }
 
 void Server::unknown_8023EE80() {
-  auto log = this->log_stack("unknown_8023EE80: ");
+  bool is_trial = this->options.is_trial();
+
   if (this->unknown_a14 < this->num_pending_attacks_with_cards) {
-    log.debug("applying first attack result");
     this->attack_cards[this->unknown_a14]->apply_attack_result();
+    if (is_trial) {
+      for (size_t z = 0; z < 4; z++) {
+        auto ps = this->player_states[z];
+        if (ps) {
+          ps->unknown_8023C110();
+        }
+      }
+    }
     this->unknown_a14++;
   }
+
   this->check_for_battle_end();
-  this->copy_player_states_to_prev_states();
-  this->unknown_8023EEF4();
-  this->send_set_card_updates_and_6xB4x04_if_needed();
+
+  if (is_trial) {
+    this->unknown_8023EEF4();
+    this->update_battle_state_flags_and_send_6xB4x03_if_needed();
+    this->send_6xB4x02_for_all_players_if_needed();
+  } else {
+    this->copy_player_states_to_prev_states();
+    this->unknown_8023EEF4();
+    this->send_set_card_updates_and_6xB4x04_if_needed();
+  }
 }
 
 void Server::unknown_802402F4() {

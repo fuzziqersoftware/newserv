@@ -118,8 +118,8 @@ struct ActionChain {
   /* 1D */ int8_t damage_multiplier;
   /* 1E */ uint8_t attack_number;
   /* 1F */ int8_t tp_effect_bonus;
-  /* 20 */ uint8_t unused1;
-  /* 21 */ uint8_t unused2;
+  /* 20 */ int8_t physical_attack_bonus_nte;
+  /* 21 */ int8_t tech_attack_bonus_nte;
   /* 22 */ int8_t card_ap;
   /* 23 */ int8_t card_tp;
   /* 24 */ le_uint32_t flags;
@@ -190,8 +190,8 @@ struct ActionChainWithCondsTrial {
   /* 001D */ int8_t damage_multiplier;
   /* 001E */ uint8_t attack_number;
   /* 001F */ int8_t tp_effect_bonus;
-  /* 0020 */ uint8_t unused1;
-  /* 0021 */ uint8_t unused2;
+  /* 0020 */ int8_t physical_attack_bonus_nte;
+  /* 0021 */ int8_t tech_attack_bonus_nte;
   /* 0022 */ int8_t card_ap;
   /* 0023 */ int8_t card_tp;
   /* 0024 */ le_uint32_t flags;

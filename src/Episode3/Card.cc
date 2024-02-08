@@ -221,31 +221,62 @@ ssize_t Card::apply_abnormal_condition(
   return cond_index;
 }
 
-void Card::apply_ap_adjust_assists_to_attack(
+void Card::apply_ap_and_tp_adjust_assists_to_attack(
     shared_ptr<const Card> attacker_card,
     int16_t* inout_attacker_ap,
-    int16_t* in_defense_power) const {
+    int16_t* in_defense_power,
+    int16_t* inout_attacker_tp) const {
+  auto s = this->server();
+  bool is_trial = s->options.is_trial();
+
   uint8_t client_id = attacker_card->get_client_id();
-  size_t num_assists = this->server()->assist_server->compute_num_assist_effects_for_client(client_id);
+  size_t num_assists = s->assist_server->compute_num_assist_effects_for_client(client_id);
   for (size_t z = 0; z < num_assists; z++) {
-    auto eff = this->server()->assist_server->get_active_assist_by_index(z);
-    if ((eff == AssistEffect::FIX) &&
-        attacker_card &&
-        (attacker_card->def_entry->def.type != CardType::HUNTERS_SC) &&
-        (attacker_card->def_entry->def.type != CardType::ARKZ_SC)) {
-      *inout_attacker_ap = 2;
-    } else if ((eff == AssistEffect::SILENT_COLOSSEUM) &&
-        (*inout_attacker_ap - *in_defense_power >= 7)) {
-      *inout_attacker_ap = 0;
+    switch (s->assist_server->get_active_assist_by_index(z)) {
+      case AssistEffect::POWERLESS_RAIN:
+        if (is_trial) {
+          *inout_attacker_ap = max<int16_t>(*inout_attacker_ap - 2, 0);
+        }
+        break;
+      case AssistEffect::BRAVE_WIND:
+        if (is_trial) {
+          *inout_attacker_ap = max<int16_t>(*inout_attacker_ap + 2, 0);
+        }
+        break;
+      case AssistEffect::SILENT_COLOSSEUM:
+        if (*inout_attacker_ap - *in_defense_power >= 7) {
+          *inout_attacker_ap = 0;
+        }
+        break;
+      case AssistEffect::INFLUENCE:
+        if (is_trial) {
+          *inout_attacker_ap += attacker_card->player_state()->count_set_cards_for_env_stats_nte();
+        }
+        break;
+      case AssistEffect::FIX:
+        if (!is_trial && attacker_card && !attacker_card->def_entry->def.is_sc()) {
+          *inout_attacker_ap = 2;
+        }
+        break;
+      default:
+        break;
     }
   }
 
-  num_assists = this->server()->assist_server->compute_num_assist_effects_for_client(this->client_id);
+  num_assists = s->assist_server->compute_num_assist_effects_for_client(this->client_id);
   for (size_t z = 0; z < num_assists; z++) {
-    auto eff = this->server()->assist_server->get_active_assist_by_index(z);
-    if ((eff == AssistEffect::AP_ABSORPTION) &&
-        (attacker_card->action_chain.chain.attack_medium == AttackMedium::PHYSICAL)) {
-      *inout_attacker_ap = 0;
+    auto eff = s->assist_server->get_active_assist_by_index(z);
+    if (eff == AssistEffect::AP_ABSORPTION) {
+      if (is_trial) {
+        if (attacker_card->action_chain.chain.attack_medium == AttackMedium::TECH) {
+          *inout_attacker_ap = *inout_attacker_ap + 2;
+        } else if (attacker_card->action_chain.chain.attack_medium == AttackMedium::PHYSICAL) {
+          *inout_attacker_tp = *inout_attacker_ap;
+          *inout_attacker_ap = 0;
+        }
+      } else if (attacker_card->action_chain.chain.attack_medium == AttackMedium::PHYSICAL) {
+        *inout_attacker_ap = 0;
+      }
     }
   }
 }
@@ -266,26 +297,30 @@ void Card::commit_attack(
     G_ApplyConditionEffect_Ep3_6xB4x06* cmd,
     size_t strike_number,
     int16_t* out_effective_damage) {
-  auto log = this->server()->log_stack(string_printf("commit_attack(@%04hX #%04hX, @%04hX #%04hX => %hd (str%zu)): ", this->get_card_ref(), this->get_card_id(), attacker_card->get_card_ref(), attacker_card->get_card_id(), damage, strike_number));
+  auto s = this->server();
+  auto log = s->log_stack(string_printf("commit_attack(@%04hX #%04hX, @%04hX #%04hX => %hd (str%zu)): ", this->get_card_ref(), this->get_card_id(), attacker_card->get_card_ref(), attacker_card->get_card_id(), damage, strike_number));
+  bool is_trial = s->options.is_trial();
 
   int16_t effective_damage = damage;
-  this->server()->card_special->adjust_attack_damage_due_to_conditions(
+  s->card_special->adjust_attack_damage_due_to_conditions(
       this->shared_from_this(), &effective_damage, attacker_card->get_card_ref());
   log.debug("adjusted damage = %hd", effective_damage);
 
-  size_t num_assists = this->server()->assist_server->compute_num_assist_effects_for_client(this->client_id);
+  size_t num_assists = s->assist_server->compute_num_assist_effects_for_client(this->client_id);
   for (size_t z = 0; z < num_assists; z++) {
-    auto eff = this->server()->assist_server->get_active_assist_by_index(z);
+    auto eff = s->assist_server->get_active_assist_by_index(z);
     if ((eff == AssistEffect::RANSOM) &&
         (attacker_card->action_chain.chain.attack_medium == AttackMedium::PHYSICAL)) {
       uint8_t team_id = this->player_state()->get_team_id();
-      int16_t exp_amount = clamp<int16_t>(this->server()->team_exp[team_id], 0, effective_damage);
-      this->server()->team_exp[team_id] -= exp_amount;
+      int16_t exp_amount = clamp<int16_t>(s->team_exp[team_id], 0, effective_damage);
+      s->team_exp[team_id] -= exp_amount;
       effective_damage -= exp_amount;
-      this->server()->compute_team_dice_bonus(team_id);
-      this->server()->update_battle_state_flags_and_send_6xB4x03_if_needed();
-      if (cmd) {
-        cmd->effect.ap += exp_amount;
+      if (!is_trial) {
+        s->compute_team_dice_bonus(team_id);
+        s->update_battle_state_flags_and_send_6xB4x03_if_needed();
+        if (cmd) {
+          cmd->effect.ap += exp_amount;
+        }
       }
     }
   }
@@ -329,12 +364,11 @@ void Card::commit_attack(
   cmd_to_send.effect.attacker_card_ref = attacker_card->card_ref;
   cmd_to_send.effect.target_card_ref = this->card_ref;
   cmd_to_send.effect.value = effective_damage;
-  this->server()->send(cmd_to_send);
+  s->send(cmd_to_send);
 
   this->propagate_shared_hp_if_needed();
 
-  if ((this->def_entry->def.type == CardType::HUNTERS_SC) ||
-      (this->def_entry->def.type == CardType::ARKZ_SC)) {
+  if (!is_trial && this->def_entry->def.is_sc()) {
     this->player_state()->stats.sc_damage_taken += effective_damage;
   }
 
@@ -343,8 +377,7 @@ void Card::commit_attack(
   }
 }
 
-int16_t Card::compute_defense_power_for_attacker_card(
-    shared_ptr<const Card> attacker_card) {
+int16_t Card::compute_defense_power_for_attacker_card(shared_ptr<const Card> attacker_card) {
   if (!attacker_card) {
     return 0;
   }
@@ -352,21 +385,19 @@ int16_t Card::compute_defense_power_for_attacker_card(
   this->action_metadata.defense_power = 0;
   this->action_metadata.defense_bonus = 0;
 
+  auto s = this->server();
   for (size_t z = 0; z < this->action_metadata.defense_card_ref_count; z++) {
     if (attacker_card->card_ref != this->action_metadata.original_attacker_card_refs[z]) {
       continue;
     }
-    auto ce = this->server()->definition_for_card_ref(
-        this->action_metadata.defense_card_refs[z]);
+    auto ce = s->definition_for_card_ref(this->action_metadata.defense_card_refs[z]);
     if (ce) {
       this->action_metadata.defense_power += ce->def.hp.stat;
     }
   }
 
-  this->server()->card_special->apply_action_conditions(
-      3, attacker_card, this->shared_from_this(), 0x08, nullptr);
-  this->server()->card_special->apply_action_conditions(
-      3, attacker_card, this->shared_from_this(), 0x10, nullptr);
+  s->card_special->apply_action_conditions(3, attacker_card, this->shared_from_this(), 0x08, nullptr);
+  s->card_special->apply_action_conditions(3, attacker_card, this->shared_from_this(), 0x10, nullptr);
   return this->action_metadata.defense_power + this->action_metadata.defense_bonus;
 }
 
@@ -475,14 +506,16 @@ void Card::execute_attack(shared_ptr<Card> attacker_card) {
     return;
   }
 
-  auto log = this->server()->log_stack(string_printf("execute_attack(@%04X #%04X, @%04X #%04X): ", this->get_card_ref(), this->get_card_id(), attacker_card->get_card_ref(), attacker_card->get_card_id()));
+  auto s = this->server();
+  auto log = s->log_stack(string_printf("execute_attack(@%04X #%04X, @%04X #%04X): ", this->get_card_ref(), this->get_card_id(), attacker_card->get_card_ref(), attacker_card->get_card_id()));
+  bool is_trial = s->options.is_trial();
 
-  this->card_flags = this->card_flags & 0xFFFFFFF3;
+  this->card_flags &= 0xFFFFFFF3;
   int16_t attack_ap = this->action_metadata.attack_bonus;
   int16_t attack_tp = 0;
-  int16_t defense_power = this->compute_defense_power_for_attacker_card(attacker_card);
-  log.debug("ap=%hd, tp=%hd, defense=%hd", attack_ap, attack_tp, defense_power);
-  if ((attack_ap == 0) && !this->action_metadata.check_flag(0x20)) {
+  int16_t defense_power = is_trial ? 0 : this->compute_defense_power_for_attacker_card(attacker_card);
+  log.debug("ap=%hd, tp=%hd", attack_ap, attack_tp);
+  if (!is_trial && (attack_ap == 0) && !this->action_metadata.check_flag(0x20)) {
     log.debug("ap == 0 and flag 0x20 not set");
     return;
   } else {
@@ -494,6 +527,7 @@ void Card::execute_attack(shared_ptr<Card> attacker_card) {
   cmd.effect.attacker_card_ref = attacker_card->card_ref;
   cmd.effect.target_card_ref = this->card_ref;
   if (attacker_card->action_chain.chain.attack_medium == AttackMedium::UNKNOWN_03) {
+    // Probably Resta
     for (size_t strike_num = 0; strike_num < attacker_card->action_chain.chain.strike_count; strike_num++) {
       this->current_hp = min<int16_t>(
           this->current_hp + attacker_card->action_chain.chain.effective_tp,
@@ -502,70 +536,82 @@ void Card::execute_attack(shared_ptr<Card> attacker_card) {
     this->propagate_shared_hp_if_needed();
     cmd.effect.tp = attacker_card->action_chain.chain.effective_tp;
     cmd.effect.value = -cmd.effect.tp;
-    this->server()->send(cmd);
+    s->send(cmd);
 
   } else {
-    uint16_t attacker_card_ref = attacker_card->get_card_ref();
-    this->server()->card_special->compute_attack_ap(
-        this->shared_from_this(), &attack_ap, attacker_card_ref);
+
+    if (!is_trial) {
+      defense_power = this->compute_defense_power_for_attacker_card(attacker_card);
+    }
+    log.debug("ap=%hd, tp=%hd, defense=%hd", attack_ap, attack_tp, defense_power);
+
+    if (is_trial) {
+      attacker_card->compute_action_chain_results(true, false);
+      attack_ap = attacker_card->action_chain.chain.damage;
+      if (this->action_chain.chain.attack_medium == AttackMedium::TECH) {
+        attack_ap += this->action_chain.chain.tech_attack_bonus_nte;
+      } else if (this->action_chain.chain.attack_medium == AttackMedium::PHYSICAL) {
+        attack_ap += this->action_chain.chain.physical_attack_bonus_nte;
+      }
+    }
+
+    s->card_special->compute_attack_ap(this->shared_from_this(), &attack_ap, attacker_card->get_card_ref());
     log.debug("computed ap %hd", attack_ap);
-    this->apply_ap_adjust_assists_to_attack(attacker_card, &attack_ap, &defense_power);
+    this->apply_ap_and_tp_adjust_assists_to_attack(attacker_card, &attack_ap, &defense_power, &attack_tp);
     log.debug("assist adjusts ap=%hd, defense=%hd", attack_ap, defense_power);
+
     int16_t raw_damage = attack_ap - defense_power;
-    // Note: The original code uses attack_tp here, even though it is always
-    // zero at this point
     int16_t preliminary_damage = max<int16_t>(raw_damage, 0) - attack_tp;
     this->last_attack_preliminary_damage = preliminary_damage;
     log.debug("raw_damage=%hd, preliminary_damange=%hd", raw_damage, preliminary_damage);
-    uint16_t targeted_card_ref = this->get_card_ref();
 
     uint32_t unknown_a9 = 0;
-    auto target = this->server()->card_special->compute_replaced_target_based_on_conditions(
-        targeted_card_ref, 1, 0, attacker_card_ref, 0xFFFF, 0, &unknown_a9, 0xFF, 0, 0xFFFF);
+    auto target = s->card_special->compute_replaced_target_based_on_conditions(
+        this->get_card_ref(), 1, 0, attacker_card->get_card_ref(), 0xFFFF, 0, &unknown_a9, 0xFF, nullptr, 0xFFFF);
+
     if (!target) {
       target = this->shared_from_this();
       log.debug("target is not replaced");
     } else {
       log.debug("target replaced with @%04hX #%04hX", target->get_card_ref(), target->get_card_id());
     }
-    if (unknown_a9 != 0) {
-      preliminary_damage = 0;
-      log.debug("a9 nonzero; preliminary_damage = 0");
+
+    if (!is_trial) {
+      if (unknown_a9 != 0) {
+        preliminary_damage = 0;
+        log.debug("a9 nonzero; preliminary_damage = 0");
+      }
+      if (!(this->card_flags & 2) && (!attacker_card || !(attacker_card->card_flags & 2))) {
+        s->card_special->check_for_defense_interference(attacker_card, this->shared_from_this(), &preliminary_damage);
+        log.debug("checked for defense interference");
+      }
     }
 
-    if (!(this->card_flags & 2) &&
-        (!attacker_card || !(attacker_card->card_flags & 2))) {
-      this->server()->card_special->check_for_defense_interference(
-          attacker_card, this->shared_from_this(), &preliminary_damage);
-      log.debug("checked for defense interference");
-    }
-
-    cmd.effect.current_hp = min<int16_t>(attack_ap, 99);
-    cmd.effect.ap = min<int16_t>(defense_power, 99);
+    cmd.effect.current_hp = is_trial ? attack_ap : min<int16_t>(attack_ap, 99);
+    cmd.effect.ap = is_trial ? defense_power : min<int16_t>(defense_power, 99);
     cmd.effect.tp = attack_tp;
-    this->player_state()->stats.num_attacks_taken++;
+
+    auto ps = this->player_state();
+    ps->stats.num_attacks_taken++;
+
     if (!(target->card_flags & 2)) {
       log.debug("flag 2 not set");
       for (size_t strike_num = 0; strike_num < attacker_card->action_chain.chain.strike_count; strike_num++) {
         int16_t final_effective_damage = 0;
-        target->commit_attack(
-            preliminary_damage, attacker_card, &cmd, strike_num, &final_effective_damage);
-        // TODO: Is this the right interpretation? The original code does some
-        // fancy bitwise magic that I didn't bother to decipher, because this
-        // interpretation makes sense based on how the game works.
-        this->player_state()->stats.action_card_negated_damage += max<int16_t>(
-            0, this->current_defense_power - final_effective_damage);
+        target->commit_attack(preliminary_damage, attacker_card, &cmd, strike_num, &final_effective_damage);
+        ps->stats.action_card_negated_damage += max<int16_t>(0, this->current_defense_power - final_effective_damage);
       }
     } else {
       log.debug("flag 2 set; committing zero-damage attack");
       target->commit_attack(0, attacker_card, &cmd, 0, nullptr);
     }
-    if (this != target.get()) {
+
+    if (!is_trial && (this != target.get())) {
       log.debug("target was replaced; committing zero-damage attack on original card");
       this->commit_attack(0, attacker_card, &cmd, 0, nullptr);
     }
 
-    this->server()->send_6xB4x39();
+    s->send_6xB4x39();
   }
 }
 
@@ -1110,30 +1156,29 @@ void Card::compute_action_chain_results(bool apply_action_conditions, bool ignor
 }
 
 void Card::unknown_802380C0() {
+  bool is_trial = this->server()->options.is_trial();
   this->card_flags &= 0xFFFFF7FB;
-  this->action_metadata.clear_flags(0x30);
-  this->action_chain.clear_flags(0x140);
+  this->action_metadata.clear_flags(is_trial ? 0x10 : 0x30);
+  this->action_chain.clear_flags(is_trial ? 0x40 : 0x140);
   this->unknown_80237F98(0);
 }
 
 void Card::unknown_80237F98(bool require_condition_20_or_21) {
+  auto s = this->server();
+
   bool should_send_updates = false;
   for (ssize_t z = 8; z >= 0; z--) {
     if (this->action_chain.conditions[z].type != ConditionType::NONE) {
       if (!require_condition_20_or_21 ||
-          this->server()->card_special->condition_has_when_20_or_21(
-              this->action_chain.conditions[z])) {
+          s->card_special->condition_has_when_20_or_21(this->action_chain.conditions[z])) {
         ActionState as;
         auto& cond = this->action_chain.conditions[z];
-        if (!this->server()->card_special->is_card_targeted_by_condition(
-                cond, as, this->shared_from_this())) {
-          this->server()->card_special->apply_stat_deltas_to_card_from_condition_and_clear_cond(
-              cond, this->shared_from_this());
+        if (!s->card_special->is_card_targeted_by_condition(cond, as, this->shared_from_this())) {
+          s->card_special->apply_stat_deltas_to_card_from_condition_and_clear_cond(cond, this->shared_from_this());
           should_send_updates = true;
         } else if (this->action_chain.conditions[z].remaining_turns == 0) {
           if (--this->action_chain.conditions[z].a_arg_value < 1) {
-            this->server()->card_special->apply_stat_deltas_to_card_from_condition_and_clear_cond(
-                cond, this->shared_from_this());
+            s->card_special->apply_stat_deltas_to_card_from_condition_and_clear_cond(cond, this->shared_from_this());
             should_send_updates = true;
           }
         }
@@ -1142,7 +1187,9 @@ void Card::unknown_80237F98(bool require_condition_20_or_21) {
   }
 
   this->compute_action_chain_results(1, false);
-  this->unknown_80236554(nullptr, nullptr);
+  if (!s->options.is_trial()) {
+    this->unknown_80236554(nullptr, nullptr);
+  }
   if (should_send_updates) {
     this->send_6xB4x4E_4C_4D_if_needed();
   }
@@ -1387,64 +1434,160 @@ void Card::unknown_802362D8(shared_ptr<Card> other_card) {
 }
 
 void Card::apply_attack_result() {
-  auto log = this->server()->log_stack(string_printf("apply_attack_result(@%04hX #%04hX): ", this->get_card_ref(), this->get_card_id()));
+  auto s = this->server();
+  auto ps = this->player_state();
+  bool is_trial = s->options.is_trial();
+
+  auto log = s->log_stack(string_printf("apply_attack_result(@%04hX #%04hX): ", this->get_card_ref(), this->get_card_id()));
   if (!this->action_chain.can_apply_attack()) {
     return;
   }
 
-  if (this->player_state()->stats.max_attack_combo_size < this->action_chain.chain.attack_action_card_ref_count) {
-    this->player_state()->stats.max_attack_combo_size = this->action_chain.chain.attack_action_card_ref_count;
-  }
-
-  ActionState as;
-  as.attacker_card_ref = this->get_card_ref();
-  as.target_card_refs = this->action_chain.chain.target_card_refs;
-  this->server()->replace_targets_due_to_destruction_or_conditions(&as);
-  this->action_chain.chain.target_card_refs = as.target_card_refs;
-  this->action_chain.chain.target_card_ref_count = 0;
-  for (size_t z = 0; z < 4 * 9; z++) {
-    if (this->action_chain.chain.target_card_refs[z] != 0xFFFF) {
-      this->action_chain.chain.target_card_ref_count++;
-    } else {
-      break;
-    }
-  }
-
-  for (size_t z = 0; z < this->action_chain.chain.target_card_ref_count; z++) {
-    shared_ptr<Card> card = this->server()->card_for_set_card_ref(this->action_chain.chain.target_card_refs[z]);
-    if (card) {
-      card->current_defense_power = card->action_metadata.attack_bonus;
-      if (!this->action_chain.check_flag(0x40)) {
-        this->server()->card_special->unknown_8024A6DC(this->shared_from_this(), card);
+  if (is_trial) {
+    if (this->action_chain.check_flag(0x02)) {
+      auto first_target_card = s->card_for_set_card_ref(this->action_chain.chain.target_card_refs[0]);
+      if (first_target_card) {
+        auto first_target_ps = first_target_card->player_state();
+        if (first_target_ps->count_set_cards() == 0) {
+          this->action_chain.clear_target_card_refs();
+          this->action_chain.chain.target_card_refs[0] = first_target_ps->get_sc_card_ref();
+          this->action_chain.chain.target_card_ref_count = 1;
+        }
       }
     }
+
+    ActionChainWithConds temp_chain = this->action_chain;
+    temp_chain.chain.target_card_ref_count = 0;
+
+    for (size_t z = 0; z < this->action_chain.chain.target_card_ref_count; z++) {
+      auto target_card = s->card_for_set_card_ref(this->action_chain.chain.target_card_refs[z]);
+      if (!target_card) {
+        continue;
+      }
+      if (!(target_card->card_flags & 2)) {
+        temp_chain.chain.target_card_refs[temp_chain.chain.target_card_ref_count] = target_card->get_card_ref();
+        temp_chain.chain.target_card_ref_count++;
+      } else if ((target_card->get_definition()->def.type == CardType::ITEM) && !this->action_chain.check_flag(0x02)) {
+        auto target_ps = target_card->player_state();
+        shared_ptr<Card> candidate_card;
+        for (size_t set_index = 0; set_index < 8; set_index++) {
+          auto set_card = target_ps->get_set_card(set_index);
+          if (set_card && (set_card != target_card) && !(set_card->card_flags & 2) && set_card->is_guard_item()) {
+            candidate_card = set_card;
+            break;
+          }
+        }
+        if (!candidate_card) {
+          for (size_t set_index = 0; set_index < 8; set_index++) {
+            auto set_card = target_ps->get_set_card(set_index);
+            if (set_card && (set_card != target_card) && !(set_card->card_flags & 2)) {
+              candidate_card = set_card;
+              break;
+            }
+          }
+        }
+        if (candidate_card) {
+          temp_chain.chain.target_card_refs[temp_chain.chain.target_card_ref_count] = candidate_card->get_card_ref();
+          temp_chain.chain.target_card_ref_count++;
+        } else {
+          auto target_sc = target_ps->get_sc_card();
+          if (!(target_sc->card_flags & 2)) {
+            temp_chain.chain.target_card_refs[temp_chain.chain.target_card_ref_count] = candidate_card->get_card_ref();
+            temp_chain.chain.target_card_ref_count++;
+          }
+        }
+      }
+    }
+
+    this->action_chain.chain.target_card_ref_count = 0;
+    for (size_t z = 0; z < temp_chain.chain.target_card_ref_count; z++) {
+      this->action_chain.add_target_card_ref(temp_chain.chain.target_card_refs[z]);
+    }
+
+    if (!this->action_chain.check_flag(0x40)) {
+      s->card_special->unknown_8024945C(this->shared_from_this(), nullptr);
+    }
+
+    for (size_t z = 0; z < this->action_chain.chain.target_card_ref_count; z++) {
+      auto target_card = s->card_for_set_card_ref(this->action_chain.chain.target_card_refs[z]);
+      if (target_card && !this->action_chain.check_flag(0x40)) {
+        s->card_special->unknown_8024A6DC(this->shared_from_this(), target_card);
+      }
+    }
+
+    this->compute_action_chain_results(true, false);
+    if (!this->action_chain.check_flag(0x40)) {
+      s->card_special->unknown_8024997C(this->shared_from_this());
+    }
+
+    this->compute_action_chain_results(true, false);
+    for (size_t z = 0; z < this->action_chain.chain.target_card_ref_count; z++) {
+      auto target_card = s->card_for_set_card_ref(this->action_chain.chain.target_card_refs[z]);
+      if (target_card) {
+        target_card->execute_attack(this->shared_from_this());
+      }
+    }
+
+  } else {
+    if (ps->stats.max_attack_combo_size < this->action_chain.chain.attack_action_card_ref_count) {
+      ps->stats.max_attack_combo_size = this->action_chain.chain.attack_action_card_ref_count;
+    }
+
+    ActionState as;
+    as.attacker_card_ref = this->get_card_ref();
+    as.target_card_refs = this->action_chain.chain.target_card_refs;
+    s->replace_targets_due_to_destruction_or_conditions(&as);
+    this->action_chain.chain.target_card_refs = as.target_card_refs;
+    this->action_chain.chain.target_card_ref_count = 0;
+    for (size_t z = 0; z < 4 * 9; z++) {
+      if (this->action_chain.chain.target_card_refs[z] != 0xFFFF) {
+        this->action_chain.chain.target_card_ref_count++;
+      } else {
+        break;
+      }
+    }
+
+    for (size_t z = 0; z < this->action_chain.chain.target_card_ref_count; z++) {
+      shared_ptr<Card> card = s->card_for_set_card_ref(this->action_chain.chain.target_card_refs[z]);
+      if (card) {
+        card->current_defense_power = card->action_metadata.attack_bonus;
+        if (!this->action_chain.check_flag(0x40)) {
+          s->card_special->unknown_8024A6DC(this->shared_from_this(), card);
+        }
+      }
+    }
+
+    this->compute_action_chain_results(1, 0);
+    if (!this->action_chain.check_flag(0x40)) {
+      s->card_special->unknown_8024997C(this->shared_from_this());
+    }
+    if (!(this->card_flags & 2)) {
+      this->compute_action_chain_results(1, 0);
+      s->card_special->check_for_attack_interference(this->shared_from_this());
+    }
+    this->compute_action_chain_results(1, 0);
+    this->unknown_80236374(this->shared_from_this(), nullptr);
+    this->unknown_802362D8(this->shared_from_this());
   }
 
-  this->compute_action_chain_results(1, 0);
   if (!this->action_chain.check_flag(0x40)) {
-    this->server()->card_special->unknown_8024997C(this->shared_from_this());
+    s->card_special->unknown_8024A394(this->shared_from_this());
   }
-  if (!(this->card_flags & 2)) {
-    this->compute_action_chain_results(1, 0);
-    this->server()->card_special->check_for_attack_interference(this->shared_from_this());
-  }
-  this->compute_action_chain_results(1, 0);
-  this->unknown_80236374(this->shared_from_this(), nullptr);
-  this->unknown_802362D8(this->shared_from_this());
-  if (!this->action_chain.check_flag(0x40)) {
-    this->server()->card_special->unknown_8024A394(this->shared_from_this());
-  }
-  this->player_state()->stats.num_attacks_given++;
+  ps->stats.num_attacks_given++;
+
   this->action_chain.clear_flags(8);
   this->action_chain.set_flags(4);
   this->card_flags |= 0x200;
   this->action_chain.clear_target_card_refs();
-  for (size_t client_id = 0; client_id < 4; client_id++) {
-    auto ps = this->server()->player_states[client_id];
-    if (ps) {
-      ps->unknown_8023C110();
+  if (!is_trial) {
+    for (size_t client_id = 0; client_id < 4; client_id++) {
+      auto ps = s->player_states[client_id];
+      if (ps) {
+        ps->unknown_8023C110();
+      }
     }
   }
+
   this->send_6xB4x4E_4C_4D_if_needed();
 }
 

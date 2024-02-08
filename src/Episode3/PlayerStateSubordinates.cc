@@ -234,8 +234,8 @@ bool ActionChain::operator==(const ActionChain& other) const {
       (this->damage_multiplier == other.damage_multiplier) &&
       (this->attack_number == other.attack_number) &&
       (this->tp_effect_bonus == other.tp_effect_bonus) &&
-      (this->unused1 == other.unused1) &&
-      (this->unused2 == other.unused2) &&
+      (this->physical_attack_bonus_nte == other.physical_attack_bonus_nte) &&
+      (this->tech_attack_bonus_nte == other.tech_attack_bonus_nte) &&
       (this->card_ap == other.card_ap) &&
       (this->card_tp == other.card_tp) &&
       (this->flags == other.flags) &&
@@ -254,7 +254,7 @@ std::string ActionChain::str() const {
       "attack_action_refs=%s, attack_action_ref_count=%hhu, "
       "medium=%s, target_ref_count=%hhu, subphase=%s, "
       "strikes=%hhu, damage_mult=%hhd, attack_num=%hhu, "
-      "tp_bonus=%hhd, u1=%hhu, u2=%hhu, card_ap=%hhd, "
+      "tp_bonus=%hhd, phys_bonus_nte=%hhu, tech_bonus_nte=%hhu, card_ap=%hhd, "
       "card_tp=%hhd, flags=%08" PRIX32 ", target_refs=%s]",
       this->effective_ap,
       this->effective_tp,
@@ -271,8 +271,8 @@ std::string ActionChain::str() const {
       this->damage_multiplier,
       this->attack_number,
       this->tp_effect_bonus,
-      this->unused1,
-      this->unused2,
+      this->physical_attack_bonus_nte,
+      this->tech_attack_bonus_nte,
       this->card_ap,
       this->card_tp,
       this->flags.load(),
@@ -294,8 +294,8 @@ void ActionChain::clear() {
   this->damage_multiplier = 1;
   this->attack_number = 0xFF;
   this->tp_effect_bonus = 0;
-  this->unused1 = 0;
-  this->unused2 = 0;
+  this->physical_attack_bonus_nte = 0;
+  this->tech_attack_bonus_nte = 0;
   this->card_ap = 0;
   this->card_tp = 0;
   this->flags = 0;
@@ -319,8 +319,8 @@ void ActionChain::clear_FF() {
   this->damage_multiplier = -1;
   this->attack_number = 0xFF;
   this->tp_effect_bonus = -1;
-  this->unused1 = 0xFF;
-  this->unused2 = 0xFF;
+  this->physical_attack_bonus_nte = 0xFF;
+  this->tech_attack_bonus_nte = 0xFF;
   this->card_ap = -1;
   this->card_tp = -1;
   this->flags = 0xFFFFFFFF;
@@ -393,8 +393,8 @@ void ActionChainWithConds::reset() {
   this->chain.effective_tp = 0;
   this->chain.ap_effect_bonus = 0;
   this->chain.tp_effect_bonus = 0;
-  this->chain.unused1 = 0;
-  this->chain.unused2 = 0;
+  this->chain.physical_attack_bonus_nte = 0;
+  this->chain.tech_attack_bonus_nte = 0;
   this->chain.damage = 0;
   this->chain.strike_count = 1;
   this->chain.damage_multiplier = 1;
@@ -525,8 +525,8 @@ ActionChainWithCondsTrial::ActionChainWithCondsTrial(const ActionChainWithConds&
       damage_multiplier(src.chain.damage_multiplier),
       attack_number(src.chain.attack_number),
       tp_effect_bonus(src.chain.tp_effect_bonus),
-      unused1(src.chain.unused1),
-      unused2(src.chain.unused2),
+      physical_attack_bonus_nte(src.chain.physical_attack_bonus_nte),
+      tech_attack_bonus_nte(src.chain.tech_attack_bonus_nte),
       card_ap(src.chain.card_ap),
       card_tp(src.chain.card_tp),
       flags(src.chain.flags),
@@ -550,8 +550,8 @@ ActionChainWithCondsTrial::operator ActionChainWithConds() const {
   ret.chain.damage_multiplier = this->damage_multiplier;
   ret.chain.attack_number = this->attack_number;
   ret.chain.tp_effect_bonus = this->tp_effect_bonus;
-  ret.chain.unused1 = this->unused1;
-  ret.chain.unused2 = this->unused2;
+  ret.chain.physical_attack_bonus_nte = this->physical_attack_bonus_nte;
+  ret.chain.tech_attack_bonus_nte = this->tech_attack_bonus_nte;
   ret.chain.card_ap = this->card_ap;
   ret.chain.card_tp = this->card_tp;
   ret.chain.flags = this->flags;
