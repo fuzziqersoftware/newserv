@@ -77,7 +77,6 @@ public:
       const Location& loc,
       uint8_t target_team_id) const;
   uint8_t get_atk_points() const;
-  uint8_t get_atk_points_nte() const;
   void get_short_status_for_card_index_in_hand(size_t hand_index, CardShortStatus* stat) const;
   std::shared_ptr<DeckState> get_deck();
   uint8_t get_def_points() const;

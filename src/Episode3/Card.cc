@@ -540,12 +540,9 @@ void Card::execute_attack(shared_ptr<Card> attacker_card) {
 
   } else {
 
-    if (!is_trial) {
-      defense_power = this->compute_defense_power_for_attacker_card(attacker_card);
-    }
-    log.debug("ap=%hd, tp=%hd, defense=%hd", attack_ap, attack_tp, defense_power);
-
     if (is_trial) {
+      defense_power = this->compute_defense_power_for_attacker_card(attacker_card);
+      log.debug("ap=%hd, tp=%hd, defense=%hd", attack_ap, attack_tp, defense_power);
       attacker_card->compute_action_chain_results(true, false);
       attack_ap = attacker_card->action_chain.chain.damage;
       if (this->action_chain.chain.attack_medium == AttackMedium::TECH) {
@@ -922,15 +919,19 @@ void Card::compute_action_chain_results(bool apply_action_conditions, bool ignor
       this->action_chain.chain.ap_effect_bonus,
       this->action_chain.chain.tp_effect_bonus);
 
-  int16_t card_ap;
-  int16_t card_tp;
-  auto stat_swap_type = is_trial ? StatSwapType::NONE : s->card_special->compute_stat_swap_type(this->shared_from_this());
-  log.debug("stat_swap_type = %zu (0=none, 1=a/t, 2=a/h)", static_cast<size_t>(stat_swap_type));
-  s->card_special->get_effective_ap_tp(stat_swap_type, &card_ap, &card_tp, this->get_current_hp(), this->ap, this->tp);
-  log.debug("card_ap = %hd, card_tp = %hd", card_ap, card_tp);
-
-  int16_t effective_ap = this->ap;
-  int16_t effective_tp = this->tp;
+  int16_t effective_ap;
+  int16_t effective_tp;
+  StatSwapType stat_swap_type;
+  if (is_trial) {
+    effective_ap = this->ap;
+    effective_tp = this->tp;
+    stat_swap_type = StatSwapType::NONE;
+  } else {
+    stat_swap_type = s->card_special->compute_stat_swap_type(this->shared_from_this());
+    log.debug("stat_swap_type = %zu (0=none, 1=a/t, 2=a/h)", static_cast<size_t>(stat_swap_type));
+    s->card_special->get_effective_ap_tp(stat_swap_type, &effective_ap, &effective_tp, this->get_current_hp(), this->ap, this->tp);
+    log.debug("effective_ap = %hd, effective_tp = %hd", effective_ap, effective_tp);
+  }
 
   // This option doesn't exist in NTE
   ignore_this_card_ap_tp &= !is_trial;
@@ -950,6 +951,7 @@ void Card::compute_action_chain_results(bool apply_action_conditions, bool ignor
     for (size_t set_index = 0; set_index < 8; set_index++) {
       auto card = ps->get_set_card(set_index);
       if ((card && (card->def_entry->def.card_class() == CardClass::MAG_ITEM)) && !(card->card_flags & 2)) {
+        int16_t card_ap, card_tp;
         s->card_special->get_effective_ap_tp(
             stat_swap_type, &card_ap, &card_tp, card->get_current_hp(), card->ap, card->tp);
         effective_ap += card_ap;
@@ -1004,8 +1006,7 @@ void Card::compute_action_chain_results(bool apply_action_conditions, bool ignor
         }
         break;
       case AssistEffect::INFLUENCE:
-        if (!is_trial &&
-            this->card_type_is_sc_or_creature()) {
+        if (!is_trial && this->card_type_is_sc_or_creature()) {
           int16_t count = ps->count_set_refs();
           this->action_chain.chain.ap_effect_bonus += (count >> 1);
         }

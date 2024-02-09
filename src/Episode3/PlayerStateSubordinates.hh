@@ -196,7 +196,7 @@ struct ActionChainWithCondsTrial {
   /* 0023 */ int8_t card_tp;
   /* 0024 */ le_uint32_t flags;
   // The only difference between this structure and ActionChainWithConds is that
-  // these two fields have changed orders.
+  // these two fields are in the opposite order.
   /* 0028 */ parray<Condition, 9> conditions;
   /* 00B8 */ parray<le_uint16_t, 4 * 9> target_card_refs;
   /* 0100 */

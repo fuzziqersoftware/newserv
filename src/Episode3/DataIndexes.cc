@@ -343,8 +343,7 @@ const char* name_for_direction(Direction d) {
 
 bool card_class_is_tech_like(CardClass cc, bool is_trial) {
   // NTE does not consider BOSS_TECH to be a tech-like card class, but that's
-  // probably because that card class just doesn't exist on NTE. Still, we
-  // handle
+  // probably because that card class just doesn't exist on NTE.
   if (is_trial) {
     return (cc == CardClass::TECH) || (cc == CardClass::PHOTON_BLAST);
   } else {

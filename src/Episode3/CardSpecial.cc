@@ -364,7 +364,7 @@ bool CardSpecial::apply_defense_condition(
     }
   }
 
-  if ((when == 0x04) && (flags & 4) && (defender_cond->type == ConditionType::ACID)) {
+  if ((when == 0x04) && (flags & 4) && !defender_has_ability_trap && (defender_cond->type == ConditionType::ACID)) {
     int16_t hp = defender_card->get_current_hp();
     if (hp > 0) {
       this->send_6xB4x06_for_stat_delta(defender_card, defender_cond->card_ref, 0x20, -1, 0, 1);
@@ -458,12 +458,13 @@ bool CardSpecial::apply_stat_deltas_to_all_cards_from_all_conditions_with_card_r
 bool CardSpecial::apply_stat_deltas_to_card_from_condition_and_clear_cond(Condition& cond, shared_ptr<Card> card) {
   auto s = this->server();
   auto log = s->log_stack(string_printf("apply_stat_deltas_to_card_from_condition_and_clear_cond(@%04hX #%04hX): ", card->get_card_ref(), card->get_card_id()));
+  bool is_trial = s->options.is_trial();
+
   string cond_str = cond.str();
   log.debug("cond: %s", cond_str.c_str());
 
   ConditionType cond_type = cond.type;
-  // Note: NTE does not clamp the value here.
-  int16_t cond_value = clamp<int16_t>(cond.value, -99, 99);
+  int16_t cond_value = is_trial ? cond.value.load() : clamp<int16_t>(cond.value, -99, 99);
   uint8_t cond_flags = cond.flags;
   uint16_t cond_card_ref = card->get_card_ref();
   cond.clear();
@@ -474,7 +475,7 @@ bool CardSpecial::apply_stat_deltas_to_card_from_condition_and_clear_cond(Condit
         int16_t ap = clamp<int16_t>(card->ap, -99, 99);
         int16_t tp = clamp<int16_t>(card->tp, -99, 99);
         log.debug("A_T_SWAP_0C: swapping AP (%hd) and TP (%hd)", ap, tp);
-        if (!s->options.is_trial()) {
+        if (!is_trial) {
           this->send_6xB4x06_for_stat_delta(card, cond_card_ref, 0xA0, tp - ap, 0, 0);
           this->send_6xB4x06_for_stat_delta(card, cond_card_ref, 0x80, ap - tp, 0, 0);
         }
@@ -490,7 +491,7 @@ bool CardSpecial::apply_stat_deltas_to_card_from_condition_and_clear_cond(Condit
         int16_t hp = clamp<int16_t>(card->get_current_hp(), -99, 99);
         if (hp != ap) {
           log.debug("A_H_SWAP: swapping AP (%hd) and HP (%hd)", ap, hp);
-          if (!s->options.is_trial()) {
+          if (!is_trial) {
             this->send_6xB4x06_for_stat_delta(card, cond_card_ref, 0xA0, hp - ap, 0, 0);
             this->send_6xB4x06_for_stat_delta(card, cond_card_ref, 0x20, ap - hp, 0, 0);
           }
@@ -509,9 +510,9 @@ bool CardSpecial::apply_stat_deltas_to_card_from_condition_and_clear_cond(Condit
         // Note: In NTE, this case behaves intuitively, but in non-NTE, it seems
         // that find_condition was changed to always return null. Perhaps this
         // was an accident, or perhaps not, but we implement both behaviors.
-        Condition* other_cond = s->options.is_trial() ? card->find_condition(ConditionType::AP_OVERRIDE) : nullptr;
+        Condition* other_cond = is_trial ? card->find_condition(ConditionType::AP_OVERRIDE) : nullptr;
         if (!other_cond) {
-          if (!s->options.is_trial()) {
+          if (!is_trial) {
             this->send_6xB4x06_for_stat_delta(card, cond_card_ref, 0xA0, -cond_value, 0, 0);
           }
           card->ap = max<int16_t>(card->ap - cond_value, 0);
@@ -526,9 +527,9 @@ bool CardSpecial::apply_stat_deltas_to_card_from_condition_and_clear_cond(Condit
     case ConditionType::TP_OVERRIDE:
       if (cond_flags & 2) {
         // See note in the AP_OVERRIDE case about why non-NTE always uses null.
-        Condition* other_cond = s->options.is_trial() ? card->find_condition(ConditionType::TP_OVERRIDE) : nullptr;
+        Condition* other_cond = is_trial ? card->find_condition(ConditionType::TP_OVERRIDE) : nullptr;
         if (!other_cond) {
-          if (!s->options.is_trial()) {
+          if (!is_trial) {
             this->send_6xB4x06_for_stat_delta(card, cond_card_ref, 0x80, -cond_value, 0, 0);
           }
           card->tp = max<int16_t>(card->tp - cond_value, 0);
@@ -542,7 +543,7 @@ bool CardSpecial::apply_stat_deltas_to_card_from_condition_and_clear_cond(Condit
       break;
     case ConditionType::MISC_AP_BONUSES:
       if (cond_flags & 2) {
-        if (!s->options.is_trial()) {
+        if (!is_trial) {
           this->send_6xB4x06_for_stat_delta(card, cond_card_ref, 0xA0, -cond_value, 0, 0);
         }
         card->ap = max<int16_t>(card->ap - cond_value, 0);
@@ -553,7 +554,7 @@ bool CardSpecial::apply_stat_deltas_to_card_from_condition_and_clear_cond(Condit
       break;
     case ConditionType::MISC_TP_BONUSES:
       if (cond_flags & 2) {
-        if (!s->options.is_trial()) {
+        if (!is_trial) {
           this->send_6xB4x06_for_stat_delta(card, cond_card_ref, 0x80, -cond_value, 0, 0);
         }
         card->tp = max<int16_t>(card->tp - cond_value, 0);
@@ -563,7 +564,7 @@ bool CardSpecial::apply_stat_deltas_to_card_from_condition_and_clear_cond(Condit
       }
       break;
     case ConditionType::AP_SILENCE:
-      if (!s->options.is_trial()) {
+      if (is_trial) {
         goto trial_unimplemented;
       }
       if (cond_flags & 2) {
@@ -575,7 +576,7 @@ bool CardSpecial::apply_stat_deltas_to_card_from_condition_and_clear_cond(Condit
       }
       break;
     case ConditionType::TP_SILENCE:
-      if (!s->options.is_trial()) {
+      if (is_trial) {
         goto trial_unimplemented;
       }
       if (cond_flags & 2) {
@@ -3934,13 +3935,15 @@ void CardSpecial::evaluate_and_apply_effects(
     uint16_t apply_defense_condition_to_card_ref) {
   auto s = this->server();
   auto log = s->log_stack(string_printf("evaluate_and_apply_effects(%02hhX, @%04hX, @%04hX): ", when, set_card_ref, sc_card_ref));
+  bool is_trial = s->options.is_trial();
+
   {
     string as_str = as.str();
     log.debug("when=%02hhX, set_card_ref=@%04hX, as=%s, sc_card_ref=@%04hX, apply_defense_condition_to_all_cards=%s, apply_defense_condition_to_card_ref=@%04hX",
         when, set_card_ref, as_str.c_str(), sc_card_ref, apply_defense_condition_to_all_cards ? "true" : "false", apply_defense_condition_to_card_ref);
   }
 
-  if (!s->options.is_trial()) {
+  if (!is_trial) {
     set_card_ref = this->send_6xB4x06_if_card_ref_invalid(set_card_ref, 1);
   }
 
@@ -3950,7 +3953,7 @@ void CardSpecial::evaluate_and_apply_effects(
     return;
   }
 
-  if (s->options.is_trial()) {
+  if (is_trial) {
     auto set_card = s->card_for_set_card_ref(set_card_ref);
     if ((set_card != nullptr) && set_card->get_condition_value(ConditionType::ABILITY_TRAP)) {
       return;
@@ -4017,7 +4020,7 @@ void CardSpecial::evaluate_and_apply_effects(
     string refs_str = refs_str_for_cards_vector(targeted_cards);
     effect_log.debug("targeted_cards=[%s]", refs_str.c_str());
     bool all_targets_matched = false;
-    if (!s->options.is_trial() &&
+    if (!is_trial &&
         !targeted_cards.empty() &&
         ((card_effect.type == ConditionType::UNKNOWN_64) ||
             (card_effect.type == ConditionType::MISC_DEFENSE_BONUSES) ||
@@ -4101,7 +4104,7 @@ void CardSpecial::evaluate_and_apply_effects(
           cmd.effect.flags = 0x04;
           cmd.effect.attacker_card_ref = this->send_6xB4x06_if_card_ref_invalid(as_attacker_card_ref, 0x14);
           cmd.effect.target_card_ref = target_card->get_card_ref();
-          cmd.effect.value = s->options.is_trial() ? 0 : target_card->action_chain.conditions[applied_cond_index].remaining_turns;
+          cmd.effect.value = is_trial ? 0 : target_card->action_chain.conditions[applied_cond_index].remaining_turns;
           cmd.effect.operation = static_cast<int8_t>(card_effect.type);
           s->send(cmd);
 

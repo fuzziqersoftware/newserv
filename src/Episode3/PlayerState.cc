@@ -635,7 +635,7 @@ bool PlayerState::discard_card_or_add_to_draw_pile(uint16_t card_ref, bool add_t
       card->update_stats_on_destruction();
       this->set_cards[set_index].reset();
     } else {
-      this->set_cards[set_index]->card_flags |= 2;
+      card->card_flags |= 2;
     }
   }
   if (add_to_draw_pile) {
@@ -852,12 +852,7 @@ uint8_t PlayerState::get_atk_points() const {
   return this->atk_points;
 }
 
-uint8_t PlayerState::get_atk_points_nte() const {
-  return min<uint8_t>(this->atk_points2_max, this->atk_points);
-}
-
-void PlayerState::get_short_status_for_card_index_in_hand(
-    size_t hand_index, CardShortStatus* stat) const {
+void PlayerState::get_short_status_for_card_index_in_hand(size_t hand_index, CardShortStatus* stat) const {
   stat->card_ref = this->card_refs[hand_index - 1];
 }
 
@@ -1269,6 +1264,7 @@ void PlayerState::send_set_card_updates(bool always_send) {
     }
   }
 
+  // mask will always be 0 here if is_trial is true
   if (mask && !s->get_should_copy_prev_states_to_current_states()) {
     G_ClearSetCardConditions_Ep3_6xB4x4F cmd;
     cmd.client_id = this->client_id;
@@ -1792,9 +1788,7 @@ bool PlayerState::set_action_cards_for_action_state(const ActionState& pa) {
           auto ce = s->definition_for_card_ref(pa.action_card_refs[z]);
           if (ce) {
             auto card_class = ce->def.card_class();
-            if ((card_class == CardClass::TECH) ||
-                (card_class == CardClass::PHOTON_BLAST) ||
-                (card_class == CardClass::BOSS_TECH)) {
+            if (card_class_is_tech_like(card_class, is_trial)) {
               this->stats.num_tech_cards_set++;
             }
             if ((card_class == CardClass::ATTACK_ACTION) ||

@@ -1186,9 +1186,9 @@ struct MapDefinition { // .mnmd format; also the format of (decompressed) quests
   // 10 = blocked by rock (as if the corresponding map_tiles value was 00)
   // 20 = blocked by fence (as if the corresponding map_tiles value was 00)
   // 30-34 = teleporters (2 of each value may be present)
-  // 40-44 = traps (one of each type is chosen at random to be a real trap at
-  //         battle start time)
   // 40-4F = traps on NTE
+  // 40-44 = traps on non-NTE (one of each type is chosen at random to be a real
+  //         trap at battle start time)
   // 50 = blocked by metal box (appears as improperly-z-buffered teal cube in
   //      preview; behaves like 10 and 20 in game)
   // The assist cards that each trap type can contain are:

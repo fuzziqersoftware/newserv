@@ -1437,9 +1437,9 @@ uint16_t RulerServer::compute_attack_or_defense_costs(
   size_t num_assists = this->assist_server->compute_num_assist_effects_for_client(pa.client_id);
   for (size_t w = 0; w < num_assists; w++) {
     auto assist_effect = this->assist_server->get_active_assist_by_index(w);
-    if (!is_trial && (assist_effect == AssistEffect::INFLATION)) {
+    if (is_trial && (assist_effect == AssistEffect::INFLATION)) {
       assist_cost_bias++;
-    } else if (!is_trial && (assist_effect == AssistEffect::DEFLATION)) {
+    } else if (is_trial && (assist_effect == AssistEffect::DEFLATION)) {
       assist_cost_bias--;
     } else if ((assist_effect == AssistEffect::BATTLE_ROYALE) &&
         (pa.action_card_refs[0] == 0xFFFF)) {
@@ -1720,7 +1720,7 @@ int32_t RulerServer::error_code_for_client_setting_card(
     }
 
     // Check for assists that can only be set on yourself
-    auto eff = assist_effect_number_for_card_id(ce->def.card_id, this->server()->options.is_trial());
+    auto eff = assist_effect_number_for_card_id(ce->def.card_id, is_trial);
     if (((eff == AssistEffect::LEGACY) || (!is_trial && (eff == AssistEffect::EXCHANGE))) &&
         (assist_target_client_id != 0xFF) &&
         (assist_target_client_id != client_id_for_card_ref(card_ref))) {
