@@ -1692,18 +1692,23 @@ void Server::update_battle_state_flags_and_send_6xB4x03_if_needed(bool always_se
 bool Server::update_registration_phase() {
   // Returns true if the battle can begin
 
+  auto log = this->log_stack("update_registration_phase: ");
+
   if (this->setup_phase != SetupPhase::REGISTRATION) {
+    log.debug("setup_phase is not REGISTRATION");
     return false;
   }
 
   if (this->map_and_rules->num_players == 0) {
     this->registration_phase = RegistrationPhase::AWAITING_NUM_PLAYERS;
+    log.debug("registration_phase set to AWAITING_NUM_PLAYERS");
     this->update_battle_state_flags_and_send_6xB4x03_if_needed();
     return false;
   }
 
   if (this->map_and_rules->num_players != this->num_clients_present) {
     this->registration_phase = RegistrationPhase::AWAITING_PLAYERS;
+    log.debug("registration_phase set to AWAITING_PLAYERS");
     this->update_battle_state_flags_and_send_6xB4x03_if_needed();
     return false;
   }
@@ -1717,12 +1722,14 @@ bool Server::update_registration_phase() {
 
   if (num_team0_registered_players != this->map_and_rules->num_team0_players) {
     this->registration_phase = RegistrationPhase::AWAITING_DECKS;
+    log.debug("registration_phase set to AWAITING_DECKS");
     this->update_battle_state_flags_and_send_6xB4x03_if_needed();
     return false;
   }
 
   this->registration_phase = RegistrationPhase::REGISTERED;
   this->update_battle_state_flags_and_send_6xB4x03_if_needed();
+  log.debug("battle can begin");
   return true;
 }
 
@@ -1768,10 +1775,13 @@ void Server::on_server_data_input(shared_ptr<Client> sender_c, const string& dat
     throw runtime_error("unknown CAx subsubcommand");
   }
 
-  string unmasked_data = data;
-  set_mask_for_ep3_game_command(unmasked_data.data(), unmasked_data.size(), 0);
-
-  (this->*handler)(sender_c, unmasked_data);
+  if (this->options.is_trial() || !header.mask_key) {
+    (this->*handler)(sender_c, data);
+  } else {
+    string unmasked_data = data;
+    set_mask_for_ep3_game_command(unmasked_data.data(), unmasked_data.size(), 0);
+    (this->*handler)(sender_c, unmasked_data);
+  }
 }
 
 void Server::handle_CAx0B_mulligan_hand(shared_ptr<Client>, const string& data) {

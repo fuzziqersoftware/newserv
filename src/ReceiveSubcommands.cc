@@ -960,7 +960,7 @@ static void on_ep3_battle_subs(shared_ptr<Client> c, uint8_t command, uint8_t fl
     }
   }
 
-  if (!(s->ep3_behavior_flags & Episode3::BehaviorFlag::DISABLE_MASKING)) {
+  if (!(s->ep3_behavior_flags & Episode3::BehaviorFlag::DISABLE_MASKING) && (c->version() != Version::GC_EP3_NTE)) {
     set_mask_for_ep3_game_command(data.data(), data.size(), (random_object<uint32_t>() % 0xFF) + 1);
   }
 

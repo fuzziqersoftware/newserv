@@ -6336,11 +6336,12 @@ struct G_SetMapState_Ep3_CAx13 {
 // 6xB3x14 / CAx14: Set player deck during setup
 
 struct G_SetPlayerDeck_Ep3_CAx14 {
-  G_CardServerDataCommandHeader header = {0xB3, sizeof(G_SetPlayerDeck_Ep3_CAx14) / 4, 0, 0x14, 0, 0, 0, 0, 0};
-  le_uint16_t client_id = 0;
-  uint8_t is_cpu_player = 0;
-  uint8_t unused2 = 0;
-  Episode3::DeckEntry entry;
+  /* 00 */ G_CardServerDataCommandHeader header = {0xB3, sizeof(G_SetPlayerDeck_Ep3_CAx14) / 4, 0, 0x14, 0, 0, 0, 0, 0};
+  /* 10 */ le_uint16_t client_id = 0;
+  /* 12 */ uint8_t is_cpu_player = 0;
+  /* 13 */ uint8_t unused2 = 0;
+  /* 14 */ Episode3::DeckEntry entry;
+  /* 6C */
 } __packed__;
 
 // 6xB3x15 / CAx15: Hard-reset server state
