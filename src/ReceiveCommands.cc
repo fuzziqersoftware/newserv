@@ -3091,7 +3091,7 @@ static void on_61_98(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
           send_ep3_card_list_update(c);
           c->config.set_flag(Client::Flag::HAS_EP3_CARD_DEFS);
         }
-        if (!c->config.check_flag(Client::Flag::HAS_EP3_MEDIA_UPDATES)) {
+        if ((c->version() != Version::GC_EP3_NTE) && !c->config.check_flag(Client::Flag::HAS_EP3_MEDIA_UPDATES)) {
           for (const auto& banner : s->ep3_lobby_banners) {
             send_ep3_media_update(c, banner.type, banner.which, banner.data);
             c->config.set_flag(Client::Flag::HAS_EP3_MEDIA_UPDATES);

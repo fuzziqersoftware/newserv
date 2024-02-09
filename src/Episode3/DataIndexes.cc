@@ -2323,7 +2323,7 @@ CardIndex::CardIndex(
       this->compressed_card_definitions = prs_compress(decompressed_data);
       uint64_t diff = now() - start;
       static_game_data_log.info(
-          "Compressed card definitions (%zu bytes -> %zu bytes) in %" PRIu64 "ms",
+          "Compressed card definitions (%zu bytes -> %zu bytes) in %" PRIu64 "us",
           decompressed_data.size(), this->compressed_card_definitions.size(), diff);
     }
 
@@ -2341,7 +2341,7 @@ CardIndex::CardIndex(
       this->compressed_card_definitions = prs_compress_optimal(decompressed_data.data(), decompressed_data.size());
       uint64_t diff = now() - start;
       static_game_data_log.info(
-          "Compressed card definitions (0x%zX bytes -> 0x%zX bytes) in %" PRIu64 "ms",
+          "Compressed card definitions (0x%zX bytes -> 0x%zX bytes) in %" PRIu64 "us",
           decompressed_data.size(), this->compressed_card_definitions.size(), diff);
     }
 
