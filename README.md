@@ -41,14 +41,14 @@ newserv supports several versions of PSO, including various development prototyp
 | GC Ep1&2 NTE   | Yes          | Yes          | Yes          |
 | GC Ep1&2       | Yes          | Yes          | Yes          |
 | GC Ep1&2 Plus  | Yes          | Yes          | Yes          |
-| GC Ep3 NTE     | Yes          | Partial (1)  | Yes          |
+| GC Ep3 NTE     | Yes          | Yes (1)      | Yes          |
 | GC Ep3         | Yes          | Yes          | Yes          |
 | Xbox Ep1&2     | Yes          | Yes          | Yes          |
 | BB (vanilla)   | Yes          | Yes (2)      | Yes          |
 | BB (Tethealla) | Yes          | Yes (2)      | Yes          |
 
 *Notes:*
-1. *Players can create games, edit decks, trade cards, and participate in auctions, but CARD battles don't work on Episode 3 Trial Edition on newserv.*
+1. *Ep3 NTE battles are not well-tested; some things may not work. See notes/ep3-nte-differences.txt for a list of known differences between NTE and the final version. NTE and non-NTE players cannot battle each other.*
 2. *Some BB-specific features are not well-tested (for example, some quests that use rare commands may not work properly). Please submit a GitHub issue if you find something that doesn't work.*
 3. *This is the only version of PSO that doesn't have any way to identify the player's account - there is no serial number or username. For this reason, AllowUnregisteredUsers must be enabled in config.json to support PC NTE, and PC NTE players receive a random Guild Card number every time they connect. To prevent abuse, PC NTE support can be disabled in config.json.*
 
