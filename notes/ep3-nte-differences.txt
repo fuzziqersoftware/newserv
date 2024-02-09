@@ -1,0 +1,56 @@
+List of differences in Ep3 NTE compared to Final:
+- Assist cards
+- - Dice Fever sets dice to 6, not 5, and there is no Dice Fever +
+- - Rich + and Charity + also don't exist
+- - Powerless Rain, Brave Wind, Influence, Fix apply at a different phase of the attack procedure
+- - Tech Field applies to SCs only; on Final, it applies to SCs and creatures
+- - The denominator for Vengeance is 2; on Final it's 3
+- - AP Absorption logic is different (TODO: see apply_ap_and_tp_adjust_assists_to_attack)
+- - God Whim can use ANY assist card, not only the normally-obtainable ones, and it assigns all 4 players an assist, not only those who already had assists
+- - Inflation and Deflation only cause +1 or -1 cost per action, not per card
+- - Exchange can be set on other players
+- - The SET_MV condition overrides Snail Pace and Stamina completely
+- - Stamina sets your effective MV to 99 instead of 9
+- - Land Price is 2x instead of 1.5x
+- - Shuffle All and Shuffle Group don't respect deck shuffle/loop disabled settings
+- - Assist Vanish clears immediately, which means it can override other assists that happen at the same time (Trash 1, Empty Hand, etc.); in Final it happens after those
+- Abilities
+- - Rampage and Pierce are not player-specific; that is, if an attack has Rampage against one target, it has Rampage against all targets (this distinction is important for conditional abilities like Major Rampage and Heavy Pierce)
+- - Several abilities don't exist (TODO: Which ones? 0x64 and above?)
+- - Abnormal conditions do not have priorities like they do on Final
+- - Ability Trap seems incompletely implemented (or not implemented at all?)
+- - It appears that Major Pierce doesn't work against Arkz SCs, and this was fixed in Final
+- Conditions
+- - Anti-Abnormality doesn't prevent Freeze, Drop, Guom, or Curse
+- - SCs can get Freeze (they can't in Final)
+- - Bosses do not have automatic Anti-Abnormality
+- - Ability Trap prevents all abnormal conditions
+- Traps
+- - Traps trigger as soon as you move into their tile; on Final, they trigger at the end of the Move phase
+- - Traps may use any assist card, and this can be configured in the map definition (TODO: verify this last part)
+- Rules
+- - Dice Boost does not exist
+- - ATK and DEF dice ranges can be set independently, but there are only 7 options for each: 1-6, 1-1, 2-2, 3-3, 4-4, 5-5, 6-6
+- - There may be a bug when either die is set to 1-1 so you'll always get 2 instead (TODO: verify this)
+- COM interference is not implemented
+- The target's defense power is computed after checking if the attack is Resta instead of before
+- Card definitions
+- - The n21 and n22 arg2 conditions don't exist
+- - The p25 condition finds cards with Paralyze or Fly in NTE, vs. Aerial or Fly in Final; looks like a copy-paste error by Sega
+- - The p36 condition includes SCs and items on NTE, but only SCs on Final
+- - The p41 condition includes only your team on NTE, but both teams on Final
+- - Several tokens can't be used in expr fields: ddm, sat, edm, ldm, rdm, fdm, ndm, ehp
+- Missing rule checks
+- - Boss SCs can use items
+- - Move logic is different, which I didn't reverse-engineer because I was too lazy and couldn't imagine how it could be meaningfully different from Final
+- - Many values are not clamped (in Final, many are clamped to 0-9 or -99-99)
+- - You can set cards that aren't actually in your hand
+- - The game assumes team A always is at the top facing down and team B is always at the bottom facing up; if the map defines them to start on different edges or facing different directions than expected, the creature summoning areas will be wrong
+- - Character HP rule completely overrides the HP stat on SC cards; in Final, the SC's HP stat is added to Character HP
+- - Boss SCs are not exempt from this either; they have the same HP as normal SCs
+- - Cards marked as dead but not yet deleted can still attack
+- - The HOLD (6) and CANNOT_DEFEND (7) conditions don't actually stop you from defending
+- - There is no hard limit of 1000 turns for any battle
+- - In case of a draw, the first two tiebreaker rules (number of dead SCs and remaining SC HP) are skipped
+- The server cannot override EXP result values (thus post-battle EXP loss cannot be disabled)
+- Surprisingly, the code for PBs is identical between NTE and Final; it seems like they didn't spend any time on PBs after NTE at all
