@@ -6,7 +6,7 @@ using namespace std;
 
 namespace Episode3 {
 
-const vector<uint16_t>& all_assist_card_ids(bool is_trial) {
+const vector<uint16_t>& all_assist_card_ids(bool is_nte) {
   // Note: This order matches the order that the cards are defined in the original
   // code. This is relevant for consistency of results when choosing a random card
   // (for God Whim).
@@ -29,10 +29,10 @@ const vector<uint16_t>& all_assist_card_ids(bool is_trial) {
       0x013C, 0x013D, 0x013E, 0x013F, 0x0140, 0x0141, 0x0142, 0x0143, 0x0144,
       0x0145, 0x0146, 0x0148, 0x014A, 0x014B, 0x014C, 0x014D, 0x014E, 0x023F,
       0x0240, 0x0241, 0x0242};
-  return is_trial ? ALL_ASSIST_CARD_IDS_TRIAL : ALL_ASSIST_CARD_IDS_FINAL;
+  return is_nte ? ALL_ASSIST_CARD_IDS_TRIAL : ALL_ASSIST_CARD_IDS_FINAL;
 }
 
-AssistEffect assist_effect_number_for_card_id(uint16_t card_id, bool is_trial) {
+AssistEffect assist_effect_number_for_card_id(uint16_t card_id, bool is_nte) {
   static const unordered_map<uint16_t, AssistEffect> card_id_to_effect_final_only({
       {0x0018, /* 0x0049 */ AssistEffect::DICE_FEVER_PLUS},
       {0x0019, /* 0x004A */ AssistEffect::RICH_PLUS},
@@ -116,7 +116,7 @@ AssistEffect assist_effect_number_for_card_id(uint16_t card_id, bool is_trial) {
     return card_id_to_effect.at(card_id);
   } catch (const out_of_range&) {
   }
-  if (!is_trial) {
+  if (!is_nte) {
     try {
       return card_id_to_effect_final_only.at(card_id);
     } catch (const out_of_range&) {
@@ -244,7 +244,7 @@ AssistEffect AssistServer::get_active_assist_by_index(size_t index) const {
 }
 
 void AssistServer::populate_effects() {
-  bool is_trial = this->server()->options.is_trial();
+  bool is_nte = this->server()->options.is_nte();
   for (size_t z = 0; z < 4; z++) {
     this->assist_card_defs[z] = nullptr;
     this->assist_effects[z] = AssistEffect::NONE;
@@ -253,7 +253,7 @@ void AssistServer::populate_effects() {
       uint16_t card_id = hes->assist_card_id == 0xFFFF
           ? this->card_id_for_card_ref(hes->assist_card_ref)
           : hes->assist_card_id.load();
-      this->assist_effects[z] = assist_effect_number_for_card_id(card_id, is_trial);
+      this->assist_effects[z] = assist_effect_number_for_card_id(card_id, is_nte);
       if (this->assist_effects[z] != AssistEffect::NONE) {
         this->assist_card_defs[z] = this->definition_for_card_id(card_id);
       }

@@ -113,7 +113,7 @@ bool PSOGCIFileHeader::is_ep3() const {
   return (this->game_id[2] == 'S');
 }
 
-bool PSOGCIFileHeader::is_trial() const {
+bool PSOGCIFileHeader::is_nte() const {
   return (this->game_id[0] == 'D');
 }
 

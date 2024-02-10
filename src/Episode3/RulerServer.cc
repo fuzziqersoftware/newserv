@@ -243,8 +243,8 @@ bool RulerServer::card_has_pierce_or_rampage(
   *out_has_rampage = false;
 
   bool ret;
-  bool is_trial = this->server()->options.is_trial();
-  if (is_trial) {
+  bool is_nte = this->server()->options.is_nte();
+  if (is_nte) {
     ret = true;
   } else {
     if (cond_type == ConditionType::NONE) {
@@ -292,7 +292,7 @@ bool RulerServer::card_has_pierce_or_rampage(
         auto ce = this->definition_for_card_ref(sc_status.card_ref);
         // This appears to be an NTE bug: Major Pierce doesn't work on Arkz SCs.
         if (ce &&
-            (!is_trial || (ce->def.type == CardType::HUNTERS_SC)) &&
+            (!is_nte || (ce->def.type == CardType::HUNTERS_SC)) &&
             (this->get_card_ref_max_hp(sc_status.card_ref) <= sc_status.current_hp * 2)) {
           return ret;
         }
@@ -382,10 +382,10 @@ bool RulerServer::attack_action_has_pierce_and_not_rampage(const ActionState& pa
     return false;
   }
 
-  bool is_trial = this->server()->options.is_trial();
+  bool is_nte = this->server()->options.is_nte();
   auto attack_medium = this->get_attack_medium(pa);
   auto stat = this->short_statuses[client_id];
-  if (!stat || (!is_trial && !this->card_exists_by_status(stat->at(0))) || (stat->at(0).card_ref == 0xFFFF)) {
+  if (!stat || (!is_nte && !this->card_exists_by_status(stat->at(0))) || (stat->at(0).card_ref == 0xFFFF)) {
     return false;
   }
 
@@ -424,7 +424,7 @@ bool RulerServer::attack_action_has_pierce_and_not_rampage(const ActionState& pa
     return nullopt;
   };
 
-  if (is_trial) {
+  if (is_nte) {
     auto res = check_chain();
     if (res.has_value()) {
       return res.value();
@@ -457,7 +457,7 @@ bool RulerServer::attack_action_has_pierce_and_not_rampage(const ActionState& pa
     }
   }
 
-  if (!is_trial) {
+  if (!is_nte) {
     auto res = check_chain();
     if (res.has_value()) {
       return res.value();
@@ -663,7 +663,7 @@ bool RulerServer::card_ref_has_free_maneuver(uint16_t card_ref) const {
 }
 
 bool RulerServer::card_ref_is_aerial(uint16_t card_ref) const {
-  if (!this->server()->options.is_trial()) {
+  if (!this->server()->options.is_nte()) {
     const auto* stat = this->short_status_for_card_ref(card_ref);
     if (!stat || !this->card_exists_by_status(*stat)) {
       return false;
@@ -822,13 +822,13 @@ bool RulerServer::check_pierce_and_rampage(
     uint16_t action_card_ref,
     uint8_t def_effect_index,
     AttackMedium attack_medium) const {
-  bool is_trial = this->server()->options.is_trial();
+  bool is_nte = this->server()->options.is_nte();
 
   // Note: NTE doesn't set this to zero; it apparently expects the caller to.
   *out_has_pierce = false;
 
   const auto* card_short_status = this->short_status_for_card_ref(card_ref);
-  if (!is_trial && (cond_type == ConditionType::NONE)) {
+  if (!is_nte && (cond_type == ConditionType::NONE)) {
     return false;
   }
 
@@ -850,7 +850,7 @@ bool RulerServer::check_pierce_and_rampage(
     client_short_statuses = nullptr;
   }
 
-  bool apply_check_result = (is_trial ||
+  bool apply_check_result = (is_nte ||
       this->check_usability_or_apply_condition_for_card_refs(
           action_card_ref, attacker_card_ref, card_ref, def_effect_index, attack_medium));
 
@@ -952,7 +952,7 @@ bool RulerServer::check_usability_or_condition_apply(
     log.debug("ce1 missing");
     return false;
   }
-  if (!s->options.is_trial() && (ce1->def.type == CardType::ITEM) && this->card_id_is_boss_sc(card_id2)) {
+  if (!s->options.is_nte() && (ce1->def.type == CardType::ITEM) && this->card_id_is_boss_sc(card_id2)) {
     log.debug("ce1 is item and card_id2 is boss sc");
     return false;
   }
@@ -989,7 +989,7 @@ bool RulerServer::check_usability_or_condition_apply(
   // second should not be given, so we'd return true if the criterion passes. If
   // neither of these cases apply, we should return false as a failsafe even if
   // the criterion passes. NTE did not have such a check.
-  bool ret = s->options.is_trial() || (!(def_effect_index & 0x80) || (client_id1 == client_id2)) || (client_id2 == 0xFF);
+  bool ret = s->options.is_nte() || (!(def_effect_index & 0x80) || (client_id1 == client_id2)) || (client_id2 == 0xFF);
   switch (criterion_code) {
     case CriterionCode::NONE:
       return ret;
@@ -1397,7 +1397,7 @@ uint16_t RulerServer::compute_attack_or_defense_costs(
     cost_bias++;
   }
 
-  bool is_trial = this->server()->options.is_trial();
+  bool is_nte = this->server()->options.is_nte();
   if (pa.action_card_refs[0] == 0xFFFF) {
     total_cost = cost_bias + 1;
   } else {
@@ -1413,14 +1413,14 @@ uint16_t RulerServer::compute_attack_or_defense_costs(
         return 99;
       }
       total_cost += (ce->def.self_cost + cost_bias);
-      if (card_class_is_tech_like(ce->def.card_class(), s->options.is_trial())) {
+      if (card_class_is_tech_like(ce->def.card_class(), s->options.is_nte())) {
         total_cost += tech_cost_bias;
       }
       total_ally_cost += ce->def.ally_cost;
       if (this->card_has_mighty_knuckle(pa.action_card_refs[z])) {
         has_mighty_knuckle = true;
       }
-      if (!is_trial) {
+      if (!is_nte) {
         size_t num_assists = this->assist_server->compute_num_assist_effects_for_client(pa.client_id);
         for (size_t w = 0; w < num_assists; w++) {
           auto assist_effect = this->assist_server->get_active_assist_by_index(w);
@@ -1437,9 +1437,9 @@ uint16_t RulerServer::compute_attack_or_defense_costs(
   size_t num_assists = this->assist_server->compute_num_assist_effects_for_client(pa.client_id);
   for (size_t w = 0; w < num_assists; w++) {
     auto assist_effect = this->assist_server->get_active_assist_by_index(w);
-    if (is_trial && (assist_effect == AssistEffect::INFLATION)) {
+    if (is_nte && (assist_effect == AssistEffect::INFLATION)) {
       assist_cost_bias++;
-    } else if (is_trial && (assist_effect == AssistEffect::DEFLATION)) {
+    } else if (is_nte && (assist_effect == AssistEffect::DEFLATION)) {
       assist_cost_bias--;
     } else if ((assist_effect == AssistEffect::BATTLE_ROYALE) &&
         (pa.action_card_refs[0] == 0xFFFF)) {
@@ -1450,7 +1450,7 @@ uint16_t RulerServer::compute_attack_or_defense_costs(
 
   if (has_mighty_knuckle) {
     if (!allow_mighty_knuckle) {
-      if (!is_trial) {
+      if (!is_nte) {
         final_cost = 0;
       }
     } else {
@@ -1495,7 +1495,7 @@ bool RulerServer::compute_effective_range_and_target_mode_for_attack(
   auto target_mode = ce->def.target_mode;
   if (this->card_ref_or_sc_has_fixed_range(pa.attacker_card_ref)) {
     card_id = this->card_id_for_card_ref(pa.attacker_card_ref);
-    if (!this->server()->options.is_trial()) {
+    if (!this->server()->options.is_nte()) {
       auto sc_ce = this->definition_for_card_id(card_id);
       if (sc_ce && (static_cast<uint8_t>(target_mode) < 6)) {
         target_mode = sc_ce->def.target_mode;
@@ -1679,8 +1679,8 @@ int32_t RulerServer::error_code_for_client_setting_card(
     return -0x76;
   }
 
-  bool is_trial = this->server()->options.is_trial();
-  if (!is_trial && !this->is_card_ref_in_hand(card_ref)) {
+  bool is_nte = this->server()->options.is_nte();
+  if (!is_nte && !this->is_card_ref_in_hand(card_ref)) {
     return -0x5E;
   }
 
@@ -1720,8 +1720,8 @@ int32_t RulerServer::error_code_for_client_setting_card(
     }
 
     // Check for assists that can only be set on yourself
-    auto eff = assist_effect_number_for_card_id(ce->def.card_id, is_trial);
-    if (((eff == AssistEffect::LEGACY) || (!is_trial && (eff == AssistEffect::EXCHANGE))) &&
+    auto eff = assist_effect_number_for_card_id(ce->def.card_id, is_nte);
+    if (((eff == AssistEffect::LEGACY) || (!is_nte && (eff == AssistEffect::EXCHANGE))) &&
         (assist_target_client_id != 0xFF) &&
         (assist_target_client_id != client_id_for_card_ref(card_ref))) {
       return -0x75;
@@ -1760,7 +1760,7 @@ int32_t RulerServer::error_code_for_client_setting_card(
 
   if ((ce->def.type == CardType::ITEM) || (ce->def.type == CardType::CREATURE)) {
     int16_t existing_fcs_cost = 0;
-    bool limit_summoning_by_count = !is_trial &&
+    bool limit_summoning_by_count = !is_nte &&
         this->find_condition_on_card_ref(short_statuses->at(0).card_ref, ConditionType::FC_LIMIT_BY_COUNT);
     for (size_t z = 7; z < 15; z++) {
       const auto& this_status = short_statuses->at(z);
@@ -1800,7 +1800,7 @@ int32_t RulerServer::error_code_for_client_setting_card(
       return 0;
     }
 
-    if (is_trial) {
+    if (is_nte) {
       // It seems NTE assumes that teams always start on the same ends of the
       // map; non-NTE removes this restriction.
       if (team_id == 1) {
@@ -2088,7 +2088,7 @@ uint8_t RulerServer::get_card_ref_max_hp(uint16_t card_ref) const {
     return 0;
   } else if (((ce->def.type == CardType::HUNTERS_SC) || (ce->def.type == CardType::ARKZ_SC)) &&
       (this->map_and_rules->rules.char_hp > 0) &&
-      (this->server()->options.is_trial() || !this->card_ref_is_boss_sc(card_ref))) {
+      (this->server()->options.is_nte() || !this->card_ref_is_boss_sc(card_ref))) {
     return this->map_and_rules->rules.char_hp;
   } else {
     return ce->def.hp.stat;
@@ -2237,7 +2237,7 @@ bool RulerServer::is_attack_valid(const ActionState& pa) {
     return false;
   }
 
-  if (!this->server()->options.is_trial() && (attacker_card_status->card_flags & 2)) {
+  if (!this->server()->options.is_nte() && (attacker_card_status->card_flags & 2)) {
     this->error_code3 = -0x60;
     return false;
   }
@@ -2354,8 +2354,8 @@ bool RulerServer::is_attack_or_defense_valid(const ActionState& pa) {
   }
 
   // NTE apparently does not check the action's cost here
-  bool is_trial = this->server()->options.is_trial();
-  int16_t cost = is_trial ? 0 : this->compute_attack_or_defense_costs(pa, false, nullptr);
+  bool is_nte = this->server()->options.is_nte();
+  int16_t cost = is_nte ? 0 : this->compute_attack_or_defense_costs(pa, false, nullptr);
 
   switch (this->get_pending_action_type(pa)) {
     case ActionType::ATTACK:
@@ -2451,7 +2451,7 @@ bool RulerServer::is_defense_valid(const ActionState& pa) {
     }
   }
 
-  if (!this->server()->options.is_trial() &&
+  if (!this->server()->options.is_nte() &&
       (this->find_condition_on_card_ref(pa.target_card_refs[0], ConditionType::HOLD) ||
           this->find_condition_on_card_ref(pa.target_card_refs[0], ConditionType::CANNOT_DEFEND))) {
     this->error_code3 = -0x63;
@@ -2482,7 +2482,7 @@ size_t RulerServer::max_move_distance_for_card_ref(uint32_t card_ref) const {
     return 0;
   }
 
-  if (this->server()->options.is_trial()) {
+  if (this->server()->options.is_nte()) {
     if (ce->def.type == CardType::ITEM) {
       return ce->def.mv.stat;
     }
@@ -2612,14 +2612,14 @@ void RulerServer::replace_D1_D2_rank_cards_with_Attack(
 }
 
 AttackMedium RulerServer::get_attack_medium(const ActionState& pa) const {
-  bool is_trial = this->server()->options.is_trial();
+  bool is_nte = this->server()->options.is_nte();
   for (size_t z = 0; z < 8; z++) {
     uint16_t card_ref = pa.action_card_refs[z];
     if (card_ref == 0xFFFF) {
       return AttackMedium::PHYSICAL;
     }
     auto ce = this->definition_for_card_ref(card_ref);
-    if (ce && card_class_is_tech_like(ce->def.card_class(), is_trial)) {
+    if (ce && card_class_is_tech_like(ce->def.card_class(), is_nte)) {
       return AttackMedium::TECH;
     }
   }
@@ -2640,10 +2640,10 @@ int32_t RulerServer::set_cost_for_card(uint8_t client_id, uint16_t card_ref) con
     return -0x7D;
   }
 
-  bool is_trial = this->server()->options.is_trial();
+  bool is_nte = this->server()->options.is_nte();
   auto short_statuses = this->short_statuses[client_id];
   int32_t ret = ce->def.self_cost;
-  if (!is_trial &&
+  if (!is_nte &&
       short_statuses &&
       this->card_exists_by_status(short_statuses->at(0)) &&
       this->find_condition_on_card_ref(short_statuses->at(0).card_ref, ConditionType::UNKNOWN_69)) {
@@ -2678,7 +2678,7 @@ int32_t RulerServer::set_cost_for_card(uint8_t client_id, uint16_t card_ref) con
     auto eff = this->assist_server->get_active_assist_by_index(z);
     if (eff == AssistEffect::LAND_PRICE) {
       // In NTE, Land Price is apparently 2x rather than 1.5x
-      ret = is_trial ? (ret << 1) : (ret + (ret >> 1));
+      ret = is_nte ? (ret << 1) : (ret + (ret >> 1));
     } else if (eff == AssistEffect::DEFLATION) {
       ret = max<int32_t>(0, ret - 1);
     } else if (eff == AssistEffect::INFLATION) {

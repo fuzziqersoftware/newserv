@@ -112,7 +112,7 @@ Version get_cli_version(Arguments& args, Version default_value = Version::UNKNOW
     return Version::GC_V3;
   } else if (args.get<bool>("xb")) {
     return Version::XB_V3;
-  } else if (args.get<bool>("ep3-trial")) {
+  } else if (args.get<bool>("ep3-nte")) {
     return Version::GC_EP3_NTE;
   } else if (args.get<bool>("ep3")) {
     return Version::GC_EP3;
@@ -2461,7 +2461,7 @@ Many versions also accept or require a version option. The version options are:\
   --gc-nte: GC Episodes 1&2 Trial Edition\n\
   --gc: GC Episodes 1&2\n\
   --xb: Xbox Episodes 1&2\n\
-  --ep3-trial: GC Episode 3 Trial Edition\n\
+  --ep3-nte: GC Episode 3 Trial Edition\n\
   --ep3: GC Episode 3\n\
   --bb: Blue Burst\n\
 \n",

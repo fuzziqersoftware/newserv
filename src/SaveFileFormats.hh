@@ -89,7 +89,7 @@ struct PSOGCIFileHeader {
 
   bool is_ep12() const;
   bool is_ep3() const;
-  bool is_trial() const;
+  bool is_nte() const;
 } __attribute__((packed));
 
 struct PSOGCSystemFile {

@@ -75,7 +75,7 @@ public:
     std::shared_ptr<const Tournament> tournament;
     std::array<std::vector<uint16_t>, 5> trap_card_ids;
 
-    inline bool is_trial() const {
+    inline bool is_nte() const {
       return (this->behavior_flags & BehaviorFlag::IS_TRIAL_EDITION);
     }
   };
@@ -106,7 +106,7 @@ public:
     if (cmd.header.size != sizeof(cmd) / 4) {
       throw std::logic_error("outbound command size field is incorrect");
     }
-    if (!this->options.is_trial() && (cmd.header.subsubcommand == 0x06)) {
+    if (!this->options.is_nte() && (cmd.header.subsubcommand == 0x06)) {
       this->num_6xB4x06_commands_sent++;
       this->prev_num_6xB4x06_commands_sent = this->num_6xB4x06_commands_sent;
       if (this->num_6xB4x06_commands_sent > 0x100) {
@@ -231,7 +231,7 @@ public:
 
   G_UpdateDecks_Ep3_6xB4x07 prepare_6xB4x07_decks_update() const;
   G_SetPlayerNames_Ep3_6xB4x1C prepare_6xB4x1C_names_update() const;
-  static std::string prepare_6xB6x41_map_definition(std::shared_ptr<const MapIndex::Map> map, uint8_t language, bool is_trial);
+  static std::string prepare_6xB6x41_map_definition(std::shared_ptr<const MapIndex::Map> map, uint8_t language, bool is_nte);
   void send_6xB6x41_to_all_clients() const;
   G_SetTrapTileLocations_Ep3_6xB4x50 prepare_6xB4x50_trap_tile_locations() const;
 

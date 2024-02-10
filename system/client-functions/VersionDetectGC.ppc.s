@@ -24,10 +24,10 @@ start:
   cmplwi r0, 0x47  # Check if high byte of game ID is 'G'
   beq    not_trial
   cmplwi r0, 0x44  # Check if high byte of game ID is 'D'
-  beq    is_trial
+  beq    is_nte
   li     r3, 0
   blr
-is_trial:
+is_nte:
   li     r3, 0x0054
   b      end_trial_check
 not_trial:

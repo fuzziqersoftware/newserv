@@ -13,8 +13,8 @@ namespace Episode3 {
 
 class Server;
 
-const std::vector<uint16_t>& all_assist_card_ids(bool is_trial);
-AssistEffect assist_effect_number_for_card_id(uint16_t card_id, bool is_trial);
+const std::vector<uint16_t>& all_assist_card_ids(bool is_nte);
+AssistEffect assist_effect_number_for_card_id(uint16_t card_id, bool is_nte);
 
 class AssistServer {
 public:

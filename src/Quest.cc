@@ -974,7 +974,7 @@ string decode_gci_data(
     }
 
   } else if (header.is_ep3()) {
-    if (header.is_trial()) {
+    if (header.is_nte()) {
       if (known_seed >= 0) {
         return decrypt_download_quest_data_section<true>(
             r.getv(header.data_size), header.data_size, known_seed, true, true);

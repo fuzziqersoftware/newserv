@@ -341,10 +341,10 @@ const char* name_for_direction(Direction d) {
   }
 }
 
-bool card_class_is_tech_like(CardClass cc, bool is_trial) {
+bool card_class_is_tech_like(CardClass cc, bool is_nte) {
   // NTE does not consider BOSS_TECH to be a tech-like card class, but that's
   // probably because that card class just doesn't exist on NTE.
-  if (is_trial) {
+  if (is_nte) {
     return (cc == CardClass::TECH) || (cc == CardClass::PHOTON_BLAST);
   } else {
     return (cc == CardClass::TECH) || (cc == CardClass::PHOTON_BLAST) || (cc == CardClass::BOSS_TECH);
@@ -2420,8 +2420,8 @@ shared_ptr<const MapDefinitionTrial> MapIndex::VersionedMap::trial() const {
   return this->trial_map;
 }
 
-const std::string& MapIndex::VersionedMap::compressed(bool is_trial) const {
-  if (is_trial) {
+const std::string& MapIndex::VersionedMap::compressed(bool is_nte) const {
+  if (is_nte) {
     if (this->compressed_trial_data.empty()) {
       auto md = this->trial();
       this->compressed_trial_data = prs_compress(md.get(), sizeof(*md));

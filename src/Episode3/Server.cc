@@ -205,7 +205,7 @@ void Server::send(const void* data, size_t size, uint8_t command, bool enable_ma
 
     string masked_data;
     if (enable_masking &&
-        !this->options.is_trial() &&
+        !this->options.is_nte() &&
         !(this->options.behavior_flags & BehaviorFlag::DISABLE_MASKING) &&
         (size >= 8)) {
       masked_data.assign(reinterpret_cast<const char*>(data), size);
@@ -235,7 +235,7 @@ void Server::send(const void* data, size_t size, uint8_t command, bool enable_ma
 void Server::send_6xB4x46() const {
   // Note: This function is not part of the original implementation; it was
   // factored out from its callsites in this file and the strings were changed.
-  if (this->options.is_trial()) {
+  if (this->options.is_nte()) {
     G_ServerVersionStrings_Ep3NTE_6xB4x46 cmd;
     cmd.version_signature.encode(VERSION_SIGNATURE_NTE, 1);
     cmd.date_str1.encode(format_time(this->options.card_index->definitions_mtime() * 1000000), 1);
@@ -256,10 +256,10 @@ void Server::send_6xB4x46() const {
   }
 }
 
-string Server::prepare_6xB6x41_map_definition(shared_ptr<const MapIndex::Map> map, uint8_t language, bool is_trial) {
+string Server::prepare_6xB6x41_map_definition(shared_ptr<const MapIndex::Map> map, uint8_t language, bool is_nte) {
   auto vm = map->version(language);
 
-  const auto& compressed = vm->compressed(is_trial);
+  const auto& compressed = vm->compressed(is_nte);
 
   StringWriter w;
   uint32_t subcommand_size = (compressed.size() + sizeof(G_MapData_Ep3_6xB6x41) + 3) & (~3);
@@ -280,7 +280,7 @@ void Server::send_commands_for_joining_spectator(Channel& ch) const {
   }
 
   if (this->last_chosen_map) {
-    string data = this->prepare_6xB6x41_map_definition(this->last_chosen_map, ch.language, this->options.is_trial());
+    string data = this->prepare_6xB6x41_map_definition(this->last_chosen_map, ch.language, this->options.is_nte());
     this->log().info("Sending %c version of map %08" PRIX32, char_for_language_code(ch.language), this->last_chosen_map->map_number);
     ch.send(0x6C, 0x00, data);
   }
@@ -516,7 +516,7 @@ bool Server::check_for_battle_end() {
       }
     }
 
-    if (this->options.is_trial()) {
+    if (this->options.is_nte()) {
       if (teams_defeated[0] || teams_defeated[1]) {
         ret = true;
         for (size_t client_id = 0; client_id < 4; client_id++) {
@@ -548,7 +548,7 @@ bool Server::check_for_battle_end() {
 
   } else { // Not DEFEAT_TEAM
 
-    if (this->options.is_trial()) {
+    if (this->options.is_nte()) {
       uint8_t loser_team_id = 0;
       for (size_t z = 0; z < 4; z++) {
         auto ps = this->player_states[z];
@@ -738,7 +738,7 @@ void Server::destroy_cards_with_zero_hp() {
       for (ssize_t set_index = -1; set_index < 8; set_index++) {
         auto card = (set_index < 0) ? ps->get_sc_card() : ps->get_set_card(set_index);
         if (card && !(card->card_flags & 2) && (card->get_current_hp() < 1)) {
-          card->destroy_set_card(this->options.is_trial() ? nullptr : card->w_destroyer_sc_card.lock());
+          card->destroy_set_card(this->options.is_nte() ? nullptr : card->w_destroyer_sc_card.lock());
           any_card_destroyed = true;
         }
       }
@@ -784,7 +784,7 @@ void Server::dice_phase_after() {
     size_t num_assists = this->assist_server->compute_num_assist_effects_for_client(client_id);
     for (size_t z = 0; z < num_assists; z++) {
       auto eff = this->assist_server->get_active_assist_by_index(z);
-      if ((eff == AssistEffect::CHARITY) || (!this->options.is_trial() && (eff == AssistEffect::CHARITY_PLUS))) {
+      if ((eff == AssistEffect::CHARITY) || (!this->options.is_nte() && (eff == AssistEffect::CHARITY_PLUS))) {
         int16_t exp_delta = (eff == AssistEffect::CHARITY_PLUS) ? -1 : 1;
         for (size_t other_client_id = 0; other_client_id < 4; other_client_id++) {
           auto other_ps = this->player_states[other_client_id];
@@ -843,7 +843,7 @@ void Server::draw_phase_after() {
     }
 
     // Apparently the hard limit of 1000 was added after NTE was released
-    if (this->overall_time_expired || (!this->options.is_trial() && (this->round_num >= 1000))) {
+    if (this->overall_time_expired || (!this->options.is_nte() && (this->round_num >= 1000))) {
       bool no_winner_specified = true;
       for (size_t z = 0; z < 4; z++) {
         auto ps = this->player_states[z];
@@ -934,7 +934,7 @@ void Server::end_action_phase() {
   // that this can only ever be 0 or 2, but we may have to delete the enum if
   // that turns out to be false.
   this->action_subphase = static_cast<ActionSubphase>(static_cast<uint8_t>(this->action_subphase) + 2);
-  if (this->options.is_trial()) {
+  if (this->options.is_nte()) {
     this->unknown_8023EEF4();
     this->update_battle_state_flags_and_send_6xB4x03_if_needed(0);
     this->send_6xB4x02_for_all_players_if_needed();
@@ -1059,7 +1059,7 @@ bool Server::is_registration_complete() const {
 }
 
 void Server::move_phase_after() {
-  if (!this->options.is_trial()) {
+  if (!this->options.is_nte()) {
     for (size_t trap_type = 0; trap_type < 5; trap_type++) {
       uint8_t trap_tile_index = this->chosen_trap_tile_index_of_type[trap_type];
       if (trap_tile_index == 0xFF) {
@@ -1264,7 +1264,7 @@ G_UpdateDecks_Ep3_6xB4x07 Server::prepare_6xB4x07_decks_update() const {
 void Server::send_all_state_updates() {
   this->send(this->prepare_6xB4x07_decks_update());
 
-  if (this->options.is_trial()) {
+  if (this->options.is_nte()) {
     G_UpdateMap_Ep3NTE_6xB4x05 cmd;
     cmd.state = *this->map_and_rules;
     this->send(cmd);
@@ -1323,19 +1323,19 @@ void Server::set_client_id_ready_to_advance_phase(uint8_t client_id, BattlePhase
     return;
   }
 
-  bool is_trial = this->options.is_trial();
+  bool is_nte = this->options.is_nte();
   auto ps = this->player_states[client_id];
   if (ps &&
       (this->current_team_turn1 == ps->get_team_id()) &&
-      (!is_trial || (this->battle_phase == battle_phase)) &&
+      (!is_nte || (this->battle_phase == battle_phase)) &&
       (this->setup_phase == SetupPhase::MAIN_BATTLE)) {
     ps->assist_flags |= AssistFlag::READY_TO_END_PHASE;
     ps->update_hand_and_equip_state_and_send_6xB4x02_if_needed();
     if (this->battle_phase == BattlePhase::DICE) {
-      if (is_trial || !(ps->assist_flags & AssistFlag::ELIGIBLE_FOR_DICE_BOOST) || this->map_and_rules->rules.disable_dice_boost) {
+      if (is_nte || !(ps->assist_flags & AssistFlag::ELIGIBLE_FOR_DICE_BOOST) || this->map_and_rules->rules.disable_dice_boost) {
         ps->assist_flags &= (~AssistFlag::ELIGIBLE_FOR_DICE_BOOST);
         ps->roll_main_dice_or_apply_after_effects();
-        if (!is_trial && (ps->get_atk_points() < 3) && (ps->get_def_points() < 3)) {
+        if (!is_nte && (ps->get_atk_points() < 3) && (ps->get_def_points() < 3)) {
           ps->assist_flags |= AssistFlag::ELIGIBLE_FOR_DICE_BOOST;
         }
       } else {
@@ -1372,11 +1372,11 @@ void Server::set_client_id_ready_to_advance_phase(uint8_t client_id, BattlePhase
     }
 
     if (should_advance_phase) {
-      if (!this->options.is_trial()) {
+      if (!this->options.is_nte()) {
         this->copy_player_states_to_prev_states();
       }
       this->advance_battle_phase();
-      if (!this->options.is_trial()) {
+      if (!this->options.is_nte()) {
         this->send_set_card_updates_and_6xB4x04_if_needed();
       }
       this->clear_player_flags_after_dice_phase();
@@ -1387,19 +1387,19 @@ void Server::set_client_id_ready_to_advance_phase(uint8_t client_id, BattlePhase
 }
 
 void Server::set_phase_after() {
-  bool is_trial = this->options.is_trial();
+  bool is_nte = this->options.is_nte();
 
   for (size_t client_id = 0; client_id < 4; client_id++) {
     auto ps = this->player_states[client_id];
     if (ps) {
       auto card = ps->get_sc_card();
       if (card) {
-        this->card_special->apply_action_conditions(0x06, nullptr, card, is_trial ? 0x1F : 0x04, nullptr);
+        this->card_special->apply_action_conditions(0x06, nullptr, card, is_nte ? 0x1F : 0x04, nullptr);
       }
       for (size_t set_index = 0; set_index < 8; set_index++) {
         auto card = ps->get_set_card(set_index);
         if (card) {
-          this->card_special->apply_action_conditions(0x06, nullptr, card, is_trial ? 0x1F : 0x04, nullptr);
+          this->card_special->apply_action_conditions(0x06, nullptr, card, is_nte ? 0x1F : 0x04, nullptr);
         }
       }
     }
@@ -1418,7 +1418,7 @@ void Server::set_phase_after() {
       switch (this->assist_server->get_active_assist_by_index(z)) {
         case AssistEffect::SHUFFLE_ALL:
         case AssistEffect::SHUFFLE_GROUP:
-          if (is_trial ||
+          if (is_nte ||
               (!this->map_and_rules->rules.disable_deck_shuffle && !this->map_and_rules->rules.disable_deck_loop)) {
             ps->discard_and_redraw_hand();
           }
@@ -1436,7 +1436,7 @@ void Server::set_phase_after() {
           ps->discard_all_assist_cards_from_hand();
           break;
         case AssistEffect::ASSIST_VANISH:
-          if (!is_trial) {
+          if (!is_nte) {
             clients_with_assist_vanish[client_id] = true;
           } else if (ps->get_assist_turns_remaining() != 90) {
             ps->discard_set_assist_card();
@@ -1482,7 +1482,7 @@ void Server::set_player_deck_valid(uint8_t client_id) {
 }
 
 void Server::setup_and_start_battle() {
-  bool is_trial = this->options.is_trial();
+  bool is_nte = this->options.is_nte();
 
   this->setup_phase = SetupPhase::STARTER_ROLLS;
 
@@ -1491,7 +1491,7 @@ void Server::setup_and_start_battle() {
 
   for (size_t z = 0; z < 4; z++) {
     if (!this->check_presence_entry(z)) {
-      if (!is_trial) {
+      if (!is_nte) {
         this->name_entries[z].clear();
       }
     } else {
@@ -1500,7 +1500,7 @@ void Server::setup_and_start_battle() {
     }
   }
 
-  if (!is_trial && (this->map_and_rules->rules.hp_type == HPType::COMMON_HP)) {
+  if (!is_nte && (this->map_and_rules->rules.hp_type == HPType::COMMON_HP)) {
     int16_t team_hp[2] = {99, 99};
     for (size_t z = 0; z < 4; z++) {
       auto ps = this->player_states[z];
@@ -1578,7 +1578,7 @@ void Server::setup_and_start_battle() {
         }
       } else if ((tile_type == 0x10) || (tile_type == 0x20) || (tile_type == 0x50)) {
         this->map_and_rules->map.tiles[y][x] = 0;
-      } else if (is_trial && (tile_type == 0x40) && (this->num_trap_tiles_nte < 0x10)) {
+      } else if (is_nte && (tile_type == 0x40) && (this->num_trap_tiles_nte < 0x10)) {
         this->trap_tile_locs_nte[this->num_trap_tiles_nte][0] = x;
         this->trap_tile_locs_nte[this->num_trap_tiles_nte][1] = y;
         this->num_trap_tiles_nte++;
@@ -1586,7 +1586,7 @@ void Server::setup_and_start_battle() {
     }
   }
 
-  if (!is_trial) {
+  if (!is_nte) {
     for (size_t trap_type = 0; trap_type < 5; trap_type++) {
       this->chosen_trap_tile_index_of_type[trap_type] = 0xFF;
 
@@ -1609,7 +1609,7 @@ void Server::setup_and_start_battle() {
     }
   }
 
-  if (is_trial) {
+  if (is_nte) {
     this->send_all_state_updates();
     this->send_6xB4x02_for_all_players_if_needed();
 
@@ -1636,7 +1636,7 @@ void Server::setup_and_start_battle() {
   this->registration_phase = RegistrationPhase::BATTLE_STARTED;
   this->update_battle_state_flags_and_send_6xB4x03_if_needed(true);
 
-  if (!is_trial) {
+  if (!is_nte) {
     this->send_6xB4x50_trap_tile_locations();
     G_UpdateMap_Ep3_6xB4x05 cmd;
     cmd.state = *this->map_and_rules;
@@ -1775,7 +1775,7 @@ void Server::on_server_data_input(shared_ptr<Client> sender_c, const string& dat
     throw runtime_error("unknown CAx subsubcommand");
   }
 
-  if (this->options.is_trial() || !header.mask_key) {
+  if (this->options.is_nte() || !header.mask_key) {
     (this->*handler)(sender_c, data);
   } else {
     string unmasked_data = data;
@@ -1808,7 +1808,7 @@ void Server::handle_CAx0B_mulligan_hand(shared_ptr<Client>, const string& data) 
     }
   }
 
-  if (!this->options.is_trial() || (error_code == 0)) {
+  if (!this->options.is_nte() || (error_code == 0)) {
     G_ActionResult_Ep3_6xB4x1E out_cmd;
     out_cmd.sequence_num = in_cmd.header.sequence_num.load();
     out_cmd.error_code = error_code;
@@ -1835,7 +1835,7 @@ void Server::handle_CAx0C_end_mulligan_phase(shared_ptr<Client>, const string& d
     error_code = -0x78;
   }
 
-  if (this->options.is_trial() && error_code) {
+  if (this->options.is_nte() && error_code) {
     return;
   }
 
@@ -1866,7 +1866,7 @@ void Server::handle_CAx0C_end_mulligan_phase(shared_ptr<Client>, const string& d
     }
   }
 
-  if (!this->options.is_trial() || !error_code) {
+  if (!this->options.is_nte() || !error_code) {
     G_ActionResult_Ep3_6xB4x1E out_cmd_fin;
     out_cmd_fin.sequence_num = in_cmd.header.sequence_num;
     out_cmd_fin.response_phase = 2;
@@ -1884,7 +1884,7 @@ void Server::handle_CAx0D_end_non_action_phase(shared_ptr<Client>, const string&
     throw runtime_error("invalid client ID");
   }
 
-  if (!this->options.is_trial()) {
+  if (!this->options.is_nte()) {
     G_ActionResult_Ep3_6xB4x1E out_cmd_ack;
     out_cmd_ack.sequence_num = in_cmd.header.sequence_num;
     out_cmd_ack.response_phase = 1;
@@ -1895,7 +1895,7 @@ void Server::handle_CAx0D_end_non_action_phase(shared_ptr<Client>, const string&
 
   G_ActionResult_Ep3_6xB4x1E out_cmd_fin;
   out_cmd_fin.sequence_num = in_cmd.header.sequence_num;
-  out_cmd_fin.response_phase = this->options.is_trial() ? 0 : 2;
+  out_cmd_fin.response_phase = this->options.is_nte() ? 0 : 2;
   this->send(out_cmd_fin);
 }
 
@@ -1930,7 +1930,7 @@ void Server::handle_CAx0E_discard_card_from_hand(shared_ptr<Client>, const strin
     }
   }
 
-  if (!this->options.is_trial() || (error_code == 0)) {
+  if (!this->options.is_nte() || (error_code == 0)) {
     G_ActionResult_Ep3_6xB4x1E out_cmd;
     out_cmd.sequence_num = in_cmd.header.sequence_num;
     out_cmd.error_code = error_code;
@@ -1975,10 +1975,10 @@ void Server::handle_CAx0F_set_card_from_hand(shared_ptr<Client>, const string& d
     this->ruler_server->error_code1 = error_code;
   }
 
-  if (!this->options.is_trial() || always_send_response) {
+  if (!this->options.is_nte() || always_send_response) {
     G_ActionResult_Ep3_6xB4x1E out_cmd;
     out_cmd.sequence_num = in_cmd.header.sequence_num;
-    out_cmd.error_code = this->options.is_trial() ? (was_set ? 0 : 1) : this->ruler_server->error_code1;
+    out_cmd.error_code = this->options.is_nte() ? (was_set ? 0 : 1) : this->ruler_server->error_code1;
     this->send(out_cmd);
   }
 
@@ -2016,10 +2016,10 @@ void Server::handle_CAx10_move_fc_to_location(shared_ptr<Client>, const string& 
     this->ruler_server->error_code2 = error_code;
   }
 
-  if (!this->options.is_trial() || (this->ruler_server->error_code2 == 0)) {
+  if (!this->options.is_nte() || (this->ruler_server->error_code2 == 0)) {
     G_ActionResult_Ep3_6xB4x1E out_cmd;
     out_cmd.sequence_num = in_cmd.header.sequence_num;
-    out_cmd.error_code = this->options.is_trial() ? 0 : this->ruler_server->error_code2;
+    out_cmd.error_code = this->options.is_nte() ? 0 : this->ruler_server->error_code2;
     this->send(out_cmd);
   }
 
@@ -2054,11 +2054,11 @@ void Server::handle_CAx11_enqueue_attack_or_defense(shared_ptr<Client>, const st
     this->ruler_server->error_code3 = error_code;
   }
 
-  bool is_trial = this->options.is_trial();
-  if (!is_trial || (error_code == 0)) {
+  bool is_nte = this->options.is_nte();
+  if (!is_nte || (error_code == 0)) {
     G_ActionResult_Ep3_6xB4x1E out_cmd;
     out_cmd.sequence_num = in_cmd.header.sequence_num;
-    out_cmd.error_code = is_trial ? !!this->ruler_server->error_code3 : this->ruler_server->error_code3;
+    out_cmd.error_code = is_nte ? !!this->ruler_server->error_code3 : this->ruler_server->error_code3;
     this->send(out_cmd);
   }
 
@@ -2081,7 +2081,7 @@ void Server::handle_CAx12_end_attack_list(shared_ptr<Client>, const string& data
     this->end_attack_list_for_client(in_cmd.client_id);
   }
 
-  if (!this->options.is_trial() || (error_code == 0)) {
+  if (!this->options.is_nte() || (error_code == 0)) {
     G_ActionResult_Ep3_6xB4x1E out_cmd;
     out_cmd.sequence_num = in_cmd.header.sequence_num;
     this->send(out_cmd);
@@ -2134,7 +2134,7 @@ void Server::handle_CAx13_update_map_during_setup_t(shared_ptr<Client>, const st
 }
 
 void Server::handle_CAx13_update_map_during_setup(shared_ptr<Client> c, const string& data) {
-  if (this->options.is_trial()) {
+  if (this->options.is_nte()) {
     this->handle_CAx13_update_map_during_setup_t<G_SetMapState_Ep3NTE_CAx13>(c, data);
   } else {
     this->handle_CAx13_update_map_during_setup_t<G_SetMapState_Ep3_CAx13>(c, data);
@@ -2167,7 +2167,7 @@ void Server::handle_CAx14_update_deck_during_setup(shared_ptr<Client>, const str
       if (verify_error) {
         throw runtime_error(string_printf("invalid deck: -0x%" PRIX32, verify_error));
       }
-      if (!this->options.is_trial() && !(this->options.behavior_flags & BehaviorFlag::SKIP_D1_D2_REPLACE)) {
+      if (!this->options.is_nte() && !(this->options.behavior_flags & BehaviorFlag::SKIP_D1_D2_REPLACE)) {
         this->ruler_server->replace_D1_D2_rank_cards_with_Attack(entry.card_ids);
       }
       *this->deck_entries[in_cmd.client_id] = in_cmd.entry;
@@ -2244,10 +2244,10 @@ void Server::handle_CAx1D_start_battle(shared_ptr<Client>, const string& data) {
       in_cmd.header.subsubcommand, "START BATTLE");
 
   if (!this->battle_in_progress) {
-    bool is_trial = this->options.is_trial();
+    bool is_nte = this->options.is_nte();
 
     bool should_start = false;
-    if (is_trial) {
+    if (is_nte) {
       should_start = (this->registration_phase == RegistrationPhase::REGISTERED);
     } else if (this->update_registration_phase()) {
       should_start = true;
@@ -2511,7 +2511,7 @@ void Server::send_6xB6x41_to_all_clients() const {
       }
       if (map_commands_by_language[c->language()].empty()) {
         map_commands_by_language[c->language()] = this->prepare_6xB6x41_map_definition(
-            this->last_chosen_map, c->language(), this->options.is_trial());
+            this->last_chosen_map, c->language(), this->options.is_nte());
       }
       this->log().info("Sending %c version of map %08" PRIX32, char_for_language_code(c->language()), this->last_chosen_map->map_number);
       send_command(c, 0x6C, 0x00, map_commands_by_language[c->language()]);
@@ -2584,9 +2584,9 @@ void Server::handle_CAx49_card_counts(shared_ptr<Client>, const string& data) {
 }
 
 void Server::compute_losing_team_id_and_add_winner_flags(uint32_t flags) {
-  bool is_trial = this->options.is_trial();
+  bool is_nte = this->options.is_nte();
 
-  if (!is_trial) {
+  if (!is_nte) {
     for (size_t z = 0; z < 4; z++) {
       auto ps = this->player_states[z];
       if (ps) {
@@ -2602,7 +2602,7 @@ void Server::compute_losing_team_id_and_add_winner_flags(uint32_t flags) {
   int8_t losing_team_id = -1;
   array<uint32_t, 2> team_counts = {0, 0};
 
-  if (!is_trial) {
+  if (!is_nte) {
     // First, check which team has more dead SCs
     for (size_t z = 0; z < 4; z++) {
       auto ps = this->player_states[z];
@@ -2702,7 +2702,7 @@ void Server::compute_losing_team_id_and_add_winner_flags(uint32_t flags) {
       if (losing_team_id != ps->get_team_id()) {
         ps->assist_flags |= winner_flags;
       }
-      if (!is_trial || (losing_team_id != ps->get_team_id())) {
+      if (!is_nte || (losing_team_id != ps->get_team_id())) {
         ps->update_hand_and_equip_state_and_send_6xB4x02_if_needed();
       }
     }
@@ -2730,7 +2730,7 @@ void Server::unknown_8023EEF4() {
     return;
   }
 
-  bool is_trial = this->options.is_trial();
+  bool is_nte = this->options.is_nte();
   while (this->unknown_a14 < this->num_pending_attacks_with_cards) {
     auto card = this->attack_cards[this->unknown_a14];
     if (this->get_current_team_turn() == card->get_team_id()) {
@@ -2738,7 +2738,7 @@ void Server::unknown_8023EEF4() {
       log.debug("card @%04hX #%04hX can attack", card->get_card_ref(), card->get_card_id());
       string as_str = as.str();
       log.debug("as: %s", as_str.c_str());
-      if (is_trial) {
+      if (is_nte) {
         this->replace_targets_due_to_destruction_nte(&as);
       } else {
         this->replace_targets_due_to_destruction_or_conditions(&as);
@@ -2764,7 +2764,7 @@ void Server::unknown_8023EEF4() {
     G_SetActionState_Ep3_6xB4x29 cmd;
     cmd.unknown_a1 = this->unknown_a14;
     cmd.state = this->pending_attacks_with_cards[this->unknown_a14];
-    if (is_trial) {
+    if (is_nte) {
       this->replace_targets_due_to_destruction_nte(&cmd.state);
     } else {
       this->replace_targets_due_to_destruction_or_conditions(&cmd.state);
@@ -2774,7 +2774,7 @@ void Server::unknown_8023EEF4() {
 
     this->card_special->unknown_8024AAB8(as);
 
-    if (!is_trial) {
+    if (!is_nte) {
       this->attack_cards[this->unknown_a14]->compute_action_chain_results(1, 0);
       this->attack_cards[this->unknown_a14]->unknown_80236374(this->attack_cards[this->unknown_a14], &as);
       if (!this->attack_cards[this->unknown_a14]->action_chain.check_flag(0x40)) {
@@ -2808,7 +2808,7 @@ void Server::unknown_8023EEF4() {
     this->send_6xB4x02_for_all_players_if_needed();
   }
 
-  if (!is_trial) {
+  if (!is_nte) {
     this->update_battle_state_flags_and_send_6xB4x03_if_needed();
     this->send_6xB4x02_for_all_players_if_needed();
   }
@@ -3047,11 +3047,11 @@ void Server::unknown_8023EE48() {
 }
 
 void Server::unknown_8023EE80() {
-  bool is_trial = this->options.is_trial();
+  bool is_nte = this->options.is_nte();
 
   if (this->unknown_a14 < this->num_pending_attacks_with_cards) {
     this->attack_cards[this->unknown_a14]->apply_attack_result();
-    if (is_trial) {
+    if (is_nte) {
       for (size_t z = 0; z < 4; z++) {
         auto ps = this->player_states[z];
         if (ps) {
@@ -3064,7 +3064,7 @@ void Server::unknown_8023EE80() {
 
   this->check_for_battle_end();
 
-  if (is_trial) {
+  if (is_nte) {
     this->unknown_8023EEF4();
     this->update_battle_state_flags_and_send_6xB4x03_if_needed();
     this->send_6xB4x02_for_all_players_if_needed();
@@ -3111,7 +3111,7 @@ vector<shared_ptr<Card>> Server::const_cast_set_cards_v(
 }
 
 void Server::send_6xB4x39() const {
-  if (this->options.is_trial()) {
+  if (this->options.is_nte()) {
     G_UpdateAllPlayerStatistics_Ep3NTE_6xB4x39 cmd;
     for (size_t z = 0; z < 4; z++) {
       if (this->player_states[z]) {
@@ -3132,7 +3132,7 @@ void Server::send_6xB4x39() const {
 
 void Server::send_6xB4x05() {
   this->compute_all_map_occupied_bits();
-  if (this->options.is_trial()) {
+  if (this->options.is_nte()) {
     G_UpdateMap_Ep3NTE_6xB4x05 cmd;
     cmd.state = *this->map_and_rules;
     this->send(cmd);

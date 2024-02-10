@@ -183,7 +183,7 @@ void DeckState::restart() {
   this->shuffle();
 }
 
-void DeckState::do_mulligan(bool is_trial) {
+void DeckState::do_mulligan(bool is_nte) {
   for (size_t z = 0; z < this->entries.size(); z++) {
     if (this->entries[z].state == CardState::DISCARDED) {
       this->entries[z].state = CardState::DRAWABLE;
@@ -191,7 +191,7 @@ void DeckState::do_mulligan(bool is_trial) {
   }
   this->draw_index = 1;
 
-  if (is_trial || this->shuffle_enabled) {
+  if (is_nte || this->shuffle_enabled) {
     // Get the next 5 cards from the deck, and put the previous 5 cards after
     // them (so they will be shuffled back in).
     for (uint8_t z = 0; z < 5; z++) {

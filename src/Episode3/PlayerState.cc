@@ -91,7 +91,7 @@ void PlayerState::init() {
   this->sc_card = make_shared<Card>(this->deck_state->sc_card_id(), this->sc_card_ref, this->client_id, s);
   this->sc_card->init();
   this->draw_initial_hand();
-  if (s->options.is_trial()) {
+  if (s->options.is_nte()) {
     this->update_hand_and_equip_state_and_send_6xB4x02_if_needed();
     this->send_set_card_updates(true);
   }
@@ -156,7 +156,7 @@ void PlayerState::apply_assist_card_effect_on_set(
     assist_card_id = s->card_id_for_card_ref(this->card_refs[6]);
   }
 
-  auto assist_effect = assist_effect_number_for_card_id(assist_card_id, s->options.is_trial());
+  auto assist_effect = assist_effect_number_for_card_id(assist_card_id, s->options.is_nte());
   if ((assist_effect == AssistEffect::RESISTANCE) ||
       (assist_effect == AssistEffect::INDEPENDENT)) {
     this->assist_card_set_number = 0;
@@ -176,7 +176,7 @@ void PlayerState::apply_assist_card_effect_on_set(
       }
 
       if (hand_index < 6) {
-        if (s->options.is_trial()) {
+        if (s->options.is_nte()) {
           if (this->deck_state->draw_card_by_ref(this->discard_log_card_refs[0])) {
             this->pop_from_discard_log(0);
           }
@@ -208,7 +208,7 @@ void PlayerState::apply_assist_card_effect_on_set(
 
     case AssistEffect::SKIP_SET:
     case AssistEffect::SKIP_ACT:
-      if (!s->options.is_trial()) {
+      if (!s->options.is_nte()) {
         this->assist_delay_turns = 2;
       }
       break;
@@ -253,13 +253,13 @@ void PlayerState::apply_assist_card_effect_on_set(
         }
       }
 
-      bool is_trial = s->options.is_trial();
-      if (!is_trial) {
+      bool is_nte = s->options.is_nte();
+      if (!is_nte) {
         this->on_cards_destroyed();
       }
       this->atk_points = min<uint8_t>(9, this->atk_points + (total_cost >> 1));
       this->update_hand_and_equip_state_and_send_6xB4x02_if_needed();
-      if (!is_trial) {
+      if (!is_nte) {
         s->send_6xB4x05();
       }
       break;
@@ -320,7 +320,7 @@ void PlayerState::apply_assist_card_effect_on_set(
       s->update_battle_state_flags_and_send_6xB4x03_if_needed();
 
       this->num_destroyed_fcs = 0;
-      if (!s->options.is_trial()) {
+      if (!s->options.is_nte()) {
         s->team_num_cards_destroyed[this->team_id] = 0;
         for (size_t client_id = 0; client_id < 4; client_id++) {
           const auto other_ps = s->get_player_state(client_id);
@@ -343,20 +343,20 @@ void PlayerState::apply_assist_card_effect_on_set(
       break;
 
     case AssistEffect::SLOW_TIME: {
-      bool is_trial = s->options.is_trial();
+      bool is_nte = s->options.is_nte();
       for (size_t client_id = 0; client_id < 4; client_id++) {
         auto other_ps = s->get_player_state(client_id);
         if (!other_ps) {
           continue;
         }
 
-        if (is_trial
+        if (is_nte
                 ? (other_ps->assist_remaining_turns != 90 && other_ps->assist_remaining_turns != 99)
                 : (other_ps->assist_remaining_turns < 10)) {
           other_ps->assist_remaining_turns = min<uint8_t>(9, other_ps->assist_remaining_turns << 1);
         }
 
-        for (ssize_t set_index = is_trial ? 0 : -1; set_index < 8; set_index++) {
+        for (ssize_t set_index = is_nte ? 0 : -1; set_index < 8; set_index++) {
           auto card = (set_index == -1)
               ? other_ps->get_sc_card()
               : other_ps->get_set_card(set_index);
@@ -366,7 +366,7 @@ void PlayerState::apply_assist_card_effect_on_set(
               if (cond.type == ConditionType::NONE) {
                 continue;
               }
-              if (is_trial) {
+              if (is_nte) {
                 if (cond.remaining_turns < 49) {
                   cond.remaining_turns <<= 1;
                 }
@@ -376,7 +376,7 @@ void PlayerState::apply_assist_card_effect_on_set(
             }
           }
         }
-        if (!is_trial) {
+        if (!is_nte) {
           other_ps->update_hand_and_equip_state_and_send_6xB4x02_if_needed();
           other_ps->send_set_card_updates();
         }
@@ -385,33 +385,33 @@ void PlayerState::apply_assist_card_effect_on_set(
     }
 
     case AssistEffect::QUICK_TIME: {
-      bool is_trial = s->options.is_trial();
+      bool is_nte = s->options.is_nte();
       for (size_t client_id = 0; client_id < 4; client_id++) {
         auto other_ps = s->get_player_state(client_id);
         if (!other_ps) {
           continue;
         }
 
-        if (is_trial
+        if (is_nte
                 ? (other_ps->assist_remaining_turns != 90 && other_ps->assist_remaining_turns != 99)
                 : (other_ps->assist_remaining_turns < 10)) {
           other_ps->assist_remaining_turns = ((other_ps->assist_remaining_turns + 1) >> 1);
         }
 
-        for (ssize_t set_index = is_trial ? 0 : -1; set_index < 8; set_index++) {
+        for (ssize_t set_index = is_nte ? 0 : -1; set_index < 8; set_index++) {
           auto card = (set_index == -1)
               ? other_ps->get_sc_card()
               : other_ps->get_set_card(set_index);
           if (card) {
             for (size_t cond_index = 0; cond_index < 9; cond_index++) {
               auto& cond = card->action_chain.conditions[cond_index];
-              if ((cond.type != ConditionType::NONE) && (cond.remaining_turns < (is_trial ? 99 : 10))) {
+              if ((cond.type != ConditionType::NONE) && (cond.remaining_turns < (is_nte ? 99 : 10))) {
                 cond.remaining_turns = (cond.remaining_turns + 1) >> 1;
               }
             }
           }
         }
-        if (!is_trial) {
+        if (!is_nte) {
           other_ps->update_hand_and_equip_state_and_send_6xB4x02_if_needed();
           other_ps->send_set_card_updates();
         }
@@ -428,7 +428,7 @@ void PlayerState::apply_assist_card_effect_on_set(
       break;
 
     case AssistEffect::SKIP_TURN:
-      if (!s->options.is_trial() && (!setter_ps || (setter_ps->team_id == this->team_id))) {
+      if (!s->options.is_nte() && (!setter_ps || (setter_ps->team_id == this->team_id))) {
         this->assist_delay_turns = 6;
       } else {
         this->assist_delay_turns = 5;
@@ -450,7 +450,7 @@ void PlayerState::apply_dice_effects() {
       case AssistEffect::DICE_FEVER:
         for (size_t die_index = 0; die_index < 2; die_index++) {
           if (this->dice_results[die_index] > 0) {
-            this->dice_results[die_index] = s->options.is_trial() ? 6 : 5;
+            this->dice_results[die_index] = s->options.is_nte() ? 6 : 5;
           }
         }
         break;
@@ -469,7 +469,7 @@ void PlayerState::apply_dice_effects() {
         }
         break;
       case AssistEffect::DICE_FEVER_PLUS:
-        if (s->options.is_trial()) {
+        if (s->options.is_nte()) {
           break;
         }
         for (size_t die_index = 0; die_index < 2; die_index++) {
@@ -607,7 +607,7 @@ void PlayerState::discard_and_redraw_hand() {
     this->discard_ref_from_hand(this->card_refs[0]);
   }
 
-  if (!s->options.is_trial()) {
+  if (!s->options.is_nte()) {
     G_Unknown_Ep3_6xB4x2C cmd;
     cmd.change_type = 3;
     cmd.client_id = this->client_id;
@@ -631,7 +631,7 @@ bool PlayerState::discard_card_or_add_to_draw_pile(uint16_t card_ref, bool add_t
   this->card_refs[set_index + 8] = 0xFFFF;
   auto card = this->set_cards[set_index];
   if (card) {
-    if (this->server()->options.is_trial()) {
+    if (this->server()->options.is_nte()) {
       card->update_stats_on_destruction();
       this->set_cards[set_index].reset();
     } else {
@@ -711,7 +711,7 @@ bool PlayerState::do_mulligan() {
     this->discard_ref_from_hand(this->card_refs[0]);
   }
 
-  if (!s->options.is_trial()) {
+  if (!s->options.is_nte()) {
     G_Unknown_Ep3_6xB4x2C cmd;
     cmd.change_type = 3;
     cmd.client_id = this->client_id;
@@ -720,10 +720,10 @@ bool PlayerState::do_mulligan() {
     s->send(cmd);
   }
 
-  this->deck_state->do_mulligan(s->options.is_trial());
+  this->deck_state->do_mulligan(s->options.is_nte());
   this->draw_hand(5);
 
-  if (!s->options.is_trial()) {
+  if (!s->options.is_nte()) {
     this->discard_log_card_refs.clear(0xFFFF);
   }
   return true;
@@ -736,7 +736,7 @@ void PlayerState::draw_hand(ssize_t override_count) {
   size_t num_assists = s->assist_server->compute_num_assist_effects_for_client(this->client_id);
   for (size_t z = 0; z < num_assists; z++) {
     auto eff = s->assist_server->get_active_assist_by_index(z);
-    if ((eff == AssistEffect::RICH_PLUS) && !s->options.is_trial()) {
+    if ((eff == AssistEffect::RICH_PLUS) && !s->options.is_nte()) {
       count = 4 - this->get_hand_size();
     } else if (eff == AssistEffect::RICH) {
       count = 6 - this->get_hand_size();
@@ -755,7 +755,7 @@ void PlayerState::draw_hand(ssize_t override_count) {
         break;
       }
     }
-    if (!s->options.is_trial() && (s->get_setup_phase() == SetupPhase::MAIN_BATTLE)) {
+    if (!s->options.is_nte() && (s->get_setup_phase() == SetupPhase::MAIN_BATTLE)) {
       this->stats.num_cards_drawn++;
     }
   }
@@ -1095,18 +1095,18 @@ void PlayerState::on_cards_destroyed() {
 void PlayerState::replace_all_set_assists_with_random_assists() {
   auto s = this->server();
 
-  bool is_trial = s->options.is_trial();
-  const auto& assist_card_ids = all_assist_card_ids(is_trial);
+  bool is_nte = s->options.is_nte();
+  const auto& assist_card_ids = all_assist_card_ids(is_nte);
   for (size_t client_id = 0; client_id < 4; client_id++) {
     auto other_ps = s->get_player_state(client_id);
     if (other_ps &&
-        ((other_ps->card_refs[6] != 0xFFFF) || (!is_trial && (other_ps->set_assist_card_id != 0xFFFF)))) {
+        ((other_ps->card_refs[6] != 0xFFFF) || (!is_nte && (other_ps->set_assist_card_id != 0xFFFF)))) {
       uint16_t card_id = 0x0130;
       while (card_id == 0x0130) { // God Whim
         size_t index = s->get_random(assist_card_ids.size());
         card_id = assist_card_ids[index];
         // In NTE, God Whim can use ANY card, even unobtainable cards.
-        if (!is_trial && !this->god_whim_can_use_hidden_cards) {
+        if (!is_nte && !this->god_whim_can_use_hidden_cards) {
           auto ce = s->definition_for_card_id(card_id);
           if (!ce || ce->def.cannot_drop) {
             continue;
@@ -1133,7 +1133,7 @@ bool PlayerState::replace_assist_card_by_id(uint16_t card_id) {
   this->update_hand_and_equip_state_and_send_6xB4x02_if_needed();
   s->assist_server->populate_effects();
 
-  if (!s->options.is_trial()) {
+  if (!s->options.is_nte()) {
     for (size_t client_id = 0; client_id < 4; client_id++) {
       auto other_ps = s->get_player_state(client_id);
       if (other_ps) {
@@ -1193,7 +1193,7 @@ bool PlayerState::return_set_card_to_hand1(uint16_t card_ref) {
       if (card && (card->get_card_ref() == card_ref)) {
         uint16_t set_card_ref = this->card_refs[set_index + 8];
         this->card_refs[set_index + 8] = 0xFFFF;
-        if (this->server()->options.is_trial()) {
+        if (this->server()->options.is_nte()) {
           card->update_stats_on_destruction();
           this->set_cards[set_index].reset();
         } else {
@@ -1238,12 +1238,12 @@ uint8_t PlayerState::roll_dice_with_effects(size_t num_dice) {
 
 void PlayerState::send_set_card_updates(bool always_send) {
   auto s = this->server();
-  bool is_trial = s->options.is_trial();
+  bool is_nte = s->options.is_nte();
 
   uint16_t mask = 0;
   if (this->sc_card) {
     this->sc_card->send_6xB4x4E_4C_4D_if_needed(always_send);
-  } else if (is_trial) {
+  } else if (is_nte) {
     this->send_6xB4x0A_for_set_card(0);
   } else {
     this->set_card_action_chains->at(0).clear();
@@ -1255,7 +1255,7 @@ void PlayerState::send_set_card_updates(bool always_send) {
     auto card = this->set_cards[set_index];
     if (card) {
       card->send_6xB4x4E_4C_4D_if_needed(always_send);
-    } else if (is_trial) {
+    } else if (is_nte) {
       this->send_6xB4x0A_for_set_card(set_index + 1);
     } else {
       mask |= 1 << (set_index + 1);
@@ -1264,7 +1264,7 @@ void PlayerState::send_set_card_updates(bool always_send) {
     }
   }
 
-  // mask will always be 0 here if is_trial is true
+  // mask will always be 0 here if is_nte is true
   if (mask && !s->get_should_copy_prev_states_to_current_states()) {
     G_ClearSetCardConditions_Ep3_6xB4x4F cmd;
     cmd.client_id = this->client_id;
@@ -1341,7 +1341,7 @@ bool PlayerState::set_card_from_hand(
 
   this->deck_state->set_card_ref_in_play(card_ref);
 
-  bool is_trial = s->options.is_trial();
+  bool is_nte = s->options.is_nte();
   auto ce = s->definition_for_card_ref(card_ref);
   if (ce->def.type == CardType::ITEM || ce->def.type == CardType::CREATURE) {
     if ((card_index < 7) || (card_index >= 15)) {
@@ -1379,7 +1379,7 @@ bool PlayerState::set_card_from_hand(
       target_ps->assist_card_set_number = s->next_assist_card_set_number++;
 
       this->update_hand_and_equip_state_and_send_6xB4x02_if_needed();
-      if (!is_trial) {
+      if (!is_nte) {
         target_ps->apply_assist_card_effect_on_set(this->shared_from_this());
       }
       target_ps->update_hand_and_equip_state_and_send_6xB4x02_if_needed();
@@ -1396,7 +1396,7 @@ bool PlayerState::set_card_from_hand(
           other_ps->update_hand_and_equip_state_and_send_6xB4x02_if_needed();
         }
       }
-      if (is_trial) {
+      if (is_nte) {
         target_ps->apply_assist_card_effect_on_set(this->shared_from_this());
       }
     }
@@ -1408,13 +1408,13 @@ bool PlayerState::set_card_from_hand(
 
   this->compute_total_set_cards_cost();
   s->card_special->on_card_set(this->shared_from_this(), card_ref);
-  if (!is_trial && (ce->def.type == CardType::ASSIST)) {
+  if (!is_nte && (ce->def.type == CardType::ASSIST)) {
     s->check_for_destroyed_cards_and_send_6xB4x05_6xB4x02();
   }
   this->update_hand_and_equip_state_and_send_6xB4x02_if_needed();
   s->send_6xB4x05();
 
-  if (!is_trial) {
+  if (!is_nte) {
     G_Unknown_Ep3_6xB4x4A cmd;
     cmd.card_refs.clear(0xFFFF);
     cmd.card_refs[0] = card_ref;
@@ -1596,14 +1596,14 @@ void PlayerState::update_hand_and_equip_state_and_send_6xB4x02_if_needed(
 
 void PlayerState::set_random_assist_card_from_hand_for_free() {
   auto s = this->server();
-  bool is_trial = s->options.is_trial();
+  bool is_nte = s->options.is_nte();
 
   vector<uint16_t> candidate_card_refs;
   for (size_t hand_index = 0; hand_index < 6; hand_index++) {
     uint16_t card_ref = this->card_refs[hand_index];
     auto ce = s->definition_for_card_ref(card_ref);
     if (ce && (ce->def.type == CardType::ASSIST) &&
-        (assist_effect_number_for_card_id(ce->def.card_id, is_trial) != AssistEffect::SQUEEZE)) {
+        (assist_effect_number_for_card_id(ce->def.card_id, is_nte) != AssistEffect::SQUEEZE)) {
       candidate_card_refs.emplace_back(card_ref);
     }
   }
@@ -1660,7 +1660,7 @@ void PlayerState::send_6xB4x04_if_needed(bool always_send) {
   if (always_send || (cmd.card_statuses != *this->card_short_statuses)) {
     auto s = this->server();
     *this->card_short_statuses = cmd.card_statuses;
-    if (s->options.is_trial() || !s->get_should_copy_prev_states_to_current_states()) {
+    if (s->options.is_nte() || !s->get_should_copy_prev_states_to_current_states()) {
       s->send(cmd);
     }
   }
@@ -1754,7 +1754,7 @@ int16_t PlayerState::get_assist_turns_remaining() {
 
 bool PlayerState::set_action_cards_for_action_state(const ActionState& pa) {
   auto s = this->server();
-  bool is_trial = s->options.is_trial();
+  bool is_nte = s->options.is_nte();
 
   auto attacker_card = s->card_for_set_card_ref(pa.attacker_card_ref);
   if (attacker_card) {
@@ -1762,7 +1762,7 @@ bool PlayerState::set_action_cards_for_action_state(const ActionState& pa) {
   }
 
   auto action_type = s->ruler_server->get_pending_action_type(pa);
-  if (!is_trial) {
+  if (!is_nte) {
     this->subtract_or_check_atk_or_def_points_for_action(pa, 1);
   }
 
@@ -1780,7 +1780,7 @@ bool PlayerState::set_action_cards_for_action_state(const ActionState& pa) {
       do {
         card->unknown_80237A90(pa, pa.action_card_refs[z]);
         card->unknown_802379BC(pa.action_card_refs[z]);
-        if (!is_trial) {
+        if (!is_nte) {
           if (pa.action_card_refs[z] != 0xFFFF) {
             cmd.card_refs[z] = pa.action_card_refs[z];
             cmd.entry_count++;
@@ -1788,7 +1788,7 @@ bool PlayerState::set_action_cards_for_action_state(const ActionState& pa) {
           auto ce = s->definition_for_card_ref(pa.action_card_refs[z]);
           if (ce) {
             auto card_class = ce->def.card_class();
-            if (card_class_is_tech_like(card_class, is_trial)) {
+            if (card_class_is_tech_like(card_class, is_nte)) {
               this->stats.num_tech_cards_set++;
             }
             if ((card_class == CardClass::ATTACK_ACTION) ||
@@ -1812,7 +1812,7 @@ bool PlayerState::set_action_cards_for_action_state(const ActionState& pa) {
       auto target_card = s->card_for_set_card_ref(pa.target_card_refs[z]);
       if (target_card) {
         target_card->unknown_802379DC(pa);
-        if (!is_trial) {
+        if (!is_nte) {
           if (this->client_id == target_card->get_client_id()) {
             this->stats.defense_actions_set_on_self++;
           } else {
@@ -1822,7 +1822,7 @@ bool PlayerState::set_action_cards_for_action_state(const ActionState& pa) {
         }
       }
     }
-    if (!is_trial) {
+    if (!is_nte) {
       G_Unknown_Ep3_6xB4x4A cmd;
       cmd.card_refs.clear(0xFFFF);
       cmd.client_id = this->client_id;
@@ -1832,7 +1832,7 @@ bool PlayerState::set_action_cards_for_action_state(const ActionState& pa) {
       s->send(cmd);
     }
   }
-  if (is_trial) {
+  if (is_nte) {
     this->subtract_or_check_atk_or_def_points_for_action(pa, 1);
   }
   for (size_t z = 0; (z < pa.action_card_refs.size()) && (pa.action_card_refs[z] != 0xFFFF); z++) {
@@ -1872,7 +1872,7 @@ void PlayerState::dice_phase_before() {
   this->assist_flags &= (AssistFlag::HAS_WON_BATTLE |
       AssistFlag::WINNER_DECIDED_BY_DEFEAT |
       AssistFlag::WINNER_DECIDED_BY_RANDOM |
-      (this->server()->options.is_trial() ? AssistFlag::NONE : AssistFlag::ELIGIBLE_FOR_DICE_BOOST));
+      (this->server()->options.is_nte() ? AssistFlag::NONE : AssistFlag::ELIGIBLE_FOR_DICE_BOOST));
   this->set_assist_flags_from_assist_effects();
   this->update_hand_and_equip_state_and_send_6xB4x02_if_needed(0);
   this->send_set_card_updates();
@@ -1900,7 +1900,7 @@ void PlayerState::handle_homesick_assist_effect_from_bomb(shared_ptr<Card> card)
         this->return_set_card_to_hand2(card_ref);
         this->log_discard(card_ref, 1);
         // On NTE, the card is destroyed immediately
-        if (s->options.is_trial()) {
+        if (s->options.is_nte()) {
           this->set_cards[set_index]->update_stats_on_destruction();
           this->set_cards[set_index].reset();
         } else {
@@ -1913,7 +1913,7 @@ void PlayerState::handle_homesick_assist_effect_from_bomb(shared_ptr<Card> card)
     if (this->deck_state->set_card_ref_drawable_next(card_ref)) {
       this->log_discard(card_ref, 1);
       // On NTE, the card is destroyed immediately
-      if (s->options.is_trial()) {
+      if (s->options.is_nte()) {
         this->set_cards[set_index]->update_stats_on_destruction();
         this->set_cards[set_index].reset();
       } else {
@@ -1930,7 +1930,7 @@ void PlayerState::apply_main_die_assist_effects(uint8_t* die_value) const {
   for (size_t z = 0; z < num_assists; z++) {
     switch (s->assist_server->get_active_assist_by_index(z)) {
       case AssistEffect::DICE_FEVER:
-        *die_value = s->options.is_trial() ? 6 : 5;
+        *die_value = s->options.is_nte() ? 6 : 5;
         break;
       case AssistEffect::DICE_HALF:
         *die_value = ((*die_value + 1) >> 1);
@@ -1939,7 +1939,7 @@ void PlayerState::apply_main_die_assist_effects(uint8_t* die_value) const {
         (*die_value)++;
         break;
       case AssistEffect::DICE_FEVER_PLUS:
-        if (!s->options.is_trial()) {
+        if (!s->options.is_nte()) {
           *die_value = 6;
         }
         break;
@@ -2027,7 +2027,7 @@ void PlayerState::roll_main_dice_or_apply_after_effects() {
   this->dice_results[0] = this->atk_points;
   this->dice_results[1] = this->def_points;
 
-  if (s->options.is_trial()) {
+  if (s->options.is_nte()) {
     this->atk_bonuses = this->atk_points - atk_before_bonuses;
     this->def_bonuses = this->def_points - def_before_bonuses;
   }
@@ -2035,7 +2035,7 @@ void PlayerState::roll_main_dice_or_apply_after_effects() {
   this->def_points += s->team_dice_bonus[this->team_id];
   this->atk_points = clamp<uint8_t>(this->atk_points, 1, 9);
   this->def_points = clamp<uint8_t>(this->def_points, 1, 9);
-  if (!s->options.is_trial()) {
+  if (!s->options.is_nte()) {
     this->atk_bonuses = this->atk_points - atk_before_bonuses;
     this->def_bonuses = this->def_points - def_before_bonuses;
   }
@@ -2091,7 +2091,7 @@ void PlayerState::send_6xB4x0A_for_set_card(size_t set_index) {
   this->set_card_action_chains->at(set_index) = this->unknown_a12;
   this->set_card_action_metadatas->at(set_index) = this->unknown_a13;
 
-  if (s->options.is_trial()) {
+  if (s->options.is_nte()) {
     G_UpdateActionChainAndMetadata_Ep3NTE_6xB4x0A cmd;
     cmd.client_id = this->client_id;
     cmd.index = set_index;

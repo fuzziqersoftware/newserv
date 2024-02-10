@@ -2789,12 +2789,12 @@ void send_ep3_card_battle_table_state(shared_ptr<Lobby> l, uint16_t table_number
         throw runtime_error("invalid battle table seat number");
       }
 
-      bool is_trial = (c->version() == Version::GC_EP3_NTE);
-      auto& e = is_trial ? cmd_nte.entries[c->card_battle_table_seat_number] : cmd_final.entries[c->card_battle_table_seat_number];
+      bool is_nte = (c->version() == Version::GC_EP3_NTE);
+      auto& e = is_nte ? cmd_nte.entries[c->card_battle_table_seat_number] : cmd_final.entries[c->card_battle_table_seat_number];
       if (e.state == 0) {
         e.state = c->card_battle_table_seat_state;
         e.guild_card_number = c->license->serial_number;
-        auto& clients = is_trial ? clients_nte : clients_final;
+        auto& clients = is_nte ? clients_nte : clients_final;
         clients.emplace(c);
       }
     }

@@ -164,7 +164,7 @@ enum class CardClass : uint16_t {
 };
 
 const char* name_for_card_class(CardClass cc);
-bool card_class_is_tech_like(CardClass cc, bool is_trial);
+bool card_class_is_tech_like(CardClass cc, bool is_nte);
 
 enum class TargetMode : uint8_t {
   NONE = 0x00, // Used for defense cards, mags, shields, etc.
@@ -1486,7 +1486,7 @@ public:
     VersionedMap(std::string&& compressed_data, uint8_t language);
 
     std::shared_ptr<const MapDefinitionTrial> trial() const;
-    const std::string& compressed(bool is_trial) const;
+    const std::string& compressed(bool is_nte) const;
 
   private:
     mutable std::shared_ptr<const MapDefinitionTrial> trial_map;

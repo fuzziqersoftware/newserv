@@ -429,9 +429,9 @@ void Lobby::create_ep3_server() {
     this->log.info("Recreating Episode 3 server state");
   }
   auto tourn = this->tournament_match ? this->tournament_match->tournament.lock() : nullptr;
-  bool is_trial = this->base_version == Version::GC_EP3_NTE;
+  bool is_nte = this->base_version == Version::GC_EP3_NTE;
   Episode3::Server::Options options = {
-      .card_index = is_trial ? s->ep3_card_index_trial : s->ep3_card_index,
+      .card_index = is_nte ? s->ep3_card_index_trial : s->ep3_card_index,
       .map_index = s->ep3_map_index,
       .behavior_flags = s->ep3_behavior_flags,
       .random_crypt = this->random_crypt,
