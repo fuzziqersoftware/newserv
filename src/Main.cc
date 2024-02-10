@@ -1831,11 +1831,14 @@ Action a_show_ep3_cards(
 
 Action a_generate_ep3_cards_html(
     "generate-ep3-cards-html", "\
-  generate-ep3-cards-html\n\
+  generate-ep3-cards-html [--ep3-nte] [--threads=N]\n\
     Generate an HTML file describing all Episode 3 card definitions from the\n\
-    system/ep3 directory.\n",
+    system/ep3 directory. If --ep3-nte is given, use the Trial Edition card\n\
+    definitions instead.\n",
     +[](Arguments& args) {
       size_t num_threads = args.get<size_t>("threads", 0);
+
+      bool is_nte = (get_cli_version(args, Version::GC_EP3) == Version::GC_EP3_NTE);
 
       ServerState s;
       s.load_objects_and_upstream_dependents("ep3_data");
@@ -1860,13 +1863,17 @@ Action a_generate_ep3_cards_html(
           return (this->ce == nullptr) && this->small_data_url.empty() && this->medium_data_url.empty() && this->large_data_url.empty();
         }
       };
+      auto card_index = is_nte ? s.ep3_card_index_trial : s.ep3_card_index;
       vector<CardInfo> infos;
-      for (uint32_t card_id : s.ep3_card_index->all_ids()) {
+      for (uint32_t card_id : card_index->all_ids()) {
         if (infos.size() <= card_id) {
           infos.resize(card_id + 1);
         }
-        infos[card_id].ce = s.ep3_card_index->definition_for_id(card_id);
+        infos[card_id].ce = card_index->definition_for_id(card_id);
       }
+      bool show_large_column = false;
+      bool show_medium_column = false;
+      bool show_small_column = false;
       for (const auto& filename : list_directory_sorted("system/ep3/cardtex")) {
         if ((filename[0] == 'C' || filename[0] == 'M' || filename[0] == 'L') && (filename[1] == '_')) {
           size_t card_id = stoull(filename.substr(2, 3), nullptr, 10);
@@ -1876,10 +1883,13 @@ Action a_generate_ep3_cards_html(
           auto& info = infos[card_id];
           if (filename[0] == 'C') {
             info.large_filename = "system/ep3/cardtex/" + filename;
+            show_large_column = true;
           } else if (filename[0] == 'L') {
             info.medium_filename = "system/ep3/cardtex/" + filename;
+            show_medium_column = true;
           } else if (filename[0] == 'M') {
             info.small_filename = "system/ep3/cardtex/" + filename;
+            show_small_column = true;
           }
         }
       }
@@ -1911,7 +1921,17 @@ Action a_generate_ep3_cards_html(
       deque<string> blocks;
       blocks.emplace_back("<html><head><title>Phantasy Star Online Episode III cards</title></head><body style=\"background-color:#222222; color: #EEEEEE\">");
       blocks.emplace_back("<table><tr><th style=\"text-align: left\">Legend:</th></tr><tr style=\"background-color: #663333\"><td>Card has no definition and is obviously incomplete</td></tr><tr style=\"background-color: #336633\"><td>Card is unobtainable in random draws but may be a quest or event reward</td></tr><tr style=\"background-color: #333333\"><td>Card is obtainable in random draws</td></tr></table><br /><br />");
-      blocks.emplace_back("<table><tr><th style=\"text-align: left; padding: 4px\">ID</th><th style=\"text-align: left; padding: 4px\">Small</th><th style=\"text-align: left; padding: 4px\">Medium</th><th style=\"text-align: left; padding: 4px\">Large</th><th style=\"text-align: left; padding: 4px\">Text</th><th style=\"text-align: left; padding: 4px\">Disassembly</th></tr>");
+      blocks.emplace_back("<table><tr><th style=\"text-align: left; padding: 4px\">ID</th>");
+      if (show_small_column) {
+        blocks.emplace_back("<th style=\"text-align: left; padding: 4px\">Small</th>");
+      }
+      if (show_medium_column) {
+        blocks.emplace_back("<th style=\"text-align: left; padding: 4px\">Medium</th>");
+      }
+      if (show_large_column) {
+        blocks.emplace_back("<th style=\"text-align: left; padding: 4px\">Large</th>");
+      }
+      blocks.emplace_back("<th style=\"text-align: left; padding: 4px\">Text</th><th style=\"text-align: left; padding: 4px\">Disassembly</th></tr>");
       for (size_t card_id = 0; card_id < infos.size(); card_id++) {
         const auto& entry = infos[card_id];
         if (entry.is_empty()) {
@@ -1931,25 +1951,35 @@ Action a_generate_ep3_cards_html(
         }
 
         blocks.emplace_back(string_printf("<tr style=\"background-color: %s\">", background_color));
-        blocks.emplace_back(string_printf("<td style=\"padding: 4px; vertical-align: top\"><pre>%04zX</pre></td><td style=\"padding: 4px; vertical-align: top\">", card_id));
-        if (!entry.small_data_url.empty()) {
-          blocks.emplace_back("<img src=\"");
-          blocks.emplace_back(std::move(entry.small_data_url));
-          blocks.emplace_back("\" />");
+        blocks.emplace_back(string_printf("<td style=\"padding: 4px; vertical-align: top\"><pre>%04zX</pre></td>", card_id));
+        if (show_small_column) {
+          blocks.emplace_back("<td style=\"padding: 4px; vertical-align: top\">");
+          if (!entry.small_data_url.empty()) {
+            blocks.emplace_back("<img src=\"");
+            blocks.emplace_back(std::move(entry.small_data_url));
+            blocks.emplace_back("\" />");
+          }
+          blocks.emplace_back("</td>");
         }
-        blocks.emplace_back("</td><td style=\"padding: 4px; vertical-align: top\">");
-        if (!entry.medium_data_url.empty()) {
-          blocks.emplace_back("<img src=\"");
-          blocks.emplace_back(std::move(entry.medium_data_url));
-          blocks.emplace_back("\" />");
+        if (show_medium_column) {
+          blocks.emplace_back("<td style=\"padding: 4px; vertical-align: top\">");
+          if (!entry.medium_data_url.empty()) {
+            blocks.emplace_back("<img src=\"");
+            blocks.emplace_back(std::move(entry.medium_data_url));
+            blocks.emplace_back("\" />");
+          }
+          blocks.emplace_back("</td>");
         }
-        blocks.emplace_back("</td><td style=\"padding: 4px; vertical-align: top\">");
-        if (!entry.large_data_url.empty()) {
-          blocks.emplace_back("<img src=\"");
-          blocks.emplace_back(std::move(entry.large_data_url));
-          blocks.emplace_back("\" />");
+        if (show_large_column) {
+          blocks.emplace_back("<td style=\"padding: 4px; vertical-align: top\">");
+          if (!entry.large_data_url.empty()) {
+            blocks.emplace_back("<img src=\"");
+            blocks.emplace_back(std::move(entry.large_data_url));
+            blocks.emplace_back("\" />");
+          }
+          blocks.emplace_back("</td>");
         }
-        blocks.emplace_back("</td><td style=\"padding: 4px; vertical-align: top\">");
+        blocks.emplace_back("<td style=\"padding: 4px; vertical-align: top\">");
         if (entry.ce) {
           blocks.emplace_back("<pre>");
           blocks.emplace_back(entry.ce->text);
