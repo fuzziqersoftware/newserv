@@ -1643,13 +1643,6 @@ static void on_CA_Ep3(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
     }
 
     if (s->ep3_behavior_flags & Episode3::BehaviorFlag::ENABLE_RECORDING) {
-      if (l->battle_record) {
-        for (const auto& c : l->clients) {
-          if (c) {
-            c->ep3_prev_battle_record = l->battle_record;
-          }
-        }
-      }
       l->battle_record = make_shared<Episode3::BattleRecord>(s->ep3_behavior_flags);
       for (auto existing_c : l->clients) {
         if (existing_c) {
@@ -1666,9 +1659,6 @@ static void on_CA_Ep3(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
         }
       }
       if (s->ep3_behavior_flags & Episode3::BehaviorFlag::ENABLE_STATUS_MESSAGES) {
-        if (c->ep3_prev_battle_record) {
-          send_text_message(l, "$C6Recording complete");
-        }
         send_text_message(l, "$C6Recording enabled");
       }
     }
@@ -4430,6 +4420,23 @@ static void on_6F(shared_ptr<Client> c, uint16_t command, uint32_t, string& data
     // So, we only assign item IDs here if the client is not the leader.
     if ((command == 0x006F) && (c->lobby_client_id != l->leader_id)) {
       l->assign_inventory_and_bank_item_ids(c, true);
+    }
+  }
+
+  if (l->ep3_server && l->ep3_server->battle_finished) {
+    auto s = l->require_server_state();
+    l->log.info("Deleting Episode 3 server state");
+    l->ep3_server.reset();
+    if (l->battle_record) {
+      for (const auto& c : l->clients) {
+        if (c) {
+          c->ep3_prev_battle_record = l->battle_record;
+          if ((s->ep3_behavior_flags & Episode3::BehaviorFlag::ENABLE_STATUS_MESSAGES)) {
+            send_text_message(l, "$C6Recording complete");
+          }
+        }
+      }
+      l->battle_record.reset();
     }
   }
 

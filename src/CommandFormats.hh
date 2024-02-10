@@ -2743,13 +2743,12 @@ struct C_VerifyLicense_BB_DB {
   pstring<TextEncoding::ASCII, 0x30> game_tag; // "psopc2"
 } __packed__;
 
-// DC: Player menu state (Episode 3)
-// No arguments. It seems the client expects the server to respond with another
-// DC command, the contents and flag of which are ignored entirely - all it does
-// is set a global flag on the client. This could be the mechanism for waiting
-// until all players are at the counter, like how AC (quest barrier) works. I
-// haven't spent any time investigating what this actually does; newserv just
-// immediately responds to any DC from an Episode 3 client.
+// DC: Set battle in progress flag (Episode 3)
+// No arguments except header.flag when sent by the client. When header.flag is
+// 1, the game should be locked - no players should be allowed to join. In this
+// case, the client waits for the server to respond with another DC command
+// before proceeding with battle setup. When header.flag is 0, the game should
+// be unlocked, and the client does not wait for a response from the server.
 
 // DC: Guild card data (BB)
 
