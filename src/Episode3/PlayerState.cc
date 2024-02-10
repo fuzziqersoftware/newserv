@@ -1960,8 +1960,10 @@ void PlayerState::roll_main_dice_or_apply_after_effects() {
   // the non-NTE logic and assign the dice ranges at battle start time to yield
   // the NTE behavior. (See RulesTrial in DataIndexes.cc for how this is done.)
 
-  uint8_t min_atk_dice = rules.min_dice;
-  uint8_t max_atk_dice = rules.max_dice;
+  bool is_1p_2v1 = (s->team_client_count.at(this->get_team_id()) < s->team_client_count[this->get_team_id() ^ 1]);
+
+  uint8_t min_atk_dice = (is_1p_2v1 && rules.min_atk_dice_2v1()) ? rules.min_atk_dice_2v1() : rules.min_dice;
+  uint8_t max_atk_dice = (is_1p_2v1 && rules.max_atk_dice_2v1()) ? rules.max_atk_dice_2v1() : rules.max_dice;
   if (min_atk_dice == 0) {
     min_atk_dice = 1;
   }
@@ -1980,8 +1982,8 @@ void PlayerState::roll_main_dice_or_apply_after_effects() {
     this->dice_results[0] = min_atk_dice + s->get_random(atk_dice_range_width);
   }
 
-  uint8_t min_def_dice = rules.min_def_dice() ? rules.min_def_dice() : rules.min_dice;
-  uint8_t max_def_dice = rules.max_def_dice() ? rules.max_def_dice() : rules.max_dice;
+  uint8_t min_def_dice = (is_1p_2v1 && rules.min_def_dice_2v1()) ? rules.min_def_dice_2v1() : (rules.min_def_dice() ? rules.min_def_dice() : rules.min_dice);
+  uint8_t max_def_dice = (is_1p_2v1 && rules.max_def_dice_2v1()) ? rules.max_def_dice_2v1() : (rules.max_def_dice() ? rules.max_def_dice() : rules.max_dice);
   if (min_def_dice == 0) {
     min_def_dice = 1;
   }

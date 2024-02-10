@@ -185,14 +185,19 @@ static void forward_subcommand(shared_ptr<Client> c, uint8_t command, uint8_t fl
 
     if (!data_to_send || !size_to_send) {
       lc->log.info("Command cannot be translated to client\'s version");
-    } else if ((def_flags & SDF::USE_JOIN_COMMAND_QUEUE) && lc->game_join_command_queue) {
-      lc->log.info("Client not ready to receive join commands; adding to queue");
-      auto& cmd = lc->game_join_command_queue->emplace_back();
-      cmd.command = command;
-      cmd.flag = flag;
-      cmd.data.assign(reinterpret_cast<const char*>(data_to_send), size_to_send);
     } else {
-      send_command(lc, command, flag, data_to_send, size_to_send);
+      if ((command == 0xCB) && (lc->version() == Version::GC_EP3_NTE)) {
+        command = 0xC9;
+      }
+      if ((def_flags & SDF::USE_JOIN_COMMAND_QUEUE) && lc->game_join_command_queue) {
+        lc->log.info("Client not ready to receive join commands; adding to queue");
+        auto& cmd = lc->game_join_command_queue->emplace_back();
+        cmd.command = command;
+        cmd.flag = flag;
+        cmd.data.assign(reinterpret_cast<const char*>(data_to_send), size_to_send);
+      } else {
+        send_command(lc, command, flag, data_to_send, size_to_send);
+      }
     }
   };
 

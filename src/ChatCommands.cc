@@ -1817,7 +1817,7 @@ static void server_command_ep3_infinite_time(shared_ptr<Client> c, const std::st
   send_text_message(l, infinite_time_enabled ? "$C6Infinite time enabled" : "$C6Infinite time disabled");
 }
 
-static void server_command_ep3_set_def_dice_range(shared_ptr<Client> c, const std::string& args) {
+static void server_command_ep3_set_dice_range(shared_ptr<Client> c, const std::string& args) {
   auto l = c->require_lobby();
   check_is_game(l, true);
   check_is_ep3(c, true);
@@ -1835,37 +1835,64 @@ static void server_command_ep3_set_def_dice_range(shared_ptr<Client> c, const st
     return;
   }
   if (l->tournament_match) {
-    send_text_message(c, "$C6Cannot override\nDEF range in a\ntournament");
+    send_text_message(c, "$C6Cannot override\ndice ranges in a\ntournament");
     return;
   }
 
-  if (args.empty()) {
-    l->ep3_server->map_and_rules->rules.def_dice_range = 0;
-    send_text_message_printf(l, "$C6DEF dice range\nset to default");
-  } else {
-    uint8_t min_dice, max_dice;
-    auto tokens = split(args, '-');
+  auto parse_dice_range = +[](const string& spec) -> uint8_t {
+    auto tokens = split(spec, '-');
     if (tokens.size() == 1) {
-      min_dice = stoul(tokens[0]);
-      max_dice = min_dice;
+      uint8_t v = stoull(spec);
+      return (v << 4) | (v & 0x0F);
     } else if (tokens.size() == 2) {
-      min_dice = stoul(tokens[0]);
-      max_dice = stoul(tokens[1]);
+      return (stoull(tokens[0]) << 4) | (stoull(tokens[1]) & 0x0F);
     } else {
-      send_text_message(c, "$C6Specify DEF dice\nrange as MIN-MAX");
+      throw runtime_error("invalid dice spec format");
+    }
+  };
+
+  uint8_t def_dice_range = 0;
+  uint8_t atk_dice_range_2v1 = 0;
+  uint8_t def_dice_range_2v1 = 0;
+  for (const auto& spec : split(args, ' ')) {
+    auto tokens = split(spec, ':');
+    if (tokens.size() != 2) {
+      send_text_message(c, "$C6Invalid dice spec\nformat");
       return;
     }
-    if (min_dice == 0 || min_dice > 9 || max_dice == 0 || max_dice > 9) {
-      send_text_message(c, "$C6DEF dice must be\nin range 1-9");
-      return;
+    if (tokens[0] == "d") {
+      def_dice_range = parse_dice_range(tokens[1]);
+    } else if (tokens[0] == "1") {
+      atk_dice_range_2v1 = parse_dice_range(tokens[1]);
+      def_dice_range_2v1 = atk_dice_range_2v1;
+    } else if (tokens[0] == "a1") {
+      atk_dice_range_2v1 = parse_dice_range(tokens[1]);
+    } else if (tokens[0] == "d1") {
+      def_dice_range_2v1 = parse_dice_range(tokens[1]);
     }
-    if (min_dice > max_dice) {
-      uint8_t t = min_dice;
-      min_dice = max_dice;
-      max_dice = t;
+  }
+
+  auto& rules = l->ep3_server->map_and_rules->rules;
+  rules.def_dice_range = def_dice_range;
+  rules.atk_dice_range_2v1 = atk_dice_range_2v1;
+  rules.def_dice_range_2v1 = def_dice_range_2v1;
+
+  if (!def_dice_range || !atk_dice_range_2v1 || !def_dice_range_2v1) {
+    send_text_message_printf(l, "$C7Dice ranges reset\nto defaults");
+  } else {
+    send_text_message_printf(l, "$C7Dice ranges changed:");
+    if (def_dice_range) {
+      send_text_message_printf(l, "$C7DEF: $C6%hhu-%hhu",
+          static_cast<uint8_t>(def_dice_range >> 4), static_cast<uint8_t>(def_dice_range & 0x0F));
     }
-    l->ep3_server->map_and_rules->rules.def_dice_range = ((min_dice << 4) & 0xF0) | (max_dice & 0x0F);
-    send_text_message_printf(l, "$C6DEF dice range\nset to %hhu-%hhu", min_dice, max_dice);
+    if (atk_dice_range_2v1) {
+      send_text_message_printf(l, "$C7ATK (1p in 2v1): $C6%hhu-%hhu",
+          static_cast<uint8_t>(atk_dice_range_2v1 >> 4), static_cast<uint8_t>(atk_dice_range_2v1 & 0x0F));
+    }
+    if (def_dice_range_2v1) {
+      send_text_message_printf(l, "$C7DEF (1p in 2v1): $C6%hhu-%hhu",
+          static_cast<uint8_t>(def_dice_range_2v1 >> 4), static_cast<uint8_t>(def_dice_range_2v1 & 0x0F));
+    }
   }
 }
 
@@ -2067,7 +2094,7 @@ static const unordered_map<string, ChatCommandDefinition> chat_commands({
     {"$bbchar", {server_command_bbchar, nullptr}},
     {"$cheat", {server_command_cheat, nullptr}},
     {"$debug", {server_command_debug, nullptr}},
-    {"$defrange", {server_command_ep3_set_def_dice_range, nullptr}},
+    {"$dicerange", {server_command_ep3_set_dice_range, nullptr}},
     {"$dropmode", {server_command_dropmode, nullptr}},
     {"$edit", {server_command_edit, nullptr}},
     {"$ep3battledebug", {server_command_enable_ep3_battle_debug_menu, nullptr}},

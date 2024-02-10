@@ -953,7 +953,10 @@ struct Rules {
   // NOTE: The following fields are unused in PSO's implementation, but newserv
   // uses them to implement extended rules.
   /* 0D */ uint8_t def_dice_range = 0; // High 4 bits = min, low 4 = max
-  /* 0E */ parray<uint8_t, 6> unused;
+  // These fields specify override dice ranges for the 1-player team in 2v1
+  /* 0E */ uint8_t atk_dice_range_2v1 = 0; // High 4 bits = min, low 4 = max
+  /* 0F */ uint8_t def_dice_range_2v1 = 0; // High 4 bits = min, low 4 = max
+  /* 10 */ parray<uint8_t, 4> unused;
   /* 14 */
 
   // Annoyingly, this structure is a different size in Episode 3 Trial Edition.
@@ -975,6 +978,10 @@ struct Rules {
 
   uint8_t min_def_dice() const;
   uint8_t max_def_dice() const;
+  uint8_t min_atk_dice_2v1() const;
+  uint8_t max_atk_dice_2v1() const;
+  uint8_t min_def_dice_2v1() const;
+  uint8_t max_def_dice_2v1() const;
 
   std::string str() const;
 } __attribute__((packed));
