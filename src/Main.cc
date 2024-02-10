@@ -1453,13 +1453,14 @@ Action a_decode_text_archive(
     expects the input not to have a REL footer.\n",
     +[](Arguments& args) {
       string data = read_input_data(args);
+      bool is_sjis = args.get<bool>("japanese");
 
       unique_ptr<TextSet> ts;
       size_t collection_count = args.get<size_t>("collections", 0);
       if (collection_count) {
-        ts = make_unique<BinaryTextSet>(data, collection_count, !args.get<bool>("has-pr3"));
+        ts = make_unique<BinaryTextSet>(data, collection_count, !args.get<bool>("has-pr3"), is_sjis);
       } else {
-        ts = make_unique<BinaryTextAndKeyboardsSet>(data, args.get<bool>("big-endian"));
+        ts = make_unique<BinaryTextAndKeyboardsSet>(data, args.get<bool>("big-endian"), is_sjis);
       }
       JSON j = ts->json();
       string out_data = j.serialize(JSON::SerializeOption::FORMAT | JSON::SerializeOption::ESCAPE_CONTROLS_ONLY);
@@ -1472,10 +1473,11 @@ Action a_encode_text_archive(
     +[](Arguments& args) {
       const string& input_filename = args.get<string>(1, false);
       const string& output_filename = args.get<string>(2, false);
+      bool is_sjis = args.get<bool>("japanese");
 
       auto json = JSON::parse(read_input_data(args));
       BinaryTextAndKeyboardsSet a(json);
-      auto result = a.serialize(args.get<bool>("big-endian"));
+      auto result = a.serialize(args.get<bool>("big-endian"), is_sjis);
       if (output_filename.empty()) {
         if (input_filename.empty() || (input_filename == "-")) {
           throw runtime_error("encoded text archive cannot be written to stdout");

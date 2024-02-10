@@ -53,7 +53,7 @@ class BinaryTextSet : public TextSet {
 public:
   explicit BinaryTextSet(const JSON& json) : TextSet(json) {}
   explicit BinaryTextSet(JSON&& json) : TextSet(json) {}
-  BinaryTextSet(const std::string& pr2_data, size_t collection_count, bool has_rel_footer);
+  BinaryTextSet(const std::string& pr2_data, size_t collection_count, bool has_rel_footer, bool is_sjis);
   ~BinaryTextSet() = default;
   // TODO: Implement serialize functions
 };
@@ -64,7 +64,7 @@ public:
 
   explicit BinaryTextAndKeyboardsSet(const JSON& json);
   explicit BinaryTextAndKeyboardsSet(JSON&& json);
-  BinaryTextAndKeyboardsSet(const std::string& pr2_data, bool big_endian);
+  BinaryTextAndKeyboardsSet(const std::string& pr2_data, bool big_endian, bool is_sjis);
   ~BinaryTextAndKeyboardsSet() = default;
 
   virtual JSON json() const;
@@ -77,13 +77,13 @@ public:
   void set_keyboard_selector_width(uint8_t width);
 
   // Returns (pr2_data, pr3_data)
-  std::pair<std::string, std::string> serialize(bool big_endian) const;
+  std::pair<std::string, std::string> serialize(bool big_endian, bool is_sjis) const;
 
 protected:
   template <bool IsBigEndian>
-  void parse_t(const std::string& pr2_data);
+  void parse_t(const std::string& pr2_data, bool is_sjis);
   template <bool IsBigEndian>
-  std::pair<std::string, std::string> serialize_t() const;
+  std::pair<std::string, std::string> serialize_t(bool is_sjis) const;
 
   std::vector<std::unique_ptr<Keyboard>> keyboards;
   uint8_t keyboard_selector_width;

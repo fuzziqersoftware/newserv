@@ -167,7 +167,7 @@ string UnicodeTextSet::serialize() const {
   return prs_compress_optimal(header_w.str());
 }
 
-BinaryTextSet::BinaryTextSet(const std::string& pr2_data, size_t collection_count, bool has_rel_footer) {
+BinaryTextSet::BinaryTextSet(const std::string& pr2_data, size_t collection_count, bool has_rel_footer, bool is_sjis) {
   auto pr2_decrypted = decrypt_pr2_data<false>(pr2_data);
   auto decompressed = prs_decompress(pr2_decrypted.compressed_data);
   StringReader r(decompressed);
@@ -187,6 +187,8 @@ BinaryTextSet::BinaryTextSet(const std::string& pr2_data, size_t collection_coun
   }
   used_offsets.emplace(root_offset);
 
+  auto& tt = is_sjis ? tt_sjis_to_utf8 : tt_8859_to_utf8;
+
   collection_offsets_r.go(0);
   while (!collection_offsets_r.eof()) {
     auto& collection = this->collections.emplace_back();
@@ -197,18 +199,18 @@ BinaryTextSet::BinaryTextSet(const std::string& pr2_data, size_t collection_coun
       for (uint32_t string_offset_offset = first_string_offset_offset;
            (string_offset_offset == first_string_offset_offset) || !used_offsets.count(string_offset_offset);
            string_offset_offset += 4) {
-        collection.emplace_back(r.pget_cstr(r.pget_u32l(string_offset_offset)));
+        collection.emplace_back(tt(r.pget_cstr(r.pget_u32l(string_offset_offset))));
       }
     } catch (const out_of_range&) {
     }
   }
 }
 
-BinaryTextAndKeyboardsSet::BinaryTextAndKeyboardsSet(const string& pr2_data, bool big_endian) {
+BinaryTextAndKeyboardsSet::BinaryTextAndKeyboardsSet(const string& pr2_data, bool big_endian, bool is_sjis) {
   if (big_endian) {
-    this->parse_t<true>(pr2_data);
+    this->parse_t<true>(pr2_data, is_sjis);
   } else {
-    this->parse_t<false>(pr2_data);
+    this->parse_t<false>(pr2_data, is_sjis);
   }
 }
 
@@ -271,18 +273,20 @@ void BinaryTextAndKeyboardsSet::resize_keyboards(size_t num_keyboards) {
   this->keyboards.resize(num_keyboards);
 }
 
-pair<string, string> BinaryTextAndKeyboardsSet::serialize(bool big_endian) const {
+pair<string, string> BinaryTextAndKeyboardsSet::serialize(bool big_endian, bool is_sjis) const {
   if (big_endian) {
-    return this->serialize_t<true>();
+    return this->serialize_t<true>(is_sjis);
   } else {
-    return this->serialize_t<false>();
+    return this->serialize_t<false>(is_sjis);
   }
 }
 
 template <bool IsBigEndian>
-void BinaryTextAndKeyboardsSet::parse_t(const string& pr2_data) {
+void BinaryTextAndKeyboardsSet::parse_t(const string& pr2_data, bool is_sjis) {
   using U32T = std::conditional_t<IsBigEndian, be_uint32_t, le_uint32_t>;
   using U16T = std::conditional_t<IsBigEndian, be_uint16_t, le_uint16_t>;
+
+  auto& tt = is_sjis ? tt_sjis_to_utf8 : tt_8859_to_utf8;
 
   // The structure is as follows:
   // Footer:
@@ -341,15 +345,17 @@ void BinaryTextAndKeyboardsSet::parse_t(const string& pr2_data) {
     for (uint32_t string_offset_offset = first_string_offset_offset;
          (string_offset_offset == first_string_offset_offset) || !used_offsets.count(string_offset_offset);
          string_offset_offset += 4) {
-      collection.emplace_back(r.pget_cstr(r.pget<U32T>(string_offset_offset)));
+      collection.emplace_back(tt(r.pget_cstr(r.pget<U32T>(string_offset_offset))));
     }
   }
 }
 
 template <bool IsBigEndian>
-pair<string, string> BinaryTextAndKeyboardsSet::serialize_t() const {
+pair<string, string> BinaryTextAndKeyboardsSet::serialize_t(bool is_sjis) const {
   using U32T = std::conditional_t<IsBigEndian, be_uint32_t, le_uint32_t>;
   using U16T = std::conditional_t<IsBigEndian, be_uint16_t, le_uint16_t>;
+
+  auto& tt = is_sjis ? tt_utf8_to_sjis : tt_utf8_to_8859;
 
   StringWriter w;
   ::set<size_t> relocation_offsets;
@@ -364,7 +370,7 @@ pair<string, string> BinaryTextAndKeyboardsSet::serialize_t() const {
     for (const auto& collection : this->collections) {
       for (const auto& s : collection) {
         if (string_to_offset.emplace(s, w.size()).second) {
-          w.write(s);
+          w.write(tt(s));
           w.put_u8(0);
           while (w.size() & 3) {
             w.put_u8(0);
@@ -439,13 +445,10 @@ pair<string, string> BinaryTextAndKeyboardsSet::serialize_t() const {
 
   const string& pr2_data = w.str();
   const string& pr3_data = reloc_w.str();
-  print_data(stderr, pr2_data);
   string pr2_compressed = prs_compress_optimal(pr2_data.data(), pr2_data.size());
   string pr3_compressed = prs_compress_optimal(pr3_data.data(), pr3_data.size());
-  print_data(stderr, pr2_compressed);
   string pr2_ret = encrypt_pr2_data<IsBigEndian>(pr2_compressed, pr2_data.size(), random_object<uint32_t>());
   string pr3_ret = encrypt_pr2_data<IsBigEndian>(pr3_compressed, pr3_data.size(), random_object<uint32_t>());
-  print_data(stderr, pr2_ret);
   return make_pair(std::move(pr2_ret), std::move(pr3_ret));
 }
 
@@ -454,7 +457,7 @@ TextIndex::TextIndex(
     function<shared_ptr<const string>(Version, const string&)> get_patch_file)
     : log("[TextIndex] ", static_game_data_log.min_level) {
   if (!directory.empty()) {
-    auto add_version = [&](Version version, const string& subdirectory, function<shared_ptr<TextSet>(const string&)> make_set) -> void {
+    auto add_version = [&](Version version, const string& subdirectory, function<shared_ptr<TextSet>(const string&, bool)> make_set) -> void {
       static const map<string, uint8_t> bintext_filenames({
           {"TextJapanese.pr2", 0x00},
           {"TextEnglish.pr2", 0x01},
@@ -484,7 +487,7 @@ TextIndex::TextIndex(
             this->add_set(version, it.second, make_shared<BinaryTextSet>(JSON::parse(load_file(json_path))));
           } else if (isfile(file_path)) {
             this->log.info("Loading %s %c binary text set from %s", name_for_enum(version), char_for_language_code(it.second), file_path.c_str());
-            this->add_set(version, it.second, make_set(load_file(file_path)));
+            this->add_set(version, it.second, make_set(load_file(file_path), it.second == 0));
           }
         }
       } else {
@@ -498,11 +501,11 @@ TextIndex::TextIndex(
             auto patch_file = get_patch_file ? get_patch_file(version, it.first) : nullptr;
             if (patch_file) {
               this->log.info("Loading %s %c Unicode text set from %s in patch tree", name_for_enum(version), char_for_language_code(it.second), it.first.c_str());
-              this->add_set(version, it.second, make_set(*patch_file));
+              this->add_set(version, it.second, make_set(*patch_file, it.second == 0));
             } else {
               if (isfile(file_path)) {
                 this->log.info("Loading %s %c Unicode text set from %s", name_for_enum(version), char_for_language_code(it.second), file_path.c_str());
-                this->add_set(version, it.second, make_set(load_file(file_path)));
+                this->add_set(version, it.second, make_set(load_file(file_path), it.second == 0));
               }
             }
           }
@@ -510,12 +513,12 @@ TextIndex::TextIndex(
       }
     };
 
-    auto make_binary_dc112000 = +[](const string& data) { return make_shared<BinaryTextSet>(data, 21, true); };
-    auto make_binary_dcnte_dcv1 = +[](const string& data) { return make_shared<BinaryTextSet>(data, 26, true); };
-    auto make_binary_dcv2 = +[](const string& data) { return make_shared<BinaryTextSet>(data, 37, false); };
-    auto make_binary_gc = +[](const string& data) { return make_shared<BinaryTextAndKeyboardsSet>(data, true); };
-    auto make_binary_xb = +[](const string& data) { return make_shared<BinaryTextAndKeyboardsSet>(data, false); };
-    auto make_unitxt = +[](const string& data) { return make_shared<UnicodeTextSet>(data); };
+    auto make_binary_dc112000 = +[](const string& data, bool is_sjis) { return make_shared<BinaryTextSet>(data, 21, true, is_sjis); };
+    auto make_binary_dcnte_dcv1 = +[](const string& data, bool is_sjis) { return make_shared<BinaryTextSet>(data, 26, true, is_sjis); };
+    auto make_binary_dcv2 = +[](const string& data, bool is_sjis) { return make_shared<BinaryTextSet>(data, 37, false, is_sjis); };
+    auto make_binary_gc = +[](const string& data, bool is_sjis) { return make_shared<BinaryTextAndKeyboardsSet>(data, true, is_sjis); };
+    auto make_binary_xb = +[](const string& data, bool is_sjis) { return make_shared<BinaryTextAndKeyboardsSet>(data, false, is_sjis); };
+    auto make_unitxt = +[](const string& data, bool) { return make_shared<UnicodeTextSet>(data); };
 
     add_version(Version::DC_NTE, "dc-nte", make_binary_dcnte_dcv1);
     add_version(Version::DC_V1_11_2000_PROTOTYPE, "dc-11-2000", make_binary_dc112000);
