@@ -1879,6 +1879,7 @@ std::string assemble_quest_script(const std::string& text) {
   }
 
   // Assemble code segment
+  bool version_has_args = F_HAS_ARGS & v_flag(quest_version);
   const auto& opcodes = opcodes_by_name_for_version(quest_version);
   StringWriter code_w;
   for (size_t line_num = 1; line_num <= lines.size(); line_num++) {
@@ -1908,7 +1909,8 @@ std::string assemble_quest_script(const std::string& text) {
       auto line_tokens = split(line, ' ', 1);
       const auto& opcode_def = opcodes.at(line_tokens.at(0));
 
-      if (!(opcode_def->flags & F_ARGS)) {
+      bool use_args = version_has_args && (opcode_def->flags & F_ARGS);
+      if (!use_args) {
         if ((opcode_def->opcode & 0xFF00) == 0x0000) {
           code_w.put_u8(opcode_def->opcode);
         } else {
@@ -1930,7 +1932,7 @@ std::string assemble_quest_script(const std::string& text) {
       strip_leading_whitespace(line_tokens[1]);
 
       if (starts_with(line_tokens[1], "...")) {
-        if (!(opcode_def->flags & F_ARGS)) {
+        if (!use_args) {
           throw runtime_error(string_printf("(line %zu) \'...\' can only be used with F_ARGS opcodes", line_num));
         }
 
@@ -1987,7 +1989,7 @@ std::string assemble_quest_script(const std::string& text) {
               }
             };
 
-            if (opcode_def->flags & F_ARGS) {
+            if (use_args) {
               auto label_it = labels_by_name.find(arg);
               if (arg.empty()) {
                 throw runtime_error("argument is empty");
@@ -2058,7 +2060,7 @@ std::string assemble_quest_script(const std::string& text) {
                 }
               }
 
-            } else { // Not F_ARGS
+            } else { // Not use_args
               auto add_label = [&](const string& name, bool is32) -> void {
                 if (!labels_by_name.count(name)) {
                   throw runtime_error("label not defined: " + name);
@@ -2157,7 +2159,7 @@ std::string assemble_quest_script(const std::string& text) {
         }
       }
 
-      if (opcode_def->flags & F_ARGS) {
+      if (use_args) {
         if ((opcode_def->opcode & 0xFF00) == 0x0000) {
           code_w.put_u8(opcode_def->opcode);
         } else {
