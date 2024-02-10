@@ -264,3 +264,9 @@ Note: Without a TextEnglish.pr2/pr3 patch, the menu items for these sounds will 
 0442B6D8 804D804E
 0442B6DC 804F802A
 0442B6E0 802C0000
+
+(Ep3 NTE) Use English language files
+0408E414 38600001
+0408E448 38000001
+0408E44C 900DA62C
+0408E450 4E800020
