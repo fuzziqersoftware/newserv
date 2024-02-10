@@ -1466,7 +1466,7 @@ RulesTrial::RulesTrial(const Rules& r)
       phase_time_limit(r.phase_time_limit),
       allowed_cards(r.allowed_cards),
       atk_die_behavior((r.max_dice == r.min_dice) ? r.max_dice : 0),
-      def_die_behavior((r.min_def_dice() == r.max_def_dice()) ? r.max_def_dice() : 0),
+      def_die_behavior(r.def_dice_range == 0xFF ? 0xFF : ((r.min_def_dice() == r.max_def_dice()) ? r.max_def_dice() : 0)),
       disable_deck_shuffle(r.disable_deck_shuffle),
       disable_deck_loop(r.disable_deck_loop),
       char_hp(r.char_hp),
