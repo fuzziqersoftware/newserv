@@ -1,10 +1,6 @@
 # This patch gives you the maximum number of each card. It only works if used
 # in-game, which means it must be used by running `$patch AllCards`.
 
-# This patch is only for PSO Episode 3 USA, which means it requires the
-# EnableEpisode3SendFunctionCall option to be enabled in config.json. If that
-# option is disabled, the Patches menu won't appear for the client.
-
 .meta hide_from_patches_menu
 .meta name="Get all cards"
 .meta description="This patch gives you\nthe maximum number\nof each card."
@@ -14,8 +10,6 @@ reloc0:
   .offsetof start
 
 start:
-  .include Episode3USAOnly
-
   stwu   [r1 - 0x20], r1
   mflr   r0
   stw    [r1 + 0x24], r0
@@ -25,23 +19,23 @@ start:
   stw    [r1 + 0x1C], r28
 
   # Ep3PlayerDataSegment* seg = get_player_data_segment(0)
-  lis    r3, 0x802A
-  ori    r3, r3, 0x1BAC
+  lis    r3, 0x8029
+  ori    r3, r3, 0x987C
   mtctr  r3
   li     r3, 0
   bctrl
   mr     r31, r3
 
   # decrypt_ep3_player_data_segment(seg)
-  lis    r3, 0x802A
-  ori    r3, r3, 0x15BC
+  lis    r3, 0x8029
+  ori    r3, r3, 0x92A4
   mtctr  r3
   mr     r3, r31
   bctrl
 
   # Ep3PlayerDataSegment_on_card_obtained(seg, card_id) for each card, 99 times
-  lis    r28, 0x802A
-  ori    r28, r28, 0x17AC
+  lis    r28, 0x8029
+  ori    r28, r28, 0x94C0
   li     r30, 1  # r30 = card_id
 obtain_card_99times:
   li     r29, 99  # r29 = obtain count
@@ -58,8 +52,8 @@ obtain_card_again:
   ble    obtain_card_99times
 
   # encrypt_ep3_player_data_segment(seg)
-  lis    r3, 0x802A
-  ori    r3, r3, 0x160C
+  lis    r3, 0x8029
+  ori    r3, r3, 0x92F8
   mtctr  r3
   mr     r3, r31
   bctrl
