@@ -949,7 +949,12 @@ static void on_ep3_battle_subs(shared_ptr<Client> c, uint8_t command, uint8_t fl
   }
 
   string data(reinterpret_cast<const char*>(orig_data), size);
-  set_mask_for_ep3_game_command(data.data(), data.size(), 0);
+  if (c->version() != Version::GC_EP3_NTE) {
+    set_mask_for_ep3_game_command(data.data(), data.size(), 0);
+  } else {
+    auto& new_header = check_size_t<G_CardBattleCommandHeader>(data, 0xFFFF);
+    new_header.mask_key = 0;
+  }
 
   if (header.subsubcommand == 0x1A) {
     return;
