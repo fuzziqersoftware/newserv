@@ -1840,7 +1840,11 @@ std::string assemble_quest_script(const std::string& text) {
       label->name = line.substr(0, line.size() - 1);
       size_t at_offset = label->name.find('@');
       if (at_offset != string::npos) {
-        label->index = stoul(label->name.substr(at_offset + 1), nullptr, 0);
+        try {
+          label->index = stoul(label->name.substr(at_offset + 1), nullptr, 0);
+        } catch (const exception& e) {
+          throw runtime_error(string_printf("(line %zu) invalid index in label (%s)", line_num, e.what()));
+        }
         label->name.resize(at_offset);
         if (label->name == "start" && label->index != 0) {
           throw runtime_error("start label cannot have a nonzero label ID");
