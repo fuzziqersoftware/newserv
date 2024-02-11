@@ -9,11 +9,15 @@
 (Ep3 USA) Play lobby (and event) music in Morgue also
 040B7028 60000000
 
+(Ep3 NTE) Skip white logo screens during startup
+0409E10C 38000007
 (Ep3 USA) Skip white logo screens during startup
 0409D774 38000007
 (Episodes 1&2 USA v1.1) Skip white logo screens during startup
 0413F190 38000007
 
+(Ep3 NTE) Skip agreement prompts before online game
+041C67D0 38000003
 (Ep3 USA) Skip agreement prompts before online game
 041B50C8 38000003
 (Episodes 1&2 USA v1.1) Skip agreement prompt before online game
@@ -32,6 +36,13 @@
 042F9B24 64630005
 042F9B28 38800000
 
+(Ep3 NTE) Replace loading screen A button sounds with random sounds
+042E1018 480309A9
+042E101C 5463063E
+042E1020 60631400
+042E1024 64630005
+042E1028 38800000
+
 (Ep3 USA) Change color of loading screens
 (Replace AA, RR, GG, BB appropriately)
 042FA704 3CC0AARR
@@ -45,6 +56,9 @@
 
 (Ep3 USA) Disable darkening effect during battle details mode
 042F951C 4E800020
+
+(Ep3 NTE) Disable darkening effect during battle details mode
+042E09D8 4E800020
 
 (Ep3 USA) Unlock all COM decks
 042CA908 38600001
