@@ -1535,7 +1535,7 @@ std::string disassemble_quest_script(const void* data, size_t size, Version vers
         lines.emplace_back(string_printf("  %04zX  ata_bonus            %04hX /* %hd */", l->offset + offsetof(AttackData, ata_bonus), attack.ata_bonus.load(), attack.ata_bonus.load()));
         lines.emplace_back(string_printf("  %04zX  a4                   %04hX /* %hu */", l->offset + offsetof(AttackData, unknown_a4), attack.unknown_a4.load(), attack.unknown_a4.load()));
         lines.emplace_back(string_printf("  %04zX  distance_x           %08" PRIX32 " /* %g */", l->offset + offsetof(AttackData, distance_x), attack.distance_x.load_raw(), attack.distance_x.load()));
-        lines.emplace_back(string_printf("  %04zX  angle_x              %08" PRIX32 " /* %g */", l->offset + offsetof(AttackData, angle_x), attack.angle_x.load_raw(), attack.angle_x.load()));
+        lines.emplace_back(string_printf("  %04zX  angle_x              %08" PRIX32 " /* %" PRIu32 "/65536 */", l->offset + offsetof(AttackData, angle_x), attack.angle_x.load_raw(), attack.angle_x.load()));
         lines.emplace_back(string_printf("  %04zX  distance_y           %08" PRIX32 " /* %g */", l->offset + offsetof(AttackData, distance_y), attack.distance_y.load_raw(), attack.distance_y.load()));
         lines.emplace_back(string_printf("  %04zX  a8                   %04hX /* %hu */", l->offset + offsetof(AttackData, unknown_a8), attack.unknown_a8.load(), attack.unknown_a8.load()));
         lines.emplace_back(string_printf("  %04zX  a9                   %04hX /* %hu */", l->offset + offsetof(AttackData, unknown_a9), attack.unknown_a9.load(), attack.unknown_a9.load()));

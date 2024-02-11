@@ -24,7 +24,7 @@ public:
     /* 04 */ le_int16_t ata_bonus;
     /* 06 */ le_uint16_t unknown_a4;
     /* 08 */ le_float distance_x;
-    /* 0C */ le_float angle_x;
+    /* 0C */ le_uint32_t angle_x; // Out of 0x10000 (high 16 bits are unused)
     /* 10 */ le_float distance_y;
     /* 14 */ le_uint16_t unknown_a8;
     /* 16 */ le_uint16_t unknown_a9;
