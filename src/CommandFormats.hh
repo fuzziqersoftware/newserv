@@ -2826,8 +2826,24 @@ struct C_CreateChallengeModeAwardItem_BB_07DF {
 // The client will send 09 and 10 commands to inspect or enter a tournament. The
 // server should respond to an 09 command with an E3 command; the server should
 // respond to a 10 command with an E2 command.
-
 // header.flag is the count of filled-in entries.
+
+struct S_TournamentList_Ep3NTE_E0 {
+  struct Entry {
+    le_uint32_t menu_id = 0;
+    le_uint32_t item_id = 0;
+    uint8_t unknown_a1 = 0;
+    uint8_t locked = 0;
+    uint8_t state = 0;
+    uint8_t unknown_a2 = 0;
+    le_uint32_t start_time = 0; // In seconds since Unix epoch
+    pstring<TextEncoding::MARKED, 0x20> name;
+    le_uint16_t num_teams = 0;
+    le_uint16_t max_teams = 0;
+  } __packed__;
+  parray<Entry, 0x20> entries;
+} __packed__;
+
 struct S_TournamentList_Ep3_E0 {
   struct Entry {
     le_uint32_t menu_id = 0;
@@ -2856,8 +2872,8 @@ struct S_TournamentList_Ep3_E0 {
     pstring<TextEncoding::MARKED, 0x20> name;
     le_uint16_t num_teams = 0;
     le_uint16_t max_teams = 0;
-    le_uint16_t unknown_a3 = 0;
-    le_uint16_t unknown_a4 = 0;
+    le_uint16_t unknown_a3 = 0xFFFF;
+    le_uint16_t unknown_a4 = 0xFFFF;
   } __packed__;
   parray<Entry, 0x20> entries;
 } __packed__;

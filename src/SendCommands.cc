@@ -2840,12 +2840,11 @@ void send_ep3_confirm_tournament_entry(
   send_command_t(c, 0xCC, tourn ? 0x01 : 0x00, cmd);
 }
 
-void send_ep3_tournament_list(
-    shared_ptr<Client> c,
-    bool is_for_spectator_team_create) {
+template <typename CmdT>
+void send_ep3_tournament_list_t(shared_ptr<Client> c, bool is_for_spectator_team_create) {
   auto s = c->require_server_state();
 
-  S_TournamentList_Ep3_E0 cmd;
+  CmdT cmd;
   size_t z = 0;
   for (const auto& it : s->ep3_tournament_index->all_tournaments()) {
     const auto& tourn = it.second;
@@ -2876,11 +2875,17 @@ void send_ep3_tournament_list(
       }
     }
     entry.max_teams = teams.size();
-    entry.unknown_a3 = 0xFFFF;
-    entry.unknown_a4 = 0xFFFF;
     z++;
   }
   send_command_t(c, 0xE0, z, cmd);
+}
+
+void send_ep3_tournament_list(shared_ptr<Client> c, bool is_for_spectator_team_create) {
+  if (c->version() == Version::GC_EP3_NTE) {
+    send_ep3_tournament_list_t<S_TournamentList_Ep3NTE_E0>(c, is_for_spectator_team_create);
+  } else {
+    send_ep3_tournament_list_t<S_TournamentList_Ep3_E0>(c, is_for_spectator_team_create);
+  }
 }
 
 void send_ep3_tournament_entry_list(

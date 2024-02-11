@@ -1754,7 +1754,9 @@ static void on_E2_Ep3(shared_ptr<Client> c, uint16_t, uint32_t flag, string&) {
           c->ep3_tournament_team.reset();
         }
       }
-      send_ep3_confirm_tournament_entry(c, nullptr);
+      if (c->version() != Version::GC_EP3_NTE) {
+        send_ep3_confirm_tournament_entry(c, nullptr);
+      }
       break;
     }
     case 0x03: // Create tournament spectator team (get battle list)
