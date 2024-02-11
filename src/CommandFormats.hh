@@ -6745,7 +6745,7 @@ struct G_SetTournamentPlayerDecks_Ep3_6xB4x3D_Entry {
 
 struct G_SetTournamentPlayerDecks_Ep3NTE_6xB4x3D {
   /* 0000 */ G_CardBattleCommandHeader header = {0xB4, sizeof(G_SetTournamentPlayerDecks_Ep3NTE_6xB4x3D) / 4, 0, 0x3D, 0, 0, 0};
-  /* 0008 */ Episode3::Rules rules;
+  /* 0008 */ Episode3::RulesTrial rules;
   /* 0014 */ parray<G_SetTournamentPlayerDecks_Ep3_6xB4x3D_Entry, 4> entries;
   /* 01BC */ le_uint32_t map_number = 0;
   /* 01C0 */ uint8_t player_slot = 0; // Which deck slot is editable by the client
