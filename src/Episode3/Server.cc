@@ -160,6 +160,32 @@ const Server::StackLogger& Server::log() const {
   return *this->logger_stack.back();
 }
 
+std::string Server::debug_str_for_card_ref(uint16_t card_ref) const {
+  if (card_ref == 0xFFFF) {
+    return "@FFFF";
+  }
+  auto ce = this->definition_for_card_ref(card_ref);
+  if (ce) {
+    string name = ce->def.en_name.decode();
+    return string_printf("@%04hX (#%04" PRIX32 " %s)", card_ref, ce->def.card_id.load(), name.c_str());
+  } else {
+    return string_printf("@%04hX (missing)", card_ref);
+  }
+}
+
+std::string Server::debug_str_for_card_id(uint16_t card_id) const {
+  if (card_id == 0xFFFF) {
+    return "#FFFF";
+  }
+  auto ce = this->definition_for_card_id(card_id);
+  if (ce) {
+    string name = ce->def.en_name.decode();
+    return string_printf("#%04hX (%s)", card_id, name.c_str());
+  } else {
+    return string_printf("#%04hX (missing)", card_id);
+  }
+}
+
 int8_t Server::get_winner_team_id() const {
   // Note: This function is not part of the original implementation.
 
@@ -946,44 +972,63 @@ void Server::end_action_phase() {
 }
 
 bool Server::enqueue_attack_or_defense(uint8_t client_id, ActionState* pa) {
+  auto log = this->log_stack("enqueue_attack_or_defense: ");
+  if (log.should_log(LogLevel::DEBUG)) {
+    string s = pa->str(this->shared_from_this());
+    log.debug("input: %s", s.c_str());
+  }
+
   if (client_id >= 4) {
     this->ruler_server->error_code3 = -0x78;
+    log.debug("failed: invalid client ID");
     return false;
   }
 
   auto ps = this->player_states[client_id];
   if (!ps) {
     this->ruler_server->error_code3 = -0x72;
+    log.debug("failed: player not present");
     return false;
   }
 
   if (pa->action_card_refs[0] == 0xFFFF) {
     if (pa->defense_card_ref != 0xFFFF) {
       pa->action_card_refs[0] = pa->defense_card_ref;
+      log.debug("moved defense card ref to action card ref 0");
     }
   } else {
     pa->defense_card_ref = pa->action_card_refs[0];
+    log.debug("moved action card ref 0 to defense card ref");
   }
 
   if (!this->ruler_server->is_attack_or_defense_valid(*pa)) {
+    log.debug("failed: attack or defense not valid");
     return false;
   }
 
   int16_t ally_atk_result = this->send_6xB4x33_remove_ally_atk_if_needed(*pa);
   if (ally_atk_result == 1) {
+    log.debug("pending: need ally approval");
     return true;
   } else if (ally_atk_result == -1) {
+    log.debug("failed: ally declined");
     return false;
   }
 
   if (this->num_pending_attacks >= 0x20) {
     this->ruler_server->error_code3 = -0x71;
+    log.debug("failed: too many pending attacks");
     return false;
   }
 
   size_t attack_index = this->num_pending_attacks++;
   this->pending_attacks[attack_index] = *pa;
+  if (log.should_log(LogLevel::DEBUG)) {
+    string pa_str = this->pending_attacks[attack_index].str(this->shared_from_this());
+    log.debug("set pending attack %zu: %s", attack_index, pa_str.c_str());
+  }
   ps->set_action_cards_for_action_state(*pa);
+  log.debug("set action cards");
   auto card = this->card_for_set_card_ref(this->send_6xB4x06_if_card_ref_invalid(pa->attacker_card_ref, 1));
   if (card) {
     card->card_flags |= 0x400;
@@ -2735,16 +2780,20 @@ void Server::unknown_8023EEF4() {
     auto card = this->attack_cards[this->unknown_a14];
     if (this->get_current_team_turn() == card->get_team_id()) {
       ActionState as = this->pending_attacks_with_cards[this->unknown_a14];
-      log.debug("card @%04hX #%04hX can attack", card->get_card_ref(), card->get_card_id());
-      string as_str = as.str();
-      log.debug("as: %s", as_str.c_str());
+      if (log.should_log(LogLevel::DEBUG)) {
+        log.debug("card @%04hX #%04hX can attack", card->get_card_ref(), card->get_card_id());
+        string as_str = as.str(this->shared_from_this());
+        log.debug("as: %s", as_str.c_str());
+      }
       if (is_nte) {
         this->replace_targets_due_to_destruction_nte(&as);
       } else {
         this->replace_targets_due_to_destruction_or_conditions(&as);
       }
-      as_str = as.str();
-      log.debug("as after target replacement: %s", as_str.c_str());
+      if (log.should_log(LogLevel::DEBUG)) {
+        string as_str = as.str(this->shared_from_this());
+        log.debug("as after target replacement: %s", as_str.c_str());
+      }
       if (this->any_target_exists_for_attack(as)) {
         log.debug("as is valid");
         break;
@@ -2856,7 +2905,7 @@ void Server::replace_targets_due_to_destruction_nte(ActionState* as) {
     if (!target_card) {
       break;
     }
-    if ((target_card->card_flags & 2) ||
+    if (!(target_card->card_flags & 2) ||
         (target_card->get_definition()->def.type != CardType::ITEM) ||
         attacker_card->action_chain.check_flag(0x02)) {
       continue;

@@ -99,6 +99,33 @@ public:
   StackLogger log_stack(const std::string& prefix) const;
   const StackLogger& log() const;
 
+  std::string debug_str_for_card_ref(uint16_t card_ref) const;
+  std::string debug_str_for_card_id(uint16_t card_id) const;
+  template <typename U16T>
+  std::string debug_str_for_card_refs(const U16T* refs, size_t count) const {
+    std::string ret = "[";
+    for (size_t z = 0; z < count; z++) {
+      if (refs[z] != 0xFFFF) {
+        std::string ref_str = this->debug_str_for_card_ref(refs[z]);
+        ret += string_printf("%zu:%s ", z, ref_str.c_str());
+      }
+    }
+    if (ret.size() > 1) {
+      ret.back() = ']'; // Replace the ' ' from the last added item
+    } else {
+      ret.push_back(']');
+    }
+    return ret;
+  }
+  template <typename U16T>
+  std::string debug_str_for_card_refs(const std::vector<U16T>& refs) const {
+    return this->debug_str_for_card_refs(refs.data(), refs.size());
+  }
+  template <typename U16T, size_t Count>
+  std::string debug_str_for_card_refs(const parray<U16T, Count>& refs) const {
+    return this->debug_str_for_card_refs(refs.data(), refs.size());
+  }
+
   int8_t get_winner_team_id() const;
 
   template <typename T>

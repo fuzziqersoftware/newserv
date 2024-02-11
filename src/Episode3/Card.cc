@@ -204,7 +204,7 @@ ssize_t Card::apply_abnormal_condition(
     }
   }
 
-  string cond_str = cond.str();
+  string cond_str = cond.str(s);
   log.debug("wrote condition %zd => %s", cond_index, cond_str.c_str());
 
   if (!is_nte) {
@@ -213,7 +213,7 @@ ssize_t Card::apply_abnormal_condition(
       if (this->action_chain.conditions[z].type == ConditionType::NONE) {
         continue;
       }
-      string cond_str = cond.str();
+      string cond_str = cond.str(s);
       log.debug("sorted conditions: [%zu] => %s", z, cond_str.c_str());
     }
   }
@@ -1361,11 +1361,12 @@ bool Card::is_guard_item() const {
 }
 
 bool Card::unknown_80236554(shared_ptr<Card> other_card, const ActionState* as) {
-  auto log = this->server()->log_stack(other_card
+  auto s = this->server();
+  auto log = s->log_stack(other_card
           ? string_printf("unknown_80236554(@%04hX #%04hX, @%04hX #%04hX): ", this->get_card_ref(), this->get_card_id(), other_card->get_card_ref(), other_card->get_card_id())
           : string_printf("unknown_80236554(@%04hX #%04hX, null): ", this->get_card_ref(), this->get_card_id()));
   if (as) {
-    string as_str = as->str();
+    string as_str = as->str(s);
     log.debug("as = %s", as_str.c_str());
   } else {
     log.debug("as = null");
@@ -1403,8 +1404,8 @@ bool Card::unknown_80236554(shared_ptr<Card> other_card, const ActionState* as) 
   log.debug("last attack damage stats cleared");
 
   if (other_card) {
-    this->server()->card_special->apply_action_conditions(0x03, other_card, this->shared_from_this(), 0x20, as);
-    this->server()->card_special->apply_action_conditions(0x17, other_card, this->shared_from_this(), 0x40, as);
+    s->card_special->apply_action_conditions(0x03, other_card, this->shared_from_this(), 0x20, as);
+    s->card_special->apply_action_conditions(0x17, other_card, this->shared_from_this(), 0x40, as);
     if (other_card->action_chain.check_flag(0x20000)) {
       this->action_metadata.attack_bonus = 0;
       return ret;
@@ -1417,8 +1418,9 @@ bool Card::unknown_80236554(shared_ptr<Card> other_card, const ActionState* as) 
 }
 
 void Card::unknown_802362D8(shared_ptr<Card> other_card) {
+  auto s = this->server();
   for (size_t client_id = 0; client_id < 4; client_id++) {
-    auto ps = this->server()->player_states[client_id];
+    auto ps = s->player_states[client_id];
     if (ps) {
       shared_ptr<Card> card = ps->get_sc_card();
       if (card) {

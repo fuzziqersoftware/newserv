@@ -35,7 +35,7 @@ struct Condition {
   void clear();
   void clear_FF();
 
-  std::string str() const;
+  std::string str(std::shared_ptr<const Server> s) const;
 } __attribute__((packed));
 
 struct EffectResult {
@@ -55,9 +55,9 @@ struct EffectResult {
   bool operator==(const EffectResult& other) const;
   bool operator!=(const EffectResult& other) const;
 
-  std::string str() const;
-
   void clear();
+
+  std::string str(std::shared_ptr<const Server> s) const;
 } __attribute__((packed));
 
 struct CardShortStatus {
@@ -77,7 +77,7 @@ struct CardShortStatus {
   void clear();
   void clear_FF();
 
-  std::string str() const;
+  std::string str(std::shared_ptr<const Server> s) const;
 } __attribute__((packed));
 
 struct ActionState {
@@ -87,7 +87,8 @@ struct ActionState {
   /* 04 */ le_uint16_t attacker_card_ref;
   /* 06 */ le_uint16_t defense_card_ref;
   /* 08 */ parray<le_uint16_t, 4 * 9> target_card_refs;
-  /* 50 */ parray<le_uint16_t, 9> action_card_refs;
+  /* 50 */ parray<le_uint16_t, 8> action_card_refs;
+  /* 60 */ le_uint16_t unused2;
   /* 62 */ le_uint16_t original_attacker_card_ref;
   /* 64 */
 
@@ -97,7 +98,7 @@ struct ActionState {
 
   void clear();
 
-  std::string str() const;
+  std::string str(std::shared_ptr<const Server> s) const;
 } __attribute__((packed));
 
 struct ActionChain {
@@ -133,7 +134,7 @@ struct ActionChain {
   void clear();
   void clear_FF();
 
-  std::string str() const;
+  std::string str(std::shared_ptr<const Server> s) const;
 } __attribute__((packed));
 
 struct ActionChainWithConds {
@@ -171,7 +172,7 @@ struct ActionChainWithConds {
 
   uint8_t get_adjusted_move_ability_nte(uint8_t ability) const;
 
-  std::string str() const;
+  std::string str(std::shared_ptr<const Server> s) const;
 } __attribute__((packed));
 
 struct ActionChainWithCondsTrial {
@@ -224,8 +225,6 @@ struct ActionMetadata {
   bool operator==(const ActionMetadata& other) const;
   bool operator!=(const ActionMetadata& other) const;
 
-  std::string str() const;
-
   void clear();
   void clear_FF();
 
@@ -240,6 +239,8 @@ struct ActionMetadata {
       uint16_t defense_card_ref,
       std::shared_ptr<Card> card,
       uint16_t original_attacker_card_ref);
+
+  std::string str(std::shared_ptr<const Server> s) const;
 } __attribute__((packed));
 
 struct HandAndEquipState {
@@ -274,7 +275,7 @@ struct HandAndEquipState {
   void clear();
   void clear_FF();
 
-  std::string str() const;
+  std::string str(std::shared_ptr<const Server> s) const;
 } __attribute__((packed));
 
 struct PlayerBattleStats {

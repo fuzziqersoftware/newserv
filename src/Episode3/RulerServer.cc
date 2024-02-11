@@ -1441,8 +1441,7 @@ uint16_t RulerServer::compute_attack_or_defense_costs(
       assist_cost_bias++;
     } else if (is_nte && (assist_effect == AssistEffect::DEFLATION)) {
       assist_cost_bias--;
-    } else if ((assist_effect == AssistEffect::BATTLE_ROYALE) &&
-        (pa.action_card_refs[0] == 0xFFFF)) {
+    } else if ((assist_effect == AssistEffect::BATTLE_ROYALE) && (pa.action_card_refs[0] == 0xFFFF)) {
       total_cost = 0;
       final_cost = 0;
     }
@@ -1470,9 +1469,9 @@ bool RulerServer::compute_effective_range_and_target_mode_for_attack(
     TargetMode* out_effective_target_mode,
     uint16_t* out_orig_card_ref) const {
   size_t z;
-  for (z = 0; (z < 9) && (pa.action_card_refs[z] != 0xFFFF); z++) {
+  for (z = 0; (z < 8) && (pa.action_card_refs[z] != 0xFFFF); z++) {
   }
-  if (z >= 9) {
+  if (z >= 8) {
     return false;
   }
   uint16_t card_ref = (z == 0) ? pa.attacker_card_ref : pa.action_card_refs[z - 1];
@@ -1630,8 +1629,7 @@ bool RulerServer::defense_card_can_apply_to_attack(
   return true;
 }
 
-bool RulerServer::defense_card_matches_any_attack_card_top_color(
-    const ActionState& pa) const {
+bool RulerServer::defense_card_matches_any_attack_card_top_color(const ActionState& pa) const {
   auto ce = this->definition_for_card_ref(pa.action_card_refs[0]);
   if (!ce) {
     throw runtime_error("defense card definition is missing");
@@ -2274,7 +2272,7 @@ bool RulerServer::is_attack_valid(const ActionState& pa) {
 
   size_t conditional_card_count = 0;
   size_t z;
-  for (z = 0; z < 9; z++) {
+  for (z = 0; z < 8; z++) {
     uint16_t right_card_ref = pa.action_card_refs[z];
     if (right_card_ref == 0xFFFF) {
       break;

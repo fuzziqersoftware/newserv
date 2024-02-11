@@ -41,6 +41,7 @@ PlayerState::PlayerState(uint8_t client_id, shared_ptr<Server> server)
 
 void PlayerState::init() {
   auto s = this->server();
+  auto log = s->log_stack("PlayerState::init: ");
 
   if (s->player_states.at(this->client_id).get() != this) {
     // Note: The original code handles this, but we don't. This appears not to
@@ -832,7 +833,7 @@ vector<uint16_t> PlayerState::get_all_cards_within_range(
     uint8_t target_team_id) const {
   auto s = this->server();
 
-  auto log = this->server()->log_stack("get_all_cards_within_range: ");
+  auto log = s->log_stack("get_all_cards_within_range: ");
   string loc_str = loc.str();
   log.debug("loc=%s, target_team_id=%02hhX", loc_str.c_str(), target_team_id);
 
@@ -1754,22 +1755,33 @@ int16_t PlayerState::get_assist_turns_remaining() {
 
 bool PlayerState::set_action_cards_for_action_state(const ActionState& pa) {
   auto s = this->server();
+  auto log = s->log_stack("set_action_cards_for_action_state: ");
   bool is_nte = s->options.is_nte();
 
   auto attacker_card = s->card_for_set_card_ref(pa.attacker_card_ref);
   if (attacker_card) {
+    log.debug("attacker card present");
     attacker_card->card_flags |= 0x100;
   }
 
   auto action_type = s->ruler_server->get_pending_action_type(pa);
+  if (action_type == ActionType::DEFENSE) {
+    log.debug("action type is DEFENSE");
+  } else if (action_type == ActionType::ATTACK) {
+    log.debug("action type is ATTACK");
+  } else {
+    log.debug("action type is UNKNOWN");
+  }
   if (!is_nte) {
-    this->subtract_or_check_atk_or_def_points_for_action(pa, 1);
+    log.debug("(non-nte) subtracting action points");
+    this->subtract_or_check_atk_or_def_points_for_action(pa, true);
   }
 
   if (action_type == ActionType::ATTACK) {
     auto card = s->card_for_set_card_ref(pa.attacker_card_ref);
     if (card) {
       card->loc.direction = pa.facing_direction;
+      log.debug("set facing direction to %s", name_for_direction(card->loc.direction));
 
       G_Unknown_Ep3_6xB4x4A cmd;
       cmd.card_refs.clear(0xFFFF);
@@ -1778,6 +1790,10 @@ bool PlayerState::set_action_cards_for_action_state(const ActionState& pa) {
       cmd.entry_count = 0;
       size_t z = 0;
       do {
+        if (log.should_log(LogLevel::DEBUG)) {
+          string ref_str = s->debug_str_for_card_ref(pa.action_card_refs[z]);
+          log.debug("on action card ref %s", ref_str.c_str());
+        }
         card->unknown_80237A90(pa, pa.action_card_refs[z]);
         card->unknown_802379BC(pa.action_card_refs[z]);
         if (!is_nte) {
@@ -1811,6 +1827,10 @@ bool PlayerState::set_action_cards_for_action_state(const ActionState& pa) {
     for (size_t z = 0; (z < 4 * 9) && (pa.target_card_refs[z] != 0xFFFF); z++) {
       auto target_card = s->card_for_set_card_ref(pa.target_card_refs[z]);
       if (target_card) {
+        if (log.should_log(LogLevel::DEBUG)) {
+          string ref_str = s->debug_str_for_card_ref(pa.target_card_refs[z]);
+          log.debug("on target card ref %s", ref_str.c_str());
+        }
         target_card->unknown_802379DC(pa);
         if (!is_nte) {
           if (this->client_id == target_card->get_client_id()) {
@@ -1833,9 +1853,14 @@ bool PlayerState::set_action_cards_for_action_state(const ActionState& pa) {
     }
   }
   if (is_nte) {
+    log.debug("(nte) subtracting action points");
     this->subtract_or_check_atk_or_def_points_for_action(pa, 1);
   }
   for (size_t z = 0; (z < pa.action_card_refs.size()) && (pa.action_card_refs[z] != 0xFFFF); z++) {
+    if (log.should_log(LogLevel::DEBUG)) {
+      string ref_str = s->debug_str_for_card_ref(pa.action_card_refs[z]);
+      log.debug("discarding %s from hand", ref_str.c_str());
+    }
     this->discard_ref_from_hand(pa.action_card_refs[z]);
   }
   this->update_hand_and_equip_state_and_send_6xB4x02_if_needed();

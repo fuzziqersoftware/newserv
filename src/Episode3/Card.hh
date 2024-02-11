@@ -15,11 +15,7 @@ class PlayerState;
 
 class Card : public std::enable_shared_from_this<Card> {
 public:
-  Card(
-      uint16_t card_id,
-      uint16_t card_ref,
-      uint16_t client_id,
-      std::shared_ptr<Server> server);
+  Card(uint16_t card_id, uint16_t card_ref, uint16_t client_id, std::shared_ptr<Server> server);
   void init();
   std::shared_ptr<Server> server();
   std::shared_ptr<const Server> server() const;
@@ -47,8 +43,7 @@ public:
       G_ApplyConditionEffect_Ep3_6xB4x06* cmd,
       size_t strike_number,
       int16_t* out_effective_damage);
-  int16_t compute_defense_power_for_attacker_card(
-      std::shared_ptr<const Card> attacker_card);
+  int16_t compute_defense_power_for_attacker_card(std::shared_ptr<const Card> attacker_card);
   void destroy_set_card(std::shared_ptr<Card> attacker_card);
   int32_t error_code_for_move_to_location(const Location& loc) const;
   void execute_attack(std::shared_ptr<Card> attacker_card);
@@ -73,12 +68,10 @@ public:
   void send_6xB4x4E_4C_4D_if_needed(bool always_send = false);
   void send_6xB4x4E_if_needed(bool always_send = false);
   void set_current_and_max_hp(int16_t hp);
-  void set_current_hp(
-      uint32_t new_hp, bool propagate_shared_hp = true, bool enforce_max_hp = true);
+  void set_current_hp(uint32_t new_hp, bool propagate_shared_hp = true, bool enforce_max_hp = true);
   void update_stats_on_destruction();
   void clear_action_chain_and_metadata_and_most_flags();
-  void compute_action_chain_results(
-      bool apply_action_conditions, bool ignore_this_card_ap_tp);
+  void compute_action_chain_results(bool apply_action_conditions, bool ignore_this_card_ap_tp);
   void unknown_802380C0();
   void unknown_80237F98(bool require_condition_20_or_21);
   void unknown_80237F88();
