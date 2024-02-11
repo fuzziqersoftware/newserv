@@ -2750,7 +2750,7 @@ static void on_enemy_exp_request_bb(shared_ptr<Client> c, uint8_t, uint8_t, void
       if (c->config.check_flag(Client::Flag::DEBUG_ENABLED)) {
         send_text_message_printf(c, "$C5E-%hX __MISSING__\n%s", cmd.enemy_index.load(), e.what());
       } else {
-        send_text_message_printf(c, "$C4Unknown enemy type killed:\n%s", e.what());
+        send_text_message_printf(c, "$C4Unknown enemy killed:\n%s", e.what());
       }
     }
 

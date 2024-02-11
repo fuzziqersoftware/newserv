@@ -96,11 +96,8 @@ static void check_is_leader(shared_ptr<Lobby> l, shared_ptr<Client> c) {
 static void server_command_server_info(shared_ptr<Client> c, const std::string&) {
   auto s = c->require_server_state();
   string uptime_str = format_duration(now() - s->creation_time);
-  string build_date = format_time(BUILD_TIMESTAMP);
   send_text_message_printf(c,
-      "Revision: $C6%s$C7\n$C6%s$C7\nUptime: $C6%s$C7\nLobbies: $C6%zu$C7\nClients: $C6%zu$C7(g) $C6%zu$C7(p)",
-      GIT_REVISION_HASH,
-      build_date.c_str(),
+      "Uptime: $C6%s$C7\nLobbies: $C6%zu$C7\nClients: $C6%zu$C7(g) $C6%zu$C7(p)",
       uptime_str.c_str(),
       s->id_to_lobby.size(),
       s->channel_to_client.size(),
