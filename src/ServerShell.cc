@@ -99,7 +99,10 @@ void ServerShell::execute_command(const string& command) {
     command_args = command_args.substr(args_begin);
   }
 
-  if (command_name == "exit") {
+  if (command_name == "" || starts_with(command_name, "//")) {
+    // Do nothing
+
+  } else if (command_name == "exit") {
     throw exit_shell();
 
   } else if (command_name == "help") {
