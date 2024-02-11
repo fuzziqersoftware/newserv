@@ -20,7 +20,7 @@ void BattleParamsIndex::Table::print(FILE* stream) const {
         e.char_stats.dfp.load(),
         e.char_stats.ata.load(),
         e.char_stats.lck.load(),
-        e.unknown_a1.load(),
+        e.esp.load(),
         e.experience.load(),
         e.meseta.load());
   };

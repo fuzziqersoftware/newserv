@@ -1507,7 +1507,7 @@ std::string disassemble_quest_script(const void* data, size_t size, Version vers
         lines.emplace_back(string_printf("  %04zX  dfp                  %04hX /* %hu */", l->offset + offsetof(PlayerStats, char_stats.dfp), stats.char_stats.dfp.load(), stats.char_stats.dfp.load()));
         lines.emplace_back(string_printf("  %04zX  ata                  %04hX /* %hu */", l->offset + offsetof(PlayerStats, char_stats.ata), stats.char_stats.ata.load(), stats.char_stats.ata.load()));
         lines.emplace_back(string_printf("  %04zX  lck                  %04hX /* %hu */", l->offset + offsetof(PlayerStats, char_stats.lck), stats.char_stats.lck.load(), stats.char_stats.lck.load()));
-        lines.emplace_back(string_printf("  %04zX  a1                   %04hX /* %hu */", l->offset + offsetof(PlayerStats, unknown_a1), stats.unknown_a1.load(), stats.unknown_a1.load()));
+        lines.emplace_back(string_printf("  %04zX  esp                  %04hX /* %hu */", l->offset + offsetof(PlayerStats, esp), stats.esp.load(), stats.esp.load()));
         lines.emplace_back(string_printf("  %04zX  height               %08" PRIX32 " /* %g */", l->offset + offsetof(PlayerStats, height), stats.height.load_raw(), stats.height.load()));
         lines.emplace_back(string_printf("  %04zX  a3                   %08" PRIX32 " /* %g */", l->offset + offsetof(PlayerStats, unknown_a3), stats.unknown_a3.load_raw(), stats.unknown_a3.load()));
         lines.emplace_back(string_printf("  %04zX  level                %08" PRIX32 " /* level %" PRIu32 " */", l->offset + offsetof(PlayerStats, level), stats.level.load(), stats.level.load() + 1));

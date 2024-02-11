@@ -454,7 +454,7 @@ void Client::create_battle_overlay(shared_ptr<const BattleRules> rules, shared_p
     stats.reset_to_base(char_class, level_table);
     stats.advance_to_level(char_class, target_level, level_table);
 
-    stats.unknown_a1 = 40;
+    stats.esp = 40;
     stats.meseta = 300;
   }
   if (rules->tech_disk_mode == BattleRules::TechDiskMode::LIMIT_LEVEL) {
@@ -500,7 +500,7 @@ void Client::create_challenge_overlay(Version version, size_t template_index, sh
   overlay->disp.stats.reset_to_base(overlay->disp.visual.char_class, level_table);
   overlay->disp.stats.advance_to_level(overlay->disp.visual.char_class, tpl.level, level_table);
 
-  overlay->disp.stats.unknown_a1 = 40;
+  overlay->disp.stats.esp = 40;
   overlay->disp.stats.unknown_a3 = 10.0;
   overlay->disp.stats.experience = level_table->stats_delta_for_level(overlay->disp.visual.char_class, overlay->disp.stats.level).experience;
   overlay->disp.stats.meseta = 0;
