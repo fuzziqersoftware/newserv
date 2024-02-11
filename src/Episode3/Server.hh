@@ -205,6 +205,7 @@ public:
   void send_set_card_updates_and_6xB4x04_if_needed();
   void set_battle_ended();
   void set_battle_started();
+  bool player_can_receive_dice_boost(uint8_t client_id) const;
   void set_client_id_ready_to_advance_phase(uint8_t client_id, BattlePhase battle_phase);
   void set_phase_after();
   void move_phase_before();

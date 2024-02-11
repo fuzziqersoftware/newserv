@@ -1263,8 +1263,8 @@ Rules::Rules(const JSON& json) {
   this->overall_time_limit = json.get_int("overall_time_limit", this->overall_time_limit);
   this->phase_time_limit = json.get_int("phase_time_limit", this->phase_time_limit);
   this->allowed_cards = json.get_enum("allowed_cards", this->allowed_cards);
-  this->min_dice = json.get_int("min_dice", this->min_dice);
-  this->max_dice = json.get_int("max_dice", this->max_dice);
+  this->min_dice_value = json.get_int("min_dice", this->min_dice_value);
+  this->max_dice_value = json.get_int("max_dice", this->max_dice_value);
   this->disable_deck_shuffle = json.get_bool("disable_deck_shuffle", this->disable_deck_shuffle);
   this->disable_deck_loop = json.get_bool("disable_deck_loop", this->disable_deck_loop);
   this->char_hp = json.get_int("char_hp", this->char_hp);
@@ -1273,15 +1273,15 @@ Rules::Rules(const JSON& json) {
   this->disable_dialogue = json.get_bool("disable_dialogue", this->disable_dialogue);
   this->dice_exchange_mode = json.get_enum("dice_exchange_mode", this->dice_exchange_mode);
   this->disable_dice_boost = json.get_bool("disable_dice_boost", this->disable_dice_boost);
-  uint8_t min_dice = json.get_int("min_def_dice", (this->def_dice_range >> 4) & 0x0F);
-  uint8_t max_dice = json.get_int("max_def_dice", this->def_dice_range & 0x0F);
-  this->def_dice_range = ((min_dice << 4) & 0xF0) | (max_dice & 0x0F);
-  min_dice = json.get_int("min_atk_dice_2v1", (this->atk_dice_range_2v1 >> 4) & 0x0F);
-  max_dice = json.get_int("max_atk_dice_2v1", this->atk_dice_range_2v1 & 0x0F);
-  this->atk_dice_range_2v1 = ((min_dice << 4) & 0xF0) | (max_dice & 0x0F);
-  min_dice = json.get_int("min_def_dice_2v1", (this->def_dice_range_2v1 >> 4) & 0x0F);
-  max_dice = json.get_int("max_def_dice_2v1", this->def_dice_range_2v1 & 0x0F);
-  this->def_dice_range_2v1 = ((min_dice << 4) & 0xF0) | (max_dice & 0x0F);
+  uint8_t min_dice = json.get_int("min_def_dice", (this->def_dice_value_range >> 4) & 0x0F);
+  uint8_t max_dice = json.get_int("max_def_dice", this->def_dice_value_range & 0x0F);
+  this->def_dice_value_range = ((min_dice << 4) & 0xF0) | (max_dice & 0x0F);
+  min_dice = json.get_int("min_atk_dice_2v1", (this->atk_dice_value_range_2v1 >> 4) & 0x0F);
+  max_dice = json.get_int("max_atk_dice_2v1", this->atk_dice_value_range_2v1 & 0x0F);
+  this->atk_dice_value_range_2v1 = ((min_dice << 4) & 0xF0) | (max_dice & 0x0F);
+  min_dice = json.get_int("min_def_dice_2v1", (this->def_dice_value_range_2v1 >> 4) & 0x0F);
+  max_dice = json.get_int("max_def_dice_2v1", this->def_dice_value_range_2v1 & 0x0F);
+  this->def_dice_value_range_2v1 = ((min_dice << 4) & 0xF0) | (max_dice & 0x0F);
 }
 
 JSON Rules::json() const {
@@ -1289,8 +1289,8 @@ JSON Rules::json() const {
       {"overall_time_limit", this->overall_time_limit},
       {"phase_time_limit", this->phase_time_limit},
       {"allowed_cards", name_for_enum(this->allowed_cards)},
-      {"min_dice", this->min_dice},
-      {"max_dice", this->max_dice},
+      {"min_dice", this->min_dice_value},
+      {"max_dice", this->max_dice_value},
       {"disable_deck_shuffle", static_cast<bool>(this->disable_deck_shuffle)},
       {"disable_deck_loop", static_cast<bool>(this->disable_deck_loop)},
       {"char_hp", this->char_hp},
@@ -1299,12 +1299,12 @@ JSON Rules::json() const {
       {"disable_dialogue", static_cast<bool>(this->disable_dialogue)},
       {"dice_exchange_mode", name_for_enum(this->dice_exchange_mode)},
       {"disable_dice_boost", static_cast<bool>(this->disable_dice_boost)},
-      {"min_def_dice", ((this->def_dice_range >> 4) & 0x0F)},
-      {"max_def_dice", (this->def_dice_range & 0x0F)},
-      {"min_atk_dice_2v1", ((this->atk_dice_range_2v1 >> 4) & 0x0F)},
-      {"max_atk_dice_2v1", (this->atk_dice_range_2v1 & 0x0F)},
-      {"min_def_dice_2v1", ((this->def_dice_range_2v1 >> 4) & 0x0F)},
-      {"max_def_dice_2v1", (this->def_dice_range_2v1 & 0x0F)},
+      {"min_def_dice", ((this->def_dice_value_range >> 4) & 0x0F)},
+      {"max_def_dice", (this->def_dice_value_range & 0x0F)},
+      {"min_atk_dice_2v1", ((this->atk_dice_value_range_2v1 >> 4) & 0x0F)},
+      {"max_atk_dice_2v1", (this->atk_dice_value_range_2v1 & 0x0F)},
+      {"min_def_dice_2v1", ((this->def_dice_value_range_2v1 >> 4) & 0x0F)},
+      {"max_def_dice_2v1", (this->def_dice_value_range_2v1 & 0x0F)},
   });
 }
 
@@ -1312,8 +1312,8 @@ void Rules::set_defaults() {
   this->clear();
   this->overall_time_limit = 24; // 2 hours
   this->phase_time_limit = 30;
-  this->min_dice = 1;
-  this->max_dice = 6;
+  this->min_dice_value = 1;
+  this->max_dice_value = 6;
   this->char_hp = 15;
 }
 
@@ -1321,8 +1321,8 @@ void Rules::clear() {
   this->overall_time_limit = 0;
   this->phase_time_limit = 0;
   this->allowed_cards = AllowedCards::ALL;
-  this->min_dice = 0;
-  this->max_dice = 0;
+  this->min_dice_value = 0;
+  this->max_dice_value = 0;
   this->disable_deck_shuffle = 0;
   this->disable_deck_loop = 0;
   this->char_hp = 0;
@@ -1331,8 +1331,50 @@ void Rules::clear() {
   this->disable_dialogue = 0;
   this->dice_exchange_mode = DiceExchangeMode::HIGH_ATK;
   this->disable_dice_boost = 0;
-  this->def_dice_range = 0;
+  this->def_dice_value_range = 0;
+  this->atk_dice_value_range_2v1 = 0;
+  this->def_dice_value_range_2v1 = 0;
   this->unused.clear(0);
+}
+
+pair<uint8_t, uint8_t> Rules::atk_dice_range(bool is_1p_2v1) const {
+  pair<uint8_t, uint8_t> ret;
+  if (is_1p_2v1 && this->atk_dice_value_range_2v1 && (this->atk_dice_value_range_2v1 != 0xFF)) {
+    ret = make_pair((this->atk_dice_value_range_2v1 >> 4) & 0x0F, this->atk_dice_value_range_2v1 & 0x0F);
+  } else {
+    ret = make_pair(this->min_dice_value, this->max_dice_value);
+  }
+  if (ret.first == 0) {
+    ret.first = 1;
+  }
+  if (ret.second == 0) {
+    ret.second = 6;
+  }
+  if (ret.first > ret.second) {
+    ret = make_pair(ret.second, ret.first);
+  }
+  return ret;
+}
+
+pair<uint8_t, uint8_t> Rules::def_dice_range(bool is_1p_2v1) const {
+  pair<uint8_t, uint8_t> ret;
+  if (is_1p_2v1 && this->def_dice_value_range_2v1 && (this->def_dice_value_range_2v1 != 0xFF)) {
+    ret = make_pair((this->def_dice_value_range_2v1 >> 4) & 0x0F, this->def_dice_value_range_2v1 & 0x0F);
+  } else if (this->def_dice_value_range && (this->def_dice_value_range != 0xFF)) {
+    ret = make_pair((this->def_dice_value_range >> 4) & 0x0F, this->def_dice_value_range & 0x0F);
+  } else {
+    ret = make_pair(this->min_dice_value, this->max_dice_value);
+  }
+  if (ret.first == 0) {
+    ret.first = 1;
+  }
+  if (ret.second == 0) {
+    ret.second = 6;
+  }
+  if (ret.first > ret.second) {
+    ret = make_pair(ret.second, ret.first);
+  }
+  return ret;
 }
 
 string Rules::str() const {
@@ -1364,52 +1406,33 @@ string Rules::str() const {
       break;
   }
 
-  if (this->min_dice == 0xFF) {
-    tokens.emplace_back("min_dice=(open)");
-  } else if (this->min_dice == 0x00) {
-    tokens.emplace_back("min_dice=1 (default)");
-  } else {
-    tokens.emplace_back(string_printf("min_dice=%hhu", this->min_dice));
+  auto format_dice_range = +[](std::pair<uint8_t, uint8_t> range) -> string {
+    string s = "[";
+    if (range.first == 0xFF) {
+      s += "min=(open), ";
+    } else if (range.first == 0x00) {
+      s += "min=(default), ";
+    } else {
+      s += string_printf("min=%hhu, ", range.first);
+    }
+    if (range.second == 0xFF) {
+      s += "max=(open)]";
+    } else if (range.second == 0x00) {
+      s += "max=(default)]";
+    } else {
+      s += string_printf("max=%hhu]", range.second);
+    }
+    return s;
+  };
+  tokens.emplace_back("dice_range=" + format_dice_range(make_pair(this->min_dice_value, this->max_dice_value)));
+  if (this->def_dice_value_range) {
+    tokens.emplace_back("def_dice_range=" + format_dice_range(this->def_dice_range(false)));
   }
-  if (this->max_dice == 0xFF) {
-    tokens.emplace_back("max_dice=(open)");
-  } else if (this->max_dice == 0x00) {
-    tokens.emplace_back("max_dice=6 (default)");
-  } else {
-    tokens.emplace_back(string_printf("max_dice=%hhu", this->max_dice));
+  if (this->atk_dice_value_range_2v1) {
+    tokens.emplace_back("atk_dice_range_2v1=" + format_dice_range(this->atk_dice_range(true)));
   }
-
-  if (this->min_def_dice() == 0) {
-    tokens.emplace_back("min_def_dice=(default)");
-  } else {
-    tokens.emplace_back(string_printf("min_def_dice=%hhu", this->min_def_dice()));
-  }
-  if (this->max_def_dice() == 0) {
-    tokens.emplace_back("max_def_dice=(default)");
-  } else {
-    tokens.emplace_back(string_printf("max_def_dice=%hhu", this->max_def_dice()));
-  }
-
-  if (this->min_atk_dice_2v1() == 0) {
-    tokens.emplace_back("min_atk_dice_2v1=(default)");
-  } else {
-    tokens.emplace_back(string_printf("min_atk_dice_2v1=%hhu", this->min_atk_dice_2v1()));
-  }
-  if (this->max_atk_dice_2v1() == 0) {
-    tokens.emplace_back("max_atk_dice_2v1=(default)");
-  } else {
-    tokens.emplace_back(string_printf("max_atk_dice_2v1=%hhu", this->max_atk_dice_2v1()));
-  }
-
-  if (this->min_def_dice_2v1() == 0) {
-    tokens.emplace_back("min_def_dice_2v1=(default)");
-  } else {
-    tokens.emplace_back(string_printf("min_def_dice_2v1=%hhu", this->min_def_dice_2v1()));
-  }
-  if (this->max_def_dice_2v1() == 0) {
-    tokens.emplace_back("max_def_dice_2v1=(default)");
-  } else {
-    tokens.emplace_back(string_printf("max_def_dice_2v1=%hhu", this->max_def_dice_2v1()));
+  if (this->def_dice_value_range_2v1) {
+    tokens.emplace_back("def_dice_range_2v1=" + format_dice_range(this->def_dice_range(true)));
   }
 
   switch (this->dice_exchange_mode) {
@@ -1497,15 +1520,30 @@ RulesTrial::RulesTrial(const Rules& r)
     : overall_time_limit(r.overall_time_limit),
       phase_time_limit(r.phase_time_limit),
       allowed_cards(r.allowed_cards),
-      atk_die_behavior((r.max_dice == r.min_dice) ? r.max_dice : 0),
-      def_die_behavior(r.def_dice_range == 0xFF ? 0xFF : ((r.min_def_dice() == r.max_def_dice()) ? r.max_def_dice() : 0)),
+      // ATK/DEF behaviors set below
       disable_deck_shuffle(r.disable_deck_shuffle),
       disable_deck_loop(r.disable_deck_loop),
       char_hp(r.char_hp),
       hp_type(r.hp_type),
       no_assist_cards(r.no_assist_cards),
       disable_dialogue(r.disable_dialogue),
-      dice_exchange_mode(r.dice_exchange_mode) {}
+      dice_exchange_mode(r.dice_exchange_mode) {
+  if (r.max_dice_value == r.min_dice_value) {
+    this->atk_die_behavior = r.max_dice_value;
+  } else {
+    this->atk_die_behavior = 0; // Random
+  }
+  if (r.def_dice_value_range == 0xFF) {
+    this->atk_die_behavior = 0xFF;
+  } else {
+    auto def_range = r.def_dice_range(false);
+    if (def_range.first == def_range.second) {
+      this->def_die_behavior = def_range.first;
+    } else {
+      this->def_die_behavior = 0;
+    }
+  }
+}
 
 RulesTrial::operator Rules() const {
   Rules ret;
@@ -1513,11 +1551,11 @@ RulesTrial::operator Rules() const {
   ret.phase_time_limit = this->phase_time_limit;
   ret.allowed_cards = this->allowed_cards;
   if (this->atk_die_behavior) {
-    ret.min_dice = this->atk_die_behavior;
-    ret.max_dice = this->atk_die_behavior;
+    ret.min_dice_value = this->atk_die_behavior;
+    ret.max_dice_value = this->atk_die_behavior;
   } else {
-    ret.min_dice = 1;
-    ret.max_dice = 6;
+    ret.min_dice_value = 1;
+    ret.max_dice_value = 6;
   }
   ret.disable_deck_shuffle = this->disable_deck_shuffle;
   ret.disable_deck_loop = this->disable_deck_loop;
@@ -1528,10 +1566,12 @@ RulesTrial::operator Rules() const {
   ret.dice_exchange_mode = this->dice_exchange_mode;
   ret.disable_dice_boost = 0;
   if (this->def_die_behavior) {
-    ret.def_dice_range = (this->def_die_behavior << 4) | this->def_die_behavior;
+    ret.def_dice_value_range = (this->def_die_behavior << 4) | this->def_die_behavior;
   } else {
-    ret.def_dice_range = 0x16;
+    ret.def_dice_value_range = 0x16;
   }
+  ret.atk_dice_value_range_2v1 = 0x00;
+  ret.def_dice_value_range_2v1 = 0x00;
   ret.unused.clear(0);
   return ret;
 }
@@ -2079,82 +2119,48 @@ bool Rules::check_and_reset_invalid_fields() {
     this->allowed_cards = AllowedCards::ALL;
     ret = true;
   }
-  if (this->min_dice > 9) {
-    this->min_dice = 0;
+  if (this->min_dice_value > 9) {
+    this->min_dice_value = 0;
     ret = true;
   }
-  if (this->max_dice > 9) {
-    this->max_dice = 0;
+  if (this->max_dice_value > 9) {
+    this->max_dice_value = 0;
     ret = true;
   }
-  if ((this->min_dice != 0) && (this->max_dice != 0) && (this->max_dice < this->min_dice)) {
-    uint8_t t = this->min_dice;
-    this->min_dice = this->max_dice;
-    this->max_dice = t;
-    ret = true;
-  }
-
-  uint8_t min_def_dice = this->min_def_dice();
-  uint8_t max_def_dice = this->max_def_dice();
-  if (min_def_dice > 9) {
-    min_def_dice = 0;
-    ret = true;
-  }
-  if (max_def_dice > 9) {
-    max_def_dice = 0;
-    ret = true;
-  }
-  if ((min_def_dice != 0) && (max_def_dice != 0) && (max_def_dice < min_def_dice)) {
-    uint8_t t = min_def_dice;
-    min_def_dice = max_def_dice;
-    max_def_dice = t;
-    ret = true;
-  }
-  this->def_dice_range = ((min_def_dice << 4) & 0xF0) | (max_def_dice & 0x0F);
-  if (this->disable_deck_shuffle > 1) {
-    this->disable_deck_shuffle = 0;
+  if ((this->min_dice_value != 0) && (this->max_dice_value != 0) && (this->max_dice_value < this->min_dice_value)) {
+    uint8_t t = this->min_dice_value;
+    this->min_dice_value = this->max_dice_value;
+    this->max_dice_value = t;
     ret = true;
   }
 
-  uint8_t min_atk_dice_2v1 = this->min_atk_dice_2v1();
-  uint8_t max_atk_dice_2v1 = this->max_atk_dice_2v1();
-  if (min_atk_dice_2v1 > 9) {
-    min_atk_dice_2v1 = 0;
-    ret = true;
-  }
-  if (max_atk_dice_2v1 > 9) {
-    max_atk_dice_2v1 = 0;
-    ret = true;
-  }
-  if ((min_atk_dice_2v1 != 0) && (max_atk_dice_2v1 != 0) && (max_atk_dice_2v1 < min_atk_dice_2v1)) {
-    uint8_t t = min_atk_dice_2v1;
-    min_atk_dice_2v1 = max_atk_dice_2v1;
-    max_atk_dice_2v1 = t;
-    ret = true;
-  }
-  this->def_dice_range = ((min_atk_dice_2v1 << 4) & 0xF0) | (max_atk_dice_2v1 & 0x0F);
-  if (this->disable_deck_shuffle > 1) {
-    this->disable_deck_shuffle = 0;
-    ret = true;
-  }
+  // These ranges are a newserv-specific extension and are not part of the
+  // original implementation.
+  auto check_compressed_dice_range = +[](uint8_t* range) -> bool {
+    bool ret = false;
+    uint8_t min_dice = ((*range) >> 4) & 0x0F;
+    uint8_t max_dice = (*range) & 0x0F;
+    if (min_dice > 9) {
+      min_dice = 0;
+      ret = true;
+    }
+    if (max_dice > 9) {
+      max_dice = 0;
+      ret = true;
+    }
+    if ((min_dice != 0) && (max_dice != 0) && (max_dice < min_dice)) {
+      uint8_t t = min_dice;
+      min_dice = max_dice;
+      max_dice = t;
+      ret = true;
+    }
+    *range = ((min_dice << 4) & 0xF0) | (max_dice & 0x0F);
+    return ret;
+  };
+  ret |= check_compressed_dice_range(&this->def_dice_value_range);
+  ret |= check_compressed_dice_range(&this->atk_dice_value_range_2v1);
+  ret |= check_compressed_dice_range(&this->def_dice_value_range_2v1);
 
-  uint8_t min_def_dice_2v1 = this->min_def_dice_2v1();
-  uint8_t max_def_dice_2v1 = this->max_def_dice_2v1();
-  if (min_def_dice_2v1 > 9) {
-    min_def_dice_2v1 = 0;
-    ret = true;
-  }
-  if (max_def_dice_2v1 > 9) {
-    max_def_dice_2v1 = 0;
-    ret = true;
-  }
-  if ((min_def_dice_2v1 != 0) && (max_def_dice_2v1 != 0) && (max_def_dice_2v1 < min_def_dice_2v1)) {
-    uint8_t t = min_def_dice_2v1;
-    min_def_dice_2v1 = max_def_dice_2v1;
-    max_def_dice_2v1 = t;
-    ret = true;
-  }
-  this->def_dice_range = ((min_def_dice_2v1 << 4) & 0xF0) | (max_def_dice_2v1 & 0x0F);
   if (this->disable_deck_shuffle > 1) {
     this->disable_deck_shuffle = 0;
     ret = true;
@@ -2184,30 +2190,14 @@ bool Rules::check_and_reset_invalid_fields() {
     this->disable_dice_boost = 0;
     ret = true;
   }
-  if ((this->max_dice != 0) && (this->max_dice < 3)) {
-    this->disable_dice_boost = 1;
-    ret = true;
-  }
+  // Due to newserv's custom range overrides, it doesn't make sense to disable
+  // Dice Boost for everyone based on the Rules struct. Instead, we skip setting
+  // the flag at roll time.
+  // if ((this->max_dice_value != 0) && (this->max_dice_value < 3)) {
+  //   this->disable_dice_boost = 1;
+  //   ret = true;
+  // }
   return ret;
-}
-
-uint8_t Rules::min_def_dice() const {
-  return (this->def_dice_range >> 4) & 0x0F;
-}
-uint8_t Rules::max_def_dice() const {
-  return this->def_dice_range & 0x0F;
-}
-uint8_t Rules::min_atk_dice_2v1() const {
-  return (this->atk_dice_range_2v1 >> 4) & 0x0F;
-}
-uint8_t Rules::max_atk_dice_2v1() const {
-  return this->atk_dice_range_2v1 & 0x0F;
-}
-uint8_t Rules::min_def_dice_2v1() const {
-  return (this->def_dice_range_2v1 >> 4) & 0x0F;
-}
-uint8_t Rules::max_def_dice_2v1() const {
-  return this->def_dice_range_2v1 & 0x0F;
 }
 
 CardIndex::CardIndex(

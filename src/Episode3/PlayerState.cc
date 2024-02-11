@@ -1987,44 +1987,21 @@ void PlayerState::roll_main_dice_or_apply_after_effects() {
 
   bool is_1p_2v1 = (s->team_client_count.at(this->get_team_id()) < s->team_client_count[this->get_team_id() ^ 1]);
 
-  uint8_t min_atk_dice = (is_1p_2v1 && rules.min_atk_dice_2v1()) ? rules.min_atk_dice_2v1() : rules.min_dice;
-  uint8_t max_atk_dice = (is_1p_2v1 && rules.max_atk_dice_2v1()) ? rules.max_atk_dice_2v1() : rules.max_dice;
-  if (min_atk_dice == 0) {
-    min_atk_dice = 1;
-  }
-  if (max_atk_dice == 0) {
-    max_atk_dice = 6;
-  }
-  if (max_atk_dice < min_atk_dice) {
-    uint8_t t = max_atk_dice;
-    max_atk_dice = min_atk_dice;
-    min_atk_dice = t;
-  }
-  uint8_t atk_dice_range_width = (max_atk_dice - min_atk_dice) + 1;
+  auto atk_range = rules.atk_dice_range(is_1p_2v1);
+  auto def_range = rules.def_dice_range(is_1p_2v1);
+
+  uint8_t atk_dice_range_width = (atk_range.second - atk_range.first) + 1;
   if (atk_dice_range_width < 2) {
-    this->dice_results[0] = min_atk_dice;
+    this->dice_results[0] = atk_range.first;
   } else {
-    this->dice_results[0] = min_atk_dice + s->get_random(atk_dice_range_width);
+    this->dice_results[0] = atk_range.first + s->get_random(atk_dice_range_width);
   }
 
-  uint8_t min_def_dice = (is_1p_2v1 && rules.min_def_dice_2v1()) ? rules.min_def_dice_2v1() : (rules.min_def_dice() ? rules.min_def_dice() : rules.min_dice);
-  uint8_t max_def_dice = (is_1p_2v1 && rules.max_def_dice_2v1()) ? rules.max_def_dice_2v1() : (rules.max_def_dice() ? rules.max_def_dice() : rules.max_dice);
-  if (min_def_dice == 0) {
-    min_def_dice = 1;
-  }
-  if (max_def_dice == 0) {
-    max_def_dice = 6;
-  }
-  if (max_def_dice < min_def_dice) {
-    uint8_t t = max_def_dice;
-    max_def_dice = min_def_dice;
-    min_def_dice = t;
-  }
-  uint8_t def_dice_range_width = (max_def_dice - min_def_dice) + 1;
+  uint8_t def_dice_range_width = (def_range.second - def_range.first) + 1;
   if (def_dice_range_width < 2) {
-    this->dice_results[1] = min_def_dice;
+    this->dice_results[1] = def_range.first;
   } else {
-    this->dice_results[1] = min_def_dice + s->get_random(def_dice_range_width);
+    this->dice_results[1] = def_range.first + s->get_random(def_dice_range_width);
   }
 
   bool should_exchange = false;

@@ -1363,6 +1363,13 @@ void Server::set_battle_started() {
   this->send_6xB4x05();
 }
 
+bool Server::player_can_receive_dice_boost(uint8_t client_id) const {
+  auto ps = this->player_states[client_id];
+  bool is_1p_2v1 = (this->team_client_count.at(ps->get_team_id()) < this->team_client_count[ps->get_team_id() ^ 1]);
+  const auto& rules = this->map_and_rules->rules;
+  return (rules.atk_dice_range(is_1p_2v1).second >= 3) || (rules.def_dice_range(is_1p_2v1).second >= 3);
+}
+
 void Server::set_client_id_ready_to_advance_phase(uint8_t client_id, BattlePhase battle_phase) {
   if (client_id >= 4) {
     return;
@@ -1377,7 +1384,10 @@ void Server::set_client_id_ready_to_advance_phase(uint8_t client_id, BattlePhase
     ps->assist_flags |= AssistFlag::READY_TO_END_PHASE;
     ps->update_hand_and_equip_state_and_send_6xB4x02_if_needed();
     if (this->battle_phase == BattlePhase::DICE) {
-      if (is_nte || !(ps->assist_flags & AssistFlag::ELIGIBLE_FOR_DICE_BOOST) || this->map_and_rules->rules.disable_dice_boost) {
+      if (is_nte ||
+          !(ps->assist_flags & AssistFlag::ELIGIBLE_FOR_DICE_BOOST) ||
+          this->map_and_rules->rules.disable_dice_boost ||
+          !this->player_can_receive_dice_boost(client_id)) {
         ps->assist_flags &= (~AssistFlag::ELIGIBLE_FOR_DICE_BOOST);
         ps->roll_main_dice_or_apply_after_effects();
         if (!is_nte && (ps->get_atk_points() < 3) && (ps->get_def_points() < 3)) {
@@ -2149,9 +2159,13 @@ void Server::handle_CAx13_update_map_during_setup_t(shared_ptr<Client>, const st
     // newserv's extended rules are stored in unused parts of the Rules struct,
     // and clients will probably overwrite them with zeroes if we allow them to.
     // So, we preserve the extended rules manually here.
-    uint8_t def_dice_range = this->map_and_rules->rules.def_dice_range;
+    uint8_t def_dice_value_range = this->map_and_rules->rules.def_dice_value_range;
+    uint8_t atk_dice_value_range_2v1 = this->map_and_rules->rules.atk_dice_value_range_2v1;
+    uint8_t def_dice_value_range_2v1 = this->map_and_rules->rules.def_dice_value_range_2v1;
     *this->map_and_rules = in_cmd.map_and_rules_state;
-    this->map_and_rules->rules.def_dice_range = def_dice_range;
+    this->map_and_rules->rules.def_dice_value_range = def_dice_value_range;
+    this->map_and_rules->rules.atk_dice_value_range_2v1 = atk_dice_value_range_2v1;
+    this->map_and_rules->rules.def_dice_value_range_2v1 = def_dice_value_range_2v1;
 
     // If this match is part of a tournament, ignore the rules sent by the
     // client and use the tournament rules instead.

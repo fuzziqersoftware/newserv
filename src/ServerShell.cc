@@ -204,9 +204,13 @@ Server commands:\n\
       shuffle: Shuffle entries when starting the tournament\n\
       resize: If the tournament is less than half full when it starts, reduce\n\
           the number of rounds to fit the existing entries\n\
-      dice=MIN-MAX: Set minimum and maximum dice rolls\n\
-      dice=MIN-MAX:MIN-MAX: Set minimum and maximum dice rolls for ATK and DEF\n\
-          dice separately\n\
+      dice=A-B: Set minimum and maximum dice rolls\n\
+      dice=A-B:C-D: Set minimum and maximum dice rolls for ATK dice (A-B) and\n\
+          DEF dice (C-D) separately\n\
+      dice=A-B:C-D:E-F: Set minimum and maximum dice rolls for ATK dice, DEF\n\
+          dice, and solo vs. 2P ATK and DEF dice (E-F) separately\n\
+      dice=A-B:C-D:E-F:G-H: Set minimum and maximum dice rolls for ATK dice,\n\
+          DEF dice, solo vs. 2P ATK (E-F) and DEF (G-H) dice separately\n\
       overall-time-limit=N: Set battle time limit (in multiples of 5 minutes)\n\
       phase-time-limit=N: Set phase time limit (in seconds)\n\
       allowed-cards=ALL/N/NR/NRS: Set ranks of allowed cards\n\
@@ -490,24 +494,48 @@ Proxy session commands:\n\
         } else if (token == "resize") {
           flags |= Episode3::Tournament::Flag::RESIZE_ON_START;
         } else if (starts_with(token, "dice=")) {
-          auto subtokens = split(token.substr(5), ':');
-          if (subtokens.size() == 1) {
-            rules.def_dice_range = 0x00;
-          } else if (subtokens.size() == 2) {
-            auto subsubtokens = split(subtokens[1], '-');
-            if (subsubtokens.size() != 2) {
-              throw runtime_error("dice option must be of the form dice=A-B or dice=A-B:C-D");
+          auto parse_range_c = +[](const string& s) -> uint8_t {
+            auto tokens = split(s, '-');
+            if (tokens.size() != 2) {
+              throw runtime_error("dice spec must be of the form MIN-MAX");
             }
-            rules.def_dice_range = ((stoul(subsubtokens[0]) << 4) & 0xF0) | (stoul(subsubtokens[1]) & 0x0F);
+            return (stoul(tokens[0]) << 4) | (stoul(tokens[1]) & 0x0F);
+          };
+          auto parse_range_p = +[](const string& s) -> pair<uint8_t, uint8_t> {
+            auto tokens = split(s, '-');
+            if (tokens.size() != 2) {
+              throw runtime_error("dice spec must be of the form MIN-MAX");
+            }
+            return make_pair(stoul(tokens[0]), stoul(tokens[1]));
+          };
+
+          auto subtokens = split(token.substr(5), ':');
+          if (subtokens.size() < 1) {
+            throw runtime_error("no dice ranges specified in dice= option");
+          }
+          auto atk_range = parse_range_p(tokens[0]);
+          rules.min_dice_value = atk_range.first;
+          rules.max_dice_value = atk_range.second;
+          if (subtokens.size() >= 2) {
+            rules.def_dice_value_range = parse_range_c(tokens[1]);
+            if (subtokens.size() >= 3) {
+              rules.atk_dice_value_range_2v1 = parse_range_c(tokens[2]);
+              if (subtokens.size() == 3) {
+                rules.def_dice_value_range_2v1 = rules.atk_dice_value_range_2v1;
+              } else if (subtokens.size() == 4) {
+                rules.def_dice_value_range_2v1 = parse_range_c(tokens[3]);
+              } else {
+                throw runtime_error("too many range specs given");
+              }
+            } else {
+              rules.atk_dice_value_range_2v1 = 0;
+              rules.def_dice_value_range_2v1 = 0;
+            }
           } else {
-            throw runtime_error("dice option must be of the form dice=A-B or dice=A-B:C-D");
+            rules.def_dice_value_range = 0;
+            rules.atk_dice_value_range_2v1 = 0;
+            rules.def_dice_value_range_2v1 = 0;
           }
-          auto subsubtokens = split(subtokens[0], '-');
-          if (subsubtokens.size() != 2) {
-            throw runtime_error("dice option must be of the form dice=A-B or dice=A-B:C-D");
-          }
-          rules.min_dice = stoul(subsubtokens[0]);
-          rules.max_dice = stoul(subsubtokens[1]);
         } else if (starts_with(token, "overall-time-limit=")) {
           uint32_t limit = stoul(token.substr(19));
           if (limit > 600) {

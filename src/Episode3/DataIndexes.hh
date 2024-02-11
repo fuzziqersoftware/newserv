@@ -940,8 +940,8 @@ struct Rules {
   /* 00 */ uint8_t overall_time_limit = 0;
   /* 01 */ uint8_t phase_time_limit = 0; // In seconds; 0 = unlimited
   /* 02 */ AllowedCards allowed_cards = AllowedCards::ALL;
-  /* 03 */ uint8_t min_dice = 1; // 0 = default (1)
-  /* 04 */ uint8_t max_dice = 6; // 0 = default (6)
+  /* 03 */ uint8_t min_dice_value = 1; // 0 = default (1)
+  /* 04 */ uint8_t max_dice_value = 6; // 0 = default (6)
   /* 05 */ uint8_t disable_deck_shuffle = 0; // 0 = shuffle on, 1 = off
   /* 06 */ uint8_t disable_deck_loop = 0; // 0 = loop on, 1 = off
   /* 07 */ uint8_t char_hp = 15;
@@ -952,10 +952,10 @@ struct Rules {
   /* 0C */ uint8_t disable_dice_boost = 0; // 0 = dice boost on, 1 = off
   // NOTE: The following fields are unused in PSO's implementation, but newserv
   // uses them to implement extended rules.
-  /* 0D */ uint8_t def_dice_range = 0; // High 4 bits = min, low 4 = max
+  /* 0D */ uint8_t def_dice_value_range = 0; // High 4 bits = min, low 4 = max
   // These fields specify override dice ranges for the 1-player team in 2v1
-  /* 0E */ uint8_t atk_dice_range_2v1 = 0; // High 4 bits = min, low 4 = max
-  /* 0F */ uint8_t def_dice_range_2v1 = 0; // High 4 bits = min, low 4 = max
+  /* 0E */ uint8_t atk_dice_value_range_2v1 = 0; // High 4 bits = min, low 4 = max
+  /* 0F */ uint8_t def_dice_value_range_2v1 = 0; // High 4 bits = min, low 4 = max
   /* 10 */ parray<uint8_t, 4> unused;
   /* 14 */
 
@@ -976,12 +976,8 @@ struct Rules {
   bool check_invalid_fields() const;
   bool check_and_reset_invalid_fields();
 
-  uint8_t min_def_dice() const;
-  uint8_t max_def_dice() const;
-  uint8_t min_atk_dice_2v1() const;
-  uint8_t max_atk_dice_2v1() const;
-  uint8_t min_def_dice_2v1() const;
-  uint8_t max_def_dice_2v1() const;
+  std::pair<uint8_t, uint8_t> atk_dice_range(bool is_1p_2v1) const;
+  std::pair<uint8_t, uint8_t> def_dice_range(bool is_1p_2v1) const;
 
   std::string str() const;
 } __attribute__((packed));

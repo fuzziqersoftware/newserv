@@ -1873,11 +1873,11 @@ static void server_command_ep3_set_dice_range(shared_ptr<Client> c, const std::s
   }
 
   auto& rules = l->ep3_server->map_and_rules->rules;
-  rules.def_dice_range = def_dice_range;
-  rules.atk_dice_range_2v1 = atk_dice_range_2v1;
-  rules.def_dice_range_2v1 = def_dice_range_2v1;
+  rules.def_dice_value_range = def_dice_range;
+  rules.atk_dice_value_range_2v1 = atk_dice_range_2v1;
+  rules.def_dice_value_range_2v1 = def_dice_range_2v1;
 
-  if (!def_dice_range || !atk_dice_range_2v1 || !def_dice_range_2v1) {
+  if (!def_dice_range && !atk_dice_range_2v1 && !def_dice_range_2v1) {
     send_text_message_printf(l, "$C7Dice ranges reset\nto defaults");
   } else {
     send_text_message_printf(l, "$C7Dice ranges changed:");
