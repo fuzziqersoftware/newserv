@@ -1696,7 +1696,8 @@ struct C_LoginBase_BB_93 {
   // 02 - create character
   // 03 - apply updates from dressing room
   // 04 - login server
-  // 05 - lobby server (and beyond)
+  // 05 - lobby server
+  // 06 - lobby server (with Meet User fields specified)
   uint8_t connection_phase = 0;
   uint8_t client_code = 0;
   le_uint32_t security_token = 0;
