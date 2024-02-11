@@ -834,9 +834,11 @@ uint8_t battle_param_index_for_enemy_type(Episode episode, EnemyType enemy_type)
         case EnemyType::GIRTABLULU:
           return 0x1F;
         case EnemyType::SAINT_MILLION:
-        case EnemyType::SHAMBERTIN:
-        case EnemyType::KONDRIEU:
           return 0x22;
+        case EnemyType::SHAMBERTIN:
+          return 0x26;
+        case EnemyType::KONDRIEU:
+          return 0x2A;
         default:
           throw runtime_error(string_printf("%s does not have battle parameters in Episode 4", name_for_enum(enemy_type)));
       }
