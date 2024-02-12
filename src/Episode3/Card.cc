@@ -1495,7 +1495,7 @@ void Card::apply_attack_result() {
         } else {
           auto target_sc = target_ps->get_sc_card();
           if (!(target_sc->card_flags & 2)) {
-            temp_chain.chain.target_card_refs[temp_chain.chain.target_card_ref_count] = candidate_card->get_card_ref();
+            temp_chain.chain.target_card_refs[temp_chain.chain.target_card_ref_count] = target_sc->get_card_ref();
             temp_chain.chain.target_card_ref_count++;
           }
         }
