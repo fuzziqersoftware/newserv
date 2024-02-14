@@ -278,6 +278,9 @@ public:
   std::shared_ptr<const MapIndex::Map> last_chosen_map;
   bool tournament_match_result_sent;
   uint8_t override_environment_number;
+  uint8_t def_dice_value_range_override;
+  uint8_t atk_dice_value_range_2v1_override;
+  uint8_t def_dice_value_range_2v1_override;
   mutable std::deque<StackLogger*> logger_stack;
 
   // These fields were originally contained in the TCardServerBase object
