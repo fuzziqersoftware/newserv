@@ -90,7 +90,20 @@ void PlayerVisualConfig::enforce_lobby_join_limits_for_version(Version v) {
       {0x0000, 0x0000, 0x0000, 0x0000, 0x0000}};
 
   const ClassMaxes* maxes;
-  if (is_v1_or_v2(v)) {
+  if (v == Version::GC_NTE) {
+    // GC NTE has HUcaseal, FOmar, and RAmarl, but missing others
+    if (this->char_class >= 12) {
+      this->char_class = 0; // Invalid classes -> HUmar
+    }
+
+    // GC NTE is basically v2, but uses v3 maxes
+    this->version = min<uint8_t>(this->version, 2);
+    maxes = &v3_v4_class_maxes[this->char_class];
+
+    // Prevent GC NTE from crashing from extra models
+    this->extra_model = 0;
+    this->validation_flags &= 0xFD;
+  } else if (is_v1_or_v2(v)) {
     // V1/V2 have fewer classes, so we'll substitute some here
     switch (this->char_class) {
       case 0: // HUmar
