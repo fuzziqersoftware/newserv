@@ -2603,12 +2603,30 @@ void Server::send_6xB6x41_to_all_clients() const {
   }
 }
 
-void Server::handle_CAx41_map_request(shared_ptr<Client>, const string& data) {
+void Server::handle_CAx41_map_request(shared_ptr<Client> c, const string& data) {
   const auto& cmd = check_size_t<G_MapDataRequest_Ep3_CAx41>(data);
-  this->send_debug_command_received_message(
-      cmd.header.subsubcommand, "MAP DATA");
+  this->send_debug_command_received_message(cmd.header.subsubcommand, "MAP DATA");
 
   this->last_chosen_map = this->options.map_index->for_number(cmd.map_number);
+
+  // We don't trust the extended rules fields from the client, and the client
+  // can't modify it anyway, so we always apply the map's extended rules here.
+  // This allows map creators to use newserv's extended rules in quests.
+  if (this->setup_phase == SetupPhase::REGISTRATION) {
+    auto mv = this->last_chosen_map->version(c->language());
+    const auto& map_rules = mv->map->default_rules;
+    auto& server_rules = this->map_and_rules->rules;
+    if (map_rules.def_dice_value_range != 0xFF) {
+      server_rules.def_dice_value_range = map_rules.def_dice_value_range;
+    }
+    if (map_rules.atk_dice_value_range_2v1 != 0xFF) {
+      server_rules.atk_dice_value_range_2v1 = map_rules.atk_dice_value_range_2v1;
+    }
+    if (map_rules.def_dice_value_range_2v1 != 0xFF) {
+      server_rules.def_dice_value_range_2v1 = map_rules.def_dice_value_range_2v1;
+    }
+  }
+
   this->send_6xB6x41_to_all_clients();
 }
 
