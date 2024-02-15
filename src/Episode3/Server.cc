@@ -2169,15 +2169,25 @@ void Server::handle_CAx13_update_map_during_setup_t(shared_ptr<Client> c, const 
     // the values from the $dicerange command if available.
     const auto& map_rules = this->last_chosen_map->version(c->language())->map->default_rules;
     auto& server_rules = this->map_and_rules->rules;
-    server_rules.def_dice_value_range = (map_rules.def_dice_value_range == 0xFF)
-        ? ((this->def_dice_value_range_override == 0xFF) ? 0 : this->def_dice_value_range_override)
-        : map_rules.def_dice_value_range;
-    server_rules.atk_dice_value_range_2v1 = (map_rules.atk_dice_value_range_2v1 == 0xFF)
-        ? ((this->atk_dice_value_range_2v1_override == 0xFF) ? 0 : this->atk_dice_value_range_2v1_override)
-        : map_rules.atk_dice_value_range_2v1;
-    server_rules.def_dice_value_range_2v1 = (map_rules.def_dice_value_range_2v1 == 0xFF)
-        ? ((this->def_dice_value_range_2v1_override == 0xFF) ? 0 : this->def_dice_value_range_2v1_override)
-        : map_rules.def_dice_value_range_2v1;
+    // NTE can specify the DEF dice value range in its Rules struct, so we use
+    // that unless the map or $dicerange overrides it.
+    server_rules.def_dice_value_range = (map_rules.def_dice_value_range != 0xFF)
+        ? map_rules.def_dice_value_range
+        : (this->def_dice_value_range_override != 0xFF)
+        ? this->def_dice_value_range_override
+        : this->options.is_nte()
+        ? server_rules.def_dice_value_range
+        : 0;
+    server_rules.atk_dice_value_range_2v1 = (map_rules.atk_dice_value_range_2v1 != 0xFF)
+        ? map_rules.atk_dice_value_range_2v1
+        : (this->atk_dice_value_range_2v1_override != 0xFF)
+        ? this->atk_dice_value_range_2v1_override
+        : 0;
+    server_rules.def_dice_value_range_2v1 = (map_rules.def_dice_value_range_2v1 != 0xFF)
+        ? map_rules.def_dice_value_range_2v1
+        : (this->def_dice_value_range_2v1_override != 0xFF)
+        ? this->def_dice_value_range_2v1_override
+        : 0;
 
     // If this match is part of a tournament, ignore the rules sent by the
     // client and use the tournament rules instead.

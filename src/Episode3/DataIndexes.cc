@@ -1534,7 +1534,7 @@ RulesTrial::RulesTrial(const Rules& r)
     this->atk_die_behavior = 0; // Random
   }
   if (r.def_dice_value_range == 0xFF) {
-    this->atk_die_behavior = 0xFF;
+    this->def_die_behavior = 0xFF;
   } else {
     auto def_range = r.def_dice_range(false);
     if (def_range.first == def_range.second) {
