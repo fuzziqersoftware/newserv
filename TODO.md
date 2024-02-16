@@ -4,7 +4,7 @@
 - Implement decrypt/encrypt actions for VMS files
 - Make UI strings localizable (e.g. entries in menus, welcome message, etc.)
 - Add an idle connection timeout for proxy sessions
-- Clean up ItemParameterTable implementation (see comment ad the top of the class definition)
+- Clean up ItemParameterTable implementation (see comment at the top of the class definition)
 
 ## PSO DC
 

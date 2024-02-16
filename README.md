@@ -27,25 +27,26 @@ See TODO.md for a list of known issues and future work I've curated, or go to th
 # Compatibility
 
 newserv supports several versions of PSO, including various development prototypes. Specifically:
-| Version        | Lobbies      | Games        | Proxy        |
-|----------------|--------------|--------------|--------------|
-| DC NTE         | Yes          | Yes          | No           |
-| DC 11/2000     | Yes          | Yes          | No           |
-| DC 12/2000     | Yes          | Yes          | Yes          |
-| DC 01/2001     | Yes          | Yes          | Yes          |
-| DC V1          | Yes          | Yes          | Yes          |
-| DC 08/2001     | Yes          | Yes          | Yes          |
-| DC V2          | Yes          | Yes          | Yes          |
-| PC NTE         | Yes (3)      | Yes          | No           |
-| PC             | Yes          | Yes          | Yes          |
-| GC Ep1&2 NTE   | Yes          | Yes          | Yes          |
-| GC Ep1&2       | Yes          | Yes          | Yes          |
-| GC Ep1&2 Plus  | Yes          | Yes          | Yes          |
-| GC Ep3 NTE     | Yes          | Yes (1)      | Yes          |
-| GC Ep3         | Yes          | Yes          | Yes          |
-| Xbox Ep1&2     | Yes          | Yes          | Yes          |
-| BB (vanilla)   | Yes          | Yes (2)      | Yes          |
-| BB (Tethealla) | Yes          | Yes (2)      | Yes          |
+| Version         | Lobbies  | Games    | Proxy    |
+|-----------------|----------|----------|----------|
+| DC NTE          | Yes      | Yes      | No       |
+| DC 11/2000      | Yes      | Yes      | No       |
+| DC 12/2000      | Yes      | Yes      | Yes      |
+| DC 01/2001      | Yes      | Yes      | Yes      |
+| DC V1           | Yes      | Yes      | Yes      |
+| DC 08/2001      | Yes      | Yes      | Yes      |
+| DC V2           | Yes      | Yes      | Yes      |
+| PC NTE          | Yes (3)  | Yes      | No       |
+| PC              | Yes      | Yes      | Yes      |
+| GC Ep1&2 NTE    | Yes      | Yes      | Yes      |
+| GC Ep1&2        | Yes      | Yes      | Yes      |
+| GC Ep1&2 Plus   | Yes      | Yes      | Yes      |
+| GC Ep3 NTE      | Yes      | Yes (1)  | Yes      |
+| GC Ep3          | Yes      | Yes      | Yes      |
+| Xbox Ep1&2 Beta | Untested | Untested | Untested |
+| Xbox Ep1&2      | Yes      | Yes      | Yes      |
+| BB (vanilla)    | Yes      | Yes (2)  | Yes      |
+| BB (Tethealla)  | Yes      | Yes (2)  | Yes      |
 
 *Notes:*
 1. *Ep3 NTE battles are not well-tested; some things may not work. See notes/ep3-nte-differences.txt for a list of known differences between NTE and the final version. NTE and non-NTE players cannot battle each other.*
