@@ -50,12 +50,14 @@ static shared_ptr<const Menu> proxy_options_menu_for_client(shared_ptr<const Cli
   add_flag_option(ProxyOptionsMenuItemID::PLAYER_NOTIFICATIONS, Client::Flag::PROXY_PLAYER_NOTIFICATIONS_ENABLED,
       "Player notifs", "Show a message\nwhen other players\njoin or leave");
   static const char* item_drop_notifs_description = "Enable item drop\nnotifications\n\nYou can change this\nduring the game with\nthe %sitemnotifs\ncommand";
-  if (c->config.check_flag(Client::Flag::ALL_DROP_NOTIFICATIONS_ENABLED)) {
-    ret->items.emplace_back(ProxyOptionsMenuItemID::DROP_NOTIFICATIONS, "All drop notifs", item_drop_notifs_description, 0);
-  } else if (c->config.check_flag(Client::Flag::RARE_DROP_NOTIFICATIONS_ENABLED)) {
-    ret->items.emplace_back(ProxyOptionsMenuItemID::DROP_NOTIFICATIONS, "Rare drop notifs", item_drop_notifs_description, 0);
-  } else {
-    ret->items.emplace_back(ProxyOptionsMenuItemID::DROP_NOTIFICATIONS, "No drop notifs", item_drop_notifs_description, 0);
+  if (!is_ep3(c->version())) {
+    if (c->config.check_flag(Client::Flag::ALL_DROP_NOTIFICATIONS_ENABLED)) {
+      ret->items.emplace_back(ProxyOptionsMenuItemID::DROP_NOTIFICATIONS, "All drop notifs", item_drop_notifs_description, 0);
+    } else if (c->config.check_flag(Client::Flag::RARE_DROP_NOTIFICATIONS_ENABLED)) {
+      ret->items.emplace_back(ProxyOptionsMenuItemID::DROP_NOTIFICATIONS, "Rare drop notifs", item_drop_notifs_description, 0);
+    } else {
+      ret->items.emplace_back(ProxyOptionsMenuItemID::DROP_NOTIFICATIONS, "No drop notifs", item_drop_notifs_description, 0);
+    }
   }
   add_flag_option(ProxyOptionsMenuItemID::BLOCK_PINGS, Client::Flag::PROXY_SUPPRESS_CLIENT_PINGS,
       "Block pings", "Block ping commands\nsent by the client");

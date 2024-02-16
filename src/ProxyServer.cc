@@ -681,8 +681,7 @@ ProxyServer::LinkedSession::SavingFile::SavingFile(
       is_download(is_download),
       remaining_bytes(remaining_bytes) {}
 
-void ProxyServer::LinkedSession::dispatch_on_timeout(
-    evutil_socket_t, short, void* ctx) {
+void ProxyServer::LinkedSession::dispatch_on_timeout(evutil_socket_t, short, void* ctx) {
   reinterpret_cast<LinkedSession*>(ctx)->on_timeout();
 }
 
