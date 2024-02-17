@@ -1547,7 +1547,7 @@ static void on_E4_Ep3(shared_ptr<Client> c, uint16_t, uint32_t flag, string& dat
       c->card_battle_table_seat_number = 0;
       c->card_battle_table_seat_state = 0;
       if (table_number != -1) {
-        on_ep3_battle_table_state_updated(l, c->card_battle_table_number);
+        on_ep3_battle_table_state_updated(l, table_number);
       }
     });
   } else if (!should_have_disconnect_hook) {
