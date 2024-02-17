@@ -6,7 +6,6 @@
 
 #include "Loggers.hh"
 #include "Server.hh"
-#include "Shell.hh"
 
 using namespace std;
 
@@ -474,9 +473,6 @@ ReplaySession::ReplaySession(
   while (!feof(input_log)) {
     line_num++;
     string line = fgets(input_log);
-    if (starts_with(line, Shell::PROMPT)) {
-      line = line.substr(Shell::PROMPT.size());
-    }
     if (ends_with(line, "\n")) {
       line.resize(line.size() - 1);
     }

@@ -2004,6 +2004,15 @@ MapDefinitionTrial::MapDefinitionTrial(const MapDefinition& map)
   for (size_t z = 0; z < this->dialogue_sets.size(); z++) {
     this->dialogue_sets[z] = map.dialogue_sets[z].sub<8>(0);
   }
+
+  // TODO: It'd be nice to rewrite start_tile_definitions, since it seems NTE
+  // always expects team A to be represented by 3 and 4, and team B to be
+  // represented by 7 and 8.
+
+  // TODO: NTE also expects team A to always be facing up, and B to always be
+  // facing down, so it would be nice to automatically rotate the map to make
+  // that the case. However, we'd also have to fix up the camera zones and
+  // camera specs, and the spec structure is not (yet) fully understood.
 }
 
 MapDefinitionTrial::operator MapDefinition() const {

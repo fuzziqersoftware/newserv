@@ -27,10 +27,12 @@ link_directories(${LOCAL_LIB_DIR})
 find_path     (LIBEVENT_INCLUDE_DIR NAMES event.h)
 find_library  (LIBEVENT_LIBRARY     NAMES event)
 find_library  (LIBEVENT_CORE        NAMES event_core)
+find_library  (LIBEVENT_PTHREADS    NAMES event_pthreads)
 set (LIBEVENT_INCLUDE_DIRS ${LIBEVENT_INCLUDE_DIR})
 set (LIBEVENT_LIBRARIES
         ${LIBEVENT_LIBRARY}
-        ${LIBEVENT_CORE})
+        ${LIBEVENT_CORE}
+        ${LIBEVENT_PTHREADS})
 
 find_package(phosg REQUIRED)
 find_package(Iconv REQUIRED)
@@ -81,6 +83,7 @@ set(SOURCES
     src/Episode3/RulerServer.cc
     src/Episode3/Server.cc
     src/Episode3/Tournament.cc
+    src/EventUtils.cc
     src/FileContentsCache.cc
     src/FunctionCompiler.cc
     src/GSLArchive.cc
@@ -121,9 +124,7 @@ set(SOURCES
     src/Server.cc
     src/ServerShell.cc
     src/ServerState.cc
-    src/Shell.cc
     src/StaticGameData.cc
-    src/StepGraph.cc
     src/TeamIndex.cc
     src/Text.cc
     src/TextIndex.cc

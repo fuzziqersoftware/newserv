@@ -15,6 +15,7 @@
 #include "CommonItemSet.hh"
 #include "Episode3/DataIndexes.hh"
 #include "Episode3/Tournament.hh"
+#include "EventUtils.hh"
 #include "FunctionCompiler.hh"
 #include "GSLArchive.hh"
 #include "ItemNameIndex.hh"
@@ -25,7 +26,6 @@
 #include "Menu.hh"
 #include "PlayerFilesManager.hh"
 #include "Quest.hh"
-#include "StepGraph.hh"
 #include "TeamIndex.hh"
 #include "WordSelectTable.hh"
 
@@ -68,8 +68,6 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   bool is_replay = false;
   bool config_loaded = false;
   bool default_lobbies_created = false;
-
-  StepGraph load_step_graph;
 
   std::string name;
   std::unordered_map<std::string, std::shared_ptr<PortConfiguration>> name_to_port_config;
@@ -245,11 +243,6 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   ServerState& operator=(const ServerState&) = delete;
   ServerState& operator=(ServerState&&) = delete;
 
-  void load_objects_and_downstream_dependents(const std::string& what);
-  void load_objects_and_downstream_dependents(const std::vector<std::string>& what);
-  void load_objects_and_upstream_dependents(const std::string& what);
-  void load_objects_and_upstream_dependents(const std::vector<std::string>& what);
-
   void add_client_to_available_lobby(std::shared_ptr<Client> c);
   void remove_client_from_lobby(std::shared_ptr<Client> c);
   bool change_client_lobby(
@@ -308,29 +301,45 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   std::pair<std::string, uint16_t> parse_port_spec(const JSON& json) const;
   std::vector<PortConfiguration> parse_port_configuration(const JSON& json) const;
 
-  void create_load_step_graph();
+  inline void forward_to_event_thread(std::function<void()>&& fn) {
+    ::forward_to_event_thread(this->base, std::move(fn));
+  }
+  inline void forward_or_call(bool from_non_event_thread, std::function<void()>&& fn) {
+    if (from_non_event_thread) {
+      ::forward_to_event_thread(this->base, std::move(fn));
+    } else {
+      fn();
+    }
+  }
+
+  // The following functions may only be called from a non-event thread if they
+  // take a from_non_event_thread argument; any function that does not have this
+  // argument must be called only from the event thread.
   void create_default_lobbies();
   void collect_network_addresses();
   void load_config();
-  void load_bb_private_keys();
-  void load_licenses();
-  void load_teams();
-  void load_patch_indexes();
+  void load_bb_private_keys(bool from_non_event_thread);
+  void load_licenses(bool from_non_event_thread);
+  void load_teams(bool from_non_event_thread);
+  void load_patch_indexes(bool from_non_event_thread);
   void clear_map_file_caches();
-  void load_battle_params();
-  void load_level_table();
-  void load_text_index();
+  void load_battle_params(bool from_non_event_thread);
+  void load_level_table(bool from_non_event_thread);
+  void load_text_index(bool from_non_event_thread);
   static std::shared_ptr<ItemNameIndex> create_item_name_index_for_version(
       Version version, std::shared_ptr<const ItemParameterTable> pmt, std::shared_ptr<const TextIndex> text_index);
-  void load_item_name_indexes();
-  void load_drop_tables();
-  void load_item_definitions();
-  void load_set_data_tables();
-  void load_word_select_table();
-  void load_ep3_data();
-  void load_quest_index();
-  void compile_functions();
-  void load_dol_files();
+  void load_item_name_indexes(bool from_non_event_thread);
+  void load_drop_tables(bool from_non_event_thread);
+  void load_item_definitions(bool from_non_event_thread);
+  void load_set_data_tables(bool from_non_event_thread);
+  void load_word_select_table(bool from_non_event_thread);
+  void load_ep3_cards(bool from_non_event_thread);
+  void load_ep3_maps(bool from_non_event_thread);
+  void load_ep3_tournament_state(bool from_non_event_thread);
+  void load_quest_index(bool from_non_event_thread);
+  void compile_functions(bool from_non_event_thread);
+  void load_dol_files(bool from_non_event_thread);
+  void load_all();
 
   void enqueue_destroy_lobbies();
   static void dispatch_destroy_lobbies(evutil_socket_t, short, void* ctx);

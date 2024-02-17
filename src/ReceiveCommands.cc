@@ -65,8 +65,10 @@ static shared_ptr<const Menu> proxy_options_menu_for_client(shared_ptr<const Cli
       "Block events", "Disable seasonal\nevents in the lobby\nand in games");
   add_flag_option(ProxyOptionsMenuItemID::BLOCK_PATCHES, Client::Flag::PROXY_BLOCK_FUNCTION_CALLS,
       "Block patches", "Disable patches sent\nby the remote server");
-  add_flag_option(ProxyOptionsMenuItemID::SWITCH_ASSIST, Client::Flag::SWITCH_ASSIST_ENABLED,
-      "Switch assist", "Automatically try\nto unlock 2-player\ndoors when you step\non both switches\nsequentially");
+  if (!is_ep3(c->version())) {
+    add_flag_option(ProxyOptionsMenuItemID::SWITCH_ASSIST, Client::Flag::SWITCH_ASSIST_ENABLED,
+        "Switch assist", "Automatically try\nto unlock 2-player\ndoors when you step\non both switches\nsequentially");
+  }
   if ((s->cheat_mode_behavior != ServerState::BehaviorSwitch::OFF) || c->license->check_flag(License::Flag::CHEAT_ANYWHERE)) {
     if (!is_ep3(c->version())) {
       add_flag_option(ProxyOptionsMenuItemID::INFINITE_HP, Client::Flag::INFINITE_HP_ENABLED,

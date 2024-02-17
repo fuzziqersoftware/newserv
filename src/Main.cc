@@ -1,4 +1,5 @@
 #include <event2/event.h>
+#include <event2/thread.h>
 #include <pwd.h>
 #include <signal.h>
 #include <string.h>
@@ -1127,7 +1128,8 @@ Action a_disassemble_set_data_table(
 Action a_check_set_data_table(
     "check-set-data-tables", nullptr, +[](Arguments&) {
       ServerState s;
-      s.load_objects_and_upstream_dependents("set_data_tables");
+      s.load_patch_indexes(false);
+      s.load_set_data_tables(false);
       static_game_data_log.min_level = LogLevel::DISABLED;
 
       auto get_file_data = [&](Version version, const string& filename) -> shared_ptr<const string> {
@@ -1330,7 +1332,7 @@ Action a_assemble_all_patches(
     Edition). The output files are saved in system/client-functions.\n",
     +[](Arguments&) {
       ServerState s;
-      s.load_objects_and_upstream_dependents("functions");
+      s.compile_functions(false);
 
       auto process_code = +[](shared_ptr<const CompiledFunctionCode> code,
                                uint32_t checksum_addr,
@@ -1556,7 +1558,9 @@ Action a_print_word_select_table(
     option is given, prints the token table sorted by canonical name.\n",
     +[](Arguments& args) {
       ServerState s;
-      s.load_objects_and_upstream_dependents("word_select_table");
+      s.load_patch_indexes(false);
+      s.load_text_index(false);
+      s.load_word_select_table(false);
       Version v;
       try {
         v = get_cli_version(args);
@@ -1613,7 +1617,10 @@ Action a_convert_rare_item_set(
       auto version = get_cli_version(args);
 
       ServerState s;
-      s.load_objects_and_upstream_dependents("item_name_indexes");
+      s.load_patch_indexes(false);
+      s.load_text_index(false);
+      s.load_item_definitions(false);
+      s.load_item_name_indexes(false);
 
       string input_filename = args.get<string>(1, false);
       if (input_filename.empty() || (input_filename == "-")) {
@@ -1668,7 +1675,10 @@ Action a_describe_item(
       auto version = get_cli_version(args);
 
       ServerState s;
-      s.load_objects_and_upstream_dependents("item_name_indexes");
+      s.load_patch_indexes(false);
+      s.load_text_index(false);
+      s.load_item_definitions(false);
+      s.load_item_name_indexes(false);
       auto name_index = s.item_name_index(version);
 
       ItemData item = name_index->parse_item_description(description);
@@ -1728,7 +1738,10 @@ Action a_describe_item(
 Action a_name_all_items(
     "name-all-items", nullptr, +[](Arguments&) {
       ServerState s;
-      s.load_objects_and_upstream_dependents("item_name_indexes");
+      s.load_patch_indexes(false);
+      s.load_text_index(false);
+      s.load_item_definitions(false);
+      s.load_item_name_indexes(false);
 
       set<uint32_t> all_primary_identifiers;
       for (const auto& index : s.item_name_indexes) {
@@ -1773,7 +1786,10 @@ Action a_name_all_items(
 Action a_print_item_parameter_tables(
     "print-item-tables", nullptr, +[](Arguments&) {
       ServerState s;
-      s.load_objects_and_upstream_dependents("item_name_indexes");
+      s.load_patch_indexes(false);
+      s.load_text_index(false);
+      s.load_item_definitions(false);
+      s.load_item_name_indexes(false);
       for (size_t v_s = 0; v_s < NUM_VERSIONS; v_s++) {
         const auto& index = s.item_name_indexes.at(v_s);
         if (index) {
@@ -1793,7 +1809,7 @@ Action a_show_ep3_cards(
       bool one_line = args.get<bool>("one-line");
 
       ServerState s;
-      s.load_objects_and_upstream_dependents("ep3_data");
+      s.load_ep3_cards(false);
 
       unique_ptr<BinaryTextSet> text_english;
       try {
@@ -1843,8 +1859,9 @@ Action a_generate_ep3_cards_html(
       bool is_nte = (get_cli_version(args, Version::GC_EP3) == Version::GC_EP3_NTE);
 
       ServerState s;
-      s.load_objects_and_upstream_dependents("ep3_data");
-      s.load_objects_and_upstream_dependents("text_index");
+      s.load_patch_indexes(false);
+      s.load_text_index(false);
+      s.load_ep3_cards(false);
 
       shared_ptr<const TextSet> text_english;
       try {
@@ -2007,7 +2024,8 @@ Action a_show_ep3_maps(
       config_log.info("Collecting Episode 3 data");
 
       ServerState s;
-      s.load_objects_and_upstream_dependents("ep3_data");
+      s.load_ep3_cards(false);
+      s.load_ep3_maps(false);
 
       auto map_ids = s.ep3_map_index->all_numbers();
       log_info("%zu maps", map_ids.size());
@@ -2031,7 +2049,8 @@ Action a_show_battle_params(
     in a human-readable format.\n",
     +[](Arguments&) {
       ServerState s;
-      s.load_objects_and_upstream_dependents("battle_params");
+      s.load_patch_indexes(false);
+      s.load_battle_params(false);
 
       fprintf(stdout, "Episode 1 multi\n");
       s.battle_params->get_table(false, Episode::EP1).print(stdout);
@@ -2073,7 +2092,8 @@ Action a_find_rare_enemy_seeds(
       ServerState s("system/config.json");
       shared_ptr<const VersionedQuest> vq;
       if (!quest_name.empty()) {
-        s.load_objects_and_upstream_dependents("quest_index");
+        s.load_config();
+        s.load_quest_index(false);
         auto q = s.quest_index(version)->get(quest_name);
         if (!q) {
           throw runtime_error("quest does not exist");
@@ -2083,11 +2103,11 @@ Action a_find_rare_enemy_seeds(
           throw runtime_error("quest version does not exist");
         }
       } else if (version == Version::BB_V4) {
-        s.load_objects_and_upstream_dependents("config");
+        s.load_config();
       } else if (version == Version::PC_V2) {
-        s.load_objects_and_upstream_dependents("patch_indexes");
+        s.load_patch_indexes(false);
       } else {
-        s.load_objects_and_upstream_dependents("map_file_caches");
+        s.clear_map_file_caches();
       }
 
       shared_ptr<const Map::RareEnemyRates> rare_rates;
@@ -2265,7 +2285,8 @@ Action a_diff_dol_files(
 Action a_replay_ep3_battle_commands(
     "replay-ep3-battle-commands", nullptr, +[](Arguments& args) {
       ServerState s;
-      s.load_objects_and_upstream_dependents("ep3_data");
+      s.load_ep3_cards(false);
+      s.load_ep3_maps(false);
 
       auto random_crypt = make_shared<PSOV2Encryption>(args.get<uint32_t>("seed", 0, Arguments::IntFormat::HEX));
       Episode3::Server::Options options = {
@@ -2296,6 +2317,15 @@ Action a_run_server_replay_log(
         config_log.info("newserv %s compiled at %s", GIT_REVISION_HASH, build_date.c_str());
       }
 
+#ifdef PHOSG_WINDOWS
+      int evthread_ret = evthread_use_windows_threads();
+#else
+      int evthread_ret = evthread_use_pthreads();
+#endif
+      if (evthread_ret) {
+        throw runtime_error("failed to setup libevent threads");
+      }
+
       if (!isdir("system/players")) {
         config_log.info("Players directory does not exist; creating it");
         mkdir("system/players", 0755);
@@ -2319,7 +2349,7 @@ Action a_run_server_replay_log(
 
       shared_ptr<struct event_base> base(event_base_new(), event_base_free);
       auto state = make_shared<ServerState>(base, config_filename, is_replay);
-      state->load_objects_and_downstream_dependents("all");
+      state->load_all();
 
       shared_ptr<DNSServer> dns_server;
       if (state->dns_server_port && !is_replay) {
@@ -2334,7 +2364,7 @@ Action a_run_server_replay_log(
         config_log.info("DNS server is disabled");
       }
 
-      shared_ptr<Shell> shell;
+      shared_ptr<ServerShell> shell;
       shared_ptr<ReplaySession> replay_session;
       shared_ptr<IPStackSimulator> ip_stack_simulator;
       if (is_replay) {
@@ -2423,11 +2453,12 @@ Action a_run_server_replay_log(
       if (should_run_shell) {
         should_run_shell = !replay_session.get();
       }
-      if (should_run_shell) {
-        shell = make_shared<ServerShell>(base, state);
-      }
 
       config_log.info("Ready");
+      if (should_run_shell) {
+        shell = make_shared<ServerShell>(state);
+      }
+
       event_base_dispatch(base.get());
       if (replay_session) {
         // If in a replay session, run the event loop for a bit longer to make

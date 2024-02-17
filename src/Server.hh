@@ -30,8 +30,7 @@ public:
   void disconnect_client(std::shared_ptr<Client> c);
 
   std::shared_ptr<Client> get_client() const;
-  std::vector<std::shared_ptr<Client>> get_clients_by_identifier(
-      const std::string& ident) const;
+  std::vector<std::shared_ptr<Client>> get_clients_by_identifier(const std::string& ident) const;
   std::shared_ptr<struct event_base> get_base() const;
 
   inline std::shared_ptr<ServerState> get_state() const {
@@ -69,8 +68,7 @@ private:
       evutil_socket_t fd, struct sockaddr* address, int socklen, void* ctx);
   static void dispatch_on_listen_error(struct evconnlistener* listener, void* ctx);
 
-  void on_listen_accept(struct evconnlistener* listener, evutil_socket_t fd,
-      struct sockaddr* address, int socklen);
+  void on_listen_accept(struct evconnlistener* listener, evutil_socket_t fd, struct sockaddr* address, int socklen);
   void on_listen_error(struct evconnlistener* listener);
 
   static void on_client_input(Channel& ch, uint16_t command, uint32_t flag, std::string& data);
