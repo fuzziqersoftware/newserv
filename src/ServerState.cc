@@ -645,6 +645,7 @@ void ServerState::load_config() {
 
   this->client_ping_interval_usecs = json.get_int("ClientPingInterval", 30000000);
   this->client_idle_timeout_usecs = json.get_int("ClientIdleTimeout", 60000000);
+  this->patch_client_idle_timeout_usecs = json.get_int("PatchClientIdleTimeout", 300000000);
 
   this->ip_stack_debug = json.get_bool("IPStackDebug", false);
   this->allow_unregistered_users = json.get_bool("AllowUnregisteredUsers", false);
@@ -1678,4 +1679,24 @@ void ServerState::load_all() {
   this->load_config();
   this->load_teams(false);
   this->load_quest_index(false);
+}
+
+shared_ptr<PatchServer::Config> ServerState::generate_patch_server_config(bool is_bb) const {
+  auto ret = make_shared<PatchServer::Config>();
+  ret->allow_unregistered_users = this->allow_unregistered_users;
+  ret->hide_data_from_logs = this->hide_download_commands;
+  ret->idle_timeout_usecs = this->patch_client_idle_timeout_usecs;
+  ret->message = is_bb ? this->bb_patch_server_message : this->pc_patch_server_message;
+  ret->license_index = this->license_index;
+  ret->patch_file_index = is_bb ? this->bb_patch_file_index : this->pc_patch_file_index;
+  return ret;
+}
+
+void ServerState::update_patch_server_configs() const {
+  if (this->pc_patch_server) {
+    this->pc_patch_server->set_config(this->generate_patch_server_config(false));
+  }
+  if (this->bb_patch_server) {
+    this->bb_patch_server->set_config(this->generate_patch_server_config(true));
+  }
 }

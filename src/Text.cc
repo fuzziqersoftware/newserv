@@ -11,8 +11,6 @@
 
 using namespace std;
 
-// A third case is when inbuf is NULL or *inbuf is NULL, and outbuf is NULL or *outbuf is NULL. In this case, the iconv function sets cd’s conversion state to the initial state.
-
 const iconv_t TextTranscoder::INVALID_IC = (iconv_t)(-1);
 const size_t TextTranscoder::FAILURE_RESULT = static_cast<size_t>(-1);
 

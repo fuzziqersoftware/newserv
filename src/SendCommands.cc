@@ -152,7 +152,6 @@ static const char* dc_port_map_copyright = "DreamCast Port Map. Copyright SEGA E
 static const char* dc_lobby_server_copyright = "DreamCast Lobby Server. Copyright SEGA Enterprises. 1999";
 static const char* bb_game_server_copyright = "Phantasy Star Online Blue Burst Game Server. Copyright 1999-2004 SONICTEAM.";
 static const char* bb_pm_server_copyright = "PSO NEW PM Server. Copyright 1999-2002 SONICTEAM.";
-static const char* patch_server_copyright = "Patch Server. Copyright SonicTeam, LTD. 2001";
 
 S_ServerInitWithAfterMessage_DC_PC_V3_02_17_91_9B<0xB4>
 prepare_server_init_contents_console(
@@ -240,20 +239,6 @@ void send_server_init_bb(shared_ptr<Client> c, uint8_t flags) {
       sizeof(cmd.basic_cmd.server_key), true);
 }
 
-void send_server_init_patch(shared_ptr<Client> c) {
-  uint32_t server_key = random_object<uint32_t>();
-  uint32_t client_key = random_object<uint32_t>();
-
-  S_ServerInit_Patch_02 cmd;
-  cmd.copyright.encode(patch_server_copyright);
-  cmd.server_key = server_key;
-  cmd.client_key = client_key;
-  send_command_t(c, 0x02, 0x00, cmd);
-
-  c->channel.crypt_out = make_shared<PSOV2Encryption>(server_key);
-  c->channel.crypt_in = make_shared<PSOV2Encryption>(client_key);
-}
-
 void send_server_init(shared_ptr<Client> c, uint8_t flags) {
   switch (c->version()) {
     case Version::DC_NTE:
@@ -268,10 +253,6 @@ void send_server_init(shared_ptr<Client> c, uint8_t flags) {
     case Version::GC_EP3:
     case Version::XB_V3:
       send_server_init_dc_pc_v3(c, flags);
-      break;
-    case Version::PC_PATCH:
-    case Version::BB_PATCH:
-      send_server_init_patch(c);
       break;
     case Version::BB_V4:
       send_server_init_bb(c, flags);
@@ -674,33 +655,6 @@ void send_complete_player_bb(shared_ptr<Client> c) {
   }
   cmd.char_file.disp.play_time = 0;
   send_command_t(c, 0x00E7, 0x00000000, cmd);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-// patch functions
-
-void send_enter_directory_patch(shared_ptr<Client> c, const string& dir) {
-  S_EnterDirectory_Patch_09 cmd = {{dir, 1}};
-  send_command_t(c, 0x09, 0x00, cmd);
-}
-
-void send_patch_file(shared_ptr<Client> c, shared_ptr<PatchFileIndex::File> f) {
-  S_OpenFile_Patch_06 open_cmd = {0, f->size, {f->name, 1}};
-  send_command_t(c, 0x06, 0x00, open_cmd);
-
-  for (size_t x = 0; x < f->chunk_crcs.size(); x++) {
-    auto data = f->load_data();
-    size_t chunk_size = min<uint32_t>(f->size - (x * 0x4000), 0x4000);
-
-    vector<pair<const void*, size_t>> blocks;
-    S_WriteFileHeader_Patch_07 cmd_header = {x, f->chunk_crcs[x], chunk_size};
-    blocks.emplace_back(&cmd_header, sizeof(cmd_header));
-    blocks.emplace_back(data->data() + (x * 0x4000), chunk_size);
-    send_command(c, 0x07, 0x00, blocks);
-  }
-
-  S_CloseCurrentFile_Patch_08 close_cmd = {0};
-  send_command_t(c, 0x08, 0x00, close_cmd);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

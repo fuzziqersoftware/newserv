@@ -134,6 +134,7 @@ void Server::connect_client(
   c->channel.on_command_received = Server::on_client_input;
   c->channel.on_error = Server::on_client_error;
   c->channel.context_obj = this;
+  this->state->channel_to_client.emplace(&c->channel, c);
 
   server_log.info(
       "Client connected: C-%" PRIX64 " on virtual connection %p via T-%hu-%s-%s-VI",
@@ -142,8 +143,6 @@ void Server::connect_client(
       server_port,
       name_for_enum(version),
       name_for_enum(initial_state));
-
-  this->state->channel_to_client.emplace(&c->channel, c);
 
   // Manually set the remote address, since the bufferevent has no fd and the
   // Channel constructor can't figure out the virtual remote address

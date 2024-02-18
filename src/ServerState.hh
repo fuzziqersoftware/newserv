@@ -24,6 +24,7 @@
 #include "License.hh"
 #include "Lobby.hh"
 #include "Menu.hh"
+#include "PatchServer.hh"
 #include "PlayerFilesManager.hh"
 #include "Quest.hh"
 #include "TeamIndex.hh"
@@ -79,6 +80,7 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   std::vector<std::string> ppp_stack_addresses;
   uint64_t client_ping_interval_usecs = 30000000;
   uint64_t client_idle_timeout_usecs = 60000000;
+  uint64_t patch_client_idle_timeout_usecs = 300000000;
   bool ip_stack_debug = false;
   bool allow_unregistered_users = false;
   bool allow_pc_nte = false;
@@ -235,6 +237,8 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
 
   std::shared_ptr<ProxyServer> proxy_server;
   std::shared_ptr<Server> game_server;
+  std::shared_ptr<PatchServer> pc_patch_server;
+  std::shared_ptr<PatchServer> bb_patch_server;
 
   explicit ServerState(const std::string& config_filename = "");
   ServerState(std::shared_ptr<struct event_base> base, const std::string& config_filename, bool is_replay);
@@ -311,6 +315,9 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
       fn();
     }
   }
+
+  std::shared_ptr<PatchServer::Config> generate_patch_server_config(bool is_bb) const;
+  void update_patch_server_configs() const;
 
   // The following functions may only be called from a non-event thread if they
   // take a from_non_event_thread argument; any function that does not have this

@@ -103,6 +103,7 @@ set(SOURCES
     src/Map.cc
     src/Menu.cc
     src/NetworkAddresses.cc
+    src/PatchServer.cc
     src/PatchFileIndex.cc
     src/PlayerFilesManager.cc
     src/PlayerSubordinates.cc

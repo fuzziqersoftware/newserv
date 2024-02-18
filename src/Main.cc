@@ -33,6 +33,7 @@
 #include "NetworkAddresses.hh"
 #include "PSOGCObjectGraph.hh"
 #include "PSOProtocol.hh"
+#include "PatchServer.hh"
 #include "ProxyServer.hh"
 #include "Quest.hh"
 #include "QuestScript.hh"
@@ -2411,12 +2412,29 @@ Action a_run_server_replay_log(
                 state->proxy_server->listen(pc->addr, pc->port, pc->version);
               }
             }
+
+          } else if (pc->behavior == ServerBehavior::PATCH_SERVER_PC) {
+            if (!state->pc_patch_server.get()) {
+              config_log.info("Starting PC_V2 patch server");
+              state->pc_patch_server = make_shared<PatchServer>(state->generate_patch_server_config(false));
+            }
+            string spec = string_printf("TU-%hu-%s-patch2", pc->port, pc->name.c_str());
+            state->pc_patch_server->listen(spec, pc->addr, pc->port, Version::PC_PATCH);
+
+          } else if (pc->behavior == ServerBehavior::PATCH_SERVER_BB) {
+            if (!state->bb_patch_server.get()) {
+              config_log.info("Starting BB_V4 patch server");
+              state->bb_patch_server = make_shared<PatchServer>(state->generate_patch_server_config(true));
+            }
+            string spec = string_printf("TU-%hu-%s-patch4", pc->port, pc->name.c_str());
+            state->bb_patch_server->listen(spec, pc->addr, pc->port, Version::BB_PATCH);
+
           } else {
             if (!state->game_server.get()) {
               config_log.info("Starting game server");
               state->game_server = make_shared<Server>(base, state);
             }
-            string spec = string_printf("T-%hu-%s-%s-%s", pc->port, name_for_enum(pc->version), pc->name.c_str(), name_for_enum(pc->behavior));
+            string spec = string_printf("TG-%hu-%s-%s-%s", pc->port, name_for_enum(pc->version), pc->name.c_str(), name_for_enum(pc->behavior));
             state->game_server->listen(spec, pc->addr, pc->port, pc->version, pc->behavior);
           }
         }
@@ -2470,6 +2488,20 @@ Action a_run_server_replay_log(
       }
 
       config_log.info("Normal shutdown");
+      if (state->pc_patch_server) {
+        state->pc_patch_server->schedule_stop();
+      }
+      if (state->bb_patch_server) {
+        state->bb_patch_server->schedule_stop();
+      }
+      if (state->pc_patch_server) {
+        config_log.info("Waiting for PC_V2 patch server to stop");
+        state->pc_patch_server->wait_for_stop();
+      }
+      if (state->bb_patch_server) {
+        config_log.info("Waiting for BB_V4 patch server to stop");
+        state->bb_patch_server->wait_for_stop();
+      }
       state->proxy_server.reset(); // Break reference cycle
     });
 

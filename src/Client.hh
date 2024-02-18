@@ -186,9 +186,6 @@ public:
   uint8_t bb_connection_phase;
   uint64_t ping_start_time;
 
-  // Patch server
-  std::vector<PatchFileChecksumRequest> patch_file_checksum_requests;
-
   // Lobby/positioning
   Config config;
   Config synced_config;

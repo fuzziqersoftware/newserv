@@ -178,9 +178,6 @@ void send_stream_file_chunk_bb(std::shared_ptr<Client> c, uint32_t chunk_index);
 void send_approve_player_choice_bb(std::shared_ptr<Client> c);
 void send_complete_player_bb(std::shared_ptr<Client> c);
 
-void send_enter_directory_patch(std::shared_ptr<Client> c, const std::string& dir);
-void send_patch_file(std::shared_ptr<Client> c, std::shared_ptr<PatchFileIndex::File> f);
-
 void send_message_box(std::shared_ptr<Client> c, const std::string& text);
 void send_ep3_timed_message_box(Channel& ch, uint32_t frames, const std::string& text);
 void send_lobby_name(std::shared_ptr<Client> c, const std::string& text);

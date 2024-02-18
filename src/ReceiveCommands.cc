@@ -5097,181 +5097,6 @@ static void on_EA_BB(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
   }
 }
 
-static void on_02_P(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
-  check_size_v(data.size(), 0);
-  send_command(c, 0x04, 0x00); // This requests the user's login information
-}
-
-static void change_to_directory_patch(
-    shared_ptr<Client> c,
-    vector<string>& client_path_directories,
-    const vector<string>& file_path_directories) {
-  // First, exit all leaf directories that don't match the desired path
-  while (!client_path_directories.empty() &&
-      ((client_path_directories.size() > file_path_directories.size()) ||
-          (client_path_directories.back() != file_path_directories[client_path_directories.size() - 1]))) {
-    send_command(c, 0x0A, 0x00);
-    client_path_directories.pop_back();
-  }
-
-  // At this point, client_path_directories should be a prefix of
-  // file_path_directories (or should match exactly)
-  if (client_path_directories.size() > file_path_directories.size()) {
-    throw logic_error("did not exit all necessary directories");
-  }
-  for (size_t x = 0; x < client_path_directories.size(); x++) {
-    if (client_path_directories[x] != file_path_directories[x]) {
-      throw logic_error("intermediate path is not a prefix of final path");
-    }
-  }
-
-  // Second, enter all necessary leaf directories
-  while (client_path_directories.size() < file_path_directories.size()) {
-    const string& dir = file_path_directories[client_path_directories.size()];
-    send_enter_directory_patch(c, dir);
-    client_path_directories.emplace_back(dir);
-  }
-}
-
-static void on_04_P(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
-  const auto& cmd = check_size_t<C_Login_Patch_04>(data);
-  auto s = c->require_server_state();
-
-  string username = cmd.username.decode();
-  string password = cmd.password.decode();
-
-  // There are 3 cases here:
-  // - No login information at all: just proceed without checking license
-  // - Username only: check that license exists if allow_unregistered_users is off
-  // - Username and password: call verify_bb
-  if (!username.empty() && !password.empty()) {
-    try {
-      auto l = s->license_index->verify_bb(username, password);
-      c->set_license(l);
-
-    } catch (const LicenseIndex::incorrect_password& e) {
-      send_message_box(c, string_printf("Login failed: %s", e.what()));
-      c->should_disconnect = true;
-      return;
-
-    } catch (const LicenseIndex::missing_license& e) {
-      if (!s->allow_unregistered_users) {
-        send_message_box(c, string_printf("Login failed: %s", e.what()));
-        c->should_disconnect = true;
-        return;
-      } else {
-        c->config.set_flag(Client::Flag::LICENSE_WAS_CREATED);
-        auto l = s->license_index->create_license();
-        l->serial_number = fnv1a32(cmd.username.decode()) & 0x7FFFFFFF;
-        l->bb_username = cmd.username.decode();
-        l->bb_password = cmd.password.decode();
-        s->license_index->add(l);
-        if (!s->is_replay) {
-          l->save();
-        }
-        c->set_license(l);
-        string l_str = l->str();
-        c->log.info("Created license %s", l_str.c_str());
-      }
-    }
-
-  } else if (!username.empty() && !s->allow_unregistered_users) {
-    try {
-      auto l = s->license_index->get_by_bb_username(username);
-      c->set_license(l);
-    } catch (const LicenseIndex::missing_license& e) {
-      send_message_box(c, string_printf("Login failed: %s", e.what()));
-      c->should_disconnect = true;
-      return;
-    }
-
-  } else {
-    auto l = s->license_index->create_temporary_license();
-    l->serial_number = random_object<uint32_t>() & 0x7FFFFFFF;
-    l->bb_username = "__unknown__";
-    l->bb_password = "__unknown__";
-    c->set_license(l);
-  }
-
-  // On BB we can use colors and newlines should be \n; on PC we can't use
-  // colors, the text is auto-word-wrapped, and newlines should be \r\n.
-  bool is_bb_patch = (c->version() == Version::BB_PATCH);
-  const string& message = is_bb_patch
-      ? s->bb_patch_server_message
-      : s->pc_patch_server_message;
-  if (!message.empty()) {
-    send_message_box(c, message.c_str());
-  }
-
-  auto index = is_bb_patch ? s->bb_patch_file_index : s->pc_patch_file_index;
-  if (index.get()) {
-    send_command(c, 0x0B, 0x00); // Start patch session; go to root directory
-
-    vector<string> path_directories;
-    for (const auto& file : index->all_files()) {
-      change_to_directory_patch(c, path_directories, file->path_directories);
-
-      S_FileChecksumRequest_Patch_0C req = {c->patch_file_checksum_requests.size(), {file->name, 1}};
-      send_command_t(c, 0x0C, 0x00, req);
-      c->patch_file_checksum_requests.emplace_back(file);
-    }
-    change_to_directory_patch(c, path_directories, {});
-
-    send_command(c, 0x0D, 0x00); // End of checksum requests
-
-  } else {
-    // No patch index present: just do something that will satisfy the client
-    // without actually checking or downloading any files
-    send_enter_directory_patch(c, ".");
-    send_enter_directory_patch(c, "data");
-    send_enter_directory_patch(c, "scene");
-    send_command(c, 0x0A, 0x00);
-    send_command(c, 0x0A, 0x00);
-    send_command(c, 0x0A, 0x00);
-    send_command(c, 0x12, 0x00);
-  }
-}
-
-static void on_0F_P(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
-  auto& cmd = check_size_t<C_FileInformation_Patch_0F>(data);
-  auto& req = c->patch_file_checksum_requests.at(cmd.request_id);
-  req.crc32 = cmd.checksum;
-  req.size = cmd.size;
-  req.response_received = true;
-}
-
-static void on_10_P(shared_ptr<Client> c, uint16_t, uint32_t, string&) {
-
-  S_StartFileDownloads_Patch_11 start_cmd = {0, 0};
-  for (const auto& req : c->patch_file_checksum_requests) {
-    if (!req.response_received) {
-      throw runtime_error("client did not respond to checksum request");
-    }
-    if (req.needs_update()) {
-      c->log.info("File %s needs update (CRC: %08" PRIX32 "/%08" PRIX32 ", size: %" PRIu32 "/%" PRIu32 ")",
-          req.file->name.c_str(), req.file->crc32, req.crc32, req.file->size, req.size);
-      start_cmd.total_bytes += req.file->size;
-      start_cmd.num_files++;
-    } else {
-      c->log.info("File %s is up to date", req.file->name.c_str());
-    }
-  }
-
-  if (start_cmd.num_files) {
-    send_command_t(c, 0x11, 0x00, start_cmd);
-    vector<string> path_directories;
-    for (const auto& req : c->patch_file_checksum_requests) {
-      if (req.needs_update()) {
-        change_to_directory_patch(c, path_directories, req.file->path_directories);
-        send_patch_file(c, req.file);
-      }
-    }
-    change_to_directory_patch(c, path_directories, {});
-  }
-
-  send_command(c, 0x12, 0x00);
-}
-
 static void on_ignored(shared_ptr<Client>, uint16_t, uint32_t, string&) {}
 
 static void on_unimplemented_command(
@@ -5286,293 +5111,287 @@ typedef void (*on_command_t)(shared_ptr<Client> c, uint16_t command, uint32_t fl
 // Command handler table, indexed by command number and game version. Null
 // entries in this table cause on_unimplemented_command to be called, which
 // disconnects the client.
-static_assert(NUM_VERSIONS == 14, "Don\'t forget to update the ReceiveCommands handler table");
-static on_command_t handlers[0x100][NUM_VERSIONS] = {
+static_assert(NUM_VERSIONS - 2 == 12, "Don\'t forget to update the ReceiveCommands handler table");
+static on_command_t handlers[0x100][NUM_VERSIONS - 2] = {
     // clang-format off
-//        PC_PATCH BB_PATCH DC_NTE         DC_112000      DCV1           DCV2            PC_NTE       PC           GCNTE           GC              EP3TE           EP3             XB              BB
-/* 00 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* 01 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* 02 */ {on_02_P, on_02_P, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* 03 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* 04 */ {on_04_P, on_04_P, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* 05 */ {nullptr, nullptr, on_ignored,    on_ignored,    on_ignored,    on_ignored,     on_ignored,  on_ignored,  on_ignored,     on_ignored,     on_ignored,     on_ignored,     on_05_XB,       on_ignored},
-/* 06 */ {nullptr, nullptr, on_06,         on_06,         on_06,         on_06,          on_06,       on_06,       on_06,          on_06,          on_06,          on_06,          on_06,          on_06},
-/* 07 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* 08 */ {nullptr, nullptr, on_08_E6,      on_08_E6,      on_08_E6,      on_08_E6,       on_08_E6,    on_08_E6,    on_08_E6,       on_08_E6,       on_08_E6,       on_08_E6,       on_08_E6,       on_08_E6},
-/* 09 */ {nullptr, nullptr, on_09,         on_09,         on_09,         on_09,          on_09,       on_09,       on_09,          on_09,          on_09,          on_09,          on_09,          on_09},
-/* 0A */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* 0B */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* 0C */ {nullptr, nullptr, on_0C_C1_E7_EC,on_0C_C1_E7_EC,on_0C_C1_E7_EC,on_0C_C1_E7_EC, nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* 0D */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* 0E */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* 0F */ {on_0F_P, on_0F_P, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-//        PC_PATCH BB_PATCH DC_NTE         DC_PROTO       DCV1           DCV2            PC-NTE       PC           GCNTE           GC              EP3TE           EP3             XB              BB
-/* 10 */ {on_10_P, on_10_P, on_10,         on_10,         on_10,         on_10,          on_10,       on_10,       on_10,          on_10,          on_10,          on_10,          on_10,          on_10},
-/* 11 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* 12 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* 13 */ {nullptr, nullptr, on_ignored,    on_ignored,    on_ignored,    on_ignored,     on_ignored,  on_ignored,  on_13_A7_V3_BB, on_13_A7_V3_BB, on_13_A7_V3_BB, on_13_A7_V3_BB, on_13_A7_V3_BB, on_13_A7_V3_BB},
-/* 14 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* 15 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* 16 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* 17 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* 18 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* 19 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* 1A */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* 1B */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* 1C */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* 1D */ {nullptr, nullptr, on_1D,         on_1D,         on_1D,         on_1D,          on_1D,       on_1D,       on_1D,          on_1D,          on_1D,          on_1D,          on_1D,          on_1D},
-/* 1E */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* 1F */ {nullptr, nullptr, on_1F,         on_1F,         on_1F,         on_1F,          on_1F,       on_1F,       nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-//        PC_PATCH BB_PATCH DC_NTE         DC_PROTO       DCV1           DCV2            PC-NTE       PC           GCNTE           GC              EP3TE           EP3             XB              BB
-/* 20 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* 21 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* 22 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        on_ignored},
-/* 23 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* 24 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* 25 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* 26 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* 27 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* 28 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* 29 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* 2A */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* 2B */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* 2C */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* 2D */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* 2E */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* 2F */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-//        PC_PATCH BB_PATCH DC_NTE         DC_PROTO       DCV1           DCV2            PC-NTE       PC           GCNTE           GC              EP3TE           EP3             XB              BB
-/* 30 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* 31 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* 32 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* 33 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* 34 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* 35 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* 36 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* 37 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* 38 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* 39 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* 3A */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* 3B */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* 3C */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* 3D */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* 3E */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* 3F */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-//        PC_PATCH BB_PATCH DC_NTE         DC_PROTO       DCV1           DCV2            PC-NTE       PC           GCNTE           GC              EP3TE           EP3             XB              BB
-/* 40 */ {nullptr, nullptr, on_40,         on_40,         on_40,         on_40,          on_40,       on_40,       on_40,          on_40,          on_40,          on_40,          on_40,          on_40},
-/* 41 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* 42 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* 43 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* 44 */ {nullptr, nullptr, on_ignored,    on_ignored,    on_ignored,    on_ignored,     on_ignored,  on_ignored,  on_44_A6_V3_BB, on_44_A6_V3_BB, on_44_A6_V3_BB, on_44_A6_V3_BB, on_44_A6_V3_BB, on_44_A6_V3_BB},
-/* 45 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* 46 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* 47 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* 48 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* 49 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* 4A */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* 4B */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* 4C */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* 4D */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* 4E */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* 4F */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-//        PC_PATCH BB_PATCH DC_NTE         DC_PROTO       DCV1           DCV2            PC-NTE       PC           GCNTE           GC              EP3TE           EP3             XB              BB
-/* 50 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* 51 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* 52 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* 53 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* 54 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* 55 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* 56 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* 57 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* 58 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* 59 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* 5A */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* 5B */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* 5C */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* 5D */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* 5E */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* 5F */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-//        PC_PATCH BB_PATCH DC_NTE         DC_PROTO       DCV1           DCV2            PC-NTE       PC           GCNTE           GC              EP3TE           EP3             XB              BB
-/* 60 */ {nullptr, nullptr, on_6x_C9_CB,   on_6x_C9_CB,   on_6x_C9_CB,   on_6x_C9_CB,    on_6x_C9_CB, on_6x_C9_CB, on_6x_C9_CB,    on_6x_C9_CB,    on_6x_C9_CB,    on_6x_C9_CB,    on_6x_C9_CB,    on_6x_C9_CB},
-/* 61 */ {nullptr, nullptr, on_61_98,      on_61_98,      on_61_98,      on_61_98,       on_61_98,    on_61_98,    on_61_98,       on_61_98,       on_61_98,       on_61_98,       on_61_98,       on_61_98},
-/* 62 */ {nullptr, nullptr, on_6x_C9_CB,   on_6x_C9_CB,   on_6x_C9_CB,   on_6x_C9_CB,    on_6x_C9_CB, on_6x_C9_CB, on_6x_C9_CB,    on_6x_C9_CB,    on_6x_C9_CB,    on_6x_C9_CB,    on_6x_C9_CB,    on_6x_C9_CB},
-/* 63 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* 64 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* 65 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* 66 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* 67 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* 68 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* 69 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* 6A */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* 6B */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* 6C */ {nullptr, nullptr, on_6x_C9_CB,   on_6x_C9_CB,   on_6x_C9_CB,   on_6x_C9_CB,    on_6x_C9_CB, on_6x_C9_CB, on_6x_C9_CB,    on_6x_C9_CB,    on_6x_C9_CB,    on_6x_C9_CB,    on_6x_C9_CB,    on_6x_C9_CB},
-/* 6D */ {nullptr, nullptr, on_6x_C9_CB,   on_6x_C9_CB,   on_6x_C9_CB,   on_6x_C9_CB,    on_6x_C9_CB, on_6x_C9_CB, on_6x_C9_CB,    on_6x_C9_CB,    on_6x_C9_CB,    on_6x_C9_CB,    on_6x_C9_CB,    on_6x_C9_CB},
-/* 6E */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* 6F */ {nullptr, nullptr, on_6F,         on_6F,         on_6F,         on_6F,          on_6F,       on_6F,       on_6F,          on_6F,          on_6F,          on_6F,          on_6F,          on_6F},
-//        PC_PATCH BB_PATCH DC_NTE         DC_PROTO       DCV1           DCV2            PC-NTE       PC           GCNTE           GC              EP3TE           EP3             XB              BB
-/* 70 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* 71 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* 72 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* 73 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* 74 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* 75 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* 76 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* 77 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* 78 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* 79 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* 7A */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* 7B */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* 7C */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* 7D */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* 7E */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* 7F */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-//        PC_PATCH BB_PATCH DC_NTE         DC_PROTO       DCV1           DCV2            PC-NTE       PC           GCNTE           GC              EP3TE           EP3             XB              BB
-/* 80 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* 81 */ {nullptr, nullptr, on_81,         on_81,         on_81,         on_81,          on_81,       on_81,       on_81,          on_81,          on_81,          on_81,          on_81,          on_81},
-/* 82 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* 83 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* 84 */ {nullptr, nullptr, on_84,         on_84,         on_84,         on_84,          on_84,       on_84,       on_84,          on_84,          on_84,          on_84,          on_84,          on_84},
-/* 85 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* 86 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* 87 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* 88 */ {nullptr, nullptr, on_88_DCNTE,   on_88_DCNTE,   on_88_DCNTE,   on_88_DCNTE,    nullptr,     nullptr,     on_88_DCNTE,    on_88_DCNTE,    on_88_DCNTE,    on_88_DCNTE,    nullptr,        nullptr},
-/* 89 */ {nullptr, nullptr, on_89,         on_89,         on_89,         on_89,          on_89,       on_89,       on_89,          on_89,          on_89,          on_89,          on_89,          on_89},
-/* 8A */ {nullptr, nullptr, on_8A,         on_8A,         on_8A,         on_8A,          on_8A,       on_8A,       on_8A,          on_8A,          on_8A,          on_8A,          on_8A,          on_8A},
-/* 8B */ {nullptr, nullptr, on_8B_DCNTE,   on_8B_DCNTE,   on_8B_DCNTE,   on_8B_DCNTE,    nullptr,     nullptr,     on_8B_DCNTE,    on_8B_DCNTE,    on_8B_DCNTE,    on_8B_DCNTE,    nullptr,        nullptr},
-/* 8C */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* 8D */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* 8E */ {nullptr, nullptr, on_8E_DCNTE,   on_8E_DCNTE,   on_8E_DCNTE,   on_8E_DCNTE,    nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* 8F */ {nullptr, nullptr, on_8F_DCNTE,   on_8F_DCNTE,   on_8F_DCNTE,   on_8F_DCNTE,    nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-//        PC_PATCH BB_PATCH DC_NTE         DC_PROTO       DCV1           DCV2            PC-NTE       PC           GCNTE           GC              EP3TE           EP3             XB              BB
-/* 90 */ {nullptr, nullptr, on_90_DC,      on_90_DC,      on_90_DC,      on_90_DC,       nullptr,     nullptr,     on_90_DC,       on_90_DC,       on_90_DC,       on_90_DC,       nullptr,        nullptr},
-/* 91 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* 92 */ {nullptr, nullptr, on_92_DC,      on_92_DC,      on_92_DC,      on_92_DC,       nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* 93 */ {nullptr, nullptr, on_93_DC,      on_93_DC,      on_93_DC,      on_93_DC,       nullptr,     nullptr,     on_93_DC,       on_93_DC,       on_93_DC,       on_93_DC,       nullptr,        on_93_BB},
-/* 94 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* 95 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* 96 */ {nullptr, nullptr, on_96,         on_96,         on_96,         on_96,          on_96,       on_96,       on_96,          on_96,          on_96,          on_96,          on_96,          nullptr},
-/* 97 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* 98 */ {nullptr, nullptr, on_61_98,      on_61_98,      on_61_98,      on_61_98,       on_61_98,    on_61_98,    on_61_98,       on_61_98,       on_61_98,       on_61_98,       on_61_98,       on_61_98},
-/* 99 */ {nullptr, nullptr, on_99,         on_99,         on_99,         on_99,          on_99,       on_99,       on_99,          on_99,          on_99,          on_99,          on_99,          on_99},
-/* 9A */ {nullptr, nullptr, on_9A,         on_9A,         on_9A,         on_9A,          on_9A,       on_9A,       on_9A,          on_9A,          on_9A,          on_9A,          nullptr,        nullptr},
-/* 9B */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* 9C */ {nullptr, nullptr, on_9C,         on_9C,         on_9C,         on_9C,          on_9C,       on_9C,       on_9C,          on_9C,          on_9C,          on_9C,          on_9C,          nullptr},
-/* 9D */ {nullptr, nullptr, on_9D_9E,      on_9D_9E,      on_9D_9E,      on_9D_9E,       on_9D_9E,    on_9D_9E,    on_9D_9E,       on_9D_9E,       on_9D_9E,       on_9D_9E,       on_9D_9E,       nullptr},
-/* 9E */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        on_9D_9E,    on_9D_9E,    on_9D_9E,       on_9D_9E,       on_9D_9E,       on_9D_9E,       on_9E_XB,       nullptr},
-/* 9F */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        on_9F,          on_9F,          on_9F,          on_9F,          on_9F},
-//        PC_PATCH BB_PATCH DC_NTE         DC_PROTO       DCV1           DCV2            PC-NTE       PC           GCNTE           GC              EP3TE           EP3             XB              BB
-/* A0 */ {nullptr, nullptr, on_A0,         on_A0,         on_A0,         on_A0,          on_A0,       on_A0,       on_A0,          on_A0,          on_A0,          on_A0,          on_A0,          on_A0},
-/* A1 */ {nullptr, nullptr, on_A1,         on_A1,         on_A1,         on_A1,          on_A1,       on_A1,       on_A1,          on_A1,          on_A1,          on_A1,          on_A1,          on_A1},
-/* A2 */ {nullptr, nullptr, on_A2,         on_A2,         on_A2,         on_A2,          on_A2,       on_A2,       on_A2,          on_A2,          on_A2,          on_A2,          on_A2,          on_A2},
-/* A3 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* A4 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* A5 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* A6 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     on_44_A6_V3_BB, on_44_A6_V3_BB, on_44_A6_V3_BB, on_44_A6_V3_BB, on_44_A6_V3_BB, nullptr},
-/* A7 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     on_13_A7_V3_BB, on_13_A7_V3_BB, on_13_A7_V3_BB, on_13_A7_V3_BB, on_13_A7_V3_BB, nullptr},
-/* A8 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* A9 */ {nullptr, nullptr, on_ignored,    on_ignored,    on_ignored,    on_ignored,     on_ignored,  on_ignored,  on_ignored,     on_ignored,     on_ignored,     on_ignored,     on_ignored,     on_ignored},
-/* AA */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        on_AA,       on_AA,       on_AA,          on_AA,          on_AA,          on_AA,          on_AA,          on_AA},
-/* AB */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* AC */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     on_AC_V3_BB,    on_AC_V3_BB,    on_AC_V3_BB,    on_AC_V3_BB,    on_AC_V3_BB,    on_AC_V3_BB},
-/* AD */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* AE */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* AF */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-//        PC_PATCH BB_PATCH DC_NTE         DC_PROTO       DCV1           DCV2            PC-NTE       PC           GCNTE           GC              EP3TE           EP3             XB              BB
-/* B0 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* B1 */ {nullptr, nullptr, on_B1,         on_B1,         on_B1,         on_B1,          on_B1,       on_B1,       on_B1,          on_B1,          on_B1,          on_B1,          on_B1,          nullptr},
-/* B2 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* B3 */ {nullptr, nullptr, on_B3,         on_B3,         on_B3,         on_B3,          on_B3,       on_B3,       on_B3,          on_B3,          on_B3,          on_B3,          on_B3,          on_B3},
-/* B4 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* B5 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* B6 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* B7 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        on_B7_Ep3,      on_B7_Ep3,      nullptr,        nullptr},
-/* B8 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        on_ignored,     on_ignored,     nullptr,        nullptr},
-/* B9 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        on_ignored,     on_ignored,     nullptr,        nullptr},
-/* BA */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        on_BA_Ep3,      on_BA_Ep3,      nullptr,        nullptr},
-/* BB */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* BC */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* BD */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* BE */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* BF */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-//        PC_PATCH BB_PATCH DC_NTE         DC_PROTO       DCV1           DCV2            PC-NTE       PC           GCNTE           GC              EP3TE           EP3             XB              BB
-/* C0 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       on_C0,          on_C0,       on_C0,       on_C0,          on_C0,          on_C0,          on_C0,          on_C0,          on_C0},
-/* C1 */ {nullptr, nullptr, on_0C_C1_E7_EC,on_0C_C1_E7_EC,on_0C_C1_E7_EC,on_0C_C1_E7_EC, on_C1_PC,    on_C1_PC,    on_0C_C1_E7_EC, on_0C_C1_E7_EC, on_0C_C1_E7_EC, on_0C_C1_E7_EC, on_0C_C1_E7_EC, on_C1_BB},
-/* C2 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       on_C2,          on_C2,       on_C2,       on_C2,          on_C2,          on_C2,          on_C2,          on_C2,          on_C2},
-/* C3 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       on_C3,          on_C3,       on_C3,       on_C3,          on_C3,          on_C3,          on_C3,          on_C3,          on_C3},
-/* C4 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* C5 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* C6 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        on_C6,       on_C6,       on_C6,          on_C6,          on_C6,          on_C6,          on_C6,          on_C6},
-/* C7 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        on_C7,       on_C7,       on_C7,          on_C7,          on_C7,          on_C7,          on_C7,          on_C7},
-/* C8 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        on_C8,       on_C8,       on_C8,          on_C8,          on_C8,          on_C8,          on_C8,          on_C8},
-/* C9 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        on_6x_C9_CB,    on_6x_C9_CB,    on_C9_XB,       nullptr},
-/* CA */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        on_CA_Ep3,      on_CA_Ep3,      nullptr,        nullptr},
-/* CB */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        on_6x_C9_CB,    on_6x_C9_CB,    nullptr,        nullptr},
-/* CC */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* CD */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* CE */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* CF */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-//        PC_PATCH BB_PATCH DC_NTE         DC_PROTO       DCV1           DCV2            PC-NTE       PC           GCNTE           GC              EP3TE           EP3             XB              BB
-/* D0 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     on_D0_V3_BB,    on_D0_V3_BB,    on_D0_V3_BB,    on_D0_V3_BB,    on_D0_V3_BB,    on_D0_V3_BB},
-/* D1 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* D2 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     on_D2_V3_BB,    on_D2_V3_BB,    on_D2_V3_BB,    on_D2_V3_BB,    on_D2_V3_BB,    on_D2_V3_BB},
-/* D3 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* D4 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     on_D4_V3_BB,    on_D4_V3_BB,    on_D4_V3_BB,    on_D4_V3_BB,    on_D4_V3_BB,    on_D4_V3_BB},
-/* D5 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* D6 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     on_D6_V3,       on_D6_V3,       on_D6_V3,       on_D6_V3,       on_D6_V3,       nullptr},
-/* D7 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     on_D7_GC,       on_D7_GC,       on_D7_GC,       on_D7_GC,       on_D7_GC,       nullptr},
-/* D8 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        on_D8,       on_D8,       on_D8,          on_D8,          on_D8,          on_D8,          on_D8,          on_D8},
-/* D9 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        on_D9,       on_D9,       on_D9,          on_D9,          on_D9,          on_D9,          on_D9,          on_D9},
-/* DA */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* DB */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     on_DB_V3,       on_DB_V3,       on_DB_V3,       on_DB_V3,       on_DB_V3,       nullptr},
-/* DC */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        on_DC_Ep3,      on_DC_Ep3,      nullptr,        on_DC_BB},
-/* DD */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* DE */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* DF */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        on_DF_BB},
-//        PC_PATCH BB_PATCH DC_NTE         DC_PROTO       DCV1           DCV2            PC-NTE       PC           GCNTE           GC              EP3TE           EP3             XB              BB
-/* E0 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        on_E0_BB},
-/* E1 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* E2 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        on_E2_Ep3,      on_E2_Ep3,      nullptr,        on_E2_BB},
-/* E3 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        on_E3_BB},
-/* E4 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        on_E4_Ep3,      on_E4_Ep3,      nullptr,        nullptr},
-/* E5 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        on_E5_Ep3,      on_E5_Ep3,      nullptr,        on_E5_BB},
-/* E6 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        on_08_E6,       on_08_E6,       nullptr,        nullptr},
-/* E7 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        on_0C_C1_E7_EC, on_0C_C1_E7_EC, nullptr,        on_E7_BB},
-/* E8 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        on_E8_BB},
-/* E9 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* EA */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        on_EA_BB},
-/* EB */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        on_EB_BB},
-/* EC */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        on_0C_C1_E7_EC, on_0C_C1_E7_EC, nullptr,        on_EC_BB},
-/* ED */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        on_ED_BB},
-/* EE */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        on_EE_Ep3,      on_EE_Ep3,      nullptr,        nullptr},
-/* EF */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        on_EF_Ep3,      on_EF_Ep3,      nullptr,        nullptr},
-//        PC_PATCH BB_PATCH DC_NTE         DC_PROTO       DCV1           DCV2            PC-NTE       PC           GCNTE           GC              EP3TE           EP3             XB              BB
-/* F0 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* F1 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* F2 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* F3 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* F4 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* F5 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* F6 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* F7 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* F8 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* F9 */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* FA */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* FB */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* FC */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* FD */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* FE */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* FF */ {nullptr, nullptr, nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-//        PC_PATCH BB_PATCH DC_NTE         DC_PROTO       DCV1           DCV2            PC-NTE       PC           GCNTE           GC              EP3TE           EP3             XB              BB
+//        DC_NTE         DC_112000      DCV1           DCV2            PC_NTE       PC           GCNTE           GC              EP3TE           EP3             XB              BB
+/* 00 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 01 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 02 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 03 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 04 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 05 */ {on_ignored,    on_ignored,    on_ignored,    on_ignored,     on_ignored,  on_ignored,  on_ignored,     on_ignored,     on_ignored,     on_ignored,     on_05_XB,       on_ignored},
+/* 06 */ {on_06,         on_06,         on_06,         on_06,          on_06,       on_06,       on_06,          on_06,          on_06,          on_06,          on_06,          on_06},
+/* 07 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 08 */ {on_08_E6,      on_08_E6,      on_08_E6,      on_08_E6,       on_08_E6,    on_08_E6,    on_08_E6,       on_08_E6,       on_08_E6,       on_08_E6,       on_08_E6,       on_08_E6},
+/* 09 */ {on_09,         on_09,         on_09,         on_09,          on_09,       on_09,       on_09,          on_09,          on_09,          on_09,          on_09,          on_09},
+/* 0A */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 0B */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 0C */ {on_0C_C1_E7_EC,on_0C_C1_E7_EC,on_0C_C1_E7_EC,on_0C_C1_E7_EC, nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 0D */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 0E */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 0F */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+//        DC_NTE         DC_PROTO       DCV1           DCV2            PC-NTE       PC           GCNTE           GC              EP3TE           EP3             XB              BB
+/* 10 */ {on_10,         on_10,         on_10,         on_10,          on_10,       on_10,       on_10,          on_10,          on_10,          on_10,          on_10,          on_10},
+/* 11 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 12 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 13 */ {on_ignored,    on_ignored,    on_ignored,    on_ignored,     on_ignored,  on_ignored,  on_13_A7_V3_BB, on_13_A7_V3_BB, on_13_A7_V3_BB, on_13_A7_V3_BB, on_13_A7_V3_BB, on_13_A7_V3_BB},
+/* 14 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 15 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 16 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 17 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 18 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 19 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 1A */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 1B */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 1C */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 1D */ {on_1D,         on_1D,         on_1D,         on_1D,          on_1D,       on_1D,       on_1D,          on_1D,          on_1D,          on_1D,          on_1D,          on_1D},
+/* 1E */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 1F */ {on_1F,         on_1F,         on_1F,         on_1F,          on_1F,       on_1F,       nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+//        DC_NTE         DC_PROTO       DCV1           DCV2            PC-NTE       PC           GCNTE           GC              EP3TE           EP3             XB              BB
+/* 20 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 21 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 22 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        on_ignored},
+/* 23 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 24 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 25 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 26 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 27 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 28 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 29 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 2A */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 2B */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 2C */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 2D */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 2E */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 2F */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+//        DC_NTE         DC_PROTO       DCV1           DCV2            PC-NTE       PC           GCNTE           GC              EP3TE           EP3             XB              BB
+/* 30 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 31 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 32 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 33 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 34 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 35 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 36 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 37 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 38 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 39 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 3A */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 3B */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 3C */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 3D */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 3E */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 3F */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+//        DC_NTE         DC_PROTO       DCV1           DCV2            PC-NTE       PC           GCNTE           GC              EP3TE           EP3             XB              BB
+/* 40 */ {on_40,         on_40,         on_40,         on_40,          on_40,       on_40,       on_40,          on_40,          on_40,          on_40,          on_40,          on_40},
+/* 41 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 42 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 43 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 44 */ {on_ignored,    on_ignored,    on_ignored,    on_ignored,     on_ignored,  on_ignored,  on_44_A6_V3_BB, on_44_A6_V3_BB, on_44_A6_V3_BB, on_44_A6_V3_BB, on_44_A6_V3_BB, on_44_A6_V3_BB},
+/* 45 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 46 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 47 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 48 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 49 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 4A */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 4B */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 4C */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 4D */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 4E */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 4F */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+//        DC_NTE         DC_PROTO       DCV1           DCV2            PC-NTE       PC           GCNTE           GC              EP3TE           EP3             XB              BB
+/* 50 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 51 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 52 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 53 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 54 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 55 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 56 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 57 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 58 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 59 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 5A */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 5B */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 5C */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 5D */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 5E */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 5F */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+//        DC_NTE         DC_PROTO       DCV1           DCV2            PC-NTE       PC           GCNTE           GC              EP3TE           EP3             XB              BB
+/* 60 */ {on_6x_C9_CB,   on_6x_C9_CB,   on_6x_C9_CB,   on_6x_C9_CB,    on_6x_C9_CB, on_6x_C9_CB, on_6x_C9_CB,    on_6x_C9_CB,    on_6x_C9_CB,    on_6x_C9_CB,    on_6x_C9_CB,    on_6x_C9_CB},
+/* 61 */ {on_61_98,      on_61_98,      on_61_98,      on_61_98,       on_61_98,    on_61_98,    on_61_98,       on_61_98,       on_61_98,       on_61_98,       on_61_98,       on_61_98},
+/* 62 */ {on_6x_C9_CB,   on_6x_C9_CB,   on_6x_C9_CB,   on_6x_C9_CB,    on_6x_C9_CB, on_6x_C9_CB, on_6x_C9_CB,    on_6x_C9_CB,    on_6x_C9_CB,    on_6x_C9_CB,    on_6x_C9_CB,    on_6x_C9_CB},
+/* 63 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 64 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 65 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 66 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 67 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 68 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 69 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 6A */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 6B */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 6C */ {on_6x_C9_CB,   on_6x_C9_CB,   on_6x_C9_CB,   on_6x_C9_CB,    on_6x_C9_CB, on_6x_C9_CB, on_6x_C9_CB,    on_6x_C9_CB,    on_6x_C9_CB,    on_6x_C9_CB,    on_6x_C9_CB,    on_6x_C9_CB},
+/* 6D */ {on_6x_C9_CB,   on_6x_C9_CB,   on_6x_C9_CB,   on_6x_C9_CB,    on_6x_C9_CB, on_6x_C9_CB, on_6x_C9_CB,    on_6x_C9_CB,    on_6x_C9_CB,    on_6x_C9_CB,    on_6x_C9_CB,    on_6x_C9_CB},
+/* 6E */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 6F */ {on_6F,         on_6F,         on_6F,         on_6F,          on_6F,       on_6F,       on_6F,          on_6F,          on_6F,          on_6F,          on_6F,          on_6F},
+//        DC_NTE         DC_PROTO       DCV1           DCV2            PC-NTE       PC           GCNTE           GC              EP3TE           EP3             XB              BB
+/* 70 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 71 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 72 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 73 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 74 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 75 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 76 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 77 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 78 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 79 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 7A */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 7B */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 7C */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 7D */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 7E */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 7F */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+//        DC_NTE         DC_PROTO       DCV1           DCV2            PC-NTE       PC           GCNTE           GC              EP3TE           EP3             XB              BB
+/* 80 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 81 */ {on_81,         on_81,         on_81,         on_81,          on_81,       on_81,       on_81,          on_81,          on_81,          on_81,          on_81,          on_81},
+/* 82 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 83 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 84 */ {on_84,         on_84,         on_84,         on_84,          on_84,       on_84,       on_84,          on_84,          on_84,          on_84,          on_84,          on_84},
+/* 85 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 86 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 87 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 88 */ {on_88_DCNTE,   on_88_DCNTE,   on_88_DCNTE,   on_88_DCNTE,    nullptr,     nullptr,     on_88_DCNTE,    on_88_DCNTE,    on_88_DCNTE,    on_88_DCNTE,    nullptr,        nullptr},
+/* 89 */ {on_89,         on_89,         on_89,         on_89,          on_89,       on_89,       on_89,          on_89,          on_89,          on_89,          on_89,          on_89},
+/* 8A */ {on_8A,         on_8A,         on_8A,         on_8A,          on_8A,       on_8A,       on_8A,          on_8A,          on_8A,          on_8A,          on_8A,          on_8A},
+/* 8B */ {on_8B_DCNTE,   on_8B_DCNTE,   on_8B_DCNTE,   on_8B_DCNTE,    nullptr,     nullptr,     on_8B_DCNTE,    on_8B_DCNTE,    on_8B_DCNTE,    on_8B_DCNTE,    nullptr,        nullptr},
+/* 8C */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 8D */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 8E */ {on_8E_DCNTE,   on_8E_DCNTE,   on_8E_DCNTE,   on_8E_DCNTE,    nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 8F */ {on_8F_DCNTE,   on_8F_DCNTE,   on_8F_DCNTE,   on_8F_DCNTE,    nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+//        DC_NTE         DC_PROTO       DCV1           DCV2            PC-NTE       PC           GCNTE           GC              EP3TE           EP3             XB              BB
+/* 90 */ {on_90_DC,      on_90_DC,      on_90_DC,      on_90_DC,       nullptr,     nullptr,     on_90_DC,       on_90_DC,       on_90_DC,       on_90_DC,       nullptr,        nullptr},
+/* 91 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 92 */ {on_92_DC,      on_92_DC,      on_92_DC,      on_92_DC,       nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 93 */ {on_93_DC,      on_93_DC,      on_93_DC,      on_93_DC,       nullptr,     nullptr,     on_93_DC,       on_93_DC,       on_93_DC,       on_93_DC,       nullptr,        on_93_BB},
+/* 94 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 95 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 96 */ {on_96,         on_96,         on_96,         on_96,          on_96,       on_96,       on_96,          on_96,          on_96,          on_96,          on_96,          nullptr},
+/* 97 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 98 */ {on_61_98,      on_61_98,      on_61_98,      on_61_98,       on_61_98,    on_61_98,    on_61_98,       on_61_98,       on_61_98,       on_61_98,       on_61_98,       on_61_98},
+/* 99 */ {on_99,         on_99,         on_99,         on_99,          on_99,       on_99,       on_99,          on_99,          on_99,          on_99,          on_99,          on_99},
+/* 9A */ {on_9A,         on_9A,         on_9A,         on_9A,          on_9A,       on_9A,       on_9A,          on_9A,          on_9A,          on_9A,          nullptr,        nullptr},
+/* 9B */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 9C */ {on_9C,         on_9C,         on_9C,         on_9C,          on_9C,       on_9C,       on_9C,          on_9C,          on_9C,          on_9C,          on_9C,          nullptr},
+/* 9D */ {on_9D_9E,      on_9D_9E,      on_9D_9E,      on_9D_9E,       on_9D_9E,    on_9D_9E,    on_9D_9E,       on_9D_9E,       on_9D_9E,       on_9D_9E,       on_9D_9E,       nullptr},
+/* 9E */ {nullptr,       nullptr,       nullptr,       nullptr,        on_9D_9E,    on_9D_9E,    on_9D_9E,       on_9D_9E,       on_9D_9E,       on_9D_9E,       on_9E_XB,       nullptr},
+/* 9F */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        on_9F,          on_9F,          on_9F,          on_9F,          on_9F},
+//        DC_NTE         DC_PROTO       DCV1           DCV2            PC-NTE       PC           GCNTE           GC              EP3TE           EP3             XB              BB
+/* A0 */ {on_A0,         on_A0,         on_A0,         on_A0,          on_A0,       on_A0,       on_A0,          on_A0,          on_A0,          on_A0,          on_A0,          on_A0},
+/* A1 */ {on_A1,         on_A1,         on_A1,         on_A1,          on_A1,       on_A1,       on_A1,          on_A1,          on_A1,          on_A1,          on_A1,          on_A1},
+/* A2 */ {on_A2,         on_A2,         on_A2,         on_A2,          on_A2,       on_A2,       on_A2,          on_A2,          on_A2,          on_A2,          on_A2,          on_A2},
+/* A3 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* A4 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* A5 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* A6 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     on_44_A6_V3_BB, on_44_A6_V3_BB, on_44_A6_V3_BB, on_44_A6_V3_BB, on_44_A6_V3_BB, nullptr},
+/* A7 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     on_13_A7_V3_BB, on_13_A7_V3_BB, on_13_A7_V3_BB, on_13_A7_V3_BB, on_13_A7_V3_BB, nullptr},
+/* A8 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* A9 */ {on_ignored,    on_ignored,    on_ignored,    on_ignored,     on_ignored,  on_ignored,  on_ignored,     on_ignored,     on_ignored,     on_ignored,     on_ignored,     on_ignored},
+/* AA */ {nullptr,       nullptr,       nullptr,       nullptr,        on_AA,       on_AA,       on_AA,          on_AA,          on_AA,          on_AA,          on_AA,          on_AA},
+/* AB */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* AC */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     on_AC_V3_BB,    on_AC_V3_BB,    on_AC_V3_BB,    on_AC_V3_BB,    on_AC_V3_BB,    on_AC_V3_BB},
+/* AD */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* AE */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* AF */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+//        DC_NTE         DC_PROTO       DCV1           DCV2            PC-NTE       PC           GCNTE           GC              EP3TE           EP3             XB              BB
+/* B0 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* B1 */ {on_B1,         on_B1,         on_B1,         on_B1,          on_B1,       on_B1,       on_B1,          on_B1,          on_B1,          on_B1,          on_B1,          nullptr},
+/* B2 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* B3 */ {on_B3,         on_B3,         on_B3,         on_B3,          on_B3,       on_B3,       on_B3,          on_B3,          on_B3,          on_B3,          on_B3,          on_B3},
+/* B4 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* B5 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* B6 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* B7 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        on_B7_Ep3,      on_B7_Ep3,      nullptr,        nullptr},
+/* B8 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        on_ignored,     on_ignored,     nullptr,        nullptr},
+/* B9 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        on_ignored,     on_ignored,     nullptr,        nullptr},
+/* BA */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        on_BA_Ep3,      on_BA_Ep3,      nullptr,        nullptr},
+/* BB */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* BC */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* BD */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* BE */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* BF */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+//        DC_NTE         DC_PROTO       DCV1           DCV2            PC-NTE       PC           GCNTE           GC              EP3TE           EP3             XB              BB
+/* C0 */ {nullptr,       nullptr,       nullptr,       on_C0,          on_C0,       on_C0,       on_C0,          on_C0,          on_C0,          on_C0,          on_C0,          on_C0},
+/* C1 */ {on_0C_C1_E7_EC,on_0C_C1_E7_EC,on_0C_C1_E7_EC,on_0C_C1_E7_EC, on_C1_PC,    on_C1_PC,    on_0C_C1_E7_EC, on_0C_C1_E7_EC, on_0C_C1_E7_EC, on_0C_C1_E7_EC, on_0C_C1_E7_EC, on_C1_BB},
+/* C2 */ {nullptr,       nullptr,       nullptr,       on_C2,          on_C2,       on_C2,       on_C2,          on_C2,          on_C2,          on_C2,          on_C2,          on_C2},
+/* C3 */ {nullptr,       nullptr,       nullptr,       on_C3,          on_C3,       on_C3,       on_C3,          on_C3,          on_C3,          on_C3,          on_C3,          on_C3},
+/* C4 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* C5 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* C6 */ {nullptr,       nullptr,       nullptr,       nullptr,        on_C6,       on_C6,       on_C6,          on_C6,          on_C6,          on_C6,          on_C6,          on_C6},
+/* C7 */ {nullptr,       nullptr,       nullptr,       nullptr,        on_C7,       on_C7,       on_C7,          on_C7,          on_C7,          on_C7,          on_C7,          on_C7},
+/* C8 */ {nullptr,       nullptr,       nullptr,       nullptr,        on_C8,       on_C8,       on_C8,          on_C8,          on_C8,          on_C8,          on_C8,          on_C8},
+/* C9 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        on_6x_C9_CB,    on_6x_C9_CB,    on_C9_XB,       nullptr},
+/* CA */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        on_CA_Ep3,      on_CA_Ep3,      nullptr,        nullptr},
+/* CB */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        on_6x_C9_CB,    on_6x_C9_CB,    nullptr,        nullptr},
+/* CC */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* CD */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* CE */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* CF */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+//        DC_NTE         DC_PROTO       DCV1           DCV2            PC-NTE       PC           GCNTE           GC              EP3TE           EP3             XB              BB
+/* D0 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     on_D0_V3_BB,    on_D0_V3_BB,    on_D0_V3_BB,    on_D0_V3_BB,    on_D0_V3_BB,    on_D0_V3_BB},
+/* D1 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* D2 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     on_D2_V3_BB,    on_D2_V3_BB,    on_D2_V3_BB,    on_D2_V3_BB,    on_D2_V3_BB,    on_D2_V3_BB},
+/* D3 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* D4 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     on_D4_V3_BB,    on_D4_V3_BB,    on_D4_V3_BB,    on_D4_V3_BB,    on_D4_V3_BB,    on_D4_V3_BB},
+/* D5 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* D6 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     on_D6_V3,       on_D6_V3,       on_D6_V3,       on_D6_V3,       on_D6_V3,       nullptr},
+/* D7 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     on_D7_GC,       on_D7_GC,       on_D7_GC,       on_D7_GC,       on_D7_GC,       nullptr},
+/* D8 */ {nullptr,       nullptr,       nullptr,       nullptr,        on_D8,       on_D8,       on_D8,          on_D8,          on_D8,          on_D8,          on_D8,          on_D8},
+/* D9 */ {nullptr,       nullptr,       nullptr,       nullptr,        on_D9,       on_D9,       on_D9,          on_D9,          on_D9,          on_D9,          on_D9,          on_D9},
+/* DA */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* DB */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     on_DB_V3,       on_DB_V3,       on_DB_V3,       on_DB_V3,       on_DB_V3,       nullptr},
+/* DC */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        on_DC_Ep3,      on_DC_Ep3,      nullptr,        on_DC_BB},
+/* DD */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* DE */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* DF */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        on_DF_BB},
+//        DC_NTE         DC_PROTO       DCV1           DCV2            PC-NTE       PC           GCNTE           GC              EP3TE           EP3             XB              BB
+/* E0 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        on_E0_BB},
+/* E1 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* E2 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        on_E2_Ep3,      on_E2_Ep3,      nullptr,        on_E2_BB},
+/* E3 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        on_E3_BB},
+/* E4 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        on_E4_Ep3,      on_E4_Ep3,      nullptr,        nullptr},
+/* E5 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        on_E5_Ep3,      on_E5_Ep3,      nullptr,        on_E5_BB},
+/* E6 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        on_08_E6,       on_08_E6,       nullptr,        nullptr},
+/* E7 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        on_0C_C1_E7_EC, on_0C_C1_E7_EC, nullptr,        on_E7_BB},
+/* E8 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        on_E8_BB},
+/* E9 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* EA */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        on_EA_BB},
+/* EB */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        on_EB_BB},
+/* EC */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        on_0C_C1_E7_EC, on_0C_C1_E7_EC, nullptr,        on_EC_BB},
+/* ED */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        on_ED_BB},
+/* EE */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        on_EE_Ep3,      on_EE_Ep3,      nullptr,        nullptr},
+/* EF */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        on_EF_Ep3,      on_EF_Ep3,      nullptr,        nullptr},
+//        DC_NTE         DC_PROTO       DCV1           DCV2            PC-NTE       PC           GCNTE           GC              EP3TE           EP3             XB              BB
+/* F0 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* F1 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* F2 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* F3 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* F4 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* F5 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* F6 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* F7 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* F8 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* F9 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* FA */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* FB */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* FC */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* FD */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* FE */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* FF */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+//        DC_NTE         DC_PROTO       DCV1           DCV2            PC-NTE       PC           GCNTE           GC              EP3TE           EP3             XB              BB
     // clang-format on
 };
 
 static void check_unlicensed_command(Version version, uint8_t command) {
   switch (version) {
-    case Version::PC_PATCH:
-    case Version::BB_PATCH:
-      if (command != 0x02 && command != 0x04) {
-        throw runtime_error("only commands 02 and 04 may be sent before login");
-      }
-      break;
     case Version::DC_NTE:
     case Version::DC_V1_11_2000_PROTOTYPE:
     case Version::DC_V1:
@@ -5619,11 +5438,7 @@ static void check_unlicensed_command(Version version, uint8_t command) {
   }
 }
 
-void on_command(
-    shared_ptr<Client> c,
-    uint16_t command,
-    uint32_t flag,
-    string& data) {
+void on_command(shared_ptr<Client> c, uint16_t command, uint32_t flag, string& data) {
   c->reschedule_ping_and_timeout_events();
 
   // Most of the command handlers assume the client is registered, logged in,
@@ -5634,7 +5449,7 @@ void on_command(
     check_unlicensed_command(c->version(), command);
   }
 
-  auto fn = handlers[command & 0xFF][static_cast<size_t>(c->version())];
+  auto fn = handlers[command & 0xFF][static_cast<size_t>(c->version()) - 2];
   if (fn) {
     fn(c, command, flag, data);
   } else {
@@ -5658,8 +5473,6 @@ void on_command_with_header(shared_ptr<Client> c, const string& data) {
       on_command(c, header.command, header.flag, sub_data);
       break;
     }
-    case Version::PC_PATCH:
-    case Version::BB_PATCH:
     case Version::PC_NTE:
     case Version::PC_V2: {
       auto& header = check_size_t<PSOCommandHeaderPC>(data, 0xFFFF);
