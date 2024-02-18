@@ -3584,7 +3584,7 @@ static void on_E5_BB(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
 }
 
 static void on_ED_BB(shared_ptr<Client> c, uint16_t command, uint32_t, string& data) {
-  auto p = c->character();
+  auto p = c->character(true, false);
   auto sys = c->system_file();
   switch (command) {
     case 0x01ED: {
