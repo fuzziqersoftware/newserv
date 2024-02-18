@@ -3212,6 +3212,132 @@ static void on_challenge_mode_retry_or_quit(shared_ptr<Client> c, uint8_t comman
   forward_subcommand(c, command, flag, data, size);
 }
 
+static void on_challenge_update_records(shared_ptr<Client> c, uint8_t command, uint8_t flag, void* data, size_t size) {
+  auto l = c->lobby.lock();
+  if (!l) {
+    c->log.warning("Not in any lobby; dropping command");
+    return;
+  }
+
+  const auto& cmd = check_size_t<G_SetChallengeRecordsBase_6x7C>(data, size, 0xFFFF);
+  if (cmd.client_id != c->lobby_client_id) {
+    return;
+  }
+
+  auto p = c->character(true, false);
+  Version c_version = c->version();
+  switch (c_version) {
+    case Version::DC_V2: {
+      const auto& cmd = check_size_t<G_SetChallengeRecords_DC_6x7C>(data, size);
+      p->challenge_records = cmd.records;
+      break;
+    }
+    case Version::PC_V2: {
+      const auto& cmd = check_size_t<G_SetChallengeRecords_DC_6x7C>(data, size);
+      p->challenge_records = cmd.records;
+      break;
+    }
+    case Version::GC_V3:
+    case Version::XB_V3: {
+      const auto& cmd = check_size_t<G_SetChallengeRecords_V3_6x7C>(data, size);
+      p->challenge_records = cmd.records;
+      break;
+    }
+    case Version::BB_V4: {
+      const auto& cmd = check_size_t<G_SetChallengeRecords_BB_6x7C>(data, size);
+      p->challenge_records = cmd.records;
+      break;
+    }
+    case Version::GC_NTE:
+      // TODO: DOes GC NTE ever send this command?
+      throw runtime_error("format is unknown for this game version");
+    default:
+      throw runtime_error("game version cannot send 6x7C");
+  }
+
+  string dc_data;
+  string pc_data;
+  string v3_data;
+  string bb_data;
+  auto send_to_client = [&](shared_ptr<Client> lc) -> void {
+    Version lc_version = lc->version();
+    const void* data_to_send = nullptr;
+    size_t size_to_send = 0;
+    if ((lc_version == c_version) || (is_v3(lc_version) && is_v3(c_version))) {
+      data_to_send = data;
+      size_to_send = size;
+    } else if (lc->version() == Version::DC_V2) {
+      if (dc_data.empty()) {
+        dc_data.resize(sizeof(G_SetChallengeRecords_DC_6x7C));
+        auto& dc_cmd = check_size_t<G_SetChallengeRecords_DC_6x7C>(dc_data);
+        dc_cmd.header = cmd.header;
+        dc_cmd.client_id = cmd.client_id;
+        dc_cmd.unknown_a1 = cmd.unknown_a1;
+        dc_cmd.records = p->challenge_records;
+      }
+      data_to_send = dc_data.data();
+      size_to_send = dc_data.size();
+    } else if (lc->version() == Version::PC_V2) {
+      if (pc_data.empty()) {
+        pc_data.resize(sizeof(G_SetChallengeRecords_PC_6x7C));
+        auto& pc_cmd = check_size_t<G_SetChallengeRecords_PC_6x7C>(pc_data);
+        pc_cmd.header = cmd.header;
+        pc_cmd.client_id = cmd.client_id;
+        pc_cmd.unknown_a1 = cmd.unknown_a1;
+        pc_cmd.records = p->challenge_records;
+      }
+      data_to_send = pc_data.data();
+      size_to_send = pc_data.size();
+    } else if (is_v3(lc->version())) {
+      if (v3_data.empty()) {
+        v3_data.resize(sizeof(G_SetChallengeRecords_V3_6x7C));
+        auto& v3_cmd = check_size_t<G_SetChallengeRecords_V3_6x7C>(v3_data);
+        v3_cmd.header = cmd.header;
+        v3_cmd.client_id = cmd.client_id;
+        v3_cmd.unknown_a1 = cmd.unknown_a1;
+        v3_cmd.records = p->challenge_records;
+      }
+      data_to_send = v3_data.data();
+      size_to_send = v3_data.size();
+    } else if (is_v4(lc->version())) {
+      if (bb_data.empty()) {
+        bb_data.resize(sizeof(G_SetChallengeRecords_BB_6x7C));
+        auto& bb_cmd = check_size_t<G_SetChallengeRecords_BB_6x7C>(bb_data);
+        bb_cmd.header = cmd.header;
+        bb_cmd.client_id = cmd.client_id;
+        bb_cmd.unknown_a1 = cmd.unknown_a1;
+        bb_cmd.records = p->challenge_records;
+      }
+      data_to_send = bb_data.data();
+      size_to_send = bb_data.size();
+    }
+
+    if (!data_to_send || !size_to_send) {
+      lc->log.info("Command cannot be translated to client\'s version");
+    } else {
+      send_command(lc, command, flag, data_to_send, size_to_send);
+    }
+  };
+
+  if (command_is_private(command)) {
+    if (flag >= l->max_clients) {
+      return;
+    }
+    auto target = l->clients[flag];
+    if (!target) {
+      return;
+    }
+    send_to_client(target);
+
+  } else {
+    for (auto& lc : l->clients) {
+      if (lc && (lc != c)) {
+        send_to_client(lc);
+      }
+    }
+  }
+}
+
 static void on_quest_exchange_item_bb(shared_ptr<Client> c, uint8_t, uint8_t, void* data, size_t size) {
   auto l = c->require_lobby();
   if (l->is_game() &&
@@ -3740,7 +3866,7 @@ const SubcommandDefinition subcommand_definitions[0x100] = {
     /* 6x79 */ {0x00, 0x00, 0x79, on_forward_check_lobby},
     /* 6x7A */ {0x00, 0x00, 0x7A, on_forward_check_game_client},
     /* 6x7B */ {0x00, 0x00, 0x7B, forward_subcommand_m},
-    /* 6x7C */ {0x00, 0x00, 0x7C, on_forward_check_game},
+    /* 6x7C */ {0x00, 0x00, 0x7C, on_challenge_update_records},
     /* 6x7D */ {0x00, 0x00, 0x7D, on_forward_check_game},
     /* 6x7E */ {0x00, 0x00, 0x7E, forward_subcommand_m},
     /* 6x7F */ {0x00, 0x00, 0x7F, on_battle_scores},

@@ -5024,29 +5024,25 @@ struct G_Unknown_6x7B {
   G_ClientIDHeader header;
 } __packed__;
 
-// 6x7C: Set challenge mode data (not valid on Episode 3)
+// 6x7C: Set Challenge records (not valid on Episode 3)
 
-struct G_SetChallengeModeData_6x7C {
+struct G_SetChallengeRecordsBase_6x7C {
   G_UnusedHeader header;
   le_uint16_t client_id = 0;
   parray<uint8_t, 2> unknown_a1;
-  le_uint16_t unknown_a2 = 0;
-  parray<uint8_t, 2> unknown_a3;
-  parray<le_uint32_t, 0x17> unknown_a4;
-  parray<uint8_t, 4> unknown_a5;
-  le_uint16_t unknown_a6 = 0;
-  parray<uint8_t, 2> unknown_a7;
-  le_uint32_t unknown_a8 = 0;
-  le_uint32_t unknown_a9 = 0;
-  le_uint32_t unknown_a10 = 0;
-  le_uint32_t unknown_a11 = 0;
-  le_uint32_t unknown_a12 = 0;
-  parray<uint8_t, 0x34> unknown_a13;
-  struct Entry {
-    le_uint32_t unknown_a1 = 0;
-    le_uint32_t unknown_a2 = 0;
-  } __packed__;
-  parray<Entry, 3> entries;
+} __packed__;
+
+struct G_SetChallengeRecords_DC_6x7C : G_SetChallengeRecordsBase_6x7C {
+  PlayerRecordsDC_Challenge records;
+} __packed__;
+struct G_SetChallengeRecords_PC_6x7C : G_SetChallengeRecordsBase_6x7C {
+  PlayerRecordsPC_Challenge records;
+} __packed__;
+struct G_SetChallengeRecords_V3_6x7C : G_SetChallengeRecordsBase_6x7C {
+  PlayerRecordsV3_Challenge<false> records;
+} __packed__;
+struct G_SetChallengeRecords_BB_6x7C : G_SetChallengeRecordsBase_6x7C {
+  PlayerRecordsBB_Challenge records;
 } __packed__;
 
 // 6x7D: Set battle mode data (not valid on Episode 3)
