@@ -122,11 +122,21 @@ uint8_t ItemCreator::normalize_area_number(uint8_t area) const {
 }
 
 ItemCreator::DropResult ItemCreator::on_box_item_drop(uint8_t area) {
-  return this->on_box_item_drop_with_area_norm(this->normalize_area_number(area));
+  try {
+    return this->on_box_item_drop_with_area_norm(this->normalize_area_number(area));
+  } catch (const exception& e) {
+    this->log.error("Exception in item creation: %s", e.what());
+    return DropResult();
+  }
 }
 
 ItemCreator::DropResult ItemCreator::on_monster_item_drop(uint32_t enemy_type, uint8_t area) {
-  return this->on_monster_item_drop_with_area_norm(enemy_type, this->normalize_area_number(area));
+  try {
+    return this->on_monster_item_drop_with_area_norm(enemy_type, this->normalize_area_number(area));
+  } catch (const exception& e) {
+    this->log.error("Exception in item creation: %s", e.what());
+    return DropResult();
+  }
 }
 
 ItemCreator::DropResult ItemCreator::on_box_item_drop_with_area_norm(uint8_t area_norm) {
