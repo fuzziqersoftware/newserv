@@ -135,6 +135,26 @@ void Client::Config::set_flags_for_version(Version version, int64_t sub_version)
   }
 }
 
+Client::ItemDropNotificationMode Client::Config::get_drop_notification_mode() const {
+  uint8_t mode_s = (this->check_flag(Flag::ITEM_DROP_NOTIFICATIONS_1) ? 1 : 0) |
+      (this->check_flag(Flag::ITEM_DROP_NOTIFICATIONS_2) ? 2 : 0);
+  return static_cast<Client::ItemDropNotificationMode>(mode_s);
+}
+
+void Client::Config::set_drop_notification_mode(ItemDropNotificationMode new_mode) {
+  uint8_t mode_s = static_cast<uint8_t>(new_mode);
+  if (mode_s & 1) {
+    this->set_flag(Client::Flag::ITEM_DROP_NOTIFICATIONS_1);
+  } else {
+    this->clear_flag(Client::Flag::ITEM_DROP_NOTIFICATIONS_1);
+  }
+  if (mode_s & 2) {
+    this->set_flag(Client::Flag::ITEM_DROP_NOTIFICATIONS_2);
+  } else {
+    this->clear_flag(Client::Flag::ITEM_DROP_NOTIFICATIONS_2);
+  }
+}
+
 bool Client::Config::should_update_vs(const Config& other) const {
   constexpr uint64_t mask = static_cast<uint64_t>(Flag::CLIENT_SIDE_MASK);
   return ((this->enabled_flags ^ other.enabled_flags) & mask) ||
@@ -197,7 +217,7 @@ Client::Client(
   this->config.set_flags_for_version(version, -1);
   auto s = server->get_state();
   if (is_v1_or_v2(this->version()) ? s->default_rare_notifs_enabled_v1_v2 : s->default_rare_notifs_enabled_v3_v4) {
-    this->config.set_flag(Flag::RARE_DROP_NOTIFICATIONS_ENABLED);
+    this->config.set_drop_notification_mode(ItemDropNotificationMode::RARES_ONLY);
   }
   this->config.specific_version = default_specific_version_for_version(version, -1);
 

@@ -1593,15 +1593,27 @@ void send_item_notification_if_needed(
     const Client::Config& config,
     const ItemData& item,
     bool is_from_rare_table) {
-  if (config.check_flag(Client::Flag::ALL_DROP_NOTIFICATIONS_ENABLED)) {
-    string name = s->describe_item(ch.version, item, true);
-    send_text_message(ch, name);
+  bool should_notify = false;
+  bool should_include_rare_header = false;
+  switch (config.get_drop_notification_mode()) {
+    case Client::ItemDropNotificationMode::NOTHING:
+      break;
+    case Client::ItemDropNotificationMode::RARES_ONLY:
+      should_notify = (is_from_rare_table || (item.data1[0] == 0x03)) && s->item_parameter_table(ch.version)->is_item_rare(item);
+      should_include_rare_header = true;
+      break;
+    case Client::ItemDropNotificationMode::ALL_ITEMS:
+      should_notify = (item.data1[0] != 0x04);
+      break;
+    case Client::ItemDropNotificationMode::ALL_ITEMS_INCLUDING_MESETA:
+      should_notify = true;
+      break;
+  }
 
-  } else if (config.check_flag(Client::Flag::RARE_DROP_NOTIFICATIONS_ENABLED) &&
-      (is_from_rare_table || (item.data1[0] == 0x03)) &&
-      s->item_parameter_table(ch.version)->is_item_rare(item)) {
+  if (should_notify) {
     string name = s->describe_item(ch.version, item, true);
-    send_text_message_printf(ch, "$C6Rare item dropped:\n%s", name.c_str());
+    const char* rare_header = (should_include_rare_header ? "$C6Rare item dropped:\n" : "");
+    send_text_message_printf(ch, "%s%s", rare_header, name.c_str());
   }
 }
 

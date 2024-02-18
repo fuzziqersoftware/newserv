@@ -72,8 +72,8 @@ public:
     INFINITE_HP_ENABLED                 = 0x0000000200000000,
     INFINITE_TP_ENABLED                 = 0x0000000400000000,
     DEBUG_ENABLED                       = 0x0000000800000000,
-    RARE_DROP_NOTIFICATIONS_ENABLED     = 0x0010000000000000,
-    ALL_DROP_NOTIFICATIONS_ENABLED      = 0x0020000000000000,
+    ITEM_DROP_NOTIFICATIONS_1           = 0x0010000000000000,
+    ITEM_DROP_NOTIFICATIONS_2           = 0x0020000000000000,
 
     // Proxy option flags
     PROXY_SAVE_FILES                    = 0x0000001000000000,
@@ -89,6 +89,12 @@ public:
     PROXY_BLOCK_FUNCTION_CALLS          = 0x0000800000000000,
     PROXY_EP3_UNMASK_WHISPERS           = 0x0008000000000000,
     // clang-format on
+  };
+  enum class ItemDropNotificationMode {
+    NOTHING = 0,
+    RARES_ONLY = 1,
+    ALL_ITEMS = 2,
+    ALL_ITEMS_INCLUDING_MESETA = 3,
   };
 
   static constexpr uint64_t DEFAULT_FLAGS = static_cast<uint64_t>(Flag::PROXY_CHAT_COMMANDS_ENABLED);
@@ -128,6 +134,9 @@ public:
     }
 
     void set_flags_for_version(Version version, int64_t sub_version);
+
+    ItemDropNotificationMode get_drop_notification_mode() const;
+    void set_drop_notification_mode(ItemDropNotificationMode new_mode);
 
     template <size_t Bytes>
     void parse_from(const parray<uint8_t, Bytes>& data) {

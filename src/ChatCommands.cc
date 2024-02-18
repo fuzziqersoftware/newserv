@@ -1553,20 +1553,20 @@ static void proxy_command_song(shared_ptr<ProxyServer::LinkedSession> ses, const
 }
 
 static void command_item_notifs(Channel& ch, Client::Config& config, const std::string& args) {
-  if (args == "all" || args == "on") {
-    config.clear_flag(Client::Flag::RARE_DROP_NOTIFICATIONS_ENABLED);
-    config.set_flag(Client::Flag::ALL_DROP_NOTIFICATIONS_ENABLED);
+  if (args == "every" || args == "everything") {
+    config.set_drop_notification_mode(Client::ItemDropNotificationMode::ALL_ITEMS_INCLUDING_MESETA);
+    send_text_message_printf(ch, "$C6Notifications enabled\nfor all items and\nMeseta");
+  } else if (args == "all" || args == "on") {
+    config.set_drop_notification_mode(Client::ItemDropNotificationMode::ALL_ITEMS);
     send_text_message_printf(ch, "$C6Notifications enabled\nfor all items");
   } else if (args == "rare" || args == "rares") {
-    config.set_flag(Client::Flag::RARE_DROP_NOTIFICATIONS_ENABLED);
-    config.clear_flag(Client::Flag::ALL_DROP_NOTIFICATIONS_ENABLED);
+    config.set_drop_notification_mode(Client::ItemDropNotificationMode::RARES_ONLY);
     send_text_message_printf(ch, "$C6Notifications enabled\nfor rare items only");
   } else if (args == "none" || args == "off") {
-    config.clear_flag(Client::Flag::RARE_DROP_NOTIFICATIONS_ENABLED);
-    config.clear_flag(Client::Flag::ALL_DROP_NOTIFICATIONS_ENABLED);
+    config.set_drop_notification_mode(Client::ItemDropNotificationMode::NOTHING);
     send_text_message_printf(ch, "$C6Notifications disabled\nfor all items");
   } else {
-    send_text_message_printf(ch, "$C6You must specify\n$C6off$C7, $C6rare$C7, or $C6on$C7");
+    send_text_message_printf(ch, "$C6You must specify\n$C6off$C7, $C6rare$C7, $C6on$C7, or\n$C6everything$C7");
   }
 }
 

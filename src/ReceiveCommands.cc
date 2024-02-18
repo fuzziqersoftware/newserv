@@ -49,14 +49,21 @@ static shared_ptr<const Menu> proxy_options_menu_for_client(shared_ptr<const Cli
       "Chat commands", "Enable chat\ncommands");
   add_flag_option(ProxyOptionsMenuItemID::PLAYER_NOTIFICATIONS, Client::Flag::PROXY_PLAYER_NOTIFICATIONS_ENABLED,
       "Player notifs", "Show a message\nwhen other players\njoin or leave");
-  static const char* item_drop_notifs_description = "Enable item drop\nnotifications\n\nYou can change this\nduring the game with\nthe %sitemnotifs\ncommand";
+  static const char* item_drop_notifs_description = "Enable item drop\nnotifications:\n- No = no notifs\n- Rare = rares only\n- Item = all items\nbut not Meseta\n- Every = everything";
   if (!is_ep3(c->version())) {
-    if (c->config.check_flag(Client::Flag::ALL_DROP_NOTIFICATIONS_ENABLED)) {
-      ret->items.emplace_back(ProxyOptionsMenuItemID::DROP_NOTIFICATIONS, "All drop notifs", item_drop_notifs_description, 0);
-    } else if (c->config.check_flag(Client::Flag::RARE_DROP_NOTIFICATIONS_ENABLED)) {
-      ret->items.emplace_back(ProxyOptionsMenuItemID::DROP_NOTIFICATIONS, "Rare drop notifs", item_drop_notifs_description, 0);
-    } else {
-      ret->items.emplace_back(ProxyOptionsMenuItemID::DROP_NOTIFICATIONS, "No drop notifs", item_drop_notifs_description, 0);
+    switch (c->config.get_drop_notification_mode()) {
+      case Client::ItemDropNotificationMode::NOTHING:
+        ret->items.emplace_back(ProxyOptionsMenuItemID::DROP_NOTIFICATIONS, "No drop notifs", item_drop_notifs_description, 0);
+        break;
+      case Client::ItemDropNotificationMode::RARES_ONLY:
+        ret->items.emplace_back(ProxyOptionsMenuItemID::DROP_NOTIFICATIONS, "Rare drop notifs", item_drop_notifs_description, 0);
+        break;
+      case Client::ItemDropNotificationMode::ALL_ITEMS:
+        ret->items.emplace_back(ProxyOptionsMenuItemID::DROP_NOTIFICATIONS, "Item drop notifs", item_drop_notifs_description, 0);
+        break;
+      case Client::ItemDropNotificationMode::ALL_ITEMS_INCLUDING_MESETA:
+        ret->items.emplace_back(ProxyOptionsMenuItemID::DROP_NOTIFICATIONS, "Every drop notif", item_drop_notifs_description, 0);
+        break;
     }
   }
   add_flag_option(ProxyOptionsMenuItemID::BLOCK_PINGS, Client::Flag::PROXY_SUPPRESS_CLIENT_PINGS,
@@ -2304,15 +2311,19 @@ static void on_10(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
           c->config.toggle_flag(Client::Flag::PROXY_PLAYER_NOTIFICATIONS_ENABLED);
           goto resend_proxy_options_menu;
         case ProxyOptionsMenuItemID::DROP_NOTIFICATIONS:
-          if (c->config.check_flag(Client::Flag::ALL_DROP_NOTIFICATIONS_ENABLED)) {
-            c->config.clear_flag(Client::Flag::ALL_DROP_NOTIFICATIONS_ENABLED);
-            c->config.clear_flag(Client::Flag::RARE_DROP_NOTIFICATIONS_ENABLED);
-          } else if (c->config.check_flag(Client::Flag::RARE_DROP_NOTIFICATIONS_ENABLED)) {
-            c->config.set_flag(Client::Flag::ALL_DROP_NOTIFICATIONS_ENABLED);
-            c->config.clear_flag(Client::Flag::RARE_DROP_NOTIFICATIONS_ENABLED);
-          } else {
-            c->config.clear_flag(Client::Flag::ALL_DROP_NOTIFICATIONS_ENABLED);
-            c->config.set_flag(Client::Flag::RARE_DROP_NOTIFICATIONS_ENABLED);
+          switch (c->config.get_drop_notification_mode()) {
+            case Client::ItemDropNotificationMode::NOTHING:
+              c->config.set_drop_notification_mode(Client::ItemDropNotificationMode::RARES_ONLY);
+              break;
+            case Client::ItemDropNotificationMode::RARES_ONLY:
+              c->config.set_drop_notification_mode(Client::ItemDropNotificationMode::ALL_ITEMS);
+              break;
+            case Client::ItemDropNotificationMode::ALL_ITEMS:
+              c->config.set_drop_notification_mode(Client::ItemDropNotificationMode::ALL_ITEMS_INCLUDING_MESETA);
+              break;
+            case Client::ItemDropNotificationMode::ALL_ITEMS_INCLUDING_MESETA:
+              c->config.set_drop_notification_mode(Client::ItemDropNotificationMode::NOTHING);
+              break;
           }
           goto resend_proxy_options_menu;
         case ProxyOptionsMenuItemID::BLOCK_PINGS:
