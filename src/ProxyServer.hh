@@ -74,6 +74,16 @@ public:
     ItemData next_drop_item;
     uint32_t next_item_id;
 
+    enum class DropMode {
+      DISABLED = 0,
+      PASSTHROUGH,
+      INTERCEPT,
+    };
+    DropMode drop_mode;
+    std::shared_ptr<std::string> quest_dat_data;
+    std::shared_ptr<ItemCreator> item_creator;
+    std::shared_ptr<Map> map;
+
     struct LobbyPlayer {
       uint32_t guild_card_number = 0;
       uint64_t xb_user_id = 0;
@@ -90,7 +100,12 @@ public:
     float z;
     bool is_in_game;
     bool is_in_quest;
-    uint8_t difficulty;
+    uint8_t lobby_event;
+    uint8_t lobby_difficulty;
+    uint8_t lobby_section_id;
+    GameMode lobby_mode;
+    Episode lobby_episode;
+    uint32_t lobby_random_seed;
     uint64_t client_ping_start_time = 0;
     uint64_t server_ping_start_time = 0;
 

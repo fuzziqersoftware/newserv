@@ -359,7 +359,7 @@ static void proxy_command_qset_qclear(shared_ptr<ProxyServer::LinkedSession> ses
     ses->client_channel.send(0x60, 0x00, &cmd, sizeof(cmd));
     ses->server_channel.send(0x60, 0x00, &cmd, sizeof(cmd));
   } else {
-    G_UpdateQuestFlag_V3_BB_6x75 cmd = {{{0x75, 0x03, 0x0000}, flag_num, should_set ? 0 : 1}, ses->difficulty, 0x0000};
+    G_UpdateQuestFlag_V3_BB_6x75 cmd = {{{0x75, 0x03, 0x0000}, flag_num, should_set ? 0 : 1}, ses->lobby_difficulty, 0x0000};
     ses->client_channel.send(0x60, 0x00, &cmd, sizeof(cmd));
     ses->server_channel.send(0x60, 0x00, &cmd, sizeof(cmd));
   }
@@ -1705,6 +1705,51 @@ static void server_command_dropmode(shared_ptr<Client> c, const std::string& arg
   }
 }
 
+static void proxy_command_dropmode(shared_ptr<ProxyServer::LinkedSession> ses, const std::string& args) {
+  check_cheats_allowed(ses->require_server_state(), ses);
+
+  using DropMode = ProxyServer::LinkedSession::DropMode;
+  if (args.empty()) {
+    switch (ses->drop_mode) {
+      case DropMode::DISABLED:
+        send_text_message(ses->client_channel, "Drop mode: disabled");
+        break;
+      case DropMode::PASSTHROUGH:
+        send_text_message(ses->client_channel, "Drop mode: default");
+        break;
+      case DropMode::INTERCEPT:
+        send_text_message(ses->client_channel, "Drop mode: proxy");
+        break;
+    }
+
+  } else {
+    DropMode new_mode;
+    if ((args == "none") || (args == "disabled")) {
+      new_mode = DropMode::DISABLED;
+    } else if ((args == "default") || (args == "passthrough")) {
+      new_mode = DropMode::PASSTHROUGH;
+    } else if ((args == "proxy") || (args == "intercept")) {
+      new_mode = DropMode::INTERCEPT;
+    } else {
+      send_text_message(ses->client_channel, "Invalid drop mode");
+      return;
+    }
+
+    ses->set_drop_mode(new_mode);
+    switch (ses->drop_mode) {
+      case DropMode::DISABLED:
+        send_text_message(ses->client_channel, "Item drops disabled");
+        break;
+      case DropMode::PASSTHROUGH:
+        send_text_message(ses->client_channel, "Item drops changed\nto default mode");
+        break;
+      case DropMode::INTERCEPT:
+        send_text_message(ses->client_channel, "Item drops changed\nto proxy mode");
+        break;
+    }
+  }
+}
+
 static void server_command_item(shared_ptr<Client> c, const std::string& args) {
   auto s = c->require_server_state();
   auto l = c->require_lobby();
@@ -2092,7 +2137,7 @@ static const unordered_map<string, ChatCommandDefinition> chat_commands({
     {"$cheat", {server_command_cheat, nullptr}},
     {"$debug", {server_command_debug, nullptr}},
     {"$dicerange", {server_command_ep3_set_dice_range, nullptr}},
-    {"$dropmode", {server_command_dropmode, nullptr}},
+    {"$dropmode", {server_command_dropmode, proxy_command_dropmode}},
     {"$edit", {server_command_edit, nullptr}},
     {"$ep3battledebug", {server_command_enable_ep3_battle_debug_menu, nullptr}},
     {"$event", {server_command_lobby_event, proxy_command_lobby_event}},

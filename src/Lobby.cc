@@ -269,17 +269,14 @@ shared_ptr<Map> Lobby::load_maps(
     uint32_t lobby_id,
     shared_ptr<const Map::RareEnemyRates> rare_rates,
     shared_ptr<PSOLFGEncryption> random_crypt,
-    shared_ptr<const VersionedQuest> vq) {
-  if (!vq->dat_contents_decompressed) {
-    throw runtime_error("quest does not have DAT data");
-  }
+    shared_ptr<const string> quest_dat_contents_decompressed) {
   auto map = make_shared<Map>(version, lobby_id, random_crypt);
   map->add_enemies_and_objects_from_quest_data(
       episode,
       difficulty,
       event,
-      vq->dat_contents_decompressed->data(),
-      vq->dat_contents_decompressed->size(),
+      quest_dat_contents_decompressed->data(),
+      quest_dat_contents_decompressed->size(),
       rare_rates);
   return map;
 }
@@ -377,6 +374,9 @@ void Lobby::load_maps() {
     }
 
     auto vq = this->quest->version(this->base_version, leader_c->language());
+    if (!vq->dat_contents_decompressed) {
+      throw runtime_error("quest does not have DAT data");
+    }
     this->map = this->load_maps(
         this->base_version,
         this->episode,
@@ -385,7 +385,7 @@ void Lobby::load_maps() {
         this->lobby_id,
         rare_rates,
         this->random_crypt,
-        vq);
+        vq->dat_contents_decompressed);
 
   } else if (this->mode != GameMode::CHALLENGE) {
     auto s = this->require_server_state();

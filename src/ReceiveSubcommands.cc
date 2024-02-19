@@ -2148,27 +2148,7 @@ static void on_sort_inventory_bb(shared_ptr<Client> c, uint8_t, uint8_t, void* d
 ////////////////////////////////////////////////////////////////////////////////
 // EXP/Drop Item commands
 
-static void on_entity_drop_item_request(shared_ptr<Client> c, uint8_t command, uint8_t flag, void* data, size_t size) {
-  auto s = c->require_server_state();
-  auto l = c->require_lobby();
-  if (!l->is_game()) {
-    return;
-  }
-
-  switch (l->drop_mode) {
-    case Lobby::DropMode::CLIENT:
-      forward_subcommand(c, command, flag, data, size);
-      return;
-    case Lobby::DropMode::DISABLED:
-      return;
-    case Lobby::DropMode::SERVER_SHARED:
-    case Lobby::DropMode::SERVER_DUPLICATE:
-    case Lobby::DropMode::SERVER_PRIVATE:
-      break;
-    default:
-      throw logic_error("invalid drop mode");
-  }
-
+G_SpecializableItemDropRequest_6xA2 normalize_drop_request(const void* data, size_t size) {
   G_SpecializableItemDropRequest_6xA2 cmd;
   if (size == sizeof(G_SpecializableItemDropRequest_6xA2)) {
     cmd = check_size_t<G_SpecializableItemDropRequest_6xA2>(data, size);
@@ -2200,21 +2180,35 @@ static void on_entity_drop_item_request(shared_ptr<Client> c, uint8_t command, u
     cmd.ignore_def = in_cmd.ignore_def;
     cmd.effective_area = in_cmd.floor;
   }
+  return cmd;
+}
+
+DropReconcileResult reconcile_drop_request_with_map(
+    PrefixedLogger& log,
+    Channel& client_channel,
+    G_SpecializableItemDropRequest_6xA2& cmd,
+    Version version,
+    Episode episode,
+    const Client::Config& config,
+    shared_ptr<Map> map,
+    bool mark_drop) {
+  DropReconcileResult res;
+  res.effective_rt_index = 0xFF;
+  res.is_box = (cmd.rt_index == 0x30);
+  res.should_drop = true;
+  res.ignore_def = (cmd.ignore_def != 0);
 
   Map::Object* map_object = nullptr;
   Map::Enemy* map_enemy = nullptr;
-  bool ignore_def = (cmd.ignore_def != 0);
-  uint8_t effective_rt_index = 0xFF;
-  bool is_box = (cmd.rt_index == 0x30);
-  if (is_box) {
-    if (l->map) {
-      map_object = &l->map->objects.at(cmd.entity_id);
-      l->log.info("Drop check for K-%hX %c %s",
-          map_object->object_id, ignore_def ? 'G' : 'S', Map::name_for_object_type(map_object->base_type));
+  if (res.is_box) {
+    if (map) {
+      map_object = &map->objects.at(cmd.entity_id);
+      log.info("Drop check for K-%hX %c %s",
+          map_object->object_id, res.ignore_def ? 'G' : 'S', Map::name_for_object_type(map_object->base_type));
       if (cmd.floor != map_object->floor) {
-        l->log.warning("Floor %02hhX from command does not match object\'s expected floor %02hhX", cmd.floor, map_object->floor);
+        log.warning("Floor %02hhX from command does not match object\'s expected floor %02hhX", cmd.floor, map_object->floor);
       }
-      if (is_v1_or_v2(l->base_version) && (l->base_version != Version::GC_NTE)) {
+      if (is_v1_or_v2(version) && (version != Version::GC_NTE)) {
         // V1 and V2 don't have 6xA2, so we can't get ignore_def or the object
         // parameters from the client on those versions
         cmd.param3 = map_object->param3;
@@ -2223,62 +2217,90 @@ static void on_entity_drop_item_request(shared_ptr<Client> c, uint8_t command, u
         cmd.param6 = map_object->param6;
       }
       bool object_ignore_def = (map_object->param1 > 0.0);
-      if (ignore_def != object_ignore_def) {
-        l->log.warning("ignore_def value %s from command does not match object\'s expected ignore_def %s (from p1=%g)",
-            ignore_def ? "true" : "false", object_ignore_def ? "true" : "false", map_object->param1);
+      if (res.ignore_def != object_ignore_def) {
+        log.warning("ignore_def value %s from command does not match object\'s expected ignore_def %s (from p1=%g)",
+            res.ignore_def ? "true" : "false", object_ignore_def ? "true" : "false", map_object->param1);
       }
-      if (c->config.check_flag(Client::Flag::DEBUG_ENABLED)) {
-        send_text_message_printf(c, "$C5K-%hX %c %s",
-            map_object->object_id, ignore_def ? 'G' : 'S', Map::name_for_object_type(map_object->base_type));
+      if (config.check_flag(Client::Flag::DEBUG_ENABLED)) {
+        send_text_message_printf(client_channel, "$C5K-%hX %c %s",
+            map_object->object_id, res.ignore_def ? 'G' : 'S', Map::name_for_object_type(map_object->base_type));
       }
     }
 
   } else {
-    if (l->map) {
-      map_enemy = &l->map->enemies.at(cmd.entity_id);
-      l->log.info("Drop check for E-%hX %s", map_enemy->enemy_id, name_for_enum(map_enemy->type));
-      effective_rt_index = rare_table_index_for_enemy_type(map_enemy->type);
+    if (map) {
+      map_enemy = &map->enemies.at(cmd.entity_id);
+      log.info("Drop check for E-%hX %s", map_enemy->enemy_id, name_for_enum(map_enemy->type));
+      res.effective_rt_index = rare_table_index_for_enemy_type(map_enemy->type);
       // rt_indexes in Episode 4 don't match those sent in the command; we just
       // ignore what the client sends.
-      if ((l->episode != Episode::EP4) && (cmd.rt_index != effective_rt_index)) {
-        l->log.warning("rt_index %02hhX from command does not match entity\'s expected index %02" PRIX32,
-            cmd.rt_index, effective_rt_index);
-        if (!is_v4(l->base_version)) {
-          effective_rt_index = cmd.rt_index;
+      if ((episode != Episode::EP4) && (cmd.rt_index != res.effective_rt_index)) {
+        log.warning("rt_index %02hhX from command does not match entity\'s expected index %02" PRIX32,
+            cmd.rt_index, res.effective_rt_index);
+        if (!is_v4(version)) {
+          res.effective_rt_index = cmd.rt_index;
         }
       }
       if (cmd.floor != map_enemy->floor) {
-        l->log.warning("Floor %02hhX from command does not match entity\'s expected floor %02hhX",
+        log.warning("Floor %02hhX from command does not match entity\'s expected floor %02hhX",
             cmd.floor, map_enemy->floor);
       }
-      if (c->config.check_flag(Client::Flag::DEBUG_ENABLED)) {
-        send_text_message_printf(c, "$C5E-%hX %s", map_enemy->enemy_id, name_for_enum(map_enemy->type));
+      if (config.check_flag(Client::Flag::DEBUG_ENABLED)) {
+        send_text_message_printf(client_channel, "$C5E-%hX %s", map_enemy->enemy_id, name_for_enum(map_enemy->type));
       }
     }
   }
 
-  bool should_drop = true;
-  if (map_object) {
-    if (map_object->item_drop_checked) {
-      l->log.info("Drop check has already occurred for K-%04hX; skipping it", map_object->object_id);
-      should_drop = false;
-    } else {
-      map_object->item_drop_checked = true;
+  if (mark_drop) {
+    if (map_object) {
+      if (map_object->item_drop_checked) {
+        log.info("Drop check has already occurred for K-%04hX; skipping it", map_object->object_id);
+        res.should_drop = false;
+      } else {
+        map_object->item_drop_checked = true;
+      }
     }
-  }
-  if (map_enemy) {
-    if (map_enemy->state_flags & Map::Enemy::Flag::ITEM_DROPPED) {
-      l->log.info("Drop check has already occurred for E-%04hX; skipping it", map_enemy->enemy_id);
-      should_drop = false;
-    } else {
-      map_enemy->state_flags |= Map::Enemy::Flag::ITEM_DROPPED;
+    if (map_enemy) {
+      if (map_enemy->state_flags & Map::Enemy::Flag::ITEM_DROPPED) {
+        log.info("Drop check has already occurred for E-%04hX; skipping it", map_enemy->enemy_id);
+        res.should_drop = false;
+      } else {
+        map_enemy->state_flags |= Map::Enemy::Flag::ITEM_DROPPED;
+      }
     }
   }
 
-  if (should_drop) {
+  return res;
+}
+
+static void on_entity_drop_item_request(shared_ptr<Client> c, uint8_t command, uint8_t flag, void* data, size_t size) {
+  auto s = c->require_server_state();
+  auto l = c->require_lobby();
+  if (!l->is_game()) {
+    return;
+  }
+
+  switch (l->drop_mode) {
+    case Lobby::DropMode::CLIENT:
+      forward_subcommand(c, command, flag, data, size);
+      return;
+    case Lobby::DropMode::DISABLED:
+      return;
+    case Lobby::DropMode::SERVER_SHARED:
+    case Lobby::DropMode::SERVER_DUPLICATE:
+    case Lobby::DropMode::SERVER_PRIVATE:
+      break;
+    default:
+      throw logic_error("invalid drop mode");
+  }
+
+  G_SpecializableItemDropRequest_6xA2 cmd = normalize_drop_request(data, size);
+  auto rec = reconcile_drop_request_with_map(c->log, c->channel, cmd, c->version(), l->episode, c->config, l->map, true);
+
+  if (rec.should_drop) {
     auto generate_item = [&]() -> ItemCreator::DropResult {
-      if (is_box) {
-        if (ignore_def) {
+      if (rec.is_box) {
+        if (rec.ignore_def) {
           l->log.info("Creating item from box %04hX (area %02hX)", cmd.entity_id.load(), cmd.effective_area);
           return l->item_creator->on_box_item_drop(cmd.effective_area);
         } else {
@@ -2288,7 +2310,7 @@ static void on_entity_drop_item_request(shared_ptr<Client> c, uint8_t command, u
         }
       } else {
         l->log.info("Creating item from enemy %04hX (area %02hX)", cmd.entity_id.load(), cmd.effective_area);
-        return l->item_creator->on_monster_item_drop(effective_rt_index, cmd.effective_area);
+        return l->item_creator->on_monster_item_drop(rec.effective_rt_index, cmd.effective_area);
       }
     };
 
@@ -2308,12 +2330,12 @@ static void on_entity_drop_item_request(shared_ptr<Client> c, uint8_t command, u
           l->log.info("Entity %04hX (area %02hX) created item %s", cmd.entity_id.load(), cmd.effective_area, name.c_str());
           if (l->drop_mode == Lobby::DropMode::SERVER_DUPLICATE) {
             for (const auto& lc : l->clients) {
-              if (lc && (is_box || (lc->floor == cmd.floor))) {
+              if (lc && (rec.is_box || (lc->floor == cmd.floor))) {
                 res.item.id = l->generate_item_id(0xFF);
                 l->log.info("Creating item %08" PRIX32 " at %02hhX:%g,%g for %s",
                     res.item.id.load(), cmd.floor, cmd.x.load(), cmd.z.load(), lc->channel.name.c_str());
                 l->add_item(cmd.floor, res.item, cmd.x, cmd.z, (1 << lc->lobby_client_id));
-                send_drop_item_to_channel(s, lc->channel, res.item, !is_box, cmd.floor, cmd.x, cmd.z, cmd.entity_id);
+                send_drop_item_to_channel(s, lc->channel, res.item, !rec.is_box, cmd.floor, cmd.x, cmd.z, cmd.entity_id);
                 send_item_notification_if_needed(s, lc->channel, lc->config, res.item, res.is_from_rare_table);
               }
             }
@@ -2323,7 +2345,7 @@ static void on_entity_drop_item_request(shared_ptr<Client> c, uint8_t command, u
             l->log.info("Creating item %08" PRIX32 " at %02hhX:%g,%g for all clients",
                 res.item.id.load(), cmd.floor, cmd.x.load(), cmd.z.load());
             l->add_item(cmd.floor, res.item, cmd.x, cmd.z, 0x00F);
-            send_drop_item_to_lobby(l, res.item, !is_box, cmd.floor, cmd.x, cmd.z, cmd.entity_id);
+            send_drop_item_to_lobby(l, res.item, !rec.is_box, cmd.floor, cmd.x, cmd.z, cmd.entity_id);
             for (auto lc : l->clients) {
               if (lc) {
                 send_item_notification_if_needed(s, lc->channel, lc->config, res.item, res.is_from_rare_table);
@@ -2335,7 +2357,7 @@ static void on_entity_drop_item_request(shared_ptr<Client> c, uint8_t command, u
       }
       case Lobby::DropMode::SERVER_PRIVATE: {
         for (const auto& lc : l->clients) {
-          if (lc && (is_box || (lc->floor == cmd.floor))) {
+          if (lc && (rec.is_box || (lc->floor == cmd.floor))) {
             auto res = generate_item();
             if (res.item.empty()) {
               l->log.info("No item was created for %s", lc->channel.name.c_str());
@@ -2346,7 +2368,7 @@ static void on_entity_drop_item_request(shared_ptr<Client> c, uint8_t command, u
               l->log.info("Creating item %08" PRIX32 " at %02hhX:%g,%g for %s",
                   res.item.id.load(), cmd.floor, cmd.x.load(), cmd.z.load(), lc->channel.name.c_str());
               l->add_item(cmd.floor, res.item, cmd.x, cmd.z, (1 << lc->lobby_client_id));
-              send_drop_item_to_channel(s, lc->channel, res.item, !is_box, cmd.floor, cmd.x, cmd.z, cmd.entity_id);
+              send_drop_item_to_channel(s, lc->channel, res.item, !rec.is_box, cmd.floor, cmd.x, cmd.z, cmd.entity_id);
               send_item_notification_if_needed(s, lc->channel, lc->config, res.item, res.is_from_rare_table);
             }
           }

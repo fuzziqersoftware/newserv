@@ -49,7 +49,7 @@ static shared_ptr<const Menu> proxy_options_menu_for_client(shared_ptr<const Cli
       "Chat commands", "Enable chat\ncommands");
   add_flag_option(ProxyOptionsMenuItemID::PLAYER_NOTIFICATIONS, Client::Flag::PROXY_PLAYER_NOTIFICATIONS_ENABLED,
       "Player notifs", "Show a message\nwhen other players\njoin or leave");
-  static const char* item_drop_notifs_description = "Enable item drop\nnotifications:\n- No = no notifs\n- Rare = rares only\n- Item = all items\nbut not Meseta\n- Every = everything";
+  static const char* item_drop_notifs_description = "Enable item drop\nnotifications:\n- No: no notifs\n- Rare: rares only\n- Item: all items\nbut not Meseta\n- Every: everything";
   if (!is_ep3(c->version())) {
     switch (c->config.get_drop_notification_mode()) {
       case Client::ItemDropNotificationMode::NOTHING:

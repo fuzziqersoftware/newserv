@@ -2128,7 +2128,10 @@ Action a_find_rare_enemy_seeds(
 
         shared_ptr<Map> map;
         if (vq) {
-          map = Lobby::load_maps(version, episode, difficulty, 0, 0, rare_rates, random_crypt, vq);
+          if (!vq->dat_contents_decompressed) {
+            throw runtime_error("quest does not have DAT data");
+          }
+          map = Lobby::load_maps(version, episode, difficulty, 0, 0, rare_rates, random_crypt, vq->dat_contents_decompressed);
 
         } else {
           generate_variations_deprecated(variations, random_crypt, version, episode, (mode == GameMode::SOLO));

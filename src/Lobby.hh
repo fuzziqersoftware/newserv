@@ -203,7 +203,7 @@ struct Lobby : public std::enable_shared_from_this<Lobby> {
       uint32_t lobby_id,
       std::shared_ptr<const Map::RareEnemyRates> rare_rates,
       std::shared_ptr<PSOLFGEncryption> random_crypt,
-      std::shared_ptr<const VersionedQuest> vq);
+      std::shared_ptr<const std::string> quest_dat_contents_decompressed);
   static std::shared_ptr<Map> load_maps(
       Version version,
       Episode episode,

@@ -76,18 +76,6 @@ static void forward_command(shared_ptr<ProxyServer::LinkedSession> ses, bool to_
   }
 }
 
-static void check_implemented_subcommand(
-    shared_ptr<ProxyServer::LinkedSession> ses, const string& data) {
-  if (data.size() < 4) {
-    ses->log.warning("Received broadcast/target command with no contents");
-  } else {
-    if (!subcommand_is_implemented(data[0])) {
-      ses->log.warning("Received subcommand %02hhX which is not implemented on the server",
-          data[0]);
-    }
-  }
-}
-
 // Command handlers. These are called to preprocess or react to specific
 // commands in either direction. The functions have abbreviated names in order
 // to make the massive table more readable. The functions' names are, in
@@ -954,6 +942,73 @@ static HandlerResult S_V3_BB_DA(shared_ptr<ProxyServer::LinkedSession> ses, uint
   }
 }
 
+static HandlerResult SC_6x60_6xA2(shared_ptr<ProxyServer::LinkedSession> ses, const string& data) {
+  if (!ses->is_in_game) {
+    return HandlerResult::Type::FORWARD;
+  }
+
+  if (ses->next_drop_item.data1d[0]) {
+    G_SpecializableItemDropRequest_6xA2 cmd = normalize_drop_request(data.data(), data.size());
+    auto s = ses->require_server_state();
+    ses->next_drop_item.id = ses->next_item_id++;
+    bool is_box = (cmd.rt_index == 0x30);
+    send_drop_item_to_channel(s, ses->server_channel, ses->next_drop_item, !is_box, cmd.floor, cmd.x, cmd.z, cmd.entity_id);
+    send_drop_item_to_channel(s, ses->client_channel, ses->next_drop_item, !is_box, cmd.floor, cmd.x, cmd.z, cmd.entity_id);
+    ses->next_drop_item.clear();
+    return HandlerResult::Type::SUPPRESS;
+  }
+
+  using DropMode = ProxyServer::LinkedSession::DropMode;
+  switch (ses->drop_mode) {
+    case DropMode::DISABLED:
+      return HandlerResult::Type::SUPPRESS;
+    case DropMode::PASSTHROUGH:
+      return HandlerResult::Type::FORWARD;
+    case DropMode::INTERCEPT:
+      if (!ses->item_creator) {
+        ses->log.warning("Received item drop request in intercept mode, but item creator is missing");
+        return HandlerResult::Type::FORWARD;
+      }
+      break;
+    default:
+      throw logic_error("invalid drop mode");
+  }
+
+  G_SpecializableItemDropRequest_6xA2 cmd = normalize_drop_request(data.data(), data.size());
+  auto rec = reconcile_drop_request_with_map(
+      ses->log, ses->client_channel, cmd, ses->version(), ses->lobby_episode, ses->config, ses->map, false);
+
+  ItemCreator::DropResult res;
+  if (rec.is_box) {
+    if (rec.ignore_def) {
+      ses->log.info("Creating item from box %04hX (area %02hX)", cmd.entity_id.load(), cmd.effective_area);
+      res = ses->item_creator->on_box_item_drop(cmd.effective_area);
+    } else {
+      ses->log.info("Creating item from box %04hX (area %02hX; specialized with %g %08" PRIX32 " %08" PRIX32 " %08" PRIX32 ")",
+          cmd.entity_id.load(), cmd.effective_area, cmd.param3.load(), cmd.param4.load(), cmd.param5.load(), cmd.param6.load());
+      res = ses->item_creator->on_specialized_box_item_drop(cmd.effective_area, cmd.param3, cmd.param4, cmd.param5, cmd.param6);
+    }
+  } else {
+    ses->log.info("Creating item from enemy %04hX (area %02hX)", cmd.entity_id.load(), cmd.effective_area);
+    res = ses->item_creator->on_monster_item_drop(rec.effective_rt_index, cmd.effective_area);
+  }
+
+  if (res.item.empty()) {
+    ses->log.info("No item was created");
+  } else {
+    auto s = ses->require_server_state();
+    string name = s->describe_item(ses->version(), res.item, false);
+    ses->log.info("Entity %04hX (area %02hX) created item %s", cmd.entity_id.load(), cmd.effective_area, name.c_str());
+    res.item.id = ses->next_item_id++;
+    ses->log.info("Creating item %08" PRIX32 " at %02hhX:%g,%g for all clients",
+        res.item.id.load(), cmd.floor, cmd.x.load(), cmd.z.load());
+    send_drop_item_to_channel(s, ses->client_channel, res.item, !rec.is_box, cmd.floor, cmd.x, cmd.z, cmd.entity_id);
+    send_drop_item_to_channel(s, ses->server_channel, res.item, !rec.is_box, cmd.floor, cmd.x, cmd.z, cmd.entity_id);
+    send_item_notification_if_needed(s, ses->client_channel, ses->config, res.item, res.is_from_rare_table);
+  }
+  return HandlerResult::Type::SUPPRESS;
+}
+
 static HandlerResult S_6x(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t, uint32_t, string& data) {
   auto s = ses->require_server_state();
 
@@ -1061,32 +1116,15 @@ static HandlerResult S_6x(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t, 
       const auto& cmd = check_size_t<G_DropItem_DC_6x5F>(data, sizeof(G_DropItem_PC_V3_BB_6x5F));
       send_item_notification_if_needed(ses->require_server_state(), ses->client_channel, ses->config, cmd.item.item, true);
 
-    } else if ((data[0] == 0x60) && ses->next_drop_item.data1d[0] && !is_v4(ses->version())) {
-      const auto& cmd = check_size_t<G_StandardDropItemRequest_DC_6x60>(
-          data, sizeof(G_StandardDropItemRequest_PC_V3_BB_6x60));
-      ses->next_drop_item.id = ses->next_item_id++;
-      send_drop_item_to_channel(s, ses->server_channel, ses->next_drop_item, true, cmd.floor, cmd.x, cmd.z, cmd.entity_id);
-      send_drop_item_to_channel(s, ses->client_channel, ses->next_drop_item, true, cmd.floor, cmd.x, cmd.z, cmd.entity_id);
-      ses->next_drop_item.clear();
-      return HandlerResult::Type::SUPPRESS;
-
-      // Note: This static_cast is required to make compilers not complain that
-      // the comparison is always false (which even happens in some environments
-      // if we use -0x5E... apparently char is unsigned on some systems, or
-      // std::string's char_type isn't char??)
-    } else if ((static_cast<uint8_t>(data[0]) == 0xA2) && ses->next_drop_item.data1d[0] && !is_v4(ses->version())) {
-      const auto& cmd = check_size_t<G_SpecializableItemDropRequest_6xA2>(data);
-      ses->next_drop_item.id = ses->next_item_id++;
-      send_drop_item_to_channel(s, ses->server_channel, ses->next_drop_item, false, cmd.floor, cmd.x, cmd.z, cmd.entity_id);
-      send_drop_item_to_channel(s, ses->client_channel, ses->next_drop_item, false, cmd.floor, cmd.x, cmd.z, cmd.entity_id);
-      ses->next_drop_item.clear();
-      return HandlerResult::Type::SUPPRESS;
+    } else if ((data[0] == 0x60) || (static_cast<uint8_t>(data[0]) == 0xA2)) {
+      return SC_6x60_6xA2(ses, data);
 
     } else if ((static_cast<uint8_t>(data[0]) == 0xB5) && is_ep3(ses->version()) && (data.size() > 4)) {
       if (data[4] == 0x1A) {
         return HandlerResult::Type::SUPPRESS;
       } else if (data[4] == 0x36) {
-        const auto& cmd = check_size_t<G_RecreatePlayer_Ep3_6xB5x36>(data);
+        auto& cmd = check_size_t<G_RecreatePlayer_Ep3_6xB5x36>(data);
+        set_mask_for_ep3_game_command(&cmd, sizeof(cmd), 0);
         if (ses->is_in_game && (cmd.client_id >= 4)) {
           return HandlerResult::Type::SUPPRESS;
         }
@@ -1299,6 +1337,20 @@ static HandlerResult S_13_A7(shared_ptr<ProxyServer::LinkedSession> ses, uint16_
     } else {
       ses->log.info("Download complete for file %s", sf->basename.c_str());
     }
+
+    if (!sf->is_download && ends_with(sf->basename, ".dat")) {
+      auto quest_dat_data = make_shared<std::string>(join(sf->blocks));
+      ses->map = Lobby::load_maps(
+          ses->version(),
+          ses->lobby_episode,
+          ses->lobby_difficulty,
+          ses->lobby_event,
+          ses->id,
+          Map::DEFAULT_RARE_ENEMIES,
+          make_shared<PSOV2Encryption>(ses->lobby_random_seed),
+          quest_dat_data);
+    }
+
     ses->saving_files.erase(cmd.filename.decode());
   }
 
@@ -1430,7 +1482,13 @@ static HandlerResult S_65_67_68_EB(shared_ptr<ProxyServer::LinkedSession> ses, u
     ses->is_in_game = false;
     ses->is_in_quest = false;
     ses->floor = 0x0F;
-    ses->difficulty = 0;
+    ses->lobby_difficulty = 0;
+    ses->lobby_section_id = 0;
+    ses->lobby_mode = GameMode::NORMAL;
+    ses->lobby_episode = Episode::EP1;
+    ses->lobby_random_seed = 0;
+    ses->item_creator.reset();
+    ses->map.reset();
 
     // This command can cause the client to no longer send D6 responses when
     // 1A/D5 large message boxes are closed. newserv keeps track of this
@@ -1448,6 +1506,7 @@ static HandlerResult S_65_67_68_EB(shared_ptr<ProxyServer::LinkedSession> ses, u
 
   size_t num_replacements = 0;
   ses->lobby_client_id = cmd.lobby_flags.client_id;
+  ses->lobby_event = cmd.lobby_flags.event;
   update_leader_id(ses, cmd.lobby_flags.leader_id);
   for (size_t x = 0; x < flag; x++) {
     auto& entry = cmd.entries[x];
@@ -1497,6 +1556,50 @@ constexpr on_command_t S_X_65_67_68 = &S_65_67_68_EB<S_JoinLobby_XB_65_67_68>;
 constexpr on_command_t S_B_65_67_68 = &S_65_67_68_EB<S_JoinLobby_BB_65_67_68>;
 
 template <typename CmdT>
+Episode get_episode(const CmdT&) {
+  return Episode::EP1;
+}
+template <>
+Episode get_episode<S_JoinGame_GC_64>(const S_JoinGame_GC_64& cmd) {
+  switch (cmd.episode) {
+    case 1:
+      return Episode::EP1;
+    case 2:
+      return Episode::EP2;
+    default:
+      return Episode::NONE;
+  }
+}
+template <>
+Episode get_episode<S_JoinGame_XB_64>(const S_JoinGame_XB_64& cmd) {
+  switch (cmd.episode) {
+    case 1:
+      return Episode::EP1;
+    case 2:
+      return Episode::EP2;
+    default:
+      return Episode::NONE;
+  }
+}
+template <>
+Episode get_episode<S_JoinGame_BB_64>(const S_JoinGame_BB_64& cmd) {
+  switch (cmd.episode) {
+    case 1:
+      return Episode::EP1;
+    case 2:
+      return Episode::EP2;
+    case 3:
+      return Episode::EP4;
+    default:
+      return Episode::NONE;
+  }
+}
+template <>
+Episode get_episode<S_JoinGame_Ep3_64>(const S_JoinGame_Ep3_64&) {
+  return Episode::EP3;
+}
+
+template <typename CmdT>
 static HandlerResult S_64(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t, uint32_t flag, string& data) {
   CmdT* cmd;
   S_JoinGame_Ep3_64* cmd_ep3 = nullptr;
@@ -1515,7 +1618,41 @@ static HandlerResult S_64(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t, 
   ses->floor = 0;
   ses->is_in_game = true;
   ses->is_in_quest = false;
-  ses->difficulty = cmd->difficulty;
+  ses->lobby_event = cmd->event;
+  ses->lobby_difficulty = cmd->difficulty;
+  ses->lobby_section_id = cmd->section_id;
+  // We only need the game mode for overriding drops, and SOLO behaves the same
+  // as NORMAL in that regard, so we can conveniently ignore SOLO here
+  if (cmd->battle_mode) {
+    ses->lobby_mode = GameMode::BATTLE;
+  } else if (cmd->challenge_mode) {
+    ses->lobby_mode = GameMode::CHALLENGE;
+  } else {
+    ses->lobby_mode = GameMode::NORMAL;
+  }
+  ses->lobby_random_seed = cmd->rare_seed;
+  if (cmd_ep3) {
+    ses->lobby_episode = Episode::EP3;
+  } else {
+    ses->lobby_episode = get_episode(*cmd);
+  }
+
+  // Recreate the item creator if needed, and load maps
+  auto s = ses->require_server_state();
+  ses->set_drop_mode(ses->drop_mode);
+  ses->map = Lobby::load_maps(
+      ses->version(),
+      ses->lobby_episode,
+      ses->lobby_mode,
+      ses->lobby_difficulty,
+      ses->lobby_event,
+      ses->id,
+      s->set_data_table(ses->version(), ses->lobby_episode, ses->lobby_mode, ses->lobby_difficulty),
+      bind(&ServerState::load_map_file, s.get(), placeholders::_1, placeholders::_2),
+      Map::DEFAULT_RARE_ENEMIES,
+      make_shared<PSOV2Encryption>(ses->lobby_random_seed),
+      cmd->variations,
+      &ses->log);
 
   bool modified = false;
 
@@ -1569,7 +1706,14 @@ static HandlerResult S_E8(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t, 
   ses->floor = 0;
   ses->is_in_game = true;
   ses->is_in_quest = false;
-  ses->difficulty = 0;
+  ses->lobby_event = cmd.event;
+  ses->lobby_difficulty = 0;
+  ses->lobby_section_id = cmd.section_id;
+  ses->lobby_mode = GameMode::NORMAL;
+  ses->lobby_random_seed = 0;
+  ses->lobby_episode = Episode::EP3;
+  ses->item_creator.reset();
+  ses->map.reset();
 
   bool modified = false;
 
@@ -1649,7 +1793,15 @@ static HandlerResult C_98(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t c
   ses->floor = 0x0F;
   ses->is_in_game = false;
   ses->is_in_quest = false;
-  ses->difficulty = 0;
+  ses->lobby_event = 0;
+  ses->lobby_difficulty = 0;
+  ses->lobby_section_id = 0;
+  ses->lobby_episode = Episode::EP1;
+  ses->lobby_mode = GameMode::NORMAL;
+  ses->lobby_random_seed = 0;
+  ses->item_creator.reset();
+  ses->map.reset();
+
   if (is_v3(ses->version()) || is_v4(ses->version())) {
     return C_GXB_61(ses, command, flag, data);
   } else {
@@ -1765,44 +1917,6 @@ static HandlerResult C_6x(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t c
       }
     }
   }
-
-  if (!data.empty()) {
-    if (data[0] == 0x21) {
-      const auto& cmd = check_size_t<G_InterLevelWarp_6x21>(data);
-      ses->floor = cmd.floor;
-
-    } else if (data[0] == 0x0C) {
-      if (is_v1_or_v2(ses->version()) && ses->config.check_flag(Client::Flag::INFINITE_HP_ENABLED)) {
-        send_remove_conditions(ses->client_channel, ses->lobby_client_id);
-        send_remove_conditions(ses->server_channel, ses->lobby_client_id);
-      }
-    } else if (data[0] == 0x2F || data[0] == 0x4B || data[0] == 0x4C) {
-      if (ses->config.check_flag(Client::Flag::INFINITE_HP_ENABLED)) {
-        send_player_stats_change(ses->client_channel,
-            ses->lobby_client_id, PlayerStatsChange::ADD_HP, 2550);
-        send_player_stats_change(ses->server_channel,
-            ses->lobby_client_id, PlayerStatsChange::ADD_HP, 2550);
-      }
-    } else if (data[0] == 0x3E) {
-      C_6x_movement<G_StopAtPosition_6x3E>(ses, data);
-    } else if (data[0] == 0x3F) {
-      C_6x_movement<G_SetPosition_6x3F>(ses, data);
-    } else if (data[0] == 0x40) {
-      C_6x_movement<G_WalkToPosition_6x40>(ses, data);
-    } else if (data[0] == 0x42) {
-      C_6x_movement<G_RunToPosition_6x42>(ses, data);
-    } else if (data[0] == 0x48) {
-      if (ses->config.check_flag(Client::Flag::INFINITE_TP_ENABLED)) {
-        send_player_stats_change(ses->client_channel,
-            ses->lobby_client_id, PlayerStatsChange::ADD_TP, 255);
-        send_player_stats_change(ses->server_channel,
-            ses->lobby_client_id, PlayerStatsChange::ADD_TP, 255);
-      }
-    } else if (data[0] == 0x5F) {
-      const auto& cmd = check_size_t<G_DropItem_DC_6x5F>(data, sizeof(G_DropItem_PC_V3_BB_6x5F));
-      send_item_notification_if_needed(ses->require_server_state(), ses->client_channel, ses->config, cmd.item.item, true);
-    }
-  }
   return C_6x<void>(ses, command, flag, data);
 }
 
@@ -1814,19 +1928,64 @@ constexpr on_command_t C_B_6x = &C_6x<G_SendGuildCard_BB_6x06>;
 
 template <>
 HandlerResult C_6x<void>(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t, uint32_t, string& data) {
-  check_implemented_subcommand(ses, data);
-
-  if (!data.empty() && (data[0] == 0x05) && ses->config.check_flag(Client::Flag::SWITCH_ASSIST_ENABLED)) {
-    auto& cmd = check_size_t<G_SwitchStateChanged_6x05>(data);
-    if (cmd.flags && cmd.header.object_id != 0xFFFF) {
-      if (ses->last_switch_enabled_command.header.subcommand == 0x05) {
-        ses->log.info("Switch assist: replaying previous enable command");
-        ses->server_channel.send(0x60, 0x00, &ses->last_switch_enabled_command,
-            sizeof(ses->last_switch_enabled_command));
-        ses->client_channel.send(0x60, 0x00, &ses->last_switch_enabled_command,
-            sizeof(ses->last_switch_enabled_command));
+  if (!data.empty()) {
+    if ((data[0] == 0x05) && ses->config.check_flag(Client::Flag::SWITCH_ASSIST_ENABLED)) {
+      auto& cmd = check_size_t<G_SwitchStateChanged_6x05>(data);
+      if (cmd.flags && cmd.header.object_id != 0xFFFF) {
+        if (ses->last_switch_enabled_command.header.subcommand == 0x05) {
+          ses->log.info("Switch assist: replaying previous enable command");
+          ses->server_channel.send(0x60, 0x00, &ses->last_switch_enabled_command,
+              sizeof(ses->last_switch_enabled_command));
+          ses->client_channel.send(0x60, 0x00, &ses->last_switch_enabled_command,
+              sizeof(ses->last_switch_enabled_command));
+        }
+        ses->last_switch_enabled_command = cmd;
       }
-      ses->last_switch_enabled_command = cmd;
+
+    } else if (data[0] == 0x21) {
+      const auto& cmd = check_size_t<G_InterLevelWarp_6x21>(data);
+      ses->floor = cmd.floor;
+
+    } else if (data[0] == 0x0C) {
+      if (is_v1_or_v2(ses->version()) && ses->config.check_flag(Client::Flag::INFINITE_HP_ENABLED)) {
+        send_remove_conditions(ses->client_channel, ses->lobby_client_id);
+        send_remove_conditions(ses->server_channel, ses->lobby_client_id);
+      }
+
+    } else if (data[0] == 0x2F || data[0] == 0x4B || data[0] == 0x4C) {
+      if (ses->config.check_flag(Client::Flag::INFINITE_HP_ENABLED)) {
+        send_player_stats_change(ses->client_channel,
+            ses->lobby_client_id, PlayerStatsChange::ADD_HP, 2550);
+        send_player_stats_change(ses->server_channel,
+            ses->lobby_client_id, PlayerStatsChange::ADD_HP, 2550);
+      }
+
+    } else if (data[0] == 0x3E) {
+      C_6x_movement<G_StopAtPosition_6x3E>(ses, data);
+
+    } else if (data[0] == 0x3F) {
+      C_6x_movement<G_SetPosition_6x3F>(ses, data);
+
+    } else if (data[0] == 0x40) {
+      C_6x_movement<G_WalkToPosition_6x40>(ses, data);
+
+    } else if (data[0] == 0x42) {
+      C_6x_movement<G_RunToPosition_6x42>(ses, data);
+
+    } else if (data[0] == 0x48) {
+      if (ses->config.check_flag(Client::Flag::INFINITE_TP_ENABLED)) {
+        send_player_stats_change(ses->client_channel,
+            ses->lobby_client_id, PlayerStatsChange::ADD_TP, 255);
+        send_player_stats_change(ses->server_channel,
+            ses->lobby_client_id, PlayerStatsChange::ADD_TP, 255);
+      }
+
+    } else if (data[0] == 0x5F) {
+      const auto& cmd = check_size_t<G_DropItem_DC_6x5F>(data, sizeof(G_DropItem_PC_V3_BB_6x5F));
+      send_item_notification_if_needed(ses->require_server_state(), ses->client_channel, ses->config, cmd.item.item, true);
+
+    } else if (data[0] == 0x60 || static_cast<uint8_t>(data[0]) == 0xA2) {
+      return SC_6x60_6xA2(ses, data);
     }
   }
 
