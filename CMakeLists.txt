@@ -88,6 +88,7 @@ set(SOURCES
     src/FunctionCompiler.cc
     src/GSLArchive.cc
     src/GVMEncoder.cc
+    src/HTTPServer.cc
     src/IPFrameInfo.cc
     src/IPStackSimulator.cc
     src/ItemCreator.cc

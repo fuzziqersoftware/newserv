@@ -589,7 +589,7 @@ bool CardSpecial::apply_stat_deltas_to_card_from_condition_and_clear_cond(Condit
       break;
     trial_unimplemented:
     default:
-      log.debug("%s: no adjustments for condition type", name_for_condition_type(cond_type));
+      log.debug("%s: no adjustments for condition type", name_for_enum(cond_type));
       break;
   }
 
@@ -1777,7 +1777,7 @@ bool CardSpecial::execute_effect(
   auto log = s->log_stack(string_printf("execute_effect(@%04hX #%04hX): ", card->get_card_ref(), card->get_card_id()));
   {
     string cond_str = cond.str(s);
-    log.debug("cond=%s, card=@%04hX, expr_value=%hd, unknown_p5=%hd, cond_type=%s, unknown_p7=%" PRIu32 ", attacker_card_ref=@%04hX", cond_str.c_str(), ref_for_card(card), expr_value, unknown_p5, name_for_condition_type(cond_type), unknown_p7, attacker_card_ref);
+    log.debug("cond=%s, card=@%04hX, expr_value=%hd, unknown_p5=%hd, cond_type=%s, unknown_p7=%" PRIu32 ", attacker_card_ref=@%04hX", cond_str.c_str(), ref_for_card(card), expr_value, unknown_p5, name_for_enum(cond_type), unknown_p7, attacker_card_ref);
   }
   bool is_nte = s->options.is_nte();
 
@@ -2841,7 +2841,7 @@ vector<shared_ptr<const Card>> CardSpecial::get_targeted_cards_for_condition(
   AttackMedium attack_medium = card2
       ? card2->action_chain.chain.attack_medium
       : AttackMedium::UNKNOWN;
-  log.debug("attack_medium=%s", name_for_attack_medium(attack_medium));
+  log.debug("attack_medium=%s", name_for_enum(attack_medium));
 
   auto add_card_refs = [&](const vector<uint16_t>& result_card_refs) -> void {
     for (uint16_t result_card_ref : result_card_refs) {

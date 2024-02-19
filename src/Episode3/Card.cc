@@ -914,7 +914,7 @@ void Card::compute_action_chain_results(bool apply_action_conditions, bool ignor
   this->action_chain.chain.tp_effect_bonus = 0;
 
   log.debug("(initial) medium=%s, strike_count=%hhu, ap_effect_bonus=%hhd, tp_effect_bonus=%hhd",
-      name_for_attack_medium(this->action_chain.chain.attack_medium),
+      name_for_enum(this->action_chain.chain.attack_medium),
       this->action_chain.chain.strike_count,
       this->action_chain.chain.ap_effect_bonus,
       this->action_chain.chain.tp_effect_bonus);

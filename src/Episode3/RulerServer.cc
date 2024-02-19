@@ -939,7 +939,7 @@ bool RulerServer::check_usability_or_condition_apply(
     bool is_item_usability_check,
     AttackMedium attack_medium) const {
   auto s = this->server();
-  auto log = s->log_stack(string_printf("check_usability_or_condition_apply(%02hhX, #%04hX, %02hhX, #%04hX, #%04hX, %02hhX, %s, %s): ", client_id1, card_id1, client_id2, card_id2, card_id3, def_effect_index, is_item_usability_check ? "true" : "false", name_for_attack_medium(attack_medium)));
+  auto log = s->log_stack(string_printf("check_usability_or_condition_apply(%02hhX, #%04hX, %02hhX, #%04hX, #%04hX, %02hhX, %s, %s): ", client_id1, card_id1, client_id2, card_id2, card_id3, def_effect_index, is_item_usability_check ? "true" : "false", name_for_enum(attack_medium)));
 
   if (static_cast<uint8_t>(attack_medium) & 0x80) {
     attack_medium = AttackMedium::UNKNOWN;
@@ -967,7 +967,7 @@ bool RulerServer::check_usability_or_condition_apply(
     }
     criterion_code = ce1->def.effects[def_effect_index].apply_criterion;
   }
-  log.debug("criterion_code=%s", name_for_criterion_code(criterion_code));
+  log.debug("criterion_code=%s", name_for_enum(criterion_code));
 
   // For item usability checks, prevent criteria that depend on player
   // positioning/team setup

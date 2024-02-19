@@ -843,7 +843,7 @@ void ProxyServer::LinkedSession::on_input(Channel& ch, uint16_t command, uint32_
   }
 }
 
-shared_ptr<ProxyServer::LinkedSession> ProxyServer::get_session() {
+shared_ptr<ProxyServer::LinkedSession> ProxyServer::get_session() const {
   if (this->id_to_session.empty()) {
     throw runtime_error("no sessions exist");
   }
@@ -853,8 +853,7 @@ shared_ptr<ProxyServer::LinkedSession> ProxyServer::get_session() {
   return this->id_to_session.begin()->second;
 }
 
-shared_ptr<ProxyServer::LinkedSession> ProxyServer::get_session_by_name(
-    const std::string& name) {
+shared_ptr<ProxyServer::LinkedSession> ProxyServer::get_session_by_name(const std::string& name) const {
   try {
     uint64_t session_id = stoull(name, nullptr, 16);
     return this->id_to_session.at(session_id);
@@ -863,6 +862,10 @@ shared_ptr<ProxyServer::LinkedSession> ProxyServer::get_session_by_name(
   } catch (const out_of_range&) {
     throw runtime_error("no such session");
   }
+}
+
+const unordered_map<uint64_t, shared_ptr<ProxyServer::LinkedSession>>& ProxyServer::all_sessions() const {
+  return this->id_to_session;
 }
 
 shared_ptr<ProxyServer::LinkedSession> ProxyServer::create_licensed_session(

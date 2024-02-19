@@ -38,6 +38,7 @@
   "DNSServerPort": 0,
   "IPStackListen": [],
   "PPPStackListen": [],
+  "HTTPListen": [],
   "Episode3BehaviorFlags": 0xFA,
 
   "Episode3InfiniteMeseta": false,

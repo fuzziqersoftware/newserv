@@ -216,11 +216,7 @@ Server::Server(
       destroy_clients_ev(event_new(this->base.get(), -1, EV_TIMEOUT, &Server::dispatch_destroy_clients, this), event_free),
       state(state) {}
 
-void Server::listen(
-    const std::string& addr_str,
-    const string& socket_path,
-    Version version,
-    ServerBehavior behavior) {
+void Server::listen(const std::string& addr_str, const string& socket_path, Version version, ServerBehavior behavior) {
   int fd = ::listen(socket_path, 0, SOMAXCONN);
   server_log.info("Listening on Unix socket %s on fd %d as %s",
       socket_path.c_str(), fd, addr_str.c_str());

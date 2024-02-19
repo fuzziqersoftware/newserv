@@ -150,10 +150,18 @@
   // On Windows, Unix sockets are not available, so you can only use TCP sockets
   // here. You can get Dolphin to connect locally by adding a port to this list
   // and configuring Dolphin to connect to the same port. For example, you could
-  // set this to ["127.0.0.1:5059"], and configure Dolphin's tapserver BBA to
-  // connect to 127.0.0.1:5059.
+  // set this to ["127.0.0.1:5059"] (which listens on port 5059 but only accepts
+  // connections from the local machine), and configure Dolphin's tapserver BBA
+  // to connect to 127.0.0.1:5059.
   "IPStackListen": [],
   "PPPStackListen": [],
+
+  // Where to listen for HTTP connections. The HTTP server is intended as a
+  // private interface to interact with newserv from e.g. an in-house Web portal
+  // or Discord bot. It would be unwise to expose any of these ports to the
+  // public Internet (hence why the default here is blank). The format of
+  // entries in this list is the same as for IPStackListen and PPPStackListen.
+  "HTTPListen": [],
 
   // Other servers to support proxying to. If this is empty for any game
   // version, the proxy server is disabled for that version. Entries in these

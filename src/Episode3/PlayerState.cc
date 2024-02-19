@@ -1781,7 +1781,7 @@ bool PlayerState::set_action_cards_for_action_state(const ActionState& pa) {
     auto card = s->card_for_set_card_ref(pa.attacker_card_ref);
     if (card) {
       card->loc.direction = pa.facing_direction;
-      log.debug("set facing direction to %s", name_for_direction(card->loc.direction));
+      log.debug("set facing direction to %s", name_for_enum(card->loc.direction));
 
       G_Unknown_Ep3_6xB4x4A cmd;
       cmd.card_refs.clear(0xFFFF);

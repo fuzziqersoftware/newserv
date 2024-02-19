@@ -59,8 +59,6 @@ enum class AttackMedium : uint8_t {
   INVALID_FF = 0xFF,
 };
 
-const char* name_for_attack_medium(AttackMedium medium);
-
 enum class CriterionCode : uint8_t {
   NONE = 0x00,
   HU_CLASS_SC = 0x01,
@@ -99,8 +97,6 @@ enum class CriterionCode : uint8_t {
   NON_PHYSICAL_NON_TECH_NON_UNKNOWN_ATTACK_MEDIUM_NON_SC = 0x22,
 };
 
-const char* name_for_criterion_code(CriterionCode code);
-
 enum class CardRank : uint8_t {
   N1 = 0x01,
   R1 = 0x02,
@@ -138,8 +134,6 @@ enum class CardType : uint8_t {
   END_CARD_LIST = 0xFF,
 };
 
-const char* name_for_card_type(CardType type);
-
 enum class CardClass : uint16_t {
   HU_SC = 0x0000,
   RA_SC = 0x0001,
@@ -163,7 +157,6 @@ enum class CardClass : uint16_t {
   ASSIST = 0x0028,
 };
 
-const char* name_for_card_class(CardClass cc);
 bool card_class_is_tech_like(CardClass cc, bool is_nte);
 
 enum class TargetMode : uint8_t {
@@ -310,8 +303,6 @@ enum class ConditionType : uint8_t {
   ANY_FF = 0xFF, // Used as a wildcard in some search functions
 };
 
-const char* name_for_condition_type(ConditionType cond_type);
-
 enum class AssistEffect : uint16_t {
   NONE = 0x0000,
   DICE_HALF = 0x0001,
@@ -408,8 +399,6 @@ enum class ActionSubphase : uint8_t {
   INVALID_FF = 0xFF,
 };
 
-const char* name_for_action_subphase(ActionSubphase subphase);
-
 enum class SetupPhase : uint8_t {
   REGISTRATION = 0,
   STARTER_ROLLS = 1,
@@ -439,7 +428,6 @@ enum class Direction : uint8_t {
 Direction turn_left(Direction d);
 Direction turn_right(Direction d);
 Direction turn_around(Direction d);
-const char* name_for_direction(Direction d);
 
 struct Location {
   /* 00 */ uint8_t x;
@@ -519,7 +507,7 @@ struct CardDefinition {
   } __attribute__((packed));
 
   /* 0000 */ be_uint32_t card_id;
-  /* 0004 */ parray<uint8_t, 0x40> jp_name;
+  /* 0004 */ pstring<TextEncoding::SJIS, 0x40> jp_name;
 
   // The list of card definitions ends with a "sentinel" definition that isn't a
   // real card, but instead has a negative number in the type field here.
@@ -1556,3 +1544,24 @@ template <>
 Episode3::AllowedCards enum_for_name<Episode3::AllowedCards>(const char* name);
 template <>
 const char* name_for_enum<Episode3::AllowedCards>(Episode3::AllowedCards allowed_cards);
+
+template <>
+const char* name_for_enum<Episode3::BattlePhase>(Episode3::BattlePhase phase);
+template <>
+const char* name_for_enum<Episode3::SetupPhase>(Episode3::SetupPhase phase);
+template <>
+const char* name_for_enum<Episode3::RegistrationPhase>(Episode3::RegistrationPhase phase);
+template <>
+const char* name_for_enum<Episode3::ActionSubphase>(Episode3::ActionSubphase phase);
+template <>
+const char* name_for_enum<Episode3::AttackMedium>(Episode3::AttackMedium medium);
+template <>
+const char* name_for_enum<Episode3::CriterionCode>(Episode3::CriterionCode code);
+template <>
+const char* name_for_enum<Episode3::CardType>(Episode3::CardType type);
+template <>
+const char* name_for_enum<Episode3::CardClass>(Episode3::CardClass cc);
+template <>
+const char* name_for_enum<Episode3::ConditionType>(Episode3::ConditionType cond_type);
+template <>
+const char* name_for_enum<Episode3::Direction>(Episode3::Direction d);

@@ -80,168 +80,6 @@ const char* name_for_link_color(uint8_t color) {
   }
 }
 
-const char* name_for_card_type(CardType type) {
-  switch (type) {
-    case CardType::HUNTERS_SC:
-      return "HUNTERS_SC";
-    case CardType::ARKZ_SC:
-      return "ARKZ_SC";
-    case CardType::ITEM:
-      return "ITEM";
-    case CardType::CREATURE:
-      return "CREATURE";
-    case CardType::ACTION:
-      return "ACTION";
-    case CardType::ASSIST:
-      return "ASSIST";
-    case CardType::INVALID_FF:
-      return "INVALID_FF";
-    default:
-      throw invalid_argument("invalid card type");
-  }
-}
-
-const char* name_for_card_class(CardClass cc) {
-  switch (cc) {
-    case CardClass::HU_SC:
-      return "HU_SC";
-    case CardClass::RA_SC:
-      return "RA_SC";
-    case CardClass::FO_SC:
-      return "FO_SC";
-    case CardClass::NATIVE_CREATURE:
-      return "NATIVE_CREATURE";
-    case CardClass::A_BEAST_CREATURE:
-      return "A_BEAST_CREATURE";
-    case CardClass::MACHINE_CREATURE:
-      return "MACHINE_CREATURE";
-    case CardClass::DARK_CREATURE:
-      return "DARK_CREATURE";
-    case CardClass::GUARD_ITEM:
-      return "GUARD_ITEM";
-    case CardClass::MAG_ITEM:
-      return "MAG_ITEM";
-    case CardClass::SWORD_ITEM:
-      return "SWORD_ITEM";
-    case CardClass::GUN_ITEM:
-      return "GUN_ITEM";
-    case CardClass::CANE_ITEM:
-      return "CANE_ITEM";
-    case CardClass::ATTACK_ACTION:
-      return "ATTACK_ACTION";
-    case CardClass::DEFENSE_ACTION:
-      return "DEFENSE_ACTION";
-    case CardClass::TECH:
-      return "TECH";
-    case CardClass::PHOTON_BLAST:
-      return "PHOTON_BLAST";
-    case CardClass::CONNECT_ONLY_ATTACK_ACTION:
-      return "CONNECT_ONLY_ATTACK_ACTION";
-    case CardClass::BOSS_ATTACK_ACTION:
-      return "BOSS_ATTACK_ACTION";
-    case CardClass::BOSS_TECH:
-      return "BOSS_TECH";
-    case CardClass::ASSIST:
-      return "ASSIST";
-    default:
-      throw invalid_argument("invalid card class");
-  }
-}
-
-const char* name_for_attack_medium(AttackMedium medium) {
-  switch (medium) {
-    case AttackMedium::UNKNOWN:
-      return "UNKNOWN";
-    case AttackMedium::PHYSICAL:
-      return "PHYSICAL";
-    case AttackMedium::TECH:
-      return "TECH";
-    case AttackMedium::UNKNOWN_03:
-      return "UNKNOWN_03";
-    case AttackMedium::INVALID_FF:
-      return "INVALID_FF";
-    default:
-      return "__INVALID__";
-  }
-}
-
-const char* name_for_criterion_code(CriterionCode code) {
-  switch (code) {
-    case CriterionCode::NONE:
-      return "NONE";
-    case CriterionCode::HU_CLASS_SC:
-      return "HU_CLASS_SC";
-    case CriterionCode::RA_CLASS_SC:
-      return "RA_CLASS_SC";
-    case CriterionCode::FO_CLASS_SC:
-      return "FO_CLASS_SC";
-    case CriterionCode::SAME_TEAM:
-      return "SAME_TEAM";
-    case CriterionCode::SAME_PLAYER:
-      return "SAME_PLAYER";
-    case CriterionCode::SAME_TEAM_NOT_SAME_PLAYER:
-      return "SAME_TEAM_NOT_SAME_PLAYER";
-    case CriterionCode::FC:
-      return "FC";
-    case CriterionCode::NOT_SC:
-      return "NOT_SC";
-    case CriterionCode::SC:
-      return "SC";
-    case CriterionCode::HU_OR_RA_CLASS_SC:
-      return "HU_OR_RA_CLASS_SC";
-    case CriterionCode::HUNTER_NON_ANDROID_SC:
-      return "HUNTER_NON_ANDROID_SC";
-    case CriterionCode::HUNTER_HU_CLASS_MALE_SC:
-      return "HUNTER_HU_CLASS_MALE_SC";
-    case CriterionCode::HUNTER_FEMALE_SC:
-      return "HUNTER_FEMALE_SC";
-    case CriterionCode::HUNTER_NON_RA_CLASS_HUMAN_SC:
-      return "HUNTER_NON_RA_CLASS_HUMAN_SC";
-    case CriterionCode::HUNTER_HU_CLASS_ANDROID_SC:
-      return "HUNTER_HU_CLASS_ANDROID_SC";
-    case CriterionCode::HUNTER_NON_RA_CLASS_NON_NEWMAN_SC:
-      return "HUNTER_NON_RA_CLASS_NON_NEWMAN_SC";
-    case CriterionCode::HUNTER_NON_NEWMAN_NON_FORCE_MALE_SC:
-      return "HUNTER_NON_NEWMAN_NON_FORCE_MALE_SC";
-    case CriterionCode::HUNTER_HUNEWEARL_CLASS_SC:
-      return "HUNTER_HUNEWEARL_CLASS_SC";
-    case CriterionCode::HUNTER_RA_CLASS_MALE_SC:
-      return "HUNTER_RA_CLASS_MALE_SC";
-    case CriterionCode::HUNTER_RA_CLASS_FEMALE_SC:
-      return "HUNTER_RA_CLASS_FEMALE_SC";
-    case CriterionCode::HUNTER_RA_OR_FO_CLASS_FEMALE_SC:
-      return "HUNTER_RA_OR_FO_CLASS_FEMALE_SC";
-    case CriterionCode::HUNTER_HU_OR_RA_CLASS_HUMAN_SC:
-      return "HUNTER_HU_OR_RA_CLASS_HUMAN_SC";
-    case CriterionCode::HUNTER_RA_CLASS_ANDROID_SC:
-      return "HUNTER_RA_CLASS_ANDROID_SC";
-    case CriterionCode::HUNTER_FO_CLASS_FEMALE_SC:
-      return "HUNTER_FO_CLASS_FEMALE_SC";
-    case CriterionCode::HUNTER_HUMAN_FEMALE_SC:
-      return "HUNTER_HUMAN_FEMALE_SC";
-    case CriterionCode::HUNTER_ANDROID_SC:
-      return "HUNTER_ANDROID_SC";
-    case CriterionCode::HU_OR_FO_CLASS_SC:
-      return "HU_OR_FO_CLASS_SC";
-    case CriterionCode::RA_OR_FO_CLASS_SC:
-      return "RA_OR_FO_CLASS_SC";
-    case CriterionCode::PHYSICAL_OR_UNKNOWN_ATTACK_MEDIUM:
-      return "PHYSICAL_OR_UNKNOWN_ATTACK_MEDIUM";
-    case CriterionCode::TECH_OR_UNKNOWN_ATTACK_MEDIUM:
-      return "TECH_OR_UNKNOWN_ATTACK_MEDIUM";
-    case CriterionCode::PHYSICAL_OR_TECH_OR_UNKNOWN_ATTACK_MEDIUM:
-      return "PHYSICAL_OR_TECH_OR_UNKNOWN_ATTACK_MEDIUM";
-    case CriterionCode::NON_PHYSICAL_NON_UNKNOWN_ATTACK_MEDIUM_NON_SC:
-      return "NON_PHYSICAL_NON_UNKNOWN_ATTACK_MEDIUM_NON_SC";
-    case CriterionCode::NON_PHYSICAL_NON_TECH_ATTACK_MEDIUM_NON_SC:
-      return "NON_PHYSICAL_NON_TECH_ATTACK_MEDIUM_NON_SC";
-    case CriterionCode::NON_PHYSICAL_NON_TECH_NON_UNKNOWN_ATTACK_MEDIUM_NON_SC:
-      return "NON_PHYSICAL_NON_TECH_NON_UNKNOWN_ATTACK_MEDIUM_NON_SC";
-    default:
-      throw invalid_argument("invalid criterion code");
-  }
-}
-
 Location::Location() : Location(0, 0) {}
 Location::Location(uint8_t x, uint8_t y) : Location(x, y, Direction::RIGHT) {}
 Location::Location(uint8_t x, uint8_t y, Direction direction)
@@ -262,7 +100,7 @@ bool Location::operator!=(const Location& other) const {
 
 std::string Location::str() const {
   return string_printf("Location[x=%hhu, y=%hhu, dir=%s, u=%hhu]",
-      this->x, this->y, name_for_direction(this->direction), this->unused);
+      this->x, this->y, name_for_enum(this->direction), this->unused);
 }
 
 void Location::clear() {
@@ -321,23 +159,6 @@ Direction turn_around(Direction d) {
       return Direction::UP;
     default:
       return Direction::INVALID_FF;
-  }
-}
-
-const char* name_for_direction(Direction d) {
-  switch (d) {
-    case Direction::RIGHT:
-      return "LEFT";
-    case Direction::UP:
-      return "DOWN";
-    case Direction::LEFT:
-      return "RIGHT";
-    case Direction::DOWN:
-      return "UP";
-    case Direction::INVALID_FF:
-      return "INVALID_FF";
-    default:
-      return "__INVALID__";
   }
 }
 
@@ -632,27 +453,6 @@ static const vector<ConditionDescription> description_for_condition_type({
     /* 0x7D */ {false, "UNKNOWN_7D", nullptr},
 });
 
-const char* name_for_condition_type(ConditionType cond_type) {
-  try {
-    return description_for_condition_type.at(static_cast<size_t>(cond_type)).name;
-  } catch (const out_of_range&) {
-    return "__INVALID__";
-  }
-}
-
-const char* name_for_action_subphase(ActionSubphase subphase) {
-  switch (subphase) {
-    case ActionSubphase::ATTACK:
-      return "ATTACK";
-    case ActionSubphase::DEFENSE:
-      return "DEFENSE";
-    case ActionSubphase::INVALID_FF:
-      return "INVALID_FF";
-    default:
-      return "__INVALID__";
-  }
-}
-
 void CardDefinition::Stat::decode_code() {
   this->type = static_cast<Type>(this->code / 1000);
   int16_t value = this->code - (this->type * 1000);
@@ -801,7 +601,7 @@ string CardDefinition::Effect::str(const char* separator, const TextSet* text_ar
     uint8_t type = static_cast<uint8_t>(this->apply_criterion);
     string cond_str = string_printf("cond=%02hhX", type);
     try {
-      const char* name = name_for_criterion_code(this->apply_criterion);
+      const char* name = name_for_enum(this->apply_criterion);
       cond_str += ':';
       cond_str += name;
     } catch (const invalid_argument&) {
@@ -1072,24 +872,9 @@ static const char* name_for_assist_ai_param_target(uint8_t target) {
 }
 
 string CardDefinition::str(bool single_line, const TextSet* text_archive) const {
-  string type_str;
-  try {
-    type_str = name_for_card_type(this->type);
-  } catch (const invalid_argument&) {
-    type_str = string_printf("%02hhX", static_cast<uint8_t>(this->type));
-  }
-  string criterion_str;
-  try {
-    criterion_str = name_for_criterion_code(this->usable_criterion);
-  } catch (const invalid_argument&) {
-    criterion_str = string_printf("%02hhX", static_cast<uint8_t>(this->usable_criterion));
-  }
-  string card_class_str;
-  try {
-    card_class_str = name_for_card_class(this->card_class());
-  } catch (const invalid_argument&) {
-    card_class_str = string_printf("%04hX", this->be_card_class.load());
-  }
+  string type_str = name_for_enum(this->type);
+  string criterion_str = name_for_enum(this->usable_criterion);
+  string card_class_str = name_for_enum(this->card_class());
   string rank_str = name_for_rank(this->rank);
   string target_mode_str = name_for_target_mode(this->target_mode);
   string assist_turns_str = string_for_assist_turns(this->assist_turns);
@@ -2863,6 +2648,275 @@ const char* name_for_enum<Episode3::AllowedCards>(Episode3::AllowedCards allowed
     case Episode3::AllowedCards::N_R_S_ONLY:
       return "N_R_S_ONLY";
     default:
-      throw out_of_range("invalid allowed cards");
+      return "__INVALID__";
+  }
+}
+
+template <>
+const char* name_for_enum<Episode3::BattlePhase>(Episode3::BattlePhase phase) {
+  switch (phase) {
+    case Episode3::BattlePhase::INVALID_00:
+      return "INVALID_00";
+    case Episode3::BattlePhase::DICE:
+      return "DICE";
+    case Episode3::BattlePhase::SET:
+      return "SET";
+    case Episode3::BattlePhase::MOVE:
+      return "MOVE";
+    case Episode3::BattlePhase::ACTION:
+      return "ACTION";
+    case Episode3::BattlePhase::DRAW:
+      return "DRAW";
+    case Episode3::BattlePhase::INVALID_FF:
+      return "INVALID_FF";
+    default:
+      return "__INVALID__";
+  }
+}
+
+template <>
+const char* name_for_enum<Episode3::SetupPhase>(Episode3::SetupPhase phase) {
+  switch (phase) {
+    case Episode3::SetupPhase::REGISTRATION:
+      return "REGISTRATION";
+    case Episode3::SetupPhase::STARTER_ROLLS:
+      return "STARTER_ROLLS";
+    case Episode3::SetupPhase::HAND_REDRAW_OPTION:
+      return "HAND_REDRAW_OPTION";
+    case Episode3::SetupPhase::MAIN_BATTLE:
+      return "MAIN_BATTLE";
+    case Episode3::SetupPhase::BATTLE_ENDED:
+      return "BATTLE_ENDED";
+    case Episode3::SetupPhase::INVALID_FF:
+      return "INVALID_FF";
+    default:
+      return "__INVALID__";
+  }
+}
+
+template <>
+const char* name_for_enum<Episode3::RegistrationPhase>(Episode3::RegistrationPhase phase) {
+  switch (phase) {
+    case Episode3::RegistrationPhase::AWAITING_NUM_PLAYERS:
+      return "AWAITING_NUM_PLAYERS";
+    case Episode3::RegistrationPhase::AWAITING_PLAYERS:
+      return "AWAITING_PLAYERS";
+    case Episode3::RegistrationPhase::AWAITING_DECKS:
+      return "AWAITING_DECKS";
+    case Episode3::RegistrationPhase::REGISTERED:
+      return "REGISTERED";
+    case Episode3::RegistrationPhase::BATTLE_STARTED:
+      return "BATTLE_STARTED";
+    case Episode3::RegistrationPhase::INVALID_FF:
+      return "INVALID_FF";
+    default:
+      return "__INVALID__";
+  }
+}
+
+template <>
+const char* name_for_enum<Episode3::ActionSubphase>(Episode3::ActionSubphase phase) {
+  switch (phase) {
+    case Episode3::ActionSubphase::ATTACK:
+      return "ATTACK";
+    case Episode3::ActionSubphase::DEFENSE:
+      return "DEFENSE";
+    case Episode3::ActionSubphase::INVALID_FF:
+      return "INVALID_FF";
+    default:
+      return "__INVALID__";
+  }
+}
+
+template <>
+const char* name_for_enum<Episode3::AttackMedium>(Episode3::AttackMedium medium) {
+  switch (medium) {
+    case Episode3::AttackMedium::UNKNOWN:
+      return "UNKNOWN";
+    case Episode3::AttackMedium::PHYSICAL:
+      return "PHYSICAL";
+    case Episode3::AttackMedium::TECH:
+      return "TECH";
+    case Episode3::AttackMedium::UNKNOWN_03:
+      return "UNKNOWN_03";
+    case Episode3::AttackMedium::INVALID_FF:
+      return "INVALID_FF";
+    default:
+      return "__INVALID__";
+  }
+}
+
+template <>
+const char* name_for_enum<Episode3::CriterionCode>(Episode3::CriterionCode code) {
+  switch (code) {
+    case Episode3::CriterionCode::NONE:
+      return "NONE";
+    case Episode3::CriterionCode::HU_CLASS_SC:
+      return "HU_CLASS_SC";
+    case Episode3::CriterionCode::RA_CLASS_SC:
+      return "RA_CLASS_SC";
+    case Episode3::CriterionCode::FO_CLASS_SC:
+      return "FO_CLASS_SC";
+    case Episode3::CriterionCode::SAME_TEAM:
+      return "SAME_TEAM";
+    case Episode3::CriterionCode::SAME_PLAYER:
+      return "SAME_PLAYER";
+    case Episode3::CriterionCode::SAME_TEAM_NOT_SAME_PLAYER:
+      return "SAME_TEAM_NOT_SAME_PLAYER";
+    case Episode3::CriterionCode::FC:
+      return "FC";
+    case Episode3::CriterionCode::NOT_SC:
+      return "NOT_SC";
+    case Episode3::CriterionCode::SC:
+      return "SC";
+    case Episode3::CriterionCode::HU_OR_RA_CLASS_SC:
+      return "HU_OR_RA_CLASS_SC";
+    case Episode3::CriterionCode::HUNTER_NON_ANDROID_SC:
+      return "HUNTER_NON_ANDROID_SC";
+    case Episode3::CriterionCode::HUNTER_HU_CLASS_MALE_SC:
+      return "HUNTER_HU_CLASS_MALE_SC";
+    case Episode3::CriterionCode::HUNTER_FEMALE_SC:
+      return "HUNTER_FEMALE_SC";
+    case Episode3::CriterionCode::HUNTER_NON_RA_CLASS_HUMAN_SC:
+      return "HUNTER_NON_RA_CLASS_HUMAN_SC";
+    case Episode3::CriterionCode::HUNTER_HU_CLASS_ANDROID_SC:
+      return "HUNTER_HU_CLASS_ANDROID_SC";
+    case Episode3::CriterionCode::HUNTER_NON_RA_CLASS_NON_NEWMAN_SC:
+      return "HUNTER_NON_RA_CLASS_NON_NEWMAN_SC";
+    case Episode3::CriterionCode::HUNTER_NON_NEWMAN_NON_FORCE_MALE_SC:
+      return "HUNTER_NON_NEWMAN_NON_FORCE_MALE_SC";
+    case Episode3::CriterionCode::HUNTER_HUNEWEARL_CLASS_SC:
+      return "HUNTER_HUNEWEARL_CLASS_SC";
+    case Episode3::CriterionCode::HUNTER_RA_CLASS_MALE_SC:
+      return "HUNTER_RA_CLASS_MALE_SC";
+    case Episode3::CriterionCode::HUNTER_RA_CLASS_FEMALE_SC:
+      return "HUNTER_RA_CLASS_FEMALE_SC";
+    case Episode3::CriterionCode::HUNTER_RA_OR_FO_CLASS_FEMALE_SC:
+      return "HUNTER_RA_OR_FO_CLASS_FEMALE_SC";
+    case Episode3::CriterionCode::HUNTER_HU_OR_RA_CLASS_HUMAN_SC:
+      return "HUNTER_HU_OR_RA_CLASS_HUMAN_SC";
+    case Episode3::CriterionCode::HUNTER_RA_CLASS_ANDROID_SC:
+      return "HUNTER_RA_CLASS_ANDROID_SC";
+    case Episode3::CriterionCode::HUNTER_FO_CLASS_FEMALE_SC:
+      return "HUNTER_FO_CLASS_FEMALE_SC";
+    case Episode3::CriterionCode::HUNTER_HUMAN_FEMALE_SC:
+      return "HUNTER_HUMAN_FEMALE_SC";
+    case Episode3::CriterionCode::HUNTER_ANDROID_SC:
+      return "HUNTER_ANDROID_SC";
+    case Episode3::CriterionCode::HU_OR_FO_CLASS_SC:
+      return "HU_OR_FO_CLASS_SC";
+    case Episode3::CriterionCode::RA_OR_FO_CLASS_SC:
+      return "RA_OR_FO_CLASS_SC";
+    case Episode3::CriterionCode::PHYSICAL_OR_UNKNOWN_ATTACK_MEDIUM:
+      return "PHYSICAL_OR_UNKNOWN_ATTACK_MEDIUM";
+    case Episode3::CriterionCode::TECH_OR_UNKNOWN_ATTACK_MEDIUM:
+      return "TECH_OR_UNKNOWN_ATTACK_MEDIUM";
+    case Episode3::CriterionCode::PHYSICAL_OR_TECH_OR_UNKNOWN_ATTACK_MEDIUM:
+      return "PHYSICAL_OR_TECH_OR_UNKNOWN_ATTACK_MEDIUM";
+    case Episode3::CriterionCode::NON_PHYSICAL_NON_UNKNOWN_ATTACK_MEDIUM_NON_SC:
+      return "NON_PHYSICAL_NON_UNKNOWN_ATTACK_MEDIUM_NON_SC";
+    case Episode3::CriterionCode::NON_PHYSICAL_NON_TECH_ATTACK_MEDIUM_NON_SC:
+      return "NON_PHYSICAL_NON_TECH_ATTACK_MEDIUM_NON_SC";
+    case Episode3::CriterionCode::NON_PHYSICAL_NON_TECH_NON_UNKNOWN_ATTACK_MEDIUM_NON_SC:
+      return "NON_PHYSICAL_NON_TECH_NON_UNKNOWN_ATTACK_MEDIUM_NON_SC";
+    default:
+      return "__UNKNOWN__";
+  }
+}
+
+template <>
+const char* name_for_enum<Episode3::CardType>(Episode3::CardType type) {
+  switch (type) {
+    case Episode3::CardType::HUNTERS_SC:
+      return "HUNTERS_SC";
+    case Episode3::CardType::ARKZ_SC:
+      return "ARKZ_SC";
+    case Episode3::CardType::ITEM:
+      return "ITEM";
+    case Episode3::CardType::CREATURE:
+      return "CREATURE";
+    case Episode3::CardType::ACTION:
+      return "ACTION";
+    case Episode3::CardType::ASSIST:
+      return "ASSIST";
+    case Episode3::CardType::INVALID_FF:
+      return "INVALID_FF";
+    default:
+      return "__UNKNOWN__";
+  }
+}
+
+template <>
+const char* name_for_enum<Episode3::CardClass>(Episode3::CardClass cc) {
+  switch (cc) {
+    case Episode3::CardClass::HU_SC:
+      return "HU_SC";
+    case Episode3::CardClass::RA_SC:
+      return "RA_SC";
+    case Episode3::CardClass::FO_SC:
+      return "FO_SC";
+    case Episode3::CardClass::NATIVE_CREATURE:
+      return "NATIVE_CREATURE";
+    case Episode3::CardClass::A_BEAST_CREATURE:
+      return "A_BEAST_CREATURE";
+    case Episode3::CardClass::MACHINE_CREATURE:
+      return "MACHINE_CREATURE";
+    case Episode3::CardClass::DARK_CREATURE:
+      return "DARK_CREATURE";
+    case Episode3::CardClass::GUARD_ITEM:
+      return "GUARD_ITEM";
+    case Episode3::CardClass::MAG_ITEM:
+      return "MAG_ITEM";
+    case Episode3::CardClass::SWORD_ITEM:
+      return "SWORD_ITEM";
+    case Episode3::CardClass::GUN_ITEM:
+      return "GUN_ITEM";
+    case Episode3::CardClass::CANE_ITEM:
+      return "CANE_ITEM";
+    case Episode3::CardClass::ATTACK_ACTION:
+      return "ATTACK_ACTION";
+    case Episode3::CardClass::DEFENSE_ACTION:
+      return "DEFENSE_ACTION";
+    case Episode3::CardClass::TECH:
+      return "TECH";
+    case Episode3::CardClass::PHOTON_BLAST:
+      return "PHOTON_BLAST";
+    case Episode3::CardClass::CONNECT_ONLY_ATTACK_ACTION:
+      return "CONNECT_ONLY_ATTACK_ACTION";
+    case Episode3::CardClass::BOSS_ATTACK_ACTION:
+      return "BOSS_ATTACK_ACTION";
+    case Episode3::CardClass::BOSS_TECH:
+      return "BOSS_TECH";
+    case Episode3::CardClass::ASSIST:
+      return "ASSIST";
+    default:
+      return "__INVALID__";
+  }
+}
+
+template <>
+const char* name_for_enum<Episode3::ConditionType>(Episode3::ConditionType cond_type) {
+  try {
+    return Episode3::description_for_condition_type.at(static_cast<size_t>(cond_type)).name;
+  } catch (const out_of_range&) {
+    return "__INVALID__";
+  }
+}
+
+template <>
+const char* name_for_enum<Episode3::Direction>(Episode3::Direction d) {
+  switch (d) {
+    case Episode3::Direction::RIGHT:
+      return "LEFT";
+    case Episode3::Direction::UP:
+      return "DOWN";
+    case Episode3::Direction::LEFT:
+      return "RIGHT";
+    case Episode3::Direction::DOWN:
+      return "UP";
+    case Episode3::Direction::INVALID_FF:
+      return "INVALID_FF";
+    default:
+      return "__INVALID__";
   }
 }

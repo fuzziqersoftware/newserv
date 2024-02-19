@@ -229,7 +229,7 @@ const char* abbreviation_for_section_id(uint8_t section_id) {
   if (section_id < section_id_to_abbreviation.size()) {
     return section_id_to_abbreviation[section_id];
   } else {
-    return "<Unknown>";
+    return "Unknown";
   }
 }
 
@@ -237,7 +237,7 @@ const char* name_for_section_id(uint8_t section_id) {
   if (section_id < section_id_to_name.size()) {
     return section_id_to_name[section_id];
   } else {
-    return "<Unknown>";
+    return "Unknown";
   }
 }
 
@@ -262,7 +262,7 @@ const string& name_for_event(uint8_t event) {
   if (event < lobby_event_to_name.size()) {
     return lobby_event_to_name[event];
   } else {
-    static const string ret = "<Unknown lobby event>";
+    static const string ret = "Unknown lobby event";
     return ret;
   }
 }
@@ -287,7 +287,7 @@ const string& name_for_lobby_type(uint8_t type) {
   try {
     return lobby_type_to_name.at(type);
   } catch (const out_of_range&) {
-    static const string ret = "<Unknown lobby type>";
+    static const string ret = "Unknown lobby type";
     return ret;
   }
 }
@@ -312,7 +312,7 @@ const string& name_for_npc(uint8_t npc) {
   try {
     return npc_id_to_name.at(npc);
   } catch (const out_of_range&) {
-    static const string ret = "<Unknown NPC>";
+    static const string ret = "Unknown NPC";
     return ret;
   }
 }
@@ -459,6 +459,18 @@ char abbreviation_for_difficulty(uint8_t difficulty) {
   }
 }
 
+const char* name_for_language_code(uint8_t language_code) {
+  array<const char*, 8> names = {{"Japanese",
+      "English",
+      "German",
+      "French",
+      "Spanish",
+      "Simplified Chinese",
+      "Traditional Chinese",
+      "Korean"}};
+  return (language_code < 8) ? names[language_code] : "Unknown";
+}
+
 char char_for_language_code(uint8_t language_code) {
   return (language_code < 8) ? "JEGFSBTK"[language_code] : '?';
 }
@@ -544,7 +556,7 @@ const string& name_for_technique(uint8_t tech) {
   try {
     return tech_id_to_name.at(tech);
   } catch (const out_of_range&) {
-    static const string ret = "<Unknown technique>";
+    static const string ret = "Unknown technique";
     return ret;
   }
 }

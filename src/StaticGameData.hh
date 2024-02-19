@@ -68,6 +68,7 @@ const char* name_for_difficulty(uint8_t difficulty);
 const char* token_name_for_difficulty(uint8_t difficulty);
 char abbreviation_for_difficulty(uint8_t difficulty);
 
+const char* name_for_language_code(uint8_t language_code);
 char char_for_language_code(uint8_t language_code);
 uint8_t language_code_for_char(char language_char);
 

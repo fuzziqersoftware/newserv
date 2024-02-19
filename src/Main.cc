@@ -28,6 +28,7 @@
 #include "DNSServer.hh"
 #include "GSLArchive.hh"
 #include "GVMEncoder.hh"
+#include "HTTPServer.hh"
 #include "IPStackSimulator.hh"
 #include "Loggers.hh"
 #include "NetworkAddresses.hh"
@@ -2368,6 +2369,7 @@ Action a_run_server_replay_log(
       shared_ptr<ServerShell> shell;
       shared_ptr<ReplaySession> replay_session;
       shared_ptr<IPStackSimulator> ip_stack_simulator;
+      shared_ptr<HTTPServer> http_server;
       if (is_replay) {
         config_log.info("Starting proxy server");
         state->proxy_server = make_shared<ProxyServer>(base, state);
@@ -2451,6 +2453,15 @@ Action a_run_server_replay_log(
             auto netloc = parse_netloc(it);
             string spec = (netloc.second == 0) ? ("T-PPPS-" + netloc.first) : string_printf("T-PPPS-%hu", netloc.second);
             ip_stack_simulator->listen(spec, netloc.first, netloc.second, FrameInfo::LinkType::HDLC);
+          }
+        }
+
+        if (!state->http_addresses.empty() || !state->http_addresses.empty()) {
+          config_log.info("Starting HTTP server");
+          http_server = make_shared<HTTPServer>(state);
+          for (const auto& it : state->http_addresses) {
+            auto netloc = parse_netloc(it);
+            http_server->listen(netloc.first, netloc.second);
           }
         }
       }

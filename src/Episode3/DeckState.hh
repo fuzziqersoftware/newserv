@@ -11,7 +11,7 @@
 namespace Episode3 {
 
 struct NameEntry {
-  /* 00 */ parray<char, 0x10> name;
+  /* 00 */ pstring<TextEncoding::MARKED, 0x10> name;
   /* 10 */ uint8_t client_id;
   /* 11 */ uint8_t present;
   /* 12 */ uint8_t is_cpu_player;
@@ -23,7 +23,7 @@ struct NameEntry {
 } __attribute__((packed));
 
 struct DeckEntry {
-  /* 00 */ pstring<TextEncoding::SJIS, 0x10> name;
+  /* 00 */ pstring<TextEncoding::MARKED, 0x10> name;
   /* 10 */ le_uint32_t team_id;
   /* 14 */ parray<le_uint16_t, 31> card_ids;
   // If the following flag is not set to 3, then the God Whim assist effect can
