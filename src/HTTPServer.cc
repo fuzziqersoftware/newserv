@@ -751,20 +751,21 @@ JSON HTTPServer::generate_summary_json() const {
           {"BaseVersion", name_for_enum(l->base_version)},
           {"Players", l->count_clients()},
           {"CheatsEnabled", l->check_flag(Lobby::Flag::CHEATS_ENABLED)},
-          {"QuestInProgress", l->check_flag(Lobby::Flag::QUEST_IN_PROGRESS)},
-          {"JoinableQuestInProgress", l->check_flag(Lobby::Flag::JOINABLE_QUEST_IN_PROGRESS)},
-          {"BattleInProgress", l->check_flag(Lobby::Flag::BATTLE_IN_PROGRESS)},
-          {"IsSpectatorTeam", l->check_flag(Lobby::Flag::IS_SPECTATOR_TEAM)},
-          {"SectionID", name_for_section_id(l->section_id)},
           {"Episode", name_for_episode(l->episode)},
-          {"Mode", name_for_mode(l->mode)},
-          {"Difficulty", name_for_difficulty(l->difficulty)},
           {"HasPassword", !l->password.empty()},
       }));
-      auto ep3s = l->ep3_server;
-      if (l->episode == Episode::EP3 && ep3s) {
-        games_json.back().emplace("Ep3MapNumber", ep3s->last_chosen_map ? ep3s->last_chosen_map->map_number : JSON(nullptr));
-        games_json.back().emplace("Ep3Rules", ep3s->map_and_rules ? ep3s->map_and_rules->rules.json() : nullptr);
+      if (l->episode == Episode::EP3) {
+        auto ep3s = l->ep3_server;
+        games_json.back().emplace("BattleInProgress", l->check_flag(Lobby::Flag::BATTLE_IN_PROGRESS));
+        games_json.back().emplace("IsSpectatorTeam", l->check_flag(Lobby::Flag::IS_SPECTATOR_TEAM));
+        games_json.back().emplace("MapNumber", (ep3s && ep3s->last_chosen_map) ? ep3s->last_chosen_map->map_number : JSON(nullptr));
+        games_json.back().emplace("Rules", (ep3s && ep3s->map_and_rules) ? ep3s->map_and_rules->rules.json() : nullptr);
+      } else {
+        games_json.back().emplace("QuestInProgress", l->check_flag(Lobby::Flag::QUEST_IN_PROGRESS));
+        games_json.back().emplace("JoinableQuestInProgress", l->check_flag(Lobby::Flag::JOINABLE_QUEST_IN_PROGRESS));
+        games_json.back().emplace("SectionID", name_for_section_id(l->section_id));
+        games_json.back().emplace("Mode", name_for_mode(l->mode));
+        games_json.back().emplace("Difficulty", name_for_difficulty(l->difficulty));
       }
     }
   }
