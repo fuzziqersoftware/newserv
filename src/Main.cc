@@ -1129,14 +1129,14 @@ Action a_disassemble_set_data_table(
     });
 Action a_check_set_data_table(
     "check-set-data-tables", nullptr, +[](Arguments&) {
-      ServerState s;
-      s.load_patch_indexes(false);
-      s.load_set_data_tables(false);
+      auto s = make_shared<ServerState>();
+      s->load_patch_indexes(false);
+      s->load_set_data_tables(false);
       static_game_data_log.min_level = LogLevel::DISABLED;
 
       auto get_file_data = [&](Version version, const string& filename) -> shared_ptr<const string> {
         try {
-          return s.load_map_file(version, filename);
+          return s->load_map_file(version, filename);
         } catch (const cannot_open_file&) {
           return nullptr;
         }
@@ -1201,7 +1201,7 @@ Action a_check_set_data_table(
         for (Episode episode : episodes) {
           for (GameMode mode : modes) {
             for (uint8_t difficulty = 0; difficulty <= max_difficulty; difficulty++) {
-              auto sdt = s.set_data_table(version, episode, mode, difficulty);
+              auto sdt = s->set_data_table(version, episode, mode, difficulty);
               auto ns_var_maxes = variation_maxes_deprecated(version, episode, (mode == GameMode::SOLO));
               size_t num_floors;
               if (episode == Episode::EP4) {
@@ -1333,8 +1333,8 @@ Action a_assemble_all_patches(
     versions, and one encrypted, for PSO GC JP v1.4, JP Ep3, and Ep3 Trial\n\
     Edition). The output files are saved in system/client-functions.\n",
     +[](Arguments&) {
-      ServerState s;
-      s.compile_functions(false);
+      auto s = make_shared<ServerState>();
+      s->compile_functions(false);
 
       auto process_code = +[](shared_ptr<const CompiledFunctionCode> code,
                                uint32_t checksum_addr,
@@ -1351,23 +1351,23 @@ Action a_assemble_all_patches(
         }
       };
 
-      for (const auto& it : s.function_code_index->name_and_specific_version_to_patch_function) {
+      for (const auto& it : s->function_code_index->name_and_specific_version_to_patch_function) {
         process_code(it.second, 0, 0, 0);
       }
       try {
-        process_code(s.function_code_index->name_to_function.at("VersionDetectGC"), 0, 0, 0);
+        process_code(s->function_code_index->name_to_function.at("VersionDetectGC"), 0, 0, 0);
       } catch (const out_of_range&) {
       }
       try {
-        process_code(s.function_code_index->name_to_function.at("VersionDetectXB"), 0, 0, 0);
+        process_code(s->function_code_index->name_to_function.at("VersionDetectXB"), 0, 0, 0);
       } catch (const out_of_range&) {
       }
       try {
-        process_code(s.function_code_index->name_to_function.at("CacheClearFix-Phase1"), 0x80000000, 8, 0x7F2734EC);
+        process_code(s->function_code_index->name_to_function.at("CacheClearFix-Phase1"), 0x80000000, 8, 0x7F2734EC);
       } catch (const out_of_range&) {
       }
       try {
-        process_code(s.function_code_index->name_to_function.at("CacheClearFix-Phase2"), 0, 0, 0);
+        process_code(s->function_code_index->name_to_function.at("CacheClearFix-Phase2"), 0, 0, 0);
       } catch (const out_of_range&) {
       }
     });
@@ -1559,10 +1559,10 @@ Action a_print_word_select_table(
     given, prints the table sorted by token ID for that version. If no version\n\
     option is given, prints the token table sorted by canonical name.\n",
     +[](Arguments& args) {
-      ServerState s;
-      s.load_patch_indexes(false);
-      s.load_text_index(false);
-      s.load_word_select_table(false);
+      auto s = make_shared<ServerState>();
+      s->load_patch_indexes(false);
+      s->load_text_index(false);
+      s->load_word_select_table(false);
       Version v;
       try {
         v = get_cli_version(args);
@@ -1570,9 +1570,9 @@ Action a_print_word_select_table(
         v = Version::UNKNOWN;
       }
       if (v != Version::UNKNOWN) {
-        s.word_select_table->print_index(stdout, v);
+        s->word_select_table->print_index(stdout, v);
       } else {
-        s.word_select_table->print(stdout);
+        s->word_select_table->print(stdout);
       }
     });
 
@@ -1618,11 +1618,11 @@ Action a_convert_rare_item_set(
     +[](Arguments& args) {
       auto version = get_cli_version(args);
 
-      ServerState s;
-      s.load_patch_indexes(false);
-      s.load_text_index(false);
-      s.load_item_definitions(false);
-      s.load_item_name_indexes(false);
+      auto s = make_shared<ServerState>();
+      s->load_patch_indexes(false);
+      s->load_text_index(false);
+      s->load_item_definitions(false);
+      s->load_item_name_indexes(false);
 
       string input_filename = args.get<string>(1, false);
       if (input_filename.empty() || (input_filename == "-")) {
@@ -1632,7 +1632,7 @@ Action a_convert_rare_item_set(
       auto data = make_shared<string>(read_input_data(args));
       shared_ptr<RareItemSet> rs;
       if (ends_with(input_filename, ".json")) {
-        rs = make_shared<RareItemSet>(JSON::parse(*data), s.item_name_index(version));
+        rs = make_shared<RareItemSet>(JSON::parse(*data), s->item_name_index(version));
       } else if (ends_with(input_filename, ".gsl")) {
         rs = make_shared<RareItemSet>(GSLArchive(data, false), false);
       } else if (ends_with(input_filename, ".gslb")) {
@@ -1647,9 +1647,9 @@ Action a_convert_rare_item_set(
 
       string output_filename = args.get<string>(2, false);
       if (output_filename.empty() || (output_filename == "-")) {
-        rs->print_all_collections(stdout, s.item_name_index(version));
+        rs->print_all_collections(stdout, s->item_name_index(version));
       } else if (ends_with(output_filename, ".json")) {
-        string data = rs->serialize_json(s.item_name_index(version));
+        string data = rs->serialize_json(s->item_name_index(version));
         write_output_data(args, data.data(), data.size(), nullptr);
       } else if (ends_with(output_filename, ".gsl")) {
         string data = rs->serialize_gsl(args.get<bool>("big-endian"));
@@ -1676,12 +1676,12 @@ Action a_describe_item(
       string description = args.get<string>(1);
       auto version = get_cli_version(args);
 
-      ServerState s;
-      s.load_patch_indexes(false);
-      s.load_text_index(false);
-      s.load_item_definitions(false);
-      s.load_item_name_indexes(false);
-      auto name_index = s.item_name_index(version);
+      auto s = make_shared<ServerState>();
+      s->load_patch_indexes(false);
+      s->load_text_index(false);
+      s->load_item_definitions(false);
+      s->load_item_name_indexes(false);
+      auto name_index = s->item_name_index(version);
 
       ItemData item = name_index->parse_item_description(description);
 
@@ -1693,7 +1693,7 @@ Action a_describe_item(
           item.data2[0], item.data2[1], item.data2[2], item.data2[3]);
 
       ItemData item_v2 = item;
-      item_v2.encode_for_version(Version::PC_V2, s.item_parameter_table_for_encode(Version::PC_V2));
+      item_v2.encode_for_version(Version::PC_V2, s->item_parameter_table_for_encode(Version::PC_V2));
       ItemData item_v2_decoded = item_v2;
       item_v2_decoded.decode_for_version(Version::PC_V2);
 
@@ -1712,7 +1712,7 @@ Action a_describe_item(
       }
 
       ItemData item_gc = item;
-      item_gc.encode_for_version(Version::GC_V3, s.item_parameter_table_for_encode(Version::GC_V3));
+      item_gc.encode_for_version(Version::GC_V3, s->item_parameter_table_for_encode(Version::GC_V3));
       ItemData item_gc_decoded = item_gc;
       item_gc_decoded.decode_for_version(Version::GC_V3);
 
@@ -1732,21 +1732,21 @@ Action a_describe_item(
 
       log_info("Description: %s", desc.c_str());
 
-      size_t purchase_price = s.item_parameter_table(Version::BB_V4)->price_for_item(item);
+      size_t purchase_price = s->item_parameter_table(Version::BB_V4)->price_for_item(item);
       size_t sale_price = purchase_price >> 3;
       log_info("Purchase price: %zu; sale price: %zu", purchase_price, sale_price);
     });
 
 Action a_name_all_items(
     "name-all-items", nullptr, +[](Arguments&) {
-      ServerState s;
-      s.load_patch_indexes(false);
-      s.load_text_index(false);
-      s.load_item_definitions(false);
-      s.load_item_name_indexes(false);
+      auto s = make_shared<ServerState>();
+      s->load_patch_indexes(false);
+      s->load_text_index(false);
+      s->load_item_definitions(false);
+      s->load_item_name_indexes(false);
 
       set<uint32_t> all_primary_identifiers;
-      for (const auto& index : s.item_name_indexes) {
+      for (const auto& index : s->item_name_indexes) {
         if (index) {
           for (const auto& it : index->all_by_primary_identifier()) {
             all_primary_identifiers.emplace(it.first);
@@ -1757,7 +1757,7 @@ Action a_name_all_items(
       fprintf(stderr, "IDENT   :");
       for (size_t v_s = 0; v_s < NUM_VERSIONS; v_s++) {
         Version version = static_cast<Version>(v_s);
-        const auto& index = s.item_name_indexes.at(v_s);
+        const auto& index = s->item_name_indexes.at(v_s);
         if (index) {
           fprintf(stderr, " %30s    ", name_for_enum(version));
         }
@@ -1767,10 +1767,10 @@ Action a_name_all_items(
       for (uint32_t primary_identifier : all_primary_identifiers) {
         fprintf(stderr, "%08" PRIX32 ":", primary_identifier);
         for (size_t v_s = 0; v_s < NUM_VERSIONS; v_s++) {
-          const auto& index = s.item_name_indexes.at(v_s);
+          const auto& index = s->item_name_indexes.at(v_s);
           if (index) {
             Version version = static_cast<Version>(v_s);
-            auto pmt = s.item_parameter_table(version);
+            auto pmt = s->item_parameter_table(version);
             ItemData item = ItemData::from_primary_identifier(version, primary_identifier);
             string name = index->describe_item(item);
             try {
@@ -1787,13 +1787,13 @@ Action a_name_all_items(
 
 Action a_print_item_parameter_tables(
     "print-item-tables", nullptr, +[](Arguments&) {
-      ServerState s;
-      s.load_patch_indexes(false);
-      s.load_text_index(false);
-      s.load_item_definitions(false);
-      s.load_item_name_indexes(false);
+      auto s = make_shared<ServerState>();
+      s->load_patch_indexes(false);
+      s->load_text_index(false);
+      s->load_item_definitions(false);
+      s->load_item_name_indexes(false);
       for (size_t v_s = 0; v_s < NUM_VERSIONS; v_s++) {
-        const auto& index = s.item_name_indexes.at(v_s);
+        const auto& index = s->item_name_indexes.at(v_s);
         if (index) {
           Version v = static_cast<Version>(v_s);
           fprintf(stdout, "======== %s\n", name_for_enum(v));
@@ -1810,8 +1810,8 @@ Action a_show_ep3_cards(
     +[](Arguments& args) {
       bool one_line = args.get<bool>("one-line");
 
-      ServerState s;
-      s.load_ep3_cards(false);
+      auto s = make_shared<ServerState>();
+      s->load_ep3_cards(false);
 
       unique_ptr<BinaryTextSet> text_english;
       try {
@@ -1820,15 +1820,15 @@ Action a_show_ep3_cards(
       } catch (const exception& e) {
       }
 
-      auto card_ids = s.ep3_card_index->all_ids();
+      auto card_ids = s->ep3_card_index->all_ids();
       log_info("%zu card definitions", card_ids.size());
       for (uint32_t card_id : card_ids) {
-        auto entry = s.ep3_card_index->definition_for_id(card_id);
-        string s = entry->def.str(one_line, text_english.get());
+        auto entry = s->ep3_card_index->definition_for_id(card_id);
+        string def_str = entry->def.str(one_line, text_english.get());
         if (one_line) {
-          fprintf(stdout, "%s\n", s.c_str());
+          fprintf(stdout, "%s\n", def_str.c_str());
         } else {
-          fprintf(stdout, "%s\n", s.c_str());
+          fprintf(stdout, "%s\n", def_str.c_str());
           if (!entry->debug_tags.empty()) {
             string tags = join(entry->debug_tags, ", ");
             fprintf(stdout, "  Tags: %s\n", tags.c_str());
@@ -1860,14 +1860,14 @@ Action a_generate_ep3_cards_html(
 
       bool is_nte = (get_cli_version(args, Version::GC_EP3) == Version::GC_EP3_NTE);
 
-      ServerState s;
-      s.load_patch_indexes(false);
-      s.load_text_index(false);
-      s.load_ep3_cards(false);
+      auto s = make_shared<ServerState>();
+      s->load_patch_indexes(false);
+      s->load_text_index(false);
+      s->load_ep3_cards(false);
 
       shared_ptr<const TextSet> text_english;
       try {
-        text_english = s.text_index->get(Version::GC_EP3, 1);
+        text_english = s->text_index->get(Version::GC_EP3, 1);
       } catch (const out_of_range&) {
       }
 
@@ -1884,7 +1884,7 @@ Action a_generate_ep3_cards_html(
           return (this->ce == nullptr) && this->small_data_url.empty() && this->medium_data_url.empty() && this->large_data_url.empty();
         }
       };
-      auto card_index = is_nte ? s.ep3_card_index_trial : s.ep3_card_index;
+      auto card_index = is_nte ? s->ep3_card_index_trial : s->ep3_card_index;
       vector<CardInfo> infos;
       for (uint32_t card_id : card_index->all_ids()) {
         if (infos.size() <= card_id) {
@@ -2025,20 +2025,20 @@ Action a_show_ep3_maps(
     +[](Arguments&) {
       config_log.info("Collecting Episode 3 data");
 
-      ServerState s;
-      s.load_ep3_cards(false);
-      s.load_ep3_maps(false);
+      auto s = make_shared<ServerState>();
+      s->load_ep3_cards(false);
+      s->load_ep3_maps(false);
 
-      auto map_ids = s.ep3_map_index->all_numbers();
+      auto map_ids = s->ep3_map_index->all_numbers();
       log_info("%zu maps", map_ids.size());
       for (uint32_t map_id : map_ids) {
-        auto map = s.ep3_map_index->for_number(map_id);
+        auto map = s->ep3_map_index->for_number(map_id);
         const auto& vms = map->all_versions();
         for (size_t language = 0; language < vms.size(); language++) {
           if (!vms[language]) {
             continue;
           }
-          string map_s = vms[language]->map->str(s.ep3_card_index.get(), language);
+          string map_s = vms[language]->map->str(s->ep3_card_index.get(), language);
           fprintf(stdout, "(%c) %s\n", char_for_language_code(language), map_s.c_str());
         }
       }
@@ -2050,22 +2050,22 @@ Action a_show_battle_params(
     Print the Blue Burst battle parameters from the system/blueburst directory\n\
     in a human-readable format.\n",
     +[](Arguments&) {
-      ServerState s;
-      s.load_patch_indexes(false);
-      s.load_battle_params(false);
+      auto s = make_shared<ServerState>();
+      s->load_patch_indexes(false);
+      s->load_battle_params(false);
 
       fprintf(stdout, "Episode 1 multi\n");
-      s.battle_params->get_table(false, Episode::EP1).print(stdout);
+      s->battle_params->get_table(false, Episode::EP1).print(stdout);
       fprintf(stdout, "Episode 1 solo\n");
-      s.battle_params->get_table(true, Episode::EP1).print(stdout);
+      s->battle_params->get_table(true, Episode::EP1).print(stdout);
       fprintf(stdout, "Episode 2 multi\n");
-      s.battle_params->get_table(false, Episode::EP2).print(stdout);
+      s->battle_params->get_table(false, Episode::EP2).print(stdout);
       fprintf(stdout, "Episode 2 solo\n");
-      s.battle_params->get_table(true, Episode::EP2).print(stdout);
+      s->battle_params->get_table(true, Episode::EP2).print(stdout);
       fprintf(stdout, "Episode 4 multi\n");
-      s.battle_params->get_table(false, Episode::EP4).print(stdout);
+      s->battle_params->get_table(false, Episode::EP4).print(stdout);
       fprintf(stdout, "Episode 4 solo\n");
-      s.battle_params->get_table(true, Episode::EP4).print(stdout);
+      s->battle_params->get_table(true, Episode::EP4).print(stdout);
     });
 
 Action a_find_rare_enemy_seeds(
@@ -2289,14 +2289,14 @@ Action a_diff_dol_files(
 
 Action a_replay_ep3_battle_commands(
     "replay-ep3-battle-commands", nullptr, +[](Arguments& args) {
-      ServerState s;
-      s.load_ep3_cards(false);
-      s.load_ep3_maps(false);
+      auto s = make_shared<ServerState>();
+      s->load_ep3_cards(false);
+      s->load_ep3_maps(false);
 
       auto random_crypt = make_shared<PSOV2Encryption>(args.get<uint32_t>("seed", 0, Arguments::IntFormat::HEX));
       Episode3::Server::Options options = {
-          .card_index = s.ep3_card_index,
-          .map_index = s.ep3_map_index,
+          .card_index = s->ep3_card_index,
+          .map_index = s->ep3_map_index,
           .behavior_flags = 0x0092,
           .random_crypt = random_crypt,
           .tournament = nullptr,

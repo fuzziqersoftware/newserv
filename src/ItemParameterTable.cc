@@ -1038,7 +1038,11 @@ uint8_t ItemParameterTable::get_item_adjusted_stars(const ItemData& item) const 
 }
 
 bool ItemParameterTable::is_item_rare(const ItemData& item) const {
-  return (this->get_item_base_stars(item) >= 9);
+  try {
+    return (this->get_item_base_stars(item) >= 9);
+  } catch (const out_of_range&) {
+    return false;
+  }
 }
 
 bool ItemParameterTable::is_unsealable_item(uint8_t data1_0, uint8_t data1_1, uint8_t data1_2) const {

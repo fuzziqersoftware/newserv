@@ -1637,6 +1637,12 @@ static HandlerResult S_64(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t, 
     ses->lobby_episode = get_episode(*cmd);
   }
 
+  if (ses->version() == Version::GC_NTE) {
+    // GC NTE ignores the variations field entirely, so clear the array to
+    // ensure we'll load the correct maps
+    cmd->variations.clear(0);
+  }
+
   // Recreate the item creator if needed, and load maps
   auto s = ses->require_server_state();
   ses->set_drop_mode(ses->drop_mode);
@@ -2115,7 +2121,7 @@ static on_command_t handlers[0x100][NUM_VERSIONS][2] = {
 /* 61 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr}, {nullptr, nullptr}, {S_invalid,        nullptr},     {S_invalid,        nullptr},     {S_invalid,        nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,        nullptr},     {S_invalid,        C_GXB_61},     {S_invalid,        C_GXB_61},     {S_invalid,        C_GXB_61},     {S_invalid,     C_GXB_61},     {S_invalid,    C_GXB_61}},
 /* 62 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr}, {nullptr, nullptr}, {S_6x,             C_D_6x},      {S_6x,             C_D_6x},      {S_6x,             C_D_6x},       {S_6x,          C_P_6x},       {S_6x,          C_P_6x},       {S_6x,             C_D_6x},      {S_6x,             C_G_6x},       {S_6x,             C_G_6x},       {S_6x,             C_G_6x},       {S_6x,          C_X_6x},       {S_6x,         C_B_6x}},
 /* 63 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr}, {nullptr, nullptr}, {S_invalid,        nullptr},     {S_invalid,        nullptr},     {S_invalid,        nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,        nullptr},     {S_invalid,        nullptr},      {S_invalid,        nullptr},      {S_invalid,        nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
-/* 64 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr}, {nullptr, nullptr}, {S_D_64,           nullptr},     {S_D_64,           nullptr},     {S_D_64,           nullptr},      {S_P_64,        nullptr},      {S_P_64,        nullptr},      {S_D_64,           nullptr},     {S_G_64,           nullptr},      {S_G_64,           nullptr},      {S_G_64,           nullptr},      {S_X_64,        nullptr},      {S_B_64,       nullptr}},
+/* 64 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr}, {nullptr, nullptr}, {S_D_64,           nullptr},     {S_D_64,           nullptr},     {S_D_64,           nullptr},      {S_P_64,        nullptr},      {S_P_64,        nullptr},      {S_G_64,           nullptr},     {S_G_64,           nullptr},      {S_G_64,           nullptr},      {S_G_64,           nullptr},      {S_X_64,        nullptr},      {S_B_64,       nullptr}},
 /* 65 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr}, {nullptr, nullptr}, {S_DG_65_67_68_EB, nullptr},     {S_DG_65_67_68_EB, nullptr},     {S_DG_65_67_68_EB, nullptr},      {S_P_65_67_68,  nullptr},      {S_P_65_67_68,  nullptr},      {S_DG_65_67_68_EB, nullptr},     {S_DG_65_67_68_EB, nullptr},      {S_DG_65_67_68_EB, nullptr},      {S_DG_65_67_68_EB, nullptr},      {S_X_65_67_68,  nullptr},      {S_B_65_67_68, nullptr}},
 /* 66 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr}, {nullptr, nullptr}, {S_66_69_E9,       nullptr},     {S_66_69_E9,       nullptr},     {S_66_69_E9,       nullptr},      {S_66_69_E9,    nullptr},      {S_66_69_E9,    nullptr},      {S_66_69_E9,       nullptr},     {S_66_69_E9,       nullptr},      {S_66_69_E9,       nullptr},      {S_66_69_E9,       nullptr},      {S_66_69_E9,    nullptr},      {S_66_69_E9,   nullptr}},
 /* 67 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr}, {nullptr, nullptr}, {S_DG_65_67_68_EB, nullptr},     {S_DG_65_67_68_EB, nullptr},     {S_DG_65_67_68_EB, nullptr},      {S_P_65_67_68,  nullptr},      {S_P_65_67_68,  nullptr},      {S_DG_65_67_68_EB, nullptr},     {S_DG_65_67_68_EB, nullptr},      {S_DG_65_67_68_EB, nullptr},      {S_DG_65_67_68_EB, nullptr},      {S_X_65_67_68,  nullptr},      {S_B_65_67_68, nullptr}},

@@ -306,7 +306,7 @@ void ItemData::add_mag_photon_blast(uint8_t pb_num) {
 
 void ItemData::decode_for_version(Version from_version) {
   uint8_t encoded_v2_data = this->get_encoded_v2_data();
-  bool should_decode_v2_data = (is_v1(from_version) || is_v2(from_version)) &&
+  bool should_decode_v2_data = (is_v1(from_version) || is_v2(from_version)) && (from_version != Version::GC_NTE) &&
       (encoded_v2_data != 0x00) && this->has_encoded_v2_data();
 
   switch (this->data1[0]) {
@@ -386,7 +386,7 @@ void ItemData::decode_for_version(Version from_version) {
 }
 
 void ItemData::encode_for_version(Version to_version, shared_ptr<const ItemParameterTable> item_parameter_table) {
-  bool should_encode_v2_data = (is_v1(to_version) || is_v2(to_version)) && !this->has_encoded_v2_data();
+  bool should_encode_v2_data = (is_v1(to_version) || is_v2(to_version)) && (to_version != Version::GC_NTE) && !this->has_encoded_v2_data();
 
   switch (this->data1[0]) {
     case 0x00:
