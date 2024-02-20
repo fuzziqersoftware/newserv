@@ -197,6 +197,24 @@ void HTTPServer::dispatch_handle_request(struct evhttp_request* req, void* ctx) 
   reinterpret_cast<HTTPServer*>(ctx)->handle_request(req);
 }
 
+JSON HTTPServer::generate_quest_json(shared_ptr<const Quest> q) const {
+  if (!q) {
+    return nullptr;
+  }
+  auto battle_rules_json = q->battle_rules ? q->battle_rules->json() : nullptr;
+  auto challenge_template_index_json = (q->challenge_template_index >= 0)
+      ? q->challenge_template_index
+      : JSON(nullptr);
+  return JSON::dict({
+      {"Number", q->quest_number},
+      {"Episode", name_for_episode(q->episode)},
+      {"Joinable", q->joinable},
+      {"Name", q->name},
+      {"BattleRules", std::move(battle_rules_json)},
+      {"ChallengeTemplateIndex", std::move(challenge_template_index_json)},
+  });
+}
+
 JSON HTTPServer::generate_client_config_json(const Client::Config& config) const {
   const char* drop_notifications_mode = "unknown";
   switch (config.get_drop_notification_mode()) {
@@ -567,23 +585,7 @@ JSON HTTPServer::generate_lobby_json(shared_ptr<const Lobby> l) const {
         }
       }
       ret.emplace("FloorItems", std::move(floor_items_json));
-      if (l->quest) {
-        auto battle_rules_json = l->quest->battle_rules ? l->quest->battle_rules->json() : nullptr;
-        auto challenge_template_index_json = (l->quest->challenge_template_index >= 0)
-            ? l->quest->challenge_template_index
-            : JSON(nullptr);
-        auto quest_json = JSON::dict({
-            {"Number", l->quest->quest_number},
-            {"Episode", name_for_episode(l->quest->episode)},
-            {"Joinable", l->quest->joinable},
-            {"Name", l->quest->name},
-            {"BattleRules", std::move(battle_rules_json)},
-            {"ChallengeTemplateIndex", std::move(challenge_template_index_json)},
-        });
-        ret.emplace("Quest", std::move(quest_json));
-      } else {
-        ret.emplace("Quest", nullptr);
-      }
+      ret.emplace("Quest", this->generate_quest_json(l->quest));
 
     } else {
       ret.emplace("BattleInProgress", l->check_flag(Lobby::Flag::BATTLE_IN_PROGRESS));
@@ -769,7 +771,7 @@ JSON HTTPServer::generate_summary_json() const {
   for (const auto& it : this->state->id_to_lobby) {
     auto l = it.second;
     if (l->is_game()) {
-      games_json.emplace_back(JSON::dict({
+      auto game_json = JSON::dict({
           {"ID", l->lobby_id},
           {"Name", l->name},
           {"BaseVersion", name_for_enum(l->base_version)},
@@ -777,20 +779,22 @@ JSON HTTPServer::generate_summary_json() const {
           {"CheatsEnabled", l->check_flag(Lobby::Flag::CHEATS_ENABLED)},
           {"Episode", name_for_episode(l->episode)},
           {"HasPassword", !l->password.empty()},
-      }));
+      });
       if (l->episode == Episode::EP3) {
         auto ep3s = l->ep3_server;
-        games_json.back().emplace("BattleInProgress", l->check_flag(Lobby::Flag::BATTLE_IN_PROGRESS));
-        games_json.back().emplace("IsSpectatorTeam", l->check_flag(Lobby::Flag::IS_SPECTATOR_TEAM));
-        games_json.back().emplace("MapNumber", (ep3s && ep3s->last_chosen_map) ? ep3s->last_chosen_map->map_number : JSON(nullptr));
-        games_json.back().emplace("Rules", (ep3s && ep3s->map_and_rules) ? ep3s->map_and_rules->rules.json() : nullptr);
+        game_json.emplace("BattleInProgress", l->check_flag(Lobby::Flag::BATTLE_IN_PROGRESS));
+        game_json.emplace("IsSpectatorTeam", l->check_flag(Lobby::Flag::IS_SPECTATOR_TEAM));
+        game_json.emplace("MapNumber", (ep3s && ep3s->last_chosen_map) ? ep3s->last_chosen_map->map_number : JSON(nullptr));
+        game_json.emplace("Rules", (ep3s && ep3s->map_and_rules) ? ep3s->map_and_rules->rules.json() : nullptr);
       } else {
-        games_json.back().emplace("QuestInProgress", l->check_flag(Lobby::Flag::QUEST_IN_PROGRESS));
-        games_json.back().emplace("JoinableQuestInProgress", l->check_flag(Lobby::Flag::JOINABLE_QUEST_IN_PROGRESS));
-        games_json.back().emplace("SectionID", name_for_section_id(l->section_id));
-        games_json.back().emplace("Mode", name_for_mode(l->mode));
-        games_json.back().emplace("Difficulty", name_for_difficulty(l->difficulty));
+        game_json.emplace("QuestInProgress", l->check_flag(Lobby::Flag::QUEST_IN_PROGRESS));
+        game_json.emplace("JoinableQuestInProgress", l->check_flag(Lobby::Flag::JOINABLE_QUEST_IN_PROGRESS));
+        game_json.emplace("SectionID", name_for_section_id(l->section_id));
+        game_json.emplace("Mode", name_for_mode(l->mode));
+        game_json.emplace("Difficulty", name_for_difficulty(l->difficulty));
+        game_json.emplace("Quest", this->generate_quest_json(l->quest));
       }
+      games_json.emplace_back(std::move(game_json));
     }
   }
 

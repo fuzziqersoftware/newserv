@@ -49,6 +49,7 @@ protected:
       const std::string& key,
       const std::string* _default = nullptr);
 
+  JSON generate_quest_json(std::shared_ptr<const Quest> q) const;
   JSON generate_client_config_json(const Client::Config& config) const;
   JSON generate_license_json(std::shared_ptr<const License> l) const;
   JSON generate_game_client_json(std::shared_ptr<const Client> c) const;
