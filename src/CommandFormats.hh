@@ -4909,7 +4909,8 @@ struct G_SyncPlayerDispAndInventory_BB_6x70 {
   // Offsets in this struct are relative to the overall command header
   /* 0008 */ G_ExtendedHeader<G_ClientIDHeader> header = {{0x70, 0x00, 0x0000}, sizeof(G_SyncPlayerDispAndInventory_BB_6x70)};
   /* 0010 */ G_SyncPlayerDispAndInventory_BaseV1 base;
-  /* 0128 */ pstring<TextEncoding::UTF16_ALWAYS_MARKED, 0x10> name;
+  /* 0128 */ pstring<TextEncoding::UTF16_ALWAYS_MARKED, 0x0C> name;
+  /* 0140 */ parray<uint8_t, 0x08> unknown_a1; // Probably actually unused
   /* 0148 */ PlayerStats stats;
   /* 016C */ le_uint32_t num_items = 0;
   /* 0170 */ parray<PlayerInventoryItem, 0x1E> items;
