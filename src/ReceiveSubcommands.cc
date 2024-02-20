@@ -587,9 +587,6 @@ public:
     this->xb_user_id = this->default_xb_user_id();
     this->xb_unknown_a16 = cmd.unknown_a16;
     this->name = cmd.name.decode(cmd.base.language);
-    if ((this->name.size() > 2) && (this->name[0] == '\t') && ((this->name[1] == 'E') || (this->name[1] == 'J'))) {
-      this->name = this->name.substr(2);
-    }
     this->visual.name.encode(this->name, cmd.base.language);
   }
 
@@ -663,7 +660,7 @@ public:
   G_SyncPlayerDispAndInventory_BB_6x70 as_bb(uint8_t language) const {
     G_SyncPlayerDispAndInventory_BB_6x70 ret;
     ret.base = this->base_v1();
-    ret.name.encode("\tJ" + this->name, language);
+    ret.name.encode(this->name, language);
     ret.base.visual.name.encode(string_printf("%10" PRId32, this->guild_card_number), language);
     ret.stats = this->stats;
     ret.num_items = this->num_items;

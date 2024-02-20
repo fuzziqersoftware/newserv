@@ -3168,9 +3168,6 @@ static void on_61_98(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
   c->license->save();
 
   string name_str = player->disp.name.decode(c->language());
-  if ((name_str.size() > 2) && (name_str[0] == '\t') && ((name_str[1] == 'E') || (name_str[1] == 'J'))) {
-    name_str = name_str.substr(2);
-  }
   c->channel.name = string_printf("C-%" PRIX64 " (%s)", c->id, name_str.c_str());
 
   // 98 should only be sent when leaving a game, and we should leave the client
@@ -3303,9 +3300,6 @@ static void on_06(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
 
   auto p = c->character();
   string from_name = p->disp.name.decode(c->language());
-  if (from_name.size() >= 2 && from_name[0] == '\t' && (from_name[1] == 'E' || from_name[1] == 'J')) {
-    from_name = from_name.substr(2);
-  }
   static const string whisper_text = "(whisper)";
   for (size_t x = 0; x < l->max_clients; x++) {
     if (l->clients[x]) {
@@ -3368,7 +3362,7 @@ static void on_E3_BB(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
 
     auto s = c->require_server_state();
     try {
-      auto preview = c->character()->disp.to_preview();
+      auto preview = c->character()->to_preview();
       send_player_preview_bb(c, cmd.character_index, &preview);
 
     } catch (const exception& e) {

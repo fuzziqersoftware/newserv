@@ -51,6 +51,7 @@ static string escape_string(const string& data, TextEncoding encoding = TextEnco
         decoded = data;
         break;
       case TextEncoding::UTF16:
+      case TextEncoding::UTF16_ALWAYS_MARKED:
         decoded = tt_utf16_to_utf8(data);
         break;
       case TextEncoding::SJIS:

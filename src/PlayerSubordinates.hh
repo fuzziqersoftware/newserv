@@ -174,8 +174,8 @@ struct PlayerDispDataBBPreview {
   // The name field in this structure is used for the player's Guild Card
   // number, apparently (possibly because it's a char array and this is BB)
   /* 08 */ PlayerVisualConfig visual;
-  /* 58 */ pstring<TextEncoding::UTF16, 0x10> name;
-  /* 78 */ uint32_t play_time = 0;
+  /* 58 */ pstring<TextEncoding::UTF16_ALWAYS_MARKED, 0x10> name;
+  /* 78 */ uint32_t play_time_seconds = 0;
   /* 7C */
 } __attribute__((packed));
 
@@ -183,16 +183,14 @@ struct PlayerDispDataBBPreview {
 struct PlayerDispDataBB {
   /* 0000 */ PlayerStats stats;
   /* 0024 */ PlayerVisualConfig visual;
-  /* 0074 */ pstring<TextEncoding::UTF16, 0x0C> name;
-  /* 008C */ le_uint32_t play_time = 0;
-  /* 0090 */ uint32_t unknown_a3 = 0;
+  /* 0074 */ pstring<TextEncoding::UTF16_ALWAYS_MARKED, 0x0C> name;
+  /* 008C */ parray<uint8_t, 0x08> unknown_a1; // Probably actually unused
   /* 0094 */ parray<uint8_t, 0xE8> config;
   /* 017C */ parray<uint8_t, 0x14> technique_levels_v1;
   /* 0190 */
 
   void enforce_lobby_join_limits_for_version(Version v);
   PlayerDispDataDCPCV3 to_dcpcv3(uint8_t to_language, uint8_t from_language) const;
-  PlayerDispDataBBPreview to_preview() const;
   void apply_preview(const PlayerDispDataBBPreview&);
   void apply_dressing_room(const PlayerDispDataBBPreview&);
 } __attribute__((packed));
@@ -251,8 +249,8 @@ struct GuildCardXB {
 
 struct GuildCardBB {
   /* 0000 */ le_uint32_t guild_card_number = 0;
-  /* 0004 */ pstring<TextEncoding::UTF16, 0x18> name;
-  /* 0034 */ pstring<TextEncoding::UTF16, 0x10> team_name;
+  /* 0004 */ pstring<TextEncoding::UTF16_ALWAYS_MARKED, 0x18> name;
+  /* 0034 */ pstring<TextEncoding::UTF16_ALWAYS_MARKED, 0x10> team_name;
   /* 0054 */ pstring<TextEncoding::UTF16, 0x58> description;
   /* 0104 */ uint8_t present = 0;
   /* 0105 */ uint8_t language = 0;
@@ -320,7 +318,7 @@ struct PlayerLobbyDataBB {
   /* 0C */ le_uint32_t team_id = 0;
   /* 10 */ parray<uint8_t, 0x0C> unknown_a1;
   /* 1C */ le_uint32_t client_id = 0;
-  /* 20 */ pstring<TextEncoding::UTF16, 0x10> name;
+  /* 20 */ pstring<TextEncoding::UTF16_ALWAYS_MARKED, 0x10> name;
   // If this field is zero, the "Press F1 for help" prompt appears in the corner
   // of the screen in the lobby and on Pioneer 2.
   /* 40 */ le_uint32_t hide_help_prompt = 1;
@@ -441,7 +439,7 @@ struct PlayerRecordsBB_Challenge {
   /* 00F4 */ ChallengeAwardState<false> ep1_online_award_state;
   /* 00FC */ ChallengeAwardState<false> ep2_online_award_state;
   /* 0104 */ ChallengeAwardState<false> ep1_offline_award_state;
-  /* 010C */ pstring<TextEncoding::UTF16, 0x0C> rank_title; // Encrypted; see decrypt_challenge_rank_text
+  /* 010C */ pstring<TextEncoding::CHALLENGE16, 0x0C> rank_title;
   /* 0124 */ parray<uint8_t, 0x1C> unknown_l7;
   /* 0140 */
 

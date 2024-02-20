@@ -142,7 +142,7 @@ struct PSOBBTeamMembership {
   /* 0011 */ uint8_t unknown_a7 = 0;
   /* 0012 */ uint8_t unknown_a8 = 0;
   /* 0013 */ uint8_t unknown_a9 = 0;
-  /* 0014 */ pstring<TextEncoding::UTF16, 0x0010> team_name;
+  /* 0014 */ pstring<TextEncoding::UTF16_ALWAYS_MARKED, 0x0010> team_name;
   /* 0034 */ parray<le_uint16_t, 0x20 * 0x20> flag_data;
   /* 0834 */ le_uint32_t reward_flags = 0;
   /* 0838 */
@@ -173,7 +173,7 @@ struct PSOBBFullSystemFile {
 struct PSOBBCharacterFile {
   struct SymbolChatEntry {
     /* 00 */ le_uint32_t present = 0;
-    /* 04 */ pstring<TextEncoding::UTF16, 0x14> name;
+    /* 04 */ pstring<TextEncoding::UTF16_ALWAYS_MARKED, 0x14> name;
     /* 2C */ SymbolChat data;
     /* 68 */
   } __attribute__((packed));
@@ -218,6 +218,8 @@ struct PSOBBCharacterFile {
   static const std::array<uint16_t, 20> DEFAULT_TECH_MENU_CONFIG;
 
   PSOBBCharacterFile() = default;
+
+  PlayerDispDataBBPreview to_preview() const;
 
   static std::shared_ptr<PSOBBCharacterFile> create_from_config(
       uint32_t guild_card_number,
@@ -784,6 +786,6 @@ struct LegacySavedAccountDataBB { // .nsa file format
   /* E13C */ le_uint32_t option_flags;
   /* E140 */ parray<uint8_t, 0x0A40> shortcuts;
   /* EB80 */ parray<PSOBBCharacterFile::SymbolChatEntry, 12> symbol_chats;
-  /* F060 */ pstring<TextEncoding::UTF16, 0x0010> team_name;
+  /* F060 */ pstring<TextEncoding::UTF16_ALWAYS_MARKED, 0x0010> team_name;
   /* F080 */
 } __attribute__((packed));

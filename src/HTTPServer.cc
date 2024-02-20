@@ -337,7 +337,7 @@ JSON HTTPServer::generate_game_client_json(shared_ptr<const Client> c) const {
     ret.emplace("ProportionY", p->disp.visual.proportion_y.load());
 
     ret.emplace("Name", p->disp.name.decode(c->language()));
-    ret.emplace("PlayTimeSeconds", p->disp.play_time.load());
+    ret.emplace("PlayTimeSeconds", p->play_time_seconds.load());
 
     ret.emplace("AutoReply", p->auto_reply.decode(c->language()));
     ret.emplace("InfoBoard", p->info_board.decode(c->language()));

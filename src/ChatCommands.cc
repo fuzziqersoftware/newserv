@@ -1126,9 +1126,7 @@ static void server_command_edit(shared_ptr<Client> c, const std::string& args) {
       }
     } else if (tokens.at(0) == "name") {
       vector<string> orig_tokens = split(args, ' ');
-      string name = ((p->inventory.language == 0) ? "\tE" : "\tJ") + orig_tokens.at(1);
-      p->disp.name.clear();
-      p->disp.name.encode(name, p->inventory.language);
+      p->disp.name.encode(orig_tokens.at(1), p->inventory.language);
     } else if (tokens.at(0) == "npc") {
       if (tokens.at(1) == "none") {
         p->disp.visual.extra_model = 0;

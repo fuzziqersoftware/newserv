@@ -815,7 +815,7 @@ void Client::load_all_files() {
       files_manager->set_character(this->character_filename(), this->character_data);
       this->character_data->inventory = nsc_data.inventory;
       this->character_data->disp = nsc_data.disp;
-      this->character_data->play_time_seconds = nsc_data.disp.play_time;
+      this->character_data->play_time_seconds = 0;
       this->character_data->unknown_a2 = nsc_data.unknown_a2;
       this->character_data->quest_flags = nsc_data.quest_flags;
       this->character_data->death_count = nsc_data.death_count;
@@ -929,8 +929,7 @@ void Client::save_character_file() {
     // off each time we save. I'm lazy, so insert shrug emoji here.
     uint64_t t = now();
     uint64_t seconds = (t - this->last_play_time_update) / 1000000;
-    this->character_data->disp.play_time += seconds;
-    this->character_data->play_time_seconds = this->character_data->disp.play_time;
+    this->character_data->play_time_seconds += seconds;
     player_data_log.info("Added %" PRIu64 " seconds to play time", seconds);
     this->last_play_time_update = t;
   }

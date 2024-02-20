@@ -1439,26 +1439,28 @@ struct S_GenerateID_DC_PC_V3_80 {
 // contains uninitialized memory when the client sends this command. newserv
 // clears the uninitialized data for security reasons before forwarding.
 
-template <TextEncoding Encoding>
-struct SC_SimpleMail_81 {
+struct SC_SimpleMail_PC_81 {
   // If player_tag and from_guild_card_number are zero, the message cannot be
   // replied to.
   le_uint32_t player_tag = 0x00010000;
   le_uint32_t from_guild_card_number = 0;
-  pstring<Encoding, 0x10> from_name;
+  pstring<TextEncoding::UTF16, 0x10> from_name;
   le_uint32_t to_guild_card_number = 0;
-  pstring<Encoding, 0x200> text;
+  pstring<TextEncoding::UTF16, 0x200> text;
 } __packed__;
 
-struct SC_SimpleMail_PC_81 : SC_SimpleMail_81<TextEncoding::UTF16> {
-} __packed__;
-struct SC_SimpleMail_DC_V3_81 : SC_SimpleMail_81<TextEncoding::MARKED> {
+struct SC_SimpleMail_DC_V3_81 {
+  le_uint32_t player_tag = 0x00010000;
+  le_uint32_t from_guild_card_number = 0;
+  pstring<TextEncoding::MARKED, 0x10> from_name;
+  le_uint32_t to_guild_card_number = 0;
+  pstring<TextEncoding::MARKED, 0x200> text;
 } __packed__;
 
 struct SC_SimpleMail_BB_81 {
   le_uint32_t player_tag = 0x00010000;
   le_uint32_t from_guild_card_number = 0;
-  pstring<TextEncoding::UTF16, 0x10> from_name;
+  pstring<TextEncoding::UTF16_ALWAYS_MARKED, 0x10> from_name;
   le_uint32_t to_guild_card_number = 0;
   pstring<TextEncoding::UTF16, 0x14> received_date;
   pstring<TextEncoding::UTF16, 0x200> text;
@@ -2506,7 +2508,7 @@ struct S_ChoiceSearchResultEntry_DC_V3_C4 : S_ChoiceSearchResultEntry_C4<PSOComm
 } __packed__;
 struct S_ChoiceSearchResultEntry_PC_C4 : S_ChoiceSearchResultEntry_C4<PSOCommandHeaderPC, TextEncoding::UTF16, TextEncoding::UTF16, TextEncoding::UTF16> {
 } __packed__;
-struct S_ChoiceSearchResultEntry_BB_C4 : S_ChoiceSearchResultEntry_C4<PSOCommandHeaderBB, TextEncoding::UTF16, TextEncoding::UTF16, TextEncoding::UTF16> {
+struct S_ChoiceSearchResultEntry_BB_C4 : S_ChoiceSearchResultEntry_C4<PSOCommandHeaderBB, TextEncoding::UTF16_ALWAYS_MARKED, TextEncoding::UTF16, TextEncoding::UTF16> {
 } __packed__;
 
 // C5 (S->C): Player records update (DCv2 and later versions)
@@ -2703,7 +2705,7 @@ struct S_InfoBoardEntry_D8 {
   pstring<NameEncoding, 0x10> name;
   pstring<MessageEncoding, 0xAC> message;
 } __packed__;
-struct S_InfoBoardEntry_BB_D8 : S_InfoBoardEntry_D8<TextEncoding::UTF16, TextEncoding::UTF16> {
+struct S_InfoBoardEntry_BB_D8 : S_InfoBoardEntry_D8<TextEncoding::UTF16_ALWAYS_MARKED, TextEncoding::UTF16> {
 } __packed__;
 struct S_InfoBoardEntry_V3_D8 : S_InfoBoardEntry_D8<TextEncoding::ASCII, TextEncoding::MARKED> {
 } __packed__;
@@ -3336,7 +3338,7 @@ struct C_AddOrRemoveTeamMember_BB_03EA_05EA {
 // 07EA: Team chat
 
 struct SC_TeamChat_BB_07EA {
-  pstring<TextEncoding::UTF16, 0x10> sender_name;
+  pstring<TextEncoding::UTF16_ALWAYS_MARKED, 0x10> sender_name;
   // Text follows here. The message is truncated by the client if it is longer
   // than 0x8F wchar_ts.
 } __packed__;
@@ -3353,7 +3355,7 @@ struct S_TeamMemberList_BB_09EA {
     le_uint32_t rank = 0;
     le_uint32_t privilege_level = 0; // 0x10 or 0x20 = green, 0x30 = blue, 0x40 = red, anything else = white
     le_uint32_t guild_card_number = 0;
-    pstring<TextEncoding::UTF16, 0x10> name;
+    pstring<TextEncoding::UTF16_ALWAYS_MARKED, 0x10> name;
   } __packed__;
   // Variable-length field:
   // Entry entries[entry_count];
@@ -3374,7 +3376,7 @@ struct S_Unknown_BB_0CEA {
 
 struct S_TeamName_BB_0EEA {
   parray<uint8_t, 0x10> unused;
-  pstring<TextEncoding::UTF16, 0x10> team_name;
+  pstring<TextEncoding::UTF16_ALWAYS_MARKED, 0x10> team_name;
 } __packed__;
 
 // 0FEA (C->S): Set team flag
@@ -3412,7 +3414,7 @@ struct S_TeamMembershipInformation_BB_12EA {
   uint8_t unknown_a7 = 0;
   uint8_t unknown_a8 = 0;
   uint8_t unknown_a9 = 0;
-  pstring<TextEncoding::UTF16, 0x10> team_name;
+  pstring<TextEncoding::UTF16_ALWAYS_MARKED, 0x10> team_name;
 } __packed__;
 
 // 13EA: Team info for lobby players
@@ -3429,10 +3431,10 @@ struct S_TeamInfoForPlayer_BB_13EA_15EA_Entry {
   /* 0011 */ uint8_t unknown_a7 = 0;
   /* 0012 */ uint8_t unknown_a8 = 0;
   /* 0013 */ uint8_t unknown_a9 = 0;
-  /* 0014 */ pstring<TextEncoding::UTF16, 0x10> team_name;
+  /* 0014 */ pstring<TextEncoding::UTF16_ALWAYS_MARKED, 0x10> team_name;
   /* 0034 */ le_uint32_t guild_card_number2 = 0;
   /* 0038 */ le_uint32_t lobby_client_id = 0;
-  /* 003C */ pstring<TextEncoding::UTF16, 0x10> player_name;
+  /* 003C */ pstring<TextEncoding::UTF16_ALWAYS_MARKED, 0x10> player_name;
   /* 005C */ parray<le_uint16_t, 0x20 * 0x20> flag_data;
   /* 085C */
 } __packed__;
@@ -3460,7 +3462,7 @@ struct S_IntraTeamRanking_BB_18EA {
     /* 00 */ le_uint32_t rank = 0;
     /* 04 */ le_uint32_t privilege_level = 0;
     /* 08 */ le_uint32_t guild_card_number = 0;
-    /* 0C */ pstring<TextEncoding::UTF16, 0x10> player_name;
+    /* 0C */ pstring<TextEncoding::UTF16_ALWAYS_MARKED, 0x10> player_name;
     /* 2C */ le_uint32_t points = 0;
     /* 30 */
   } __packed__;
@@ -3497,7 +3499,7 @@ struct S_TeamRewardList_BB_19EA_1AEA {
 struct S_CrossTeamRanking_BB_1CEA {
   le_uint32_t num_entries;
   struct Entry {
-    /* 00 */ pstring<TextEncoding::UTF16, 0x10> team_name;
+    /* 00 */ pstring<TextEncoding::UTF16_ALWAYS_MARKED, 0x10> team_name;
     /* 20 */ le_uint32_t team_points = 0;
     /* 24 */ le_uint32_t unknown_a1 = 0;
     /* 28 */
@@ -3513,7 +3515,7 @@ struct S_CrossTeamRanking_BB_1CEA {
 // header.flag is used, but it's unknown what the value means.
 
 struct C_RenameTeam_BB_1EEA {
-  pstring<TextEncoding::UTF16, 0x10> new_team_name;
+  pstring<TextEncoding::UTF16_ALWAYS_MARKED, 0x10> new_team_name;
 } __packed__;
 
 // 1FEA (S->C): Rename team result
@@ -4907,7 +4909,7 @@ struct G_SyncPlayerDispAndInventory_BB_6x70 {
   // Offsets in this struct are relative to the overall command header
   /* 0008 */ G_ExtendedHeader<G_ClientIDHeader> header = {{0x70, 0x00, 0x0000}, sizeof(G_SyncPlayerDispAndInventory_BB_6x70)};
   /* 0010 */ G_SyncPlayerDispAndInventory_BaseV1 base;
-  /* 0128 */ pstring<TextEncoding::UTF16, 0x10> name;
+  /* 0128 */ pstring<TextEncoding::UTF16_ALWAYS_MARKED, 0x10> name;
   /* 0148 */ PlayerStats stats;
   /* 016C */ le_uint32_t num_items = 0;
   /* 0170 */ parray<PlayerInventoryItem, 0x1E> items;

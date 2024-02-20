@@ -210,6 +210,16 @@ PSOBBBaseSystemFile::PSOBBBaseSystemFile() {
   }
 }
 
+PlayerDispDataBBPreview PSOBBCharacterFile::to_preview() const {
+  PlayerDispDataBBPreview pre;
+  pre.level = this->disp.stats.level;
+  pre.experience = this->disp.stats.experience;
+  pre.visual = this->disp.visual;
+  pre.name = this->disp.name;
+  pre.play_time_seconds = this->play_time_seconds;
+  return pre;
+}
+
 shared_ptr<PSOBBCharacterFile> PSOBBCharacterFile::create_from_config(
     uint32_t guild_card_number,
     uint8_t language,

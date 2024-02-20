@@ -653,7 +653,6 @@ void send_complete_player_bb(shared_ptr<Client> c) {
   if (team) {
     cmd.system_file.team_membership = team->membership_for_member(c->license->serial_number);
   }
-  cmd.char_file.disp.play_time = 0;
   send_command_t(c, 0x00E7, 0x00000000, cmd);
 }
 
@@ -837,7 +836,7 @@ string prepare_chat_data(
   string data;
 
   if (version == Version::BB_V4) {
-    data.append("\tJ");
+    data.append(language ? "\tE" : "\tJ");
   }
   data.append(from_name);
   if (version == Version::DC_NTE) {
@@ -1415,7 +1414,9 @@ void send_game_menu(
     shared_ptr<Client> c,
     bool is_spectator_team_list,
     bool show_tournaments_only) {
-  if (uses_utf16(c->version())) {
+  if (is_v4(c->version())) {
+    send_game_menu_t<TextEncoding::UTF16_ALWAYS_MARKED>(c, is_spectator_team_list, show_tournaments_only);
+  } else if (uses_utf16(c->version())) {
     send_game_menu_t<TextEncoding::UTF16>(c, is_spectator_team_list, show_tournaments_only);
   } else {
     send_game_menu_t<TextEncoding::MARKED>(c, is_spectator_team_list, show_tournaments_only);
@@ -1639,12 +1640,7 @@ void populate_lobby_data_for_client<PlayerLobbyDataBB>(PlayerLobbyDataBB& ret, s
     ret.team_id = 0;
   }
   string name = c->character()->disp.name.decode(c->language());
-  if ((name.size() >= 2) && (name[0] == '\t') && (name[1] != 'C')) {
-    ret.name.encode(name, viewer_c->language());
-  } else {
-    const char* marker = c->language() ? "\tE" : "\tJ";
-    ret.name.encode(marker + name, viewer_c->language());
-  }
+  ret.name.encode(name, viewer_c->language());
 }
 
 static void send_join_spectator_team(shared_ptr<Client> c, shared_ptr<Lobby> l) {

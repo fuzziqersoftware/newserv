@@ -136,7 +136,7 @@ PSOBBTeamMembership TeamIndex::Team::membership_for_member(uint32_t serial_numbe
   ret.unknown_a7 = 0;
   ret.unknown_a8 = 0;
   ret.unknown_a9 = 0;
-  ret.team_name.encode("\tE" + this->name);
+  ret.team_name.encode(this->name);
   if (this->flag_data) {
     ret.flag_data = *this->flag_data;
   } else {

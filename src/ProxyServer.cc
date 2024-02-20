@@ -826,7 +826,7 @@ void ProxyServer::LinkedSession::send_to_game_server(const char* error_message) 
     this->disconnect();
 
   } else {
-    send_ship_info(this->client_channel, string_printf("You\'ve returned to\n\tC6%s$C7\n\n%s", s->name.c_str(), error_message ? error_message : ""));
+    send_ship_info(this->client_channel, string_printf("You\'ve returned to\n$C6%s$C7\n\n%s", s->name.c_str(), error_message ? error_message : ""));
 
     // Restore newserv_client_config, so the login server gets the client flags
     if (is_v3(this->version())) {

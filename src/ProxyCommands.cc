@@ -518,7 +518,7 @@ static HandlerResult S_V123_04(shared_ptr<ProxyServer::LinkedSession> ses, uint1
     ses->log.info("Remote guild card number set to %" PRId64,
         ses->remote_guild_card_number);
     string message = string_printf(
-        "The remote server\nhas assigned your\nGuild Card number:\n\tC6%" PRId64,
+        "The remote server\nhas assigned your\nGuild Card number:\n$C6%" PRId64,
         ses->remote_guild_card_number);
     send_ship_info(ses->client_channel, message);
   }

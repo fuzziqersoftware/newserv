@@ -165,10 +165,6 @@ void PlayerVisualConfig::enforce_lobby_join_limits_for_version(Version v) {
     this->name_color_checksum = 0;
   }
   this->class_flags = class_flags_for_class(this->char_class);
-
-  if (!is_v4(v) && (this->name.at(0) == '\t') && (this->name.at(1) == 'J' || this->name.at(1) == 'E')) {
-    this->name.encode(this->name.decode().substr(2));
-  }
 }
 
 void PlayerDispDataDCPCV3::enforce_lobby_join_limits_for_version(Version v) {
@@ -177,13 +173,6 @@ void PlayerDispDataDCPCV3::enforce_lobby_join_limits_for_version(Version v) {
 
 void PlayerDispDataBB::enforce_lobby_join_limits_for_version(Version v) {
   this->visual.enforce_lobby_join_limits_for_version(v);
-  if (!is_v4(v)) {
-    throw logic_error("PlayerDispDataBB being sent to non-BB client");
-  }
-  this->play_time = 0;
-  if (this->name.at(0) != '\t' || (this->name.at(1) != 'E' && this->name.at(1) != 'J')) {
-    this->name.encode("\tJ" + this->name.decode());
-  }
 }
 
 PlayerDispDataBB PlayerDispDataDCPCV3::to_bb(uint8_t to_language, uint8_t from_language) const {
@@ -207,16 +196,6 @@ PlayerDispDataDCPCV3 PlayerDispDataBB::to_dcpcv3(uint8_t to_language, uint8_t fr
   ret.config = this->config;
   ret.technique_levels_v1 = this->technique_levels_v1;
   return ret;
-}
-
-PlayerDispDataBBPreview PlayerDispDataBB::to_preview() const {
-  PlayerDispDataBBPreview pre;
-  pre.level = this->stats.level;
-  pre.experience = this->stats.experience;
-  pre.visual = this->visual;
-  pre.name = this->name;
-  pre.play_time = this->play_time;
-  return pre;
 }
 
 void PlayerDispDataBB::apply_dressing_room(const PlayerDispDataBBPreview& pre) {
@@ -343,7 +322,7 @@ PlayerRecordsBB_Challenge::PlayerRecordsBB_Challenge(const PlayerRecordsPC_Chall
       grave_message(rec.grave_message.decode(), 1),
       unknown_m5(0),
       unknown_t6(0),
-      rank_title(rec.rank_title),
+      rank_title(rec.rank_title.decode(), 1),
       unknown_l7(0) {}
 
 PlayerRecordsBB_Challenge::PlayerRecordsBB_Challenge(const PlayerRecordsV3_Challenge<false>& rec)
@@ -407,7 +386,7 @@ PlayerRecordsBB_Challenge::operator PlayerRecordsPC_Challenge() const {
   PlayerRecordsPC_Challenge ret;
   ret.title_color = this->title_color;
   ret.unknown_u0 = this->unknown_u0;
-  ret.rank_title = this->rank_title;
+  ret.rank_title.encode(this->rank_title.decode());
   ret.times_ep1_online = this->times_ep1_online;
   if (this->grave_is_ep2) {
     ret.grave_stage_num = 0;

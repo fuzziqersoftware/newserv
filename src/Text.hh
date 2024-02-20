@@ -252,6 +252,7 @@ enum class TextEncoding {
   ISO8859,
   ASCII,
   MARKED,
+  UTF16_ALWAYS_MARKED,
   CHALLENGE8, // MARKED but with challenge encryption on top
   CHALLENGE16, // UTF16 but with challenge encryption on top
 };
@@ -290,7 +291,7 @@ void decrypt_challenge_rank_text_t(void* vdata, size_t count) {
 template <
     TextEncoding Encoding,
     size_t Chars,
-    size_t BytesPerChar = (((Encoding == TextEncoding::UTF16) || (Encoding == TextEncoding::CHALLENGE16)) ? 2 : 1)>
+    size_t BytesPerChar = (((Encoding == TextEncoding::UTF16) || (Encoding == TextEncoding::UTF16_ALWAYS_MARKED) || (Encoding == TextEncoding::CHALLENGE16)) ? 2 : 1)>
 struct pstring {
   static constexpr size_t Bytes = Chars * BytesPerChar;
 
@@ -349,6 +350,17 @@ struct pstring {
           this->clear_after_bytes(ret.bytes_written);
           break;
         }
+        case TextEncoding::UTF16_ALWAYS_MARKED:
+          if (s.empty()) {
+            this->clear();
+            break;
+          } else if (s.size() <= 2 || s[0] != '\t' || s[1] == 'C') {
+            std::string to_encode = ((client_language == 0) ? "\tJ" : "\tE") + s;
+            auto ret = tt_utf8_to_utf16(this->data, Bytes, to_encode.data(), to_encode.size(), true);
+            this->clear_after_bytes(ret.bytes_written);
+            break;
+          }
+          [[fallthrough]];
         case TextEncoding::UTF16: {
           auto ret = tt_utf8_to_utf16(this->data, Bytes, s.data(), s.size(), true);
           this->clear_after_bytes(ret.bytes_written);
@@ -437,6 +449,10 @@ struct pstring {
           return tt_sjis_to_utf8(this->data, this->used_chars_8());
         case TextEncoding::UTF16:
           return tt_utf16_to_utf8(this->data, this->used_chars_16() * 2);
+        case TextEncoding::UTF16_ALWAYS_MARKED: {
+          std::string ret = tt_utf16_to_utf8(this->data, this->used_chars_16() * 2);
+          return ((ret.size() >= 2) && (ret[0] == '\t') && (ret[1] != 'C')) ? ret.substr(2) : ret;
+        }
         case TextEncoding::UTF8:
           return std::string(reinterpret_cast<const char*>(&this->data[0]), this->used_chars_8());
         case TextEncoding::CHALLENGE16: {
