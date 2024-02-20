@@ -704,6 +704,30 @@ JSON HTTPServer::generate_proxy_server_clients_json() const {
   return res;
 }
 
+JSON HTTPServer::generate_server_info_json() const {
+  size_t game_count = 0;
+  size_t lobby_count = 0;
+  for (const auto& it : this->state->id_to_lobby) {
+    if (it.second->is_game()) {
+      game_count++;
+    } else {
+      lobby_count++;
+    }
+  }
+  uint64_t uptime_usecs = now() - this->state->creation_time;
+  return JSON::dict({
+      {"StartTimeUsecs", this->state->creation_time},
+      {"StartTime", format_time(this->state->creation_time)},
+      {"UptimeUsecs", uptime_usecs},
+      {"Uptime", format_duration(uptime_usecs)},
+      {"LobbyCount", lobby_count},
+      {"GameCount", game_count},
+      {"ClientCount", this->state->channel_to_client.size()},
+      {"ProxySessionCount", this->state->proxy_server->num_sessions()},
+      {"ServerName", this->state->name},
+  });
+}
+
 JSON HTTPServer::generate_lobbies_json() const {
   JSON res = JSON::list();
   for (const auto& it : this->state->id_to_lobby) {
@@ -774,6 +798,7 @@ JSON HTTPServer::generate_summary_json() const {
       {"Clients", std::move(clients_json)},
       {"ProxyClients", std::move(proxy_clients_json)},
       {"Games", std::move(games_json)},
+      {"Server", this->generate_server_info_json()},
   });
 }
 
@@ -782,6 +807,7 @@ JSON HTTPServer::generate_all_json() const {
       {"Clients", this->generate_game_server_clients_json()},
       {"ProxyClients", this->generate_proxy_server_clients_json()},
       {"Lobbies", this->generate_lobbies_json()},
+      {"Server", this->generate_server_info_json()},
   });
 }
 
@@ -819,6 +845,8 @@ void HTTPServer::handle_request(struct evhttp_request* req) {
       ret = this->generate_proxy_server_clients_json();
     } else if (uri == "/y/lobbies") {
       ret = this->generate_lobbies_json();
+    } else if (uri == "/y/server") {
+      ret = this->generate_server_info_json();
     } else if (uri == "/y/summary") {
       ret = this->generate_summary_json();
     } else if (uri == "/y/all") {

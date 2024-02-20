@@ -56,6 +56,7 @@ protected:
   JSON generate_lobby_json(std::shared_ptr<const Lobby> l) const;
   JSON generate_game_server_clients_json() const;
   JSON generate_proxy_server_clients_json() const;
+  JSON generate_server_info_json() const;
   JSON generate_lobbies_json() const;
   JSON generate_summary_json() const;
   JSON generate_all_json() const;
