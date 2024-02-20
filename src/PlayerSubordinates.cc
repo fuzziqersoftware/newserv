@@ -165,6 +165,7 @@ void PlayerVisualConfig::enforce_lobby_join_limits_for_version(Version v) {
     this->name_color_checksum = 0;
   }
   this->class_flags = class_flags_for_class(this->char_class);
+  this->name.clear_after_bytes(0x0C);
 }
 
 void PlayerDispDataDCPCV3::enforce_lobby_join_limits_for_version(Version v) {
@@ -173,6 +174,7 @@ void PlayerDispDataDCPCV3::enforce_lobby_join_limits_for_version(Version v) {
 
 void PlayerDispDataBB::enforce_lobby_join_limits_for_version(Version v) {
   this->visual.enforce_lobby_join_limits_for_version(v);
+  this->name.clear_after_bytes(0x18); // 12 characters
 }
 
 PlayerDispDataBB PlayerDispDataDCPCV3::to_bb(uint8_t to_language, uint8_t from_language) const {

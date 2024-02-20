@@ -183,8 +183,7 @@ struct PlayerDispDataBBPreview {
 struct PlayerDispDataBB {
   /* 0000 */ PlayerStats stats;
   /* 0024 */ PlayerVisualConfig visual;
-  /* 0074 */ pstring<TextEncoding::UTF16_ALWAYS_MARKED, 0x0C> name;
-  /* 008C */ parray<uint8_t, 0x08> unknown_a1; // Probably actually unused
+  /* 0074 */ pstring<TextEncoding::UTF16_ALWAYS_MARKED, 0x10> name;
   /* 0094 */ parray<uint8_t, 0xE8> config;
   /* 017C */ parray<uint8_t, 0x14> technique_levels_v1;
   /* 0190 */
