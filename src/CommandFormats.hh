@@ -58,8 +58,11 @@
 // instead in newserv, since the server substitutes most usage of $ in player-
 // provided text with \t. The escape codes are:
 // - Language codes
-// - - $E: Set text interpretation to English
-// - - $J: Set text interpretation to Japanese
+// - - $E: Set text interpretation to English / use Roman font
+// - - $J: Set text interpretation to Japanese / use Japanese font
+// - - $B: Use Simplified Chinese font (PC/BB)
+// - - $T: Use Traditional Chinese font (PC/BB)
+// - - $K: Use Korean font (PC/BB)
 // - Color codes
 // - - $C0: Black (000000)
 // - - $C1: Blue (0000FF)

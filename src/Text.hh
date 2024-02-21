@@ -355,7 +355,9 @@ struct pstring {
             this->clear();
             break;
           } else if (s.size() <= 2 || s[0] != '\t' || s[1] == 'C') {
-            std::string to_encode = ((client_language == 0) ? "\tJ" : "\tE") + s;
+            std::string to_encode = "\t";
+            to_encode += marker_for_language_code(client_language);
+            to_encode += s;
             auto ret = tt_utf8_to_utf16(this->data, Bytes, to_encode.data(), to_encode.size(), true);
             this->clear_after_bytes(ret.bytes_written);
             break;
@@ -580,3 +582,7 @@ std::string remove_color(const std::string& s);
 std::string strip_color(const std::string& s);
 
 std::string escape_player_name(const std::string& name);
+
+char marker_for_language_code(uint8_t language_code);
+bool is_language_marker_sjis_8859(char marker);
+bool is_language_marker_utf16(char marker);

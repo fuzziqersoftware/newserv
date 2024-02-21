@@ -150,7 +150,10 @@ string tt_encode_marked_optional(const string& utf8, uint8_t default_language, b
 
 string tt_encode_marked(const string& utf8, uint8_t default_language, bool is_utf16) {
   if (is_utf16) {
-    return tt_utf8_to_utf16((default_language ? "\tE" : "\tJ") + utf8);
+    string to_encode = "\t";
+    to_encode += marker_for_language_code(default_language);
+    to_encode += utf8;
+    return tt_utf8_to_utf16(to_encode);
   } else {
     if (default_language) {
       try {
@@ -171,7 +174,7 @@ string tt_encode_marked(const string& utf8, uint8_t default_language, bool is_ut
 string tt_decode_marked(const string& data, uint8_t default_language, bool is_utf16) {
   if (is_utf16) {
     string ret = tt_utf16_to_utf8(data);
-    if (ret.size() >= 2 && ret[0] == '\t' && (ret[1] == 'E' || ret[1] == 'J')) {
+    if (ret.size() >= 2 && ret[0] == '\t' && is_language_marker_utf16(ret[1])) {
       ret = ret.substr(2);
     }
     return ret;
@@ -335,4 +338,32 @@ string escape_player_name(const string& name) {
   } else {
     return remove_color(name);
   }
+}
+
+char marker_for_language_code(uint8_t language_code) {
+  switch (language_code) {
+    case 0:
+      return 'J';
+    case 1:
+    case 2:
+    case 3:
+    case 4:
+      return 'E';
+    case 5:
+      return 'B';
+    case 6:
+      return 'T';
+    case 7:
+      return 'K';
+    default:
+      return 'E';
+  }
+}
+
+bool is_language_marker_sjis_8859(char marker) {
+  return (marker == 'J' || marker == 'E');
+}
+
+bool is_language_marker_utf16(char marker) {
+  return (marker == 'J' || marker == 'E' || marker == 'B' || marker == 'T' || marker == 'K');
 }

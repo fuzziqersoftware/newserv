@@ -179,12 +179,12 @@ struct PSOBBCharacterFile {
   } __attribute__((packed));
 
   struct DefaultSymbolChatEntry {
-    const char* name;
+    std::array<const char*, 8> language_to_name;
     uint32_t spec;
     std::array<uint16_t, 4> corner_objects;
     std::array<SymbolChat::FacePart, 12> face_parts;
 
-    SymbolChatEntry to_entry() const;
+    SymbolChatEntry to_entry(uint8_t language) const;
   };
 
   /* 0000 */ PlayerInventory inventory;
