@@ -73,8 +73,6 @@ void Client::Config::set_flags_for_version(Version version, int64_t sub_version)
     case 0x21: // DCv1 US
       this->set_flag(Flag::NO_D6);
       this->set_flag(Flag::NO_SEND_FUNCTION_CALL);
-      // In the case of DCNTE, the IS_DC_TRIAL_EDITION flag is already set when
-      // we get here
       break;
     case 0x23: // DCv1 EU
       this->set_flag(Flag::NO_D6);
@@ -93,13 +91,10 @@ void Client::Config::set_flags_for_version(Version version, int64_t sub_version)
       break;
     case 0x30: // GC Ep1&2 GameJam demo, GC Ep1&2 Trial Edition, GC Ep1&2 JP v1.2, at least one version of XB
     case 0x31: // GC Ep1&2 US v1.0, GC US v1.1, XB US
-    case 0x34: // GC Ep1&2 JP v1.3
-      // In the case of GC Trial Edition, the IS_GC_TRIAL_EDITION flag is
-      // already set when we get here (because the client has used V2 encryption
-      // instead of V3)
       break;
     case 0x32: // GC Ep1&2 EU 50Hz
     case 0x33: // GC Ep1&2 EU 60Hz
+    case 0x34: // GC Ep1&2 JP v1.3
       this->set_flag(Flag::NO_D6_AFTER_LOBBY);
       break;
     case 0x35: // GC Ep1&2 JP v1.4 (Plus)
@@ -117,8 +112,7 @@ void Client::Config::set_flags_for_version(Version version, int64_t sub_version)
       this->set_flag(Flag::ENCRYPTED_SEND_FUNCTION_CALL);
       this->set_flag(Flag::SEND_FUNCTION_CALL_NO_CACHE_PATCH);
       // sub_version can't be used to tell JP final and Trial Edition apart; we
-      // instead look at header.flag in the 61 command and set the
-      // IS_EP3_TRIAL_EDITION flag there.
+      // instead look at header.flag in the 61 command and set the version then.
       break;
     case 0x41: // GC Ep3 US (and BB)
       this->set_flag(Flag::NO_D6_AFTER_LOBBY);
