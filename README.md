@@ -43,7 +43,7 @@ newserv supports several versions of PSO, including various development prototyp
 | GC Ep1&2 Plus   | Yes      | Yes      | Yes      |
 | GC Ep3 NTE      | Yes      | Yes (1)  | Yes      |
 | GC Ep3          | Yes      | Yes      | Yes      |
-| Xbox Ep1&2 Beta | Untested | Untested | Untested |
+| Xbox Ep1&2 Beta | Yes      | Yes      | Yes      |
 | Xbox Ep1&2      | Yes      | Yes      | Yes      |
 | BB (vanilla)    | Yes      | Yes (2)  | Yes      |
 | BB (Tethealla)  | Yes      | Yes (2)  | Yes      |
