@@ -310,7 +310,7 @@ In addition, these features are only supported for the following game versions:
 
 You can put memory patches in the system/client-functions directory with filenames like PatchName.patch.s and they will appear in the Patches menu for PSO GC, XB, and BB clients that support patching. Memory patches are written in PowerPC or x86 assembly and are compiled when newserv is started. The assembly system's features are documented in the comments in system/client-functions/WriteMemory.ppc.s.
 
-newserv comes with a set of patches for GC Episodes 1&2 based on AR codes originally made by Ralf at GC-Forever. Many of them were originally posted in [this thread](https://www.gc-forever.com/forums/viewtopic.php?f=38&t=2050).
+newserv comes with a set of patches for GC Episodes 1&2 based on AR codes originally made by Ralf at GC-Forever and Aleron Ives. Many of them were originally posted in [this thread](https://www.gc-forever.com/forums/viewtopic.php?f=38&t=2050).
 
 You can also put DOL files in the system/dol directory, and they will appear in the Programs menu for GC clients. Selecting a DOL file there will load the file into the GameCube's memory and run it, just like the old homebrew loaders (PSUL and PSOload) did. For this to work, ReadMemoryWord.ppc.s, WriteMemory.ppc.s, and RunDOL.ppc.s must be present in the system/client-functions directory. This has been tested on Dolphin but not on a real GameCube, so results may vary.
 
