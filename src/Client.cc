@@ -838,11 +838,6 @@ void Client::load_all_files() {
     }
   }
 
-  if (this->character_data) {
-    this->license->auto_reply_message = this->character_data->auto_reply.decode();
-    this->license->save();
-  }
-
   this->blocked_senders.clear();
   for (size_t z = 0; z < this->guild_card_data->blocked.size(); z++) {
     if (this->guild_card_data->blocked[z].present) {
@@ -851,6 +846,10 @@ void Client::load_all_files() {
   }
 
   if (this->character_data) {
+    // Clear legacy play_time field
+    this->character_data->disp.name.clear_after_bytes(0x18);
+    this->license->auto_reply_message = this->character_data->auto_reply.decode();
+    this->license->save();
     this->last_play_time_update = now();
   }
 }
