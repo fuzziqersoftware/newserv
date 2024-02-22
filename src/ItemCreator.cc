@@ -18,15 +18,16 @@ ItemCreator::ItemCreator(
     shared_ptr<const WeaponRandomSet> weapon_random_set,
     shared_ptr<const TekkerAdjustmentSet> tekker_adjustment_set,
     shared_ptr<const ItemParameterTable> item_parameter_table,
-    Version version,
+    std::shared_ptr<const ItemData::StackLimits> stack_limits,
     Episode episode,
     GameMode mode,
     uint8_t difficulty,
     uint8_t section_id,
     uint32_t random_seed,
     shared_ptr<const BattleRules> restrictions)
-    : log(string_printf("[ItemCreator:%s/%s/%s/%c/%hhu] ", name_for_enum(version), abbreviation_for_episode(episode), abbreviation_for_mode(mode), abbreviation_for_difficulty(difficulty), section_id), lobby_log.min_level),
-      version(version),
+    : log(string_printf("[ItemCreator:%s/%s/%s/%c/%hhu] ", name_for_enum(stack_limits->version), abbreviation_for_episode(episode), abbreviation_for_mode(mode), abbreviation_for_difficulty(difficulty), section_id), lobby_log.min_level),
+      version(stack_limits->version),
+      stack_limits(stack_limits),
       episode(episode),
       mode(mode),
       difficulty(difficulty),
@@ -474,7 +475,7 @@ void ItemCreator::set_item_unidentified_flag_if_not_challenge(ItemData& item) co
 
 void ItemCreator::set_tool_item_amount_to_1(ItemData& item) const {
   if (item.data1[0] == 0x03) {
-    item.set_tool_item_amount(this->version, 1);
+    item.set_tool_item_amount(*this->stack_limits, 1);
   }
 }
 
@@ -1723,7 +1724,7 @@ ItemData ItemCreator::base_item_for_specialized_box(uint32_t def0, uint32_t def1
       if (item.data1[1] == 0x02) {
         item.data1[4] = def0 & 0xFF;
       }
-      item.set_tool_item_amount(this->version, 1);
+      item.set_tool_item_amount(*this->stack_limits, 1);
       break;
     case 0x04:
       item.data2d = ((def1 >> 0x10) & 0xFFFF) * 10;

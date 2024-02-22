@@ -259,7 +259,10 @@ CommandDefinition c_reload(
         } else if (type == "drop-tables") {
           args.s->load_drop_tables(true);
         } else if (type == "config") {
-          args.s->forward_to_event_thread([s = args.s]() { s->load_config(); });
+          args.s->forward_to_event_thread([s = args.s]() {
+            s->load_config_early();
+            s->load_config_late();
+          });
         } else if (type == "teams") {
           args.s->load_teams(true);
         } else if (type == "quests") {

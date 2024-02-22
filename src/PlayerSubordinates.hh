@@ -101,8 +101,8 @@ struct PlayerBank {
   /* 0008 */ parray<PlayerBankItem, 200> items;
   /* 12C8 */
 
-  void add_item(const ItemData& item, Version version);
-  ItemData remove_item(uint32_t item_id, uint32_t amount, Version version);
+  void add_item(const ItemData& item, const ItemData::StackLimits& limits);
+  ItemData remove_item(uint32_t item_id, uint32_t amount, const ItemData::StackLimits& limits);
   size_t find_item(uint32_t item_id);
 
   void sort();

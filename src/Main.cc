@@ -1739,11 +1739,13 @@ Action a_describe_item(
 
 Action a_name_all_items(
     "name-all-items", nullptr, +[](Arguments&) {
-      auto s = make_shared<ServerState>();
+      auto s = make_shared<ServerState>("system/config.json");
+      s->load_config_early();
       s->load_patch_indexes(false);
       s->load_text_index(false);
       s->load_item_definitions(false);
       s->load_item_name_indexes(false);
+      s->load_config_early();
 
       set<uint32_t> all_primary_identifiers;
       for (const auto& index : s->item_name_indexes) {
@@ -1771,7 +1773,7 @@ Action a_name_all_items(
           if (index) {
             Version version = static_cast<Version>(v_s);
             auto pmt = s->item_parameter_table(version);
-            ItemData item = ItemData::from_primary_identifier(version, primary_identifier);
+            ItemData item = ItemData::from_primary_identifier(*s->item_stack_limits(version), primary_identifier);
             string name = index->describe_item(item);
             try {
               bool is_rare = pmt->is_item_rare(item);
@@ -2091,12 +2093,12 @@ Action a_find_rare_enemy_seeds(
       size_t min_count = args.get<size_t>("min-count", 1);
       string quest_name = args.get<string>("quest", false);
 
-      ServerState s("system/config.json");
+      auto s = make_shared<ServerState>("system/config.json");
       shared_ptr<const VersionedQuest> vq;
       if (!quest_name.empty()) {
-        s.load_config();
-        s.load_quest_index(false);
-        auto q = s.quest_index(version)->get(quest_name);
+        s->load_config_early();
+        s->load_quest_index(false);
+        auto q = s->quest_index(version)->get(quest_name);
         if (!q) {
           throw runtime_error("quest does not exist");
         }
@@ -2105,20 +2107,20 @@ Action a_find_rare_enemy_seeds(
           throw runtime_error("quest version does not exist");
         }
       } else if (version == Version::BB_V4) {
-        s.load_config();
+        s->load_config_early();
       } else if (version == Version::PC_V2) {
-        s.load_patch_indexes(false);
+        s->load_patch_indexes(false);
       } else {
-        s.clear_map_file_caches();
+        s->clear_map_file_caches();
       }
 
       shared_ptr<const Map::RareEnemyRates> rare_rates;
       if (version != Version::BB_V4) {
         rare_rates = Map::DEFAULT_RARE_ENEMIES;
       } else if (mode == GameMode::CHALLENGE) {
-        rare_rates = s.rare_enemy_rates_challenge;
+        rare_rates = s->rare_enemy_rates_challenge;
       } else {
-        rare_rates = s.rare_enemy_rates_by_difficulty[difficulty];
+        rare_rates = s->rare_enemy_rates_by_difficulty[difficulty];
       }
 
       mutex output_lock;
@@ -2142,8 +2144,8 @@ Action a_find_rare_enemy_seeds(
               difficulty,
               0,
               0,
-              s.set_data_table(version, episode, mode, difficulty),
-              bind(&ServerState::load_map_file, &s, placeholders::_1, placeholders::_2),
+              s->set_data_table(version, episode, mode, difficulty),
+              bind(&ServerState::load_map_file, s.get(), placeholders::_1, placeholders::_2),
               rare_rates,
               random_crypt,
               variations);

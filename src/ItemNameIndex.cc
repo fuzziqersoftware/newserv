@@ -5,16 +5,16 @@
 using namespace std;
 
 ItemNameIndex::ItemNameIndex(
-    Version version,
     std::shared_ptr<const ItemParameterTable> item_parameter_table,
+    std::shared_ptr<const ItemData::StackLimits> limits,
     const std::vector<std::string>& name_coll)
-    : version(version),
-      item_parameter_table(item_parameter_table) {
+    : item_parameter_table(item_parameter_table),
+      limits(limits) {
 
   for (uint32_t primary_identifier : item_parameter_table->compute_all_valid_primary_identifiers()) {
     const string* name = nullptr;
     try {
-      ItemData item = ItemData::from_primary_identifier(this->version, primary_identifier);
+      ItemData item = ItemData::from_primary_identifier(*this->limits, primary_identifier);
       name = &name_coll.at(item_parameter_table->get_item_id(item));
     } catch (const out_of_range&) {
     }
@@ -138,7 +138,7 @@ std::string ItemNameIndex::describe_item(
   // flags in a different location.
   if (((item.data1[1] == 0x01) && (item.data1[4] & 0x40)) ||
       ((item.data1[0] == 0x02) && (item.data2[2] & 0x40)) ||
-      ((item.data1[0] == 0x03) && !item.is_stackable(this->version) && (item.data1[3] & 0x40))) {
+      ((item.data1[0] == 0x03) && !item.is_stackable(*this->limits) && (item.data1[3] & 0x40))) {
     ret_tokens.emplace_back("Wrapped");
   }
 
@@ -318,7 +318,7 @@ std::string ItemNameIndex::describe_item(
 
     // For tools, add the amount (if applicable)
   } else if (item.data1[0] == 0x03) {
-    if (item.max_stack_size(this->version) > 1) {
+    if (item.max_stack_size(*this->limits) > 1) {
       ret_tokens.emplace_back(string_printf("x%hhu", item.data1[5]));
     }
   }
@@ -360,7 +360,7 @@ ItemData ItemNameIndex::parse_item_description(const std::string& desc) const {
       }
     }
   }
-  ret.enforce_min_stack_size(this->version);
+  ret.enforce_min_stack_size(*this->limits);
   return ret;
 }
 
@@ -596,7 +596,7 @@ ItemData ItemNameIndex::parse_item_description_phase(const std::string& descript
       ret.data2[2] |= 0x40;
     }
   } else if (ret.data1[0] == 0x03) {
-    if (ret.max_stack_size(this->version) > 1) {
+    if (ret.max_stack_size(*this->limits) > 1) {
       if (starts_with(desc, "x")) {
         ret.data1[5] = stoul(desc.substr(1), nullptr, 10);
       } else {
@@ -607,7 +607,7 @@ ItemData ItemNameIndex::parse_item_description_phase(const std::string& descript
     }
 
     if (is_wrapped) {
-      if (ret.is_stackable(this->version)) {
+      if (ret.is_stackable(*this->limits)) {
         throw runtime_error("stackable items cannot be wrapped");
       } else {
         ret.data1[3] |= 0x40;
@@ -816,7 +816,7 @@ void ItemNameIndex::print_table(FILE* stream) const {
       item.data1[0] = 0x03;
       item.data1[1] = data1_1;
       item.data1[(data1_1 == 0x02) ? 4 : 2] = data1_2;
-      item.set_tool_item_amount(this->version, 1);
+      item.set_tool_item_amount(*this->limits, 1);
       string name = this->describe_item(item);
 
       fprintf(stream, "03%02zX%02zX => %08" PRIX32 " %04hX %04hX %6" PRIu32 " %5hu %04hX %6" PRId32 " %08" PRIX32 " %2hhu* %s %s\n",

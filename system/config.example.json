@@ -667,6 +667,27 @@
     [0x40, "download-ep3", "Download", "$E$C6Quests to download\nto your Memory Card"],
   ],
 
+  // Item stack limits. Note that changing these does not affect the client's
+  // behavior automatically - this only exists to allow the server to understand
+  // the behavior of clients that are already patched with different stack
+  // limits. The ToolLimits list is indexed by data1[1] (that is, the second
+  // byte of the item data); for items beyond the end of the list, the last
+  // entry's value is used.
+  "ItemStackLimits": [
+    {"MesetaLimit": 999999, "ToolLimits": [10, 10, 1, 10, 10, 10, 10, 10, 10, 1]}, // DC NTE
+    {"MesetaLimit": 999999, "ToolLimits": [10]}, // DC 11/2000
+    {"MesetaLimit": 999999, "ToolLimits": [10, 10, 1, 10, 10, 10, 10, 10, 10, 1]}, // DC V1
+    {"MesetaLimit": 999999, "ToolLimits": [10, 10, 1, 10, 10, 10, 10, 10, 10, 1]}, // DC V2
+    {"MesetaLimit": 999999, "ToolLimits": [10, 10, 1, 10, 10, 10, 10, 10, 10, 1]}, // PC NTE
+    {"MesetaLimit": 999999, "ToolLimits": [10, 10, 1, 10, 10, 10, 10, 10, 10, 1]}, // PC
+    {"MesetaLimit": 999999, "ToolLimits": [10, 10, 1, 10, 10, 10, 10, 10, 10, 1, 1, 1, 1, 1, 1, 1, 99, 1]}, // GC NTE
+    {"MesetaLimit": 999999, "ToolLimits": [10, 10, 1, 10, 10, 10, 10, 10, 10, 1, 1, 1, 1, 1, 1, 1, 99, 1]}, // GC
+    {"MesetaLimit": 999999, "ToolLimits": [10, 10, 1, 10, 10, 10, 10, 10, 10, 1, 1, 1, 1, 1, 1, 1, 99, 1]}, // GC Ep3 NTE
+    {"MesetaLimit": 999999, "ToolLimits": [10, 10, 1, 10, 10, 10, 10, 10, 10, 1, 1, 1, 1, 1, 1, 1, 99, 1]}, // GC Ep3
+    {"MesetaLimit": 999999, "ToolLimits": [10, 10, 1, 10, 10, 10, 10, 10, 10, 1, 1, 1, 1, 1, 1, 1, 99, 1]}, // XB
+    {"MesetaLimit": 999999, "ToolLimits": [10, 10, 1, 10, 10, 10, 10, 10, 10, 1, 1, 1, 1, 1, 1, 1, 99, 1]}, // BB
+  ],
+
   // Quest result item definitions for opcode F95E (used in Black Paper's
   // Dangerous Deal 1 and 2). This list is indexed as [reward_type][difficulty].
   // Reward types 0, 1, 2, and 4 are used by vanilla PSOBB; other reward types

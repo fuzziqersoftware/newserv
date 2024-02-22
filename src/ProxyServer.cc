@@ -782,7 +782,7 @@ void ProxyServer::LinkedSession::set_drop_mode(DropMode new_mode) {
         s->weapon_random_sets.at(this->lobby_difficulty),
         s->tekker_adjustment_set,
         s->item_parameter_table(version),
-        version,
+        s->item_stack_limits(version),
         this->lobby_episode,
         (this->lobby_mode == GameMode::SOLO) ? GameMode::NORMAL : this->lobby_mode,
         this->lobby_difficulty,

@@ -33,8 +33,6 @@ enum class GameMode {
 const char* name_for_mode(GameMode mode);
 const char* abbreviation_for_mode(GameMode mode);
 
-size_t max_stack_size_for_item(Version version, uint8_t data0, uint8_t data1);
-
 extern const std::vector<std::string> tech_id_to_name;
 extern const std::unordered_map<std::string, uint8_t> name_to_tech_id;
 

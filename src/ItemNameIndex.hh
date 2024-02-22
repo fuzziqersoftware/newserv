@@ -20,8 +20,8 @@ public:
   };
 
   ItemNameIndex(
-      Version version,
       std::shared_ptr<const ItemParameterTable> pmt,
+      std::shared_ptr<const ItemData::StackLimits> limits,
       const std::vector<std::string>& name_coll);
 
   inline size_t entry_count() const {
@@ -43,8 +43,8 @@ public:
 private:
   ItemData parse_item_description_phase(const std::string& description, bool skip_special) const;
 
-  Version version;
   std::shared_ptr<const ItemParameterTable> item_parameter_table;
+  std::shared_ptr<const ItemData::StackLimits> limits;
 
   std::unordered_map<uint32_t, std::shared_ptr<const ItemMetadata>> primary_identifier_index;
   std::map<std::string, std::shared_ptr<const ItemMetadata>> name_index;

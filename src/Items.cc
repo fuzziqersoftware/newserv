@@ -111,9 +111,9 @@ void player_use_item(shared_ptr<Client> c, size_t item_index, shared_ptr<PSOLFGE
     }
     armor.data.data1[5]++;
 
-  } else if (item.data.is_wrapped(c->version())) {
+  } else if (item.data.is_wrapped(*s->item_stack_limits(c->version()))) {
     // Unwrap present
-    item.data.unwrap(c->version());
+    item.data.unwrap(*s->item_stack_limits(c->version()));
     should_delete_item = false;
 
   } else if (primary_identifier == 0x00330000) {
@@ -250,7 +250,7 @@ void player_use_item(shared_ptr<Client> c, size_t item_index, shared_ptr<PSOLFGE
   if (should_delete_item) {
     // Allow overdrafting meseta if the client is not BB, since the server isn't
     // informed when meseta is added or removed from the bank.
-    player->remove_item(item.data.id, 1, c->version());
+    player->remove_item(item.data.id, 1, *s->item_stack_limits(c->version()));
   }
 }
 

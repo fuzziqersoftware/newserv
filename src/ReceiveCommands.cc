@@ -3740,7 +3740,7 @@ static void on_DF_BB(shared_ptr<Client> c, uint16_t command, uint32_t, string& d
           ? p->challenge_records.ep2_online_award_state
           : p->challenge_records.ep1_online_award_state;
       award_state.rank_award_flags |= cmd.rank_bitmask;
-      p->add_item(cmd.item, c->version());
+      p->add_item(cmd.item, *s->item_stack_limits(c->version()));
       l->on_item_id_generated_externally(cmd.item.id);
       string desc = s->describe_item(Version::BB_V4, cmd.item, false);
       l->log.info("(Challenge mode) Item awarded to player %hhu: %s", c->lobby_client_id, desc.c_str());
@@ -4611,6 +4611,7 @@ static void on_D2_V3_BB(shared_ptr<Client> c, uint16_t, uint32_t, string& data) 
     throw runtime_error("player executed a trade with no other side pending");
   }
 
+  auto s = c->require_server_state();
   auto complete_trade_for_side = [&](shared_ptr<Client> to_c, shared_ptr<Client> from_c) {
     if (c->version() == Version::BB_V4) {
       // On BB, the server is expected to generate the delete item and create
@@ -4618,9 +4619,9 @@ static void on_D2_V3_BB(shared_ptr<Client> c, uint16_t, uint32_t, string& data) 
       auto to_p = to_c->character();
       auto from_p = from_c->character();
       for (const auto& trade_item : from_c->pending_item_trade->items) {
-        size_t amount = trade_item.stack_size(from_c->version());
+        size_t amount = trade_item.stack_size(*s->item_stack_limits(from_c->version()));
 
-        auto item = from_p->remove_item(trade_item.id, amount, from_c->version());
+        auto item = from_p->remove_item(trade_item.id, amount, *s->item_stack_limits(from_c->version()));
         // This is a special case: when the trade is executed, the client
         // deletes the traded items from its own inventory automatically, so we
         // should NOT send the 6x29 to that client; we should only send it to
@@ -4632,7 +4633,7 @@ static void on_D2_V3_BB(shared_ptr<Client> c, uint16_t, uint32_t, string& data) 
           }
         }
 
-        to_p->add_item(trade_item, to_c->version());
+        to_p->add_item(trade_item, *s->item_stack_limits(to_c->version()));
         send_create_inventory_item_to_lobby(to_c, to_c->lobby_client_id, item);
       }
       send_command(to_c, 0xD3, 0x00);
@@ -5066,7 +5067,7 @@ static void on_EA_BB(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
           }
         }
         if (!reward.reward_item.empty()) {
-          c->current_bank().add_item(reward.reward_item, c->version());
+          c->current_bank().add_item(reward.reward_item, *s->item_stack_limits(c->version()));
         }
       }
       break;

@@ -8,6 +8,39 @@
 
 using namespace std;
 
+const vector<uint8_t> ItemData::StackLimits::DEFAULT_TOOL_LIMITS_DC_11_2000(
+    {10});
+const vector<uint8_t> ItemData::StackLimits::DEFAULT_TOOL_LIMITS_V1_V2(
+    {10, 10, 1, 10, 10, 10, 10, 10, 10, 1});
+const vector<uint8_t> ItemData::StackLimits::DEFAULT_TOOL_LIMITS_V3_V4(
+    {10, 10, 1, 10, 10, 10, 10, 10, 10, 1, 1, 1, 1, 1, 1, 1, 99, 1});
+
+ItemData::StackLimits::StackLimits(
+    Version version, const vector<uint8_t>& max_tool_stack_sizes_by_data1_1, uint32_t max_meseta_stack_size)
+    : version(version),
+      max_tool_stack_sizes_by_data1_1(max_tool_stack_sizes_by_data1_1),
+      max_meseta_stack_size(max_meseta_stack_size) {}
+
+ItemData::StackLimits::StackLimits(Version version, const JSON& json)
+    : version(version) {
+  this->max_tool_stack_sizes_by_data1_1.clear();
+  for (const auto& limit_json : json.at("ToolLimits").as_list()) {
+    this->max_tool_stack_sizes_by_data1_1.emplace_back(limit_json->as_int());
+  }
+  this->max_meseta_stack_size = json.at("MesetaLimit").as_int();
+}
+
+uint8_t ItemData::StackLimits::get(uint8_t data1_0, uint8_t data1_1) const {
+  if (data1_0 == 4) {
+    return this->max_meseta_stack_size;
+  }
+  if (data1_0 == 3) {
+    const auto& vec = this->max_tool_stack_sizes_by_data1_1;
+    return vec.at(min<size_t>(data1_1, vec.size() - 1));
+  }
+  return 1;
+}
+
 ItemData::ItemData() {
   this->clear();
 }
@@ -85,7 +118,7 @@ uint32_t ItemData::primary_identifier() const {
   }
 }
 
-bool ItemData::is_wrapped(Version version) const {
+bool ItemData::is_wrapped(const StackLimits& limits) const {
   switch (this->data1[0]) {
     case 0:
     case 1:
@@ -93,7 +126,7 @@ bool ItemData::is_wrapped(Version version) const {
     case 2:
       return this->data2[2] & 0x40;
     case 3:
-      return !this->is_stackable(version) && (this->data1[3] & 0x40);
+      return !this->is_stackable(limits) && (this->data1[3] & 0x40);
     case 4:
       return false;
     default:
@@ -101,7 +134,7 @@ bool ItemData::is_wrapped(Version version) const {
   }
 }
 
-void ItemData::wrap(Version version) {
+void ItemData::wrap(const StackLimits& limits) {
   switch (this->data1[0]) {
     case 0:
     case 1:
@@ -111,7 +144,7 @@ void ItemData::wrap(Version version) {
       this->data2[2] |= 0x40;
       break;
     case 3:
-      if (!this->is_stackable(version)) {
+      if (!this->is_stackable(limits)) {
         this->data1[3] |= 0x40;
       }
       break;
@@ -122,7 +155,7 @@ void ItemData::wrap(Version version) {
   }
 }
 
-void ItemData::unwrap(Version version) {
+void ItemData::unwrap(const StackLimits& limits) {
   switch (this->data1[0]) {
     case 0:
     case 1:
@@ -132,7 +165,7 @@ void ItemData::unwrap(Version version) {
       this->data2[2] &= 0xBF;
       break;
     case 3:
-      if (!this->is_stackable(version)) {
+      if (!this->is_stackable(limits)) {
         this->data1[3] &= 0xBF;
       }
       break;
@@ -143,23 +176,23 @@ void ItemData::unwrap(Version version) {
   }
 }
 
-bool ItemData::is_stackable(Version version) const {
-  return this->max_stack_size(version) > 1;
+bool ItemData::is_stackable(const StackLimits& limits) const {
+  return this->max_stack_size(limits) > 1;
 }
 
-size_t ItemData::stack_size(Version version) const {
-  if (max_stack_size_for_item(version, this->data1[0], this->data1[1]) > 1) {
+size_t ItemData::stack_size(const StackLimits& limits) const {
+  if (this->max_stack_size(limits) > 1) {
     return this->data1[5];
   }
   return 1;
 }
 
-size_t ItemData::max_stack_size(Version version) const {
-  return max_stack_size_for_item(version, this->data1[0], this->data1[1]);
+size_t ItemData::max_stack_size(const StackLimits& limits) const {
+  return limits.get(this->data1[0], this->data1[1]);
 }
 
-void ItemData::enforce_min_stack_size(Version version) {
-  if (this->stack_size(version) == 0) {
+void ItemData::enforce_min_stack_size(const StackLimits& limits) {
+  if (this->stack_size(limits) == 0) {
     this->data1[5] = 1;
   }
 }
@@ -502,12 +535,12 @@ void ItemData::set_sealed_item_kill_count(uint16_t v) {
   }
 }
 
-uint8_t ItemData::get_tool_item_amount(Version version) const {
-  return this->is_stackable(version) ? this->data1[5] : 1;
+uint8_t ItemData::get_tool_item_amount(const StackLimits& limits) const {
+  return this->is_stackable(limits) ? this->data1[5] : 1;
 }
 
-void ItemData::set_tool_item_amount(Version version, uint8_t amount) {
-  if (this->is_stackable(version)) {
+void ItemData::set_tool_item_amount(const StackLimits& limits, uint8_t amount) {
+  if (this->is_stackable(limits)) {
     this->data1[5] = amount;
   } else if (this->data1[0] == 0x03) {
     this->data1[5] = 0x00;
@@ -667,7 +700,7 @@ ItemData ItemData::from_data(const string& data) {
   return ret;
 }
 
-ItemData ItemData::from_primary_identifier(Version version, uint32_t primary_identifier) {
+ItemData ItemData::from_primary_identifier(const StackLimits& limits, uint32_t primary_identifier) {
   ItemData ret;
   if (primary_identifier > 0x04000000) {
     throw runtime_error("invalid item class");
@@ -680,7 +713,7 @@ ItemData ItemData::from_primary_identifier(Version version, uint32_t primary_ide
   } else {
     ret.data1[2] = (primary_identifier >> 8) & 0xFF;
   }
-  ret.set_tool_item_amount(version, 1);
+  ret.set_tool_item_amount(limits, 1);
   return ret;
 }
 

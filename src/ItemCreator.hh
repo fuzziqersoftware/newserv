@@ -19,7 +19,7 @@ public:
       std::shared_ptr<const WeaponRandomSet> weapon_random_set,
       std::shared_ptr<const TekkerAdjustmentSet> tekker_adjustment_set,
       std::shared_ptr<const ItemParameterTable> item_parameter_table,
-      Version version,
+      std::shared_ptr<const ItemData::StackLimits> stack_limits,
       Episode episode,
       GameMode mode,
       uint8_t difficulty,
@@ -56,6 +56,7 @@ public:
 private:
   PrefixedLogger log;
   Version version;
+  std::shared_ptr<const ItemData::StackLimits> stack_limits;
   Episode episode;
   GameMode mode;
   uint8_t difficulty;

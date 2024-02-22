@@ -66,8 +66,9 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   std::shared_ptr<struct event_base> base;
 
   std::string config_filename;
+  JSON config_json;
   bool is_replay = false;
-  bool config_loaded = false;
+  bool one_time_config_loaded = false;
   bool default_lobbies_created = false;
 
   std::string name;
@@ -148,6 +149,7 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   std::array<std::shared_ptr<const WeaponRandomSet>, 4> weapon_random_sets;
   std::shared_ptr<const TekkerAdjustmentSet> tekker_adjustment_set;
   std::array<std::shared_ptr<const ItemParameterTable>, NUM_VERSIONS> item_parameter_tables;
+  std::array<std::shared_ptr<const ItemData::StackLimits>, NUM_VERSIONS> item_stack_limits_tables;
   std::shared_ptr<const MagEvolutionTable> mag_evolution_table;
   std::shared_ptr<const TextIndex> text_index;
   std::array<std::shared_ptr<const ItemNameIndex>, NUM_VERSIONS> item_name_indexes;
@@ -281,9 +283,8 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
 
   std::shared_ptr<const ItemParameterTable> item_parameter_table(Version version) const;
   std::shared_ptr<const ItemParameterTable> item_parameter_table_for_encode(Version version) const;
-  void set_item_parameter_table(Version version, std::shared_ptr<const ItemParameterTable> table);
+  std::shared_ptr<const ItemData::StackLimits> item_stack_limits(Version version) const;
   std::shared_ptr<const ItemNameIndex> item_name_index(Version version) const;
-  void set_item_name_index(Version version, std::shared_ptr<const ItemNameIndex> index);
   std::string describe_item(Version version, const ItemData& item, bool include_color_codes) const;
   ItemData parse_item_description(Version version, const std::string& description) const;
 
@@ -325,7 +326,8 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   // argument must be called only from the event thread.
   void create_default_lobbies();
   void collect_network_addresses();
-  void load_config();
+  void load_config_early();
+  void load_config_late();
   void load_bb_private_keys(bool from_non_event_thread);
   void load_licenses(bool from_non_event_thread);
   void load_teams(bool from_non_event_thread);
@@ -334,8 +336,10 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   void load_battle_params(bool from_non_event_thread);
   void load_level_table(bool from_non_event_thread);
   void load_text_index(bool from_non_event_thread);
-  static std::shared_ptr<ItemNameIndex> create_item_name_index_for_version(
-      Version version, std::shared_ptr<const ItemParameterTable> pmt, std::shared_ptr<const TextIndex> text_index);
+  std::shared_ptr<ItemNameIndex> create_item_name_index_for_version(
+      std::shared_ptr<const ItemParameterTable> pmt,
+      std::shared_ptr<const ItemData::StackLimits> limits,
+      std::shared_ptr<const TextIndex> text_index) const;
   void load_item_name_indexes(bool from_non_event_thread);
   void load_drop_tables(bool from_non_event_thread);
   void load_item_definitions(bool from_non_event_thread);

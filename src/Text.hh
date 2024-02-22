@@ -50,6 +50,10 @@ std::string tt_encode_marked_optional(const std::string& utf8, uint8_t default_l
 std::string tt_encode_marked(const std::string& utf8, uint8_t default_language, bool is_utf16);
 std::string tt_decode_marked(const std::string& data, uint8_t default_language, bool is_utf16);
 
+char marker_for_language_code(uint8_t language_code);
+bool is_language_marker_sjis_8859(char marker);
+bool is_language_marker_utf16(char marker);
+
 // Packed array object for use in protocol structs
 
 template <typename ItemT, size_t Count>
@@ -582,7 +586,3 @@ std::string remove_color(const std::string& s);
 std::string strip_color(const std::string& s);
 
 std::string escape_player_name(const std::string& name);
-
-char marker_for_language_code(uint8_t language_code);
-bool is_language_marker_sjis_8859(char marker);
-bool is_language_marker_utf16(char marker);

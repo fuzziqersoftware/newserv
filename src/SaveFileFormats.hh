@@ -233,8 +233,8 @@ struct PSOBBCharacterFile {
       const PlayerDispDataBBPreview& preview,
       std::shared_ptr<const LevelTable> level_table);
 
-  void add_item(const ItemData& item, Version version);
-  ItemData remove_item(uint32_t item_id, uint32_t amount, Version version);
+  void add_item(const ItemData& item, const ItemData::StackLimits& limits);
+  ItemData remove_item(uint32_t item_id, uint32_t amount, const ItemData::StackLimits& limits);
   void add_meseta(uint32_t amount);
   void remove_meseta(uint32_t amount, bool allow_overdraft);
 

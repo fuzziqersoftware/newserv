@@ -385,6 +385,14 @@ shared_ptr<const ItemParameterTable> ServerState::item_parameter_table_for_encod
   return this->item_parameter_table(is_v1(version) ? Version::PC_V2 : version);
 }
 
+shared_ptr<const ItemData::StackLimits> ServerState::item_stack_limits(Version version) const {
+  auto ret = this->item_stack_limits_tables.at(static_cast<size_t>(version));
+  if (ret == nullptr) {
+    throw runtime_error("no item stack limits table exists for this version");
+  }
+  return ret;
+}
+
 shared_ptr<const ItemNameIndex> ServerState::item_name_index(Version version) const {
   auto ret = this->item_name_indexes.at(static_cast<size_t>(version));
   if (ret == nullptr) {
@@ -401,8 +409,7 @@ ItemData ServerState::parse_item_description(Version version, const string& desc
   return this->item_name_index(version)->parse_item_description(description);
 }
 
-void ServerState::set_port_configuration(
-    const vector<PortConfiguration>& port_configs) {
+void ServerState::set_port_configuration(const vector<PortConfiguration>& port_configs) {
   this->name_to_port_config.clear();
   this->number_to_port_config.clear();
 
@@ -546,17 +553,17 @@ void ServerState::collect_network_addresses() {
   }
 }
 
-void ServerState::load_config() {
+void ServerState::load_config_early() {
   if (this->config_filename.empty()) {
     throw logic_error("configuration filename is missing");
   }
 
   config_log.info("Loading configuration");
-  auto json = JSON::parse(load_file(this->config_filename));
+  this->config_json = JSON::parse(load_file(this->config_filename));
 
   auto parse_behavior_switch = [&](const string& json_key, BehaviorSwitch default_value) -> ServerState::BehaviorSwitch {
     try {
-      string behavior = json.get_string(json_key);
+      string behavior = this->config_json.get_string(json_key);
       if (behavior == "Off") {
         return ServerState::BehaviorSwitch::OFF;
       } else if (behavior == "OffByDefault") {
@@ -573,11 +580,11 @@ void ServerState::load_config() {
     }
   };
 
-  this->name = json.at("ServerName").as_string();
+  this->name = this->config_json.at("ServerName").as_string();
 
-  if (!this->config_loaded) {
+  if (!this->one_time_config_loaded) {
     try {
-      this->username = json.at("User").as_string();
+      this->username = this->config_json.at("User").as_string();
       if (this->username == "$SUDO_USER") {
         const char* user_from_env = getenv("SUDO_USER");
         if (!user_from_env) {
@@ -588,15 +595,15 @@ void ServerState::load_config() {
     } catch (const out_of_range&) {
     }
 
-    this->set_port_configuration(parse_port_configuration(json.at("PortConfiguration")));
+    this->set_port_configuration(parse_port_configuration(this->config_json.at("PortConfiguration")));
     try {
-      auto spec = this->parse_port_spec(json.at("DNSServerPort"));
+      auto spec = this->parse_port_spec(this->config_json.at("DNSServerPort"));
       this->dns_server_addr = std::move(spec.first);
       this->dns_server_port = spec.second;
     } catch (const out_of_range&) {
     }
     try {
-      for (const auto& item : json.at("IPStackListen").as_list()) {
+      for (const auto& item : this->config_json.at("IPStackListen").as_list()) {
         if (item->is_int()) {
           this->ip_stack_addresses.emplace_back(string_printf("0.0.0.0:%" PRId64, item->as_int()));
         } else {
@@ -606,7 +613,7 @@ void ServerState::load_config() {
     } catch (const out_of_range&) {
     }
     try {
-      for (const auto& item : json.at("PPPStackListen").as_list()) {
+      for (const auto& item : this->config_json.at("PPPStackListen").as_list()) {
         if (item->is_int()) {
           this->ppp_stack_addresses.emplace_back(string_printf("0.0.0.0:%" PRId64, item->as_int()));
         } else {
@@ -616,7 +623,7 @@ void ServerState::load_config() {
     } catch (const out_of_range&) {
     }
     try {
-      for (const auto& item : json.at("HTTPListen").as_list()) {
+      for (const auto& item : this->config_json.at("HTTPListen").as_list()) {
         if (item->is_int()) {
           this->http_addresses.emplace_back(string_printf("0.0.0.0:%" PRId64, item->as_int()));
         } else {
@@ -625,9 +632,11 @@ void ServerState::load_config() {
       }
     } catch (const out_of_range&) {
     }
+
+    this->one_time_config_loaded = true;
   }
 
-  auto local_address_str = json.at("LocalAddress").as_string();
+  auto local_address_str = this->config_json.at("LocalAddress").as_string();
   try {
     this->local_address = this->all_addresses.at(local_address_str);
     string addr_str = string_for_address(this->local_address);
@@ -640,7 +649,7 @@ void ServerState::load_config() {
   this->all_addresses.erase("<local>");
   this->all_addresses.emplace("<local>", this->local_address);
 
-  auto external_address_str = json.at("ExternalAddress").as_string();
+  auto external_address_str = this->config_json.at("ExternalAddress").as_string();
   try {
     this->external_address = this->all_addresses.at(external_address_str);
     string addr_str = string_for_address(this->external_address);
@@ -653,32 +662,32 @@ void ServerState::load_config() {
   this->all_addresses.erase("<external>");
   this->all_addresses.emplace("<external>", this->external_address);
 
-  this->client_ping_interval_usecs = json.get_int("ClientPingInterval", 30000000);
-  this->client_idle_timeout_usecs = json.get_int("ClientIdleTimeout", 60000000);
-  this->patch_client_idle_timeout_usecs = json.get_int("PatchClientIdleTimeout", 300000000);
+  this->client_ping_interval_usecs = this->config_json.get_int("ClientPingInterval", 30000000);
+  this->client_idle_timeout_usecs = this->config_json.get_int("ClientIdleTimeout", 60000000);
+  this->patch_client_idle_timeout_usecs = this->config_json.get_int("PatchClientIdleTimeout", 300000000);
 
-  this->ip_stack_debug = json.get_bool("IPStackDebug", false);
-  this->allow_unregistered_users = json.get_bool("AllowUnregisteredUsers", false);
-  this->allow_pc_nte = json.get_bool("AllowPCNTE", false);
-  this->use_temp_licenses_for_prototypes = json.get_bool("UseTemporaryLicensesForPrototypes", true);
-  this->allowed_drop_modes_v1_v2_normal = json.get_int("AllowedDropModesV1V2Normal", 0x1F);
-  this->allowed_drop_modes_v1_v2_battle = json.get_int("AllowedDropModesV1V2Battle", 0x07);
-  this->allowed_drop_modes_v1_v2_challenge = json.get_int("AllowedDropModesV1V2Challenge", 0x07);
-  this->allowed_drop_modes_v3_normal = json.get_int("AllowedDropModesV3Normal", 0x1F);
-  this->allowed_drop_modes_v3_battle = json.get_int("AllowedDropModesV3Battle", 0x07);
-  this->allowed_drop_modes_v3_challenge = json.get_int("AllowedDropModesV3Challenge", 0x07);
-  this->allowed_drop_modes_v4_normal = json.get_int("AllowedDropModesV4Normal", 0x1D);
-  this->allowed_drop_modes_v4_battle = json.get_int("AllowedDropModesV4Battle", 0x05);
-  this->allowed_drop_modes_v4_challenge = json.get_int("AllowedDropModesV4Challenge", 0x05);
-  this->default_drop_mode_v1_v2_normal = json.get_enum("DefaultDropModeV1V2Normal", Lobby::DropMode::CLIENT);
-  this->default_drop_mode_v1_v2_battle = json.get_enum("DefaultDropModeV1V2Battle", Lobby::DropMode::CLIENT);
-  this->default_drop_mode_v1_v2_challenge = json.get_enum("DefaultDropModeV1V2Challenge", Lobby::DropMode::CLIENT);
-  this->default_drop_mode_v3_normal = json.get_enum("DefaultDropModeV3Normal", Lobby::DropMode::CLIENT);
-  this->default_drop_mode_v3_battle = json.get_enum("DefaultDropModeV3Battle", Lobby::DropMode::CLIENT);
-  this->default_drop_mode_v3_challenge = json.get_enum("DefaultDropModeV3Challenge", Lobby::DropMode::CLIENT);
-  this->default_drop_mode_v4_normal = json.get_enum("DefaultDropModeV4Normal", Lobby::DropMode::SERVER_SHARED);
-  this->default_drop_mode_v4_battle = json.get_enum("DefaultDropModeV4Battle", Lobby::DropMode::SERVER_SHARED);
-  this->default_drop_mode_v4_challenge = json.get_enum("DefaultDropModeV4Challenge", Lobby::DropMode::SERVER_SHARED);
+  this->ip_stack_debug = this->config_json.get_bool("IPStackDebug", false);
+  this->allow_unregistered_users = this->config_json.get_bool("AllowUnregisteredUsers", false);
+  this->allow_pc_nte = this->config_json.get_bool("AllowPCNTE", false);
+  this->use_temp_licenses_for_prototypes = this->config_json.get_bool("UseTemporaryLicensesForPrototypes", true);
+  this->allowed_drop_modes_v1_v2_normal = this->config_json.get_int("AllowedDropModesV1V2Normal", 0x1F);
+  this->allowed_drop_modes_v1_v2_battle = this->config_json.get_int("AllowedDropModesV1V2Battle", 0x07);
+  this->allowed_drop_modes_v1_v2_challenge = this->config_json.get_int("AllowedDropModesV1V2Challenge", 0x07);
+  this->allowed_drop_modes_v3_normal = this->config_json.get_int("AllowedDropModesV3Normal", 0x1F);
+  this->allowed_drop_modes_v3_battle = this->config_json.get_int("AllowedDropModesV3Battle", 0x07);
+  this->allowed_drop_modes_v3_challenge = this->config_json.get_int("AllowedDropModesV3Challenge", 0x07);
+  this->allowed_drop_modes_v4_normal = this->config_json.get_int("AllowedDropModesV4Normal", 0x1D);
+  this->allowed_drop_modes_v4_battle = this->config_json.get_int("AllowedDropModesV4Battle", 0x05);
+  this->allowed_drop_modes_v4_challenge = this->config_json.get_int("AllowedDropModesV4Challenge", 0x05);
+  this->default_drop_mode_v1_v2_normal = this->config_json.get_enum("DefaultDropModeV1V2Normal", Lobby::DropMode::CLIENT);
+  this->default_drop_mode_v1_v2_battle = this->config_json.get_enum("DefaultDropModeV1V2Battle", Lobby::DropMode::CLIENT);
+  this->default_drop_mode_v1_v2_challenge = this->config_json.get_enum("DefaultDropModeV1V2Challenge", Lobby::DropMode::CLIENT);
+  this->default_drop_mode_v3_normal = this->config_json.get_enum("DefaultDropModeV3Normal", Lobby::DropMode::CLIENT);
+  this->default_drop_mode_v3_battle = this->config_json.get_enum("DefaultDropModeV3Battle", Lobby::DropMode::CLIENT);
+  this->default_drop_mode_v3_challenge = this->config_json.get_enum("DefaultDropModeV3Challenge", Lobby::DropMode::CLIENT);
+  this->default_drop_mode_v4_normal = this->config_json.get_enum("DefaultDropModeV4Normal", Lobby::DropMode::SERVER_SHARED);
+  this->default_drop_mode_v4_battle = this->config_json.get_enum("DefaultDropModeV4Battle", Lobby::DropMode::SERVER_SHARED);
+  this->default_drop_mode_v4_challenge = this->config_json.get_enum("DefaultDropModeV4Challenge", Lobby::DropMode::SERVER_SHARED);
   if ((this->default_drop_mode_v4_normal == Lobby::DropMode::CLIENT) ||
       (this->default_drop_mode_v4_battle == Lobby::DropMode::CLIENT) ||
       (this->default_drop_mode_v4_challenge == Lobby::DropMode::CLIENT)) {
@@ -691,20 +700,20 @@ void ServerState::load_config() {
 
   this->quest_flag_persist_mask.update_all(true);
   try {
-    for (const auto& flag_id_json : json.get_list("PreventPersistQuestFlags")) {
+    for (const auto& flag_id_json : this->config_json.get_list("PreventPersistQuestFlags")) {
       this->quest_flag_persist_mask.clear(flag_id_json->as_int());
     }
   } catch (const out_of_range&) {
   }
 
-  this->persistent_game_idle_timeout_usecs = json.get_int("PersistentGameIdleTimeout", 0);
+  this->persistent_game_idle_timeout_usecs = this->config_json.get_int("PersistentGameIdleTimeout", 0);
   this->cheat_mode_behavior = parse_behavior_switch("CheatModeBehavior", BehaviorSwitch::OFF_BY_DEFAULT);
-  this->default_rare_notifs_enabled_v1_v2 = json.get_bool("RareNotificationsEnabledByDefault", false);
+  this->default_rare_notifs_enabled_v1_v2 = this->config_json.get_bool("RareNotificationsEnabledByDefault", false);
   this->default_rare_notifs_enabled_v3_v4 = this->default_rare_notifs_enabled_v1_v2;
-  this->default_rare_notifs_enabled_v1_v2 = json.get_bool("RareNotificationsEnabledByDefaultV1V2", this->default_rare_notifs_enabled_v1_v2);
-  this->default_rare_notifs_enabled_v3_v4 = json.get_bool("RareNotificationsEnabledByDefaultV3V4", this->default_rare_notifs_enabled_v3_v4);
-  this->ep3_send_function_call_enabled = json.get_bool("EnableEpisode3SendFunctionCall", false);
-  this->catch_handler_exceptions = json.get_bool("CatchHandlerExceptions", true);
+  this->default_rare_notifs_enabled_v1_v2 = this->config_json.get_bool("RareNotificationsEnabledByDefaultV1V2", this->default_rare_notifs_enabled_v1_v2);
+  this->default_rare_notifs_enabled_v3_v4 = this->config_json.get_bool("RareNotificationsEnabledByDefaultV3V4", this->default_rare_notifs_enabled_v3_v4);
+  this->ep3_send_function_call_enabled = this->config_json.get_bool("EnableEpisode3SendFunctionCall", false);
+  this->catch_handler_exceptions = this->config_json.get_bool("CatchHandlerExceptions", true);
 
   auto parse_int_list = +[](const JSON& json) -> vector<uint32_t> {
     vector<uint32_t> ret;
@@ -714,27 +723,27 @@ void ServerState::load_config() {
     return ret;
   };
 
-  this->ep3_infinite_meseta = json.get_bool("Episode3InfiniteMeseta", false);
+  this->ep3_infinite_meseta = this->config_json.get_bool("Episode3InfiniteMeseta", false);
   try {
-    this->ep3_defeat_player_meseta_rewards = parse_int_list(json.at("Episode3DefeatPlayerMeseta"));
+    this->ep3_defeat_player_meseta_rewards = parse_int_list(this->config_json.at("Episode3DefeatPlayerMeseta"));
   } catch (const out_of_range&) {
     this->ep3_defeat_player_meseta_rewards = {300, 400, 500, 600, 700};
   }
   try {
-    this->ep3_defeat_com_meseta_rewards = parse_int_list(json.get("Episode3DefeatCOMMeseta", JSON::list()));
+    this->ep3_defeat_com_meseta_rewards = parse_int_list(this->config_json.get("Episode3DefeatCOMMeseta", JSON::list()));
   } catch (const out_of_range&) {
     this->ep3_defeat_com_meseta_rewards = {100, 200, 300, 400, 500};
   }
-  this->ep3_final_round_meseta_bonus = json.get_int("Episode3FinalRoundMesetaBonus", 300);
-  this->ep3_jukebox_is_free = json.get_bool("Episode3JukeboxIsFree", false);
-  this->ep3_behavior_flags = json.get_int("Episode3BehaviorFlags", false);
-  this->ep3_card_auction_points = json.get_int("CardAuctionPoints", 0);
-  this->hide_download_commands = json.get_bool("HideDownloadCommands", true);
-  this->proxy_allow_save_files = json.get_bool("ProxyAllowSaveFiles", true);
-  this->proxy_enable_login_options = json.get_bool("ProxyEnableLoginOptions", false);
+  this->ep3_final_round_meseta_bonus = this->config_json.get_int("Episode3FinalRoundMesetaBonus", 300);
+  this->ep3_jukebox_is_free = this->config_json.get_bool("Episode3JukeboxIsFree", false);
+  this->ep3_behavior_flags = this->config_json.get_int("Episode3BehaviorFlags", false);
+  this->ep3_card_auction_points = this->config_json.get_int("CardAuctionPoints", 0);
+  this->hide_download_commands = this->config_json.get_bool("HideDownloadCommands", true);
+  this->proxy_allow_save_files = this->config_json.get_bool("ProxyAllowSaveFiles", true);
+  this->proxy_enable_login_options = this->config_json.get_bool("ProxyEnableLoginOptions", false);
 
   try {
-    const auto& i = json.at("CardAuctionSize");
+    const auto& i = this->config_json.at("CardAuctionSize");
     if (i.is_int()) {
       this->ep3_card_auction_min_size = i.as_int();
       this->ep3_card_auction_max_size = this->ep3_card_auction_min_size;
@@ -747,58 +756,9 @@ void ServerState::load_config() {
     this->ep3_card_auction_max_size = 0;
   }
 
-  this->ep3_card_auction_pool.clear();
-  try {
-    for (const auto& it : json.get_dict("CardAuctionPool")) {
-      uint16_t card_id;
-      try {
-        card_id = this->ep3_card_index->definition_for_name_normalized(it.first)->def.card_id;
-      } catch (const out_of_range&) {
-        throw runtime_error(string_printf("Ep3 card \"%s\" in auction pool does not exist", it.first.c_str()));
-      }
-      this->ep3_card_auction_pool.emplace_back(
-          CardAuctionPoolEntry{
-              .probability = static_cast<uint64_t>(it.second->at(0).as_int()),
-              .card_id = card_id,
-              .min_price = static_cast<uint16_t>(it.second->at(1).as_int())});
-    }
-  } catch (const out_of_range&) {
-  }
-
-  for (auto& trap_card_ids : this->ep3_trap_card_ids) {
-    trap_card_ids.clear();
-  }
-  if (this->ep3_card_index) {
-    try {
-      const auto& ep3_trap_cards_json = json.get_list("Episode3TrapCards");
-      if (!ep3_trap_cards_json.empty()) {
-        if (ep3_trap_cards_json.size() != 5) {
-          throw runtime_error("Episode3TrapCards must be a list of 5 lists");
-        }
-        for (size_t trap_type = 0; trap_type < 5; trap_type++) {
-          auto& trap_card_ids = this->ep3_trap_card_ids[trap_type];
-          for (const auto& card_it : ep3_trap_cards_json.at(trap_type)->as_list()) {
-            try {
-              const auto& card = this->ep3_card_index->definition_for_name_normalized(card_it->as_string());
-              if (card->def.type != Episode3::CardType::ASSIST) {
-                throw runtime_error(string_printf("Ep3 card \"%s\" in trap card list is not an assist card", name.c_str()));
-              }
-              trap_card_ids.emplace_back(card->def.card_id);
-            } catch (const out_of_range&) {
-              throw runtime_error(string_printf("Ep3 card \"%s\" in trap card list does not exist", name.c_str()));
-            }
-          }
-        }
-      }
-    } catch (const out_of_range&) {
-    }
-  } else {
-    config_log.warning("Episode 3 card definitions missing; cannot set trap card IDs from config");
-  }
-
   if (!this->is_replay) {
     this->ep3_lobby_banners.clear();
-    for (const auto& it : json.get("Episode3LobbyBanners", JSON::list()).as_list()) {
+    for (const auto& it : this->config_json.get("Episode3LobbyBanners", JSON::list()).as_list()) {
       string path = "system/ep3/banners/" + it->at(2).as_string();
 
       string compressed_gvm_data;
@@ -850,7 +810,7 @@ void ServerState::load_config() {
       }
       return ret;
     };
-    const auto& categories_json = json.at("Episode3EXResultValues");
+    const auto& categories_json = this->config_json.at("Episode3EXResultValues");
     this->ep3_default_ex_values = parse_ep3_ex_result_cmd(categories_json.at("Default"));
     try {
       this->ep3_tournament_ex_values = parse_ep3_ex_result_cmd(categories_json.at("Tournament"));
@@ -864,68 +824,54 @@ void ServerState::load_config() {
     }
   }
 
-  this->quest_F95E_results.clear();
-  this->quest_F95F_results.clear();
-  this->quest_F960_success_results.clear();
-  this->quest_F960_failure_results = QuestF960Result();
-  this->secret_lottery_results.clear();
-  if (this->item_name_index(Version::BB_V4)) {
-    try {
-      for (const auto& type_it : json.get_list("QuestF95EResultItems")) {
-        auto& type_res = this->quest_F95E_results.emplace_back();
-        for (const auto& difficulty_it : type_it->as_list()) {
-          auto& difficulty_res = type_res.emplace_back();
-          for (const auto& item_it : difficulty_it->as_list()) {
-            difficulty_res.emplace_back(this->parse_item_description(Version::BB_V4, item_it->as_string()));
-          }
-        }
+  try {
+    const auto& stack_limits_tables_json = this->config_json.at("ItemStackLimits");
+    for (size_t v_s = NUM_PATCH_VERSIONS; v_s < NUM_VERSIONS; v_s++) {
+      try {
+        Version v = static_cast<Version>(v_s);
+        this->item_stack_limits_tables[v_s] = make_shared<ItemData::StackLimits>(
+            v, stack_limits_tables_json.at(v_s - NUM_PATCH_VERSIONS));
+      } catch (const out_of_range&) {
       }
-    } catch (const out_of_range&) {
     }
-    try {
-      for (const auto& it : json.get_list("QuestF95FResultItems")) {
-        auto& list = it->as_list();
-        size_t price = list.at(0)->as_int();
-        this->quest_F95F_results.emplace_back(make_pair(price, this->parse_item_description(Version::BB_V4, list.at(1)->as_string())));
-      }
-    } catch (const out_of_range&) {
-    }
-    try {
-      this->quest_F960_failure_results = QuestF960Result(json.at("QuestF960FailureResultItems"), this->item_name_index(Version::BB_V4));
-      for (const auto& it : json.get_list("QuestF960SuccessResultItems")) {
-        this->quest_F960_success_results.emplace_back(*it, this->item_name_index(Version::BB_V4));
-      }
-    } catch (const out_of_range&) {
-    }
-    try {
-      for (const auto& it : json.get_list("SecretLotteryResultItems")) {
-        this->secret_lottery_results.emplace_back(this->parse_item_description(Version::BB_V4, it->as_string()));
-      }
-    } catch (const out_of_range&) {
-    }
-  } else {
-    config_log.warning("BB item name index is missing; cannot load quest reward lists from config");
+  } catch (const out_of_range&) {
   }
 
-  this->bb_global_exp_multiplier = json.get_int("BBGlobalEXPMultiplier", 1);
+  for (size_t v_s = NUM_PATCH_VERSIONS; v_s < NUM_VERSIONS; v_s++) {
+    if (!this->item_stack_limits_tables[v_s]) {
+      Version v = static_cast<Version>(v_s);
+      if (v == Version::DC_V1_11_2000_PROTOTYPE) {
+        this->item_stack_limits_tables[v_s] = make_shared<ItemData::StackLimits>(
+            Version::DC_V1_11_2000_PROTOTYPE, ItemData::StackLimits::DEFAULT_TOOL_LIMITS_DC_11_2000, 999999);
+      } else if (v_s < static_cast<size_t>(Version::GC_NTE)) {
+        this->item_stack_limits_tables[v_s] = make_shared<ItemData::StackLimits>(
+            v, ItemData::StackLimits::DEFAULT_TOOL_LIMITS_V1_V2, 999999);
+      } else {
+        this->item_stack_limits_tables[v_s] = make_shared<ItemData::StackLimits>(
+            v, ItemData::StackLimits::DEFAULT_TOOL_LIMITS_V3_V4, 999999);
+      }
+    }
+  }
 
-  set_log_levels_from_json(json.get("LogLevels", JSON::dict()));
+  this->bb_global_exp_multiplier = this->config_json.get_int("BBGlobalEXPMultiplier", 1);
+
+  set_log_levels_from_json(this->config_json.get("LogLevels", JSON::dict()));
 
   try {
-    this->run_shell_behavior = json.at("RunInteractiveShell").as_bool()
+    this->run_shell_behavior = this->config_json.at("RunInteractiveShell").as_bool()
         ? ServerState::RunShellBehavior::ALWAYS
         : ServerState::RunShellBehavior::NEVER;
   } catch (const out_of_range&) {
   }
 
-  this->allow_dc_pc_games = json.get_bool("AllowDCPCGames", true);
-  this->allow_gc_xb_games = json.get_bool("AllowGCXBGames", true);
+  this->allow_dc_pc_games = this->config_json.get_bool("AllowDCPCGames", true);
+  this->allow_gc_xb_games = this->config_json.get_bool("AllowGCXBGames", true);
 
   for (auto& order : this->public_lobby_search_orders) {
     order.clear();
   }
   try {
-    const auto& orders_json = json.get_list("LobbySearchOrders");
+    const auto& orders_json = this->config_json.get_list("LobbySearchOrders");
     for (size_t v_s = 0; v_s < orders_json.size(); v_s++) {
       auto& order = this->public_lobby_search_orders.at(v_s);
       const auto& order_json = orders_json.at(v_s);
@@ -943,7 +889,7 @@ void ServerState::load_config() {
     }
   }
   try {
-    const auto& events_json = json.get_list("LobbyEvents");
+    const auto& events_json = this->config_json.get_list("LobbyEvents");
     for (size_t z = 0; z < events_json.size(); z++) {
       const auto& v = events_json.at(z);
       uint8_t event = v->is_int() ? v->as_int() : event_for_name(v->as_string());
@@ -958,15 +904,15 @@ void ServerState::load_config() {
 
   this->pre_lobby_event = 0;
   try {
-    auto v = json.at("MenuEvent");
+    auto v = this->config_json.at("MenuEvent");
     this->pre_lobby_event = v.is_int() ? v.as_int() : event_for_name(v.as_string());
   } catch (const out_of_range&) {
   }
 
-  this->ep3_menu_song = json.get_int("Episode3MenuSong", -1);
+  this->ep3_menu_song = this->config_json.get_int("Episode3MenuSong", -1);
 
   try {
-    this->quest_category_index = make_shared<QuestCategoryIndex>(json.at("QuestCategories"));
+    this->quest_category_index = make_shared<QuestCategoryIndex>(this->config_json.at("QuestCategories"));
   } catch (const exception& e) {
     throw runtime_error(string_printf(
         "QuestCategories is missing or invalid in config.json (%s) - see config.example.json for an example", e.what()));
@@ -985,9 +931,9 @@ void ServerState::load_config() {
       "Return to the\nmain menu", MenuItem::Flag::INVISIBLE_IN_INFO_MENU);
   {
     auto blank_json = JSON::list();
-    const JSON& default_json = json.get("InformationMenuContents", blank_json);
-    const JSON& v2_json = json.get("InformationMenuContentsV1V2", default_json);
-    const JSON& v3_json = json.get("InformationMenuContentsV3", default_json);
+    const JSON& default_json = this->config_json.get("InformationMenuContents", blank_json);
+    const JSON& v2_json = this->config_json.get("InformationMenuContentsV1V2", default_json);
+    const JSON& v3_json = this->config_json.get("InformationMenuContentsV3", default_json);
 
     uint32_t item_id = 0;
     for (const auto& item : v2_json.as_list()) {
@@ -1018,7 +964,7 @@ void ServerState::load_config() {
 
     try {
       map<string, const JSON&> sorted_jsons;
-      for (const auto& it : json.at(key).as_dict()) {
+      for (const auto& it : this->config_json.at(key).as_dict()) {
         sorted_jsons.emplace(it.first, *it.second);
       }
 
@@ -1044,7 +990,7 @@ void ServerState::load_config() {
   this->proxy_destinations_menu_xb = generate_proxy_destinations_menu(this->proxy_destinations_xb, "ProxyDestinations-XB");
 
   try {
-    const string& netloc_str = json.get_string("ProxyDestination-Patch");
+    const string& netloc_str = this->config_json.get_string("ProxyDestination-Patch");
     this->proxy_destination_patch = parse_netloc(netloc_str);
     config_log.info("Patch server proxy is enabled with destination %s", netloc_str.c_str());
     for (auto& it : this->name_to_port_config) {
@@ -1057,7 +1003,7 @@ void ServerState::load_config() {
     this->proxy_destination_patch.second = 0;
   }
   try {
-    const string& netloc_str = json.get_string("ProxyDestination-BB");
+    const string& netloc_str = this->config_json.get_string("ProxyDestination-BB");
     this->proxy_destination_bb = parse_netloc(netloc_str);
     config_log.info("BB proxy is enabled with destination %s", netloc_str.c_str());
     for (auto& it : this->name_to_port_config) {
@@ -1070,13 +1016,13 @@ void ServerState::load_config() {
     this->proxy_destination_bb.second = 0;
   }
 
-  this->welcome_message = json.get_string("WelcomeMessage", "");
-  this->pc_patch_server_message = json.get_string("PCPatchServerMessage", "");
-  this->bb_patch_server_message = json.get_string("BBPatchServerMessage", "");
+  this->welcome_message = this->config_json.get_string("WelcomeMessage", "");
+  this->pc_patch_server_message = this->config_json.get_string("PCPatchServerMessage", "");
+  this->bb_patch_server_message = this->config_json.get_string("BBPatchServerMessage", "");
 
   this->team_reward_defs_json = nullptr;
   try {
-    this->team_reward_defs_json = std::move(json.at("TeamRewards"));
+    this->team_reward_defs_json = std::move(this->config_json.at("TeamRewards"));
   } catch (const out_of_range&) {
   }
 
@@ -1085,14 +1031,14 @@ void ServerState::load_config() {
     try {
       string key = "RareEnemyRates-";
       key += token_name_for_difficulty(z);
-      this->rare_enemy_rates_by_difficulty[z] = make_shared<Map::RareEnemyRates>(json.at(key));
+      this->rare_enemy_rates_by_difficulty[z] = make_shared<Map::RareEnemyRates>(this->config_json.at(key));
       prev = this->rare_enemy_rates_by_difficulty[z];
     } catch (const out_of_range&) {
       this->rare_enemy_rates_by_difficulty[z] = prev;
     }
   }
   try {
-    this->rare_enemy_rates_challenge = make_shared<Map::RareEnemyRates>(json.at("RareEnemyRates-Challenge"));
+    this->rare_enemy_rates_challenge = make_shared<Map::RareEnemyRates>(this->config_json.at("RareEnemyRates-Challenge"));
   } catch (const out_of_range&) {
     this->rare_enemy_rates_challenge = Map::DEFAULT_RARE_ENEMIES;
   }
@@ -1101,7 +1047,7 @@ void ServerState::load_config() {
   this->min_levels_v4[1] = DEFAULT_MIN_LEVELS_V4_EP2;
   this->min_levels_v4[2] = DEFAULT_MIN_LEVELS_V4_EP4;
   try {
-    for (const auto& ep_it : json.get_dict("BBMinimumLevels")) {
+    for (const auto& ep_it : this->config_json.get_dict("BBMinimumLevels")) {
       array<size_t, 4> levels({0, 0, 0, 0});
       for (size_t z = 0; z < 4; z++) {
         levels[z] = ep_it.second->get_int(z) - 1;
@@ -1122,8 +1068,100 @@ void ServerState::load_config() {
     }
   } catch (const out_of_range&) {
   }
+}
 
-  this->config_loaded = true;
+void ServerState::load_config_late() {
+  this->ep3_card_auction_pool.clear();
+  try {
+    for (const auto& it : this->config_json.get_dict("CardAuctionPool")) {
+      uint16_t card_id;
+      try {
+        card_id = this->ep3_card_index->definition_for_name_normalized(it.first)->def.card_id;
+      } catch (const out_of_range&) {
+        throw runtime_error(string_printf("Ep3 card \"%s\" in auction pool does not exist", it.first.c_str()));
+      }
+      this->ep3_card_auction_pool.emplace_back(
+          CardAuctionPoolEntry{
+              .probability = static_cast<uint64_t>(it.second->at(0).as_int()),
+              .card_id = card_id,
+              .min_price = static_cast<uint16_t>(it.second->at(1).as_int())});
+    }
+  } catch (const out_of_range&) {
+  }
+
+  for (auto& trap_card_ids : this->ep3_trap_card_ids) {
+    trap_card_ids.clear();
+  }
+  if (this->ep3_card_index) {
+    try {
+      const auto& ep3_trap_cards_json = this->config_json.get_list("Episode3TrapCards");
+      if (!ep3_trap_cards_json.empty()) {
+        if (ep3_trap_cards_json.size() != 5) {
+          throw runtime_error("Episode3TrapCards must be a list of 5 lists");
+        }
+        for (size_t trap_type = 0; trap_type < 5; trap_type++) {
+          auto& trap_card_ids = this->ep3_trap_card_ids[trap_type];
+          for (const auto& card_it : ep3_trap_cards_json.at(trap_type)->as_list()) {
+            try {
+              const auto& card = this->ep3_card_index->definition_for_name_normalized(card_it->as_string());
+              if (card->def.type != Episode3::CardType::ASSIST) {
+                throw runtime_error(string_printf("Ep3 card \"%s\" in trap card list is not an assist card", name.c_str()));
+              }
+              trap_card_ids.emplace_back(card->def.card_id);
+            } catch (const out_of_range&) {
+              throw runtime_error(string_printf("Ep3 card \"%s\" in trap card list does not exist", name.c_str()));
+            }
+          }
+        }
+      }
+    } catch (const out_of_range&) {
+    }
+  } else {
+    config_log.warning("Episode 3 card definitions missing; cannot set trap card IDs from config");
+  }
+
+  this->quest_F95E_results.clear();
+  this->quest_F95F_results.clear();
+  this->quest_F960_success_results.clear();
+  this->quest_F960_failure_results = QuestF960Result();
+  this->secret_lottery_results.clear();
+  if (this->item_name_index(Version::BB_V4)) {
+    try {
+      for (const auto& type_it : this->config_json.get_list("QuestF95EResultItems")) {
+        auto& type_res = this->quest_F95E_results.emplace_back();
+        for (const auto& difficulty_it : type_it->as_list()) {
+          auto& difficulty_res = type_res.emplace_back();
+          for (const auto& item_it : difficulty_it->as_list()) {
+            difficulty_res.emplace_back(this->parse_item_description(Version::BB_V4, item_it->as_string()));
+          }
+        }
+      }
+    } catch (const out_of_range&) {
+    }
+    try {
+      for (const auto& it : this->config_json.get_list("QuestF95FResultItems")) {
+        auto& list = it->as_list();
+        size_t price = list.at(0)->as_int();
+        this->quest_F95F_results.emplace_back(make_pair(price, this->parse_item_description(Version::BB_V4, list.at(1)->as_string())));
+      }
+    } catch (const out_of_range&) {
+    }
+    try {
+      this->quest_F960_failure_results = QuestF960Result(this->config_json.at("QuestF960FailureResultItems"), this->item_name_index(Version::BB_V4));
+      for (const auto& it : this->config_json.get_list("QuestF960SuccessResultItems")) {
+        this->quest_F960_success_results.emplace_back(*it, this->item_name_index(Version::BB_V4));
+      }
+    } catch (const out_of_range&) {
+    }
+    try {
+      for (const auto& it : this->config_json.get_list("SecretLotteryResultItems")) {
+        this->secret_lottery_results.emplace_back(this->parse_item_description(Version::BB_V4, it->as_string()));
+      }
+    } catch (const out_of_range&) {
+    }
+  } else {
+    config_log.warning("BB item name index is missing; cannot load quest reward lists from config");
+  }
 }
 
 void ServerState::load_bb_private_keys(bool from_non_event_thread) {
@@ -1366,28 +1404,30 @@ void ServerState::load_word_select_table(bool from_non_event_thread) {
 }
 
 shared_ptr<ItemNameIndex> ServerState::create_item_name_index_for_version(
-    Version version, shared_ptr<const ItemParameterTable> pmt, shared_ptr<const TextIndex> text_index) {
-  switch (version) {
+    shared_ptr<const ItemParameterTable> pmt,
+    shared_ptr<const ItemData::StackLimits> limits,
+    shared_ptr<const TextIndex> text_index) const {
+  switch (limits->version) {
     case Version::DC_NTE:
-      return make_shared<ItemNameIndex>(version, pmt, text_index->get(Version::DC_NTE, 0, 2));
+      return make_shared<ItemNameIndex>(pmt, limits, text_index->get(Version::DC_NTE, 0, 2));
     case Version::DC_V1_11_2000_PROTOTYPE:
-      return make_shared<ItemNameIndex>(version, pmt, text_index->get(Version::DC_V1_11_2000_PROTOTYPE, 1, 2));
+      return make_shared<ItemNameIndex>(pmt, limits, text_index->get(Version::DC_V1_11_2000_PROTOTYPE, 1, 2));
     case Version::DC_V1:
-      return make_shared<ItemNameIndex>(version, pmt, text_index->get(Version::DC_V1, 1, 2));
+      return make_shared<ItemNameIndex>(pmt, limits, text_index->get(Version::DC_V1, 1, 2));
     case Version::DC_V2:
-      return make_shared<ItemNameIndex>(version, pmt, text_index->get(Version::DC_V2, 1, 3));
+      return make_shared<ItemNameIndex>(pmt, limits, text_index->get(Version::DC_V2, 1, 3));
     case Version::PC_NTE:
-      return make_shared<ItemNameIndex>(version, pmt, text_index->get(Version::PC_NTE, 1, 3));
+      return make_shared<ItemNameIndex>(pmt, limits, text_index->get(Version::PC_NTE, 1, 3));
     case Version::PC_V2:
-      return make_shared<ItemNameIndex>(version, pmt, text_index->get(Version::PC_V2, 1, 3));
+      return make_shared<ItemNameIndex>(pmt, limits, text_index->get(Version::PC_V2, 1, 3));
     case Version::GC_NTE:
-      return make_shared<ItemNameIndex>(version, pmt, text_index->get(Version::GC_NTE, 1, 0));
+      return make_shared<ItemNameIndex>(pmt, limits, text_index->get(Version::GC_NTE, 1, 0));
     case Version::GC_V3:
-      return make_shared<ItemNameIndex>(version, pmt, text_index->get(Version::GC_V3, 1, 0));
+      return make_shared<ItemNameIndex>(pmt, limits, text_index->get(Version::GC_V3, 1, 0));
     case Version::XB_V3:
-      return make_shared<ItemNameIndex>(version, pmt, text_index->get(Version::XB_V3, 1, 0));
+      return make_shared<ItemNameIndex>(pmt, limits, text_index->get(Version::XB_V3, 1, 0));
     case Version::BB_V4:
-      return make_shared<ItemNameIndex>(version, pmt, text_index->get(Version::BB_V4, 1, 1));
+      return make_shared<ItemNameIndex>(pmt, limits, text_index->get(Version::BB_V4, 1, 1));
     default:
       return nullptr;
   }
@@ -1399,7 +1439,8 @@ void ServerState::load_item_name_indexes(bool from_non_event_thread) {
   for (size_t v_s = NUM_PATCH_VERSIONS; v_s < NUM_VERSIONS; v_s++) {
     Version v = static_cast<Version>(v_s);
     config_log.info("Generating item name index for %s", name_for_enum(v));
-    new_indexes[v_s] = this->create_item_name_index_for_version(v, this->item_parameter_table(v), this->text_index);
+    new_indexes[v_s] = this->create_item_name_index_for_version(
+        this->item_parameter_table(v), this->item_stack_limits(v), this->text_index);
   }
 
   auto set = [s = this->shared_from_this(), new_indexes = std::move(new_indexes)]() {
@@ -1668,6 +1709,7 @@ void ServerState::create_default_lobbies() {
 
 void ServerState::load_all() {
   this->collect_network_addresses();
+  this->load_config_early();
   this->load_bb_private_keys(false);
   this->load_licenses(false);
   this->clear_map_file_caches();
@@ -1686,7 +1728,7 @@ void ServerState::load_all() {
   this->load_item_definitions(false);
   this->load_item_name_indexes(false);
   this->load_drop_tables(false);
-  this->load_config();
+  this->load_config_late();
   this->load_teams(false);
   this->load_quest_index(false);
 }

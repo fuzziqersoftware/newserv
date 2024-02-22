@@ -1,6 +1,7 @@
 #pragma once
 
 #include <phosg/Encoding.hh>
+#include <phosg/JSON.hh>
 #include <string>
 
 #include "Text.hh"
@@ -54,7 +55,26 @@ struct ItemMagStats {
   }
 };
 
-struct ItemData { // 0x14 bytes
+struct ItemData {
+  struct StackLimits {
+    Version version;
+    std::vector<uint8_t> max_tool_stack_sizes_by_data1_1;
+    uint32_t max_meseta_stack_size;
+
+    StackLimits(Version version, const std::vector<uint8_t>& max_tool_stack_sizes_by_data1_1, uint32_t max_meseta_stack_size);
+    StackLimits(Version version, const JSON& json);
+    StackLimits(const StackLimits& other) = default;
+    StackLimits(StackLimits&& other) = default;
+    StackLimits& operator=(const StackLimits& other) = default;
+    StackLimits& operator=(StackLimits&& other) = default;
+
+    uint8_t get(uint8_t data1_0, uint8_t data1_1) const;
+
+    static const std::vector<uint8_t> DEFAULT_TOOL_LIMITS_DC_11_2000;
+    static const std::vector<uint8_t> DEFAULT_TOOL_LIMITS_V1_V2;
+    static const std::vector<uint8_t> DEFAULT_TOOL_LIMITS_V3_V4;
+  };
+
   // QUICK ITEM FORMAT REFERENCE
   //           data1/0  data1/4  data1/8  data2
   //   Weapon: 00ZZZZGG SS00AABB AABBAABB 00000000
@@ -124,18 +144,18 @@ struct ItemData { // 0x14 bytes
   void clear();
 
   static ItemData from_data(const std::string& data);
-  static ItemData from_primary_identifier(Version version, uint32_t primary_identifier);
+  static ItemData from_primary_identifier(const StackLimits& limits, uint32_t primary_identifier);
   std::string hex() const;
   uint32_t primary_identifier() const;
 
-  bool is_wrapped(Version version) const;
-  void wrap(Version version);
-  void unwrap(Version version);
+  bool is_wrapped(const StackLimits& limits) const;
+  void wrap(const StackLimits& limits);
+  void unwrap(const StackLimits& limits);
 
-  bool is_stackable(Version version) const;
-  size_t stack_size(Version version) const;
-  size_t max_stack_size(Version version) const;
-  void enforce_min_stack_size(Version version);
+  bool is_stackable(const StackLimits& limits) const;
+  size_t stack_size(const StackLimits& limits) const;
+  size_t max_stack_size(const StackLimits& limits) const;
+  void enforce_min_stack_size(const StackLimits& limits);
 
   static bool is_common_consumable(uint32_t primary_identifier);
   bool is_common_consumable() const;
@@ -154,8 +174,8 @@ struct ItemData { // 0x14 bytes
 
   uint16_t get_sealed_item_kill_count() const;
   void set_sealed_item_kill_count(uint16_t v);
-  uint8_t get_tool_item_amount(Version version) const;
-  void set_tool_item_amount(Version version, uint8_t amount);
+  uint8_t get_tool_item_amount(const StackLimits& limits) const;
+  void set_tool_item_amount(const StackLimits& limits, uint8_t amount);
   int16_t get_armor_or_shield_defense_bonus() const;
   void set_armor_or_shield_defense_bonus(int16_t bonus);
   int16_t get_common_armor_evasion_bonus() const;

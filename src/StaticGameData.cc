@@ -506,23 +506,6 @@ uint8_t language_code_for_char(char language_char) {
   }
 }
 
-size_t max_stack_size_for_item(Version version, uint8_t data0, uint8_t data1) {
-  if (data0 == 4) {
-    return 999999;
-  }
-  if (data0 == 3) {
-    if (version == Version::DC_V1_11_2000_PROTOTYPE) {
-      // All tool items are stackable up to x10 on this version
-      return 10;
-    } else if ((data1 < 9) && (data1 != 2)) {
-      return 10;
-    } else if (data1 == 0x10) {
-      return 99;
-    }
-  }
-  return 1;
-}
-
 const vector<string> tech_id_to_name = {
     "foie", "gifoie", "rafoie",
     "barta", "gibarta", "rabarta",

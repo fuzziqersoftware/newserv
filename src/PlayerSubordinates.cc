@@ -444,7 +444,7 @@ PlayerRecordsBB_Challenge::operator PlayerRecordsV3_Challenge<false>() const {
   return ret;
 }
 
-void PlayerBank::add_item(const ItemData& item, Version version) {
+void PlayerBank::add_item(const ItemData& item, const ItemData::StackLimits& limits) {
   uint32_t primary_identifier = item.primary_identifier();
 
   if (primary_identifier == 0x04000000) {
@@ -455,7 +455,7 @@ void PlayerBank::add_item(const ItemData& item, Version version) {
     return;
   }
 
-  size_t combine_max = item.max_stack_size(version);
+  size_t combine_max = item.max_stack_size(limits);
   if (combine_max > 1) {
     size_t y;
     for (y = 0; y < this->num_items; y++) {
@@ -480,17 +480,17 @@ void PlayerBank::add_item(const ItemData& item, Version version) {
   }
   auto& last_item = this->items[this->num_items];
   last_item.data = item;
-  last_item.amount = (item.max_stack_size(version) > 1) ? item.data1[5] : 1;
+  last_item.amount = (item.max_stack_size(limits) > 1) ? item.data1[5] : 1;
   last_item.present = 1;
   this->num_items++;
 }
 
-ItemData PlayerBank::remove_item(uint32_t item_id, uint32_t amount, Version version) {
+ItemData PlayerBank::remove_item(uint32_t item_id, uint32_t amount, const ItemData::StackLimits& limits) {
   size_t index = this->find_item(item_id);
   auto& bank_item = this->items[index];
 
   ItemData ret;
-  if (amount && (bank_item.data.stack_size(version) > 1) && (amount < bank_item.data.data1[5])) {
+  if (amount && (bank_item.data.stack_size(limits) > 1) && (amount < bank_item.data.data1[5])) {
     ret = bank_item.data;
     ret.data1[5] = amount;
     bank_item.data.data1[5] -= amount;

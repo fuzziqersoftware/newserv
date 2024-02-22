@@ -408,7 +408,7 @@ PSOBBCharacterFile::SymbolChatEntry PSOBBCharacterFile::DefaultSymbolChatEntry::
 
 // TODO: Eliminate duplication between this function and the parallel function
 // in PlayerBank
-void PSOBBCharacterFile::add_item(const ItemData& item, Version version) {
+void PSOBBCharacterFile::add_item(const ItemData& item, const ItemData::StackLimits& limits) {
   uint32_t primary_identifier = item.primary_identifier();
 
   // Annoyingly, meseta is in the disp data, not in the inventory struct. If the
@@ -419,7 +419,7 @@ void PSOBBCharacterFile::add_item(const ItemData& item, Version version) {
   }
 
   // Handle combinable items
-  size_t combine_max = item.max_stack_size(version);
+  size_t combine_max = item.max_stack_size(limits);
   if (combine_max > 1) {
     // Get the item index if there's already a stack of the same item in the
     // player's inventory
@@ -456,13 +456,13 @@ void PSOBBCharacterFile::add_item(const ItemData& item, Version version) {
 
 // TODO: Eliminate code duplication between this function and the parallel
 // function in PlayerBank
-ItemData PSOBBCharacterFile::remove_item(uint32_t item_id, uint32_t amount, Version version) {
+ItemData PSOBBCharacterFile::remove_item(uint32_t item_id, uint32_t amount, const ItemData::StackLimits& limits) {
   ItemData ret;
 
   // If we're removing meseta (signaled by an invalid item ID), then create a
   // meseta item.
   if (item_id == 0xFFFFFFFF) {
-    this->remove_meseta(amount, !is_v4(version));
+    this->remove_meseta(amount, !is_v4(limits.version));
     ret.data1[0] = 0x04;
     ret.data2d = amount;
     return ret;
@@ -476,7 +476,7 @@ ItemData PSOBBCharacterFile::remove_item(uint32_t item_id, uint32_t amount, Vers
   // then create a new item and reduce the amount of the existing stack. Note
   // that passing amount == 0 means to remove the entire stack, so this only
   // applies if amount is nonzero.
-  if (amount && (inventory_item.data.stack_size(version) > 1) &&
+  if (amount && (inventory_item.data.stack_size(limits) > 1) &&
       (amount < inventory_item.data.data1[5])) {
     if (is_equipped) {
       throw runtime_error("character has a combine item equipped");
