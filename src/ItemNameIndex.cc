@@ -107,8 +107,9 @@ std::string ItemNameIndex::describe_item(
   vector<string> ret_tokens;
 
   // For weapons, specials appear before the weapon name
+  bool is_unidentified = false;
   if ((item.data1[0] == 0x00) && (item.data1[4] != 0x00) && !item.is_s_rank_weapon()) {
-    bool is_unidentified = item.data1[4] & 0x80;
+    is_unidentified = item.data1[4] & 0x80;
     bool is_present = item.data1[4] & 0x40;
     uint8_t special_id = item.data1[4] & 0x3F;
     if (is_present) {
@@ -325,7 +326,9 @@ std::string ItemNameIndex::describe_item(
 
   string ret = join(ret_tokens, " ");
   if (include_color_escapes) {
-    if (item.is_s_rank_weapon()) {
+    if (is_unidentified) {
+      return "$C3" + ret;
+    } else if (item.is_s_rank_weapon()) {
       return "$C4" + ret;
     } else if (this->item_parameter_table->is_item_rare(item)) {
       return "$C6" + ret;
