@@ -3897,6 +3897,9 @@ struct G_EnemyHitByPlayer_6x0A {
   G_EnemyIDHeader header;
   le_uint16_t enemy_index = 0; // [0, 0xB50)
   le_uint16_t total_damage = 0;
+  // Flags:
+  // 00000400 - should play hit animation
+  // 00000800 - should die
   typename std::conditional<IsBigEndian, be_uint32_t, le_uint32_t>::type flags = 0;
 } __packed__;
 
@@ -4686,7 +4689,7 @@ struct G_SyncGameStateHeader_6x6B_6x6C_6x6D_6x6E {
 struct G_SyncEnemyState_6x6B_Entry_Decompressed {
   le_uint32_t flags = 0;
   le_uint16_t last_attacker = 0;
-  le_uint16_t remaining_hp = 0;
+  le_uint16_t total_damage = 0;
   uint8_t red_buff_type = 0;
   uint8_t red_buff_level = 0;
   uint8_t blue_buff_type = 0;
