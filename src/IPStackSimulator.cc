@@ -1166,6 +1166,7 @@ void IPStackSimulator::on_client_tcp_frame(
       throw runtime_error("non-SYN frame does not correspond to any open TCP connection");
     }
     bool conn_valid = true;
+    bool acked_seq_changed = false;
 
     if (fi.tcp->flags & TCPHeader::Flag::ACK) {
       ip_stack_simulator_log.debug("Client sent ACK %08" PRIX32, fi.tcp->ack_num.load());
@@ -1189,6 +1190,7 @@ void IPStackSimulator::on_client_tcp_frame(
           conn->acked_server_seq += ack_delta;
           conn->resend_push_usecs = DEFAULT_RESEND_PUSH_USECS;
           conn->next_push_max_frame_size = conn->max_frame_size;
+          acked_seq_changed = true;
 
           ip_stack_simulator_log.debug("Removed %08" PRIX32 " bytes from pending buffer and advanced acked_server_seq to %08" PRIX32,
               ack_delta, conn->acked_server_seq);
@@ -1298,7 +1300,7 @@ void IPStackSimulator::on_client_tcp_frame(
           conn_str.c_str(), conn->acked_server_seq, conn->next_client_seq, conn->bytes_received);
     }
 
-    if (conn_valid) {
+    if (conn_valid && acked_seq_changed) {
       // Try to send some more data if the client is waiting on it
       this->send_pending_push_frame(c, *conn);
     }
@@ -1385,8 +1387,7 @@ void IPStackSimulator::send_pending_push_frame(shared_ptr<IPClient> c, IPClient:
   if (conn.resend_push_usecs > 5000000) {
     conn.resend_push_usecs = 5000000;
   }
-  conn.next_push_max_frame_size = max<size_t>(
-      0x100, conn.next_push_max_frame_size - 0x100);
+  conn.next_push_max_frame_size = max<size_t>(0x100, conn.next_push_max_frame_size - 0x100);
 }
 
 void IPStackSimulator::send_tcp_frame(
