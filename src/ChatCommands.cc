@@ -1912,7 +1912,6 @@ static void server_command_ep3_set_dice_range(shared_ptr<Client> c, const std::s
     }
   }
 
-  auto& rules = l->ep3_server->map_and_rules->rules;
   l->ep3_server->def_dice_value_range_override = def_dice_range;
   l->ep3_server->atk_dice_value_range_2v1_override = atk_dice_range_2v1;
   l->ep3_server->def_dice_value_range_2v1_override = def_dice_range_2v1;
