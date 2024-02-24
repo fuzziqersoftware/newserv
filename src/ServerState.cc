@@ -623,6 +623,16 @@ void ServerState::load_config_early() {
     } catch (const out_of_range&) {
     }
     try {
+      for (const auto& item : this->config_json.at("PPPRawListen").as_list()) {
+        if (item->is_int()) {
+          this->ppp_raw_addresses.emplace_back(string_printf("0.0.0.0:%" PRId64, item->as_int()));
+        } else {
+          this->ppp_raw_addresses.emplace_back(item->as_string());
+        }
+      }
+    } catch (const out_of_range&) {
+    }
+    try {
       for (const auto& item : this->config_json.at("HTTPListen").as_list()) {
         if (item->is_int()) {
           this->http_addresses.emplace_back(string_printf("0.0.0.0:%" PRId64, item->as_int()));

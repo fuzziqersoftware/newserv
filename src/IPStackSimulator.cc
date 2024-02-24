@@ -135,28 +135,28 @@ IPStackSimulator::~IPStackSimulator() {
   }
 }
 
-void IPStackSimulator::listen(const string& name, const string& socket_path, FrameInfo::LinkType link_type) {
+void IPStackSimulator::listen(const string& name, const string& socket_path, Protocol proto) {
   int fd = ::listen(socket_path, 0, SOMAXCONN);
   ip_stack_simulator_log.info("Listening on Unix socket %s on fd %d as %s", socket_path.c_str(), fd, name.c_str());
-  this->add_socket(name, fd, link_type);
+  this->add_socket(name, fd, proto);
 }
 
-void IPStackSimulator::listen(const string& name, const string& addr, int port, FrameInfo::LinkType link_type) {
+void IPStackSimulator::listen(const string& name, const string& addr, int port, Protocol proto) {
   if (port == 0) {
-    this->listen(name, addr, link_type);
+    this->listen(name, addr, proto);
   } else {
     int fd = ::listen(addr, port, SOMAXCONN);
     string netloc_str = render_netloc(addr, port);
     ip_stack_simulator_log.info("Listening on TCP interface %s on fd %d as %s", netloc_str.c_str(), fd, name.c_str());
-    this->add_socket(name, fd, link_type);
+    this->add_socket(name, fd, proto);
   }
 }
 
-void IPStackSimulator::listen(const string& name, int port, FrameInfo::LinkType link_type) {
-  this->listen(name, "", port, link_type);
+void IPStackSimulator::listen(const string& name, int port, Protocol proto) {
+  this->listen(name, "", port, proto);
 }
 
-void IPStackSimulator::add_socket(const string& name, int fd, FrameInfo::LinkType link_type) {
+void IPStackSimulator::add_socket(const string& name, int fd, Protocol proto) {
   unique_listener l(
       evconnlistener_new(
           this->base.get(),
@@ -166,7 +166,7 @@ void IPStackSimulator::add_socket(const string& name, int fd, FrameInfo::LinkTyp
           0,
           fd),
       evconnlistener_free);
-  this->listening_sockets.emplace(piecewise_construct, forward_as_tuple(fd), forward_as_tuple(name, link_type, std::move(l)));
+  this->listening_sockets.emplace(piecewise_construct, forward_as_tuple(fd), forward_as_tuple(name, proto, std::move(l)));
 }
 
 uint32_t IPStackSimulator::connect_address_for_remote_address(uint32_t remote_addr) {
@@ -180,10 +180,10 @@ uint32_t IPStackSimulator::connect_address_for_remote_address(uint32_t remote_ad
   }
 }
 
-IPStackSimulator::IPClient::IPClient(shared_ptr<IPStackSimulator> sim, FrameInfo::LinkType link_type, struct bufferevent* bev)
+IPStackSimulator::IPClient::IPClient(shared_ptr<IPStackSimulator> sim, Protocol protocol, struct bufferevent* bev)
     : sim(sim),
       bev(bev, bufferevent_free),
-      link_type(link_type),
+      protocol(protocol),
       mac_addr(0),
       ipv4_addr(0),
       idle_timeout_event(event_new(sim->base.get(), -1, EV_TIMEOUT, &IPStackSimulator::IPClient::dispatch_on_idle_timeout, this), event_free) {
@@ -256,7 +256,7 @@ void IPStackSimulator::on_listen_accept(struct evconnlistener* listener,
 
   struct bufferevent* bev = bufferevent_socket_new(this->base.get(), fd,
       BEV_OPT_CLOSE_ON_FREE | BEV_OPT_DEFER_CALLBACKS);
-  auto c = make_shared<IPClient>(this->shared_from_this(), listening_socket->link_type, bev);
+  auto c = make_shared<IPClient>(this->shared_from_this(), listening_socket->protocol, bev);
   this->bev_to_client.emplace(make_pair(bev, c));
 
   bufferevent_setcb(bev, &IPStackSimulator::dispatch_on_client_input, nullptr,
@@ -300,24 +300,64 @@ void IPStackSimulator::on_client_input(struct bufferevent* bev) {
   struct timeval tv = usecs_to_timeval(idle_timeout_usecs);
   event_add(c->idle_timeout_event.get(), &tv);
 
-  while (evbuffer_get_length(buf) >= 2) {
-    uint16_t frame_size;
-    evbuffer_copyout(buf, &frame_size, 2);
-    if (evbuffer_get_length(buf) < static_cast<size_t>(frame_size + 2)) {
-      break; // No complete frame available; done for now
-    }
+  switch (c->protocol) {
+    case Protocol::ETHERNET_TAPSERVER:
+    case Protocol::HDLC_TAPSERVER:
+      while (evbuffer_get_length(buf) >= 2) {
+        uint16_t frame_size;
+        evbuffer_copyout(buf, &frame_size, 2);
+        if (evbuffer_get_length(buf) < static_cast<size_t>(frame_size + 2)) {
+          break; // No complete frame available; done for now
+        }
 
-    evbuffer_drain(buf, 2);
-    string frame(frame_size, '\0');
-    evbuffer_remove(buf, frame.data(), frame.size());
+        evbuffer_drain(buf, 2);
+        string frame(frame_size, '\0');
+        evbuffer_remove(buf, frame.data(), frame.size());
 
-    try {
-      this->on_client_frame(c, frame);
-    } catch (const exception& e) {
-      if (ip_stack_simulator_log.warning("Failed to process frame: %s", e.what())) {
-        print_data(stderr, frame);
+        try {
+          this->on_client_frame(c, frame);
+        } catch (const exception& e) {
+          if (ip_stack_simulator_log.warning("Failed to process frame: %s", e.what())) {
+            print_data(stderr, frame);
+          }
+        }
       }
-    }
+      break;
+    case Protocol::HDLC_RAW:
+      while (evbuffer_get_length(buf) >= 2) {
+        struct evbuffer_ptr res = evbuffer_search(buf, "\x7E", 1, nullptr);
+        if (res.pos < 0) {
+          break;
+        }
+        size_t start_offset = res.pos;
+
+        if (evbuffer_ptr_set(buf, &res, 1, EVBUFFER_PTR_ADD)) {
+          ip_stack_simulator_log.warning("Cannot advance search for end of frame");
+          break;
+        }
+
+        struct evbuffer_ptr end_res = evbuffer_search(buf, "\x7E", 1, &res);
+        if (end_res.pos < 0) {
+          break;
+        }
+        size_t frame_size = end_res.pos + 1 - start_offset;
+
+        if (start_offset) {
+          evbuffer_drain(buf, start_offset);
+        }
+
+        string frame(frame_size, '\0');
+        evbuffer_remove(buf, frame.data(), frame.size());
+
+        try {
+          this->on_client_frame(c, frame);
+        } catch (const exception& e) {
+          if (ip_stack_simulator_log.warning("Failed to process frame: %s", e.what())) {
+            print_data(stderr, frame);
+          }
+        }
+      }
+      break;
   }
 }
 
@@ -343,8 +383,8 @@ void IPStackSimulator::send_layer3_frame(shared_ptr<IPClient> c, FrameInfo::Prot
 void IPStackSimulator::send_layer3_frame(shared_ptr<IPClient> c, FrameInfo::Protocol proto, const void* data, size_t size) const {
   struct evbuffer* out_buf = bufferevent_get_output(c->bev.get());
 
-  switch (c->link_type) {
-    case FrameInfo::LinkType::ETHERNET: {
+  switch (c->protocol) {
+    case Protocol::ETHERNET_TAPSERVER: {
       EthernetHeader ether;
       ether.dest_mac = c->mac_addr;
       ether.src_mac = this->host_mac_address_bytes;
@@ -376,7 +416,8 @@ void IPStackSimulator::send_layer3_frame(shared_ptr<IPClient> c, FrameInfo::Prot
       break;
     }
 
-    case FrameInfo::LinkType::HDLC: {
+    case Protocol::HDLC_TAPSERVER:
+    case Protocol::HDLC_RAW: {
       HDLCHeader hdlc;
       hdlc.start_sentinel1 = 0x7E;
       hdlc.address = 0xFF;
@@ -413,8 +454,10 @@ void IPStackSimulator::send_layer3_frame(shared_ptr<IPClient> c, FrameInfo::Prot
         print_data(stderr, w.str());
       }
 
-      le_uint16_t frame_size = escaped.size();
-      evbuffer_add(out_buf, &frame_size, 2);
+      if (c->protocol == Protocol::HDLC_TAPSERVER) {
+        le_uint16_t frame_size = escaped.size();
+        evbuffer_add(out_buf, &frame_size, 2);
+      }
       evbuffer_add(out_buf, escaped.data(), escaped.size());
       if (this->pcap_text_log_file) {
         this->log_frame(escaped);
@@ -428,9 +471,13 @@ void IPStackSimulator::send_layer3_frame(shared_ptr<IPClient> c, FrameInfo::Prot
 }
 
 void IPStackSimulator::on_client_frame(shared_ptr<IPClient> c, const string& frame) {
+  FrameInfo::LinkType link_type = (c->protocol == Protocol::ETHERNET_TAPSERVER)
+      ? FrameInfo::LinkType::ETHERNET
+      : FrameInfo::LinkType::HDLC;
+
   const string* effective_data = &frame;
   string hdlc_unescaped_data;
-  if (c->link_type == FrameInfo::LinkType::HDLC) {
+  if (link_type == FrameInfo::LinkType::HDLC) {
     hdlc_unescaped_data = unescape_hdlc_frame(frame);
     effective_data = &hdlc_unescaped_data;
   }
@@ -439,7 +486,7 @@ void IPStackSimulator::on_client_frame(shared_ptr<IPClient> c, const string& fra
   }
   this->log_frame(*effective_data);
 
-  FrameInfo fi(c->link_type, *effective_data);
+  FrameInfo fi(link_type, *effective_data);
   if (ip_stack_simulator_log.should_log(LogLevel::DEBUG)) {
     string fi_header = fi.header_str();
     ip_stack_simulator_log.debug("Frame header: %s", fi_header.c_str());
@@ -1314,7 +1361,7 @@ void IPStackSimulator::send_pending_push_frame(shared_ptr<IPClient> c, IPClient:
   }
 
   size_t bytes_to_send = min<size_t>(pending_bytes, conn.next_push_max_frame_size);
-  if ((c->link_type == FrameInfo::LinkType::HDLC) && (bytes_to_send > 200)) {
+  if ((c->protocol == Protocol::HDLC_TAPSERVER) && (bytes_to_send > 200)) {
     // There is a bug in Dolphin's modem implementation (which I wrote, so it's
     // my fault) that causes commands to be dropped when too much data is sent
     // at once. To work around this, we only send up to 200 bytes in each push

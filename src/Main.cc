@@ -2452,12 +2452,17 @@ Action a_run_server_replay_log(
           for (const auto& it : state->ip_stack_addresses) {
             auto netloc = parse_netloc(it);
             string spec = (netloc.second == 0) ? ("T-IPS-" + netloc.first) : string_printf("T-IPS-%hu", netloc.second);
-            ip_stack_simulator->listen(spec, netloc.first, netloc.second, FrameInfo::LinkType::ETHERNET);
+            ip_stack_simulator->listen(spec, netloc.first, netloc.second, IPStackSimulator::Protocol::ETHERNET_TAPSERVER);
           }
           for (const auto& it : state->ppp_stack_addresses) {
             auto netloc = parse_netloc(it);
-            string spec = (netloc.second == 0) ? ("T-PPPS-" + netloc.first) : string_printf("T-PPPS-%hu", netloc.second);
-            ip_stack_simulator->listen(spec, netloc.first, netloc.second, FrameInfo::LinkType::HDLC);
+            string spec = (netloc.second == 0) ? ("T-PPPST-" + netloc.first) : string_printf("T-PPPST-%hu", netloc.second);
+            ip_stack_simulator->listen(spec, netloc.first, netloc.second, IPStackSimulator::Protocol::HDLC_TAPSERVER);
+          }
+          for (const auto& it : state->ppp_raw_addresses) {
+            auto netloc = parse_netloc(it);
+            string spec = (netloc.second == 0) ? ("T-PPPSR-" + netloc.first) : string_printf("T-PPPSR-%hu", netloc.second);
+            ip_stack_simulator->listen(spec, netloc.first, netloc.second, IPStackSimulator::Protocol::HDLC_RAW);
           }
         }
 

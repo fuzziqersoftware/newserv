@@ -16,15 +16,21 @@
 
 class IPStackSimulator : public std::enable_shared_from_this<IPStackSimulator> {
 public:
+  enum class Protocol {
+    ETHERNET_TAPSERVER = 0,
+    HDLC_TAPSERVER,
+    HDLC_RAW,
+  };
+
   IPStackSimulator(
       std::shared_ptr<struct event_base> base,
       std::shared_ptr<ServerState> state);
   ~IPStackSimulator();
 
-  void listen(const std::string& name, const std::string& socket_path, FrameInfo::LinkType link_type);
-  void listen(const std::string& name, const std::string& addr, int port, FrameInfo::LinkType link_type);
-  void listen(const std::string& name, int port, FrameInfo::LinkType link_type);
-  void add_socket(const std::string& name, int fd, FrameInfo::LinkType link_type);
+  void listen(const std::string& name, const std::string& socket_path, Protocol protocol);
+  void listen(const std::string& name, const std::string& addr, int port, Protocol protocol);
+  void listen(const std::string& name, int port, Protocol protocol);
+  void add_socket(const std::string& name, int fd, Protocol protocol);
 
   static uint32_t connect_address_for_remote_address(uint32_t remote_addr);
 
@@ -41,7 +47,7 @@ private:
     std::weak_ptr<IPStackSimulator> sim;
 
     unique_bufferevent bev;
-    FrameInfo::LinkType link_type;
+    Protocol protocol;
     uint32_t hdlc_escape_control_character_flags = 0xFFFFFFFF;
     uint32_t hdlc_remote_magic_number = 0;
     parray<uint8_t, 6> mac_addr; // Only used for LinkType::ETHERNET
@@ -80,7 +86,7 @@ private:
 
     unique_event idle_timeout_event;
 
-    IPClient(std::shared_ptr<IPStackSimulator> sim, FrameInfo::LinkType link_type, struct bufferevent* bev);
+    IPClient(std::shared_ptr<IPStackSimulator> sim, Protocol protocol, struct bufferevent* bev);
 
     static void dispatch_on_idle_timeout(evutil_socket_t fd, short events, void* ctx);
     void on_idle_timeout();
@@ -88,12 +94,12 @@ private:
 
   struct ListeningSocket {
     std::string name;
-    FrameInfo::LinkType link_type;
+    Protocol protocol;
     unique_listener listener;
 
-    ListeningSocket(const std::string& name, FrameInfo::LinkType link_type, unique_listener&& l)
+    ListeningSocket(const std::string& name, Protocol protocol, unique_listener&& l)
         : name(name),
-          link_type(link_type),
+          protocol(protocol),
           listener(std::move(l)) {}
   };
 
