@@ -99,10 +99,10 @@ void Server::init() {
   this->card_special = make_shared<CardSpecial>(this->shared_from_this());
 
   // Note: The original implementation calls the default PSOV2Encryption
-  // constructor for random_crypt, which just uses 0 as the seed. It then
+  // constructor for opt_rand_crypt, which just uses 0 as the seed. It then
   // re-seeds the generator later. We instead expect the caller to provide a
   // seeded generator, and we don't re-seed it at all.
-  // this->random_crypt = make_shared<PSOV2Encryption>(0);
+  // this->opt_rand_crypt = make_shared<PSOV2Encryption>(0);
 
   this->state_flags = make_shared<StateFlags>();
 
@@ -273,10 +273,15 @@ void Server::send_6xB4x46() const {
     G_ServerVersionStrings_Ep3_6xB4x46 cmd;
     cmd.version_signature.encode(VERSION_SIGNATURE, 1);
     cmd.date_str1.encode(format_time(this->options.card_index->definitions_mtime() * 1000000), 1);
-    string date_str2 = string_printf(
-        "Random:%08" PRIX32 "+%08" PRIX32,
-        this->options.random_crypt->seed(),
-        this->options.random_crypt->absolute_offset());
+    string date_str2;
+    if (this->options.opt_rand_crypt) {
+      date_str2 = string_printf(
+          "Random:%08" PRIX32 "+%08" PRIX32,
+          this->options.opt_rand_crypt->seed(),
+          this->options.opt_rand_crypt->absolute_offset());
+    } else {
+      date_str2 = "Random:<SYS>";
+    }
     if (this->last_chosen_map) {
       date_str2 += string_printf(" Map:%08" PRIX32, this->last_chosen_map->map_number);
     }
@@ -1080,14 +1085,14 @@ shared_ptr<const PlayerState> Server::get_player_state(uint8_t client_id) const 
 
 uint32_t Server::get_random(uint32_t max) {
   // The original implementation was essentially:
-  // return (static_cast<double>(this->random_crypt->next() >> 16) / 65536.0) * max
-  // This is unnecessarily complicated, so we instead just do this:
-  return this->options.random_crypt->next() % max;
+  // return (static_cast<double>(this->opt_rand_crypt->next() >> 16) / 65536.0) * max
+  // This is unnecessarily complicated and imprecise, so we instead just do:
+  return random_from_optional_crypt(this->options.opt_rand_crypt) % max;
 }
 
 float Server::get_random_float_0_1() {
   // This lacks some precision, but matches the original implementation.
-  return (static_cast<double>(this->options.random_crypt->next() >> 16) / 65536.0);
+  return (static_cast<double>(random_from_optional_crypt(this->options.opt_rand_crypt) >> 16) / 65536.0);
 }
 
 uint32_t Server::get_round_num() const {
@@ -1544,8 +1549,8 @@ void Server::setup_and_start_battle() {
 
   this->setup_phase = SetupPhase::STARTER_ROLLS;
 
-  // Note: This is where original implementation re-seeds random_crypt (it uses
-  // time() as the seed value).
+  // Note: This is where original implementation re-seeds opt_rand_crypt (it
+  // uses time() as the seed value).
 
   for (size_t z = 0; z < 4; z++) {
     if (!this->check_presence_entry(z)) {

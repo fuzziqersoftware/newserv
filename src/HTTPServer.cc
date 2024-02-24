@@ -643,8 +643,8 @@ JSON HTTPServer::generate_lobby_json(shared_ptr<const Lobby> l) const {
         }
         auto battle_state_json = JSON::dict({
             {"BehaviorFlags", ep3s->options.behavior_flags},
-            {"RandomSeed", ep3s->options.random_crypt ? ep3s->options.random_crypt->seed() : JSON(nullptr)},
-            {"RandomOffset", ep3s->options.random_crypt ? ep3s->options.random_crypt->absolute_offset() : JSON(nullptr)},
+            {"RandomSeed", ep3s->options.opt_rand_crypt ? ep3s->options.opt_rand_crypt->seed() : JSON(nullptr)},
+            {"RandomOffset", ep3s->options.opt_rand_crypt ? ep3s->options.opt_rand_crypt->absolute_offset() : JSON(nullptr)},
             {"Tournament", ep3s->options.tournament ? ep3s->options.tournament->json() : nullptr},
             {"MapNumber", ep3s->last_chosen_map ? ep3s->last_chosen_map->map_number : JSON(nullptr)},
             {"EnvironmentNumber", ep3s->map_and_rules ? ep3s->map_and_rules->environment_number : JSON(nullptr)},

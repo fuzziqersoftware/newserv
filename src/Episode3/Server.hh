@@ -71,7 +71,7 @@ public:
     std::shared_ptr<const CardIndex> card_index;
     std::shared_ptr<const MapIndex> map_index;
     uint32_t behavior_flags;
-    std::shared_ptr<PSOLFGEncryption> random_crypt;
+    std::shared_ptr<PSOLFGEncryption> opt_rand_crypt;
     std::shared_ptr<const Tournament> tournament;
     std::array<std::vector<uint16_t>, 5> trap_card_ids;
 

@@ -57,13 +57,13 @@ public:
   DeckState(
       uint8_t client_id,
       const parray<CardIDT, 0x1F>& card_ids,
-      std::shared_ptr<PSOLFGEncryption> random_crypt)
+      std::shared_ptr<PSOLFGEncryption> opt_rand_crypt)
       : client_id(client_id),
         draw_index(1),
         card_ref_base(this->client_id << 8),
         shuffle_enabled(true),
         loop_enabled(true),
-        random_crypt(random_crypt) {
+        opt_rand_crypt(opt_rand_crypt) {
     for (size_t z = 0; z < card_ids.size(); z++) {
       auto& e = this->entries[z];
       e.card_id = card_ids[z];
@@ -112,7 +112,7 @@ private:
   parray<CardEntry, 31> entries;
   parray<uint16_t, 31> card_refs;
 
-  std::shared_ptr<PSOLFGEncryption> random_crypt;
+  std::shared_ptr<PSOLFGEncryption> opt_rand_crypt;
 };
 
 } // namespace Episode3

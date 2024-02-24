@@ -26,3 +26,4 @@
 
 - Test all quest item subcommands
 - Figure out why Pouilly Slime EXP doesn't work
+- Make server-specified rare enemies work with maps loaded by the proxy

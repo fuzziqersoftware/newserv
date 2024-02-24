@@ -5,6 +5,7 @@
 
 #include <memory>
 #include <phosg/Encoding.hh>
+#include <phosg/Random.hh>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -341,4 +342,8 @@ std::string encrypt_pr2_data(const std::string& data, size_t decompressed_size, 
     crypt.decrypt(ret.data() + 8, ret.size() - 8);
   }
   return ret;
+}
+
+inline uint32_t random_from_optional_crypt(std::shared_ptr<PSOLFGEncryption> random_crypt) {
+  return random_crypt ? random_crypt->next() : random_object<uint32_t>();
 }

@@ -4147,8 +4147,8 @@ shared_ptr<Lobby> create_game_generic(
   game->difficulty = difficulty;
   if (c->config.check_flag(Client::Flag::USE_OVERRIDE_RANDOM_SEED)) {
     game->random_seed = c->config.override_random_seed;
+    game->opt_rand_crypt = make_shared<PSOV2Encryption>(game->random_seed);
   }
-  game->random_crypt = make_shared<PSOV2Encryption>(game->random_seed);
   if (battle_player) {
     game->battle_player = battle_player;
     battle_player->set_lobby(game);
@@ -4239,14 +4239,14 @@ shared_ptr<Lobby> create_game_generic(
     // GC NTE ignores the passed-in variations and always uses all zeroes
     if (game->base_version != Version::GC_NTE) {
       auto sdt = s->set_data_table(game->base_version, game->episode, game->mode, game->difficulty);
-      game->variations = sdt->generate_variations(game->episode, is_solo, game->random_crypt);
+      game->variations = sdt->generate_variations(game->episode, is_solo, game->opt_rand_crypt);
     } else {
       game->variations.clear(0);
     }
     game->load_maps();
   } else {
     game->variations.clear(0);
-    game->map = make_shared<Map>(game->base_version, game->lobby_id, game->random_crypt);
+    game->map = make_shared<Map>(game->base_version, game->lobby_id, game->random_seed, game->opt_rand_crypt);
   }
 
   return game;

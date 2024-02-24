@@ -205,8 +205,8 @@ void DeckState::do_mulligan(bool is_nte) {
     size_t max = this->num_drawable_cards() - 5;
     uint8_t base_index = this->draw_index + 5;
     for (size_t z = 0; z < this->card_refs.size(); z++) {
-      uint8_t index1 = this->random_crypt->next() % max;
-      uint8_t index2 = this->random_crypt->next() % max;
+      uint8_t index1 = random_from_optional_crypt(this->opt_rand_crypt) % max;
+      uint8_t index2 = random_from_optional_crypt(this->opt_rand_crypt) % max;
       uint16_t temp_ref = this->card_refs[base_index + index1];
       this->card_refs[base_index + index1] = this->card_refs[base_index + index2];
       this->card_refs[base_index + index2] = temp_ref;
@@ -265,8 +265,8 @@ void DeckState::shuffle() {
       // instead swap each item with another random item (possibly itself) that
       // doesn't appear earlier than it in the array, but this is not what Sega
       // did.
-      uint8_t index1 = this->draw_index + this->random_crypt->next() % max;
-      uint8_t index2 = this->draw_index + this->random_crypt->next() % max;
+      uint8_t index1 = this->draw_index + random_from_optional_crypt(this->opt_rand_crypt) % max;
+      uint8_t index2 = this->draw_index + random_from_optional_crypt(this->opt_rand_crypt) % max;
       uint16_t temp_ref = this->card_refs[index1];
       this->card_refs[index1] = this->card_refs[index2];
       this->card_refs[index2] = temp_ref;

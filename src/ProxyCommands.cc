@@ -1347,6 +1347,7 @@ static HandlerResult S_13_A7(shared_ptr<ProxyServer::LinkedSession> ses, uint16_
           ses->lobby_event,
           ses->id,
           Map::DEFAULT_RARE_ENEMIES,
+          ses->lobby_random_seed,
           make_shared<PSOV2Encryption>(ses->lobby_random_seed),
           quest_dat_data);
     }
@@ -1656,6 +1657,7 @@ static HandlerResult S_64(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t, 
       s->set_data_table(ses->version(), ses->lobby_episode, ses->lobby_mode, ses->lobby_difficulty),
       bind(&ServerState::load_map_file, s.get(), placeholders::_1, placeholders::_2),
       Map::DEFAULT_RARE_ENEMIES,
+      ses->lobby_random_seed,
       make_shared<PSOV2Encryption>(ses->lobby_random_seed),
       cmd->variations,
       &ses->log);

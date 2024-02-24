@@ -689,10 +689,11 @@ string Map::Object::str() const {
       this->item_drop_checked ? "true" : "false");
 }
 
-Map::Map(Version version, uint32_t lobby_id, std::shared_ptr<PSOLFGEncryption> random_crypt)
+Map::Map(Version version, uint32_t lobby_id, uint32_t rare_seed, std::shared_ptr<PSOLFGEncryption> opt_rand_crypt)
     : log(string_printf("[Lobby:%08" PRIX32 ":map] ", lobby_id), lobby_log.min_level),
       version(version),
-      random_crypt(random_crypt) {}
+      rare_seed(rare_seed),
+      opt_rand_crypt(opt_rand_crypt) {}
 
 void Map::clear() {
   this->objects.clear();
@@ -735,7 +736,7 @@ bool Map::check_and_log_rare_enemy(bool default_is_rare, uint32_t rare_rate) {
   // versions, we must match the client's logic, even though it's more
   // computationally expensive.
   if (this->version == Version::BB_V4) {
-    if ((this->rare_enemy_indexes.size() < 0x10) && (this->random_crypt->next() < rare_rate)) {
+    if ((this->rare_enemy_indexes.size() < 0x10) && (random_from_optional_crypt(this->opt_rand_crypt) < rare_rate)) {
       this->rare_enemy_indexes.emplace_back(this->enemies.size());
       return true;
     }
@@ -744,7 +745,7 @@ bool Map::check_and_log_rare_enemy(bool default_is_rare, uint32_t rare_rate) {
     // TODO: We only need the first value from this crypt, so it's unfortunate
     // that we have to initialize the entire thing. Find a way to make this
     // faster.
-    PSOV2Encryption crypt(this->random_crypt->seed() + 0x1000 + this->enemies.size());
+    PSOV2Encryption crypt(this->rare_seed + 0x1000 + this->enemies.size());
     float det = (static_cast<float>((crypt.next() >> 16) & 0xFFFF) / 65536.0f);
     // On v1 and v2 (and GC NTE), the rare rate is 0.1% instead of 0.2%.
     float threshold = is_v1_or_v2(this->version) ? 0.001f : 0.002f;
@@ -1534,7 +1535,7 @@ void Map::add_enemies_and_objects_from_quest_data(
       const auto& random_enemy_locations_header = r.pget<SectionHeader>(floor_sections.random_enemy_locations);
       const auto& random_enemy_definitions_header = r.pget<SectionHeader>(floor_sections.random_enemy_definitions);
       if (!random_state) {
-        random_state = make_shared<DATParserRandomState>(this->random_crypt->seed());
+        random_state = make_shared<DATParserRandomState>(this->rare_seed);
       }
       this->add_random_enemies_from_map_data(
           episode,
@@ -1640,12 +1641,12 @@ string Map::disassemble_quest_data(const void* data, size_t size) {
 SetDataTableBase::SetDataTableBase(Version version) : version(version) {}
 
 parray<le_uint32_t, 0x20> SetDataTableBase::generate_variations(
-    Episode episode, bool is_solo, std::shared_ptr<PSOLFGEncryption> random_crypt) const {
+    Episode episode, bool is_solo, std::shared_ptr<PSOLFGEncryption> opt_rand_crypt) const {
   parray<le_uint32_t, 0x20> ret;
   for (size_t floor = 0; floor < 0x10; floor++) {
     auto num_vars = this->num_free_roam_variations_for_floor(episode, is_solo, floor);
-    ret[floor * 2] = (num_vars.first > 1) ? (random_crypt->next() % num_vars.first) : 0;
-    ret[floor * 2 + 1] = (num_vars.second > 1) ? (random_crypt->next() % num_vars.second) : 0;
+    ret[floor * 2] = (num_vars.first > 1) ? (random_from_optional_crypt(opt_rand_crypt) % num_vars.first) : 0;
+    ret[floor * 2 + 1] = (num_vars.second > 1) ? (random_from_optional_crypt(opt_rand_crypt) % num_vars.second) : 0;
   }
   return ret;
 }

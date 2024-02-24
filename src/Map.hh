@@ -256,7 +256,7 @@ struct Map {
     void generate_shuffled_location_table(const Map::RandomEnemyLocationsHeader& header, StringReader r, uint16_t section);
   };
 
-  Map(Version version, uint32_t lobby_id, std::shared_ptr<PSOLFGEncryption> random_crypt);
+  Map(Version version, uint32_t lobby_id, uint32_t rare_seed, std::shared_ptr<PSOLFGEncryption> opt_rand_crypt);
   ~Map() = default;
 
   void clear();
@@ -315,7 +315,8 @@ struct Map {
 
   PrefixedLogger log;
   Version version;
-  std::shared_ptr<PSOLFGEncryption> random_crypt;
+  uint32_t rare_seed;
+  std::shared_ptr<PSOLFGEncryption> opt_rand_crypt;
   std::vector<Object> objects;
   std::vector<Enemy> enemies;
   std::vector<size_t> rare_enemy_indexes;
@@ -325,7 +326,10 @@ class SetDataTableBase {
 public:
   virtual ~SetDataTableBase() = default;
 
-  parray<le_uint32_t, 0x20> generate_variations(Episode episode, bool is_solo, std::shared_ptr<PSOLFGEncryption> random_crypt) const;
+  parray<le_uint32_t, 0x20> generate_variations(
+      Episode episode,
+      bool is_solo,
+      std::shared_ptr<PSOLFGEncryption> opt_rand_crypt = nullptr) const;
   virtual std::pair<uint32_t, uint32_t> num_available_variations_for_floor(Episode episode, uint8_t floor) const = 0;
   virtual std::pair<uint32_t, uint32_t> num_free_roam_variations_for_floor(Episode episode, bool is_solo, uint8_t floor) const = 0;
 

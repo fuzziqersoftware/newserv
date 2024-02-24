@@ -24,11 +24,11 @@ public:
       GameMode mode,
       uint8_t difficulty,
       uint8_t section_id,
-      uint32_t random_seed,
+      std::shared_ptr<PSOLFGEncryption> opt_rand_crypt,
       std::shared_ptr<const BattleRules> restrictions = nullptr);
   ~ItemCreator() = default;
 
-  void set_random_state(uint32_t seed, uint32_t absolute_offset);
+  void set_random_crypt(std::shared_ptr<PSOLFGEncryption> new_random_crypt);
 
   struct DropResult {
     ItemData item;
@@ -78,7 +78,7 @@ private:
 
   // Note: The original implementation uses 17 different random states for some
   // reason. We forego that and use only one for simplicity.
-  PSOV2Encryption random_crypt;
+  std::shared_ptr<PSOLFGEncryption> opt_rand_crypt;
 
   inline bool is_v3() const {
     return !is_v1_or_v2(this->version);

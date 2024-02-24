@@ -23,7 +23,7 @@ ItemCreator::ItemCreator(
     GameMode mode,
     uint8_t difficulty,
     uint8_t section_id,
-    uint32_t random_seed,
+    std::shared_ptr<PSOLFGEncryption> opt_rand_crypt,
     shared_ptr<const BattleRules> restrictions)
     : log(string_printf("[ItemCreator:%s/%s/%s/%c/%hhu] ", name_for_enum(stack_limits->version), abbreviation_for_episode(episode), abbreviation_for_mode(mode), abbreviation_for_difficulty(difficulty), section_id), lobby_log.min_level),
       version(stack_limits->version),
@@ -40,17 +40,12 @@ ItemCreator::ItemCreator(
       item_parameter_table(item_parameter_table),
       pt(common_item_set->get_table(this->episode, this->mode, this->difficulty, this->section_id)),
       restrictions(restrictions),
-      random_crypt(random_seed) {
+      opt_rand_crypt(opt_rand_crypt ? make_shared<PSOV2Encryption>(opt_rand_crypt->seed()) : nullptr) {
   this->generate_unit_stars_tables();
 }
 
-void ItemCreator::set_random_state(uint32_t seed, uint32_t absolute_offset) {
-  if ((this->random_crypt.seed() != seed) || (this->random_crypt.absolute_offset() > absolute_offset)) {
-    this->random_crypt = PSOV2Encryption(seed);
-  }
-  while (this->random_crypt.absolute_offset() < absolute_offset) {
-    this->random_crypt.next();
-  }
+void ItemCreator::set_random_crypt(shared_ptr<PSOLFGEncryption> new_random_crypt) {
+  this->opt_rand_crypt = new_random_crypt;
 }
 
 bool ItemCreator::are_rare_drops_allowed() const {
@@ -141,8 +136,11 @@ ItemCreator::DropResult ItemCreator::on_monster_item_drop(uint32_t enemy_type, u
 }
 
 ItemCreator::DropResult ItemCreator::on_box_item_drop_with_area_norm(uint8_t area_norm) {
-  this->log.info("Box drop checks for area_norm %02hhX; random state: %08" PRIX32 " %08" PRIX32,
-      area_norm, this->random_crypt.seed(), this->random_crypt.absolute_offset());
+  this->log.info("Box drop checks for area_norm %02hhX", area_norm);
+  if (this->opt_rand_crypt) {
+    this->log.info("Random state: %08" PRIX32 " %08" PRIX32,
+        this->opt_rand_crypt->seed(), this->opt_rand_crypt->absolute_offset());
+  }
   DropResult res;
   res.item = this->check_rare_specs_and_create_rare_box_item(area_norm);
   if (!res.item.empty()) {
@@ -189,7 +187,11 @@ ItemCreator::DropResult ItemCreator::on_monster_item_drop_with_area_norm(uint32_
     this->log.warning("Invalid enemy type: %" PRIX32, enemy_type);
     return DropResult();
   }
-  this->log.info("Enemy type: %" PRIX32 "; random state: %08" PRIX32 " %08" PRIX32, enemy_type, this->random_crypt.seed(), this->random_crypt.absolute_offset());
+  this->log.info("Enemy type: %" PRIX32 "", enemy_type);
+  if (this->opt_rand_crypt) {
+    this->log.info("Random state: %08" PRIX32 " %08" PRIX32,
+        this->opt_rand_crypt->seed(), this->opt_rand_crypt->absolute_offset());
+  }
 
   uint8_t type_drop_prob = this->pt->enemy_type_drop_probs.at(enemy_type);
   uint8_t drop_sample = this->rand_int(100);
@@ -281,12 +283,12 @@ ItemData ItemCreator::check_rare_specs_and_create_rare_box_item(uint8_t area_nor
 }
 
 uint32_t ItemCreator::rand_int(uint64_t max) {
-  return this->random_crypt.next() % max;
+  return random_from_optional_crypt(this->opt_rand_crypt) % max;
 }
 
 float ItemCreator::rand_float_0_1_from_crypt() {
   // This lacks some precision, but matches the original implementation.
-  return (static_cast<double>(this->random_crypt.next() >> 16) / 65536.0);
+  return (static_cast<double>(random_from_optional_crypt(this->opt_rand_crypt) >> 16) / 65536.0);
 }
 
 template <size_t NumRanges>
@@ -706,9 +708,9 @@ void ItemCreator::generate_common_mag_variances(ItemData& item) {
     if (is_pre_v1(this->version)) {
       item.data2[3] = 0x00;
     } else if (is_v1_or_v2(this->version)) {
-      item.data2[3] = this->random_crypt.next() % 0x0E;
+      item.data2[3] = random_from_optional_crypt(this->opt_rand_crypt) % 0x0E;
     } else {
-      item.data2[3] = this->random_crypt.next() % 0x12;
+      item.data2[3] = random_from_optional_crypt(this->opt_rand_crypt) % 0x12;
     }
   }
 }
@@ -1018,8 +1020,7 @@ bool ItemCreator::shop_does_not_contain_duplicate_item_by_data1_0_1_2(
   return true;
 }
 
-void ItemCreator::generate_armor_shop_armors(
-    vector<ItemData>& shop, size_t player_level) {
+void ItemCreator::generate_armor_shop_armors(vector<ItemData>& shop, size_t player_level) {
   size_t num_items;
   if (player_level < 11) {
     num_items = 4;
@@ -1039,7 +1040,7 @@ void ItemCreator::generate_armor_shop_armors(
       pt.push(src_table.first[z].value);
     }
   }
-  pt.shuffle(this->random_crypt);
+  pt.shuffle(this->opt_rand_crypt);
 
   for (size_t items_generated = 0; items_generated < num_items;) {
     ItemData item;
@@ -1083,7 +1084,7 @@ void ItemCreator::generate_armor_shop_shields(vector<ItemData>& shop, size_t pla
       pt.push(src_table.first[z].value);
     }
   }
-  pt.shuffle(this->random_crypt);
+  pt.shuffle(this->opt_rand_crypt);
 
   for (size_t items_generated = 0; items_generated < num_items;) {
     ItemData item;
@@ -1126,7 +1127,7 @@ void ItemCreator::generate_armor_shop_units(vector<ItemData>& shop, size_t playe
       pt.push(src_table.first[z].value);
     }
   }
-  pt.shuffle(this->random_crypt);
+  pt.shuffle(this->opt_rand_crypt);
 
   for (size_t items_generated = 0; items_generated < num_items;) {
     ItemData item;
@@ -1229,7 +1230,7 @@ void ItemCreator::generate_rare_tool_shop_recovery_items(
       pt.push(e.value);
     }
   }
-  pt.shuffle(this->random_crypt);
+  pt.shuffle(this->opt_rand_crypt);
 
   size_t effective_num_items = num_items;
   size_t items_generated = 0;
@@ -1272,7 +1273,7 @@ void ItemCreator::generate_tool_shop_tech_disks(vector<ItemData>& shop, size_t p
       pt.push(e.value);
     }
   }
-  pt.shuffle(this->random_crypt);
+  pt.shuffle(this->opt_rand_crypt);
 
   static const array<uint8_t, 0x13> tech_num_map = {
       0x00, 0x03, 0x06, 0x0F, 0x10, 0x0D, 0x0A, 0x0B, 0x0C, 0x01, 0x04, 0x07,
@@ -1373,7 +1374,7 @@ vector<ItemData> ItemCreator::generate_weapon_shop_contents(size_t player_level)
       pt.push(e.value);
     }
   }
-  pt.shuffle(this->random_crypt);
+  pt.shuffle(this->opt_rand_crypt);
 
   vector<ItemData> shop;
   while (shop.size() < num_items) {
@@ -1573,7 +1574,7 @@ void ItemCreator::generate_weapon_shop_item_special(ItemData& item, size_t playe
 
   // Note: The original code shuffles pt and then pops a single value from it.
   // For simplicity, we just sample a single value (and don't pop it) instead.
-  switch (pt.sample(this->random_crypt)) {
+  switch (pt.sample(this->opt_rand_crypt)) {
     case 0:
       item.data1[4] = 0;
       break;
@@ -1625,7 +1626,7 @@ void ItemCreator::generate_weapon_shop_item_bonus1(
 
   // Note: The original code shuffles pt and then pops a single value from it.
   // For simplicity, we just sample a single value (and don't pop it) instead.
-  item.data1[6] = pt.sample(this->random_crypt);
+  item.data1[6] = pt.sample(this->opt_rand_crypt);
   if (item.data1[6] == 0) {
     item.data1[7] = 0;
 
@@ -1666,7 +1667,7 @@ void ItemCreator::generate_weapon_shop_item_bonus2(ItemData& item, size_t player
       pt.push(e.value);
     }
   }
-  pt.shuffle(this->random_crypt);
+  pt.shuffle(this->opt_rand_crypt);
 
   do {
     item.data1[8] = pt.pop();
@@ -1752,7 +1753,7 @@ ssize_t ItemCreator::apply_tekker_deltas(ItemData& item, uint8_t section_id) {
   // Adjust the weapon's special
   {
     const auto& prob_table = this->tekker_adjustment_set->get_special_upgrade_prob_table(section_id, favored);
-    uint8_t delta_index = prob_table.sample(this->random_crypt);
+    uint8_t delta_index = prob_table.sample(this->opt_rand_crypt);
     int8_t delta = delta_table.at(delta_index);
     this->log.info("(Special) Delta index %hhu, delta %hhd", delta_index, delta);
     // Note: The original code checks specifically for -1 and +1 here, but the
@@ -1788,7 +1789,7 @@ ssize_t ItemCreator::apply_tekker_deltas(ItemData& item, uint8_t section_id) {
   if (!this->item_parameter_table->is_item_rare(item)) {
     const auto& weapon_def = this->item_parameter_table->get_weapon(item.data1[1], item.data1[2]);
     const auto& prob_table = this->tekker_adjustment_set->get_grind_delta_prob_table(section_id, favored);
-    uint8_t delta_index = prob_table.sample(this->random_crypt);
+    uint8_t delta_index = prob_table.sample(this->opt_rand_crypt);
     int8_t delta = delta_table.at(delta_index);
     this->log.info("(Grind) Delta index %hhu, delta %hhd", delta_index, delta);
     int16_t new_grind = static_cast<int16_t>(item.data1[3]) + static_cast<int16_t>(delta);
@@ -1804,7 +1805,7 @@ ssize_t ItemCreator::apply_tekker_deltas(ItemData& item, uint8_t section_id) {
     const auto& prob_table = this->tekker_adjustment_set->get_bonus_delta_prob_table(section_id, favored);
     // Note: The original code really does use the same delta for all three
     // bonuses.
-    uint8_t delta_index = prob_table.sample(this->random_crypt);
+    uint8_t delta_index = prob_table.sample(this->opt_rand_crypt);
     int8_t delta = delta_table.at(delta_index);
     this->log.info("(Bonuses) Delta index %hhu, delta %hhd", delta_index, delta);
     // Note: The original code doesn't check if there's actually a bonus in each

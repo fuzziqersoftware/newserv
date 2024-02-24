@@ -257,7 +257,7 @@ void Lobby::create_item_creator() {
       (this->mode == GameMode::SOLO) ? GameMode::NORMAL : this->mode,
       this->difficulty,
       this->section_id,
-      this->random_seed,
+      this->opt_rand_crypt,
       this->quest ? this->quest->battle_rules : nullptr);
 }
 
@@ -268,9 +268,10 @@ shared_ptr<Map> Lobby::load_maps(
     uint8_t event,
     uint32_t lobby_id,
     shared_ptr<const Map::RareEnemyRates> rare_rates,
-    shared_ptr<PSOLFGEncryption> random_crypt,
+    uint32_t random_seed,
+    shared_ptr<PSOLFGEncryption> opt_rand_crypt,
     shared_ptr<const string> quest_dat_contents_decompressed) {
-  auto map = make_shared<Map>(version, lobby_id, random_crypt);
+  auto map = make_shared<Map>(version, lobby_id, random_seed, opt_rand_crypt);
   map->add_enemies_and_objects_from_quest_data(
       episode,
       difficulty,
@@ -291,12 +292,26 @@ shared_ptr<Map> Lobby::load_maps(
     shared_ptr<const SetDataTableBase> sdt,
     function<shared_ptr<const string>(Version, const string&)> get_file_data,
     shared_ptr<const Map::RareEnemyRates> rare_rates,
-    shared_ptr<PSOLFGEncryption> random_crypt,
+    uint32_t random_seed,
+    shared_ptr<PSOLFGEncryption> opt_rand_crypt,
     const parray<le_uint32_t, 0x20>& variations,
     const PrefixedLogger* log) {
   auto enemy_filenames = sdt->map_filenames_for_variations(variations, episode, mode, true);
   auto object_filenames = sdt->map_filenames_for_variations(variations, episode, mode, false);
-  return Lobby::load_maps(enemy_filenames, object_filenames, version, episode, mode, difficulty, event, lobby_id, get_file_data, rare_rates, random_crypt, log);
+  return Lobby::load_maps(
+      enemy_filenames,
+      object_filenames,
+      version,
+      episode,
+      mode,
+      difficulty,
+      event,
+      lobby_id,
+      get_file_data,
+      rare_rates,
+      random_seed,
+      opt_rand_crypt,
+      log);
 }
 
 shared_ptr<Map> Lobby::load_maps(
@@ -310,9 +325,10 @@ shared_ptr<Map> Lobby::load_maps(
     uint32_t lobby_id,
     function<shared_ptr<const string>(Version, const string&)> get_file_data,
     shared_ptr<const Map::RareEnemyRates> rare_rates,
-    shared_ptr<PSOLFGEncryption> random_crypt,
+    uint32_t rare_seed,
+    shared_ptr<PSOLFGEncryption> opt_rand_crypt,
     const PrefixedLogger* log) {
-  auto map = make_shared<Map>(version, lobby_id, random_crypt);
+  auto map = make_shared<Map>(version, lobby_id, rare_seed, opt_rand_crypt);
 
   // Don't load free-roam maps in Challenge mode, since players can't go to
   // Ragol without a quest loaded
@@ -384,7 +400,8 @@ void Lobby::load_maps() {
         this->event,
         this->lobby_id,
         rare_rates,
-        this->random_crypt,
+        this->random_seed,
+        this->opt_rand_crypt,
         vq->dat_contents_decompressed);
 
   } else if (this->mode != GameMode::CHALLENGE) {
@@ -399,12 +416,13 @@ void Lobby::load_maps() {
         s->set_data_table(this->base_version, this->episode, this->mode, this->difficulty),
         bind(&ServerState::load_map_file, s.get(), placeholders::_1, placeholders::_2),
         rare_rates,
-        this->random_crypt,
+        this->random_seed,
+        this->opt_rand_crypt,
         this->variations,
         &this->log);
 
   } else {
-    this->map = make_shared<Map>(this->base_version, this->lobby_id, this->random_crypt);
+    this->map = make_shared<Map>(this->base_version, this->lobby_id, this->random_seed, this->opt_rand_crypt);
   }
 
   this->log.info("Generated objects list (%zu entries):", this->map->objects.size());
@@ -434,7 +452,7 @@ void Lobby::create_ep3_server() {
       .card_index = is_nte ? s->ep3_card_index_trial : s->ep3_card_index,
       .map_index = s->ep3_map_index,
       .behavior_flags = s->ep3_behavior_flags,
-      .random_crypt = this->random_crypt,
+      .opt_rand_crypt = this->opt_rand_crypt,
       .tournament = tourn,
       .trap_card_ids = s->ep3_trap_card_ids,
   };

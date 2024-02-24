@@ -6,7 +6,7 @@
 
 using namespace std;
 
-void player_use_item(shared_ptr<Client> c, size_t item_index, shared_ptr<PSOLFGEncryption> random_crypt) {
+void player_use_item(shared_ptr<Client> c, size_t item_index, shared_ptr<PSOLFGEncryption> opt_rand_crypt) {
   auto s = c->require_server_state();
 
   // On PC (and presumably DC), the client sends a 6x29 after this to delete the
@@ -177,7 +177,7 @@ void player_use_item(shared_ptr<Client> c, size_t item_index, shared_ptr<PSOLFGE
     if (sum == 0) {
       throw runtime_error("no unwrap results available for event");
     }
-    size_t det = random_crypt->next() % sum;
+    size_t det = random_from_optional_crypt(opt_rand_crypt) % sum;
     for (size_t z = 0; z < table.second; z++) {
       const auto& entry = table.first[z];
       if (det > entry.probability) {

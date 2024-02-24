@@ -2133,7 +2133,8 @@ Action a_find_rare_enemy_seeds(
           if (!vq->dat_contents_decompressed) {
             throw runtime_error("quest does not have DAT data");
           }
-          map = Lobby::load_maps(version, episode, difficulty, 0, 0, rare_rates, random_crypt, vq->dat_contents_decompressed);
+          map = Lobby::load_maps(
+              version, episode, difficulty, 0, 0, rare_rates, seed, random_crypt, vq->dat_contents_decompressed);
 
         } else {
           generate_variations_deprecated(variations, random_crypt, version, episode, (mode == GameMode::SOLO));
@@ -2147,6 +2148,7 @@ Action a_find_rare_enemy_seeds(
               s->set_data_table(version, episode, mode, difficulty),
               bind(&ServerState::load_map_file, s.get(), placeholders::_1, placeholders::_2),
               rare_rates,
+              seed,
               random_crypt,
               variations);
         }
@@ -2295,12 +2297,12 @@ Action a_replay_ep3_battle_commands(
       s->load_ep3_cards(false);
       s->load_ep3_maps(false);
 
-      auto random_crypt = make_shared<PSOV2Encryption>(args.get<uint32_t>("seed", 0, Arguments::IntFormat::HEX));
+      auto opt_rand_crypt = make_shared<PSOV2Encryption>(args.get<uint32_t>("seed", 0, Arguments::IntFormat::HEX));
       Episode3::Server::Options options = {
           .card_index = s->ep3_card_index,
           .map_index = s->ep3_map_index,
           .behavior_flags = 0x0092,
-          .random_crypt = random_crypt,
+          .opt_rand_crypt = opt_rand_crypt,
           .tournament = nullptr,
           .trap_card_ids = {},
       };

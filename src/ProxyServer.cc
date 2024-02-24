@@ -771,9 +771,9 @@ void ProxyServer::LinkedSession::set_drop_mode(DropMode new_mode) {
       default:
         throw logic_error("invalid lobby base version");
     }
-    uint32_t random_seed = this->config.check_flag(Client::Flag::USE_OVERRIDE_RANDOM_SEED)
-        ? this->config.override_random_seed
-        : this->lobby_random_seed;
+    auto opt_rand_crypt = this->config.check_flag(Client::Flag::USE_OVERRIDE_RANDOM_SEED)
+        ? make_shared<PSOV2Encryption>(this->config.override_random_seed)
+        : nullptr;
     this->item_creator = make_shared<ItemCreator>(
         common_item_set,
         rare_item_set,
@@ -787,7 +787,7 @@ void ProxyServer::LinkedSession::set_drop_mode(DropMode new_mode) {
         (this->lobby_mode == GameMode::SOLO) ? GameMode::NORMAL : this->lobby_mode,
         this->lobby_difficulty,
         this->lobby_section_id,
-        random_seed,
+        opt_rand_crypt,
         // TODO: Can we get battle rules here somehow?
         nullptr);
   } else {
