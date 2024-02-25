@@ -9,7 +9,9 @@ Feel free to submit GitHub issues if you find bugs or have feature requests. I'd
 See TODO.md for a list of known issues and future work I've curated, or go to the GitHub issue tracker for issues and requests submitted by the community.
 
 **Table of contents**
-* [History](#history)
+* Background
+    * [History](#history)
+    * [Other server projects](#other-server-projects)
 * [Compatibility](#compatibility)
 * Setup
     * [Server setup](#server-setup)
@@ -42,6 +44,24 @@ For a while it was essentially necessary to use a proxy to go online at all, so 
 At the time of its inception, Aeon was also called newserv, and you may find some beta releases floating around the Internet with filenames like `newserv-b3.zip`. I had released betas 1, 2, and 3 before I released the entire source of beta 5 and stopped working on the project when I went to college. This was around the time when I switched from writing software primarily on Windows to primarily on macOS and Linux, so Aeon beta 5 was the last server I wrote that specifically targeted Windows. (newserv, which you're looking at now, is a bit tedious to compile on Windows but does work.)
 
 <img align="left" src="static/s-newserv.png" /> After a long hiatus from PSO and much professional and personal development in my technical abilities, I was reminiscing sometime in October 2018 by reading my old code archives. Somehow inspired when I came across Aeon, I spent a weekend and a couple more evenings rewriting the entire project again, cleaning up ancient patterns I had used eleven years ago, replacing entire modules with simple STL containers, and eliminating even more support files in favor of configuration autodetection. The code is now suitably modern and stable, and I'm not embarrassed by its existence, as I am by Aeon beta 5's source code and my archive of Khyller (which, thankfully, no one else ever saw).
+
+## Other server projects
+
+Independently of this project, there are many other PSO servers out there. Those that I know of that are (or were) public are listed here in approximate chronological order:
+
+* (Early 2000s) **[Schtserv](https://schtserv.com/)**: The first public-access PSO server; written in Delphi by Schthack. Still active and popular as of this writing (early 2024). Schtserv is also the only other unofficial server to support all versions of PSO, including Episode 3.
+* (2005) **Khyller**: An early attempt of mine to support PSO PC, GC, and BB. See above for more details.
+* (2006) **Aeon**: My second attempt. Better than Khyller, but still unreliable.
+* (2008) **Tethealla**: A fairly extensive implementation of PSOBB, written in C by Sodaboy. The public version of Tethealla has been [officially disowned](https://www.pioneer2.net/community/threads/tethealla-server-forums-removal.26365/) (as it is now more than 15 years old), but closed-source development continues. [Ephinea](https://ephinea.pioneer2.net/), currently the most popular PSOBB server, is the continuation of this project. Several other modern PSOBB servers are forks of the initial public version of Tethealla as well.
+* (2008) **[Sylverant](https://sylverant.net/)** [(source)](https://sourceforge.net/projects/sylverant/): The second public-access PSO server; written in C by BlueCrab. Still active and popular as of this writing (early 2024).
+* (2015) **[Archon](https://github.com/dcrodman/archon)**: A PSOBB server written in Go by Drew Rodman.
+* (2015) **[Idola](https://github.com/HybridEidolon/idolapsoserv)**: A PSOBB server written in Rust by HybridEidolon. Functionality status unknown; the project has been archived.
+* (2017) **[Aselia](https://github.com/Solybum/Aselia)**: A PSOBB server written written in C# by Soly. It seems this was planned to be open-source at some point, but that has not (yet) happened.
+* (2018) **newserv**: This project right here.
+* (2019) **[Mechonis](https://gitlab.com/sora3087/mechonis)**: A PSOBB server with a microservice architecture written in TypeScript by TrueVision.
+* (2021) **[Phantasmal World](https://github.com/DaanVandenBosch/phantasmal-world)**: A set of PSO tools, including a web-based model viewer and quest builder, and a PSO server, written by Daan Vanden Bosch.
+* (2021) **[Elseware](http://git.sharnoth.com/jake/elseware)**: A PSOBB server written in Rust by Jake.
+* (2022) **[PSOSERVER](https://github.com/Sancaros/PSOSERVER)**: A server for all versions, written in C by Sancaros and based on Sylverant and newserv.
 
 # Compatibility
 
