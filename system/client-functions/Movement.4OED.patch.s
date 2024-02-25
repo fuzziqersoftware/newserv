@@ -9,7 +9,8 @@ start:
 
   .data     0x00308E88
   .deltaof  code_start, code_end
-
 code_start:
   .include  MovementXB
 code_end:
+  .data     0x00000000
+  .data     0x00000000
