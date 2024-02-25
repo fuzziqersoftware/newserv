@@ -61,4 +61,8 @@ protected:
   JSON generate_lobbies_json() const;
   JSON generate_summary_json() const;
   JSON generate_all_json() const;
+
+  JSON generate_ep3_cards_json(bool trial) const;
+  JSON generate_rare_tables_json() const;
+  JSON generate_rare_table_json(const std::string& table_name) const;
 };

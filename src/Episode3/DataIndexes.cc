@@ -80,6 +80,16 @@ const char* name_for_link_color(uint8_t color) {
   }
 }
 
+JSON json_for_link_colors(const parray<uint8_t, 8>& colors) {
+  JSON ret = JSON::list();
+  for (size_t z = 0; z < colors.size(); z++) {
+    if (colors[z]) {
+      ret.emplace_back(name_for_link_color(colors[z]));
+    }
+  }
+  return ret;
+}
+
 Location::Location() : Location(0, 0) {}
 Location::Location(uint8_t x, uint8_t y) : Location(x, y, Direction::RIGHT) {}
 Location::Location(uint8_t x, uint8_t y, Direction direction)
@@ -1016,6 +1026,111 @@ Card: %04" PRIX32 " \"%s\"\n\
   }
 }
 
+JSON CardDefinition::Stat::json() const {
+  const char* type_str = "unknown";
+  switch (this->type) {
+    case Type::BLANK:
+      type_str = "BLANK";
+      break;
+    case Type::STAT:
+      type_str = "DEFAULT";
+      break;
+    case Type::PLUS_STAT:
+      type_str = "PLUS";
+      break;
+    case Type::MINUS_STAT:
+      type_str = "MINUS";
+      break;
+    case Type::EQUALS_STAT:
+      type_str = "EQUALS";
+      break;
+    case Type::UNKNOWN:
+      type_str = "UNKNOWN";
+      break;
+    case Type::PLUS_UNKNOWN:
+      type_str = "PLUS_UNKNOWN";
+      break;
+    case Type::MINUS_UNKNOWN:
+      type_str = "MINUS_UNKNOWN";
+      break;
+    case Type::EQUALS_UNKNOWN:
+      type_str = "EQUALS_UNKNOWN";
+      break;
+  }
+  return JSON::dict({
+      {"type", type_str},
+      {"value", this->stat},
+  });
+}
+
+JSON CardDefinition::Effect::json() const {
+  return JSON::dict({
+      {"EffectNum", this->effect_num},
+      {"ConditionType", name_for_enum(this->type)},
+      {"Expression", this->expr.decode()},
+      {"When", this->when},
+      {"Arg1", this->arg1.decode()},
+      {"Arg2", this->arg2.decode()},
+      {"Arg3", this->arg3.decode()},
+      {"ApplyCriterion", name_for_enum(this->apply_criterion)},
+      {"NameIndex", this->name_index},
+  });
+}
+
+JSON CardDefinition::json() const {
+  JSON range_json;
+  if (this->range[0] == 0x000FFFFF) {
+    range_json = "ENTIRE_FIELD";
+  } else {
+    range_json = JSON::list();
+    for (size_t y = 0; y < 6; y++) {
+      uint32_t row = this->range[y];
+      auto& row_json = range_json.emplace_back(JSON::list());
+      for (size_t x = 0; x < 5; x++) {
+        row_json.emplace_back((row & 0x00010000) ? true : false);
+        row <<= 4;
+      }
+    }
+  }
+
+  JSON effects_json = JSON::list();
+  for (size_t z = 0; z < this->effects.size(); z++) {
+    if (!this->effects[z].is_empty()) {
+      effects_json.emplace_back(this->effects[z].json());
+    }
+  }
+
+  return JSON::dict({
+      {"CardID", this->card_id.load()},
+      {"JPName", this->jp_name.decode()},
+      {"CardType", name_for_enum(this->type)},
+      {"SelfCost", this->self_cost},
+      {"AllyCost", this->ally_cost},
+      {"HP", this->hp.json()},
+      {"AP", this->ap.json()},
+      {"TP", this->tp.json()},
+      {"MV", this->mv.json()},
+      {"LeftColors", json_for_link_colors(this->left_colors)},
+      {"RightColors", json_for_link_colors(this->right_colors)},
+      {"TopColors", json_for_link_colors(this->top_colors)},
+      {"Range", std::move(range_json)},
+      {"TargetMode", name_for_target_mode(this->target_mode)},
+      {"AssistTurns", this->assist_turns},
+      {"CannotMove", this->cannot_move ? true : false},
+      {"CannotAttack", this->cannot_attack ? true : false},
+      {"CannotDrop", this->cannot_drop ? true : false},
+      {"UsableCriterion", name_for_enum(this->usable_criterion)},
+      {"Rank", name_for_rank(this->rank)},
+      {"CardClass", name_for_enum(this->card_class())},
+      {"AssistAIParams", this->assist_ai_params.load()},
+      {"DropRates", JSON::list({this->drop_rates[0].load(), this->drop_rates[1].load()})},
+      {"ENName", this->en_name.decode()},
+      {"JPShortName", this->jp_short_name.decode()},
+      {"ENShortName", this->en_short_name.decode()},
+      {"Effects", std::move(effects_json)},
+  });
+}
+
 void PlayerConfig::decrypt() {
   if (!this->is_encrypted) {
     return;
@@ -1497,6 +1612,97 @@ void MapDefinition::assert_semantically_equivalent(const MapDefinition& other) c
     throw runtime_error("entry states not equal");
   }
 }
+
+JSON MapDefinition::CameraSpec::json() const {
+  return JSON::dict({
+      {"Camera", JSON::list({this->camera_x.load(), this->camera_y.load(), this->camera_z.load()})},
+      {"Focus", JSON::list({this->focus_x.load(), this->focus_y.load(), this->focus_z.load()})},
+  });
+}
+
+JSON MapDefinition::NPCDeck::json() const {
+  JSON card_ids_json = JSON::list();
+  for (size_t z = 0; z < this->card_ids.size(); z++) {
+    if (this->card_ids[z] != 0xFFFF) {
+      card_ids_json.emplace_back(this->card_ids[z].load());
+    }
+  }
+  return JSON::dict({
+      {"Name", this->name.decode()},
+      {"CardIDs", std::move(card_ids_json)},
+  });
+}
+
+JSON MapDefinition::AIParams::json() const {
+  JSON params_json = JSON::list();
+  for (size_t z = 0; z < this->params.size(); z++) {
+    params_json.emplace_back(this->params[z].load());
+  }
+  return JSON::dict({
+      {"IsArkz", this->is_arkz ? true : false},
+      {"Name", this->name.decode()},
+      {"CardIDs", std::move(params_json)},
+  });
+}
+
+JSON MapDefinition::DialogueSet::json() const {
+  JSON strings_json = JSON::list();
+  for (size_t z = 0; z < this->strings.size(); z++) {
+    strings_json.emplace_back(this->strings[z].decode());
+  }
+  return JSON::dict({
+      {"When", this->when.load()},
+      {"PercentChance", this->percent_chance.load()},
+      {"CardIDs", std::move(strings_json)},
+  });
+}
+
+JSON MapDefinition::EntryState::json() const {
+  JSON player_type_json;
+  switch (this->player_type) {
+    case 0x00:
+      player_type_json = "Player";
+      break;
+    case 0x01:
+      player_type_json = "Player/COM";
+      break;
+    case 0x02:
+      player_type_json = "COM";
+      break;
+    case 0x03:
+      player_type_json = "NPC";
+      break;
+    case 0x04:
+      player_type_json = "NONE";
+      break;
+    case 0xFF:
+      player_type_json = "FREE";
+      break;
+    default:
+      player_type_json = this->player_type;
+  }
+  JSON deck_type_json;
+  switch (this->deck_type) {
+    case 0x00:
+      deck_type_json = "HERO ONLY";
+      break;
+    case 0x01:
+      deck_type_json = "DARK ONLY";
+      break;
+    case 0xFF:
+      deck_type_json = "ANY";
+      break;
+    default:
+      deck_type_json = this->deck_type;
+  }
+  return JSON::dict({
+      {"PlayerType", std::move(player_type_json)},
+      {"DeckType", std::move(deck_type_json)},
+  });
+}
+
+// TODO:
+// JSON MapDefinition::json() const { ... }
 
 string MapDefinition::CameraSpec::str() const {
   return string_printf(
@@ -2257,6 +2463,14 @@ set<uint32_t> CardIndex::all_ids() const {
 
 uint64_t CardIndex::definitions_mtime() const {
   return this->mtime_for_card_definitions;
+}
+
+JSON CardIndex::definitions_json() const {
+  JSON ret = JSON::dict();
+  for (const auto& it : this->card_definitions_by_name) {
+    ret.emplace(it.first, it.second->def.json());
+  }
+  return ret;
 }
 
 string CardIndex::normalize_card_name(const string& name) {

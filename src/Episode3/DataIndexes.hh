@@ -468,6 +468,7 @@ struct CardDefinition {
 
     void decode_code();
     std::string str() const;
+    JSON json() const;
   } __attribute__((packed));
 
   struct Effect {
@@ -504,6 +505,7 @@ struct CardDefinition {
     bool is_empty() const;
     static std::string str_for_arg(const std::string& arg);
     std::string str(const char* separator = ", ", const TextSet* text_archive = nullptr) const;
+    JSON json() const;
   } __attribute__((packed));
 
   /* 0000 */ be_uint32_t card_id;
@@ -770,6 +772,7 @@ struct CardDefinition {
 
   void decode_range();
   std::string str(bool single_line = true, const TextSet* text_archive = nullptr) const;
+  JSON json() const;
 } __attribute__((packed)); // 0x128 bytes in total
 
 struct CardDefinitionsFooter {
@@ -1150,6 +1153,7 @@ struct MapDefinition { // .mnmd format; also the format of (decompressed) quests
     /* 48 */
 
     std::string str() const;
+    JSON json() const;
   } __attribute__((packed));
 
   // This array specifies the camera zone maps. A camera zone map is a subset of
@@ -1207,6 +1211,7 @@ struct MapDefinition { // .mnmd format; also the format of (decompressed) quests
     /* 00 */ pstring<TextEncoding::SJIS, 0x18> name;
     /* 18 */ parray<be_uint16_t, 0x20> card_ids; // Last one appears to always be FFFF
     /* 58 */
+    JSON json() const;
   } __attribute__((packed));
   /* 1FE8 */ parray<NPCDeck, 3> npc_decks; // Unused if name[0] == 0
 
@@ -1222,6 +1227,7 @@ struct MapDefinition { // .mnmd format; also the format of (decompressed) quests
     // TODO: Figure out exactly how these are used and document here.
     /* 0018 */ parray<be_uint16_t, 0x7E> params;
     /* 0114 */
+    JSON json() const;
   } __attribute__((packed));
   /* 20F0 */ parray<AIParams, 3> npc_ai_params; // Unused if name[0] == 0
 
@@ -1274,6 +1280,7 @@ struct MapDefinition { // .mnmd format; also the format of (decompressed) quests
     // strings, excluding any that are empty or begin with the character '^'.
     /* 0004 */ parray<pstring<TextEncoding::SJIS, 0x40>, 4> strings;
     /* 0104 */
+    JSON json() const;
   } __attribute__((packed));
 
   // There are up to 0x10 of these per valid NPC, but only the first 13 of them
@@ -1356,6 +1363,7 @@ struct MapDefinition { // .mnmd format; also the format of (decompressed) quests
 
     bool operator==(const EntryState& other) const = default;
     bool operator!=(const EntryState& other) const = default;
+    JSON json() const;
   } __attribute__((packed));
   /* 5A10 */ parray<EntryState, 4> entry_states;
   /* 5A18 */
@@ -1371,6 +1379,7 @@ struct MapDefinition { // .mnmd format; also the format of (decompressed) quests
   void assert_semantically_equivalent(const MapDefinition& other) const;
 
   std::string str(const CardIndex* card_index, uint8_t language) const;
+  JSON json() const;
 } __attribute__((packed));
 
 struct MapDefinitionTrial {
@@ -1453,6 +1462,7 @@ public:
   std::shared_ptr<const CardEntry> definition_for_name_normalized(const std::string& name) const;
   std::set<uint32_t> all_ids() const;
   uint64_t definitions_mtime() const;
+  JSON definitions_json() const;
 
 private:
   static std::string normalize_card_name(const std::string& name);

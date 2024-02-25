@@ -1649,7 +1649,8 @@ Action a_convert_rare_item_set(
       if (output_filename.empty() || (output_filename == "-")) {
         rs->print_all_collections(stdout, s->item_name_index(version));
       } else if (ends_with(output_filename, ".json")) {
-        string data = rs->serialize_json(s->item_name_index(version));
+        auto json = rs->json(s->item_name_index(version));
+        string data = json.serialize(JSON::SerializeOption::FORMAT | JSON::SerializeOption::HEX_INTEGERS | JSON::SerializeOption::SORT_DICT_KEYS);
         write_output_data(args, data.data(), data.size(), nullptr);
       } else if (ends_with(output_filename, ".gsl")) {
         string data = rs->serialize_gsl(args.get<bool>("big-endian"));

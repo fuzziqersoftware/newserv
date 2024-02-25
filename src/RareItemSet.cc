@@ -427,7 +427,7 @@ std::string RareItemSet::serialize_gsl(bool big_endian) const {
   return GSLArchive::generate(files, big_endian);
 }
 
-std::string RareItemSet::serialize_json(shared_ptr<const ItemNameIndex> name_index) const {
+JSON RareItemSet::json(shared_ptr<const ItemNameIndex> name_index) const {
   auto modes_dict = JSON::dict();
   static const array<GameMode, 4> modes = {GameMode::NORMAL, GameMode::BATTLE, GameMode::CHALLENGE, GameMode::SOLO};
   for (const auto& mode : modes) {
@@ -507,7 +507,7 @@ std::string RareItemSet::serialize_json(shared_ptr<const ItemNameIndex> name_ind
     modes_dict.emplace(name_for_mode(mode), std::move(episodes_dict));
   }
 
-  return modes_dict.serialize(JSON::SerializeOption::FORMAT | JSON::SerializeOption::HEX_INTEGERS | JSON::SerializeOption::SORT_DICT_KEYS);
+  return modes_dict;
 }
 
 void RareItemSet::print_collection(

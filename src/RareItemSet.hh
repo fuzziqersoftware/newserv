@@ -37,7 +37,7 @@ public:
 
   std::string serialize_afs(bool is_v1) const;
   std::string serialize_gsl(bool big_endian) const;
-  std::string serialize_json(std::shared_ptr<const ItemNameIndex> name_index = nullptr) const;
+  JSON json(std::shared_ptr<const ItemNameIndex> name_index = nullptr) const;
 
   void print_collection(
       FILE* stream,

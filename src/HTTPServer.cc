@@ -815,6 +815,38 @@ JSON HTTPServer::generate_all_json() const {
   });
 }
 
+JSON HTTPServer::generate_ep3_cards_json(bool trial) const {
+  const auto& index = trial ? this->state->ep3_card_index_trial : this->state->ep3_card_index;
+  return index->definitions_json();
+}
+
+JSON HTTPServer::generate_rare_tables_json() const {
+  JSON ret = JSON::list();
+  for (const auto& it : this->state->rare_item_sets) {
+    ret.emplace_back(it.first);
+  }
+  return ret;
+}
+
+JSON HTTPServer::generate_rare_table_json(const std::string& table_name) const {
+  try {
+    const auto& table = this->state->rare_item_sets.at(table_name);
+    shared_ptr<const ItemNameIndex> name_index;
+    if (ends_with(table_name, "-v1")) {
+      name_index = this->state->item_name_index(Version::DC_V1);
+    } else if (ends_with(table_name, "-v2")) {
+      name_index = this->state->item_name_index(Version::PC_V2);
+    } else if (ends_with(table_name, "-v3")) {
+      name_index = this->state->item_name_index(Version::GC_V3);
+    } else if (ends_with(table_name, "-v4")) {
+      name_index = this->state->item_name_index(Version::BB_V4);
+    }
+    return table->json(name_index);
+  } catch (const out_of_range&) {
+    throw http_error(404, "table does not exist");
+  }
+}
+
 void HTTPServer::handle_request(struct evhttp_request* req) {
   JSON ret;
   uint32_t serialize_options = 0;
@@ -835,14 +867,29 @@ void HTTPServer::handle_request(struct evhttp_request* req) {
 
     if (uri == "/") {
       auto endpoints_json = JSON::list({
+          "/y/data/ep3-cards",
+          "/y/data/ep3-cards-trial",
+          "/y/data/rare-tables",
+          "/y/data/config",
           "/y/clients",
           "/y/proxy-clients",
           "/y/lobbies",
+          "/y/server",
           "/y/summary",
           "/y/all",
       });
       ret = JSON::dict({{"endpoints", std::move(endpoints_json)}});
 
+    } else if (uri == "/y/data/ep3-cards") {
+      ret = this->generate_ep3_cards_json(false);
+    } else if (uri == "/y/data/ep3-cards-trial") {
+      ret = this->generate_ep3_cards_json(true);
+    } else if (uri == "/y/data/rare-tables") {
+      ret = this->generate_rare_tables_json();
+    } else if (!strncmp(uri.c_str(), "/y/data/rare-tables/", 20)) {
+      ret = this->generate_rare_table_json(uri.substr(20));
+    } else if (uri == "/y/data/config") {
+      ret = this->state->config_json;
     } else if (uri == "/y/clients") {
       ret = this->generate_game_server_clients_json();
     } else if (uri == "/y/proxy-clients") {
