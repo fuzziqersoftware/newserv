@@ -9,22 +9,59 @@ reloc0:
   .offsetof start
 start:
   .include  WriteCodeBlocksXB
-  .binary   000D1BD5 00000001 00
-  .binary   000D1C4C 00000002 EB08
-  .binary   0020E895 00000001 EB
-  .binary   00211ABA 00000002 EB74
-  .binary   002292E5 00000002 9090
-  .binary   00229367 00000002 EB08
-  .binary   0022A352 00000002 9090
-  .binary   0022A3CB 00000002 EB08
-  .binary   0022C065 00000001 00
-  .binary   0022C09E 00000002 EB08
-  .binary   0022C416 00000001 00
-  .binary   00241B08 00000001 00
-  .binary   00241B7C 00000002 EB08
-  .binary   002A2BF4 00000001 00
-  .binary   002A2C6C 00000002 EB08
-  .binary   002D6D0A 00000001 00
-  .binary   002D6D7D 00000002 EB08
-  .binary   002F103E 00000001 EB
-  .binary   00000000 00000000
+  .data     0x000D1BD5
+  .data     0x00000001
+  .binary   00
+  .data     0x000D1C4C
+  .data     0x00000002
+  .binary   EB08
+  .data     0x0020E895
+  .data     0x00000001
+  .binary   EB
+  .data     0x00211ABA
+  .data     0x00000002
+  .binary   EB74
+  .data     0x002292E5
+  .data     0x00000002
+  .binary   9090
+  .data     0x00229367
+  .data     0x00000002
+  .binary   EB08
+  .data     0x0022A352
+  .data     0x00000002
+  .binary   9090
+  .data     0x0022A3CB
+  .data     0x00000002
+  .binary   EB08
+  .data     0x0022C065
+  .data     0x00000001
+  .binary   00
+  .data     0x0022C09E
+  .data     0x00000002
+  .binary   EB08
+  .data     0x0022C416
+  .data     0x00000001
+  .binary   00
+  .data     0x00241B08
+  .data     0x00000001
+  .binary   00
+  .data     0x00241B7C
+  .data     0x00000002
+  .binary   EB08
+  .data     0x002A2BF4
+  .data     0x00000001
+  .binary   00
+  .data     0x002A2C6C
+  .data     0x00000002
+  .binary   EB08
+  .data     0x002D6D0A
+  .data     0x00000001
+  .binary   00
+  .data     0x002D6D7D
+  .data     0x00000002
+  .binary   EB08
+  .data     0x002F103E
+  .data     0x00000001
+  .binary   EB
+  .data     0x00000000
+  .data     0x00000000
