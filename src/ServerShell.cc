@@ -52,7 +52,7 @@ struct CommandDefinition {
     if (!def) {
       fprintf(stderr, "FAILED: no such command; try 'help'\n");
     } else if (def->run_on_event_thread) {
-      args.s->forward_to_event_thread([def, args]() {
+      args.s->call_on_event_thread<void>([def, args]() {
         CommandArgs local_args = args;
         try {
           def->run(local_args);
@@ -282,6 +282,8 @@ CommandDefinition c_add_license(
       xb-user-id=<user-id> (Xbox user ID)\n\
       xb-account-id=<account-id> (Xbox account ID)\n\
       gc-password=<password> (GC password)\n\
+      dc-nte-serial-number=<serial-number> (DC NTE serial number)\n\
+      dc-nte-access-key=<access-key> (DC NTE access key)\n\
       access-key=<access-key> (DC/GC/PC access key)\n\
       serial=<serial-number> (decimal serial number; required for all licenses)\n\
       flags=<privilege-mask> (see below)\n\
@@ -318,6 +320,10 @@ CommandDefinition c_add_license(
           l->xb_account_id = stoull(token.substr(14), nullptr, 16);
         } else if (starts_with(token, "gc-password=")) {
           l->gc_password = token.substr(12);
+        } else if (starts_with(token, "dc-nte-serial-number=")) {
+          l->dc_nte_serial_number = token.substr(21);
+        } else if (starts_with(token, "dc-nte-access-key=")) {
+          l->dc_nte_access_key = token.substr(18);
         } else if (starts_with(token, "access-key=")) {
           l->access_key = token.substr(11);
         } else if (starts_with(token, "serial=")) {
@@ -383,6 +389,10 @@ CommandDefinition c_update_license(
             l->xb_account_id = stoull(token.substr(14), nullptr, 16);
           } else if (starts_with(token, "gc-password=")) {
             l->gc_password = token.substr(12);
+          } else if (starts_with(token, "dc-nte-serial-number=")) {
+            l->dc_nte_serial_number = token.substr(21);
+          } else if (starts_with(token, "dc-nte-access-key=")) {
+            l->dc_nte_access_key = token.substr(18);
           } else if (starts_with(token, "access-key=")) {
             l->access_key = token.substr(11);
           } else if (starts_with(token, "serial=")) {

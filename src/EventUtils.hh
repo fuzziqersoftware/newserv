@@ -33,3 +33,6 @@ T call_on_event_thread(std::shared_ptr<struct event_base> base, std::function<T(
   }
   return ret.value();
 }
+
+template <>
+void call_on_event_thread<void>(std::shared_ptr<struct event_base> base, std::function<void()>&& compute);

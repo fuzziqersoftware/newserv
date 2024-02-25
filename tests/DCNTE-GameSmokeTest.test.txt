@@ -18,9 +18,9 @@ I 91446 2023-12-31 21:04:43 - [Commands] Sending to C-1 (version=DC_NTE command=
 00E0 | 65 20 77 69 74 68 20 70 72 6F 67 72 61 6D 73 20 | e with programs
 00F0 | 74 68 61 74 20 65 78 70 65 63 74 20 69 74 2E 00 | that expect it.
 I 91446 2023-12-31 21:04:43 - [Commands] Received from C-1 (version=DC_NTE command=88 flag=00)
-0000 | 88 00 26 00 35 35 35 35 35 35 35 35 00 00 00 00 |   & 55555555
-0010 | 00 00 00 00 00 38 38 38 38 38 38 38 38 00 00 00 |      88888888
-0020 | 00 00 00 00 00 00                               |
+0000 | 88 00 26 00 35 35 35 35 35 35 35 35 35 35 35 35 |   & 555555555555
+0010 | 35 35 35 35 00 38 38 38 38 38 38 38 38 38 38 38 | 5555 88888888888
+0020 | 38 38 38 38 38 00                               | 88888
 I 91446 2023-12-31 21:04:43 - [C-1] Game version changed to DC_NTE
 I 91446 2023-12-31 21:04:43 - [C-1] Created license [License: serial_number=1431655765/55555555, access_key=88888888, flags=00000000]
 I 91446 2023-12-31 21:04:43 - [Commands] Sending to C-1 (version=DC_NTE command=88 flag=00)
@@ -43,8 +43,8 @@ I 91446 2023-12-31 21:04:44 - [Commands] Sending to C-1 (version=DC_V1 command=8
 I 91446 2023-12-31 21:04:44 - [Commands] Received from C-1 (version=DC_V1 command=8B flag=00)
 0000 | 8B 00 14 01 00 00 FF FF FF FF 00 00 00 00 13 2B |                +
 0010 | 64 B2 2C B2 20 00 00 00 00 00 00 00 35 35 35 35 | d ,         5555
-0020 | 35 35 35 35 00 00 00 00 00 00 00 00 00 38 38 38 | 5555         888
-0030 | 38 38 38 38 38 00 00 00 00 00 00 00 00 00 66 6C | 88888         fl
+0020 | 35 35 35 35 35 35 35 35 35 35 35 35 00 38 38 38 | 555555555555 888
+0030 | 38 38 38 38 38 38 38 38 38 38 38 38 38 00 66 6C | 8888888888888 fl
 0040 | 79 63 61 73 74 31 00 00 00 00 00 00 00 00 00 00 | ycast1
 0050 | 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 |
 0060 | 00 00 00 00 00 00 00 00 00 00 00 00 00 00 70 61 |               pa
@@ -61,7 +61,7 @@ I 91446 2023-12-31 21:04:44 - [Commands] Received from C-1 (version=DC_V1 comman
 0110 | 00 00 00 00                                     |
 I 91446 2023-12-31 21:04:44 - [C-1] Game version changed to DC_NTE
 I 91446 2023-12-31 21:04:44 - [Commands] Sending to C-1 (version=DC_NTE command=04 flag=00)
-0000 | 04 00 0C 00 00 00 01 00 55 55 55 55             |         UUUU
+0000 | 04 00 0C 00 00 00 01 00 F5 5D C2 1A             |         UUUU
 I 91446 2023-12-31 21:04:44 - [C-1] Client is a prototype version and the license was created during this session; converting permanent license to temporary license
 I 91446 2023-12-31 21:04:44 - [Commands] Sending to C-1 (version=DC_NTE command=07 flag=02)
 0000 | 07 02 58 00 11 00 00 11 FF FF FF FF 04 00 41 6C |   X           Al
@@ -96,10 +96,10 @@ I 91446 2023-12-31 21:04:56 - [Commands] Sending to C-2 (version=DC_NTE command=
 00E0 | 65 20 77 69 74 68 20 70 72 6F 67 72 61 6D 73 20 | e with programs
 00F0 | 74 68 61 74 20 65 78 70 65 63 74 20 69 74 2E 00 | that expect it.
 I 91446 2023-12-31 21:04:56 - [Commands] Received from C-2 (version=DC_NTE command=8B flag=00)
-0000 | 8B 00 B0 00 00 00 01 00 55 55 55 55 00 00 13 2B |         UUUU   +
+0000 | 8B 00 B0 00 00 00 01 00 F5 5D C2 1A 00 00 13 2B |         UUUU   +
 0010 | 64 B2 2C B2 20 00 00 00 00 00 00 00 35 35 35 35 | d ,         5555
-0020 | 35 35 35 35 00 00 00 00 00 00 00 00 00 38 38 38 | 5555         888
-0030 | 38 38 38 38 38 00 00 00 00 00 00 00 00 00 66 6C | 88888         fl
+0020 | 35 35 35 35 35 35 35 35 35 35 35 35 00 38 38 38 | 555555555555 888
+0030 | 38 38 38 38 38 38 38 38 38 38 38 38 38 00 66 6C | 8888888888888 fl
 0040 | 79 63 61 73 74 31 00 00 00 00 00 00 00 00 00 00 | ycast1
 0050 | 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 |
 0060 | 00 00 00 00 00 00 00 00 00 00 00 00 00 00 70 61 |               pa
@@ -110,7 +110,7 @@ I 91446 2023-12-31 21:04:56 - [Commands] Received from C-2 (version=DC_NTE comma
 I 91446 2023-12-31 21:04:56 - [C-2] Game version changed to DC_NTE
 I 91446 2023-12-31 21:04:56 - [C-2] Created license [License: serial_number=1431655765/55555555, access_key=88888888, flags=00000000]
 I 91446 2023-12-31 21:04:56 - [Commands] Sending to C-2 (version=DC_NTE command=04 flag=00)
-0000 | 04 00 0C 00 00 00 01 00 55 55 55 55             |         UUUU
+0000 | 04 00 0C 00 00 00 01 00 F5 5D C2 1A             |         UUUU
 I 91446 2023-12-31 21:04:56 - [C-2] Client is a prototype version and the license was created during this session; converting permanent license to temporary license
 I 91446 2023-12-31 21:04:56 - [Commands] Sending to C-2 (version=DC_NTE command=83 flag=0A)
 0000 | 83 0A 7C 00 33 00 00 33 01 00 00 00 00 00 00 00 |   | 3  3
@@ -205,7 +205,7 @@ I 91446 2023-12-31 21:04:57 - [C-2] Assigned inventory item IDs
 [PlayerInventory]    9: [+00000010] 03020000 03010000 00000000 (10010009) 00000000 (Disk:Barta Lv.1)
 I 91446 2023-12-31 21:04:57 - [C-2] Bank is empty
 I 91446 2023-12-31 21:04:57 - [Commands] Sending to C-2 (ABCDEFGHIJKL) (version=DC_NTE command=67 flag=01)
-0000 | 67 01 44 04 00 00 01 00 00 00 01 00 55 55 55 55 | g D         UUUU
+0000 | 67 01 44 04 00 00 01 00 00 00 01 00 F5 5D C2 1A | g D         UUUU
 0010 | 7F 00 00 01 00 00 00 00 41 42 43 44 45 46 47 48 |         ABCDEFGH
 0020 | 49 4A 4B 4C 00 00 00 00 0A 00 00 00 01 00 00 00 | IJKL
 0030 | 04 00 00 00 00 06 00 00 00 00 00 00 00 00 00 00 |
@@ -317,7 +317,7 @@ I 91446 2023-12-31 21:05:17 - [Commands] Received from C-2 (ABCDEFGHIJKL) (versi
 0000 | 06 00 14 00 00 00 00 00 00 00 00 00 6F 6D 67 20 |             omg
 0010 | 68 34 78 00                                     | h4x
 I 91446 2023-12-31 21:05:17 - [Commands] Sending to C-2 (ABCDEFGHIJKL) (version=DC_NTE command=06 flag=00)
-0000 | 06 00 24 00 00 00 00 00 55 55 55 55 41 42 43 44 |   $     UUUUABCD
+0000 | 06 00 24 00 00 00 00 00 F5 5D C2 1A 41 42 43 44 |   $     UUUUABCD
 0010 | 45 46 47 48 49 4A 4B 4C 3E 30 6F 6D 67 20 68 34 | EFGHIJKL>0omg h4
 0020 | 78 00 00 00                                     | x
 I 91446 2023-12-31 21:05:17 - [Commands] Received from C-2 (ABCDEFGHIJKL) (version=DC_NTE command=60 flag=00)
@@ -456,9 +456,9 @@ I 91446 2023-12-31 21:05:43 - [Commands] Sending to C-3 (version=DC_NTE command=
 00E0 | 65 20 77 69 74 68 20 70 72 6F 67 72 61 6D 73 20 | e with programs
 00F0 | 74 68 61 74 20 65 78 70 65 63 74 20 69 74 2E 00 | that expect it.
 I 91446 2023-12-31 21:05:43 - [Commands] Received from C-3 (version=DC_NTE command=88 flag=00)
-0000 | 88 00 26 00 39 39 39 39 39 39 39 39 00 00 00 00 |   & 99999999
-0010 | 00 00 00 00 00 39 39 39 39 39 39 39 39 00 00 00 |      99999999
-0020 | 00 00 00 00 00 00                               |
+0000 | 88 00 26 00 39 39 39 39 39 39 39 39 39 39 39 39 |   & 999999999999
+0010 | 39 39 39 39 00 39 39 39 39 39 39 39 39 39 39 39 | 9999 99999999999
+0020 | 39 39 39 39 39 00                               | 99999
 I 91446 2023-12-31 21:05:43 - [C-3] Game version changed to DC_NTE
 I 91446 2023-12-31 21:05:43 - [C-3] Created license [License: serial_number=2576980377/99999999, access_key=99999999, flags=00000000]
 I 91446 2023-12-31 21:05:43 - [Commands] Sending to C-3 (version=DC_NTE command=88 flag=00)
@@ -495,7 +495,7 @@ I 91446 2023-12-31 21:05:43 - [C-2] Assigned inventory item IDs
 [PlayerInventory]    9: [+00000010] 03020000 03010000 00000000 (10010009) 00000000 (Disk:Barta Lv.1)
 I 91446 2023-12-31 21:05:43 - [C-2] Bank is empty
 I 91446 2023-12-31 21:05:43 - [Commands] Sending to C-2 (ABCDEFGHIJKL) (version=DC_NTE command=67 flag=01)
-0000 | 67 01 44 04 00 00 01 00 00 00 01 00 55 55 55 55 | g D         UUUU
+0000 | 67 01 44 04 00 00 01 00 00 00 01 00 F5 5D C2 1A | g D         UUUU
 0010 | 7F 00 00 01 00 00 00 00 41 42 43 44 45 46 47 48 |         ABCDEFGH
 0020 | 49 4A 4B 4C 00 00 00 00 0A 00 00 00 01 00 00 00 | IJKL
 0030 | 04 00 00 00 00 06 00 00 00 00 00 00 00 00 00 00 |
@@ -567,8 +567,8 @@ I 91446 2023-12-31 21:05:43 - [Commands] Sending to C-2 (ABCDEFGHIJKL) (version=
 I 91446 2023-12-31 21:05:43 - [Commands] Received from C-3 (version=DC_V1 command=8B flag=00)
 0000 | 8B 00 14 01 00 00 FF FF FF FF 00 00 00 00 B7 57 |                W
 0010 | 02 41 B9 22 20 00 00 00 00 00 00 00 39 39 39 39 |  A "        9999
-0020 | 39 39 39 39 00 00 00 00 00 00 00 00 00 39 39 39 | 9999         999
-0030 | 39 39 39 39 39 00 00 00 00 00 00 00 00 00 66 6C | 99999         fl
+0020 | 39 39 39 39 39 39 39 39 39 39 39 39 00 39 39 39 | 999999999999 999
+0030 | 39 39 39 39 39 39 39 39 39 39 39 39 39 00 66 6C | 9999999999999 fl
 0040 | 79 63 61 73 74 31 00 00 00 00 00 00 00 00 00 00 | ycast1
 0050 | 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 |
 0060 | 00 00 00 00 00 00 00 00 00 00 00 00 00 00 70 61 |               pa
@@ -585,7 +585,7 @@ I 91446 2023-12-31 21:05:43 - [Commands] Received from C-3 (version=DC_V1 comman
 0110 | 00 00 00 00                                     |
 I 91446 2023-12-31 21:05:43 - [C-3] Game version changed to DC_NTE
 I 91446 2023-12-31 21:05:43 - [Commands] Sending to C-3 (version=DC_NTE command=04 flag=00)
-0000 | 04 00 0C 00 00 00 01 00 99 99 99 99             |
+0000 | 04 00 0C 00 00 00 01 00 F5 79 DE 25             |
 I 91446 2023-12-31 21:05:43 - [C-3] Client is a prototype version and the license was created during this session; converting permanent license to temporary license
 I 91446 2023-12-31 21:05:43 - [Commands] Sending to C-3 (version=DC_NTE command=07 flag=02)
 0000 | 07 02 58 00 11 00 00 11 FF FF FF FF 04 00 41 6C |   X           Al
@@ -629,10 +629,10 @@ I 91446 2023-12-31 21:05:45 - [Commands] Sending to C-4 (version=DC_NTE command=
 00E0 | 65 20 77 69 74 68 20 70 72 6F 67 72 61 6D 73 20 | e with programs
 00F0 | 74 68 61 74 20 65 78 70 65 63 74 20 69 74 2E 00 | that expect it.
 I 91446 2023-12-31 21:05:45 - [Commands] Received from C-4 (version=DC_NTE command=8B flag=00)
-0000 | 8B 00 B0 00 00 00 01 00 99 99 99 99 00 00 B7 57 |                W
+0000 | 8B 00 B0 00 00 00 01 00 F5 79 DE 25 00 00 B7 57 |                W
 0010 | 02 41 B9 22 20 00 00 00 00 00 00 00 39 39 39 39 |  A "        9999
-0020 | 39 39 39 39 00 00 00 00 00 00 00 00 00 39 39 39 | 9999         999
-0030 | 39 39 39 39 39 00 00 00 00 00 00 00 00 00 66 6C | 99999         fl
+0020 | 39 39 39 39 39 39 39 39 39 39 39 39 00 39 39 39 | 999999999999 999
+0030 | 39 39 39 39 39 39 39 39 39 39 39 39 39 00 66 6C | 9999999999999 fl
 0040 | 79 63 61 73 74 31 00 00 00 00 00 00 00 00 00 00 | ycast1
 0050 | 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 |
 0060 | 00 00 00 00 00 00 00 00 00 00 00 00 00 00 70 61 |               pa
@@ -643,7 +643,7 @@ I 91446 2023-12-31 21:05:45 - [Commands] Received from C-4 (version=DC_NTE comma
 I 91446 2023-12-31 21:05:45 - [C-4] Game version changed to DC_NTE
 I 91446 2023-12-31 21:05:45 - [C-4] Created license [License: serial_number=2576980377/99999999, access_key=99999999, flags=00000000]
 I 91446 2023-12-31 21:05:45 - [Commands] Sending to C-4 (version=DC_NTE command=04 flag=00)
-0000 | 04 00 0C 00 00 00 01 00 99 99 99 99             |
+0000 | 04 00 0C 00 00 00 01 00 F5 79 DE 25             |
 I 91446 2023-12-31 21:05:45 - [C-4] Client is a prototype version and the license was created during this session; converting permanent license to temporary license
 I 91446 2023-12-31 21:05:45 - [Commands] Sending to C-4 (version=DC_NTE command=83 flag=0A)
 0000 | 83 0A 7C 00 33 00 00 33 01 00 00 00 00 00 00 00 |   | 3  3
@@ -732,7 +732,7 @@ I 91446 2023-12-31 21:05:45 - [C-4] Assigned inventory item IDs
 [PlayerInventory]    3: [+00000004] 01020100 00000000 00000000 (10010003) 00000000 (Shield)
 I 91446 2023-12-31 21:05:45 - [C-4] Bank is empty
 I 91446 2023-12-31 21:05:45 - [Commands] Sending to C-4 (BBBBBBBBBBBB) (version=DC_NTE command=67 flag=01)
-0000 | 67 01 44 04 00 00 01 00 00 00 01 00 99 99 99 99 | g D
+0000 | 67 01 44 04 00 00 01 00 00 00 01 00 F5 79 DE 25 | g D
 0010 | 7F 00 00 01 00 00 00 00 42 42 42 42 42 42 42 42 |         BBBBBBBB
 0020 | 42 42 42 42 00 00 00 00 04 00 00 00 01 00 00 00 | BBBB
 0030 | 10 00 00 00 03 00 00 00 00 02 00 00 00 00 00 00 |
@@ -872,7 +872,7 @@ I 91446 2023-12-31 21:05:56 - [C-2] Assigned inventory item IDs
 [PlayerInventory]    9: [+00000010] 03020000 03010000 00000000 (10210009) 00000000 (Disk:Barta Lv.1)
 I 91446 2023-12-31 21:05:56 - [C-2] Bank is empty
 I 91446 2023-12-31 21:05:56 - [Commands] Sending to C-4 (BBBBBBBBBBBB) (version=DC_NTE command=68 flag=01)
-0000 | 68 01 44 04 00 00 01 00 00 00 01 00 55 55 55 55 | h D         UUUU
+0000 | 68 01 44 04 00 00 01 00 00 00 01 00 F5 5D C2 1A | h D         UUUU
 0010 | 7F 00 00 01 01 00 00 00 41 42 43 44 45 46 47 48 |         ABCDEFGH
 0020 | 49 4A 4B 4C 00 00 00 00 0A 00 00 00 01 00 00 00 | IJKL
 0030 | 04 00 00 00 00 06 00 00 00 00 00 00 00 00 00 00 |
@@ -942,7 +942,7 @@ I 91446 2023-12-31 21:05:56 - [Commands] Sending to C-4 (BBBBBBBBBBBB) (version=
 0430 | FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF |
 0440 | FF FF FF 00                                     |
 I 91446 2023-12-31 21:05:56 - [Commands] Sending to C-2 (ABCDEFGHIJKL) (version=DC_NTE command=67 flag=02)
-0000 | 67 02 80 08 01 00 01 00 00 00 01 00 99 99 99 99 | g
+0000 | 67 02 80 08 01 00 01 00 00 00 01 00 F5 79 DE 25 | g
 0010 | 7F 00 00 01 00 00 00 00 42 42 42 42 42 42 42 42 |         BBBBBBBB
 0020 | 42 42 42 42 00 00 00 00 04 00 00 00 01 00 00 00 | BBBB
 0030 | 10 00 00 00 03 00 00 00 00 02 00 00 00 00 00 00 |
@@ -1010,7 +1010,7 @@ I 91446 2023-12-31 21:05:56 - [Commands] Sending to C-2 (ABCDEFGHIJKL) (version=
 0410 | 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 |
 0420 | 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 |
 0430 | FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF |
-0440 | FF FF FF 00 00 00 01 00 55 55 55 55 7F 00 00 01 |         UUUU
+0440 | FF FF FF 00 00 00 01 00 F5 5D C2 1A 7F 00 00 01 |         UUUU
 0450 | 01 00 00 00 41 42 43 44 45 46 47 48 49 4A 4B 4C |     ABCDEFGHIJKL
 0460 | 00 00 00 00 0A 00 00 00 01 00 00 00 04 00 00 00 |
 0470 | 00 06 00 00 00 00 00 00 00 00 00 00 00 00 21 10 |               !
@@ -1205,7 +1205,7 @@ I 91446 2023-12-31 21:06:24 - [Commands] Sending to C-2 (ABCDEFGHIJKL) (version=
 0050 | 00 00 00 00 01 00 00 00 01 00 00 00 00 00 00 00 |
 0060 | 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 |
 0070 | 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 |
-0080 | 00 00 00 00 00 00 00 00 00 00 01 00 55 55 55 55 |             UUUU
+0080 | 00 00 00 00 00 00 00 00 00 00 01 00 F5 5D C2 1A |             UUUU
 0090 | 7F 00 00 01 00 00 00 00 41 42 43 44 45 46 47 48 |         ABCDEFGH
 00A0 | 49 4A 4B 4C 00 00 00 00 00 00 00 00 00 00 00 00 | IJKL
 00B0 | 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 |
@@ -1296,7 +1296,7 @@ I 91446 2023-12-31 21:06:44 - [C-4] Assigned inventory item IDs but did not mark
 [PlayerInventory]    3: [+00000004] 01020100 00000000 00000000 (00210003) 00000000 (Shield)
 I 91446 2023-12-31 21:06:44 - [C-4] Bank is empty
 I 91446 2023-12-31 21:06:44 - [Commands] Sending to C-2 (ABCDEFGHIJKL) (version=DC_NTE command=65 flag=01)
-0000 | 65 01 44 04 00 00 01 00 00 00 01 00 99 99 99 99 | e D
+0000 | 65 01 44 04 00 00 01 00 00 00 01 00 F5 79 DE 25 | e D
 0010 | 7F 00 00 01 01 00 00 00 42 42 42 42 42 42 42 42 |         BBBBBBBB
 0020 | 42 42 42 42 00 00 00 00 04 00 00 00 01 00 00 00 | BBBB
 0030 | 10 00 00 00 03 00 00 00 00 02 00 00 00 00 00 00 |
@@ -1374,9 +1374,9 @@ I 91446 2023-12-31 21:06:44 - [Commands] Sending to C-4 (BBBBBBBBBBBB) (version=
 0050 | 00 00 00 00 01 00 00 00 01 00 00 00 00 00 00 00 |
 0060 | 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 |
 0070 | 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 |
-0080 | 00 00 00 00 00 00 00 00 00 00 01 00 55 55 55 55 |             UUUU
+0080 | 00 00 00 00 00 00 00 00 00 00 01 00 F5 5D C2 1A |             UUUU
 0090 | 7F 00 00 01 00 00 00 00 41 42 43 44 45 46 47 48 |         ABCDEFGH
-00A0 | 49 4A 4B 4C 00 00 00 00 00 00 01 00 99 99 99 99 | IJKL
+00A0 | 49 4A 4B 4C 00 00 00 00 00 00 01 00 F5 79 DE 25 | IJKL
 00B0 | 7F 00 00 01 01 00 00 00 42 42 42 42 42 42 42 42 |         BBBBBBBB
 00C0 | 42 42 42 42 00 00 00 00 00 00 00 00 00 00 00 00 | BBBB
 00D0 | 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 |

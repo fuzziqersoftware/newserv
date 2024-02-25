@@ -19,6 +19,8 @@ License::License(const JSON& json)
       bb_team_id(0) {
   this->serial_number = json.get_int("SerialNumber");
   this->access_key = json.get_string("AccessKey", "");
+  this->dc_nte_serial_number = json.get_string("DCNTESerialNumber", "");
+  this->dc_nte_access_key = json.get_string("DCNTEAccessKey", "");
   this->gc_password = json.get_string("GCPassword", "");
   this->xb_gamertag = json.get_string("XBGamerTag", "");
   this->xb_user_id = json.get_int("XBUserID", 0);
@@ -38,6 +40,8 @@ JSON License::json() const {
   return JSON::dict({
       {"SerialNumber", this->serial_number},
       {"AccessKey", this->access_key},
+      {"DCNTESerialNumber", this->dc_nte_serial_number},
+      {"DCNTEAccessKey", this->dc_nte_access_key},
       {"GCPassword", this->gc_password},
       {"XBGamerTag", this->xb_gamertag},
       {"XBUserID", this->xb_user_id},
@@ -62,6 +66,12 @@ string License::str() const {
   tokens.emplace_back(string_printf("serial_number=%010" PRIu32 "/%08" PRIX32, this->serial_number, this->serial_number));
   if (!this->access_key.empty()) {
     tokens.emplace_back("access_key=" + this->access_key);
+  }
+  if (!this->dc_nte_serial_number.empty()) {
+    tokens.emplace_back("dc_nte_serial_number=" + this->dc_nte_serial_number);
+  }
+  if (!this->dc_nte_access_key.empty()) {
+    tokens.emplace_back("dc_nte_access_key=" + this->dc_nte_access_key);
   }
   if (!this->gc_password.empty()) {
     tokens.emplace_back("gc_password=" + this->gc_password);
@@ -147,22 +157,46 @@ vector<shared_ptr<License>> LicenseIndex::all() const {
 
 void LicenseIndex::add(shared_ptr<License> l) {
   this->serial_number_to_license[l->serial_number] = l;
-  if (!l->bb_username.empty()) {
-    this->bb_username_to_license[l->bb_username] = l;
+  if (!l->dc_nte_serial_number.empty()) {
+    this->dc_nte_serial_number_to_license[l->dc_nte_serial_number] = l;
   }
   if (!l->xb_gamertag.empty()) {
     this->xb_gamertag_to_license[l->xb_gamertag] = l;
+  }
+  if (!l->bb_username.empty()) {
+    this->bb_username_to_license[l->bb_username] = l;
   }
 }
 
 void LicenseIndex::remove(uint32_t serial_number) {
   auto l = this->serial_number_to_license.at(serial_number);
   this->serial_number_to_license.erase(l->serial_number);
-  if (!l->bb_username.empty()) {
-    this->bb_username_to_license.erase(l->bb_username);
+  if (!l->dc_nte_serial_number.empty()) {
+    this->dc_nte_serial_number_to_license.erase(l->dc_nte_serial_number);
   }
   if (!l->xb_gamertag.empty()) {
     this->xb_gamertag_to_license.erase(l->xb_gamertag);
+  }
+  if (!l->bb_username.empty()) {
+    this->bb_username_to_license.erase(l->bb_username);
+  }
+}
+
+shared_ptr<License> LicenseIndex::verify_dc_nte(const string& serial_number, const string& access_key) const {
+  if (serial_number.empty()) {
+    throw no_username();
+  }
+  try {
+    auto& license = this->dc_nte_serial_number_to_license.at(serial_number);
+    if (license->ban_end_time && (license->ban_end_time >= now())) {
+      throw invalid_argument("user is banned");
+    }
+    if (license->dc_nte_access_key != access_key) {
+      throw incorrect_access_key();
+    }
+    return license;
+  } catch (const out_of_range&) {
+    throw missing_license();
   }
 }
 

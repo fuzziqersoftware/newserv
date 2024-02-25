@@ -35,6 +35,8 @@ public:
   };
 
   uint32_t serial_number = 0;
+  std::string dc_nte_serial_number;
+  std::string dc_nte_access_key;
   std::string access_key;
   std::string gc_password;
   std::string xb_gamertag;
@@ -123,6 +125,7 @@ public:
   void add(std::shared_ptr<License> l);
   void remove(uint32_t serial_number);
 
+  std::shared_ptr<License> verify_dc_nte(const std::string& serial_number, const std::string& access_key) const;
   std::shared_ptr<License> verify_v1_v2(
       uint32_t serial_number,
       const std::string& access_key,
@@ -140,8 +143,9 @@ public:
   std::shared_ptr<License> verify_bb(const std::string& username, const std::string& password) const;
 
 protected:
-  std::unordered_map<std::string, std::shared_ptr<License>> bb_username_to_license;
+  std::unordered_map<std::string, std::shared_ptr<License>> dc_nte_serial_number_to_license;
   std::unordered_map<std::string, std::shared_ptr<License>> xb_gamertag_to_license;
+  std::unordered_map<std::string, std::shared_ptr<License>> bb_username_to_license;
   std::unordered_map<uint32_t, std::shared_ptr<License>> serial_number_to_license;
 
   std::shared_ptr<License> create_temporary_license_for_shared_license(
