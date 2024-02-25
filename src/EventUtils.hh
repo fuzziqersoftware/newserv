@@ -2,6 +2,7 @@
 
 #include <event2/event.h>
 
+#include <condition_variable>
 #include <functional>
 #include <memory>
 #include <mutex>
