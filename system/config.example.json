@@ -156,6 +156,12 @@
   "IPStackListen": [],
   "PPPStackListen": [],
 
+  // Where to listen for PPP clients. This exists to interface with PSO GC
+  // clients running on a Wii with Devolution, which emulates the modem adapter.
+  // The PPP stream can be forwarded directly to newserv on any port specified
+  // here without using pppd or another PPP server.
+  "PPPRawListen": [],
+
   // Where to listen for HTTP connections. The HTTP server is intended as a
   // private interface to interact with newserv from e.g. an in-house Web portal
   // or Discord bot. It would be unwise to expose any of these ports to the
