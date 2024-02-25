@@ -66,7 +66,7 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   std::shared_ptr<struct event_base> base;
 
   std::string config_filename;
-  JSON config_json;
+  std::shared_ptr<const JSON> config_json;
   bool is_replay = false;
   bool one_time_config_loaded = false;
   bool default_lobbies_created = false;
@@ -285,7 +285,8 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   std::shared_ptr<const ItemParameterTable> item_parameter_table(Version version) const;
   std::shared_ptr<const ItemParameterTable> item_parameter_table_for_encode(Version version) const;
   std::shared_ptr<const ItemData::StackLimits> item_stack_limits(Version version) const;
-  std::shared_ptr<const ItemNameIndex> item_name_index(Version version) const;
+  std::shared_ptr<const ItemNameIndex> item_name_index_opt(Version version) const; // Returns null if missing
+  std::shared_ptr<const ItemNameIndex> item_name_index(Version version) const; // Throws if missing
   std::string describe_item(Version version, const ItemData& item, bool include_color_codes) const;
   ItemData parse_item_description(Version version, const std::string& description) const;
 

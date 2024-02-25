@@ -25,6 +25,9 @@ public:
   void listen(int port);
   void add_socket(int fd);
 
+  void schedule_stop();
+  void wait_for_stop();
+
 protected:
   class http_error : public std::runtime_error {
   public:
@@ -33,7 +36,11 @@ protected:
   };
 
   std::shared_ptr<ServerState> state;
+  std::shared_ptr<struct event_base> base;
   std::shared_ptr<struct evhttp> http;
+  std::thread th;
+
+  void thread_fn();
 
   static void dispatch_handle_request(struct evhttp_request* req, void* ctx);
   void handle_request(struct evhttp_request* req);
@@ -49,12 +56,12 @@ protected:
       const std::string& key,
       const std::string* _default = nullptr);
 
-  JSON generate_quest_json(std::shared_ptr<const Quest> q) const;
-  JSON generate_client_config_json(const Client::Config& config) const;
-  JSON generate_license_json(std::shared_ptr<const License> l) const;
-  JSON generate_game_client_json(std::shared_ptr<const Client> c) const;
-  JSON generate_proxy_client_json(std::shared_ptr<const ProxyServer::LinkedSession> ses) const;
-  JSON generate_lobby_json(std::shared_ptr<const Lobby> l) const;
+  static JSON generate_quest_json_st(std::shared_ptr<const Quest> q);
+  static JSON generate_client_config_json_st(const Client::Config& config);
+  static JSON generate_license_json_st(std::shared_ptr<const License> l);
+  static JSON generate_game_client_json_st(std::shared_ptr<const Client> c, std::shared_ptr<const ItemNameIndex> item_name_index);
+  static JSON generate_proxy_client_json_st(std::shared_ptr<const ProxyServer::LinkedSession> ses);
+  static JSON generate_lobby_json_st(std::shared_ptr<const Lobby> l, std::shared_ptr<const ItemNameIndex> item_name_index);
   JSON generate_game_server_clients_json() const;
   JSON generate_proxy_server_clients_json() const;
   JSON generate_server_info_json() const;

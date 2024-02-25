@@ -10,6 +10,7 @@
 #include <string>
 #include <vector>
 
+#include "EventUtils.hh"
 #include "Loggers.hh"
 #include "ProxyServer.hh"
 #include "Server.hh"
@@ -164,7 +165,9 @@ const string& HTTPServer::get_url_param(
 
 HTTPServer::HTTPServer(shared_ptr<ServerState> state)
     : state(state),
-      http(evhttp_new(this->state->base.get()), evhttp_free) {
+      base(event_base_new(), event_base_free),
+      http(evhttp_new(this->base.get()), evhttp_free),
+      th(&HTTPServer::thread_fn, this) {
   evhttp_set_gencb(this->http.get(), this->dispatch_handle_request, this);
 }
 
@@ -193,11 +196,19 @@ void HTTPServer::add_socket(int fd) {
   evhttp_accept_socket(this->http.get(), fd);
 }
 
+void HTTPServer::schedule_stop() {
+  event_base_loopexit(this->base.get(), nullptr);
+}
+
+void HTTPServer::wait_for_stop() {
+  this->th.join();
+}
+
 void HTTPServer::dispatch_handle_request(struct evhttp_request* req, void* ctx) {
   reinterpret_cast<HTTPServer*>(ctx)->handle_request(req);
 }
 
-JSON HTTPServer::generate_quest_json(shared_ptr<const Quest> q) const {
+JSON HTTPServer::generate_quest_json_st(shared_ptr<const Quest> q) {
   if (!q) {
     return nullptr;
   }
@@ -215,7 +226,7 @@ JSON HTTPServer::generate_quest_json(shared_ptr<const Quest> q) const {
   });
 }
 
-JSON HTTPServer::generate_client_config_json(const Client::Config& config) const {
+JSON HTTPServer::generate_client_config_json_st(const Client::Config& config) {
   const char* drop_notifications_mode = "unknown";
   switch (config.get_drop_notification_mode()) {
     case Client::ItemDropNotificationMode::NOTHING:
@@ -255,7 +266,7 @@ JSON HTTPServer::generate_client_config_json(const Client::Config& config) const
   return ret;
 }
 
-JSON HTTPServer::generate_license_json(shared_ptr<const License> l) const {
+JSON HTTPServer::generate_license_json_st(shared_ptr<const License> l) {
   auto ret = JSON::dict({
       {"SerialNumber", l->serial_number},
       {"Flags", l->flags},
@@ -270,20 +281,20 @@ JSON HTTPServer::generate_license_json(shared_ptr<const License> l) const {
   return ret;
 };
 
-JSON HTTPServer::generate_game_client_json(shared_ptr<const Client> c) const {
+JSON HTTPServer::generate_game_client_json_st(shared_ptr<const Client> c, shared_ptr<const ItemNameIndex> item_name_index) {
   auto ret = JSON::dict({
       {"ID", c->id},
       {"RemoteAddress", render_sockaddr_storage(c->channel.remote_addr)},
       {"Version", name_for_enum(c->version())},
       {"SubVersion", c->sub_version},
-      {"Config", this->generate_client_config_json(c->config)},
+      {"Config", HTTPServer::generate_client_config_json_st(c->config)},
       {"Language", name_for_language_code(c->language())},
       {"LocationX", c->x},
       {"LocationZ", c->z},
       {"LocationFloor", c->floor},
       {"CanChat", c->can_chat},
   });
-  ret.emplace("license", c->license ? this->generate_license_json(c->license) : JSON(nullptr));
+  ret.emplace("license", c->license ? HTTPServer::generate_license_json_st(c->license) : JSON(nullptr));
   auto l = c->lobby.lock();
   if (l) {
     ret.emplace("LobbyID", l->lobby_id);
@@ -311,14 +322,14 @@ JSON HTTPServer::generate_game_client_json(shared_ptr<const Client> c) const {
       JSON items_json = JSON::list();
       for (size_t z = 0; z < p->inventory.num_items; z++) {
         const auto& item = p->inventory.items[z];
-        string description = this->state->describe_item(c->version(), item.data, false);
-        string data_str = item.data.hex();
         auto item_dict = JSON::dict({
             {"Flags", item.flags.load()},
-            {"Data", std::move(data_str)},
-            {"Description", std::move(description)},
+            {"Data", item.data.hex()},
             {"ItemID", item.data.id.load()},
         });
+        if (item_name_index) {
+          item_dict.emplace("Description", item_name_index->describe_item(item.data, false));
+        }
         items_json.emplace_back(std::move(item_dict));
       }
       ret.emplace("ATP", p->disp.stats.char_stats.atp.load());
@@ -419,7 +430,7 @@ JSON HTTPServer::generate_game_client_json(shared_ptr<const Client> c) const {
   return ret;
 }
 
-JSON HTTPServer::generate_proxy_client_json(shared_ptr<const ProxyServer::LinkedSession> ses) const {
+JSON HTTPServer::generate_proxy_client_json_st(shared_ptr<const ProxyServer::LinkedSession> ses) {
   struct LobbyPlayer {
     uint32_t guild_card_number = 0;
     uint64_t xb_user_id = 0;
@@ -459,7 +470,7 @@ JSON HTTPServer::generate_proxy_client_json(shared_ptr<const ProxyServer::Linked
       {"DCHardwareID", ses->hardware_id},
       {"RemoteGuildCardNumber", ses->remote_guild_card_number},
       {"RemoteClientConfigData", format_data_string(&ses->remote_client_config_data[0], ses->remote_client_config_data.size())},
-      {"Config", this->generate_client_config_json(ses->config)},
+      {"Config", HTTPServer::generate_client_config_json_st(ses->config)},
       {"Language", name_for_language_code(ses->language())},
       {"LobbyClientID", ses->lobby_client_id},
       {"LeaderClientID", ses->leader_client_id},
@@ -487,11 +498,11 @@ JSON HTTPServer::generate_proxy_client_json(shared_ptr<const ProxyServer::Linked
       ret.emplace("DropMode", "proxy");
       break;
   }
-  ret.emplace("License", ses->license ? this->generate_license_json(ses->license) : JSON(nullptr));
+  ret.emplace("License", ses->license ? HTTPServer::generate_license_json_st(ses->license) : JSON(nullptr));
   return ret;
 }
 
-JSON HTTPServer::generate_lobby_json(shared_ptr<const Lobby> l) const {
+JSON HTTPServer::generate_lobby_json_st(shared_ptr<const Lobby> l, shared_ptr<const ItemNameIndex> item_name_index) {
   std::array<std::shared_ptr<Client>, 12> clients;
 
   auto client_ids_json = JSON::list();
@@ -569,23 +580,23 @@ JSON HTTPServer::generate_lobby_json(shared_ptr<const Lobby> l) const {
       for (size_t floor = 0; floor < l->floor_item_managers.size(); floor++) {
         for (const auto& it : l->floor_item_managers[floor].items) {
           const auto& item = it.second;
-          string description = this->state->describe_item(l->base_version, item->data, false);
-          string data_str = item->data.hex();
           auto item_dict = JSON::dict({
               {"LocationFloor", floor},
               {"LocationX", item->x},
               {"LocationZ", item->z},
               {"DropNumber", item->drop_number},
               {"VisibilityFlags", item->visibility_flags},
-              {"Data", std::move(data_str)},
-              {"Description", std::move(description)},
+              {"Data", item->data.hex()},
               {"ItemID", item->data.id.load()},
           });
+          if (item_name_index) {
+            item_dict.emplace("Description", item_name_index->describe_item(item->data, false));
+          }
           floor_items_json.emplace_back(std::move(item_dict));
         }
       }
       ret.emplace("FloorItems", std::move(floor_items_json));
-      ret.emplace("Quest", this->generate_quest_json(l->quest));
+      ret.emplace("Quest", HTTPServer::generate_quest_json_st(l->quest));
 
     } else {
       ret.emplace("BattleInProgress", l->check_flag(Lobby::Flag::BATTLE_IN_PROGRESS));
@@ -691,119 +702,130 @@ JSON HTTPServer::generate_lobby_json(shared_ptr<const Lobby> l) const {
 }
 
 JSON HTTPServer::generate_game_server_clients_json() const {
-  JSON res = JSON::list();
-  for (const auto& it : this->state->channel_to_client) {
-    res.emplace_back(this->generate_game_client_json(it.second));
-  }
-  return res;
+  return call_on_event_thread<JSON>(this->state->base, [&]() {
+    auto res = JSON::list();
+    for (const auto& it : this->state->channel_to_client) {
+      res.emplace_back(this->generate_game_client_json_st(it.second, this->state->item_name_index_opt(it.second->version())));
+    }
+    return res;
+  });
 }
 
 JSON HTTPServer::generate_proxy_server_clients_json() const {
-  JSON res = JSON::list();
-  for (const auto& it : this->state->proxy_server->all_sessions()) {
-    res.emplace_back(this->generate_proxy_client_json(it.second));
-  }
-  return res;
+  return call_on_event_thread<JSON>(this->state->base, [&]() {
+    JSON res = JSON::list();
+    for (const auto& it : this->state->proxy_server->all_sessions()) {
+      res.emplace_back(this->generate_proxy_client_json_st(it.second));
+    }
+    return res;
+  });
 }
 
 JSON HTTPServer::generate_server_info_json() const {
-  size_t game_count = 0;
-  size_t lobby_count = 0;
-  for (const auto& it : this->state->id_to_lobby) {
-    if (it.second->is_game()) {
-      game_count++;
-    } else {
-      lobby_count++;
+  return call_on_event_thread<JSON>(this->state->base, [&]() {
+    size_t game_count = 0;
+    size_t lobby_count = 0;
+    for (const auto& it : this->state->id_to_lobby) {
+      if (it.second->is_game()) {
+        game_count++;
+      } else {
+        lobby_count++;
+      }
     }
-  }
-  uint64_t uptime_usecs = now() - this->state->creation_time;
-  return JSON::dict({
-      {"StartTimeUsecs", this->state->creation_time},
-      {"StartTime", format_time(this->state->creation_time)},
-      {"UptimeUsecs", uptime_usecs},
-      {"Uptime", format_duration(uptime_usecs)},
-      {"LobbyCount", lobby_count},
-      {"GameCount", game_count},
-      {"ClientCount", this->state->channel_to_client.size()},
-      {"ProxySessionCount", this->state->proxy_server->num_sessions()},
-      {"ServerName", this->state->name},
+    uint64_t uptime_usecs = now() - this->state->creation_time;
+    return JSON::dict({
+        {"StartTimeUsecs", this->state->creation_time},
+        {"StartTime", format_time(this->state->creation_time)},
+        {"UptimeUsecs", uptime_usecs},
+        {"Uptime", format_duration(uptime_usecs)},
+        {"LobbyCount", lobby_count},
+        {"GameCount", game_count},
+        {"ClientCount", this->state->channel_to_client.size()},
+        {"ProxySessionCount", this->state->proxy_server->num_sessions()},
+        {"ServerName", this->state->name},
+    });
   });
 }
 
 JSON HTTPServer::generate_lobbies_json() const {
-  JSON res = JSON::list();
-  for (const auto& it : this->state->id_to_lobby) {
-    res.emplace_back(this->generate_lobby_json(it.second));
-  }
-  return res;
+  return call_on_event_thread<JSON>(this->state->base, [&]() {
+    JSON res = JSON::list();
+    for (const auto& it : this->state->id_to_lobby) {
+      res.emplace_back(this->generate_lobby_json_st(it.second, this->state->item_name_index_opt(it.second->base_version)));
+    }
+    return res;
+  });
 }
 
 JSON HTTPServer::generate_summary_json() const {
-  auto clients_json = JSON::list();
-  for (const auto& it : this->state->channel_to_client) {
-    auto c = it.second;
-    auto p = c->character(false, false);
-    auto l = c->lobby.lock();
-    clients_json.emplace_back(JSON::dict({
-        {"ID", c->id},
-        {"SerialNumber", c->license ? c->license->serial_number : JSON(nullptr)},
-        {"Name", p ? p->disp.name.decode(it.second->language()) : JSON(nullptr)},
-        {"Version", name_for_enum(it.second->version())},
-        {"Language", name_for_language_code(it.second->language())},
-        {"Level", p ? p->disp.stats.level + 1 : JSON(nullptr)},
-        {"Class", p ? name_for_char_class(p->disp.visual.char_class) : JSON(nullptr)},
-        {"SectionID", p ? name_for_section_id(p->disp.visual.section_id) : JSON(nullptr)},
-        {"LobbyID", l ? l->lobby_id : JSON(nullptr)},
-    }));
-  }
-
-  auto proxy_clients_json = JSON::list();
-  for (const auto& it : this->state->proxy_server->all_sessions()) {
-    proxy_clients_json.emplace_back(JSON::dict({
-        {"SerialNumber", it.second->license ? it.second->license->serial_number : JSON(nullptr)},
-        {"Name", it.second->character_name},
-        {"Version", name_for_enum(it.second->version())},
-        {"Language", name_for_language_code(it.second->language())},
-    }));
-  }
-
-  auto games_json = JSON::list();
-  for (const auto& it : this->state->id_to_lobby) {
-    auto l = it.second;
-    if (l->is_game()) {
-      auto game_json = JSON::dict({
-          {"ID", l->lobby_id},
-          {"Name", l->name},
-          {"BaseVersion", name_for_enum(l->base_version)},
-          {"Players", l->count_clients()},
-          {"CheatsEnabled", l->check_flag(Lobby::Flag::CHEATS_ENABLED)},
-          {"Episode", name_for_episode(l->episode)},
-          {"HasPassword", !l->password.empty()},
-      });
-      if (l->episode == Episode::EP3) {
-        auto ep3s = l->ep3_server;
-        game_json.emplace("BattleInProgress", l->check_flag(Lobby::Flag::BATTLE_IN_PROGRESS));
-        game_json.emplace("IsSpectatorTeam", l->check_flag(Lobby::Flag::IS_SPECTATOR_TEAM));
-        game_json.emplace("MapNumber", (ep3s && ep3s->last_chosen_map) ? ep3s->last_chosen_map->map_number : JSON(nullptr));
-        game_json.emplace("Rules", (ep3s && ep3s->map_and_rules) ? ep3s->map_and_rules->rules.json() : nullptr);
-      } else {
-        game_json.emplace("QuestInProgress", l->check_flag(Lobby::Flag::QUEST_IN_PROGRESS));
-        game_json.emplace("JoinableQuestInProgress", l->check_flag(Lobby::Flag::JOINABLE_QUEST_IN_PROGRESS));
-        game_json.emplace("SectionID", name_for_section_id(l->section_id));
-        game_json.emplace("Mode", name_for_mode(l->mode));
-        game_json.emplace("Difficulty", name_for_difficulty(l->difficulty));
-        game_json.emplace("Quest", this->generate_quest_json(l->quest));
-      }
-      games_json.emplace_back(std::move(game_json));
+  auto ret = call_on_event_thread<JSON>(this->state->base, [&]() {
+    auto clients_json = JSON::list();
+    for (const auto& it : this->state->channel_to_client) {
+      auto c = it.second;
+      auto p = c->character(false, false);
+      auto l = c->lobby.lock();
+      clients_json.emplace_back(JSON::dict({
+          {"ID", c->id},
+          {"SerialNumber", c->license ? c->license->serial_number : JSON(nullptr)},
+          {"Name", p ? p->disp.name.decode(it.second->language()) : JSON(nullptr)},
+          {"Version", name_for_enum(it.second->version())},
+          {"Language", name_for_language_code(it.second->language())},
+          {"Level", p ? p->disp.stats.level + 1 : JSON(nullptr)},
+          {"Class", p ? name_for_char_class(p->disp.visual.char_class) : JSON(nullptr)},
+          {"SectionID", p ? name_for_section_id(p->disp.visual.section_id) : JSON(nullptr)},
+          {"LobbyID", l ? l->lobby_id : JSON(nullptr)},
+      }));
     }
-  }
 
-  return JSON::dict({
-      {"Clients", std::move(clients_json)},
-      {"ProxyClients", std::move(proxy_clients_json)},
-      {"Games", std::move(games_json)},
-      {"Server", this->generate_server_info_json()},
+    auto proxy_clients_json = JSON::list();
+    for (const auto& it : this->state->proxy_server->all_sessions()) {
+      proxy_clients_json.emplace_back(JSON::dict({
+          {"SerialNumber", it.second->license ? it.second->license->serial_number : JSON(nullptr)},
+          {"Name", it.second->character_name},
+          {"Version", name_for_enum(it.second->version())},
+          {"Language", name_for_language_code(it.second->language())},
+      }));
+    }
+
+    auto games_json = JSON::list();
+    for (const auto& it : this->state->id_to_lobby) {
+      auto l = it.second;
+      if (l->is_game()) {
+        auto game_json = JSON::dict({
+            {"ID", l->lobby_id},
+            {"Name", l->name},
+            {"BaseVersion", name_for_enum(l->base_version)},
+            {"Players", l->count_clients()},
+            {"CheatsEnabled", l->check_flag(Lobby::Flag::CHEATS_ENABLED)},
+            {"Episode", name_for_episode(l->episode)},
+            {"HasPassword", !l->password.empty()},
+        });
+        if (l->episode == Episode::EP3) {
+          auto ep3s = l->ep3_server;
+          game_json.emplace("BattleInProgress", l->check_flag(Lobby::Flag::BATTLE_IN_PROGRESS));
+          game_json.emplace("IsSpectatorTeam", l->check_flag(Lobby::Flag::IS_SPECTATOR_TEAM));
+          game_json.emplace("MapNumber", (ep3s && ep3s->last_chosen_map) ? ep3s->last_chosen_map->map_number : JSON(nullptr));
+          game_json.emplace("Rules", (ep3s && ep3s->map_and_rules) ? ep3s->map_and_rules->rules.json() : nullptr);
+        } else {
+          game_json.emplace("QuestInProgress", l->check_flag(Lobby::Flag::QUEST_IN_PROGRESS));
+          game_json.emplace("JoinableQuestInProgress", l->check_flag(Lobby::Flag::JOINABLE_QUEST_IN_PROGRESS));
+          game_json.emplace("SectionID", name_for_section_id(l->section_id));
+          game_json.emplace("Mode", name_for_mode(l->mode));
+          game_json.emplace("Difficulty", name_for_difficulty(l->difficulty));
+          game_json.emplace("Quest", this->generate_quest_json_st(l->quest));
+        }
+        games_json.emplace_back(std::move(game_json));
+      }
+    }
+
+    return JSON::dict({
+        {"Clients", std::move(clients_json)},
+        {"ProxyClients", std::move(proxy_clients_json)},
+        {"Games", std::move(games_json)},
+    });
   });
+  ret.emplace("Server", this->generate_server_info_json());
+  return ret;
 }
 
 JSON HTTPServer::generate_all_json() const {
@@ -816,13 +838,18 @@ JSON HTTPServer::generate_all_json() const {
 }
 
 JSON HTTPServer::generate_ep3_cards_json(bool trial) const {
-  const auto& index = trial ? this->state->ep3_card_index_trial : this->state->ep3_card_index;
+  auto index = call_on_event_thread<shared_ptr<const Episode3::CardIndex>>(this->state->base, [&]() {
+    return trial ? this->state->ep3_card_index_trial : this->state->ep3_card_index;
+  });
   return index->definitions_json();
 }
 
 JSON HTTPServer::generate_rare_tables_json() const {
+  auto sets = call_on_event_thread<unordered_map<string, shared_ptr<const RareItemSet>>>(this->state->base, [&]() {
+    return this->state->rare_item_sets;
+  });
   JSON ret = JSON::list();
-  for (const auto& it : this->state->rare_item_sets) {
+  for (const auto& it : sets) {
     ret.emplace_back(it.first);
   }
   return ret;
@@ -830,25 +857,28 @@ JSON HTTPServer::generate_rare_tables_json() const {
 
 JSON HTTPServer::generate_rare_table_json(const std::string& table_name) const {
   try {
-    const auto& table = this->state->rare_item_sets.at(table_name);
-    shared_ptr<const ItemNameIndex> name_index;
-    if (ends_with(table_name, "-v1")) {
-      name_index = this->state->item_name_index(Version::DC_V1);
-    } else if (ends_with(table_name, "-v2")) {
-      name_index = this->state->item_name_index(Version::PC_V2);
-    } else if (ends_with(table_name, "-v3")) {
-      name_index = this->state->item_name_index(Version::GC_V3);
-    } else if (ends_with(table_name, "-v4")) {
-      name_index = this->state->item_name_index(Version::BB_V4);
-    }
-    return table->json(name_index);
+    auto colls = call_on_event_thread<pair<shared_ptr<const RareItemSet>, shared_ptr<const ItemNameIndex>>>(this->state->base, [&]() {
+      const auto& table = this->state->rare_item_sets.at(table_name);
+      shared_ptr<const ItemNameIndex> name_index;
+      if (ends_with(table_name, "-v1")) {
+        name_index = this->state->item_name_index_opt(Version::DC_V1);
+      } else if (ends_with(table_name, "-v2")) {
+        name_index = this->state->item_name_index_opt(Version::PC_V2);
+      } else if (ends_with(table_name, "-v3")) {
+        name_index = this->state->item_name_index_opt(Version::GC_V3);
+      } else if (ends_with(table_name, "-v4")) {
+        name_index = this->state->item_name_index_opt(Version::BB_V4);
+      }
+      return make_pair(table, name_index);
+    });
+    return colls.first->json(colls.second);
   } catch (const out_of_range&) {
     throw http_error(404, "table does not exist");
   }
 }
 
 void HTTPServer::handle_request(struct evhttp_request* req) {
-  JSON ret;
+  shared_ptr<const JSON> ret;
   uint32_t serialize_options = 0;
   try {
     string uri = evhttp_request_get_uri(req);
@@ -862,7 +892,10 @@ void HTTPServer::handle_request(struct evhttp_request* req) {
 
     static const string default_format_option = "false";
     if (this->get_url_param(query, "format", &default_format_option) == "true") {
-      serialize_options = JSON::SerializeOption::FORMAT | JSON::SerializeOption::SORT_DICT_KEYS;
+      serialize_options |= JSON::SerializeOption::FORMAT | JSON::SerializeOption::SORT_DICT_KEYS;
+    }
+    if (this->get_url_param(query, "hex", &default_format_option) == "true") {
+      serialize_options |= JSON::SerializeOption::HEX_INTEGERS;
     }
 
     if (uri == "/") {
@@ -870,6 +903,7 @@ void HTTPServer::handle_request(struct evhttp_request* req) {
           "/y/data/ep3-cards",
           "/y/data/ep3-cards-trial",
           "/y/data/rare-tables",
+          "/y/data/rare-tables/<TABLE-NAME>",
           "/y/data/config",
           "/y/clients",
           "/y/proxy-clients",
@@ -878,30 +912,30 @@ void HTTPServer::handle_request(struct evhttp_request* req) {
           "/y/summary",
           "/y/all",
       });
-      ret = JSON::dict({{"endpoints", std::move(endpoints_json)}});
+      ret = make_shared<JSON>(JSON::dict({{"endpoints", std::move(endpoints_json)}}));
 
     } else if (uri == "/y/data/ep3-cards") {
-      ret = this->generate_ep3_cards_json(false);
+      ret = make_shared<JSON>(this->generate_ep3_cards_json(false));
     } else if (uri == "/y/data/ep3-cards-trial") {
-      ret = this->generate_ep3_cards_json(true);
+      ret = make_shared<JSON>(this->generate_ep3_cards_json(true));
     } else if (uri == "/y/data/rare-tables") {
-      ret = this->generate_rare_tables_json();
+      ret = make_shared<JSON>(this->generate_rare_tables_json());
     } else if (!strncmp(uri.c_str(), "/y/data/rare-tables/", 20)) {
-      ret = this->generate_rare_table_json(uri.substr(20));
+      ret = make_shared<JSON>(this->generate_rare_table_json(uri.substr(20)));
     } else if (uri == "/y/data/config") {
-      ret = this->state->config_json;
+      ret = call_on_event_thread<shared_ptr<const JSON>>(this->state->base, [this]() { return this->state->config_json; });
     } else if (uri == "/y/clients") {
-      ret = this->generate_game_server_clients_json();
+      ret = make_shared<JSON>(this->generate_game_server_clients_json());
     } else if (uri == "/y/proxy-clients") {
-      ret = this->generate_proxy_server_clients_json();
+      ret = make_shared<JSON>(this->generate_proxy_server_clients_json());
     } else if (uri == "/y/lobbies") {
-      ret = this->generate_lobbies_json();
+      ret = make_shared<JSON>(this->generate_lobbies_json());
     } else if (uri == "/y/server") {
-      ret = this->generate_server_info_json();
+      ret = make_shared<JSON>(this->generate_server_info_json());
     } else if (uri == "/y/summary") {
-      ret = this->generate_summary_json();
+      ret = make_shared<JSON>(this->generate_summary_json());
     } else if (uri == "/y/all") {
-      ret = this->generate_all_json();
+      ret = make_shared<JSON>(this->generate_all_json());
 
     } else {
       throw http_error(404, "unknown action");
@@ -922,10 +956,14 @@ void HTTPServer::handle_request(struct evhttp_request* req) {
   }
 
   unique_ptr<struct evbuffer, void (*)(struct evbuffer*)> out_buffer(evbuffer_new(), evbuffer_free);
-  string* serialized = new string(ret.serialize(JSON::SerializeOption::ESCAPE_CONTROLS_ONLY | serialize_options));
+  string* serialized = new string(ret->serialize(JSON::SerializeOption::ESCAPE_CONTROLS_ONLY | serialize_options));
   auto cleanup = +[](const void*, size_t, void* s) -> void {
     delete reinterpret_cast<string*>(s);
   };
   evbuffer_add_reference(out_buffer.get(), serialized->data(), serialized->size(), cleanup, serialized);
   this->send_response(req, 200, "application/json", out_buffer.get());
+}
+
+void HTTPServer::thread_fn() {
+  event_base_loop(this->base.get(), EVLOOP_NO_EXIT_ON_EMPTY);
 }

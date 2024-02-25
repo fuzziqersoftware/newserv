@@ -2518,6 +2518,9 @@ Action a_run_server_replay_log(
       if (state->bb_patch_server) {
         state->bb_patch_server->schedule_stop();
       }
+      if (http_server) {
+        http_server->schedule_stop();
+      }
       if (state->pc_patch_server) {
         config_log.info("Waiting for PC_V2 patch server to stop");
         state->pc_patch_server->wait_for_stop();
@@ -2525,6 +2528,10 @@ Action a_run_server_replay_log(
       if (state->bb_patch_server) {
         config_log.info("Waiting for BB_V4 patch server to stop");
         state->bb_patch_server->wait_for_stop();
+      }
+      if (http_server) {
+        config_log.info("Waiting for HTTP server to stop");
+        http_server->wait_for_stop();
       }
       state->proxy_server.reset(); // Break reference cycle
     });
