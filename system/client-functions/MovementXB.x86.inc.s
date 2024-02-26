@@ -28,7 +28,7 @@ process_stick_value:
   cmova     ecx, eax            # if X2 out of deadzone range, use eax
   mov       edx, eax
   bswap     edx                 # dh = Y2
-  lea       edx, [edx + 0x2800] # dh = Y2 = 0x28
+  lea       edx, [edx + 0x2800] # dh = Y2 + 0x28
   cmp       dh, 0x50
   cmova     ecx, eax            # if Y2 out of deadzone range, use eax
 
