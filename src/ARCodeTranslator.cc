@@ -5,6 +5,7 @@
 #include <phosg/Filesystem.hh>
 #include <phosg/Strings.hh>
 #include <resource_file/ExecutableFormats/DOLFile.hh>
+#include <resource_file/ExecutableFormats/XBEFile.hh>
 
 using namespace std;
 
@@ -63,11 +64,11 @@ public:
   }
   void set_source_file(const string& filename) {
     this->src_filename = filename;
-    this->src_file = files.at(this->src_filename);
+    this->src_file = this->files.at(this->src_filename);
   }
 
   void find_rtoc_global_regs() const {
-    for (const auto& it : files) {
+    for (const auto& it : this->files) {
       bool r2_high_found = false;
       bool r2_low_found = false;
       bool r13_high_found = false;
@@ -258,7 +259,7 @@ public:
     }
 
     unordered_map<string, uint32_t> results;
-    for (const auto& it : files) {
+    for (const auto& it : this->files) {
       if (it.second == this->src_file) {
         log.info("(%s) %08" PRIX32 " (from source)", it.first.c_str(), src_addr);
         results.emplace(it.first, src_addr);
@@ -349,8 +350,246 @@ private:
   shared_ptr<const DOLFile> src_file;
 };
 
+class XBEPatchTranslator {
+public:
+  enum class ExpandMethod {
+    FORWARD = 0,
+    BACKWARD,
+    BOTH,
+  };
+
+  static const char* name_for_expand_method(ExpandMethod method) {
+    switch (method) {
+      case ExpandMethod::FORWARD:
+        return "FORWARD";
+      case ExpandMethod::BACKWARD:
+        return "BACKWARD";
+      case ExpandMethod::BOTH:
+        return "BOTH";
+      default:
+        throw logic_error("invalid expand method");
+    }
+  }
+
+  XBEPatchTranslator(const string& directory)
+      : log("[xbe-trans] "),
+        directory(directory) {
+    while (ends_with(this->directory, "/")) {
+      this->directory.pop_back();
+    }
+    for (const auto& filename : list_directory(this->directory)) {
+      if (ends_with(filename, ".xbe")) {
+        string name = filename.substr(0, filename.size() - 4);
+        string path = directory + "/" + filename;
+        this->files.emplace(name, make_shared<XBEFile>(path.c_str()));
+        this->log.info("Loaded %s", name.c_str());
+      }
+    }
+  }
+  ~XBEPatchTranslator() = default;
+
+  const string& get_source_filename() const {
+    return this->src_filename;
+  }
+  void set_source_file(const string& filename) {
+    this->src_filename = filename;
+    this->src_file = this->files.at(this->src_filename);
+  }
+
+  uint32_t find_match(
+      shared_ptr<const XBEFile> dest_file,
+      uint32_t src_address,
+      uint32_t src_size,
+      ExpandMethod expand_method) const {
+    if (!this->src_file) {
+      throw runtime_error("no source file selected");
+    }
+
+    const XBEFile::Section* src_section = nullptr;
+    for (const auto& sec : this->src_file->sections) {
+      if (src_address >= sec.addr && src_address < sec.addr + sec.file_size) {
+        src_section = &sec;
+        break;
+      }
+    }
+    if (!src_section) {
+      throw runtime_error("source address not within any section");
+    }
+
+    const char* method_token = this->name_for_expand_method(expand_method);
+
+    size_t src_offset = src_address - src_section->addr;
+    size_t src_bytes_available_before = src_offset;
+    size_t src_bytes_available_after = src_section->file_size - src_offset - src_size;
+    this->log.info("(find_match/%s) Source offset = %08zX with %zX/%zX bytes available before/after",
+        method_token, src_offset, src_bytes_available_before, src_bytes_available_after);
+
+    size_t match_bytes_before = 0;
+    size_t match_bytes_after = 0;
+    while (match_bytes_before + match_bytes_after + src_size < 0x100) {
+      size_t num_matches = 0;
+      size_t last_match_address = 0;
+      size_t match_length = match_bytes_before + match_bytes_after + src_size;
+      auto src_r = this->src_file->read_from_addr(src_section->addr + src_offset - match_bytes_before, match_length);
+      for (const auto& dest_section : dest_file->sections) {
+        for (size_t dest_match_offset = 0; dest_match_offset + match_length <= dest_section.file_size; dest_match_offset++) {
+          src_r.go(0);
+          StringReader dest_r = dest_file->read_from_addr(dest_section.addr + dest_match_offset, match_length);
+          size_t z;
+          for (z = 0; z < match_length; z++) {
+            uint8_t src_data = src_r.get_u8();
+            uint8_t dest_data = dest_r.get_u8();
+            if (src_data != dest_data) {
+              break;
+            }
+          }
+          if (z == match_length) {
+            num_matches++;
+            last_match_address = dest_section.addr + dest_match_offset + match_bytes_before;
+          }
+        }
+      }
+      this->log.info("(find_match/%s) For match length %zX, %zu matches found", method_token, match_length, num_matches);
+      if (num_matches == 1) {
+        return last_match_address;
+      } else if (num_matches == 0) {
+        throw runtime_error("did not find exactly one match");
+      }
+      bool can_expand_backward = false;
+      bool can_expand_forward = false;
+      switch (expand_method) {
+        case ExpandMethod::BACKWARD:
+          can_expand_backward = (src_bytes_available_before > match_bytes_before);
+          break;
+        case ExpandMethod::FORWARD:
+          can_expand_forward = (src_bytes_available_after > match_bytes_after);
+          break;
+        case ExpandMethod::BOTH:
+          can_expand_backward = (src_bytes_available_before > match_bytes_before);
+          can_expand_forward = (src_bytes_available_after > match_bytes_after);
+          break;
+        default:
+          throw logic_error("invalid expand method");
+      }
+      if (!can_expand_backward && !can_expand_forward) {
+        throw runtime_error("no further expansion is allowed");
+      }
+      if (can_expand_backward) {
+        match_bytes_before++;
+      }
+      if (can_expand_forward) {
+        match_bytes_after++;
+      }
+    }
+    throw runtime_error("scan field too long; too many matches");
+  }
+
+  void find_all_matches(uint32_t src_addr, uint32_t src_size) const {
+    if (!this->src_file) {
+      throw runtime_error("no source file selected");
+    }
+
+    unordered_map<string, uint32_t> results;
+    for (const auto& it : files) {
+      if (it.second == this->src_file) {
+        log.info("(%s) %08" PRIX32 " (from source)", it.first.c_str(), src_addr);
+        results.emplace(it.first, src_addr);
+      } else {
+
+        array<future<uint32_t>, 3> futures;
+        static const array<ExpandMethod, 3> methods = {
+            ExpandMethod::FORWARD,
+            ExpandMethod::BACKWARD,
+            ExpandMethod::BOTH,
+        };
+        for (size_t z = 0; z < methods.size(); z++) {
+          futures[z] = async(&XBEPatchTranslator::find_match, this, it.second, src_addr, src_size, methods[z]);
+        }
+
+        unordered_set<uint32_t> match_addrs;
+        for (size_t z = 0; z < futures.size(); z++) {
+          const char* method_name = this->name_for_expand_method(methods[z]);
+          try {
+            uint32_t ret = futures[z].get();
+            log.info("(%s) (%s) %08" PRIX32, it.first.c_str(), method_name, ret);
+            match_addrs.emplace(ret);
+          } catch (const exception& e) {
+            log.error("(%s) (%s) failed: %s", it.first.c_str(), method_name, e.what());
+          }
+        }
+
+        if (match_addrs.empty()) {
+          log.error("(%s) no match found", it.first.c_str());
+        } else if (match_addrs.size() > 1) {
+          log.error("(%s) different matches found by different methods", it.first.c_str());
+        } else {
+          results.emplace(it.first, *match_addrs.begin());
+        }
+      }
+    }
+    for (const auto& it : results) {
+      fprintf(stdout, "%s => %08" PRIX32 "\n", it.first.c_str(), it.second);
+    }
+  }
+
+  void handle_command(const string& command) {
+    auto tokens = split(command, ' ');
+    if (tokens.empty()) {
+      throw runtime_error("no command given");
+    }
+    strip_trailing_whitespace(tokens[tokens.size() - 1]);
+
+    if (tokens[0] == "use") {
+      this->set_source_file(tokens.at(1));
+    } else if (tokens[0] == "match") {
+      this->find_all_matches(stoul(tokens.at(1), nullptr, 16), stoul(tokens.at(2), nullptr, 16));
+    } else if (!tokens[0].empty()) {
+      throw runtime_error("unknown command");
+    }
+  }
+
+  void run_shell() {
+    while (!feof(stdin)) {
+      if (!this->src_filename.empty()) {
+        fprintf(stdout, "ar-trans:%s/%s> ", this->directory.c_str(), this->src_filename.c_str());
+      } else {
+        fprintf(stdout, "ar-trans:%s> ", this->directory.c_str());
+      }
+      fflush(stdout);
+
+      string command = fgets(stdin);
+      try {
+        this->handle_command(command);
+      } catch (const exception& e) {
+        this->log.error("Failed: %s", e.what());
+      }
+    }
+    fputc('\n', stdout);
+  }
+
+private:
+  PrefixedLogger log;
+  string directory;
+  unordered_map<string, shared_ptr<const XBEFile>> files;
+  string src_filename;
+  shared_ptr<const XBEFile> src_file;
+};
+
 void run_ar_code_translator(const std::string& directory, const std::string& use_filename, const std::string& command) {
   ARCodeTranslator trans(directory);
+  if (!use_filename.empty()) {
+    trans.set_source_file(use_filename);
+  }
+
+  if (!command.empty()) {
+    trans.handle_command(command);
+  } else {
+    trans.run_shell();
+  }
+}
+
+void run_xbe_patch_translator(const std::string& directory, const std::string& use_filename, const std::string& command) {
+  XBEPatchTranslator trans(directory);
   if (!use_filename.empty()) {
     trans.set_source_file(use_filename);
   }

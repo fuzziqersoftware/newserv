@@ -2280,6 +2280,14 @@ Action a_ar_code_translator(
       }
       run_ar_code_translator(dir, args.get<string>(2, false), args.get<string>(3, false));
     });
+Action a_xbe_patch_translator(
+    "xbe-patch-translator", nullptr, +[](Arguments& args) {
+      const string& dir = args.get<string>(1, false);
+      if (dir.empty() || (dir == "-")) {
+        throw invalid_argument("a directory name is required");
+      }
+      run_xbe_patch_translator(dir, args.get<string>(2, false), args.get<string>(3, false));
+    });
 
 Action a_diff_dol_files(
     "diff-dol-files", nullptr, +[](Arguments& args) {
