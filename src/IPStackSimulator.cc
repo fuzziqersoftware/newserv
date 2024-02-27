@@ -1302,7 +1302,7 @@ void IPStackSimulator::on_client_tcp_frame(
 
     if (conn_valid && acked_seq_changed) {
       // Try to send some more data if the client is waiting on it
-      this->send_pending_push_frame(c, *conn);
+      this->send_pending_push_frame(c, *conn, true);
     }
   }
 }
@@ -1356,19 +1356,28 @@ void IPStackSimulator::open_server_connection(shared_ptr<IPClient> c, IPClient::
   }
 }
 
-void IPStackSimulator::send_pending_push_frame(shared_ptr<IPClient> c, IPClient::TCPConnection& conn) {
+void IPStackSimulator::send_pending_push_frame(
+    shared_ptr<IPClient> c, IPClient::TCPConnection& conn, bool always_send) {
   size_t pending_bytes = evbuffer_get_length(conn.pending_data.get());
   if (!pending_bytes) {
+    event_del(conn.resend_push_event.get());
+    return;
+  }
+
+  // If we're waiting to receive an ACK from the client, don't send another PSH
+  // until we get the ACK (unless this is a resend of a previous PSH due to a
+  // timeout)
+  if (!always_send && event_pending(conn.resend_push_event.get(), EV_TIMEOUT, nullptr)) {
     return;
   }
 
   size_t bytes_to_send = min<size_t>(pending_bytes, conn.next_push_max_frame_size);
-  if ((c->protocol == Protocol::HDLC_TAPSERVER) && (bytes_to_send > 200)) {
+  if (c->protocol == Protocol::HDLC_TAPSERVER) {
     // There is a bug in Dolphin's modem implementation (which I wrote, so it's
     // my fault) that causes commands to be dropped when too much data is sent
     // at once. To work around this, we only send up to 200 bytes in each push
     // frame.
-    bytes_to_send = 200;
+    bytes_to_send = min<size_t>(bytes_to_send, 200);
   }
 
   ip_stack_simulator_log.debug("Sending PSH frame with seq_num %08" PRIX32 ", 0x%zX/0x%zX data bytes",
@@ -1448,13 +1457,9 @@ void IPStackSimulator::dispatch_on_resend_push(evutil_socket_t, short, void* ctx
     if (!sim) {
       ip_stack_simulator_log.warning("Resend push event triggered for client on deleted simulator; ignoring");
     } else {
-      sim->on_resend_push(c, *conn);
+      sim->send_pending_push_frame(c, *conn, true);
     }
   }
-}
-
-void IPStackSimulator::on_resend_push(shared_ptr<IPClient> c, IPClient::TCPConnection& conn) {
-  this->send_pending_push_frame(c, conn);
 }
 
 void IPStackSimulator::dispatch_on_server_input(struct bufferevent*, void* ctx) {
@@ -1483,7 +1488,7 @@ void IPStackSimulator::on_server_input(shared_ptr<IPClient> c, IPClient::TCPConn
   event_add(c->idle_timeout_event.get(), &tv);
 
   evbuffer_add_buffer(conn.pending_data.get(), buf);
-  this->send_pending_push_frame(c, conn);
+  this->send_pending_push_frame(c, conn, false);
 }
 
 void IPStackSimulator::dispatch_on_server_error(

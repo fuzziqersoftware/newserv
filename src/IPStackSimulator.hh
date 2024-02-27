@@ -144,15 +144,13 @@ private:
   void on_client_udp_frame(std::shared_ptr<IPClient> c, const FrameInfo& fi);
   void on_client_tcp_frame(std::shared_ptr<IPClient> c, const FrameInfo& fi);
 
-  static void dispatch_on_resend_push(evutil_socket_t fd, short events, void* ctx);
-  void on_resend_push(std::shared_ptr<IPClient> c, IPClient::TCPConnection& conn);
-
   static void dispatch_on_server_input(struct bufferevent* bev, void* ctx);
   void on_server_input(std::shared_ptr<IPClient> c, IPClient::TCPConnection& conn);
   static void dispatch_on_server_error(struct bufferevent* bev, short events, void* ctx);
   void on_server_error(std::shared_ptr<IPClient> c, IPClient::TCPConnection& conn, short events);
 
-  void send_pending_push_frame(std::shared_ptr<IPClient> c, IPClient::TCPConnection& conn);
+  static void dispatch_on_resend_push(evutil_socket_t, short, void* ctx);
+  void send_pending_push_frame(std::shared_ptr<IPClient> c, IPClient::TCPConnection& conn, bool always_send);
   void send_tcp_frame(
       std::shared_ptr<IPClient> c,
       IPClient::TCPConnection& conn,
