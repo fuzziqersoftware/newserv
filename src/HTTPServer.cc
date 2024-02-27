@@ -844,6 +844,16 @@ JSON HTTPServer::generate_ep3_cards_json(bool trial) const {
   return index->definitions_json();
 }
 
+JSON HTTPServer::generate_common_tables_json() const {
+  auto [set_v2, set_v3_v4] = call_on_event_thread<pair<shared_ptr<const CommonItemSet>, shared_ptr<const CommonItemSet>>>(this->state->base, [&]() {
+    return make_pair(this->state->common_item_set_v2, this->state->common_item_set_v3_v4);
+  });
+  return JSON::dict({
+      {"v1_v2", set_v2->json()},
+      {"v3_v4", set_v3_v4->json()},
+  });
+}
+
 JSON HTTPServer::generate_rare_tables_json() const {
   auto sets = call_on_event_thread<unordered_map<string, shared_ptr<const RareItemSet>>>(this->state->base, [&]() {
     return this->state->rare_item_sets;
@@ -880,9 +890,10 @@ JSON HTTPServer::generate_rare_table_json(const std::string& table_name) const {
 void HTTPServer::handle_request(struct evhttp_request* req) {
   shared_ptr<const JSON> ret;
   uint32_t serialize_options = 0;
-  try {
-    string uri = evhttp_request_get_uri(req);
+  uint64_t start_time = now();
+  string uri = evhttp_request_get_uri(req);
 
+  try {
     std::unordered_multimap<std::string, std::string> query;
     size_t query_pos = uri.find('?');
     if (query_pos != string::npos) {
@@ -902,6 +913,7 @@ void HTTPServer::handle_request(struct evhttp_request* req) {
       auto endpoints_json = JSON::list({
           "/y/data/ep3-cards",
           "/y/data/ep3-cards-trial",
+          "/y/data/common-tables",
           "/y/data/rare-tables",
           "/y/data/rare-tables/<TABLE-NAME>",
           "/y/data/config",
@@ -918,6 +930,8 @@ void HTTPServer::handle_request(struct evhttp_request* req) {
       ret = make_shared<JSON>(this->generate_ep3_cards_json(false));
     } else if (uri == "/y/data/ep3-cards-trial") {
       ret = make_shared<JSON>(this->generate_ep3_cards_json(true));
+    } else if (uri == "/y/data/common-tables") {
+      ret = make_shared<JSON>(this->generate_common_tables_json());
     } else if (uri == "/y/data/rare-tables") {
       ret = make_shared<JSON>(this->generate_rare_tables_json());
     } else if (!strncmp(uri.c_str(), "/y/data/rare-tables/", 20)) {
@@ -955,13 +969,22 @@ void HTTPServer::handle_request(struct evhttp_request* req) {
     return;
   }
 
+  uint64_t handler_end = now();
   unique_ptr<struct evbuffer, void (*)(struct evbuffer*)> out_buffer(evbuffer_new(), evbuffer_free);
   string* serialized = new string(ret->serialize(JSON::SerializeOption::ESCAPE_CONTROLS_ONLY | serialize_options));
+  size_t size = serialized->size();
+  uint64_t serialize_end = now();
   auto cleanup = +[](const void*, size_t, void* s) -> void {
     delete reinterpret_cast<string*>(s);
   };
   evbuffer_add_reference(out_buffer.get(), serialized->data(), serialized->size(), cleanup, serialized);
   this->send_response(req, 200, "application/json", out_buffer.get());
+
+  string handler_time = format_duration(handler_end - start_time);
+  string serialize_time = format_duration(serialize_end - handler_end);
+  string size_str = format_size(size);
+  server_log.info("[HTTPServer] %s in [handler: %s, serialize: %s, size: %s]",
+      uri.c_str(), handler_time.c_str(), serialize_time.c_str(), size_str.c_str());
 }
 
 void HTTPServer::thread_fn() {

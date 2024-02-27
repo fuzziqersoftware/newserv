@@ -2,6 +2,7 @@
 
 #include <array>
 #include <phosg/Encoding.hh>
+#include <phosg/JSON.hh>
 
 #include "GSLArchive.hh"
 #include "PSOEncryption.hh"
@@ -45,6 +46,7 @@ public:
     parray<parray<uint8_t, 10>, 7> box_item_class_prob_table;
 
     void print_enemy_table(FILE* stream) const;
+    JSON json() const;
 
   private:
     template <bool IsBigEndian>
@@ -256,6 +258,7 @@ public:
   };
 
   std::shared_ptr<const Table> get_table(Episode episode, GameMode mode, uint8_t difficulty, uint8_t secid) const;
+  JSON json() const;
 
 protected:
   CommonItemSet() = default;

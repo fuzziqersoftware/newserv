@@ -1,10 +1,122 @@
 #include "CommonItemSet.hh"
 
 #include "AFSArchive.hh"
+#include "EnemyType.hh"
 #include "GSLArchive.hh"
 #include "StaticGameData.hh"
 
 using namespace std;
+
+template <typename IntT, size_t Count>
+JSON to_json(const parray<IntT, Count>& v) {
+  auto ret = JSON::list();
+  for (size_t z = 0; z < Count; z++) {
+    ret.emplace_back(v[z]);
+  }
+  return ret;
+}
+
+template <typename IntT, size_t Count>
+JSON to_json(const parray<CommonItemSet::Table::Range<IntT>, Count>& v) {
+  auto ret = JSON::list();
+  for (size_t z = 0; z < Count; z++) {
+    ret.emplace_back(to_json(v[z]));
+  }
+  return ret;
+}
+
+template <typename IntT>
+JSON to_json(const CommonItemSet::Table::Range<IntT>& v) {
+  if (v.min == v.max) {
+    return JSON(v.min);
+  } else {
+    return JSON::list({v.min, v.max});
+  }
+}
+
+template <typename IntT, size_t Count1, size_t Count2>
+JSON to_json(const parray<parray<IntT, Count2>, Count1>& v) {
+  auto ret = JSON::list();
+  for (size_t z = 0; z < Count1; z++) {
+    ret.emplace_back(to_json(v[z]));
+  }
+  return ret;
+}
+
+JSON CommonItemSet::Table::json() const {
+  JSON enemy_meseta_ranges_json = JSON::dict();
+  JSON enemy_type_drop_probs_json = JSON::dict();
+  JSON enemy_item_classes_json = JSON::dict();
+  for (size_t z = 0; z < 0x64; z++) {
+    static const array<Episode, 3> episodes = {Episode::EP1, Episode::EP2, Episode::EP4};
+    for (Episode episode : episodes) {
+      JSON enemy_meseta_ranges_episode_json = JSON::dict();
+      JSON enemy_type_drop_probs_episode_json = JSON::dict();
+      JSON enemy_item_classes_episode_json = JSON::dict();
+      for (auto type : enemy_types_for_rare_table_index(episode, z)) {
+        string type_str = name_for_enum(type);
+        enemy_meseta_ranges_episode_json.emplace(type_str, to_json(this->enemy_meseta_ranges[z]));
+        enemy_type_drop_probs_episode_json.emplace(type_str, this->enemy_type_drop_probs[z]);
+        enemy_item_classes_episode_json.emplace(type_str, this->enemy_item_classes[z]);
+      }
+      string name = name_for_episode(episode);
+      enemy_meseta_ranges_json.emplace(name, std::move(enemy_meseta_ranges_episode_json));
+      enemy_type_drop_probs_json.emplace(name, std::move(enemy_type_drop_probs_episode_json));
+      enemy_item_classes_json.emplace(name, std::move(enemy_item_classes_episode_json));
+    }
+  }
+  return JSON::dict({
+      {"BaseWeaponTypeProbTable", to_json(this->base_weapon_type_prob_table)},
+      {"SubtypeBaseTable", to_json(this->subtype_base_table)},
+      {"SubtypeAreaLengthTable", to_json(this->subtype_area_length_table)},
+      {"GrindProbTable", to_json(this->grind_prob_table)},
+      {"ArmorShieldTypeIndexProbTable", to_json(this->armor_shield_type_index_prob_table)},
+      {"ArmorSlotCountProbTable", to_json(this->armor_slot_count_prob_table)},
+      {"EnemyMesetaRanges", std::move(enemy_meseta_ranges_json)},
+      {"EnemyTypeDropProbs", std::move(enemy_type_drop_probs_json)},
+      {"EnemyItemClasses", std::move(enemy_item_classes_json)},
+      {"BoxMesetaRanges", to_json(this->box_meseta_ranges)},
+      {"HasRareBonusValueProbTable", this->has_rare_bonus_value_prob_table},
+      {"BonusValueProbTable", to_json(this->bonus_value_prob_table)},
+      {"NonRareBonusProbSpec", to_json(this->nonrare_bonus_prob_spec)},
+      {"BonusTypeProbTable", to_json(this->bonus_type_prob_table)},
+      {"SpecialMult", to_json(this->special_mult)},
+      {"SpecialPercent", to_json(this->special_percent)},
+      {"ToolClassProbTable", to_json(this->tool_class_prob_table)},
+      {"TechniqueIndexProbTable", to_json(this->technique_index_prob_table)},
+      {"TechniqueLevelRanges", to_json(this->technique_level_ranges)},
+      {"ArmorOrShieldTypeBias", this->armor_or_shield_type_bias},
+      {"UnitMaxStarsTable", to_json(this->unit_max_stars_table)},
+      {"BoxItemClassProbTable", to_json(this->box_item_class_prob_table)},
+  });
+}
+
+JSON CommonItemSet::json() const {
+  auto modes_dict = JSON::dict();
+  static const array<GameMode, 4> modes = {GameMode::NORMAL, GameMode::BATTLE, GameMode::CHALLENGE, GameMode::SOLO};
+  for (const auto& mode : modes) {
+    auto episodes_dict = JSON::dict();
+    static const array<Episode, 3> episodes = {Episode::EP1, Episode::EP2, Episode::EP4};
+    for (const auto& episode : episodes) {
+      auto difficulty_dict = JSON::dict();
+      for (uint8_t difficulty = 0; difficulty < 4; difficulty++) {
+        auto section_id_dict = JSON::dict();
+        for (uint8_t section_id = 0; section_id < 10; section_id++) {
+          try {
+            auto table = this->get_table(episode, mode, difficulty, section_id);
+            section_id_dict.emplace(name_for_section_id(section_id), table->json());
+          } catch (const runtime_error&) {
+          }
+        }
+        difficulty_dict.emplace(token_name_for_difficulty(difficulty), std::move(section_id_dict));
+      }
+      episodes_dict.emplace(token_name_for_episode(episode), std::move(difficulty_dict));
+    }
+    modes_dict.emplace(name_for_mode(mode), std::move(episodes_dict));
+  }
+
+  return modes_dict;
+}
 
 CommonItemSet::Table::Table(const StringReader& r, bool is_big_endian, bool is_v3) {
   if (is_big_endian) {

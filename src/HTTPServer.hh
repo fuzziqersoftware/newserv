@@ -70,6 +70,7 @@ protected:
   JSON generate_all_json() const;
 
   JSON generate_ep3_cards_json(bool trial) const;
+  JSON generate_common_tables_json() const;
   JSON generate_rare_tables_json() const;
   JSON generate_rare_table_json(const std::string& table_name) const;
 };
