@@ -12,22 +12,22 @@ start:
   # region @ 80351638 (152 bytes)
   .data     0x80351638  # address
   .data     0x00000098  # size
-  .data     0x880300EE  # 80351638 => lbz       r0, [r3 + 0x00EE]
+  .data     0x880300EE  # 80351638 => lbz       r0, [r3 + 0x00EE]  # data1_2
   .data     0x2800000B  # 8035163C => cmplwi    r0, 11
   .data     0x40820144  # 80351640 => bne       +0x00000144 /* 80351784 */
-  .data     0x83E300F0  # 80351644 => lwz       r31, [r3 + 0x00F0]
+  .data     0x83E300F0  # 80351644 => lwz       r31, [r3 + 0x00F0]  # r31 = owner_player
   .data     0x38000000  # 80351648 => li        r0, 0x0000
   .data     0x60000000  # 8035164C => nop
-  .data     0x38800374  # 80351650 => li        r4, 0x0374
-  .data     0x38A00D38  # 80351654 => li        r5, 0x0D38
+  .data     0x38800374  # 80351650 => li        r4, 0x0374  # material_usage
+  .data     0x38A00D38  # 80351654 => li        r5, 0x0D38  # stats.char_stats.atp
   .data     0x48000059  # 80351658 => bl        +0x00000058 /* 803516B0 */
-  .data     0x38A00D3A  # 8035165C => li        r5, 0x0D3A
+  .data     0x38A00D3A  # 8035165C => li        r5, 0x0D3A  # stats.char_stats.mst
   .data     0x48000051  # 80351660 => bl        +0x00000050 /* 803516B0 */
-  .data     0x38A00D3C  # 80351664 => li        r5, 0x0D3C
+  .data     0x38A00D3C  # 80351664 => li        r5, 0x0D3C  # stats.char_stats.evp
   .data     0x48000049  # 80351668 => bl        +0x00000048 /* 803516B0 */
-  .data     0x38A00D40  # 8035166C => li        r5, 0x0D40
+  .data     0x38A00D40  # 8035166C => li        r5, 0x0D40  # stats.char_stats.dfp
   .data     0x48000041  # 80351670 => bl        +0x00000040 /* 803516B0 */
-  .data     0x38A00D44  # 80351674 => li        r5, 0x0D44
+  .data     0x38A00D44  # 80351674 => li        r5, 0x0D44  # stats.char_stats.lck
   .data     0x48000039  # 80351678 => bl        +0x00000038 /* 803516B0 */
   .data     0x7FE3FB78  # 8035167C => mr        r3, r31
   .data     0x4BE64B95  # 80351680 => bl        -0x0019B46C /* 801B6214 */
