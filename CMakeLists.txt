@@ -143,6 +143,9 @@ target_include_directories(newserv PUBLIC ${LIBEVENT_INCLUDE_DIR} ${Iconv_INCLUD
 target_link_libraries(newserv phosg ${LIBEVENT_LIBRARIES} ${Iconv_LIBRARIES} pthread)
 add_dependencies(newserv newserv-Revision-cc)
 
+# target_compile_options(newserv PRIVATE -fsanitize=address)
+# target_link_options(newserv PRIVATE -fsanitize=address)
+
 if(resource_file_FOUND)
     target_compile_definitions(newserv PUBLIC HAVE_RESOURCE_FILE)
     target_link_libraries(newserv resource_file)
