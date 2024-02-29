@@ -697,6 +697,21 @@ void PlayerBank::assign_ids(uint32_t base_id) {
   }
 }
 
+QuestFlagsV1& QuestFlagsV1::operator=(const QuestFlags& other) {
+  this->data[0] = other.data[0];
+  this->data[1] = other.data[1];
+  this->data[2] = other.data[2];
+  return *this;
+}
+
+QuestFlagsV1::operator QuestFlags() const {
+  QuestFlags ret;
+  ret.data[0] = this->data[0];
+  ret.data[1] = this->data[1];
+  ret.data[2] = this->data[2];
+  return ret;
+}
+
 BattleRules::BattleRules(const JSON& json) {
   static const JSON empty_list = JSON::list();
 

@@ -558,6 +558,13 @@ struct QuestFlags {
   }
 } __attribute__((packed));
 
+struct QuestFlagsV1 {
+  parray<QuestFlagsForDifficulty, 3> data;
+
+  QuestFlagsV1& operator=(const QuestFlags& other);
+  operator QuestFlags() const;
+} __attribute__((packed));
+
 struct BattleRules {
   enum class TechDiskMode : uint8_t {
     ALLOW = 0,

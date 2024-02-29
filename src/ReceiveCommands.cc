@@ -365,15 +365,24 @@ static void on_1D(shared_ptr<Client> c, uint16_t, uint32_t, string&) {
     c->game_join_command_queue.reset();
   }
 
-  if (c->config.check_flag(Client::Flag::SHOULD_SEND_ARTIFICIAL_ITEM_STATE)) {
-    c->config.clear_flag(Client::Flag::SHOULD_SEND_ARTIFICIAL_ITEM_STATE);
-    if (!is_ep3(c->version())) {
-      send_game_item_state(c);
+  if (!is_ep3(c->version())) {
+    if (c->config.check_flag(Client::Flag::SHOULD_SEND_ARTIFICIAL_ITEM_STATE)) {
+      c->config.clear_flag(Client::Flag::SHOULD_SEND_ARTIFICIAL_ITEM_STATE);
+      send_game_item_state(c); // 6x6D
+    }
+    if (c->config.check_flag(Client::Flag::SHOULD_SEND_ARTIFICIAL_OBJECT_STATE)) {
+      c->config.clear_flag(Client::Flag::SHOULD_SEND_ARTIFICIAL_OBJECT_STATE);
+      send_game_object_state(c); // 6x6C
+    }
+    if (c->config.check_flag(Client::Flag::SHOULD_SEND_ARTIFICIAL_ENEMY_AND_SET_STATE)) {
+      c->config.clear_flag(Client::Flag::SHOULD_SEND_ARTIFICIAL_ENEMY_AND_SET_STATE);
+      send_game_enemy_state(c); // 6x6B
+      send_game_set_state(c); // 6x6E
     }
   }
   if (c->config.check_flag(Client::Flag::SHOULD_SEND_ARTIFICIAL_FLAG_STATE)) {
     c->config.clear_flag(Client::Flag::SHOULD_SEND_ARTIFICIAL_FLAG_STATE);
-    send_game_flag_state(c);
+    send_game_flag_state(c); // 6x6F
   }
 }
 
@@ -2501,13 +2510,24 @@ static void on_10(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
           }
           if (game->is_game()) {
             c->config.set_flag(Client::Flag::LOADING);
-            // If no one was in the game before, then there's no leader to send the
-            // item state - send it to the joining player (who is now the leader)
+            // If no one was in the game before, then there's no leader to send
+            // the game state - send it to the joining player (who is now the
+            // leader)
             if (game->count_clients() == 1) {
-              // No one was in the game before, so the object and enemy state is lost;
-              // regenerate it as if the game was just created
-              game->load_maps();
               c->config.set_flag(Client::Flag::SHOULD_SEND_ARTIFICIAL_ITEM_STATE);
+              // TODO: Eventually, we want to send the enemy and set states too,
+              // but currently this doesn't work well. Instead, we reset their
+              // flags so it's as if they were never defeated.
+              // c->config.set_flag(Client::Flag::SHOULD_SEND_ARTIFICIAL_ENEMY_AND_SET_STATE);
+              if (game->map) {
+                for (auto& enemy : game->map->enemies) {
+                  enemy.game_flags = 0;
+                  enemy.total_damage = 0;
+                  enemy.state_flags = 0;
+                }
+              }
+              c->config.set_flag(Client::Flag::SHOULD_SEND_ARTIFICIAL_OBJECT_STATE);
+              c->config.set_flag(Client::Flag::SHOULD_SEND_ARTIFICIAL_FLAG_STATE);
             }
           }
           break;
@@ -4299,6 +4319,15 @@ shared_ptr<Lobby> create_game_generic(
   } else {
     game->variations.clear(0);
     game->map = make_shared<Map>(game->base_version, game->lobby_id, game->random_seed, game->opt_rand_crypt);
+  }
+
+  // The game's quest flags are inherited from the creator, if known
+  if (c->version() == Version::BB_V4) {
+    game->quest_flag_values = make_unique<QuestFlags>(p->quest_flags);
+    game->quest_flags_known = nullptr;
+  } else {
+    game->quest_flag_values = make_unique<QuestFlags>();
+    game->quest_flags_known = make_unique<QuestFlags>();
   }
 
   return game;

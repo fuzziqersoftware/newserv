@@ -34,60 +34,62 @@ public:
     // TODO: It'd be nice to use a pattern here (e.g. all server-side flags are
     // in the high bits) but that would require re-recording or manually
     // rewriting all the tests
-    CLIENT_SIDE_MASK                    = 0xFFFFFFFFFC0FFFFB,
+    CLIENT_SIDE_MASK                           = 0xFF3CFFFF7C0FFFFB,
 
     // Version-related flags
-    CHECKED_FOR_DC_V1_PROTOTYPE         = 0x0000000000000002,
-    LICENSE_WAS_CREATED                 = 0x0000000000000004, // Server-side only
-    NO_D6_AFTER_LOBBY                   = 0x0000000000000100,
-    NO_D6                               = 0x0000000000000200,
-    FORCE_ENGLISH_LANGUAGE_BB           = 0x0000000000000400,
+    CHECKED_FOR_DC_V1_PROTOTYPE                = 0x0000000000000002,
+    LICENSE_WAS_CREATED                        = 0x0000000000000004, // Server-side only
+    NO_D6_AFTER_LOBBY                          = 0x0000000000000100,
+    NO_D6                                      = 0x0000000000000200,
+    FORCE_ENGLISH_LANGUAGE_BB                  = 0x0000000000000400,
 
     // Flags describing the behavior for send_function_call
-    NO_SEND_FUNCTION_CALL               = 0x0000000000001000,
-    ENCRYPTED_SEND_FUNCTION_CALL        = 0x0000000000002000,
-    SEND_FUNCTION_CALL_CHECKSUM_ONLY    = 0x0000000000004000,
-    SEND_FUNCTION_CALL_NO_CACHE_PATCH   = 0x0000000000008000,
-    USE_OVERFLOW_FOR_SEND_FUNCTION_CALL = 0x0000000000010000,
+    NO_SEND_FUNCTION_CALL                      = 0x0000000000001000,
+    ENCRYPTED_SEND_FUNCTION_CALL               = 0x0000000000002000,
+    SEND_FUNCTION_CALL_CHECKSUM_ONLY           = 0x0000000000004000,
+    SEND_FUNCTION_CALL_NO_CACHE_PATCH          = 0x0000000000008000,
+    USE_OVERFLOW_FOR_SEND_FUNCTION_CALL        = 0x0000000000010000,
 
     // State flags
-    LOADING                             = 0x0000000000100000, // Server-side only
-    LOADING_QUEST                       = 0x0000000000200000, // Server-side only
-    LOADING_RUNNING_JOINABLE_QUEST      = 0x0000000000400000, // Server-side only
-    LOADING_TOURNAMENT                  = 0x0000000000800000, // Server-side only
-    IN_INFORMATION_MENU                 = 0x0000000001000000, // Server-side only
-    AT_WELCOME_MESSAGE                  = 0x0000000002000000, // Server-side only
-    SAVE_ENABLED                        = 0x0000000004000000,
-    HAS_EP3_CARD_DEFS                   = 0x0000000008000000,
-    HAS_EP3_MEDIA_UPDATES               = 0x0000000010000000,
-    USE_OVERRIDE_RANDOM_SEED            = 0x0000000020000000,
-    HAS_GUILD_CARD_NUMBER               = 0x0000000040000000,
-    AT_BANK_COUNTER                     = 0x0000000080000000, // Server-side only
-    SHOULD_SEND_ARTIFICIAL_ITEM_STATE   = 0x0001000000000000, // Server-side only
-    SHOULD_SEND_ARTIFICIAL_FLAG_STATE   = 0x0002000000000000, // Server-side only
-    SHOULD_SEND_ENABLE_SAVE             = 0x0004000000000000,
-    SWITCH_ASSIST_ENABLED               = 0x0000000100000000,
+    LOADING                                    = 0x0000000000100000, // Server-side only
+    LOADING_QUEST                              = 0x0000000000200000, // Server-side only
+    LOADING_RUNNING_JOINABLE_QUEST             = 0x0000000000400000, // Server-side only
+    LOADING_TOURNAMENT                         = 0x0000000000800000, // Server-side only
+    IN_INFORMATION_MENU                        = 0x0000000001000000, // Server-side only
+    AT_WELCOME_MESSAGE                         = 0x0000000002000000, // Server-side only
+    SAVE_ENABLED                               = 0x0000000004000000,
+    HAS_EP3_CARD_DEFS                          = 0x0000000008000000,
+    HAS_EP3_MEDIA_UPDATES                      = 0x0000000010000000,
+    USE_OVERRIDE_RANDOM_SEED                   = 0x0000000020000000,
+    HAS_GUILD_CARD_NUMBER                      = 0x0000000040000000,
+    AT_BANK_COUNTER                            = 0x0000000080000000, // Server-side only
+    SHOULD_SEND_ARTIFICIAL_ITEM_STATE          = 0x0001000000000000, // Server-side only
+    SHOULD_SEND_ARTIFICIAL_ENEMY_AND_SET_STATE = 0x0040000000000000, // Server-side only
+    SHOULD_SEND_ARTIFICIAL_OBJECT_STATE        = 0x0080000000000000, // Server-side only
+    SHOULD_SEND_ARTIFICIAL_FLAG_STATE          = 0x0002000000000000, // Server-side only
+    SHOULD_SEND_ENABLE_SAVE                    = 0x0004000000000000,
+    SWITCH_ASSIST_ENABLED                      = 0x0000000100000000,
 
     // Cheat mode and option flags
-    INFINITE_HP_ENABLED                 = 0x0000000200000000,
-    INFINITE_TP_ENABLED                 = 0x0000000400000000,
-    DEBUG_ENABLED                       = 0x0000000800000000,
-    ITEM_DROP_NOTIFICATIONS_1           = 0x0010000000000000,
-    ITEM_DROP_NOTIFICATIONS_2           = 0x0020000000000000,
+    INFINITE_HP_ENABLED                        = 0x0000000200000000,
+    INFINITE_TP_ENABLED                        = 0x0000000400000000,
+    DEBUG_ENABLED                              = 0x0000000800000000,
+    ITEM_DROP_NOTIFICATIONS_1                  = 0x0010000000000000,
+    ITEM_DROP_NOTIFICATIONS_2                  = 0x0020000000000000,
 
     // Proxy option flags
-    PROXY_SAVE_FILES                    = 0x0000001000000000,
-    PROXY_CHAT_COMMANDS_ENABLED         = 0x0000002000000000,
-    PROXY_PLAYER_NOTIFICATIONS_ENABLED  = 0x0000008000000000,
-    PROXY_SUPPRESS_CLIENT_PINGS         = 0x0000010000000000,
-    PROXY_SUPPRESS_REMOTE_LOGIN         = 0x0000020000000000,
-    PROXY_ZERO_REMOTE_GUILD_CARD        = 0x0000040000000000,
-    PROXY_EP3_INFINITE_MESETA_ENABLED   = 0x0000080000000000,
-    PROXY_EP3_INFINITE_TIME_ENABLED     = 0x0000100000000000,
-    PROXY_RED_NAME_ENABLED              = 0x0000200000000000,
-    PROXY_BLANK_NAME_ENABLED            = 0x0000400000000000,
-    PROXY_BLOCK_FUNCTION_CALLS          = 0x0000800000000000,
-    PROXY_EP3_UNMASK_WHISPERS           = 0x0008000000000000,
+    PROXY_SAVE_FILES                           = 0x0000001000000000,
+    PROXY_CHAT_COMMANDS_ENABLED                = 0x0000002000000000,
+    PROXY_PLAYER_NOTIFICATIONS_ENABLED         = 0x0000008000000000,
+    PROXY_SUPPRESS_CLIENT_PINGS                = 0x0000010000000000,
+    PROXY_SUPPRESS_REMOTE_LOGIN                = 0x0000020000000000,
+    PROXY_ZERO_REMOTE_GUILD_CARD               = 0x0000040000000000,
+    PROXY_EP3_INFINITE_MESETA_ENABLED          = 0x0000080000000000,
+    PROXY_EP3_INFINITE_TIME_ENABLED            = 0x0000100000000000,
+    PROXY_RED_NAME_ENABLED                     = 0x0000200000000000,
+    PROXY_BLANK_NAME_ENABLED                   = 0x0000400000000000,
+    PROXY_BLOCK_FUNCTION_CALLS                 = 0x0000800000000000,
+    PROXY_EP3_UNMASK_WHISPERS                  = 0x0008000000000000,
     // clang-format on
   };
   enum class ItemDropNotificationMode {

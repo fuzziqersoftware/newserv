@@ -675,6 +675,15 @@ string Map::Enemy::str() const {
       this->state_flags);
 }
 
+string Map::Event::str() const {
+  return string_printf("[Map::Event W-%02hhX-%" PRIX32 " flags=%04hX floor=%02hhX action_stream_offset=%" PRIX32 "]",
+      this->floor,
+      this->event_id,
+      this->flags,
+      this->floor,
+      this->action_stream_offset);
+}
+
 string Map::Object::str() const {
   return string_printf("[Map::Object source %zX %04hX(%s) @%04hX p1=%g p456=[%08" PRIX32 " %08" PRIX32 " %08" PRIX32 "] floor=%02hhX item_drop_checked=%s]",
       this->source_index,
@@ -1189,9 +1198,6 @@ void Map::add_enemy(
     case 0x00C7: // TBoss3VoloptHiraisin
     case 0x0118:
       add(EnemyType::UNKNOWN);
-      this->log.warning(
-          "(Entry %zu, offset %zX in file) Unknown enemy type %04hX",
-          source_index, source_index * sizeof(EnemyEntry), e.base_type.load());
       break;
 
     default:
@@ -1320,6 +1326,10 @@ void Map::add_random_enemies_from_map_data(
   }
   wave_events_segment_r.go(wave_events_header.entries_offset);
 
+  size_t action_stream_base_offset = this->event_action_stream.size();
+  this->event_action_stream += wave_events_segment_r.pread(
+      wave_events_header.action_stream_offset, wave_events_segment_r.size() - wave_events_header.action_stream_offset);
+
   const auto& locations_header = locations_segment_r.get<RandomEnemyLocationsHeader>();
   const auto& definitions_header = definitions_segment_r.get<RandomEnemyDefinitionsHeader>();
   auto definitions_r = definitions_segment_r.sub(
@@ -1336,6 +1346,7 @@ void Map::add_random_enemies_from_map_data(
     size_t remaining_waves = random_state->rand_int_biased(1, entry.max_waves);
     // Trace: at 0080E125 EAX is wave count
 
+    le_uint32_t wave_next_event_id = entry.event_id;
     uint32_t wave_number = entry.wave_number;
     while (remaining_waves) {
       remaining_waves--;
@@ -1422,17 +1433,60 @@ void Map::add_random_enemies_from_map_data(
         }
       }
       if (remaining_waves) {
-        // We don't generate the event stream here, but the client does, and in
-        // doing so, it uses one value from random to determine the delay
-        // parameter of the event. To keep our state in sync with what the
-        // client would do, we skip a random value here.
-        random_state->random.next();
+        /* ev.delay = */ random_state->rand_int_biased(entry.min_delay, entry.max_delay);
+        this->add_event(wave_next_event_id, entry.flags, floor, this->event_action_stream.size());
+        this->event_action_stream.push_back(0x0C);
+        wave_next_event_id = entry.event_id + wave_number + 10000;
+        this->event_action_stream.append(reinterpret_cast<const char*>(&wave_next_event_id), sizeof(wave_next_event_id));
+        this->event_action_stream.push_back(0x01);
         wave_number++;
       }
     }
 
-    // For the same reason as above, we need to skip another random value here.
-    random_state->random.next();
+    /* ev.delay = */ random_state->rand_int_biased(entry.min_delay, entry.max_delay);
+    this->add_event(wave_next_event_id, entry.flags, floor, action_stream_base_offset + entry.action_stream_offset);
+    wave_number++;
+  }
+}
+
+void Map::add_event(uint32_t event_id, uint16_t flags, uint8_t floor, uint32_t action_stream_offset) {
+  size_t index = this->events.size();
+  auto& ev = this->events.emplace_back();
+  ev.event_id = event_id;
+  ev.flags = flags;
+  ev.floor = floor;
+  ev.action_stream_offset = action_stream_offset;
+  uint64_t k = (static_cast<uint64_t>(floor) << 32) | event_id;
+  if (!this->floor_and_event_id_to_index.emplace(k, index).second) {
+    this->log.warning("Duplicate event ID: W-%02hhX-%" PRIX32, floor, event_id);
+  }
+}
+
+Map::Event& Map::get_event(uint8_t floor, uint32_t event_id) {
+  uint64_t k = (static_cast<uint64_t>(floor) << 32) | event_id;
+  return this->events.at(this->floor_and_event_id_to_index.at(k));
+}
+
+const Map::Event& Map::get_event(uint8_t floor, uint32_t event_id) const {
+  uint64_t k = (static_cast<uint64_t>(floor) << 32) | event_id;
+  return this->events.at(this->floor_and_event_id_to_index.at(k));
+}
+
+void Map::add_events_from_map_data(uint8_t floor, const void* data, size_t size) {
+  StringReader r(data, size);
+  const auto& header = r.get<EventsSectionHeader>();
+  if (header.format != 0) {
+    throw runtime_error("events section format is not zero");
+  }
+
+  size_t action_stream_base_offset = this->event_action_stream.size();
+  this->event_action_stream += r.pread(header.action_stream_offset, r.size() - header.action_stream_offset);
+
+  this->events.reserve(this->events.size() + header.entry_count);
+  auto events_r = r.sub(header.entries_offset, sizeof(Event1Entry) * header.entry_count);
+  while (!events_r.eof()) {
+    const auto& entry = events_r.get<Event1Entry>();
+    this->add_event(entry.event_id, entry.flags, floor, entry.action_stream_offset + action_stream_base_offset);
   }
 }
 
@@ -1519,23 +1573,10 @@ void Map::add_entities_from_quest_data(
       this->add_objects_from_map_data(floor, r.pgetv(floor_sections.objects + sizeof(header), header.data_size), header.data_size);
     }
 
-    if (floor_sections.enemies != 0xFFFFFFFF) {
-      const auto& header = r.pget<SectionHeader>(floor_sections.enemies);
-      if (header.data_size % sizeof(EnemyEntry)) {
-        throw runtime_error("quest layout enemy section size is not a multiple of enemy entry size");
-      }
-      this->add_enemies_from_map_data(
-          episode,
-          difficulty,
-          event,
-          floor,
-          r.pgetv(floor_sections.enemies + sizeof(header), header.data_size),
-          header.data_size,
-          rare_rates);
-
-    } else if ((floor_sections.wave_events != 0xFFFFFFFF) &&
+    if ((floor_sections.wave_events != 0xFFFFFFFF) &&
         (floor_sections.random_enemy_locations != 0xFFFFFFFF) &&
         (floor_sections.random_enemy_definitions != 0xFFFFFFFF)) {
+      // Challenge Mode random enemy waves
       const auto& wave_events_header = r.pget<SectionHeader>(floor_sections.wave_events);
       const auto& random_enemy_locations_header = r.pget<SectionHeader>(floor_sections.random_enemy_locations);
       const auto& random_enemy_definitions_header = r.pget<SectionHeader>(floor_sections.random_enemy_definitions);
@@ -1552,6 +1593,29 @@ void Map::add_entities_from_quest_data(
           r.sub(floor_sections.random_enemy_definitions + sizeof(SectionHeader), random_enemy_definitions_header.data_size),
           random_state,
           rare_rates);
+
+    } else {
+      // Non-Challenge (standard) enemies
+      if (floor_sections.enemies != 0xFFFFFFFF) {
+        const auto& header = r.pget<SectionHeader>(floor_sections.enemies);
+        if (header.data_size % sizeof(EnemyEntry)) {
+          throw runtime_error("quest layout enemy section size is not a multiple of enemy entry size");
+        }
+        this->add_enemies_from_map_data(
+            episode,
+            difficulty,
+            event,
+            floor,
+            r.pgetv(floor_sections.enemies + sizeof(header), header.data_size),
+            header.data_size,
+            rare_rates);
+      }
+
+      if (floor_sections.wave_events != 0xFFFFFFFF) {
+        const auto& wave_events_header = r.pget<SectionHeader>(floor_sections.wave_events);
+        const void* data = r.pgetv(floor_sections.wave_events + sizeof(SectionHeader), wave_events_header.data_size);
+        this->add_events_from_map_data(floor, data, wave_events_header.data_size);
+      }
     }
   }
 }
@@ -1657,14 +1721,14 @@ parray<le_uint32_t, 0x20> SetDataTableBase::generate_variations(
 }
 
 vector<string> SetDataTableBase::map_filenames_for_variations(
-    const parray<le_uint32_t, 0x20>& variations, Episode episode, GameMode mode, bool is_enemies) const {
+    const parray<le_uint32_t, 0x20>& variations, Episode episode, GameMode mode, FilenameType type) const {
   vector<string> ret;
   for (uint8_t floor = 0; floor < 0x10; floor++) {
     ret.emplace_back(this->map_filename_for_variation(
-        floor, variations[floor * 2], variations[floor * 2 + 1], episode, mode, is_enemies));
+        floor, variations[floor * 2], variations[floor * 2 + 1], episode, mode, type));
   }
   for (uint8_t floor = 0x10; floor < 0x12; floor++) {
-    ret.emplace_back(this->map_filename_for_variation(floor, 0, 0, episode, mode, is_enemies));
+    ret.emplace_back(this->map_filename_for_variation(floor, 0, 0, episode, mode, type));
   }
   return ret;
 }
@@ -1738,8 +1802,8 @@ void SetDataTable::load_table_t(const string& data) {
       while (!var2_r.eof()) {
         auto& entry = var2_v.emplace_back();
         entry.object_list_basename = r.pget_cstr(var2_r.get<U32T>());
-        entry.enemy_list_basename = r.pget_cstr(var2_r.get<U32T>());
-        entry.event_list_basename = r.pget_cstr(var2_r.get<U32T>());
+        entry.enemy_and_event_list_basename = r.pget_cstr(var2_r.get<U32T>());
+        entry.area_setup_filename = r.pget_cstr(var2_r.get<U32T>());
       }
     }
   }
@@ -1750,7 +1814,10 @@ pair<uint32_t, uint32_t> SetDataTable::num_available_variations_for_floor(Episod
   if (area == 0xFF) {
     return make_pair(1, 1);
   } else {
-    const auto& e = this->entries.at(area);
+    if (area >= this->entries.size()) {
+      return make_pair(1, 1);
+    }
+    const auto& e = this->entries[area];
     return make_pair(e.size(), e.at(0).size());
   }
 }
@@ -1789,7 +1856,7 @@ pair<uint32_t, uint32_t> SetDataTable::num_free_roam_variations_for_floor(Episod
 }
 
 string SetDataTable::map_filename_for_variation(
-    uint8_t floor, uint32_t var1, uint32_t var2, Episode episode, GameMode mode, bool is_enemies) const {
+    uint8_t floor, uint32_t var1, uint32_t var2, Episode episode, GameMode mode, FilenameType type) const {
   uint8_t area = this->default_area_for_floor(episode, floor);
   if (area == 0xFF) {
     return "";
@@ -1800,22 +1867,35 @@ string SetDataTable::map_filename_for_variation(
   }
 
   const auto& entry = this->entries.at(area).at(var1).at(var2);
-  string filename = is_enemies ? entry.enemy_list_basename : entry.object_list_basename;
 
-  filename += (is_enemies ? "e" : "o");
+  string filename;
+  switch (type) {
+    case FilenameType::OBJECTS:
+      filename = entry.object_list_basename + "o";
+      break;
+    case FilenameType::ENEMIES:
+      filename = entry.enemy_and_event_list_basename + "e";
+      break;
+    case FilenameType::EVENTS:
+      filename = entry.enemy_and_event_list_basename;
+      break;
+    default:
+      throw logic_error("invalid map filename type");
+  }
 
+  bool is_events = (type == FilenameType::EVENTS);
   switch ((floor != 0) ? GameMode::NORMAL : mode) {
     case GameMode::NORMAL:
-      filename += ".dat";
+      filename += is_events ? ".evt" : ".dat";
       break;
     case GameMode::SOLO:
-      filename += "_s.dat";
+      filename += is_events ? "_s.evt" : "_s.dat";
       break;
     case GameMode::CHALLENGE:
-      filename += "_c1.dat";
+      filename += is_events ? "_c1.evt" : "_c1.dat";
       break;
     case GameMode::BATTLE:
-      filename += "_d.dat";
+      filename += is_events ? "_d.evt" : "_d.dat";
       break;
     default:
       throw logic_error("invalid game mode");
@@ -1826,14 +1906,15 @@ string SetDataTable::map_filename_for_variation(
 
 string SetDataTable::str() const {
   vector<string> lines;
-  lines.emplace_back(string_printf("FL/V1/V2 => ----------------------OBJECT -----------------------ENEMY -----------------------EVENT\n"));
+  lines.emplace_back(string_printf("FL/V1/V2 => ----------------------OBJECT -----------------ENEMY+EVENT -----------------------SETUP\n"));
   for (size_t a = 0; a < this->entries.size(); a++) {
     const auto& v1_v = this->entries[a];
     for (size_t v1 = 0; v1 < v1_v.size(); v1++) {
       const auto& v2_v = v1_v[v1];
       for (size_t v2 = 0; v2 < v2_v.size(); v2++) {
         const auto& e = v2_v[v2];
-        lines.emplace_back(string_printf("%02zX/%02zX/%02zX => %28s %28s %28s\n", a, v1, v2, e.object_list_basename.c_str(), e.enemy_list_basename.c_str(), e.event_list_basename.c_str()));
+        lines.emplace_back(string_printf("%02zX/%02zX/%02zX => %28s %28s %28s\n",
+            a, v1, v2, e.object_list_basename.c_str(), e.enemy_and_event_list_basename.c_str(), e.area_setup_filename.c_str()));
       }
     }
   }
@@ -1854,7 +1935,7 @@ struct AreaMapFileInfo {
         variation2_values(variation2_values) {}
 };
 
-const array<vector<vector<string>>, 0x10> SetDataTableDCNTE::NAMES = {{
+const array<vector<vector<string>>, 0x12> SetDataTableDCNTE::NAMES = {{
     /* 00 */ {{"map_city00_00"}},
     /* 01 */ {{"map_forest01_00", "map_forest01_01"}},
     /* 02 */ {{"map_forest02_00", "map_forest02_03"}},
@@ -1871,12 +1952,15 @@ const array<vector<vector<string>>, 0x10> SetDataTableDCNTE::NAMES = {{
     /* 0D */ {{"map_boss03"}},
     /* 0E */ {{"map_boss04"}},
     /* 0F */ {{"map_visuallobby"}, {"map_visuallobby"}, {"map_visuallobby"}, {"map_visuallobby"}, {"map_visuallobby"}, {"map_visuallobby"}, {"map_visuallobby"}, {"map_visuallobby"}, {"map_visuallobby"}, {"map_visuallobby"}},
+    /* 10 */ {},
+    /* 11 */ {},
 }};
 
 SetDataTableDCNTE::SetDataTableDCNTE() : SetDataTableBase(Version::DC_NTE) {}
 
 pair<uint32_t, uint32_t> SetDataTableDCNTE::num_available_variations_for_floor(Episode, uint8_t floor) const {
-  return make_pair(this->NAMES[floor].size(), this->NAMES[floor][0].size());
+  const auto& floor_names = this->NAMES.at(floor);
+  return make_pair(floor_names.size(), floor_names.empty() ? 0 : this->NAMES.at(floor)[0].size());
 }
 
 pair<uint32_t, uint32_t> SetDataTableDCNTE::num_free_roam_variations_for_floor(Episode episode, bool, uint8_t floor) const {
@@ -1884,14 +1968,29 @@ pair<uint32_t, uint32_t> SetDataTableDCNTE::num_free_roam_variations_for_floor(E
 }
 
 string SetDataTableDCNTE::map_filename_for_variation(
-    uint8_t floor, uint32_t var1, uint32_t var2, Episode, GameMode, bool is_enemies) const {
-  if (floor >= this->NAMES.size()) {
+    uint8_t floor, uint32_t var1, uint32_t var2, Episode, GameMode, FilenameType type) const {
+  try {
+    string basename = this->NAMES.at(floor).at(var1).at(var2);
+    switch (type) {
+      case FilenameType::ENEMIES:
+        basename += "e.dat";
+        break;
+      case FilenameType::OBJECTS:
+        basename += "o.dat";
+        break;
+      case FilenameType::EVENTS:
+        basename += ".evt";
+        break;
+      default:
+        throw logic_error("invalid map filename type");
+    }
+    return basename;
+  } catch (const out_of_range&) {
     return "";
   }
-  return this->NAMES.at(floor).at(var1).at(var2) + (is_enemies ? "e.dat" : "o.dat");
 }
 
-const array<vector<vector<string>>, 0x10> SetDataTableDC112000::NAMES = {{
+const array<vector<vector<string>>, 0x12> SetDataTableDC112000::NAMES = {{
     /* 00 */ {{"map_city00_00"}},
     /* 01 */ {{"map_forest01_00", "map_forest01_01", "map_forest01_02", "map_forest01_03", "map_forest01_04"}},
     /* 02 */ {{"map_forest02_00", "map_forest02_01", "map_forest02_02", "map_forest02_03", "map_forest02_04"}},
@@ -1908,12 +2007,15 @@ const array<vector<vector<string>>, 0x10> SetDataTableDC112000::NAMES = {{
     /* 0D */ {{"map_boss03"}},
     /* 0E */ {{"map_boss04"}},
     /* 0F */ {{"map_visuallobby"}, {"map_visuallobby"}, {"map_visuallobby"}, {"map_visuallobby"}, {"map_visuallobby"}, {"map_visuallobby"}, {"map_visuallobby"}, {"map_visuallobby"}, {"map_visuallobby"}, {"map_visuallobby"}},
+    /* 10 */ {},
+    /* 11 */ {},
 }};
 
 SetDataTableDC112000::SetDataTableDC112000() : SetDataTableBase(Version::DC_V1_11_2000_PROTOTYPE) {}
 
 pair<uint32_t, uint32_t> SetDataTableDC112000::num_available_variations_for_floor(Episode, uint8_t floor) const {
-  return make_pair(this->NAMES[floor].size(), this->NAMES[floor][0].size());
+  const auto& floor_names = this->NAMES.at(floor);
+  return make_pair(floor_names.size(), floor_names.empty() ? 0 : this->NAMES.at(floor)[0].size());
 }
 
 pair<uint32_t, uint32_t> SetDataTableDC112000::num_free_roam_variations_for_floor(Episode episode, bool, uint8_t floor) const {
@@ -1921,11 +2023,25 @@ pair<uint32_t, uint32_t> SetDataTableDC112000::num_free_roam_variations_for_floo
 }
 
 string SetDataTableDC112000::map_filename_for_variation(
-    uint8_t floor, uint32_t var1, uint32_t var2, Episode, GameMode, bool is_enemies) const {
+    uint8_t floor, uint32_t var1, uint32_t var2, Episode, GameMode, FilenameType type) const {
   if (floor >= this->NAMES.size()) {
     return "";
   }
-  return this->NAMES.at(floor).at(var1).at(var2) + (is_enemies ? "e.dat" : "o.dat");
+  string basename = this->NAMES.at(floor).at(var1).at(var2);
+  switch (type) {
+    case FilenameType::ENEMIES:
+      basename += "e.dat";
+      break;
+    case FilenameType::OBJECTS:
+      basename += "o.dat";
+      break;
+    case FilenameType::EVENTS:
+      basename += ".evt";
+      break;
+    default:
+      throw logic_error("invalid map filename type");
+  }
+  return basename;
 }
 
 static const vector<AreaMapFileInfo> map_file_info_dc_nte = {

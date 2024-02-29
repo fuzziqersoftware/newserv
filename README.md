@@ -431,8 +431,8 @@ Some commands only work on the game server and not on the proxy server. The chat
         * The rest of the commands in this section are enabled on the game server. (They are always enabled on the proxy server.)
     * `$quest <number>` (game server only): Load a quest by quest number. Can be used to load battle or challenge quests with only one player present.
     * `$qcall <function-id>`: Call a quest function on your client.
-    * `$qcheck <flag-num>` (game server only): Show the value of a quest flag. This command can be used without debug mode enabled.
-    * `$qset <flag-num>` or `$qclear <flag-num>`: Set or clear a quest flag for everyone in the game.
+    * `$qcheck <flag-num>` (game server only): Show the value of a quest flag. This command can be used without debug mode enabled. If you're in a game, show the value of the flag in that game; if you're in the lobby, show the saved value of that quest flag for your character (BB only).
+    * `$qset <flag-num>` or `$qclear <flag-num>`: Set or clear a quest flag for everyone in the game. If you're in the lobby and on BB, set or clear the saved value of a quest flag in your character file.
     * `$qgread <flag-num>` (game server only): Get the value of a quest counter ("global flag"). This command can be used without debug mode enabled.
     * `$qgwrite <flag-num> <value>` (game server only): Set the value of a quest counter ("global flag") for yourself.
     * `$qsync <reg-num> <value>`: Set a quest register's value for yourself only. `<reg-num>` should be either rXX (e.g. r60) or fXX (e.g. f60); if the latter, `<value>` is parsed as a floating-point value instead of as an integer.
@@ -468,7 +468,7 @@ Some commands only work on the game server and not on the proxy server. The chat
     * `$minlevel <level>`: Sets the minimum level for players to join the current game.
     * `$password <password>`: Sets the game's join password. To unlock the game, run `$password` with nothing after it.
     * `$dropmode [mode]`: Changes the way item drops behave in the current game. `mode` can be `none`, `client`, `shared`, `private`, or `duplicate`. If `mode` is not given, tells you the current drop mode without changing it. See the "Item tables and drop modes" section for more information.
-    * `$persist`: Enable or disable persistence for the current game. When persistence is on, the game will not be deleted when the last player leaves. The state of enemies and objects on the map will be reset when the last player leaves, but dropped items will not be deleted. If the game is empty for too long (15 minutes by default), it is then deleted.
+    * `$persist`: Enable or disable persistence for the current game. When persistence is on, the game will not be deleted when the last player leaves. The state of enemies on the map will be reset when the last player leaves, but dropped items will not be deleted. If the game is empty for too long (15 minutes by default), it is then deleted.
 
 * Episode 3 commands (game server only)
     * `$spec`: Toggles the allow spectators flag for Episode 3 games. If any players are spectating when this flag is disabled, they will be sent back to the lobby.

@@ -328,19 +328,19 @@ static shared_ptr<Client> get_sync_target(shared_ptr<Client> sender_c, uint8_t c
   return nullptr;
 }
 
-static void on_forward_sync_joining_player_state(shared_ptr<Client> c, uint8_t command, uint8_t flag, void* data, size_t size) {
+static void on_sync_joining_player_compressed_state(shared_ptr<Client> c, uint8_t command, uint8_t flag, void* data, size_t size) {
   auto target = get_sync_target(c, command, flag, false);
   if (!target) {
     return;
   }
 
-  uint8_t subcommand;
+  uint8_t orig_subcommand_number;
   size_t decompressed_size;
   size_t compressed_size;
   const void* compressed_data;
   if (is_pre_v1(c->version())) {
     const auto& cmd = check_size_t<G_SyncGameStateHeader_DCNTE_6x6B_6x6C_6x6D_6x6E>(data, size, 0xFFFF);
-    subcommand = cmd.header.basic_header.subcommand;
+    orig_subcommand_number = cmd.header.basic_header.subcommand;
     decompressed_size = cmd.decompressed_size;
     compressed_size = size - sizeof(cmd);
     compressed_data = reinterpret_cast<const char*>(data) + sizeof(cmd);
@@ -349,117 +349,276 @@ static void on_forward_sync_joining_player_state(shared_ptr<Client> c, uint8_t c
     if (cmd.compressed_size > size - sizeof(cmd)) {
       throw runtime_error("compressed end offset is beyond end of command");
     }
-    subcommand = cmd.header.basic_header.subcommand;
+    orig_subcommand_number = cmd.header.basic_header.subcommand;
     decompressed_size = cmd.decompressed_size;
     compressed_size = cmd.compressed_size;
     compressed_data = reinterpret_cast<const char*>(data) + sizeof(cmd);
   }
 
+  const auto* subcommand_def = def_for_subcommand(c->version(), orig_subcommand_number);
+  if (!subcommand_def) {
+    throw runtime_error("unknown sync subcommand");
+  }
+
+  string decompressed = bc0_decompress(compressed_data, compressed_size);
   if (c->config.check_flag(Client::Flag::DEBUG_ENABLED)) {
-    string decompressed = bc0_decompress(compressed_data, compressed_size);
     c->log.info("Decompressed sync data (%zX -> %zX bytes; expected %zX):",
         compressed_size, decompressed.size(), decompressed_size);
     print_data(stderr, decompressed);
   }
 
-  if (is_pre_v1(c->version()) == is_pre_v1(target->version())) {
-    on_forward_check_game_loading(c, command, flag, data, size);
+  switch (subcommand_def->final_subcommand) {
+    case 0x6B: {
+      auto l = c->require_lobby();
+      if (l->map) {
+        l->log.info("Checking client enemy state against server state");
+        StringReader r(decompressed);
+        size_t count = r.size() / sizeof(G_SyncEnemyState_6x6B_Entry_Decompressed);
+        if (count != l->map->enemies.size()) {
+          l->log.warning("Enemy count from client (%zu) does not match enemy count from map (%zu)",
+              count, l->map->enemies.size());
+        } else {
+          l->log.info("Enemy count from client matches enemy count from map (%zu)", l->map->enemies.size());
+        }
 
-  } else if (is_pre_v1(target->version())) {
-    StringWriter w;
-    uint32_t cmd_size = ((compressed_size + sizeof(G_SyncGameStateHeader_DCNTE_6x6B_6x6C_6x6D_6x6E)) + 3) & (~3);
-    w.put(G_SyncGameStateHeader_DCNTE_6x6B_6x6C_6x6D_6x6E{
-        .header = {{subcommand, 0x00, 0x0000}, cmd_size},
-        .decompressed_size = decompressed_size,
-    });
-    w.write(compressed_data, compressed_size);
-    while (w.size() & 3) {
-      w.put_u8(0);
-    }
-    const string& data_to_send = w.str();
-    forward_subcommand(c, command, flag, data_to_send.data(), data_to_send.size());
+        // TODO: We should UPDATE our view of the flags here, not just check them
+        for (size_t z = 0; z < min<size_t>(count, l->map->enemies.size()); z++) {
+          const auto& entry = r.get<G_SyncEnemyState_6x6B_Entry_Decompressed>();
+          if (l->map->enemies[z].game_flags != entry.flags) {
+            l->log.warning("(E-%zX) Flags from client (%08" PRIX32 ") do not match game flags from map (%08" PRIX32 ")",
+                z, entry.flags.load(), l->map->enemies[z].game_flags);
+          }
+          if (l->map->enemies[z].total_damage != entry.total_damage) {
+            l->log.warning("(E-%zX) Total damage from client (%hu) does not match total damage from map (%hu)",
+                z, entry.total_damage.load(), l->map->enemies[z].total_damage);
+          }
+        }
+      }
 
-  } else {
-    StringWriter w;
-    uint32_t cmd_size = ((compressed_size + sizeof(G_SyncGameStateHeader_6x6B_6x6C_6x6D_6x6E)) + 3) & (~3);
-    w.put(G_SyncGameStateHeader_6x6B_6x6C_6x6D_6x6E{
-        .header = {{subcommand, 0x00, 0x0000}, cmd_size},
-        .decompressed_size = decompressed_size,
-        .compressed_size = compressed_size,
-    });
-    w.write(compressed_data, compressed_size);
-    while (w.size() & 3) {
-      w.put_u8(0);
+      send_game_join_sync_command_compressed(
+          target,
+          compressed_data,
+          compressed_size,
+          decompressed_size,
+          subcommand_def->nte_subcommand,
+          subcommand_def->proto_subcommand,
+          subcommand_def->final_subcommand);
+      break;
     }
-    const string& data_to_send = w.str();
-    forward_subcommand(c, command, flag, data_to_send.data(), data_to_send.size());
+
+    case 0x6C: {
+      auto l = c->require_lobby();
+      if (l->map) {
+        l->log.info("Checking client object state against server state");
+        StringReader r(decompressed);
+        size_t count = r.size() / sizeof(G_SyncObjectState_6x6C_Entry_Decompressed);
+        if (count > l->map->objects.size()) {
+          l->log.warning("Object count from client (%zu) exceeds object count from map (%zu)",
+              count, l->map->objects.size());
+        } else if (count < l->map->objects.size()) {
+          // This is normal because we load objects for inaccessible maps (e.g. lobby)
+          l->log.info("Object count from client (%zu) is less than object count from map (%zu) (this is normal)",
+              count, l->map->objects.size());
+        } else {
+          l->log.info("Object count from client matches object count from map (%zu)", l->map->objects.size());
+        }
+
+        // TODO: We should UPDATE our view of the flags here, not just check them
+        for (size_t z = 0; z < min<size_t>(count, l->map->enemies.size()); z++) {
+          const auto& entry = r.get<G_SyncObjectState_6x6C_Entry_Decompressed>();
+          if (l->map->objects[z].game_flags != entry.flags) {
+            l->log.warning("(K-%zX) Flags from client (%04hX) do not match game flags from map (%04hX)",
+                z, entry.flags.load(), l->map->objects[z].game_flags);
+          }
+        }
+      }
+
+      send_game_join_sync_command_compressed(
+          target,
+          compressed_data,
+          compressed_size,
+          decompressed_size,
+          subcommand_def->nte_subcommand,
+          subcommand_def->proto_subcommand,
+          subcommand_def->final_subcommand);
+      break;
+    }
+
+    case 0x6D: {
+      if (decompressed.size() < sizeof(G_SyncItemState_6x6D_Decompressed)) {
+        throw runtime_error(string_printf(
+            "decompressed 6x6D data (0x%zX bytes) is too short for header (0x%zX bytes)",
+            decompressed.size(), sizeof(G_SyncItemState_6x6D_Decompressed)));
+      }
+      auto* decompressed_cmd = reinterpret_cast<G_SyncItemState_6x6D_Decompressed*>(decompressed.data());
+
+      size_t num_floor_items = 0;
+      for (size_t z = 0; z < decompressed_cmd->floor_item_count_per_floor.size(); z++) {
+        num_floor_items += decompressed_cmd->floor_item_count_per_floor[z];
+      }
+
+      size_t required_size = sizeof(G_SyncItemState_6x6D_Decompressed) + num_floor_items * sizeof(FloorItem);
+      if (decompressed.size() < required_size) {
+        throw runtime_error(string_printf(
+            "decompressed 6x6D data (0x%zX bytes) is too short for all floor items (0x%zX bytes)",
+            decompressed.size(), required_size));
+      }
+
+      auto l = c->require_lobby();
+      size_t target_num_items = target->character()->inventory.num_items;
+      for (size_t z = 0; z < 12; z++) {
+        uint32_t client_next_id = decompressed_cmd->next_item_id_per_player[z];
+        uint32_t server_next_id = l->next_item_id_for_client[z];
+        if (client_next_id == server_next_id) {
+          l->log.info("Next item ID for player %zu (%08" PRIX32 ") matches expected value", z, l->next_item_id_for_client[z]);
+        } else if ((z == target->lobby_client_id) && (client_next_id == server_next_id - target_num_items)) {
+          l->log.info("Next item ID for player %zu (%08" PRIX32 ") matches expected value before inventory item ID assignment (%08" PRIX32 ")", z, l->next_item_id_for_client[z], static_cast<uint32_t>(server_next_id - target_num_items));
+        } else {
+          l->log.warning("Next item ID for player %zu (%08" PRIX32 ") does not match expected value (%08" PRIX32 ")",
+              z, decompressed_cmd->next_item_id_per_player[z].load(), l->next_item_id_for_client[z]);
+        }
+      }
+
+      // The leader's item state is never forwarded since the leader may be able
+      // to see items that the joining player should not see. We always generate
+      // a new item state for the joining player instead.
+      send_game_item_state(target);
+      break;
+    }
+
+    case 0x6E: {
+      StringReader r(decompressed);
+      const auto& dec_header = r.get<G_SyncSetFlagState_6x6E_Decompressed>();
+      if (dec_header.total_size != dec_header.entity_set_flags_size + dec_header.event_set_flags_size + dec_header.unused_size) {
+        throw runtime_error("incorrect size fields in 6x6E header");
+      }
+
+      auto l = c->require_lobby();
+      if (l->map) {
+        l->log.info("Checking client set flag state against server state");
+
+        StringReader set_flags_r = r.sub(r.where(), dec_header.entity_set_flags_size);
+        const auto& set_flags_header = set_flags_r.get<G_SyncSetFlagState_6x6E_Decompressed::EntitySetFlags>();
+
+        if (c->config.check_flag(Client::Flag::DEBUG_ENABLED)) {
+          c->log.info("Set flags data:");
+          print_data(stderr, set_flags_r.all());
+        }
+
+        if (set_flags_header.num_object_sets > l->map->objects.size()) {
+          l->log.warning("Object set count from client (%hu) exceeds object count from map (%zu)",
+              set_flags_header.num_object_sets.load(), l->map->objects.size());
+        } else if (set_flags_header.num_object_sets < l->map->objects.size()) {
+          // This is normal because we load objects for inaccessible maps (e.g. lobby)
+          l->log.info("Object set count from client (%hu) is less than object count from map (%zu) (this is normal)",
+              set_flags_header.num_object_sets.load(), l->map->objects.size());
+        } else {
+          l->log.info("Object set count from client matches object count from map (%zu)", l->map->objects.size());
+        }
+        for (size_t z = 0; z < min<size_t>(set_flags_header.num_object_sets, l->map->objects.size()); z++) {
+          uint16_t flags = set_flags_r.get_u16l();
+          if (flags != l->map->objects[z].set_flags) {
+            l->log.warning("(K-%zX) Set flags from client (%04hX) do not match flags from map (%04hX)",
+                z, flags, l->map->objects[z].set_flags);
+          }
+        }
+
+        set_flags_r.go(sizeof(set_flags_header) + set_flags_header.num_object_sets * sizeof(le_uint16_t));
+        if (set_flags_header.num_enemy_sets != l->map->enemy_set_flags.size()) {
+          l->log.warning("Enemy set count from client (%hu) does not match count from map (%zu)",
+              set_flags_header.num_enemy_sets.load(), l->map->enemy_set_flags.size());
+        } else {
+          l->log.info("Enemy set count from client matches count from map (%zu)", l->map->enemy_set_flags.size());
+        }
+        for (size_t z = 0; z < min<size_t>(set_flags_header.num_enemy_sets, l->map->enemy_set_flags.size()); z++) {
+          uint16_t flags = set_flags_r.get_u16l();
+          if (flags != l->map->enemy_set_flags[z]) {
+            l->log.warning("(S-%zX) Set flags from client (%04hX) do not match flags from map (%04hX)",
+                z, flags, l->map->enemy_set_flags[z]);
+          }
+        }
+
+        StringReader event_set_flags_r = r.sub(r.where() + dec_header.entity_set_flags_size, dec_header.event_set_flags_size);
+        if (c->config.check_flag(Client::Flag::DEBUG_ENABLED)) {
+          c->log.info("Event flags data:");
+          print_data(stderr, event_set_flags_r.all());
+        }
+        size_t num_event_flags = event_set_flags_r.size() / sizeof(le_uint16_t);
+        if (num_event_flags != l->map->events.size()) {
+          l->log.warning("Event count from client (%zu) does not match count from map (%zu)",
+              num_event_flags, l->map->events.size());
+        } else {
+          l->log.info("Event count from client matches count from map (%zu)", l->map->events.size());
+        }
+        for (size_t z = 0; z < min<size_t>(num_event_flags, l->map->events.size()); z++) {
+          uint16_t flags = event_set_flags_r.get_u16l();
+          const auto& event = l->map->events[z];
+          if (flags != event.flags) {
+            l->log.warning("(W-%02hhX-%" PRIX32 ") Event flags from client (%04hX) do not match flags from map (%04hX)",
+                event.floor, event.event_id, flags, event.flags);
+          }
+        }
+      }
+
+      size_t expected_unused_size = is_v1(c->version()) ? 0x200 : 0x240;
+      size_t target_unused_size = is_v1(target->version()) ? 0x200 : 0x240;
+      if (dec_header.unused_size != expected_unused_size) {
+        l->log.warning("Unused data size (0x%" PRIX32 ") does not match expected size (0x%zX)",
+            dec_header.unused_size.load(), expected_unused_size);
+      }
+      if (dec_header.unused_size != target_unused_size) {
+        l->log.info("Resizing unused data from 0x%" PRIX32 " bytes to 0x%zX bytes",
+            dec_header.unused_size.load(), target_unused_size);
+        if (dec_header.unused_size >= decompressed.size()) {
+          throw runtime_error("unused size is too large");
+        }
+        decompressed.resize(decompressed.size() - dec_header.unused_size.load() + target_unused_size, '\0');
+        auto* wdec_header = reinterpret_cast<G_SyncSetFlagState_6x6E_Decompressed*>(decompressed.data());
+        wdec_header->unused_size = target_unused_size;
+        wdec_header->total_size = wdec_header->entity_set_flags_size + wdec_header->event_set_flags_size + wdec_header->unused_size;
+      }
+
+      send_game_join_sync_command_compressed(
+          target,
+          compressed_data,
+          compressed_size,
+          decompressed_size,
+          subcommand_def->nte_subcommand,
+          subcommand_def->proto_subcommand,
+          subcommand_def->final_subcommand);
+      break;
+    }
+
+    default:
+      throw logic_error("invalid compressed sync state subcommand");
   }
 }
 
-static void on_sync_joining_player_item_state(shared_ptr<Client> c, uint8_t command, uint8_t flag, void* data, size_t size) {
-  auto target = get_sync_target(c, command, flag, false);
-  if (!target) {
+template <typename CmdT>
+static void on_sync_joining_player_quest_flags_t(shared_ptr<Client> c, uint8_t command, uint8_t flag, void* data, size_t size) {
+  const auto& cmd = check_size_t<CmdT>(data, size);
+
+  if (!command_is_private(command)) {
     return;
   }
-  const auto& l = c->require_lobby();
 
-  string decompressed;
-  size_t compressed_size;
-  size_t decompressed_size;
-  if (is_pre_v1(c->version())) {
-    const auto& cmd = check_size_t<G_SyncGameStateHeader_DCNTE_6x6B_6x6C_6x6D_6x6E>(data, size, 0xFFFF);
-    compressed_size = size - sizeof(cmd);
-    decompressed_size = cmd.decompressed_size;
-    decompressed = bc0_decompress(reinterpret_cast<const char*>(data) + sizeof(cmd), compressed_size);
+  auto l = c->require_lobby();
+  if (l->is_game() && l->any_client_loading() && (l->leader_id == c->lobby_client_id)) {
+    l->quest_flags_known = nullptr; // All quest flags are now known
+    l->quest_flag_values = make_unique<QuestFlags>(cmd.quest_flags);
+    auto target = l->clients.at(flag);
+    if (target) {
+      send_game_flag_state(target);
+    }
+  }
+}
+
+static void on_sync_joining_player_quest_flags(shared_ptr<Client> c, uint8_t command, uint8_t flag, void* data, size_t size) {
+  if (is_v1(c->version())) {
+    on_sync_joining_player_quest_flags_t<G_SetQuestFlagsV1_6x6F>(c, command, flag, data, size);
   } else {
-    const auto& cmd = check_size_t<G_SyncGameStateHeader_6x6B_6x6C_6x6D_6x6E>(data, size, 0xFFFF);
-    compressed_size = cmd.compressed_size;
-    decompressed_size = cmd.decompressed_size;
-    if (compressed_size > size - sizeof(cmd)) {
-      throw runtime_error("compressed end offset is beyond end of command");
-    }
-    decompressed = bc0_decompress(reinterpret_cast<const char*>(data) + sizeof(cmd), cmd.compressed_size);
+    on_sync_joining_player_quest_flags_t<G_SetQuestFlagsV2V3V4_6x6F>(c, command, flag, data, size);
   }
-  if (c->config.check_flag(Client::Flag::DEBUG_ENABLED)) {
-    c->log.info("Decompressed item sync data (%zX -> %zX bytes; expected %zX):",
-        compressed_size, decompressed.size(), decompressed_size);
-    print_data(stderr, decompressed);
-  }
-
-  if (decompressed.size() < sizeof(G_SyncItemState_6x6D_Decompressed)) {
-    throw runtime_error(string_printf(
-        "decompressed 6x6D data (0x%zX bytes) is too short for header (0x%zX bytes)",
-        decompressed.size(), sizeof(G_SyncItemState_6x6D_Decompressed)));
-  }
-  auto* decompressed_cmd = reinterpret_cast<G_SyncItemState_6x6D_Decompressed*>(decompressed.data());
-
-  size_t num_floor_items = 0;
-  for (size_t z = 0; z < decompressed_cmd->floor_item_count_per_floor.size(); z++) {
-    num_floor_items += decompressed_cmd->floor_item_count_per_floor[z];
-  }
-
-  size_t required_size = sizeof(G_SyncItemState_6x6D_Decompressed) + num_floor_items * sizeof(FloorItem);
-  if (decompressed.size() < required_size) {
-    throw runtime_error(string_printf(
-        "decompressed 6x6D data (0x%zX bytes) is too short for all floor items (0x%zX bytes)",
-        decompressed.size(), required_size));
-  }
-
-  size_t target_num_items = target->character()->inventory.num_items;
-  for (size_t z = 0; z < 12; z++) {
-    uint32_t client_next_id = decompressed_cmd->next_item_id_per_player[z];
-    uint32_t server_next_id = l->next_item_id_for_client[z];
-    if (client_next_id == server_next_id) {
-      l->log.info("Next item ID for player %zu (%08" PRIX32 ") matches expected value", z, l->next_item_id_for_client[z]);
-    } else if ((z == target->lobby_client_id) && (client_next_id == server_next_id - target_num_items)) {
-      l->log.info("Next item ID for player %zu (%08" PRIX32 ") matches expected value before inventory item ID assignment (%08" PRIX32 ")", z, l->next_item_id_for_client[z], static_cast<uint32_t>(server_next_id - target_num_items));
-    } else {
-      l->log.warning("Next item ID for player %zu (%08" PRIX32 ") does not match expected value (%08" PRIX32 ")",
-          z, decompressed_cmd->next_item_id_per_player[z].load(), l->next_item_id_for_client[z]);
-    }
-  }
-
-  send_game_item_state(target);
 }
 
 class Parsed6x70Data {
@@ -2404,39 +2563,50 @@ static void on_set_quest_flag(shared_ptr<Client> c, uint8_t command, uint8_t fla
     return;
   }
 
-  uint16_t flag_index, difficulty, action;
+  uint16_t flag_num, difficulty, action;
   if (is_v1_or_v2(c->version()) && (c->version() != Version::GC_NTE)) {
     const auto& cmd = check_size_t<G_UpdateQuestFlag_DC_PC_6x75>(data, size);
-    flag_index = cmd.flag;
+    flag_num = cmd.flag;
     action = cmd.action;
     difficulty = l->difficulty;
   } else {
     const auto& cmd = check_size_t<G_UpdateQuestFlag_V3_BB_6x75>(data, size);
-    flag_index = cmd.flag;
+    flag_num = cmd.flag;
     action = cmd.action;
     difficulty = cmd.difficulty;
   }
 
-  if ((flag_index >= 0x400) || (difficulty > 3) || (action > 1)) {
+  // The client explicitly checks action for both 0 and 1 - any other value
+  // means no operation is performed.
+  if ((flag_num >= 0x400) || (difficulty > 3) || (action > 1)) {
     return;
   }
+  bool should_set = (action == 0);
 
-  // TODO: Should we allow overlays here?
-  auto p = c->character(true, false);
-
-  auto s = c->require_server_state();
-  if (s->quest_flag_persist_mask.get(flag_index)) {
-    // The client explicitly checks for both 0 and 1 - any other value means no
-    // operation is performed.
-    if (action == 0) {
-      c->log.info("Setting quest flag %s:%03hX", name_for_difficulty(difficulty), flag_index);
-      p->quest_flags.set(difficulty, flag_index);
-    } else if (action == 1) {
-      c->log.info("Clearing quest flag %s:%03hX", name_for_difficulty(difficulty), flag_index);
-      p->quest_flags.clear(difficulty, flag_index);
-    }
+  if (l->quest_flags_known) {
+    l->quest_flags_known->set(difficulty, flag_num);
+  }
+  if (should_set) {
+    l->quest_flag_values->set(difficulty, flag_num);
   } else {
-    c->log.info("Quest flag %s:%03hX cannot be modified", name_for_difficulty(difficulty), flag_index);
+    l->quest_flag_values->clear(difficulty, flag_num);
+  }
+
+  if (c->version() == Version::BB_V4) {
+    auto s = c->require_server_state();
+    // TODO: Should we allow overlays here?
+    auto p = c->character(true, false);
+    if (s->quest_flag_persist_mask.get(flag_num)) {
+      if (should_set) {
+        c->log.info("Setting quest flag %s:%03hX", name_for_difficulty(difficulty), flag_num);
+        p->quest_flags.set(difficulty, flag_num);
+      } else {
+        c->log.info("Clearing quest flag %s:%03hX", name_for_difficulty(difficulty), flag_num);
+        p->quest_flags.clear(difficulty, flag_num);
+      }
+    } else {
+      c->log.info("Quest flag %s:%03hX cannot be modified", name_for_difficulty(difficulty), flag_num);
+    }
   }
 
   forward_subcommand(c, command, flag, data, size);
@@ -2448,12 +2618,12 @@ static void on_set_quest_flag(shared_ptr<Client> c, uint8_t command, uint8_t fla
       // On Normal, Dark Falz does not have a third phase, so send the drop
       // request after the end of the second phase. On all other difficulty
       // levels, send it after the third phase.
-      if ((difficulty == 0) && (flag_index == 0x0035)) {
+      if ((difficulty == 0) && (flag_num == 0x0035)) {
         boss_enemy_type = EnemyType::DARK_FALZ_2;
-      } else if ((difficulty != 0) && (flag_index == 0x0037)) {
+      } else if ((difficulty != 0) && (flag_num == 0x0037)) {
         boss_enemy_type = EnemyType::DARK_FALZ_3;
       }
-    } else if (is_ep2 && (flag_index == 0x0057) && (c->floor == 0x0D)) {
+    } else if (is_ep2 && (flag_num == 0x0057) && (c->floor == 0x0D)) {
       boss_enemy_type = EnemyType::OLGA_FLOW_2;
     }
 
@@ -2492,6 +2662,52 @@ static void on_set_quest_flag(shared_ptr<Client> c, uint8_t command, uint8_t fla
       }
     }
   }
+}
+
+static void on_set_entity_flag(shared_ptr<Client> c, uint8_t command, uint8_t flag, void* data, size_t size) {
+  auto l = c->require_lobby();
+  if (!l->is_game()) {
+    return;
+  }
+
+  const auto& cmd = check_size_t<G_SetEntityFlags_6x76>(data, size);
+  if (l->map) {
+    if (cmd.header.enemy_id >= 0x1000 && cmd.header.enemy_id < 0x4000) {
+      try {
+        l->map->enemies.at(cmd.header.enemy_id - 0x1000).game_flags |= cmd.flags;
+      } catch (const out_of_range&) {
+        l->log.warning("Flag update refers to missing enemy");
+      }
+    } else if (cmd.header.enemy_id >= 0x4000) {
+      try {
+        l->map->objects.at(cmd.header.enemy_id - 0x4000).game_flags |= cmd.flags;
+      } catch (const out_of_range&) {
+        l->log.warning("Flag update refers to missing object");
+      }
+    }
+  }
+
+  forward_subcommand(c, command, flag, data, size);
+}
+
+static void on_trigger_set_event(shared_ptr<Client> c, uint8_t command, uint8_t flag, void* data, size_t size) {
+  auto l = c->require_lobby();
+  if (!l->is_game()) {
+    return;
+  }
+
+  const auto& cmd = check_size_t<G_TriggerSetEvent_6x67>(data, size);
+  if (l->map) {
+    // TODO: The game's logic is significantly more complex than this. Do we
+    // need to do anything fancy here?
+    try {
+      l->map->get_event(cmd.floor, cmd.event_id).flags |= 0x04;
+    } catch (const out_of_range&) {
+      l->log.warning("Client triggered missing event W-%02" PRIX32 "-%" PRIX32, cmd.floor.load(), cmd.event_id.load());
+    }
+  }
+
+  forward_subcommand(c, command, flag, data, size);
 }
 
 static void on_battle_scores(shared_ptr<Client> c, uint8_t command, uint8_t, void* data, size_t size) {
@@ -3935,22 +4151,22 @@ const SubcommandDefinition subcommand_definitions[0x100] = {
     /* 6x64 */ {0x56, 0x5D, 0x64, on_forward_check_game},
     /* 6x65 */ {0x57, 0x5E, 0x65, on_forward_check_game},
     /* 6x66 */ {0x00, 0x00, 0x66, on_forward_check_game},
-    /* 6x67 */ {0x58, 0x5F, 0x67, on_forward_check_game},
+    /* 6x67 */ {0x58, 0x5F, 0x67, on_trigger_set_event},
     /* 6x68 */ {0x59, 0x60, 0x68, on_forward_check_game},
     /* 6x69 */ {0x5A, 0x61, 0x69, on_npc_control},
     /* 6x6A */ {0x5B, 0x62, 0x6A, on_forward_check_game},
-    /* 6x6B */ {0x5C, 0x63, 0x6B, on_forward_sync_joining_player_state, SDF::USE_JOIN_COMMAND_QUEUE},
-    /* 6x6C */ {0x5D, 0x64, 0x6C, on_forward_sync_joining_player_state, SDF::USE_JOIN_COMMAND_QUEUE},
-    /* 6x6D */ {0x5E, 0x65, 0x6D, on_sync_joining_player_item_state, SDF::USE_JOIN_COMMAND_QUEUE},
-    /* 6x6E */ {0x5F, 0x66, 0x6E, on_forward_sync_joining_player_state, SDF::USE_JOIN_COMMAND_QUEUE},
-    /* 6x6F */ {0x00, 0x00, 0x6F, on_forward_check_game_loading, SDF::USE_JOIN_COMMAND_QUEUE},
+    /* 6x6B */ {0x5C, 0x63, 0x6B, on_sync_joining_player_compressed_state, SDF::USE_JOIN_COMMAND_QUEUE},
+    /* 6x6C */ {0x5D, 0x64, 0x6C, on_sync_joining_player_compressed_state, SDF::USE_JOIN_COMMAND_QUEUE},
+    /* 6x6D */ {0x5E, 0x65, 0x6D, on_sync_joining_player_compressed_state, SDF::USE_JOIN_COMMAND_QUEUE},
+    /* 6x6E */ {0x5F, 0x66, 0x6E, on_sync_joining_player_compressed_state, SDF::USE_JOIN_COMMAND_QUEUE},
+    /* 6x6F */ {0x00, 0x00, 0x6F, on_sync_joining_player_quest_flags, SDF::USE_JOIN_COMMAND_QUEUE},
     /* 6x70 */ {0x60, 0x67, 0x70, on_sync_joining_player_disp_and_inventory, SDF::USE_JOIN_COMMAND_QUEUE},
     /* 6x71 */ {0x00, 0x00, 0x71, on_forward_check_game_loading, SDF::USE_JOIN_COMMAND_QUEUE},
     /* 6x72 */ {0x61, 0x68, 0x72, on_forward_check_game_loading, SDF::USE_JOIN_COMMAND_QUEUE},
     /* 6x73 */ {0x00, 0x00, 0x73, on_forward_check_game_quest},
     /* 6x74 */ {0x62, 0x69, 0x74, on_word_select, SDF::ALWAYS_FORWARD_TO_WATCHERS},
     /* 6x75 */ {0x00, 0x00, 0x75, on_set_quest_flag},
-    /* 6x76 */ {0x00, 0x00, 0x76, on_forward_check_game},
+    /* 6x76 */ {0x00, 0x00, 0x76, on_set_entity_flag},
     /* 6x77 */ {0x00, 0x00, 0x77, on_forward_check_game},
     /* 6x78 */ {0x00, 0x00, 0x78, forward_subcommand_m},
     /* 6x79 */ {0x00, 0x00, 0x79, on_forward_check_lobby},

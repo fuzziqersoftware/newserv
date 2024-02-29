@@ -4629,9 +4629,9 @@ struct G_UseStarAtomizer_6x66 {
   parray<le_uint16_t, 4> target_client_ids;
 } __packed__;
 
-// 6x67: Trigger wave event
+// 6x67: Trigger set event
 
-struct G_TriggerWaveEvent_6x67 {
+struct G_TriggerSetEvent_6x67 {
   G_UnusedHeader header;
   le_uint32_t floor = 0;
   le_uint32_t event_id = 0; // NOT event index
@@ -4773,7 +4773,12 @@ struct G_SyncSetFlagState_6x6E_Decompressed {
 
 // 6x6F: Set quest flags (used while loading into game)
 
-struct G_SetQuestFlags_6x6F {
+struct G_SetQuestFlagsV1_6x6F {
+  G_UnusedHeader header;
+  QuestFlagsV1 quest_flags;
+} __packed__;
+
+struct G_SetQuestFlagsV2V3V4_6x6F {
   G_UnusedHeader header;
   QuestFlags quest_flags;
 } __packed__;
@@ -4988,12 +4993,14 @@ struct G_UpdateQuestFlag_V3_BB_6x75 : G_UpdateQuestFlag_DC_PC_6x75 {
   le_uint16_t unused = 0;
 } __packed__;
 
-// 6x76: Enemy killed
+// 6x76: Set entity flags
+// This command can only be used to set flags, since the game performs a bitwise
+// OR operation instead of a simple assignment.
 
-struct G_EnemyKilled_6x76 {
-  G_EnemyIDHeader header;
-  le_uint16_t unknown_a1 = 0;
-  le_uint16_t unknown_a2 = 0; // Flags of some sort
+struct G_SetEntityFlags_6x76 {
+  G_EnemyIDHeader header; // 1000-3FFF = enemy, 4000-FFFF = object
+  le_uint16_t floor = 0;
+  le_uint16_t flags = 0;
 } __packed__;
 
 // 6x77: Sync quest data

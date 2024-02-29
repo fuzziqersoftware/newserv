@@ -361,9 +361,10 @@ bool Client::evaluate_quest_availability_expression(
   if (!expr) {
     return true;
   }
+  auto l = this->lobby.lock();
   auto p = this->character();
   QuestAvailabilityExpression::Env env = {
-      .flags = &p->quest_flags.data.at(difficulty),
+      .flags = (l && !l->quest_flags_known) ? &l->quest_flag_values->data.at(difficulty) : &p->quest_flags.data.at(difficulty),
       .challenge_records = &p->challenge_records,
       .team = this->team(),
       .num_players = num_players,

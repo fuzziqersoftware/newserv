@@ -2396,30 +2396,44 @@ void send_ep3_change_music(Channel& ch, uint32_t song) {
   ch.send(0x60, 0x00, cmd);
 }
 
-static void send_game_join_sync_command(
+void send_game_join_sync_command(
     shared_ptr<Client> c, const void* data, size_t size, uint8_t dc_nte_sc, uint8_t dc_11_2000_sc, uint8_t sc) {
   string compressed_data = bc0_compress(data, size);
+  send_game_join_sync_command_compressed(c, compressed_data.data(), compressed_data.size(), size, dc_nte_sc, dc_11_2000_sc, sc);
+}
 
+void send_game_join_sync_command(shared_ptr<Client> c, const string& data, uint8_t dc_nte_sc, uint8_t dc_11_2000_sc, uint8_t sc) {
+  send_game_join_sync_command(c, data.data(), data.size(), dc_nte_sc, dc_11_2000_sc, sc);
+}
+
+void send_game_join_sync_command_compressed(
+    shared_ptr<Client> c,
+    const void* data,
+    size_t size,
+    size_t decompressed_size,
+    uint8_t dc_nte_sc,
+    uint8_t dc_11_2000_sc,
+    uint8_t sc) {
   StringWriter w;
   if (is_pre_v1(c->version())) {
     G_SyncGameStateHeader_DCNTE_6x6B_6x6C_6x6D_6x6E compressed_header;
     compressed_header.header.basic_header.subcommand = (c->version() == Version::DC_NTE) ? dc_nte_sc : dc_11_2000_sc;
     compressed_header.header.basic_header.size = 0x00;
     compressed_header.header.basic_header.unused = 0x0000;
-    compressed_header.header.size = (compressed_data.size() + sizeof(G_SyncGameStateHeader_DCNTE_6x6B_6x6C_6x6D_6x6E) + 3) & (~3);
-    compressed_header.decompressed_size = size;
+    compressed_header.header.size = (size + sizeof(G_SyncGameStateHeader_DCNTE_6x6B_6x6C_6x6D_6x6E) + 3) & (~3);
+    compressed_header.decompressed_size = decompressed_size;
     w.put(compressed_header);
   } else {
     G_SyncGameStateHeader_6x6B_6x6C_6x6D_6x6E compressed_header;
     compressed_header.header.basic_header.subcommand = sc;
     compressed_header.header.basic_header.size = 0x00;
     compressed_header.header.basic_header.unused = 0x0000;
-    compressed_header.header.size = (compressed_data.size() + sizeof(G_SyncGameStateHeader_6x6B_6x6C_6x6D_6x6E) + 3) & (~3);
-    compressed_header.decompressed_size = size;
-    compressed_header.compressed_size = compressed_data.size();
+    compressed_header.header.size = (size + sizeof(G_SyncGameStateHeader_6x6B_6x6C_6x6D_6x6E) + 3) & (~3);
+    compressed_header.decompressed_size = decompressed_size;
+    compressed_header.compressed_size = size;
     w.put(compressed_header);
   }
-  w.write(compressed_data);
+  w.write(data, size);
   while (w.size() & 3) {
     w.put_u8(0x00);
   }
@@ -2525,28 +2539,116 @@ void send_game_object_state(shared_ptr<Client> c) {
   send_game_join_sync_command(c, entries.data(), entries.size() * sizeof(entries[0]), 0x5D, 0x64, 0x6C);
 }
 
-void send_game_flag_state(shared_ptr<Client> c) {
+void send_game_set_state(shared_ptr<Client> c) {
+  auto l = c->require_lobby();
+  if (!l->map) {
+    return;
+  }
+
+  size_t num_object_sets = l->map->objects.size();
+  size_t num_enemy_sets = l->map->enemy_set_flags.size();
+
+  G_SyncSetFlagState_6x6E_Decompressed::EntitySetFlags entity_set_flags_header;
+  entity_set_flags_header.object_set_flags_offset = sizeof(entity_set_flags_header);
+  entity_set_flags_header.num_object_sets = num_object_sets;
+  entity_set_flags_header.enemy_set_flags_offset = sizeof(entity_set_flags_header) + num_object_sets * sizeof(le_uint16_t);
+  entity_set_flags_header.num_enemy_sets = num_enemy_sets;
+
+  G_SyncSetFlagState_6x6E_Decompressed header;
+  header.entity_set_flags_size = sizeof(entity_set_flags_header) + (num_object_sets + num_enemy_sets) * sizeof(le_uint16_t);
+  header.event_set_flags_size = sizeof(le_uint16_t) * l->map->events.size();
+  header.unused_size = is_v1(c->version()) ? 0x200 : 0x240;
+  header.total_size = header.entity_set_flags_size + header.event_set_flags_size + header.unused_size;
+
+  StringWriter w;
+  w.put(header);
+  w.put(entity_set_flags_header);
+  for (const auto& obj : l->map->objects) {
+    w.put_u16l(obj.set_flags);
+  }
+  for (uint16_t enemy_set_flags : l->map->enemy_set_flags) {
+    w.put_u16l(enemy_set_flags);
+  }
+  for (const auto& event : l->map->events) {
+    w.put_u16l(event.flags);
+  }
+  w.extend_by(header.unused_size, 0x00);
+
+  send_game_join_sync_command(c, w.str(), 0x5F, 0x66, 0x6E);
+}
+
+template <typename CmdT>
+void send_game_flag_state_t(shared_ptr<Client> c) {
   auto l = c->require_lobby();
 
-  G_SetQuestFlags_6x6F cmd;
-  cmd.header.subcommand = 0x6F;
-  cmd.header.size = sizeof(G_SetQuestFlags_6x6F) >> 2;
-  cmd.header.unused = 0x0000;
-  cmd.quest_flags = c->character()->quest_flags;
-
-  for (const auto& lc : l->clients) {
-    if (!lc) {
-      continue;
+  if (l->quest_flags_known) { // Not all flags known; send multiple 6x75s
+    StringWriter w;
+    bool use_v3_cmd = !is_v1_or_v2(c->version()) || (c->version() == Version::GC_NTE);
+    for (uint8_t difficulty = 0; difficulty < 4; difficulty++) {
+      if ((difficulty != l->difficulty) && !use_v3_cmd) {
+        continue;
+      }
+      const auto& diff_flags = l->quest_flag_values->data.at(difficulty);
+      const auto& diff_known_flags = l->quest_flags_known->data.at(difficulty);
+      for (uint8_t z = 0; z < diff_known_flags.data.size(); z++) {
+        uint8_t known_flags = diff_known_flags.data[z];
+        if (!known_flags) {
+          continue;
+        }
+        uint8_t flag_values = diff_flags.data[z];
+        for (uint8_t sh = 0; sh < 8; sh++) {
+          if ((known_flags << sh) & 0x80) {
+            uint16_t flag_num = ((z << 3) | sh);
+            if (use_v3_cmd) {
+              w.put(G_UpdateQuestFlag_V3_BB_6x75{
+                  {{0x75, 0x03, 0x0000}, flag_num, (((flag_values << sh) & 0x80) ? 0 : 1)}, difficulty, 0});
+            } else {
+              w.put(G_UpdateQuestFlag_DC_PC_6x75{
+                  {0x75, 0x02, 0x0000}, flag_num, (((flag_values << sh) & 0x80) ? 0 : 1)});
+            }
+          }
+        }
+      }
     }
-    if (lc->game_join_command_queue) {
-      lc->log.info("Client not ready to receive join commands; adding to queue");
-      auto& cmd = lc->game_join_command_queue->emplace_back();
-      cmd.command = 0x0060;
-      cmd.flag = 0x00000000;
+
+    if (w.size() > 0) {
+      if (c->game_join_command_queue) {
+        c->log.info("Client not ready to receive join commands; adding to queue");
+        auto& cmd = c->game_join_command_queue->emplace_back();
+        cmd.command = 0x006D;
+        cmd.flag = c->lobby_client_id;
+        cmd.data = std::move(w.str());
+      } else {
+        send_command(c, 0x6D, c->lobby_client_id, w.str());
+      }
+    }
+
+  } else { // All flags known; send 6x6F
+    CmdT cmd;
+    cmd.header.subcommand = 0x6F;
+    cmd.header.size = sizeof(CmdT) >> 2;
+    cmd.header.unused = 0x0000;
+    cmd.quest_flags = (l && !l->quest_flags_known) ? *l->quest_flag_values : c->character()->quest_flags;
+
+    if (c->game_join_command_queue) {
+      c->log.info("Client not ready to receive join commands; adding to queue");
+      auto& cmd = c->game_join_command_queue->emplace_back();
+      cmd.command = 0x0062;
+      cmd.flag = c->lobby_client_id;
       cmd.data.assign(reinterpret_cast<const char*>(&cmd), sizeof(cmd));
     } else {
-      send_command_t(lc, 0x60, 0x00, cmd);
+      send_command_t(c, 0x62, c->lobby_client_id, cmd);
     }
+  }
+}
+
+void send_game_flag_state(shared_ptr<Client> c) {
+  // DC NTE and 11/2000 don't have this command at all; v1 has it but it doesn't
+  // include flags for Ultimate.
+  if (!is_v1(c->version())) {
+    send_game_flag_state_t<G_SetQuestFlagsV2V3V4_6x6F>(c);
+  } else if (!is_pre_v1(c->version())) {
+    send_game_flag_state_t<G_SetQuestFlagsV1_6x6F>(c);
   }
 }
 

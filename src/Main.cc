@@ -1127,187 +1127,6 @@ Action a_disassemble_set_data_table(
       string str = sdt.str();
       write_output_data(args, str.data(), str.size(), "txt");
     });
-Action a_check_set_data_table(
-    "check-set-data-tables", nullptr, +[](Arguments&) {
-      auto s = make_shared<ServerState>();
-      s->load_patch_indexes(false);
-      s->load_set_data_tables(false);
-      static_game_data_log.min_level = LogLevel::DISABLED;
-
-      auto get_file_data = [&](Version version, const string& filename) -> shared_ptr<const string> {
-        try {
-          return s->load_map_file(version, filename);
-        } catch (const cannot_open_file&) {
-          return nullptr;
-        }
-      };
-
-      auto check_filenames = [&](Version version, const string& sdt_filename, const vector<string>& ns_filenames) -> string {
-        for (size_t z = 0; z < ns_filenames.size(); z++) {
-          const auto& ns_filename = ns_filenames[z];
-          auto data = get_file_data(version, ns_filename);
-          if (data) {
-            if (sdt_filename != ns_filename) {
-              string ns_filenames_str = join(ns_filenames, ", ");
-              return string_printf("SDT => %s, NS => [%s]", sdt_filename.c_str(), ns_filenames_str.c_str());
-            }
-            return "OK";
-          }
-          if (!data && (sdt_filename == ns_filename)) {
-            string ns_filenames_str = join(ns_filenames, ", ");
-            return string_printf("SDT => %s (missing)", sdt_filename.c_str());
-          }
-        }
-        if (ns_filenames.empty() && sdt_filename.empty()) {
-          return "OK (no files)";
-        } else if (ns_filenames.empty()) {
-          auto data = get_file_data(version, sdt_filename);
-          if (data) {
-            return string_printf("NS blank, SDT => %s", sdt_filename.c_str());
-          } else {
-            return string_printf("NS blank, SDT => %s (missing)", sdt_filename.c_str());
-          }
-        } else if (sdt_filename.empty()) {
-          string ns_filenames_str = join(ns_filenames, ", ");
-          return string_printf("SDT blank, NS => [%s] (all missing)", ns_filenames_str.c_str());
-        } else {
-          string ns_filenames_str = join(ns_filenames, ", ");
-          return string_printf("SDT => %s (missing), NS => [%s] (all missing)", sdt_filename.c_str(), ns_filenames_str.c_str());
-        }
-      };
-
-      size_t num_checks = 0;
-      size_t num_errors = 0;
-      auto check_table = [&](Version version) {
-        vector<Episode> episodes({Episode::EP1});
-        if (!is_v1_or_v2(version) || (version == Version::GC_NTE)) {
-          episodes.emplace_back(Episode::EP2);
-          if (is_v4(version)) {
-            episodes.emplace_back(Episode::EP4);
-          }
-        }
-
-        vector<GameMode> modes({GameMode::NORMAL});
-        if (!is_v1(version)) {
-          modes.emplace_back(GameMode::BATTLE);
-          modes.emplace_back(GameMode::CHALLENGE);
-        }
-        if (is_v4(version)) {
-          modes.emplace_back(GameMode::SOLO);
-        }
-
-        uint8_t max_difficulty = is_v1(version) ? 2 : 3;
-
-        for (Episode episode : episodes) {
-          for (GameMode mode : modes) {
-            for (uint8_t difficulty = 0; difficulty <= max_difficulty; difficulty++) {
-              auto sdt = s->set_data_table(version, episode, mode, difficulty);
-              auto ns_var_maxes = variation_maxes_deprecated(version, episode, (mode == GameMode::SOLO));
-              size_t num_floors;
-              if (episode == Episode::EP4) {
-                num_floors = 0x0B;
-              } else if (episode == Episode::EP2) {
-                num_floors = 0x10;
-              } else {
-                num_floors = 0x0F;
-              }
-              for (size_t floor = 0; floor < num_floors; floor++) {
-                auto sdt_var_avail = sdt->num_available_variations_for_floor(episode, floor);
-                auto sdt_var_maxes = sdt->num_free_roam_variations_for_floor(episode, mode == GameMode::SOLO, floor);
-                size_t sdt_var1_max_avail = sdt_var_avail.first - 1;
-                size_t sdt_var2_max_avail = sdt_var_avail.second - 1;
-                size_t sdt_var1_max = sdt_var_maxes.first - 1;
-                size_t sdt_var2_max = sdt_var_maxes.second - 1;
-                size_t ns_var1_max = ns_var_maxes[floor * 2];
-                size_t ns_var2_max = ns_var_maxes[floor * 2 + 1];
-                num_checks += 4;
-                if (sdt_var1_max > sdt_var1_max_avail) {
-                  fprintf(stdout, "## %-8s %-10s %-10s %-10s %02zX VAR1:[SDT:%02zX SDTA:%02zX]\n",
-                      name_for_enum(version),
-                      name_for_episode(episode),
-                      name_for_mode(mode),
-                      name_for_difficulty(difficulty),
-                      floor,
-                      sdt_var1_max,
-                      sdt_var1_max_avail);
-                  num_errors++;
-                }
-                if (sdt_var2_max > sdt_var2_max_avail) {
-                  fprintf(stdout, "## %-8s %-10s %-10s %-10s %02zX VAR2:[SDT:%02zX SDTA:%02zX]\n",
-                      name_for_enum(version),
-                      name_for_episode(episode),
-                      name_for_mode(mode),
-                      name_for_difficulty(difficulty),
-                      floor,
-                      sdt_var2_max,
-                      sdt_var2_max_avail);
-                  num_errors++;
-                }
-                if (sdt_var1_max < ns_var1_max) {
-                  fprintf(stdout, "## %-8s %-10s %-10s %-10s %02zX VAR1:[SDT:%02zX NS:%02zX]\n",
-                      name_for_enum(version),
-                      name_for_episode(episode),
-                      name_for_mode(mode),
-                      name_for_difficulty(difficulty),
-                      floor,
-                      sdt_var1_max,
-                      ns_var1_max);
-                  num_errors++;
-                }
-                if (sdt_var2_max < ns_var2_max) {
-                  fprintf(stdout, "## %-8s %-10s %-10s %-10s %02zX VAR2:[SDT:%02zX NS:%02zX]\n",
-                      name_for_enum(version),
-                      name_for_episode(episode),
-                      name_for_mode(mode),
-                      name_for_difficulty(difficulty),
-                      floor,
-                      sdt_var2_max,
-                      ns_var2_max);
-                  num_errors++;
-                }
-                for (size_t var1 = 0; var1 <= ns_var1_max; var1++) {
-                  for (size_t var2 = 0; var2 <= ns_var2_max; var2++) {
-                    auto sdt_enemy_filename = sdt->map_filename_for_variation(floor, var1, var2, episode, mode, true);
-                    auto sdt_object_filename = sdt->map_filename_for_variation(floor, var1, var2, episode, mode, false);
-                    auto ns_enemy_filenames = map_filenames_for_variation_deprecated(floor, var1, var2, version, episode, mode, true);
-                    auto ns_object_filenames = map_filenames_for_variation_deprecated(floor, var1, var2, version, episode, mode, false);
-                    string enemies_error = check_filenames(version, sdt_enemy_filename, ns_enemy_filenames);
-                    string objects_error = check_filenames(version, sdt_object_filename, ns_object_filenames);
-                    num_checks += 2;
-                    num_errors += (enemies_error != "OK") + (objects_error != "OK");
-                    fprintf(stdout, "%s %-8s %-10s %-10s %-10s %02zX %02zX %02zX E:[%s] O:[%s] E:%-30s O:%-30s\n",
-                        ((enemies_error != "OK") || (objects_error != "OK")) ? "##" : "  ",
-                        name_for_enum(version),
-                        name_for_episode(episode),
-                        name_for_mode(mode),
-                        name_for_difficulty(difficulty),
-                        floor,
-                        var1,
-                        var2,
-                        enemies_error.c_str(),
-                        objects_error.c_str(),
-                        sdt_enemy_filename.c_str(),
-                        sdt_object_filename.c_str());
-                  }
-                }
-              }
-            }
-          }
-        }
-      };
-
-      check_table(Version::DC_NTE);
-      check_table(Version::DC_V1_11_2000_PROTOTYPE);
-      check_table(Version::DC_V1);
-      check_table(Version::DC_V2);
-      check_table(Version::PC_NTE);
-      check_table(Version::PC_V2);
-      check_table(Version::GC_NTE);
-      check_table(Version::GC_V3);
-      check_table(Version::XB_V3);
-      check_table(Version::BB_V4);
-      fprintf(stdout, "%zu/%zu errors\n", num_errors, num_checks);
-    });
 
 Action a_assemble_quest_script(
     "assemble-quest-script", "\
@@ -2187,6 +2006,122 @@ Action a_find_rare_enemy_seeds(
       };
 
       parallel_range<uint64_t>(thread_fn, 0, 0x100000000, num_threads, nullptr);
+    });
+
+Action a_load_maps_test(
+    "load-maps-test", nullptr, +[](Arguments&) {
+      using SDT = SetDataTable;
+      auto s = make_shared<ServerState>("system/config.json");
+      s->load_config_early();
+      s->clear_map_file_caches();
+      s->load_patch_indexes(false);
+      s->load_set_data_tables(false);
+      s->load_quest_index(false);
+      for (size_t v_s = NUM_PATCH_VERSIONS; v_s < NUM_VERSIONS; v_s++) {
+        Version v = static_cast<Version>(v_s);
+        if (is_ep3(v)) {
+          continue;
+        }
+        const array<Episode, 3> episodes = {Episode::EP1, Episode::EP2, Episode::EP4};
+        for (Episode episode : episodes) {
+          if (episode == Episode::EP4 && !is_v4(v)) {
+            continue;
+          }
+          if (episode == Episode::EP2 && is_v1_or_v2(v) && (v != Version::GC_NTE)) {
+            continue;
+          }
+          const array<GameMode, 4> modes = {GameMode::NORMAL, GameMode::BATTLE, GameMode::CHALLENGE, GameMode::SOLO};
+          for (GameMode mode : modes) {
+            if ((mode == GameMode::BATTLE || mode == GameMode::CHALLENGE) && is_v1(v)) {
+              continue;
+            }
+            if (mode == GameMode::SOLO && !is_v4(v)) {
+              continue;
+            }
+            for (uint8_t difficulty = 0; difficulty < 4; difficulty++) {
+              if (difficulty == 3 && is_v1(v)) {
+                continue;
+              }
+              auto sdt = s->set_data_table(v, episode, mode, difficulty);
+              for (uint8_t floor = 0; floor < 0x12; floor++) {
+                auto variation_maxes = sdt->num_free_roam_variations_for_floor(episode, mode == GameMode::SOLO, floor);
+                for (size_t var1 = 0; var1 < variation_maxes.first; var1++) {
+                  for (size_t var2 = 0; var2 < variation_maxes.second; var2++) {
+                    auto enemies_filename = sdt->map_filename_for_variation(
+                        floor, var1, var2, episode, mode, SDT::FilenameType::ENEMIES);
+                    auto objects_filename = sdt->map_filename_for_variation(
+                        floor, var1, var2, episode, mode, SDT::FilenameType::OBJECTS);
+                    auto events_filename = sdt->map_filename_for_variation(
+                        floor, var1, var2, episode, mode, SDT::FilenameType::EVENTS);
+
+                    fprintf(stderr, "... %s %s %s %s %02hhX %zX %zX",
+                        name_for_enum(v), name_for_episode(episode), name_for_mode(mode), name_for_difficulty(difficulty), floor, var1, var2);
+                    auto map = make_shared<Map>(v, 0, 0, nullptr);
+                    if (!enemies_filename.empty()) {
+                      fprintf(stderr, " [%s => ", enemies_filename.c_str());
+                      auto map_data = s->load_map_file(v, enemies_filename);
+                      if (map_data) {
+                        map->add_enemies_from_map_data(
+                            episode, difficulty, 0, 0, map_data->data(), map_data->size(), Map::DEFAULT_RARE_ENEMIES);
+                        fprintf(stderr, "%zu enemies, %zu sets]", map->enemies.size(), map->enemy_set_flags.size());
+                      } else {
+                        fprintf(stderr, "__MISSING__]");
+                      }
+                    }
+                    if (!objects_filename.empty()) {
+                      fprintf(stderr, " [%s => ", objects_filename.c_str());
+                      auto map_data = s->load_map_file(v, objects_filename);
+                      if (map_data) {
+                        map->add_objects_from_map_data(floor, map_data->data(), map_data->size());
+                        fprintf(stderr, "%zu objects]", map->objects.size());
+                      } else {
+                        fprintf(stderr, "__MISSING__]");
+                      }
+                    }
+                    if (!events_filename.empty()) {
+                      fprintf(stderr, " [%s => ", events_filename.c_str());
+                      auto map_data = s->load_map_file(v, events_filename);
+                      if (map_data) {
+                        map->add_events_from_map_data(floor, map_data->data(), map_data->size());
+                        fprintf(stderr, "%zu events, %zu action bytes]", map->events.size(), map->event_action_stream.size());
+                      } else {
+                        fprintf(stderr, "__MISSING__]");
+                      }
+                    }
+                    fputc('\n', stderr);
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+
+      for (const auto& q_it : s->default_quest_index->quests_by_number) {
+        for (const auto& vq_it : q_it.second->versions) {
+          auto vq = vq_it.second;
+          shared_ptr<const Map> map = Lobby::load_maps(
+              vq->version,
+              vq->episode,
+              0,
+              0,
+              0,
+              Map::DEFAULT_RARE_ENEMIES,
+              0,
+              nullptr,
+              vq->dat_contents_decompressed);
+          fprintf(stderr, "... %" PRIu32 " (%s) %s %s %s => %zu enemies (%zu sets), %zu objects, %zu events\n",
+              vq->quest_number,
+              vq->name.c_str(),
+              name_for_episode(vq->episode),
+              name_for_enum(vq->version),
+              name_for_language_code(vq->language),
+              map->enemies.size(),
+              map->enemy_set_flags.size(),
+              map->objects.size(),
+              map->events.size());
+        }
+      }
     });
 
 Action a_parse_object_graph(

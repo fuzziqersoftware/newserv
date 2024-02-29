@@ -35,7 +35,12 @@ TextTranscoder::Result TextTranscoder::operator()(
   const void* orig_src = src;
   while (src_bytes > 0) {
     size_t src_bytes_before = src_bytes;
-    size_t ret = iconv(this->ic, reinterpret_cast<char**>(const_cast<void**>(&src)), &src_bytes, reinterpret_cast<char**>(&dest), &dest_bytes);
+    size_t ret = iconv(
+        this->ic,
+        reinterpret_cast<char**>(const_cast<void**>(&src)),
+        &src_bytes,
+        reinterpret_cast<char**>(&dest),
+        &dest_bytes);
 
     size_t bytes_read = reinterpret_cast<const char*>(src) - reinterpret_cast<const char*>(orig_src);
     if (ret == this->FAILURE_RESULT) {
@@ -64,7 +69,6 @@ TextTranscoder::Result TextTranscoder::operator()(
         default:
           throw runtime_error("transcoding failed: " + string_for_error(errno));
       }
-
     } else if (src_bytes_before == src_bytes) {
       throw runtime_error("could not transcode any characters");
     }

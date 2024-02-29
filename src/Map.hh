@@ -94,7 +94,7 @@ struct Map {
   } __attribute__((packed));
 
   struct EventsSectionHeader { // Section type 3 (WAVE_EVENTS)
-    /* 00 */ le_uint32_t footer_offset;
+    /* 00 */ le_uint32_t action_stream_offset;
     /* 04 */ le_uint32_t entries_offset;
     /* 08 */ le_uint32_t entry_count;
     /* 0C */ be_uint32_t format; // 0 or 'evt2'
@@ -248,6 +248,15 @@ struct Map {
     std::string str() const;
   } __attribute__((packed));
 
+  struct Event {
+    uint32_t event_id;
+    uint16_t flags;
+    uint8_t floor;
+    uint32_t action_stream_offset;
+
+    std::string str() const;
+  } __attribute__((packed));
+
   struct DATParserRandomState {
     PSOV2Encryption random;
     PSOV2Encryption location_table_random;
@@ -297,6 +306,11 @@ struct Map {
       std::shared_ptr<DATParserRandomState> random_state,
       std::shared_ptr<const RareEnemyRates> rare_rates = DEFAULT_RARE_ENEMIES);
 
+  void add_event(uint32_t event_id, uint16_t flags, uint8_t floor, uint32_t action_stream_offset);
+  Event& get_event(uint8_t floor, uint32_t event_id);
+  const Event& get_event(uint8_t floor, uint32_t event_id) const;
+  void add_events_from_map_data(uint8_t floor, const void* data, size_t size);
+
   struct DATSectionsForFloor {
     uint32_t objects = 0xFFFFFFFF;
     uint32_t enemies = 0xFFFFFFFF;
@@ -327,6 +341,9 @@ struct Map {
   std::vector<Enemy> enemies;
   std::vector<uint16_t> enemy_set_flags;
   std::vector<size_t> rare_enemy_indexes;
+  std::vector<Event> events;
+  std::string event_action_stream;
+  std::unordered_map<uint64_t, size_t> floor_and_event_id_to_index;
 };
 
 class SetDataTableBase {
@@ -340,10 +357,16 @@ public:
   virtual std::pair<uint32_t, uint32_t> num_available_variations_for_floor(Episode episode, uint8_t floor) const = 0;
   virtual std::pair<uint32_t, uint32_t> num_free_roam_variations_for_floor(Episode episode, bool is_solo, uint8_t floor) const = 0;
 
+  enum class FilenameType {
+    OBJECTS = 0,
+    ENEMIES,
+    EVENTS,
+  };
+
   virtual std::string map_filename_for_variation(
-      uint8_t floor, uint32_t var1, uint32_t var2, Episode episode, GameMode mode, bool is_enemies) const = 0;
+      uint8_t floor, uint32_t var1, uint32_t var2, Episode episode, GameMode mode, FilenameType type) const = 0;
   std::vector<std::string> map_filenames_for_variations(
-      const parray<le_uint32_t, 0x20>& variations, Episode episode, GameMode mode, bool is_enemies) const;
+      const parray<le_uint32_t, 0x20>& variations, Episode episode, GameMode mode, FilenameType type) const;
 
   uint8_t default_area_for_floor(Episode episode, uint8_t floor) const;
 
@@ -357,8 +380,8 @@ class SetDataTable : public SetDataTableBase {
 public:
   struct SetEntry {
     std::string object_list_basename;
-    std::string enemy_list_basename;
-    std::string event_list_basename;
+    std::string enemy_and_event_list_basename;
+    std::string area_setup_filename;
   };
 
   SetDataTable(Version version, const std::string& data);
@@ -367,7 +390,7 @@ public:
   virtual std::pair<uint32_t, uint32_t> num_available_variations_for_floor(Episode episode, uint8_t floor) const;
   virtual std::pair<uint32_t, uint32_t> num_free_roam_variations_for_floor(Episode episode, bool is_solo, uint8_t floor) const;
   virtual std::string map_filename_for_variation(
-      uint8_t floor, uint32_t var1, uint32_t var2, Episode episode, GameMode mode, bool is_enemies) const;
+      uint8_t floor, uint32_t var1, uint32_t var2, Episode episode, GameMode mode, FilenameType type) const;
 
   std::string str() const;
 
@@ -388,10 +411,10 @@ public:
   virtual std::pair<uint32_t, uint32_t> num_available_variations_for_floor(Episode episode, uint8_t floor) const;
   virtual std::pair<uint32_t, uint32_t> num_free_roam_variations_for_floor(Episode episode, bool is_solo, uint8_t floor) const;
   virtual std::string map_filename_for_variation(
-      uint8_t floor, uint32_t var1, uint32_t var2, Episode episode, GameMode mode, bool is_enemies) const;
+      uint8_t floor, uint32_t var1, uint32_t var2, Episode episode, GameMode mode, FilenameType type) const;
 
 private:
-  static const std::array<std::vector<std::vector<std::string>>, 0x10> NAMES;
+  static const std::array<std::vector<std::vector<std::string>>, 0x12> NAMES;
 };
 
 class SetDataTableDC112000 : public SetDataTableBase {
@@ -402,10 +425,10 @@ public:
   virtual std::pair<uint32_t, uint32_t> num_available_variations_for_floor(Episode episode, uint8_t floor) const;
   virtual std::pair<uint32_t, uint32_t> num_free_roam_variations_for_floor(Episode episode, bool is_solo, uint8_t floor) const;
   virtual std::string map_filename_for_variation(
-      uint8_t floor, uint32_t var1, uint32_t var2, Episode episode, GameMode mode, bool is_enemies) const;
+      uint8_t floor, uint32_t var1, uint32_t var2, Episode episode, GameMode mode, FilenameType type) const;
 
 private:
-  static const std::array<std::vector<std::vector<std::string>>, 0x10> NAMES;
+  static const std::array<std::vector<std::vector<std::string>>, 0x12> NAMES;
 };
 
 void generate_variations_deprecated(

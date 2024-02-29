@@ -311,10 +311,22 @@ static void server_command_qcheck(shared_ptr<Client> c, const std::string& args)
   auto l = c->require_lobby();
   uint16_t flag_num = stoul(args, nullptr, 0);
 
-  send_text_message_printf(c, "$C7Quest flag 0x%hX (%hu)\nis %s on %s",
-      flag_num, flag_num,
-      c->character()->quest_flags.get(l->difficulty, flag_num) ? "set" : "not set",
-      name_for_difficulty(l->difficulty));
+  if (l->is_game()) {
+    if (!l->quest_flags_known || l->quest_flags_known->get(l->difficulty, flag_num)) {
+      send_text_message_printf(c, "$C7Game: flag 0x%hX (%hu)\nis %s on %s",
+          flag_num, flag_num,
+          c->character()->quest_flags.get(l->difficulty, flag_num) ? "set" : "not set",
+          name_for_difficulty(l->difficulty));
+    } else {
+      send_text_message_printf(c, "$C7Game: flag 0x%hX (%hu)\nis unknown on %s",
+          flag_num, flag_num, name_for_difficulty(l->difficulty));
+    }
+  } else if (c->version() == Version::BB_V4) {
+    send_text_message_printf(c, "$C7Player: flag 0x%hX (%hu)\nis %s on %s",
+        flag_num, flag_num,
+        c->character()->quest_flags.get(l->difficulty, flag_num) ? "set" : "not set",
+        name_for_difficulty(l->difficulty));
+  }
 }
 
 static void server_command_qset_qclear(shared_ptr<Client> c, const std::string& args, bool should_set) {
@@ -330,10 +342,22 @@ static void server_command_qset_qclear(shared_ptr<Client> c, const std::string& 
 
   uint16_t flag_num = stoul(args, nullptr, 0);
 
-  if (should_set) {
-    c->character()->quest_flags.set(l->difficulty, flag_num);
-  } else {
-    c->character()->quest_flags.clear(l->difficulty, flag_num);
+  if (l->is_game()) {
+    if (l->quest_flags_known) {
+      l->quest_flags_known->set(l->difficulty, flag_num);
+    }
+    if (should_set) {
+      l->quest_flag_values->set(l->difficulty, flag_num);
+    } else {
+      l->quest_flag_values->clear(l->difficulty, flag_num);
+    }
+  } else if (c->version() == Version::BB_V4) {
+    auto p = c->character();
+    if (should_set) {
+      p->quest_flags.set(l->difficulty, flag_num);
+    } else {
+      p->quest_flags.clear(l->difficulty, flag_num);
+    }
   }
 
   if (is_v1_or_v2(c->version())) {

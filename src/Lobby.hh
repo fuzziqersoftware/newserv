@@ -92,15 +92,15 @@ struct Lobby : public std::enable_shared_from_this<Lobby> {
   uint32_t min_level;
   uint32_t max_level;
 
-  // Item state
+  // Game state
   std::array<uint32_t, 12> next_item_id_for_client;
   uint32_t next_game_item_id;
   std::vector<FloorItemManager> floor_item_managers;
-
-  // Map state
   std::shared_ptr<const Map::RareEnemyRates> rare_enemy_rates;
   std::shared_ptr<Map> map;
   parray<le_uint32_t, 0x20> variations;
+  std::unique_ptr<QuestFlags> quest_flags_known; // If null, ALL quest flags are known
+  std::unique_ptr<QuestFlags> quest_flag_values;
 
   // Game config
   Version base_version;
@@ -226,6 +226,7 @@ struct Lobby : public std::enable_shared_from_this<Lobby> {
   static std::shared_ptr<Map> load_maps(
       const std::vector<std::string>& enemy_filenames,
       const std::vector<std::string>& object_filenames,
+      const std::vector<std::string>& event_filenames,
       Version version,
       Episode episode,
       GameMode mode,

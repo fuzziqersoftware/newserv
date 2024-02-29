@@ -325,11 +325,13 @@ shared_ptr<Map> Lobby::load_maps(
     shared_ptr<PSOLFGEncryption> opt_rand_crypt,
     const parray<le_uint32_t, 0x20>& variations,
     const PrefixedLogger* log) {
-  auto enemy_filenames = sdt->map_filenames_for_variations(variations, episode, mode, true);
-  auto object_filenames = sdt->map_filenames_for_variations(variations, episode, mode, false);
+  auto enemy_filenames = sdt->map_filenames_for_variations(variations, episode, mode, SetDataTable::FilenameType::ENEMIES);
+  auto object_filenames = sdt->map_filenames_for_variations(variations, episode, mode, SetDataTable::FilenameType::OBJECTS);
+  auto event_filenames = sdt->map_filenames_for_variations(variations, episode, mode, SetDataTable::FilenameType::EVENTS);
   return Lobby::load_maps(
       enemy_filenames,
       object_filenames,
+      event_filenames,
       version,
       episode,
       mode,
@@ -346,6 +348,7 @@ shared_ptr<Map> Lobby::load_maps(
 shared_ptr<Map> Lobby::load_maps(
     const vector<string>& enemy_filenames,
     const vector<string>& object_filenames,
+    const vector<string>& event_filenames,
     Version version,
     Episode episode,
     GameMode mode,
@@ -401,6 +404,21 @@ shared_ptr<Map> Lobby::load_maps(
       }
     } else if (log) {
       log->info("No objects to load for floor %02zX", floor);
+    }
+
+    const auto& floor_event_filename = event_filenames.at(floor);
+    if (!floor_event_filename.empty()) {
+      auto map_data = get_file_data(version, floor_event_filename);
+      if (map_data) {
+        map->add_events_from_map_data(floor, map_data->data(), map_data->size());
+        if (log) {
+          log->info("Loaded events map %s for floor %02zX", floor_event_filename.c_str(), floor);
+        }
+      } else if (log) {
+        log->info("Events map %s for floor %02zX cannot be used; skipping", floor_event_filename.c_str(), floor);
+      }
+    } else if (log) {
+      log->info("No events to load for floor %02zX", floor);
     }
   }
 
@@ -463,6 +481,11 @@ void Lobby::load_maps() {
   for (size_t z = 0; z < this->map->enemies.size(); z++) {
     string e_str = this->map->enemies[z].str();
     this->log.info("(E-%zX) %s", z, e_str.c_str());
+  }
+  this->log.info("Generated events list (%zu entries):", this->map->events.size());
+  for (size_t z = 0; z < this->map->events.size(); z++) {
+    string e_str = this->map->events[z].str();
+    this->log.info("%s", e_str.c_str());
   }
   this->log.info("Loaded maps contain %zu object entries and %zu enemy entries overall (%zu as rares)",
       this->map->objects.size(), this->map->enemies.size(), this->map->rare_enemy_indexes.size());
