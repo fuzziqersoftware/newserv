@@ -576,13 +576,10 @@ void PlayerInventory::equip_item_id(uint32_t item_id, EquipSlot slot, bool allow
 void PlayerInventory::equip_item_index(size_t index, EquipSlot slot, bool allow_overwrite) {
   auto& item = this->items[index];
 
-  if (slot == EquipSlot::UNKNOWN) {
+  if ((slot == EquipSlot::UNKNOWN) || !item.data.can_be_equipped_in_slot(slot)) {
     slot = item.data.default_equip_slot();
   }
 
-  if (!item.data.can_be_equipped_in_slot(slot)) {
-    throw runtime_error("incorrect item type for equip slot");
-  }
   if (this->has_equipped_item(slot)) {
     if (allow_overwrite) {
       this->unequip_item_slot(slot);
