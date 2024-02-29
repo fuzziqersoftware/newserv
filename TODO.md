@@ -5,6 +5,7 @@
 - Make UI strings localizable (e.g. entries in menus, welcome message, etc.)
 - Add an idle connection timeout for proxy sessions
 - Clean up ItemParameterTable implementation (see comment at the top of the class definition)
+- Handle MeetUserExtensions properly in 41 and C4 commands on the proxy (rewrite the embedded 19 command and store a map of )
 
 ## PSO DC
 
