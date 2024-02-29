@@ -14,8 +14,6 @@ reloc0:
   .offsetof start
 
 start:
-  .include Episode3USAOnly
-
   stwu   [r1 - 0x20], r1
   mflr   r0
   stw    [r1 + 0x24], r0
