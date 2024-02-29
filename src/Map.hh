@@ -104,18 +104,18 @@ struct Map {
   struct Event1Entry { // Section type 3 (WAVE_EVENTS) if format == 0
     /* 00 */ le_uint32_t event_id;
     /* 04 */ le_uint16_t flags;
-    /* 06 */ le_uint16_t unknown_a2;
+    /* 06 */ le_uint16_t event_type;
     /* 08 */ le_uint16_t section;
     /* 0A */ le_uint16_t wave_number;
     /* 0C */ le_uint32_t delay;
-    /* 10 */ le_uint32_t clear_events_index;
+    /* 10 */ le_uint32_t action_stream_offset;
     /* 14 */
   } __attribute__((packed));
 
   struct Event2Entry { // Section type 3 (WAVE_EVENTS) if format == 'evt2'
     /* 00 */ le_uint32_t event_id;
     /* 04 */ le_uint16_t flags;
-    /* 06 */ le_uint16_t unknown_a2;
+    /* 06 */ le_uint16_t event_type;
     /* 08 */ le_uint16_t section;
     /* 0A */ le_uint16_t wave_number;
     /* 0C */ le_uint16_t min_delay;
@@ -123,7 +123,7 @@ struct Map {
     /* 10 */ uint8_t min_enemies;
     /* 11 */ uint8_t max_enemies;
     /* 12 */ le_uint16_t max_waves;
-    /* 14 */ le_uint32_t clear_events_index;
+    /* 14 */ le_uint32_t action_stream_offset;
     /* 18 */
   } __attribute__((packed));
 
@@ -217,6 +217,10 @@ struct Map {
     uint32_t param4;
     uint32_t param5;
     uint32_t param6;
+    uint16_t game_flags;
+    // Technically set_flags shouldn't be part of the Object struct, but all
+    // object entries always generate exactly one object, so we store it here.
+    uint16_t set_flags;
     bool item_drop_checked;
 
     std::string str() const;
@@ -231,13 +235,16 @@ struct Map {
       ITEM_DROPPED = 0x10,
     };
     size_t source_index;
+    size_t set_index;
     uint16_t enemy_id;
+    uint16_t total_damage;
+    uint32_t game_flags; // From 6x0A
     EnemyType type;
     uint8_t floor;
     uint8_t state_flags;
     uint8_t last_hit_by_client_id;
 
-    Enemy(uint16_t enemy_id, size_t source_index, uint8_t floor, EnemyType type);
+    Enemy(uint16_t enemy_id, size_t source_index, size_t set_index, uint8_t floor, EnemyType type);
 
     std::string str() const;
   } __attribute__((packed));
@@ -300,7 +307,7 @@ struct Map {
   };
   static std::vector<DATSectionsForFloor> collect_quest_map_data_sections(const void* data, size_t size);
 
-  void add_enemies_and_objects_from_quest_data(
+  void add_entities_from_quest_data(
       Episode episode,
       uint8_t difficulty,
       uint8_t event,
@@ -319,6 +326,7 @@ struct Map {
   std::shared_ptr<PSOLFGEncryption> opt_rand_crypt;
   std::vector<Object> objects;
   std::vector<Enemy> enemies;
+  std::vector<uint16_t> enemy_set_flags;
   std::vector<size_t> rare_enemy_indexes;
 };
 

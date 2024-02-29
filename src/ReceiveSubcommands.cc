@@ -2283,6 +2283,12 @@ static void on_entity_drop_item_request(shared_ptr<Client> c, uint8_t command, u
     return;
   }
 
+  // Note: We always call reconcile_drop_request_with_map, even in client drop
+  // mode, so that we can correctly mark enemies and objects as having dropped
+  // their items in persistent games.
+  G_SpecializableItemDropRequest_6xA2 cmd = normalize_drop_request(data, size);
+  auto rec = reconcile_drop_request_with_map(c->log, c->channel, cmd, c->version(), l->episode, c->config, l->map, true);
+
   switch (l->drop_mode) {
     case Lobby::DropMode::CLIENT:
       forward_subcommand(c, command, flag, data, size);
@@ -2296,9 +2302,6 @@ static void on_entity_drop_item_request(shared_ptr<Client> c, uint8_t command, u
     default:
       throw logic_error("invalid drop mode");
   }
-
-  G_SpecializableItemDropRequest_6xA2 cmd = normalize_drop_request(data, size);
-  auto rec = reconcile_drop_request_with_map(c->log, c->channel, cmd, c->version(), l->episode, c->config, l->map, true);
 
   if (rec.should_drop) {
     auto generate_item = [&]() -> ItemCreator::DropResult {
@@ -2570,8 +2573,8 @@ static void on_gol_dragon_actions(shared_ptr<Client> c, uint8_t command, uint8_t
   }
 }
 
-static void on_enemy_hit(shared_ptr<Client> c, uint8_t command, uint8_t, void* data, size_t size) {
-  const auto& cmd = check_size_t<G_EnemyHitByPlayer_DC_PC_XB_BB_6x0A>(data, size);
+static void on_update_enemy_state(shared_ptr<Client> c, uint8_t command, uint8_t, void* data, size_t size) {
+  const auto& cmd = check_size_t<G_UpdateEnemyState_DC_PC_XB_BB_6x0A>(data, size);
 
   if (command_is_private(command)) {
     return;
@@ -2581,22 +2584,21 @@ static void on_enemy_hit(shared_ptr<Client> c, uint8_t command, uint8_t, void* d
     return;
   }
 
-  if (l->base_version == Version::BB_V4) {
-    if (c->lobby_client_id > 3) {
-      throw logic_error("client ID is above 3");
-    }
-    if (!l->map) {
-      throw runtime_error("game does not have a map loaded");
-    }
+  if (c->lobby_client_id > 3) {
+    throw logic_error("client ID is above 3");
+  }
+  if (l->map) {
     if (cmd.enemy_index >= l->map->enemies.size()) {
       return;
     }
-
     auto& enemy = l->map->enemies[cmd.enemy_index];
     enemy.last_hit_by_client_id = c->lobby_client_id;
+    enemy.game_flags = is_big_endian(c->version()) ? bswap32(cmd.flags) : cmd.flags.load();
+    enemy.total_damage = cmd.total_damage;
+    l->log.info("E-%hX updated to damage=%hu game_flags=%08" PRIX32, cmd.enemy_index.load(), enemy.total_damage, enemy.game_flags);
   }
 
-  G_EnemyHitByPlayer_GC_6x0A sw_cmd = {{{cmd.header.subcommand, cmd.header.size, cmd.header.enemy_id}, cmd.enemy_index, cmd.total_damage, cmd.flags.load()}};
+  G_UpdateEnemyState_GC_6x0A sw_cmd = {{{cmd.header.subcommand, cmd.header.size, cmd.header.enemy_id}, cmd.enemy_index, cmd.total_damage, cmd.flags.load()}};
   bool sender_is_be = is_big_endian(c->version());
   for (auto lc : l->clients) {
     if (lc && (lc != c)) {
@@ -2607,6 +2609,27 @@ static void on_enemy_hit(shared_ptr<Client> c, uint8_t command, uint8_t, void* d
       }
     }
   }
+}
+
+static void on_update_object_state(shared_ptr<Client> c, uint8_t command, uint8_t flag, void* data, size_t size) {
+  const auto& cmd = check_size_t<G_UpdateObjectState_6x0B>(data, size);
+
+  if (command_is_private(command)) {
+    return;
+  }
+  auto l = c->require_lobby();
+  if (!l->is_game()) {
+    return;
+  }
+
+  if (l->map) {
+    if (cmd.object_index >= l->map->objects.size()) {
+      return;
+    }
+    l->map->objects[cmd.object_index].game_flags = cmd.flags;
+  }
+
+  forward_subcommand(c, command, flag, data, size);
 }
 
 static void on_charge_attack_bb(shared_ptr<Client> c, uint8_t command, uint8_t flag, void* data, size_t size) {
@@ -3809,8 +3832,8 @@ const SubcommandDefinition subcommand_definitions[0x100] = {
     /* 6x07 */ {0x07, 0x07, 0x07, on_symbol_chat, SDF::ALWAYS_FORWARD_TO_WATCHERS},
     /* 6x08 */ {0x08, 0x08, 0x08, on_invalid},
     /* 6x09 */ {0x09, 0x09, 0x09, forward_subcommand_m},
-    /* 6x0A */ {0x0A, 0x0A, 0x0A, on_enemy_hit},
-    /* 6x0B */ {0x0B, 0x0B, 0x0B, on_forward_check_game},
+    /* 6x0A */ {0x0A, 0x0A, 0x0A, on_update_enemy_state},
+    /* 6x0B */ {0x0B, 0x0B, 0x0B, on_update_object_state},
     /* 6x0C */ {0x0C, 0x0C, 0x0C, on_received_condition},
     /* 6x0D */ {0x00, 0x00, 0x0D, on_forward_check_game},
     /* 6x0E */ {0x00, 0x00, 0x0E, on_forward_check_game},

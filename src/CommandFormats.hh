@@ -3890,27 +3890,27 @@ struct G_Unknown_6x09 {
   G_EnemyIDHeader header;
 } __packed__;
 
-// 6x0A: Enemy hit
+// 6x0A: Update enemy state
 
 template <bool IsBigEndian>
-struct G_EnemyHitByPlayer_6x0A {
+struct G_UpdateEnemyState_6x0A {
   G_EnemyIDHeader header;
   le_uint16_t enemy_index = 0; // [0, 0xB50)
   le_uint16_t total_damage = 0;
   // Flags:
   // 00000400 - should play hit animation
-  // 00000800 - should die
+  // 00000800 - is dead
   typename std::conditional<IsBigEndian, be_uint32_t, le_uint32_t>::type flags = 0;
 } __packed__;
 
-struct G_EnemyHitByPlayer_GC_6x0A : G_EnemyHitByPlayer_6x0A<true> {
+struct G_UpdateEnemyState_GC_6x0A : G_UpdateEnemyState_6x0A<true> {
 } __packed__;
-struct G_EnemyHitByPlayer_DC_PC_XB_BB_6x0A : G_EnemyHitByPlayer_6x0A<false> {
+struct G_UpdateEnemyState_DC_PC_XB_BB_6x0A : G_UpdateEnemyState_6x0A<false> {
 } __packed__;
 
-// 6x0B: Box destroyed
+// 6x0B: Update object state
 
-struct G_BoxDestroyed_6x0B {
+struct G_UpdateObjectState_6x0B {
   G_ClientIDHeader header;
   le_uint32_t flags = 0;
   le_uint32_t object_index = 0;
@@ -4626,15 +4626,13 @@ struct G_UseStarAtomizer_6x66 {
   parray<le_uint16_t, 4> target_client_ids;
 } __packed__;
 
-// 6x67: Create enemy set
+// 6x67: Trigger wave event
 
-struct G_CreateEnemySet_6x67 {
+struct G_TriggerWaveEvent_6x67 {
   G_UnusedHeader header;
-  // unused1 could be floor; the client checks this against a global but the
-  // logic is the same in both branches
-  le_uint32_t unused1 = 0;
-  le_uint32_t unknown_a1 = 0;
-  le_uint32_t unused2 = 0;
+  le_uint32_t floor = 0;
+  le_uint32_t event_id = 0; // NOT event index
+  le_uint32_t unused = 0;
 } __packed__;
 
 // 6x68: Create telepipe / cast Ryuker
@@ -4687,9 +4685,9 @@ struct G_SyncGameStateHeader_6x6B_6x6C_6x6D_6x6E {
 
 // Decompressed format is a list of these
 struct G_SyncEnemyState_6x6B_Entry_Decompressed {
-  le_uint32_t flags = 0;
-  le_uint16_t last_attacker = 0;
-  le_uint16_t total_damage = 0;
+  le_uint32_t flags = 0; // Same as flags in 6x0A
+  le_uint16_t item_drop_id = 0;
+  le_uint16_t total_damage = 0; // Same as in 6x0A
   uint8_t red_buff_type = 0;
   uint8_t red_buff_level = 0;
   uint8_t blue_buff_type = 0;
@@ -4702,7 +4700,7 @@ struct G_SyncEnemyState_6x6B_Entry_Decompressed {
 // Decompressed format is a list of these
 struct G_SyncObjectState_6x6C_Entry_Decompressed {
   le_uint16_t flags = 0;
-  le_uint16_t object_index = 0;
+  le_uint16_t item_drop_id = 0;
 } __packed__;
 
 // 6x6D: Sync item state (used while loading into game)
@@ -4746,19 +4744,28 @@ struct G_SyncItemState_6x6D_Decompressed {
   // FloorItem items[sum(floor_item_count_per_floor)];
 } __packed__;
 
-// 6x6E: Sync flag state (used while loading into game)
+// 6x6E: Sync set flag state (used while loading into game)
 // Compressed format is the same as 6x6B.
 
-struct G_SyncFlagState_6x6E_Decompressed {
-  // The three unknowns here are the sizes (in bytes) of three fields
-  // immediately following this structure. It is currently unknown what these
-  // fields represent. The three unknown fields always sum to the size field.
-  le_uint16_t size = 0;
-  le_uint16_t unknown_a1 = 0;
-  le_uint16_t unknown_a2 = 0;
-  le_uint16_t unknown_a3 = 0;
-  // Three variable-length fields follow here. They are in the same order as the
-  // unknown fields above.
+struct G_SyncSetFlagState_6x6E_Decompressed {
+  le_uint16_t total_size = 0; // == sum of the following 3 fields
+  le_uint16_t entity_set_flags_size = 0;
+  le_uint16_t event_set_flags_size = 0;
+  le_uint16_t unused_size = 0;
+  // Variable-length fields follow here:
+  // EntitySetFlags entity_set_flags; // Total size is set_flags_size
+  // le_uint16_t event_set_flags[event_set_flags_size / 2]; // Same order as in map files (NOT sorted by event_id)
+  // uint8_t unused[is_v1 ? 0x200 : 0x240]; // Possibly an early implementation of 6x6F; unused even in DC NTE
+
+  struct EntitySetFlags {
+    le_uint32_t object_set_flags_offset = 0;
+    le_uint32_t num_object_sets = 0;
+    le_uint32_t enemy_set_flags_offset = 0;
+    le_uint32_t num_enemy_sets = 0;
+    // Variable-length fields follow here:
+    // le_uint16_t object_set_flags[num_object_sets];
+    // le_uint16_t enemy_set_flags[num_enemy_sets];
+  } __packed__;
 } __packed__;
 
 // 6x6F: Set quest flags (used while loading into game)
@@ -4773,7 +4780,7 @@ struct G_SetQuestFlags_6x6F {
 // and instead rearranged a bunch of things.
 
 struct Telepipe {
-  /* 00 */ le_uint16_t client_id = 0xFFFF;
+  /* 00 */ le_uint16_t owner_client_id = 0xFFFF;
   /* 02 */ le_uint16_t unknown_a1 = 0;
   /* 04 */ le_uint32_t unknown_a2 = 0;
   /* 08 */ le_float x = 0.0f;

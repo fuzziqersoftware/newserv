@@ -2359,6 +2359,45 @@ void send_ep3_change_music(Channel& ch, uint32_t song) {
   ch.send(0x60, 0x00, cmd);
 }
 
+static void send_game_join_sync_command(
+    shared_ptr<Client> c, const void* data, size_t size, uint8_t dc_nte_sc, uint8_t dc_11_2000_sc, uint8_t sc) {
+  string compressed_data = bc0_compress(data, size);
+
+  StringWriter w;
+  if (is_pre_v1(c->version())) {
+    G_SyncGameStateHeader_DCNTE_6x6B_6x6C_6x6D_6x6E compressed_header;
+    compressed_header.header.basic_header.subcommand = (c->version() == Version::DC_NTE) ? dc_nte_sc : dc_11_2000_sc;
+    compressed_header.header.basic_header.size = 0x00;
+    compressed_header.header.basic_header.unused = 0x0000;
+    compressed_header.header.size = (compressed_data.size() + sizeof(G_SyncGameStateHeader_DCNTE_6x6B_6x6C_6x6D_6x6E) + 3) & (~3);
+    compressed_header.decompressed_size = size;
+    w.put(compressed_header);
+  } else {
+    G_SyncGameStateHeader_6x6B_6x6C_6x6D_6x6E compressed_header;
+    compressed_header.header.basic_header.subcommand = sc;
+    compressed_header.header.basic_header.size = 0x00;
+    compressed_header.header.basic_header.unused = 0x0000;
+    compressed_header.header.size = (compressed_data.size() + sizeof(G_SyncGameStateHeader_6x6B_6x6C_6x6D_6x6E) + 3) & (~3);
+    compressed_header.decompressed_size = size;
+    compressed_header.compressed_size = compressed_data.size();
+    w.put(compressed_header);
+  }
+  w.write(compressed_data);
+  while (w.size() & 3) {
+    w.put_u8(0x00);
+  }
+
+  if (c->game_join_command_queue) {
+    c->log.info("Client not ready to receive join commands; adding to queue");
+    auto& cmd = c->game_join_command_queue->emplace_back();
+    cmd.command = 0x6D;
+    cmd.flag = c->lobby_client_id;
+    cmd.data = std::move(w.str());
+  } else {
+    send_command(c, 0x6D, c->lobby_client_id, w.str());
+  }
+}
+
 void send_game_item_state(shared_ptr<Client> c) {
   auto l = c->require_lobby();
   auto s = c->require_server_state();
@@ -2406,42 +2445,47 @@ void send_game_item_state(shared_ptr<Client> c) {
   StringWriter decompressed_w;
   decompressed_w.put(decompressed_header);
   decompressed_w.write(floor_items_w.str());
+  const auto& data = decompressed_w.str();
+  send_game_join_sync_command(c, data.data(), data.size(), 0x5E, 0x65, 0x6D);
+}
 
-  string compressed_data = bc0_compress(decompressed_w.str());
-
-  StringWriter w;
-  if (is_pre_v1(c->version())) {
-    G_SyncGameStateHeader_DCNTE_6x6B_6x6C_6x6D_6x6E compressed_header;
-    compressed_header.header.basic_header.subcommand = (c->version() == Version::DC_NTE) ? 0x5E : 0x65;
-    compressed_header.header.basic_header.size = 0x00;
-    compressed_header.header.basic_header.unused = 0x0000;
-    compressed_header.header.size = (compressed_data.size() + sizeof(G_SyncGameStateHeader_DCNTE_6x6B_6x6C_6x6D_6x6E) + 3) & (~3);
-    compressed_header.decompressed_size = decompressed_w.size();
-    w.put(compressed_header);
-  } else {
-    G_SyncGameStateHeader_6x6B_6x6C_6x6D_6x6E compressed_header;
-    compressed_header.header.basic_header.subcommand = 0x6D;
-    compressed_header.header.basic_header.size = 0x00;
-    compressed_header.header.basic_header.unused = 0x0000;
-    compressed_header.header.size = (compressed_data.size() + sizeof(G_SyncGameStateHeader_6x6B_6x6C_6x6D_6x6E) + 3) & (~3);
-    compressed_header.decompressed_size = decompressed_w.size();
-    compressed_header.compressed_size = compressed_data.size();
-    w.put(compressed_header);
+void send_game_enemy_state(shared_ptr<Client> c) {
+  auto l = c->require_lobby();
+  if (!l->map) {
+    return;
   }
-  w.write(compressed_data);
-  while (w.size() & 3) {
-    w.put_u8(0x00);
+  auto s = c->require_server_state();
+
+  vector<G_SyncEnemyState_6x6B_Entry_Decompressed> entries;
+  entries.reserve(l->map->enemies.size());
+  for (size_t z = 0; z < l->map->enemies.size(); z++) {
+    const auto& enemy = l->map->enemies[z];
+    auto& entry = entries.emplace_back();
+    entry.flags = enemy.game_flags;
+    entry.item_drop_id = (enemy.state_flags & Map::Enemy::Flag::ITEM_DROPPED) ? 0xFFFF : (0xCA0 + z);
+    entry.total_damage = enemy.total_damage;
   }
 
-  if (c->game_join_command_queue) {
-    c->log.info("Client not ready to receive join commands; adding to queue");
-    auto& cmd = c->game_join_command_queue->emplace_back();
-    cmd.command = 0x6D;
-    cmd.flag = c->lobby_client_id;
-    cmd.data = std::move(w.str());
-  } else {
-    send_command(c, 0x6D, c->lobby_client_id, w.str());
+  send_game_join_sync_command(c, entries.data(), entries.size() * sizeof(entries[0]), 0x5C, 0x63, 0x6B);
+}
+
+void send_game_object_state(shared_ptr<Client> c) {
+  auto l = c->require_lobby();
+  if (!l->map) {
+    return;
   }
+  auto s = c->require_server_state();
+
+  vector<G_SyncObjectState_6x6C_Entry_Decompressed> entries;
+  entries.reserve(l->map->objects.size());
+  for (size_t z = 0; z < l->map->objects.size(); z++) {
+    const auto& obj = l->map->objects[z];
+    auto& entry = entries.emplace_back();
+    entry.flags = obj.game_flags;
+    entry.item_drop_id = (obj.item_drop_checked) ? 0xFFFF : (0x100 + z);
+  }
+
+  send_game_join_sync_command(c, entries.data(), entries.size() * sizeof(entries[0]), 0x5D, 0x64, 0x6C);
 }
 
 void send_game_flag_state(shared_ptr<Client> c) {

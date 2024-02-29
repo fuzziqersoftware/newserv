@@ -272,7 +272,7 @@ shared_ptr<Map> Lobby::load_maps(
     shared_ptr<PSOLFGEncryption> opt_rand_crypt,
     shared_ptr<const string> quest_dat_contents_decompressed) {
   auto map = make_shared<Map>(version, lobby_id, random_seed, opt_rand_crypt);
-  map->add_enemies_and_objects_from_quest_data(
+  map->add_entities_from_quest_data(
       episode,
       difficulty,
       event,

@@ -655,9 +655,12 @@ string Map::EnemyEntry::str() const {
       this->unused.load());
 }
 
-Map::Enemy::Enemy(uint16_t enemy_id, size_t source_index, uint8_t floor, EnemyType type)
+Map::Enemy::Enemy(uint16_t enemy_id, size_t source_index, size_t set_index, uint8_t floor, EnemyType type)
     : source_index(source_index),
+      set_index(set_index),
       enemy_id(enemy_id),
+      total_damage(0),
+      game_flags(0),
       type(type),
       floor(floor),
       state_flags(0),
@@ -721,6 +724,8 @@ void Map::add_objects_from_map_data(uint8_t floor, const void* data, size_t size
         .param4 = objects[z].param4,
         .param5 = objects[z].param5,
         .param6 = objects[z].param6,
+        .game_flags = 0,
+        .set_flags = 0,
         .item_drop_checked = false,
     });
   }
@@ -763,12 +768,15 @@ void Map::add_enemy(
     uint8_t difficulty,
     uint8_t event,
     uint8_t floor,
-    size_t index,
+    size_t source_index,
     const EnemyEntry& e,
     std::shared_ptr<const RareEnemyRates> rare_rates) {
+  size_t set_index = this->enemy_set_flags.size();
+  this->enemy_set_flags.emplace_back(0);
+
   auto add = [&](EnemyType type) -> void {
     uint16_t enemy_id = this->enemies.size();
-    this->enemies.emplace_back(enemy_id, index, floor, type);
+    this->enemies.emplace_back(enemy_id, source_index, set_index, floor, type);
   };
 
   EnemyType child_type = EnemyType::UNKNOWN;
@@ -1186,14 +1194,14 @@ void Map::add_enemy(
       add(EnemyType::UNKNOWN);
       this->log.warning(
           "(Entry %zu, offset %zX in file) Unknown enemy type %04hX",
-          index, index * sizeof(EnemyEntry), e.base_type.load());
+          source_index, source_index * sizeof(EnemyEntry), e.base_type.load());
       break;
 
     default:
       add(EnemyType::UNKNOWN);
       this->log.warning(
           "(Entry %zu, offset %zX in file) Invalid enemy type %04hX",
-          index, index * sizeof(EnemyEntry), e.base_type.load());
+          source_index, source_index * sizeof(EnemyEntry), e.base_type.load());
       break;
   }
 
@@ -1492,7 +1500,7 @@ vector<Map::DATSectionsForFloor> Map::collect_quest_map_data_sections(const void
   return ret;
 }
 
-void Map::add_enemies_and_objects_from_quest_data(
+void Map::add_entities_from_quest_data(
     Episode episode,
     uint8_t difficulty,
     uint8_t event,
