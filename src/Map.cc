@@ -912,7 +912,7 @@ void Map::add_enemy(
       if ((episode == Episode::EP2) && (e.floor == 0x11)) {
         add(EnemyType::DEL_LILY);
       } else {
-        add(this->check_and_log_rare_enemy((this->version == Version::BB_V4) && (e.uparam1 & 1), rare_rates->nar_lily)
+        add(this->check_and_log_rare_enemy(false, rare_rates->nar_lily)
                 ? EnemyType::NAR_LILY
                 : EnemyType::POISON_LILY);
       }
