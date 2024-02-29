@@ -756,9 +756,9 @@ struct CardDefinition {
   // enormous comment? That's what this array stores.
   /* 009C */ parray<be_uint16_t, 2> drop_rates;
 
-  /* 00A0 */ pstring<TextEncoding::SJIS, 0x14> en_name;
+  /* 00A0 */ pstring<TextEncoding::ISO8859, 0x14> en_name;
   /* 00B4 */ pstring<TextEncoding::SJIS, 0x0B> jp_short_name;
-  /* 00BF */ pstring<TextEncoding::SJIS, 0x08> en_short_name;
+  /* 00BF */ pstring<TextEncoding::ISO8859, 0x08> en_short_name;
   // These effects modify the card's behavior in various situations. Only
   // effects for which effect_num is not zero are used.
   /* 00C7 */ parray<Effect, 3> effects;
@@ -793,7 +793,7 @@ struct CardDefinitionsFooter {
 } __attribute__((packed));
 
 struct DeckDefinition {
-  /* 00 */ pstring<TextEncoding::SJIS, 0x10> name;
+  /* 00 */ pstring<TextEncoding::MARKED, 0x10> name;
   /* 10 */ be_uint32_t client_id; // 0-3
   // List of card IDs. The card count is the number of nonzero entries here
   // before a zero entry (or 50 if no entries are nonzero). The first card ID is
@@ -816,7 +816,7 @@ struct PlayerConfig {
   // The game splits this internally into two structures. The first column of
   // offsets is relative to the start of the first structure; the second column
   // is relative to the start of the second structure.
-  /* 0000:---- */ pstring<TextEncoding::SJIS, 12> rank_text; // From B7 command
+  /* 0000:---- */ pstring<TextEncoding::MARKED, 12> rank_text; // From B7 command
   /* 000C:---- */ parray<uint8_t, 0x1C> unknown_a1;
   /* 0028:---- */ parray<be_uint16_t, 20> tech_menu_shortcut_entries;
   /* 0050:---- */ parray<be_uint32_t, 10> choice_search_config;
@@ -878,7 +878,7 @@ struct PlayerConfig {
   /* 2124:1FD0 */ be_uint32_t online_clv_exp; // CLvOn = this / 100
   struct PlayerReference {
     /* 00 */ be_uint32_t guild_card_number;
-    /* 04 */ pstring<TextEncoding::SJIS, 0x18> player_name;
+    /* 04 */ pstring<TextEncoding::MARKED, 0x18> name;
   } __attribute__((packed));
   // This array is updated when a battle is started (via a 6xB4x05 command). The
   // client adds the opposing players' info to ths first two entries here if the
@@ -1198,10 +1198,10 @@ struct MapDefinition { // .mnmd format; also the format of (decompressed) quests
   /* 1D68 */ parray<uint8_t, 0x74> unknown_a5;
   /* 1DDC */ Rules default_rules;
 
-  /* 1DF0 */ pstring<TextEncoding::SJIS, 0x14> name;
-  /* 1E04 */ pstring<TextEncoding::SJIS, 0x14> location_name;
-  /* 1E18 */ pstring<TextEncoding::SJIS, 0x3C> quest_name; // == location_name if not a quest
-  /* 1E54 */ pstring<TextEncoding::SJIS, 0x190> description;
+  /* 1DF0 */ pstring<TextEncoding::MARKED, 0x14> name;
+  /* 1E04 */ pstring<TextEncoding::MARKED, 0x14> location_name;
+  /* 1E18 */ pstring<TextEncoding::MARKED, 0x3C> quest_name; // == location_name if not a quest
+  /* 1E54 */ pstring<TextEncoding::MARKED, 0x190> description;
 
   // These fields describe where the map cursor on the preview screen should
   // scroll to
@@ -1209,10 +1209,10 @@ struct MapDefinition { // .mnmd format; also the format of (decompressed) quests
   /* 1FE6 */ be_uint16_t map_y;
 
   struct NPCDeck {
-    /* 00 */ pstring<TextEncoding::SJIS, 0x18> name;
+    /* 00 */ pstring<TextEncoding::MARKED, 0x18> deck_name;
     /* 18 */ parray<be_uint16_t, 0x20> card_ids; // Last one appears to always be FFFF
     /* 58 */
-    JSON json() const;
+    JSON json(uint8_t language) const;
   } __attribute__((packed));
   /* 1FE8 */ parray<NPCDeck, 3> npc_decks; // Unused if name[0] == 0
 
@@ -1224,11 +1224,11 @@ struct MapDefinition { // .mnmd format; also the format of (decompressed) quests
     /* 0000 */ parray<be_uint16_t, 2> unknown_a1;
     /* 0004 */ uint8_t is_arkz;
     /* 0005 */ parray<uint8_t, 3> unknown_a2;
-    /* 0008 */ pstring<TextEncoding::SJIS, 0x10> name;
+    /* 0008 */ pstring<TextEncoding::MARKED, 0x10> ai_name;
     // TODO: Figure out exactly how these are used and document here.
     /* 0018 */ parray<be_uint16_t, 0x7E> params;
     /* 0114 */
-    JSON json() const;
+    JSON json(uint8_t language) const;
   } __attribute__((packed));
   /* 20F0 */ parray<AIParams, 3> npc_ai_params; // Unused if name[0] == 0
 
@@ -1259,9 +1259,9 @@ struct MapDefinition { // .mnmd format; also the format of (decompressed) quests
   // appears after the battle if it's not blank. dispatch_message appears right
   // before the player chooses a deck if it's not blank; usually it says
   // something like "You can only dispatch <character>".
-  /* 2440 */ pstring<TextEncoding::SJIS, 0x190> before_message;
-  /* 25D0 */ pstring<TextEncoding::SJIS, 0x190> after_message;
-  /* 2760 */ pstring<TextEncoding::SJIS, 0x190> dispatch_message;
+  /* 2440 */ pstring<TextEncoding::MARKED, 0x190> before_message;
+  /* 25D0 */ pstring<TextEncoding::MARKED, 0x190> after_message;
+  /* 2760 */ pstring<TextEncoding::MARKED, 0x190> dispatch_message;
 
   struct DialogueSet {
     // Dialogue sets specify lines that COMs can say at certain points during
@@ -1279,9 +1279,9 @@ struct MapDefinition { // .mnmd format; also the format of (decompressed) quests
     /* 0002 */ be_uint16_t percent_chance; // 0-100, or FFFF if unused
     // If the dialogue set activates, the game randomly chooses one of these
     // strings, excluding any that are empty or begin with the character '^'.
-    /* 0004 */ parray<pstring<TextEncoding::SJIS, 0x40>, 4> strings;
+    /* 0004 */ parray<pstring<TextEncoding::MARKED, 0x40>, 4> strings;
     /* 0104 */
-    JSON json() const;
+    JSON json(uint8_t language) const;
   } __attribute__((packed));
 
   // There are up to 0x10 of these per valid NPC, but only the first 13 of them
@@ -1380,7 +1380,7 @@ struct MapDefinition { // .mnmd format; also the format of (decompressed) quests
   void assert_semantically_equivalent(const MapDefinition& other) const;
 
   std::string str(const CardIndex* card_index, uint8_t language) const;
-  JSON json() const;
+  JSON json(uint8_t language) const;
 } __attribute__((packed));
 
 struct MapDefinitionTrial {
@@ -1401,19 +1401,19 @@ struct MapDefinitionTrial {
   /* 1C68 */ parray<parray<uint8_t, 0x10>, 0x10> modification_tiles;
   /* 1D68 */ parray<uint8_t, 0x74> unknown_a5;
   /* 1DD4 */ RulesTrial default_rules;
-  /* 1DE8 */ pstring<TextEncoding::SJIS, 0x14> name;
-  /* 1DFC */ pstring<TextEncoding::SJIS, 0x14> location_name;
-  /* 1E10 */ pstring<TextEncoding::SJIS, 0x3C> quest_name;
-  /* 1E4C */ pstring<TextEncoding::SJIS, 0x190> description;
+  /* 1DE8 */ pstring<TextEncoding::MARKED, 0x14> name;
+  /* 1DFC */ pstring<TextEncoding::MARKED, 0x14> location_name;
+  /* 1E10 */ pstring<TextEncoding::MARKED, 0x3C> quest_name;
+  /* 1E4C */ pstring<TextEncoding::MARKED, 0x190> description;
   /* 1FDC */ be_uint16_t map_x;
   /* 1FDE */ be_uint16_t map_y;
   /* 1FE0 */ parray<MapDefinition::NPCDeck, 3> npc_decks;
   /* 20E8 */ parray<MapDefinition::AIParams, 3> npc_ai_params;
   /* 2424 */ parray<uint8_t, 8> unknown_a7;
   /* 242C */ parray<be_int32_t, 3> npc_ai_params_entry_index;
-  /* 2438 */ pstring<TextEncoding::SJIS, 0x190> before_message;
-  /* 25C8 */ pstring<TextEncoding::SJIS, 0x190> after_message;
-  /* 2758 */ pstring<TextEncoding::SJIS, 0x190> dispatch_message;
+  /* 2438 */ pstring<TextEncoding::MARKED, 0x190> before_message;
+  /* 25C8 */ pstring<TextEncoding::MARKED, 0x190> after_message;
+  /* 2758 */ pstring<TextEncoding::MARKED, 0x190> dispatch_message;
   /* 28E8 */ parray<parray<MapDefinition::DialogueSet, 8>, 3> dialogue_sets;
   /* 4148 */ parray<be_uint16_t, 0x10> reward_card_ids;
   /* 4168 */ be_int32_t win_level_override;

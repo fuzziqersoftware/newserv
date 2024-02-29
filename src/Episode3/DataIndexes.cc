@@ -1620,7 +1620,7 @@ JSON MapDefinition::CameraSpec::json() const {
   });
 }
 
-JSON MapDefinition::NPCDeck::json() const {
+JSON MapDefinition::NPCDeck::json(uint8_t language) const {
   JSON card_ids_json = JSON::list();
   for (size_t z = 0; z < this->card_ids.size(); z++) {
     if (this->card_ids[z] != 0xFFFF) {
@@ -1628,27 +1628,27 @@ JSON MapDefinition::NPCDeck::json() const {
     }
   }
   return JSON::dict({
-      {"Name", this->name.decode()},
+      {"Name", this->deck_name.decode(language)},
       {"CardIDs", std::move(card_ids_json)},
   });
 }
 
-JSON MapDefinition::AIParams::json() const {
+JSON MapDefinition::AIParams::json(uint8_t language) const {
   JSON params_json = JSON::list();
   for (size_t z = 0; z < this->params.size(); z++) {
     params_json.emplace_back(this->params[z].load());
   }
   return JSON::dict({
       {"IsArkz", this->is_arkz ? true : false},
-      {"Name", this->name.decode()},
+      {"Name", this->ai_name.decode(language)},
       {"CardIDs", std::move(params_json)},
   });
 }
 
-JSON MapDefinition::DialogueSet::json() const {
+JSON MapDefinition::DialogueSet::json(uint8_t language) const {
   JSON strings_json = JSON::list();
   for (size_t z = 0; z < this->strings.size(); z++) {
-    strings_json.emplace_back(this->strings[z].decode());
+    strings_json.emplace_back(this->strings[z].decode(language));
   }
   return JSON::dict({
       {"When", this->when.load()},
@@ -1779,7 +1779,7 @@ string MapDefinition::str(const CardIndex* card_index, uint8_t language) const {
   lines.emplace_back(string_printf("  map_xy: %hu %hu", this->map_x.load(), this->map_y.load()));
   for (size_t z = 0; z < 3; z++) {
     lines.emplace_back(string_printf("  npc_chars[%zu]:", z));
-    lines.emplace_back("    name: " + this->npc_ai_params[z].name.decode(language));
+    lines.emplace_back("    name: " + this->npc_ai_params[z].ai_name.decode(language));
     lines.emplace_back(string_printf(
         "    ai_params: (a1: %04hX %04hX, is_arkz: %02hhX, a2: %02hX %02hX %02hX)",
         this->npc_ai_params[z].unknown_a1[0].load(), this->npc_ai_params[z].unknown_a1[1].load(),
@@ -1800,7 +1800,7 @@ string MapDefinition::str(const CardIndex* card_index, uint8_t language) const {
         this->npc_ai_params[z].params[0x7A].load(), this->npc_ai_params[z].params[0x7B].load(),
         this->npc_ai_params[z].params[0x7C].load(), this->npc_ai_params[z].params[0x7D].load()));
     lines.emplace_back(string_printf("  npc_decks[%zu]:", z));
-    lines.emplace_back("    name: " + this->npc_decks[z].name.decode(language));
+    lines.emplace_back("    name: " + this->npc_decks[z].deck_name.decode(language));
     for (size_t w = 0; w < 0x20; w++) {
       uint16_t card_id = this->npc_decks[z].card_ids[w];
       shared_ptr<const CardIndex::CardEntry> entry;
@@ -2062,7 +2062,7 @@ MapDefinitionTrial::operator MapDefinition() const {
   // guess and fill in the field appropriately here.
   size_t num_npc_decks = 0;
   for (size_t z = 0; z < ret.npc_decks.size(); z++) {
-    if (!ret.npc_decks[z].name.empty()) {
+    if (!ret.npc_decks[z].deck_name.empty()) {
       num_npc_decks++;
     }
   }
