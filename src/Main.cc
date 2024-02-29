@@ -2306,25 +2306,46 @@ Action a_replay_ep3_battle_commands(
       s->load_ep3_cards(false);
       s->load_ep3_maps(false);
 
-      auto opt_rand_crypt = make_shared<PSOV2Encryption>(args.get<uint32_t>("seed", 0, Arguments::IntFormat::HEX));
-      Episode3::Server::Options options = {
-          .card_index = s->ep3_card_index,
-          .map_index = s->ep3_map_index,
-          .behavior_flags = 0x0092,
-          .opt_rand_crypt = opt_rand_crypt,
-          .tournament = nullptr,
-          .trap_card_ids = {},
-      };
-      auto server = make_shared<Episode3::Server>(nullptr, std::move(options));
-      server->init();
+      int64_t base_seed = args.get<int64_t>("seed", -1);
+      bool is_trial = (get_cli_version(args, Version::GC_EP3) == Version::GC_EP3_NTE);
 
       auto input = read_input_data(args);
-      auto lines = split(input, '\n');
-      for (const auto& line : lines) {
+      vector<string> commands;
+      for (const auto& line : split(input, '\n')) {
         string data = parse_data_string(line);
         if (!data.empty()) {
-          server->on_server_data_input(nullptr, data);
+          commands.emplace_back(std::move(data));
         }
+      }
+
+      auto run_replay = [&](int64_t seed, size_t) {
+        Episode3::Server::Options options = {
+            .card_index = s->ep3_card_index,
+            .map_index = s->ep3_map_index,
+            .behavior_flags = 0x0092,
+            .opt_rand_crypt = (seed >= 0) ? make_shared<PSOV2Encryption>(seed) : nullptr,
+            .tournament = nullptr,
+            .trap_card_ids = {},
+        };
+        if (is_trial) {
+          options.behavior_flags |= Episode3::BehaviorFlag::IS_TRIAL_EDITION;
+        }
+        if (base_seed >= 0) {
+          options.behavior_flags |= Episode3::BehaviorFlag::LOG_COMMANDS_IF_LOBBY_MISSING;
+        }
+        auto server = make_shared<Episode3::Server>(nullptr, std::move(options));
+        server->init();
+        for (const auto& command : commands) {
+          server->on_server_data_input(nullptr, command);
+        }
+        return false;
+      };
+
+      if (base_seed >= 0) {
+        run_replay(base_seed, 0);
+      } else {
+        size_t num_threads = args.get<size_t>("threads", 0);
+        parallel_range<int64_t>(run_replay, 0, 0x100000000, num_threads);
       }
     });
 

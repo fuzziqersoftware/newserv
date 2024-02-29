@@ -256,7 +256,8 @@ void Server::send(const void* data, size_t size, uint8_t command, bool enable_ma
       l->battle_record->add_command(BattleRecord::Event::Type::BATTLE_COMMAND, data, size);
     }
 
-  } else if (this->log().info("Generated command")) {
+  } else if ((this->options.behavior_flags & BehaviorFlag::LOG_COMMANDS_IF_LOBBY_MISSING) &&
+      this->log().info("Generated command")) {
     print_data(stderr, data, size);
   }
 }
@@ -1824,8 +1825,10 @@ const unordered_map<uint8_t, Server::handler_t> Server::subcommand_handlers({
 
 void Server::on_server_data_input(shared_ptr<Client> sender_c, const string& data) {
   auto header = check_size_t<G_CardBattleCommandHeader>(data, 0xFFFF);
-  if (header.size * 4 < data.size()) {
-    throw runtime_error("command is incomplete");
+  size_t expected_size = header.size * 4;
+  if (expected_size < data.size()) {
+    print_data(stderr, data);
+    throw runtime_error(string_printf("command is incomplete: expected %zX bytes, received %zX bytes", expected_size, data.size()));
   }
   if (header.subcommand != 0xB3) {
     throw runtime_error("server data command is not 6xB3");
@@ -2163,33 +2166,29 @@ void Server::handle_CAx13_update_map_during_setup_t(shared_ptr<Client> c, const 
       (this->map_and_rules->num_players == 0) &&
       (this->registration_phase != RegistrationPhase::REGISTERED) &&
       (this->registration_phase != RegistrationPhase::BATTLE_STARTED)) {
-    if (!this->last_chosen_map) {
-      throw runtime_error("CAx13 sent with no map chosen");
-    }
-
     *this->map_and_rules = in_cmd.map_and_rules_state;
     // The client will likely send incorrect values for the extended rules (or
     // in the case of NTE, no values at all, since the Rules structure is
     // smaller). So, use the values from the last chosen map if applicable, or
     // the values from the $dicerange command if available.
-    const auto& map_rules = this->last_chosen_map->version(c->language())->map->default_rules;
+    const Rules* map_rules = this->last_chosen_map ? &this->last_chosen_map->version(c->language())->map->default_rules : nullptr;
     auto& server_rules = this->map_and_rules->rules;
     // NTE can specify the DEF dice value range in its Rules struct, so we use
     // that unless the map or $dicerange overrides it.
-    server_rules.def_dice_value_range = (map_rules.def_dice_value_range != 0xFF)
-        ? map_rules.def_dice_value_range
+    server_rules.def_dice_value_range = (map_rules && (map_rules->def_dice_value_range != 0xFF))
+        ? map_rules->def_dice_value_range
         : (this->def_dice_value_range_override != 0xFF)
         ? this->def_dice_value_range_override
         : this->options.is_nte()
         ? server_rules.def_dice_value_range
         : 0;
-    server_rules.atk_dice_value_range_2v1 = (map_rules.atk_dice_value_range_2v1 != 0xFF)
-        ? map_rules.atk_dice_value_range_2v1
+    server_rules.atk_dice_value_range_2v1 = (map_rules && (map_rules->atk_dice_value_range_2v1 != 0xFF))
+        ? map_rules->atk_dice_value_range_2v1
         : (this->atk_dice_value_range_2v1_override != 0xFF)
         ? this->atk_dice_value_range_2v1_override
         : 0;
-    server_rules.def_dice_value_range_2v1 = (map_rules.def_dice_value_range_2v1 != 0xFF)
-        ? map_rules.def_dice_value_range_2v1
+    server_rules.def_dice_value_range_2v1 = (map_rules && (map_rules->def_dice_value_range_2v1 != 0xFF))
+        ? map_rules->def_dice_value_range_2v1
         : (this->def_dice_value_range_2v1_override != 0xFF)
         ? this->def_dice_value_range_2v1_override
         : 0;
@@ -2585,6 +2584,10 @@ void Server::handle_CAx40_map_list_request(shared_ptr<Client> sender_c, const st
 }
 
 void Server::send_6xB6x41_to_all_clients() const {
+  if (!this->last_chosen_map) {
+    throw logic_error("cannot send 6xB4x41 without a map chosen");
+  }
+
   auto l = this->lobby.lock();
   if (l) {
     vector<string> map_commands_by_language;
