@@ -393,9 +393,7 @@ bool CardSpecial::apply_defense_condition(
 
   string expr = orig_eff->expr.decode();
   int16_t expr_value = this->evaluate_effect_expr(astats, expr.c_str(), dice_roll);
-  this->execute_effect(
-      *defender_cond, defender_card, expr_value, defender_cond->value,
-      orig_eff->type, flags, attacker_card_ref);
+  this->execute_effect(*defender_cond, defender_card, expr_value, defender_cond->value, orig_eff->type, flags, attacker_card_ref);
   if (flags & 4) {
     if (is_nte || !(defender_card->card_flags & 2)) {
       defender_card->compute_action_chain_results(true, false);
@@ -2461,13 +2459,13 @@ bool CardSpecial::execute_effect(
       [[fallthrough]];
     case ConditionType::SLAYERS_ASSASSINS:
       if (is_nte) {
-        auto card = s->card_for_set_card_ref(attacker_card_ref);
+        auto set_card = s->card_for_set_card_ref(attacker_card_ref);
         bool card_found = false;
-        if (!card) {
+        if (!set_card) {
           card_found = false;
         } else {
-          for (size_t z = 0; z < card->action_chain.chain.target_card_ref_count; z++) {
-            if (card->action_chain.chain.target_card_refs[z] == card->get_card_ref()) {
+          for (size_t z = 0; z < set_card->action_chain.chain.target_card_ref_count; z++) {
+            if (set_card->action_chain.chain.target_card_refs[z] == card->get_card_ref()) {
               card_found = true;
               break;
             }
@@ -3511,8 +3509,7 @@ void CardSpecial::on_card_set(shared_ptr<PlayerState> ps, uint16_t card_ref) {
   this->evaluate_and_apply_effects(0x01, card_ref, as, sc_card_ref);
 }
 
-const CardDefinition::Effect* CardSpecial::original_definition_for_condition(
-    const Condition& cond) const {
+const CardDefinition::Effect* CardSpecial::original_definition_for_condition(const Condition& cond) const {
   auto ce = this->server()->definition_for_card_ref(cond.card_ref);
   if (!ce) {
     return nullptr;
@@ -3526,8 +3523,7 @@ bool CardSpecial::card_ref_has_ability_trap(const Condition& cond) const {
   if (!card) {
     return false;
   } else {
-    return this->card_has_condition_with_ref(
-        card, ConditionType::ABILITY_TRAP, 0xFFFF, 0xFFFF);
+    return this->card_has_condition_with_ref(card, ConditionType::ABILITY_TRAP, 0xFFFF, 0xFFFF);
   }
 }
 
@@ -3567,8 +3563,7 @@ void CardSpecial::send_6xB4x06_for_card_destroyed(
   this->server()->send(cmd);
 }
 
-uint16_t CardSpecial::send_6xB4x06_if_card_ref_invalid(
-    uint16_t card_ref, int16_t value) const {
+uint16_t CardSpecial::send_6xB4x06_if_card_ref_invalid(uint16_t card_ref, int16_t value) const {
   auto s = this->server();
   if (!s->options.is_nte() && !s->card_ref_is_empty_or_has_valid_card_id(card_ref)) {
     if (value != 0) {
@@ -4115,7 +4110,7 @@ void CardSpecial::evaluate_and_apply_effects(
           // bug probably does nothing in any reasonable scenario, since the
           // target card refs array immediately precedes the conditions array,
           // and the target card refs array is excessively long, so OR'ing a
-          // value that is amost certainly already 0xFFFF with 1 would do
+          // value that is almost certainly already 0xFFFF with 1 would do
           // nothing. In our implementation, however, we bounds-check
           // everything, so we've moved this check inside the relevant if block.
           if (dice_roll.value_used_in_expr) {
@@ -4140,8 +4135,7 @@ void CardSpecial::evaluate_and_apply_effects(
 
   if (any_expr_used_dice_roll) {
     dice_cmd.effect.flags = 0x08;
-    dice_cmd.effect.attacker_card_ref = this->send_6xB4x06_if_card_ref_invalid(
-        as_attacker_card_ref, 0x15);
+    dice_cmd.effect.attacker_card_ref = this->send_6xB4x06_if_card_ref_invalid(as_attacker_card_ref, 0x15);
     dice_cmd.effect.dice_roll_value = dice_roll.value;
     s->send(dice_cmd);
   }
@@ -4671,8 +4665,7 @@ void CardSpecial::unknown_8024AAB8(const ActionState& as) {
   log.debug("as=%s", as_str.c_str());
 
   for (size_t z = 0; (z < 8) && (as.action_card_refs[z] != 0xFFFF); z++) {
-    uint16_t card_ref = this->send_6xB4x06_if_card_ref_invalid(
-        as.action_card_refs[z], 0x1E);
+    uint16_t card_ref = this->send_6xB4x06_if_card_ref_invalid(as.action_card_refs[z], 0x1E);
     if (card_ref == 0xFFFF) {
       break;
     }
@@ -4941,8 +4934,7 @@ void CardSpecial::check_for_attack_interference(shared_ptr<Card> unknown_p2) {
 
   G_ApplyConditionEffect_Ep3_6xB4x06 cmd;
   cmd.effect.flags = 0x04;
-  cmd.effect.attacker_card_ref = this->send_6xB4x06_if_card_ref_invalid(
-      unknown_p2->get_card_ref(), 0x11);
+  cmd.effect.attacker_card_ref = this->send_6xB4x06_if_card_ref_invalid(unknown_p2->get_card_ref(), 0x11);
   cmd.effect.target_card_ref = unknown_p2->get_card_ref();
   cmd.effect.value = 0;
   cmd.effect.operation = 0x7D;

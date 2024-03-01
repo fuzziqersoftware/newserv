@@ -96,9 +96,7 @@ private:
 
 class BattleRecordPlayer {
 public:
-  BattleRecordPlayer(
-      std::shared_ptr<const BattleRecord> rec,
-      std::shared_ptr<struct event_base> base);
+  BattleRecordPlayer(std::shared_ptr<const BattleRecord> rec, std::shared_ptr<struct event_base> base);
   ~BattleRecordPlayer() = default;
 
   std::shared_ptr<const BattleRecord> get_record() const;

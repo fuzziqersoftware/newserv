@@ -39,17 +39,17 @@ private:
 
 public:
   parray<AssistEffect, 4> assist_effects;
-  std::shared_ptr<const CardIndex::CardEntry> assist_card_defs[4];
+  bcarray<std::shared_ptr<const CardIndex::CardEntry>, 4> assist_card_defs;
   uint32_t num_assist_cards_set;
   parray<uint8_t, 4> client_ids_with_assists;
   parray<AssistEffect, 4> active_assist_effects;
-  std::shared_ptr<const CardIndex::CardEntry> active_assist_card_defs[4];
+  bcarray<std::shared_ptr<const CardIndex::CardEntry>, 4> active_assist_card_defs;
   uint32_t num_active_assists;
-  std::shared_ptr<HandAndEquipState> hand_and_equip_states[4];
-  std::shared_ptr<parray<CardShortStatus, 0x10>> card_short_statuses[4];
-  std::shared_ptr<DeckEntry> deck_entries[4];
-  std::shared_ptr<parray<ActionChainWithConds, 9>> set_card_action_chains[4];
-  std::shared_ptr<parray<ActionMetadata, 9>> set_card_action_metadatas[4];
+  bcarray<std::shared_ptr<HandAndEquipState>, 4> hand_and_equip_states;
+  bcarray<std::shared_ptr<parray<CardShortStatus, 0x10>>, 4> card_short_statuses;
+  bcarray<std::shared_ptr<DeckEntry>, 4> deck_entries;
+  bcarray<std::shared_ptr<parray<ActionChainWithConds, 9>>, 4> set_card_action_chains;
+  bcarray<std::shared_ptr<parray<ActionMetadata, 9>>, 4> set_card_action_metadatas;
 };
 
 } // namespace Episode3

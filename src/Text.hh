@@ -247,6 +247,90 @@ struct parray {
   }
 } __attribute__((packed));
 
+template <typename ItemT, size_t Count>
+struct bcarray {
+  ItemT items[Count];
+
+  bcarray(ItemT v) {
+    this->clear(v);
+  }
+  bcarray(std::initializer_list<ItemT> init_items) {
+    for (size_t z = 0; z < init_items.size(); z++) {
+      this->items[z] = std::data(init_items)[z];
+    }
+    this->clear_after(init_items.size());
+  }
+  template <typename ArgT = ItemT>
+    requires(std::is_arithmetic_v<ArgT> || is_converted_endian_sc_v<ArgT>)
+  bcarray() {
+    this->clear(0);
+  }
+  template <typename ArgT = ItemT>
+    requires std::is_pointer_v<ArgT>
+  bcarray() {
+    this->clear(nullptr);
+  }
+  template <typename ArgT = ItemT>
+    requires(!std::is_arithmetic_v<ArgT> && !std::is_pointer_v<ArgT> && !is_converted_endian_sc_v<ArgT>)
+  bcarray() {}
+
+  bcarray(const bcarray& other) {
+    this->operator=(other);
+  }
+  bcarray(bcarray&& other) {
+    this->operator=(std::move(other));
+  }
+
+  constexpr static size_t size() {
+    return Count;
+  }
+
+  ItemT& operator[](size_t index) {
+    if (index >= Count) {
+      throw std::out_of_range("array index out of bounds");
+    }
+    return *&this->items[index];
+  }
+  const ItemT& operator[](size_t index) const {
+    if (index >= Count) {
+      throw std::out_of_range("array index out of bounds");
+    }
+    return *&this->items[index];
+  }
+
+  ItemT& at(size_t index) {
+    return this->operator[](index);
+  }
+  const ItemT& at(size_t index) const {
+    return this->operator[](index);
+  }
+
+  bcarray& operator=(const bcarray& s) {
+    for (size_t x = 0; x < Count; x++) {
+      this->items[x] = s.items[x];
+    }
+    return *this;
+  }
+  bcarray& operator=(bcarray&& s) {
+    for (size_t x = 0; x < Count; x++) {
+      this->items[x] = std::move(s.items[x]);
+    }
+    return *this;
+  }
+
+  bool operator==(const bcarray& s) const {
+    for (size_t x = 0; x < Count; x++) {
+      if (this->items[x] != s.items[x]) {
+        return false;
+      }
+    }
+    return true;
+  }
+  bool operator!=(const bcarray& s) const {
+    return !this->operator==(s);
+  }
+} __attribute__((packed));
+
 // Packed text objects for use in protocol structs
 
 enum class TextEncoding {

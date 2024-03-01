@@ -265,30 +265,26 @@ void Server::send(const void* data, size_t size, uint8_t command, bool enable_ma
 void Server::send_6xB4x46() const {
   // Note: This function is not part of the original implementation; it was
   // factored out from its callsites in this file and the strings were changed.
-  if (this->options.is_nte()) {
-    G_ServerVersionStrings_Ep3NTE_6xB4x46 cmd;
-    cmd.version_signature.encode(VERSION_SIGNATURE_NTE, 1);
-    cmd.date_str1.encode(format_time(this->options.card_index->definitions_mtime() * 1000000), 1);
-    this->send(cmd);
+
+  // NTE doesn't have the date_str2 field, but we send it anyway to make
+  // debugging easier.
+  G_ServerVersionStrings_Ep3_6xB4x46 cmd;
+  cmd.version_signature.encode(this->options.is_nte() ? VERSION_SIGNATURE_NTE : VERSION_SIGNATURE, 1);
+  cmd.date_str1.encode(format_time(this->options.card_index->definitions_mtime() * 1000000), 1);
+  string date_str2;
+  if (this->options.opt_rand_crypt) {
+    date_str2 = string_printf(
+        "Random:%08" PRIX32 "+%08" PRIX32,
+        this->options.opt_rand_crypt->seed(),
+        this->options.opt_rand_crypt->absolute_offset());
   } else {
-    G_ServerVersionStrings_Ep3_6xB4x46 cmd;
-    cmd.version_signature.encode(VERSION_SIGNATURE, 1);
-    cmd.date_str1.encode(format_time(this->options.card_index->definitions_mtime() * 1000000), 1);
-    string date_str2;
-    if (this->options.opt_rand_crypt) {
-      date_str2 = string_printf(
-          "Random:%08" PRIX32 "+%08" PRIX32,
-          this->options.opt_rand_crypt->seed(),
-          this->options.opt_rand_crypt->absolute_offset());
-    } else {
-      date_str2 = "Random:<SYS>";
-    }
-    if (this->last_chosen_map) {
-      date_str2 += string_printf(" Map:%08" PRIX32, this->last_chosen_map->map_number);
-    }
-    cmd.date_str2.encode(date_str2, 1);
-    this->send(cmd);
+    date_str2 = "Random:<SYS>";
   }
+  if (this->last_chosen_map) {
+    date_str2 += string_printf(" Map:%08" PRIX32, this->last_chosen_map->map_number);
+  }
+  cmd.date_str2.encode(date_str2, 1);
+  this->send(cmd);
 }
 
 string Server::prepare_6xB6x41_map_definition(shared_ptr<const MapIndex::Map> map, uint8_t language, bool is_nte) {
@@ -2498,8 +2494,7 @@ void Server::handle_CAx34_subtract_ally_atk_points(shared_ptr<Client>, const str
               attacker_card->card_flags |= 0x400;
               attacker_card->player_state()->send_6xB4x04_if_needed();
             }
-            uint16_t card_ref = this->send_6xB4x06_if_card_ref_invalid(
-                pa.original_attacker_card_ref, 9);
+            uint16_t card_ref = this->send_6xB4x06_if_card_ref_invalid(pa.original_attacker_card_ref, 9);
             auto orig_attacker_card = this->card_for_set_card_ref(card_ref);
             auto target_card = this->card_for_set_card_ref(pa.target_card_refs[0]);
             if (orig_attacker_card && target_card) {
@@ -2800,11 +2795,9 @@ uint32_t Server::get_team_exp(uint8_t team_id) const {
   return this->team_exp[team_id];
 }
 
-uint32_t Server::send_6xB4x06_if_card_ref_invalid(
-    uint16_t card_ref, int16_t negative_value) {
+uint32_t Server::send_6xB4x06_if_card_ref_invalid(uint16_t card_ref, int16_t negative_value) {
   if (this->card_special) {
-    return this->card_special->send_6xB4x06_if_card_ref_invalid(
-        card_ref, -negative_value);
+    return this->card_special->send_6xB4x06_if_card_ref_invalid(card_ref, -negative_value);
   }
   return card_ref;
 }

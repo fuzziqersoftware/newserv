@@ -148,7 +148,7 @@ private:
 
 public:
   std::shared_ptr<Card> sc_card;
-  std::shared_ptr<Card> set_cards[8];
+  bcarray<std::shared_ptr<Card>, 8> set_cards;
   uint8_t client_id;
   uint16_t num_mulligans_allowed;
   CardType sc_card_type;

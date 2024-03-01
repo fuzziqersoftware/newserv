@@ -198,11 +198,11 @@ private:
   std::weak_ptr<Server> w_server;
 
 public:
-  std::shared_ptr<HandAndEquipState> hand_and_equip_states[4];
-  std::shared_ptr<parray<CardShortStatus, 0x10>> short_statuses[4];
-  std::shared_ptr<DeckEntry> deck_entries[4];
-  std::shared_ptr<parray<ActionChainWithConds, 9>> set_card_action_chains[4];
-  std::shared_ptr<parray<ActionMetadata, 9>> set_card_action_metadatas[4];
+  bcarray<std::shared_ptr<HandAndEquipState>, 4> hand_and_equip_states;
+  bcarray<std::shared_ptr<parray<CardShortStatus, 0x10>>, 4> short_statuses;
+  bcarray<std::shared_ptr<DeckEntry>, 4> deck_entries;
+  bcarray<std::shared_ptr<parray<ActionChainWithConds, 9>>, 4> set_card_action_chains;
+  bcarray<std::shared_ptr<parray<ActionMetadata, 9>>, 4> set_card_action_metadatas;
   std::shared_ptr<MapAndRulesState> map_and_rules;
   std::shared_ptr<StateFlags> state_flags;
   std::shared_ptr<AssistServer> assist_server;

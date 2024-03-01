@@ -292,7 +292,7 @@ public:
     void clear();
   } __attribute__((packed));
   std::shared_ptr<MapAndRulesState> map_and_rules;
-  std::shared_ptr<DeckEntry> deck_entries[4];
+  bcarray<std::shared_ptr<DeckEntry>, 4> deck_entries;
   parray<PresenceEntry, 4> presence_entries;
   uint8_t num_clients_present;
   parray<NameEntry, 4> name_entries;
@@ -311,7 +311,7 @@ public:
   RegistrationPhase registration_phase;
   ActionSubphase action_subphase;
   uint8_t current_team_turn2;
-  ActionState pending_attacks[0x20];
+  bcarray<ActionState, 0x20> pending_attacks;
   uint32_t num_pending_attacks;
   parray<uint8_t, 4> client_done_enqueuing_attacks;
   parray<uint8_t, 4> player_ready_to_end_phase;
@@ -327,8 +327,8 @@ public:
   std::array<std::shared_ptr<PlayerState>, 4> player_states;
   parray<uint32_t, 4> clients_done_in_mulligan_phase;
   uint32_t num_pending_attacks_with_cards;
-  std::shared_ptr<Card> attack_cards[0x20];
-  ActionState pending_attacks_with_cards[0x20];
+  bcarray<std::shared_ptr<Card>, 0x20> attack_cards;
+  bcarray<ActionState, 0x20> pending_attacks_with_cards;
   uint32_t unknown_a14;
   uint32_t unknown_a15;
   parray<uint32_t, 4> defense_list_ended_for_client;
@@ -346,7 +346,7 @@ public:
   parray<parray<parray<uint8_t, 2>, 8>, 5> trap_tile_locs;
   parray<parray<uint8_t, 2>, 0x10> trap_tile_locs_nte;
   size_t num_trap_tiles_nte;
-  ActionState pb_action_states[4];
+  bcarray<ActionState, 4> pb_action_states;
   parray<uint8_t, 4> has_done_pb;
   parray<parray<uint8_t, 4>, 4> has_done_pb_with_client;
   mutable uint32_t num_6xB4x06_commands_sent;
