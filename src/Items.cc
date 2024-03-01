@@ -81,7 +81,7 @@ void player_use_item(shared_ptr<Client> c, size_t item_index, shared_ptr<PSOLFGE
         break;
       case 6: // Hit Material (v1/v2) or Luck Material (v3/v4)
         type = Type::LUCK;
-        if (!is_v3_or_later) {
+        if (!is_v3_or_later && (c->version() != Version::GC_NTE)) {
           // Hit material doesn't exist on v3/v4, but we'll ignore type anyway
           // in this case because track_non_hp_tp_materials is false
           p->disp.stats.char_stats.ata += 2;
@@ -91,7 +91,7 @@ void player_use_item(shared_ptr<Client> c, size_t item_index, shared_ptr<PSOLFGE
         break;
       case 7: // Luck Material (v1/v2)
         type = Type::LUCK;
-        if (!is_v3_or_later) {
+        if (!is_v3_or_later && (c->version() != Version::GC_NTE)) {
           p->disp.stats.char_stats.lck += 2;
         } else {
           throw runtime_error("unknown material used");
