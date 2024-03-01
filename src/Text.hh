@@ -329,7 +329,7 @@ struct bcarray {
   bool operator!=(const bcarray& s) const {
     return !this->operator==(s);
   }
-} __attribute__((packed));
+};
 
 // Packed text objects for use in protocol structs
 
