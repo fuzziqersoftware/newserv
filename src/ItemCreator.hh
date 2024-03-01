@@ -55,7 +55,7 @@ public:
 
 private:
   PrefixedLogger log;
-  Version version;
+  Version logic_version;
   std::shared_ptr<const ItemData::StackLimits> stack_limits;
   Episode episode;
   GameMode mode;
@@ -79,10 +79,6 @@ private:
   // Note: The original implementation uses 17 different random states for some
   // reason. We forego that and use only one for simplicity.
   std::shared_ptr<PSOLFGEncryption> opt_rand_crypt;
-
-  inline bool is_v3() const {
-    return !is_v1_or_v2(this->version);
-  }
 
   bool are_rare_drops_allowed() const;
   uint8_t normalize_area_number(uint8_t area) const;

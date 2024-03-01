@@ -26,7 +26,7 @@ ItemCreator::ItemCreator(
     std::shared_ptr<PSOLFGEncryption> opt_rand_crypt,
     shared_ptr<const BattleRules> restrictions)
     : log(string_printf("[ItemCreator:%s/%s/%s/%c/%hhu] ", name_for_enum(stack_limits->version), abbreviation_for_episode(episode), abbreviation_for_mode(mode), abbreviation_for_difficulty(difficulty), section_id), lobby_log.min_level),
-      version(stack_limits->version),
+      logic_version(stack_limits->version),
       stack_limits(stack_limits),
       episode(episode),
       mode(mode),
@@ -461,17 +461,15 @@ void ItemCreator::set_item_unidentified_flag_if_not_challenge(ItemData& item) co
   if (item.data1[0] != 0x00) {
     return;
   }
-  // On V3, all rare weapons and weapons with specials are untekked when
-  // created; on V2, only rares that are not in the standard item classes are
-  // untekked when created.
-  if (this->is_v3()) {
-    if (this->item_parameter_table->is_item_rare(item) || (item.data1[4] != 0)) {
-      item.data1[4] |= 0x80;
-    }
-  } else {
-    if (this->item_parameter_table->is_item_rare(item) ? (item.data1[1] > 0x0C) : (item.data1[4] != 0)) {
-      item.data1[4] |= 0x80;
-    }
+  // On V1, V3, and V4, all rare weapons and weapons with specials are untekked
+  // when created; on V2, only rares that are not in the standard item classes
+  // are untekked when created.
+  bool is_rare = this->item_parameter_table->is_item_rare(item);
+  bool use_v2_logic = is_v2(this->logic_version) && (this->logic_version != Version::GC_NTE);
+  if (use_v2_logic
+          ? (is_rare ? (item.data1[1] > 0x0C) : (item.data1[4] != 0))
+          : (is_rare || (item.data1[4] != 0))) {
+    item.data1[4] |= 0x80;
   }
 }
 
@@ -657,7 +655,7 @@ void ItemCreator::generate_common_tool_variances(uint32_t area_norm, ItemData& i
   item.clear();
 
   uint8_t tool_class = this->get_rand_from_weighted_tables_2d_vertical(this->pt->tool_class_prob_table, area_norm);
-  if (this->is_v3() && (tool_class == 0x1A)) {
+  if ((!is_v1_or_v2(this->logic_version) || (this->logic_version == Version::GC_NTE)) && (tool_class == 0x1A)) {
     tool_class = 0x73;
   }
   this->log.info("Generating tool with class %02hhX", tool_class);
@@ -705,9 +703,9 @@ void ItemCreator::generate_common_mag_variances(ItemData& item) {
 
     // The original code (on PSO GC) assigns the mag color as 0x0E. We assign
     // a random color instead.
-    if (is_pre_v1(this->version)) {
+    if (is_pre_v1(this->logic_version)) {
       item.data2[3] = 0x00;
-    } else if (is_v1_or_v2(this->version)) {
+    } else if (is_v1_or_v2(this->logic_version)) {
       item.data2[3] = random_from_optional_crypt(this->opt_rand_crypt) % 0x0E;
     } else {
       item.data2[3] = random_from_optional_crypt(this->opt_rand_crypt) % 0x12;
@@ -823,7 +821,7 @@ void ItemCreator::generate_unit_stars_tables() {
 
   size_t star_base_index;
   uint8_t num_units;
-  switch (this->version) {
+  switch (this->logic_version) {
     case Version::PC_PATCH:
     case Version::BB_PATCH:
     case Version::GC_EP3_NTE:
