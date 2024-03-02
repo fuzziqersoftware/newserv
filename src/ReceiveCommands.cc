@@ -2228,7 +2228,7 @@ static void on_10(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
             auto quest_index = s->quest_index(c->version());
             const auto& categories = quest_index->categories(menu_type, Episode::EP3, c->version());
             if (categories.size() == 1) {
-              auto quests = quest_index->filter(menu_type, Episode::EP3, c->version(), categories[0]->category_id);
+              auto quests = quest_index->filter(Episode::EP3, c->version(), categories[0]->category_id);
               send_quest_menu(c, quests, true);
               break;
             }
@@ -2491,32 +2491,12 @@ static void on_10(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
 
       shared_ptr<Lobby> l = c->lobby.lock();
       Episode episode = l ? l->episode : Episode::NONE;
-      QuestMenuType menu_type = QuestMenuType::NORMAL;
       QuestIndex::IncludeCondition include_condition = nullptr;
-      if (!l) {
-        // Assume the menu to be sent is the download quest menu if the client
-        // is not in any lobby
-        menu_type = is_ep3(c->version()) ? QuestMenuType::EP3_DOWNLOAD : QuestMenuType::DOWNLOAD;
-      } else {
-        auto cat = quest_index->category_index->at(item_id);
-        static const std::array<QuestMenuType, 4> menu_types({
-            QuestMenuType::GOVERNMENT,
-            QuestMenuType::CHALLENGE,
-            QuestMenuType::BATTLE,
-            QuestMenuType::SOLO,
-        });
-        for (QuestMenuType check_menu_type : menu_types) {
-          if (cat->check_flag(check_menu_type)) {
-            menu_type = check_menu_type;
-            break;
-          }
-        }
-        if (!c->license->check_flag(License::Flag::DISABLE_QUEST_REQUIREMENTS)) {
-          include_condition = l->quest_include_condition();
-        }
+      if (l && !c->license->check_flag(License::Flag::DISABLE_QUEST_REQUIREMENTS)) {
+        include_condition = l->quest_include_condition();
       }
 
-      const auto& quests = quest_index->filter(menu_type, episode, c->version(), item_id, include_condition);
+      const auto& quests = quest_index->filter(episode, c->version(), item_id, include_condition);
       send_quest_menu(c, quests, !l);
       break;
     }

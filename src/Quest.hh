@@ -31,6 +31,7 @@ enum class QuestMenuType {
   GOVERNMENT = 4,
   DOWNLOAD = 5,
   EP3_DOWNLOAD = 6,
+  // 7 can't be used as a menu type (it enables the per-episode filter)
 };
 
 struct QuestCategoryIndex {
@@ -45,6 +46,9 @@ struct QuestCategoryIndex {
 
     [[nodiscard]] inline bool check_flag(QuestMenuType menu_type) const {
       return this->enabled_flags & (1 << static_cast<uint8_t>(menu_type));
+    }
+    [[nodiscard]] inline bool enable_episode_filter() const {
+      return this->enabled_flags & 0x80;
     }
   };
 
@@ -151,7 +155,6 @@ struct QuestIndex {
       Version version,
       IncludeCondition include_condition = nullptr) const;
   std::vector<std::pair<QuestIndex::IncludeState, std::shared_ptr<const Quest>>> filter(
-      QuestMenuType menu_type,
       Episode episode,
       Version version,
       uint32_t category_id,

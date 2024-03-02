@@ -777,14 +777,9 @@ vector<shared_ptr<const QuestCategoryIndex::Category>> QuestIndex::categories(
     Episode episode,
     Version version,
     IncludeCondition include_condition) const {
-  // The episode filter should apply in normal or solo mode
-  if ((menu_type != QuestMenuType::NORMAL) && (menu_type != QuestMenuType::SOLO)) {
-    episode = Episode::NONE;
-  }
-
   vector<shared_ptr<const QuestCategoryIndex::Category>> ret;
   for (const auto& cat : this->category_index->categories) {
-    if (cat->check_flag(menu_type) && !this->filter(menu_type, episode, version, cat->category_id, include_condition, 1).empty()) {
+    if (cat->check_flag(menu_type) && !this->filter(episode, version, cat->category_id, include_condition, 1).empty()) {
       ret.emplace_back(cat);
     }
   }
@@ -792,15 +787,13 @@ vector<shared_ptr<const QuestCategoryIndex::Category>> QuestIndex::categories(
 }
 
 vector<pair<QuestIndex::IncludeState, shared_ptr<const Quest>>> QuestIndex::filter(
-    QuestMenuType menu_type,
     Episode episode,
     Version version,
     uint32_t category_id,
     IncludeCondition include_condition,
     size_t limit) const {
-  if ((menu_type != QuestMenuType::NORMAL) && (menu_type != QuestMenuType::SOLO)) {
-    episode = Episode::NONE;
-  }
+  auto cat = this->category_index->at(category_id);
+  Episode effective_episode = cat->enable_episode_filter() ? episode : Episode::NONE;
 
   vector<pair<IncludeState, shared_ptr<const Quest>>> ret;
   auto category_it = this->quests_by_category_id_and_number.find(category_id);
@@ -808,7 +801,7 @@ vector<pair<QuestIndex::IncludeState, shared_ptr<const Quest>>> QuestIndex::filt
     return ret;
   }
   for (auto it : category_it->second) {
-    if (((episode == Episode::NONE) || (it.second->episode == episode)) &&
+    if (((effective_episode == Episode::NONE) || (it.second->episode == effective_episode)) &&
         it.second->has_version_any_language(version)) {
       IncludeState state = include_condition ? include_condition(it.second) : IncludeState::AVAILABLE;
       if (state == IncludeState::HIDDEN) {
