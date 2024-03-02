@@ -3294,7 +3294,8 @@ static void on_challenge_update_records(shared_ptr<Client> c, uint8_t command, u
   auto p = c->character(true, false);
   Version c_version = c->version();
   switch (c_version) {
-    case Version::DC_V2: {
+    case Version::DC_V2:
+    case Version::GC_NTE: {
       const auto& cmd = check_size_t<G_SetChallengeRecords_DC_6x7C>(data, size);
       p->challenge_records = cmd.records;
       break;
@@ -3315,9 +3316,6 @@ static void on_challenge_update_records(shared_ptr<Client> c, uint8_t command, u
       p->challenge_records = cmd.records;
       break;
     }
-    case Version::GC_NTE:
-      // TODO: DOes GC NTE ever send this command?
-      throw runtime_error("format is unknown for this game version");
     default:
       throw runtime_error("game version cannot send 6x7C");
   }
@@ -3333,7 +3331,7 @@ static void on_challenge_update_records(shared_ptr<Client> c, uint8_t command, u
     if ((lc_version == c_version) || (is_v3(lc_version) && is_v3(c_version))) {
       data_to_send = data;
       size_to_send = size;
-    } else if (lc->version() == Version::DC_V2) {
+    } else if ((lc->version() == Version::DC_V2) || (lc->version() == Version::GC_NTE)) {
       if (dc_data.empty()) {
         dc_data.resize(sizeof(G_SetChallengeRecords_DC_6x7C));
         auto& dc_cmd = check_size_t<G_SetChallengeRecords_DC_6x7C>(dc_data);
