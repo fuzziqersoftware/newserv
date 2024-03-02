@@ -107,19 +107,19 @@ Version get_cli_version(Arguments& args, Version default_value = Version::UNKNOW
     return Version::DC_V2;
   } else if (args.get<bool>("pc-nte")) {
     return Version::PC_NTE;
-  } else if (args.get<bool>("pc")) {
+  } else if (args.get<bool>("pc") || args.get<bool>("pc-v2")) {
     return Version::PC_V2;
   } else if (args.get<bool>("gc-nte")) {
     return Version::GC_NTE;
-  } else if (args.get<bool>("gc")) {
+  } else if (args.get<bool>("gc") || args.get<bool>("gc-v3")) {
     return Version::GC_V3;
-  } else if (args.get<bool>("xb")) {
+  } else if (args.get<bool>("xb") || args.get<bool>("xb=v3")) {
     return Version::XB_V3;
-  } else if (args.get<bool>("ep3-nte")) {
+  } else if (args.get<bool>("ep3-nte") || args.get<bool>("gc-ep3-nte")) {
     return Version::GC_EP3_NTE;
-  } else if (args.get<bool>("ep3")) {
+  } else if (args.get<bool>("ep3") || args.get<bool>("gc-ep3")) {
     return Version::GC_EP3;
-  } else if (args.get<bool>("bb")) {
+  } else if (args.get<bool>("bb") || args.get<bool>("bb-v4")) {
     return Version::BB_V4;
   } else if (default_value != Version::UNKNOWN) {
     return default_value;
