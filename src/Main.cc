@@ -1677,7 +1677,8 @@ Action a_describe_item(
       string description = args.get<string>(1);
       auto version = get_cli_version(args);
 
-      auto s = make_shared<ServerState>();
+      auto s = make_shared<ServerState>("system/config.json");
+      s->load_config_early();
       s->load_patch_indexes(false);
       s->load_text_index(false);
       s->load_item_definitions(false);
@@ -1686,8 +1687,12 @@ Action a_describe_item(
 
       ItemData item = name_index->parse_item_description(description);
 
+      if (args.get<bool>("decode")) {
+        item.decode_for_version(version);
+      }
+
       string desc = name_index->describe_item(item);
-      log_info("Data (decoded):    %02hhX%02hhX%02hhX%02hhX %02hhX%02hhX%02hhX%02hhX %02hhX%02hhX%02hhX%02hhX -------- %02hhX%02hhX%02hhX%02hhX",
+      log_info("Data (decoded):        %02hhX%02hhX%02hhX%02hhX %02hhX%02hhX%02hhX%02hhX %02hhX%02hhX%02hhX%02hhX -------- %02hhX%02hhX%02hhX%02hhX",
           item.data1[0], item.data1[1], item.data1[2], item.data1[3],
           item.data1[4], item.data1[5], item.data1[6], item.data1[7],
           item.data1[8], item.data1[9], item.data1[10], item.data1[11],
@@ -1698,14 +1703,14 @@ Action a_describe_item(
       ItemData item_v2_decoded = item_v2;
       item_v2_decoded.decode_for_version(Version::PC_V2);
 
-      log_info("Data (V2-encoded): %02hhX%02hhX%02hhX%02hhX %02hhX%02hhX%02hhX%02hhX %02hhX%02hhX%02hhX%02hhX -------- %02hhX%02hhX%02hhX%02hhX",
+      log_info("Data (V2-encoded):     %02hhX%02hhX%02hhX%02hhX %02hhX%02hhX%02hhX%02hhX %02hhX%02hhX%02hhX%02hhX -------- %02hhX%02hhX%02hhX%02hhX",
           item_v2.data1[0], item_v2.data1[1], item_v2.data1[2], item_v2.data1[3],
           item_v2.data1[4], item_v2.data1[5], item_v2.data1[6], item_v2.data1[7],
           item_v2.data1[8], item_v2.data1[9], item_v2.data1[10], item_v2.data1[11],
           item_v2.data2[0], item_v2.data2[1], item_v2.data2[2], item_v2.data2[3]);
       if (item_v2_decoded != item) {
         log_warning("V2-decoded data does not match original data");
-        log_warning("Data (V2-decoded): %02hhX%02hhX%02hhX%02hhX %02hhX%02hhX%02hhX%02hhX %02hhX%02hhX%02hhX%02hhX -------- %02hhX%02hhX%02hhX%02hhX",
+        log_warning("Data (V2-decoded):     %02hhX%02hhX%02hhX%02hhX %02hhX%02hhX%02hhX%02hhX %02hhX%02hhX%02hhX%02hhX -------- %02hhX%02hhX%02hhX%02hhX",
             item_v2_decoded.data1[0], item_v2_decoded.data1[1], item_v2_decoded.data1[2], item_v2_decoded.data1[3],
             item_v2_decoded.data1[4], item_v2_decoded.data1[5], item_v2_decoded.data1[6], item_v2_decoded.data1[7],
             item_v2_decoded.data1[8], item_v2_decoded.data1[9], item_v2_decoded.data1[10], item_v2_decoded.data1[11],
@@ -1717,14 +1722,14 @@ Action a_describe_item(
       ItemData item_gc_decoded = item_gc;
       item_gc_decoded.decode_for_version(Version::GC_V3);
 
-      log_info("Data (GC-encoded): %02hhX%02hhX%02hhX%02hhX %02hhX%02hhX%02hhX%02hhX %02hhX%02hhX%02hhX%02hhX -------- %02hhX%02hhX%02hhX%02hhX",
+      log_info("Data (GC-encoded):     %02hhX%02hhX%02hhX%02hhX %02hhX%02hhX%02hhX%02hhX %02hhX%02hhX%02hhX%02hhX -------- %02hhX%02hhX%02hhX%02hhX",
           item_gc.data1[0], item_gc.data1[1], item_gc.data1[2], item_gc.data1[3],
           item_gc.data1[4], item_gc.data1[5], item_gc.data1[6], item_gc.data1[7],
           item_gc.data1[8], item_gc.data1[9], item_gc.data1[10], item_gc.data1[11],
           item_gc.data2[0], item_gc.data2[1], item_gc.data2[2], item_gc.data2[3]);
       if (item_gc_decoded != item) {
         log_warning("GC-decoded data does not match original data");
-        log_warning("Data (GC-decoded): %02hhX%02hhX%02hhX%02hhX %02hhX%02hhX%02hhX%02hhX %02hhX%02hhX%02hhX%02hhX -------- %02hhX%02hhX%02hhX%02hhX",
+        log_warning("Data (GC-decoded):     %02hhX%02hhX%02hhX%02hhX %02hhX%02hhX%02hhX%02hhX %02hhX%02hhX%02hhX%02hhX -------- %02hhX%02hhX%02hhX%02hhX",
             item_gc_decoded.data1[0], item_gc_decoded.data1[1], item_gc_decoded.data1[2], item_gc_decoded.data1[3],
             item_gc_decoded.data1[4], item_gc_decoded.data1[5], item_gc_decoded.data1[6], item_gc_decoded.data1[7],
             item_gc_decoded.data1[8], item_gc_decoded.data1[9], item_gc_decoded.data1[10], item_gc_decoded.data1[11],
