@@ -939,6 +939,7 @@ bool RulerServer::check_usability_or_condition_apply(
     bool is_item_usability_check,
     AttackMedium attack_medium) const {
   auto s = this->server();
+  bool is_nte = s->options.is_nte();
   auto log = s->log_stack(string_printf("check_usability_or_condition_apply(%02hhX, #%04hX, %02hhX, #%04hX, #%04hX, %02hhX, %s, %s): ", client_id1, card_id1, client_id2, card_id2, card_id3, def_effect_index, is_item_usability_check ? "true" : "false", name_for_enum(attack_medium)));
 
   if (static_cast<uint8_t>(attack_medium) & 0x80) {
@@ -952,7 +953,7 @@ bool RulerServer::check_usability_or_condition_apply(
     log.debug("ce1 missing");
     return false;
   }
-  if (!s->options.is_nte() && (ce1->def.type == CardType::ITEM) && this->card_id_is_boss_sc(card_id2)) {
+  if (!is_nte && (ce1->def.type == CardType::ITEM) && this->card_id_is_boss_sc(card_id2)) {
     log.debug("ce1 is item and card_id2 is boss sc");
     return false;
   }
@@ -989,7 +990,7 @@ bool RulerServer::check_usability_or_condition_apply(
   // second should not be given, so we'd return true if the criterion passes. If
   // neither of these cases apply, we should return false as a failsafe even if
   // the criterion passes. NTE did not have such a check.
-  bool ret = s->options.is_nte() || (!(def_effect_index & 0x80) || (client_id1 == client_id2)) || (client_id2 == 0xFF);
+  bool ret = is_nte || (!(def_effect_index & 0x80) || (client_id1 == client_id2)) || (client_id2 == 0xFF);
   switch (criterion_code) {
     case CriterionCode::NONE:
       return ret;
@@ -1413,7 +1414,7 @@ uint16_t RulerServer::compute_attack_or_defense_costs(
         return 99;
       }
       total_cost += (ce->def.self_cost + cost_bias);
-      if (card_class_is_tech_like(ce->def.card_class(), s->options.is_nte())) {
+      if (card_class_is_tech_like(ce->def.card_class(), is_nte)) {
         total_cost += tech_cost_bias;
       }
       total_ally_cost += ce->def.ally_cost;

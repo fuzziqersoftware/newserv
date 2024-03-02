@@ -1837,7 +1837,7 @@ void Server::on_server_data_input(shared_ptr<Client> sender_c, const string& dat
     throw runtime_error("unknown CAx subsubcommand");
   }
 
-  if (this->options.is_nte() || !header.mask_key) {
+  if ((sender_c->version() == Version::GC_EP3_NTE) || !header.mask_key) {
     (this->*handler)(sender_c, data);
   } else {
     string unmasked_data = data;

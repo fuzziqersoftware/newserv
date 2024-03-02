@@ -1422,15 +1422,14 @@ bool CardSpecial::evaluate_effect_arg2_condition(
     attacker_card_ref = as.original_attacker_card_ref;
   }
 
+  bool is_nte = s->options.is_nte();
   auto set_card = s->card_for_set_card_ref(set_card_ref);
   bool set_card_has_ability_trap =
-      (!s->options.is_nte() &&
-          set_card &&
-          this->card_has_condition_with_ref(set_card, ConditionType::ABILITY_TRAP, 0xFFFF, 0xFFFF));
+      (!is_nte && set_card && this->card_has_condition_with_ref(set_card, ConditionType::ABILITY_TRAP, 0xFFFF, 0xFFFF));
 
   switch (arg2_text[0]) {
     case 'C':
-      if (s->options.is_nte()) {
+      if (is_nte) {
         return false;
       }
       card = s->card_for_set_card_ref(set_card_ref);
@@ -1532,16 +1531,16 @@ bool CardSpecial::evaluate_effect_arg2_condition(
             uint16_t action_card_ref = as.action_card_refs[z];
             if (action_card_ref != 0xFFFF) {
               auto ce = s->definition_for_card_ref(action_card_ref);
-              if (card_class_is_tech_like(ce->def.card_class(), s->options.is_nte())) {
+              if (card_class_is_tech_like(ce->def.card_class(), is_nte)) {
                 return true;
               }
             }
           }
           return false;
         case 0x04: // n04
-          return card->action_chain.check_flag(s->options.is_nte() ? 0x00000080 : 0x0001E000);
+          return card->action_chain.check_flag(is_nte ? 0x00000080 : 0x0001E000);
         case 0x05: // n05
-          return card->action_chain.check_flag(s->options.is_nte() ? 0x00000002 : 0x00001E00);
+          return card->action_chain.check_flag(is_nte ? 0x00000002 : 0x00001E00);
         case 0x06: // n06
           return (card->get_definition()->def.card_class() == CardClass::NATIVE_CREATURE);
         case 0x07: // n07
@@ -1559,9 +1558,8 @@ bool CardSpecial::evaluate_effect_arg2_condition(
         case 0x0D: { // n13
           auto ce = card->get_definition();
           return ((ce->def.card_class() == CardClass::GUARD_ITEM) ||
-              (!s->options.is_nte() && (ce->def.card_class() == CardClass::MAG_ITEM)) ||
-              s->ruler_server->find_condition_on_card_ref(
-                  card->get_card_ref(), ConditionType::GUARD_CREATURE, 0, 0, 0));
+              (!is_nte && (ce->def.card_class() == CardClass::MAG_ITEM)) ||
+              s->ruler_server->find_condition_on_card_ref(card->get_card_ref(), ConditionType::GUARD_CREATURE, 0, 0, 0));
         }
         case 0x0E: // n14
           return card->get_definition()->def.is_sc();
@@ -1599,7 +1597,7 @@ bool CardSpecial::evaluate_effect_arg2_condition(
           return s->ruler_server->find_condition_on_card_ref(
               card->get_card_ref(), ConditionType::FREEZE, 0, 0, 0);
         case 0x15: { // n21
-          if (!s->options.is_nte()) {
+          if (!is_nte) {
             uint8_t client_id = client_id_for_card_ref(sc_card_ref);
             if (client_id != 0xFF) {
               return card->action_chain.check_flag(0x00002000 << client_id);
@@ -1608,7 +1606,7 @@ bool CardSpecial::evaluate_effect_arg2_condition(
           return false;
         }
         case 0x16: { // n22
-          if (!s->options.is_nte()) {
+          if (!is_nte) {
             uint8_t client_id = client_id_for_card_ref(sc_card_ref);
             if (client_id != 0xFF) {
               return card->action_chain.check_flag(0x00000200 << client_id);
@@ -1636,7 +1634,7 @@ bool CardSpecial::evaluate_effect_arg2_condition(
                   card, ConditionType::ANY, set_card_ref, ((v % 10) == 0) ? 0xFF : (v % 10)) != nullptr);
     }
     case 'r':
-      return (!set_card_has_ability_trap || s->options.is_nte()) && (random_percent < atoi(arg2_text + 1));
+      return (!set_card_has_ability_trap || is_nte) && (random_percent < atoi(arg2_text + 1));
     case 's': {
       auto ce = card->get_definition();
       return ((ce->def.self_cost >= arg2_text[1] - '0') &&
@@ -1650,7 +1648,7 @@ bool CardSpecial::evaluate_effect_arg2_condition(
       uint8_t v = atoi(arg2_text + 1);
       // TODO: Figure out what this logic actually does and rename the variables
       // or comment it appropriately.
-      if (s->options.is_nte()) {
+      if (is_nte) {
         return (v < set_card->unknown_a9);
       } else if (when == 4) {
         uint32_t y = set_card->unknown_a9 & 0xFFFFFFFE;
@@ -2483,7 +2481,7 @@ bool CardSpecial::execute_effect(
 
       } else if (unknown_p7 & 0x20) {
         card->action_metadata.attack_bonus = clamp<int16_t>(
-            positive_expr_value + card->action_metadata.attack_bonus, -99, 99);
+            card->action_metadata.attack_bonus + positive_expr_value, -99, 99);
       }
       return true;
 
@@ -4714,9 +4712,10 @@ void CardSpecial::move_phase_before_for_card(shared_ptr<Card> card) {
 
 void CardSpecial::dice_phase_before_for_card(shared_ptr<Card> card) {
   auto s = this->server();
+  bool is_nte = s->options.is_nte();
 
   auto ps = card->player_state();
-  if (s->options.is_nte() && (!ps || !ps->is_team_turn())) {
+  if (is_nte && (!ps || !ps->is_team_turn())) {
     return;
   }
 
@@ -4733,7 +4732,7 @@ void CardSpecial::dice_phase_before_for_card(shared_ptr<Card> card) {
     }
   }
 
-  if (!s->options.is_nte()) {
+  if (!is_nte) {
     this->apply_defense_conditions(as, 0x46, card, 0x04);
     this->evaluate_and_apply_effects(0x46, card->get_card_ref(), as, sc_card_ref);
   }
