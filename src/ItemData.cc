@@ -363,13 +363,9 @@ void ItemData::decode_for_version(Version from_version) {
         this->data1[1] = encoded_v2_data + 0x2B;
       }
 
-      if (is_big_endian(from_version)) {
-        // PSO GC erroneously byteswaps the data2d field, even though it's actually
-        // just four individual bytes, so we correct for that here.
-        this->data2d = bswap32(this->data2d);
-
-      } else if (is_v1(from_version) || is_v2(from_version)) {
-        // PSO PC encodes mags in a tediously annoying manner. The first four bytes are the same, but then...
+      if (is_v1(from_version) || is_v2(from_version)) {
+        // PSO PC and GC NTE encode mags in a tediously annoying manner. The
+        // first four bytes are the same, but then...
         // V2: pHHHHHHHHHHHHHHc pIIIIIIIIIIIIIIc JJJJJJJJJJJJJJJc KKKKKKKKKKKKKKKc QQQQQQQQ QQQQQQQQ YYYYYYYY pYYYYYYY
         // V3: HHHHHHHHHHHHHHHH IIIIIIIIIIIIIIII JJJJJJJJJJJJJJJJ KKKKKKKKKKKKKKKK YYYYYYYY QQQQQQQQ PPPPPPPP CCCCCCCC
         // c = color in V2 (4 bits; low bit first)
@@ -385,10 +381,18 @@ void ItemData::decode_for_version(Version from_version) {
         this->data2[0] = this->data2w[1] & 0x7FFF; // Synchro
         this->data2[2] = ((this->data2[3] >> 7) & 1) | ((this->data1w[2] >> 14) & 2) | ((this->data1w[3] >> 13) & 4); // PB flags
         this->data2[3] = (this->data1w[2] & 1) | ((this->data1w[3] & 1) << 1) | ((this->data1w[4] & 1) << 2) | ((this->data1w[5] & 1) << 3); // Color
+        // 01000080
         this->data1w[2] &= 0x7FFE;
         this->data1w[3] &= 0x7FFE;
         this->data1w[4] &= 0xFFFE;
         this->data1w[5] &= 0xFFFE;
+
+      } else if (is_big_endian(from_version)) {
+        // PSO GC (but not GC NTE, which uses the above logic) byteswaps the
+        // data2d field, since internally it's actually a uint32_t. We treat it
+        // as individual bytes instead, so we correct for the client's
+        // byteswapping here.
+        this->data2d = bswap32(this->data2d);
       }
       break;
 
@@ -458,9 +462,7 @@ void ItemData::encode_for_version(Version to_version, shared_ptr<const ItemParam
       // This logic is the inverse of the corresponding logic in
       // decode_for_version; see that function for a description of what's
       // going on here.
-      if (is_big_endian(to_version)) {
-        this->data2d = bswap32(this->data2d);
-      } else if (is_v1(to_version) || is_v2(to_version)) {
+      if (is_v1(to_version) || is_v2(to_version)) {
         this->data1w[2] = (this->data1w[2] & 0x7FFE) | ((this->data2[2] << 14) & 0x8000) | (this->data2[3] & 1);
         this->data1w[3] = (this->data1w[3] & 0x7FFE) | ((this->data2[2] << 13) & 0x8000) | ((this->data2[3] >> 1) & 1);
         this->data1w[4] = (this->data1w[4] & 0xFFFE) | ((this->data2[3] >> 2) & 1);
@@ -468,6 +470,8 @@ void ItemData::encode_for_version(Version to_version, shared_ptr<const ItemParam
         // Order is important; data2w[0] must not be written before data2[0] is read
         this->data2w[1] = this->data2[0] | ((this->data2[2] << 15) & 0x8000);
         this->data2w[0] = this->data2[1];
+      } else if (is_big_endian(to_version)) {
+        this->data2d = bswap32(this->data2d);
       }
       break;
 
