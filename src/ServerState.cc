@@ -1462,6 +1462,8 @@ void ServerState::load_item_name_indexes(bool from_non_event_thread) {
     new_indexes[v_s] = this->create_item_name_index_for_version(
         this->item_parameter_table(v), this->item_stack_limits(v), this->text_index);
   }
+  new_indexes[static_cast<size_t>(Version::GC_EP3)] = new_indexes[static_cast<size_t>(Version::GC_V3)];
+  new_indexes[static_cast<size_t>(Version::GC_EP3_NTE)] = new_indexes[static_cast<size_t>(Version::GC_V3)];
 
   auto set = [s = this->shared_from_this(), new_indexes = std::move(new_indexes)]() {
     s->item_name_indexes = std::move(new_indexes);
