@@ -406,7 +406,13 @@ shared_ptr<const ItemNameIndex> ServerState::item_name_index(Version version) co
 }
 
 string ServerState::describe_item(Version version, const ItemData& item, bool include_color_codes) const {
-  return this->item_name_index(version)->describe_item(item, include_color_codes);
+  if (is_v1(version)) {
+    ItemData encoded = item;
+    encoded.encode_for_version(version, this->item_parameter_table(version));
+    return this->item_name_index(version)->describe_item(encoded, include_color_codes);
+  } else {
+    return this->item_name_index(version)->describe_item(item, include_color_codes);
+  }
 }
 
 ItemData ServerState::parse_item_description(Version version, const string& description) const {

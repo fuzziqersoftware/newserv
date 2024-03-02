@@ -97,9 +97,7 @@ const array<const char*, 0x11> name_for_s_rank_special = {
     "King\'s",
 };
 
-std::string ItemNameIndex::describe_item(
-    const ItemData& item,
-    bool include_color_escapes) const {
+std::string ItemNameIndex::describe_item(const ItemData& item, bool include_color_escapes) const {
   if (item.data1[0] == 0x04) {
     return string_printf("%s%" PRIu32 " Meseta", include_color_escapes ? "$C7" : "", item.data2d.load());
   }
