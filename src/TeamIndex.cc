@@ -369,7 +369,8 @@ void TeamIndex::update_member_name(uint32_t serial_number, const std::string& na
 
 void TeamIndex::add_member_points(uint32_t serial_number, uint32_t points) {
   auto team = this->serial_number_to_team.at(serial_number);
-  team->members.at(serial_number).points += points;
+  auto& m = team->members.at(serial_number);
+  m.points += points;
   team->points += points;
   team->save_config();
 }
