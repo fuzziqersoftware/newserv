@@ -983,10 +983,8 @@ void send_info_board_t(shared_ptr<Client> c) {
 void send_info_board(shared_ptr<Client> c) {
   if (uses_utf16(c->version())) {
     send_info_board_t<TextEncoding::UTF16, TextEncoding::UTF16>(c);
-  } else if (c->language()) {
-    send_info_board_t<TextEncoding::ASCII, TextEncoding::ISO8859>(c);
   } else {
-    send_info_board_t<TextEncoding::ASCII, TextEncoding::SJIS>(c);
+    send_info_board_t<TextEncoding::ASCII, TextEncoding::MARKED>(c);
   }
 }
 
