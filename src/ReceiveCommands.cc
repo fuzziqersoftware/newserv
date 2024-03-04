@@ -4233,7 +4233,7 @@ shared_ptr<Lobby> create_game_generic(
       throw logic_error("invalid quest script version");
   }
 
-  game->event = Lobby::game_event_for_lobby_event(current_lobby->event);
+  game->event = current_lobby->event;
   game->block = 0xFF;
   game->max_clients = game->check_flag(Lobby::Flag::IS_SPECTATOR_TEAM) ? 12 : 4;
   game->min_level = min_level;

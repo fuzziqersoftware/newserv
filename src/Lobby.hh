@@ -294,8 +294,6 @@ struct Lobby : public std::enable_shared_from_this<Lobby> {
 
   QuestIndex::IncludeCondition quest_include_condition() const;
 
-  static uint8_t game_event_for_lobby_event(uint8_t lobby_event);
-
   std::unordered_map<uint32_t, std::shared_ptr<Client>> clients_by_serial_number() const;
 
   static void dispatch_on_idle_timeout(evutil_socket_t, short, void* ctx);

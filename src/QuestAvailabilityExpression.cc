@@ -252,14 +252,14 @@ bool QuestAvailabilityExpression::EventLookupNode::operator==(const Node& other)
 }
 
 int64_t QuestAvailabilityExpression::EventLookupNode::evaluate(const Env& env) const {
-  return env.num_players;
+  return env.event;
 }
 
 string QuestAvailabilityExpression::EventLookupNode::str() const {
   return "V_Event";
 }
 
-QuestAvailabilityExpression::ConstantNode::ConstantNode(bool value)
+QuestAvailabilityExpression::ConstantNode::ConstantNode(int64_t value)
     : value(value) {}
 
 bool QuestAvailabilityExpression::ConstantNode::operator==(const Node& other) const {

@@ -767,19 +767,6 @@ Lobby::JoinError Lobby::join_error_for_client(std::shared_ptr<Client> c, const s
   return JoinError::ALLOWED;
 }
 
-uint8_t Lobby::game_event_for_lobby_event(uint8_t lobby_event) {
-  if (lobby_event > 7) {
-    return 0;
-  }
-  if (lobby_event == 7) {
-    return 2;
-  }
-  if (lobby_event == 2) {
-    return 0;
-  }
-  return lobby_event;
-}
-
 bool Lobby::item_exists(uint8_t floor, uint32_t item_id) const {
   if (floor >= this->floor_item_managers.size()) {
     return false;

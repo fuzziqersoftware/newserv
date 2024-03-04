@@ -162,7 +162,7 @@ protected:
 
   class ConstantNode : public Node {
   public:
-    ConstantNode(bool value);
+    ConstantNode(int64_t value);
     virtual ~ConstantNode() = default;
     virtual bool operator==(const Node& other) const;
     virtual int64_t evaluate(const Env& env) const;
