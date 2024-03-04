@@ -187,7 +187,7 @@ BinaryTextSet::BinaryTextSet(const std::string& pr2_data, size_t collection_coun
   }
   used_offsets.emplace(root_offset);
 
-  auto& tt = is_sjis ? tt_sjis_to_utf8 : tt_8859_to_utf8;
+  auto& tt = is_sjis ? tt_sega_sjis_to_utf8 : tt_8859_to_utf8;
 
   collection_offsets_r.go(0);
   while (!collection_offsets_r.eof()) {
@@ -286,7 +286,7 @@ void BinaryTextAndKeyboardsSet::parse_t(const string& pr2_data, bool is_sjis) {
   using U32T = std::conditional_t<IsBigEndian, be_uint32_t, le_uint32_t>;
   using U16T = std::conditional_t<IsBigEndian, be_uint16_t, le_uint16_t>;
 
-  auto& tt = is_sjis ? tt_sjis_to_utf8 : tt_8859_to_utf8;
+  auto& tt = is_sjis ? tt_sega_sjis_to_utf8 : tt_8859_to_utf8;
 
   // The structure is as follows:
   // Footer:
@@ -355,7 +355,7 @@ pair<string, string> BinaryTextAndKeyboardsSet::serialize_t(bool is_sjis) const 
   using U32T = std::conditional_t<IsBigEndian, be_uint32_t, le_uint32_t>;
   using U16T = std::conditional_t<IsBigEndian, be_uint16_t, le_uint16_t>;
 
-  auto& tt = is_sjis ? tt_utf8_to_sjis : tt_utf8_to_8859;
+  auto& tt = is_sjis ? tt_utf8_to_sega_sjis : tt_utf8_to_8859;
 
   StringWriter w;
   ::set<size_t> relocation_offsets;

@@ -22,52 +22,55 @@ TextTranscoder::TextTranscoder(const char* to, const char* from)
   }
 }
 
-TextTranscoder::TextTranscoder(TextTranscoder&& other) : ic(other.ic) {
-  other.ic = this->INVALID_IC;
-}
-
-TextTranscoder& TextTranscoder::operator=(TextTranscoder&& other) {
-  this->ic = other.ic;
-  other.ic = this->INVALID_IC;
-  return *this;
-}
-
 TextTranscoder::~TextTranscoder() {
   iconv_close(this->ic);
 }
 
 TextTranscoder::Result TextTranscoder::operator()(
-    void* dest, size_t dest_size, const void* src, size_t src_bytes, bool truncate_oversize_result) {
+    void* dest, size_t dest_bytes, const void* src, size_t src_bytes, bool truncate_oversize_result) {
   // Clear any conversion state left over from the previous call
   iconv(this->ic, nullptr, nullptr, nullptr, nullptr);
 
   void* orig_dest = dest;
   const void* orig_src = src;
-  size_t ret = iconv(
-      this->ic,
-      reinterpret_cast<char**>(const_cast<void**>(&src)),
-      &src_bytes,
-      reinterpret_cast<char**>(&dest),
-      &dest_size);
+  while (src_bytes > 0) {
+    size_t src_bytes_before = src_bytes;
+    size_t ret = iconv(this->ic, reinterpret_cast<char**>(const_cast<void**>(&src)), &src_bytes, reinterpret_cast<char**>(&dest), &dest_bytes);
 
-  size_t bytes_read = reinterpret_cast<const char*>(src) - reinterpret_cast<const char*>(orig_src);
-  if (ret == this->FAILURE_RESULT) {
-    switch (errno) {
-      case EILSEQ:
-        throw runtime_error(string_printf("untranslatable character at position 0x%zX", bytes_read));
-      case EINVAL:
-        throw runtime_error(string_printf("incomplete multibyte sequence at position 0x%zX", bytes_read));
-      case E2BIG:
-        if (!truncate_oversize_result) {
-          throw runtime_error("string does not fit in buffer");
-        } else {
+    size_t bytes_read = reinterpret_cast<const char*>(src) - reinterpret_cast<const char*>(orig_src);
+    if (ret == this->FAILURE_RESULT) {
+      switch (errno) {
+        case EILSEQ: {
+          string custom_result = this->on_untranslatable(&src, &src_bytes);
+          if (custom_result.empty()) {
+            throw runtime_error(string_printf("untranslatable character at position 0x%zX", bytes_read));
+          } else if (custom_result.size() <= dest_bytes) {
+            memcpy(dest, custom_result.data(), custom_result.size());
+            dest = reinterpret_cast<char*>(dest) + custom_result.size();
+            dest_bytes -= custom_result.size();
+          } else if (!truncate_oversize_result) {
+            throw runtime_error("string does not fit in buffer");
+          }
           break;
         }
-      default:
-        throw runtime_error("transcoding failed: " + string_for_error(errno));
+        case EINVAL:
+          throw runtime_error(string_printf("incomplete multibyte sequence at position 0x%zX", bytes_read));
+        case E2BIG:
+          if (!truncate_oversize_result) {
+            throw runtime_error("string does not fit in buffer");
+          } else {
+            break;
+          }
+        default:
+          throw runtime_error("transcoding failed: " + string_for_error(errno));
+      }
+
+    } else if (src_bytes_before == src_bytes) {
+      throw runtime_error("could not transcode any characters");
     }
   }
 
+  size_t bytes_read = reinterpret_cast<const char*>(src) - reinterpret_cast<const char*>(orig_src);
   size_t bytes_written = reinterpret_cast<char*>(dest) - reinterpret_cast<char*>(orig_dest);
   return Result{
       .bytes_read = bytes_read,
@@ -75,21 +78,22 @@ TextTranscoder::Result TextTranscoder::operator()(
   };
 }
 
-string TextTranscoder::operator()(const void* src, size_t src_size) {
+string TextTranscoder::operator()(const void* src, size_t src_bytes) {
   // Clear any conversion state left over from the previous call
   iconv(this->ic, nullptr, nullptr, nullptr, nullptr);
 
   const void* orig_src = src;
   deque<string> blocks;
-  while (src_size > 0) {
+  while (src_bytes > 0) {
     // Assume 2x input size on average, but always allocate at least 8 bytes
-    string& block = blocks.emplace_back(max<size_t>((src_size << 1), 8), '\0');
+    string& block = blocks.emplace_back(max<size_t>((src_bytes << 1), 8), '\0');
     char* dest = block.data();
     size_t dest_size = block.size();
+    size_t src_bytes_before = src_bytes;
     size_t ret = iconv(
         this->ic,
         reinterpret_cast<char**>(const_cast<void**>(&src)),
-        &src_size,
+        &src_bytes,
         reinterpret_cast<char**>(&dest),
         &dest_size);
     block.resize(block.size() - dest_size);
@@ -97,8 +101,14 @@ string TextTranscoder::operator()(const void* src, size_t src_size) {
     size_t bytes_read = reinterpret_cast<const char*>(src) - reinterpret_cast<const char*>(orig_src);
     if (ret == this->FAILURE_RESULT) {
       switch (errno) {
-        case EILSEQ:
-          throw runtime_error(string_printf("untranslatable character at position %zu", bytes_read));
+        case EILSEQ: {
+          string custom_result = this->on_untranslatable(&src, &src_bytes);
+          if (custom_result.empty()) {
+            throw runtime_error(string_printf("untranslatable character at position %zu", bytes_read));
+          }
+          blocks.emplace_back(std::move(custom_result));
+          break;
+        }
         case EINVAL:
           throw runtime_error(string_printf("incomplete multibyte sequence at position %zu", bytes_read));
         case E2BIG:
@@ -106,9 +116,8 @@ string TextTranscoder::operator()(const void* src, size_t src_size) {
         default:
           throw runtime_error("transcoding failed: " + string_for_error(errno));
       }
-    }
-    if ((bytes_read == 0) && (src_size != 0)) {
-      throw runtime_error("failed to transcode input data");
+    } else if (src_bytes_before == src_bytes) {
+      throw runtime_error("could not transcode any characters");
     }
   }
 
@@ -119,10 +128,44 @@ string TextTranscoder::operator()(const string& data) {
   return this->operator()(data.data(), data.size());
 }
 
+std::string TextTranscoder::on_untranslatable(const void**, size_t*) const {
+  return "";
+}
+
+TextTranscoderCustomSJISToUTF8::TextTranscoderCustomSJISToUTF8() : TextTranscoder("UTF-8", "SHIFT_JIS") {}
+
+std::string TextTranscoderCustomSJISToUTF8::on_untranslatable(const void** src, size_t* size) const {
+  // Sega implemented a single nonstandard Shift-JIS character on PSO GC (and
+  // probably XB as well): the heart symbol, encoded as F040. Understandably,
+  // libiconv doesn't know what to do with it because it's not actually part of
+  // Shift-JIS, so we have to handle it manually here.
+  if ((*size >= 2) && !memcmp(*src, "\xF0\x40", 2)) {
+    *src = reinterpret_cast<const char*>(*src) + 2;
+    *size -= 2;
+    return "\xE2\x99\xA5";
+  } else {
+    return "";
+  }
+}
+
+TextTranscoderUTF8ToCustomSJIS::TextTranscoderUTF8ToCustomSJIS() : TextTranscoder("SHIFT_JIS", "UTF-8") {}
+
+std::string TextTranscoderUTF8ToCustomSJIS::on_untranslatable(const void** src, size_t* size) const {
+  if ((*size >= 3) && !memcmp(*src, "\xE2\x99\xA5", 3)) {
+    *src = reinterpret_cast<const char*>(*src) + 3;
+    *size -= 3;
+    return "\xF0\x40";
+  } else {
+    return "";
+  }
+}
+
 TextTranscoder tt_8859_to_utf8("UTF-8", "ISO-8859-1");
 TextTranscoder tt_utf8_to_8859("ISO-8859-1", "UTF-8");
-TextTranscoder tt_sjis_to_utf8("UTF-8", "SHIFT_JIS");
-TextTranscoder tt_utf8_to_sjis("SHIFT_JIS", "UTF-8");
+TextTranscoder tt_standard_sjis_to_utf8("UTF-8", "SHIFT_JIS");
+TextTranscoder tt_utf8_to_standard_sjis("SHIFT_JIS", "UTF-8");
+TextTranscoderCustomSJISToUTF8 tt_sega_sjis_to_utf8;
+TextTranscoderUTF8ToCustomSJIS tt_utf8_to_sega_sjis;
 TextTranscoder tt_utf16_to_utf8("UTF-8", "UTF-16LE");
 TextTranscoder tt_utf8_to_utf16("UTF-16LE", "UTF-8");
 TextTranscoder tt_ascii_to_utf8("UTF-8", "ASCII");
@@ -136,11 +179,11 @@ string tt_encode_marked_optional(const string& utf8, uint8_t default_language, b
       try {
         return tt_utf8_to_8859(utf8);
       } catch (const exception& e) {
-        return "\tJ" + tt_utf8_to_sjis(utf8);
+        return "\tJ" + tt_utf8_to_sega_sjis(utf8);
       }
     } else {
       try {
-        return tt_utf8_to_sjis(utf8);
+        return tt_utf8_to_sega_sjis(utf8);
       } catch (const exception& e) {
         return "\tE" + tt_utf8_to_8859(utf8);
       }
@@ -159,11 +202,11 @@ string tt_encode_marked(const string& utf8, uint8_t default_language, bool is_ut
       try {
         return "\tE" + tt_utf8_to_8859(utf8);
       } catch (const exception& e) {
-        return "\tJ" + tt_utf8_to_sjis(utf8);
+        return "\tJ" + tt_utf8_to_sega_sjis(utf8);
       }
     } else {
       try {
-        return "\tJ" + tt_utf8_to_sjis(utf8);
+        return "\tJ" + tt_utf8_to_sega_sjis(utf8);
       } catch (const exception& e) {
         return "\tE" + tt_utf8_to_8859(utf8);
       }
@@ -181,12 +224,12 @@ string tt_decode_marked(const string& data, uint8_t default_language, bool is_ut
   } else {
     if (data.size() >= 2 && data[0] == '\t') {
       if (data[1] == 'J') {
-        return tt_sjis_to_utf8(data.substr(2));
+        return tt_sega_sjis_to_utf8(data.substr(2));
       } else if (data[1] == 'E') {
         return tt_8859_to_utf8(data.substr(2));
       }
     }
-    return default_language ? tt_8859_to_utf8(data) : tt_sjis_to_utf8(data);
+    return default_language ? tt_8859_to_utf8(data) : tt_sega_sjis_to_utf8(data);
   }
 }
 

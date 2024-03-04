@@ -1445,7 +1445,7 @@ Action a_extract_bml("extract-bml", "\
 Action a_decode_sjis(
     "decode-sjis", nullptr, +[](Arguments& args) {
       string data = read_input_data(args);
-      string result = tt_sjis_to_utf8(data);
+      string result = tt_sega_sjis_to_utf8(data);
       write_output_data(args, result.data(), result.size(), "txt");
     });
 

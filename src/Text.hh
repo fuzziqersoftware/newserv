@@ -17,10 +17,10 @@ class TextTranscoder {
 public:
   TextTranscoder(const char* to, const char* from);
   TextTranscoder(const TextTranscoder&) = delete;
-  TextTranscoder(TextTranscoder&&);
+  TextTranscoder(TextTranscoder&&) = delete;
   TextTranscoder& operator=(const TextTranscoder&) = delete;
-  TextTranscoder& operator=(TextTranscoder&&);
-  ~TextTranscoder();
+  TextTranscoder& operator=(TextTranscoder&&) = delete;
+  virtual ~TextTranscoder();
 
   struct Result {
     size_t bytes_read;
@@ -31,16 +31,38 @@ public:
   std::string operator()(const void* src, size_t src_bytes);
   std::string operator()(const std::string& data);
 
-private:
+protected:
+  virtual std::string on_untranslatable(const void** src, size_t* size) const;
+
   static const iconv_t INVALID_IC;
   static const size_t FAILURE_RESULT;
   iconv_t ic;
 };
 
+class TextTranscoderCustomSJISToUTF8 : public TextTranscoder {
+public:
+  TextTranscoderCustomSJISToUTF8();
+  virtual ~TextTranscoderCustomSJISToUTF8() = default;
+
+protected:
+  virtual std::string on_untranslatable(const void** src, size_t* size) const;
+};
+
+class TextTranscoderUTF8ToCustomSJIS : public TextTranscoder {
+public:
+  TextTranscoderUTF8ToCustomSJIS();
+  virtual ~TextTranscoderUTF8ToCustomSJIS() = default;
+
+protected:
+  virtual std::string on_untranslatable(const void** src, size_t* size) const;
+};
+
 extern TextTranscoder tt_8859_to_utf8;
 extern TextTranscoder tt_utf8_to_8859;
-extern TextTranscoder tt_sjis_to_utf8;
-extern TextTranscoder tt_utf8_to_sjis;
+extern TextTranscoder tt_standard_sjis_to_utf8;
+extern TextTranscoder tt_utf8_to_standard_sjis;
+extern TextTranscoderCustomSJISToUTF8 tt_sega_sjis_to_utf8;
+extern TextTranscoderUTF8ToCustomSJIS tt_utf8_to_sega_sjis;
 extern TextTranscoder tt_utf16_to_utf8;
 extern TextTranscoder tt_utf8_to_utf16;
 extern TextTranscoder tt_ascii_to_utf8;
@@ -434,7 +456,7 @@ struct pstring {
           break;
         }
         case TextEncoding::SJIS: {
-          auto ret = tt_utf8_to_sjis(this->data, Bytes, s.data(), s.size(), true);
+          auto ret = tt_utf8_to_sega_sjis(this->data, Bytes, s.data(), s.size(), true);
           this->clear_after_bytes(ret.bytes_written);
           break;
         }
@@ -469,7 +491,7 @@ struct pstring {
         case TextEncoding::MARKED: {
           if (client_language == 0) {
             try {
-              auto ret = tt_utf8_to_sjis(this->data, Bytes, s.data(), s.size(), true);
+              auto ret = tt_utf8_to_sega_sjis(this->data, Bytes, s.data(), s.size(), true);
               this->clear_after_bytes(ret.bytes_written);
             } catch (const std::runtime_error&) {
               this->data[0] = '\t';
@@ -484,7 +506,7 @@ struct pstring {
             } catch (const std::runtime_error&) {
               this->data[0] = '\t';
               this->data[1] = 'J';
-              auto ret = tt_utf8_to_sjis(this->data + 2, Bytes - 2, s.data(), s.size(), true);
+              auto ret = tt_utf8_to_sega_sjis(this->data + 2, Bytes - 2, s.data(), s.size(), true);
               this->clear_after_bytes(ret.bytes_written + 2);
             }
           }
@@ -536,7 +558,7 @@ struct pstring {
         case TextEncoding::ISO8859:
           return tt_8859_to_utf8(this->data, this->used_chars_8());
         case TextEncoding::SJIS:
-          return tt_sjis_to_utf8(this->data, this->used_chars_8());
+          return tt_sega_sjis_to_utf8(this->data, this->used_chars_8());
         case TextEncoding::UTF16:
           return tt_utf16_to_utf8(this->data, this->used_chars_16() * 2);
         case TextEncoding::UTF16_ALWAYS_MARKED: {
@@ -563,7 +585,7 @@ struct pstring {
           }
           return client_language
               ? tt_8859_to_utf8(&this->data[offset], this->used_chars_8() - offset)
-              : tt_sjis_to_utf8(&this->data[offset], this->used_chars_8() - offset);
+              : tt_sega_sjis_to_utf8(&this->data[offset], this->used_chars_8() - offset);
         }
         default:
           throw std::logic_error("unknown text encoding");

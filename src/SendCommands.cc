@@ -2,6 +2,7 @@
 
 #include <event2/buffer.h>
 #include <inttypes.h>
+#include <stdarg.h>
 #include <string.h>
 
 #include <functional>
@@ -853,7 +854,7 @@ string prepare_chat_data(
     data.append(text);
     return tt_utf8_to_utf16(data);
   } else if (version == Version::DC_NTE) {
-    data.append(tt_utf8_to_sjis(text));
+    data.append(tt_utf8_to_sega_sjis(text));
     return data;
   } else {
     data.append(tt_encode_marked(text, language, false));

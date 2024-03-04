@@ -55,7 +55,7 @@ static string escape_string(const string& data, TextEncoding encoding = TextEnco
         decoded = tt_utf16_to_utf8(data);
         break;
       case TextEncoding::SJIS:
-        decoded = tt_sjis_to_utf8(data);
+        decoded = tt_sega_sjis_to_utf8(data);
         break;
       case TextEncoding::ISO8859:
         decoded = tt_8859_to_utf8(data);
@@ -1234,7 +1234,7 @@ std::string disassemble_quest_script(const void* data, size_t size, Version vers
                   } else {
                     string s = cmd_r.get_cstr();
                     if (def->flags & F_PASS) {
-                      arg_stack_values.emplace_back(language ? tt_8859_to_utf8(s) : tt_sjis_to_utf8(s));
+                      arg_stack_values.emplace_back(language ? tt_8859_to_utf8(s) : tt_sega_sjis_to_utf8(s));
                     }
                     dasm_arg = escape_string(s, encoding_for_language(language));
                   }
@@ -1969,7 +1969,7 @@ std::string assemble_quest_script(const std::string& text) {
             auto add_cstr = [&](const string& text) -> void {
               switch (quest_version) {
                 case Version::DC_NTE:
-                  code_w.write(tt_utf8_to_sjis(text));
+                  code_w.write(tt_utf8_to_sega_sjis(text));
                   code_w.put_u8(0);
                   break;
                 case Version::DC_V1_11_2000_PROTOTYPE:
@@ -1980,7 +1980,7 @@ std::string assemble_quest_script(const std::string& text) {
                 case Version::GC_EP3_NTE:
                 case Version::GC_EP3:
                 case Version::XB_V3:
-                  code_w.write(quest_language ? tt_utf8_to_8859(text) : tt_utf8_to_sjis(text));
+                  code_w.write(quest_language ? tt_utf8_to_8859(text) : tt_utf8_to_sega_sjis(text));
                   code_w.put_u8(0);
                   break;
                 case Version::PC_NTE:
