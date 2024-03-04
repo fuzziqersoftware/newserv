@@ -4217,11 +4217,14 @@ shared_ptr<Lobby> create_game_generic(
 
   if (game->episode != Episode::EP3) {
     // GC NTE ignores the passed-in variations and always uses all zeroes
-    if (game->base_version != Version::GC_NTE) {
+    if (game->base_version == Version::GC_NTE) {
+      game->variations.clear(0);
+    } else if (c->override_variations) {
+      game->variations = *c->override_variations;
+      c->override_variations.reset();
+    } else {
       auto sdt = s->set_data_table(game->base_version, game->episode, game->mode, game->difficulty);
       game->variations = sdt->generate_variations(game->episode, is_solo, game->opt_rand_crypt);
-    } else {
-      game->variations.clear(0);
     }
     game->load_maps();
   } else {

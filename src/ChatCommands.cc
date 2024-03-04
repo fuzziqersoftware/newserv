@@ -954,6 +954,22 @@ static void proxy_command_secid(shared_ptr<ProxyServer::LinkedSession> ses, cons
   }
 }
 
+static void server_command_variations(shared_ptr<Client> c, const std::string& args) {
+  // Note: This command is intentionally undocumented, since it's primarily used
+  // for testing. If we ever make it public, we should add some kind of user
+  // feedback (currently it sends no message when it runs).
+  auto s = c->require_server_state();
+  auto l = c->require_lobby();
+  check_is_game(l, false);
+  check_cheats_allowed(s, c);
+
+  c->override_variations = make_unique<parray<le_uint32_t, 0x20>>();
+  c->override_variations->clear(0);
+  for (size_t z = 0; z < min<size_t>(c->override_variations->size(), args.size()); z++) {
+    c->override_variations->at(z) = args[z] - '0';
+  }
+}
+
 static void server_command_rand(shared_ptr<Client> c, const std::string& args) {
   auto s = c->require_server_state();
   auto l = c->require_lobby();
@@ -2185,6 +2201,7 @@ static const unordered_map<string, ChatCommandDefinition> chat_commands({
     {"$surrender", {server_command_surrender, nullptr}},
     {"$swa", {server_command_switch_assist, proxy_command_switch_assist}},
     {"$unset", {server_command_ep3_unset_field_character, nullptr}},
+    {"$variations", {server_command_variations, nullptr}},
     {"$warp", {server_command_warpme, proxy_command_warpme}},
     {"$warpme", {server_command_warpme, proxy_command_warpme}},
     {"$warpall", {server_command_warpall, proxy_command_warpall}},

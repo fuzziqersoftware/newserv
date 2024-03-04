@@ -198,6 +198,7 @@ public:
   // Lobby/positioning
   Config config;
   Config synced_config;
+  std::unique_ptr<parray<le_uint32_t, 0x20>> override_variations;
   int32_t sub_version;
   float x;
   float z;
