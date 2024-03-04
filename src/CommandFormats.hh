@@ -4184,12 +4184,12 @@ struct G_SetOrClearPlayerFlags_6x2E {
   le_uint32_t or_mask = 0;
 } __packed__;
 
-// 6x2F: Hit by enemy
+// 6x2F: Change player HP
 
-struct G_HitByEnemy_6x2F {
-  G_ClientIDHeader header;
-  le_uint32_t hit_type = 0; // 0 = set HP, 1 = add/subtract HP, 2 = add/sub fixed HP
-  le_uint16_t damage = 0;
+struct G_ChangePlayerHP_6x2F {
+  G_UnusedHeader header;
+  le_uint32_t type = 0; // 0 = set HP, 1 = add/subtract HP, 2 = add/sub fixed HP
+  le_uint16_t amount = 0;
   le_uint16_t client_id = 0;
 } __packed__;
 

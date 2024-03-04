@@ -1220,8 +1220,9 @@ static void on_received_condition(shared_ptr<Client> c, uint8_t command, uint8_t
   }
 }
 
-static void on_hit_by_enemy(shared_ptr<Client> c, uint8_t command, uint8_t flag, void* data, size_t size) {
-  const auto& cmd = check_size_t<G_ClientIDHeader>(data, size, 0xFFFF);
+template <typename CmdT>
+static void on_change_hp(shared_ptr<Client> c, uint8_t command, uint8_t flag, void* data, size_t size) {
+  const auto& cmd = check_size_t<CmdT>(data, size, 0xFFFF);
 
   auto l = c->require_lobby();
   if (l->is_game() && (cmd.client_id == c->lobby_client_id)) {
@@ -3871,7 +3872,7 @@ const SubcommandDefinition subcommand_definitions[0x100] = {
     /* 6x2C */ {0x28, 0x2A, 0x2C, on_forward_check_client},
     /* 6x2D */ {0x29, 0x2B, 0x2D, on_forward_check_client},
     /* 6x2E */ {0x2A, 0x2C, 0x2E, on_forward_check_client},
-    /* 6x2F */ {0x2B, 0x2D, 0x2F, on_hit_by_enemy},
+    /* 6x2F */ {0x2B, 0x2D, 0x2F, on_change_hp<G_ChangePlayerHP_6x2F>},
     /* 6x30 */ {0x2C, 0x2E, 0x30, on_level_up},
     /* 6x31 */ {0x2D, 0x2F, 0x31, on_forward_check_game},
     /* 6x32 */ {0x00, 0x00, 0x32, on_forward_check_game},
@@ -3899,8 +3900,8 @@ const SubcommandDefinition subcommand_definitions[0x100] = {
     /* 6x48 */ {0x00, 0x00, 0x48, on_cast_technique_finished},
     /* 6x49 */ {0x3E, 0x44, 0x49, on_subtract_pb_energy},
     /* 6x4A */ {0x3F, 0x45, 0x4A, on_forward_check_game_client},
-    /* 6x4B */ {0x40, 0x46, 0x4B, on_hit_by_enemy},
-    /* 6x4C */ {0x41, 0x47, 0x4C, on_hit_by_enemy},
+    /* 6x4B */ {0x40, 0x46, 0x4B, on_change_hp<G_ClientIDHeader>},
+    /* 6x4C */ {0x41, 0x47, 0x4C, on_change_hp<G_ClientIDHeader>},
     /* 6x4D */ {0x42, 0x48, 0x4D, on_player_died},
     /* 6x4E */ {0x00, 0x00, 0x4E, on_forward_check_game_client},
     /* 6x4F */ {0x43, 0x49, 0x4F, on_forward_check_game_client},
