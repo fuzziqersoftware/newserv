@@ -1177,10 +1177,12 @@ void send_guild_card(
     uint8_t char_class) {
   switch (ch.version) {
     case Version::DC_NTE:
+      send_guild_card_dc_pc_gc_t<G_SendGuildCard_DCNTE_6x06>(
+          ch, guild_card_number, name, description, language, section_id, char_class);
+      break;
     case Version::DC_V1_11_2000_PROTOTYPE:
     case Version::DC_V1:
     case Version::DC_V2:
-      // TODO: Is this the right format and subcommand for NTE and the prototype?
       send_guild_card_dc_pc_gc_t<G_SendGuildCard_DC_6x06>(
           ch, guild_card_number, name, description, language, section_id, char_class);
       break;

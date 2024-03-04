@@ -984,7 +984,11 @@ static void on_send_guild_card(shared_ptr<Client> c, uint8_t command, uint8_t fl
   }
 
   switch (c->version()) {
-    case Version::DC_NTE:
+    case Version::DC_NTE: {
+      const auto& cmd = check_size_t<G_SendGuildCard_DCNTE_6x06>(data, size);
+      c->character(true, false)->guild_card.description.encode(cmd.guild_card.description.decode(c->language()), c->language());
+      break;
+    }
     case Version::DC_V1_11_2000_PROTOTYPE:
     case Version::DC_V1:
     case Version::DC_V2: {

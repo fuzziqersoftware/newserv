@@ -3848,6 +3848,12 @@ struct G_SwitchStateChanged_6x05 {
 
 // 6x06: Send guild card
 
+struct G_SendGuildCard_DCNTE_6x06 {
+  G_UnusedHeader header;
+  GuildCardDCNTE guild_card;
+  uint8_t unused;
+} __packed__;
+
 struct G_SendGuildCard_DC_6x06 {
   G_UnusedHeader header;
   GuildCardDC guild_card;

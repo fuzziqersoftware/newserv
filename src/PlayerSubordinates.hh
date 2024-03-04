@@ -194,6 +194,19 @@ struct PlayerDispDataBB {
   void apply_dressing_room(const PlayerDispDataBBPreview&);
 } __attribute__((packed));
 
+struct GuildCardDCNTE {
+  /* 00 */ le_uint32_t player_tag = 0;
+  /* 04 */ le_uint32_t guild_card_number = 0;
+  /* 08 */ pstring<TextEncoding::ASCII, 0x18> name;
+  /* 20 */ pstring<TextEncoding::MARKED, 0x48> description;
+  /* 68 */ parray<uint8_t, 0x0F> unused2;
+  /* 77 */ uint8_t present = 0;
+  /* 78 */ uint8_t language = 0;
+  /* 79 */ uint8_t section_id = 0;
+  /* 7A */ uint8_t char_class = 0;
+  /* 7B */
+} __attribute__((packed));
+
 struct GuildCardDC {
   /* 00 */ le_uint32_t player_tag = 0;
   /* 04 */ le_uint32_t guild_card_number = 0;
