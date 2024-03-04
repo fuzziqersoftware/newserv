@@ -1,33 +1,83 @@
-(Ep1&2 USA) Unlock all songs in BGM test
+Unlock all songs in BGM test
 (Note: sadly, there are no secret/unused ones)
-04368960 38600001
-04368964 4E800020
+Ep12-JP12 => 04367A68 38600001
+             04367A6C 4E800020
+Ep12-JP13 => 04368ED8 38600001
+             04368EDC 4E800020
+Ep12-JP14 => 0436A434 38600001
+             0436A438 4E800020
+Ep12-JP15 => 0436A1E8 38600001
+             0436A1EC 4E800020
+Ep12-US10 => 0436891C 38600001
+             04368920 4E800020
+Ep12-US11 => 04368960 38600001
+             04368964 4E800020
+Ep12-US12 => 0436A5B4 38600001
+             0436A5B8 4E800020
+Ep12-EU   => 043699A8 38600001
+             043699AC 4E800020
+Ep3-NTE   => 041EA948 38600001
+             041EA94C 4E800020
+Ep3-JP    => 041D8CF0 38600001
+             041D8CF4 4E800020
+Ep3-US    => 041D8D7C 38600001
+             041D8D80 4E800020
+Ep3-EU    => 041D93F0 38600001
+             041D93F4 4E800020
 
-(Ep1&2 USA v1.1) Play lobby (and event) music on Pioneer 2 also
-0417E0F0 60000000
+Play lobby (and event) music in Morgue also
+Ep12-JP12 => 0417DD34 60000000
+Ep12-JP13 => 0417E0E8 60000000
+Ep12-JP14 => 0417E24C 60000000
+Ep12-JP15 => 0417E1AC 60000000
+Ep12-US10 => 0417E0F0 60000000
+Ep12-US11 => 0417E0F0 60000000
+Ep12-US12 => 0417E210 60000000
+Ep12-EU   => 0417E6D4 60000000
+Ep3-NTE   => 040B8C7C 60000000
+Ep3-US    => 040B7028 60000000
+Ep3-JP    => 040B7044 60000000
+Ep3-EU    => 040B746C 60000000
 
-(Ep3 USA) Play lobby (and event) music in Morgue also
-040B7028 60000000
+Skip white logo screens during startup
+Ep12-JP12 => 0413EE54 38000007
+Ep12-JP13 => 0413F1DC 38000007
+Ep12-JP14 => 0413F338 38000007
+Ep12-JP15 => 0413F298 38000007
+Ep12-US10 => 0413F190 38000007
+Ep12-US11 => 0413F190 38000007
+Ep12-US12 => 0413F2A8 38000007
+Ep12-EU   => 0413F524 38000007
+Ep3-NTE   => 0409E10C 38000007
+Ep3-JP    => 0409D810 38000007
+Ep3-US    => 0409D774 38000007
+Ep3-EU    => 0409D9A4 38000007
 
-(Ep3 NTE) Skip white logo screens during startup
-0409E10C 38000007
-(Ep3 USA) Skip white logo screens during startup
-0409D774 38000007
-(Episodes 1&2 USA v1.1) Skip white logo screens during startup
-0413F190 38000007
+Skip agreement prompts before online game
+Ep12-JP12 => 0432737C 38000003
+Ep12-JP13 => 043283CC 38000003
+Ep12-JP14 => 043298E8 38000003
+Ep12-JP15 => 04329690 38000003
+Ep12-US10 => 04327D3C 38000003
+Ep12-US11 => 04327D80 38000003
+Ep12-US12 => 0432984C 38000003
+Ep12-EU   => 04328C58 38000003
+Ep3-NTE   => 041C67D0 38000003
+Ep3-JP    => 041B5234 38000003
+Ep3-US    => 041B50C8 38000003
+Ep3-EU    => 041B574C 38000003
 
-(Ep3 NTE) Skip agreement prompts before online game
-041C67D0 38000003
-(Ep3 USA) Skip agreement prompts before online game
-041B50C8 38000003
-(Episodes 1&2 USA v1.1) Skip agreement prompt before online game
-04327D80 38000003
+Disable rate limit for pressing A during loading screens
+Ep3-NTE => 042E1030 38000000
+Ep3-JP  => 042F8BE4 38000000
+Ep3-US  => 042F9B30 38000000
+Ep3-EU  => 042FA734 38000000
 
-(Ep3 USA) Disable rate limit for pressing A during loading screens
-042F9B30 38000000
-
-(Ep3 USA) Auto-press A as fast as possible during loading screens
-042F9AC0 60000000
+Auto-press A as fast as possible during loading screens
+Ep3-EU  => 042FA6C4 60000000
+Ep3-US  => 042F9AC0 60000000
+Ep3-NTE => 040C2C48 60000000
+Ep3-JP  => 042F8B74 60000000
 
 (Ep3 USA) Replace loading screen A button sounds with random sounds
 042F9B18 4804BB19
@@ -54,14 +104,16 @@
 0400BD64 EC5D00B2
 0400BD68 4E800020
 
-(Ep3 USA) Disable darkening effect during battle details mode
-042F951C 4E800020
+Disable darkening effect during battle details mode
+Ep3-NTE => 042E09D8 4E800020
+Ep3-JP  => 042F85D0 4E800020
+Ep3-US  => 042F951C 4E800020
+Ep3-EU  => 042FA120 4E800020
 
-(Ep3 NTE) Disable darkening effect during battle details mode
-042E09D8 4E800020
-
-(Ep3 USA) Unlock all COM decks
-042CA908 38600001
+Unlock all COM decks
+Ep3-JP => 042C9B34 38600001
+Ep3-EU => 042CB414 38600001
+Ep3-US => 042CA908 38600001
 
 (Ep3 USA) Enable all lobby counter options in non-CARD lobbies
 04096A8C 480000C0
@@ -117,8 +169,11 @@
 040002BC 7C633050
 040002C0 4E800020
 
-(Ep3 USA) Unlock all offline free battle maps
-042CAA00 38600001
+Unlock all offline free battle maps
+Ep3-NTE => 042BE538 38600001
+Ep3-JP =>  042C9C2C 38600001
+Ep3-EU =>  042CB50C 38600001
+Ep3-US =>  042CAA00 38600001
 (This unlocks ALL maps, including a bunch of maps with garbage names that crash if you try to play them)
 
 (Ep3 USA) Talk to auction counter offline to get all cards
@@ -179,8 +234,10 @@
 025CB6AA 00000001
 TODO: Figure out more debug message conditionals (vars/functions) and add them here
 
-(Episode 3 USA) Able to find VIP cards offline (but they're still rare)
-042C0B20 4800000C
+Able to find VIP cards offline (but they're still rare)
+Ep3-EU => 042C15DC 4800000C
+Ep3-JP => 042BFE24 4800000C
+Ep3-US => 042C0B20 4800000C
 
 (Ep3 USA) Hold L when starting battle to enter debug menu
 042C5460 4BD3AF78
@@ -195,8 +252,11 @@ TODO: Figure out more debug message conditionals (vars/functions) and add them h
 040003F8 3800001A
 040003FC 482C5068
 
-(Ep3 USA) Dressing room always accessible
-041A16FC 38600001
+Dressing room always accessible
+Ep3-NTE => 041B2A2C 38600001
+Ep3-JP  => 041A1920 38600001
+Ep3-EU  => 041A1C84 38600001
+Ep3-US  => 041A16FC 38600001
 
 (Ep3 USA) Full dressing room v1
 Can't change your class, but you start with your existing appearance
@@ -215,8 +275,11 @@ Go online with this code on after using the dressing room to fully save changes
 (Ep3 USA) Replace Options menu with debug menu
 04149E70 38600019
 
-(Ep3 USA) Jukebox is free
-0430D1DC 48000024
+Jukebox is free
+Ep3-NTE => 042248C4 48000024 (useless because the jukebox isn't loaded in NTE, but apparently the code for it exists)
+Ep3-JP  => 0430C178 48000024
+Ep3-US  => 0430D1DC 48000024
+Ep3-EU  => 0430DE3C 48000024
 
 (Ep3 USA) Use own character in battle (online only)
 041FFAB0 4800001C
@@ -247,8 +310,11 @@ Go online with this code on after using the dressing room to fully save changes
 0412F8D4 7D0803A6
 0412F8D8 4BEDEBF4
 
-(Ep3 USA) Metal tiles don't appear in Simulator map
-04296904 4E800020
+Metal tiles don't appear in Simulator map
+Ep3-NTE => 0428FED8 4E800020
+Ep3-JP  => 04296054 4E800020
+Ep3-US  => 04296904 4E800020
+Ep3-EU  => 04297278 4E800020
 
 (Ep3 USA) Enable Boooo and Laughter soundchat sounds
 Note: Without a TextEnglish.pr2/pr3 patch, the menu items for these sounds will be blank (but they will still work)
