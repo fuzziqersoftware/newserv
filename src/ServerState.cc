@@ -902,26 +902,6 @@ void ServerState::load_config_early() {
   } catch (const out_of_range&) {
   }
 
-  for (size_t z = 1; z <= 20; z++) {
-    auto l = this->find_lobby(z);
-    if (l) {
-      l->event = 0;
-    }
-  }
-  try {
-    const auto& events_json = this->config_json->get_list("LobbyEvents");
-    for (size_t z = 0; z < events_json.size(); z++) {
-      const auto& v = events_json.at(z);
-      uint8_t event = v->is_int() ? v->as_int() : event_for_name(v->as_string());
-      const auto& l = this->find_lobby(z + 1);
-      if (l && l->check_flag(Lobby::Flag::DEFAULT)) {
-        l->event = event;
-        send_change_event(l, l->event);
-      }
-    }
-  } catch (const out_of_range&) {
-  }
-
   this->pre_lobby_event = 0;
   try {
     auto v = this->config_json->at("MenuEvent");
@@ -1091,6 +1071,26 @@ void ServerState::load_config_early() {
 }
 
 void ServerState::load_config_late() {
+  for (size_t z = 1; z <= 20; z++) {
+    auto l = this->find_lobby(z);
+    if (l) {
+      l->event = 0;
+    }
+  }
+  try {
+    const auto& events_json = this->config_json->get_list("LobbyEvents");
+    for (size_t z = 0; z < events_json.size(); z++) {
+      const auto& v = events_json.at(z);
+      uint8_t event = v->is_int() ? v->as_int() : event_for_name(v->as_string());
+      const auto& l = this->find_lobby(z + 1);
+      if (l && l->check_flag(Lobby::Flag::DEFAULT)) {
+        l->event = event;
+        send_change_event(l, l->event);
+      }
+    }
+  } catch (const out_of_range&) {
+  }
+
   this->ep3_card_auction_pool.clear();
   try {
     for (const auto& it : this->config_json->get_dict("CardAuctionPool")) {
