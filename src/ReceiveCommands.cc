@@ -564,9 +564,17 @@ static void on_90_DC(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
   c->config.set_flags_for_version(c->version(), -1);
   c->log.info("Game version changed to DC_V1");
 
-  uint32_t serial_number = stoul(cmd.serial_number.decode(), nullptr, 16);
+  string serial_number_str = cmd.serial_number.decode();
+  string access_key_str = cmd.access_key.decode();
+  uint32_t serial_number = 0;
   try {
-    shared_ptr<License> l = s->license_index->verify_v1_v2(serial_number, cmd.access_key.decode(), "");
+    shared_ptr<License> l;
+    if (serial_number_str.size() > 8 || access_key_str.size() > 8) {
+      l = s->license_index->verify_dc_nte(serial_number_str, access_key_str);
+    } else {
+      serial_number = stoull(serial_number_str, nullptr, 16);
+      l = s->license_index->verify_v1_v2(serial_number, access_key_str, "");
+    }
     c->set_license(l);
     send_command(c, 0x90, 0x02);
 
@@ -586,8 +594,18 @@ static void on_90_DC(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
     } else {
       c->config.set_flag(Client::Flag::LICENSE_WAS_CREATED);
       auto l = s->license_index->create_license();
-      l->serial_number = serial_number;
-      l->access_key = cmd.access_key.decode();
+      if (serial_number_str.size() > 8 || access_key_str.size() > 8) {
+        l->dc_nte_serial_number = serial_number_str;
+        l->dc_nte_access_key = access_key_str;
+        l->serial_number = fnv1a32(l->dc_nte_serial_number) & 0x7FFFFFFF;
+      } else if (serial_number != 0) {
+        l->serial_number = serial_number;
+        l->access_key = cmd.access_key.decode();
+      } else {
+        send_command(c, 0x90, 0x03);
+        c->should_disconnect = true;
+        return;
+      }
       s->license_index->add(l);
       if (!s->is_replay) {
         l->save();
@@ -621,9 +639,17 @@ static void on_93_DC(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
     set_console_client_flags(c, cmd.sub_version);
   }
 
-  uint32_t serial_number = stoul(cmd.serial_number.decode(), nullptr, 16);
+  string serial_number_str = cmd.serial_number.decode();
+  string access_key_str = cmd.access_key.decode();
+  uint32_t serial_number = 0;
   try {
-    shared_ptr<License> l = s->license_index->verify_v1_v2(serial_number, cmd.access_key.decode(), cmd.name.decode());
+    shared_ptr<License> l;
+    if (serial_number_str.size() > 8 || access_key_str.size() > 8) {
+      l = s->license_index->verify_dc_nte(serial_number_str, access_key_str);
+    } else {
+      serial_number = stoull(serial_number_str, nullptr, 16);
+      l = s->license_index->verify_v1_v2(serial_number, access_key_str, cmd.name.decode());
+    }
     c->set_license(l);
 
   } catch (const LicenseIndex::no_username& e) {
@@ -644,8 +670,18 @@ static void on_93_DC(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
     } else {
       c->config.set_flag(Client::Flag::LICENSE_WAS_CREATED);
       auto l = s->license_index->create_license();
-      l->serial_number = serial_number;
-      l->access_key = cmd.access_key.decode();
+      if (serial_number_str.size() > 8 || access_key_str.size() > 8) {
+        l->dc_nte_serial_number = serial_number_str;
+        l->dc_nte_access_key = access_key_str;
+        l->serial_number = fnv1a32(l->dc_nte_serial_number) & 0x7FFFFFFF;
+      } else if (serial_number != 0) {
+        l->serial_number = serial_number;
+        l->access_key = cmd.access_key.decode();
+      } else {
+        send_command(c, 0x90, 0x03);
+        c->should_disconnect = true;
+        return;
+      }
       s->license_index->add(l);
       if (!s->is_replay) {
         l->save();
