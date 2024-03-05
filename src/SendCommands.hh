@@ -218,7 +218,12 @@ void send_chat_message(
     char private_flags);
 void send_simple_mail(
     std::shared_ptr<Client> c,
-    uint32_t from_serial_number,
+    uint32_t from_guild_card_number,
+    const std::string& from_name,
+    const std::string& text);
+void send_simple_mail(
+    std::shared_ptr<ServerState> s,
+    uint32_t from_guild_card_number,
     const std::string& from_name,
     const std::string& text);
 

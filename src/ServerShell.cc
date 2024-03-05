@@ -458,6 +458,13 @@ CommandDefinition c_announce(
     +[](CommandArgs& args) {
       send_text_message(args.s, args.args);
     });
+CommandDefinition c_announce_mail(
+    "announce-mail", "announce-mail MESSAGE\n\
+    Send an announcement message via Simple Mail to all players.",
+    true,
+    +[](CommandArgs& args) {
+      send_simple_mail(args.s, 0, args.s->name, args.args);
+    });
 
 CommandDefinition c_create_tournament(
     "create-tournament", "create-tournament TOURNAMENT-NAME MAP-NAME NUM-TEAMS [OPTIONS...]\n\

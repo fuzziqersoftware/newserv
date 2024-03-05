@@ -265,6 +265,12 @@ static void server_command_announce(shared_ptr<Client> c, const std::string& arg
   send_text_message(s, args);
 }
 
+static void server_command_announce_mail(shared_ptr<Client> c, const std::string& args) {
+  auto s = c->require_server_state();
+  check_license_flag(c, License::Flag::ANNOUNCE);
+  send_simple_mail(s, 0, s->name, args);
+}
+
 static void server_command_arrow(shared_ptr<Client> c, const std::string& args) {
   auto l = c->require_lobby();
   c->lobby_arrow_color = stoull(args, nullptr, 0);
@@ -2141,6 +2147,7 @@ struct ChatCommandDefinition {
 static const unordered_map<string, ChatCommandDefinition> chat_commands({
     {"$allevent", {server_command_lobby_event_all, nullptr}},
     {"$ann", {server_command_announce, nullptr}},
+    {"$ann!", {server_command_announce_mail, nullptr}},
     {"$arrow", {server_command_arrow, proxy_command_arrow}},
     {"$auction", {server_command_auction, proxy_command_auction}},
     {"$ax", {server_command_ax, nullptr}},

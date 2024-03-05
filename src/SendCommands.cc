@@ -18,6 +18,7 @@
 #include "Compression.hh"
 #include "FileContentsCache.hh"
 #include "PSOProtocol.hh"
+#include "ProxyServer.hh"
 #include "StaticGameData.hh"
 #include "Text.hh"
 
@@ -806,10 +807,10 @@ void send_text_message(shared_ptr<Lobby> l, const string& text) {
 }
 
 void send_text_message(shared_ptr<ServerState> s, const string& text) {
-  // TODO: We should have a collection of all clients (even those not in any
-  // lobby) and use that instead here
-  for (auto& l : s->all_lobbies()) {
-    send_text_message(l, text);
+  for (auto& it : s->channel_to_client) {
+    if (it.second->license && !is_patch(it.second->version())) {
+      send_text_message(it.second, text);
+    }
   }
 }
 
@@ -917,7 +918,7 @@ void send_chat_message(
 template <typename CmdT>
 void send_simple_mail_t(shared_ptr<Client> c, uint32_t from_guild_card_number, const string& from_name, const string& text) {
   CmdT cmd;
-  cmd.player_tag = 0x00010000;
+  cmd.player_tag = from_guild_card_number ? 0x00010000 : 0;
   cmd.from_guild_card_number = from_guild_card_number;
   cmd.from_name.encode(from_name, c->language());
   cmd.to_guild_card_number = c->license->serial_number;
@@ -927,7 +928,7 @@ void send_simple_mail_t(shared_ptr<Client> c, uint32_t from_guild_card_number, c
 
 void send_simple_mail_bb(shared_ptr<Client> c, uint32_t from_guild_card_number, const string& from_name, const string& text) {
   SC_SimpleMail_BB_81 cmd;
-  cmd.player_tag = 0x00010000;
+  cmd.player_tag = from_guild_card_number ? 0x00010000 : 0;
   cmd.from_guild_card_number = from_guild_card_number;
   cmd.from_name.encode(from_name, c->language());
   cmd.to_guild_card_number = c->license->serial_number;
@@ -958,6 +959,14 @@ void send_simple_mail(shared_ptr<Client> c, uint32_t from_guild_card_number, con
       break;
     default:
       throw logic_error("unimplemented versioned command");
+  }
+}
+
+void send_simple_mail(shared_ptr<ServerState> s, uint32_t from_guild_card_number, const string& from_name, const string& text) {
+  for (const auto& it : s->channel_to_client) {
+    if (it.second->license && !is_patch(it.second->version())) {
+      send_simple_mail(it.second, from_guild_card_number, from_name, text);
+    }
   }
 }
 
