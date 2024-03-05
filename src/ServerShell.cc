@@ -297,6 +297,7 @@ CommandDefinition c_add_license(
       01000000 = Can use debugging commands\n\
       02000000 = Can use cheat commands even if cheat mode is disabled\n\
       04000000 = Can play any quest without progression/flags restrictions\n\
+      08000000 = Can use chat commands even if disabled in config.json\n\
       80000000 = License is a shared serial (disables Access Key and password\n\
         checks; players will get Guild Cards based on their player names)\n\
     There are also shorthands for some general privilege levels:\n\

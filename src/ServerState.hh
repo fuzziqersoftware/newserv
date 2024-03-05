@@ -90,6 +90,7 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   bool use_temp_licenses_for_prototypes = true;
   bool allow_dc_pc_games = true;
   bool allow_gc_xb_games = true;
+  bool enable_chat_commands = true;
   uint8_t allowed_drop_modes_v1_v2_normal = 0x1F;
   uint8_t allowed_drop_modes_v1_v2_battle = 0x07;
   uint8_t allowed_drop_modes_v1_v2_challenge = 0x07;

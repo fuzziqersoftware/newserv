@@ -25,6 +25,12 @@
   // corner of the screen while in lobbies.
   "ServerName": "newserv",
 
+  // User to run the server as. If present, newserv will attempt to switch to
+  // this user's permissions after loading its configuration and opening
+  // listening sockets. The special value $SUDO_USER causes newserv to look up
+  // the desired username in the $SUDO_USER environment variable instead.
+  // "User": "$SUDO_USER",
+
   // Address to connect local clients to (IP address or interface name). This
   // is the address that newserv will expect clients on the same network as the
   // server to connect to.
@@ -282,18 +288,18 @@
   // still manually create permanent licenses for NTE players.
   "UseTemporaryLicensesForPrototypes": true,
 
-  // If this option is enabled, PC NTE users will be allowed to connect. This is
-  // the only version of the game that does not have any way to identify the
+  // If this option is enabled, PC NTE players will be allowed to connect. This
+  // is the only version of the game that does not have any way to identify the
   // player (no serial number, username, etc.), so PC NTE players receive random
   // Guild Card numbers every time they connect and cannot be banned by serial
   // number or username.
   "AllowPCNTE": true,
 
-  // User to run the server as. If present, newserv will attempt to switch to
-  // this user's permissions after loading its configuration and opening
-  // listening sockets. The special value $SUDO_USER causes newserv to look up
-  // the desired username in the $SUDO_USER environment variable instead.
-  // "User": "$SUDO_USER",
+  // Whether to enable chat commands for all players. If this is true, all
+  // players will be able to use chat commands as normal; if this is false, only
+  // players with the ALWAYS_ENABLE_CHAT_COMMANDS license flag will be able to
+  // use chat commands.
+  "EnableChatCommands": true,
 
   // Information menu contents. Each entry is a list containing [title,
   // short description, full contents]. In the short description and full

@@ -45,8 +45,10 @@ static shared_ptr<const Menu> proxy_options_menu_for_client(shared_ptr<const Cli
     add_bool_option(item_id, c->config.check_flag(flag), text, description);
   };
 
-  add_flag_option(ProxyOptionsMenuItemID::CHAT_COMMANDS, Client::Flag::PROXY_CHAT_COMMANDS_ENABLED,
-      "Chat commands", "Enable chat\ncommands");
+  if (c->can_use_chat_commands()) {
+    add_flag_option(ProxyOptionsMenuItemID::CHAT_COMMANDS, Client::Flag::PROXY_CHAT_COMMANDS_ENABLED,
+        "Chat commands", "Enable chat\ncommands");
+  }
   add_flag_option(ProxyOptionsMenuItemID::PLAYER_NOTIFICATIONS, Client::Flag::PROXY_PLAYER_NOTIFICATIONS_ENABLED,
       "Player notifs", "Show a message\nwhen other players\njoin or leave");
   static const char* item_drop_notifs_description = "Enable item drop\nnotifications:\n- No: no notifs\n- Rare: rares only\n- Item: all items\nbut not Meseta\n- Every: everything";
@@ -133,6 +135,9 @@ void send_client_to_proxy_server(shared_ptr<Client> c) {
 
   s->proxy_server->delete_session(c->license->serial_number);
   auto ses = s->proxy_server->create_licensed_session(c->license, local_port, c->version(), c->config);
+  if (!c->can_use_chat_commands()) {
+    ses->config.clear_flag(Client::Flag::PROXY_CHAT_COMMANDS_ENABLED);
+  }
   if (!s->proxy_allow_save_files) {
     ses->config.clear_flag(Client::Flag::PROXY_SAVE_FILES);
   }
@@ -2341,7 +2346,11 @@ static void on_10(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
           send_proxy_destinations_menu(c);
           break;
         case ProxyOptionsMenuItemID::CHAT_COMMANDS:
-          c->config.toggle_flag(Client::Flag::PROXY_CHAT_COMMANDS_ENABLED);
+          if (c->can_use_chat_commands()) {
+            c->config.toggle_flag(Client::Flag::PROXY_CHAT_COMMANDS_ENABLED);
+          } else {
+            c->config.clear_flag(Client::Flag::PROXY_CHAT_COMMANDS_ENABLED);
+          }
           goto resend_proxy_options_menu;
         case ProxyOptionsMenuItemID::PLAYER_NOTIFICATIONS:
           c->config.toggle_flag(Client::Flag::PROXY_PLAYER_NOTIFICATIONS_ENABLED);
@@ -3301,7 +3310,7 @@ static void on_06(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
   }
 
   char command_sentinel = (c->version() == Version::DC_V1_11_2000_PROTOTYPE) ? '@' : '$';
-  if (text[0] == command_sentinel) {
+  if ((text[0] == command_sentinel) && c->can_use_chat_commands()) {
     if (text[1] == command_sentinel) {
       text = text.substr(1);
     } else {

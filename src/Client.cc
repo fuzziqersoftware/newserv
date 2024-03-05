@@ -391,6 +391,16 @@ bool Client::can_play_quest(shared_ptr<const Quest> q, uint8_t event, uint8_t di
   return ret;
 }
 
+bool Client::can_use_chat_commands() const {
+  if (!this->license) {
+    return false;
+  }
+  if (this->license->check_flag(License::Flag::ALWAYS_ENABLE_CHAT_COMMANDS)) {
+    return true;
+  }
+  return this->require_server_state()->enable_chat_commands;
+}
+
 void Client::dispatch_save_game_data(evutil_socket_t, short, void* ctx) {
   reinterpret_cast<Client*>(ctx)->save_game_data();
 }

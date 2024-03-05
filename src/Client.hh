@@ -293,6 +293,8 @@ public:
   bool can_see_quest(std::shared_ptr<const Quest> q, uint8_t event, uint8_t difficulty, size_t num_players) const;
   bool can_play_quest(std::shared_ptr<const Quest> q, uint8_t event, uint8_t difficulty, size_t num_players) const;
 
+  bool can_use_chat_commands() const;
+
   static void dispatch_save_game_data(evutil_socket_t, short, void* ctx);
   void save_game_data();
   static void dispatch_send_ping(evutil_socket_t, short, void* ctx);

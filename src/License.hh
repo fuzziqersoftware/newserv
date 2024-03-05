@@ -14,23 +14,23 @@ class License {
 public:
   enum class Flag : uint32_t {
     // clang-format off
-    KICK_USER                  = 0x00000001,
-    BAN_USER                   = 0x00000002,
-    SILENCE_USER               = 0x00000004,
-    CHANGE_EVENT               = 0x00000010,
-    ANNOUNCE                   = 0x00000020,
-    FREE_JOIN_GAMES            = 0x00000040,
-    DEBUG                      = 0x01000000,
-    CHEAT_ANYWHERE             = 0x02000000,
-    DISABLE_QUEST_REQUIREMENTS = 0x04000000,
-    MODERATOR                  = 0x00000007,
-    ADMINISTRATOR              = 0x000000FF,
-    ROOT                       = 0x7FFFFFFF,
-    IS_SHARED_SERIAL           = 0x80000000,
+    KICK_USER                   = 0x00000001,
+    BAN_USER                    = 0x00000002,
+    SILENCE_USER                = 0x00000004,
+    CHANGE_EVENT                = 0x00000010,
+    ANNOUNCE                    = 0x00000020,
+    FREE_JOIN_GAMES             = 0x00000040,
+    DEBUG                       = 0x01000000,
+    CHEAT_ANYWHERE              = 0x02000000,
+    DISABLE_QUEST_REQUIREMENTS  = 0x04000000,
+    ALWAYS_ENABLE_CHAT_COMMANDS = 0x08000000,
+    MODERATOR                   = 0x00000007,
+    ADMINISTRATOR               = 0x000000FF,
+    ROOT                        = 0x7FFFFFFF,
+    IS_SHARED_SERIAL            = 0x80000000,
     // NOTE: When adding or changing license flags, don't forget to change the
     // documentation in the shell's help text.
-
-    UNUSED_BITS                = 0x78FFFF00,
+    UNUSED_BITS                 = 0x70FFFF00,
     // clang-format on
   };
 
