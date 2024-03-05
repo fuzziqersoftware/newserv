@@ -188,7 +188,7 @@
     [0x02, "battle", "Battle", "$E$C6Battle mode rule\nsets"],
     [0x04, "challenge-ep1", "Challenge (Episode 1)", "$E$C6Challenge mode\nquests in Episode 1"],
     [0x04, "challenge-ep2", "Challenge (Episode 2)", "$E$C6Challenge mode\nquests in Episode 2"],
-    [0x08, "solo-story", "Story", "$E$C6Quests that follow\nthe Episode 1 story"],
+    [0x88, "solo-story", "Story", "$E$C6Quests that follow\nthe Episode 1 story"],
     [0x08, "solo-extra", "Solo", "$E$C6Quests that require\na single player"],
     [0x10, "government-ep1", "Hero in Red", "$E$CG-Red Ring Rico-\n$C6Quests that follow\nthe Episode 1\nstoryline"],
     [0x10, "government-ep2", "The Military's Hero", "$E$CG-Heathcliff Flowen-\n$C6Quests that follow\nthe Episode 2\nstoryline"],
