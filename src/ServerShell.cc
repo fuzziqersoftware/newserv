@@ -260,8 +260,13 @@ CommandDefinition c_reload(
           args.s->load_drop_tables(true);
         } else if (type == "config") {
           args.s->forward_to_event_thread([s = args.s]() {
-            s->load_config_early();
-            s->load_config_late();
+            try {
+              s->load_config_early();
+              s->load_config_late();
+            } catch (const exception& e) {
+              fprintf(stderr, "FAILED: %s\n", e.what());
+              fprintf(stderr, "Some configuration may have been reloaded. Fix the underlying issue and try again.\n");
+            }
           });
         } else if (type == "teams") {
           args.s->load_teams(true);
@@ -355,7 +360,7 @@ CommandDefinition c_add_license(
 
       l->save();
       args.s->license_index->add(l);
-      fprintf(stderr, "license added\n");
+      fprintf(stderr, "License added\n");
     });
 
 CommandDefinition c_update_license(
@@ -428,7 +433,7 @@ CommandDefinition c_update_license(
 
       l->save();
       args.s->license_index->add(l);
-      fprintf(stderr, "license updated\n");
+      fprintf(stderr, "License updated\n");
     });
 CommandDefinition c_delete_license(
     "delete-license", "delete-license SERIAL-NUMBER\n\
@@ -439,7 +444,7 @@ CommandDefinition c_delete_license(
       auto l = args.s->license_index->get(serial_number);
       l->delete_file();
       args.s->license_index->remove(l->serial_number);
-      fprintf(stderr, "license deleted\n");
+      fprintf(stderr, "License deleted\n");
     });
 CommandDefinition c_list_licenses(
     "list-licenses", "list-licenses\n\
@@ -618,10 +623,10 @@ CommandDefinition c_create_tournament(
         }
       }
       if (rules.check_and_reset_invalid_fields()) {
-        fprintf(stderr, "warning: some rules were invalid and reset to defaults\n");
+        fprintf(stderr, "Warning: Some rules were invalid and reset to defaults\n");
       }
       auto tourn = args.s->ep3_tournament_index->create_tournament(name, map, rules, num_teams, flags);
-      fprintf(stderr, "created tournament \"%s\"\n", tourn->get_name().c_str());
+      fprintf(stderr, "Created tournament \"%s\"\n", tourn->get_name().c_str());
     });
 
 CommandDefinition c_delete_tournament(
@@ -632,9 +637,9 @@ CommandDefinition c_delete_tournament(
     +[](CommandArgs& args) {
       string name = get_quoted_string(args.args);
       if (args.s->ep3_tournament_index->delete_tournament(name)) {
-        fprintf(stderr, "tournament deleted\n");
+        fprintf(stderr, "Deleted tournament\n");
       } else {
-        fprintf(stderr, "no such tournament exists\n");
+        fprintf(stderr, "No such tournament exists\n");
       }
     });
 CommandDefinition c_list_tournaments(
@@ -659,9 +664,9 @@ CommandDefinition c_start_tournament(
         args.s->ep3_tournament_index->save();
         tourn->send_all_state_updates();
         send_ep3_text_message_printf(args.s, "$C7The tournament\n$C6%s$C7\nhas begun", tourn->get_name().c_str());
-        fprintf(stderr, "tournament started\n");
+        fprintf(stderr, "Tournament started\n");
       } else {
-        fprintf(stderr, "no such tournament exists\n");
+        fprintf(stderr, "No such tournament exists\n");
       }
     });
 CommandDefinition c_describe_tournament(
@@ -675,7 +680,7 @@ CommandDefinition c_describe_tournament(
       if (tourn) {
         tourn->print_bracket(stderr);
       } else {
-        fprintf(stderr, "no such tournament exists\n");
+        fprintf(stderr, "No such tournament exists\n");
       }
     });
 
