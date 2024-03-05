@@ -242,7 +242,6 @@ struct Map {
     EnemyType type;
     uint8_t floor;
     uint8_t state_flags;
-    uint8_t last_hit_by_client_id;
 
     Enemy(uint16_t enemy_id, size_t source_index, size_t set_index, uint8_t floor, EnemyType type);
 

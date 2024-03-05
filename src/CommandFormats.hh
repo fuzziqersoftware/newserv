@@ -4342,13 +4342,14 @@ struct G_Attack_6x43_6x44_6x45 {
 
 // 6x46: Attack finished (sent after each of 43, 44, and 45) (protected on V3/V4)
 
+struct TargetEntry {
+  le_uint16_t entity_id = 0;
+  le_uint16_t unknown_a2 = 0;
+} __packed__;
+
 struct G_AttackFinished_6x46 {
   G_ClientIDHeader header;
   le_uint32_t count = 0;
-  struct TargetEntry {
-    le_uint16_t unknown_a1 = 0;
-    le_uint16_t unknown_a2 = 0;
-  } __packed__;
   // The client may send a shorter command if not all of these are used.
   parray<TargetEntry, 10> targets;
 } __packed__;
@@ -4366,11 +4367,7 @@ struct G_CastTechnique_6x47 {
   // compatibility, and never cleaned it up.
   uint8_t level = 0;
   uint8_t target_count = 0; // Must be in [0, 10]
-  struct TargetEntry {
-    le_uint16_t client_id = 0;
-    le_uint16_t unknown_a2 = 0;
-  } __packed__;
-  // The client mauy send a shorter command if not all of these are used.
+  // The client may send a shorter command if not all of these are used.
   parray<TargetEntry, 10> targets;
 } __packed__;
 

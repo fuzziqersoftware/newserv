@@ -2597,7 +2597,6 @@ static void on_update_enemy_state(shared_ptr<Client> c, uint8_t command, uint8_t
       return;
     }
     auto& enemy = l->map->enemies[cmd.enemy_index];
-    enemy.last_hit_by_client_id = c->lobby_client_id;
     enemy.game_flags = is_big_endian(c->version()) ? bswap32(cmd.flags) : cmd.flags.load();
     enemy.total_damage = cmd.total_damage;
     l->log.info("E-%hX updated to damage=%hu game_flags=%08" PRIX32, cmd.enemy_index.load(), enemy.total_damage, enemy.game_flags);
@@ -2831,19 +2830,17 @@ static void on_enemy_exp_request_bb(shared_ptr<Client> c, uint8_t, uint8_t, void
         // the monsters would all give more EXP, but they did something far lazier
         // instead: they just stuck an if statement in the client's EXP request
         // function. We, unfortunately, have to do the same here.
-        bool is_killer = (e.last_hit_by_client_id == c->lobby_client_id);
         bool is_ep2 = (l->episode == Episode::EP2);
         uint32_t player_exp = experience *
-            (is_killer ? 1.0 : 0.8) *
+            (cmd.is_killer ? 1.0 : 0.8) *
             l->base_exp_multiplier *
             l->challenge_exp_multiplier *
             (is_ep2 ? 1.3 : 1.0);
         if (c->config.check_flag(Client::Flag::DEBUG_ENABLED)) {
           send_text_message_printf(
-              c, "$C5+%" PRIu32 " E-%hX %s%s",
+              c, "$C5+%" PRIu32 " E-%hX %s",
               player_exp,
               cmd.enemy_index.load(),
-              (!cmd.is_killer == !is_killer) ? "" : "$C6!K$C5 ",
               name_for_enum(e.type));
         }
         if (c->character()->disp.stats.level < 199) {

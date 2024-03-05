@@ -663,19 +663,16 @@ Map::Enemy::Enemy(uint16_t enemy_id, size_t source_index, size_t set_index, uint
       game_flags(0),
       type(type),
       floor(floor),
-      state_flags(0),
-      last_hit_by_client_id(0) {
-}
+      state_flags(0) {}
 
 string Map::Enemy::str() const {
-  return string_printf("[Map::Enemy E-%hX source %zX %s%s floor=%02hhX flags=%02hhX last_hit_by_client_id=%hu]",
+  return string_printf("[Map::Enemy E-%hX source %zX %s%s floor=%02hhX flags=%02hhX]",
       this->enemy_id,
       this->source_index,
       name_for_enum(this->type),
       enemy_type_is_rare(this->type) ? " RARE" : "",
       this->floor,
-      this->state_flags,
-      this->last_hit_by_client_id);
+      this->state_flags);
 }
 
 string Map::Object::str() const {
