@@ -88,3 +88,17 @@ string string_for_address(uint32_t address) {
 uint32_t address_for_string(const char* address) {
   return ntohl(inet_addr(address));
 }
+
+uint64_t devolution_phone_number_for_netloc(uint32_t addr, uint16_t port) {
+  // It seems the address part of the number is fixed-width, but the port is
+  // not. Why did they do it this way?
+  if (port & 0xF000) {
+    return (static_cast<uint64_t>(addr) << 16) | port;
+  } else if (port & 0x0F00) {
+    return (static_cast<uint64_t>(addr) << 12) | port;
+  } else if (port & 0x00F0) {
+    return (static_cast<uint64_t>(addr) << 8) | port;
+  } else {
+    return (static_cast<uint64_t>(addr) << 4) | port;
+  }
+}

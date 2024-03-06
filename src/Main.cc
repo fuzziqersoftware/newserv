@@ -2483,7 +2483,7 @@ Action a_run_server_replay_log(
           }
         }
 
-        if (!state->ip_stack_addresses.empty() || !state->ppp_stack_addresses.empty()) {
+        if (!state->ip_stack_addresses.empty() || !state->ppp_stack_addresses.empty() || !state->ppp_raw_addresses.empty()) {
           config_log.info("Starting IP/PPP stack simulator");
           ip_stack_simulator = make_shared<IPStackSimulator>(base, state);
           for (const auto& it : state->ip_stack_addresses) {
@@ -2500,6 +2500,19 @@ Action a_run_server_replay_log(
             auto netloc = parse_netloc(it);
             string spec = (netloc.second == 0) ? ("T-PPPSR-" + netloc.first) : string_printf("T-PPPSR-%hu", netloc.second);
             ip_stack_simulator->listen(spec, netloc.first, netloc.second, IPStackSimulator::Protocol::HDLC_RAW);
+            if (netloc.second) {
+              if (state->local_address == state->external_address) {
+                config_log.info(
+                    "Note: The Devolution phone number for %s is %" PRIu64,
+                    spec.c_str(), devolution_phone_number_for_netloc(state->local_address, netloc.second));
+              } else {
+                config_log.info(
+                    "Note: The Devolution phone numbers for %s are %" PRIu64 " (local) and %" PRIu64 " (external)",
+                    spec.c_str(),
+                    devolution_phone_number_for_netloc(state->local_address, netloc.second),
+                    devolution_phone_number_for_netloc(state->external_address, netloc.second));
+              }
+            }
           }
         }
 

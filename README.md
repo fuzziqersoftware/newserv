@@ -183,6 +183,17 @@ You can make PSO connect to newserv by setting its default gateway and DNS serve
 
 If you have PSO Plus or Episode III, it won't want to connect to a server on the same local network as the GameCube itself, as determined by the GameCube's IP address and subnet mask. In the old days, one way to get around this was to create a fake network adapter on the server (or use an existing real one) that has an IP address on a different subnet, tell the GameCube that the server is the default gateway (as above), and have the server reply to the DNS request with its non-local IP address. To do this with newserv, just set LocalAddress in the config file to a different interface. For example, if the GameCube is on the 192.168.0.x network and your other adapter has address 10.0.1.6, set newserv's LocalAddress to 10.0.1.6 and set PSO's DNS server and default gateway addresses to the server's 192.168.0.x address. This may not work on modern systems or on non-Windows machines - I haven't tested it in many years.
 
+### PSO GC on a Wii or Wii U
+
+Using a Wii or Wii U to connect to newserv requires the Wii or vWii to be softmodded. How to do this is beyond the scope of this document.
+
+Nintendont includes BBA emulation and is compatible with all PSO GameCube versions except Episodes I&II Trial Edition. To use Nintendont, enable BBA emulation in Nintendont's settings and follow the instructions in the above section (PSO GC on a real GameCube).
+
+Devolution includes modem emulation and is compatible with all PSO GameCube versions including Episodes I&II Trial Edition. newserv can act as a PPP server, which Devolution can directly cnnect to. To do this:
+1. Enable the PPPRawListen option according to the comments in config.json.
+2. Start newserv.
+3. In the game's network settings, set the username and password to anything (they cannot be blank), and set the phone number to the number that newserv outputs to the console during startup. (It will be near the end of all the startup log messages.) If your Wii is on the same network as newserv, use the local number; otherwise, use the external number.
+
 ### PSO GC on Dolphin
 
 If you're using the HLE BBA type, set the BBA's DNS server address to newserv's IP address and it should work. (If newserv is on the same machine as Dolphin, you will need to use an action replay code directed at 127.0.0.1 to connect, as PSO rejects DNS queries from the same IP address.) Set PSO's network settings the same as listed below.
