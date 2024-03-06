@@ -338,9 +338,8 @@ struct PSOGCCharacterFile {
     //   H = Player lobby labels (0 = name; 1 = name, language, and level;
     //       2 = W/D counts; 3 = challenge rank; 4 = nothing)
     //   I = Idle disconnect time (0 = 15 mins; 1 = 30 mins; 2 = 45 mins;
-    //       3 = 60 mins; 4 or 5: immediately; 6: 16 seconds; 7: 32 seconds).
-    //       Obviously the behaviors for 4-7 are unintended; this is the result
-    //       of a missing bounds check.
+    //       3 = 60 mins; 4: never; 5-7: undefined behavior due to a missing
+    //       bounds check).
     //   J = Message speed (0 = slow; 1 = normal; 2 = fast; 3 = very fast)
     //   P = Cursor position (0 = saved; 1 = non-saved)
     //   Q = Button config (0 = normal; 1 = L/R reversed)
