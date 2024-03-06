@@ -888,6 +888,20 @@ void ServerState::load_config_early() {
   this->allow_gc_xb_games = this->config_json->get_bool("AllowGCXBGames", true);
   this->enable_chat_commands = this->config_json->get_bool("EnableChatCommands", true);
 
+  this->version_name_colors.reset();
+  try {
+    const auto& colors_json = this->config_json->get_list("VersionNameColors");
+    if (colors_json.size() != NUM_NON_PATCH_VERSIONS) {
+      throw runtime_error("VersionNameColors list length is incorrect");
+    }
+    auto new_colors = make_unique<std::array<uint32_t, NUM_NON_PATCH_VERSIONS>>();
+    for (size_t z = 0; z < NUM_NON_PATCH_VERSIONS; z++) {
+      new_colors->at(z) = colors_json.at(z)->as_int();
+    }
+    this->version_name_colors = std::move(new_colors);
+  } catch (const out_of_range&) {
+  }
+
   for (auto& order : this->public_lobby_search_orders) {
     order.clear();
   }

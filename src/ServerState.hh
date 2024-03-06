@@ -91,6 +91,7 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   bool allow_dc_pc_games = true;
   bool allow_gc_xb_games = true;
   bool enable_chat_commands = true;
+  std::unique_ptr<std::array<uint32_t, NUM_NON_PATCH_VERSIONS>> version_name_colors;
   uint8_t allowed_drop_modes_v1_v2_normal = 0x1F;
   uint8_t allowed_drop_modes_v1_v2_battle = 0x07;
   uint8_t allowed_drop_modes_v1_v2_challenge = 0x07;
@@ -292,6 +293,10 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   ItemData parse_item_description(Version version, const std::string& description) const;
 
   const std::vector<uint32_t> public_lobby_search_order(Version version) const;
+
+  inline uint32_t name_color_for_version(Version v) const {
+    return this->version_name_colors ? this->version_name_colors->at(static_cast<size_t>(v) - NUM_PATCH_VERSIONS) : 0;
+  }
 
   std::shared_ptr<const std::vector<std::string>> information_contents_for_client(std::shared_ptr<const Client> c) const;
   std::shared_ptr<const QuestIndex> quest_index(Version version) const;

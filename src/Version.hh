@@ -28,6 +28,8 @@ constexpr size_t NUM_VERSIONS = static_cast<size_t>(Version::BB_V4) + 1;
 constexpr size_t NUM_PATCH_VERSIONS = static_cast<size_t>(Version::BB_PATCH) + 1;
 constexpr size_t NUM_NON_PATCH_VERSIONS = NUM_VERSIONS - NUM_PATCH_VERSIONS;
 
+static_assert(NUM_NON_PATCH_VERSIONS == 12, "Don't forget to update VersionNameColors in config.json");
+
 template <>
 const char* name_for_enum<Version>(Version v);
 template <>

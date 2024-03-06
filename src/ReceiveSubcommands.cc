@@ -846,6 +846,12 @@ static void on_sync_joining_player_disp_and_inventory(
 
   parsed->transcode_inventory_items(c_v, target_v, s->item_parameter_table_for_encode(target_v));
   parsed->visual.enforce_lobby_join_limits_for_version(target_v);
+  if (s->version_name_colors) {
+    parsed->visual.name_color = s->name_color_for_version(c_v);
+    if (is_v1_or_v2(c_v)) {
+      parsed->visual.compute_name_color_checksum();
+    }
+  }
 
   switch (target_v) {
     case Version::DC_NTE:

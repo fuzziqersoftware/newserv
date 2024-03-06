@@ -963,6 +963,25 @@
   "AllowDCPCGames": false,
   "AllowGCXBGames": true,
 
+  // This option causes the server to override name colors for all players based
+  // on which version of the game they're using. If this option is missing or
+  // commented out (the default), the server does not override any name colors.
+  // There must be 12 entries in this list, and colors are specified as ARGB32.
+  // "VersionNameColors": [
+  //   0xFFBBBBBB, // DC NTE
+  //   0xFF666666, // DC 11/2000
+  //   0xFFFFFFFF, // DC v1
+  //   0xFFFFAE35, // DC v2
+  //   0xFF875C1C, // PC NTE
+  //   0xFFFFAE35, // PC v2
+  //   0xFF663366, // GC NTE
+  //   0xFFFFBBFF, // GC
+  //   0xFF666600, // Ep3 NTE
+  //   0xFFDFF56E, // Ep3
+  //   0xFFBBFFBB, // Xbox
+  //   0xFF55FDE3, // BB (the official Episode 4 color is probably 0xFFC69141)
+  // ],
+
   // These options control which item drop modes are used by default, and which
   // can be chosen by the player. The AllowedDropModes fields are a bitmask
   // specifying which modes players can choose with the $dropmode command. The
