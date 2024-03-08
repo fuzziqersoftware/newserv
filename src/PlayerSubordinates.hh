@@ -348,13 +348,14 @@ struct ChallengeAwardState {
 
 template <TextEncoding UnencryptedEncoding, TextEncoding EncryptedEncoding>
 struct PlayerRecordsDCPC_Challenge {
-  /* 00 */ le_uint16_t title_color = 0x7FFF;
-  /* 02 */ parray<uint8_t, 2> unknown_u0;
-  /* 04 */ pstring<EncryptedEncoding, 0x0C> rank_title;
-  /* 10 */ parray<ChallengeTime<false>, 9> times_ep1_online; // TODO: This might be offline times
-  /* 34 */ uint8_t grave_stage_num = 0;
-  /* 35 */ uint8_t grave_floor = 0;
-  /* 36 */ le_uint16_t grave_deaths = 0;
+  /* DC:PC */
+  /* 00:00 */ le_uint16_t title_color = 0x7FFF;
+  /* 02:02 */ parray<uint8_t, 2> unknown_u0;
+  /* 04:04 */ pstring<EncryptedEncoding, 0x0C> rank_title;
+  /* 10:1C */ parray<ChallengeTime<false>, 9> times_ep1_online; // TODO: This might be offline times
+  /* 34:40 */ uint8_t grave_stage_num = 0;
+  /* 35:41 */ uint8_t grave_floor = 0;
+  /* 36:42 */ le_uint16_t grave_deaths = 0;
   // grave_time is encoded with the following bit fields:
   //   YYYYMMMM DDDDDDDD HHHHHHHH mmmmmmmm
   //   Y = year after 2000 (clamped to [0, 15])
@@ -362,22 +363,22 @@ struct PlayerRecordsDCPC_Challenge {
   //   D = day
   //   H = hour
   //   m = minute
-  /* 38 */ le_uint32_t grave_time = 0;
-  /* 3C */ le_uint32_t grave_defeated_by_enemy_rt_index = 0;
-  /* 40 */ le_float grave_x = 0.0f;
-  /* 44 */ le_float grave_y = 0.0f;
-  /* 48 */ le_float grave_z = 0.0f;
-  /* 4C */ pstring<UnencryptedEncoding, 0x14> grave_team;
-  /* 60 */ pstring<UnencryptedEncoding, 0x18> grave_message;
-  /* 78 */ parray<ChallengeTime<false>, 9> times_ep1_offline; // TODO: This might be online times
-  /* 9C */ parray<uint8_t, 4> unknown_l4;
-  /* A0 */
+  /* 38:44 */ le_uint32_t grave_time = 0;
+  /* 3C:48 */ le_uint32_t grave_defeated_by_enemy_rt_index = 0;
+  /* 40:4C */ le_float grave_x = 0.0f;
+  /* 44:50 */ le_float grave_y = 0.0f;
+  /* 48:54 */ le_float grave_z = 0.0f;
+  /* 4C:58 */ pstring<UnencryptedEncoding, 0x14> grave_team;
+  /* 60:80 */ pstring<UnencryptedEncoding, 0x18> grave_message;
+  /* 78:B0 */ parray<ChallengeTime<false>, 9> times_ep1_offline; // TODO: This might be online times
+  /* 9C:D4 */ parray<uint8_t, 4> unknown_l4;
+  /* A0:D8 */
 } __attribute__((packed));
 
-struct PlayerRecordsDC_Challenge : PlayerRecordsDCPC_Challenge<TextEncoding::CHALLENGE8, TextEncoding::ASCII> {
+struct PlayerRecordsDC_Challenge : PlayerRecordsDCPC_Challenge<TextEncoding::ASCII, TextEncoding::CHALLENGE8> {
 } __attribute__((packed));
 
-struct PlayerRecordsPC_Challenge : PlayerRecordsDCPC_Challenge<TextEncoding::CHALLENGE16, TextEncoding::UTF16> {
+struct PlayerRecordsPC_Challenge : PlayerRecordsDCPC_Challenge<TextEncoding::UTF16, TextEncoding::CHALLENGE16> {
 } __attribute__((packed));
 
 template <bool IsBigEndian>

@@ -3309,7 +3309,7 @@ static void on_challenge_update_records(shared_ptr<Client> c, uint8_t command, u
       break;
     }
     case Version::PC_V2: {
-      const auto& cmd = check_size_t<G_SetChallengeRecords_DC_6x7C>(data, size);
+      const auto& cmd = check_size_t<G_SetChallengeRecords_PC_6x7C>(data, size);
       p->challenge_records = cmd.records;
       break;
     }
