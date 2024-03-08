@@ -14,6 +14,7 @@
 
 namespace MenuID {
 constexpr uint32_t MAIN = 0x11000011;
+constexpr uint32_t CLEAR_LICENSE_CONFIRMATION = 0x11111111;
 constexpr uint32_t INFORMATION = 0x22000022;
 constexpr uint32_t LOBBY = 0x33000033;
 constexpr uint32_t GAME = 0x44000044;
@@ -39,6 +40,11 @@ constexpr uint32_t PROGRAMS = 0x11777711;
 constexpr uint32_t DISCONNECT = 0x11888811;
 constexpr uint32_t CLEAR_LICENSE = 0x11999911;
 } // namespace MainMenuItemID
+
+namespace ClearLicenseConfirmationMenuItemID {
+constexpr uint32_t CANCEL = 0x01010101;
+constexpr uint32_t CLEAR_LICENSE = 0x02020202;
+} // namespace ClearLicenseConfirmationMenuItemID
 
 namespace InformationMenuItemID {
 constexpr uint32_t GO_BACK = 0x22FFFF22;

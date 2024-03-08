@@ -2312,14 +2312,36 @@ static void on_10(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
           c->should_disconnect = true;
           break;
 
-        case MainMenuItemID::CLEAR_LICENSE:
-          send_command(c, 0x9A, 0x04);
-          c->should_disconnect = true;
+        case MainMenuItemID::CLEAR_LICENSE: {
+          auto s = c->require_server_state();
+
+          auto conf_menu = make_shared<Menu>(MenuID::CLEAR_LICENSE_CONFIRMATION, s->name);
+          conf_menu->items.emplace_back(ClearLicenseConfirmationMenuItemID::CANCEL, "Go back",
+              "Go back to the\nmain menu", 0);
+          conf_menu->items.emplace_back(ClearLicenseConfirmationMenuItemID::CLEAR_LICENSE, "Clear license",
+              "Disconnect with an\ninvalid license error\nso you can enter a\ndifferent serial\nnumber, access key,\nor password",
+              MenuItem::Flag::INVISIBLE_ON_DC_PROTOS | MenuItem::Flag::INVISIBLE_ON_PC_NTE | MenuItem::Flag::INVISIBLE_ON_XB | MenuItem::Flag::INVISIBLE_ON_BB);
+
+          send_menu(c, conf_menu);
+          send_ship_info(c, "Are you sure?");
           break;
+        }
 
         default:
           send_message_box(c, "Incorrect menu item ID.");
           break;
+      }
+      break;
+    }
+
+    case MenuID::CLEAR_LICENSE_CONFIRMATION: {
+      switch (item_id) {
+        case ClearLicenseConfirmationMenuItemID::CANCEL:
+          send_main_menu(c);
+          break;
+        case ClearLicenseConfirmationMenuItemID::CLEAR_LICENSE:
+          send_command(c, 0x9A, 0x04);
+          c->should_disconnect = true;
       }
       break;
     }
