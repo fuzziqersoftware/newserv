@@ -3344,6 +3344,7 @@ static void on_challenge_update_records(shared_ptr<Client> c, uint8_t command, u
         dc_data.resize(sizeof(G_SetChallengeRecords_DC_6x7C));
         auto& dc_cmd = check_size_t<G_SetChallengeRecords_DC_6x7C>(dc_data);
         dc_cmd.header = cmd.header;
+        dc_cmd.header.size = sizeof(G_SetChallengeRecords_DC_6x7C) >> 2;
         dc_cmd.client_id = cmd.client_id;
         dc_cmd.unknown_a1 = cmd.unknown_a1;
         dc_cmd.records = p->challenge_records;
@@ -3355,6 +3356,7 @@ static void on_challenge_update_records(shared_ptr<Client> c, uint8_t command, u
         pc_data.resize(sizeof(G_SetChallengeRecords_PC_6x7C));
         auto& pc_cmd = check_size_t<G_SetChallengeRecords_PC_6x7C>(pc_data);
         pc_cmd.header = cmd.header;
+        pc_cmd.header.size = sizeof(G_SetChallengeRecords_PC_6x7C) >> 2;
         pc_cmd.client_id = cmd.client_id;
         pc_cmd.unknown_a1 = cmd.unknown_a1;
         pc_cmd.records = p->challenge_records;
@@ -3366,6 +3368,7 @@ static void on_challenge_update_records(shared_ptr<Client> c, uint8_t command, u
         v3_data.resize(sizeof(G_SetChallengeRecords_V3_6x7C));
         auto& v3_cmd = check_size_t<G_SetChallengeRecords_V3_6x7C>(v3_data);
         v3_cmd.header = cmd.header;
+        v3_cmd.header.size = sizeof(G_SetChallengeRecords_V3_6x7C) >> 2;
         v3_cmd.client_id = cmd.client_id;
         v3_cmd.unknown_a1 = cmd.unknown_a1;
         v3_cmd.records = p->challenge_records;
@@ -3377,6 +3380,7 @@ static void on_challenge_update_records(shared_ptr<Client> c, uint8_t command, u
         bb_data.resize(sizeof(G_SetChallengeRecords_BB_6x7C));
         auto& bb_cmd = check_size_t<G_SetChallengeRecords_BB_6x7C>(bb_data);
         bb_cmd.header = cmd.header;
+        bb_cmd.header.size = sizeof(G_SetChallengeRecords_BB_6x7C) >> 2;
         bb_cmd.client_id = cmd.client_id;
         bb_cmd.unknown_a1 = cmd.unknown_a1;
         bb_cmd.records = p->challenge_records;
