@@ -408,6 +408,16 @@ ItemData ItemNameIndex::parse_item_description_phase(const std::string& descript
   if (is_wrapped) {
     desc = desc.substr(8);
   }
+  bool is_unidentified = starts_with(desc, "?");
+  if (is_unidentified) {
+    size_t z;
+    for (z = 1; z < desc.size(); z++) {
+      if (desc[z] != ' ' && desc[z] != '?') {
+        break;
+      }
+    }
+    desc = desc.substr(z);
+  }
 
   // TODO: It'd be nice to be able to parse S-rank weapon specials here too.
   uint8_t weapon_special = 0;
@@ -459,7 +469,7 @@ ItemData ItemNameIndex::parse_item_description_phase(const std::string& descript
 
   if (ret.data1[0] == 0x00) {
     // Weapons: add special, grind and percentages (or name, if S-rank)
-    ret.data1[4] = weapon_special | (is_wrapped ? 0x40 : 0x00);
+    ret.data1[4] = weapon_special | (is_wrapped ? 0x40 : 0x00) | (is_unidentified ? 0x80 : 0x00);
 
     auto tokens = split(desc, ' ');
     for (auto& token : tokens) {

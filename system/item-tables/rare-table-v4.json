@@ -10,11 +10,15 @@
   // Probability may be a 32-bit integer specifying the relative frequency of
   // finding the item, out of 2^32 (so 0x80000000 means a 50% chance), or it may
   // be a fraction represented as a string (e.g. "3/32"). ItemDesc may be a
-  // textual description of the item, or it may be an integer specifying the
-  // 3-byte item code (in this case, the item code may be specified in hex, like
-  // 0x009D00). Keep in mind that only the first 3 bytes of the item code are
-  // used, so weapon grinds and attributes, etc. will be ignored when specifying
-  // items as strings.
+  // textual description of the item, the item's data specified as a hex string,
+  // or an integer specifying the 3-byte item code (in this case, the item code
+  // may be specified in hex, like 0x009D00). If an item has any extended
+  // attributes specified (that is, if there are any nonzero bytes in the item's
+  // data beyond the first three bytes), then the standard random attribute
+  // logic is disabled for that item and it will drop exactly as specified.
+  // Furthermore, if any item has any extended attributes specified, then the
+  // entire rare table can only be represented in this JSON format and cannot be
+  // converted to any other format (AFS/GSL/REL).
   "Normal": {
     "Episode1": {
       "Hard": {

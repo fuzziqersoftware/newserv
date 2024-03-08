@@ -1618,7 +1618,8 @@ Action a_convert_rare_item_set(
     +[](Arguments& args) {
       auto version = get_cli_version(args);
 
-      auto s = make_shared<ServerState>();
+      auto s = make_shared<ServerState>("system/config.json");
+      s->load_config_early();
       s->load_patch_indexes(false);
       s->load_text_index(false);
       s->load_item_definitions(false);

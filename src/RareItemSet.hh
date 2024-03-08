@@ -19,7 +19,7 @@ class RareItemSet {
 public:
   struct ExpandedDrop {
     uint32_t probability = 0;
-    parray<uint8_t, 3> item_code;
+    ItemData data;
 
     std::string str() const;
     std::string str(std::shared_ptr<const ItemNameIndex> name_index) const;

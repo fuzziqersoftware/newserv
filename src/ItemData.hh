@@ -146,6 +146,7 @@ struct ItemData {
   static ItemData from_data(const std::string& data);
   static ItemData from_primary_identifier(const StackLimits& limits, uint32_t primary_identifier);
   std::string hex() const;
+  std::string short_hex() const;
   uint32_t primary_identifier() const;
 
   bool is_wrapped(const StackLimits& limits) const;
@@ -188,6 +189,8 @@ struct ItemData {
 
   EquipSlot default_equip_slot() const;
   bool can_be_equipped_in_slot(EquipSlot slot) const;
+
+  bool can_be_encoded_in_rel_rare_table() const;
 
   bool empty() const;
 

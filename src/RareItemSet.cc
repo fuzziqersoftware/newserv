@@ -12,20 +12,16 @@ using namespace std;
 
 string RareItemSet::ExpandedDrop::str() const {
   auto frac = reduce_fraction<uint64_t>(this->probability, 0x100000000);
+  auto hex = this->data.hex();
   return string_printf(
-      "(%08" PRIX32 " => %" PRIu64 "/%" PRIu64 ") %02hhX%02hhX%02hhX",
-      this->probability, frac.first, frac.second, this->item_code[0], this->item_code[1], this->item_code[2]);
+      "(%08" PRIX32 " => %" PRIu64 "/%" PRIu64 ") %s",
+      this->probability, frac.first, frac.second, hex.c_str());
 }
 
 string RareItemSet::ExpandedDrop::str(shared_ptr<const ItemNameIndex> name_index) const {
-  ItemData item;
-  item.data1[0] = this->item_code[0];
-  item.data1[1] = this->item_code[1];
-  item.data1[2] = this->item_code[2];
-
   string ret = this->str();
   ret += " (";
-  ret += name_index->describe_item(item);
+  ret += name_index->describe_item(this->data);
   ret += ")";
   return ret;
 }
@@ -78,14 +74,22 @@ uint8_t RareItemSet::compress_rate(uint32_t probability) {
 }
 
 RareItemSet::ParsedRELData::PackedDrop::PackedDrop(const ExpandedDrop& exp)
-    : probability(RareItemSet::compress_rate(exp.probability)),
-      item_code(exp.item_code) {}
+    : probability(RareItemSet::compress_rate(exp.probability)) {
+  if (!exp.data.can_be_encoded_in_rel_rare_table()) {
+    throw runtime_error("item " + exp.data.short_hex() + " has extended attributes and cannot be encoded in a REL file");
+  }
+  this->item_code[0] = exp.data.data1[0];
+  this->item_code[1] = exp.data.data1[1];
+  this->item_code[2] = exp.data.data1[2];
+}
 
 RareItemSet::ExpandedDrop RareItemSet::ParsedRELData::PackedDrop::expand() const {
-  return ExpandedDrop{
-      .probability = RareItemSet::expand_rate(this->probability),
-      .item_code = this->item_code,
-  };
+  ExpandedDrop ret;
+  ret.probability = RareItemSet::expand_rate(this->probability);
+  ret.data.data1[0] = this->item_code[0];
+  ret.data.data1[1] = this->item_code[1];
+  ret.data.data1[2] = this->item_code[2];
+  return ret;
 }
 
 template <bool IsBigEndian>
@@ -184,10 +188,9 @@ RareItemSet::ParsedRELData::ParsedRELData(const SpecCollection& collection) {
   for (const auto& specs : collection.rt_index_to_specs) {
     ExpandedDrop effective_spec;
     for (const auto& spec : specs) {
-      if (effective_spec.item_code.is_filled_with(0)) {
+      if (effective_spec.data.empty()) {
         effective_spec = spec;
-      } else if ((effective_spec.probability != spec.probability) ||
-          (effective_spec.item_code != spec.item_code)) {
+      } else if ((effective_spec.probability != spec.probability) || (effective_spec.data != spec.data)) {
         throw runtime_error("monster spec cannot be converted to ItemRT format");
       }
     }
@@ -216,7 +219,7 @@ RareItemSet::SpecCollection RareItemSet::ParsedRELData::as_collection() const {
   SpecCollection ret;
   for (size_t z = 0; z < this->monster_rares.size(); z++) {
     const auto& drop = this->monster_rares[z];
-    if (drop.item_code.is_filled_with(0)) {
+    if (drop.data.empty()) {
       continue;
     }
     if (z >= ret.rt_index_to_specs.size()) {
@@ -225,7 +228,7 @@ RareItemSet::SpecCollection RareItemSet::ParsedRELData::as_collection() const {
     ret.rt_index_to_specs[z].emplace_back(drop);
   }
   for (const auto& drop : this->box_rares) {
-    if (drop.drop.item_code.is_filled_with(0)) {
+    if (drop.drop.data.empty()) {
       continue;
     }
     if (drop.area >= ret.box_area_to_specs.size()) {
@@ -362,17 +365,14 @@ RareItemSet::RareItemSet(const JSON& json, shared_ptr<const ItemNameIndex> name_
               auto item_desc = spec_json->at(1);
               if (item_desc.is_int()) {
                 uint32_t item_code = item_desc.as_int();
-                d.item_code[0] = (item_code >> 16) & 0xFF;
-                d.item_code[1] = (item_code >> 8) & 0xFF;
-                d.item_code[2] = item_code & 0xFF;
+                d.data.data1[0] = (item_code >> 16) & 0xFF;
+                d.data.data1[1] = (item_code >> 8) & 0xFF;
+                d.data.data1[2] = item_code & 0xFF;
               } else if (item_desc.is_string()) {
                 if (!name_index) {
                   throw runtime_error("item name index is not available");
                 }
-                ItemData data = name_index->parse_item_description(item_desc.as_string());
-                d.item_code[0] = data.data1[0];
-                d.item_code[1] = data.data1[1];
-                d.item_code[2] = data.data1[2];
+                d.data = name_index->parse_item_description(item_desc.as_string());
               } else {
                 throw runtime_error("invalid item description type");
               }
@@ -446,19 +446,18 @@ JSON RareItemSet::json(shared_ptr<const ItemNameIndex> name_index) const {
             }
 
             for (const auto& spec : this->get_enemy_specs(GameMode::NORMAL, episode, difficulty, section_id, rt_index)) {
-              uint32_t data1_0_1_2 = (spec.item_code[0] << 16) | (spec.item_code[1] << 8) | spec.item_code[2];
-              if (data1_0_1_2 == 0) {
+              if (spec.data.empty()) {
                 continue;
               }
-
               auto frac = reduce_fraction<uint64_t>(spec.probability, 0x100000000);
-              auto spec_json = JSON::list({string_printf("%" PRIu64 "/%" PRIu64, frac.first, frac.second), data1_0_1_2});
+              auto spec_json = JSON::list({string_printf("%" PRIu64 "/%" PRIu64, frac.first, frac.second)});
+              if (spec.data.can_be_encoded_in_rel_rare_table()) {
+                spec_json.emplace_back((spec.data.data1[0] << 16) | (spec.data.data1[1] << 8) | spec.data.data1[2]);
+              } else {
+                spec_json.emplace_back(spec.data.short_hex());
+              }
               if (name_index) {
-                ItemData data;
-                data.data1[0] = spec.item_code[0];
-                data.data1[1] = spec.item_code[1];
-                data.data1[2] = spec.item_code[2];
-                spec_json.emplace_back(name_index->describe_item(data));
+                spec_json.emplace_back(name_index->describe_item(spec.data));
               }
               for (const auto& enemy_type : enemy_types) {
                 if (enemy_type_valid_for_episode(episode, enemy_type)) {
@@ -473,20 +472,20 @@ JSON RareItemSet::json(shared_ptr<const ItemNameIndex> name_index) const {
             auto area_list = JSON::list();
 
             for (const auto& spec : this->get_box_specs(GameMode::NORMAL, episode, difficulty, section_id, area)) {
-              uint32_t data1_0_1_2 = (spec.item_code[0] << 16) | (spec.item_code[1] << 8) | spec.item_code[2];
-              if (data1_0_1_2 == 0) {
+              if (spec.data.empty()) {
                 continue;
               }
-
               auto frac = reduce_fraction<uint64_t>(spec.probability, 0x100000000);
-              area_list.emplace_back(JSON::list({string_printf("%" PRIu64 "/%" PRIu64, frac.first, frac.second), data1_0_1_2}));
-              if (name_index) {
-                ItemData data;
-                data.data1[0] = spec.item_code[0];
-                data.data1[1] = spec.item_code[1];
-                data.data1[2] = spec.item_code[2];
-                area_list.back().emplace_back(name_index->describe_item(data));
+              auto spec_json = JSON::list({string_printf("%" PRIu64 "/%" PRIu64, frac.first, frac.second)});
+              if (spec.data.can_be_encoded_in_rel_rare_table()) {
+                spec_json.emplace_back((spec.data.data1[0] << 16) | (spec.data.data1[1] << 8) | spec.data.data1[2]);
+              } else {
+                spec_json.emplace_back(spec.data.short_hex());
               }
+              if (name_index) {
+                spec_json.emplace_back(name_index->describe_item(spec.data));
+              }
+              area_list.emplace_back(std::move(spec_json));
             }
 
             if (!area_list.empty()) {

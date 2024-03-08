@@ -665,6 +665,10 @@ bool ItemData::can_be_equipped_in_slot(EquipSlot slot) const {
   }
 }
 
+bool ItemData::can_be_encoded_in_rel_rare_table() const {
+  return !(this->data1[3] || this->data1d[1] || this->data1d[2] || this->data2d);
+}
+
 bool ItemData::compare_for_sort(const ItemData& a, const ItemData& b) {
   for (size_t z = 0; z < 12; z++) {
     if (a.data1[z] < b.data1[z]) {
@@ -722,10 +726,19 @@ ItemData ItemData::from_primary_identifier(const StackLimits& limits, uint32_t p
 }
 
 string ItemData::hex() const {
-  return string_printf("%02hhX%02hhX%02hhX%02hhX %02hhX%02hhX%02hhX%02hhX %02hhX%02hhX%02hhX%02hhX (%08" PRIX32 ") %02hhX%02hhX%02hhX%02hhX",
-      this->data1[0], this->data1[1], this->data1[2], this->data1[3],
-      this->data1[4], this->data1[5], this->data1[6], this->data1[7],
-      this->data1[8], this->data1[9], this->data1[10], this->data1[11],
-      this->id.load(),
-      this->data2[0], this->data2[1], this->data2[2], this->data2[3]);
+  return string_printf("%08" PRIX32 " %08" PRIX32 " %08" PRIX32 " (%08" PRIX32 ") %08" PRIX32,
+      this->data1db[0].load(), this->data1db[1].load(), this->data1db[2].load(), this->id.load(), this->data2db.load());
+}
+
+string ItemData::short_hex() const {
+  auto ret = string_printf("%08" PRIX32 "%08" PRIX32 "%08" PRIX32 "%08" PRIX32,
+      this->data1db[0].load(), this->data1db[1].load(), this->data1db[2].load(), this->data2db.load());
+  size_t offset = ret.find_last_not_of('0');
+  if (offset != string::npos) {
+    offset += (offset & 1) ? 1 : 2;
+    if (offset < ret.size()) {
+      ret.resize(offset);
+    }
+  }
+  return ret;
 }

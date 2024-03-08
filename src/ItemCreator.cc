@@ -272,12 +272,16 @@ ItemData ItemCreator::check_rare_specs_and_create_rare_box_item(uint8_t area_nor
   for (const auto& spec : rare_specs) {
     item = this->check_rate_and_create_rare_item(spec, area_norm);
     if (!item.empty()) {
-      this->log.info("Box spec %08" PRIX32 " produced item %02hhX%02hhX%02hhX",
-          spec.probability, spec.item_code[0], spec.item_code[1], spec.item_code[2]);
+      if (this->log.should_log(LogLevel::INFO)) {
+        auto hex = spec.data.hex();
+        this->log.info("Box spec %08" PRIX32 " produced item %s", spec.probability, hex.c_str());
+      }
       break;
     }
-    this->log.info("Box spec %08" PRIX32 " did not produce item %02hhX%02hhX%02hhX",
-        spec.probability, spec.item_code[0], spec.item_code[1], spec.item_code[2]);
+    if (this->log.should_log(LogLevel::INFO)) {
+      auto hex = spec.data.hex();
+      this->log.info("Box spec %08" PRIX32 " did not produce item %s", spec.probability, hex.c_str());
+    }
   }
   return item;
 }
@@ -329,12 +333,16 @@ ItemData ItemCreator::check_rare_spec_and_create_rare_enemy_item(uint32_t enemy_
     for (const auto& spec : rare_specs) {
       item = this->check_rate_and_create_rare_item(spec, area_norm);
       if (!item.empty()) {
-        this->log.info("Enemy spec %08" PRIX32 " produced item %02hhX%02hhX%02hhX",
-            spec.probability, spec.item_code[0], spec.item_code[1], spec.item_code[2]);
+        if (this->log.should_log(LogLevel::INFO)) {
+          auto hex = spec.data.hex();
+          this->log.info("Enemy spec %08" PRIX32 " produced item %s", spec.probability, hex.c_str());
+        }
         break;
       }
-      this->log.info("Enemy spec %08" PRIX32 " did not produce item %02hhX%02hhX%02hhX",
-          spec.probability, spec.item_code[0], spec.item_code[1], spec.item_code[2]);
+      if (this->log.should_log(LogLevel::INFO)) {
+        auto hex = spec.data.hex();
+        this->log.info("Enemy spec %08" PRIX32 " did not produce item %s", spec.probability, hex.c_str());
+      }
     }
   }
   return item;
@@ -351,37 +359,36 @@ ItemData ItemCreator::check_rate_and_create_rare_item(const RareItemSet::Expande
     return ItemData();
   }
 
-  ItemData item;
-  item.data1[0] = drop.item_code[0];
-  item.data1[1] = drop.item_code[1];
-  item.data1[2] = drop.item_code[2];
-  switch (item.data1[0]) {
-    case 0:
-      if (this->pt->has_rare_bonus_value_prob_table) {
-        this->generate_rare_weapon_bonuses(item, this->rand_int(10));
-      } else {
-        this->generate_common_weapon_bonuses(item, area_norm);
-      }
-      this->set_item_unidentified_flag_if_not_challenge(item);
-      break;
-    case 1:
-      this->generate_common_armor_slots_and_bonuses(item);
-      break;
-    case 2:
-      this->generate_common_mag_variances(item);
-      break;
-    case 3:
-      this->clear_tool_item_if_invalid(item);
-      this->set_tool_item_amount_to_1(item);
-      break;
-    case 4:
-      break;
-    default:
-      throw logic_error("invalid item class");
+  ItemData item = drop.data;
+  if (item.can_be_encoded_in_rel_rare_table()) {
+    switch (item.data1[0]) {
+      case 0:
+        if (this->pt->has_rare_bonus_value_prob_table) {
+          this->generate_rare_weapon_bonuses(item, this->rand_int(10));
+        } else {
+          this->generate_common_weapon_bonuses(item, area_norm);
+        }
+        this->set_item_unidentified_flag_if_not_challenge(item);
+        break;
+      case 1:
+        this->generate_common_armor_slots_and_bonuses(item);
+        break;
+      case 2:
+        this->generate_common_mag_variances(item);
+        break;
+      case 3:
+        this->clear_tool_item_if_invalid(item);
+        this->set_tool_item_amount_to_1(item);
+        break;
+      case 4:
+        break;
+      default:
+        throw logic_error("invalid item class");
+    }
+    this->set_item_kill_count_if_unsealable(item);
   }
 
   this->clear_item_if_restricted(item);
-  this->set_item_kill_count_if_unsealable(item);
   return item;
 }
 
