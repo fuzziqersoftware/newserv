@@ -509,6 +509,21 @@ JSON RareItemSet::json(shared_ptr<const ItemNameIndex> name_index) const {
   return modes_dict;
 }
 
+void RareItemSet::multiply_all_rates(double factor) {
+  auto multiply_rates_vec = +[](vector<vector<ExpandedDrop>>& vec, double factor) -> void {
+    for (auto& vec_it : vec) {
+      for (auto& z_it : vec_it) {
+        uint64_t new_probability = z_it.probability * factor;
+        z_it.probability = min<uint64_t>(new_probability, 0xFFFFFFFF);
+      }
+    }
+  };
+  for (auto& coll_it : this->collections) {
+    multiply_rates_vec(coll_it.second.rt_index_to_specs, factor);
+    multiply_rates_vec(coll_it.second.box_area_to_specs, factor);
+  }
+}
+
 void RareItemSet::print_collection(
     FILE* stream,
     GameMode mode,

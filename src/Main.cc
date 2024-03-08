@@ -1605,7 +1605,7 @@ Action a_cat_client(
 
 Action a_convert_rare_item_set(
     "convert-rare-item-set", "\
-  convert-rare-item-set INPUT-FILENAME [OUTPUT-FILENAME]\n\
+  convert-rare-item-set INPUT-FILENAME [OUTPUT-FILENAME] [OPTIONS]\n\
     If OUTPUT-FILENAME is not given, print the contents of a rare item table in\n\
     a human-readable format. Otherwise, convert the input rare item set to a\n\
     different format and write it to OUTPUT-FILENAME. Both filenames must end\n\
@@ -1614,10 +1614,13 @@ Action a_convert_rare_item_set(
       .gsl (PSO BB little-endian GSL archive)\n\
       .gslb (PSO GC big-endian GSL archive)\n\
       .afs (PSO V2 little-endian AFS archive)\n\
-      .rel (Schtserv rare table; cannot be used in output filename)\n",
+      .rel (Schtserv rare table; cannot be used in output filename)\n\
+    If the --multiply=X option is given, multiplies all drop rates by X (given\n\
+    as a decimal value).\n",
     +[](Arguments& args) {
       auto version = get_cli_version(args);
 
+      double rate_factor = args.get<double>("multiply");
       auto s = make_shared<ServerState>("system/config.json");
       s->load_config_early();
       s->load_patch_indexes(false);
@@ -1644,6 +1647,10 @@ Action a_convert_rare_item_set(
         rs = make_shared<RareItemSet>(*data, true);
       } else {
         throw runtime_error("cannot determine input format; use a filename ending with .json, .gsl, .gslb, .afs, or .rel");
+      }
+
+      if (rate_factor != 1.0) {
+        rs->multiply_all_rates(rate_factor);
       }
 
       string output_filename = args.get<string>(2, false);

@@ -39,6 +39,8 @@ public:
   std::string serialize_gsl(bool big_endian) const;
   JSON json(std::shared_ptr<const ItemNameIndex> name_index = nullptr) const;
 
+  void multiply_all_rates(double factor);
+
   void print_collection(
       FILE* stream,
       GameMode mode,
