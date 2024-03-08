@@ -496,11 +496,20 @@ bool Lobby::any_client_loading() const {
 size_t Lobby::count_clients() const {
   size_t ret = 0;
   for (size_t x = 0; x < this->max_clients; x++) {
-    if (this->clients[x].get()) {
+    if (this->clients[x]) {
       ret++;
     }
   }
   return ret;
+}
+
+bool Lobby::any_v1_clients_present() const {
+  for (size_t x = 0; x < this->max_clients; x++) {
+    if (this->clients[x] && is_v1(this->clients[x]->version())) {
+      return true;
+    }
+  }
+  return false;
 }
 
 void Lobby::add_client(shared_ptr<Client> c, ssize_t required_client_id) {
@@ -752,8 +761,9 @@ Lobby::JoinError Lobby::join_error_for_client(std::shared_ptr<Client> c, const s
       }
       if (this->quest) {
         size_t num_clients = this->count_clients() + 1;
-        if (!c->can_see_quest(this->quest, this->event, this->difficulty, num_clients) ||
-            !c->can_play_quest(this->quest, this->event, this->difficulty, num_clients)) {
+        bool v1_present = is_v1(c->version()) || this->any_v1_clients_present();
+        if (!c->can_see_quest(this->quest, this->event, this->difficulty, num_clients, v1_present) ||
+            !c->can_play_quest(this->quest, this->event, this->difficulty, num_clients, v1_present)) {
           return JoinError::NO_ACCESS_TO_QUEST;
         }
       }
@@ -862,13 +872,14 @@ unordered_map<uint32_t, shared_ptr<Client>> Lobby::clients_by_serial_number() co
 
 QuestIndex::IncludeCondition Lobby::quest_include_condition() const {
   size_t num_players = this->count_clients();
-  return [this, num_players](shared_ptr<const Quest> q) -> QuestIndex::IncludeState {
+  bool v1_present = this->any_v1_clients_present();
+  return [this, num_players, v1_present](shared_ptr<const Quest> q) -> QuestIndex::IncludeState {
     bool is_enabled = true;
     for (const auto& lc : this->clients) {
-      if (lc && !lc->can_see_quest(q, this->event, this->difficulty, num_players)) {
+      if (lc && !lc->can_see_quest(q, this->event, this->difficulty, num_players, v1_present)) {
         return QuestIndex::IncludeState::HIDDEN;
       }
-      if (lc && !lc->can_play_quest(q, this->event, this->difficulty, num_players)) {
+      if (lc && !lc->can_play_quest(q, this->event, this->difficulty, num_players, v1_present)) {
         is_enabled = false;
       }
     }

@@ -21,6 +21,7 @@ public:
     std::shared_ptr<const TeamIndex::Team> team;
     size_t num_players;
     uint8_t event;
+    bool v1_present;
   };
 
   QuestAvailabilityExpression(const std::string& text);
@@ -155,6 +156,15 @@ protected:
   public:
     EventLookupNode();
     virtual ~EventLookupNode() = default;
+    virtual bool operator==(const Node& other) const;
+    virtual int64_t evaluate(const Env& env) const;
+    virtual std::string str() const;
+  };
+
+  class V1PresenceLookupNode : public Node {
+  public:
+    V1PresenceLookupNode();
+    virtual ~V1PresenceLookupNode() = default;
     virtual bool operator==(const Node& other) const;
     virtual int64_t evaluate(const Env& env) const;
     virtual std::string str() const;

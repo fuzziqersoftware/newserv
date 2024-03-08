@@ -349,46 +349,41 @@ shared_ptr<const TeamIndex::Team> Client::team() const {
   return team;
 }
 
-bool Client::can_see_quest(shared_ptr<const Quest> q, uint8_t event, uint8_t difficulty, size_t num_players) const {
+bool Client::evaluate_quest_availability_expression(
+    shared_ptr<const QuestAvailabilityExpression> expr,
+    uint8_t event,
+    uint8_t difficulty,
+    size_t num_players,
+    bool v1_present) const {
   if (this->license && this->license->check_flag(License::Flag::DISABLE_QUEST_REQUIREMENTS)) {
     return true;
   }
-  if (!q->available_expression) {
+  if (!expr) {
     return true;
   }
   auto p = this->character();
-  string expr = q->available_expression->str();
   QuestAvailabilityExpression::Env env = {
       .flags = &p->quest_flags.data.at(difficulty),
       .challenge_records = &p->challenge_records,
       .team = this->team(),
       .num_players = num_players,
       .event = event,
+      .v1_present = v1_present,
   };
-  int64_t ret = q->available_expression->evaluate(env);
-  this->log.info("Evaluated quest availability expression %s => %s", expr.c_str(), ret ? "TRUE" : "FALSE");
+  int64_t ret = expr->evaluate(env);
+  if (this->log.should_log(LogLevel::INFO)) {
+    string expr_str = expr->str();
+    this->log.info("Evaluated quest availability expression %s => %s", expr_str.c_str(), ret ? "TRUE" : "FALSE");
+  }
   return ret;
 }
 
-bool Client::can_play_quest(shared_ptr<const Quest> q, uint8_t event, uint8_t difficulty, size_t num_players) const {
-  if (this->license && this->license->check_flag(License::Flag::DISABLE_QUEST_REQUIREMENTS)) {
-    return true;
-  }
-  if (!q->enabled_expression) {
-    return true;
-  }
-  auto p = this->character();
-  string expr = q->enabled_expression->str();
-  QuestAvailabilityExpression::Env env = {
-      .flags = &p->quest_flags.data.at(difficulty),
-      .challenge_records = &p->challenge_records,
-      .team = this->team(),
-      .num_players = num_players,
-      .event = event,
-  };
-  bool ret = q->enabled_expression->evaluate(env);
-  this->log.info("Evaluating quest enabled expression %s => %s", expr.c_str(), ret ? "TRUE" : "FALSE");
-  return ret;
+bool Client::can_see_quest(shared_ptr<const Quest> q, uint8_t event, uint8_t difficulty, size_t num_players, bool v1_present) const {
+  return this->evaluate_quest_availability_expression(q->available_expression, event, difficulty, num_players, v1_present);
+}
+
+bool Client::can_play_quest(shared_ptr<const Quest> q, uint8_t event, uint8_t difficulty, size_t num_players, bool v1_present) const {
+  return this->evaluate_quest_availability_expression(q->enabled_expression, event, difficulty, num_players, v1_present);
 }
 
 bool Client::can_use_chat_commands() const {

@@ -259,6 +259,20 @@ string QuestAvailabilityExpression::EventLookupNode::str() const {
   return "V_Event";
 }
 
+QuestAvailabilityExpression::V1PresenceLookupNode::V1PresenceLookupNode() {}
+
+bool QuestAvailabilityExpression::V1PresenceLookupNode::operator==(const Node& other) const {
+  return dynamic_cast<const V1PresenceLookupNode*>(&other) != nullptr;
+}
+
+int64_t QuestAvailabilityExpression::V1PresenceLookupNode::evaluate(const Env& env) const {
+  return env.v1_present ? 1 : 0;
+}
+
+string QuestAvailabilityExpression::V1PresenceLookupNode::str() const {
+  return "V_V1Present";
+}
+
 QuestAvailabilityExpression::ConstantNode::ConstantNode(int64_t value)
     : value(value) {}
 
@@ -411,6 +425,9 @@ unique_ptr<const QuestAvailabilityExpression::Node> QuestAvailabilityExpression:
   }
   if (text == "V_Event") {
     return make_unique<EventLookupNode>();
+  }
+  if (text == "V_V1Present") {
+    return make_unique<V1PresenceLookupNode>();
   }
 
   // Check for constants

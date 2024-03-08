@@ -290,8 +290,14 @@ public:
 
   std::shared_ptr<const TeamIndex::Team> team() const;
 
-  bool can_see_quest(std::shared_ptr<const Quest> q, uint8_t event, uint8_t difficulty, size_t num_players) const;
-  bool can_play_quest(std::shared_ptr<const Quest> q, uint8_t event, uint8_t difficulty, size_t num_players) const;
+  bool evaluate_quest_availability_expression(
+      std::shared_ptr<const QuestAvailabilityExpression> expr,
+      uint8_t event,
+      uint8_t difficulty,
+      size_t num_players,
+      bool v1_present) const;
+  bool can_see_quest(std::shared_ptr<const Quest> q, uint8_t event, uint8_t difficulty, size_t num_players, bool v1_present) const;
+  bool can_play_quest(std::shared_ptr<const Quest> q, uint8_t event, uint8_t difficulty, size_t num_players, bool v1_present) const;
 
   bool can_use_chat_commands() const;
 
