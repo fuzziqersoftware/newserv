@@ -965,13 +965,18 @@ static HandlerResult SC_6x60_6xA2(shared_ptr<ProxyServer::LinkedSession> ses, co
     case DropMode::PASSTHROUGH:
       return HandlerResult::Type::FORWARD;
     case DropMode::INTERCEPT:
-      if (!ses->item_creator) {
-        ses->log.warning("Received item drop request in intercept mode, but item creator is missing");
-        return HandlerResult::Type::FORWARD;
-      }
       break;
     default:
       throw logic_error("invalid drop mode");
+  }
+
+  if (!ses->item_creator) {
+    ses->log.warning("Session is in INTERCEPT drop mode, but item creator is missing");
+    return HandlerResult::Type::FORWARD;
+  }
+  if (!ses->map) {
+    ses->log.warning("Session is in INTERCEPT drop mode, but map is missing");
+    return HandlerResult::Type::FORWARD;
   }
 
   G_SpecializableItemDropRequest_6xA2 cmd = normalize_drop_request(data.data(), data.size());
@@ -1647,20 +1652,22 @@ static HandlerResult S_64(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t, 
   // Recreate the item creator if needed, and load maps
   auto s = ses->require_server_state();
   ses->set_drop_mode(ses->drop_mode);
-  ses->map = Lobby::load_maps(
-      ses->version(),
-      ses->lobby_episode,
-      ses->lobby_mode,
-      ses->lobby_difficulty,
-      ses->lobby_event,
-      ses->id,
-      s->set_data_table(ses->version(), ses->lobby_episode, ses->lobby_mode, ses->lobby_difficulty),
-      bind(&ServerState::load_map_file, s.get(), placeholders::_1, placeholders::_2),
-      Map::DEFAULT_RARE_ENEMIES,
-      ses->lobby_random_seed,
-      make_shared<PSOV2Encryption>(ses->lobby_random_seed),
-      cmd->variations,
-      &ses->log);
+  if (!is_ep3(ses->version())) {
+    ses->map = Lobby::load_maps(
+        ses->version(),
+        ses->lobby_episode,
+        ses->lobby_mode,
+        ses->lobby_difficulty,
+        ses->lobby_event,
+        ses->id,
+        s->set_data_table(ses->version(), ses->lobby_episode, ses->lobby_mode, ses->lobby_difficulty),
+        bind(&ServerState::load_map_file, s.get(), placeholders::_1, placeholders::_2),
+        Map::DEFAULT_RARE_ENEMIES,
+        ses->lobby_random_seed,
+        make_shared<PSOV2Encryption>(ses->lobby_random_seed),
+        cmd->variations,
+        &ses->log);
+  }
 
   bool modified = false;
 
