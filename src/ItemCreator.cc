@@ -50,14 +50,16 @@ void ItemCreator::set_random_crypt(shared_ptr<PSOLFGEncryption> new_random_crypt
 }
 
 void ItemCreator::set_section_id(uint8_t new_section_id) {
-  this->section_id = new_section_id;
-  this->log.prefix = string_printf("[ItemCreator:%s/%s/%s/%c/%hhu] ",
-      name_for_enum(stack_limits->version),
-      abbreviation_for_episode(episode),
-      abbreviation_for_mode(mode),
-      abbreviation_for_difficulty(difficulty),
-      this->section_id);
-  this->pt = common_item_set->get_table(this->episode, this->mode, this->difficulty, this->section_id);
+  if (this->section_id != new_section_id) {
+    this->section_id = new_section_id;
+    this->log.prefix = string_printf("[ItemCreator:%s/%s/%s/%c/%hhu] ",
+        name_for_enum(stack_limits->version),
+        abbreviation_for_episode(episode),
+        abbreviation_for_mode(mode),
+        abbreviation_for_difficulty(difficulty),
+        this->section_id);
+    this->pt = common_item_set->get_table(this->episode, this->mode, this->difficulty, this->section_id);
+  }
 }
 
 bool ItemCreator::are_rare_drops_allowed() const {

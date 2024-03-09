@@ -56,23 +56,24 @@ struct Lobby : public std::enable_shared_from_this<Lobby> {
     uint32_t reassign_all_item_ids(uint32_t next_item_id);
   };
   enum class Flag {
-    GAME = 0x00000001,
-    PERSISTENT = 0x00000002,
-
+    // clang-format off
+    GAME                            = 0x00000001,
+    PERSISTENT                      = 0x00000002,
     // Flags used only for games
-    CHEATS_ENABLED = 0x00000100,
-    QUEST_IN_PROGRESS = 0x00000200,
-    BATTLE_IN_PROGRESS = 0x00000400,
-    JOINABLE_QUEST_IN_PROGRESS = 0x00000800,
-    IS_SPECTATOR_TEAM = 0x00002000, // episode must be EP3 also
-    SPECTATORS_FORBIDDEN = 0x00004000,
+    CHEATS_ENABLED                  = 0x00000100,
+    QUEST_IN_PROGRESS               = 0x00000200,
+    BATTLE_IN_PROGRESS              = 0x00000400,
+    JOINABLE_QUEST_IN_PROGRESS      = 0x00000800,
+    IS_SPECTATOR_TEAM               = 0x00002000, // episode must be EP3 also
+    SPECTATORS_FORBIDDEN            = 0x00004000,
     START_BATTLE_PLAYER_IMMEDIATELY = 0x00008000,
-    CANNOT_CHANGE_CHEAT_MODE = 0x00010000,
-
+    CANNOT_CHANGE_CHEAT_MODE        = 0x00010000,
+    USE_CREATOR_SECTION_ID          = 0x00020000,
     // Flags used only for lobbies
-    PUBLIC = 0x01000000,
-    DEFAULT = 0x02000000,
-    IS_OVERFLOW = 0x08000000,
+    PUBLIC                          = 0x01000000,
+    DEFAULT                         = 0x02000000,
+    IS_OVERFLOW                     = 0x08000000,
+    // clang-format on
   };
   enum class DropMode {
     DISABLED = 0,
@@ -107,6 +108,7 @@ struct Lobby : public std::enable_shared_from_this<Lobby> {
   // bits are indexed as (1 << version), where version is a value from the
   // Version enum.
   uint16_t allowed_versions;
+  uint8_t creator_section_id;
   uint8_t override_section_id;
   Episode episode;
   GameMode mode;

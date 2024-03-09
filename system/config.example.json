@@ -814,7 +814,17 @@
   // drop modes in all game versions. If you want to scale the drop rates for
   // only some versions, use the --multiply option to the convert-rare-item-set
   // action instead.
-  "ServerGlobalDropRateMultiplier": 1,
+  "ServerGlobalDropRateMultiplier": 1.0,
+
+  // Whether to retain server drop tables when game leaders change. The client
+  // reloads its drop tables when the leader joins a game or returns to Pioneer
+  // 2; this leads to some edge cases that could be confusing for players, so
+  // newserv instead switches its server tables instantly to the new leader's
+  // section ID when the leader leaves the game. This option, if enabled, causes
+  // the server to instead use the game creator's section ID for the entire
+  // duration of the game. On versions other than BB, this only has an effect in
+  // server drop modes.
+  "UseGameCreatorSectionID": false,
 
   // BB team reward definitions. Team rewards have the following fields:
   //   Key: Internal name of the reward. Must be unique across all rewards.

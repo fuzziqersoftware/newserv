@@ -4178,11 +4178,15 @@ shared_ptr<Lobby> create_game_generic(
   if (!s->behavior_can_be_overridden(s->cheat_mode_behavior)) {
     game->set_flag(Lobby::Flag::CANNOT_CHANGE_CHEAT_MODE);
   }
+  if (s->use_game_creator_section_id) {
+    game->set_flag(Lobby::Flag::USE_CREATOR_SECTION_ID);
+  }
   if (watched_lobby || battle_player) {
     game->set_flag(Lobby::Flag::IS_SPECTATOR_TEAM);
   }
   game->password = password;
 
+  game->creator_section_id = p->disp.visual.section_id;
   game->override_section_id = c->config.override_section_id;
   game->episode = episode;
   game->mode = mode;

@@ -297,6 +297,8 @@
     "031000",
   ],
   "BBGlobalEXPMultiplier": 1,
+  "ServerGlobalDropRateMultiplier": 1.0,
+  "UseGameCreatorSectionID": false,
 
   "TeamRewards": [
     {

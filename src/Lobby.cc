@@ -264,10 +264,13 @@ void Lobby::create_item_creator() {
 void Lobby::change_section_id() {
   if (this->item_creator) {
     uint8_t new_section_id = this->effective_section_id();
-    this->item_creator->set_section_id(new_section_id);
-    for (const auto& c : this->clients) {
-      if (c && c->config.check_flag(Client::Flag::DEBUG_ENABLED)) {
-        send_text_message_printf(c, "$C5Section ID changed\nto %s (%hhu)", name_for_section_id(new_section_id), new_section_id);
+    if (this->item_creator->get_section_id() != new_section_id) {
+      this->log.info("Changing section ID to %s", name_for_section_id(new_section_id));
+      this->item_creator->set_section_id(new_section_id);
+      for (const auto& c : this->clients) {
+        if (c && c->config.check_flag(Client::Flag::DEBUG_ENABLED)) {
+          send_text_message_printf(c, "$C5Section ID changed\nto %s (%hhu)", name_for_section_id(new_section_id), new_section_id);
+        }
       }
     }
   }
@@ -276,6 +279,9 @@ void Lobby::change_section_id() {
 uint8_t Lobby::effective_section_id() const {
   if (this->override_section_id != 0xFF) {
     return this->override_section_id;
+  }
+  if (this->check_flag(Lobby::Flag::USE_CREATOR_SECTION_ID)) {
+    return this->creator_section_id;
   }
   auto leader = this->clients.at(this->leader_id);
   if (leader) {

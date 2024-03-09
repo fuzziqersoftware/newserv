@@ -52,6 +52,9 @@ public:
   inline void set_restrictions(std::shared_ptr<const BattleRules> restrictions) {
     this->restrictions = restrictions;
   }
+  inline uint8_t get_section_id() const {
+    return this->section_id;
+  }
   void set_section_id(uint8_t new_section_id);
 
 private:
