@@ -506,11 +506,11 @@ static void on_sync_joining_player_compressed_state(shared_ptr<Client> c, uint8_
         }
 
         if (set_flags_header.num_object_sets > l->map->objects.size()) {
-          l->log.warning("Object set count from client (%hu) exceeds object count from map (%zu)",
+          l->log.warning("Object set count from client (%" PRIu32 ") exceeds object count from map (%zu)",
               set_flags_header.num_object_sets.load(), l->map->objects.size());
         } else if (set_flags_header.num_object_sets < l->map->objects.size()) {
           // This is normal because we load objects for inaccessible maps (e.g. lobby)
-          l->log.info("Object set count from client (%hu) is less than object count from map (%zu) (this is normal)",
+          l->log.info("Object set count from client (%" PRIu32 ") is less than object count from map (%zu) (this is normal)",
               set_flags_header.num_object_sets.load(), l->map->objects.size());
         } else {
           l->log.info("Object set count from client matches object count from map (%zu)", l->map->objects.size());
@@ -525,7 +525,7 @@ static void on_sync_joining_player_compressed_state(shared_ptr<Client> c, uint8_
 
         set_flags_r.go(sizeof(set_flags_header) + set_flags_header.num_object_sets * sizeof(le_uint16_t));
         if (set_flags_header.num_enemy_sets != l->map->enemy_set_flags.size()) {
-          l->log.warning("Enemy set count from client (%hu) does not match count from map (%zu)",
+          l->log.warning("Enemy set count from client (%" PRIu32 ") does not match count from map (%zu)",
               set_flags_header.num_enemy_sets.load(), l->map->enemy_set_flags.size());
         } else {
           l->log.info("Enemy set count from client matches count from map (%zu)", l->map->enemy_set_flags.size());
