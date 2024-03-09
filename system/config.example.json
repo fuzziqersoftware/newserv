@@ -810,6 +810,11 @@
   // EXP multiplier for BB games. This must be an integer due to a client
   // limitation, and must be at least 1.
   "BBGlobalEXPMultiplier": 1,
+  // Drop rate multiplier for all server drop tables. This applies to server
+  // drop modes in all game versions. If you want to scale the drop rates for
+  // only some versions, use the --multiply option to the convert-rare-item-set
+  // action instead.
+  "ServerGlobalDropRateMultiplier": 1,
 
   // BB team reward definitions. Team rewards have the following fields:
   //   Key: Internal name of the reward. Must be unique across all rewards.

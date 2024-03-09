@@ -874,6 +874,7 @@ void ServerState::load_config_early() {
   }
 
   this->bb_global_exp_multiplier = this->config_json->get_int("BBGlobalEXPMultiplier", 1);
+  this->server_global_drop_rate_multiplier = this->config_json->get_float("ServerGlobalDropRateMultiplier", 1);
 
   set_log_levels_from_json(this->config_json->get("LogLevels", JSON::dict()));
 
@@ -1489,7 +1490,7 @@ void ServerState::load_item_name_indexes(bool from_non_event_thread) {
 void ServerState::load_drop_tables(bool from_non_event_thread) {
   config_log.info("Loading rare item sets");
 
-  unordered_map<string, shared_ptr<const RareItemSet>> new_rare_item_sets;
+  unordered_map<string, shared_ptr<RareItemSet>> new_rare_item_sets;
   for (const auto& filename : list_directory_sorted("system/item-tables")) {
     if (!starts_with(filename, "rare-table-")) {
       continue;
@@ -1574,7 +1575,17 @@ void ServerState::load_drop_tables(bool from_non_event_thread) {
                  new_tool_random_set = std::move(new_tool_random_set),
                  new_weapon_random_sets = std::move(new_weapon_random_sets),
                  new_tekker_adjustment_set = std::move(new_tekker_adjustment_set)]() {
-    s->rare_item_sets = std::move(new_rare_item_sets);
+    if (s->server_global_drop_rate_multiplier != 1.0) {
+      for (auto& it : new_rare_item_sets) {
+        it.second->multiply_all_rates(s->server_global_drop_rate_multiplier);
+      }
+    }
+    // We can't just move() new_rare_item_sets into place because its values are
+    // not const :(
+    s->rare_item_sets.clear();
+    for (auto& it : new_rare_item_sets) {
+      s->rare_item_sets.emplace(it.first, std::move(it.second));
+    }
     s->common_item_set_v2 = std::move(new_common_item_set_v2);
     s->common_item_set_v3_v4 = std::move(new_common_item_set_v3_v4);
     s->armor_random_set = std::move(new_armor_random_set);

@@ -65,7 +65,7 @@ Independently of this project, there are many other PSO servers out there. Those
 
 # Compatibility
 
-newserv supports several versions of PSO, including various development prototypes. Specifically:
+newserv supports all known versions of PSO, including development prototypes. Specifically:
 | Version         | Lobbies  | Games    | Proxy    |
 |-----------------|----------|----------|----------|
 | DC NTE          | Yes      | Yes      | No       |
