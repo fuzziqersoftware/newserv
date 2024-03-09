@@ -144,7 +144,7 @@ Lobby::Lobby(shared_ptr<ServerState> s, uint32_t id, bool is_game)
       next_game_item_id(0xCC000000),
       base_version(Version::GC_V3),
       allowed_versions(0x0000),
-      section_id(0),
+      override_section_id(0xFF),
       episode(Episode::NONE),
       mode(GameMode::NORMAL),
       difficulty(0),
@@ -256,9 +256,32 @@ void Lobby::create_item_creator() {
       this->episode,
       (this->mode == GameMode::SOLO) ? GameMode::NORMAL : this->mode,
       this->difficulty,
-      this->section_id,
+      this->effective_section_id(),
       this->opt_rand_crypt,
       this->quest ? this->quest->battle_rules : nullptr);
+}
+
+void Lobby::change_section_id() {
+  if (this->item_creator) {
+    uint8_t new_section_id = this->effective_section_id();
+    this->item_creator->set_section_id(new_section_id);
+    for (const auto& c : this->clients) {
+      if (c && c->config.check_flag(Client::Flag::DEBUG_ENABLED)) {
+        send_text_message_printf(c, "$C5Section ID changed\nto %s (%hhu)", name_for_section_id(new_section_id), new_section_id);
+      }
+    }
+  }
+}
+
+uint8_t Lobby::effective_section_id() const {
+  if (this->override_section_id != 0xFF) {
+    return this->override_section_id;
+  }
+  auto leader = this->clients.at(this->leader_id);
+  if (leader) {
+    return leader->character()->disp.visual.section_id;
+  }
+  return 0;
 }
 
 shared_ptr<Map> Lobby::load_maps(
@@ -470,8 +493,9 @@ void Lobby::reassign_leader_on_client_departure(size_t leaving_client_index) {
     if (x == leaving_client_index) {
       continue;
     }
-    if (this->clients[x].get()) {
+    if (this->clients[x]) {
       this->leader_id = x;
+      this->change_section_id();
       return;
     }
   }
@@ -558,6 +582,7 @@ void Lobby::add_client(shared_ptr<Client> c, ssize_t required_client_id) {
   }
   if (leader_index >= this->max_clients) {
     this->leader_id = c->lobby_client_id;
+    this->change_section_id();
   }
 
   // If this is a lobby or no one was here before this, reassign all the floor

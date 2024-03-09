@@ -1671,7 +1671,7 @@ static void send_join_spectator_team(shared_ptr<Client> c, shared_ptr<Lobby> l) 
   cmd.variations.clear(0);
   cmd.client_id = c->lobby_client_id;
   cmd.event = l->event;
-  cmd.section_id = l->section_id;
+  cmd.section_id = l->effective_section_id();
   cmd.rare_seed = l->random_seed;
   cmd.episode = 0xFF;
 
@@ -1811,7 +1811,7 @@ void send_join_game(shared_ptr<Client> c, shared_ptr<Lobby> l) {
     cmd.difficulty = l->difficulty;
     cmd.battle_mode = (l->mode == GameMode::BATTLE) ? 1 : 0;
     cmd.event = l->event;
-    cmd.section_id = l->section_id;
+    cmd.section_id = l->effective_section_id();
     cmd.challenge_mode = (l->mode == GameMode::CHALLENGE) ? 1 : 0;
     cmd.rare_seed = l->random_seed;
     return populate_lobby_data(cmd);

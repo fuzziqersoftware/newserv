@@ -1901,7 +1901,7 @@ static void on_09(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
             abbreviation_for_episode(game->episode),
             abbreviation_for_difficulty(game->difficulty),
             abbreviation_for_mode(game->mode),
-            abbreviation_for_section_id(game->section_id));
+            abbreviation_for_section_id(game->effective_section_id()));
 
         if (c->config.check_flag(Client::Flag::DEBUG_ENABLED)) {
           vector<const char*> flags_tokens;
@@ -4183,9 +4183,7 @@ shared_ptr<Lobby> create_game_generic(
   }
   game->password = password;
 
-  game->section_id = (c->config.override_section_id != 0xFF)
-      ? c->config.override_section_id
-      : p->disp.visual.section_id;
+  game->override_section_id = c->config.override_section_id;
   game->episode = episode;
   game->mode = mode;
   if (game->mode == GameMode::CHALLENGE) {

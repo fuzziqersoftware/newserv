@@ -5282,7 +5282,7 @@ I 23921 2024-03-03 21:21:19 - [Commands] Received from C-2 (Jess) (version=GC_V3
 0000 | 09 00 0C 00 44 00 00 44 15 00 00 00             |     D  D
 I 23921 2024-03-03 21:21:19 - [Commands] Sending to C-2 (Jess) (version=GC_V3 command=11 flag=00)
 0000 | 11 00 2C 00 00 00 00 00 00 00 00 00 45 70 32 20 |   ,         Ep2
-0010 | 4E 20 4E 6D 6C 20 50 6E 6B 0A 09 43 36 43 68 65 | N Nml Pnk  C6Che
+0010 | 4E 20 4E 6D 6C 20 56 69 72 0A 09 43 36 43 68 65 | N Nml Vir  C6Che
 0020 | 61 74 73 20 6F 6E 09 43 37 00 00 00             | ats on C7
 I 23921 2024-03-03 21:21:22 - [Commands] Received from C-2 (Jess) (version=GC_V3 command=60 flag=00)
 0000 | 60 00 10 00 52 03 00 00 00 00 00 00 00 80 FF FF | `   R

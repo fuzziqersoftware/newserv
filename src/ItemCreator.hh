@@ -52,6 +52,7 @@ public:
   inline void set_restrictions(std::shared_ptr<const BattleRules> restrictions) {
     this->restrictions = restrictions;
   }
+  void set_section_id(uint8_t new_section_id);
 
 private:
   PrefixedLogger log;
@@ -67,6 +68,7 @@ private:
   std::shared_ptr<const WeaponRandomSet> weapon_random_set;
   std::shared_ptr<const TekkerAdjustmentSet> tekker_adjustment_set;
   std::shared_ptr<const ItemParameterTable> item_parameter_table;
+  std::shared_ptr<const CommonItemSet> common_item_set;
   std::shared_ptr<const CommonItemSet::Table> pt;
   std::shared_ptr<const BattleRules> restrictions;
 

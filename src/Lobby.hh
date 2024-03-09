@@ -107,7 +107,7 @@ struct Lobby : public std::enable_shared_from_this<Lobby> {
   // bits are indexed as (1 << version), where version is a value from the
   // Version enum.
   uint16_t allowed_versions;
-  uint8_t section_id;
+  uint8_t override_section_id;
   Episode episode;
   GameMode mode;
   uint8_t difficulty; // 0-3
@@ -195,6 +195,8 @@ struct Lobby : public std::enable_shared_from_this<Lobby> {
   std::shared_ptr<ChallengeParameters> require_challenge_params() const;
   void set_drop_mode(DropMode new_mode);
   void create_item_creator();
+  void change_section_id();
+  uint8_t effective_section_id() const;
   static std::shared_ptr<Map> load_maps(
       Version version,
       Episode episode,

@@ -38,6 +38,7 @@ ItemCreator::ItemCreator(
       weapon_random_set(weapon_random_set),
       tekker_adjustment_set(tekker_adjustment_set),
       item_parameter_table(item_parameter_table),
+      common_item_set(common_item_set),
       pt(common_item_set->get_table(this->episode, this->mode, this->difficulty, this->section_id)),
       restrictions(restrictions),
       opt_rand_crypt(opt_rand_crypt ? make_shared<PSOV2Encryption>(opt_rand_crypt->seed()) : nullptr) {
@@ -46,6 +47,17 @@ ItemCreator::ItemCreator(
 
 void ItemCreator::set_random_crypt(shared_ptr<PSOLFGEncryption> new_random_crypt) {
   this->opt_rand_crypt = new_random_crypt;
+}
+
+void ItemCreator::set_section_id(uint8_t new_section_id) {
+  this->section_id = new_section_id;
+  this->log.prefix = string_printf("[ItemCreator:%s/%s/%s/%c/%hhu] ",
+      name_for_enum(stack_limits->version),
+      abbreviation_for_episode(episode),
+      abbreviation_for_mode(mode),
+      abbreviation_for_difficulty(difficulty),
+      this->section_id);
+  this->pt = common_item_set->get_table(this->episode, this->mode, this->difficulty, this->section_id);
 }
 
 bool ItemCreator::are_rare_drops_allowed() const {

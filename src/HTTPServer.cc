@@ -539,7 +539,7 @@ JSON HTTPServer::generate_lobby_json_st(shared_ptr<const Lobby> l, shared_ptr<co
         variations_json.emplace_back(l->variations[z].load());
       }
       ret.emplace("Variations", std::move(variations_json));
-      ret.emplace("SectionID", name_for_section_id(l->section_id));
+      ret.emplace("SectionID", name_for_section_id(l->effective_section_id()));
       ret.emplace("Mode", name_for_mode(l->mode));
       ret.emplace("Difficulty", name_for_difficulty(l->difficulty));
       ret.emplace("BaseEXPMultiplier", l->base_exp_multiplier);
@@ -809,7 +809,7 @@ JSON HTTPServer::generate_summary_json() const {
         } else {
           game_json.emplace("QuestInProgress", l->check_flag(Lobby::Flag::QUEST_IN_PROGRESS));
           game_json.emplace("JoinableQuestInProgress", l->check_flag(Lobby::Flag::JOINABLE_QUEST_IN_PROGRESS));
-          game_json.emplace("SectionID", name_for_section_id(l->section_id));
+          game_json.emplace("SectionID", name_for_section_id(l->effective_section_id()));
           game_json.emplace("Mode", name_for_mode(l->mode));
           game_json.emplace("Difficulty", name_for_difficulty(l->difficulty));
           game_json.emplace("Quest", this->generate_quest_json_st(l->quest));

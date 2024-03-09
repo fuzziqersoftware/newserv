@@ -119,7 +119,7 @@ static void server_command_lobby_info(shared_ptr<Client> c, const std::string&) 
         } else {
           lines.emplace_back(string_printf("$C6%08X$C7 L$C6%d-%d$C7", l->lobby_id, l->min_level + 1, l->max_level + 1));
         }
-        lines.emplace_back(string_printf("$C7Section ID: $C6%s$C7", name_for_section_id(l->section_id)));
+        lines.emplace_back(string_printf("$C7Section ID: $C6%s$C7", name_for_section_id(l->effective_section_id())));
 
         switch (l->drop_mode) {
           case Lobby::DropMode::DISABLED:
@@ -927,20 +927,27 @@ static void server_command_meseta(shared_ptr<Client> c, const std::string& args)
 
 static void server_command_secid(shared_ptr<Client> c, const std::string& args) {
   auto l = c->require_lobby();
-  check_is_game(l, false);
   check_cheats_allowed(c->require_server_state(), c);
 
+  uint8_t new_override_section_id;
+
   if (!args[0]) {
-    c->config.override_section_id = 0xFF;
+    new_override_section_id = 0xFF;
     send_text_message(c, "$C6Override section ID\nremoved");
   } else {
-    uint8_t new_secid = section_id_for_name(args);
-    if (new_secid == 0xFF) {
+    new_override_section_id = section_id_for_name(args);
+    if (new_override_section_id == 0xFF) {
       send_text_message(c, "$C6Invalid section ID");
+      return;
     } else {
-      c->config.override_section_id = new_secid;
-      send_text_message_printf(c, "$C6Override section ID\nset to %s", name_for_section_id(new_secid));
+      send_text_message_printf(c, "$C6Override section ID\nset to %s", name_for_section_id(new_override_section_id));
     }
+  }
+
+  c->config.override_section_id = new_override_section_id;
+  if (l->is_game() && (l->leader_id == c->lobby_client_id)) {
+    l->override_section_id = new_override_section_id;
+    l->change_section_id();
   }
 }
 
