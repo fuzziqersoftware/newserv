@@ -3150,20 +3150,35 @@ vector<shared_ptr<const Card>> CardSpecial::get_targeted_cards_for_condition(
       }
       break;
     case 0x24: { // p36
+      auto log36 = log.sub("(p36) ");
       // On NTE, this includes SCs and items; on other versions, it's SCs only
       static const auto should_include = +[](shared_ptr<const CardIndex::CardEntry> ce, bool is_nte) -> bool {
         return (ce && (ce->def.is_sc() || (is_nte ? (ce->def.type == CardType::ITEM) : false)));
       };
       bool is_nte = s->options.is_nte();
       if (as.original_attacker_card_ref == 0xFFFF) {
+        log36.debug("original_attacker_card_ref missing");
+        // debug_str_for_card_ref
         for (size_t z = 0; (z < 4 * 9) && (as.target_card_refs[z] != 0xFFFF); z++) {
+          string debug_ref_str = s->debug_str_for_card_ref(as.target_card_refs[z]);
+          log36.debug("examining %s", debug_ref_str.c_str());
           auto result_card = s->card_for_set_card_ref(as.target_card_refs[z]);
           if (result_card && should_include(result_card->get_definition(), is_nte)) {
+            log36.debug("adding %s", debug_ref_str.c_str());
             ret.emplace_back(result_card);
+          } else {
+            log36.debug("skipping %s", debug_ref_str.c_str());
           }
         }
       } else if (card2 && should_include(card2->get_definition(), is_nte)) {
+        string debug_ref_str = s->debug_str_for_card_ref(card2->get_card_ref());
+        log36.debug("original_attacker_card_ref present; adding card2 = %s", debug_ref_str.c_str());
         ret.emplace_back(card2);
+      } else if (card2) {
+        string debug_ref_str = s->debug_str_for_card_ref(card2->get_card_ref());
+        log36.debug("original_attacker_card_ref present and card2 (%s) not eligible", debug_ref_str.c_str());
+      } else {
+        log36.debug("original_attacker_card_ref present and card2 missing");
       }
       break;
     }
