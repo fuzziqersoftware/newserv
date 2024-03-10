@@ -345,6 +345,12 @@ bool FunctionCodeIndex::patch_menu_empty(uint32_t specific_version) const {
   return true;
 }
 
+std::shared_ptr<const CompiledFunctionCode> FunctionCodeIndex::get_patch(
+    const std::string& name, uint32_t specific_version) const {
+  return this->name_and_specific_version_to_patch_function.at(
+      string_printf("%s-%08" PRIX32, name.c_str(), specific_version));
+}
+
 DOLFileIndex::DOLFileIndex(const string& directory) {
   if (!function_compiler_available()) {
     function_compiler_log.info("Function compiler is not available");

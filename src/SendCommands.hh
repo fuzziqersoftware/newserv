@@ -159,6 +159,7 @@ void send_function_call(
     uint32_t checksum_addr = 0,
     uint32_t checksum_size = 0,
     uint32_t override_relocations_offset = 0);
+bool send_protected_command(std::shared_ptr<Client> c, const void* data, size_t size, bool echo_to_lobby);
 
 void send_reconnect(std::shared_ptr<Client> c, uint32_t address, uint16_t port);
 void send_pc_console_split_reconnect(

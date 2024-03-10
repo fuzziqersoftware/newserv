@@ -70,6 +70,8 @@ struct FunctionCodeIndex {
 
   std::shared_ptr<const Menu> patch_menu(uint32_t specific_version) const;
   bool patch_menu_empty(uint32_t specific_version) const;
+
+  std::shared_ptr<const CompiledFunctionCode> get_patch(const std::string& name, uint32_t specific_version) const;
 };
 
 struct DOLFileIndex {

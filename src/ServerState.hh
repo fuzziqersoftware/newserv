@@ -113,6 +113,7 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   QuestFlagsForDifficulty quest_flag_persist_mask;
   uint64_t persistent_game_idle_timeout_usecs = 0;
   bool ep3_send_function_call_enabled = false;
+  bool enable_v3_v4_protected_subcommands = false;
   bool catch_handler_exceptions = true;
   bool ep3_infinite_meseta = false;
   std::vector<uint32_t> ep3_defeat_player_meseta_rewards = {400, 500, 600, 700, 800};

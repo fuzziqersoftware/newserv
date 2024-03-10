@@ -1350,15 +1350,15 @@ static void on_change_floor_6x21(shared_ptr<Client> c, uint8_t command, uint8_t 
   forward_subcommand(c, command, flag, data, size);
 }
 
-// When a player dies, decrease their mag's synchro
 static void on_player_died(shared_ptr<Client> c, uint8_t command, uint8_t flag, void* data, size_t size) {
-  const auto& cmd = check_size_t<G_ClientIDHeader>(data, size, 0xFFFF);
+  const auto& cmd = check_size_t<G_PlayerDied_6x4D>(data, size, 0xFFFF);
 
   auto l = c->require_lobby();
-  if (!l->is_game() || (cmd.client_id != c->lobby_client_id)) {
+  if (!l->is_game() || (cmd.header.client_id != c->lobby_client_id)) {
     return;
   }
 
+  // Decrease MAG's synchro
   try {
     auto& inventory = c->character()->inventory;
     size_t mag_index = inventory.find_equipped_item(EquipSlot::MAG);
@@ -1370,13 +1370,58 @@ static void on_player_died(shared_ptr<Client> c, uint8_t command, uint8_t flag, 
   forward_subcommand(c, command, flag, data, size);
 }
 
+static void on_player_revivable(shared_ptr<Client> c, uint8_t command, uint8_t flag, void* data, size_t size) {
+  const auto& cmd = check_size_t<G_PlayerRevivable_6x4E>(data, size, 0xFFFF);
+
+  auto l = c->require_lobby();
+  if (!l->is_game() || (cmd.header.client_id != c->lobby_client_id)) {
+    return;
+  }
+
+  forward_subcommand(c, command, flag, data, size);
+
+  // Revive if infinite HP is enabled
+  bool player_cheats_enabled = l->check_flag(Lobby::Flag::CHEATS_ENABLED) || (c->license->check_flag(License::Flag::CHEAT_ANYWHERE));
+  if (player_cheats_enabled && c->config.check_flag(Client::Flag::INFINITE_HP_ENABLED)) {
+    G_UseMedicalCenter_6x31 v2_cmd = {0x31, 0x01, c->lobby_client_id};
+    G_RevivePlayer_V3_BB_6xA1 v3_cmd = {0xA1, 0x01, c->lobby_client_id};
+    for (auto lc : l->clients) {
+      if (!lc) {
+        continue;
+      }
+      bool use_v3 = !is_v1_or_v2(lc->version()) || (lc->version() == Version::GC_NTE);
+      const void* data = use_v3 ? static_cast<const void*>(&v3_cmd) : static_cast<const void*>(&v2_cmd);
+      size_t size = use_v3 ? sizeof(v3_cmd) : sizeof(v2_cmd);
+      if (lc == c) {
+        send_protected_command(lc, data, size, false);
+      } else {
+        send_command(lc, 0x60, 0x00, data, size);
+      }
+    }
+  }
+}
+
+void on_player_revived(shared_ptr<Client> c, uint8_t command, uint8_t flag, void* data, size_t size) {
+  check_size_t<G_PlayerRevived_6x4F>(data, size, 0xFFFF);
+
+  auto l = c->require_lobby();
+  if (l->is_game()) {
+    forward_subcommand(c, command, flag, data, size);
+    bool player_cheats_enabled = !is_v1(c->version()) &&
+        (l->check_flag(Lobby::Flag::CHEATS_ENABLED) || (c->license->check_flag(License::Flag::CHEAT_ANYWHERE)));
+    if (player_cheats_enabled && c->config.check_flag(Client::Flag::INFINITE_HP_ENABLED)) {
+      send_player_stats_change(c, PlayerStatsChange::ADD_HP, 2550);
+    }
+  }
+}
+
 static void on_received_condition(shared_ptr<Client> c, uint8_t command, uint8_t flag, void* data, size_t size) {
   const auto& cmd = check_size_t<G_ClientIDHeader>(data, size, 0xFFFF);
 
   auto l = c->require_lobby();
   if (l->is_game()) {
     forward_subcommand(c, command, flag, data, size);
-    if (is_v1_or_v2(c->version()) && (cmd.client_id == c->lobby_client_id)) {
+    if (cmd.client_id == c->lobby_client_id) {
       bool player_cheats_enabled = l->check_flag(Lobby::Flag::CHEATS_ENABLED) || (c->license->check_flag(License::Flag::CHEAT_ANYWHERE));
       if (player_cheats_enabled && c->config.check_flag(Client::Flag::INFINITE_HP_ENABLED)) {
         send_remove_conditions(c);
@@ -4126,8 +4171,8 @@ const SubcommandDefinition subcommand_definitions[0x100] = {
     /* 6x4B */ {0x40, 0x46, 0x4B, on_change_hp<G_ClientIDHeader>},
     /* 6x4C */ {0x41, 0x47, 0x4C, on_change_hp<G_ClientIDHeader>},
     /* 6x4D */ {0x42, 0x48, 0x4D, on_player_died},
-    /* 6x4E */ {0x00, 0x00, 0x4E, on_forward_check_game_client},
-    /* 6x4F */ {0x43, 0x49, 0x4F, on_forward_check_game_client},
+    /* 6x4E */ {0x00, 0x00, 0x4E, on_player_revivable},
+    /* 6x4F */ {0x43, 0x49, 0x4F, on_player_revived},
     /* 6x50 */ {0x44, 0x4A, 0x50, on_forward_check_game_client},
     /* 6x51 */ {0x00, 0x00, 0x51, on_invalid},
     /* 6x52 */ {0x46, 0x4C, 0x52, on_set_animation_state},

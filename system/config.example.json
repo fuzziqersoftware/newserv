@@ -966,7 +966,13 @@
   // exploiting a bug in Episode 3, and while it seems to work reliably on
   // Dolphin, it hasn't been tested on a real GameCube. So, newserv doesn't
   // enable Episode 3 USA patches by default; it only does if this option is on.
-  // "EnableEpisode3SendFunctionCall": true,
+  "EnableEpisode3SendFunctionCall": false,
+
+  // Whether to enable protected subcommands on GC and Xbox. This enables the
+  // infinite HP cheat to also automatically revive players and clear conditions
+  // like poison and freeze. (On v1 and v2, those functions are always enabled
+  // in infinite HP mode.)
+  "EnableV3V4ProtectedSubcommands": false,
 
   // Whether to allow cross-play for various game versions. DCv1 and DCv2 are
   // always allowed to join each other's games (though DCv2 can deny permission

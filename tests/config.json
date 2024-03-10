@@ -40,6 +40,8 @@
   "PPPStackListen": [],
   "HTTPListen": [],
   "Episode3BehaviorFlags": 0xFA,
+  "EnableEpisode3SendFunctionCall": false,
+  "EnableV3V4ProtectedSubcommands": false,
 
   "Episode3InfiniteMeseta": false,
   "Episode3DefeatPlayerMeseta": [400, 500, 600, 700, 800],

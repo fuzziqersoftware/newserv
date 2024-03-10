@@ -734,6 +734,7 @@ void ServerState::load_config_early() {
   this->default_rare_notifs_enabled_v1_v2 = this->config_json->get_bool("RareNotificationsEnabledByDefaultV1V2", this->default_rare_notifs_enabled_v1_v2);
   this->default_rare_notifs_enabled_v3_v4 = this->config_json->get_bool("RareNotificationsEnabledByDefaultV3V4", this->default_rare_notifs_enabled_v3_v4);
   this->ep3_send_function_call_enabled = this->config_json->get_bool("EnableEpisode3SendFunctionCall", false);
+  this->enable_v3_v4_protected_subcommands = this->config_json->get_bool("EnableV3V4ProtectedSubcommands", false);
   this->catch_handler_exceptions = this->config_json->get_bool("CatchHandlerExceptions", true);
 
   auto parse_int_list = +[](const JSON& json) -> vector<uint32_t> {

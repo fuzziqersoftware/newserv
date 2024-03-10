@@ -477,6 +477,62 @@ void send_function_call(
   ch.send(0xB2, code ? code->index : 0x00, data);
 }
 
+bool send_protected_command(std::shared_ptr<Client> c, const void* data, size_t size, bool echo_to_lobby) {
+  switch (c->version()) {
+    case Version::DC_NTE:
+    case Version::DC_V1_11_2000_PROTOTYPE:
+    case Version::DC_V1:
+    case Version::DC_V2:
+    case Version::PC_NTE:
+    case Version::PC_V2:
+    case Version::GC_NTE:
+      if (echo_to_lobby) {
+        send_command(c->require_lobby(), 0x60, 0x00, data, size);
+      } else {
+        send_command(c, 0x60, 0x00, data, size);
+      }
+      return true;
+
+    case Version::GC_V3:
+    case Version::XB_V3:
+    case Version::GC_EP3_NTE:
+    case Version::GC_EP3: {
+      auto s = c->require_server_state();
+      if (!s->enable_v3_v4_protected_subcommands ||
+          c->config.check_flag(Client::Flag::NO_SEND_FUNCTION_CALL) ||
+          c->config.check_flag(Client::Flag::SEND_FUNCTION_CALL_CHECKSUM_ONLY)) {
+        return false;
+      }
+
+      prepare_client_for_patches(c, [wc = weak_ptr<Client>(c), data = string(reinterpret_cast<const char*>(data), size), echo_to_lobby]() {
+        auto c = wc.lock();
+        if (!c) {
+          return;
+        }
+        try {
+          auto s = c->require_server_state();
+          auto fn = s->function_code_index->get_patch("CallProtectedHandler", c->config.specific_version);
+          uint32_t size_label_value = is_big_endian(c->version()) ? data.size() : bswap32(data.size());
+          send_function_call(c, fn, {{"size", size_label_value}}, data);
+          c->function_call_response_queue.emplace_back(empty_function_call_response_handler);
+          if (echo_to_lobby) {
+            auto l = c->lobby.lock();
+            if (l) {
+              send_command_excluding_client(l, c, 0x60, 0x00, data.data(), data.size());
+            }
+          }
+        } catch (const exception& e) {
+          c->log.warning("Failed to send protected command: %s", e.what());
+        }
+      });
+      return true;
+    }
+
+    default:
+      return false;
+  }
+}
+
 void send_reconnect(shared_ptr<Client> c, uint32_t address, uint16_t port) {
   S_Reconnect_19 cmd = {{address, port, 0}};
   send_command_t(c, is_patch(c->version()) ? 0x14 : 0x19, 0x00, cmd);
@@ -2354,12 +2410,14 @@ void send_player_stats_change(Channel& ch, uint16_t client_id, PlayerStatsChange
 }
 
 void send_remove_conditions(shared_ptr<Client> c) {
-  auto l = c->require_lobby();
-  for (auto& lc : l->clients) {
-    if (lc) {
-      send_remove_conditions(lc->channel, c->lobby_client_id);
-    }
+  parray<G_AddOrRemoveCondition_6x0C_6x0D, 4> cmds;
+  for (size_t z = 0; z < 4; z++) {
+    auto& cmd = cmds[z];
+    cmd.header = {0x0D, sizeof(G_AddOrRemoveCondition_6x0C_6x0D) >> 2, c->lobby_client_id};
+    cmd.unknown_a1 = z;
+    cmd.unknown_a2 = 0;
   }
+  send_protected_command(c, &cmds, sizeof(cmds), true);
 }
 
 void send_remove_conditions(Channel& ch, uint16_t client_id) {

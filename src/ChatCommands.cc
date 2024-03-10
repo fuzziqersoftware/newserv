@@ -597,8 +597,7 @@ static void server_command_patch(shared_ptr<Client> c, const std::string& args) 
       auto s = c->require_server_state();
       // Note: We can't look this up outside of the closure because
       // c->specific_version can change during prepare_client_for_patches
-      auto fn = s->function_code_index->name_and_specific_version_to_patch_function.at(
-          string_printf("%s-%08" PRIX32, args.c_str(), c->config.specific_version));
+      auto fn = s->function_code_index->get_patch(args, c->config.specific_version);
       send_function_call(c, fn);
       c->function_call_response_queue.emplace_back(empty_function_call_response_handler);
     } catch (const out_of_range&) {
@@ -617,8 +616,7 @@ static void proxy_command_patch(shared_ptr<ProxyServer::LinkedSession> ses, cons
         ses->log.info("Version detected as %08" PRIX32, ses->config.specific_version);
       }
       auto s = ses->require_server_state();
-      auto fn = s->function_code_index->name_and_specific_version_to_patch_function.at(
-          string_printf("%s-%08" PRIX32, args.c_str(), ses->config.specific_version));
+      auto fn = s->function_code_index->get_patch(args, ses->config.specific_version);
       send_function_call(ses->client_channel, ses->config, fn);
       // Don't forward the patch response to the server
       ses->function_call_return_handler_queue.emplace_back(empty_patch_return_handler);
@@ -1638,7 +1636,7 @@ static void server_command_infinite_hp(shared_ptr<Client> c, const std::string&)
   c->config.toggle_flag(Client::Flag::INFINITE_HP_ENABLED);
   bool enabled = c->config.check_flag(Client::Flag::INFINITE_HP_ENABLED);
   send_text_message_printf(c, "$C6Infinite HP %s", enabled ? "enabled" : "disabled");
-  if (enabled && l->is_game() && is_v1_or_v2(c->version())) {
+  if (enabled && l->is_game()) {
     send_remove_conditions(c);
   }
 }
@@ -1649,7 +1647,7 @@ static void proxy_command_infinite_hp(shared_ptr<ProxyServer::LinkedSession> ses
   ses->config.toggle_flag(Client::Flag::INFINITE_HP_ENABLED);
   bool enabled = ses->config.check_flag(Client::Flag::INFINITE_HP_ENABLED);
   send_text_message_printf(ses->client_channel, "$C6Infinite HP %s", enabled ? "enabled" : "disabled");
-  if (enabled && ses->is_in_game && is_v1_or_v2(ses->version())) {
+  if (enabled && ses->is_in_game) {
     send_remove_conditions(ses->client_channel, ses->lobby_client_id);
     send_remove_conditions(ses->server_channel, ses->lobby_client_id);
   }

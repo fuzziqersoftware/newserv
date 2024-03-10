@@ -4422,15 +4422,15 @@ struct G_PlayerDied_6x4D {
   le_uint32_t unknown_a1 = 0;
 } __packed__;
 
-// 6x4E: Player died (protected on V3/V4)
+// 6x4E: Player is dead can be revived (protected on V3/V4)
 
-struct G_PlayerDied_6x4E {
+struct G_PlayerRevivable_6x4E {
   G_ClientIDHeader header;
 } __packed__;
 
-// 6x4F: Player resurrected (via Scape Doll) (protected on V3/V4)
+// 6x4F: Player revived (protected on V3/V4)
 
-struct G_PlayerUsedScapeDoll_6x4F {
+struct G_PlayerRevived_6x4F {
   G_ClientIDHeader header;
 } __packed__;
 
@@ -5362,10 +5362,9 @@ struct G_GalGryphonBossActions_6xA0 {
   parray<le_uint32_t, 4> unknown_a4;
 } __packed__;
 
-// 6xA1: Unknown (not valid on pre-V3) (protected on V3/V4)
-// Part of revive process. Occurs right after revive command; function unclear.
+// 6xA1: Revive player (not valid on pre-V3) (protected on V3/V4)
 
-struct G_Unknown_6xA1 {
+struct G_RevivePlayer_V3_BB_6xA1 {
   G_ClientIDHeader header;
 } __packed__;
 
