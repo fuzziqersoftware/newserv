@@ -1439,7 +1439,7 @@ Action a_convert_rare_item_set(
     +[](Arguments& args) {
       auto version = get_cli_version(args);
 
-      double rate_factor = args.get<double>("multiply");
+      double rate_factor = args.get<double>("multiply", 1.0);
       auto s = make_shared<ServerState>("system/config.json");
       s->load_config_early();
       s->load_patch_indexes(false);

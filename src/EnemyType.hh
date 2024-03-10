@@ -20,6 +20,7 @@ enum class EnemyType {
   BOOMA,
   BOOTA,
   BULCLAW,
+  BULK,
   CANADINE,
   CANADINE_GROUP,
   CANANE,

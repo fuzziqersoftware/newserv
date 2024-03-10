@@ -2453,10 +2453,19 @@ DropReconcileResult reconcile_drop_request_with_map(
       // rt_indexes in Episode 4 don't match those sent in the command; we just
       // ignore what the client sends.
       if ((episode != Episode::EP4) && (cmd.rt_index != res.effective_rt_index)) {
-        log.warning("rt_index %02hhX from command does not match entity\'s expected index %02" PRIX32,
-            cmd.rt_index, res.effective_rt_index);
-        if (!is_v4(version)) {
-          res.effective_rt_index = cmd.rt_index;
+        // Special cases: BULCLAW => BULK and DARK_GUNNER => DEATH_GUNNER
+        if (cmd.rt_index == 0x27 && map_enemy->type == EnemyType::BULCLAW) {
+          log.info("E-%hX killed as BULK instead of BULCLAW", map_enemy->enemy_id);
+          res.effective_rt_index = 0x27;
+        } else if (cmd.rt_index == 0x23 && map_enemy->type == EnemyType::DARK_GUNNER) {
+          log.info("E-%hX killed as DEATH_GUNNER instead of DARK_GUNNER", map_enemy->enemy_id);
+          res.effective_rt_index = 0x23;
+        } else {
+          log.warning("rt_index %02hhX from command does not match entity\'s expected index %02" PRIX32,
+              cmd.rt_index, res.effective_rt_index);
+          if (!is_v4(version)) {
+            res.effective_rt_index = cmd.rt_index;
+          }
         }
       }
       if (cmd.floor != map_enemy->floor) {
