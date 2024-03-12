@@ -64,6 +64,7 @@ TextTranscoder::Result TextTranscoder::operator()(
           if (!truncate_oversize_result) {
             throw runtime_error("string does not fit in buffer");
           } else {
+            src_bytes = 0;
             break;
           }
         default:
