@@ -1723,7 +1723,7 @@ string MapDefinition::str(const CardIndex* card_index, uint8_t language) const {
   auto add_map = [&](const parray<parray<uint8_t, 0x10>, 0x10>& tiles) {
     for (size_t y = 0; y < this->height; y++) {
       string line = "   ";
-      for (size_t x = 0; x < this->height; x++) {
+      for (size_t x = 0; x < this->width; x++) {
         line += string_printf(" %02hhX", tiles[y][x]);
       }
       lines.emplace_back(std::move(line));
