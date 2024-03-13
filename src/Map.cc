@@ -736,8 +736,8 @@ void Map::add_objects_from_map_data(uint8_t floor, const void* data, size_t size
     uint16_t object_id = this->objects.size();
     this->objects.emplace_back(Object{
         .source_index = z,
-        .object_id = object_id,
         .floor = floor,
+        .object_id = object_id,
         .base_type = objects[z].base_type,
         .section = objects[z].section,
         .group = objects[z].group,
