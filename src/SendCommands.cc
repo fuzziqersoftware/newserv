@@ -2695,10 +2695,10 @@ void send_game_flag_state_t(shared_ptr<Client> c) {
 
     if (c->game_join_command_queue) {
       c->log.info("Client not ready to receive join commands; adding to queue");
-      auto& cmd = c->game_join_command_queue->emplace_back();
-      cmd.command = 0x0062;
-      cmd.flag = c->lobby_client_id;
-      cmd.data.assign(reinterpret_cast<const char*>(&cmd), sizeof(cmd));
+      auto& queue_cmd = c->game_join_command_queue->emplace_back();
+      queue_cmd.command = 0x0062;
+      queue_cmd.flag = c->lobby_client_id;
+      queue_cmd.data.assign(reinterpret_cast<const char*>(&cmd), sizeof(cmd));
     } else {
       send_command_t(c, 0x62, c->lobby_client_id, cmd);
     }
