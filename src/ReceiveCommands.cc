@@ -2515,17 +2515,7 @@ static void on_10(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
             // leader)
             if (game->count_clients() == 1) {
               c->config.set_flag(Client::Flag::SHOULD_SEND_ARTIFICIAL_ITEM_STATE);
-              // TODO: Eventually, we want to send the enemy and set states too,
-              // but currently this doesn't work well. Instead, we reset their
-              // flags so it's as if they were never defeated.
-              // c->config.set_flag(Client::Flag::SHOULD_SEND_ARTIFICIAL_ENEMY_AND_SET_STATE);
-              if (game->map) {
-                for (auto& enemy : game->map->enemies) {
-                  enemy.game_flags = 0;
-                  enemy.total_damage = 0;
-                  enemy.state_flags = 0;
-                }
-              }
+              c->config.set_flag(Client::Flag::SHOULD_SEND_ARTIFICIAL_ENEMY_AND_SET_STATE);
               c->config.set_flag(Client::Flag::SHOULD_SEND_ARTIFICIAL_OBJECT_STATE);
               c->config.set_flag(Client::Flag::SHOULD_SEND_ARTIFICIAL_FLAG_STATE);
             }
@@ -4329,6 +4319,7 @@ shared_ptr<Lobby> create_game_generic(
     game->quest_flag_values = make_unique<QuestFlags>();
     game->quest_flags_known = make_unique<QuestFlags>();
   }
+  game->switch_flags = make_unique<SwitchFlags>();
 
   return game;
 }

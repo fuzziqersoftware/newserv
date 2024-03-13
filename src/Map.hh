@@ -103,6 +103,10 @@ struct Map {
 
   struct Event1Entry { // Section type 3 (WAVE_EVENTS) if format == 0
     /* 00 */ le_uint32_t event_id;
+    // Bits in flags:
+    //   0004 = is active
+    //   0008 = post-wave actions have been run
+    //   0010 = all enemies killed
     /* 04 */ le_uint16_t flags;
     /* 06 */ le_uint16_t event_type;
     /* 08 */ le_uint16_t section;
@@ -208,10 +212,11 @@ struct Map {
     // TODO: Add more fields in here if we ever care about them. Currently we
     // only care about boxes with fixed item drops.
     size_t source_index;
-    uint16_t object_id;
     uint8_t floor;
+    uint16_t object_id;
     uint16_t base_type;
     uint16_t section;
+    uint16_t group;
     float param1; // If <= 0, this is a specialized box, and the specialization is in param4/5/6
     float param3; // If == 0, the item should be varied by difficulty and area
     uint32_t param4;
@@ -239,23 +244,35 @@ struct Map {
     uint16_t enemy_id;
     uint16_t total_damage;
     uint32_t game_flags; // From 6x0A
+    uint16_t section;
+    uint16_t wave_number;
     EnemyType type;
     uint8_t floor;
     uint8_t state_flags;
 
-    Enemy(uint16_t enemy_id, size_t source_index, size_t set_index, uint8_t floor, EnemyType type);
+    Enemy(
+        uint16_t enemy_id,
+        size_t source_index,
+        size_t set_index,
+        uint8_t floor,
+        uint16_t section,
+        uint16_t wave_number,
+        EnemyType type);
 
     std::string str() const;
-  } __attribute__((packed));
+  };
 
   struct Event {
     uint32_t event_id;
     uint16_t flags;
+    uint16_t section;
+    uint16_t wave_number;
     uint8_t floor;
     uint32_t action_stream_offset;
+    std::vector<size_t> enemy_indexes;
 
     std::string str() const;
-  } __attribute__((packed));
+  };
 
   struct DATParserRandomState {
     PSOV2Encryption random;
@@ -306,7 +323,13 @@ struct Map {
       std::shared_ptr<DATParserRandomState> random_state,
       std::shared_ptr<const RareEnemyRates> rare_rates = DEFAULT_RARE_ENEMIES);
 
-  void add_event(uint32_t event_id, uint16_t flags, uint8_t floor, uint32_t action_stream_offset);
+  void add_event(
+      uint32_t event_id,
+      uint16_t flags,
+      uint8_t floor,
+      uint16_t section,
+      uint16_t wave_number,
+      uint32_t action_stream_offset);
   Event& get_event(uint8_t floor, uint32_t event_id);
   const Event& get_event(uint8_t floor, uint32_t event_id) const;
   void add_events_from_map_data(uint8_t floor, const void* data, size_t size);
@@ -330,7 +353,14 @@ struct Map {
 
   const Enemy& find_enemy(uint8_t floor, EnemyType type) const;
   Enemy& find_enemy(uint8_t floor, EnemyType type);
+  std::vector<Object*> get_objects(uint8_t floor, uint16_t section, uint16_t wave_number);
+  std::vector<Enemy*> get_enemies(uint8_t floor, uint16_t section, uint16_t wave_number);
+  std::vector<Event*> get_events(uint8_t floor, uint16_t section, uint16_t wave_number);
+  std::vector<Event*> get_events(uint8_t floor);
 
+  static std::string disassemble_objects_data(const void* data, size_t size, size_t* object_number = nullptr);
+  static std::string disassemble_enemies_data(const void* data, size_t size, size_t* enemy_number = nullptr);
+  static std::string disassemble_wave_events_data(const void* data, size_t size, uint8_t floor = 0xFF);
   static std::string disassemble_quest_data(const void* data, size_t size);
 
   PrefixedLogger log;
@@ -343,7 +373,10 @@ struct Map {
   std::vector<size_t> rare_enemy_indexes;
   std::vector<Event> events;
   std::string event_action_stream;
-  std::unordered_map<uint64_t, size_t> floor_and_event_id_to_index;
+  std::map<uint64_t, size_t> floor_and_event_id_to_index;
+  std::unordered_multimap<uint64_t, size_t> floor_section_and_group_to_object_index;
+  std::unordered_multimap<uint64_t, size_t> floor_section_and_wave_number_to_enemy_index;
+  std::unordered_multimap<uint64_t, size_t> floor_section_and_wave_number_to_event_index;
 };
 
 class SetDataTableBase {

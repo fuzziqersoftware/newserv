@@ -3828,21 +3828,28 @@ struct G_ExtendedHeader {
 struct G_Unknown_6x04 {
   G_ClientIDHeader header;
   le_uint16_t unknown_a1 = 0;
-  le_uint16_t unused = 0;
+  le_uint16_t unknown_a2 = 0;
 } __packed__;
 
 // 6x05: Switch state changed
 // Some things that don't look like switches are implemented as switches using
 // this subcommand. For example, when all enemies in a room are defeated, this
 // subcommand is used to unlock the doors.
+// Note: In the client, this is a subclass of 6x04, similar to how 6xA2 is a
+// subclass of 6x60.
 
 struct G_SwitchStateChanged_6x05 {
   // Note: header.object_id is 0xFFFF for room clear when all enemies defeated
   G_ObjectIDHeader header;
-  parray<uint8_t, 2> unknown_a1;
+  // TODO: Some of these might be big-endian on GC; it only byteswaps
+  // unknown_a3. Are the others actually uint16, or are they uint8[2]?
+  le_uint16_t unknown_a1 = 0;
   le_uint16_t unknown_a2 = 0;
-  parray<uint8_t, 2> unknown_a3;
-  uint8_t floor = 0;
+  le_uint16_t switch_flag_num = 0;
+  uint8_t switch_flag_floor = 0;
+  // Only two bits in flags have meanings:
+  // 01 - set unlock flag (if not set, the flag is cleared instead)
+  // 02 - play room unlock sound if floor matches client's floor
   uint8_t flags = 0; // Bit field, with 2 lowest bits having meaning
 } __packed__;
 
@@ -4635,7 +4642,7 @@ struct G_TriggerSetEvent_6x67 {
   G_UnusedHeader header;
   le_uint32_t floor = 0;
   le_uint32_t event_id = 0; // NOT event index
-  le_uint32_t unused = 0;
+  le_uint32_t client_id = 0;
 } __packed__;
 
 // 6x68: Create telepipe / cast Ryuker
@@ -4754,11 +4761,11 @@ struct G_SyncSetFlagState_6x6E_Decompressed {
   le_uint16_t total_size = 0; // == sum of the following 3 fields
   le_uint16_t entity_set_flags_size = 0;
   le_uint16_t event_set_flags_size = 0;
-  le_uint16_t unused_size = 0;
+  le_uint16_t switch_flags_size = 0;
   // Variable-length fields follow here:
   // EntitySetFlags entity_set_flags; // Total size is set_flags_size
   // le_uint16_t event_set_flags[event_set_flags_size / 2]; // Same order as in map files (NOT sorted by event_id)
-  // uint8_t unused[is_v1 ? 0x200 : 0x240]; // Possibly an early implementation of 6x6F; unused even in DC NTE
+  // SwitchFlags switch_flags; // 0x200 bytes on v1 abd earlier; 0x240 bytes on v2 and later
 
   struct EntitySetFlags {
     le_uint32_t object_set_flags_offset = 0;
@@ -4993,11 +5000,11 @@ struct G_UpdateQuestFlag_V3_BB_6x75 : G_UpdateQuestFlag_DC_PC_6x75 {
   le_uint16_t unused = 0;
 } __packed__;
 
-// 6x76: Set entity flags
-// This command can only be used to set flags, since the game performs a bitwise
-// OR operation instead of a simple assignment.
+// 6x76: Set entity set flags
+// This command can only be used to set set flags, since the game performs a
+// bitwise OR operation instead of a simple assignment.
 
-struct G_SetEntityFlags_6x76 {
+struct G_SetEntitySetFlags_6x76 {
   G_EnemyIDHeader header; // 1000-3FFF = enemy, 4000-FFFF = object
   le_uint16_t floor = 0;
   le_uint16_t flags = 0;
@@ -5235,8 +5242,9 @@ struct G_Unknown_6x91 {
   le_uint32_t unknown_a2 = 0;
   le_uint16_t unknown_a3 = 0;
   le_uint16_t unknown_a4 = 0;
-  le_uint16_t unknown_a5 = 0;
-  parray<uint8_t, 2> unknown_a6;
+  le_uint16_t switch_flag_num = 0;
+  uint8_t should_set = 0; // The switch flag is only set if this is equal to 1; otherwise it's cleared
+  uint8_t switch_flag_floor = 0;
 } __packed__;
 
 // 6x92: Unknown (not valid on Episode 3)
@@ -5251,9 +5259,9 @@ struct G_Unknown_6x92 {
 
 struct G_ActivateTimedSwitch_6x93 {
   G_UnusedHeader header;
-  le_uint16_t floor = 0;
-  le_uint16_t switch_id = 0;
-  uint8_t unknown_a1 = 0; // Logic is different if this is 1 vs. any other value
+  le_uint16_t switch_flag_floor = 0;
+  le_uint16_t switch_flag_num = 0;
+  uint8_t should_set = 0; // The switch flag is only set if this is equal to 1; otherwise it's cleared
   parray<uint8_t, 3> unused;
 } __packed__;
 

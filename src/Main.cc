@@ -1117,6 +1117,43 @@ Action a_disassemble_quest_map(
       string result = Map::disassemble_quest_data(data.data(), data.size());
       write_output_data(args, result.data(), result.size(), "txt");
     });
+Action a_disassemble_free_map(
+    "disassemble-free-map", "\
+  disassemble-free-map INPUT-FILENAME [OUTPUT-FILENAME]\n\
+    Disassemble the input free-roam map (.dat or .evt file) into a text\n\
+    representation of the data it contains. Unlike othe disassembly actions,\n\
+    this action expects its input to be already decompressed. If the input is\n\
+    compressed, use the --compressed option. Also unlike other options, the\n\
+    input must be from a file (that is, INPUT-FILENAME is required and cannot\n\
+    be \"-\").\n",
+    +[](Arguments& args) {
+      const string& input_filename = args.get<string>(1, true);
+      bool is_events = ends_with(input_filename, ".evt");
+      bool is_enemies = ends_with(input_filename, "e.dat") || ends_with(input_filename, "e_s.dat") || ends_with(input_filename, "e_c1.dat") || ends_with(input_filename, "e_d.dat");
+      bool is_objects = ends_with(input_filename, "o.dat") || ends_with(input_filename, "o_s.dat") || ends_with(input_filename, "o_c1.dat") || ends_with(input_filename, "o_d.dat");
+      if (!is_objects && !is_enemies && !is_events) {
+        throw runtime_error("cannot determine input file type");
+      }
+
+      string data = read_input_data(args);
+      if (args.get<bool>("compressed")) {
+        data = prs_decompress(data);
+      }
+
+      string result;
+      if (is_objects) {
+        result = Map::disassemble_objects_data(data.data(), data.size());
+      } else if (is_enemies) {
+        result = Map::disassemble_enemies_data(data.data(), data.size());
+      } else if (is_events) {
+        result = Map::disassemble_wave_events_data(data.data(), data.size());
+      } else {
+        throw logic_error("unhandled input type");
+      }
+      result.push_back('\n');
+
+      write_output_data(args, result.data(), result.size(), "txt");
+    });
 Action a_disassemble_set_data_table(
     "disassemble-set-data-table", "\
   disassemble-set-data-table [INPUT-FILENAME]\n\

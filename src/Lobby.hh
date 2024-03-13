@@ -101,6 +101,7 @@ struct Lobby : public std::enable_shared_from_this<Lobby> {
   parray<le_uint32_t, 0x20> variations;
   std::unique_ptr<QuestFlags> quest_flags_known; // If null, ALL quest flags are known
   std::unique_ptr<QuestFlags> quest_flag_values;
+  std::unique_ptr<SwitchFlags> switch_flags;
 
   // Game config
   Version base_version;

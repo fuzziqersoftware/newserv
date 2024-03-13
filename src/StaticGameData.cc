@@ -775,6 +775,19 @@ const char* name_for_floor(Episode episode, uint8_t floor) {
   }
 }
 
+bool floor_is_boss_arena(Episode episode, uint8_t floor) {
+  switch (episode) {
+    case Episode::EP1:
+      return (floor >= 0x0B) && (floor <= 0x0E);
+    case Episode::EP2:
+      return (floor >= 0x0C) && (floor <= 0x0F);
+    case Episode::EP4:
+      return (floor == 0x09);
+    default:
+      return false;
+  }
+}
+
 uint32_t class_flags_for_class(uint8_t char_class) {
   static constexpr uint8_t flags[12] = {
       0x25, 0x2A, 0x31, 0x45, 0x51, 0x52, 0x86, 0x89, 0x8A, 0x32, 0x85, 0x46};

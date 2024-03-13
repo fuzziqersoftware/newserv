@@ -485,11 +485,10 @@ static void on_sync_joining_player_compressed_state(shared_ptr<Client> c, uint8_
       send_game_item_state(target);
       break;
     }
-
     case 0x6E: {
       StringReader r(decompressed);
       const auto& dec_header = r.get<G_SyncSetFlagState_6x6E_Decompressed>();
-      if (dec_header.total_size != dec_header.entity_set_flags_size + dec_header.event_set_flags_size + dec_header.unused_size) {
+      if (dec_header.total_size != dec_header.entity_set_flags_size + dec_header.event_set_flags_size + dec_header.switch_flags_size) {
         throw runtime_error("incorrect size fields in 6x6E header");
       }
 
@@ -518,8 +517,9 @@ static void on_sync_joining_player_compressed_state(shared_ptr<Client> c, uint8_
         for (size_t z = 0; z < min<size_t>(set_flags_header.num_object_sets, l->map->objects.size()); z++) {
           uint16_t flags = set_flags_r.get_u16l();
           if (flags != l->map->objects[z].set_flags) {
-            l->log.warning("(K-%zX) Set flags from client (%04hX) do not match flags from map (%04hX)",
+            l->log.warning("(K-%zX) Set flags from client (%04hX) do not match set flags from map (%04hX)",
                 z, flags, l->map->objects[z].set_flags);
+            l->map->objects[z].set_flags = flags;
           }
         }
 
@@ -533,8 +533,9 @@ static void on_sync_joining_player_compressed_state(shared_ptr<Client> c, uint8_
         for (size_t z = 0; z < min<size_t>(set_flags_header.num_enemy_sets, l->map->enemy_set_flags.size()); z++) {
           uint16_t flags = set_flags_r.get_u16l();
           if (flags != l->map->enemy_set_flags[z]) {
-            l->log.warning("(S-%zX) Set flags from client (%04hX) do not match flags from map (%04hX)",
+            l->log.warning("(S-%zX) Set flags from client (%04hX) do not match set flags from map (%04hX)",
                 z, flags, l->map->enemy_set_flags[z]);
+            l->map->enemy_set_flags[z] = flags;
           }
         }
 
@@ -552,31 +553,59 @@ static void on_sync_joining_player_compressed_state(shared_ptr<Client> c, uint8_
         }
         for (size_t z = 0; z < min<size_t>(num_event_flags, l->map->events.size()); z++) {
           uint16_t flags = event_set_flags_r.get_u16l();
-          const auto& event = l->map->events[z];
+          auto& event = l->map->events[z];
           if (flags != event.flags) {
             l->log.warning("(W-%02hhX-%" PRIX32 ") Event flags from client (%04hX) do not match flags from map (%04hX)",
                 event.floor, event.event_id, flags, event.flags);
+            event.flags = flags;
           }
         }
       }
 
-      size_t expected_unused_size = is_v1(c->version()) ? 0x200 : 0x240;
-      size_t target_unused_size = is_v1(target->version()) ? 0x200 : 0x240;
-      if (dec_header.unused_size != expected_unused_size) {
-        l->log.warning("Unused data size (0x%" PRIX32 ") does not match expected size (0x%zX)",
-            dec_header.unused_size.load(), expected_unused_size);
+      size_t expected_switch_flag_num_floors = is_v1(c->version()) ? 0x10 : 0x12;
+      size_t expected_switch_flags_size = expected_switch_flag_num_floors * 0x20;
+      if (dec_header.switch_flags_size != expected_switch_flags_size) {
+        l->log.warning("Switch flags size (0x%" PRIX32 ") does not match expected size (0x%zX)",
+            dec_header.switch_flags_size.load(), expected_switch_flags_size);
+      } else {
+        l->log.info("Switch flags size matches expected size (0x%zX)", expected_switch_flags_size);
       }
-      if (dec_header.unused_size != target_unused_size) {
-        l->log.info("Resizing unused data from 0x%" PRIX32 " bytes to 0x%zX bytes",
-            dec_header.unused_size.load(), target_unused_size);
-        if (dec_header.unused_size >= decompressed.size()) {
-          throw runtime_error("unused size is too large");
+      if (l->switch_flags) {
+        StringReader switch_flags_r = r.sub(r.where() + dec_header.entity_set_flags_size + dec_header.event_set_flags_size);
+        for (size_t floor = 0; floor < expected_switch_flag_num_floors; floor++) {
+          // There is a bug in most (perhaps all) versions of the game, which
+          // causes this array to be too small. It looks like Sega forgot to
+          // account for the header (G_SyncSetFlagState_6x6E_Decompressed)
+          // before compressing the buffer, so the game cuts off the last 8
+          // bytes of the switch flags. Since this only affects the last floor,
+          // which rarely has any switches on it (or is even accessible by the
+          // player), it's not surprising that no one noticed this. But it does
+          // mean we have to check switch_flags_r.eof() here.
+          for (size_t z = 0; (z < 0x20) && !switch_flags_r.eof(); z++) {
+            uint8_t& l_flags = l->switch_flags->data[floor][z];
+            uint8_t r_flags = switch_flags_r.get_u8();
+            if (l_flags != r_flags) {
+              l->log.warning("Switch flags do not match at %02zX[%02zX] (expected %02hhX, received %02hhX)",
+                  floor, z, l_flags, r_flags);
+              l_flags = r_flags;
+            }
+          }
         }
-        decompressed.resize(decompressed.size() - dec_header.unused_size.load() + target_unused_size, '\0');
-        auto* wdec_header = reinterpret_cast<G_SyncSetFlagState_6x6E_Decompressed*>(decompressed.data());
-        wdec_header->unused_size = target_unused_size;
-        wdec_header->total_size = wdec_header->entity_set_flags_size + wdec_header->event_set_flags_size + wdec_header->unused_size;
       }
+
+      // size_t target_switch_flag_num_floors = is_v1(target->version()) ? 0x10 : 0x12;
+      // size_t target_switch_flags_size = target_switch_flag_num_floors * 0x20;
+      // if (dec_header.switch_flags_size != target_switch_flags_size) {
+      //   l->log.info("Resizing switch flags from 0x%" PRIX32 " bytes to 0x%zX bytes",
+      //       dec_header.switch_flags_size.load(), target_switch_flags_size);
+      //   if (dec_header.switch_flags_size >= decompressed.size()) {
+      //     throw runtime_error("switch flags size is too large");
+      //   }
+      //   decompressed.resize(decompressed.size() - dec_header.switch_flags_size.load() + target_switch_flags_size, '\0');
+      //   auto* wdec_header = reinterpret_cast<G_SyncSetFlagState_6x6E_Decompressed*>(decompressed.data());
+      //   wdec_header->switch_flags_size = target_switch_flags_size;
+      //   wdec_header->total_size = wdec_header->entity_set_flags_size + wdec_header->event_set_flags_size + wdec_header->switch_flags_size;
+      // }
 
       send_game_join_sync_command_compressed(
           target,
@@ -1513,6 +1542,14 @@ static void on_switch_state_changed(shared_ptr<Client> c, uint8_t command, uint8
   }
 
   forward_subcommand(c, command, flag, data, size);
+
+  if (l->switch_flags) {
+    if (cmd.flags & 1) {
+      l->switch_flags->set(cmd.switch_flag_floor, cmd.switch_flag_num);
+    } else {
+      l->switch_flags->clear(cmd.switch_flag_floor, cmd.switch_flag_num);
+    }
+  }
 
   if (cmd.flags && cmd.header.object_id != 0xFFFF) {
     if (!l->quest &&
@@ -2718,25 +2755,130 @@ static void on_set_quest_flag(shared_ptr<Client> c, uint8_t command, uint8_t fla
   }
 }
 
-static void on_set_entity_flag(shared_ptr<Client> c, uint8_t command, uint8_t flag, void* data, size_t size) {
+static void on_set_entity_set_flag(shared_ptr<Client> c, uint8_t command, uint8_t flag, void* data, size_t size) {
   auto l = c->require_lobby();
   if (!l->is_game()) {
     return;
   }
 
-  const auto& cmd = check_size_t<G_SetEntityFlags_6x76>(data, size);
+  const auto& cmd = check_size_t<G_SetEntitySetFlags_6x76>(data, size);
   if (l->map) {
-    if (cmd.header.enemy_id >= 0x1000 && cmd.header.enemy_id < 0x4000) {
+    if (cmd.header.enemy_id >= 0x4000) {
+      uint16_t object_index = cmd.header.enemy_id - 0x4000;
       try {
-        l->map->enemies.at(cmd.header.enemy_id - 0x1000).game_flags |= cmd.flags;
+        uint16_t& set_flags = l->map->objects.at(object_index).set_flags;
+        set_flags |= cmd.flags;
+        l->log.info("Client set set flags %04hX on K-%hX (flags are now %04hX)",
+            cmd.flags.load(), object_index, cmd.flags.load());
+      } catch (const out_of_range&) {
+        l->log.warning("Flag update refers to missing object");
+      }
+
+    } else if (cmd.header.enemy_id >= 0x1000) {
+      int32_t section = -1;
+      int32_t wave_number = -1;
+      uint16_t enemy_index = cmd.header.enemy_id - 0x1000;
+      try {
+        const auto& enemy = l->map->enemies.at(enemy_index);
+        uint16_t& set_flags = l->map->enemy_set_flags.at(enemy.set_index);
+        set_flags |= cmd.flags;
+        section = enemy.section;
+        wave_number = enemy.wave_number;
+        l->log.info("Client set set flags %04hX on E-%hX (flags are now %04hX)",
+            cmd.flags.load(), enemy_index, cmd.flags.load());
       } catch (const out_of_range&) {
         l->log.warning("Flag update refers to missing enemy");
       }
-    } else if (cmd.header.enemy_id >= 0x4000) {
-      try {
-        l->map->objects.at(cmd.header.enemy_id - 0x4000).game_flags |= cmd.flags;
-      } catch (const out_of_range&) {
-        l->log.warning("Flag update refers to missing object");
+
+      if ((section >= 0) && (wave_number >= 0)) {
+        // When all enemies in a wave event have (set_flags & 8), which means
+        // they are defeated, set event_flags = (event_flags | 0x18) & (~4),
+        // which means it is done and should not trigger
+        bool all_enemies_defeated = true;
+        l->log.info("Checking for defeated enemies with section=%04" PRIX32 " wave_number=%04" PRIX32,
+            section, wave_number);
+        for (const Map::Enemy* enemy : l->map->get_enemies(cmd.floor, section, wave_number)) {
+          if (!(l->map->enemy_set_flags.at(enemy->set_index) & 8)) {
+            l->log.info("E-%hX is not defeated; cannot advance event to finished state", enemy->enemy_id);
+            all_enemies_defeated = false;
+            break;
+          } else {
+            l->log.info("E-%hX is defeated", enemy->enemy_id);
+          }
+        }
+        if (all_enemies_defeated) {
+          l->log.info("All enemies defeated; setting events with section=%04" PRIX32 " wave_number=%04" PRIX32 " to finished state",
+              section, wave_number);
+          for (Map::Event* event : l->map->get_events(cmd.floor, section, wave_number)) {
+            event->flags = (event->flags | 0x18) & (~4);
+            l->log.info("Set flags on W-%02hhX-%" PRIX32 " to %04hX", event->floor, event->event_id, event->flags);
+
+            StringReader actions_r(l->map->event_action_stream);
+            actions_r.go(event->action_stream_offset);
+            while (!actions_r.eof()) {
+              uint8_t opcode = actions_r.get_u8();
+              switch (opcode) {
+                case 0x00: // nop
+                  l->log.info("(W-%02hhX-%" PRIX32 " script) nop", event->floor, event->event_id);
+                  break;
+                case 0x01: // stop
+                  l->log.info("(W-%02hhX-%" PRIX32 " script) stop", event->floor, event->event_id);
+                  actions_r.go(actions_r.size());
+                  break;
+                case 0x08: { // construct_objects
+                  uint16_t section = actions_r.get_u16l();
+                  uint16_t group = actions_r.get_u16l();
+                  l->log.info("(W-%02hhX-%" PRIX32 " script) construct_objects %04hX %04hX", event->floor, event->event_id, section, group);
+                  for (auto* obj : l->map->get_objects(event->floor, section, group)) {
+                    if (!(obj->set_flags & 0x0A)) {
+                      l->log.info("(W-%02hhX-%" PRIX32 " script)   Setting flags 0012 on object K-%hX", event->floor, event->event_id, obj->object_id);
+                      obj->set_flags |= 0x12;
+                    }
+                  }
+                  break;
+                }
+                case 0x09: // construct_enemies
+                case 0x0D: { // construct_enemies_stop
+                  uint16_t section = actions_r.get_u16l();
+                  uint16_t wave_number = actions_r.get_u16l();
+                  l->log.info("(W-%02hhX-%" PRIX32 " script) construct_enemies %04hX %04hX", event->floor, event->event_id, section, wave_number);
+                  for (auto* enemy : l->map->get_enemies(event->floor, section, wave_number)) {
+                    uint16_t& set_flags = l->map->enemy_set_flags.at(enemy->set_index);
+                    if (!(set_flags & 0x0A)) {
+                      l->log.info("(W-%02hhX-%" PRIX32 " script)   Setting flags 0002 on enemy set S-%zX (from E-%hX)", event->floor, event->event_id, enemy->set_index, enemy->enemy_id);
+                      set_flags |= 0x02;
+                    }
+                  }
+                  if (opcode == 0x0D) {
+                    actions_r.go(actions_r.size());
+                  }
+                  break;
+                }
+                case 0x0A: // enable_switch_flag
+                case 0x0B: { // disable_switch_flag
+                  // These opcodes cause the client to send 6x05 commands, so
+                  // we don't have to do anything here.
+                  uint16_t switch_flag_num = actions_r.get_u16l();
+                  l->log.info("(W-%02hhX-%" PRIX32 " script) %sable_switch_flag %04hX",
+                      event->floor, event->event_id, (opcode & 1) ? "dis" : "en", switch_flag_num);
+                  break;
+                }
+                case 0x0C: { // trigger_event
+                  // This opcode causes the client to send a 6x67 command, so
+                  // we don't have to do anything here.
+                  uint32_t event_id = actions_r.get_u32l();
+                  l->log.info("(W-%02hhX-%" PRIX32 " script) trigger_event W-%02hhX-%" PRIX32,
+                      event->floor, event->event_id, event->floor, event_id);
+                  break;
+                }
+                default:
+                  l->log.warning("(W-%02hhX-%" PRIX32 ") Invalid opcode %02hhX at offset %zX in event action stream",
+                      event->floor, event->event_id, opcode, actions_r.where() - 1);
+                  actions_r.go(actions_r.size());
+              }
+            }
+          }
+        }
       }
     }
   }
@@ -2752,15 +2894,47 @@ static void on_trigger_set_event(shared_ptr<Client> c, uint8_t command, uint8_t 
 
   const auto& cmd = check_size_t<G_TriggerSetEvent_6x67>(data, size);
   if (l->map) {
-    // TODO: The game's logic is significantly more complex than this. Do we
-    // need to do anything fancy here?
     try {
       l->map->get_event(cmd.floor, cmd.event_id).flags |= 0x04;
+      l->log.info("Client triggered set event W-%02" PRIX32 "-%" PRIX32, cmd.floor.load(), cmd.event_id.load());
     } catch (const out_of_range&) {
-      l->log.warning("Client triggered missing event W-%02" PRIX32 "-%" PRIX32, cmd.floor.load(), cmd.event_id.load());
+      l->log.warning("Client triggered missing set event W-%02" PRIX32 "-%" PRIX32, cmd.floor.load(), cmd.event_id.load());
     }
   }
 
+  forward_subcommand(c, command, flag, data, size);
+}
+
+static void on_unknown_6x91(shared_ptr<Client> c, uint8_t command, uint8_t flag, void* data, size_t size) {
+  const auto& cmd = check_size_t<G_Unknown_6x91>(data, size);
+  auto l = c->require_lobby();
+  if (!l->is_game()) {
+    return;
+  }
+  if (l->switch_flags &&
+      (cmd.should_set == 1) &&
+      (cmd.switch_flag_num < 0x100) &&
+      (cmd.switch_flag_floor < 0x12) &&
+      (cmd.header.object_id >= 0x4000) &&
+      (cmd.header.object_id != 0xFFFF)) {
+    l->switch_flags->set(cmd.switch_flag_floor, cmd.switch_flag_num);
+  }
+  forward_subcommand(c, command, flag, data, size);
+}
+
+static void on_activate_timed_switch(shared_ptr<Client> c, uint8_t command, uint8_t flag, void* data, size_t size) {
+  const auto& cmd = check_size_t<G_ActivateTimedSwitch_6x93>(data, size);
+  auto l = c->require_lobby();
+  if (!l->is_game()) {
+    return;
+  }
+  if (l->switch_flags) {
+    if (cmd.should_set == 1) {
+      l->switch_flags->set(cmd.switch_flag_floor, cmd.switch_flag_num);
+    } else {
+      l->switch_flags->clear(cmd.switch_flag_floor, cmd.switch_flag_num);
+    }
+  }
   forward_subcommand(c, command, flag, data, size);
 }
 
@@ -4220,7 +4394,7 @@ const SubcommandDefinition subcommand_definitions[0x100] = {
     /* 6x73 */ {0x00, 0x00, 0x73, on_forward_check_game_quest},
     /* 6x74 */ {0x62, 0x69, 0x74, on_word_select, SDF::ALWAYS_FORWARD_TO_WATCHERS},
     /* 6x75 */ {0x00, 0x00, 0x75, on_set_quest_flag},
-    /* 6x76 */ {0x00, 0x00, 0x76, on_set_entity_flag},
+    /* 6x76 */ {0x00, 0x00, 0x76, on_set_entity_set_flag},
     /* 6x77 */ {0x00, 0x00, 0x77, on_forward_check_game},
     /* 6x78 */ {0x00, 0x00, 0x78, forward_subcommand_m},
     /* 6x79 */ {0x00, 0x00, 0x79, on_forward_check_lobby},
@@ -4247,9 +4421,9 @@ const SubcommandDefinition subcommand_definitions[0x100] = {
     /* 6x8E */ {0x00, 0x00, 0x8E, on_forward_check_game},
     /* 6x8F */ {0x00, 0x00, 0x8F, on_forward_check_game},
     /* 6x90 */ {0x00, 0x00, 0x90, on_forward_check_game},
-    /* 6x91 */ {0x00, 0x00, 0x91, on_forward_check_game},
+    /* 6x91 */ {0x00, 0x00, 0x91, on_unknown_6x91},
     /* 6x92 */ {0x00, 0x00, 0x92, on_forward_check_game},
-    /* 6x93 */ {0x00, 0x00, 0x93, on_forward_check_game},
+    /* 6x93 */ {0x00, 0x00, 0x93, on_activate_timed_switch},
     /* 6x94 */ {0x00, 0x00, 0x94, on_warp},
     /* 6x95 */ {0x00, 0x00, 0x95, on_forward_check_game},
     /* 6x96 */ {0x00, 0x00, 0x96, on_forward_check_game},

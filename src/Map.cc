@@ -14,6 +14,10 @@ using namespace std;
 
 static constexpr float UINT32_MAX_AS_FLOAT = 4294967296.0f;
 
+static uint64_t section_index_key(uint8_t floor, uint16_t section, uint16_t wave_number) {
+  return (static_cast<uint64_t>(floor) << 32) | (static_cast<uint64_t>(section) << 16) | static_cast<uint64_t>(wave_number);
+}
+
 const char* Map::name_for_object_type(uint16_t type) {
   switch (type) {
     case 0x0000:
@@ -655,23 +659,34 @@ string Map::EnemyEntry::str() const {
       this->unused.load());
 }
 
-Map::Enemy::Enemy(uint16_t enemy_id, size_t source_index, size_t set_index, uint8_t floor, EnemyType type)
+Map::Enemy::Enemy(
+    uint16_t enemy_id,
+    size_t source_index,
+    size_t set_index,
+    uint8_t floor,
+    uint16_t section,
+    uint16_t wave_number,
+    EnemyType type)
     : source_index(source_index),
       set_index(set_index),
       enemy_id(enemy_id),
       total_damage(0),
       game_flags(0),
+      section(section),
+      wave_number(wave_number),
       type(type),
       floor(floor),
       state_flags(0) {}
 
 string Map::Enemy::str() const {
-  return string_printf("[Map::Enemy E-%hX source %zX %s%s floor=%02hhX flags=%02hhX]",
+  return string_printf("[Map::Enemy E-%hX source %zX %s%s floor=%02hhX section=%04hX wave_number=%04hX flags=%02hhX]",
       this->enemy_id,
       this->source_index,
       name_for_enum(this->type),
       enemy_type_is_rare(this->type) ? " RARE" : "",
       this->floor,
+      this->section,
+      this->wave_number,
       this->state_flags);
 }
 
@@ -725,6 +740,7 @@ void Map::add_objects_from_map_data(uint8_t floor, const void* data, size_t size
         .floor = floor,
         .base_type = objects[z].base_type,
         .section = objects[z].section,
+        .group = objects[z].group,
         .param1 = objects[z].param1,
         .param3 = objects[z].param3,
         .param4 = objects[z].param4,
@@ -734,6 +750,8 @@ void Map::add_objects_from_map_data(uint8_t floor, const void* data, size_t size
         .set_flags = 0,
         .item_drop_checked = false,
     });
+    uint64_t k = section_index_key(floor, objects[z].section, objects[z].group);
+    this->floor_section_and_group_to_object_index.emplace(k, object_id);
   }
 }
 
@@ -782,7 +800,9 @@ void Map::add_enemy(
 
   auto add = [&](EnemyType type) -> void {
     uint16_t enemy_id = this->enemies.size();
-    this->enemies.emplace_back(enemy_id, source_index, set_index, floor, type);
+    this->enemies.emplace_back(enemy_id, source_index, set_index, floor, e.section, e.wave_number, type);
+    uint64_t k = section_index_key(floor, e.section, e.wave_number);
+    this->floor_section_and_wave_number_to_enemy_index.emplace(k, enemy_id);
   };
 
   EnemyType child_type = EnemyType::UNKNOWN;
@@ -1434,7 +1454,7 @@ void Map::add_random_enemies_from_map_data(
       }
       if (remaining_waves) {
         /* ev.delay = */ random_state->rand_int_biased(entry.min_delay, entry.max_delay);
-        this->add_event(wave_next_event_id, entry.flags, floor, this->event_action_stream.size());
+        this->add_event(wave_next_event_id, entry.flags, floor, entry.section, wave_number, this->event_action_stream.size());
         this->event_action_stream.push_back(0x0C);
         wave_next_event_id = entry.event_id + wave_number + 10000;
         this->event_action_stream.append(reinterpret_cast<const char*>(&wave_next_event_id), sizeof(wave_next_event_id));
@@ -1444,15 +1464,17 @@ void Map::add_random_enemies_from_map_data(
     }
 
     /* ev.delay = */ random_state->rand_int_biased(entry.min_delay, entry.max_delay);
-    this->add_event(wave_next_event_id, entry.flags, floor, action_stream_base_offset + entry.action_stream_offset);
+    this->add_event(wave_next_event_id, entry.flags, floor, entry.section, wave_number, action_stream_base_offset + entry.action_stream_offset);
     wave_number++;
   }
 }
 
-void Map::add_event(uint32_t event_id, uint16_t flags, uint8_t floor, uint32_t action_stream_offset) {
+void Map::add_event(uint32_t event_id, uint16_t flags, uint8_t floor, uint16_t section, uint16_t wave_number, uint32_t action_stream_offset) {
   size_t index = this->events.size();
   auto& ev = this->events.emplace_back();
   ev.event_id = event_id;
+  ev.section = section;
+  ev.wave_number = wave_number;
   ev.flags = flags;
   ev.floor = floor;
   ev.action_stream_offset = action_stream_offset;
@@ -1460,6 +1482,9 @@ void Map::add_event(uint32_t event_id, uint16_t flags, uint8_t floor, uint32_t a
   if (!this->floor_and_event_id_to_index.emplace(k, index).second) {
     this->log.warning("Duplicate event ID: W-%02hhX-%" PRIX32, floor, event_id);
   }
+
+  k = section_index_key(floor, section, wave_number);
+  this->floor_section_and_wave_number_to_event_index.emplace(k, index);
 }
 
 Map::Event& Map::get_event(uint8_t floor, uint32_t event_id) {
@@ -1486,7 +1511,7 @@ void Map::add_events_from_map_data(uint8_t floor, const void* data, size_t size)
   auto events_r = r.sub(header.entries_offset, sizeof(Event1Entry) * header.entry_count);
   while (!events_r.eof()) {
     const auto& entry = events_r.get<Event1Entry>();
-    this->add_event(entry.event_id, entry.flags, floor, entry.action_stream_offset + action_stream_base_offset);
+    this->add_event(entry.event_id, entry.flags, floor, entry.section, entry.wave_number, entry.action_stream_offset + action_stream_base_offset);
   }
 }
 
@@ -1638,6 +1663,154 @@ Map::Enemy& Map::find_enemy(uint8_t floor, EnemyType type) {
   throw out_of_range("enemy not found");
 }
 
+std::vector<Map::Object*> Map::get_objects(uint8_t floor, uint16_t section, uint16_t group) {
+  uint64_t k = section_index_key(floor, section, group);
+  vector<Object*> ret;
+  for (auto its = this->floor_section_and_group_to_object_index.equal_range(k); its.first != its.second; its.first++) {
+    ret.emplace_back(&this->objects.at(its.first->second));
+  }
+  return ret;
+}
+
+std::vector<Map::Enemy*> Map::get_enemies(uint8_t floor, uint16_t section, uint16_t wave_number) {
+  uint64_t k = section_index_key(floor, section, wave_number);
+  vector<Enemy*> ret;
+  for (auto its = this->floor_section_and_wave_number_to_enemy_index.equal_range(k); its.first != its.second; its.first++) {
+    ret.emplace_back(&this->enemies.at(its.first->second));
+  }
+  return ret;
+}
+
+std::vector<Map::Event*> Map::get_events(uint8_t floor, uint16_t section, uint16_t wave_number) {
+  uint64_t k = section_index_key(floor, section, wave_number);
+  vector<Event*> ret;
+  for (auto its = this->floor_section_and_wave_number_to_event_index.equal_range(k); its.first != its.second; its.first++) {
+    ret.emplace_back(&this->events.at(its.first->second));
+  }
+  return ret;
+}
+
+std::vector<Map::Event*> Map::get_events(uint8_t floor) {
+  uint64_t k_start = (static_cast<uint64_t>(floor) << 32);
+  uint64_t k_end = (static_cast<uint64_t>(floor + 1) << 32);
+  vector<Event*> ret;
+  for (auto it = this->floor_and_event_id_to_index.lower_bound(k_start);
+       (it != this->floor_and_event_id_to_index.end()) && (it->first < k_end);
+       it++) {
+    ret.emplace_back(&this->events.at(it->second));
+  }
+  return ret;
+}
+
+template <typename EntryT>
+static string disassemble_vector_file_t(const void* data, size_t size, size_t* entry_number, char type_ch) {
+  deque<string> ret;
+  StringReader r(data, size);
+
+  size_t local_entry_number = 0;
+  if (!entry_number) {
+    entry_number = &local_entry_number;
+  }
+
+  while (r.remaining() >= sizeof(EntryT)) {
+    string o_str = r.get<EntryT>().str();
+    ret.emplace_back(string_printf("/* %c-%zX */ %s", type_ch, (*entry_number)++, o_str.c_str()));
+  }
+  if (r.remaining()) {
+    ret.emplace_back("// Warning: section size is not a multiple of entry size");
+    size_t size = r.remaining();
+    ret.emplace_back(format_data(r.getv(size), size));
+  }
+  return join(ret, "\n");
+}
+
+string Map::disassemble_objects_data(const void* data, size_t size, size_t* object_number) {
+  return disassemble_vector_file_t<ObjectEntry>(data, size, object_number, 'K');
+}
+
+string Map::disassemble_enemies_data(const void* data, size_t size, size_t* enemy_number) {
+  return disassemble_vector_file_t<EnemyEntry>(data, size, enemy_number, 'S');
+}
+
+string Map::disassemble_wave_events_data(const void* data, size_t size, uint8_t floor) {
+  deque<string> ret;
+  StringReader r(data, size);
+
+  const auto& evt_header = r.get<EventsSectionHeader>();
+  if (evt_header.format == 0x65767432) { // 'evt2'
+    ret.emplace_back(".evt2_format"); // TODO
+    size_t size = r.remaining();
+    ret.emplace_back(format_data(r.getv(size), size));
+  } else {
+    auto action_stream_r = r.sub(evt_header.action_stream_offset);
+    for (size_t z = 0; z < evt_header.entry_count; z++) {
+      const auto& entry = r.get<Event1Entry>();
+      ret.emplace_back(string_printf("/* W-%02hhX-%" PRIX32 " */ [Event1Entry flags=%04hX type=%04hX section=%04hX wave_number=%04hX delay=%" PRIu32 "]",
+          floor,
+          entry.event_id.load(),
+          entry.flags.load(),
+          entry.event_type.load(),
+          entry.section.load(),
+          entry.wave_number.load(),
+          entry.delay.load()));
+      auto ev_actions_r = action_stream_r.sub(entry.action_stream_offset);
+      bool should_continue = true;
+      while (!ev_actions_r.eof() && should_continue) {
+        uint8_t opcode = ev_actions_r.get_u8();
+        switch (opcode) {
+          case 0x00:
+            ret.emplace_back(string_printf("  00            nop"));
+            break;
+          case 0x01:
+            ret.emplace_back(string_printf("  01            stop"));
+            should_continue = false;
+            break;
+          case 0x08: {
+            uint16_t section = ev_actions_r.get_u16l();
+            uint16_t group = ev_actions_r.get_u16l();
+            ret.emplace_back(string_printf("  08 %04hX %04hX  construct_objects       section=%04hX group=%04hX",
+                section, group, section, group));
+            break;
+          }
+          case 0x09: {
+            uint16_t section = ev_actions_r.get_u16l();
+            uint16_t wave_number = ev_actions_r.get_u16l();
+            ret.emplace_back(string_printf("  09 %04hX %04hX  construct_enemies       section=%04hX wave_number=%04hX",
+                section, wave_number, section, wave_number));
+            break;
+          }
+          case 0x0A: {
+            uint16_t id = ev_actions_r.get_u16l();
+            ret.emplace_back(string_printf("  0A %04hX       enable_switch_flag      id=%04hX", id, id));
+            break;
+          }
+          case 0x0B: {
+            uint16_t id = ev_actions_r.get_u16l();
+            ret.emplace_back(string_printf("  0B %04hX       disable_switch_flag     id=%04hX", id, id));
+            break;
+          }
+          case 0x0C: {
+            uint32_t event_id = ev_actions_r.get_u32l();
+            ret.emplace_back(string_printf("  0C %04hX       trigger_event           event_id=%08" PRIX32, event_id, event_id));
+            break;
+          }
+          case 0x0D: {
+            uint16_t section = ev_actions_r.get_u16l();
+            uint16_t wave_number = ev_actions_r.get_u16l();
+            ret.emplace_back(string_printf("  0D %04hX %04hX  construct_enemies_stop  section=%04hX wave_number=%04hX",
+                section, wave_number, section, wave_number));
+            break;
+          }
+          default:
+            ret.emplace_back(string_printf("  %02hhX            .invalid", opcode));
+        }
+      }
+    }
+  }
+
+  return join(ret, "\n");
+}
+
 string Map::disassemble_quest_data(const void* data, size_t size) {
   auto all_floor_sections = Map::collect_quest_map_data_sections(data, size);
 
@@ -1651,56 +1824,34 @@ string Map::disassemble_quest_data(const void* data, size_t size) {
     if (floor_sections.objects != 0xFFFFFFFF) {
       ret.emplace_back(string_printf(".objects %zu", floor));
       const auto& header = r.pget<SectionHeader>(floor_sections.objects);
-      auto sub_r = r.sub(floor_sections.objects + sizeof(SectionHeader), header.data_size);
-      while (sub_r.remaining() >= sizeof(ObjectEntry)) {
-        string o_str = sub_r.get<ObjectEntry>().str();
-        ret.emplace_back(string_printf("/* K-%zX */ %s", object_number++, o_str.c_str()));
-      }
-      if (sub_r.remaining()) {
-        ret.emplace_back("// Warning: object section size is not a multiple of object entry size");
-        size_t offset = floor_sections.objects + sizeof(SectionHeader) + r.where();
-        size_t bytes = r.remaining();
-        ret.emplace_back(format_data(r.getv(r.remaining()), bytes, offset));
-      }
+      size_t offset = floor_sections.objects + sizeof(SectionHeader);
+      ret.emplace_back(Map::disassemble_objects_data(r.pgetv(offset, header.data_size), header.data_size, &object_number));
     }
-
     if (floor_sections.enemies != 0xFFFFFFFF) {
       ret.emplace_back(string_printf(".enemies %zu", floor));
       const auto& header = r.pget<SectionHeader>(floor_sections.enemies);
-      auto sub_r = r.sub(floor_sections.enemies + sizeof(SectionHeader), header.data_size);
-      while (sub_r.remaining() >= sizeof(EnemyEntry)) {
-        string e_str = sub_r.get<EnemyEntry>().str();
-        ret.emplace_back(string_printf("/* entry %zX */ %s", enemy_number++, e_str.c_str()));
-      }
-      if (sub_r.remaining()) {
-        ret.emplace_back("// Warning: enemy section size is not a multiple of enemy entry size");
-        size_t offset = floor_sections.objects + sizeof(SectionHeader) + r.where();
-        size_t bytes = r.remaining();
-        ret.emplace_back(format_data(r.getv(r.remaining()), bytes, offset));
-      }
+      size_t offset = floor_sections.enemies + sizeof(SectionHeader);
+      ret.emplace_back(Map::disassemble_enemies_data(r.pgetv(offset, header.data_size), header.data_size, &enemy_number));
     }
-
-    // TODO: Add disassembly for these section types
     if (floor_sections.wave_events != 0xFFFFFFFF) {
       ret.emplace_back(string_printf(".wave_events %zu", floor));
       const auto& header = r.pget<SectionHeader>(floor_sections.wave_events);
       size_t offset = floor_sections.wave_events + sizeof(SectionHeader);
-      auto sub_r = r.sub(offset, header.data_size);
-      ret.emplace_back(format_data(r.getv(r.remaining()), header.data_size, offset));
+      ret.emplace_back(Map::disassemble_wave_events_data(r.pgetv(offset, header.data_size), header.data_size, floor));
     }
     if (floor_sections.random_enemy_locations != 0xFFFFFFFF) {
       ret.emplace_back(string_printf(".random_enemy_locations %zu", floor));
       const auto& header = r.pget<SectionHeader>(floor_sections.random_enemy_locations);
       size_t offset = floor_sections.random_enemy_locations + sizeof(SectionHeader);
       auto sub_r = r.sub(offset, header.data_size);
-      ret.emplace_back(format_data(r.getv(r.remaining()), header.data_size, offset));
+      ret.emplace_back(format_data(sub_r.getv(sub_r.remaining()), header.data_size, offset));
     }
     if (floor_sections.random_enemy_definitions != 0xFFFFFFFF) {
       ret.emplace_back(string_printf(".random_enemy_definitions %zu", floor));
       const auto& header = r.pget<SectionHeader>(floor_sections.random_enemy_definitions);
       size_t offset = floor_sections.random_enemy_definitions + sizeof(SectionHeader);
       auto sub_r = r.sub(offset, header.data_size);
-      ret.emplace_back(format_data(r.getv(r.remaining()), header.data_size, offset));
+      ret.emplace_back(format_data(sub_r.getv(sub_r.remaining()), header.data_size, offset));
     }
   }
 

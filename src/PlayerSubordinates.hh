@@ -565,6 +565,20 @@ struct QuestFlagsV1 {
   operator QuestFlags() const;
 } __attribute__((packed));
 
+struct SwitchFlags {
+  parray<parray<uint8_t, 0x20>, 0x12> data;
+
+  inline bool get(uint8_t floor, uint16_t flag_num) const {
+    return this->data[floor][flag_num >> 3] & (0x80 >> (flag_num & 7));
+  }
+  inline void set(uint8_t floor, uint16_t flag_num) {
+    this->data[floor][flag_num >> 3] |= (0x80 >> (flag_num & 7));
+  }
+  inline void clear(uint8_t floor, uint16_t flag_num) {
+    this->data[floor][flag_num >> 3] &= ~(0x80 >> (flag_num & 7));
+  }
+} __attribute__((packed));
+
 struct BattleRules {
   enum class TechDiskMode : uint8_t {
     ALLOW = 0,

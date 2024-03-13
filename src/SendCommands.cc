@@ -2615,8 +2615,8 @@ void send_game_set_state(shared_ptr<Client> c) {
   G_SyncSetFlagState_6x6E_Decompressed header;
   header.entity_set_flags_size = sizeof(entity_set_flags_header) + (num_object_sets + num_enemy_sets) * sizeof(le_uint16_t);
   header.event_set_flags_size = sizeof(le_uint16_t) * l->map->events.size();
-  header.unused_size = is_v1(c->version()) ? 0x200 : 0x240;
-  header.total_size = header.entity_set_flags_size + header.event_set_flags_size + header.unused_size;
+  header.switch_flags_size = is_v1(c->version()) ? 0x200 : 0x240;
+  header.total_size = header.entity_set_flags_size + header.event_set_flags_size + header.switch_flags_size;
 
   StringWriter w;
   w.put(header);
@@ -2630,7 +2630,12 @@ void send_game_set_state(shared_ptr<Client> c) {
   for (const auto& event : l->map->events) {
     w.put_u16l(event.flags);
   }
-  w.extend_by(header.unused_size, 0x00);
+  if (l->switch_flags) {
+    static_assert(sizeof(SwitchFlags) == 0x240, "switch_flags size is incorrect");
+    w.write(l->switch_flags->data.data(), header.switch_flags_size);
+  } else {
+    w.extend_by(header.switch_flags_size, 0x00);
+  }
 
   send_game_join_sync_command(c, w.str(), 0x5F, 0x66, 0x6E);
 }

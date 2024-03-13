@@ -76,6 +76,7 @@ extern const std::unordered_map<std::string, uint8_t> mag_color_for_name;
 size_t floor_limit_for_episode(Episode ep);
 uint8_t floor_for_name(const std::string& name);
 const char* name_for_floor(Episode episode, uint8_t floor);
+bool floor_is_boss_arena(Episode episode, uint8_t floor);
 
 uint32_t class_flags_for_class(uint8_t char_class);
 

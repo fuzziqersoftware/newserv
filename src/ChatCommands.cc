@@ -1471,18 +1471,34 @@ static void server_command_warp(shared_ptr<Client> c, const std::string& args, b
   auto s = c->require_server_state();
   auto l = c->require_lobby();
   check_is_game(l, true);
-  check_cheats_enabled(l, c);
 
   uint32_t floor = stoul(args, nullptr, 0);
   if (c->floor == floor) {
     return;
   }
 
+  // Special case: $warp[me] 0 is allowed in boss arenas if the boss is already
+  // defeated, even if cheats are disabled. This is because if a player returns
+  // to a boss arena after a persistence gap in the game, the exit warp won't
+  // exist, so they need a way to get out.
+  bool should_check_cheats = is_warpall || (floor != 0) || !floor_is_boss_arena(l->episode, c->floor);
+  if (!should_check_cheats) {
+    for (const auto* event : l->map->get_events(c->floor)) {
+      if (!(event->flags & 0x18)) {
+        should_check_cheats = true;
+        break;
+      }
+    }
+  }
+  if (should_check_cheats) {
+    check_cheats_enabled(l, c);
+  }
+
   size_t limit = floor_limit_for_episode(l->episode);
   if (limit == 0) {
     return;
   } else if (floor > limit) {
-    send_text_message_printf(c, "$C6Area numbers must\nbe %zu or less.", limit);
+    send_text_message_printf(c, "$C6Area numbers must\nbe %zu or less", limit);
     return;
   }
 
