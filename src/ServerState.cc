@@ -1140,14 +1140,15 @@ void ServerState::load_config_late() {
         for (size_t trap_type = 0; trap_type < 5; trap_type++) {
           auto& trap_card_ids = this->ep3_trap_card_ids[trap_type];
           for (const auto& card_it : ep3_trap_cards_json.at(trap_type)->as_list()) {
+            const string& card_name = card_it->as_string();
             try {
-              const auto& card = this->ep3_card_index->definition_for_name_normalized(card_it->as_string());
+              const auto& card = this->ep3_card_index->definition_for_name_normalized(card_name);
               if (card->def.type != Episode3::CardType::ASSIST) {
-                throw runtime_error(string_printf("Ep3 card \"%s\" in trap card list is not an assist card", name.c_str()));
+                throw runtime_error(string_printf("Ep3 card \"%s\" in trap card list is not an assist card", card_name.c_str()));
               }
               trap_card_ids.emplace_back(card->def.card_id);
             } catch (const out_of_range&) {
-              throw runtime_error(string_printf("Ep3 card \"%s\" in trap card list does not exist", name.c_str()));
+              throw runtime_error(string_printf("Ep3 card \"%s\" in trap card list does not exist", card_name.c_str()));
             }
           }
         }
