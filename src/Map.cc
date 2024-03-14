@@ -1791,7 +1791,7 @@ string Map::disassemble_wave_events_data(const void* data, size_t size, uint8_t 
           }
           case 0x0C: {
             uint32_t event_id = ev_actions_r.get_u32l();
-            ret.emplace_back(string_printf("  0C %04hX       trigger_event           event_id=%08" PRIX32, event_id, event_id));
+            ret.emplace_back(string_printf("  0C %08" PRIX32 "   trigger_event           event_id=%08" PRIX32, event_id, event_id));
             break;
           }
           case 0x0D: {
