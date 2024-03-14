@@ -1946,15 +1946,13 @@ HandlerResult C_6x<void>(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t, u
   if (!data.empty()) {
     if ((data[0] == 0x05) && ses->config.check_flag(Client::Flag::SWITCH_ASSIST_ENABLED)) {
       auto& cmd = check_size_t<G_SwitchStateChanged_6x05>(data);
-      if (cmd.flags && cmd.header.object_id != 0xFFFF) {
-        if (ses->last_switch_enabled_command.header.subcommand == 0x05) {
-          ses->log.info("Switch assist: replaying previous enable command");
-          ses->server_channel.send(0x60, 0x00, &ses->last_switch_enabled_command,
-              sizeof(ses->last_switch_enabled_command));
-          ses->client_channel.send(0x60, 0x00, &ses->last_switch_enabled_command,
-              sizeof(ses->last_switch_enabled_command));
+      if ((cmd.flags & 1) && (cmd.header.object_id != 0xFFFF)) {
+        ses->recent_switch_flags.add(cmd.switch_flag_num);
+        string commands = ses->recent_switch_flags.enable_commands(ses->floor);
+        if (!commands.empty()) {
+          ses->server_channel.send(0x60, 0x00, commands);
+          ses->client_channel.send(0x60, 0x00, commands);
         }
-        ses->last_switch_enabled_command = cmd;
       }
 
     } else if (data[0] == 0x21) {

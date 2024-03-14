@@ -733,3 +733,15 @@ struct SymbolChat {
 
   SymbolChat();
 } __attribute__((packed));
+
+struct RecentSwitchFlags {
+  uint64_t flag_nums = 0xFFFFFFFFFFFFFFFF;
+
+  inline void clear() {
+    this->flag_nums = 0xFFFFFFFFFFFFFFFF;
+  }
+
+  void add(uint16_t flag_num);
+
+  std::string enable_commands(uint8_t floor) const;
+};

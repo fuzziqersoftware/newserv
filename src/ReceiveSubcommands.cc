@@ -1364,8 +1364,9 @@ static void on_change_floor_6x1F(shared_ptr<Client> c, uint8_t command, uint8_t 
 
   } else {
     const auto& cmd = check_size_t<G_SetPlayerFloor_6x1F>(data, size);
-    if (cmd.floor >= 0) {
+    if (cmd.floor >= 0 && c->floor != static_cast<uint32_t>(cmd.floor)) {
       c->floor = cmd.floor;
+      c->recent_switch_flags.clear();
     }
   }
   forward_subcommand(c, command, flag, data, size);
@@ -1373,8 +1374,9 @@ static void on_change_floor_6x1F(shared_ptr<Client> c, uint8_t command, uint8_t 
 
 static void on_change_floor_6x21(shared_ptr<Client> c, uint8_t command, uint8_t flag, void* data, size_t size) {
   const auto& cmd = check_size_t<G_InterLevelWarp_6x21>(data, size);
-  if (cmd.floor >= 0) {
+  if (cmd.floor >= 0 && c->floor != static_cast<uint32_t>(cmd.floor)) {
     c->floor = cmd.floor;
+    c->recent_switch_flags.clear();
   }
   forward_subcommand(c, command, flag, data, size);
 }
@@ -1551,18 +1553,17 @@ static void on_switch_state_changed(shared_ptr<Client> c, uint8_t command, uint8
     }
   }
 
-  if (cmd.flags && cmd.header.object_id != 0xFFFF) {
-    if (!l->quest &&
-        c->config.check_flag(Client::Flag::SWITCH_ASSIST_ENABLED) &&
-        (c->last_switch_enabled_command.header.subcommand == 0x05)) {
-      c->log.info("[Switch assist] Replaying previous enable command");
+  if ((cmd.flags & 1) && cmd.header.object_id != 0xFFFF) {
+    c->recent_switch_flags.add(cmd.switch_flag_num);
+    if (!l->quest && c->config.check_flag(Client::Flag::SWITCH_ASSIST_ENABLED)) {
       if (c->config.check_flag(Client::Flag::DEBUG_ENABLED)) {
         send_text_message(c, "$C5Switch assist");
       }
-      forward_subcommand(c, command, flag, &c->last_switch_enabled_command, sizeof(c->last_switch_enabled_command));
-      send_command_t(c, command, flag, c->last_switch_enabled_command);
+      string commands = c->recent_switch_flags.enable_commands(c->floor);
+      if (!commands.empty()) {
+        send_command(c, 0x60, 0x00, commands);
+      }
     }
-    c->last_switch_enabled_command = cmd;
   }
 }
 
@@ -1587,8 +1588,9 @@ void on_movement_with_floor(shared_ptr<Client> c, uint8_t command, uint8_t flag,
   }
   c->x = cmd.x;
   c->z = cmd.z;
-  if (cmd.floor >= 0) {
+  if (cmd.floor >= 0 && c->floor != static_cast<uint32_t>(cmd.floor)) {
     c->floor = cmd.floor;
+    c->recent_switch_flags.clear();
   }
   forward_subcommand(c, command, flag, data, size);
 }

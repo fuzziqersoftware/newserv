@@ -250,7 +250,7 @@ public:
 
   // Miscellaneous (used by chat commands)
   uint32_t next_exp_value; // next EXP value to give
-  G_SwitchStateChanged_6x05 last_switch_enabled_command;
+  RecentSwitchFlags recent_switch_flags; // used for switch assist
   bool can_chat;
   struct PendingCharacterExport {
     std::shared_ptr<const License> license;

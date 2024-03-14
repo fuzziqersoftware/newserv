@@ -682,6 +682,7 @@ static void server_command_exit(shared_ptr<Client> c, const std::string&) {
       G_UnusedHeader cmd = {0x73, 0x01, 0x0000};
       c->channel.send(0x60, 0x00, cmd);
       c->floor = 0;
+      c->recent_switch_flags.clear();
     } else if (is_ep3(c->version())) {
       c->channel.send(0xED, 0x00);
     } else {

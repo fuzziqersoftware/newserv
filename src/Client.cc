@@ -215,7 +215,6 @@ Client::Client(
   }
   this->config.specific_version = default_specific_version_for_version(version, -1);
 
-  this->last_switch_enabled_command.header.subcommand = 0;
   memset(&this->next_connection_addr, 0, sizeof(this->next_connection_addr));
 
   this->reschedule_save_game_data_event();

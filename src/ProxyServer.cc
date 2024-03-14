@@ -537,7 +537,6 @@ ProxyServer::LinkedSession::LinkedSession(
       lobby_mode(GameMode::NORMAL),
       lobby_episode(Episode::EP1),
       lobby_random_seed(0) {
-  this->last_switch_enabled_command.header.subcommand = 0;
   memset(this->prev_server_command_bytes, 0, sizeof(this->prev_server_command_bytes));
 }
 
