@@ -607,8 +607,10 @@ JSON Map::RareEnemyRates::json() const {
 }
 
 string Map::ObjectEntry::str() const {
-  return string_printf("[ObjectEntry type=%04hX flags=%04hX index=%04hX a2=%04hX entity_id=%04hX group=%04hX section=%04hX a3=%04hX x=%g y=%g z=%g x_angle=%08" PRIX32 " y_angle=%08" PRIX32 " z_angle=%08" PRIX32 " params=[%g %g %g %08" PRIX32 " %08" PRIX32 " %08" PRIX32 "] unused=%08" PRIX32 "]",
+  string name_str = Map::name_for_object_type(this->base_type);
+  return string_printf("[ObjectEntry type=%04hX \"%s\" flags=%04hX index=%04hX a2=%04hX entity_id=%04hX group=%04hX section=%04hX a3=%04hX x=%g y=%g z=%g x_angle=%08" PRIX32 " y_angle=%08" PRIX32 " z_angle=%08" PRIX32 " params=[%g %g %g %08" PRIX32 " %08" PRIX32 " %08" PRIX32 "] unused=%08" PRIX32 "]",
       this->base_type.load(),
+      name_str.c_str(),
       this->flags.load(),
       this->index.load(),
       this->unknown_a2.load(),
