@@ -350,6 +350,7 @@ shared_ptr<const TeamIndex::Team> Client::team() const {
 
 bool Client::evaluate_quest_availability_expression(
     shared_ptr<const QuestAvailabilityExpression> expr,
+    shared_ptr<const Lobby> game,
     uint8_t event,
     uint8_t difficulty,
     size_t num_players,
@@ -360,10 +361,12 @@ bool Client::evaluate_quest_availability_expression(
   if (!expr) {
     return true;
   }
-  auto l = this->lobby.lock();
+  if (game && !game->quest_flag_values) {
+    throw logic_error("quest flags are missing from game");
+  }
   auto p = this->character();
   QuestAvailabilityExpression::Env env = {
-      .flags = (l && !l->quest_flags_known) ? &l->quest_flag_values->data.at(difficulty) : &p->quest_flags.data.at(difficulty),
+      .flags = (game && !game->quest_flags_known) ? &game->quest_flag_values->data.at(difficulty) : &p->quest_flags.data.at(difficulty),
       .challenge_records = &p->challenge_records,
       .team = this->team(),
       .num_players = num_players,
@@ -378,12 +381,24 @@ bool Client::evaluate_quest_availability_expression(
   return ret;
 }
 
-bool Client::can_see_quest(shared_ptr<const Quest> q, uint8_t event, uint8_t difficulty, size_t num_players, bool v1_present) const {
-  return this->evaluate_quest_availability_expression(q->available_expression, event, difficulty, num_players, v1_present);
+bool Client::can_see_quest(
+    shared_ptr<const Quest> q,
+    shared_ptr<const Lobby> game,
+    uint8_t event,
+    uint8_t difficulty,
+    size_t num_players,
+    bool v1_present) const {
+  return this->evaluate_quest_availability_expression(q->available_expression, game, event, difficulty, num_players, v1_present);
 }
 
-bool Client::can_play_quest(shared_ptr<const Quest> q, uint8_t event, uint8_t difficulty, size_t num_players, bool v1_present) const {
-  return this->evaluate_quest_availability_expression(q->enabled_expression, event, difficulty, num_players, v1_present);
+bool Client::can_play_quest(
+    shared_ptr<const Quest> q,
+    shared_ptr<const Lobby> game,
+    uint8_t event,
+    uint8_t difficulty,
+    size_t num_players,
+    bool v1_present) const {
+  return this->evaluate_quest_availability_expression(q->enabled_expression, game, event, difficulty, num_players, v1_present);
 }
 
 bool Client::can_use_chat_commands() const {

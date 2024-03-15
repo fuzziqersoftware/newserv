@@ -294,12 +294,25 @@ public:
 
   bool evaluate_quest_availability_expression(
       std::shared_ptr<const QuestAvailabilityExpression> expr,
+      std::shared_ptr<const Lobby> game,
       uint8_t event,
       uint8_t difficulty,
       size_t num_players,
       bool v1_present) const;
-  bool can_see_quest(std::shared_ptr<const Quest> q, uint8_t event, uint8_t difficulty, size_t num_players, bool v1_present) const;
-  bool can_play_quest(std::shared_ptr<const Quest> q, uint8_t event, uint8_t difficulty, size_t num_players, bool v1_present) const;
+  bool can_see_quest(
+      std::shared_ptr<const Quest> q,
+      std::shared_ptr<const Lobby> game,
+      uint8_t event,
+      uint8_t difficulty,
+      size_t num_players,
+      bool v1_present) const;
+  bool can_play_quest(
+      std::shared_ptr<const Quest> q,
+      std::shared_ptr<const Lobby> game,
+      uint8_t event,
+      uint8_t difficulty,
+      size_t num_players,
+      bool v1_present) const;
 
   bool can_use_chat_commands() const;
 
