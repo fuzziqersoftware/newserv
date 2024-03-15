@@ -2341,12 +2341,7 @@ Action a_run_server_replay_log(
         config_log.info("newserv %s compiled at %s", GIT_REVISION_HASH, build_date.c_str());
       }
 
-#ifdef PHOSG_WINDOWS
-      int evthread_ret = evthread_use_windows_threads();
-#else
-      int evthread_ret = evthread_use_pthreads();
-#endif
-      if (evthread_ret) {
+      if (evthread_use_pthreads()) {
         throw runtime_error("failed to setup libevent threads");
       }
 
