@@ -2709,10 +2709,14 @@ void send_game_flag_state_t(shared_ptr<Client> c) {
 void send_game_flag_state(shared_ptr<Client> c) {
   // DC NTE and 11/2000 don't have this command at all; v1 has it but it doesn't
   // include flags for Ultimate.
-  if (!is_v1(c->version())) {
-    send_game_flag_state_t<G_SetQuestFlagsV2V3V4_6x6F>(c);
-  } else if (!is_pre_v1(c->version())) {
-    send_game_flag_state_t<G_SetQuestFlagsV1_6x6F>(c);
+  if (is_pre_v1(c->version())) {
+    return;
+  } else if (is_v1(c->version())) {
+    send_game_flag_state_t<G_SetQuestFlags_DCv1_6x6F>(c);
+  } else if (!is_v4(c->version())) {
+    send_game_flag_state_t<G_SetQuestFlags_V2_V3_6x6F>(c);
+  } else {
+    send_game_flag_state_t<G_SetQuestFlags_BB_6x6F>(c);
   }
 }
 

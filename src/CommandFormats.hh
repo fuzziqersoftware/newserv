@@ -4780,14 +4780,23 @@ struct G_SyncSetFlagState_6x6E_Decompressed {
 
 // 6x6F: Set quest flags (used while loading into game)
 
-struct G_SetQuestFlagsV1_6x6F {
+struct G_SetQuestFlags_DCv1_6x6F {
   G_UnusedHeader header;
   QuestFlagsV1 quest_flags;
 } __packed__;
 
-struct G_SetQuestFlagsV2V3V4_6x6F {
+struct G_SetQuestFlags_V2_V3_6x6F {
   G_UnusedHeader header;
   QuestFlags quest_flags;
+} __packed__;
+
+struct G_SetQuestFlags_BB_6x6F {
+  G_UnusedHeader header;
+  QuestFlags quest_flags;
+  // If use_apply_mask is 1, only the flags set in bb_quest_flag_apply_mask
+  // (in PlayerSubordinates.cc) are overwritten on the receiving client's end.
+  // The client always sends this with use_apply_mask = 1.
+  le_uint32_t use_apply_mask = 1;
 } __packed__;
 
 // 6x70: Sync player disp data and inventory (used while loading into game)

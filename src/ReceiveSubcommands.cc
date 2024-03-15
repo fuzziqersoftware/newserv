@@ -644,9 +644,11 @@ static void on_sync_joining_player_quest_flags_t(shared_ptr<Client> c, uint8_t c
 
 static void on_sync_joining_player_quest_flags(shared_ptr<Client> c, uint8_t command, uint8_t flag, void* data, size_t size) {
   if (is_v1(c->version())) {
-    on_sync_joining_player_quest_flags_t<G_SetQuestFlagsV1_6x6F>(c, command, flag, data, size);
+    on_sync_joining_player_quest_flags_t<G_SetQuestFlags_DCv1_6x6F>(c, command, flag, data, size);
+  } else if (!is_v4(c->version())) {
+    on_sync_joining_player_quest_flags_t<G_SetQuestFlags_V2_V3_6x6F>(c, command, flag, data, size);
   } else {
-    on_sync_joining_player_quest_flags_t<G_SetQuestFlagsV2V3V4_6x6F>(c, command, flag, data, size);
+    on_sync_joining_player_quest_flags_t<G_SetQuestFlags_BB_6x6F>(c, command, flag, data, size);
   }
 }
 

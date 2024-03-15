@@ -745,3 +745,5 @@ struct RecentSwitchFlags {
 
   std::string enable_commands(uint8_t floor) const;
 };
+
+extern const QuestFlagsForDifficulty bb_quest_flag_apply_mask;
