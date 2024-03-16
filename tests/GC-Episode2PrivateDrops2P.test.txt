@@ -1170,19 +1170,17 @@ I 94381 2023-12-29 15:36:34 - [Commands] Sending to C-5 (Jonah) (version=GC_V3 c
 I 94381 2023-12-29 15:36:34 - [Commands] Received from C-5 (Jonah) (version=GC_V3 command=09 flag=00)
 0000 | 09 00 0C 00 44 00 00 44 15 00 00 00             |     D  D
 I 94381 2023-12-29 15:36:34 - [Commands] Sending to C-5 (Jonah) (version=GC_V3 command=11 flag=00)
-0000 | 11 00 44 00 00 00 00 00 00 00 00 00 31 3A 20 09 |   D         1:
-0010 | 43 36 4A 65 73 73 09 43 37 20 52 41 6D 6C 20 4C | C6Jess C7 RAml L
-0020 | 32 39 0A 45 70 32 20 4E 20 4E 6D 6C 20 50 6E 6B | 29 Ep2 N Nml Pnk
-0030 | 0A 09 43 36 43 68 65 61 74 73 20 6F 6E 09 43 37 |   C6Cheats on C7
-0040 | 00 00 00 00                                     |
+0000 | 11 00 24 00 00 00 00 00 00 00 00 00 4A 65 73 73 |   $         Jess
+0010 | 0A 20 20 52 41 6D 61 72 6C 20 4C 76 32 39 20 45 |    RAmarl Lv29 E
+0020 | 00 00 00 00                                     |
 I 94381 2023-12-29 15:36:36 - [Commands] Received from C-5 (Jonah) (version=GC_V3 command=09 flag=00)
 0000 | 09 00 0C 00 44 00 00 44 15 00 00 00             |     D  D
 I 94381 2023-12-29 15:36:36 - [Commands] Sending to C-5 (Jonah) (version=GC_V3 command=11 flag=00)
-0000 | 11 00 44 00 00 00 00 00 00 00 00 00 31 3A 20 09 |   D         1:
-0010 | 43 36 4A 65 73 73 09 43 37 20 52 41 6D 6C 20 4C | C6Jess C7 RAml L
-0020 | 32 39 0A 45 70 32 20 4E 20 4E 6D 6C 20 50 6E 6B | 29 Ep2 N Nml Pnk
-0030 | 0A 09 43 36 43 68 65 61 74 73 20 6F 6E 09 43 37 |   C6Cheats on C7
-0040 | 00 00 00 00                                     |
+0000 | 11 00 48 00 00 00 00 00 00 00 00 00 53 65 63 74 |   H         Sect
+0010 | 69 6F 6E 20 49 44 3A 20 50 69 6E 6B 61 6C 0A 09 | ion ID: Pinkal
+0020 | 43 36 43 68 65 61 74 73 20 65 6E 61 62 6C 65 64 | C6Cheats enabled
+0030 | 09 43 37 0A 09 43 36 43 6C 69 65 6E 74 20 64 72 |  C7  C6Client dr
+0040 | 6F 70 73 09 43 37 00 00                         | ops C7
 I 94381 2023-12-29 15:36:44 - [Commands] Received from C-2 (Jess) (version=GC_V3 command=60 flag=00)
 0000 | 60 00 1C 00 3F 06 00 00 00 00 00 80 0F 00 00 00 | `   ?
 0010 | 00 00 20 41 00 00 00 00 00 00 70 43             |    A      pC
@@ -1198,11 +1196,9 @@ I 94381 2023-12-29 15:36:44 - [Commands] Sending to C-2 (Jess) (version=GC_V3 co
 I 94381 2023-12-29 15:36:45 - [Commands] Received from C-5 (Jonah) (version=GC_V3 command=09 flag=00)
 0000 | 09 00 0C 00 44 00 00 44 15 00 00 00             |     D  D
 I 94381 2023-12-29 15:36:45 - [Commands] Sending to C-5 (Jonah) (version=GC_V3 command=11 flag=00)
-0000 | 11 00 44 00 00 00 00 00 00 00 00 00 31 3A 20 09 |   D         1:
-0010 | 43 36 4A 65 73 73 09 43 37 20 52 41 6D 6C 20 4C | C6Jess C7 RAml L
-0020 | 32 39 0A 45 70 32 20 4E 20 4E 6D 6C 20 50 6E 6B | 29 Ep2 N Nml Pnk
-0030 | 0A 09 43 36 43 68 65 61 74 73 20 6F 6E 09 43 37 |   C6Cheats on C7
-0040 | 00 00 00 00                                     |
+0000 | 11 00 24 00 00 00 00 00 00 00 00 00 4A 65 73 73 |   $         Jess
+0010 | 0A 20 20 52 41 6D 61 72 6C 20 4C 76 32 39 20 45 |    RAmarl Lv29 E
+0020 | 00 00 00 00                                     |
 I 94381 2023-12-29 15:36:45 - [Commands] Received from C-2 (Jess) (version=GC_V3 command=99 flag=00)
 0000 | 99 00 04 00                                     |
 I 94381 2023-12-29 15:36:49 - [Commands] Received from C-5 (Jonah) (version=GC_V3 command=10 flag=00)
@@ -7967,11 +7963,11 @@ I 94381 2023-12-29 15:42:16 - [Commands] Sending to C-5 (Jonah) (version=GC_V3 c
 I 94381 2023-12-29 15:42:16 - [Commands] Received from C-5 (Jonah) (version=GC_V3 command=09 flag=00)
 0000 | 09 00 0C 00 44 00 00 44 15 00 00 00             |     D  D
 I 94381 2023-12-29 15:42:16 - [Commands] Sending to C-5 (Jonah) (version=GC_V3 command=11 flag=00)
-0000 | 11 00 44 00 00 00 00 00 00 00 00 00 31 3A 20 09 |   D         1:
-0010 | 43 36 4A 65 73 73 09 43 37 20 52 41 6D 6C 20 4C | C6Jess C7 RAml L
-0020 | 32 39 0A 45 70 32 20 4E 20 4E 6D 6C 20 50 6E 6B | 29 Ep2 N Nml Pnk
-0030 | 0A 09 43 36 43 68 65 61 74 73 20 6F 6E 09 43 37 |   C6Cheats on C7
-0040 | 00 00 00 00                                     |
+0000 | 11 00 48 00 00 00 00 00 00 00 00 00 53 65 63 74 |   H         Sect
+0010 | 69 6F 6E 20 49 44 3A 20 50 69 6E 6B 61 6C 0A 09 | ion ID: Pinkal
+0020 | 43 36 43 68 65 61 74 73 20 65 6E 61 62 6C 65 64 | C6Cheats enabled
+0030 | 09 43 37 0A 09 43 36 50 72 69 76 61 74 65 20 64 |  C7  C6Private d
+0040 | 72 6F 70 73 09 43 37 00                         | rops C7
 I 94381 2023-12-29 15:42:18 - [Commands] Received from C-5 (Jonah) (version=GC_V3 command=10 flag=00)
 0000 | 10 00 0C 00 44 00 00 44 15 00 00 00             |     D  D
 I 94381 2023-12-29 15:42:18 - [C-5] Assigned inventory item IDs

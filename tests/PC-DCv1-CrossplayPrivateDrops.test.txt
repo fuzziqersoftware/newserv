@@ -839,11 +839,9 @@ I 97037 2023-12-29 15:57:03 - [Commands] Sending to C-5 (88888888) (version=DC_V
 I 97037 2023-12-29 15:57:05 - [Commands] Received from C-5 (88888888) (version=DC_V1 command=09 flag=00)
 0000 | 09 00 0C 00 44 00 00 44 15 00 00 00             |     D  D
 I 97037 2023-12-29 15:57:05 - [Commands] Sending to C-5 (88888888) (version=DC_V1 command=11 flag=00)
-0000 | 11 00 44 00 00 00 00 00 00 00 00 00 31 3A 20 09 |   D         1:
-0010 | 43 36 54 61 6C 69 09 43 37 20 52 41 63 6C 20 4C | C6Tali C7 RAcl L
-0020 | 31 38 35 0A 45 70 31 20 4E 20 4E 6D 6C 20 50 72 | 185 Ep1 N Nml Pr
-0030 | 70 0A 09 43 36 43 68 65 61 74 73 20 6F 6E 09 43 | p  C6Cheats on C
-0040 | 37 00 00 00                                     | 7
+0000 | 11 00 24 00 00 00 00 00 00 00 00 00 54 61 6C 69 |   $         Tali
+0010 | 0A 20 20 52 41 63 61 73 65 61 6C 20 4C 76 31 38 |    RAcaseal Lv18
+0020 | 35 20 45 00                                     | 5 E
 I 97037 2023-12-29 15:57:06 - [Commands] Received from C-5 (88888888) (version=DC_V1 command=10 flag=00)
 0000 | 10 00 0C 00 44 00 00 44 15 00 00 00             |     D  D
 I 97037 2023-12-29 15:57:06 - [C-5] Assigned inventory item IDs

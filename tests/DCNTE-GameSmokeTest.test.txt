@@ -1251,10 +1251,9 @@ I 91446 2023-12-31 21:06:28 - [Commands] Sending to C-4 (BBBBBBBBBBBB) (version=
 I 91446 2023-12-31 21:06:30 - [Commands] Received from C-4 (BBBBBBBBBBBB) (version=DC_NTE command=09 flag=00)
 0000 | 09 00 0C 00 44 00 00 44 15 00 00 00             |     D  D
 I 91446 2023-12-31 21:06:30 - [Commands] Sending to C-4 (BBBBBBBBBBBB) (version=DC_NTE command=11 flag=00)
-0000 | 11 00 3C 00 00 00 00 00 00 00 00 00 31 3A 20 41 |   <         1: A
-0010 | 42 43 44 45 46 47 48 49 4A 4B 4C 20 52 41 63 74 | BCDEFGHIJKL RAct
-0020 | 20 4C 31 0A 45 70 31 20 4E 20 4E 6D 6C 20 52 65 |  L1 Ep1 N Nml Re
-0030 | 64 0A 43 68 65 61 74 73 20 6F 6E 00             | d Cheats on
+0000 | 11 00 28 00 00 00 00 00 00 00 00 00 41 42 43 44 |   (         ABCD
+0010 | 45 46 47 48 49 4A 4B 4C 0A 20 20 52 41 63 61 73 | EFGHIJKL   RAcas
+0020 | 74 20 4C 76 31 20 4A 00                         | t Lv1 J
 I 91446 2023-12-31 21:06:36 - [Commands] Received from C-2 (ABCDEFGHIJKL) (version=DC_NTE command=60 flag=00)
 0000 | 60 00 1C 00 36 06 00 00 00 00 00 00 00 00 00 00 | `   6
 0010 | 5C 0F C6 43 00 00 00 00 C3 75 95 42             | \  C     u B

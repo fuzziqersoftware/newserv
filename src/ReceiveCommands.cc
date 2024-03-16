@@ -1720,7 +1720,7 @@ static void on_CA_Ep3(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
         }
       }
       if (s->ep3_behavior_flags & Episode3::BehaviorFlag::ENABLE_STATUS_MESSAGES) {
-        send_text_message(l, "$C6Recording enabled");
+        send_text_message(l, "$C7Recording enabled");
       }
     }
   }
@@ -1795,10 +1795,10 @@ static void on_E2_Ep3(shared_ptr<Client> c, uint16_t, uint32_t flag, string&) {
         if (tourn) {
           send_ep3_tournament_entry_list(c, tourn, false);
         } else {
-          send_lobby_message_box(c, "$C6The tournament\nhas concluded.");
+          send_lobby_message_box(c, "$C7The tournament\nhas concluded.");
         }
       } else {
-        send_lobby_message_box(c, "$C6You are not\nregistered in a\ntournament.");
+        send_lobby_message_box(c, "$C7You are not\nregistered in a\ntournament.");
       }
       break;
     }
@@ -1822,7 +1822,7 @@ static void on_E2_Ep3(shared_ptr<Client> c, uint16_t, uint32_t flag, string&) {
     }
     case 0x03: // Create tournament spectator team (get battle list)
     case 0x04: // Join tournament spectator team (get team list)
-      send_lobby_message_box(c, "$C6Use View Regular\nBattle for this");
+      send_lobby_message_box(c, "$C7Use View Regular\nBattle for this");
       break;
     default:
       throw runtime_error("invalid tournament operation");
@@ -1857,7 +1857,7 @@ static void on_09(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
       bool is_download_quest = !c->lobby.lock();
       auto quest_index = s->quest_index(c->version());
       if (!quest_index) {
-        send_quest_info(c, "$C6Quests are not available.", is_download_quest);
+        send_quest_info(c, "$C7Quests are not available.", is_download_quest);
       } else {
         auto q = quest_index->get(cmd.item_id);
         if (!q) {
@@ -1889,72 +1889,43 @@ static void on_09(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
 
       } else {
         string info;
-        for (size_t x = 0; x < game->max_clients; x++) {
-          const auto& game_c = game->clients[x];
-          if (game_c.get()) {
-            auto player = game_c->character();
-            string name = escape_player_name(player->disp.name.decode(game_c->language()));
-            if (game->is_ep3()) {
-              info += string_printf("%zu: $C6%s$C7 L%" PRIu32 "\n",
-                  x + 1, name.c_str(), player->disp.stats.level + 1);
-            } else {
-              info += string_printf("%zu: $C6%s$C7 %s L%" PRIu32 "\n",
-                  x + 1, name.c_str(),
-                  abbreviation_for_char_class(player->disp.visual.char_class),
-                  player->disp.stats.level + 1);
+        if (c->last_game_info_requested != game->lobby_id) {
+          // Send page 1 (players)
+          c->last_game_info_requested = game->lobby_id;
+          for (size_t x = 0; x < game->max_clients; x++) {
+            const auto& game_c = game->clients[x];
+            if (game_c.get()) {
+              auto player = game_c->character();
+              string name = escape_player_name(player->disp.name.decode(game_c->language()));
+              info += string_printf("%s\n  %s Lv%" PRIu32 " %c\n",
+                  name.c_str(),
+                  name_for_char_class(player->disp.visual.char_class),
+                  player->disp.stats.level + 1,
+                  char_for_language_code(game_c->language()));
             }
           }
         }
 
-        info += string_printf("%s %c %s %s\n",
-            abbreviation_for_episode(game->episode),
-            abbreviation_for_difficulty(game->difficulty),
-            abbreviation_for_mode(game->mode),
-            abbreviation_for_section_id(game->effective_section_id()));
+        // If page 1 is blank (there are no players) or we sent page 1 last
+        // time, send page 2 (extended info)
+        if (info.empty()) {
+          c->last_game_info_requested = 0;
+          info += string_printf("Section ID: %s\n", name_for_section_id(game->effective_section_id()));
+          if (game->max_level != 0xFFFFFFFF) {
+            info += string_printf("Req. level: %" PRIu32 "-%" PRIu32 "\n", game->min_level + 1, game->max_level + 1);
+          } else if (game->min_level != 0) {
+            info += string_printf("Req. level: %" PRIu32 "+\n", game->min_level + 1);
+          }
 
-        if (c->config.check_flag(Client::Flag::DEBUG_ENABLED)) {
-          vector<const char*> flags_tokens;
-          string quest_name;
+          if (c->config.check_flag(Client::Flag::DEBUG_ENABLED)) {
+            info += string_printf("%s\n", name_for_enum(game->base_version));
+          }
+
           if (game->check_flag(Lobby::Flag::CHEATS_ENABLED)) {
-            flags_tokens.emplace_back("$C6C$C7");
+            info += "$C6Cheats enabled$C7\n";
           }
           if (game->check_flag(Lobby::Flag::PERSISTENT)) {
-            flags_tokens.emplace_back("$C6P$C7");
-          }
-          if (!game->password.empty()) {
-            flags_tokens.emplace_back("$C4L$C7");
-          }
-          if (game->check_flag(Lobby::Flag::IS_SPECTATOR_TEAM)) {
-            flags_tokens.emplace_back("$C8ST$C7");
-          }
-          if (game->check_flag(Lobby::Flag::SPECTATORS_FORBIDDEN)) {
-            flags_tokens.emplace_back("$C8NS$C7");
-          }
-          if (game->quest) {
-            flags_tokens.emplace_back(game->check_flag(Lobby::Flag::JOINABLE_QUEST_IN_PROGRESS) ? "$C3JQ$C7" : "$C3Q$C7");
-            quest_name = remove_color(game->quest->name);
-          } else if (game->check_flag(Lobby::Flag::JOINABLE_QUEST_IN_PROGRESS)) {
-            flags_tokens.emplace_back("$C3JQ$C7");
-          } else if (game->check_flag(Lobby::Flag::QUEST_IN_PROGRESS)) {
-            flags_tokens.emplace_back("$C3Q$C7");
-          } else if (game->check_flag(Lobby::Flag::BATTLE_IN_PROGRESS)) {
-            flags_tokens.emplace_back("$C3B$C7");
-          }
-          info += ("Flags: " + join(flags_tokens, ",") + "\n");
-          if (!quest_name.empty()) {
-            info += ("Q: $C6" + quest_name + "$C7\n");
-          }
-          info += string_printf("Version: %s\n", name_for_enum(game->base_version));
-
-        } else {
-          bool cheats_enabled = game->check_flag(Lobby::Flag::CHEATS_ENABLED);
-          bool locked = !game->password.empty();
-          if (cheats_enabled && locked) {
-            info += "$C4Locked$C7, $C6cheats on$C7\n";
-          } else if (cheats_enabled) {
-            info += "$C6Cheats on$C7\n";
-          } else if (locked) {
-            info += "$C4Locked$C7\n";
+            info += "$C6Persistence enabled$C7\n";
           }
 
           if (game->quest) {
@@ -1965,15 +1936,26 @@ static void on_09(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
             info += "$C6Quest in progress\n";
           } else if (game->check_flag(Lobby::Flag::QUEST_IN_PROGRESS)) {
             info += "$C4Quest in progress\n";
-          } else if (game->check_flag(Lobby::Flag::BATTLE_IN_PROGRESS)) {
-            info += "$C4Battle in progress\n";
           }
 
-          if (game->check_flag(Lobby::Flag::SPECTATORS_FORBIDDEN)) {
-            info += "$C4View Battle forbidden\n";
+          switch (game->drop_mode) {
+            case Lobby::DropMode::DISABLED:
+              info += "$C6Drops disabled$C7\n";
+              break;
+            case Lobby::DropMode::CLIENT:
+              info += "$C6Client drops$C7\n";
+              break;
+            case Lobby::DropMode::SERVER_SHARED:
+              info += "$C6Server drops$C7\n";
+              break;
+            case Lobby::DropMode::SERVER_PRIVATE:
+              info += "$C6Private drops$C7\n";
+              break;
+            case Lobby::DropMode::SERVER_DUPLICATE:
+              info += "$C6Duplicate drops$C7\n";
+              break;
           }
         }
-
         strip_trailing_whitespace(info);
         send_ship_info(c, info);
       }
@@ -2500,7 +2482,7 @@ static void on_10(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
       auto s = c->require_server_state();
       auto game = s->find_lobby(item_id);
       if (!game) {
-        send_lobby_message_box(c, "$C6You cannot join this\ngame because it no\nlonger exists.");
+        send_lobby_message_box(c, "$C7You cannot join this\ngame because it no\nlonger exists.");
         break;
       }
       switch (game->join_error_for_client(c, &password)) {
@@ -2522,37 +2504,43 @@ static void on_10(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
           }
           break;
         case Lobby::JoinError::FULL:
-          send_lobby_message_box(c, "$C6You cannot join this\ngame because it is\nfull.");
+          send_lobby_message_box(c, "$C7You cannot join this\ngame because it is\nfull.");
           break;
         case Lobby::JoinError::VERSION_CONFLICT:
-          send_lobby_message_box(c, "$C6You cannot join this\ngame because it is\nfor a different\nversion of PSO.");
+          send_lobby_message_box(c, "$C7You cannot join this\ngame because it is\nfor a different\nversion of PSO.");
           break;
         case Lobby::JoinError::QUEST_IN_PROGRESS:
-          send_lobby_message_box(c, "$C6You cannot join this\ngame because a\nquest is already\nin progress.");
+          send_lobby_message_box(c, "$C7You cannot join this\ngame because a\nquest is already\nin progress.");
           break;
         case Lobby::JoinError::BATTLE_IN_PROGRESS:
-          send_lobby_message_box(c, "$C6You cannot join this\ngame because a\nbattle is already\nin progress.");
+          send_lobby_message_box(c, "$C7You cannot join this\ngame because a\nbattle is already\nin progress.");
           break;
         case Lobby::JoinError::LOADING:
-          send_lobby_message_box(c, "$C6You cannot join this\ngame because\nanother player is\ncurrently loading.\nTry again soon.");
+          send_lobby_message_box(c, "$C7You cannot join this\ngame because\nanother player is\ncurrently loading.\nTry again soon.");
           break;
         case Lobby::JoinError::SOLO:
-          send_lobby_message_box(c, "$C6You cannot join this\ngame because it is\na Solo Mode game.");
+          send_lobby_message_box(c, "$C7You cannot join this\ngame because it is\na Solo Mode game.");
           break;
         case Lobby::JoinError::INCORRECT_PASSWORD:
-          send_lobby_message_box(c, "$C6Incorrect password.");
+          send_lobby_message_box(c, "$C7Incorrect password.");
           break;
-        case Lobby::JoinError::LEVEL_TOO_LOW:
-          send_lobby_message_box(c, "$C6Your level is too\nlow to join this\ngame.");
+        case Lobby::JoinError::LEVEL_TOO_LOW: {
+          string msg = string_printf("$C7You must be level\n%zu or above to\njoin this game.",
+              static_cast<size_t>(game->min_level + 1));
+          send_lobby_message_box(c, msg);
           break;
-        case Lobby::JoinError::LEVEL_TOO_HIGH:
-          send_lobby_message_box(c, "$C6Your level is too\nhigh to join this\ngame.");
+        }
+        case Lobby::JoinError::LEVEL_TOO_HIGH: {
+          string msg = string_printf("$C7You must be level\n%zu or below to\njoin this game.",
+              static_cast<size_t>(game->max_level + 1));
+          send_lobby_message_box(c, msg);
           break;
+        }
         case Lobby::JoinError::NO_ACCESS_TO_QUEST:
-          send_lobby_message_box(c, "$C6You don't have access\nto the quest in progress\nin this game, or there\nis no space for another\nplayer in the quest.");
+          send_lobby_message_box(c, "$C7You don't have access\nto the quest in progress\nin this game, or there\nis no space for another\nplayer in the quest.");
           break;
         default:
-          send_lobby_message_box(c, "$C6You cannot join this\ngame.");
+          send_lobby_message_box(c, "$C7You cannot join this\ngame.");
           break;
       }
       break;
@@ -2562,7 +2550,7 @@ static void on_10(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
       auto s = c->require_server_state();
       auto quest_index = s->quest_index(c->version());
       if (!quest_index) {
-        send_lobby_message_box(c, "$C6Quests are not available.");
+        send_lobby_message_box(c, "$C7Quests are not available.");
         break;
       }
 
@@ -2583,12 +2571,12 @@ static void on_10(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
       auto s = c->require_server_state();
       auto quest_index = s->quest_index(c->version());
       if (!quest_index) {
-        send_lobby_message_box(c, "$C6Quests are not\navailable.");
+        send_lobby_message_box(c, "$C7Quests are not\navailable.");
         break;
       }
       auto q = quest_index->get(item_id);
       if (!q) {
-        send_lobby_message_box(c, "$C6Quest does not exist.");
+        send_lobby_message_box(c, "$C7Quest does not exist.");
         break;
       }
 
@@ -2596,21 +2584,21 @@ static void on_10(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
       // Otherwise, they must be in a game to load a quest.
       auto l = c->lobby.lock();
       if (l && !l->is_game()) {
-        send_lobby_message_box(c, "$C6Quests cannot be\nloaded in lobbies.");
+        send_lobby_message_box(c, "$C7Quests cannot be\nloaded in lobbies.");
         break;
       }
 
       if (l) {
         if (q->episode == Episode::EP3) {
-          send_lobby_message_box(c, "$C6Episode 3 quests\ncannot be loaded\nvia this interface.");
+          send_lobby_message_box(c, "$C7Episode 3 quests\ncannot be loaded\nvia this interface.");
           break;
         }
         if (l->quest) {
-          send_lobby_message_box(c, "$C6A quest is already\nin progress.");
+          send_lobby_message_box(c, "$C7A quest is already\nin progress.");
           break;
         }
         if (l->quest_include_condition()(q) != QuestIndex::IncludeState::AVAILABLE) {
-          send_lobby_message_box(c, "$C6This quest has not\nbeen unlocked for\nall players in this\ngame.");
+          send_lobby_message_box(c, "$C7This quest has not\nbeen unlocked for\nall players in this\ngame.");
           break;
         }
         set_lobby_quest(l, q);
@@ -2618,7 +2606,7 @@ static void on_10(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
       } else {
         auto vq = q->version(c->version(), c->language());
         if (!vq) {
-          send_lobby_message_box(c, "$C6Quest does not exist\nfor this game version.");
+          send_lobby_message_box(c, "$C7Quest does not exist\nfor this game version.");
           break;
         }
         // Episode 3 uses the download quest commands (A6/A7) but does not
@@ -2699,7 +2687,7 @@ static void on_10(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
         throw runtime_error("non-Episode 3 client attempted to join tournament");
       }
       if (c->ep3_tournament_team.lock()) {
-        send_lobby_message_box(c, "$C6You are registered\nin a different\ntournament already");
+        send_lobby_message_box(c, "$C7You are registered\nin a different\ntournament already");
         break;
       }
       if (team_name.empty()) {
@@ -2899,14 +2887,14 @@ static void on_A2(shared_ptr<Client> c, uint16_t, uint32_t flag, string& data) {
 
   auto l = c->lobby.lock();
   if (!l || !l->is_game()) {
-    send_lobby_message_box(c, "$C6Quests are not available\nin lobbies.");
+    send_lobby_message_box(c, "$C7Quests are not available\nin lobbies.");
     return;
   }
 
   // In Episode 3, there are no quest categories, so skip directly to the quest
   // filter menu.
   if (is_ep3(c->version())) {
-    send_lobby_message_box(c, "$C6Episode 3 does not\nprovide online quests\nvia this interface.");
+    send_lobby_message_box(c, "$C7Episode 3 does not\nprovide online quests\nvia this interface.");
   } else {
     QuestMenuType menu_type;
     if ((c->version() == Version::BB_V4) && flag) {
@@ -3288,7 +3276,7 @@ static void on_61_98(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
         bb_player->choice_search_config = player->choice_search_config;
         try {
           Client::save_character_file(filename, c->system_file(), bb_player);
-          send_text_message(c, "$C6Character data saved");
+          send_text_message(c, "$C7Character data saved");
         } catch (const exception& e) {
           send_text_message_printf(c, "$C6Character data could\nnot be saved:\n%s", e.what());
         }
@@ -4107,7 +4095,8 @@ shared_ptr<Lobby> create_game_generic(
   if (!c->license->check_flag(License::Flag::FREE_JOIN_GAMES) && (min_level > p->disp.stats.level)) {
     // Note: We don't throw here because this is a situation players might
     // actually encounter while playing the game normally
-    send_lobby_message_box(c, "Your level is too\nlow for this\ndifficulty");
+    string msg = string_printf("You must be level %zu\nor above to play\nthis difficulty.", static_cast<size_t>(min_level + 1));
+    send_lobby_message_box(c, msg);
     return nullptr;
   }
 
@@ -4389,11 +4378,11 @@ static void on_0C_C1_E7_EC(shared_ptr<Client> c, uint16_t command, uint32_t, str
       }
       watched_lobby = s->find_lobby(cmd.item_id);
       if (!watched_lobby) {
-        send_lobby_message_box(c, "$C6This game no longer\nexists");
+        send_lobby_message_box(c, "$C7This game no longer\nexists");
         return;
       }
       if (watched_lobby->check_flag(Lobby::Flag::SPECTATORS_FORBIDDEN)) {
-        send_lobby_message_box(c, "$C6This game does not\nallow spectators");
+        send_lobby_message_box(c, "$C7This game does not\nallow spectators");
         return;
       }
     }
@@ -4451,11 +4440,11 @@ static void on_C1_BB(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
       episode = Episode::EP4;
       // Disallow battle/challenge in Ep4
       if (mode == GameMode::BATTLE) {
-        send_lobby_message_box(c, "$C6Episode 4 does not\nsupport Battle Mode.");
+        send_lobby_message_box(c, "$C7Episode 4 does not\nsupport Battle Mode.");
         return;
       }
       if (mode == GameMode::CHALLENGE) {
-        send_lobby_message_box(c, "$C6Episode 4 does not\nsupport Challenge Mode.");
+        send_lobby_message_box(c, "$C7Episode 4 does not\nsupport Challenge Mode.");
         return;
       }
       break;
@@ -4515,7 +4504,7 @@ static void on_6F(shared_ptr<Client> c, uint16_t command, uint32_t, string& data
         if (c) {
           c->ep3_prev_battle_record = l->battle_record;
           if ((s->ep3_behavior_flags & Episode3::BehaviorFlag::ENABLE_STATUS_MESSAGES)) {
-            send_text_message(l, "$C6Recording complete");
+            send_text_message(l, "$C7Recording complete");
           }
         }
       }

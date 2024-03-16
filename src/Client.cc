@@ -201,6 +201,7 @@ Client::Client(
       card_battle_table_number(-1),
       card_battle_table_seat_number(0),
       card_battle_table_seat_state(0),
+      last_game_info_requested(0),
       should_update_play_time(false),
       bb_character_index(-1),
       next_exp_value(0),

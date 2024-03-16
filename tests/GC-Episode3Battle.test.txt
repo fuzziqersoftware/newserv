@@ -4023,7 +4023,7 @@ I 16332 2023-09-17 10:14:46 - [Commands] Sending to C-2 (Tali) (version=GC comma
 0010 | 20 63 6C 69 65 6E 74 20 49 44 3A 20 09 43 36 30 |  client ID:  C60
 0020 | 00 00 00 00                                     |
 I 16332 2023-09-17 10:14:46 - [Commands] Sending to C-2 (Tali) (version=GC command=B0 flag=00)
-0000 | B0 00 24 00 00 00 00 00 00 00 00 00 09 43 36 52 |   $          C6R
+0000 | B0 00 24 00 00 00 00 00 00 00 00 00 09 43 37 52 |   $          C7R
 0010 | 65 63 6F 72 64 69 6E 67 20 65 6E 61 62 6C 65 64 | ecording enabled
 0020 | 00 00 00 00                                     |
 I 16332 2023-09-17 10:14:46 - [Commands] Sending to C-2 (Tali) (version=GC command=B0 flag=00)
@@ -30338,7 +30338,7 @@ I 16332 2023-09-17 10:22:26 - [Commands] Received from C-2 (Tali) (version=GC co
 I 16332 2023-09-17 10:22:26 - [Commands] Received from C-2 (Tali) (version=GC command=6F flag=00)
 0000 | 6F 00 04 00                                     | o
 I 16332 2023-09-17 10:22:26 - [Commands] Sending to C-2 (Tali) (version=GC command=B1 flag=00)
-0000 | B0 00 24 00 00 00 00 00 00 00 00 00 09 43 36 52 |   $          C6R
+0000 | B0 00 24 00 00 00 00 00 00 00 00 00 09 43 37 52 |   $          C7R
 0010 | 65 63 6F 72 64 69 6E 67 20 63 6F 6D 70 6C 65 74 | ecording complet
 0020 | 65 00 00 00                                     | e
 I 16332 2023-09-17 10:22:26 - [Commands] Sending to C-2 (Tali) (version=GC command=B1 flag=00)
@@ -30424,7 +30424,7 @@ I 16332 2023-09-17 10:22:26 - [Commands] Sending to C-2 (Tali) (version=GC comma
 0010 | 20 63 6C 69 65 6E 74 20 49 44 3A 20 09 43 36 30 |  client ID:  C60
 0020 | 00 00 00 00                                     |
 I 16332 2023-09-17 10:22:26 - [Commands] Sending to C-2 (Tali) (version=GC command=B0 flag=00)
-0000 | B0 00 24 00 00 00 00 00 00 00 00 00 09 43 36 52 |   $          C6R
+0000 | B0 00 24 00 00 00 00 00 00 00 00 00 09 43 37 52 |   $          C7R
 0010 | 65 63 6F 72 64 69 6E 67 20 65 6E 61 62 6C 65 64 | ecording enabled
 0020 | 00 00 00 00                                     |
 I 16332 2023-09-17 10:22:26 - [Commands] Sending to C-2 (Tali) (version=GC command=B0 flag=00)

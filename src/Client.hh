@@ -219,6 +219,7 @@ public:
   std::weak_ptr<Episode3::Tournament::Team> ep3_tournament_team;
   std::shared_ptr<Episode3::BattleRecord> ep3_prev_battle_record;
   std::shared_ptr<const Menu> last_menu_sent;
+  uint32_t last_game_info_requested;
   struct JoinCommand {
     uint16_t command;
     uint32_t flag;
