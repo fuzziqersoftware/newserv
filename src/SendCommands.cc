@@ -1113,11 +1113,11 @@ void send_card_search_result_t(
 
   string location_string;
   if (result_lobby->is_game()) {
-    location_string = string_printf("%s,BLOCK01,%s", result_lobby->name.c_str(), s->name.c_str());
+    location_string = string_printf("%s,,BLOCK01,%s", result_lobby->name.c_str(), s->name.c_str());
   } else if (result_lobby->is_ep3()) {
-    location_string = string_printf("BLOCK01-C%02" PRIu32 ",BLOCK01,%s", result_lobby->lobby_id - 15, s->name.c_str());
+    location_string = string_printf("BLOCK01-C%02" PRIu32 ",,BLOCK01,%s", result_lobby->lobby_id - 15, s->name.c_str());
   } else {
-    location_string = string_printf("BLOCK01-%02" PRIu32 ",BLOCK01,%s", result_lobby->lobby_id, s->name.c_str());
+    location_string = string_printf("BLOCK01-%02" PRIu32 ",,BLOCK01,%s", result_lobby->lobby_id, s->name.c_str());
   }
   cmd.location_string.encode(location_string, c->language());
   cmd.extension.lobby_refs[0].menu_id = MenuID::LOBBY;

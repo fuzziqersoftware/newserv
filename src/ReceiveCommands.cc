@@ -3859,19 +3859,18 @@ static void on_choice_search_t(shared_ptr<Client> c, const ChoiceSearchConfig& c
         auto& result = results.emplace_back();
         result.guild_card_number = lc->license->serial_number;
         result.name.encode(lp->disp.name.decode(lc->language()), c->language());
-        string info_string = string_printf("%s Lv%zu %s",
+        string info_string = string_printf("%s Lv%zu %s\n",
             name_for_char_class(lp->disp.visual.char_class),
             static_cast<size_t>(lp->disp.stats.level + 1),
-            name_for_section_id(lp->disp.visual.section_id));
+            abbreviation_for_section_id(lp->disp.visual.section_id));
         result.info_string.encode(info_string, c->language());
-        string lobby_name = l->is_game() ? l->name : string_printf("BLOCK01-%02" PRIu32, l->lobby_id);
         string location_string;
         if (l->is_game()) {
-          location_string = string_printf("%s,BLOCK01,%s", l->name.c_str(), s->name.c_str());
+          location_string = string_printf("%s,,BLOCK01,%s", l->name.c_str(), s->name.c_str());
         } else if (l->is_ep3()) {
-          location_string = string_printf("BLOCK01-C%02" PRIu32 ",BLOCK01,%s", l->lobby_id - 15, s->name.c_str());
+          location_string = string_printf("BLOCK01-C%02" PRIu32 ",,BLOCK01,%s", l->lobby_id - 15, s->name.c_str());
         } else {
-          location_string = string_printf("BLOCK01-%02" PRIu32 ",BLOCK01,%s", l->lobby_id, s->name.c_str());
+          location_string = string_printf("BLOCK01-%02" PRIu32 ",,BLOCK01,%s", l->lobby_id, s->name.c_str());
         }
         result.location_string.encode(location_string, c->language());
         result.reconnect_command_header.command = 0x19;
@@ -3882,6 +3881,7 @@ static void on_choice_search_t(shared_ptr<Client> c, const ChoiceSearchConfig& c
         result.meet_user.lobby_refs[0].menu_id = MenuID::LOBBY;
         result.meet_user.lobby_refs[0].item_id = l->lobby_id;
         result.meet_user.player_name.encode(lp->disp.name.decode(lc->language()), c->language());
+        // The client can only handle 32 results
         if (results.size() >= 0x20) {
           break;
         }
@@ -3889,7 +3889,21 @@ static void on_choice_search_t(shared_ptr<Client> c, const ChoiceSearchConfig& c
     }
   }
 
-  send_command_vt(c, 0xC4, results.size(), results);
+  if (results.empty()) {
+    // There is a client bug that causes garbage to appear in the info window
+    // when the server returns no entries in this command, since the client
+    // tries to display the first entry in the list even if the list contains
+    // "No player". If the server sends no entries at all, the entry will
+    // uninitialized memory which can cause crashes on v2, so we send a blank
+    // entry to prevent this.
+    auto& result = results.emplace_back();
+    result.reconnect_command_header.command = 0x00;
+    result.reconnect_command_header.flag = 0x00;
+    result.reconnect_command_header.size = 0x0000;
+    send_command_vt(c, 0xC4, 0, results);
+  } else {
+    send_command_vt(c, 0xC4, results.size(), results);
+  }
 }
 
 static void on_C3(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
