@@ -1837,6 +1837,11 @@ void Server::on_server_data_input(shared_ptr<Client> sender_c, const string& dat
     throw runtime_error("unknown CAx subsubcommand");
   }
 
+  auto l = this->lobby.lock();
+  if (l && l->battle_record && l->battle_record->writable()) {
+    l->battle_record->add_command(BattleRecord::Event::Type::SERVER_DATA_COMMAND, data.data(), data.size());
+  }
+
   if ((sender_c->version() == Version::GC_EP3_NTE) || !header.mask_key) {
     (this->*handler)(sender_c, data);
   } else {

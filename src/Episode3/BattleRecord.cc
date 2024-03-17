@@ -32,6 +32,7 @@ BattleRecord::Event::Event(StringReader& r) {
     case Event::Type::GAME_COMMAND:
     case Event::Type::BATTLE_COMMAND:
     case Event::Type::EP3_GAME_COMMAND:
+    case Event::Type::SERVER_DATA_COMMAND:
       this->data = r.read(r.get_u16l());
       break;
     default:
@@ -64,6 +65,7 @@ void BattleRecord::Event::serialize(StringWriter& w) const {
     case Event::Type::GAME_COMMAND:
     case Event::Type::BATTLE_COMMAND:
     case Event::Type::EP3_GAME_COMMAND:
+    case Event::Type::SERVER_DATA_COMMAND:
       w.put_u16l(this->data.size());
       w.write(this->data);
       break;
@@ -355,6 +357,10 @@ void BattleRecordPlayer::schedule_events() {
             break;
           case BattleRecord::Event::Type::CHAT_MESSAGE:
             send_prepared_chat_message(l, ev.guild_card_number, ev.data);
+            break;
+          case BattleRecord::Event::Type::SERVER_DATA_COMMAND:
+            // These are not replayed, since the battle record also contains
+            // the results of these commands.
             break;
         }
         this->event_it++;

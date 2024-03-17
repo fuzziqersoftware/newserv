@@ -35,6 +35,7 @@ public:
       GAME_COMMAND = 4,
       EP3_GAME_COMMAND = 5,
       CHAT_MESSAGE = 6,
+      SERVER_DATA_COMMAND = 7,
     };
 
     // Fields used for all events
