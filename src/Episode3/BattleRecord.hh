@@ -24,6 +24,8 @@ public:
     PlayerInventory inventory;
     PlayerDispDataDCPCV3 disp;
     le_uint32_t level;
+
+    void print(FILE* stream) const;
   } __attribute__((packed));
 
   struct Event {
@@ -53,6 +55,7 @@ public:
     Event() = default;
     explicit Event(StringReader& r);
     void serialize(StringWriter& w) const;
+    void print(FILE* stream) const;
   };
 
   explicit BattleRecord(uint32_t behavior_flags);
@@ -79,6 +82,8 @@ public:
   // minimal set of commands to set up and start the battle during a replay.
   void set_battle_start_timestamp();
   void set_battle_end_timestamp();
+
+  void print(FILE* stream) const;
 
 private:
   static constexpr uint64_t SIGNATURE = 0x14C946D56D1DAC50;

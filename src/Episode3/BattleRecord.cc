@@ -9,6 +9,12 @@ using namespace std;
 
 namespace Episode3 {
 
+void BattleRecord::PlayerEntry::print(FILE* stream) const {
+  // TODO: Format this nicely somehow. Maybe factor out the functions in
+  // QuestScript that format some of these structures
+  print_data(stream, this, sizeof(this));
+}
+
 BattleRecord::Event::Event(StringReader& r) {
   this->type = r.get<Event::Type>();
   this->timestamp = r.get_u64l();
@@ -71,6 +77,51 @@ void BattleRecord::Event::serialize(StringWriter& w) const {
       break;
     default:
       throw logic_error("unknown event type");
+  }
+}
+
+void BattleRecord::Event::print(FILE* stream) const {
+  string time_str = format_time(this->timestamp);
+  fprintf(stream, "Event @%016" PRIX64 " (%s) ", this->timestamp, time_str.c_str());
+  switch (this->type) {
+    case Type::PLAYER_JOIN:
+      fprintf(stream, "PLAYER_JOIN %02" PRIX32 "\n", this->players[0].lobby_data.client_id.load());
+      this->players[0].print(stream);
+      break;
+    case Type::PLAYER_LEAVE:
+      fprintf(stream, "PLAYER_LEAVE %02hhu\n", this->leaving_client_id);
+      break;
+    case Type::SET_INITIAL_PLAYERS:
+      fprintf(stream, "SET_INITIAL_PLAYERS");
+      for (const auto& player : this->players) {
+        fprintf(stream, " %02" PRIX32, player.lobby_data.client_id.load());
+      }
+      for (const auto& player : this->players) {
+        player.print(stream);
+      }
+      break;
+    case Type::BATTLE_COMMAND:
+      fprintf(stream, "BATTLE_COMMAND\n");
+      print_data(stream, this->data);
+      break;
+    case Type::GAME_COMMAND:
+      fprintf(stream, "GAME_COMMAND\n");
+      print_data(stream, this->data);
+      break;
+    case Type::EP3_GAME_COMMAND:
+      fprintf(stream, "EP3_GAME_COMMAND\n");
+      print_data(stream, this->data);
+      break;
+    case Type::CHAT_MESSAGE:
+      fprintf(stream, "CHAT_MESSAGE %08" PRIX32 "\n", this->guild_card_number);
+      print_data(stream, this->data);
+      break;
+    case Type::SERVER_DATA_COMMAND:
+      fprintf(stream, "SERVER_DATA_COMMAND\n");
+      print_data(stream, this->data);
+      break;
+    default:
+      throw runtime_error("unknown event type in batlte record");
   }
 }
 
@@ -274,6 +325,21 @@ void BattleRecord::set_battle_start_timestamp() {
 
 void BattleRecord::set_battle_end_timestamp() {
   this->battle_end_timestamp = now();
+}
+
+void BattleRecord::print(FILE* stream) const {
+  string start_str = format_time(this->battle_start_timestamp);
+  string end_str = format_time(this->battle_end_timestamp);
+  fprintf(stream, "BattleRecord %s behavior_flags=%08" PRIX32 " start=%016" PRIX64 " (%s) end=%016" PRIX64 " (%s); %zu events\n",
+      this->is_writable ? "writable" : "read-only",
+      this->behavior_flags,
+      this->battle_start_timestamp,
+      start_str.c_str(),
+      this->battle_end_timestamp,
+      end_str.c_str(), this->events.size());
+  for (const auto& event : this->events) {
+    event.print(stream);
+  }
 }
 
 BattleRecordPlayer::BattleRecordPlayer(

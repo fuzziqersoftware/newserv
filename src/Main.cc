@@ -2285,6 +2285,13 @@ Action a_diff_dol_files(
       }
     });
 
+Action a_format_ep3_battle_record(
+    "format-ep3-battle-record", nullptr, +[](Arguments& args) {
+      string data = read_input_data(args);
+      Episode3::BattleRecord rec(data);
+      rec.print(stdout);
+    });
+
 Action a_replay_ep3_battle_commands(
     "replay-ep3-battle-commands", nullptr, +[](Arguments& args) {
       auto s = make_shared<ServerState>();
