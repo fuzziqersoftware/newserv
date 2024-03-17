@@ -2491,6 +2491,9 @@ struct C_CreateGame_BB_C1 : C_CreateGame<TextEncoding::UTF16> {
 
 // C4 (S->C): Choice search results (DCv2 and later versions)
 // Internal name: RcvChoiceAns
+// There is a bug that can cause the client to crash or display garbage if this
+// command is sent with no entries. To work around this, newserv sends a blank
+// entry (but still with header.flag = 0) if there are no results.
 
 // Command is a list of these; header.flag is the entry count
 template <typename HeaderT, TextEncoding NameEncoding, TextEncoding DescEncoding, TextEncoding LocatorEncoding>
