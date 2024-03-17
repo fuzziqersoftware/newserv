@@ -4766,9 +4766,9 @@ struct G_SyncSetFlagState_6x6E_Decompressed {
   le_uint16_t event_set_flags_size = 0;
   le_uint16_t switch_flags_size = 0;
   // Variable-length fields follow here:
-  // EntitySetFlags entity_set_flags; // Total size is set_flags_size
+  // EntitySetFlags entity_set_flags; // Total size is entity_set_flags_size
   // le_uint16_t event_set_flags[event_set_flags_size / 2]; // Same order as in map files (NOT sorted by event_id)
-  // SwitchFlags switch_flags; // 0x200 bytes on v1 abd earlier; 0x240 bytes on v2 and later
+  // SwitchFlags switch_flags; // 0x200 bytes (0x10 floors) on v1 and earlier; 0x240 bytes (0x12 floors) on v2 and later
 
   struct EntitySetFlags {
     le_uint32_t object_set_flags_offset = 0;
@@ -4804,7 +4804,8 @@ struct G_SetQuestFlags_BB_6x6F {
 
 // 6x70: Sync player disp data and inventory (used while loading into game)
 // Annoyingly, they didn't use the same format as the 65/67/68 commands here,
-// and instead rearranged a bunch of things.
+// and instead rearranged a bunch of things. This is presumably because this
+// structure also includes transient state (e.g. current HP).
 
 struct Telepipe {
   /* 00 */ le_uint16_t owner_client_id = 0xFFFF;
@@ -4972,9 +4973,11 @@ struct G_DoneLoadingIntoGame_6x72 {
   G_UnusedHeader header;
 } __packed__;
 
-// 6x73: Unknown
+// 6x73: Exit quest
+// This command misbehaves if sent in a lobby or in a game when no quest is
+// loaded.
 
-struct G_Unknown_6x73 {
+struct G_ExitQuest_6x73 {
   G_UnusedHeader header;
 } __packed__;
 
