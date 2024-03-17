@@ -50,19 +50,12 @@ JSON CommonItemSet::Table::json() const {
   for (size_t z = 0; z < 0x64; z++) {
     static const array<Episode, 3> episodes = {Episode::EP1, Episode::EP2, Episode::EP4};
     for (Episode episode : episodes) {
-      JSON enemy_meseta_ranges_episode_json = JSON::dict();
-      JSON enemy_type_drop_probs_episode_json = JSON::dict();
-      JSON enemy_item_classes_episode_json = JSON::dict();
       for (auto type : enemy_types_for_rare_table_index(episode, z)) {
-        string type_str = name_for_enum(type);
-        enemy_meseta_ranges_episode_json.emplace(type_str, to_json(this->enemy_meseta_ranges[z]));
-        enemy_type_drop_probs_episode_json.emplace(type_str, this->enemy_type_drop_probs[z]);
-        enemy_item_classes_episode_json.emplace(type_str, this->enemy_item_classes[z]);
+        string name = string_printf("%s:%s", abbreviation_for_episode(episode), name_for_enum(type));
+        enemy_meseta_ranges_json.emplace(name, to_json(this->enemy_meseta_ranges[z]));
+        enemy_type_drop_probs_json.emplace(name, this->enemy_type_drop_probs[z]);
+        enemy_item_classes_json.emplace(name, this->enemy_item_classes[z]);
       }
-      string name = name_for_episode(episode);
-      enemy_meseta_ranges_json.emplace(name, std::move(enemy_meseta_ranges_episode_json));
-      enemy_type_drop_probs_json.emplace(name, std::move(enemy_type_drop_probs_episode_json));
-      enemy_item_classes_json.emplace(name, std::move(enemy_item_classes_episode_json));
     }
   }
   return JSON::dict({

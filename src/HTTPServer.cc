@@ -848,10 +848,7 @@ JSON HTTPServer::generate_common_tables_json() const {
   auto [set_v2, set_v3_v4] = call_on_event_thread<pair<shared_ptr<const CommonItemSet>, shared_ptr<const CommonItemSet>>>(this->state->base, [&]() {
     return make_pair(this->state->common_item_set_v2, this->state->common_item_set_v3_v4);
   });
-  return JSON::dict({
-      {"v1_v2", set_v2->json()},
-      {"v3_v4", set_v3_v4->json()},
-  });
+  return JSON::dict({{"v1_v2", set_v2->json()}, {"v3_v4", set_v3_v4->json()}});
 }
 
 JSON HTTPServer::generate_rare_tables_json() const {
