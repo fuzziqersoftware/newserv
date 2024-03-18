@@ -440,7 +440,7 @@ Some commands only work on the game server and not on the proxy server. The chat
     * `$gc` (game server only): Send your own Guild Card to yourself.
     * `$sc <data>`: Send a command to yourself.
     * `$ss <data>`: Send a command to the remote server (if in a proxy session) or to the game server.
-    * `$sb <data>`: Send a comamnd to yourself, and to the remote server or game server.
+    * `$sb <data>`: Send a command to yourself, and to the remote server or game server.
     * `$meseta <amount>` (game server only; Episode 3 only): Add the given amount to your Meseta total.
     * `$auction` (Episode 3 only): Bring up the CARD Auction menu, regardless of how many players are in the game or if you have a VIP card.
     * `$ep3battledebug` (game server only; Episode 3 only): Enable or disable TCard00_Select. If enabled, the game will enter the debug menu when you start a battle.

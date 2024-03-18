@@ -65,6 +65,12 @@ static void check_is_ep3(shared_ptr<Client> c, bool is_ep3) {
   }
 }
 
+static void check_debug_enabled(shared_ptr<Client> c) {
+  if (!c->config.check_flag(Client::Flag::DEBUG_ENABLED)) {
+    throw precondition_failed("$C6This command can only\nbe run in debug mode\n(run %sdebug first)");
+  }
+}
+
 static void check_cheats_enabled(shared_ptr<Lobby> l, shared_ptr<Client> c) {
   if (!l->check_flag(Lobby::Flag::CHEATS_ENABLED) && !c->license->check_flag(License::Flag::CHEAT_ANYWHERE)) {
     throw precondition_failed("$C6This command can\nonly be used in\ncheat mode.");
@@ -290,10 +296,7 @@ static void server_command_debug(shared_ptr<Client> c, const std::string&) {
 }
 
 static void server_command_quest(shared_ptr<Client> c, const std::string& args) {
-  if (!c->config.check_flag(Client::Flag::DEBUG_ENABLED)) {
-    send_text_message(c, "$C6This command can only\nbe run in debug mode\n(run %sdebug first)");
-    return;
-  }
+  check_debug_enabled(c);
 
   Version effective_version = is_ep3(c->version()) ? Version::GC_V3 : c->version();
 
@@ -330,10 +333,7 @@ static void server_command_qcheck(shared_ptr<Client> c, const std::string& args)
 }
 
 static void server_command_qset_qclear(shared_ptr<Client> c, const std::string& args, bool should_set) {
-  if (!c->config.check_flag(Client::Flag::DEBUG_ENABLED)) {
-    send_text_message(c, "$C6This command can only\nbe run in debug mode\n(run %sdebug first)");
-    return;
-  }
+  check_debug_enabled(c);
   auto l = c->require_lobby();
   if (!l->is_game()) {
     send_text_message(c, "$C6This command cannot\nbe used in the lobby");
@@ -419,10 +419,7 @@ static void server_command_qgwrite(shared_ptr<Client> c, const std::string& args
     send_text_message(c, "$C6This command can\nonly be used on BB");
     return;
   }
-  if (!c->config.check_flag(Client::Flag::DEBUG_ENABLED)) {
-    send_text_message(c, "$C6This command can only\nbe run in debug mode\n(run %sdebug first)");
-    return;
-  }
+  check_debug_enabled(c);
   auto l = c->require_lobby();
   if (!l->is_game()) {
     send_text_message(c, "$C6This command cannot\nbe used in the lobby");
@@ -449,10 +446,7 @@ static void server_command_qgwrite(shared_ptr<Client> c, const std::string& args
 }
 
 static void server_command_qsync_qsyncall(shared_ptr<Client> c, const std::string& args, bool send_to_lobby) {
-  if (!c->config.check_flag(Client::Flag::DEBUG_ENABLED)) {
-    send_text_message(c, "$C6This command can only\nbe run in debug mode\n(run %sdebug first)");
-    return;
-  }
+  check_debug_enabled(c);
   auto l = c->require_lobby();
   if (!l->is_game()) {
     send_text_message(c, "$C6This command cannot\nbe used in the lobby");
@@ -531,10 +525,7 @@ static void proxy_command_qsyncall(shared_ptr<ProxyServer::LinkedSession> ses, c
 }
 
 static void server_command_qcall(shared_ptr<Client> c, const std::string& args) {
-  if (!c->config.check_flag(Client::Flag::DEBUG_ENABLED)) {
-    send_text_message(c, "$C6This command can only\nbe run in debug mode\n(run %sdebug first)");
-    return;
-  }
+  check_debug_enabled(c);
 
   auto l = c->require_lobby();
   if (l->is_game() && l->quest) {
@@ -742,12 +733,14 @@ static void proxy_command_get_player_card(shared_ptr<ProxyServer::LinkedSession>
 }
 
 static void server_command_send_client(shared_ptr<Client> c, const std::string& args) {
+  check_debug_enabled(c);
   string data = parse_data_string(args);
   data.resize((data.size() + 3) & (~3));
   c->channel.send(data);
 }
 
 static void server_command_send_server(shared_ptr<Client> c, const std::string& args) {
+  check_debug_enabled(c);
   string data = parse_data_string(args);
   data.resize((data.size() + 3) & (~3));
   on_command_with_header(c, data);
@@ -948,10 +941,7 @@ static void server_command_playrec(shared_ptr<Client> c, const std::string& args
 
 static void server_command_meseta(shared_ptr<Client> c, const std::string& args) {
   check_is_ep3(c, true);
-  if (!c->config.check_flag(Client::Flag::DEBUG_ENABLED)) {
-    send_text_message(c, "$C6This command can only\nbe run in debug mode\n(run %sdebug first)");
-    return;
-  }
+  check_debug_enabled(c);
 
   uint32_t amount = stoul(args, nullptr, 0);
   c->license->ep3_current_meseta += amount;
@@ -1890,10 +1880,7 @@ static void proxy_command_item(shared_ptr<ProxyServer::LinkedSession> ses, const
 }
 
 static void server_command_enable_ep3_battle_debug_menu(shared_ptr<Client> c, const std::string& args) {
-  if (!c->config.check_flag(Client::Flag::DEBUG_ENABLED)) {
-    send_text_message(c, "$C6This command can only\nbe run in debug mode\n(run %sdebug first)");
-    return;
-  }
+  check_debug_enabled(c);
 
   auto l = c->require_lobby();
   check_is_game(l, true);
