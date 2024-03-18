@@ -4322,6 +4322,40 @@ shared_ptr<Lobby> create_game_generic(
     game->quest_flag_values = make_unique<QuestFlags>();
     game->quest_flags_known = make_unique<QuestFlags>();
   }
+
+  if (s->unlock_all_areas) {
+    static const vector<uint16_t> flags_ep1_v123 = {0x0017, 0x0020, 0x002A};
+    static const vector<uint16_t> flags_ep1_v4 = {0x01F9, 0x0201, 0x0207};
+    static const vector<uint16_t> flags_ep2_v123 = {0x004C, 0x004F, 0x0052};
+    static const vector<uint16_t> flags_ep2_v4 = {0x021B, 0x0225, 0x022F};
+    static const vector<uint16_t> flags_ep4_v4 = {0x02BD, 0x02BE, 0x02BF, 0x02C0, 0x02C1};
+
+    const vector<uint16_t>* flags_to_enable;
+    switch (game->episode) {
+      case Episode::EP1:
+        flags_to_enable = is_v4(game->base_version) ? &flags_ep1_v4 : &flags_ep1_v123;
+        break;
+      case Episode::EP2:
+        flags_to_enable = is_v4(game->base_version) ? &flags_ep2_v4 : &flags_ep2_v123;
+        break;
+      case Episode::EP4:
+        flags_to_enable = &flags_ep1_v4;
+        break;
+      default:
+        flags_to_enable = nullptr;
+    }
+
+    if (flags_to_enable) {
+      for (uint16_t flag_num : *flags_to_enable) {
+        game->quest_flag_values->set(game->difficulty, flag_num);
+        if (game->quest_flags_known) {
+          game->quest_flags_known->set(game->difficulty, flag_num);
+        }
+      }
+      c->config.set_flag(Client::Flag::SHOULD_SEND_ARTIFICIAL_FLAG_STATE);
+    }
+  }
+
   game->switch_flags = make_unique<SwitchFlags>();
 
   return game;

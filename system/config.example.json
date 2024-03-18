@@ -957,6 +957,12 @@
   //       available on the proxy server.
   "CheatModeBehavior": "OnByDefault",
 
+  // Whether to unlock all areas by default in Ep1/2/4 games. If this is on,
+  // the Ragol warp in Pioneer 2 will allow access to all base areas (Forest 1,
+  // Cave 1, Mine 1, and Ruins 1 in Episode 1, for example) even if the player
+  // who created the game does not yet have access to those areas.
+  "UnlockAllAreas": false,
+
   // Whether to enable rare drop notifications by default. Players can toggle
   // this behavior for themselves with the $itemnotifs command.
   "RareNotificationsEnabledByDefaultV1V2": false,

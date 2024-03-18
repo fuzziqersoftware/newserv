@@ -91,6 +91,7 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   bool allow_dc_pc_games = true;
   bool allow_gc_xb_games = true;
   bool enable_chat_commands = true;
+  bool unlock_all_areas = false;
   std::unique_ptr<std::array<uint32_t, NUM_NON_PATCH_VERSIONS>> version_name_colors;
   uint8_t allowed_drop_modes_v1_v2_normal = 0x1F;
   uint8_t allowed_drop_modes_v1_v2_battle = 0x07;

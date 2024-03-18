@@ -890,6 +890,7 @@ void ServerState::load_config_early() {
   this->allow_dc_pc_games = this->config_json->get_bool("AllowDCPCGames", true);
   this->allow_gc_xb_games = this->config_json->get_bool("AllowGCXBGames", true);
   this->enable_chat_commands = this->config_json->get_bool("EnableChatCommands", true);
+  this->unlock_all_areas = this->config_json->get_bool("UnlockAllAreas", false);
 
   this->version_name_colors.reset();
   try {
