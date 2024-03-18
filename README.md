@@ -439,7 +439,8 @@ Some commands only work on the game server and not on the proxy server. The chat
     * `$qsyncall <reg-num> <value>`: Set a quest register's value for everyone in the game. `<reg-num>` should be either rXX (e.g. r60) or fXX (e.g. f60); if the latter, `<value>` is parsed as a floating-point value instead of as an integer.
     * `$gc` (game server only): Send your own Guild Card to yourself.
     * `$sc <data>`: Send a command to yourself.
-    * `$ss <data>` (proxy server only): Send a command to the remote server.
+    * `$ss <data>`: Send a command to the remote server (if in a proxy session) or to the game server.
+    * `$sb <data>`: Send a comamnd to yourself, and to the remote server or game server.
     * `$meseta <amount>` (game server only; Episode 3 only): Add the given amount to your Meseta total.
     * `$auction` (Episode 3 only): Bring up the CARD Auction menu, regardless of how many players are in the game or if you have a VIP card.
     * `$ep3battledebug` (game server only; Episode 3 only): Enable or disable TCard00_Select. If enabled, the game will enter the debug menu when you start a battle.

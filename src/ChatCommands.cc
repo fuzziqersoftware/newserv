@@ -747,6 +747,12 @@ static void server_command_send_client(shared_ptr<Client> c, const std::string& 
   c->channel.send(data);
 }
 
+static void server_command_send_server(shared_ptr<Client> c, const std::string& args) {
+  string data = parse_data_string(args);
+  data.resize((data.size() + 3) & (~3));
+  on_command_with_header(c, data);
+}
+
 static void proxy_command_send_client(shared_ptr<ProxyServer::LinkedSession> ses, const std::string& args) {
   string data = parse_data_string(args);
   data.resize((data.size() + 3) & (~3));
@@ -757,6 +763,16 @@ static void proxy_command_send_server(shared_ptr<ProxyServer::LinkedSession> ses
   string data = parse_data_string(args);
   data.resize((data.size() + 3) & (~3));
   ses->server_channel.send(data);
+}
+
+static void server_command_send_both(shared_ptr<Client> c, const std::string& args) {
+  server_command_send_client(c, args);
+  server_command_send_server(c, args);
+}
+
+static void proxy_command_send_both(shared_ptr<ProxyServer::LinkedSession> ses, const std::string& args) {
+  proxy_command_send_client(ses, args);
+  proxy_command_send_server(ses, args);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2242,6 +2258,7 @@ static const unordered_map<string, ChatCommandDefinition> chat_commands({
     {"$save", {server_command_save, nullptr}},
     {"$savechar", {server_command_savechar, nullptr}},
     {"$saverec", {server_command_saverec, nullptr}},
+    {"$sb", {server_command_send_both, proxy_command_send_both}},
     {"$sc", {server_command_send_client, proxy_command_send_client}},
     {"$secid", {server_command_secid, proxy_command_secid}},
     {"$setassist", {server_command_ep3_replace_assist_card, nullptr}},
@@ -2249,7 +2266,7 @@ static const unordered_map<string, ChatCommandDefinition> chat_commands({
     {"$silence", {server_command_silence, nullptr}},
     {"$song", {server_command_song, proxy_command_song}},
     {"$spec", {server_command_toggle_spectator_flag, nullptr}},
-    {"$ss", {nullptr, proxy_command_send_server}},
+    {"$ss", {server_command_send_server, proxy_command_send_server}},
     {"$stat", {server_command_get_ep3_battle_stat, nullptr}},
     {"$surrender", {server_command_surrender, nullptr}},
     {"$swa", {server_command_switch_assist, proxy_command_switch_assist}},
