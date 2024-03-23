@@ -607,12 +607,13 @@ private:
 class MagEvolutionTable {
 public:
   struct TableOffsets {
-    /* 00 / 0400 */ le_uint32_t unknown_a1; // -> [offset -> (0xC-byte struct)[0x53], offset -> (same as first offset)]
-    /* 04 / 0408 */ le_uint32_t unknown_a2; // -> (2-byte struct, or single word)[0x53]
+    // num_mags = 0x53 in BB, 0x43 in V3
+    /* 00 / 0400 */ le_uint32_t unknown_a1; // -> [offset -> (0xC-byte struct)[num_mags], offset -> (same as first offset)]
+    /* 04 / 0408 */ le_uint32_t unknown_a2; // -> (2-byte struct, or single word)[num_mags]
     /* 08 / 04AE */ le_uint32_t unknown_a3; // -> (0xA8 bytes; possibly (8-byte struct)[0x15])
-    /* 0C / 0556 */ le_uint32_t unknown_a4; // -> (uint8_t)[0x53]
+    /* 0C / 0556 */ le_uint32_t unknown_a4; // -> (uint8_t)[num_mags]
     /* 10 / 05AC */ le_uint32_t unknown_a5; // -> (float)[0x48]
-    /* 14 / 06CC */ le_uint32_t evolution_number; // -> (uint8_t)[0x53]
+    /* 14 / 06CC */ le_uint32_t evolution_number; // -> (uint8_t)[num_mags]
   } __attribute__((packed));
 
   struct EvolutionNumberTable {
