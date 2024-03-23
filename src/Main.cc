@@ -2285,6 +2285,15 @@ Action a_diff_dol_files(
       }
     });
 
+Action a_generate_hangame_creds(
+    "generate-hangame-creds", nullptr, +[](Arguments& args) {
+      const string& user_id = args.get<string>(1);
+      const string& token = args.get<string>(2);
+      const string& unused = args.get<string>(3, false);
+      string hex = format_data_string(encode_psobb_hangame_credentials(user_id, token, unused));
+      fprintf(stdout, "psobb.exe 1196310600 %s\n", hex.c_str());
+    });
+
 Action a_format_ep3_battle_record(
     "format-ep3-battle-record", nullptr, +[](Arguments& args) {
       string data = read_input_data(args);

@@ -66,6 +66,7 @@
     "xb":            [9500,  "xb",    "login_server"],
     "pc-patch":      [10000, "patch", "patch_server_pc"],
     "bb-patch":      [11000, "patch", "patch_server_bb"],
+    "bb-patch-hg":   [11200, "patch", "patch_server_bb"],
     "bb-patch2":     [11100, "patch", "patch_server_bb"],
     "bb-patch3":     [10500, "patch", "patch_server_bb"],
     "bb-init":       [12000, "bb",    "login_server"],

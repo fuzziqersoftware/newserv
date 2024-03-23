@@ -788,3 +788,5 @@ struct LegacySavedAccountDataBB { // .nsa file format
   /* F060 */ pstring<TextEncoding::UTF16_ALWAYS_MARKED, 0x10> team_name;
   /* F080 */
 } __attribute__((packed));
+
+std::string encode_psobb_hangame_credentials(const std::string& user_id, const std::string& token, const std::string& unused = "");

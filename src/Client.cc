@@ -266,7 +266,7 @@ void Client::set_license(shared_ptr<License> l) {
   if (this->version() == Version::BB_V4) {
     // Make sure bb_username is filename-safe
     for (char ch : l->bb_username) {
-      if (!isalnum(ch) && (ch != '-') && (ch != '_')) {
+      if (!isalnum(ch) && (ch != '-') && (ch != '_') && (ch != '@')) {
         throw runtime_error("invalid characters in username");
       }
     }

@@ -87,6 +87,7 @@
     "pc":            [9300,  "pc",    "login_server"],
     "pc-patch":      [10000, "patch", "patch_server_pc"],
     "bb-patch":      [11000, "patch", "patch_server_bb"],
+    "bb-patch-hg":   [11200, "patch", "patch_server_bb"],
     "bb-init":       [12000, "bb",    "login_server"],
 
     // PSO Xbox tunnels its connections through the Xbox Live service (or, in
