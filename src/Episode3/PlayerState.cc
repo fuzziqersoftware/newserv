@@ -224,8 +224,7 @@ void PlayerState::apply_assist_card_effect_on_set(
 
       size_t log_index;
       for (log_index = 0; log_index < 0x10; log_index++) {
-        auto ce = s->definition_for_card_ref(
-            this->discard_log_card_refs[log_index]);
+        auto ce = s->definition_for_card_ref(this->discard_log_card_refs[log_index]);
         if (ce && ((ce->def.type == CardType::ITEM || ce->def.type == CardType::CREATURE))) {
           break;
         }

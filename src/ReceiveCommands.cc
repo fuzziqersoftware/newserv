@@ -3859,7 +3859,7 @@ static void on_choice_search_t(shared_ptr<Client> c, const ChoiceSearchConfig& c
         auto& result = results.emplace_back();
         result.guild_card_number = lc->license->serial_number;
         result.name.encode(lp->disp.name.decode(lc->language()), c->language());
-        string info_string = string_printf("%s Lv%zu %s\n",
+        string info_string = string_printf("%s Lv%zu\n%s\n",
             name_for_char_class(lp->disp.visual.char_class),
             static_cast<size_t>(lp->disp.stats.level + 1),
             abbreviation_for_section_id(lp->disp.visual.section_id));
