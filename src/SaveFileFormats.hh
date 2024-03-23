@@ -360,7 +360,8 @@ struct PSOGCCharacterFile {
     /* 25DC:21C0 */ parray<uint8_t, 4> unknown_a2;
     /* 25E0:21C4 */ PlayerRecordsV3_Challenge<true> challenge_records;
     /* 26E0:22C4 */ parray<be_uint16_t, 20> tech_menu_shortcut_entries;
-    /* 2708:22EC */ parray<uint8_t, 0x28> unknown_a6;
+    /* 2708:22EC */ ChoiceSearchConfig choice_search_config;
+    /* 2720:2304 */ parray<uint8_t, 0x10> unknown_a6;
     /* 2730:2314 */ parray<be_uint32_t, 0x10> quest_counters;
     /* 2770:2354 */ PlayerRecords_Battle<true> offline_battle_records;
     /* 2788:236C */ parray<uint8_t, 4> unknown_f5;
