@@ -758,7 +758,7 @@ void ServerState::load_config_early() {
   }
   this->ep3_final_round_meseta_bonus = this->config_json->get_int("Episode3FinalRoundMesetaBonus", 300);
   this->ep3_jukebox_is_free = this->config_json->get_bool("Episode3JukeboxIsFree", false);
-  this->ep3_behavior_flags = this->config_json->get_int("Episode3BehaviorFlags", false);
+  this->ep3_behavior_flags = this->config_json->get_int("Episode3BehaviorFlags", 0);
   this->ep3_card_auction_points = this->config_json->get_int("CardAuctionPoints", 0);
   this->hide_download_commands = this->config_json->get_bool("HideDownloadCommands", true);
   this->proxy_allow_save_files = this->config_json->get_bool("ProxyAllowSaveFiles", true);
