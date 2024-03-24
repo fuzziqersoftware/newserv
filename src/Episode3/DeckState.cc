@@ -84,43 +84,45 @@ bool DeckState::draw_card_by_ref(uint16_t card_ref) {
   }
 
   uint8_t index = index_for_card_ref(card_ref);
-  if (index > this->entries.size()) {
+  if (index >= this->entries.size()) {
     return false;
   }
 
-  if (this->entries[index].state == CardState::DISCARDED) {
+  auto& entry = this->entries[index];
+  if (entry.state == CardState::DISCARDED) {
     // If the card is discarded, then it should be before the draw index, and we
     // can just change its state.
-    this->entries[index].state = CardState::IN_HAND;
+    entry.state = CardState::IN_HAND;
     return true;
+  }
 
-  } else if (this->entries[index].state == CardState::DRAWABLE) {
-    // If the card is still drawable, we need to move it so it's just in front
-    // of the draw index, then immediately draw it. Ep3 NTE does not handle this
-    // case, but we do even when playing NTE.
-    ssize_t ref_index;
-    for (ref_index = this->card_refs.size(); ref_index >= 0; ref_index--) {
-      if (this->card_refs[ref_index] == card_ref) {
-        break;
-      }
-    }
-    if (ref_index < 0) {
-      return false;
-    }
-
-    size_t ref_uindex = ref_index;
-    for (; ref_uindex > this->draw_index; ref_uindex--) {
-      // Note: draw_index is also unsigned, so ref_uindex cannot be zero here
-      this->card_refs[ref_uindex] = this->card_refs[ref_uindex - 1];
-    }
-    this->card_refs[this->draw_index] = card_ref;
-    this->entries[index].state = CardState::IN_HAND;
-    this->draw_index++;
-    return true;
-
-  } else {
+  if (entry.state != CardState::DRAWABLE) {
     return false;
   }
+
+  // If the card is still drawable, we need to move it so it's just in front of
+  // the draw index, then immediately draw it. Ep3 NTE does not handle this
+  // case, but we do even when playing NTE.
+  size_t ref_index;
+  for (ref_index = 0; ref_index < this->card_refs.size(); ref_index++) {
+    if (this->card_refs[ref_index] == card_ref) {
+      break;
+    }
+  }
+  if (ref_index >= this->card_refs.size()) {
+    return false;
+  }
+
+  for (; ref_index > this->draw_index; ref_index--) {
+    // this->draw_index is also unsigned, so ref_index cannot be zero here
+    this->card_refs[ref_index] = this->card_refs[ref_index - 1];
+  }
+  this->card_refs[this->draw_index] = card_ref;
+
+  // Draw the card
+  entry.state = CardState::IN_HAND;
+  this->draw_index++;
+  return true;
 }
 
 uint16_t DeckState::card_id_for_card_ref(uint16_t card_ref) const {
