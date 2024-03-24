@@ -1842,7 +1842,7 @@ void Server::on_server_data_input(shared_ptr<Client> sender_c, const string& dat
     l->battle_record->add_command(BattleRecord::Event::Type::SERVER_DATA_COMMAND, data.data(), data.size());
   }
 
-  if ((sender_c->version() == Version::GC_EP3_NTE) || !header.mask_key) {
+  if ((sender_c && (sender_c->version() == Version::GC_EP3_NTE)) || !header.mask_key) {
     (this->*handler)(sender_c, data);
   } else {
     string unmasked_data = data;
@@ -2172,7 +2172,8 @@ void Server::handle_CAx13_update_map_during_setup_t(shared_ptr<Client> c, const 
     // in the case of NTE, no values at all, since the Rules structure is
     // smaller). So, use the values from the last chosen map if applicable, or
     // the values from the $dicerange command if available.
-    const Rules* map_rules = this->last_chosen_map ? &this->last_chosen_map->version(c->language())->map->default_rules : nullptr;
+    uint8_t language = c ? c->language() : 1;
+    const Rules* map_rules = this->last_chosen_map ? &this->last_chosen_map->version(language)->map->default_rules : nullptr;
     auto& server_rules = this->map_and_rules->rules;
     // NTE can specify the DEF dice value range in its Rules struct, so we use
     // that unless the map or $dicerange overrides it.
@@ -2559,8 +2560,7 @@ void Server::handle_CAx3A_time_limit_expired(shared_ptr<Client>, const string& d
 
 void Server::handle_CAx40_map_list_request(shared_ptr<Client> sender_c, const string& data) {
   const auto& in_cmd = check_size_t<G_MapListRequest_Ep3_CAx40>(data);
-  this->send_debug_command_received_message(
-      in_cmd.header.subsubcommand, "MAP LIST");
+  this->send_debug_command_received_message(in_cmd.header.subsubcommand, "MAP LIST");
 
   auto l = this->lobby.lock();
   if (!l) {
