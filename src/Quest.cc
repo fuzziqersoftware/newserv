@@ -490,13 +490,19 @@ QuestIndex::QuestIndex(
       continue;
     }
 
-    auto add_file = [&](map<string, FileData>& files, const string& basename, const string& filename, string&& value) {
+    auto add_file = [&](map<string, FileData>& files, const string& basename, const string& filename, string&& value, bool check_chunk_size) {
       if (categories.emplace(basename, cat->category_id).first->second != cat->category_id) {
         throw runtime_error("file " + basename + " exists in multiple categories");
       }
       auto data_ptr = make_shared<string>(std::move(value));
       if (!files.emplace(basename, FileData{filename, data_ptr}).second) {
         throw runtime_error("file " + basename + " already exists");
+      }
+      // There is a bug in the client that prevents quests from loading properly
+      // if any file's size is a multiple of 0x400. See the comments on the 13
+      // command in CommandFormats.hh for more details.
+      if (check_chunk_size && !(data_ptr->size() & 0x3FF)) {
+        data_ptr->push_back(0x00);
       }
     };
 
@@ -544,26 +550,26 @@ QuestIndex::QuestIndex(
         }
 
         if (extension == "json") {
-          add_file(json_files, file_basename, orig_filename, std::move(file_data));
+          add_file(json_files, file_basename, orig_filename, std::move(file_data), false);
         } else if (extension == "bin" || extension == "mnm") {
-          add_file(bin_files, file_basename, orig_filename, std::move(file_data));
+          add_file(bin_files, file_basename, orig_filename, std::move(file_data), true);
         } else if (extension == "bind" || extension == "mnmd") {
-          add_file(bin_files, file_basename, orig_filename, prs_compress_optimal(file_data));
+          add_file(bin_files, file_basename, orig_filename, prs_compress_optimal(file_data), true);
         } else if (extension == "dat") {
-          add_file(dat_files, file_basename, orig_filename, std::move(file_data));
+          add_file(dat_files, file_basename, orig_filename, std::move(file_data), true);
         } else if (extension == "datd") {
-          add_file(dat_files, file_basename, orig_filename, prs_compress_optimal(file_data));
+          add_file(dat_files, file_basename, orig_filename, prs_compress_optimal(file_data), true);
         } else if (extension == "pvr") {
-          add_file(pvr_files, file_basename, orig_filename, std::move(file_data));
+          add_file(pvr_files, file_basename, orig_filename, std::move(file_data), true);
         } else if (extension == "qst") {
           auto files = decode_qst_data(file_data);
           for (auto& it : files) {
             if (ends_with(it.first, ".bin")) {
-              add_file(bin_files, file_basename, orig_filename, std::move(it.second));
+              add_file(bin_files, file_basename, orig_filename, std::move(it.second), true);
             } else if (ends_with(it.first, ".dat")) {
-              add_file(dat_files, file_basename, orig_filename, std::move(it.second));
+              add_file(dat_files, file_basename, orig_filename, std::move(it.second), true);
             } else if (ends_with(it.first, ".pvr")) {
-              add_file(pvr_files, file_basename, orig_filename, std::move(it.second));
+              add_file(pvr_files, file_basename, orig_filename, std::move(it.second), true);
             } else {
               throw runtime_error("qst file contains unsupported file type: " + it.first);
             }

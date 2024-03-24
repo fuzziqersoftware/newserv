@@ -709,7 +709,14 @@ struct C_MenuSelection_PC_BB_10_Flag03 : C_MenuSelection_10_Flag03<TextEncoding:
 // memory card), use A7 instead.
 // All chunks except the last must have 0x400 data bytes. When downloading an
 // online quest, the .bin and .dat chunks may be interleaved (although newserv
-// currently sends them sequentially).
+// currently sends them sequentially). There is a client bug in BB (and
+// probably all other versions) where if the quest file's size is a multiple
+// of 0x400, the last chunk will have size 0x400, and the client will never
+// consider the download complete since it only checks if the last chunk has
+// size < 0x400; it does not check if all expected bytes have been received.
+// To work around this, newserv appends an extra zero byte if the quest file's
+// size is a multiple of 0x400; this byte will be ignored since the PRS
+// decompression algorithm contains a stop command, so it will never read it.
 
 // header.flag = file chunk index (start offset / 0x400)
 struct S_WriteFile_13_A7 {
