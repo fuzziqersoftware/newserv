@@ -2650,6 +2650,30 @@ int main(int argc, char** argv) {
     log_error("Unknown or invalid action; try --help");
     return 1;
   }
+#ifdef PHOSG_WINDOWS
+  // Cygwin just gives a stackdump when an exception falls out of main(), so
+  // unlike Linux and macOS, we have to manually catch exceptions here just to
+  // see what the exception message was.
+  try {
+    a->run(args);
+  } catch (const cannot_open_file& e) {
+    log_error("Top-level exception (cannot_open_file): %s", e.what());
+    throw;
+  } catch (const invalid_argument& e) {
+    log_error("Top-level exception (invalid_argument): %s", e.what());
+    throw;
+  } catch (const out_of_range& e) {
+    log_error("Top-level exception (out_of_range): %s", e.what());
+    throw;
+  } catch (const runtime_error& e) {
+    log_error("Top-level exception (runtime_error): %s", e.what());
+    throw;
+  } catch (const exception& e) {
+    log_error("Top-level exception: %s", e.what());
+    throw;
+  }
+#else
   a->run(args);
+#endif
   return 0;
 }
