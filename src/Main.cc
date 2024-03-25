@@ -266,6 +266,7 @@ static void a_compress_decompress_fn(Arguments& args) {
   bool is_decompress = starts_with(action, "decompress-");
   bool is_big_endian = args.get<bool>("big-endian");
   bool is_optimal = args.get<bool>("optimal");
+  bool is_pessimal = args.get<bool>("pessimal");
   int8_t compression_level = args.get<int8_t>("compression-level", 0);
   size_t bytes = args.get<size_t>("bytes", 0);
   string seed = args.get<string>("seed");
@@ -298,6 +299,8 @@ static void a_compress_decompress_fn(Arguments& args) {
   if (!is_decompress && (is_prs || is_pr2 || is_prc)) {
     if (is_optimal) {
       data = prs_compress_optimal(data.data(), data.size(), optimal_progress_fn);
+    } else if (is_pessimal) {
+      data = prs_compress_pessimal(data.data(), data.size());
     } else {
       data = prs_compress(data, compression_level, progress_fn);
     }

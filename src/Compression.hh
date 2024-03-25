@@ -177,6 +177,10 @@ std::string prs_compress_indexed(
 std::string prs_compress_optimal(const void* vdata, size_t size, ProgressCallback progress_fn = nullptr);
 std::string prs_compress_optimal(const std::string& data, ProgressCallback progress_fn = nullptr);
 
+// Compresses data using PRS to the LARGEST possible output size. There is no
+// practical use for this function except for amusement.
+std::string prs_compress_pessimal(const void* vdata, size_t size);
+
 // Decompresses PRS-compressed data.
 struct PRSDecompressResult {
   std::string data;

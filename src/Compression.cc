@@ -438,6 +438,45 @@ string prs_compress_optimal(const string& data, ProgressCallback progress_fn) {
   return prs_compress_optimal(data.data(), data.size(), progress_fn);
 }
 
+string prs_compress_pessimal(const void* vdata, size_t size) {
+  const uint8_t* in_data = reinterpret_cast<const uint8_t*>(vdata);
+
+  // The worst possible encoding we can do is a literal byte when no byte with
+  // the same value is within the window, or an extended copy if there is a byte
+  // with the same value in the window.
+  WindowIndex<0x1FFF, 1> window(in_data, size);
+  LZSSInterleavedWriter w;
+  for (size_t z = 0; z < size; z++) {
+    auto match = window.get_best_match();
+    if (match.second >= 1) {
+      // Write extended copy
+      int16_t offset = match.first - window.offset;
+      w.write_control(false);
+      w.flush_if_ready();
+      w.write_control(true);
+      uint16_t a = (offset << 3);
+      w.write_data(a & 0xFF);
+      w.write_data(a >> 8);
+      w.write_data(0);
+    } else {
+      // Write literal
+      w.write_control(true);
+      w.write_data(in_data[z]);
+    }
+    w.flush_if_ready();
+    window.advance();
+  }
+
+  // Write stop command
+  w.write_control(false);
+  w.flush_if_ready();
+  w.write_control(true);
+  w.write_data(0);
+  w.write_data(0);
+
+  return std::move(w.close());
+}
+
 PRSCompressor::PRSCompressor(
     ssize_t compression_level, ProgressCallback progress_fn)
     : compression_level(compression_level),
