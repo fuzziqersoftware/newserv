@@ -131,7 +131,8 @@ newserv implements a patch server for PSO PC and PSO BB game data. Any file or d
 For Blue Burst set up, the below is mandatory for a smooth experience:
 
 1. Browse to your chosen client's data directory.
-2. Copy all the map_*.dat files and the data.gsl file and place them in `system/patch-bb/data`
+2. Copy all the map_*.dat files, unitxt_* files and the data.gsl file and place them in `system/patch-bb/data`.
+3. If you're using game files from the Tethealla client, make a copy of unitxt_j.prs inside system/patch-bb/data and name it unitxt_e.prs. (If unitxt_e.prs already exists, replace it with the copied file.)
 
 For BB clients, newserv reads some files out of the patch data to implement game logic, so it's important that certain game files are synchronized between the server and the client. newserv contains defaults for these files in the system/maps/bb-v4 directory, but if these don't match the client's copies of the files, odd behavior will occur in games.
 
