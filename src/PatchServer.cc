@@ -395,17 +395,31 @@ void PatchServer::on_client_error(Channel& ch, short events) {
 }
 
 PatchServer::PatchServer(shared_ptr<const Config> config)
-    : base(event_base_new(), event_base_free),
-      config(config),
-      destroy_clients_ev(event_new(this->base.get(), -1, EV_TIMEOUT, &PatchServer::dispatch_destroy_clients, this), event_free),
-      th(&PatchServer::thread_fn, this) {}
+    : config(config) {
+  if (config->shared_base) {
+    this->base = config->shared_base;
+    this->base_is_shared = true;
+  } else {
+    this->base.reset(event_base_new(), event_base_free);
+    this->base_is_shared = false;
+  }
+  this->destroy_clients_ev.reset(
+      event_new(this->base.get(), -1, EV_TIMEOUT, &PatchServer::dispatch_destroy_clients, this), event_free);
+  if (!this->base_is_shared) {
+    this->th = thread(&PatchServer::thread_fn, this);
+  }
+}
 
 void PatchServer::schedule_stop() {
-  event_base_loopexit(this->base.get(), nullptr);
+  if (!this->base_is_shared) {
+    event_base_loopexit(this->base.get(), nullptr);
+  }
 }
 
 void PatchServer::wait_for_stop() {
-  this->th.join();
+  if (!this->base_is_shared) {
+    this->th.join();
+  }
 }
 
 void PatchServer::listen(const std::string& addr_str, const string& socket_path, Version version) {

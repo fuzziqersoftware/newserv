@@ -1787,6 +1787,14 @@ void ServerState::load_all() {
 
 shared_ptr<PatchServer::Config> ServerState::generate_patch_server_config(bool is_bb) const {
   auto ret = make_shared<PatchServer::Config>();
+#ifdef PHOSG_WINDOWS
+  // libevent doesn't play nice with Cygwin, so we run the patch server on the
+  // main thread there. The problem seems to be that the locking structures are
+  // never set up, presumably since we call event_use_pthreads() since
+  // event_use_windows_threads() doesn't exist. (Does literally no one else use
+  // libevent with Cygwin??)
+  ret->shared_base = this->base;
+#endif
   ret->allow_unregistered_users = this->allow_unregistered_users;
   ret->hide_data_from_logs = this->hide_download_commands;
   ret->idle_timeout_usecs = this->patch_client_idle_timeout_usecs;

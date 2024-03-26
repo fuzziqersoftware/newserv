@@ -22,6 +22,7 @@ public:
     std::string message;
     std::shared_ptr<const LicenseIndex> license_index;
     std::shared_ptr<const PatchFileIndex> patch_file_index;
+    std::shared_ptr<struct event_base> shared_base;
   };
 
   PatchServer() = delete;
@@ -86,6 +87,7 @@ private:
   };
 
   std::shared_ptr<struct event_base> base;
+  bool base_is_shared;
   std::shared_ptr<const Config> config;
 
   std::unordered_set<std::shared_ptr<Client>> clients_to_destroy;

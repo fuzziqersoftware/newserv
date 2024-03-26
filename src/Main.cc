@@ -2361,7 +2361,7 @@ Action a_run_server_replay_log(
       }
 
       if (evthread_use_pthreads()) {
-        throw runtime_error("failed to setup libevent threads");
+        throw runtime_error("failed to set up libevent threads");
       }
 
       if (!isdir("system/players")) {
