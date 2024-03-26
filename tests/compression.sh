@@ -52,6 +52,10 @@ rm $BASENAME.mnrd \
     $BASENAME.mnrd.$SCHEME.lN \
     $BASENAME.mnrd.$SCHEME.l0 \
     $BASENAME.mnrd.$SCHEME.l1 \
+    $BASENAME.mnrd.$SCHEME.lo \
+    $BASENAME.mnrd.$SCHEME.lp \
     $BASENAME.mnrd.$SCHEME.lN.dec \
     $BASENAME.mnrd.$SCHEME.l0.dec \
-    $BASENAME.mnrd.$SCHEME.l1.dec
+    $BASENAME.mnrd.$SCHEME.l1.dec \
+    $BASENAME.mnrd.$SCHEME.lo.dec \
+    $BASENAME.mnrd.$SCHEME.lp.dec
