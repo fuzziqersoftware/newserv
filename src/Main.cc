@@ -1559,6 +1559,8 @@ Action a_describe_item(
       }
 
       string desc = name_index->describe_item(item);
+      string desc_colored = name_index->describe_item(item, true);
+
       log_info("Data (decoded):        %02hhX%02hhX%02hhX%02hhX %02hhX%02hhX%02hhX%02hhX %02hhX%02hhX%02hhX%02hhX -------- %02hhX%02hhX%02hhX%02hhX",
           item.data1[0], item.data1[1], item.data1[2], item.data1[3],
           item.data1[4], item.data1[5], item.data1[6], item.data1[7],
@@ -1604,6 +1606,7 @@ Action a_describe_item(
       }
 
       log_info("Description: %s", desc.c_str());
+      log_info("Description (in-game): %s", desc_colored.c_str());
 
       size_t purchase_price = s->item_parameter_table(Version::BB_V4)->price_for_item(item);
       size_t sale_price = purchase_price >> 3;

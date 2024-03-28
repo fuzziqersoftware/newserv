@@ -166,7 +166,7 @@ std::string ItemNameIndex::describe_item(const ItemData& item, bool include_colo
     }
   }
 
-  // For weapons, add the grind and percentages, or S-rank name if applicable
+  // For weapons, add the grind and bonuses, or S-rank name if applicable
   if (item.data1[0] == 0x00) {
     if (item.data1[3] > 0) {
       ret_tokens.emplace_back(string_printf("+%hhu", item.data1[3]));
@@ -201,7 +201,7 @@ std::string ItemNameIndex::describe_item(const ItemData& item, bool include_colo
       }
 
     } else { // Not S-rank (extended name bits not set)
-      parray<int8_t, 5> percentages(0);
+      parray<int8_t, 5> bonuses(0);
       for (size_t x = 0; x < 3; x++) {
         uint8_t which = item.data1[6 + 2 * x];
         uint8_t value = item.data1[7 + 2 * x];
@@ -211,12 +211,20 @@ std::string ItemNameIndex::describe_item(const ItemData& item, bool include_colo
         if (which > 5) {
           ret_tokens.emplace_back(string_printf("!PC:%02hhX%02hhX", which, value));
         } else {
-          percentages[which - 1] = value;
+          bonuses[which - 1] = value;
         }
       }
-      if (!percentages.is_filled_with(0)) {
-        ret_tokens.emplace_back(string_printf("%hhd/%hhd/%hhd/%hhd/%hhd",
-            percentages[0], percentages[1], percentages[2], percentages[3], percentages[4]));
+      if (!bonuses.is_filled_with(0)) {
+        bool should_include_hit = (bonuses[4] != 0);
+        bool should_highlight_hit = include_color_escapes && (bonuses[4] > 0);
+        if (should_include_hit) {
+          ret_tokens.emplace_back(string_printf("%hhd/%hhd/%hhd/%hhd/%s%hhd",
+              bonuses[0], bonuses[1], bonuses[2], bonuses[3],
+              (should_highlight_hit ? "$CG" : ""), bonuses[4]));
+        } else {
+          ret_tokens.emplace_back(string_printf("%hhd/%hhd/%hhd/%hhd",
+              bonuses[0], bonuses[1], bonuses[2], bonuses[3]));
+        }
       }
     }
 
