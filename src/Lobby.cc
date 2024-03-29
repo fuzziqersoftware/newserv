@@ -12,7 +12,7 @@
 using namespace std;
 
 bool Lobby::FloorItem::visible_to_client(uint8_t client_id) const {
-  return this->visibility_flags & (1 << client_id);
+  return this->flags & (1 << client_id);
 }
 
 Lobby::FloorItemManager::FloorItemManager(uint32_t lobby_id, uint8_t floor)
@@ -27,18 +27,18 @@ shared_ptr<Lobby::FloorItem> Lobby::FloorItemManager::find(uint32_t item_id) con
   return this->items.at(item_id);
 }
 
-void Lobby::FloorItemManager::add(const ItemData& item, float x, float z, uint16_t visibility_flags) {
+void Lobby::FloorItemManager::add(const ItemData& item, float x, float z, uint16_t flags) {
   auto fi = make_shared<FloorItem>();
   fi->data = item;
   fi->x = x;
   fi->z = z;
   fi->drop_number = this->next_drop_number++;
-  fi->visibility_flags = visibility_flags & 0x0FFF;
+  fi->flags = flags;
   this->add(fi);
 }
 
 void Lobby::FloorItemManager::add(shared_ptr<Lobby::FloorItem> fi) {
-  if (fi->visibility_flags == 0) {
+  if (fi->flags == 0) {
     throw logic_error("floor item is not visible to any player");
   }
 
@@ -51,8 +51,8 @@ void Lobby::FloorItemManager::add(shared_ptr<Lobby::FloorItem> fi) {
       this->queue_for_client[z].emplace(fi->drop_number, fi);
     }
   }
-  this->log.info("Added floor item %08" PRIX32 " at %g, %g with drop number %" PRIu64 " visible to %03hX",
-      fi->data.id.load(), fi->x, fi->z, fi->drop_number, fi->visibility_flags);
+  this->log.info("Added floor item %08" PRIX32 " at %g, %g with drop number %" PRIu64 " with flags %03hX",
+      fi->data.id.load(), fi->x, fi->z, fi->drop_number, fi->flags);
 }
 
 std::shared_ptr<Lobby::FloorItem> Lobby::FloorItemManager::remove(uint32_t item_id, uint8_t client_id) {
@@ -70,8 +70,8 @@ std::shared_ptr<Lobby::FloorItem> Lobby::FloorItemManager::remove(uint32_t item_
     }
   }
   this->items.erase(item_it);
-  this->log.info("Removed floor item %08" PRIX32 " at %g, %g with drop number %" PRIu64 " visible to %03hX",
-      fi->data.id.load(), fi->x, fi->z, fi->drop_number, fi->visibility_flags);
+  this->log.info("Removed floor item %08" PRIX32 " at %g, %g with drop number %" PRIu64 " with flags %03hX",
+      fi->data.id.load(), fi->x, fi->z, fi->drop_number, fi->flags);
   return fi;
 }
 
@@ -89,7 +89,7 @@ std::unordered_set<std::shared_ptr<Lobby::FloorItem>> Lobby::FloorItemManager::e
 void Lobby::FloorItemManager::clear_inaccessible(uint16_t remaining_clients_mask) {
   unordered_set<uint32_t> item_ids_to_delete;
   for (const auto& it : this->items) {
-    if ((it.second->visibility_flags & remaining_clients_mask) == 0) {
+    if ((it.second->flags & remaining_clients_mask) == 0) {
       item_ids_to_delete.emplace(it.first);
     }
   }
@@ -102,7 +102,7 @@ void Lobby::FloorItemManager::clear_inaccessible(uint16_t remaining_clients_mask
 void Lobby::FloorItemManager::clear_private() {
   unordered_set<uint32_t> item_ids_to_delete;
   for (const auto& it : this->items) {
-    if ((it.second->visibility_flags & 0x00F) != 0x00F) {
+    if ((it.second->flags & 0x00F) != 0x00F) {
       item_ids_to_delete.emplace(it.first);
     }
   }
@@ -843,9 +843,9 @@ shared_ptr<Lobby::FloorItem> Lobby::find_item(uint8_t floor, uint32_t item_id) c
   return this->floor_item_managers.at(floor).find(item_id);
 }
 
-void Lobby::add_item(uint8_t floor, const ItemData& data, float x, float z, uint16_t visibility_flags) {
+void Lobby::add_item(uint8_t floor, const ItemData& data, float x, float z, uint16_t flags) {
   auto& m = this->floor_item_managers.at(floor);
-  m.add(data, x, z, visibility_flags);
+  m.add(data, x, z, flags);
   this->evict_items_from_floor(floor);
 }
 

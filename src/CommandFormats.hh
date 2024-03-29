@@ -1417,7 +1417,7 @@ struct S_LeaveLobby_66_69_Ep3_E9 {
 // 7E: Invalid command
 // 7F: Invalid command
 
-// 80: Valid but ignored (all versions)
+// 80: Valid but ignored (all versions except BB)
 // Internal names: RcvGenerateID and SndGenerateID
 // This command appears to be used to set the next item ID for the given player
 // slot. PSO V3 and later accept this command, but ignore it entirely. Notably,

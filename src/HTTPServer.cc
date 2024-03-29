@@ -585,7 +585,7 @@ JSON HTTPServer::generate_lobby_json_st(shared_ptr<const Lobby> l, shared_ptr<co
               {"LocationX", item->x},
               {"LocationZ", item->z},
               {"DropNumber", item->drop_number},
-              {"VisibilityFlags", item->visibility_flags},
+              {"Flags", item->flags},
               {"Data", item->data.hex()},
               {"ItemID", item->data.id.load()},
           });

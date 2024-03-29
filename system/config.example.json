@@ -969,6 +969,26 @@
   "RareNotificationsEnabledByDefaultV1V2": false,
   "RareNotificationsEnabledByDefaultV3V4": false,
 
+  // Conditions for when to broadcast rare notifications. These only apply to
+  // items dropped by boxes and enemies; items dropped by players or created
+  // with the $item command do not cause notifications when picked up.
+
+  // If a weapon, armor, shield, or unit with at least this many stars is
+  // picked up, everyone in the game is notified. To disable these
+  // notifications, set this to 255.
+  "GameRareNotifMinStars": 10,
+  // If a weapon, armor, shield, or unit with at least this many stars is
+  // picked up, everyone on the server (except Episode 3 players) is notified.
+  // To disable these notifications, set this to 255.
+  "GlobalRareNotifMinStars": 12,
+  // If this option is on and a rare mag is picked up, everyone in the game is
+  // notified. Note that there are no rare mags in any of the default drop
+  // tables, so this has no effect unless you add rare mags to the drop tables.
+  "GameRareMagNotifsEnabled": true,
+  // If this option is on and a rare tool item (for example, a Photon Drop) is
+  // picked up, everyone in the game is notified.
+  "GameRareToolNotifsEnabled": true,
+
   // Whether to enable patches on Episode 3 USA. This functionality depends on
   // exploiting a bug in Episode 3, and while it seems to work reliably on
   // Dolphin, it hasn't been tested on a real GameCube. So, newserv doesn't

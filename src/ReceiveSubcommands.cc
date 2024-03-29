@@ -1896,7 +1896,7 @@ static void on_box_or_enemy_item_drop_t(shared_ptr<Client> c, uint8_t command, u
   ItemData item = cmd.item.item;
   item.decode_for_version(c->version());
   l->on_item_id_generated_externally(item.id);
-  l->add_item(cmd.item.floor, item, cmd.item.x, cmd.item.z, 0x00F);
+  l->add_item(cmd.item.floor, item, cmd.item.x, cmd.item.z, 0x100F);
 
   auto name = s->describe_item(c->version(), item, false);
   l->log.info("Player %hhu (leader) created floor item %08" PRIX32 " (%s) at %hhu:(%g, %g)",
@@ -1991,6 +1991,47 @@ static void on_pick_up_item_generic(
         send_pick_up_item_to_client(lc, client_id, item_id, floor);
       } else {
         send_create_inventory_item_to_client(lc, client_id, fi->data);
+      }
+    }
+
+    if ((fi->flags & 0x1000) && (fi->data.data1[0] < 0x04)) {
+      auto pmt = s->item_parameter_table(c->version());
+      bool should_send_game_notif = false;
+      bool should_send_global_notif = false;
+      switch (fi->data.data1[0]) {
+        case 0x00:
+        case 0x01: {
+          uint8_t stars = pmt->get_item_adjusted_stars(fi->data);
+          should_send_game_notif = (stars >= s->game_rare_notif_min_stars);
+          should_send_global_notif = (stars >= s->global_rare_notif_min_stars);
+          break;
+        }
+        case 0x02: {
+          should_send_game_notif = s->game_rare_mag_notifs_enabled && pmt->is_item_rare(fi->data);
+          break;
+        }
+        case 0x03: {
+          should_send_game_notif = s->game_rare_tool_notifs_enabled && pmt->is_item_rare(fi->data);
+          break;
+        }
+      }
+
+      if (should_send_game_notif || should_send_global_notif) {
+        string p_name = p->disp.name.decode();
+        string desc = s->describe_item(c->version(), fi->data, true);
+        string message = string_printf("$C6%s$C7 has found\n%s", p_name.c_str(), desc.c_str());
+        if (should_send_global_notif) {
+          for (auto& it : s->channel_to_client) {
+            if (it.second->license &&
+                !is_patch(it.second->version()) &&
+                !is_ep3(it.second->version()) &&
+                it.second->lobby.lock()) {
+              send_text_message(it.second, message);
+            }
+          }
+        } else {
+          send_text_message(l, message);
+        }
       }
     }
   }
@@ -2605,7 +2646,7 @@ static void on_entity_drop_item_request(shared_ptr<Client> c, uint8_t command, u
                 res.item.id = l->generate_item_id(0xFF);
                 l->log.info("Creating item %08" PRIX32 " at %02hhX:%g,%g for %s",
                     res.item.id.load(), cmd.floor, cmd.x.load(), cmd.z.load(), lc->channel.name.c_str());
-                l->add_item(cmd.floor, res.item, cmd.x, cmd.z, (1 << lc->lobby_client_id));
+                l->add_item(cmd.floor, res.item, cmd.x, cmd.z, 0x1000 | (1 << lc->lobby_client_id));
                 send_drop_item_to_channel(s, lc->channel, res.item, !rec.is_box, cmd.floor, cmd.x, cmd.z, cmd.entity_id);
                 send_item_notification_if_needed(s, lc->channel, lc->config, res.item, res.is_from_rare_table);
               }
@@ -2615,7 +2656,7 @@ static void on_entity_drop_item_request(shared_ptr<Client> c, uint8_t command, u
             res.item.id = l->generate_item_id(0xFF);
             l->log.info("Creating item %08" PRIX32 " at %02hhX:%g,%g for all clients",
                 res.item.id.load(), cmd.floor, cmd.x.load(), cmd.z.load());
-            l->add_item(cmd.floor, res.item, cmd.x, cmd.z, 0x00F);
+            l->add_item(cmd.floor, res.item, cmd.x, cmd.z, 0x100F);
             send_drop_item_to_lobby(l, res.item, !rec.is_box, cmd.floor, cmd.x, cmd.z, cmd.entity_id);
             for (auto lc : l->clients) {
               if (lc) {
@@ -2638,7 +2679,7 @@ static void on_entity_drop_item_request(shared_ptr<Client> c, uint8_t command, u
               res.item.id = l->generate_item_id(0xFF);
               l->log.info("Creating item %08" PRIX32 " at %02hhX:%g,%g for %s",
                   res.item.id.load(), cmd.floor, cmd.x.load(), cmd.z.load(), lc->channel.name.c_str());
-              l->add_item(cmd.floor, res.item, cmd.x, cmd.z, (1 << lc->lobby_client_id));
+              l->add_item(cmd.floor, res.item, cmd.x, cmd.z, 0x1000 | (1 << lc->lobby_client_id));
               send_drop_item_to_channel(s, lc->channel, res.item, !rec.is_box, cmd.floor, cmd.x, cmd.z, cmd.entity_id);
               send_item_notification_if_needed(s, lc->channel, lc->config, res.item, res.is_from_rare_table);
             }
@@ -3703,7 +3744,7 @@ static void on_request_challenge_grave_recovery_item_bb(shared_ptr<Client> c, ui
     };
     ItemData item = items.at(cmd.item_type);
     item.id = l->generate_item_id(cmd.header.client_id);
-    l->add_item(cmd.floor, item, cmd.x, cmd.z, 0x00F);
+    l->add_item(cmd.floor, item, cmd.x, cmd.z, 0x100F);
     send_drop_stacked_item_to_lobby(l, item, cmd.floor, cmd.x, cmd.z);
   }
 }
@@ -4072,7 +4113,7 @@ static void on_quest_F95E_result_bb(shared_ptr<Client> c, uint8_t, uint8_t, void
       }
 
       item.id = l->generate_item_id(0xFF);
-      l->add_item(cmd.floor, item, cmd.x, cmd.z, 0x00F);
+      l->add_item(cmd.floor, item, cmd.x, cmd.z, 0x100F);
 
       send_drop_stacked_item_to_lobby(l, item, cmd.floor, cmd.x, cmd.z);
     }

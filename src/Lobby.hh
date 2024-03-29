@@ -29,7 +29,13 @@ struct Lobby : public std::enable_shared_from_this<Lobby> {
     float x;
     float z;
     uint64_t drop_number;
-    uint16_t visibility_flags;
+    // The low 12 bits of flags are visibility flags, specifying which clients
+    // can see the item. (In practice, only the lowest 4 of these bits are used,
+    // but the game has fields for 12 players so we do too.)
+    // The 13th bit (0x1000) specifies whether a rare item notification should
+    // be sent to all players when the item is picked up. This has no effect for
+    // non-rare items.
+    uint16_t flags;
 
     bool visible_to_client(uint8_t client_id) const;
   };
@@ -46,7 +52,7 @@ struct Lobby : public std::enable_shared_from_this<Lobby> {
 
     bool exists(uint32_t item_id) const;
     std::shared_ptr<FloorItem> find(uint32_t item_id) const;
-    void add(const ItemData& item, float x, float z, uint16_t visibility_flags);
+    void add(const ItemData& item, float x, float z, uint16_t flags);
     void add(std::shared_ptr<FloorItem> fi);
     std::shared_ptr<FloorItem> remove(uint32_t item_id, uint8_t client_id);
     std::unordered_set<std::shared_ptr<FloorItem>> evict();
@@ -290,7 +296,7 @@ struct Lobby : public std::enable_shared_from_this<Lobby> {
 
   bool item_exists(uint8_t floor, uint32_t item_id) const;
   std::shared_ptr<FloorItem> find_item(uint8_t floor, uint32_t item_id) const;
-  void add_item(uint8_t floor, const ItemData& item, float x, float z, uint16_t visibility_flags);
+  void add_item(uint8_t floor, const ItemData& item, float x, float z, uint16_t flags);
   void add_item(uint8_t floor, std::shared_ptr<FloorItem>);
   void evict_items_from_floor(uint8_t floor);
   std::shared_ptr<FloorItem> remove_item(uint8_t floor, uint32_t item_id, uint8_t requesting_client_id);

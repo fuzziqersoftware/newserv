@@ -128,6 +128,10 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   bool use_game_creator_section_id = false;
   bool default_rare_notifs_enabled_v1_v2 = false;
   bool default_rare_notifs_enabled_v3_v4 = false;
+  uint8_t game_rare_notif_min_stars = 0xFF;
+  uint8_t global_rare_notif_min_stars = 0xFF;
+  bool game_rare_mag_notifs_enabled = false;
+  bool game_rare_tool_notifs_enabled = false;
   std::vector<std::shared_ptr<const PSOBBEncryption::KeyFile>> bb_private_keys;
   std::shared_ptr<const FunctionCodeIndex> function_code_index;
   std::shared_ptr<const PatchFileIndex> pc_patch_file_index;

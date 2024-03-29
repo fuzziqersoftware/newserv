@@ -32,6 +32,10 @@
   "CheatModeBehavior": "OnByDefault",
   "UnlockAllAreas": false,
   "RareNotificationsEnabledByDefault": false,
+  "GameRareNotifMinStars": 10,
+  "GlobalRareNotifMinStars": 12,
+  "GameRareMagNotifsEnabled": true,
+  "GameRareToolNotifsEnabled": true,
 
   "LocalAddress": "en0",
   "ExternalAddress": "en0",
