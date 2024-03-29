@@ -18,6 +18,7 @@ See TODO.md for a list of known issues and future work I've curated, or go to th
     * [Client patch directories for PC and BB](#client-patch-directories)
     * [How to connect](#how-to-connect)
 * Features and configuration
+    * [User licenses](#user-licenses)
     * [Installing quests](#installing-quests)
     * [Item tables and drop modes](#item-tables-and-drop-modes)
     * [Cross-version play](#cross-version-play)
@@ -222,6 +223,12 @@ If you want to accept connections from outside your local network, you'll need t
 For GC clients, you'll have to use newserv's built-in DNS server or set up your own DNS server as well. If you want external clients to be able to use your DNS server, you'll have to forward UDP port 53 to your newserv instance. Remote players can then connect to your server by entering your DNS server's IP address in their client's network configuration.
 
 # Server feature configuration
+
+## User licenses
+
+By default, newserv does not require users to pre-register before playing; the server will instead automatically create an account the first time each player connects. These accounts have no special permissions. You can view, create, edit, and delete user accounts in the server's shell (run `help` in the shell to see how to do this).
+
+If you're running the server not only for yourself, you may want to give your account elevated privileges. To do so, run `update-license SERIAL-NUMBER flags=root` (replacing SERIAL-NUMBER with your actual serial number). You can also use update-license to edit other parts of the license; for example, if you want your GC and BB characters to share an account so they will have the same Guild Card number and privilege flags, you can run `update-license SERIAL-NUMBER bb-username=USERNAME bb-password=PASSWORD`.
 
 ## Installing quests
 

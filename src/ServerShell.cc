@@ -451,9 +451,14 @@ CommandDefinition c_list_licenses(
     List all licenses registered on the server.",
     true,
     +[](CommandArgs& args) {
-      for (const auto& l : args.s->license_index->all()) {
-        string s = l->str();
-        fprintf(stderr, "%s\n", s.c_str());
+      auto licenses = args.s->license_index->all();
+      if (licenses.empty()) {
+        fprintf(stderr, "No licenses registered\n");
+      } else {
+        for (const auto& l : licenses) {
+          string s = l->str();
+          fprintf(stderr, "%s\n", s.c_str());
+        }
       }
     });
 
