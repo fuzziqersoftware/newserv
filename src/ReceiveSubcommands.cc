@@ -1418,17 +1418,20 @@ static void on_player_revivable(shared_ptr<Client> c, uint8_t command, uint8_t f
   if (player_cheats_enabled && c->config.check_flag(Client::Flag::INFINITE_HP_ENABLED)) {
     G_UseMedicalCenter_6x31 v2_cmd = {0x31, 0x01, c->lobby_client_id};
     G_RevivePlayer_V3_BB_6xA1 v3_cmd = {0xA1, 0x01, c->lobby_client_id};
-    for (auto lc : l->clients) {
-      if (!lc) {
-        continue;
-      }
-      bool use_v3 = !is_v1_or_v2(lc->version()) || (lc->version() == Version::GC_NTE);
-      const void* data = use_v3 ? static_cast<const void*>(&v3_cmd) : static_cast<const void*>(&v2_cmd);
-      size_t size = use_v3 ? sizeof(v3_cmd) : sizeof(v2_cmd);
-      if (lc == c) {
-        send_protected_command(lc, data, size, false);
-      } else {
-        send_command(lc, 0x60, 0x00, data, size);
+    static_assert(sizeof(v2_cmd) == sizeof(v3_cmd), "Command sizes do not match");
+
+    const void* c_data = (!is_v1_or_v2(c->version()) || (c->version() == Version::GC_NTE))
+        ? static_cast<const void*>(&v3_cmd)
+        : static_cast<const void*>(&v2_cmd);
+    if (send_protected_command(c, c_data, sizeof(v3_cmd), false)) {
+      for (auto lc : l->clients) {
+        if (!lc || (lc == c)) {
+          continue;
+        }
+        const void* lc_data = (!is_v1_or_v2(lc->version()) || (lc->version() == Version::GC_NTE))
+            ? static_cast<const void*>(&v3_cmd)
+            : static_cast<const void*>(&v2_cmd);
+        send_command(lc, 0x60, 0x00, lc_data, sizeof(v3_cmd));
       }
     }
   }

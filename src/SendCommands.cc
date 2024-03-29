@@ -2417,7 +2417,9 @@ void send_remove_conditions(shared_ptr<Client> c) {
     cmd.unknown_a1 = z;
     cmd.unknown_a2 = 0;
   }
-  send_protected_command(c, &cmds, sizeof(cmds), true);
+  if (send_protected_command(c, &cmds, sizeof(cmds), true)) {
+    send_command_excluding_client(c->require_lobby(), c, 0x60, 0x00, &cmds, sizeof(cmds));
+  }
 }
 
 void send_remove_conditions(Channel& ch, uint16_t client_id) {
