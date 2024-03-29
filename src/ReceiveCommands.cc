@@ -3862,7 +3862,7 @@ static void on_choice_search_t(shared_ptr<Client> c, const ChoiceSearchConfig& c
         string info_string = string_printf("%s Lv%zu\n%s\n",
             name_for_char_class(lp->disp.visual.char_class),
             static_cast<size_t>(lp->disp.stats.level + 1),
-            abbreviation_for_section_id(lp->disp.visual.section_id));
+            name_for_section_id(lp->disp.visual.section_id));
         result.info_string.encode(info_string, c->language());
         string location_string;
         if (l->is_game()) {
