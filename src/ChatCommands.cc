@@ -332,6 +332,122 @@ static void server_command_qcheck(shared_ptr<Client> c, const std::string& args)
   }
 }
 
+static void server_command_swset_swclear(shared_ptr<Client> c, const std::string& args, bool should_set) {
+  check_debug_enabled(c);
+  auto l = c->require_lobby();
+  if (!l->is_game()) {
+    send_text_message(c, "$C6This command cannot\nbe used in the lobby");
+    return;
+  }
+
+  auto tokens = split(args, ' ');
+  uint8_t floor, flag_num;
+  if (tokens.size() == 1) {
+    floor = c->floor;
+    flag_num = stoul(tokens[0], nullptr, 0);
+  } else if (tokens.size() == 2) {
+    floor = stoul(tokens[0], nullptr, 0);
+    flag_num = stoul(tokens[1], nullptr, 0);
+  } else {
+    send_text_message(c, "$C4Incorrect parameters");
+    return;
+  }
+
+  if (should_set) {
+    l->switch_flags->set(floor, flag_num);
+  } else {
+    l->switch_flags->clear(floor, flag_num);
+  }
+
+  uint8_t cmd_flags = should_set ? 0x01 : 0x00;
+  G_SwitchStateChanged_6x05 cmd = {{0x05, 0x03, 0xFFFF}, 0, 0, flag_num, floor, cmd_flags};
+  send_command_t(l, 0x60, 0x00, cmd);
+}
+
+static void server_command_swset(shared_ptr<Client> c, const std::string& args) {
+  return server_command_swset_swclear(c, args, true);
+}
+
+static void server_command_swclear(shared_ptr<Client> c, const std::string& args) {
+  return server_command_swset_swclear(c, args, false);
+}
+
+static void proxy_command_swset_swclear(shared_ptr<ProxyServer::LinkedSession> ses, const std::string& args, bool should_set) {
+  if (!ses->is_in_game) {
+    send_text_message(ses->client_channel, "$C6This command cannot\nbe used in the lobby");
+    return;
+  }
+
+  auto tokens = split(args, ' ');
+  uint8_t floor, flag_num;
+  if (tokens.size() == 1) {
+    floor = ses->floor;
+    flag_num = stoul(tokens[0], nullptr, 0);
+  } else if (tokens.size() == 2) {
+    floor = stoul(tokens[0], nullptr, 0);
+    flag_num = stoul(tokens[1], nullptr, 0);
+  } else {
+    send_text_message(ses->client_channel, "$C4Incorrect parameters");
+    return;
+  }
+
+  uint8_t cmd_flags = should_set ? 0x01 : 0x00;
+  G_SwitchStateChanged_6x05 cmd = {{0x05, 0x03, 0xFFFF}, 0, 0, flag_num, floor, cmd_flags};
+  ses->client_channel.send(0x60, 0x00, &cmd, sizeof(cmd));
+  ses->server_channel.send(0x60, 0x00, &cmd, sizeof(cmd));
+}
+
+static void proxy_command_swset(shared_ptr<ProxyServer::LinkedSession> ses, const std::string& args) {
+  return proxy_command_swset_swclear(ses, args, true);
+}
+
+static void proxy_command_swclear(shared_ptr<ProxyServer::LinkedSession> ses, const std::string& args) {
+  return proxy_command_swset_swclear(ses, args, false);
+}
+
+static void server_command_swsetall(shared_ptr<Client> c, const std::string&) {
+  check_debug_enabled(c);
+  auto l = c->require_lobby();
+  if (!l->is_game()) {
+    send_text_message(c, "$C6This command cannot\nbe used in the lobby");
+    return;
+  }
+
+  l->switch_flags->data[c->floor].clear(0xFF);
+
+  parray<G_SwitchStateChanged_6x05, 0x100> cmds;
+  for (size_t z = 0; z < cmds.size(); z++) {
+    auto& cmd = cmds[z];
+    cmd.header.subcommand = 0x05;
+    cmd.header.size = 0x03;
+    cmd.header.object_id = 0xFFFF;
+    cmd.switch_flag_floor = c->floor;
+    cmd.switch_flag_num = z;
+    cmd.flags = 0x01;
+  }
+  send_command_t(l, 0x6C, 0x00, cmds);
+}
+
+static void proxy_command_swsetall(shared_ptr<ProxyServer::LinkedSession> ses, const std::string&) {
+  if (!ses->is_in_game) {
+    send_text_message(ses->client_channel, "$C6This command cannot\nbe used in the lobby");
+    return;
+  }
+
+  parray<G_SwitchStateChanged_6x05, 0x100> cmds;
+  for (size_t z = 0; z < cmds.size(); z++) {
+    auto& cmd = cmds[z];
+    cmd.header.subcommand = 0x05;
+    cmd.header.size = 0x03;
+    cmd.header.object_id = 0xFFFF;
+    cmd.switch_flag_floor = ses->floor;
+    cmd.switch_flag_num = z;
+    cmd.flags = 0x01;
+  }
+  ses->client_channel.send(0x6C, 0x00, &cmds, sizeof(cmds));
+  ses->server_channel.send(0x6C, 0x00, &cmds, sizeof(cmds));
+}
+
 static void server_command_qset_qclear(shared_ptr<Client> c, const std::string& args, bool should_set) {
   check_debug_enabled(c);
   auto l = c->require_lobby();
@@ -2257,6 +2373,9 @@ static const unordered_map<string, ChatCommandDefinition> chat_commands({
     {"$stat", {server_command_get_ep3_battle_stat, nullptr}},
     {"$surrender", {server_command_surrender, nullptr}},
     {"$swa", {server_command_switch_assist, proxy_command_switch_assist}},
+    {"$swclear", {server_command_swclear, proxy_command_swclear}},
+    {"$swset", {server_command_swset, proxy_command_swset}},
+    {"$swsetall", {server_command_swsetall, proxy_command_swsetall}},
     {"$unset", {server_command_ep3_unset_field_character, nullptr}},
     {"$variations", {server_command_variations, nullptr}},
     {"$warp", {server_command_warpme, proxy_command_warpme}},

@@ -3860,7 +3860,7 @@ struct G_SwitchStateChanged_6x05 {
   // Only two bits in flags have meanings:
   // 01 - set unlock flag (if not set, the flag is cleared instead)
   // 02 - play room unlock sound if floor matches client's floor
-  uint8_t flags = 0; // Bit field, with 2 lowest bits having meaning
+  uint8_t flags = 0;
 } __packed__;
 
 // 6x06: Send guild card

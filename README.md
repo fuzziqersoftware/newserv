@@ -445,6 +445,8 @@ Some commands only work on the game server and not on the proxy server. The chat
     * `$qgwrite <flag-num> <value>` (game server only): Set the value of a quest counter ("global flag") for yourself.
     * `$qsync <reg-num> <value>`: Set a quest register's value for yourself only. `<reg-num>` should be either rXX (e.g. r60) or fXX (e.g. f60); if the latter, `<value>` is parsed as a floating-point value instead of as an integer.
     * `$qsyncall <reg-num> <value>`: Set a quest register's value for everyone in the game. `<reg-num>` should be either rXX (e.g. r60) or fXX (e.g. f60); if the latter, `<value>` is parsed as a floating-point value instead of as an integer.
+    * `$swset [floor] <flag-num>` and `$swclear [floor] <flag-num>`: Set or clear a switch flag. If floor is not given, sets or clears the flag on your current floor.
+    * `$swsetall`: Sets all switch flags on your current floor. This unlocks all doors, disables all laser fences, triggers all light/poison switches, etc.
     * `$gc` (game server only): Send your own Guild Card to yourself.
     * `$sc <data>`: Send a command to yourself.
     * `$ss <data>`: Send a command to the remote server (if in a proxy session) or to the game server.
