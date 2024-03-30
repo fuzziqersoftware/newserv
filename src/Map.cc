@@ -1480,23 +1480,29 @@ void Map::add_event(uint32_t event_id, uint16_t flags, uint8_t floor, uint16_t s
   ev.flags = flags;
   ev.floor = floor;
   ev.action_stream_offset = action_stream_offset;
-  uint64_t k = (static_cast<uint64_t>(floor) << 32) | event_id;
-  if (!this->floor_and_event_id_to_index.emplace(k, index).second) {
-    this->log.warning("Duplicate event ID: W-%02hhX-%" PRIX32, floor, event_id);
-  }
 
+  uint64_t k = (static_cast<uint64_t>(floor) << 32) | event_id;
+  this->floor_and_event_id_to_index.emplace(k, index);
   k = section_index_key(floor, section, wave_number);
   this->floor_section_and_wave_number_to_event_index.emplace(k, index);
 }
 
-Map::Event& Map::get_event(uint8_t floor, uint32_t event_id) {
+vector<Map::Event*> Map::get_events(uint8_t floor, uint32_t event_id) {
   uint64_t k = (static_cast<uint64_t>(floor) << 32) | event_id;
-  return this->events.at(this->floor_and_event_id_to_index.at(k));
+  vector<Event*> ret;
+  for (auto its = this->floor_and_event_id_to_index.equal_range(k); its.first != its.second; its.first++) {
+    ret.emplace_back(&this->events.at(its.first->second));
+  }
+  return ret;
 }
 
-const Map::Event& Map::get_event(uint8_t floor, uint32_t event_id) const {
+vector<const Map::Event*> Map::get_events(uint8_t floor, uint32_t event_id) const {
   uint64_t k = (static_cast<uint64_t>(floor) << 32) | event_id;
-  return this->events.at(this->floor_and_event_id_to_index.at(k));
+  vector<const Event*> ret;
+  for (auto its = this->floor_and_event_id_to_index.equal_range(k); its.first != its.second; its.first++) {
+    ret.emplace_back(&this->events.at(its.first->second));
+  }
+  return ret;
 }
 
 void Map::add_events_from_map_data(uint8_t floor, const void* data, size_t size) {

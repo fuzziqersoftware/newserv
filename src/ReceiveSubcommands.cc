@@ -2924,12 +2924,12 @@ static void on_trigger_set_event(shared_ptr<Client> c, uint8_t command, uint8_t 
 
   const auto& cmd = check_size_t<G_TriggerSetEvent_6x67>(data, size);
   if (l->map) {
-    try {
-      l->map->get_event(cmd.floor, cmd.event_id).flags |= 0x04;
-      l->log.info("Client triggered set event W-%02" PRIX32 "-%" PRIX32, cmd.floor.load(), cmd.event_id.load());
-    } catch (const out_of_range&) {
-      l->log.warning("Client triggered missing set event W-%02" PRIX32 "-%" PRIX32, cmd.floor.load(), cmd.event_id.load());
+    auto events = l->map->get_events(cmd.floor, cmd.event_id);
+    for (auto* event : events) {
+      event->flags |= 0x04;
     }
+    l->log.info("Client triggered set event W-%02" PRIX32 "-%" PRIX32 " (%zu events)",
+        cmd.floor.load(), cmd.event_id.load(), events.size());
   }
 
   forward_subcommand(c, command, flag, data, size);

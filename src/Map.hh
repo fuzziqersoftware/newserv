@@ -330,8 +330,8 @@ struct Map {
       uint16_t section,
       uint16_t wave_number,
       uint32_t action_stream_offset);
-  Event& get_event(uint8_t floor, uint32_t event_id);
-  const Event& get_event(uint8_t floor, uint32_t event_id) const;
+  std::vector<Event*> get_events(uint8_t floor, uint32_t event_id);
+  std::vector<const Event*> get_events(uint8_t floor, uint32_t event_id) const;
   void add_events_from_map_data(uint8_t floor, const void* data, size_t size);
 
   struct DATSectionsForFloor {
@@ -373,7 +373,7 @@ struct Map {
   std::vector<size_t> rare_enemy_indexes;
   std::vector<Event> events;
   std::string event_action_stream;
-  std::map<uint64_t, size_t> floor_and_event_id_to_index;
+  std::multimap<uint64_t, size_t> floor_and_event_id_to_index;
   std::unordered_multimap<uint64_t, size_t> floor_section_and_group_to_object_index;
   std::unordered_multimap<uint64_t, size_t> floor_section_and_wave_number_to_enemy_index;
   std::unordered_multimap<uint64_t, size_t> floor_section_and_wave_number_to_event_index;
