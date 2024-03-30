@@ -1014,14 +1014,15 @@ uint8_t ItemParameterTable::get_item_base_stars(const ItemData& item) const {
   }
 }
 
-uint8_t ItemParameterTable::get_item_adjusted_stars(const ItemData& item) const {
+uint8_t ItemParameterTable::get_item_adjusted_stars(const ItemData& item, bool ignore_unidentified) const {
   uint8_t ret = this->get_item_base_stars(item);
   if (item.data1[0] == 0) {
+    bool is_unidentified = (!ignore_unidentified) && (item.data1[4] & 0x80);
     if (ret < 9) {
-      if (!(item.data1[4] & 0x80)) {
+      if (!is_unidentified) {
         ret += this->get_special_stars(item.data1[4]);
       }
-    } else if (item.data1[4] & 0x80) {
+    } else if (is_unidentified) {
       ret = 0;
     }
   } else if (item.data1[0] == 1) {

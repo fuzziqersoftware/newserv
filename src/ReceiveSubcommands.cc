@@ -1997,32 +1997,14 @@ static void on_pick_up_item_generic(
       }
     }
 
-    if ((fi->flags & 0x1000) && (fi->data.data1[0] < 0x04)) {
-      auto pmt = s->item_parameter_table(c->version());
-      bool should_send_game_notif = false;
-      bool should_send_global_notif = false;
-      switch (fi->data.data1[0]) {
-        case 0x00:
-        case 0x01: {
-          uint8_t stars = pmt->get_item_adjusted_stars(fi->data);
-          should_send_game_notif = (stars >= s->game_rare_notif_min_stars);
-          should_send_global_notif = (stars >= s->global_rare_notif_min_stars);
-          break;
-        }
-        case 0x02: {
-          should_send_game_notif = s->game_rare_mag_notifs_enabled && pmt->is_item_rare(fi->data);
-          break;
-        }
-        case 0x03: {
-          should_send_game_notif = s->game_rare_tool_notifs_enabled && pmt->is_item_rare(fi->data);
-          break;
-        }
-      }
-
+    if (fi->flags & 0x1000) {
+      uint32_t pi = fi->data.primary_identifier();
+      bool should_send_game_notif = s->notify_game_for_item_primary_identifiers.count(pi);
+      bool should_send_global_notif = s->notify_server_for_item_primary_identifiers.count(pi);
       if (should_send_game_notif || should_send_global_notif) {
         string p_name = p->disp.name.decode();
         string desc = s->describe_item(c->version(), fi->data, true);
-        string message = string_printf("$C6%s$C7 has found\n%s", p_name.c_str(), desc.c_str());
+        string message = string_printf("$C6%s$C7 found\n%s", p_name.c_str(), desc.c_str());
         if (should_send_global_notif) {
           for (auto& it : s->channel_to_client) {
             if (it.second->license &&

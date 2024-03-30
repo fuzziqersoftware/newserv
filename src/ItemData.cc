@@ -101,6 +101,14 @@ bool ItemData::empty() const {
 }
 
 uint32_t ItemData::primary_identifier() const {
+  // Primary identifiers are like:
+  // - 00TTSS00 = weapon (T = type, S = subtype; subtype is 0 for ES weapons)
+  // - 01TTSS00 = armor/shield/unit
+  // - 02TT0000 = mag
+  // - 0302ZZLL = tech disk (Z = tech number, L = level)
+  // - 03TTSS00 = tool
+  // - 04000000 = meseta
+
   // The game treats any item starting with 04 as Meseta, and ignores the rest
   // of data1 (the value is in data2)
   if (this->data1[0] == 0x04) {

@@ -969,25 +969,37 @@
   "RareNotificationsEnabledByDefaultV1V2": false,
   "RareNotificationsEnabledByDefaultV3V4": false,
 
-  // Conditions for when to broadcast rare notifications. These only apply to
-  // items dropped by boxes and enemies; items dropped by players or created
-  // with the $item command do not cause notifications when picked up.
-
-  // If a weapon, armor, shield, or unit with at least this many stars is
-  // picked up, everyone in the game is notified. To disable these
-  // notifications, set this to 255.
-  "GameRareNotifMinStars": 10,
-  // If a weapon, armor, shield, or unit with at least this many stars is
-  // picked up, everyone on the server (except Episode 3 players) is notified.
-  // To disable these notifications, set this to 255.
-  "GlobalRareNotifMinStars": 12,
-  // If this option is on and a rare mag is picked up, everyone in the game is
-  // notified. Note that there are no rare mags in any of the default drop
-  // tables, so this has no effect unless you add rare mags to the drop tables.
-  "GameRareMagNotifsEnabled": true,
-  // If this option is on and a rare tool item (for example, a Photon Drop) is
-  // picked up, everyone in the game is notified.
-  "GameRareToolNotifsEnabled": true,
+  // Items for which rare notifications should be broadcast to the game or
+  // entire server. These notifications occur when the item is picked up. They
+  // only are generated from items dropped by boxes and enemies; items dropped
+  // by players or created with the $item command do not cause notifications
+  // when picked up.
+  // Entries in these lists are primary identifiers, which are similar to the
+  // usual 3-byte item codes but are slightly more expressive. In summary,
+  // primary identifiers go like this:
+  //   0x00TTSS00 = weapon (T = type, S = subtype; subtype is 0 for ES weapons)
+  //   0x01TTSS00 = armor/shield/unit
+  //   0x02TT0000 = mag
+  //   0x03TTSS00 = tool item (except tech disks)
+  //   0x0302ZZLL = tech disk (Z = tech number, L = level - 1)
+  //   0x04000000 = meseta
+  // For example (you can check these in names-v4.json):
+  //   0x00020700 = DRAGON SLAYER (any stats)
+  //   0x01012A00 = DF FIELD (any stats)
+  //   0x020B0000 = Tapas (any level)
+  //   0x03010200 = Trifluid (any amount)
+  //   0x0302061D = Disk:Zonde Lv.30
+  //   0x04000000 = Meseta (any amount)
+  // As with most other places where you can specify items in this file, you
+  // can also put textual item descriptions in here (e.g. "DRAGON SLAYER"), but
+  // only data that would appear in the primary identifier will be used - that
+  // is, if you were to put something like "DRAGON SLAYER +5 5/0/0/5/0", the
+  // grind and bonuses would be ignored, and all DRAGON SLAYERs would result in
+  // notifications regardless of their stats. For textual descriptions, the
+  // items are parsed as they would be on BB, so certain V2-only items cannot
+  // be represented this way.
+  "NotifyGameForItemPrimaryIdentifiers": [],
+  "NotifyServerForItemPrimaryIdentifiers": [],
 
   // Whether to enable patches on Episode 3 USA. This functionality depends on
   // exploiting a bug in Episode 3, and while it seems to work reliably on

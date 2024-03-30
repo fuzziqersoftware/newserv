@@ -733,10 +733,6 @@ void ServerState::load_config_early() {
   this->default_rare_notifs_enabled_v3_v4 = this->default_rare_notifs_enabled_v1_v2;
   this->default_rare_notifs_enabled_v1_v2 = this->config_json->get_bool("RareNotificationsEnabledByDefaultV1V2", this->default_rare_notifs_enabled_v1_v2);
   this->default_rare_notifs_enabled_v3_v4 = this->config_json->get_bool("RareNotificationsEnabledByDefaultV3V4", this->default_rare_notifs_enabled_v3_v4);
-  this->game_rare_notif_min_stars = this->config_json->get_int("GameRareNotifMinStars", this->game_rare_notif_min_stars);
-  this->global_rare_notif_min_stars = this->config_json->get_int("GlobalRareNotifMinStars", this->global_rare_notif_min_stars);
-  this->game_rare_mag_notifs_enabled = this->config_json->get_bool("GameRareMagNotifsEnabled", this->game_rare_mag_notifs_enabled);
-  this->game_rare_tool_notifs_enabled = this->config_json->get_bool("GameRareToolNotifsEnabled", this->game_rare_tool_notifs_enabled);
   this->ep3_send_function_call_enabled = this->config_json->get_bool("EnableEpisode3SendFunctionCall", false);
   this->enable_v3_v4_protected_subcommands = this->config_json->get_bool("EnableV3V4ProtectedSubcommands", false);
   this->catch_handler_exceptions = this->config_json->get_bool("CatchHandlerExceptions", true);
@@ -1200,6 +1196,31 @@ void ServerState::load_config_late() {
     try {
       for (const auto& it : this->config_json->get_list("SecretLotteryResultItems")) {
         this->secret_lottery_results.emplace_back(this->parse_item_description(Version::BB_V4, it->as_string()));
+      }
+    } catch (const out_of_range&) {
+    }
+
+    this->notify_game_for_item_primary_identifiers.clear();
+    try {
+      for (const auto& pi_json : this->config_json->get_list("NotifyGameForItemPrimaryIdentifiers")) {
+        if (pi_json->is_int()) {
+          this->notify_game_for_item_primary_identifiers.emplace(pi_json->as_int());
+        } else {
+          auto item = this->parse_item_description(Version::BB_V4, pi_json->as_string());
+          this->notify_game_for_item_primary_identifiers.emplace(item.primary_identifier());
+        }
+      }
+    } catch (const out_of_range&) {
+    }
+    this->notify_server_for_item_primary_identifiers.clear();
+    try {
+      for (const auto& pi_json : this->config_json->get_list("NotifyServerForItemPrimaryIdentifiers")) {
+        if (pi_json->is_int()) {
+          this->notify_server_for_item_primary_identifiers.emplace(pi_json->as_int());
+        } else {
+          auto item = this->parse_item_description(Version::BB_V4, pi_json->as_string());
+          this->notify_server_for_item_primary_identifiers.emplace(item.primary_identifier());
+        }
       }
     } catch (const out_of_range&) {
     }

@@ -450,7 +450,7 @@ public:
   uint32_t get_item_id(const ItemData& item) const;
   uint32_t get_item_team_points(const ItemData& item) const;
   uint8_t get_item_base_stars(const ItemData& item) const;
-  uint8_t get_item_adjusted_stars(const ItemData& item) const;
+  uint8_t get_item_adjusted_stars(const ItemData& item, bool ignore_unidentified = false) const;
   bool is_item_rare(const ItemData& item) const;
   bool is_unsealable_item(uint8_t data1_0, uint8_t data1_1, uint8_t data1_2) const;
   bool is_unsealable_item(const ItemData& param_1) const;
