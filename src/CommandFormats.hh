@@ -4660,9 +4660,8 @@ struct G_TriggerSetEvent_6x67 {
 struct G_CreateTelepipe_6x68 {
   G_UnusedHeader header;
   le_uint16_t client_id2 = 0;
-  le_uint16_t unknown_a1 = 0;
-  le_uint16_t unknown_a2 = 0;
-  parray<uint8_t, 2> unused2;
+  le_uint16_t floor = 0;
+  le_uint32_t unknown_a2 = 0;
   le_float x = 0.0f;
   le_float y = 0.0f;
   le_float z = 0.0f;
@@ -4816,7 +4815,7 @@ struct G_SetQuestFlags_BB_6x6F {
 
 struct Telepipe {
   /* 00 */ le_uint16_t owner_client_id = 0xFFFF;
-  /* 02 */ le_uint16_t unknown_a1 = 0;
+  /* 02 */ le_uint16_t floor = 0;
   /* 04 */ le_uint32_t unknown_a2 = 0;
   /* 08 */ le_float x = 0.0f;
   /* 0C */ le_float y = 0.0f;
