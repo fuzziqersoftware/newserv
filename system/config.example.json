@@ -962,6 +962,8 @@
   // the Ragol warp in Pioneer 2 will allow access to all base areas (Forest 1,
   // Cave 1, Mine 1, and Ruins 1 in Episode 1, for example) even if the player
   // who created the game does not yet have access to those areas.
+  // Note that some late PSOBB client versions (for example, the Tethealla
+  // client) open all areas by default, so this setting has no effect for them.
   "UnlockAllAreas": false,
 
   // Whether to enable rare drop notifications by default. Players can toggle
