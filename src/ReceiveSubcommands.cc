@@ -1999,8 +1999,18 @@ static void on_pick_up_item_generic(
 
     if (fi->flags & 0x1000) {
       uint32_t pi = fi->data.primary_identifier();
-      bool should_send_game_notif = s->notify_game_for_item_primary_identifiers.count(pi);
-      bool should_send_global_notif = s->notify_server_for_item_primary_identifiers.count(pi);
+      bool should_send_game_notif, should_send_global_notif;
+      if (is_v1_or_v2(c->version()) && (c->version() != Version::GC_NTE)) {
+        should_send_game_notif = s->notify_game_for_item_primary_identifiers_v1_v2.count(pi);
+        should_send_global_notif = s->notify_server_for_item_primary_identifiers_v1_v2.count(pi);
+      } else if (!is_v4(c->version())) {
+        should_send_game_notif = s->notify_game_for_item_primary_identifiers_v3.count(pi);
+        should_send_global_notif = s->notify_server_for_item_primary_identifiers_v3.count(pi);
+      } else {
+        should_send_game_notif = s->notify_game_for_item_primary_identifiers_v4.count(pi);
+        should_send_global_notif = s->notify_server_for_item_primary_identifiers_v4.count(pi);
+      }
+
       if (should_send_game_notif || should_send_global_notif) {
         string p_name = p->disp.name.decode();
         string desc = s->describe_item(c->version(), fi->data, true);

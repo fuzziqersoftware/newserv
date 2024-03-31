@@ -1214,30 +1214,34 @@ void ServerState::load_config_late() {
     } catch (const out_of_range&) {
     }
 
-    this->notify_game_for_item_primary_identifiers.clear();
-    try {
-      for (const auto& pi_json : this->config_json->get_list("NotifyGameForItemPrimaryIdentifiers")) {
-        if (pi_json->is_int()) {
-          this->notify_game_for_item_primary_identifiers.emplace(pi_json->as_int());
-        } else {
-          auto item = this->parse_item_description(Version::BB_V4, pi_json->as_string());
-          this->notify_game_for_item_primary_identifiers.emplace(item.primary_identifier());
+    auto parse_primary_identifier_list = [&](const char* key, Version base_version) -> std::unordered_set<uint32_t> {
+      std::unordered_set<uint32_t> ret;
+      try {
+        for (const auto& pi_json : this->config_json->get_list(key)) {
+          if (pi_json->is_int()) {
+            ret.emplace(pi_json->as_int());
+          } else {
+            auto item = this->parse_item_description(base_version, pi_json->as_string());
+            ret.emplace(item.primary_identifier());
+          }
         }
+      } catch (const out_of_range&) {
       }
-    } catch (const out_of_range&) {
-    }
-    this->notify_server_for_item_primary_identifiers.clear();
-    try {
-      for (const auto& pi_json : this->config_json->get_list("NotifyServerForItemPrimaryIdentifiers")) {
-        if (pi_json->is_int()) {
-          this->notify_server_for_item_primary_identifiers.emplace(pi_json->as_int());
-        } else {
-          auto item = this->parse_item_description(Version::BB_V4, pi_json->as_string());
-          this->notify_server_for_item_primary_identifiers.emplace(item.primary_identifier());
-        }
-      }
-    } catch (const out_of_range&) {
-    }
+      return ret;
+    };
+    this->notify_game_for_item_primary_identifiers_v1_v2 = parse_primary_identifier_list(
+        "NotifyGameForItemPrimaryIdentifiersV1V2", Version::PC_V2);
+    this->notify_game_for_item_primary_identifiers_v3 = parse_primary_identifier_list(
+        "NotifyGameForItemPrimaryIdentifiersV3", Version::GC_V3);
+    this->notify_game_for_item_primary_identifiers_v4 = parse_primary_identifier_list(
+        "NotifyGameForItemPrimaryIdentifiersV4", Version::BB_V4);
+    this->notify_server_for_item_primary_identifiers_v1_v2 = parse_primary_identifier_list(
+        "NotifyServerForItemPrimaryIdentifiersV1V2", Version::PC_V2);
+    this->notify_server_for_item_primary_identifiers_v3 = parse_primary_identifier_list(
+        "NotifyServerForItemPrimaryIdentifiersV3", Version::GC_V3);
+    this->notify_server_for_item_primary_identifiers_v4 = parse_primary_identifier_list(
+        "NotifyServerForItemPrimaryIdentifiersV4", Version::BB_V4);
+
   } else {
     config_log.warning("BB item name index is missing; cannot load quest reward lists from config");
   }

@@ -66,8 +66,9 @@ bool ItemCreator::are_rare_drops_allowed() const {
   // Note: The client has an additional check here, which appears to be a subtle
   // anti-cheating measure. There is a flag on the client, initially zero, which
   // is set to 1 when certain unexpected item-related things happen (for
-  // example, a player possessing a mag with a level above 200). When the flag
-  // is set, this function returns false, which prevents all rare item drops.
+  // example, a player possessing a mag with a level above 200, or a stack of
+  // consumables with an amount above the stack size limit). When the flag is
+  // set, this function returns false, which prevents all rare item drops.
   // newserv intentionally does not implement this flag.
   return (this->mode != GameMode::CHALLENGE);
 }

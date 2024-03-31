@@ -992,8 +992,12 @@
   // notifications regardless of their stats. For textual descriptions, the
   // items are parsed as they would be on BB, so certain V2-only items cannot
   // be represented this way.
-  "NotifyGameForItemPrimaryIdentifiers": [],
-  "NotifyServerForItemPrimaryIdentifiers": [],
+  "NotifyGameForItemPrimaryIdentifiersV1V2": [],
+  "NotifyGameForItemPrimaryIdentifiersV3": [],
+  "NotifyGameForItemPrimaryIdentifiersV4": [],
+  "NotifyServerForItemPrimaryIdentifiersV1V2": [],
+  "NotifyServerForItemPrimaryIdentifiersV3": [],
+  "NotifyServerForItemPrimaryIdentifiersV4": [],
 
   // Whether to notify the entire server when a player reaches the maximum level
   // (100 on v1, 200 on other versions, or 999 on Episode 3).

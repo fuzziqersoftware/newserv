@@ -129,8 +129,12 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   bool use_game_creator_section_id = false;
   bool default_rare_notifs_enabled_v1_v2 = false;
   bool default_rare_notifs_enabled_v3_v4 = false;
-  std::unordered_set<uint32_t> notify_game_for_item_primary_identifiers;
-  std::unordered_set<uint32_t> notify_server_for_item_primary_identifiers;
+  std::unordered_set<uint32_t> notify_game_for_item_primary_identifiers_v1_v2;
+  std::unordered_set<uint32_t> notify_game_for_item_primary_identifiers_v3;
+  std::unordered_set<uint32_t> notify_game_for_item_primary_identifiers_v4;
+  std::unordered_set<uint32_t> notify_server_for_item_primary_identifiers_v1_v2;
+  std::unordered_set<uint32_t> notify_server_for_item_primary_identifiers_v3;
+  std::unordered_set<uint32_t> notify_server_for_item_primary_identifiers_v4;
   bool notify_server_for_max_level_achieved = false;
   std::vector<std::shared_ptr<const PSOBBEncryption::KeyFile>> bb_private_keys;
   std::shared_ptr<const FunctionCodeIndex> function_code_index;
