@@ -995,6 +995,10 @@
   "NotifyGameForItemPrimaryIdentifiers": [],
   "NotifyServerForItemPrimaryIdentifiers": [],
 
+  // Whether to notify the entire server when a player reaches the maximum level
+  // (100 on v1, 200 on other versions, or 999 on Episode 3).
+  "NotifyServerForMaxLevelAchieved": false,
+
   // Whether to enable patches on Episode 3 USA. This functionality depends on
   // exploiting a bug in Episode 3, and while it seems to work reliably on
   // Dolphin, it hasn't been tested on a real GameCube. So, newserv doesn't

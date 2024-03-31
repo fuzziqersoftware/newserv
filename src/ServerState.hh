@@ -131,6 +131,7 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   bool default_rare_notifs_enabled_v3_v4 = false;
   std::unordered_set<uint32_t> notify_game_for_item_primary_identifiers;
   std::unordered_set<uint32_t> notify_server_for_item_primary_identifiers;
+  bool notify_server_for_max_level_achieved = false;
   std::vector<std::shared_ptr<const PSOBBEncryption::KeyFile>> bb_private_keys;
   std::shared_ptr<const FunctionCodeIndex> function_code_index;
   std::shared_ptr<const PatchFileIndex> pc_patch_file_index;

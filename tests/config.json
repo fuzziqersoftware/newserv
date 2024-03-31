@@ -33,6 +33,7 @@
   "RareNotificationsEnabledByDefault": false,
   "NotifyGameForItemPrimaryIdentifiers": [],
   "NotifyServerForItemPrimaryIdentifiers": [],
+  "NotifyServerForMaxLevelAchieved": false,
 
   "LocalAddress": "en0",
   "ExternalAddress": "en0",

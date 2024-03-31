@@ -3129,6 +3129,35 @@ static void on_charge_attack_bb(shared_ptr<Client> c, uint8_t command, uint8_t f
   }
 }
 
+static void send_max_level_notification_if_needed(shared_ptr<Client> c) {
+  auto s = c->require_server_state();
+  if (!s->notify_server_for_max_level_achieved) {
+    return;
+  }
+
+  uint32_t max_level;
+  if (is_v1(c->version())) {
+    max_level = 99;
+  } else if (!is_ep3(c->version())) {
+    max_level = 199;
+  } else {
+    max_level = 998;
+  }
+
+  auto p = c->character();
+  if (p->disp.stats.level == max_level) {
+    string name = p->disp.name.decode(c->language());
+    size_t level_for_str = max_level + 1;
+    string message = string_printf("$CG%s$C6\nGC: %" PRIu32 "\nhas reached Level $CG%zu",
+        name.c_str(), c->license->serial_number, level_for_str);
+    for (auto& it : s->channel_to_client) {
+      if ((it.second != c) && it.second->license && !is_patch(it.second->version()) && it.second->lobby.lock()) {
+        send_text_message(it.second, message);
+      }
+    }
+  }
+}
+
 static void on_level_up(shared_ptr<Client> c, uint8_t command, uint8_t flag, void* data, size_t size) {
   auto l = c->require_lobby();
   if (!l->is_game()) {
@@ -3161,6 +3190,7 @@ static void on_level_up(shared_ptr<Client> c, uint8_t command, uint8_t flag, voi
     p->disp.stats.level = cmd.level.load();
   }
 
+  send_max_level_notification_if_needed(c);
   forward_subcommand(c, command, flag, data, size);
 }
 
@@ -3183,7 +3213,9 @@ static void add_player_exp(shared_ptr<Client> c, uint32_t exp) {
       break;
     }
   } while (p->disp.stats.level < 199);
+
   if (leveled_up) {
+    send_max_level_notification_if_needed(c);
     send_level_up(c);
   }
 }

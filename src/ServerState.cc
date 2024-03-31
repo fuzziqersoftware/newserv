@@ -690,6 +690,7 @@ void ServerState::load_config_early() {
   this->allow_unregistered_users = this->config_json->get_bool("AllowUnregisteredUsers", false);
   this->allow_pc_nte = this->config_json->get_bool("AllowPCNTE", false);
   this->use_temp_licenses_for_prototypes = this->config_json->get_bool("UseTemporaryLicensesForPrototypes", true);
+  this->notify_server_for_max_level_achieved = this->config_json->get_bool("NotifyServerForMaxLevelAchieved", false);
   this->allowed_drop_modes_v1_v2_normal = this->config_json->get_int("AllowedDropModesV1V2Normal", 0x1F);
   this->allowed_drop_modes_v1_v2_battle = this->config_json->get_int("AllowedDropModesV1V2Battle", 0x07);
   this->allowed_drop_modes_v1_v2_challenge = this->config_json->get_int("AllowedDropModesV1V2Challenge", 0x07);
