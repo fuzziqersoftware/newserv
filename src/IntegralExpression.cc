@@ -1,4 +1,4 @@
-#include "QuestAvailabilityExpression.hh"
+#include "IntegralExpression.hh"
 
 #include <algorithm>
 #include <mutex>
@@ -21,16 +21,16 @@
 
 using namespace std;
 
-QuestAvailabilityExpression::QuestAvailabilityExpression(const string& text)
+IntegralExpression::IntegralExpression(const string& text)
     : root(this->parse_expr(text)) {}
 
-QuestAvailabilityExpression::BinaryOperatorNode::BinaryOperatorNode(
+IntegralExpression::BinaryOperatorNode::BinaryOperatorNode(
     Type type, unique_ptr<const Node>&& left, unique_ptr<const Node>&& right)
     : type(type),
       left(std::move(left)),
       right(std::move(right)) {}
 
-bool QuestAvailabilityExpression::BinaryOperatorNode::operator==(const Node& other) const {
+bool IntegralExpression::BinaryOperatorNode::operator==(const Node& other) const {
   try {
     const BinaryOperatorNode& other_bin = dynamic_cast<const BinaryOperatorNode&>(other);
     return other_bin.type == this->type && *other_bin.left == *this->left && *other_bin.right == *this->right;
@@ -39,7 +39,7 @@ bool QuestAvailabilityExpression::BinaryOperatorNode::operator==(const Node& oth
   }
 }
 
-int64_t QuestAvailabilityExpression::BinaryOperatorNode::evaluate(const Env& env) const {
+int64_t IntegralExpression::BinaryOperatorNode::evaluate(const Env& env) const {
   switch (this->type) {
     case Type::LOGICAL_OR:
       return this->left->evaluate(env) || this->right->evaluate(env);
@@ -82,7 +82,7 @@ int64_t QuestAvailabilityExpression::BinaryOperatorNode::evaluate(const Env& env
   }
 }
 
-string QuestAvailabilityExpression::BinaryOperatorNode::str() const {
+string IntegralExpression::BinaryOperatorNode::str() const {
   switch (this->type) {
     case Type::LOGICAL_OR:
       return "(" + this->left->str() + ") || (" + this->right->str() + ")";
@@ -125,11 +125,11 @@ string QuestAvailabilityExpression::BinaryOperatorNode::str() const {
   }
 }
 
-QuestAvailabilityExpression::UnaryOperatorNode::UnaryOperatorNode(Type type, unique_ptr<const Node>&& sub)
+IntegralExpression::UnaryOperatorNode::UnaryOperatorNode(Type type, unique_ptr<const Node>&& sub)
     : type(type),
       sub(std::move(sub)) {}
 
-bool QuestAvailabilityExpression::UnaryOperatorNode::operator==(const Node& other) const {
+bool IntegralExpression::UnaryOperatorNode::operator==(const Node& other) const {
   try {
     const UnaryOperatorNode& other_un = dynamic_cast<const UnaryOperatorNode&>(other);
     return other_un.type == this->type && *other_un.sub == *this->sub;
@@ -138,7 +138,7 @@ bool QuestAvailabilityExpression::UnaryOperatorNode::operator==(const Node& othe
   }
 }
 
-int64_t QuestAvailabilityExpression::UnaryOperatorNode::evaluate(const Env& env) const {
+int64_t IntegralExpression::UnaryOperatorNode::evaluate(const Env& env) const {
   switch (this->type) {
     case Type::LOGICAL_NOT:
       return !this->sub->evaluate(env);
@@ -151,7 +151,7 @@ int64_t QuestAvailabilityExpression::UnaryOperatorNode::evaluate(const Env& env)
   }
 }
 
-string QuestAvailabilityExpression::UnaryOperatorNode::str() const {
+string IntegralExpression::UnaryOperatorNode::str() const {
   switch (this->type) {
     case Type::LOGICAL_NOT:
       return "!(" + this->sub->str() + ")";
@@ -164,10 +164,10 @@ string QuestAvailabilityExpression::UnaryOperatorNode::str() const {
   }
 }
 
-QuestAvailabilityExpression::FlagLookupNode::FlagLookupNode(uint16_t flag_index)
+IntegralExpression::FlagLookupNode::FlagLookupNode(uint16_t flag_index)
     : flag_index(flag_index) {}
 
-bool QuestAvailabilityExpression::FlagLookupNode::operator==(const Node& other) const {
+bool IntegralExpression::FlagLookupNode::operator==(const Node& other) const {
   try {
     const FlagLookupNode& other_flag = dynamic_cast<const FlagLookupNode&>(other);
     return other_flag.flag_index == this->flag_index;
@@ -176,20 +176,23 @@ bool QuestAvailabilityExpression::FlagLookupNode::operator==(const Node& other) 
   }
 }
 
-int64_t QuestAvailabilityExpression::FlagLookupNode::evaluate(const Env& env) const {
+int64_t IntegralExpression::FlagLookupNode::evaluate(const Env& env) const {
+  if (!env.flags) {
+    throw runtime_error("quest flags not available");
+  }
   return env.flags->get(this->flag_index) ? 1 : 0;
 }
 
-string QuestAvailabilityExpression::FlagLookupNode::str() const {
+string IntegralExpression::FlagLookupNode::str() const {
   return string_printf("F_%04hX", this->flag_index);
 }
 
-QuestAvailabilityExpression::ChallengeCompletionLookupNode::ChallengeCompletionLookupNode(
+IntegralExpression::ChallengeCompletionLookupNode::ChallengeCompletionLookupNode(
     Episode episode, uint8_t stage_index)
     : episode(episode),
       stage_index(stage_index) {}
 
-bool QuestAvailabilityExpression::ChallengeCompletionLookupNode::operator==(const Node& other) const {
+bool IntegralExpression::ChallengeCompletionLookupNode::operator==(const Node& other) const {
   try {
     const ChallengeCompletionLookupNode& other_cc = dynamic_cast<const ChallengeCompletionLookupNode&>(other);
     return other_cc.episode == this->episode && other_cc.stage_index == this->stage_index;
@@ -198,7 +201,10 @@ bool QuestAvailabilityExpression::ChallengeCompletionLookupNode::operator==(cons
   }
 }
 
-int64_t QuestAvailabilityExpression::ChallengeCompletionLookupNode::evaluate(const Env& env) const {
+int64_t IntegralExpression::ChallengeCompletionLookupNode::evaluate(const Env& env) const {
+  if (!env.challenge_records) {
+    throw runtime_error("challenge records not available");
+  }
   if (this->episode == Episode::EP1) {
     return env.challenge_records->times_ep1_online.at(this->stage_index).has_value();
   } else if (this->episode == Episode::EP2) {
@@ -207,14 +213,14 @@ int64_t QuestAvailabilityExpression::ChallengeCompletionLookupNode::evaluate(con
   return false;
 }
 
-string QuestAvailabilityExpression::ChallengeCompletionLookupNode::str() const {
+string IntegralExpression::ChallengeCompletionLookupNode::str() const {
   return string_printf("CC_%s_%hhu", abbreviation_for_episode(this->episode), static_cast<uint8_t>(this->stage_index + 1));
 }
 
-QuestAvailabilityExpression::TeamRewardLookupNode::TeamRewardLookupNode(const string& reward_name)
+IntegralExpression::TeamRewardLookupNode::TeamRewardLookupNode(const string& reward_name)
     : reward_name(reward_name) {}
 
-bool QuestAvailabilityExpression::TeamRewardLookupNode::operator==(const Node& other) const {
+bool IntegralExpression::TeamRewardLookupNode::operator==(const Node& other) const {
   try {
     const TeamRewardLookupNode& other_team_reward = dynamic_cast<const TeamRewardLookupNode&>(other);
     return other_team_reward.reward_name == this->reward_name;
@@ -223,60 +229,60 @@ bool QuestAvailabilityExpression::TeamRewardLookupNode::operator==(const Node& o
   }
 }
 
-int64_t QuestAvailabilityExpression::TeamRewardLookupNode::evaluate(const Env& env) const {
+int64_t IntegralExpression::TeamRewardLookupNode::evaluate(const Env& env) const {
   return (env.team && env.team->has_reward(this->reward_name)) ? 1 : 0;
 }
 
-string QuestAvailabilityExpression::TeamRewardLookupNode::str() const {
+string IntegralExpression::TeamRewardLookupNode::str() const {
   return "T_" + this->reward_name;
 }
 
-QuestAvailabilityExpression::NumPlayersLookupNode::NumPlayersLookupNode() {}
+IntegralExpression::NumPlayersLookupNode::NumPlayersLookupNode() {}
 
-bool QuestAvailabilityExpression::NumPlayersLookupNode::operator==(const Node& other) const {
+bool IntegralExpression::NumPlayersLookupNode::operator==(const Node& other) const {
   return dynamic_cast<const NumPlayersLookupNode*>(&other) != nullptr;
 }
 
-int64_t QuestAvailabilityExpression::NumPlayersLookupNode::evaluate(const Env& env) const {
+int64_t IntegralExpression::NumPlayersLookupNode::evaluate(const Env& env) const {
   return env.num_players;
 }
 
-string QuestAvailabilityExpression::NumPlayersLookupNode::str() const {
+string IntegralExpression::NumPlayersLookupNode::str() const {
   return "V_NumPlayers";
 }
 
-QuestAvailabilityExpression::EventLookupNode::EventLookupNode() {}
+IntegralExpression::EventLookupNode::EventLookupNode() {}
 
-bool QuestAvailabilityExpression::EventLookupNode::operator==(const Node& other) const {
+bool IntegralExpression::EventLookupNode::operator==(const Node& other) const {
   return dynamic_cast<const EventLookupNode*>(&other) != nullptr;
 }
 
-int64_t QuestAvailabilityExpression::EventLookupNode::evaluate(const Env& env) const {
+int64_t IntegralExpression::EventLookupNode::evaluate(const Env& env) const {
   return env.event;
 }
 
-string QuestAvailabilityExpression::EventLookupNode::str() const {
+string IntegralExpression::EventLookupNode::str() const {
   return "V_Event";
 }
 
-QuestAvailabilityExpression::V1PresenceLookupNode::V1PresenceLookupNode() {}
+IntegralExpression::V1PresenceLookupNode::V1PresenceLookupNode() {}
 
-bool QuestAvailabilityExpression::V1PresenceLookupNode::operator==(const Node& other) const {
+bool IntegralExpression::V1PresenceLookupNode::operator==(const Node& other) const {
   return dynamic_cast<const V1PresenceLookupNode*>(&other) != nullptr;
 }
 
-int64_t QuestAvailabilityExpression::V1PresenceLookupNode::evaluate(const Env& env) const {
+int64_t IntegralExpression::V1PresenceLookupNode::evaluate(const Env& env) const {
   return env.v1_present ? 1 : 0;
 }
 
-string QuestAvailabilityExpression::V1PresenceLookupNode::str() const {
+string IntegralExpression::V1PresenceLookupNode::str() const {
   return "V_V1Present";
 }
 
-QuestAvailabilityExpression::ConstantNode::ConstantNode(int64_t value)
+IntegralExpression::ConstantNode::ConstantNode(int64_t value)
     : value(value) {}
 
-bool QuestAvailabilityExpression::ConstantNode::operator==(const Node& other) const {
+bool IntegralExpression::ConstantNode::operator==(const Node& other) const {
   try {
     const ConstantNode& other_const = dynamic_cast<const ConstantNode&>(other);
     return other_const.value == this->value;
@@ -285,15 +291,15 @@ bool QuestAvailabilityExpression::ConstantNode::operator==(const Node& other) co
   }
 }
 
-int64_t QuestAvailabilityExpression::ConstantNode::evaluate(const Env&) const {
+int64_t IntegralExpression::ConstantNode::evaluate(const Env&) const {
   return this->value;
 }
 
-string QuestAvailabilityExpression::ConstantNode::str() const {
+string IntegralExpression::ConstantNode::str() const {
   return string_printf("%" PRId64, this->value);
 }
 
-unique_ptr<const QuestAvailabilityExpression::Node> QuestAvailabilityExpression::parse_expr(string_view text) {
+unique_ptr<const IntegralExpression::Node> IntegralExpression::parse_expr(string_view text) {
   // Strip off spaces and fully-enclosing parentheses
   for (;;) {
     size_t starting_size = text.size();
@@ -334,13 +340,13 @@ unique_ptr<const QuestAvailabilityExpression::Node> QuestAvailabilityExpression:
   // Check for unary operators
   if (text[0] == '!') {
     return make_unique<UnaryOperatorNode>(UnaryOperatorNode::Type::LOGICAL_NOT,
-        QuestAvailabilityExpression::parse_expr(text.substr(1)));
+        IntegralExpression::parse_expr(text.substr(1)));
   } else if (text[0] == '~') {
     return make_unique<UnaryOperatorNode>(UnaryOperatorNode::Type::BITWISE_NOT,
-        QuestAvailabilityExpression::parse_expr(text.substr(1)));
+        IntegralExpression::parse_expr(text.substr(1)));
   } else if (text[0] == '-') {
     return make_unique<UnaryOperatorNode>(UnaryOperatorNode::Type::NEGATIVE,
-        QuestAvailabilityExpression::parse_expr(text.substr(1)));
+        IntegralExpression::parse_expr(text.substr(1)));
   }
 
   // Check for binary operators at the root level
@@ -377,8 +383,8 @@ unique_ptr<const QuestAvailabilityExpression::Node> QuestAvailabilityExpression:
               ((z < oper.first.size()) || (text.compare(z - oper.first.size(), oper.first.size(), oper.first) != 0)) &&
               (text.compare(z, oper.first.size(), oper.first) == 0) &&
               (text.compare(z + oper.first.size(), oper.first.size(), oper.first) != 0)) {
-            auto left = QuestAvailabilityExpression::parse_expr(text.substr(0, z));
-            auto right = QuestAvailabilityExpression::parse_expr(text.substr(z + oper.first.size()));
+            auto left = IntegralExpression::parse_expr(text.substr(0, z));
+            auto right = IntegralExpression::parse_expr(text.substr(z + oper.first.size()));
             return make_unique<BinaryOperatorNode>(oper.second, std::move(left), std::move(right));
           }
         }

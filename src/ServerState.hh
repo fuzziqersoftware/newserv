@@ -91,7 +91,6 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   bool allow_dc_pc_games = true;
   bool allow_gc_xb_games = true;
   bool enable_chat_commands = true;
-  bool unlock_all_areas = false;
   std::unique_ptr<std::array<uint32_t, NUM_NON_PATCH_VERSIONS>> version_name_colors;
   uint8_t allowed_drop_modes_v1_v2_normal = 0x1F;
   uint8_t allowed_drop_modes_v1_v2_battle = 0x07;
@@ -111,7 +110,9 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   Lobby::DropMode default_drop_mode_v4_normal = Lobby::DropMode::SERVER_SHARED;
   Lobby::DropMode default_drop_mode_v4_battle = Lobby::DropMode::SERVER_SHARED;
   Lobby::DropMode default_drop_mode_v4_challenge = Lobby::DropMode::SERVER_SHARED;
-  QuestFlagsForDifficulty quest_flag_persist_mask;
+  std::unordered_map<uint16_t, IntegralExpression> quest_flag_rewrites_v1_v2;
+  std::unordered_map<uint16_t, IntegralExpression> quest_flag_rewrites_v3;
+  std::unordered_map<uint16_t, IntegralExpression> quest_flag_rewrites_v4;
   uint64_t persistent_game_idle_timeout_usecs = 0;
   bool ep3_send_function_call_enabled = false;
   bool enable_v3_v4_protected_subcommands = false;

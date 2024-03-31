@@ -350,7 +350,7 @@ shared_ptr<const TeamIndex::Team> Client::team() const {
 }
 
 bool Client::evaluate_quest_availability_expression(
-    shared_ptr<const QuestAvailabilityExpression> expr,
+    shared_ptr<const IntegralExpression> expr,
     shared_ptr<const Lobby> game,
     uint8_t event,
     uint8_t difficulty,
@@ -366,8 +366,8 @@ bool Client::evaluate_quest_availability_expression(
     throw logic_error("quest flags are missing from game");
   }
   auto p = this->character();
-  QuestAvailabilityExpression::Env env = {
-      .flags = (game && !game->quest_flags_known) ? &game->quest_flag_values->data.at(difficulty) : &p->quest_flags.data.at(difficulty),
+  IntegralExpression::Env env = {
+      .flags = &p->quest_flags.data.at(difficulty),
       .challenge_records = &p->challenge_records,
       .team = this->team(),
       .num_players = num_players,

@@ -13,7 +13,7 @@
 #include "StaticGameData.hh"
 #include "TeamIndex.hh"
 
-class QuestAvailabilityExpression {
+class IntegralExpression {
 public:
   struct Env {
     const QuestFlagsForDifficulty* flags;
@@ -24,12 +24,12 @@ public:
     bool v1_present;
   };
 
-  QuestAvailabilityExpression(const std::string& text);
-  ~QuestAvailabilityExpression() = default;
-  inline bool operator==(const QuestAvailabilityExpression& other) const {
+  IntegralExpression(const std::string& text);
+  ~IntegralExpression() = default;
+  inline bool operator==(const IntegralExpression& other) const {
     return this->root->operator==(*other.root);
   }
-  inline bool operator!=(const QuestAvailabilityExpression& other) const {
+  inline bool operator!=(const IntegralExpression& other) const {
     return !this->operator==(other);
   }
   inline int64_t evaluate(const Env& env) const {

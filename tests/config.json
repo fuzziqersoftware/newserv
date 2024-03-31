@@ -30,7 +30,6 @@
   "DefaultDropModeV4Battle": "SERVER_SHARED",
   "DefaultDropModeV4Challenge": "SERVER_SHARED",
   "CheatModeBehavior": "OnByDefault",
-  "UnlockAllAreas": false,
   "RareNotificationsEnabledByDefault": false,
   "NotifyGameForItemPrimaryIdentifiers": [],
   "NotifyServerForItemPrimaryIdentifiers": [],
@@ -407,5 +406,38 @@
     "Episode2": [1, 30, 60, 100],
     "Episode4": [1, 40, 70, 110],
   },
-  "PreventPersistQuestFlags": [0x0046, 0x0047, 0x0048],
+
+  "QuestFlagRewritesV1V2": {
+    // "F_0017": true, // Ep1 area unlocks
+    // "F_0020": true, // Ep1 area unlocks
+    // "F_002A": true, // Ep1 area unlocks
+  },
+  "QuestFlagRewritesV3": {
+    // "F_0017": true, // Ep1 area unlocks
+    // "F_0020": true, // Ep1 area unlocks
+    // "F_002A": true, // Ep1 area unlocks
+    // "F_004C": true, // Ep2 area unlocks
+    // "F_004F": true, // Ep2 area unlocks
+    // "F_0052": true, // Ep2 area unlocks
+  },
+  "QuestFlagRewritesV4": {
+    // "F_01F9": true, // Ep1 area unlocks
+    // "F_0201": true, // Ep1 area unlocks
+    // "F_0207": true, // Ep1 area unlocks
+    // "F_021B": true, // Ep2 area unlocks
+    // "F_0225": true, // Ep2 area unlocks
+    // "F_022F": true, // Ep2 area unlocks
+    // "F_02BD": true, // Ep4 area unlocks
+    // "F_02BE": true, // Ep4 area unlocks
+    // "F_02BF": true, // Ep4 area unlocks
+    // "F_02C0": true, // Ep4 area unlocks
+    // "F_02C1": true, // Ep4 area unlocks
+    "F_0046": false, // Ep2 CCA door lock fix
+    "F_0047": false, // Ep2 CCA door lock fix
+    "F_0048": false, // Ep2 CCA door lock fix
+    "F_002C": "F_01F7", // Ep1 Forest monument state = 1-2 cleared
+    "F_002D": "F_01FD", // Ep1 Cave monument state = 2-2 cleared
+    "F_002E": "F_0209", // Ep1 Mine monument state = 4-1 cleared
+    "F_002F": "F_01F7 && F_01FD && F_0209", // All monuments state
+  },
 }

@@ -294,7 +294,7 @@ public:
   std::shared_ptr<const TeamIndex::Team> team() const;
 
   bool evaluate_quest_availability_expression(
-      std::shared_ptr<const QuestAvailabilityExpression> expr,
+      std::shared_ptr<const IntegralExpression> expr,
       std::shared_ptr<const Lobby> game,
       uint8_t event,
       uint8_t difficulty,

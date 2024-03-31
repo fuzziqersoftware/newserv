@@ -205,8 +205,8 @@ VersionedQuest::VersionedQuest(
     std::shared_ptr<const std::string> pvr_contents,
     std::shared_ptr<const BattleRules> battle_rules,
     ssize_t challenge_template_index,
-    std::shared_ptr<const QuestAvailabilityExpression> available_expression,
-    std::shared_ptr<const QuestAvailabilityExpression> enabled_expression)
+    std::shared_ptr<const IntegralExpression> available_expression,
+    std::shared_ptr<const IntegralExpression> enabled_expression)
     : quest_number(quest_number),
       category_id(category_id),
       episode(Episode::NONE),
@@ -673,8 +673,8 @@ QuestIndex::QuestIndex(
       const FileData* json_filedata = nullptr;
       shared_ptr<BattleRules> battle_rules;
       ssize_t challenge_template_index = -1;
-      shared_ptr<const QuestAvailabilityExpression> available_expression;
-      shared_ptr<const QuestAvailabilityExpression> enabled_expression;
+      shared_ptr<const IntegralExpression> available_expression;
+      shared_ptr<const IntegralExpression> enabled_expression;
       try {
         json_filedata = &json_files.at(basename);
       } catch (const out_of_range&) {
@@ -698,11 +698,11 @@ QuestIndex::QuestIndex(
         } catch (const out_of_range&) {
         }
         try {
-          available_expression = make_shared<QuestAvailabilityExpression>(metadata_json.get_string("AvailableIf"));
+          available_expression = make_shared<IntegralExpression>(metadata_json.get_string("AvailableIf"));
         } catch (const out_of_range&) {
         }
         try {
-          enabled_expression = make_shared<QuestAvailabilityExpression>(metadata_json.get_string("EnabledIf"));
+          enabled_expression = make_shared<IntegralExpression>(metadata_json.get_string("EnabledIf"));
         } catch (const out_of_range&) {
         }
       }

@@ -8,8 +8,8 @@
 #include <unordered_map>
 #include <vector>
 
+#include "IntegralExpression.hh"
 #include "PlayerSubordinates.hh"
-#include "QuestAvailabilityExpression.hh"
 #include "QuestScript.hh"
 #include "StaticGameData.hh"
 #include "TeamIndex.hh"
@@ -76,8 +76,8 @@ struct VersionedQuest {
   std::shared_ptr<const std::string> pvr_contents;
   std::shared_ptr<const BattleRules> battle_rules;
   ssize_t challenge_template_index;
-  std::shared_ptr<const QuestAvailabilityExpression> available_expression;
-  std::shared_ptr<const QuestAvailabilityExpression> enabled_expression;
+  std::shared_ptr<const IntegralExpression> available_expression;
+  std::shared_ptr<const IntegralExpression> enabled_expression;
 
   VersionedQuest(
       uint32_t quest_number,
@@ -89,8 +89,8 @@ struct VersionedQuest {
       std::shared_ptr<const std::string> pvr_contents,
       std::shared_ptr<const BattleRules> battle_rules = nullptr,
       ssize_t challenge_template_index = -1,
-      std::shared_ptr<const QuestAvailabilityExpression> available_expression = nullptr,
-      std::shared_ptr<const QuestAvailabilityExpression> enabled_expression = nullptr);
+      std::shared_ptr<const IntegralExpression> available_expression = nullptr,
+      std::shared_ptr<const IntegralExpression> enabled_expression = nullptr);
 
   std::string bin_filename() const;
   std::string dat_filename() const;
@@ -124,8 +124,8 @@ public:
   std::string name;
   std::shared_ptr<const BattleRules> battle_rules;
   ssize_t challenge_template_index;
-  std::shared_ptr<const QuestAvailabilityExpression> available_expression;
-  std::shared_ptr<const QuestAvailabilityExpression> enabled_expression;
+  std::shared_ptr<const IntegralExpression> available_expression;
+  std::shared_ptr<const IntegralExpression> enabled_expression;
   std::map<uint32_t, std::shared_ptr<const VersionedQuest>> versions;
 };
 

@@ -718,13 +718,27 @@ void ServerState::load_config_early() {
     throw runtime_error("CLIENT drop mode cannot be allowed in V4");
   }
 
-  this->quest_flag_persist_mask.update_all(true);
-  try {
-    for (const auto& flag_id_json : this->config_json->get_list("PreventPersistQuestFlags")) {
-      this->quest_flag_persist_mask.clear(flag_id_json->as_int());
+  auto parse_quest_flag_rewrites = [&json = this->config_json](const char* key) -> std::unordered_map<uint16_t, IntegralExpression> {
+    std::unordered_map<uint16_t, IntegralExpression> ret;
+    try {
+      for (const auto& it : json->get_dict(key)) {
+        if (!it.first.starts_with("F_")) {
+          throw runtime_error("invalid flag reference: " + it.first);
+        }
+        uint16_t flag = stoul(it.first.substr(2), nullptr, 16);
+        if (it.second->is_bool()) {
+          ret.emplace(flag, it.second->as_bool() ? "true" : "false");
+        } else {
+          ret.emplace(flag, it.second->as_string());
+        }
+      }
+    } catch (const out_of_range&) {
     }
-  } catch (const out_of_range&) {
-  }
+    return ret;
+  };
+  this->quest_flag_rewrites_v1_v2 = parse_quest_flag_rewrites("QuestFlagRewritesV1V2");
+  this->quest_flag_rewrites_v3 = parse_quest_flag_rewrites("QuestFlagRewritesV3");
+  this->quest_flag_rewrites_v4 = parse_quest_flag_rewrites("QuestFlagRewritesV4");
 
   this->persistent_game_idle_timeout_usecs = this->config_json->get_int("PersistentGameIdleTimeout", 0);
   this->cheat_mode_behavior = parse_behavior_switch("CheatModeBehavior", BehaviorSwitch::OFF_BY_DEFAULT);
@@ -890,7 +904,6 @@ void ServerState::load_config_early() {
   this->allow_dc_pc_games = this->config_json->get_bool("AllowDCPCGames", true);
   this->allow_gc_xb_games = this->config_json->get_bool("AllowGCXBGames", true);
   this->enable_chat_commands = this->config_json->get_bool("EnableChatCommands", true);
-  this->unlock_all_areas = this->config_json->get_bool("UnlockAllAreas", false);
 
   this->version_name_colors.reset();
   try {

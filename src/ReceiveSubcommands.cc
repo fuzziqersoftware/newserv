@@ -2717,16 +2717,12 @@ static void on_set_quest_flag(shared_ptr<Client> c, uint8_t command, uint8_t fla
     auto s = c->require_server_state();
     // TODO: Should we allow overlays here?
     auto p = c->character(true, false);
-    if (s->quest_flag_persist_mask.get(flag_num)) {
-      if (should_set) {
-        c->log.info("Setting quest flag %s:%03hX", name_for_difficulty(difficulty), flag_num);
-        p->quest_flags.set(difficulty, flag_num);
-      } else {
-        c->log.info("Clearing quest flag %s:%03hX", name_for_difficulty(difficulty), flag_num);
-        p->quest_flags.clear(difficulty, flag_num);
-      }
+    if (should_set) {
+      c->log.info("Setting quest flag %s:%03hX", name_for_difficulty(difficulty), flag_num);
+      p->quest_flags.set(difficulty, flag_num);
     } else {
-      c->log.info("Quest flag %s:%03hX cannot be modified", name_for_difficulty(difficulty), flag_num);
+      c->log.info("Clearing quest flag %s:%03hX", name_for_difficulty(difficulty), flag_num);
+      p->quest_flags.clear(difficulty, flag_num);
     }
   }
 

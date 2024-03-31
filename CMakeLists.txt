@@ -114,7 +114,7 @@ set(SOURCES
     src/PSOGCObjectGraph.cc
     src/PSOProtocol.cc
     src/Quest.cc
-    src/QuestAvailabilityExpression.cc
+    src/IntegralExpression.cc
     src/QuestScript.cc
     src/RareItemSet.cc
     src/ReceiveCommands.cc

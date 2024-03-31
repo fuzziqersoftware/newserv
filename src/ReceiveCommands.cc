@@ -4219,6 +4219,7 @@ shared_ptr<Lobby> create_game_generic(
     game->base_exp_multiplier = s->bb_global_exp_multiplier;
   }
 
+  const unordered_map<uint16_t, IntegralExpression>* quest_flag_rewrites;
   switch (game->base_version) {
     case Version::DC_NTE:
     case Version::DC_V1_11_2000_PROTOTYPE:
@@ -4226,6 +4227,7 @@ shared_ptr<Lobby> create_game_generic(
     case Version::DC_V2:
     case Version::PC_NTE:
     case Version::PC_V2:
+      quest_flag_rewrites = &s->quest_flag_rewrites_v1_v2;
       if (game->mode == GameMode::BATTLE) {
         game->set_drop_mode(s->default_drop_mode_v1_v2_battle);
         game->allowed_drop_modes = s->allowed_drop_modes_v1_v2_battle;
@@ -4240,6 +4242,7 @@ shared_ptr<Lobby> create_game_generic(
     case Version::GC_NTE:
     case Version::GC_V3:
     case Version::XB_V3:
+      quest_flag_rewrites = &s->quest_flag_rewrites_v3;
       if (game->mode == GameMode::BATTLE) {
         game->set_drop_mode(s->default_drop_mode_v3_battle);
         game->allowed_drop_modes = s->allowed_drop_modes_v3_battle;
@@ -4253,10 +4256,12 @@ shared_ptr<Lobby> create_game_generic(
       break;
     case Version::GC_EP3_NTE:
     case Version::GC_EP3:
+      quest_flag_rewrites = nullptr;
       game->set_drop_mode(Lobby::DropMode::DISABLED);
       game->allowed_drop_modes = (1 << static_cast<size_t>(game->drop_mode));
       break;
     case Version::BB_V4:
+      quest_flag_rewrites = &s->quest_flag_rewrites_v4;
       if (game->mode == GameMode::BATTLE) {
         game->set_drop_mode(s->default_drop_mode_v4_battle);
         game->allowed_drop_modes = s->allowed_drop_modes_v4_battle;
@@ -4323,37 +4328,28 @@ shared_ptr<Lobby> create_game_generic(
     game->quest_flags_known = make_unique<QuestFlags>();
   }
 
-  if (s->unlock_all_areas) {
-    static const vector<uint16_t> flags_ep1_v123 = {0x0017, 0x0020, 0x002A};
-    static const vector<uint16_t> flags_ep1_v4 = {0x01F9, 0x0201, 0x0207};
-    static const vector<uint16_t> flags_ep2_v123 = {0x004C, 0x004F, 0x0052};
-    static const vector<uint16_t> flags_ep2_v4 = {0x021B, 0x0225, 0x022F};
-    static const vector<uint16_t> flags_ep4_v4 = {0x02BD, 0x02BE, 0x02BF, 0x02C0, 0x02C1};
-
-    const vector<uint16_t>* flags_to_enable;
-    switch (game->episode) {
-      case Episode::EP1:
-        flags_to_enable = is_v4(game->base_version) ? &flags_ep1_v4 : &flags_ep1_v123;
-        break;
-      case Episode::EP2:
-        flags_to_enable = is_v4(game->base_version) ? &flags_ep2_v4 : &flags_ep2_v123;
-        break;
-      case Episode::EP4:
-        flags_to_enable = &flags_ep1_v4;
-        break;
-      default:
-        flags_to_enable = nullptr;
-    }
-
-    if (flags_to_enable) {
-      for (uint16_t flag_num : *flags_to_enable) {
-        game->quest_flag_values->set(game->difficulty, flag_num);
-        if (game->quest_flags_known) {
-          game->quest_flags_known->set(game->difficulty, flag_num);
-        }
+  if (quest_flag_rewrites && !quest_flag_rewrites->empty()) {
+    IntegralExpression::Env env = {
+        .flags = &p->quest_flags.data.at(difficulty),
+        .challenge_records = &p->challenge_records,
+        .team = c->team(),
+        .num_players = 1,
+        .event = game->event,
+        .v1_present = is_v1(game->base_version),
+    };
+    for (const auto& it : *quest_flag_rewrites) {
+      bool should_set = it.second.evaluate(env);
+      game->log.info("Overriding quest flag %04hX = %s", it.first, should_set ? "true" : "false");
+      if (should_set) {
+        game->quest_flag_values->set(game->difficulty, it.first);
+      } else {
+        game->quest_flag_values->clear(game->difficulty, it.first);
       }
-      c->config.set_flag(Client::Flag::SHOULD_SEND_ARTIFICIAL_FLAG_STATE);
+      if (game->quest_flags_known) {
+        game->quest_flags_known->set(game->difficulty, it.first);
+      }
     }
+    c->config.set_flag(Client::Flag::SHOULD_SEND_ARTIFICIAL_FLAG_STATE);
   }
 
   game->switch_flags = make_unique<SwitchFlags>();
