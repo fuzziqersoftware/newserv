@@ -2005,17 +2005,18 @@ static void on_pick_up_item_generic(
         string p_name = p->disp.name.decode();
         string desc = s->describe_item(c->version(), fi->data, true);
         string message = string_printf("$C6%s$C7 found\n%s", p_name.c_str(), desc.c_str());
+        string bb_message = string_printf("$C6%s$C7 has found %s", p_name.c_str(), desc.c_str());
         if (should_send_global_notif) {
           for (auto& it : s->channel_to_client) {
             if (it.second->license &&
                 !is_patch(it.second->version()) &&
                 !is_ep3(it.second->version()) &&
                 it.second->lobby.lock()) {
-              send_text_message(it.second, message);
+              send_text_or_scrolling_message(it.second, message, bb_message);
             }
           }
         } else {
-          send_text_message(l, message);
+          send_text_or_scrolling_message(l, nullptr, message, bb_message);
         }
       }
     }
@@ -3150,9 +3151,11 @@ static void send_max_level_notification_if_needed(shared_ptr<Client> c) {
     size_t level_for_str = max_level + 1;
     string message = string_printf("$CG%s$C6\nGC: %" PRIu32 "\nhas reached Level $CG%zu",
         name.c_str(), c->license->serial_number, level_for_str);
+    string bb_message = string_printf("$CG%s$C6 (GC: %" PRIu32 ") has reached Level $CG%zu",
+        name.c_str(), c->license->serial_number, level_for_str);
     for (auto& it : s->channel_to_client) {
       if ((it.second != c) && it.second->license && !is_patch(it.second->version()) && it.second->lobby.lock()) {
-        send_text_message(it.second, message);
+        send_text_or_scrolling_message(it.second, message, bb_message);
       }
     }
   }

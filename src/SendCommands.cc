@@ -884,6 +884,31 @@ __attribute__((format(printf, 2, 3))) void send_ep3_text_message_printf(shared_p
   }
 }
 
+void send_scrolling_message_bb(shared_ptr<Client> c, const string& text) {
+  if (c->version() != Version::BB_V4) {
+    throw logic_error("cannot send scrolling message to non-BB player");
+  }
+  send_header_text(c->channel, 0x00EE, 0, text, ColorMode::ADD);
+}
+
+void send_text_or_scrolling_message(shared_ptr<Client> c, const string& text, const string& scrolling) {
+  if (is_v4(c->version())) {
+    send_scrolling_message_bb(c, scrolling);
+  } else {
+    send_text_message(c, text);
+  }
+}
+
+void send_text_or_scrolling_message(
+    std::shared_ptr<Lobby> l, std::shared_ptr<Client> exclude_c, const std::string& text, const std::string& scrolling) {
+  for (const auto& lc : l->clients) {
+    if (!lc || (lc == exclude_c)) {
+      continue;
+    }
+    send_text_or_scrolling_message(lc, text, scrolling);
+  }
+}
+
 string prepare_chat_data(
     Version version,
     uint8_t language,
