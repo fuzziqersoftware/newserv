@@ -1290,6 +1290,18 @@ static void server_command_edit(shared_ptr<Client> c, const std::string& args) {
       uint32_t new_color;
       sscanf(tokens.at(1).c_str(), "%8X", &new_color);
       p->disp.visual.name_color = new_color;
+    } else if (tokens.at(0) == "language" || tokens.at(0) == "lang") {
+      if (tokens.at(1).size() != 1) {
+        throw runtime_error("invalid language");
+      }
+      uint8_t new_language = language_code_for_char(tokens.at(1).at(0));
+      c->channel.language = new_language;
+      p->inventory.language = new_language;
+      p->guild_card.language = new_language;
+      auto sys = c->system_file(false);
+      if (sys) {
+        sys->base.language = new_language;
+      }
     } else if (tokens.at(0) == "secid" && cheats_allowed) {
       uint8_t secid = section_id_for_name(tokens.at(1));
       if (secid == 0xFF) {
