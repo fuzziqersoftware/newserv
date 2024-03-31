@@ -212,9 +212,9 @@ If you're using a version of Dolphin with tapserver support, you can make it con
 
 The PSO BB client has been modified and distributed in many different forms. newserv supports most, but not all, of the common distributions. Unlike other versions, it's important that the client and server have the same map files, so make sure to set up the patch directory based on the client you'll be using with newserv. (See the "Client patch directories" section for instructions on setting this up.)
 
-The original Japanese and US versions of PSO BB should work, but you'll have to modify your hosts file or edit psobb.exe to point to your newserv instance. The original versions are packed, so this is a more involved process than simply opening the executable in a hex editor and finding/replacing some strings.
+The original Japanese and US versions of PSO BB should work (the last Japanese release can be found [here](https://archive.org/details/psobb_jp_setup_12511_20240109/)), but you'll have to modify your hosts file or edit psobb.exe to point to your newserv instance. The original versions are packed with various versions of ASProtect, so this is a more involved process than simply opening the executable in a hex editor and finding/replacing some strings.
 
-Alternatively, you can use the Tethealla client (https://archive.org/details/psobb-tethealla-client); you can find the connection addresses starting at 0x56D724 in psobb.exe. Overwrite these addresses with your server's hostname or IP address, and you should be able to connect.
+Alternatively, you can use the [Tethealla client](https://archive.org/details/psobb-tethealla-client); you can find the connection addresses starting at 0x56D724 in psobb.exe. Overwrite these addresses with your server's hostname or IP address, and you should be able to connect.
 
 ### Connecting external clients
 
