@@ -6992,12 +6992,12 @@ struct G_CardCounts_Ep3_CAx49 {
   parray<uint8_t, 0x2F0> card_id_to_count;
 } __packed__;
 
-// 6xB4x4A: Unknown
+// 6xB4x4A: Add to set card log
 // This command is not valid on Episode 3 Trial Edition.
 // TODO: Document this from Episode 3 client/server disassembly
 
-struct G_Unknown_Ep3_6xB4x4A {
-  G_CardBattleCommandHeader header = {0xB4, sizeof(G_Unknown_Ep3_6xB4x4A) / 4, 0, 0x4A, 0, 0, 0};
+struct G_AddToSetCardlog_Ep3_6xB4x4A {
+  G_CardBattleCommandHeader header = {0xB4, sizeof(G_AddToSetCardlog_Ep3_6xB4x4A) / 4, 0, 0x4A, 0, 0, 0};
   // Note: entry_count appears not to be bounds-checked; presumably the server
   // could send up to 0xFF entries, but those after the 8th would not be
   // byteswapped before the client handles them.
