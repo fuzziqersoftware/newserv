@@ -22,6 +22,7 @@
 
 - Fix receiving Guild Cards from non-Xbox players
 - Research the F94D quest opcode
+- Finish porting the remaining GC patches
 
 ## PSOBB
 
