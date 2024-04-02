@@ -1553,17 +1553,20 @@ static void on_switch_state_changed(shared_ptr<Client> c, uint8_t command, uint8
   if (l->switch_flags) {
     if (cmd.flags & 1) {
       l->switch_flags->set(cmd.switch_flag_floor, cmd.switch_flag_num);
+      if (c->config.check_flag(Client::Flag::DEBUG_ENABLED)) {
+        send_text_message_printf(c, "$C5SW-%02hhX-%02hX ON", cmd.switch_flag_floor, cmd.switch_flag_num.load());
+      }
     } else {
       l->switch_flags->clear(cmd.switch_flag_floor, cmd.switch_flag_num);
+      if (c->config.check_flag(Client::Flag::DEBUG_ENABLED)) {
+        send_text_message_printf(c, "$C5SW-%02hhX-%02hX OFF", cmd.switch_flag_floor, cmd.switch_flag_num.load());
+      }
     }
   }
 
   if ((cmd.flags & 1) && cmd.header.object_id != 0xFFFF) {
     c->recent_switch_flags.add(cmd.switch_flag_num);
     if (!l->quest && c->config.check_flag(Client::Flag::SWITCH_ASSIST_ENABLED)) {
-      if (c->config.check_flag(Client::Flag::DEBUG_ENABLED)) {
-        send_text_message(c, "$C5Switch assist");
-      }
       string commands = c->recent_switch_flags.enable_commands(c->floor);
       if (!commands.empty()) {
         send_command(c, 0x60, 0x00, commands);
@@ -2937,6 +2940,9 @@ static void on_trigger_set_event(shared_ptr<Client> c, uint8_t command, uint8_t 
     }
     l->log.info("Client triggered set event W-%02" PRIX32 "-%" PRIX32 " (%zu events)",
         cmd.floor.load(), cmd.event_id.load(), events.size());
+    if (c->config.check_flag(Client::Flag::DEBUG_ENABLED)) {
+      send_text_message_printf(c, "$C5W-%02" PRIX32 "-%" PRIX32 " START (%zu)", cmd.floor.load(), cmd.event_id.load(), events.size());
+    }
   }
 
   forward_subcommand(c, command, flag, data, size);
