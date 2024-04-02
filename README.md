@@ -135,6 +135,8 @@ For Blue Burst set up, the below is mandatory for a smooth experience:
 2. Copy all the map_*.dat files, unitxt_* files and the data.gsl file and place them in `system/patch-bb/data`.
 3. If you're using game files from the Tethealla client, make a copy of unitxt_j.prs inside system/patch-bb/data and name it unitxt_e.prs. (If unitxt_e.prs already exists, replace it with the copied file.)
 
+If you do not have a BB client, or using a Tethealla client from another source, Tethealla clients that are compatible with newserv can be found here: [English](https://web.archive.org/web/20240402011115/https://ragol.org/files/bb/TethVer12513_English.zip) / [Japanese](https://web.archive.org/web/20240402013127/https://ragol.org/files/bb/TethVer12513_Japanese.zip). These clients connect to 127.0.0.1 (localhost) automatically.
+
 For BB clients, newserv reads some files out of the patch data to implement game logic, so it's important that certain game files are synchronized between the server and the client. newserv contains defaults for these files in the system/maps/bb-v4 directory, but if these don't match the client's copies of the files, odd behavior will occur in games.
 
 To make server startup faster, newserv caches the modification times, sizes, and checksums of the files in the patch directories. If the patch server appears to be misbehaving, try deleting the .metadata-cache.json file in the relevant patch directory to force newserv to recompute all the checksums. Also, in the case when checksums are cached, newserv may not actually load the data for a patch file until it's needed by a client. Therefore, modifying any part of the patch tree while newserv is running can cause clients to see an inconsistent view of it.
@@ -214,7 +216,7 @@ The PSO BB client has been modified and distributed in many different forms. new
 
 The original Japanese and US versions of PSO BB should work (the last Japanese release can be found [here](https://archive.org/details/psobb_jp_setup_12511_20240109/)), but you'll have to modify your hosts file or edit psobb.exe to point to your newserv instance. The original versions are packed with various versions of ASProtect, so this is a more involved process than simply opening the executable in a hex editor and finding/replacing some strings.
 
-Alternatively, you can use the [Tethealla client](https://archive.org/details/psobb-tethealla-client); you can find the connection addresses starting at 0x56D724 in psobb.exe. Overwrite these addresses with your server's hostname or IP address, and you should be able to connect.
+Alternatively, you can use the Tethealla client ([English](https://web.archive.org/web/20240402011115/https://ragol.org/files/bb/TethVer12513_English.zip) / [Japanese](https://web.archive.org/web/20240402013127/https://ragol.org/files/bb/TethVer12513_Japanese.zip)); you can find the connection addresses starting at 0x56D724 in psobb.exe. Overwrite these addresses with your server's hostname or IP address, and you should be able to connect. If the server is on the same PC as the client and you don't plan to have any external players, these Tethealla clients will automatically connect to the server without any modifications.
 
 ### Connecting external clients
 
