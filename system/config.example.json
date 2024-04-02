@@ -900,6 +900,13 @@
       "Points": 8000,
       "RewardItem": "00B200",
     }, {
+      "Key": "UnionField",
+      "Name": "Union Field",
+      "Description": "Create a Union Field\narmor",
+      "IsUnique": false,
+      "Points": 100,
+      "RewardItem": "010155",
+    }, {
       "Key": "UnionGuard",
       "Name": "Union Guard",
       "Description": "Create a Union Guard\nshield",
