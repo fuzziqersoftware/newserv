@@ -3863,6 +3863,7 @@ void send_team_membership_info(shared_ptr<Client> c) {
     cmd.guild_card_number = c->license->serial_number;
     cmd.team_id = team->team_id;
     cmd.privilege_level = team->members.at(c->license->serial_number).privilege_level();
+    cmd.team_member_count = min<size_t>(team->members.size(), 100);
     cmd.team_name.encode(team->name);
   }
   send_command_t(c, 0x12EA, 0x00000000, cmd);
@@ -3878,6 +3879,7 @@ static S_TeamInfoForPlayer_BB_13EA_15EA_Entry team_metadata_for_client(shared_pt
     cmd.guild_card_number = c->license->serial_number;
     cmd.team_id = team->team_id;
     cmd.privilege_level = team->members.at(c->license->serial_number).privilege_level();
+    cmd.team_member_count = min<size_t>(team->members.size(), 100);
     cmd.team_name.encode(team->name);
     if (team->flag_data) {
       cmd.flag_data = *team->flag_data;

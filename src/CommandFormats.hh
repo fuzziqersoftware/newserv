@@ -3424,7 +3424,7 @@ struct S_TeamMembershipInformation_BB_12EA {
   le_uint32_t unknown_a4 = 0;
   le_uint32_t unknown_a6 = 0;
   uint8_t privilege_level = 0;
-  uint8_t unknown_a7 = 0;
+  uint8_t team_member_count = 0;
   uint8_t unknown_a8 = 0;
   uint8_t unknown_a9 = 0;
   pstring<TextEncoding::UTF16_ALWAYS_MARKED, 0x10> team_name;
@@ -3441,7 +3441,7 @@ struct S_TeamInfoForPlayer_BB_13EA_15EA_Entry {
   /* 0008 */ le_uint32_t reward_flags = 0;
   /* 000C */ le_uint32_t unknown_a6 = 0;
   /* 0010 */ uint8_t privilege_level = 0;
-  /* 0011 */ uint8_t unknown_a7 = 0;
+  /* 0011 */ uint8_t team_member_count = 0;
   /* 0012 */ uint8_t unknown_a8 = 0;
   /* 0013 */ uint8_t unknown_a9 = 0;
   /* 0014 */ pstring<TextEncoding::UTF16_ALWAYS_MARKED, 0x10> team_name;
