@@ -905,7 +905,6 @@
       "Description": "Create a Union Guard\nshield",
       "IsUnique": false,
       "Points": 100,
-      // TODO: There are 4 of these in names-v4.json; which should we use?
       "RewardItem": "010295",
     }, {
       "Key": "Ticket500",

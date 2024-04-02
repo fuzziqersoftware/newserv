@@ -4012,11 +4012,16 @@ void send_team_reward_list(shared_ptr<Client> c, bool show_purchased) {
   }
   auto s = c->require_server_state();
 
+  // Hide item rewards if the player's bank is full
   bool show_item_rewards = show_purchased || (c->current_bank().num_items < 200);
 
   vector<S_TeamRewardList_BB_19EA_1AEA::Entry> entries;
   for (const auto& reward : s->team_index->reward_definitions()) {
-    if (team->has_reward(reward.key) != show_purchased) {
+    // In the buy menu, hide rewards that can't be bought again (that is, unique
+    // rewards that the team already has). In the bought menu, hide rewards that
+    // the team does not have.
+    bool has_reward = team->has_reward(reward.key);
+    if (show_purchased ? (!has_reward) : (has_reward && reward.is_unique)) {
       continue;
     }
     if (!show_item_rewards && !reward.reward_item.empty()) {
