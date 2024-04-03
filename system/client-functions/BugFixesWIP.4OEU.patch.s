@@ -45,9 +45,8 @@ start:
   .data     0x00000008
   .binary   7080808060707070
 
-  # Olga Flow Barta Bug Fix (makes barta work on ice weakness Olga Flow instead of damaging player)
-  # eax is zero when we get here; can use eax, ecx, edx
-  # 000970E0 8B8B40040000   mov    ecx, [ebx + 0x440]
+  # Olga Flow Barta Bug Fix (makes Barta work on ice weakness Olga Flow instead of damaging player)
+  # 000970E0 8B8B40040000   mov    ecx, [ebx + 0x440]  # eax is zero when we get here; can use eax, ecx, edx
   # 000970E6 EB3C           jmp    00097124
   .data     0x000970E0
   .data     0x00000008
@@ -66,6 +65,20 @@ start:
   .data     0x00097365
   .data     0x0000000A
   .binary   83F9197502B10239CEC3
+
+  # TP Bar Colour Bug Fix
+  .data     0x00277ECE
+  .data     0x00000004
+  .data     0xFF00AAFA
+  .data     0x00277EDE
+  .data     0x00000004
+  .data     0xFF00AAFA
+  .data     0x00277F24
+  .data     0x00000004
+  .data     0xFF00AAFA
+  .data     0x0054A2D4
+  .data     0x00000004
+  .data     0xFF0074EE
 
   .data     0x00000000
   .data     0x00000000
@@ -99,6 +112,7 @@ start:
 # US11------------- DISASSEMBLY (US10)
 # 800917B4 4800024D bl        +0x0000024C /* 80091A00 */
 # 800917B8 B3C3032C sth       [r3 + 0x032C], r30
+# => 000EB350 on XBOX-US1, but param used on GC was optimized out
 
 # Control Tower: Delbiter Death SFX Bug Fix
 # US11------------- DISASSEMBLY (US10)
@@ -128,8 +142,8 @@ start:
 
 # SFX Cancellation Distance Bug Fix
 # US11------------- DISASSEMBLY (US10)
-# 805D2F30 46AFC800 .invalid  sc
-# 805D31D0 43480000 bc        26, 8, +0x00000000 /* 805CC1B0 */
+# 805D2F30 46AFC800
+# 805D31D0 43480000
 
 # Foie SFX Pitch Bug Fix
 # US11------------- DISASSEMBLY (US10)
@@ -351,13 +365,6 @@ start:
 # 80189E20 60000000 nop
 # 801937A8 60000000 nop
 
-# TP Bar Colour Bug Fix
-# US11------------- DISASSEMBLY (US10)
-# 8026E2D4 3884AAFA subi      r4, r4, 0x5506
-# 8026E3E8 3863AAFA subi      r3, r3, 0x5506
-# 8026E470 3883AAFA subi      r4, r3, 0x5506
-# 804CC7F0 FF0074EE
-
 # Devil's and Demon's Special Damage Display Bug Fix
 # US11------------- DISASSEMBLY (US10)
 # 80013084 4BFFFCC0 b         -0x00000340 /* 80012D44 */
@@ -376,7 +383,7 @@ start:
 # US11------------- DISASSEMBLY (US10)
 # TODO: This changes an argument to a virtual function to use TObjPlayer->center_pos instead of a
 # Vector3F from the stack. What is the correct offset on XB's TObjPlayer? Some later fields are
-# offset by 4 (eg 320 on GC => 324 on XB), but eaclier fields are not (60 on GC => 60 on XB).
+# offset by 4 (eg 320 on GC => 324 on XB), but earlier fields are not (60 on GC => 60 on XB).
 # 801C62C0 389F02FC addi      r4, r31, 0x02FC
 
 # Deband/Shifta/Resta Target Bug Fix
