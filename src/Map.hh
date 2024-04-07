@@ -34,7 +34,7 @@ struct Map {
     inline Type type() const {
       return static_cast<Type>(this->le_type.load());
     }
-  } __attribute__((packed));
+  } __packed_ws__(SectionHeader, 0x10);
 
   struct ObjectEntry { // Section type 1 (OBJECTS)
     /* 00 */ le_uint16_t base_type;
@@ -61,7 +61,7 @@ struct Map {
     /* 44 */
 
     std::string str() const;
-  } __attribute__((packed));
+  } __packed_ws__(ObjectEntry, 0x44);
 
   struct EnemyEntry { // Section type 2 (ENEMIES)
     /* 00 */ le_uint16_t base_type;
@@ -91,7 +91,7 @@ struct Map {
     /* 48 */
 
     std::string str() const;
-  } __attribute__((packed));
+  } __packed_ws__(EnemyEntry, 0x48);
 
   struct EventsSectionHeader { // Section type 3 (WAVE_EVENTS)
     /* 00 */ le_uint32_t action_stream_offset;
@@ -99,7 +99,7 @@ struct Map {
     /* 08 */ le_uint32_t entry_count;
     /* 0C */ be_uint32_t format; // 0 or 'evt2'
     /* 10 */
-  } __attribute__((packed));
+  } __packed_ws__(EventsSectionHeader, 0x10);
 
   struct Event1Entry { // Section type 3 (WAVE_EVENTS) if format == 0
     /* 00 */ le_uint32_t event_id;
@@ -114,7 +114,7 @@ struct Map {
     /* 0C */ le_uint32_t delay;
     /* 10 */ le_uint32_t action_stream_offset;
     /* 14 */
-  } __attribute__((packed));
+  } __packed_ws__(Event1Entry, 0x14);
 
   struct Event2Entry { // Section type 3 (WAVE_EVENTS) if format == 'evt2'
     /* 00 */ le_uint32_t event_id;
@@ -129,21 +129,21 @@ struct Map {
     /* 12 */ le_uint16_t max_waves;
     /* 14 */ le_uint32_t action_stream_offset;
     /* 18 */
-  } __attribute__((packed));
+  } __packed_ws__(Event2Entry, 0x18);
 
   struct RandomEnemyLocationsHeader { // Section type 4 (RANDOM_ENEMY_LOCATIONS)
     /* 00 */ le_uint32_t section_table_offset; // Offset to RandomEnemyLocationSegment structs, from start of this struct
     /* 04 */ le_uint32_t entries_offset; // Offset to RandomEnemyLocationEntry structs, from start of this struct
     /* 08 */ le_uint32_t num_sections;
     /* 0C */
-  } __attribute__((packed));
+  } __packed_ws__(RandomEnemyLocationsHeader, 0x0C);
 
   struct RandomEnemyLocationSection { // Section type 4 (RANDOM_ENEMY_LOCATIONS)
     /* 00 */ le_uint16_t section;
     /* 02 */ le_uint16_t count;
     /* 04 */ le_uint32_t offset;
     /* 08 */
-  } __attribute__((packed));
+  } __packed_ws__(RandomEnemyLocationSection, 8);
 
   struct RandomEnemyLocationEntry { // Section type 4 (RANDOM_ENEMY_LOCATIONS)
     /* 00 */ le_float x;
@@ -155,7 +155,7 @@ struct Map {
     /* 18 */ uint16_t unknown_a9;
     /* 1A */ uint16_t unknown_a10;
     /* 1C */
-  } __attribute__((packed));
+  } __packed_ws__(RandomEnemyLocationEntry, 0x1C);
 
   struct RandomEnemyDefinitionsHeader { // Section type 5 (RANDOM_ENEMY_DEFINITIONS)
     /* 00 */ le_uint32_t entries_offset; // Offset to RandomEnemyDefinition structs, from start of this struct
@@ -163,7 +163,7 @@ struct Map {
     /* 08 */ le_uint32_t entry_count;
     /* 0C */ le_uint32_t weight_entry_count;
     /* 10 */
-  } __attribute__((packed));
+  } __packed_ws__(RandomEnemyDefinitionsHeader, 0x10);
 
   struct RandomEnemyDefinition { // Section type 5 (RANDOM_ENEMY_DEFINITIONS)
     // All fields through entry_num map to the corresponding fields in
@@ -179,7 +179,7 @@ struct Map {
     /* 1C */ le_uint16_t min_children;
     /* 1E */ le_uint16_t max_children;
     /* 20 */
-  } __attribute__((packed));
+  } __packed_ws__(RandomEnemyDefinition, 0x20);
 
   struct RandomEnemyWeight { // Section type 5 (RANDOM_ENEMY_DEFINITIONS)
     /* 00 */ uint8_t base_type_index;
@@ -187,7 +187,7 @@ struct Map {
     /* 02 */ uint8_t weight;
     /* 03 */ uint8_t unknown_a4;
     /* 04 */
-  } __attribute__((packed));
+  } __packed_ws__(RandomEnemyWeight, 4);
 
   struct RareEnemyRates {
     uint32_t hildeblue; // HILDEBEAR -> HILDEBLUE

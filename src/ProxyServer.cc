@@ -837,7 +837,7 @@ void ProxyServer::LinkedSession::send_to_game_server(const char* error_message) 
     }
 
     string port_name = login_port_name_for_version(this->version());
-    S_Reconnect_19 reconnect_cmd = {{0, s->name_to_port_config.at(port_name)->port, 0}};
+    S_Reconnect_19 reconnect_cmd = {0, s->name_to_port_config.at(port_name)->port, 0};
 
     // If the client is on a virtual connection, we can use any address
     // here and they should be able to connect back to the game server

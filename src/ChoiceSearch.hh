@@ -10,12 +10,16 @@
 
 class Client;
 
-struct ChoiceSearchConfig {
-  le_uint32_t disabled = 1; // 0 = enabled, 1 = disabled. Unused in command C3
+template <bool IsBigEndian>
+struct ChoiceSearchConfigT {
+  using U16T = typename std::conditional<IsBigEndian, be_uint16_t, le_uint16_t>::type;
+  using U32T = typename std::conditional<IsBigEndian, be_uint32_t, le_uint32_t>::type;
+
+  U32T disabled = 1; // 0 = enabled, 1 = disabled. Unused in command C3
   struct Entry {
-    le_uint16_t parent_choice_id = 0;
-    le_uint16_t choice_id = 0;
-  } __attribute__((packed));
+    U16T parent_choice_id = 0;
+    U16T choice_id = 0;
+  } __packed_ws__(Entry, 4);
   parray<Entry, 5> entries;
 
   int32_t get_setting(uint16_t parent_choice_id) const {
@@ -26,7 +30,24 @@ struct ChoiceSearchConfig {
     }
     return -1;
   }
-} __attribute__((packed));
+
+  operator ChoiceSearchConfigT<!IsBigEndian>() const {
+    ChoiceSearchConfigT<!IsBigEndian> ret;
+    ret.disabled = this->disabled.load();
+    for (size_t z = 0; z < this->entries.size(); z++) {
+      auto& ret_e = ret.entries[z];
+      const auto& this_e = this->entries[z];
+      ret_e.parent_choice_id = this_e.parent_choice_id.load();
+      ret_e.choice_id = this_e.choice_id.load();
+    }
+    return ret;
+  }
+} __packed__;
+
+using ChoiceSearchConfig = ChoiceSearchConfigT<false>;
+using ChoiceSearchConfigBE = ChoiceSearchConfigT<true>;
+check_struct_size(ChoiceSearchConfig, 0x18);
+check_struct_size(ChoiceSearchConfigBE, 0x18);
 
 struct ChoiceSearchCategory {
   struct Choice {

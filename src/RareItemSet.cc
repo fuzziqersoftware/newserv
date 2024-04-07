@@ -97,7 +97,7 @@ void RareItemSet::ParsedRELData::parse_t(StringReader r, bool is_v1) {
   using U32T = typename std::conditional<IsBigEndian, be_uint32_t, le_uint32_t>::type;
 
   uint32_t root_offset = r.pget<U32T>(r.size() - 0x10);
-  const auto& root = r.pget<Offsets<IsBigEndian>>(root_offset);
+  const auto& root = r.pget<OffsetsT<IsBigEndian>>(root_offset);
 
   StringReader monsters_r = r.sub(root.monster_rares_offset);
   for (size_t z = 0; z < (is_v1 ? 0x33 : 0x65); z++) {
@@ -125,7 +125,7 @@ std::string RareItemSet::ParsedRELData::serialize_t(bool is_v1) const {
 
   static const PackedDrop empty_drop;
 
-  Offsets<IsBigEndian> root;
+  OffsetsT<IsBigEndian> root;
   root.box_count = this->box_rares.size();
 
   StringWriter w;

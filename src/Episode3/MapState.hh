@@ -20,7 +20,7 @@ struct MapState {
   void clear();
 
   void print(FILE* stream) const;
-} __attribute__((packed));
+} __packed_ws__(MapState, 0x110);
 
 struct MapAndRulesState {
   /* 0000 */ MapState map;
@@ -45,7 +45,7 @@ struct MapAndRulesState {
 
   void set_occupied_bit_for_tile(uint8_t x, uint8_t y);
   void clear_occupied_bit_for_tile(uint8_t x, uint8_t y);
-} __attribute__((packed));
+} __packed_ws__(MapAndRulesState, 0x138);
 
 struct MapAndRulesStateTrial {
   /* 0000 */ MapState map;
@@ -65,7 +65,7 @@ struct MapAndRulesStateTrial {
   MapAndRulesStateTrial() = default;
   MapAndRulesStateTrial(const MapAndRulesState& state);
   operator MapAndRulesState() const;
-} __attribute__((packed));
+} __packed_ws__(MapAndRulesStateTrial, 0x130);
 
 struct OverlayState {
   parray<parray<uint8_t, 0x10>, 0x10> tiles;
@@ -75,6 +75,6 @@ struct OverlayState {
 
   OverlayState();
   void clear();
-} __attribute__((packed));
+} __packed_ws__(OverlayState, 0x174);
 
 } // namespace Episode3

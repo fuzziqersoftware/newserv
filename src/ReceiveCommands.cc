@@ -1715,7 +1715,7 @@ static void on_CA_Ep3(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
           l->battle_record->add_player(
               lobby_data,
               existing_p->inventory,
-              existing_p->disp.to_dcpcv3(c->language(), c->language()),
+              existing_p->disp.to_dcpcv3<false>(c->language(), c->language()),
               c->ep3_config ? (c->ep3_config->online_clv_exp / 100) : 0);
         }
       }
@@ -3208,7 +3208,7 @@ static void on_61_98(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
     default:
       throw logic_error("player data command not implemented for version");
   }
-  player->inventory.decode_from_client(c);
+  player->inventory.decode_from_client(c->version());
   c->channel.language = player->inventory.language;
   c->license->save();
 
@@ -3258,7 +3258,7 @@ static void on_61_98(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
         if (is_v1_or_v2(c->version())) {
           bb_player->disp.stats = player->disp.stats;
         } else {
-          bb_player->disp.stats.advance_to_level(bb_player->disp.visual.char_class, player->disp.stats.level, s->level_table);
+          s->level_table->advance_to_level(bb_player->disp.stats, player->disp.stats.level, bb_player->disp.visual.char_class);
           bb_player->disp.stats.char_stats.atp += bb_player->get_material_usage(PSOBBCharacterFile::MaterialType::POWER) * 2;
           bb_player->disp.stats.char_stats.mst += bb_player->get_material_usage(PSOBBCharacterFile::MaterialType::MIND) * 2;
           bb_player->disp.stats.char_stats.evp += bb_player->get_material_usage(PSOBBCharacterFile::MaterialType::EVADE) * 2;
@@ -3276,7 +3276,7 @@ static void on_61_98(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
         bb_player->choice_search_config = player->choice_search_config;
         try {
           Client::save_character_file(filename, c->system_file(), bb_player);
-          send_text_message(c, "$C7Character data saved");
+          send_text_message(c, "$C7Character data saved\n(basic only)");
         } catch (const exception& e) {
           send_text_message_printf(c, "$C6Character data could\nnot be saved:\n%s", e.what());
         }
@@ -3288,6 +3288,65 @@ static void on_61_98(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
     if (!c->lobby.lock() && (c->server_behavior == ServerBehavior::LOBBY_SERVER)) {
       s->add_client_to_available_lobby(c);
     }
+  }
+}
+
+static void on_30(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
+  if (!c->pending_character_export) {
+    c->log.warning("No pending export is present");
+    return;
+  }
+  unique_ptr<Client::PendingCharacterExport> pending_export = std::move(c->pending_character_export);
+  c->pending_character_export.reset();
+
+  string filename;
+  if (pending_export->is_bb_conversion) {
+    filename = Client::character_filename(
+        pending_export->license->bb_username,
+        pending_export->character_index);
+  } else {
+    filename = Client::backup_character_filename(
+        pending_export->license->serial_number,
+        pending_export->character_index);
+  }
+
+  auto s = c->require_server_state();
+  if (s->player_files_manager->get_character(filename)) {
+    send_text_message(c, "$C6The target player\nis currently loaded.\nSign off in Blue\nBurst and try again.");
+    return;
+  }
+
+  shared_ptr<PSOBBCharacterFile> bb_char;
+  switch (c->version()) {
+    case Version::GC_V3: {
+      auto gc_char = check_size_t<PSOGCCharacterFile::Character>(data);
+      bb_char = PSOBBCharacterFile::create_from_gc(gc_char);
+      break;
+    }
+    case Version::DC_NTE:
+    case Version::DC_V1_11_2000_PROTOTYPE:
+    case Version::DC_V1:
+    case Version::DC_V2:
+    case Version::PC_NTE:
+    case Version::PC_V2:
+    case Version::GC_NTE:
+    case Version::GC_EP3_NTE:
+    case Version::GC_EP3:
+    case Version::XB_V3:
+    case Version::BB_V4:
+    default:
+      throw logic_error("extended player data command not implemented for version");
+  }
+
+  bb_char->inventory.decode_from_client(c->version());
+  bb_char->disp.visual.version = 4;
+  bb_char->disp.visual.name_color_checksum = 0x00000000;
+
+  try {
+    Client::save_character_file(filename, c->system_file(), bb_char);
+    send_text_message(c, "$C7Character data saved\n(full save file)");
+  } catch (const exception& e) {
+    send_text_message_printf(c, "$C6Character data could\nnot be saved:\n%s", e.what());
   }
 }
 
@@ -3655,7 +3714,7 @@ static void on_ED_BB(shared_ptr<Client> c, uint16_t command, uint32_t, string& d
     }
     case 0x06ED: {
       const auto& cmd = check_size_t<C_UpdateTechMenu_BB_06ED>(data);
-      p->tech_menu_config = cmd.tech_menu;
+      p->tech_menu_shortcut_entries = cmd.tech_menu;
       break;
     }
     case 0x07ED: {
@@ -4379,7 +4438,7 @@ static void on_0C_C1_E7_EC(shared_ptr<Client> c, uint16_t command, uint32_t, str
 
   shared_ptr<Lobby> game;
   if ((c->version() == Version::DC_NTE) || (c->version() == Version::DC_V1_11_2000_PROTOTYPE)) {
-    const auto& cmd = check_size_t<C_CreateGame_DCNTE<TextEncoding::SJIS>>(data);
+    const auto& cmd = check_size_t<C_CreateGame_DCNTE>(data);
     game = create_game_generic(s, c, cmd.name.decode(c->language()), cmd.password.decode(c->language()), Episode::EP1, GameMode::NORMAL, 0, true);
 
   } else {
@@ -5277,7 +5336,7 @@ static on_command_t handlers[0x100][NUM_VERSIONS - 2] = {
 /* 2E */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
 /* 2F */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
 //        DC_NTE         DC_PROTO       DCV1           DCV2            PC-NTE       PC           GCNTE           GC              EP3TE           EP3             XB              BB
-/* 30 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
+/* 30 */ {on_30,         on_30,         on_30,         on_30,          on_30,       on_30,       on_30,          on_30,          on_30,          on_30,          on_30,          on_30},
 /* 31 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
 /* 32 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
 /* 33 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},

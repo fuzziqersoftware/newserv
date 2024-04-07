@@ -12,14 +12,14 @@ struct GVMFileEntry {
   be_uint16_t file_num;
   pstring<TextEncoding::ASCII, 0x1C> name;
   parray<be_uint32_t, 2> unknown_a1;
-} __attribute__((packed));
+} __packed_ws__(GVMFileEntry, 0x26);
 
 struct GVMFileHeader {
   be_uint32_t magic; // 'GVMH'
   le_uint32_t header_size;
   be_uint16_t flags;
   be_uint16_t num_files;
-} __attribute__((packed));
+} __packed_ws__(GVMFileHeader, 0x0C);
 
 struct GVRHeader {
   be_uint32_t magic; // 'GVRT'
@@ -29,7 +29,7 @@ struct GVRHeader {
   GVRDataFormat data_format;
   be_uint16_t width;
   be_uint16_t height;
-} __attribute__((packed));
+} __packed_ws__(GVRHeader, 0x10);
 
 string encode_gvm(const Image& img, GVRDataFormat data_format) {
   if (img.get_width() > 0xFFFF) {

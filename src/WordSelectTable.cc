@@ -32,7 +32,7 @@ static vector<vector<RetT>> read_indirect_table(const StringReader& base_r, size
 }
 
 template <bool IsBigEndian>
-struct NonWindowsRoot {
+struct NonWindowsRootT {
   using U32T = typename std::conditional<IsBigEndian, be_uint32_t, le_uint32_t>::type;
   U32T strings_table;
   U32T table1;
@@ -41,7 +41,12 @@ struct NonWindowsRoot {
   U32T table4;
   U32T article_types_table;
   U32T table6;
-} __attribute__((packed));
+} __packed__;
+
+using NonWindowsRoot = NonWindowsRootT<false>;
+using NonWindowsRootBE = NonWindowsRootT<true>;
+check_struct_size(NonWindowsRoot, 0x1C);
+check_struct_size(NonWindowsRootBE, 0x1C);
 
 struct PCV2Root {
   le_uint32_t unknown_a1;
@@ -52,7 +57,7 @@ struct PCV2Root {
   le_uint32_t table4;
   le_uint32_t article_types_table;
   le_uint32_t table6;
-} __attribute__((packed));
+} __packed_ws__(PCV2Root, 0x20);
 
 struct BBRoot {
   le_uint32_t table1;
@@ -61,7 +66,7 @@ struct BBRoot {
   le_uint32_t table4;
   le_uint32_t article_types_table;
   le_uint32_t table6;
-} __attribute__((packed));
+} __packed_ws__(BBRoot, 0x18);
 
 template <bool IsBigEndian, size_t StringTableCount, size_t TokenCount>
 void WordSelectSet::parse_non_windows_t(const std::string& data, bool use_sjis) {
@@ -70,7 +75,7 @@ void WordSelectSet::parse_non_windows_t(const std::string& data, bool use_sjis) 
 
   StringReader r(data);
   uint32_t root_offset = r.pget<U32T>(r.size() - 0x10);
-  const auto& root = r.pget<NonWindowsRoot<IsBigEndian>>(root_offset);
+  const auto& root = r.pget<NonWindowsRootT<IsBigEndian>>(root_offset);
 
   {
     auto string_offset_r = r.sub(root.strings_table, sizeof(U32T) * StringTableCount);

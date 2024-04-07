@@ -7,6 +7,8 @@
 #include <phosg/Filesystem.hh>
 #include <phosg/Strings.hh>
 
+#include "Text.hh"
+
 using namespace std;
 
 AFSArchive::AFSArchive(shared_ptr<const string> data)
@@ -14,12 +16,12 @@ AFSArchive::AFSArchive(shared_ptr<const string> data)
   struct FileHeader {
     be_uint32_t magic;
     le_uint32_t num_files;
-  } __attribute__((packed));
+  } __packed_ws__(FileHeader, 8);
 
   struct FileEntry {
     le_uint32_t offset;
     le_uint32_t size;
-  } __attribute__((packed));
+  } __packed_ws__(FileEntry, 8);
 
   StringReader r(*this->data);
   const auto& header = r.get<FileHeader>();

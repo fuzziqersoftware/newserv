@@ -43,7 +43,7 @@ shared_ptr<const QuestCategoryIndex::Category> QuestCategoryIndex::at(uint32_t c
 // GCI decoding logic
 
 template <bool IsBigEndian>
-struct PSOMemCardDLQFileEncryptedHeader {
+struct PSOMemCardDLQFileEncryptedHeaderT {
   using U32T = typename std::conditional<IsBigEndian, be_uint32_t, le_uint32_t>::type;
 
   U32T round2_seed;
@@ -54,12 +54,11 @@ struct PSOMemCardDLQFileEncryptedHeader {
   le_uint32_t decompressed_size;
   le_uint32_t round3_seed;
   // Data follows here.
-} __attribute__((packed));
-
-struct PSOVMSDLQFileEncryptedHeader : PSOMemCardDLQFileEncryptedHeader<false> {
-} __attribute__((packed));
-struct PSOGCIDLQFileEncryptedHeader : PSOMemCardDLQFileEncryptedHeader<true> {
-} __attribute__((packed));
+} __packed__;
+using PSOVMSDLQFileEncryptedHeader = PSOMemCardDLQFileEncryptedHeaderT<false>;
+using PSOGCIDLQFileEncryptedHeader = PSOMemCardDLQFileEncryptedHeaderT<true>;
+check_struct_size(PSOVMSDLQFileEncryptedHeader, 0x10);
+check_struct_size(PSOGCIDLQFileEncryptedHeader, 0x10);
 
 template <bool IsBigEndian>
 string decrypt_download_quest_data_section(
@@ -73,7 +72,7 @@ string decrypt_download_quest_data_section(
   // not at the beginning. Presumably they did this because the system,
   // character, and Guild Card files are a constant size, but download quest
   // files can vary in size.
-  using HeaderT = PSOMemCardDLQFileEncryptedHeader<IsBigEndian>;
+  using HeaderT = PSOMemCardDLQFileEncryptedHeaderT<IsBigEndian>;
   auto* header = reinterpret_cast<HeaderT*>(decrypted.data());
   PSOV2Encryption round2_crypt(header->round2_seed);
   round2_crypt.encrypt_t<IsBigEndian>(
@@ -193,7 +192,7 @@ string find_seed_and_decrypt_download_quest_data_section(
 struct PSODownloadQuestHeader {
   le_uint32_t size;
   le_uint32_t encryption_seed;
-} __attribute__((packed));
+} __packed_ws__(PSODownloadQuestHeader, 8);
 
 VersionedQuest::VersionedQuest(
     uint32_t quest_number,

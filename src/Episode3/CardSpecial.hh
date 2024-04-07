@@ -6,6 +6,7 @@
 
 #include "../Text.hh"
 #include "DataIndexes.hh"
+#include "Server.hh"
 
 namespace Episode3 {
 
@@ -94,7 +95,7 @@ public:
     void print(FILE* stream) const;
 
     uint32_t at(size_t index) const;
-  } __attribute__((packed));
+  } __packed_ws__(AttackEnvStats, 0x9C);
 
   CardSpecial(std::shared_ptr<Server> server);
   std::shared_ptr<Server> server();

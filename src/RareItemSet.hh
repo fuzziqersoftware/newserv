@@ -64,17 +64,21 @@ protected:
       PackedDrop() = default;
       explicit PackedDrop(const ExpandedDrop&);
       ExpandedDrop expand() const;
-    } __attribute__((packed));
+    } __packed_ws__(PackedDrop, 4);
 
     template <bool IsBigEndian>
-    struct Offsets {
+    struct OffsetsT {
       using U32T = typename std::conditional<IsBigEndian, be_uint32_t, le_uint32_t>::type;
       /* 00 */ U32T monster_rares_offset; // -> parray<PackedDrop, 0x65> (or 0x33 on v1)
       /* 04 */ U32T box_count; // Usually 30 (0x1E)
       /* 08 */ U32T box_areas_offset; // -> parray<uint8_t, 0x1E>
       /* 0C */ U32T box_rares_offset; // -> parray<PackedDrop, 0x1E>
       /* 10 */
-    } __attribute__((packed));
+    } __packed__;
+    using Offsets = OffsetsT<false>;
+    using OffsetsBE = OffsetsT<true>;
+    check_struct_size(Offsets, 0x10);
+    check_struct_size(OffsetsBE, 0x10);
 
     struct BoxRare {
       uint8_t area;

@@ -1284,8 +1284,8 @@ static void server_command_edit(shared_ptr<Client> c, const std::string& args) {
       p->disp.stats.experience = stoul(tokens.at(1));
     } else if (tokens.at(0) == "level" && cheats_allowed) {
       uint32_t level = stoul(tokens.at(1)) - 1;
-      p->disp.stats.reset_to_base(p->disp.visual.char_class, s->level_table);
-      p->disp.stats.advance_to_level(p->disp.visual.char_class, level, s->level_table);
+      s->level_table->reset_to_base(p->disp.stats, p->disp.visual.char_class);
+      s->level_table->advance_to_level(p->disp.stats, level, p->disp.visual.char_class);
     } else if (tokens.at(0) == "namecolor") {
       uint32_t new_color;
       sscanf(tokens.at(1).c_str(), "%8X", &new_color);
@@ -1434,9 +1434,10 @@ static void server_command_bbchar_savechar(shared_ptr<Client> c, const std::stri
   }
 
   c->pending_character_export = std::move(pending_export);
-  // Request the player data. The client will respond with a 61, and the handler
-  // for that command will execute the conversion
-  send_get_player_info(c);
+
+  // Request the player data. The client will respond with a 61 or 30, and the
+  // handler for either of those commands will execute the conversion
+  send_get_player_info(c, true);
 }
 
 static void server_command_bbchar(shared_ptr<Client> c, const std::string& args) {

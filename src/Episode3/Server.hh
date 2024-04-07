@@ -290,7 +290,8 @@ public:
     uint8_t is_cpu_player;
     PresenceEntry();
     void clear();
-  } __attribute__((packed));
+  } __packed_ws__(PresenceEntry, 3);
+
   std::shared_ptr<MapAndRulesState> map_and_rules;
   bcarray<std::shared_ptr<DeckEntry>, 4> deck_entries;
   parray<PresenceEntry, 4> presence_entries;

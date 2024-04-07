@@ -119,10 +119,10 @@ enum SendServerInitFlag {
   USE_SECONDARY_MESSAGE = 0x02,
 };
 
-S_ServerInitWithAfterMessage_DC_PC_V3_02_17_91_9B<0xB4>
+S_ServerInitWithAfterMessageT_DC_PC_V3_02_17_91_9B<0xB4>
 prepare_server_init_contents_console(
     uint32_t server_key, uint32_t client_key, uint8_t flags);
-S_ServerInitWithAfterMessage_BB_03_9B<0xB4>
+S_ServerInitWithAfterMessageT_BB_03_9B<0xB4>
 prepare_server_init_contents_bb(
     const parray<uint8_t, 0x30>& server_key,
     const parray<uint8_t, 0x30>& client_key,
@@ -287,7 +287,7 @@ void send_update_lobby_data_bb(std::shared_ptr<Client> c);
 void send_player_join_notification(std::shared_ptr<Client> c, std::shared_ptr<Lobby> l, std::shared_ptr<Client> joining_client);
 void send_player_leave_notification(std::shared_ptr<Lobby> l, uint8_t leaving_client_id);
 void send_self_leave_notification(std::shared_ptr<Client> c);
-void send_get_player_info(std::shared_ptr<Client> c);
+void send_get_player_info(std::shared_ptr<Client> c, bool request_extended = false);
 
 void send_execute_item_trade(std::shared_ptr<Client> c, const std::vector<ItemData>& items);
 void send_execute_card_trade(std::shared_ptr<Client> c, const std::vector<std::pair<uint32_t, uint32_t>>& card_to_count);

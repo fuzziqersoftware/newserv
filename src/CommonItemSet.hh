@@ -20,7 +20,7 @@ public:
     struct Range {
       IntT min;
       IntT max;
-    } __attribute__((packed));
+    } __packed__;
 
     parray<uint8_t, 0x0C> base_weapon_type_prob_table;
     parray<int8_t, 0x0C> subtype_base_table;
@@ -53,7 +53,7 @@ public:
     void parse_itempt_t(const StringReader& r, bool is_v3);
 
     template <bool IsBigEndian>
-    struct Offsets {
+    struct OffsetsT {
       using U16T = typename std::conditional<IsBigEndian, be_uint16_t, le_uint16_t>::type;
       using U32T = typename std::conditional<IsBigEndian, be_uint32_t, le_uint32_t>::type;
 
@@ -254,7 +254,11 @@ public:
       /* 50 */ U32T box_item_class_prob_table_offset;
 
       // There are several unused fields here.
-    } __attribute__((packed));
+    } __packed__;
+    using Offsets = OffsetsT<false>;
+    using OffsetsBE = OffsetsT<true>;
+    check_struct_size(Offsets, 0x54);
+    check_struct_size(OffsetsBE, 0x54);
   };
 
   std::shared_ptr<const Table> get_table(Episode episode, GameMode mode, uint8_t difficulty, uint8_t secid) const;
@@ -327,10 +331,12 @@ public:
   struct WeightTableEntry {
     ValueT value;
     WeightT weight;
-  } __attribute__((packed));
+  } __packed__;
 
   using WeightTableEntry8 = WeightTableEntry<uint8_t>;
   using WeightTableEntry32 = WeightTableEntry<be_uint32_t>;
+  check_struct_size(WeightTableEntry8, 2);
+  check_struct_size(WeightTableEntry32, 8);
 
 protected:
   std::shared_ptr<const std::string> data;
@@ -340,7 +346,7 @@ protected:
     be_uint32_t offset;
     uint8_t entries_per_table;
     parray<uint8_t, 3> unused;
-  } __attribute__((packed));
+  } __packed_ws__(TableSpec, 8);
 
   RELFileSet(std::shared_ptr<const std::string> data);
 
@@ -381,7 +387,7 @@ public:
     Mode mode;
     uint8_t player_level_divisor_or_min_level;
     uint8_t max_level;
-  } __attribute__((packed));
+  } __packed_ws__(TechDiskLevelEntry, 3);
 
   std::pair<const uint8_t*, size_t> get_common_recovery_table(size_t index) const;
   std::pair<const WeightTableEntry8*, size_t> get_rare_recovery_table(size_t index) const;
@@ -403,7 +409,7 @@ public:
   struct RangeTableEntry {
     be_uint32_t min;
     be_uint32_t max;
-  } __attribute__((packed));
+  } __packed_ws__(RangeTableEntry, 8);
 
   std::pair<const WeightTableEntry8*, size_t> get_weapon_type_table(size_t index) const;
   const parray<WeightTableEntry32, 6>* get_bonus_type_table(size_t which, size_t index) const;
@@ -422,7 +428,7 @@ private:
     be_uint32_t special_mode_table; // [[{u32 value, u32 weight}](3)](8)
     be_uint32_t standard_grind_range_table; // [{u32 min, u32 max}](6)
     be_uint32_t favored_grind_range_table; // [{u32 min, u32 max}](6)
-  } __attribute__((packed));
+  } __packed_ws__(Offsets, 0x20);
 
   const Offsets* offsets;
 };
@@ -455,11 +461,11 @@ private:
     uint8_t delta_index;
     uint8_t count_default;
     uint8_t count_favored;
-  } __attribute__((packed));
+  } __packed_ws__(DeltaProbabilityEntry, 3);
   struct LuckTableEntry {
     uint8_t delta_index;
     int8_t luck;
-  } __attribute__((packed));
+  } __packed_ws__(LuckTableEntry, 2);
 
   struct Offsets {
     // Each section ID's favored weapon class has different probabilities than
@@ -565,7 +571,7 @@ private:
     // In PSO V3, the bonus delta luck table is:
     //   +10 => +15, +5 => +8, 0 => 0, -5 => -8, -10 => -15
     be_uint32_t bonus_delta_luck_offset; // LuckTableEntry[...]; ending with FF FF
-  } __attribute__((packed));
+  } __packed_ws__(Offsets, 0x18);
 
   const Offsets* offsets;
 

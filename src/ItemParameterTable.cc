@@ -79,9 +79,9 @@ ItemParameterTable::ItemParameterTable(shared_ptr<const string> data, Version ve
     case Version::GC_V3:
     case Version::XB_V3: {
       if (is_big_endian(this->version)) {
-        this->offsets_v3_be = &this->r.pget<TableOffsetsV3V4<true>>(offset_table_offset);
+        this->offsets_v3_be = &this->r.pget<TableOffsetsV3V4BE>(offset_table_offset);
       } else {
-        this->offsets_v3_le = &this->r.pget<TableOffsetsV3V4<false>>(offset_table_offset);
+        this->offsets_v3_le = &this->r.pget<TableOffsetsV3V4>(offset_table_offset);
       }
       this->num_weapon_classes = 0xAA;
       this->num_tool_classes = 0x18;
@@ -93,7 +93,7 @@ ItemParameterTable::ItemParameterTable(shared_ptr<const string> data, Version ve
     }
 
     case Version::BB_V4: {
-      this->offsets_v4 = &this->r.pget<TableOffsetsV3V4<false>>(offset_table_offset);
+      this->offsets_v4 = &this->r.pget<TableOffsetsV3V4>(offset_table_offset);
       this->num_weapon_classes = 0xED;
       this->num_tool_classes = 0x1B;
       this->item_stars_first_id = 0xB1;
@@ -207,7 +207,7 @@ ItemParameterTable::WeaponV4 ItemParameterTable::WeaponGCNTE::to_v4() const {
 }
 
 template <bool IsBigEndian>
-ItemParameterTable::WeaponV4 ItemParameterTable::WeaponV3<IsBigEndian>::to_v4() const {
+ItemParameterTable::WeaponV4 ItemParameterTable::WeaponV3T<IsBigEndian>::to_v4() const {
   WeaponV4 ret;
   ret.base.id = this->base.id.load();
   ret.base.type = this->base.type.load();
@@ -282,7 +282,7 @@ ItemParameterTable::ArmorOrShieldV4 ItemParameterTable::ArmorOrShieldV1V2::to_v4
 }
 
 template <bool IsBigEndian>
-ItemParameterTable::ArmorOrShieldV4 ItemParameterTable::ArmorOrShieldV3<IsBigEndian>::to_v4() const {
+ItemParameterTable::ArmorOrShieldV4 ItemParameterTable::ArmorOrShieldV3T<IsBigEndian>::to_v4() const {
   ArmorOrShieldV4 ret;
   ret.base.id = this->base.id.load();
   ret.base.type = this->base.type.load();
@@ -324,7 +324,7 @@ ItemParameterTable::UnitV4 ItemParameterTable::UnitV1V2::to_v4() const {
 }
 
 template <bool IsBigEndian>
-ItemParameterTable::UnitV4 ItemParameterTable::UnitV3<IsBigEndian>::to_v4() const {
+ItemParameterTable::UnitV4 ItemParameterTable::UnitV3T<IsBigEndian>::to_v4() const {
   UnitV4 ret;
   ret.base.id = this->base.id.load();
   ret.base.type = this->base.type.load();
@@ -371,7 +371,7 @@ ItemParameterTable::MagV4 ItemParameterTable::MagV2::to_v4() const {
 }
 
 template <bool IsBigEndian>
-ItemParameterTable::MagV4 ItemParameterTable::MagV3<IsBigEndian>::to_v4() const {
+ItemParameterTable::MagV4 ItemParameterTable::MagV3T<IsBigEndian>::to_v4() const {
   MagV4 ret;
   ret.base.id = this->base.id.load();
   ret.base.type = this->base.type.load();
@@ -402,7 +402,7 @@ ItemParameterTable::ToolV4 ItemParameterTable::ToolV1V2::to_v4() const {
 }
 
 template <bool IsBigEndian>
-ItemParameterTable::ToolV4 ItemParameterTable::ToolV3<IsBigEndian>::to_v4() const {
+ItemParameterTable::ToolV4 ItemParameterTable::ToolV3T<IsBigEndian>::to_v4() const {
   ToolV4 ret;
   ret.base.id = this->base.id.load();
   ret.base.type = this->base.type.load();
@@ -416,13 +416,13 @@ ItemParameterTable::ToolV4 ItemParameterTable::ToolV3<IsBigEndian>::to_v4() cons
 
 template <bool IsBigEndian>
 size_t indirect_lookup_2d_count(const StringReader& r, size_t root_offset, size_t co_index) {
-  using ArrayRefT = typename std::conditional_t<IsBigEndian, ItemParameterTable::ArrayRefBE, ItemParameterTable::ArrayRefLE>;
+  using ArrayRefT = typename std::conditional_t<IsBigEndian, ItemParameterTable::ArrayRefBE, ItemParameterTable::ArrayRef>;
   return r.pget<ArrayRefT>(root_offset + sizeof(ArrayRefT) * co_index).count;
 }
 
 template <typename T, bool IsBigEndian>
 const T& indirect_lookup_2d(const StringReader& r, size_t root_offset, size_t co_index, size_t item_index) {
-  using ArrayRefT = typename std::conditional_t<IsBigEndian, ItemParameterTable::ArrayRefBE, ItemParameterTable::ArrayRefLE>;
+  using ArrayRefT = typename std::conditional_t<IsBigEndian, ItemParameterTable::ArrayRefBE, ItemParameterTable::ArrayRef>;
 
   const auto& co = r.pget<ArrayRefT>(root_offset + sizeof(ArrayRefT) * co_index);
   if (item_index >= co.count) {
@@ -473,9 +473,9 @@ const ItemParameterTable::WeaponV4& ItemParameterTable::get_weapon(uint8_t data1
     } else if (this->offsets_gc_nte) {
       def_v4 = indirect_lookup_2d<WeaponGCNTE, true>(this->r, this->offsets_gc_nte->weapon_table, data1_1, data1_2).to_v4();
     } else if (this->offsets_v3_le) {
-      def_v4 = indirect_lookup_2d<WeaponV3<false>, false>(this->r, this->offsets_v3_le->weapon_table, data1_1, data1_2).to_v4();
+      def_v4 = indirect_lookup_2d<WeaponV3, false>(this->r, this->offsets_v3_le->weapon_table, data1_1, data1_2).to_v4();
     } else if (this->offsets_v3_be) {
-      def_v4 = indirect_lookup_2d<WeaponV3<true>, true>(this->r, this->offsets_v3_be->weapon_table, data1_1, data1_2).to_v4();
+      def_v4 = indirect_lookup_2d<WeaponV3BE, true>(this->r, this->offsets_v3_be->weapon_table, data1_1, data1_2).to_v4();
     } else {
       throw logic_error("table is not v2, v3, or v4");
     }
@@ -528,11 +528,11 @@ const ItemParameterTable::ArmorOrShieldV4& ItemParameterTable::get_armor_or_shie
     } else if (this->offsets_v1_v2) {
       def_v4 = indirect_lookup_2d<ArmorOrShieldV1V2, false>(this->r, this->offsets_v1_v2->armor_table, data1_1 - 1, data1_2).to_v4();
     } else if (this->offsets_gc_nte) {
-      def_v4 = indirect_lookup_2d<ArmorOrShieldV3<true>, true>(this->r, this->offsets_gc_nte->armor_table, data1_1 - 1, data1_2).to_v4();
+      def_v4 = indirect_lookup_2d<ArmorOrShieldV3BE, true>(this->r, this->offsets_gc_nte->armor_table, data1_1 - 1, data1_2).to_v4();
     } else if (this->offsets_v3_le) {
-      def_v4 = indirect_lookup_2d<ArmorOrShieldV3<false>, false>(this->r, this->offsets_v3_le->armor_table, data1_1 - 1, data1_2).to_v4();
+      def_v4 = indirect_lookup_2d<ArmorOrShieldV3, false>(this->r, this->offsets_v3_le->armor_table, data1_1 - 1, data1_2).to_v4();
     } else if (this->offsets_v3_be) {
-      def_v4 = indirect_lookup_2d<ArmorOrShieldV3<true>, true>(this->r, this->offsets_v3_be->armor_table, data1_1 - 1, data1_2).to_v4();
+      def_v4 = indirect_lookup_2d<ArmorOrShieldV3BE, true>(this->r, this->offsets_v3_be->armor_table, data1_1 - 1, data1_2).to_v4();
     } else {
       throw logic_error("table is not v2, v3, or v4");
     }
@@ -580,11 +580,11 @@ const ItemParameterTable::UnitV4& ItemParameterTable::get_unit(uint8_t data1_2) 
     } else if (this->offsets_v1_v2) {
       def_v4 = indirect_lookup_2d<UnitV1V2, false>(this->r, this->offsets_v1_v2->unit_table, 0, data1_2).to_v4();
     } else if (this->offsets_gc_nte) {
-      def_v4 = indirect_lookup_2d<UnitV3<true>, true>(this->r, this->offsets_gc_nte->unit_table, 0, data1_2).to_v4();
+      def_v4 = indirect_lookup_2d<UnitV3BE, true>(this->r, this->offsets_gc_nte->unit_table, 0, data1_2).to_v4();
     } else if (this->offsets_v3_le) {
-      def_v4 = indirect_lookup_2d<UnitV3<false>, false>(this->r, this->offsets_v3_le->unit_table, 0, data1_2).to_v4();
+      def_v4 = indirect_lookup_2d<UnitV3, false>(this->r, this->offsets_v3_le->unit_table, 0, data1_2).to_v4();
     } else if (this->offsets_v3_be) {
-      def_v4 = indirect_lookup_2d<UnitV3<true>, true>(this->r, this->offsets_v3_be->unit_table, 0, data1_2).to_v4();
+      def_v4 = indirect_lookup_2d<UnitV3BE, true>(this->r, this->offsets_v3_be->unit_table, 0, data1_2).to_v4();
     } else {
       throw logic_error("table is not v2, v3, or v4");
     }
@@ -636,11 +636,11 @@ const ItemParameterTable::MagV4& ItemParameterTable::get_mag(uint8_t data1_1) co
         def_v4 = indirect_lookup_2d<MagV2, false>(this->r, this->offsets_v1_v2->mag_table, 0, data1_1).to_v4();
       }
     } else if (this->offsets_gc_nte) {
-      def_v4 = indirect_lookup_2d<MagV3<true>, true>(this->r, this->offsets_gc_nte->mag_table, 0, data1_1).to_v4();
+      def_v4 = indirect_lookup_2d<MagV3BE, true>(this->r, this->offsets_gc_nte->mag_table, 0, data1_1).to_v4();
     } else if (this->offsets_v3_le) {
-      def_v4 = indirect_lookup_2d<MagV3<false>, false>(this->r, this->offsets_v3_le->mag_table, 0, data1_1).to_v4();
+      def_v4 = indirect_lookup_2d<MagV3, false>(this->r, this->offsets_v3_le->mag_table, 0, data1_1).to_v4();
     } else if (this->offsets_v3_be) {
-      def_v4 = indirect_lookup_2d<MagV3<true>, true>(this->r, this->offsets_v3_be->mag_table, 0, data1_1).to_v4();
+      def_v4 = indirect_lookup_2d<MagV3BE, true>(this->r, this->offsets_v3_be->mag_table, 0, data1_1).to_v4();
     } else {
       throw logic_error("table is not v2, v3, or v4");
     }
@@ -693,11 +693,11 @@ const ItemParameterTable::ToolV4& ItemParameterTable::get_tool(uint8_t data1_1, 
     } else if (this->offsets_v1_v2) {
       def_v4 = indirect_lookup_2d<ToolV1V2, false>(this->r, this->offsets_v1_v2->tool_table, data1_1, data1_2).to_v4();
     } else if (this->offsets_gc_nte) {
-      def_v4 = indirect_lookup_2d<ToolV3<true>, true>(this->r, this->offsets_gc_nte->tool_table, data1_1, data1_2).to_v4();
+      def_v4 = indirect_lookup_2d<ToolV3BE, true>(this->r, this->offsets_gc_nte->tool_table, data1_1, data1_2).to_v4();
     } else if (this->offsets_v3_le) {
-      def_v4 = indirect_lookup_2d<ToolV3<false>, false>(this->r, this->offsets_v3_le->tool_table, data1_1, data1_2).to_v4();
+      def_v4 = indirect_lookup_2d<ToolV3, false>(this->r, this->offsets_v3_le->tool_table, data1_1, data1_2).to_v4();
     } else if (this->offsets_v3_be) {
-      def_v4 = indirect_lookup_2d<ToolV3<true>, true>(this->r, this->offsets_v3_be->tool_table, data1_1, data1_2).to_v4();
+      def_v4 = indirect_lookup_2d<ToolV3BE, true>(this->r, this->offsets_v3_be->tool_table, data1_1, data1_2).to_v4();
     } else {
       throw logic_error("table is not v2, v3, or v4");
     }
@@ -706,13 +706,13 @@ const ItemParameterTable::ToolV4& ItemParameterTable::get_tool(uint8_t data1_1, 
   }
 }
 
-template <typename ToolT, bool IsBigEndian>
+template <typename ToolDefT, bool IsBigEndian>
 pair<uint8_t, uint8_t> ItemParameterTable::find_tool_by_id_t(uint32_t tool_table_offset, uint32_t item_id) const {
-  const auto* cos = &this->r.pget<ArrayRef<IsBigEndian>>(
-      tool_table_offset, this->num_tool_classes * sizeof(ArrayRef<IsBigEndian>));
+  const auto* cos = &this->r.pget<ArrayRefT<IsBigEndian>>(
+      tool_table_offset, this->num_tool_classes * sizeof(ArrayRefT<IsBigEndian>));
   for (size_t z = 0; z < this->num_tool_classes; z++) {
     const auto& co = cos[z];
-    const auto* defs = &this->r.pget<ToolT>(co.offset, sizeof(ToolT) * co.count);
+    const auto* defs = &this->r.pget<ToolDefT>(co.offset, sizeof(ToolDefT) * co.count);
     for (size_t y = 0; y < co.count; y++) {
       if (defs[y].base.id == item_id) {
         return make_pair(z, y);
@@ -728,11 +728,11 @@ pair<uint8_t, uint8_t> ItemParameterTable::find_tool_by_id(uint32_t item_id) con
   } else if (this->offsets_v1_v2) {
     return this->find_tool_by_id_t<ToolV1V2, false>(this->offsets_v1_v2->tool_table, item_id);
   } else if (this->offsets_gc_nte) {
-    return this->find_tool_by_id_t<ToolV3<true>, true>(this->offsets_gc_nte->tool_table, item_id);
+    return this->find_tool_by_id_t<ToolV3BE, true>(this->offsets_gc_nte->tool_table, item_id);
   } else if (this->offsets_v3_le) {
-    return this->find_tool_by_id_t<ToolV3<false>, false>(this->offsets_v3_le->tool_table, item_id);
+    return this->find_tool_by_id_t<ToolV3, false>(this->offsets_v3_le->tool_table, item_id);
   } else if (this->offsets_v3_be) {
-    return this->find_tool_by_id_t<ToolV3<true>, true>(this->offsets_v3_be->tool_table, item_id);
+    return this->find_tool_by_id_t<ToolV3BE, true>(this->offsets_v3_be->tool_table, item_id);
   } else if (this->offsets_v4) {
     return this->find_tool_by_id_t<ToolV4, false>(this->offsets_v4->tool_table, item_id);
   } else {
@@ -752,7 +752,7 @@ float ItemParameterTable::get_sale_divisor_t(const OffsetsT* offsets, uint8_t da
       return this->r.pget<FloatT>(offsets->weapon_sale_divisor_table + data1_1 * sizeof(FloatT));
 
     case 1: {
-      const auto& divisors = this->r.pget<NonWeaponSaleDivisors<IsBigEndian>>(offsets->sale_divisor_table);
+      const auto& divisors = this->r.pget<NonWeaponSaleDivisorsT<IsBigEndian>>(offsets->sale_divisor_table);
       switch (data1_1) {
         case 1:
           return divisors.armor_divisor;
@@ -765,7 +765,7 @@ float ItemParameterTable::get_sale_divisor_t(const OffsetsT* offsets, uint8_t da
     }
 
     case 2: {
-      const auto& divisors = this->r.pget<NonWeaponSaleDivisors<IsBigEndian>>(offsets->sale_divisor_table);
+      const auto& divisors = this->r.pget<NonWeaponSaleDivisorsT<IsBigEndian>>(offsets->sale_divisor_table);
       return divisors.mag_divisor;
     }
 
@@ -803,22 +803,22 @@ const ItemParameterTable::MagFeedResult& ItemParameterTable::get_mag_feed_result
 
   uint32_t offset;
   if (this->offsets_dc_protos) {
-    const auto& table_offsets = this->r.pget<MagFeedResultsListOffsets<false>>(this->offsets_dc_protos->mag_feed_table);
+    const auto& table_offsets = this->r.pget<MagFeedResultsListOffsets>(this->offsets_dc_protos->mag_feed_table);
     offset = table_offsets.offsets[table_index];
   } else if (this->offsets_v1_v2) {
-    const auto& table_offsets = this->r.pget<MagFeedResultsListOffsets<false>>(this->offsets_v1_v2->mag_feed_table);
+    const auto& table_offsets = this->r.pget<MagFeedResultsListOffsets>(this->offsets_v1_v2->mag_feed_table);
     offset = table_offsets.offsets[table_index];
   } else if (this->offsets_gc_nte) {
-    const auto& table_offsets = this->r.pget<MagFeedResultsListOffsets<true>>(this->offsets_gc_nte->mag_feed_table);
+    const auto& table_offsets = this->r.pget<MagFeedResultsListOffsetsBE>(this->offsets_gc_nte->mag_feed_table);
     offset = table_offsets.offsets[table_index];
   } else if (this->offsets_v3_le) {
-    const auto& table_offsets = this->r.pget<MagFeedResultsListOffsets<false>>(this->offsets_v3_le->mag_feed_table);
+    const auto& table_offsets = this->r.pget<MagFeedResultsListOffsets>(this->offsets_v3_le->mag_feed_table);
     offset = table_offsets.offsets[table_index];
   } else if (this->offsets_v3_be) {
-    const auto& table_offsets = this->r.pget<MagFeedResultsListOffsets<true>>(this->offsets_v3_be->mag_feed_table);
+    const auto& table_offsets = this->r.pget<MagFeedResultsListOffsetsBE>(this->offsets_v3_be->mag_feed_table);
     offset = table_offsets.offsets[table_index];
   } else if (this->offsets_v4) {
-    const auto& table_offsets = this->r.pget<MagFeedResultsListOffsets<false>>(this->offsets_v4->mag_feed_table);
+    const auto& table_offsets = this->r.pget<MagFeedResultsListOffsets>(this->offsets_v4->mag_feed_table);
     offset = table_offsets.offsets[table_index];
   } else {
     throw logic_error("table is not v2, v3, or v4");
@@ -856,24 +856,24 @@ uint8_t ItemParameterTable::get_special_stars(uint8_t special) const {
       : 0;
 }
 
-const ItemParameterTable::Special<false>& ItemParameterTable::get_special(uint8_t special) const {
+const ItemParameterTable::Special& ItemParameterTable::get_special(uint8_t special) const {
   special &= 0x3F;
   if (special >= this->num_specials) {
     throw out_of_range("invalid special index");
   }
 
   if (this->offsets_dc_protos) {
-    return this->r.pget<Special<false>>(this->offsets_dc_protos->special_data_table + sizeof(Special<false>) * special);
+    return this->r.pget<Special>(this->offsets_dc_protos->special_data_table + sizeof(Special) * special);
   } else if (this->offsets_v1_v2) {
-    return this->r.pget<Special<false>>(this->offsets_v1_v2->special_data_table + sizeof(Special<false>) * special);
+    return this->r.pget<Special>(this->offsets_v1_v2->special_data_table + sizeof(Special) * special);
   } else if (this->offsets_v3_le) {
-    return this->r.pget<Special<false>>(this->offsets_v3_le->special_data_table + sizeof(Special<false>) * special);
+    return this->r.pget<Special>(this->offsets_v3_le->special_data_table + sizeof(Special) * special);
   } else if (this->offsets_gc_nte) {
     if ((special >= this->parsed_specials.size()) || (this->parsed_specials[special].type != 0xFFFF)) {
       if (special >= this->parsed_specials.size()) {
         this->parsed_specials.resize(special + 1);
       }
-      const auto& sp_be = this->r.pget<Special<true>>(this->offsets_gc_nte->special_data_table + sizeof(Special<true>) * special);
+      const auto& sp_be = this->r.pget<SpecialBE>(this->offsets_gc_nte->special_data_table + sizeof(SpecialBE) * special);
       this->parsed_specials[special].type = sp_be.type.load();
       this->parsed_specials[special].amount = sp_be.amount.load();
     }
@@ -883,13 +883,13 @@ const ItemParameterTable::Special<false>& ItemParameterTable::get_special(uint8_
       if (special >= this->parsed_specials.size()) {
         this->parsed_specials.resize(special + 1);
       }
-      const auto& sp_be = this->r.pget<Special<true>>(this->offsets_v3_be->special_data_table + sizeof(Special<true>) * special);
+      const auto& sp_be = this->r.pget<SpecialBE>(this->offsets_v3_be->special_data_table + sizeof(SpecialBE) * special);
       this->parsed_specials[special].type = sp_be.type.load();
       this->parsed_specials[special].amount = sp_be.amount.load();
     }
     return this->parsed_specials[special];
   } else if (this->offsets_v4) {
-    return this->r.pget<Special<false>>(this->offsets_v4->special_data_table + sizeof(Special<false>) * special);
+    return this->r.pget<Special>(this->offsets_v4->special_data_table + sizeof(Special) * special);
   } else {
     throw logic_error("table is not v2, v3, or v4");
   }
@@ -1051,7 +1051,7 @@ bool ItemParameterTable::is_unsealable_item(uint8_t data1_0, uint8_t data1_1, ui
   if (this->offsets_dc_protos || this->offsets_v1_v2 || this->offsets_gc_nte) {
     return false;
   } else if (this->offsets_v3_le) {
-    const auto& co = this->r.pget<ArrayRefLE>(this->offsets_v3_le->unsealable_table);
+    const auto& co = this->r.pget<ArrayRef>(this->offsets_v3_le->unsealable_table);
     offset = co.offset;
     count = co.count;
   } else if (this->offsets_v3_be) {
@@ -1059,7 +1059,7 @@ bool ItemParameterTable::is_unsealable_item(uint8_t data1_0, uint8_t data1_1, ui
     offset = co.offset;
     count = co.count;
   } else if (this->offsets_v4) {
-    const auto& co = this->r.pget<ArrayRefLE>(this->offsets_v4->unsealable_table);
+    const auto& co = this->r.pget<ArrayRef>(this->offsets_v4->unsealable_table);
     offset = co.offset;
     count = co.count;
   } else {
@@ -1111,7 +1111,7 @@ const std::map<uint32_t, std::vector<ItemParameterTable::ItemCombination>>& Item
       static const std::map<uint32_t, std::vector<ItemParameterTable::ItemCombination>> empty_map;
       return empty_map;
     } else if (this->offsets_v3_le) {
-      const auto& co = this->r.pget<ArrayRefLE>(this->offsets_v3_le->combination_table);
+      const auto& co = this->r.pget<ArrayRef>(this->offsets_v3_le->combination_table);
       offset = co.offset;
       count = co.count;
     } else if (this->offsets_v3_be) {
@@ -1119,7 +1119,7 @@ const std::map<uint32_t, std::vector<ItemParameterTable::ItemCombination>>& Item
       offset = co.offset;
       count = co.count;
     } else if (this->offsets_v4) {
-      const auto& co = this->r.pget<ArrayRefLE>(this->offsets_v4->combination_table);
+      const auto& co = this->r.pget<ArrayRef>(this->offsets_v4->combination_table);
       offset = co.offset;
       count = co.count;
     } else {
@@ -1138,7 +1138,7 @@ const std::map<uint32_t, std::vector<ItemParameterTable::ItemCombination>>& Item
 
 template <bool IsBigEndian>
 size_t ItemParameterTable::num_events_t(uint32_t base_offset) const {
-  return this->r.pget<ArrayRef<IsBigEndian>>(base_offset).count;
+  return this->r.pget<ArrayRefT<IsBigEndian>>(base_offset).count;
 }
 
 size_t ItemParameterTable::num_events() const {
@@ -1158,11 +1158,11 @@ size_t ItemParameterTable::num_events() const {
 template <bool IsBigEndian>
 std::pair<const ItemParameterTable::EventItem*, size_t> ItemParameterTable::get_event_items_t(
     uint32_t base_offset, uint8_t event_number) const {
-  const auto& co = this->r.pget<ArrayRef<IsBigEndian>>(base_offset);
+  const auto& co = this->r.pget<ArrayRefT<IsBigEndian>>(base_offset);
   if (event_number >= co.count) {
     throw out_of_range("invalid event number");
   }
-  const auto& event_co = this->r.pget<ArrayRef<IsBigEndian>>(co.offset + sizeof(ArrayRef<IsBigEndian>) * event_number);
+  const auto& event_co = this->r.pget<ArrayRefT<IsBigEndian>>(co.offset + sizeof(ArrayRefT<IsBigEndian>) * event_number);
   const auto* defs = &this->r.pget<EventItem>(event_co.offset, event_co.count * sizeof(EventItem));
   return make_pair(defs, event_co.count);
 }

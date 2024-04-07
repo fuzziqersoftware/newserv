@@ -11,7 +11,7 @@ struct TObjectVTable {
   be_uint32_t update;
   be_uint32_t render;
   be_uint32_t render_shadow;
-} __attribute__((packed));
+} __packed_ws__(TObjectVTable, 0x18);
 
 struct TObject {
   be_uint32_t type_name_addr;
@@ -22,7 +22,7 @@ struct TObject {
   be_uint32_t parent_addr;
   be_uint32_t children_head_addr;
   be_uint32_t vtable_addr;
-} __attribute__((packed));
+} __packed_ws__(TObject, 0x1C);
 
 PSOGCObjectGraph::PSOGCObjectGraph(
     const string& memory_data, uint32_t root_address) {

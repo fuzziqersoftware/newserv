@@ -447,7 +447,7 @@ struct Location {
 
   void clear();
   void clear_FF();
-} __attribute__((packed));
+} __packed_ws__(Location, 4);
 
 struct CardDefinition {
   struct Stat {
@@ -470,7 +470,7 @@ struct CardDefinition {
     void decode_code();
     std::string str() const;
     JSON json() const;
-  } __attribute__((packed));
+  } __packed_ws__(Stat, 4);
 
   struct Effect {
     // effect_num is the 1-based index of this effect within the card definition
@@ -507,7 +507,7 @@ struct CardDefinition {
     static std::string str_for_arg(const std::string& arg);
     std::string str(const char* separator = ", ", const TextSet* text_archive = nullptr) const;
     JSON json() const;
-  } __attribute__((packed));
+  } __packed_ws__(Effect, 0x20);
 
   /* 0000 */ be_uint32_t card_id;
   /* 0004 */ pstring<TextEncoding::SJIS, 0x40> jp_name;
@@ -774,7 +774,7 @@ struct CardDefinition {
   void decode_range();
   std::string str(bool single_line = true, const TextSet* text_archive = nullptr) const;
   JSON json() const;
-} __attribute__((packed)); // 0x128 bytes in total
+} __packed_ws__(CardDefinition, 0x128);
 
 struct CardDefinitionsFooter {
   // Technically the card definitions file is a REL file, so the last 0x20 bytes
@@ -790,7 +790,7 @@ struct CardDefinitionsFooter {
   /* 48 */ be_uint32_t footer_offset;
   /* 4C */ parray<be_uint32_t, 3> unused2;
   /* 58 */
-} __attribute__((packed));
+} __packed_ws__(CardDefinitionsFooter, 0x58);
 
 struct DeckDefinition {
   /* 00 */ pstring<TextEncoding::MARKED, 0x10> name;
@@ -810,7 +810,7 @@ struct DeckDefinition {
   /* 82 */ uint8_t second;
   /* 83 */ uint8_t unknown_a2;
   /* 84 */
-} __attribute__((packed));
+} __packed_ws__(DeckDefinition, 0x84);
 
 struct PlayerConfig {
   // The game splits this internally into two structures. The first column of
@@ -828,7 +828,7 @@ struct PlayerConfig {
   // earlier version, this was the offline records structure, but they later
   // decided to just count online and offline records together in the main
   // records structure and didn't remove the codepath that reads from this.
-  /* 0138:---- */ PlayerRecords_Battle<true> unused_offline_records;
+  /* 0138:---- */ PlayerRecordsBattleBE unused_offline_records;
   /* 0150:---- */ parray<uint8_t, 4> unknown_a4;
   // The PlayerDataSegment structure begins here. In newserv, we combine this
   // structure into PlayerConfig since the two are always used together.
@@ -879,7 +879,7 @@ struct PlayerConfig {
   struct PlayerReference {
     /* 00 */ be_uint32_t guild_card_number;
     /* 04 */ pstring<TextEncoding::MARKED, 0x18> name;
-  } __attribute__((packed));
+  } __packed_ws__(PlayerReference, 0x1C);
   // This array is updated when a battle is started (via a 6xB4x05 command). The
   // client adds the opposing players' info to ths first two entries here if the
   // opponents are human. (The existing entries are always moved back by two
@@ -902,7 +902,7 @@ struct PlayerConfig {
 
   void decrypt();
   void encrypt(uint8_t basis);
-} __attribute__((packed));
+} __packed_ws__(PlayerConfig, 0x2350);
 
 enum class HPType : uint8_t {
   DEFEAT_PLAYER = 0,
@@ -972,7 +972,7 @@ struct Rules {
   std::pair<uint8_t, uint8_t> def_dice_range(bool is_1p_2v1) const;
 
   std::string str() const;
-} __attribute__((packed));
+} __packed_ws__(Rules, 0x14);
 
 struct RulesTrial {
   // Most fields here have the same meanings as in the final version.
@@ -996,7 +996,7 @@ struct RulesTrial {
   RulesTrial() = default;
   RulesTrial(const Rules&);
   operator Rules() const;
-} __attribute__((packed));
+} __packed_ws__(RulesTrial, 0x0C);
 
 struct StateFlags {
   /* 00 */ le_uint16_t turn_num;
@@ -1018,7 +1018,7 @@ struct StateFlags {
   bool operator!=(const StateFlags& other) const;
   void clear();
   void clear_FF();
-} __attribute__((packed));
+} __packed_ws__(StateFlags, 0x18);
 
 struct MapList {
   be_uint32_t num_maps;
@@ -1046,18 +1046,18 @@ struct MapList {
     /* 021C */ uint8_t map_category;
     /* 021D */ parray<uint8_t, 3> unused;
     /* 0220 */
-  } __attribute__((packed));
+  } __packed_ws__(Entry, 0x220);
 
   // Variable-length fields:
   // Entry entries[num_maps];
   // char strings[...EOF]; // Null-terminated strings, pointed to by offsets in Entry structs
-} __attribute__((packed));
+} __packed_ws__(MapList, 0x10);
 
 struct CompressedMapHeader { // .mnm file format
   le_uint32_t map_number;
   le_uint32_t compressed_data_size;
   // Compressed data immediately follows (which decompresses to a MapDefinition)
-} __attribute__((packed));
+} __packed_ws__(CompressedMapHeader, 8);
 
 struct MapDefinition { // .mnmd format; also the format of (decompressed) quests
   // If tag is not 0x00000100, the game considers the map to be corrupt in
@@ -1155,7 +1155,7 @@ struct MapDefinition { // .mnmd format; also the format of (decompressed) quests
 
     std::string str() const;
     JSON json() const;
-  } __attribute__((packed));
+  } __packed_ws__(CameraSpec, 0x48);
 
   // This array specifies the camera zone maps. A camera zone map is a subset of
   // the main map (specified in map_tiles). Tiles that are part of each camera
@@ -1213,7 +1213,7 @@ struct MapDefinition { // .mnmd format; also the format of (decompressed) quests
     /* 18 */ parray<be_uint16_t, 0x20> card_ids; // Last one appears to always be FFFF
     /* 58 */
     JSON json(uint8_t language) const;
-  } __attribute__((packed));
+  } __packed_ws__(NPCDeck, 0x58);
   /* 1FE8 */ parray<NPCDeck, 3> npc_decks; // Unused if name[0] == 0
 
   // These are almost (but not quite) the same format as the entries in
@@ -1229,7 +1229,7 @@ struct MapDefinition { // .mnmd format; also the format of (decompressed) quests
     /* 0018 */ parray<be_uint16_t, 0x7E> params;
     /* 0114 */
     JSON json(uint8_t language) const;
-  } __attribute__((packed));
+  } __packed_ws__(AIParams, 0x114);
   /* 20F0 */ parray<AIParams, 3> npc_ai_params; // Unused if name[0] == 0
 
   /* 242C */ parray<uint8_t, 8> unknown_a7;
@@ -1282,7 +1282,7 @@ struct MapDefinition { // .mnmd format; also the format of (decompressed) quests
     /* 0004 */ parray<pstring<TextEncoding::MARKED, 0x40>, 4> strings;
     /* 0104 */
     JSON json(uint8_t language) const;
-  } __attribute__((packed));
+  } __packed_ws__(DialogueSet, 0x104);
 
   // There are up to 0x10 of these per valid NPC, but only the first 13 of them
   // are used, since each one must have a unique value for .when and the values
@@ -1365,7 +1365,7 @@ struct MapDefinition { // .mnmd format; also the format of (decompressed) quests
     bool operator==(const EntryState& other) const = default;
     bool operator!=(const EntryState& other) const = default;
     JSON json() const;
-  } __attribute__((packed));
+  } __packed_ws__(EntryState, 2);
   /* 5A10 */ parray<EntryState, 4> entry_states;
   /* 5A18 */
 
@@ -1381,7 +1381,7 @@ struct MapDefinition { // .mnmd format; also the format of (decompressed) quests
 
   std::string str(const CardIndex* card_index, uint8_t language) const;
   JSON json(uint8_t language) const;
-} __attribute__((packed));
+} __packed_ws__(MapDefinition, 0x5A18);
 
 struct MapDefinitionTrial {
   // This is the format of Episode 3 Trial Edition maps. See the comments in
@@ -1430,7 +1430,7 @@ struct MapDefinitionTrial {
 
   MapDefinitionTrial(const MapDefinition& map);
   operator MapDefinition() const;
-} __attribute__((packed));
+} __packed_ws__(MapDefinitionTrial, 0x41A0);
 
 struct COMDeckDefinition {
   size_t index;

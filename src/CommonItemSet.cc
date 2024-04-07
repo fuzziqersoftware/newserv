@@ -124,7 +124,7 @@ void CommonItemSet::Table::parse_itempt_t(const StringReader& r, bool is_v3) {
   using U16T = typename std::conditional<IsBigEndian, be_uint16_t, le_uint16_t>::type;
   using U32T = typename std::conditional<IsBigEndian, be_uint32_t, le_uint32_t>::type;
 
-  const auto& offsets = r.pget<Offsets<IsBigEndian>>(r.pget<U32T>(r.size() - 0x10));
+  const auto& offsets = r.pget<OffsetsT<IsBigEndian>>(r.pget<U32T>(r.size() - 0x10));
 
   this->base_weapon_type_prob_table = r.pget<parray<uint8_t, 0x0C>>(offsets.base_weapon_type_prob_table_offset);
   this->subtype_base_table = r.pget<parray<int8_t, 0x0C>>(offsets.subtype_base_table_offset);

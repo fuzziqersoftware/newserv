@@ -20,7 +20,7 @@ struct NameEntry {
 
   NameEntry();
   void clear();
-} __attribute__((packed));
+} __packed_ws__(NameEntry, 0x14);
 
 struct DeckEntry {
   /* 00 */ pstring<TextEncoding::MARKED, 0x10> name;
@@ -37,7 +37,7 @@ struct DeckEntry {
 
   DeckEntry();
   void clear();
-} __attribute__((packed));
+} __packed_ws__(DeckEntry, 0x58);
 
 uint8_t index_for_card_ref(uint16_t card_ref);
 uint8_t client_id_for_card_ref(uint16_t card_ref);

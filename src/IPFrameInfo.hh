@@ -12,31 +12,31 @@ struct HDLCHeader {
   uint8_t address; // 0xFF usually
   uint8_t control; // 0x03 for PPP
   be_uint16_t protocol;
-} __attribute__((packed));
+} __packed_ws__(HDLCHeader, 5);
 
 struct LCPHeader {
   uint8_t command;
   uint8_t request_id;
   be_uint16_t size;
-} __attribute__((packed));
+} __packed_ws__(LCPHeader, 4);
 
 struct PAPHeader {
   uint8_t command;
   uint8_t request_id;
   be_uint16_t size;
-} __attribute__((packed));
+} __packed_ws__(PAPHeader, 4);
 
 struct IPCPHeader {
   uint8_t command;
   uint8_t request_id;
   be_uint16_t size;
-} __attribute__((packed));
+} __packed_ws__(IPCPHeader, 4);
 
 struct EthernetHeader {
   parray<uint8_t, 6> dest_mac;
   parray<uint8_t, 6> src_mac;
   be_uint16_t protocol;
-} __attribute__((packed));
+} __packed_ws__(EthernetHeader, 0x0E);
 
 struct ARPHeader {
   be_uint16_t hardware_type;
@@ -44,7 +44,7 @@ struct ARPHeader {
   uint8_t hwaddr_len;
   uint8_t paddr_len;
   be_uint16_t operation;
-} __attribute__((packed));
+} __packed_ws__(ARPHeader, 8);
 
 struct IPv4Header {
   uint8_t version_ihl;
@@ -57,14 +57,14 @@ struct IPv4Header {
   be_uint16_t checksum;
   be_uint32_t src_addr;
   be_uint32_t dest_addr;
-} __attribute__((packed));
+} __packed_ws__(IPv4Header, 0x14);
 
 struct UDPHeader {
   be_uint16_t src_port;
   be_uint16_t dest_port;
   be_uint16_t size;
   be_uint16_t checksum;
-} __attribute__((packed));
+} __packed_ws__(UDPHeader, 8);
 
 struct TCPHeader {
   enum Flag {
@@ -87,7 +87,7 @@ struct TCPHeader {
   be_uint16_t window;
   be_uint16_t checksum;
   be_uint16_t urgent_ptr;
-} __attribute__((packed));
+} __packed_ws__(TCPHeader, 0x14);
 
 struct DHCPHeader {
   uint8_t opcode = 0;
@@ -105,7 +105,7 @@ struct DHCPHeader {
   parray<uint8_t, 0xC0> unused_bootp_legacy;
   be_uint32_t magic = 0x63825363;
   // Options follow here, terminated with FF
-} __attribute__((packed));
+} __packed_ws__(DHCPHeader, 0xF0);
 
 struct FrameInfo {
   enum class LinkType {

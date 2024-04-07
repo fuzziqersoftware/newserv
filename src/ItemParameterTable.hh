@@ -19,42 +19,43 @@ public:
   // being null or not in each public function. Rewrite this and make it better.
 
   template <bool IsBigEndian>
-  struct ArrayRef {
+  struct ArrayRefT {
     using U32T = typename std::conditional<IsBigEndian, be_uint32_t, le_uint32_t>::type;
     /* 00 */ U32T count;
     /* 04 */ U32T offset;
     /* 08 */
-  } __attribute__((packed));
-  struct ArrayRefLE : ArrayRef<false> {
-  } __attribute__((packed));
-  struct ArrayRefBE : ArrayRef<true> {
-  } __attribute__((packed));
+  } __packed__;
+
+  using ArrayRef = ArrayRefT<false>;
+  using ArrayRefBE = ArrayRefT<true>;
+  check_struct_size(ArrayRef, 8);
+  check_struct_size(ArrayRefBE, 8);
 
   template <bool IsBigEndian>
-  struct ItemBaseV2 {
+  struct ItemBaseV2T {
     using U32T = typename std::conditional<IsBigEndian, be_uint32_t, le_uint32_t>::type;
     // id specifies several things; notably, it doubles as the index of the
     // item's name in the text archive (e.g. TextEnglish) collection 0.
     /* 00 */ U32T id = 0xFFFFFFFF;
     /* 04 */
-  } __attribute__((packed));
+  } __packed__;
   template <bool IsBigEndian>
-  struct ItemBaseV3 : ItemBaseV2<IsBigEndian> {
+  struct ItemBaseV3T : ItemBaseV2T<IsBigEndian> {
     using U16T = typename std::conditional<IsBigEndian, be_uint16_t, le_uint16_t>::type;
     /* 04 */ U16T type = 0;
     /* 06 */ U16T skin = 0;
     /* 08 */
-  } __attribute__((packed));
+  } __packed__;
   template <bool IsBigEndian>
-  struct ItemBaseV4 : ItemBaseV3<IsBigEndian> {
+  struct ItemBaseV4T : ItemBaseV3T<IsBigEndian> {
     using U32T = typename std::conditional<IsBigEndian, be_uint32_t, le_uint32_t>::type;
     /* 08 */ U32T team_points = 0;
     /* 0C */
-  } __attribute__((packed));
+  } __packed__;
 
   struct WeaponV4;
   struct WeaponDCProtos {
-    /* 00 */ ItemBaseV2<false> base;
+    /* 00 */ ItemBaseV2T<false> base;
     /* 04 */ le_uint16_t class_flags = 0;
     /* 06 */ le_uint16_t atp_min = 0;
     /* 08 */ le_uint16_t atp_max = 0;
@@ -68,10 +69,10 @@ public:
     /* 14 */
 
     WeaponV4 to_v4() const;
-  } __attribute__((packed));
+  } __packed_ws__(WeaponDCProtos, 0x14);
 
   struct WeaponV1V2 {
-    /* 00 */ ItemBaseV2<false> base;
+    /* 00 */ ItemBaseV2T<false> base;
     /* 04 */ le_uint16_t class_flags = 0;
     /* 06 */ le_uint16_t atp_min = 0;
     /* 08 */ le_uint16_t atp_max = 0;
@@ -87,10 +88,10 @@ public:
     /* 18 */
 
     WeaponV4 to_v4() const;
-  } __attribute__((packed));
+  } __packed_ws__(WeaponV1V2, 0x18);
 
   struct WeaponGCNTE {
-    /* 00 */ ItemBaseV3<true> base;
+    /* 00 */ ItemBaseV3T<true> base;
     /* 08 */ be_uint16_t class_flags = 0;
     /* 0A */ be_uint16_t atp_min = 0;
     /* 0C */ be_uint16_t atp_max = 0;
@@ -115,12 +116,12 @@ public:
     /* 24 */
 
     WeaponV4 to_v4() const;
-  } __attribute__((packed));
+  } __packed_ws__(WeaponGCNTE, 0x24);
 
   template <bool IsBigEndian>
-  struct WeaponV3 {
+  struct WeaponV3T {
     using U16T = typename std::conditional<IsBigEndian, be_uint16_t, le_uint16_t>::type;
-    /* 00 */ ItemBaseV3<IsBigEndian> base;
+    /* 00 */ ItemBaseV3T<IsBigEndian> base;
     /* 08 */ U16T class_flags = 0;
     /* 0A */ U16T atp_min = 0;
     /* 0C */ U16T atp_max = 0;
@@ -149,10 +150,15 @@ public:
     /* 28 */
 
     WeaponV4 to_v4() const;
-  } __attribute__((packed));
+  } __packed__;
+
+  using WeaponV3 = WeaponV3T<false>;
+  using WeaponV3BE = WeaponV3T<true>;
+  check_struct_size(WeaponV3, 0x28);
+  check_struct_size(WeaponV3BE, 0x28);
 
   struct WeaponV4 {
-    /* 00 */ ItemBaseV4<false> base;
+    /* 00 */ ItemBaseV4T<false> base;
     /* 0C */ le_uint16_t class_flags = 0x00FF;
     /* 0E */ le_uint16_t atp_min = 0;
     /* 10 */ le_uint16_t atp_max = 0;
@@ -179,10 +185,10 @@ public:
     /* 2A */ uint8_t tech_boost = 0;
     /* 2B */ uint8_t combo_type = 0;
     /* 2C */
-  } __attribute__((packed));
+  } __packed_ws__(WeaponV4, 0x2C);
 
   template <typename BaseT, bool IsBigEndian>
-  struct ArmorOrShield {
+  struct ArmorOrShieldT {
     using U16T = typename std::conditional<IsBigEndian, be_uint16_t, le_uint16_t>::type;
     /* V1/V2 offsets */
     /* 00 */ BaseT base;
@@ -200,33 +206,36 @@ public:
     /* 12 */ uint8_t dfp_range = 0;
     /* 13 */ uint8_t evp_range = 0;
     /* 14 */
-  } __attribute__((packed));
+  } __packed__;
 
-  struct ArmorOrShieldV4;
-  struct ArmorOrShieldDCProtos : ArmorOrShield<ItemBaseV2<false>, false> {
-    ArmorOrShieldV4 to_v4() const;
-  } __attribute__((packed));
   template <typename BaseT, bool IsBigEndian>
-  struct ArmorOrShieldFinal : ArmorOrShield<BaseT, IsBigEndian> {
+  struct ArmorOrShieldFinalT : ArmorOrShieldT<BaseT, IsBigEndian> {
     using U16T = typename std::conditional<IsBigEndian, be_uint16_t, le_uint16_t>::type;
     /* 14 */ uint8_t stat_boost = 0;
     /* 15 */ uint8_t tech_boost = 0;
     /* 16 */ U16T unknown_a2 = 0;
     /* 18 */
-  } __attribute__((packed));
+  } __packed__;
+  using ArmorOrShieldV4 = ArmorOrShieldFinalT<ItemBaseV4T<false>, false>;
+  check_struct_size(ArmorOrShieldV4, 0x20);
+  struct ArmorOrShieldDCProtos : ArmorOrShieldT<ItemBaseV2T<false>, false> {
+    ArmorOrShieldV4 to_v4() const;
+  } __packed_ws__(ArmorOrShieldDCProtos, 0x14);
 
-  struct ArmorOrShieldV1V2 : ArmorOrShieldFinal<ItemBaseV2<false>, false> {
+  struct ArmorOrShieldV1V2 : ArmorOrShieldFinalT<ItemBaseV2T<false>, false> {
     ArmorOrShieldV4 to_v4() const;
-  } __attribute__((packed));
+  } __packed_ws__(ArmorOrShieldV1V2, 0x18);
   template <bool IsBigEndian>
-  struct ArmorOrShieldV3 : ArmorOrShieldFinal<ItemBaseV3<IsBigEndian>, IsBigEndian> {
+  struct ArmorOrShieldV3T : ArmorOrShieldFinalT<ItemBaseV3T<IsBigEndian>, IsBigEndian> {
     ArmorOrShieldV4 to_v4() const;
-  } __attribute__((packed));
-  struct ArmorOrShieldV4 : ArmorOrShieldFinal<ItemBaseV4<false>, false> {
-  } __attribute__((packed));
+  } __packed__;
+  using ArmorOrShieldV3 = ArmorOrShieldV3T<false>;
+  using ArmorOrShieldV3BE = ArmorOrShieldV3T<true>;
+  check_struct_size(ArmorOrShieldV3, 0x1C);
+  check_struct_size(ArmorOrShieldV3BE, 0x1C);
 
   template <typename BaseT, bool IsBigEndian>
-  struct Unit {
+  struct UnitT {
     using U16T = typename std::conditional<IsBigEndian, be_uint16_t, le_uint16_t>::type;
     using S16T = typename std::conditional<IsBigEndian, be_int16_t, le_int16_t>::type;
     /* V1/V2 offsets */
@@ -234,31 +243,34 @@ public:
     /* 04 */ U16T stat = 0;
     /* 06 */ U16T stat_amount = 0;
     /* 08 */
-  } __attribute__((packed));
+  } __packed__;
 
-  struct UnitV4;
-  struct UnitDCProtos : Unit<ItemBaseV2<false>, false> {
-    UnitV4 to_v4() const;
-  } __attribute__((packed));
   template <typename BaseT, bool IsBigEndian>
-  struct UnitFinal : Unit<BaseT, IsBigEndian> {
+  struct UnitFinalT : UnitT<BaseT, IsBigEndian> {
     using S16T = typename std::conditional<IsBigEndian, be_int16_t, le_int16_t>::type;
     /* 08 */ S16T modifier_amount = 0;
     /* 0A */ parray<uint8_t, 2> unused;
     /* 0C */
-  } __attribute__((packed));
-  struct UnitV1V2 : UnitFinal<ItemBaseV2<false>, false> {
+  } __packed__;
+  using UnitV4 = UnitFinalT<ItemBaseV4T<false>, false>;
+  check_struct_size(UnitV4, 0x14);
+  struct UnitDCProtos : UnitT<ItemBaseV2T<false>, false> {
     UnitV4 to_v4() const;
-  } __attribute__((packed));
+  } __packed_ws__(UnitDCProtos, 0x08);
+  struct UnitV1V2 : UnitFinalT<ItemBaseV2T<false>, false> {
+    UnitV4 to_v4() const;
+  } __packed_ws__(UnitV1V2, 0x0C);
   template <bool IsBigEndian>
-  struct UnitV3 : UnitFinal<ItemBaseV3<IsBigEndian>, IsBigEndian> {
+  struct UnitV3T : UnitFinalT<ItemBaseV3T<IsBigEndian>, IsBigEndian> {
     UnitV4 to_v4() const;
-  } __attribute__((packed));
-  struct UnitV4 : UnitFinal<ItemBaseV4<false>, false> {
-  } __attribute__((packed));
+  } __packed__;
+  using UnitV3 = UnitV3T<false>;
+  using UnitV3BE = UnitV3T<true>;
+  check_struct_size(UnitV3, 0x10);
+  check_struct_size(UnitV3BE, 0x10);
 
   template <typename BaseT, bool IsBigEndian>
-  struct Mag {
+  struct MagT {
     using U16T = typename std::conditional<IsBigEndian, be_uint16_t, le_uint16_t>::type;
     /* V1/V2 offsets */
     /* 00 */ BaseT base;
@@ -289,36 +301,38 @@ public:
     /* 0E */ uint8_t on_death_flag = 0;
     /* 0F */ uint8_t on_boss_flag = 0;
     /* 10 */
-  } __attribute__((packed));
+  } __packed__;
 
-  struct MagV4;
-  struct MagV1 : Mag<ItemBaseV2<false>, false> {
+  struct MagV4 : MagT<ItemBaseV4T<false>, false> {
+    le_uint16_t class_flags = 0x00FF;
+    parray<uint8_t, 2> unused;
+  } __packed_ws__(MagV4, 0x1C);
+  struct MagV1 : MagT<ItemBaseV2T<false>, false> {
     MagV4 to_v4() const;
-  } __attribute__((packed));
-  struct MagV2 : Mag<ItemBaseV2<false>, false> {
+  } __packed_ws__(MagV1, 0x10);
+  struct MagV2 : MagT<ItemBaseV2T<false>, false> {
     /* 10 */ le_uint16_t class_flags = 0x00FF;
     /* 12 */ parray<uint8_t, 2> unused;
     /* 14 */
 
     MagV4 to_v4() const;
-  } __attribute__((packed));
+  } __packed_ws__(MagV2, 0x14);
   template <bool IsBigEndian>
-  struct MagV3 : Mag<ItemBaseV3<IsBigEndian>, IsBigEndian> {
+  struct MagV3T : MagT<ItemBaseV3T<IsBigEndian>, IsBigEndian> {
     using U16T = typename std::conditional<IsBigEndian, be_uint16_t, le_uint16_t>::type;
     /* 10 */ U16T class_flags = 0x00FF;
     /* 12 */ parray<uint8_t, 2> unused;
     /* 14 */
 
     MagV4 to_v4() const;
-  } __attribute__((packed));
-  struct MagV4 : Mag<ItemBaseV4<false>, false> {
-    /* 10 */ le_uint16_t class_flags = 0x00FF;
-    /* 12 */ parray<uint8_t, 2> unused;
-    /* 14 */
-  } __attribute__((packed));
+  } __packed__;
+  using MagV3 = MagV3T<false>;
+  using MagV3BE = MagV3T<true>;
+  check_struct_size(MagV3, 0x18);
+  check_struct_size(MagV3BE, 0x18);
 
   template <typename BaseT, bool IsBigEndian>
-  struct Tool {
+  struct ToolT {
     using U16T = typename std::conditional<IsBigEndian, be_uint16_t, le_uint16_t>::type;
     using S32T = typename std::conditional<IsBigEndian, be_int32_t, le_int32_t>::type;
     using U32T = typename std::conditional<IsBigEndian, be_uint32_t, le_uint32_t>::type;
@@ -329,18 +343,21 @@ public:
     /* 08 */ S32T cost = 0;
     /* 0C */ U32T item_flag = 0;
     /* 10 */
-  } __attribute__((packed));
+  } __packed__;
 
-  struct ToolV4;
-  struct ToolV1V2 : Tool<ItemBaseV2<false>, false> {
+  using ToolV4 = ToolT<ItemBaseV4T<false>, false>;
+  check_struct_size(ToolV4, 0x18);
+  struct ToolV1V2 : ToolT<ItemBaseV2T<false>, false> {
     ToolV4 to_v4() const;
-  } __attribute__((packed));
+  } __packed_ws__(ToolV1V2, 0x10);
   template <bool IsBigEndian>
-  struct ToolV3 : Tool<ItemBaseV3<IsBigEndian>, IsBigEndian> {
+  struct ToolV3T : ToolT<ItemBaseV3T<IsBigEndian>, IsBigEndian> {
     ToolV4 to_v4() const;
-  } __attribute__((packed));
-  struct ToolV4 : Tool<ItemBaseV4<false>, false> {
-  } __attribute__((packed));
+  } __packed__;
+  using ToolV3 = ToolV3T<false>;
+  using ToolV3BE = ToolV3T<true>;
+  check_struct_size(ToolV3, 0x14);
+  check_struct_size(ToolV3BE, 0x14);
 
   struct MagFeedResult {
     int8_t def = 0;
@@ -350,31 +367,43 @@ public:
     int8_t iq = 0;
     int8_t synchro = 0;
     parray<uint8_t, 2> unused;
-  } __attribute__((packed));
+  } __packed_ws__(MagFeedResult, 8);
 
   using MagFeedResultsList = parray<MagFeedResult, 11>;
 
   template <bool IsBigEndian>
-  struct MagFeedResultsListOffsets {
+  struct MagFeedResultsListOffsetsT {
     using U32T = typename std::conditional<IsBigEndian, be_uint32_t, le_uint32_t>::type;
     parray<U32T, 8> offsets; // Offsets of MagFeedResultsList objects
-  } __attribute__((packed));
+  } __packed__;
+  using MagFeedResultsListOffsets = MagFeedResultsListOffsetsT<false>;
+  using MagFeedResultsListOffsetsBE = MagFeedResultsListOffsetsT<true>;
+  check_struct_size(MagFeedResultsListOffsets, 0x20);
+  check_struct_size(MagFeedResultsListOffsetsBE, 0x20);
 
   template <bool IsBigEndian>
-  struct Special {
+  struct SpecialT {
     using U16T = typename std::conditional<IsBigEndian, be_uint16_t, le_uint16_t>::type;
     U16T type = 0xFFFF;
     U16T amount = 0;
-  } __attribute__((packed));
+  } __packed__;
+  using Special = SpecialT<false>;
+  using SpecialBE = SpecialT<true>;
+  check_struct_size(Special, 4);
+  check_struct_size(SpecialBE, 4);
 
   template <bool IsBigEndian>
-  struct StatBoost {
+  struct StatBoostT {
     using U16T = typename std::conditional<IsBigEndian, be_uint16_t, le_uint16_t>::type;
     uint8_t stat1 = 0;
     uint8_t stat2 = 0;
     U16T amount1 = 0;
     U16T amount2 = 0;
-  } __attribute__((packed));
+  } __packed__;
+  using StatBoost = StatBoostT<false>;
+  using StatBoostBE = StatBoostT<true>;
+  check_struct_size(StatBoost, 6);
+  check_struct_size(StatBoostBE, 6);
 
   // Indexed as [tech_num][char_class]
   using MaxTechniqueLevels = parray<parray<uint8_t, 12>, 19>;
@@ -388,10 +417,10 @@ public:
     uint8_t level = 0;
     uint8_t char_class = 0;
     parray<uint8_t, 3> unused;
-  } __attribute__((packed));
+  } __packed_ws__(ItemCombination, 0x10);
 
   template <bool IsBigEndian>
-  struct TechniqueBoost {
+  struct TechniqueBoostT {
     using U32T = typename std::conditional<IsBigEndian, be_uint32_t, le_uint32_t>::type;
     using FloatT = typename std::conditional<IsBigEndian, be_float, le_float>::type;
     U32T tech1 = 0;
@@ -400,26 +429,34 @@ public:
     FloatT boost2 = 0.0f;
     U32T tech3 = 0;
     FloatT boost3 = 0.0f;
-  } __attribute__((packed));
+  } __packed__;
+  using TechniqueBoost = TechniqueBoostT<false>;
+  using TechniqueBoostBE = TechniqueBoostT<true>;
+  check_struct_size(TechniqueBoost, 0x18);
+  check_struct_size(TechniqueBoostBE, 0x18);
 
   struct EventItem {
     parray<uint8_t, 3> item;
     uint8_t probability = 0;
-  } __attribute__((packed));
+  } __packed_ws__(EventItem, 4);
 
   struct UnsealableItem {
     parray<uint8_t, 3> item;
     uint8_t unused = 0;
-  } __attribute__((packed));
+  } __packed_ws__(UnsealableItem, 4);
 
   template <bool IsBigEndian>
-  struct NonWeaponSaleDivisors {
+  struct NonWeaponSaleDivisorsT {
     using FloatT = typename std::conditional<IsBigEndian, be_float, le_float>::type;
     FloatT armor_divisor = 0.0f;
     FloatT shield_divisor = 0.0f;
     FloatT unit_divisor = 0.0f;
     FloatT mag_divisor = 0.0f;
-  } __attribute__((packed));
+  } __packed__;
+  using NonWeaponSaleDivisors = NonWeaponSaleDivisorsT<false>;
+  using NonWeaponSaleDivisorsBE = NonWeaponSaleDivisorsT<true>;
+  check_struct_size(NonWeaponSaleDivisors, 0x10);
+  check_struct_size(NonWeaponSaleDivisorsBE, 0x10);
 
   ItemParameterTable(std::shared_ptr<const std::string> data, Version version);
   ~ItemParameterTable() = default;
@@ -443,7 +480,7 @@ public:
   const MagFeedResult& get_mag_feed_result(uint8_t table_index, uint8_t which) const;
   uint8_t get_item_stars(uint32_t id) const;
   uint8_t get_special_stars(uint8_t special) const;
-  const Special<false>& get_special(uint8_t special) const;
+  const Special& get_special(uint8_t special) const;
   uint8_t get_max_tech_level(uint8_t char_class, uint8_t tech_num) const;
   uint8_t get_weapon_v1_replacement(uint8_t data1_1) const;
 
@@ -493,7 +530,7 @@ private:
     /* 44 / 0668 / 0668 */ le_uint32_t unknown_a2;
     /* 48 / 030C / 030C */ le_uint32_t unknown_a3;
     /* 4C / 2CE4 / 2D78 */ le_uint32_t unknown_a4;
-  } __attribute__((packed));
+  } __packed_ws__(TableOffsetsDCProtos, 0x50);
 
   struct TableOffsetsV1V2 {
     // TODO: Is weapon count 0x89 or 0x8A? It could be that the last entry in
@@ -516,7 +553,7 @@ private:
     /* 38 / 2C12 / 4540 */ le_uint32_t special_data_table; // -> [Special](0x29)
     /* 3C / 2CB8 / 58DC */ le_uint32_t stat_boost_table; // -> [StatBoost]
     /* 40 / 3198 / 5704 */ le_uint32_t shield_effect_table; // -> [8-byte structs]
-  } __attribute__((packed));
+  } __packed_ws__(TableOffsetsV1V2, 0x44);
 
   struct TableOffsetsGCNTE {
     /* 00 / 6F0C */ be_uint32_t weapon_table; // -> [{count, offset -> [WeaponV3/WeaponV4]}](0xED)
@@ -539,10 +576,10 @@ private:
     /* 44 / 737C */ be_uint32_t combination_table; // -> {count, offset -> [ItemCombination]}
     /* 48 / 68B0 */ be_uint32_t unknown_a1;
     /* 4C / 6B1C */ be_uint32_t tech_boost_table; // -> [TechniqueBoost] (always 0x2C of them? from counts struct?)
-  } __attribute__((packed));
+  } __packed_ws__(TableOffsetsGCNTE, 0x50);
 
   template <bool IsBigEndian>
-  struct TableOffsetsV3V4 {
+  struct TableOffsetsV3V4T {
     using U32T = typename std::conditional<IsBigEndian, be_uint32_t, le_uint32_t>::type;
     /* ## / GC   / BB */
     /* 00 / F078 / 14884 */ U32T weapon_table; // -> [{count, offset -> [WeaponV3/WeaponV4]}](0xED)
@@ -568,7 +605,11 @@ private:
     /* 50 / F5F0 / 15014 */ U32T unwrap_table; // -> {count, offset -> [{count, offset -> [EventItem]}]}
     /* 54 / F5F8 / 1501C */ U32T unsealable_table; // -> {count, offset -> [UnsealableItem]}
     /* 58 / F600 / 15024 */ U32T ranged_special_table; // -> {count, offset -> [4-byte structs]}
-  } __attribute__((packed));
+  } __packed__;
+  using TableOffsetsV3V4 = TableOffsetsV3V4T<false>;
+  using TableOffsetsV3V4BE = TableOffsetsV3V4T<true>;
+  check_struct_size(TableOffsetsV3V4, 0x5C);
+  check_struct_size(TableOffsetsV3V4BE, 0x5C);
 
   Version version;
   std::shared_ptr<const std::string> data;
@@ -576,9 +617,9 @@ private:
   const TableOffsetsDCProtos* offsets_dc_protos;
   const TableOffsetsV1V2* offsets_v1_v2;
   const TableOffsetsGCNTE* offsets_gc_nte;
-  const TableOffsetsV3V4<false>* offsets_v3_le;
-  const TableOffsetsV3V4<true>* offsets_v3_be;
-  const TableOffsetsV3V4<false>* offsets_v4;
+  const TableOffsetsV3V4* offsets_v3_le;
+  const TableOffsetsV3V4BE* offsets_v3_be;
+  const TableOffsetsV3V4* offsets_v4;
 
   // These are unused if offsets_v4 is not null (in that case, we just return
   // references pointing inside the data string)
@@ -588,13 +629,13 @@ private:
   mutable std::vector<UnitV4> parsed_units;
   mutable std::vector<MagV4> parsed_mags;
   mutable std::unordered_map<uint16_t, ToolV4> parsed_tools;
-  mutable std::vector<Special<false>> parsed_specials;
+  mutable std::vector<Special> parsed_specials;
 
   // Key is used_item. We can't index on (used_item, equipped_item) because
   // equipped_item may contain wildcards, and the matching order matters.
   mutable std::map<uint32_t, std::vector<ItemCombination>> item_combination_index;
 
-  template <typename ToolT, bool IsBigEndian>
+  template <typename ToolDefT, bool IsBigEndian>
   std::pair<uint8_t, uint8_t> find_tool_by_id_t(uint32_t tool_table_offset, uint32_t id) const;
   template <bool IsBigEndian, typename OffsetsT>
   float get_sale_divisor_t(const OffsetsT* offsets, uint8_t data1_0, uint8_t data1_1) const;
@@ -614,11 +655,11 @@ public:
     /* 0C / 0556 */ le_uint32_t unknown_a4; // -> (uint8_t)[num_mags]
     /* 10 / 05AC */ le_uint32_t unknown_a5; // -> (float)[0x48]
     /* 14 / 06CC */ le_uint32_t evolution_number; // -> (uint8_t)[num_mags]
-  } __attribute__((packed));
+  } __packed_ws__(TableOffsets, 0x18);
 
   struct EvolutionNumberTable {
     parray<uint8_t, 0x53> values;
-  } __attribute__((packed));
+  } __packed_ws__(EvolutionNumberTable, 0x53);
 
   MagEvolutionTable(std::shared_ptr<const std::string> data);
   ~MagEvolutionTable() = default;

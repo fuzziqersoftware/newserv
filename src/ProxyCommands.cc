@@ -701,7 +701,7 @@ static HandlerResult S_B2(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t, 
     ses->log.info("Wrote code from server to file %s", output_filename.c_str());
 
 #ifdef HAVE_RESOURCE_FILE
-    using FooterT = S_ExecuteCode_Footer_B2<IsBigEndian>;
+    using FooterT = S_ExecuteCode_FooterT_B2<IsBigEndian>;
     using U16T = typename std::conditional<IsBigEndian, be_uint16_t, le_uint16_t>::type;
     using U32T = typename std::conditional<IsBigEndian, be_uint32_t, le_uint32_t>::type;
     // TODO: Support SH-4 disassembly too

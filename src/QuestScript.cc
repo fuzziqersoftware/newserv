@@ -117,7 +117,7 @@ static string format_and_indent_data(const void* data, size_t size, uint64_t sta
 
 struct UnknownF8F2Entry {
   parray<le_float, 4> unknown_a1;
-} __attribute__((packed));
+} __packed_ws__(UnknownF8F2Entry, 0x10);
 
 struct QuestScriptOpcodeDefinition {
   struct Argument {

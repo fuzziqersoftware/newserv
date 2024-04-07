@@ -26,7 +26,7 @@ public:
     le_uint32_t level;
 
     void print(FILE* stream) const;
-  } __attribute__((packed));
+  } __packed_ws__(PlayerEntry, 0x440);
 
   struct Event {
     enum class Type : uint8_t {

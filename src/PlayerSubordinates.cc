@@ -22,184 +22,6 @@
 
 using namespace std;
 
-PlayerInventoryItem::PlayerInventoryItem(const ItemData& item, bool equipped)
-    : present(1),
-      unknown_a1(0),
-      extension_data1(0),
-      extension_data2(0),
-      flags(equipped ? 8 : 0),
-      data(item) {}
-
-uint32_t PlayerVisualConfig::compute_name_color_checksum(uint32_t name_color) {
-  uint8_t x = (random_object<uint32_t>() % 0xFF) + 1;
-  uint8_t y = (random_object<uint32_t>() % 0xFF) + 1;
-  // name_color (ARGB)   = ABCDEFGHabcdefghIJKLMNOPijklmnop
-  // name_color_checksum = 000000000ijklmabcdeIJKLM00000000 ^ xxxxxxxxyyyyyyyyxxxxxxxxyyyyyyyy
-  uint32_t xbrgx95558 = ((name_color << 15) & 0x007C0000) | ((name_color >> 6) & 0x0003E000) | ((name_color >> 3) & 0x00001F00);
-  uint32_t mask = (x << 24) | (y << 16) | (x << 8) | y;
-  return xbrgx95558 ^ mask;
-}
-
-void PlayerVisualConfig::compute_name_color_checksum() {
-  this->name_color_checksum = this->compute_name_color_checksum(this->name_color);
-}
-
-void PlayerVisualConfig::enforce_lobby_join_limits_for_version(Version v) {
-  struct ClassMaxes {
-    uint16_t costume;
-    uint16_t skin;
-    uint16_t face;
-    uint16_t head;
-    uint16_t hair;
-  };
-  static constexpr ClassMaxes v1_v2_class_maxes[14] = {
-      {0x0009, 0x0004, 0x0005, 0x0000, 0x0007},
-      {0x0009, 0x0004, 0x0005, 0x0000, 0x000A},
-      {0x0000, 0x0009, 0x0000, 0x0005, 0x0000},
-      {0x0009, 0x0004, 0x0005, 0x0000, 0x0007},
-      {0x0000, 0x0009, 0x0000, 0x0005, 0x0000},
-      {0x0000, 0x0009, 0x0000, 0x0005, 0x0000},
-      {0x0009, 0x0004, 0x0005, 0x0000, 0x000A},
-      {0x0009, 0x0004, 0x0005, 0x0000, 0x0007},
-      {0x0009, 0x0004, 0x0005, 0x0000, 0x000A},
-      {0x0000, 0x0000, 0x0000, 0x0000, 0x0000},
-      {0x0000, 0x0000, 0x0000, 0x0000, 0x0000},
-      {0x0000, 0x0000, 0x0000, 0x0000, 0x0000},
-      {0x0000, 0x0000, 0x0000, 0x0000, 0x0000},
-      {0x0000, 0x0000, 0x0000, 0x0000, 0x0000},
-  };
-  static constexpr ClassMaxes v3_v4_class_maxes[19] = {
-      {0x0012, 0x0004, 0x0005, 0x0000, 0x000A},
-      {0x0012, 0x0004, 0x0005, 0x0000, 0x000A},
-      {0x0000, 0x0019, 0x0000, 0x0005, 0x0000},
-      {0x0012, 0x0004, 0x0005, 0x0000, 0x000A},
-      {0x0000, 0x0019, 0x0000, 0x0005, 0x0000},
-      {0x0000, 0x0019, 0x0000, 0x0005, 0x0000},
-      {0x0012, 0x0004, 0x0005, 0x0000, 0x000A},
-      {0x0012, 0x0004, 0x0005, 0x0000, 0x000A},
-      {0x0012, 0x0004, 0x0005, 0x0000, 0x000A},
-      {0x0000, 0x0019, 0x0000, 0x0005, 0x0000},
-      {0x0012, 0x0004, 0x0005, 0x0000, 0x000A},
-      {0x0012, 0x0004, 0x0005, 0x0000, 0x000A},
-      {0x0000, 0x0000, 0x0000, 0x0000, 0x0001},
-      {0x0000, 0x0000, 0x0000, 0x0000, 0x0001},
-      {0x0000, 0x0000, 0x0000, 0x0000, 0x0000},
-      {0x0000, 0x0000, 0x0000, 0x0000, 0x0000},
-      {0x0000, 0x0000, 0x0000, 0x0000, 0x0000},
-      {0x0000, 0x0000, 0x0000, 0x0000, 0x0000},
-      {0x0000, 0x0000, 0x0000, 0x0000, 0x0000}};
-
-  const ClassMaxes* maxes;
-  if (v == Version::GC_NTE) {
-    // GC NTE has HUcaseal, FOmar, and RAmarl, but missing others
-    if (this->char_class >= 12) {
-      this->char_class = 0; // Invalid classes -> HUmar
-    }
-
-    // GC NTE is basically v2, but uses v3 maxes
-    this->version = min<uint8_t>(this->version, 2);
-    maxes = &v3_v4_class_maxes[this->char_class];
-
-    // Prevent GC NTE from crashing from extra models
-    this->extra_model = 0;
-    this->validation_flags &= 0xFD;
-  } else if (is_v1_or_v2(v)) {
-    // V1/V2 have fewer classes, so we'll substitute some here
-    switch (this->char_class) {
-      case 0: // HUmar
-      case 1: // HUnewearl
-      case 2: // HUcast
-      case 3: // RAmar
-      case 4: // RAcast
-      case 5: // RAcaseal
-      case 6: // FOmarl
-      case 7: // FOnewm
-      case 8: // FOnewearl
-      case 12: // V3 custom 1
-      case 13: // V3 custom 2
-        break;
-      case 9: // HUcaseal
-        this->char_class = 5; // HUcaseal -> RAcaseal
-        break;
-      case 10: // FOmar
-        this->char_class = 0; // FOmar -> HUmar
-        break;
-      case 11: // RAmarl
-        this->char_class = 1; // RAmarl -> HUnewearl
-        break;
-      case 14: // V2 custom 1 / V3 custom 3
-      case 15: // V2 custom 2 / V3 custom 4
-      case 16: // V2 custom 3 / V3 custom 5
-      case 17: // V2 custom 4 / V3 custom 6
-      case 18: // V2 custom 5 / V3 custom 7
-        this->char_class -= 5;
-        break;
-      default:
-        this->char_class = 0; // Invalid classes -> HUmar
-    }
-
-    this->version = min<uint8_t>(this->version, is_v1(v) ? 0 : 2);
-    maxes = &v1_v2_class_maxes[this->char_class];
-
-  } else {
-    if (this->char_class >= 19) {
-      this->char_class = 0; // Invalid classes -> HUmar
-    }
-    this->version = min<uint8_t>(this->version, 3);
-    maxes = &v3_v4_class_maxes[this->char_class];
-  }
-
-  // V1/V2 has fewer costumes and android skins, so substitute them here
-  this->costume = maxes->costume ? (this->costume % maxes->costume) : 0;
-  this->skin = maxes->skin ? (this->skin % maxes->skin) : 0;
-  this->face = maxes->face ? (this->face % maxes->face) : 0;
-  this->head = maxes->head ? (this->head % maxes->head) : 0;
-  this->hair = maxes->hair ? (this->hair % maxes->hair) : 0;
-
-  if (this->name_color == 0) {
-    this->name_color = 0xFFFFFFFF;
-  }
-  if (is_v1_or_v2(v)) {
-    this->compute_name_color_checksum();
-  } else {
-    this->name_color_checksum = 0;
-  }
-  this->class_flags = class_flags_for_class(this->char_class);
-  this->name.clear_after_bytes(0x0C);
-}
-
-void PlayerDispDataDCPCV3::enforce_lobby_join_limits_for_version(Version v) {
-  this->visual.enforce_lobby_join_limits_for_version(v);
-}
-
-void PlayerDispDataBB::enforce_lobby_join_limits_for_version(Version v) {
-  this->visual.enforce_lobby_join_limits_for_version(v);
-  this->name.clear_after_bytes(0x18); // 12 characters
-}
-
-PlayerDispDataBB PlayerDispDataDCPCV3::to_bb(uint8_t to_language, uint8_t from_language) const {
-  PlayerDispDataBB bb;
-  bb.stats = this->stats;
-  bb.visual = this->visual;
-  bb.visual.name.encode("         0");
-  string decoded_name = this->visual.name.decode(from_language);
-  bb.name.encode(decoded_name, to_language);
-  bb.config = this->config;
-  bb.technique_levels_v1 = this->technique_levels_v1;
-  return bb;
-}
-
-PlayerDispDataDCPCV3 PlayerDispDataBB::to_dcpcv3(uint8_t to_language, uint8_t from_language) const {
-  PlayerDispDataDCPCV3 ret;
-  ret.stats = this->stats;
-  ret.visual = this->visual;
-  string decoded_name = this->name.decode(from_language);
-  ret.visual.name.encode(decoded_name, to_language);
-  ret.config = this->config;
-  ret.technique_levels_v1 = this->technique_levels_v1;
-  return ret;
-}
-
 void PlayerDispDataBB::apply_dressing_room(const PlayerDispDataBBPreview& pre) {
   this->visual.name_color = pre.visual.name_color;
   this->visual.extra_model = pre.visual.extra_model;
@@ -231,6 +53,106 @@ void GuildCardBB::clear() {
   this->language = 0;
   this->section_id = 0;
   this->char_class = 0;
+}
+
+GuildCardDCNTE::operator GuildCardBB() const {
+  GuildCardBB ret;
+  ret.guild_card_number = this->guild_card_number;
+  ret.name.encode(this->name.decode(this->language), this->language);
+  ret.description.encode(this->description.decode(this->language), this->language);
+  ret.present = this->present;
+  ret.language = this->language;
+  ret.section_id = this->section_id;
+  ret.char_class = this->char_class;
+  return ret;
+}
+
+GuildCardDC::operator GuildCardBB() const {
+  GuildCardBB ret;
+  ret.guild_card_number = this->guild_card_number;
+  ret.name.encode(this->name.decode(this->language), this->language);
+  ret.description.encode(this->description.decode(this->language), this->language);
+  ret.present = this->present;
+  ret.language = this->language;
+  ret.section_id = this->section_id;
+  ret.char_class = this->char_class;
+  return ret;
+}
+
+GuildCardPC::operator GuildCardBB() const {
+  GuildCardBB ret;
+  ret.guild_card_number = this->guild_card_number;
+  ret.name.encode(this->name.decode(this->language), this->language);
+  ret.description.encode(this->description.decode(this->language), this->language);
+  ret.present = this->present;
+  ret.language = this->language;
+  ret.section_id = this->section_id;
+  ret.char_class = this->char_class;
+  return ret;
+}
+
+GuildCardXB::operator GuildCardBB() const {
+  GuildCardBB ret;
+  ret.guild_card_number = this->guild_card_number;
+  ret.name.encode(this->name.decode(this->language), this->language);
+  ret.description.encode(this->description.decode(this->language), this->language);
+  ret.present = this->present;
+  ret.language = this->language;
+  ret.section_id = this->section_id;
+  ret.char_class = this->char_class;
+  return ret;
+}
+
+GuildCardBB::operator GuildCardDCNTE() const {
+  GuildCardDCNTE ret;
+  ret.player_tag = 0x00010000;
+  ret.guild_card_number = this->guild_card_number;
+  ret.name.encode(this->name.decode(this->language), this->language);
+  ret.description.encode(this->description.decode(this->language), this->language);
+  ret.present = this->present;
+  ret.language = this->language;
+  ret.section_id = this->section_id;
+  ret.char_class = this->char_class;
+  return ret;
+}
+
+GuildCardBB::operator GuildCardDC() const {
+  GuildCardDC ret;
+  ret.player_tag = 0x00010000;
+  ret.guild_card_number = this->guild_card_number;
+  ret.name.encode(this->name.decode(this->language), this->language);
+  ret.description.encode(this->description.decode(this->language), this->language);
+  ret.present = this->present;
+  ret.language = this->language;
+  ret.section_id = this->section_id;
+  ret.char_class = this->char_class;
+  return ret;
+}
+
+GuildCardBB::operator GuildCardPC() const {
+  GuildCardPC ret;
+  ret.player_tag = 0x00010000;
+  ret.guild_card_number = this->guild_card_number;
+  ret.name.encode(this->name.decode(this->language), this->language);
+  ret.description.encode(this->description.decode(this->language), this->language);
+  ret.present = this->present;
+  ret.language = this->language;
+  ret.section_id = this->section_id;
+  ret.char_class = this->char_class;
+  return ret;
+}
+
+GuildCardBB::operator GuildCardXB() const {
+  GuildCardXB ret;
+  ret.player_tag = 0x00010000;
+  ret.guild_card_number = this->guild_card_number;
+  ret.name.encode(this->name.decode(this->language), this->language);
+  ret.description.encode(this->description.decode(this->language), this->language);
+  ret.present = this->present;
+  ret.language = this->language;
+  ret.section_id = this->section_id;
+  ret.char_class = this->char_class;
+  return ret;
 }
 
 void PlayerLobbyDataPC::clear() {
@@ -279,7 +201,7 @@ void PlayerLobbyDataBB::clear() {
   this->hide_help_prompt = 0;
 }
 
-PlayerRecordsBB_Challenge::PlayerRecordsBB_Challenge(const PlayerRecordsDC_Challenge& rec)
+PlayerRecordsChallengeBB::PlayerRecordsChallengeBB(const PlayerRecordsChallengeDC& rec)
     : title_color(rec.title_color),
       unknown_u0(rec.unknown_u0),
       times_ep1_online(rec.times_ep1_online),
@@ -303,7 +225,7 @@ PlayerRecordsBB_Challenge::PlayerRecordsBB_Challenge(const PlayerRecordsDC_Chall
       rank_title(rec.rank_title.decode(), 1),
       unknown_l7(0) {}
 
-PlayerRecordsBB_Challenge::PlayerRecordsBB_Challenge(const PlayerRecordsPC_Challenge& rec)
+PlayerRecordsChallengeBB::PlayerRecordsChallengeBB(const PlayerRecordsChallengePC& rec)
     : title_color(rec.title_color),
       unknown_u0(rec.unknown_u0),
       times_ep1_online(rec.times_ep1_online),
@@ -327,35 +249,8 @@ PlayerRecordsBB_Challenge::PlayerRecordsBB_Challenge(const PlayerRecordsPC_Chall
       rank_title(rec.rank_title.decode(), 1),
       unknown_l7(0) {}
 
-PlayerRecordsBB_Challenge::PlayerRecordsBB_Challenge(const PlayerRecordsV3_Challenge<false>& rec)
-    : title_color(rec.stats.title_color),
-      unknown_u0(rec.stats.unknown_u0),
-      times_ep1_online(rec.stats.times_ep1_online),
-      times_ep2_online(rec.stats.times_ep2_online),
-      times_ep1_offline(rec.stats.times_ep1_offline),
-      grave_is_ep2(rec.stats.grave_is_ep2),
-      grave_stage_num(rec.stats.grave_stage_num),
-      grave_floor(rec.stats.grave_floor),
-      unknown_g0(rec.stats.unknown_g0),
-      grave_deaths(rec.stats.grave_deaths),
-      unknown_u4(rec.stats.unknown_u4),
-      grave_time(rec.stats.grave_time),
-      grave_defeated_by_enemy_rt_index(rec.stats.grave_defeated_by_enemy_rt_index),
-      grave_x(rec.stats.grave_x),
-      grave_y(rec.stats.grave_y),
-      grave_z(rec.stats.grave_z),
-      grave_team(rec.stats.grave_team.decode(), 1),
-      grave_message(rec.stats.grave_message.decode(), 1),
-      unknown_m5(rec.stats.unknown_m5),
-      unknown_t6(rec.stats.unknown_t6),
-      ep1_online_award_state(rec.stats.ep1_online_award_state),
-      ep2_online_award_state(rec.stats.ep2_online_award_state),
-      ep1_offline_award_state(rec.stats.ep1_offline_award_state),
-      rank_title(rec.rank_title.decode(), 1),
-      unknown_l7(rec.unknown_l7) {}
-
-PlayerRecordsBB_Challenge::operator PlayerRecordsDC_Challenge() const {
-  PlayerRecordsDC_Challenge ret;
+PlayerRecordsChallengeBB::operator PlayerRecordsChallengeDC() const {
+  PlayerRecordsChallengeDC ret;
   ret.title_color = this->title_color;
   ret.unknown_u0 = this->unknown_u0;
   ret.rank_title.encode(this->rank_title.decode());
@@ -384,8 +279,8 @@ PlayerRecordsBB_Challenge::operator PlayerRecordsDC_Challenge() const {
   return ret;
 }
 
-PlayerRecordsBB_Challenge::operator PlayerRecordsPC_Challenge() const {
-  PlayerRecordsPC_Challenge ret;
+PlayerRecordsChallengeBB::operator PlayerRecordsChallengePC() const {
+  PlayerRecordsChallengePC ret;
   ret.title_color = this->title_color;
   ret.unknown_u0 = this->unknown_u0;
   ret.rank_title.encode(this->rank_title.decode());
@@ -412,289 +307,6 @@ PlayerRecordsBB_Challenge::operator PlayerRecordsPC_Challenge() const {
   ret.times_ep1_offline = this->times_ep1_offline;
   ret.unknown_l4.clear(0);
   return ret;
-}
-
-PlayerRecordsBB_Challenge::operator PlayerRecordsV3_Challenge<false>() const {
-  PlayerRecordsV3_Challenge<false> ret;
-  ret.stats.title_color = this->title_color;
-  ret.stats.unknown_u0 = this->unknown_u0;
-  ret.stats.times_ep1_online = this->times_ep1_online;
-  ret.stats.times_ep2_online = this->times_ep2_online;
-  ret.stats.times_ep1_offline = this->times_ep1_offline;
-  ret.stats.grave_is_ep2 = this->grave_is_ep2;
-  ret.stats.grave_stage_num = this->grave_stage_num;
-  ret.stats.grave_floor = this->grave_floor;
-  ret.stats.unknown_g0 = this->unknown_g0;
-  ret.stats.grave_deaths = this->grave_deaths;
-  ret.stats.unknown_u4 = this->unknown_u4;
-  ret.stats.grave_time = this->grave_time;
-  ret.stats.grave_defeated_by_enemy_rt_index = this->grave_defeated_by_enemy_rt_index;
-  ret.stats.grave_x = this->grave_x;
-  ret.stats.grave_y = this->grave_y;
-  ret.stats.grave_z = this->grave_z;
-  ret.stats.grave_team.encode(this->grave_team.decode(), 1);
-  ret.stats.grave_message.encode(this->grave_message.decode(), 1);
-  ret.stats.unknown_m5 = this->unknown_m5;
-  ret.stats.unknown_t6 = this->unknown_t6;
-  ret.stats.ep1_online_award_state = this->ep1_online_award_state;
-  ret.stats.ep2_online_award_state = this->ep2_online_award_state;
-  ret.stats.ep1_offline_award_state = this->ep1_offline_award_state;
-  ret.rank_title.encode(this->rank_title.decode(), 1);
-  ret.unknown_l7 = this->unknown_l7;
-  return ret;
-}
-
-void PlayerBank::add_item(const ItemData& item, const ItemData::StackLimits& limits) {
-  uint32_t primary_identifier = item.primary_identifier();
-
-  if (primary_identifier == 0x04000000) {
-    this->meseta += item.data2d;
-    if (this->meseta > 999999) {
-      this->meseta = 999999;
-    }
-    return;
-  }
-
-  size_t combine_max = item.max_stack_size(limits);
-  if (combine_max > 1) {
-    size_t y;
-    for (y = 0; y < this->num_items; y++) {
-      if (this->items[y].data.primary_identifier() == primary_identifier) {
-        break;
-      }
-    }
-
-    if (y < this->num_items) {
-      uint8_t new_count = this->items[y].data.data1[5] + item.data1[5];
-      if (new_count > combine_max) {
-        throw runtime_error("stack size would exceed limit");
-      }
-      this->items[y].data.data1[5] = new_count;
-      this->items[y].amount = new_count;
-      return;
-    }
-  }
-
-  if (this->num_items >= 200) {
-    throw runtime_error("no free space in bank");
-  }
-  auto& last_item = this->items[this->num_items];
-  last_item.data = item;
-  last_item.amount = (item.max_stack_size(limits) > 1) ? item.data1[5] : 1;
-  last_item.present = 1;
-  this->num_items++;
-}
-
-ItemData PlayerBank::remove_item(uint32_t item_id, uint32_t amount, const ItemData::StackLimits& limits) {
-  size_t index = this->find_item(item_id);
-  auto& bank_item = this->items[index];
-
-  ItemData ret;
-  if (amount && (bank_item.data.stack_size(limits) > 1) && (amount < bank_item.data.data1[5])) {
-    ret = bank_item.data;
-    ret.data1[5] = amount;
-    bank_item.data.data1[5] -= amount;
-    bank_item.amount -= amount;
-    return ret;
-  }
-
-  ret = bank_item.data;
-  this->num_items--;
-  for (size_t x = index; x < this->num_items; x++) {
-    this->items[x] = this->items[x + 1];
-  }
-  auto& last_item = this->items[this->num_items];
-  last_item.amount = 0;
-  last_item.present = 0;
-  last_item.data.clear();
-  return ret;
-}
-
-size_t PlayerInventory::find_item(uint32_t item_id) const {
-  for (size_t x = 0; x < this->num_items; x++) {
-    if (this->items[x].data.id == item_id) {
-      return x;
-    }
-  }
-  throw out_of_range("item not present");
-}
-
-size_t PlayerInventory::find_item_by_primary_identifier(uint32_t primary_identifier) const {
-  for (size_t x = 0; x < this->num_items; x++) {
-    if (this->items[x].data.primary_identifier() == primary_identifier) {
-      return x;
-    }
-  }
-  throw out_of_range("item not present");
-}
-
-size_t PlayerInventory::find_equipped_item(EquipSlot slot) const {
-  ssize_t ret = -1;
-  for (size_t y = 0; y < this->num_items; y++) {
-    const auto& i = this->items[y];
-    if (!(i.flags & 0x00000008)) {
-      continue;
-    }
-    if (!i.data.can_be_equipped_in_slot(slot)) {
-      continue;
-    }
-
-    // Units can be equipped in multiple slots, so the currently-equipped slot
-    // is stored in the item data itself.
-    if (((slot == EquipSlot::UNIT_1) && (i.data.data1[4] != 0x00)) ||
-        ((slot == EquipSlot::UNIT_2) && (i.data.data1[4] != 0x01)) ||
-        ((slot == EquipSlot::UNIT_3) && (i.data.data1[4] != 0x02)) ||
-        ((slot == EquipSlot::UNIT_4) && (i.data.data1[4] != 0x03))) {
-      continue;
-    }
-
-    if (ret < 0) {
-      ret = y;
-    } else {
-      throw runtime_error("multiple items are equipped in the same slot");
-    }
-  }
-  if (ret < 0) {
-    throw out_of_range("no item is equipped in this slot");
-  }
-  return ret;
-}
-
-bool PlayerInventory::has_equipped_item(EquipSlot slot) const {
-  try {
-    this->find_equipped_item(slot);
-    return true;
-  } catch (const out_of_range&) {
-    return false;
-  }
-}
-
-void PlayerInventory::equip_item_id(uint32_t item_id, EquipSlot slot, bool allow_overwrite) {
-  this->equip_item_index(this->find_item(item_id), slot, allow_overwrite);
-}
-
-void PlayerInventory::equip_item_index(size_t index, EquipSlot slot, bool allow_overwrite) {
-  auto& item = this->items[index];
-
-  if ((slot == EquipSlot::UNKNOWN) || !item.data.can_be_equipped_in_slot(slot)) {
-    slot = item.data.default_equip_slot();
-  }
-
-  if (this->has_equipped_item(slot)) {
-    if (allow_overwrite) {
-      this->unequip_item_slot(slot);
-    } else {
-      throw runtime_error("equip slot is already in use");
-    }
-  }
-
-  item.flags |= 0x00000008;
-  // Units store which slot they're equipped in within the item data itself
-  if ((item.data.data1[0] == 0x01) && (item.data.data1[1] == 0x03)) {
-    item.data.data1[4] = static_cast<uint8_t>(slot) - 9;
-  }
-}
-
-void PlayerInventory::unequip_item_id(uint32_t item_id) {
-  this->unequip_item_index(this->find_item(item_id));
-}
-
-void PlayerInventory::unequip_item_slot(EquipSlot slot) {
-  this->unequip_item_index(this->find_equipped_item(slot));
-}
-
-void PlayerInventory::unequip_item_index(size_t index) {
-  auto& item = this->items[index];
-
-  item.flags &= (~0x00000008);
-  // Units store which slot they're equipped in within the item data itself
-  if ((item.data.data1[0] == 0x01) && (item.data.data1[1] == 0x03)) {
-    item.data.data1[4] = 0x00;
-  }
-  // If the item is an armor, remove all units too
-  if ((item.data.data1[0] == 0x01) && (item.data.data1[1] == 0x01)) {
-    for (size_t z = 0; z < 30; z++) {
-      auto& unit = this->items[z];
-      if ((unit.data.data1[0] == 0x01) && (unit.data.data1[1] == 0x03)) {
-        unit.flags &= (~0x00000008);
-        unit.data.data1[4] = 0x00;
-      }
-    }
-  }
-}
-
-size_t PlayerInventory::remove_all_items_of_type(uint8_t data1_0, int16_t data1_1) {
-  size_t write_offset = 0;
-  for (size_t read_offset = 0; read_offset < this->num_items; read_offset++) {
-    bool should_delete = ((this->items[read_offset].data.data1[0] == data1_0) &&
-        ((data1_1 < 0) || (this->items[read_offset].data.data1[1] == static_cast<uint8_t>(data1_1))));
-    if (!should_delete) {
-      if (read_offset != write_offset) {
-        this->items[write_offset].present = this->items[read_offset].present;
-        this->items[write_offset].unknown_a1 = this->items[read_offset].unknown_a1;
-        this->items[write_offset].flags = this->items[read_offset].flags;
-        this->items[write_offset].data = this->items[read_offset].data;
-      }
-      write_offset++;
-    }
-  }
-  size_t ret = this->num_items - write_offset;
-  this->num_items = write_offset;
-  return ret;
-}
-
-void PlayerInventory::decode_from_client(shared_ptr<Client> c) {
-  for (size_t z = 0; z < this->items.size(); z++) {
-    this->items[z].data.decode_for_version(c->version());
-  }
-}
-
-void PlayerInventory::encode_for_client(shared_ptr<Client> c) {
-  Version v = c->version();
-  if (v == Version::DC_NTE) {
-    // DC NTE has the item count as a 32-bit value here, whereas every other
-    // version uses a single byte. To stop DC NTE from crashing by trying to
-    // construct far more than 30 TItem objects, we clear the fields DC NTE
-    // doesn't know about. Note that the 11/2000 prototype does not have this
-    // issue - its inventory format matches the rest of the versions.
-    this->hp_from_materials = 0;
-    this->tp_from_materials = 0;
-    this->language = 0;
-  } else if ((v != Version::PC_NTE) && (v != Version::PC_V2)) {
-    if (this->language > 4) {
-      this->language = 0;
-    }
-  } else {
-    if (this->language > 7) {
-      this->language = 0;
-    }
-  }
-
-  // For pre-V2 clients, use the V2 parameter table, since the V1 table doesn't
-  // have correct encodings for backward-compatible V2 items.
-  auto item_parameter_table = c->require_server_state()->item_parameter_table_for_encode(v);
-  for (size_t z = 0; z < this->items.size(); z++) {
-    this->items[z].data.encode_for_version(v, item_parameter_table);
-  }
-}
-
-size_t PlayerBank::find_item(uint32_t item_id) {
-  for (size_t x = 0; x < this->num_items; x++) {
-    if (this->items[x].data.id == item_id) {
-      return x;
-    }
-  }
-  throw out_of_range("item not present");
-}
-
-void PlayerBank::sort() {
-  std::sort(this->items.data(), this->items.data() + this->num_items);
-}
-
-void PlayerBank::assign_ids(uint32_t base_id) {
-  for (size_t z = 0; z < this->num_items; z++) {
-    this->items[z].data.id = base_id + z;
-  }
 }
 
 QuestFlagsV1& QuestFlagsV1::operator=(const QuestFlags& other) {
@@ -1086,11 +698,6 @@ const ChallengeTemplateDefinition& get_challenge_template_definition(Version ver
     throw runtime_error("invalid class flags on original player");
   }
 }
-
-SymbolChat::SymbolChat()
-    : spec(0),
-      corner_objects(0x00FF),
-      face_parts() {}
 
 void RecentSwitchFlags::add(uint16_t flag_num) {
   if ((flag_num != ((this->flag_nums >> 48) & 0xFFFF)) &&

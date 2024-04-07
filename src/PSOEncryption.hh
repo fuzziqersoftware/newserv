@@ -114,13 +114,13 @@ public:
       parray<le_uint32_t, 0x12> as32;
       InitialKeys() : as32() {}
       InitialKeys(const InitialKeys& other) : as32(other.as32) {}
-    } __attribute__((packed));
+    } __packed_ws__(InitialKeys, 0x48);
     union PrivateKeys {
       parray<uint8_t, 0x1000> as8;
       parray<le_uint32_t, 0x400> as32;
       PrivateKeys() : as32() {}
       PrivateKeys(const PrivateKeys& other) : as32(other.as32) {}
-    } __attribute__((packed));
+    } __packed_ws__(PrivateKeys, 0x1000);
     InitialKeys initial_keys;
     PrivateKeys private_keys;
     // This field only really needs to be one byte, but annoyingly, some
@@ -129,7 +129,7 @@ public:
     // this structure's size from not matching the .nsk files' sizes, we use
     // an unnecessarily large size for this field.
     le_uint64_t subtype;
-  } __attribute__((packed));
+  } __packed_ws__(KeyFile, 0x1050);
 
   PSOBBEncryption(const KeyFile& key, const void* seed, size_t seed_size);
 
@@ -254,39 +254,49 @@ uint32_t encrypt_challenge_time(uint16_t value);
 uint16_t decrypt_challenge_time(uint32_t value);
 
 template <bool IsBigEndian>
-class ChallengeTime {
+class ChallengeTimeT {
 private:
   using U32T = typename std::conditional<IsBigEndian, be_uint32_t, le_uint32_t>::type;
   U32T value;
 
 public:
-  ChallengeTime() = default;
-  ChallengeTime(uint16_t v) {
-    this->store(v);
+  ChallengeTimeT() = default;
+  ChallengeTimeT(uint16_t v) {
+    this->encode(v);
   }
-  ChallengeTime(const ChallengeTime& other) = default;
-  ChallengeTime(ChallengeTime&& other) = default;
-  ChallengeTime& operator=(const ChallengeTime& other) = default;
-  ChallengeTime& operator=(ChallengeTime&& other) = default;
+  ChallengeTimeT(const ChallengeTimeT& other) = default;
+  ChallengeTimeT(ChallengeTimeT&& other) = default;
+  ChallengeTimeT& operator=(const ChallengeTimeT& other) = default;
+  ChallengeTimeT& operator=(ChallengeTimeT&& other) = default;
 
   bool has_value() const {
     return this->value != 0;
   }
 
-  uint16_t load() const {
+  uint32_t load_raw() const {
+    return this->value;
+  }
+  void store_raw(uint32_t value) {
+    this->value = value;
+  }
+
+  uint16_t decode() const {
     return decrypt_challenge_time(this->value);
   }
-  operator uint16_t() const {
-    return this->load();
-  }
-  void store(uint16_t v) {
+  void encode(uint16_t v) {
     this->value = ((v == 0) || (v == 0xFFFF)) ? 0 : encrypt_challenge_time(v);
   }
-  ChallengeTime& operator=(uint16_t v) {
-    this->store(v);
-    return *this;
+
+  operator ChallengeTimeT<!IsBigEndian>() const {
+    ChallengeTimeT<!IsBigEndian> ret;
+    ret.store_raw(this->value);
+    return ret;
   }
-} __attribute__((packed));
+} __packed__;
+using ChallengeTime = ChallengeTimeT<false>;
+using ChallengeTimeBE = ChallengeTimeT<true>;
+check_struct_size(ChallengeTime, 4);
+check_struct_size(ChallengeTimeBE, 4);
 
 std::string decrypt_v2_registry_value(const void* data, size_t size);
 

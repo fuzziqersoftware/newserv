@@ -36,7 +36,7 @@ struct Condition {
   void clear_FF();
 
   std::string str(std::shared_ptr<const Server> s) const;
-} __attribute__((packed));
+} __packed_ws__(Condition, 0x10);
 
 struct EffectResult {
   /* 00 */ le_uint16_t attacker_card_ref;
@@ -58,7 +58,7 @@ struct EffectResult {
   void clear();
 
   std::string str(std::shared_ptr<const Server> s) const;
-} __attribute__((packed));
+} __packed_ws__(EffectResult, 0x0C);
 
 struct CardShortStatus {
   /* 00 */ le_uint16_t card_ref;
@@ -78,7 +78,7 @@ struct CardShortStatus {
   void clear_FF();
 
   std::string str(std::shared_ptr<const Server> s) const;
-} __attribute__((packed));
+} __packed_ws__(CardShortStatus, 0x10);
 
 struct ActionState {
   /* 00 */ le_uint16_t client_id;
@@ -99,7 +99,7 @@ struct ActionState {
   void clear();
 
   std::string str(std::shared_ptr<const Server> s) const;
-} __attribute__((packed));
+} __packed_ws__(ActionState, 0x64);
 
 struct ActionChain {
   // Note: Episode 3 Trial Edition has a different format for this structure.
@@ -135,7 +135,7 @@ struct ActionChain {
   void clear_FF();
 
   std::string str(std::shared_ptr<const Server> s) const;
-} __attribute__((packed));
+} __packed_ws__(ActionChain, 0x70);
 
 struct ActionChainWithConds {
   /* 0000 */ ActionChain chain;
@@ -173,7 +173,7 @@ struct ActionChainWithConds {
   uint8_t get_adjusted_move_ability_nte(uint8_t ability) const;
 
   std::string str(std::shared_ptr<const Server> s) const;
-} __attribute__((packed));
+} __packed_ws__(ActionChainWithConds, 0x100);
 
 struct ActionChainWithCondsTrial {
   /* 0000 */ int8_t effective_ap;
@@ -205,7 +205,7 @@ struct ActionChainWithCondsTrial {
   ActionChainWithCondsTrial() = default;
   ActionChainWithCondsTrial(const ActionChainWithConds& src);
   operator ActionChainWithConds() const;
-} __attribute__((packed));
+} __packed_ws__(ActionChainWithCondsTrial, 0x100);
 
 struct ActionMetadata {
   /* 00 */ le_uint16_t card_ref;
@@ -241,7 +241,7 @@ struct ActionMetadata {
       uint16_t original_attacker_card_ref);
 
   std::string str(std::shared_ptr<const Server> s) const;
-} __attribute__((packed));
+} __packed_ws__(ActionMetadata, 0x74);
 
 struct HandAndEquipState {
   /* 00 */ parray<uint8_t, 2> dice_results;
@@ -276,7 +276,7 @@ struct HandAndEquipState {
   void clear_FF();
 
   std::string str(std::shared_ptr<const Server> s) const;
-} __attribute__((packed));
+} __packed_ws__(HandAndEquipState, 0x54);
 
 struct PlayerBattleStats {
   /* 00 */ le_uint16_t damage_given;
@@ -310,7 +310,7 @@ struct PlayerBattleStats {
 
   static uint8_t rank_for_score(float score);
   static const char* name_for_rank(uint8_t rank);
-} __attribute__((packed));
+} __packed_ws__(PlayerBattleStats, 0x28);
 
 struct PlayerBattleStatsTrial {
   /* 00 */ le_uint32_t damage_given = 0;
@@ -323,7 +323,7 @@ struct PlayerBattleStatsTrial {
   PlayerBattleStatsTrial() = default;
   PlayerBattleStatsTrial(const PlayerBattleStats& data);
   operator PlayerBattleStats() const;
-} __attribute__((packed));
+} __packed_ws__(PlayerBattleStatsTrial, 0x14);
 
 std::vector<uint16_t> get_card_refs_within_range(
     const parray<uint8_t, 9 * 9>& range,

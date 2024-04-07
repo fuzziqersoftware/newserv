@@ -388,7 +388,7 @@ shared_ptr<PSOBBCharacterFile> PSOBBCharacterFile::create_from_config(
     ret->disp.config[z] = config[z];
   }
 
-  ret->disp.stats.reset_to_base(ret->disp.visual.char_class, level_table);
+  level_table->reset_to_base(ret->disp.stats, ret->disp.visual.char_class);
   ret->disp.technique_levels_v1.clear(0xFF);
   if (ret->disp.visual.class_flags & 0x80) {
     ret->disp.technique_levels_v1[0] = 0x00; // Forces start with Foie Lv.1
@@ -404,7 +404,7 @@ shared_ptr<PSOBBCharacterFile> PSOBBCharacterFile::create_from_config(
     ret->symbol_chats[z] = PSOBBCharacterFile::DEFAULT_SYMBOL_CHATS[z].to_entry(language);
   }
   for (size_t z = 0; z < PSOBBCharacterFile::DEFAULT_TECH_MENU_CONFIG.size(); z++) {
-    ret->tech_menu_config[z] = PSOBBCharacterFile::DEFAULT_TECH_MENU_CONFIG[z];
+    ret->tech_menu_shortcut_entries[z] = PSOBBCharacterFile::DEFAULT_TECH_MENU_CONFIG[z];
   }
   return ret;
 }
@@ -418,16 +418,99 @@ shared_ptr<PSOBBCharacterFile> PSOBBCharacterFile::create_from_preview(
       guild_card_number, language, preview.visual, preview.name.decode(language), level_table);
 }
 
-PSOBBCharacterFile::SymbolChatEntry PSOBBCharacterFile::DefaultSymbolChatEntry::to_entry(uint8_t language) const {
-  SymbolChatEntry ret;
+shared_ptr<PSOBBCharacterFile> PSOBBCharacterFile::create_from_gc(const PSOGCCharacterFile::Character& gc) {
+  auto ret = make_shared<PSOBBCharacterFile>();
+  ret->inventory = gc.inventory;
+  uint8_t language = ret->inventory.language;
+  ret->disp = gc.disp.to_bb(language, language);
+  ret->creation_timestamp = gc.creation_timestamp.load();
+  ret->play_time_seconds = gc.play_time_seconds.load();
+  ret->option_flags = gc.option_flags.load();
+  ret->save_count = gc.save_count.load();
+  ret->quest_flags = gc.quest_flags;
+  ret->death_count = gc.death_count.load();
+  ret->bank = gc.bank;
+  ret->guild_card = gc.guild_card;
+  for (size_t z = 0; z < std::min<size_t>(ret->symbol_chats.size(), gc.symbol_chats.size()); z++) {
+    auto& ret_sc = ret->symbol_chats[z];
+    const auto& gc_sc = gc.symbol_chats[z];
+    ret_sc.present = gc_sc.present.load();
+    ret_sc.name.encode(gc_sc.name.decode(language), language);
+    ret_sc.spec = gc_sc.spec;
+  }
+  for (size_t z = 0; z < std::min<size_t>(ret->shortcuts.size(), gc.shortcuts.size()); z++) {
+    ret->shortcuts[z] = gc.shortcuts[z].convert<false, TextEncoding::UTF16>(language);
+  }
+  ret->auto_reply.encode(gc.auto_reply.decode(language), language);
+  ret->info_board.encode(gc.info_board.decode(language), language);
+  ret->battle_records = gc.battle_records;
+  ret->unknown_a4 = gc.unknown_a4;
+  ret->challenge_records = gc.challenge_records;
+  for (size_t z = 0; z < std::min<size_t>(ret->tech_menu_shortcut_entries.size(), gc.tech_menu_shortcut_entries.size()); z++) {
+    ret->tech_menu_shortcut_entries[z] = gc.tech_menu_shortcut_entries[z].load();
+  }
+  ret->choice_search_config = gc.choice_search_config;
+  ret->unknown_a6 = gc.unknown_a6;
+  for (size_t z = 0; z < std::min<size_t>(ret->quest_counters.size(), gc.quest_counters.size()); z++) {
+    ret->quest_counters[z] = gc.quest_counters[z].load();
+  }
+  ret->offline_battle_records = gc.offline_battle_records;
+  ret->unknown_a7 = gc.unknown_a7;
+  return ret;
+}
+
+PSOGCCharacterFile::Character PSOBBCharacterFile::to_gc() const {
+  uint8_t language = this->inventory.language;
+
+  PSOGCCharacterFile::Character ret;
+  ret.inventory = this->inventory;
+  ret.disp = this->disp.to_dcpcv3<true>(language, language);
+  ret.creation_timestamp = this->creation_timestamp.load();
+  ret.play_time_seconds = this->play_time_seconds.load();
+  ret.option_flags = this->option_flags.load();
+  ret.save_count = this->save_count.load();
+  ret.quest_flags = this->quest_flags;
+  ret.death_count = this->death_count.load();
+  ret.bank = this->bank;
+  ret.guild_card = this->guild_card;
+  for (size_t z = 0; z < std::min<size_t>(ret.symbol_chats.size(), this->symbol_chats.size()); z++) {
+    auto& ret_sc = ret.symbol_chats[z];
+    const auto& gc_sc = this->symbol_chats[z];
+    ret_sc.present = gc_sc.present.load();
+    ret_sc.name.encode(gc_sc.name.decode(language), language);
+    ret_sc.spec = gc_sc.spec;
+  }
+  for (size_t z = 0; z < std::min<size_t>(ret.shortcuts.size(), this->shortcuts.size()); z++) {
+    ret.shortcuts[z] = this->shortcuts[z].convert<true, TextEncoding::MARKED>(language);
+  }
+  ret.auto_reply.encode(this->auto_reply.decode(language), language);
+  ret.info_board.encode(this->info_board.decode(language), language);
+  ret.battle_records = this->battle_records;
+  ret.unknown_a4 = this->unknown_a4;
+  ret.challenge_records = this->challenge_records;
+  for (size_t z = 0; z < std::min<size_t>(ret.tech_menu_shortcut_entries.size(), this->tech_menu_shortcut_entries.size()); z++) {
+    ret.tech_menu_shortcut_entries[z] = this->tech_menu_shortcut_entries[z].load();
+  }
+  ret.choice_search_config = this->choice_search_config;
+  ret.unknown_a6 = this->unknown_a6;
+  for (size_t z = 0; z < std::min<size_t>(ret.quest_counters.size(), this->quest_counters.size()); z++) {
+    ret.quest_counters[z] = this->quest_counters[z].load();
+  }
+  ret.offline_battle_records = this->offline_battle_records;
+  ret.unknown_a7 = this->unknown_a7;
+  return ret;
+}
+
+SaveFileSymbolChatEntryBB PSOBBCharacterFile::DefaultSymbolChatEntry::to_entry(uint8_t language) const {
+  SaveFileSymbolChatEntryBB ret;
   ret.present = 1;
   ret.name.encode(this->language_to_name.at(language), language);
-  ret.data.spec = this->spec;
+  ret.spec.spec = this->spec;
   for (size_t z = 0; z < 4; z++) {
-    ret.data.corner_objects[z] = this->corner_objects[z];
+    ret.spec.corner_objects[z] = this->corner_objects[z];
   }
   for (size_t z = 0; z < 12; z++) {
-    ret.data.face_parts[z] = this->face_parts[z];
+    ret.spec.face_parts[z] = this->face_parts[z];
   }
   return ret;
 }
@@ -617,12 +700,12 @@ void PSOBBCharacterFile::clear_all_material_usage() {
 }
 
 const array<PSOBBCharacterFile::DefaultSymbolChatEntry, 6> PSOBBCharacterFile::DEFAULT_SYMBOL_CHATS = {
-    DefaultSymbolChatEntry{{"\tJ\xE3\x81\x93\xE3\x82\x93\xE3\x81\xAB\xE3\x81\xA1\xE3\x81\xAF", "\tEHello", "\tEHallo", "\tESalut", "\tEHola", "\tB\xE4\xBD\xA0\xE5\xA5\xBD", "\tT\xE4\xBD\xA0\xE5\xA5\xBD", "\tK\xEC\x95\x88\xEB\x85\x95"}, 0x28, {0xFFFF, 0x000D, 0xFFFF, 0xFFFF}, {SymbolChat::FacePart{0x05, 0x18, 0x1D, 0x00}, {0x05, 0x28, 0x1D, 0x01}, {0x36, 0x20, 0x2A, 0x00}, {0x3C, 0x00, 0x32, 0x00}, {0xFF, 0x00, 0x00, 0x00}, {0xFF, 0x00, 0x00, 0x00}, {0xFF, 0x00, 0x00, 0x00}, {0xFF, 0x00, 0x00, 0x02}, {0xFF, 0x00, 0x00, 0x02}, {0xFF, 0x00, 0x00, 0x02}, {0xFF, 0x00, 0x00, 0x02}, {0xFF, 0x00, 0x00, 0x02}}},
-    DefaultSymbolChatEntry{{"\tJ\xE3\x81\x95\xE3\x82\x88\xE3\x81\x86\xE3\x81\xAA\xE3\x82\x89", "\tEGood-bye", "\tETschus", "\tEAu revoir", "\tEAdios", "\tB\xE5\x86\x8D\xE8\xA7\x81", "\tT\xE5\x86\x8D\xE8\xA6\x8B", "\tK\xEC\x9E\x98\xEA\xB0\x80"}, 0x74, {0x0476, 0x000C, 0xFFFF, 0xFFFF}, {SymbolChat::FacePart{0x06, 0x15, 0x14, 0x00}, {0x06, 0x2B, 0x14, 0x01}, {0x05, 0x18, 0x1F, 0x00}, {0x05, 0x28, 0x1F, 0x01}, {0x36, 0x20, 0x2A, 0x00}, {0x3C, 0x00, 0x32, 0x00}, {0xFF, 0x00, 0x00, 0x00}, {0xFF, 0x00, 0x00, 0x02}, {0xFF, 0x00, 0x00, 0x02}, {0xFF, 0x00, 0x00, 0x02}, {0xFF, 0x00, 0x00, 0x02}, {0xFF, 0x00, 0x00, 0x02}}},
-    DefaultSymbolChatEntry{{"\tJ\xE3\x81\xB0\xE3\x82\x93\xE3\x81\x96\xE3\x83\xBC\xE3\x81\x84", "\tEHurrah!", "\tEHurra!", "\tEHourra !", "\tEHurra", "\tB\xE4\xB8\x87\xE5\xB2\x81", "\tT\xE8\x90\xAC\xE6\xAD\xB2", "\tK\xEB\xA7\x8C\xEC\x84\xB8"}, 0x28, {0x0362, 0x0362, 0xFFFF, 0xFFFF}, {SymbolChat::FacePart{0x09, 0x16, 0x1B, 0x00}, {0x09, 0x2B, 0x1B, 0x01}, {0x37, 0x20, 0x2C, 0x00}, {0xFF, 0x00, 0x00, 0x00}, {0xFF, 0x00, 0x00, 0x00}, {0xFF, 0x00, 0x00, 0x00}, {0xFF, 0x00, 0x00, 0x00}, {0xFF, 0x00, 0x00, 0x02}, {0xFF, 0x00, 0x00, 0x02}, {0xFF, 0x00, 0x00, 0x02}, {0xFF, 0x00, 0x00, 0x02}, {0xFF, 0x00, 0x00, 0x02}}},
-    DefaultSymbolChatEntry{{"\tJ\xE3\x81\x86\xE3\x81\x87\xEF\xBD\x9E\xE3\x82\x93", "\tECrying", "\tEIch bin sauer!", "\tEJe suis triste", "\tELlanto", "\tB\xE5\x96\x82\xEF\xBD\x9E", "\tT\xE5\x96\x82\xEF\xBD\x9E", "\tK\xEC\x9D\x91~"}, 0x74, {0x074F, 0xFFFF, 0xFFFF, 0xFFFF}, {SymbolChat::FacePart{0x06, 0x15, 0x14, 0x00}, {0x06, 0x2B, 0x14, 0x01}, {0x05, 0x18, 0x1F, 0x00}, {0x05, 0x28, 0x1F, 0x01}, {0x21, 0x20, 0x2E, 0x00}, {0xFF, 0x00, 0x00, 0x00}, {0xFF, 0x00, 0x00, 0x00}, {0xFF, 0x00, 0x00, 0x02}, {0xFF, 0x00, 0x00, 0x02}, {0xFF, 0x00, 0x00, 0x02}, {0xFF, 0x00, 0x00, 0x02}, {0xFF, 0x00, 0x00, 0x02}}},
-    DefaultSymbolChatEntry{{"\tJ\xE3\x81\x8A\xE3\x81\x93\xE3\x81\xA3\xE3\x81\x9F\xEF\xBC\x81", "\tEI'm angry!", "\tEWeinen", "\tEJe suis en colere !", "\tEEnfado", "\tB\xE7\x94\x9F\xE6\xB0\x94\xE4\xBA\x86\xEF\xBC\x81", "\tT\xE7\x94\x9F\xE6\xB0\xA3\xE4\xBA\x86\xEF\xBC\x81", "\tK\xEB\x82\x98\xEC\x99\x94\xEB\x8B\xA4\xEF\xBC\x81"}, 0x5C, {0x0116, 0x0001, 0xFFFF, 0xFFFF}, {SymbolChat::FacePart{0x0B, 0x18, 0x1B, 0x01}, {0x0B, 0x28, 0x1B, 0x00}, {0x33, 0x20, 0x2A, 0x00}, {0xFF, 0x00, 0x00, 0x00}, {0xFF, 0x00, 0x00, 0x00}, {0xFF, 0x00, 0x00, 0x00}, {0xFF, 0x00, 0x00, 0x00}, {0xFF, 0x00, 0x00, 0x02}, {0xFF, 0x00, 0x00, 0x02}, {0xFF, 0x00, 0x00, 0x02}, {0xFF, 0x00, 0x00, 0x02}, {0xFF, 0x00, 0x00, 0x02}}},
-    DefaultSymbolChatEntry{{"\tJ\xE3\x81\x9F\xE3\x81\x99\xE3\x81\x91\xE3\x81\xA6\xEF\xBC\x81", "\tEHelp me!", "\tEHilf mir!", "\tEAide-moi !", "\tEAyuda", "\tB\xE6\x95\x91\xE5\x91\xBD\xE5\x95\x8A\xEF\xBC\x81", "\tT\xE6\x95\x91\xE5\x91\xBD\xE5\x95\x8A\xEF\xBC\x81", "\tK\xEB\x8F\x84\xEC\x99\x80\xEC\xA4\x98\xEF\xBC\x81"}, 0xEC, {0x065E, 0x0138, 0xFFFF, 0xFFFF}, {SymbolChat::FacePart{0x02, 0x17, 0x1B, 0x01}, {0x02, 0x2A, 0x1B, 0x00}, {0x31, 0x20, 0x2C, 0x00}, {0xFF, 0x00, 0x00, 0x00}, {0xFF, 0x00, 0x00, 0x00}, {0xFF, 0x00, 0x00, 0x00}, {0xFF, 0x00, 0x00, 0x00}, {0xFF, 0x00, 0x00, 0x02}, {0xFF, 0x00, 0x00, 0x02}, {0xFF, 0x00, 0x00, 0x02}, {0xFF, 0x00, 0x00, 0x02}, {0xFF, 0x00, 0x00, 0x02}}},
+    DefaultSymbolChatEntry{{"\tJ\xE3\x81\x93\xE3\x82\x93\xE3\x81\xAB\xE3\x81\xA1\xE3\x81\xAF", "\tEHello", "\tEHallo", "\tESalut", "\tEHola", "\tB\xE4\xBD\xA0\xE5\xA5\xBD", "\tT\xE4\xBD\xA0\xE5\xA5\xBD", "\tK\xEC\x95\x88\xEB\x85\x95"}, 0x28, {0xFFFF, 0x000D, 0xFFFF, 0xFFFF}, {SymbolChatFacePart{0x05, 0x18, 0x1D, 0x00}, {0x05, 0x28, 0x1D, 0x01}, {0x36, 0x20, 0x2A, 0x00}, {0x3C, 0x00, 0x32, 0x00}, {0xFF, 0x00, 0x00, 0x00}, {0xFF, 0x00, 0x00, 0x00}, {0xFF, 0x00, 0x00, 0x00}, {0xFF, 0x00, 0x00, 0x02}, {0xFF, 0x00, 0x00, 0x02}, {0xFF, 0x00, 0x00, 0x02}, {0xFF, 0x00, 0x00, 0x02}, {0xFF, 0x00, 0x00, 0x02}}},
+    DefaultSymbolChatEntry{{"\tJ\xE3\x81\x95\xE3\x82\x88\xE3\x81\x86\xE3\x81\xAA\xE3\x82\x89", "\tEGood-bye", "\tETschus", "\tEAu revoir", "\tEAdios", "\tB\xE5\x86\x8D\xE8\xA7\x81", "\tT\xE5\x86\x8D\xE8\xA6\x8B", "\tK\xEC\x9E\x98\xEA\xB0\x80"}, 0x74, {0x0476, 0x000C, 0xFFFF, 0xFFFF}, {SymbolChatFacePart{0x06, 0x15, 0x14, 0x00}, {0x06, 0x2B, 0x14, 0x01}, {0x05, 0x18, 0x1F, 0x00}, {0x05, 0x28, 0x1F, 0x01}, {0x36, 0x20, 0x2A, 0x00}, {0x3C, 0x00, 0x32, 0x00}, {0xFF, 0x00, 0x00, 0x00}, {0xFF, 0x00, 0x00, 0x02}, {0xFF, 0x00, 0x00, 0x02}, {0xFF, 0x00, 0x00, 0x02}, {0xFF, 0x00, 0x00, 0x02}, {0xFF, 0x00, 0x00, 0x02}}},
+    DefaultSymbolChatEntry{{"\tJ\xE3\x81\xB0\xE3\x82\x93\xE3\x81\x96\xE3\x83\xBC\xE3\x81\x84", "\tEHurrah!", "\tEHurra!", "\tEHourra !", "\tEHurra", "\tB\xE4\xB8\x87\xE5\xB2\x81", "\tT\xE8\x90\xAC\xE6\xAD\xB2", "\tK\xEB\xA7\x8C\xEC\x84\xB8"}, 0x28, {0x0362, 0x0362, 0xFFFF, 0xFFFF}, {SymbolChatFacePart{0x09, 0x16, 0x1B, 0x00}, {0x09, 0x2B, 0x1B, 0x01}, {0x37, 0x20, 0x2C, 0x00}, {0xFF, 0x00, 0x00, 0x00}, {0xFF, 0x00, 0x00, 0x00}, {0xFF, 0x00, 0x00, 0x00}, {0xFF, 0x00, 0x00, 0x00}, {0xFF, 0x00, 0x00, 0x02}, {0xFF, 0x00, 0x00, 0x02}, {0xFF, 0x00, 0x00, 0x02}, {0xFF, 0x00, 0x00, 0x02}, {0xFF, 0x00, 0x00, 0x02}}},
+    DefaultSymbolChatEntry{{"\tJ\xE3\x81\x86\xE3\x81\x87\xEF\xBD\x9E\xE3\x82\x93", "\tECrying", "\tEIch bin sauer!", "\tEJe suis triste", "\tELlanto", "\tB\xE5\x96\x82\xEF\xBD\x9E", "\tT\xE5\x96\x82\xEF\xBD\x9E", "\tK\xEC\x9D\x91~"}, 0x74, {0x074F, 0xFFFF, 0xFFFF, 0xFFFF}, {SymbolChatFacePart{0x06, 0x15, 0x14, 0x00}, {0x06, 0x2B, 0x14, 0x01}, {0x05, 0x18, 0x1F, 0x00}, {0x05, 0x28, 0x1F, 0x01}, {0x21, 0x20, 0x2E, 0x00}, {0xFF, 0x00, 0x00, 0x00}, {0xFF, 0x00, 0x00, 0x00}, {0xFF, 0x00, 0x00, 0x02}, {0xFF, 0x00, 0x00, 0x02}, {0xFF, 0x00, 0x00, 0x02}, {0xFF, 0x00, 0x00, 0x02}, {0xFF, 0x00, 0x00, 0x02}}},
+    DefaultSymbolChatEntry{{"\tJ\xE3\x81\x8A\xE3\x81\x93\xE3\x81\xA3\xE3\x81\x9F\xEF\xBC\x81", "\tEI'm angry!", "\tEWeinen", "\tEJe suis en colere !", "\tEEnfado", "\tB\xE7\x94\x9F\xE6\xB0\x94\xE4\xBA\x86\xEF\xBC\x81", "\tT\xE7\x94\x9F\xE6\xB0\xA3\xE4\xBA\x86\xEF\xBC\x81", "\tK\xEB\x82\x98\xEC\x99\x94\xEB\x8B\xA4\xEF\xBC\x81"}, 0x5C, {0x0116, 0x0001, 0xFFFF, 0xFFFF}, {SymbolChatFacePart{0x0B, 0x18, 0x1B, 0x01}, {0x0B, 0x28, 0x1B, 0x00}, {0x33, 0x20, 0x2A, 0x00}, {0xFF, 0x00, 0x00, 0x00}, {0xFF, 0x00, 0x00, 0x00}, {0xFF, 0x00, 0x00, 0x00}, {0xFF, 0x00, 0x00, 0x00}, {0xFF, 0x00, 0x00, 0x02}, {0xFF, 0x00, 0x00, 0x02}, {0xFF, 0x00, 0x00, 0x02}, {0xFF, 0x00, 0x00, 0x02}, {0xFF, 0x00, 0x00, 0x02}}},
+    DefaultSymbolChatEntry{{"\tJ\xE3\x81\x9F\xE3\x81\x99\xE3\x81\x91\xE3\x81\xA6\xEF\xBC\x81", "\tEHelp me!", "\tEHilf mir!", "\tEAide-moi !", "\tEAyuda", "\tB\xE6\x95\x91\xE5\x91\xBD\xE5\x95\x8A\xEF\xBC\x81", "\tT\xE6\x95\x91\xE5\x91\xBD\xE5\x95\x8A\xEF\xBC\x81", "\tK\xEB\x8F\x84\xEC\x99\x80\xEC\xA4\x98\xEF\xBC\x81"}, 0xEC, {0x065E, 0x0138, 0xFFFF, 0xFFFF}, {SymbolChatFacePart{0x02, 0x17, 0x1B, 0x01}, {0x02, 0x2A, 0x1B, 0x00}, {0x31, 0x20, 0x2C, 0x00}, {0xFF, 0x00, 0x00, 0x00}, {0xFF, 0x00, 0x00, 0x00}, {0xFF, 0x00, 0x00, 0x00}, {0xFF, 0x00, 0x00, 0x00}, {0xFF, 0x00, 0x00, 0x02}, {0xFF, 0x00, 0x00, 0x02}, {0xFF, 0x00, 0x00, 0x02}, {0xFF, 0x00, 0x00, 0x02}, {0xFF, 0x00, 0x00, 0x02}}},
 };
 
 const array<uint16_t, 20> PSOBBCharacterFile::DEFAULT_TECH_MENU_CONFIG = {

@@ -650,7 +650,7 @@ void Lobby::add_client(shared_ptr<Client> c, ssize_t required_client_id) {
     this->battle_record->add_player(
         lobby_data,
         p->inventory,
-        p->disp.to_dcpcv3(c->language(), c->language()),
+        p->disp.to_dcpcv3<false>(c->language(), c->language()),
         c->ep3_config ? (c->ep3_config->online_clv_exp / 100) : 0);
   }
 

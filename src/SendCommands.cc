@@ -155,11 +155,11 @@ static const char* dc_lobby_server_copyright = "DreamCast Lobby Server. Copyrigh
 static const char* bb_game_server_copyright = "Phantasy Star Online Blue Burst Game Server. Copyright 1999-2004 SONICTEAM.";
 static const char* bb_pm_server_copyright = "PSO NEW PM Server. Copyright 1999-2002 SONICTEAM.";
 
-S_ServerInitWithAfterMessage_DC_PC_V3_02_17_91_9B<0xB4>
+S_ServerInitWithAfterMessageT_DC_PC_V3_02_17_91_9B<0xB4>
 prepare_server_init_contents_console(
     uint32_t server_key, uint32_t client_key, uint8_t flags) {
   bool initial_connection = (flags & SendServerInitFlag::IS_INITIAL_CONNECTION);
-  S_ServerInitWithAfterMessage_DC_PC_V3_02_17_91_9B<0xB4> cmd;
+  S_ServerInitWithAfterMessageT_DC_PC_V3_02_17_91_9B<0xB4> cmd;
   cmd.basic_cmd.copyright.encode(initial_connection ? dc_port_map_copyright : dc_lobby_server_copyright);
   cmd.basic_cmd.server_key = server_key;
   cmd.basic_cmd.client_key = client_key;
@@ -205,13 +205,13 @@ void send_server_init_dc_pc_v3(shared_ptr<Client> c, uint8_t flags) {
   }
 }
 
-S_ServerInitWithAfterMessage_BB_03_9B<0xB4>
+S_ServerInitWithAfterMessageT_BB_03_9B<0xB4>
 prepare_server_init_contents_bb(
     const parray<uint8_t, 0x30>& server_key,
     const parray<uint8_t, 0x30>& client_key,
     uint8_t flags) {
   bool use_secondary_message = (flags & SendServerInitFlag::USE_SECONDARY_MESSAGE);
-  S_ServerInitWithAfterMessage_BB_03_9B<0xB4> cmd;
+  S_ServerInitWithAfterMessageT_BB_03_9B<0xB4> cmd;
   cmd.basic_cmd.copyright.encode(use_secondary_message ? bb_pm_server_copyright : bb_game_server_copyright);
   cmd.basic_cmd.server_key = server_key;
   cmd.basic_cmd.client_key = client_key;
@@ -534,7 +534,7 @@ bool send_protected_command(std::shared_ptr<Client> c, const void* data, size_t 
 }
 
 void send_reconnect(shared_ptr<Client> c, uint32_t address, uint16_t port) {
-  S_Reconnect_19 cmd = {{address, port, 0}};
+  S_Reconnect_19 cmd = {address, port, 0};
   send_command_t(c, is_patch(c->version()) ? 0x14 : 0x19, 0x00, cmd);
 }
 
@@ -1056,7 +1056,7 @@ void send_simple_mail(shared_ptr<ServerState> s, uint32_t from_guild_card_number
 
 template <TextEncoding NameEncoding, TextEncoding MessageEncoding>
 void send_info_board_t(shared_ptr<Client> c) {
-  vector<S_InfoBoardEntry_D8<NameEncoding, MessageEncoding>> entries;
+  vector<S_InfoBoardEntryT_D8<NameEncoding, MessageEncoding>> entries;
   auto l = c->require_lobby();
   for (const auto& other_c : l->clients) {
     if (!other_c.get()) {
@@ -1125,7 +1125,7 @@ void send_card_search_result_t(
   auto s = c->require_server_state();
   string port_name = lobby_port_name_for_version(c->version());
 
-  S_GuildCardSearchResult<CommandHeaderT, Encoding> cmd;
+  S_GuildCardSearchResultT<CommandHeaderT, Encoding> cmd;
   cmd.player_tag = 0x00010000;
   cmd.searcher_guild_card_number = c->license->serial_number;
   cmd.result_guild_card_number = result->license->serial_number;
@@ -1413,7 +1413,7 @@ void send_game_menu_t(
     bool show_tournaments_only) {
   auto s = c->require_server_state();
 
-  vector<S_GameMenuEntry<Encoding>> entries;
+  vector<S_GameMenuEntryT<Encoding>> entries;
   {
     auto& e = entries.emplace_back();
     e.menu_id = MenuID::GAME;
@@ -1770,8 +1770,8 @@ static void send_join_spectator_team(shared_ptr<Client> c, shared_ptr<Lobby> l) 
       auto& p = cmd.players[z];
       populate_lobby_data_for_client(p.lobby_data, wc, c);
       p.inventory = wc_p->inventory;
-      p.inventory.encode_for_client(c);
-      p.disp = wc_p->disp.to_dcpcv3(c->language(), p.inventory.language);
+      p.inventory.encode_for_client(c->version(), s->item_parameter_table_for_encode(c->version()));
+      p.disp = wc_p->disp.to_dcpcv3<false>(c->language(), p.inventory.language);
       p.disp.enforce_lobby_join_limits_for_version(c->version());
 
       auto& e = cmd.entries[z];
@@ -1813,7 +1813,7 @@ static void send_join_spectator_team(shared_ptr<Client> c, shared_ptr<Lobby> l) 
       auto& p = cmd.players[client_id];
       p.lobby_data = entry.lobby_data;
       p.inventory = entry.inventory;
-      p.inventory.encode_for_client(c);
+      p.inventory.encode_for_client(c->version(), s->item_parameter_table_for_encode(c->version()));
       p.disp = entry.disp;
       p.disp.enforce_lobby_join_limits_for_version(c->version());
 
@@ -1840,7 +1840,7 @@ static void send_join_spectator_team(shared_ptr<Client> c, shared_ptr<Lobby> l) 
       auto& cmd_e = cmd.entries[z];
       populate_lobby_data_for_client(cmd_p.lobby_data, other_c, c);
       cmd_p.inventory = other_p->inventory;
-      cmd_p.disp = other_p->disp.to_dcpcv3(c->language(), cmd_p.inventory.language);
+      cmd_p.disp = other_p->disp.to_dcpcv3<false>(c->language(), cmd_p.inventory.language);
       cmd_p.disp.enforce_lobby_join_limits_for_version(c->version());
 
       cmd_e.player_tag = 0x00010000;
@@ -1960,7 +1960,7 @@ void send_join_game(shared_ptr<Client> c, shared_ptr<Lobby> l) {
           auto other_p = l->clients[x]->character();
           auto& cmd_p = cmd.players_ep3[x];
           cmd_p.inventory = other_p->inventory;
-          cmd_p.inventory.encode_for_client(c);
+          cmd_p.inventory.encode_for_client(c->version(), s->item_parameter_table_for_encode(c->version()));
           cmd_p.disp = convert_player_disp_data<PlayerDispDataDCPCV3>(other_p->disp, c->language(), other_p->inventory.language);
           cmd_p.disp.enforce_lobby_join_limits_for_version(c->version());
           if (s->version_name_colors) {
@@ -2048,7 +2048,7 @@ void send_join_lobby_t(shared_ptr<Client> c, shared_ptr<Lobby> l, shared_ptr<Cli
     lobby_block = l->block;
   }
 
-  S_JoinLobby<LobbyFlags, LobbyDataT, DispDataT> cmd;
+  S_JoinLobbyT<LobbyFlags, LobbyDataT, DispDataT> cmd;
   cmd.lobby_flags.client_id = c->lobby_client_id;
   cmd.lobby_flags.leader_id = l->leader_id;
   cmd.lobby_flags.disable_udp = 0x01;
@@ -2076,7 +2076,7 @@ void send_join_lobby_t(shared_ptr<Client> c, shared_ptr<Lobby> l, shared_ptr<Cli
     auto& e = cmd.entries[used_entries++];
     populate_lobby_data_for_client(e.lobby_data, lc, c);
     e.inventory = lp->inventory;
-    e.inventory.encode_for_client(c);
+    e.inventory.encode_for_client(c->version(), s->item_parameter_table_for_encode(c->version()));
     if ((lc == c) && is_v1_or_v2(c->version()) && lc->v1_v2_last_reported_disp) {
       e.disp = convert_player_disp_data<DispDataT>(*lc->v1_v2_last_reported_disp, c->language(), lp->inventory.language);
     } else {
@@ -2151,7 +2151,7 @@ void send_join_lobby_xb(shared_ptr<Client> c, shared_ptr<Lobby> l, shared_ptr<Cl
     auto& e = cmd.entries[used_entries++];
     populate_lobby_data_for_client(e.lobby_data, lc, c);
     e.inventory = lp->inventory;
-    e.inventory.encode_for_client(c);
+    e.inventory.encode_for_client(c->version(), s->item_parameter_table_for_encode(c->version()));
     e.disp = convert_player_disp_data<PlayerDispDataDCPCV3>(lp->disp, c->language(), lp->inventory.language);
     e.disp.enforce_lobby_join_limits_for_version(c->version());
     if (s->version_name_colors) {
@@ -2199,7 +2199,7 @@ void send_join_lobby_dc_nte(shared_ptr<Client> c, shared_ptr<Lobby> l,
     auto& e = cmd.entries[used_entries++];
     populate_lobby_data_for_client(e.lobby_data, lc, c);
     e.inventory = lp->inventory;
-    e.inventory.encode_for_client(c);
+    e.inventory.encode_for_client(c->version(), s->item_parameter_table_for_encode(c->version()));
     if ((lc == c) && is_v1_or_v2(c->version()) && lc->v1_v2_last_reported_disp) {
       e.disp = convert_player_disp_data<PlayerDispDataDCPCV3>(*lc->v1_v2_last_reported_disp, c->language(), lp->inventory.language);
     } else {
@@ -2319,8 +2319,39 @@ void send_self_leave_notification(shared_ptr<Client> c) {
   send_command_t(c, 0x69, c->lobby_client_id, cmd);
 }
 
-void send_get_player_info(shared_ptr<Client> c) {
-  send_command(c, (c->version() == Version::DC_NTE) ? 0x8D : 0x95, 0x00);
+static bool send_get_extended_player_info(shared_ptr<Client> c) {
+  // TODO: Support extended player info on other versions.
+  if (c->version() != Version::GC_V3) {
+    return false;
+  }
+  auto s = c->require_server_state();
+  if (c->config.check_flag(Client::Flag::NO_SEND_FUNCTION_CALL) ||
+      c->config.check_flag(Client::Flag::SEND_FUNCTION_CALL_CHECKSUM_ONLY)) {
+    return false;
+  }
+
+  prepare_client_for_patches(c, [wc = weak_ptr<Client>(c)]() {
+    auto c = wc.lock();
+    if (!c) {
+      return;
+    }
+    try {
+      auto s = c->require_server_state();
+      auto fn = s->function_code_index->get_patch("GetExtendedPlayerInfo", c->config.specific_version);
+      send_function_call(c, fn);
+      c->function_call_response_queue.emplace_back(empty_function_call_response_handler);
+    } catch (const exception& e) {
+      c->log.warning("Failed to send extended player info request: %s", e.what());
+      send_get_player_info(c, false);
+    }
+  });
+  return true;
+}
+
+void send_get_player_info(shared_ptr<Client> c, bool request_extended) {
+  if (!request_extended || !send_get_extended_player_info(c)) {
+    send_command(c, (c->version() == Version::DC_NTE) ? 0x8D : 0x95, 0x00);
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3151,7 +3182,7 @@ template <typename RulesT>
 void send_ep3_tournament_details_t(
     shared_ptr<Client> c,
     shared_ptr<const Episode3::Tournament> tourn) {
-  S_TournamentGameDetailsBase_Ep3_E3<RulesT> cmd;
+  S_TournamentGameDetailsBaseT_Ep3_E3<RulesT> cmd;
   auto vm = tourn->get_map()->version(c->language());
   cmd.name.encode(tourn->get_name(), c->language());
   cmd.map_name.encode(vm->map->name.decode(vm->language), c->language());
@@ -3203,7 +3234,7 @@ void send_ep3_game_details_t(shared_ptr<Client> c, shared_ptr<Lobby> l) {
   auto tourn = tourn_match ? tourn_match->tournament.lock() : nullptr;
 
   if (tourn) {
-    S_TournamentGameDetailsBase_Ep3_E3<RulesT> cmd;
+    S_TournamentGameDetailsBaseT_Ep3_E3<RulesT> cmd;
     cmd.name.encode(l->name, c->language());
 
     auto vm = tourn->get_map()->version(c->language());
@@ -3222,7 +3253,7 @@ void send_ep3_game_details_t(shared_ptr<Client> c, shared_ptr<Lobby> l) {
 
     if (primary_lobby) {
       auto serial_number_to_client = primary_lobby->clients_by_serial_number();
-      using TeamEntryT = typename S_TournamentGameDetailsBase_Ep3_E3<RulesT>::TeamEntry;
+      using TeamEntryT = typename S_TournamentGameDetailsBaseT_Ep3_E3<RulesT>::TeamEntry;
       auto describe_team = [&](TeamEntryT& team_entry, shared_ptr<const Episode3::Tournament::Team> team) -> void {
         team_entry.team_name.encode(team->name, c->language());
         for (size_t z = 0; z < team->players.size(); z++) {
@@ -3263,7 +3294,7 @@ void send_ep3_game_details_t(shared_ptr<Client> c, shared_ptr<Lobby> l) {
     send_command_t(c, 0xE3, flag, cmd);
 
   } else {
-    S_GameInformationBase_Ep3_E1<RulesT> cmd;
+    S_GameInformationBaseT_Ep3_E1<RulesT> cmd;
     cmd.game_name.encode(l->name, c->language());
     if (primary_lobby) {
       size_t num_players = 0;
@@ -3292,7 +3323,7 @@ void send_ep3_game_details_t(shared_ptr<Client> c, shared_ptr<Lobby> l) {
       // spectator count in the info window object. To account for this, we send
       // a mostly-blank E3 to set the spectator count, followed by an E1 with
       // the correct data.
-      S_TournamentGameDetailsBase_Ep3_E3<RulesT> cmd_E3;
+      S_TournamentGameDetailsBaseT_Ep3_E3<RulesT> cmd_E3;
       cmd_E3.num_spectators = num_spectators;
       send_command_t(c, 0xE3, 0x04, cmd_E3);
 

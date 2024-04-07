@@ -380,10 +380,10 @@ JSON HTTPServer::generate_game_client_json_st(shared_ptr<const Client> c, shared
     ret.emplace("BattleDisconnectCount", p->battle_records.disconnect_count.load());
 
     if (!is_ep3(c->version())) {
-      auto json_for_challenge_times = []<size_t Count>(const parray<ChallengeTime<false>, Count>& times) -> JSON {
+      auto json_for_challenge_times = []<size_t Count>(const parray<ChallengeTime, Count>& times) -> JSON {
         auto times_json = JSON::list();
         for (size_t z = 0; z < times.size(); z++) {
-          times_json.emplace_back(times[z].load());
+          times_json.emplace_back(times[z].decode());
         }
         return times_json;
       };
@@ -419,11 +419,11 @@ JSON HTTPServer::generate_game_client_json_st(shared_ptr<const Client> c, shared
       ret.emplace("ChallengeGraveTeam", p->challenge_records.grave_team.decode());
       ret.emplace("ChallengeGraveMessage", p->challenge_records.grave_message.decode());
       ret.emplace("ChallengeAwardStateEp1OnlineFlags", p->challenge_records.ep1_online_award_state.rank_award_flags.load());
-      ret.emplace("ChallengeAwardStateEp1OnlineMaxRank", p->challenge_records.ep1_online_award_state.maximum_rank.load());
+      ret.emplace("ChallengeAwardStateEp1OnlineMaxRank", p->challenge_records.ep1_online_award_state.maximum_rank.decode());
       ret.emplace("ChallengeAwardStateEp2OnlineFlags", p->challenge_records.ep2_online_award_state.rank_award_flags.load());
-      ret.emplace("ChallengeAwardStateEp2OnlineMaxRank", p->challenge_records.ep2_online_award_state.maximum_rank.load());
+      ret.emplace("ChallengeAwardStateEp2OnlineMaxRank", p->challenge_records.ep2_online_award_state.maximum_rank.decode());
       ret.emplace("ChallengeAwardStateEp1OfflineFlags", p->challenge_records.ep1_offline_award_state.rank_award_flags.load());
-      ret.emplace("ChallengeAwardStateEp1OfflineMaxRank", p->challenge_records.ep1_offline_award_state.maximum_rank.load());
+      ret.emplace("ChallengeAwardStateEp1OfflineMaxRank", p->challenge_records.ep1_offline_award_state.maximum_rank.decode());
       ret.emplace("ChallengeRankTitle", p->challenge_records.rank_title.decode());
     }
   }

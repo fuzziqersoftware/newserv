@@ -347,7 +347,7 @@ DiskLicenseIndex::DiskLicenseIndex() {
     pstring<TextEncoding::ASCII, 0x0C> gc_password; // GC password
     uint32_t privileges; // privilege level
     uint64_t ban_end_time; // end time of ban (zero = not banned)
-  } __attribute__((packed));
+  } __packed_ws__(BinaryLicense, 0x54);
 
   if (!isdir("system/licenses")) {
     mkdir("system/licenses", 0755);

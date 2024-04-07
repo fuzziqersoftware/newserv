@@ -13,19 +13,19 @@ struct PSOCommandHeaderPC {
   le_uint16_t size;
   uint8_t command;
   uint8_t flag;
-} __attribute__((packed));
+} __packed_ws__(PSOCommandHeaderPC, 4);
 
 struct PSOCommandHeaderDCV3 {
   uint8_t command;
   uint8_t flag;
   le_uint16_t size;
-} __attribute__((packed));
+} __packed_ws__(PSOCommandHeaderDCV3, 4);
 
 struct PSOCommandHeaderBB {
   le_uint16_t size;
   le_uint16_t command;
   le_uint32_t flag;
-} __attribute__((packed));
+} __packed_ws__(PSOCommandHeaderBB, 8);
 
 union PSOCommandHeader {
   PSOCommandHeaderDCV3 dc;
@@ -45,7 +45,7 @@ union PSOCommandHeader {
   }
 
   PSOCommandHeader();
-} __attribute__((packed));
+} __packed_ws__(PSOCommandHeader, 8);
 
 // This function is used in a lot of places to check received command sizes and
 // cast them to the appropriate type

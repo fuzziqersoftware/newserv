@@ -440,7 +440,7 @@ uint32_t specific_version_for_gc_header_checksum(uint32_t header_checksum) {
       char developer_code2 = 'P';
       uint8_t disc_number = 0;
       uint8_t version_code;
-    } __attribute__((packed)) data;
+    } __packed__ data;
     for (const char* game_code2 = "OS"; *game_code2; game_code2++) {
       data.game_code2 = *game_code2;
       for (const char* region_code = "JEP"; *region_code; region_code++) {

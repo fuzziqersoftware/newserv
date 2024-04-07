@@ -1231,7 +1231,7 @@ static void on_symbol_chat(shared_ptr<Client> c, uint8_t command, uint8_t flag, 
 
 template <bool SenderIsBigEndian>
 static void on_word_select_t(shared_ptr<Client> c, uint8_t command, uint8_t, void* data, size_t size) {
-  const auto& cmd = check_size_t<G_WordSelect_6x74<SenderIsBigEndian>>(data, size);
+  const auto& cmd = check_size_t<G_WordSelectT_6x74<SenderIsBigEndian>>(data, size);
   if (c->can_chat && (cmd.client_id == c->lobby_client_id)) {
     if (command_is_private(command)) {
       return;
@@ -1282,12 +1282,12 @@ static void on_word_select_t(shared_ptr<Client> c, uint8_t command, uint8_t, voi
         }
 
         if (is_big_endian(lc->version())) {
-          G_WordSelect_6x74<true> out_cmd = {
+          G_WordSelectBE_6x74 out_cmd = {
               subcommand, cmd.size, cmd.client_id.load(),
               s->word_select_table->translate(cmd.message, from_version, lc_version)};
           send_command_t(lc, 0x60, 0x00, out_cmd);
         } else {
-          G_WordSelect_6x74<false> out_cmd = {
+          G_WordSelect_6x74 out_cmd = {
               subcommand, cmd.size, cmd.client_id.load(),
               s->word_select_table->translate(cmd.message, from_version, lc_version)};
           send_command_t(lc, 0x60, 0x00, out_cmd);
@@ -2982,7 +2982,7 @@ static void on_activate_timed_switch(shared_ptr<Client> c, uint8_t command, uint
 }
 
 static void on_battle_scores(shared_ptr<Client> c, uint8_t command, uint8_t, void* data, size_t size) {
-  const auto& cmd = check_size_t<G_BattleScores_6x7F<false>>(data, size);
+  const auto& cmd = check_size_t<G_BattleScores_6x7F>(data, size);
 
   if (command_is_private(command)) {
     return;
@@ -2992,7 +2992,7 @@ static void on_battle_scores(shared_ptr<Client> c, uint8_t command, uint8_t, voi
     return;
   }
 
-  G_BattleScores_6x7F<true> sw_cmd;
+  G_BattleScoresBE_6x7F sw_cmd;
   sw_cmd.header.subcommand = 0x7F;
   sw_cmd.header.size = cmd.header.size;
   sw_cmd.header.unused = 0;
@@ -3026,8 +3026,8 @@ static void on_dragon_actions(shared_ptr<Client> c, uint8_t command, uint8_t, vo
     return;
   }
 
-  G_DragonBossActions_GC_6x12 sw_cmd = {{{cmd.header.subcommand, cmd.header.size, cmd.header.enemy_id},
-      cmd.unknown_a2, cmd.unknown_a3, cmd.unknown_a4, cmd.x.load(), cmd.z.load()}};
+  G_DragonBossActions_GC_6x12 sw_cmd = {{cmd.header.subcommand, cmd.header.size, cmd.header.enemy_id},
+      cmd.unknown_a2, cmd.unknown_a3, cmd.unknown_a4, cmd.x.load(), cmd.z.load()};
   bool sender_is_be = is_big_endian(c->version());
   for (auto lc : l->clients) {
     if (lc && (lc != c)) {
@@ -3051,14 +3051,14 @@ static void on_gol_dragon_actions(shared_ptr<Client> c, uint8_t command, uint8_t
     return;
   }
 
-  G_GolDragonBossActions_GC_6xA8 sw_cmd = {{{cmd.header.subcommand, cmd.header.size, cmd.header.enemy_id},
+  G_GolDragonBossActions_GC_6xA8 sw_cmd = {{cmd.header.subcommand, cmd.header.size, cmd.header.enemy_id},
       cmd.unknown_a2,
       cmd.unknown_a3,
       cmd.unknown_a4,
       cmd.x.load(),
       cmd.z.load(),
       cmd.unknown_a5,
-      0}};
+      0};
   bool sender_is_be = is_big_endian(c->version());
   for (auto lc : l->clients) {
     if (lc && (lc != c)) {
@@ -3095,7 +3095,7 @@ static void on_update_enemy_state(shared_ptr<Client> c, uint8_t command, uint8_t
     l->log.info("E-%hX updated to damage=%hu game_flags=%08" PRIX32, cmd.enemy_index.load(), enemy.total_damage, enemy.game_flags);
   }
 
-  G_UpdateEnemyState_GC_6x0A sw_cmd = {{{cmd.header.subcommand, cmd.header.size, cmd.header.enemy_id}, cmd.enemy_index, cmd.total_damage, cmd.flags.load()}};
+  G_UpdateEnemyState_GC_6x0A sw_cmd = {{cmd.header.subcommand, cmd.header.size, cmd.header.enemy_id}, cmd.enemy_index, cmd.total_damage, cmd.flags.load()};
   bool sender_is_be = is_big_endian(c->version());
   for (auto lc : l->clients) {
     if (lc && (lc != c)) {
@@ -3752,7 +3752,7 @@ static void on_battle_level_up_bb(shared_ptr<Client> c, uint8_t, uint8_t, void* 
       auto lp = lc->character();
       uint32_t target_level = lp->disp.stats.level + cmd.num_levels;
       uint32_t before_exp = lp->disp.stats.experience;
-      lp->disp.stats.advance_to_level(lp->disp.visual.char_class, target_level, s->level_table);
+      s->level_table->advance_to_level(lp->disp.stats, target_level, lp->disp.visual.char_class);
       send_give_experience(lc, lp->disp.stats.experience - before_exp);
       send_level_up(lc);
     }
@@ -4626,10 +4626,10 @@ void on_subcommand_multi(shared_ptr<Client> c, uint8_t command, uint8_t flag, st
     if (header->size != 0) {
       cmd_size = header->size << 2;
     } else {
-      if (offset + sizeof(G_ExtendedHeader<G_UnusedHeader>) > data.size()) {
+      if (offset + sizeof(G_ExtendedHeaderT<G_UnusedHeader>) > data.size()) {
         throw runtime_error("insufficient data remaining for next extended subcommand header");
       }
-      const auto* ext_header = reinterpret_cast<const G_ExtendedHeader<G_UnusedHeader>*>(data.data() + offset);
+      const auto* ext_header = reinterpret_cast<const G_ExtendedHeaderT<G_UnusedHeader>*>(data.data() + offset);
       cmd_size = ext_header->size;
       if (cmd_size < 8) {
         throw runtime_error("extended subcommand header has size < 8");

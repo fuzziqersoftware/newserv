@@ -16,7 +16,7 @@ struct PSOQuestHeaderDCNTE {
   /* 000C */ le_uint32_t unused;
   /* 0010 */ pstring<TextEncoding::SJIS, 0x10> name;
   /* 0020 */
-} __attribute__((packed));
+} __packed_ws__(PSOQuestHeaderDCNTE, 0x20);
 
 struct PSOQuestHeaderDC { // Same format for DC v1 and v2
   /* 0000 */ le_uint32_t code_offset;
@@ -30,7 +30,7 @@ struct PSOQuestHeaderDC { // Same format for DC v1 and v2
   /* 0034 */ pstring<TextEncoding::MARKED, 0x80> short_description;
   /* 00B4 */ pstring<TextEncoding::MARKED, 0x120> long_description;
   /* 01D4 */
-} __attribute__((packed));
+} __packed_ws__(PSOQuestHeaderDC, 0x1D4);
 
 struct PSOQuestHeaderPC {
   /* 0000 */ le_uint32_t code_offset;
@@ -44,7 +44,7 @@ struct PSOQuestHeaderPC {
   /* 0054 */ pstring<TextEncoding::UTF16, 0x80> short_description;
   /* 0154 */ pstring<TextEncoding::UTF16, 0x120> long_description;
   /* 0394 */
-} __attribute__((packed));
+} __packed_ws__(PSOQuestHeaderPC, 0x394);
 
 // TODO: Is the XB quest header format the same as on GC? If not, make a
 // separate struct; if so, rename this struct to V3.
@@ -61,7 +61,7 @@ struct PSOQuestHeaderGC {
   /* 0034 */ pstring<TextEncoding::MARKED, 0x80> short_description;
   /* 00B4 */ pstring<TextEncoding::MARKED, 0x120> long_description;
   /* 01D4 */
-} __attribute__((packed));
+} __packed_ws__(PSOQuestHeaderGC, 0x1D4);
 
 struct PSOQuestHeaderBB {
   /* 0000 */ le_uint32_t code_offset;
@@ -78,7 +78,7 @@ struct PSOQuestHeaderBB {
   /* 0058 */ pstring<TextEncoding::UTF16, 0x80> short_description;
   /* 0158 */ pstring<TextEncoding::UTF16, 0x120> long_description;
   /* 0398 */
-} __attribute__((packed));
+} __packed_ws__(PSOQuestHeaderBB, 0x398);
 
 Episode episode_for_quest_episode_number(uint8_t episode_number);
 

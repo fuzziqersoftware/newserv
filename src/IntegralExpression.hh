@@ -17,7 +17,7 @@ class IntegralExpression {
 public:
   struct Env {
     const QuestFlagsForDifficulty* flags;
-    const PlayerRecordsBB_Challenge* challenge_records;
+    const PlayerRecordsChallengeBB* challenge_records;
     std::shared_ptr<const TeamIndex::Team> team;
     size_t num_players;
     uint8_t event;

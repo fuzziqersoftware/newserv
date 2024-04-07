@@ -11,6 +11,6 @@ struct AITalkBin {
       be_uint32_t percent_chance; // 0-100
       be_uint32_t count;
       be_uint32_t string_ids[count];
-    } __attribute__((packed));
-  } __attribute__((packed));
-} __attribute__((packed));
+    } __packed__;
+  } __packed__;
+} __packed__;

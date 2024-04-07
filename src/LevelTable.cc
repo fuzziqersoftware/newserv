@@ -9,26 +9,26 @@
 
 using namespace std;
 
-void PlayerStats::reset_to_base(uint8_t char_class, shared_ptr<const LevelTable> level_table) {
-  this->level = 0;
-  this->experience = 0;
-  this->char_stats = level_table->base_stats_for_class(char_class);
+void LevelTable::reset_to_base(PlayerStats& stats, uint8_t char_class) const {
+  stats.level = 0;
+  stats.experience = 0;
+  stats.char_stats = this->base_stats_for_class(char_class);
 }
 
-void PlayerStats::advance_to_level(uint8_t char_class, uint32_t level, shared_ptr<const LevelTable> level_table) {
-  for (; this->level < level; this->level++) {
-    const auto& level_stats = level_table->stats_delta_for_level(char_class, this->level + 1);
+void LevelTable::advance_to_level(PlayerStats& stats, uint32_t level, uint8_t char_class) const {
+  for (; stats.level < level; stats.level++) {
+    const auto& level_stats = this->stats_delta_for_level(char_class, stats.level + 1);
     // The original code clamps the resulting stat values to [0, max_stat]; we
     // don't have max_stat handy so we just allow them to be unbounded
-    this->char_stats.atp += level_stats.atp;
-    this->char_stats.mst += level_stats.mst;
-    this->char_stats.evp += level_stats.evp;
-    this->char_stats.hp += level_stats.hp;
-    this->char_stats.dfp += level_stats.dfp;
-    this->char_stats.ata += level_stats.ata;
+    stats.char_stats.atp += level_stats.atp;
+    stats.char_stats.mst += level_stats.mst;
+    stats.char_stats.evp += level_stats.evp;
+    stats.char_stats.hp += level_stats.hp;
+    stats.char_stats.dfp += level_stats.dfp;
+    stats.char_stats.ata += level_stats.ata;
     // Note: It is not a bug that lck is ignored here; the original code
     // ignores it too.
-    this->experience = level_stats.experience;
+    stats.experience = level_stats.experience;
   }
 }
 
@@ -52,7 +52,7 @@ LevelTableV2::LevelTableV2(const string& data, bool compressed) {
     le_uint32_t unknown_a10; // -> u32[3] -> (0x10-byte struct)[0x0C]
     le_uint32_t unknown_a11; // -> u32[3] -> (0x30-bytes)
     le_uint32_t unknown_a12; // -> u32[3] -> (0x14-byte struct)[0x0F]
-  } __attribute__((packed));
+  } __packed_ws__(Offsets, 0x40);
 
   StringReader r;
   string decompressed_data;
@@ -158,7 +158,7 @@ LevelTableV4::LevelTableV4(const string& data, bool compressed) {
   struct Offsets {
     le_uint32_t base_stats; // -> u32[12] -> CharacterStats
     le_uint32_t level_deltas; // -> u32[12] -> LevelStatsDelta[200]
-  } __attribute__((packed));
+  } __packed_ws__(Offsets, 8);
 
   StringReader r;
   string decompressed_data;

@@ -78,7 +78,7 @@ private:
   struct UnitResult {
     uint8_t unit;
     int8_t modifier;
-  } __attribute__((packed));
+  } __packed_ws__(UnitResult, 2);
   std::array<std::vector<UnitResult>, 13> unit_results_by_star_count;
 
   // Note: The original implementation uses 17 different random states for some

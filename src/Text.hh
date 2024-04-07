@@ -11,6 +11,15 @@
 #include <stdexcept>
 #include <string>
 
+#define __packed__ __attribute__((packed))
+#define check_struct_size(StructT, Size)                                 \
+  static_assert(sizeof(StructT) >= Size, "Structure size is too small"); \
+  static_assert(sizeof(StructT) <= Size, "Structure size is too large")
+
+#define __packed_ws__(StructT, Size) \
+  __packed__;                        \
+  check_struct_size(StructT, Size)
+
 // Conversion functions
 
 class TextTranscoder {
@@ -112,6 +121,12 @@ struct parray {
     this->operator=(std::move(other));
   }
 
+  template <typename FromT>
+    requires std::is_convertible_v<FromT, ItemT>
+  parray(const parray<FromT, Count>& other) {
+    this->operator=(other);
+  }
+
   template <size_t OtherCount>
   parray(const parray<ItemT, OtherCount>& s) {
     this->operator=(s);
@@ -203,6 +218,18 @@ struct parray {
     return *this;
   }
 
+  template <typename FromT>
+    requires std::is_convertible_v<FromT, ItemT>
+  parray& operator=(const parray<FromT, Count>& s) {
+    for (size_t x = 0; x < Count; x++) {
+      const FromT& src_item = s.items[x];
+      ItemT& dest_item = this->items[x];
+      static_assert(!std::is_const_v<ItemT>, "ItemT is const");
+      dest_item = src_item;
+    }
+    return *this;
+  }
+
   template <size_t OtherCount>
   parray& operator=(const parray<ItemT, OtherCount>& s) {
     if (OtherCount <= Count) {
@@ -267,7 +294,7 @@ struct parray {
     }
     return true;
   }
-} __attribute__((packed));
+} __packed__;
 
 template <typename ItemT, size_t Count>
 struct bcarray {
@@ -672,7 +699,7 @@ struct pstring {
 
   // Note: The contents of a pstring do not have to be null-terminated, so there
   // is no .c_str() function.
-} __attribute__((packed));
+} __packed__;
 
 // Helper functions
 

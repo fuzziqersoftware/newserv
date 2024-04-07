@@ -486,8 +486,8 @@ void Client::create_battle_overlay(shared_ptr<const BattleRules> rules, shared_p
     uint8_t char_class = this->overlay_character_data->disp.visual.char_class;
     auto& stats = this->overlay_character_data->disp.stats;
 
-    stats.reset_to_base(char_class, level_table);
-    stats.advance_to_level(char_class, target_level, level_table);
+    level_table->reset_to_base(stats, char_class);
+    level_table->advance_to_level(stats, target_level, char_class);
 
     stats.esp = 40;
     stats.meseta = 300;
@@ -532,8 +532,8 @@ void Client::create_challenge_overlay(Version version, size_t template_index, sh
 
   overlay->inventory.items[13].extension_data2 = 1;
 
-  overlay->disp.stats.reset_to_base(overlay->disp.visual.char_class, level_table);
-  overlay->disp.stats.advance_to_level(overlay->disp.visual.char_class, tpl.level, level_table);
+  level_table->reset_to_base(overlay->disp.stats, overlay->disp.visual.char_class);
+  level_table->advance_to_level(overlay->disp.stats, tpl.level, overlay->disp.visual.char_class);
 
   overlay->disp.stats.esp = 40;
   overlay->disp.stats.unknown_a3 = 10.0;
@@ -753,6 +753,7 @@ void Client::load_all_files() {
       if (header.flag != 0x00000000) {
         throw runtime_error("incorrect flag in character file header");
       }
+      static_assert(sizeof(PSOBBCharacterFile) + sizeof(PSOBBFullSystemFile) == 0x3994, ".psochar size is incorrect");
       this->character_data = make_shared<PSOBBCharacterFile>(freadx<PSOBBCharacterFile>(f.get()));
       files_manager->set_character(char_filename, this->character_data);
       player_data_log.info("Loaded character data from %s", char_filename.c_str());
@@ -831,7 +832,6 @@ void Client::load_all_files() {
       this->character_data->inventory = nsc_data.inventory;
       this->character_data->disp = nsc_data.disp;
       this->character_data->play_time_seconds = 0;
-      this->character_data->unknown_a2 = nsc_data.unknown_a2;
       this->character_data->quest_flags = nsc_data.quest_flags;
       this->character_data->death_count = nsc_data.death_count;
       this->character_data->bank = nsc_data.bank;
@@ -846,7 +846,7 @@ void Client::load_all_files() {
       this->character_data->info_board = nsc_data.info_board;
       this->character_data->battle_records = nsc_data.battle_records;
       this->character_data->challenge_records = nsc_data.challenge_records;
-      this->character_data->tech_menu_config = nsc_data.tech_menu_config;
+      this->character_data->tech_menu_shortcut_entries = nsc_data.tech_menu_shortcut_entries;
       this->character_data->quest_counters = nsc_data.quest_counters;
       if (nsa_data) {
         this->character_data->option_flags = nsa_data->option_flags;

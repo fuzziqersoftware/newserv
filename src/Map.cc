@@ -1940,7 +1940,8 @@ void SetDataTable::load_table_t(const string& data) {
     U32T unknown_a6; // == 0
     U32T unknown_a7; // == 0
     U32T unknown_a8; // == 0
-  } __attribute__((packed));
+  } __packed_ws__(Footer, 0x20);
+
   if (r.size() < sizeof(Footer)) {
     throw runtime_error("set data table is too small");
   }
