@@ -22,6 +22,9 @@
 
 // Conversion functions
 
+std::string encode_utf8_char(uint32_t ch);
+uint32_t decode_utf8_char(const void** data, size_t* size);
+
 class TextTranscoder {
 public:
   TextTranscoder(const char* to, const char* from);

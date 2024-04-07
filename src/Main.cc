@@ -1301,6 +1301,12 @@ Action a_extract_bml("extract-bml", "\
     PC/BB format.\n",
     a_extract_archive_fn);
 
+Action a_encode_sjis(
+    "encode-sjis", nullptr, +[](Arguments& args) {
+      string data = read_input_data(args);
+      string result = tt_utf8_to_sega_sjis(data);
+      write_output_data(args, result.data(), result.size(), "txt");
+    });
 Action a_decode_sjis(
     "decode-sjis", nullptr, +[](Arguments& args) {
       string data = read_input_data(args);

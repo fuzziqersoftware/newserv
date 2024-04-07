@@ -139,28 +139,127 @@ std::string TextTranscoder::on_untranslatable(const void**, size_t*) const {
 
 TextTranscoderCustomSJISToUTF8::TextTranscoderCustomSJISToUTF8() : TextTranscoder("UTF-8", "SHIFT_JIS") {}
 
-std::string TextTranscoderCustomSJISToUTF8::on_untranslatable(const void** src, size_t* size) const {
-  // Sega implemented a single nonstandard Shift-JIS character on PSO GC (and
-  // probably XB as well): the heart symbol, encoded as F040. Understandably,
-  // libiconv doesn't know what to do with it because it's not actually part of
-  // Shift-JIS, so we have to handle it manually here.
-  if ((*size >= 2) && !memcmp(*src, "\xF0\x40", 2)) {
-    *src = reinterpret_cast<const char*>(*src) + 2;
-    *size -= 2;
-    return "\xE2\x99\xA5";
+std::string encode_utf8_char(uint32_t ch) {
+  string ret;
+  if (ch < 0x80) {
+    ret.push_back(ch);
+  } else if (ch < 0x800) {
+    ret.push_back(0xC0 | (ch >> 6));
+    ret.push_back(0x80 | (ch & 0x3F));
+  } else if (ch < 0x10000) {
+    ret.push_back(0xE0 | (ch >> 12));
+    ret.push_back(0x80 | ((ch >> 6) & 0x3F));
+    ret.push_back(0x80 | (ch & 0x3F));
+  } else if (ch < 0x110000) {
+    ret.push_back(0xF0 | (ch >> 18));
+    ret.push_back(0x80 | ((ch >> 12) & 0x3F));
+    ret.push_back(0x80 | ((ch >> 6) & 0x3F));
+    ret.push_back(0x80 | (ch & 0x3F));
+  } else {
+    throw runtime_error("unencodable Unicode code point");
+  }
+  return ret;
+}
+
+uint32_t decode_utf8_char(const void** vdata, size_t* size) {
+  if (*size == 0) {
+    throw runtime_error("incomplete UTF-8 character");
+  }
+
+  const uint8_t* data = reinterpret_cast<const uint8_t*>(*vdata);
+  if (!(data[0] & 0x80)) {
+    (*size)--;
+    *vdata = data + 1;
+    return *data;
+  } else if ((data[0] & 0xE0) == 0xC0) {
+    if ((*size < 2) || ((data[1] & 0xC0) != 0x80)) {
+      throw runtime_error("incomplete UTF-8 character");
+    }
+    (*size) -= 2;
+    *vdata = data + 2;
+    return ((data[0] & 0x1F) << 6) | (data[1] & 0x3F);
+  } else if ((data[0] & 0xF0) == 0xE0) {
+    if ((*size < 3) || ((data[1] & 0xC0) != 0x80) || ((data[2] & 0xC0) != 0x80)) {
+      throw runtime_error("incomplete UTF-8 character");
+    }
+    (*size) -= 3;
+    *vdata = data + 3;
+    return ((data[0] & 0x0F) << 12) | ((data[1] & 0x3F) << 6) | (data[2] & 0x3F);
+  } else if ((data[0] & 0xF8) == 0xF0) {
+    if ((*size < 4) || ((data[1] & 0xC0) != 0x80) || ((data[2] & 0xC0) != 0x80) || ((data[3] & 0xC0) != 0x80)) {
+      throw runtime_error("incomplete UTF-8 character");
+    }
+    (*size) -= 4;
+    *vdata = data + 4;
+    return ((data[0] & 0x07) << 18) | ((data[1] & 0x3F) << 12) | ((data[2] & 0x3F) << 6) | (data[3] & 0x3F);
+  } else {
+    throw runtime_error("invalid UTF-8 character");
+  }
+}
+
+std::string TextTranscoderCustomSJISToUTF8::on_untranslatable(const void** vsrc, size_t* size) const {
+  // Sega implemented some nonstandard Shift-JIS characters on PSO GC (and
+  // probably XB as well): the heart symbol, encoded as F040, and the PSO font,
+  // encoded as F041-F064. Understandably, libiconv doesn't know what to do
+  // with these because they're not actually part of Shift-JIS, so we have to
+  // handle them manually here. We convert them to actual UTF-8 symbols:
+  // F040 (heart symbol) -> U+2665 (heart suit symbol)
+  // F041 (PSO font number 0) -> 24EA (circled digit zero)
+  // F042-F04A (PSO font numbers 1-9) -> 2460-2468 (circled digits 1-9)
+  // F04B-F064 (PSO font letters) -> 1D4D0-1D4E9 (script letters A-Z)
+
+  const uint8_t* src = reinterpret_cast<const uint8_t*>(*vsrc);
+  if ((*size < 2) || (src[0] != 0xF0)) {
+    return "";
+  }
+
+  string ret;
+  if (src[1] < 0x40) {
+    return "";
+  } else if (src[1] == 0x40) { // F040 -> U+2665
+    ret = encode_utf8_char(0x2665);
+  } else if (src[1] == 0x41) { // F041 -> U+24EA
+    ret = encode_utf8_char(0x24EA);
+  } else if (src[1] <= 0x4A) { // F042-F04A -> U+2460-U+2468
+    ret = encode_utf8_char(0x2460 + (src[1] - 0x42));
+  } else if (src[1] <= 0x64) { // F04B-F064 -> U+1D4D0-U+1D4E9
+    ret = encode_utf8_char(0x1D4D0 + (src[1] - 0x4B));
   } else {
     return "";
   }
+
+  *vsrc = src + 2;
+  (*size) -= 2;
+  return ret;
 }
 
 TextTranscoderUTF8ToCustomSJIS::TextTranscoderUTF8ToCustomSJIS() : TextTranscoder("SHIFT_JIS", "UTF-8") {}
 
 std::string TextTranscoderUTF8ToCustomSJIS::on_untranslatable(const void** src, size_t* size) const {
-  if ((*size >= 3) && !memcmp(*src, "\xE2\x99\xA5", 3)) {
-    *src = reinterpret_cast<const char*>(*src) + 3;
-    *size -= 3;
+  const void* orig_src = *src;
+  size_t orig_size = *size;
+  uint32_t ch;
+  try {
+    ch = decode_utf8_char(src, size);
+  } catch (const runtime_error&) {
+    return "";
+  }
+
+  if (ch == 0x2665) { // U+2665 -> F040
     return "\xF0\x40";
+  } else if (ch == 0x24EA) { // U+24EA -> F041
+    return "\xF0\x41";
+  } else if (ch >= 0x2460 && ch <= 0x2468) { // U+2460-U+2468 -> F042-F04A
+    string ret("\xF0");
+    ret.push_back(0x42 + (ch - 0x2460));
+    return ret;
+  } else if (ch >= 0x1D4D0 && ch <= 0x1D4E9) { // U+1D4D0-U+1D4E9 -> F04B-F064
+    string ret("\xF0");
+    ret.push_back(0x4B + (ch - 0x1D4D0));
+    return ret;
   } else {
+    *src = orig_src;
+    *size = orig_size;
     return "";
   }
 }
