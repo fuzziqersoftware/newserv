@@ -2,9 +2,7 @@
 
 set -e
 
-SCHEME=$1
-
-EXECUTABLE="$2"
+EXECUTABLE="$1"
 if [ "$EXECUTABLE" == "" ]; then
   EXECUTABLE="./newserv"
 fi
