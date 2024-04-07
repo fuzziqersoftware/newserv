@@ -1191,8 +1191,9 @@ Action a_assemble_all_patches(
     two compiled .bin files for each patch (one unencrypted, for most PSO\n\
     versions, and one encrypted, for PSO GC JP v1.4, JP Ep3, and Ep3 Trial\n\
     Edition). The output files are saved in system/client-functions.\n",
-    +[](Arguments&) {
-      auto s = make_shared<ServerState>();
+    +[](Arguments& args) {
+      string config_filename = args.get<string>("config");
+      auto s = make_shared<ServerState>(config_filename);
       s->compile_functions(false);
 
       auto process_code = +[](shared_ptr<const CompiledFunctionCode> code,
@@ -1424,7 +1425,8 @@ Action a_print_word_select_table(
     given, prints the table sorted by token ID for that version. If no version\n\
     option is given, prints the token table sorted by canonical name.\n",
     +[](Arguments& args) {
-      auto s = make_shared<ServerState>();
+      string config_filename = args.get<string>("config");
+      auto s = make_shared<ServerState>(config_filename);
       s->load_patch_indexes(false);
       s->load_text_index(false);
       s->load_word_select_table(false);
@@ -1486,7 +1488,8 @@ Action a_convert_rare_item_set(
       auto version = get_cli_version(args);
 
       double rate_factor = args.get<double>("multiply", 1.0);
-      auto s = make_shared<ServerState>("system/config.json");
+      string config_filename = args.get<string>("config");
+      auto s = make_shared<ServerState>(config_filename);
       s->load_config_early();
       s->load_patch_indexes(false);
       s->load_text_index(false);
@@ -1550,7 +1553,8 @@ Action a_describe_item(
       string description = args.get<string>(1);
       auto version = get_cli_version(args);
 
-      auto s = make_shared<ServerState>("system/config.json");
+      string config_filename = args.get<string>("config");
+      auto s = make_shared<ServerState>(config_filename);
       s->load_config_early();
       s->load_patch_indexes(false);
       s->load_text_index(false);
@@ -1620,8 +1624,9 @@ Action a_describe_item(
     });
 
 Action a_name_all_items(
-    "name-all-items", nullptr, +[](Arguments&) {
-      auto s = make_shared<ServerState>("system/config.json");
+    "name-all-items", nullptr, +[](Arguments& args) {
+      string config_filename = args.get<string>("config");
+      auto s = make_shared<ServerState>(config_filename);
       s->load_config_early();
       s->load_patch_indexes(false);
       s->load_text_index(false);
@@ -1670,8 +1675,9 @@ Action a_name_all_items(
     });
 
 Action a_print_item_parameter_tables(
-    "print-item-tables", nullptr, +[](Arguments&) {
-      auto s = make_shared<ServerState>();
+    "print-item-tables", nullptr, +[](Arguments& args) {
+      string config_filename = args.get<string>("config");
+      auto s = make_shared<ServerState>(config_filename);
       s->load_patch_indexes(false);
       s->load_text_index(false);
       s->load_item_definitions(false);
@@ -1694,7 +1700,8 @@ Action a_show_ep3_cards(
     +[](Arguments& args) {
       bool one_line = args.get<bool>("one-line");
 
-      auto s = make_shared<ServerState>();
+      string config_filename = args.get<string>("config");
+      auto s = make_shared<ServerState>(config_filename);
       s->load_ep3_cards(false);
 
       unique_ptr<BinaryTextSet> text_english;
@@ -1744,7 +1751,8 @@ Action a_generate_ep3_cards_html(
 
       bool is_nte = (get_cli_version(args, Version::GC_EP3) == Version::GC_EP3_NTE);
 
-      auto s = make_shared<ServerState>();
+      string config_filename = args.get<string>("config");
+      auto s = make_shared<ServerState>(config_filename);
       s->load_patch_indexes(false);
       s->load_text_index(false);
       s->load_ep3_cards(false);
@@ -1906,10 +1914,11 @@ Action a_show_ep3_maps(
   show-ep3-maps\n\
     Print the Episode 3 maps from the system/ep3 directory in a (sort of)\n\
     human-readable format.\n",
-    +[](Arguments&) {
+    +[](Arguments& args) {
       config_log.info("Collecting Episode 3 data");
 
-      auto s = make_shared<ServerState>();
+      string config_filename = args.get<string>("config");
+      auto s = make_shared<ServerState>(config_filename);
       s->load_ep3_cards(false);
       s->load_ep3_maps(false);
 
@@ -1933,8 +1942,9 @@ Action a_show_battle_params(
   show-battle-params\n\
     Print the Blue Burst battle parameters from the system/blueburst directory\n\
     in a human-readable format.\n",
-    +[](Arguments&) {
-      auto s = make_shared<ServerState>();
+    +[](Arguments& args) {
+      string config_filename = args.get<string>("config");
+      auto s = make_shared<ServerState>(config_filename);
       s->load_patch_indexes(false);
       s->load_battle_params(false);
 
@@ -1975,7 +1985,8 @@ Action a_find_rare_enemy_seeds(
       size_t min_count = args.get<size_t>("min-count", 1);
       string quest_name = args.get<string>("quest", false);
 
-      auto s = make_shared<ServerState>("system/config.json");
+      string config_filename = args.get<string>("config");
+      auto s = make_shared<ServerState>(config_filename);
       shared_ptr<const VersionedQuest> vq;
       if (!quest_name.empty()) {
         s->load_config_early();
@@ -2058,9 +2069,10 @@ Action a_find_rare_enemy_seeds(
     });
 
 Action a_load_maps_test(
-    "load-maps-test", nullptr, +[](Arguments&) {
+    "load-maps-test", nullptr, +[](Arguments& args) {
       using SDT = SetDataTable;
-      auto s = make_shared<ServerState>("system/config.json");
+      string config_filename = args.get<string>("config");
+      auto s = make_shared<ServerState>(config_filename);
       s->load_config_early();
       s->clear_map_file_caches();
       s->load_patch_indexes(false);
@@ -2315,7 +2327,8 @@ Action a_format_ep3_battle_record(
 
 Action a_replay_ep3_battle_commands(
     "replay-ep3-battle-commands", nullptr, +[](Arguments& args) {
-      auto s = make_shared<ServerState>();
+      string config_filename = args.get<string>("config");
+      auto s = make_shared<ServerState>(config_filename);
       s->load_ep3_cards(false);
       s->load_ep3_maps(false);
 
