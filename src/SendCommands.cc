@@ -1461,7 +1461,7 @@ void send_game_menu_t(
     auto& e = entries.emplace_back();
     e.menu_id = MenuID::GAME;
     e.game_id = l->lobby_id;
-    e.difficulty_tag = (l->is_ep3() ? 0x0A : (l->difficulty + 0x22));
+    e.difficulty_tag = (is_ep3(c->version()) ? 0x0A : (l->difficulty + 0x22));
     e.num_players = l->count_clients();
     if (is_dc(c->version())) {
       e.episode = l->version_is_allowed(Version::DC_V1) ? 1 : 0;
@@ -1489,6 +1489,10 @@ void send_game_menu_t(
           break;
         default:
           throw logic_error("invalid game mode");
+      }
+      // On v2, render name in orange if v1 is not allowed
+      if (is_v2(c->version()) && !l->version_is_allowed(Version::DC_V1)) {
+        e.flags |= 0x40;
       }
       // On BB, gray out games that can't be joined
       if ((c->version() == Version::BB_V4) && (l->join_error_for_client(c, nullptr) != Lobby::JoinError::ALLOWED)) {

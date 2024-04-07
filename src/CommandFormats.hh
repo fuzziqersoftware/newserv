@@ -552,12 +552,18 @@ struct S_GameMenuEntryT {
   // - On BB, 0x40/0x41 mean Episodes 1/2 as on GC, and 0x43 means Episode 4.
   uint8_t episode = 0;
   // Flags:
+  // 01 = Send name? (client sends the name field in the 10 command if this
+  //      item is chosen, but it's blank)
   // 02 = Locked (lock icon appears in menu; player is prompted for password if
   //      they choose this game)
   // 04 = In battle (Episode 3; a sword icon appears in menu)
   // 04 = Disabled (BB; used for solo games)
   // 10 = Is battle mode
   // 20 = Is challenge mode
+  // 40 = Is v2 only (DCv2/PC); name renders in orange
+  // 40 = Is Episode 1 (V3/BB)
+  // 80 = Is Episode 2 (V3/BB)
+  // C0 = Is Episode 4 (BB)
   uint8_t flags = 0;
 } __packed__;
 using S_GameMenuEntry_PC_BB_08 = S_GameMenuEntryT<TextEncoding::UTF16>;
