@@ -7,4 +7,4 @@ if [ "$EXECUTABLE" == "" ]; then
   EXECUTABLE="./newserv"
 fi
 
-$EXECUTABLE load-maps-test
+$EXECUTABLE --config=tests/config.json load-maps-test
