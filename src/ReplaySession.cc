@@ -189,7 +189,7 @@ void ReplaySession::check_for_password(shared_ptr<const Event> ev) const {
           check_ak(cmd.access_key2.decode());
         }
       } else if (header.command == 0xDB) {
-        const auto& cmd = check_size_t<C_VerifyLicense_V3_DB>(cmd_data, cmd_size);
+        const auto& cmd = check_size_t<C_VerifyAccount_V3_DB>(cmd_data, cmd_size);
         check_ak(cmd.access_key.decode());
         check_ak(cmd.access_key2.decode());
         check_pw(cmd.password.decode());
@@ -208,7 +208,7 @@ void ReplaySession::check_for_password(shared_ptr<const Event> ev) const {
       } else if (header.command == 0x9E) {
         check_pw(check_size_t<C_LoginExtended_BB_9E>(cmd_data, cmd_size).password.decode());
       } else if (header.command == 0xDB) {
-        check_pw(check_size_t<C_VerifyLicense_BB_DB>(cmd_data, cmd_size).password.decode());
+        check_pw(check_size_t<C_VerifyAccount_V3_DB>(cmd_data, cmd_size).password.decode());
       }
       break;
     }

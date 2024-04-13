@@ -37,7 +37,7 @@
   // Quests may be set to be unavailable until a preceding quest has been
   // cleared or a team reward has been purchased. To enable this feature, set a
   // value for AvailableIf in the quest's JSON file. (This is ignored if the
-  // player has the DISABLE_QUEST_REQUIREMENTS flag in their license.) This
+  // player has the DISABLE_QUEST_REQUIREMENTS flag in their account.) This
   // field's value should be an expression that tests any of the following:
   //   F_XXXX: Quest flag specified in hex (e.g. F_014D)
   //   CC_EpX_Y: Whether or not Challenge stage X in Episode Y is complete
@@ -52,6 +52,6 @@
   // On BB, quests may be disabled but still visible to the player. This
   // expression controls when that should be the case. If AvailableIf evaluates
   // to false, this is ignored. This field is also ignored if the player has
-  // the DISABLE_QUEST_REQUIREMENTS flag in their license.
+  // the DISABLE_QUEST_REQUIREMENTS flag in their account.
   // "EnabledIf": "!F_0169",
 }

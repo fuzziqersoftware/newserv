@@ -37,7 +37,7 @@ public:
 
     std::unique_ptr<struct event, void (*)(struct event*)> timeout_event;
 
-    std::shared_ptr<License> license;
+    std::shared_ptr<Login> login;
 
     Channel client_channel;
     Channel server_channel;
@@ -136,13 +136,13 @@ public:
         std::shared_ptr<ProxyServer> server,
         uint16_t local_port,
         Version version,
-        std::shared_ptr<License> license,
+        std::shared_ptr<Login> login,
         const Client::Config& config);
     LinkedSession(
         std::shared_ptr<ProxyServer> server,
         uint16_t local_port,
         Version version,
-        std::shared_ptr<License> license,
+        std::shared_ptr<Login> login,
         const struct sockaddr_storage& next_destination);
     LinkedSession(
         std::shared_ptr<ProxyServer> server,
@@ -199,8 +199,8 @@ public:
   std::shared_ptr<LinkedSession> get_session_by_name(const std::string& name) const;
   const std::unordered_map<uint64_t, std::shared_ptr<LinkedSession>>& all_sessions() const;
 
-  std::shared_ptr<LinkedSession> create_licensed_session(
-      std::shared_ptr<License> l,
+  std::shared_ptr<LinkedSession> create_logged_in_session(
+      std::shared_ptr<Login> login,
       uint16_t local_port,
       Version version,
       const Client::Config& config);
@@ -250,7 +250,7 @@ private:
     // just local variables inside on_input because XB requires two commands to
     // get started (9E and 9F), so we need to store this state somewhere between
     // those commands.
-    std::shared_ptr<License> license;
+    std::shared_ptr<Login> login;
     uint32_t sub_version = 0;
     std::string character_name;
     Client::Config config;
@@ -281,7 +281,7 @@ private:
   std::unordered_map<struct bufferevent*, std::shared_ptr<UnlinkedSession>> bev_to_unlinked_session;
   std::unordered_set<std::shared_ptr<UnlinkedSession>> unlinked_sessions_to_destroy;
   std::unordered_map<uint64_t, std::shared_ptr<LinkedSession>> id_to_session;
-  uint64_t next_unlicensed_session_id;
+  uint64_t next_logged_out_session_id;
 
   static void dispatch_destroy_sessions(evutil_socket_t, short, void* ctx);
   void destroy_sessions();

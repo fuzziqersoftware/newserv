@@ -11,6 +11,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "Account.hh"
 #include "Client.hh"
 #include "CommonItemSet.hh"
 #include "Episode3/DataIndexes.hh"
@@ -21,7 +22,6 @@
 #include "ItemNameIndex.hh"
 #include "ItemParameterTable.hh"
 #include "LevelTable.hh"
-#include "License.hh"
 #include "Lobby.hh"
 #include "Menu.hh"
 #include "PatchServer.hh"
@@ -87,7 +87,7 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   bool ip_stack_debug = false;
   bool allow_unregistered_users = false;
   bool allow_pc_nte = false;
-  bool use_temp_licenses_for_prototypes = true;
+  bool use_temp_accounts_for_prototypes = true;
   bool allow_dc_pc_games = true;
   bool allow_gc_xb_games = true;
   bool enable_chat_commands = true;
@@ -214,7 +214,7 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   };
   std::vector<Ep3LobbyBannerEntry> ep3_lobby_banners;
 
-  std::shared_ptr<LicenseIndex> license_index;
+  std::shared_ptr<AccountIndex> account_index;
   std::shared_ptr<TeamIndex> team_index;
   JSON team_reward_defs_json;
 
@@ -285,7 +285,7 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
 
   std::shared_ptr<Client> find_client(
       const std::string* identifier = nullptr,
-      uint64_t serial_number = 0,
+      uint64_t account_id = 0,
       std::shared_ptr<Lobby> l = nullptr);
 
   uint32_t connect_address_for_client(std::shared_ptr<Client> c) const;
@@ -353,7 +353,7 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   void load_config_early();
   void load_config_late();
   void load_bb_private_keys(bool from_non_event_thread);
-  void load_licenses(bool from_non_event_thread);
+  void load_accounts(bool from_non_event_thread);
   void load_teams(bool from_non_event_thread);
   void load_patch_indexes(bool from_non_event_thread);
   void clear_map_file_caches();

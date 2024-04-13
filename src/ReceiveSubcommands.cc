@@ -991,13 +991,13 @@ static void on_sync_joining_player_disp_and_inventory(
     case Version::DC_NTE:
       parsed = make_unique<Parsed6x70Data>(
           check_size_t<G_SyncPlayerDispAndInventory_DCNTE_6x70>(data, size),
-          c->license->serial_number);
+          c->login->account->account_id);
       parsed->clear_dc_protos_unused_item_fields();
       break;
     case Version::DC_V1_11_2000_PROTOTYPE:
       parsed = make_unique<Parsed6x70Data>(
           check_size_t<G_SyncPlayerDispAndInventory_DC112000_6x70>(data, size),
-          c->license->serial_number,
+          c->login->account->account_id,
           c->language());
       parsed->clear_dc_protos_unused_item_fields();
       break;
@@ -1007,7 +1007,7 @@ static void on_sync_joining_player_disp_and_inventory(
     case Version::PC_V2:
       parsed = make_unique<Parsed6x70Data>(
           check_size_t<G_SyncPlayerDispAndInventory_DC_PC_6x70>(data, size),
-          c->license->serial_number);
+          c->login->account->account_id);
       if (c_v == Version::DC_V1) {
         parsed->clear_v1_unused_item_fields();
       }
@@ -1018,17 +1018,17 @@ static void on_sync_joining_player_disp_and_inventory(
     case Version::GC_EP3:
       parsed = make_unique<Parsed6x70Data>(
           check_size_t<G_SyncPlayerDispAndInventory_GC_6x70>(data, size),
-          c->license->serial_number);
+          c->login->account->account_id);
       break;
     case Version::XB_V3:
       parsed = make_unique<Parsed6x70Data>(
           check_size_t<G_SyncPlayerDispAndInventory_XB_6x70>(data, size),
-          c->license->serial_number);
+          c->login->account->account_id);
       break;
     case Version::BB_V4:
       parsed = make_unique<Parsed6x70Data>(
           check_size_t<G_SyncPlayerDispAndInventory_BB_6x70>(data, size),
-          c->license->serial_number);
+          c->login->account->account_id);
       break;
     default:
       throw logic_error("6x70 command from unknown game version");
@@ -1414,7 +1414,8 @@ static void on_player_revivable(shared_ptr<Client> c, uint8_t command, uint8_t f
   forward_subcommand(c, command, flag, data, size);
 
   // Revive if infinite HP is enabled
-  bool player_cheats_enabled = l->check_flag(Lobby::Flag::CHEATS_ENABLED) || (c->license->check_flag(License::Flag::CHEAT_ANYWHERE));
+  bool player_cheats_enabled = l->check_flag(Lobby::Flag::CHEATS_ENABLED) ||
+      (c->login->account->check_flag(Account::Flag::CHEAT_ANYWHERE));
   if (player_cheats_enabled && c->config.check_flag(Client::Flag::INFINITE_HP_ENABLED)) {
     G_UseMedicalCenter_6x31 v2_cmd = {0x31, 0x01, c->lobby_client_id};
     G_RevivePlayer_V3_BB_6xA1 v3_cmd = {0xA1, 0x01, c->lobby_client_id};
@@ -1444,7 +1445,7 @@ void on_player_revived(shared_ptr<Client> c, uint8_t command, uint8_t flag, void
   if (l->is_game()) {
     forward_subcommand(c, command, flag, data, size);
     bool player_cheats_enabled = !is_v1(c->version()) &&
-        (l->check_flag(Lobby::Flag::CHEATS_ENABLED) || (c->license->check_flag(License::Flag::CHEAT_ANYWHERE)));
+        (l->check_flag(Lobby::Flag::CHEATS_ENABLED) || (c->login->account->check_flag(Account::Flag::CHEAT_ANYWHERE)));
     if (player_cheats_enabled && c->config.check_flag(Client::Flag::INFINITE_HP_ENABLED)) {
       send_player_stats_change(c, PlayerStatsChange::ADD_HP, 2550);
     }
@@ -1458,7 +1459,7 @@ static void on_received_condition(shared_ptr<Client> c, uint8_t command, uint8_t
   if (l->is_game()) {
     forward_subcommand(c, command, flag, data, size);
     if (cmd.client_id == c->lobby_client_id) {
-      bool player_cheats_enabled = l->check_flag(Lobby::Flag::CHEATS_ENABLED) || (c->license->check_flag(License::Flag::CHEAT_ANYWHERE));
+      bool player_cheats_enabled = l->check_flag(Lobby::Flag::CHEATS_ENABLED) || (c->login->account->check_flag(Account::Flag::CHEAT_ANYWHERE));
       if (player_cheats_enabled && c->config.check_flag(Client::Flag::INFINITE_HP_ENABLED)) {
         send_remove_conditions(c);
       }
@@ -1474,7 +1475,7 @@ static void on_change_hp(shared_ptr<Client> c, uint8_t command, uint8_t flag, vo
   if (l->is_game() && (cmd.client_id == c->lobby_client_id)) {
     forward_subcommand(c, command, flag, data, size);
     bool player_cheats_enabled = !is_v1(c->version()) &&
-        (l->check_flag(Lobby::Flag::CHEATS_ENABLED) || (c->license->check_flag(License::Flag::CHEAT_ANYWHERE)));
+        (l->check_flag(Lobby::Flag::CHEATS_ENABLED) || (c->login->account->check_flag(Account::Flag::CHEAT_ANYWHERE)));
     if (player_cheats_enabled && c->config.check_flag(Client::Flag::INFINITE_HP_ENABLED)) {
       send_player_stats_change(c, PlayerStatsChange::ADD_HP, 2550);
     }
@@ -1488,7 +1489,7 @@ static void on_cast_technique_finished(shared_ptr<Client> c, uint8_t command, ui
   if (l->is_game() && (cmd.header.client_id == c->lobby_client_id)) {
     forward_subcommand(c, command, flag, data, size);
     bool player_cheats_enabled = !is_v1(c->version()) &&
-        (l->check_flag(Lobby::Flag::CHEATS_ENABLED) || (c->license->check_flag(License::Flag::CHEAT_ANYWHERE)));
+        (l->check_flag(Lobby::Flag::CHEATS_ENABLED) || (c->login->account->check_flag(Account::Flag::CHEAT_ANYWHERE)));
     if (player_cheats_enabled && c->config.check_flag(Client::Flag::INFINITE_TP_ENABLED)) {
       send_player_stats_change(c, PlayerStatsChange::ADD_TP, 255);
     }
@@ -2021,7 +2022,7 @@ static void on_pick_up_item_generic(
         string bb_message = string_printf("$C6%s$C7 has found %s", p_name.c_str(), desc.c_str());
         if (should_send_global_notif) {
           for (auto& it : s->channel_to_client) {
-            if (it.second->license &&
+            if (it.second->login &&
                 !is_patch(it.second->version()) &&
                 !is_ep3(it.second->version()) &&
                 it.second->lobby.lock()) {
@@ -3166,11 +3167,11 @@ static void send_max_level_notification_if_needed(shared_ptr<Client> c) {
     string name = p->disp.name.decode(c->language());
     size_t level_for_str = max_level + 1;
     string message = string_printf("$CG%s$C6\nGC: %" PRIu32 "\nhas reached Level $CG%zu",
-        name.c_str(), c->license->serial_number, level_for_str);
+        name.c_str(), c->login->account->account_id, level_for_str);
     string bb_message = string_printf("$CG%s$C6 (GC: %" PRIu32 ") has reached Level $CG%zu",
-        name.c_str(), c->license->serial_number, level_for_str);
+        name.c_str(), c->login->account->account_id, level_for_str);
     for (auto& it : s->channel_to_client) {
-      if ((it.second != c) && it.second->license && !is_patch(it.second->version()) && it.second->lobby.lock()) {
+      if ((it.second != c) && it.second->login && !is_patch(it.second->version()) && it.second->lobby.lock()) {
         send_text_or_scrolling_message(it.second, message, bb_message);
       }
     }
@@ -3508,7 +3509,7 @@ void on_exchange_item_for_team_points_bb(shared_ptr<Client> c, uint8_t command, 
   auto item = p->remove_item(cmd.item_id, cmd.amount, *s->item_stack_limits(c->version()));
 
   size_t points = s->item_parameter_table(Version::BB_V4)->get_item_team_points(item);
-  s->team_index->add_member_points(c->license->serial_number, points);
+  s->team_index->add_member_points(c->login->account->account_id, points);
 
   if (l->log.should_log(LogLevel::INFO)) {
     auto name = s->describe_item(c->version(), item, false);

@@ -275,9 +275,7 @@ struct Lobby : public std::enable_shared_from_this<Lobby> {
       std::shared_ptr<Client> c,
       ssize_t required_client_id = -1);
 
-  std::shared_ptr<Client> find_client(
-      const std::string* identifier = nullptr,
-      uint64_t serial_number = 0);
+  std::shared_ptr<Client> find_client(const std::string* identifier = nullptr, uint64_t account_id = 0);
 
   enum class JoinError {
     ALLOWED = 0,
@@ -307,7 +305,7 @@ struct Lobby : public std::enable_shared_from_this<Lobby> {
 
   QuestIndex::IncludeCondition quest_include_condition() const;
 
-  std::unordered_map<uint32_t, std::shared_ptr<Client>> clients_by_serial_number() const;
+  std::unordered_map<uint32_t, std::shared_ptr<Client>> clients_by_account_id() const;
 
   static void dispatch_on_idle_timeout(evutil_socket_t, short, void* ctx);
 

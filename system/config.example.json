@@ -274,20 +274,20 @@
   // a full session log before submitting your report.
   "HideDownloadCommands": true,
 
-  // If this option is disabled, the server only allows users who have licenses
+  // If this option is disabled, the server only allows users who have accounts
   // on the server to connect. If this is enabled, all users will be allowed to
-  // connect even if they don't have licenses. When a user connects with an
+  // connect even if they don't have accounts. When a user connects with an
   // unregistered license (serial number and access key combination, or username
-  // and password combination on BB), a new license is created for them.
-  // Licenses are addressed by serial numbers; on BB, the new license's serial
+  // and password combination on BB), a new account is created for them.
+  // Accounts are addressed by serial numbers; on BB, the new account's serial
   // number is a hash of the username.
   "AllowUnregisteredUsers": true,
 
   // If this option is enabled and AllowUnregisteredUsers is enabled, the server
-  // will use temporary licenses for the prototype versions (DC NTE, DC 11/2000,
-  // GC NTE, and Ep3 NTE) instead of permanent licenses. In this case, you can
-  // still manually create permanent licenses for NTE players.
-  "UseTemporaryLicensesForPrototypes": true,
+  // will use temporary accounts for the prototype versions (DC NTE, DC 11/2000,
+  // GC NTE, and Ep3 NTE) instead of permanent accounts. In this case, you can
+  // still manually create permanent accounts for NTE players.
+  "UseTemporaryAccountsForPrototypes": true,
 
   // If this option is enabled, PC NTE players will be allowed to connect. This
   // is the only version of the game that does not have any way to identify the
@@ -298,7 +298,7 @@
 
   // Whether to enable chat commands for all players. If this is true, all
   // players will be able to use chat commands as normal; if this is false, only
-  // players with the ALWAYS_ENABLE_CHAT_COMMANDS license flag will be able to
+  // players with the ALWAYS_ENABLE_CHAT_COMMANDS account flag will be able to
   // use chat commands.
   "EnableChatCommands": true,
 
@@ -466,10 +466,10 @@
 
   // If this is enabled, all players will have infinite Meseta, effectively
   // making the jukebox and Pinz's Shop free. Otherwise, Meseta behaves as
-  // defined below. Meseta rewards are tied to a player's license (and therefore
-  // their serial number) and are stored server-side. Unlike other servers,
-  // newserv forbids overdrafting Meseta; if this option is disabled and a
-  // player spends Meseta they don't have, the player is disconnected.
+  // defined below. Meseta rewards are tied to a player's account and are
+  // stored server-side. Unlike other servers, newserv forbids overdrafting
+  // Meseta; if this option is disabled and a player spends Meseta they don't
+  // have, the player is disconnected.
   "Episode3InfiniteMeseta": false,
   // Meseta values for winning each tournament round. If a player defeats
   // another player in round 1, for example, they will earn 400 Meseta; if they

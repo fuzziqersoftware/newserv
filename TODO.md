@@ -14,7 +14,7 @@
 ## Episode 3
 
 - Enforce tournament deck restrictions (e.g. rank checks, No Assist option) when populating COMs at tournament start time
-- Make `reload licenses` not vulnerable to online players' licenses overwriting licenses on disk somehow
+- Make `reload accounts` not vulnerable to online players' accounts overwriting accounts on disk somehow
 - Implement ranks (based on total Meseta earned)
 - Make an AR code that gets rid of the SAMPLE overlays on NTE
 

@@ -262,33 +262,16 @@ void Client::reschedule_ping_and_timeout_events() {
   event_add(this->idle_timeout_event.get(), &idle_tv);
 }
 
-void Client::set_license(shared_ptr<License> l) {
-  if (this->version() == Version::BB_V4) {
-    // Make sure bb_username is filename-safe
-    for (char ch : l->bb_username) {
-      if (!isalnum(ch) && (ch != '-') && (ch != '_') && (ch != '@')) {
-        throw runtime_error("invalid characters in username");
-      }
-    }
-  }
-  this->license = l;
-}
-
-void Client::convert_license_to_temporary_if_nte() {
-  // If the session is a prototype version and the license was created and we
-  // should use a temporary license instead, delete the permanent license and
-  // replace it with a temporary license.
+void Client::convert_account_to_temporary_if_nte() {
+  // If the session is a prototype version and the account was created and we
+  // should use a temporary account instead, delete the permanent account and
+  // replace it with a temporary account.
   auto s = this->require_server_state();
-  if (s->use_temp_licenses_for_prototypes &&
-      this->config.check_flag(Client::Flag::LICENSE_WAS_CREATED) &&
-      is_any_nte(this->version())) {
-    this->log.info("Client is a prototype version and the license was created during this session; converting permanent license to temporary license");
-    s->license_index->remove(this->license->serial_number);
-    auto new_l = s->license_index->create_temporary_license();
-    this->license->delete_file();
-    *new_l = std::move(*this->license);
-    this->set_license(new_l);
-    this->config.clear_flag(Client::Flag::LICENSE_WAS_CREATED);
+  if (s->use_temp_accounts_for_prototypes && this->login->account_was_created && is_any_nte(this->version())) {
+    this->log.info("Client is a prototype version and the account was created during this session; converting permanent account to temporary account");
+    this->login->account->is_temporary = true;
+    this->login->account->delete_file();
+    this->login->account_was_created = false;
   }
 }
 
@@ -309,29 +292,29 @@ shared_ptr<Lobby> Client::require_lobby() const {
 }
 
 shared_ptr<const TeamIndex::Team> Client::team() const {
-  if (!this->license) {
-    throw logic_error("Client::team called on client with no license");
+  if (!this->login) {
+    throw logic_error("Client::team called on client with no account");
   }
 
-  if (this->license->bb_team_id == 0) {
+  if (this->login->account->bb_team_id == 0) {
     return nullptr;
   }
 
   auto p = this->character(false);
   auto s = this->require_server_state();
-  auto team = s->team_index->get_by_id(this->license->bb_team_id);
+  auto team = s->team_index->get_by_id(this->login->account->bb_team_id);
   if (!team) {
-    this->log.info("License contains a team ID, but the team does not exist; clearing team ID from license");
-    this->license->bb_team_id = 0;
-    this->license->save();
+    this->log.info("Account contains a team ID, but the team does not exist; clearing team ID from account");
+    this->login->account->bb_team_id = 0;
+    this->login->account->save();
     return nullptr;
   }
 
-  auto member_it = team->members.find(this->license->serial_number);
+  auto member_it = team->members.find(this->login->account->account_id);
   if (member_it == team->members.end()) {
-    this->log.info("License contains a team ID, but the team does not contain this member; clearing team ID from license");
-    this->license->bb_team_id = 0;
-    this->license->save();
+    this->log.info("Account contains a team ID, but the team does not contain this member; clearing team ID from account");
+    this->login->account->bb_team_id = 0;
+    this->login->account->save();
     return nullptr;
   }
 
@@ -342,7 +325,7 @@ shared_ptr<const TeamIndex::Team> Client::team() const {
     string name = p->disp.name.decode(this->language());
     if (m.name != name) {
       this->log.info("Updating player name in team config");
-      s->team_index->update_member_name(this->license->serial_number, name);
+      s->team_index->update_member_name(this->login->account->account_id, name);
     }
   }
 
@@ -356,7 +339,7 @@ bool Client::evaluate_quest_availability_expression(
     uint8_t difficulty,
     size_t num_players,
     bool v1_present) const {
-  if (this->license && this->license->check_flag(License::Flag::DISABLE_QUEST_REQUIREMENTS)) {
+  if (this->login && this->login->account->check_flag(Account::Flag::DISABLE_QUEST_REQUIREMENTS)) {
     return true;
   }
   if (!expr) {
@@ -403,10 +386,10 @@ bool Client::can_play_quest(
 }
 
 bool Client::can_use_chat_commands() const {
-  if (!this->license) {
+  if (!this->login) {
     return false;
   }
-  if (this->license->check_flag(License::Flag::ALWAYS_ENABLE_CHAT_COMMANDS)) {
+  if (this->login->account->check_flag(Account::Flag::ALWAYS_ENABLE_CHAT_COMMANDS)) {
     return true;
   }
   return this->require_server_state()->enable_chat_commands;
@@ -622,10 +605,10 @@ string Client::system_filename() const {
   if (this->version() != Version::BB_V4) {
     throw logic_error("non-BB players do not have system data");
   }
-  if (!this->license) {
+  if (!this->login || !this->login->bb_license) {
     throw logic_error("client is not logged in");
   }
-  return string_printf("system/players/system_%s.psosys", this->license->bb_username.c_str());
+  return string_printf("system/players/system_%s.psosys", this->login->bb_license->username.c_str());
 }
 
 string Client::character_filename(const std::string& bb_username, int8_t index) {
@@ -638,55 +621,55 @@ string Client::character_filename(const std::string& bb_username, int8_t index) 
   return string_printf("system/players/player_%s_%hhd.psochar", bb_username.c_str(), index);
 }
 
-string Client::backup_character_filename(uint32_t serial_number, size_t index) {
-  return string_printf("system/players/backup_player_%" PRIu32 "_%zu.psochar", serial_number, index);
+string Client::backup_character_filename(uint32_t account_id, size_t index) {
+  return string_printf("system/players/backup_player_%" PRIu32 "_%zu.psochar", account_id, index);
 }
 
 string Client::character_filename(int8_t index) const {
   if (this->version() != Version::BB_V4) {
     throw logic_error("non-BB players do not have character data");
   }
-  if (!this->license) {
+  if (!this->login || !this->login->bb_license) {
     throw logic_error("client is not logged in");
   }
-  return this->character_filename(this->license->bb_username, (index < 0) ? this->bb_character_index : index);
+  return this->character_filename(this->login->bb_license->username, (index < 0) ? this->bb_character_index : index);
 }
 
 string Client::guild_card_filename() const {
   if (this->version() != Version::BB_V4) {
     throw logic_error("non-BB players do not have character data");
   }
-  if (!this->license) {
+  if (!this->login || !this->login->bb_license) {
     throw logic_error("client is not logged in");
   }
-  return string_printf("system/players/guild_cards_%s.psocard", this->license->bb_username.c_str());
+  return string_printf("system/players/guild_cards_%s.psocard", this->login->bb_license->username.c_str());
 }
 
 string Client::shared_bank_filename() const {
   if (this->version() != Version::BB_V4) {
     throw logic_error("non-BB players do not have character data");
   }
-  if (!this->license) {
+  if (!this->login || !this->login->bb_license) {
     throw logic_error("client is not logged in");
   }
-  return string_printf("system/players/shared_bank_%s.psobank", this->license->bb_username.c_str());
+  return string_printf("system/players/shared_bank_%s.psobank", this->login->bb_license->username.c_str());
 }
 
 string Client::legacy_account_filename() const {
   if (this->version() != Version::BB_V4) {
     throw logic_error("non-BB players do not have character data");
   }
-  if (!this->license) {
+  if (!this->login || !this->login->bb_license) {
     throw logic_error("client is not logged in");
   }
-  return string_printf("system/players/account_%s.nsa", this->license->bb_username.c_str());
+  return string_printf("system/players/account_%s.nsa", this->login->bb_license->username.c_str());
 }
 
 string Client::legacy_player_filename() const {
   if (this->version() != Version::BB_V4) {
     throw logic_error("non-BB players do not have character data");
   }
-  if (!this->license) {
+  if (!this->login || !this->login->bb_license) {
     throw logic_error("client is not logged in");
   }
   if (this->bb_character_index < 0) {
@@ -694,7 +677,7 @@ string Client::legacy_player_filename() const {
   }
   return string_printf(
       "system/players/player_%s_%hhd.nsc",
-      this->license->bb_username.c_str(),
+      this->login->bb_license->username.c_str(),
       static_cast<int8_t>(this->bb_character_index + 1));
 }
 
@@ -714,7 +697,7 @@ void Client::load_all_files() {
     this->guild_card_data = make_shared<PSOBBGuildCardFile>();
     return;
   }
-  if (!this->license) {
+  if (!this->login || !this->login->bb_license) {
     throw logic_error("cannot load BB player data until client is logged in");
   }
 
@@ -835,7 +818,7 @@ void Client::load_all_files() {
       this->character_data->quest_flags = nsc_data.quest_flags;
       this->character_data->death_count = nsc_data.death_count;
       this->character_data->bank = nsc_data.bank;
-      this->character_data->guild_card.guild_card_number = this->license->serial_number;
+      this->character_data->guild_card.guild_card_number = this->login->account->account_id;
       this->character_data->guild_card.name = nsc_data.disp.name;
       this->character_data->guild_card.description = nsc_data.guild_card_description;
       this->character_data->guild_card.present = 1;
@@ -869,8 +852,8 @@ void Client::load_all_files() {
   if (this->character_data) {
     // Clear legacy play_time field
     this->character_data->disp.name.clear_after_bytes(0x18);
-    this->license->auto_reply_message = this->character_data->auto_reply.decode();
-    this->license->save();
+    this->login->account->auto_reply_message = this->character_data->auto_reply.decode();
+    this->login->account->save();
     this->last_play_time_update = now();
   }
 }
@@ -917,10 +900,10 @@ void Client::save_character_file(
   fwritex(f.get(), *character);
   fwritex(f.get(), *system);
   // TODO: Technically, we should write the actual team membership struct to the
-  // file here, but that would cause Client to depend on License, which
+  // file here, but that would cause Client to depend on Account, which
   // it currently does not. This data doesn't matter at all for correctness
   // within newserv, since it ignores this data entirely and instead generates
-  // the membership struct from the team ID in the License and the team's state.
+  // the membership struct from the team ID in the Account and the team's state.
   // So, writing correct data here would mostly be for compatibility with other
   // PSO servers. But if the other server is newserv, then this data would be
   // used anyway, and if it's not, then it would presumably have a different set
@@ -960,8 +943,8 @@ void Client::save_guild_card_file() const {
   player_data_log.info("Saved Guild Card file %s", filename.c_str());
 }
 
-void Client::load_backup_character(uint32_t serial_number, size_t index) {
-  string filename = this->backup_character_filename(serial_number, index);
+void Client::load_backup_character(uint32_t account_id, size_t index) {
+  string filename = this->backup_character_filename(account_id, index);
   auto f = fopen_unique(filename, "rb");
   auto header = freadx<PSOCommandHeaderBB>(f.get());
   if (header.size != 0x399C) {

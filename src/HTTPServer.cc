@@ -266,19 +266,48 @@ JSON HTTPServer::generate_client_config_json_st(const Client::Config& config) {
   return ret;
 }
 
-JSON HTTPServer::generate_license_json_st(shared_ptr<const License> l) {
-  auto ret = JSON::dict({
-      {"SerialNumber", l->serial_number},
-      {"Flags", l->flags},
-      {"Ep3CurrentMeseta", l->ep3_current_meseta},
-      {"Ep3TotalMesetaEarned", l->ep3_total_meseta_earned},
-      {"BBTeamID", l->bb_team_id},
+JSON HTTPServer::generate_account_json_st(shared_ptr<const Account> a) {
+  auto dc_nte_licenses_json = JSON::list();
+  for (const auto& it : a->dc_nte_licenses) {
+    dc_nte_licenses_json.emplace_back(it.first);
+  }
+  auto dc_licenses_json = JSON::list();
+  for (const auto& it : a->dc_licenses) {
+    dc_licenses_json.emplace_back(it.first);
+  }
+  auto pc_licenses_json = JSON::list();
+  for (const auto& it : a->pc_licenses) {
+    pc_licenses_json.emplace_back(it.first);
+  }
+  auto gc_licenses_json = JSON::list();
+  for (const auto& it : a->gc_licenses) {
+    gc_licenses_json.emplace_back(it.first);
+  }
+  auto xb_licenses_json = JSON::list();
+  for (const auto& it : a->xb_licenses) {
+    xb_licenses_json.emplace_back(it.first);
+  }
+  auto bb_licenses_json = JSON::list();
+  for (const auto& it : a->bb_licenses) {
+    bb_licenses_json.emplace_back(it.first);
+  }
+  return JSON::dict({
+      {"AccountID", a->account_id},
+      {"Flags", a->flags},
+      {"BanEndTime", a->ban_end_time ? a->ban_end_time : JSON(nullptr)},
+      {"Ep3CurrentMeseta", a->ep3_current_meseta},
+      {"Ep3TotalMesetaEarned", a->ep3_total_meseta_earned},
+      {"BBTeamID", a->bb_team_id},
+      {"LastPlayerName", a->last_player_name},
+      {"AutoReplyMessage", a->auto_reply_message},
+      {"IsTemporary", a->is_temporary},
+      {"DCNTELicenses", std::move(dc_nte_licenses_json)},
+      {"DCLicenses", std::move(dc_licenses_json)},
+      {"PCLicenses", std::move(pc_licenses_json)},
+      {"GCLicenses", std::move(gc_licenses_json)},
+      {"XBLicenses", std::move(xb_licenses_json)},
+      {"BBLicenses", std::move(bb_licenses_json)},
   });
-  ret.emplace("BanEndTime", l->ban_end_time ? l->ban_end_time : JSON(nullptr));
-  ret.emplace("XBGamertag", !l->xb_gamertag.empty() ? l->xb_gamertag : JSON(nullptr));
-  ret.emplace("XBUserID", l->xb_user_id ? l->xb_user_id : JSON(nullptr));
-  ret.emplace("BBUsername", !l->bb_username.empty() ? l->bb_username : JSON(nullptr));
-  return ret;
 };
 
 JSON HTTPServer::generate_game_client_json_st(shared_ptr<const Client> c, shared_ptr<const ItemNameIndex> item_name_index) {
@@ -294,7 +323,7 @@ JSON HTTPServer::generate_game_client_json_st(shared_ptr<const Client> c, shared
       {"LocationFloor", c->floor},
       {"CanChat", c->can_chat},
   });
-  ret.emplace("license", c->license ? HTTPServer::generate_license_json_st(c->license) : JSON(nullptr));
+  ret.emplace("Account", c->login ? HTTPServer::generate_account_json_st(c->login->account) : JSON(nullptr));
   auto l = c->lobby.lock();
   if (l) {
     ret.emplace("LobbyID", l->lobby_id);
@@ -498,7 +527,7 @@ JSON HTTPServer::generate_proxy_client_json_st(shared_ptr<const ProxyServer::Lin
       ret.emplace("DropMode", "proxy");
       break;
   }
-  ret.emplace("License", ses->license ? HTTPServer::generate_license_json_st(ses->license) : JSON(nullptr));
+  ret.emplace("Account", ses->login ? HTTPServer::generate_account_json_st(ses->login->account) : JSON(nullptr));
   return ret;
 }
 
@@ -766,7 +795,7 @@ JSON HTTPServer::generate_summary_json() const {
       auto l = c->lobby.lock();
       clients_json.emplace_back(JSON::dict({
           {"ID", c->id},
-          {"SerialNumber", c->license ? c->license->serial_number : JSON(nullptr)},
+          {"AccountID", c->login ? c->login->account->account_id : JSON(nullptr)},
           {"Name", p ? p->disp.name.decode(it.second->language()) : JSON(nullptr)},
           {"Version", name_for_enum(it.second->version())},
           {"Language", name_for_language_code(it.second->language())},
@@ -780,7 +809,7 @@ JSON HTTPServer::generate_summary_json() const {
     auto proxy_clients_json = JSON::list();
     for (const auto& it : this->state->proxy_server->all_sessions()) {
       proxy_clients_json.emplace_back(JSON::dict({
-          {"SerialNumber", it.second->license ? it.second->license->serial_number : JSON(nullptr)},
+          {"AccountID", it.second->login ? it.second->login->account->account_id : JSON(nullptr)},
           {"Name", it.second->character_name},
           {"Version", name_for_enum(it.second->version())},
           {"Language", name_for_language_code(it.second->language())},

@@ -8,8 +8,8 @@
 #include <unordered_set>
 #include <vector>
 
+#include "Account.hh"
 #include "Channel.hh"
-#include "License.hh"
 #include "PatchFileIndex.hh"
 #include "Version.hh"
 
@@ -20,7 +20,7 @@ public:
     bool hide_data_from_logs;
     uint64_t idle_timeout_usecs;
     std::string message;
-    std::shared_ptr<const LicenseIndex> license_index;
+    std::shared_ptr<AccountIndex> account_index;
     std::shared_ptr<const PatchFileIndex> patch_file_index;
     std::shared_ptr<struct event_base> shared_base;
   };

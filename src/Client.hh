@@ -5,13 +5,13 @@
 #include <memory>
 #include <stdexcept>
 
+#include "Account.hh"
 #include "Channel.hh"
 #include "CommandFormats.hh"
 #include "Episode3/BattleRecord.hh"
 #include "Episode3/Tournament.hh"
 #include "FileContentsCache.hh"
 #include "FunctionCompiler.hh"
-#include "License.hh"
 #include "PSOEncryption.hh"
 #include "PSOProtocol.hh"
 #include "PatchFileIndex.hh"
@@ -38,7 +38,6 @@ public:
 
     // Version-related flags
     CHECKED_FOR_DC_V1_PROTOTYPE                = 0x0000000000000002,
-    LICENSE_WAS_CREATED                        = 0x0000000000000004, // Server-side only
     NO_D6_AFTER_LOBBY                          = 0x0000000000000100,
     NO_D6                                      = 0x0000000000000200,
     FORCE_ENGLISH_LANGUAGE_BB                  = 0x0000000000000400,
@@ -181,8 +180,7 @@ public:
   uint64_t id;
   PrefixedLogger log;
 
-  // License & account
-  std::shared_ptr<License> license;
+  std::shared_ptr<Login> login;
 
   // Network
   Channel channel;
@@ -254,9 +252,9 @@ public:
   RecentSwitchFlags recent_switch_flags; // used for switch assist
   bool can_chat;
   struct PendingCharacterExport {
-    std::shared_ptr<const License> license;
+    std::shared_ptr<const Account> dest_account;
     ssize_t character_index = -1;
-    bool is_bb_conversion = false;
+    std::shared_ptr<const BBLicense> dest_bb_license; // Only used for $bbchar; null for $savechar
   };
   std::unique_ptr<PendingCharacterExport> pending_character_export;
   std::deque<std::function<void(uint32_t, uint32_t)>> function_call_response_queue;
@@ -283,8 +281,7 @@ public:
     return this->channel.language;
   }
 
-  void set_license(std::shared_ptr<License> l);
-  void convert_license_to_temporary_if_nte();
+  void convert_account_to_temporary_if_nte();
 
   void sync_config();
 
@@ -355,7 +352,7 @@ public:
 
   std::string system_filename() const;
   static std::string character_filename(const std::string& bb_username, int8_t index);
-  static std::string backup_character_filename(uint32_t serial_number, size_t index);
+  static std::string backup_character_filename(uint32_t account_id, size_t index);
   std::string character_filename(int8_t index = -1) const;
   std::string guild_card_filename() const;
   std::string shared_bank_filename() const;
@@ -373,7 +370,7 @@ public:
   void save_character_file();
   void save_guild_card_file() const;
 
-  void load_backup_character(uint32_t serial_number, size_t index);
+  void load_backup_character(uint32_t account_id, size_t index);
   void save_and_unload_character();
 
   PlayerBank& current_bank();

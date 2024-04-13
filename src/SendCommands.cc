@@ -277,7 +277,7 @@ void send_update_client_config(shared_ptr<Client> c, bool always_send) {
           c->config.set_flag(Client::Flag::HAS_GUILD_CARD_NUMBER);
           S_UpdateClientConfig_DC_PC_04 cmd;
           cmd.player_tag = 0x00010000;
-          cmd.guild_card_number = c->license->serial_number;
+          cmd.guild_card_number = c->login->account->account_id;
           send_command_t(c, 0x04, 0x00, cmd);
         }
         break;
@@ -290,7 +290,7 @@ void send_update_client_config(shared_ptr<Client> c, bool always_send) {
         c->config.set_flag(Client::Flag::HAS_GUILD_CARD_NUMBER);
         S_UpdateClientConfig_V3_04 cmd;
         cmd.player_tag = 0x00010000;
-        cmd.guild_card_number = c->license->serial_number;
+        cmd.guild_card_number = c->login->account->account_id;
         c->config.serialize_into(cmd.client_config);
         send_command_t(c, 0x04, 0x00, cmd);
         break;
@@ -556,7 +556,7 @@ void send_client_init_bb(shared_ptr<Client> c, uint32_t error_code) {
   S_ClientInit_BB_00E6 cmd;
   cmd.error_code = error_code;
   cmd.player_tag = 0x00010000;
-  cmd.guild_card_number = c->license->serial_number;
+  cmd.guild_card_number = c->login->account->account_id;
   cmd.security_token = team ? team->team_id : 0;
   c->config.serialize_into(cmd.client_config);
   cmd.can_create_team = 1;
@@ -570,7 +570,7 @@ void send_system_file_bb(shared_ptr<Client> c) {
   PSOBBFullSystemFile cmd;
   cmd.base = *c->system_file();
   if (team) {
-    cmd.team_membership = team->membership_for_member(c->license->serial_number);
+    cmd.team_membership = team->membership_for_member(c->login->account->account_id);
   }
   send_command_t(c, 0x00E2, 0x00000000, cmd);
 }
@@ -709,7 +709,7 @@ void send_complete_player_bb(shared_ptr<Client> c) {
   cmd.char_file = *p;
   cmd.system_file.base = *sys;
   if (team) {
-    cmd.system_file.team_membership = team->membership_for_member(c->license->serial_number);
+    cmd.system_file.team_membership = team->membership_for_member(c->login->account->account_id);
   }
   send_command_t(c, 0x00E7, 0x00000000, cmd);
 }
@@ -864,7 +864,7 @@ void send_text_message(shared_ptr<Lobby> l, const string& text) {
 
 void send_text_message(shared_ptr<ServerState> s, const string& text) {
   for (auto& it : s->channel_to_client) {
-    if (it.second->license && !is_patch(it.second->version())) {
+    if (it.second->login && !is_patch(it.second->version())) {
       send_text_message(it.second, text);
     }
   }
@@ -1002,7 +1002,7 @@ void send_simple_mail_t(shared_ptr<Client> c, uint32_t from_guild_card_number, c
   cmd.player_tag = from_guild_card_number ? 0x00010000 : 0;
   cmd.from_guild_card_number = from_guild_card_number;
   cmd.from_name.encode(from_name, c->language());
-  cmd.to_guild_card_number = c->license->serial_number;
+  cmd.to_guild_card_number = c->login->account->account_id;
   cmd.text.encode(text, c->language());
   send_command_t(c, 0x81, 0x00, cmd);
 }
@@ -1012,7 +1012,7 @@ void send_simple_mail_bb(shared_ptr<Client> c, uint32_t from_guild_card_number, 
   cmd.player_tag = from_guild_card_number ? 0x00010000 : 0;
   cmd.from_guild_card_number = from_guild_card_number;
   cmd.from_name.encode(from_name, c->language());
-  cmd.to_guild_card_number = c->license->serial_number;
+  cmd.to_guild_card_number = c->login->account->account_id;
   cmd.received_date.encode(format_time(now()), c->language());
   cmd.text.encode(text, c->language());
   send_command_t(c, 0x81, 0x00, cmd);
@@ -1045,7 +1045,7 @@ void send_simple_mail(shared_ptr<Client> c, uint32_t from_guild_card_number, con
 
 void send_simple_mail(shared_ptr<ServerState> s, uint32_t from_guild_card_number, const string& from_name, const string& text) {
   for (const auto& it : s->channel_to_client) {
-    if (it.second->license && !is_patch(it.second->version())) {
+    if (it.second->login && !is_patch(it.second->version())) {
       send_simple_mail(it.second, from_guild_card_number, from_name, text);
     }
   }
@@ -1127,8 +1127,8 @@ void send_card_search_result_t(
 
   S_GuildCardSearchResultT<CommandHeaderT, Encoding> cmd;
   cmd.player_tag = 0x00010000;
-  cmd.searcher_guild_card_number = c->license->serial_number;
-  cmd.result_guild_card_number = result->license->serial_number;
+  cmd.searcher_guild_card_number = c->login->account->account_id;
+  cmd.result_guild_card_number = result->login->account->account_id;
   cmd.reconnect_command_header.size = sizeof(cmd.reconnect_command_header) + sizeof(cmd.reconnect_command);
   cmd.reconnect_command_header.command = 0x19;
   cmd.reconnect_command_header.flag = 0x00;
@@ -1301,20 +1301,20 @@ void send_guild_card(
 }
 
 void send_guild_card(shared_ptr<Client> c, shared_ptr<Client> source) {
-  if (!source->license) {
-    throw runtime_error("source player does not have a license");
+  if (!source->login) {
+    throw runtime_error("source player does not have an account");
   }
 
   auto source_p = source->character(true, false);
   auto source_team = source->team();
 
-  uint64_t xb_user_id = source->license->xb_user_id
-      ? source->license->xb_user_id
-      : (0xAE00000000000000ULL | source->license->serial_number);
+  uint64_t xb_user_id = (source->login->xb_license && source->login->xb_license->user_id)
+      ? source->login->xb_license->user_id
+      : (0xAE00000000000000ULL | source->login->account->account_id);
 
   send_guild_card(
       c->channel,
-      source->license->serial_number,
+      source->login->account->account_id,
       xb_user_id,
       source_p->disp.name.decode(source->language()),
       source_team ? source_team->name : "",
@@ -1569,7 +1569,7 @@ void send_quest_categories_menu_t(
     QuestMenuType menu_type,
     Episode episode) {
   QuestIndex::IncludeCondition include_condition = nullptr;
-  if (!c->license->check_flag(License::Flag::DISABLE_QUEST_REQUIREMENTS)) {
+  if (!c->login->account->check_flag(Account::Flag::DISABLE_QUEST_REQUIREMENTS)) {
     auto l = c->lobby.lock();
     include_condition = l ? l->quest_include_condition() : nullptr;
   }
@@ -1701,7 +1701,7 @@ void send_player_records_t(shared_ptr<Client> c, shared_ptr<Lobby> l, shared_ptr
 template <typename LobbyDataT>
 void populate_lobby_data_for_client(LobbyDataT& ret, shared_ptr<const Client> c, shared_ptr<const Client> viewer_c) {
   ret.player_tag = 0x00010000;
-  ret.guild_card_number = c->license->serial_number;
+  ret.guild_card_number = c->login->account->account_id;
   ret.client_id = c->lobby_client_id;
   string name = c->character()->disp.name.decode(c->language());
   ret.name.encode(name, viewer_c->language());
@@ -1710,11 +1710,11 @@ void populate_lobby_data_for_client(LobbyDataT& ret, shared_ptr<const Client> c,
 template <>
 void populate_lobby_data_for_client(PlayerLobbyDataXB& ret, shared_ptr<const Client> c, shared_ptr<const Client> viewer_c) {
   ret.player_tag = 0x00010000;
-  ret.guild_card_number = c->license->serial_number;
+  ret.guild_card_number = c->login->account->account_id;
   if (c->xb_netloc) {
     ret.netloc = *c->xb_netloc;
   } else {
-    ret.netloc.account_id = 0xAE00000000000000 | c->license->serial_number;
+    ret.netloc.account_id = 0xAE00000000000000 | c->login->account->account_id;
   }
   ret.client_id = c->lobby_client_id;
   string name = c->character()->disp.name.decode(c->language());
@@ -1724,11 +1724,11 @@ void populate_lobby_data_for_client(PlayerLobbyDataXB& ret, shared_ptr<const Cli
 template <>
 void populate_lobby_data_for_client<PlayerLobbyDataBB>(PlayerLobbyDataBB& ret, shared_ptr<const Client> c, shared_ptr<const Client> viewer_c) {
   ret.player_tag = 0x00010000;
-  ret.guild_card_number = c->license->serial_number;
+  ret.guild_card_number = c->login->account->account_id;
   ret.client_id = c->lobby_client_id;
   auto team = c->team();
   if (team) {
-    ret.team_master_guild_card_number = team->master_serial_number;
+    ret.team_master_guild_card_number = team->master_account_id;
     ret.team_id = team->team_id;
   } else {
     ret.team_master_guild_card_number = 0;
@@ -1780,7 +1780,7 @@ static void send_join_spectator_team(shared_ptr<Client> c, shared_ptr<Lobby> l) 
 
       auto& e = cmd.entries[z];
       e.player_tag = 0x00010000;
-      e.guild_card_number = wc->license->serial_number;
+      e.guild_card_number = wc->login->account->account_id;
       e.name.encode(wc_p->disp.name.decode(wc_p->inventory.language), c->language());
       e.present = 1;
       e.level = wc->ep3_config
@@ -1848,7 +1848,7 @@ static void send_join_spectator_team(shared_ptr<Client> c, shared_ptr<Lobby> l) 
       cmd_p.disp.enforce_lobby_join_limits_for_version(c->version());
 
       cmd_e.player_tag = 0x00010000;
-      cmd_e.guild_card_number = other_c->license->serial_number;
+      cmd_e.guild_card_number = other_c->login->account->account_id;
       cmd_e.name = cmd_p.lobby_data.name;
       cmd_e.present = 1;
       cmd_e.level = other_c->ep3_config
@@ -2416,7 +2416,7 @@ void send_arrow_update(shared_ptr<Lobby> l) {
     }
     auto& e = entries.emplace_back();
     e.player_tag = 0x00010000;
-    e.guild_card_number = lc->license->serial_number;
+    e.guild_card_number = lc->login->account->account_id;
     e.arrow_color = lc->lobby_arrow_color;
   }
 
@@ -3031,8 +3031,8 @@ void send_ep3_media_update(
 
 void send_ep3_rank_update(shared_ptr<Client> c) {
   auto s = c->require_server_state();
-  uint32_t current_meseta = s->ep3_infinite_meseta ? 1000000 : c->license->ep3_current_meseta;
-  uint32_t total_meseta_earned = s->ep3_infinite_meseta ? 1000000 : c->license->ep3_total_meseta_earned;
+  uint32_t current_meseta = s->ep3_infinite_meseta ? 1000000 : c->login->account->ep3_current_meseta;
+  uint32_t total_meseta_earned = s->ep3_infinite_meseta ? 1000000 : c->login->account->ep3_total_meseta_earned;
   S_RankUpdate_Ep3_B7 cmd = {0, {}, current_meseta, total_meseta_earned, 0xFFFFFFFF};
   send_command_t(c, 0xB7, 0x00, cmd);
 }
@@ -3056,7 +3056,7 @@ void send_ep3_card_battle_table_state(shared_ptr<Lobby> l, uint16_t table_number
       auto& e = is_nte ? cmd_nte.entries[c->card_battle_table_seat_number] : cmd_final.entries[c->card_battle_table_seat_number];
       if (e.state == 0) {
         e.state = c->card_battle_table_seat_state;
-        e.guild_card_number = c->license->serial_number;
+        e.guild_card_number = c->login->account->account_id;
         auto& clients = is_nte ? clients_nte : clients_final;
         clients.emplace(c);
       }
@@ -3256,7 +3256,7 @@ void send_ep3_game_details_t(shared_ptr<Client> c, shared_ptr<Lobby> l) {
     cmd.players_per_team = (tourn->get_flags() & Episode3::Tournament::Flag::IS_2V2) ? 2 : 1;
 
     if (primary_lobby) {
-      auto serial_number_to_client = primary_lobby->clients_by_serial_number();
+      auto account_id_to_client = primary_lobby->clients_by_account_id();
       using TeamEntryT = typename S_TournamentGameDetailsBaseT_Ep3_E3<RulesT>::TeamEntry;
       auto describe_team = [&](TeamEntryT& team_entry, shared_ptr<const Episode3::Tournament::Team> team) -> void {
         team_entry.team_name.encode(team->name, c->language());
@@ -3265,7 +3265,7 @@ void send_ep3_game_details_t(shared_ptr<Client> c, shared_ptr<Lobby> l) {
           const auto& player = team->players[z];
           if (player.is_human()) {
             try {
-              auto other_c = serial_number_to_client.at(player.serial_number);
+              auto other_c = account_id_to_client.at(player.account_id);
               entry.name.encode(other_c->character()->disp.name.decode(other_c->language()), c->language());
               entry.description.encode(ep3_description_for_client(other_c), c->language());
             } catch (const out_of_range&) {
@@ -3387,7 +3387,7 @@ void send_ep3_set_tournament_player_decks_t(shared_ptr<Client> c) {
       if (player.is_human()) {
         entry.type = 1; // Human
         entry.player_name.encode(player.player_name, c->language());
-        if (player.serial_number == c->license->serial_number) {
+        if (player.account_id == c->login->account->account_id) {
           cmd.player_slot = base_index + z;
         }
       } else {
@@ -3426,7 +3426,7 @@ void send_ep3_tournament_match_result(shared_ptr<Lobby> l, uint32_t meseta_rewar
     throw logic_error("cannot send tournament result without valid winner team");
   }
 
-  auto serial_number_to_client = l->clients_by_serial_number();
+  auto account_id_to_client = l->clients_by_account_id();
 
   for (const auto& lc : l->clients) {
     if (!lc) {
@@ -3437,7 +3437,7 @@ void send_ep3_tournament_match_result(shared_ptr<Lobby> l, uint32_t meseta_rewar
         const auto& player = team->players[z];
         if (player.is_human()) {
           try {
-            auto pc = serial_number_to_client.at(player.serial_number);
+            auto pc = account_id_to_client.at(player.account_id);
             entry.player_names[z].encode(pc->character()->disp.name.decode(pc->language()), lc->language());
           } catch (const out_of_range&) {
             entry.player_names[z].encode(player.player_name, lc->language());
@@ -3895,9 +3895,9 @@ void send_team_membership_info(shared_ptr<Client> c) {
   auto team = c->team();
   S_TeamMembershipInformation_BB_12EA cmd;
   if (team) {
-    cmd.guild_card_number = c->license->serial_number;
+    cmd.guild_card_number = c->login->account->account_id;
     cmd.team_id = team->team_id;
-    cmd.privilege_level = team->members.at(c->license->serial_number).privilege_level();
+    cmd.privilege_level = team->members.at(c->login->account->account_id).privilege_level();
     cmd.team_member_count = min<size_t>(team->members.size(), 100);
     cmd.team_name.encode(team->name);
   }
@@ -3908,12 +3908,12 @@ static S_TeamInfoForPlayer_BB_13EA_15EA_Entry team_metadata_for_client(shared_pt
   auto team = c->team();
   S_TeamInfoForPlayer_BB_13EA_15EA_Entry cmd;
   cmd.lobby_client_id = c->lobby_client_id;
-  cmd.guild_card_number2 = c->license->serial_number;
+  cmd.guild_card_number2 = c->login->account->account_id;
   cmd.player_name = c->character()->disp.name;
   if (team) {
-    cmd.guild_card_number = c->license->serial_number;
+    cmd.guild_card_number = c->login->account->account_id;
     cmd.team_id = team->team_id;
-    cmd.privilege_level = team->members.at(c->license->serial_number).privilege_level();
+    cmd.privilege_level = team->members.at(c->login->account->account_id).privilege_level();
     cmd.team_member_count = min<size_t>(team->members.size(), 100);
     cmd.team_name.encode(team->name);
     if (team->flag_data) {
@@ -3971,7 +3971,7 @@ void send_team_member_list(shared_ptr<Client> c) {
     auto& e = entries.emplace_back();
     e.rank = z + 1;
     e.privilege_level = m->privilege_level();
-    e.guild_card_number = m->serial_number;
+    e.guild_card_number = m->account_id;
     e.name.encode(m->name, c->language());
   }
 
@@ -4006,7 +4006,7 @@ void send_intra_team_ranking(shared_ptr<Client> c) {
     auto& e = entries.emplace_back();
     e.rank = z + 1;
     e.privilege_level = m->privilege_level();
-    e.guild_card_number = m->serial_number;
+    e.guild_card_number = m->account_id;
     e.player_name.encode(m->name);
     e.points = m->points;
   }

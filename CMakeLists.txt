@@ -58,6 +58,7 @@ add_custom_target(
 
 set(SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/src/Revision.cc
+    src/Account.cc
     src/AFSArchive.cc
     src/BattleParamsIndex.cc
     src/BMLArchive.cc
@@ -97,7 +98,6 @@ set(SOURCES
     src/ItemParameterTable.cc
     src/Items.cc
     src/LevelTable.cc
-    src/License.cc
     src/Lobby.cc
     src/Loggers.cc
     src/Main.cc

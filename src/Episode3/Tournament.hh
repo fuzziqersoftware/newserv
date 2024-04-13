@@ -33,16 +33,16 @@ public:
   };
 
   struct PlayerEntry {
-    // Invariant: (serial_number == 0) != (com_deck == nullptr)
+    // Invariant: (account_id == 0) != (com_deck == nullptr)
     // (that is, exactly one of the following must be valid)
-    uint32_t serial_number;
+    uint32_t account_id;
     std::shared_ptr<const COMDeckDefinition> com_deck;
 
-    // client is valid if serial_number is nonzero and the client is connected
+    // client is valid if account_id is nonzero and the client is connected
     std::weak_ptr<Client> client;
     std::string player_name; // Not used for COM decks
 
-    explicit PlayerEntry(uint32_t serial_number, const std::string& player_name = "");
+    explicit PlayerEntry(uint32_t account_id, const std::string& player_name = "");
     explicit PlayerEntry(std::shared_ptr<Client> c);
     explicit PlayerEntry(std::shared_ptr<const COMDeckDefinition> com_deck);
 
@@ -73,7 +73,7 @@ public:
         std::shared_ptr<Client> c,
         const std::string& team_name,
         const std::string& password);
-    bool unregister_player(uint32_t serial_number);
+    bool unregister_player(uint32_t account_id);
 
     bool has_any_human_players() const;
     size_t num_human_players() const;
@@ -152,8 +152,8 @@ public:
   std::shared_ptr<Team> get_winner_team() const;
   std::shared_ptr<Match> next_match_for_team(std::shared_ptr<Team> team) const;
   std::shared_ptr<Match> get_final_match() const;
-  std::shared_ptr<Team> team_for_serial_number(uint32_t serial_number) const;
-  const std::set<uint32_t>& get_all_player_serial_numbers() const;
+  std::shared_ptr<Team> team_for_account_id(uint32_t account_id) const;
+  const std::set<uint32_t>& get_all_player_account_ids() const;
 
   void start();
 
@@ -178,7 +178,7 @@ private:
   State current_state;
   uint32_t menu_item_id;
 
-  std::set<uint32_t> all_player_serial_numbers;
+  std::set<uint32_t> all_player_account_ids;
   std::unordered_set<std::shared_ptr<Match>> pending_matches;
 
   // This vector contains all teams in the original starting order of the
@@ -231,7 +231,7 @@ public:
       uint8_t flags);
   bool delete_tournament(const std::string& name);
 
-  std::shared_ptr<Tournament::Team> team_for_serial_number(uint32_t serial_number) const;
+  std::shared_ptr<Tournament::Team> team_for_account_id(uint32_t account_id) const;
 
   void link_client(std::shared_ptr<Client> c);
   void link_all_clients(std::shared_ptr<ServerState> s);

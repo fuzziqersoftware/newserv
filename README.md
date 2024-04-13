@@ -18,7 +18,7 @@ See TODO.md for a list of known issues and future work I've curated, or go to th
     * [Client patch directories for PC and BB](#client-patch-directories)
     * [How to connect](#how-to-connect)
 * Features and configuration
-    * [User licenses](#user-licenses)
+    * [User accounts](#user-accounts)
     * [Installing quests](#installing-quests)
     * [Item tables and drop modes](#item-tables-and-drop-modes)
     * [Cross-version play](#cross-version-play)
@@ -226,11 +226,22 @@ For GC clients, you'll have to use newserv's built-in DNS server or set up your 
 
 # Server feature configuration
 
-## User licenses
+## User accounts
 
 By default, newserv does not require users to pre-register before playing; the server will instead automatically create an account the first time each player connects. These accounts have no special permissions. You can view, create, edit, and delete user accounts in the server's shell (run `help` in the shell to see how to do this).
 
-If you're running the server not only for yourself, you may want to give your account elevated privileges. To do so, run `update-license SERIAL-NUMBER flags=root` (replacing SERIAL-NUMBER with your actual serial number). You can also use update-license to edit other parts of the license; for example, if you want your GC and BB characters to share an account so they will have the same Guild Card number and privilege flags, you can run `update-license SERIAL-NUMBER bb-username=USERNAME bb-password=PASSWORD`.
+A license is a set of credentials that a player can use to log in. There are six types of licenses:
+* *DC NTE licenses* consist of a 16-character serial number and 16-character access key.
+* *DC licenses* consist of an 8-character hex serial number and an 8-character access key.
+* *PC licenses* are the same format as DC licenses, but are used for PC v2.
+* *GC licenses* consist of a 10-digit decimal serial number, a 12-character access key, and a password of up to 8 characters.
+* *XB licenses* consist of a gamertag of up to 16 characters, a 16-character hex user ID, and a 16-character hex account ID.
+* *BB licenses* consist of a username of up to 16 characters and a password of up to 16 characters.
+Each account may have multiple licenses. To add a license to an account, use `add-license` in the shell.
+
+On BB, character data is scoped to the license, but system and Guild Card data is scoped to the account. That is, an account with multiple BB licenses can have more than 4 characters (up to 4 per license), but they will all share the same team membership and Guild Card lists.
+
+You may want to give your account elevated privileges. To do so, run `update-account ACCOUNT-ID flags=root` (replacing ACCOUNT-ID with your actual account-id). You can also use update-account to edit other parts of the account; see the help text for more information.
 
 ## Installing quests
 
@@ -433,7 +444,7 @@ Some commands only work on the game server and not on the proxy server. The chat
     * `$where` (game server only): Shows your current floor number and coordinates. Mainly useful for debugging.
 
 * Debugging commands
-    * `$debug` (game server only): Enable or disable debug. You need the DEBUG permission in your user license to use this command. Enabling debug does a few things:
+    * `$debug` (game server only): Enable or disable debug. You need the DEBUG flag in your user account to use this command. Enabling debug does a few things:
         * You'll see in-game messages from the server when you take certain actions, like killing an enemy in BB.
         * You'll see the rare seed value and floor variations when you join a game.
         * You'll be placed into the highest available slot in lobbies and games instead of the lowest, unless you're joining a BB solo-mode game.

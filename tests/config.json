@@ -6,7 +6,7 @@
   //    replay runner uses virtual connections instead.
   // 2. The IP stack simulator is disabled.
   // 3. Unregistered users are allowed. This enables the tests to run on other
-  //    machines, which won't have the same license file.
+  //    machines, which won't have the same account files.
   "ServerName": "Alexandria",
   "CatchHandlerExceptions": false,
 
@@ -146,7 +146,7 @@
   "HideDownloadCommands": true,
 
   "AllowUnregisteredUsers": true,
-  "UseTemporaryLicensesForPrototypes": true,
+  "UseTemporaryAccountsForPrototypes": true,
   "AllowPCNTE": true,
   "AllowDCPCGames": true,
   "AllowGCXBGames": true,

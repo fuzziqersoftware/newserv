@@ -160,19 +160,19 @@ void PatchServer::on_04(shared_ptr<Client> c, string& data) {
   string password = cmd.password.decode();
 
   // There are 3 cases here:
-  // - No login information at all: just proceed without checking license
-  // - Username only: check that license exists if allow_unregistered_users is off
+  // - No login information at all: just proceed without checking credentials
+  // - Username: check that account exists if allow_unregistered_users is off
   // - Username and password: call verify_bb
   if (!username.empty() && !password.empty()) {
     try {
-      this->config->license_index->verify_bb(username, password);
+      this->config->account_index->from_bb_credentials(username, &password, false);
 
-    } catch (const LicenseIndex::incorrect_password& e) {
+    } catch (const AccountIndex::incorrect_password& e) {
       this->send_message_box(c, string_printf("Login failed: %s", e.what()));
       this->disconnect_client(c);
       return;
 
-    } catch (const LicenseIndex::missing_license& e) {
+    } catch (const AccountIndex::missing_account& e) {
       if (!this->config->allow_unregistered_users) {
         this->send_message_box(c, string_printf("Login failed: %s", e.what()));
         this->disconnect_client(c);
@@ -182,8 +182,8 @@ void PatchServer::on_04(shared_ptr<Client> c, string& data) {
 
   } else if (!username.empty() && !this->config->allow_unregistered_users) {
     try {
-      this->config->license_index->get_by_bb_username(username);
-    } catch (const LicenseIndex::missing_license& e) {
+      this->config->account_index->from_bb_credentials(username, nullptr, false);
+    } catch (const AccountIndex::missing_account& e) {
       this->send_message_box(c, string_printf("Login failed: %s", e.what()));
       this->disconnect_client(c);
       return;

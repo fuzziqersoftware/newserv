@@ -31,6 +31,9 @@ const char* QUEST_BARRIER_DISCONNECT_HOOK_NAME = "quest_barrier";
 const char* ADD_NEXT_CLIENT_DISCONNECT_HOOK_NAME = "add_next_game_client";
 
 static shared_ptr<const Menu> proxy_options_menu_for_client(shared_ptr<const Client> c) {
+  if (!c->login) {
+    throw logic_error("client is not logged in");
+  }
   auto s = c->require_server_state();
 
   auto ret = make_shared<Menu>(MenuID::PROXY_OPTIONS, "Proxy options");
@@ -78,7 +81,8 @@ static shared_ptr<const Menu> proxy_options_menu_for_client(shared_ptr<const Cli
     add_flag_option(ProxyOptionsMenuItemID::SWITCH_ASSIST, Client::Flag::SWITCH_ASSIST_ENABLED,
         "Switch assist", "Automatically try\nto unlock 2-player\ndoors when you step\non both switches\nsequentially");
   }
-  if ((s->cheat_mode_behavior != ServerState::BehaviorSwitch::OFF) || c->license->check_flag(License::Flag::CHEAT_ANYWHERE)) {
+  if ((s->cheat_mode_behavior != ServerState::BehaviorSwitch::OFF) ||
+      c->login->account->check_flag(Account::Flag::CHEAT_ANYWHERE)) {
     if (!is_ep3(c->version())) {
       add_flag_option(ProxyOptionsMenuItemID::INFINITE_HP, Client::Flag::INFINITE_HP_ENABLED,
           "Infinite HP", "Enable automatic HP\nrestoration when\nyou are hit by an\nenemy or trap\n\nCannot revive you\nfrom one-hit kills");
@@ -133,8 +137,8 @@ void send_client_to_proxy_server(shared_ptr<Client> c) {
   string port_name = proxy_port_name_for_version(c->version());
   uint16_t local_port = s->name_to_port_config.at(port_name)->port;
 
-  s->proxy_server->delete_session(c->license->serial_number);
-  auto ses = s->proxy_server->create_licensed_session(c->license, local_port, c->version(), c->config);
+  s->proxy_server->delete_session(c->login->account->account_id);
+  auto ses = s->proxy_server->create_logged_in_session(c->login, local_port, c->version(), c->config);
   if (!c->can_use_chat_commands()) {
     ses->config.clear_flag(Client::Flag::PROXY_CHAT_COMMANDS_ENABLED);
   }
@@ -279,7 +283,7 @@ static void send_main_menu(shared_ptr<Client> c) {
 }
 
 void on_login_complete(shared_ptr<Client> c) {
-  c->convert_license_to_temporary_if_nte();
+  c->convert_account_to_temporary_if_nte();
 
   // On BB, this function is called when the data server phase is done (and we
   // should send the ship select menu), so we don't need to check for it here.
@@ -420,55 +424,32 @@ static void set_console_client_flags(shared_ptr<Client> c, uint32_t sub_version)
 }
 
 static void on_DB_V3(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
-  const auto& cmd = check_size_t<C_VerifyLicense_V3_DB>(data);
+  const auto& cmd = check_size_t<C_VerifyAccount_V3_DB>(data);
   auto s = c->require_server_state();
 
   if (c->channel.crypt_in->type() == PSOEncryption::Type::V2) {
-    throw runtime_error("GC trial edition client sent V3 verify license command");
+    throw runtime_error("GC trial edition client sent V3 verify account command");
   }
   set_console_client_flags(c, cmd.sub_version);
 
   uint32_t serial_number = stoul(cmd.serial_number.decode(), nullptr, 16);
   try {
-    auto l = s->license_index->verify_gc_with_password(serial_number, cmd.access_key.decode(), cmd.password.decode(), "");
-    c->set_license(l);
+    auto password = cmd.password.decode();
+    c->login = s->account_index->from_gc_credentials(
+        serial_number, cmd.access_key.decode(), &password, "", s->allow_unregistered_users);
     send_command(c, 0x9A, 0x02);
 
-  } catch (const LicenseIndex::no_username& e) {
+  } catch (const AccountIndex::no_username& e) {
     send_command(c, 0x9A, 0x03);
-    c->should_disconnect = true;
-    return;
-
-  } catch (const LicenseIndex::incorrect_access_key& e) {
+  } catch (const AccountIndex::incorrect_access_key& e) {
     send_command(c, 0x9A, 0x03);
-    c->should_disconnect = true;
-    return;
-
-  } catch (const LicenseIndex::incorrect_password& e) {
+  } catch (const AccountIndex::incorrect_password& e) {
     send_command(c, 0x9A, 0x01);
-    return;
-
-  } catch (const LicenseIndex::missing_license& e) {
-    if (!s->allow_unregistered_users) {
-      send_command(c, 0x9A, 0x04);
-      c->should_disconnect = true;
-      return;
-    } else {
-      c->config.set_flag(Client::Flag::LICENSE_WAS_CREATED);
-      auto l = s->license_index->create_license();
-      l->serial_number = serial_number;
-      l->access_key = cmd.access_key.decode();
-      l->gc_password = cmd.password.decode();
-      s->license_index->add(l);
-      if (!s->is_replay) {
-        l->save();
-      }
-      c->set_license(l);
-      string l_str = l->str();
-      c->log.info("Created license %s", l_str.c_str());
-      send_command(c, 0x9A, 0x02);
-    }
+  } catch (const AccountIndex::missing_account& e) {
+    send_command(c, 0x9A, 0x04);
   }
+
+  c->should_disconnect = !c->login;
 }
 
 static void on_88_DCNTE(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
@@ -480,39 +461,19 @@ static void on_88_DCNTE(shared_ptr<Client> c, uint16_t, uint32_t, string& data) 
   c->log.info("Game version changed to DC_NTE");
 
   try {
-    shared_ptr<License> l = s->license_index->verify_dc_nte(cmd.serial_number.decode(), cmd.access_key.decode());
-    c->set_license(l);
+    c->login = s->account_index->from_dc_nte_credentials(
+        cmd.serial_number.decode(), cmd.access_key.decode(), s->allow_unregistered_users);
     send_command(c, 0x88, 0x00);
 
-  } catch (const LicenseIndex::no_username& e) {
+  } catch (const AccountIndex::no_username& e) {
     send_message_box(c, "Incorrect serial number");
-    c->should_disconnect = true;
-    return;
-
-  } catch (const LicenseIndex::incorrect_access_key& e) {
+  } catch (const AccountIndex::incorrect_access_key& e) {
     send_message_box(c, "Incorrect access key");
-    c->should_disconnect = true;
-
-  } catch (const LicenseIndex::missing_license& e) {
-    if (!s->allow_unregistered_users) {
-      send_message_box(c, "Incorrect serial number");
-      c->should_disconnect = true;
-    } else {
-      c->config.set_flag(Client::Flag::LICENSE_WAS_CREATED);
-      auto l = s->license_index->create_license();
-      l->dc_nte_serial_number = cmd.serial_number.decode();
-      l->dc_nte_access_key = cmd.access_key.decode();
-      l->serial_number = fnv1a32(l->dc_nte_serial_number) & 0x7FFFFFFF;
-      s->license_index->add(l);
-      if (!s->is_replay) {
-        l->save();
-      }
-      c->set_license(l);
-      string l_str = l->str();
-      c->log.info("Created license %s", l_str.c_str());
-      send_command(c, 0x88, 0x00);
-    }
+  } catch (const AccountIndex::missing_account& e) {
+    send_message_box(c, "Incorrect serial number");
   }
+
+  c->should_disconnect = !c->login;
 }
 
 static void on_8B_DCNTE(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
@@ -525,46 +486,24 @@ static void on_8B_DCNTE(shared_ptr<Client> c, uint16_t, uint32_t, string& data) 
   c->log.info("Game version changed to DC_NTE");
 
   try {
-    shared_ptr<License> l = s->license_index->verify_dc_nte(cmd.serial_number.decode(), cmd.access_key.decode());
-    c->set_license(l);
-
-  } catch (const LicenseIndex::no_username& e) {
+    c->login = s->account_index->from_dc_nte_credentials(cmd.serial_number.decode(), cmd.access_key.decode(), s->allow_unregistered_users);
+  } catch (const AccountIndex::no_username& e) {
     send_message_box(c, "Incorrect serial number");
-    c->should_disconnect = true;
-    return;
-
-  } catch (const LicenseIndex::incorrect_access_key& e) {
+  } catch (const AccountIndex::incorrect_access_key& e) {
     send_message_box(c, "Incorrect access key");
+  } catch (const AccountIndex::missing_account& e) {
+    send_message_box(c, "Incorrect serial number");
+  }
+
+  if (!c->login) {
     c->should_disconnect = true;
-
-  } catch (const LicenseIndex::missing_license& e) {
-    if (!s->allow_unregistered_users) {
-      send_message_box(c, "Incorrect serial number");
-      c->should_disconnect = true;
-    } else {
-      c->config.set_flag(Client::Flag::LICENSE_WAS_CREATED);
-      auto l = s->license_index->create_license();
-      l->dc_nte_serial_number = cmd.serial_number.decode();
-      l->dc_nte_access_key = cmd.access_key.decode();
-      l->serial_number = fnv1a32(l->dc_nte_serial_number) & 0x7FFFFFFF;
-      s->license_index->add(l);
-      if (!s->is_replay) {
-        l->save();
+  } else {
+    if (cmd.is_extended) {
+      const auto& ext_cmd = check_size_t<C_LoginExtended_DCNTE_8B>(data);
+      if (ext_cmd.extension.lobby_refs[0].menu_id == MenuID::LOBBY) {
+        c->preferred_lobby_id = ext_cmd.extension.lobby_refs[0].item_id;
       }
-      c->set_license(l);
-      string l_str = l->str();
-      c->log.info("Created license %s", l_str.c_str());
     }
-  }
-
-  if (cmd.is_extended) {
-    const auto& ext_cmd = check_size_t<C_LoginExtended_DCNTE_8B>(data);
-    if (ext_cmd.extension.lobby_refs[0].menu_id == MenuID::LOBBY) {
-      c->preferred_lobby_id = ext_cmd.extension.lobby_refs[0].item_id;
-    }
-  }
-
-  if (!c->should_disconnect) {
     send_update_client_config(c, true);
     on_login_complete(c);
   }
@@ -582,54 +521,22 @@ static void on_90_DC(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
   string access_key_str = cmd.access_key.decode();
   uint32_t serial_number = 0;
   try {
-    shared_ptr<License> l;
     if (serial_number_str.size() > 8 || access_key_str.size() > 8) {
-      l = s->license_index->verify_dc_nte(serial_number_str, access_key_str);
+      c->login = s->account_index->from_dc_nte_credentials(serial_number_str, access_key_str, s->allow_unregistered_users);
     } else {
       serial_number = stoull(serial_number_str, nullptr, 16);
-      l = s->license_index->verify_v1_v2(serial_number, access_key_str, "");
+      c->login = s->account_index->from_dc_credentials(serial_number, access_key_str, "", s->allow_unregistered_users);
     }
-    c->set_license(l);
-    send_command(c, 0x90, 0x02);
+    send_command(c, 0x90, 0x01);
 
-  } catch (const LicenseIndex::no_username& e) {
+  } catch (const AccountIndex::no_username& e) {
     send_command(c, 0x90, 0x03);
-    c->should_disconnect = true;
-    return;
-
-  } catch (const LicenseIndex::incorrect_access_key& e) {
+  } catch (const AccountIndex::incorrect_access_key& e) {
     send_command(c, 0x90, 0x03);
-    c->should_disconnect = true;
-
-  } catch (const LicenseIndex::missing_license& e) {
-    if (!s->allow_unregistered_users) {
-      send_command(c, 0x90, 0x03);
-      c->should_disconnect = true;
-    } else {
-      c->config.set_flag(Client::Flag::LICENSE_WAS_CREATED);
-      auto l = s->license_index->create_license();
-      if (serial_number_str.size() > 8 || access_key_str.size() > 8) {
-        l->dc_nte_serial_number = serial_number_str;
-        l->dc_nte_access_key = access_key_str;
-        l->serial_number = fnv1a32(l->dc_nte_serial_number) & 0x7FFFFFFF;
-      } else if (serial_number != 0) {
-        l->serial_number = serial_number;
-        l->access_key = cmd.access_key.decode();
-      } else {
-        send_command(c, 0x90, 0x03);
-        c->should_disconnect = true;
-        return;
-      }
-      s->license_index->add(l);
-      if (!s->is_replay) {
-        l->save();
-      }
-      c->set_license(l);
-      string l_str = l->str();
-      c->log.info("Created license %s", l_str.c_str());
-      send_command(c, 0x90, 0x01);
-    }
+  } catch (const AccountIndex::missing_account& e) {
+    send_command(c, 0x90, 0x03);
   }
+  c->should_disconnect = !c->login;
 }
 
 static void on_92_DC(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
@@ -657,53 +564,24 @@ static void on_93_DC(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
   string access_key_str = cmd.access_key.decode();
   uint32_t serial_number = 0;
   try {
-    shared_ptr<License> l;
     if (serial_number_str.size() > 8 || access_key_str.size() > 8) {
-      l = s->license_index->verify_dc_nte(serial_number_str, access_key_str);
+      c->login = s->account_index->from_dc_nte_credentials(serial_number_str, access_key_str, s->allow_unregistered_users);
     } else {
       serial_number = stoull(serial_number_str, nullptr, 16);
-      l = s->license_index->verify_v1_v2(serial_number, access_key_str, cmd.name.decode());
+      c->login = s->account_index->from_dc_credentials(
+          serial_number, access_key_str, cmd.name.decode(), s->allow_unregistered_users);
     }
-    c->set_license(l);
 
-  } catch (const LicenseIndex::no_username& e) {
+  } catch (const AccountIndex::no_username& e) {
     send_message_box(c, "Incorrect serial number");
-    c->should_disconnect = true;
-    return;
-
-  } catch (const LicenseIndex::incorrect_access_key& e) {
+  } catch (const AccountIndex::incorrect_access_key& e) {
     send_message_box(c, "Incorrect access key");
+  } catch (const AccountIndex::missing_account& e) {
+    send_message_box(c, "Incorrect serial number");
+  }
+  if (!c->login) {
     c->should_disconnect = true;
     return;
-
-  } catch (const LicenseIndex::missing_license& e) {
-    if (!s->allow_unregistered_users) {
-      send_message_box(c, "Incorrect serial number");
-      c->should_disconnect = true;
-      return;
-    } else {
-      c->config.set_flag(Client::Flag::LICENSE_WAS_CREATED);
-      auto l = s->license_index->create_license();
-      if (serial_number_str.size() > 8 || access_key_str.size() > 8) {
-        l->dc_nte_serial_number = serial_number_str;
-        l->dc_nte_access_key = access_key_str;
-        l->serial_number = fnv1a32(l->dc_nte_serial_number) & 0x7FFFFFFF;
-      } else if (serial_number != 0) {
-        l->serial_number = serial_number;
-        l->access_key = cmd.access_key.decode();
-      } else {
-        send_command(c, 0x90, 0x03);
-        c->should_disconnect = true;
-        return;
-      }
-      s->license_index->add(l);
-      if (!s->is_replay) {
-        l->save();
-      }
-      c->set_license(l);
-      string l_str = l->str();
-      c->log.info("Created license %s", l_str.c_str());
-    }
   }
 
   if (cmd.is_extended) {
@@ -737,15 +615,17 @@ static void on_9A(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
 
   set_console_client_flags(c, cmd.sub_version);
 
-  uint32_t serial_number = 0;
   try {
-    shared_ptr<License> l;
     switch (c->version()) {
-      case Version::DC_V2:
+      case Version::DC_V2: {
+        uint32_t serial_number = stoul(cmd.serial_number.decode(), nullptr, 16);
+        c->login = s->account_index->from_dc_credentials(
+            serial_number, cmd.access_key.decode(), "", s->allow_unregistered_users);
+        break;
+      }
       case Version::PC_NTE:
       case Version::PC_V2: {
-        if ((c->version() != Version::DC_V2) &&
-            (cmd.sub_version == 0x29) &&
+        if ((cmd.sub_version == 0x29) &&
             cmd.v1_serial_number.empty() &&
             cmd.v1_access_key.empty() &&
             cmd.serial_number.empty() &&
@@ -755,21 +635,12 @@ static void on_9A(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
             cmd.email_address.empty()) {
           c->channel.version = Version::PC_NTE;
           c->log.info("Changed client version to PC_NTE");
-          if (!s->allow_unregistered_users || !s->allow_pc_nte) {
-            throw LicenseIndex::no_username();
-          } else {
-            serial_number = cmd.guild_card_number;
-            while ((serial_number == 0xFFFFFFFF) || s->license_index->get(serial_number)) {
-              serial_number = random_object<uint32_t>() & 0x7FFFFFFF;
-            }
-            auto l = s->license_index->create_temporary_license();
-            l->serial_number = serial_number;
-            string l_str = l->str();
-            c->log.info("Created temporary license for PC NTE client %s", l_str.c_str());
-          }
+          c->login = s->account_index->from_pc_nte_credentials(
+              cmd.guild_card_number, s->allow_unregistered_users && s->allow_pc_nte);
         } else {
-          serial_number = stoul(cmd.serial_number.decode(), nullptr, 16);
-          l = s->license_index->verify_v1_v2(serial_number, cmd.access_key.decode(), "");
+          uint32_t serial_number = stoul(cmd.serial_number.decode(), nullptr, 16);
+          c->login = s->account_index->from_pc_credentials(
+              serial_number, cmd.access_key.decode(), "", s->allow_unregistered_users);
         }
         break;
       }
@@ -777,55 +648,30 @@ static void on_9A(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
       case Version::GC_V3:
       case Version::GC_EP3_NTE:
       case Version::GC_EP3: {
-        serial_number = stoul(cmd.serial_number.decode(), nullptr, 16);
-        l = s->license_index->verify_gc_no_password(serial_number, cmd.access_key.decode(), "");
+        uint32_t serial_number = stoul(cmd.serial_number.decode(), nullptr, 16);
+        // On V3, the client should have sent a DB command containing the
+        // password already, which should have created an account if needed. So
+        // if no account exists at this point, disconnect the client even if
+        // unregistered users are allowed.
+        c->login = s->account_index->from_gc_credentials(serial_number, cmd.access_key.decode(), nullptr, "", false);
         break;
       }
       default:
         throw runtime_error("unsupported versioned command");
     }
-    c->set_license(l);
     send_command(c, 0x9A, 0x02);
-  } catch (const LicenseIndex::no_username& e) {
+
+  } catch (const AccountIndex::no_username& e) {
     send_command(c, 0x9A, 0x03);
-    c->should_disconnect = true;
-  } catch (const LicenseIndex::incorrect_access_key& e) {
+  } catch (const AccountIndex::incorrect_access_key& e) {
     send_command(c, 0x9A, 0x03);
-    c->should_disconnect = true;
-  } catch (const LicenseIndex::incorrect_password& e) {
+  } catch (const AccountIndex::incorrect_password& e) {
     send_command(c, 0x9A, 0x01);
-    c->should_disconnect = true;
-  } catch (const LicenseIndex::missing_license& e) {
-    // On V3, the client should have sent a different command containing the
-    // password already, which should have created and added a license. So, if
-    // no license exists at this point, disconnect the client even if
-    // unregistered clients are allowed.
-    shared_ptr<License> l;
-    if (is_v3(c->version())) {
-      send_command(c, 0x9A, 0x04);
-      c->should_disconnect = true;
-
-    } else if (!s->allow_unregistered_users || (serial_number == 0)) {
-      send_command(c, 0x9A, 0x03);
-      c->should_disconnect = true;
-
-    } else if (is_v1_or_v2(c->version())) {
-      c->config.set_flag(Client::Flag::LICENSE_WAS_CREATED);
-      auto l = s->license_index->create_license();
-      l->serial_number = serial_number;
-      l->access_key = cmd.access_key.decode();
-      s->license_index->add(l);
-      if (!s->is_replay) {
-        l->save();
-      }
-      c->set_license(l);
-      string l_str = l->str();
-      c->log.info("Created license %s", l_str.c_str());
-      send_command(c, 0x9A, 0x02);
-    } else {
-      throw runtime_error("unsupported game version");
-    }
+  } catch (const AccountIndex::missing_account& e) {
+    send_command(c, 0x9A, 0x03);
   }
+
+  c->should_disconnect = !c->login;
 }
 
 static void on_9C(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
@@ -837,59 +683,36 @@ static void on_9C(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
 
   uint32_t serial_number = stoul(cmd.serial_number.decode(), nullptr, 16);
   try {
-    shared_ptr<License> l;
     switch (c->version()) {
       case Version::DC_V2:
+        c->login = s->account_index->from_dc_credentials(serial_number, cmd.access_key.decode(), "", false);
+        break;
       case Version::PC_V2:
-        l = s->license_index->verify_v1_v2(serial_number, cmd.access_key.decode(), "");
+        c->login = s->account_index->from_pc_credentials(serial_number, cmd.access_key.decode(), "", false);
         break;
       case Version::GC_NTE:
       case Version::GC_V3:
       case Version::GC_EP3_NTE:
-      case Version::GC_EP3:
-        l = s->license_index->verify_gc_with_password(serial_number, cmd.access_key.decode(), cmd.password.decode(), "");
+      case Version::GC_EP3: {
+        string password = cmd.password.decode();
+        c->login = s->account_index->from_gc_credentials(serial_number, cmd.access_key.decode(), &password, "", false);
         break;
+      }
       default:
         // TODO: PC_NTE can probably send 9C, but due to the way we've
         // implemented PC_NTE's login sequence, it never should send 9C.
         throw logic_error("unsupported versioned command");
     }
-    c->set_license(l);
     send_command(c, 0x9C, 0x01);
 
-  } catch (const LicenseIndex::no_username& e) {
+  } catch (const AccountIndex::no_username& e) {
     send_message_box(c, "Incorrect serial number");
-    c->should_disconnect = true;
-    return;
-
-  } catch (const LicenseIndex::incorrect_password& e) {
+  } catch (const AccountIndex::incorrect_password& e) {
     send_command(c, 0x9C, 0x00);
-    c->should_disconnect = true;
-    return;
-
-  } catch (const LicenseIndex::missing_license& e) {
-    if (!s->allow_unregistered_users) {
-      send_command(c, 0x9C, 0x00);
-      c->should_disconnect = true;
-      return;
-    } else {
-      c->config.set_flag(Client::Flag::LICENSE_WAS_CREATED);
-      auto l = s->license_index->create_license();
-      l->serial_number = serial_number;
-      l->access_key = cmd.access_key.decode();
-      if (is_gc(c->version())) {
-        l->gc_password = cmd.password.decode();
-      }
-      s->license_index->add(l);
-      if (!s->is_replay) {
-        l->save();
-      }
-      c->set_license(l);
-      string l_str = l->str();
-      c->log.info("Created license %s", l_str.c_str());
-      send_command(c, 0x9C, 0x01);
-    }
+  } catch (const AccountIndex::missing_account& e) {
+    send_command(c, 0x9C, 0x00);
   }
+  c->should_disconnect = !c->login;
 }
 
 static void on_9D_9E(shared_ptr<Client> c, uint16_t command, uint32_t, string& data) {
@@ -949,15 +772,17 @@ static void on_9D_9E(shared_ptr<Client> c, uint16_t command, uint32_t, string& d
     c->config.set_flag(Client::Flag::NO_SEND_FUNCTION_CALL);
   }
 
-  uint32_t serial_number = 0;
   try {
-    shared_ptr<License> l;
     switch (c->version()) {
-      case Version::DC_V2:
+      case Version::DC_V2: {
+        uint32_t serial_number = stoul(base_cmd->serial_number.decode(), nullptr, 16);
+        c->login = s->account_index->from_dc_credentials(
+            serial_number, base_cmd->access_key.decode(), base_cmd->name.decode(), s->allow_unregistered_users);
+        break;
+      }
       case Version::PC_NTE:
       case Version::PC_V2:
-        if ((c->version() != Version::DC_V2) &&
-            (base_cmd->sub_version == 0x29) &&
+        if ((base_cmd->sub_version == 0x29) &&
             base_cmd->v1_serial_number.empty() &&
             base_cmd->v1_access_key.empty() &&
             base_cmd->serial_number.empty() &&
@@ -966,76 +791,45 @@ static void on_9D_9E(shared_ptr<Client> c, uint16_t command, uint32_t, string& d
             base_cmd->access_key2.empty()) {
           c->channel.version = Version::PC_NTE;
           c->log.info("Changed client version to PC_NTE");
-          if (!s->allow_unregistered_users || !s->allow_pc_nte) {
-            throw LicenseIndex::no_username();
-          } else {
-            serial_number = base_cmd->guild_card_number;
-            while ((serial_number == 0xFFFFFFFF) || s->license_index->get(serial_number)) {
-              serial_number = random_object<uint32_t>() & 0x7FFFFFFF;
-            }
-            auto l = s->license_index->create_temporary_license();
-            l->serial_number = serial_number;
-            string l_str = l->str();
-            c->log.info("Created temporary license for PC NTE client %s", l_str.c_str());
-          }
+          c->login = s->account_index->from_pc_nte_credentials(
+              base_cmd->guild_card_number, s->allow_unregistered_users && s->allow_pc_nte);
         } else {
-          serial_number = stoul(base_cmd->serial_number.decode(), nullptr, 16);
-          l = s->license_index->verify_v1_v2(serial_number, base_cmd->access_key.decode(), base_cmd->name.decode());
+          uint32_t serial_number = stoul(base_cmd->serial_number.decode(), nullptr, 16);
+          c->login = s->account_index->from_pc_credentials(
+              serial_number, base_cmd->access_key.decode(), base_cmd->name.decode(), s->allow_unregistered_users);
         }
         break;
       case Version::GC_NTE:
       case Version::GC_V3:
       case Version::GC_EP3_NTE:
-      case Version::GC_EP3:
-        serial_number = stoul(base_cmd->serial_number.decode(), nullptr, 16);
-        l = s->license_index->verify_gc_no_password(serial_number, base_cmd->access_key.decode(), base_cmd->name.decode());
+      case Version::GC_EP3: {
+        uint32_t serial_number = stoul(base_cmd->serial_number.decode(), nullptr, 16);
+        // GC clients should have sent a DB command first which would have
+        // created the account if needed
+        c->login = s->account_index->from_gc_credentials(
+            serial_number, base_cmd->access_key.decode(), nullptr, base_cmd->name.decode(), false);
         break;
+      }
       default:
         throw logic_error("unsupported versioned command");
     }
-    c->set_license(l);
 
-  } catch (const LicenseIndex::no_username& e) {
+  } catch (const AccountIndex::no_username& e) {
     send_command(c, 0x04, 0x03);
-    c->should_disconnect = true;
-    return;
-
-  } catch (const LicenseIndex::incorrect_access_key& e) {
+  } catch (const AccountIndex::incorrect_access_key& e) {
     send_command(c, 0x04, 0x03);
-    c->should_disconnect = true;
-    return;
-
-  } catch (const LicenseIndex::incorrect_password& e) {
+  } catch (const AccountIndex::incorrect_password& e) {
     send_command(c, 0x04, 0x06);
-    c->should_disconnect = true;
-    return;
-
-  } catch (const LicenseIndex::missing_license& e) {
-    if (!s->allow_unregistered_users || (serial_number == 0)) {
-      send_command(c, 0x04, 0x04);
-      c->should_disconnect = true;
-      return;
-
-    } else if (is_v1_or_v2(c->version()) || is_v3(c->version())) {
-      c->config.set_flag(Client::Flag::LICENSE_WAS_CREATED);
-      auto l = s->license_index->create_license();
-      l->serial_number = serial_number;
-      l->access_key = base_cmd->access_key.decode();
-      s->license_index->add(l);
-      if (!s->is_replay) {
-        l->save();
-      }
-      c->set_license(l);
-      string l_str = l->str();
-      c->log.info("Created license %s", l_str.c_str());
-
-    } else {
-      throw runtime_error("unsupported game version");
-    }
+  } catch (const AccountIndex::missing_account& e) {
+    send_command(c, 0x04, 0x04);
   }
 
-  send_update_client_config(c, true);
-  on_login_complete(c);
+  if (!c->login) {
+    c->should_disconnect = true;
+  } else {
+    send_update_client_config(c, true);
+    on_login_complete(c);
+  }
 }
 
 static void on_9E_XB(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
@@ -1060,54 +854,39 @@ static void on_9E_XB(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
   uint64_t xb_user_id = stoull(cmd.access_key.decode(), nullptr, 16);
   uint64_t xb_account_id = cmd.netloc.account_id;
   try {
-    shared_ptr<License> l = s->license_index->verify_xb(xb_gamertag, xb_user_id, xb_account_id);
+    c->login = s->account_index->from_xb_credentials(xb_gamertag, xb_user_id, xb_account_id, s->allow_unregistered_users);
     bool should_save = false;
-    if (l->xb_user_id == 0) {
-      l->xb_user_id = xb_user_id;
-      c->log.info("Set license XB user ID to %016" PRIX64, l->xb_user_id);
+    if (c->login->xb_license->user_id == 0) {
+      c->login->xb_license->user_id = xb_user_id;
+      c->log.info("Set license XB user ID to %016" PRIX64, c->login->xb_license->user_id);
       should_save = true;
     }
-    if (l->xb_account_id == 0) {
-      l->xb_account_id = xb_account_id;
-      c->log.info("Set license XB account ID to %016" PRIX64, l->xb_account_id);
+    if (c->login->xb_license->account_id == 0) {
+      c->login->xb_license->account_id = xb_account_id;
+      c->log.info("Set license XB account ID to %016" PRIX64, c->login->xb_license->account_id);
       should_save = true;
     }
     if (should_save && !s->is_replay) {
-      l->save();
+      c->login->account->save();
     }
-    c->set_license(l);
 
-  } catch (const LicenseIndex::no_username& e) {
+  } catch (const AccountIndex::no_username& e) {
     send_command(c, 0x04, 0x03);
-    c->should_disconnect = true;
-    return;
-
-  } catch (const LicenseIndex::incorrect_access_key& e) {
+  } catch (const AccountIndex::incorrect_access_key& e) {
     send_command(c, 0x04, 0x03);
-    c->should_disconnect = true;
-    return;
-
-  } catch (const LicenseIndex::missing_license& e) {
-    c->config.set_flag(Client::Flag::LICENSE_WAS_CREATED);
-    auto l = s->license_index->create_license();
-    l->serial_number = fnv1a32(xb_gamertag) & 0x7FFFFFFF;
-    l->xb_gamertag = xb_gamertag;
-    l->xb_user_id = xb_user_id;
-    l->xb_account_id = xb_account_id;
-    s->license_index->add(l);
-    if (!s->is_replay) {
-      l->save();
-    }
-    c->set_license(l);
-    string l_str = l->str();
-    c->log.info("Created license %s", l_str.c_str());
+  } catch (const AccountIndex::missing_account& e) {
+    send_command(c, 0x04, 0x03);
   }
 
-  // The 9E command doesn't include the client config, so we need to request it
-  // separately with a 9F command. The 9F handler will call on_login_complete.
-  // Note that we can't send this command immediately after the 02/17 command;
-  // if we do, the client doesn't decrypt it properly and won't respond.
-  send_command(c, 0x9F, 0x00);
+  if (!c->login) {
+    c->should_disconnect = true;
+  } else {
+    // The 9E command doesn't include the client config, so we need to request it
+    // separately with a 9F command. The 9F handler will call on_login_complete.
+    // Note that we can't send this command immediately after the 02/17 command;
+    // if we do, the client doesn't decrypt it properly and won't respond.
+    send_command(c, 0x9F, 0x00);
+  }
 }
 
 static void scramble_bb_security_data(parray<uint8_t, 0x28>& data, uint8_t which, bool reverse) {
@@ -1161,38 +940,18 @@ static void on_93_BB(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
   string password = base_cmd.password.decode();
 
   try {
-    auto l = s->license_index->verify_bb(username, password);
-    c->set_license(l);
+    c->login = s->account_index->from_bb_credentials(username, &password, s->allow_unregistered_users);
 
-  } catch (const LicenseIndex::no_username& e) {
+  } catch (const AccountIndex::no_username& e) {
     send_message_box(c, "Username is missing");
-    c->should_disconnect = true;
-    return;
-
-  } catch (const LicenseIndex::incorrect_password& e) {
+  } catch (const AccountIndex::incorrect_password& e) {
     send_message_box(c, "Incorrect login password");
+  } catch (const AccountIndex::missing_account& e) {
+    send_message_box(c, "You are not registered on this server");
+  }
+  if (!c->login) {
     c->should_disconnect = true;
     return;
-
-  } catch (const LicenseIndex::missing_license& e) {
-    if (!s->allow_unregistered_users) {
-      send_message_box(c, "You are not registered on this server");
-      c->should_disconnect = true;
-      return;
-    } else {
-      c->config.set_flag(Client::Flag::LICENSE_WAS_CREATED);
-      auto l = s->license_index->create_license();
-      l->serial_number = fnv1a32(username) & 0x7FFFFFFF;
-      l->bb_username = username;
-      l->bb_password = password;
-      s->license_index->add(l);
-      if (!s->is_replay) {
-        l->save();
-      }
-      c->set_license(l);
-      string l_str = l->str();
-      c->log.info("Created license %s", l_str.c_str());
-    }
   }
 
   if (base_cmd.guild_card_number != 0) {
@@ -1307,18 +1066,18 @@ static void on_BA_Ep3(shared_ptr<Client> c, uint16_t command, uint32_t, string& 
     current_meseta = 1000000;
     total_meseta_earned = 1000000;
   } else if (is_lobby && s->ep3_jukebox_is_free) {
-    current_meseta = c->license->ep3_current_meseta;
-    total_meseta_earned = c->license->ep3_total_meseta_earned;
+    current_meseta = c->login->account->ep3_current_meseta;
+    total_meseta_earned = c->login->account->ep3_total_meseta_earned;
   } else {
-    if (c->license->ep3_current_meseta < in_cmd.value) {
+    if (c->login->account->ep3_current_meseta < in_cmd.value) {
       throw runtime_error("meseta overdraft not allowed");
     }
-    c->license->ep3_current_meseta -= in_cmd.value;
+    c->login->account->ep3_current_meseta -= in_cmd.value;
     if (!s->is_replay) {
-      c->license->save();
+      c->login->account->save();
     }
-    current_meseta = c->license->ep3_current_meseta;
-    total_meseta_earned = c->license->ep3_total_meseta_earned;
+    current_meseta = c->login->account->ep3_current_meseta;
+    total_meseta_earned = c->login->account->ep3_total_meseta_earned;
   }
 
   S_MesetaTransaction_Ep3_BA out_cmd = {current_meseta, total_meseta_earned, in_cmd.request_token};
@@ -1452,7 +1211,7 @@ static bool start_ep3_battle_table_game_if_ready(shared_ptr<Lobby> l, int16_t ta
   // present and rearrange their client IDs to match their team positions
   unordered_map<size_t, shared_ptr<Client>> game_clients;
   if (tourn_match) {
-    unordered_map<size_t, uint32_t> required_serial_numbers;
+    unordered_map<size_t, uint32_t> required_account_ids;
     auto add_team_players = [&](shared_ptr<const Episode3::Tournament::Team> team, size_t base_index) -> void {
       size_t z = 0;
       for (const auto& player : team->players) {
@@ -1460,7 +1219,7 @@ static bool start_ep3_battle_table_game_if_ready(shared_ptr<Lobby> l, int16_t ta
           throw logic_error("more than 2 players on team");
         }
         if (player.is_human()) {
-          required_serial_numbers.emplace(base_index + z, player.serial_number);
+          required_account_ids.emplace(base_index + z, player.account_id);
         }
         z++;
       }
@@ -1468,17 +1227,17 @@ static bool start_ep3_battle_table_game_if_ready(shared_ptr<Lobby> l, int16_t ta
     add_team_players(tourn_match->preceding_a->winner_team, 0);
     add_team_players(tourn_match->preceding_b->winner_team, 2);
 
-    for (const auto& it : required_serial_numbers) {
+    for (const auto& it : required_account_ids) {
       size_t client_id = it.first;
-      uint32_t serial_number = it.second;
+      uint32_t account_id = it.second;
       for (const auto& it : table_clients) {
-        if (it.second->license->serial_number == serial_number) {
+        if (it.second->login->account->account_id == account_id) {
           game_clients.emplace(client_id, it.second);
         }
       }
     }
 
-    if (game_clients.size() != required_serial_numbers.size()) {
+    if (game_clients.size() != required_account_ids.size()) {
       // Not all tournament match participants are present, so we can't start
       // the tournament match. (But they can still use the battle table)
       tourn_match.reset();
@@ -1711,7 +1470,7 @@ static void on_CA_Ep3(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
           PlayerLobbyDataDCGC lobby_data;
           lobby_data.name.encode(existing_p->disp.name.decode(existing_c->language()), c->language());
           lobby_data.player_tag = 0x00010000;
-          lobby_data.guild_card_number = existing_c->license->serial_number;
+          lobby_data.guild_card_number = existing_c->login->account->account_id;
           l->battle_record->add_player(
               lobby_data,
               existing_p->inventory,
@@ -1767,10 +1526,10 @@ static void on_CA_Ep3(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
       if (player.is_human()) {
         auto winner_c = player.client.lock();
         if (winner_c) {
-          winner_c->license->ep3_current_meseta += meseta_reward;
-          winner_c->license->ep3_total_meseta_earned += meseta_reward;
+          winner_c->login->account->ep3_current_meseta += meseta_reward;
+          winner_c->login->account->ep3_total_meseta_earned += meseta_reward;
           if (!s->is_replay) {
-            winner_c->license->save();
+            winner_c->login->account->save();
           }
           send_ep3_rank_update(winner_c);
         }
@@ -1809,7 +1568,7 @@ static void on_E2_Ep3(shared_ptr<Client> c, uint16_t, uint32_t flag, string&) {
         if (tourn) {
           if (tourn->get_state() != Episode3::Tournament::State::COMPLETE) {
             auto s = c->require_server_state();
-            team->unregister_player(c->license->serial_number);
+            team->unregister_player(c->login->account->account_id);
             on_tournament_bracket_updated(s, tourn);
           }
           c->ep3_tournament_team.reset();
@@ -2007,10 +1766,10 @@ static void on_09(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
           for (const auto& player : team->players) {
             if (player.is_human()) {
               if (player.player_name.empty()) {
-                message += string_printf("\n  $C6%08" PRIX32 "$C7", player.serial_number);
+                message += string_printf("\n  $C6%08" PRIX32 "$C7", player.account_id);
               } else {
                 string player_name = escape_player_name(player.player_name);
-                message += string_printf("\n  $C6%s$C7 (%08" PRIX32 ")", player_name.c_str(), player.serial_number);
+                message += string_printf("\n  $C6%s$C7 (%08" PRIX32 ")", player_name.c_str(), player.account_id);
               }
             } else {
               string player_name = escape_player_name(player.com_deck->player_name);
@@ -2557,7 +2316,7 @@ static void on_10(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
       shared_ptr<Lobby> l = c->lobby.lock();
       Episode episode = l ? l->episode : Episode::NONE;
       QuestIndex::IncludeCondition include_condition = nullptr;
-      if (l && !c->license->check_flag(License::Flag::DISABLE_QUEST_REQUIREMENTS)) {
+      if (l && !c->login->account->check_flag(Account::Flag::DISABLE_QUEST_REQUIREMENTS)) {
         include_condition = l->quest_include_condition();
       }
 
@@ -2692,7 +2451,7 @@ static void on_10(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
       }
       if (team_name.empty()) {
         team_name = c->character()->disp.name.decode(c->language());
-        team_name += string_printf("/%" PRIX32, c->license->serial_number);
+        team_name += string_printf("/%" PRIX32, c->login->account->account_id);
       }
       auto s = c->require_server_state();
       uint16_t tourn_num = item_id >> 16;
@@ -3030,7 +2789,7 @@ static void on_61_98(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
       c->v1_v2_last_reported_disp = make_unique<PlayerDispDataDCPCV3>(cmd.disp);
       player->inventory = cmd.inventory;
       player->disp = cmd.disp.to_bb(player->inventory.language, player->inventory.language);
-      c->license->last_player_name = player->disp.name.decode(player->inventory.language);
+      c->login->account->last_player_name = player->disp.name.decode(player->inventory.language);
       break;
     }
     case Version::DC_V2: {
@@ -3041,7 +2800,7 @@ static void on_61_98(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
       player->battle_records = cmd.records.battle;
       player->challenge_records = cmd.records.challenge;
       player->choice_search_config = cmd.choice_search_config;
-      c->license->last_player_name = player->disp.name.decode(player->inventory.language);
+      c->login->account->last_player_name = player->disp.name.decode(player->inventory.language);
       break;
     }
     case Version::PC_NTE:
@@ -3065,12 +2824,12 @@ static void on_61_98(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
         } catch (const runtime_error& e) {
           c->log.warning("Failed to decode auto-reply message: %s", e.what());
         }
-        c->license->auto_reply_message = auto_reply;
+        c->login->account->auto_reply_message = auto_reply;
       } else {
         player->auto_reply.clear();
-        c->license->auto_reply_message.clear();
+        c->login->account->auto_reply_message.clear();
       }
-      c->license->last_player_name = player->disp.name.decode(player->inventory.language);
+      c->login->account->last_player_name = player->disp.name.decode(player->inventory.language);
       break;
     }
     case Version::GC_NTE: {
@@ -3093,12 +2852,12 @@ static void on_61_98(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
         } catch (const runtime_error& e) {
           c->log.warning("Failed to decode auto-reply message: %s", e.what());
         }
-        c->license->auto_reply_message = auto_reply;
+        c->login->account->auto_reply_message = auto_reply;
       } else {
         player->auto_reply.clear();
-        c->license->auto_reply_message.clear();
+        c->login->account->auto_reply_message.clear();
       }
-      c->license->last_player_name = player->disp.name.decode(player->inventory.language);
+      c->login->account->last_player_name = player->disp.name.decode(player->inventory.language);
       break;
     }
 
@@ -3125,7 +2884,7 @@ static void on_61_98(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
           if (c->config.specific_version == 0x33000000) {
             c->config.specific_version = 0x33534A54; // 3SJT
           }
-          c->convert_license_to_temporary_if_nte();
+          c->convert_account_to_temporary_if_nte();
         }
         cmd = &check_size_t<C_CharacterData_V3_61_98>(data, 0xFFFF);
       }
@@ -3169,12 +2928,12 @@ static void on_61_98(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
         } catch (const runtime_error& e) {
           c->log.warning("Failed to decode auto-reply message: %s", e.what());
         }
-        c->license->auto_reply_message = auto_reply;
+        c->login->account->auto_reply_message = auto_reply;
       } else {
         player->auto_reply.clear();
-        c->license->auto_reply_message.clear();
+        c->login->account->auto_reply_message.clear();
       }
-      c->license->last_player_name = player->disp.name.decode(player->inventory.language);
+      c->login->account->last_player_name = player->disp.name.decode(player->inventory.language);
       break;
     }
     case Version::BB_V4: {
@@ -3197,12 +2956,12 @@ static void on_61_98(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
         } catch (const runtime_error& e) {
           c->log.warning("Failed to decode auto-reply message: %s", e.what());
         }
-        c->license->auto_reply_message = auto_reply;
+        c->login->account->auto_reply_message = auto_reply;
       } else {
         player->auto_reply.clear();
-        c->license->auto_reply_message.clear();
+        c->login->account->auto_reply_message.clear();
       }
-      c->license->last_player_name = player->disp.name.decode(player->inventory.language);
+      c->login->account->last_player_name = player->disp.name.decode(player->inventory.language);
       break;
     }
     default:
@@ -3210,7 +2969,7 @@ static void on_61_98(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
   }
   player->inventory.decode_from_client(c->version());
   c->channel.language = player->inventory.language;
-  c->license->save();
+  c->login->account->save();
 
   string name_str = player->disp.name.decode(c->language());
   c->channel.name = string_printf("C-%" PRIX64 " (%s)", c->id, name_str.c_str());
@@ -3229,14 +2988,12 @@ static void on_61_98(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
       c->pending_character_export.reset();
 
       string filename;
-      if (pending_export->is_bb_conversion) {
+      if (pending_export->dest_bb_license) {
         filename = Client::character_filename(
-            pending_export->license->bb_username,
-            pending_export->character_index);
+            pending_export->dest_bb_license->username, pending_export->character_index);
       } else {
         filename = Client::backup_character_filename(
-            pending_export->license->serial_number,
-            pending_export->character_index);
+            pending_export->dest_account->account_id, pending_export->character_index);
       }
 
       if (s->player_files_manager->get_character(filename)) {
@@ -3244,7 +3001,7 @@ static void on_61_98(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
 
       } else {
         auto bb_player = PSOBBCharacterFile::create_from_config(
-            pending_export->license->serial_number,
+            pending_export->dest_account->account_id,
             c->language(),
             player->disp.visual,
             player->disp.name.decode(c->language()),
@@ -3300,13 +3057,13 @@ static void on_30(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
   c->pending_character_export.reset();
 
   string filename;
-  if (pending_export->is_bb_conversion) {
+  if (pending_export->dest_bb_license) {
     filename = Client::character_filename(
-        pending_export->license->bb_username,
+        pending_export->dest_bb_license->username,
         pending_export->character_index);
   } else {
     filename = Client::backup_character_filename(
-        pending_export->license->serial_number,
+        pending_export->dest_account->account_id,
         pending_export->character_index);
   }
 
@@ -3410,7 +3167,7 @@ static void on_06(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
       bool should_hide_contents = (!(l->check_flag(Lobby::Flag::IS_SPECTATOR_TEAM))) && (private_flags & (1 << x));
       const string& effective_text = should_hide_contents ? whisper_text : text;
       try {
-        send_chat_message(l->clients[x], c->license->serial_number, from_name, effective_text, private_flags);
+        send_chat_message(l->clients[x], c->login->account->account_id, from_name, effective_text, private_flags);
       } catch (const runtime_error& e) {
         l->clients[x]->log.warning("Failed to encode chat message: %s", e.what());
       }
@@ -3420,7 +3177,7 @@ static void on_06(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
     for (size_t x = 0; x < watcher_l->max_clients; x++) {
       if (watcher_l->clients[x]) {
         try {
-          send_chat_message(watcher_l->clients[x], c->license->serial_number, from_name, text, private_flags);
+          send_chat_message(watcher_l->clients[x], c->login->account->account_id, from_name, text, private_flags);
         } catch (const runtime_error& e) {
           watcher_l->clients[x]->log.warning("Failed to encode chat message: %s", e.what());
         }
@@ -3437,7 +3194,7 @@ static void on_06(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
           p->disp.name.decode(c->language()),
           text,
           private_flags);
-      l->battle_record->add_chat_message(c->license->serial_number, std::move(prepared_message));
+      l->battle_record->add_chat_message(c->login->account->account_id, std::move(prepared_message));
     } catch (const runtime_error& e) {
       l->log.warning("Failed to encode chat message for battle record: %s", e.what());
     }
@@ -3459,7 +3216,7 @@ static void on_E3_BB(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
     send_approve_player_choice_bb(c);
 
   } else {
-    if (!c->license) {
+    if (!c->login) {
       c->should_disconnect = true;
       return;
     }
@@ -3648,7 +3405,7 @@ static void on_EC_BB(shared_ptr<Client>, uint16_t, uint32_t, string& data) {
 static void on_E5_BB(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
   const auto& cmd = check_size_t<SC_PlayerPreview_CreateCharacter_BB_00E5>(data);
 
-  if (!c->license) {
+  if (!c->login) {
     send_message_box(c, "$C6You are not logged in.");
     return;
   }
@@ -3671,7 +3428,7 @@ static void on_E5_BB(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
   } else {
     try {
       auto s = c->require_server_state();
-      c->create_character_file(c->license->serial_number, c->language(), cmd.preview, s->level_table);
+      c->create_character_file(c->login->account->account_id, c->language(), cmd.preview, s->level_table);
     } catch (const exception& e) {
       send_message_box(c, string_printf("$C6New character could not be created:\n%s", e.what()));
       return;
@@ -3868,7 +3625,7 @@ static void on_40(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
   try {
     auto s = c->require_server_state();
     auto result = s->find_client(nullptr, cmd.target_guild_card_number);
-    if (!result->blocked_senders.count(c->license->serial_number)) {
+    if (!result->blocked_senders.count(c->login->account->account_id)) {
       auto result_lobby = result->lobby.lock();
       if (result_lobby) {
         send_card_search_result(c, result, result_lobby);
@@ -3893,7 +3650,7 @@ static void on_choice_search_t(shared_ptr<Client> c, const ChoiceSearchConfig& c
   vector<ResultT> results;
   for (const auto& l : s->all_lobbies()) {
     for (const auto& lc : l->clients) {
-      if (!lc || lc->character()->choice_search_config.disabled) {
+      if (!lc || !lc->login || lc->character()->choice_search_config.disabled) {
         continue;
       }
 
@@ -3916,7 +3673,7 @@ static void on_choice_search_t(shared_ptr<Client> c, const ChoiceSearchConfig& c
       if (is_match) {
         auto lp = lc->character();
         auto& result = results.emplace_back();
-        result.guild_card_number = lc->license->serial_number;
+        result.guild_card_number = lc->login->account->account_id;
         result.name.encode(lp->disp.name.decode(lc->language()), c->language());
         string info_string = string_printf("%s Lv%zu\n%s\n",
             name_for_char_class(lp->disp.visual.char_class),
@@ -4031,38 +3788,38 @@ static void on_81(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
   } catch (const out_of_range&) {
   }
 
-  if (!target) {
+  if (!target || !target->login) {
     // TODO: We should store pending messages for accounts somewhere, and send
     // them when the player signs on again.
     if (!c->blocked_senders.count(to_guild_card_number)) {
       try {
-        auto target_license = s->license_index->get(to_guild_card_number);
-        if (!target_license->auto_reply_message.empty()) {
+        auto target_account = s->account_index->from_account_id(to_guild_card_number);
+        if (!target_account->auto_reply_message.empty()) {
           send_simple_mail(
               c,
-              target_license->serial_number,
-              target_license->last_player_name,
-              target_license->auto_reply_message);
+              target_account->account_id,
+              target_account->last_player_name,
+              target_account->auto_reply_message);
         }
-      } catch (const LicenseIndex::missing_license&) {
+      } catch (const AccountIndex::missing_account&) {
       }
     }
     send_text_message(c, "$C6Player is offline");
 
   } else {
     // If the sender is blocked, don't forward the mail
-    if (target->blocked_senders.count(c->license->serial_number)) {
+    if (target->blocked_senders.count(c->login->account->account_id)) {
       return;
     }
 
     // If the target has auto-reply enabled, send the autoreply. Note that we also
     // forward the message in this case.
-    if (!c->blocked_senders.count(target->license->serial_number)) {
+    if (!c->blocked_senders.count(target->login->account->account_id)) {
       auto target_p = target->character();
       if (!target_p->auto_reply.empty()) {
         send_simple_mail(
             c,
-            target->license->serial_number,
+            target->login->account->account_id,
             target_p->disp.name.decode(target_p->inventory.language),
             target_p->auto_reply.decode(target_p->inventory.language));
       }
@@ -4071,7 +3828,7 @@ static void on_81(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
     // Forward the message
     send_simple_mail(
         target,
-        c->license->serial_number,
+        c->login->account->account_id,
         c->character()->disp.name.decode(c->language()),
         message);
   }
@@ -4110,15 +3867,15 @@ void on_C7(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
     c->log.warning("Failed to decode auto-reply message: %s", e.what());
     return;
   }
-  c->license->auto_reply_message = message;
-  c->license->save();
+  c->login->account->auto_reply_message = message;
+  c->login->account->save();
 }
 
 static void on_C8(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
   check_size_v(data.size(), 0);
   c->character(true, false)->auto_reply.clear();
-  c->license->auto_reply_message.clear();
-  c->license->save();
+  c->login->account->auto_reply_message.clear();
+  c->login->account->save();
 }
 
 static void on_C6(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
@@ -4165,7 +3922,7 @@ shared_ptr<Lobby> create_game_generic(
   size_t min_level = s->default_min_level_for_game(c->version(), episode, difficulty);
 
   auto p = c->character();
-  if (!c->license->check_flag(License::Flag::FREE_JOIN_GAMES) && (min_level > p->disp.stats.level)) {
+  if (!c->login->account->check_flag(Account::Flag::FREE_JOIN_GAMES) && (min_level > p->disp.stats.level)) {
     // Note: We don't throw here because this is a situation players might
     // actually encounter while playing the game normally
     string msg = string_printf("You must be level %zu\nor above to play\nthis difficulty.", static_cast<size_t>(min_level + 1));
@@ -4975,14 +4732,14 @@ static void on_EA_BB(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
       string team_name = cmd.name.decode(c->language());
       if (s->team_index->get_by_name(team_name)) {
         send_command(c, 0x02EA, 0x00000002);
-      } else if (c->license->bb_team_id != 0) {
+      } else if (c->login->account->bb_team_id != 0) {
         // TODO: What's the right error code to use here?
         send_command(c, 0x02EA, 0x00000001);
       } else {
         string player_name = c->character()->disp.name.decode(c->language());
-        auto team = s->team_index->create(team_name, c->license->serial_number, player_name);
-        c->license->bb_team_id = team->team_id;
-        c->license->save();
+        auto team = s->team_index->create(team_name, c->login->account->account_id, player_name);
+        c->login->account->bb_team_id = team->team_id;
+        c->login->account->save();
 
         send_command(c, 0x02EA, 0x00000000);
         send_update_team_metadata_for_client(c);
@@ -4993,7 +4750,7 @@ static void on_EA_BB(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
     }
     case 0x03EA: { // Add team member
       auto team = c->team();
-      if (team && team->members.at(c->license->serial_number).privilege_level() >= 0x30) {
+      if (team && team->members.at(c->login->account->account_id).privilege_level() >= 0x30) {
         const auto& cmd = check_size_t<C_AddOrRemoveTeamMember_BB_03EA_05EA>(data);
         auto s = c->require_server_state();
         shared_ptr<Client> added_c;
@@ -5003,7 +4760,7 @@ static void on_EA_BB(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
           send_command(c, 0x04EA, 0x00000006);
         }
 
-        if (added_c) {
+        if (added_c && added_c->login) {
           auto added_c_team = added_c->team();
           if (added_c_team) {
             send_command(c, 0x04EA, 0x00000001);
@@ -5015,11 +4772,11 @@ static void on_EA_BB(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
             send_command(added_c, 0x04EA, 0x00000005);
 
           } else {
-            added_c->license->bb_team_id = team->team_id;
-            added_c->license->save();
+            added_c->login->account->bb_team_id = team->team_id;
+            added_c->login->account->save();
             s->team_index->add_member(
                 team->team_id,
-                added_c->license->serial_number,
+                added_c->login->account->account_id,
                 added_c->character()->disp.name.decode(added_c->language()));
 
             send_update_team_metadata_for_client(added_c);
@@ -5035,13 +4792,13 @@ static void on_EA_BB(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
       auto team = c->team();
       if (team) {
         const auto& cmd = check_size_t<C_AddOrRemoveTeamMember_BB_03EA_05EA>(data);
-        bool is_removing_self = (cmd.guild_card_number == c->license->serial_number);
+        bool is_removing_self = (cmd.guild_card_number == c->login->account->account_id);
         if (is_removing_self ||
-            (team->members.at(c->license->serial_number).privilege_level() >= 0x30)) {
+            (team->members.at(c->login->account->account_id).privilege_level() >= 0x30)) {
           s->team_index->remove_member(cmd.guild_card_number);
-          auto removed_license = s->license_index->get(cmd.guild_card_number);
-          removed_license->bb_team_id = 0;
-          removed_license->save();
+          auto removed_account = s->account_index->from_account_id(cmd.guild_card_number);
+          removed_account->bb_team_id = 0;
+          removed_account->save();
           send_command(c, 0x06EA, 0x00000000);
 
           shared_ptr<Client> removed_c;
@@ -5072,7 +4829,7 @@ static void on_EA_BB(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
         if (ends_with(data, required_end)) {
           for (const auto& it : team->members) {
             try {
-              auto target_c = s->find_client(nullptr, it.second.serial_number);
+              auto target_c = s->find_client(nullptr, it.second.account_id);
               send_command(target_c, 0x07EA, 0x00000000, data);
             } catch (const out_of_range&) {
             }
@@ -5097,12 +4854,12 @@ static void on_EA_BB(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
     }
     case 0x0FEA: { // Set team flag
       auto team = c->team();
-      if (team && team->members.at(c->license->serial_number).check_flag(TeamIndex::Team::Member::Flag::IS_MASTER)) {
+      if (team && team->members.at(c->login->account->account_id).check_flag(TeamIndex::Team::Member::Flag::IS_MASTER)) {
         const auto& cmd = check_size_t<C_SetTeamFlag_BB_0FEA>(data);
         s->team_index->set_flag_data(team->team_id, cmd.flag_data);
         for (const auto& it : team->members) {
           try {
-            auto member_c = s->find_client(nullptr, it.second.serial_number);
+            auto member_c = s->find_client(nullptr, it.second.account_id);
             send_update_team_metadata_for_client(member_c);
           } catch (const out_of_range&) {
           }
@@ -5112,13 +4869,13 @@ static void on_EA_BB(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
     }
     case 0x10EA: { // Disband team
       auto team = c->team();
-      if (team && team->members.at(c->license->serial_number).check_flag(TeamIndex::Team::Member::Flag::IS_MASTER)) {
+      if (team && team->members.at(c->login->account->account_id).check_flag(TeamIndex::Team::Member::Flag::IS_MASTER)) {
         s->team_index->disband(team->team_id);
 
         send_command(c, 0x10EA, 0x00000000);
         for (const auto& it : team->members) {
           try {
-            auto member_c = s->find_client(nullptr, it.second.serial_number);
+            auto member_c = s->find_client(nullptr, it.second.account_id);
             send_update_team_metadata_for_client(member_c);
             send_team_membership_info(member_c);
           } catch (const out_of_range&) {
@@ -5131,7 +4888,7 @@ static void on_EA_BB(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
       auto team = c->team();
       if (team) {
         auto& cmd = check_size_t<C_ChangeTeamMemberPrivilegeLevel_BB_11EA>(data);
-        if (cmd.guild_card_number == c->license->serial_number) {
+        if (cmd.guild_card_number == c->login->account->account_id) {
           throw runtime_error("this command cannot be used to modify your own permissions");
         }
 
@@ -5141,7 +4898,7 @@ static void on_EA_BB(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
         bool send_master_transfer_updates = false;
         switch (flag) {
           case 0x00: // Demote member
-            if (s->team_index->demote_leader(c->license->serial_number, cmd.guild_card_number)) {
+            if (s->team_index->demote_leader(c->login->account->account_id, cmd.guild_card_number)) {
               send_command(c, 0x11EA, 0x00000000);
               send_updates_for_other_m = true;
             } else {
@@ -5149,7 +4906,7 @@ static void on_EA_BB(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
             }
             break;
           case 0x30: // Promote member
-            if (s->team_index->promote_leader(c->license->serial_number, cmd.guild_card_number)) {
+            if (s->team_index->promote_leader(c->login->account->account_id, cmd.guild_card_number)) {
               send_command(c, 0x11EA, 0x00000000);
               send_updates_for_other_m = true;
             } else {
@@ -5157,7 +4914,7 @@ static void on_EA_BB(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
             }
             break;
           case 0x40: // Transfer master
-            s->team_index->change_master(c->license->serial_number, cmd.guild_card_number);
+            s->team_index->change_master(c->login->account->account_id, cmd.guild_card_number);
             send_command(c, 0x11EA, 0x00000000);
             send_updates_for_this_m = true;
             send_updates_for_other_m = true;
@@ -5170,7 +4927,7 @@ static void on_EA_BB(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
         if (send_master_transfer_updates) {
           for (const auto& it : team->members) {
             try {
-              auto other_c = s->find_client(nullptr, it.second.serial_number);
+              auto other_c = s->find_client(nullptr, it.second.account_id);
               send_update_lobby_data_bb(other_c);
             } catch (const out_of_range&) {
             }
@@ -5224,7 +4981,7 @@ static void on_EA_BB(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
         if (reward.reward_flag != TeamIndex::Team::RewardFlag::NONE) {
           for (const auto& it : team->members) {
             try {
-              auto member_c = s->find_client(nullptr, it.second.serial_number);
+              auto member_c = s->find_client(nullptr, it.second.account_id);
               send_update_team_reward_flags(member_c);
             } catch (const out_of_range&) {
             }
@@ -5253,7 +5010,7 @@ static void on_EA_BB(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
         send_command(c, 0x1FEA, 0x00000000);
         for (const auto& it : team->members) {
           try {
-            auto member_c = s->find_client(nullptr, it.second.serial_number);
+            auto member_c = s->find_client(nullptr, it.second.account_id);
             send_update_team_metadata_for_client(c);
             send_team_membership_info(c);
           } catch (const out_of_range&) {
@@ -5560,7 +5317,7 @@ static on_command_t handlers[0x100][NUM_VERSIONS - 2] = {
     // clang-format on
 };
 
-static void check_unlicensed_command(Version version, uint8_t command) {
+static void check_logged_out_command(Version version, uint8_t command) {
   switch (version) {
     case Version::DC_NTE:
     case Version::DC_V1_11_2000_PROTOTYPE:
@@ -5569,7 +5326,7 @@ static void check_unlicensed_command(Version version, uint8_t command) {
       // newserv doesn't actually know that DC clients are DC until it receives
       // an appropriate login command (93, 9A, or 9D), but those commands also
       // log the client in, so this case should never be executed.
-      throw logic_error("cannot check unlicensed command for DC client");
+      throw logic_error("cannot check logged-out command for DC client");
     case Version::PC_NTE:
     case Version::PC_V2:
       if (command != 0x9A && command != 0x9C && command != 0x9D) {
@@ -5612,11 +5369,11 @@ void on_command(shared_ptr<Client> c, uint16_t command, uint32_t flag, string& d
   c->reschedule_ping_and_timeout_events();
 
   // Most of the command handlers assume the client is registered, logged in,
-  // and not banned (and therefore that c->license is not null), so the client
-  // is allowed to access normal functionality. This check prevents clients from
+  // and not banned (and therefore that c->login is not null), so the client is
+  // allowed to access normal functionality. This check prevents clients from
   // sneakily sending commands to access functionality without logging in.
-  if (!c->license.get()) {
-    check_unlicensed_command(c->version(), command);
+  if (!c->login) {
+    check_logged_out_command(c->version(), command);
   }
 
   auto fn = handlers[command & 0xFF][static_cast<size_t>(c->version()) - 2];

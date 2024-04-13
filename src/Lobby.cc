@@ -566,6 +566,10 @@ bool Lobby::any_v1_clients_present() const {
 }
 
 void Lobby::add_client(shared_ptr<Client> c, ssize_t required_client_id) {
+  if (!c->login) {
+    throw runtime_error("client is not logged in");
+  }
+
   ssize_t index;
   ssize_t min_client_id = this->check_flag(Lobby::Flag::IS_SPECTATOR_TEAM) ? 4 : 0;
 
@@ -645,7 +649,7 @@ void Lobby::add_client(shared_ptr<Client> c, ssize_t required_client_id) {
     auto p = c->character();
     PlayerLobbyDataDCGC lobby_data;
     lobby_data.player_tag = 0x00010000;
-    lobby_data.guild_card_number = c->license->serial_number;
+    lobby_data.guild_card_number = c->login->account->account_id;
     lobby_data.name.encode(p->disp.name.decode(c->language()), c->language());
     this->battle_record->add_player(
         lobby_data,
@@ -767,14 +771,13 @@ void Lobby::move_client_to_lobby(
   dest_lobby->add_client(c, required_client_id);
 }
 
-shared_ptr<Client> Lobby::find_client(const string* identifier, uint64_t serial_number) {
+shared_ptr<Client> Lobby::find_client(const string* identifier, uint64_t account_id) {
   for (size_t x = 0; x < this->max_clients; x++) {
     auto lc = this->clients[x];
     if (!lc) {
       continue;
     }
-    if (serial_number && lc->license &&
-        (lc->license->serial_number == serial_number)) {
+    if (account_id && lc->login && (lc->login->account->account_id == account_id)) {
       return lc;
     }
     if (identifier && (lc->character()->disp.name.eq(*identifier, lc->language()))) {
@@ -802,7 +805,7 @@ Lobby::JoinError Lobby::join_error_for_client(std::shared_ptr<Client> c, const s
     if (this->mode == GameMode::SOLO) {
       return JoinError::SOLO;
     }
-    if (!c->license->check_flag(License::Flag::FREE_JOIN_GAMES)) {
+    if (!c->login->account->check_flag(Account::Flag::FREE_JOIN_GAMES)) {
       if (password && !this->password.empty() && (*password != this->password)) {
         return JoinError::INCORRECT_PASSWORD;
       }
@@ -915,11 +918,11 @@ void Lobby::assign_inventory_and_bank_item_ids(shared_ptr<Client> c, bool consum
   }
 }
 
-unordered_map<uint32_t, shared_ptr<Client>> Lobby::clients_by_serial_number() const {
+unordered_map<uint32_t, shared_ptr<Client>> Lobby::clients_by_account_id() const {
   unordered_map<uint32_t, shared_ptr<Client>> ret;
   for (auto c : this->clients) {
-    if (c) {
-      ret.emplace(c->license->serial_number, c);
+    if (c && c->login) {
+      ret.emplace(c->login->account->account_id, c);
     }
   }
   return ret;

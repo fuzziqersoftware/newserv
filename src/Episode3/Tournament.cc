@@ -9,18 +9,18 @@ using namespace std;
 
 namespace Episode3 {
 
-Tournament::PlayerEntry::PlayerEntry(uint32_t serial_number, const string& player_name)
-    : serial_number(serial_number),
+Tournament::PlayerEntry::PlayerEntry(uint32_t account_id, const string& player_name)
+    : account_id(account_id),
       player_name(player_name) {}
 
 Tournament::PlayerEntry::PlayerEntry(shared_ptr<Client> c)
-    : serial_number(c->license->serial_number),
+    : account_id(c->login->account->account_id),
       client(c),
       player_name(c->character()->disp.name.decode(c->language())) {}
 
 Tournament::PlayerEntry::PlayerEntry(
     shared_ptr<const COMDeckDefinition> com_deck)
-    : serial_number(0),
+    : account_id(0),
       com_deck(com_deck) {}
 
 bool Tournament::PlayerEntry::is_com() const {
@@ -28,7 +28,7 @@ bool Tournament::PlayerEntry::is_com() const {
 }
 
 bool Tournament::PlayerEntry::is_human() const {
-  return (this->serial_number != 0);
+  return (this->account_id != 0);
 }
 
 Tournament::Team::Team(
@@ -56,9 +56,9 @@ string Tournament::Team::str() const {
   for (const auto& player : this->players) {
     if (player.is_human()) {
       if (player.player_name.empty()) {
-        ret += string_printf(" %08" PRIX32, player.serial_number);
+        ret += string_printf(" %08" PRIX32, player.account_id);
       } else {
-        ret += string_printf(" %08" PRIX32 " (%s)", player.serial_number, player.player_name.c_str());
+        ret += string_printf(" %08" PRIX32 " (%s)", player.account_id, player.player_name.c_str());
       }
     }
   }
@@ -81,12 +81,12 @@ void Tournament::Team::register_player(
   if (!tournament) {
     throw runtime_error("tournament has been deleted");
   }
-  if (!tournament->all_player_serial_numbers.emplace(c->license->serial_number).second) {
+  if (!tournament->all_player_account_ids.emplace(c->login->account->account_id).second) {
     throw runtime_error("player already registered in same tournament");
   }
 
   for (const auto& player : this->players) {
-    if (player.is_human() && (player.serial_number == c->license->serial_number)) {
+    if (player.is_human() && (player.account_id == c->login->account->account_id)) {
       throw logic_error("player already registered in team but not in tournament");
     }
   }
@@ -99,11 +99,11 @@ void Tournament::Team::register_player(
   }
 }
 
-bool Tournament::Team::unregister_player(uint32_t serial_number) {
+bool Tournament::Team::unregister_player(uint32_t account_id) {
   size_t index;
   for (index = 0; index < this->players.size(); index++) {
     if (this->players[index].is_human() &&
-        (this->players[index].serial_number == serial_number)) {
+        (this->players[index].account_id == account_id)) {
       break;
     }
   }
@@ -143,7 +143,7 @@ bool Tournament::Team::unregister_player(uint32_t serial_number) {
       // If the tournament has not started yet, just remove the player from the
       // team
     } else {
-      if (!tournament->all_player_serial_numbers.erase(serial_number)) {
+      if (!tournament->all_player_account_ids.erase(account_id)) {
         throw logic_error("player removed from team but not from tournament");
       }
     }
@@ -371,13 +371,13 @@ void Tournament::init() {
       team_index_to_rounds_cleared.emplace_back(team_json->get_int("num_rounds_cleared"));
       for (const auto& player_json : team_json->get_list("player_specs")) {
         if (player_json->is_list()) {
-          uint32_t serial_number = player_json->at(0).as_int();
-          team->players.emplace_back(serial_number, player_json->at(1).as_string());
-          this->all_player_serial_numbers.emplace(serial_number);
+          uint32_t account_id = player_json->at(0).as_int();
+          team->players.emplace_back(account_id, player_json->at(1).as_string());
+          this->all_player_account_ids.emplace(account_id);
         } else if (player_json->is_int()) {
-          uint32_t serial_number = player_json->as_int();
-          team->players.emplace_back(serial_number);
-          this->all_player_serial_numbers.emplace(serial_number);
+          uint32_t account_id = player_json->as_int();
+          team->players.emplace_back(account_id);
+          this->all_player_account_ids.emplace(account_id);
         } else if (player_json->is_string()) {
           team->players.emplace_back(this->com_deck_index->deck_for_name(player_json->as_string()));
         } else {
@@ -511,9 +511,9 @@ JSON Tournament::json() const {
     for (const auto& player : team->players) {
       if (player.is_human()) {
         if (!player.player_name.empty()) {
-          players_list.emplace_back(JSON::list({player.serial_number, player.player_name}));
+          players_list.emplace_back(JSON::list({player.account_id, player.player_name}));
         } else {
-          players_list.emplace_back(player.serial_number);
+          players_list.emplace_back(player.account_id);
         }
       } else {
         players_list.emplace_back(player.com_deck->deck_name);
@@ -571,25 +571,25 @@ shared_ptr<Tournament::Match> Tournament::get_final_match() const {
   return this->final_match;
 }
 
-shared_ptr<Tournament::Team> Tournament::team_for_serial_number(
-    uint32_t serial_number) const {
-  if (!this->all_player_serial_numbers.count(serial_number)) {
+shared_ptr<Tournament::Team> Tournament::team_for_account_id(
+    uint32_t account_id) const {
+  if (!this->all_player_account_ids.count(account_id)) {
     return nullptr;
   }
 
   for (auto team : this->teams) {
     for (const auto& player : team->players) {
-      if (player.serial_number == serial_number) {
+      if (player.account_id == account_id) {
         return team->is_active ? team : nullptr;
       }
     }
   }
 
-  throw logic_error("serial number registered in tournament but not in any team");
+  throw logic_error("account ID registered in tournament but not in any team");
 }
 
-const set<uint32_t>& Tournament::get_all_player_serial_numbers() const {
-  return this->all_player_serial_numbers;
+const set<uint32_t>& Tournament::get_all_player_account_ids() const {
+  return this->all_player_account_ids;
 }
 
 void Tournament::start() {
@@ -896,10 +896,10 @@ bool TournamentIndex::delete_tournament(const string& name) {
   return true;
 }
 
-shared_ptr<Tournament::Team> TournamentIndex::team_for_serial_number(uint32_t serial_number) const {
+shared_ptr<Tournament::Team> TournamentIndex::team_for_account_id(uint32_t account_id) const {
   for (const auto& it : this->name_to_tournament) {
     const auto& tourn = it.second;
-    auto team = tourn->team_for_serial_number(serial_number);
+    auto team = tourn->team_for_account_id(account_id);
     if (team) {
       return team;
     }
@@ -912,11 +912,11 @@ void TournamentIndex::link_client(shared_ptr<Client> c) {
     return;
   }
 
-  auto team = this->team_for_serial_number(c->license->serial_number);
+  auto team = this->team_for_account_id(c->login->account->account_id);
   auto tourn = team ? team->tournament.lock() : nullptr;
   if (team && team->is_active && tourn) {
     for (auto& player : team->players) {
-      if (player.serial_number == c->license->serial_number) {
+      if (player.account_id == c->login->account->account_id) {
         c->ep3_tournament_team = team;
         player.client = c;
         if (c->version() == Version::GC_EP3) {

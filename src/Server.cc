@@ -281,14 +281,14 @@ shared_ptr<Client> Server::get_client() const {
 }
 
 vector<shared_ptr<Client>> Server::get_clients_by_identifier(const string& ident) const {
-  int64_t serial_number_hex = -1;
-  int64_t serial_number_dec = -1;
+  int64_t account_id_hex = -1;
+  int64_t account_id_dec = -1;
   try {
-    serial_number_dec = stoul(ident, nullptr, 10);
+    account_id_dec = stoul(ident, nullptr, 10);
   } catch (const invalid_argument&) {
   }
   try {
-    serial_number_hex = stoul(ident, nullptr, 16);
+    account_id_hex = stoul(ident, nullptr, 16);
   } catch (const invalid_argument&) {
   }
 
@@ -297,15 +297,19 @@ vector<shared_ptr<Client>> Server::get_clients_by_identifier(const string& ident
   vector<shared_ptr<Client>> results;
   for (const auto& it : this->state->channel_to_client) {
     auto c = it.second;
-    if (c->license && c->license->serial_number == serial_number_dec) {
+    if (c->login && c->login->account->account_id == account_id_hex) {
       results.emplace_back(std::move(c));
       continue;
     }
-    if (c->license && c->license->serial_number == serial_number_hex) {
+    if (c->login && c->login->account->account_id == account_id_dec) {
       results.emplace_back(std::move(c));
       continue;
     }
-    if (c->license && c->license->bb_username == ident) {
+    if (c->login && c->login->xb_license && c->login->xb_license->gamertag == ident) {
+      results.emplace_back(std::move(c));
+      continue;
+    }
+    if (c->login && c->login->bb_license && c->login->bb_license->username == ident) {
       results.emplace_back(std::move(c));
       continue;
     }

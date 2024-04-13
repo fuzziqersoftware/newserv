@@ -136,13 +136,13 @@ static HandlerResult S_97(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t, 
 }
 
 static HandlerResult C_G_9E(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t, uint32_t, string&) {
-  if (ses->config.check_flag(Client::Flag::PROXY_SUPPRESS_REMOTE_LOGIN)) {
+  if (ses->config.check_flag(Client::Flag::PROXY_SUPPRESS_REMOTE_LOGIN) && ses->login) {
     le_uint64_t checksum = random_object<uint64_t>() & 0x0000FFFFFFFFFFFF;
     ses->server_channel.send(0x96, 0x00, &checksum, sizeof(checksum));
 
     S_UpdateClientConfig_V3_04 cmd;
     cmd.player_tag = 0x00010000;
-    cmd.guild_card_number = ses->license->serial_number;
+    cmd.guild_card_number = ses->login->account->account_id;
     cmd.client_config.clear(0xFF);
     ses->client_channel.send(0x04, 0x00, &cmd, sizeof(cmd));
 
@@ -154,7 +154,7 @@ static HandlerResult C_G_9E(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t
 }
 
 static HandlerResult S_G_9A(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t, uint32_t, string&) {
-  if (!ses->license || ses->config.check_flag(Client::Flag::PROXY_SUPPRESS_REMOTE_LOGIN)) {
+  if (ses->config.check_flag(Client::Flag::PROXY_SUPPRESS_REMOTE_LOGIN) || !ses->login || !ses->login->gc_license) {
     return HandlerResult::Type::FORWARD;
   }
 
@@ -171,8 +171,8 @@ static HandlerResult S_G_9A(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t
   cmd.sub_version = ses->sub_version;
   cmd.is_extended = (ses->remote_guild_card_number < 0) ? 1 : 0;
   cmd.language = ses->language();
-  cmd.serial_number.encode(string_printf("%08" PRIX32 "", ses->license->serial_number));
-  cmd.access_key.encode(ses->license->access_key);
+  cmd.serial_number.encode(string_printf("%08" PRIX32 "", ses->login->account->account_id));
+  cmd.access_key.encode(ses->login->gc_license->access_key);
   cmd.serial_number2 = cmd.serial_number;
   cmd.access_key2 = cmd.access_key;
   if (ses->config.check_flag(Client::Flag::PROXY_BLANK_NAME_ENABLED)) {
@@ -204,8 +204,8 @@ static HandlerResult S_V123P_02_17(
   // after_message than newserv does, so don't require it
   const auto& cmd = check_size_t<S_ServerInitDefault_DC_PC_V3_02_17_91_9B>(data, 0xFFFF);
 
-  if (!ses->license) {
-    ses->log.info("No license in linked session");
+  if (!ses->login) {
+    ses->log.info("Linked session is not logged in");
 
     // We have to forward the command BEFORE setting up encryption, so the
     // client will be able to understand what we sent.
@@ -226,7 +226,7 @@ static HandlerResult S_V123P_02_17(
     return HandlerResult::Type::SUPPRESS;
   }
 
-  ses->log.info("Existing license in linked session");
+  ses->log.info("Linked session is logged in");
 
   // This isn't forwarded to the client, so don't recreate the client's crypts
   if (uses_v3_encryption(ses->version())) {
@@ -253,10 +253,13 @@ static HandlerResult S_V123P_02_17(
 
     case Version::DC_V1_11_2000_PROTOTYPE:
     case Version::DC_V1:
+      if (!ses->login->dc_license) {
+        throw runtime_error("DC license missing from login");
+      }
       if (command == 0x17) {
         C_LoginV1_DC_PC_V3_90 cmd;
-        cmd.serial_number.encode(string_printf("%08" PRIX32 "", ses->license->serial_number));
-        cmd.access_key.encode(ses->license->access_key);
+        cmd.serial_number.encode(string_printf("%08" PRIX32 "", ses->login->account->account_id));
+        cmd.access_key.encode(ses->login->dc_license->access_key);
         cmd.access_key.clear_after_bytes(8);
         ses->server_channel.send(0x90, 0x00, &cmd, sizeof(cmd));
         return HandlerResult::Type::SUPPRESS;
@@ -274,8 +277,8 @@ static HandlerResult S_V123P_02_17(
         cmd.sub_version = ses->sub_version;
         cmd.is_extended = 0;
         cmd.language = ses->language();
-        cmd.serial_number.encode(string_printf("%08" PRIX32 "", ses->license->serial_number));
-        cmd.access_key.encode(ses->license->access_key);
+        cmd.serial_number.encode(string_printf("%08" PRIX32 "", ses->login->account->account_id));
+        cmd.access_key.encode(ses->login->dc_license->access_key);
         cmd.access_key.clear_after_bytes(8);
         cmd.hardware_id.encode(ses->hardware_id);
         cmd.name.encode(ses->character_name);
@@ -288,6 +291,18 @@ static HandlerResult S_V123P_02_17(
     case Version::PC_NTE:
     case Version::PC_V2:
     case Version::GC_NTE:
+      const string* access_key;
+      if (ses->version() == Version::DC_V2) {
+        access_key = ses->login->dc_license ? &ses->login->dc_license->access_key : nullptr;
+      } else if (ses->version() != Version::GC_NTE) {
+        access_key = ses->login->pc_license ? &ses->login->pc_license->access_key : nullptr;
+      } else {
+        access_key = ses->login->gc_license ? &ses->login->gc_license->access_key : nullptr;
+      }
+      if (!access_key) {
+        throw runtime_error("incorrect login type");
+      }
+
       if (command == 0x17) {
         C_Login_DC_PC_V3_9A cmd;
         if (ses->remote_guild_card_number < 0) {
@@ -298,8 +313,8 @@ static HandlerResult S_V123P_02_17(
           cmd.guild_card_number = ses->remote_guild_card_number;
         }
         cmd.sub_version = ses->sub_version;
-        cmd.serial_number.encode(string_printf("%08" PRIX32 "", ses->license->serial_number));
-        cmd.access_key.encode(ses->license->access_key);
+        cmd.serial_number.encode(string_printf("%08" PRIX32 "", ses->login->account->account_id));
+        cmd.access_key.encode(*access_key);
         if (ses->version() != Version::GC_NTE) {
           cmd.access_key.clear_after_bytes(8);
         }
@@ -307,7 +322,7 @@ static HandlerResult S_V123P_02_17(
         cmd.access_key2 = cmd.access_key;
         // TODO: We probably should set email_address, but we currently don't
         // keep that value anywhere in the session object, nor is it saved in
-        // the License object.
+        // the Account object.
         ses->server_channel.send(0x9A, 0x00, &cmd, sizeof(cmd));
         return HandlerResult::Type::SUPPRESS;
       } else {
@@ -324,8 +339,8 @@ static HandlerResult S_V123P_02_17(
         cmd.sub_version = ses->sub_version;
         cmd.is_extended = 0;
         cmd.language = ses->language();
-        cmd.serial_number.encode(string_printf("%08" PRIX32 "", ses->license->serial_number));
-        cmd.access_key.encode(ses->license->access_key);
+        cmd.serial_number.encode(string_printf("%08" PRIX32 "", ses->login->account->account_id));
+        cmd.access_key.encode(*access_key);
         if (ses->version() != Version::GC_NTE) {
           cmd.access_key.clear_after_bytes(8);
         }
@@ -344,14 +359,17 @@ static HandlerResult S_V123P_02_17(
     case Version::GC_V3:
     case Version::GC_EP3_NTE:
     case Version::GC_EP3:
+      if (!ses->login->gc_license) {
+        throw runtime_error("GC license missing from login");
+      }
       if (command == 0x17) {
-        C_VerifyLicense_V3_DB cmd;
-        cmd.serial_number.encode(string_printf("%08" PRIX32 "", ses->license->serial_number));
-        cmd.access_key.encode(ses->license->access_key);
+        C_VerifyAccount_V3_DB cmd;
+        cmd.serial_number.encode(string_printf("%08" PRIX32 "", ses->login->account->account_id));
+        cmd.access_key.encode(ses->login->gc_license->access_key);
         cmd.sub_version = ses->sub_version;
         cmd.serial_number2 = cmd.serial_number;
         cmd.access_key2 = cmd.access_key;
-        cmd.password.encode(ses->license->gc_password);
+        cmd.password.encode(ses->login->gc_license->password);
         ses->server_channel.send(0xDB, 0x00, &cmd, sizeof(cmd));
         return HandlerResult::Type::SUPPRESS;
 
@@ -400,6 +418,9 @@ static HandlerResult S_V123P_02_17(
       throw logic_error("GC init command not handled");
 
     case Version::XB_V3: {
+      if (!ses->login->xb_license) {
+        throw runtime_error("XB license missing from login");
+      }
       C_LoginExtended_XB_9E cmd;
       if (ses->remote_guild_card_number < 0) {
         cmd.player_tag = 0xFFFF0000;
@@ -413,8 +434,8 @@ static HandlerResult S_V123P_02_17(
       cmd.sub_version = ses->sub_version;
       cmd.is_extended = (ses->remote_guild_card_number < 0) ? 1 : 0;
       cmd.language = ses->language();
-      cmd.serial_number.encode(ses->license->xb_gamertag);
-      cmd.access_key.encode(string_printf("%016" PRIX64, ses->license->xb_user_id));
+      cmd.serial_number.encode(ses->login->xb_license->gamertag);
+      cmd.access_key.encode(string_printf("%016" PRIX64, ses->login->xb_license->user_id));
       cmd.serial_number2 = cmd.serial_number;
       cmd.access_key2 = cmd.access_key;
       if (ses->config.check_flag(Client::Flag::PROXY_BLANK_NAME_ENABLED)) {
@@ -424,8 +445,8 @@ static HandlerResult S_V123P_02_17(
       }
       cmd.netloc = ses->xb_netloc;
       cmd.unknown_a1a = ses->xb_9E_unknown_a1a;
-      cmd.xb_user_id_high = (ses->license->xb_user_id >> 32) & 0xFFFFFFFF;
-      cmd.xb_user_id_low = ses->license->xb_user_id & 0xFFFFFFFF;
+      cmd.xb_user_id_high = (ses->login->xb_license->user_id >> 32) & 0xFFFFFFFF;
+      cmd.xb_user_id_low = ses->login->xb_license->user_id & 0xFFFFFFFF;
       ses->server_channel.send(0x9E, 0x01, &cmd, sizeof(C_LoginExtended_XB_9E));
       return HandlerResult::Type::SUPPRESS;
     }
@@ -508,8 +529,8 @@ static HandlerResult S_V123_04(shared_ptr<ProxyServer::LinkedSession> ses, uint1
       offsetof(S_UpdateClientConfig_V3_04, client_config),
       sizeof(S_UpdateClientConfig_V3_04));
 
-  // If this is a licensed session, hide the guild card number assigned by the
-  // remote server so the client doesn't see it change. If this is an unlicensed
+  // If this is a logged-in session, hide the guild card number assigned by the
+  // remote server so the client doesn't see it change. If this is a logged-out
   // session, then the client never received a guild card number from newserv
   // anyway, so we can let the client see the number from the remote server.
   bool had_guild_card_number = (ses->remote_guild_card_number >= 0);
@@ -522,8 +543,8 @@ static HandlerResult S_V123_04(shared_ptr<ProxyServer::LinkedSession> ses, uint1
         ses->remote_guild_card_number);
     send_ship_info(ses->client_channel, message);
   }
-  if (ses->license) {
-    cmd.guild_card_number = ses->license->serial_number;
+  if (ses->login) {
+    cmd.guild_card_number = ses->login->account->account_id;
   }
 
   // It seems the client ignores the length of the 04 command, and always copies
@@ -549,15 +570,15 @@ static HandlerResult S_V123_04(shared_ptr<ProxyServer::LinkedSession> ses, uint1
     ses->server_channel.send(0x96, 0x00, &checksum, sizeof(checksum));
   }
 
-  return ses->license ? HandlerResult::Type::MODIFIED : HandlerResult::Type::FORWARD;
+  return ses->login ? HandlerResult::Type::MODIFIED : HandlerResult::Type::FORWARD;
 }
 
 static HandlerResult S_V123_06(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t, uint32_t, string& data) {
   bool modified = false;
-  if (ses->license) {
+  if (ses->login) {
     auto& cmd = check_size_t<SC_TextHeader_01_06_11_B0_EE>(data, 0xFFFF);
     if (cmd.guild_card_number == ses->remote_guild_card_number) {
-      cmd.guild_card_number = ses->license->serial_number;
+      cmd.guild_card_number = ses->login->account->account_id;
       modified = true;
     }
   }
@@ -579,7 +600,7 @@ static HandlerResult S_V123_06(shared_ptr<ProxyServer::LinkedSession> ses, uint1
 
 template <typename CmdT>
 static HandlerResult S_41(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t, uint32_t, string& data) {
-  if (ses->license) {
+  if (ses->login) {
     auto& cmd = check_size_t<CmdT>(data);
     if ((cmd.searcher_guild_card_number == ses->remote_guild_card_number) &&
         (cmd.result_guild_card_number == ses->remote_guild_card_number) &&
@@ -593,11 +614,11 @@ static HandlerResult S_41(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t, 
     } else {
       bool modified = false;
       if (cmd.searcher_guild_card_number == ses->remote_guild_card_number) {
-        cmd.searcher_guild_card_number = ses->license->serial_number;
+        cmd.searcher_guild_card_number = ses->login->account->account_id;
         modified = true;
       }
       if (cmd.result_guild_card_number == ses->remote_guild_card_number) {
-        cmd.result_guild_card_number = ses->license->serial_number;
+        cmd.result_guild_card_number = ses->login->account->account_id;
         modified = true;
       }
       return modified ? HandlerResult::Type::MODIFIED : HandlerResult::Type::FORWARD;
@@ -614,14 +635,14 @@ constexpr on_command_t S_B_41 = &S_41<S_GuildCardSearchResult_BB_41>;
 template <typename CmdT>
 static HandlerResult S_81(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t, uint32_t, string& data) {
   bool modified = false;
-  if (ses->license) {
+  if (ses->login) {
     auto& cmd = check_size_t<CmdT>(data);
     if (cmd.from_guild_card_number == ses->remote_guild_card_number) {
-      cmd.from_guild_card_number = ses->license->serial_number;
+      cmd.from_guild_card_number = ses->login->account->account_id;
       modified = true;
     }
     if (cmd.to_guild_card_number == ses->remote_guild_card_number) {
-      cmd.to_guild_card_number = ses->license->serial_number;
+      cmd.to_guild_card_number = ses->login->account->account_id;
       modified = true;
     }
   }
@@ -634,13 +655,13 @@ constexpr on_command_t S_B_81 = &S_81<SC_SimpleMail_BB_81>;
 
 static HandlerResult S_88(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t, uint32_t flag, string& data) {
   bool modified = false;
-  if (ses->license) {
+  if (ses->login) {
     size_t expected_size = sizeof(S_ArrowUpdateEntry_88) * flag;
     auto* entries = &check_size_t<S_ArrowUpdateEntry_88>(
         data, expected_size, expected_size);
     for (size_t x = 0; x < flag; x++) {
       if (entries[x].guild_card_number == ses->remote_guild_card_number) {
-        entries[x].guild_card_number = ses->license->serial_number;
+        entries[x].guild_card_number = ses->login->account->account_id;
         modified = true;
       }
     }
@@ -806,14 +827,14 @@ static HandlerResult S_B_E7(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t
 template <typename CmdT>
 static HandlerResult S_C4(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t, uint32_t flag, string& data) {
   bool modified = false;
-  if (ses->license) {
+  if (ses->login) {
     size_t expected_size = sizeof(CmdT) * flag;
     // Some servers (e.g. Schtserv) send extra data on the end of this command;
     // the client ignores it so we can ignore it too
     auto* entries = &check_size_t<CmdT>(data, expected_size, 0xFFFF);
     for (size_t x = 0; x < flag; x++) {
       if (entries[x].guild_card_number == ses->remote_guild_card_number) {
-        entries[x].guild_card_number = ses->license->serial_number;
+        entries[x].guild_card_number = ses->login->account->account_id;
         modified = true;
       }
     }
@@ -830,7 +851,7 @@ static HandlerResult S_G_E4(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t
   bool modified = false;
   for (size_t x = 0; x < 4; x++) {
     if (cmd.entries[x].guild_card_number == ses->remote_guild_card_number) {
-      cmd.entries[x].guild_card_number = ses->license->serial_number;
+      cmd.entries[x].guild_card_number = ses->login->account->account_id;
       modified = true;
     }
   }
@@ -1521,8 +1542,8 @@ static HandlerResult S_65_67_68_EB(shared_ptr<ProxyServer::LinkedSession> ses, u
       ses->log.warning("Ignoring invalid player index %zu at position %zu", index, x);
     } else {
       string name = escape_player_name(entry.disp.visual.name.decode(entry.inventory.language));
-      if (ses->license && (entry.lobby_data.guild_card_number == ses->remote_guild_card_number)) {
-        entry.lobby_data.guild_card_number = ses->license->serial_number;
+      if (ses->login && (entry.lobby_data.guild_card_number == ses->remote_guild_card_number)) {
+        entry.lobby_data.guild_card_number = ses->login->account->account_id;
         num_replacements++;
         modified = true;
       } else if (ses->config.check_flag(Client::Flag::PROXY_PLAYER_NOTIFICATIONS_ENABLED) &&
@@ -1675,7 +1696,7 @@ static HandlerResult S_64(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t, 
   update_leader_id(ses, cmd->leader_id);
   for (size_t x = 0; x < flag; x++) {
     if (cmd->lobby_data[x].guild_card_number == ses->remote_guild_card_number) {
-      cmd->lobby_data[x].guild_card_number = ses->license->serial_number;
+      cmd->lobby_data[x].guild_card_number = ses->login->account->account_id;
       modified = true;
     }
     auto& p = ses->lobby_players[x];
@@ -1740,11 +1761,11 @@ static HandlerResult S_E8(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t, 
     auto& spec_entry = cmd.entries[x];
 
     if (player_entry.lobby_data.guild_card_number == ses->remote_guild_card_number) {
-      player_entry.lobby_data.guild_card_number = ses->license->serial_number;
+      player_entry.lobby_data.guild_card_number = ses->login->account->account_id;
       modified = true;
     }
     if (spec_entry.guild_card_number == ses->remote_guild_card_number) {
-      spec_entry.guild_card_number = ses->license->serial_number;
+      spec_entry.guild_card_number = ses->login->account->account_id;
       modified = true;
     }
 
@@ -1879,13 +1900,13 @@ static HandlerResult C_06(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t, 
 
 static HandlerResult C_40(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t, uint32_t, string& data) {
   bool modified = false;
-  if (ses->license) {
+  if (ses->login) {
     auto& cmd = check_size_t<C_GuildCardSearch_40>(data);
-    if (cmd.searcher_guild_card_number == ses->license->serial_number) {
+    if (cmd.searcher_guild_card_number == ses->login->account->account_id) {
       cmd.searcher_guild_card_number = ses->remote_guild_card_number;
       modified = true;
     }
-    if (cmd.target_guild_card_number == ses->license->serial_number) {
+    if (cmd.target_guild_card_number == ses->login->account->account_id) {
       cmd.target_guild_card_number = ses->remote_guild_card_number;
       modified = true;
     }
@@ -1896,11 +1917,11 @@ static HandlerResult C_40(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t, 
 template <typename CmdT>
 static HandlerResult C_81(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t, uint32_t, string& data) {
   auto& cmd = check_size_t<CmdT>(data);
-  if (ses->license) {
-    if (cmd.from_guild_card_number == ses->license->serial_number) {
+  if (ses->login) {
+    if (cmd.from_guild_card_number == ses->login->account->account_id) {
       cmd.from_guild_card_number = ses->remote_guild_card_number;
     }
-    if (cmd.to_guild_card_number == ses->license->serial_number) {
+    if (cmd.to_guild_card_number == ses->login->account->account_id) {
       cmd.to_guild_card_number = ses->remote_guild_card_number;
     }
   }
@@ -1922,12 +1943,12 @@ void C_6x_movement(shared_ptr<ProxyServer::LinkedSession> ses, const string& dat
 
 template <typename SendGuildCardCmdT>
 static HandlerResult C_6x(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t command, uint32_t flag, string& data) {
-  if (ses->license && !data.empty()) {
+  if (ses->login && !data.empty()) {
     // On BB, the 6x06 command is blank - the server generates the actual Guild
     // Card contents and sends it to the target client.
     if ((data[0] == 0x06) && !is_v4(ses->version())) {
       auto& cmd = check_size_t<SendGuildCardCmdT>(data);
-      if (cmd.guild_card.guild_card_number == ses->license->serial_number) {
+      if (cmd.guild_card.guild_card_number == ses->login->account->account_id) {
         cmd.guild_card.guild_card_number = ses->remote_guild_card_number;
       }
     }
@@ -2006,11 +2027,11 @@ HandlerResult C_6x<void>(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t, u
 }
 
 static HandlerResult C_V123_A0_A1(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t, uint32_t, string&) {
-  if (!ses->license) {
+  if (!ses->login) {
     return HandlerResult::Type::FORWARD;
   }
 
-  // For licensed sessions, send them back to newserv's main menu instead of
+  // For logged-in sessions, send them back to newserv's main menu instead of
   // going to the remote server's ship/block select menu
   ses->send_to_game_server();
   ses->disconnect_action = ProxyServer::LinkedSession::DisconnectAction::CLOSE_IMMEDIATELY;

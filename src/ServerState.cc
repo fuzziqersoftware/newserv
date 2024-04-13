@@ -214,21 +214,21 @@ void ServerState::on_player_left_lobby(shared_ptr<Lobby> l, uint8_t leaving_clie
   }
 }
 
-shared_ptr<Client> ServerState::find_client(const string* identifier, uint64_t serial_number, shared_ptr<Lobby> l) {
+shared_ptr<Client> ServerState::find_client(const string* identifier, uint64_t account_id, shared_ptr<Lobby> l) {
   // WARNING: There are multiple callsites where we assume this function never
   // returns a client that isn't in any lobby. If this behavior changes, we will
   // need to audit all callsites to ensure correctness.
 
-  if ((serial_number == 0) && identifier) {
+  if ((account_id == 0) && identifier) {
     try {
-      serial_number = stoull(*identifier, nullptr, 0);
+      account_id = stoull(*identifier, nullptr, 0);
     } catch (const exception&) {
     }
   }
 
   if (l) {
     try {
-      return l->find_client(identifier, serial_number);
+      return l->find_client(identifier, account_id);
     } catch (const out_of_range&) {
     }
   }
@@ -238,7 +238,7 @@ shared_ptr<Client> ServerState::find_client(const string* identifier, uint64_t s
       continue; // don't bother looking again
     }
     try {
-      return other_l->find_client(identifier, serial_number);
+      return other_l->find_client(identifier, account_id);
     } catch (const out_of_range&) {
     }
   }
@@ -689,7 +689,7 @@ void ServerState::load_config_early() {
   this->ip_stack_debug = this->config_json->get_bool("IPStackDebug", false);
   this->allow_unregistered_users = this->config_json->get_bool("AllowUnregisteredUsers", false);
   this->allow_pc_nte = this->config_json->get_bool("AllowPCNTE", false);
-  this->use_temp_licenses_for_prototypes = this->config_json->get_bool("UseTemporaryLicensesForPrototypes", true);
+  this->use_temp_accounts_for_prototypes = this->config_json->get_bool("UseTemporaryAccountsForPrototypes", true);
   this->notify_server_for_max_level_achieved = this->config_json->get_bool("NotifyServerForMaxLevelAchieved", false);
   this->allowed_drop_modes_v1_v2_normal = this->config_json->get_int("AllowedDropModesV1V2Normal", 0x1F);
   this->allowed_drop_modes_v1_v2_battle = this->config_json->get_int("AllowedDropModesV1V2Battle", 0x07);
@@ -1265,12 +1265,12 @@ void ServerState::load_bb_private_keys(bool from_non_event_thread) {
   this->forward_or_call(from_non_event_thread, std::move(set));
 }
 
-void ServerState::load_licenses(bool from_non_event_thread) {
-  config_log.info("Indexing licenses");
-  shared_ptr<LicenseIndex> new_index = this->is_replay ? make_shared<LicenseIndex>() : make_shared<DiskLicenseIndex>();
+void ServerState::load_accounts(bool from_non_event_thread) {
+  config_log.info("Indexing accounts");
+  shared_ptr<AccountIndex> new_index = make_shared<AccountIndex>(this->is_replay);
 
   auto set = [s = this->shared_from_this(), new_index = std::move(new_index)]() {
-    s->license_index = std::move(new_index);
+    s->account_index = std::move(new_index);
   };
   this->forward_or_call(from_non_event_thread, std::move(set));
 }
@@ -1806,7 +1806,7 @@ void ServerState::load_all() {
   this->collect_network_addresses();
   this->load_config_early();
   this->load_bb_private_keys(false);
-  this->load_licenses(false);
+  this->load_accounts(false);
   this->clear_map_file_caches();
   this->load_patch_indexes(false);
   this->load_ep3_cards(false);
@@ -1842,7 +1842,7 @@ shared_ptr<PatchServer::Config> ServerState::generate_patch_server_config(bool i
   ret->hide_data_from_logs = this->hide_download_commands;
   ret->idle_timeout_usecs = this->patch_client_idle_timeout_usecs;
   ret->message = is_bb ? this->bb_patch_server_message : this->pc_patch_server_message;
-  ret->license_index = this->license_index;
+  ret->account_index = this->account_index;
   ret->patch_file_index = is_bb ? this->bb_patch_file_index : this->pc_patch_file_index;
   return ret;
 }

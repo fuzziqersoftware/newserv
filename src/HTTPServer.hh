@@ -58,7 +58,7 @@ protected:
 
   static JSON generate_quest_json_st(std::shared_ptr<const Quest> q);
   static JSON generate_client_config_json_st(const Client::Config& config);
-  static JSON generate_license_json_st(std::shared_ptr<const License> l);
+  static JSON generate_account_json_st(std::shared_ptr<const Account> a);
   static JSON generate_game_client_json_st(std::shared_ptr<const Client> c, std::shared_ptr<const ItemNameIndex> item_name_index);
   static JSON generate_proxy_client_json_st(std::shared_ptr<const ProxyServer::LinkedSession> ses);
   static JSON generate_lobby_json_st(std::shared_ptr<const Lobby> l, std::shared_ptr<const ItemNameIndex> item_name_index);

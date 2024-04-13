@@ -41,7 +41,7 @@ ProxyServer::ProxyServer(
     : base(base),
       destroy_sessions_ev(event_new(this->base.get(), -1, EV_TIMEOUT, &ProxyServer::dispatch_destroy_sessions, this), event_free),
       state(state),
-      next_unlicensed_session_id(0xFF00000000000001) {}
+      next_logged_out_session_id(0xFF00000000000001) {}
 
 void ProxyServer::listen(const std::string& addr, uint16_t port, Version version, const struct sockaddr_storage* default_destination) {
   auto socket_obj = make_shared<ListeningSocket>(this, addr, port, version, default_destination);
@@ -140,14 +140,14 @@ void ProxyServer::on_client_connect(
   // client, create a linked session immediately and connect to the remote
   // server. This creates a direct session.
   if (default_destination && is_patch(version)) {
-    uint64_t session_id = this->next_unlicensed_session_id++;
-    if (this->next_unlicensed_session_id == 0) {
-      this->next_unlicensed_session_id = 0xFF00000000000001;
+    uint64_t session_id = this->next_logged_out_session_id++;
+    if (this->next_logged_out_session_id == 0) {
+      this->next_logged_out_session_id = 0xFF00000000000001;
     }
 
     auto emplace_ret = this->id_to_session.emplace(session_id, make_shared<LinkedSession>(this->shared_from_this(), session_id, listen_port, version, *default_destination));
     if (!emplace_ret.second) {
-      throw logic_error("linked session already exists for unlicensed client");
+      throw logic_error("linked session already exists for logged-out client");
     }
     auto ses = emplace_ret.first->second;
     ses->log.info("Opened linked session");
@@ -278,8 +278,7 @@ void ProxyServer::UnlinkedSession::on_input(Channel& ch, uint16_t command, uint3
           ses->channel.version = Version::DC_NTE;
           ses->log.info("Version changed to DC_NTE");
           const auto& cmd = check_size_t<C_Login_DCNTE_8B>(data, sizeof(C_LoginExtended_DCNTE_8B));
-          ses->license = s->license_index->verify_v1_v2(
-              stoul(cmd.serial_number.decode(), nullptr, 16), cmd.access_key.decode(), cmd.name.decode());
+          ses->login = s->account_index->from_dc_nte_credentials(cmd.serial_number.decode(), cmd.access_key.decode(), false);
           ses->sub_version = cmd.sub_version;
           ses->channel.language = cmd.language;
           ses->character_name = cmd.name.decode(ses->channel.language);
@@ -288,8 +287,8 @@ void ProxyServer::UnlinkedSession::on_input(Channel& ch, uint16_t command, uint3
           ses->channel.version = Version::DC_V1;
           ses->log.info("Version changed to DC_V1");
           const auto& cmd = check_size_t<C_LoginV1_DC_93>(data);
-          ses->license = s->license_index->verify_v1_v2(
-              stoul(cmd.serial_number.decode(), nullptr, 16), cmd.access_key.decode(), cmd.name.decode());
+          ses->login = s->account_index->from_dc_credentials(
+              stoul(cmd.serial_number.decode(), nullptr, 16), cmd.access_key.decode(), cmd.name.decode(), false);
           ses->sub_version = cmd.sub_version;
           ses->channel.language = cmd.language;
           ses->character_name = cmd.name.decode(ses->channel.language);
@@ -299,13 +298,13 @@ void ProxyServer::UnlinkedSession::on_input(Channel& ch, uint16_t command, uint3
           if (cmd.sub_version >= 0x30) {
             ses->log.info("Version changed to GC_NTE");
             ses->channel.version = Version::GC_NTE;
-            ses->license = s->license_index->verify_gc_no_password(
-                stoul(cmd.serial_number.decode(), nullptr, 16), cmd.access_key.decode(), cmd.name.decode());
+            ses->login = s->account_index->from_gc_credentials(
+                stoul(cmd.serial_number.decode(), nullptr, 16), cmd.access_key.decode(), nullptr, cmd.name.decode(), false);
           } else { // DC V2
             ses->log.info("Version changed to DC_V2");
             ses->channel.version = Version::DC_V2;
-            ses->license = s->license_index->verify_v1_v2(
-                stoul(cmd.serial_number.decode(), nullptr, 16), cmd.access_key.decode(), cmd.name.decode());
+            ses->login = s->account_index->from_dc_credentials(
+                stoul(cmd.serial_number.decode(), nullptr, 16), cmd.access_key.decode(), cmd.name.decode(), false);
           }
           ses->sub_version = cmd.sub_version;
           ses->channel.language = cmd.language;
@@ -323,8 +322,8 @@ void ProxyServer::UnlinkedSession::on_input(Channel& ch, uint16_t command, uint3
           throw runtime_error("command is not 9D");
         }
         const auto& cmd = check_size_t<C_Login_DC_PC_GC_9D>(data, sizeof(C_LoginExtended_PC_9D));
-        ses->license = s->license_index->verify_v1_v2(
-            stoul(cmd.serial_number.decode(), nullptr, 16), cmd.access_key.decode(), cmd.name.decode());
+        ses->login = s->account_index->from_pc_credentials(
+            stoul(cmd.serial_number.decode(), nullptr, 16), cmd.access_key.decode(), cmd.name.decode(), false);
         ses->sub_version = cmd.sub_version;
         ses->channel.language = cmd.language;
         ses->character_name = cmd.name.decode(ses->channel.language);
@@ -337,8 +336,8 @@ void ProxyServer::UnlinkedSession::on_input(Channel& ch, uint16_t command, uint3
         // We should only get a 9E while the session is unlinked
         if (command == 0x9E) {
           const auto& cmd = check_size_t<C_Login_GC_9E>(data, sizeof(C_LoginExtended_GC_9E));
-          ses->license = s->license_index->verify_gc_no_password(
-              stoul(cmd.serial_number.decode(), nullptr, 16), cmd.access_key.decode(), cmd.name.decode());
+          ses->login = s->account_index->from_gc_credentials(
+              stoul(cmd.serial_number.decode(), nullptr, 16), cmd.access_key.decode(), nullptr, cmd.name.decode(), false);
           ses->sub_version = cmd.sub_version;
           ses->channel.language = cmd.language;
           ses->character_name = cmd.name.decode(ses->channel.language);
@@ -359,7 +358,7 @@ void ProxyServer::UnlinkedSession::on_input(Channel& ch, uint16_t command, uint3
           string xb_gamertag = cmd.serial_number.decode();
           uint64_t xb_user_id = stoull(cmd.access_key.decode(), nullptr, 16);
           uint64_t xb_account_id = cmd.netloc.account_id;
-          ses->license = s->license_index->verify_xb(xb_gamertag, xb_user_id, xb_account_id);
+          ses->login = s->account_index->from_xb_credentials(xb_gamertag, xb_user_id, xb_account_id, false);
           ses->sub_version = cmd.sub_version;
           ses->channel.language = cmd.language;
           ses->character_name = cmd.name.decode(ses->channel.language);
@@ -382,22 +381,8 @@ void ProxyServer::UnlinkedSession::on_input(Channel& ch, uint16_t command, uint3
           throw runtime_error("command is not 93");
         }
         const auto& cmd = check_size_t<C_LoginBase_BB_93>(data, 0xFFFF);
-        try {
-          ses->license = s->license_index->verify_bb(cmd.username.decode(), cmd.password.decode());
-        } catch (const LicenseIndex::missing_license&) {
-          if (!s->allow_unregistered_users) {
-            throw;
-          }
-          auto l = s->license_index->create_license();
-          l->serial_number = fnv1a32(cmd.username.decode()) & 0x7FFFFFFF;
-          l->bb_username = cmd.username.decode();
-          l->bb_password = cmd.password.decode();
-          s->license_index->add(l);
-          l->save();
-          ses->license = l;
-          string l_str = l->str();
-          ses->log.info("Created license %s", l_str.c_str());
-        }
+        string password = cmd.password.decode();
+        ses->login = s->account_index->from_bb_credentials(cmd.username.decode(), &password, s->allow_unregistered_users);
         ses->login_command_bb = std::move(data);
         break;
       }
@@ -415,36 +400,36 @@ void ProxyServer::UnlinkedSession::on_input(Channel& ch, uint16_t command, uint3
   // afterward.
   struct bufferevent* session_key = ch.bev.get();
 
-  // If license is non-null, then the client has a password and can be connected
+  // If login is present, then the client has credentials and can be connected
   // to the remote lobby server.
-  if (ses->license.get()) {
+  if (ses->login) {
     // At this point, we will always close the unlinked session, even if it
     // doesn't get converted/merged to a linked session
     should_close_unlinked_session = true;
 
-    // Look up the linked session for this license (if any)
+    // Look up the linked session for this account (if any)
     shared_ptr<LinkedSession> linked_ses;
     try {
-      linked_ses = server->id_to_session.at(ses->license->serial_number);
+      linked_ses = server->id_to_session.at(ses->login->account->account_id);
       linked_ses->log.info("Resuming linked session from unlinked session");
 
     } catch (const out_of_range&) {
-      // If there's no open session for this license, then there must be a valid
+      // If there's no open session for this account, then there must be a valid
       // destination somewhere - either in the client config or in the unlinked
       // session
       if (ses->config.proxy_destination_address != 0) {
-        linked_ses = make_shared<LinkedSession>(server, ses->local_port, ses->version(), ses->license, ses->config);
-        linked_ses->log.info("Opened licensed session for unlinked session based on client config");
+        linked_ses = make_shared<LinkedSession>(server, ses->local_port, ses->version(), ses->login, ses->config);
+        linked_ses->log.info("Opened logged-in session for unlinked session based on client config");
       } else if (ses->next_destination.ss_family == AF_INET) {
-        linked_ses = make_shared<LinkedSession>(server, ses->local_port, ses->version(), ses->license, ses->next_destination);
-        linked_ses->log.info("Opened licensed session for unlinked session based on unlinked default destination");
+        linked_ses = make_shared<LinkedSession>(server, ses->local_port, ses->version(), ses->login, ses->next_destination);
+        linked_ses->log.info("Opened logged-in session for unlinked session based on unlinked default destination");
       } else {
         ses->log.error("Cannot open linked session: no valid destination in client config or unlinked session");
       }
     }
 
     if (linked_ses.get()) {
-      server->id_to_session.emplace(ses->license->serial_number, linked_ses);
+      server->id_to_session.emplace(ses->login->account->account_id, linked_ses);
       // Resume the linked session using the unlinked session
       try {
         if (ses->version() == Version::BB_V4) {
@@ -496,7 +481,7 @@ ProxyServer::LinkedSession::LinkedSession(
       id(id),
       log(string_printf("[ProxyServer:LinkedSession:%08" PRIX64 "] ", this->id), proxy_server_log.min_level),
       timeout_event(event_new(server->base.get(), -1, EV_TIMEOUT, &LinkedSession::dispatch_on_timeout, this), event_free),
-      license(nullptr),
+      login(nullptr),
       client_channel(
           version,
           1,
@@ -544,10 +529,10 @@ ProxyServer::LinkedSession::LinkedSession(
     shared_ptr<ProxyServer> server,
     uint16_t local_port,
     Version version,
-    shared_ptr<License> license,
+    shared_ptr<Login> login,
     const Client::Config& config)
-    : LinkedSession(server, license->serial_number, local_port, version) {
-  this->license = license;
+    : LinkedSession(server, login->account->account_id, local_port, version) {
+  this->login = login;
   this->config = config;
   memset(&this->next_destination, 0, sizeof(this->next_destination));
   struct sockaddr_in* dest_sin = reinterpret_cast<struct sockaddr_in*>(&this->next_destination);
@@ -560,10 +545,10 @@ ProxyServer::LinkedSession::LinkedSession(
     shared_ptr<ProxyServer> server,
     uint16_t local_port,
     Version version,
-    std::shared_ptr<License> license,
+    std::shared_ptr<Login> login,
     const struct sockaddr_storage& next_destination)
-    : LinkedSession(server, license->serial_number, local_port, version) {
-  this->license = license;
+    : LinkedSession(server, login->account->account_id, local_port, version) {
+  this->login = login;
   this->next_destination = next_destination;
 }
 
@@ -631,7 +616,7 @@ void ProxyServer::LinkedSession::resume_inner(
     throw runtime_error("client connection is already open for this session");
   }
   if (this->next_destination.ss_family != AF_INET) {
-    throw logic_error("attempted to resume an unlicensed linked session without destination set");
+    throw logic_error("attempted to resume an logged-out linked session without destination set");
   }
 
   this->client_channel.replace_with(
@@ -795,9 +780,9 @@ void ProxyServer::LinkedSession::set_drop_mode(DropMode new_mode) {
 }
 
 void ProxyServer::LinkedSession::send_to_game_server(const char* error_message) {
-  // If there is no license, do nothing - we can't return to the game server
-  // from unlicensed sessions
-  if (!this->license) {
+  // If there is no account, do nothing - we can't return to the game server
+  // from logged-out sessions
+  if (!this->login) {
     this->disconnect();
     return;
   }
@@ -831,7 +816,7 @@ void ProxyServer::LinkedSession::send_to_game_server(const char* error_message) 
     if (is_v3(this->version())) {
       S_UpdateClientConfig_V3_04 update_client_config_cmd;
       update_client_config_cmd.player_tag = 0x00010000;
-      update_client_config_cmd.guild_card_number = this->license->serial_number;
+      update_client_config_cmd.guild_card_number = this->login->account->account_id;
       this->config.serialize_into(update_client_config_cmd.client_config);
       this->client_channel.send(0x04, 0x00, &update_client_config_cmd, sizeof(update_client_config_cmd));
     }
@@ -938,17 +923,17 @@ const unordered_map<uint64_t, shared_ptr<ProxyServer::LinkedSession>>& ProxyServ
   return this->id_to_session;
 }
 
-shared_ptr<ProxyServer::LinkedSession> ProxyServer::create_licensed_session(
-    shared_ptr<License> l,
+shared_ptr<ProxyServer::LinkedSession> ProxyServer::create_logged_in_session(
+    shared_ptr<Login> login,
     uint16_t local_port,
     Version version,
     const Client::Config& config) {
-  auto session = make_shared<LinkedSession>(this->shared_from_this(), local_port, version, l, config);
+  auto session = make_shared<LinkedSession>(this->shared_from_this(), local_port, version, login, config);
   auto emplace_ret = this->id_to_session.emplace(session->id, session);
   if (!emplace_ret.second) {
-    throw runtime_error("session already exists for this license");
+    throw runtime_error("session already exists for this account");
   }
-  session->log.info("Opening licensed session");
+  session->log.info("Opening logged-in session");
   return emplace_ret.first->second;
 }
 

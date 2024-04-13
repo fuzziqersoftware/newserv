@@ -770,7 +770,7 @@ struct C_WriteFileConfirmation_V3_BB_13_A7 {
 // NTE will respond with an 8B. Other non-V3 clients will respond with a 9A or
 // 9D.
 
-// 18 (S->C): License verification result (PC/V3)
+// 18 (S->C): Account verification result (PC/V3)
 // Behaves exactly the same as 9A (S->C). No arguments except header.flag.
 
 // 19 (S->C): Reconnect to different address
@@ -1515,7 +1515,7 @@ struct C_LobbySelection_84 {
 // 86: Invalid command
 // 87: Invalid command
 
-// 88 (C->S): License check (DC NTE only)
+// 88 (C->S): Account check (DC NTE only)
 // The server should respond with an 88 command.
 
 struct C_Login_DCNTE_88 {
@@ -1523,7 +1523,7 @@ struct C_Login_DCNTE_88 {
   pstring<TextEncoding::ASCII, 0x11> access_key;
 } __packed_ws__(C_Login_DCNTE_88, 0x22);
 
-// 88 (S->C): License check result (DC NTE only)
+// 88 (S->C): Account check result (DC NTE only)
 // No arguments except header.flag.
 // If header.flag is zero, client will respond with an 8A command. Otherwise, it
 // will respond with an 8B command. This is the same behavior as for the 18
@@ -1643,7 +1643,7 @@ struct C_LoginV1_DC_PC_V3_90 {
   // the receive handler.
 } __packed_ws__(C_LoginV1_DC_PC_V3_90, 0x22);
 
-// 90 (S->C): License verification result (V3)
+// 90 (S->C): Account verification result (V3)
 // Behaves exactly the same as 9A (S->C). No arguments except header.flag.
 
 // 91 (S->C): Start encryption at login server (legacy; non-BB only)
@@ -1819,7 +1819,7 @@ struct C_Login_DC_PC_V3_9A {
   pstring<TextEncoding::ASCII, 0x30> email_address;
 } __packed_ws__(C_Login_DC_PC_V3_9A, 0xDC);
 
-// 9A (S->C): License verification result
+// 9A (S->C): Account verification result
 // Internal name: RcvPsoRegistCheckV2
 // The result code is sent in the header.flag field. Result codes:
 // 00 = license ok (don't save to memory card; client responds with 9D/9E)
@@ -1955,7 +1955,7 @@ struct C_LoginExtended_XB_9E : C_Login_XB_9E {
 
 struct C_LoginExtended_BB_9E {
   /* 0000 */ le_uint32_t player_tag = 0x00010000;
-  /* 0004 */ le_uint32_t guild_card_number = 0; // == serial_number when on newserv
+  /* 0004 */ le_uint32_t guild_card_number = 0; // == account_id when on newserv
   /* 0008 */ le_uint32_t sub_version = 0;
   /* 000C */ le_uint32_t unknown_a1 = 0;
   /* 0010 */ le_uint32_t unknown_a2 = 0;
@@ -2740,7 +2740,7 @@ check_struct_size(S_InfoBoardEntry_BB_D8, 0x178);
 // DB (C->S): Verify license (V3/BB)
 // Server should respond with a 9A command.
 
-struct C_VerifyLicense_V3_DB {
+struct C_VerifyAccount_V3_DB {
   pstring<TextEncoding::ASCII, 0x20> unused;
   pstring<TextEncoding::ASCII, 0x10> serial_number; // On XB, this is the XBL gamertag
   pstring<TextEncoding::ASCII, 0x10> access_key; // On XB, this is the XBL user ID
@@ -2749,11 +2749,11 @@ struct C_VerifyLicense_V3_DB {
   pstring<TextEncoding::ASCII, 0x30> serial_number2; // On XB, this is the XBL gamertag
   pstring<TextEncoding::ASCII, 0x30> access_key2; // On XB, this is the XBL user ID
   pstring<TextEncoding::ASCII, 0x30> password; // On XB, this contains "xbox-pso"
-} __packed_ws__(C_VerifyLicense_V3_DB, 0xDC);
+} __packed_ws__(C_VerifyAccount_V3_DB, 0xDC);
 
 // Note: This login pathway generally isn't used on BB (and isn't supported at
 // all during the data server phase). All current servers use 03/93 instead.
-struct C_VerifyLicense_BB_DB {
+struct C_VerifyAccount_BB_DB {
   // Note: These four fields are likely the same as those used in BB's 9E
   pstring<TextEncoding::ASCII, 0x10> unknown_a3; // Always blank?
   pstring<TextEncoding::ASCII, 0x10> unknown_a4; // == "?"
@@ -2763,7 +2763,7 @@ struct C_VerifyLicense_BB_DB {
   pstring<TextEncoding::ASCII, 0x30> username;
   pstring<TextEncoding::ASCII, 0x30> password;
   pstring<TextEncoding::ASCII, 0x30> game_tag; // "psopc2"
-} __packed_ws__(C_VerifyLicense_BB_DB, 0xD4);
+} __packed_ws__(C_VerifyAccount_BB_DB, 0xD4);
 
 // DC: Set battle in progress flag (Episode 3)
 // No arguments except header.flag when sent by the client. When header.flag is

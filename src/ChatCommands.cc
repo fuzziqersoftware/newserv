@@ -38,11 +38,11 @@ private:
   std::string user_msg;
 };
 
-static void check_license_flag(shared_ptr<Client> c, License::Flag flag) {
-  if (!c->license) {
+static void check_account_flag(shared_ptr<Client> c, Account::Flag flag) {
+  if (!c->login) {
     throw precondition_failed("$C6You are not\nlogged in.");
   }
-  if (!c->license->check_flag(flag)) {
+  if (!c->login->account->check_flag(flag)) {
     throw precondition_failed("$C6You do not have\npermission to\nrun this command.");
   }
 }
@@ -72,20 +72,22 @@ static void check_debug_enabled(shared_ptr<Client> c) {
 }
 
 static void check_cheats_enabled(shared_ptr<Lobby> l, shared_ptr<Client> c) {
-  if (!l->check_flag(Lobby::Flag::CHEATS_ENABLED) && !c->license->check_flag(License::Flag::CHEAT_ANYWHERE)) {
+  if (!l->check_flag(Lobby::Flag::CHEATS_ENABLED) &&
+      !c->login->account->check_flag(Account::Flag::CHEAT_ANYWHERE)) {
     throw precondition_failed("$C6This command can\nonly be used in\ncheat mode.");
   }
 }
 
 static void check_cheats_allowed(shared_ptr<ServerState> s, shared_ptr<Client> c) {
-  if ((s->cheat_mode_behavior == ServerState::BehaviorSwitch::OFF) && !c->license->check_flag(License::Flag::CHEAT_ANYWHERE)) {
+  if ((s->cheat_mode_behavior == ServerState::BehaviorSwitch::OFF) &&
+      !c->login->account->check_flag(Account::Flag::CHEAT_ANYWHERE)) {
     throw precondition_failed("$C6Cheats are disabled\non this server.");
   }
 }
 
 static void check_cheats_allowed(shared_ptr<ServerState> s, shared_ptr<ProxyServer::LinkedSession> ses) {
   if ((s->cheat_mode_behavior == ServerState::BehaviorSwitch::OFF) &&
-      (!ses->license || !ses->license->check_flag(License::Flag::CHEAT_ANYWHERE))) {
+      (!ses->login || !ses->login->account->check_flag(Account::Flag::CHEAT_ANYWHERE))) {
     throw precondition_failed("$C6Cheats are disabled\non this proxy.");
   }
 }
@@ -261,19 +263,19 @@ static void proxy_command_lobby_info(shared_ptr<ProxyServer::LinkedSession> ses,
 }
 
 static void server_command_ax(shared_ptr<Client> c, const std::string& args) {
-  check_license_flag(c, License::Flag::ANNOUNCE);
+  check_account_flag(c, Account::Flag::ANNOUNCE);
   ax_messages_log.info("%s", args.c_str());
 }
 
 static void server_command_announce(shared_ptr<Client> c, const std::string& args) {
   auto s = c->require_server_state();
-  check_license_flag(c, License::Flag::ANNOUNCE);
+  check_account_flag(c, Account::Flag::ANNOUNCE);
   send_text_message(s, args);
 }
 
 static void server_command_announce_mail(shared_ptr<Client> c, const std::string& args) {
   auto s = c->require_server_state();
-  check_license_flag(c, License::Flag::ANNOUNCE);
+  check_account_flag(c, Account::Flag::ANNOUNCE);
   send_simple_mail(s, 0, s->name, args);
 }
 
@@ -290,7 +292,7 @@ static void proxy_command_arrow(shared_ptr<ProxyServer::LinkedSession> ses, cons
 }
 
 static void server_command_debug(shared_ptr<Client> c, const std::string&) {
-  check_license_flag(c, License::Flag::DEBUG);
+  check_account_flag(c, Account::Flag::DEBUG);
   c->config.toggle_flag(Client::Flag::DEBUG_ENABLED);
   send_text_message_printf(c, "Debug %s", (c->config.check_flag(Client::Flag::DEBUG_ENABLED) ? "enabled" : "disabled"));
 }
@@ -678,7 +680,7 @@ static void server_command_show_material_counts(shared_ptr<Client> c, const std:
 }
 
 static void server_command_auction(shared_ptr<Client> c, const std::string&) {
-  check_license_flag(c, License::Flag::DEBUG);
+  check_account_flag(c, Account::Flag::DEBUG);
   auto l = c->require_lobby();
   if (l->is_game() && l->is_ep3()) {
     G_InitiateCardAuction_Ep3_6xB5x42 cmd;
@@ -898,7 +900,7 @@ static void server_command_cheat(shared_ptr<Client> c, const std::string&) {
     l->toggle_flag(Lobby::Flag::CHEATS_ENABLED);
     send_text_message_printf(l, "Cheat mode %s", l->check_flag(Lobby::Flag::CHEATS_ENABLED) ? "enabled" : "disabled");
 
-    if (!c->license->check_flag(License::Flag::CHEAT_ANYWHERE)) {
+    if (!c->login->account->check_flag(Account::Flag::CHEAT_ANYWHERE)) {
       size_t default_min_level = s->default_min_level_for_game(l->base_version, l->episode, l->difficulty);
       if (l->min_level < default_min_level) {
         l->min_level = default_min_level;
@@ -911,7 +913,7 @@ static void server_command_cheat(shared_ptr<Client> c, const std::string&) {
 static void server_command_lobby_event(shared_ptr<Client> c, const std::string& args) {
   auto l = c->require_lobby();
   check_is_game(l, false);
-  check_license_flag(c, License::Flag::CHANGE_EVENT);
+  check_account_flag(c, Account::Flag::CHANGE_EVENT);
 
   uint8_t new_event = event_for_name(args);
   if (new_event == 0xFF) {
@@ -940,7 +942,7 @@ static void proxy_command_lobby_event(shared_ptr<ProxyServer::LinkedSession> ses
 }
 
 static void server_command_lobby_event_all(shared_ptr<Client> c, const std::string& args) {
-  check_license_flag(c, License::Flag::CHANGE_EVENT);
+  check_account_flag(c, Account::Flag::CHANGE_EVENT);
 
   uint8_t new_event = event_for_name(args);
   if (new_event == 0xFF) {
@@ -992,13 +994,13 @@ static void proxy_command_lobby_type(shared_ptr<ProxyServer::LinkedSession> ses,
   ses->config.override_lobby_number = new_type;
 }
 
-static string file_path_for_recording(const std::string& args, uint32_t serial_number) {
+static string file_path_for_recording(const std::string& args, uint32_t account_id) {
   for (char ch : args) {
     if (ch <= 0x20 || ch > 0x7E || ch == '/') {
       throw runtime_error("invalid recording name");
     }
   }
-  return string_printf("system/ep3/battle-records/%010" PRIu32 "_%s.mzrd", serial_number, args.c_str());
+  return string_printf("system/ep3/battle-records/%010" PRIu32 "_%s.mzrd", account_id, args.c_str());
 }
 
 static void server_command_saverec(shared_ptr<Client> c, const std::string& args) {
@@ -1006,7 +1008,7 @@ static void server_command_saverec(shared_ptr<Client> c, const std::string& args
     send_text_message(c, "$C4No finished\nrecording is\npresent");
     return;
   }
-  string file_path = file_path_for_recording(args, c->license->serial_number);
+  string file_path = file_path_for_recording(args, c->login->account->account_id);
   string data = c->ep3_prev_battle_record->serialize();
   save_file(file_path, data);
   send_text_message(c, "$C7Recording saved");
@@ -1023,7 +1025,7 @@ static void server_command_playrec(shared_ptr<Client> c, const std::string& args
   if (l->is_game() && l->battle_player) {
     l->battle_player->start();
   } else if (!l->is_game()) {
-    string file_path = file_path_for_recording(args, c->license->serial_number);
+    string file_path = file_path_for_recording(args, c->login->account->account_id);
 
     auto s = c->require_server_state();
     string filename = args;
@@ -1060,11 +1062,11 @@ static void server_command_meseta(shared_ptr<Client> c, const std::string& args)
   check_debug_enabled(c);
 
   uint32_t amount = stoul(args, nullptr, 0);
-  c->license->ep3_current_meseta += amount;
-  c->license->ep3_total_meseta_earned += amount;
-  c->license->save();
+  c->login->account->ep3_current_meseta += amount;
+  c->login->account->ep3_total_meseta_earned += amount;
+  c->login->account->save();
   send_ep3_rank_update(c);
-  send_text_message_printf(c, "You now have\n$C6%" PRIu32 "$C7 Meseta", c->license->ep3_current_meseta);
+  send_text_message_printf(c, "You now have\n$C6%" PRIu32 "$C7 Meseta", c->login->account->ep3_current_meseta);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1215,7 +1217,8 @@ static void server_command_min_level(shared_ptr<Client> c, const std::string& ar
   size_t new_min_level = stoull(args) - 1;
 
   auto s = c->require_server_state();
-  bool cheats_allowed = (l->check_flag(Lobby::Flag::CHEATS_ENABLED) || c->license->check_flag(License::Flag::CHEAT_ANYWHERE));
+  bool cheats_allowed = (l->check_flag(Lobby::Flag::CHEATS_ENABLED) ||
+      c->login->account->check_flag(Account::Flag::CHEAT_ANYWHERE));
   if (!cheats_allowed) {
     size_t default_min_level = s->default_min_level_for_game(l->base_version, l->episode, l->difficulty);
     if (new_min_level < default_min_level) {
@@ -1257,7 +1260,7 @@ static void server_command_edit(shared_ptr<Client> c, const std::string& args) {
   }
 
   bool cheats_allowed = ((s->cheat_mode_behavior != ServerState::BehaviorSwitch::OFF) ||
-      c->license->check_flag(License::Flag::CHEAT_ANYWHERE));
+      c->login->account->check_flag(Account::Flag::CHEAT_ANYWHERE));
 
   string encoded_args = tolower(args);
   vector<string> tokens = split(encoded_args, ' ');
@@ -1401,7 +1404,6 @@ static void server_command_bbchar_savechar(shared_ptr<Client> c, const std::stri
   check_is_game(l, false);
 
   auto pending_export = make_unique<Client::PendingCharacterExport>();
-  pending_export->is_bb_conversion = is_bb_conversion;
 
   if (is_bb_conversion) {
     vector<string> tokens = split(args, ' ');
@@ -1418,7 +1420,9 @@ static void server_command_bbchar_savechar(shared_ptr<Client> c, const std::stri
     }
 
     try {
-      c->pending_character_export->license = s->license_index->verify_bb(tokens[0].c_str(), tokens[1].c_str());
+      auto dest_login = s->account_index->from_bb_credentials(tokens[0], &tokens[1], false);
+      pending_export->dest_account = dest_login->account;
+      pending_export->dest_bb_license = dest_login->bb_license;
     } catch (const exception& e) {
       send_text_message_printf(c, "$C6Login failed: %s", e.what());
       return;
@@ -1430,7 +1434,7 @@ static void server_command_bbchar_savechar(shared_ptr<Client> c, const std::stri
       send_text_message(c, "$C6Player index must\nbe in range 1-4");
       return;
     }
-    pending_export->license = c->license;
+    pending_export->dest_account = c->login->account;
   }
 
   c->pending_character_export = std::move(pending_export);
@@ -1445,8 +1449,8 @@ static void server_command_bbchar(shared_ptr<Client> c, const std::string& args)
 }
 
 static void server_command_savechar(shared_ptr<Client> c, const std::string& args) {
-  if (c->license->check_flag(License::Flag::IS_SHARED_SERIAL)) {
-    send_text_message(c, "$C7This command cannot\nbe used on a shared\nserial number");
+  if (c->login->account->check_flag(Account::Flag::IS_SHARED_ACCOUNT)) {
+    send_text_message(c, "$C7This command cannot\nbe used on a shared\naccount");
     return;
   }
   server_command_bbchar_savechar(c, args, false);
@@ -1457,8 +1461,8 @@ static void server_command_loadchar(shared_ptr<Client> c, const std::string& arg
     send_text_message(c, "$C7This command can only\nbe used on v1 or v2");
     return;
   }
-  if (c->license->check_flag(License::Flag::IS_SHARED_SERIAL)) {
-    send_text_message(c, "$C7This command cannot\nbe used on a shared\nserial number");
+  if (c->login->account->check_flag(Account::Flag::IS_SHARED_ACCOUNT)) {
+    send_text_message(c, "$C7This command cannot\nbe used on a shared\naccount");
     return;
   }
   auto l = c->require_lobby();
@@ -1469,7 +1473,7 @@ static void server_command_loadchar(shared_ptr<Client> c, const std::string& arg
     send_text_message(c, "$C6Player index must\nbe in range 1-4");
     return;
   }
-  c->load_backup_character(c->license->serial_number, index);
+  c->load_backup_character(c->login->account->account_id, index);
 
   auto s = c->require_server_state();
   send_player_leave_notification(l, c->lobby_client_id);
@@ -1496,8 +1500,8 @@ static string name_for_client(shared_ptr<Client> c) {
     return escape_player_name(player->disp.name.decode(player->inventory.language));
   }
 
-  if (c->license.get()) {
-    return string_printf("SN:%" PRIu32, c->license->serial_number);
+  if (c->login) {
+    return string_printf("SN:%" PRIu32, c->login->account->account_id);
   }
 
   return "Player";
@@ -1506,16 +1510,16 @@ static string name_for_client(shared_ptr<Client> c) {
 static void server_command_silence(shared_ptr<Client> c, const std::string& args) {
   auto s = c->require_server_state();
   auto l = c->require_lobby();
-  check_license_flag(c, License::Flag::SILENCE_USER);
+  check_account_flag(c, Account::Flag::SILENCE_USER);
 
   auto target = s->find_client(&args);
-  if (!target->license) {
+  if (!target->login) {
     // this should be impossible, but I'll bet it's not actually
     send_text_message(c, "$C6Client not logged in");
     return;
   }
 
-  if (target->license->check_flag(License::Flag::SILENCE_USER)) {
+  if (target->login->account->check_flag(Account::Flag::SILENCE_USER)) {
     send_text_message(c, "$C6You do not have\nsufficient privileges.");
     return;
   }
@@ -1529,16 +1533,16 @@ static void server_command_silence(shared_ptr<Client> c, const std::string& args
 static void server_command_kick(shared_ptr<Client> c, const std::string& args) {
   auto s = c->require_server_state();
   auto l = c->require_lobby();
-  check_license_flag(c, License::Flag::KICK_USER);
+  check_account_flag(c, Account::Flag::KICK_USER);
 
   auto target = s->find_client(&args);
-  if (!target->license) {
+  if (!target->login) {
     // This should be impossible, but I'll bet it's not actually
     send_text_message(c, "$C6Client not logged in");
     return;
   }
 
-  if (target->license->check_flag(License::Flag::KICK_USER)) {
+  if (target->login->account->check_flag(Account::Flag::KICK_USER)) {
     send_text_message(c, "$C6You do not have\nsufficient privileges.");
     return;
   }
@@ -1552,7 +1556,7 @@ static void server_command_kick(shared_ptr<Client> c, const std::string& args) {
 static void server_command_ban(shared_ptr<Client> c, const std::string& args) {
   auto s = c->require_server_state();
   auto l = c->require_lobby();
-  check_license_flag(c, License::Flag::BAN_USER);
+  check_account_flag(c, Account::Flag::BAN_USER);
 
   size_t space_pos = args.find(' ');
   if (space_pos == string::npos) {
@@ -1562,13 +1566,13 @@ static void server_command_ban(shared_ptr<Client> c, const std::string& args) {
 
   string identifier = args.substr(space_pos + 1);
   auto target = s->find_client(&identifier);
-  if (!target->license) {
+  if (!target->login) {
     // This should be impossible, but I'll bet it's not actually
     send_text_message(c, "$C6Client not logged in");
     return;
   }
 
-  if (target->license->check_flag(License::Flag::BAN_USER)) {
+  if (target->login->account->check_flag(Account::Flag::BAN_USER)) {
     send_text_message(c, "$C6You do not have\nsufficient privileges.");
     return;
   }
@@ -1592,8 +1596,8 @@ static void server_command_ban(shared_ptr<Client> c, const std::string& args) {
     usecs *= 60 * 60 * 24 * 365;
   }
 
-  target->license->ban_end_time = now() + usecs;
-  target->license->save();
+  target->login->account->ban_end_time = now() + usecs;
+  target->login->account->save();
   send_message_box(target, "$C6You were banned by a moderator.");
   target->should_disconnect = true;
   string target_name = name_for_client(target);

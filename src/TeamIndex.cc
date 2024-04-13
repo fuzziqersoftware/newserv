@@ -13,14 +13,19 @@
 using namespace std;
 
 TeamIndex::Team::Member::Member(const JSON& json)
-    : serial_number(json.get_int("SerialNumber")),
-      flags(json.get_int("Flags", 0)),
+    : flags(json.get_int("Flags", 0)),
       points(json.get_int("Points", 0)),
-      name(json.get_string("Name", "")) {}
+      name(json.get_string("Name", "")) {
+  try {
+    this->account_id = json.get_int("AccountID");
+  } catch (const out_of_range&) {
+    this->account_id = json.get_int("SerialNumber");
+  }
+}
 
 JSON TeamIndex::Team::Member::json() const {
   return JSON::dict({
-      {"SerialNumber", this->serial_number},
+      {"AccountID", this->account_id},
       {"Flags", this->flags},
       {"Points", this->points},
       {"Name", this->name},
@@ -57,11 +62,11 @@ void TeamIndex::Team::load_config() {
   for (const auto& member_it : json.get_list("Members")) {
     Member m(*member_it);
     this->points += m.points;
-    uint32_t serial_number = m.serial_number;
+    uint32_t account_id = m.account_id;
     if (m.check_flag(Member::Flag::IS_MASTER)) {
-      this->master_serial_number = serial_number;
+      this->master_account_id = account_id;
     }
-    this->members.emplace(serial_number, std::move(m));
+    this->members.emplace(account_id, std::move(m));
   }
   try {
     for (const auto& it : json.get_list("RewardKeys")) {
@@ -124,11 +129,11 @@ void TeamIndex::Team::delete_files() const {
   remove(flag_filename.c_str());
 }
 
-PSOBBTeamMembership TeamIndex::Team::membership_for_member(uint32_t serial_number) const {
-  const auto& m = this->members.at(serial_number);
+PSOBBTeamMembership TeamIndex::Team::membership_for_member(uint32_t account_id) const {
+  const auto& m = this->members.at(account_id);
 
   PSOBBTeamMembership ret;
-  ret.team_master_guild_card_number = this->master_serial_number;
+  ret.team_master_guild_card_number = this->master_account_id;
   ret.team_id = this->team_id;
   ret.unknown_a5 = 0;
   ret.unknown_a6 = 0;
@@ -279,9 +284,9 @@ shared_ptr<const TeamIndex::Team> TeamIndex::get_by_name(const string& name) con
   }
 }
 
-shared_ptr<const TeamIndex::Team> TeamIndex::get_by_serial_number(uint32_t serial_number) const {
+shared_ptr<const TeamIndex::Team> TeamIndex::get_by_account_id(uint32_t account_id) const {
   try {
-    return this->serial_number_to_team.at(serial_number);
+    return this->account_id_to_team.at(account_id);
   } catch (const out_of_range&) {
     return nullptr;
   }
@@ -295,17 +300,17 @@ vector<shared_ptr<const TeamIndex::Team>> TeamIndex::all() const {
   return ret;
 }
 
-shared_ptr<const TeamIndex::Team> TeamIndex::create(const string& name, uint32_t master_serial_number, const string& master_name) {
+shared_ptr<const TeamIndex::Team> TeamIndex::create(const string& name, uint32_t master_account_id, const string& master_name) {
   auto team = make_shared<Team>(this->next_team_id++);
   save_file(this->directory + "/base.json", JSON::dict({{"NextTeamID", this->next_team_id}}).serialize());
 
   Team::Member m;
-  m.serial_number = master_serial_number;
+  m.account_id = master_account_id;
   m.flags = 0;
   m.points = 0;
   m.name = master_name;
   m.set_flag(Team::Member::Flag::IS_MASTER);
-  team->members.emplace(master_serial_number, std::move(m));
+  team->members.emplace(master_account_id, std::move(m));
   team->name = name;
 
   team->save_config();
@@ -329,30 +334,30 @@ void TeamIndex::rename(uint32_t team_id, const std::string& new_team_name) {
   team->save_config();
 }
 
-void TeamIndex::add_member(uint32_t team_id, uint32_t serial_number, const string& name) {
+void TeamIndex::add_member(uint32_t team_id, uint32_t account_id, const string& name) {
   auto team = this->id_to_team.at(team_id);
-  if (!this->serial_number_to_team.emplace(serial_number, team).second) {
+  if (!this->account_id_to_team.emplace(account_id, team).second) {
     throw runtime_error("user is already in a different team");
   }
 
   Team::Member m;
-  m.serial_number = serial_number;
+  m.account_id = account_id;
   m.flags = 0;
   m.points = 0;
   m.name = name;
-  team->members.emplace(serial_number, std::move(m));
+  team->members.emplace(account_id, std::move(m));
 
   team->save_config();
 }
 
-void TeamIndex::remove_member(uint32_t serial_number) {
-  auto team_it = this->serial_number_to_team.find(serial_number);
-  if (team_it == this->serial_number_to_team.end()) {
+void TeamIndex::remove_member(uint32_t account_id) {
+  auto team_it = this->account_id_to_team.find(account_id);
+  if (team_it == this->account_id_to_team.end()) {
     throw runtime_error("client is not in any team");
   }
   auto team = std::move(team_it->second);
-  this->serial_number_to_team.erase(team_it);
-  team->members.erase(serial_number);
+  this->account_id_to_team.erase(team_it);
+  team->members.erase(account_id);
   if (team->members.empty()) {
     this->disband(team->team_id);
   } else {
@@ -360,16 +365,16 @@ void TeamIndex::remove_member(uint32_t serial_number) {
   }
 }
 
-void TeamIndex::update_member_name(uint32_t serial_number, const std::string& name) {
-  auto team = this->serial_number_to_team.at(serial_number);
-  auto& m = team->members.at(serial_number);
+void TeamIndex::update_member_name(uint32_t account_id, const std::string& name) {
+  auto team = this->account_id_to_team.at(account_id);
+  auto& m = team->members.at(account_id);
   m.name = name;
   team->save_config();
 }
 
-void TeamIndex::add_member_points(uint32_t serial_number, uint32_t points) {
-  auto team = this->serial_number_to_team.at(serial_number);
-  auto& m = team->members.at(serial_number);
+void TeamIndex::add_member_points(uint32_t account_id, uint32_t points) {
+  auto team = this->account_id_to_team.at(account_id);
+  auto& m = team->members.at(account_id);
   m.points += points;
   team->points += points;
   team->save_config();
@@ -381,13 +386,13 @@ void TeamIndex::set_flag_data(uint32_t team_id, const parray<le_uint16_t, 0x20 *
   team->save_flag();
 }
 
-bool TeamIndex::promote_leader(uint32_t master_serial_number, uint32_t leader_serial_number) {
-  auto team = this->serial_number_to_team.at(master_serial_number);
-  auto& master_m = team->members.at(master_serial_number);
+bool TeamIndex::promote_leader(uint32_t master_account_id, uint32_t leader_account_id) {
+  auto team = this->account_id_to_team.at(master_account_id);
+  auto& master_m = team->members.at(master_account_id);
   if (!master_m.check_flag(TeamIndex::Team::Member::Flag::IS_MASTER)) {
-    throw runtime_error("incorrect master serial number");
+    throw runtime_error("incorrect master account ID");
   }
-  auto& other_m = team->members.at(leader_serial_number);
+  auto& other_m = team->members.at(leader_account_id);
 
   if (other_m.check_flag(TeamIndex::Team::Member::Flag::IS_LEADER) || !team->can_promote_leader()) {
     return false;
@@ -397,13 +402,13 @@ bool TeamIndex::promote_leader(uint32_t master_serial_number, uint32_t leader_se
   return true;
 }
 
-bool TeamIndex::demote_leader(uint32_t master_serial_number, uint32_t leader_serial_number) {
-  auto team = this->serial_number_to_team.at(master_serial_number);
-  auto& master_m = team->members.at(master_serial_number);
+bool TeamIndex::demote_leader(uint32_t master_account_id, uint32_t leader_account_id) {
+  auto team = this->account_id_to_team.at(master_account_id);
+  auto& master_m = team->members.at(master_account_id);
   if (!master_m.check_flag(TeamIndex::Team::Member::Flag::IS_MASTER)) {
-    throw runtime_error("incorrect master serial number");
+    throw runtime_error("incorrect master account ID");
   }
-  auto& other_m = team->members.at(leader_serial_number);
+  auto& other_m = team->members.at(leader_account_id);
 
   if (!other_m.check_flag(TeamIndex::Team::Member::Flag::IS_LEADER)) {
     return false;
@@ -413,19 +418,19 @@ bool TeamIndex::demote_leader(uint32_t master_serial_number, uint32_t leader_ser
   return true;
 }
 
-void TeamIndex::change_master(uint32_t master_serial_number, uint32_t new_master_serial_number) {
-  auto team = this->serial_number_to_team.at(master_serial_number);
-  auto& master_m = team->members.at(master_serial_number);
+void TeamIndex::change_master(uint32_t master_account_id, uint32_t new_master_account_id) {
+  auto team = this->account_id_to_team.at(master_account_id);
+  auto& master_m = team->members.at(master_account_id);
   if (!master_m.check_flag(TeamIndex::Team::Member::Flag::IS_MASTER)) {
-    throw runtime_error("incorrect master serial number");
+    throw runtime_error("incorrect master account ID");
   }
-  auto& new_master_m = team->members.at(new_master_serial_number);
+  auto& new_master_m = team->members.at(new_master_account_id);
 
   master_m.clear_flag(TeamIndex::Team::Member::Flag::IS_MASTER);
   master_m.set_flag(TeamIndex::Team::Member::Flag::IS_LEADER);
   new_master_m.clear_flag(TeamIndex::Team::Member::Flag::IS_LEADER);
   new_master_m.set_flag(TeamIndex::Team::Member::Flag::IS_MASTER);
-  team->master_serial_number = new_master_serial_number;
+  team->master_account_id = new_master_account_id;
   team->save_config();
 }
 
@@ -451,9 +456,9 @@ void TeamIndex::add_to_indexes(shared_ptr<Team> team) {
     throw runtime_error("team name is already in use");
   }
   for (const auto& it : team->members) {
-    if (!this->serial_number_to_team.emplace(it.second.serial_number, team).second) {
+    if (!this->account_id_to_team.emplace(it.second.account_id, team).second) {
       static_game_data_log.warning("Serial number %08" PRIX32 " (%010" PRIu32 ") exists in multiple teams",
-          it.second.serial_number, it.second.serial_number);
+          it.second.account_id, it.second.account_id);
     }
   }
 }
@@ -462,6 +467,6 @@ void TeamIndex::remove_from_indexes(shared_ptr<Team> team) {
   this->id_to_team.erase(team->team_id);
   this->name_to_team.erase(team->name);
   for (const auto& it : team->members) {
-    this->serial_number_to_team.erase(it.second.serial_number);
+    this->account_id_to_team.erase(it.second.account_id);
   }
 }

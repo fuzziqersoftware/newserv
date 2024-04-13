@@ -22,7 +22,7 @@ public:
         IS_MASTER = 0x01,
         IS_LEADER = 0x02,
       };
-      uint32_t serial_number = 0;
+      uint32_t account_id = 0;
       uint8_t flags = 0;
       uint64_t points = 0;
       std::string name;
@@ -60,7 +60,7 @@ public:
     uint32_t points = 0;
     uint32_t spent_points = 0;
     std::string name;
-    uint32_t master_serial_number = 0;
+    uint32_t master_account_id = 0;
     std::unordered_map<uint32_t, Member> members;
     uint32_t reward_flags = 0;
     std::unordered_set<std::string> reward_keys;
@@ -79,7 +79,7 @@ public:
     void save_flag() const;
     void delete_files() const;
 
-    PSOBBTeamMembership membership_for_member(uint32_t serial_number) const;
+    PSOBBTeamMembership membership_for_member(uint32_t account_id) const;
 
     [[nodiscard]] inline bool check_reward_flag(RewardFlag flag) const {
       return !!(static_cast<uint8_t>(flag) & this->reward_flags);
@@ -125,21 +125,21 @@ public:
   size_t count() const;
   std::shared_ptr<const Team> get_by_id(uint32_t team_id) const;
   std::shared_ptr<const Team> get_by_name(const std::string& name) const;
-  std::shared_ptr<const Team> get_by_serial_number(uint32_t serial_number) const;
+  std::shared_ptr<const Team> get_by_account_id(uint32_t account_id) const;
   std::vector<std::shared_ptr<const Team>> all() const;
 
-  std::shared_ptr<const Team> create(const std::string& name, uint32_t master_serial_number, const std::string& master_name);
+  std::shared_ptr<const Team> create(const std::string& name, uint32_t master_account_id, const std::string& master_name);
   void disband(uint32_t team_id);
   void rename(uint32_t team_id, const std::string& new_name);
 
-  void add_member(uint32_t team_id, uint32_t serial_number, const std::string& name);
-  void remove_member(uint32_t serial_number);
-  void update_member_name(uint32_t serial_number, const std::string& name);
-  void add_member_points(uint32_t serial_number, uint32_t points);
+  void add_member(uint32_t team_id, uint32_t account_id, const std::string& name);
+  void remove_member(uint32_t account_id);
+  void update_member_name(uint32_t account_id, const std::string& name);
+  void add_member_points(uint32_t account_id, uint32_t points);
   void set_flag_data(uint32_t team_id, const parray<le_uint16_t, 0x20 * 0x20>& flag_data);
-  bool promote_leader(uint32_t master_serial_number, uint32_t leader_serial_number);
-  bool demote_leader(uint32_t master_serial_number, uint32_t leader_serial_number);
-  void change_master(uint32_t master_serial_number, uint32_t new_master_serial_number);
+  bool promote_leader(uint32_t master_account_id, uint32_t leader_account_id);
+  bool demote_leader(uint32_t master_account_id, uint32_t leader_account_id);
+  void change_master(uint32_t master_account_id, uint32_t new_master_account_id);
   void buy_reward(uint32_t team_id, const std::string& key, uint32_t points, Team::RewardFlag reward_flag);
 
 protected:
@@ -147,7 +147,7 @@ protected:
   uint32_t next_team_id;
   std::unordered_map<uint32_t, std::shared_ptr<Team>> id_to_team;
   std::unordered_map<std::string, std::shared_ptr<Team>> name_to_team;
-  std::unordered_map<uint32_t, std::shared_ptr<Team>> serial_number_to_team;
+  std::unordered_map<uint32_t, std::shared_ptr<Team>> account_id_to_team;
   std::vector<Reward> reward_defs;
 
   void add_to_indexes(std::shared_ptr<Team> team);
