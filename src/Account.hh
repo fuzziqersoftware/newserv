@@ -1,6 +1,7 @@
 #pragma once
 
 #include <memory>
+#include <mutex>
 #include <phosg/JSON.hh>
 #include <shared_mutex>
 #include <string>
