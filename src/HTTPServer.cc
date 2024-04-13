@@ -291,6 +291,10 @@ JSON HTTPServer::generate_account_json_st(shared_ptr<const Account> a) {
   for (const auto& it : a->bb_licenses) {
     bb_licenses_json.emplace_back(it.first);
   }
+  auto auto_patches_json = JSON::list();
+  for (const auto& it : a->auto_patches_enabled) {
+    auto_patches_json.emplace_back(it);
+  }
   return JSON::dict({
       {"AccountID", a->account_id},
       {"Flags", a->flags},
@@ -307,6 +311,7 @@ JSON HTTPServer::generate_account_json_st(shared_ptr<const Account> a) {
       {"GCLicenses", std::move(gc_licenses_json)},
       {"XBLicenses", std::move(xb_licenses_json)},
       {"BBLicenses", std::move(bb_licenses_json)},
+      {"AutoPatchesEnabled", std::move(auto_patches_json)},
   });
 };
 

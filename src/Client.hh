@@ -61,6 +61,7 @@ public:
     HAS_EP3_MEDIA_UPDATES                      = 0x0000000010000000,
     USE_OVERRIDE_RANDOM_SEED                   = 0x0000000020000000,
     HAS_GUILD_CARD_NUMBER                      = 0x0000000040000000,
+    HAS_AUTO_PATCHES                           = 0x0000004000000000,
     AT_BANK_COUNTER                            = 0x0000000080000000, // Server-side only
     SHOULD_SEND_ARTIFICIAL_ITEM_STATE          = 0x0001000000000000, // Server-side only
     SHOULD_SEND_ARTIFICIAL_ENEMY_AND_SET_STATE = 0x0040000000000000, // Server-side only

@@ -90,6 +90,8 @@ struct Account {
   uint32_t bb_team_id = 0;
   bool is_temporary = false; // If true, isn't saved to disk
 
+  std::unordered_set<std::string> auto_patches_enabled;
+
   std::unordered_map<std::string, std::shared_ptr<DCNTELicense>> dc_nte_licenses;
   std::unordered_map<uint32_t, std::shared_ptr<V1V2License>> dc_licenses;
   std::unordered_map<uint32_t, std::shared_ptr<V1V2License>> pc_licenses;

@@ -228,6 +228,13 @@ Account::Account(const JSON& json)
   this->ep3_current_meseta = json.get_int("Ep3CurrentMeseta", 0);
   this->ep3_total_meseta_earned = json.get_int("Ep3TotalMesetaEarned", 0);
   this->bb_team_id = json.get_int("BBTeamID", 0);
+
+  try {
+    for (const auto& it : json.get_list("AutoPatchesEnabled")) {
+      this->auto_patches_enabled.emplace(it->as_string());
+    }
+  } catch (const out_of_range&) {
+  }
 }
 
 JSON Account::json() const {
@@ -255,6 +262,12 @@ JSON Account::json() const {
   for (const auto& it : this->bb_licenses) {
     bb_json.emplace_back(it.second->json());
   }
+
+  JSON auto_patches_json = JSON::list();
+  for (const auto& it : this->auto_patches_enabled) {
+    auto_patches_json.emplace_back(it);
+  }
+
   return JSON::dict({
       {"FormatVersion", 1},
       {"AccountID", this->account_id},
@@ -271,6 +284,7 @@ JSON Account::json() const {
       {"Ep3CurrentMeseta", this->ep3_current_meseta},
       {"Ep3TotalMesetaEarned", this->ep3_total_meseta_earned},
       {"BBTeamID", this->bb_team_id},
+      {"AutoPatchesEnabled", std::move(auto_patches_json)},
   });
 }
 

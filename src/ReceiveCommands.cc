@@ -118,6 +118,63 @@ static shared_ptr<const Menu> proxy_options_menu_for_client(shared_ptr<const Cli
   return ret;
 }
 
+void send_first_pre_lobby_commands(shared_ptr<Client> c, std::function<void()> on_complete) {
+  // TODO: This function is bad. Ideally we would use coroutines and clean up
+  // all these terrible callbacks.
+
+  if (function_compiler_available() &&
+      !c->config.check_flag(Client::Flag::HAS_AUTO_PATCHES) &&
+      !c->config.check_flag(Client::Flag::NO_SEND_FUNCTION_CALL)) {
+    prepare_client_for_patches(c, [wc = weak_ptr<Client>(c), on_complete = std::move(on_complete)]() -> void {
+      auto c = wc.lock();
+      if (!c) {
+        return;
+      }
+
+      auto s = c->require_server_state();
+      size_t num_patches_sent = 0;
+      for (const auto& patch_name : c->login->account->auto_patches_enabled) {
+        try {
+          send_function_call(c, s->function_code_index->get_patch(patch_name, c->config.specific_version));
+          num_patches_sent++;
+        } catch (const out_of_range&) {
+          c->log.warning("Client has auto patch %s enabled, but it is not available for specific_version %08" PRIX32,
+              patch_name.c_str(), c->config.specific_version);
+        }
+      }
+
+      // We can't just blast all the commands at the client, since the sequence
+      // ends with a reconnect command, which changes the encryption state! We
+      // have to wait until all the patch responses have been received before
+      // sending any command that the client will respond to. It's OK to send
+      // the 04 immediately before the 19 (since the client does not respond to
+      // 04), but it is not OK to send the B2s without waiting.
+
+      if (num_patches_sent == 0) {
+        c->config.set_flag(Client::Flag::HAS_AUTO_PATCHES);
+        send_update_client_config(c, false);
+        on_complete();
+
+      } else {
+        while (c->function_call_response_queue.size() < num_patches_sent - 1) {
+          c->function_call_response_queue.emplace_back(empty_function_call_response_handler);
+        }
+        c->function_call_response_queue.emplace_back([wc, on_complete = std::move(on_complete)](uint32_t, uint32_t) {
+          auto c = wc.lock();
+          if (!c) {
+            return;
+          }
+          c->config.set_flag(Client::Flag::HAS_AUTO_PATCHES);
+          send_update_client_config(c, false);
+          on_complete();
+        });
+      }
+    });
+  } else {
+    on_complete();
+  }
+}
+
 void send_client_to_login_server(shared_ptr<Client> c) {
   string port_name = login_port_name_for_version(c->version());
   auto s = c->require_server_state();
@@ -125,35 +182,49 @@ void send_client_to_login_server(shared_ptr<Client> c) {
 }
 
 void send_client_to_lobby_server(shared_ptr<Client> c) {
-  auto s = c->require_server_state();
-  string port_name = lobby_port_name_for_version(c->version());
-  send_reconnect(c, s->connect_address_for_client(c),
-      s->name_to_port_config.at(port_name)->port);
+  send_first_pre_lobby_commands(c, [wc = weak_ptr(c)]() {
+    auto c = wc.lock();
+    if (!c) {
+      return;
+    }
+
+    auto s = c->require_server_state();
+    string port_name = lobby_port_name_for_version(c->version());
+    send_reconnect(c, s->connect_address_for_client(c),
+        s->name_to_port_config.at(port_name)->port);
+  });
 }
 
 void send_client_to_proxy_server(shared_ptr<Client> c) {
-  auto s = c->require_server_state();
+  send_first_pre_lobby_commands(c, [wc = weak_ptr(c)]() {
+    auto c = wc.lock();
+    if (!c) {
+      return;
+    }
 
-  string port_name = proxy_port_name_for_version(c->version());
-  uint16_t local_port = s->name_to_port_config.at(port_name)->port;
+    auto s = c->require_server_state();
 
-  s->proxy_server->delete_session(c->login->account->account_id);
-  auto ses = s->proxy_server->create_logged_in_session(c->login, local_port, c->version(), c->config);
-  if (!c->can_use_chat_commands()) {
-    ses->config.clear_flag(Client::Flag::PROXY_CHAT_COMMANDS_ENABLED);
-  }
-  if (!s->proxy_allow_save_files) {
-    ses->config.clear_flag(Client::Flag::PROXY_SAVE_FILES);
-  }
-  if (!s->proxy_enable_login_options) {
-    ses->config.clear_flag(Client::Flag::PROXY_SUPPRESS_REMOTE_LOGIN);
-    ses->config.clear_flag(Client::Flag::PROXY_ZERO_REMOTE_GUILD_CARD);
-  }
-  if (ses->config.check_flag(Client::Flag::PROXY_ZERO_REMOTE_GUILD_CARD)) {
-    ses->remote_guild_card_number = 0;
-  }
+    string port_name = proxy_port_name_for_version(c->version());
+    uint16_t local_port = s->name_to_port_config.at(port_name)->port;
 
-  send_reconnect(c, s->connect_address_for_client(c), local_port);
+    s->proxy_server->delete_session(c->login->account->account_id);
+    auto ses = s->proxy_server->create_logged_in_session(c->login, local_port, c->version(), c->config);
+    if (!c->can_use_chat_commands()) {
+      ses->config.clear_flag(Client::Flag::PROXY_CHAT_COMMANDS_ENABLED);
+    }
+    if (!s->proxy_allow_save_files) {
+      ses->config.clear_flag(Client::Flag::PROXY_SAVE_FILES);
+    }
+    if (!s->proxy_enable_login_options) {
+      ses->config.clear_flag(Client::Flag::PROXY_SUPPRESS_REMOTE_LOGIN);
+      ses->config.clear_flag(Client::Flag::PROXY_ZERO_REMOTE_GUILD_CARD);
+    }
+    if (ses->config.check_flag(Client::Flag::PROXY_ZERO_REMOTE_GUILD_CARD)) {
+      ses->remote_guild_card_number = 0;
+    }
+
+    send_reconnect(c, s->connect_address_for_client(c), local_port);
+  });
 }
 
 static void send_proxy_destinations_menu(shared_ptr<Client> c) {
@@ -267,6 +338,8 @@ static void send_main_menu(shared_ptr<Client> c) {
     if (!s->function_code_index->patch_menu_empty(c->config.specific_version)) {
       main_menu->items.emplace_back(MainMenuItemID::PATCHES, "Patches",
           "Change game\nbehaviors", MenuItem::Flag::INVISIBLE_ON_DC | MenuItem::Flag::INVISIBLE_ON_PC | MenuItem::Flag::REQUIRES_SEND_FUNCTION_CALL);
+      main_menu->items.emplace_back(MainMenuItemID::PATCH_SWITCHES, "Patch switches",
+          "Automatically\napply patches every\ntime you connect", MenuItem::Flag::INVISIBLE_ON_DC | MenuItem::Flag::INVISIBLE_ON_PC | MenuItem::Flag::REQUIRES_SEND_FUNCTION_CALL);
     }
     if (!s->dol_file_index->empty()) {
       main_menu->items.emplace_back(MainMenuItemID::PROGRAMS, "Programs",
@@ -2041,6 +2114,21 @@ static void on_10(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
           });
           break;
 
+        case MainMenuItemID::PATCH_SWITCHES:
+          if (!function_compiler_available()) {
+            throw runtime_error("function compiler not available");
+          }
+          if (c->config.check_flag(Client::Flag::NO_SEND_FUNCTION_CALL)) {
+            throw runtime_error("client does not support send_function_call");
+          }
+          // We have to prepare the client for patches here, even though we
+          // don't send them from this mennu, because we need to know the
+          // client's specific_version before sending the menu.
+          prepare_client_for_patches(c, [c]() -> void {
+            send_menu(c, c->require_server_state()->function_code_index->patch_switches_menu(c->config.specific_version, c->login->account->auto_patches_enabled));
+          });
+          break;
+
         case MainMenuItemID::PROGRAMS:
           if (!function_compiler_available()) {
             throw runtime_error("function compiler not available");
@@ -2404,6 +2492,26 @@ static void on_10(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
             c, s->function_code_index->menu_item_id_and_specific_version_to_patch_function.at(key));
         c->function_call_response_queue.emplace_back(empty_function_call_response_handler);
         send_menu(c, s->function_code_index->patch_menu(c->config.specific_version));
+      }
+      break;
+
+    case MenuID::PATCH_SWITCHES:
+      if (item_id == PatchesMenuItemID::GO_BACK) {
+        send_main_menu(c);
+
+      } else {
+        if (c->config.check_flag(Client::Flag::NO_SEND_FUNCTION_CALL)) {
+          throw runtime_error("client does not support send_function_call");
+        }
+
+        auto s = c->require_server_state();
+        uint64_t key = (static_cast<uint64_t>(item_id) << 32) | c->config.specific_version;
+        auto fn = s->function_code_index->menu_item_id_and_specific_version_to_patch_function.at(key);
+        if (!c->login->account->auto_patches_enabled.emplace(fn->short_name).second) {
+          c->login->account->auto_patches_enabled.erase(fn->short_name);
+        }
+        c->login->account->save();
+        send_menu(c, s->function_code_index->patch_switches_menu(c->config.specific_version, c->login->account->auto_patches_enabled));
       }
       break;
 

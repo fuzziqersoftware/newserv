@@ -325,13 +325,33 @@ shared_ptr<const Menu> FunctionCodeIndex::patch_menu(uint32_t specific_version) 
   ret->items.emplace_back(PatchesMenuItemID::GO_BACK, "Go back", "Return to the\nmain menu", 0);
   for (const auto& it : this->name_and_specific_version_to_patch_function) {
     const auto& fn = it.second;
-    if (!fn->hide_from_patches_menu && ends_with(it.first, suffix)) {
-      ret->items.emplace_back(
-          fn->menu_item_id,
-          fn->long_name.empty() ? fn->short_name : fn->long_name,
-          fn->description,
-          MenuItem::Flag::REQUIRES_SEND_FUNCTION_CALL);
+    if (fn->hide_from_patches_menu || !ends_with(it.first, suffix)) {
+      continue;
     }
+    ret->items.emplace_back(
+        fn->menu_item_id,
+        fn->long_name.empty() ? fn->short_name : fn->long_name,
+        fn->description,
+        MenuItem::Flag::REQUIRES_SEND_FUNCTION_CALL);
+  }
+  return ret;
+}
+
+shared_ptr<const Menu> FunctionCodeIndex::patch_switches_menu(
+    uint32_t specific_version, const std::unordered_set<std::string>& auto_patches_enabled) const {
+  auto suffix = string_printf("-%08" PRIX32, specific_version);
+
+  auto ret = make_shared<Menu>(MenuID::PATCH_SWITCHES, "Patch switches");
+  ret->items.emplace_back(PatchesMenuItemID::GO_BACK, "Go back", "Return to the\nmain menu", 0);
+  for (const auto& it : this->name_and_specific_version_to_patch_function) {
+    const auto& fn = it.second;
+    if (fn->hide_from_patches_menu || !ends_with(it.first, suffix)) {
+      continue;
+    }
+    string name;
+    name.push_back(auto_patches_enabled.count(fn->short_name) ? '*' : '-');
+    name += fn->long_name.empty() ? fn->short_name : fn->long_name;
+    ret->items.emplace_back(fn->menu_item_id, name, fn->description, MenuItem::Flag::REQUIRES_SEND_FUNCTION_CALL);
   }
   return ret;
 }
