@@ -2184,24 +2184,25 @@ pair<uint32_t, uint32_t> SetDataTableDC112000::num_free_roam_variations_for_floo
 
 string SetDataTableDC112000::map_filename_for_variation(
     uint8_t floor, uint32_t var1, uint32_t var2, Episode, GameMode, FilenameType type) const {
-  if (floor >= this->NAMES.size()) {
+  try {
+    string basename = this->NAMES.at(floor).at(var1).at(var2);
+    switch (type) {
+      case FilenameType::ENEMIES:
+        basename += "e.dat";
+        break;
+      case FilenameType::OBJECTS:
+        basename += "o.dat";
+        break;
+      case FilenameType::EVENTS:
+        basename += ".evt";
+        break;
+      default:
+        throw logic_error("invalid map filename type");
+    }
+    return basename;
+  } catch (const out_of_range&) {
     return "";
   }
-  string basename = this->NAMES.at(floor).at(var1).at(var2);
-  switch (type) {
-    case FilenameType::ENEMIES:
-      basename += "e.dat";
-      break;
-    case FilenameType::OBJECTS:
-      basename += "o.dat";
-      break;
-    case FilenameType::EVENTS:
-      basename += ".evt";
-      break;
-    default:
-      throw logic_error("invalid map filename type");
-  }
-  return basename;
 }
 
 static const vector<AreaMapFileInfo> map_file_info_dc_nte = {
