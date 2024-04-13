@@ -1,4 +1,4 @@
-# .meta hide_from_patches_menu
+.meta hide_from_patches_menu
 .meta name="GetExtendedPlayerInfo"
 .meta description=""
 
