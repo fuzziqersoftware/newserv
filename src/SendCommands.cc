@@ -4056,9 +4056,8 @@ void send_team_reward_list(shared_ptr<Client> c, bool show_purchased) {
   for (const auto& reward : s->team_index->reward_definitions()) {
     // In the buy menu, hide rewards that can't be bought again (that is, unique
     // rewards that the team already has). In the bought menu, hide rewards that
-    // the team does not have.
-    bool has_reward = team->has_reward(reward.key);
-    if (show_purchased ? (!has_reward) : (has_reward && reward.is_unique)) {
+    // the team does not have or that can be bought again.
+    if (show_purchased != (team->has_reward(reward.key) && reward.is_unique)) {
       continue;
     }
     if (!show_item_rewards && !reward.reward_item.empty()) {
