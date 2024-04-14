@@ -1556,11 +1556,32 @@ static void on_CA_Ep3(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
       }
     }
   }
+
   bool battle_finished_before = l->ep3_server->battle_finished;
   l->ep3_server->on_server_data_input(c, data);
+
+  // If the battle has finished, finalize the recording and link it to all
+  // participating players and spectators
   if (!battle_finished_before && l->ep3_server->battle_finished && l->battle_record) {
     l->battle_record->set_battle_end_timestamp();
+    unordered_set<shared_ptr<Lobby>> lobbies;
+    lobbies.emplace(l);
+    for (const auto& wl : l->watcher_lobbies) {
+      lobbies.emplace(wl);
+    }
+    for (const auto& rl : lobbies) {
+      for (const auto& rc : rl->clients) {
+        if (rc) {
+          rc->ep3_prev_battle_record = l->battle_record;
+          if ((s->ep3_behavior_flags & Episode3::BehaviorFlag::ENABLE_STATUS_MESSAGES)) {
+            send_text_message(rc, "$C7Recording complete");
+          }
+        }
+      }
+    }
+    l->battle_record.reset();
   }
+
   if (l->tournament_match &&
       l->ep3_server->setup_phase == Episode3::SetupPhase::BATTLE_ENDED &&
       !l->ep3_server->tournament_match_result_sent) {
@@ -4449,7 +4470,7 @@ static void on_6F(shared_ptr<Client> c, uint16_t command, uint32_t, string& data
   }
 
   // Episode 3 sends a 6F after a CAx21 (end battle) command, so we shouldn't
-  // reassign the items IDs again in that case (even though item IDs really
+  // reassign the item IDs again in that case (even though item IDs really
   // don't matter for Ep3)
   if (c->config.check_flag(Client::Flag::LOADING)) {
     c->config.clear_flag(Client::Flag::LOADING);
@@ -4467,17 +4488,6 @@ static void on_6F(shared_ptr<Client> c, uint16_t command, uint32_t, string& data
     auto s = l->require_server_state();
     l->log.info("Deleting Episode 3 server state");
     l->ep3_server.reset();
-    if (l->battle_record) {
-      for (const auto& c : l->clients) {
-        if (c) {
-          c->ep3_prev_battle_record = l->battle_record;
-          if ((s->ep3_behavior_flags & Episode3::BehaviorFlag::ENABLE_STATUS_MESSAGES)) {
-            send_text_message(l, "$C7Recording complete");
-          }
-        }
-      }
-      l->battle_record.reset();
-    }
   }
 
   send_server_time(c);
