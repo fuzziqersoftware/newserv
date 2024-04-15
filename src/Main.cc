@@ -56,6 +56,11 @@ bool use_terminal_colors = false;
 void print_version_info();
 void print_usage();
 
+std::string get_config_filename(Arguments& args) {
+  string config_filename = args.get<string>("config");
+  return config_filename.empty() ? "system/config.json" : config_filename;
+}
+
 template <typename T>
 vector<T> parse_int_vector(const JSON& o) {
   vector<T> ret;
@@ -1425,8 +1430,7 @@ Action a_print_word_select_table(
     given, prints the table sorted by token ID for that version. If no version\n\
     option is given, prints the token table sorted by canonical name.\n",
     +[](Arguments& args) {
-      string config_filename = args.get<string>("config");
-      auto s = make_shared<ServerState>(config_filename);
+      auto s = make_shared<ServerState>(get_config_filename(args));
       s->load_patch_indexes(false);
       s->load_text_index(false);
       s->load_word_select_table(false);
@@ -1488,8 +1492,7 @@ Action a_convert_rare_item_set(
       auto version = get_cli_version(args);
 
       double rate_factor = args.get<double>("multiply", 1.0);
-      string config_filename = args.get<string>("config");
-      auto s = make_shared<ServerState>(config_filename);
+      auto s = make_shared<ServerState>(get_config_filename(args));
       s->load_config_early();
       s->load_patch_indexes(false);
       s->load_text_index(false);
@@ -1553,8 +1556,7 @@ Action a_describe_item(
       string description = args.get<string>(1);
       auto version = get_cli_version(args);
 
-      string config_filename = args.get<string>("config");
-      auto s = make_shared<ServerState>(config_filename);
+      auto s = make_shared<ServerState>(get_config_filename(args));
       s->load_config_early();
       s->load_patch_indexes(false);
       s->load_text_index(false);
@@ -1625,8 +1627,7 @@ Action a_describe_item(
 
 Action a_name_all_items(
     "name-all-items", nullptr, +[](Arguments& args) {
-      string config_filename = args.get<string>("config");
-      auto s = make_shared<ServerState>(config_filename);
+      auto s = make_shared<ServerState>(get_config_filename(args));
       s->load_config_early();
       s->load_patch_indexes(false);
       s->load_text_index(false);
@@ -1676,8 +1677,7 @@ Action a_name_all_items(
 
 Action a_print_item_parameter_tables(
     "print-item-tables", nullptr, +[](Arguments& args) {
-      string config_filename = args.get<string>("config");
-      auto s = make_shared<ServerState>(config_filename);
+      auto s = make_shared<ServerState>(get_config_filename(args));
       s->load_patch_indexes(false);
       s->load_text_index(false);
       s->load_item_definitions(false);
@@ -1700,8 +1700,7 @@ Action a_show_ep3_cards(
     +[](Arguments& args) {
       bool one_line = args.get<bool>("one-line");
 
-      string config_filename = args.get<string>("config");
-      auto s = make_shared<ServerState>(config_filename);
+      auto s = make_shared<ServerState>(get_config_filename(args));
       s->load_ep3_cards(false);
 
       unique_ptr<BinaryTextSet> text_english;
@@ -1751,8 +1750,7 @@ Action a_generate_ep3_cards_html(
 
       bool is_nte = (get_cli_version(args, Version::GC_EP3) == Version::GC_EP3_NTE);
 
-      string config_filename = args.get<string>("config");
-      auto s = make_shared<ServerState>(config_filename);
+      auto s = make_shared<ServerState>(get_config_filename(args));
       s->load_patch_indexes(false);
       s->load_text_index(false);
       s->load_ep3_cards(false);
@@ -1917,8 +1915,7 @@ Action a_show_ep3_maps(
     +[](Arguments& args) {
       config_log.info("Collecting Episode 3 data");
 
-      string config_filename = args.get<string>("config");
-      auto s = make_shared<ServerState>(config_filename);
+      auto s = make_shared<ServerState>(get_config_filename(args));
       s->load_ep3_cards(false);
       s->load_ep3_maps(false);
 
@@ -1943,8 +1940,7 @@ Action a_show_battle_params(
     Print the Blue Burst battle parameters from the system/blueburst directory\n\
     in a human-readable format.\n",
     +[](Arguments& args) {
-      string config_filename = args.get<string>("config");
-      auto s = make_shared<ServerState>(config_filename);
+      auto s = make_shared<ServerState>(get_config_filename(args));
       s->load_patch_indexes(false);
       s->load_battle_params(false);
 
@@ -1985,8 +1981,7 @@ Action a_find_rare_enemy_seeds(
       size_t min_count = args.get<size_t>("min-count", 1);
       string quest_name = args.get<string>("quest", false);
 
-      string config_filename = args.get<string>("config");
-      auto s = make_shared<ServerState>(config_filename);
+      auto s = make_shared<ServerState>(get_config_filename(args));
       shared_ptr<const VersionedQuest> vq;
       if (!quest_name.empty()) {
         s->load_config_early();
@@ -2071,8 +2066,7 @@ Action a_find_rare_enemy_seeds(
 Action a_load_maps_test(
     "load-maps-test", nullptr, +[](Arguments& args) {
       using SDT = SetDataTable;
-      string config_filename = args.get<string>("config");
-      auto s = make_shared<ServerState>(config_filename);
+      auto s = make_shared<ServerState>(get_config_filename(args));
       s->load_config_early();
       s->clear_map_file_caches();
       s->load_patch_indexes(false);
@@ -2327,8 +2321,7 @@ Action a_format_ep3_battle_record(
 
 Action a_replay_ep3_battle_commands(
     "replay-ep3-battle-commands", nullptr, +[](Arguments& args) {
-      string config_filename = args.get<string>("config");
-      auto s = make_shared<ServerState>(config_filename);
+      auto s = make_shared<ServerState>(get_config_filename(args));
       s->load_ep3_cards(false);
       s->load_ep3_maps(false);
 
@@ -2391,12 +2384,8 @@ Action a_run_server_replay_log(
         mkdir("system/players", 0755);
       }
 
-      string config_filename = args.get<string>("config");
       const string& replay_log_filename = args.get<string>("replay-log");
       bool is_replay = !replay_log_filename.empty();
-      if (config_filename.empty()) {
-        config_filename = "system/config.json";
-      }
 
       signal(SIGPIPE, SIG_IGN);
       if (isatty(fileno(stderr))) {
@@ -2408,7 +2397,7 @@ Action a_run_server_replay_log(
       }
 
       shared_ptr<struct event_base> base(event_base_new(), event_base_free);
-      auto state = make_shared<ServerState>(base, config_filename, is_replay);
+      auto state = make_shared<ServerState>(base, get_config_filename(args), is_replay);
       state->load_all();
 
       shared_ptr<DNSServer> dns_server;
