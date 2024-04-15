@@ -24,6 +24,7 @@
 #include <phosg/Time.hh>
 #ifdef HAVE_RESOURCE_FILE
 #include <resource_file/Emulators/PPC32Emulator.hh>
+#include <resource_file/Emulators/SH4Emulator.hh>
 #include <resource_file/Emulators/X86Emulator.hh>
 #endif
 
@@ -728,7 +729,8 @@ static HandlerResult S_B2(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t, 
     // TODO: Support SH-4 disassembly too
     bool is_ppc = ::is_ppc(ses->version());
     bool is_x86 = ::is_x86(ses->version());
-    if (is_ppc || is_x86) {
+    bool is_sh4 = ::is_sh4(ses->version());
+    if (is_ppc || is_x86 || is_sh4) {
       try {
         if (code.size() < sizeof(FooterT)) {
           throw runtime_error("code section is too small");
@@ -759,6 +761,12 @@ static HandlerResult S_B2(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t, 
               &labels);
         } else if (is_x86) {
           disassembly = X86Emulator::disassemble(
+              &r.pget<uint8_t>(0, code.size()),
+              code.size(),
+              0,
+              &labels);
+        } else if (is_sh4) {
+          disassembly = SH4Emulator::disassemble(
               &r.pget<uint8_t>(0, code.size()),
               code.size(),
               0,

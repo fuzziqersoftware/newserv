@@ -44,6 +44,9 @@ void Client::Config::set_flags_for_version(Version version, int64_t sub_version)
         case Version::DC_NTE:
         case Version::DC_V1_11_2000_PROTOTYPE:
         case Version::DC_V1:
+          this->set_flag(Flag::NO_D6);
+          this->set_flag(Flag::NO_SEND_FUNCTION_CALL);
+          break;
         case Version::DC_V2:
           this->set_flag(Flag::NO_D6);
           this->set_flag(Flag::SEND_FUNCTION_CALL_NO_CACHE_PATCH);

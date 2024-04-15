@@ -10,6 +10,7 @@
 
 #ifdef HAVE_RESOURCE_FILE
 #include <resource_file/Emulators/PPC32Emulator.hh>
+#include <resource_file/Emulators/SH4Emulator.hh>
 #include <resource_file/Emulators/X86Emulator.hh>
 #endif
 
@@ -39,6 +40,8 @@ const char* name_for_architecture(CompiledFunctionCode::Architecture arch) {
       return "PowerPC";
     case CompiledFunctionCode::Architecture::X86:
       return "x86";
+    case CompiledFunctionCode::Architecture::SH4:
+      return "SH-4";
     default:
       throw logic_error("invalid architecture");
   }
@@ -165,7 +168,8 @@ shared_ptr<CompiledFunctionCode> compile_function_code(
           ret = X86Emulator::assemble(load_file(asm_filename), get_include);
           break;
         case CompiledFunctionCode::Architecture::SH4:
-          throw runtime_error("cannot compuile SH-4 assembly");
+          ret = SH4Emulator::assemble(load_file(asm_filename), get_include);
+          break;
         default:
           throw runtime_error("unknown architecture");
       }
@@ -184,6 +188,10 @@ shared_ptr<CompiledFunctionCode> compile_function_code(
     assembled = PPC32Emulator::assemble(text, get_include);
   } else if (arch == CompiledFunctionCode::Architecture::X86) {
     assembled = X86Emulator::assemble(text, get_include);
+  } else if (arch == CompiledFunctionCode::Architecture::SH4) {
+    assembled = SH4Emulator::assemble(text, get_include);
+  } else {
+    throw runtime_error("invalid architecture");
   }
   ret->code = std::move(assembled.code);
   ret->label_offsets = std::move(assembled.label_offsets);

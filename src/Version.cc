@@ -204,8 +204,14 @@ uint32_t default_specific_version_for_version(Version version, int64_t sub_versi
   // to set the specific_version based on sub_version. Fortunately, all
   // versions that share sub_version values also support send_function_call,
   // so for those versions we get the specific_version later by sending the
-  // VersionDetectGC or VersionDetectXB call.
+  // VersionDetectDC, VersionDetectGC, or VersionDetectXB call.
   switch (version) {
+    case Version::DC_NTE:
+      return 0x314F4A31;
+    case Version::DC_V1_11_2000_PROTOTYPE:
+      return 0x314F4A32;
+    case Version::DC_V1:
+      return 0x00000000; // Need to send VersionDetectDC (but can't on V1; rip)
     case Version::GC_NTE:
       return 0x334F4A54; // 3OJT
     case Version::GC_V3:
@@ -225,7 +231,7 @@ uint32_t default_specific_version_for_version(Version version, int64_t sub_versi
         case 0x30: // GC Ep1&2 GameJam demo, GC Ep1&2 Trial Edition, GC Ep1&2 JP v1.2, at least one version of PSO XB
         case 0x31: // GC Ep1&2 US v1.0, GC US v1.1, XB US
         default:
-          return 0x33000000;
+          return 0x00000000; // Need to send VersionDetectGC
       }
       throw logic_error("this should be impossible");
     case Version::GC_EP3_NTE:
@@ -240,7 +246,7 @@ uint32_t default_specific_version_for_version(Version version, int64_t sub_versi
         case -1: // Initial check (before sub_version recognition)
         case 0x40: // GC Ep3 trial and GC Ep3 JP
         default:
-          return 0x33000000;
+          return 0x00000000; // Need to send VersionDetectGC
       }
     case Version::XB_V3:
       return 0x344F0000;

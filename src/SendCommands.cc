@@ -338,11 +338,17 @@ void prepare_client_for_patches(shared_ptr<Client> c, function<void()> on_comple
     if (!c) {
       return;
     }
-    bool is_gc = ::is_gc(c->version());
-    bool is_xb = (c->version() == Version::XB_V3);
-    if ((is_gc || is_xb) &&
+    const char* version_detect_name = nullptr;
+    if (c->version() == Version::DC_V2) {
+      version_detect_name = "VersionDetectDC";
+    } else if (is_gc(c->version())) {
+      version_detect_name = "VersionDetectGC";
+    } else if (c->version() == Version::XB_V3) {
+      version_detect_name = "VersionDetectXB";
+    }
+    if (version_detect_name &&
         c->config.specific_version == default_specific_version_for_version(c->version(), -1)) {
-      send_function_call(c, s->function_code_index->name_to_function.at(is_xb ? "VersionDetectXB" : "VersionDetectGC"));
+      send_function_call(c, s->function_code_index->name_to_function.at(version_detect_name));
       c->function_call_response_queue.emplace_back([wc = weak_ptr<Client>(c), on_complete](uint32_t specific_version, uint32_t) -> void {
         auto c = wc.lock();
         if (!c) {

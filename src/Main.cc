@@ -1196,10 +1196,8 @@ Action a_assemble_all_patches(
     two compiled .bin files for each patch (one unencrypted, for most PSO\n\
     versions, and one encrypted, for PSO GC JP v1.4, JP Ep3, and Ep3 Trial\n\
     Edition). The output files are saved in system/client-functions.\n",
-    +[](Arguments& args) {
-      string config_filename = args.get<string>("config");
-      auto s = make_shared<ServerState>(config_filename);
-      s->compile_functions(false);
+    +[](Arguments&) {
+      auto fci = make_shared<FunctionCodeIndex>("system/client-functions");
 
       auto process_code = +[](shared_ptr<const CompiledFunctionCode> code,
                                uint32_t checksum_addr,
@@ -1216,23 +1214,27 @@ Action a_assemble_all_patches(
         }
       };
 
-      for (const auto& it : s->function_code_index->name_and_specific_version_to_patch_function) {
+      for (const auto& it : fci->name_and_specific_version_to_patch_function) {
         process_code(it.second, 0, 0, 0);
       }
       try {
-        process_code(s->function_code_index->name_to_function.at("VersionDetectGC"), 0, 0, 0);
+        process_code(fci->name_to_function.at("VersionDetectDC"), 0, 0, 0);
       } catch (const out_of_range&) {
       }
       try {
-        process_code(s->function_code_index->name_to_function.at("VersionDetectXB"), 0, 0, 0);
+        process_code(fci->name_to_function.at("VersionDetectGC"), 0, 0, 0);
       } catch (const out_of_range&) {
       }
       try {
-        process_code(s->function_code_index->name_to_function.at("CacheClearFix-Phase1"), 0x80000000, 8, 0x7F2734EC);
+        process_code(fci->name_to_function.at("VersionDetectXB"), 0, 0, 0);
       } catch (const out_of_range&) {
       }
       try {
-        process_code(s->function_code_index->name_to_function.at("CacheClearFix-Phase2"), 0, 0, 0);
+        process_code(fci->name_to_function.at("CacheClearFix-Phase1"), 0x80000000, 8, 0x7F2734EC);
+      } catch (const out_of_range&) {
+      }
+      try {
+        process_code(fci->name_to_function.at("CacheClearFix-Phase2"), 0, 0, 0);
       } catch (const out_of_range&) {
       }
     });

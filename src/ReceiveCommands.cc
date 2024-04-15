@@ -122,6 +122,10 @@ void send_first_pre_lobby_commands(shared_ptr<Client> c, std::function<void()> o
   // TODO: This function is bad. Ideally we would use coroutines and clean up
   // all these terrible callbacks.
 
+  if (c->login->account->auto_patches_enabled.empty()) {
+    c->config.set_flag(Client::Flag::HAS_AUTO_PATCHES);
+  }
+
   if (function_compiler_available() &&
       !c->config.check_flag(Client::Flag::HAS_AUTO_PATCHES) &&
       !c->config.check_flag(Client::Flag::NO_SEND_FUNCTION_CALL)) {
@@ -3002,7 +3006,7 @@ static void on_61_98(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
         const auto* cmd3 = &check_size_t<C_CharacterData_Ep3_61_98>(data);
         c->ep3_config = make_shared<Episode3::PlayerConfig>(cmd3->ep3_config);
         cmd = reinterpret_cast<const C_CharacterData_V3_61_98*>(cmd3);
-        if (c->config.specific_version == 0x33000000) {
+        if (c->config.specific_version == 0x00000000) {
           c->config.specific_version = 0x33534A30; // 3SJ0
         }
       } else {
@@ -3010,7 +3014,7 @@ static void on_61_98(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
           c->channel.version = Version::GC_EP3_NTE;
           c->log.info("Game version changed to GC_EP3_NTE");
           c->config.clear_flag(Client::Flag::ENCRYPTED_SEND_FUNCTION_CALL);
-          if (c->config.specific_version == 0x33000000) {
+          if (c->config.specific_version == default_specific_version_for_version(Version::GC_EP3, -1)) {
             c->config.specific_version = 0x33534A54; // 3SJT
           }
           c->convert_account_to_temporary_if_nte();
