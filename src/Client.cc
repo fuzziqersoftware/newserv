@@ -74,13 +74,15 @@ void Client::Config::set_flags_for_version(Version version, int64_t sub_version)
       this->set_flag(Flag::NO_D6);
       this->set_flag(Flag::NO_SEND_FUNCTION_CALL);
       break;
-    case 0x23: // DCv1 EU
+    case 0x22: // DCv1 EU 50Hz (presumably)
+    case 0x23: // DCv1 EU 60Hz (presumably)
       this->set_flag(Flag::NO_D6);
       this->set_flag(Flag::NO_SEND_FUNCTION_CALL);
       break;
     case 0x25: // DCv2 JP
     case 0x26: // DCv2 US
-    case 0x28: // DCv2 EU
+    case 0x27: // DCv2 EU 50Hz (presumably)
+    case 0x28: // DCv2 EU 60Hz (presumably)
       this->set_flag(Flag::NO_D6);
       this->set_flag(Flag::SEND_FUNCTION_CALL_NO_CACHE_PATCH);
       break;
