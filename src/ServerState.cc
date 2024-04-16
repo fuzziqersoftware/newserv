@@ -795,18 +795,25 @@ void ServerState::load_config_early() {
 
   if (!this->is_replay) {
     this->ep3_lobby_banners.clear();
+    size_t banner_index = 0;
     for (const auto& it : this->config_json->get("Episode3LobbyBanners", JSON::list()).as_list()) {
       string path = "system/ep3/banners/" + it->at(2).as_string();
 
       string compressed_gvm_data;
       string decompressed_gvm_data;
-      if (ends_with(path, ".gvm.prs")) {
+      string lower_path = tolower(path);
+      if (ends_with(lower_path, ".gvm.prs")) {
         compressed_gvm_data = load_file(path);
-      } else if (ends_with(path, ".gvm")) {
+      } else if (ends_with(lower_path, ".gvm")) {
         decompressed_gvm_data = load_file(path);
-      } else if (ends_with(path, ".bmp")) {
+      } else if (ends_with(lower_path, ".bmp")) {
         Image img(path);
-        decompressed_gvm_data = encode_gvm(img, img.get_has_alpha() ? GVRDataFormat::RGB5A3 : GVRDataFormat::RGB565);
+        decompressed_gvm_data = encode_gvm(
+            img,
+            img.get_has_alpha() ? GVRDataFormat::RGB5A3 : GVRDataFormat::RGB565,
+            string_printf("bnr%zu", banner_index),
+            0x80 | banner_index);
+        banner_index++;
       } else {
         throw runtime_error(string_printf("banner %s is in an unknown format", path.c_str()));
       }

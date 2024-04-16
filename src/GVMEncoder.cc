@@ -11,13 +11,16 @@ using namespace std;
 struct GVMFileEntry {
   be_uint16_t file_num;
   pstring<TextEncoding::ASCII, 0x1C> name;
-  parray<be_uint32_t, 2> unknown_a1;
+  uint8_t format_flags; // Same as in GVRHeader
+  GVRDataFormat data_format; // Same as in GVRHeader
+  be_uint16_t dimensions; // As powers of two in low nybbles (so e.g. 128x128 = 0x0055)
+  be_uint32_t global_index;
 } __packed_ws__(GVMFileEntry, 0x26);
 
 struct GVMFileHeader {
-  be_uint32_t magic; // 'GVMH'
+  be_uint32_t signature; // 'GVMH'
   le_uint32_t header_size;
-  be_uint16_t flags;
+  be_uint16_t flags; // Specifies which fields are present in GVMFileEntries; we always use 0xF (all fields present)
   be_uint16_t num_files;
 } __packed_ws__(GVMFileHeader, 0x0C);
 
@@ -31,19 +34,24 @@ struct GVRHeader {
   be_uint16_t height;
 } __packed_ws__(GVRHeader, 0x10);
 
-string encode_gvm(const Image& img, GVRDataFormat data_format) {
-  if (img.get_width() > 0xFFFF) {
-    throw runtime_error("image is too wide to be encoded as a GVR texture");
+string encode_gvm(const Image& img, GVRDataFormat data_format, const std::string& internal_name, uint32_t global_index) {
+  int8_t dimensions_field = -2;
+  {
+    size_t h = img.get_height();
+    size_t w = img.get_width();
+    if ((h != w) || (w & (w - 1)) || (h & (h - 1))) {
+      throw runtime_error("image must be square and dimensions must be powers of 2");
+    }
+    for (w >>= 1; w; w >>= 1, dimensions_field++) {
+    }
+    if (dimensions_field < 1) {
+      throw runtime_error("image is too small");
+    }
+    if (dimensions_field > 0xF) {
+      throw runtime_error("image is too large");
+    }
   }
-  if (img.get_height() > 0xFFFF) {
-    throw runtime_error("image is too tall to be encoded as a GVR texture");
-  }
-  if (img.get_width() & 3) {
-    throw runtime_error("image width is not a multiple of 4");
-  }
-  if (img.get_height() & 3) {
-    throw runtime_error("image height is not a multiple of 4");
-  }
+
   size_t pixel_count = img.get_width() * img.get_height();
   size_t pixel_bytes = 0;
   switch (data_format) {
@@ -59,11 +67,14 @@ string encode_gvm(const Image& img, GVRDataFormat data_format) {
   }
 
   StringWriter w;
-  w.put<GVMFileHeader>({.magic = 0x47564D48, .header_size = 0x48, .flags = 0x010F, .num_files = 1});
+  w.put<GVMFileHeader>({.signature = 0x47564D48, .header_size = 0x48, .flags = 0x000F, .num_files = 1});
   GVMFileEntry file_entry;
   file_entry.file_num = 0;
-  file_entry.name.encode("img", 1);
-  file_entry.unknown_a1.clear(0);
+  file_entry.name.encode(internal_name, 1);
+  file_entry.data_format = data_format;
+  file_entry.format_flags = 0;
+  file_entry.dimensions = (dimensions_field << 4) | dimensions_field;
+  file_entry.global_index = global_index;
   w.put(file_entry);
   w.extend_to(0x50, 0x00);
   w.put<GVRHeader>({.magic = 0x47565254,

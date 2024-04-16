@@ -19,7 +19,7 @@ enum class GVRDataFormat : uint8_t {
   DXT1 = 0x0E,
 };
 
-std::string encode_gvm(const Image& img, GVRDataFormat data_format);
+std::string encode_gvm(const Image& img, GVRDataFormat data_format, const std::string& internal_name, uint32_t global_index);
 
 constexpr uint16_t encode_rgb565(uint8_t r, uint8_t g, uint8_t b) {
   return ((r << 8) & 0xF800) | ((g << 3) & 0x07E0) | ((b >> 3) & 0x001F);

@@ -790,7 +790,7 @@ Action a_encode_gvm(
       } else {
         img = Image(stdin);
       }
-      string encoded = encode_gvm(img, img.get_has_alpha() ? GVRDataFormat::RGB5A3 : GVRDataFormat::RGB565);
+      string encoded = encode_gvm(img, img.get_has_alpha() ? GVRDataFormat::RGB5A3 : GVRDataFormat::RGB565, "image.gvr", 0);
       write_output_data(args, encoded.data(), encoded.size(), "gvm");
     });
 

@@ -2299,19 +2299,21 @@ struct S_RankUpdate_Ep3_B7 {
 
 struct S_UpdateMediaHeader_Ep3_B9 {
   // Valid values for the type field:
-  // 1: GVM file
-  // 2: Unknown; probably BML file
-  // 3: Unknown; probably BML file
-  // 4: Unknown; appears to be completely ignored
-  // Any other value: entire command is ignored
-  // For types 2 and 3, the game looks for various tokens in the decompressed
-  // data; specifically '****', 'GCAM', 'GJBM', 'GJTL', 'GLIM', 'GMDM', 'GSSM',
-  // 'NCAM', 'NJBM', 'NJCA', 'NLIM', 'NMDM', and 'NSSM'. Of these, 'GJTL',
-  // 'NMDM', and 'NSSM' are found in some of the game's existing BML files, but
-  // the others don't seem to be anywhere on the disc. 'NJBM' is found in
-  // psohistory_e.sfd, but not in any other files.
+  //   1: Texture set (GVM file)
+  //   2: Model
+  //   3: Animation
+  //   4: Delete all previous media updates
+  //   Any other value: entire command is ignored
+  // A texture can be displayed without a model or animation. A model requires a
+  // texture (sent in a separate B9 command with the same location_flags), but
+  // does not require an animation - it will just stand still without one. An
+  // animation requires both a texture and model with the same location_flags.
+  // For models and animations, the game looks for various tokens in the
+  // decompressed data; specifically '****', 'GCAM', 'GJBM', 'GJTL', 'GLIM',
+  // 'GMDM', 'GSSM', 'NCAM', 'NJBM', 'NJCA', 'NLIM', 'NMDM', and 'NSSM'.
   le_uint32_t type = 0;
-  // which is a bit field specifying which positions to set. The bits are:
+  // location_flags is a bit field specifying where the banner or object should
+  // appear. The bits are:
   // 00000001: South above-counter banner (facing away from teleporters)
   // 00000002: West above-counter banner
   // 00000004: North above-counter banner (facing toward jukebox)
@@ -2348,9 +2350,9 @@ struct S_UpdateMediaHeader_Ep3_B9 {
   // banners - if a banner is sent in these locations, it appears sideways and
   // halfway submerged in the floor, and has no collision. Furthermore, it seems
   // that up to 8 different banners or models may be set simultaneously (though
-  // each may appear in more than one position). If 8 B9 commands have been
-  // received, further B9 commands are ignored.
-  le_uint32_t which = 0x00000000;
+  // each may appear in more than one position). If 8 banners or objects already
+  // exist, further media sent via B9 is ignored.
+  le_uint32_t location_flags = 0x00000000;
   // This field specifies the size of the compressed data. The uncompressed size
   // is not sent anywhere in this command.
   le_uint16_t size = 0;
@@ -2361,11 +2363,10 @@ struct S_UpdateMediaHeader_Ep3_B9 {
   // client ignores the command.
 } __packed_ws__(S_UpdateMediaHeader_Ep3_B9, 0x0C);
 
-// B9 (C->S): Confirm received B9 (Episode 3)
+// B9 (C->S): Confirm media update (Episode 3)
 // No arguments
 // This command is not valid on Episode 3 Trial Edition.
-// The client sends this even if it ignores the contents of a B9 command (if
-// the data size was too large, or if there were already 8 banners/models).
+// The client sends this even if it ignores the contents of a B9 command.
 
 // BA: Meseta transaction (Episode 3)
 // This command is not valid on Episode 3 Trial Edition.
