@@ -1015,40 +1015,47 @@ void prs_disassemble(FILE* stream, const void* data, size_t size) {
   ControlStreamReader cr(r);
 
   while (!r.eof()) {
+    uint8_t buffered_bits = cr.buffered_bits();
     if (cr.read()) {
-      fprintf(stream, "[%zX] literal %02hhX\n", output_bytes, r.get_u8());
+      uint8_t literal_value = r.get_u8();
+      fprintf(stream, "[%zX] %hhu> 1    %02hhX        literal %02hhX\n",
+          output_bytes, buffered_bits, literal_value, literal_value);
       output_bytes++;
 
     } else {
-      ssize_t offset;
-      size_t count;
-      const char* copy_type;
-
+      size_t count, read_offset;
       if (cr.read()) {
-        uint16_t a = r.get_u8();
-        a |= (r.get_u8() << 8);
-        offset = (a >> 3) | (~0x1FFF);
+        uint8_t a_low = r.get_u8();
+        uint8_t a_high = r.get_u8();
+        uint16_t a = (a_high << 8) | a_low;
+        ssize_t offset = (a >> 3) | (~0x1FFF);
         if (offset == ~0x1FFF) {
           fprintf(stream, "[%zX] end\n", output_bytes);
           break;
         }
         if (a & 7) {
-          copy_type = "long";
           count = (a & 7) + 2;
+          read_offset = output_bytes + offset;
+          fprintf(stream, "[%zX] %hhu> 01   %02hhX %02hhX     long copy from %zd (offset=%zX) size=%zX\n",
+              output_bytes, buffered_bits, a_low, a_high, offset, read_offset, count);
         } else {
-          copy_type = "extended";
-          count = r.get_u8() + 1;
+          uint8_t count_u8 = r.get_u8();
+          count = count_u8 + 1;
+          read_offset = output_bytes + offset;
+          fprintf(stream, "[%zX] %hhu> 01   %02hhX %02hhX %02hhX  extended copy from %zd (offset=%zX) size=%zX\n",
+              output_bytes, buffered_bits, a_low, a_high, count_u8, offset, read_offset, count);
         }
 
       } else {
-        copy_type = "short";
-        count = cr.read() << 1;
-        count = (count | cr.read()) + 2;
-        offset = r.get_u8() | (~0xFF);
+        bool first_bit = cr.read();
+        bool second_bit = cr.read();
+        uint8_t offset_u8 = r.get_u8();
+        count = ((first_bit ? 2 : 0) | (second_bit ? 1 : 0)) + 2;
+        ssize_t offset = offset_u8 | (~0xFF);
+        read_offset = output_bytes + offset;
+        fprintf(stream, "[%zX] %hhu> 00%c%c %02hhX        short copy from %zd (offset=%zX) size=%zX\n",
+            output_bytes, buffered_bits, first_bit ? '1' : '0', second_bit ? '1' : '0', offset_u8, offset, read_offset, count);
       }
-
-      size_t read_offset = output_bytes + offset;
-      fprintf(stream, "[%zX] %s copy %zX\n", output_bytes, copy_type, count);
 
       if (read_offset >= output_bytes) {
         throw runtime_error("backreference offset beyond beginning of output");
