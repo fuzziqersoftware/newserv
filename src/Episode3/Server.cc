@@ -783,6 +783,9 @@ void Server::destroy_cards_with_zero_hp() {
 void Server::determine_first_team_turn() {
   this->team_client_count[0] = this->map_and_rules->num_team0_players;
   this->team_client_count[1] = this->map_and_rules->num_players - this->team_client_count[0];
+  if (this->team_client_count[0] == 0 || this->team_client_count[1] == 0) {
+    throw runtime_error("one or both teams have no players");
+  }
   this->first_team_turn = 0xFF;
   while (this->first_team_turn == 0xFF) {
     uint8_t results[2] = {0, 0};
