@@ -21,3 +21,14 @@ std::string generate_dc_serial_number(uint8_t domain, uint8_t subdomain = 0xFF);
 std::unordered_map<uint32_t, std::string> generate_all_dc_serial_numbers(uint8_t domain = 0xFF, uint8_t subdomain = 0xFF);
 
 void dc_serial_number_speed_test(uint64_t seed = 0xFFFFFFFFFFFFFFFF);
+
+struct EncryptedDCv2Executables {
+  std::string executable;
+  std::string indexes;
+};
+
+std::string decrypt_dp_address_jpn(
+    const std::string& dp_address_jpn_data,
+    const std::string& iwashi_sea_data,
+    const std::string& katsuo_sea_data);
+EncryptedDCv2Executables encrypt_dp_address_jpn(const std::string& executable, const std::string& indexes);

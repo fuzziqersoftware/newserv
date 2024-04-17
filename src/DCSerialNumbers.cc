@@ -1386,3 +1386,42 @@ void dc_serial_number_speed_test(uint64_t seed) {
   fprintf(stderr, "Fast vs. slow speedup: %zux\n", static_cast<size_t>(time_slow / time_fast));
   fprintf(stderr, "Disagreements: %zu\n", num_disagreements);
 }
+
+string decrypt_dp_address_jpn(
+    const string& executable,
+    const string& values,
+    const string& indexes) {
+  StringReader values_r(values);
+  StringReader indexes_r(indexes);
+
+  size_t fixup_values_offset = values_r.pget_u32l(0x3FFC) - 0x8C004000;
+  size_t fixup_steps_offset = indexes_r.pget_u32l(0x3BFC) - 0x8C008400;
+  StringReader fixup_values_r = values_r.sub(fixup_values_offset);
+  StringReader fixup_steps_r = indexes_r.sub(fixup_steps_offset);
+
+  auto decrypted = decrypt_pr2_data<false>(executable);
+  size_t fixup_offset = 0;
+  while (fixup_steps_r.get_u8(false)) {
+    fixup_offset += (fixup_steps_r.get_u8() << 2);
+    fixup_steps_r.skip(1);
+    if (fixup_offset + 4 > decrypted.compressed_data.size()) {
+      throw runtime_error("fixup beyond end of compressed data");
+    }
+    *reinterpret_cast<le_uint32_t*>(decrypted.compressed_data.data() + fixup_offset) = fixup_values_r.get_u32l();
+  }
+
+  return prs_decompress(decrypted.compressed_data);
+}
+
+EncryptedDCv2Executables encrypt_dp_address_jpn(const string& executable, const string& indexes) {
+  EncryptedDCv2Executables ret;
+
+  string compressed = prs_compress(executable);
+  ret.executable = encrypt_pr2_data<false>(compressed, executable.size(), random_object<uint32_t>() & 0x7FFFFF7F);
+
+  StringReader indexes_r(indexes);
+  size_t fixup_steps_offset = indexes_r.pget_u32l(0x3BFC) - 0x8C008400;
+  ret.indexes = indexes;
+  ret.indexes.at(fixup_steps_offset) = 0;
+  return ret;
+}

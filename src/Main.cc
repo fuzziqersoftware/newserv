@@ -754,6 +754,40 @@ static void a_encrypt_decrypt_save_data_fn(Arguments& args) {
 Action a_decrypt_save_data("decrypt-save-data", nullptr, a_encrypt_decrypt_save_data_fn);
 Action a_encrypt_save_data("encrypt-save-data", nullptr, a_encrypt_decrypt_save_data_fn);
 
+Action a_decrypt_dcv2_executable(
+    "decrypt-dcv2-executable", "\
+  decrypt-dcv2-executable --executable=EXEC --indexes=INDEXES --values=VALUES\n\
+    Decrypt a PSO DC v2 executable file. EXEC should be the path to the\n\
+    executable (DP_ADDRESS.JPN), INDEXES should be the path to the index fixup\n\
+    table (KATSUO.SEA), and VALUES should be the path to the value fixup table\n\
+    (IWASHI.SEA). The output is written to EXEC.dec.\n",
+    +[](Arguments& args) {
+      string executable_filename = args.get<string>("executable", true);
+      string values_filename = args.get<string>("values", true);
+      string indexes_filename = args.get<string>("indexes", true);
+      string executable_data = load_file(executable_filename);
+      string values_data = load_file(values_filename);
+      string indexes_data = load_file(indexes_filename);
+      string decrypted = decrypt_dp_address_jpn(executable_data, values_data, indexes_data);
+      save_file(executable_filename + ".dec", decrypted);
+    });
+Action a_encrypt_dcv2_executable(
+    "encrypt-dcv2-executable", "\
+  decrypt-dcv2-executable --executable=EXEC --indexes=INDEXES\n\
+    Encrypt a PSO DC v2 executable file. EXEC should be the path to the\n\
+    executable (DP_ADDRESS.JPN) and INDEXES should be the path to the index\n\
+    fixup table (KATSUO.SEA). The output is written to EXEC.enc and\n\
+    INDEXES.enc.",
+    +[](Arguments& args) {
+      string executable_filename = args.get<string>("executable", true);
+      string indexes_filename = args.get<string>("indexes", true);
+      string executable_data = load_file(executable_filename);
+      string indexes_data = load_file(indexes_filename);
+      auto encrypted = encrypt_dp_address_jpn(executable_data, indexes_data);
+      save_file(executable_filename + ".enc", encrypted.executable);
+      save_file(indexes_filename + ".enc", encrypted.indexes);
+    });
+
 Action a_decode_gci_snapshot(
     "decode-gci-snapshot", "\
   decode-gci-snapshot [INPUT-FILENAME [OUTPUT-FILENAME]]\n\
