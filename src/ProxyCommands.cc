@@ -1374,16 +1374,20 @@ static HandlerResult S_13_A7(shared_ptr<ProxyServer::LinkedSession> ses, uint16_
 
     if (!sf->is_download && ends_with(sf->basename, ".dat")) {
       auto quest_dat_data = make_shared<std::string>(join(sf->blocks));
-      ses->map = Lobby::load_maps(
-          ses->version(),
-          ses->lobby_episode,
-          ses->lobby_difficulty,
-          ses->lobby_event,
-          ses->id,
-          Map::DEFAULT_RARE_ENEMIES,
-          ses->lobby_random_seed,
-          make_shared<PSOV2Encryption>(ses->lobby_random_seed),
-          quest_dat_data);
+      try {
+        ses->map = Lobby::load_maps(
+            ses->version(),
+            ses->lobby_episode,
+            ses->lobby_difficulty,
+            ses->lobby_event,
+            ses->id,
+            Map::DEFAULT_RARE_ENEMIES,
+            ses->lobby_random_seed,
+            make_shared<PSOV2Encryption>(ses->lobby_random_seed),
+            quest_dat_data);
+      } catch (const exception& e) {
+        ses->log.warning("Failed to load quest map: %s", e.what());
+      }
     }
 
     ses->saving_files.erase(cmd.filename.decode());
