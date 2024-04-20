@@ -407,6 +407,7 @@ The VERS token in client function filenames refers to the specific version of th
 | PSO Xbox EU TU    | 4OPU | Yes       |
 | PSO BB JP 1.25.13 | 51OC | Yes       |
 | PSO BB Tethealla  | 51OC | Yes       |
+
 *Note: newserv uses the shorter GameCube versioning convention, where discs labeled DOL-XXXX-0-0Y are version 1.Y. The PSO community seems to use the convention 1.0Y in some places instead, but these are the same version. For example, the version that newserv calls v1.4 is the same as v1.04, and is labeled DOL-GPOJ-0-04 on the underside of the disc.*
 
 newserv comes with a set of patches for some of the above versions, based on AR codes originally made by Ralf at GC-Forever and Aleron Ives. Many of them were originally posted in [this thread](https://www.gc-forever.com/forums/viewtopic.php?f=38&t=2050).
