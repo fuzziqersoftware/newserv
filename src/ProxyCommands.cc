@@ -1221,6 +1221,7 @@ static HandlerResult C_GXB_61(shared_ptr<ProxyServer::LinkedSession> ses, uint16
       if (is_ep3(ses->version()) && (ses->version() != Version::GC_EP3_NTE)) {
         ses->log.info("Version changed to GC_EP3_NTE");
         ses->set_version(Version::GC_EP3_NTE);
+        ses->config.specific_version = SPECIFIC_VERSION_GC_EP3_NTE;
       }
       pd = &check_size_t<C_CharacterData_V3_61_98>(data, 0xFFFF);
     }

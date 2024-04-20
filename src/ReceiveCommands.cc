@@ -341,9 +341,9 @@ static void send_main_menu(shared_ptr<Client> c) {
   if (!s->is_replay) {
     if (!s->function_code_index->patch_menu_empty(c->config.specific_version)) {
       main_menu->items.emplace_back(MainMenuItemID::PATCHES, "Patches",
-          "Change game\nbehaviors", MenuItem::Flag::INVISIBLE_ON_DC | MenuItem::Flag::INVISIBLE_ON_PC | MenuItem::Flag::REQUIRES_SEND_FUNCTION_CALL);
+          "Change game\nbehaviors", MenuItem::Flag::INVISIBLE_ON_PC | MenuItem::Flag::REQUIRES_SEND_FUNCTION_CALL);
       main_menu->items.emplace_back(MainMenuItemID::PATCH_SWITCHES, "Patch switches",
-          "Automatically\napply patches every\ntime you connect", MenuItem::Flag::INVISIBLE_ON_DC | MenuItem::Flag::INVISIBLE_ON_PC | MenuItem::Flag::REQUIRES_SEND_FUNCTION_CALL);
+          "Automatically\napply patches every\ntime you connect", MenuItem::Flag::INVISIBLE_ON_PC | MenuItem::Flag::REQUIRES_SEND_FUNCTION_CALL);
     }
     if (!s->dol_file_index->empty()) {
       main_menu->items.emplace_back(MainMenuItemID::PROGRAMS, "Programs",
@@ -480,22 +480,32 @@ static void set_console_client_flags(shared_ptr<Client> c, uint32_t sub_version)
     if (sub_version <= 0x24) {
       c->channel.version = Version::DC_V1;
       c->log.info("Game version changed to DC_V1");
+      if (specific_version_is_indeterminate(c->config.specific_version) || c->config.specific_version == SPECIFIC_VERSION_DC_11_2000_PROTOTYPE) {
+        c->config.specific_version = SPECIFIC_VERSION_DC_V1_INDETERMINATE;
+      }
     } else if (sub_version <= 0x28) {
       c->channel.version = Version::DC_V2;
       c->log.info("Game version changed to DC_V2");
+      if (specific_version_is_indeterminate(c->config.specific_version)) {
+        c->config.specific_version = SPECIFIC_VERSION_DC_V2_INDETERMINATE;
+      }
     } else if (is_v3(c->version())) {
       c->channel.version = Version::GC_NTE;
       c->log.info("Game version changed to GC_NTE");
+      c->config.specific_version = SPECIFIC_VERSION_GC_NTE;
     }
   } else {
     if (sub_version >= 0x40 && !is_ep3(c->version())) {
       c->channel.version = Version::GC_EP3;
       c->log.info("Game version changed to GC_EP3");
+      if (specific_version_is_indeterminate(c->config.specific_version)) {
+        c->config.specific_version = SPECIFIC_VERSION_GC_EP3_INDETERMINATE;
+      }
     }
   }
   c->config.set_flags_for_version(c->version(), sub_version);
   c->sub_version = sub_version;
-  if (c->config.specific_version == default_specific_version_for_version(c->version(), -1)) {
+  if (specific_version_is_indeterminate(c->config.specific_version)) {
     c->config.specific_version = default_specific_version_for_version(c->version(), sub_version);
   }
 }
@@ -534,6 +544,7 @@ static void on_88_DCNTE(shared_ptr<Client> c, uint16_t, uint32_t, string& data) 
   auto s = c->require_server_state();
 
   c->channel.version = Version::DC_NTE;
+  c->config.specific_version = SPECIFIC_VERSION_DC_NTE;
   c->config.set_flags_for_version(c->version(), -1);
   c->log.info("Game version changed to DC_NTE");
 
@@ -560,6 +571,7 @@ static void on_8B_DCNTE(shared_ptr<Client> c, uint16_t, uint32_t, string& data) 
   c->channel.version = Version::DC_NTE;
   c->channel.language = cmd.language;
   c->config.set_flags_for_version(c->version(), -1);
+  c->config.specific_version = SPECIFIC_VERSION_DC_NTE;
   c->log.info("Game version changed to DC_NTE");
 
   try {
@@ -592,6 +604,9 @@ static void on_90_DC(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
 
   c->channel.version = Version::DC_V1;
   c->config.set_flags_for_version(c->version(), -1);
+  if (specific_version_is_indeterminate(c->config.specific_version) || c->config.specific_version == SPECIFIC_VERSION_DC_11_2000_PROTOTYPE) {
+    c->config.specific_version = SPECIFIC_VERSION_DC_V1_INDETERMINATE;
+  }
   c->log.info("Game version changed to DC_V1");
 
   string serial_number_str = cmd.serial_number.decode();
@@ -624,6 +639,9 @@ static void on_92_DC(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
   // client is actually DCv1 and not the prototype.
   c->config.set_flag(Client::Flag::CHECKED_FOR_DC_V1_PROTOTYPE);
   c->channel.version = Version::DC_V1;
+  if (specific_version_is_indeterminate(c->config.specific_version) || c->config.specific_version == SPECIFIC_VERSION_DC_11_2000_PROTOTYPE) {
+    c->config.specific_version = SPECIFIC_VERSION_DC_V1_INDETERMINATE;
+  }
   c->log.info("Game version changed to DC_V1");
   send_command(c, 0x92, 0x01);
 }
@@ -680,6 +698,9 @@ static void on_93_DC(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
     send_command(c, 0x90, 0x01);
     c->config.set_flag(Client::Flag::CHECKED_FOR_DC_V1_PROTOTYPE);
     c->channel.version = Version::DC_V1_11_2000_PROTOTYPE;
+    if (specific_version_is_indeterminate(c->config.specific_version)) {
+      c->config.specific_version = SPECIFIC_VERSION_DC_11_2000_PROTOTYPE;
+    }
     c->log.info("Game version changed to DC_V1_11_2000_PROTOTYPE (will be changed to V1 if 92 is received)");
   } else {
     on_login_complete(c);
@@ -3006,16 +3027,16 @@ static void on_61_98(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
         const auto* cmd3 = &check_size_t<C_CharacterData_Ep3_61_98>(data);
         c->ep3_config = make_shared<Episode3::PlayerConfig>(cmd3->ep3_config);
         cmd = reinterpret_cast<const C_CharacterData_V3_61_98*>(cmd3);
-        if (c->config.specific_version == 0x00000000) {
-          c->config.specific_version = 0x33534A30; // 3SJ0
+        if (specific_version_is_indeterminate(c->config.specific_version)) {
+          c->config.specific_version = SPECIFIC_VERSION_GC_EP3_JP; // 3SJ0
         }
       } else {
         if (is_ep3(c->version())) {
           c->channel.version = Version::GC_EP3_NTE;
           c->log.info("Game version changed to GC_EP3_NTE");
           c->config.clear_flag(Client::Flag::ENCRYPTED_SEND_FUNCTION_CALL);
-          if (c->config.specific_version == default_specific_version_for_version(Version::GC_EP3, -1)) {
-            c->config.specific_version = 0x33534A54; // 3SJT
+          if (specific_version_is_indeterminate(c->config.specific_version)) {
+            c->config.specific_version = SPECIFIC_VERSION_GC_EP3_NTE;
           }
           c->convert_account_to_temporary_if_nte();
         }

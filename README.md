@@ -365,23 +365,51 @@ Like quests, Episode 3 card definitions, maps, and quests are cached in memory. 
 
 ## Memory patches, client functions, and DOL files
 
-Everything in this section requires resource_dasm to be installed, so newserv can use the assemblers and disassemblers from its libresource_file library. If resource_dasm is not installed, newserv will still build and run, but these features will not be available.
+*Everything in this section requires resource_dasm to be installed, so newserv can use the assemblers and disassemblers from its libresource_file library. If resource_dasm is not installed, newserv will still build and run, but these features will not be available.*
 
-In addition, these features are only supported for the following game versions:
-* PSO GameCube Episodes 1&2 Trial Edition
-* PSO GameCube Episodes 1&2 JP, USA, and EU but not Plus
-* PSO GameCube Episodes 1&2 Plus JP v1.4 but not v1.5
-* PSO GameCube Episode 3 Trial Edition
-* PSO GameCube Episode 3 JP
-* PSO GameCube Episode 3 USA (experimental; must be manually enabled in config.json)
-* PSO Xbox (all versions)
-* PSO BB
+You can put assembly files in the system/client-functions directory with filenames like PatchName.VERS.patch.s and they will appear in the Patches menu for clients that support client functions. Client functions are written in SH-4, PowerPC, or x86 assembly and are compiled when newserv is started. The assembly system's features are documented in the comments in system/client-functions/System/WriteMemory.ppc.s.
 
+The VERS token in client function filenames refers to the specific version of the game that the client function applies to. Some versions do not support receiving client functions at all. The specific versions are:
+
+| Game              | VERS | Supported |
+|-------------------|------|-----------|
+| PSO DC NTE        | 1OJ1 | No        |
+| PSO DC 11/2000    | 1OJ2 | No        |
+| PSO DC 12/2000    | 1OJ3 | No        |
+| PSO DC 01/2001    | 1OJ4 | No        |
+| PSO DC v1 JP      | 1OJF | No        |
+| PSO DC v1 US      | 1OEF | No        |
+| PSO DC v1 EU      | 1OPF | No        |
+| PSO DC 08/2001    | 2OJ5 | Yes       |
+| PSO DC v2 JP      | 2OJF | Yes       |
+| PSO DC v2 US      | 2OEF | Yes       |
+| PSO DC v2 EU      | 2OPF | Yes       |
+| PSO PC (v2)       | 2OJW | No        |
+| PSO GC NTE        | 3OJT | Yes       |
+| PSO GC v1.2 JP    | 3OJ2 | Yes       |
+| PSO GC v1.3 JP    | 3OJ3 | Yes       |
+| PSO GC v1.4 JP    | 3OJ4 | Yes       |
+| PSO GC v1.5 JP    | 3OJ5 | No        |
+| PSO GC v1.0 US    | 3OE0 | Yes       |
+| PSO GC v1.1 US    | 3OE1 | Yes       |
+| PSO GC v1.2 US    | 3OE2 | No        |
+| PSO GC v1.0 EU    | 3OP0 | Yes       |
+| PSO GC Ep3 NTE    | 3SJT | Yes       |
+| PSO GC Ep3 JP     | 3SJ0 | Yes       |
+| PSO GC Ep3 US     | 3SE0 | No        |
+| PSO GC Ep3 EU     | 3SP0 | No        |
+| PSO Xbox Beta     | 4OJB | Yes       |
+| PSO Xbox JP Disc  | 4OJD | Yes       |
+| PSO Xbox JP TU    | 4OJU | Yes       |
+| PSO Xbox US Disc  | 4OED | Yes       |
+| PSO Xbox US TU    | 4OEU | Yes       |
+| PSO Xbox EU Disc  | 4OPD | Yes       |
+| PSO Xbox EU TU    | 4OPU | Yes       |
+| PSO BB JP 1.25.13 | 51OC | Yes       |
+| PSO BB Tethealla  | 51OC | Yes       |
 *Note: newserv uses the shorter GameCube versioning convention, where discs labeled DOL-XXXX-0-0Y are version 1.Y. The PSO community seems to use the convention 1.0Y in some places instead, but these are the same version. For example, the version that newserv calls v1.4 is the same as v1.04, and is labeled DOL-GPOJ-0-04 on the underside of the disc.*
 
-You can put memory patches in the system/client-functions directory with filenames like PatchName.patch.s and they will appear in the Patches menu for PSO GC, XB, and BB clients that support patching. Memory patches are written in PowerPC or x86 assembly and are compiled when newserv is started. The assembly system's features are documented in the comments in system/client-functions/WriteMemory.ppc.s.
-
-newserv comes with a set of patches for GC Episodes 1&2 based on AR codes originally made by Ralf at GC-Forever and Aleron Ives. Many of them were originally posted in [this thread](https://www.gc-forever.com/forums/viewtopic.php?f=38&t=2050).
+newserv comes with a set of patches for some of the above versions, based on AR codes originally made by Ralf at GC-Forever and Aleron Ives. Many of them were originally posted in [this thread](https://www.gc-forever.com/forums/viewtopic.php?f=38&t=2050).
 
 You can also put DOL files in the system/dol directory, and they will appear in the Programs menu for GC clients. Selecting a DOL file there will load the file into the GameCube's memory and run it, just like the old homebrew loaders (PSUL and PSOload) did. For this to work, ReadMemoryWord.ppc.s, WriteMemory.ppc.s, and RunDOL.ppc.s must be present in the system/client-functions directory. This has been tested on Dolphin but not on a real GameCube, so results may vary.
 

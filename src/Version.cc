@@ -207,54 +207,71 @@ uint32_t default_specific_version_for_version(Version version, int64_t sub_versi
   // VersionDetectDC, VersionDetectGC, or VersionDetectXB call.
   switch (version) {
     case Version::DC_NTE:
-      return 0x314F4A31;
+      return SPECIFIC_VERSION_DC_NTE;
     case Version::DC_V1_11_2000_PROTOTYPE:
-      return 0x314F4A32;
+      return SPECIFIC_VERSION_DC_11_2000_PROTOTYPE;
     case Version::DC_V1:
-      return 0x00000000; // Need to send VersionDetectDC (but can't on V1; rip)
+      return SPECIFIC_VERSION_DC_V1_INDETERMINATE; // Need to send VersionDetectDC (but can't on V1; rip)
+    case Version::DC_V2:
+      return SPECIFIC_VERSION_DC_V2_INDETERMINATE; // Need to send VersionDetectDC
+    case Version::PC_V2:
+      return SPECIFIC_VERSION_PC_V2;
     case Version::GC_NTE:
-      return 0x334F4A54; // 3OJT
+      return SPECIFIC_VERSION_GC_NTE; // 3OJT
     case Version::GC_V3:
       switch (sub_version) {
         case 0x32: // GC Ep1&2 EU 50Hz
         case 0x33: // GC Ep1&2 EU 60Hz
-          return 0x334F5030; // 3OP0
+          return SPECIFIC_VERSION_GC_V3_EU; // 3OP0
         case 0x36: // GC Ep1&2 US v1.2 (Plus)
-          return 0x334F4532; // 3OE2
-        case 0x39: // GC Ep1&2 JP v1.5 (Plus)
-          return 0x334F4A35; // 3OJ5
+          return SPECIFIC_VERSION_GC_V3_US_12; // 3OE2
         case 0x34: // GC Ep1&2 JP v1.3
-          return 0x334F4A33; // 3OJ3
+          return SPECIFIC_VERSION_GC_V3_JP_13; // 3OJ3
         case 0x35: // GC Ep1&2 JP v1.4 (Plus)
-          return 0x334F4A34; // 3OJ4
+          return SPECIFIC_VERSION_GC_V3_JP_14; // 3OJ4
+        case 0x39: // GC Ep1&2 JP v1.5 (Plus)
+          return SPECIFIC_VERSION_GC_V3_JP_15; // 3OJ5
         case -1: // Initial check (before sub_version recognition)
         case 0x30: // GC Ep1&2 GameJam demo, GC Ep1&2 Trial Edition, GC Ep1&2 JP v1.2, at least one version of PSO XB
         case 0x31: // GC Ep1&2 US v1.0, GC US v1.1, XB US
         default:
-          return 0x00000000; // Need to send VersionDetectGC
+          return SPECIFIC_VERSION_GC_V3_INDETERMINATE; // Need to send VersionDetectGC
       }
       throw logic_error("this should be impossible");
     case Version::GC_EP3_NTE:
-      return 0x33534A54; // 3SJT
+      return SPECIFIC_VERSION_GC_EP3_NTE; // 3SJT
     case Version::GC_EP3:
       switch (sub_version) {
         case 0x41: // GC Ep3 US
-          return 0x33534530; // 3SE0
+          return SPECIFIC_VERSION_GC_EP3_US; // 3SE0
         case 0x42: // GC Ep3 EU 50Hz
         case 0x43: // GC Ep3 EU 60Hz
-          return 0x33535030; // 3SP0
+          return SPECIFIC_VERSION_GC_EP3_EU; // 3SP0
         case -1: // Initial check (before sub_version recognition)
         case 0x40: // GC Ep3 trial and GC Ep3 JP
         default:
-          return 0x00000000; // Need to send VersionDetectGC
+          return SPECIFIC_VERSION_GC_EP3_INDETERMINATE; // Need to send VersionDetectGC
       }
     case Version::XB_V3:
-      return 0x344F0000;
+      return SPECIFIC_VERSION_XB_V3_INDETERMINATE;
     case Version::BB_V4:
-      return 0x354F3030;
+      return SPECIFIC_VERSION_BB_V4_INDETERMINATE;
     default:
-      return 0x00000000;
+      return SPECIFIC_VERSION_INDETERMINATE;
   }
+}
+
+bool specific_version_is_indeterminate(uint32_t specific_version) {
+  return ((specific_version & 0x000000FF) == 0);
+}
+
+bool specific_version_is_dc(uint32_t specific_version) {
+  // All v1 and v2 specific_versions are DC except 324F4A57 (2OJW), which is PC
+  uint8_t major_version = specific_version >> 24;
+  if (major_version < 0x31 || major_version > 0x32) {
+    return false;
+  }
+  return (specific_version != 0x324F4A57);
 }
 
 bool specific_version_is_gc(uint32_t specific_version) {

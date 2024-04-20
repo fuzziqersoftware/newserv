@@ -140,7 +140,30 @@ inline bool uses_utf16(Version version) {
       (version == Version::BB_V4);
 }
 
+constexpr uint32_t SPECIFIC_VERSION_DC_NTE = 0x314F4A31; // 1OJ1
+constexpr uint32_t SPECIFIC_VERSION_DC_11_2000_PROTOTYPE = 0x314F4A32; // 1OJ2
+constexpr uint32_t SPECIFIC_VERSION_DC_V1_INDETERMINATE = 0x31000000; // 1___
+constexpr uint32_t SPECIFIC_VERSION_DC_V2_INDETERMINATE = 0x32000000; // 2___
+constexpr uint32_t SPECIFIC_VERSION_PC_V2 = 0x324F4A57; // 2OJW
+constexpr uint32_t SPECIFIC_VERSION_GC_NTE = 0x334F4A54; // 3OJT
+constexpr uint32_t SPECIFIC_VERSION_GC_V3_EU = 0x334F5030; // 3OP0
+constexpr uint32_t SPECIFIC_VERSION_GC_V3_US_12 = 0x334F4532; // 3OE2
+constexpr uint32_t SPECIFIC_VERSION_GC_V3_JP_13 = 0x334F4A33; // 3OJ3
+constexpr uint32_t SPECIFIC_VERSION_GC_V3_JP_14 = 0x334F4A34; // 3OJ4
+constexpr uint32_t SPECIFIC_VERSION_GC_V3_JP_15 = 0x334F4A35; // 3OJ5
+constexpr uint32_t SPECIFIC_VERSION_GC_V3_INDETERMINATE = 0x334F0000; // 3O__
+constexpr uint32_t SPECIFIC_VERSION_GC_EP3_INDETERMINATE = 0x33534A00; // 3SJ_
+constexpr uint32_t SPECIFIC_VERSION_GC_EP3_NTE = 0x33534A54; // 3SJT
+constexpr uint32_t SPECIFIC_VERSION_GC_EP3_JP = 0x33534A30; // 3SJ0
+constexpr uint32_t SPECIFIC_VERSION_GC_EP3_US = 0x33534530; // 3SE0
+constexpr uint32_t SPECIFIC_VERSION_GC_EP3_EU = 0x33535030; // 3SP0
+constexpr uint32_t SPECIFIC_VERSION_XB_V3_INDETERMINATE = 0x344F0000; // 4O__
+constexpr uint32_t SPECIFIC_VERSION_BB_V4_INDETERMINATE = 0x35000000; // 5___
+constexpr uint32_t SPECIFIC_VERSION_INDETERMINATE = 0x00000000; // ____
+
 uint32_t default_specific_version_for_version(Version version, int64_t sub_version);
+bool specific_version_is_indeterminate(uint32_t specific_version);
+bool specific_version_is_dc(uint32_t specific_version);
 bool specific_version_is_gc(uint32_t specific_version);
 bool specific_version_is_xb(uint32_t specific_version);
 bool specific_version_is_bb(uint32_t specific_version);

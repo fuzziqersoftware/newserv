@@ -120,12 +120,14 @@ bool CompiledFunctionCode::is_big_endian() const {
 
 shared_ptr<CompiledFunctionCode> compile_function_code(
     CompiledFunctionCode::Architecture arch,
-    const string& directory,
+    const string& function_directory,
+    const string& system_directory,
     const string& name,
     const string& text) {
 #ifndef HAVE_RESOURCE_FILE
   (void)arch;
-  (void)directory;
+  (void)function_directory;
+  (void)system_directory;
   (void)name;
   (void)text;
   throw runtime_error("function compiler is not available");
@@ -154,7 +156,11 @@ shared_ptr<CompiledFunctionCode> compile_function_code(
         throw runtime_error("unknown architecture");
     }
 
-    string asm_filename = string_printf("%s/%s.%s.inc.s", directory.c_str(), name.c_str(), arch_name_token);
+    // Look in the function directory first, then the system directory
+    string asm_filename = string_printf("%s/%s.%s.inc.s", function_directory.c_str(), name.c_str(), arch_name_token);
+    if (!isfile(asm_filename)) {
+      asm_filename = string_printf("%s/%s.%s.inc.s", system_directory.c_str(), name.c_str(), arch_name_token);
+    }
     if (isfile(asm_filename)) {
       if (!get_include_stack.emplace(name).second) {
         throw runtime_error("mutual recursion between includes: " + name);
@@ -176,7 +182,12 @@ shared_ptr<CompiledFunctionCode> compile_function_code(
       get_include_stack.erase(name);
       return ret.code;
     }
-    string bin_filename = directory + "/" + name + ".inc.bin";
+
+    string bin_filename = function_directory + "/" + name + ".inc.bin";
+    if (isfile(bin_filename)) {
+      return load_file(bin_filename);
+    }
+    bin_filename = system_directory + "/" + name + ".inc.bin";
     if (isfile(bin_filename)) {
       return load_file(bin_filename);
     }
@@ -245,83 +256,95 @@ FunctionCodeIndex::FunctionCodeIndex(const string& directory) {
     return;
   }
 
-  uint32_t next_menu_item_id = 0;
-  for (const auto& filename : list_directory_sorted(directory)) {
-    try {
-      if (!ends_with(filename, ".s")) {
-        continue;
-      }
+  string system_dir_path = ends_with(directory, "/") ? (directory + "System") : (directory + "/System");
 
-      string name = filename.substr(0, filename.size() - 2);
-      if (ends_with(name, ".inc")) {
-        continue;
-      }
+  uint32_t next_menu_item_id = 1;
+  for (const auto& subdir_name : list_directory_sorted(directory)) {
+    string subdir_path = ends_with(directory, "/") ? (directory + subdir_name) : (directory + "/" + subdir_name);
+    if (!isdir(subdir_path)) {
+      function_compiler_log.warning("Skipping %s (not a directory)", subdir_name.c_str());
+      continue;
+    }
 
-      bool is_patch = ends_with(name, ".patch");
-      if (is_patch) {
-        name.resize(name.size() - 6);
-      }
+    for (const auto& filename : list_directory_sorted(subdir_path)) {
+      try {
+        if (!ends_with(filename, ".s")) {
+          continue;
+        }
 
-      // Figure out the version or specific_version
-      CompiledFunctionCode::Architecture arch = CompiledFunctionCode::Architecture::UNKNOWN;
-      uint32_t specific_version = 0;
-      string short_name = name;
-      if (ends_with(name, ".ppc")) {
-        arch = CompiledFunctionCode::Architecture::POWERPC;
-        name.resize(name.size() - 4);
-        short_name = name;
-      } else if (ends_with(name, ".x86")) {
-        arch = CompiledFunctionCode::Architecture::X86;
-        name.resize(name.size() - 4);
-        short_name = name;
-      } else if (ends_with(name, ".sh4")) {
-        arch = CompiledFunctionCode::Architecture::SH4;
-        name.resize(name.size() - 4);
-        short_name = name;
-      } else if (is_patch && (name.size() >= 5) && (name[name.size() - 5] == '.')) {
-        specific_version = (name[name.size() - 4] << 24) | (name[name.size() - 3] << 16) | (name[name.size() - 2] << 8) | name[name.size() - 1];
-        if (specific_version_is_gc(specific_version)) {
+        string name = filename.substr(0, filename.size() - 2);
+        if (ends_with(name, ".inc")) {
+          continue;
+        }
+
+        bool is_patch = ends_with(name, ".patch");
+        if (is_patch) {
+          name.resize(name.size() - 6);
+        }
+
+        // Figure out the version or specific_version
+        CompiledFunctionCode::Architecture arch = CompiledFunctionCode::Architecture::UNKNOWN;
+        uint32_t specific_version = 0;
+        string short_name = name;
+        if (ends_with(name, ".ppc")) {
           arch = CompiledFunctionCode::Architecture::POWERPC;
-        } else if (specific_version_is_xb(specific_version) || specific_version_is_bb(specific_version)) {
+          name.resize(name.size() - 4);
+          short_name = name;
+        } else if (ends_with(name, ".x86")) {
           arch = CompiledFunctionCode::Architecture::X86;
-        } else {
-          throw runtime_error("unable to determine architecture from specific_version");
+          name.resize(name.size() - 4);
+          short_name = name;
+        } else if (ends_with(name, ".sh4")) {
+          arch = CompiledFunctionCode::Architecture::SH4;
+          name.resize(name.size() - 4);
+          short_name = name;
+        } else if (is_patch && (name.size() >= 5) && (name[name.size() - 5] == '.')) {
+          specific_version = (name[name.size() - 4] << 24) | (name[name.size() - 3] << 16) | (name[name.size() - 2] << 8) | name[name.size() - 1];
+          if (specific_version_is_dc(specific_version)) {
+            arch = CompiledFunctionCode::Architecture::SH4;
+          } else if (specific_version_is_gc(specific_version)) {
+            arch = CompiledFunctionCode::Architecture::POWERPC;
+          } else if (specific_version_is_xb(specific_version) || specific_version_is_bb(specific_version)) {
+            arch = CompiledFunctionCode::Architecture::X86;
+          } else {
+            throw runtime_error("unable to determine architecture from specific_version");
+          }
+          short_name = name.substr(0, name.size() - 5);
         }
-        short_name = name.substr(0, name.size() - 5);
-      }
 
-      if (arch == CompiledFunctionCode::Architecture::UNKNOWN) {
-        throw runtime_error("unable to determine architecture");
-      }
-
-      string path = directory + "/" + filename;
-      string text = load_file(path);
-      auto code = compile_function_code(arch, directory, name, text);
-      if (code->index != 0) {
-        if (!this->index_to_function.emplace(code->index, code).second) {
-          throw runtime_error(string_printf(
-              "duplicate function index: %08" PRIX32, code->index));
+        if (arch == CompiledFunctionCode::Architecture::UNKNOWN) {
+          throw runtime_error("unable to determine architecture");
         }
-      }
-      code->specific_version = specific_version;
-      code->source_path = path;
-      code->short_name = short_name;
-      this->name_to_function.emplace(name, code);
-      if (is_patch) {
-        code->menu_item_id = next_menu_item_id++;
-        this->menu_item_id_and_specific_version_to_patch_function.emplace(
-            static_cast<uint64_t>(code->menu_item_id) << 32 | specific_version, code);
-        this->name_and_specific_version_to_patch_function.emplace(
-            string_printf("%s-%08" PRIX32, short_name.c_str(), specific_version), code);
-      }
 
-      string index_prefix = code->index ? string_printf("%02X => ", code->index) : "";
-      string patch_prefix = is_patch ? string_printf("[%08" PRIX32 "/%08" PRIX32 "] ", code->menu_item_id, code->specific_version) : "";
-      function_compiler_log.info("Compiled function %s%s%s (%s)",
-          index_prefix.c_str(), patch_prefix.c_str(), name.c_str(), name_for_architecture(code->arch));
+        string path = subdir_path + "/" + filename;
+        string text = load_file(path);
+        auto code = compile_function_code(arch, subdir_path, system_dir_path, name, text);
+        if (code->index != 0) {
+          if (!this->index_to_function.emplace(code->index, code).second) {
+            throw runtime_error(string_printf(
+                "duplicate function index: %08" PRIX32, code->index));
+          }
+        }
+        code->specific_version = specific_version;
+        code->source_path = path;
+        code->short_name = short_name;
+        this->name_to_function.emplace(name, code);
+        if (is_patch) {
+          code->menu_item_id = next_menu_item_id++;
+          this->menu_item_id_and_specific_version_to_patch_function.emplace(
+              static_cast<uint64_t>(code->menu_item_id) << 32 | specific_version, code);
+          this->name_and_specific_version_to_patch_function.emplace(
+              string_printf("%s-%08" PRIX32, short_name.c_str(), specific_version), code);
+        }
 
-    } catch (const exception& e) {
-      function_compiler_log.warning("Failed to compile function %s: %s", filename.c_str(), e.what());
+        string index_prefix = code->index ? string_printf("%02X => ", code->index) : "";
+        string patch_prefix = is_patch ? string_printf("[%08" PRIX32 "/%08" PRIX32 "] ", code->menu_item_id, code->specific_version) : "";
+        function_compiler_log.info("Compiled function %s%s%s (%s)",
+            index_prefix.c_str(), patch_prefix.c_str(), name.c_str(), name_for_architecture(code->arch));
+
+      } catch (const exception& e) {
+        function_compiler_log.warning("Failed to compile function %s: %s", filename.c_str(), e.what());
+      }
     }
   }
 }

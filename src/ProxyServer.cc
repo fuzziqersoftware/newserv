@@ -277,6 +277,7 @@ void ProxyServer::UnlinkedSession::on_input(Channel& ch, uint16_t command, uint3
         if (command == 0x8B) {
           ses->channel.version = Version::DC_NTE;
           ses->log.info("Version changed to DC_NTE");
+          ses->config.specific_version = SPECIFIC_VERSION_DC_NTE;
           const auto& cmd = check_size_t<C_Login_DCNTE_8B>(data, sizeof(C_LoginExtended_DCNTE_8B));
           ses->login = s->account_index->from_dc_nte_credentials(cmd.serial_number.decode(), cmd.access_key.decode(), false);
           ses->sub_version = cmd.sub_version;
@@ -286,6 +287,9 @@ void ProxyServer::UnlinkedSession::on_input(Channel& ch, uint16_t command, uint3
         } else if (command == 0x93) { // 11/2000 proto through DC V1
           ses->channel.version = Version::DC_V1;
           ses->log.info("Version changed to DC_V1");
+          if (specific_version_is_indeterminate(ses->config.specific_version)) {
+            ses->config.specific_version = SPECIFIC_VERSION_DC_V1_INDETERMINATE;
+          }
           const auto& cmd = check_size_t<C_LoginV1_DC_93>(data);
           ses->login = s->account_index->from_dc_credentials(
               stoul(cmd.serial_number.decode(), nullptr, 16), cmd.access_key.decode(), cmd.name.decode(), false);
@@ -298,11 +302,15 @@ void ProxyServer::UnlinkedSession::on_input(Channel& ch, uint16_t command, uint3
           if (cmd.sub_version >= 0x30) {
             ses->log.info("Version changed to GC_NTE");
             ses->channel.version = Version::GC_NTE;
+            ses->config.specific_version = SPECIFIC_VERSION_GC_NTE;
             ses->login = s->account_index->from_gc_credentials(
                 stoul(cmd.serial_number.decode(), nullptr, 16), cmd.access_key.decode(), nullptr, cmd.name.decode(), false);
           } else { // DC V2
             ses->log.info("Version changed to DC_V2");
             ses->channel.version = Version::DC_V2;
+            if (specific_version_is_indeterminate(ses->config.specific_version)) {
+              ses->config.specific_version = SPECIFIC_VERSION_DC_V2_INDETERMINATE;
+            }
             ses->login = s->account_index->from_dc_credentials(
                 stoul(cmd.serial_number.decode(), nullptr, 16), cmd.access_key.decode(), cmd.name.decode(), false);
           }
@@ -345,6 +353,9 @@ void ProxyServer::UnlinkedSession::on_input(Channel& ch, uint16_t command, uint3
           if (cmd.sub_version >= 0x40) {
             ses->log.info("Version changed to GC_EP3");
             ses->channel.version = Version::GC_EP3;
+            if (specific_version_is_indeterminate(ses->config.specific_version)) {
+              ses->config.specific_version = SPECIFIC_VERSION_GC_EP3_INDETERMINATE;
+            }
           }
         } else {
           throw runtime_error("command is not 9D or 9E");
