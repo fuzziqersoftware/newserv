@@ -32,3 +32,5 @@ std::string decrypt_dp_address_jpn(
     const std::string& iwashi_sea_data,
     const std::string& katsuo_sea_data);
 EncryptedDCv2Executables encrypt_dp_address_jpn(const std::string& executable, const std::string& indexes);
+
+std::string crypt_dp_address_jpn_simple(const std::string& data, int64_t seed = -1);

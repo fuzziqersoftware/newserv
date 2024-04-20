@@ -757,35 +757,57 @@ Action a_encrypt_save_data("encrypt-save-data", nullptr, a_encrypt_decrypt_save_
 Action a_decrypt_dcv2_executable(
     "decrypt-dcv2-executable", "\
   decrypt-dcv2-executable --executable=EXEC --indexes=INDEXES --values=VALUES\n\
+  decrypt-dcv2-executable --executable=EXEC --simple [--seed=SEED]\n\
     Decrypt a PSO DC v2 executable file. EXEC should be the path to the\n\
     executable (DP_ADDRESS.JPN), INDEXES should be the path to the index fixup\n\
     table (KATSUO.SEA), and VALUES should be the path to the value fixup table\n\
-    (IWASHI.SEA). The output is written to EXEC.dec.\n",
+    (IWASHI.SEA). The output is written to EXEC.dec.\n\
+    If --simple is given, uses the simpler encryption method used in some\n\
+    community modifications of the game. In this case, --seed is not required;\n\
+    if not given, finds the seed automatically, and prints it to stderr so you\n\
+    will be able to use it when re-encrypting.",
     +[](Arguments& args) {
       string executable_filename = args.get<string>("executable", true);
-      string values_filename = args.get<string>("values", true);
-      string indexes_filename = args.get<string>("indexes", true);
       string executable_data = load_file(executable_filename);
-      string values_data = load_file(values_filename);
-      string indexes_data = load_file(indexes_filename);
-      string decrypted = decrypt_dp_address_jpn(executable_data, values_data, indexes_data);
+      string decrypted;
+      if (args.get<bool>("simple")) {
+        string seed_str = args.get<string>("seed");
+        int64_t seed = seed_str.empty() ? -1 : stoull(seed_str, nullptr, 16);
+        decrypted = crypt_dp_address_jpn_simple(executable_data, seed);
+      } else {
+        string values_filename = args.get<string>("values", true);
+        string indexes_filename = args.get<string>("indexes", true);
+        string values_data = load_file(values_filename);
+        string indexes_data = load_file(indexes_filename);
+        decrypted = decrypt_dp_address_jpn(executable_data, values_data, indexes_data);
+      }
       save_file(executable_filename + ".dec", decrypted);
     });
 Action a_encrypt_dcv2_executable(
     "encrypt-dcv2-executable", "\
   decrypt-dcv2-executable --executable=EXEC --indexes=INDEXES\n\
+  decrypt-dcv2-executable --executable=EXEC --simple --seed=SEED\n\
     Encrypt a PSO DC v2 executable file. EXEC should be the path to the\n\
     executable (DP_ADDRESS.JPN) and INDEXES should be the path to the index\n\
     fixup table (KATSUO.SEA). The output is written to EXEC.enc and\n\
-    INDEXES.enc.",
+    INDEXES.enc.\n\
+    If --simple is given, uses the simpler encryption method used in some\n\
+    community modifications of the game. In this case, --seed is required.",
     +[](Arguments& args) {
       string executable_filename = args.get<string>("executable", true);
-      string indexes_filename = args.get<string>("indexes", true);
       string executable_data = load_file(executable_filename);
-      string indexes_data = load_file(indexes_filename);
-      auto encrypted = encrypt_dp_address_jpn(executable_data, indexes_data);
-      save_file(executable_filename + ".enc", encrypted.executable);
-      save_file(indexes_filename + ".enc", encrypted.indexes);
+      string encrypted_executable;
+      if (args.get<bool>("simple")) {
+        int64_t seed = stoull(args.get<string>("seed", true), nullptr, 16);
+        encrypted_executable = crypt_dp_address_jpn_simple(executable_data, seed);
+      } else {
+        string indexes_filename = args.get<string>("indexes", true);
+        string indexes_data = load_file(indexes_filename);
+        auto encrypted = encrypt_dp_address_jpn(executable_data, indexes_data);
+        save_file(indexes_filename + ".enc", encrypted.indexes);
+        encrypted_executable = std::move(encrypted.executable);
+      }
+      save_file(executable_filename + ".enc", encrypted_executable);
     });
 
 Action a_decode_gci_snapshot(

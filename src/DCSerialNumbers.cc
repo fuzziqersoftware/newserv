@@ -1425,3 +1425,35 @@ EncryptedDCv2Executables encrypt_dp_address_jpn(const string& executable, const 
   ret.indexes.at(fixup_steps_offset) = 0;
   return ret;
 }
+
+std::string crypt_dp_address_jpn_simple(const std::string& data, int64_t mask_key) {
+  if (data.size() & 3) {
+    throw runtime_error("size is not a multiple of 4");
+  }
+
+  StringReader r(data);
+  if (mask_key < 0) {
+    unordered_map<uint32_t, size_t> key_freq;
+    while (!r.eof()) {
+      key_freq[r.get_u32l()] += 1;
+    }
+    size_t max_v = 0;
+    for (const auto& it : key_freq) {
+      if (it.second > max_v) {
+        max_v = it.second;
+        mask_key = it.first;
+      }
+    }
+    if (mask_key < 0) {
+      throw runtime_error("cannot determine mask key");
+    }
+    log_info("Determined %08" PRIX64 " to be the most likely mask key", mask_key);
+    r.go(0);
+  }
+
+  StringWriter w;
+  while (!r.eof()) {
+    w.put_u32l(r.get_u32l() ^ mask_key);
+  }
+  return std::move(w.str());
+}
