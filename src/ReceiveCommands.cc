@@ -1550,16 +1550,6 @@ static void on_CA_Ep3(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
   if (!l->ep3_server || l->ep3_server->battle_finished) {
     auto s = c->require_server_state();
 
-    l->create_ep3_server();
-
-    if (s->ep3_behavior_flags & Episode3::BehaviorFlag::ENABLE_STATUS_MESSAGES) {
-      for (size_t z = 0; z < l->max_clients; z++) {
-        if (l->clients[z]) {
-          send_text_message_printf(l->clients[z], "Your client ID: $C6%zu", z);
-        }
-      }
-    }
-
     if (s->ep3_behavior_flags & Episode3::BehaviorFlag::ENABLE_RECORDING) {
       l->battle_record = make_shared<Episode3::BattleRecord>(s->ep3_behavior_flags);
       for (auto existing_c : l->clients) {
@@ -1576,10 +1566,9 @@ static void on_CA_Ep3(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
               c->ep3_config ? (c->ep3_config->online_clv_exp / 100) : 0);
         }
       }
-      if (s->ep3_behavior_flags & Episode3::BehaviorFlag::ENABLE_STATUS_MESSAGES) {
-        send_text_message(l, "$C7Recording enabled");
-      }
     }
+
+    l->create_ep3_server();
   }
 
   bool battle_finished_before = l->ep3_server->battle_finished;

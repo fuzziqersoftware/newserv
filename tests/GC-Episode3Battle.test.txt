@@ -4019,14 +4019,6 @@ I 16332 2023-09-17 10:14:46 - [Commands] Sending to C-2 (Tali) (version=GC comma
 00B0 | 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 |
 00C0 | 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 |
 I 16332 2023-09-17 10:14:46 - [Commands] Sending to C-2 (Tali) (version=GC command=B0 flag=00)
-0000 | B0 00 24 00 00 00 00 00 00 00 00 00 59 6F 75 72 |   $         Your
-0010 | 20 63 6C 69 65 6E 74 20 49 44 3A 20 09 43 36 30 |  client ID:  C60
-0020 | 00 00 00 00                                     |
-I 16332 2023-09-17 10:14:46 - [Commands] Sending to C-2 (Tali) (version=GC command=B0 flag=00)
-0000 | B0 00 24 00 00 00 00 00 00 00 00 00 09 43 37 52 |   $          C7R
-0010 | 65 63 6F 72 64 69 6E 67 20 65 6E 61 62 6C 65 64 | ecording enabled
-0020 | 00 00 00 00                                     |
-I 16332 2023-09-17 10:14:46 - [Commands] Sending to C-2 (Tali) (version=GC command=B0 flag=00)
 0000 | B0 00 24 00 00 00 00 00 00 00 00 00 09 43 35 30 |   $          C50
 0010 | 2F 43 41 78 34 39 20 43 41 52 44 20 43 4F 55 4E | /CAx49 CARD COUN
 0020 | 54 53 00 00                                     | TS
@@ -30419,14 +30411,6 @@ I 16332 2023-09-17 10:22:26 - [Commands] Sending to C-2 (Tali) (version=GC comma
 00A0 | 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 |
 00B0 | 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 |
 00C0 | 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 |
-I 16332 2023-09-17 10:22:26 - [Commands] Sending to C-2 (Tali) (version=GC command=B0 flag=00)
-0000 | B0 00 24 00 00 00 00 00 00 00 00 00 59 6F 75 72 |   $         Your
-0010 | 20 63 6C 69 65 6E 74 20 49 44 3A 20 09 43 36 30 |  client ID:  C60
-0020 | 00 00 00 00                                     |
-I 16332 2023-09-17 10:22:26 - [Commands] Sending to C-2 (Tali) (version=GC command=B0 flag=00)
-0000 | B0 00 24 00 00 00 00 00 00 00 00 00 09 43 37 52 |   $          C7R
-0010 | 65 63 6F 72 64 69 6E 67 20 65 6E 61 62 6C 65 64 | ecording enabled
-0020 | 00 00 00 00                                     |
 I 16332 2023-09-17 10:22:26 - [Commands] Sending to C-2 (Tali) (version=GC command=B0 flag=00)
 0000 | B0 00 24 00 00 00 00 00 00 00 00 00 09 43 35 30 |   $          C50
 0010 | 2F 43 41 78 34 39 20 43 41 52 44 20 43 4F 55 4E | /CAx49 CARD COUN
