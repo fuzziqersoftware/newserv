@@ -76,6 +76,7 @@ public:
   void add_command(Event::Type type, const void* data, size_t size);
   void add_command(Event::Type type, std::string&& data);
   void add_chat_message(uint32_t guild_card_number, std::string&& data);
+  void add_random_data(const void* data, size_t size);
   // This function collapses all the existing player join/leave events into a
   // single SET_INITIAL_PLAYERS event, and deletes all events before the latest
   // BATTLE_COMMAND command that specifies the battle map. This should provide a
@@ -86,7 +87,8 @@ public:
   void print(FILE* stream) const;
 
 private:
-  static constexpr uint64_t SIGNATURE = 0x14C946D56D1DAC50;
+  static constexpr uint64_t SIGNATURE_V1 = 0x14C946D56D1DAC50;
+  static constexpr uint64_t SIGNATURE_V2 = 0xD01E5EC12853C377;
 
   static bool is_map_definition_event(const Event& ev);
 
@@ -96,6 +98,7 @@ private:
   uint64_t battle_start_timestamp;
   uint64_t battle_end_timestamp;
   std::deque<Event> events;
+  std::string random_stream;
 
   friend class BattleRecordPlayer;
 };
@@ -120,6 +123,7 @@ private:
   std::shared_ptr<struct event_base> base;
   std::weak_ptr<Lobby> lobby;
   std::shared_ptr<struct event> next_command_ev;
+  StringReader random_r;
 };
 
 } // namespace Episode3

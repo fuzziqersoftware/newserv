@@ -49,7 +49,7 @@ void PlayerState::init() {
     throw logic_error("replacing a player state object is not permitted");
   }
 
-  this->deck_state = make_shared<DeckState>(this->client_id, s->deck_entries[client_id]->card_ids, s->options.opt_rand_crypt);
+  this->deck_state = make_shared<DeckState>(this->client_id, s->deck_entries[client_id]->card_ids, s);
   if (s->map_and_rules->rules.disable_deck_shuffle) {
     this->deck_state->disable_shuffle();
   }

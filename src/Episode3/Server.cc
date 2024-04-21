@@ -4,6 +4,7 @@
 #include <phosg/Time.hh>
 
 #include "../Loggers.hh"
+#include "../Revision.hh"
 #include "../SendCommands.hh"
 
 using namespace std;
@@ -29,6 +30,7 @@ void Server::PresenceEntry::clear() {
 
 Server::Server(shared_ptr<Lobby> lobby, Options&& options)
     : lobby(lobby),
+      battle_record(lobby->battle_record),
       has_lobby(lobby != nullptr),
       options(std::move(options)),
       last_chosen_map(this->options.tournament ? this->options.tournament->get_map() : nullptr),
@@ -99,10 +101,10 @@ void Server::init() {
   this->card_special = make_shared<CardSpecial>(this->shared_from_this());
 
   // Note: The original implementation calls the default PSOV2Encryption
-  // constructor for opt_rand_crypt, which just uses 0 as the seed. It then
+  // constructor for random_crypt, which just uses 0 as the seed. It then
   // re-seeds the generator later. We instead expect the caller to provide a
   // seeded generator, and we don't re-seed it at all.
-  // this->opt_rand_crypt = make_shared<PSOV2Encryption>(0);
+  // this->random_crypt = make_shared<PSOV2Encryption>(0);
 
   this->state_flags = make_shared<StateFlags>();
 
@@ -252,8 +254,8 @@ void Server::send(const void* data, size_t size, uint8_t command, bool enable_ma
     for (auto watcher_l : l->watcher_lobbies) {
       send_command_if_not_loading(watcher_l, command, 0x00, data, size);
     }
-    if (l->battle_record && l->battle_record->writable()) {
-      l->battle_record->add_command(BattleRecord::Event::Type::BATTLE_COMMAND, data, size);
+    if (this->battle_record && this->battle_record->writable()) {
+      this->battle_record->add_command(BattleRecord::Event::Type::BATTLE_COMMAND, data, size);
     }
 
   } else if ((this->options.behavior_flags & BehaviorFlag::LOG_COMMANDS_IF_LOBBY_MISSING) &&
@@ -271,19 +273,8 @@ void Server::send_6xB4x46() const {
   G_ServerVersionStrings_Ep3_6xB4x46 cmd;
   cmd.version_signature.encode(this->options.is_nte() ? VERSION_SIGNATURE_NTE : VERSION_SIGNATURE, 1);
   cmd.date_str1.encode(format_time(this->options.card_index->definitions_mtime() * 1000000), 1);
-  string date_str2;
-  if (this->options.opt_rand_crypt) {
-    date_str2 = string_printf(
-        "Random:%08" PRIX32 "+%08" PRIX32,
-        this->options.opt_rand_crypt->seed(),
-        this->options.opt_rand_crypt->absolute_offset());
-  } else {
-    date_str2 = "Random:<SYS>";
-  }
-  if (this->last_chosen_map) {
-    date_str2 += string_printf(" Map:%08" PRIX32, this->last_chosen_map->map_number);
-  }
-  cmd.date_str2.encode(date_str2, 1);
+  string build_date = format_time(BUILD_TIMESTAMP);
+  cmd.date_str2.encode(string_printf("newserv %s compiled at %s", GIT_REVISION_HASH, build_date.c_str()), 1);
   this->send(cmd);
 }
 
@@ -1083,16 +1074,24 @@ shared_ptr<const PlayerState> Server::get_player_state(uint8_t client_id) const 
   return this->player_states[client_id];
 }
 
+uint32_t Server::get_random_raw() {
+  le_uint32_t ret = random_from_optional_crypt(this->options.opt_rand_crypt);
+  if (this->battle_record && this->battle_record->writable()) {
+    this->battle_record->add_random_data(&ret, sizeof(ret));
+  }
+  return ret;
+}
+
 uint32_t Server::get_random(uint32_t max) {
   // The original implementation was essentially:
-  // return (static_cast<double>(this->opt_rand_crypt->next() >> 16) / 65536.0) * max
+  // return (static_cast<double>(this->random_source->next() >> 16) / 65536.0) * max
   // This is unnecessarily complicated and imprecise, so we instead just do:
-  return random_from_optional_crypt(this->options.opt_rand_crypt) % max;
+  return this->get_random_raw() % max;
 }
 
 float Server::get_random_float_0_1() {
   // This lacks some precision, but matches the original implementation.
-  return (static_cast<double>(random_from_optional_crypt(this->options.opt_rand_crypt) >> 16) / 65536.0);
+  return (static_cast<double>(this->get_random_raw() >> 16) / 65536.0);
 }
 
 uint32_t Server::get_round_num() const {
@@ -1549,8 +1548,8 @@ void Server::setup_and_start_battle() {
 
   this->setup_phase = SetupPhase::STARTER_ROLLS;
 
-  // Note: This is where original implementation re-seeds opt_rand_crypt (it
-  // uses time() as the seed value).
+  // Note: This is where original implementation re-seeds its random generator
+  // (it uses time() as the seed value).
 
   for (size_t z = 0; z < 4; z++) {
     if (!this->check_presence_entry(z)) {
@@ -1840,9 +1839,8 @@ void Server::on_server_data_input(shared_ptr<Client> sender_c, const string& dat
     throw runtime_error("unknown CAx subsubcommand");
   }
 
-  auto l = this->lobby.lock();
-  if (l && l->battle_record && l->battle_record->writable()) {
-    l->battle_record->add_command(BattleRecord::Event::Type::SERVER_DATA_COMMAND, data.data(), data.size());
+  if (this->battle_record && this->battle_record->writable()) {
+    this->battle_record->add_command(BattleRecord::Event::Type::SERVER_DATA_COMMAND, data.data(), data.size());
   }
 
   if ((sender_c && (sender_c->version() == Version::GC_EP3_NTE)) || !header.mask_key) {
@@ -2356,11 +2354,12 @@ void Server::handle_CAx1D_start_battle(shared_ptr<Client>, const string& data) {
     }
 
     if (should_start) {
+      if (this->battle_record && this->battle_record->writable()) {
+        this->battle_record->set_battle_start_timestamp();
+      }
+
       auto l = this->lobby.lock();
       if (l) {
-        if (l->battle_record) {
-          l->battle_record->set_battle_start_timestamp();
-        }
         // Note: Sega's implementation doesn't set EX results values here; they
         // did it at game join time instead. We do it here for code simplicity.
         if ((l->base_version != Version::GC_EP3_NTE) && l->ep3_ex_result_values) {
@@ -2617,13 +2616,13 @@ void Server::send_6xB6x41_to_all_clients() const {
       }
     }
 
-    if (l->battle_record && l->battle_record->writable()) {
+    if (this->battle_record && this->battle_record->writable()) {
       // TODO: It's not great that we just pick the first one; ideally we'd put
       // all of them in the recording and send the appropriate one to the client
       // in the playback lobby
       for (string& data : map_commands_by_language) {
         if (!data.empty()) {
-          l->battle_record->add_command(
+          this->battle_record->add_command(
               BattleRecord::Event::Type::BATTLE_COMMAND, std::move(data));
           break;
         }

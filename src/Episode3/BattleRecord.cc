@@ -121,7 +121,7 @@ void BattleRecord::Event::print(FILE* stream) const {
       print_data(stream, this->data);
       break;
     default:
-      throw runtime_error("unknown event type in batlte record");
+      throw runtime_error("unknown event type in battle record");
   }
 }
 
@@ -137,14 +137,23 @@ BattleRecord::BattleRecord(const string& data)
       battle_start_timestamp(0),
       battle_end_timestamp(0) {
   StringReader r(data);
+
   uint64_t signature = r.get_u64l();
-  if (signature != this->SIGNATURE) {
+  bool has_random_stream;
+  if (signature == this->SIGNATURE_V1) {
+    has_random_stream = false;
+  } else if (signature == this->SIGNATURE_V2) {
+    has_random_stream = true;
+  } else {
     throw runtime_error("incorrect battle record signature");
   }
 
   this->battle_start_timestamp = r.get_u64l();
   this->battle_end_timestamp = r.get_u64l();
   this->behavior_flags = r.get_u32l();
+  if (has_random_stream) {
+    this->random_stream = r.read(r.get_u32l());
+  }
   while (!r.eof()) {
     this->events.emplace_back(r);
   }
@@ -152,10 +161,12 @@ BattleRecord::BattleRecord(const string& data)
 
 string BattleRecord::serialize() const {
   StringWriter w;
-  w.put_u64l(this->SIGNATURE);
+  w.put_u64l(this->SIGNATURE_V2);
   w.put_u64l(this->battle_start_timestamp);
   w.put_u64l(this->battle_end_timestamp);
   w.put_u32l(this->behavior_flags);
+  w.put_u32l(this->random_stream.size());
+  w.write(this->random_stream);
   for (const auto& ev : this->events) {
     ev.serialize(w);
   }
@@ -240,6 +251,10 @@ void BattleRecord::add_chat_message(
   ev.data = std::move(data);
 }
 
+void BattleRecord::add_random_data(const void* data, size_t size) {
+  this->random_stream.append(reinterpret_cast<const char*>(data), size);
+}
+
 bool BattleRecord::is_map_definition_event(const Event& ev) {
   if (ev.type == Event::Type::BATTLE_COMMAND) {
     auto& header = check_size_t<G_CardBattleCommandHeader>(ev.data, 0xFFFF);
@@ -321,6 +336,9 @@ void BattleRecord::set_battle_start_timestamp() {
     }
   }
   this->events = std::move(new_events);
+
+  // Clear any existing random data (there shouldn't be any)
+  this->random_stream.clear();
 }
 
 void BattleRecord::set_battle_end_timestamp() {

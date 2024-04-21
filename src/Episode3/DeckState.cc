@@ -1,5 +1,7 @@
 #include "DeckState.hh"
 
+#include "Server.hh"
+
 using namespace std;
 
 namespace Episode3 {
@@ -203,12 +205,17 @@ void DeckState::do_mulligan(bool is_nte) {
       this->card_refs[index + 5] = temp_ref;
     }
 
+    auto s = this->server.lock();
+    if (!s) {
+      throw runtime_error("server is missing");
+    }
+
     // Shuffle the deck, except the first 5 cards (which are about to be drawn).
     size_t max = this->num_drawable_cards() - 5;
     uint8_t base_index = this->draw_index + 5;
     for (size_t z = 0; z < this->card_refs.size(); z++) {
-      uint8_t index1 = random_from_optional_crypt(this->opt_rand_crypt) % max;
-      uint8_t index2 = random_from_optional_crypt(this->opt_rand_crypt) % max;
+      uint8_t index1 = s->get_random(max);
+      uint8_t index2 = s->get_random(max);
       uint16_t temp_ref = this->card_refs[base_index + index1];
       this->card_refs[base_index + index1] = this->card_refs[base_index + index2];
       this->card_refs[base_index + index2] = temp_ref;
@@ -260,6 +267,11 @@ void DeckState::set_card_discarded(uint16_t card_ref) {
 
 void DeckState::shuffle() {
   if (this->shuffle_enabled) {
+    auto s = this->server.lock();
+    if (!s) {
+      throw runtime_error("server is missing");
+    }
+
     size_t max = this->num_drawable_cards();
     for (size_t z = 0; z < this->card_refs.size(); z++) {
       // Note: This is the way Sega originally implemented shuffling - they just
@@ -267,8 +279,8 @@ void DeckState::shuffle() {
       // instead swap each item with another random item (possibly itself) that
       // doesn't appear earlier than it in the array, but this is not what Sega
       // did.
-      uint8_t index1 = this->draw_index + random_from_optional_crypt(this->opt_rand_crypt) % max;
-      uint8_t index2 = this->draw_index + random_from_optional_crypt(this->opt_rand_crypt) % max;
+      uint8_t index1 = this->draw_index + s->get_random(max);
+      uint8_t index2 = this->draw_index + s->get_random(max);
       uint16_t temp_ref = this->card_refs[index1];
       this->card_refs[index1] = this->card_refs[index2];
       this->card_refs[index2] = temp_ref;

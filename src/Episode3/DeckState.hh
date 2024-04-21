@@ -10,6 +10,8 @@
 
 namespace Episode3 {
 
+class Server;
+
 struct NameEntry {
   /* 00 */ pstring<TextEncoding::MARKED, 0x10> name;
   /* 10 */ uint8_t client_id;
@@ -57,13 +59,13 @@ public:
   DeckState(
       uint8_t client_id,
       const parray<CardIDT, 0x1F>& card_ids,
-      std::shared_ptr<PSOLFGEncryption> opt_rand_crypt)
-      : client_id(client_id),
+      std::shared_ptr<Server> server)
+      : server(server),
+        client_id(client_id),
         draw_index(1),
         card_ref_base(this->client_id << 8),
         shuffle_enabled(true),
-        loop_enabled(true),
-        opt_rand_crypt(opt_rand_crypt) {
+        loop_enabled(true) {
     for (size_t z = 0; z < card_ids.size(); z++) {
       auto& e = this->entries[z];
       e.card_id = card_ids[z];
@@ -99,6 +101,8 @@ public:
   void print(FILE* stream, std::shared_ptr<const CardIndex> card_index = nullptr) const;
 
 private:
+  std::weak_ptr<Server> server;
+
   struct CardEntry {
     uint16_t card_id;
     uint8_t deck_index;
@@ -111,8 +115,6 @@ private:
   bool loop_enabled;
   parray<CardEntry, 31> entries;
   parray<uint16_t, 31> card_refs;
-
-  std::shared_ptr<PSOLFGEncryption> opt_rand_crypt;
 };
 
 } // namespace Episode3

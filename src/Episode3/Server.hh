@@ -9,6 +9,7 @@
 #include "../CommandFormats.hh"
 #include "../Text.hh"
 #include "AssistServer.hh"
+#include "BattleRecord.hh"
 #include "CardSpecial.hh"
 #include "MapState.hh"
 #include "PlayerState.hh"
@@ -191,6 +192,7 @@ public:
   uint8_t get_current_team_turn() const;
   std::shared_ptr<PlayerState> get_player_state(uint8_t client_id);
   std::shared_ptr<const PlayerState> get_player_state(uint8_t client_id) const;
+  uint32_t get_random_raw();
   uint32_t get_random(uint32_t max);
   float get_random_float_0_1();
   uint32_t get_round_num() const;
@@ -273,6 +275,7 @@ private:
 public:
   // These fields are not part of the original implementation
   std::weak_ptr<Lobby> lobby;
+  std::shared_ptr<BattleRecord> battle_record;
   bool has_lobby;
   Options options;
   std::shared_ptr<const MapIndex::Map> last_chosen_map;

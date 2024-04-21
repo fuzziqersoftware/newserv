@@ -3859,8 +3859,10 @@ void CardSpecial::check_for_defense_interference(
     shared_ptr<const Card> attacker_card,
     shared_ptr<Card> target_card,
     int16_t* inout_unknown_p4) {
+  auto s = this->server();
+
   // Note: This check is not part of the original implementation.
-  if (this->server()->options.behavior_flags & BehaviorFlag::DISABLE_INTERFERENCE) {
+  if (s->options.behavior_flags & BehaviorFlag::DISABLE_INTERFERENCE) {
     return;
   }
 
@@ -3871,13 +3873,13 @@ void CardSpecial::check_for_defense_interference(
     return;
   }
 
-  uint16_t ally_sc_card_ref = this->server()->ruler_server->get_ally_sc_card_ref(
+  uint16_t ally_sc_card_ref = s->ruler_server->get_ally_sc_card_ref(
       target_card->get_card_ref());
   if (ally_sc_card_ref == 0xFFFF) {
     return;
   }
 
-  auto ally_sc = this->server()->card_for_set_card_ref(ally_sc_card_ref);
+  auto ally_sc = s->card_for_set_card_ref(ally_sc_card_ref);
   if (!ally_sc || (ally_sc->card_flags & 2)) {
     return;
   }
@@ -3892,17 +3894,17 @@ void CardSpecial::check_for_defense_interference(
     return;
   }
 
-  auto ally_hes = this->server()->ruler_server->get_hand_and_equip_state_for_client_id(target_ally_client_id);
-  if (!ally_hes || (!(this->server()->options.behavior_flags & BehaviorFlag::ALLOW_NON_COM_INTERFERENCE) && !ally_hes->is_cpu_player)) {
+  auto ally_hes = s->ruler_server->get_hand_and_equip_state_for_client_id(target_ally_client_id);
+  if (!ally_hes || (!(s->options.behavior_flags & BehaviorFlag::ALLOW_NON_COM_INTERFERENCE) && !ally_hes->is_cpu_player)) {
     return;
   }
 
-  uint16_t target_card_id = this->server()->card_id_for_card_ref(target_card->get_card_ref());
+  uint16_t target_card_id = s->card_id_for_card_ref(target_card->get_card_ref());
   if (target_card_id == 0xFFFF) {
     return;
   }
 
-  uint16_t ally_sc_card_id = this->server()->card_id_for_card_ref(ally_sc_card_ref);
+  uint16_t ally_sc_card_id = s->card_id_for_card_ref(ally_sc_card_ref);
   if (ally_sc_card_id == 0xFFFF) {
     return;
   }
@@ -3916,7 +3918,7 @@ void CardSpecial::check_for_defense_interference(
   }
   auto entry = get_interference_probability_entry(
       target_card_id, ally_sc_card_id, false);
-  if (!entry || (this->server()->get_random(99) >= entry->defense_probability)) {
+  if (!entry || (s->get_random(99) >= entry->defense_probability)) {
     return;
   }
 
@@ -3928,7 +3930,7 @@ void CardSpecial::check_for_defense_interference(
   cmd.effect.target_card_ref = target_card->get_card_ref();
   cmd.effect.value = 0;
   cmd.effect.operation = 0x7D;
-  this->server()->send(cmd);
+  s->send(cmd);
   if (inout_unknown_p4) {
     *inout_unknown_p4 = 0;
     target_card->action_metadata.set_flags(0x10);
