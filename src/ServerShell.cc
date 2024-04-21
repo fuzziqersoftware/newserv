@@ -399,10 +399,13 @@ CommandDefinition c_update_account(
     "update-account", "update-account ACCOUNT-ID PARAMETERS...\n\
     Update an existing license. ACCOUNT-ID (8 hex digits) specifies which\n\
     account to update. The options are similar to the add-account command:\n\
-      flags=FLAGS: behaviors and permissions for the account (same as with\n\
-          add-account)\n\
-      ep3-current-meseta=MESETA: Episode 3 Meseta value\n\
-      ep3-total-meseta=MESETA: Episode 3 total Meseta ever earned\n\
+      flags=FLAGS: sets behaviors and permissions for the account (same as\n\
+          with add-account)\n\
+      ban-duration=DURATION: bans this account for the specified duration; the\n\
+          duration should be of the form 3d, 2w, 1mo, or 1y\n\
+      unban: clears any existing ban from this account\n\
+      ep3-current-meseta=MESETA: sets Episode 3 Meseta value\n\
+      ep3-total-meseta=MESETA: sets Episode 3 total Meseta ever earned\n\
       temporary: marks the account as temporary; it is not saved to disk and\n\
           therefore will be deleted when the server shuts down\n\
       permanent: if the account was temporary, makes it non-temporary",
@@ -421,6 +424,7 @@ CommandDefinition c_update_account(
       int64_t new_ep3_total_meseta = -1;
       int64_t new_flags = -1;
       uint8_t new_is_temporary = 0xFF;
+      int64_t new_ban_duration = -1;
       for (const string& token : tokens) {
         if (starts_with(token, "ep3-current-meseta=")) {
           new_ep3_current_meseta = stoul(token.substr(19), nullptr, 0);
@@ -432,18 +436,42 @@ CommandDefinition c_update_account(
           new_is_temporary = 0;
         } else if (starts_with(token, "flags=")) {
           new_flags = parse_account_flags(token.substr(6));
+        } else if (token == "unban") {
+          new_ban_duration = 0;
+        } else if (starts_with(token, "ban-duration=")) {
+          auto duration_str = token.substr(13);
+          if (ends_with(duration_str, "s")) {
+            new_ban_duration = stoull(duration_str.substr(0, duration_str.size() - 1)) * 1000000LL;
+          } else if (ends_with(duration_str, "m")) {
+            new_ban_duration = stoull(duration_str.substr(0, duration_str.size() - 1)) * 60000000LL;
+          } else if (ends_with(duration_str, "h")) {
+            new_ban_duration = stoull(duration_str.substr(0, duration_str.size() - 1)) * 3600000000LL;
+          } else if (ends_with(duration_str, "d")) {
+            new_ban_duration = stoull(duration_str.substr(0, duration_str.size() - 1)) * 86400000000LL;
+          } else if (ends_with(duration_str, "w")) {
+            new_ban_duration = stoull(duration_str.substr(0, duration_str.size() - 1)) * 604800000000LL;
+          } else if (ends_with(duration_str, "mo")) {
+            new_ban_duration = stoull(duration_str.substr(0, duration_str.size() - 2)) * 2952000000000LL;
+          } else if (ends_with(duration_str, "y")) {
+            new_ban_duration = stoull(duration_str.substr(0, duration_str.size() - 1)) * 31536000000000LL;
+          } else {
+            throw runtime_error("invalid time unit");
+          }
         } else {
           throw invalid_argument("invalid account field: " + token);
         }
       }
 
-      if (new_ep3_current_meseta > 0) {
+      if (new_ban_duration >= 0) {
+        account->ban_end_time = now() + new_ban_duration;
+      }
+      if (new_ep3_current_meseta >= 0) {
         account->ep3_current_meseta = new_ep3_current_meseta;
       }
-      if (new_ep3_total_meseta > 0) {
+      if (new_ep3_total_meseta >= 0) {
         account->ep3_total_meseta_earned = new_ep3_total_meseta;
       }
-      if (new_flags > 0) {
+      if (new_flags >= 0) {
         account->flags = new_flags;
       }
       if (new_is_temporary != 0xFF) {
@@ -452,6 +480,10 @@ CommandDefinition c_update_account(
 
       account->save();
       fprintf(stderr, "Account %08" PRIX32 " updated\n", account->account_id);
+
+      if (new_ban_duration > 0) {
+        args.s->disconnect_all_banned_clients();
+      }
     });
 CommandDefinition c_delete_account(
     "delete-account", "delete-account ACCOUNT-ID\n\
