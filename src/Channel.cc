@@ -32,6 +32,7 @@ Channel::Channel(
     TerminalFormat terminal_send_color,
     TerminalFormat terminal_recv_color)
     : bev(nullptr, flush_and_free_bufferevent),
+      virtual_network_id(0),
       version(version),
       language(language),
       name(name),
@@ -44,6 +45,7 @@ Channel::Channel(
 
 Channel::Channel(
     struct bufferevent* bev,
+    uint64_t virtual_network_id,
     Version version,
     uint8_t language,
     on_command_received_t on_command_received,
@@ -61,7 +63,7 @@ Channel::Channel(
       on_command_received(on_command_received),
       on_error(on_error),
       context_obj(context_obj) {
-  this->set_bufferevent(bev);
+  this->set_bufferevent(bev, virtual_network_id);
 }
 
 void Channel::replace_with(
@@ -70,10 +72,9 @@ void Channel::replace_with(
     on_error_t on_error,
     void* context_obj,
     const std::string& name) {
-  this->set_bufferevent(other.bev.release());
+  this->set_bufferevent(other.bev.release(), other.virtual_network_id);
   this->local_addr = other.local_addr;
   this->remote_addr = other.remote_addr;
-  this->is_virtual_connection = other.is_virtual_connection;
   this->version = other.version;
   this->language = other.language;
   this->crypt_in = other.crypt_in;
@@ -87,27 +88,23 @@ void Channel::replace_with(
   other.disconnect(); // Clears crypts, addrs, etc.
 }
 
-void Channel::set_bufferevent(struct bufferevent* bev) {
+void Channel::set_bufferevent(struct bufferevent* bev, uint64_t virtual_network_id) {
   this->bev.reset(bev);
+  this->virtual_network_id = virtual_network_id;
 
   if (this->bev.get()) {
     int fd = bufferevent_getfd(this->bev.get());
     if (fd < 0) {
-      this->is_virtual_connection = true;
       memset(&this->local_addr, 0, sizeof(this->local_addr));
       memset(&this->remote_addr, 0, sizeof(this->remote_addr));
     } else {
-      this->is_virtual_connection = false;
       get_socket_addresses(fd, &this->local_addr, &this->remote_addr);
     }
 
-    bufferevent_setcb(this->bev.get(),
-        &Channel::dispatch_on_input, nullptr,
-        &Channel::dispatch_on_error, this);
+    bufferevent_setcb(this->bev.get(), &Channel::dispatch_on_input, nullptr, &Channel::dispatch_on_error, this);
     bufferevent_enable(this->bev.get(), EV_READ | EV_WRITE);
 
   } else {
-    this->is_virtual_connection = false;
     memset(&this->local_addr, 0, sizeof(this->local_addr));
     memset(&this->remote_addr, 0, sizeof(this->remote_addr));
   }
@@ -149,7 +146,7 @@ void Channel::disconnect() {
 
   memset(&this->local_addr, 0, sizeof(this->local_addr));
   memset(&this->remote_addr, 0, sizeof(this->remote_addr));
-  this->is_virtual_connection = false;
+  this->virtual_network_id = false;
   this->crypt_in.reset();
   this->crypt_out.reset();
 }

@@ -124,6 +124,7 @@ IPStackSimulator::IPStackSimulator(
     shared_ptr<ServerState> state)
     : base(base),
       state(state),
+      next_network_id(1),
       pcap_text_log_file(state->ip_stack_debug ? fopen("IPStackSimulator-Log.txt", "wt") : nullptr) {
   this->host_mac_address_bytes.clear(0x90);
   this->broadcast_mac_address_bytes.clear(0xFF);
@@ -169,6 +170,10 @@ void IPStackSimulator::add_socket(const string& name, int fd, Protocol proto) {
   this->listening_sockets.emplace(piecewise_construct, forward_as_tuple(fd), forward_as_tuple(name, proto, std::move(l)));
 }
 
+shared_ptr<IPStackSimulator::IPClient> IPStackSimulator::get_network(uint64_t network_id) const {
+  return this->network_id_to_client.at(network_id);
+}
+
 uint32_t IPStackSimulator::connect_address_for_remote_address(uint32_t remote_addr) {
   // Use an address not on the same subnet as the client, so that PSO Plus and
   // Episode III will think they're talking to a remote network and won't reject
@@ -180,8 +185,10 @@ uint32_t IPStackSimulator::connect_address_for_remote_address(uint32_t remote_ad
   }
 }
 
-IPStackSimulator::IPClient::IPClient(shared_ptr<IPStackSimulator> sim, Protocol protocol, struct bufferevent* bev)
+IPStackSimulator::IPClient::IPClient(
+    shared_ptr<IPStackSimulator> sim, uint64_t network_id, Protocol protocol, struct bufferevent* bev)
     : sim(sim),
+      network_id(network_id),
       bev(bev, bufferevent_free),
       protocol(protocol),
       mac_addr(0),
@@ -200,7 +207,7 @@ void IPStackSimulator::IPClient::on_idle_timeout() {
   auto sim = this->sim.lock();
   if (sim) {
     ip_stack_simulator_log.info("Idle timeout expired on virtual network %d", bufferevent_getfd(this->bev.get()));
-    sim->disconnect_client(this->bev.get());
+    sim->disconnect_client(this->network_id);
   } else {
     ip_stack_simulator_log.info("Idle timeout expired on virtual network %d, but simulator is missing", bufferevent_getfd(this->bev.get()));
   }
@@ -227,9 +234,9 @@ IPStackSimulator::IPClient::TCPConnection::TCPConnection()
       bytes_received(0),
       bytes_sent(0) {}
 
-void IPStackSimulator::disconnect_client(struct bufferevent* bev) {
-  ip_stack_simulator_log.info("Virtual network %d disconnected", bufferevent_getfd(bev));
-  this->bev_to_client.erase(bev);
+void IPStackSimulator::disconnect_client(uint64_t network_id) {
+  ip_stack_simulator_log.info("Virtual network N-%" PRIu64 " disconnected", network_id);
+  this->network_id_to_client.erase(network_id);
 }
 
 void IPStackSimulator::dispatch_on_listen_accept(
@@ -252,20 +259,20 @@ void IPStackSimulator::on_listen_accept(struct evconnlistener* listener, evutil_
   try {
     listening_socket = &this->listening_sockets.at(listen_fd);
   } catch (const out_of_range&) {
-    ip_stack_simulator_log.info("Virtual network %d connected via unknown listener %d; disconnecting", fd, listen_fd);
+    ip_stack_simulator_log.info("Virtual network fd %d connected via unknown listener %d; disconnecting", fd, listen_fd);
     close(fd);
     return;
   }
 
-  ip_stack_simulator_log.info("Virtual network %d connected via %s", fd, listening_socket->name.c_str());
+  uint64_t network_id = this->next_network_id++;
+  ip_stack_simulator_log.info("Virtual network N-%" PRIu64 " connected via %s", network_id, listening_socket->name.c_str());
 
-  struct bufferevent* bev = bufferevent_socket_new(this->base.get(), fd,
-      BEV_OPT_CLOSE_ON_FREE | BEV_OPT_DEFER_CALLBACKS);
-  auto c = make_shared<IPClient>(this->shared_from_this(), listening_socket->protocol, bev);
-  this->bev_to_client.emplace(make_pair(bev, c));
+  struct bufferevent* bev = bufferevent_socket_new(this->base.get(), fd, BEV_OPT_CLOSE_ON_FREE | BEV_OPT_DEFER_CALLBACKS);
+  auto c = make_shared<IPClient>(this->shared_from_this(), network_id, listening_socket->protocol, bev);
+  this->network_id_to_client.emplace(c->network_id, c);
 
-  bufferevent_setcb(bev, &IPStackSimulator::dispatch_on_client_input, nullptr,
-      &IPStackSimulator::dispatch_on_client_error, this);
+  bufferevent_setcb(bev, &IPStackSimulator::IPClient::dispatch_on_client_input, nullptr,
+      &IPStackSimulator::IPClient::dispatch_on_client_error, c.get());
   bufferevent_enable(bev, EV_READ | EV_WRITE);
 }
 
@@ -281,31 +288,26 @@ void IPStackSimulator::on_listen_error(struct evconnlistener* listener) {
   event_base_loopexit(this->base.get(), nullptr);
 }
 
-void IPStackSimulator::dispatch_on_client_input(
-    struct bufferevent* bev, void* ctx) {
-  reinterpret_cast<IPStackSimulator*>(ctx)->on_client_input(bev);
+void IPStackSimulator::IPClient::dispatch_on_client_input(struct bufferevent* bev, void* ctx) {
+  reinterpret_cast<IPClient*>(ctx)->on_client_input(bev);
 }
 
-void IPStackSimulator::on_client_input(struct bufferevent* bev) {
+void IPStackSimulator::IPClient::on_client_input(struct bufferevent* bev) {
   struct evbuffer* buf = bufferevent_get_input(bev);
 
-  shared_ptr<IPClient> c;
-  try {
-    c = this->bev_to_client.at(bev);
-  } catch (const out_of_range&) {
+  auto sim = this->sim.lock();
+  if (!sim) {
     size_t bytes = evbuffer_get_length(buf);
-    ip_stack_simulator_log.warning("Ignoring data received from unregistered virtual network (0x%zX bytes)",
-        bytes);
+    ip_stack_simulator_log.warning("Ignoring data from unregistered virtual network (0x%zX bytes)", bytes);
     evbuffer_drain(buf, bytes);
     return;
   }
 
-  auto sim = c->sim.lock();
   uint64_t idle_timeout_usecs = sim ? sim->state->client_idle_timeout_usecs : 60000000;
   struct timeval tv = usecs_to_timeval(idle_timeout_usecs);
-  event_add(c->idle_timeout_event.get(), &tv);
+  event_add(this->idle_timeout_event.get(), &tv);
 
-  switch (c->protocol) {
+  switch (this->protocol) {
     case Protocol::ETHERNET_TAPSERVER:
     case Protocol::HDLC_TAPSERVER:
       while (evbuffer_get_length(buf) >= 2) {
@@ -320,7 +322,7 @@ void IPStackSimulator::on_client_input(struct bufferevent* bev) {
         evbuffer_remove(buf, frame.data(), frame.size());
 
         try {
-          this->on_client_frame(c, frame);
+          sim->on_client_frame(this->shared_from_this(), frame);
         } catch (const exception& e) {
           if (ip_stack_simulator_log.warning("Failed to process frame: %s", e.what())) {
             print_data(stderr, frame);
@@ -355,7 +357,7 @@ void IPStackSimulator::on_client_input(struct bufferevent* bev) {
         evbuffer_remove(buf, frame.data(), frame.size());
 
         try {
-          this->on_client_frame(c, frame);
+          sim->on_client_frame(this->shared_from_this(), frame);
         } catch (const exception& e) {
           if (ip_stack_simulator_log.warning("Failed to process frame: %s", e.what())) {
             print_data(stderr, frame);
@@ -366,18 +368,19 @@ void IPStackSimulator::on_client_input(struct bufferevent* bev) {
   }
 }
 
-void IPStackSimulator::dispatch_on_client_error(
-    struct bufferevent* bev, short events, void* ctx) {
-  reinterpret_cast<IPStackSimulator*>(ctx)->on_client_error(bev, events);
+void IPStackSimulator::IPClient::dispatch_on_client_error(struct bufferevent* bev, short events, void* ctx) {
+  reinterpret_cast<IPClient*>(ctx)->on_client_error(bev, events);
 }
-void IPStackSimulator::on_client_error(struct bufferevent* bev, short events) {
+void IPStackSimulator::IPClient::on_client_error(struct bufferevent*, short events) {
   if (events & BEV_EVENT_ERROR) {
     int err = EVUTIL_SOCKET_ERROR();
-    ip_stack_simulator_log.warning("Virtual network caused error %d (%s)", err,
-        evutil_socket_error_to_string(err));
+    ip_stack_simulator_log.warning("Virtual network caused error %d (%s)", err, evutil_socket_error_to_string(err));
   }
   if (events & (BEV_EVENT_EOF | BEV_EVENT_ERROR)) {
-    this->disconnect_client(bev);
+    auto sim = this->sim.lock();
+    if (sim) {
+      sim->disconnect_client(this->network_id);
+    }
   }
 }
 
@@ -1340,23 +1343,19 @@ void IPStackSimulator::open_server_connection(shared_ptr<IPClient> c, IPClient::
   string conn_str = this->str_for_tcp_connection(c, conn);
   if (port_config->behavior == ServerBehavior::PROXY_SERVER) {
     if (!this->state->proxy_server.get()) {
-      ip_stack_simulator_log.error("TCP connection %s is to non-running proxy server",
-          conn_str.c_str());
+      ip_stack_simulator_log.error("TCP connection %s is to non-running proxy server", conn_str.c_str());
       flush_and_free_bufferevent(bevs[1]);
     } else {
-      this->state->proxy_server->connect_client(bevs[1], conn.server_port);
-      ip_stack_simulator_log.info("Connected TCP connection %s to proxy server",
-          conn_str.c_str());
+      this->state->proxy_server->connect_virtual_client(bevs[1], c->network_id, conn.server_port);
+      ip_stack_simulator_log.info("Connected TCP connection %s to proxy server", conn_str.c_str());
     }
   } else if (this->state->game_server.get()) {
-    this->state->game_server->connect_client(bevs[1], c->ipv4_addr,
-        conn.client_port, conn.server_port, port_config->version,
-        port_config->behavior);
-    ip_stack_simulator_log.info("Connected TCP connection %s to game server",
-        conn_str.c_str());
+    this->state->game_server->connect_virtual_client(
+        bevs[1], c->network_id, c->ipv4_addr, conn.client_port,
+        conn.server_port, port_config->version, port_config->behavior);
+    ip_stack_simulator_log.info("Connected TCP connection %s to game server", conn_str.c_str());
   } else {
-    ip_stack_simulator_log.error("No server available for TCP connection %s",
-        conn_str.c_str());
+    ip_stack_simulator_log.error("No server available for TCP connection %s", conn_str.c_str());
     flush_and_free_bufferevent(bevs[1]);
   }
 }

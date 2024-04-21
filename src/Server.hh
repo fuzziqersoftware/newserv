@@ -23,10 +23,15 @@ public:
   void listen(const std::string& addr_str, int port, Version version, ServerBehavior initial_state);
   void add_socket(const std::string& addr_str, int fd, Version version, ServerBehavior initial_state);
 
-  void connect_client(struct bufferevent* bev, uint32_t address,
-      uint16_t client_port, uint16_t server_port,
-      Version version, ServerBehavior initial_state);
-  void connect_client(std::shared_ptr<Client> c, Channel&& ch);
+  void connect_virtual_client(
+      struct bufferevent* bev,
+      uint64_t virtual_network_id,
+      uint32_t address,
+      uint16_t client_port,
+      uint16_t server_port,
+      Version version,
+      ServerBehavior initial_state);
+  void connect_virtual_client(std::shared_ptr<Client> c, Channel&& ch);
   void disconnect_client(std::shared_ptr<Client> c);
 
   std::shared_ptr<Client> get_client() const;

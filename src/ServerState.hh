@@ -387,4 +387,6 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   static void dispatch_destroy_lobbies(evutil_socket_t, short, void* ctx);
 
   void disconnect_all_banned_clients();
+
+  std::string format_address_for_channel_name(const struct sockaddr_storage& remote_ss, uint64_t virtual_network);
 };

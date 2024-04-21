@@ -247,13 +247,12 @@ shared_ptr<Client> ServerState::find_client(const string* identifier, uint64_t a
 }
 
 uint32_t ServerState::connect_address_for_client(shared_ptr<Client> c) const {
-  if (c->channel.is_virtual_connection) {
+  if (c->channel.virtual_network_id) {
     if (c->channel.remote_addr.ss_family != AF_INET) {
       throw logic_error("virtual connection is missing remote IPv4 address");
     }
     const auto* sin = reinterpret_cast<const sockaddr_in*>(&c->channel.remote_addr);
-    return IPStackSimulator::connect_address_for_remote_address(
-        ntohl(sin->sin_addr.s_addr));
+    return IPStackSimulator::connect_address_for_remote_address(ntohl(sin->sin_addr.s_addr));
   } else {
     // TODO: we can do something smarter here, like use the sockname to find
     // out which interface the client is connected to, and return that address
@@ -1908,20 +1907,46 @@ void ServerState::disconnect_all_banned_clients() {
   // IP stack simulator (IP bans only; account bans will presumably be handled
   // by one of the above cases)
   if (this->ip_stack_simulator) {
-    vector<bufferevent*> bevs_to_disconnect;
-    for (const auto& it : this->ip_stack_simulator->all_clients()) {
-      int fd = bufferevent_getfd(it.first);
+    vector<uint64_t> ids_to_disconnect;
+    for (const auto& it : this->ip_stack_simulator->all_networks()) {
+      int fd = bufferevent_getfd(it.second->bev.get());
       if (fd < 0) {
         continue;
       }
       struct sockaddr_storage remote_ss;
       get_socket_addresses(fd, nullptr, &remote_ss);
       if (this->banned_ipv4_ranges->check(remote_ss)) {
-        bevs_to_disconnect.emplace_back(it.first);
+        ids_to_disconnect.emplace_back(it.second->network_id);
       }
     }
-    for (auto* bev : bevs_to_disconnect) {
-      this->ip_stack_simulator->disconnect_client(bev);
+    for (uint64_t id : ids_to_disconnect) {
+      this->ip_stack_simulator->disconnect_client(id);
+    }
+  }
+}
+
+string ServerState::format_address_for_channel_name(
+    const struct sockaddr_storage& remote_ss, uint64_t virtual_network_id) {
+  if (!virtual_network_id) {
+    if (remote_ss.ss_family == 0) {
+      return "__invalid_address__";
+    } else {
+      return "ipv4:" + render_sockaddr_storage(remote_ss);
+    }
+  } else {
+    if (this->ip_stack_simulator) {
+      auto network = this->ip_stack_simulator->get_network(virtual_network_id);
+      int fd = bufferevent_getfd(network->bev.get());
+      if (fd < 0) {
+        return string_printf("ipss:N-%" PRIu64 ":__unknown_address__", network->network_id);
+      } else {
+        struct sockaddr_storage remote_ss;
+        get_socket_addresses(fd, nullptr, &remote_ss);
+        string addr_str = render_sockaddr_storage(remote_ss);
+        return string_printf("ipss:N-%" PRIu64 ":%s", network->network_id, addr_str.c_str());
+      }
+    } else {
+      return "__unknown_address__";
     }
   }
 }

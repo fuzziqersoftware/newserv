@@ -13,7 +13,7 @@ struct Channel {
   std::unique_ptr<struct bufferevent, void (*)(struct bufferevent*)> bev;
   struct sockaddr_storage local_addr;
   struct sockaddr_storage remote_addr;
-  bool is_virtual_connection;
+  uint64_t virtual_network_id; // 0 = normal TCP connection
 
   Version version;
   uint8_t language;
@@ -50,6 +50,7 @@ struct Channel {
   // Creates a connected channel
   Channel(
       struct bufferevent* bev,
+      uint64_t virtual_network_id,
       Version version,
       uint8_t language,
       on_command_received_t on_command_received,
@@ -70,7 +71,7 @@ struct Channel {
       void* context_obj,
       const std::string& name = "");
 
-  void set_bufferevent(struct bufferevent* bev);
+  void set_bufferevent(struct bufferevent* bev, uint64_t virtual_network_id);
 
   inline bool connected() const {
     return this->bev.get() != nullptr;

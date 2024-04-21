@@ -11,6 +11,7 @@
 #include <phosg/Network.hh>
 #include <phosg/Time.hh>
 
+#include "IPStackSimulator.hh"
 #include "Loggers.hh"
 #include "Server.hh"
 #include "Version.hh"
@@ -169,12 +170,13 @@ bool Client::Config::should_update_vs(const Config& other) const {
 Client::Client(
     shared_ptr<Server> server,
     struct bufferevent* bev,
+    uint64_t virtual_network_id,
     Version version,
     ServerBehavior server_behavior)
     : server(server),
       id(next_id++),
       log(string_printf("[C-%" PRIX64 "] ", this->id), client_log.min_level),
-      channel(bev, version, 1, nullptr, nullptr, this, string_printf("C-%" PRIX64, this->id), TerminalFormat::FG_YELLOW, TerminalFormat::FG_GREEN),
+      channel(bev, virtual_network_id, version, 1, nullptr, nullptr, this, "", TerminalFormat::FG_YELLOW, TerminalFormat::FG_GREEN),
       server_behavior(server_behavior),
       should_disconnect(false),
       should_send_to_lobby_server(false),
@@ -214,6 +216,8 @@ Client::Client(
       dol_base_addr(0),
       external_bank_character_index(-1),
       last_play_time_update(0) {
+  this->update_channel_name();
+
   this->config.set_flags_for_version(version, -1);
   auto s = server->get_state();
   if (is_v1_or_v2(this->version()) ? s->default_rare_notifs_enabled_v1_v2 : s->default_rare_notifs_enabled_v3_v4) {
@@ -250,6 +254,19 @@ Client::~Client() {
     this->save_all();
   }
   this->log.info("Deleted");
+}
+
+void Client::update_channel_name() {
+  string ip_str = this->require_server_state()->format_address_for_channel_name(
+      this->channel.remote_addr, this->channel.virtual_network_id);
+
+  auto player = this->character(false, false);
+  if (player) {
+    string name_str = player->disp.name.decode(this->language());
+    this->channel.name = string_printf("C-%" PRIX64 " (%s) @ %s", this->id, name_str.c_str(), ip_str.c_str());
+  } else {
+    this->channel.name = string_printf("C-%" PRIX64 " @ %s", this->id, ip_str.c_str());
+  }
 }
 
 void Client::reschedule_save_game_data_event() {

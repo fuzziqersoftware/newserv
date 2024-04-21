@@ -630,7 +630,7 @@ void ReplaySession::execute_pending_events() {
           struct bufferevent* bevs[2];
           bufferevent_pair_new(this->base.get(), 0, bevs);
 
-          c->channel.set_bufferevent(bevs[0]);
+          c->channel.set_bufferevent(bevs[0], 0);
           this->channel_to_client.emplace(&c->channel, c);
 
           shared_ptr<const PortConfiguration> port_config;
@@ -645,7 +645,7 @@ void ReplaySession::execute_pending_events() {
             // TODO: We should support this at some point in the future
             throw runtime_error(string_printf("(ev-line %zu) client connected to proxy server", this->first_event->line_num));
           } else if (this->state->game_server.get()) {
-            this->state->game_server->connect_client(bevs[1], 0x20202020,
+            this->state->game_server->connect_virtual_client(bevs[1], 0, 0x20202020,
                 1025, c->port, port_config->version, port_config->behavior);
           } else {
             throw runtime_error(string_printf("(ev-line %zu) no server available for connection", this->first_event->line_num));

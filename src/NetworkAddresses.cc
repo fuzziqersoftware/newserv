@@ -10,6 +10,7 @@
 
 #include <memory>
 #include <phosg/Encoding.hh>
+#include <phosg/Network.hh>
 #include <phosg/Strings.hh>
 #include <stdexcept>
 
@@ -23,8 +24,7 @@ uint32_t resolve_address(const char* address) {
         "can\'t resolve hostname %s: %s", address, e.c_str()));
   }
 
-  std::unique_ptr<struct addrinfo, void (*)(struct addrinfo*)> res0_unique(
-      res0, freeaddrinfo);
+  std::unique_ptr<struct addrinfo, void (*)(struct addrinfo*)> res0_unique(res0, freeaddrinfo);
   struct addrinfo* res4 = nullptr;
   for (struct addrinfo* res = res0; res; res = res->ai_next) {
     if (res->ai_family == AF_INET) {

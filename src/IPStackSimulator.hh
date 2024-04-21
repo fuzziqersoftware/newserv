@@ -27,8 +27,9 @@ public:
   using unique_evbuffer = std::unique_ptr<struct evbuffer, void (*)(struct evbuffer*)>;
   using unique_event = std::unique_ptr<struct event, void (*)(struct event*)>;
 
-  struct IPClient {
+  struct IPClient : std::enable_shared_from_this<IPClient> {
     std::weak_ptr<IPStackSimulator> sim;
+    uint64_t network_id;
 
     unique_bufferevent bev;
     Protocol protocol;
@@ -70,7 +71,12 @@ public:
 
     unique_event idle_timeout_event;
 
-    IPClient(std::shared_ptr<IPStackSimulator> sim, Protocol protocol, struct bufferevent* bev);
+    IPClient(std::shared_ptr<IPStackSimulator> sim, uint64_t network_id, Protocol protocol, struct bufferevent* bev);
+
+    static void dispatch_on_client_input(struct bufferevent* bev, void* ctx);
+    void on_client_input(struct bufferevent* bev);
+    static void dispatch_on_client_error(struct bufferevent* bev, short events, void* ctx);
+    void on_client_error(struct bufferevent* bev, short events);
 
     static void dispatch_on_idle_timeout(evutil_socket_t fd, short events, void* ctx);
     void on_idle_timeout();
@@ -88,15 +94,17 @@ public:
 
   static uint32_t connect_address_for_remote_address(uint32_t remote_addr);
 
-  inline const std::unordered_map<struct bufferevent*, std::shared_ptr<IPClient>>& all_clients() const {
-    return this->bev_to_client;
+  std::shared_ptr<IPClient> get_network(uint64_t network_id) const;
+  inline const std::unordered_map<uint64_t, std::shared_ptr<IPClient>>& all_networks() const {
+    return this->network_id_to_client;
   }
 
-  void disconnect_client(struct bufferevent* bev);
+  void disconnect_client(uint64_t network_id);
 
 private:
   std::shared_ptr<struct event_base> base;
   std::shared_ptr<ServerState> state;
+  uint64_t next_network_id;
 
   struct ListeningSocket {
     std::string name;
@@ -110,7 +118,7 @@ private:
   };
 
   std::unordered_map<int, ListeningSocket> listening_sockets;
-  std::unordered_map<struct bufferevent*, std::shared_ptr<IPClient>> bev_to_client;
+  std::unordered_map<uint64_t, std::shared_ptr<IPClient>> network_id_to_client;
 
   parray<uint8_t, 6> host_mac_address_bytes;
   parray<uint8_t, 6> broadcast_mac_address_bytes;
@@ -129,11 +137,6 @@ private:
   void on_listen_accept(struct evconnlistener* listener, evutil_socket_t fd, struct sockaddr* address, int socklen);
   static void dispatch_on_listen_error(struct evconnlistener* listener, void* ctx);
   void on_listen_error(struct evconnlistener* listener);
-
-  static void dispatch_on_client_input(struct bufferevent* bev, void* ctx);
-  void on_client_input(struct bufferevent* bev);
-  static void dispatch_on_client_error(struct bufferevent* bev, short events, void* ctx);
-  void on_client_error(struct bufferevent* bev, short events);
 
   void send_layer3_frame(std::shared_ptr<IPClient> c, FrameInfo::Protocol proto, const std::string& data) const;
   void send_layer3_frame(std::shared_ptr<IPClient> c, FrameInfo::Protocol proto, const void* data, size_t size) const;

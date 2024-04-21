@@ -28,10 +28,10 @@ using namespace std;
 using namespace std::placeholders;
 
 void Server::disconnect_client(shared_ptr<Client> c) {
-  if (c->channel.is_virtual_connection) {
-    server_log.info("Client disconnected: C-%" PRIX64 " on virtual connection %p", c->id, c->channel.bev.get());
+  if (c->channel.virtual_network_id) {
+    server_log.info("Client disconnected: C-%" PRIX64 " on N-%" PRIu64, c->id, c->channel.virtual_network_id);
   } else if (c->channel.bev) {
-    server_log.info("Client disconnected: C-%" PRIX64 " on fd %d", c->id, bufferevent_getfd(c->channel.bev.get()));
+    server_log.info("Client disconnected: C-%" PRIX64, c->id);
   } else {
     server_log.info("Client C-%" PRIX64 " removed from game server", c->id);
   }
@@ -112,7 +112,7 @@ void Server::on_listen_accept(struct evconnlistener* listener, evutil_socket_t f
   }
 
   struct bufferevent* bev = bufferevent_socket_new(this->base.get(), fd, BEV_OPT_CLOSE_ON_FREE | BEV_OPT_DEFER_CALLBACKS);
-  auto c = make_shared<Client>(this->shared_from_this(), bev, listening_socket->version, listening_socket->behavior);
+  auto c = make_shared<Client>(this->shared_from_this(), bev, 0, listening_socket->version, listening_socket->behavior);
   c->channel.on_command_received = Server::on_client_input;
   c->channel.on_error = Server::on_client_error;
   c->channel.context_obj = this;
@@ -129,19 +129,24 @@ void Server::on_listen_accept(struct evconnlistener* listener, evutil_socket_t f
   }
 }
 
-void Server::connect_client(
-    struct bufferevent* bev, uint32_t address, uint16_t client_port,
-    uint16_t server_port, Version version, ServerBehavior initial_state) {
-  auto c = make_shared<Client>(this->shared_from_this(), bev, version, initial_state);
+void Server::connect_virtual_client(
+    struct bufferevent* bev,
+    uint64_t virtual_network_id,
+    uint32_t address,
+    uint16_t client_port,
+    uint16_t server_port,
+    Version version,
+    ServerBehavior initial_state) {
+  auto c = make_shared<Client>(this->shared_from_this(), bev, virtual_network_id, version, initial_state);
   c->channel.on_command_received = Server::on_client_input;
   c->channel.on_error = Server::on_client_error;
   c->channel.context_obj = this;
   this->state->channel_to_client.emplace(&c->channel, c);
 
   server_log.info(
-      "Client connected: C-%" PRIX64 " on virtual connection %p via T-%hu-%s-%s-VI",
+      "Client connected: C-%" PRIX64 " on virtual network N-%" PRIu64 " via T-%hu-%s-%s-VI",
       c->id,
-      bev,
+      virtual_network_id,
       server_port,
       name_for_enum(version),
       name_for_enum(initial_state));
@@ -161,7 +166,7 @@ void Server::connect_client(
   }
 }
 
-void Server::connect_client(shared_ptr<Client> c, Channel&& ch) {
+void Server::connect_virtual_client(shared_ptr<Client> c, Channel&& ch) {
   c->channel.replace_with(std::move(ch), Server::on_client_input, Server::on_client_error, this, string_printf("C-%" PRIX64, c->id));
   this->state->channel_to_client.emplace(&c->channel, c);
   server_log.info("Client C-%" PRIX64 " added to game server", c->id);

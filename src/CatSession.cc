@@ -56,7 +56,7 @@ CatSession::CatSession(
   if (!bev) {
     throw runtime_error(string_printf("failed to open socket (%d)", EVUTIL_SOCKET_ERROR()));
   }
-  this->channel.set_bufferevent(bev);
+  this->channel.set_bufferevent(bev, 0);
 
   if (bufferevent_socket_connect(this->channel.bev.get(),
           reinterpret_cast<const sockaddr*>(&remote), sizeof(struct sockaddr_in)) != 0) {

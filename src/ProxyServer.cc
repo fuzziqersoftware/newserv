@@ -41,7 +41,8 @@ ProxyServer::ProxyServer(
     : base(base),
       destroy_sessions_ev(event_new(this->base.get(), -1, EV_TIMEOUT, &ProxyServer::dispatch_destroy_sessions, this), event_free),
       state(state),
-      next_logged_out_session_id(0xFF00000000000001) {}
+      next_unlinked_session_id(this->MIN_UNLINKED_SESSION_ID),
+      next_logged_out_session_id(this->MIN_LINKED_LOGGED_OUT_SESSION_ID) {}
 
 void ProxyServer::listen(const std::string& addr, uint16_t port, Version version, const struct sockaddr_storage* default_destination) {
   auto socket_obj = make_shared<ListeningSocket>(this, addr, port, version, default_destination);
@@ -57,7 +58,7 @@ ProxyServer::ListeningSocket::ListeningSocket(
     Version version,
     const struct sockaddr_storage* default_destination)
     : server(server),
-      log(string_printf("[ProxyServer:ListeningSocket:%hu] ", port), proxy_server_log.min_level),
+      log(string_printf("[ProxyServer:T-%hu] ", port), proxy_server_log.min_level),
       port(port),
       fd(::listen(addr, port, SOMAXCONN)),
       listener(nullptr, evconnlistener_free),
@@ -107,7 +108,7 @@ void ProxyServer::ListeningSocket::on_listen_accept(int fd) {
 
   this->log.info("Client connected on fd %d (port %hu, version %s)", fd, this->port, name_for_enum(this->version));
   auto* bev = bufferevent_socket_new(this->server->base.get(), fd, BEV_OPT_CLOSE_ON_FREE | BEV_OPT_DEFER_CALLBACKS);
-  this->server->on_client_connect(bev, this->port, this->version,
+  this->server->on_client_connect(bev, 0, this->port, this->version,
       (this->default_destination.ss_family == AF_INET) ? &this->default_destination : nullptr);
 }
 
@@ -119,27 +120,26 @@ void ProxyServer::ListeningSocket::on_listen_error() {
   event_base_loopexit(this->server->base.get(), nullptr);
 }
 
-void ProxyServer::connect_client(struct bufferevent* bev, uint16_t server_port) {
+void ProxyServer::connect_virtual_client(struct bufferevent* bev, uint64_t virtual_network_id, uint16_t server_port) {
   // Look up the listening socket for the given port, and use that game version.
   // We don't support default-destination proxying for virtual connections (yet)
   Version version;
   try {
     version = this->listeners.at(server_port)->version;
   } catch (const out_of_range&) {
-    proxy_server_log.info("Virtual connection received on unregistered port %hu; closing it",
-        server_port);
+    proxy_server_log.info("Virtual connection received on unregistered port %hu; closing it", server_port);
     bufferevent_flush(bev, EV_READ | EV_WRITE, BEV_FINISHED);
     bufferevent_free(bev);
     return;
   }
 
-  proxy_server_log.info("Client connected on virtual connection %p (port %hu)", bev,
-      server_port);
-  this->on_client_connect(bev, server_port, version, nullptr);
+  proxy_server_log.info("Client connected on virtual connection %p (port %hu)", bev, server_port);
+  this->on_client_connect(bev, virtual_network_id, server_port, version, nullptr);
 }
 
 void ProxyServer::on_client_connect(
     struct bufferevent* bev,
+    uint64_t virtual_network_id,
     uint16_t listen_port,
     Version version,
     const struct sockaddr_storage* default_destination) {
@@ -148,25 +148,31 @@ void ProxyServer::on_client_connect(
   // server. This creates a direct session.
   if (default_destination && is_patch(version)) {
     uint64_t session_id = this->next_logged_out_session_id++;
-    if (this->next_logged_out_session_id == 0) {
-      this->next_logged_out_session_id = 0xFF00000000000001;
+    if (this->next_logged_out_session_id == this->MIN_UNLINKED_SESSION_ID) {
+      this->next_logged_out_session_id = this->MIN_LINKED_LOGGED_OUT_SESSION_ID;
     }
 
-    auto emplace_ret = this->id_to_session.emplace(session_id, make_shared<LinkedSession>(this->shared_from_this(), session_id, listen_port, version, *default_destination));
+    auto emplace_ret = this->id_to_linked_session.emplace(session_id, make_shared<LinkedSession>(this->shared_from_this(), session_id, listen_port, version, *default_destination));
     if (!emplace_ret.second) {
       throw logic_error("linked session already exists for logged-out client");
     }
     auto ses = emplace_ret.first->second;
     ses->log.info("Opened linked session");
 
-    Channel ch(bev, version, 1, nullptr, nullptr, ses.get(), "", TerminalFormat::FG_YELLOW, TerminalFormat::FG_GREEN);
+    Channel ch(bev, virtual_network_id, version, 1, nullptr, nullptr, ses.get(), "", TerminalFormat::FG_YELLOW, TerminalFormat::FG_GREEN);
     ses->resume(std::move(ch));
 
+  } else {
     // If no default destination exists, or the client is not a patch client,
     // create an unlinked session - we'll have to get the destination from the
     // client's config, which we'll get via a 9E command soon.
-  } else {
-    auto emplace_ret = this->bev_to_unlinked_session.emplace(bev, make_shared<UnlinkedSession>(this->shared_from_this(), bev, listen_port, version));
+    uint64_t session_id = this->next_unlinked_session_id++;
+    if (this->next_unlinked_session_id == 0) {
+      this->next_unlinked_session_id = this->MIN_UNLINKED_SESSION_ID;
+    }
+
+    auto emplace_ret = this->id_to_unlinked_session.emplace(
+        session_id, make_shared<UnlinkedSession>(this->shared_from_this(), session_id, bev, virtual_network_id, listen_port, version));
     if (!emplace_ret.second) {
       throw logic_error("stale unlinked session exists");
     }
@@ -235,22 +241,28 @@ void ProxyServer::on_client_connect(
 
 ProxyServer::UnlinkedSession::UnlinkedSession(
     shared_ptr<ProxyServer> server,
+    uint64_t id,
     struct bufferevent* bev,
+    uint64_t virtual_network_id,
     uint16_t local_port,
     Version version)
     : server(server),
-      log(string_printf("[ProxyServer:UnlinkedSession:%p] ", bev), proxy_server_log.min_level),
+      id(id),
+      log(string_printf("[ProxyServer:US-%" PRIX64 "] ", this->id), proxy_server_log.min_level),
       channel(
           bev,
+          virtual_network_id,
           version,
           1,
           ProxyServer::UnlinkedSession::on_input,
           ProxyServer::UnlinkedSession::on_error,
           this,
-          string_printf("UnlinkedSession:%p", bev),
+          "",
           TerminalFormat::FG_YELLOW,
           TerminalFormat::FG_GREEN),
       local_port(local_port) {
+  string ip_str = server->state->format_address_for_channel_name(this->channel.remote_addr, this->channel.virtual_network_id);
+  this->channel.name = string_printf("US-%" PRIX64 " @ %s", this->id, ip_str.c_str());
   memset(&this->next_destination, 0, sizeof(this->next_destination));
 }
 
@@ -413,10 +425,7 @@ void ProxyServer::UnlinkedSession::on_input(Channel& ch, uint16_t command, uint3
     should_close_unlinked_session = true;
   }
 
-  // Note that ch.bev will be moved from when the linked session is resumed, so
-  // we need to retain a copy of it in order to close the unlinked session
-  // afterward.
-  struct bufferevent* session_key = ch.bev.get();
+  uint64_t unlinked_session_id = ses->id;
 
   // If login is present, then the client has credentials and can be connected
   // to the remote lobby server.
@@ -428,7 +437,7 @@ void ProxyServer::UnlinkedSession::on_input(Channel& ch, uint16_t command, uint3
     // Look up the linked session for this account (if any)
     shared_ptr<LinkedSession> linked_ses;
     try {
-      linked_ses = server->id_to_session.at(ses->login->account->account_id);
+      linked_ses = server->id_to_linked_session.at(ses->login->account->account_id);
       linked_ses->log.info("Resuming linked session from unlinked session");
 
     } catch (const out_of_range&) {
@@ -447,7 +456,7 @@ void ProxyServer::UnlinkedSession::on_input(Channel& ch, uint16_t command, uint3
     }
 
     if (linked_ses.get()) {
-      server->id_to_session.emplace(ses->login->account->account_id, linked_ses);
+      server->id_to_linked_session.emplace(ses->login->account->account_id, linked_ses);
       // Resume the linked session using the unlinked session
       try {
         if (ses->version() == Version::BB_V4) {
@@ -472,7 +481,7 @@ void ProxyServer::UnlinkedSession::on_input(Channel& ch, uint16_t command, uint3
   }
 
   if (should_close_unlinked_session) {
-    server->delete_session(session_key);
+    server->delete_session(unlinked_session_id);
   }
 }
 
@@ -486,7 +495,7 @@ void ProxyServer::UnlinkedSession::on_error(Channel& ch, short events) {
   }
   if (events & (BEV_EVENT_ERROR | BEV_EVENT_EOF)) {
     ses->log.info("Client has disconnected");
-    ses->require_server()->delete_session(ses->channel.bev.get());
+    ses->require_server()->delete_session(ses->id);
   }
 }
 
@@ -497,7 +506,7 @@ ProxyServer::LinkedSession::LinkedSession(
     Version version)
     : server(server),
       id(id),
-      log(string_printf("[ProxyServer:LinkedSession:%08" PRIX64 "] ", this->id), proxy_server_log.min_level),
+      log(string_printf("[ProxyServer:LS-%" PRIX64 "] ", this->id), proxy_server_log.min_level),
       timeout_event(event_new(server->base.get(), -1, EV_TIMEOUT, &LinkedSession::dispatch_on_timeout, this), event_free),
       login(nullptr),
       client_channel(
@@ -506,7 +515,7 @@ ProxyServer::LinkedSession::LinkedSession(
           nullptr,
           nullptr,
           this,
-          string_printf("LinkedSession:%08" PRIX64 ":client", this->id),
+          string_printf("LS-%" PRIX64 "-C", this->id),
           TerminalFormat::FG_YELLOW,
           TerminalFormat::FG_GREEN),
       server_channel(
@@ -515,7 +524,7 @@ ProxyServer::LinkedSession::LinkedSession(
           nullptr,
           nullptr,
           this,
-          string_printf("LinkedSession:%08" PRIX64 ":server", this->id),
+          string_printf("LS-%" PRIX64 "-S", this->id),
           TerminalFormat::FG_YELLOW,
           TerminalFormat::FG_RED),
       local_port(local_port),
@@ -637,12 +646,17 @@ void ProxyServer::LinkedSession::resume_inner(
     throw logic_error("attempted to resume an logged-out linked session without destination set");
   }
 
+  auto s = this->server.lock();
+  if (!s) {
+    throw logic_error("ProxyServer is missing during LinkedSession resume");
+  }
+
   this->client_channel.replace_with(
       std::move(client_channel),
       ProxyServer::LinkedSession::on_input,
       ProxyServer::LinkedSession::on_error,
       this,
-      string_printf("LinkedSession:%08" PRIX64 ":client", this->id));
+      "");
   this->server_channel.language = this->client_channel.language;
   this->server_channel.version = this->client_channel.version;
 
@@ -665,8 +679,8 @@ void ProxyServer::LinkedSession::connect() {
   string netloc_str = render_sockaddr_storage(this->next_destination);
   this->log.info("Connecting to %s", netloc_str.c_str());
 
-  this->server_channel.set_bufferevent(bufferevent_socket_new(
-      this->require_server()->base.get(), -1, BEV_OPT_CLOSE_ON_FREE | BEV_OPT_DEFER_CALLBACKS));
+  this->server_channel.set_bufferevent(
+      bufferevent_socket_new(this->require_server()->base.get(), -1, BEV_OPT_CLOSE_ON_FREE | BEV_OPT_DEFER_CALLBACKS), 0);
   if (bufferevent_socket_connect(this->server_channel.bev.get(),
           reinterpret_cast<const sockaddr*>(dest_sin), sizeof(*dest_sin)) != 0) {
     throw runtime_error(string_printf("failed to connect (%d)", EVUTIL_SOCKET_ERROR()));
@@ -676,8 +690,19 @@ void ProxyServer::LinkedSession::connect() {
   this->server_channel.on_error = ProxyServer::LinkedSession::on_error;
   this->server_channel.context_obj = this;
 
+  this->update_channel_names();
+
   // Cancel the session delete timeout
   event_del(this->timeout_event.get());
+}
+
+void ProxyServer::LinkedSession::update_channel_names() {
+  auto s = this->require_server_state();
+  auto client_ip_str = s->format_address_for_channel_name(
+      this->client_channel.remote_addr, this->client_channel.virtual_network_id);
+  auto server_ip_str = s->format_address_for_channel_name(this->server_channel.remote_addr, 0);
+  this->client_channel.name = string_printf("LS-%08" PRIX64 "-C @ %s", this->id, client_ip_str.c_str());
+  this->server_channel.name = string_printf("LS-%08" PRIX64 "-S @ %s", this->id, server_ip_str.c_str());
 }
 
 ProxyServer::LinkedSession::SavingFile::SavingFile(
@@ -704,6 +729,10 @@ void ProxyServer::LinkedSession::on_error(Channel& ch, short events) {
 
   if (events & BEV_EVENT_CONNECTED) {
     ses->log.info("%s channel connected", is_server_stream ? "Server" : "Client");
+    if (is_server_stream) {
+      get_socket_addresses(bufferevent_getfd(ch.bev.get()), &ch.local_addr, &ch.remote_addr);
+      ses->update_channel_names();
+    }
 
     if (is_server_stream && (ses->config.override_lobby_event != 0xFF) && (is_v3(ses->version()) || is_v4(ses->version()))) {
       ses->client_channel.send(0xDA, ses->config.override_lobby_event);
@@ -844,7 +873,7 @@ void ProxyServer::LinkedSession::send_to_game_server(const char* error_message) 
 
     // If the client is on a virtual connection, we can use any address
     // here and they should be able to connect back to the game server
-    if (this->client_channel.is_virtual_connection) {
+    if (this->client_channel.virtual_network_id) {
       struct sockaddr_in* dest_sin = reinterpret_cast<struct sockaddr_in*>(&this->next_destination);
       if (dest_sin->sin_family != AF_INET) {
         throw logic_error("ss not AF_INET");
@@ -917,19 +946,19 @@ void ProxyServer::LinkedSession::on_input(Channel& ch, uint16_t command, uint32_
 }
 
 shared_ptr<ProxyServer::LinkedSession> ProxyServer::get_session() const {
-  if (this->id_to_session.empty()) {
+  if (this->id_to_linked_session.empty()) {
     throw runtime_error("no sessions exist");
   }
-  if (this->id_to_session.size() > 1) {
+  if (this->id_to_linked_session.size() > 1) {
     throw runtime_error("multiple sessions exist");
   }
-  return this->id_to_session.begin()->second;
+  return this->id_to_linked_session.begin()->second;
 }
 
 shared_ptr<ProxyServer::LinkedSession> ProxyServer::get_session_by_name(const std::string& name) const {
   try {
     uint64_t session_id = stoull(name, nullptr, 16);
-    return this->id_to_session.at(session_id);
+    return this->id_to_linked_session.at(session_id);
   } catch (const invalid_argument&) {
     throw runtime_error("invalid session name");
   } catch (const out_of_range&) {
@@ -938,7 +967,7 @@ shared_ptr<ProxyServer::LinkedSession> ProxyServer::get_session_by_name(const st
 }
 
 const unordered_map<uint64_t, shared_ptr<ProxyServer::LinkedSession>>& ProxyServer::all_sessions() const {
-  return this->id_to_session;
+  return this->id_to_linked_session;
 }
 
 shared_ptr<ProxyServer::LinkedSession> ProxyServer::create_logged_in_session(
@@ -947,7 +976,7 @@ shared_ptr<ProxyServer::LinkedSession> ProxyServer::create_logged_in_session(
     Version version,
     const Client::Config& config) {
   auto session = make_shared<LinkedSession>(this->shared_from_this(), local_port, version, login, config);
-  auto emplace_ret = this->id_to_session.emplace(session->id, session);
+  auto emplace_ret = this->id_to_linked_session.emplace(session->id, session);
   if (!emplace_ret.second) {
     throw runtime_error("session already exists for this account");
   }
@@ -956,22 +985,22 @@ shared_ptr<ProxyServer::LinkedSession> ProxyServer::create_logged_in_session(
 }
 
 void ProxyServer::delete_session(uint64_t id) {
-  if (this->id_to_session.erase(id)) {
-    proxy_server_log.info("Closed LinkedSession:%08" PRIX64, id);
-  }
-}
+  if (id < this->MIN_UNLINKED_SESSION_ID) {
+    if (this->id_to_linked_session.erase(id)) {
+      proxy_server_log.info("Closed LS-%08" PRIX64, id);
+    }
+  } else {
+    auto it = this->id_to_unlinked_session.find(id);
+    if (it == this->id_to_unlinked_session.end()) {
+      throw logic_error("unlinked session exists but is not registered");
+    }
+    it->second->log.info("Closing session");
+    this->unlinked_sessions_to_destroy.emplace(std::move(it->second));
+    this->id_to_unlinked_session.erase(it);
 
-void ProxyServer::delete_session(struct bufferevent* bev) {
-  auto it = this->bev_to_unlinked_session.find(bev);
-  if (it == this->bev_to_unlinked_session.end()) {
-    throw logic_error("unlinked session exists but is not registered");
+    auto tv = usecs_to_timeval(0);
+    event_add(this->destroy_sessions_ev.get(), &tv);
   }
-  it->second->log.info("Closing session");
-  this->unlinked_sessions_to_destroy.emplace(std::move(it->second));
-  this->bev_to_unlinked_session.erase(it);
-
-  auto tv = usecs_to_timeval(0);
-  event_add(this->destroy_sessions_ev.get(), &tv);
 }
 
 void ProxyServer::dispatch_destroy_sessions(evutil_socket_t, short, void* ctx) {
@@ -983,14 +1012,14 @@ void ProxyServer::destroy_sessions() {
 }
 
 size_t ProxyServer::num_sessions() const {
-  return this->id_to_session.size();
+  return this->id_to_linked_session.size();
 }
 
 size_t ProxyServer::delete_disconnected_sessions() {
   size_t count = 0;
-  for (auto it = this->id_to_session.begin(); it != this->id_to_session.end();) {
+  for (auto it = this->id_to_linked_session.begin(); it != this->id_to_linked_session.end();) {
     if (!it->second->is_connected()) {
-      it = this->id_to_session.erase(it);
+      it = this->id_to_linked_session.erase(it);
       count++;
     } else {
       it++;

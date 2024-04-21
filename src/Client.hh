@@ -268,9 +268,12 @@ public:
   Client(
       std::shared_ptr<Server> server,
       struct bufferevent* bev,
+      uint64_t virtual_network_id,
       Version version,
       ServerBehavior server_behavior);
   ~Client();
+
+  void update_channel_name();
 
   void reschedule_save_game_data_event();
   void reschedule_ping_and_timeout_events();

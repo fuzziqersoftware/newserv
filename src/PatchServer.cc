@@ -38,7 +38,7 @@ PatchServer::Client::Client(
     : server(server),
       id(next_id++),
       log(string_printf("[C-%" PRIX64 "] ", this->id), client_log.min_level),
-      channel(bev, version, 1, nullptr, nullptr, this, string_printf("C-%" PRIX64, this->id), TerminalFormat::FG_YELLOW, TerminalFormat::FG_GREEN),
+      channel(bev, 0, version, 1, nullptr, nullptr, this, string_printf("C-%" PRIX64, this->id), TerminalFormat::FG_YELLOW, TerminalFormat::FG_GREEN),
       idle_timeout_usecs(idle_timeout_usecs),
       idle_timeout_event(
           event_new(bufferevent_get_base(bev), -1, EV_TIMEOUT, &PatchServer::Client::dispatch_idle_timeout, this),
@@ -279,12 +279,12 @@ void PatchServer::on_10(shared_ptr<Client> c, string&) {
 }
 
 void PatchServer::disconnect_client(shared_ptr<Client> c) {
-  if (c->channel.is_virtual_connection) {
-    server_log.info("Client disconnected: C-%" PRIX64 " on virtual connection %p", c->id, c->channel.bev.get());
+  if (c->channel.virtual_network_id) {
+    server_log.info("Client disconnected: C-%" PRIX64 " on N-%" PRIu64, c->id, c->channel.virtual_network_id);
   } else if (c->channel.bev) {
-    server_log.info("Client disconnected: C-%" PRIX64 " on fd %d", c->id, bufferevent_getfd(c->channel.bev.get()));
+    server_log.info("Client disconnected: C-%" PRIX64, c->id);
   } else {
-    server_log.info("Client C-%" PRIX64 " removed from game server", c->id);
+    server_log.info("Client C-%" PRIX64 " removed from patch server", c->id);
   }
 
   this->channel_to_client.erase(&c->channel);

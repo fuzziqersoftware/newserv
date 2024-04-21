@@ -28,7 +28,7 @@ public:
 
   void listen(const std::string& addr, uint16_t port, Version version, const struct sockaddr_storage* default_destination = nullptr);
 
-  void connect_client(struct bufferevent* bev, uint16_t server_port);
+  void connect_virtual_client(struct bufferevent* bev, uint64_t virtual_network_id, uint16_t server_port);
 
   struct LinkedSession : std::enable_shared_from_this<LinkedSession> {
     std::weak_ptr<ProxyServer> server;
@@ -186,6 +186,8 @@ public:
     static void on_error(Channel& ch, short events);
     void on_timeout();
 
+    void update_channel_names();
+
     void clear_lobby_players(size_t num_slots);
 
     void set_drop_mode(DropMode new_mode);
@@ -205,7 +207,6 @@ public:
       Version version,
       const Client::Config& config);
   void delete_session(uint64_t id);
-  void delete_session(struct bufferevent* bev);
 
   size_t num_sessions() const;
 
@@ -238,6 +239,7 @@ private:
 
   struct UnlinkedSession {
     std::weak_ptr<ProxyServer> server;
+    uint64_t id;
 
     PrefixedLogger log;
     Channel channel;
@@ -259,7 +261,13 @@ private:
     XBNetworkLocation xb_netloc;
     parray<le_uint32_t, 3> xb_9E_unknown_a1a;
 
-    UnlinkedSession(std::shared_ptr<ProxyServer> server, struct bufferevent* bev, uint16_t port, Version version);
+    UnlinkedSession(
+        std::shared_ptr<ProxyServer> server,
+        uint64_t id,
+        struct bufferevent* bev,
+        uint64_t virtual_network_id,
+        uint16_t port,
+        Version version);
 
     std::shared_ptr<ProxyServer> require_server() const;
     std::shared_ptr<ServerState> require_server_state() const;
@@ -278,9 +286,10 @@ private:
   std::shared_ptr<struct event> destroy_sessions_ev;
   std::shared_ptr<ServerState> state;
   std::map<int, std::shared_ptr<ListeningSocket>> listeners;
-  std::unordered_map<struct bufferevent*, std::shared_ptr<UnlinkedSession>> bev_to_unlinked_session;
+  std::unordered_map<uint64_t, std::shared_ptr<UnlinkedSession>> id_to_unlinked_session;
   std::unordered_set<std::shared_ptr<UnlinkedSession>> unlinked_sessions_to_destroy;
-  std::unordered_map<uint64_t, std::shared_ptr<LinkedSession>> id_to_session;
+  std::unordered_map<uint64_t, std::shared_ptr<LinkedSession>> id_to_linked_session;
+  uint64_t next_unlinked_session_id;
   uint64_t next_logged_out_session_id;
 
   static void dispatch_destroy_sessions(evutil_socket_t, short, void* ctx);
@@ -288,7 +297,11 @@ private:
 
   void on_client_connect(
       struct bufferevent* bev,
+      uint64_t virtual_network_id,
       uint16_t listen_port,
       Version version,
       const struct sockaddr_storage* default_destination);
+
+  static constexpr uint64_t MIN_UNLINKED_SESSION_ID = 0xC000000000000000;
+  static constexpr uint64_t MIN_LINKED_LOGGED_OUT_SESSION_ID = 0x1000000000000000;
 };

@@ -3114,8 +3114,7 @@ static void on_61_98(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
   c->channel.language = player->inventory.language;
   c->login->account->save();
 
-  string name_str = player->disp.name.decode(c->language());
-  c->channel.name = string_printf("C-%" PRIX64 " (%s)", c->id, name_str.c_str());
+  c->update_channel_name();
 
   // 98 should only be sent when leaving a game, and we should leave the client
   // in no lobby (they will send an 84 soon afterward to choose a lobby).
