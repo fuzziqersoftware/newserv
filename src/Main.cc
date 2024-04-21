@@ -2458,22 +2458,21 @@ Action a_run_server_replay_log(
       auto state = make_shared<ServerState>(base, get_config_filename(args), is_replay);
       state->load_all();
 
-      shared_ptr<DNSServer> dns_server;
       if (state->dns_server_port && !is_replay) {
         if (!state->dns_server_addr.empty()) {
           config_log.info("Starting DNS server on %s:%hu", state->dns_server_addr.c_str(), state->dns_server_port);
         } else {
           config_log.info("Starting DNS server on port %hu", state->dns_server_port);
         }
-        dns_server = make_shared<DNSServer>(base, state->local_address, state->external_address);
-        dns_server->listen(state->dns_server_addr, state->dns_server_port);
+        state->dns_server = make_shared<DNSServer>(
+            base, state->local_address, state->external_address, state->banned_ipv4_ranges);
+        state->dns_server->listen(state->dns_server_addr, state->dns_server_port);
       } else {
         config_log.info("DNS server is disabled");
       }
 
       shared_ptr<ServerShell> shell;
       shared_ptr<ReplaySession> replay_session;
-      shared_ptr<IPStackSimulator> ip_stack_simulator;
       shared_ptr<HTTPServer> http_server;
       if (is_replay) {
         config_log.info("Starting proxy server");
@@ -2548,21 +2547,24 @@ Action a_run_server_replay_log(
 
         if (!state->ip_stack_addresses.empty() || !state->ppp_stack_addresses.empty() || !state->ppp_raw_addresses.empty()) {
           config_log.info("Starting IP/PPP stack simulator");
-          ip_stack_simulator = make_shared<IPStackSimulator>(base, state);
+          state->ip_stack_simulator = make_shared<IPStackSimulator>(base, state);
           for (const auto& it : state->ip_stack_addresses) {
             auto netloc = parse_netloc(it);
             string spec = (netloc.second == 0) ? ("T-IPS-" + netloc.first) : string_printf("T-IPS-%hu", netloc.second);
-            ip_stack_simulator->listen(spec, netloc.first, netloc.second, IPStackSimulator::Protocol::ETHERNET_TAPSERVER);
+            state->ip_stack_simulator->listen(
+                spec, netloc.first, netloc.second, IPStackSimulator::Protocol::ETHERNET_TAPSERVER);
           }
           for (const auto& it : state->ppp_stack_addresses) {
             auto netloc = parse_netloc(it);
             string spec = (netloc.second == 0) ? ("T-PPPST-" + netloc.first) : string_printf("T-PPPST-%hu", netloc.second);
-            ip_stack_simulator->listen(spec, netloc.first, netloc.second, IPStackSimulator::Protocol::HDLC_TAPSERVER);
+            state->ip_stack_simulator->listen(
+                spec, netloc.first, netloc.second, IPStackSimulator::Protocol::HDLC_TAPSERVER);
           }
           for (const auto& it : state->ppp_raw_addresses) {
             auto netloc = parse_netloc(it);
             string spec = (netloc.second == 0) ? ("T-PPPSR-" + netloc.first) : string_printf("T-PPPSR-%hu", netloc.second);
-            ip_stack_simulator->listen(spec, netloc.first, netloc.second, IPStackSimulator::Protocol::HDLC_RAW);
+            state->ip_stack_simulator->listen(
+                spec, netloc.first, netloc.second, IPStackSimulator::Protocol::HDLC_RAW);
             if (netloc.second) {
               if (state->local_address == state->external_address) {
                 config_log.info(

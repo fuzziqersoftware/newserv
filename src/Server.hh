@@ -31,6 +31,7 @@ public:
 
   std::shared_ptr<Client> get_client() const;
   std::vector<std::shared_ptr<Client>> get_clients_by_identifier(const std::string& ident) const;
+  std::vector<std::shared_ptr<Client>> all_clients() const;
   std::shared_ptr<struct event_base> get_base() const;
 
   inline std::shared_ptr<ServerState> get_state() const {

@@ -682,6 +682,13 @@ void ServerState::load_config_early() {
   this->all_addresses.erase("<external>");
   this->all_addresses.emplace("<external>", this->external_address);
 
+  try {
+    this->banned_ipv4_ranges = make_shared<IPV4RangeSet>(this->config_json->at("BannedIPV4Ranges"));
+    this->disconnect_all_banned_clients();
+  } catch (const out_of_range&) {
+    this->banned_ipv4_ranges = make_shared<IPV4RangeSet>();
+  }
+
   this->client_ping_interval_usecs = this->config_json->get_int("ClientPingInterval", 30000000);
   this->client_idle_timeout_usecs = this->config_json->get_int("ClientIdleTimeout", 60000000);
   this->patch_client_idle_timeout_usecs = this->config_json->get_int("PatchClientIdleTimeout", 300000000);
@@ -1108,6 +1115,8 @@ void ServerState::load_config_early() {
     }
   } catch (const out_of_range&) {
   }
+
+  this->update_dependent_server_configs();
 }
 
 void ServerState::load_config_late() {
@@ -1278,6 +1287,7 @@ void ServerState::load_accounts(bool from_non_event_thread) {
 
   auto set = [s = this->shared_from_this(), new_index = std::move(new_index)]() {
     s->account_index = std::move(new_index);
+    s->update_dependent_server_configs();
   };
   this->forward_or_call(from_non_event_thread, std::move(set));
 }
@@ -1324,6 +1334,7 @@ void ServerState::load_patch_indexes(bool from_non_event_thread) {
     s->bb_data_gsl = std::move(bb_data_gsl);
     s->pc_patch_file_index = std::move(pc_patch_file_index);
     s->bb_patch_file_index = std::move(bb_patch_file_index);
+    s->update_dependent_server_configs();
   };
   this->forward_or_call(from_non_event_thread, std::move(set));
 }
@@ -1850,15 +1861,67 @@ shared_ptr<PatchServer::Config> ServerState::generate_patch_server_config(bool i
   ret->idle_timeout_usecs = this->patch_client_idle_timeout_usecs;
   ret->message = is_bb ? this->bb_patch_server_message : this->pc_patch_server_message;
   ret->account_index = this->account_index;
+  ret->banned_ipv4_ranges = this->banned_ipv4_ranges;
   ret->patch_file_index = is_bb ? this->bb_patch_file_index : this->pc_patch_file_index;
   return ret;
 }
 
-void ServerState::update_patch_server_configs() const {
+void ServerState::update_dependent_server_configs() const {
   if (this->pc_patch_server) {
     this->pc_patch_server->set_config(this->generate_patch_server_config(false));
   }
   if (this->bb_patch_server) {
     this->bb_patch_server->set_config(this->generate_patch_server_config(true));
+  }
+  if (this->dns_server) {
+    this->dns_server->set_banned_ipv4_ranges(this->banned_ipv4_ranges);
+  }
+}
+
+void ServerState::disconnect_all_banned_clients() {
+  uint64_t now_usecs = now();
+
+  if (this->game_server) {
+    for (const auto& c : this->game_server->all_clients()) {
+      if ((c->login && (c->login->account->ban_end_time > now_usecs)) ||
+          this->banned_ipv4_ranges->check(c->channel.remote_addr)) {
+        this->game_server->disconnect_client(c);
+      }
+    }
+  }
+
+  // Proxy server
+  if (this->proxy_server) {
+    vector<uint32_t> sessions_to_close;
+    for (const auto& it : this->proxy_server->all_sessions()) {
+      auto ses = it.second;
+      if ((ses->login && (ses->login->account->ban_end_time > now_usecs)) ||
+          this->banned_ipv4_ranges->check(ses->client_channel.remote_addr)) {
+        sessions_to_close.emplace_back(it.first);
+      }
+    }
+    for (uint32_t ses_id : sessions_to_close) {
+      this->proxy_server->delete_session(ses_id);
+    }
+  }
+
+  // IP stack simulator (IP bans only; account bans will presumably be handled
+  // by one of the above cases)
+  if (this->ip_stack_simulator) {
+    vector<bufferevent*> bevs_to_disconnect;
+    for (const auto& it : this->ip_stack_simulator->all_clients()) {
+      int fd = bufferevent_getfd(it.first);
+      if (fd < 0) {
+        continue;
+      }
+      struct sockaddr_storage remote_ss;
+      get_socket_addresses(fd, nullptr, &remote_ss);
+      if (this->banned_ipv4_ranges->check(remote_ss)) {
+        bevs_to_disconnect.emplace_back(it.first);
+      }
+    }
+    for (auto* bev : bevs_to_disconnect) {
+      this->ip_stack_simulator->disconnect_client(bev);
+    }
   }
 }

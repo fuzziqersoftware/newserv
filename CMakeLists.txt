@@ -92,6 +92,7 @@ set(SOURCES
     src/HTTPServer.cc
     src/IPFrameInfo.cc
     src/IPStackSimulator.cc
+    src/IPV4RangeSet.cc
     src/ItemCreator.cc
     src/ItemData.cc
     src/ItemNameIndex.cc

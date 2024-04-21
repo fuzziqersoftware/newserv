@@ -176,6 +176,17 @@
   // entries in this list is the same as for IPStackListen and PPPStackListen.
   "HTTPListen": [],
 
+  // Banned IP address ranges. If a client whose remote IPv4 address is in any
+  // of these ranges connects to the server, they are immediately disconnected
+  // with no message. Entries in this list may be individiual IP addresses
+  // (e.g. "1.2.3.4") or CIDR ranges (e.g. "1.2.3.0/24"). This field takes
+  // effect immediately when `reload config` is run in the shell; any existing
+  // clients who are now banned are disconnected.
+  // Note that this setting does not apply to the HTTP server; it is not
+  // possible to ban IP ranges from the HTTP server. (It is also inadvisable
+  // to expose the HTTP server to the public Internet.)
+  "BannedIPV4Ranges": [],
+
   // Other servers to support proxying to. If this is empty for any game
   // version, the proxy server is disabled for that version. Entries in these
   // dictionaries should be of the form "name": "address:port"; the names are

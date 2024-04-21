@@ -22,22 +22,6 @@ public:
     HDLC_RAW,
   };
 
-  IPStackSimulator(
-      std::shared_ptr<struct event_base> base,
-      std::shared_ptr<ServerState> state);
-  ~IPStackSimulator();
-
-  void listen(const std::string& name, const std::string& socket_path, Protocol protocol);
-  void listen(const std::string& name, const std::string& addr, int port, Protocol protocol);
-  void listen(const std::string& name, int port, Protocol protocol);
-  void add_socket(const std::string& name, int fd, Protocol protocol);
-
-  static uint32_t connect_address_for_remote_address(uint32_t remote_addr);
-
-private:
-  std::shared_ptr<struct event_base> base;
-  std::shared_ptr<ServerState> state;
-
   using unique_listener = std::unique_ptr<struct evconnlistener, void (*)(struct evconnlistener*)>;
   using unique_bufferevent = std::unique_ptr<struct bufferevent, void (*)(struct bufferevent*)>;
   using unique_evbuffer = std::unique_ptr<struct evbuffer, void (*)(struct evbuffer*)>;
@@ -92,6 +76,28 @@ private:
     void on_idle_timeout();
   };
 
+  IPStackSimulator(
+      std::shared_ptr<struct event_base> base,
+      std::shared_ptr<ServerState> state);
+  ~IPStackSimulator();
+
+  void listen(const std::string& name, const std::string& socket_path, Protocol protocol);
+  void listen(const std::string& name, const std::string& addr, int port, Protocol protocol);
+  void listen(const std::string& name, int port, Protocol protocol);
+  void add_socket(const std::string& name, int fd, Protocol protocol);
+
+  static uint32_t connect_address_for_remote_address(uint32_t remote_addr);
+
+  inline const std::unordered_map<struct bufferevent*, std::shared_ptr<IPClient>>& all_clients() const {
+    return this->bev_to_client;
+  }
+
+  void disconnect_client(struct bufferevent* bev);
+
+private:
+  std::shared_ptr<struct event_base> base;
+  std::shared_ptr<ServerState> state;
+
   struct ListeningSocket {
     std::string name;
     Protocol protocol;
@@ -111,20 +117,16 @@ private:
 
   FILE* pcap_text_log_file;
 
-  void disconnect_client(struct bufferevent* bev);
-
   static uint64_t tcp_conn_key_for_connection(const IPClient::TCPConnection& conn);
   static uint64_t tcp_conn_key_for_client_frame(const IPv4Header& ipv4, const TCPHeader& tcp);
   static uint64_t tcp_conn_key_for_client_frame(const FrameInfo& fi);
 
   static std::string str_for_ipv4_netloc(uint32_t addr, uint16_t port);
-  static std::string str_for_tcp_connection(std::shared_ptr<const IPClient> c,
-      const IPClient::TCPConnection& conn);
+  static std::string str_for_tcp_connection(std::shared_ptr<const IPClient> c, const IPClient::TCPConnection& conn);
 
   static void dispatch_on_listen_accept(struct evconnlistener* listener,
       evutil_socket_t fd, struct sockaddr* address, int socklen, void* ctx);
-  void on_listen_accept(struct evconnlistener* listener, evutil_socket_t fd,
-      struct sockaddr* address, int socklen);
+  void on_listen_accept(struct evconnlistener* listener, evutil_socket_t fd, struct sockaddr* address, int socklen);
   static void dispatch_on_listen_error(struct evconnlistener* listener, void* ctx);
   void on_listen_error(struct evconnlistener* listener);
 
@@ -158,8 +160,7 @@ private:
       struct evbuffer* src_buf = nullptr,
       size_t src_bytes = 0);
 
-  void open_server_connection(
-      std::shared_ptr<IPClient> c, IPClient::TCPConnection& conn);
+  void open_server_connection(std::shared_ptr<IPClient> c, IPClient::TCPConnection& conn);
 
   void log_frame(const std::string& data) const;
 };

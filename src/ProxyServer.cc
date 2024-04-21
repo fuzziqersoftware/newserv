@@ -98,6 +98,13 @@ void ProxyServer::ListeningSocket::dispatch_on_listen_error(
 }
 
 void ProxyServer::ListeningSocket::on_listen_accept(int fd) {
+  struct sockaddr_storage remote_addr;
+  get_socket_addresses(fd, nullptr, &remote_addr);
+  if (this->server->state->banned_ipv4_ranges->check(remote_addr)) {
+    close(fd);
+    return;
+  }
+
   this->log.info("Client connected on fd %d (port %hu, version %s)", fd, this->port, name_for_enum(this->version));
   auto* bev = bufferevent_socket_new(this->server->base.get(), fd, BEV_OPT_CLOSE_ON_FREE | BEV_OPT_DEFER_CALLBACKS);
   this->server->on_client_connect(bev, this->port, this->version,

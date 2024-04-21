@@ -85,17 +85,20 @@ void Server::destroy_clients() {
 void Server::dispatch_on_listen_accept(
     struct evconnlistener* listener, evutil_socket_t fd,
     struct sockaddr* address, int socklen, void* ctx) {
-  reinterpret_cast<Server*>(ctx)->on_listen_accept(listener, fd, address,
-      socklen);
+  reinterpret_cast<Server*>(ctx)->on_listen_accept(listener, fd, address, socklen);
 }
 
-void Server::dispatch_on_listen_error(
-    struct evconnlistener* listener, void* ctx) {
+void Server::dispatch_on_listen_error(struct evconnlistener* listener, void* ctx) {
   reinterpret_cast<Server*>(ctx)->on_listen_error(listener);
 }
 
-void Server::on_listen_accept(
-    struct evconnlistener* listener, evutil_socket_t fd, struct sockaddr*, int) {
+void Server::on_listen_accept(struct evconnlistener* listener, evutil_socket_t fd, struct sockaddr*, int) {
+  struct sockaddr_storage remote_addr;
+  get_socket_addresses(fd, nullptr, &remote_addr);
+  if (this->state->banned_ipv4_ranges->check(remote_addr)) {
+    close(fd);
+    return;
+  }
 
   int listen_fd = evconnlistener_get_fd(listener);
   ListeningSocket* listening_socket;
@@ -108,8 +111,7 @@ void Server::on_listen_accept(
     return;
   }
 
-  struct bufferevent* bev = bufferevent_socket_new(this->base.get(), fd,
-      BEV_OPT_CLOSE_ON_FREE | BEV_OPT_DEFER_CALLBACKS);
+  struct bufferevent* bev = bufferevent_socket_new(this->base.get(), fd, BEV_OPT_CLOSE_ON_FREE | BEV_OPT_DEFER_CALLBACKS);
   auto c = make_shared<Client>(this->shared_from_this(), bev, listening_socket->version, listening_socket->behavior);
   c->channel.on_command_received = Server::on_client_input;
   c->channel.on_error = Server::on_client_error;
@@ -298,39 +300,47 @@ vector<shared_ptr<Client>> Server::get_clients_by_identifier(const string& ident
   for (const auto& it : this->state->channel_to_client) {
     auto c = it.second;
     if (c->login && c->login->account->account_id == account_id_hex) {
-      results.emplace_back(std::move(c));
+      results.emplace_back(c);
       continue;
     }
     if (c->login && c->login->account->account_id == account_id_dec) {
-      results.emplace_back(std::move(c));
+      results.emplace_back(c);
       continue;
     }
     if (c->login && c->login->xb_license && c->login->xb_license->gamertag == ident) {
-      results.emplace_back(std::move(c));
+      results.emplace_back(c);
       continue;
     }
     if (c->login && c->login->bb_license && c->login->bb_license->username == ident) {
-      results.emplace_back(std::move(c));
+      results.emplace_back(c);
       continue;
     }
 
     auto p = c->character(false, false);
     if (p && p->disp.name.eq(ident, p->inventory.language)) {
-      results.emplace_back(std::move(c));
+      results.emplace_back(c);
       continue;
     }
 
     if (c->channel.name == ident) {
-      results.emplace_back(std::move(c));
+      results.emplace_back(c);
       continue;
     }
     if (starts_with(c->channel.name, ident + " ")) {
-      results.emplace_back(std::move(c));
+      results.emplace_back(c);
       continue;
     }
   }
 
   return results;
+}
+
+vector<shared_ptr<Client>> Server::all_clients() const {
+  vector<shared_ptr<Client>> ret;
+  for (const auto& it : this->state->channel_to_client) {
+    ret.emplace_back(it.second);
+  }
+  return ret;
 }
 
 shared_ptr<struct event_base> Server::get_base() const {

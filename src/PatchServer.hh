@@ -10,6 +10,7 @@
 
 #include "Account.hh"
 #include "Channel.hh"
+#include "IPV4RangeSet.hh"
 #include "PatchFileIndex.hh"
 #include "Version.hh"
 
@@ -22,6 +23,7 @@ public:
     std::string message;
     std::shared_ptr<AccountIndex> account_index;
     std::shared_ptr<const PatchFileIndex> patch_file_index;
+    std::shared_ptr<const IPV4RangeSet> banned_ipv4_ranges;
     std::shared_ptr<struct event_base> shared_base;
   };
 

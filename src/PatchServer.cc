@@ -320,6 +320,13 @@ void PatchServer::dispatch_on_listen_error(
 }
 
 void PatchServer::on_listen_accept(struct evconnlistener* listener, evutil_socket_t fd, struct sockaddr*, int) {
+  struct sockaddr_storage remote_addr;
+  get_socket_addresses(fd, nullptr, &remote_addr);
+  if (this->config->banned_ipv4_ranges->check(remote_addr)) {
+    close(fd);
+    return;
+  }
+
   int listen_fd = evconnlistener_get_fd(listener);
   ListeningSocket* listening_socket;
   try {
@@ -461,7 +468,11 @@ void PatchServer::thread_fn() {
 }
 
 void PatchServer::set_config(std::shared_ptr<const Config> config) {
-  forward_to_event_thread(this->base, [s = this->shared_from_this(), config = std::move(config)]() {
-    s->config = config;
-  });
+  if (this->base_is_shared) {
+    this->config = config;
+  } else {
+    forward_to_event_thread(this->base, [s = this->shared_from_this(), config = std::move(config)]() {
+      s->config = config;
+    });
+  }
 }

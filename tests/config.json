@@ -46,6 +46,7 @@
   "IPStackListen": [],
   "PPPStackListen": [],
   "HTTPListen": [],
+  "BannedIPV4Ranges": [],
   "Episode3BehaviorFlags": 0xFA,
   "EnableEpisode3SendFunctionCall": false,
   "EnableV3V4ProtectedSubcommands": false,

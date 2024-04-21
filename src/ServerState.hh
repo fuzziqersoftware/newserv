@@ -14,11 +14,13 @@
 #include "Account.hh"
 #include "Client.hh"
 #include "CommonItemSet.hh"
+#include "DNSServer.hh"
 #include "Episode3/DataIndexes.hh"
 #include "Episode3/Tournament.hh"
 #include "EventUtils.hh"
 #include "FunctionCompiler.hh"
 #include "GSLArchive.hh"
+#include "IPV4RangeSet.hh"
 #include "ItemNameIndex.hh"
 #include "ItemParameterTable.hh"
 #include "LevelTable.hh"
@@ -33,6 +35,7 @@
 // Forward declarations due to reference cycles
 class ProxyServer;
 class Server;
+class IPStackSimulator;
 
 struct PortConfiguration {
   std::string name;
@@ -215,6 +218,7 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   std::vector<Ep3LobbyBannerEntry> ep3_lobby_banners;
 
   std::shared_ptr<AccountIndex> account_index;
+  std::shared_ptr<IPV4RangeSet> banned_ipv4_ranges;
   std::shared_ptr<TeamIndex> team_index;
   JSON team_reward_defs_json;
 
@@ -253,6 +257,8 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   bool proxy_allow_save_files = true;
   bool proxy_enable_login_options = false;
 
+  std::shared_ptr<IPStackSimulator> ip_stack_simulator;
+  std::shared_ptr<DNSServer> dns_server;
   std::shared_ptr<ProxyServer> proxy_server;
   std::shared_ptr<Server> game_server;
   std::shared_ptr<PatchServer> pc_patch_server;
@@ -343,7 +349,7 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   }
 
   std::shared_ptr<PatchServer::Config> generate_patch_server_config(bool is_bb) const;
-  void update_patch_server_configs() const;
+  void update_dependent_server_configs() const;
 
   // The following functions may only be called from a non-event thread if they
   // take a from_non_event_thread argument; any function that does not have this
@@ -379,4 +385,6 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
 
   void enqueue_destroy_lobbies();
   static void dispatch_destroy_lobbies(evutil_socket_t, short, void* ctx);
+
+  void disconnect_all_banned_clients();
 };

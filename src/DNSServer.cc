@@ -19,10 +19,13 @@ using namespace std;
 
 DNSServer::DNSServer(
     shared_ptr<struct event_base> base,
-    uint32_t local_connect_address, uint32_t external_connect_address)
+    uint32_t local_connect_address,
+    uint32_t external_connect_address,
+    shared_ptr<const IPV4RangeSet> banned_ipv4_ranges)
     : base(base),
       local_connect_address(local_connect_address),
-      external_connect_address(external_connect_address) {}
+      external_connect_address(external_connect_address),
+      banned_ipv4_ranges(banned_ipv4_ranges) {}
 
 DNSServer::~DNSServer() {
   for (const auto& it : this->fd_to_receive_event) {
@@ -55,8 +58,7 @@ void DNSServer::dispatch_on_receive_message(evutil_socket_t fd,
   reinterpret_cast<DNSServer*>(ctx)->on_receive_message(fd, events);
 }
 
-string DNSServer::response_for_query(
-    const void* vdata, size_t size, uint32_t resolved_address) {
+string DNSServer::response_for_query(const void* vdata, size_t size, uint32_t resolved_address) {
   if (size < 0x0C) {
     throw invalid_argument("query too small");
   }
@@ -82,7 +84,7 @@ string DNSServer::response_for_query(
 
 void DNSServer::on_receive_message(int fd, short) {
   for (;;) {
-    sockaddr_in remote;
+    struct sockaddr_storage remote;
     socklen_t remote_size = sizeof(sockaddr_in);
     memset(&remote, 0, remote_size);
 
@@ -104,9 +106,10 @@ void DNSServer::on_receive_message(int fd, short) {
       dns_server_log.warning("input query too small");
       print_data(stderr, input.data(), bytes);
 
-    } else {
+    } else if (!this->banned_ipv4_ranges->check(remote)) {
       input.resize(bytes);
-      uint32_t remote_address = ntohl(remote.sin_addr.s_addr);
+      const sockaddr_in* remote_sin = reinterpret_cast<const sockaddr_in*>(&remote);
+      uint32_t remote_address = ntohl(remote_sin->sin_addr.s_addr);
       uint32_t connect_address = is_local_address(remote_address)
           ? this->local_connect_address
           : this->external_connect_address;

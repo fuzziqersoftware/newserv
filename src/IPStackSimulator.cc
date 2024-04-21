@@ -235,12 +235,17 @@ void IPStackSimulator::disconnect_client(struct bufferevent* bev) {
 void IPStackSimulator::dispatch_on_listen_accept(
     struct evconnlistener* listener, evutil_socket_t fd,
     struct sockaddr* address, int socklen, void* ctx) {
-  reinterpret_cast<IPStackSimulator*>(ctx)->on_listen_accept(
-      listener, fd, address, socklen);
+  reinterpret_cast<IPStackSimulator*>(ctx)->on_listen_accept(listener, fd, address, socklen);
 }
 
-void IPStackSimulator::on_listen_accept(struct evconnlistener* listener,
-    evutil_socket_t fd, struct sockaddr*, int) {
+void IPStackSimulator::on_listen_accept(struct evconnlistener* listener, evutil_socket_t fd, struct sockaddr*, int) {
+  struct sockaddr_storage remote_addr;
+  get_socket_addresses(fd, nullptr, &remote_addr);
+  if (this->state->banned_ipv4_ranges->check(remote_addr)) {
+    close(fd);
+    return;
+  }
+
   int listen_fd = evconnlistener_get_fd(listener);
 
   const ListeningSocket* listening_socket;
