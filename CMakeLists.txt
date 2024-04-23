@@ -90,6 +90,7 @@ set(SOURCES
     src/GSLArchive.cc
     src/GVMEncoder.cc
     src/HTTPServer.cc
+    src/IntegralExpression.cc
     src/IPFrameInfo.cc
     src/IPStackSimulator.cc
     src/IPV4RangeSet.cc
@@ -105,8 +106,8 @@ set(SOURCES
     src/Map.cc
     src/Menu.cc
     src/NetworkAddresses.cc
-    src/PatchServer.cc
     src/PatchFileIndex.cc
+    src/PatchServer.cc
     src/PlayerFilesManager.cc
     src/PlayerSubordinates.cc
     src/ProxyCommands.cc
@@ -115,7 +116,6 @@ set(SOURCES
     src/PSOGCObjectGraph.cc
     src/PSOProtocol.cc
     src/Quest.cc
-    src/IntegralExpression.cc
     src/QuestScript.cc
     src/RareItemSet.cc
     src/ReceiveCommands.cc
