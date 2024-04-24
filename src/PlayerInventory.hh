@@ -3,6 +3,7 @@
 #include <inttypes.h>
 #include <stddef.h>
 
+#include <algorithm>
 #include <array>
 #include <phosg/Encoding.hh>
 #include <phosg/JSON.hh>
