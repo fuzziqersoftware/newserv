@@ -1572,7 +1572,18 @@ static void on_CA_Ep3(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
   }
 
   bool battle_finished_before = l->ep3_server->battle_finished;
-  l->ep3_server->on_server_data_input(c, data);
+
+  try {
+    l->ep3_server->on_server_data_input(c, data);
+  } catch (const exception& e) {
+    c->log.error("Episode 3 engine returned an error: %s", e.what());
+    if (l->battle_record) {
+      string filename = string_printf("system/ep3/battle-records/exc.%" PRIu64 ".mzrd", now());
+      save_file(filename, l->battle_record->serialize());
+      c->log.error("Saved partial battle record as %s", filename.c_str());
+    }
+    throw;
+  }
 
   // If the battle has finished, finalize the recording and link it to all
   // participating players and spectators
