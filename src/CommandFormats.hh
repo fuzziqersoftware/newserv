@@ -5563,13 +5563,14 @@ struct G_MoveLobbyChair_6xB0 {
 
 // 6xB2: Play sound from player (not valid on pre-V3 or GC Trial Edition)
 // This command is sent when a snapshot is taken on PSO GC, but it can be used
-// to play any sound, centered on the player identified by client_id.
+// to play any sound, centered on the local player. If localize is FFFF, then
+// the sound is not centered on the local player and is just played globally.
 
 struct G_PlaySoundFromPlayer_6xB2 {
   G_UnusedHeader header;
   uint8_t floor = 0;
   uint8_t unused = 0;
-  le_uint16_t client_id = 0;
+  le_uint16_t localize = 0;
   le_uint32_t sound_id = 0; // 0x00051720 = camera shutter sound
 } __packed_ws__(G_PlaySoundFromPlayer_6xB2, 0x0C);
 
