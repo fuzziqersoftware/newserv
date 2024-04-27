@@ -1,5 +1,5 @@
 start:
-  mov    eax, 0x88888888  # eax = &player_compute_implied_stats
+  mov    eax, 0x88888888  # eax = &player_compute_implied_stats (the value is overwritten by the including patch)
   lea    edx, [ecx + 0x78]
   cmp    byte [edx + 0x76], 11  # this->data1[2] (item+0xEE) ?= 0x0B
   jne    skip_all
