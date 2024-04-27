@@ -217,13 +217,14 @@ std::string ItemNameIndex::describe_item(const ItemData& item, bool include_colo
       if (!bonuses.is_filled_with(0)) {
         bool should_include_hit = (bonuses[4] != 0);
         bool should_highlight_hit = include_color_escapes && (bonuses[4] > 0);
+        const char* color_prefix = include_color_escapes ? "$C7" : "";
         if (should_include_hit) {
-          ret_tokens.emplace_back(string_printf("%hhd/%hhd/%hhd/%hhd/%s%hhd",
-              bonuses[0], bonuses[1], bonuses[2], bonuses[3],
-              (should_highlight_hit ? "$CG" : ""), bonuses[4]));
+          ret_tokens.emplace_back(string_printf("%s%hhd/%hhd/%hhd/%hhd/%s%hhd",
+              color_prefix, bonuses[0], bonuses[1], bonuses[2], bonuses[3],
+              (should_highlight_hit ? "$C6" : ""), bonuses[4]));
         } else {
-          ret_tokens.emplace_back(string_printf("%hhd/%hhd/%hhd/%hhd",
-              bonuses[0], bonuses[1], bonuses[2], bonuses[3]));
+          ret_tokens.emplace_back(string_printf("%s%hhd/%hhd/%hhd/%hhd",
+              color_prefix, bonuses[0], bonuses[1], bonuses[2], bonuses[3]));
         }
       }
     }

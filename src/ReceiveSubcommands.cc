@@ -3175,9 +3175,9 @@ static void send_max_level_notification_if_needed(shared_ptr<Client> c) {
   if (p->disp.stats.level == max_level) {
     string name = p->disp.name.decode(c->language());
     size_t level_for_str = max_level + 1;
-    string message = string_printf("$CG%s$C6\nGC: %" PRIu32 "\nhas reached Level $CG%zu",
+    string message = string_printf("$C6%s$C7\nGC: %" PRIu32 "\nhas reached Level $C6%zu",
         name.c_str(), c->login->account->account_id, level_for_str);
-    string bb_message = string_printf("$CG%s$C6 (GC: %" PRIu32 ") has reached Level $CG%zu",
+    string bb_message = string_printf("$C6%s$C7 (GC: %" PRIu32 ") has reached Level $C6%zu",
         name.c_str(), c->login->account->account_id, level_for_str);
     for (auto& it : s->channel_to_client) {
       if ((it.second != c) && it.second->login && !is_patch(it.second->version()) && it.second->lobby.lock()) {

@@ -72,7 +72,7 @@
 // - - $C7: White (FFFFFF)
 // - - $C8: Pink (FF8080)
 // - - $C9: Violet (8080FF)
-// - - $CG: Orange pulse (FFE000 + darkenings thereof)
+// - - $CG: Orange pulse (FFE000 + darkenings thereof; v2 and later only)
 // - - $Ca: Orange (F5A052; Episode 3 only)
 // - Special character codes (Ep3 only)
 // - - $B: Dash + small bullet
