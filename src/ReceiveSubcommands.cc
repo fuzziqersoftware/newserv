@@ -1576,6 +1576,15 @@ static void on_switch_state_changed(shared_ptr<Client> c, uint8_t command, uint8
   }
 }
 
+static void on_play_sound_from_player(shared_ptr<Client> c, uint8_t command, uint8_t flag, void* data, size_t size) {
+  const auto& cmd = check_size_t<G_PlaySoundFromPlayer_6xB2>(data, size);
+  // This command can be used to play arbitrary sounds, but the client only
+  // ever sends it for the camera shutter sound, so we only allow that one.
+  if (cmd.floor == c->floor && cmd.sound_id == 0x00051720) {
+    forward_subcommand(c, command, flag, data, size);
+  }
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 
 template <typename CmdT>
@@ -4532,7 +4541,7 @@ const SubcommandDefinition subcommand_definitions[0x100] = {
     /* 6xAF */ {0x00, 0x00, 0xAF, on_forward_check_lobby_client},
     /* 6xB0 */ {0x00, 0x00, 0xB0, on_forward_check_lobby_client},
     /* 6xB1 */ {0x00, 0x00, 0xB1, forward_subcommand_m},
-    /* 6xB2 */ {0x00, 0x00, 0xB2, forward_subcommand_m},
+    /* 6xB2 */ {0x00, 0x00, 0xB2, on_play_sound_from_player},
     /* 6xB3 */ {0x00, 0x00, 0xB3, on_xbox_voice_chat_control},
     /* 6xB4 */ {0x00, 0x00, 0xB4, on_xbox_voice_chat_control},
     /* 6xB5 */ {0x00, 0x00, 0xB5, on_open_shop_bb_or_ep3_battle_subs},
