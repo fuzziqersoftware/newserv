@@ -69,6 +69,7 @@ public:
     SHOULD_SEND_ARTIFICIAL_FLAG_STATE          = 0x0002000000000000, // Server-side only
     SHOULD_SEND_ENABLE_SAVE                    = 0x0004000000000000,
     SWITCH_ASSIST_ENABLED                      = 0x0000000100000000,
+    IS_CLIENT_CUSTOMIZATION                    = 0x0100000000000000,
 
     // Cheat mode and option flags
     INFINITE_HP_ENABLED                        = 0x0000000200000000,

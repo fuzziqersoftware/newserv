@@ -792,7 +792,8 @@ Lobby::JoinError Lobby::join_error_for_client(std::shared_ptr<Client> c, const s
   if (this->count_clients() >= this->max_clients) {
     return JoinError::FULL;
   }
-  if (!this->version_is_allowed(c->version()) && !c->config.check_flag(Client::Flag::DEBUG_ENABLED)) {
+  bool debug_enabled = c->config.check_flag(Client::Flag::DEBUG_ENABLED);
+  if (!this->version_is_allowed(c->version()) && !debug_enabled) {
     return JoinError::VERSION_CONFLICT;
   }
   if (this->is_game()) {
@@ -804,6 +805,10 @@ Lobby::JoinError Lobby::join_error_for_client(std::shared_ptr<Client> c, const s
     }
     if (this->mode == GameMode::SOLO) {
       return JoinError::SOLO;
+    }
+    if (!debug_enabled &&
+        (this->check_flag(Flag::IS_CLIENT_CUSTOMIZATION) != c->config.check_flag(Client::Flag::IS_CLIENT_CUSTOMIZATION))) {
+      return JoinError::VERSION_CONFLICT;
     }
     if (!c->login->account->check_flag(Account::Flag::FREE_JOIN_GAMES)) {
       if (password && !this->password.empty() && (*password != this->password)) {

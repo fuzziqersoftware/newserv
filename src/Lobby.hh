@@ -70,6 +70,7 @@ struct Lobby : public std::enable_shared_from_this<Lobby> {
     QUEST_IN_PROGRESS               = 0x00000200,
     BATTLE_IN_PROGRESS              = 0x00000400,
     JOINABLE_QUEST_IN_PROGRESS      = 0x00000800,
+    IS_CLIENT_CUSTOMIZATION         = 0x00001000,
     IS_SPECTATOR_TEAM               = 0x00002000, // episode must be EP3 also
     SPECTATORS_FORBIDDEN            = 0x00004000,
     START_BATTLE_PLAYER_IMMEDIATELY = 0x00008000,

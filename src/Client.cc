@@ -108,9 +108,11 @@ void Client::Config::set_flags_for_version(Version version, int64_t sub_version)
       this->set_flag(Flag::ENCRYPTED_SEND_FUNCTION_CALL);
       this->set_flag(Flag::SEND_FUNCTION_CALL_NO_CACHE_PATCH);
       break;
+    case 0x3A: // GC Ep1&2 US v1.2 (Plus) GMK edition
+      this->set_flag(Flag::IS_CLIENT_CUSTOMIZATION);
+      [[fallthrough]];
     case 0x36: // GC Ep1&2 US v1.2 (Plus)
     case 0x39: // GC Ep1&2 JP v1.5 (Plus)
-    case 0x3A: // GC Ep1&2 US v1.2 (Plus) GMK edition
       this->set_flag(Flag::NO_D6_AFTER_LOBBY);
       this->set_flag(Flag::NO_SEND_FUNCTION_CALL);
       break;

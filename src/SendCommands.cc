@@ -1436,6 +1436,7 @@ void send_game_menu_t(
   for (shared_ptr<Lobby> l : s->all_lobbies()) {
     if (l->is_game() &&
         (client_has_debug || l->version_is_allowed(c->version())) &&
+        (client_has_debug || (l->check_flag(Lobby::Flag::IS_CLIENT_CUSTOMIZATION) == c->config.check_flag(Client::Flag::IS_CLIENT_CUSTOMIZATION))) &&
         (l->check_flag(Lobby::Flag::IS_SPECTATOR_TEAM) == is_spectator_team_list) &&
         (!show_tournaments_only || l->tournament_match)) {
       games.emplace(l);

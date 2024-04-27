@@ -4149,6 +4149,9 @@ shared_ptr<Lobby> create_game_generic(
     default:
       throw logic_error("invalid quest script version");
   }
+  if (c->config.check_flag(Client::Flag::IS_CLIENT_CUSTOMIZATION)) {
+    game->set_flag(Lobby::Flag::IS_CLIENT_CUSTOMIZATION);
+  }
 
   while (game->floor_item_managers.size() < 0x12) {
     game->floor_item_managers.emplace_back(game->lobby_id, game->floor_item_managers.size());
