@@ -765,7 +765,7 @@ Action a_decrypt_dcv2_executable(
     If --simple is given, uses the simpler encryption method used in some\n\
     community modifications of the game. In this case, --seed is not required;\n\
     if not given, finds the seed automatically, and prints it to stderr so you\n\
-    will be able to use it when re-encrypting.",
+    will be able to use it when re-encrypting.\n",
     +[](Arguments& args) {
       string executable_filename = args.get<string>("executable", true);
       string executable_data = load_file(executable_filename);
@@ -785,14 +785,14 @@ Action a_decrypt_dcv2_executable(
     });
 Action a_encrypt_dcv2_executable(
     "encrypt-dcv2-executable", "\
-  decrypt-dcv2-executable --executable=EXEC --indexes=INDEXES\n\
-  decrypt-dcv2-executable --executable=EXEC --simple --seed=SEED\n\
+  encrypt-dcv2-executable --executable=EXEC --indexes=INDEXES\n\
+  encrypt-dcv2-executable --executable=EXEC --simple --seed=SEED\n\
     Encrypt a PSO DC v2 executable file. EXEC should be the path to the\n\
     executable (DP_ADDRESS.JPN) and INDEXES should be the path to the index\n\
     fixup table (KATSUO.SEA). The output is written to EXEC.enc and\n\
     INDEXES.enc.\n\
     If --simple is given, uses the simpler encryption method used in some\n\
-    community modifications of the game. In this case, --seed is required.",
+    community modifications of the game. In this case, --seed is required.\n",
     +[](Arguments& args) {
       string executable_filename = args.get<string>("executable", true);
       string executable_data = load_file(executable_filename);
@@ -2424,6 +2424,45 @@ Action a_replay_ep3_battle_commands(
         size_t num_threads = args.get<size_t>("threads", 0);
         parallel_range<int64_t>(run_replay, 0, 0x100000000, num_threads);
       }
+    });
+
+Action a_replay_ep3_battle_record(
+    "replay-ep3-battle-record", nullptr, +[](Arguments& args) {
+      auto rec = make_shared<Episode3::BattleRecord>(read_input_data(args));
+
+      auto s = make_shared<ServerState>(get_config_filename(args));
+      s->load_ep3_cards(false);
+      s->load_ep3_maps(false);
+
+      bool is_trial = (get_cli_version(args, Version::GC_EP3) == Version::GC_EP3_NTE);
+
+      Episode3::Server::Options options = {
+          .card_index = s->ep3_card_index,
+          .map_index = s->ep3_map_index,
+          .behavior_flags = (Episode3::BehaviorFlag::IGNORE_CARD_COUNTS |
+              Episode3::BehaviorFlag::ENABLE_STATUS_MESSAGES |
+              Episode3::BehaviorFlag::DISABLE_MASKING |
+              Episode3::BehaviorFlag::LOG_COMMANDS_IF_LOBBY_MISSING),
+          .opt_rand_stream = make_shared<StringReader>(rec->get_random_stream()),
+          .tournament = nullptr,
+          .trap_card_ids = {},
+      };
+      if (is_trial) {
+        options.behavior_flags |= Episode3::BehaviorFlag::IS_TRIAL_EDITION;
+      }
+      options.behavior_flags |= Episode3::BehaviorFlag::LOG_COMMANDS_IF_LOBBY_MISSING;
+      auto server = make_shared<Episode3::Server>(nullptr, std::move(options));
+      server->init();
+      for (const auto& command : rec->get_all_server_data_commands()) {
+        log_info("Server data command");
+        print_data(stderr, command, 0, nullptr, PrintDataFlags::PRINT_ASCII | PrintDataFlags::DISABLE_COLOR | PrintDataFlags::OFFSET_16_BITS);
+        server->on_server_data_input(nullptr, command);
+      }
+    });
+
+Action a_disassemble_ep3_battle_record(
+    "disassemble-ep3-battle-record", nullptr, +[](Arguments& args) {
+      Episode3::BattleRecord(read_input_data(args)).print(stdout);
     });
 
 Action a_run_server_replay_log(

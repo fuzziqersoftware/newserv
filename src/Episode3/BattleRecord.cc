@@ -12,7 +12,7 @@ namespace Episode3 {
 void BattleRecord::PlayerEntry::print(FILE* stream) const {
   // TODO: Format this nicely somehow. Maybe factor out the functions in
   // QuestScript that format some of these structures
-  print_data(stream, this, sizeof(this));
+  print_data(stream, this, sizeof(*this), 0, nullptr, PrintDataFlags::PRINT_ASCII | PrintDataFlags::DISABLE_COLOR | PrintDataFlags::OFFSET_16_BITS);
 }
 
 BattleRecord::Event::Event(StringReader& r) {
@@ -96,29 +96,30 @@ void BattleRecord::Event::print(FILE* stream) const {
       for (const auto& player : this->players) {
         fprintf(stream, " %02" PRIX32, player.lobby_data.client_id.load());
       }
+      fputc('\n', stream);
       for (const auto& player : this->players) {
         player.print(stream);
       }
       break;
     case Type::BATTLE_COMMAND:
       fprintf(stream, "BATTLE_COMMAND\n");
-      print_data(stream, this->data);
+      print_data(stream, this->data, 0, nullptr, PrintDataFlags::PRINT_ASCII | PrintDataFlags::DISABLE_COLOR | PrintDataFlags::OFFSET_16_BITS);
       break;
     case Type::GAME_COMMAND:
       fprintf(stream, "GAME_COMMAND\n");
-      print_data(stream, this->data);
+      print_data(stream, this->data, 0, nullptr, PrintDataFlags::PRINT_ASCII | PrintDataFlags::DISABLE_COLOR | PrintDataFlags::OFFSET_16_BITS);
       break;
     case Type::EP3_GAME_COMMAND:
       fprintf(stream, "EP3_GAME_COMMAND\n");
-      print_data(stream, this->data);
+      print_data(stream, this->data, 0, nullptr, PrintDataFlags::PRINT_ASCII | PrintDataFlags::DISABLE_COLOR | PrintDataFlags::OFFSET_16_BITS);
       break;
     case Type::CHAT_MESSAGE:
       fprintf(stream, "CHAT_MESSAGE %08" PRIX32 "\n", this->guild_card_number);
-      print_data(stream, this->data);
+      print_data(stream, this->data, 0, nullptr, PrintDataFlags::PRINT_ASCII | PrintDataFlags::DISABLE_COLOR | PrintDataFlags::OFFSET_16_BITS);
       break;
     case Type::SERVER_DATA_COMMAND:
       fprintf(stream, "SERVER_DATA_COMMAND\n");
-      print_data(stream, this->data);
+      print_data(stream, this->data, 0, nullptr, PrintDataFlags::PRINT_ASCII | PrintDataFlags::DISABLE_COLOR | PrintDataFlags::OFFSET_16_BITS);
       break;
     default:
       throw runtime_error("unknown event type in battle record");
@@ -255,6 +256,20 @@ void BattleRecord::add_random_data(const void* data, size_t size) {
   this->random_stream.append(reinterpret_cast<const char*>(data), size);
 }
 
+vector<string> BattleRecord::get_all_server_data_commands() const {
+  vector<string> ret;
+  for (const auto& event : this->events) {
+    if (event.type == Event::Type::SERVER_DATA_COMMAND) {
+      ret.emplace_back(event.data);
+    }
+  }
+  return ret;
+}
+
+const string& BattleRecord::get_random_stream() const {
+  return this->random_stream;
+}
+
 bool BattleRecord::is_map_definition_event(const Event& ev) {
   if (ev.type == Event::Type::BATTLE_COMMAND) {
     auto& header = check_size_t<G_CardBattleCommandHeader>(ev.data, 0xFFFF);
@@ -331,7 +346,7 @@ void BattleRecord::set_battle_start_timestamp() {
     }
   }
   for (; it != this->events.end(); it++) {
-    if (it->type == Event::Type::BATTLE_COMMAND) {
+    if ((it->type == Event::Type::BATTLE_COMMAND) || (it->type == Event::Type::SERVER_DATA_COMMAND)) {
       new_events.emplace_back(std::move(*it));
     }
   }
@@ -373,7 +388,7 @@ shared_ptr<const BattleRecord> BattleRecordPlayer::get_record() const {
   return this->record;
 }
 
-void BattleRecordPlayer::set_lobby(std::shared_ptr<Lobby> l) {
+void BattleRecordPlayer::set_lobby(shared_ptr<Lobby> l) {
   this->lobby = l;
 }
 

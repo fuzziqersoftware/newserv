@@ -30,7 +30,7 @@ void Server::PresenceEntry::clear() {
 
 Server::Server(shared_ptr<Lobby> lobby, Options&& options)
     : lobby(lobby),
-      battle_record(lobby->battle_record),
+      battle_record(lobby ? lobby->battle_record : nullptr),
       has_lobby(lobby != nullptr),
       options(std::move(options)),
       last_chosen_map(this->options.tournament ? this->options.tournament->get_map() : nullptr),
@@ -260,7 +260,7 @@ void Server::send(const void* data, size_t size, uint8_t command, bool enable_ma
 
   } else if ((this->options.behavior_flags & BehaviorFlag::LOG_COMMANDS_IF_LOBBY_MISSING) &&
       this->log().info("Generated command")) {
-    print_data(stderr, data, size);
+    print_data(stderr, data, size, 0, nullptr, PrintDataFlags::PRINT_ASCII | PrintDataFlags::DISABLE_COLOR | PrintDataFlags::OFFSET_16_BITS);
   }
 }
 
@@ -1075,7 +1075,13 @@ shared_ptr<const PlayerState> Server::get_player_state(uint8_t client_id) const 
 }
 
 uint32_t Server::get_random_raw() {
-  le_uint32_t ret = random_from_optional_crypt(this->options.opt_rand_crypt);
+  le_uint32_t ret;
+  if (this->options.opt_rand_stream) {
+    this->options.opt_rand_stream->readx(&ret, sizeof(ret));
+  } else {
+    ret = random_from_optional_crypt(this->options.opt_rand_crypt);
+  }
+
   if (this->battle_record && this->battle_record->writable()) {
     this->battle_record->add_random_data(&ret, sizeof(ret));
   }

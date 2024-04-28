@@ -86,6 +86,9 @@ public:
 
   void print(FILE* stream) const;
 
+  std::vector<std::string> get_all_server_data_commands() const;
+  const std::string& get_random_stream() const;
+
 private:
   static constexpr uint64_t SIGNATURE_V1 = 0x14C946D56D1DAC50;
   static constexpr uint64_t SIGNATURE_V2 = 0xD01E5EC12853C377;
