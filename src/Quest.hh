@@ -64,6 +64,7 @@ struct VersionedQuest {
   uint32_t category_id;
   Episode episode;
   bool joinable;
+  int16_t lock_status_register;
   std::string name;
   Version version;
   uint8_t language;
@@ -91,7 +92,8 @@ struct VersionedQuest {
       ssize_t challenge_template_index = -1,
       std::shared_ptr<const IntegralExpression> available_expression = nullptr,
       std::shared_ptr<const IntegralExpression> enabled_expression = nullptr,
-      bool force_joinable = false);
+      bool force_joinable = false,
+      int16_t lock_status_register = -1);
 
   std::string bin_filename() const;
   std::string dat_filename() const;
@@ -122,6 +124,7 @@ public:
   uint32_t category_id;
   Episode episode;
   bool joinable;
+  int16_t lock_status_register;
   std::string name;
   std::shared_ptr<const BattleRules> battle_rules;
   ssize_t challenge_template_index;

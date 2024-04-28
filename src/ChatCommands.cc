@@ -577,7 +577,7 @@ static void server_command_qsync_qsyncall(shared_ptr<Client> c, const std::strin
     return;
   }
 
-  G_SyncQuestData_6x77 cmd;
+  G_SyncQuestRegister_6x77 cmd;
   cmd.header = {0x77, 0x03, 0x0000};
   cmd.register_number = stoul(tokens[0].substr(1), nullptr, 0);
   cmd.unused = 0;
@@ -616,7 +616,7 @@ static void proxy_command_qsync_qsyncall(shared_ptr<ProxyServer::LinkedSession> 
     return;
   }
 
-  G_SyncQuestData_6x77 cmd;
+  G_SyncQuestRegister_6x77 cmd;
   cmd.header = {0x77, 0x03, 0x0000};
   cmd.register_number = stoul(tokens[0].substr(1), nullptr, 0);
   cmd.unused = 0;

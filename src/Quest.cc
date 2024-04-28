@@ -206,11 +206,13 @@ VersionedQuest::VersionedQuest(
     ssize_t challenge_template_index,
     std::shared_ptr<const IntegralExpression> available_expression,
     std::shared_ptr<const IntegralExpression> enabled_expression,
-    bool force_joinable)
+    bool force_joinable,
+    int16_t lock_status_register)
     : quest_number(quest_number),
       category_id(category_id),
       episode(Episode::NONE),
-      joinable(false),
+      joinable(force_joinable),
+      lock_status_register(lock_status_register),
       version(version),
       language(language),
       is_dlq_encoded(false),
@@ -234,7 +236,6 @@ VersionedQuest::VersionedQuest(
         throw invalid_argument("file is too small for header");
       }
       auto* header = reinterpret_cast<const PSOQuestHeaderDCNTE*>(bin_decompressed.data());
-      this->joinable = force_joinable;
       this->episode = Episode::EP1;
       if (this->quest_number == 0xFFFFFFFF) {
         this->quest_number = fnv1a32(header, sizeof(header)) & 0xFFFF;
@@ -250,7 +251,6 @@ VersionedQuest::VersionedQuest(
         throw invalid_argument("file is too small for header");
       }
       auto* header = reinterpret_cast<const PSOQuestHeaderDC*>(bin_decompressed.data());
-      this->joinable = force_joinable;
       this->episode = Episode::EP1;
       if (this->quest_number == 0xFFFFFFFF) {
         this->quest_number = header->quest_number;
@@ -267,7 +267,6 @@ VersionedQuest::VersionedQuest(
         throw invalid_argument("file is too small for header");
       }
       auto* header = reinterpret_cast<const PSOQuestHeaderPC*>(bin_decompressed.data());
-      this->joinable = force_joinable;
       this->episode = Episode::EP1;
       if (this->quest_number == 0xFFFFFFFF) {
         this->quest_number = header->quest_number;
@@ -290,7 +289,6 @@ VersionedQuest::VersionedQuest(
         throw invalid_argument("file is incorrect size");
       }
       auto* map = reinterpret_cast<const Episode3::MapDefinition*>(bin_decompressed.data());
-      this->joinable = force_joinable;
       this->episode = Episode::EP3;
       if (this->quest_number == 0xFFFFFFFF) {
         this->quest_number = map->map_number;
@@ -308,7 +306,6 @@ VersionedQuest::VersionedQuest(
         throw invalid_argument("file is too small for header");
       }
       auto* header = reinterpret_cast<const PSOQuestHeaderGC*>(bin_decompressed.data());
-      this->joinable = force_joinable;
       this->episode = find_quest_episode_from_script(bin_decompressed.data(), bin_decompressed.size(), this->version);
       if (this->quest_number == 0xFFFFFFFF) {
         this->quest_number = header->quest_number;
@@ -324,7 +321,7 @@ VersionedQuest::VersionedQuest(
         throw invalid_argument("file is too small for header");
       }
       auto* header = reinterpret_cast<const PSOQuestHeaderBB*>(bin_decompressed.data());
-      this->joinable = header->joinable || force_joinable;
+      this->joinable |= header->joinable;
       this->episode = find_quest_episode_from_script(bin_decompressed.data(), bin_decompressed.size(), this->version);
       if (this->quest_number == 0xFFFFFFFF) {
         this->quest_number = header->quest_number;
@@ -388,6 +385,7 @@ Quest::Quest(shared_ptr<const VersionedQuest> initial_version)
       category_id(initial_version->category_id),
       episode(initial_version->episode),
       joinable(initial_version->joinable),
+      lock_status_register(initial_version->lock_status_register),
       name(initial_version->name),
       battle_rules(initial_version->battle_rules),
       challenge_template_index(initial_version->challenge_template_index),
@@ -412,6 +410,9 @@ void Quest::add_version(shared_ptr<const VersionedQuest> vq) {
   }
   if (this->joinable != vq->joinable) {
     throw runtime_error("quest version has a different joinability state");
+  }
+  if (this->lock_status_register != vq->lock_status_register) {
+    throw runtime_error("quest version has a different lock status register");
   }
   if (!this->battle_rules != !vq->battle_rules) {
     throw runtime_error("quest version has a different battle rules presence state");
@@ -676,6 +677,7 @@ QuestIndex::QuestIndex(
       shared_ptr<const IntegralExpression> available_expression;
       shared_ptr<const IntegralExpression> enabled_expression;
       bool force_joinable = false;
+      int16_t lock_status_register = -1;
       try {
         json_filedata = &json_files.at(basename);
       } catch (const out_of_range&) {
@@ -710,6 +712,10 @@ QuestIndex::QuestIndex(
           force_joinable = metadata_json.get_bool("Joinable");
         } catch (const out_of_range&) {
         }
+        try {
+          lock_status_register = metadata_json.get_bool("LockStatusRegister");
+        } catch (const out_of_range&) {
+        }
       }
 
       auto vq = make_shared<VersionedQuest>(
@@ -724,7 +730,8 @@ QuestIndex::QuestIndex(
           challenge_template_index,
           available_expression,
           enabled_expression,
-          force_joinable);
+          force_joinable,
+          lock_status_register);
 
       auto category_name = this->category_index->at(vq->category_id)->name;
       string filenames_str = bin_filedata->filename;

@@ -220,6 +220,7 @@ JSON HTTPServer::generate_quest_json_st(shared_ptr<const Quest> q) {
       {"Number", q->quest_number},
       {"Episode", name_for_episode(q->episode)},
       {"Joinable", q->joinable},
+      {"LockStatusRegister", (q->lock_status_register >= 0) ? q->lock_status_register : JSON(nullptr)},
       {"Name", q->name},
       {"BattleRules", std::move(battle_rules_json)},
       {"ChallengeTemplateIndex", std::move(challenge_template_index_json)},

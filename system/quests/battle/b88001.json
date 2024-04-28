@@ -61,4 +61,10 @@
   // progress. Note that this will likely not work properly unless the quest
   // script is designed to support joining players.
   // "Joinable": true,
+  // If a quest is joinable and this field is specified, then setting this
+  // register to a nonzero value via the sync_register opcode will cause the
+  // game to be locked and not allow any further joins. The register may be
+  // set to to zero to allow joins again. This field is ignored for quests
+  // that do not have the Joinable otion set above.
+  // "LockStatusRegister": 249,
 }

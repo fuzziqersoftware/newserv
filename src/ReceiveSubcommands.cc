@@ -2803,6 +2803,36 @@ static void on_set_quest_flag(shared_ptr<Client> c, uint8_t command, uint8_t fla
   }
 }
 
+static void on_sync_quest_register(shared_ptr<Client> c, uint8_t command, uint8_t flag, void* data, size_t size) {
+  auto l = c->require_lobby();
+  if (!l->is_game()) {
+    return;
+  }
+
+  const auto& cmd = check_size_t<G_SyncQuestRegister_6x77>(data, size);
+  if (cmd.register_number >= 0x100) {
+    throw runtime_error("invalid register number");
+  }
+
+  // If the lock status register is being written, change the game's flags to
+  // allow or forbid joining
+  if (l->quest &&
+      l->quest->joinable &&
+      (l->quest->lock_status_register >= 0) &&
+      (cmd.register_number == l->quest->lock_status_register)) {
+    // Lock if value is nonzero; unlock if value is zero
+    if (cmd.value.as_int) {
+      l->set_flag(Lobby::Flag::QUEST_IN_PROGRESS);
+      l->clear_flag(Lobby::Flag::JOINABLE_QUEST_IN_PROGRESS);
+    } else {
+      l->clear_flag(Lobby::Flag::QUEST_IN_PROGRESS);
+      l->set_flag(Lobby::Flag::JOINABLE_QUEST_IN_PROGRESS);
+    }
+  }
+
+  forward_subcommand(c, command, flag, data, size);
+}
+
 static void on_set_entity_set_flag(shared_ptr<Client> c, uint8_t command, uint8_t flag, void* data, size_t size) {
   auto l = c->require_lobby();
   if (!l->is_game()) {
@@ -4480,7 +4510,7 @@ const SubcommandDefinition subcommand_definitions[0x100] = {
     /* 6x74 */ {0x62, 0x69, 0x74, on_word_select, SDF::ALWAYS_FORWARD_TO_WATCHERS},
     /* 6x75 */ {0x00, 0x00, 0x75, on_set_quest_flag},
     /* 6x76 */ {0x00, 0x00, 0x76, on_set_entity_set_flag},
-    /* 6x77 */ {0x00, 0x00, 0x77, on_forward_check_game},
+    /* 6x77 */ {0x00, 0x00, 0x77, on_sync_quest_register},
     /* 6x78 */ {0x00, 0x00, 0x78, forward_subcommand_m},
     /* 6x79 */ {0x00, 0x00, 0x79, on_forward_check_lobby},
     /* 6x7A */ {0x00, 0x00, 0x7A, on_forward_check_game_client},

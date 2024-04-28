@@ -5034,10 +5034,10 @@ struct G_SetEntitySetFlags_6x76 {
   le_uint16_t flags = 0;
 } __packed_ws__(G_SetEntitySetFlags_6x76, 8);
 
-// 6x77: Sync quest data
+// 6x77: Sync quest register
 // This is sent by the client when an opcode D9 is executed within a quest.
 
-struct G_SyncQuestData_6x77 {
+struct G_SyncQuestRegister_6x77 {
   G_UnusedHeader header;
   le_uint16_t register_number = 0; // Must be < 0x100
   le_uint16_t unused = 0;
@@ -5045,7 +5045,7 @@ struct G_SyncQuestData_6x77 {
     le_uint32_t as_int;
     le_float as_float;
   } __packed__ value;
-} __packed_ws__(G_SyncQuestData_6x77, 0x0C);
+} __packed_ws__(G_SyncQuestRegister_6x77, 0x0C);
 
 // 6x78: Unknown
 
