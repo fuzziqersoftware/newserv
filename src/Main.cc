@@ -2400,6 +2400,7 @@ Action a_replay_ep3_battle_commands(
             .card_index = s->ep3_card_index,
             .map_index = s->ep3_map_index,
             .behavior_flags = 0x0092,
+            .opt_rand_stream = nullptr,
             .opt_rand_crypt = (seed >= 0) ? make_shared<PSOV2Encryption>(seed) : nullptr,
             .tournament = nullptr,
             .trap_card_ids = {},
@@ -2444,6 +2445,7 @@ Action a_replay_ep3_battle_record(
               Episode3::BehaviorFlag::DISABLE_MASKING |
               Episode3::BehaviorFlag::LOG_COMMANDS_IF_LOBBY_MISSING),
           .opt_rand_stream = make_shared<StringReader>(rec->get_random_stream()),
+          .opt_rand_crypt = nullptr,
           .tournament = nullptr,
           .trap_card_ids = {},
       };
