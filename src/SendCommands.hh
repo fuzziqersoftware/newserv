@@ -32,6 +32,21 @@ extern const std::unordered_set<std::string> bb_crypt_initial_client_commands;
 //   pointer is given but size is accidentally not given (e.g. if the type of
 //   data in the calling function is changed from string to void*).
 
+template <typename CmdT>
+void send_or_enqueue_command(std::shared_ptr<Client> c, uint16_t command, uint32_t flag, const CmdT& cmd) {
+  if (c->game_join_command_queue) {
+    c->log.info("Client not ready to receive game commands; adding to queue");
+    auto& q_cmd = c->game_join_command_queue->emplace_back();
+    q_cmd.command = command;
+    q_cmd.flag = flag;
+    // TODO: It'd be nice to avoid this copy. Maybe take in a pointer to cmd
+    // and move it into q_cmd somehow, so q_cmd can free it when needed?
+    q_cmd.data.assign(reinterpret_cast<const char*>(&cmd), sizeof(cmd));
+  } else {
+    send_command(c, command, flag, &cmd, sizeof(cmd));
+  }
+}
+
 void send_command(std::shared_ptr<Client> c, uint16_t command,
     uint32_t flag, const std::vector<std::pair<const void*, size_t>>& blocks);
 
@@ -293,6 +308,7 @@ void send_execute_item_trade(std::shared_ptr<Client> c, const std::vector<ItemDa
 void send_execute_card_trade(std::shared_ptr<Client> c, const std::vector<std::pair<uint32_t, uint32_t>>& card_to_count);
 
 void send_arrow_update(std::shared_ptr<Lobby> l);
+void send_unblock_join(std::shared_ptr<Client> c);
 void send_resume_game(std::shared_ptr<Lobby> l, std::shared_ptr<Client> ready_client);
 
 enum PlayerStatsChange {
@@ -331,6 +347,7 @@ void send_game_enemy_state(std::shared_ptr<Client> c);
 void send_game_object_state(std::shared_ptr<Client> c);
 void send_game_set_state(std::shared_ptr<Client> c);
 void send_game_flag_state(std::shared_ptr<Client> c);
+void send_game_player_state(std::shared_ptr<Client> to_c, std::shared_ptr<Client> from_c, bool apply_overrides);
 void send_drop_item_to_channel(std::shared_ptr<ServerState> s, Channel& ch, const ItemData& item,
     bool from_enemy, uint8_t floor, float x, float z, uint16_t request_id);
 void send_drop_item_to_lobby(std::shared_ptr<Lobby> l, const ItemData& item,

@@ -35,8 +35,8 @@
   // "ChallengeTemplateIndex": 0,
 
   // Quests may be set to be unavailable until a preceding quest has been
-  // cleared or a team reward has been purchased. To enable this feature, set a
-  // value for AvailableIf in the quest's JSON file. (This is ignored if the
+  // cleared or a team reward has been purchased. To enable this behavior, set
+  // a value for AvailableIf in the quest's JSON file. (This is ignored if the
   // player has the DISABLE_QUEST_REQUIREMENTS flag in their account.) This
   // field's value should be an expression that tests any of the following:
   //   F_XXXX: Quest flag specified in hex (e.g. F_014D)
@@ -54,4 +54,11 @@
   // to false, this is ignored. This field is also ignored if the player has
   // the DISABLE_QUEST_REQUIREMENTS flag in their account.
   // "EnabledIf": "!F_0169",
+
+  // On BB, a quest's joinability flag is part of the quest file header, but
+  // other versions don't natively support joining quests in progress. This
+  // flag, if present, enables non-BB quests to be joined when already in
+  // progress. Note that this will likely not work properly unless the quest
+  // script is designed to support joining players.
+  // "Joinable": true,
 }

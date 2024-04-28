@@ -13,6 +13,7 @@
 
 #include "IPStackSimulator.hh"
 #include "Loggers.hh"
+#include "SendCommands.hh"
 #include "Server.hh"
 #include "Version.hh"
 

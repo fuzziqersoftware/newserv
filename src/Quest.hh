@@ -90,7 +90,8 @@ struct VersionedQuest {
       std::shared_ptr<const BattleRules> battle_rules = nullptr,
       ssize_t challenge_template_index = -1,
       std::shared_ptr<const IntegralExpression> available_expression = nullptr,
-      std::shared_ptr<const IntegralExpression> enabled_expression = nullptr);
+      std::shared_ptr<const IntegralExpression> enabled_expression = nullptr,
+      bool force_joinable = false);
 
   std::string bin_filename() const;
   std::string dat_filename() const;

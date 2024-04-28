@@ -19,6 +19,7 @@
 #include "FileContentsCache.hh"
 #include "PSOProtocol.hh"
 #include "ProxyServer.hh"
+#include "ReceiveSubcommands.hh"
 #include "StaticGameData.hh"
 #include "Text.hh"
 
@@ -2436,7 +2437,13 @@ void send_arrow_update(shared_ptr<Lobby> l) {
   }
 }
 
-// tells the player that the joining player is done joining, and the game can resume
+void send_unblock_join(shared_ptr<Client> c) {
+  if (!is_pre_v1(c->version())) {
+    static const be_uint32_t data = 0x71010000;
+    send_command(c, 0x60, 0x00, &data, sizeof(be_uint32_t));
+  }
+}
+
 void send_resume_game(shared_ptr<Lobby> l, shared_ptr<Client> ready_client) {
   for (auto lc : l->clients) {
     if (lc && (lc != ready_client) && !is_pre_v1(lc->version())) {
@@ -2567,7 +2574,7 @@ void send_game_join_sync_command_compressed(
   }
 
   if (c->game_join_command_queue) {
-    c->log.info("Client not ready to receive join commands; adding to queue");
+    c->log.info("Client not ready to receive game commands; adding to queue");
     auto& cmd = c->game_join_command_queue->emplace_back();
     cmd.command = 0x6D;
     cmd.flag = c->lobby_client_id;
@@ -2786,6 +2793,74 @@ void send_game_flag_state(shared_ptr<Client> c) {
     send_game_flag_state_t<G_SetQuestFlags_V2_V3_6x6F>(c);
   } else {
     send_game_flag_state_t<G_SetQuestFlags_BB_6x6F>(c);
+  }
+}
+
+void send_game_player_state(shared_ptr<Client> to_c, shared_ptr<Client> from_c, bool apply_overrides) {
+  if (!from_c->last_reported_6x70) {
+    throw runtime_error("source client did not send a 6x70 command");
+  }
+  if (!from_c->login) {
+    throw logic_error("source client is not logged in");
+  }
+
+  auto s = to_c->require_server_state();
+  Parsed6x70Data to_send = *from_c->last_reported_6x70;
+
+  to_send.base.client_id = from_c->lobby_client_id;
+  to_send.player_tag = 0x00010000;
+  to_send.guild_card_number = from_c->login->account->account_id;
+
+  if (apply_overrides) {
+    auto from_p = from_c->character();
+    to_send.base.x = from_c->x;
+    to_send.base.z = from_c->z;
+    to_send.bonus_hp_from_materials = from_p->inventory.hp_from_materials;
+    to_send.bonus_tp_from_materials = from_p->inventory.tp_from_materials;
+    to_send.language = from_c->language();
+    // TODO: Deal with telepipes. Probably we should track their state via the
+    // subcommands sent when they're created/destroyed, but currently we don't.
+    to_send.area = from_c->floor;
+    to_send.technique_levels_v1 = from_p->disp.technique_levels_v1;
+    to_send.visual = from_p->disp.visual;
+    to_send.name = from_p->disp.name.decode(from_c->language());
+    if (to_c->version() != Version::BB_V4) {
+      to_send.visual.name.encode(to_send.name, to_c->language());
+    }
+    to_send.stats = from_p->disp.stats;
+    to_send.num_items = from_p->inventory.num_items;
+    to_send.items = from_p->inventory.items;
+    to_send.item_version = Version::BB_V4; // Server-side items are stored in BB encoding
+    to_send.floor = from_c->floor;
+  }
+
+  switch (to_c->version()) {
+    case Version::DC_NTE:
+      send_or_enqueue_command(to_c, 0x6D, to_c->lobby_client_id, to_send.as_dc_nte(s));
+      break;
+    case Version::DC_V1_11_2000_PROTOTYPE:
+      send_or_enqueue_command(to_c, 0x6D, to_c->lobby_client_id, to_send.as_dc_112000(s));
+      break;
+    case Version::DC_V1:
+    case Version::DC_V2:
+    case Version::PC_NTE:
+    case Version::PC_V2:
+      send_or_enqueue_command(to_c, 0x6D, to_c->lobby_client_id, to_send.as_dc_pc(s, to_c->version()));
+      break;
+    case Version::GC_NTE:
+    case Version::GC_V3:
+    case Version::GC_EP3_NTE:
+    case Version::GC_EP3:
+      send_or_enqueue_command(to_c, 0x6D, to_c->lobby_client_id, to_send.as_gc_gcnte(s, to_c->version()));
+      break;
+    case Version::XB_V3:
+      send_or_enqueue_command(to_c, 0x6D, to_c->lobby_client_id, to_send.as_xb(s));
+      break;
+    case Version::BB_V4:
+      send_or_enqueue_command(to_c, 0x6D, to_c->lobby_client_id, to_send.as_bb(s, to_c->language()));
+      break;
+    default:
+      throw logic_error("attempting to send 6x70 command to unknown game version");
   }
 }
 

@@ -465,6 +465,20 @@ static void on_1D(shared_ptr<Client> c, uint16_t, uint32_t, string&) {
     c->config.clear_flag(Client::Flag::SHOULD_SEND_ARTIFICIAL_FLAG_STATE);
     send_game_flag_state(c); // 6x6F
   }
+  if (c->config.check_flag(Client::Flag::SHOULD_SEND_ARTIFICIAL_PLAYER_STATES)) {
+    c->config.clear_flag(Client::Flag::SHOULD_SEND_ARTIFICIAL_PLAYER_STATES);
+    auto l = c->require_lobby();
+    if (l->is_game()) {
+      for (auto lc : l->clients) {
+        // If we haven't received a 6x70 from this client, maybe they're VERY
+        // far behind and wil lstll send it, or maybe they'll time out and be
+        // disconnected soon - either way, we shouldn't fail if it's missing.
+        if (lc && (lc != c) && lc->last_reported_6x70) {
+          send_game_player_state(c, lc, true); // 6x70
+        }
+      }
+    }
+  }
 }
 
 static void on_05_XB(shared_ptr<Client> c, uint16_t, uint32_t, string&) {
@@ -1229,6 +1243,7 @@ static bool add_next_game_client(shared_ptr<Lobby> l) {
 
   s->change_client_lobby(c, l, true, target_client_id);
   c->config.set_flag(Client::Flag::LOADING);
+  c->log.info("LOADING flag set");
   if (tourn) {
     c->config.set_flag(Client::Flag::LOADING_TOURNAMENT);
   }
@@ -2045,6 +2060,7 @@ void set_lobby_quest(shared_ptr<Lobby> l, shared_ptr<const Quest> q, bool substi
 
     if (use_loading_flag) {
       lc->config.set_flag(Client::Flag::LOADING_QUEST);
+      lc->log.info("LOADING_QUEST flag set");
       lc->disconnect_hooks.emplace(QUEST_BARRIER_DISCONNECT_HOOK_NAME, [l]() -> void {
         send_quest_barrier_if_all_clients_ready(l);
       });
@@ -2385,6 +2401,8 @@ static void on_10(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
           }
           if (game->is_game()) {
             c->config.set_flag(Client::Flag::LOADING);
+            c->log.info("LOADING flag set");
+
             // If no one was in the game before, then there's no leader to send
             // the game state - send it to the joining player (who is now the
             // leader)
@@ -2834,30 +2852,49 @@ static void on_A2(shared_ptr<Client> c, uint16_t, uint32_t flag, string& data) {
   }
 }
 
+static void on_joinable_quest_loaded(shared_ptr<Client> c) {
+  auto l = c->require_lobby();
+  if (!l->is_game() || !l->quest) {
+    throw runtime_error("joinable quest load completed in non-game");
+  }
+  auto leader_c = l->clients.at(l->leader_id);
+  if (!leader_c) {
+    throw logic_error("lobby leader is missing");
+  }
+
+  // On BB, ask the leader to send the quest state to the joining player (and
+  // we'll need to use the game join command queue to avoid any item ID races).
+  // On other versions, the server will have to generate the state commands;
+  // this happens when the response to the ping (1D) is received, so we don't
+  // need the game join command queue in that case.
+  if (leader_c->version() == Version::BB_V4) {
+    send_command(leader_c, 0xDD, c->lobby_client_id);
+    c->log.info("Creating game join command queue");
+    c->game_join_command_queue = make_unique<deque<Client::JoinCommand>>();
+  } else {
+    c->config.set_flag(Client::Flag::SHOULD_SEND_ARTIFICIAL_ITEM_STATE);
+    c->config.set_flag(Client::Flag::SHOULD_SEND_ARTIFICIAL_ENEMY_AND_SET_STATE);
+    c->config.set_flag(Client::Flag::SHOULD_SEND_ARTIFICIAL_OBJECT_STATE);
+    c->config.set_flag(Client::Flag::SHOULD_SEND_ARTIFICIAL_FLAG_STATE);
+    c->config.set_flag(Client::Flag::SHOULD_SEND_ARTIFICIAL_PLAYER_STATES);
+  }
+  send_command(c, 0x1D, 0x00);
+
+  if (!is_v1_or_v2(c->version())) {
+    send_command(c, 0xAC, 0x00);
+  }
+}
+
 static void on_AC_V3_BB(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
   check_size_v(data.size(), 0);
 
-  auto l = c->require_lobby();
-
   if (c->config.check_flag(Client::Flag::LOADING_RUNNING_JOINABLE_QUEST)) {
-    if (l->base_version != Version::BB_V4) {
-      throw logic_error("joinable quest started on non-BB version");
-    }
-
-    auto leader_c = l->clients.at(l->leader_id);
-    if (!leader_c) {
-      throw logic_error("lobby leader is missing");
-    }
-
-    send_command(leader_c, 0xDD, c->lobby_client_id);
-    send_command(c, 0xAC, 0x00);
-
-    c->log.info("Creating game join command queue");
-    c->game_join_command_queue = make_unique<deque<Client::JoinCommand>>();
-    send_command(c, 0x1D, 0x00);
+    on_joinable_quest_loaded(c);
 
   } else if (c->config.check_flag(Client::Flag::LOADING_QUEST)) {
     c->config.clear_flag(Client::Flag::LOADING_QUEST);
+    c->log.info("LOADING_QUEST flag cleared");
+    auto l = c->require_lobby();
     if (l->quest && send_quest_barrier_if_all_clients_ready(l)) {
       on_quest_loaded(l);
     }
@@ -4343,6 +4380,7 @@ static void on_C1_PC(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
   if (game) {
     s->change_client_lobby(c, game);
     c->config.set_flag(Client::Flag::LOADING);
+    c->log.info("LOADING flag set");
   }
 }
 
@@ -4415,6 +4453,7 @@ static void on_0C_C1_E7_EC(shared_ptr<Client> c, uint16_t command, uint32_t, str
   if (game) {
     s->change_client_lobby(c, game);
     c->config.set_flag(Client::Flag::LOADING);
+    c->log.info("LOADING flag set");
 
     // There is a bug in DC NTE and 11/2000 that causes them to assign item IDs
     // twice when joining a game. If there are other players in the game, this
@@ -4472,6 +4511,7 @@ static void on_C1_BB(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
   if (game) {
     s->change_client_lobby(c, game);
     c->config.set_flag(Client::Flag::LOADING);
+    c->log.info("LOADING flag set");
   }
 }
 
@@ -4501,6 +4541,7 @@ static void on_6F(shared_ptr<Client> c, uint16_t command, uint32_t, string& data
   // don't matter for Ep3)
   if (c->config.check_flag(Client::Flag::LOADING)) {
     c->config.clear_flag(Client::Flag::LOADING);
+    c->log.info("LOADING flag cleared");
 
     // The client sends 6F when it has created its TObjPlayer and assigned its
     // item IDs. For the leader, however, this happens before any inbound commands
@@ -4533,6 +4574,9 @@ static void on_6F(shared_ptr<Client> c, uint16_t command, uint32_t, string& data
     send_update_team_reward_flags(c);
     send_all_nearby_team_metadatas_to_client(c, false);
 
+    // On BB, send the joinable quest file as soon as the client is ready (6F).
+    // On other versions, we send joinable quests in the 99 handler instead,
+    // since we need to wait for the client's save to complete.
     // BB sends 016F when the client is done loading a quest. In that case, we
     // shouldn't send the quest to them again!
     if ((command == 0x006F) && l->check_flag(Lobby::Flag::JOINABLE_QUEST_IN_PROGRESS)) {
@@ -4549,10 +4593,12 @@ static void on_6F(shared_ptr<Client> c, uint16_t command, uint32_t, string& data
       send_open_quest_file(c, bin_filename, bin_filename, "", vq->quest_number, QuestFileType::ONLINE, vq->bin_contents);
       send_open_quest_file(c, dat_filename, dat_filename, "", vq->quest_number, QuestFileType::ONLINE, vq->dat_contents);
       c->config.set_flag(Client::Flag::LOADING_RUNNING_JOINABLE_QUEST);
+      c->log.info("LOADING_RUNNING_JOINABLE_QUEST flag set");
       should_resume_game = false;
 
     } else if ((command == 0x016F) && c->config.check_flag(Client::Flag::LOADING_RUNNING_JOINABLE_QUEST)) {
       c->config.clear_flag(Client::Flag::LOADING_RUNNING_JOINABLE_QUEST);
+      c->log.info("LOADING_RUNNING_JOINABLE_QUEST flag cleared");
     }
     if (l->map) {
       send_rare_enemy_index_list(c, l->map->rare_enemy_indexes);
@@ -4615,6 +4661,34 @@ static void on_99(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
     send_client_to_lobby_server(c);
   } else if (c->should_send_to_proxy_server) {
     send_client_to_proxy_server(c);
+  }
+
+  // See the comment in on_6F about why we do this here, but only for non-BB
+  // versions.
+  if (l && l->check_flag(Lobby::Flag::JOINABLE_QUEST_IN_PROGRESS) && (c->version() != Version::BB_V4)) {
+    if (!l->quest) {
+      throw runtime_error("JOINABLE_QUEST_IN_PROGRESS is set, but lobby has no quest");
+    }
+    auto vq = l->quest->version(c->version(), c->language());
+    if (!vq) {
+      throw runtime_error("JOINABLE_QUEST_IN_PROGRESS is set, but lobby has no quest for client version");
+    }
+    string bin_filename = vq->bin_filename();
+    string dat_filename = vq->dat_filename();
+
+    send_open_quest_file(c, bin_filename, bin_filename, "", vq->quest_number, QuestFileType::ONLINE, vq->bin_contents);
+    send_open_quest_file(c, dat_filename, dat_filename, "", vq->quest_number, QuestFileType::ONLINE, vq->dat_contents);
+    c->config.set_flag(Client::Flag::LOADING_RUNNING_JOINABLE_QUEST);
+    c->log.info("LOADING_RUNNING_JOINABLE_QUEST flag set");
+
+    // On v1 and v2, there is no confirmation when the client is done
+    // downloading the quest file, so just set the in-quest state immediately.
+    // On v3 and later, we do this when we receive the AC command.
+    // TODO: This might not work for GC NTE, since we wait for file chunk
+    // confirmations (13 commands) but there is no AC command.
+    if (is_v1_or_v2(c->version())) {
+      on_joinable_quest_loaded(c);
+    }
   }
 }
 

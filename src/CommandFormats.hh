@@ -4974,11 +4974,11 @@ struct G_SyncPlayerDispAndInventory_BB_6x70 {
   /* 04C8 */
 } __packed_ws__(G_SyncPlayerDispAndInventory_BB_6x70, 0x4C0);
 
-// 6x71: Unknown (used while loading into game)
+// 6x71: Unblock game join (used while loading into game)
 
-struct G_Unknown_6x71 {
+struct G_UnblockGameJoin_6x71 {
   G_UnusedHeader header;
-} __packed_ws__(G_Unknown_6x71, 4);
+} __packed_ws__(G_UnblockGameJoin_6x71, 4);
 
 // 6x72: Player done loading into game
 

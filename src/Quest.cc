@@ -205,7 +205,8 @@ VersionedQuest::VersionedQuest(
     std::shared_ptr<const BattleRules> battle_rules,
     ssize_t challenge_template_index,
     std::shared_ptr<const IntegralExpression> available_expression,
-    std::shared_ptr<const IntegralExpression> enabled_expression)
+    std::shared_ptr<const IntegralExpression> enabled_expression,
+    bool force_joinable)
     : quest_number(quest_number),
       category_id(category_id),
       episode(Episode::NONE),
@@ -233,7 +234,7 @@ VersionedQuest::VersionedQuest(
         throw invalid_argument("file is too small for header");
       }
       auto* header = reinterpret_cast<const PSOQuestHeaderDCNTE*>(bin_decompressed.data());
-      this->joinable = false;
+      this->joinable = force_joinable;
       this->episode = Episode::EP1;
       if (this->quest_number == 0xFFFFFFFF) {
         this->quest_number = fnv1a32(header, sizeof(header)) & 0xFFFF;
@@ -249,7 +250,7 @@ VersionedQuest::VersionedQuest(
         throw invalid_argument("file is too small for header");
       }
       auto* header = reinterpret_cast<const PSOQuestHeaderDC*>(bin_decompressed.data());
-      this->joinable = false;
+      this->joinable = force_joinable;
       this->episode = Episode::EP1;
       if (this->quest_number == 0xFFFFFFFF) {
         this->quest_number = header->quest_number;
@@ -266,7 +267,7 @@ VersionedQuest::VersionedQuest(
         throw invalid_argument("file is too small for header");
       }
       auto* header = reinterpret_cast<const PSOQuestHeaderPC*>(bin_decompressed.data());
-      this->joinable = false;
+      this->joinable = force_joinable;
       this->episode = Episode::EP1;
       if (this->quest_number == 0xFFFFFFFF) {
         this->quest_number = header->quest_number;
@@ -289,7 +290,7 @@ VersionedQuest::VersionedQuest(
         throw invalid_argument("file is incorrect size");
       }
       auto* map = reinterpret_cast<const Episode3::MapDefinition*>(bin_decompressed.data());
-      this->joinable = false;
+      this->joinable = force_joinable;
       this->episode = Episode::EP3;
       if (this->quest_number == 0xFFFFFFFF) {
         this->quest_number = map->map_number;
@@ -307,7 +308,7 @@ VersionedQuest::VersionedQuest(
         throw invalid_argument("file is too small for header");
       }
       auto* header = reinterpret_cast<const PSOQuestHeaderGC*>(bin_decompressed.data());
-      this->joinable = false;
+      this->joinable = force_joinable;
       this->episode = find_quest_episode_from_script(bin_decompressed.data(), bin_decompressed.size(), this->version);
       if (this->quest_number == 0xFFFFFFFF) {
         this->quest_number = header->quest_number;
@@ -323,7 +324,7 @@ VersionedQuest::VersionedQuest(
         throw invalid_argument("file is too small for header");
       }
       auto* header = reinterpret_cast<const PSOQuestHeaderBB*>(bin_decompressed.data());
-      this->joinable = header->joinable;
+      this->joinable = header->joinable || force_joinable;
       this->episode = find_quest_episode_from_script(bin_decompressed.data(), bin_decompressed.size(), this->version);
       if (this->quest_number == 0xFFFFFFFF) {
         this->quest_number = header->quest_number;
@@ -674,6 +675,7 @@ QuestIndex::QuestIndex(
       ssize_t challenge_template_index = -1;
       shared_ptr<const IntegralExpression> available_expression;
       shared_ptr<const IntegralExpression> enabled_expression;
+      bool force_joinable = false;
       try {
         json_filedata = &json_files.at(basename);
       } catch (const out_of_range&) {
@@ -704,6 +706,10 @@ QuestIndex::QuestIndex(
           enabled_expression = make_shared<IntegralExpression>(metadata_json.get_string("EnabledIf"));
         } catch (const out_of_range&) {
         }
+        try {
+          force_joinable = metadata_json.get_bool("Joinable");
+        } catch (const out_of_range&) {
+        }
       }
 
       auto vq = make_shared<VersionedQuest>(
@@ -717,7 +723,8 @@ QuestIndex::QuestIndex(
           battle_rules,
           challenge_template_index,
           available_expression,
-          enabled_expression);
+          enabled_expression,
+          force_joinable);
 
       auto category_name = this->category_index->at(vq->category_id)->name;
       string filenames_str = bin_filedata->filename;

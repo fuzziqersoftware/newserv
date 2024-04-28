@@ -1051,6 +1051,7 @@ static void server_command_playrec(shared_ptr<Client> c, const std::string& args
       }
       s->change_client_lobby(c, game);
       c->config.set_flag(Client::Flag::LOADING);
+      c->log.info("LOADING flag set");
     }
   } else {
     send_text_message(c, "$C4This command cannot\nbe used in a game");

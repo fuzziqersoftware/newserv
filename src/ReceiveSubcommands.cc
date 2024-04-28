@@ -27,7 +27,6 @@ struct SubcommandDefinition {
   enum Flag {
     ALWAYS_FORWARD_TO_WATCHERS = 0x01,
     ALLOW_FORWARD_TO_WATCHED_LOBBY = 0x02,
-    USE_JOIN_COMMAND_QUEUE = 0x04,
   };
   uint8_t nte_subcommand;
   uint8_t proto_subcommand;
@@ -189,7 +188,7 @@ static void forward_subcommand(shared_ptr<Client> c, uint8_t command, uint8_t fl
       if ((command == 0xCB) && (lc->version() == Version::GC_EP3_NTE)) {
         command = 0xC9;
       }
-      if ((def_flags & SDF::USE_JOIN_COMMAND_QUEUE) && lc->game_join_command_queue) {
+      if (lc->game_join_command_queue) {
         lc->log.info("Client not ready to receive join commands; adding to queue");
         auto& cmd = lc->game_join_command_queue->emplace_back();
         cmd.command = command;
@@ -652,316 +651,350 @@ static void on_sync_joining_player_quest_flags(shared_ptr<Client> c, uint8_t com
   }
 }
 
-class Parsed6x70Data {
-public:
-  G_SyncPlayerDispAndInventory_BaseDCNTE base;
-  uint32_t unknown_a5_nte = 0;
-  uint32_t unknown_a6_nte = 0;
-  uint16_t bonus_hp_from_materials = 0;
-  uint16_t bonus_tp_from_materials = 0;
-  parray<uint8_t, 0x10> unknown_a5_112000;
-  parray<G_Unknown_6x70_SubA2, 5> unknown_a4_final;
-  uint32_t language = 0;
-  uint32_t player_tag = 0;
-  uint32_t guild_card_number = 0;
-  uint32_t unknown_a6 = 0;
-  uint32_t battle_team_number = 0;
-  Telepipe telepipe;
-  uint32_t unknown_a8 = 0;
-  parray<uint8_t, 0x10> unknown_a9_nte_112000;
-  G_Unknown_6x70_SubA1 unknown_a9_final;
-  uint32_t area = 0;
-  uint32_t flags2 = 0;
-  parray<uint8_t, 0x14> technique_levels_v1 = 0xFF;
-  PlayerVisualConfig visual;
-  std::string name;
-  PlayerStats stats;
-  uint32_t num_items = 0;
-  parray<PlayerInventoryItem, 0x1E> items;
-  uint32_t floor = 0;
-  uint64_t xb_user_id = 0;
-  uint32_t xb_unknown_a16 = 0;
-
-  Parsed6x70Data(const G_SyncPlayerDispAndInventory_DCNTE_6x70& cmd, uint32_t guild_card_number)
-      : base(cmd.base),
-        unknown_a5_nte(cmd.unknown_a5),
-        unknown_a6_nte(cmd.unknown_a6),
-        bonus_hp_from_materials(0),
-        bonus_tp_from_materials(0),
-        language(0),
-        player_tag(0x00010000),
-        guild_card_number(guild_card_number),
-        unknown_a6(0),
-        battle_team_number(0),
-        telepipe(cmd.telepipe),
-        unknown_a8(cmd.unknown_a8),
-        unknown_a9_nte_112000(cmd.unknown_a9),
-        area(cmd.area),
-        flags2(cmd.flags2),
-        visual(cmd.visual),
-        stats(cmd.stats),
-        num_items(cmd.num_items),
-        items(cmd.items),
-        floor(cmd.area),
-        xb_user_id(this->default_xb_user_id()),
-        xb_unknown_a16(0) {
-    this->name = this->visual.name.decode(this->language);
+static void transcode_inventory_items(
+    parray<PlayerInventoryItem, 30>& items,
+    size_t num_items,
+    Version from_version,
+    Version to_version,
+    shared_ptr<const ItemParameterTable> to_item_parameter_table) {
+  if (num_items > 30) {
+    throw runtime_error("invalid inventory item count");
   }
-
-  Parsed6x70Data(const G_SyncPlayerDispAndInventory_DC112000_6x70& cmd, uint32_t guild_card_number, uint8_t language)
-      : base(cmd.base),
-        unknown_a5_nte(0),
-        unknown_a6_nte(0),
-        bonus_hp_from_materials(cmd.bonus_hp_from_materials),
-        bonus_tp_from_materials(cmd.bonus_tp_from_materials),
-        unknown_a5_112000(cmd.unknown_a5),
-        language(language),
-        player_tag(0x00010000),
-        guild_card_number(guild_card_number),
-        unknown_a6(0),
-        battle_team_number(0),
-        telepipe(cmd.telepipe),
-        unknown_a8(cmd.unknown_a8),
-        unknown_a9_nte_112000(cmd.unknown_a9),
-        area(cmd.area),
-        flags2(cmd.flags2),
-        visual(cmd.visual),
-        stats(cmd.stats),
-        num_items(cmd.num_items),
-        items(cmd.items),
-        floor(cmd.area),
-        xb_user_id(this->default_xb_user_id()),
-        xb_unknown_a16(0) {
-    this->name = this->visual.name.decode(this->language);
-  }
-
-  Parsed6x70Data(const G_SyncPlayerDispAndInventory_DC_PC_6x70& cmd, uint32_t guild_card_number)
-      : Parsed6x70Data(cmd.base, guild_card_number) {
-    this->stats = cmd.stats;
-    this->num_items = cmd.num_items;
-    this->items = cmd.items;
-    this->floor = cmd.base.area;
-    this->xb_user_id = this->default_xb_user_id();
-    this->xb_unknown_a16 = 0;
-    this->name = this->visual.name.decode(this->language);
-  }
-
-  Parsed6x70Data(const G_SyncPlayerDispAndInventory_GC_6x70& cmd, uint32_t guild_card_number)
-      : Parsed6x70Data(cmd.base, guild_card_number) {
-    this->stats = cmd.stats;
-    this->num_items = cmd.num_items;
-    this->items = cmd.items;
-    this->floor = cmd.floor;
-    this->xb_user_id = this->default_xb_user_id();
-    this->xb_unknown_a16 = 0;
-    this->name = this->visual.name.decode(this->language);
-  }
-
-  Parsed6x70Data(const G_SyncPlayerDispAndInventory_XB_6x70& cmd, uint32_t guild_card_number)
-      : Parsed6x70Data(cmd.base, guild_card_number) {
-    this->stats = cmd.stats;
-    this->num_items = cmd.num_items;
-    this->items = cmd.items;
-    this->floor = cmd.floor;
-    this->xb_user_id = (static_cast<uint64_t>(cmd.xb_user_id_high) << 32) | cmd.xb_user_id_low;
-    this->xb_unknown_a16 = cmd.unknown_a16;
-    this->name = this->visual.name.decode(this->language);
-  }
-
-  Parsed6x70Data(const G_SyncPlayerDispAndInventory_BB_6x70& cmd, uint32_t guild_card_number)
-      : Parsed6x70Data(cmd.base, guild_card_number) {
-    this->stats = cmd.stats;
-    this->num_items = cmd.num_items;
-    this->items = cmd.items;
-    this->floor = cmd.floor;
-    this->xb_user_id = this->default_xb_user_id();
-    this->xb_unknown_a16 = cmd.unknown_a16;
-    this->name = cmd.name.decode(cmd.base.language);
-    this->visual.name.encode(this->name, cmd.base.language);
-  }
-
-  G_SyncPlayerDispAndInventory_DCNTE_6x70 as_dc_nte() const {
-    G_SyncPlayerDispAndInventory_DCNTE_6x70 ret;
-    ret.base = this->base;
-    ret.unknown_a5 = this->unknown_a5_nte;
-    ret.unknown_a6 = this->unknown_a6;
-    ret.telepipe = this->telepipe;
-    ret.unknown_a8 = this->unknown_a8;
-    ret.unknown_a9 = this->unknown_a9_nte_112000;
-    ret.area = this->area;
-    ret.flags2 = this->flags2;
-    ret.visual = this->visual;
-    ret.stats = this->stats;
-    ret.num_items = this->num_items;
-    ret.items = this->items;
-    return ret;
-  }
-
-  G_SyncPlayerDispAndInventory_DC112000_6x70 as_dc_112000() const {
-    G_SyncPlayerDispAndInventory_DC112000_6x70 ret;
-    ret.base = this->base;
-    ret.bonus_hp_from_materials = this->bonus_hp_from_materials;
-    ret.bonus_tp_from_materials = this->bonus_tp_from_materials;
-    ret.unknown_a5 = this->unknown_a5_112000;
-    ret.telepipe = this->telepipe;
-    ret.unknown_a8 = this->unknown_a8;
-    ret.unknown_a9 = this->unknown_a9_nte_112000;
-    ret.area = this->area;
-    ret.flags2 = this->flags2;
-    ret.visual = this->visual;
-    ret.stats = this->stats;
-    ret.num_items = this->num_items;
-    ret.items = this->items;
-    return ret;
-  }
-
-  G_SyncPlayerDispAndInventory_DC_PC_6x70 as_dc_pc() const {
-    G_SyncPlayerDispAndInventory_DC_PC_6x70 ret;
-    ret.base = this->base_v1();
-    ret.stats = this->stats;
-    ret.num_items = this->num_items;
-    ret.items = this->items;
-    return ret;
-  }
-
-  G_SyncPlayerDispAndInventory_GC_6x70 as_gc() const {
-    G_SyncPlayerDispAndInventory_GC_6x70 ret;
-    ret.base = this->base_v1();
-    ret.stats = this->stats;
-    ret.num_items = this->num_items;
-    ret.items = this->items;
-    ret.floor = this->floor;
-    return ret;
-  }
-
-  G_SyncPlayerDispAndInventory_XB_6x70 as_xb() const {
-    G_SyncPlayerDispAndInventory_XB_6x70 ret;
-    ret.base = this->base_v1();
-    ret.stats = this->stats;
-    ret.num_items = this->num_items;
-    ret.items = this->items;
-    ret.floor = this->floor;
-    ret.xb_user_id_high = this->xb_user_id >> 32;
-    ret.xb_user_id_low = this->xb_user_id;
-    ret.unknown_a16 = this->xb_unknown_a16;
-    return ret;
-  }
-
-  G_SyncPlayerDispAndInventory_BB_6x70 as_bb(uint8_t language) const {
-    G_SyncPlayerDispAndInventory_BB_6x70 ret;
-    ret.base = this->base_v1();
-    ret.name.encode(this->name, language);
-    ret.base.visual.name.encode(string_printf("%10" PRId32, this->guild_card_number), language);
-    ret.stats = this->stats;
-    ret.num_items = this->num_items;
-    ret.items = this->items;
-    ret.floor = this->floor;
-    ret.xb_user_id_high = this->xb_user_id >> 32;
-    ret.xb_user_id_low = this->xb_user_id;
-    ret.unknown_a16 = this->xb_unknown_a16;
-    return ret;
-  }
-
-  uint64_t default_xb_user_id() const {
-    return (0xAE00000000000000 | this->guild_card_number);
-  }
-
-  void clear_v1_unused_item_fields() {
-    for (size_t z = 0; z < min<uint32_t>(this->num_items, 30); z++) {
-      auto& item = this->items[z];
-      item.unknown_a1 = 0;
-      item.extension_data1 = 0;
-      item.extension_data2 = 0;
+  if (from_version != to_version) {
+    for (size_t z = 0; z < num_items; z++) {
+      items[z].data.decode_for_version(from_version);
+      items[z].data.encode_for_version(to_version, to_item_parameter_table);
     }
   }
-
-  void clear_dc_protos_unused_item_fields() {
-    for (size_t z = 0; z < min<uint32_t>(this->num_items, 30); z++) {
-      auto& item = this->items[z];
-      item.unknown_a1 = 0;
-      item.extension_data1 = 0;
-      item.extension_data2 = 0;
-      item.data.data2d = 0;
+  for (size_t z = num_items; z < 30; z++) {
+    auto& item = items[z];
+    item.present = 0;
+    item.unknown_a1 = 0;
+    item.flags = 0;
+    item.data.clear();
+  }
+  if (is_v1(to_version)) {
+    for (size_t z = 0; z < 30; z++) {
+      auto& item = items[z];
+      item.extension_data1 = 0x00;
+      item.extension_data2 = 0x00;
+    }
+  } else {
+    for (size_t z = 20; z < 30; z++) {
+      items[z].extension_data1 = 0x00;
+    }
+    for (size_t z = 16; z < 30; z++) {
+      items[z].extension_data2 = 0x00;
     }
   }
+}
 
-  void transcode_inventory_items(
-      Version from_version,
-      Version to_version,
-      shared_ptr<const ItemParameterTable> to_item_parameter_table) {
-    if (this->num_items > 30) {
-      throw runtime_error("invalid inventory item count");
-    }
-    if (from_version != to_version) {
-      for (size_t z = 0; z < this->num_items; z++) {
-        this->items[z].data.decode_for_version(from_version);
-        this->items[z].data.encode_for_version(to_version, to_item_parameter_table);
-      }
-    }
-    for (size_t z = this->num_items; z < 30; z++) {
-      auto& item = this->items[z];
-      item.present = 0;
-      item.unknown_a1 = 0;
-      item.flags = 0;
-      item.data.clear();
-    }
-    if (is_v1(to_version)) {
-      for (size_t z = 0; z < 30; z++) {
-        auto& item = this->items[z];
-        item.extension_data1 = 0x00;
-        item.extension_data2 = 0x00;
-      }
+Parsed6x70Data::Parsed6x70Data(
+    const G_SyncPlayerDispAndInventory_DCNTE_6x70& cmd, uint32_t guild_card_number, Version from_version)
+    : from_version(from_version),
+      item_version(from_version),
+      base(cmd.base),
+      unknown_a5_nte(cmd.unknown_a5),
+      unknown_a6_nte(cmd.unknown_a6),
+      bonus_hp_from_materials(0),
+      bonus_tp_from_materials(0),
+      language(0),
+      player_tag(0x00010000),
+      guild_card_number(guild_card_number),
+      unknown_a6(0),
+      battle_team_number(0),
+      telepipe(cmd.telepipe),
+      unknown_a8(cmd.unknown_a8),
+      unknown_a9_nte_112000(cmd.unknown_a9),
+      area(cmd.area),
+      flags2(cmd.flags2),
+      visual(cmd.visual),
+      stats(cmd.stats),
+      num_items(cmd.num_items),
+      items(cmd.items),
+      floor(cmd.area),
+      xb_user_id(this->default_xb_user_id()),
+      xb_unknown_a16(0) {
+  this->name = this->visual.name.decode(this->language);
+}
+
+Parsed6x70Data::Parsed6x70Data(
+    const G_SyncPlayerDispAndInventory_DC112000_6x70& cmd, uint32_t guild_card_number, uint8_t language, Version from_version)
+    : from_version(from_version),
+      item_version(from_version),
+      base(cmd.base),
+      unknown_a5_nte(0),
+      unknown_a6_nte(0),
+      bonus_hp_from_materials(cmd.bonus_hp_from_materials),
+      bonus_tp_from_materials(cmd.bonus_tp_from_materials),
+      unknown_a5_112000(cmd.unknown_a5),
+      language(language),
+      player_tag(0x00010000),
+      guild_card_number(guild_card_number),
+      unknown_a6(0),
+      battle_team_number(0),
+      telepipe(cmd.telepipe),
+      unknown_a8(cmd.unknown_a8),
+      unknown_a9_nte_112000(cmd.unknown_a9),
+      area(cmd.area),
+      flags2(cmd.flags2),
+      visual(cmd.visual),
+      stats(cmd.stats),
+      num_items(cmd.num_items),
+      items(cmd.items),
+      floor(cmd.area),
+      xb_user_id(this->default_xb_user_id()),
+      xb_unknown_a16(0) {
+  this->name = this->visual.name.decode(this->language);
+}
+
+Parsed6x70Data::Parsed6x70Data(
+    const G_SyncPlayerDispAndInventory_DC_PC_6x70& cmd, uint32_t guild_card_number, Version from_version)
+    : Parsed6x70Data(cmd.base, guild_card_number, from_version) {
+  this->stats = cmd.stats;
+  this->num_items = cmd.num_items;
+  this->items = cmd.items;
+  this->floor = cmd.base.area;
+  this->xb_user_id = this->default_xb_user_id();
+  this->xb_unknown_a16 = 0;
+  this->name = this->visual.name.decode(this->language);
+}
+
+Parsed6x70Data::Parsed6x70Data(
+    const G_SyncPlayerDispAndInventory_GC_6x70& cmd, uint32_t guild_card_number, Version from_version)
+    : Parsed6x70Data(cmd.base, guild_card_number, from_version) {
+  this->stats = cmd.stats;
+  this->num_items = cmd.num_items;
+  this->items = cmd.items;
+  this->floor = cmd.floor;
+  this->xb_user_id = this->default_xb_user_id();
+  this->xb_unknown_a16 = 0;
+  this->name = this->visual.name.decode(this->language);
+}
+
+Parsed6x70Data::Parsed6x70Data(
+    const G_SyncPlayerDispAndInventory_XB_6x70& cmd, uint32_t guild_card_number, Version from_version)
+    : Parsed6x70Data(cmd.base, guild_card_number, from_version) {
+  this->stats = cmd.stats;
+  this->num_items = cmd.num_items;
+  this->items = cmd.items;
+  this->floor = cmd.floor;
+  this->xb_user_id = (static_cast<uint64_t>(cmd.xb_user_id_high) << 32) | cmd.xb_user_id_low;
+  this->xb_unknown_a16 = cmd.unknown_a16;
+  this->name = this->visual.name.decode(this->language);
+}
+
+Parsed6x70Data::Parsed6x70Data(
+    const G_SyncPlayerDispAndInventory_BB_6x70& cmd, uint32_t guild_card_number, Version from_version)
+    : Parsed6x70Data(cmd.base, guild_card_number, from_version) {
+  this->stats = cmd.stats;
+  this->num_items = cmd.num_items;
+  this->items = cmd.items;
+  this->floor = cmd.floor;
+  this->xb_user_id = this->default_xb_user_id();
+  this->xb_unknown_a16 = cmd.unknown_a16;
+  this->name = cmd.name.decode(cmd.base.language);
+  this->visual.name.encode(this->name, cmd.base.language);
+}
+
+G_SyncPlayerDispAndInventory_DCNTE_6x70 Parsed6x70Data::as_dc_nte(shared_ptr<ServerState> s) const {
+  G_SyncPlayerDispAndInventory_DCNTE_6x70 ret;
+  ret.base = this->base;
+  ret.unknown_a5 = this->unknown_a5_nte;
+  ret.unknown_a6 = this->unknown_a6;
+  ret.telepipe = this->telepipe;
+  ret.unknown_a8 = this->unknown_a8;
+  ret.unknown_a9 = this->unknown_a9_nte_112000;
+  ret.area = this->area;
+  ret.flags2 = this->flags2;
+  ret.visual = this->visual;
+  ret.stats = this->stats;
+  ret.num_items = this->num_items;
+  ret.items = this->items;
+
+  transcode_inventory_items(
+      ret.items, ret.num_items, this->item_version, Version::DC_NTE, s->item_parameter_table_for_encode(Version::DC_NTE));
+  ret.visual.enforce_lobby_join_limits_for_version(Version::DC_NTE);
+  if (s->version_name_colors) {
+    ret.visual.name_color = s->name_color_for_version(this->from_version);
+    ret.visual.compute_name_color_checksum();
+  }
+  return ret;
+}
+
+G_SyncPlayerDispAndInventory_DC112000_6x70 Parsed6x70Data::as_dc_112000(shared_ptr<ServerState> s) const {
+  G_SyncPlayerDispAndInventory_DC112000_6x70 ret;
+  ret.base = this->base;
+  ret.bonus_hp_from_materials = this->bonus_hp_from_materials;
+  ret.bonus_tp_from_materials = this->bonus_tp_from_materials;
+  ret.unknown_a5 = this->unknown_a5_112000;
+  ret.telepipe = this->telepipe;
+  ret.unknown_a8 = this->unknown_a8;
+  ret.unknown_a9 = this->unknown_a9_nte_112000;
+  ret.area = this->area;
+  ret.flags2 = this->flags2;
+  ret.visual = this->visual;
+  ret.stats = this->stats;
+  ret.num_items = this->num_items;
+  ret.items = this->items;
+
+  transcode_inventory_items(
+      ret.items, ret.num_items, this->item_version, Version::DC_V1_11_2000_PROTOTYPE, s->item_parameter_table_for_encode(Version::DC_V1_11_2000_PROTOTYPE));
+  ret.visual.enforce_lobby_join_limits_for_version(Version::DC_V1_11_2000_PROTOTYPE);
+  if (s->version_name_colors) {
+    ret.visual.name_color = s->name_color_for_version(this->from_version);
+    ret.visual.compute_name_color_checksum();
+  }
+  return ret;
+}
+
+G_SyncPlayerDispAndInventory_DC_PC_6x70 Parsed6x70Data::as_dc_pc(shared_ptr<ServerState> s, Version to_version) const {
+  G_SyncPlayerDispAndInventory_DC_PC_6x70 ret;
+  ret.base = this->base_v1();
+  ret.stats = this->stats;
+  ret.num_items = this->num_items;
+  ret.items = this->items;
+
+  transcode_inventory_items(
+      ret.items, ret.num_items, this->item_version, to_version, s->item_parameter_table_for_encode(to_version));
+  ret.base.visual.enforce_lobby_join_limits_for_version(to_version);
+  if (s->version_name_colors) {
+    ret.base.visual.name_color = s->name_color_for_version(this->from_version);
+    ret.base.visual.compute_name_color_checksum();
+  }
+  return ret;
+}
+
+G_SyncPlayerDispAndInventory_GC_6x70 Parsed6x70Data::as_gc_gcnte(shared_ptr<ServerState> s, Version to_version) const {
+  G_SyncPlayerDispAndInventory_GC_6x70 ret;
+  ret.base = this->base_v1();
+  ret.stats = this->stats;
+  ret.num_items = this->num_items;
+  ret.items = this->items;
+  ret.floor = this->floor;
+
+  transcode_inventory_items(
+      ret.items, ret.num_items, this->item_version, to_version, s->item_parameter_table_for_encode(to_version));
+  ret.base.visual.enforce_lobby_join_limits_for_version(to_version);
+  if (s->version_name_colors) {
+    ret.base.visual.name_color = s->name_color_for_version(this->from_version);
+    if (is_v1_or_v2(to_version)) {
+      ret.base.visual.compute_name_color_checksum();
     } else {
-      for (size_t z = 20; z < 30; z++) {
-        this->items[z].extension_data1 = 0x00;
-      }
-      for (size_t z = 16; z < 30; z++) {
-        this->items[z].extension_data2 = 0x00;
-      }
+      ret.base.visual.name_color_checksum = 0;
     }
   }
+  return ret;
+}
 
-protected:
-  Parsed6x70Data(const G_SyncPlayerDispAndInventory_BaseV1& base, uint32_t guild_card_number) {
-    this->base = base.base;
-    this->bonus_hp_from_materials = base.bonus_hp_from_materials;
-    this->bonus_tp_from_materials = base.bonus_tp_from_materials;
-    this->unknown_a4_final = base.unknown_a4;
-    this->language = base.language;
-    this->player_tag = base.player_tag;
-    this->guild_card_number = guild_card_number; // Ignore the client's GC#
-    this->unknown_a6 = base.unknown_a6;
-    this->battle_team_number = base.battle_team_number;
-    this->telepipe = base.telepipe;
-    this->unknown_a8 = base.unknown_a8;
-    this->unknown_a9_final = base.unknown_a9;
-    this->area = base.area;
-    this->flags2 = base.flags2;
-    this->technique_levels_v1 = base.technique_levels_v1;
-    this->visual = base.visual;
-  }
+G_SyncPlayerDispAndInventory_XB_6x70 Parsed6x70Data::as_xb(shared_ptr<ServerState> s) const {
+  G_SyncPlayerDispAndInventory_XB_6x70 ret;
+  ret.base = this->base_v1();
+  ret.stats = this->stats;
+  ret.num_items = this->num_items;
+  ret.items = this->items;
+  ret.floor = this->floor;
+  ret.xb_user_id_high = this->xb_user_id >> 32;
+  ret.xb_user_id_low = this->xb_user_id;
+  ret.unknown_a16 = this->xb_unknown_a16;
 
-  G_SyncPlayerDispAndInventory_BaseV1 base_v1() const {
-    G_SyncPlayerDispAndInventory_BaseV1 ret;
-    ret.base = this->base;
-    ret.bonus_hp_from_materials = this->bonus_hp_from_materials;
-    ret.bonus_tp_from_materials = this->bonus_tp_from_materials;
-    ret.unknown_a4 = this->unknown_a4_final;
-    ret.language = this->language;
-    ret.player_tag = this->player_tag;
-    ret.guild_card_number = this->guild_card_number;
-    ret.unknown_a6 = this->unknown_a6;
-    ret.battle_team_number = this->battle_team_number;
-    ret.telepipe = this->telepipe;
-    ret.unknown_a8 = this->unknown_a8;
-    ret.unknown_a9 = this->unknown_a9_final;
-    ret.area = this->area;
-    ret.flags2 = this->flags2;
-    ret.technique_levels_v1 = this->technique_levels_v1;
-    ret.visual = this->visual;
-    return ret;
+  transcode_inventory_items(
+      ret.items, ret.num_items, this->item_version, Version::XB_V3, s->item_parameter_table_for_encode(Version::XB_V3));
+  ret.base.visual.enforce_lobby_join_limits_for_version(Version::XB_V3);
+  if (s->version_name_colors) {
+    ret.base.visual.name_color = s->name_color_for_version(this->from_version);
+    ret.base.visual.name_color_checksum = 0;
   }
-};
+  return ret;
+}
+
+G_SyncPlayerDispAndInventory_BB_6x70 Parsed6x70Data::as_bb(shared_ptr<ServerState> s, uint8_t language) const {
+  G_SyncPlayerDispAndInventory_BB_6x70 ret;
+  ret.base = this->base_v1();
+  ret.name.encode(this->name, language);
+  ret.base.visual.name.encode(string_printf("%10" PRId32, this->guild_card_number), language);
+  ret.stats = this->stats;
+  ret.num_items = this->num_items;
+  ret.items = this->items;
+  ret.floor = this->floor;
+  ret.xb_user_id_high = this->xb_user_id >> 32;
+  ret.xb_user_id_low = this->xb_user_id;
+  ret.unknown_a16 = this->xb_unknown_a16;
+
+  transcode_inventory_items(
+      ret.items, ret.num_items, this->item_version, Version::BB_V4, s->item_parameter_table_for_encode(Version::BB_V4));
+  ret.base.visual.enforce_lobby_join_limits_for_version(Version::BB_V4);
+  if (s->version_name_colors) {
+    ret.base.visual.name_color = s->name_color_for_version(this->from_version);
+    ret.base.visual.name_color_checksum = 0;
+  }
+  return ret;
+}
+
+uint64_t Parsed6x70Data::default_xb_user_id() const {
+  return (0xAE00000000000000 | this->guild_card_number);
+}
+
+void Parsed6x70Data::clear_v1_unused_item_fields() {
+  for (size_t z = 0; z < min<uint32_t>(this->num_items, 30); z++) {
+    auto& item = this->items[z];
+    item.unknown_a1 = 0;
+    item.extension_data1 = 0;
+    item.extension_data2 = 0;
+  }
+}
+
+void Parsed6x70Data::clear_dc_protos_unused_item_fields() {
+  for (size_t z = 0; z < min<uint32_t>(this->num_items, 30); z++) {
+    auto& item = this->items[z];
+    item.unknown_a1 = 0;
+    item.extension_data1 = 0;
+    item.extension_data2 = 0;
+    item.data.data2d = 0;
+  }
+}
+
+Parsed6x70Data::Parsed6x70Data(
+    const G_SyncPlayerDispAndInventory_BaseV1& base, uint32_t guild_card_number, Version from_version)
+    : from_version(from_version),
+      item_version(this->from_version),
+      base(base.base),
+      bonus_hp_from_materials(base.bonus_hp_from_materials),
+      bonus_tp_from_materials(base.bonus_tp_from_materials),
+      unknown_a4_final(base.unknown_a4),
+      language(base.language),
+      player_tag(base.player_tag),
+      guild_card_number(guild_card_number), // Ignore the client's GC#
+      unknown_a6(base.unknown_a6),
+      battle_team_number(base.battle_team_number),
+      telepipe(base.telepipe),
+      unknown_a8(base.unknown_a8),
+      unknown_a9_final(base.unknown_a9),
+      area(base.area),
+      flags2(base.flags2),
+      technique_levels_v1(base.technique_levels_v1),
+      visual(base.visual) {}
+
+G_SyncPlayerDispAndInventory_BaseV1 Parsed6x70Data::base_v1() const {
+  G_SyncPlayerDispAndInventory_BaseV1 ret;
+  ret.base = this->base;
+  ret.bonus_hp_from_materials = this->bonus_hp_from_materials;
+  ret.bonus_tp_from_materials = this->bonus_tp_from_materials;
+  ret.unknown_a4 = this->unknown_a4_final;
+  ret.language = this->language;
+  ret.player_tag = this->player_tag;
+  ret.guild_card_number = this->guild_card_number;
+  ret.unknown_a6 = this->unknown_a6;
+  ret.battle_team_number = this->battle_team_number;
+  ret.telepipe = this->telepipe;
+  ret.unknown_a8 = this->unknown_a8;
+  ret.unknown_a9 = this->unknown_a9_final;
+  ret.area = this->area;
+  ret.flags2 = this->flags2;
+  ret.technique_levels_v1 = this->technique_levels_v1;
+  ret.visual = this->visual;
+  return ret;
+}
 
 static void on_sync_joining_player_disp_and_inventory(
     shared_ptr<Client> c, uint8_t command, uint8_t flag, void* data, size_t size) {
@@ -985,92 +1018,53 @@ static void on_sync_joining_player_disp_and_inventory(
     send_command(target, 0x62, target->lobby_client_id, &data, sizeof(data));
   }
 
-  unique_ptr<Parsed6x70Data> parsed;
-
   switch (c_v) {
     case Version::DC_NTE:
-      parsed = make_unique<Parsed6x70Data>(
+      c->last_reported_6x70.reset(new Parsed6x70Data(
           check_size_t<G_SyncPlayerDispAndInventory_DCNTE_6x70>(data, size),
-          c->login->account->account_id);
-      parsed->clear_dc_protos_unused_item_fields();
+          c->login->account->account_id, c_v));
+      c->last_reported_6x70->clear_dc_protos_unused_item_fields();
       break;
     case Version::DC_V1_11_2000_PROTOTYPE:
-      parsed = make_unique<Parsed6x70Data>(
+      c->last_reported_6x70.reset(new Parsed6x70Data(
           check_size_t<G_SyncPlayerDispAndInventory_DC112000_6x70>(data, size),
-          c->login->account->account_id,
-          c->language());
-      parsed->clear_dc_protos_unused_item_fields();
+          c->login->account->account_id, c->language(), c_v));
+      c->last_reported_6x70->clear_dc_protos_unused_item_fields();
       break;
     case Version::DC_V1:
     case Version::DC_V2:
     case Version::PC_NTE:
     case Version::PC_V2:
-      parsed = make_unique<Parsed6x70Data>(
+      c->last_reported_6x70.reset(new Parsed6x70Data(
           check_size_t<G_SyncPlayerDispAndInventory_DC_PC_6x70>(data, size),
-          c->login->account->account_id);
+          c->login->account->account_id, c_v));
       if (c_v == Version::DC_V1) {
-        parsed->clear_v1_unused_item_fields();
+        c->last_reported_6x70->clear_v1_unused_item_fields();
       }
       break;
     case Version::GC_NTE:
     case Version::GC_V3:
     case Version::GC_EP3_NTE:
     case Version::GC_EP3:
-      parsed = make_unique<Parsed6x70Data>(
+      c->last_reported_6x70.reset(new Parsed6x70Data(
           check_size_t<G_SyncPlayerDispAndInventory_GC_6x70>(data, size),
-          c->login->account->account_id);
+          c->login->account->account_id, c_v));
       break;
     case Version::XB_V3:
-      parsed = make_unique<Parsed6x70Data>(
+      c->last_reported_6x70.reset(new Parsed6x70Data(
           check_size_t<G_SyncPlayerDispAndInventory_XB_6x70>(data, size),
-          c->login->account->account_id);
+          c->login->account->account_id, c_v));
       break;
     case Version::BB_V4:
-      parsed = make_unique<Parsed6x70Data>(
+      c->last_reported_6x70.reset(new Parsed6x70Data(
           check_size_t<G_SyncPlayerDispAndInventory_BB_6x70>(data, size),
-          c->login->account->account_id);
+          c->login->account->account_id, c_v));
       break;
     default:
       throw logic_error("6x70 command from unknown game version");
   }
 
-  parsed->transcode_inventory_items(c_v, target_v, s->item_parameter_table_for_encode(target_v));
-  parsed->visual.enforce_lobby_join_limits_for_version(target_v);
-  if (s->version_name_colors) {
-    parsed->visual.name_color = s->name_color_for_version(c_v);
-    if (is_v1_or_v2(target_v)) {
-      parsed->visual.compute_name_color_checksum();
-    }
-  }
-
-  switch (target_v) {
-    case Version::DC_NTE:
-      forward_subcommand_t(target, command, flag, parsed->as_dc_nte());
-      break;
-    case Version::DC_V1_11_2000_PROTOTYPE:
-      forward_subcommand_t(target, command, flag, parsed->as_dc_112000());
-      break;
-    case Version::DC_V1:
-    case Version::DC_V2:
-    case Version::PC_NTE:
-    case Version::PC_V2:
-      forward_subcommand_t(target, command, flag, parsed->as_dc_pc());
-      break;
-    case Version::GC_NTE:
-    case Version::GC_V3:
-    case Version::GC_EP3_NTE:
-    case Version::GC_EP3:
-      forward_subcommand_t(target, command, flag, parsed->as_gc());
-      break;
-    case Version::XB_V3:
-      forward_subcommand_t(target, command, flag, parsed->as_xb());
-      break;
-    case Version::BB_V4:
-      forward_subcommand_t(target, command, flag, parsed->as_bb(target->language()));
-      break;
-    default:
-      throw logic_error("6x70 command from unknown game version");
-  }
+  send_game_player_state(target, c, false);
 }
 
 static void on_forward_check_client(shared_ptr<Client> c, uint8_t command, uint8_t flag, void* data, size_t size) {
@@ -1346,6 +1340,9 @@ static void on_set_player_visible(shared_ptr<Client> c, uint8_t command, uint8_t
           send_update_team_reward_flags(c);
           send_all_nearby_team_metadatas_to_client(c, false);
         }
+      } else if (c->config.check_flag(Client::Flag::LOADING_RUNNING_JOINABLE_QUEST) && (c->version() != Version::BB_V4)) {
+        c->config.clear_flag(Client::Flag::LOADING_RUNNING_JOINABLE_QUEST);
+        c->log.info("LOADING_RUNNING_JOINABLE_QUEST flag cleared");
       }
     }
   }
@@ -1360,6 +1357,7 @@ static void on_change_floor_6x1F(shared_ptr<Client> c, uint8_t command, uint8_t 
     // the loading flag here instead.
     if (c->config.check_flag(Client::Flag::LOADING)) {
       c->config.clear_flag(Client::Flag::LOADING);
+      c->log.info("LOADING flag cleared");
       send_resume_game(c->require_lobby(), c);
       c->require_lobby()->assign_inventory_and_bank_item_ids(c, true);
     }
@@ -4470,14 +4468,14 @@ const SubcommandDefinition subcommand_definitions[0x100] = {
     /* 6x68 */ {0x59, 0x60, 0x68, on_forward_check_game},
     /* 6x69 */ {0x5A, 0x61, 0x69, on_npc_control},
     /* 6x6A */ {0x5B, 0x62, 0x6A, on_forward_check_game},
-    /* 6x6B */ {0x5C, 0x63, 0x6B, on_sync_joining_player_compressed_state, SDF::USE_JOIN_COMMAND_QUEUE},
-    /* 6x6C */ {0x5D, 0x64, 0x6C, on_sync_joining_player_compressed_state, SDF::USE_JOIN_COMMAND_QUEUE},
-    /* 6x6D */ {0x5E, 0x65, 0x6D, on_sync_joining_player_compressed_state, SDF::USE_JOIN_COMMAND_QUEUE},
-    /* 6x6E */ {0x5F, 0x66, 0x6E, on_sync_joining_player_compressed_state, SDF::USE_JOIN_COMMAND_QUEUE},
-    /* 6x6F */ {0x00, 0x00, 0x6F, on_sync_joining_player_quest_flags, SDF::USE_JOIN_COMMAND_QUEUE},
-    /* 6x70 */ {0x60, 0x67, 0x70, on_sync_joining_player_disp_and_inventory, SDF::USE_JOIN_COMMAND_QUEUE},
-    /* 6x71 */ {0x00, 0x00, 0x71, on_forward_check_game_loading, SDF::USE_JOIN_COMMAND_QUEUE},
-    /* 6x72 */ {0x61, 0x68, 0x72, on_forward_check_game_loading, SDF::USE_JOIN_COMMAND_QUEUE},
+    /* 6x6B */ {0x5C, 0x63, 0x6B, on_sync_joining_player_compressed_state},
+    /* 6x6C */ {0x5D, 0x64, 0x6C, on_sync_joining_player_compressed_state},
+    /* 6x6D */ {0x5E, 0x65, 0x6D, on_sync_joining_player_compressed_state},
+    /* 6x6E */ {0x5F, 0x66, 0x6E, on_sync_joining_player_compressed_state},
+    /* 6x6F */ {0x00, 0x00, 0x6F, on_sync_joining_player_quest_flags},
+    /* 6x70 */ {0x60, 0x67, 0x70, on_sync_joining_player_disp_and_inventory},
+    /* 6x71 */ {0x00, 0x00, 0x71, on_forward_check_game_loading},
+    /* 6x72 */ {0x61, 0x68, 0x72, on_forward_check_game_loading},
     /* 6x73 */ {0x00, 0x00, 0x73, on_forward_check_game_quest},
     /* 6x74 */ {0x62, 0x69, 0x74, on_word_select, SDF::ALWAYS_FORWARD_TO_WATCHERS},
     /* 6x75 */ {0x00, 0x00, 0x75, on_set_quest_flag},

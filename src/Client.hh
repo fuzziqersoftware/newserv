@@ -24,6 +24,7 @@ extern const uint64_t CLIENT_CONFIG_MAGIC;
 
 class Server;
 struct Lobby;
+class Parsed6x70Data;
 
 class Client : public std::enable_shared_from_this<Client> {
 public:
@@ -67,6 +68,7 @@ public:
     SHOULD_SEND_ARTIFICIAL_ENEMY_AND_SET_STATE = 0x0040000000000000, // Server-side only
     SHOULD_SEND_ARTIFICIAL_OBJECT_STATE        = 0x0080000000000000, // Server-side only
     SHOULD_SEND_ARTIFICIAL_FLAG_STATE          = 0x0002000000000000, // Server-side only
+    SHOULD_SEND_ARTIFICIAL_PLAYER_STATES       = 0x0200000000000000, // Server-side only
     SHOULD_SEND_ENABLE_SAVE                    = 0x0004000000000000,
     SWITCH_ASSIST_ENABLED                      = 0x0000000100000000,
     IS_CLIENT_CUSTOMIZATION                    = 0x0100000000000000,
@@ -241,6 +243,7 @@ public:
   bool should_update_play_time;
   std::unordered_set<uint32_t> blocked_senders;
   std::unique_ptr<PlayerDispDataDCPCV3> v1_v2_last_reported_disp;
+  std::shared_ptr<Parsed6x70Data> last_reported_6x70;
   // These are null unless the client is within the trade sequence (D0-D4 or EE commands)
   std::unique_ptr<PendingItemTrade> pending_item_trade;
   std::unique_ptr<PendingCardTrade> pending_card_trade;
