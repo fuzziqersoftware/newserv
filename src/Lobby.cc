@@ -504,6 +504,7 @@ void Lobby::create_ep3_server() {
       .card_index = is_nte ? s->ep3_card_index_trial : s->ep3_card_index,
       .map_index = s->ep3_map_index,
       .behavior_flags = s->ep3_behavior_flags,
+      .opt_rand_stream = nullptr,
       .opt_rand_crypt = this->opt_rand_crypt,
       .tournament = tourn,
       .trap_card_ids = s->ep3_trap_card_ids,
