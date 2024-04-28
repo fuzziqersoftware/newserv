@@ -3052,7 +3052,7 @@ void send_set_exp_multiplier(shared_ptr<Lobby> l) {
   G_SetEXPMultiplier_BB_6xDD cmd = {{0xDD, sizeof(G_SetEXPMultiplier_BB_6xDD) / 4, (l->mode == GameMode::CHALLENGE) ? 1 : l->base_exp_multiplier}};
   for (auto lc : l->clients) {
     if (lc && (lc->version() == Version::BB_V4)) {
-      send_command_t(l, 0x60, 0x00, cmd);
+      send_command_t(lc, 0x60, 0x00, cmd);
     }
   }
 }
