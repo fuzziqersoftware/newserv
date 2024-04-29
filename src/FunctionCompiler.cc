@@ -50,7 +50,8 @@ const char* name_for_architecture(CompiledFunctionCode::Architecture arch) {
 template <typename FooterT>
 string CompiledFunctionCode::generate_client_command_t(
     const unordered_map<string, uint32_t>& label_writes,
-    const string& suffix,
+    const void* suffix_data,
+    size_t suffix_size,
     uint32_t override_relocations_offset) const {
   FooterT footer;
   footer.num_relocations = this->relocation_deltas.size();
@@ -72,7 +73,9 @@ string CompiledFunctionCode::generate_client_command_t(
   } else {
     w.write(this->code);
   }
-  w.write(suffix);
+  if (suffix_size) {
+    w.write(suffix_data, suffix_size);
+  }
   while (w.size() & 3) {
     w.put_u8(0);
   }
@@ -101,14 +104,15 @@ string CompiledFunctionCode::generate_client_command_t(
 
 string CompiledFunctionCode::generate_client_command(
     const unordered_map<string, uint32_t>& label_writes,
-    const string& suffix,
+    const void* suffix_data,
+    size_t suffix_size,
     uint32_t override_relocations_offset) const {
   if (this->arch == Architecture::POWERPC) {
     return this->generate_client_command_t<S_ExecuteCode_Footer_GC_B2>(
-        label_writes, suffix, override_relocations_offset);
+        label_writes, suffix_data, suffix_size, override_relocations_offset);
   } else if ((this->arch == Architecture::X86) || (this->arch == Architecture::SH4)) {
     return this->generate_client_command_t<S_ExecuteCode_Footer_DC_PC_XB_BB_B2>(
-        label_writes, suffix, override_relocations_offset);
+        label_writes, suffix_data, suffix_size, override_relocations_offset);
   } else {
     throw logic_error("invalid architecture");
   }

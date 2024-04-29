@@ -1,7 +1,7 @@
   # r3 = dest ptr
   # r4 = src ptr
   # r5 = size
-  # Clobbers r3, r4, r5
+  # Clobbers r3, r4, r5, ctr
   addi    r5, r5, 3
   rlwinm  r5, r5, 30, 2, 31 # r5 = number of words to copy
   mtctr   r5

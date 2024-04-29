@@ -365,7 +365,8 @@ void prepare_client_for_patches(shared_ptr<Client> c, function<void()> on_comple
   };
 
   if (!c->config.check_flag(Client::Flag::SEND_FUNCTION_CALL_NO_CACHE_PATCH)) {
-    send_function_call(c, s->function_code_index->name_to_function.at("CacheClearFix-Phase1"), {}, "", 0x80000000, 8, 0x7F2734EC);
+    auto fn = s->function_code_index->name_to_function.at("CacheClearFix-Phase1");
+    send_function_call(c, fn, {}, nullptr, 0, 0x80000000, 8, 0x7F2734EC);
     c->function_call_response_queue.emplace_back([s, wc = weak_ptr<Client>(c), send_version_detect](uint32_t, uint32_t header_checksum) -> void {
       auto c = wc.lock();
       if (!c) {
@@ -397,14 +398,15 @@ void prepare_client_for_patches(shared_ptr<Client> c, function<void()> on_comple
 string prepare_send_function_call_data(
     shared_ptr<const CompiledFunctionCode> code,
     const unordered_map<string, uint32_t>& label_writes,
-    const string& suffix,
+    const void* suffix_data,
+    size_t suffix_size,
     uint32_t checksum_addr,
     uint32_t checksum_size,
     uint32_t override_relocations_offset,
     bool use_encrypted_format) {
   string data;
   if (code.get()) {
-    data = code->generate_client_command(label_writes, suffix, override_relocations_offset);
+    data = code->generate_client_command(label_writes, suffix_data, suffix_size, override_relocations_offset);
 
     if (use_encrypted_format) {
       uint32_t key = random_object<uint32_t>();
@@ -446,7 +448,8 @@ void send_function_call(
     shared_ptr<Client> c,
     shared_ptr<const CompiledFunctionCode> code,
     const unordered_map<string, uint32_t>& label_writes,
-    const string& suffix,
+    const void* suffix_data,
+    size_t suffix_size,
     uint32_t checksum_addr,
     uint32_t checksum_size,
     uint32_t override_relocations_offset) {
@@ -455,7 +458,8 @@ void send_function_call(
       c->config,
       code,
       label_writes,
-      suffix,
+      suffix_data,
+      suffix_size,
       checksum_addr,
       checksum_size,
       override_relocations_offset);
@@ -466,7 +470,8 @@ void send_function_call(
     const Client::Config& client_config,
     shared_ptr<const CompiledFunctionCode> code,
     const unordered_map<string, uint32_t>& label_writes,
-    const string& suffix,
+    const void* suffix_data,
+    size_t suffix_size,
     uint32_t checksum_addr,
     uint32_t checksum_size,
     uint32_t override_relocations_offset) {
@@ -478,7 +483,7 @@ void send_function_call(
   }
 
   string data = prepare_send_function_call_data(
-      code, label_writes, suffix, checksum_addr, checksum_size, override_relocations_offset,
+      code, label_writes, suffix_data, suffix_size, checksum_addr, checksum_size, override_relocations_offset,
       client_config.check_flag(Client::Flag::ENCRYPTED_SEND_FUNCTION_CALL));
 
   ch.send(0xB2, code ? code->index : 0x00, data);
@@ -520,7 +525,7 @@ bool send_protected_command(std::shared_ptr<Client> c, const void* data, size_t 
           auto s = c->require_server_state();
           auto fn = s->function_code_index->get_patch("CallProtectedHandler", c->config.specific_version);
           uint32_t size_label_value = is_big_endian(c->version()) ? data.size() : bswap32(data.size());
-          send_function_call(c, fn, {{"size", size_label_value}}, data);
+          send_function_call(c, fn, {{"size", size_label_value}}, data.data(), data.size());
           c->function_call_response_queue.emplace_back(empty_function_call_response_handler);
           if (echo_to_lobby) {
             auto l = c->lobby.lock();

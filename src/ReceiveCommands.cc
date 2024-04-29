@@ -2778,7 +2778,7 @@ static void send_dol_file_chunk(shared_ptr<Client> c, uint32_t start_addr) {
   auto fn = s->function_code_index->name_to_function.at("WriteMemory");
   unordered_map<string, uint32_t> label_writes(
       {{"dest_addr", start_addr}, {"size", bytes_to_send}});
-  send_function_call(c, fn, label_writes, data_to_send);
+  send_function_call(c, fn, label_writes, data_to_send.data(), data_to_send.size());
 
   size_t progress_percent = ((offset + bytes_to_send) * 100) / c->loading_dol_file->data.size();
   send_ship_info(c, string_printf("%zu%%%%", progress_percent));

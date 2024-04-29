@@ -1261,7 +1261,8 @@ Action a_assemble_all_patches(
                                uint32_t override_start_addr) -> void {
         for (uint8_t encrypted = 0; encrypted < 2; encrypted++) {
           StringWriter w;
-          string data = prepare_send_function_call_data(code, {}, "", checksum_addr, checksum_size, override_start_addr, encrypted);
+          string data = prepare_send_function_call_data(
+              code, {}, nullptr, 0, checksum_addr, checksum_size, override_start_addr, encrypted);
           w.put(PSOCommandHeaderDCV3{.command = 0xB2, .flag = code->index, .size = data.size() + 4});
           w.write(data);
           string out_path = code->source_path + (encrypted ? ".enc.bin" : ".std.bin");

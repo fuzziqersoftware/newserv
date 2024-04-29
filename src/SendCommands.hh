@@ -152,7 +152,8 @@ void prepare_client_for_patches(std::shared_ptr<Client> c, std::function<void()>
 std::string prepare_send_function_call_data(
     std::shared_ptr<const CompiledFunctionCode> code,
     const std::unordered_map<std::string, uint32_t>& label_writes,
-    const std::string& suffix,
+    const void* suffix_data,
+    size_t suffix_size,
     uint32_t checksum_addr,
     uint32_t checksum_size,
     uint32_t override_relocations_offset,
@@ -162,7 +163,8 @@ void send_function_call(
     const Client::Config& client_config,
     std::shared_ptr<const CompiledFunctionCode> code,
     const std::unordered_map<std::string, uint32_t>& label_writes = {},
-    const std::string& suffix = "",
+    const void* suffix_data = nullptr,
+    size_t suffix_size = 0,
     uint32_t checksum_addr = 0,
     uint32_t checksum_size = 0,
     uint32_t override_relocations_offset = 0);
@@ -170,7 +172,8 @@ void send_function_call(
     std::shared_ptr<Client> c,
     std::shared_ptr<const CompiledFunctionCode> code,
     const std::unordered_map<std::string, uint32_t>& label_writes = {},
-    const std::string& suffix = "",
+    const void* suffix_data = nullptr,
+    size_t suffix_size = 0,
     uint32_t checksum_addr = 0,
     uint32_t checksum_size = 0,
     uint32_t override_relocations_offset = 0);

@@ -1458,8 +1458,8 @@ static void server_command_savechar(shared_ptr<Client> c, const std::string& arg
 }
 
 static void server_command_loadchar(shared_ptr<Client> c, const std::string& args) {
-  if (!is_v1_or_v2(c->version())) {
-    send_text_message(c, "$C7This command can only\nbe used on v1 or v2");
+  if (!is_v1_or_v2(c->version()) && c->version() != Version::GC_V3) {
+    send_text_message(c, "$C7This command can only\nbe used on v1, v2,\nand GC");
     return;
   }
   if (c->login->account->check_flag(Account::Flag::IS_SHARED_ACCOUNT)) {
@@ -1476,9 +1476,50 @@ static void server_command_loadchar(shared_ptr<Client> c, const std::string& arg
   }
   c->load_backup_character(c->login->account->account_id, index);
 
-  auto s = c->require_server_state();
-  send_player_leave_notification(l, c->lobby_client_id);
-  s->send_lobby_join_notifications(l, c);
+  if (c->version() == Version::GC_V3) {
+    // TODO: Support extended player info on other versions
+    auto s = c->require_server_state();
+    if (c->config.check_flag(Client::Flag::NO_SEND_FUNCTION_CALL) ||
+        c->config.check_flag(Client::Flag::SEND_FUNCTION_CALL_CHECKSUM_ONLY)) {
+      send_text_message_printf(c, "Can\'t load character\ndata on PSO Plus");
+      return;
+    }
+
+    auto gc_char = make_shared<PSOGCCharacterFile::Character>(c->character()->to_gc());
+    prepare_client_for_patches(c, [wc = weak_ptr<Client>(c), gc_char]() {
+      auto c = wc.lock();
+      if (!c) {
+        return;
+      }
+      try {
+        auto s = c->require_server_state();
+        auto fn = s->function_code_index->get_patch("SetExtendedPlayerInfo", c->config.specific_version);
+        send_function_call(c, fn, {}, gc_char.get(), sizeof(PSOGCCharacterFile::Character));
+        c->function_call_response_queue.emplace_back([wc = weak_ptr<Client>(c)](uint32_t, uint32_t) -> void {
+          auto c = wc.lock();
+          if (!c) {
+            return;
+          }
+          auto l = c->lobby.lock();
+          if (l) {
+            auto s = c->require_server_state();
+            send_player_leave_notification(l, c->lobby_client_id);
+            s->send_lobby_join_notifications(l, c);
+          }
+        });
+      } catch (const exception& e) {
+        c->log.warning("Failed to set extended player info: %s", e.what());
+        send_text_message_printf(c, "Failed to set\nplayer info:\n%s", e.what());
+      }
+    });
+
+  } else {
+    // On v1 and v2, the client will assign its character data from the lobby
+    // join command, so it suffices to just resend the join notification.
+    auto s = c->require_server_state();
+    send_player_leave_notification(l, c->lobby_client_id);
+    s->send_lobby_join_notifications(l, c);
+  }
 }
 
 static void server_command_save(shared_ptr<Client> c, const std::string&) {

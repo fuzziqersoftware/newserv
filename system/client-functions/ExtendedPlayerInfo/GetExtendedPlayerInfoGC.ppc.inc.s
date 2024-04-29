@@ -1,9 +1,13 @@
   stwu   [r1 - 0x20], r1
-  stw    [r1 + 0x24], r12
+  mflr   r0
+  stw    [r1 + 0x24], r0
   stw    [r1 + 0x08], r31
   stw    [r1 + 0x0C], r30
   stw    [r1 + 0x10], r29
   stw    [r1 + 0x14], r28
+
+  b      get_data_ptr
+get_data_ptr_ret:
   mflr   r30
 
   li     r3, 0x279C
@@ -17,20 +21,22 @@
   ori    r0, r0, 0x9C27
   stw    [r31], r0  # header = 30 00 9C 27
 
-  lwz    r0, [r30 + 0x04]
-  mtctr  r0
-  bctrl  # get_character_file
-  mr     r28, r3
-
-  lwz    r0, [r30 + 0x08]
-  mtctr  r0
-  bctrl  # get_selected_character_file_index
-  mulli  r3, r3, 0x2798
-  addi   r3, r3, 4
-  add    r4, r3, r28  # r4 = &character_file->characters[selected_char_file_index]
-  addi   r3, r31, 4
-  li     r5, 0x2798
+  lwz    r4, [r30 + 0x04]
+  lwz    r4, [r4]  # r4 = char_file_part1
+  addi   r3, r31, 0x0004
+  li     r5, 0x041C  # sizeof(part1)
   bl     memcpy
+
+  lwz    r4, [r30 + 0x08]
+  lwz    r4, [r4]  # r4 = char_file_part2
+  addi   r3, r31, 0x0420
+  li     r5, 0x2370  # sizeof(part2)
+  bl     memcpy
+
+  li     r0, 0
+  stw    [r31 + 0x2790], r0
+  stw    [r31 + 0x2794], r0
+  stw    [r31 + 0x2798], r0
 
   mr     r28, r31
   li     r29, 0x279C
@@ -79,3 +85,6 @@ malloc9_failed:
 memcpy:
   .include CopyDataWords
   blr
+
+get_data_ptr:
+  bl     get_data_ptr_ret

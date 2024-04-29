@@ -43,11 +43,13 @@ struct CompiledFunctionCode {
   template <typename FooterT>
   std::string generate_client_command_t(
       const std::unordered_map<std::string, uint32_t>& label_writes,
-      const std::string& suffix,
+      const void* suffix_data = nullptr,
+      size_t suffix_size = 0,
       uint32_t override_relocations_offset = 0) const;
   std::string generate_client_command(
       const std::unordered_map<std::string, uint32_t>& label_writes = {},
-      const std::string& suffix = "",
+      const void* suffix_data = nullptr,
+      size_t suffix_size = 0,
       uint32_t override_relocations_offset = 0) const;
 };
 
