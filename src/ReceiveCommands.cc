@@ -3269,11 +3269,12 @@ static void on_30(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
 
   shared_ptr<PSOBBCharacterFile> bb_char;
   switch (c->version()) {
-    case Version::GC_V3: {
-      auto gc_char = check_size_t<PSOGCCharacterFile::Character>(data);
-      bb_char = PSOBBCharacterFile::create_from_gc(gc_char);
+    case Version::GC_V3:
+      bb_char = PSOBBCharacterFile::create_from_gc(check_size_t<PSOGCCharacterFile::Character>(data));
       break;
-    }
+    case Version::XB_V3:
+      bb_char = PSOBBCharacterFile::create_from_xb(check_size_t<PSOXBCharacterFileCharacter>(data));
+      break;
     case Version::DC_NTE:
     case Version::DC_V1_11_2000_PROTOTYPE:
     case Version::DC_V1:
@@ -3283,7 +3284,6 @@ static void on_30(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
     case Version::GC_NTE:
     case Version::GC_EP3_NTE:
     case Version::GC_EP3:
-    case Version::XB_V3:
     case Version::BB_V4:
     default:
       throw logic_error("extended player data command not implemented for version");

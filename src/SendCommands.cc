@@ -2336,37 +2336,29 @@ void send_self_leave_notification(shared_ptr<Client> c) {
   send_command_t(c, 0x69, c->lobby_client_id, cmd);
 }
 
-static bool send_get_extended_player_info(shared_ptr<Client> c) {
-  // TODO: Support extended player info on other versions.
-  if (c->version() != Version::GC_V3) {
-    return false;
-  }
-  auto s = c->require_server_state();
-  if (c->config.check_flag(Client::Flag::NO_SEND_FUNCTION_CALL) ||
-      c->config.check_flag(Client::Flag::SEND_FUNCTION_CALL_CHECKSUM_ONLY)) {
-    return false;
-  }
-
-  prepare_client_for_patches(c, [wc = weak_ptr<Client>(c)]() {
-    auto c = wc.lock();
-    if (!c) {
-      return;
-    }
-    try {
-      auto s = c->require_server_state();
-      auto fn = s->function_code_index->get_patch("GetExtendedPlayerInfo", c->config.specific_version);
-      send_function_call(c, fn);
-      c->function_call_response_queue.emplace_back(empty_function_call_response_handler);
-    } catch (const exception& e) {
-      c->log.warning("Failed to send extended player info request: %s", e.what());
-      send_get_player_info(c, false);
-    }
-  });
-  return true;
-}
-
 void send_get_player_info(shared_ptr<Client> c, bool request_extended) {
-  if (!request_extended || !send_get_extended_player_info(c)) {
+  // TODO: Support extended player info on other versions.
+  if (request_extended &&
+      !c->config.check_flag(Client::Flag::NO_SEND_FUNCTION_CALL) &&
+      !c->config.check_flag(Client::Flag::SEND_FUNCTION_CALL_CHECKSUM_ONLY) &&
+      ((c->version() == Version::GC_V3) || (c->version() == Version::XB_V3))) {
+    auto s = c->require_server_state();
+    prepare_client_for_patches(c, [wc = weak_ptr<Client>(c)]() {
+      auto c = wc.lock();
+      if (!c) {
+        return;
+      }
+      try {
+        auto s = c->require_server_state();
+        auto fn = s->function_code_index->get_patch("GetExtendedPlayerInfo", c->config.specific_version);
+        send_function_call(c, fn);
+        c->function_call_response_queue.emplace_back(empty_function_call_response_handler);
+      } catch (const exception& e) {
+        c->log.warning("Failed to send extended player info request: %s", e.what());
+        send_get_player_info(c, false);
+      }
+    });
+  } else {
     send_command(c, (c->version() == Version::DC_NTE) ? 0x8D : 0x95, 0x00);
   }
 }

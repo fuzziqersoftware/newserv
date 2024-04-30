@@ -7193,4 +7193,4 @@ struct G_RejectBattleStartRequest_Ep3_6xB4x53 {
 
 // 30 (C->S): Extended player info
 // Requested with the GetExtendedPlayerInfo patch.
-// Format is PSOGCCharacterFile::Character.
+// Format is PSOGCCharacterFile::Character or PSOXBCharacterFileCharacter.

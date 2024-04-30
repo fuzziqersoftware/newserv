@@ -124,17 +124,19 @@ template <bool IsBigEndian, TextEncoding Encoding, size_t NameLength>
 struct SaveFileSymbolChatEntryT {
   using U32T = std::conditional_t<IsBigEndian, be_uint32_t, le_uint32_t>;
 
-  /* PC:GC:BB */
-  /* 00:00:00 */ U32T present;
-  /* 04:04:04 */ pstring<Encoding, NameLength> name;
-  /* 34:1C:2C */ SymbolChatT<IsBigEndian> spec;
-  /* 70:58:68 */
+  /* PC:GC:XB:BB */
+  /* 00:00:00:00 */ U32T present;
+  /* 04:04:04:04 */ pstring<Encoding, NameLength> name;
+  /* 34:1C:1C:2C */ SymbolChatT<IsBigEndian> spec;
+  /* 70:58:58:68 */
 } __packed__;
 using SaveFileSymbolChatEntryPC = SaveFileSymbolChatEntryT<false, TextEncoding::UTF16, 0x18>;
 using SaveFileSymbolChatEntryGC = SaveFileSymbolChatEntryT<true, TextEncoding::MARKED, 0x18>;
+using SaveFileSymbolChatEntryXB = SaveFileSymbolChatEntryT<false, TextEncoding::MARKED, 0x18>;
 using SaveFileSymbolChatEntryBB = SaveFileSymbolChatEntryT<false, TextEncoding::UTF16, 0x14>;
 check_struct_size(SaveFileSymbolChatEntryPC, 0x70);
 check_struct_size(SaveFileSymbolChatEntryGC, 0x58);
+check_struct_size(SaveFileSymbolChatEntryXB, 0x58);
 check_struct_size(SaveFileSymbolChatEntryBB, 0x68);
 
 template <bool IsBigEndian>
@@ -208,8 +210,10 @@ struct SaveFileChatShortcutEntryT {
   }
 } __packed__;
 using SaveFileShortcutEntryGC = SaveFileChatShortcutEntryT<true, TextEncoding::MARKED>;
+using SaveFileShortcutEntryXB = SaveFileChatShortcutEntryT<false, TextEncoding::MARKED>;
 using SaveFileShortcutEntryBB = SaveFileChatShortcutEntryT<false, TextEncoding::UTF16>;
 check_struct_size(SaveFileShortcutEntryGC, 0x54);
+check_struct_size(SaveFileShortcutEntryXB, 0x54);
 check_struct_size(SaveFileShortcutEntryBB, 0xA4);
 
 struct PSOGCCharacterFile {
@@ -388,6 +392,49 @@ struct PSOGCSnapshotFile {
   bool checksum_correct() const;
   Image decode_image() const;
 } __packed_ws__(PSOGCSnapshotFile, 0x1818C);
+
+struct PSOXBCharacterFileCharacter {
+  // This structure is internally split into two by the game. The offsets here
+  // are relative to the start of this structure (first column), and relative
+  // to the start of the second internal structure (second column).
+  // Most fields have the same meanings as in PSOGCCharacterFile::Character.
+  /* 0000:---- */ PlayerInventory inventory;
+  /* 034C:---- */ PlayerDispDataDCPCV3 disp;
+  /* 041C:0000 */ le_uint32_t flags = 0;
+  /* 0420:0004 */ le_uint32_t creation_timestamp = 0;
+  /* 0424:0008 */ le_uint32_t signature = 0xC87ED5B1;
+  /* 0428:000C */ le_uint32_t play_time_seconds = 0;
+  /* 042C:0010 */ le_uint32_t option_flags = 0x00040058;
+  /* 0430:0014 */ le_uint32_t save_count = 0;
+  /* 0434:0018 */ parray<uint8_t, 0x1C> unknown_a2;
+  /* 0450:0034 */ parray<uint8_t, 0x10> unknown_a3;
+  /* 0460:0044 */ QuestFlags quest_flags;
+  /* 0660:0244 */ le_uint32_t death_count = 0;
+  /* 0664:0248 */ PlayerBank bank;
+  /* 192C:1510 */ GuildCardXB guild_card;
+  /* 1B58:173C */ parray<SaveFileSymbolChatEntryXB, 12> symbol_chats;
+  /* 1F78:1B5C */ parray<SaveFileShortcutEntryXB, 16> shortcuts;
+  /* 24B8:209C */ pstring<TextEncoding::MARKED, 0xAC> auto_reply;
+  /* 2518:20FC */ pstring<TextEncoding::MARKED, 0xAC> info_board;
+  // // TODO: The following fields are guesses and have not been verified.
+  /* 2610:21F4 */ PlayerRecordsBattle battle_records;
+  /* 2628:220C */ parray<uint8_t, 4> unknown_a4;
+  /* 262C:2210 */ PlayerRecordsChallengeV3 challenge_records;
+  /* 272C:2310 */ parray<be_uint16_t, 20> tech_menu_shortcut_entries;
+  /* 2754:2338 */ ChoiceSearchConfig choice_search_config;
+  /* 276C:2350 */ parray<uint8_t, 0x10> unknown_a6;
+  /* 277C:2360 */ parray<be_uint32_t, 0x10> quest_counters;
+  /* 27BC:23A0 */ PlayerRecordsBattle offline_battle_records;
+  /* 27D4:23B8 */ parray<uint8_t, 4> unknown_a7;
+  struct UnknownA8Entry {
+    /* 00 */ le_uint32_t unknown_a1;
+    /* 04 */ parray<uint8_t, 0x1C> unknown_a2;
+    /* 20 */ parray<le_float, 4> unknown_a3;
+    /* 30 */
+  } __packed_ws__(UnknownA8Entry, 0x30);
+  /* 27D8:23BC */ parray<UnknownA8Entry, 5> unknown_a8;
+  /* 28C8:24AC */
+} __packed_ws__(PSOXBCharacterFileCharacter, 0x28C8);
 
 template <bool IsBigEndian>
 std::string decrypt_data_section(const void* data_section, size_t size, uint32_t round1_seed, size_t max_decrypt_bytes = 0) {
@@ -745,6 +792,7 @@ struct PSOBBCharacterFile {
       const PlayerDispDataBBPreview& preview,
       std::shared_ptr<const LevelTable> level_table);
   static std::shared_ptr<PSOBBCharacterFile> create_from_gc(const PSOGCCharacterFile::Character& gc_char);
+  static std::shared_ptr<PSOBBCharacterFile> create_from_xb(const PSOXBCharacterFileCharacter& xb_char);
 
   void add_item(const ItemData& item, const ItemData::StackLimits& limits);
   ItemData remove_item(uint32_t item_id, uint32_t amount, const ItemData::StackLimits& limits);
@@ -769,6 +817,7 @@ struct PSOBBCharacterFile {
   void clear_all_material_usage();
 
   PSOGCCharacterFile::Character to_gc() const;
+  PSOXBCharacterFileCharacter to_xb(uint64_t xb_user_id) const;
 } __packed_ws__(PSOBBCharacterFile, 0x2EA4);
 
 struct PSOBBGuildCardFile {

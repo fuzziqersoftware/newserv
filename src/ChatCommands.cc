@@ -1476,7 +1476,7 @@ static void server_command_loadchar(shared_ptr<Client> c, const std::string& arg
   }
   c->load_backup_character(c->login->account->account_id, index);
 
-  if (c->version() == Version::GC_V3) {
+  if ((c->version() == Version::GC_V3) || (c->version() == Version::XB_V3)) {
     // TODO: Support extended player info on other versions
     auto s = c->require_server_state();
     if (c->config.check_flag(Client::Flag::NO_SEND_FUNCTION_CALL) ||
@@ -1485,33 +1485,47 @@ static void server_command_loadchar(shared_ptr<Client> c, const std::string& arg
       return;
     }
 
-    auto gc_char = make_shared<PSOGCCharacterFile::Character>(c->character()->to_gc());
-    prepare_client_for_patches(c, [wc = weak_ptr<Client>(c), gc_char]() {
-      auto c = wc.lock();
-      if (!c) {
-        return;
+    auto send_set_extended_player_info = []<typename CharT>(shared_ptr<Client> c, shared_ptr<const CharT> char_file) -> void {
+      prepare_client_for_patches(c, [wc = weak_ptr<Client>(c), char_file]() {
+        auto c = wc.lock();
+        if (!c) {
+          return;
+        }
+        try {
+          auto s = c->require_server_state();
+          auto fn = s->function_code_index->get_patch("SetExtendedPlayerInfo", c->config.specific_version);
+          send_function_call(c, fn, {}, char_file.get(), sizeof(CharT));
+          c->function_call_response_queue.emplace_back([wc = weak_ptr<Client>(c)](uint32_t, uint32_t) -> void {
+            auto c = wc.lock();
+            if (!c) {
+              return;
+            }
+            auto l = c->lobby.lock();
+            if (l) {
+              auto s = c->require_server_state();
+              send_player_leave_notification(l, c->lobby_client_id);
+              s->send_lobby_join_notifications(l, c);
+            }
+          });
+        } catch (const exception& e) {
+          c->log.warning("Failed to set extended player info: %s", e.what());
+          send_text_message_printf(c, "Failed to set\nplayer info:\n%s", e.what());
+        }
+      });
+    };
+
+    if (c->version() == Version::GC_V3) {
+      auto gc_char = make_shared<PSOGCCharacterFile::Character>(c->character()->to_gc());
+      send_set_extended_player_info.operator()<PSOGCCharacterFile::Character>(c, gc_char);
+    } else if (c->version() == Version::XB_V3) {
+      if (!c->login || !c->login->xb_license) {
+        throw runtime_error("XB client is not logged in");
       }
-      try {
-        auto s = c->require_server_state();
-        auto fn = s->function_code_index->get_patch("SetExtendedPlayerInfo", c->config.specific_version);
-        send_function_call(c, fn, {}, gc_char.get(), sizeof(PSOGCCharacterFile::Character));
-        c->function_call_response_queue.emplace_back([wc = weak_ptr<Client>(c)](uint32_t, uint32_t) -> void {
-          auto c = wc.lock();
-          if (!c) {
-            return;
-          }
-          auto l = c->lobby.lock();
-          if (l) {
-            auto s = c->require_server_state();
-            send_player_leave_notification(l, c->lobby_client_id);
-            s->send_lobby_join_notifications(l, c);
-          }
-        });
-      } catch (const exception& e) {
-        c->log.warning("Failed to set extended player info: %s", e.what());
-        send_text_message_printf(c, "Failed to set\nplayer info:\n%s", e.what());
-      }
-    });
+      auto xb_char = make_shared<PSOXBCharacterFileCharacter>(c->character()->to_xb(c->login->xb_license->user_id));
+      send_set_extended_player_info.operator()<PSOXBCharacterFileCharacter>(c, xb_char);
+    } else {
+      throw logic_error("unimplemented extended player info version");
+    }
 
   } else {
     // On v1 and v2, the client will assign its character data from the lobby

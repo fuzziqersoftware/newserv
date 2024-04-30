@@ -459,6 +459,47 @@ shared_ptr<PSOBBCharacterFile> PSOBBCharacterFile::create_from_gc(const PSOGCCha
   return ret;
 }
 
+shared_ptr<PSOBBCharacterFile> PSOBBCharacterFile::create_from_xb(const PSOXBCharacterFileCharacter& xb) {
+  auto ret = make_shared<PSOBBCharacterFile>();
+  ret->inventory = xb.inventory;
+  uint8_t language = ret->inventory.language;
+  ret->disp = xb.disp.to_bb(language, language);
+  ret->creation_timestamp = xb.creation_timestamp.load();
+  ret->play_time_seconds = xb.play_time_seconds.load();
+  ret->option_flags = xb.option_flags.load();
+  ret->save_count = xb.save_count.load();
+  ret->quest_flags = xb.quest_flags;
+  ret->death_count = xb.death_count.load();
+  ret->bank = xb.bank;
+  ret->guild_card = xb.guild_card;
+  for (size_t z = 0; z < std::min<size_t>(ret->symbol_chats.size(), xb.symbol_chats.size()); z++) {
+    auto& ret_sc = ret->symbol_chats[z];
+    const auto& xb_sc = xb.symbol_chats[z];
+    ret_sc.present = xb_sc.present.load();
+    ret_sc.name.encode(xb_sc.name.decode(language), language);
+    ret_sc.spec = xb_sc.spec;
+  }
+  for (size_t z = 0; z < std::min<size_t>(ret->shortcuts.size(), xb.shortcuts.size()); z++) {
+    ret->shortcuts[z] = xb.shortcuts[z].convert<false, TextEncoding::UTF16>(language);
+  }
+  ret->auto_reply.encode(xb.auto_reply.decode(language), language);
+  ret->info_board.encode(xb.info_board.decode(language), language);
+  ret->battle_records = xb.battle_records;
+  ret->unknown_a4 = xb.unknown_a4;
+  ret->challenge_records = xb.challenge_records;
+  for (size_t z = 0; z < std::min<size_t>(ret->tech_menu_shortcut_entries.size(), xb.tech_menu_shortcut_entries.size()); z++) {
+    ret->tech_menu_shortcut_entries[z] = xb.tech_menu_shortcut_entries[z].load();
+  }
+  ret->choice_search_config = xb.choice_search_config;
+  ret->unknown_a6 = xb.unknown_a6;
+  for (size_t z = 0; z < std::min<size_t>(ret->quest_counters.size(), xb.quest_counters.size()); z++) {
+    ret->quest_counters[z] = xb.quest_counters[z].load();
+  }
+  ret->offline_battle_records = xb.offline_battle_records;
+  ret->unknown_a7 = xb.unknown_a7;
+  return ret;
+}
+
 PSOGCCharacterFile::Character PSOBBCharacterFile::to_gc() const {
   uint8_t language = this->inventory.language;
 
@@ -482,6 +523,50 @@ PSOGCCharacterFile::Character PSOBBCharacterFile::to_gc() const {
   }
   for (size_t z = 0; z < std::min<size_t>(ret.shortcuts.size(), this->shortcuts.size()); z++) {
     ret.shortcuts[z] = this->shortcuts[z].convert<true, TextEncoding::MARKED>(language);
+  }
+  ret.auto_reply.encode(this->auto_reply.decode(language), language);
+  ret.info_board.encode(this->info_board.decode(language), language);
+  ret.battle_records = this->battle_records;
+  ret.unknown_a4 = this->unknown_a4;
+  ret.challenge_records = this->challenge_records;
+  for (size_t z = 0; z < std::min<size_t>(ret.tech_menu_shortcut_entries.size(), this->tech_menu_shortcut_entries.size()); z++) {
+    ret.tech_menu_shortcut_entries[z] = this->tech_menu_shortcut_entries[z].load();
+  }
+  ret.choice_search_config = this->choice_search_config;
+  ret.unknown_a6 = this->unknown_a6;
+  for (size_t z = 0; z < std::min<size_t>(ret.quest_counters.size(), this->quest_counters.size()); z++) {
+    ret.quest_counters[z] = this->quest_counters[z].load();
+  }
+  ret.offline_battle_records = this->offline_battle_records;
+  ret.unknown_a7 = this->unknown_a7;
+  return ret;
+}
+
+PSOXBCharacterFileCharacter PSOBBCharacterFile::to_xb(uint64_t xb_user_id) const {
+  uint8_t language = this->inventory.language;
+
+  PSOXBCharacterFileCharacter ret;
+  ret.inventory = this->inventory;
+  ret.disp = this->disp.to_dcpcv3<false>(language, language);
+  ret.creation_timestamp = this->creation_timestamp.load();
+  ret.play_time_seconds = this->play_time_seconds.load();
+  ret.option_flags = this->option_flags.load();
+  ret.save_count = this->save_count.load();
+  ret.quest_flags = this->quest_flags;
+  ret.death_count = this->death_count.load();
+  ret.bank = this->bank;
+  ret.guild_card = this->guild_card;
+  ret.guild_card.xb_user_id_high = (xb_user_id >> 32) & 0xFFFFFFFF;
+  ret.guild_card.xb_user_id_low = xb_user_id & 0xFFFFFFFF;
+  for (size_t z = 0; z < std::min<size_t>(ret.symbol_chats.size(), this->symbol_chats.size()); z++) {
+    auto& ret_sc = ret.symbol_chats[z];
+    const auto& gc_sc = this->symbol_chats[z];
+    ret_sc.present = gc_sc.present.load();
+    ret_sc.name.encode(gc_sc.name.decode(language), language);
+    ret_sc.spec = gc_sc.spec;
+  }
+  for (size_t z = 0; z < std::min<size_t>(ret.shortcuts.size(), this->shortcuts.size()); z++) {
+    ret.shortcuts[z] = this->shortcuts[z].convert<false, TextEncoding::MARKED>(language);
   }
   ret.auto_reply.encode(this->auto_reply.decode(language), language);
   ret.info_board.encode(this->info_board.decode(language), language);
