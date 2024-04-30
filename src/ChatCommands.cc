@@ -1431,8 +1431,8 @@ static void server_command_bbchar_savechar(shared_ptr<Client> c, const std::stri
 
   } else {
     pending_export->character_index = stoll(args) - 1;
-    if ((pending_export->character_index > 3) || (pending_export->character_index < 0)) {
-      send_text_message(c, "$C6Player index must\nbe in range 1-4");
+    if ((pending_export->character_index > 15) || (pending_export->character_index < 0)) {
+      send_text_message(c, "$C6Player index must\nbe in range 1-16");
       return;
     }
     pending_export->dest_account = c->login->account;
@@ -1470,8 +1470,8 @@ static void server_command_loadchar(shared_ptr<Client> c, const std::string& arg
   check_is_game(l, false);
 
   size_t index = stoull(args, nullptr, 0) - 1;
-  if (index > 3) {
-    send_text_message(c, "$C6Player index must\nbe in range 1-4");
+  if (index > 15) {
+    send_text_message(c, "$C6Player index must\nbe in range 1-16");
     return;
   }
   c->load_backup_character(c->login->account->account_id, index);
