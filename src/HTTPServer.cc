@@ -749,8 +749,10 @@ JSON HTTPServer::generate_game_server_clients_json() const {
 JSON HTTPServer::generate_proxy_server_clients_json() const {
   return call_on_event_thread<JSON>(this->state->base, [&]() {
     JSON res = JSON::list();
-    for (const auto& it : this->state->proxy_server->all_sessions()) {
-      res.emplace_back(this->generate_proxy_client_json_st(it.second));
+    if (this->state->proxy_server) {
+      for (const auto& it : this->state->proxy_server->all_sessions()) {
+        res.emplace_back(this->generate_proxy_client_json_st(it.second));
+      }
     }
     return res;
   });
@@ -776,7 +778,7 @@ JSON HTTPServer::generate_server_info_json() const {
         {"LobbyCount", lobby_count},
         {"GameCount", game_count},
         {"ClientCount", this->state->channel_to_client.size()},
-        {"ProxySessionCount", this->state->proxy_server->num_sessions()},
+        {"ProxySessionCount", this->state->proxy_server ? this->state->proxy_server->num_sessions() : 0},
         {"ServerName", this->state->name},
     });
   });
@@ -813,13 +815,15 @@ JSON HTTPServer::generate_summary_json() const {
     }
 
     auto proxy_clients_json = JSON::list();
-    for (const auto& it : this->state->proxy_server->all_sessions()) {
-      proxy_clients_json.emplace_back(JSON::dict({
-          {"AccountID", it.second->login ? it.second->login->account->account_id : JSON(nullptr)},
-          {"Name", it.second->character_name},
-          {"Version", name_for_enum(it.second->version())},
-          {"Language", name_for_language_code(it.second->language())},
-      }));
+    if (this->state->proxy_server) {
+      for (const auto& it : this->state->proxy_server->all_sessions()) {
+        proxy_clients_json.emplace_back(JSON::dict({
+            {"AccountID", it.second->login ? it.second->login->account->account_id : JSON(nullptr)},
+            {"Name", it.second->character_name},
+            {"Version", name_for_enum(it.second->version())},
+            {"Language", name_for_language_code(it.second->language())},
+        }));
+      }
     }
 
     auto games_json = JSON::list();
