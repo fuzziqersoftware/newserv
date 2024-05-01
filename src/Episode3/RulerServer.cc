@@ -2,6 +2,7 @@
 
 #include <optional>
 
+#include "DataIndexes.hh"
 #include "Server.hh"
 
 using namespace std;
@@ -1469,36 +1470,52 @@ bool RulerServer::compute_effective_range_and_target_mode_for_attack(
     uint16_t* out_effective_card_id,
     TargetMode* out_effective_target_mode,
     uint16_t* out_orig_card_ref) const {
+  auto s = this->server();
+  bool is_nte = s->options.is_nte();
+  auto log = s->log_stack("compute_effective_range_and_target_mode_for_attack");
+
   size_t z;
   for (z = 0; (z < 8) && (pa.action_card_refs[z] != 0xFFFF); z++) {
   }
   if (z >= 8) {
+    log.debug("too many action card refs");
     return false;
   }
+  log.debug("%zu action card refs", z);
   uint16_t card_ref = (z == 0) ? pa.attacker_card_ref : pa.action_card_refs[z - 1];
+  log.debug("base card ref = @%04hX", card_ref);
 
   uint16_t card_id = this->card_id_for_card_ref(card_ref);
   if (card_id == 0xFFFF) {
+    log.debug("card ref is broken");
     return false;
   }
 
   auto ce = this->definition_for_card_id(card_id);
   uint8_t client_id = client_id_for_card_ref(pa.attacker_card_ref);
   if ((client_id == 0xFF) || !ce) {
+    log.debug("card ref is broken or definition is missing");
     return false;
   }
 
   if (out_orig_card_ref) {
+    log.debug("orig_card_ref = @%04hX", card_ref);
     *out_orig_card_ref = card_ref;
   }
 
   auto target_mode = ce->def.target_mode;
   if (this->card_ref_or_sc_has_fixed_range(pa.attacker_card_ref)) {
+    string target_mode_name = name_for_target_mode(target_mode);
+    log.debug("attacker card ref @%04hX has fixed range; target mode is %s (%hhu)",
+        pa.attacker_card_ref.load(), target_mode_name.c_str(), static_cast<uint8_t>(target_mode));
     card_id = this->card_id_for_card_ref(pa.attacker_card_ref);
-    if (!this->server()->options.is_nte()) {
+    if (!is_nte) {
       auto sc_ce = this->definition_for_card_id(card_id);
       if (sc_ce && (static_cast<uint8_t>(target_mode) < 6)) {
         target_mode = sc_ce->def.target_mode;
+        string target_mode_name = name_for_target_mode(target_mode);
+        log.debug("sc_ce overrides target mode with %s (%hhu)",
+            target_mode_name.c_str(), static_cast<uint8_t>(target_mode));
       }
     }
   }
@@ -1508,8 +1525,10 @@ bool RulerServer::compute_effective_range_and_target_mode_for_attack(
     auto assist_effect = this->assist_server->get_active_assist_by_index(z);
     if (assist_effect == AssistEffect::SIMPLE) {
       card_id = this->card_id_for_card_ref(pa.attacker_card_ref);
+      log.debug("SIMPLE assist overrides card id with #%04hX", card_id);
     } else if (assist_effect == AssistEffect::HEAVY_FOG) {
       card_id = 0xFFFE;
+      log.debug("HEAVY_FOG assist overrides card id with #%04hX", card_id);
     }
   }
 
