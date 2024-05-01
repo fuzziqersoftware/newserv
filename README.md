@@ -479,7 +479,7 @@ Some commands only work on the game server and not on the proxy server. The chat
         * You'll be placed into the highest available slot in lobbies and games instead of the lowest, unless you're joining a BB solo-mode game.
         * You'll be able to join games with any PSO version, not only those for which crossplay is normally supported. Be prepared for client crashes and other client-side brokenness if you do this. Please do not submit any issues for broken behaviors in crossplay, unless the situation is explicitly supported (see the "Cross-version play" section above).
         * The rest of the commands in this section are enabled on the game server. (They are always enabled on the proxy server.)
-    * `$quest <number>` (game server only): Load a quest by quest number. Can be used to load battle or challenge quests with only one player present.
+    * `$quest <number>` (game server only): Load a quest by quest number. Can be used to load battle or challenge quests with only one player present. Debug is not required to be enabled if the specified quest has the AllowStartFromChatCommand field set in its metadata file.
     * `$qcall <function-id>`: Call a quest function on your client.
     * `$qcheck <flag-num>` (game server only): Show the value of a quest flag. This command can be used without debug mode enabled. If you're in a game, show the value of the flag in that game; if you're in the lobby, show the saved value of that quest flag for your character (BB only).
     * `$qset <flag-num>` or `$qclear <flag-num>`: Set or clear a quest flag for everyone in the game. If you're in the lobby and on BB, set or clear the saved value of a quest flag in your character file.

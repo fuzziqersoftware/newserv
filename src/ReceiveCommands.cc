@@ -2055,6 +2055,7 @@ void set_lobby_quest(shared_ptr<Lobby> l, shared_ptr<const Quest> q, bool substi
       lc->should_disconnect = true;
       break;
     }
+    lc->log.info("Sending %c version of quest \"%s\"", char_for_language_code(vq->language), vq->name.c_str());
 
     string bin_filename = vq->bin_filename();
     string dat_filename = vq->dat_filename();

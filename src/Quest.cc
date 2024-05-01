@@ -206,11 +206,13 @@ VersionedQuest::VersionedQuest(
     ssize_t challenge_template_index,
     std::shared_ptr<const IntegralExpression> available_expression,
     std::shared_ptr<const IntegralExpression> enabled_expression,
+    bool allow_start_from_chat_command,
     bool force_joinable,
     int16_t lock_status_register)
     : quest_number(quest_number),
       category_id(category_id),
       episode(Episode::NONE),
+      allow_start_from_chat_command(allow_start_from_chat_command),
       joinable(force_joinable),
       lock_status_register(lock_status_register),
       version(version),
@@ -384,6 +386,7 @@ Quest::Quest(shared_ptr<const VersionedQuest> initial_version)
     : quest_number(initial_version->quest_number),
       category_id(initial_version->category_id),
       episode(initial_version->episode),
+      allow_start_from_chat_command(initial_version->allow_start_from_chat_command),
       joinable(initial_version->joinable),
       lock_status_register(initial_version->lock_status_register),
       name(initial_version->name),
@@ -407,6 +410,9 @@ void Quest::add_version(shared_ptr<const VersionedQuest> vq) {
   }
   if (this->episode != vq->episode) {
     throw runtime_error("quest version is in a different episode");
+  }
+  if (this->allow_start_from_chat_command != vq->allow_start_from_chat_command) {
+    throw runtime_error("quest version has a different allow_start_from_chat_command state");
   }
   if (this->joinable != vq->joinable) {
     throw runtime_error("quest version has a different joinability state");
@@ -676,6 +682,7 @@ QuestIndex::QuestIndex(
       ssize_t challenge_template_index = -1;
       shared_ptr<const IntegralExpression> available_expression;
       shared_ptr<const IntegralExpression> enabled_expression;
+      bool allow_start_from_chat_command = false;
       bool force_joinable = false;
       int16_t lock_status_register = -1;
       try {
@@ -709,6 +716,10 @@ QuestIndex::QuestIndex(
         } catch (const out_of_range&) {
         }
         try {
+          allow_start_from_chat_command = metadata_json.get_bool("AllowStartFromChatCommand");
+        } catch (const out_of_range&) {
+        }
+        try {
           force_joinable = metadata_json.get_bool("Joinable");
         } catch (const out_of_range&) {
         }
@@ -730,6 +741,7 @@ QuestIndex::QuestIndex(
           challenge_template_index,
           available_expression,
           enabled_expression,
+          allow_start_from_chat_command,
           force_joinable,
           lock_status_register);
 

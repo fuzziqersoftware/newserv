@@ -63,6 +63,7 @@ struct VersionedQuest {
   uint32_t quest_number;
   uint32_t category_id;
   Episode episode;
+  bool allow_start_from_chat_command;
   bool joinable;
   int16_t lock_status_register;
   std::string name;
@@ -92,6 +93,7 @@ struct VersionedQuest {
       ssize_t challenge_template_index = -1,
       std::shared_ptr<const IntegralExpression> available_expression = nullptr,
       std::shared_ptr<const IntegralExpression> enabled_expression = nullptr,
+      bool allow_start_from_chat_command = false,
       bool force_joinable = false,
       int16_t lock_status_register = -1);
 
@@ -123,6 +125,7 @@ public:
   uint32_t quest_number;
   uint32_t category_id;
   Episode episode;
+  bool allow_start_from_chat_command;
   bool joinable;
   int16_t lock_status_register;
   std::string name;

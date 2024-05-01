@@ -298,18 +298,29 @@ static void server_command_debug(shared_ptr<Client> c, const std::string&) {
 }
 
 static void server_command_quest(shared_ptr<Client> c, const std::string& args) {
-  check_debug_enabled(c);
-
-  Version effective_version = is_ep3(c->version()) ? Version::GC_V3 : c->version();
-
   auto s = c->require_server_state();
   auto l = c->require_lobby();
+  if (!l->is_game()) {
+    throw precondition_failed("$C6Quests cannot be\nstarted from the\nlobby");
+  }
+
+  Version effective_version = is_ep3(c->version()) ? Version::GC_V3 : c->version();
   auto q = s->quest_index(effective_version)->get(stoul(args));
   if (!q) {
     send_text_message(c, "$C6Quest not found");
-  } else {
-    set_lobby_quest(c->require_lobby(), q, true);
+    return;
   }
+
+  if (!c->config.check_flag(Client::Flag::DEBUG_ENABLED)) {
+    if (l->count_clients() > 1) {
+      throw precondition_failed("$C6This command can only\nbe used with no\nother players present");
+    }
+    if (!q->allow_start_from_chat_command) {
+      throw precondition_failed("$C6This quest cannot\nbe started with the\n%squest command");
+    }
+  }
+
+  set_lobby_quest(c->require_lobby(), q, true);
 }
 
 static void server_command_qcheck(shared_ptr<Client> c, const std::string& args) {
