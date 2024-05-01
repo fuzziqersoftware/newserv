@@ -2002,6 +2002,14 @@ void set_lobby_quest(shared_ptr<Lobby> l, shared_ptr<const Quest> q, bool substi
     throw runtime_error("lobby already has an assigned quest");
   }
 
+  // Only allow loading battle/challenge quests if the game mode is correct
+  if ((q->challenge_template_index >= 0) != (l->mode == GameMode::CHALLENGE)) {
+    throw runtime_error("incorrect game mode");
+  }
+  if ((q->battle_rules != nullptr) != (l->mode == GameMode::BATTLE)) {
+    throw runtime_error("incorrect game mode");
+  }
+
   auto s = l->require_server_state();
 
   if (q->joinable) {
