@@ -61,17 +61,18 @@
   // progress. Note that this will likely not work properly unless the quest
   // script is designed to support joining players.
   // "Joinable": true,
+
   // If a quest is joinable and this field is specified, then setting this
   // register to a nonzero value via the sync_register opcode will cause the
-  // game to be locked and not allow any further joins. The register may be
-  // set to to zero to allow joins again. This field is ignored for quests
-  // that do not have the Joinable otion set above.
+  // game to be locked and not allow any further joins. If the register is set
+  // to zero again, joining will be allowed again. This field is ignored for
+  // quests that do not have the Joinable option set above.
   // "LockStatusRegister": 249,
 
   // Normally, the $quest command requires $debug to be enabled, but if this
-  // option is set, this quest may be loaded via $quest even if $debug is off,
-  // but only if there are no other players present in the game. When a quest
-  // is loaded via $quest, AvailableIf and EnabledIf are not checked, so it's
-  // inadvisable to set this to true if either of those fields are also used.
+  // option is set, this quest may be loaded via $quest even if $debug is off
+  // if there are no other players present in the game. When a quest is loaded
+  // via $quest, AvailableIf and EnabledIf are not checked, so it's inadvisable
+  // to use this option if either of those options are also used.
   // "AllowStartFromChatCommand": true,
 }
