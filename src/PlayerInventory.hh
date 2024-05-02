@@ -47,12 +47,14 @@ class ItemParameterTable;
 
 template <bool IsBigEndian>
 struct PlayerInventoryItemT {
+  using U32T = typename std::conditional<IsBigEndian, be_uint32_t, le_uint32_t>::type;
+
   /* 00 */ uint8_t present = 0;
   /* 01 */ uint8_t unknown_a1 = 0;
   // See note above about these fields
   /* 02 */ uint8_t extension_data1 = 0;
   /* 03 */ uint8_t extension_data2 = 0;
-  /* 04 */ le_uint32_t flags = 0; // 8 = equipped
+  /* 04 */ U32T flags = 0; // 8 = equipped
   /* 08 */ ItemData data;
   /* 1C */
 
@@ -74,6 +76,7 @@ struct PlayerInventoryItemT {
     ret.extension_data2 = this->extension_data2;
     ret.flags = this->flags.load();
     ret.data = this->data;
+    ret.data.id.store_raw(bswap32(ret.data.id.load_raw()));
     return ret;
   }
 } __packed__;

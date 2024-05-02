@@ -436,6 +436,9 @@ void ItemData::encode_for_version(Version to_version, shared_ptr<const ItemParam
   switch (this->data1[0]) {
     case 0x00:
       if (should_encode_v2_data && (this->data1[1] > 0x26)) {
+        if (!item_parameter_table) {
+          throw logic_error("item parameter table is required to encode v2 data");
+        }
         if (this->data1[1] < 0x89) {
           this->data1[5] = this->data1[1];
           this->data1[1] = item_parameter_table->get_weapon_v1_replacement(this->data1[1]);

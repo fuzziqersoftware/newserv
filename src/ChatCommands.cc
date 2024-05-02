@@ -1469,8 +1469,8 @@ static void server_command_savechar(shared_ptr<Client> c, const std::string& arg
 }
 
 static void server_command_loadchar(shared_ptr<Client> c, const std::string& args) {
-  if (!is_v1_or_v2(c->version()) && c->version() != Version::GC_V3) {
-    send_text_message(c, "$C7This command can only\nbe used on v1, v2,\nand GC");
+  if (!is_v1_or_v2(c->version()) && (c->version() != Version::GC_V3) && (c->version() != Version::XB_V3)) {
+    send_text_message(c, "$C7This command cannot\nbe used on your\ngame version");
     return;
   }
   if (c->login->account->check_flag(Account::Flag::IS_SHARED_ACCOUNT)) {

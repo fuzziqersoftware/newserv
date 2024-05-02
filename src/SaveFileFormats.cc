@@ -421,6 +421,7 @@ shared_ptr<PSOBBCharacterFile> PSOBBCharacterFile::create_from_preview(
 shared_ptr<PSOBBCharacterFile> PSOBBCharacterFile::create_from_gc(const PSOGCCharacterFile::Character& gc) {
   auto ret = make_shared<PSOBBCharacterFile>();
   ret->inventory = gc.inventory;
+  ret->inventory.decode_from_client(Version::GC_V3);
   uint8_t language = ret->inventory.language;
   ret->disp = gc.disp.to_bb(language, language);
   ret->creation_timestamp = gc.creation_timestamp.load();
@@ -462,6 +463,7 @@ shared_ptr<PSOBBCharacterFile> PSOBBCharacterFile::create_from_gc(const PSOGCCha
 shared_ptr<PSOBBCharacterFile> PSOBBCharacterFile::create_from_xb(const PSOXBCharacterFileCharacter& xb) {
   auto ret = make_shared<PSOBBCharacterFile>();
   ret->inventory = xb.inventory;
+  ret->inventory.decode_from_client(Version::XB_V3);
   uint8_t language = ret->inventory.language;
   ret->disp = xb.disp.to_bb(language, language);
   ret->creation_timestamp = xb.creation_timestamp.load();
@@ -505,6 +507,7 @@ PSOGCCharacterFile::Character PSOBBCharacterFile::to_gc() const {
 
   PSOGCCharacterFile::Character ret;
   ret.inventory = this->inventory;
+  ret.inventory.encode_for_client(Version::GC_V3, nullptr);
   ret.disp = this->disp.to_dcpcv3<true>(language, language);
   ret.creation_timestamp = this->creation_timestamp.load();
   ret.play_time_seconds = this->play_time_seconds.load();
@@ -547,6 +550,7 @@ PSOXBCharacterFileCharacter PSOBBCharacterFile::to_xb(uint64_t xb_user_id) const
 
   PSOXBCharacterFileCharacter ret;
   ret.inventory = this->inventory;
+  ret.inventory.encode_for_client(Version::XB_V3, nullptr);
   ret.disp = this->disp.to_dcpcv3<false>(language, language);
   ret.creation_timestamp = this->creation_timestamp.load();
   ret.play_time_seconds = this->play_time_seconds.load();
