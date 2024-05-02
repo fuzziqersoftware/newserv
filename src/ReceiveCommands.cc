@@ -1744,7 +1744,8 @@ static void on_09(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
   auto s = c->require_server_state();
 
   switch (cmd.menu_id) {
-    case MenuID::QUEST_CATEGORIES:
+    case MenuID::QUEST_CATEGORIES_EP1:
+    case MenuID::QUEST_CATEGORIES_EP2:
       // Don't send anything here. The quest filter menu already has short
       // descriptions included with the entries, which the client shows in the
       // usual location on the screen.
@@ -1754,17 +1755,17 @@ static void on_09(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
       bool is_download_quest = !c->lobby.lock();
       auto quest_index = s->quest_index(c->version());
       if (!quest_index) {
-        send_quest_info(c, "$C7Quests are not available.", is_download_quest);
+        send_quest_info(c, "$C7Quests are not available.", 0x00, is_download_quest);
       } else {
         auto q = quest_index->get(cmd.item_id);
         if (!q) {
-          send_quest_info(c, "$C4Quest does not\nexist.", is_download_quest);
+          send_quest_info(c, "$C4Quest does not\nexist.", 0x00, is_download_quest);
         } else {
           auto vq = q->version(c->version(), c->language());
           if (!vq) {
-            send_quest_info(c, "$C4Quest does not\nexist for this game\nversion.", is_download_quest);
+            send_quest_info(c, "$C4Quest does not\nexist for this game\nversion.", 0x00, is_download_quest);
           } else {
-            send_quest_info(c, vq->long_description, is_download_quest);
+            send_quest_info(c, vq->long_description, vq->description_flag, is_download_quest);
           }
         }
       }
@@ -2470,7 +2471,8 @@ static void on_10(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
       break;
     }
 
-    case MenuID::QUEST_CATEGORIES: {
+    case MenuID::QUEST_CATEGORIES_EP1:
+    case MenuID::QUEST_CATEGORIES_EP2: {
       auto s = c->require_server_state();
       auto quest_index = s->quest_index(c->version());
       if (!quest_index) {

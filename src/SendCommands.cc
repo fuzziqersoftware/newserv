@@ -739,6 +739,7 @@ static void send_text(
     Channel& ch,
     StringWriter& w,
     uint16_t command,
+    uint32_t flag,
     const string& text,
     ColorMode color_mode) {
   bool is_w = uses_utf16(ch.version);
@@ -772,18 +773,18 @@ static void send_text(
   while (w.str().size() & 3) {
     w.put_u8(0);
   }
-  ch.send(command, 0x00, w.str());
+  ch.send(command, flag, w.str());
 }
 
-static void send_text(Channel& ch, uint16_t command, const string& text, ColorMode color_mode) {
+static void send_text(Channel& ch, uint16_t command, uint32_t flag, const string& text, ColorMode color_mode) {
   StringWriter w;
-  send_text(ch, w, command, text, color_mode);
+  send_text(ch, w, command, flag, text, color_mode);
 }
 
 static void send_header_text(Channel& ch, uint16_t command, uint32_t guild_card_number, const string& text, ColorMode color_mode) {
   StringWriter w;
   w.put(SC_TextHeader_01_06_11_B0_EE({0, guild_card_number}));
-  send_text(ch, w, command, text, color_mode);
+  send_text(ch, w, command, 0x00, text, color_mode);
 }
 
 void send_message_box(shared_ptr<Client> c, const string& text) {
@@ -812,7 +813,7 @@ void send_message_box(shared_ptr<Client> c, const string& text) {
     default:
       throw logic_error("invalid game version");
   }
-  send_text(c->channel, command, text, ColorMode::ADD);
+  send_text(c->channel, command, 0x00, text, ColorMode::ADD);
 }
 
 void send_ep3_timed_message_box(Channel& ch, uint32_t frames, const string& message) {
@@ -834,11 +835,11 @@ void send_ep3_timed_message_box(Channel& ch, uint32_t frames, const string& mess
 }
 
 void send_lobby_name(shared_ptr<Client> c, const string& text) {
-  send_text(c->channel, 0x8A, text, ColorMode::NONE);
+  send_text(c->channel, 0x8A, 0x00, text, ColorMode::NONE);
 }
 
-void send_quest_info(shared_ptr<Client> c, const string& text, bool is_download_quest) {
-  send_text(c->channel, is_download_quest ? 0xA5 : 0xA3, text, ColorMode::ADD);
+void send_quest_info(shared_ptr<Client> c, const string& text, uint8_t description_flag, bool is_download_quest) {
+  send_text(c->channel, is_download_quest ? 0xA5 : 0xA3, description_flag, text, ColorMode::ADD);
 }
 
 void send_lobby_message_box(shared_ptr<Client> c, const string& text, bool left_side_on_bb) {
@@ -1590,7 +1591,7 @@ void send_quest_categories_menu_t(
   vector<EntryT> entries;
   for (const auto& cat : quest_index->categories(menu_type, episode, c->version(), include_condition)) {
     auto& e = entries.emplace_back();
-    e.menu_id = MenuID::QUEST_CATEGORIES;
+    e.menu_id = cat->use_ep2_icon() ? MenuID::QUEST_CATEGORIES_EP2 : MenuID::QUEST_CATEGORIES_EP1;
     e.item_id = cat->category_id;
     e.name.encode(cat->name, c->language());
     e.short_description.encode(add_color(cat->description), c->language());

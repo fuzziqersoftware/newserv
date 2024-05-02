@@ -662,37 +662,38 @@
     // Each entry is [flags, directory_name, category_name, description].
     // These fields are:
     //   flags: a bit field containing the following:
-    //       0x01 - appears in normal mode
-    //       0x02 - appears in battle mode
-    //       0x04 - appears in challenge mode
-    //       0x08 - appears in solo mode (BB)
-    //       0x10 - appears at government counter (BB)
-    //       0x20 - appears in download quest menu
-    //       0x40 - appears in Episode 3 download quest menu
-    //       0x80 - hide quests that don't match the game's episode
+    //       0x001 - appears in normal mode
+    //       0x002 - appears in battle mode
+    //       0x004 - appears in challenge mode
+    //       0x008 - appears in solo mode (BB)
+    //       0x010 - appears at government counter (BB)
+    //       0x020 - appears in download quest menu
+    //       0x040 - appears in Episode 3 download quest menu
+    //       0x080 - hide quests that don't match the game's episode
+    //       0x100 - is Episode 2 Challenge category
     //   directory_name: the directory inside system/quests that contains quests
     //       for this category.
     //   category_name: what appears in the quest menu on the client.
     //   description: what appears in the category description window (may
     //       contain color escape codes like $C6).
-    [0x81, "retrieval", "Retrieval", "$E$C6Quests that involve\nretrieving an object"],
-    [0x81, "extermination", "Extermination", "$E$C6Quests that involve\ndestroying all\nmonsters"],
-    [0x81, "events", "Events", "$E$C6Quests that are part\nof an event"],
-    [0x81, "shops", "Shops", "$E$C6Quests that contain\nshops"],
-    [0x81, "vr", "Virtual Reality", "$E$C6Quests that are\ndone in a simulator"],
-    [0x81, "tower", "Control Tower", "$E$C6Quests that take\nplace at the Control\nTower"],
-    [0x81, "team", "Team", "$E$C6Quests for you\nand your team\nmembers."],
-    [0x02, "battle", "Battle", "$E$C6Battle mode rule\nsets"],
-    [0x04, "challenge-ep1", "Challenge (Episode 1)", "$E$C6Challenge mode\nquests in Episode 1"],
-    [0x04, "challenge-ep2", "Challenge (Episode 2)", "$E$C6Challenge mode\nquests in Episode 2"],
-    [0x88, "solo-story", "Story", "$E$C6Quests that follow\nthe story"],
-    [0x88, "solo-extra", "Solo", "$E$C6Quests that require\na single player"],
-    [0x10, "government-ep1", "Hero in Red", "$E$CG-Red Ring Rico-\n$C6Quests that follow\nthe Episode 1\nstoryline"],
-    [0x10, "government-ep2", "The Military's Hero", "$E$CG-Heathcliff Flowen-\n$C6Quests that follow\nthe Episode 2\nstoryline"],
-    [0x10, "government-ep4", "The Meteor Impact Incident", "$E$C6Quests that follow\nthe Episode 4\nstoryline"],
-    [0x20, "download", "Download", "$E$C6Quests to download\nto your Memory Card"],
-    [0x40, "download-ep3-trial", "Trial Download", "$E$C6Quests to download\nto your Memory Card\nfrom Episode 3\nTrial Edition"],
-    [0x40, "download-ep3", "Download", "$E$C6Quests to download\nto your Memory Card"],
+    [0x081, "retrieval", "Retrieval", "$E$C6Quests that involve\nretrieving an object"],
+    [0x081, "extermination", "Extermination", "$E$C6Quests that involve\ndestroying all\nmonsters"],
+    [0x081, "events", "Events", "$E$C6Quests that are part\nof an event"],
+    [0x081, "shops", "Shops", "$E$C6Quests that contain\nshops"],
+    [0x081, "vr", "Virtual Reality", "$E$C6Quests that are\ndone in a simulator"],
+    [0x081, "tower", "Control Tower", "$E$C6Quests that take\nplace at the Control\nTower"],
+    [0x081, "team", "Team", "$E$C6Quests for you\nand your team\nmembers."],
+    [0x002, "battle", "Battle", "$E$C6Battle mode rule\nsets"],
+    [0x004, "challenge-ep1", "Challenge (Episode 1)", "$E$C6Challenge mode\nquests in Episode 1"],
+    [0x104, "challenge-ep2", "Challenge (Episode 2)", "$E$C6Challenge mode\nquests in Episode 2"],
+    [0x088, "solo-story", "Story", "$E$C6Quests that follow\nthe story"],
+    [0x088, "solo-extra", "Solo", "$E$C6Quests that require\na single player"],
+    [0x010, "government-ep1", "Hero in Red", "$E$CG-Red Ring Rico-\n$C6Quests that follow\nthe Episode 1\nstoryline"],
+    [0x010, "government-ep2", "The Military's Hero", "$E$CG-Heathcliff Flowen-\n$C6Quests that follow\nthe Episode 2\nstoryline"],
+    [0x010, "government-ep4", "The Meteor Impact Incident", "$E$C6Quests that follow\nthe Episode 4\nstoryline"],
+    [0x020, "download", "Download", "$E$C6Quests to download\nto your Memory Card"],
+    [0x040, "download-ep3-trial", "Trial Download", "$E$C6Quests to download\nto your Memory Card\nfrom Episode 3\nTrial Edition"],
+    [0x040, "download-ep3", "Download", "$E$C6Quests to download\nto your Memory Card"],
   ],
 
   // Item stack limits. Note that changing these does not affect the client's

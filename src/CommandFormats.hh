@@ -2022,8 +2022,19 @@ template <TextEncoding Encoding, size_t ShortDescLength>
 struct S_QuestMenuEntryT {
   // Note: The game treats menu_id as two 8-bit fields followed by a 16-bit
   // field. In most situations, this is opaque to the server, so we treat it as
-  // a single 32-bit field, but in the case of the quest menu, the second byte
-  // is used to determine the icon that appears to the left of the quest name.
+  // a single 32-bit field; however, in the case of the quest menu, the first
+  // and second bytes have meaning on the client.
+  //
+  // The first byte is used as the quest episode number, which is only relevant
+  // for showing the Challenge Mode times window when a quest is selected.
+  // This byte must be set correctly on the quest category entry, not the quest
+  // itself, so the Episode 1 Challenge quests category should have a value of
+  // 1 in this byte, and the Episode 2 Challenge quests category should have a
+  // value of 2. (This is not the only condition required for the Challenge
+  // Mode times window to work; see the description of command A3 also.)
+  //
+  // The second byte of the menu ID is used to determine which icon appears to
+  // the left of the quest name.
   // Specifically:
   //   0 = online quest icon (green diamond)
   //   1 = download quest icon (green square with outlined diamond)
@@ -2054,7 +2065,13 @@ struct S_QuestMenuEntry_BB_A2_A4 {
 } __packed_ws__(S_QuestMenuEntry_BB_A2_A4, 0x13C);
 
 // A3 (S->C): Quest information
-// Same format as 1A/D5 command (plain text)
+// Same format as 1A/D5 command (plain text). The header.flag field is used to
+// inform the client of the Challenge stage number, so it can show the correct
+// timing window when the stage is selected. The Episode 1 stage numbers should
+// be specified as 51-59 (decimal) in header.flag, and the Episode 2 stage
+// numbers should be specified as 61-65 (decimal). If the header.flag value is
+// outside this range, it is ignored, and the Challenge Mode times window does
+// not update.
 
 // A4 (S->C): Download quest menu
 // Internal name: RcvQuestList
@@ -5220,12 +5237,12 @@ struct G_PlayerKilledByMonster_6x89 {
   le_uint16_t unused = 0;
 } __packed_ws__(G_PlayerKilledByMonster_6x89, 8);
 
-// 6x8A: Unknown (not valid on Episode 3)
+// 6x8A: Show Challenge time records window (not valid on Episode 3)
 
-struct G_Unknown_6x8A {
+struct G_ShowChallengeTimeRecordsWindow_6x8A {
   G_ClientIDHeader header;
-  le_uint32_t unknown_a1 = 0; // Must be < 0x11
-} __packed_ws__(G_Unknown_6x8A, 8);
+  le_uint32_t which = 0; // Must be < 0x11
+} __packed_ws__(G_ShowChallengeTimeRecordsWindow_6x8A, 8);
 
 // 6x8B: Unknown (not valid on Episode 3)
 // This command has a handler, but it does nothing.

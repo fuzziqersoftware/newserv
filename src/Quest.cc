@@ -204,6 +204,7 @@ VersionedQuest::VersionedQuest(
     std::shared_ptr<const std::string> pvr_contents,
     std::shared_ptr<const BattleRules> battle_rules,
     ssize_t challenge_template_index,
+    uint8_t description_flag,
     std::shared_ptr<const IntegralExpression> available_expression,
     std::shared_ptr<const IntegralExpression> enabled_expression,
     bool allow_start_from_chat_command,
@@ -223,6 +224,7 @@ VersionedQuest::VersionedQuest(
       pvr_contents(pvr_contents),
       battle_rules(battle_rules),
       challenge_template_index(challenge_template_index),
+      description_flag(description_flag),
       available_expression(available_expression),
       enabled_expression(enabled_expression) {
 
@@ -392,6 +394,7 @@ Quest::Quest(shared_ptr<const VersionedQuest> initial_version)
       name(initial_version->name),
       battle_rules(initial_version->battle_rules),
       challenge_template_index(initial_version->challenge_template_index),
+      description_flag(initial_version->description_flag),
       available_expression(initial_version->available_expression),
       enabled_expression(initial_version->enabled_expression) {
   this->versions.emplace(this->versions_key(initial_version->version, initial_version->language), initial_version);
@@ -428,6 +431,9 @@ void Quest::add_version(shared_ptr<const VersionedQuest> vq) {
   }
   if (this->challenge_template_index != vq->challenge_template_index) {
     throw runtime_error("quest version has different challenge template index");
+  }
+  if (this->description_flag != vq->description_flag) {
+    throw runtime_error("quest version has different description flag");
   }
   if (!this->available_expression != !vq->available_expression) {
     throw runtime_error("quest version has available expression but root quest does not, or vice versa");
@@ -680,6 +686,7 @@ QuestIndex::QuestIndex(
       const FileData* json_filedata = nullptr;
       shared_ptr<BattleRules> battle_rules;
       ssize_t challenge_template_index = -1;
+      uint8_t description_flag = 0;
       shared_ptr<const IntegralExpression> available_expression;
       shared_ptr<const IntegralExpression> enabled_expression;
       bool allow_start_from_chat_command = false;
@@ -705,6 +712,10 @@ QuestIndex::QuestIndex(
         }
         try {
           challenge_template_index = metadata_json.at("ChallengeTemplateIndex").as_int();
+        } catch (const out_of_range&) {
+        }
+        try {
+          description_flag = metadata_json.at("DescriptionFlag").as_int();
         } catch (const out_of_range&) {
         }
         try {
@@ -739,6 +750,7 @@ QuestIndex::QuestIndex(
           pvr_filedata ? pvr_filedata->data : nullptr,
           battle_rules,
           challenge_template_index,
+          description_flag,
           available_expression,
           enabled_expression,
           allow_start_from_chat_command,

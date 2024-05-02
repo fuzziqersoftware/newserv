@@ -1,5 +1,6 @@
 {
   "ChallengeTemplateIndex": 8,
+  "DescriptionFlag": 59,
   "AvailableIf": "CC_Ep1_8",
   "EnabledIf": "CC_Ep1_8"
 }

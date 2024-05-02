@@ -37,7 +37,7 @@ enum class QuestMenuType {
 struct QuestCategoryIndex {
   struct Category {
     uint32_t category_id;
-    uint8_t enabled_flags;
+    uint16_t enabled_flags;
     std::string directory_name;
     std::string name;
     std::string description;
@@ -48,7 +48,10 @@ struct QuestCategoryIndex {
       return this->enabled_flags & (1 << static_cast<uint8_t>(menu_type));
     }
     [[nodiscard]] inline bool enable_episode_filter() const {
-      return this->enabled_flags & 0x80;
+      return this->enabled_flags & 0x080;
+    }
+    [[nodiscard]] inline bool use_ep2_icon() const {
+      return this->enabled_flags & 0x100;
     }
   };
 
@@ -78,6 +81,7 @@ struct VersionedQuest {
   std::shared_ptr<const std::string> pvr_contents;
   std::shared_ptr<const BattleRules> battle_rules;
   ssize_t challenge_template_index;
+  uint8_t description_flag;
   std::shared_ptr<const IntegralExpression> available_expression;
   std::shared_ptr<const IntegralExpression> enabled_expression;
 
@@ -91,6 +95,7 @@ struct VersionedQuest {
       std::shared_ptr<const std::string> pvr_contents,
       std::shared_ptr<const BattleRules> battle_rules = nullptr,
       ssize_t challenge_template_index = -1,
+      uint8_t description_flag = 0,
       std::shared_ptr<const IntegralExpression> available_expression = nullptr,
       std::shared_ptr<const IntegralExpression> enabled_expression = nullptr,
       bool allow_start_from_chat_command = false,
@@ -131,6 +136,7 @@ public:
   std::string name;
   std::shared_ptr<const BattleRules> battle_rules;
   ssize_t challenge_template_index;
+  uint8_t description_flag;
   std::shared_ptr<const IntegralExpression> available_expression;
   std::shared_ptr<const IntegralExpression> enabled_expression;
   std::map<uint32_t, std::shared_ptr<const VersionedQuest>> versions;
