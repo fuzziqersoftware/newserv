@@ -5238,10 +5238,20 @@ struct G_PlayerKilledByMonster_6x89 {
 } __packed_ws__(G_PlayerKilledByMonster_6x89, 8);
 
 // 6x8A: Show Challenge time records window (not valid on Episode 3)
+// The leader sends this command to tell other clients to show, hide, or update
+// the window that shows Challenge Mode stage competion and time records during
+// Challenge quest selection.
 
 struct G_ShowChallengeTimeRecordsWindow_6x8A {
   G_ClientIDHeader header;
-  le_uint32_t which = 0; // Must be < 0x11
+  // Values for which (decimal):
+  // 0 = hide window
+  // 1 = show Episode 1 completion state per player
+  // 2 = show Episode 2 completion state per player
+  // 3-11 = show times for Episode 1 stage (which - 2)
+  // 12-16 = show times for Episode 2 stage (which - 11)
+  // Anything else = command is ignored
+  le_uint32_t which = 0;
 } __packed_ws__(G_ShowChallengeTimeRecordsWindow_6x8A, 8);
 
 // 6x8B: Unknown (not valid on Episode 3)
