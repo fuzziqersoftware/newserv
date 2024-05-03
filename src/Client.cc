@@ -774,6 +774,14 @@ void Client::load_all_files() {
         files_manager->set_system(sys_filename, this->system_data);
         player_data_log.info("Loaded system data from %s", char_filename.c_str());
       }
+
+      uint8_t lang = this->language();
+      player_data_log.info("Overriding language fields in save files with %02hhX (%c)",
+          lang, char_for_language_code(lang));
+      this->character_data->inventory.language = lang;
+      this->character_data->guild_card.language = lang;
+      this->system_data->base.language = lang;
+
     } else {
       player_data_log.info("Character file is missing: %s", char_filename.c_str());
     }
