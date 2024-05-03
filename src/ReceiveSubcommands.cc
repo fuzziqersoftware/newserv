@@ -1706,28 +1706,43 @@ template <typename CmdT>
 static void on_create_inventory_item_t(shared_ptr<Client> c, uint8_t command, uint8_t flag, void* data, size_t size) {
   const auto& cmd = check_size_t<CmdT>(data, size);
 
-  if ((cmd.header.client_id != c->lobby_client_id)) {
-    return;
-  }
-  if (c->version() == Version::BB_V4) {
-    // BB should never send this command - inventory items should only be
-    // created by the server in response to shop buy / bank withdraw / etc. reqs
+  auto l = c->require_lobby();
+  if (!l->is_game()) {
     return;
   }
 
-  auto s = c->require_server_state();
-  auto l = c->require_lobby();
-  auto p = c->character();
   ItemData item = cmd.item_data;
   item.decode_for_version(c->version());
   l->on_item_id_generated_externally(item.id);
-  p->add_item(item, *s->item_stack_limits(c->version()));
 
-  if (l->log.should_log(LogLevel::INFO)) {
-    auto s = c->require_server_state();
-    auto name = s->describe_item(c->version(), item, false);
-    l->log.info("Player %hu created inventory item %08" PRIX32 " (%s)", c->lobby_client_id, item.id.load(), name.c_str());
-    c->print_inventory(stderr);
+  // Players cannot send this on behalf of another player, but they can send it
+  // on behalf of an NPC; we don't track items for NPCs so in that case we just
+  // mark the item ID as used and ignore it. This works for the most part,
+  // because when NPCs use or equip items, we ignore the command since it has
+  // the wrong client ID.
+  // TODO: This won't work if NPCs ever drop items that players can interact
+  // with. Presumably we would have to track all NPCs' inventory items to handle
+  // this.
+  auto s = c->require_server_state();
+  if (cmd.header.client_id != c->lobby_client_id) {
+    // Don't allow creating items in other players' inventories, only in NPCs'
+    if (l->clients.at(cmd.header.client_id)) {
+      return;
+    }
+
+    if (l->log.should_log(LogLevel::INFO)) {
+      auto name = s->describe_item(c->version(), item, false);
+      l->log.info("Player %hu created inventory item %08" PRIX32 " (%s) in inventory of NPC %02hX; ignoring", c->lobby_client_id, item.id.load(), name.c_str(), cmd.header.client_id.load());
+    }
+
+  } else {
+    c->character()->add_item(item, *s->item_stack_limits(c->version()));
+
+    if (l->log.should_log(LogLevel::INFO)) {
+      auto name = s->describe_item(c->version(), item, false);
+      l->log.info("Player %hu created inventory item %08" PRIX32 " (%s)", c->lobby_client_id, item.id.load(), name.c_str());
+      c->print_inventory(stderr);
+    }
   }
 
   forward_subcommand_with_item_transcode_t(c, command, flag, cmd);
