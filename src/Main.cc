@@ -17,9 +17,9 @@
 #include <unordered_map>
 
 #ifdef HAVE_RESOURCE_FILE
-#include "ARCodeTranslator.hh"
+#include "AddressTranslator.hh"
 #else
-#include "ARCodeTranslator-Stub.hh"
+#include "AddressTranslator-Stub.hh"
 #endif
 #include "BMLArchive.hh"
 #include "CatSession.hh"
@@ -2334,21 +2334,13 @@ Action a_dc_serial_number_speed_test(
       }
     });
 
-Action a_ar_code_translator(
-    "ar-code-translator", nullptr, +[](Arguments& args) {
+Action a_address_translator(
+    "address-translator", nullptr, +[](Arguments& args) {
       const string& dir = args.get<string>(1, false);
       if (dir.empty() || (dir == "-")) {
         throw invalid_argument("a directory name is required");
       }
-      run_ar_code_translator(dir, args.get<string>(2, false), args.get<string>(3, false));
-    });
-Action a_xbe_patch_translator(
-    "xbe-patch-translator", nullptr, +[](Arguments& args) {
-      const string& dir = args.get<string>(1, false);
-      if (dir.empty() || (dir == "-")) {
-        throw invalid_argument("a directory name is required");
-      }
-      run_xbe_patch_translator(dir, args.get<string>(2, false), args.get<string>(3, false));
+      run_address_translator(dir, args.get<string>(2, false), args.get<string>(3, false));
     });
 
 Action a_diff_dol_files(

@@ -136,7 +136,7 @@ set(SOURCES
 )
 
 if(resource_file_FOUND)
-    set(SOURCES ${SOURCES} src/ARCodeTranslator.cc)
+    set(SOURCES ${SOURCES} src/AddressTranslator.cc)
 endif()
 
 add_executable(newserv ${SOURCES})

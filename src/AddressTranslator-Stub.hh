@@ -5,11 +5,7 @@
 #include <utility>
 #include <vector>
 
-inline void run_ar_code_translator(const std::string&, const std::string&, const std::string&) {
-  throw std::runtime_error("resource_file is not available; install it and rebuild newserv");
-}
-
-inline void run_xbe_patch_translator(const std::string&, const std::string&, const std::string&) {
+inline void run_address_translator(const std::string&, const std::string&, const std::string&) {
   throw std::runtime_error("resource_file is not available; install it and rebuild newserv");
 }
 
