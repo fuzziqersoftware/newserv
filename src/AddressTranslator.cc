@@ -440,7 +440,7 @@ public:
     } else if (tokens[0] == "match") {
       this->find_all_matches(
           stoul(tokens.at(1), nullptr, 16),
-          tokens.size() >= 2 ? stoul(tokens.at(2), nullptr, 16) : 0);
+          tokens.size() >= 3 ? stoul(tokens[2], nullptr, 16) : 0);
     } else if (tokens[0] == "find-ppc-globals") {
       this->find_ppc_rtoc_global_regs();
     } else if (!tokens[0].empty()) {
