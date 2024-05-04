@@ -22,24 +22,5 @@ done:
   rets
   nop
 
-debug_stop:
-  mov     r2, 0x46
-  shl     r2, 1
-  shl     r2, 8
-  shl     r2, 16
-  mov.l   [r2], r0
-  add     r2, 4
-  mov.l   [r2], r3
-  add     r2, 4
-  mov.l   [r2], r4
-  add     r2, 4
-  mov.l   [r2], r5
-  add     r2, 4
-  mov.l   [r2], r6
-  add     r2, 4
-  mov.l   [r2], r7
-  bs      debug_stop
-  nop
-
   .align 4
 first_patch_header:
