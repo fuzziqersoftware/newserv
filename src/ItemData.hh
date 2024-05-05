@@ -84,6 +84,7 @@ struct ItemData {
   //   Mag:    02ZZLLWW HHHHIIII JJJJKKKK YYQQPPVV
   //   Tool:   03ZZZZFF 00CC0000 00000000 00000000
   //   Meseta: 04000000 00000000 00000000 MMMMMMMM
+  // 01034D00 00000000 204E0000
   // A = attribute type (for S-ranks, custom name)
   // B = attribute amount (for S-ranks, custom name)
   // C = stack size (for tools)
@@ -173,8 +174,9 @@ struct ItemData {
   uint8_t get_encoded_v2_data() const;
   bool has_encoded_v2_data() const;
 
-  uint16_t get_sealed_item_kill_count() const;
-  void set_sealed_item_kill_count(uint16_t v);
+  bool has_kill_count() const;
+  uint16_t get_kill_count() const;
+  void set_kill_count(uint16_t v);
   uint8_t get_tool_item_amount(const StackLimits& limits) const;
   void set_tool_item_amount(const StackLimits& limits, uint8_t amount);
   int16_t get_armor_or_shield_defense_bonus() const;

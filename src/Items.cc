@@ -119,21 +119,25 @@ void player_use_item(shared_ptr<Client> c, size_t item_index, shared_ptr<PSOLFGE
   } else if (primary_identifier == 0x00330000) {
     // Unseal Sealed J-Sword => Tsumikiri J-Sword
     item.data.data1[1] = 0x32;
+    item.flags &= (~8); // Unequip it
     should_delete_item = false;
 
   } else if (primary_identifier == 0x00AB0000) {
     // Unseal Lame d'Argent => Excalibur
     item.data.data1[1] = 0xAC;
+    item.flags &= (~8); // Unequip it
     should_delete_item = false;
 
   } else if (primary_identifier == 0x01034D00) {
     // Unseal Limiter => Adept
     item.data.data1[2] = 0x4E;
+    item.flags &= (~8); // Unequip it
     should_delete_item = false;
 
   } else if (primary_identifier == 0x01034F00) {
     // Unseal Swordsman Lore => Proof of Sword-Saint
     item.data.data1[2] = 0x50;
+    item.flags &= (~8); // Unequip it
     should_delete_item = false;
 
   } else if (primary_identifier == 0x030C0000) {
@@ -242,6 +246,7 @@ void player_use_item(shared_ptr<Client> c, size_t item_index, shared_ptr<PSOLFGE
         inv_item.data.data1[2] = combo.result_item[2];
         inv_item.data.data1[3] = 0; // Grind
         inv_item.data.data1[4] = 0; // Flags + special
+        inv_item.flags &= (~8); // Unequip it
       } catch (const out_of_range&) {
       }
     }

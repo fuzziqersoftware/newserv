@@ -3435,7 +3435,7 @@ static void on_enemy_exp_request_bb(shared_ptr<Client> c, uint8_t, uint8_t, void
       auto& item = inventory.items[z];
       if ((item.flags & 0x08) &&
           s->item_parameter_table(c->version())->is_unsealable_item(item.data)) {
-        item.data.set_sealed_item_kill_count(item.data.get_sealed_item_kill_count() + 1);
+        item.data.set_kill_count(item.data.get_kill_count() + 1);
       }
     }
   }

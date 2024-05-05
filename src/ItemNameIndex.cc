@@ -208,7 +208,10 @@ std::string ItemNameIndex::describe_item(const ItemData& item, bool include_colo
         if (which == 0) {
           continue;
         }
-        if (which > 5) {
+        if (which & 0x80) {
+          uint16_t kill_count = ((which << 8) & 0x7F00) | (value & 0xFF);
+          ret_tokens.emplace_back(string_printf("K:%hu", kill_count));
+        } else if (which > 5) {
           ret_tokens.emplace_back(string_printf("!PC:%02hhX%02hhX", which, value));
         } else {
           bonuses[which - 1] = value;

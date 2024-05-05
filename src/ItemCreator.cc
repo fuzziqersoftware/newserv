@@ -472,7 +472,7 @@ void ItemCreator::deduplicate_weapon_bonuses(ItemData& item) const {
 void ItemCreator::set_item_kill_count_if_unsealable(ItemData& item) const {
   if (this->item_parameter_table->is_unsealable_item(item)) {
     this->log.info("Item is unsealable; setting kill count to zero");
-    item.set_sealed_item_kill_count(0);
+    item.set_kill_count(0);
   }
 }
 

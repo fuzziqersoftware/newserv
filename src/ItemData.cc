@@ -537,16 +537,22 @@ bool ItemData::has_encoded_v2_data() const {
       : (this->get_encoded_v2_data() != 0);
 }
 
-uint16_t ItemData::get_sealed_item_kill_count() const {
-  return ((this->data1[10] << 8) | this->data1[11]) & 0x7FFF;
+bool ItemData::has_kill_count() const {
+  return !this->is_s_rank_weapon() && (this->data1[10] & 0x80);
 }
 
-void ItemData::set_sealed_item_kill_count(uint16_t v) {
-  if (v > 0x7FFF) {
-    this->data1w[5] = 0xFFFF;
-  } else {
-    this->data1[10] = (v >> 8) | 0x80;
-    this->data1[11] = v;
+uint16_t ItemData::get_kill_count() const {
+  return this->has_kill_count() ? (((this->data1[10] << 8) | this->data1[11]) & 0x7FFF) : 0;
+}
+
+void ItemData::set_kill_count(uint16_t v) {
+  if (!this->is_s_rank_weapon()) {
+    if (v > 0x7FFF) {
+      this->data1w[5] = 0xFFFF;
+    } else {
+      this->data1[10] = (v >> 8) | 0x80;
+      this->data1[11] = v;
+    }
   }
 }
 
