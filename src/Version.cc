@@ -305,10 +305,8 @@ bool specific_version_is_xb(uint32_t specific_version) {
 }
 
 bool specific_version_is_bb(uint32_t specific_version) {
-  // TODO: We should actually find a way to determine BB specific_versions, but
-  // there are so many mods out there, and there's a patch server anyway, so it
-  // seems not worth the effort
-  return specific_version == 0x35303030;
+  // BB specific_versions are 5XXX, where X is an encoding of the revision number
+  return (specific_version & 0xFF000000) == 0x35000000;
 }
 
 const char* file_path_token_for_version(Version version) {

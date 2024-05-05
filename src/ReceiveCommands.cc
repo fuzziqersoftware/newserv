@@ -1071,13 +1071,56 @@ static void on_93_BB(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
   } else {
     string version_string = config_data.as_string();
     strip_trailing_zeroes(version_string);
-    // Note: Tethealla PSOBB is actually Japanese PSOBB, but with most of the
-    // files replaced with English text/graphics/etc. For this reason, it still
-    // reports its language as Japanese, so we have to account for that
-    // manually here.
-    if (starts_with(version_string, "TethVer")) {
-      c->log.info("Client is TethVer subtype; forcing English language");
-      c->config.set_flag(Client::Flag::FORCE_ENGLISH_LANGUAGE_BB);
+    // If the version string starts with "Ver.", assume it's Sega and apply the
+    // normal version encoding logic. Otherwise, assume it's a community mod,
+    // almost all of which are based on TethVer12513, so assume that version
+    // otherwise.
+    if (true || starts_with(version_string, "Ver.")) {
+      // Basic algorithm: take all numeric characters from the version string
+      // and ignore everything else. Treat that as a decimal integer, then
+      // base36-encode it into the low 3 bytes of specific_version.
+      uint64_t version = 0;
+      for (char ch : version_string) {
+        if (isdigit(ch)) {
+          version = (version * 10) + (ch - '0');
+        }
+      }
+      uint8_t shift = 0;
+      uint32_t specific_version = 0;
+      while (version) {
+        if (shift > 16) {
+          throw runtime_error("invalid version string");
+        }
+        uint8_t ch = (version % 36) + '0';
+        version /= 36;
+        if (ch > '9') {
+          ch += 7;
+        }
+        specific_version |= (ch << shift);
+        shift += 8;
+      }
+      if (!(specific_version & 0x00FF0000)) {
+        specific_version |= 0x00300000;
+      }
+      if (!(specific_version & 0x0000FF00)) {
+        specific_version |= 0x00003000;
+      }
+      if (!(specific_version & 0x000000FF)) {
+        specific_version |= 0x00000030;
+      }
+      c->config.specific_version = 0x35000000 | specific_version;
+
+    } else {
+      c->config.specific_version = 0x35394E4C; // 59NL
+
+      // Note: Tethealla PSOBB is actually Japanese PSOBB, but with most of the
+      // files replaced with English text/graphics/etc. For this reason, it still
+      // reports its language as Japanese, so we have to account for that
+      // manually here.
+      if (starts_with(version_string, "TethVer")) {
+        c->log.info("Client is TethVer subtype; forcing English language");
+        c->config.set_flag(Client::Flag::FORCE_ENGLISH_LANGUAGE_BB);
+      }
     }
   }
   c->channel.language = c->config.check_flag(Client::Flag::FORCE_ENGLISH_LANGUAGE_BB) ? 1 : base_cmd.language;

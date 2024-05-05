@@ -392,8 +392,9 @@ shared_ptr<const Menu> FunctionCodeIndex::patch_switches_menu(
 }
 
 bool FunctionCodeIndex::patch_menu_empty(uint32_t specific_version) const {
+  uint32_t mask = specific_version_is_indeterminate(specific_version) ? 0xFF000000 : 0xFFFFFFFF;
   for (const auto& it : this->menu_item_id_and_specific_version_to_patch_function) {
-    if ((it.first & 0xFF000000) == (specific_version & 0xFF000000)) {
+    if ((it.first & mask) == (specific_version & mask)) {
       return false;
     }
   }
