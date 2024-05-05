@@ -1472,7 +1472,7 @@ bool RulerServer::compute_effective_range_and_target_mode_for_attack(
     uint16_t* out_orig_card_ref) const {
   auto s = this->server();
   bool is_nte = s->options.is_nte();
-  auto log = s->log_stack("compute_effective_range_and_target_mode_for_attack");
+  auto log = s->log_stack("compute_effective_range_and_target_mode_for_attack: ");
 
   size_t z;
   for (z = 0; (z < 8) && (pa.action_card_refs[z] != 0xFFFF); z++) {
@@ -1505,17 +1505,17 @@ bool RulerServer::compute_effective_range_and_target_mode_for_attack(
 
   auto target_mode = ce->def.target_mode;
   if (this->card_ref_or_sc_has_fixed_range(pa.attacker_card_ref)) {
-    string target_mode_name = name_for_target_mode(target_mode);
+    const char* target_mode_name = name_for_target_mode(target_mode);
     log.debug("attacker card ref @%04hX has fixed range; target mode is %s (%hhu)",
-        pa.attacker_card_ref.load(), target_mode_name.c_str(), static_cast<uint8_t>(target_mode));
+        pa.attacker_card_ref.load(), target_mode_name, static_cast<uint8_t>(target_mode));
     card_id = this->card_id_for_card_ref(pa.attacker_card_ref);
     if (!is_nte) {
       auto sc_ce = this->definition_for_card_id(card_id);
       if (sc_ce && (static_cast<uint8_t>(target_mode) < 6)) {
         target_mode = sc_ce->def.target_mode;
-        string target_mode_name = name_for_target_mode(target_mode);
+        const char* target_mode_name = name_for_target_mode(target_mode);
         log.debug("sc_ce overrides target mode with %s (%hhu)",
-            target_mode_name.c_str(), static_cast<uint8_t>(target_mode));
+            target_mode_name, static_cast<uint8_t>(target_mode));
       }
     }
   }
@@ -2059,21 +2059,27 @@ shared_ptr<const CardIndex::CardEntry> RulerServer::definition_for_card_id(uint3
 
 uint32_t RulerServer::get_card_id_with_effective_range(
     uint16_t card_ref, uint16_t card_id_override, TargetMode* out_target_mode) const {
+  auto log = this->server()->log_stack(string_printf("get_card_id_with_effective_range(@%04hX, #%04hX): ", card_ref, card_id_override));
+
   uint16_t card_id = (card_id_override == 0xFFFF)
       ? this->card_id_for_card_ref(card_ref)
       : card_id_override;
+  log.debug("card_id=#%04hX", card_id);
 
   if (card_id != 0xFFFF) {
     auto ce = this->definition_for_card_id(card_id);
     uint8_t client_id = client_id_for_card_ref(card_ref);
     if ((client_id != 0xFF) && ce) {
       TargetMode effective_target_mode = ce->def.target_mode;
+      log.debug("ce valid for #%04hX with effective target mode %s", card_id, name_for_target_mode(effective_target_mode));
 
       if (this->card_ref_or_sc_has_fixed_range(card_ref)) {
         // Undo the override that may have been passed in
-        auto ce = this->definition_for_card_id(this->card_id_for_card_ref(card_ref));
-        if (ce && (static_cast<uint8_t>(effective_target_mode) < 6)) {
-          effective_target_mode = ce->def.target_mode;
+        log.debug("@%04hX has FIXED_RANGE", card_ref);
+        auto orig_ce = this->definition_for_card_id(this->card_id_for_card_ref(card_ref));
+        if (orig_ce && (static_cast<uint8_t>(effective_target_mode) < 6)) {
+          log.debug("ce valid for #%04hX with effective target mode %s; overriding to %s", card_id, name_for_target_mode(effective_target_mode), name_for_target_mode(orig_ce->def.target_mode));
+          effective_target_mode = orig_ce->def.target_mode;
         }
       }
 
@@ -2082,14 +2088,17 @@ uint32_t RulerServer::get_card_id_with_effective_range(
         auto eff = this->assist_server->get_active_assist_by_index(z);
         if (eff == AssistEffect::SIMPLE) {
           card_id = this->card_id_for_card_ref(card_ref);
+          log.debug("SIMPLE assist effect is active; using #%04hX for range", card_id);
         } else if (eff == AssistEffect::HEAVY_FOG) {
           card_id = 0xFFFE;
+          log.debug("HEAVY_FOG assist effect is active; limiting range to one tile in front");
         }
       }
 
       if (out_target_mode) {
         *out_target_mode = effective_target_mode;
       }
+      log.debug("results: card_id=#%04hX, target_mode=%s", card_id, name_for_target_mode(effective_target_mode));
     }
   }
 

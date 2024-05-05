@@ -736,23 +736,23 @@ string name_for_rank(CardRank rank) {
   }
 }
 
-string name_for_target_mode(TargetMode target_mode) {
+const char* name_for_target_mode(TargetMode target_mode) {
   static const vector<const char*> names({
       "NONE",
-      "SINGLE",
-      "MULTI",
+      "SINGLE_RANGE",
+      "MULTI_RANGE",
       "SELF",
       "TEAM",
+      "EVERYONE",
+      "MULTI_RANGE_ALLIES",
+      "ALL_ALLIES",
       "ALL",
-      "MULTI-ALLY",
-      "ALL-ALLY",
-      "ALL-ATTACK",
-      "OWN-FCS",
+      "OWN_FCS",
   });
   try {
     return names.at(static_cast<uint8_t>(target_mode));
   } catch (const out_of_range&) {
-    return string_printf("(%02hhX)", static_cast<uint8_t>(target_mode));
+    return "__UNKNOWN__";
   }
 }
 
@@ -886,7 +886,7 @@ string CardDefinition::str(bool single_line, const TextSet* text_archive) const 
   string criterion_str = name_for_enum(this->usable_criterion);
   string card_class_str = name_for_enum(this->card_class());
   string rank_str = name_for_rank(this->rank);
-  string target_mode_str = name_for_target_mode(this->target_mode);
+  const char* target_mode_str = name_for_target_mode(this->target_mode);
   string assist_turns_str = string_for_assist_turns(this->assist_turns);
   string hp_str = this->hp.str();
   string ap_str = this->ap.str();
@@ -937,7 +937,7 @@ string CardDefinition::str(bool single_line, const TextSet* text_archive) const 
         criterion_str.c_str(),
         rank_str.c_str(),
         cost_str.c_str(),
-        target_mode_str.c_str(),
+        target_mode_str,
         range_str.c_str(),
         assist_turns_str.c_str(),
         this->cannot_move ? "true" : "false",
@@ -1004,7 +1004,7 @@ Card: %04" PRIX32 " \"%s\"\n\
         criterion_str.c_str(),
         rank_str.c_str(),
         cost_str.c_str(),
-        target_mode_str.c_str(),
+        target_mode_str,
         range_str.c_str(),
         assist_turns_str.c_str(),
         this->cannot_move ? "cannot" : "can",

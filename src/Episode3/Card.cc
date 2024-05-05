@@ -1219,7 +1219,9 @@ void Card::move_phase_before() {
 }
 
 void Card::unknown_80236374(shared_ptr<Card> other_card, const ActionState* as) {
-  auto log = this->server()->log_stack(string_printf("unknown_80236374(@%04hX #%04hX, @%04hX #%04hX): ", this->get_card_ref(), this->get_card_id(), other_card->get_card_ref(), other_card->get_card_id()));
+  auto s = this->server();
+  auto log = s->log_stack(string_printf("unknown_80236374(@%04hX #%04hX, @%04hX #%04hX): ", this->get_card_ref(), this->get_card_id(), other_card->get_card_ref(), other_card->get_card_id()));
+
   auto check_card = [&](shared_ptr<Card> card) -> void {
     if (card) {
       if (!card->unknown_80236554(other_card, as)) {
@@ -1231,25 +1233,21 @@ void Card::unknown_80236374(shared_ptr<Card> other_card, const ActionState* as) 
   };
 
   for (size_t client_id = 0; client_id < 4; client_id++) {
-    auto ps = this->server()->player_states[client_id];
-    if (ps) {
-      if (this->server()->get_current_team_turn2() != ps->get_team_id()) {
-        check_card(ps->get_sc_card());
-        for (size_t set_index = 0; set_index < 8; set_index++) {
-          check_card(ps->get_set_card(set_index));
-        }
+    auto ps = s->player_states[client_id];
+    if (ps && (s->get_current_team_turn2() != ps->get_team_id())) {
+      check_card(ps->get_sc_card());
+      for (size_t set_index = 0; set_index < 8; set_index++) {
+        check_card(ps->get_set_card(set_index));
       }
     }
   }
 
   for (size_t client_id = 0; client_id < 4; client_id++) {
-    auto ps = this->server()->player_states[client_id];
-    if (ps) {
-      if (this->server()->get_current_team_turn2() == ps->get_team_id()) {
-        check_card(ps->get_sc_card());
-        for (size_t set_index = 0; set_index < 8; set_index++) {
-          check_card(ps->get_set_card(set_index));
-        }
+    auto ps = s->player_states[client_id];
+    if (ps && (s->get_current_team_turn2() == ps->get_team_id())) {
+      check_card(ps->get_sc_card());
+      for (size_t set_index = 0; set_index < 8; set_index++) {
+        check_card(ps->get_set_card(set_index));
       }
     }
   }

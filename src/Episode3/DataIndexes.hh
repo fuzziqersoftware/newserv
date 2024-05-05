@@ -173,7 +173,7 @@ enum class TargetMode : uint8_t {
   OWN_FCS = 0x09, // e.g. Traitor
 };
 
-std::string name_for_target_mode(TargetMode target_mode);
+const char* name_for_target_mode(TargetMode target_mode);
 
 enum class ConditionType : uint8_t {
   NONE = 0x00,

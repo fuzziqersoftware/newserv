@@ -252,8 +252,7 @@ void CardSpecial::apply_action_conditions(
       temp_as = *as;
     }
   } else {
-    temp_as = this->create_defense_state_for_card_pair_action_chains(
-        attacker_card, defender_card);
+    temp_as = this->create_defense_state_for_card_pair_action_chains(attacker_card, defender_card);
   }
 
   this->apply_defense_conditions(temp_as, when, defender_card, flags);
@@ -422,8 +421,7 @@ bool CardSpecial::apply_defense_conditions(
     shared_ptr<Card> defender_card,
     uint32_t flags) {
   for (size_t z = 0; z < 9; z++) {
-    this->apply_defense_condition(
-        when, &defender_card->action_chain.conditions[z], z, as, defender_card, flags, 0);
+    this->apply_defense_condition(when, &defender_card->action_chain.conditions[z], z, as, defender_card, flags, 0);
   }
   return true;
 }
