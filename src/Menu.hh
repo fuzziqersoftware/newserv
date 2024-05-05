@@ -20,8 +20,10 @@ constexpr uint32_t LOBBY = 0x33000033;
 constexpr uint32_t GAME = 0x44000044;
 constexpr uint32_t QUEST_EP1 = 0x55010155;
 constexpr uint32_t QUEST_EP2 = 0x55020255;
-constexpr uint32_t QUEST_CATEGORIES_EP1 = 0x01666601;
-constexpr uint32_t QUEST_CATEGORIES_EP2 = 0x02666602;
+// See the decsription of the A2 command in CommandFormats.hh for why these
+// menu IDs don't fit the rest of the pattern.
+constexpr uint32_t QUEST_CATEGORIES_EP1 = 0x01000001;
+constexpr uint32_t QUEST_CATEGORIES_EP2 = 0x02000002;
 constexpr uint32_t PROXY_DESTINATIONS = 0x77000077;
 constexpr uint32_t PROGRAMS = 0x88000088;
 constexpr uint32_t PATCHES = 0x99000099;
