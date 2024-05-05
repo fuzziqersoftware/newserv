@@ -900,7 +900,7 @@ opcodes_by_name_for_version(Version v) {
   return index;
 }
 
-std::string disassemble_quest_script(const void* data, size_t size, Version version, uint8_t language, bool reassembly_mode) {
+std::string disassemble_quest_script(const void* data, size_t size, Version version, uint8_t override_language, bool reassembly_mode) {
   StringReader r(data, size);
   deque<string> lines;
   lines.emplace_back(string_printf(".version %s", name_for_enum(version)));
@@ -908,6 +908,7 @@ std::string disassemble_quest_script(const void* data, size_t size, Version vers
   bool use_wstrs = false;
   size_t code_offset = 0;
   size_t function_table_offset = 0;
+  uint8_t language;
   switch (version) {
     case Version::DC_NTE: {
       const auto& header = r.get<PSOQuestHeaderDCNTE>();
@@ -923,8 +924,12 @@ std::string disassemble_quest_script(const void* data, size_t size, Version vers
       const auto& header = r.get<PSOQuestHeaderDC>();
       code_offset = header.code_offset;
       function_table_offset = header.function_table_offset;
-      if (header.language < 5) {
+      if (override_language != 0xFF) {
+        language = override_language;
+      } else if (header.language < 5) {
         language = header.language;
+      } else {
+        language = 1;
       }
       lines.emplace_back(string_printf(".quest_num %hu", header.quest_number.load()));
       lines.emplace_back(string_printf(".language %hhu", header.language));
@@ -939,8 +944,12 @@ std::string disassemble_quest_script(const void* data, size_t size, Version vers
       const auto& header = r.get<PSOQuestHeaderPC>();
       code_offset = header.code_offset;
       function_table_offset = header.function_table_offset;
-      if (header.language < 8) {
+      if (override_language != 0xFF) {
+        language = override_language;
+      } else if (header.language < 8) {
         language = header.language;
+      } else {
+        language = 1;
       }
       lines.emplace_back(string_printf(".quest_num %hu", header.quest_number.load()));
       lines.emplace_back(string_printf(".language %hhu", header.language));
@@ -957,8 +966,12 @@ std::string disassemble_quest_script(const void* data, size_t size, Version vers
       const auto& header = r.get<PSOQuestHeaderGC>();
       code_offset = header.code_offset;
       function_table_offset = header.function_table_offset;
-      if (header.language < 5) {
+      if (override_language != 0xFF) {
+        language = override_language;
+      } else if (header.language < 5) {
         language = header.language;
+      } else {
+        language = 1;
       }
       lines.emplace_back(string_printf(".quest_num %hhu", header.quest_number));
       lines.emplace_back(string_printf(".language %hhu", header.language));
@@ -973,6 +986,11 @@ std::string disassemble_quest_script(const void* data, size_t size, Version vers
       const auto& header = r.get<PSOQuestHeaderBB>();
       code_offset = header.code_offset;
       function_table_offset = header.function_table_offset;
+      if (override_language != 0xFF) {
+        language = override_language;
+      } else {
+        language = 1;
+      }
       lines.emplace_back(string_printf(".quest_num %hu", header.quest_number.load()));
       lines.emplace_back(string_printf(".episode %s", name_for_header_episode_number(header.episode)));
       lines.emplace_back(string_printf(".max_players %hhu", header.episode));

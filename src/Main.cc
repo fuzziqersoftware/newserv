@@ -1163,9 +1163,9 @@ Action a_disassemble_quest_script(
       if (!args.get<bool>("decompressed")) {
         data = prs_decompress(data);
       }
-      uint8_t language = args.get<bool>("japanese") ? 0 : 1;
+      uint8_t override_language = args.get<uint8_t>("language", 0xFF);
       bool reassembly_mode = args.get<bool>("reassembly");
-      string result = disassemble_quest_script(data.data(), data.size(), version, language, reassembly_mode);
+      string result = disassemble_quest_script(data.data(), data.size(), version, override_language, reassembly_mode);
       write_output_data(args, result.data(), result.size(), "txt");
     });
 Action a_disassemble_quest_map(
