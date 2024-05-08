@@ -605,14 +605,14 @@
   // and should be placed in the system/ep3/banners directory. Images are
   // subject to a lot of restrictions due to GC hardware limitations:
   // - The image must be square.
-  // - The image dimensions must be a power of 2 (e.g. 128x128 or 256x256)
+  // - The image dimensions must be a power of 2 (e.g. 128x128 or 256x256).
   // - The image data must be no larger than 0x37000 bytes when encoded as a
   //   GVM file (newserv will do this encoding internally if it's not a .gvm
-  //   or .gvm.prs file already)
-  // - The GVM file must compress to no larger than 0x3800 bytes
+  //   or .gvm.prs file already).
+  // - The GVM file must compress to no larger than 0x3800 bytes.
   // newserv will fail on startup if the data size constraints aren't satisfied.
   // Banners are specified as lists of [type, where, filename]. type should be
-  // 1 for image files. where is a bitmask specifying where in the lobby the
+  // 1 for image files. where is a bit field specifying where in the lobby the
   // banner should appear; the bits are:
   // 00000001: South above-counter banner (facing away from teleporters)
   // 00000002: West above-counter banner
@@ -661,7 +661,7 @@
   "QuestCategories": [
     // Each entry is [flags, directory_name, category_name, description].
     // These fields are:
-    //   flags: a bit field containing the following:
+    //   flags: a bit field containing the following bits:
     //       0x001 - appears in normal mode
     //       0x002 - appears in battle mode
     //       0x004 - appears in challenge mode
@@ -670,7 +670,6 @@
     //       0x020 - appears in download quest menu
     //       0x040 - appears in Episode 3 download quest menu
     //       0x080 - hide quests that don't match the game's episode
-    //       0x090 - hide government quests categories that don't match the game's episode (BB)
     //       0x100 - is Episode 2 Challenge category
     //   directory_name: the directory inside system/quests that contains quests
     //       for this category.
@@ -689,9 +688,9 @@
     [0x104, "challenge-ep2", "Challenge (Episode 2)", "$E$C6Challenge mode\nquests in Episode 2"],
     [0x088, "solo-story", "Story", "$E$C6Quests that follow\nthe story"],
     [0x088, "solo-extra", "Solo", "$E$C6Quests that require\na single player"],
-    [0x090, "government-ep1", "Hero in Red", "$E$CG-Red Ring Rico-\n$C6Quests that follow\nthe Episode 1\nstoryline"],
-    [0x090, "government-ep2", "The Military's Hero", "$E$CG-Heathcliff Flowen-\n$C6Quests that follow\nthe Episode 2\nstoryline"],
-    [0x090, "government-ep4", "The Meteor Impact Incident", "$E$C6Quests that follow\nthe Episode 4\nstoryline"],
+    [0x010, "government-ep1", "Hero in Red", "$E$CG-Red Ring Rico-\n$C6Quests that follow\nthe Episode 1\nstoryline"],
+    [0x010, "government-ep2", "The Military's Hero", "$E$CG-Heathcliff Flowen-\n$C6Quests that follow\nthe Episode 2\nstoryline"],
+    [0x010, "government-ep4", "The Meteor Impact Incident", "$E$C6Quests that follow\nthe Episode 4\nstoryline"],
     [0x020, "download", "Download", "$E$C6Quests to download\nto your Memory Card"],
     [0x040, "download-ep3-trial", "Trial Download", "$E$C6Quests to download\nto your Memory Card\nfrom Episode 3\nTrial Edition"],
     [0x040, "download-ep3", "Download", "$E$C6Quests to download\nto your Memory Card"],
@@ -1064,9 +1063,10 @@
   // ],
 
   // These options control which item drop modes are used by default, and which
-  // can be chosen by the player. The AllowedDropModes fields are a bitmask
-  // specifying which modes players can choose with the $dropmode command. The
-  // modes are (name = mask):
+  // can be chosen by the player. The AllowedDropModes fields are bit fields
+  // specifying which modes players can choose with the $dropmode command. See
+  // "Item tables and drop modes" in README.md for details on how each drop
+  // mode behaves. The mode bits are:
   //   DISABLED         = 0x01
   //   CLIENT           = 0x02
   //   SERVER_SHARED    = 0x04
