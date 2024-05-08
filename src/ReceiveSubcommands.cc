@@ -1497,8 +1497,7 @@ static void on_cast_technique_finished(shared_ptr<Client> c, uint8_t command, ui
 static void on_attack_finished(shared_ptr<Client> c, uint8_t command, uint8_t flag, void* data, size_t size) {
   const auto& cmd = check_size_t<G_AttackFinished_6x46>(data, size,
       offsetof(G_AttackFinished_6x46, targets), sizeof(G_AttackFinished_6x46));
-  size_t allowed_count = min<size_t>(cmd.header.size - 2, 11);
-  if (cmd.count > allowed_count) {
+  if (cmd.count > min<size_t>(cmd.header.size - 2, cmd.targets.size())) {
     throw runtime_error("invalid attack finished command");
   }
   on_forward_check_game_client(c, command, flag, data, size);
@@ -1507,18 +1506,16 @@ static void on_attack_finished(shared_ptr<Client> c, uint8_t command, uint8_t fl
 static void on_cast_technique(shared_ptr<Client> c, uint8_t command, uint8_t flag, void* data, size_t size) {
   const auto& cmd = check_size_t<G_CastTechnique_6x47>(data, size,
       offsetof(G_CastTechnique_6x47, targets), sizeof(G_CastTechnique_6x47));
-  size_t allowed_count = min<size_t>(cmd.header.size - 2, 10);
-  if (cmd.target_count > allowed_count) {
+  if (cmd.target_count > min<size_t>(cmd.header.size - 2, cmd.targets.size())) {
     throw runtime_error("invalid cast technique command");
   }
   on_forward_check_game_client(c, command, flag, data, size);
 }
 
-static void on_subtract_pb_energy(shared_ptr<Client> c, uint8_t command, uint8_t flag, void* data, size_t size) {
-  const auto& cmd = check_size_t<G_SubtractPBEnergy_6x49>(data, size,
-      offsetof(G_SubtractPBEnergy_6x49, entries), sizeof(G_SubtractPBEnergy_6x49));
-  size_t allowed_count = min<size_t>(cmd.header.size - 3, 14);
-  if (cmd.entry_count > allowed_count) {
+static void on_execute_photon_blast(shared_ptr<Client> c, uint8_t command, uint8_t flag, void* data, size_t size) {
+  const auto& cmd = check_size_t<G_ExecutePhotonBlast_6x49>(data, size,
+      offsetof(G_ExecutePhotonBlast_6x49, targets), sizeof(G_ExecutePhotonBlast_6x49));
+  if (cmd.target_count > min<size_t>(cmd.header.size - 3, cmd.targets.size())) {
     throw runtime_error("invalid subtract PB energy command");
   }
   on_forward_check_game_client(c, command, flag, data, size);
@@ -4479,7 +4476,7 @@ const SubcommandDefinition subcommand_definitions[0x100] = {
     /* 6x46 */ {0x00, 0x42, 0x46, on_attack_finished},
     /* 6x47 */ {0x3D, 0x43, 0x47, on_cast_technique},
     /* 6x48 */ {0x00, 0x00, 0x48, on_cast_technique_finished},
-    /* 6x49 */ {0x3E, 0x44, 0x49, on_subtract_pb_energy},
+    /* 6x49 */ {0x3E, 0x44, 0x49, on_execute_photon_blast},
     /* 6x4A */ {0x3F, 0x45, 0x4A, on_forward_check_game_client},
     /* 6x4B */ {0x40, 0x46, 0x4B, on_change_hp<G_ClientIDHeader>},
     /* 6x4C */ {0x41, 0x47, 0x4C, on_change_hp<G_ClientIDHeader>},

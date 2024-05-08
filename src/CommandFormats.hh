@@ -4425,22 +4425,18 @@ struct G_CastTechniqueComplete_6x48 {
   le_uint16_t level = 0;
 } __packed_ws__(G_CastTechniqueComplete_6x48, 8);
 
-// 6x49: Subtract photon blast energy (protected on V3/V4)
+// 6x49: Execute Photon Blast (protected on V3/V4)
 
-struct G_SubtractPBEnergy_6x49 {
+struct G_ExecutePhotonBlast_6x49 {
   G_ClientIDHeader header;
   uint8_t unknown_a1 = 0;
   uint8_t unknown_a2 = 0;
-  le_uint16_t entry_count = 0;
+  le_uint16_t target_count = 0;
   le_uint16_t unknown_a3 = 0;
   le_uint16_t unknown_a4 = 0;
-  struct Entry {
-    le_uint16_t unknown_a1 = 0;
-    le_uint16_t unknown_a2 = 0;
-  } __packed_ws__(Entry, 4);
   // The client may send a shorter command if not all of these are used.
-  parray<Entry, 10> entries;
-} __packed_ws__(G_SubtractPBEnergy_6x49, 0x34);
+  parray<TargetEntry, 10> targets;
+} __packed_ws__(G_ExecutePhotonBlast_6x49, 0x34);
 
 // 6x4A: Fully shield attack (protected on V3/V4)
 

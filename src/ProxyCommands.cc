@@ -1122,8 +1122,7 @@ static HandlerResult S_6x(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t, 
       const auto& cmd = check_size_t<G_AttackFinished_6x46>(data,
           offsetof(G_AttackFinished_6x46, targets),
           sizeof(G_AttackFinished_6x46));
-      size_t allowed_count = min<size_t>(cmd.header.size - 2, 11);
-      if (cmd.count > allowed_count) {
+      if (cmd.count > min<size_t>(cmd.header.size - 2, cmd.targets.size())) {
         ses->log.warning("Blocking subcommand 6x46 with invalid count");
         return HandlerResult::Type::SUPPRESS;
       }
@@ -1131,17 +1130,15 @@ static HandlerResult S_6x(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t, 
       const auto& cmd = check_size_t<G_CastTechnique_6x47>(data,
           offsetof(G_CastTechnique_6x47, targets),
           sizeof(G_CastTechnique_6x47));
-      size_t allowed_count = min<size_t>(cmd.header.size - 2, 10);
-      if (cmd.target_count > allowed_count) {
+      if (cmd.target_count > min<size_t>(cmd.header.size - 2, cmd.targets.size())) {
         ses->log.warning("Blocking subcommand 6x47 with invalid count");
         return HandlerResult::Type::SUPPRESS;
       }
     } else if (data[0] == 0x49) {
-      const auto& cmd = check_size_t<G_SubtractPBEnergy_6x49>(data,
-          offsetof(G_SubtractPBEnergy_6x49, entries),
-          sizeof(G_SubtractPBEnergy_6x49));
-      size_t allowed_count = min<size_t>(cmd.header.size - 3, 14);
-      if (cmd.entry_count > allowed_count) {
+      const auto& cmd = check_size_t<G_ExecutePhotonBlast_6x49>(data,
+          offsetof(G_ExecutePhotonBlast_6x49, targets),
+          sizeof(G_ExecutePhotonBlast_6x49));
+      if (cmd.target_count > min<size_t>(cmd.header.size - 3, cmd.targets.size())) {
         ses->log.warning("Blocking subcommand 6x49 with invalid count");
         return HandlerResult::Type::SUPPRESS;
       }
