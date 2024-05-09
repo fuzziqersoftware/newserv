@@ -13,7 +13,7 @@
   // 192.168.x.x). In PSO's network configuration, set the DNS server address to
   // the same address you entered in LocalAddress in this file.
 
-  // If you also want people to be able to conenct to your newserv instance from
+  // If you also want people to be able to connect to your newserv instance from
   // the Internet, you'll need to set ExternalAddress to your public-facing IPv4
   // address (you can find this by visiting e.g. whatismyip.com). You'll also
   // need to set up port forwarding on your router for all the TCP ports listed

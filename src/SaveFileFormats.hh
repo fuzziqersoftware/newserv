@@ -228,6 +228,7 @@ struct PSOGCCharacterFile {
     //   00000001: Character was not saved after disconnecting (and the message
     //     about items being deleted is shown in the select menu)
     //   00000002: Used for something, but it's not known what it does
+    //   00000010: Used on DCv2, but not clear what it does
     /* 041C:0000 */ be_uint32_t flags = 0;
     /* 0420:0004 */ be_uint32_t creation_timestamp = 0;
     // The signature field holds the value 0xA205B064, which is 2718281828 in
