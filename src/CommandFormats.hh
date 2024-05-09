@@ -3881,7 +3881,7 @@ struct G_SwitchStateChanged_6x05 {
   // Note: header.object_id is 0xFFFF for room clear when all enemies defeated
   G_ObjectIDHeader header;
   // TODO: Some of these might be big-endian on GC; it only byteswaps
-  // unknown_a3. Are the others actually uint16, or are they uint8[2]?
+  // switch_flag_num. Are the others actually uint16, or are they uint8[2]?
   le_uint16_t unknown_a1 = 0;
   le_uint16_t unknown_a2 = 0;
   le_uint16_t switch_flag_num = 0;
