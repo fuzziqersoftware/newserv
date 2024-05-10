@@ -8,6 +8,13 @@ start:
   .include  WriteCodeBlocksDC
 
   .align    4
+  .data     0x8C028276
+  .data     6
+  nop
+  bs        +0x2C
+  nop
+
+  .align    4
   .data     0x8C16B50A
   .data     2
   sett
@@ -18,22 +25,7 @@ start:
   nop
 
   .align    4
-  .data     0x8C180100
-  .data     2
-  nop
-
-  .align    4
-  .data     0x8C180F96
-  .data     2
-  nop
-
-  .align    4
-  .data     0x8C1825F2
-  .data     2
-  nop
-
-  .align    4
-  .data     0x8C181DC0
+  .data     0x8C17E816
   .data     2
   nop
 
@@ -43,17 +35,34 @@ start:
   nop
 
   .align    4
+  .data     0x8C180100
+  .data     2
+  nop
+
+  .align    4
   .data     0x8C180ECA
   .data     2
   nop
 
   .align    4
-  .data     0x8C028276
-  .data     6
-  .binary   090014A00900
-  # nop
-  # bs        +0x2C
-  # nop
+  .data     0x8C180F96
+  .data     2
+  nop
+
+  .align    4
+  .data     0x8C181DC0
+  .data     2
+  nop
+
+  .align    4
+  .data     0x8C181DEC
+  .data     2
+  nop
+
+  .align    4
+  .data     0x8C1825F2
+  .data     2
+  nop
 
   .align    4
   .data     0x00000000
