@@ -228,7 +228,10 @@ struct PSOGCCharacterFile {
     //   00000001: Character was not saved after disconnecting (and the message
     //     about items being deleted is shown in the select menu)
     //   00000002: Used for something, but it's not known what it does
-    //   00000010: Used on DCv2, but not clear what it does
+    //   00000010: Character has ever possessed a hacked item, according to the
+    //     check_for_hacked_item function in DCv2 (TODO: Does this exist in V3+
+    //     also? If so, is the logic the same?)
+    //   00000040: Used, but purpose is unknown
     /* 041C:0000 */ be_uint32_t flags = 0;
     /* 0420:0004 */ be_uint32_t creation_timestamp = 0;
     // The signature field holds the value 0xA205B064, which is 2718281828 in
