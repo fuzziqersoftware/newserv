@@ -20,9 +20,9 @@ start:
   sett
 
   .align    4
-  .data     0x8C17EC76
+  .data     0x8C17EC74
   .data     2
-  nop
+  and       r0, 0xFE
 
   .align    4
   .data     0x8C17ED52
@@ -30,9 +30,9 @@ start:
   nop
 
   .align    4
-  .data     0x8C1807A4
+  .data     0x8C1807A2
   .data     2
-  nop
+  and       r0, 0xFE
 
   .align    4
   .data     0x8C180848
@@ -40,9 +40,9 @@ start:
   nop
 
   .align    4
-  .data     0x8C18165E
+  .data     0x8C18165C
   .data     2
-  nop
+  and       r0, 0xFE
 
   .align    4
   .data     0x8C18172A
@@ -50,9 +50,9 @@ start:
   nop
 
   .align    4
-  .data     0x8C182660
+  .data     0x8C18265E
   .data     2
-  nop
+  and       r0, 0xFE
 
   .align    4
   .data     0x8C18268C
@@ -60,9 +60,9 @@ start:
   nop
 
   .align    4
-  .data     0x8C182F6A
+  .data     0x8C182F68
   .data     2
-  nop
+  and       r0, 0xFE
 
   .align    4
   .data     0x00000000
