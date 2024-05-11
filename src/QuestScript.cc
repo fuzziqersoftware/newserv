@@ -681,7 +681,7 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     {0xF8B4, "write2", {INT32, INT32}, F_V3_V4 | F_ARGS},
     {0xF8B5, "write4", {REG, REG}, F_V2},
     {0xF8B5, "write4", {INT32, INT32}, F_V3_V4 | F_ARGS},
-    {0xF8B6, "check_for_hacking", {REG}, F_V2}, // Returns a bitmask of 5 different types of detectable hacking. But it only works on DCv2 - it crashes on all other versions.
+    {0xF8B6, "check_for_hacking", {REG}, F_V2_V4}, // Returns a bitmask of 5 different types of detectable hacking. But it only works on DCv2 - it crashes on all other versions.
     {0xF8B7, "unknown_F8B7", {REG}, F_V2_V4}, // TODO (DX) - Challenge mode. Appears to be timing-related; regA is expected to be in [60, 3600]. Encodes the value with encrypt_challenge_time even though it's never sent over the network and is only decrypted locally.
     {0xF8B8, "disable_retry_menu", {}, F_V2_V4},
     {0xF8B9, "chl_recovery", {}, F_V2_V4},
