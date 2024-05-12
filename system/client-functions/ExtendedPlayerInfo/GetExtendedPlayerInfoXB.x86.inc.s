@@ -60,7 +60,7 @@ drain_failed:
   call   [ebx + 0x10]  # free9(orig_send_ptr)
   add    esp, 8  # orig_send_ptr, remaining_bytes
 
-  mov    eax, 1
+  mov    eax, 0
 
 malloc9_failed:
   pop    esi

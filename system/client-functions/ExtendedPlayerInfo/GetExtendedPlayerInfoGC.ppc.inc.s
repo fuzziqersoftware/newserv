@@ -42,6 +42,7 @@ get_data_ptr_ret:
   li     r29, 0x279C
 send_again:
   lwz    r3, [r30 + 0x0C]
+  lwz    r3, [r3]
   lwz    r0, [r30 + 0x14]
   mtctr  r0
   bctrl  # TProtocol_wait_send_drain(root_protocol)
@@ -70,7 +71,7 @@ drain_failed:
   lwz    r0, [r30 + 0x10]
   mtctr  r0
   bctrl  # free9
-  li     r3, 1
+  li     r3, 0
 
 malloc9_failed:
   lwz    r28, [r1 + 0x14]
