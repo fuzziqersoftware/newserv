@@ -188,10 +188,12 @@ struct SaveFileChatShortcutEntryT {
   }
 } __packed__;
 using SaveFileShortcutEntryDC = SaveFileChatShortcutEntryT<false, TextEncoding::MARKED, 0x3C>;
+using SaveFileShortcutEntryPC = SaveFileChatShortcutEntryT<false, TextEncoding::UTF16, 0x3C>;
 using SaveFileShortcutEntryGC = SaveFileChatShortcutEntryT<true, TextEncoding::MARKED, 0x50>;
 using SaveFileShortcutEntryXB = SaveFileChatShortcutEntryT<false, TextEncoding::MARKED, 0x50>;
 using SaveFileShortcutEntryBB = SaveFileChatShortcutEntryT<false, TextEncoding::UTF16, 0x50>;
 check_struct_size(SaveFileShortcutEntryDC, 0x40);
+check_struct_size(SaveFileShortcutEntryPC, 0x7C);
 check_struct_size(SaveFileShortcutEntryGC, 0x54);
 check_struct_size(SaveFileShortcutEntryXB, 0x54);
 check_struct_size(SaveFileShortcutEntryBB, 0xA4);
@@ -371,31 +373,38 @@ struct PSOPCCharacterFile { // PSO______SYS and PSO______SYD
   /* 00010 */ parray<uint8_t, 0x430> unknown_a1;
   struct CharacterEntry {
     /* 0000 */ le_uint32_t present = 1; // 1 if character present, 0 if empty
-    struct Character {
+    struct EncryptedSection {
       /* 0000 */ le_uint32_t checksum = 0;
-      /* 0004 */ PlayerInventory inventory;
-      /* 0350 */ PlayerDispDataDCPCV3 disp;
-      /* 0420 */ be_uint32_t flags = 0;
-      /* 0424 */ be_uint32_t creation_timestamp = 0;
-      /* 0428 */ be_uint32_t signature = 0x6C5D889E;
-      /* 042C */ be_uint32_t play_time_seconds = 0;
-      /* 0430 */ be_uint32_t option_flags = 0x00040058;
-      /* 0434 */ be_uint32_t save_count = 1;
-      // TODO: Figure out what this is. On GC, this is where the bank data goes.
-      /* 0438 */ parray<uint8_t, 0x7D4> unknown_a2;
-      /* 0C0C */ GuildCardPC guild_card;
-      /* 0CFC */ parray<SaveFileSymbolChatEntryPC, 12> symbol_chats;
-      // TODO: Figure out what this is. On GC, this is where chat shortcuts and
-      // challenge/battle records go.
-      /* 123C */ parray<uint8_t, 0xAA0> unknown_a3;
-      /* 1CDC */ parray<le_uint16_t, 20> tech_menu_shortcut_entries;
-      /* 1D04 */ parray<uint8_t, 0x2C> unknown_a4;
-      /* 1D30 */ pstring<TextEncoding::ASCII, 0x10> serial_number; // As %08X (not decimal)
-      /* 1D40 */ pstring<TextEncoding::ASCII, 0x10> access_key; // As decimal
+      struct Character {
+        /* 0000 */ PlayerInventory inventory;
+        /* 034C */ PlayerDispDataDCPCV3 disp;
+        /* 041C */ be_uint32_t flags = 0;
+        /* 0420 */ be_uint32_t creation_timestamp = 0;
+        /* 0424 */ be_uint32_t signature = 0x6C5D889E;
+        /* 0428 */ be_uint32_t play_time_seconds = 0;
+        /* 042C */ be_uint32_t option_flags = 0x00040058;
+        /* 0430 */ be_uint32_t save_count = 1;
+        /* 0434 */ pstring<TextEncoding::ASCII, 0x1C> ppp_username;
+        /* 0450 */ pstring<TextEncoding::ASCII, 0x10> ppp_password;
+        /* 0460 */ QuestFlags quest_flags;
+        /* 0660 */ PlayerBank60 bank;
+        /* 0C08 */ GuildCardPC guild_card;
+        /* 0CF8 */ parray<SaveFileSymbolChatEntryPC, 12> symbol_chats;
+        /* 1238 */ parray<SaveFileShortcutEntryPC, 20> shortcuts;
+        /* 1BE8 */ PlayerRecordsBattle battle_records;
+        /* 1C00 */ PlayerRecordsChallengePC challenge_records;
+        /* 1CD8 */ parray<le_uint16_t, 20> tech_menu_shortcut_entries;
+        /* 1D00 */ parray<le_uint32_t, 10> choice_search_config;
+        /* 1D28 */ parray<uint8_t, 4> unknown_a2;
+        /* 1D2C */ pstring<TextEncoding::ASCII, 0x10> serial_number; // As %08X (not decimal)
+        /* 1D3C */ pstring<TextEncoding::ASCII, 0x10> access_key; // As decimal
+        /* 1D4C */
+      } __packed_ws__(Character, 0x1D4C);
+      /* 0004 */ Character character;
       /* 1D50 */ le_uint32_t round2_seed = 0;
       /* 1D54 */
-    } __packed_ws__(Character, 0x1D54);
-    /* 0004 */ Character character;
+    } __packed_ws__(EncryptedSection, 0x1D54);
+    /* 0004 */ EncryptedSection encrypted;
     /* 1D58 */ parray<uint8_t, 0x3C> unused;
     /* 1D94 */
   } __packed_ws__(CharacterEntry, 0x1D94);

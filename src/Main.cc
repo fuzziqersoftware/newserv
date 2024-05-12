@@ -681,8 +681,8 @@ static void a_encrypt_decrypt_pc_save_fn(Arguments& args) {
       for (size_t z = 0; z < charfile->entries.size(); z++) {
         if (charfile->entries[z].present) {
           try {
-            charfile->entries[z].character = decrypt_fixed_size_data_section_t<PSOPCCharacterFile::CharacterEntry::Character, false>(
-                &charfile->entries[z].character, sizeof(charfile->entries[z].character), round1_seed, skip_checksum, override_round2_seed);
+            charfile->entries[z].encrypted = decrypt_fixed_size_data_section_t<PSOPCCharacterFile::CharacterEntry::EncryptedSection, false>(
+                &charfile->entries[z].encrypted, sizeof(charfile->entries[z].encrypted), round1_seed, skip_checksum, override_round2_seed);
           } catch (const exception& e) {
             fprintf(stderr, "warning: cannot decrypt character %zu: %s\n", z, e.what());
           }
@@ -691,12 +691,12 @@ static void a_encrypt_decrypt_pc_save_fn(Arguments& args) {
     } else {
       for (size_t z = 0; z < charfile->entries.size(); z++) {
         if (charfile->entries[z].present) {
-          string encrypted = encrypt_fixed_size_data_section_t<PSOPCCharacterFile::CharacterEntry::Character, false>(
-              charfile->entries[z].character, round1_seed);
-          if (encrypted.size() != sizeof(PSOPCCharacterFile::CharacterEntry::Character)) {
+          string encrypted = encrypt_fixed_size_data_section_t<PSOPCCharacterFile::CharacterEntry::EncryptedSection, false>(
+              charfile->entries[z].encrypted, round1_seed);
+          if (encrypted.size() != sizeof(PSOPCCharacterFile::CharacterEntry::EncryptedSection)) {
             throw logic_error("incorrect encrypted result size");
           }
-          charfile->entries[z].character = *reinterpret_cast<const PSOPCCharacterFile::CharacterEntry::Character*>(encrypted.data());
+          charfile->entries[z].encrypted = *reinterpret_cast<const PSOPCCharacterFile::CharacterEntry::EncryptedSection*>(encrypted.data());
         }
       }
     }
