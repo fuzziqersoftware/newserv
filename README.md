@@ -193,7 +193,7 @@ Using a Wii or Wii U to connect to newserv requires the Wii or vWii to be softmo
 
 Nintendont includes BBA emulation and is compatible with all PSO GameCube versions except Episodes I&II Trial Edition. To use Nintendont, enable BBA emulation in Nintendont's settings and follow the instructions in the above section (PSO GC on a real GameCube).
 
-Devolution includes modem emulation and is compatible with all PSO GameCube versions including Episodes I&II Trial Edition. newserv can act as a PPP server, which Devolution can directly cnnect to. To do this:
+Devolution includes modem emulation and is compatible with all PSO GameCube versions including Episodes I&II Trial Edition. newserv can act as a PPP server, which Devolution can directly connect to. To do this:
 1. Enable the PPPRawListen option according to the comments in config.json.
 2. Start newserv.
 3. In the game's network settings, set the username and password to anything (they cannot be blank), and set the phone number to the number that newserv outputs to the console during startup. (It will be near the end of all the startup log messages.) If your Wii is on the same network as newserv, use the local number; otherwise, use the external number.
