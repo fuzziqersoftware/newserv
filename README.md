@@ -537,7 +537,8 @@ Some commands only work on the game server and not on the proxy server. The chat
 
 * Cheat mode commands
     * `$cheat` (game server only): Enables or disables cheat mode for the current game. All other cheat mode commands do nothing if cheat mode is disabled. By default, cheat mode is off in new games but can be enabled; there is an option in config.json that allows you to disable cheat mode entirely, or set it to on by default in new games. Cheat mode is always enabled on the proxy server, unless cheat mode is disabled on the entire server.
-    * `$infhp` / `$inftp`: Enables or disables infinite HP or TP mode. Applies to only you. In infinite HP mode, one-hit KO attacks will still kill you. On V1 and V2, infinite HP also automatically cures status ailments.
+    * `$infhp`: Enables or disables infinite HP mode. Applies to only you; does not affect other players. When enabled, one-hit KO attacks will still kill you, but on most versions of the game (not DCv1, GC US 1.2, or GC JP 1.5), the server can automatically revive you. On all versions except GC US 1.2 and GC JP 1.5, infinite HP also automatically cures status ailments.
+    * `$inftp`: Enables or disables infinite TP mode. Applies to only you; does not affect other players.
     * `$warpme <floor-id>` (or `$warp <floor-id>`): Warps yourself to the given floor.
     * `$warpall <floor-id>`: Warps everyone in the game to the given floor. You must be the leader to use this command, unless you're on the proxy server.
     * `$next`: Warps yourself to the next floor.
