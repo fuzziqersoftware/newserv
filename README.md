@@ -204,9 +204,9 @@ If you're using the HLE BBA type, set the BBA's DNS server address to newserv's 
 
 If you're using the TAP BBA type, you'll have to set PSO's network settings appropriately for your tap interface. Set the DNS server address in PSO's network settings to newserv's IP address.
 
-If you're using a version of Dolphin with tapserver support, you can make it connect to a newserv instance running on the same machine via the tapserver interface. You do not need to install or run tapserver. To do this:
-1. Set Dolphin's BBA type to tapserver (Config -> GameCube -> SP1).
-2. Enable newserv's IP stack simulator according to the comments in config.json and start newserv.
+If you're using the tapserver BBA or modem type, you can make it connect to a newserv instance running on the same machine via the tapserver interface. To do this:
+1. In the GameCube pane of the Config window, set the SP1 device to Broadband Adapter (tapserver) or Modem Adapter (tapserver).
+2. Set IPStackListen (for BBA) or PPPStackListen (for modem) according to the comments in config.json and start newserv.
 3. In PSO's network settings, enable DHCP ("Automatically obtain an IP address"), set DNS server address to "Automatic", and leave DHCP Hostname as "Not set". Leave the proxy server settings blank.
 4. Start an online game.
 
