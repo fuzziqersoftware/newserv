@@ -1422,17 +1422,10 @@ static void on_player_revivable(shared_ptr<Client> c, uint8_t command, uint8_t f
     const void* c_data = (!is_v1_or_v2(c->version()) || (c->version() == Version::GC_NTE))
         ? static_cast<const void*>(&v3_cmd)
         : static_cast<const void*>(&v2_cmd);
-    if (send_protected_command(c, c_data, sizeof(v3_cmd), false)) {
-      for (auto lc : l->clients) {
-        if (!lc || (lc == c)) {
-          continue;
-        }
-        const void* lc_data = (!is_v1_or_v2(lc->version()) || (lc->version() == Version::GC_NTE))
-            ? static_cast<const void*>(&v3_cmd)
-            : static_cast<const void*>(&v2_cmd);
-        send_command(lc, 0x60, 0x00, lc_data, sizeof(v3_cmd));
-      }
-    }
+    // TODO: We might need to send different versions of the command here to
+    // different clients in certain crossplay scenarios, so just using
+    // echo_to_lobby would not suffice. Figure out a way to handle this.
+    send_protected_command(c, c_data, sizeof(v3_cmd), true);
   }
 }
 

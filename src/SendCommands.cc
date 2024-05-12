@@ -508,7 +508,8 @@ bool send_protected_command(std::shared_ptr<Client> c, const void* data, size_t 
     case Version::GC_V3:
     case Version::XB_V3:
     case Version::GC_EP3_NTE:
-    case Version::GC_EP3: {
+    case Version::GC_EP3:
+    case Version::BB_V4: {
       auto s = c->require_server_state();
       if (!s->enable_v3_v4_protected_subcommands ||
           c->config.check_flag(Client::Flag::NO_SEND_FUNCTION_CALL) ||
@@ -2489,9 +2490,7 @@ void send_remove_conditions(shared_ptr<Client> c) {
     cmd.unknown_a1 = z;
     cmd.unknown_a2 = 0;
   }
-  if (send_protected_command(c, &cmds, sizeof(cmds), true)) {
-    send_command_excluding_client(c->require_lobby(), c, 0x60, 0x00, &cmds, sizeof(cmds));
-  }
+  send_protected_command(c, &cmds, sizeof(cmds), true);
 }
 
 void send_remove_conditions(Channel& ch, uint16_t client_id) {
