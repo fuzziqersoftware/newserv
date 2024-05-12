@@ -27,12 +27,12 @@ public:
   std::shared_ptr<PSOBBBaseSystemFile> get_system(const std::string& filename);
   std::shared_ptr<PSOBBCharacterFile> get_character(const std::string& filename);
   std::shared_ptr<PSOBBGuildCardFile> get_guild_card(const std::string& filename);
-  std::shared_ptr<PlayerBank> get_bank(const std::string& filename);
+  std::shared_ptr<PlayerBank200> get_bank(const std::string& filename);
 
   void set_system(const std::string& filename, std::shared_ptr<PSOBBBaseSystemFile> file);
   void set_character(const std::string& filename, std::shared_ptr<PSOBBCharacterFile> file);
   void set_guild_card(const std::string& filename, std::shared_ptr<PSOBBGuildCardFile> file);
-  void set_bank(const std::string& filename, std::shared_ptr<PlayerBank> file);
+  void set_bank(const std::string& filename, std::shared_ptr<PlayerBank200> file);
 
 private:
   std::shared_ptr<struct event_base> base;
@@ -41,7 +41,7 @@ private:
   std::unordered_map<std::string, std::shared_ptr<PSOBBBaseSystemFile>> loaded_system_files;
   std::unordered_map<std::string, std::shared_ptr<PSOBBCharacterFile>> loaded_character_files;
   std::unordered_map<std::string, std::shared_ptr<PSOBBGuildCardFile>> loaded_guild_card_files;
-  std::unordered_map<std::string, std::shared_ptr<PlayerBank>> loaded_bank_files;
+  std::unordered_map<std::string, std::shared_ptr<PlayerBank200>> loaded_bank_files;
 
   static void clear_expired_files(evutil_socket_t fd, short events, void* ctx);
 };

@@ -2338,11 +2338,11 @@ void send_self_leave_notification(shared_ptr<Client> c) {
 }
 
 void send_get_player_info(shared_ptr<Client> c, bool request_extended) {
-  // TODO: Support extended player info on other versions.
+  // TODO: Support extended player info on Ep3 JP and NTE
   if (request_extended &&
       !c->config.check_flag(Client::Flag::NO_SEND_FUNCTION_CALL) &&
       !c->config.check_flag(Client::Flag::SEND_FUNCTION_CALL_CHECKSUM_ONLY) &&
-      ((c->version() == Version::GC_V3) || (c->version() == Version::XB_V3))) {
+      ((c->version() == Version::DC_V2) || (c->version() == Version::GC_V3) || (c->version() == Version::XB_V3))) {
     auto s = c->require_server_state();
     prepare_client_for_patches(c, [wc = weak_ptr<Client>(c)]() {
       auto c = wc.lock();

@@ -904,7 +904,7 @@ void Client::save_all() {
   }
   if (this->external_bank) {
     string filename = this->shared_bank_filename();
-    save_object_file<PlayerBank>(filename, *this->external_bank);
+    save_object_file<PlayerBank200>(filename, *this->external_bank);
     player_data_log.info("Saved shared bank file %s", filename.c_str());
   }
   if (this->external_bank_character) {
@@ -1002,7 +1002,7 @@ void Client::save_and_unload_character() {
   }
 }
 
-PlayerBank& Client::current_bank() {
+PlayerBank200& Client::current_bank() {
   if (this->external_bank) {
     return *this->external_bank;
   } else if (this->external_bank_character) {
@@ -1018,7 +1018,7 @@ std::shared_ptr<PSOBBCharacterFile> Client::current_bank_character() {
 void Client::use_default_bank() {
   if (this->external_bank) {
     string filename = this->shared_bank_filename();
-    save_object_file<PlayerBank>(filename, *this->external_bank);
+    save_object_file<PlayerBank200>(filename, *this->external_bank);
     this->external_bank.reset();
     player_data_log.info("Detached shared bank %s", filename.c_str());
   }
@@ -1040,12 +1040,12 @@ bool Client::use_shared_bank() {
     player_data_log.info("Using loaded shared bank %s", filename.c_str());
     return true;
   } else if (isfile(filename)) {
-    this->external_bank = make_shared<PlayerBank>(load_object_file<PlayerBank>(filename));
+    this->external_bank = make_shared<PlayerBank200>(load_object_file<PlayerBank200>(filename));
     files_manager->set_bank(filename, this->external_bank);
     player_data_log.info("Loaded shared bank %s", filename.c_str());
     return true;
   } else {
-    this->external_bank = make_shared<PlayerBank>();
+    this->external_bank = make_shared<PlayerBank200>();
     files_manager->set_bank(filename, this->external_bank);
     player_data_log.info("Created shared bank for %s", filename.c_str());
     return false;

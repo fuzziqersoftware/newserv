@@ -234,6 +234,7 @@ struct PlayerInventoryT {
   }
 
   size_t remove_all_items_of_type(uint8_t data1_0, int16_t data1_1 = -1) {
+
     size_t write_offset = 0;
     for (size_t read_offset = 0; read_offset < this->num_items; read_offset++) {
       bool should_delete = ((this->items[read_offset].data.data1[0] == data1_0) &&
@@ -287,6 +288,7 @@ struct PlayerInventoryT {
   }
 
   operator PlayerInventoryT<!IsBigEndian>() const {
+
     PlayerInventoryT<!IsBigEndian> ret;
     ret.num_items = this->num_items;
     ret.hp_from_materials = this->hp_from_materials;
@@ -301,14 +303,14 @@ using PlayerInventoryBE = PlayerInventoryT<true>;
 check_struct_size(PlayerInventory, 0x34C);
 check_struct_size(PlayerInventoryBE, 0x34C);
 
-template <bool IsBigEndian>
+template <size_t SlotCount, bool IsBigEndian>
 struct PlayerBankT {
   using U32T = typename std::conditional<IsBigEndian, be_uint32_t, le_uint32_t>::type;
 
   /* 0000 */ U32T num_items = 0;
   /* 0004 */ U32T meseta = 0;
-  /* 0008 */ parray<PlayerBankItemT<IsBigEndian>, 200> items;
-  /* 12C8 */
+  /* 0008 */ parray<PlayerBankItemT<IsBigEndian>, SlotCount> items;
+  /* 05A8 for 60 items (v1/v2), 12C8 for 200 items (v3/v4) */
 
   void add_item(const ItemData& item, const ItemData::StackLimits& limits) {
     uint32_t primary_identifier = item.primary_identifier();
@@ -341,7 +343,7 @@ struct PlayerBankT {
       }
     }
 
-    if (this->num_items >= 200) {
+    if (this->num_items >= SlotCount) {
       throw std::runtime_error("no free space in bank");
     }
     auto& last_item = this->items[this->num_items];
@@ -352,6 +354,7 @@ struct PlayerBankT {
   }
 
   ItemData remove_item(uint32_t item_id, uint32_t amount, const ItemData::StackLimits& limits) {
+
     size_t index = this->find_item(item_id);
     auto& bank_item = this->items[index];
 
@@ -395,17 +398,21 @@ struct PlayerBankT {
     }
   }
 
-  operator PlayerBankT<!IsBigEndian>() const {
-    PlayerBankT<!IsBigEndian> ret;
+  template <size_t DestSlotCount, bool DestIsBigEndian>
+  operator PlayerBankT<DestSlotCount, DestIsBigEndian>() const {
+
+    PlayerBankT<DestSlotCount, DestIsBigEndian> ret;
     ret.num_items = this->num_items.load();
     ret.meseta = this->meseta.load();
-    for (size_t z = 0; z < this->items.size(); z++) {
+    for (size_t z = 0; z < std::min<size_t>(ret.items.size(), this->items.size()); z++) {
       ret.items[z] = this->items[z];
     }
     return ret;
   }
 } __packed__;
-using PlayerBank = PlayerBankT<false>;
-using PlayerBankBE = PlayerBankT<true>;
-check_struct_size(PlayerBank, 0x12C8);
-check_struct_size(PlayerBankBE, 0x12C8);
+using PlayerBank60 = PlayerBankT<60, false>;
+using PlayerBank200 = PlayerBankT<200, false>;
+using PlayerBank200BE = PlayerBankT<200, true>;
+check_struct_size(PlayerBank60, 0x05A8);
+check_struct_size(PlayerBank200, 0x12C8);
+check_struct_size(PlayerBank200BE, 0x12C8);

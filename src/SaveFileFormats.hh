@@ -132,11 +132,11 @@ struct SaveFileSymbolChatEntryT {
 } __packed__;
 using SaveFileSymbolChatEntryPC = SaveFileSymbolChatEntryT<false, TextEncoding::UTF16, 0x18>;
 using SaveFileSymbolChatEntryGC = SaveFileSymbolChatEntryT<true, TextEncoding::MARKED, 0x18>;
-using SaveFileSymbolChatEntryXB = SaveFileSymbolChatEntryT<false, TextEncoding::MARKED, 0x18>;
+using SaveFileSymbolChatEntryDCXB = SaveFileSymbolChatEntryT<false, TextEncoding::MARKED, 0x18>;
 using SaveFileSymbolChatEntryBB = SaveFileSymbolChatEntryT<false, TextEncoding::UTF16, 0x14>;
 check_struct_size(SaveFileSymbolChatEntryPC, 0x70);
 check_struct_size(SaveFileSymbolChatEntryGC, 0x58);
-check_struct_size(SaveFileSymbolChatEntryXB, 0x58);
+check_struct_size(SaveFileSymbolChatEntryDCXB, 0x58);
 check_struct_size(SaveFileSymbolChatEntryBB, 0x68);
 
 template <bool IsBigEndian>
@@ -167,12 +167,12 @@ using WordSelectMessageBE = WordSelectMessageT<true>;
 check_struct_size(WordSelectMessage, 0x1C);
 check_struct_size(WordSelectMessageBE, 0x1C);
 
-template <bool IsBigEndian, TextEncoding Encoding>
+template <bool IsBigEndian, TextEncoding Encoding, size_t MaxChars>
 struct SaveFileChatShortcutEntryT {
   using U32T = std::conditional_t<IsBigEndian, be_uint32_t, le_uint32_t>;
 
   union Definition {
-    pstring<Encoding, 0x50> text;
+    pstring<Encoding, MaxChars> text;
     WordSelectMessageT<IsBigEndian> word_select;
     SymbolChatT<IsBigEndian> symbol_chat;
 
@@ -184,14 +184,14 @@ struct SaveFileChatShortcutEntryT {
     }
   } __packed__;
 
-  /* GC:BB */
-  /* 00:00 */ U32T type; // 1 = text, 2 = word select, 3 = symbol chat
-  /* 04:04 */ Definition definition;
-  /* 54:A4 */
+  /* DC:GC:BB */
+  /* 00:00:00 */ U32T type; // 1 = text, 2 = word select, 3 = symbol chat
+  /* 04:04:04 */ Definition definition;
+  /* 40:54:A4 */
 
-  template <bool RetIsBigEndian, TextEncoding RetEncoding>
-  SaveFileChatShortcutEntryT<RetIsBigEndian, RetEncoding> convert(uint8_t language) const {
-    SaveFileChatShortcutEntryT<RetIsBigEndian, RetEncoding> ret;
+  template <bool RetIsBigEndian, TextEncoding RetEncoding, size_t RetMaxSize>
+  SaveFileChatShortcutEntryT<RetIsBigEndian, RetEncoding, RetMaxSize> convert(uint8_t language) const {
+    SaveFileChatShortcutEntryT<RetIsBigEndian, RetEncoding, RetMaxSize> ret;
     ret.type = this->type.load();
     switch (ret.type) {
       case 1:
@@ -209,12 +209,48 @@ struct SaveFileChatShortcutEntryT {
     return ret;
   }
 } __packed__;
-using SaveFileShortcutEntryGC = SaveFileChatShortcutEntryT<true, TextEncoding::MARKED>;
-using SaveFileShortcutEntryXB = SaveFileChatShortcutEntryT<false, TextEncoding::MARKED>;
-using SaveFileShortcutEntryBB = SaveFileChatShortcutEntryT<false, TextEncoding::UTF16>;
+using SaveFileShortcutEntryDC = SaveFileChatShortcutEntryT<false, TextEncoding::MARKED, 0x3C>;
+using SaveFileShortcutEntryGC = SaveFileChatShortcutEntryT<true, TextEncoding::MARKED, 0x50>;
+using SaveFileShortcutEntryXB = SaveFileChatShortcutEntryT<false, TextEncoding::MARKED, 0x50>;
+using SaveFileShortcutEntryBB = SaveFileChatShortcutEntryT<false, TextEncoding::UTF16, 0x50>;
+check_struct_size(SaveFileShortcutEntryDC, 0x40);
 check_struct_size(SaveFileShortcutEntryGC, 0x54);
 check_struct_size(SaveFileShortcutEntryXB, 0x54);
 check_struct_size(SaveFileShortcutEntryBB, 0xA4);
+
+struct PSODCV2CharacterFile {
+  // See PSOGCCharacterFile::Character for descriptions of fields' meanings.
+  /* 0000:---- */ PlayerInventory inventory;
+  /* 034C:---- */ PlayerDispDataDCPCV3 disp;
+  /* 041C:0000 */ le_uint32_t flags = 0;
+  /* 0420:0004 */ le_uint32_t creation_timestamp = 0;
+  /* 0424:0008 */ le_uint32_t signature = 0xA205B064;
+  /* 0428:000C */ le_uint32_t play_time_seconds = 0;
+  /* 042C:0010 */ le_uint32_t option_flags = 0x00040058;
+  /* 0430:0014 */ le_uint32_t save_count = 0;
+  /* 0434:0018 */ pstring<TextEncoding::ASCII, 0x1C> ppp_username;
+  /* 0450:0034 */ pstring<TextEncoding::ASCII, 0x10> ppp_password;
+  /* 0460:0044 */ QuestFlags quest_flags;
+  /* 0660:0244 */ PlayerBank60 bank;
+  /* 0C08:07EC */ GuildCardDC guild_card;
+  /* 0C85:0869 */ parray<uint8_t, 3> unknown_s1; // Probably actually unused
+  /* 0C88:086C */ parray<SaveFileSymbolChatEntryDCXB, 12> symbol_chats;
+  /* 10A8:0C8C */ parray<SaveFileShortcutEntryDC, 20> shortcuts;
+  /* 15A8:118C */ pstring<TextEncoding::ASCII, 0x10> v1_serial_number;
+  /* 15B8:119C */ pstring<TextEncoding::ASCII, 0x10> v1_access_key;
+  /* 15C8:11AC */ PlayerRecordsBattle battle_records;
+  /* 15E0:11C4 */ PlayerRecordsChallengeDC challenge_records;
+  /* 1680:1264 */ parray<le_uint16_t, 20> tech_menu_shortcut_entries;
+  // The Choice Search config is stored here as 32-bit integers, even though
+  // it's always represented with 16-bit integers in the C0 command. The order
+  // of the entries here is the same (that is, the first two of these ints are
+  // entries[0], the second two are entries[1], etc.).
+  /* 16A8:128C */ parray<le_uint32_t, 10> choice_search_config;
+  /* 16D0:12B4 */ parray<uint8_t, 4> unknown_a2;
+  /* 16D4:12B8 */ pstring<TextEncoding::ASCII, 0x10> v2_serial_number;
+  /* 16E4:12C8 */ pstring<TextEncoding::ASCII, 0x10> v2_access_key;
+  /* 16F4:12D8 */
+} __packed_ws__(PSODCV2CharacterFile, 0x16F4);
 
 struct PSOGCCharacterFile {
   /* 00000 */ be_uint32_t checksum;
@@ -257,11 +293,11 @@ struct PSOGCCharacterFile {
     //   R = Map direction (0 = non-fixed; 1 = fixed)
     /* 042C:0010 */ be_uint32_t option_flags = 0x00040058;
     /* 0430:0014 */ be_uint32_t save_count = 0;
-    /* 0434:0018 */ parray<uint8_t, 0x1C> unknown_a2;
-    /* 0450:0034 */ parray<uint8_t, 0x10> unknown_a3;
+    /* 0434:0018 */ pstring<TextEncoding::ASCII, 0x1C> ppp_username;
+    /* 0450:0034 */ pstring<TextEncoding::ASCII, 0x10> ppp_password;
     /* 0460:0044 */ QuestFlags quest_flags;
     /* 0660:0244 */ be_uint32_t death_count = 0;
-    /* 0664:0248 */ PlayerBankBE bank;
+    /* 0664:0248 */ PlayerBank200BE bank;
     /* 192C:1510 */ GuildCardGCBE guild_card;
     /* 19BC:15A0 */ parray<SaveFileSymbolChatEntryGC, 12> symbol_chats;
     /* 1DDC:19C0 */ parray<SaveFileShortcutEntryGC, 20> shortcuts;
@@ -307,19 +343,17 @@ struct PSOGCEp3CharacterFile {
     // this field mean.
     /* 042C:0010 */ be_uint32_t option_flags;
     /* 0430:0014 */ be_uint32_t save_count;
-    /* 0434:0018 */ parray<uint8_t, 0x1C> unknown_a2;
-    /* 0450:0034 */ parray<uint8_t, 0x10> unknown_a3;
+    /* 0434:0018 */ pstring<TextEncoding::ASCII, 0x1C> ppp_username;
+    /* 0450:0034 */ pstring<TextEncoding::ASCII, 0x10> ppp_password;
     // seq_vars is an array of 8192 bits, which contain all the Episode 3 quest
     // progress flags. This includes things like which maps are unlocked, which
     // NPC decks are unlocked, and whether the player has a VIP card or not.
     /* 0460:0044 */ parray<uint8_t, 0x400> seq_vars;
     /* 0860:0444 */ be_uint32_t death_count;
-    // The following three fields appear to actually be a PlayerBank structure
-    // with only 4 item slots instead of 200. They presumably didn't completely
-    // remove the bank in Ep3 because they would have to change too much code.
-    /* 0864:0448 */ be_uint32_t num_bank_items;
-    /* 0868:044C */ be_uint32_t bank_meseta;
-    /* 086C:0450 */ parray<PlayerBankItemBE, 4> bank_items;
+    // Curiously, Episode 3 characters do have item banks, but there are only 4
+    // item slots. Sega presumably didn't completely remove the bank in Ep3
+    // because they would have to change too much code.
+    /* 0864:0448 */ PlayerBankT<4, true> bank;
     /* 08CC:04B0 */ GuildCardGCBE guild_card;
     /* 095C:0540 */ parray<SaveFileSymbolChatEntryGC, 12> symbol_chats;
     /* 0D7C:0960 */ parray<SaveFileShortcutEntryGC, 20> chat_shortcuts;
@@ -410,13 +444,13 @@ struct PSOXBCharacterFileCharacter {
   /* 0428:000C */ le_uint32_t play_time_seconds = 0;
   /* 042C:0010 */ le_uint32_t option_flags = 0x00040058;
   /* 0430:0014 */ le_uint32_t save_count = 0;
-  /* 0434:0018 */ parray<uint8_t, 0x1C> unknown_a2;
-  /* 0450:0034 */ parray<uint8_t, 0x10> unknown_a3;
+  /* 0434:0018 */ pstring<TextEncoding::ASCII, 0x1C> ppp_username;
+  /* 0450:0034 */ pstring<TextEncoding::ASCII, 0x10> ppp_password;
   /* 0460:0044 */ QuestFlags quest_flags;
   /* 0660:0244 */ le_uint32_t death_count = 0;
-  /* 0664:0248 */ PlayerBank bank;
+  /* 0664:0248 */ PlayerBank200 bank;
   /* 192C:1510 */ GuildCardXB guild_card;
-  /* 1B58:173C */ parray<SaveFileSymbolChatEntryXB, 12> symbol_chats;
+  /* 1B58:173C */ parray<SaveFileSymbolChatEntryDCXB, 12> symbol_chats;
   /* 1F78:1B5C */ parray<SaveFileShortcutEntryXB, 16> shortcuts;
   /* 24B8:209C */ pstring<TextEncoding::MARKED, 0xAC> auto_reply;
   /* 2518:20FC */ pstring<TextEncoding::MARKED, 0xAC> info_board;
@@ -759,7 +793,7 @@ struct PSOBBCharacterFile {
   /* 04F0 */ le_uint32_t save_count = 0;
   /* 04F4 */ QuestFlags quest_flags;
   /* 06F4 */ le_uint32_t death_count = 0;
-  /* 06F8 */ PlayerBank bank;
+  /* 06F8 */ PlayerBank200 bank;
   /* 19C0 */ GuildCardBB guild_card;
   /* 1AC8 */ le_uint32_t unknown_a3 = 0;
   /* 1ACC */ parray<SaveFileSymbolChatEntryBB, 0x0C> symbol_chats;
@@ -795,8 +829,9 @@ struct PSOBBCharacterFile {
       uint8_t language,
       const PlayerDispDataBBPreview& preview,
       std::shared_ptr<const LevelTable> level_table);
-  static std::shared_ptr<PSOBBCharacterFile> create_from_gc(const PSOGCCharacterFile::Character& gc_char);
-  static std::shared_ptr<PSOBBCharacterFile> create_from_xb(const PSOXBCharacterFileCharacter& xb_char);
+  static std::shared_ptr<PSOBBCharacterFile> create_from_dc_v2(const PSODCV2CharacterFile& dc);
+  static std::shared_ptr<PSOBBCharacterFile> create_from_gc(const PSOGCCharacterFile::Character& gc);
+  static std::shared_ptr<PSOBBCharacterFile> create_from_xb(const PSOXBCharacterFileCharacter& xb);
 
   void add_item(const ItemData& item, const ItemData::StackLimits& limits);
   ItemData remove_item(uint32_t item_id, uint32_t amount, const ItemData::StackLimits& limits);
@@ -856,7 +891,7 @@ struct LegacySavedPlayerDataBB { // .nsc file format
   /* 0028 */ PlayerRecordsBattle battle_records;
   /* 0040 */ PlayerDispDataBBPreview preview;
   /* 00BC */ pstring<TextEncoding::UTF16, 0x00AC> auto_reply;
-  /* 0214 */ PlayerBank bank;
+  /* 0214 */ PlayerBank200 bank;
   /* 14DC */ PlayerRecordsChallengeBB challenge_records;
   /* 161C */ PlayerDispDataBB disp;
   /* 17AC */ pstring<TextEncoding::UTF16, 0x0058> guild_card_description;

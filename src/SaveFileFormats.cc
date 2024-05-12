@@ -418,6 +418,39 @@ shared_ptr<PSOBBCharacterFile> PSOBBCharacterFile::create_from_preview(
       guild_card_number, language, preview.visual, preview.name.decode(language), level_table);
 }
 
+shared_ptr<PSOBBCharacterFile> PSOBBCharacterFile::create_from_dc_v2(const PSODCV2CharacterFile& dc) {
+  auto ret = make_shared<PSOBBCharacterFile>();
+  ret->inventory = dc.inventory;
+  ret->inventory.decode_from_client(Version::DC_V2);
+  uint8_t language = ret->inventory.language;
+  ret->disp = dc.disp.to_bb(language, language);
+  ret->creation_timestamp = dc.creation_timestamp;
+  ret->play_time_seconds = dc.play_time_seconds;
+  ret->option_flags = dc.option_flags;
+  ret->save_count = dc.save_count;
+  ret->quest_flags = dc.quest_flags;
+  ret->bank = dc.bank;
+  ret->guild_card = dc.guild_card;
+  for (size_t z = 0; z < std::min<size_t>(ret->symbol_chats.size(), dc.symbol_chats.size()); z++) {
+    auto& ret_sc = ret->symbol_chats[z];
+    const auto& dc_sc = dc.symbol_chats[z];
+    ret_sc.present = dc_sc.present.load();
+    ret_sc.name.encode(dc_sc.name.decode(language), language);
+    ret_sc.spec = dc_sc.spec;
+  }
+  for (size_t z = 0; z < std::min<size_t>(ret->shortcuts.size(), dc.shortcuts.size()); z++) {
+    ret->shortcuts[z] = dc.shortcuts[z].convert<false, TextEncoding::UTF16, 0x50>(language);
+  }
+  ret->battle_records = dc.battle_records;
+  ret->challenge_records = dc.challenge_records;
+  ret->tech_menu_shortcut_entries = dc.tech_menu_shortcut_entries;
+  for (size_t z = 0; z < 5; z++) {
+    ret->choice_search_config.entries[z].parent_choice_id = dc.choice_search_config[z * 2].load();
+    ret->choice_search_config.entries[z].choice_id = dc.choice_search_config[z * 2 + 1].load();
+  }
+  return ret;
+}
+
 shared_ptr<PSOBBCharacterFile> PSOBBCharacterFile::create_from_gc(const PSOGCCharacterFile::Character& gc) {
   auto ret = make_shared<PSOBBCharacterFile>();
   ret->inventory = gc.inventory;
@@ -440,7 +473,7 @@ shared_ptr<PSOBBCharacterFile> PSOBBCharacterFile::create_from_gc(const PSOGCCha
     ret_sc.spec = gc_sc.spec;
   }
   for (size_t z = 0; z < std::min<size_t>(ret->shortcuts.size(), gc.shortcuts.size()); z++) {
-    ret->shortcuts[z] = gc.shortcuts[z].convert<false, TextEncoding::UTF16>(language);
+    ret->shortcuts[z] = gc.shortcuts[z].convert<false, TextEncoding::UTF16, 0x50>(language);
   }
   ret->auto_reply.encode(gc.auto_reply.decode(language), language);
   ret->info_board.encode(gc.info_board.decode(language), language);
@@ -482,7 +515,7 @@ shared_ptr<PSOBBCharacterFile> PSOBBCharacterFile::create_from_xb(const PSOXBCha
     ret_sc.spec = xb_sc.spec;
   }
   for (size_t z = 0; z < std::min<size_t>(ret->shortcuts.size(), xb.shortcuts.size()); z++) {
-    ret->shortcuts[z] = xb.shortcuts[z].convert<false, TextEncoding::UTF16>(language);
+    ret->shortcuts[z] = xb.shortcuts[z].convert<false, TextEncoding::UTF16, 0x50>(language);
   }
   ret->auto_reply.encode(xb.auto_reply.decode(language), language);
   ret->info_board.encode(xb.info_board.decode(language), language);
@@ -525,7 +558,7 @@ PSOGCCharacterFile::Character PSOBBCharacterFile::to_gc() const {
     ret_sc.spec = gc_sc.spec;
   }
   for (size_t z = 0; z < std::min<size_t>(ret.shortcuts.size(), this->shortcuts.size()); z++) {
-    ret.shortcuts[z] = this->shortcuts[z].convert<true, TextEncoding::MARKED>(language);
+    ret.shortcuts[z] = this->shortcuts[z].convert<true, TextEncoding::MARKED, 0x50>(language);
   }
   ret.auto_reply.encode(this->auto_reply.decode(language), language);
   ret.info_board.encode(this->info_board.decode(language), language);
@@ -570,7 +603,7 @@ PSOXBCharacterFileCharacter PSOBBCharacterFile::to_xb(uint64_t xb_user_id) const
     ret_sc.spec = gc_sc.spec;
   }
   for (size_t z = 0; z < std::min<size_t>(ret.shortcuts.size(), this->shortcuts.size()); z++) {
-    ret.shortcuts[z] = this->shortcuts[z].convert<false, TextEncoding::MARKED>(language);
+    ret.shortcuts[z] = this->shortcuts[z].convert<false, TextEncoding::MARKED, 0x50>(language);
   }
   ret.auto_reply.encode(this->auto_reply.decode(language), language);
   ret.info_board.encode(this->info_board.decode(language), language);
@@ -605,7 +638,7 @@ SaveFileSymbolChatEntryBB PSOBBCharacterFile::DefaultSymbolChatEntry::to_entry(u
 }
 
 // TODO: Eliminate duplication between this function and the parallel function
-// in PlayerBank
+// in PlayerBankT
 void PSOBBCharacterFile::add_item(const ItemData& item, const ItemData::StackLimits& limits) {
   uint32_t primary_identifier = item.primary_identifier();
 
@@ -653,7 +686,7 @@ void PSOBBCharacterFile::add_item(const ItemData& item, const ItemData::StackLim
 }
 
 // TODO: Eliminate code duplication between this function and the parallel
-// function in PlayerBank
+// function in PlayerBankT
 ItemData PSOBBCharacterFile::remove_item(uint32_t item_id, uint32_t amount, const ItemData::StackLimits& limits) {
   ItemData ret;
 

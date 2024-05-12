@@ -381,7 +381,7 @@ public:
   void load_backup_character(uint32_t account_id, size_t index);
   void save_and_unload_character();
 
-  PlayerBank& current_bank();
+  PlayerBank200& current_bank();
   std::shared_ptr<PSOBBCharacterFile> current_bank_character();
   bool use_shared_bank(); // Returns true if the bank exists; false if it was created
   void use_character_bank(int8_t bb_character_index);
@@ -398,7 +398,7 @@ private:
   std::shared_ptr<PSOBBCharacterFile> overlay_character_data;
   std::shared_ptr<PSOBBCharacterFile> character_data;
   std::shared_ptr<PSOBBGuildCardFile> guild_card_data;
-  std::shared_ptr<PlayerBank> external_bank;
+  std::shared_ptr<PlayerBank200> external_bank;
   std::shared_ptr<PSOBBCharacterFile> external_bank_character;
   int8_t external_bank_character_index;
   uint64_t last_play_time_update;
