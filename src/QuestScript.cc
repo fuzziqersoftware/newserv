@@ -993,7 +993,7 @@ std::string disassemble_quest_script(const void* data, size_t size, Version vers
       }
       lines.emplace_back(string_printf(".quest_num %hu", header.quest_number.load()));
       lines.emplace_back(string_printf(".episode %s", name_for_header_episode_number(header.episode)));
-      lines.emplace_back(string_printf(".max_players %hhu", header.episode));
+      lines.emplace_back(string_printf(".max_players %hhu", header.max_players ? header.max_players : 4));
       if (header.joinable) {
         lines.emplace_back(".joinable");
       }
