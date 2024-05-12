@@ -214,9 +214,12 @@ If you're using a version of Dolphin with tapserver support, you can make it con
 
 The PSO BB client has been modified and distributed in many different forms. newserv supports most, but not all, of the common distributions. Unlike other versions, it's important that the client and server have the same map files, so make sure to set up the patch directory based on the client you'll be using with newserv. (See the "Client patch directories" section for instructions on setting this up.)
 
-The original Japanese and US versions of PSO BB should work (the last Japanese release can be found [here](https://archive.org/details/psobb_jp_setup_12511_20240109/)), but you'll have to modify your hosts file or edit psobb.exe to point to your newserv instance. The original versions are packed with various versions of ASProtect, so this is a more involved process than simply opening the executable in a hex editor and finding/replacing some strings.
+The original Japanese and US versions of PSO BB work with newserv (the last Japanese release can be found [here](https://archive.org/details/psobb_jp_setup_12511_20240109/)). To get them to connect to your server, do one of the following:
+* Use a drop-in patcher like [AzureFlare](https://github.com/Repflez/AzureFlare).
+* Modify your hosts file to redirect the client's destination address to localhost or your server's address.
+* Edit psobb.exe to point to your newserv instance. The original clients are packed with various versions of ASProtect, so this is a more involved process than simply opening the executable in a hex editor and finding/replacing some strings.
 
-Alternatively, you can use the Tethealla client ([English](https://web.archive.org/web/20240402011115/https://ragol.org/files/bb/TethVer12513_English.zip) / [Japanese](https://web.archive.org/web/20240402013127/https://ragol.org/files/bb/TethVer12513_Japanese.zip)); you can find the connection addresses starting at 0x56D724 in psobb.exe. Overwrite these addresses with your server's hostname or IP address, and you should be able to connect. If the server is on the same PC as the client and you don't plan to have any external players, these Tethealla clients will automatically connect to the server without any modifications.
+Alternatively, you can use the Tethealla client ([English](https://web.archive.org/web/20240402011115/https://ragol.org/files/bb/TethVer12513_English.zip) or [Japanese](https://web.archive.org/web/20240402013127/https://ragol.org/files/bb/TethVer12513_Japanese.zip)). If the server is on the same PC as the client and you don't plan to have any external players, these Tethealla clients will automatically connect to the server without any modifications. This version of the client is not packed, and you can find the connection addresses starting at 0x56D724 in psobb.exe. Overwrite these addresses with your server's hostname or IP address, and you should be able to connect.
 
 ### Connecting external clients
 
