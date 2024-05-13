@@ -649,6 +649,10 @@ struct PSOBBCharacterFile {
   static std::shared_ptr<PSOBBCharacterFile> create_from_gc(const PSOGCCharacterFile::Character& gc);
   static std::shared_ptr<PSOBBCharacterFile> create_from_xb(const PSOXBCharacterFileCharacter& xb);
 
+  PSODCV2CharacterFile to_dc_v2() const;
+  PSOGCCharacterFile::Character to_gc() const;
+  PSOXBCharacterFileCharacter to_xb(uint64_t xb_user_id) const;
+
   void add_item(const ItemData& item, const ItemData::StackLimits& limits);
   ItemData remove_item(uint32_t item_id, uint32_t amount, const ItemData::StackLimits& limits);
   void add_meseta(uint32_t amount);
@@ -670,9 +674,6 @@ struct PSOBBCharacterFile {
   uint8_t get_material_usage(MaterialType which) const;
   void set_material_usage(MaterialType which, uint8_t usage);
   void clear_all_material_usage();
-
-  PSOGCCharacterFile::Character to_gc() const;
-  PSOXBCharacterFileCharacter to_xb(uint64_t xb_user_id) const;
 } __packed_ws__(PSOBBCharacterFile, 0x2EA4);
 
 ////////////////////////////////////////////////////////////////////////////////

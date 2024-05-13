@@ -327,6 +327,28 @@ All versions of PSO can see and interact with each other in the lobby. newserv a
 
 In V1/V2 cross-version play, when any of the server drop modes are used, the server uses the drop table corresponding to the version the game was created with. (For example, if a DC V1 player created the game, rare-table-v1.json will be used, even after V2 players join.)
 
+## Server-side saves
+
+newserv has the ability to save character data on the server side. For PSO BB, this is required of course, but this feature can also be used on other PSO versions.
+
+Each account has 4 BB character slots and 16 non-BB character file slots. The non-BB slots are independent of the BB slots, and can be accessed with the `$savechar <slot>` and `$loadchar <slot>` commands (slots are numbered 1 through 16). `$savechar` copies the character you're currently playing as and saves the data on the server, and `$loadchar` does the reverse, overwriting your current character with the data saved on the server. Note that you can load a character that was saved from a different version of PSO, which allows you to easily transfer characters between games. On v1 and v2, changes done by `$loadchar` will be undone if you join a game; to permanently save your changes, disconnect from the lobby after using the command.
+
+There is a third command, `$bbchar <username> <password> <slot>`, which behaves similarly to `$savechar` but writes the character data to a BB character slot in a different account instead (slots are numbered 1 through 4). This can be used to "upgrade" a character to BB from an earlier version.
+
+Exactly which data is saved and loaded depends on the game version:
+
+| Game                 | Inventory | Character | Options/chats | Quest flags | Bank | Battle/challenge |
+|----------------------|-----------|-----------|---------------|-------------|------|------------------|
+| PSO DC v1 prototypes | Yes       | Yes       | No            | No          | No   | N/A              |
+| PSO DC v1            | Yes       | Yes       | No            | No          | No   | N/A              |
+| PSO DC v2            | Yes       | Yes       | Yes           | Yes         | Yes  | Yes              |
+| PSO PC (v2)          | Yes       | Yes       | No            | No          | No   | Save only        |
+| PSO GC NTE           | Yes       | Yes       | No            | No          | No   | Save only        |
+| PSO GC (not Plus)    | Yes       | Yes       | Yes           | Yes         | Yes  | Yes              |
+| PSO GC Plus          | Save only | Save only | No            | No          | No   | Save only        |
+| PSO Xbox             | Yes       | Yes       | Yes           | Yes         | Yes  | Yes              |
+| PSO BB               | Yes       | Yes       | Yes           | Yes         | Yes  | Yes              |
+
 ## Episode 3 features
 
 newserv supports many features unique to Episode 3:
@@ -510,9 +532,9 @@ Some commands only work on the game server and not on the proxy server. The chat
     * `$patch <name>`: Run a patch on your client. `<name>` must exactly match the name of a patch on the server.
 
 * Character data commands (game server only)
-    * `$savechar <slot>`: Saves your current character data on the server in the specified slot (each account has 16 slots, numbered 1-16). These slots are separate from BB character slots; using this command does not affect BB characters. On non-Plus GC versions, this command also saves your bank contents and chat shortcuts.
-    * `$loadchar <slot>` (v1, v2, and GC non-Plus only): Loads your character data from the specified slot. The changes will be undone if you join a game - to save your changes, disconnect from the lobby.
-    * `$bbchar <username> <password> <slot>`: Use this command when playing on a non-BB version of PSO. If the username and password are correct, this command converts your current character to BB format and saves it on the server in the given slot (1-4). Any character already in that slot is overwritten. (This command is similar to `$savechar`, except it overwrites a BB character slot, and can transfer characters across accounts.) Note that the character's chat data, quick menu config, and bank contents are not copied, since there is no way for the server to request those types of data.
+    * `$savechar <slot>`: Saves your current character data on the server in the specified slot. See the "Server-side saves" section for more details.
+    * `$loadchar <slot>`: Saves your current character data on the server in the specified slot. See the "Server-side saves" section for more details.
+    * `$bbchar <username> <password> <slot>`: Saves your current character data on the server in a different account's BB character slots. See the "Server-side saves" section for more details.
     * `$edit <stat> <value>`: Modifies your character data. If you are on V3 (GameCube/Xbox), this command does nothing. If you are on V1 or V2 (DC or PC, not BB), your changes will be undone if you join a game - to save your changes, disconnect from the lobby. If cheats are allowed on the server, `<stat>` can be any of `atp`, `mst`, `evp`, `hp`, `dfp`, `ata`, `lck`, `meseta`, `exp`, `level`, `namecolor`, `secid`, `name`, `language`, `npc`, or `tech`. If cheats are not allowed, only `namecolor`, `name`, `language`, and `npc` can be used. Changing your character's language is only useful on BB; to do so, use a single-character language code (e.g. to switch your character to English, use `$edit language E`; for Japanese, use `$edit language J`).
 
 * Blue Burst player commands (game server only)

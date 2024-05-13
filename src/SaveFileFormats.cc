@@ -600,6 +600,43 @@ shared_ptr<PSOBBCharacterFile> PSOBBCharacterFile::create_from_xb(const PSOXBCha
   return ret;
 }
 
+PSODCV2CharacterFile PSOBBCharacterFile::to_dc_v2() const {
+  uint8_t language = this->inventory.language;
+
+  PSODCV2CharacterFile ret;
+  ret.inventory = this->inventory;
+  ret.inventory.encode_for_client(Version::DC_V2, nullptr);
+  ret.disp = this->disp.to_dcpcv3<false>(language, language);
+  ret.disp.visual.enforce_lobby_join_limits_for_version(Version::DC_V2);
+  ret.creation_timestamp = this->creation_timestamp.load();
+  ret.play_time_seconds = this->play_time_seconds.load();
+  ret.option_flags = this->option_flags.load();
+  ret.save_count = this->save_count.load();
+  ret.quest_flags = this->quest_flags;
+  ret.bank = this->bank;
+  ret.guild_card = this->guild_card;
+  for (size_t z = 0; z < std::min<size_t>(ret.symbol_chats.size(), this->symbol_chats.size()); z++) {
+    auto& ret_sc = ret.symbol_chats[z];
+    const auto& gc_sc = this->symbol_chats[z];
+    ret_sc.present = gc_sc.present.load();
+    ret_sc.name.encode(gc_sc.name.decode(language), language);
+    ret_sc.spec = gc_sc.spec;
+  }
+  for (size_t z = 0; z < std::min<size_t>(ret.shortcuts.size(), this->shortcuts.size()); z++) {
+    ret.shortcuts[z] = this->shortcuts[z].convert<false, TextEncoding::MARKED, 0x3C>(language);
+  }
+  ret.battle_records = this->battle_records;
+  ret.challenge_records = this->challenge_records;
+  for (size_t z = 0; z < std::min<size_t>(ret.tech_menu_shortcut_entries.size(), this->tech_menu_shortcut_entries.size()); z++) {
+    ret.tech_menu_shortcut_entries[z] = this->tech_menu_shortcut_entries[z].load();
+  }
+  for (size_t z = 0; z < 5; z++) {
+    ret.choice_search_config[z * 2] = this->choice_search_config.entries[z].parent_choice_id.load();
+    ret.choice_search_config[z * 2 + 1] = this->choice_search_config.entries[z].choice_id.load();
+  }
+  return ret;
+}
+
 PSOGCCharacterFile::Character PSOBBCharacterFile::to_gc() const {
   uint8_t language = this->inventory.language;
 
@@ -607,6 +644,7 @@ PSOGCCharacterFile::Character PSOBBCharacterFile::to_gc() const {
   ret.inventory = this->inventory;
   ret.inventory.encode_for_client(Version::GC_V3, nullptr);
   ret.disp = this->disp.to_dcpcv3<true>(language, language);
+  ret.disp.visual.enforce_lobby_join_limits_for_version(Version::GC_V3);
   ret.creation_timestamp = this->creation_timestamp.load();
   ret.play_time_seconds = this->play_time_seconds.load();
   ret.option_flags = this->option_flags.load();
@@ -650,6 +688,7 @@ PSOXBCharacterFileCharacter PSOBBCharacterFile::to_xb(uint64_t xb_user_id) const
   ret.inventory = this->inventory;
   ret.inventory.encode_for_client(Version::XB_V3, nullptr);
   ret.disp = this->disp.to_dcpcv3<false>(language, language);
+  ret.disp.visual.enforce_lobby_join_limits_for_version(Version::XB_V3);
   ret.creation_timestamp = this->creation_timestamp.load();
   ret.play_time_seconds = this->play_time_seconds.load();
   ret.option_flags = this->option_flags.load();
