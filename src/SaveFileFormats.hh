@@ -581,10 +581,10 @@ struct PSOXBCharacterFileCharacter {
   /* 2610:21F4 */ PlayerRecordsBattle battle_records;
   /* 2628:220C */ parray<uint8_t, 4> unknown_a4;
   /* 262C:2210 */ PlayerRecordsChallengeV3 challenge_records;
-  /* 272C:2310 */ parray<be_uint16_t, 20> tech_menu_shortcut_entries;
+  /* 272C:2310 */ parray<le_uint16_t, 20> tech_menu_shortcut_entries;
   /* 2754:2338 */ ChoiceSearchConfig choice_search_config;
   /* 276C:2350 */ parray<uint8_t, 0x10> unknown_a6;
-  /* 277C:2360 */ parray<be_uint32_t, 0x10> quest_counters;
+  /* 277C:2360 */ parray<le_uint32_t, 0x10> quest_counters;
   /* 27BC:23A0 */ PlayerRecordsBattle offline_battle_records;
   /* 27D4:23B8 */ parray<uint8_t, 4> unknown_a7;
   struct UnknownA8Entry {
