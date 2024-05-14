@@ -519,7 +519,10 @@ shared_ptr<PSOBBCharacterFile> PSOBBCharacterFile::create_from_dc_v2(const PSODC
 shared_ptr<PSOBBCharacterFile> PSOBBCharacterFile::create_from_gc(const PSOGCCharacterFile::Character& gc) {
   auto ret = make_shared<PSOBBCharacterFile>();
   ret->inventory = gc.inventory;
-  ret->inventory.decode_from_client(Version::GC_V3);
+  // Note: We intentionally do not call ret->inventory.decode_from_client here.
+  // This is because the GC client byteswaps data2 in each item before sending
+  // it to the server in the 61 and 98 commands, but GetExtendedPlayerInfo does
+  // not do this, so the data2 fields are already in the correct order here.
   uint8_t language = ret->inventory.language;
   ret->disp = gc.disp.to_bb(language, language);
   ret->creation_timestamp = gc.creation_timestamp.load();
@@ -642,7 +645,10 @@ PSOGCCharacterFile::Character PSOBBCharacterFile::to_gc() const {
 
   PSOGCCharacterFile::Character ret;
   ret.inventory = this->inventory;
-  ret.inventory.encode_for_client(Version::GC_V3, nullptr);
+  // Note: We intentionally do not call ret.inventory.encode_for_client here.
+  // This is because the GC client byteswaps data2 in each item before sending
+  // it to the server in the 61 and 98 commands, but GetExtendedPlayerInfo does
+  // not do this, so the data2 fields are already in the correct order here.
   ret.disp = this->disp.to_dcpcv3<true>(language, language);
   ret.disp.visual.enforce_lobby_join_limits_for_version(Version::GC_V3);
   ret.creation_timestamp = this->creation_timestamp.load();
