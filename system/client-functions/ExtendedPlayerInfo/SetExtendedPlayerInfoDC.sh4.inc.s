@@ -8,9 +8,9 @@ start:
   mov.l  r4, [r7]
   mov.l  r4, [r4]
   mov    r5, r7
-  add    r5, 8
+  mov.l  r6, [part1_size]  # This cannot be in the delay slot after `calls`
   calls  memcpy
-  mov.l  r6, [part1_size]
+  add    r5, 8
 
   # First, copy some important fields out of the saved character so that the
   # game won't consider the character corrupt. Note that r5 already points to
@@ -49,9 +49,9 @@ start:
 
   # memcpy(char_file_part2, inbound_part2, sizeof(char_file_part2))
   mov    r4, r1
-  mov    r5, r2
+  mov.l  r6, [part2_size]  # This cannot be in the delay slot after `calls`
   calls  memcpy
-  mov.l  r6, [part2_size]
+  mov    r5, r2
 
   lds.l  pr, [r15]+
   rets
