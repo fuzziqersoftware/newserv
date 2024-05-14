@@ -1001,37 +1001,6 @@ static void on_9E_XB(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
   }
 }
 
-static void scramble_bb_security_data(parray<uint8_t, 0x28>& data, uint8_t which, bool reverse) {
-  static const uint8_t forward_orders[8][5] = {
-      {2, 0, 1, 4, 3},
-      {3, 4, 0, 1, 2},
-      {2, 3, 4, 0, 1},
-      {2, 3, 0, 1, 4},
-      {0, 2, 3, 4, 1},
-      {1, 4, 2, 3, 0},
-      {2, 0, 1, 4, 3},
-      {1, 0, 3, 4, 2},
-  };
-  static const uint8_t reverse_orders[8][5] = {
-      {1, 2, 0, 4, 3},
-      {2, 3, 4, 0, 1},
-      {3, 4, 0, 1, 2},
-      {2, 3, 0, 1, 4},
-      {0, 4, 1, 2, 3},
-      {4, 0, 2, 3, 1},
-      {1, 2, 0, 4, 3},
-      {1, 0, 4, 2, 3},
-  };
-  const auto& order = reverse ? reverse_orders[which & 7] : forward_orders[which & 7];
-  parray<uint8_t, 0x28> scrambled_data;
-  for (size_t z = 0; z < 5; z++) {
-    for (size_t x = 0; x < 8; x++) {
-      scrambled_data[(z * 8) + x] = data[(order[z] * 8) + x];
-    }
-  }
-  data = scrambled_data;
-}
-
 static void on_93_BB(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
   const auto& base_cmd = check_size_t<C_LoginBase_BB_93>(data, 0xFFFF);
   auto s = c->require_server_state();
@@ -1039,12 +1008,6 @@ static void on_93_BB(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
   parray<uint8_t, 0x28> config_data = (data.size() == sizeof(C_LoginWithoutHardwareInfo_BB_93))
       ? check_size_t<C_LoginWithoutHardwareInfo_BB_93>(data).client_config
       : check_size_t<C_LoginWithHardwareInfo_BB_93>(data).client_config;
-
-  // If security_token is zero, the game scrambles the client config data based
-  // on the first character in the username. We undo the scramble here.
-  if (base_cmd.security_token == 0) {
-    scramble_bb_security_data(config_data, base_cmd.username.at(0), true);
-  }
 
   c->config.set_flags_for_version(c->version(), base_cmd.sub_version);
   c->channel.language = base_cmd.language;
@@ -1075,7 +1038,7 @@ static void on_93_BB(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
     // normal version encoding logic. Otherwise, assume it's a community mod,
     // almost all of which are based on TethVer12513, so assume that version
     // otherwise.
-    if (true || starts_with(version_string, "Ver.")) {
+    if (starts_with(version_string, "Ver.")) {
       // Basic algorithm: take all numeric characters from the version string
       // and ignore everything else. Treat that as a decimal integer, then
       // base36-encode it into the low 3 bytes of specific_version.

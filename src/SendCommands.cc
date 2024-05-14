@@ -564,6 +564,37 @@ void send_pc_console_split_reconnect(shared_ptr<Client> c, uint32_t address,
   send_command_t(c, 0x19, 0x00, cmd);
 }
 
+static void scramble_bb_security_data(parray<uint8_t, 0x28>& data, uint8_t which, bool reverse) {
+  static const uint8_t forward_orders[8][5] = {
+      {2, 0, 1, 4, 3},
+      {3, 4, 0, 1, 2},
+      {2, 3, 4, 0, 1},
+      {2, 3, 0, 1, 4},
+      {0, 2, 3, 4, 1},
+      {1, 4, 2, 3, 0},
+      {2, 0, 1, 4, 3},
+      {1, 0, 3, 4, 2},
+  };
+  static const uint8_t reverse_orders[8][5] = {
+      {1, 2, 0, 4, 3},
+      {2, 3, 4, 0, 1},
+      {3, 4, 0, 1, 2},
+      {2, 3, 0, 1, 4},
+      {0, 4, 1, 2, 3},
+      {4, 0, 2, 3, 1},
+      {1, 2, 0, 4, 3},
+      {1, 0, 4, 2, 3},
+  };
+  const auto& order = reverse ? reverse_orders[which & 7] : forward_orders[which & 7];
+  parray<uint8_t, 0x28> scrambled_data;
+  for (size_t z = 0; z < 5; z++) {
+    for (size_t x = 0; x < 8; x++) {
+      scrambled_data[(z * 8) + x] = data[(order[z] * 8) + x];
+    }
+  }
+  data = scrambled_data;
+}
+
 void send_client_init_bb(shared_ptr<Client> c, uint32_t error_code) {
   auto team = c->team();
   S_ClientInit_BB_00E6 cmd;
@@ -574,6 +605,15 @@ void send_client_init_bb(shared_ptr<Client> c, uint32_t error_code) {
   c->config.serialize_into(cmd.client_config);
   cmd.can_create_team = 1;
   cmd.episode_4_unlocked = 1;
+
+  // If security_token is zero, the game scrambles the client config data based
+  // on the first character in the username. We undo the scramble here, so when
+  // the client scrambles the data upon receipt, it will be correct when it next
+  // is sent back to the server.
+  if (cmd.security_token == 0 && c->login && c->login->bb_license) {
+    scramble_bb_security_data(cmd.client_config, c->login->bb_license->username.at(0), true);
+  }
+
   send_command_t(c, 0x00E6, 0x00000000, cmd);
 }
 
