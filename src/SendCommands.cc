@@ -1587,7 +1587,7 @@ void send_quest_menu_t(
     }
 
     auto& e = entries.emplace_back();
-    e.menu_id = (it.second->episode == Episode::EP2) ? MenuID::QUEST_EP2 : MenuID::QUEST_EP1;
+    e.menu_id = (it.second->episode == Episode::EP1) ? MenuID::QUEST_EP1 : MenuID::QUEST_EP2;
     e.item_id = it.second->quest_number;
     e.name.encode(vq->name, c->language());
     e.short_description.encode(add_color(vq->short_description), c->language());
@@ -1608,7 +1608,7 @@ void send_quest_menu_bb(
     }
 
     auto& e = entries.emplace_back();
-    e.menu_id = MenuID::QUEST_EP1;
+    e.menu_id = (it.second->episode == Episode::EP1) ? MenuID::QUEST_EP1 : MenuID::QUEST_EP2;
     e.item_id = it.second->quest_number;
     e.name.encode(vq->name, c->language());
     e.short_description.encode(add_color(vq->short_description), c->language());
