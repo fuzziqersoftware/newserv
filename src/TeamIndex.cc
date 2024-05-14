@@ -113,7 +113,7 @@ void TeamIndex::Team::save_flag() const {
   if (!this->flag_data) {
     return;
   }
-  Image img(32, 32, false);
+  Image img(32, 32, true);
   for (size_t y = 0; y < 32; y++) {
     for (size_t x = 0; x < 32; x++) {
       img.write_pixel(x, y, decode_argb1555_to_rgba8888(this->flag_data->at(y * 0x20 + x)));
