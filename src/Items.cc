@@ -351,7 +351,7 @@ void apply_mag_feed_result(
     if (evolution_number < 2) {
       uint16_t flags = mag_item.compute_mag_strength_flags();
       if (mag_number == 0x0D) {
-        if ((flags & 0x110) == 0) {
+        if (flags & 0x110) {
           mag_item.data1[1] = 0x02;
         } else if (flags & 8) {
           mag_item.data1[1] = 0x03;
