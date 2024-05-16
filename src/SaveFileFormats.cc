@@ -608,6 +608,8 @@ PSODCV2CharacterFile PSOBBCharacterFile::to_dc_v2() const {
 
   PSODCV2CharacterFile ret;
   ret.inventory = this->inventory;
+  // We don't need to do the v1-compatible encoding (hence it is OK to pass
+  // nullptr here) but we do need to encode mag stats in the v2 format
   ret.inventory.encode_for_client(Version::DC_V2, nullptr);
   ret.disp = this->disp.to_dcpcv3<false>(language, language);
   ret.disp.visual.enforce_lobby_join_limits_for_version(Version::DC_V2);

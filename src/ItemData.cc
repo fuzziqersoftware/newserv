@@ -431,14 +431,14 @@ void ItemData::decode_for_version(Version from_version) {
 }
 
 void ItemData::encode_for_version(Version to_version, shared_ptr<const ItemParameterTable> item_parameter_table) {
-  bool should_encode_v2_data = (is_v1(to_version) || is_v2(to_version)) && (to_version != Version::GC_NTE) && !this->has_encoded_v2_data();
+  bool should_encode_v2_data = item_parameter_table &&
+      (is_v1(to_version) || is_v2(to_version)) &&
+      (to_version != Version::GC_NTE) &&
+      !this->has_encoded_v2_data();
 
   switch (this->data1[0]) {
     case 0x00:
       if (should_encode_v2_data && (this->data1[1] > 0x26)) {
-        if (!item_parameter_table) {
-          throw logic_error("item parameter table is required to encode v2 data");
-        }
         if (this->data1[1] < 0x89) {
           this->data1[5] = this->data1[1];
           this->data1[1] = item_parameter_table->get_weapon_v1_replacement(this->data1[1]);

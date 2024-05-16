@@ -288,7 +288,6 @@ struct PlayerInventoryT {
   }
 
   operator PlayerInventoryT<!IsBigEndian>() const {
-
     PlayerInventoryT<!IsBigEndian> ret;
     ret.num_items = this->num_items;
     ret.hp_from_materials = this->hp_from_materials;

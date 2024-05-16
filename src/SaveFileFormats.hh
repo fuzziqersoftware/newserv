@@ -494,8 +494,8 @@ struct PSOGCEp3CharacterFile {
     // This structure is internally split into two by the game. The offsets here
     // are relative to the start of this structure (first column), and relative
     // to the start of the second internal structure (second column).
-    /* 0000:---- */ PlayerInventory inventory;
-    /* 034C:---- */ PlayerDispDataDCPCV3 disp;
+    /* 0000:---- */ PlayerInventoryBE inventory;
+    /* 034C:---- */ PlayerDispDataDCPCV3BE disp;
     /* 041C:0000 */ be_uint32_t flags = 0;
     /* 0420:0004 */ be_uint32_t creation_timestamp = 0;
     /* 0424:0008 */ be_uint32_t signature = 0xA204B064;
@@ -540,15 +540,15 @@ struct PSOGCEp3CharacterFile {
   // by the B7 command sent by the server instead.
   /* 19420 */ be_uint64_t bgm_test_songs_unlocked = 0;
   /* 19428 */ be_uint32_t save_count = 1;
-  // This is an array of 999 bits, represented here as 128 bytes (the last bit
-  // is never used). Each bit corresponds to a card ID with the bit's index; if
-  // the bit is set, then during offline play, the card's rank is replaced with
-  // D2 if its original rank is S, SS, E, or D2, or with D1 if the original rank
-  // is any other value. Upon receiving a B8 command (server card definitions),
-  // the game clears this array, and sets all bits whose corresponding cards
-  // from the server have the D1 or D2 ranks. This could have been used by Sega
-  // to prevent broken cards from being used offline, but there's no indication
-  // that they ever used this functionality.
+  // This is an array of 999 bits, represented here as 128 bytes (the last 25
+  // bits are not used). Each bit corresponds to a card ID with the bit's index;
+  // if the bit is set, then during offline play, the card's rank is replaced
+  // with D2 if its original rank is S, SS, E, or D2, or with D1 if the original
+  // rank is any other value. Upon receiving a B8 command (server card
+  // definitions), the game clears this array, and sets all bits whose
+  // corresponding cards from the server have the D1 or D2 ranks. This could
+  // have been used by Sega to prevent broken cards from being used offline, but
+  // there's no indication that they ever used this functionality.
   /* 1942C */ parray<uint8_t, 0x80> card_rank_override_flags;
   /* 194AC */ be_uint32_t round2_seed = 0;
   /* 194B0 */
