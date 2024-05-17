@@ -7,6 +7,17 @@
 
 using namespace std;
 
+// The favored weapon type table is hardcoded in the game client. The table is:
+//   Viridia     shots
+//   Greennill   rifles
+//   Skyly       swords
+//   Bluefull    partisans
+//   Purplenum   mechguns
+//   Pinkal      canes
+//   Redria      (none)
+//   Oran        daggers
+//   Yellowboze  (none)
+//   Whitill     slicers
 static const array<uint8_t, 10> favored_weapon_by_section_id = {
     0x09, 0x07, 0x02, 0x04, 0x08, 0x0A, 0xFF, 0x03, 0xFF, 0x05};
 
