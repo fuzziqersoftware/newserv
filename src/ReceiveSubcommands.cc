@@ -3661,7 +3661,7 @@ static void on_identify_item_bb(shared_ptr<Client> c, uint8_t command, uint8_t f
     p->disp.stats.meseta -= 100;
     c->bb_identify_result = p->inventory.items[x].data;
     c->bb_identify_result.data1[4] &= 0x7F;
-    l->item_creator->apply_tekker_deltas(c->bb_identify_result, p->disp.visual.section_id);
+    l->item_creator->apply_tekker_deltas(c->bb_identify_result, l->effective_section_id());
     send_item_identify_result(c);
 
   } else {
