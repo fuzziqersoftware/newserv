@@ -1567,10 +1567,8 @@ void ItemCreator::generate_weapon_shop_item_grind(ItemData& item, size_t player_
       ? this->weapon_random_set->get_favored_grind_range(table_index)
       : this->weapon_random_set->get_standard_grind_range(table_index);
 
-  const auto& weapon_def = this->item_parameter_table->get_weapon(
-      item.data1[1], item.data1[2]);
-  item.data1[3] = clamp<uint8_t>(
-      this->rand_int(range->max + 1), range->min, weapon_def.max_grind);
+  const auto& weapon_def = this->item_parameter_table->get_weapon(item.data1[1], item.data1[2]);
+  item.data1[3] = clamp<uint8_t>(this->rand_int(range->max + 1), range->min, weapon_def.max_grind);
 }
 
 void ItemCreator::generate_weapon_shop_item_special(ItemData& item, size_t player_level) {

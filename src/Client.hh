@@ -406,4 +406,5 @@ private:
   void save_and_clear_external_bank();
 
   void load_all_files();
+  void update_character_data_after_load(std::shared_ptr<PSOBBCharacterFile> character_data);
 };

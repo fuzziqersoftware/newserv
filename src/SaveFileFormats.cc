@@ -4,6 +4,7 @@
 #include <stdexcept>
 #include <string>
 
+#include "LevelTable.hh"
 #include "PSOProtocol.hh"
 
 using namespace std;
@@ -917,6 +918,40 @@ void PSOBBCharacterFile::clear_all_material_usage() {
   for (size_t z = 0; z < 5; z++) {
     this->inventory.items[z + 8].extension_data2 = 0;
   }
+}
+
+void PSOBBCharacterFile::import_tethealla_material_usage(std::shared_ptr<const LevelTable> level_table) {
+  // Tethealla (Ephinea) doesn't store material counts anywhere in the file,
+  // so if the material counts in the inventory extension data are all zero,
+  // check the current stats against the expected stats for the character's
+  // current level and set the material counts if they make sense.
+  if (this->get_material_usage(PSOBBCharacterFile::MaterialType::POWER) |
+      this->get_material_usage(PSOBBCharacterFile::MaterialType::MIND) |
+      this->get_material_usage(PSOBBCharacterFile::MaterialType::EVADE) |
+      this->get_material_usage(PSOBBCharacterFile::MaterialType::DEF) |
+      this->get_material_usage(PSOBBCharacterFile::MaterialType::LUCK)) {
+    return;
+  }
+
+  PlayerStats level_base_stats = this->disp.stats;
+  level_table->reset_to_base(level_base_stats, this->disp.visual.char_class);
+  level_table->advance_to_level(level_base_stats, this->disp.stats.level, this->disp.visual.char_class);
+
+  uint64_t pow = (this->disp.stats.char_stats.atp - level_base_stats.char_stats.atp) / 2;
+  uint64_t mind = (this->disp.stats.char_stats.mst - level_base_stats.char_stats.mst) / 2;
+  uint64_t evade = (this->disp.stats.char_stats.evp - level_base_stats.char_stats.evp) / 2;
+  uint64_t def = (this->disp.stats.char_stats.dfp - level_base_stats.char_stats.dfp) / 2;
+  uint64_t luck = (this->disp.stats.char_stats.lck - level_base_stats.char_stats.lck) / 2;
+
+  // We intentionally do not check any limits here. This is because on pre-v3,
+  // there are no limits, and we don't want to reject legitimate characters
+  // that have used more than 250 materials.
+
+  this->set_material_usage(PSOBBCharacterFile::MaterialType::POWER, pow);
+  this->set_material_usage(PSOBBCharacterFile::MaterialType::MIND, mind);
+  this->set_material_usage(PSOBBCharacterFile::MaterialType::EVADE, evade);
+  this->set_material_usage(PSOBBCharacterFile::MaterialType::DEF, def);
+  this->set_material_usage(PSOBBCharacterFile::MaterialType::LUCK, luck);
 }
 
 static uint16_t crc16(const void* data, size_t size) {

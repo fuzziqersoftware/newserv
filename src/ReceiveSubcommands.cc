@@ -3232,7 +3232,8 @@ static void on_level_up(shared_ptr<Client> c, uint8_t command, uint8_t flag, voi
   if (is_pre_v1(c->version())) {
     check_size_t<G_LevelUp_DCNTE_6x30>(data, size);
     auto s = c->require_server_state();
-    const auto& level_incrs = s->level_table->stats_delta_for_level(p->disp.visual.char_class, p->disp.stats.level + 1);
+    auto level_table = s->level_table(c->version());
+    const auto& level_incrs = level_table->stats_delta_for_level(p->disp.visual.char_class, p->disp.stats.level + 1);
     p->disp.stats.char_stats.atp += level_incrs.atp;
     p->disp.stats.char_stats.mst += level_incrs.mst;
     p->disp.stats.char_stats.evp += level_incrs.evp;
@@ -3265,8 +3266,7 @@ static void add_player_exp(shared_ptr<Client> c, uint32_t exp) {
 
   bool leveled_up = false;
   do {
-    const auto& level = s->level_table->stats_delta_for_level(
-        p->disp.visual.char_class, p->disp.stats.level + 1);
+    const auto& level = s->level_table(c->version())->stats_delta_for_level(p->disp.visual.char_class, p->disp.stats.level + 1);
     if (p->disp.stats.experience >= level.experience) {
       leveled_up = true;
       level.apply(p->disp.stats.char_stats);
@@ -3775,7 +3775,7 @@ static void on_battle_restart_bb(shared_ptr<Client> c, uint8_t, uint8_t, void* d
       if (lc) {
         lc->delete_overlay();
         lc->use_default_bank();
-        lc->create_battle_overlay(new_rules, s->level_table);
+        lc->create_battle_overlay(new_rules, s->level_table(c->version()));
       }
     }
     l->load_maps();
@@ -3795,7 +3795,7 @@ static void on_battle_level_up_bb(shared_ptr<Client> c, uint8_t, uint8_t, void* 
       auto lp = lc->character();
       uint32_t target_level = lp->disp.stats.level + cmd.num_levels;
       uint32_t before_exp = lp->disp.stats.experience;
-      s->level_table->advance_to_level(lp->disp.stats, target_level, lp->disp.visual.char_class);
+      s->level_table(lc->version())->advance_to_level(lp->disp.stats, target_level, lp->disp.visual.char_class);
       send_give_experience(lc, lp->disp.stats.experience - before_exp);
       send_level_up(lc);
     }
@@ -3839,7 +3839,7 @@ static void on_challenge_mode_retry_or_quit(shared_ptr<Client> c, uint8_t comman
     for (auto lc : l->clients) {
       if (lc) {
         lc->use_default_bank();
-        lc->create_challenge_overlay(lc->version(), l->quest->challenge_template_index, s->level_table);
+        lc->create_challenge_overlay(lc->version(), l->quest->challenge_template_index, s->level_table(c->version()));
         lc->log.info("Created challenge overlay");
         l->assign_inventory_and_bank_item_ids(lc, true);
       }

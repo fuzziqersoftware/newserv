@@ -775,12 +775,8 @@ void Client::load_all_files() {
         player_data_log.info("Loaded system data from %s", char_filename.c_str());
       }
 
-      uint8_t lang = this->language();
-      player_data_log.info("Overriding language fields in save files with %02hhX (%c)",
-          lang, char_for_language_code(lang));
-      this->character_data->inventory.language = lang;
-      this->character_data->guild_card.language = lang;
-      this->system_data->base.language = lang;
+      this->update_character_data_after_load(this->character_data);
+      this->system_data->base.language = this->language();
 
     } else {
       player_data_log.info("Character file is missing: %s", char_filename.c_str());
@@ -873,6 +869,7 @@ void Client::load_all_files() {
       } else {
         player_data_log.info("Loaded legacy player data from %s", nsc_filename.c_str());
       }
+      this->update_character_data_after_load(this->character_data);
     }
   }
 
@@ -890,6 +887,15 @@ void Client::load_all_files() {
     this->login->account->save();
     this->last_play_time_update = now();
   }
+}
+
+void Client::update_character_data_after_load(shared_ptr<PSOBBCharacterFile> charfile) {
+  charfile->import_tethealla_material_usage(this->require_server_state()->level_table(this->version()));
+
+  uint8_t lang = this->language();
+  player_data_log.info("Overriding language fields in save files with %02hhX (%c)", lang, char_for_language_code(lang));
+  charfile->inventory.language = lang;
+  charfile->guild_card.language = lang;
 }
 
 void Client::save_all() {
@@ -991,6 +997,7 @@ void Client::load_backup_character(uint32_t account_id, size_t index) {
     throw runtime_error("incorrect flag in character file header");
   }
   this->character_data = make_shared<PSOBBCharacterFile>(freadx<PSOBBCharacterFile>(f.get()));
+  this->update_character_data_after_load(this->character_data);
   this->v1_v2_last_reported_disp.reset();
 }
 
@@ -1075,6 +1082,7 @@ void Client::use_character_bank(int8_t index) {
         throw runtime_error("incorrect flag in character file header");
       }
       this->external_bank_character = make_shared<PSOBBCharacterFile>(freadx<PSOBBCharacterFile>(f.get()));
+      this->update_character_data_after_load(this->external_bank_character);
       this->external_bank_character_index = index;
       files_manager->set_character(filename, this->external_bank_character);
       player_data_log.info("Loaded character data from %s for external bank", filename.c_str());

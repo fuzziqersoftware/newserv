@@ -155,7 +155,9 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   std::shared_ptr<const QuestCategoryIndex> quest_category_index;
   std::shared_ptr<const QuestIndex> default_quest_index;
   std::shared_ptr<const QuestIndex> ep3_download_quest_index;
-  std::shared_ptr<const LevelTable> level_table;
+  std::shared_ptr<const LevelTable> level_table_v1_v2;
+  std::shared_ptr<const LevelTable> level_table_v3;
+  std::shared_ptr<const LevelTable> level_table_v4;
   std::shared_ptr<const BattleParamsIndex> battle_params;
   std::shared_ptr<const GSLArchive> bb_data_gsl;
   std::unordered_map<std::string, std::shared_ptr<const RareItemSet>> rare_item_sets;
@@ -302,6 +304,7 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
 
   std::shared_ptr<const SetDataTableBase> set_data_table(Version version, Episode episode, GameMode mode, uint8_t difficulty) const;
 
+  std::shared_ptr<const LevelTable> level_table(Version version) const;
   std::shared_ptr<const ItemParameterTable> item_parameter_table(Version version) const;
   std::shared_ptr<const ItemParameterTable> item_parameter_table_for_encode(Version version) const;
   std::shared_ptr<const ItemData::StackLimits> item_stack_limits(Version version) const;
@@ -364,7 +367,7 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   void load_patch_indexes(bool from_non_event_thread);
   void clear_map_file_caches();
   void load_battle_params(bool from_non_event_thread);
-  void load_level_table(bool from_non_event_thread);
+  void load_level_tables(bool from_non_event_thread);
   void load_text_index(bool from_non_event_thread);
   std::shared_ptr<ItemNameIndex> create_item_name_index_for_version(
       std::shared_ptr<const ItemParameterTable> pmt,

@@ -372,6 +372,28 @@ shared_ptr<const SetDataTableBase> ServerState::set_data_table(
   return ret;
 }
 
+shared_ptr<const LevelTable> ServerState::level_table(Version version) const {
+  switch (version) {
+    case Version::DC_NTE:
+    case Version::DC_V1_11_2000_PROTOTYPE:
+    case Version::DC_V1:
+    case Version::DC_V2:
+    case Version::PC_NTE:
+    case Version::PC_V2:
+    case Version::GC_NTE: // TODO: Does NTE use the v2 table, the v3 table, or neither?
+      return this->level_table_v1_v2;
+    case Version::GC_V3:
+    case Version::GC_EP3_NTE:
+    case Version::GC_EP3:
+    case Version::XB_V3:
+      return this->level_table_v3;
+    case Version::BB_V4:
+      return this->level_table_v4;
+    default:
+      throw logic_error("level table not available for version");
+  }
+}
+
 shared_ptr<const ItemParameterTable> ServerState::item_parameter_table(Version version) const {
   auto ret = this->item_parameter_tables.at(static_cast<size_t>(version));
   if (ret == nullptr) {
@@ -1407,12 +1429,16 @@ void ServerState::load_battle_params(bool from_non_event_thread) {
   this->forward_or_call(from_non_event_thread, std::move(set));
 }
 
-void ServerState::load_level_table(bool from_non_event_thread) {
-  config_log.info("Loading level table");
-  auto new_table = make_shared<LevelTableV4>(*this->load_bb_file("PlyLevelTbl.prs"), true);
+void ServerState::load_level_tables(bool from_non_event_thread) {
+  config_log.info("Loading level tables");
+  auto new_table_v1_v2 = make_shared<LevelTableV2>(load_file("system/level-tables/PlayerTable-pc-v2.prs"), true);
+  auto new_table_v3 = make_shared<LevelTableV3BE>(load_file("system/level-tables/PlyLevelTbl-gc-v3.cpt"), true);
+  auto new_table_v4 = make_shared<LevelTableV4>(*this->load_bb_file("PlyLevelTbl.prs"), true);
 
-  auto set = [s = this->shared_from_this(), new_table = std::move(new_table)]() {
-    s->level_table = std::move(new_table);
+  auto set = [s = this->shared_from_this(), new_table_v1_v2 = std::move(new_table_v1_v2), new_table_v3 = std::move(new_table_v3), new_table_v4 = std::move(new_table_v4)]() {
+    s->level_table_v1_v2 = std::move(new_table_v1_v2);
+    s->level_table_v3 = std::move(new_table_v3);
+    s->level_table_v4 = std::move(new_table_v4);
   };
   this->forward_or_call(from_non_event_thread, std::move(set));
 }
@@ -1834,7 +1860,7 @@ void ServerState::load_all() {
   this->create_default_lobbies();
   this->load_set_data_tables(false);
   this->load_battle_params(false);
-  this->load_level_table(false);
+  this->load_level_tables(false);
   this->load_text_index(false);
   this->load_word_select_table(false);
   this->load_item_definitions(false);

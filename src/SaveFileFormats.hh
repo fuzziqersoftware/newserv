@@ -674,6 +674,7 @@ struct PSOBBCharacterFile {
   uint8_t get_material_usage(MaterialType which) const;
   void set_material_usage(MaterialType which, uint8_t usage);
   void clear_all_material_usage();
+  void import_tethealla_material_usage(std::shared_ptr<const LevelTable> level_table);
 } __packed_ws__(PSOBBCharacterFile, 0x2EA4);
 
 ////////////////////////////////////////////////////////////////////////////////

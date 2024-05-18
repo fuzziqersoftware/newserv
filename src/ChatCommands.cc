@@ -1299,8 +1299,9 @@ static void server_command_edit(shared_ptr<Client> c, const std::string& args) {
       p->disp.stats.experience = stoul(tokens.at(1));
     } else if (tokens.at(0) == "level" && cheats_allowed) {
       uint32_t level = stoul(tokens.at(1)) - 1;
-      s->level_table->reset_to_base(p->disp.stats, p->disp.visual.char_class);
-      s->level_table->advance_to_level(p->disp.stats, level, p->disp.visual.char_class);
+      auto level_table = s->level_table(c->version());
+      level_table->reset_to_base(p->disp.stats, p->disp.visual.char_class);
+      level_table->advance_to_level(p->disp.stats, level, p->disp.visual.char_class);
     } else if (tokens.at(0) == "namecolor") {
       uint32_t new_color;
       sscanf(tokens.at(1).c_str(), "%8X", &new_color);

@@ -209,7 +209,7 @@ CommandDefinition c_reload(
       functions - recompile all client-side patches and functions\n\
       item-definitions - reload item definitions files\n\
       item-name-index - regenerate item name list\n\
-      level-table - reload the level-up tables\n\
+      level-tables - reload the player stats tables\n\
       patch-files - reindex the PC and BB patch directories\n\
       quests - reindex all quests (including Episode3 download quests)\n\
       set-tables - reload set data tables\n\
@@ -246,8 +246,8 @@ CommandDefinition c_reload(
           args.s->load_set_data_tables(true);
         } else if (type == "battle-params") {
           args.s->load_battle_params(true);
-        } else if (type == "level-table") {
-          args.s->load_level_table(true);
+        } else if (type == "level-tables") {
+          args.s->load_level_tables(true);
         } else if (type == "text-index") {
           args.s->load_text_index(true);
         } else if (type == "word-select") {

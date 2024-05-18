@@ -1989,11 +1989,11 @@ static void on_quest_loaded(shared_ptr<Lobby> l) {
       lc->delete_overlay();
       if (l->quest->battle_rules) {
         lc->use_default_bank();
-        lc->create_battle_overlay(l->quest->battle_rules, s->level_table);
+        lc->create_battle_overlay(l->quest->battle_rules, s->level_table(lc->version()));
         lc->log.info("Created battle overlay");
       } else if (l->quest->challenge_template_index >= 0) {
         lc->use_default_bank();
-        lc->create_challenge_overlay(lc->version(), l->quest->challenge_template_index, s->level_table);
+        lc->create_challenge_overlay(lc->version(), l->quest->challenge_template_index, s->level_table(lc->version()));
         lc->log.info("Created challenge overlay");
         l->assign_inventory_and_bank_item_ids(lc, true);
       }
@@ -3216,17 +3216,19 @@ static void on_61_98(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
             c->language(),
             player->disp.visual,
             player->disp.name.decode(c->language()),
-            s->level_table);
+            s->level_table(c->version()));
         bb_player->disp.visual.version = 4;
         bb_player->disp.visual.name_color_checksum = 0x00000000;
         bb_player->inventory = player->inventory;
         // Before V3, player stats can't be correctly computed from other fields
         // because material usage isn't stored anywhere. For these versions, we
         // have to trust the stats field from the player's data.
+        auto level_table = s->level_table(c->version());
         if (is_v1_or_v2(c->version())) {
           bb_player->disp.stats = player->disp.stats;
+          bb_player->import_tethealla_material_usage(level_table);
         } else {
-          s->level_table->advance_to_level(bb_player->disp.stats, player->disp.stats.level, bb_player->disp.visual.char_class);
+          level_table->advance_to_level(bb_player->disp.stats, player->disp.stats.level, bb_player->disp.visual.char_class);
           bb_player->disp.stats.char_stats.atp += bb_player->get_material_usage(PSOBBCharacterFile::MaterialType::POWER) * 2;
           bb_player->disp.stats.char_stats.mst += bb_player->get_material_usage(PSOBBCharacterFile::MaterialType::MIND) * 2;
           bb_player->disp.stats.char_stats.evp += bb_player->get_material_usage(PSOBBCharacterFile::MaterialType::EVADE) * 2;
@@ -3641,7 +3643,7 @@ static void on_E5_BB(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
   } else {
     try {
       auto s = c->require_server_state();
-      c->create_character_file(c->login->account->account_id, c->language(), cmd.preview, s->level_table);
+      c->create_character_file(c->login->account->account_id, c->language(), cmd.preview, s->level_table(c->version()));
     } catch (const exception& e) {
       send_message_box(c, string_printf("$C6New character could not be created:\n%s", e.what()));
       return;
@@ -3761,7 +3763,7 @@ static void on_DF_BB(shared_ptr<Client> c, uint16_t command, uint32_t, string& d
       for (auto lc : l->clients) {
         if (lc) {
           lc->use_default_bank();
-          lc->create_challenge_overlay(lc->version(), l->quest->challenge_template_index, s->level_table);
+          lc->create_challenge_overlay(lc->version(), l->quest->challenge_template_index, s->level_table(lc->version()));
           lc->log.info("Created challenge overlay");
           l->assign_inventory_and_bank_item_ids(lc, true);
         }
