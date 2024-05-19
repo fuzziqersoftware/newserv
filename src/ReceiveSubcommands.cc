@@ -3983,7 +3983,7 @@ static void on_quest_exchange_item_bb(shared_ptr<Client> c, uint8_t, uint8_t, vo
   auto l = c->require_lobby();
   if (l->is_game() &&
       (l->base_version == Version::BB_V4) &&
-      l->check_flag(Lobby::Flag::QUEST_IN_PROGRESS)) {
+      (l->check_flag(Lobby::Flag::QUEST_IN_PROGRESS) || l->check_flag(Lobby::Flag::JOINABLE_QUEST_IN_PROGRESS))) {
     const auto& cmd = check_size_t<G_ExchangeItemInQuest_BB_6xD5>(data, size);
     auto s = c->require_server_state();
 
@@ -4097,7 +4097,9 @@ static void on_photon_drop_exchange_for_s_rank_special_bb(shared_ptr<Client> c, 
 static void on_secret_lottery_ticket_exchange_bb(shared_ptr<Client> c, uint8_t, uint8_t, void* data, size_t size) {
   auto s = c->require_server_state();
   auto l = c->require_lobby();
-  if (l->is_game() && (l->base_version == Version::BB_V4) && l->check_flag(Lobby::Flag::QUEST_IN_PROGRESS)) {
+  if (l->is_game() &&
+      (l->base_version == Version::BB_V4) &&
+      (l->check_flag(Lobby::Flag::QUEST_IN_PROGRESS) || l->check_flag(Lobby::Flag::JOINABLE_QUEST_IN_PROGRESS))) {
     const auto& cmd = check_size_t<G_ExchangeSecretLotteryTicket_BB_6xDE>(data, size);
 
     if (s->secret_lottery_results.empty()) {
@@ -4153,7 +4155,9 @@ static void on_secret_lottery_ticket_exchange_bb(shared_ptr<Client> c, uint8_t, 
 
 static void on_photon_crystal_exchange_bb(shared_ptr<Client> c, uint8_t, uint8_t, void* data, size_t size) {
   auto l = c->require_lobby();
-  if (l->is_game() && (l->base_version == Version::BB_V4) && l->check_flag(Lobby::Flag::QUEST_IN_PROGRESS)) {
+  if (l->is_game() &&
+      (l->base_version == Version::BB_V4) &&
+      (l->check_flag(Lobby::Flag::QUEST_IN_PROGRESS) || l->check_flag(Lobby::Flag::JOINABLE_QUEST_IN_PROGRESS))) {
     check_size_t<G_ExchangePhotonCrystals_BB_6xDF>(data, size);
     auto s = c->require_server_state();
     auto p = c->character();
@@ -4165,7 +4169,9 @@ static void on_photon_crystal_exchange_bb(shared_ptr<Client> c, uint8_t, uint8_t
 
 static void on_quest_F95E_result_bb(shared_ptr<Client> c, uint8_t, uint8_t, void* data, size_t size) {
   auto l = c->require_lobby();
-  if (l->is_game() && (l->base_version == Version::BB_V4) && l->check_flag(Lobby::Flag::QUEST_IN_PROGRESS)) {
+  if (l->is_game() &&
+      (l->base_version == Version::BB_V4) &&
+      (l->check_flag(Lobby::Flag::QUEST_IN_PROGRESS) || l->check_flag(Lobby::Flag::JOINABLE_QUEST_IN_PROGRESS))) {
     const auto& cmd = check_size_t<G_RequestItemDropFromQuest_BB_6xE0>(data, size);
     auto s = c->require_server_state();
 
@@ -4197,7 +4203,9 @@ static void on_quest_F95E_result_bb(shared_ptr<Client> c, uint8_t, uint8_t, void
 
 static void on_quest_F95F_result_bb(shared_ptr<Client> c, uint8_t, uint8_t, void* data, size_t size) {
   auto l = c->require_lobby();
-  if (l->is_game() && (l->base_version == Version::BB_V4) && l->check_flag(Lobby::Flag::QUEST_IN_PROGRESS)) {
+  if (l->is_game() &&
+      (l->base_version == Version::BB_V4) &&
+      (l->check_flag(Lobby::Flag::QUEST_IN_PROGRESS) || l->check_flag(Lobby::Flag::JOINABLE_QUEST_IN_PROGRESS))) {
     const auto& cmd = check_size_t<G_ExchangePhotonTickets_BB_6xE1>(data, size);
     auto s = c->require_server_state();
     auto p = c->character();
@@ -4304,7 +4312,9 @@ static void on_quest_F960_result_bb(shared_ptr<Client> c, uint8_t, uint8_t, void
 
 static void on_momoka_item_exchange_bb(shared_ptr<Client> c, uint8_t, uint8_t, void* data, size_t size) {
   auto l = c->require_lobby();
-  if (l->is_game() && (l->base_version == Version::BB_V4) && l->check_flag(Lobby::Flag::QUEST_IN_PROGRESS)) {
+  if (l->is_game() &&
+      (l->base_version == Version::BB_V4) &&
+      (l->check_flag(Lobby::Flag::QUEST_IN_PROGRESS) || l->check_flag(Lobby::Flag::JOINABLE_QUEST_IN_PROGRESS))) {
     const auto& cmd = check_size_t<G_MomokaItemExchange_BB_6xD9>(data, size);
     auto s = c->require_server_state();
     auto p = c->character();
@@ -4336,7 +4346,9 @@ static void on_momoka_item_exchange_bb(shared_ptr<Client> c, uint8_t, uint8_t, v
 
 static void on_upgrade_weapon_attribute_bb(shared_ptr<Client> c, uint8_t, uint8_t, void* data, size_t size) {
   auto l = c->require_lobby();
-  if (l->is_game() && (l->base_version == Version::BB_V4) && l->check_flag(Lobby::Flag::QUEST_IN_PROGRESS)) {
+  if (l->is_game() &&
+      (l->base_version == Version::BB_V4) &&
+      (l->check_flag(Lobby::Flag::QUEST_IN_PROGRESS) || l->check_flag(Lobby::Flag::JOINABLE_QUEST_IN_PROGRESS))) {
     const auto& cmd = check_size_t<G_UpgradeWeaponAttribute_BB_6xDA>(data, size);
     auto s = c->require_server_state();
     auto p = c->character();
