@@ -517,6 +517,41 @@ shared_ptr<PSOBBCharacterFile> PSOBBCharacterFile::create_from_dc_v2(const PSODC
   return ret;
 }
 
+shared_ptr<PSOBBCharacterFile> PSOBBCharacterFile::create_from_gc_nte(const PSOGCNTECharacterFileCharacter& gc_nte) {
+  auto ret = make_shared<PSOBBCharacterFile>();
+  ret->inventory = gc_nte.inventory;
+  // Note: We intentionally do not call ret->inventory.decode_from_client here.
+  // This is because the GC client byteswaps data2 in each item before sending
+  // it to the server in the 61 and 98 commands, but GetExtendedPlayerInfo does
+  // not do this, so the data2 fields are already in the correct order here.
+  uint8_t language = ret->inventory.language;
+  ret->disp = gc_nte.disp.to_bb(language, language);
+  ret->creation_timestamp = gc_nte.creation_timestamp.load();
+  ret->play_time_seconds = gc_nte.play_time_seconds.load();
+  ret->option_flags = gc_nte.option_flags.load();
+  ret->save_count = gc_nte.save_count.load();
+  ret->quest_flags = gc_nte.quest_flags;
+  ret->bank = gc_nte.bank;
+  ret->guild_card = gc_nte.guild_card;
+  for (size_t z = 0; z < std::min<size_t>(ret->symbol_chats.size(), gc_nte.symbol_chats.size()); z++) {
+    auto& ret_sc = ret->symbol_chats[z];
+    const auto& gc_sc = gc_nte.symbol_chats[z];
+    ret_sc.present = gc_sc.present.load();
+    ret_sc.name.encode(gc_sc.name.decode(language), language);
+    ret_sc.spec = gc_sc.spec;
+  }
+  for (size_t z = 0; z < std::min<size_t>(ret->shortcuts.size(), gc_nte.shortcuts.size()); z++) {
+    ret->shortcuts[z] = gc_nte.shortcuts[z].convert<false, TextEncoding::UTF16, 0x50>(language);
+  }
+  ret->battle_records = gc_nte.battle_records;
+  ret->unknown_a4 = gc_nte.unknown_a4;
+  ret->challenge_records = gc_nte.challenge_records;
+  for (size_t z = 0; z < std::min<size_t>(ret->tech_menu_shortcut_entries.size(), gc_nte.tech_menu_shortcut_entries.size()); z++) {
+    ret->tech_menu_shortcut_entries[z] = gc_nte.tech_menu_shortcut_entries[z].load();
+  }
+  return ret;
+}
+
 shared_ptr<PSOBBCharacterFile> PSOBBCharacterFile::create_from_gc(const PSOGCCharacterFile::Character& gc) {
   auto ret = make_shared<PSOBBCharacterFile>();
   ret->inventory = gc.inventory;
@@ -639,6 +674,43 @@ PSODCV2CharacterFile PSOBBCharacterFile::to_dc_v2() const {
   for (size_t z = 0; z < 5; z++) {
     ret.choice_search_config[z * 2] = this->choice_search_config.entries[z].parent_choice_id.load();
     ret.choice_search_config[z * 2 + 1] = this->choice_search_config.entries[z].choice_id.load();
+  }
+  return ret;
+}
+
+PSOGCNTECharacterFileCharacter PSOBBCharacterFile::to_gc_nte() const {
+  uint8_t language = this->inventory.language;
+
+  PSOGCNTECharacterFileCharacter ret;
+  ret.inventory = this->inventory;
+  // Note: We intentionally do not call ret.inventory.encode_for_client here.
+  // This is because the GC client byteswaps data2 in each item before sending
+  // it to the server in the 61 and 98 commands, but GetExtendedPlayerInfo does
+  // not do this, so the data2 fields are already in the correct order here.
+  ret.disp = this->disp.to_dcpcv3<true>(language, language);
+  ret.disp.visual.enforce_lobby_join_limits_for_version(Version::GC_V3);
+  ret.creation_timestamp = this->creation_timestamp.load();
+  ret.play_time_seconds = this->play_time_seconds.load();
+  ret.option_flags = this->option_flags.load();
+  ret.save_count = this->save_count.load();
+  ret.quest_flags = this->quest_flags;
+  ret.bank = this->bank;
+  ret.guild_card = this->guild_card;
+  for (size_t z = 0; z < std::min<size_t>(ret.symbol_chats.size(), this->symbol_chats.size()); z++) {
+    auto& ret_sc = ret.symbol_chats[z];
+    const auto& gc_sc = this->symbol_chats[z];
+    ret_sc.present = gc_sc.present.load();
+    ret_sc.name.encode(gc_sc.name.decode(language), language);
+    ret_sc.spec = gc_sc.spec;
+  }
+  for (size_t z = 0; z < std::min<size_t>(ret.shortcuts.size(), this->shortcuts.size()); z++) {
+    ret.shortcuts[z] = this->shortcuts[z].convert<true, TextEncoding::MARKED, 0x50>(language);
+  }
+  ret.battle_records = this->battle_records;
+  ret.unknown_a4 = this->unknown_a4;
+  ret.challenge_records = this->challenge_records;
+  for (size_t z = 0; z < std::min<size_t>(ret.tech_menu_shortcut_entries.size(), this->tech_menu_shortcut_entries.size()); z++) {
+    ret.tech_menu_shortcut_entries[z] = this->tech_menu_shortcut_entries[z].load();
   }
   return ret;
 }

@@ -3911,6 +3911,11 @@ struct G_SendGuildCard_PC_6x06 {
   GuildCardPC guild_card;
 } __packed_ws__(G_SendGuildCard_PC_6x06, 0xF4);
 
+struct G_SendGuildCard_GCNTE_6x06 {
+  G_UnusedHeader header;
+  GuildCardGCNTE guild_card;
+} __packed_ws__(G_SendGuildCard_GCNTE_6x06, 0xA8);
+
 struct G_SendGuildCard_GC_6x06 {
   G_UnusedHeader header;
   GuildCardGC guild_card;

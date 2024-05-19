@@ -412,6 +412,33 @@ struct PSOPCCharacterFile { // PSO______SYS and PSO______SYD
   /* ECE40 */
 } __packed_ws__(PSOPCCharacterFile, 0xECE40);
 
+struct PSOGCNTECharacterFileCharacter {
+  /* 0000:---- */ PlayerInventoryBE inventory;
+  /* 034C:---- */ PlayerDispDataDCPCV3BE disp;
+  /* 041C:0000 */ be_uint32_t flags = 0;
+  /* 0420:0004 */ be_uint32_t creation_timestamp = 0;
+  /* 0424:0008 */ be_uint32_t signature = 0xA205B064;
+  /* 0428:000C */ be_uint32_t play_time_seconds = 0;
+  /* 042C:0010 */ be_uint32_t option_flags = 0x00040058;
+  /* 0430:0014 */ be_uint32_t save_count = 1;
+  /* 0434:0018 */ pstring<TextEncoding::ASCII, 0x1C> ppp_username;
+  /* 0450:0034 */ pstring<TextEncoding::ASCII, 0x10> ppp_password;
+  /* 0460:0044 */ QuestFlags quest_flags;
+  /* 0660:0244 */ PlayerBank200BE bank;
+  /* 1928:150C */ GuildCardGCNTEBE guild_card;
+  /* 19CC:15B0 */ parray<SaveFileSymbolChatEntryGC, 12> symbol_chats;
+  /* 1DEC:19D0 */ parray<SaveFileShortcutEntryGC, 20> shortcuts;
+  /* 247C:2060 */ PlayerRecordsBattleBE battle_records;
+  /* 2494:2078 */ parray<uint8_t, 4> unknown_a4;
+  /* 2498:207C */ PlayerRecordsChallengeDC challenge_records;
+  /* 2538:211C */ parray<be_uint16_t, 20> tech_menu_shortcut_entries;
+  // TODO: choice_search_config and offline_battle_records may be in here
+  // somewhere. When they are found, don't forget to update the conversion
+  // functions in PSOBBCharacterFile.
+  /* 2560:2144 */ parray<uint8_t, 0x130> unknown_n2;
+  /* 2690:2274 */
+} __packed_ws__(PSOGCNTECharacterFileCharacter, 0x2690);
+
 struct PSOGCCharacterFile {
   /* 00000 */ be_uint32_t checksum = 0;
   struct Character {
@@ -646,10 +673,12 @@ struct PSOBBCharacterFile {
       const PlayerDispDataBBPreview& preview,
       std::shared_ptr<const LevelTable> level_table);
   static std::shared_ptr<PSOBBCharacterFile> create_from_dc_v2(const PSODCV2CharacterFile& dc);
+  static std::shared_ptr<PSOBBCharacterFile> create_from_gc_nte(const PSOGCNTECharacterFileCharacter& gc_nte);
   static std::shared_ptr<PSOBBCharacterFile> create_from_gc(const PSOGCCharacterFile::Character& gc);
   static std::shared_ptr<PSOBBCharacterFile> create_from_xb(const PSOXBCharacterFileCharacter& xb);
 
   PSODCV2CharacterFile to_dc_v2() const;
+  PSOGCNTECharacterFileCharacter to_gc_nte() const;
   PSOGCCharacterFile::Character to_gc() const;
   PSOXBCharacterFileCharacter to_xb(uint64_t xb_user_id) const;
 

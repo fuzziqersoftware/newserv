@@ -343,7 +343,7 @@ Exactly which data is saved and loaded depends on the game version:
 | PSO DC v1            | Yes       | Yes       | No            | No          | No   | N/A              |
 | PSO DC v2            | Yes       | Yes       | Yes           | Yes         | Yes  | Yes              |
 | PSO PC (v2)          | Yes       | Yes       | No            | No          | No   | Save only        |
-| PSO GC NTE           | Yes       | Yes       | No            | No          | No   | Save only        |
+| PSO GC NTE           | Yes       | Yes       | Yes           | Yes         | Yes  | Yes              |
 | PSO GC (not Plus)    | Yes       | Yes       | Yes           | Yes         | Yes  | Yes              |
 | PSO GC Plus          | Save only | Save only | No            | No          | No   | Save only        |
 | PSO Xbox             | Yes       | Yes       | Yes           | Yes         | Yes  | Yes              |
@@ -396,48 +396,48 @@ You can put assembly files in the system/client-functions directory with filenam
 
 The VERS token in client function filenames refers to the specific version of the game that the client function applies to. Some versions do not support receiving client functions at all. The specific versions are:
 
-| Game              | VERS | Supported |
-|-------------------|------|-----------|
-| PSO DC NTE        | 1OJ1 | No        |
-| PSO DC 11/2000    | 1OJ2 | No        |
-| PSO DC 12/2000    | 1OJ3 | No        |
-| PSO DC 01/2001    | 1OJ4 | No        |
-| PSO DC v1 JP      | 1OJF | No        |
-| PSO DC v1 US      | 1OEF | No        |
-| PSO DC v1 EU      | 1OPF | No        |
-| PSO DC 08/2001    | 2OJ5 | Yes       |
-| PSO DC v2 JP      | 2OJF | Yes       |
-| PSO DC v2 US      | 2OEF | Yes       |
-| PSO DC v2 EU      | 2OPF | Yes       |
-| PSO PC (v2)       | 2OJW | No        |
-| PSO GC NTE        | 3OJT | Yes       |
-| PSO GC v1.2 JP    | 3OJ2 | Yes       |
-| PSO GC v1.3 JP    | 3OJ3 | Yes       |
-| PSO GC v1.4 JP    | 3OJ4 | Yes       |
-| PSO GC v1.5 JP    | 3OJ5 | No        |
-| PSO GC v1.0 US    | 3OE0 | Yes       |
-| PSO GC v1.1 US    | 3OE1 | Yes       |
-| PSO GC v1.2 US    | 3OE2 | No        |
-| PSO GC v1.0 EU    | 3OP0 | Yes       |
-| PSO GC Ep3 NTE    | 3SJT | Yes       |
-| PSO GC Ep3 JP     | 3SJ0 | Yes       |
-| PSO GC Ep3 US     | 3SE0 | No        |
-| PSO GC Ep3 EU     | 3SP0 | No        |
-| PSO Xbox Beta     | 4OJB | Yes       |
-| PSO Xbox JP Disc  | 4OJD | Yes       |
-| PSO Xbox JP TU    | 4OJU | Yes       |
-| PSO Xbox US Disc  | 4OED | Yes       |
-| PSO Xbox US TU    | 4OEU | Yes       |
-| PSO Xbox EU Disc  | 4OPD | Yes       |
-| PSO Xbox EU TU    | 4OPU | Yes       |
-| PSO BB JP 1.25.13 | 51OC | Yes       |
-| PSO BB Tethealla  | 51OC | Yes       |
+| Game              | VERS | Architecture  |
+|-------------------|------|---------------|
+| PSO DC NTE        | 1OJ1 | Not supported |
+| PSO DC 11/2000    | 1OJ2 | Not supported |
+| PSO DC 12/2000    | 1OJ3 | Not supported |
+| PSO DC 01/2001    | 1OJ4 | Not supported |
+| PSO DC v1 JP      | 1OJF | Not supported |
+| PSO DC v1 US      | 1OEF | Not supported |
+| PSO DC v1 EU      | 1OPF | Not supported |
+| PSO DC 08/2001    | 2OJ5 | SH-4          |
+| PSO DC v2 JP      | 2OJF | SH-4          |
+| PSO DC v2 US      | 2OEF | SH-4          |
+| PSO DC v2 EU      | 2OPF | SH-4          |
+| PSO PC (v2)       | 2OJW | Not supported |
+| PSO GC NTE        | 3OJT | PowerPC       |
+| PSO GC v1.2 JP    | 3OJ2 | PowerPC       |
+| PSO GC v1.3 JP    | 3OJ3 | PowerPC       |
+| PSO GC v1.4 JP    | 3OJ4 | PowerPC       |
+| PSO GC v1.5 JP    | 3OJ5 | Not supported |
+| PSO GC v1.0 US    | 3OE0 | PowerPC       |
+| PSO GC v1.1 US    | 3OE1 | PowerPC       |
+| PSO GC v1.2 US    | 3OE2 | Not supported |
+| PSO GC v1.0 EU    | 3OP0 | PowerPC       |
+| PSO GC Ep3 NTE    | 3SJT | PowerPC       |
+| PSO GC Ep3 JP     | 3SJ0 | PowerPC       |
+| PSO GC Ep3 US     | 3SE0 | Not supported |
+| PSO GC Ep3 EU     | 3SP0 | Not supported |
+| PSO Xbox Beta     | 4OJB | x86           |
+| PSO Xbox JP Disc  | 4OJD | x86           |
+| PSO Xbox JP TU    | 4OJU | x86           |
+| PSO Xbox US Disc  | 4OED | x86           |
+| PSO Xbox US TU    | 4OEU | x86           |
+| PSO Xbox EU Disc  | 4OPD | x86           |
+| PSO Xbox EU TU    | 4OPU | x86           |
+| PSO BB JP 1.25.13 | 51OC | x86           |
+| PSO BB Tethealla  | 51OC | x86           |
 
 *Note: newserv uses the shorter GameCube versioning convention, where discs labeled DOL-XXXX-0-0Y are version 1.Y. The PSO community seems to use the convention 1.0Y in some places instead, but these are the same version. For example, the version that newserv calls v1.4 is the same as v1.04, and is labeled DOL-GPOJ-0-04 on the underside of the disc.*
 
 newserv comes with a set of patches for some of the above versions, based on AR codes originally made by Ralf at GC-Forever and Aleron Ives. Many of them were originally posted in [this thread](https://www.gc-forever.com/forums/viewtopic.php?f=38&t=2050).
 
-You can also put DOL files in the system/dol directory, and they will appear in the Programs menu for GC clients. Selecting a DOL file there will load the file into the GameCube's memory and run it, just like the old homebrew loaders (PSUL and PSOload) did. For this to work, ReadMemoryWord.ppc.s, WriteMemory.ppc.s, and RunDOL.ppc.s must be present in the system/client-functions directory. This has been tested on Dolphin but not on a real GameCube, so results may vary.
+You can also put DOL files in the system/dol directory, and they will appear in the Programs menu for GC clients. Selecting a DOL file there will load the file into the GameCube's memory and run it, just like the old homebrew loaders (PSUL and PSOload) did. For this to work, ReadMemoryWord.ppc.s, WriteMemory.ppc.s, and RunDOL.ppc.s must be present in the system/client-functions/System directory. This has been tested on Dolphin but not on a real GameCube, so results may vary.
 
 Like other kinds of data, functions and DOL files are cached in memory. If you've changed any of these files, you can run `reload functions` or `reload dol-files` in the interactive shell to make the changes take effect without restarting the server.
 

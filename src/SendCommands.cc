@@ -347,8 +347,7 @@ void prepare_client_for_patches(shared_ptr<Client> c, function<void()> on_comple
     } else if (c->version() == Version::XB_V3) {
       version_detect_name = "VersionDetectXB";
     }
-    if (version_detect_name &&
-        c->config.specific_version == default_specific_version_for_version(c->version(), -1)) {
+    if (version_detect_name && specific_version_is_indeterminate(c->config.specific_version)) {
       send_function_call(c, s->function_code_index->name_to_function.at(version_detect_name));
       c->function_call_response_queue.emplace_back([wc = weak_ptr<Client>(c), on_complete](uint32_t specific_version, uint32_t) -> void {
         auto c = wc.lock();
@@ -2379,11 +2378,30 @@ void send_self_leave_notification(shared_ptr<Client> c) {
 }
 
 void send_get_player_info(shared_ptr<Client> c, bool request_extended) {
-  // TODO: Support extended player info on Ep3 JP and NTE
+  // TODO: Support extended player info on Ep3 (JP and NTE)
+  switch (c->version()) {
+    case Version::DC_NTE:
+    case Version::DC_V1_11_2000_PROTOTYPE:
+    case Version::DC_V1:
+    case Version::PC_NTE:
+    case Version::PC_V2:
+    case Version::GC_EP3_NTE:
+    case Version::GC_EP3:
+    case Version::BB_V4:
+      request_extended = false;
+      break;
+    case Version::DC_V2:
+    case Version::GC_NTE:
+    case Version::GC_V3:
+    case Version::XB_V3:
+      break;
+    default:
+      throw logic_error("invalid version");
+  }
+
   if (request_extended &&
       !c->config.check_flag(Client::Flag::NO_SEND_FUNCTION_CALL) &&
-      !c->config.check_flag(Client::Flag::SEND_FUNCTION_CALL_CHECKSUM_ONLY) &&
-      ((c->version() == Version::DC_V2) || (c->version() == Version::GC_V3) || (c->version() == Version::XB_V3))) {
+      !c->config.check_flag(Client::Flag::SEND_FUNCTION_CALL_CHECKSUM_ONLY)) {
     auto s = c->require_server_state();
     prepare_client_for_patches(c, [wc = weak_ptr<Client>(c)]() {
       auto c = wc.lock();

@@ -748,8 +748,7 @@ static void proxy_command_patch(shared_ptr<ProxyServer::LinkedSession> ses, cons
   auto send_version_detect_or_send_call = [args, ses, send_call]() {
     bool is_gc = ::is_gc(ses->version());
     bool is_xb = (ses->version() == Version::XB_V3);
-    if ((is_gc || is_xb) &&
-        ses->config.specific_version == default_specific_version_for_version(ses->version(), -1)) {
+    if ((is_gc || is_xb) && specific_version_is_indeterminate(ses->config.specific_version)) {
       auto s = ses->require_server_state();
       send_function_call(
           ses->client_channel,
@@ -1472,6 +1471,7 @@ static void server_command_savechar(shared_ptr<Client> c, const std::string& arg
 static void server_command_loadchar(shared_ptr<Client> c, const std::string& args) {
   if (!is_v1_or_v2(c->version()) &&
       (c->version() != Version::GC_V3) &&
+      (c->version() != Version::GC_NTE) &&
       (c->version() != Version::XB_V3) &&
       (c->version() != Version::BB_V4)) {
     send_text_message(c, "$C7This command cannot\nbe used on your\ngame version");
@@ -1498,7 +1498,10 @@ static void server_command_loadchar(shared_ptr<Client> c, const std::string& arg
     send_player_leave_notification(l, c->lobby_client_id);
     s->send_lobby_join_notifications(l, c);
 
-  } else if ((c->version() == Version::DC_V2) || (c->version() == Version::GC_V3) || (c->version() == Version::XB_V3)) {
+  } else if ((c->version() == Version::DC_V2) ||
+      (c->version() == Version::GC_NTE) ||
+      (c->version() == Version::GC_V3) ||
+      (c->version() == Version::XB_V3)) {
     // TODO: Support extended player info on other versions
     auto s = c->require_server_state();
     if (c->config.check_flag(Client::Flag::NO_SEND_FUNCTION_CALL) ||
@@ -1539,6 +1542,9 @@ static void server_command_loadchar(shared_ptr<Client> c, const std::string& arg
     if (c->version() == Version::DC_V2) {
       auto dc_char = make_shared<PSODCV2CharacterFile>(c->character()->to_dc_v2());
       send_set_extended_player_info.operator()<PSODCV2CharacterFile>(c, dc_char);
+    } else if (c->version() == Version::GC_NTE) {
+      auto gc_char = make_shared<PSOGCNTECharacterFileCharacter>(c->character()->to_gc_nte());
+      send_set_extended_player_info.operator()<PSOGCNTECharacterFileCharacter>(c, gc_char);
     } else if (c->version() == Version::GC_V3) {
       auto gc_char = make_shared<PSOGCCharacterFile::Character>(c->character()->to_gc());
       send_set_extended_player_info.operator()<PSOGCCharacterFile::Character>(c, gc_char);

@@ -359,24 +359,41 @@ struct GuildCardPC {
   operator GuildCardBB() const;
 } __packed_ws__(GuildCardPC, 0xF0);
 
-template <bool IsBigEndian>
+// 0000 | 62 00 AC 00 06 2A 00 00 00 00 01 00 90 96 66 8C | b    *        f
+// 0010 | 31 31 31 31 00 00 00 00 00 00 00 00 00 00 00 00 | 1111
+// 0020 | 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 |
+// 0030 | 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 |
+// 0040 | 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 |
+// 0050 | 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 |
+// 0060 | 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 |
+// 0070 | 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 |
+// 0080 | 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 |
+// 0090 | 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 |
+// 00A0 | 00 00 00 00 00 00 00 00 01 00 06 00             |
+
+template <bool IsBigEndian, size_t DescriptionLength>
 struct GuildCardGCT {
   using U32T = typename std::conditional<IsBigEndian, be_uint32_t, le_uint32_t>::type;
 
-  /* 00 */ U32T player_tag = 0x00010000;
-  /* 04 */ U32T guild_card_number = 0;
-  /* 08 */ pstring<TextEncoding::ASCII, 0x18> name;
-  /* 20 */ pstring<TextEncoding::MARKED, 0x6C> description;
-  /* 8C */ uint8_t present = 0;
-  /* 8D */ uint8_t language = 0;
-  /* 8E */ uint8_t section_id = 0;
-  /* 8F */ uint8_t char_class = 0;
-  /* 90 */
+  /* NTE:Final */
+  /* 00:00 */ U32T player_tag = 0x00010000;
+  /* 04:04 */ U32T guild_card_number = 0;
+  /* 08:08 */ pstring<TextEncoding::ASCII, 0x18> name;
+  /* 20:20 */ pstring<TextEncoding::MARKED, DescriptionLength> description;
+  /* 8C:8C */ uint8_t present = 0;
+  /* 8D:8D */ uint8_t language = 0;
+  /* 8E:8E */ uint8_t section_id = 0;
+  /* 8F:8F */ uint8_t char_class = 0;
+  /* 90:90 */
 
   operator GuildCardBB() const;
 } __packed__;
-using GuildCardGC = GuildCardGCT<false>;
-using GuildCardGCBE = GuildCardGCT<true>;
+using GuildCardGCNTE = GuildCardGCT<false, 0x80>;
+using GuildCardGCNTEBE = GuildCardGCT<true, 0x80>;
+using GuildCardGC = GuildCardGCT<false, 0x6C>;
+using GuildCardGCBE = GuildCardGCT<true, 0x6C>;
+check_struct_size(GuildCardGCNTE, 0xA4);
+check_struct_size(GuildCardGCNTEBE, 0xA4);
 check_struct_size(GuildCardGC, 0x90);
 check_struct_size(GuildCardGCBE, 0x90);
 
@@ -412,9 +429,9 @@ struct GuildCardBB {
   operator GuildCardDCNTE() const;
   operator GuildCardDC() const;
   operator GuildCardPC() const;
-  template <bool IsBigEndian>
-  operator GuildCardGCT<IsBigEndian>() const {
-    GuildCardGCT<IsBigEndian> ret;
+  template <bool IsBigEndian, size_t DescriptionLength>
+  operator GuildCardGCT<IsBigEndian, DescriptionLength>() const {
+    GuildCardGCT<IsBigEndian, DescriptionLength> ret;
     ret.player_tag = 0x00010000;
     ret.guild_card_number = this->guild_card_number.load();
     ret.name.encode(this->name.decode(this->language), this->language);
@@ -428,8 +445,8 @@ struct GuildCardBB {
   operator GuildCardXB() const;
 } __packed_ws__(GuildCardBB, 0x108);
 
-template <bool IsBigEndian>
-GuildCardGCT<IsBigEndian>::operator GuildCardBB() const {
+template <bool IsBigEndian, size_t DescriptionLength>
+GuildCardGCT<IsBigEndian, DescriptionLength>::operator GuildCardBB() const {
   GuildCardBB ret;
   ret.guild_card_number = this->guild_card_number.load();
   ret.name.encode(this->name.decode(this->language), this->language);
