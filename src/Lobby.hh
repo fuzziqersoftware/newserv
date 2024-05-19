@@ -67,15 +67,16 @@ struct Lobby : public std::enable_shared_from_this<Lobby> {
     PERSISTENT                      = 0x00000002,
     // Flags used only for games
     CHEATS_ENABLED                  = 0x00000100,
-    QUEST_IN_PROGRESS               = 0x00000200,
-    BATTLE_IN_PROGRESS              = 0x00000400,
-    JOINABLE_QUEST_IN_PROGRESS      = 0x00000800,
-    IS_CLIENT_CUSTOMIZATION         = 0x00001000,
-    IS_SPECTATOR_TEAM               = 0x00002000, // episode must be EP3 also
-    SPECTATORS_FORBIDDEN            = 0x00004000,
-    START_BATTLE_PLAYER_IMMEDIATELY = 0x00008000,
-    CANNOT_CHANGE_CHEAT_MODE        = 0x00010000,
-    USE_CREATOR_SECTION_ID          = 0x00020000,
+    QUEST_SELECTION_IN_PROGRESS     = 0x00000200,
+    QUEST_IN_PROGRESS               = 0x00000400,
+    BATTLE_IN_PROGRESS              = 0x00000800,
+    JOINABLE_QUEST_IN_PROGRESS      = 0x00001000,
+    IS_CLIENT_CUSTOMIZATION         = 0x00002000,
+    IS_SPECTATOR_TEAM               = 0x00004000, // .episode must be EP3 also
+    SPECTATORS_FORBIDDEN            = 0x00008000,
+    START_BATTLE_PLAYER_IMMEDIATELY = 0x00010000,
+    CANNOT_CHANGE_CHEAT_MODE        = 0x00020000,
+    USE_CREATOR_SECTION_ID          = 0x00040000,
     // Flags used only for lobbies
     PUBLIC                          = 0x01000000,
     DEFAULT                         = 0x02000000,
@@ -282,6 +283,7 @@ struct Lobby : public std::enable_shared_from_this<Lobby> {
     ALLOWED = 0,
     FULL,
     VERSION_CONFLICT,
+    QUEST_SELECTION_IN_PROGRESS,
     QUEST_IN_PROGRESS,
     BATTLE_IN_PROGRESS,
     LOADING,

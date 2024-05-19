@@ -2105,14 +2105,11 @@ struct S_QuestMenuEntry_BB_A2_A4 {
 // A9 (C->S): Quest menu closed (canceled)
 // Internal name: SndQuestEnd
 // No arguments
-// This command is sent when the in-game quest menu (A2) is closed. When the
+// This command is sent when the in-game quest menu (A2) is closed. This is used
+// by the server to unlock the game if the players don't select a quest, since
+// players are forbidden from joining while the quest menu is open. When the
 // download quest menu is closed, either by downloading a quest or canceling,
-// the client sends A0 instead. The existence of the A0 response on the download
-// case makes sense, because the client may not be in a lobby and the server may
-// need to send another menu or redirect the client. But for the online quest
-// menu, the client is already in a game and can move normally after canceling
-// the quest menu, so it's not obvious why A9 is needed at all. newserv (and
-// probably all other private servers) ignores it.
+// the client sends A0 instead.
 // Curiously, PSO GC sends uninitialized data in header.flag.
 
 // AA (C->S): Send quest statistic (V3/BB)

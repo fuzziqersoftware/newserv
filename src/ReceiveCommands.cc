@@ -1840,6 +1840,8 @@ static void on_09(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
             info += "$C6Quest in progress\n";
           } else if (game->check_flag(Lobby::Flag::QUEST_IN_PROGRESS)) {
             info += "$C4Quest in progress\n";
+          } else if (game->check_flag(Lobby::Flag::QUEST_SELECTION_IN_PROGRESS)) {
+            info += "$C4Selecting quest\n";
           }
 
           switch (game->drop_mode) {
@@ -2024,6 +2026,7 @@ void set_lobby_quest(shared_ptr<Lobby> l, shared_ptr<const Quest> q, bool substi
   } else {
     l->set_flag(Lobby::Flag::QUEST_IN_PROGRESS);
   }
+  l->clear_flag(Lobby::Flag::QUEST_SELECTION_IN_PROGRESS);
   l->clear_flag(Lobby::Flag::PERSISTENT);
 
   l->quest = q;
@@ -2440,6 +2443,9 @@ static void on_10(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
         case Lobby::JoinError::VERSION_CONFLICT:
           send_lobby_message_box(c, "$C7You cannot join this\ngame because it is\nfor a different\nversion of PSO.");
           break;
+        case Lobby::JoinError::QUEST_SELECTION_IN_PROGRESS:
+          send_lobby_message_box(c, "$C7You cannot join this\ngame because the\nplayers are currently\nchoosing a quest.");
+          break;
         case Lobby::JoinError::QUEST_IN_PROGRESS:
           send_lobby_message_box(c, "$C7You cannot join this\ngame because a\nquest is already\nin progress.");
           break;
@@ -2843,33 +2849,41 @@ static void on_A2(shared_ptr<Client> c, uint16_t, uint32_t flag, string& data) {
     return;
   }
 
-  // In Episode 3, there are no quest categories, so skip directly to the quest
-  // filter menu.
   if (is_ep3(c->version())) {
     send_lobby_message_box(c, "$C7Episode 3 does not\nprovide online quests\nvia this interface.");
+    return;
+  }
+
+  QuestMenuType menu_type;
+  if ((c->version() == Version::BB_V4) && flag) {
+    menu_type = QuestMenuType::GOVERNMENT;
   } else {
-    QuestMenuType menu_type;
-    if ((c->version() == Version::BB_V4) && flag) {
-      menu_type = QuestMenuType::GOVERNMENT;
-    } else {
-      switch (l->mode) {
-        case GameMode::NORMAL:
-          menu_type = QuestMenuType::NORMAL;
-          break;
-        case GameMode::BATTLE:
-          menu_type = QuestMenuType::BATTLE;
-          break;
-        case GameMode::CHALLENGE:
-          menu_type = QuestMenuType::CHALLENGE;
-          break;
-        case GameMode::SOLO:
-          menu_type = QuestMenuType::SOLO;
-          break;
-        default:
-          throw logic_error("invalid game mode");
-      }
+    switch (l->mode) {
+      case GameMode::NORMAL:
+        menu_type = QuestMenuType::NORMAL;
+        break;
+      case GameMode::BATTLE:
+        menu_type = QuestMenuType::BATTLE;
+        break;
+      case GameMode::CHALLENGE:
+        menu_type = QuestMenuType::CHALLENGE;
+        break;
+      case GameMode::SOLO:
+        menu_type = QuestMenuType::SOLO;
+        break;
+      default:
+        throw logic_error("invalid game mode");
     }
-    send_quest_categories_menu(c, s->quest_index(c->version()), menu_type, l->episode);
+  }
+
+  send_quest_categories_menu(c, s->quest_index(c->version()), menu_type, l->episode);
+  l->set_flag(Lobby::Flag::QUEST_SELECTION_IN_PROGRESS);
+}
+
+static void on_A9(shared_ptr<Client> c, uint16_t, uint32_t, string&) {
+  auto l = c->require_lobby();
+  if (l->is_game() && (c->lobby_client_id == l->leader_id)) {
+    l->clear_flag(Lobby::Flag::QUEST_SELECTION_IN_PROGRESS);
   }
 }
 
@@ -5467,7 +5481,7 @@ static on_command_t handlers[0x100][NUM_NON_PATCH_VERSIONS] = {
 /* A6 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     on_44_A6_V3_BB, on_44_A6_V3_BB, on_44_A6_V3_BB, on_44_A6_V3_BB, on_44_A6_V3_BB, nullptr},
 /* A7 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     on_13_A7_V3_BB, on_13_A7_V3_BB, on_13_A7_V3_BB, on_13_A7_V3_BB, on_13_A7_V3_BB, nullptr},
 /* A8 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* A9 */ {on_ignored,    on_ignored,    on_ignored,    on_ignored,     on_ignored,  on_ignored,  on_ignored,     on_ignored,     on_ignored,     on_ignored,     on_ignored,     on_ignored},
+/* A9 */ {on_A9,         on_A9,         on_A9,         on_A9,          on_A9,       on_A9,       on_A9,          on_A9,          on_A9,          on_A9,          on_A9,          on_A9},
 /* AA */ {nullptr,       nullptr,       nullptr,       nullptr,        on_AA,       on_AA,       on_AA,          on_AA,          on_AA,          on_AA,          on_AA,          on_AA},
 /* AB */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
 /* AC */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     on_AC_V3_BB,    on_AC_V3_BB,    on_AC_V3_BB,    on_AC_V3_BB,    on_AC_V3_BB,    on_AC_V3_BB},

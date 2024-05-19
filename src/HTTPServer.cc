@@ -567,6 +567,7 @@ JSON HTTPServer::generate_lobby_json_st(shared_ptr<const Lobby> l, shared_ptr<co
     ret.emplace("Name", l->name);
     ret.emplace("RandomSeed", l->random_seed);
     if (l->episode != Episode::EP3) {
+      ret.emplace("QuestSelectionInProgress", l->check_flag(Lobby::Flag::QUEST_SELECTION_IN_PROGRESS));
       ret.emplace("QuestInProgress", l->check_flag(Lobby::Flag::QUEST_IN_PROGRESS));
       ret.emplace("JoinableQuestInProgress", l->check_flag(Lobby::Flag::JOINABLE_QUEST_IN_PROGRESS));
       auto variations_json = JSON::list();
@@ -846,6 +847,7 @@ JSON HTTPServer::generate_summary_json() const {
           game_json.emplace("MapNumber", (ep3s && ep3s->last_chosen_map) ? ep3s->last_chosen_map->map_number : JSON(nullptr));
           game_json.emplace("Rules", (ep3s && ep3s->map_and_rules) ? ep3s->map_and_rules->rules.json() : nullptr);
         } else {
+          game_json.emplace("QuestSelectionInProgress", l->check_flag(Lobby::Flag::QUEST_SELECTION_IN_PROGRESS));
           game_json.emplace("QuestInProgress", l->check_flag(Lobby::Flag::QUEST_IN_PROGRESS));
           game_json.emplace("JoinableQuestInProgress", l->check_flag(Lobby::Flag::JOINABLE_QUEST_IN_PROGRESS));
           game_json.emplace("SectionID", name_for_section_id(l->effective_section_id()));

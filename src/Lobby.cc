@@ -798,6 +798,9 @@ Lobby::JoinError Lobby::join_error_for_client(std::shared_ptr<Client> c, const s
     return JoinError::VERSION_CONFLICT;
   }
   if (this->is_game()) {
+    if (this->check_flag(Flag::QUEST_SELECTION_IN_PROGRESS)) {
+      return JoinError::QUEST_SELECTION_IN_PROGRESS;
+    }
     if (this->check_flag(Flag::QUEST_IN_PROGRESS)) {
       return JoinError::QUEST_IN_PROGRESS;
     }
@@ -973,7 +976,9 @@ bool Lobby::compare_shared(const shared_ptr<const Lobby>& a, const shared_ptr<co
   // 5. Difficulty: Normal < Hard < Very Hard < Ultimate
   // 6. Game name
   static auto get_priority = +[](const shared_ptr<const Lobby>& l) -> size_t {
-    if (l->check_flag(Lobby::Flag::QUEST_IN_PROGRESS) || l->check_flag(Lobby::Flag::BATTLE_IN_PROGRESS)) {
+    if (l->check_flag(Lobby::Flag::QUEST_SELECTION_IN_PROGRESS) ||
+        l->check_flag(Lobby::Flag::QUEST_IN_PROGRESS) ||
+        l->check_flag(Lobby::Flag::BATTLE_IN_PROGRESS)) {
       return 4;
     }
     size_t num_clients = l->count_clients();
