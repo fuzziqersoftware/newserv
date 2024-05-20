@@ -2991,6 +2991,18 @@ static void on_trigger_set_event(shared_ptr<Client> c, uint8_t command, uint8_t 
   forward_subcommand(c, command, flag, data, size);
 }
 
+static void on_update_telepipe_state(shared_ptr<Client> c, uint8_t command, uint8_t flag, void* data, size_t size) {
+  auto l = c->require_lobby();
+  if (!l->is_game()) {
+    return;
+  }
+
+  c->telepipe_state = check_size_t<G_SetTelepipeState_6x68>(data, size);
+  c->telepipe_lobby_id = l->lobby_id;
+
+  forward_subcommand(c, command, flag, data, size);
+}
+
 static void on_unknown_6x91(shared_ptr<Client> c, uint8_t command, uint8_t flag, void* data, size_t size) {
   const auto& cmd = check_size_t<G_Unknown_6x91>(data, size);
   auto l = c->require_lobby();
@@ -4512,7 +4524,7 @@ const SubcommandDefinition subcommand_definitions[0x100] = {
     /* 6x65 */ {0x57, 0x5E, 0x65, on_forward_check_game},
     /* 6x66 */ {0x00, 0x00, 0x66, on_forward_check_game},
     /* 6x67 */ {0x58, 0x5F, 0x67, on_trigger_set_event},
-    /* 6x68 */ {0x59, 0x60, 0x68, on_forward_check_game},
+    /* 6x68 */ {0x59, 0x60, 0x68, on_update_telepipe_state},
     /* 6x69 */ {0x5A, 0x61, 0x69, on_npc_control},
     /* 6x6A */ {0x5B, 0x62, 0x6A, on_forward_check_game},
     /* 6x6B */ {0x5C, 0x63, 0x6B, on_sync_joining_player_compressed_state},

@@ -3204,7 +3204,7 @@ static void on_61_98(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
   if (command == 0x98) {
     // If the client had an overlay (for battle/challenge modes), delete it
     c->delete_overlay();
-
+    c->telepipe_lobby_id = 0;
     s->remove_client_from_lobby(c);
 
   } else if (command == 0x61) {

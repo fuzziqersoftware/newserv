@@ -4680,18 +4680,20 @@ struct G_TriggerSetEvent_6x67 {
   le_uint32_t client_id = 0;
 } __packed_ws__(G_TriggerSetEvent_6x67, 0x10);
 
-// 6x68: Create telepipe / cast Ryuker
+// 6x68: Set telepipe state
 
-struct G_CreateTelepipe_6x68 {
+struct G_SetTelepipeState_6x68 {
   G_UnusedHeader header;
   le_uint16_t client_id2 = 0;
   le_uint16_t floor = 0;
-  le_uint32_t unknown_a2 = 0;
+  le_uint16_t unknown_b1 = 0;
+  uint8_t unknown_b2 = 0;
+  uint8_t unknown_b3 = 0;
   le_float x = 0.0f;
   le_float y = 0.0f;
   le_float z = 0.0f;
-  le_uint32_t unused3 = 0;
-} __packed_ws__(G_CreateTelepipe_6x68, 0x1C);
+  le_uint32_t unknown_a3 = 0;
+} __packed_ws__(G_SetTelepipeState_6x68, 0x1C);
 
 // 6x69: NPC control
 // Note: NPCs cannot be destroyed with 6x69; 6x1C is used instead for that.
@@ -4838,16 +4840,16 @@ struct G_SetQuestFlags_BB_6x6F {
 // and instead rearranged a bunch of things. This is presumably because this
 // structure also includes transient state (e.g. current HP).
 
-struct Telepipe {
+struct Telepipe6x70 {
   /* 00 */ le_uint16_t owner_client_id = 0xFFFF;
   /* 02 */ le_uint16_t floor = 0;
-  /* 04 */ le_uint32_t unknown_a2 = 0;
+  /* 04 */ le_uint32_t unknown_a1 = 0;
   /* 08 */ le_float x = 0.0f;
   /* 0C */ le_float y = 0.0f;
   /* 10 */ le_float z = 0.0f;
   /* 14 */ le_uint32_t unknown_a3 = 0;
   /* 18 */ le_uint32_t unknown_a4 = 0x0000FFFF;
-} __packed_ws__(Telepipe, 0x1C);
+} __packed_ws__(Telepipe6x70, 0x1C);
 
 struct G_Unknown_6x70_SubA1 {
   // This is used in all versions of this command except DCNTE and 11/2000.
@@ -4887,7 +4889,7 @@ struct G_SyncPlayerDispAndInventory_DCNTE_6x70 {
   // The following two fields appear to contain uninitialized data
   /* 0030 */ le_uint32_t unknown_a5 = 0;
   /* 0034 */ le_uint32_t unknown_a6 = 0;
-  /* 0038 */ Telepipe telepipe;
+  /* 0038 */ Telepipe6x70 telepipe;
   /* 0054 */ le_uint32_t unknown_a8 = 0;
   /* 0058 */ parray<uint8_t, 0x10> unknown_a9;
   /* 0068 */ le_uint32_t area = 0;
@@ -4906,7 +4908,7 @@ struct G_SyncPlayerDispAndInventory_DC112000_6x70 {
   /* 0030 */ le_uint16_t bonus_hp_from_materials = 0;
   /* 0032 */ le_uint16_t bonus_tp_from_materials = 0;
   /* 0034 */ parray<uint8_t, 0x10> unknown_a5;
-  /* 0044 */ Telepipe telepipe;
+  /* 0044 */ Telepipe6x70 telepipe;
   /* 0060 */ le_uint32_t unknown_a8 = 0;
   /* 0064 */ parray<uint8_t, 0x10> unknown_a9;
   /* 0074 */ le_uint32_t area = 0;
@@ -4928,7 +4930,7 @@ struct G_SyncPlayerDispAndInventory_BaseV1 {
   /* 006C */ le_uint32_t guild_card_number = 0;
   /* 0070 */ le_uint32_t unknown_a6 = 0;
   /* 0074 */ le_uint32_t battle_team_number = 0;
-  /* 0078 */ Telepipe telepipe;
+  /* 0078 */ Telepipe6x70 telepipe;
   /* 0094 */ le_uint32_t unknown_a8 = 0;
   /* 0098 */ G_Unknown_6x70_SubA1 unknown_a9;
   /* 00AC */ le_uint32_t area = 0;

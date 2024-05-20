@@ -54,7 +54,7 @@ public:
   uint32_t guild_card_number = 0;
   uint32_t unknown_a6 = 0;
   uint32_t battle_team_number = 0;
-  Telepipe telepipe;
+  Telepipe6x70 telepipe;
   uint32_t unknown_a8 = 0;
   parray<uint8_t, 0x10> unknown_a9_nte_112000;
   G_Unknown_6x70_SubA1 unknown_a9_final;

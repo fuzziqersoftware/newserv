@@ -2866,6 +2866,17 @@ void send_game_player_state(shared_ptr<Client> to_c, shared_ptr<Client> from_c, 
   to_send.player_tag = 0x00010000;
   to_send.guild_card_number = from_c->login->account->account_id;
 
+  auto to_l = to_c->lobby.lock();
+  if (to_l && (from_c->telepipe_lobby_id == to_l->lobby_id)) {
+    to_send.telepipe.owner_client_id = from_c->telepipe_state.client_id2;
+    to_send.telepipe.floor = from_c->telepipe_state.floor;
+    to_send.telepipe.unknown_a1 = from_c->telepipe_state.unknown_b3;
+    to_send.telepipe.x = from_c->telepipe_state.x;
+    to_send.telepipe.y = from_c->telepipe_state.y;
+    to_send.telepipe.z = from_c->telepipe_state.z;
+    to_send.telepipe.unknown_a3 = from_c->telepipe_state.unknown_a3;
+  }
+
   if (apply_overrides) {
     auto from_p = from_c->character();
     to_send.base.x = from_c->x;

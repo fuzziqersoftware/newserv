@@ -247,6 +247,8 @@ public:
   // These are null unless the client is within the trade sequence (D0-D4 or EE commands)
   std::unique_ptr<PendingItemTrade> pending_item_trade;
   std::unique_ptr<PendingCardTrade> pending_card_trade;
+  uint32_t telepipe_lobby_id;
+  G_SetTelepipeState_6x68 telepipe_state;
   std::shared_ptr<Episode3::PlayerConfig> ep3_config; // Null for non-Ep3
   int8_t bb_character_index;
   ItemData bb_identify_result;
