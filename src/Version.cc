@@ -207,15 +207,15 @@ uint32_t default_specific_version_for_version(Version version, int64_t sub_versi
   // VersionDetectDC, VersionDetectGC, or VersionDetectXB call.
   switch (version) {
     case Version::DC_NTE:
-      return SPECIFIC_VERSION_DC_NTE;
+      return SPECIFIC_VERSION_DC_NTE; // 1OJ1
     case Version::DC_V1_11_2000_PROTOTYPE:
-      return SPECIFIC_VERSION_DC_11_2000_PROTOTYPE;
+      return SPECIFIC_VERSION_DC_11_2000_PROTOTYPE; // 1OJ2
     case Version::DC_V1:
-      return SPECIFIC_VERSION_DC_V1_INDETERMINATE; // Need to send VersionDetectDC (but can't on V1; rip)
+      return SPECIFIC_VERSION_DC_V1_INDETERMINATE; // 1___; need to send VersionDetectDC (but can't on V1; rip)
     case Version::DC_V2:
-      return SPECIFIC_VERSION_DC_V2_INDETERMINATE; // Need to send VersionDetectDC
+      return SPECIFIC_VERSION_DC_V2_INDETERMINATE; // 2___; need to send VersionDetectDC
     case Version::PC_V2:
-      return SPECIFIC_VERSION_PC_V2;
+      return SPECIFIC_VERSION_PC_V2; // 2OJW
     case Version::GC_NTE:
       return SPECIFIC_VERSION_GC_NTE; // 3OJT
     case Version::GC_V3:
@@ -235,7 +235,7 @@ uint32_t default_specific_version_for_version(Version version, int64_t sub_versi
         case 0x30: // GC Ep1&2 GameJam demo, GC Ep1&2 Trial Edition, GC Ep1&2 JP v1.2, at least one version of PSO XB
         case 0x31: // GC Ep1&2 US v1.0, GC US v1.1, XB US
         default:
-          return SPECIFIC_VERSION_GC_V3_INDETERMINATE; // Need to send VersionDetectGC
+          return SPECIFIC_VERSION_GC_V3_INDETERMINATE; // 3O__; need to send VersionDetectGC
       }
       throw logic_error("this should be impossible");
     case Version::GC_EP3_NTE:
@@ -250,12 +250,12 @@ uint32_t default_specific_version_for_version(Version version, int64_t sub_versi
         case -1: // Initial check (before sub_version recognition)
         case 0x40: // GC Ep3 trial and GC Ep3 JP
         default:
-          return SPECIFIC_VERSION_GC_EP3_INDETERMINATE; // Need to send VersionDetectGC
+          return SPECIFIC_VERSION_GC_EP3_INDETERMINATE; // 3SJ_; need to send VersionDetectGC
       }
     case Version::XB_V3:
-      return SPECIFIC_VERSION_XB_V3_INDETERMINATE;
+      return SPECIFIC_VERSION_XB_V3_INDETERMINATE; // 4O__; need to send VersionDetectXB
     case Version::BB_V4:
-      return SPECIFIC_VERSION_BB_V4_INDETERMINATE;
+      return SPECIFIC_VERSION_BB_V4_INDETERMINATE; // 5___; we should be able to determine version from initial login
     default:
       return SPECIFIC_VERSION_INDETERMINATE;
   }
@@ -275,7 +275,7 @@ bool specific_version_is_dc(uint32_t specific_version) {
 }
 
 bool specific_version_is_gc(uint32_t specific_version) {
-  // GC specific_versions are 3GRV, where G is [OE], R is [JEP], V is [0-9T]
+  // GC specific_versions are 3GRV, where G is [OS], R is [JEP], V is [0-9T]
   if ((specific_version & 0xFF000000) != 0x33000000) {
     return false;
   }
