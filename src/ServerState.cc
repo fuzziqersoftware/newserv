@@ -769,6 +769,15 @@ void ServerState::load_config_early() {
   this->quest_flag_rewrites_v3 = parse_quest_flag_rewrites("QuestFlagRewritesV3");
   this->quest_flag_rewrites_v4 = parse_quest_flag_rewrites("QuestFlagRewritesV4");
 
+  this->quest_counter_fields.clear();
+  try {
+    for (const auto& it : this->config_json->get_dict("QuestCounterFields")) {
+      const auto& def = it.second->as_list();
+      this->quest_counter_fields.emplace(it.first, make_pair(def.at(0)->as_int(), def.at(1)->as_int()));
+    }
+  } catch (const out_of_range&) {
+  }
+
   this->persistent_game_idle_timeout_usecs = this->config_json->get_int("PersistentGameIdleTimeout", 0);
   this->cheat_mode_behavior = parse_behavior_switch("CheatModeBehavior", BehaviorSwitch::OFF_BY_DEFAULT);
   this->use_game_creator_section_id = this->config_json->get_bool("UseGameCreatorSectionID", false);

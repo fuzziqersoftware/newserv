@@ -538,8 +538,38 @@ static void server_command_qgread(shared_ptr<Client> c, const std::string& args)
   if (flag_num >= flags.size()) {
     send_text_message_printf(c, "$C7Flag number must be\nless than %zu", flags.size());
   } else {
-    send_text_message_printf(c, "$C7Quest counter %hhu\nhas value %" PRIu32,
-        flag_num, flags[flag_num].load());
+    send_text_message_printf(c, "$C7Quest counter %hhu\nhas value %" PRIu32, flag_num, flags[flag_num].load());
+  }
+}
+
+static void server_command_qfread(shared_ptr<Client> c, const std::string& args) {
+  auto s = c->require_server_state();
+
+  uint8_t counter_index;
+  uint32_t mask;
+  try {
+    const auto& def = s->quest_counter_fields.at(args);
+    counter_index = def.first;
+    mask = def.second;
+  } catch (const out_of_range&) {
+    send_text_message(c, "$C4Invalid field name");
+    return;
+  }
+  if (mask == 0) {
+    throw runtime_error("invalid quest counter definition");
+  }
+
+  uint32_t counter_value = c->character()->quest_counters.at(counter_index) & mask;
+
+  while (!(mask & 1)) {
+    mask >>= 1;
+    counter_value >>= 1;
+  }
+
+  if (mask == 1) {
+    send_text_message_printf(c, "$C7Field %s\nhas value %s", args.c_str(), counter_value ? "TRUE" : "FALSE");
+  } else {
+    send_text_message_printf(c, "$C7Field %s\nhas value %" PRIu32, args.c_str(), counter_value);
   }
 }
 
@@ -1634,7 +1664,7 @@ static void server_command_kick(shared_ptr<Client> c, const std::string& args) {
     return;
   }
 
-  send_message_box(target, "$C6You were kicked off by a moderator.");
+  send_message_box(target, "$C6You have been kicked off the server.");
   target->should_disconnect = true;
   string target_name = name_for_client(target);
   send_text_message_printf(l, "$C6%s kicked off", target_name.c_str());
@@ -1685,7 +1715,7 @@ static void server_command_ban(shared_ptr<Client> c, const std::string& args) {
 
   target->login->account->ban_end_time = now() + usecs;
   target->login->account->save();
-  send_message_box(target, "$C6You were banned by a moderator.");
+  send_message_box(target, "$C6You have been banned.");
   target->should_disconnect = true;
   string target_name = name_for_client(target);
   send_text_message_printf(l, "$C6%s banned", target_name.c_str());
@@ -2455,6 +2485,7 @@ static const unordered_map<string, ChatCommandDefinition> chat_commands({
     {"$qcall", {server_command_qcall, proxy_command_qcall}},
     {"$qcheck", {server_command_qcheck, nullptr}},
     {"$qclear", {server_command_qclear, proxy_command_qclear}},
+    {"$qfread", {server_command_qfread, nullptr}},
     {"$qgread", {server_command_qgread, nullptr}},
     {"$qgwrite", {server_command_qgwrite, nullptr}},
     {"$qset", {server_command_qset, proxy_command_qset}},

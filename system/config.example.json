@@ -1176,9 +1176,37 @@
     "F_002F": "F_01F7 && F_01FD && F_0209", // All monuments state
   },
 
+  // This setting defines fields that can be used with the $qfread command.
+  "QuestCounterFields": {
+    // Entries are [quest_counter_index, field_mask]. field_mask must contain
+    // exactly one contiguous sequence of one or more 1 bits. If there is
+    // exactly one bit set in the mask, it is reported as true or false; if
+    // there are multiple bits set, it is reported as a numeric value.
+    "betaluckycoins": [0x01, 0x003F8000], // Beta Lucky Coins
+    "garonbscore":    [0x00, 0x0003FC00], // Garon button-mashing game score
+    "garonpoints":    [0x00, 0x000003FF], // Garon points
+    "garontscore":    [0x00, 0x03FC0000], // Garon timing game score
+    "killcount":      [0x03, 0x003FFF00], // Kill count
+    "luckycoins":     [0x0B, 0x000001FC], // Lucky Coins
+    "luckytickets1":  [0x03, 0x000000FF], // Lucky Tickets
+    "luckytickets2":  [0x06, 0x0FF00000], // Lucky Tickets
+    "luckytickets3":  [0x0A, 0x7FC00000], // Lucky Tickets
+    "ma1v2points":    [0x09, 0x00003FFF], // MA1v2 points
+    "ma2v2points":    [0x09, 0x0FFFC000], // MA2v2 points
+    "ma4kills":       [0x0E, 0x7FFFFFFF], // MA4 kills (Total)
+    "ma4killsc":      [0x08, 0x7FFFFFFF], // MA4 kills (Crater)
+    "ma4killscd":     [0x03, 0x7FFFFFFF], // MA4 kills (Central Dome)
+    "ma4killsgdv":    [0x04, 0x7FFFFFFF], // MA4 kills (Gal Da Val)
+    "ma4tickets":     [0x0F, 0x000000FF], // MA4 Tickets
+    "pgcandyid":      [0x05, 0x00007FFF], // Principal's Gift: Random Candy ID
+    "rhpoints":       [0x02, 0x003FC000], // Rappy's Holiday points
+    "songcount":      [0x03, 0x07C00000], // Song count
+    "wrappingpapers": [0x0B, 0x1FF00000], // Wrapping Papers
+  },
+
   // Whether to enable certain exception handling. Disabling this causes
   // newserv to abort when any client causes an exception, which is generally
   // only useful for debugging newserv itself. This setting should usually be
-  // left on (which is the default behavior).
+  // left on.
   "CatchHandlerExceptions": true,
 }

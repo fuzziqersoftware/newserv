@@ -452,4 +452,27 @@
     "F_002E": "F_0209", // Ep1 Mine monument state = 4-1 cleared
     "F_002F": "F_01F7 && F_01FD && F_0209", // All monuments state
   },
+
+  "QuestCounterFields": {
+    "betaluckycoins": [0x01, 0x003F8000],
+    "garonbscore":    [0x00, 0x0003FC00],
+    "garonpoints":    [0x00, 0x000003FF],
+    "garontscore":    [0x00, 0x03FC0000],
+    "killcount":      [0x03, 0x003FFF00],
+    "luckycoins":     [0x0B, 0x000001FC],
+    "luckytickets1":  [0x03, 0x000000FF],
+    "luckytickets2":  [0x06, 0x0FF00000],
+    "luckytickets3":  [0x0A, 0x7FC00000],
+    "ma1v2points":    [0x09, 0x00003FFF],
+    "ma2v2points":    [0x09, 0x0FFFC000],
+    "ma4kills":       [0x0E, 0x7FFFFFFF],
+    "ma4killsc":      [0x08, 0x7FFFFFFF],
+    "ma4killscd":     [0x03, 0x7FFFFFFF],
+    "ma4killsgdv":    [0x04, 0x7FFFFFFF],
+    "ma4tickets":     [0x0F, 0x000000FF],
+    "pgcandyid":      [0x05, 0x00007FFF],
+    "rhpoints":       [0x02, 0x003FC000],
+    "songcount":      [0x03, 0x07C00000],
+    "wrappingpapers": [0x0B, 0x1FF00000],
+  },
 }

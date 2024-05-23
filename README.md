@@ -485,35 +485,36 @@ newserv supports a variety of commands players can use by chatting in-game. Any 
 Some commands only work on the game server and not on the proxy server. The chat commands are:
 
 * Information commands
-    * `$li`: Shows basic information about the lobby or game you're in. If you're on the proxy server, shows information about your connection instead (remote Guild Card number, client ID, etc.).
-    * `$si` (game server only): Shows basic information about the server.
-    * `$ping`: Shows round-trip ping time from the server to you. On the proxy server, shows the ping time from you to the proxy and from the proxy to the server.
-    * `$matcount` (game server only): Shows how many of each type of material you've used.
-    * `$itemnotifs <mode>`: Enables item drop notification messages. If the game has private drops enabled, you will only see a notification if the dropped item is visible to you; you won't be notified of other players' drops. The modes are:
+    * `$li`: Show basic information about the lobby or game you're in. If you're on the proxy server, show information about your connection instead (remote Guild Card number, client ID, etc.).
+    * `$si` (game server only): Show basic information about the server.
+    * `$ping`: Show round-trip ping time from the server to you. On the proxy server, show the ping time from you to the proxy and from the proxy to the server.
+    * `$matcount` (game server only): Show how many of each type of material you've used.
+    * `$itemnotifs <mode>`: Enable item drop notification messages. If the game has private drops enabled, you will only see a notification if the dropped item is visible to you; you won't be notified of other players' drops. The modes are:
         * `off`: No notifications are shown.
         * `rare`: You are notified when a rare item drops.
         * `on`: You are notified when any item drops, except Meseta.
         * `every`: You are notified when any item drops, including Meseta.
-    * `$what` (game server only): Shows the type, name, and stats of the nearest item on the ground.
-    * `$where` (game server only): Shows your current floor number and coordinates. Mainly useful for debugging.
+    * `$what` (game server only): Show the type, name, and stats of the nearest item on the ground.
+    * `$where` (game server only): Show your current floor number and coordinates. Mainly useful for debugging.
+    * `$qfread <field-name>` (game server only): Show the value of a quest counter in your player data. The field names are defined in config.json.
 
 * Debugging commands
-    * `$debug` (game server only): Enable or disable debug. You need the DEBUG flag in your user account to use this command. Enabling debug does a few things:
+    * `$debug` (game server only): Enable or disable debug. You need the DEBUG flag in your user account to use this command. Enabling debug does several things:
         * You'll see in-game messages from the server when you take certain actions, like killing an enemy in BB.
         * You'll see the rare seed value and floor variations when you join a game.
-        * You'll be placed into the highest available slot in lobbies and games instead of the lowest, unless you're joining a BB solo-mode game.
-        * You'll be able to join games with any PSO version, not only those for which crossplay is normally supported. Be prepared for client crashes and other client-side brokenness if you do this. Please do not submit any issues for broken behaviors in crossplay, unless the situation is explicitly supported (see the "Cross-version play" section above).
+        * You'll be placed into the last available slot in lobbies and games instead of the first, unless you're joining a BB solo-mode game.
+        * You'll be able to join games with any PSO version, not only those for which crossplay is normally supported. Be prepared for client crashes and other client-side brokenness if you do this. Do not submit any issues for broken behaviors in crossplay, unless the situation is explicitly supported (see the "Cross-version play" section above).
         * The rest of the commands in this section are enabled on the game server. (They are always enabled on the proxy server.)
     * `$quest <number>` (game server only): Load a quest by quest number. Can be used to load battle or challenge quests with only one player present. Debug is not required to be enabled if the specified quest has the AllowStartFromChatCommand field set in its metadata file.
     * `$qcall <function-id>`: Call a quest function on your client.
     * `$qcheck <flag-num>` (game server only): Show the value of a quest flag. This command can be used without debug mode enabled. If you're in a game, show the value of the flag in that game; if you're in the lobby, show the saved value of that quest flag for your character (BB only).
     * `$qset <flag-num>` or `$qclear <flag-num>`: Set or clear a quest flag for everyone in the game. If you're in the lobby and on BB, set or clear the saved value of a quest flag in your character file.
-    * `$qgread <flag-num>` (game server only): Get the value of a quest counter ("global flag"). This command can be used without debug mode enabled.
+    * `$qgread <flag-num>` (game server only): Show the value of a quest counter ("global flag"). This command can be used without debug mode enabled.
     * `$qgwrite <flag-num> <value>` (game server only): Set the value of a quest counter ("global flag") for yourself.
     * `$qsync <reg-num> <value>`: Set a quest register's value for yourself only. `<reg-num>` should be either rXX (e.g. r60) or fXX (e.g. f60); if the latter, `<value>` is parsed as a floating-point value instead of as an integer.
     * `$qsyncall <reg-num> <value>`: Set a quest register's value for everyone in the game. `<reg-num>` should be either rXX (e.g. r60) or fXX (e.g. f60); if the latter, `<value>` is parsed as a floating-point value instead of as an integer.
     * `$swset [floor] <flag-num>` and `$swclear [floor] <flag-num>`: Set or clear a switch flag. If floor is not given, sets or clears the flag on your current floor.
-    * `$swsetall`: Sets all switch flags on your current floor. This unlocks all doors, disables all laser fences, triggers all light/poison switches, etc.
+    * `$swsetall`: Set all switch flags on your current floor. This unlocks all doors, disables all laser fences, triggers all light/poison switches, etc.
     * `$gc` (game server only): Send your own Guild Card to yourself.
     * `$sc <data>`: Send a command to yourself.
     * `$ss <data>`: Send a command to the remote server (if in a proxy session) or to the game server.
@@ -523,63 +524,63 @@ Some commands only work on the game server and not on the proxy server. The chat
     * `$ep3battledebug` (game server only; Episode 3 only): Enable or disable TCard00_Select. If enabled, the game will enter the debug menu when you start a battle.
 
 * Personal state commands
-    * `$arrow <color-id>`: Changes your lobby arrow color.
-    * `$secid <section-id>`: Sets your override section ID. After running this command, any games you create will use your override section ID for rare drops instead of your character's actual section ID. If you're in a game and you are the leader of the game, this also immediately changes the item tables used by the server when creating items. To revert to your actual section id, run `$secid` with no name after it. On the proxy server, this will not work if the remote server controls item drops (e.g. on BB, or on Schtserv with server drops enabled). If the server does not allow cheat mode anywhere (that is, "CheatModeBehavior" is "Off" in config.json), this command does nothing.
-    * `$rand <seed>`: Sets your override random seed (specified as a 32-bit hex value). This will make any games you create use the given seed for rare enemies. This also makes item drops deterministic in Blue Burst games hosted by newserv. On the proxy server, this command can cause desyncs with other players in the same game, since they will not see the overridden random seed. To remove the override, run `$rand` with no arguments. If the server does not allow cheat mode anywhere (that is, "CheatModeBehavior" is "Off" in config.json), this command does nothing.
-    * `$ln [name-or-type]`: Sets the lobby number. Visible only to you. This command exists because some non-lobby maps can be loaded as lobbies with invalid lobby numbers. See the "GC lobby types" and "Ep3 lobby types" entries in the information menu for acceptable values here. Note that non-lobby maps do not have a lobby counter, so there's no way to exit the lobby without using either `$ln` again or `$exit`. On the game server, `$ln` reloads the lobby immediately; on the proxy server, it doesn't take effect until you load another lobby yourself (which means you'll like have to use `$exit` to escape). Run this command with no argument to return to the default lobby.
-    * `$swa`: Enables or disables switch assist. When enabled, the server will attempt to automatically unlock two-player and four-player doors in non-quest games if you step on all the required switches sequentially.
-    * `$exit`: If you're in a lobby, sends you to the main menu (which ends your proxy session, if you're in one). If you're in a game or spectator team, sends you to the lobby (but does not end your proxy session if you're in one). Does nothing if you're in a non-Episode 3 game and no quest is in progress.
+    * `$arrow <color-id>`: Change your lobby arrow color.
+    * `$secid <section-id>`: Set your override section ID. After running this command, any games you create will use your override section ID for rare drops instead of your character's actual section ID. If you're in a game and you are the leader of the game, this also immediately changes the item tables used by the server when creating items. To revert to your actual section id, run `$secid` with no name after it. On the proxy server, this will not work if the remote server controls item drops (e.g. on BB, or on Schtserv with server drops enabled). If the server does not allow cheat mode anywhere (that is, "CheatModeBehavior" is "Off" in config.json), this command does nothing.
+    * `$rand <seed>`: Set your override random seed (specified as a 32-bit hex value). This will make any games you create use the given seed for rare enemies. This also makes item drops deterministic in Blue Burst games hosted by newserv. On the proxy server, this command can cause desyncs with other players in the same game, since they will not see the overridden random seed. To remove the override, run `$rand` with no arguments. If the server does not allow cheat mode anywhere (that is, "CheatModeBehavior" is "Off" in config.json), this command does nothing.
+    * `$ln [name-or-type]`: Set the lobby number. Visible only to you. This command exists because some non-lobby maps can be loaded as lobbies with invalid lobby numbers. See the "GC lobby types" and "Ep3 lobby types" entries in the information menu for acceptable values here. Note that non-lobby maps do not have a lobby counter, so there's no way to exit the lobby without using either `$ln` again or `$exit`. On the game server, `$ln` reloads the lobby immediately; on the proxy server, it doesn't take effect until you load another lobby yourself (which means you'll like have to use `$exit` to escape). Run this command with no argument to return to the default lobby.
+    * `$swa`: Enable or disable switch assist. When enabled, the server will attempt to automatically unlock two-player and four-player doors in non-quest games if you step on all the required switches sequentially.
+    * `$exit`: If you're in a lobby, send you to the main menu (which ends your proxy session, if you're in one). If you're in a game or spectator team, send you to the lobby (but does not end your proxy session if you're in one). Does nothing if you're in a non-Episode 3 game and no quest is in progress.
     * `$patch <name>`: Run a patch on your client. `<name>` must exactly match the name of a patch on the server.
 
 * Character data commands (game server only)
-    * `$savechar <slot>`: Saves your current character data on the server in the specified slot. See the "Server-side saves" section for more details.
-    * `$loadchar <slot>`: Saves your current character data on the server in the specified slot. See the "Server-side saves" section for more details.
-    * `$bbchar <username> <password> <slot>`: Saves your current character data on the server in a different account's BB character slots. See the "Server-side saves" section for more details.
-    * `$edit <stat> <value>`: Modifies your character data. If you are on V3 (GameCube/Xbox), this command does nothing. If you are on V1 or V2 (DC or PC, not BB), your changes will be undone if you join a game - to save your changes, disconnect from the lobby. If cheats are allowed on the server, `<stat>` can be any of `atp`, `mst`, `evp`, `hp`, `dfp`, `ata`, `lck`, `meseta`, `exp`, `level`, `namecolor`, `secid`, `name`, `language`, `npc`, or `tech`. If cheats are not allowed, only `namecolor`, `name`, `language`, and `npc` can be used. Changing your character's language is only useful on BB; to do so, use a single-character language code (e.g. to switch your character to English, use `$edit language E`; for Japanese, use `$edit language J`).
+    * `$savechar <slot>`: Save your current character data on the server in the specified slot. See the "Server-side saves" section for more details.
+    * `$loadchar <slot>`: Save your current character data on the server in the specified slot. See the "Server-side saves" section for more details.
+    * `$bbchar <username> <password> <slot>`: Save your current character data on the server in a different account's BB character slots. See the "Server-side saves" section for more details.
+    * `$edit <stat> <value>`: Modify your character data. If you are on V3 (GameCube/Xbox), this command does nothing. If you are on V1 or V2 (DC or PC, not BB), your changes will be undone if you join a game - to save your changes, disconnect from the lobby. If cheats are allowed on the server, `<stat>` can be any of `atp`, `mst`, `evp`, `hp`, `dfp`, `ata`, `lck`, `meseta`, `exp`, `level`, `namecolor`, `secid`, `name`, `language`, `npc`, or `tech`. If cheats are not allowed, only `namecolor`, `name`, `language`, and `npc` can be used. Changing your character's language is only useful on BB; to do so, use a single-character language code (e.g. to switch your character to English, use `$edit language E`; for Japanese, use `$edit language J`).
 
 * Blue Burst player commands (game server only)
-    * `$bank [number]`: Switches your current bank, so you can access your other character's banks (if `number` is 1-4) or your shared account bank (if `number` is 0). If `number` is not given, switches back to your current character's bank.
-    * `$save`: Saves your character, system, and Guild Card data immediately. (By default, your character is saved every 60 seconds while online, and your account and Guild Card data are saved whenever they change.)
+    * `$bank [number]`: Switch your current bank, so you can access your other character's banks (if `number` is 1-4) or your shared account bank (if `number` is 0). If `number` is not given, switch back to your current character's bank.
+    * `$save`: Save your character, system, and Guild Card data immediately. (By default, your character is saved every 60 seconds while online, and your account and Guild Card data are saved whenever they change.)
 
 * Game state commands (game server only)
-    * `$maxlevel <level>`: Sets the maximum level for players to join the current game. (This only applies when joining; if a player joins and then levels up past this level during the game, they are not kicked out, but won't be able to rejoin if they leave.)
-    * `$minlevel <level>`: Sets the minimum level for players to join the current game.
-    * `$password <password>`: Sets the game's join password. To unlock the game, run `$password` with nothing after it.
-    * `$dropmode [mode]`: Changes the way item drops behave in the current game. `mode` can be `none`, `client`, `shared`, `private`, or `duplicate`. If `mode` is not given, tells you the current drop mode without changing it. See the "Item tables and drop modes" section for more information.
-    * `$persist`: Enable or disable persistence for the current game. When persistence is on, the game will not be deleted when the last player leaves. The states of enemies, objects, and switches will be saved, and items left on the floor will not be deleted (except items only visible to the leaving player). If the game is empty for too long (15 minutes by default), it is then deleted. There is an edge case with persistence: if the player defeats a boss, leaves the room, joins again, and returns to the boss arena, neither the boss nor the exit warp will spawn, so they will be stuck there and have to use $warp or Quit Game to get out. For this reason, `$warp 0` is allowed in boss arenas once the boss is defeated, even if cheat mode is disabled.
+    * `$maxlevel <level>`: Set the maximum level for players to join the current game. (This only applies when joining; if a player joins and then levels up past this level during the game, they are not kicked out, but won't be able to rejoin if they leave.)
+    * `$minlevel <level>`: Set the minimum level for players to join the current game.
+    * `$password <password>`: Set the game's join password. To unlock the game, run `$password` with nothing after it.
+    * `$dropmode [mode]`: Change the way item drops behave in the current game. `mode` can be `none`, `client`, `shared`, `private`, or `duplicate`. If `mode` is not given, tells you the current drop mode without changing it. See the "Item tables and drop modes" section for more information.
+    * `$persist`: Enable or disable persistence for the current game. When persistence is on, the game will not be deleted when the last player leaves. The states of enemies, objects, and switches will be saved, and items left on the floor will not be deleted (except items that were only visible to the leaving player, which are deleted). If the game is empty for too long (15 minutes by default), it is then deleted. There is an edge case with persistence: if the player defeats a boss, leaves the room, joins again, and returns to the boss arena, neither the boss nor the exit warp will appear, so they will be stuck there and have to use $warp or Quit Game to get out. For this reason, `$warp 0` is allowed in boss arenas once the boss is defeated, even if cheat mode is disabled.
 
 * Episode 3 commands (game server only)
-    * `$spec`: Toggles the allow spectators flag for Episode 3 games. If any players are spectating when this flag is disabled, they will be sent back to the lobby.
-    * `$inftime`: Toggles infinite-time mode. Must be used before starting a battle. If infinite-time mode is enabled, the overall and per-phase time limits will be disabled regardless of the values chosen during battle setup. After completing a battle, infinite-time mode is reset to the server's default value (which can be set in Episode3BehaviorFlags in config.json).
-    * `$dicerange [d:L-H] [1:L-H] [a1:L-H] [d1:L-H]`: Sets override dice ranges for the next battle. The min and max dice values from the rules setup menu always apply to the ATK dice, but you can specify a different range for the DEF dice with `d:2-4` (for example). The `1:` override applies to the 1-player team in a 2v1 game (so you would set the 2-player team's desired dice range in the rules menu). You can also specify the 1-player team's ATK and DEF ranges separately with the `a1:` and `d1:` overrides. Note that these ranges will only be used if the chosen map or quest does not override them.
-    * `$stat <what>`: Shows a statistic about your player or team in the current battle. `<what>` can be `duration`, `fcs-destroyed`, `cards-destroyed`, `damage-given`, `damage-taken`, `opp-cards-destroyed`, `own-cards-destroyed`, `move-distance`, `cards-set`, `fcs-set`, `attack-actions-set`, `techs-set`, `assists-set`, `defenses-self`, `defenses-ally`, `cards-drawn`, `max-attack-damage`, `max-combo`, `attacks-given`, `attacks-taken`, `sc-damage`, `damage-defended`, or `rank`.
-    * `$surrender`: Causes your team to immediately lose the current battle.
-    * `$saverec <name>`: Saves the recording of the last battle.
-    * `$playrec <name>`: Plays a battle recording. This command creates a spectator team and replays the specified battle log within it. There is a bug in Dolphin that makes use of this command unstable in emulation (see the "Battle records" section above).
+    * `$spec`: Toggle the allow spectators flag for Episode 3 games. If any players are spectating when this flag is disabled, they are sent back to the lobby.
+    * `$inftime`: Toggle infinite-time mode. Must be used before starting a battle. If infinite-time mode is on, the overall and per-phase time limits will be disabled regardless of the values chosen during battle rules setup. After completing a battle, infinite-time mode is reset to the server's default value (which can be set in Episode3BehaviorFlags in config.json).
+    * `$dicerange [d:L-H] [1:L-H] [a1:L-H] [d1:L-H]`: Set override dice ranges for the next battle. The min and max dice values from the rules setup menu always apply to the ATK dice, but you can specify a different range for the DEF dice with `d:2-4` (for example). The `1:` override applies to the 1-player team in a 2v1 game (so you would set the 2-player team's desired dice range in the rules menu). You can also specify the 1-player team's ATK and DEF ranges separately with the `a1:` and `d1:` overrides. Note that these ranges will only be used if the chosen map or quest does not override them.
+    * `$stat <what>`: Show a statistic about your player or team in the current battle. `<what>` can be `duration`, `fcs-destroyed`, `cards-destroyed`, `damage-given`, `damage-taken`, `opp-cards-destroyed`, `own-cards-destroyed`, `move-distance`, `cards-set`, `fcs-set`, `attack-actions-set`, `techs-set`, `assists-set`, `defenses-self`, `defenses-ally`, `cards-drawn`, `max-attack-damage`, `max-combo`, `attacks-given`, `attacks-taken`, `sc-damage`, `damage-defended`, or `rank`.
+    * `$surrender`: Cause your team to immediately lose the current battle.
+    * `$saverec <name>`: Save the recording of the last battle.
+    * `$playrec <name>`: Play a battle recording. This command creates a spectator team immediately but the replay does not start automatically, to give other players a chance to join. To start the battle replay within the spectator team, run `$playrec` again (with no name). There is a bug in Dolphin that makes this command unstable in emulation (see the "Battle records" section above).
 
 * Cheat mode commands
-    * `$cheat` (game server only): Enables or disables cheat mode for the current game. All other cheat mode commands do nothing if cheat mode is disabled. By default, cheat mode is off in new games but can be enabled; there is an option in config.json that allows you to disable cheat mode entirely, or set it to on by default in new games. Cheat mode is always enabled on the proxy server, unless cheat mode is disabled on the entire server.
-    * `$infhp`: Enables or disables infinite HP mode. Applies to only you; does not affect other players. When enabled, one-hit KO attacks will still kill you, but on most versions of the game (not DCv1, GC US 1.2, or GC JP 1.5), the server will automatically revive you if you die. On all versions except GC US 1.2 and GC JP 1.5, infinite HP also automatically cures status ailments.
-    * `$inftp`: Enables or disables infinite TP mode. Applies to only you; does not affect other players.
-    * `$warpme <floor-id>` (or `$warp <floor-id>`): Warps yourself to the given floor.
-    * `$warpall <floor-id>`: Warps everyone in the game to the given floor. You must be the leader to use this command, unless you're on the proxy server.
-    * `$next`: Warps yourself to the next floor.
+    * `$cheat` (game server only): Enable or disable cheat mode for the current game. All other cheat mode commands do nothing if cheat mode is disabled. By default, cheat mode is off in new games but can be enabled; there is an option in config.json that allows you to disable cheat mode entirely, or set it to on by default in new games. Cheat mode is always enabled on the proxy server, unless cheat mode is disabled on the entire server.
+    * `$infhp`: Enable or disable infinite HP mode. Applies to only you; does not affect other players. When enabled, one-hit KO attacks will still kill you, but on most versions of the game (not DCv1, GC US 1.2, or GC JP 1.5), the server will automatically revive you if you die. On all versions except GC US 1.2 and GC JP 1.5, infinite HP also automatically cures status ailments.
+    * `$inftp`: Enable or disable infinite TP mode. Applies to only you; does not affect other players.
+    * `$warpme <floor-id>` (or `$warp <floor-id>`): Warp yourself to the given floor.
+    * `$warpall <floor-id>`: Warp everyone in the game to the given floor. You must be the leader to use this command, unless you're on the proxy server.
+    * `$next`: Warp yourself to the next floor.
     * `$item <desc>` (or `$i <desc>`): Create an item. `desc` may be a description of the item (e.g. "Hell Saber +5 0/10/25/0/10") or a string of hex data specifying the item code. Item codes are 16 hex bytes; at least 2 bytes must be specified, and all unspecified bytes are zeroes. If you are on the proxy server, you must not be using Blue Burst for this command to work. On the game server, this command works for all versions.
     * `$unset <index>` (game server only): In an Episode 3 battle, removes one of your set cards from the field. `<index>` is the index of the set card as it appears on your screen - 1 is the card next to your SC's icon, 2 is the card to the right of 1, etc. This does not cause a Hunters-side SC to lose HP, as they normally do when their items are destroyed.
-    * `$dropmode [mode]` (proxy server): Changes the way item drops behave in the current game, if you are not on BB. Unlike the game server version of this command, using this on the proxy server requires cheats to be enabled. This works by intercepting the drop requests sent to and from the leader. (So, if you are the leader and not using server drop mode on the remote server, it affects the entire game; otherwise, it affects only items generated by your actions.) `mode` can be `none` (no drops), `default` (normal drops), or `proxy` (use newserv's drop tables instead of the remote server's). If `mode` is not given, tells you the current drop mode without changing it.
+    * `$dropmode [mode]` (proxy server): Change the way item drops behave in the current game, if you are not on BB. Unlike the game server version of this command, using this on the proxy server requires cheats to be enabled. This works by intercepting the drop requests sent to and from the leader. (So, if you are the leader and not using server drop mode on the remote server, it affects the entire game; otherwise, it affects only items generated by your actions.) `mode` can be `none` (no drops), `default` (normal drops), or `proxy` (use newserv's drop tables instead of the remote server's). If `mode` is not given, tells you the current drop mode without changing it.
 
-* Configuration commands
-    * `$event <event>`: Sets the current holiday event in the current lobby. Holiday events are documented in the "Using $event" item in the information menu. If you're on the proxy server, this applies to all lobbies and games you join, but only you will see the new event - other players will not.
-    * `$allevent <event>` (game server only): Sets the current holiday event in all lobbies.
-    * `$song <song-id>` (Episode 3 only): Plays a specific song in the current lobby.
+* Aesthetic commands
+    * `$event <event>`: Set the current holiday event in the current lobby. Holiday events are documented in the "Using $event" item in the information menu. If you're on the proxy server, this applies to all lobbies and games you join, but only you will see the new event - other players will not.
+    * `$allevent <event>` (game server only): Set the current holiday event in all lobbies.
+    * `$song <song-id>` (Episode 3 only): Play a specific song in the current lobby.
 
 * Administration commands (game server only)
-    * `$ann <message>`: Sends an announcement message. The message is sent as temporary on-screen text to all players in all games and lobbies.
-    * `$ann! <message>`: Sends an announcement message. The message is sent as a Simple Mail message to all players in all games and lobbies.
-    * `$ax <message>`: Sends a message to the server's terminal. This cannot be used to run server shell commands; it only prints text to stderr.
-    * `$silence <identifier>`: Silences a player (remove their ability to chat) or unsilences a player. The identifier may be the player's name or Guild Card number.
-    * `$kick <identifier>`: Disconnects a player. The identifier may be the player's name or Guild Card number.
-    * `$ban <identifier>`: Bans a player. The identifier may be the player's name or Guild Card number.
+    * `$ann <message>`: Send an announcement message. The message is sent as temporary on-screen text to all players in all games and lobbies.
+    * `$ann! <message>`: Send an announcement message. The message is sent as a Simple Mail message to all players in all games and lobbies.
+    * `$ax <message>`: Send a message to the server's terminal. This cannot be used to run server shell commands; it only prints text to stderr.
+    * `$silence <identifier>`: Silence a player (remove their ability to chat) or unsilence a player. The identifier may be the player's name or Guild Card number.
+    * `$kick <identifier>`: Disconnect a player. The identifier may be the player's name or Guild Card number.
+    * `$ban <duration> <identifier>`: Ban a player. The duration should be of the form `10m` (minutes), `10h` (hours), `10d` (days), `10w` (weeks), `10M` (months), or `10y` (years). (Numbers other than 10 may be used, of course.) As with `$kick`, the identifier may be the player's name or Guild Card number.
 
 # Non-server features
 
