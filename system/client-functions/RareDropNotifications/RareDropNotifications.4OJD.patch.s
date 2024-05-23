@@ -51,28 +51,29 @@ sound1_start:
   pop       edi  # From original function
   pop       esi  # From original function
   add       esp, 0xC  # From original function
+  test      eax, eax
+  je        fail  # Item does not exist (was on a different floor)
   cmp       byte [eax + 0xEF], 0x4
-  je        do_sound
+  je        +0x503  # sound2_start
+fail:
   ret
-do_sound:
-  xor       ecx, ecx
-  push      ecx
-  jmp       +0x502  # sound2_start
 sound1_end:
 
   .data     0x00188A62
   .deltaof  sound2_start, sound2_end
 sound2_start:
+  xor       ecx, ecx
+  push      ecx
   push      ecx
   push      ecx
   push      0x0000055E
-  call      +0x161342  # 002E9DB0 => play_sound(0x55E, nullptr, 0, 0);
-  jmp       +0x31  # sound3_start
+  jmp       +0x33  # sound3_start
 sound2_end:
 
   .data     0x00188AA1
   .deltaof  sound3_start, sound3_end
 sound3_start:
+  call      +0x16130A  # 002E9DB0 => play_sound(0x55E, nullptr, 0, 0);
   add       esp, 0x10
   ret
 sound3_end:
