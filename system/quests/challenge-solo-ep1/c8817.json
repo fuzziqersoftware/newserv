@@ -1,0 +1,6 @@
+{
+  "ChallengeTemplateIndex": 6,
+  "DescriptionFlag": 57,
+  "AvailableIf": "V_NumPlayers == 2",
+  "AllowStartFromChatCommand": true
+}
