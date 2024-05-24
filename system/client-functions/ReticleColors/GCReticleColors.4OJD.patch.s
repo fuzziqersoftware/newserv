@@ -1,4 +1,4 @@
-.meta name="DC targets"
+.meta name="GC targets"
 .meta description="Change the target\nreticle colors to\nthose used on the\nGameCube"
 # Original code by Ralf @ GC-Forever and Aleron Ives
 # https://www.gc-forever.com/forums/viewtopic.php?t=2050
