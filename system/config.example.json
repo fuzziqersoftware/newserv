@@ -676,6 +676,8 @@
     //   category_name: what appears in the quest menu on the client.
     //   description: what appears in the category description window (may
     //       contain color escape codes like $C6).
+    [0x081, "government-console-ep1", "Hero in Red", "$E$CG-Red Ring Rico-\n$C6Quests that follow\nthe Episode 1\nstoryline"],
+    [0x081, "government-console-ep2", "The Military's Hero", "$E$CG-Heathcliff Flowen-\n$C6Quests that follow\nthe Episode 2\nstoryline"],
     [0x081, "retrieval", "Retrieval", "$E$C6Quests that involve\nretrieving an object"],
     [0x081, "extermination", "Extermination", "$E$C6Quests that involve\ndestroying all\nmonsters"],
     [0x081, "events", "Events", "$E$C6Quests that are part\nof an event"],
@@ -685,7 +687,9 @@
     [0x081, "team", "Team", "$E$C6Quests for you\nand your team\nmembers."],
     [0x002, "battle", "Battle", "$E$C6Battle mode rule\nsets"],
     [0x004, "challenge-ep1", "Challenge (Episode 1)", "$E$C6Challenge mode\nquests in Episode 1"],
+    [0x004, "challenge-solo-ep1", "Solo Challenge (Episode 1)", "$E$C6Challenge mode\nquests in Episode 1\nthat you can solo"],
     [0x104, "challenge-ep2", "Challenge (Episode 2)", "$E$C6Challenge mode\nquests in Episode 2"],
+    [0x104, "challenge-solo-ep1", "Solo Challenge (Episode 2)", "$E$C6Challenge mode\nquests in Episode 2\nthat you can solo"],
     [0x088, "solo-story", "Story", "$E$C6Quests that follow\nthe story"],
     [0x088, "solo-extra", "Solo", "$E$C6Quests that require\na single player"],
     [0x010, "government-ep1", "Hero in Red", "$E$CG-Red Ring Rico-\n$C6Quests that follow\nthe Episode 1\nstoryline"],

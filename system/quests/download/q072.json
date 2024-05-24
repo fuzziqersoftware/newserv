@@ -1,3 +1,0 @@
-{
-  "AvailableIf": "V_NumPlayers == 1",
-}
