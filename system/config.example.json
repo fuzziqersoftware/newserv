@@ -689,7 +689,7 @@
     [0x004, "challenge-ep1", "Challenge (Episode 1)", "$E$C6Challenge mode\nquests in Episode 1"],
     [0x004, "challenge-solo-ep1", "Solo Challenge (Episode 1)", "$E$C6Challenge mode\nquests in Episode 1\nthat you can solo"],
     [0x104, "challenge-ep2", "Challenge (Episode 2)", "$E$C6Challenge mode\nquests in Episode 2"],
-    [0x104, "challenge-solo-ep1", "Solo Challenge (Episode 2)", "$E$C6Challenge mode\nquests in Episode 2\nthat you can solo"],
+    [0x104, "challenge-solo-ep2", "Solo Challenge (Episode 2)", "$E$C6Challenge mode\nquests in Episode 2\nthat you can solo"],
     [0x088, "solo-story", "Story", "$E$C6Quests that follow\nthe story"],
     [0x088, "solo-extra", "Solo", "$E$C6Quests that require\na single player"],
     [0x010, "government-ep1", "Hero in Red", "$E$CG-Red Ring Rico-\n$C6Quests that follow\nthe Episode 1\nstoryline"],
