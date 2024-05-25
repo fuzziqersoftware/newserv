@@ -353,7 +353,6 @@ struct PlayerBankT {
   }
 
   ItemData remove_item(uint32_t item_id, uint32_t amount, const ItemData::StackLimits& limits) {
-
     size_t index = this->find_item(item_id);
     auto& bank_item = this->items[index];
 
@@ -397,11 +396,22 @@ struct PlayerBankT {
     }
   }
 
+  void decode_from_client(Version v) {
+    for (size_t z = 0; z < this->items.size(); z++) {
+      this->items[z].data.decode_for_version(v);
+    }
+  }
+
+  void encode_for_client(Version v) {
+    for (size_t z = 0; z < this->items.size(); z++) {
+      this->items[z].data.encode_for_version(v, nullptr);
+    }
+  }
+
   template <size_t DestSlotCount, bool DestIsBigEndian>
   operator PlayerBankT<DestSlotCount, DestIsBigEndian>() const {
-
     PlayerBankT<DestSlotCount, DestIsBigEndian> ret;
-    ret.num_items = this->num_items.load();
+    ret.num_items = std::min<size_t>(ret.items.size(), this->num_items.load());
     ret.meseta = this->meseta.load();
     for (size_t z = 0; z < std::min<size_t>(ret.items.size(), this->items.size()); z++) {
       ret.items[z] = this->items[z];

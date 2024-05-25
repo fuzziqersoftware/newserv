@@ -496,6 +496,7 @@ shared_ptr<PSOBBCharacterFile> PSOBBCharacterFile::create_from_dc_v2(const PSODC
   ret->save_count = dc.save_count;
   ret->quest_flags = dc.quest_flags;
   ret->bank = dc.bank;
+  ret->bank.decode_from_client(Version::DC_V2);
   ret->guild_card = dc.guild_card;
   for (size_t z = 0; z < std::min<size_t>(ret->symbol_chats.size(), dc.symbol_chats.size()); z++) {
     auto& ret_sc = ret->symbol_chats[z];
@@ -610,6 +611,7 @@ shared_ptr<PSOBBCharacterFile> PSOBBCharacterFile::create_from_xb(const PSOXBCha
   ret->quest_flags = xb.quest_flags;
   ret->death_count = xb.death_count.load();
   ret->bank = xb.bank;
+  ret->bank.decode_from_client(Version::XB_V3);
   ret->guild_card = xb.guild_card;
   for (size_t z = 0; z < std::min<size_t>(ret->symbol_chats.size(), xb.symbol_chats.size()); z++) {
     auto& ret_sc = ret->symbol_chats[z];
@@ -655,6 +657,7 @@ PSODCV2CharacterFile PSOBBCharacterFile::to_dc_v2() const {
   ret.save_count = this->save_count.load();
   ret.quest_flags = this->quest_flags;
   ret.bank = this->bank;
+  ret.bank.encode_for_client(Version::DC_V2);
   ret.guild_card = this->guild_card;
   for (size_t z = 0; z < std::min<size_t>(ret.symbol_chats.size(), this->symbol_chats.size()); z++) {
     auto& ret_sc = ret.symbol_chats[z];
@@ -777,6 +780,7 @@ PSOXBCharacterFileCharacter PSOBBCharacterFile::to_xb(uint64_t xb_user_id) const
   ret.quest_flags = this->quest_flags;
   ret.death_count = this->death_count.load();
   ret.bank = this->bank;
+  ret.bank.encode_for_client(Version::XB_V3);
   ret.guild_card = this->guild_card;
   ret.guild_card.xb_user_id_high = (xb_user_id >> 32) & 0xFFFFFFFF;
   ret.guild_card.xb_user_id_low = xb_user_id & 0xFFFFFFFF;
