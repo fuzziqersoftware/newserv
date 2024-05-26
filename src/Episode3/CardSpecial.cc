@@ -79,7 +79,7 @@ void CardSpecial::AttackEnvStats::clear() {
   this->target_attack_bonus = 0;
   this->last_attack_preliminary_damage = 0;
   this->last_attack_damage = 0;
-  this->total_last_attack_damage = 0;
+  this->final_last_attack_damage = 0;
   this->last_attack_damage_count = 0;
   this->target_current_hp = 0;
 }
@@ -107,7 +107,7 @@ void CardSpecial::AttackEnvStats::print(FILE* stream) const {
   fprintf(stream, "(ef)  non_target_team_num_set_cards      = %" PRIu32 "\n", this->non_target_team_num_set_cards);
   fprintf(stream, "(ehp) target_current_hp                  = %" PRIu32 "\n", this->target_current_hp);
   fprintf(stream, "(f)   num_set_cards                      = %" PRIu32 "\n", this->num_set_cards);
-  fprintf(stream, "(fdm) total_last_attack_damage           = %" PRIu32 "\n", this->total_last_attack_damage);
+  fprintf(stream, "(fdm) final_last_attack_damage           = %" PRIu32 "\n", this->final_last_attack_damage);
   fprintf(stream, "(ff)  target_team_num_set_cards          = %" PRIu32 "\n", this->target_team_num_set_cards);
   fprintf(stream, "(gn)  num_gun_type_items                 = %" PRIu32 "\n", this->num_gun_type_items);
   fprintf(stream, "(hf)  num_item_or_creature_cards_in_hand = %" PRIu32 "\n", this->num_item_or_creature_cards_in_hand);
@@ -239,7 +239,7 @@ void CardSpecial::adjust_dice_boost_if_team_has_condition_52(
 }
 
 void CardSpecial::apply_action_conditions(
-    uint8_t when,
+    EffectWhen when,
     shared_ptr<const Card> attacker_card,
     shared_ptr<Card> defender_card,
     uint32_t flags,
@@ -290,7 +290,7 @@ bool CardSpecial::apply_attribute_guard_if_possible(
 }
 
 bool CardSpecial::apply_defense_condition(
-    uint8_t when,
+    EffectWhen when,
     Condition* defender_cond,
     uint8_t cond_index,
     const ActionState& defense_state,
@@ -327,7 +327,7 @@ bool CardSpecial::apply_defense_condition(
     return false;
   }
 
-  if ((when == 0x02) && (defender_cond->type == ConditionType::GUOM) && (flags & 4)) {
+  if ((when == EffectWhen::AFTER_ANY_CARD_ATTACK) && (defender_cond->type == ConditionType::GUOM) && (flags & 4)) {
     CardShortStatus stat = defender_card->get_short_status();
     if (stat.card_flags & 4) {
       G_ApplyConditionEffect_Ep3_6xB4x06 cmd;
@@ -346,7 +346,7 @@ bool CardSpecial::apply_defense_condition(
 
   if (s->options.is_nte()) {
     auto defender_ps = defender_card->player_state();
-    if ((when == 0x0F) && (flags & 4) && (defender_cond->type == ConditionType::DROP) && defender_ps) {
+    if ((when == EffectWhen::BEFORE_DRAW_PHASE) && (flags & 4) && (defender_cond->type == ConditionType::DROP) && defender_ps) {
       auto defender_sc_card = defender_ps->get_sc_card();
       uint8_t defender_team_id = defender_ps->get_team_id();
       if (defender_sc_card && s->team_exp[defender_team_id]) {
@@ -363,7 +363,7 @@ bool CardSpecial::apply_defense_condition(
     }
   }
 
-  if ((when == 0x04) && (flags & 4) && !defender_has_ability_trap && (defender_cond->type == ConditionType::ACID)) {
+  if ((when == EffectWhen::BEFORE_DICE_PHASE_THIS_TEAM_TURN) && (flags & 4) && !defender_has_ability_trap && (defender_cond->type == ConditionType::ACID)) {
     int16_t hp = defender_card->get_current_hp();
     if (hp > 0) {
       this->send_6xB4x06_for_stat_delta(defender_card, defender_cond->card_ref, 0x20, -1, 0, 1);
@@ -417,7 +417,7 @@ bool CardSpecial::apply_defense_condition(
 
 bool CardSpecial::apply_defense_conditions(
     const ActionState& as,
-    uint8_t when,
+    EffectWhen when,
     shared_ptr<Card> defender_card,
     uint32_t flags) {
   for (size_t z = 0; z < 9; z++) {
@@ -810,7 +810,7 @@ CardSpecial::AttackEnvStats CardSpecial::compute_attack_env_stats(
   int32_t total_last_attack_damage = 0;
   size_t last_attack_damage_count = 0;
   this->sum_last_attack_damage(nullptr, &total_last_attack_damage, &last_attack_damage_count);
-  ast.total_last_attack_damage = total_last_attack_damage;
+  ast.final_last_attack_damage = total_last_attack_damage;
   ast.last_attack_damage_count = last_attack_damage_count;
 
   if (!target_card) {
@@ -1236,13 +1236,14 @@ void CardSpecial::compute_team_dice_bonus(uint8_t team_id) {
   s->team_dice_bonus[team_id] = min<uint8_t>(value, 8);
 }
 
-bool CardSpecial::condition_has_when_20_or_21(const Condition& cond) const {
+bool CardSpecial::condition_applies_on_sc_or_item_attack(const Condition& cond) const {
   auto ce = this->server()->definition_for_card_ref(cond.card_ref);
   if (!ce) {
     return false;
   }
-  uint8_t when = ce->def.effects[cond.card_definition_effect_index].when;
-  return ((when == 0x20) || (when == 0x21));
+  EffectWhen when = ce->def.effects[cond.card_definition_effect_index].when;
+  return ((when == EffectWhen::AFTER_CREATURE_OR_HUNTER_SC_ATTACK) ||
+      (when == EffectWhen::BEFORE_CREATURE_OR_HUNTER_SC_ATTACK));
 }
 
 size_t CardSpecial::count_action_cards_with_condition_for_all_current_attacks(
@@ -1408,7 +1409,7 @@ bool CardSpecial::evaluate_effect_arg2_condition(
     uint16_t set_card_ref,
     uint16_t sc_card_ref,
     uint8_t random_percent,
-    uint8_t when) const {
+    EffectWhen when) const {
   // Note: In the original code, as and dice_roll were optional pointers, but
   // they are non-null at all callsites, so we've replaced them with references
   // (and eliminated the null checks within this function).
@@ -1648,7 +1649,7 @@ bool CardSpecial::evaluate_effect_arg2_condition(
       // or comment it appropriately.
       if (is_nte) {
         return (v < set_card->unknown_a9);
-      } else if (when == 4) {
+      } else if (when == EffectWhen::BEFORE_DICE_PHASE_THIS_TEAM_TURN) {
         uint32_t y = set_card->unknown_a9 & 0xFFFFFFFE;
         if ((set_card->unknown_a9 > 0) &&
             (y == (y / (v & 0xFFFFFFFE)) * (v & 0xFFFFFFFE))) {
@@ -3517,7 +3518,7 @@ void CardSpecial::on_card_set(shared_ptr<PlayerState> ps, uint16_t card_ref) {
   uint16_t sc_card_ref = sc_card ? sc_card->get_card_ref() : 0xFFFF;
 
   ActionState as;
-  this->evaluate_and_apply_effects(0x01, card_ref, as, sc_card_ref);
+  this->evaluate_and_apply_effects(EffectWhen::CARD_SET, card_ref, as, sc_card_ref);
 }
 
 const CardDefinition::Effect* CardSpecial::original_definition_for_condition(const Condition& cond) const {
@@ -3825,7 +3826,7 @@ int16_t CardSpecial::max_all_attack_bonuses(size_t* out_count) const {
   return max_attack_bonus;
 }
 
-void CardSpecial::unknown_80244AA8(shared_ptr<Card> card) {
+void CardSpecial::apply_effects_after_card_move(shared_ptr<Card> card) {
   ActionState as = this->create_attack_state_from_card_action_chain(card);
 
   bool is_nte = this->server()->options.is_nte();
@@ -3845,12 +3846,12 @@ void CardSpecial::unknown_80244AA8(shared_ptr<Card> card) {
         }
       }
     }
-    this->apply_defense_conditions(as, 0x27, card, 0x04);
-    this->evaluate_and_apply_effects(0x27, card->get_card_ref(), as, 0xFFFF);
+    this->apply_defense_conditions(as, EffectWhen::BEFORE_MOVE_PHASE_AND_AFTER_CARD_MOVE_FINAL, card, 0x04);
+    this->evaluate_and_apply_effects(EffectWhen::BEFORE_MOVE_PHASE_AND_AFTER_CARD_MOVE_FINAL, card->get_card_ref(), as, 0xFFFF);
   }
 
-  this->apply_defense_conditions(as, 0x13, card, is_nte ? 0x1F : 0x04);
-  this->evaluate_and_apply_effects(0x13, card->get_card_ref(), as, 0xFFFF);
+  this->apply_defense_conditions(as, EffectWhen::AFTER_CARD_MOVE, card, is_nte ? 0x1F : 0x04);
+  this->evaluate_and_apply_effects(EffectWhen::AFTER_CARD_MOVE, card->get_card_ref(), as, 0xFFFF);
 }
 
 void CardSpecial::check_for_defense_interference(
@@ -3936,7 +3937,7 @@ void CardSpecial::check_for_defense_interference(
 }
 
 void CardSpecial::evaluate_and_apply_effects(
-    uint8_t when,
+    EffectWhen when,
     uint16_t set_card_ref,
     const ActionState& as,
     uint16_t sc_card_ref,
@@ -4014,7 +4015,7 @@ void CardSpecial::evaluate_and_apply_effects(
     string card_effect_str = card_effect.str();
     effect_log.debug("effect: %s", card_effect_str.c_str());
     if (card_effect.when != when) {
-      effect_log.debug("does not apply (effect.when=%02hhX, when=%02" PRIX32 ")", card_effect.when, when);
+      effect_log.debug("does not apply (effect.when=%02hhX, when=%s)", card_effect.when, name_for_enum(when));
       continue;
     }
 
@@ -4426,10 +4427,10 @@ void CardSpecial::on_card_destroyed(
       attacker_card, destroyed_card);
 
   uint16_t destroyed_card_ref = destroyed_card->get_card_ref();
-  this->evaluate_and_apply_effects(0x05, destroyed_card_ref, defense_as, 0xFFFF);
+  this->evaluate_and_apply_effects(EffectWhen::CARD_DESTROYED, destroyed_card_ref, defense_as, 0xFFFF);
   for (size_t z = 0; (z < 8) && (defense_as.action_card_refs[z] != 0xFFFF); z++) {
     this->evaluate_and_apply_effects(
-        0x05, defense_as.action_card_refs[z], defense_as, destroyed_card->get_card_ref());
+        EffectWhen::CARD_DESTROYED, defense_as.action_card_refs[z], defense_as, destroyed_card->get_card_ref());
   }
 
   if (attacker_card) {
@@ -4671,9 +4672,9 @@ vector<shared_ptr<const Card>> CardSpecial::filter_cards_by_range(
   return ret;
 }
 
-void CardSpecial::unknown_8024AAB8(const ActionState& as) {
+void CardSpecial::apply_effects_after_attack_target_resolution(const ActionState& as) {
   auto s = this->server();
-  auto log = s->log_stack("unknown_8024AAB8: ");
+  auto log = s->log_stack("apply_effects_after_attack_target_resolution: ");
   string as_str = as.str(s);
   log.debug("as=%s", as_str.c_str());
 
@@ -4685,31 +4686,37 @@ void CardSpecial::unknown_8024AAB8(const ActionState& as) {
 
     if (this->send_6xB4x06_if_card_ref_invalid(as.original_attacker_card_ref, 0x1F) == 0xFFFF) {
       this->evaluate_and_apply_effects(
-          0x01, as.action_card_refs[z], as, this->send_6xB4x06_if_card_ref_invalid(as.attacker_card_ref, 0x21));
+          EffectWhen::CARD_SET,
+          as.action_card_refs[z],
+          as,
+          this->send_6xB4x06_if_card_ref_invalid(as.attacker_card_ref, 0x21));
       this->evaluate_and_apply_effects(
-          0x0B, as.action_card_refs[z], as, this->send_6xB4x06_if_card_ref_invalid(as.attacker_card_ref, 0x22));
+          EffectWhen::AFTER_ATTACK_TARGET_RESOLUTION,
+          as.action_card_refs[z],
+          as,
+          this->send_6xB4x06_if_card_ref_invalid(as.attacker_card_ref, 0x22));
     } else {
       uint16_t card_ref = this->send_6xB4x06_if_card_ref_invalid(as.target_card_refs[0], 0x20);
       if (card_ref != 0xFFFF) {
-        this->evaluate_and_apply_effects(0x01, as.action_card_refs[z], as, card_ref);
-        this->evaluate_and_apply_effects(0x15, as.action_card_refs[z], as, card_ref);
+        this->evaluate_and_apply_effects(EffectWhen::CARD_SET, as.action_card_refs[z], as, card_ref);
+        this->evaluate_and_apply_effects(EffectWhen::UNKNOWN_15, as.action_card_refs[z], as, card_ref);
       }
     }
   }
 
-  if (as.original_attacker_card_ref == 0xffff) {
+  if (as.original_attacker_card_ref == 0xFFFF) {
     uint16_t card_ref1 = this->send_6xB4x06_if_card_ref_invalid(as.attacker_card_ref, 0x23);
     uint16_t card_ref2 = this->send_6xB4x06_if_card_ref_invalid(as.attacker_card_ref, 0x25);
-    this->evaluate_and_apply_effects(0x33, card_ref2, as, card_ref1);
+    this->evaluate_and_apply_effects(EffectWhen::UNKNOWN_33, card_ref2, as, card_ref1);
     card_ref1 = this->send_6xB4x06_if_card_ref_invalid(as.attacker_card_ref, 0x24);
     card_ref2 = this->send_6xB4x06_if_card_ref_invalid(as.attacker_card_ref, 0x26);
-    this->evaluate_and_apply_effects(0x34, card_ref2, as, card_ref1);
+    this->evaluate_and_apply_effects(EffectWhen::UNKNOWN_34, card_ref2, as, card_ref1);
     for (size_t z = 0; (z < 4 * 9) && (as.target_card_refs[z] != 0xFFFF); z++) {
       uint16_t card_ref = this->send_6xB4x06_if_card_ref_invalid(as.action_card_refs[z], 0x27);
       if (card_ref == 0xFFFF) {
         break;
       }
-      this->evaluate_and_apply_effects(0x35, as.target_card_refs[z], as, as.attacker_card_ref);
+      this->evaluate_and_apply_effects(EffectWhen::UNKNOWN_35, as.target_card_refs[z], as, as.attacker_card_ref);
     }
   }
 }
@@ -4717,11 +4724,11 @@ void CardSpecial::unknown_8024AAB8(const ActionState& as) {
 void CardSpecial::move_phase_before_for_card(shared_ptr<Card> card) {
   bool is_nte = this->server()->options.is_nte();
   ActionState as = this->create_attack_state_from_card_action_chain(card);
-  this->apply_defense_conditions(as, 0x09, card, is_nte ? 0x1F : 0x04);
-  this->evaluate_and_apply_effects(0x09, card->get_card_ref(), as, 0xFFFF);
+  this->apply_defense_conditions(as, EffectWhen::BEFORE_MOVE_PHASE, card, is_nte ? 0x1F : 0x04);
+  this->evaluate_and_apply_effects(EffectWhen::BEFORE_MOVE_PHASE, card->get_card_ref(), as, 0xFFFF);
   if (!is_nte) {
-    this->apply_defense_conditions(as, 0x27, card, 0x04);
-    this->evaluate_and_apply_effects(0x27, card->get_card_ref(), as, 0xFFFF);
+    this->apply_defense_conditions(as, EffectWhen::BEFORE_MOVE_PHASE_AND_AFTER_CARD_MOVE_FINAL, card, 0x04);
+    this->evaluate_and_apply_effects(EffectWhen::BEFORE_MOVE_PHASE_AND_AFTER_CARD_MOVE_FINAL, card->get_card_ref(), as, 0xFFFF);
   }
 }
 
@@ -4748,16 +4755,16 @@ void CardSpecial::dice_phase_before_for_card(shared_ptr<Card> card) {
   }
 
   if (!is_nte) {
-    this->apply_defense_conditions(as, 0x46, card, 0x04);
-    this->evaluate_and_apply_effects(0x46, card->get_card_ref(), as, sc_card_ref);
+    this->apply_defense_conditions(as, EffectWhen::BEFORE_DICE_PHASE_ALL_TURNS_FINAL, card, 0x04);
+    this->evaluate_and_apply_effects(EffectWhen::BEFORE_DICE_PHASE_ALL_TURNS_FINAL, card->get_card_ref(), as, sc_card_ref);
   }
   if (ps->is_team_turn()) {
-    this->apply_defense_conditions(as, 0x04, card, 0x04);
-    this->evaluate_and_apply_effects(0x04, card->get_card_ref(), as, sc_card_ref);
+    this->apply_defense_conditions(as, EffectWhen::BEFORE_DICE_PHASE_THIS_TEAM_TURN, card, 0x04);
+    this->evaluate_and_apply_effects(EffectWhen::BEFORE_DICE_PHASE_THIS_TEAM_TURN, card->get_card_ref(), as, sc_card_ref);
   }
 }
 
-template <uint8_t When1, uint8_t When2>
+template <EffectWhen When1, EffectWhen When2>
 void CardSpecial::apply_effects_on_phase_change_t(shared_ptr<Card> unknown_p2, const ActionState* existing_as) {
   auto s = this->server();
   auto log = s->log_stack(string_printf("apply_effects_on_phase_change_t<%02hhX, %02hhX>(@%04hX #%04hX): ", When1, When2, unknown_p2->get_card_ref(), unknown_p2->get_card_id()));
@@ -4797,17 +4804,17 @@ void CardSpecial::apply_effects_on_phase_change_t(shared_ptr<Card> unknown_p2, c
 }
 
 void CardSpecial::draw_phase_before_for_card(shared_ptr<Card> unknown_p2) {
-  this->apply_effects_on_phase_change_t<0x0F, 0x0A>(unknown_p2);
+  this->apply_effects_on_phase_change_t<EffectWhen::BEFORE_DRAW_PHASE, EffectWhen::UNKNOWN_0A>(unknown_p2);
 }
 
 void CardSpecial::action_phase_before_for_card(shared_ptr<Card> unknown_p2) {
   if (unknown_p2->player_state()->is_team_turn()) {
-    this->apply_effects_on_phase_change_t<0x0E, 0x0A>(unknown_p2);
+    this->apply_effects_on_phase_change_t<EffectWhen::BEFORE_ACT_PHASE, EffectWhen::UNKNOWN_0A>(unknown_p2);
   }
 }
 
 void CardSpecial::unknown_8024945C(shared_ptr<Card> unknown_p2, const ActionState* existing_as) {
-  this->apply_effects_on_phase_change_t<0x0A, 0x0A>(unknown_p2, this->server()->options.is_nte() ? nullptr : existing_as);
+  this->apply_effects_on_phase_change_t<EffectWhen::UNKNOWN_0A, EffectWhen::UNKNOWN_0A>(unknown_p2, this->server()->options.is_nte() ? nullptr : existing_as);
 }
 
 void CardSpecial::unknown_8024966C(shared_ptr<Card> unknown_p2, const ActionState* existing_as) {
@@ -4826,38 +4833,38 @@ void CardSpecial::unknown_8024966C(shared_ptr<Card> unknown_p2, const ActionStat
   auto ce = unknown_p2->get_definition();
   auto defender_card = (ce && (ce->def.type == CardType::ITEM) && card) ? card : unknown_p2;
 
-  this->apply_defense_conditions(as, 0x3D, unknown_p2, 4);
-  this->apply_defense_conditions(as, 0x3E, unknown_p2, 4);
+  this->apply_defense_conditions(as, EffectWhen::ATTACK_STAT_OVERRIDES, unknown_p2, 4);
+  this->apply_defense_conditions(as, EffectWhen::ATTACK_DAMAGE_ADJUSTMENT, unknown_p2, 4);
   if (defender_card) {
-    this->apply_defense_conditions(as, 0x22, defender_card, 4);
+    this->apply_defense_conditions(as, EffectWhen::UNKNOWN_22, defender_card, 4);
   }
 
   for (size_t z = 0; (z < 4 * 9) && (as.target_card_refs[z] != 0xFFFF); z++) {
     auto card = this->server()->card_for_set_card_ref(as.target_card_refs[z]);
     if (card) {
       ActionState defense_as = this->create_defense_state_for_card_pair_action_chains(unknown_p2, card);
-      this->apply_defense_conditions(defense_as, 0x3D, card, 4);
-      this->apply_defense_conditions(defense_as, 0x3F, card, 4);
+      this->apply_defense_conditions(defense_as, EffectWhen::ATTACK_STAT_OVERRIDES, card, 4);
+      this->apply_defense_conditions(defense_as, EffectWhen::DEFENSE_DAMAGE_ADJUSTMENT, card, 4);
     }
   }
 
-  this->evaluate_and_apply_effects(0x3D, unknown_p2->get_card_ref(), as, card_ref);
-  this->evaluate_and_apply_effects(0x3E, unknown_p2->get_card_ref(), as, card_ref);
+  this->evaluate_and_apply_effects(EffectWhen::ATTACK_STAT_OVERRIDES, unknown_p2->get_card_ref(), as, card_ref);
+  this->evaluate_and_apply_effects(EffectWhen::ATTACK_DAMAGE_ADJUSTMENT, unknown_p2->get_card_ref(), as, card_ref);
   if (defender_card) {
-    this->evaluate_and_apply_effects(0x22, defender_card->get_card_ref(), as, card_ref);
+    this->evaluate_and_apply_effects(EffectWhen::UNKNOWN_22, defender_card->get_card_ref(), as, card_ref);
   }
 
   for (size_t z = 0; (z < 8) && (as.action_card_refs[z] != 0xFFFF); z++) {
-    this->evaluate_and_apply_effects(0x3D, as.action_card_refs[z], as, unknown_p2->get_card_ref());
-    this->evaluate_and_apply_effects(0x3E, as.action_card_refs[z], as, unknown_p2->get_card_ref());
+    this->evaluate_and_apply_effects(EffectWhen::ATTACK_STAT_OVERRIDES, as.action_card_refs[z], as, unknown_p2->get_card_ref());
+    this->evaluate_and_apply_effects(EffectWhen::ATTACK_DAMAGE_ADJUSTMENT, as.action_card_refs[z], as, unknown_p2->get_card_ref());
   }
 
   for (size_t z = 0; (z < 4 * 9) && (as.target_card_refs[z] != 0xFFFF); z++) {
     card = this->server()->card_for_set_card_ref(as.target_card_refs[z]);
     if (card) {
       ActionState defense_as = this->create_defense_state_for_card_pair_action_chains(unknown_p2, card);
-      this->evaluate_and_apply_effects(0x3D, card->get_card_ref(), defense_as, unknown_p2->get_card_ref());
-      this->evaluate_and_apply_effects(0x3F, card->get_card_ref(), defense_as, unknown_p2->get_card_ref());
+      this->evaluate_and_apply_effects(EffectWhen::ATTACK_STAT_OVERRIDES, card->get_card_ref(), defense_as, unknown_p2->get_card_ref());
+      this->evaluate_and_apply_effects(EffectWhen::DEFENSE_DAMAGE_ADJUSTMENT, card->get_card_ref(), defense_as, unknown_p2->get_card_ref());
     }
   }
 }
@@ -4871,11 +4878,11 @@ void CardSpecial::unknown_8024A9D8(const ActionState& pa, uint16_t action_card_r
   for (size_t z = 0; (z < 8) && (pa.action_card_refs[z] != 0xFFFF); z++) {
     if (this->server()->options.is_nte() || (action_card_ref == 0xFFFF) || (action_card_ref == pa.action_card_refs[z])) {
       if (pa.original_attacker_card_ref == 0xFFFF) {
-        this->evaluate_and_apply_effects(0x29, pa.action_card_refs[z], pa, pa.attacker_card_ref);
-        this->evaluate_and_apply_effects(0x2A, pa.action_card_refs[z], pa, pa.attacker_card_ref);
+        this->evaluate_and_apply_effects(EffectWhen::UNKNOWN_29, pa.action_card_refs[z], pa, pa.attacker_card_ref);
+        this->evaluate_and_apply_effects(EffectWhen::UNKNOWN_2A, pa.action_card_refs[z], pa, pa.attacker_card_ref);
       } else {
-        this->evaluate_and_apply_effects(0x29, pa.action_card_refs[z], pa, pa.target_card_refs[0]);
-        this->evaluate_and_apply_effects(0x2B, pa.action_card_refs[z], pa, pa.target_card_refs[0]);
+        this->evaluate_and_apply_effects(EffectWhen::UNKNOWN_29, pa.action_card_refs[z], pa, pa.target_card_refs[0]);
+        this->evaluate_and_apply_effects(EffectWhen::UNKNOWN_2B, pa.action_card_refs[z], pa, pa.target_card_refs[0]);
       }
     }
   }
@@ -4955,10 +4962,15 @@ void CardSpecial::check_for_attack_interference(shared_ptr<Card> unknown_p2) {
   this->server()->send(cmd);
 }
 
-template <uint8_t When1, uint8_t When2, uint8_t When3, uint8_t When4>
-void CardSpecial::unknown_t2(shared_ptr<Card> unknown_p2) {
+template <
+    EffectWhen WhenAllCards,
+    EffectWhen WhenAttackerAndActionCards,
+    EffectWhen WhenAttackerOrHunterSCCard,
+    EffectWhen WhenTargetsAndActionCards>
+void CardSpecial::apply_effects_before_or_after_attack(shared_ptr<Card> unknown_p2) {
   auto s = this->server();
-  auto log = s->log_stack(string_printf("unknown_t2<%02hhX, %02hhX, %02hhX, %02hhX>(@%04hX #%04hX): ", When1, When2, When3, When4, unknown_p2->get_card_ref(), unknown_p2->get_card_id()));
+  auto log = s->log_stack(string_printf("apply_effects_before_or_after_attack<%s, %s, %s, %s>(@%04hX #%04hX): ",
+      name_for_enum(WhenAllCards), name_for_enum(WhenAttackerAndActionCards), name_for_enum(WhenAttackerOrHunterSCCard), name_for_enum(WhenTargetsAndActionCards), unknown_p2->get_card_ref(), unknown_p2->get_card_id()));
 
   ActionState as = this->create_attack_state_from_card_action_chain(unknown_p2);
 
@@ -4968,56 +4980,64 @@ void CardSpecial::unknown_t2(shared_ptr<Card> unknown_p2) {
     sc_card_ref = sc_card->get_card_ref();
   }
 
-  auto defender_card = unknown_p2;
+  auto attacker_card = unknown_p2;
   if (unknown_p2->get_definition() && (unknown_p2->get_definition()->def.type == CardType::ITEM) && sc_card) {
-    defender_card = sc_card;
+    attacker_card = sc_card;
   }
 
   uint8_t apply_defense_conditions_flags = s->options.is_nte() ? 0x1F : 0x04;
-  this->apply_defense_conditions(as, When1, unknown_p2, apply_defense_conditions_flags);
-  this->apply_defense_conditions(as, When2, unknown_p2, apply_defense_conditions_flags);
-  if (defender_card) {
-    this->apply_defense_conditions(as, When3, defender_card, apply_defense_conditions_flags);
+  this->apply_defense_conditions(as, WhenAllCards, unknown_p2, apply_defense_conditions_flags);
+  this->apply_defense_conditions(as, WhenAttackerAndActionCards, unknown_p2, apply_defense_conditions_flags);
+  if (attacker_card) {
+    this->apply_defense_conditions(as, WhenAttackerOrHunterSCCard, attacker_card, apply_defense_conditions_flags);
   }
 
   for (size_t z = 0; (z < 4 * 9) && (as.target_card_refs[z] != 0xFFFF); z++) {
     auto set_card = s->card_for_set_card_ref(as.target_card_refs[z]);
     if (set_card) {
       ActionState target_as = this->create_defense_state_for_card_pair_action_chains(unknown_p2, set_card);
-      this->apply_defense_conditions(target_as, When1, set_card, apply_defense_conditions_flags);
-      this->apply_defense_conditions(target_as, When4, set_card, apply_defense_conditions_flags);
+      this->apply_defense_conditions(target_as, WhenAllCards, set_card, apply_defense_conditions_flags);
+      this->apply_defense_conditions(target_as, WhenTargetsAndActionCards, set_card, apply_defense_conditions_flags);
     }
   }
 
-  this->evaluate_and_apply_effects(When1, unknown_p2->get_card_ref(), as, sc_card_ref);
-  this->evaluate_and_apply_effects(When2, unknown_p2->get_card_ref(), as, sc_card_ref);
-  if (defender_card) {
-    this->evaluate_and_apply_effects(When3, defender_card->get_card_ref(), as, sc_card_ref);
+  this->evaluate_and_apply_effects(WhenAllCards, unknown_p2->get_card_ref(), as, sc_card_ref);
+  this->evaluate_and_apply_effects(WhenAttackerAndActionCards, unknown_p2->get_card_ref(), as, sc_card_ref);
+  if (attacker_card) {
+    this->evaluate_and_apply_effects(WhenAttackerOrHunterSCCard, attacker_card->get_card_ref(), as, sc_card_ref);
   }
   for (size_t z = 0; (z < 8) && (as.action_card_refs[z] != 0xFFFF); z++) {
-    this->evaluate_and_apply_effects(When1, as.action_card_refs[z], as, unknown_p2->get_card_ref());
-    this->evaluate_and_apply_effects(When2, as.action_card_refs[z], as, unknown_p2->get_card_ref());
+    this->evaluate_and_apply_effects(WhenAllCards, as.action_card_refs[z], as, unknown_p2->get_card_ref());
+    this->evaluate_and_apply_effects(WhenAttackerAndActionCards, as.action_card_refs[z], as, unknown_p2->get_card_ref());
   }
   for (size_t z = 0; (z < 4 * 9) && (as.target_card_refs[z] != 0xFFFF); z++) {
     auto set_card = s->card_for_set_card_ref(as.target_card_refs[z]);
     if (set_card) {
       ActionState target_as = this->create_defense_state_for_card_pair_action_chains(unknown_p2, set_card);
-      this->evaluate_and_apply_effects(When1, set_card->get_card_ref(), target_as, unknown_p2->get_card_ref());
-      this->evaluate_and_apply_effects(When4, set_card->get_card_ref(), target_as, unknown_p2->get_card_ref());
+      this->evaluate_and_apply_effects(WhenAllCards, set_card->get_card_ref(), target_as, unknown_p2->get_card_ref());
+      this->evaluate_and_apply_effects(WhenTargetsAndActionCards, set_card->get_card_ref(), target_as, unknown_p2->get_card_ref());
       for (size_t z = 0; (z < 8) && (target_as.action_card_refs[z] != 0xFFFF); z++) {
-        this->evaluate_and_apply_effects(When1, target_as.action_card_refs[z], target_as, set_card->get_card_ref());
-        this->evaluate_and_apply_effects(When4, target_as.action_card_refs[z], target_as, set_card->get_card_ref());
+        this->evaluate_and_apply_effects(WhenAllCards, target_as.action_card_refs[z], target_as, set_card->get_card_ref());
+        this->evaluate_and_apply_effects(WhenTargetsAndActionCards, target_as.action_card_refs[z], target_as, set_card->get_card_ref());
       }
     }
   }
 }
 
-void CardSpecial::unknown_8024997C(shared_ptr<Card> card) {
-  return this->unknown_t2<0x03, 0x0D, 0x21, 0x17>(card);
+void CardSpecial::apply_effects_after_attack(shared_ptr<Card> card) {
+  return this->apply_effects_before_or_after_attack<
+      EffectWhen::AFTER_ANY_CARD_ATTACK,
+      EffectWhen::AFTER_THIS_CARD_ATTACK,
+      EffectWhen::AFTER_CREATURE_OR_HUNTER_SC_ATTACK,
+      EffectWhen::AFTER_THIS_CARD_ATTACKED>(card);
 }
 
-void CardSpecial::unknown_8024A394(shared_ptr<Card> card) {
-  return this->unknown_t2<0x02, 0x0C, 0x20, 0x16>(card);
+void CardSpecial::apply_effects_before_attack(shared_ptr<Card> card) {
+  return this->apply_effects_before_or_after_attack<
+      EffectWhen::BEFORE_ANY_CARD_ATTACK,
+      EffectWhen::BEFORE_THIS_CARD_ATTACK,
+      EffectWhen::BEFORE_CREATURE_OR_HUNTER_SC_ATTACK,
+      EffectWhen::BEFORE_THIS_CARD_ATTACKED>(card);
 }
 
 bool CardSpecial::client_has_atk_dice_boost_condition(uint8_t client_id) {
@@ -5054,8 +5074,8 @@ void CardSpecial::unknown_8024A6DC(shared_ptr<Card> unknown_p2, shared_ptr<Card>
   ActionState as = this->create_defense_state_for_card_pair_action_chains(
       unknown_p2, unknown_p3);
   for (size_t z = 0; (z < 8) && (as.action_card_refs[z] != 0xFFFF); z++) {
-    this->evaluate_and_apply_effects(0x01, as.action_card_refs[z], as, unknown_p3->get_card_ref());
-    this->evaluate_and_apply_effects(0x15, as.action_card_refs[z], as, unknown_p3->get_card_ref());
+    this->evaluate_and_apply_effects(EffectWhen::CARD_SET, as.action_card_refs[z], as, unknown_p3->get_card_ref());
+    this->evaluate_and_apply_effects(EffectWhen::UNKNOWN_15, as.action_card_refs[z], as, unknown_p3->get_card_ref());
   }
 }
 

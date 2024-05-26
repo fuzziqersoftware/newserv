@@ -517,7 +517,7 @@ bool CardDefinition::Effect::is_empty() const {
   return (this->effect_num == 0 &&
       this->type == ConditionType::NONE &&
       this->expr.empty() &&
-      this->when == 0 &&
+      this->when == EffectWhen::NONE &&
       this->arg1.empty() &&
       this->arg2.empty() &&
       this->arg3.empty() &&
@@ -603,7 +603,7 @@ string CardDefinition::Effect::str(const char* separator, const TextSet* text_ar
   if (!this->expr.empty()) {
     tokens.emplace_back("expr=" + this->expr.decode());
   }
-  tokens.emplace_back(string_printf("when=%02hhX", this->when));
+  tokens.emplace_back(string_printf("when=%s", name_for_enum(this->when)));
   tokens.emplace_back("arg1=" + this->str_for_arg(this->arg1.decode()));
   tokens.emplace_back("arg2=" + this->str_for_arg(this->arg2.decode()));
   tokens.emplace_back("arg3=" + this->str_for_arg(this->arg3.decode()));
@@ -1068,7 +1068,7 @@ JSON CardDefinition::Effect::json() const {
       {"EffectNum", this->effect_num},
       {"ConditionType", name_for_enum(this->type)},
       {"Expression", this->expr.decode()},
-      {"When", this->when},
+      {"When", name_for_enum(this->when)},
       {"Arg1", this->arg1.decode()},
       {"Arg2", this->arg2.decode()},
       {"Arg3", this->arg3.decode()},
@@ -3114,6 +3114,78 @@ const char* name_for_enum<Episode3::ConditionType>(Episode3::ConditionType cond_
     return Episode3::description_for_condition_type.at(static_cast<size_t>(cond_type)).name;
   } catch (const out_of_range&) {
     return "__INVALID__";
+  }
+}
+
+template <>
+const char* name_for_enum<Episode3::EffectWhen>(Episode3::EffectWhen when) {
+  switch (when) {
+    case Episode3::EffectWhen::NONE:
+      return "NONE";
+    case Episode3::EffectWhen::CARD_SET:
+      return "CARD_SET";
+    case Episode3::EffectWhen::AFTER_ANY_CARD_ATTACK:
+      return "AFTER_ANY_CARD_ATTACK";
+    case Episode3::EffectWhen::BEFORE_ANY_CARD_ATTACK:
+      return "BEFORE_ANY_CARD_ATTACK";
+    case Episode3::EffectWhen::BEFORE_DICE_PHASE_THIS_TEAM_TURN:
+      return "BEFORE_DICE_PHASE_THIS_TEAM_TURN";
+    case Episode3::EffectWhen::CARD_DESTROYED:
+      return "CARD_DESTROYED";
+    case Episode3::EffectWhen::AFTER_SET_PHASE:
+      return "AFTER_SET_PHASE";
+    case Episode3::EffectWhen::BEFORE_MOVE_PHASE:
+      return "BEFORE_MOVE_PHASE";
+    case Episode3::EffectWhen::UNKNOWN_0A:
+      return "UNKNOWN_0A";
+    case Episode3::EffectWhen::AFTER_ATTACK_TARGET_RESOLUTION:
+      return "AFTER_ATTACK_TARGET_RESOLUTION";
+    case Episode3::EffectWhen::AFTER_THIS_CARD_ATTACK:
+      return "AFTER_THIS_CARD_ATTACK";
+    case Episode3::EffectWhen::BEFORE_THIS_CARD_ATTACK:
+      return "BEFORE_THIS_CARD_ATTACK";
+    case Episode3::EffectWhen::BEFORE_ACT_PHASE:
+      return "BEFORE_ACT_PHASE";
+    case Episode3::EffectWhen::BEFORE_DRAW_PHASE:
+      return "BEFORE_DRAW_PHASE";
+    case Episode3::EffectWhen::AFTER_CARD_MOVE:
+      return "AFTER_CARD_MOVE";
+    case Episode3::EffectWhen::UNKNOWN_15:
+      return "UNKNOWN_15";
+    case Episode3::EffectWhen::AFTER_THIS_CARD_ATTACKED:
+      return "AFTER_THIS_CARD_ATTACKED";
+    case Episode3::EffectWhen::BEFORE_THIS_CARD_ATTACKED:
+      return "BEFORE_THIS_CARD_ATTACKED";
+    case Episode3::EffectWhen::AFTER_CREATURE_OR_HUNTER_SC_ATTACK:
+      return "AFTER_CREATURE_OR_HUNTER_SC_ATTACK";
+    case Episode3::EffectWhen::BEFORE_CREATURE_OR_HUNTER_SC_ATTACK:
+      return "BEFORE_CREATURE_OR_HUNTER_SC_ATTACK";
+    case Episode3::EffectWhen::UNKNOWN_22:
+      return "UNKNOWN_22";
+    case Episode3::EffectWhen::BEFORE_MOVE_PHASE_AND_AFTER_CARD_MOVE_FINAL:
+      return "BEFORE_MOVE_PHASE_AND_AFTER_CARD_MOVE_FINAL";
+    case Episode3::EffectWhen::UNKNOWN_29:
+      return "UNKNOWN_29";
+    case Episode3::EffectWhen::UNKNOWN_2A:
+      return "UNKNOWN_2A";
+    case Episode3::EffectWhen::UNKNOWN_2B:
+      return "UNKNOWN_2B";
+    case Episode3::EffectWhen::UNKNOWN_33:
+      return "UNKNOWN_33";
+    case Episode3::EffectWhen::UNKNOWN_34:
+      return "UNKNOWN_34";
+    case Episode3::EffectWhen::UNKNOWN_35:
+      return "UNKNOWN_35";
+    case Episode3::EffectWhen::ATTACK_STAT_OVERRIDES:
+      return "ATTACK_STAT_OVERRIDES";
+    case Episode3::EffectWhen::ATTACK_DAMAGE_ADJUSTMENT:
+      return "ATTACK_DAMAGE_ADJUSTMENT";
+    case Episode3::EffectWhen::DEFENSE_DAMAGE_ADJUSTMENT:
+      return "DEFENSE_DAMAGE_ADJUSTMENT";
+    case Episode3::EffectWhen::BEFORE_DICE_PHASE_ALL_TURNS_FINAL:
+      return "BEFORE_DICE_PHASE_ALL_TURNS_FINAL";
+    default:
+      return "__INVALID__";
   }
 }
 

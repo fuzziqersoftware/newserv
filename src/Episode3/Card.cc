@@ -396,8 +396,8 @@ int16_t Card::compute_defense_power_for_attacker_card(shared_ptr<const Card> att
     }
   }
 
-  s->card_special->apply_action_conditions(3, attacker_card, this->shared_from_this(), 0x08, nullptr);
-  s->card_special->apply_action_conditions(3, attacker_card, this->shared_from_this(), 0x10, nullptr);
+  s->card_special->apply_action_conditions(EffectWhen::BEFORE_ANY_CARD_ATTACK, attacker_card, this->shared_from_this(), 0x08, nullptr);
+  s->card_special->apply_action_conditions(EffectWhen::BEFORE_ANY_CARD_ATTACK, attacker_card, this->shared_from_this(), 0x10, nullptr);
   return this->action_metadata.defense_power + this->action_metadata.defense_bonus;
 }
 
@@ -982,7 +982,7 @@ void Card::compute_action_chain_results(bool apply_action_conditions, bool ignor
 
   if (apply_action_conditions) {
     auto this_sh = this->shared_from_this();
-    s->card_special->apply_action_conditions(3, this_sh, this_sh, 1, nullptr);
+    s->card_special->apply_action_conditions(EffectWhen::BEFORE_ANY_CARD_ATTACK, this_sh, this_sh, 1, nullptr);
     log.debug("applied action conditions (1)");
   } else {
     log.debug("skipped applying action conditions (1)");
@@ -1120,7 +1120,7 @@ void Card::compute_action_chain_results(bool apply_action_conditions, bool ignor
 
   if (apply_action_conditions) {
     auto this_sh = this->shared_from_this();
-    s->card_special->apply_action_conditions(0x03, this_sh, this_sh, 2, nullptr);
+    s->card_special->apply_action_conditions(EffectWhen::BEFORE_ANY_CARD_ATTACK, this_sh, this_sh, 2, nullptr);
     log.debug("applied action conditions (2)");
     if (!is_nte && this->action_chain.check_flag(0x100)) {
       this->action_chain.chain.damage = min<int16_t>(this->action_chain.chain.damage + 5, 99);
@@ -1171,7 +1171,7 @@ void Card::unknown_80237F98(bool require_condition_20_or_21) {
   for (ssize_t z = 8; z >= 0; z--) {
     if (this->action_chain.conditions[z].type != ConditionType::NONE) {
       if (!require_condition_20_or_21 ||
-          s->card_special->condition_has_when_20_or_21(this->action_chain.conditions[z])) {
+          s->card_special->condition_applies_on_sc_or_item_attack(this->action_chain.conditions[z])) {
         ActionState as;
         auto& cond = this->action_chain.conditions[z];
         if (!s->card_special->is_card_targeted_by_condition(cond, as, this->shared_from_this())) {
@@ -1402,8 +1402,8 @@ bool Card::unknown_80236554(shared_ptr<Card> other_card, const ActionState* as) 
   log.debug("last attack damage stats cleared");
 
   if (other_card) {
-    s->card_special->apply_action_conditions(0x03, other_card, this->shared_from_this(), 0x20, as);
-    s->card_special->apply_action_conditions(0x17, other_card, this->shared_from_this(), 0x40, as);
+    s->card_special->apply_action_conditions(EffectWhen::BEFORE_ANY_CARD_ATTACK, other_card, this->shared_from_this(), 0x20, as);
+    s->card_special->apply_action_conditions(EffectWhen::BEFORE_THIS_CARD_ATTACKED, other_card, this->shared_from_this(), 0x40, as);
     if (other_card->action_chain.check_flag(0x20000)) {
       this->action_metadata.attack_bonus = 0;
       return ret;
@@ -1518,7 +1518,7 @@ void Card::apply_attack_result() {
 
     this->compute_action_chain_results(true, false);
     if (!this->action_chain.check_flag(0x40)) {
-      s->card_special->unknown_8024997C(this->shared_from_this());
+      s->card_special->apply_effects_before_attack(this->shared_from_this());
     }
 
     this->compute_action_chain_results(true, false);
@@ -1558,21 +1558,21 @@ void Card::apply_attack_result() {
       }
     }
 
-    this->compute_action_chain_results(1, 0);
+    this->compute_action_chain_results(true, false);
     if (!this->action_chain.check_flag(0x40)) {
-      s->card_special->unknown_8024997C(this->shared_from_this());
+      s->card_special->apply_effects_before_attack(this->shared_from_this());
     }
     if (!(this->card_flags & 2)) {
-      this->compute_action_chain_results(1, 0);
+      this->compute_action_chain_results(true, false);
       s->card_special->check_for_attack_interference(this->shared_from_this());
     }
-    this->compute_action_chain_results(1, 0);
+    this->compute_action_chain_results(true, false);
     this->unknown_80236374(this->shared_from_this(), nullptr);
     this->unknown_802362D8(this->shared_from_this());
   }
 
   if (!this->action_chain.check_flag(0x40)) {
-    s->card_special->unknown_8024A394(this->shared_from_this());
+    s->card_special->apply_effects_after_attack(this->shared_from_this());
   }
   ps->stats.num_attacks_given++;
 

@@ -1003,7 +1003,7 @@ bool PlayerState::move_card_to_location_by_card_index(size_t card_index, const L
   this->send_6xB4x04_if_needed();
   s->send_6xB4x05();
   s->send_6xB4x39();
-  s->card_special->unknown_80244AA8(card);
+  s->card_special->apply_effects_after_card_move(card);
   return true;
 }
 

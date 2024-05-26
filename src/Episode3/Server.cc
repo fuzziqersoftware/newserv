@@ -1462,12 +1462,12 @@ void Server::set_phase_after() {
     if (ps) {
       auto card = ps->get_sc_card();
       if (card) {
-        this->card_special->apply_action_conditions(0x06, nullptr, card, is_nte ? 0x1F : 0x04, nullptr);
+        this->card_special->apply_action_conditions(EffectWhen::AFTER_SET_PHASE, nullptr, card, is_nte ? 0x1F : 0x04, nullptr);
       }
       for (size_t set_index = 0; set_index < 8; set_index++) {
         auto card = ps->get_set_card(set_index);
         if (card) {
-          this->card_special->apply_action_conditions(0x06, nullptr, card, is_nte ? 0x1F : 0x04, nullptr);
+          this->card_special->apply_action_conditions(EffectWhen::AFTER_SET_PHASE, nullptr, card, is_nte ? 0x1F : 0x04, nullptr);
         }
       }
     }
@@ -2869,7 +2869,7 @@ void Server::unknown_8023EEF4() {
     ActionState as = cmd.state;
     this->send(cmd);
 
-    this->card_special->unknown_8024AAB8(as);
+    this->card_special->apply_effects_after_attack_target_resolution(as);
 
     if (!is_nte) {
       this->attack_cards[this->unknown_a14]->compute_action_chain_results(1, 0);

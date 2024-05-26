@@ -85,7 +85,7 @@ public:
     /* 84 */ uint32_t target_attack_bonus; // "edm" in expr
     /* 88 */ uint32_t last_attack_preliminary_damage; // "ldm" in expr
     /* 8C */ uint32_t last_attack_damage; // "rdm" in expr
-    /* 90 */ uint32_t total_last_attack_damage; // "fdm" in expr
+    /* 90 */ uint32_t final_last_attack_damage; // "fdm" in expr
     /* 94 */ uint32_t last_attack_damage_count; // "ndm" in expr
     /* 98 */ uint32_t target_current_hp; // "ehp" in expr
     /* 9C */
@@ -106,7 +106,7 @@ public:
   void adjust_dice_boost_if_team_has_condition_52(
       uint8_t team_id, uint8_t* inout_dice_boost, std::shared_ptr<const Card> card);
   void apply_action_conditions(
-      uint8_t when,
+      EffectWhen when,
       std::shared_ptr<const Card> attacker_card,
       std::shared_ptr<Card> defender_card,
       uint32_t flags,
@@ -118,7 +118,7 @@ public:
       uint16_t condition_giver_card_ref,
       uint16_t attacker_card_ref);
   bool apply_defense_condition(
-      uint8_t when,
+      EffectWhen when,
       Condition* defender_cond,
       uint8_t cond_index,
       const ActionState& defense_state,
@@ -127,7 +127,7 @@ public:
       bool unknown_p8);
   bool apply_defense_conditions(
       const ActionState& as,
-      uint8_t when,
+      EffectWhen when,
       std::shared_ptr<Card> defender_card,
       uint32_t flags);
   bool apply_stat_deltas_to_all_cards_from_all_conditions_with_card_ref(
@@ -165,7 +165,7 @@ public:
       uint16_t sc_card_ref);
   StatSwapType compute_stat_swap_type(std::shared_ptr<const Card> card) const;
   void compute_team_dice_bonus(uint8_t team_id);
-  bool condition_has_when_20_or_21(const Condition& cond) const;
+  bool condition_applies_on_sc_or_item_attack(const Condition& cond) const;
   size_t count_action_cards_with_condition_for_all_current_attacks(
       ConditionType cond_type, uint16_t card_ref) const;
   size_t count_action_cards_with_condition_for_current_attack(
@@ -189,7 +189,7 @@ public:
       uint16_t set_card_ref,
       uint16_t sc_card_ref,
       uint8_t random_percent,
-      uint8_t when) const;
+      EffectWhen when) const;
   int32_t evaluate_effect_expr(
       const AttackEnvStats& ast,
       const char* expr,
@@ -276,13 +276,13 @@ public:
       size_t* out_damage_count) const;
   void update_condition_orders(std::shared_ptr<Card> card);
   int16_t max_all_attack_bonuses(size_t* out_count) const;
-  void unknown_80244AA8(std::shared_ptr<Card> card);
+  void apply_effects_after_card_move(std::shared_ptr<Card> card);
   void check_for_defense_interference(
       std::shared_ptr<const Card> attacker_card,
       std::shared_ptr<Card> target_card,
       int16_t* inout_unknown_p4);
   void evaluate_and_apply_effects(
-      uint8_t when,
+      EffectWhen when,
       uint16_t set_card_ref,
       const ActionState& as,
       uint16_t sc_card_ref,
@@ -313,10 +313,10 @@ public:
       std::shared_ptr<const Card> card1,
       const Location& card1_loc,
       std::shared_ptr<const Card> card2) const;
-  void unknown_8024AAB8(const ActionState& as);
+  void apply_effects_after_attack_target_resolution(const ActionState& as);
   void move_phase_before_for_card(std::shared_ptr<Card> unknown_p2);
   void dice_phase_before_for_card(std::shared_ptr<Card> card);
-  template <uint8_t When1, uint8_t When2>
+  template <EffectWhen When1, EffectWhen When2>
   void apply_effects_on_phase_change_t(std::shared_ptr<Card> unknown_p2, const ActionState* existing_as = nullptr);
   void draw_phase_before_for_card(std::shared_ptr<Card> unknown_p2);
   void action_phase_before_for_card(std::shared_ptr<Card> unknown_p2);
@@ -325,10 +325,14 @@ public:
   static std::shared_ptr<Card> sc_card_for_card(std::shared_ptr<Card> unknown_p2);
   void unknown_8024A9D8(const ActionState& pa, uint16_t action_card_ref);
   void check_for_attack_interference(std::shared_ptr<Card> unknown_p2);
-  template <uint8_t When1, uint8_t When2, uint8_t When3, uint8_t When4>
-  void unknown_t2(std::shared_ptr<Card> unknown_p2);
-  void unknown_8024997C(std::shared_ptr<Card> card);
-  void unknown_8024A394(std::shared_ptr<Card> card);
+  template <
+      EffectWhen WhenAllCards,
+      EffectWhen WhenAttackerAndActionCards,
+      EffectWhen WhenAttackerOrHunterSCCard,
+      EffectWhen WhenTargetsAndActionCards>
+  void apply_effects_before_or_after_attack(std::shared_ptr<Card> unknown_p2);
+  void apply_effects_before_attack(std::shared_ptr<Card> card);
+  void apply_effects_after_attack(std::shared_ptr<Card> card);
   bool client_has_atk_dice_boost_condition(uint8_t client_id);
   void unknown_8024A6DC(
       std::shared_ptr<Card> unknown_p2, std::shared_ptr<Card> unknown_p3);

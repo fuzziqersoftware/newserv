@@ -306,6 +306,41 @@ enum class ConditionType : uint8_t {
   ANY_FF = 0xFF, // Used as a wildcard in some search functions
 };
 
+enum class EffectWhen : uint8_t {
+  NONE = 0x00,
+  CARD_SET = 0x01, // Permanent effects like RAMPAGE/PIERCE on SCs, BIG_SWING, AERIAL, etc.; many AC effects also
+  AFTER_ANY_CARD_ATTACK = 0x02, // GIVE_DAMAGE, HEAL, A_H_SWAP_PERM
+  BEFORE_ANY_CARD_ATTACK = 0x03, // AP_LOSS, COMBO_TP
+  BEFORE_DICE_PHASE_THIS_TEAM_TURN = 0x04, // Many different effects
+  CARD_DESTROYED = 0x05, // RETURN_TO_HAND, RETURN, FILIAL, GIVE_OR_TAKE_EXP
+  AFTER_SET_PHASE = 0x06, // Unused
+  BEFORE_MOVE_PHASE = 0x09, // Unused
+  UNKNOWN_0A = 0x0A, // ANTI_ABNORMALITY_2 on Tollaw (non-SC version of another when?)
+  AFTER_ATTACK_TARGET_RESOLUTION = 0x0B, // ABILITY_TRAP via First Attack action card only
+  AFTER_THIS_CARD_ATTACK = 0x0C, // Many effects
+  BEFORE_THIS_CARD_ATTACK = 0x0D, // Conditions, AP_BOOST/TP_BOOST, AP_SILENCE, MULTI_STRIKE
+  BEFORE_ACT_PHASE = 0x0E, // Before act phase (ANTI_ABNORMALITY_2, FIXED_RANGE)
+  BEFORE_DRAW_PHASE = 0x0F, // Unused
+  AFTER_CARD_MOVE = 0x13, // Unused
+  UNKNOWN_15 = 0x15, // Unused
+  AFTER_THIS_CARD_ATTACKED = 0x16, // Conditions, DEATH_COMPANION, GIVE_DAMAGE, AP_GROWTH (Nidra)
+  BEFORE_THIS_CARD_ATTACKED = 0x17, // Defense damage adjustments
+  AFTER_CREATURE_OR_HUNTER_SC_ATTACK = 0x20, // RETURN_TO_HAND, A_T_SWAP_PERM, GIVE_OR_TAKE_EXP
+  BEFORE_CREATURE_OR_HUNTER_SC_ATTACK = 0x21, // Unused
+  UNKNOWN_22 = 0x22, // MISC_AP_BONUSES (SCs only?)
+  BEFORE_MOVE_PHASE_AND_AFTER_CARD_MOVE_FINAL = 0x27, // SET_MV
+  UNKNOWN_29 = 0x29, // MIGHTY_KNUCKLE
+  UNKNOWN_2A = 0x2A, // Unused
+  UNKNOWN_2B = 0x2B, // Unused
+  UNKNOWN_33 = 0x33, // DEF_DISABLE_BY_COST
+  UNKNOWN_34 = 0x34, // Unused
+  UNKNOWN_35 = 0x35, // Unused
+  ATTACK_STAT_OVERRIDES = 0x3D, // BONUS_FROM_LEADER, COPY, ABILITY_TRAP
+  ATTACK_DAMAGE_ADJUSTMENT = 0x3E, // AP_BOOST, SLAYERS_ASSASSINS, WEAK_SPOT_INFLUENCE, GROUP
+  DEFENSE_DAMAGE_ADJUSTMENT = 0x3F, // MOSTLY_HALFGUARDS, ACTION_DISRUPTER
+  BEFORE_DICE_PHASE_ALL_TURNS_FINAL = 0x46, // Pollux Timed Pierce
+};
+
 enum class AssistEffect : uint16_t {
   NONE = 0x0000,
   DICE_HALF = 0x0001,
@@ -488,7 +523,7 @@ struct CardDefinition {
     /* 02 */ pstring<TextEncoding::ASCII, 0x0F> expr;
     // when specifies in which phase the effect should activate.
     // TODO: There are many values that can be used here; document them.
-    /* 11 */ uint8_t when;
+    /* 11 */ EffectWhen when;
     // arg1 generally specifies how long the effect activates for.
     /* 12 */ pstring<TextEncoding::ASCII, 4> arg1;
     // arg2 generally specifies a condition for when the effect activates.
@@ -1576,5 +1611,7 @@ template <>
 const char* name_for_enum<Episode3::CardClass>(Episode3::CardClass cc);
 template <>
 const char* name_for_enum<Episode3::ConditionType>(Episode3::ConditionType cond_type);
+template <>
+const char* name_for_enum<Episode3::EffectWhen>(Episode3::EffectWhen when);
 template <>
 const char* name_for_enum<Episode3::Direction>(Episode3::Direction d);
