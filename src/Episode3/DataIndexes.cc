@@ -109,8 +109,8 @@ bool Location::operator!=(const Location& other) const {
 }
 
 std::string Location::str() const {
-  return string_printf("Location[x=%hhu, y=%hhu, dir=%s, u=%hhu]",
-      this->x, this->y, name_for_enum(this->direction), this->unused);
+  return string_printf("Location[x=%hhu, y=%hhu, dir=%hhu:%s, u=%hhu]",
+      this->x, this->y, static_cast<uint8_t>(this->direction), name_for_enum(this->direction), this->unused);
 }
 
 void Location::clear() {
@@ -603,7 +603,7 @@ string CardDefinition::Effect::str(const char* separator, const TextSet* text_ar
   if (!this->expr.empty()) {
     tokens.emplace_back("expr=" + this->expr.decode());
   }
-  tokens.emplace_back(string_printf("when=%s", name_for_enum(this->when)));
+  tokens.emplace_back(string_printf("when=%02hhX:%s", static_cast<uint8_t>(this->when), name_for_enum(this->when)));
   tokens.emplace_back("arg1=" + this->str_for_arg(this->arg1.decode()));
   tokens.emplace_back("arg2=" + this->str_for_arg(this->arg2.decode()));
   tokens.emplace_back("arg3=" + this->str_for_arg(this->arg3.decode()));
