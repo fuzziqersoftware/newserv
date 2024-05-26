@@ -3944,13 +3944,13 @@ void CardSpecial::evaluate_and_apply_effects(
     bool apply_defense_condition_to_all_cards,
     uint16_t apply_defense_condition_to_card_ref) {
   auto s = this->server();
-  auto log = s->log_stack(string_printf("evaluate_and_apply_effects(%02hhX, @%04hX, @%04hX): ", when, set_card_ref, sc_card_ref));
+  auto log = s->log_stack(string_printf("evaluate_and_apply_effects(%s, @%04hX, @%04hX): ", name_for_enum(when), set_card_ref, sc_card_ref));
   bool is_nte = s->options.is_nte();
 
   {
     string as_str = as.str(s);
-    log.debug("when=%02hhX, set_card_ref=@%04hX, as=%s, sc_card_ref=@%04hX, apply_defense_condition_to_all_cards=%s, apply_defense_condition_to_card_ref=@%04hX",
-        when, set_card_ref, as_str.c_str(), sc_card_ref, apply_defense_condition_to_all_cards ? "true" : "false", apply_defense_condition_to_card_ref);
+    log.debug("when=%s, set_card_ref=@%04hX, as=%s, sc_card_ref=@%04hX, apply_defense_condition_to_all_cards=%s, apply_defense_condition_to_card_ref=@%04hX",
+        name_for_enum(when), set_card_ref, as_str.c_str(), sc_card_ref, apply_defense_condition_to_all_cards ? "true" : "false", apply_defense_condition_to_card_ref);
   }
 
   if (!is_nte) {
@@ -4015,7 +4015,7 @@ void CardSpecial::evaluate_and_apply_effects(
     string card_effect_str = card_effect.str();
     effect_log.debug("effect: %s", card_effect_str.c_str());
     if (card_effect.when != when) {
-      effect_log.debug("does not apply (effect.when=%02hhX, when=%s)", card_effect.when, name_for_enum(when));
+      effect_log.debug("does not apply (effect.when=%s, when=%s)", name_for_enum(card_effect.when), name_for_enum(when));
       continue;
     }
 
@@ -4767,7 +4767,7 @@ void CardSpecial::dice_phase_before_for_card(shared_ptr<Card> card) {
 template <EffectWhen When1, EffectWhen When2>
 void CardSpecial::apply_effects_on_phase_change_t(shared_ptr<Card> unknown_p2, const ActionState* existing_as) {
   auto s = this->server();
-  auto log = s->log_stack(string_printf("apply_effects_on_phase_change_t<%02hhX, %02hhX>(@%04hX #%04hX): ", When1, When2, unknown_p2->get_card_ref(), unknown_p2->get_card_id()));
+  auto log = s->log_stack(string_printf("apply_effects_on_phase_change_t<%s, %s>(@%04hX #%04hX): ", name_for_enum(When1), name_for_enum(When2), unknown_p2->get_card_ref(), unknown_p2->get_card_id()));
   bool is_nte = s->options.is_nte();
 
   ActionState as;
