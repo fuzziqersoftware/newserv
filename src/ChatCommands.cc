@@ -438,6 +438,7 @@ static void server_command_swsetall(shared_ptr<Client> c, const std::string&) {
     cmd.switch_flag_num = z;
     cmd.flags = 0x01;
   }
+  cmds[0].flags = 0x03; // Play room unlock sound
   send_command_t(l, 0x6C, 0x00, cmds);
 }
 
@@ -457,6 +458,7 @@ static void proxy_command_swsetall(shared_ptr<ProxyServer::LinkedSession> ses, c
     cmd.switch_flag_num = z;
     cmd.flags = 0x01;
   }
+  cmds[0].flags = 0x03; // Play room unlock sound
   ses->client_channel.send(0x6C, 0x00, &cmds, sizeof(cmds));
   ses->server_channel.send(0x6C, 0x00, &cmds, sizeof(cmds));
 }
