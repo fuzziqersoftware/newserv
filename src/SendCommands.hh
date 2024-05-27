@@ -21,6 +21,8 @@ extern const std::unordered_set<uint32_t> v2_crypt_initial_client_commands;
 extern const std::unordered_set<uint32_t> v3_crypt_initial_client_commands;
 extern const std::unordered_set<std::string> bb_crypt_initial_client_commands;
 
+constexpr size_t GC_QUEST_LOAD_MAX_CHUNKS_IN_FLIGHT = 4;
+
 // TODO: Many of these functions should take a Channel& instead of a
 // shared_ptr<Client>. Refactor functions appropriately.
 

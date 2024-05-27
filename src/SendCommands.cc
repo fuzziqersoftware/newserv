@@ -3852,18 +3852,27 @@ void send_open_quest_file(
       throw logic_error("cannot send quest files to this version of client");
   }
 
-  // For GC/XB/BB, we wait for acknowledgement commands before sending each
-  // chunk. For DC/PC, we send the entire quest all at once.
-  if (is_v1_or_v2(c->version()) && (c->version() != Version::GC_NTE)) {
-    for (size_t offset = 0; offset < contents->size(); offset += 0x400) {
-      size_t chunk_bytes = contents->size() - offset;
-      if (chunk_bytes > 0x400) {
-        chunk_bytes = 0x400;
-      }
-      send_quest_file_chunk(c, filename.c_str(), offset / 0x400,
-          contents->data() + offset, chunk_bytes, (type != QuestFileType::ONLINE));
+  // On most versions, we can trust the TCP stack to do the right thing when we
+  // send a lot of data at once, but on GC, the client will crash if too much
+  // quest data is sent at once. This is likely a bug in the TCP stack, since
+  // the client should apply backpressure to avoid bad situations, but we have
+  // to deal with it here instead.
+  size_t total_chunks = (contents->size() + 0x3FF) / 0x400;
+  size_t chunks_to_send = is_gc(c->version()) ? min<size_t>(GC_QUEST_LOAD_MAX_CHUNKS_IN_FLIGHT, total_chunks) : total_chunks;
+
+  for (size_t z = 0; z < chunks_to_send; z++) {
+    size_t offset = z * 0x400;
+    size_t chunk_bytes = contents->size() - offset;
+    if (chunk_bytes > 0x400) {
+      chunk_bytes = 0x400;
     }
-  } else {
+    send_quest_file_chunk(c, filename.c_str(), offset / 0x400,
+        contents->data() + offset, chunk_bytes, (type != QuestFileType::ONLINE));
+  }
+
+  // If there are still chunks to send, track the file so the chunk
+  // acknowledgement handler (13 or A7) cna know what to send next
+  if (chunks_to_send < total_chunks) {
     c->sending_files.emplace(filename, contents);
     c->log.info("Opened file %s", filename.c_str());
   }

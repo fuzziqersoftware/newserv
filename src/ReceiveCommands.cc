@@ -2970,37 +2970,30 @@ static void on_D7_GC(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
   }
 }
 
-static void send_file_chunk(
-    shared_ptr<Client> c,
-    const string& filename,
-    size_t chunk_index,
-    bool is_download_quest) {
-  shared_ptr<const string> data;
+static void on_13_A7_GC(shared_ptr<Client> c, uint16_t command, uint32_t flag, string& data) {
+  // See comment in send_open_quest_file about why we only have logic here for
+  // GC clients, and ignore this command on all other versions
+  const auto& cmd = check_size_t<C_WriteFileConfirmation_V3_BB_13_A7>(data);
+  bool is_download_quest = (command == 0xA7);
+  string filename = cmd.filename.decode();
+  size_t chunk_to_send = flag + GC_QUEST_LOAD_MAX_CHUNKS_IN_FLIGHT;
+
+  shared_ptr<const string> file_data;
   try {
-    data = c->sending_files.at(filename);
+    file_data = c->sending_files.at(filename);
   } catch (const out_of_range&) {
     return;
   }
 
-  size_t chunk_offset = chunk_index * 0x400;
-  if (chunk_offset >= data->size()) {
+  size_t chunk_offset = chunk_to_send * 0x400;
+  if (chunk_offset >= file_data->size()) {
     c->log.info("Done sending file %s", filename.c_str());
     c->sending_files.erase(filename);
   } else {
-    const void* chunk_data = data->data() + (chunk_index * 0x400);
-    size_t chunk_size = min<size_t>(data->size() - chunk_offset, 0x400);
-    send_quest_file_chunk(c, filename, chunk_index, chunk_data, chunk_size, is_download_quest);
+    const void* chunk_data = file_data->data() + (chunk_to_send * 0x400);
+    size_t chunk_size = min<size_t>(file_data->size() - chunk_offset, 0x400);
+    send_quest_file_chunk(c, filename, chunk_to_send, chunk_data, chunk_size, is_download_quest);
   }
-}
-
-static void on_44_A6_V3_BB(shared_ptr<Client> c, uint16_t command, uint32_t, string& data) {
-  const auto& cmd = check_size_t<C_OpenFileConfirmation_44_A6>(data);
-  send_file_chunk(c, cmd.filename.decode(), 0, (command == 0xA6));
-}
-
-static void on_13_A7_V3_BB(shared_ptr<Client> c, uint16_t command, uint32_t flag, string& data) {
-  const auto& cmd = check_size_t<C_WriteFileConfirmation_V3_BB_13_A7>(data);
-  send_file_chunk(c, cmd.filename.decode(), flag + 1, (command == 0xA7));
 }
 
 static void on_61_98(shared_ptr<Client> c, uint16_t command, uint32_t flag, string& data) {
@@ -5322,7 +5315,7 @@ static on_command_t handlers[0x100][NUM_NON_PATCH_VERSIONS] = {
 /* 10 */ {on_10,         on_10,         on_10,         on_10,          on_10,       on_10,       on_10,          on_10,          on_10,          on_10,          on_10,          on_10},
 /* 11 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
 /* 12 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* 13 */ {on_ignored,    on_ignored,    on_ignored,    on_ignored,     on_ignored,  on_ignored,  on_13_A7_V3_BB, on_13_A7_V3_BB, on_13_A7_V3_BB, on_13_A7_V3_BB, on_13_A7_V3_BB, on_13_A7_V3_BB},
+/* 13 */ {on_ignored,    on_ignored,    on_ignored,    on_ignored,     on_ignored,  on_ignored,  on_13_A7_GC,    on_13_A7_GC,    on_13_A7_GC,    on_13_A7_GC,    on_ignored,     on_ignored},
 /* 14 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
 /* 15 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
 /* 16 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
@@ -5374,7 +5367,7 @@ static on_command_t handlers[0x100][NUM_NON_PATCH_VERSIONS] = {
 /* 41 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
 /* 42 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
 /* 43 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* 44 */ {on_ignored,    on_ignored,    on_ignored,    on_ignored,     on_ignored,  on_ignored,  on_44_A6_V3_BB, on_44_A6_V3_BB, on_44_A6_V3_BB, on_44_A6_V3_BB, on_44_A6_V3_BB, on_44_A6_V3_BB},
+/* 44 */ {on_ignored,    on_ignored,    on_ignored,    on_ignored,     on_ignored,  on_ignored,  on_ignored,     on_ignored,     on_ignored,     on_ignored,     on_ignored,     on_ignored},
 /* 45 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
 /* 46 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
 /* 47 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
@@ -5478,8 +5471,8 @@ static on_command_t handlers[0x100][NUM_NON_PATCH_VERSIONS] = {
 /* A3 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
 /* A4 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
 /* A5 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* A6 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     on_44_A6_V3_BB, on_44_A6_V3_BB, on_44_A6_V3_BB, on_44_A6_V3_BB, on_44_A6_V3_BB, nullptr},
-/* A7 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     on_13_A7_V3_BB, on_13_A7_V3_BB, on_13_A7_V3_BB, on_13_A7_V3_BB, on_13_A7_V3_BB, nullptr},
+/* A6 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     on_ignored,     on_ignored,     on_ignored,     on_ignored,     on_ignored,     nullptr},
+/* A7 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     on_13_A7_GC,    on_13_A7_GC,    on_13_A7_GC,    on_13_A7_GC,    on_ignored,     nullptr},
 /* A8 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
 /* A9 */ {on_A9,         on_A9,         on_A9,         on_A9,          on_A9,       on_A9,       on_A9,          on_A9,          on_A9,          on_A9,          on_A9,          on_A9},
 /* AA */ {nullptr,       nullptr,       nullptr,       nullptr,        on_AA,       on_AA,       on_AA,          on_AA,          on_AA,          on_AA,          on_AA,          on_AA},
