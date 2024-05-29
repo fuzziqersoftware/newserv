@@ -12,6 +12,7 @@ See TODO.md for a list of known issues and future work I've curated, or go to th
 * Background
     * [History](#history)
     * [Other server projects](#other-server-projects)
+    * [Using newserv in other projects](#using-newserv-in-other-projects)
 * [Compatibility](#compatibility)
 * Setup
     * [Server setup](#server-setup)
@@ -62,7 +63,14 @@ Independently of this project, there are many other PSO servers out there. Those
 * (2019) **[Mechonis](https://gitlab.com/sora3087/mechonis)**: A PSOBB server with a microservice architecture written in TypeScript by TrueVision.
 * (2021) **[Phantasmal World](https://github.com/DaanVandenBosch/phantasmal-world)**: A set of PSO tools, including a web-based model viewer and quest builder, and a PSO server, written by Daan Vanden Bosch.
 * (2021) **[Elseware](http://git.sharnoth.com/jake/elseware)**: A PSOBB server written in Rust by Jake.
-* (2022) **[PSOSERVER](https://github.com/Sancaros/PSOSERVER)**: A server for all versions, written in C by Sancaros and based on Sylverant and newserv.
+
+## Using newserv in other projects
+
+There is a fair amount of code in this project that could potentially be useful to other projects. You are free to use code from newserv in your own open-source projects; the only condition is that the contents of the LICENSE file must be included in your project if you use code from newserv. Your project does not also have to use the MIT license; you can use any license you want.
+
+If you want to use parts of newserv in your project, there are two easy ways to do so with proper licensing:
+* If you're using a lot of code from newserv, you can put a copy of newserv's LICENSE file in your repository alongside your own license file, or include the contents of newserv's license in your own license file.
+* If you're only using a few files from newserv, you can copy and paste the contents of the LICENSE file into a comment at the beginning of each file.
 
 # Compatibility
 
