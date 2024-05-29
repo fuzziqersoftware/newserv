@@ -70,7 +70,7 @@ There is a fair amount of code in this project that could potentially be useful 
 
 If you want to use parts of newserv in your project, there are two easy ways to do so with proper licensing:
 * If you're using a lot of code from newserv, you can put a copy of newserv's LICENSE file in your repository alongside your own license file, or include the contents of newserv's license in your own license file.
-* If you're only using a few files from newserv, you can copy and paste the contents of the LICENSE file into a comment at the beginning of each file.
+* If you're only using a few files from newserv, you can copy and paste the contents of the LICENSE file into a comment at the beginning of each copied file.
 
 # Compatibility
 
