@@ -337,18 +337,6 @@ unique_ptr<const IntegralExpression::Node> IntegralExpression::parse_expr(string
     throw runtime_error("invalid expression");
   }
 
-  // Check for unary operators
-  if (text[0] == '!') {
-    return make_unique<UnaryOperatorNode>(UnaryOperatorNode::Type::LOGICAL_NOT,
-        IntegralExpression::parse_expr(text.substr(1)));
-  } else if (text[0] == '~') {
-    return make_unique<UnaryOperatorNode>(UnaryOperatorNode::Type::BITWISE_NOT,
-        IntegralExpression::parse_expr(text.substr(1)));
-  } else if (text[0] == '-') {
-    return make_unique<UnaryOperatorNode>(UnaryOperatorNode::Type::NEGATIVE,
-        IntegralExpression::parse_expr(text.substr(1)));
-  }
-
   // Check for binary operators at the root level
   using BinType = BinaryOperatorNode::Type;
   static const vector<vector<pair<std::string, BinaryOperatorNode::Type>>> binary_operator_levels = {
@@ -390,6 +378,18 @@ unique_ptr<const IntegralExpression::Node> IntegralExpression::parse_expr(string
         }
       }
     }
+  }
+
+  // Check for unary operators
+  if (text[0] == '!') {
+    return make_unique<UnaryOperatorNode>(UnaryOperatorNode::Type::LOGICAL_NOT,
+        IntegralExpression::parse_expr(text.substr(1)));
+  } else if (text[0] == '~') {
+    return make_unique<UnaryOperatorNode>(UnaryOperatorNode::Type::BITWISE_NOT,
+        IntegralExpression::parse_expr(text.substr(1)));
+  } else if (text[0] == '-') {
+    return make_unique<UnaryOperatorNode>(UnaryOperatorNode::Type::NEGATIVE,
+        IntegralExpression::parse_expr(text.substr(1)));
   }
 
   // Check for env lookups

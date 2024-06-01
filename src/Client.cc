@@ -386,7 +386,7 @@ bool Client::evaluate_quest_availability_expression(
   int64_t ret = expr->evaluate(env);
   if (this->log.should_log(LogLevel::INFO)) {
     string expr_str = expr->str();
-    this->log.info("Evaluated quest availability expression %s => %s", expr_str.c_str(), ret ? "TRUE" : "FALSE");
+    this->log.info("Evaluated integral expression %s => %s", expr_str.c_str(), ret ? "TRUE" : "FALSE");
   }
   return ret;
 }

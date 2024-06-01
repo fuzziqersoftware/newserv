@@ -482,8 +482,10 @@ static void server_command_qset_qclear(shared_ptr<Client> c, const std::string& 
     } else {
       l->quest_flag_values->clear(l->difficulty, flag_num);
     }
-  } else if (c->version() == Version::BB_V4) {
-    auto p = c->character();
+  }
+
+  auto p = c->character(false);
+  if (p) {
     if (should_set) {
       p->quest_flags.set(l->difficulty, flag_num);
     } else {
