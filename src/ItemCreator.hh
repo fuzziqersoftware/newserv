@@ -83,6 +83,24 @@ private:
 
   // Note: The original implementation uses 17 different random states for some
   // reason. We forego that and use only one for simplicity.
+  // Originally, the 17 random states were used for:
+  //   [0x00] - drop-anything rate check
+  //   [0x01] - common item class check
+  //   [0x02] - get_rand_from_weighted_tables16 determinants
+  //   [0x03] - get_rand_from_weighted_tables8 determinants
+  //   [0x04] - tech disk levels
+  //   [0x05] - meseta amounts
+  //   [0x06] - rare drop rate check
+  //   [0x07] - rare weapon special table index
+  //   [0x08] - apparently unused
+  //   [0x09] - whether to generate a common weapon special
+  //   [0x0A] - number of stars for common weapon special
+  //   [0x0B] - unit modifiers
+  //   [0x0C] - common armor DFP bonuses
+  //   [0x0D] - common armor EVP bonuses
+  //   [0x0E] - apparently unused
+  //   [0x0F] - which common weapon special to generate
+  //   [0x10] - apparently unused
   std::shared_ptr<PSOLFGEncryption> opt_rand_crypt;
 
   bool are_rare_drops_allowed() const;
