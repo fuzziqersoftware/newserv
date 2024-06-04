@@ -4387,6 +4387,10 @@ struct G_Attack_6x43_6x44_6x45 {
 } __packed_ws__(G_Attack_6x43_6x44_6x45, 8);
 
 // 6x46: Attack finished (sent after each of 43, 44, and 45) (protected on V3/V4)
+// The number of targets is not bounds-checked during byteswapping on GC
+// clients. The client only expects up to 10 entries here, so if the number of
+// targets is too large, the client will byteswap the function's return address
+// on the stack, and it will crash.
 
 struct TargetEntry {
   le_uint16_t entity_id = 0;
@@ -4401,6 +4405,7 @@ struct G_AttackFinished_6x46 {
 } __packed_ws__(G_AttackFinished_6x46, 0x30);
 
 // 6x47: Cast technique (protected on V3/V4)
+// On GC, this command has the same bounds-check bug as 6x46.
 
 struct G_CastTechnique_6x47 {
   G_ClientIDHeader header;
@@ -4428,6 +4433,7 @@ struct G_CastTechniqueComplete_6x48 {
 } __packed_ws__(G_CastTechniqueComplete_6x48, 8);
 
 // 6x49: Execute Photon Blast (protected on V3/V4)
+// On GC, this command has the same bounds-check bug as 6x46.
 
 struct G_ExecutePhotonBlast_6x49 {
   G_ClientIDHeader header;
