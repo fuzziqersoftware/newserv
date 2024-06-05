@@ -5,7 +5,7 @@ set -e
 SCHEME=$1
 
 EXECUTABLE="$2"
-if [ "$EXECUTABLE" == "" ]; then
+if [ -z "$EXECUTABLE" ]; then
   EXECUTABLE="./newserv"
 fi
 

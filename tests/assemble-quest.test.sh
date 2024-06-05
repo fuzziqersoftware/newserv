@@ -3,7 +3,7 @@
 set -e
 
 EXECUTABLE="$1"
-if [ "$EXECUTABLE" == "" ]; then
+if [ -z "$EXECUTABLE" ]; then
   EXECUTABLE="./newserv"
 fi
 
