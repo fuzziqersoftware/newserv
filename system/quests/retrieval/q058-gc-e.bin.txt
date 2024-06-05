@@ -59,15 +59,38 @@
 // capability.
 // .joinable
 
-// The quest script begins here. A quest script is a sequence of opcodes, and
-// labels denoting positions within that sequence that can be jumped to or
-// called like a function. All labels have names, and some have numbers. (In the
-// compiled format, labels have only numbers and no names; during compilation,
-// each label that doesn't have a number is assigned a number that isn't in use
-// by another label.) To explicitly specify a label number (for example, if an
-// object or NPC refers to a label by number), use an @ sign followed by the
-// desired number. Note that numbers can be specified in decimal or hexadecimal;
-// see on_talk_to_npc1 and on_talk_to_npc2 for examples.
+// The quest script begins after the header directives. A quest script is a
+// sequence of opcodes, and labels denoting positions within that sequence that
+// can be jumped to or called like a function. All labels have names, and some
+// have numbers. (In the compiled format, labels have only numbers and no names;
+// during compilation, each label that doesn't have a number is assigned a
+// number that isn't in use by another label.) To explicitly specify a label
+// number (for example, if an object or NPC refers to a label by number), use an
+// @ sign followed by the desired number. Note that numbers can be specified in
+// decimal or hexadecimal; see on_talk_to_npc1 and on_talk_to_npc2 for examples.
+
+// Registers may be named as well as labels. (In the compiled script, registers
+// do not have names, so disassembling a quest script always produces only
+// numbered registers.) When compiling, all of the following are valid:
+//   r83                    (explicitly numbered register)
+//   r:difficulty_level     (the compiler will assign an unused register number)
+//   r:difficulty_level@83  (named and explicitly numbered)
+// You don't always have to use the same form for each register; for example,
+// if you use r:difficulty_level@83 anywhere in the quest script, you can also
+// use r:difficulty_level and r83 in other places and they will all refer to the
+// same register. (However, if you don't use r:difficulty_level@83 anywhere, but
+// you do use r83 and r:difficulty_level, the compiler will assign these to two
+// different registers since there is nothing linking the name to the number.)
+
+// Using opcodes that take a consecutive sequence of registers, such as
+// map_designate which takes 4, introduces constraints on which registers may be
+// assigned to which numbers. For example, before one of the map_designate
+// opcodes after the start label, we explicitly assign one register's number,
+// but leave the nearby registers' numbers unassigned. The compiler assigns
+// those four registers to r60-r63, because they are used in a map_designate
+// call. If we didn't explicitly number any of those registers, the compiler
+// would instead choose a consecutive sequence of register numbers that aren't
+// used anywhere else in the script.
 
 // This quest does not contain any examples of non-script data, but such data
 // can be included in the quest script using the .data directive, like this:
@@ -80,63 +103,63 @@
 // Every quest must have a start label; this is the main thread that starts when
 // the quest begins. The start label is always assigned number 0.
 start:
-  gget                            0x0091, r252
+  gget                            0x0091, r:flag_0091_value@252
   set_floor_handler               0, floor_handler_pioneer_2
   set_floor_handler               1, floor_handler_forest_1
   set_floor_handler               2, floor_handler_forest_2
   set_floor_handler               11, floor_handler_dragon
   set_qt_success                  on_quest_success
-  get_difficulty_level_v2         r83
-  leti                            r60, 0 // Pioneer 2
-  leti                            r61, 0
-  leti                            r62, 0
-  leti                            r63, 0
-  map_designate                   r60-r63
-  leti                            r60, 1 // Forest 1
-  leti                            r61, 0
-  leti                            r62, 0
-  leti                            r63, 0
-  map_designate                   r60-r63
-  leti                            r60, 2 // Forest 2
-  leti                            r61, 0
-  leti                            r62, 0
-  leti                            r63, 0
-  map_designate                   r60-r63
-  leti                            r60, 11  // Dragon
-  leti                            r61, 0
-  leti                            r62, 0
-  leti                            r63, 0
-  map_designate                   r60-r63
+  get_difficulty_level_v2         r:difficulty_level@83
+  leti                            r:op_arg1, 0 // Pioneer 2
+  leti                            r:op_arg2, 0
+  leti                            r:op_arg3@62, 0 // See comment above about register assignment
+  leti                            r:op_arg4, 0
+  map_designate                   (r:op_arg1, r:op_arg2, r:op_arg3, r:op_arg4)
+  leti                            r:op_arg1, 1 // Forest 1
+  leti                            r:op_arg2, 0
+  leti                            r:op_arg3, 0
+  leti                            r:op_arg4, 0
+  map_designate                   (r:op_arg1, r:op_arg2, r:op_arg3, r:op_arg4)
+  leti                            r:op_arg1, 2 // Forest 2
+  leti                            r:op_arg2, 0
+  leti                            r:op_arg3, 0
+  leti                            r:op_arg4, 0
+  map_designate                   (r:op_arg1, r:op_arg2, r:op_arg3, r:op_arg4)
+  leti                            r:op_arg1, 11  // Dragon
+  leti                            r:op_arg2, 0
+  leti                            r:op_arg3, 0
+  leti                            r:op_arg4, 0
+  map_designate                   (r:op_arg1, r:op_arg2, r:op_arg3, r:op_arg4)
   ret
 
 return_immediately:
   ret
 
 floor_handler_pioneer_2:
-  switch_jmp                      r0, [floor_handler_pioneer_2_first_time, floor_handler_pioneer_2_not_first_time]
+  switch_jmp                      r:has_talked_to_hopkins, [floor_handler_pioneer_2_first_time, floor_handler_pioneer_2_not_first_time]
 floor_handler_pioneer_2_first_time:
   set                             r50
   set_mainwarp                    1
-  leti                            r60, 0x000000ED
-  leti                            r61, 0x00000000
-  leti                            r62, 0x0000014D
-  leti                            r63, 0xFFFFFFF1
-  p_setpos                        0, r60-r63
-  leti                            r60, 0x000000FF
-  leti                            r61, 0x00000000
-  leti                            r62, 0x00000152
-  leti                            r63, 0xFFFFFFD5
-  p_setpos                        1, r60-r63
-  leti                            r60, 0x000000DE
-  leti                            r61, 0x00000000
-  leti                            r62, 0x00000142
-  leti                            r63, 0x00000019
-  p_setpos                        2, r60-r63
-  leti                            r60, 0x000000F8
-  leti                            r61, 0x00000000
-  leti                            r62, 0x00000143
-  leti                            r63, 0xFFFFFFEC
-  p_setpos                        3, r60-r63
+  leti                            r:op_arg1, 0x000000ED
+  leti                            r:op_arg2, 0x00000000
+  leti                            r:op_arg3, 0x0000014D
+  leti                            r:op_arg4, 0xFFFFFFF1
+  p_setpos                        0, (r:op_arg1, r:op_arg2, r:op_arg3, r:op_arg4)
+  leti                            r:op_arg1, 0x000000FF
+  leti                            r:op_arg2, 0x00000000
+  leti                            r:op_arg3, 0x00000152
+  leti                            r:op_arg4, 0xFFFFFFD5
+  p_setpos                        1, (r:op_arg1, r:op_arg2, r:op_arg3, r:op_arg4)
+  leti                            r:op_arg1, 0x000000DE
+  leti                            r:op_arg2, 0x00000000
+  leti                            r:op_arg3, 0x00000142
+  leti                            r:op_arg4, 0x00000019
+  p_setpos                        2, (r:op_arg1, r:op_arg2, r:op_arg3, r:op_arg4)
+  leti                            r:op_arg1, 0x000000F8
+  leti                            r:op_arg2, 0x00000000
+  leti                            r:op_arg3, 0x00000143
+  leti                            r:op_arg4, 0xFFFFFFEC
+  p_setpos                        3, (r:op_arg1, r:op_arg2, r:op_arg3, r:op_arg4)
   call                            on_talk_to_hopkins
   ret
 floor_handler_pioneer_2_not_first_time:
@@ -156,10 +179,10 @@ label00CB@0x00CB:
   ret
 
 on_quest_success:
-  jmpi_eq                         r83, 0, on_quest_success_normal
-  jmpi_eq                         r83, 1, on_quest_success_hard
-  jmpi_eq                         r83, 2, on_quest_success_very_hard
-  jmpi_eq                         r83, 3, on_quest_success_ultimate
+  jmpi_eq                         r:difficulty_level, 0, on_quest_success_normal
+  jmpi_eq                         r:difficulty_level, 1, on_quest_success_hard
+  jmpi_eq                         r:difficulty_level, 2, on_quest_success_very_hard
+  jmpi_eq                         r:difficulty_level, 3, on_quest_success_ultimate
 on_quest_success_normal:
   window_msg                      "You\'ve been awarded\n100 Meseta."
   bgm                             1
@@ -241,7 +264,7 @@ play_dragon_killed_cutscene_when_ready_check_again:
   ret
 
 on_dragon_killed:
-  jmpi_eq                         r83, 3, on_dragon_killed_ultimate
+  jmpi_eq                         r:difficulty_level, 3, on_dragon_killed_ultimate
   window_msg                      "Dragon killed!"
   add_msg                         "Hopkins\'s HEAT SWORD found\nin Dragon\'s mouth!"
   se                              1
@@ -281,7 +304,7 @@ show_mission_complete_if_needed_check_again:
 on_talk_to_hopkins@310:
   jmpi_eq                         r255, 1, on_talk_to_hopkins_complete_again
   jmpi_eq                         r254, 1, on_talk_to_hopkins_complete
-  jmpi_eq                         r0, 1, on_talk_to_hopkins_incomplete_again
+  jmpi_eq                         r:has_talked_to_hopkins, 1, on_talk_to_hopkins_incomplete_again
   call                            start_cutscene
   call                            wait_30_frames
   message                         100, "Ca... can you help\nme?  Please?"
@@ -290,7 +313,7 @@ on_talk_to_hopkins@310:
   add_msg                         "My HEAT SWORD...\nMy dad gave HEAT SWORD\nto me..."
   add_msg                         "It\'s really important to\nme. I don\'t know how it\nwas taken from me."
   add_msg                         "I cannot do my job\nwithout it!  Please\nget it back for me."
-  set                             r0
+  set                             r:has_talked_to_hopkins
   mesend
   bgm                             1
   call                            end_cutscene

@@ -1775,6 +1775,186 @@ Episode episode_for_quest_episode_number(uint8_t episode_number) {
   }
 }
 
+struct RegisterAssigner {
+  struct Register {
+    string name;
+    int16_t number = -1; // -1 = unassigned (any number)
+    shared_ptr<Register> prev;
+    shared_ptr<Register> next;
+    unordered_set<size_t> offsets;
+  };
+
+  ~RegisterAssigner() {
+    for (auto& it : this->named_regs) {
+      it.second->prev.reset();
+      it.second->next.reset();
+    }
+    for (auto& reg : this->numbered_regs) {
+      if (reg) {
+        reg->prev.reset();
+        reg->next.reset();
+      }
+    }
+  }
+
+  shared_ptr<Register> get_or_create(const string& name, int16_t number) {
+    shared_ptr<Register> reg;
+    try {
+      if (!name.empty()) {
+        reg = this->named_regs.at(name);
+      } else if (number >= 0 && number < 0x100) {
+        reg = this->numbered_regs.at(number);
+      } else {
+        throw runtime_error("invalid register name or number");
+      }
+    } catch (const out_of_range&) {
+    }
+
+    if (!reg) {
+      reg = make_shared<Register>();
+    }
+
+    if (number >= 0) {
+      if (reg->number < 0) {
+        reg->number = number;
+        if (this->numbered_regs.at(reg->number)) {
+          throw runtime_error(string_printf("number %hd is already assigned to a different register", reg->number));
+        }
+        this->numbered_regs.at(reg->number) = reg;
+      } else if (reg->number != number) {
+        throw runtime_error(string_printf("register %s is assigned multiple numbers", reg->name.c_str()));
+      }
+    }
+
+    if (!name.empty()) {
+      if (reg->name.empty()) {
+        reg->name = name;
+        if (!this->named_regs.emplace(reg->name, reg).second) {
+          throw runtime_error(string_printf("name %s is already assigned to a different register", reg->name.c_str()));
+        }
+      } else if (reg->name != name) {
+        throw runtime_error(string_printf("register %hd is assigned multiple names", reg->number));
+      }
+    }
+
+    return reg;
+  }
+
+  void assign_number(shared_ptr<Register> reg, uint8_t number) {
+    if (reg->number < 0) {
+      reg->number = number;
+      if (this->numbered_regs.at(reg->number)) {
+        throw logic_error(string_printf("register number %hd assigned multiple times", reg->number));
+      }
+      this->numbered_regs.at(reg->number) = reg;
+    } else if (reg->number != static_cast<int16_t>(number)) {
+      throw runtime_error(string_printf("assigning different register number %hhu over existing register number %hd", number, reg->number));
+    }
+  }
+
+  void constrain(shared_ptr<Register> first_reg, shared_ptr<Register> second_reg) {
+    if (!first_reg->next) {
+      first_reg->next = second_reg;
+    } else if (first_reg->next != second_reg) {
+      throw runtime_error(string_printf("register %s must come after %s, but is already constrained to another register", second_reg->name.c_str(), first_reg->name.c_str()));
+    }
+    if (!second_reg->prev) {
+      second_reg->prev = first_reg;
+    } else if (second_reg->prev != first_reg) {
+      throw runtime_error(string_printf("register %s must come before %s, but is already constrained to another register", first_reg->name.c_str(), second_reg->name.c_str()));
+    }
+    if ((first_reg->number >= 0) && (second_reg->number >= 0) && (first_reg->number != ((second_reg->number - 1) & 0xFF))) {
+      throw runtime_error(string_printf("register %s must come before %s, but both registers already have non-consecutive numbers", first_reg->name.c_str(), second_reg->name.c_str()));
+    }
+  }
+
+  void assign_all() {
+    // TODO: Technically, we should assign the biggest blocks first to minimize
+    // fragmentation. I am lazy and haven't implemented this yet.
+    unordered_set<shared_ptr<Register>> unassigned;
+    for (auto it : this->named_regs) {
+      if (it.second->number < 0) {
+        unassigned.emplace(it.second);
+      }
+    }
+
+    while (!unassigned.empty()) {
+      auto reg_it = unassigned.begin();
+      auto reg = *reg_it;
+      unassigned.erase(reg_it);
+
+      // If this register is already assigned, skip it
+      if (reg->number >= 0) {
+        continue;
+      }
+
+      // If any next register is assigned, assign this register
+      size_t next_delta = 1;
+      for (auto next_reg = reg->next; next_reg; next_reg = next_reg->next, next_delta++) {
+        if (next_reg->number >= 0) {
+          this->assign_number(reg, (next_reg->number - next_delta) & 0xFF);
+          break;
+        }
+      }
+      if (reg->number >= 0) {
+        continue;
+      }
+
+      // If any prev register is assigned, assign this register
+      size_t prev_delta = 1;
+      for (auto prev_reg = reg->prev; prev_reg; prev_reg = prev_reg->prev, prev_delta++) {
+        if (prev_reg->number >= 0) {
+          this->assign_number(reg, (prev_reg->number + prev_delta) & 0xFF);
+          break;
+        }
+      }
+      if (reg->number >= 0) {
+        continue;
+      }
+
+      // No prev or next register is assigned; find an interval in the register
+      // number space that fits this block of registers. The total number of
+      // register numbers needed is (prev_delta - 1) + (next_delta - 1) + 1.
+      size_t num_regs = prev_delta + next_delta - 1;
+      this->assign_number(reg, (this->find_register_number_space(num_regs) + (prev_delta - 1)) & 0xFF);
+
+      // We don't need to assign the prev and next registers; they should also
+      // be in the unassigned set and will be assigned by the above logic
+    }
+
+    // At this point, all registers should be assigned
+    for (const auto& it : this->named_regs) {
+      if (it.second->number < 0) {
+        throw logic_error(string_printf("register %s was not assigned", it.second->name.c_str()));
+      }
+    }
+    for (size_t z = 0; z < 0x100; z++) {
+      auto reg = this->numbered_regs[z];
+      if (reg && (reg->number != static_cast<int16_t>(z))) {
+        throw logic_error(string_printf("register %zu has incorrect number %hd", z, reg->number));
+      }
+    }
+  }
+
+  uint8_t find_register_number_space(size_t num_regs) const {
+    for (size_t candidate = 0; candidate < 0x100; candidate++) {
+      size_t z;
+      for (z = 0; z < num_regs; z++) {
+        if (this->numbered_regs[candidate + z]) {
+          break;
+        }
+      }
+      if (z == num_regs) {
+        return candidate;
+      }
+    }
+    throw runtime_error("not enough space to assign registers");
+  }
+
+  unordered_map<string, shared_ptr<Register>> named_regs;
+  array<shared_ptr<Register>, 0x100> numbered_regs;
+};
+
 std::string assemble_quest_script(const std::string& text) {
   auto lines = split(text, '\n');
 
@@ -1901,6 +2081,88 @@ std::string assemble_quest_script(const std::string& text) {
     }
   }
 
+  // Prepare to collect named registers
+  RegisterAssigner reg_assigner;
+  auto parse_reg = [&reg_assigner](const string& arg, bool allow_unnumbered = true) -> shared_ptr<RegisterAssigner::Register> {
+    if (arg.size() < 2) {
+      throw runtime_error("register argument is too short");
+    }
+    if ((arg[0] != 'r') && (arg[0] != 'f')) {
+      throw runtime_error("a register is required");
+    }
+    string name;
+    ssize_t number = -1;
+    if (arg[1] == ':') {
+      auto tokens = split(arg.substr(2), '@');
+      if (tokens.size() == 1) {
+        name = std::move(tokens[0]);
+      } else if (tokens.size() == 2) {
+        name = std::move(tokens[0]);
+        number = stoull(tokens[1], nullptr, 0);
+      } else {
+        throw runtime_error("invalid register specification");
+      }
+    } else {
+      number = stoull(arg.substr(1), nullptr, 0);
+    }
+    if (!allow_unnumbered && (number < 0)) {
+      throw runtime_error("a numbered register is required");
+    }
+    if (number > 0xFF) {
+      throw runtime_error("invalid register number");
+    }
+    return reg_assigner.get_or_create(name, number);
+  };
+  auto parse_reg_set_fixed = [&reg_assigner, &parse_reg](const string& name, size_t expected_count) -> vector<shared_ptr<RegisterAssigner::Register>> {
+    if (expected_count == 0) {
+      throw logic_error("REG_SET_FIXED argument expects no registers");
+    }
+    if (name.empty()) {
+      throw runtime_error("no register specified for REG_SET_FIXED argument");
+    }
+    vector<shared_ptr<RegisterAssigner::Register>> regs;
+    if ((name[0] == '(') && (name.back() == ')')) {
+      auto tokens = split(name.substr(1, name.size() - 2), ',');
+      if (tokens.size() != expected_count) {
+        throw runtime_error("incorrect number of registers in REG_SET_FIXED");
+      }
+      for (auto& token : tokens) {
+        strip_trailing_whitespace(token);
+        strip_leading_whitespace(token);
+        regs.emplace_back(parse_reg(token));
+        if (regs.size() > 1) {
+          reg_assigner.constrain(regs.at(regs.size() - 2), regs.back());
+        }
+      }
+    } else {
+      auto tokens = split(name, '-');
+      if (tokens.size() == 1) {
+        regs.emplace_back(parse_reg(tokens[0], false));
+        while (regs.size() < expected_count) {
+          regs.emplace_back(parse_reg("", (regs.back()->number + 1) & 0xFF));
+          reg_assigner.constrain(regs.at(regs.size() - 2), regs.back());
+        }
+      } else if (tokens.size() == 2) {
+        regs.emplace_back(parse_reg(tokens[0], false));
+        while (regs.size() < expected_count - 1) {
+          regs.emplace_back(reg_assigner.get_or_create("", (regs.back()->number + 1) & 0xFF));
+          reg_assigner.constrain(regs.at(regs.size() - 2), regs.back());
+        }
+        regs.emplace_back(parse_reg(tokens[1], false));
+        if (static_cast<size_t>(regs.back()->number - regs.front()->number + 1) != expected_count) {
+          throw runtime_error("incorrect number of registers used");
+        }
+        reg_assigner.constrain(regs.at(regs.size() - 2), regs.back());
+      } else {
+        throw runtime_error("invalid fixed register set syntax");
+      }
+    }
+    if (regs.empty() || regs.size() != expected_count) {
+      throw logic_error("incorrect register count in REG_SET_FIXED after parsing");
+    }
+    return regs;
+  };
+
   // Assemble code segment
   bool version_has_args = F_HAS_ARGS & v_flag(quest_version);
   const auto& opcodes = opcodes_by_name_for_version(quest_version);
@@ -1974,16 +2236,6 @@ std::string assemble_quest_script(const std::string& text) {
           strip_leading_whitespace(arg);
 
           try {
-            auto parse_reg = +[](const string& name) -> uint8_t {
-              if ((name[0] != 'r') && (name[0] != 'f')) {
-                throw runtime_error("a register is required");
-              }
-              size_t reg_num = stoull(name.substr(1), nullptr, 0);
-              if (reg_num > 0xFF) {
-                throw runtime_error("invalid register number");
-              }
-              return reg_num;
-            };
             auto add_cstr = [&](const string& text) -> void {
               switch (quest_version) {
                 case Version::DC_NTE:
@@ -2019,37 +2271,33 @@ std::string assemble_quest_script(const std::string& text) {
               } else if (label_it != labels_by_name.end()) {
                 code_w.put_u8(0x4B); // arg_pushw
                 code_w.put_u16l(label_it->second->index);
-              } else if ((arg[0] == 'r') || (arg[0] == 'f')) {
+              } else if ((arg[0] == 'r') || (arg[0] == 'f') || ((arg[0] == '(') && (arg.back() == ')'))) {
                 // If the corresponding argument is a REG or REG_SET_FIXED, push
                 // the register number, not the register's value, since it's an
                 // out-param
                 if ((arg_def.type == Type::REG) || (arg_def.type == Type::REG32)) {
                   code_w.put_u8(0x4A); // arg_pushb
-                  code_w.put_u8(parse_reg(arg));
+                  auto reg = parse_reg(arg);
+                  reg->offsets.emplace(code_w.size());
+                  code_w.put_u8(reg->number);
                 } else if (
                     (arg_def.type == Type::REG_SET_FIXED) ||
                     (arg_def.type == Type::REG32_SET_FIXED)) {
-                  auto tokens = split(arg, '-');
-                  uint8_t start_reg;
-                  if (tokens.size() == 1) {
-                    start_reg = parse_reg(tokens[0]);
-                  } else if (tokens.size() == 2) {
-                    start_reg = parse_reg(tokens[0]);
-                    if (static_cast<size_t>(parse_reg(tokens[1]) - start_reg + 1) != arg_def.count) {
-                      throw runtime_error("incorrect number of registers used");
-                    }
-                  } else {
-                    throw runtime_error("invalid fixed register set syntax");
-                  }
+                  auto regs = parse_reg_set_fixed(arg, arg_def.count);
                   code_w.put_u8(0x4A); // arg_pushb
-                  code_w.put_u8(start_reg);
+                  regs[0]->offsets.emplace(code_w.size());
+                  code_w.put_u8(regs[0]->number);
                 } else {
                   code_w.put_u8(0x48); // arg_pushr
-                  code_w.put_u8(parse_reg(arg));
+                  auto reg = parse_reg(arg);
+                  reg->offsets.emplace(code_w.size());
+                  code_w.put_u8(reg->number);
                 }
               } else if ((arg[0] == '@') && ((arg[1] == 'r') || (arg[1] == 'f'))) {
                 code_w.put_u8(0x4C); // arg_pusha
-                code_w.put_u8(parse_reg(arg.substr(1)));
+                auto reg = parse_reg(arg.substr(1));
+                reg->offsets.emplace(code_w.size());
+                code_w.put_u8(reg->number);
               } else if ((arg[0] == '@') && labels_by_name.count(arg.substr(1))) {
                 code_w.put_u8(0x4D); // arg_pusho
                 code_w.put_u16(labels_by_name.at(arg.substr(1))->index);
@@ -2094,11 +2342,12 @@ std::string assemble_quest_script(const std::string& text) {
                   code_w.put_u16(labels_by_name.at(name)->index);
                 }
               };
-              auto add_reg = [&](const string& name, bool is32) -> void {
+              auto add_reg = [&](shared_ptr<RegisterAssigner::Register> reg, bool is32) -> void {
+                reg->offsets.emplace(code_w.size());
                 if (is32) {
-                  code_w.put_u32l(parse_reg(name));
+                  code_w.put_u32l(reg->number & 0xFF);
                 } else {
-                  code_w.put_u8(parse_reg(name));
+                  code_w.put_u8(reg->number);
                 }
               };
 
@@ -2130,30 +2379,21 @@ std::string assemble_quest_script(const std::string& text) {
                 }
                 case Type::REG:
                 case Type::REG32:
-                  add_reg(arg, arg_def.type == Type::REG32);
+                  add_reg(parse_reg(arg), arg_def.type == Type::REG32);
                   break;
                 case Type::REG_SET_FIXED:
                 case Type::REG32_SET_FIXED: {
-                  auto tokens = split(arg, '-');
-                  if (tokens.size() == 1) {
-                    add_reg(tokens[0], arg_def.type == Type::REG32_SET_FIXED);
-                  } else if (tokens.size() == 2) {
-                    if (static_cast<size_t>(parse_reg(tokens[1]) - parse_reg(tokens[0]) + 1) != arg_def.count) {
-                      throw runtime_error("incorrect number of registers used");
-                    }
-                    add_reg(tokens[0], arg_def.type == Type::REG32_SET_FIXED);
-                  } else {
-                    throw runtime_error("invalid fixed register set syntax");
-                  }
+                  auto regs = parse_reg_set_fixed(arg, arg_def.count);
+                  add_reg(regs[0], arg_def.type == Type::REG32_SET_FIXED);
                   break;
                 }
                 case Type::REG_SET: {
                   auto regs = split_set(arg);
                   code_w.put_u8(regs.size());
-                  for (auto reg : regs) {
-                    strip_trailing_whitespace(reg);
-                    strip_leading_whitespace(reg);
-                    add_reg(reg, false);
+                  for (auto reg_arg : regs) {
+                    strip_trailing_whitespace(reg_arg);
+                    strip_leading_whitespace(reg_arg);
+                    add_reg(parse_reg(reg_arg), false);
                   }
                   break;
                 }
@@ -2196,6 +2436,18 @@ std::string assemble_quest_script(const std::string& text) {
   }
   while (code_w.size() & 3) {
     code_w.put_u8(0);
+  }
+
+  // Assign all register numbers and patch the code section if needed
+  reg_assigner.assign_all();
+  for (size_t z = 0; z < 0x100; z++) {
+    auto reg = reg_assigner.numbered_regs[z];
+    if (!reg) {
+      continue;
+    }
+    for (size_t offset : reg->offsets) {
+      code_w.pput_u8(offset, reg->number);
+    }
   }
 
   // Generate function table
