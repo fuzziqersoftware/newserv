@@ -1871,18 +1871,14 @@ struct RegisterAssigner {
   void assign_all() {
     // TODO: Technically, we should assign the biggest blocks first to minimize
     // fragmentation. I am lazy and haven't implemented this yet.
-    unordered_set<shared_ptr<Register>> unassigned;
+    vector<shared_ptr<Register>> unassigned;
     for (auto it : this->named_regs) {
       if (it.second->number < 0) {
-        unassigned.emplace(it.second);
+        unassigned.emplace_back(it.second);
       }
     }
 
-    while (!unassigned.empty()) {
-      auto reg_it = unassigned.begin();
-      auto reg = *reg_it;
-      unassigned.erase(reg_it);
-
+    for (auto reg : unassigned) {
       // If this register is already assigned, skip it
       if (reg->number >= 0) {
         continue;
@@ -1951,7 +1947,7 @@ struct RegisterAssigner {
     throw runtime_error("not enough space to assign registers");
   }
 
-  unordered_map<string, shared_ptr<Register>> named_regs;
+  map<string, shared_ptr<Register>> named_regs;
   array<shared_ptr<Register>, 0x100> numbered_regs;
 };
 
@@ -2030,7 +2026,7 @@ std::string assemble_quest_script(const std::string& text) {
     ssize_t index = -1;
     ssize_t offset = -1;
   };
-  unordered_map<string, shared_ptr<Label>> labels_by_name;
+  map<string, shared_ptr<Label>> labels_by_name;
   map<ssize_t, shared_ptr<Label>> labels_by_index;
   for (size_t line_num = 1; line_num <= lines.size(); line_num++) {
     const auto& line = lines[line_num - 1];
