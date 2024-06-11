@@ -9,8 +9,12 @@
 #include <optional>
 #include <stdexcept>
 
+// Calls a function on the given base's event thread. This function returns
+// when the call has been enqueued, not necessarily after it returns.
 void forward_to_event_thread(std::shared_ptr<struct event_base> base, std::function<void()>&& fn);
 
+// Calls a function on the given base's event thread and waits for it to
+// return. Returns the value returned on that thread.
 template <typename T>
 T call_on_event_thread(std::shared_ptr<struct event_base> base, std::function<T()>&& compute) {
   std::optional<T> ret;
