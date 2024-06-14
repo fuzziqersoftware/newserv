@@ -1782,6 +1782,10 @@ struct RegisterAssigner {
     shared_ptr<Register> prev;
     shared_ptr<Register> next;
     unordered_set<size_t> offsets;
+
+    std::string str() const {
+      return string_printf("Register(%p, name=\"%s\", number=%hd)", this, this->name.c_str(), this->number);
+    }
   };
 
   ~RegisterAssigner() {
@@ -1798,16 +1802,19 @@ struct RegisterAssigner {
   }
 
   shared_ptr<Register> get_or_create(const string& name, int16_t number) {
+    if ((number < -1) || (number >= 0x100)) {
+      throw runtime_error("invalid register number");
+    }
+
     shared_ptr<Register> reg;
-    try {
-      if (!name.empty()) {
+    if (!name.empty()) {
+      try {
         reg = this->named_regs.at(name);
-      } else if (number >= 0 && number < 0x100) {
-        reg = this->numbered_regs.at(number);
-      } else {
-        throw runtime_error("invalid register name or number");
+      } catch (const out_of_range&) {
       }
-    } catch (const out_of_range&) {
+    }
+    if (!reg && number >= 0) {
+      reg = this->numbered_regs.at(number);
     }
 
     if (!reg) {
@@ -1817,8 +1824,9 @@ struct RegisterAssigner {
     if (number >= 0) {
       if (reg->number < 0) {
         reg->number = number;
-        if (this->numbered_regs.at(reg->number)) {
-          throw runtime_error(string_printf("number %hd is already assigned to a different register", reg->number));
+        auto& numbered_reg = this->numbered_regs.at(reg->number);
+        if (numbered_reg) {
+          throw runtime_error(reg->str() + " cannot be assigned due to conflict with " + numbered_reg->str());
         }
         this->numbered_regs.at(reg->number) = reg;
       } else if (reg->number != number) {
