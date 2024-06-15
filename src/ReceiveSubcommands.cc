@@ -4346,7 +4346,8 @@ static void on_quest_F960_result_bb(shared_ptr<Client> c, uint8_t, uint8_t, void
 
     // The 6xE3 handler on the client fails if the item already exists, so we
     // need to send 6xE3 before we call send_create_inventory_item_to_lobby.
-    G_SetMesetaSlotPrizeResult_BB_6xE3 cmd_6xE3 = {{0xE3, sizeof(G_SetMesetaSlotPrizeResult_BB_6xE3) >> 2, 0x0000}, item};
+    G_SetMesetaSlotPrizeResult_BB_6xE3 cmd_6xE3 = {
+        {0xE3, sizeof(G_SetMesetaSlotPrizeResult_BB_6xE3) >> 2, c->lobby_client_id}, item};
     send_command_t(c, 0x60, 0x00, cmd_6xE3);
 
     try {
