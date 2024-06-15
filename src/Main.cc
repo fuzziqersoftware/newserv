@@ -1604,6 +1604,42 @@ Action a_convert_rare_item_set(
         throw runtime_error("cannot determine output format; use a filename ending with .json, .gsl, .gslb, or .afs");
       }
     });
+Action a_convert_common_item_set(
+    "convert-common-item-set", "\
+  convert-common-item-set INPUT-FILENAME [OUTPUT-FILENAME]\n\
+    Convert the input rare item set to a JSON representation and write it to\n\
+    OUTPUT-FILENAME or stdout. The input filename must end in one of the\n\
+    following extensions:\n\
+      .json (newserv JSON common item table)\n\
+      .gsl (PSO BB little-endian GSL archive)\n\
+      .gslb (PSO GC big-endian GSL archive)\n",
+    +[](Arguments& args) {
+      string input_filename = args.get<string>(1, false);
+      if (input_filename.empty() || (input_filename == "-")) {
+        throw runtime_error("input filename must be given");
+      }
+
+      auto data = make_shared<string>(read_input_data(args));
+      shared_ptr<CommonItemSet> cs;
+      if (ends_with(input_filename, ".json")) {
+        cs = make_shared<JSONCommonItemSet>(JSON::parse(*data));
+      } else if (ends_with(input_filename, ".gsl")) {
+        cs = make_shared<GSLV3V4CommonItemSet>(data, args.get<bool>("big-endian"));
+      } else if (ends_with(input_filename, ".gslb")) {
+        cs = make_shared<GSLV3V4CommonItemSet>(data, true);
+      } else {
+        throw runtime_error("cannot determine input format; use a filename ending with .json, .gsl, .gslb, or .afs");
+      }
+
+      const string& output_filename = args.get<string>(2, false);
+      if (output_filename.empty()) {
+        cs->print(stdout);
+      } else {
+        auto json = cs->json();
+        string json_data = json.serialize(JSON::SerializeOption::FORMAT | JSON::SerializeOption::HEX_INTEGERS | JSON::SerializeOption::SORT_DICT_KEYS);
+        write_output_data(args, json_data.data(), json_data.size(), "json");
+      }
+    });
 
 Action a_describe_item(
     "describe-item", "\

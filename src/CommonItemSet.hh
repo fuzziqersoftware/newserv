@@ -14,7 +14,8 @@ public:
   class Table {
   public:
     Table() = delete;
-    Table(const StringReader& r, bool big_endian, bool is_v3);
+    Table(const JSON& json, Episode episode);
+    Table(const StringReader& r, bool big_endian, bool is_v3, Episode episode);
 
     template <typename IntT>
     struct Range {
@@ -22,6 +23,7 @@ public:
       IntT max;
     } __packed__;
 
+    Episode episode;
     parray<uint8_t, 0x0C> base_weapon_type_prob_table;
     parray<int8_t, 0x0C> subtype_base_table;
     parray<uint8_t, 0x0C> subtype_area_length_table;
@@ -45,8 +47,8 @@ public:
     parray<uint8_t, 0x0A> unit_max_stars_table;
     parray<parray<uint8_t, 10>, 7> box_item_class_prob_table;
 
-    void print_enemy_table(FILE* stream) const;
     JSON json() const;
+    void print(FILE* stream) const;
 
   private:
     template <bool IsBigEndian>
@@ -263,6 +265,7 @@ public:
 
   std::shared_ptr<const Table> get_table(Episode episode, GameMode mode, uint8_t difficulty, uint8_t secid) const;
   JSON json() const;
+  void print(FILE* stream) const;
 
 protected:
   CommonItemSet() = default;
@@ -280,6 +283,11 @@ public:
 class GSLV3V4CommonItemSet : public CommonItemSet {
 public:
   GSLV3V4CommonItemSet(std::shared_ptr<const std::string> gsl_data, bool is_big_endian);
+};
+
+class JSONCommonItemSet : public CommonItemSet {
+public:
+  explicit JSONCommonItemSet(const JSON& json);
 };
 
 // Note: There are clearly better ways of doing this, but this implementation

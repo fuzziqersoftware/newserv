@@ -852,7 +852,7 @@ void ItemNameIndex::print_table(FILE* stream) const {
           t.amount.load(),
           t.tech.load(),
           t.cost.load(),
-          t.item_flag.load(),
+          t.item_flags.load(),
           stars,
           divisor_str.c_str(),
           name.c_str());

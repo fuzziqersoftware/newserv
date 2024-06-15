@@ -341,7 +341,16 @@ public:
     /* 04 */ U16T amount = 0;
     /* 06 */ U16T tech = 0;
     /* 08 */ S32T cost = 0;
-    /* 0C */ U32T item_flag = 0;
+    // Bits in item_flags:
+    //   00000001 - ever usable by player ("Use" appears in inventory menu)
+    //   00000002 - unknown
+    //   00000004 - unknown
+    //   00000008 - usable by android characters
+    //   00000010 - usable in Pioneer 2 / Lab
+    //   00000020 - usable in boss arenas
+    //   00000040 - usable in Challenge mode
+    //   00000080 - is rare (renders as red box; V3+)
+    /* 0C */ U32T item_flags = 0;
     /* 10 */
   } __packed__;
 

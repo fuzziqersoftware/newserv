@@ -397,7 +397,7 @@ ItemParameterTable::ToolV4 ItemParameterTable::ToolV1V2::to_v4() const {
   ret.amount = this->amount;
   ret.tech = this->tech;
   ret.cost = this->cost;
-  ret.item_flag = this->item_flag;
+  ret.item_flags = this->item_flags;
   return ret;
 }
 
@@ -410,7 +410,7 @@ ItemParameterTable::ToolV4 ItemParameterTable::ToolV3T<IsBigEndian>::to_v4() con
   ret.amount = this->amount.load();
   ret.tech = this->tech.load();
   ret.cost = this->cost.load();
-  ret.item_flag = this->item_flag.load();
+  ret.item_flags = this->item_flags.load();
   return ret;
 }
 
@@ -1008,7 +1008,7 @@ uint8_t ItemParameterTable::get_item_base_stars(const ItemData& item) const {
     const auto& def = (item.data1[1] == 2)
         ? this->get_tool(2, item.data1[4])
         : this->get_tool(item.data1[1], item.data1[2]);
-    return (def.item_flag & 0x80) ? 12 : 0;
+    return (def.item_flags & 0x80) ? 12 : 0;
   } else {
     return 0;
   }
