@@ -40,6 +40,7 @@ DropReconcileResult reconcile_drop_request_with_map(
 class Parsed6x70Data {
 public:
   Version from_version;
+  bool from_client_customization;
   Version item_version;
 
   G_SyncPlayerDispAndInventory_BaseDCNTE base;
@@ -73,28 +74,34 @@ public:
   Parsed6x70Data(
       const G_SyncPlayerDispAndInventory_DCNTE_6x70& cmd,
       uint32_t guild_card_number,
-      Version from_version);
+      Version from_version,
+      bool from_client_customization);
   Parsed6x70Data(
       const G_SyncPlayerDispAndInventory_DC112000_6x70& cmd,
       uint32_t guild_card_number,
       uint8_t language,
-      Version from_version);
+      Version from_version,
+      bool from_client_customization);
   Parsed6x70Data(
       const G_SyncPlayerDispAndInventory_DC_PC_6x70& cmd,
       uint32_t guild_card_number,
-      Version from_version);
+      Version from_version,
+      bool from_client_customization);
   Parsed6x70Data(
       const G_SyncPlayerDispAndInventory_GC_6x70& cmd,
       uint32_t guild_card_number,
-      Version from_version);
+      Version from_version,
+      bool from_client_customization);
   Parsed6x70Data(
       const G_SyncPlayerDispAndInventory_XB_6x70& cmd,
       uint32_t guild_card_number,
-      Version from_version);
+      Version from_version,
+      bool from_client_customization);
   Parsed6x70Data(
       const G_SyncPlayerDispAndInventory_BB_6x70& cmd,
       uint32_t guild_card_number,
-      Version from_version);
+      Version from_version,
+      bool from_client_customization);
 
   G_SyncPlayerDispAndInventory_DCNTE_6x70 as_dc_nte(std::shared_ptr<ServerState> s) const;
   G_SyncPlayerDispAndInventory_DC112000_6x70 as_dc_112000(std::shared_ptr<ServerState> s) const;
@@ -108,6 +115,10 @@ public:
   void clear_dc_protos_unused_item_fields();
 
 protected:
-  Parsed6x70Data(const G_SyncPlayerDispAndInventory_BaseV1& base, uint32_t guild_card_number, Version from_version);
+  Parsed6x70Data(
+      const G_SyncPlayerDispAndInventory_BaseV1& base,
+      uint32_t guild_card_number,
+      Version from_version,
+      bool from_client_customization);
   G_SyncPlayerDispAndInventory_BaseV1 base_v1() const;
 };

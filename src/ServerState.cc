@@ -951,6 +951,7 @@ void ServerState::load_config_early() {
   this->enable_chat_commands = this->config_json->get_bool("EnableChatCommands", true);
 
   this->version_name_colors.reset();
+  this->client_customization_name_color = 0;
   try {
     const auto& colors_json = this->config_json->get_list("VersionNameColors");
     if (colors_json.size() != NUM_NON_PATCH_VERSIONS) {
@@ -961,6 +962,10 @@ void ServerState::load_config_early() {
       new_colors->at(z) = colors_json.at(z)->as_int();
     }
     this->version_name_colors = std::move(new_colors);
+  } catch (const out_of_range&) {
+  }
+  try {
+    this->client_customization_name_color = this->config_json->get_int("ClientCustomizationNameColor");
   } catch (const out_of_range&) {
   }
 

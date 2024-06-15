@@ -1842,9 +1842,10 @@ static void send_join_spectator_team(shared_ptr<Client> c, shared_ptr<Lobby> l) 
           : wc_p->disp.stats.level.load();
       e.name_color = wc_p->disp.visual.name_color;
 
-      if (s->version_name_colors) {
-        p.disp.visual.name_color = s->name_color_for_version(wc->version());
-        e.name_color = p.disp.visual.name_color;
+      uint32_t name_color = s->name_color_for_client(wc);
+      if (name_color) {
+        p.disp.visual.name_color = name_color;
+        e.name_color = name_color;
       }
 
       player_count++;
@@ -1910,9 +1911,10 @@ static void send_join_spectator_team(shared_ptr<Client> c, shared_ptr<Lobby> l) 
           : other_p->disp.stats.level.load();
       cmd_e.name_color = other_p->disp.visual.name_color;
 
-      if (s->version_name_colors) {
-        cmd_p.disp.visual.name_color = s->name_color_for_version(other_c->version());
-        cmd_e.name_color = cmd_p.disp.visual.name_color;
+      uint32_t name_color = s->name_color_for_client(other_c);
+      if (name_color) {
+        cmd_p.disp.visual.name_color = name_color;
+        cmd_e.name_color = name_color;
       }
 
       player_count++;
@@ -2014,15 +2016,17 @@ void send_join_game(shared_ptr<Client> c, shared_ptr<Lobby> l) {
       size_t player_count = populate_v3_cmd(cmd);
       auto s = c->require_server_state();
       for (size_t x = 0; x < 4; x++) {
-        if (l->clients[x]) {
-          auto other_p = l->clients[x]->character();
+        auto lc = l->clients[x];
+        if (lc) {
+          auto other_p = lc->character();
           auto& cmd_p = cmd.players_ep3[x];
           cmd_p.inventory = other_p->inventory;
           cmd_p.inventory.encode_for_client(c->version(), s->item_parameter_table_for_encode(c->version()));
           cmd_p.disp = convert_player_disp_data<PlayerDispDataDCPCV3>(other_p->disp, c->language(), other_p->inventory.language);
           cmd_p.disp.enforce_lobby_join_limits_for_version(c->version());
-          if (s->version_name_colors) {
-            cmd_p.disp.visual.name_color = s->name_color_for_version(l->clients[x]->version());
+          uint32_t name_color = s->name_color_for_client(lc);
+          if (name_color) {
+            cmd_p.disp.visual.name_color = name_color;
           }
         }
       }
@@ -2140,8 +2144,9 @@ void send_join_lobby_t(shared_ptr<Client> c, shared_ptr<Lobby> l, shared_ptr<Cli
     } else {
       e.disp = convert_player_disp_data<DispDataT>(lp->disp, c->language(), lp->inventory.language);
       e.disp.enforce_lobby_join_limits_for_version(c->version());
-      if (s->version_name_colors) {
-        e.disp.visual.name_color = s->name_color_for_version(lc->version());
+      uint32_t name_color = s->name_color_for_client(lc);
+      if (name_color) {
+        e.disp.visual.name_color = name_color;
         if (is_v1_or_v2(c->version())) {
           e.disp.visual.compute_name_color_checksum();
         }
@@ -2212,8 +2217,9 @@ void send_join_lobby_xb(shared_ptr<Client> c, shared_ptr<Lobby> l, shared_ptr<Cl
     e.inventory.encode_for_client(c->version(), s->item_parameter_table_for_encode(c->version()));
     e.disp = convert_player_disp_data<PlayerDispDataDCPCV3>(lp->disp, c->language(), lp->inventory.language);
     e.disp.enforce_lobby_join_limits_for_version(c->version());
-    if (s->version_name_colors) {
-      e.disp.visual.name_color = s->name_color_for_version(lc->version());
+    uint32_t name_color = s->name_color_for_client(lc);
+    if (name_color) {
+      e.disp.visual.name_color = name_color;
     }
   }
 
@@ -2263,8 +2269,9 @@ void send_join_lobby_dc_nte(shared_ptr<Client> c, shared_ptr<Lobby> l,
     } else {
       e.disp = convert_player_disp_data<PlayerDispDataDCPCV3>(lp->disp, c->language(), lp->inventory.language);
       e.disp.enforce_lobby_join_limits_for_version(c->version());
-      if (s->version_name_colors) {
-        e.disp.visual.name_color = s->name_color_for_version(lc->version());
+      uint32_t name_color = s->name_color_for_client(lc);
+      if (name_color) {
+        e.disp.visual.name_color = name_color;
         e.disp.visual.compute_name_color_checksum();
       }
     }

@@ -95,6 +95,7 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   bool allow_gc_xb_games = true;
   bool enable_chat_commands = true;
   std::unique_ptr<std::array<uint32_t, NUM_NON_PATCH_VERSIONS>> version_name_colors;
+  uint32_t client_customization_name_color = 0x00000000;
   uint8_t allowed_drop_modes_v1_v2_normal = 0x1F;
   uint8_t allowed_drop_modes_v1_v2_battle = 0x07;
   uint8_t allowed_drop_modes_v1_v2_challenge = 0x07;
@@ -316,8 +317,14 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
 
   const std::vector<uint32_t> public_lobby_search_order(Version version) const;
 
-  inline uint32_t name_color_for_version(Version v) const {
+  inline uint32_t name_color_for_client(Version v, bool is_client_customization) const {
+    if (is_client_customization && this->client_customization_name_color) {
+      return this->client_customization_name_color;
+    }
     return this->version_name_colors ? this->version_name_colors->at(static_cast<size_t>(v) - NUM_PATCH_VERSIONS) : 0;
+  }
+  inline uint32_t name_color_for_client(std::shared_ptr<const Client> c) const {
+    return this->name_color_for_client(c->version(), c->config.check_flag(Client::Flag::IS_CLIENT_CUSTOMIZATION));
   }
 
   std::shared_ptr<const std::vector<std::string>> information_contents_for_client(std::shared_ptr<const Client> c) const;

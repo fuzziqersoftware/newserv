@@ -690,8 +690,12 @@ static void transcode_inventory_items(
 }
 
 Parsed6x70Data::Parsed6x70Data(
-    const G_SyncPlayerDispAndInventory_DCNTE_6x70& cmd, uint32_t guild_card_number, Version from_version)
+    const G_SyncPlayerDispAndInventory_DCNTE_6x70& cmd,
+    uint32_t guild_card_number,
+    Version from_version,
+    bool from_client_customization)
     : from_version(from_version),
+      from_client_customization(from_client_customization),
       item_version(from_version),
       base(cmd.base),
       unknown_a5_nte(cmd.unknown_a5),
@@ -719,8 +723,13 @@ Parsed6x70Data::Parsed6x70Data(
 }
 
 Parsed6x70Data::Parsed6x70Data(
-    const G_SyncPlayerDispAndInventory_DC112000_6x70& cmd, uint32_t guild_card_number, uint8_t language, Version from_version)
+    const G_SyncPlayerDispAndInventory_DC112000_6x70& cmd,
+    uint32_t guild_card_number,
+    uint8_t language,
+    Version from_version,
+    bool from_client_customization)
     : from_version(from_version),
+      from_client_customization(from_client_customization),
       item_version(from_version),
       base(cmd.base),
       unknown_a5_nte(0),
@@ -749,8 +758,11 @@ Parsed6x70Data::Parsed6x70Data(
 }
 
 Parsed6x70Data::Parsed6x70Data(
-    const G_SyncPlayerDispAndInventory_DC_PC_6x70& cmd, uint32_t guild_card_number, Version from_version)
-    : Parsed6x70Data(cmd.base, guild_card_number, from_version) {
+    const G_SyncPlayerDispAndInventory_DC_PC_6x70& cmd,
+    uint32_t guild_card_number,
+    Version from_version,
+    bool from_client_customization)
+    : Parsed6x70Data(cmd.base, guild_card_number, from_version, from_client_customization) {
   this->stats = cmd.stats;
   this->num_items = cmd.num_items;
   this->items = cmd.items;
@@ -761,8 +773,11 @@ Parsed6x70Data::Parsed6x70Data(
 }
 
 Parsed6x70Data::Parsed6x70Data(
-    const G_SyncPlayerDispAndInventory_GC_6x70& cmd, uint32_t guild_card_number, Version from_version)
-    : Parsed6x70Data(cmd.base, guild_card_number, from_version) {
+    const G_SyncPlayerDispAndInventory_GC_6x70& cmd,
+    uint32_t guild_card_number,
+    Version from_version,
+    bool from_client_customization)
+    : Parsed6x70Data(cmd.base, guild_card_number, from_version, from_client_customization) {
   this->stats = cmd.stats;
   this->num_items = cmd.num_items;
   this->items = cmd.items;
@@ -773,8 +788,11 @@ Parsed6x70Data::Parsed6x70Data(
 }
 
 Parsed6x70Data::Parsed6x70Data(
-    const G_SyncPlayerDispAndInventory_XB_6x70& cmd, uint32_t guild_card_number, Version from_version)
-    : Parsed6x70Data(cmd.base, guild_card_number, from_version) {
+    const G_SyncPlayerDispAndInventory_XB_6x70& cmd,
+    uint32_t guild_card_number,
+    Version from_version,
+    bool from_client_customization)
+    : Parsed6x70Data(cmd.base, guild_card_number, from_version, from_client_customization) {
   this->stats = cmd.stats;
   this->num_items = cmd.num_items;
   this->items = cmd.items;
@@ -785,8 +803,11 @@ Parsed6x70Data::Parsed6x70Data(
 }
 
 Parsed6x70Data::Parsed6x70Data(
-    const G_SyncPlayerDispAndInventory_BB_6x70& cmd, uint32_t guild_card_number, Version from_version)
-    : Parsed6x70Data(cmd.base, guild_card_number, from_version) {
+    const G_SyncPlayerDispAndInventory_BB_6x70& cmd,
+    uint32_t guild_card_number,
+    Version from_version,
+    bool from_client_customization)
+    : Parsed6x70Data(cmd.base, guild_card_number, from_version, from_client_customization) {
   this->stats = cmd.stats;
   this->num_items = cmd.num_items;
   this->items = cmd.items;
@@ -815,8 +836,10 @@ G_SyncPlayerDispAndInventory_DCNTE_6x70 Parsed6x70Data::as_dc_nte(shared_ptr<Ser
   transcode_inventory_items(
       ret.items, ret.num_items, this->item_version, Version::DC_NTE, s->item_parameter_table_for_encode(Version::DC_NTE));
   ret.visual.enforce_lobby_join_limits_for_version(Version::DC_NTE);
-  if (s->version_name_colors) {
-    ret.visual.name_color = s->name_color_for_version(this->from_version);
+
+  uint32_t name_color = s->name_color_for_client(this->from_version, this->from_client_customization);
+  if (name_color) {
+    ret.visual.name_color = name_color;
     ret.visual.compute_name_color_checksum();
   }
   return ret;
@@ -841,10 +864,13 @@ G_SyncPlayerDispAndInventory_DC112000_6x70 Parsed6x70Data::as_dc_112000(shared_p
   transcode_inventory_items(
       ret.items, ret.num_items, this->item_version, Version::DC_V1_11_2000_PROTOTYPE, s->item_parameter_table_for_encode(Version::DC_V1_11_2000_PROTOTYPE));
   ret.visual.enforce_lobby_join_limits_for_version(Version::DC_V1_11_2000_PROTOTYPE);
-  if (s->version_name_colors) {
-    ret.visual.name_color = s->name_color_for_version(this->from_version);
+
+  uint32_t name_color = s->name_color_for_client(this->from_version, this->from_client_customization);
+  if (name_color) {
+    ret.visual.name_color = name_color;
     ret.visual.compute_name_color_checksum();
   }
+
   return ret;
 }
 
@@ -858,10 +884,13 @@ G_SyncPlayerDispAndInventory_DC_PC_6x70 Parsed6x70Data::as_dc_pc(shared_ptr<Serv
   transcode_inventory_items(
       ret.items, ret.num_items, this->item_version, to_version, s->item_parameter_table_for_encode(to_version));
   ret.base.visual.enforce_lobby_join_limits_for_version(to_version);
-  if (s->version_name_colors) {
-    ret.base.visual.name_color = s->name_color_for_version(this->from_version);
+
+  uint32_t name_color = s->name_color_for_client(this->from_version, this->from_client_customization);
+  if (name_color) {
+    ret.base.visual.name_color = name_color;
     ret.base.visual.compute_name_color_checksum();
   }
+
   return ret;
 }
 
@@ -876,14 +905,17 @@ G_SyncPlayerDispAndInventory_GC_6x70 Parsed6x70Data::as_gc_gcnte(shared_ptr<Serv
   transcode_inventory_items(
       ret.items, ret.num_items, this->item_version, to_version, s->item_parameter_table_for_encode(to_version));
   ret.base.visual.enforce_lobby_join_limits_for_version(to_version);
-  if (s->version_name_colors) {
-    ret.base.visual.name_color = s->name_color_for_version(this->from_version);
+
+  uint32_t name_color = s->name_color_for_client(this->from_version, this->from_client_customization);
+  if (name_color) {
+    ret.base.visual.name_color = name_color;
     if (is_v1_or_v2(to_version)) {
       ret.base.visual.compute_name_color_checksum();
     } else {
       ret.base.visual.name_color_checksum = 0;
     }
   }
+
   return ret;
 }
 
@@ -901,10 +933,13 @@ G_SyncPlayerDispAndInventory_XB_6x70 Parsed6x70Data::as_xb(shared_ptr<ServerStat
   transcode_inventory_items(
       ret.items, ret.num_items, this->item_version, Version::XB_V3, s->item_parameter_table_for_encode(Version::XB_V3));
   ret.base.visual.enforce_lobby_join_limits_for_version(Version::XB_V3);
-  if (s->version_name_colors) {
-    ret.base.visual.name_color = s->name_color_for_version(this->from_version);
+
+  uint32_t name_color = s->name_color_for_client(this->from_version, this->from_client_customization);
+  if (name_color) {
+    ret.base.visual.name_color = name_color;
     ret.base.visual.name_color_checksum = 0;
   }
+
   return ret;
 }
 
@@ -924,10 +959,13 @@ G_SyncPlayerDispAndInventory_BB_6x70 Parsed6x70Data::as_bb(shared_ptr<ServerStat
   transcode_inventory_items(
       ret.items, ret.num_items, this->item_version, Version::BB_V4, s->item_parameter_table_for_encode(Version::BB_V4));
   ret.base.visual.enforce_lobby_join_limits_for_version(Version::BB_V4);
-  if (s->version_name_colors) {
-    ret.base.visual.name_color = s->name_color_for_version(this->from_version);
+
+  uint32_t name_color = s->name_color_for_client(this->from_version, this->from_client_customization);
+  if (name_color) {
+    ret.base.visual.name_color = name_color;
     ret.base.visual.name_color_checksum = 0;
   }
+
   return ret;
 }
 
@@ -955,8 +993,12 @@ void Parsed6x70Data::clear_dc_protos_unused_item_fields() {
 }
 
 Parsed6x70Data::Parsed6x70Data(
-    const G_SyncPlayerDispAndInventory_BaseV1& base, uint32_t guild_card_number, Version from_version)
+    const G_SyncPlayerDispAndInventory_BaseV1& base,
+    uint32_t guild_card_number,
+    Version from_version,
+    bool from_client_customization)
     : from_version(from_version),
+      from_client_customization(from_client_customization),
       item_version(this->from_version),
       base(base.base),
       bonus_hp_from_materials(base.bonus_hp_from_materials),
@@ -1018,17 +1060,18 @@ static void on_sync_joining_player_disp_and_inventory(
     send_command(target, 0x62, target->lobby_client_id, &data, sizeof(data));
   }
 
+  bool is_client_customisation = c->config.check_flag(Client::Flag::IS_CLIENT_CUSTOMIZATION);
   switch (c_v) {
     case Version::DC_NTE:
       c->last_reported_6x70.reset(new Parsed6x70Data(
           check_size_t<G_SyncPlayerDispAndInventory_DCNTE_6x70>(data, size),
-          c->login->account->account_id, c_v));
+          c->login->account->account_id, c_v, is_client_customisation));
       c->last_reported_6x70->clear_dc_protos_unused_item_fields();
       break;
     case Version::DC_V1_11_2000_PROTOTYPE:
       c->last_reported_6x70.reset(new Parsed6x70Data(
           check_size_t<G_SyncPlayerDispAndInventory_DC112000_6x70>(data, size),
-          c->login->account->account_id, c->language(), c_v));
+          c->login->account->account_id, c->language(), c_v, is_client_customisation));
       c->last_reported_6x70->clear_dc_protos_unused_item_fields();
       break;
     case Version::DC_V1:
@@ -1037,7 +1080,7 @@ static void on_sync_joining_player_disp_and_inventory(
     case Version::PC_V2:
       c->last_reported_6x70.reset(new Parsed6x70Data(
           check_size_t<G_SyncPlayerDispAndInventory_DC_PC_6x70>(data, size),
-          c->login->account->account_id, c_v));
+          c->login->account->account_id, c_v, is_client_customisation));
       if (c_v == Version::DC_V1) {
         c->last_reported_6x70->clear_v1_unused_item_fields();
       }
@@ -1048,17 +1091,17 @@ static void on_sync_joining_player_disp_and_inventory(
     case Version::GC_EP3:
       c->last_reported_6x70.reset(new Parsed6x70Data(
           check_size_t<G_SyncPlayerDispAndInventory_GC_6x70>(data, size),
-          c->login->account->account_id, c_v));
+          c->login->account->account_id, c_v, is_client_customisation));
       break;
     case Version::XB_V3:
       c->last_reported_6x70.reset(new Parsed6x70Data(
           check_size_t<G_SyncPlayerDispAndInventory_XB_6x70>(data, size),
-          c->login->account->account_id, c_v));
+          c->login->account->account_id, c_v, is_client_customisation));
       break;
     case Version::BB_V4:
       c->last_reported_6x70.reset(new Parsed6x70Data(
           check_size_t<G_SyncPlayerDispAndInventory_BB_6x70>(data, size),
-          c->login->account->account_id, c_v));
+          c->login->account->account_id, c_v, is_client_customisation));
       break;
     default:
       throw logic_error("6x70 command from unknown game version");

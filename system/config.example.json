@@ -1065,6 +1065,7 @@
   //   0xFFBBFFBB, // Xbox
   //   0xFF55FDE3, // BB (the official Episode 4 color is probably 0xFFC69141)
   // ],
+  // "ClientCustomizationNameColor": 0xFFFFBBBB,
 
   // These options control which item drop modes are used by default, and which
   // can be chosen by the player. The AllowedDropModes fields are bit fields
