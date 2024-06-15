@@ -3663,22 +3663,21 @@ static void on_E5_BB(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
 }
 
 static void on_ED_BB(shared_ptr<Client> c, uint16_t command, uint32_t, string& data) {
-  auto p = c->character(true, false);
   auto sys = c->system_file();
   switch (command) {
     case 0x01ED: {
       const auto& cmd = check_size_t<C_UpdateOptionFlags_BB_01ED>(data);
-      p->option_flags = cmd.option_flags;
+      c->character(true, false)->option_flags = cmd.option_flags;
       break;
     }
     case 0x02ED: {
       const auto& cmd = check_size_t<C_UpdateSymbolChats_BB_02ED>(data);
-      p->symbol_chats = cmd.symbol_chats;
+      c->character(true, false)->symbol_chats = cmd.symbol_chats;
       break;
     }
     case 0x03ED: {
       const auto& cmd = check_size_t<C_UpdateChatShortcuts_BB_03ED>(data);
-      p->shortcuts = cmd.chat_shortcuts;
+      c->character(true, false)->shortcuts = cmd.chat_shortcuts;
       break;
     }
     case 0x04ED: {
@@ -3695,17 +3694,18 @@ static void on_ED_BB(shared_ptr<Client> c, uint16_t command, uint32_t, string& d
     }
     case 0x06ED: {
       const auto& cmd = check_size_t<C_UpdateTechMenu_BB_06ED>(data);
-      p->tech_menu_shortcut_entries = cmd.tech_menu;
+      // TODO: Should this use the overlay or not?
+      c->character(true, false)->tech_menu_shortcut_entries = cmd.tech_menu;
       break;
     }
     case 0x07ED: {
       const auto& cmd = check_size_t<C_UpdateCustomizeMenu_BB_07ED>(data);
-      p->disp.config = cmd.customize;
+      c->character()->disp.config = cmd.customize;
       break;
     }
     case 0x08ED: {
       const auto& cmd = check_size_t<C_UpdateChallengeRecords_BB_08ED>(data);
-      p->challenge_records = cmd.records;
+      c->character(true, false)->challenge_records = cmd.records;
       break;
     }
     default:
