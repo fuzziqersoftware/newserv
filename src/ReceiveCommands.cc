@@ -3694,7 +3694,6 @@ static void on_ED_BB(shared_ptr<Client> c, uint16_t command, uint32_t, string& d
     }
     case 0x06ED: {
       const auto& cmd = check_size_t<C_UpdateTechMenu_BB_06ED>(data);
-      // TODO: Should this use the overlay or not?
       c->character(true, false)->tech_menu_shortcut_entries = cmd.tech_menu;
       break;
     }
