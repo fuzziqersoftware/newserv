@@ -2710,7 +2710,7 @@ void send_game_enemy_state(shared_ptr<Client> c) {
     const auto& enemy = l->map->enemies[z];
     auto& entry = entries.emplace_back();
     entry.flags = enemy.game_flags;
-    entry.item_drop_id = (enemy.state_flags & Map::Enemy::Flag::ITEM_DROPPED) ? 0xFFFF : (0xCA0 + z);
+    entry.item_drop_id = (enemy.server_flags & Map::Enemy::Flag::ITEM_DROPPED) ? 0xFFFF : (0xCA0 + z);
     entry.total_damage = enemy.total_damage;
   }
 

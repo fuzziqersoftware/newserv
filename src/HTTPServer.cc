@@ -579,6 +579,7 @@ JSON HTTPServer::generate_lobby_json_st(shared_ptr<const Lobby> l, shared_ptr<co
       ret.emplace("Mode", name_for_mode(l->mode));
       ret.emplace("Difficulty", name_for_difficulty(l->difficulty));
       ret.emplace("BaseEXPMultiplier", l->base_exp_multiplier);
+      ret.emplace("EXPShareMultiplier", l->exp_share_multiplier);
       ret.emplace("AllowedDropModes", l->allowed_drop_modes);
       switch (l->drop_mode) {
         case Lobby::DropMode::DISABLED:

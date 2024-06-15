@@ -2625,11 +2625,11 @@ DropReconcileResult reconcile_drop_request_with_map(
       }
     }
     if (map_enemy) {
-      if (map_enemy->state_flags & Map::Enemy::Flag::ITEM_DROPPED) {
+      if (map_enemy->server_flags & Map::Enemy::Flag::ITEM_DROPPED) {
         log.info("Drop check has already occurred for E-%04hX; skipping it", map_enemy->enemy_id);
         res.should_drop = false;
       } else {
-        map_enemy->state_flags |= Map::Enemy::Flag::ITEM_DROPPED;
+        map_enemy->server_flags |= Map::Enemy::Flag::ITEM_DROPPED;
       }
     }
   }
@@ -3190,6 +3190,7 @@ static void on_update_enemy_state(shared_ptr<Client> c, uint8_t command, uint8_t
     auto& enemy = l->map->enemies[cmd.enemy_index];
     enemy.game_flags = is_big_endian(c->version()) ? bswap32(cmd.flags) : cmd.flags.load();
     enemy.total_damage = cmd.total_damage;
+    enemy.set_last_hit_by_client_id(c->lobby_client_id);
     l->log.info("E-%hX updated to damage=%hu game_flags=%08" PRIX32, cmd.enemy_index.load(), enemy.total_damage, enemy.game_flags);
   }
 
@@ -3397,10 +3398,6 @@ static void on_enemy_exp_request_bb(shared_ptr<Client> c, uint8_t, uint8_t, void
   auto s = c->require_server_state();
   auto l = c->require_lobby();
 
-  if (l->base_version != Version::BB_V4) {
-    throw runtime_error("BB-only command sent in non-BB game");
-  }
-
   const auto& cmd = check_size_t<G_EnemyEXPRequest_BB_6xC8>(data, size);
 
   if (!l->is_game()) {
@@ -3421,66 +3418,85 @@ static void on_enemy_exp_request_bb(shared_ptr<Client> c, uint8_t, uint8_t, void
   string e_str = e.str();
   c->log.info("EXP requested for E-%hX => %s", cmd.enemy_index.load(), e_str.c_str());
 
-  uint8_t state_flag = Map::Enemy::Flag::EXP_REQUESTED_BY_PLAYER0 << c->lobby_client_id;
-  if (e.state_flags & state_flag) {
+  // If the requesting player never hit this enemy, they are probably cheating;
+  // ignore the command. Also, each player sends a 6xC8 if they ever hit the
+  // enemy; we only react to the first 6xC8 for each enemy (and give all
+  // relevant players EXP then, if they deserve it).
+  if (!e.ever_hit_by_client_id(c->lobby_client_id) || (e.server_flags & Map::Enemy::Flag::EXP_GIVEN)) {
+    return;
+  }
+  e.server_flags |= Map::Enemy::Flag::EXP_GIVEN;
+
+  double base_exp = 0.0;
+  try {
+    const auto& bp_table = s->battle_params->get_table(l->mode == GameMode::SOLO, l->episode);
+    uint32_t bp_index = battle_param_index_for_enemy_type(l->episode, e.type);
+    base_exp = bp_table.stats[l->difficulty][bp_index].experience;
+  } catch (const exception& e) {
     if (c->config.check_flag(Client::Flag::DEBUG_ENABLED)) {
-      send_text_message_printf(c, "$C5E-%hX __CHECKED__", cmd.enemy_index.load());
+      send_text_message_printf(c, "$C5E-%hX __MISSING__\n%s", cmd.enemy_index.load(), e.what());
+    } else {
+      send_text_message_printf(c, "$C4Unknown enemy killed:\n%s", e.what());
+    }
+  }
+
+  for (size_t client_id = 0; client_id < 4; client_id++) {
+    auto lc = l->clients[client_id];
+    if (!lc) {
+      continue;
     }
 
-  } else {
-    e.state_flags |= state_flag;
-
-    double experience = 0.0;
-    try {
-      const auto& bp_table = s->battle_params->get_table(l->mode == GameMode::SOLO, l->episode);
-      uint32_t bp_index = battle_param_index_for_enemy_type(l->episode, e.type);
-      experience = bp_table.stats[l->difficulty][bp_index].experience;
-    } catch (const exception& e) {
-      if (c->config.check_flag(Client::Flag::DEBUG_ENABLED)) {
-        send_text_message_printf(c, "$C5E-%hX __MISSING__\n%s", cmd.enemy_index.load(), e.what());
+    if (base_exp != 0.0) {
+      // If this player killed the enemy, they get full EXP; if they tagged the
+      // enemy, they get 80% EXP; if auto EXP share is enabled and they are
+      // close enough to the monster, they get a smaller share; if none of these
+      // situations apply, they get no EXP.
+      double rate_factor;
+      if (e.last_hit_by_client_id(client_id)) {
+        rate_factor = max<double>(1.0, l->exp_share_multiplier);
+      } else if (e.ever_hit_by_client_id(client_id)) {
+        rate_factor = max<double>(0.8, l->exp_share_multiplier);
+      } else if (lc->floor == e.floor) {
+        rate_factor = l->exp_share_multiplier;
       } else {
-        send_text_message_printf(c, "$C4Unknown enemy killed:\n%s", e.what());
+        rate_factor = 0.0;
       }
-    }
 
-    if (experience != 0.0) {
-      if (c->floor != e.floor) {
-        if (c->config.check_flag(Client::Flag::DEBUG_ENABLED)) {
-          send_text_message_printf(c, "$C5E-%hX %s\n$C4FLOOR Y:%02" PRIX32 " E:%02hhX",
-              cmd.enemy_index.load(), name_for_enum(e.type), c->floor, e.floor);
-        }
-      } else {
+      if (rate_factor > 0.0) {
         // In PSOBB, Sega decided to add a 30% EXP boost for Episode 2. They could
         // have done something reasonable, like edit the BattleParamEntry files so
         // the monsters would all give more EXP, but they did something far lazier
         // instead: they just stuck an if statement in the client's EXP request
         // function. We, unfortunately, have to do the same here.
         bool is_ep2 = (l->episode == Episode::EP2);
-        uint32_t player_exp = experience *
-            (cmd.is_killer ? 1.0 : 0.8) *
+        uint32_t player_exp = base_exp *
+            rate_factor *
             l->base_exp_multiplier *
             l->challenge_exp_multiplier *
             (is_ep2 ? 1.3 : 1.0);
-        if (c->config.check_flag(Client::Flag::DEBUG_ENABLED)) {
+        if (lc->config.check_flag(Client::Flag::DEBUG_ENABLED)) {
           send_text_message_printf(
-              c, "$C5+%" PRIu32 " E-%hX %s",
+              lc, "$C5+%" PRIu32 " E-%hX %s",
               player_exp,
               cmd.enemy_index.load(),
               name_for_enum(e.type));
         }
-        if (c->character()->disp.stats.level < 199) {
-          add_player_exp(c, player_exp);
+        if (lc->character()->disp.stats.level < 199) {
+          add_player_exp(lc, player_exp);
         }
       }
     }
 
     // Update kill counts on unsealable items
-    auto& inventory = c->character()->inventory;
-    for (size_t z = 0; z < inventory.num_items; z++) {
-      auto& item = inventory.items[z];
-      if ((item.flags & 0x08) &&
-          s->item_parameter_table(c->version())->is_unsealable_item(item.data)) {
-        item.data.set_kill_count(item.data.get_kill_count() + 1);
+    // TODO: Do tags count too, even if the player didn't actually strike the
+    // final blow? Here we assume tags do count.
+    if (e.ever_hit_by_client_id(client_id)) {
+      auto& inventory = lc->character()->inventory;
+      for (size_t z = 0; z < inventory.num_items; z++) {
+        auto& item = inventory.items[z];
+        if ((item.flags & 0x08) && s->item_parameter_table(lc->version())->is_unsealable_item(item.data)) {
+          item.data.set_kill_count(item.data.get_kill_count() + 1);
+        }
       }
     }
   }

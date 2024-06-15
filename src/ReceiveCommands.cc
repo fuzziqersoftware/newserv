@@ -4257,9 +4257,8 @@ shared_ptr<Lobby> create_game_generic(
     game->battle_player = battle_player;
     battle_player->set_lobby(game);
   }
-  if (game->base_version == Version::BB_V4) {
-    game->base_exp_multiplier = s->bb_global_exp_multiplier;
-  }
+  game->base_exp_multiplier = s->bb_global_exp_multiplier;
+  game->exp_share_multiplier = s->exp_share_multiplier;
 
   const unordered_map<uint16_t, IntegralExpression>* quest_flag_rewrites;
   switch (game->base_version) {

@@ -149,6 +149,7 @@ Lobby::Lobby(shared_ptr<ServerState> s, uint32_t id, bool is_game)
       mode(GameMode::NORMAL),
       difficulty(0),
       base_exp_multiplier(1),
+      exp_share_multiplier(0.5),
       challenge_exp_multiplier(1.0f),
       random_seed(random_object<uint32_t>()),
       drop_mode(DropMode::CLIENT),

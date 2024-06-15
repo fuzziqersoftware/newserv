@@ -233,11 +233,11 @@ struct Map {
 
   struct Enemy {
     enum Flag {
-      EXP_REQUESTED_BY_PLAYER0 = 0x01,
-      EXP_REQUESTED_BY_PLAYER1 = 0x02,
-      EXP_REQUESTED_BY_PLAYER2 = 0x04,
-      EXP_REQUESTED_BY_PLAYER3 = 0x08,
-      ITEM_DROPPED = 0x10,
+      LAST_HIT_MASK = 0x03,
+      EXP_GIVEN = 0x04,
+      ITEM_DROPPED = 0x08,
+      ALL_HITS_MASK_FIRST = 0x10,
+      ALL_HITS_MASK = 0xF0,
     };
     size_t source_index;
     size_t set_index;
@@ -248,7 +248,7 @@ struct Map {
     uint16_t wave_number;
     EnemyType type;
     uint8_t floor;
-    uint8_t state_flags;
+    uint8_t server_flags;
 
     Enemy(
         uint16_t enemy_id,
@@ -260,6 +260,16 @@ struct Map {
         EnemyType type);
 
     std::string str() const;
+
+    inline bool ever_hit_by_client_id(uint8_t client_id) const {
+      return this->server_flags & (Flag::ALL_HITS_MASK_FIRST << client_id);
+    }
+    inline bool last_hit_by_client_id(uint8_t client_id) const {
+      return (this->server_flags & Flag::LAST_HIT_MASK) == client_id;
+    }
+    inline void set_last_hit_by_client_id(uint8_t client_id) {
+      this->server_flags = (this->server_flags & (~Flag::LAST_HIT_MASK)) | (Flag::ALL_HITS_MASK_FIRST << client_id) | (client_id & 3);
+    }
   };
 
   struct Event {

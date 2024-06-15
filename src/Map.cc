@@ -678,10 +678,10 @@ Map::Enemy::Enemy(
       wave_number(wave_number),
       type(type),
       floor(floor),
-      state_flags(0) {}
+      server_flags(0) {}
 
 string Map::Enemy::str() const {
-  return string_printf("[Map::Enemy E-%hX source %zX %s%s floor=%02hhX section=%04hX wave_number=%04hX flags=%02hhX]",
+  return string_printf("[Map::Enemy E-%hX source %zX %s%s floor=%02hhX section=%04hX wave_number=%04hX server_flags=%02hhX]",
       this->enemy_id,
       this->source_index,
       name_for_enum(this->type),
@@ -689,7 +689,7 @@ string Map::Enemy::str() const {
       this->floor,
       this->section,
       this->wave_number,
-      this->state_flags);
+      this->server_flags);
 }
 
 string Map::Event::str() const {

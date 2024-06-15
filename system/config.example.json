@@ -827,6 +827,20 @@
   // EXP multiplier for BB games. This must be an integer due to a client
   // limitation, and must be at least 1.
   "BBGlobalEXPMultiplier": 1,
+  // EXP share multiplier for BB games. The logic for EXP computation is:
+  // - If the player lands the killing blow on an enemy they get full EXP (or
+  //   multiplied by this value, if this value is greater than 1).
+  // - If the player tags an enemy but doesn't kill it, they get full EXP
+  //   multiplied by 80% (or multiplied by this value, if this value is greater
+  //   than 0.8). This applies even if the player is on a different floor when
+  //   the enemy dies.
+  // - If the player is on the same floor as an enemy when it is killed but
+  //   the player never attacked it, they get full EXP multiplied by this value
+  //   (50% by default).
+  // - If the player is not on the same floor as an enemy when it is killed and
+  //   never tagged it, they get no EXP.
+  // To disable EXP share in BB games, set this to zero.
+  "BBEXPShareMultiplier": 0.5,
   // Drop rate multiplier for all server drop tables. This applies to server
   // drop modes in all game versions. If you want to scale the drop rates for
   // only some versions, use the --multiply option to the convert-rare-item-set

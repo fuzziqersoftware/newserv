@@ -123,6 +123,7 @@ struct Lobby : public std::enable_shared_from_this<Lobby> {
   GameMode mode;
   uint8_t difficulty; // 0-3
   uint16_t base_exp_multiplier;
+  float exp_share_multiplier;
   float challenge_exp_multiplier;
   std::string password;
   std::string name;
