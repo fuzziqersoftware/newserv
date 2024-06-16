@@ -749,6 +749,15 @@ static const array<const char*, 0x0B> ep4_floor_names = {
     "Purgatory",
 };
 
+static const array<const char*, 0x12> ep1_floor_names_short = {
+    "P2", "F1", "F2", "C1", "C2", "C3", "M1", "M2", "R1", "R2", "R3", "Dgn", "DRL", "VO", "DF", "Lby", "B1", "B2"};
+
+static const array<const char*, 0x12> ep2_floor_names_short = {
+    "Lab", "VRTA", "VRTB", "VRSA", "VRSB", "CCA", "JN", "JE", "Mtn", "SS", "SU", "SL", "GG", "OF", "BR", "GD", "SSN", "Twr"};
+
+static const array<const char*, 0x0B> ep4_floor_names_short = {
+    "P2", "CE", "CW", "CS", "CN", "CI", "D1", "D2", "D3", "SM", "Pg"};
+
 size_t floor_limit_for_episode(Episode ep) {
   switch (ep) {
     case Episode::EP1:
@@ -772,6 +781,19 @@ const char* name_for_floor(Episode episode, uint8_t floor) {
       return ep4_floor_names.at(floor);
     default:
       throw logic_error("invalid episode for drop floor");
+  }
+}
+
+const char* short_name_for_floor(Episode episode, uint8_t floor) {
+  switch (episode) {
+    case Episode::EP1:
+      return ep1_floor_names_short.at(floor);
+    case Episode::EP2:
+      return ep2_floor_names_short.at(floor);
+    case Episode::EP4:
+      return ep4_floor_names_short.at(floor);
+    default:
+      throw logic_error("invalid episode for floor");
   }
 }
 

@@ -1827,7 +1827,16 @@ static void proxy_command_next(shared_ptr<ProxyServer::LinkedSession> ses, const
 }
 
 static void server_command_where(shared_ptr<Client> c, const std::string&) {
-  send_text_message_printf(c, "$C7Floor: %02" PRIX32 "\nX: %g\nZ: %g", c->floor, c->x, c->z);
+  auto l = c->require_lobby();
+  send_text_message_printf(c, "$C7%01" PRIX32 ":%s X:%" PRId32 " Z:%" PRId32,
+      c->floor, short_name_for_floor(l->episode, c->floor), static_cast<int32_t>(c->x), static_cast<int32_t>(c->z));
+  for (auto lc : l->clients) {
+    if (lc && (lc != c)) {
+      string name = lc->character()->disp.name.decode(lc->language());
+      send_text_message_printf(c, "$C6%s$C7 %01" PRIX32 ":%s",
+          name.c_str(), lc->floor, short_name_for_floor(l->episode, lc->floor));
+    }
+  }
 }
 
 static void server_command_what(shared_ptr<Client> c, const std::string&) {
