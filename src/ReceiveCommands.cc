@@ -3515,6 +3515,10 @@ static void on_E8_BB(shared_ptr<Client> c, uint16_t command, uint32_t, string& d
           should_save = true;
         }
       }
+      if (c->login && new_gc.guild_card_number == c->login->account->account_id) {
+        c->character(true, false)->guild_card.description = new_gc.description;
+        c->log.info("Updated character's guild card");
+      }
       break;
     }
     case 0x07E8: { // Add blocked user
