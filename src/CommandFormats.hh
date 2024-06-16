@@ -5132,7 +5132,7 @@ struct G_SetBattleModeData_6x7D {
   // 0 = Unknown (params[0] and [1] are used)
   // 1 = Does nothing
   // 2 = Unknown (no params are used)
-  // 3 = Set player meseta score (params[0] = client ID, [1] = score)
+  // 3 = Set player score (params[0] = client ID, [1] = score)
   // 4 = Unknown (params[0] = client ID)
   // 5 = Unknown (no params are used)
   // 6 = Unknown (all params are used)
@@ -5378,13 +5378,15 @@ struct G_UpdatePlayerStat_6x9A {
   uint8_t amount = 0;
 } __packed_ws__(G_UpdatePlayerStat_6x9A, 8);
 
-// 6x9B: Unknown (protected on V3/V4)
+// 6x9B: Level up all techniques (protected on V3/V4)
+// Used in battle mode if the rules specify that techniques should level up
+// upon character death.
 
-struct G_Unknown_6x9B {
+struct G_LevelUpAllTechniques_6x9B {
   G_UnusedHeader header;
-  uint8_t unknown_a1 = 0;
+  uint8_t num_levels = 0;
   parray<uint8_t, 3> unused;
-} __packed_ws__(G_Unknown_6x9B, 8);
+} __packed_ws__(G_LevelUpAllTechniques_6x9B, 8);
 
 // 6x9C: Unknown (supported; game only; not valid on Episode 3)
 
