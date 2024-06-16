@@ -3463,11 +3463,12 @@ static void on_enemy_exp_request_bb(shared_ptr<Client> c, uint8_t, uint8_t, void
       }
 
       if (rate_factor > 0.0) {
-        // In PSOBB, Sega decided to add a 30% EXP boost for Episode 2. They could
-        // have done something reasonable, like edit the BattleParamEntry files so
-        // the monsters would all give more EXP, but they did something far lazier
-        // instead: they just stuck an if statement in the client's EXP request
-        // function. We, unfortunately, have to do the same here.
+        // In PSOBB, Sega decided to add a 30% EXP boost for Episode 2. They
+        // could have done something reasonable, like edit the BattleParamEntry
+        // files so the monsters would all give more EXP, but they did
+        // something far lazier instead: they just stuck an if statement in the
+        // client's EXP request function. We, unfortunately, have to do the
+        // same thing here.
         bool is_ep2 = (l->episode == Episode::EP2);
         uint32_t player_exp = base_exp *
             rate_factor *
@@ -3487,10 +3488,9 @@ static void on_enemy_exp_request_bb(shared_ptr<Client> c, uint8_t, uint8_t, void
       }
     }
 
-    // Update kill counts on unsealable items
-    // TODO: Do tags count too, even if the player didn't actually strike the
-    // final blow? Here we assume tags do count.
-    if (e.ever_hit_by_client_id(client_id)) {
+    // Update kill counts on unsealable items, but only for the player who
+    // actually killed the enemy
+    if (e.last_hit_by_client_id(client_id)) {
       auto& inventory = lc->character()->inventory;
       for (size_t z = 0; z < inventory.num_items; z++) {
         auto& item = inventory.items[z];
