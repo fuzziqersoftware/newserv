@@ -3864,11 +3864,14 @@ static void on_battle_level_up_bb(shared_ptr<Client> c, uint8_t, uint8_t, void* 
     if (lc) {
       auto s = c->require_server_state();
       auto lp = lc->character();
-      uint32_t target_level = lp->disp.stats.level + cmd.num_levels;
+      uint32_t target_level = min<uint32_t>(lp->disp.stats.level + cmd.num_levels, 199);
       uint32_t before_exp = lp->disp.stats.experience;
-      s->level_table(lc->version())->advance_to_level(lp->disp.stats, target_level, lp->disp.visual.char_class);
-      send_give_experience(lc, lp->disp.stats.experience - before_exp);
-      send_level_up(lc);
+      int32_t exp_delta = lp->disp.stats.experience - before_exp;
+      if (exp_delta > 0) {
+        s->level_table(lc->version())->advance_to_level(lp->disp.stats, target_level, lp->disp.visual.char_class);
+        send_give_experience(lc, exp_delta);
+        send_level_up(lc);
+      }
     }
   }
 }
