@@ -251,6 +251,7 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   std::unordered_set<std::shared_ptr<Lobby>> lobbies_to_destroy;
   std::shared_ptr<struct event> destroy_lobbies_event;
   std::array<std::vector<uint32_t>, NUM_VERSIONS> public_lobby_search_orders;
+  std::vector<uint32_t> client_customization_public_lobby_search_order;
   std::atomic<int32_t> next_lobby_id = 1;
   uint8_t pre_lobby_event = 0;
   int32_t ep3_menu_song = -1;
@@ -316,7 +317,10 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   std::string describe_item(Version version, const ItemData& item, bool include_color_codes) const;
   ItemData parse_item_description(Version version, const std::string& description) const;
 
-  const std::vector<uint32_t> public_lobby_search_order(Version version) const;
+  const std::vector<uint32_t>& public_lobby_search_order(Version version, bool is_client_customization) const;
+  inline const std::vector<uint32_t>& public_lobby_search_order(std::shared_ptr<const Client> c) const {
+    return this->public_lobby_search_order(c->version(), c->config.check_flag(Client::Flag::IS_CLIENT_CUSTOMIZATION));
+  }
 
   inline uint32_t name_color_for_client(Version v, bool is_client_customization) const {
     if (is_client_customization && this->client_customization_name_color) {

@@ -379,6 +379,7 @@
     [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15], // Xbox
     [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15], // BB
   ],
+  "ClientCustomizationLobbySearchOrder": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
 
   // Lobby holiday events. The event can be changed in each lobby independently
   // with the $event command, or in all lobbies with the $allevent command. When

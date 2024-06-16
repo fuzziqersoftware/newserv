@@ -61,7 +61,7 @@ void ServerState::add_client_to_available_lobby(shared_ptr<Client> c) {
   }
 
   if (!added_to_lobby.get()) {
-    for (const auto& lobby_id : this->public_lobby_search_order(c->version())) {
+    for (const auto& lobby_id : this->public_lobby_search_order(c)) {
       try {
         auto l = this->find_lobby(lobby_id);
         if (l &&
@@ -317,8 +317,11 @@ const vector<pair<string, uint16_t>>& ServerState::proxy_destinations(Version ve
   }
 }
 
-const vector<uint32_t> ServerState::public_lobby_search_order(Version version) const {
+const vector<uint32_t>& ServerState::public_lobby_search_order(Version version, bool is_client_customization) const {
   static_assert(NUM_VERSIONS == 14, "Don\'t forget to update the public lobby search orders in config.json");
+  if (is_client_customization && !this->client_customization_public_lobby_search_order.empty()) {
+    return this->client_customization_public_lobby_search_order;
+  }
   return this->public_lobby_search_orders.at(static_cast<size_t>(version));
 }
 
@@ -973,6 +976,7 @@ void ServerState::load_config_early() {
   for (auto& order : this->public_lobby_search_orders) {
     order.clear();
   }
+  this->client_customization_public_lobby_search_order.clear();
   try {
     const auto& orders_json = this->config_json->get_list("LobbySearchOrders");
     for (size_t v_s = 0; v_s < orders_json.size(); v_s++) {
@@ -981,6 +985,14 @@ void ServerState::load_config_early() {
       for (const auto& it : order_json->as_list()) {
         order.emplace_back(it->as_int());
       }
+    }
+  } catch (const out_of_range&) {
+  }
+  try {
+    const auto& order_json = this->config_json->get_list("ClientCustomizationLobbySearchOrder");
+    auto& order = this->client_customization_public_lobby_search_order;
+    for (const auto& it : order_json) {
+      order.emplace_back(it->as_int());
     }
   } catch (const out_of_range&) {
   }
