@@ -36,7 +36,11 @@ ToT as_type(const FromT& v) {
 
 static const char* name_for_header_episode_number(uint8_t episode) {
   static const array<const char*, 3> names = {"Episode1", "Episode2", "Episode4"};
-  return names.at(episode);
+  try {
+    return names.at(episode);
+  } catch (const out_of_range&) {
+    return "Episode1  # invalid value in header";
+  }
 }
 
 static TextEncoding encoding_for_language(uint8_t language) {
