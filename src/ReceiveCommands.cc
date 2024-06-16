@@ -2998,6 +2998,16 @@ static void on_13_A7_GC(shared_ptr<Client> c, uint16_t command, uint32_t flag, s
 
 static void on_61_98(shared_ptr<Client> c, uint16_t command, uint32_t flag, string& data) {
   auto s = c->require_server_state();
+
+  // 98 should only be sent when leaving a game, and we should leave the client
+  // in no lobby (they will send an 84 soon afterward to choose a lobby).
+  if (command == 0x98) {
+    // If the client had an overlay (for battle/challenge modes), delete it
+    c->delete_overlay();
+    c->telepipe_lobby_id = 0;
+    s->remove_client_from_lobby(c);
+  }
+
   auto player = c->character();
 
   switch (c->version()) {
@@ -3192,15 +3202,7 @@ static void on_61_98(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
 
   c->update_channel_name();
 
-  // 98 should only be sent when leaving a game, and we should leave the client
-  // in no lobby (they will send an 84 soon afterward to choose a lobby).
-  if (command == 0x98) {
-    // If the client had an overlay (for battle/challenge modes), delete it
-    c->delete_overlay();
-    c->telepipe_lobby_id = 0;
-    s->remove_client_from_lobby(c);
-
-  } else if (command == 0x61) {
+  if (command == 0x61) {
     if (c->pending_character_export) {
       unique_ptr<Client::PendingCharacterExport> pending_export = std::move(c->pending_character_export);
       c->pending_character_export.reset();
