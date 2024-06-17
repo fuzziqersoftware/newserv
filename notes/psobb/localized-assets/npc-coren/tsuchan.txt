@@ -44,7 +44,7 @@ Huh?
 That's too bad...
 
 Well, these kind of things usually
-have a chance to lose money. 
+have a chance to lose money.
 
 Let's keep this discreet.
 If you feel up to it, talk to me again.
@@ -69,7 +69,7 @@ fail at everything.
 
 What the...?
 
-You don't have the 
+You don't have the
 meseta to pay me?
 
 I won't work with such
@@ -92,5 +92,3 @@ You'll win someday!
 
 In case you want to try again,
 come back to me once more.
-
-
