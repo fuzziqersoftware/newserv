@@ -306,6 +306,22 @@ struct PSOBBFullSystemFile {
 ////////////////////////////////////////////////////////////////////////////////
 // Character files
 
+struct PSODC112000CharacterFile {
+  // See PSOGCCharacterFile::Character for descriptions of fields' meanings.
+  /* 0000:---- */ PlayerInventory inventory;
+  /* 034C:---- */ PlayerDispDataDCPCV3 disp;
+  /* 041C:0000 */ le_uint32_t flags = 0;
+  /* 0420:0004 */ le_uint32_t creation_timestamp = 0;
+  /* 0424:0008 */ le_uint32_t signature = 0xA205B064;
+  /* 0428:000C */ le_uint32_t play_time_seconds = 0;
+  /* 042C:0010 */ le_uint32_t option_flags = 0x00040058;
+  /* 0430:0014 */ le_uint16_t save_count_since_last_inventory_erasure = 1;
+  /* 0432:0016 */ le_uint16_t inventory_erasure_count = 0;
+  // TODO: Fill out the rest of this structure.
+  /* 0434:0018 */ parray<uint8_t, 0xFA0> unknown_a1;
+  /* 13D4:0FB8 */
+} __packed_ws__(PSODC112000CharacterFile, 0x13D4);
+
 struct PSODCV1CharacterFile {
   // See PSOGCCharacterFile::Character for descriptions of fields' meanings.
   /* 0000:---- */ PlayerInventory inventory;
