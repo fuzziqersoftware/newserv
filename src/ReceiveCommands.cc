@@ -253,9 +253,13 @@ static bool send_enable_send_function_call_if_applicable(shared_ptr<Client> c) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void on_connect(std::shared_ptr<Client> c) {
+  auto s = c->require_server_state();
+  if (s->default_switch_assist_enabled) {
+    c->config.set_flag(Client::Flag::SWITCH_ASSIST_ENABLED);
+  }
+
   switch (c->server_behavior) {
     case ServerBehavior::PC_CONSOLE_DETECT: {
-      auto s = c->require_server_state();
       uint16_t pc_port = s->name_to_port_config.at("pc-login")->port;
       uint16_t console_port = s->name_to_port_config.at("console-login")->port;
       send_pc_console_split_reconnect(c, s->connect_address_for_client(c), pc_port, console_port);

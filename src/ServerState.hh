@@ -131,6 +131,7 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   bool hide_download_commands = true;
   RunShellBehavior run_shell_behavior = RunShellBehavior::DEFAULT;
   BehaviorSwitch cheat_mode_behavior = BehaviorSwitch::OFF_BY_DEFAULT;
+  bool default_switch_assist_enabled = false;
   bool use_game_creator_section_id = false;
   bool default_rare_notifs_enabled_v1_v2 = false;
   bool default_rare_notifs_enabled_v3_v4 = false;

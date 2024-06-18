@@ -783,6 +783,7 @@ void ServerState::load_config_early() {
 
   this->persistent_game_idle_timeout_usecs = this->config_json->get_int("PersistentGameIdleTimeout", 0);
   this->cheat_mode_behavior = parse_behavior_switch("CheatModeBehavior", BehaviorSwitch::OFF_BY_DEFAULT);
+  this->default_switch_assist_enabled = this->config_json->get_bool("EnableSwitchAssistByDefault", false);
   this->use_game_creator_section_id = this->config_json->get_bool("UseGameCreatorSectionID", false);
   this->default_rare_notifs_enabled_v1_v2 = this->config_json->get_bool("RareNotificationsEnabledByDefault", false);
   this->default_rare_notifs_enabled_v3_v4 = this->default_rare_notifs_enabled_v1_v2;

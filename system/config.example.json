@@ -995,6 +995,11 @@
   //       available on the proxy server.
   "CheatModeBehavior": "OnByDefault",
 
+  // Default switch assist behavior. Players can always toggle switch assist
+  // with the $swa command; this only controls whether it's enabled by default
+  // for all players or not.
+  "EnableSwitchAssistByDefault": false,
+
   // Whether to enable rare drop notifications by default. Players can toggle
   // this behavior for themselves with the $itemnotifs command.
   "RareNotificationsEnabledByDefaultV1V2": false,
