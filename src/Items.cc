@@ -244,7 +244,7 @@ void player_use_item(shared_ptr<Client> c, size_t item_index, shared_ptr<PSOLFGE
         inv_item.data.data1[0] = combo.result_item[0];
         inv_item.data.data1[1] = combo.result_item[1];
         // For mags, don't reset level + PBs + stats
-        if (inv_item.data.data1[1] != 0x02) {
+        if (inv_item.data.data1[0] != 0x02) {
           inv_item.data.data1[2] = combo.result_item[2];
           inv_item.data.data1[3] = 0; // Grind
           inv_item.data.data1[4] = 0; // Flags + special
