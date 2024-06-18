@@ -26,7 +26,11 @@ ServerState::QuestF960Result::QuestF960Result(const JSON& json, std::shared_ptr<
   this->probability_upgrade = json.get_int("ProbabilityUpgrade", 0);
   for (size_t day = 0; day < 7; day++) {
     for (const auto& item_it : json.get_list(day_names[day])) {
-      this->results[day].emplace_back(name_index->parse_item_description(item_it->as_string()));
+      try {
+        this->results[day].emplace_back(name_index->parse_item_description(item_it->as_string()));
+      } catch (const exception& e) {
+        config_log.warning("Cannot parse item description \"%s\": %s (skipping entry)", item_it->as_string().c_str(), e.what());
+      }
     }
   }
 }
@@ -1251,7 +1255,11 @@ void ServerState::load_config_late() {
         for (const auto& difficulty_it : type_it->as_list()) {
           auto& difficulty_res = type_res.emplace_back();
           for (const auto& item_it : difficulty_it->as_list()) {
-            difficulty_res.emplace_back(this->parse_item_description(Version::BB_V4, item_it->as_string()));
+            try {
+              difficulty_res.emplace_back(this->parse_item_description(Version::BB_V4, item_it->as_string()));
+            } catch (const exception& e) {
+              config_log.warning("Cannot parse item description \"%s\": %s (skipping entry)", item_it->as_string().c_str(), e.what());
+            }
           }
         }
       }
@@ -1261,7 +1269,11 @@ void ServerState::load_config_late() {
       for (const auto& it : this->config_json->get_list("QuestF95FResultItems")) {
         auto& list = it->as_list();
         size_t price = list.at(0)->as_int();
-        this->quest_F95F_results.emplace_back(make_pair(price, this->parse_item_description(Version::BB_V4, list.at(1)->as_string())));
+        try {
+          this->quest_F95F_results.emplace_back(make_pair(price, this->parse_item_description(Version::BB_V4, list.at(1)->as_string())));
+        } catch (const exception& e) {
+          config_log.warning("Cannot parse item description \"%s\": %s (skipping entry)", list.at(1)->as_string().c_str(), e.what());
+        }
       }
     } catch (const out_of_range&) {
     }
@@ -1274,7 +1286,11 @@ void ServerState::load_config_late() {
     }
     try {
       for (const auto& it : this->config_json->get_list("SecretLotteryResultItems")) {
-        this->secret_lottery_results.emplace_back(this->parse_item_description(Version::BB_V4, it->as_string()));
+        try {
+          this->secret_lottery_results.emplace_back(this->parse_item_description(Version::BB_V4, it->as_string()));
+        } catch (const exception& e) {
+          config_log.warning("Cannot parse item description \"%s\": %s (skipping entry)", it->as_string().c_str(), e.what());
+        }
       }
     } catch (const out_of_range&) {
     }
@@ -1286,8 +1302,12 @@ void ServerState::load_config_late() {
           if (pi_json->is_int()) {
             ret.emplace(pi_json->as_int());
           } else {
-            auto item = this->parse_item_description(base_version, pi_json->as_string());
-            ret.emplace(item.primary_identifier());
+            try {
+              auto item = this->parse_item_description(base_version, pi_json->as_string());
+              ret.emplace(item.primary_identifier());
+            } catch (const exception& e) {
+              config_log.warning("Cannot parse item description \"%s\": %s (skipping entry)", pi_json->as_string().c_str(), e.what());
+            }
           }
         }
       } catch (const out_of_range&) {
