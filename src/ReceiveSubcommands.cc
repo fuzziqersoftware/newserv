@@ -3535,8 +3535,35 @@ void on_item_reward_request_bb(shared_ptr<Client> c, uint8_t, uint8_t, void* dat
   item = cmd.item_data;
   item.enforce_min_stack_size(limits);
   item.id = l->generate_item_id(c->lobby_client_id);
-  c->character()->add_item(item, limits);
-  send_create_inventory_item_to_lobby(c, c->lobby_client_id, item);
+
+  // The logic for the item_create and item_create2 opcodes (B3 and B4)
+  // includes a precondition check to see if the player can actually add the
+  // item to their inventory or not, and the entire command is skipped if not.
+  // However, on BB, the implementation performs this check and sends a 6xCA
+  // command instead - the item is not immediately added to the inventory, and
+  // is instead added when the server sends back a 6xBE command. So if a quest
+  // creates multiple items in quick succession, there may be another 6xCA/6xBE
+  // sequence in flight, and the client's check if an item can be created may
+  // pass when a 6xBE command that would make it fail is already on the way
+  // from the server. To handle this, we simply ignore any 6xCA command if the
+  // item can't be created.
+  try {
+    c->character()->add_item(item, limits);
+    send_create_inventory_item_to_lobby(c, c->lobby_client_id, item);
+    if (l->log.should_log(LogLevel::INFO)) {
+      auto name = s->describe_item(c->version(), item, false);
+      l->log.info("Player %hu created inventory item %08" PRIX32 " (%s) via quest command",
+          c->lobby_client_id, item.id.load(), name.c_str());
+      c->print_inventory(stderr);
+    }
+
+  } catch (const out_of_range&) {
+    if (l->log.should_log(LogLevel::INFO)) {
+      auto name = s->describe_item(c->version(), item, false);
+      l->log.info("Player %hu attempted to create inventory item %08" PRIX32 " (%s) via quest command, but it cannot be placed in their inventory",
+          c->lobby_client_id, item.id.load(), name.c_str());
+    }
+  }
 }
 
 void on_transfer_item_via_mail_message_bb(shared_ptr<Client> c, uint8_t command, uint8_t flag, void* data, size_t size) {
