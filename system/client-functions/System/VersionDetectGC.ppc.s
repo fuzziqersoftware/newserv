@@ -35,5 +35,5 @@ not_trial:
   ori    r3, r3, 0x0030
 end_trial_check:
   oris   r3, r3, 0x3300  # Set high byte ('3')
-  rlwimi r3, r4, 8, 8, 23  # Set middle two bytes to last to bytes of game ID
+  rlwimi r3, r4, 8, 8, 23  # Set middle two bytes to last two bytes of game ID
   blr
