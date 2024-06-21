@@ -28,6 +28,8 @@ public:
   void schedule_stop();
   void wait_for_stop();
 
+  void send_rare_drop_notification(std::shared_ptr<const JSON> message);
+
 protected:
   class http_error : public std::runtime_error {
   public:
@@ -35,10 +37,46 @@ protected:
     int code;
   };
 
+  struct WebsocketClient {
+    struct evhttp_connection* conn;
+    struct bufferevent* bev;
+
+    uint8_t pending_opcode;
+    std::string pending_data;
+
+    uint64_t last_communication_time;
+
+    void* context;
+
+    WebsocketClient(struct evhttp_connection* conn);
+    ~WebsocketClient();
+
+    void reset_pending_frame();
+  };
+
   std::shared_ptr<ServerState> state;
   std::shared_ptr<struct event_base> base;
   std::shared_ptr<struct evhttp> http;
   std::thread th;
+
+  std::unordered_set<std::shared_ptr<WebsocketClient>> rare_drop_subscribers;
+
+  std::unordered_map<struct bufferevent*, std::shared_ptr<WebsocketClient>> bev_to_websocket_client;
+
+  std::shared_ptr<WebsocketClient> enable_websockets(struct evhttp_request* req);
+
+  static void dispatch_on_websocket_read(struct bufferevent* bev, void* ctx);
+  static void dispatch_on_websocket_error(struct bufferevent* bev, short events, void* ctx);
+
+  void on_websocket_read(struct bufferevent* bev);
+  void on_websocket_error(struct bufferevent* bev, short events);
+
+  void disconnect_websocket_client(struct bufferevent* bev);
+  void send_websocket_message(struct bufferevent* bev, const std::string& message, uint8_t opcode = 0x01);
+  void send_websocket_message(std::shared_ptr<WebsocketClient> c, const std::string& message, uint8_t opcode = 0x01);
+
+  virtual void handle_websocket_message(std::shared_ptr<WebsocketClient> c, uint8_t opcode, const std::string& message);
+  virtual void handle_websocket_disconnect(std::shared_ptr<WebsocketClient> c);
 
   void thread_fn();
 

@@ -10,6 +10,7 @@
 
 #include "Client.hh"
 #include "Compression.hh"
+#include "HTTPServer.hh"
 #include "Items.hh"
 #include "Lobby.hh"
 #include "Loggers.hh"
@@ -2072,9 +2073,26 @@ static void on_pick_up_item_generic(
 
       if (should_send_game_notif || should_send_global_notif) {
         string p_name = p->disp.name.decode();
-        string desc = s->describe_item(c->version(), fi->data, true);
-        string message = string_printf("$C6%s$C7 found\n%s", p_name.c_str(), desc.c_str());
-        string bb_message = string_printf("$C6%s$C7 has found %s", p_name.c_str(), desc.c_str());
+        string desc_ingame = s->describe_item(c->version(), fi->data, true);
+        string desc_http = s->describe_item(c->version(), fi->data, false);
+
+        if (s->http_server) {
+          auto message = make_shared<JSON>(JSON::dict({
+              {"PlayerAccountID", c->login->account->account_id},
+              {"PlayerName", p_name},
+              {"PlayerVersion", name_for_enum(c->version())},
+              {"GameName", l->name},
+              {"GameDropMode", name_for_enum(l->drop_mode)},
+              {"ItemData", fi->data.hex()},
+              {"ItemDescription", desc_http},
+              {"NotifyGame", should_send_game_notif},
+              {"NotifyServer", should_send_global_notif},
+          }));
+          s->http_server->send_rare_drop_notification(message);
+        }
+
+        string message = string_printf("$C6%s$C7 found\n%s", p_name.c_str(), desc_ingame.c_str());
+        string bb_message = string_printf("$C6%s$C7 has found %s", p_name.c_str(), desc_ingame.c_str());
         if (should_send_global_notif) {
           for (auto& it : s->channel_to_client) {
             if (it.second->login &&

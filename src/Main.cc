@@ -2543,7 +2543,6 @@ Action a_run_server_replay_log(
 
       shared_ptr<ServerShell> shell;
       shared_ptr<ReplaySession> replay_session;
-      shared_ptr<HTTPServer> http_server;
       if (is_replay) {
         config_log.info("Starting proxy server");
         state->proxy_server = make_shared<ProxyServer>(base, state);
@@ -2653,10 +2652,10 @@ Action a_run_server_replay_log(
 
         if (!state->http_addresses.empty() || !state->http_addresses.empty()) {
           config_log.info("Starting HTTP server");
-          http_server = make_shared<HTTPServer>(state);
+          state->http_server = make_shared<HTTPServer>(state);
           for (const auto& it : state->http_addresses) {
             auto netloc = parse_netloc(it);
-            http_server->listen(netloc.first, netloc.second);
+            state->http_server->listen(netloc.first, netloc.second);
           }
         }
       }
@@ -2700,8 +2699,8 @@ Action a_run_server_replay_log(
       if (state->bb_patch_server) {
         state->bb_patch_server->schedule_stop();
       }
-      if (http_server) {
-        http_server->schedule_stop();
+      if (state->http_server) {
+        state->http_server->schedule_stop();
       }
       if (state->pc_patch_server) {
         config_log.info("Waiting for PC_V2 patch server to stop");
@@ -2711,9 +2710,9 @@ Action a_run_server_replay_log(
         config_log.info("Waiting for BB_V4 patch server to stop");
         state->bb_patch_server->wait_for_stop();
       }
-      if (http_server) {
+      if (state->http_server) {
         config_log.info("Waiting for HTTP server to stop");
-        http_server->wait_for_stop();
+        state->http_server->wait_for_stop();
       }
       state->proxy_server.reset(); // Break reference cycle
     });

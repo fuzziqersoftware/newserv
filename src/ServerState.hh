@@ -36,6 +36,7 @@
 class ProxyServer;
 class Server;
 class IPStackSimulator;
+class HTTPServer;
 
 struct PortConfiguration {
   std::string name;
@@ -270,6 +271,7 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   std::shared_ptr<Server> game_server;
   std::shared_ptr<PatchServer> pc_patch_server;
   std::shared_ptr<PatchServer> bb_patch_server;
+  std::shared_ptr<HTTPServer> http_server;
 
   explicit ServerState(const std::string& config_filename = "");
   ServerState(std::shared_ptr<struct event_base> base, const std::string& config_filename, bool is_replay);
