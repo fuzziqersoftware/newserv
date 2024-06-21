@@ -1959,7 +1959,7 @@ static void on_box_or_enemy_item_drop_t(shared_ptr<Client> c, uint8_t command, u
   ItemData item = cmd.item.item;
   item.decode_for_version(c->version());
   l->on_item_id_generated_externally(item.id);
-  l->add_item(cmd.item.floor, item, cmd.item.x, cmd.item.z, 0x100F);
+  l->add_item(cmd.item.floor, item, cmd.item.x, cmd.item.z, (l->drop_mode == Lobby::DropMode::CLIENT) ? 0x100F : 0x000F);
 
   auto name = s->describe_item(c->version(), item, false);
   l->log.info("Player %hhu (leader) created floor item %08" PRIX32 " (%s) at %hhu:(%g, %g)",
