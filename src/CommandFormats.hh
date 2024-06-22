@@ -3929,6 +3929,7 @@ struct G_SendGuildCard_BB_6x06 {
 } __packed_ws__(G_SendGuildCard_BB_6x06, 0x10C);
 
 // 6x07: Symbol chat
+// If UDP mode is enabled, this command is sent via UDP.
 
 struct G_SymbolChat_6x07 {
   G_UnusedHeader header;
@@ -4351,6 +4352,7 @@ struct G_SetPosition_6x3F {
 } __packed_ws__(G_SetPosition_6x3F, 0x18);
 
 // 6x40: Walk (protected on V3/V4)
+// If UDP mode is enabled, this command is sent via UDP.
 
 struct G_WalkToPosition_6x40 {
   G_ClientIDHeader header;
@@ -4369,6 +4371,7 @@ struct G_Unknown_6x41 {
 } __packed_ws__(G_Unknown_6x41, 0x0C);
 
 // 6x42: Run (protected on V3/V4)
+// If UDP mode is enabled, this command is sent via UDP.
 
 struct G_RunToPosition_6x42 {
   G_ClientIDHeader header;
@@ -4379,6 +4382,7 @@ struct G_RunToPosition_6x42 {
 // 6x43: First attack (protected on V3/V4)
 // 6x44: Second attack (protected on V3/V4)
 // 6x45: Third attack (protected on V3/V4)
+// If UDP mode is enabled, these commands are sent via UDP.
 
 struct G_Attack_6x43_6x44_6x45 {
   G_ClientIDHeader header;
@@ -4543,6 +4547,7 @@ struct G_Unknown_6x57 {
 } __packed_ws__(G_Unknown_6x57, 4);
 
 // 6x58: Lobby animation (protected on V3/V4)
+// If UDP mode is enabled, this command is sent via UDP.
 
 struct G_LobbyAnimation_6x58 {
   G_ClientIDHeader header;
