@@ -4487,13 +4487,24 @@ struct G_PlayerRevived_6x4F {
 } __packed_ws__(G_PlayerRevived_6x4F, 4);
 
 // 6x50: Switch interaction (protected on V3/V4)
+// If UDP mode is enabled, this command is sent via UDP.
 
 struct G_SwitchInteraction_6x50 {
   G_ClientIDHeader header;
   le_uint32_t unknown_a1 = 0;
 } __packed_ws__(G_SwitchInteraction_6x50, 8);
 
-// 6x51: Invalid subcommand
+// 6x51: Set player angle
+// If UDP mode is enabled, this command is sent via UDP.
+// This command appears to be vestigial - no version of the game has a handler
+// for it (it is always ignored), but PSO GC has a function that sends it. It's
+// not known if this function is ever called, or how to trigger it.
+
+struct G_SetPlayerAngle_6x51 {
+  G_ClientIDHeader header;
+  le_uint16_t angle = 0;
+  parray<uint8_t, 2> unused;
+} __packed_ws__(G_SetPlayerAngle_6x51, 8);
 
 // 6x52: Set animation state (protected on V3/V4)
 
