@@ -543,7 +543,8 @@ QuestIndex::QuestIndex(
           file_data = decode_dlq_data(load_file(file_path));
           filename.resize(filename.size() - 4);
         } else if (ends_with(filename, ".txt")) {
-          file_data = assemble_quest_script(load_file(file_path));
+          string include_dir = dirname(file_path);
+          file_data = assemble_quest_script(load_file(file_path), include_dir);
           filename.resize(filename.size() - 4);
           if (ends_with(filename, ".bin")) {
             filename.push_back('d');

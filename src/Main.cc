@@ -1237,7 +1237,13 @@ Action a_assemble_quest_script(
     uncompressed .bind file instead.\n",
     +[](Arguments& args) {
       string text = read_input_data(args);
-      string result = assemble_quest_script(text);
+
+      const string& input_filename = args.get<string>(1, false);
+      string include_dir = (!input_filename.empty() && (input_filename != "-"))
+          ? dirname(input_filename)
+          : ".";
+
+      string result = assemble_quest_script(text, include_dir);
       bool compress = !args.get<bool>("decompressed");
       if (compress) {
         result = prs_compress_optimal(result);

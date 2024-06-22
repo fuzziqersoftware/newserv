@@ -96,6 +96,11 @@
 // can be included in the quest script using the .data directive, like this:
 //   hello_symbol_chat:
 //     .data 28000000 FFFF 0D00 FFFF FFFF 05 18 1D 00 05 28 1D 01 36 20 2A 00 3C 00 32 00 FF 00 00 00 FF 00 00 00 FF 00 00 00 FF 00 00 02 FF 00 00 02 FF 00 00 02 FF 00 00 02 FF 00 00 02
+// You can also include binary data from another file in the same directory
+// (the contents of the file are "pasted" into the assembled script, as if you
+// had pasted in the hex along with a .data directive):
+//   movement_data:
+//     .include_bin  movement_data.bin
 // There is also a directive for including a large number of zero bytes:
 //   lots_of_zeroes:
 //     .zero 0x400  // 1024 bytes of zeroes

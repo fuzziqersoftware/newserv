@@ -12,6 +12,12 @@
 #include <unordered_map>
 #include <vector>
 
+#ifdef HAVE_RESOURCE_FILE
+#include <resource_file/Emulators/PPC32Emulator.hh>
+#include <resource_file/Emulators/SH4Emulator.hh>
+#include <resource_file/Emulators/X86Emulator.hh>
+#endif
+
 #include "BattleParamsIndex.hh"
 #include "CommandFormats.hh"
 #include "Compression.hh"
@@ -1964,7 +1970,7 @@ struct RegisterAssigner {
   array<shared_ptr<Register>, 0x100> numbered_regs;
 };
 
-std::string assemble_quest_script(const std::string& text) {
+std::string assemble_quest_script(const std::string& text, const std::string& include_directory) {
   auto lines = split(text, '\n');
 
   // Strip comments and whitespace
@@ -2196,6 +2202,29 @@ std::string assemble_quest_script(const std::string& text) {
         } else if (starts_with(line, ".zero ")) {
           size_t size = stoull(line.substr(6), nullptr, 0);
           code_w.extend_by(size, 0x00);
+        } else if (starts_with(line, ".include_bin ")) {
+          string filename = line.substr(13);
+          strip_whitespace(filename);
+          code_w.write(load_file(include_directory + "/" + filename));
+        } else if (starts_with(line, ".include_native ")) {
+#ifdef HAVE_RESOURCE_FILE
+          string filename = line.substr(16);
+          strip_whitespace(filename);
+          string native_text = load_file(include_directory + "/" + filename);
+          string code;
+          if (is_ppc(quest_version)) {
+            code = std::move(PPC32Emulator::assemble(native_text).code);
+          } else if (is_x86(quest_version)) {
+            code = std::move(X86Emulator::assemble(native_text).code);
+          } else if (is_sh4(quest_version)) {
+            code = std::move(SH4Emulator::assemble(native_text).code);
+          } else {
+            throw runtime_error("unknown architecture");
+          }
+          code_w.write(code);
+#else
+          throw runtime_error("native code cannot be compiled; rebuild newserv with libresource_file");
+#endif
         }
         continue;
       }
