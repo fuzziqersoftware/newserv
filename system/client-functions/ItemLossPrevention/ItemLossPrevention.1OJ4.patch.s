@@ -24,7 +24,7 @@ start:
   and       r0, 0xFE
 
   .align    4
-  .data     0x8C16053C
+  .data     0x8C16053A
   .data     2
   and       r0, 0xFE
 
