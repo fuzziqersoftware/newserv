@@ -1667,100 +1667,104 @@ Episode find_quest_episode_from_script(const void* data, size_t size, Version ve
       throw logic_error("invalid quest version");
   }
 
-  const auto& opcodes = opcodes_for_version(version);
   unordered_set<Episode> found_episodes;
 
-  // The set_episode opcode should always be in the first function (0)
-  StringReader cmd_r = r.sub(code_offset + r.pget_u32l(function_table_offset));
+  try {
+    const auto& opcodes = opcodes_for_version(version);
+    // The set_episode opcode should always be in the first function (0)
+    StringReader cmd_r = r.sub(code_offset + r.pget_u32l(function_table_offset));
 
-  while (!cmd_r.eof()) {
-    uint16_t opcode = cmd_r.get_u8();
-    if ((opcode & 0xFE) == 0xF8) {
-      opcode = (opcode << 8) | cmd_r.get_u8();
-    }
+    while (!cmd_r.eof()) {
+      uint16_t opcode = cmd_r.get_u8();
+      if ((opcode & 0xFE) == 0xF8) {
+        opcode = (opcode << 8) | cmd_r.get_u8();
+      }
 
-    const QuestScriptOpcodeDefinition* def = nullptr;
-    try {
-      def = opcodes.at(opcode);
-    } catch (const out_of_range&) {
-    }
+      const QuestScriptOpcodeDefinition* def = nullptr;
+      try {
+        def = opcodes.at(opcode);
+      } catch (const out_of_range&) {
+      }
 
-    if (def == nullptr) {
-      throw runtime_error(string_printf("unknown quest opcode %04hX", opcode));
-    }
+      if (def == nullptr) {
+        throw runtime_error(string_printf("unknown quest opcode %04hX", opcode));
+      }
 
-    if (def->flags & F_RET) {
-      break;
-    }
+      if (def->flags & F_RET) {
+        break;
+      }
 
-    if (!(def->flags & F_ARGS)) {
-      for (const auto& arg : def->args) {
-        using Type = QuestScriptOpcodeDefinition::Argument::Type;
-        string dasm_arg;
-        switch (arg.type) {
-          case Type::LABEL16:
-            cmd_r.skip(2);
-            break;
-          case Type::LABEL32:
-            cmd_r.skip(4);
-            break;
-          case Type::LABEL16_SET:
-            if (def->flags & F_PASS) {
-              throw logic_error("LABEL16_SET cannot be pushed to arg stack");
-            }
-            cmd_r.skip(cmd_r.get_u8() * 2);
-            break;
-          case Type::REG:
-            cmd_r.skip(1);
-            break;
-          case Type::REG_SET:
-            if (def->flags & F_PASS) {
-              throw logic_error("REG_SET cannot be pushed to arg stack");
-            }
-            cmd_r.skip(cmd_r.get_u8());
-            break;
-          case Type::REG_SET_FIXED:
-            if (def->flags & F_PASS) {
-              throw logic_error("REG_SET_FIXED cannot be pushed to arg stack");
-            }
-            cmd_r.skip(1);
-            break;
-          case Type::REG32_SET_FIXED:
-            if (def->flags & F_PASS) {
-              throw logic_error("REG32_SET_FIXED cannot be pushed to arg stack");
-            }
-            cmd_r.skip(4);
-            break;
-          case Type::INT8:
-            cmd_r.skip(1);
-            break;
-          case Type::INT16:
-            cmd_r.skip(2);
-            break;
-          case Type::INT32:
-            if (def->flags & F_SET_EPISODE) {
-              found_episodes.emplace(episode_for_quest_episode_number(cmd_r.get_u32l()));
-            } else {
+      if (!(def->flags & F_ARGS)) {
+        for (const auto& arg : def->args) {
+          using Type = QuestScriptOpcodeDefinition::Argument::Type;
+          string dasm_arg;
+          switch (arg.type) {
+            case Type::LABEL16:
+              cmd_r.skip(2);
+              break;
+            case Type::LABEL32:
               cmd_r.skip(4);
-            }
-            break;
-          case Type::FLOAT32:
-            cmd_r.skip(4);
-            break;
-          case Type::CSTRING:
-            if (use_wstrs) {
-              for (uint16_t ch = cmd_r.get_u16l(); ch; ch = cmd_r.get_u16l()) {
+              break;
+            case Type::LABEL16_SET:
+              if (def->flags & F_PASS) {
+                throw logic_error("LABEL16_SET cannot be pushed to arg stack");
               }
-            } else {
-              for (uint8_t ch = cmd_r.get_u8(); ch; ch = cmd_r.get_u8()) {
+              cmd_r.skip(cmd_r.get_u8() * 2);
+              break;
+            case Type::REG:
+              cmd_r.skip(1);
+              break;
+            case Type::REG_SET:
+              if (def->flags & F_PASS) {
+                throw logic_error("REG_SET cannot be pushed to arg stack");
               }
-            }
-            break;
-          default:
-            throw logic_error("invalid argument type");
+              cmd_r.skip(cmd_r.get_u8());
+              break;
+            case Type::REG_SET_FIXED:
+              if (def->flags & F_PASS) {
+                throw logic_error("REG_SET_FIXED cannot be pushed to arg stack");
+              }
+              cmd_r.skip(1);
+              break;
+            case Type::REG32_SET_FIXED:
+              if (def->flags & F_PASS) {
+                throw logic_error("REG32_SET_FIXED cannot be pushed to arg stack");
+              }
+              cmd_r.skip(4);
+              break;
+            case Type::INT8:
+              cmd_r.skip(1);
+              break;
+            case Type::INT16:
+              cmd_r.skip(2);
+              break;
+            case Type::INT32:
+              if (def->flags & F_SET_EPISODE) {
+                found_episodes.emplace(episode_for_quest_episode_number(cmd_r.get_u32l()));
+              } else {
+                cmd_r.skip(4);
+              }
+              break;
+            case Type::FLOAT32:
+              cmd_r.skip(4);
+              break;
+            case Type::CSTRING:
+              if (use_wstrs) {
+                for (uint16_t ch = cmd_r.get_u16l(); ch; ch = cmd_r.get_u16l()) {
+                }
+              } else {
+                for (uint8_t ch = cmd_r.get_u8(); ch; ch = cmd_r.get_u8()) {
+                }
+              }
+              break;
+            default:
+              throw logic_error("invalid argument type");
+          }
         }
       }
     }
+  } catch (const exception& e) {
+    log_warning("Cannot determine episode from quest script (%s)", e.what());
   }
 
   if (found_episodes.size() > 1) {
