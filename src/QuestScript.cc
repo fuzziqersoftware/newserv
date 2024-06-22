@@ -286,7 +286,7 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     {0x000A, "letb", {REG, INT8}, F_V3_V4}, // Sets register to a fixed value (int8)
     {0x000B, "letw", {REG, INT16}, F_V3_V4}, // Sets register to a fixed value (int16)
     {0x000C, "leta", {REG, REG}, F_V3_V4}, // Sets regA to the memory address of regB
-    {0x000D, "leto", {REG, SCRIPT16}, F_V3_V4}, // Sets register to the offset (NOT memory address) of a function
+    {0x000D, "leto", {REG, SCRIPT16}, F_V3_V4}, // Sets register to the address of an entry in the quest function table
     {0x0010, "set", {REG}, F_V0_V4}, // Sets a register to 1
     {0x0011, "clear", {REG}, F_V0_V4}, // Sets a register to 0
     {0x0012, "rev", {REG}, F_V0_V4}, // Sets a register to 0 if it's nonzero and vice versa
@@ -836,7 +836,7 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     {0xF94A, "olga_flow_is_dead", {REG}, F_V3_V4},
     {0xF94B, "particle_effect_nc", {{REG_SET_FIXED, 4}}, F_V3_V4},
     {0xF94C, "player_effect_nc", {{REG_SET_FIXED, 4}}, F_V3_V4},
-    {0xF94D, "has_ep3_save_file", {REG}, F_V3 | F_ARGS}, // (PSO Plus only) Returns 1 if a file named PSO3_CHARACTER is present on either memory card
+    {0xF94D, "has_ep3_save_file", {REG}, F_GC_V3 | F_ARGS}, // (PSO Plus only) Returns 1 if a file named PSO3_CHARACTER is present on either memory card
     {0xF94D, "give_or_take_card", {{REG_SET_FIXED, 2}}, F_GC_EP3}, // regsA[0] is card_id; card is given if regsA[1] >= 0, otherwise it's taken
     {0xF94D, "unknown_F94D", {INT32, REG}, F_XB_V3 | F_ARGS}, // Related to voice chat. argA is a client ID; a value is read from that player's TVoiceChatClient object and (!!value) is placed in regB. This value is set by the 6xB3 command; TODO: figure out what that value represents and name this opcode appropriately
     {0xF94D, "nop_F94D", {}, F_V4},
