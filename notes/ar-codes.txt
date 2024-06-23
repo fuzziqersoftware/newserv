@@ -79,6 +79,11 @@ Ep3-US  => 042F9AC0 60000000
 Ep3-NTE => 040C2C48 60000000
 Ep3-JP  => 042F8B74 60000000
 
+(Ep1&2 USA v1.1) Change type of all loading screens
+0401CA04 3BE0000X
+0401CA08 48000038
+Values for X: 0 = lobby/game join, 1 = quest load, 3 = pipe up, 4 = pipe down, anything else = silent black screen
+
 (Ep3 USA) Replace loading screen A button sounds with random sounds
 042F9B18 4804BB19
 042F9B1C 5463063E
