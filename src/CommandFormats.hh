@@ -717,16 +717,19 @@ check_struct_size(C_MenuSelection_PC_BB_10_Flag03, 0x48);
 // Internal name: RcvDownLoad
 // Used for downloading online quests. For download quests (to be saved to the
 // memory card), use A7 instead.
+// This command exists on DC NTE, but it does nothing. DC NTE does not have the
+// 44 command, which would also be required for loading quests, so online
+// quests canot be loaded on DC NTE.
 // All chunks except the last must have 0x400 data bytes. When downloading an
-// online quest, the .bin and .dat chunks may be interleaved (although newserv
-// currently sends them sequentially). There is a client bug in BB (and
-// probably all other versions) where if the quest file's size is a multiple
-// of 0x400, the last chunk will have size 0x400, and the client will never
-// consider the download complete since it only checks if the last chunk has
-// size < 0x400; it does not check if all expected bytes have been received.
-// To work around this, newserv appends an extra zero byte if the quest file's
-// size is a multiple of 0x400; this byte will be ignored since the PRS
-// decompression algorithm contains a stop command, so it will never read it.
+// online quest, the .bin and .dat chunks may be interleaved. There is a client
+// bug in BB (and probably all other versions) where if the quest file's size
+// is a multiple of 0x400, the last chunk will have size 0x400, and the client
+// will never consider the download complete since it only checks if the last
+// chunk has size < 0x400; it does not check if all expected bytes have been
+// received. To work around this, newserv appends an extra zero byte if the
+// quest file's size is a multiple of 0x400; this byte will be ignored since
+// the PRS decompression algorithm contains a stop command, so it will never
+// read it.
 
 // header.flag = file chunk index (start offset / 0x400)
 struct S_WriteFile_13_A7 {
@@ -974,6 +977,8 @@ check_struct_size(S_GuildCardSearchResult_BB_41, 0x128);
 // Internal name: RcvDownLoadHead
 // Used for downloading online quests. The client will react to a 44 command if
 // the filename ends in .bin or .dat.
+// This command is not implemented on DC NTE, so DC NTE cannot receive online
+// quest files.
 // For download quests (to be saved to the memory card) and GBA games, the A6
 // command is used instead. The client will react to A6 if the filename ends in
 // .bin/.dat (quests), .pvr (textures), or .gba (GameBoy Advance games).
