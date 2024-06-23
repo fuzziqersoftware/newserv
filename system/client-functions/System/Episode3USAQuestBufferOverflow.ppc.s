@@ -1,3 +1,7 @@
+# This program was an early attempt at restoring B2 patching functionality to
+# Episode 3. It is no longer used, since the quest loading method is more
+# reliable, but this file remains for documentation purposes.
+
 # There is a buffer overflow bug in PSO Episode 3 that this program uses to
 # achieve arbitrary code execution. (This bug is likely present in all versions
 # of PSO, but the code here is specific to the USA version of Episode 3.) This

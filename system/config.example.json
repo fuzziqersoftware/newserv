@@ -1055,15 +1055,13 @@
   // load, then wait for the client to leave the "game", before even getting to
   // the welcome message.
   // This quest is not intended to be localized since it should not contain any
-  // user-visible text, so the server sends the English version for PSO USA
-  // v1.2, and the Japanese version for PSO JP v1.5, regardless of the client's
-  // language setting. The quest is not used on any other PSO version.
-  "PSOPlusSendFunctionCallQuestNumber": -1,
-  // Whether to enable patches on Episode 3 USA. This functionality depends on
-  // exploiting a bug in Episode 3, and while it seems to work reliably on
-  // Dolphin, it hasn't been tested on a real GameCube. So, newserv doesn't
-  // enable Episode 3 USA patches by default; it only does if this option is on.
-  "EnableEpisode3SendFunctionCall": false,
+  // user-visible text, so the server uses the language field to determine
+  // which quest to send based on the client's version:
+  // - US Plus v1.2 + customizations: English
+  // - JP Plus v1.5: Japanese
+  // - US Ep3: Spanish
+  // - EU Ep3: German
+  "EnableSendFunctionCallQuestNumber": -1,
 
   // Whether to enable protected subcommands on GC and Xbox. This enables the
   // infinite HP cheat to also automatically revive players and clear conditions

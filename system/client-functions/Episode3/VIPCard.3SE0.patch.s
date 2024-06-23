@@ -1,8 +1,3 @@
-# This patch is only for PSO Episode 3 USA, which means it requires the
-# EnableEpisode3SendFunctionCall option to be enabled in config.json. If that
-# option is disabled, the Patches menu won't appear for the client. If this
-# patch is run on a different client version, it will do nothing.
-
 .meta name="Get VIP card"
 .meta description="Gives you a VIP card"
 

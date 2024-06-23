@@ -79,8 +79,7 @@ handle_B2_skip_relocations:
   ori     r0, r0, 0xC274
   mr      r3, r6
   mr      r4, r5
-  mtctr   r0
-  bctrl   # flush_code(code_base_addr, code_section_size)
+  bl      call_flush_code  # flush_code(code_base_addr, code_section_size)
 
   # Call the code section and put the return value (byteswapped) on the stack
   # Note: flush_code only uses r3, r4, and r5, so we don't need to reload r7
@@ -148,6 +147,16 @@ crc32_done:
   xori    r3, r3, 0xFFFF
   blr     # return (result ^ 0xFFFFFFFF)
 
+call_flush_code:
+  lis     r5, 0x8000
+  ori     r5, r5, 0xC274
+  mtctr   r5
+  lhz     r0, [r5 + 6]
+  cmplwi  r0, 0xFFF1
+  beqctr
+  addi    r5, r5, 0xB0  # 8000C324
+  mtctr   r5
+  bctr
 
 get_handle_B2_ptr:
   mflr    r9  # r9 = &handle_B2
@@ -170,20 +179,36 @@ copy_handle_B2_word_again:
   bdnz    copy_handle_B2_word_again
 
   # Invalidate the caches appropriately for the newly-copied code
-  lis     r9, 0x8000
-  ori     r9, r9, 0xC274
-  mtctr   r9
   mr      r3, r12
   rlwinm  r4, r7, 30, 2, 31
-  bctrl   # flush_code(copied_B2_handler, copied_B2_handler_bytes)
+  bl      call_flush_code  # flush_code(copied_B2_handler, copied_B2_handler_bytes)
 
   # Replace the command handler table entry for command 0E (which is an unused
   # legacy command and has very broken behavior) with our B2 implementation
-  lis     r5, 0x804C
-  ori     r5, r5, 0x4E08
   li      r0, 0x00B2
+  lis     r6, 0x804C
+  ori     r5, r6, 0x4E08  # US v1.2
+  lwz     r3, [r5]
+  cmplwi  r3, 0x000E
+  beq     patch_main_handlers_write
+  ori     r5, r6, 0x5530  # JP v1.5
+  lwz     r3, [r5]
+  cmplwi  r3, 0x000E
+  beq     patch_main_handlers_write
+  lis     r6, 0x8045
+  subi    r5, r6, 0x097C  # US Ep3
+  lwz     r3, [r5]
+  cmplwi  r3, 0x000E
+  beq     patch_main_handlers_write
+  ori     r5, r6, 0x1A3C  # EU Ep3
+  lwz     r3, [r5]
+  cmplwi  r3, 0x000E
+  bne     done
+
+patch_main_handlers_write:
   stw     [r5], r0
   stw     [r5 + 0x0C], r12
 
+done:
   mtlr    r11
   blr

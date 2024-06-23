@@ -37,9 +37,6 @@ void Client::Config::set_flags_for_version(Version version, int64_t sub_version)
 
   switch (sub_version) {
     case -1: // Initial check (before sub_version recognition)
-      // Note: BB does not appear here because we always get its sub_version in
-      // the very first command; there is no way to get here for a BB client
-      // before we know the client's sub_version.
       switch (version) {
         case Version::PC_PATCH:
         case Version::BB_PATCH:
@@ -127,10 +124,9 @@ void Client::Config::set_flags_for_version(Version version, int64_t sub_version)
       this->set_flag(Flag::IS_CLIENT_CUSTOMIZATION);
       [[fallthrough]];
     case 0x36: // GC Ep1&2 US v1.2 (Plus)
-      this->set_flag(Flag::CAN_RECEIVE_ENABLE_B2_QUEST);
-      [[fallthrough]];
     case 0x39: // GC Ep1&2 JP v1.5 (Plus)
       this->set_flag(Flag::NO_D6_AFTER_LOBBY);
+      this->set_flag(Flag::CAN_RECEIVE_ENABLE_B2_QUEST);
       break;
     case 0x40: // GC Ep3 JP and Trial Edition (and BB)
       this->set_flag(Flag::NO_D6_AFTER_LOBBY);
@@ -141,13 +137,10 @@ void Client::Config::set_flags_for_version(Version version, int64_t sub_version)
       // instead look at header.flag in the 61 command and set the version then.
       break;
     case 0x41: // GC Ep3 US (and BB)
-      this->set_flag(Flag::NO_D6_AFTER_LOBBY);
-      this->set_flag(Flag::USE_OVERFLOW_FOR_SEND_FUNCTION_CALL);
-      this->set_flag(Flag::SEND_FUNCTION_CALL_NO_CACHE_PATCH);
-      break;
     case 0x42: // GC Ep3 EU 50Hz
     case 0x43: // GC Ep3 EU 60Hz
       this->set_flag(Flag::NO_D6_AFTER_LOBBY);
+      this->set_flag(Flag::CAN_RECEIVE_ENABLE_B2_QUEST);
       break;
     default:
       throw runtime_error(string_printf("unknown sub_version %" PRIX64, sub_version));

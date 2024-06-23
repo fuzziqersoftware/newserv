@@ -49,8 +49,7 @@
   "HTTPListen": [],
   "BannedIPV4Ranges": [],
   "Episode3BehaviorFlags": 0xFA,
-  "PSOPlusSendFunctionCallQuestNumber": -1,
-  "EnableEpisode3SendFunctionCall": false,
+  "EnableSendFunctionCallQuestNumber": -1,
   "EnableV3V4ProtectedSubcommands": false,
 
   "Episode3InfiniteMeseta": false,

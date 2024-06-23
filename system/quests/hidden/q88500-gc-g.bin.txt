@@ -1,0 +1,47 @@
+.version GC_EP3
+.quest_num 88500
+.language 1
+.episode Episode1
+.name "GC Ep3 EU patch enabler"
+.short_desc ""
+.long_desc ""
+
+start:
+  leti               r3, 0x80004000
+  write4             0x80454E04, 0x80109FB4
+  write4             0x80454E08, 0x8000C324
+  write4             0x80454E0C, r3
+
+  read4              r0, 0x8057CA10
+  leto               r4, code
+  read4              r4, r4
+  add                r4, r0
+  leto               r5, code_end
+  read4              r5, r5
+  add                r5, r0
+
+copy_byte:
+  jmp_eq             r4, r5, copy_done
+  read1              r0, r4
+  write1             r3, r0
+  addi               r3, 1
+  addi               r4, 1
+  jmp                copy_byte
+
+copy_done:
+  .data              F9FE00400080
+  .data              F9FF
+
+  ba_initial_floor   17
+  write2             0x8057C930, 1
+
+  // Clean up quest handler table
+  write4             0x80454E04, 0
+  write4             0x80454E08, 0
+  write4             0x80454E0C, 0
+
+  ret
+
+code:
+  .include_native    q88500-gc.s
+code_end:

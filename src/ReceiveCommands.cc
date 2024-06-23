@@ -236,20 +236,6 @@ static void send_proxy_destinations_menu(shared_ptr<Client> c) {
   send_menu(c, s->proxy_destinations_menu(c->version()));
 }
 
-static bool send_enable_send_function_call_if_applicable(shared_ptr<Client> c) {
-  auto s = c->require_server_state();
-  if (function_compiler_available() && c->config.check_flag(Client::Flag::USE_OVERFLOW_FOR_SEND_FUNCTION_CALL)) {
-    if (s->ep3_send_function_call_enabled) {
-      send_quest_buffer_overflow(c);
-    } else {
-      c->config.clear_flag(Client::Flag::HAS_SEND_FUNCTION_CALL);
-    }
-    c->config.clear_flag(Client::Flag::USE_OVERFLOW_FOR_SEND_FUNCTION_CALL);
-    return true;
-  }
-  return false;
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 
 void on_connect(std::shared_ptr<Client> c) {
@@ -379,7 +365,6 @@ void on_login_server_login_complete(shared_ptr<Client> c) {
       c->config.check_flag(Client::Flag::NO_D6) ||
       !c->config.check_flag(Client::Flag::AT_WELCOME_MESSAGE)) {
     c->config.clear_flag(Client::Flag::AT_WELCOME_MESSAGE);
-    send_enable_send_function_call_if_applicable(c);
     send_update_client_config(c, false);
     send_main_menu(c);
   } else {
@@ -398,10 +383,27 @@ void on_login_complete(shared_ptr<Client> c) {
 
       if (c->config.check_flag(Client::Flag::CAN_RECEIVE_ENABLE_B2_QUEST) &&
           !c->config.check_flag(Client::Flag::HAS_SEND_FUNCTION_CALL) &&
-          (s->ep12_plus_send_function_call_quest_num >= 0)) {
-        auto q = s->quest_index(c->version())->get(s->ep12_plus_send_function_call_quest_num);
+          (s->enable_send_function_call_quest_num >= 0)) {
+        auto q = s->default_quest_index->get(s->enable_send_function_call_quest_num);
         if (q) {
-          auto vq = q->version(c->version(), (c->sub_version == 0x39 ? 0 : 1));
+          uint8_t q_language;
+          switch (c->sub_version) {
+            case 0x39:
+              q_language = 0; // Japanese (JP Plus v1.5)
+              break;
+            case 0x42:
+            case 0x43:
+              q_language = 2; // German (EU Ep3)
+              break;
+            case 0x41:
+              q_language = 4; // Spanish (US Ep3)
+              break;
+            case 0x36:
+            case 0x3A:
+            default:
+              q_language = 1; // English (US Plus v1.2 + customizations)
+          }
+          auto vq = q->version(is_ep3(c->version()) ? Version::GC_V3 : c->version(), q_language);
           if (vq) {
             c->config.set_flag(Client::Flag::HAS_SEND_FUNCTION_CALL);
             c->config.set_flag(Client::Flag::SEND_FUNCTION_CALL_NO_CACHE_PATCH);
@@ -907,18 +909,6 @@ static void on_9D_9E(shared_ptr<Client> c, uint16_t command, uint32_t, string& d
 
   c->channel.language = base_cmd->language;
   set_console_client_flags(c, base_cmd->sub_version);
-
-  // See system/client-functions/Episode3USAQuestBufferOverflow.ppc.s for where
-  // this value gets set. We use this to determine if the client has already run
-  // the code or not; sending it again when the client has already run it will
-  // likely cause the client to crash.
-  if (base_cmd->unused1 == 0x5F5CA297) {
-    c->config.clear_flag(Client::Flag::USE_OVERFLOW_FOR_SEND_FUNCTION_CALL);
-    c->config.set_flag(Client::Flag::HAS_SEND_FUNCTION_CALL);
-  } else if (!s->ep3_send_function_call_enabled && c->config.check_flag(Client::Flag::USE_OVERFLOW_FOR_SEND_FUNCTION_CALL)) {
-    c->config.clear_flag(Client::Flag::USE_OVERFLOW_FOR_SEND_FUNCTION_CALL);
-    c->config.clear_flag(Client::Flag::HAS_SEND_FUNCTION_CALL);
-  }
 
   try {
     switch (c->version()) {
@@ -1775,7 +1765,6 @@ static void on_D6_V3(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
     send_menu(c, s->information_menu(c->version()));
   } else if (c->config.check_flag(Client::Flag::AT_WELCOME_MESSAGE)) {
     c->config.clear_flag(Client::Flag::AT_WELCOME_MESSAGE);
-    send_enable_send_function_call_if_applicable(c);
     send_update_client_config(c, false);
     send_main_menu(c);
   }

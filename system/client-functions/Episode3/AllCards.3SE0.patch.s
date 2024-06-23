@@ -1,10 +1,6 @@
 # This patch gives you the maximum number of each card. It only works if used
 # in-game, which means it must be used by running `$patch AllCards`.
 
-# This patch is only for PSO Episode 3 USA, which means it requires the
-# EnableEpisode3SendFunctionCall option to be enabled in config.json. If that
-# option is disabled, the Patches menu won't appear for the client.
-
 .meta hide_from_patches_menu
 .meta name="Get all cards"
 .meta description="This patch gives you\nthe maximum number\nof each card."
