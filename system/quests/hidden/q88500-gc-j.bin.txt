@@ -38,7 +38,6 @@ copy_done:
   ba_initial_floor   17
   write2             0x805D63D8, 1
 
-  // Clean up quest handler table
   write4             0x804C88F0, 0
   write4             0x804C88F4, 0
   write4             0x804C88F8, 0
