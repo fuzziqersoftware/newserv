@@ -94,6 +94,7 @@ public:
     PROXY_BLANK_NAME_ENABLED                   = 0x0000400000000000,
     PROXY_BLOCK_FUNCTION_CALLS                 = 0x0000800000000000,
     PROXY_EP3_UNMASK_WHISPERS                  = 0x0008000000000000,
+    PROXY_VIRTUAL_CLIENT                       = 0x0400000000000000,
     // clang-format on
   };
   enum class ItemDropNotificationMode {

@@ -103,6 +103,8 @@ static shared_ptr<const Menu> proxy_options_menu_for_client(shared_ptr<const Cli
         "Save files", "Save local copies of\nfiles from the\nremote server\n(quests, etc.)");
   }
   if (s->proxy_enable_login_options) {
+    add_flag_option(ProxyOptionsMenuItemID::VIRTUAL_CLIENT, Client::Flag::PROXY_VIRTUAL_CLIENT,
+        "Virtual client", "");
     add_flag_option(ProxyOptionsMenuItemID::RED_NAME, Client::Flag::PROXY_RED_NAME_ENABLED,
         "Red name", "Set the colors\nof your name and\nChallenge Mode\nrank to red");
     add_flag_option(ProxyOptionsMenuItemID::BLANK_NAME, Client::Flag::PROXY_BLANK_NAME_ENABLED,
@@ -2370,6 +2372,9 @@ static void on_10(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
           goto resend_proxy_options_menu;
         case ProxyOptionsMenuItemID::SAVE_FILES:
           c->config.toggle_flag(Client::Flag::PROXY_SAVE_FILES);
+          goto resend_proxy_options_menu;
+        case ProxyOptionsMenuItemID::VIRTUAL_CLIENT:
+          c->config.toggle_flag(Client::Flag::PROXY_VIRTUAL_CLIENT);
           goto resend_proxy_options_menu;
         case ProxyOptionsMenuItemID::RED_NAME:
           c->config.toggle_flag(Client::Flag::PROXY_RED_NAME_ENABLED);

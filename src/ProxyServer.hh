@@ -160,6 +160,11 @@ public:
     inline uint8_t language() const {
       return this->client_channel.language;
     }
+    inline uint32_t effective_sub_version() const {
+      return this->config.check_flag(Client::Flag::PROXY_VIRTUAL_CLIENT)
+          ? default_sub_version_for_version(this->version())
+          : this->sub_version;
+    }
     void set_version(Version v);
 
     void resume(

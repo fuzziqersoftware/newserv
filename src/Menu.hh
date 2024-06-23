@@ -80,13 +80,14 @@ constexpr uint32_t SWITCH_ASSIST = 0xAA0707AA;
 constexpr uint32_t BLOCK_EVENTS = 0xAA0808AA;
 constexpr uint32_t BLOCK_PATCHES = 0xAA0909AA;
 constexpr uint32_t SAVE_FILES = 0xAA0A0AAA;
-constexpr uint32_t RED_NAME = 0xAA0B0BAA;
-constexpr uint32_t BLANK_NAME = 0xAA0C0CAA;
-constexpr uint32_t SUPPRESS_LOGIN = 0xAA0D0DAA;
-constexpr uint32_t SKIP_CARD = 0xAA0E0EAA;
-constexpr uint32_t EP3_INFINITE_MESETA = 0xAA0F0FAA;
-constexpr uint32_t EP3_INFINITE_TIME = 0xAA1010AA;
-constexpr uint32_t EP3_UNMASK_WHISPERS = 0xAA1111AA;
+constexpr uint32_t VIRTUAL_CLIENT = 0xAA0B0BAA;
+constexpr uint32_t RED_NAME = 0xAA0C0CAA;
+constexpr uint32_t BLANK_NAME = 0xAA0D0DAA;
+constexpr uint32_t SUPPRESS_LOGIN = 0xAA0E0EAA;
+constexpr uint32_t SKIP_CARD = 0xAA0F0FAA;
+constexpr uint32_t EP3_INFINITE_MESETA = 0xAA1010AA;
+constexpr uint32_t EP3_INFINITE_TIME = 0xAA1111AA;
+constexpr uint32_t EP3_UNMASK_WHISPERS = 0xAA1212AA;
 } // namespace ProxyOptionsMenuItemID
 
 namespace TeamRewardMenuItemID {

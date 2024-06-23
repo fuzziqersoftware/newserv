@@ -169,7 +169,7 @@ static HandlerResult S_G_9A(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t
   }
   cmd.unused1 = 0;
   cmd.unused2 = 0;
-  cmd.sub_version = ses->sub_version;
+  cmd.sub_version = ses->effective_sub_version();
   cmd.is_extended = (ses->remote_guild_card_number < 0) ? 1 : 0;
   cmd.language = ses->language();
   cmd.serial_number.encode(string_printf("%08" PRIX32 "", ses->login->account->account_id));
@@ -275,7 +275,7 @@ static HandlerResult S_V123P_02_17(
         }
         cmd.unknown_a1 = 0;
         cmd.unknown_a2 = 0;
-        cmd.sub_version = ses->sub_version;
+        cmd.sub_version = ses->effective_sub_version();
         cmd.is_extended = 0;
         cmd.language = ses->language();
         cmd.serial_number.encode(string_printf("%08" PRIX32 "", ses->login->account->account_id));
@@ -313,7 +313,7 @@ static HandlerResult S_V123P_02_17(
           cmd.player_tag = 0x00010000;
           cmd.guild_card_number = ses->remote_guild_card_number;
         }
-        cmd.sub_version = ses->sub_version;
+        cmd.sub_version = ses->effective_sub_version();
         cmd.serial_number.encode(string_printf("%08" PRIX32 "", ses->login->account->account_id));
         cmd.access_key.encode(*access_key);
         if (ses->version() != Version::GC_NTE) {
@@ -337,7 +337,7 @@ static HandlerResult S_V123P_02_17(
         }
         cmd.unused1 = 0;
         cmd.unused2 = 0;
-        cmd.sub_version = ses->sub_version;
+        cmd.sub_version = ses->effective_sub_version();
         cmd.is_extended = 0;
         cmd.language = ses->language();
         cmd.serial_number.encode(string_printf("%08" PRIX32 "", ses->login->account->account_id));
@@ -367,7 +367,7 @@ static HandlerResult S_V123P_02_17(
         C_VerifyAccount_V3_DB cmd;
         cmd.serial_number.encode(string_printf("%08" PRIX32 "", ses->login->account->account_id));
         cmd.access_key.encode(ses->login->gc_license->access_key);
-        cmd.sub_version = ses->sub_version;
+        cmd.sub_version = ses->effective_sub_version();
         cmd.serial_number2 = cmd.serial_number;
         cmd.access_key2 = cmd.access_key;
         cmd.password.encode(ses->login->gc_license->password);
@@ -396,7 +396,7 @@ static HandlerResult S_V123P_02_17(
         cmd.guild_card_number = guild_card_number;
         cmd.unused1 = 0;
         cmd.unused2 = 0;
-        cmd.sub_version = ses->sub_version;
+        cmd.sub_version = ses->effective_sub_version();
         cmd.is_extended = 0;
         cmd.language = ses->language();
         cmd.serial_number.encode(string_printf("%08" PRIX32, fake_serial_number));
@@ -432,7 +432,7 @@ static HandlerResult S_V123P_02_17(
       }
       cmd.unused1 = 0;
       cmd.unused2 = 0;
-      cmd.sub_version = ses->sub_version;
+      cmd.sub_version = ses->effective_sub_version();
       cmd.is_extended = (ses->remote_guild_card_number < 0) ? 1 : 0;
       cmd.language = ses->language();
       cmd.serial_number.encode(ses->login->xb_license->gamertag);
