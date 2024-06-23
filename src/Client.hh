@@ -35,7 +35,7 @@ public:
     // TODO: It'd be nice to use a pattern here (e.g. all server-side flags are
     // in the high bits) but that would require re-recording or manually
     // rewriting all the tests
-    CLIENT_SIDE_MASK                           = 0xFF3CFFFF7C0FFFFB,
+    CLIENT_SIDE_MASK                           = 0xFF3CFFFF7C0BFFFB,
 
     // Version-related flags
     CHECKED_FOR_DC_V1_PROTOTYPE                = 0x0000000000000002,
@@ -44,11 +44,13 @@ public:
     FORCE_ENGLISH_LANGUAGE_BB                  = 0x0000000000000400,
 
     // Flags describing the behavior for send_function_call
-    NO_SEND_FUNCTION_CALL                      = 0x0000000000001000,
+    HAS_SEND_FUNCTION_CALL                     = 0x0000000000001000,
     ENCRYPTED_SEND_FUNCTION_CALL               = 0x0000000000002000,
     SEND_FUNCTION_CALL_CHECKSUM_ONLY           = 0x0000000000004000,
     SEND_FUNCTION_CALL_NO_CACHE_PATCH          = 0x0000000000008000,
     USE_OVERFLOW_FOR_SEND_FUNCTION_CALL        = 0x0000000000010000,
+    CAN_RECEIVE_ENABLE_B2_QUEST                = 0x0000000000020000,
+    AWAITING_ENABLE_B2_QUEST                   = 0x0000000000040000, // Server-side only
 
     // State flags
     LOADING                                    = 0x0000000000100000, // Server-side only

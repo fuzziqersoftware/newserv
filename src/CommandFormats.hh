@@ -430,8 +430,7 @@ struct C_LegacyLogin_BB_04 {
 //   Any other nonzero value = Generic failure (101)
 // The client config field in this command is ignored by pre-V3 clients as well
 // as Episodes 1&2 Trial Edition. All other V3 clients save it as opaque data to
-// be returned in a 9E or 9F command later. newserv sends the client config
-// anyway to clients that ignore it.
+// be returned in a 9E or 9F command later.
 // The client will respond with a 96 command, but only the first time it
 // receives this command - for later 04 commands, the client will still update
 // its client config but will not respond. Changing the security data at any

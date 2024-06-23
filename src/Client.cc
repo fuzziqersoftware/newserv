@@ -37,36 +37,47 @@ void Client::Config::set_flags_for_version(Version version, int64_t sub_version)
 
   switch (sub_version) {
     case -1: // Initial check (before sub_version recognition)
+      // Note: BB does not appear here because we always get its sub_version in
+      // the very first command; there is no way to get here for a BB client
+      // before we know the client's sub_version.
       switch (version) {
         case Version::PC_PATCH:
         case Version::BB_PATCH:
           this->set_flag(Flag::NO_D6);
-          this->set_flag(Flag::NO_SEND_FUNCTION_CALL);
           break;
         case Version::DC_NTE:
         case Version::DC_V1_11_2000_PROTOTYPE:
         case Version::DC_V1:
           this->set_flag(Flag::NO_D6);
-          this->set_flag(Flag::NO_SEND_FUNCTION_CALL);
           break;
         case Version::DC_V2:
           this->set_flag(Flag::NO_D6);
+          this->set_flag(Flag::HAS_SEND_FUNCTION_CALL);
           this->set_flag(Flag::SEND_FUNCTION_CALL_NO_CACHE_PATCH);
           break;
         case Version::PC_NTE:
         case Version::PC_V2:
           this->set_flag(Flag::NO_D6);
+          this->set_flag(Flag::HAS_SEND_FUNCTION_CALL);
           this->set_flag(Flag::SEND_FUNCTION_CALL_CHECKSUM_ONLY);
           this->set_flag(Flag::SEND_FUNCTION_CALL_NO_CACHE_PATCH);
           break;
         case Version::GC_NTE:
-        case Version::GC_V3:
+          this->set_flag(Flag::HAS_SEND_FUNCTION_CALL);
+          break;
         case Version::GC_EP3_NTE:
+          this->set_flag(Flag::HAS_SEND_FUNCTION_CALL);
+          this->set_flag(Flag::ENCRYPTED_SEND_FUNCTION_CALL);
+          break;
+        case Version::GC_V3:
         case Version::GC_EP3:
+          // Some of these versions have send_function_call and some don't; we
+          // have to set these flags later when we get sub_version
           break;
         case Version::XB_V3:
           // TODO: Do all versions of XB need this flag? US does, at least.
           this->set_flag(Flag::NO_D6_AFTER_LOBBY);
+          this->set_flag(Flag::HAS_SEND_FUNCTION_CALL);
           this->set_flag(Flag::SEND_FUNCTION_CALL_NO_CACHE_PATCH);
           break;
         default:
@@ -77,35 +88,38 @@ void Client::Config::set_flags_for_version(Version version, int64_t sub_version)
     case 0x20: // DCNTE, possibly also DCv1 JP
     case 0x21: // DCv1 US
       this->set_flag(Flag::NO_D6);
-      this->set_flag(Flag::NO_SEND_FUNCTION_CALL);
       break;
     case 0x22: // DCv1 EU 50Hz (presumably)
     case 0x23: // DCv1 EU 60Hz (presumably)
       this->set_flag(Flag::NO_D6);
-      this->set_flag(Flag::NO_SEND_FUNCTION_CALL);
       break;
     case 0x25: // DCv2 JP
     case 0x26: // DCv2 US
     case 0x27: // DCv2 EU 50Hz (presumably)
     case 0x28: // DCv2 EU 60Hz (presumably)
       this->set_flag(Flag::NO_D6);
+      this->set_flag(Flag::HAS_SEND_FUNCTION_CALL);
       this->set_flag(Flag::SEND_FUNCTION_CALL_NO_CACHE_PATCH);
       break;
     case 0x29: // PC
       this->set_flag(Flag::NO_D6);
+      this->set_flag(Flag::HAS_SEND_FUNCTION_CALL);
       this->set_flag(Flag::SEND_FUNCTION_CALL_CHECKSUM_ONLY);
       this->set_flag(Flag::SEND_FUNCTION_CALL_NO_CACHE_PATCH);
       break;
     case 0x30: // GC Ep1&2 GameJam demo, GC Ep1&2 Trial Edition, GC Ep1&2 JP v1.2, at least one version of XB
     case 0x31: // GC Ep1&2 US v1.0, GC US v1.1, XB US
+      this->set_flag(Flag::HAS_SEND_FUNCTION_CALL);
       break;
     case 0x32: // GC Ep1&2 EU 50Hz
     case 0x33: // GC Ep1&2 EU 60Hz
     case 0x34: // GC Ep1&2 JP v1.3
       this->set_flag(Flag::NO_D6_AFTER_LOBBY);
+      this->set_flag(Flag::HAS_SEND_FUNCTION_CALL);
       break;
     case 0x35: // GC Ep1&2 JP v1.4 (Plus)
       this->set_flag(Flag::NO_D6_AFTER_LOBBY);
+      this->set_flag(Flag::HAS_SEND_FUNCTION_CALL);
       this->set_flag(Flag::ENCRYPTED_SEND_FUNCTION_CALL);
       this->set_flag(Flag::SEND_FUNCTION_CALL_NO_CACHE_PATCH);
       break;
@@ -113,12 +127,14 @@ void Client::Config::set_flags_for_version(Version version, int64_t sub_version)
       this->set_flag(Flag::IS_CLIENT_CUSTOMIZATION);
       [[fallthrough]];
     case 0x36: // GC Ep1&2 US v1.2 (Plus)
+      this->set_flag(Flag::CAN_RECEIVE_ENABLE_B2_QUEST);
+      [[fallthrough]];
     case 0x39: // GC Ep1&2 JP v1.5 (Plus)
       this->set_flag(Flag::NO_D6_AFTER_LOBBY);
-      this->set_flag(Flag::NO_SEND_FUNCTION_CALL);
       break;
     case 0x40: // GC Ep3 JP and Trial Edition (and BB)
       this->set_flag(Flag::NO_D6_AFTER_LOBBY);
+      this->set_flag(Flag::HAS_SEND_FUNCTION_CALL);
       this->set_flag(Flag::ENCRYPTED_SEND_FUNCTION_CALL);
       this->set_flag(Flag::SEND_FUNCTION_CALL_NO_CACHE_PATCH);
       // sub_version can't be used to tell JP final and Trial Edition apart; we
@@ -132,7 +148,6 @@ void Client::Config::set_flags_for_version(Version version, int64_t sub_version)
     case 0x42: // GC Ep3 EU 50Hz
     case 0x43: // GC Ep3 EU 60Hz
       this->set_flag(Flag::NO_D6_AFTER_LOBBY);
-      this->set_flag(Flag::NO_SEND_FUNCTION_CALL);
       break;
     default:
       throw runtime_error(string_printf("unknown sub_version %" PRIX64, sub_version));

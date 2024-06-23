@@ -588,8 +588,6 @@ QuestIndex::QuestIndex(
               throw runtime_error("qst file contains unsupported file type: " + it.first);
             }
           }
-        } else {
-          static_game_data_log.warning("(%s) Skipping file (unsupported format)", filename.c_str());
         }
 
       } catch (const exception& e) {

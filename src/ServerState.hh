@@ -120,6 +120,7 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   std::unordered_map<uint16_t, IntegralExpression> quest_flag_rewrites_v4;
   std::unordered_map<std::string, std::pair<uint8_t, uint32_t>> quest_counter_fields; // For $qfread command
   uint64_t persistent_game_idle_timeout_usecs = 0;
+  int64_t ep12_plus_send_function_call_quest_num = -1;
   bool ep3_send_function_call_enabled = false;
   bool enable_v3_v4_protected_subcommands = false;
   bool catch_handler_exceptions = true;

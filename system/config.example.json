@@ -677,6 +677,7 @@
     //   category_name: what appears in the quest menu on the client.
     //   description: what appears in the category description window (may
     //       contain color escape codes like $C6).
+    [0x000, "hidden", "Hidden", "$E$C6Quests that do not\nappear in any menu"],
     [0x081, "government-console-ep1", "Hero in Red", "$E$CG-Red Ring Rico-\n$C6Quests that follow\nthe Episode 1\nstoryline"],
     [0x081, "government-console-ep2", "The Military's Hero", "$E$CG-Heathcliff Flowen-\n$C6Quests that follow\nthe Episode 2\nstoryline"],
     [0x081, "retrieval", "Retrieval", "$E$C6Quests that involve\nretrieving an object"],
@@ -1045,6 +1046,19 @@
   // (100 on v1, 200 on other versions, or 999 on Episode 3).
   "NotifyServerForMaxLevelAchieved": false,
 
+  // If this number is nonnegative, it specifies a quest which is automatically
+  // sent to clients using Episodes 1&2 Plus USA when they connect. This is
+  // intended to be used for enabling server-side patches at connection time.
+  // This is not enabled by default because it has not yet been tested on real
+  // hardware, and it also increases the loading time considerably - the player
+  // has to wait for the initial server connection, then wait for the quest to
+  // load, then wait for the client to leave the "game", before even getting to
+  // the welcome message.
+  // This quest is not intended to be localized since it should not contain any
+  // user-visible text, so the server sends the English version for PSO USA
+  // v1.2, and the Japanese version for PSO JP v1.5, regardless of the client's
+  // language setting. The quest is not used on any other PSO version.
+  "PSOPlusSendFunctionCallQuestNumber": -1,
   // Whether to enable patches on Episode 3 USA. This functionality depends on
   // exploiting a bug in Episode 3, and while it seems to work reliably on
   // Dolphin, it hasn't been tested on a real GameCube. So, newserv doesn't

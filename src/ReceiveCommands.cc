@@ -128,7 +128,7 @@ void send_first_pre_lobby_commands(shared_ptr<Client> c, std::function<void()> o
 
   if (function_compiler_available() &&
       !c->config.check_flag(Client::Flag::HAS_AUTO_PATCHES) &&
-      !c->config.check_flag(Client::Flag::NO_SEND_FUNCTION_CALL)) {
+      c->config.check_flag(Client::Flag::HAS_SEND_FUNCTION_CALL)) {
     prepare_client_for_patches(c, [wc = weak_ptr<Client>(c), on_complete = std::move(on_complete)]() -> void {
       auto c = wc.lock();
       if (!c) {
@@ -242,7 +242,7 @@ static bool send_enable_send_function_call_if_applicable(shared_ptr<Client> c) {
     if (s->ep3_send_function_call_enabled) {
       send_quest_buffer_overflow(c);
     } else {
-      c->config.set_flag(Client::Flag::NO_SEND_FUNCTION_CALL);
+      c->config.clear_flag(Client::Flag::HAS_SEND_FUNCTION_CALL);
     }
     c->config.clear_flag(Client::Flag::USE_OVERFLOW_FOR_SEND_FUNCTION_CALL);
     return true;
@@ -363,6 +363,30 @@ static void send_main_menu(shared_ptr<Client> c) {
   send_menu(c, main_menu);
 }
 
+void on_login_server_login_complete(shared_ptr<Client> c) {
+  auto s = c->require_server_state();
+
+  if (s->pre_lobby_event && (!is_ep3(c->version()) || s->ep3_menu_song < 0)) {
+    send_change_event(c, s->pre_lobby_event);
+  }
+
+  if (is_ep3(c->version())) {
+    send_ep3_rank_update(c);
+    send_get_player_info(c);
+  }
+
+  if (s->welcome_message.empty() ||
+      c->config.check_flag(Client::Flag::NO_D6) ||
+      !c->config.check_flag(Client::Flag::AT_WELCOME_MESSAGE)) {
+    c->config.clear_flag(Client::Flag::AT_WELCOME_MESSAGE);
+    send_enable_send_function_call_if_applicable(c);
+    send_update_client_config(c, false);
+    send_main_menu(c);
+  } else {
+    send_message_box(c, s->welcome_message.c_str());
+  }
+}
+
 void on_login_complete(shared_ptr<Client> c) {
   c->convert_account_to_temporary_if_nte();
 
@@ -372,24 +396,32 @@ void on_login_complete(shared_ptr<Client> c) {
     case ServerBehavior::LOGIN_SERVER: {
       auto s = c->require_server_state();
 
-      if (s->pre_lobby_event && (!is_ep3(c->version()) || s->ep3_menu_song < 0)) {
-        send_change_event(c, s->pre_lobby_event);
+      if (c->config.check_flag(Client::Flag::CAN_RECEIVE_ENABLE_B2_QUEST) &&
+          !c->config.check_flag(Client::Flag::HAS_SEND_FUNCTION_CALL) &&
+          (s->ep12_plus_send_function_call_quest_num >= 0)) {
+        auto q = s->quest_index(c->version())->get(s->ep12_plus_send_function_call_quest_num);
+        if (q) {
+          auto vq = q->version(c->version(), (c->sub_version == 0x39 ? 0 : 1));
+          if (vq) {
+            c->config.set_flag(Client::Flag::HAS_SEND_FUNCTION_CALL);
+            c->config.set_flag(Client::Flag::SEND_FUNCTION_CALL_NO_CACHE_PATCH);
+            c->config.set_flag(Client::Flag::AWAITING_ENABLE_B2_QUEST);
+            send_update_client_config(c, false);
+
+            c->log.info("Sending %c version of quest \"%s\"", char_for_language_code(vq->language), vq->name.c_str());
+            string bin_filename = vq->bin_filename();
+            string dat_filename = vq->dat_filename();
+            string xb_filename = vq->xb_filename();
+            send_open_quest_file(c, bin_filename, bin_filename, xb_filename, vq->quest_number, QuestFileType::ONLINE, vq->bin_contents);
+            send_open_quest_file(c, dat_filename, dat_filename, xb_filename, vq->quest_number, QuestFileType::ONLINE, vq->dat_contents);
+
+            send_command(c, 0xAC, 0x00);
+          }
+        }
       }
 
-      if (is_ep3(c->version())) {
-        send_ep3_rank_update(c);
-        send_get_player_info(c);
-      }
-
-      if (s->welcome_message.empty() ||
-          c->config.check_flag(Client::Flag::NO_D6) ||
-          !c->config.check_flag(Client::Flag::AT_WELCOME_MESSAGE)) {
-        c->config.clear_flag(Client::Flag::AT_WELCOME_MESSAGE);
-        send_enable_send_function_call_if_applicable(c);
-        send_update_client_config(c, false);
-        send_main_menu(c);
-      } else {
-        send_message_box(c, s->welcome_message.c_str());
+      if (!c->config.check_flag(Client::Flag::AWAITING_ENABLE_B2_QUEST)) {
+        on_login_server_login_complete(c);
       }
       break;
     }
@@ -882,10 +914,10 @@ static void on_9D_9E(shared_ptr<Client> c, uint16_t command, uint32_t, string& d
   // likely cause the client to crash.
   if (base_cmd->unused1 == 0x5F5CA297) {
     c->config.clear_flag(Client::Flag::USE_OVERFLOW_FOR_SEND_FUNCTION_CALL);
-    c->config.clear_flag(Client::Flag::NO_SEND_FUNCTION_CALL);
+    c->config.set_flag(Client::Flag::HAS_SEND_FUNCTION_CALL);
   } else if (!s->ep3_send_function_call_enabled && c->config.check_flag(Client::Flag::USE_OVERFLOW_FOR_SEND_FUNCTION_CALL)) {
     c->config.clear_flag(Client::Flag::USE_OVERFLOW_FOR_SEND_FUNCTION_CALL);
-    c->config.set_flag(Client::Flag::NO_SEND_FUNCTION_CALL);
+    c->config.clear_flag(Client::Flag::HAS_SEND_FUNCTION_CALL);
   }
 
   try {
@@ -2195,7 +2227,7 @@ static void on_10(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
           if (!function_compiler_available()) {
             throw runtime_error("function compiler not available");
           }
-          if (c->config.check_flag(Client::Flag::NO_SEND_FUNCTION_CALL)) {
+          if (!c->config.check_flag(Client::Flag::HAS_SEND_FUNCTION_CALL)) {
             throw runtime_error("client does not support send_function_call");
           }
           prepare_client_for_patches(c, [c]() -> void {
@@ -2207,7 +2239,7 @@ static void on_10(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
           if (!function_compiler_available()) {
             throw runtime_error("function compiler not available");
           }
-          if (c->config.check_flag(Client::Flag::NO_SEND_FUNCTION_CALL)) {
+          if (!c->config.check_flag(Client::Flag::HAS_SEND_FUNCTION_CALL)) {
             throw runtime_error("client does not support send_function_call");
           }
           // We have to prepare the client for patches here, even though we
@@ -2222,7 +2254,7 @@ static void on_10(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
           if (!function_compiler_available()) {
             throw runtime_error("function compiler not available");
           }
-          if (c->config.check_flag(Client::Flag::NO_SEND_FUNCTION_CALL)) {
+          if (!c->config.check_flag(Client::Flag::HAS_SEND_FUNCTION_CALL)) {
             throw runtime_error("client does not support send_function_call");
           }
           prepare_client_for_patches(c, [c]() -> void {
@@ -2577,7 +2609,7 @@ static void on_10(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
         send_main_menu(c);
 
       } else {
-        if (c->config.check_flag(Client::Flag::NO_SEND_FUNCTION_CALL)) {
+        if (!c->config.check_flag(Client::Flag::HAS_SEND_FUNCTION_CALL)) {
           throw runtime_error("client does not support send_function_call");
         }
 
@@ -2595,7 +2627,7 @@ static void on_10(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
         send_main_menu(c);
 
       } else {
-        if (c->config.check_flag(Client::Flag::NO_SEND_FUNCTION_CALL)) {
+        if (!c->config.check_flag(Client::Flag::HAS_SEND_FUNCTION_CALL)) {
           throw runtime_error("client does not support send_function_call");
         }
 
@@ -2615,7 +2647,7 @@ static void on_10(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
         send_main_menu(c);
 
       } else {
-        if (c->config.check_flag(Client::Flag::NO_SEND_FUNCTION_CALL)) {
+        if (!c->config.check_flag(Client::Flag::HAS_SEND_FUNCTION_CALL)) {
           throw runtime_error("client does not support send_function_call");
         }
 
@@ -2699,6 +2731,13 @@ partner (if any) and opponent(s).",
 static void on_84(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
   const auto& cmd = check_size_t<C_LobbySelection_84>(data);
   auto s = c->require_server_state();
+
+  if ((c->server_behavior == ServerBehavior::LOGIN_SERVER) &&
+      c->config.check_flag(Client::Flag::AWAITING_ENABLE_B2_QUEST)) {
+    on_login_server_login_complete(c);
+    c->config.clear_flag(Client::Flag::AWAITING_ENABLE_B2_QUEST);
+    return;
+  }
 
   if (cmd.menu_id != MenuID::LOBBY) {
     send_message_box(c, "Incorrect menu ID");

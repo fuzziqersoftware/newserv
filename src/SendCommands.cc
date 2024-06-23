@@ -474,7 +474,7 @@ void send_function_call(
     uint32_t checksum_addr,
     uint32_t checksum_size,
     uint32_t override_relocations_offset) {
-  if (client_config.check_flag(Client::Flag::NO_SEND_FUNCTION_CALL)) {
+  if (!client_config.check_flag(Client::Flag::HAS_SEND_FUNCTION_CALL)) {
     throw logic_error("client does not support function calls");
   }
   if (code.get() && client_config.check_flag(Client::Flag::SEND_FUNCTION_CALL_CHECKSUM_ONLY)) {
@@ -511,7 +511,7 @@ bool send_protected_command(std::shared_ptr<Client> c, const void* data, size_t 
     case Version::BB_V4: {
       auto s = c->require_server_state();
       if (!s->enable_v3_v4_protected_subcommands ||
-          c->config.check_flag(Client::Flag::NO_SEND_FUNCTION_CALL) ||
+          !c->config.check_flag(Client::Flag::HAS_SEND_FUNCTION_CALL) ||
           c->config.check_flag(Client::Flag::SEND_FUNCTION_CALL_CHECKSUM_ONLY)) {
         return false;
       }
@@ -1429,7 +1429,7 @@ void send_menu_t(shared_ptr<Client> c, shared_ptr<const Menu> menu, bool is_info
       is_visible &= !c->config.check_flag(Client::Flag::NO_D6);
     }
     if (item.flags & MenuItem::Flag::REQUIRES_SEND_FUNCTION_CALL) {
-      is_visible &= !c->config.check_flag(Client::Flag::NO_SEND_FUNCTION_CALL);
+      is_visible &= c->config.check_flag(Client::Flag::HAS_SEND_FUNCTION_CALL);
     }
     if (item.flags & MenuItem::Flag::REQUIRES_SAVE_DISABLED) {
       is_visible &= !c->config.check_flag(Client::Flag::SAVE_ENABLED);
@@ -2407,7 +2407,7 @@ void send_get_player_info(shared_ptr<Client> c, bool request_extended) {
   }
 
   if (request_extended &&
-      !c->config.check_flag(Client::Flag::NO_SEND_FUNCTION_CALL) &&
+      c->config.check_flag(Client::Flag::HAS_SEND_FUNCTION_CALL) &&
       !c->config.check_flag(Client::Flag::SEND_FUNCTION_CALL_CHECKSUM_ONLY)) {
     auto s = c->require_server_state();
     prepare_client_for_patches(c, [wc = weak_ptr<Client>(c)]() {

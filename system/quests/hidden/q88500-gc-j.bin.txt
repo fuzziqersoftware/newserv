@@ -1,0 +1,50 @@
+.version GC_V3
+.quest_num 88500
+.language 0
+.episode Episode1
+.name "GC v1.5 JP patch enabler"
+.short_desc ""
+.long_desc ""
+
+start:
+  // This script is identical to q88500-gc-e.bin.txt, except the addresses are
+  // changed to be suitable for JP v1.5.
+  leti               r3, 0x80004000
+
+  write4             0x804C88F0, 0x801F29C0
+  write4             0x804C88F4, 0x8000C274
+  write4             0x804C88F8, r3
+
+  read4              r0, 0x805D6560
+  leto               r4, code
+  read4              r4, r4
+  add                r4, r0
+  leto               r5, code_end
+  read4              r5, r5
+  add                r5, r0
+
+copy_byte:
+  jmp_eq             r4, r5, copy_done
+  read1              r0, r4
+  write1             r3, r0
+  addi               r3, 1
+  addi               r4, 1
+  jmp                copy_byte
+
+copy_done:
+  .data              F9FE00400080
+  .data              F9FF
+
+  ba_initial_floor   17
+  write2             0x805D63D8, 1
+
+  // Clean up quest handler table
+  write4             0x804C88F0, 0
+  write4             0x804C88F4, 0
+  write4             0x804C88F8, 0
+
+  ret
+
+code:
+  .include_native    q88500-gc.s
+code_end:

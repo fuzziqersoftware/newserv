@@ -1538,7 +1538,7 @@ static void server_command_loadchar(shared_ptr<Client> c, const std::string& arg
       (c->version() == Version::XB_V3)) {
     // TODO: Support extended player info on other versions
     auto s = c->require_server_state();
-    if (c->config.check_flag(Client::Flag::NO_SEND_FUNCTION_CALL) ||
+    if (!c->config.check_flag(Client::Flag::HAS_SEND_FUNCTION_CALL) ||
         c->config.check_flag(Client::Flag::SEND_FUNCTION_CALL_CHECKSUM_ONLY)) {
       send_text_message_printf(c, "Can\'t load character\ndata on this game\nversion");
       return;

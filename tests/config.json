@@ -49,6 +49,7 @@
   "HTTPListen": [],
   "BannedIPV4Ranges": [],
   "Episode3BehaviorFlags": 0xFA,
+  "PSOPlusSendFunctionCallQuestNumber": -1,
   "EnableEpisode3SendFunctionCall": false,
   "EnableV3V4ProtectedSubcommands": false,
 
@@ -192,6 +193,7 @@
   },
 
   "QuestCategories": [
+    [0x000, "hidden", "Hidden", "$E$C6Quests that do not\nappear in any menu"],
     [0x081, "government-console-ep1", "Hero in Red", "$E$CG-Red Ring Rico-\n$C6Quests that follow\nthe Episode 1\nstoryline"],
     [0x081, "government-console-ep2", "The Military's Hero", "$E$CG-Heathcliff Flowen-\n$C6Quests that follow\nthe Episode 2\nstoryline"],
     [0x081, "retrieval", "Retrieval", "$E$C6Quests that involve\nretrieving an object"],
