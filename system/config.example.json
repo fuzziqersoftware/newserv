@@ -709,7 +709,7 @@
   // byte of the item data); for items beyond the end of the list, the last
   // entry's value is used.
   "ItemStackLimits": [
-    {"MesetaLimit": 999999, "ToolLimits": [10, 10, 1, 10, 10, 10, 10, 10, 10, 1]}, // DC NTE
+    {"MesetaLimit": 999999, "ToolLimits": [10]}, // DC NTE
     {"MesetaLimit": 999999, "ToolLimits": [10]}, // DC 11/2000
     {"MesetaLimit": 999999, "ToolLimits": [10, 10, 1, 10, 10, 10, 10, 10, 10, 1]}, // DC V1
     {"MesetaLimit": 999999, "ToolLimits": [10, 10, 1, 10, 10, 10, 10, 10, 10, 1]}, // DC V2
