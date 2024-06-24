@@ -12,7 +12,8 @@ void player_use_item(shared_ptr<Client> c, size_t item_index, shared_ptr<PSOLFGE
   // On PC (and presumably DC), the client sends a 6x29 after this to delete the
   // used item. On GC and later versions, this does not happen, so we should
   // delete the item here.
-  bool is_v3_or_later = is_v3(c->version()) || is_v4(c->version());
+  bool is_v4 = ::is_v4(c->version());
+  bool is_v3_or_later = is_v3(c->version()) || is_v4;
   bool should_delete_item = is_v3_or_later;
 
   auto player = c->character();
@@ -36,13 +37,9 @@ void player_use_item(shared_ptr<Client> c, size_t item_index, shared_ptr<PSOLFGE
     }
 
     auto& weapon = player->inventory.items[player->inventory.find_equipped_item(EquipSlot::WEAPON)];
-    // Don't enforce the weapon's grind limit on V1 and V2. This is necessary
-    // because the V2 client replaces its inventory items on the fly with items
-    // compatible with V1 when sending the 61 and 98 commands. There appears to
-    // be no way to disable this behavior, so there's no way for the server to
-    // get an accurate picture of what's actually in the player's inventory, so
-    // there's no way to know if we would be enforcing the correct grind limit.
-    if (is_v3_or_later) {
+    // Only enforce grind limits on BB, since the server doesn't have direct
+    // control over players' inventories on other versions
+    if (is_v4) {
       auto item_parameter_table = s->item_parameter_table(c->version());
       auto weapon_def = item_parameter_table->get_weapon(weapon.data.data1[1], weapon.data.data1[2]);
       if (weapon.data.data1[3] >= weapon_def.max_grind) {
