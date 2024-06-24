@@ -161,6 +161,7 @@ constexpr uint32_t SPECIFIC_VERSION_XB_V3_INDETERMINATE = 0x344F0000; // 4O__
 constexpr uint32_t SPECIFIC_VERSION_BB_V4_INDETERMINATE = 0x35000000; // 5___
 constexpr uint32_t SPECIFIC_VERSION_INDETERMINATE = 0x00000000; // ____
 
+uint32_t default_sub_version_for_version(Version version);
 uint32_t default_specific_version_for_version(Version version, int64_t sub_version);
 bool specific_version_is_indeterminate(uint32_t specific_version);
 bool specific_version_is_dc(uint32_t specific_version);

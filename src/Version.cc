@@ -199,6 +199,37 @@ ServerBehavior enum_for_name<ServerBehavior>(const char* name) {
   }
 }
 
+uint32_t default_sub_version_for_version(Version version) {
+  switch (version) {
+    case Version::DC_NTE:
+      return 0x20;
+    case Version::DC_V1_11_2000_PROTOTYPE:
+      return 0x21;
+    case Version::DC_V1:
+      return 0x21;
+    case Version::DC_V2:
+      return 0x26;
+    case Version::PC_NTE:
+      return 0x28;
+    case Version::PC_V2:
+      return 0x29;
+    case Version::GC_NTE:
+      return 0x30;
+    case Version::GC_V3:
+      return 0x31;
+    case Version::GC_EP3_NTE:
+      return 0x40;
+    case Version::GC_EP3:
+      return 0x41;
+    case Version::XB_V3:
+      return 0x31;
+    case Version::BB_V4:
+      return 0x41;
+    default:
+      return 0x00;
+  }
+}
+
 uint32_t default_specific_version_for_version(Version version, int64_t sub_version) {
   // For versions that don't support send_function_call by default, we need
   // to set the specific_version based on sub_version. Fortunately, all
@@ -224,6 +255,7 @@ uint32_t default_specific_version_for_version(Version version, int64_t sub_versi
         case 0x33: // GC Ep1&2 EU 60Hz
           return SPECIFIC_VERSION_GC_V3_EU; // 3OP0
         case 0x36: // GC Ep1&2 US v1.2 (Plus)
+        case 0x3A: // GC Ep1&2 US v1.2 (Plus) GMK edition
           return SPECIFIC_VERSION_GC_V3_US_12; // 3OE2
         case 0x34: // GC Ep1&2 JP v1.3
           return SPECIFIC_VERSION_GC_V3_JP_13; // 3OJ3
