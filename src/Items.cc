@@ -39,14 +39,12 @@ void player_use_item(shared_ptr<Client> c, size_t item_index, shared_ptr<PSOLFGE
     auto& weapon = player->inventory.items[player->inventory.find_equipped_item(EquipSlot::WEAPON)];
     // Only enforce grind limits on BB, since the server doesn't have direct
     // control over players' inventories on other versions
-    if (is_v4) {
-      auto item_parameter_table = s->item_parameter_table(c->version());
-      auto weapon_def = item_parameter_table->get_weapon(weapon.data.data1[1], weapon.data.data1[2]);
-      if (weapon.data.data1[3] >= weapon_def.max_grind) {
-        throw runtime_error("weapon already at maximum grind");
-      }
+    auto item_parameter_table = s->item_parameter_table(c->version());
+    auto weapon_def = item_parameter_table->get_weapon(weapon.data.data1[1], weapon.data.data1[2]);
+    if (is_v4 && (weapon.data.data1[3] >= weapon_def.max_grind)) {
+      throw runtime_error("weapon already at maximum grind");
     }
-    weapon.data.data1[3] += (item.data.data1[2] + 1);
+    weapon.data.data1[3] = min<uint8_t>(weapon.data.data1[3] + item.data.data1[2] + 1, weapon_def.max_grind);
 
   } else if ((primary_identifier & 0xFFFF0000) == 0x030B0000) { // Material
     auto p = c->character();
