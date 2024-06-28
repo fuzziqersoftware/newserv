@@ -257,6 +257,65 @@ Image PSOGCSnapshotFile::decode_image() const {
   return ret;
 }
 
+PSOGCEp3CharacterFile::Character::Character(const PSOGCEp3NTECharacter& nte)
+    : inventory(nte.inventory),
+      disp(nte.disp),
+      flags(nte.flags),
+      creation_timestamp(nte.creation_timestamp),
+      signature(nte.signature),
+      play_time_seconds(nte.play_time_seconds),
+      option_flags(nte.option_flags),
+      save_count(nte.save_count),
+      ppp_username(nte.ppp_username),
+      ppp_password(nte.ppp_password),
+      seq_vars(nte.seq_vars),
+      death_count(nte.death_count),
+      bank(nte.bank),
+      guild_card(nte.guild_card),
+      symbol_chats(nte.symbol_chats),
+      chat_shortcuts(nte.chat_shortcuts),
+      auto_reply(nte.auto_reply),
+      info_board(nte.info_board),
+      battle_records(nte.battle_records),
+      unknown_a10(nte.unknown_a10),
+      challenge_record_stats(nte.challenge_record_stats),
+      ep3_config(nte.ep3_config),
+      unknown_a11(nte.unknown_a11),
+      unknown_a12(nte.unknown_a12),
+      unknown_a13(nte.unknown_a13) {
+  this->ep3_config.backup_visual = this->disp.visual;
+}
+
+PSOGCEp3CharacterFile::Character::operator PSOGCEp3NTECharacter() const {
+  return {
+      .inventory = this->inventory,
+      .disp = this->disp,
+      .flags = this->flags,
+      .creation_timestamp = this->creation_timestamp,
+      .signature = this->signature,
+      .play_time_seconds = this->play_time_seconds,
+      .option_flags = this->option_flags,
+      .save_count = this->save_count,
+      .ppp_username = this->ppp_username,
+      .ppp_password = this->ppp_password,
+      .seq_vars = this->seq_vars,
+      .death_count = this->death_count,
+      .bank = this->bank,
+      .guild_card = this->guild_card,
+      .symbol_chats = this->symbol_chats,
+      .chat_shortcuts = this->chat_shortcuts,
+      .auto_reply = this->auto_reply,
+      .info_board = this->info_board,
+      .battle_records = this->battle_records,
+      .unknown_a10 = this->unknown_a10,
+      .challenge_record_stats = this->challenge_record_stats,
+      .ep3_config = this->ep3_config,
+      .unknown_a11 = this->unknown_a11,
+      .unknown_a12 = this->unknown_a12,
+      .unknown_a13 = this->unknown_a13,
+  };
+}
+
 void PSOBBGuildCardFile::Entry::clear() {
   this->data.clear();
   this->unknown_a1.clear(0);
@@ -595,6 +654,48 @@ shared_ptr<PSOBBCharacterFile> PSOBBCharacterFile::create_from_gc(const PSOGCCha
   }
   ret->offline_battle_records = gc.offline_battle_records;
   ret->unknown_a7 = gc.unknown_a7;
+  return ret;
+}
+
+shared_ptr<PSOBBCharacterFile> PSOBBCharacterFile::create_from_ep3(const PSOGCEp3CharacterFile::Character& ep3) {
+  auto ret = make_shared<PSOBBCharacterFile>();
+  ret->inventory = ep3.inventory;
+  uint8_t language = ret->inventory.language;
+  ret->disp = ep3.disp.to_bb(language, language);
+  ret->creation_timestamp = ep3.creation_timestamp.load();
+  ret->play_time_seconds = ep3.play_time_seconds.load();
+  ret->option_flags = ep3.option_flags.load();
+  ret->save_count = ep3.save_count.load();
+  ret->death_count = ep3.death_count.load();
+  ret->bank = ep3.bank;
+  ret->guild_card = ep3.guild_card;
+  for (size_t z = 0; z < std::min<size_t>(ret->symbol_chats.size(), ep3.symbol_chats.size()); z++) {
+    auto& ret_sc = ret->symbol_chats[z];
+    const auto& gc_sc = ep3.symbol_chats[z];
+    ret_sc.present = gc_sc.present.load();
+    ret_sc.name.encode(gc_sc.name.decode(language), language);
+    ret_sc.spec = gc_sc.spec;
+  }
+  for (size_t z = 0; z < std::min<size_t>(ret->shortcuts.size(), ep3.chat_shortcuts.size()); z++) {
+    ret->shortcuts[z] = ep3.chat_shortcuts[z].convert<false, TextEncoding::UTF16, 0x50>(language);
+  }
+  ret->auto_reply.encode(ep3.auto_reply.decode(language), language);
+  ret->info_board.encode(ep3.info_board.decode(language), language);
+  ret->battle_records = ep3.battle_records;
+  ret->unknown_a4 = ep3.ep3_config.unknown_a4;
+  ret->challenge_records.rank_title.encode(ep3.ep3_config.rank_text.decode(language), language);
+  for (size_t z = 0; z < std::min<size_t>(ret->tech_menu_shortcut_entries.size(), ep3.ep3_config.tech_menu_shortcut_entries.size()); z++) {
+    ret->tech_menu_shortcut_entries[z] = ep3.ep3_config.tech_menu_shortcut_entries[z].load();
+  }
+  ret->choice_search_config.disabled = !!(ret->option_flags & 0x00040000);
+  for (size_t z = 0; z < 5; z++) {
+    ret->choice_search_config.entries[z].parent_choice_id = ep3.ep3_config.choice_search_config[z * 2].load();
+    ret->choice_search_config.entries[z].choice_id = ep3.ep3_config.choice_search_config[z * 2 + 1].load();
+  }
+  for (size_t z = 0; z < std::min<size_t>(ret->quest_counters.size(), ep3.ep3_config.scenario_progress.size()); z++) {
+    ret->quest_counters[z] = ep3.ep3_config.scenario_progress[z].load();
+  }
+  ret->offline_battle_records = ep3.ep3_config.unused_offline_records;
   return ret;
 }
 

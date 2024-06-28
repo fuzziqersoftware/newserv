@@ -656,8 +656,9 @@ string Client::character_filename(const std::string& bb_username, int8_t index) 
   return string_printf("system/players/player_%s_%hhd.psochar", bb_username.c_str(), index);
 }
 
-string Client::backup_character_filename(uint32_t account_id, size_t index) {
-  return string_printf("system/players/backup_player_%" PRIu32 "_%zu.psochar", account_id, index);
+string Client::backup_character_filename(uint32_t account_id, size_t index, bool is_ep3) {
+  return string_printf("system/players/backup_player_%" PRIu32 "_%zu.%s",
+      account_id, index, is_ep3 ? "pso3char" : "psochar");
 }
 
 string Client::character_filename(int8_t index) const {
@@ -963,6 +964,13 @@ void Client::save_character_file(
   player_data_log.info("Saved character file %s", filename.c_str());
 }
 
+void Client::save_ep3_character_file(
+    const string& filename,
+    const PSOGCEp3CharacterFile::Character& character) {
+  save_file(filename, &character, sizeof(character));
+  player_data_log.info("Saved Episode 3 character file %s", filename.c_str());
+}
+
 void Client::save_character_file() {
   if (!this->system_data.get()) {
     throw logic_error("no system file loaded");
@@ -993,7 +1001,7 @@ void Client::save_guild_card_file() const {
 }
 
 void Client::load_backup_character(uint32_t account_id, size_t index) {
-  string filename = this->backup_character_filename(account_id, index);
+  string filename = this->backup_character_filename(account_id, index, false);
   auto f = fopen_unique(filename, "rb");
   auto header = freadx<PSOCommandHeaderBB>(f.get());
   if (header.size != 0x399C) {
@@ -1008,6 +1016,16 @@ void Client::load_backup_character(uint32_t account_id, size_t index) {
   this->character_data = make_shared<PSOBBCharacterFile>(freadx<PSOBBCharacterFile>(f.get()));
   this->update_character_data_after_load(this->character_data);
   this->v1_v2_last_reported_disp.reset();
+}
+
+shared_ptr<PSOGCEp3CharacterFile::Character> Client::load_ep3_backup_character(uint32_t account_id, size_t index) {
+  string filename = this->backup_character_filename(account_id, index, true);
+  auto ch = make_shared<PSOGCEp3CharacterFile::Character>(load_object_file<PSOGCEp3CharacterFile::Character>(filename));
+  this->character_data = PSOBBCharacterFile::create_from_ep3(*ch);
+  this->ep3_config = make_shared<Episode3::PlayerConfig>(ch->ep3_config);
+  this->update_character_data_after_load(this->character_data);
+  this->v1_v2_last_reported_disp.reset();
+  return ch;
 }
 
 void Client::save_and_unload_character() {

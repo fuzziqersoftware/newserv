@@ -1054,6 +1054,8 @@
   // has to wait for the initial server connection, then wait for the quest to
   // load, then wait for the client to leave the "game", before even getting to
   // the welcome message.
+  // To enable this feature, set this value to 88500. This is the number of the
+  // quest in system/quests/hidden that implements the patch.
   // This quest is not intended to be localized since it should not contain any
   // user-visible text, so the server uses the language field to determine
   // which quest to send based on the client's version:

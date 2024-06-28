@@ -7,7 +7,7 @@ get_data_ptr_ret:
 
   # Copy part1 data into place
   lwz    r3, [r10 + 0x08]
-  addi   r4, r11, 0x0004
+  addi   r4, r11, 0x0008
   li     r5, 0x41C
   bl     memcpy
 
@@ -17,8 +17,8 @@ get_data_ptr_ret:
   lwz    r7, [r3 + 0x04]  # creation_timestamp
   lwz    r8, [r3 + 0x08]  # signature
   lwz    r9, [r3 + 0x14]  # save_count
-  addi   r4, r11, 0x0420
-  li     r5, 0x2370
+  addi   r4, r11, 0x0424
+  lwz    r5, [r11 + 4]
   bl     memcpy
   lwz    r3, [r10 + 0x0C]
   stw    [r3 + 0x04], r7  # creation_timestamp

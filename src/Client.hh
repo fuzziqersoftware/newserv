@@ -364,7 +364,7 @@ public:
 
   std::string system_filename() const;
   static std::string character_filename(const std::string& bb_username, int8_t index);
-  static std::string backup_character_filename(uint32_t account_id, size_t index);
+  static std::string backup_character_filename(uint32_t account_id, size_t index, bool is_ep3);
   std::string character_filename(int8_t index = -1) const;
   std::string guild_card_filename() const;
   std::string shared_bank_filename() const;
@@ -378,11 +378,15 @@ public:
       const std::string& filename,
       std::shared_ptr<const PSOBBBaseSystemFile> sys,
       std::shared_ptr<const PSOBBCharacterFile> character);
+  static void save_ep3_character_file(
+      const std::string& filename,
+      const PSOGCEp3CharacterFile::Character& character);
   // Note: This function is not const because it updates the player's play time.
   void save_character_file();
   void save_guild_card_file() const;
 
   void load_backup_character(uint32_t account_id, size_t index);
+  std::shared_ptr<PSOGCEp3CharacterFile::Character> load_ep3_backup_character(uint32_t account_id, size_t index);
   void save_and_unload_character();
 
   PlayerBank200& current_bank();

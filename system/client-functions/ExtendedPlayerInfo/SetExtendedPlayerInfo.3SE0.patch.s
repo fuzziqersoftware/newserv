@@ -8,6 +8,6 @@ reloc0:
 start:
   .include SetExtendedPlayerInfoGC
 data:
-  .data  0x805C4E60  # character_file
-  .data  0x00002370  # sizeof(part2)
-  # Server adds a PSOGCCharacterFile::Character here
+  .data  0x8057A6E8  # character_file
+  .data  0x0000358C  # sizeof(*char_file_part2)
+  # Server adds a PSOGCEp3CharacterFile::Character here

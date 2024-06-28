@@ -3250,7 +3250,7 @@ static void on_61_98(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
             pending_export->dest_bb_license->username, pending_export->character_index);
       } else {
         filename = Client::backup_character_filename(
-            pending_export->dest_account->account_id, pending_export->character_index);
+            pending_export->dest_account->account_id, pending_export->character_index, is_ep3(c->version()));
       }
 
       if (s->player_files_manager->get_character(filename)) {
@@ -3323,12 +3323,28 @@ static void on_30(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
   } else {
     filename = Client::backup_character_filename(
         pending_export->dest_account->account_id,
-        pending_export->character_index);
+        pending_export->character_index,
+        is_ep3(c->version()));
   }
 
   auto s = c->require_server_state();
   if (s->player_files_manager->get_character(filename)) {
     send_text_message(c, "$C6The target player\nis currently loaded.\nSign off in Blue\nBurst and try again.");
+    return;
+  }
+
+  if (is_ep3(c->version())) {
+    try {
+      if (c->version() == Version::GC_EP3_NTE) {
+        PSOGCEp3CharacterFile::Character ch(check_size_t<PSOGCEp3NTECharacter>(data));
+        Client::save_ep3_character_file(filename, ch);
+      } else {
+        Client::save_ep3_character_file(filename, check_size_t<PSOGCEp3CharacterFile::Character>(data));
+      }
+      send_text_message(c, "$C7Character data saved\n(full save file)");
+    } catch (const exception& e) {
+      send_text_message_printf(c, "$C6Character data could\nnot be saved:\n%s", e.what());
+    }
     return;
   }
 
@@ -3346,13 +3362,14 @@ static void on_30(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
     case Version::XB_V3:
       bb_char = PSOBBCharacterFile::create_from_xb(check_size_t<PSOXBCharacterFileCharacter>(data));
       break;
+    case Version::GC_EP3_NTE:
+    case Version::GC_EP3:
+      throw logic_error("Episode 3 case not handled correctly");
     case Version::DC_NTE:
     case Version::DC_V1_11_2000_PROTOTYPE:
     case Version::DC_V1:
     case Version::PC_NTE:
     case Version::PC_V2:
-    case Version::GC_EP3_NTE:
-    case Version::GC_EP3:
     case Version::BB_V4:
     default:
       throw logic_error("extended player data command not implemented for version");

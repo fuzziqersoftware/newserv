@@ -14,3 +14,4 @@ data:
   .data  0x805CEA50  # root_protocol (anchor: send_05)
   .data  0x803DC870  # free9
   .data  0x800785F0  # TProtocol_wait_send_drain
+  .data  0x00002370  # sizeof(*char_file_part2)

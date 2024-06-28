@@ -9,4 +9,5 @@ start:
   .include SetExtendedPlayerInfoGC
 data:
   .data  0x805CC738  # character_file
+  .data  0x00002370  # sizeof(part2)
   # Server adds a PSOGCCharacterFile::Character here

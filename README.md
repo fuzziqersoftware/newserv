@@ -357,9 +357,13 @@ Exactly which data is saved and loaded depends on the game version:
 | PSO PC (v2)          | Yes       | Yes       | No            | No          | No   | Save only        |
 | PSO GC NTE           | Yes       | Yes       | Yes           | Yes         | Yes  | Yes              |
 | PSO GC (not Plus)    | Yes       | Yes       | Yes           | Yes         | Yes  | Yes              |
-| PSO GC Plus          | Save only | Save only | No            | No          | No   | Save only        |
+| PSO GC Plus (1)      | Save only | Save only | No            | No          | No   | Save only        |
+| PSO GC Ep3 (1)       | No        | Save only | No            | No          | No   | Save only        |
 | PSO Xbox             | Yes       | Yes       | Yes           | Yes         | Yes  | Yes              |
 | PSO BB               | Yes       | Yes       | Yes           | Yes         | Yes  | Yes              |
+
+*Notes*:
+1. *If EnableSendFunctionCallQuestNumber is enabled in config.json, then $savechar and $loadchar can save and restore all character data on these versions, just like on GC non-Plus. Episode 3 characters exist in a separate namespace; that is, you can't use $savechar and $loadchar to convert an Ep3 character to non-Ep3, or vice versa.*
 
 ## Episode 3 features
 

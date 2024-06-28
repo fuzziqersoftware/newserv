@@ -531,6 +531,42 @@ struct PSOGCCharacterFile {
   /* 1156C */
 } __packed_ws__(PSOGCCharacterFile, 0x1156C);
 
+struct PSOGCEp3NTECharacter {
+  // This structure is internally split into two by the game. The offsets here
+  // are relative to the start of this structure (first column), and relative
+  // to the start of the second internal structure (second column).
+  /* 0000:---- */ PlayerInventoryBE inventory;
+  /* 034C:---- */ PlayerDispDataDCPCV3BE disp;
+  /* 041C:0000 */ be_uint32_t flags = 0;
+  /* 0420:0004 */ be_uint32_t creation_timestamp = 0;
+  /* 0424:0008 */ be_uint32_t signature = 0xA205B064;
+  /* 0428:000C */ be_uint32_t play_time_seconds = 0;
+  /* 042C:0010 */ be_uint32_t option_flags = 0x00040058;
+  /* 0430:0014 */ be_uint32_t save_count = 1;
+  /* 0434:0018 */ pstring<TextEncoding::ASCII, 0x1C> ppp_username;
+  /* 0450:0034 */ pstring<TextEncoding::ASCII, 0x10> ppp_password;
+  // seq_vars is an array of 8192 bits, which contain all the Episode 3 quest
+  // progress flags. This includes things like which maps are unlocked, which
+  // NPC decks are unlocked, and whether the player has a VIP card or not.
+  /* 0460:0044 */ parray<uint8_t, 0x400> seq_vars;
+  /* 0860:0444 */ be_uint32_t death_count = 0;
+  /* 0864:0448 */ PlayerBank200BE bank;
+  /* 1B2C:1710 */ GuildCardGCBE guild_card;
+  /* 1BBC:17A0 */ parray<SaveFileSymbolChatEntryGC, 12> symbol_chats;
+  /* 1FDC:1BC0 */ parray<SaveFileShortcutEntryGC, 20> chat_shortcuts;
+  /* 266C:2250 */ pstring<TextEncoding::MARKED, 0xAC> auto_reply;
+  /* 2718:22FC */ pstring<TextEncoding::MARKED, 0xAC> info_board;
+  // // In this struct, place_counts[0] is win_count and [1] is loss_count
+  /* 27C4:23A8 */ PlayerRecordsBattleBE battle_records;
+  /* 27DC:23C0 */ parray<uint8_t, 4> unknown_a10;
+  /* 27E0:23C4 */ PlayerRecordsChallengeV3BE::Stats challenge_record_stats;
+  /* 28B8:249C */ Episode3::PlayerConfigNTE ep3_config;
+  /* 4610:41F4 */ be_uint32_t unknown_a11 = 0;
+  /* 4614:41F8 */ be_uint32_t unknown_a12 = 0;
+  /* 4618:41FC */ be_uint32_t unknown_a13 = 0;
+  /* 461C:4200 */
+} __packed_ws__(PSOGCEp3NTECharacter, 0x461C);
+
 struct PSOGCEp3CharacterFile {
   /* 00000 */ be_uint32_t checksum = 0; // crc32 of this field (as 0) through end of struct
   struct Character {
@@ -541,10 +577,8 @@ struct PSOGCEp3CharacterFile {
     /* 034C:---- */ PlayerDispDataDCPCV3BE disp;
     /* 041C:0000 */ be_uint32_t flags = 0;
     /* 0420:0004 */ be_uint32_t creation_timestamp = 0;
-    /* 0424:0008 */ be_uint32_t signature = 0xA204B064;
+    /* 0424:0008 */ be_uint32_t signature = 0xA205B064;
     /* 0428:000C */ be_uint32_t play_time_seconds = 0;
-    // See the comment in PSOGCCharacterFile::Character about what the bits in
-    // this field mean.
     /* 042C:0010 */ be_uint32_t option_flags = 0x00040058;
     /* 0430:0014 */ be_uint32_t save_count = 1;
     /* 0434:0018 */ pstring<TextEncoding::ASCII, 0x1C> ppp_username;
@@ -572,6 +606,10 @@ struct PSOGCEp3CharacterFile {
     /* 39AC:3590 */ be_uint32_t unknown_a12 = 0;
     /* 39B0:3594 */ be_uint32_t unknown_a13 = 0;
     /* 39B4:3598 */
+
+    Character() = default;
+    explicit Character(const PSOGCEp3NTECharacter& nte);
+    operator PSOGCEp3NTECharacter() const;
   } __packed_ws__(Character, 0x39B4);
   /* 00004 */ parray<Character, 7> characters;
   /* 193F0 */ pstring<TextEncoding::ASCII, 0x10> serial_number; // As %08X (not decimal)
@@ -691,6 +729,7 @@ struct PSOBBCharacterFile {
   static std::shared_ptr<PSOBBCharacterFile> create_from_dc_v2(const PSODCV2CharacterFile& dc);
   static std::shared_ptr<PSOBBCharacterFile> create_from_gc_nte(const PSOGCNTECharacterFileCharacter& gc_nte);
   static std::shared_ptr<PSOBBCharacterFile> create_from_gc(const PSOGCCharacterFile::Character& gc);
+  static std::shared_ptr<PSOBBCharacterFile> create_from_ep3(const PSOGCEp3CharacterFile::Character& ep3);
   static std::shared_ptr<PSOBBCharacterFile> create_from_xb(const PSOXBCharacterFileCharacter& xb);
 
   PSODCV2CharacterFile to_dc_v2() const;

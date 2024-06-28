@@ -1449,6 +1449,11 @@ static void server_command_bbchar_savechar(shared_ptr<Client> c, const std::stri
   auto l = c->require_lobby();
   check_is_game(l, false);
 
+  if (is_bb_conversion && is_ep3(c->version())) {
+    send_text_message(c, "$C6Episode 3 players\ncannot be converted\nto BB format");
+    return;
+  }
+
   auto pending_export = make_unique<Client::PendingCharacterExport>();
 
   if (is_bb_conversion) {
@@ -1503,14 +1508,6 @@ static void server_command_savechar(shared_ptr<Client> c, const std::string& arg
 }
 
 static void server_command_loadchar(shared_ptr<Client> c, const std::string& args) {
-  if (!is_v1_or_v2(c->version()) &&
-      (c->version() != Version::GC_V3) &&
-      (c->version() != Version::GC_NTE) &&
-      (c->version() != Version::XB_V3) &&
-      (c->version() != Version::BB_V4)) {
-    send_text_message(c, "$C7This command cannot\nbe used on your\ngame version");
-    return;
-  }
   if (c->login->account->check_flag(Account::Flag::IS_SHARED_ACCOUNT)) {
     send_text_message(c, "$C7This command cannot\nbe used on a shared\naccount");
     return;
@@ -1523,7 +1520,13 @@ static void server_command_loadchar(shared_ptr<Client> c, const std::string& arg
     send_text_message(c, "$C6Player index must\nbe in range 1-16");
     return;
   }
-  c->load_backup_character(c->login->account->account_id, index);
+
+  shared_ptr<PSOGCEp3CharacterFile::Character> ep3_char;
+  if (is_ep3(c->version())) {
+    ep3_char = c->load_ep3_backup_character(c->login->account->account_id, index);
+  } else {
+    c->load_backup_character(c->login->account->account_id, index);
+  }
 
   if (c->version() == Version::BB_V4) {
     // On BB, it suffices to simply send the character file again
@@ -1535,6 +1538,8 @@ static void server_command_loadchar(shared_ptr<Client> c, const std::string& arg
   } else if ((c->version() == Version::DC_V2) ||
       (c->version() == Version::GC_NTE) ||
       (c->version() == Version::GC_V3) ||
+      (c->version() == Version::GC_EP3_NTE) ||
+      (c->version() == Version::GC_EP3) ||
       (c->version() == Version::XB_V3)) {
     // TODO: Support extended player info on other versions
     auto s = c->require_server_state();
@@ -1582,6 +1587,11 @@ static void server_command_loadchar(shared_ptr<Client> c, const std::string& arg
     } else if (c->version() == Version::GC_V3) {
       auto gc_char = make_shared<PSOGCCharacterFile::Character>(c->character()->to_gc());
       send_set_extended_player_info.operator()<PSOGCCharacterFile::Character>(c, gc_char);
+    } else if (c->version() == Version::GC_EP3_NTE) {
+      auto nte_char = make_shared<PSOGCEp3NTECharacter>(*ep3_char);
+      send_set_extended_player_info.operator()<PSOGCEp3NTECharacter>(c, nte_char);
+    } else if (c->version() == Version::GC_EP3) {
+      send_set_extended_player_info.operator()<PSOGCEp3CharacterFile::Character>(c, ep3_char);
     } else if (c->version() == Version::XB_V3) {
       if (!c->login || !c->login->xb_license) {
         throw runtime_error("XB client is not logged in");

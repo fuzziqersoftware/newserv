@@ -2385,21 +2385,20 @@ void send_self_leave_notification(shared_ptr<Client> c) {
 }
 
 void send_get_player_info(shared_ptr<Client> c, bool request_extended) {
-  // TODO: Support extended player info on Ep3 (JP and NTE)
   switch (c->version()) {
     case Version::DC_NTE:
     case Version::DC_V1_11_2000_PROTOTYPE:
     case Version::DC_V1:
     case Version::PC_NTE:
     case Version::PC_V2:
-    case Version::GC_EP3_NTE:
-    case Version::GC_EP3:
     case Version::BB_V4:
       request_extended = false;
       break;
     case Version::DC_V2:
     case Version::GC_NTE:
     case Version::GC_V3:
+    case Version::GC_EP3_NTE:
+    case Version::GC_EP3:
     case Version::XB_V3:
       break;
     default:

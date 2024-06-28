@@ -1,25 +1,31 @@
-  stwu   [r1 - 0x20], r1
+  stwu   [r1 - 0x40], r1
   mflr   r0
-  stw    [r1 + 0x24], r0
+  stw    [r1 + 0x44], r0
   stw    [r1 + 0x08], r31
   stw    [r1 + 0x0C], r30
   stw    [r1 + 0x10], r29
   stw    [r1 + 0x14], r28
+  stw    [r1 + 0x18], r27
 
   b      get_data_ptr
 get_data_ptr_ret:
   mflr   r30
 
-  li     r3, 0x279C
+  lwz    r27, [r30 + 0x18]  # sizeof(part2)
+
+  addi   r3, r27, 0x42C  # sizeof(header) + sizeof(part1) + sizeof(part2) + sizeof(unused fields after part2)
   lwz    r0, [r30]
   mtctr  r0
   bctrl  # malloc9
   mr.    r31, r3
   beq    malloc9_failed
 
-  lis    r0, 0x3000
-  ori    r0, r0, 0x9C27
-  stw    [r31], r0  # header = 30 00 9C 27
+  li     r0, 0x3000
+  sth    [r31], r0
+  addi   r3, r27, 0x42C
+  stb    [r31 + 2], r3
+  rlwinm r3, r3, 24, 24, 31
+  stb    [r31 + 3], r3  # header = 30 00 SS SS
 
   lwz    r4, [r30 + 0x04]
   lwz    r4, [r4]  # r4 = char_file_part1
@@ -30,16 +36,18 @@ get_data_ptr_ret:
   lwz    r4, [r30 + 0x08]
   lwz    r4, [r4]  # r4 = char_file_part2
   addi   r3, r31, 0x0420
-  li     r5, 0x2370  # sizeof(part2)
+  mr     r5, r27
   bl     memcpy
 
   li     r0, 0
-  stw    [r31 + 0x2790], r0
-  stw    [r31 + 0x2794], r0
-  stw    [r31 + 0x2798], r0
+  add    r3, r27, r31
+  addi   r3, r3, 0x420  # r3 = pointer to unused fields after part2
+  stw    [r3 + 0], r0
+  stw    [r3 + 4], r0
+  stw    [r3 + 8], r0
 
   mr     r28, r31
-  li     r29, 0x279C
+  addi   r29, r27, 0x42C
 send_again:
   lwz    r3, [r30 + 0x0C]
   lwz    r3, [r3]
@@ -74,12 +82,13 @@ drain_failed:
   li     r3, 0
 
 malloc9_failed:
+  lwz    r27, [r1 + 0x18]
   lwz    r28, [r1 + 0x14]
   lwz    r29, [r1 + 0x10]
   lwz    r30, [r1 + 0x0C]
   lwz    r31, [r1 + 0x08]
-  lwz    r0, [r1 + 0x24]
-  addi   r1, r1, 0x20
+  lwz    r0, [r1 + 0x44]
+  addi   r1, r1, 0x40
   mtlr   r0
   blr
 

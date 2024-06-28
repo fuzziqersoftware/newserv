@@ -907,12 +907,12 @@ struct PlayerConfig {
   // card counts array is encrypted in memory most of the time, and they went
   // out of their way to ensure the game uses an area of memory that almost no
   // other game uses, which is also used by the Action Replay.)
-  /* 05A4:0450 */ parray<be_uint64_t, 0x1C2> rare_tokens;
+  /* 05A4:0450 */ parray<be_uint64_t, 450> rare_tokens;
   /* 13B4:1260 */ parray<uint8_t, 0x80> unknown_a7;
   /* 1434:12E0 */ parray<DeckDefinition, 25> decks;
   /* 2118:1FC4 */ parray<uint8_t, 0x08> unknown_a8;
-  /* 2120:1FCC */ be_uint32_t offline_clv_exp; // CLvOff = this / 100
-  /* 2124:1FD0 */ be_uint32_t online_clv_exp; // CLvOn = this / 100
+  /* 2120:1FCC */ be_uint32_t offline_clv_exp; // CLvOff = (this / 100) + 1
+  /* 2124:1FD0 */ be_uint32_t online_clv_exp; // CLvOn = (this / 100) + 1
   struct PlayerReference {
     /* 00 */ be_uint32_t guild_card_number;
     /* 04 */ pstring<TextEncoding::MARKED, 0x18> name;
@@ -940,6 +940,39 @@ struct PlayerConfig {
   void decrypt();
   void encrypt(uint8_t basis);
 } __packed_ws__(PlayerConfig, 0x2350);
+
+struct PlayerConfigNTE {
+  /* 0000 */ pstring<TextEncoding::MARKED, 12> rank_text;
+  /* 000C */ parray<uint8_t, 0x1C> unknown_a1;
+  /* 0028 */ parray<be_uint16_t, 20> tech_menu_shortcut_entries;
+  /* 0050 */ parray<be_uint32_t, 10> choice_search_config;
+  /* 0078 */ parray<be_uint32_t, 0x10> scenario_progress; // Final has 0x30 entries here
+  /* 00B8 */ PlayerRecordsBattleBE unused_offline_records;
+  /* 00D0 */ parray<uint8_t, 4> unknown_a4;
+  /* 00D4 */ uint8_t is_encrypted;
+  /* 00D5 */ uint8_t basis;
+  /* 00D6 */ parray<uint8_t, 2> unused;
+  /* 00D8 */ parray<uint8_t, 1000> card_counts;
+  /* 04C0 */ parray<be_uint16_t, 50> card_count_checksums;
+  /* 0524 */ parray<be_uint64_t, 300> rare_tokens;
+  /* 0E84 */ parray<DeckDefinition, 25> decks;
+  /* 1B68 */ parray<uint8_t, 0x08> unknown_a8;
+  /* 1B70 */ be_uint32_t offline_clv_exp;
+  /* 1B74 */ be_uint32_t online_clv_exp;
+  /* 1B78 */ parray<PlayerConfig::PlayerReference, 10> recent_human_opponents;
+  /* 1C90 */ parray<uint8_t, 0x28> unknown_a10;
+  /* 1CB8 */ be_uint32_t init_timestamp;
+  /* 1CBC */ be_uint32_t last_online_battle_start_timestamp;
+  /* 1CC0 */ be_uint32_t unknown_t3;
+  /* 1CC4 */ parray<uint8_t, 0x94> unknown_a14;
+  /* 1D58 */
+
+  PlayerConfigNTE(const PlayerConfig& config);
+  operator PlayerConfig() const;
+
+  void decrypt();
+  void encrypt(uint8_t basis);
+} __packed_ws__(PlayerConfigNTE, 0x1D58);
 
 enum class HPType : uint8_t {
   DEFEAT_PLAYER = 0,

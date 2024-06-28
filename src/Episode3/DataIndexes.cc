@@ -1158,6 +1158,62 @@ void PlayerConfig::encrypt(uint8_t basis) {
   this->basis = basis;
 }
 
+PlayerConfigNTE::PlayerConfigNTE(const PlayerConfig& config)
+    : rank_text(config.rank_text),
+      unknown_a1(config.unknown_a1),
+      tech_menu_shortcut_entries(config.tech_menu_shortcut_entries),
+      choice_search_config(config.choice_search_config),
+      scenario_progress(config.scenario_progress),
+      unused_offline_records(config.unused_offline_records),
+      unknown_a4(config.unknown_a4),
+      is_encrypted(config.is_encrypted),
+      basis(config.basis),
+      unused(config.unused),
+      card_counts(config.card_counts),
+      card_count_checksums(config.card_count_checksums),
+      rare_tokens(config.rare_tokens),
+      decks(config.decks),
+      unknown_a8(config.unknown_a8),
+      offline_clv_exp(config.offline_clv_exp),
+      online_clv_exp(config.online_clv_exp),
+      recent_human_opponents(config.recent_human_opponents),
+      unknown_a10(config.unknown_a10),
+      init_timestamp(config.init_timestamp),
+      last_online_battle_start_timestamp(config.last_online_battle_start_timestamp),
+      unknown_t3(config.unknown_t3),
+      unknown_a14(config.unknown_a14) {
+  // TODO: Do we need to recompute card_count_checksums? (Here or in operator
+  // PlayerConfig?)
+}
+
+PlayerConfigNTE::operator PlayerConfig() const {
+  return {
+      .rank_text = this->rank_text,
+      .unknown_a1 = this->unknown_a1,
+      .tech_menu_shortcut_entries = this->tech_menu_shortcut_entries,
+      .choice_search_config = this->choice_search_config,
+      .scenario_progress = this->scenario_progress,
+      .unused_offline_records = this->unused_offline_records,
+      .unknown_a4 = this->unknown_a4,
+      .is_encrypted = this->is_encrypted,
+      .basis = this->basis,
+      .unused = this->unused,
+      .card_counts = this->card_counts,
+      .card_count_checksums = this->card_count_checksums,
+      .rare_tokens = this->rare_tokens,
+      .decks = this->decks,
+      .unknown_a8 = this->unknown_a8,
+      .offline_clv_exp = this->offline_clv_exp,
+      .online_clv_exp = this->online_clv_exp,
+      .recent_human_opponents = this->recent_human_opponents,
+      .unknown_a10 = this->unknown_a10,
+      .init_timestamp = this->init_timestamp,
+      .last_online_battle_start_timestamp = this->last_online_battle_start_timestamp,
+      .unknown_t3 = this->unknown_t3,
+      .unknown_a14 = this->unknown_a14,
+  };
+}
+
 Rules::Rules(const JSON& json) {
   this->clear();
   this->overall_time_limit = json.get_int("overall_time_limit", this->overall_time_limit);
