@@ -405,7 +405,7 @@ void on_login_complete(shared_ptr<Client> c) {
             default:
               q_language = 1; // English (US Plus v1.2 + customizations)
           }
-          auto vq = q->version(is_ep3(c->version()) ? Version::GC_V3 : c->version(), q_language);
+          auto vq = q->version(is_ep3(c->version()) ? Version::GC_V3 : c->version(), q_language, false);
           if (vq) {
             c->config.set_flag(Client::Flag::HAS_SEND_FUNCTION_CALL);
             c->config.set_flag(Client::Flag::SEND_FUNCTION_CALL_NO_CACHE_PATCH);

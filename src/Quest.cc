@@ -461,17 +461,22 @@ bool Quest::has_version_any_language(Version v) const {
   return ((it != this->versions.end()) && ((it->first & 0xFF00) == k));
 }
 
-shared_ptr<const VersionedQuest> Quest::version(Version v, uint8_t language) const {
+shared_ptr<const VersionedQuest> Quest::version(Version v, uint8_t language, bool allow_language_fallback) const {
   // Return the requested version, if it exists
   try {
     return this->versions.at(this->versions_key(v, language));
   } catch (const out_of_range&) {
   }
+  if (!allow_language_fallback) {
+    return nullptr;
+  }
+
   // Return the English version, if it exists
   try {
     return this->versions.at(this->versions_key(v, 1));
   } catch (const out_of_range&) {
   }
+
   // Return the first language, if it exists
   auto it = this->versions.lower_bound(this->versions_key(v, 0));
   if ((it == this->versions.end()) || ((it->first & 0xFF00) != this->versions_key(v, 0))) {
