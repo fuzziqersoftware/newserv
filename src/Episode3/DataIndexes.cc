@@ -1187,31 +1187,31 @@ PlayerConfigNTE::PlayerConfigNTE(const PlayerConfig& config)
 }
 
 PlayerConfigNTE::operator PlayerConfig() const {
-  return {
-      .rank_text = this->rank_text,
-      .unknown_a1 = this->unknown_a1,
-      .tech_menu_shortcut_entries = this->tech_menu_shortcut_entries,
-      .choice_search_config = this->choice_search_config,
-      .scenario_progress = this->scenario_progress,
-      .unused_offline_records = this->unused_offline_records,
-      .unknown_a4 = this->unknown_a4,
-      .is_encrypted = this->is_encrypted,
-      .basis = this->basis,
-      .unused = this->unused,
-      .card_counts = this->card_counts,
-      .card_count_checksums = this->card_count_checksums,
-      .rare_tokens = this->rare_tokens,
-      .decks = this->decks,
-      .unknown_a8 = this->unknown_a8,
-      .offline_clv_exp = this->offline_clv_exp,
-      .online_clv_exp = this->online_clv_exp,
-      .recent_human_opponents = this->recent_human_opponents,
-      .unknown_a10 = this->unknown_a10,
-      .init_timestamp = this->init_timestamp,
-      .last_online_battle_start_timestamp = this->last_online_battle_start_timestamp,
-      .unknown_t3 = this->unknown_t3,
-      .unknown_a14 = this->unknown_a14,
-  };
+  PlayerConfig ret;
+  ret.rank_text = this->rank_text;
+  ret.unknown_a1 = this->unknown_a1;
+  ret.tech_menu_shortcut_entries = this->tech_menu_shortcut_entries;
+  ret.choice_search_config = this->choice_search_config;
+  ret.scenario_progress = this->scenario_progress;
+  ret.unused_offline_records = this->unused_offline_records;
+  ret.unknown_a4 = this->unknown_a4;
+  ret.is_encrypted = this->is_encrypted;
+  ret.basis = this->basis;
+  ret.unused = this->unused;
+  ret.card_counts = this->card_counts;
+  ret.card_count_checksums = this->card_count_checksums;
+  ret.rare_tokens = this->rare_tokens;
+  ret.decks = this->decks;
+  ret.unknown_a8 = this->unknown_a8;
+  ret.offline_clv_exp = this->offline_clv_exp;
+  ret.online_clv_exp = this->online_clv_exp;
+  ret.recent_human_opponents = this->recent_human_opponents;
+  ret.unknown_a10 = this->unknown_a10;
+  ret.init_timestamp = this->init_timestamp;
+  ret.last_online_battle_start_timestamp = this->last_online_battle_start_timestamp;
+  ret.unknown_t3 = this->unknown_t3;
+  ret.unknown_a14 = this->unknown_a14;
+  return ret;
 }
 
 Rules::Rules(const JSON& json) {

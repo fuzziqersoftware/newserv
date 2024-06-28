@@ -967,7 +967,8 @@ struct PlayerConfigNTE {
   /* 1CC4 */ parray<uint8_t, 0x94> unknown_a14;
   /* 1D58 */
 
-  PlayerConfigNTE(const PlayerConfig& config);
+  PlayerConfigNTE() = default;
+  explicit PlayerConfigNTE(const PlayerConfig& config);
   operator PlayerConfig() const;
 
   void decrypt();

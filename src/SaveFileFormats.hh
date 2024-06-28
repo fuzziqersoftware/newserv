@@ -565,6 +565,8 @@ struct PSOGCEp3NTECharacter {
   /* 4614:41F8 */ be_uint32_t unknown_a12 = 0;
   /* 4618:41FC */ be_uint32_t unknown_a13 = 0;
   /* 461C:4200 */
+
+  PSOGCEp3NTECharacter() = default;
 } __packed_ws__(PSOGCEp3NTECharacter, 0x461C);
 
 struct PSOGCEp3CharacterFile {

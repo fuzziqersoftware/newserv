@@ -287,33 +287,33 @@ PSOGCEp3CharacterFile::Character::Character(const PSOGCEp3NTECharacter& nte)
 }
 
 PSOGCEp3CharacterFile::Character::operator PSOGCEp3NTECharacter() const {
-  return {
-      .inventory = this->inventory,
-      .disp = this->disp,
-      .flags = this->flags,
-      .creation_timestamp = this->creation_timestamp,
-      .signature = this->signature,
-      .play_time_seconds = this->play_time_seconds,
-      .option_flags = this->option_flags,
-      .save_count = this->save_count,
-      .ppp_username = this->ppp_username,
-      .ppp_password = this->ppp_password,
-      .seq_vars = this->seq_vars,
-      .death_count = this->death_count,
-      .bank = this->bank,
-      .guild_card = this->guild_card,
-      .symbol_chats = this->symbol_chats,
-      .chat_shortcuts = this->chat_shortcuts,
-      .auto_reply = this->auto_reply,
-      .info_board = this->info_board,
-      .battle_records = this->battle_records,
-      .unknown_a10 = this->unknown_a10,
-      .challenge_record_stats = this->challenge_record_stats,
-      .ep3_config = this->ep3_config,
-      .unknown_a11 = this->unknown_a11,
-      .unknown_a12 = this->unknown_a12,
-      .unknown_a13 = this->unknown_a13,
-  };
+  PSOGCEp3NTECharacter ret;
+  ret.inventory = this->inventory;
+  ret.disp = this->disp;
+  ret.flags = this->flags;
+  ret.creation_timestamp = this->creation_timestamp;
+  ret.signature = this->signature;
+  ret.play_time_seconds = this->play_time_seconds;
+  ret.option_flags = this->option_flags;
+  ret.save_count = this->save_count;
+  ret.ppp_username = this->ppp_username;
+  ret.ppp_password = this->ppp_password;
+  ret.seq_vars = this->seq_vars;
+  ret.death_count = this->death_count;
+  ret.bank = this->bank;
+  ret.guild_card = this->guild_card;
+  ret.symbol_chats = this->symbol_chats;
+  ret.chat_shortcuts = this->chat_shortcuts;
+  ret.auto_reply = this->auto_reply;
+  ret.info_board = this->info_board;
+  ret.battle_records = this->battle_records;
+  ret.unknown_a10 = this->unknown_a10;
+  ret.challenge_record_stats = this->challenge_record_stats;
+  ret.ep3_config = Episode3::PlayerConfigNTE(this->ep3_config);
+  ret.unknown_a11 = this->unknown_a11;
+  ret.unknown_a12 = this->unknown_a12;
+  ret.unknown_a13 = this->unknown_a13;
+  return ret;
 }
 
 void PSOBBGuildCardFile::Entry::clear() {
