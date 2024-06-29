@@ -1,5 +1,5 @@
 # Returns the client specific_version in eax and the address of the
-# MmSetAddressProtect function pointer in ecx, which is immediately followed by
+# MmSetAddressProtect function pointer in edx, which is immediately followed by
 # the MmQueryAddressProtect function pointer.
 
 start:
