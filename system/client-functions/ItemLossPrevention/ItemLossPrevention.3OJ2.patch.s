@@ -13,6 +13,18 @@ start:
   .data     0x801D33E4  # address
   .data     0x00000004  # size
   .data     0x4800004C  # 801D33E4 => b         +0x0000004C /* 801D3430 */
+  # region @ 801FE900 (4 bytes)
+  .data     0x801FE900  # address
+  .data     0x00000004  # size
+  .data     0x60000000  # 801FE900 => nop
+  # region @ 801FFE5C (4 bytes)
+  .data     0x801FFE5C  # address
+  .data     0x00000004  # size
+  .data     0x60000000  # 801FFE5C => nop
+  # region @ 802019C8 (4 bytes)
+  .data     0x802019C8  # address
+  .data     0x00000004  # size
+  .data     0x38000000  # 802019C8 => li        r0, 0x0000
   # region @ 802C2060 (4 bytes)
   .data     0x802C2060  # address
   .data     0x00000004  # size
