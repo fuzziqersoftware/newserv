@@ -67,6 +67,10 @@ start:
   .data     0x804CBB14  # address
   .data     0x00000004  # size
   .data     0x42960000  # 804CBB14 => bc        20, 22, +0x00000000 /* 804CBB14 */
+  # region @ 804CBB20 (4 bytes)
+  .data     0x804CBB20  # address
+  .data     0x00000004  # size
+  .data     0x42960000  # 804CBB20 => bc        20, 22, +0x00000000 /* 804CBB20 */
   # region @ 804CBBB0 (4 bytes)
   .data     0x804CBBB0  # address
   .data     0x00000004  # size
