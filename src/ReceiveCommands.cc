@@ -228,6 +228,10 @@ void send_client_to_proxy_server(shared_ptr<Client> c) {
     if (ses->config.check_flag(Client::Flag::PROXY_ZERO_REMOTE_GUILD_CARD)) {
       ses->remote_guild_card_number = 0;
     }
+    if (c->version() == Version::GC_EP3) {
+      send_ep3_media_update(c, 4, 0, "");
+      ses->config.clear_flag(Client::Flag::HAS_EP3_MEDIA_UPDATES);
+    }
 
     send_reconnect(c, s->connect_address_for_client(c), local_port);
   });
