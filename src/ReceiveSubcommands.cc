@@ -1984,7 +1984,7 @@ static void on_box_or_enemy_item_drop_t(shared_ptr<Client> c, uint8_t command, u
         send_command_t(lc, command, flag, cmd);
       }
     }
-    send_item_notification_if_needed(s, lc->channel, lc->config, cmd.item.item, true);
+    send_item_notification_if_needed(s, lc->channel, lc->config, item, true);
   }
 }
 

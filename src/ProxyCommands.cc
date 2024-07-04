@@ -1145,7 +1145,9 @@ static HandlerResult S_6x(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t, 
 
     } else if (data[0] == 0x5F) {
       const auto& cmd = check_size_t<G_DropItem_DC_6x5F>(data, sizeof(G_DropItem_PC_V3_BB_6x5F));
-      send_item_notification_if_needed(ses->require_server_state(), ses->client_channel, ses->config, cmd.item.item, true);
+      ItemData item = cmd.item.item;
+      item.decode_for_version(ses->version());
+      send_item_notification_if_needed(ses->require_server_state(), ses->client_channel, ses->config, item, true);
 
     } else if ((data[0] == 0x60) || (static_cast<uint8_t>(data[0]) == 0xA2)) {
       return SC_6x60_6xA2(ses, data);
