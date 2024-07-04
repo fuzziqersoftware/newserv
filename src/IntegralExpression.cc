@@ -340,16 +340,16 @@ unique_ptr<const IntegralExpression::Node> IntegralExpression::parse_expr(string
   // Check for binary operators at the root level
   using BinType = BinaryOperatorNode::Type;
   static const vector<vector<pair<std::string, BinaryOperatorNode::Type>>> binary_operator_levels = {
-      {{make_pair("*", BinType::MULTIPLY)}, {make_pair("/", BinType::DIVIDE)}, {make_pair("%", BinType::MODULUS)}},
-      {{make_pair("+", BinType::ADD)}, {make_pair("-", BinType::SUBTRACT)}},
-      {{make_pair("<<", BinType::LEFT_SHIFT)}, {make_pair(">>", BinType::RIGHT_SHIFT)}},
-      {{make_pair("<=", BinType::LESS_OR_EQUAL)}, {make_pair(">=", BinType::GREATER_OR_EQUAL)}, {make_pair("<", BinType::LESS_THAN)}, {make_pair(">", BinType::GREATER_THAN)}},
-      {{make_pair("==", BinType::EQUAL)}, {make_pair("!=", BinType::NOT_EQUAL)}},
-      {{make_pair("&", BinType::BITWISE_AND)}},
-      {{make_pair("^", BinType::BITWISE_XOR)}},
-      {{make_pair("|", BinType::BITWISE_OR)}},
-      {{make_pair("&&", BinType::LOGICAL_AND)}},
       {{make_pair("||", BinType::LOGICAL_OR)}},
+      {{make_pair("&&", BinType::LOGICAL_AND)}},
+      {{make_pair("|", BinType::BITWISE_OR)}},
+      {{make_pair("^", BinType::BITWISE_XOR)}},
+      {{make_pair("&", BinType::BITWISE_AND)}},
+      {{make_pair("==", BinType::EQUAL)}, {make_pair("!=", BinType::NOT_EQUAL)}},
+      {{make_pair("<=", BinType::LESS_OR_EQUAL)}, {make_pair(">=", BinType::GREATER_OR_EQUAL)}, {make_pair("<", BinType::LESS_THAN)}, {make_pair(">", BinType::GREATER_THAN)}},
+      {{make_pair("<<", BinType::LEFT_SHIFT)}, {make_pair(">>", BinType::RIGHT_SHIFT)}},
+      {{make_pair("+", BinType::ADD)}, {make_pair("-", BinType::SUBTRACT)}},
+      {{make_pair("*", BinType::MULTIPLY)}, {make_pair("/", BinType::DIVIDE)}, {make_pair("%", BinType::MODULUS)}},
   };
   for (const auto& operators : binary_operator_levels) {
     size_t paren_level = 0;
