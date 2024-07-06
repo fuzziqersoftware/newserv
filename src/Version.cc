@@ -214,15 +214,12 @@ uint32_t default_sub_version_for_version(Version version) {
     case Version::PC_V2:
       return 0x29;
     case Version::GC_NTE:
-      return 0x30;
     case Version::GC_V3:
-      return 0x31;
-    case Version::GC_EP3_NTE:
-      return 0x40;
-    case Version::GC_EP3:
-      return 0x41;
     case Version::XB_V3:
-      return 0x31;
+      return 0x30;
+    case Version::GC_EP3_NTE:
+    case Version::GC_EP3:
+      return 0x40;
     case Version::BB_V4:
       return 0x41;
     default:
