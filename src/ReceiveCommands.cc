@@ -3243,6 +3243,12 @@ static void on_61_98(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
 
   c->update_channel_name();
 
+  // If the player is BB and has just left a game, sync their save file to the
+  // client to make sure it's up to date
+  if ((c->version() == Version::BB_V4) && (command == 0x98)) {
+    send_complete_player_bb(c);
+  }
+
   if (command == 0x61) {
     if (c->pending_character_export) {
       unique_ptr<Client::PendingCharacterExport> pending_export = std::move(c->pending_character_export);

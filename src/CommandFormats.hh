@@ -4676,7 +4676,9 @@ struct G_ActivateMagEffect_6x61 {
 // 6x62: Unknown
 // This command has a handler, but it does nothing even on DC NTE.
 
-// 6x63: Destroy floor item (used when too many items have been dropped)
+// 6x63: Destroy floor item
+// This is sent by the leader to destroy a floor item when there are 50 or more
+// items already on the ground on the current floor.
 
 struct G_DestroyFloorItem_6x5C_6x63 {
   G_UnusedHeader header;

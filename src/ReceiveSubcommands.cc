@@ -3724,29 +3724,52 @@ static void on_destroy_floor_item(shared_ptr<Client> c, uint8_t command, uint8_t
   }
 
   auto s = c->require_server_state();
-  auto fi = l->remove_item(cmd.floor, cmd.item_id, 0xFF);
-  auto name = s->describe_item(c->version(), fi->data, false);
-  l->log.info("Player %hhu destroyed floor item %08" PRIX32 " (%s)", c->lobby_client_id, cmd.item_id.load(), name.c_str());
+  shared_ptr<Lobby::FloorItem> fi;
+  try {
+    fi = l->remove_item(cmd.floor, cmd.item_id, 0xFF);
+  } catch (const out_of_range&) {
+  }
 
-  // Only forward to players for whom the item was visible
-  for (size_t z = 0; z < l->clients.size(); z++) {
-    auto lc = l->clients[z];
-    if (lc && fi->visible_to_client(z)) {
-      if (lc->version() != c->version()) {
-        G_DestroyFloorItem_6x5C_6x63 out_cmd = cmd;
-        switch (lc->version()) {
-          case Version::DC_NTE:
-            out_cmd.header.subcommand = is_6x5C ? 0x4E : 0x55;
-            break;
-          case Version::DC_V1_11_2000_PROTOTYPE:
-            out_cmd.header.subcommand = is_6x5C ? 0x55 : 0x5C;
-            break;
-          default:
-            out_cmd.header.subcommand = is_6x5C ? 0x5C : 0x63;
+  if (!fi) {
+    // There are generally two data races that could occur here. Either the
+    // player attempted to evict the item at the same time the server did (that
+    // is, the client's and server's 6x63 commands crossed paths on the
+    // network), or the player attempted to evict an item that was already
+    // picked up. The former case is easy to handle; we can just ignore the
+    // command. The latter case is more difficult - we have to know which
+    // player picked up the item and send a 6x2B command to the sender, to sync
+    // their item state with the server's again. We can't just look through the
+    // players' inventories to find the item ID, since item IDs can be
+    // destroyed when stackable items or Meseta are picked up.
+    // TODO: We don't actually handle the evict/pickup conflict case. This case
+    // is probably quite rare, but we should eventually handle it.
+    l->log.info("Player %hhu attempted to destroy floor item %08" PRIX32 ", but it is missing",
+        c->lobby_client_id, cmd.item_id.load());
+
+  } else {
+    auto name = s->describe_item(c->version(), fi->data, false);
+    l->log.info("Player %hhu destroyed floor item %08" PRIX32 " (%s)", c->lobby_client_id, cmd.item_id.load(), name.c_str());
+
+    // Only forward to players for whom the item was visible
+    for (size_t z = 0; z < l->clients.size(); z++) {
+      auto lc = l->clients[z];
+      if (lc && fi->visible_to_client(z)) {
+        if (lc->version() != c->version()) {
+          G_DestroyFloorItem_6x5C_6x63 out_cmd = cmd;
+          switch (lc->version()) {
+            case Version::DC_NTE:
+              out_cmd.header.subcommand = is_6x5C ? 0x4E : 0x55;
+              break;
+            case Version::DC_V1_11_2000_PROTOTYPE:
+              out_cmd.header.subcommand = is_6x5C ? 0x55 : 0x5C;
+              break;
+            default:
+              out_cmd.header.subcommand = is_6x5C ? 0x5C : 0x63;
+          }
+          send_command_t(lc, command, flag, out_cmd);
+        } else {
+          send_command_t(lc, command, flag, cmd);
         }
-        send_command_t(lc, command, flag, out_cmd);
-      } else {
-        send_command_t(lc, command, flag, cmd);
       }
     }
   }

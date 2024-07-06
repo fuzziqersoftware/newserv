@@ -91,8 +91,7 @@ struct Lobby : public std::enable_shared_from_this<Lobby> {
     SERVER_DUPLICATE = 4,
   };
 
-  std::weak_ptr<ServerState>
-      server_state;
+  std::weak_ptr<ServerState> server_state;
   PrefixedLogger log;
 
   uint32_t lobby_id;
