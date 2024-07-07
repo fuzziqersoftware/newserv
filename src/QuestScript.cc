@@ -1140,10 +1140,14 @@ std::string disassemble_quest_script(const void* data, size_t size, Version vers
                     arg_stack_values.emplace_back(ArgStackValue::Type::LABEL, label_id);
                   }
                   if (label_id >= function_table.size()) {
-                    dasm_arg = string_printf("label%04" PRIX32 " /* invalid */", label_id);
+                    dasm_arg = string_printf("label%04" PRIX32, label_id);
                   } else {
                     auto& l = function_table.at(label_id);
-                    dasm_arg = string_printf("label%04" PRIX32 " /* %04" PRIX32 " */", label_id, l->offset);
+                    if (reassembly_mode) {
+                      dasm_arg = string_printf("label%04" PRIX32, label_id);
+                    } else {
+                      dasm_arg = string_printf("label%04" PRIX32 " /* %04" PRIX32 " */", label_id, l->offset);
+                    }
                     l->references.emplace(opcode_start_offset);
                     l->add_data_type(arg.data_type);
                     if (arg.data_type == Arg::DataType::SCRIPT) {
@@ -1161,10 +1165,14 @@ std::string disassemble_quest_script(const void* data, size_t size, Version vers
                     dasm_arg += (dasm_arg.empty() ? "[" : ", ");
                     uint32_t label_id = cmd_r.get_u16l();
                     if (label_id >= function_table.size()) {
-                      dasm_arg += string_printf("function%04" PRIX32 " /* invalid */", label_id);
+                      dasm_arg += string_printf("label%04" PRIX32, label_id);
                     } else {
                       auto& l = function_table.at(label_id);
-                      dasm_arg += string_printf("label%04" PRIX32 " /* %04" PRIX32 " */", label_id, l->offset);
+                      if (reassembly_mode) {
+                        dasm_arg += string_printf("label%04" PRIX32, label_id);
+                      } else {
+                        dasm_arg += string_printf("label%04" PRIX32 " /* %04" PRIX32 " */", label_id, l->offset);
+                      }
                       l->references.emplace(opcode_start_offset);
                       l->add_data_type(arg.data_type);
                       if (arg.data_type == Arg::DataType::SCRIPT) {
