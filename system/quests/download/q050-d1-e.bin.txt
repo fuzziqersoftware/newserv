@@ -1,0 +1,1065 @@
+.version DC_V1
+.quest_num 15
+.language 1
+.name "Soul of a Blacksmith"
+.short_desc "A blacksmith\nwants to make\na weapon using\nRagol\'s unknown\nmaterials."
+.long_desc "Client: Ozwald\nQuest:\nI want to make a new\nweapon using unknown\nmaterials on Ragol.\nReward: 2500 Meseta"
+
+start:
+  call                            random_setup
+  get_difficulty_level_v1         r83
+  set_floor_handler               0x00000000, floor_handler_0
+  set_floor_handler               0x00000001, floor_handler_1
+  set_floor_handler               0x00000002, floor_handler_2
+  set_floor_handler               0x00000003, floor_handler_3
+  set_floor_handler               0x00000004, floor_handler_4
+  set_floor_handler               0x00000005, floor_handler_5
+  set_floor_handler               0x0000000B, floor_handler_B
+  leti                            r60, 0x00000000
+  leti                            r61, 0x00000000
+  leti                            r62, 0x00000000
+  leti                            r63, 0x00000000
+  map_designate                   r60-r63
+  leti                            r60, 0x00000001
+  leti                            r61, 0x00000000
+  leti                            r62, 0x00000000
+  leti                            r63, 0x00000003
+  map_designate                   r60-r63
+  leti                            r60, 0x00000002
+  leti                            r61, 0x00000000
+  leti                            r62, 0x00000000
+  leti                            r63, 0x00000003
+  map_designate                   r60-r63
+  leti                            r60, 0x00000003
+  leti                            r61, 0x00000000
+  leti                            r62, 0x00000002
+  leti                            r63, 0x00000000
+  map_designate                   r60-r63
+  leti                            r60, 0x00000004
+  leti                            r61, 0x00000000
+  leti                            r62, 0x00000002
+  leti                            r63, 0x00000000
+  map_designate                   r60-r63
+  leti                            r60, 0x00000005
+  leti                            r61, 0x00000000
+  leti                            r62, 0x00000001
+  leti                            r63, 0x00000001
+  map_designate                   r60-r63
+  leti                            r60, 0x0000000B
+  leti                            r61, 0x00000000
+  leti                            r62, 0x00000000
+  leti                            r63, 0x00000000
+  map_designate                   r60-r63
+  set_qt_success                  on_quest_success
+  ret
+
+return:
+  ret
+
+floor_handler_0:
+  set_mainwarp                    0x00000001
+  set_mainwarp                    0x00000003
+  jmpi_eq                         r200, 0x00000001, return
+  leti                            r60, 0x000000E6
+  leti                            r61, 0x00000000
+  leti                            r62, 0x0000014D
+  leti                            r63, 0x00000000
+  p_setpos                        0x00000000, r60-r63
+  call                            label0136
+  set                             r200
+  ret
+
+on_quest_success:
+  gset                            0x0081
+  window_msg                      "You\'ve been awarded 2500 Meseta."
+  bgm                             0x00000001
+  winend
+  pl_add_meseta                   0x00000000, 0x000009C4
+  ret
+
+floor_handler_1:
+  leti                            r60, 0xFFFFFEEC
+  leti                            r61, 0x00000010
+  leti                            r62, 0xFFFFFDDD
+  leti                            r63, 0x0000000F
+  leti                            r64, 0x00000168
+  at_coords_call                  r60-r64
+  leti                            r60, 0x000001E3
+  leti                            r61, 0x0000001F
+  leti                            r62, 0xFFFFFFBF
+  leti                            r63, 0x0000000F
+  leti                            r64, 0x00000169
+  at_coords_call                  r60-r64
+  ret
+
+floor_handler_2:
+  ret
+
+floor_handler_3:
+  leti                            r60, 0x00000033
+  leti                            r61, 0x00000000
+  leti                            r62, 0x00000370
+  leti                            r63, 0x00000028
+  leti                            r64, 0x0000016A
+  at_coords_call                  r60-r64
+  switch_on                       0x00000005
+  switch_on                       0x0000000A
+  ret
+
+floor_handler_4:
+  leti                            r60, 0x000005A9
+  leti                            r61, 0x00000000
+  leti                            r62, 0xFFFFFCA6
+  leti                            r63, 0x00000028
+  leti                            r64, 0x0000016B
+  at_coords_call                  r60-r64
+  ret
+
+floor_handler_5:
+  leti                            r60, 0x00000204
+  leti                            r61, 0x00000000
+  leti                            r62, 0xFFFFFB99
+  leti                            r63, 0x00000012
+  leti                            r64, 0x0000016C
+  at_coords_call                  r60-r64
+  ret
+
+floor_handler_B:
+  thread_stg                      label00CC
+  ret
+
+label0136@0x0136:
+  jmpi_eq                         r8, 0x00000001, label013C
+  jmpi_eq                         r255, 0x00000001, label013B
+  jmp_on                          label013A, [r3, r2, r6]
+  jmp_on                          label013A, [r1, r2, r6]
+  jmp_on                          label0139, [r1, r2, r5]
+  jmp_on                          label0139, [r3, r2, r5]
+  jmp_on                          label0138, [r1, r2, r4]
+  jmp_on                          label0138, [r3, r2, r4]
+  jmpi_eq                         r0, 0x00000001, label0137
+  call                            label00DC
+  message                         0x00000065, "Are you a <hero job>\nfrom the Hunter\'s\nGuild?"
+  add_msg                         "I\'m Ozwald, a\nblacksmith.  Nice to\nmeet you."
+  add_msg                         "I think it\'ll be an easy\njob for you, too."
+  add_msg                         "It\'s simple.  Go to\nRagol to collect some\nraw weapon material."
+  add_msg                         "The weapon made by the\nmaterials on Ragol will\nbe yours.  Good deal?"
+  add_msg                         "I\'m just interested in\nthe creation process\nusing unknown materials."
+  add_msg                         "Now, I want you to\ncollect three different\nmaterials on Ragol."
+  add_msg                         "Take this memo with you.\nThat is a list of\nwhat I want."
+  add_msg                         "Oh, one more thing!"
+  add_msg                         "About the third one. I\'m\nnot sure that kind of\nmaterial exists there."
+  add_msg                         "So, it\'s up to you.\nJust bring back what\nyou think is good."
+  add_msg                         "Find something good\nto make a strong\nweapon.  OK?"
+  add_msg                         "Here\'s the list.\nRead it carefully."
+  add_msg                         "Don\'t disappoint me,\nOK?"
+  mesend
+  set                             r0
+  window_msg                      "Got the material memo!"
+  winend
+  bgm                             0x00000001
+  call                            label00DD
+  set_quest_board_handler         0x00000000, label0123, "Material Memo"
+  set                             r74
+  ret
+
+label0137@0x0137:
+  message                         0x00000065, "Hey, what\'s up?\nNot done yet?"
+  add_msg                         "Hurry up, hurry it up.\nI can\'t wait."
+  mesend
+  ret
+
+label0138@0x0138:
+  message                         0x00000065, "Yes, yes!\nYou finally came back."
+  add_msg                         "Well, I\'ve never seen\nthis mineral before."
+  mesend
+  list                            r100, "Blade\nGun\nStaff\nWait and reconsider."
+  switch_jmp                      r100, [label014B, label014E, label0151, label01AE]
+  ret
+
+label014B@0x014B:
+  message                         0x00000065, "OK, just wait a few\nminutes!"
+  mesend
+  call                            label0122
+  add_msg                         "Hey, I\'m back."
+  add_msg                         "Look, this was made with\nthe materials that you\nfound on Ragol."
+  add_msg                         "This is yours.  I hope\nit helps you."
+  mesend
+  leti                            r:item_data1_0@110, 0x00
+  leti                            r:item_data1_1@111, 0x02
+  leti                            r:item_data1_2@112, 0x00
+  leti                            r:item_data1_3@113, 0x00
+  leti                            r:item_data1_4@114, 0x18
+  leti                            r:item_data1_5@115, 0x00
+  leti                            r:item_data1_6@116, 0x00
+  leti                            r:item_data1_7@117, 0x00
+  leti                            r:item_data1_8@118, 0x00
+  leti                            r:item_data1_9@119, 0x00
+  leti                            r:item_data1_A@120, 0x00
+  leti                            r:item_data1_B@121, 0x00
+  item_create2                    r110-r121, r:item_id
+  set                             r172
+  jmpi_eq                         r:item_id, 0xFFFFFFFF, label01AF
+  window_msg                      "Got a Fire Sword!"
+  set                             r255
+  call                            label012C
+  winend
+  bgm                             0x00000000
+  playbgm_epi                     0x00000001
+  ret
+
+label014E@0x014E:
+  message                         0x00000065, "OK, just wait a few\nminutes!"
+  mesend
+  call                            label0122
+  add_msg                         "Hey, I\'m back."
+  add_msg                         "Look, this was made with\nthe materials that you\nfound on Ragol."
+  add_msg                         "This is yours.  I hope\nit helps you."
+  mesend
+  leti                            r:item_data1_0, 0x00
+  leti                            r:item_data1_1, 0x07
+  leti                            r:item_data1_2, 0x00
+  leti                            r:item_data1_3, 0x00
+  leti                            r:item_data1_4, 0x18
+  leti                            r:item_data1_5, 0x00
+  leti                            r:item_data1_6, 0x00
+  leti                            r:item_data1_7, 0x00
+  leti                            r:item_data1_8, 0x00
+  leti                            r:item_data1_9, 0x00
+  leti                            r:item_data1_A, 0x00
+  leti                            r:item_data1_B, 0x00
+  item_create2                    r110-r121, r:item_id
+  set                             r172
+  jmpi_eq                         r:item_id, 0xFFFFFFFF, label01AF
+  window_msg                      "Got a Fire Rifle!"
+  set                             r255
+  call                            label012C
+  winend
+  bgm                             0x00000000
+  playbgm_epi                     0x00000001
+  ret
+
+label0151@0x0151:
+  message                         0x00000065, "OK, just wait a few\nminutes!"
+  mesend
+  call                            label0122
+  add_msg                         "Hey, I\'m back."
+  add_msg                         "Look, this was made with\nthe materials that you\nfound on Ragol."
+  add_msg                         "This is yours.  I hope\nit helps you."
+  mesend
+  leti                            r:item_data1_0, 0x00
+  leti                            r:item_data1_1, 0x0B
+  leti                            r:item_data1_2, 0x00
+  leti                            r:item_data1_3, 0x00
+  leti                            r:item_data1_4, 0x18
+  leti                            r:item_data1_5, 0x00
+  leti                            r:item_data1_6, 0x00
+  leti                            r:item_data1_7, 0x00
+  leti                            r:item_data1_8, 0x00
+  leti                            r:item_data1_9, 0x00
+  leti                            r:item_data1_A, 0x00
+  leti                            r:item_data1_B, 0x00
+  item_create2                    r110-r121, r:item_id
+  set                             r172
+  jmpi_eq                         r:item_id, 0xFFFFFFFF, label01AF
+  window_msg                      "Got a Fire Rod!"
+  set                             r255
+  call                            label012C
+  winend
+  bgm                             0x00000000
+  playbgm_epi                     0x00000001
+  ret
+
+label0139@0x0139:
+  message                         0x00000065, "Yes, yes!\nFinally, you came back."
+  add_msg                         "Well, it seems like it\'s\ngood quality mineral..."
+  mesend
+  list                            r100, "Blade\nGun\nStaff\nWait and reconsider."
+  switch_jmp                      r100, [label0155, label0158, label015B, label01AE]
+
+label0155@0x0155:
+  message                         0x00000065, "OK, just wait a few\nminutes!"
+  mesend
+  call                            label0122
+  add_msg                         "Hey, I\'m back."
+  add_msg                         "Look, this was made with\nthe materials that you\nfound on Ragol."
+  add_msg                         "This is yours.  I hope\nit helps you."
+  mesend
+  leti                            r:item_data1_0, 0x00
+  leti                            r:item_data1_1, 0x02
+  leti                            r:item_data1_2, 0x00
+  leti                            r:item_data1_3, 0x00
+  leti                            r:item_data1_4, 0x10
+  leti                            r:item_data1_5, 0x00
+  leti                            r:item_data1_6, 0x00
+  leti                            r:item_data1_7, 0x00
+  leti                            r:item_data1_8, 0x00
+  leti                            r:item_data1_9, 0x00
+  leti                            r:item_data1_A, 0x00
+  leti                            r:item_data1_B, 0x00
+  item_create2                    r110-r121, r:item_id
+  set                             r172
+  jmpi_eq                         r:item_id, 0xFFFFFFFF, label01AF
+  window_msg                      "Got a Frost Sword!"
+  set                             r255
+  call                            label012C
+  winend
+  bgm                             0x00000000
+  playbgm_epi                     0x00000001
+  ret
+
+label0158@0x0158:
+  message                         0x00000065, "OK, just wait a few\nminutes!"
+  mesend
+  call                            label0122
+  add_msg                         "Hey, I\'m back."
+  add_msg                         "Look, this was made with\nthe materials that you\nfound on Ragol."
+  add_msg                         "This is yours.\nI hope it helps you."
+  mesend
+  leti                            r:item_data1_0, 0x00
+  leti                            r:item_data1_1, 0x08
+  leti                            r:item_data1_2, 0x00
+  leti                            r:item_data1_3, 0x00
+  leti                            r:item_data1_4, 0x10
+  leti                            r:item_data1_5, 0x00
+  leti                            r:item_data1_6, 0x00
+  leti                            r:item_data1_7, 0x00
+  leti                            r:item_data1_8, 0x00
+  leti                            r:item_data1_9, 0x00
+  leti                            r:item_data1_A, 0x00
+  leti                            r:item_data1_B, 0x00
+  item_create2                    r110-r121, r:item_id
+  set                             r172
+  jmpi_eq                         r:item_id, 0xFFFFFFFF, label01AF
+  window_msg                      "Got a Frost Mechgun!"
+  set                             r255
+  call                            label012C
+  winend
+  bgm                             0x00000000
+  playbgm_epi                     0x00000001
+  ret
+
+label015B@0x015B:
+  message                         0x00000065, "OK, just wait a few\nminutes!"
+  mesend
+  call                            label0122
+  add_msg                         "Hey, I\'m back."
+  add_msg                         "Look, this was made with\nthe materials that you\nfound on Ragol."
+  add_msg                         "This is yours.  I hope\nit helps you."
+  mesend
+  leti                            r:item_data1_0, 0x00
+  leti                            r:item_data1_1, 0x0B
+  leti                            r:item_data1_2, 0x00
+  leti                            r:item_data1_3, 0x00
+  leti                            r:item_data1_4, 0x10
+  leti                            r:item_data1_5, 0x00
+  leti                            r:item_data1_6, 0x00
+  leti                            r:item_data1_7, 0x00
+  leti                            r:item_data1_8, 0x00
+  leti                            r:item_data1_9, 0x00
+  leti                            r:item_data1_A, 0x00
+  leti                            r:item_data1_B, 0x00
+  item_create2                    r110-r121, r:item_id
+  set                             r172
+  jmpi_eq                         r:item_id, 0xFFFFFFFF, label01AF
+  window_msg                      "Got a Frost Rod!"
+  set                             r255
+  call                            label012C
+  winend
+  bgm                             0x00000000
+  playbgm_epi                     0x00000001
+  ret
+
+label013A@0x013A:
+  jmpi_eq                         r83, 0x00000000, label015E
+  jmpi_eq                         r83, 0x00000001, label0172
+  jmpi_eq                         r83, 0x00000002, label017C
+  ret
+
+label015E@0x015E:
+  message                         0x00000065, "Yes, yes!\nYou\'re finally back."
+  add_msg                         "Hmmm...!\nI think you found a\nvery special mineral!!"
+  mesend
+  list                            r100, "Blade\nGun\nStaff\nWait and reconsider."
+  switch_jmp                      r100, [label015F, label0162, label0165, label01AE]
+
+label015F@0x015F:
+  message                         0x00000065, "OK, just wait a few\nminutes!"
+  mesend
+  call                            label0122
+  add_msg                         "Hey, I\'m back."
+  add_msg                         "Look, this was made with\nthe materials that you\nfound on Ragol."
+  add_msg                         "This is yours.  I hope\nit helps you."
+  mesend
+  leti                            r:item_data1_0, 0x00
+  leti                            r:item_data1_1, 0x04
+  leti                            r:item_data1_2, 0x00
+  leti                            r:item_data1_3, 0x00
+  leti                            r:item_data1_4, 0x25
+  leti                            r:item_data1_5, 0x00
+  call                            generate_bonuses
+  leti                            r:item_data1_A, 0x00
+  leti                            r:item_data1_B, 0x00
+  item_create2                    r110-r121, r:item_id
+  set                             r172
+  jmpi_eq                         r:item_id, 0xFFFFFFFF, label01AF
+  window_msg                      "Got a Havoc Partisan!"
+  set                             r255
+  call                            label012C
+  winend
+  bgm                             0x00000000
+  playbgm_epi                     0x00000001
+  ret
+
+label0162@0x0162:
+  message                         0x00000065, "OK, just wait a few\nminutes!"
+  mesend
+  call                            label0122
+  add_msg                         "Hey, I\'m back."
+  add_msg                         "Look, this was made with\nthe materials that you\nfound on Ragol."
+  add_msg                         "This is yours.  I hope\nit helps you."
+  mesend
+  leti                            r:item_data1_0, 0x00
+  leti                            r:item_data1_1, 0x08
+  leti                            r:item_data1_2, 0x00
+  leti                            r:item_data1_3, 0x00
+  leti                            r:item_data1_4, 0x25
+  leti                            r:item_data1_5, 0x00
+  call                            generate_bonuses
+  leti                            r:item_data1_A, 0x00
+  leti                            r:item_data1_B, 0x00
+  item_create2                    r110-r121, r:item_id
+  set                             r172
+  jmpi_eq                         r:item_id, 0xFFFFFFFF, label01AF
+  window_msg                      "Got a Havoc Mechgun!"
+  set                             r255
+  call                            label012C
+  winend
+  bgm                             0x00000000
+  playbgm_epi                     0x00000001
+  ret
+
+label0165@0x0165:
+  message                         0x00000065, "OK, just wait a few\nminutes!"
+  mesend
+  call                            label0122
+  add_msg                         "Hey, I\'m back."
+  add_msg                         "Look, this was made with\nthe materials that you\nfound on Ragol."
+  add_msg                         "This is yours.  I hope\nit helps you."
+  mesend
+  leti                            r:item_data1_0, 0x00
+  leti                            r:item_data1_1, 0x0C
+  leti                            r:item_data1_2, 0x00
+  leti                            r:item_data1_3, 0x00
+  leti                            r:item_data1_4, 0x25
+  leti                            r:item_data1_5, 0x00
+  call                            generate_bonuses
+  leti                            r:item_data1_A, 0x00
+  leti                            r:item_data1_B, 0x00
+  item_create2                    r110-r121, r:item_id
+  set                             r172
+  jmpi_eq                         r:item_id, 0xFFFFFFFF, label01AF
+  window_msg                      "Got a Havoc Wand!"
+  set                             r255
+  call                            label012C
+  winend
+  bgm                             0x00000000
+  playbgm_epi                     0x00000001
+  ret
+
+label0172@0x0172:
+  message                         0x00000065, "Yes, yes!\nYou\'re finally back."
+  add_msg                         "Hmmm...!\nI think you found a\nvery special mineral!!"
+  mesend
+  list                            r100, "Blade\nGun\nStaff\nWait and reconsider."
+  switch_jmp                      r100, [label0173, label0176, label0179, label01AE]
+
+label0173@0x0173:
+  message                         0x00000065, "OK, just wait a few\nminutes!"
+  mesend
+  call                            label0122
+  add_msg                         "Hey, I\'m back."
+  add_msg                         "Look, this was made with\nthe materials that you\nfound on Ragol."
+  add_msg                         "This is yours.  I hope\nit helps you."
+  mesend
+  leti                            r:item_data1_0, 0x00
+  leti                            r:item_data1_1, 0x05
+  leti                            r:item_data1_2, 0x02
+  leti                            r:item_data1_3, 0x00
+  leti                            r:item_data1_4, 0x1D
+  leti                            r:item_data1_5, 0x00
+  call                            generate_bonuses
+  leti                            r:item_data1_A, 0x00
+  leti                            r:item_data1_B, 0x00
+  item_create2                    r110-r121, r:item_id
+  set                             r172
+  jmpi_eq                         r:item_id, 0xFFFFFFFF, label01AF
+  window_msg                      "Got a Storm Cutter!"
+  set                             r255
+  call                            label012C
+  winend
+  bgm                             0x00000000
+  playbgm_epi                     0x00000001
+  ret
+
+label0176@0x0176:
+  message                         0x00000065, "OK, just wait a few\nminutes!"
+  mesend
+  call                            label0122
+  add_msg                         "Hey, I\'m back."
+  add_msg                         "Look, this was made with\nthe materials that you\nfound on Ragol."
+  add_msg                         "This is yours.  I hope\nit helps you."
+  mesend
+  leti                            r:item_data1_0, 0x00
+  leti                            r:item_data1_1, 0x09
+  leti                            r:item_data1_2, 0x02
+  leti                            r:item_data1_3, 0x00
+  leti                            r:item_data1_4, 0x1D
+  leti                            r:item_data1_5, 0x00
+  call                            generate_bonuses
+  leti                            r:item_data1_A, 0x00
+  leti                            r:item_data1_B, 0x00
+  item_create2                    r110-r121, r:item_id
+  set                             r172
+  jmpi_eq                         r:item_id, 0xFFFFFFFF, label01AF
+  window_msg                      "Got a Storm Cannon!"
+  set                             r255
+  call                            label012C
+  winend
+  bgm                             0x00000000
+  playbgm_epi                     0x00000001
+  ret
+
+label0179@0x0179:
+  message                         0x00000065, "OK, just wait a few\nminutes!"
+  mesend
+  call                            label0122
+  add_msg                         "Hey, I\'m back."
+  add_msg                         "Look, this was made with\nthe materials that you\nfound on Ragol."
+  add_msg                         "This is yours.  I hope\nit helps you."
+  mesend
+  leti                            r:item_data1_0, 0x00
+  leti                            r:item_data1_1, 0x0C
+  leti                            r:item_data1_2, 0x02
+  leti                            r:item_data1_3, 0x00
+  leti                            r:item_data1_4, 0x1D
+  leti                            r:item_data1_5, 0x00
+  call                            generate_bonuses
+  leti                            r:item_data1_A, 0x00
+  leti                            r:item_data1_B, 0x00
+  item_create2                    r110-r121, r:item_id
+  set                             r172
+  jmpi_eq                         r:item_id, 0xFFFFFFFF, label01AF
+  window_msg                      "Got a Storm Baton!"
+  set                             r255
+  call                            label012C
+  winend
+  bgm                             0x00000000
+  playbgm_epi                     0x00000001
+  ret
+
+label017C@0x017C:
+  message                         0x00000065, "Yes, yes!\nYou\'re finally back."
+  add_msg                         "Hmmm...!\nI think you found a\nvery special mineral!!"
+  mesend
+  list                            r100, "Blade\nGun\nStaff\nWait and reconsider."
+  switch_jmp                      r100, [label017D, label0180, label0183, label01AE]
+
+label017D@0x017D:
+  message                         0x00000065, "OK, just wait a few\nminutes!"
+  mesend
+  call                            label0122
+  add_msg                         "Hey, I\'m back."
+  add_msg                         "Look, this was made with\nthe materials that you\nfound on Ragol."
+  add_msg                         "This is yours.  I hope\nit helps you."
+  mesend
+  leti                            r:item_data1_0, 0x00
+  leti                            r:item_data1_1, 0x04
+  leti                            r:item_data1_2, 0x03
+  leti                            r:item_data1_3, 0x00
+  leti                            r:item_data1_4, 0x11
+  leti                            r:item_data1_5, 0x00
+  call                            generate_bonuses
+  leti                            r:item_data1_A, 0x00
+  leti                            r:item_data1_B, 0x00
+  item_create2                    r110-r121, r:item_id
+  set                             r172
+  jmpi_eq                         r:item_id, 0xFFFFFFFF, label01AF
+  window_msg                      "Got a Freeze Berdys!"
+  set                             r255
+  call                            label012C
+  winend
+  bgm                             0x00000000
+  playbgm_epi                     0x00000001
+  ret
+
+label0180@0x0180:
+  message                         0x00000065, "OK, just wait a few\nminutes!"
+  mesend
+  call                            label0122
+  add_msg                         "Hey, I\'m back."
+  add_msg                         "Look, this was made with\nthe materials that you\nfound on Ragol."
+  add_msg                         "This is yours.  I hope\nit helps you."
+  mesend
+  leti                            r:item_data1_0, 0x00
+  leti                            r:item_data1_1, 0x07
+  leti                            r:item_data1_2, 0x03
+  leti                            r:item_data1_3, 0x00
+  leti                            r:item_data1_4, 0x11
+  leti                            r:item_data1_5, 0x00
+  call                            generate_bonuses
+  leti                            r:item_data1_A, 0x00
+  leti                            r:item_data1_B, 0x00
+  item_create2                    r110-r121, r:item_id
+  set                             r172
+  jmpi_eq                         r:item_id, 0xFFFFFFFF, label01AF
+  window_msg                      "Got a Freeze Beam!"
+  set                             r255
+  call                            label012C
+  winend
+  bgm                             0x00000000
+  playbgm_epi                     0x00000001
+  ret
+
+label0183@0x0183:
+  message                         0x00000065, "OK, just wait a few\nminutes!"
+  mesend
+  call                            label0122
+  add_msg                         "Hey, I\'m back."
+  add_msg                         "Look, this was made with\nthe materials that you\nfound on Ragol."
+  add_msg                         "This is yours.  I hope\nit helps you."
+  mesend
+  leti                            r:item_data1_0, 0x00
+  leti                            r:item_data1_1, 0x0B
+  leti                            r:item_data1_2, 0x03
+  leti                            r:item_data1_3, 0x00
+  leti                            r:item_data1_4, 0x11
+  leti                            r:item_data1_5, 0x00
+  call                            generate_bonuses
+  leti                            r:item_data1_A, 0x00
+  leti                            r:item_data1_B, 0x00
+  item_create2                    r110-r121, r:item_id
+  set                             r172
+  jmpi_eq                         r:item_id, 0xFFFFFFFF, label01AF
+  window_msg                      "Got a Freeze Striker!"
+  set                             r255
+  call                            label012C
+  winend
+  bgm                             0x00000000
+  playbgm_epi                     0x00000001
+  ret
+
+label013B@0x013B:
+  message                         0x00000065, "The Guild will pay your\nreward.  Sorry, I know\nit\'s not much Meseta."
+  add_msg                         "That quality material\nyou brought back really\nexcited me.  Thank you!"
+  set                             r8
+  mesend
+  ret
+
+label013C@0x013C:
+  message                         0x00000065, "The Guild will pay your\nreward.  Sorry it\'s\nnot much Meseta."
+  add_msg                         "You did a good job!\nSee you."
+  mesend
+  ret
+
+label01AE@0x01AE:
+  jmp_on                          label01B0, [r101, r102, r103]
+  message                         0x00000065, "Well...\nThere may have also still\nbeen other minerals."
+  mesend
+  ret
+
+label01AF@0x01AF:
+  window_msg                      "Your inventory is full."
+  winend
+  ret
+
+label01B0@0x01B0:
+  ret
+
+label0140@0x0140:
+  // Could not determine data type; disassembling as code
+  jmpi_eq                         r255, 0x00000001, label0142
+  jmp_on                          label0141, [r1, r2, r6]
+  jmp_on                          label0141, [r1, r2, r5]
+  jmp_on                          label0141, [r1, r2, r4]
+  jmp_on                          label0141, [r3, r2, r6]
+  jmp_on                          label0141, [r3, r2, r5]
+  jmp_on                          label0141, [r3, r2, r4]
+  message                         0x00000066, "Let me apologize for\nmy husband for asking\nsuch a big favor..."
+  add_msg                         "His ambition is to be\nbetter than the \"big\nthree\" blacksmiths."
+  add_msg                         "\"Big three\" is a\nrewarded name for famous\ntalented blacksmiths."
+  add_msg                         "Good luck, anyway."
+  mesend
+  ret
+
+label0141@0x0141:
+  message                         0x00000066, "Did you find all the\nmaterials on the list?\nOh, that\'s wonderful!"
+  add_msg                         "He\'ll be excited when he\nsees them.  He sometimes\nacts just like a kid."
+  mesend
+  ret
+
+label0142@0x0142:
+  message                         0x00000066, "Thank you."
+  add_msg                         "I helped him with his\ntask for several days."
+  add_msg                         "I\'m sure it\'s a good\nweapon.  Please use it."
+  mesend
+  ret
+
+label0168@0x0168:
+  // Could not determine data type; disassembling as code
+  jmpi_eq                         r90, 0x00000001, return
+  jmpi_eq                         r3, 0x00000001, label019A
+  jmpi_eq                         r1, 0x00000001, return
+  call                            start_cutscene
+  set_quest_board_handler         0x00000001, label0124, "Miwontite"
+  set                             r75
+  set                             r1
+  window_msg                      "Got a miwontite!"
+  winend
+  bgm                             0x00000001
+  call                            end_cutscene
+  ret
+
+label0169@0x0169:
+  // Could not determine data type; disassembling as code
+  jmpi_eq                         r90, 0x00000001, return
+  jmpi_eq                         r1, 0x00000001, label019A
+  jmpi_eq                         r3, 0x00000001, return
+  call                            start_cutscene
+  set_quest_board_handler         0x00000001, label0124, "Miwontite"
+  set                             r75
+  set                             r3
+  window_msg                      "Got a miwontite!"
+  winend
+  bgm                             0x00000001
+  call                            end_cutscene
+  ret
+
+label019A@0x019A:
+  call                            start_cutscene
+  set                             r90
+  window_msg                      "Miwontite is\nalready in the inventory. "
+  winend
+  call                            end_cutscene
+  ret
+
+label016A@0x016A:
+  // Could not determine data type; disassembling as code
+  jmpi_eq                         r255, 0x00000001, return
+  set                             r101
+  jmpi_eq                         r4, 0x00000001, label0190
+  jmpi_eq                         r5, 0x00000001, label0191
+  jmpi_eq                         r6, 0x00000001, label0192
+  call                            start_cutscene
+  window_msg                      "Got a red mineral!"
+  winend
+  bgm                             0x00000001
+  call                            end_cutscene
+  set                             r4
+  set_quest_board_handler         0x00000003, label0126, "Red Mineral"
+  set                             r77
+  ret
+
+label016B@0x016B:
+  // Could not determine data type; disassembling as code
+  jmpi_eq                         r255, 0x00000001, return
+  set                             r102
+  jmpi_eq                         r4, 0x00000001, label0193
+  jmpi_eq                         r5, 0x00000001, label0190
+  jmpi_eq                         r6, 0x00000001, label0194
+  call                            start_cutscene
+  window_msg                      "Got a green mineral!"
+  winend
+  bgm                             0x00000001
+  call                            end_cutscene
+  set                             r5
+  set_quest_board_handler         0x00000003, label0127, "Green Mineral"
+  set                             r77
+  ret
+
+label016C@0x016C:
+  // Could not determine data type; disassembling as code
+  jmpi_eq                         r255, 0x00000001, return
+  set                             r103
+  jmpi_eq                         r4, 0x00000001, label0195
+  jmpi_eq                         r5, 0x00000001, label0196
+  jmpi_eq                         r6, 0x00000001, label0190
+  call                            start_cutscene
+  window_msg                      "Got a blue mineral!"
+  winend
+  bgm                             0x00000001
+  call                            end_cutscene
+  set                             r6
+  set_quest_board_handler         0x00000003, label0128, "Blue Mineral"
+  set                             r77
+  ret
+
+label0190@0x0190:
+  call                            start_cutscene
+  window_msg                      "The mineral is\nalready in the inventory. "
+  winend
+  call                            end_cutscene
+  ret
+
+label0191@0x0191:
+  call                            start_cutscene
+  window_msg                      "Got a red mineral!"
+  bgm                             0x00000001
+  add_msg                         "..."
+  add_msg                         "Photon in another mineral\ndisappeared!"
+  winend
+  call                            end_cutscene
+  clear                           r5
+  set                             r4
+  clear_quest_board_handler       0x00000003
+  set_quest_board_handler         0x00000003, label0126, "Red Mineral\n"
+  ret
+
+label0192@0x0192:
+  call                            start_cutscene
+  window_msg                      "Got a red mineral!"
+  bgm                             0x00000001
+  add_msg                         "..."
+  add_msg                         "Photon in another mineral\ndisappeared!"
+  winend
+  call                            end_cutscene
+  clear                           r6
+  set                             r4
+  clear_quest_board_handler       0x00000003
+  set_quest_board_handler         0x00000003, label0126, "Red Mineral\n"
+  ret
+
+label0193@0x0193:
+  call                            start_cutscene
+  window_msg                      "Got a green mineral!"
+  bgm                             0x00000001
+  add_msg                         "..."
+  add_msg                         "Photon in another mineral\ndisappeared!"
+  winend
+  call                            end_cutscene
+  clear                           r4
+  set                             r5
+  clear_quest_board_handler       0x00000003
+  set_quest_board_handler         0x00000003, label0127, "Green Mineral\n"
+  ret
+
+label0194@0x0194:
+  call                            start_cutscene
+  window_msg                      "Got a green mineral!"
+  bgm                             0x00000001
+  add_msg                         "..."
+  add_msg                         "Photon in another mineral\ndisappeared!"
+  winend
+  call                            end_cutscene
+  clear                           r6
+  set                             r5
+  clear_quest_board_handler       0x00000003
+  set_quest_board_handler         0x00000003, label0127, "Green Mineral\n"
+  ret
+
+label0195@0x0195:
+  call                            start_cutscene
+  window_msg                      "Got a blue mineral!"
+  bgm                             0x00000001
+  add_msg                         "..."
+  add_msg                         "Photon in another mineral\ndisappeared!"
+  winend
+  call                            end_cutscene
+  clear                           r4
+  set                             r6
+  clear_quest_board_handler       0x00000003
+  set_quest_board_handler         0x00000003, label0128, "blue Mineral\n"
+  ret
+
+label0196@0x0196:
+  call                            start_cutscene
+  window_msg                      "Got a blue mineral!"
+  bgm                             0x00000001
+  add_msg                         "..."
+  add_msg                         "Photon in another mineral\ndisappeared!"
+  winend
+  call                            end_cutscene
+  clear                           r5
+  set                             r6
+  clear_quest_board_handler       0x00000003
+  set_quest_board_handler         0x00000003, label0128, "Blue Mineral\n"
+  ret
+
+label0123@0x0123:
+  disp_msg_qb                     "1. Miwontite\nOften found in the river"
+  add_msg                         "2. Dragon fang\nGrown in Dragon\'s jaws."
+  add_msg                         "3. Mineral\nUse your best judgement."
+  close_msg_qb
+  ret
+
+label0124@0x0124:
+  disp_msg_qb                     "Miwontite"
+  close_msg_qb
+  ret
+
+label0125@0x0125:
+  disp_msg_qb                     "Dragon fang"
+  close_msg_qb
+  ret
+
+label0126@0x0126:
+  disp_msg_qb                     "Red Mineral"
+  close_msg_qb
+  ret
+
+label0127@0x0127:
+  disp_msg_qb                     "Green Mineral"
+  close_msg_qb
+  ret
+
+label0128@0x0128:
+  disp_msg_qb                     "Blue Mineral"
+  close_msg_qb
+  ret
+
+label00DC@0x00DC:
+  p_action_disable
+  npc_nont
+  disable_movement1               0x00000000
+  hud_hide
+  p_look_at                       0x00000000, 0x00000001
+  cine_enable
+  cam_zmin
+  call                            label00CF
+  ret
+
+label00DD@0x00DD:
+  cam_zmout
+  cine_disable
+  hud_show
+  enable_movement1                0x00000000
+  npc_talk
+  p_action_enable
+  ret
+
+start_cutscene:
+  cine_enable
+  p_action_disable
+  disable_movement1               0x00000000
+  ret
+
+end_cutscene:
+  enable_movement1                0x00000000
+  p_action_enable
+  cine_disable
+  ret
+
+label0122@0x0122:
+  fadeout
+  call                            label00CF
+  fadein
+  ret
+
+label012C@0x012C:
+  clear_quest_board_handler       0x00000000
+  clear_quest_board_handler       0x00000001
+  clear_quest_board_handler       0x00000002
+  clear_quest_board_handler       0x00000003
+  clear                           r74
+  clear                           r75
+  clear                           r76
+  clear                           r77
+  ret
+
+label00CC@0x00CC:
+  jmpi_eq                         r2, 0x00000001, return
+  sync
+  leti                            r54, 0x0000000B
+  leti                            r55, 0x00000001
+  if_zone_clear                   r56, r54-r55
+  jmpi_eq                         r56, 0x00000000, label00CC
+  cine_enable
+  p_action_disable
+  disable_movement1               0x00000000
+  window_msg                      "Got a dragon fang!"
+  winend
+  bgm                             0x00000001
+  enable_movement1                0x00000000
+  p_action_enable
+  cine_disable
+  set                             r2
+  set_quest_board_handler         0x00000002, label0125, "Dragon fang"
+  set                             r76
+  ret
+
+label00CF@0x00CF:
+  leti                            r72, 0x00000000
+
+label00D0@0x00D0:
+  sync
+  addi                            r72, 0x00000001
+  jmpi_le                         r72, 0x0000001E, label00D0
+  ret
+
+generate_bonuses:
+  leti                            r:rand_low, 0
+  leti                            r:rand_high, 4
+  call                            random
+  let                             r:item_data1_6, r:rand_st
+
+  leti                            r:rand_low, 4
+  leti                            r:rand_high, 12
+  call                            random
+  let                             r:item_data1_7, r:rand_st
+  muli                            r:item_data1_7, 5
+  subi                            r:item_data1_7, 10
+
+  leti                            r:rand_low, 0
+  leti                            r:rand_high, 4
+  call                            random
+  jmpi_ge                         r:rand_st, 2, generate_bonuses_no_hit
+  leti                            r:item_data1_8, 5
+  leti                            r:rand_low, 4
+  leti                            r:rand_high, 12
+  call                            random
+  let                             r:item_data1_9, r:rand_st
+  muli                            r:item_data1_9, 5
+  subi                            r:item_data1_9, 10
+  ret
+generate_bonuses_no_hit:
+  leti                            r:item_data1_8, 0x00000000
+  leti                            r:item_data1_9, 0x00000000
+  ret
+
+random_setup:
+  leti                            r:rand_st, 0x811C9DC5
+  ret
+
+random:
+  getmtime                        r:rand_gen
+
+  let                             r:rand_buf, r:rand_gen
+  andi                            r:rand_buf, 0xFF000000
+  divi                            r:rand_buf, 0x01000000
+  xor                             r:rand_st, r:rand_buf
+  muli                            r:rand_st, 0x01000193
+
+  let                             r:rand_buf, r:rand_gen
+  andi                            r:rand_buf, 0x00FF0000
+  divi                            r:rand_buf, 0x00010000
+  xor                             r:rand_st, r:rand_buf
+  muli                            r:rand_st, 0x01000193
+
+  let                             r:rand_buf, r:rand_gen
+  andi                            r:rand_buf, 0x0000FF00
+  divi                            r:rand_buf, 0x00000100
+  xor                             r:rand_st, r:rand_buf
+  muli                            r:rand_st, 0x01000193
+
+  andi                            r:rand_gen, 0x000000FF
+  xor                             r:rand_st, r:rand_gen
+  muli                            r:rand_st, 0x01000193
+
+  // This is biased to rand_min, but that matches Sega's implementation in V2+
+  let                             r:rand_result, r:rand_st
+  mod2                            r:rand_result, r:rand_high
+  jmp_ge                          r:rand_result, r:rand_low, random_done
+  let                             r:rand_result, r:rand_low
+
+random_done:
+  ret

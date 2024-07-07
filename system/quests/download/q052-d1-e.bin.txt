@@ -1,0 +1,811 @@
+.version DC_V1
+.quest_num 19
+.language 1
+.name "The Retired Hunter"
+.short_desc "I will kill\n10000 monsters\nbefore I die!"
+.long_desc "Client: Donoph\nQuest:\n  An old hunter, Donoph,\n  is about to die.\n  Defeat 99 monsters to\n  fulfill his dream.\nReward: 8000 Meseta\n"
+
+start@0x0000:
+  gget                            0x0073, r40
+  set_floor_handler               0x00000000, label0096
+  set_floor_handler               0x00000002, label0098
+  set_floor_handler               0x0000000A, label00A0
+  set_qt_success                  label00FA
+  get_difficulty_level_v1         r83
+  leti                            r60, 0x00000000
+  leti                            r61, 0x00000000
+  leti                            r62, 0x00000000
+  leti                            r63, 0x00000000
+  map_designate                   r60-r63
+  leti                            r60, 0x00000002
+  leti                            r61, 0x00000000
+  leti                            r62, 0x00000000
+  leti                            r63, 0x00000003
+  map_designate                   r60-r63
+  leti                            r60, 0x0000000A
+  leti                            r61, 0x00000000
+  leti                            r62, 0x00000002
+  leti                            r63, 0x00000000
+  map_designate                   r60-r63
+  ret
+
+label0001@0x0001:
+  ret
+
+label0096@0x0096:
+  thread_stg                      label00D1
+  jmpi_eq                         r255, 0x00000001, label0120
+  jmpi_eq                         r253, 0x00000001, label00FB
+  thread_stg                      label00C8
+  jmpi_eq                         r10, 0x00000001, label00BC
+  leti                            r60, 0x000000ED
+  leti                            r61, 0x00000000
+  leti                            r62, 0x0000014D
+  leti                            r63, 0x00000000
+  p_setpos                        0x00000000, r60-r63
+  leti                            r60, 0x000000E1
+  leti                            r61, 0x00000000
+  leti                            r62, 0x00000163
+  leti                            r63, 0x000000AF
+  leti                            r64, 0x00000000
+  leti                            r65, 0x00000001
+  leti                            r66, 0x00000006
+  npc_crp_id                      r60-r66, 0x00000007
+  npc_stop                        0x00000001
+  call                            label0136
+  set                             r10
+  set_mainwarp                    0x0000000A
+  ret
+
+label00BC@0x00BC:
+  clear                           r11
+  ret
+
+label0120@0x0120:
+  npc_kill                        0x00000001
+  playbgm_epi                     0x00000002
+  ret
+
+label00FA@0x00FA:
+  gset                            0x0089
+  jmpi_eq                         r83, 0x00000000, label00FC
+  jmpi_eq                         r83, 0x00000001, label00FD
+  jmpi_eq                         r83, 0x00000002, label00FE
+  ret
+
+label00FC@0x00FC:
+  window_msg                      "You\'ve been awarded 8000 Meseta."
+  winend
+  bgm                             0x00000001
+  pl_add_meseta                   0x00000000, 0x00001F40
+  ret
+
+label00FD@0x00FD:
+  window_msg                      "You\'ve been awarded 12000 Meseta."
+  winend
+  bgm                             0x00000001
+  pl_add_meseta                   0x00000000, 0x00002EE0
+  ret
+
+label00FE@0x00FE:
+  window_msg                      "You\'ve been awarded 18000 Meseta."
+  winend
+  bgm                             0x00000001
+  pl_add_meseta                   0x00000000, 0x00004650
+  ret
+
+label00FB@0x00FB:
+  p_enablewarp
+  warp_on
+  npc_kill                        0x00000001
+  disable_movement1               0x00000000
+  p_talk_guild                    0x00000000
+  ret
+
+label0098@0x0098:
+  ret
+
+label00A0@0x00A0:
+  call                            label0107
+  thread_stg                      label00C8
+  thread_stg                      label00D1
+  thread_stg                      label0108
+  thread_stg                      label0119
+  thread_stg                      label011B
+  switch_on                       0x00000008
+  switch_on                       0x0000005C
+  switch_on                       0x0000005D
+  switch_on                       0x00000035
+  leti                            r60, 0x00000006
+  leti                            r61, 0x00000027
+  leti                            r62, 0x0000000B
+  leti                            r63, 0x00000046
+  leti                            r64, 0x0000000A
+  leti                            r65, 0x00000012
+  leti                            r66, 0x00000032
+  leti                            r67, 0x0000001E
+  leti                            r68, 0x0000001E
+  leti                            r69, 0x0000000A
+  leti                            r70, 0x0000000A
+  leti                            r71, 0x00000050
+  leti                            r72, 0x0000000A
+  leti                            r73, 0x00000032
+  npc_param                       r60-r73, 0x00000006
+  leti                            r60, 0xFFFFF92A
+  leti                            r61, 0x00000000
+  leti                            r62, 0xFFFFF911
+  leti                            r63, 0x00000032
+  leti                            r64, 0x00000121
+  leti                            r65, 0x00000078
+  leti                            r66, 0xFFFFF9F2
+  leti                            r67, 0x00000000
+  leti                            r68, 0xFFFFF911
+  col_plinaw                      r60-r68
+  leti                            r60, 0xFFFFFFCE
+  leti                            r61, 0x00000000
+  leti                            r62, 0xFFFFFC4A
+  leti                            r63, 0x00000032
+  leti                            r64, 0x00000121
+  leti                            r65, 0x00000078
+  leti                            r66, 0x000000FA
+  leti                            r67, 0x00000000
+  leti                            r68, 0xFFFFFC4A
+  col_plinaw                      r60-r68
+  leti                            r60, 0xFFFFFFCE
+  leti                            r61, 0x00000000
+  leti                            r62, 0xFFFFFBB4
+  leti                            r63, 0x00000032
+  leti                            r64, 0x00000121
+  leti                            r65, 0x00000078
+  leti                            r66, 0x000000FA
+  leti                            r67, 0x00000000
+  leti                            r68, 0xFFFFFBB4
+  col_plinaw                      r60-r68
+  jmpi_eq                         r7, 0x00000001, label0001
+  leti                            r60, 0x000001DA
+  leti                            r61, 0x00000000
+  leti                            r62, 0x0000001F
+  leti                            r63, 0x0000001E
+  leti                            r64, 0x000000A1
+  at_coords_call                  r60-r64
+  ret
+
+label00A1@0x00A1:
+  // Could not determine data type; disassembling as code
+  jmpi_eq                         r11, 0x00000001, label0001
+  set                             r11
+  fadeout
+  leti                            r60, 0x000001DB
+  leti                            r61, 0x00000000
+  leti                            r62, 0xFFFFFF06
+  leti                            r63, 0xFFFFFFA6
+  leti                            r64, 0x00000000
+  leti                            r65, 0x00000001
+  leti                            r66, 0x00000006
+  npc_crp_id                      r60-r66, 0x00000007
+  npc_stop                        0x00000001
+  leti                            r60, 0x000001DB
+  leti                            r61, 0x00000000
+  leti                            r62, 0xFFFFFF9C
+  leti                            r63, 0x00000032
+  leti                            r64, 0x0000015E
+  at_coords_call                  r60-r64
+  fadein
+  ret
+
+label0121@0x0121:
+  // Could not determine data type; disassembling as code
+  npc_chkwarp
+  ret
+
+label0136@0x0136:
+  call                            label00DC
+  call                            label00CF
+  call                            label00CF
+  message                         0x00000001, "Are you <hero name>?\nNice to meet you,\nI\'m Donoph."
+  add_msg                         "It\'s very simple.  You\nhelp me defeat monsters.\nThat\'s it."
+  add_msg                         "I\'m a hunter, too.\nI worked very hard and\nkilled lots of monsters."
+  add_msg                         "My life\'s ambition was\nto kill 10000 monsters!"
+  add_msg                         "I almost succeeded when\nI retired just 10 years\nago."
+  add_msg                         "The last monster I\nkilled was my 9901th. I\nhad only 99 more to go!"
+  add_msg                         "I know I won\'t live much\nlonger.  I want my dream\nto come true."
+  add_msg                         "I can\'t die a happy man\nunless I kill 99 more\nmonsters.  Understand?"
+  mesend
+  list                            r100, "??\n!!"
+  switch_jmp                      r100, [label0138, label0139]
+
+label0138@0x0138:
+  message                         0x00000001, "What?"
+  se                              0x00000014
+  add_msg                         "You\'re exactly the same\nas the other numbskulls."
+  add_msg                         "Cough, cough.\nIt\'s OK.  All people\nthink differently."
+  jmp                             label013A
+
+label0139@0x0139:
+  message                         0x00000001, "Good, good.  I think\nyou understand what it\nis to be a MAN."
+  set                             r41
+  jmp                             label013A
+
+label013A@0x013A:
+  message                         0x00000001, "Now, listen."
+  add_msg                         "I only have 30 minutes\nto live, starting now."
+  add_msg                         "Trust me.  I know this\nbecause, well I just do!"
+  add_msg                         "It means that I have to\nkill 99 monsters before\n30 minutes are up."
+  add_msg                         "And..."
+  add_msg                         "Oh, no, nothing.\nI\'ll go down now.\nPlease come later."
+  add_msg                         "Cough, cough!"
+  add_msg                         "I\'m OK, thank you.\nAh, by the way... if\nyou could..."
+  add_msg                         "Please don\'t tell\nanybody about this.\nOK?"
+  mesend
+  leti                            r60, 0x000000B9
+  leti                            r61, 0x00000000
+  leti                            r62, 0x00000127
+  leti                            r63, 0x00000001
+  pl_walk                         r60-r63, 0x00000004
+  call                            label00CF
+  call                            label00CF
+  npc_kill                        0x00000001
+  call                            label00DD
+  set                             r0
+  thread_stg                      label00D1
+  ret
+
+label0140@0x0140:
+  // Could not determine data type; disassembling as code
+  jmpi_eq                         r255, 0x00000001, label0141
+  message                         0x00000065, "People die without\nexception."
+  add_msg                         "So people struggle to\nlive their lives."
+  add_msg                         "Don\'t you think so?"
+  mesend
+  ret
+
+label0141@0x0141:
+  message                         0x00000065, "He wasn\'t just an old\nhunter.  He\'s special!"
+  mesend
+  ret
+
+label0143@0x0143:
+  // Could not determine data type; disassembling as code
+  jmpi_eq                         r9, 0x00000001, label0141
+  message                         0x00000065, "People die without\nexception."
+  add_msg                         "So people struggle to\nlive their lives."
+  add_msg                         "Am I right, Donoph?"
+  mesend
+  ret
+
+label014A@0x014A:
+  // Could not determine data type; disassembling as code
+  jmpi_eq                         r1, 0x00000001, label014D
+  jmpi_eq                         r255, 0x00000001, label014C
+  jmpi_eq                         r7, 0x00000001, label014E
+  jmpi_eq                         r6, 0x00000001, label014B
+  jmpi_eq                         r40, 0x00000001, label014F
+  message                         0x00000066, "You were with Donoph.\nYou don\'t have to\nbe secretive with me."
+  add_msg                         "His best friend was on\n\"Pioneer 1\".  Heathcliff.\nThey were like brothers."
+  add_msg                         "So I think Donoph wanted\nto stand on the same\nground with him."
+  set                             r6
+  mesend
+  ret
+
+label014F@0x014F:
+  message                         0x00000066, "Hi <hero name>... \nHow have you been?"
+  add_msg                         "You were with Donoph.\nYou don\'t have to\nbe secretive with me."
+  add_msg                         "His best friend was on\n\"Pioneer 1\".  Heathclif.\nThey were like brothers."
+  add_msg                         "So I think Donoph wanted\nto stand on the same\nground with him."
+  set                             r6
+  mesend
+  ret
+
+label014E@0x014E:
+  jmpi_eq                         r9, 0x00000001, label014B
+  jmpi_eq                         r40, 0x00000000, label014B
+  message                         0x00000066, "Donoph..."
+  add_msg                         "<hero name>,\nDonoph needs your help."
+  mesend
+  ret
+
+label014B@0x014B:
+  message                         0x00000066, "... ... ..."
+  add_msg                         "He needs your help."
+  mesend
+  ret
+
+label014C@0x014C:
+  message                         0x00000066, "I think it was better\nfor him than sleeping\nin a comfortable bed."
+  add_msg                         "Thanks for taking care\nof him."
+  mesend
+  jmpi_eq                         r83, 0x00000000, label0001
+  jmpi_eq                         r83, 0x00000001, label0001
+  jmpi_eq                         r40, 0x00000000, label0001
+  jmpi_eq                         r41, 0x00000000, label0001
+  jmpi_eq                         r42, 0x00000001, label0001
+  set_mainwarp                    0x00000002
+  bgm                             0x00000000
+  set                             r42
+  ret
+
+label014D@0x014D:
+  message                         0x00000066, "Heath adopted me."
+  add_msg                         "He didn\'t want to get on\nboard Pioneer 1..."
+  add_msg                         "He refused orders to\nleave with Pioneer 1\nseveral times."
+  add_msg                         "When he was finally\nforced to go, he told me\njust before he left that"
+  add_msg                         "evolution and damnation\nmay be two sides of the\nsame coin."
+  add_msg                         "It\'s all up to the\npeople living in it..."
+  add_msg                         "We may be in the same\nsituation..."
+  mesend
+  ret
+
+label0154@0x0154:
+  // Could not determine data type; disassembling as code
+  jmpi_eq                         r255, 0x00000001, label0156
+  jmpi_eq                         r7, 0x00000001, label0157
+  jmpi_eq                         r5, 0x00000001, label0155
+  message                         0x00000067, "DI...di...DID you SEE\nMr. Donoph?\nOops, I\'m sorry!"
+  add_msg                         "I...I\'m a bit nervous...\nSorry for shouting\nout so suddenly."
+  add_msg                         "Mr. Donoph is an old\nhunter. Did you see him?"
+  add_msg                         "Of course not...\nThanks."
+  add_msg                         "Where is he?  He must\nstay in bed..."
+  set                             r5
+  mesend
+  ret
+
+label0155@0x0155:
+  message                         0x00000067, "Where has he gone?"
+  mesend
+  ret
+
+label0156@0x0156:
+  message                         0x00000067, "Did he say that?\n...Mr. Donoph..."
+  add_msg                         "But I\'m a nurse. I can\'t\nlet him walk around\nwhile I know about it!"
+  mesend
+  ret
+
+label0157@0x0157:
+  jmpi_eq                         r9, 0x00000001, label0155
+  message                         0x00000067, "Mr. Donoph!  Please come\nback to the hospital!"
+  add_msg                         "I know you\'re hiding\naround here!"
+  mesend
+  ret
+
+label015E@0x015E:
+  // Could not determine data type; disassembling as code
+  jmpi_eq                         r7, 0x00000001, label0001
+  npc_play                        0x00000000
+  call                            label00E4
+  message                         0x00000001, "Ah, you came.  I was\na little worried that\nyou might not come."
+  add_msg                         "Cough, cough!\n(Breath)"
+  add_msg                         "No, I\'m OK!  I must live\nuntil I kill 10000\nmonsters!"
+  add_msg                         "Ha, ha, ha!\nNow, let\'s go!"
+  mesend
+  set                             r7
+  bgm                             0x00000001
+  call                            label00E5
+  ret
+
+label015F@0x015F:
+  // Could not determine data type; disassembling as code
+  call                            label00E4
+  message                         0x00000001, "No, not now..."
+  mesend
+  call                            label00E5
+  ret
+
+label0160@0x0160:
+  jmpi_eq                         r255, 0x00000001, label0001
+  set                             r254
+  call                            label00E4
+  message                         0x00000001, "Cough!\nCough!"
+  add_msg                         "Finally... I killed\n10000 of them..."
+  add_msg                         "Thank you.  Now I can\ngo ...cough!\nCough!"
+  add_msg                         "You go back to the Guild\nto receive your reward.\nI\'ll stay here."
+  add_msg                         "I have lived... enough.\n...Heath..."
+  mesend
+  set                             r255
+  bgm                             0x00000001
+  fadeout
+  call                            label00CF
+  npc_kill                        0x00000001
+  call                            label00CF
+  fadein
+  call                            label00E5
+  ret
+
+label041A@0x041A:
+  // Could not determine data type; disassembling as code
+  p_action_disable
+  npc_nont
+  disable_movement1               0x00000000
+  hud_hide
+  cine_enable
+  cam_zmin
+  call                            label00CF
+  jmpi_eq                         r1, 0x00000001, label016B
+  window_msg                      "Main computer access..."
+  add_msg                         "Access denied."
+  add_msg                         "."
+  add_msg                         ".."
+  add_msg                         "Local computer access..."
+  add_msg                         "Access OK."
+  add_msg                         "."
+  add_msg                         ".."
+  add_msg                         "Search Heathcliff..."
+  add_msg                         "."
+  add_msg                         ".."
+  add_msg                         "..."
+  add_msg                         "Search result: 1"
+  add_msg                         "Heathcliff Flowen"
+  add_msg                         "...W... in 084 year, died"
+  add_msg                         "There is a message.\nDo you want to play\nthe message?"
+  winend
+  list                            r100, "Yes\nNo"
+  switch_jmp                      r100, [label016A, label016B]
+
+label016A@0x016A:
+  window_msg                      "Start playing the\nmessage."
+  add_msg                         "I know who is watching\nthis..."
+  add_msg                         "I decided to leave a\nlittle ahead of you."
+  add_msg                         "It\'s sad that we can\'t\nsee each other, but I\ndon\'t want to tempt fate."
+  add_msg                         "It\'s very peaceful here.\nIt\'s boring because it\'s\ntoo peaceful."
+  add_msg                         "Donoph... This is not the\nright place for you. \nEspecially, for you..."
+  add_msg                         "Ha ha ha"
+  add_msg                         "My daughter will take\ncare of you. Don\'t cause\nany problems, old man."
+  add_msg                         "You are her favorite.\nEver since she was a\nsmall child, I\'d imagine."
+  add_msg                         "... ... ..."
+  add_msg                         "And, Zook, I know you\nwant \"out,\" but don\'t do\nanything stupid."
+  add_msg                         "You\'re such a stubborn\nguy. Even when we were\nyoung."
+  add_msg                         "Well... I did something\nthat I\'m not really \nproud of..."
+  add_msg                         "We are so old now. I hope\nyou understand."
+  add_msg                         "Don\'t let that girl worry\nabout you so much."
+  add_msg                         "We still have a lot to\ntalk about, but I guess\nit\'ll be a while."
+  add_msg                         "See you again...\nover there."
+  add_msg                         "..."
+  add_msg                         "... ..."
+  add_msg                         "... ... ..."
+  add_msg                         "Finish playing."
+  set                             r1
+  winend
+  cam_zmout
+  cine_disable
+  hud_show
+  enable_movement1                0x00000000
+  npc_talk
+  p_action_enable
+  ret
+
+label016B@0x016B:
+  window_msg                      "Go back to normal\nfunction."
+  winend
+  cam_zmout
+  cine_disable
+  hud_show
+  enable_movement1                0x00000000
+  npc_talk
+  p_action_enable
+  ret
+
+label00DC@0x00DC:
+  p_action_disable
+  npc_nont
+  disable_movement1               0x00000000
+  hud_hide
+  p_look_at                       0x00000000, 0x00000001
+  p_look_at                       0x00000001, 0x00000000
+  cine_enable
+  cam_zmin
+  call                            label00CF
+  ret
+
+label00DD@0x00DD:
+  cam_zmout
+  cine_disable
+  hud_show
+  enable_movement1                0x00000000
+  npc_talk
+  p_action_enable
+  ret
+
+label00E4@0x00E4:
+  p_action_disable
+  npc_nont
+  disable_movement1               0x00000000
+  p_look                          0x00000000
+  p_look_at                       0x00000001, 0x00000000
+  hud_hide
+  cine_enable
+  cam_zmin
+  call                            label00CF
+  ret
+
+label00E5@0x00E5:
+  cam_zmout
+  cine_disable
+  hud_show
+  enable_movement1                0x00000000
+  npc_talk
+  p_action_enable
+  ret
+
+label00CF@0x00CF:
+  leti                            r72, 0x00000000
+
+label00D0@0x00D0:
+  sync
+  addi                            r72, 0x00000001
+  jmpi_le                         r72, 0x0000001E, label00D0
+  ret
+
+label00D1@0x00D1:
+  jmpi_eq                         r254, 0x00000001, label0001
+  jmpi_eq                         r253, 0x00000001, label0001
+  jmpi_eq                         r0, 0x00000000, label0001
+  jmpi_gt                         r200, 0x00000000, label00D2
+  leti                            r200, 0x0000D2F0
+
+label00D2@0x00D2:
+  window_time
+  sync
+  subi                            r200, 0x00000001
+  let                             r70, r200
+  divi                            r70, 0x0000001E
+  winset_time                     r70
+  jmpi_eq                         r254, 0x00000001, label00D4
+  jmpi_gt                         r70, 0x00000000, label00D2
+  set                             r253
+  disable_movement1               0x00000000
+  thread_stg                      label00D3
+  window_msg                      "TIME UP!"
+  winend
+  ret
+
+label00D3@0x00D3:
+  call                            label00CF
+  fadeout
+  winend_time
+  p_return_guild
+  ret
+
+label00D4@0x00D4:
+  winend_time
+  ret
+
+label0108@0x0108:
+  sync
+  chk_ene_num                     r234
+  jmpi_le                         r234, 0x00000005, label0108
+  jmpi_eq                         r99, 0x00000000, label0116
+  jmpi_le                         r234, 0x00000009, label0108
+  jmpi_eq                         r86, 0x00000000, label0109
+  jmpi_le                         r234, 0x00000013, label0108
+  jmpi_eq                         r87, 0x00000000, label010A
+  jmpi_le                         r234, 0x0000001D, label0108
+  jmpi_eq                         r88, 0x00000000, label010B
+  jmpi_le                         r234, 0x00000027, label0108
+  jmpi_eq                         r89, 0x00000000, label010C
+  jmpi_le                         r234, 0x00000031, label0108
+  jmpi_eq                         r90, 0x00000000, label010D
+  jmpi_le                         r234, 0x0000003B, label0108
+  jmpi_eq                         r91, 0x00000000, label010E
+  jmpi_le                         r234, 0x00000040, label0108
+  jmpi_eq                         r100, 0x00000000, label0117
+  jmpi_le                         r234, 0x00000045, label0108
+  jmpi_eq                         r92, 0x00000000, label010F
+  jmpi_le                         r234, 0x0000004F, label0108
+  jmpi_eq                         r93, 0x00000000, label0110
+  jmpi_le                         r234, 0x00000059, label0108
+  jmpi_eq                         r94, 0x00000000, label0111
+  jmpi_le                         r234, 0x0000005E, label0108
+  jmpi_eq                         r95, 0x00000000, label0112
+  jmpi_le                         r234, 0x0000005F, label0108
+  jmpi_eq                         r96, 0x00000000, label0113
+  jmpi_le                         r234, 0x00000060, label0108
+  jmpi_eq                         r97, 0x00000000, label0114
+  jmpi_le                         r234, 0x00000061, label0108
+  jmpi_eq                         r98, 0x00000000, label0115
+  jmpi_le                         r234, 0x00000062, label0108
+  call                            label00CF
+  jmp                             label0160
+  ret
+
+label0109@0x0109:
+  p_action_disable
+  message                         0x00000001, "This is number 10!"
+  mesend
+  set                             r86
+  p_action_enable
+  jmp                             label0108
+  ret
+
+label010A@0x010A:
+  p_action_disable
+  message                         0x00000001, "20!"
+  mesend
+  set                             r87
+  p_action_enable
+  jmp                             label0108
+  ret
+
+label010B@0x010B:
+  p_action_disable
+  message                         0x00000001, "30!"
+  mesend
+  set                             r88
+  p_action_enable
+  jmp                             label0108
+  ret
+
+label010C@0x010C:
+  p_action_disable
+  message                         0x00000001, "40!"
+  mesend
+  set                             r89
+  p_action_enable
+  jmp                             label0108
+  ret
+
+label010D@0x010D:
+  p_action_disable
+  message                         0x00000001, "50!"
+  mesend
+  set                             r90
+  p_action_enable
+  jmp                             label0108
+  ret
+
+label010E@0x010E:
+  p_action_disable
+  message                         0x00000001, "60!"
+  mesend
+  set                             r91
+  p_action_enable
+  jmp                             label0108
+  ret
+
+label010F@0x010F:
+  p_action_disable
+  message                         0x00000001, "70!"
+  mesend
+  set                             r92
+  p_action_enable
+  jmp                             label0108
+  ret
+
+label0110@0x0110:
+  p_action_disable
+  message                         0x00000001, "80!"
+  mesend
+  set                             r93
+  p_action_enable
+  jmp                             label0108
+  ret
+
+label0111@0x0111:
+  p_action_disable
+  message                         0x00000001, "90!"
+  mesend
+  set                             r94
+  p_action_enable
+  jmp                             label0108
+  ret
+
+label0112@0x0112:
+  p_action_disable
+  message                         0x00000001, "95!"
+  mesend
+  set                             r95
+  p_action_enable
+  jmp                             label0108
+  ret
+
+label0113@0x0113:
+  p_action_disable
+  message                         0x00000001, "96!"
+  mesend
+  set                             r96
+  p_action_enable
+  jmp                             label0108
+  ret
+
+label0114@0x0114:
+  p_action_disable
+  message                         0x00000001, "97!"
+  mesend
+  set                             r97
+  p_action_enable
+  jmp                             label0108
+  ret
+
+label0115@0x0115:
+  p_action_disable
+  message                         0x00000001, "98!"
+  mesend
+  set                             r98
+  p_action_enable
+  jmp                             label0108
+  ret
+
+label0116@0x0116:
+  call                            label00CF
+  call                            label00E4
+  message                         0x00000001, "Ah ha!\nThis is going really well.\nI\'m just mowing them down!"
+  mesend
+  call                            label00E5
+  set                             r99
+  jmp                             label0108
+  ret
+
+label011A@0x011A:
+  jmpi_eq                         r91, 0x00000001, label0001
+  call                            label00E4
+  message                         0x00000001, "Half way done...  There\nshould only be about 50 more\nenemies left to finish off!"
+  mesend
+  call                            label00E5
+  jmp                             label0108
+  ret
+
+label0117@0x0117:
+  call                            label00CF
+  call                            label00E4
+  message                         0x00000001, "Cough!  Cough!\nAlmost done..."
+  add_msg                         "Almost there.\nI\'ve got to hang on!"
+  mesend
+  call                            label00E5
+  set                             r100
+  jmp                             label0108
+  ret
+
+label0119@0x0119:
+  jmpi_eq                         r85, 0x00000001, label0001
+  sync
+  leti                            r60, 0x0000000A
+  leti                            r61, 0x0000002A
+  if_zone_clear                   r62, r60-r61
+  jmpi_eq                         r62, 0x00000000, label0119
+  call                            label00CF
+  set                             r85
+  jmp                             label011A
+  ret
+
+label011B@0x011B:
+  jmpi_eq                         r85, 0x00000001, label0001
+  sync
+  leti                            r60, 0x0000000A
+  leti                            r61, 0x0000001F
+  if_zone_clear                   r62, r60-r61
+  jmpi_eq                         r62, 0x00000000, label011B
+  call                            label00CF
+  set                             r85
+  jmp                             label011A
+  ret
+
+label00C8@0x00C8:
+  sync
+  p_dead                          r58, 0x00000000
+  nop
+  nop
+  nop
+  jmpi_eq                         r58, 0x00000001, label00CA
+  p_dead                          r238, 0x01000000
+  nop
+  nop
+  nop
+  jmpi_eq                         r238, 0x00000000, label00C8
+  warp_off
+  p_disablewarp
+  call                            label00CF
+  call                            label00CF
+  set                             r253
+  fadeout
+  npc_kill                        0x00000001
+  p_return_guild
+  ret
+
+label00CA@0x00CA:
+  ret
+
+label0107@0x0107:
+  npc_text                        0x00000004, "What can I do..."
+  npc_text                        0x0000000B, "Let\'s move on."
+  npc_text                        0x0000000D, "Gyaaah!"
+  npc_text                        0x0000000E, "I\'m still OK!"
+  npc_text                        0x0000000F, "Mph!"
+  ret
