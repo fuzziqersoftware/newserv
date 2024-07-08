@@ -355,3 +355,8 @@ Note: Without a TextEnglish.pr2/pr3 patch, the menu items for these sounds will 
 0408E448 38000001
 0408E44C 900DA62C
 0408E450 4E800020
+
+(v1.1 USA) Replace all sound effects with specified sound effect
+042256E4 3F40XXXX
+042256E8 635AYYYY
+042256EC 4800000C
