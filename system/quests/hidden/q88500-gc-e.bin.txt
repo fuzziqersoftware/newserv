@@ -8,7 +8,7 @@
 
 start:
   // Create quest opcode handlers for F9FE to call flush_code and F9FF to call
-  // the copied code. Fortunately, quest_call_l leaved the byteswapped value of
+  // the copied code. Fortunately, quest_call_l leaves the byteswapped value of
   // the opcode argument in r4, so as long as the address ends with 00, it will
   // be valid as the size argument to flush_code. We'll end up flushing many
   // more bytes than needed, but this isn't a problem.
