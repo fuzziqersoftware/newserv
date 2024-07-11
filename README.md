@@ -140,8 +140,8 @@ newserv implements a patch server for PSO PC and PSO BB game data. Any file or d
 For Blue Burst set up, the below is mandatory for a smooth experience:
 
 1. Browse to your chosen client's data directory.
-2. Copy all the map_*.dat files, unitxt_* files and the data.gsl file and place them in `system/patch-bb/data`.
-3. If you're using game files from the Tethealla client, make a copy of unitxt_j.prs inside system/patch-bb/data and name it unitxt_e.prs. (If unitxt_e.prs already exists, replace it with the copied file.)
+2. Copy all the `map_*.dat` files, `unitxt_*` files and the `data.gsl` file and place them in `system/patch-bb/data`.
+3. If you're using game files from the Tethealla client, make a copy of `unitxt_j.prs` inside system/patch-bb/data and name it `unitxt_e.prs`. (If `unitxt_e.prs` already exists, replace it with the copied file.)
 
 If you do not have a BB client, or using a Tethealla client from another source, Tethealla clients that are compatible with newserv can be found here: [English](https://web.archive.org/web/20240402011115/https://ragol.org/files/bb/TethVer12513_English.zip) / [Japanese](https://web.archive.org/web/20240402013127/https://ragol.org/files/bb/TethVer12513_Japanese.zip). These clients connect to 127.0.0.1 (localhost) automatically.
 
