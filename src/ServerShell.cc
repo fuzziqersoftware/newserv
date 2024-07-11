@@ -82,7 +82,21 @@ void ServerShell::thread_fn() {
   for (;;) {
     fprintf(stdout, "newserv> ");
     fflush(stdout);
-    string command = fgets(stdin);
+    string command;
+    uint64_t read_start_usecs = now();
+    try {
+      command = fgets(stdin);
+    } catch (const io_error& e) {
+      // Cygwin sometimes causes fgets() to fail with errno -1 when the
+      // terminal window is resized. We ignore these events unless the read
+      // failed immediately (which probably means it would fail again if we
+      // retried immediately).
+      if (now() - read_start_usecs < 1000000 || e.error != -1) {
+        throw;
+      }
+      log_warning("I/O error reading from terminal: %s (%d)", e.what(), e.error);
+      continue;
+    }
 
     // If command is empty (not even a \n), it's probably EOF
     if (command.empty()) {
