@@ -2225,11 +2225,11 @@ std::string assemble_quest_script(const std::string& text, const std::string& in
           string native_text = load_file(include_directory + "/" + filename);
           string code;
           if (is_ppc(quest_version)) {
-            code = std::move(PPC32Emulator::assemble(native_text).code);
+            code = std::move(ResourceDASM::PPC32Emulator::assemble(native_text).code);
           } else if (is_x86(quest_version)) {
-            code = std::move(X86Emulator::assemble(native_text).code);
+            code = std::move(ResourceDASM::X86Emulator::assemble(native_text).code);
           } else if (is_sh4(quest_version)) {
-            code = std::move(SH4Emulator::assemble(native_text).code);
+            code = std::move(ResourceDASM::SH4Emulator::assemble(native_text).code);
           } else {
             throw runtime_error("unknown architecture");
           }

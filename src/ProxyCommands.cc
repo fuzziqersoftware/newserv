@@ -754,19 +754,19 @@ static HandlerResult S_B2(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t, 
 
         string disassembly;
         if (is_ppc) {
-          disassembly = PPC32Emulator::disassemble(
+          disassembly = ResourceDASM::PPC32Emulator::disassemble(
               &r.pget<uint8_t>(0, code.size()),
               code.size(),
               0,
               &labels);
         } else if (is_x86) {
-          disassembly = X86Emulator::disassemble(
+          disassembly = ResourceDASM::X86Emulator::disassemble(
               &r.pget<uint8_t>(0, code.size()),
               code.size(),
               0,
               &labels);
         } else if (is_sh4) {
-          disassembly = SH4Emulator::disassemble(
+          disassembly = ResourceDASM::SH4Emulator::disassemble(
               &r.pget<uint8_t>(0, code.size()),
               code.size(),
               0,

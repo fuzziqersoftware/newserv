@@ -115,8 +115,8 @@ public:
       if (ends_with(filename, ".dol")) {
         string name = filename.substr(0, filename.size() - 4);
         string path = directory + "/" + filename;
-        DOLFile dol(path.c_str());
-        auto mem = make_shared<MemoryContext>();
+        ResourceDASM::DOLFile dol(path.c_str());
+        auto mem = make_shared<ResourceDASM::MemoryContext>();
         dol.load_into(mem);
         this->mems.emplace(name, mem);
         this->enable_ppc = true;
@@ -124,8 +124,8 @@ public:
       } else if (ends_with(filename, ".xbe")) {
         string name = filename.substr(0, filename.size() - 4);
         string path = directory + "/" + filename;
-        XBEFile xbe(path.c_str());
-        auto mem = make_shared<MemoryContext>();
+        ResourceDASM::XBEFile xbe(path.c_str());
+        auto mem = make_shared<ResourceDASM::MemoryContext>();
         xbe.load_into(mem);
         this->mems.emplace(name, mem);
         this->log.info("Loaded %s", name.c_str());
@@ -133,7 +133,7 @@ public:
         string name = filename.substr(0, filename.size() - 4);
         string path = directory + "/" + filename;
         string data = load_file(path);
-        auto mem = make_shared<MemoryContext>();
+        auto mem = make_shared<ResourceDASM::MemoryContext>();
         mem->allocate_at(0x8C010000, data.size());
         mem->memcpy(0x8C010000, data.data(), data.size());
         this->mems.emplace(name, mem);
@@ -204,7 +204,7 @@ public:
   }
 
   uint32_t find_match(
-      shared_ptr<const MemoryContext> dest_mem,
+      shared_ptr<const ResourceDASM::MemoryContext> dest_mem,
       uint32_t src_addr,
       uint32_t src_size,
       ExpandMethod expand_method) const {
@@ -470,9 +470,9 @@ public:
 private:
   PrefixedLogger log;
   string directory;
-  unordered_map<string, shared_ptr<const MemoryContext>> mems;
+  unordered_map<string, shared_ptr<const ResourceDASM::MemoryContext>> mems;
   string src_filename;
-  shared_ptr<const MemoryContext> src_mem;
+  shared_ptr<const ResourceDASM::MemoryContext> src_mem;
   bool enable_ppc;
 };
 
@@ -490,10 +490,10 @@ void run_address_translator(const std::string& directory, const std::string& use
 }
 
 vector<pair<uint32_t, string>> diff_dol_files(const string& a_filename, const string& b_filename) {
-  DOLFile a(a_filename.c_str());
-  DOLFile b(b_filename.c_str());
-  auto a_mem = make_shared<MemoryContext>();
-  auto b_mem = make_shared<MemoryContext>();
+  ResourceDASM::DOLFile a(a_filename.c_str());
+  ResourceDASM::DOLFile b(b_filename.c_str());
+  auto a_mem = make_shared<ResourceDASM::MemoryContext>();
+  auto b_mem = make_shared<ResourceDASM::MemoryContext>();
   a.load_into(a_mem);
   b.load_into(b_mem);
 

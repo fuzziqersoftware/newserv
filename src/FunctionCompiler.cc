@@ -169,16 +169,16 @@ shared_ptr<CompiledFunctionCode> compile_function_code(
       if (!get_include_stack.emplace(name).second) {
         throw runtime_error("mutual recursion between includes: " + name);
       }
-      EmulatorBase::AssembleResult ret;
+      ResourceDASM::EmulatorBase::AssembleResult ret;
       switch (arch) {
         case CompiledFunctionCode::Architecture::POWERPC:
-          ret = PPC32Emulator::assemble(load_file(asm_filename), get_include);
+          ret = ResourceDASM::PPC32Emulator::assemble(load_file(asm_filename), get_include);
           break;
         case CompiledFunctionCode::Architecture::X86:
-          ret = X86Emulator::assemble(load_file(asm_filename), get_include);
+          ret = ResourceDASM::X86Emulator::assemble(load_file(asm_filename), get_include);
           break;
         case CompiledFunctionCode::Architecture::SH4:
-          ret = SH4Emulator::assemble(load_file(asm_filename), get_include);
+          ret = ResourceDASM::SH4Emulator::assemble(load_file(asm_filename), get_include);
           break;
         default:
           throw runtime_error("unknown architecture");
@@ -198,13 +198,13 @@ shared_ptr<CompiledFunctionCode> compile_function_code(
     throw runtime_error("data not found for include: " + name + " (from " + asm_filename + " or " + bin_filename + ")");
   };
 
-  EmulatorBase::AssembleResult assembled;
+  ResourceDASM::EmulatorBase::AssembleResult assembled;
   if (arch == CompiledFunctionCode::Architecture::POWERPC) {
-    assembled = PPC32Emulator::assemble(text, get_include);
+    assembled = ResourceDASM::PPC32Emulator::assemble(text, get_include);
   } else if (arch == CompiledFunctionCode::Architecture::X86) {
-    assembled = X86Emulator::assemble(text, get_include);
+    assembled = ResourceDASM::X86Emulator::assemble(text, get_include);
   } else if (arch == CompiledFunctionCode::Architecture::SH4) {
-    assembled = SH4Emulator::assemble(text, get_include);
+    assembled = ResourceDASM::SH4Emulator::assemble(text, get_include);
   } else {
     throw runtime_error("invalid architecture");
   }
