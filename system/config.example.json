@@ -1006,6 +1006,10 @@
   "RareNotificationsEnabledByDefaultV1V2": false,
   "RareNotificationsEnabledByDefaultV3V4": false,
 
+  // If this is true, items generated in client drop mode can trigger rare drop
+  // notifications. By default, they can't.
+  "RareNotificationsEnabledForClientDrops": false,
+
   // Items for which rare notifications should be broadcast to the game or
   // entire server. These notifications occur when the item is picked up. They
   // only are generated from items dropped by boxes and enemies; items dropped
