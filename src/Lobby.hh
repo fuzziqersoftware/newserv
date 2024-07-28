@@ -40,7 +40,7 @@ struct Lobby : public std::enable_shared_from_this<Lobby> {
     bool visible_to_client(uint8_t client_id) const;
   };
   struct FloorItemManager {
-    PrefixedLogger log;
+    phosg::PrefixedLogger log;
     uint64_t next_drop_number;
     // It's important that this is a map and not an unordered_map. See the
     // comment in send_game_item_state for more details.
@@ -92,7 +92,7 @@ struct Lobby : public std::enable_shared_from_this<Lobby> {
   };
 
   std::weak_ptr<ServerState> server_state;
-  PrefixedLogger log;
+  phosg::PrefixedLogger log;
 
   uint32_t lobby_id;
 
@@ -231,7 +231,7 @@ struct Lobby : public std::enable_shared_from_this<Lobby> {
       uint32_t random_seed,
       std::shared_ptr<PSOLFGEncryption> opt_rand_crypt,
       const parray<le_uint32_t, 0x20>& variations,
-      const PrefixedLogger* log = nullptr);
+      const phosg::PrefixedLogger* log = nullptr);
   static std::shared_ptr<Map> load_maps(
       const std::vector<std::string>& enemy_filenames,
       const std::vector<std::string>& object_filenames,
@@ -246,7 +246,7 @@ struct Lobby : public std::enable_shared_from_this<Lobby> {
       std::shared_ptr<const Map::RareEnemyRates> rare_rates,
       uint32_t random_seed,
       std::shared_ptr<PSOLFGEncryption> opt_rand_crypt,
-      const PrefixedLogger* log = nullptr);
+      const phosg::PrefixedLogger* log = nullptr);
   void load_maps();
   void create_ep3_server();
 
@@ -316,6 +316,6 @@ struct Lobby : public std::enable_shared_from_this<Lobby> {
 };
 
 template <>
-Lobby::DropMode enum_for_name<Lobby::DropMode>(const char* name);
+Lobby::DropMode phosg::enum_for_name<Lobby::DropMode>(const char* name);
 template <>
-const char* name_for_enum<Lobby::DropMode>(Lobby::DropMode value);
+const char* phosg::name_for_enum<Lobby::DropMode>(Lobby::DropMode value);

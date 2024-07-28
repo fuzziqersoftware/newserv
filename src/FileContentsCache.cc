@@ -20,7 +20,7 @@ FileContentsCache::File::File(
 shared_ptr<const FileContentsCache::File> FileContentsCache::replace(
     const string& name, string&& data, uint64_t t) {
   if (t == 0) {
-    t = now();
+    t = phosg::now();
   }
   auto new_file = make_shared<File>(name, std::move(data), t);
   auto emplace_ret = this->name_to_file.emplace(name, new_file);
@@ -37,7 +37,7 @@ shared_ptr<const FileContentsCache::File> FileContentsCache::replace(
 }
 
 FileContentsCache::GetResult FileContentsCache::get_or_load(const std::string& name) {
-  return this->get(name, load_file);
+  return this->get(name, phosg::load_file);
 }
 
 FileContentsCache::GetResult FileContentsCache::get_or_load(const char* name) {
@@ -59,7 +59,7 @@ shared_ptr<const FileContentsCache::File> FileContentsCache::get_or_throw(
 
 FileContentsCache::GetResult FileContentsCache::get(const std::string& name,
     std::function<std::string(const std::string&)> generate) {
-  uint64_t t = now();
+  uint64_t t = phosg::now();
   try {
     auto& entry = this->name_to_file.at(name);
     if (this->ttl_usecs && (t - entry->load_time < this->ttl_usecs)) {

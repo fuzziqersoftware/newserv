@@ -324,8 +324,8 @@ QuestFlagsV1::operator QuestFlags() const {
   return ret;
 }
 
-BattleRules::BattleRules(const JSON& json) {
-  static const JSON empty_list = JSON::list();
+BattleRules::BattleRules(const phosg::JSON& json) {
+  static const phosg::JSON empty_list = phosg::JSON::list();
 
   this->tech_disk_mode = json.get_enum("TechDiskMode", this->tech_disk_mode);
   this->weapon_and_armor_mode = json.get_enum("WeaponAndArmorMode", this->weapon_and_armor_mode);
@@ -340,7 +340,7 @@ BattleRules::BattleRules(const JSON& json) {
   this->hide_target_reticle = json.get_int("HideTargetReticle", this->hide_target_reticle);
   this->meseta_mode = json.get_enum("MesetaMode", this->meseta_mode);
   this->death_level_up = json.get_int("DeathLevelUp", this->death_level_up);
-  const JSON& trap_counts_json = json.get("TrapCounts", empty_list);
+  const phosg::JSON& trap_counts_json = json.get("TrapCounts", empty_list);
   for (size_t z = 0; z < trap_counts_json.size(); z++) {
     this->trap_counts[z] = trap_counts_json.at(z).as_int();
   }
@@ -355,8 +355,8 @@ BattleRules::BattleRules(const JSON& json) {
   this->box_drop_area = json.get_int("BoxDropArea", this->box_drop_area);
 }
 
-JSON BattleRules::json() const {
-  return JSON::dict({
+phosg::JSON BattleRules::json() const {
+  return phosg::JSON::dict({
       {"TechDiskMode", this->tech_disk_mode},
       {"WeaponAndArmorMode", this->weapon_and_armor_mode},
       {"MagMode", this->mag_mode},
@@ -370,7 +370,7 @@ JSON BattleRules::json() const {
       {"HideTargetReticle", this->hide_target_reticle},
       {"MesetaMode", this->meseta_mode},
       {"DeathLevelUp", this->death_level_up},
-      {"TrapCounts", JSON::list({this->trap_counts[0], this->trap_counts[1], this->trap_counts[2], this->trap_counts[3]})},
+      {"TrapCounts", phosg::JSON::list({this->trap_counts[0], this->trap_counts[1], this->trap_counts[2], this->trap_counts[3]})},
       {"EnableSonar", this->enable_sonar},
       {"SonarCount", this->sonar_count},
       {"ForbidScapeDolls", this->forbid_scape_dolls},
@@ -384,7 +384,7 @@ JSON BattleRules::json() const {
 }
 
 template <>
-const char* name_for_enum<BattleRules::TechDiskMode>(BattleRules::TechDiskMode v) {
+const char* phosg::name_for_enum<BattleRules::TechDiskMode>(BattleRules::TechDiskMode v) {
   switch (v) {
     case BattleRules::TechDiskMode::ALLOW:
       return "ALLOW";
@@ -397,7 +397,7 @@ const char* name_for_enum<BattleRules::TechDiskMode>(BattleRules::TechDiskMode v
   }
 }
 template <>
-BattleRules::TechDiskMode enum_for_name<BattleRules::TechDiskMode>(const char* name) {
+BattleRules::TechDiskMode phosg::enum_for_name<BattleRules::TechDiskMode>(const char* name) {
   if (!strcmp(name, "ALLOW")) {
     return BattleRules::TechDiskMode::ALLOW;
   } else if (!strcmp(name, "FORBID_ALL")) {
@@ -410,7 +410,7 @@ BattleRules::TechDiskMode enum_for_name<BattleRules::TechDiskMode>(const char* n
 }
 
 template <>
-const char* name_for_enum<BattleRules::WeaponAndArmorMode>(BattleRules::WeaponAndArmorMode v) {
+const char* phosg::name_for_enum<BattleRules::WeaponAndArmorMode>(BattleRules::WeaponAndArmorMode v) {
   switch (v) {
     case BattleRules::WeaponAndArmorMode::ALLOW:
       return "ALLOW";
@@ -425,7 +425,7 @@ const char* name_for_enum<BattleRules::WeaponAndArmorMode>(BattleRules::WeaponAn
   }
 }
 template <>
-BattleRules::WeaponAndArmorMode enum_for_name<BattleRules::WeaponAndArmorMode>(const char* name) {
+BattleRules::WeaponAndArmorMode phosg::enum_for_name<BattleRules::WeaponAndArmorMode>(const char* name) {
   if (!strcmp(name, "ALLOW")) {
     return BattleRules::WeaponAndArmorMode::ALLOW;
   } else if (!strcmp(name, "CLEAR_AND_ALLOW")) {
@@ -440,7 +440,7 @@ BattleRules::WeaponAndArmorMode enum_for_name<BattleRules::WeaponAndArmorMode>(c
 }
 
 template <>
-const char* name_for_enum<BattleRules::MagMode>(BattleRules::MagMode v) {
+const char* phosg::name_for_enum<BattleRules::MagMode>(BattleRules::MagMode v) {
   switch (v) {
     case BattleRules::MagMode::ALLOW:
       return "ALLOW";
@@ -451,7 +451,7 @@ const char* name_for_enum<BattleRules::MagMode>(BattleRules::MagMode v) {
   }
 }
 template <>
-BattleRules::MagMode enum_for_name<BattleRules::MagMode>(const char* name) {
+BattleRules::MagMode phosg::enum_for_name<BattleRules::MagMode>(const char* name) {
   if (!strcmp(name, "ALLOW")) {
     return BattleRules::MagMode::ALLOW;
   } else if (!strcmp(name, "FORBID_ALL")) {
@@ -462,7 +462,7 @@ BattleRules::MagMode enum_for_name<BattleRules::MagMode>(const char* name) {
 }
 
 template <>
-const char* name_for_enum<BattleRules::ToolMode>(BattleRules::ToolMode v) {
+const char* phosg::name_for_enum<BattleRules::ToolMode>(BattleRules::ToolMode v) {
   switch (v) {
     case BattleRules::ToolMode::ALLOW:
       return "ALLOW";
@@ -475,7 +475,7 @@ const char* name_for_enum<BattleRules::ToolMode>(BattleRules::ToolMode v) {
   }
 }
 template <>
-BattleRules::ToolMode enum_for_name<BattleRules::ToolMode>(const char* name) {
+BattleRules::ToolMode phosg::enum_for_name<BattleRules::ToolMode>(const char* name) {
   if (!strcmp(name, "ALLOW")) {
     return BattleRules::ToolMode::ALLOW;
   } else if (!strcmp(name, "CLEAR_AND_ALLOW")) {
@@ -488,7 +488,7 @@ BattleRules::ToolMode enum_for_name<BattleRules::ToolMode>(const char* name) {
 }
 
 template <>
-const char* name_for_enum<BattleRules::TrapMode>(BattleRules::TrapMode v) {
+const char* phosg::name_for_enum<BattleRules::TrapMode>(BattleRules::TrapMode v) {
   switch (v) {
     case BattleRules::TrapMode::DEFAULT:
       return "DEFAULT";
@@ -499,7 +499,7 @@ const char* name_for_enum<BattleRules::TrapMode>(BattleRules::TrapMode v) {
   }
 }
 template <>
-BattleRules::TrapMode enum_for_name<BattleRules::TrapMode>(const char* name) {
+BattleRules::TrapMode phosg::enum_for_name<BattleRules::TrapMode>(const char* name) {
   if (!strcmp(name, "DEFAULT")) {
     return BattleRules::TrapMode::DEFAULT;
   } else if (!strcmp(name, "ALL_PLAYERS")) {
@@ -510,7 +510,7 @@ BattleRules::TrapMode enum_for_name<BattleRules::TrapMode>(const char* name) {
 }
 
 template <>
-const char* name_for_enum<BattleRules::MesetaMode>(BattleRules::MesetaMode v) {
+const char* phosg::name_for_enum<BattleRules::MesetaMode>(BattleRules::MesetaMode v) {
   switch (v) {
     case BattleRules::MesetaMode::ALLOW:
       return "ALLOW";
@@ -523,7 +523,7 @@ const char* name_for_enum<BattleRules::MesetaMode>(BattleRules::MesetaMode v) {
   }
 }
 template <>
-BattleRules::MesetaMode enum_for_name<BattleRules::MesetaMode>(const char* name) {
+BattleRules::MesetaMode phosg::enum_for_name<BattleRules::MesetaMode>(const char* name) {
   if (!strcmp(name, "ALLOW")) {
     return BattleRules::MesetaMode::ALLOW;
   } else if (!strcmp(name, "FORBID_ALL")) {
@@ -536,7 +536,7 @@ BattleRules::MesetaMode enum_for_name<BattleRules::MesetaMode>(const char* name)
 }
 
 template <>
-const char* name_for_enum<BattleRules::RespawnMode>(BattleRules::RespawnMode v) {
+const char* phosg::name_for_enum<BattleRules::RespawnMode>(BattleRules::RespawnMode v) {
   switch (v) {
     case BattleRules::RespawnMode::ALLOW:
       return "ALLOW";
@@ -549,7 +549,7 @@ const char* name_for_enum<BattleRules::RespawnMode>(BattleRules::RespawnMode v) 
   }
 }
 template <>
-BattleRules::RespawnMode enum_for_name<BattleRules::RespawnMode>(const char* name) {
+BattleRules::RespawnMode phosg::enum_for_name<BattleRules::RespawnMode>(const char* name) {
   if (!strcmp(name, "ALLOW")) {
     return BattleRules::RespawnMode::ALLOW;
   } else if (!strcmp(name, "FORBID")) {
@@ -709,7 +709,7 @@ void RecentSwitchFlags::add(uint16_t flag_num) {
 }
 
 string RecentSwitchFlags::enable_commands(uint8_t floor) const {
-  StringWriter w;
+  phosg::StringWriter w;
   uint64_t flag_nums = this->flag_nums;
   for (size_t z = 0; z < 4; z++) {
     uint16_t flag_num = flag_nums;

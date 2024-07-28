@@ -28,8 +28,8 @@ public:
       std::string name;
 
       Member() = default;
-      explicit Member(const JSON& json);
-      JSON json() const;
+      explicit Member(const phosg::JSON& json);
+      phosg::JSON json() const;
 
       [[nodiscard]] inline bool check_flag(Flag flag) const {
         return !!(static_cast<uint8_t>(flag) & this->flags);
@@ -68,7 +68,7 @@ public:
 
     Team() = default;
     explicit Team(uint32_t team_id);
-    JSON json() const;
+    phosg::JSON json() const;
 
     std::string json_filename() const;
     std::string flag_filename() const;
@@ -112,10 +112,10 @@ public:
     Team::RewardFlag reward_flag = Team::RewardFlag::NONE;
     ItemData reward_item;
 
-    Reward(uint32_t menu_item_id, const JSON& def_json);
+    Reward(uint32_t menu_item_id, const phosg::JSON& def_json);
   };
 
-  TeamIndex(const std::string& directory, const JSON& reward_defs_json);
+  TeamIndex(const std::string& directory, const phosg::JSON& reward_defs_json);
   ~TeamIndex() = default;
 
   inline const std::vector<Reward>& reward_definitions() const {

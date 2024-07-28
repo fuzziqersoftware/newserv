@@ -49,16 +49,16 @@ string Tournament::Team::str() const {
     num_com_players += player.is_com();
   }
 
-  string ret = string_printf("[Team/%zu %s %zuH/%zuC/%zuP name=%s pass=%s rounds=%zu",
+  string ret = phosg::string_printf("[Team/%zu %s %zuH/%zuC/%zuP name=%s pass=%s rounds=%zu",
       this->index, this->is_active ? "active" : "inactive",
       num_human_players, num_com_players, this->max_players, this->name.c_str(),
       this->password.c_str(), this->num_rounds_cleared);
   for (const auto& player : this->players) {
     if (player.is_human()) {
       if (player.player_name.empty()) {
-        ret += string_printf(" %08" PRIX32, player.account_id);
+        ret += phosg::string_printf(" %08" PRIX32, player.account_id);
       } else {
-        ret += string_printf(" %08" PRIX32 " (%s)", player.account_id, player.player_name.c_str());
+        ret += phosg::string_printf(" %08" PRIX32 " (%s)", player.account_id, player.player_name.c_str());
       }
     }
   }
@@ -206,7 +206,7 @@ Tournament::Match::Match(
 
 string Tournament::Match::str() const {
   string winner_str = this->winner_team ? this->winner_team->str() : "(none)";
-  return string_printf("[Match round=%zu winner=%s]", this->round_num, winner_str.c_str());
+  return phosg::string_printf("[Match round=%zu winner=%s]", this->round_num, winner_str.c_str());
 }
 
 bool Tournament::Match::resolve_if_skippable() {
@@ -230,7 +230,7 @@ bool Tournament::Match::resolve_if_skippable() {
   // entirely and just make one team advance arbitrarily (note that this also
   // handles the case where both preceding winner teams are empty)
   if (!winner_a->has_any_human_players() && !winner_b->has_any_human_players()) {
-    this->set_winner_team((random_object<uint8_t>() & 1) ? winner_b : winner_a);
+    this->set_winner_team((phosg::random_object<uint8_t>() & 1) ? winner_b : winner_a);
     return true;
   }
 
@@ -318,7 +318,7 @@ Tournament::Tournament(
     const Rules& rules,
     size_t num_teams,
     uint8_t flags)
-    : log(string_printf("[Tournament:%s] ", name.c_str())),
+    : log(phosg::string_printf("[Tournament:%s] ", name.c_str())),
       map_index(map_index),
       com_deck_index(com_deck_index),
       name(name),
@@ -342,8 +342,8 @@ Tournament::Tournament(
 Tournament::Tournament(
     shared_ptr<const MapIndex> map_index,
     shared_ptr<const COMDeckIndex> com_deck_index,
-    const JSON& json)
-    : log(string_printf("[Tournament:%s] ", json.get_string("name").c_str())),
+    const phosg::JSON& json)
+    : log(phosg::string_printf("[Tournament:%s] ", json.get_string("name").c_str())),
       map_index(map_index),
       com_deck_index(com_deck_index),
       source_json(json),
@@ -504,14 +504,14 @@ void Tournament::create_bracket_matches() {
   this->final_match = current_round_matches.at(0);
 }
 
-JSON Tournament::json() const {
-  auto teams_list = JSON::list();
+phosg::JSON Tournament::json() const {
+  auto teams_list = phosg::JSON::list();
   for (auto team : this->teams) {
-    auto players_list = JSON::list();
+    auto players_list = phosg::JSON::list();
     for (const auto& player : team->players) {
       if (player.is_human()) {
         if (!player.player_name.empty()) {
-          players_list.emplace_back(JSON::list({player.account_id, player.player_name}));
+          players_list.emplace_back(phosg::JSON::list({player.account_id, player.player_name}));
         } else {
           players_list.emplace_back(player.account_id);
         }
@@ -519,7 +519,7 @@ JSON Tournament::json() const {
         players_list.emplace_back(player.com_deck->deck_name);
       }
     }
-    teams_list.emplace_back(JSON::dict({
+    teams_list.emplace_back(phosg::JSON::dict({
         {"max_players", team->max_players},
         {"player_specs", std::move(players_list)},
         {"name", team->name},
@@ -527,7 +527,7 @@ JSON Tournament::json() const {
         {"num_rounds_cleared", team->num_rounds_cleared},
     }));
   }
-  return JSON::dict({
+  return phosg::JSON::dict({
       {"name", this->name},
       {"map_number", this->map->map_number},
       {"rules", this->rules.json()},
@@ -649,7 +649,7 @@ void Tournament::start() {
   if (this->flags & Flag::SHUFFLE_ENTRIES) {
     // Shuffle all the tournament entries
     for (size_t z = this->teams.size(); z > 0; z--) {
-      size_t index = random_object<uint32_t>() % z;
+      size_t index = phosg::random_object<uint32_t>() % z;
       if (index != z - 1) {
         this->teams[z - 1].swap(this->teams[index]);
       }
@@ -665,7 +665,7 @@ void Tournament::start() {
     auto m = this->zero_round_matches[z];
     auto t = m->winner_team;
     if (t->name.empty()) {
-      t->name = has_com_teams ? string_printf("COM:%zu", z) : "(no entrant)";
+      t->name = has_com_teams ? phosg::string_printf("COM:%zu", z) : "(no entrant)";
     }
     for (const auto& player : t->players) {
       if (player.is_com()) {
@@ -791,16 +791,16 @@ TournamentIndex::TournamentIndex(
     return;
   }
 
-  JSON json;
+  phosg::JSON json;
   try {
-    json = JSON::parse(load_file(this->state_filename));
-  } catch (const cannot_open_file&) {
-    json = JSON::list();
+    json = phosg::JSON::parse(phosg::load_file(this->state_filename));
+  } catch (const phosg::cannot_open_file&) {
+    json = phosg::JSON::list();
   }
 
   if (json.is_list()) {
     if (json.size() > 0x20) {
-      throw runtime_error("tournament JSON list length is incorrect");
+      throw runtime_error("tournament phosg::JSON list length is incorrect");
     }
     for (size_t z = 0; z < min<size_t>(json.size(), 0x20); z++) {
       if (!json.at(z).is_null()) {
@@ -815,13 +815,13 @@ TournamentIndex::TournamentIndex(
     }
   } else if (json.is_dict()) {
     if (json.size() > 0x20) {
-      throw runtime_error("tournament JSON dict length is incorrect");
+      throw runtime_error("tournament phosg::JSON dict length is incorrect");
     }
     for (const auto& it : json.as_dict()) {
       auto tourn = make_shared<Tournament>(this->map_index, this->com_deck_index, *it.second);
       tourn->init();
       if (!this->name_to_tournament.emplace(tourn->get_name(), tourn).second) {
-        // This is logic_error instead of runtime_error because JSON dicts are
+        // This is logic_error instead of runtime_error because phosg::JSON dicts are
         // supposed to already have unique keys
         throw logic_error("multiple tournaments have the same name: " + tourn->get_name());
       }
@@ -829,7 +829,7 @@ TournamentIndex::TournamentIndex(
       this->menu_item_id_to_tournament.emplace_back(tourn);
     }
   } else {
-    throw runtime_error("tournament state root JSON is not a list or dict");
+    throw runtime_error("tournament state root phosg::JSON is not a list or dict");
   }
 }
 
@@ -838,11 +838,11 @@ void TournamentIndex::save() const {
     return;
   }
 
-  auto json = JSON::dict();
+  auto json = phosg::JSON::dict();
   for (const auto& it : this->name_to_tournament) {
     json.emplace(it.second->get_name(), it.second->json());
   }
-  save_file(this->state_filename, json.serialize(JSON::SerializeOption::FORMAT | JSON::SerializeOption::HEX_INTEGERS | JSON::SerializeOption::ESCAPE_CONTROLS_ONLY));
+  phosg::save_file(this->state_filename, json.serialize(phosg::JSON::SerializeOption::FORMAT | phosg::JSON::SerializeOption::HEX_INTEGERS | phosg::JSON::SerializeOption::ESCAPE_CONTROLS_ONLY));
 }
 
 shared_ptr<Tournament> TournamentIndex::create_tournament(

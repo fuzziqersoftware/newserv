@@ -364,7 +364,7 @@ static void on_sync_joining_player_compressed_state(shared_ptr<Client> c, uint8_
   if (c->config.check_flag(Client::Flag::DEBUG_ENABLED)) {
     c->log.info("Decompressed sync data (%zX -> %zX bytes; expected %zX):",
         compressed_size, decompressed.size(), decompressed_size);
-    print_data(stderr, decompressed);
+    phosg::print_data(stderr, decompressed);
   }
 
   switch (subcommand_def->final_subcommand) {
@@ -372,7 +372,7 @@ static void on_sync_joining_player_compressed_state(shared_ptr<Client> c, uint8_
       auto l = c->require_lobby();
       if (l->map) {
         l->log.info("Checking client enemy state against server state");
-        StringReader r(decompressed);
+        phosg::StringReader r(decompressed);
         size_t count = r.size() / sizeof(G_SyncEnemyState_6x6B_Entry_Decompressed);
         if (count != l->map->enemies.size()) {
           l->log.warning("Enemy count from client (%zu) does not match enemy count from map (%zu)",
@@ -410,7 +410,7 @@ static void on_sync_joining_player_compressed_state(shared_ptr<Client> c, uint8_
       auto l = c->require_lobby();
       if (l->map) {
         l->log.info("Checking client object state against server state");
-        StringReader r(decompressed);
+        phosg::StringReader r(decompressed);
         size_t count = r.size() / sizeof(G_SyncObjectState_6x6C_Entry_Decompressed);
         if (count > l->map->objects.size()) {
           l->log.warning("Object count from client (%zu) exceeds object count from map (%zu)",
@@ -446,7 +446,7 @@ static void on_sync_joining_player_compressed_state(shared_ptr<Client> c, uint8_
 
     case 0x6D: {
       if (decompressed.size() < sizeof(G_SyncItemState_6x6D_Decompressed)) {
-        throw runtime_error(string_printf(
+        throw runtime_error(phosg::string_printf(
             "decompressed 6x6D data (0x%zX bytes) is too short for header (0x%zX bytes)",
             decompressed.size(), sizeof(G_SyncItemState_6x6D_Decompressed)));
       }
@@ -459,7 +459,7 @@ static void on_sync_joining_player_compressed_state(shared_ptr<Client> c, uint8_
 
       size_t required_size = sizeof(G_SyncItemState_6x6D_Decompressed) + num_floor_items * sizeof(FloorItem);
       if (decompressed.size() < required_size) {
-        throw runtime_error(string_printf(
+        throw runtime_error(phosg::string_printf(
             "decompressed 6x6D data (0x%zX bytes) is too short for all floor items (0x%zX bytes)",
             decompressed.size(), required_size));
       }
@@ -486,7 +486,7 @@ static void on_sync_joining_player_compressed_state(shared_ptr<Client> c, uint8_
       break;
     }
     case 0x6E: {
-      StringReader r(decompressed);
+      phosg::StringReader r(decompressed);
       const auto& dec_header = r.get<G_SyncSetFlagState_6x6E_Decompressed>();
       if (dec_header.total_size != dec_header.entity_set_flags_size + dec_header.event_set_flags_size + dec_header.switch_flags_size) {
         throw runtime_error("incorrect size fields in 6x6E header");
@@ -496,12 +496,12 @@ static void on_sync_joining_player_compressed_state(shared_ptr<Client> c, uint8_
       if (l->map) {
         l->log.info("Checking client set flag state against server state");
 
-        StringReader set_flags_r = r.sub(r.where(), dec_header.entity_set_flags_size);
+        phosg::StringReader set_flags_r = r.sub(r.where(), dec_header.entity_set_flags_size);
         const auto& set_flags_header = set_flags_r.get<G_SyncSetFlagState_6x6E_Decompressed::EntitySetFlags>();
 
         if (c->config.check_flag(Client::Flag::DEBUG_ENABLED)) {
           c->log.info("Set flags data:");
-          print_data(stderr, set_flags_r.all());
+          phosg::print_data(stderr, set_flags_r.all());
         }
 
         if (set_flags_header.num_object_sets > l->map->objects.size()) {
@@ -539,10 +539,10 @@ static void on_sync_joining_player_compressed_state(shared_ptr<Client> c, uint8_
           }
         }
 
-        StringReader event_set_flags_r = r.sub(r.where() + dec_header.entity_set_flags_size, dec_header.event_set_flags_size);
+        phosg::StringReader event_set_flags_r = r.sub(r.where() + dec_header.entity_set_flags_size, dec_header.event_set_flags_size);
         if (c->config.check_flag(Client::Flag::DEBUG_ENABLED)) {
           c->log.info("Event flags data:");
-          print_data(stderr, event_set_flags_r.all());
+          phosg::print_data(stderr, event_set_flags_r.all());
         }
         size_t num_event_flags = event_set_flags_r.size() / sizeof(le_uint16_t);
         if (num_event_flags != l->map->events.size()) {
@@ -571,7 +571,7 @@ static void on_sync_joining_player_compressed_state(shared_ptr<Client> c, uint8_
         l->log.info("Switch flags size matches expected size (0x%zX)", expected_switch_flags_size);
       }
       if (l->switch_flags) {
-        StringReader switch_flags_r = r.sub(r.where() + dec_header.entity_set_flags_size + dec_header.event_set_flags_size);
+        phosg::StringReader switch_flags_r = r.sub(r.where() + dec_header.entity_set_flags_size + dec_header.event_set_flags_size);
         for (size_t floor = 0; floor < expected_switch_flag_num_floors; floor++) {
           // There is a bug in most (perhaps all) versions of the game, which
           // causes this array to be too small. It looks like Sega forgot to
@@ -948,7 +948,7 @@ G_SyncPlayerDispAndInventory_BB_6x70 Parsed6x70Data::as_bb(shared_ptr<ServerStat
   G_SyncPlayerDispAndInventory_BB_6x70 ret;
   ret.base = this->base_v1();
   ret.name.encode(this->name, language);
-  ret.base.visual.name.encode(string_printf("%10" PRId32, this->guild_card_number), language);
+  ret.base.visual.name.encode(phosg::string_printf("%10" PRId32, this->guild_card_number), language);
   ret.stats = this->stats;
   ret.num_items = this->num_items;
   ret.items = this->items;
@@ -1202,7 +1202,7 @@ static void on_ep3_battle_subs(shared_ptr<Client> c, uint8_t command, uint8_t fl
   }
 
   if (!(s->ep3_behavior_flags & Episode3::BehaviorFlag::DISABLE_MASKING) && (c->version() != Version::GC_EP3_NTE)) {
-    set_mask_for_ep3_game_command(data.data(), data.size(), (random_object<uint32_t>() % 0xFF) + 1);
+    set_mask_for_ep3_game_command(data.data(), data.size(), (phosg::random_object<uint32_t>() % 0xFF) + 1);
   }
 
   forward_subcommand(c, command, flag, data.data(), data.size());
@@ -1267,9 +1267,9 @@ static void on_symbol_chat(shared_ptr<Client> c, uint8_t command, uint8_t flag, 
   }
 }
 
-template <bool SenderIsBigEndian>
+template <bool SenderBE>
 static void on_word_select_t(shared_ptr<Client> c, uint8_t command, uint8_t, void* data, size_t size) {
-  const auto& cmd = check_size_t<G_WordSelectT_6x74<SenderIsBigEndian>>(data, size);
+  const auto& cmd = check_size_t<G_WordSelectT_6x74<SenderBE>>(data, size);
   if (c->can_chat && (cmd.client_id == c->lobby_client_id)) {
     if (command_is_private(command)) {
       return;
@@ -1695,7 +1695,7 @@ static void on_player_drop_item(shared_ptr<Client> c, uint8_t command, uint8_t f
   auto item = p->remove_item(cmd.item_id, 0, *s->item_stack_limits(c->version()));
   l->add_item(cmd.floor, item, cmd.x, cmd.z, 0x00F);
 
-  if (l->log.should_log(LogLevel::INFO)) {
+  if (l->log.should_log(phosg::LogLevel::INFO)) {
     auto s = c->require_server_state();
     auto name = s->describe_item(c->version(), item, false);
     l->log.info("Player %hu dropped item %08" PRIX32 " (%s) at %hu:(%g, %g)",
@@ -1764,7 +1764,7 @@ static void on_create_inventory_item_t(shared_ptr<Client> c, uint8_t command, ui
       return;
     }
 
-    if (l->log.should_log(LogLevel::INFO)) {
+    if (l->log.should_log(phosg::LogLevel::INFO)) {
       auto name = s->describe_item(c->version(), item, false);
       l->log.info("Player %hu created inventory item %08" PRIX32 " (%s) in inventory of NPC %02hX; ignoring", c->lobby_client_id, item.id.load(), name.c_str(), cmd.header.client_id.load());
     }
@@ -1772,7 +1772,7 @@ static void on_create_inventory_item_t(shared_ptr<Client> c, uint8_t command, ui
   } else {
     c->character()->add_item(item, *s->item_stack_limits(c->version()));
 
-    if (l->log.should_log(LogLevel::INFO)) {
+    if (l->log.should_log(phosg::LogLevel::INFO)) {
       auto name = s->describe_item(c->version(), item, false);
       l->log.info("Player %hu created inventory item %08" PRIX32 " (%s)", c->lobby_client_id, item.id.load(), name.c_str());
       c->print_inventory(stderr);
@@ -1812,7 +1812,7 @@ static void on_drop_partial_stack_t(shared_ptr<Client> c, uint8_t command, uint8
   l->on_item_id_generated_externally(item.id);
   l->add_item(cmd.floor, item, cmd.x, cmd.z, 0x00F);
 
-  if (l->log.should_log(LogLevel::INFO)) {
+  if (l->log.should_log(phosg::LogLevel::INFO)) {
     auto s = c->require_server_state();
     auto name = s->describe_item(c->version(), item, false);
     l->log.info("Player %hu split stack to create floor item %08" PRIX32 " (%s) at %hu:(%g, %g)",
@@ -1862,7 +1862,7 @@ static void on_drop_partial_stack_bb(shared_ptr<Client> c, uint8_t command, uint
     l->add_item(cmd.floor, item, cmd.x, cmd.z, 0x00F);
     send_drop_stacked_item_to_lobby(l, item, cmd.floor, cmd.x, cmd.z);
 
-    if (l->log.should_log(LogLevel::INFO)) {
+    if (l->log.should_log(phosg::LogLevel::INFO)) {
       auto s = c->require_server_state();
       auto name = s->describe_item(c->version(), item, false);
       l->log.info("Player %hu split stack %08" PRIX32 " (removed: %s) at %hu:(%g, %g)",
@@ -1897,7 +1897,7 @@ static void on_buy_shop_item(shared_ptr<Client> c, uint8_t command, uint8_t flag
   size_t price = s->item_parameter_table(c->version())->price_for_item(item);
   p->remove_meseta(price, c->version() != Version::BB_V4);
 
-  if (l->log.should_log(LogLevel::INFO)) {
+  if (l->log.should_log(phosg::LogLevel::INFO)) {
     auto name = s->describe_item(c->version(), item, false);
     l->log.info("Player %hu bought item %08" PRIX32 " (%s) from shop (%zu Meseta)",
         cmd.header.client_id.load(), item.id.load(), name.c_str(), price);
@@ -2040,7 +2040,7 @@ static void on_pick_up_item_generic(
       return;
     }
 
-    if (l->log.should_log(LogLevel::INFO)) {
+    if (l->log.should_log(phosg::LogLevel::INFO)) {
       auto s = c->require_server_state();
       auto name = s->describe_item(c->version(), fi->data, false);
       l->log.info("Player %hu picked up %08" PRIX32 " (%s)", client_id, item_id, name.c_str());
@@ -2079,12 +2079,12 @@ static void on_pick_up_item_generic(
         string desc_http = s->describe_item(c->version(), fi->data, false);
 
         if (s->http_server) {
-          auto message = make_shared<JSON>(JSON::dict({
+          auto message = make_shared<phosg::JSON>(phosg::JSON::dict({
               {"PlayerAccountID", c->login->account->account_id},
               {"PlayerName", p_name},
-              {"PlayerVersion", name_for_enum(c->version())},
+              {"PlayerVersion", phosg::name_for_enum(c->version())},
               {"GameName", l->name},
-              {"GameDropMode", name_for_enum(l->drop_mode)},
+              {"GameDropMode", phosg::name_for_enum(l->drop_mode)},
               {"ItemData", fi->data.hex()},
               {"ItemDescription", desc_http},
               {"NotifyGame", should_send_game_notif},
@@ -2093,8 +2093,8 @@ static void on_pick_up_item_generic(
           s->http_server->send_rare_drop_notification(message);
         }
 
-        string message = string_printf("$C6%s$C7 found\n%s", p_name.c_str(), desc_ingame.c_str());
-        string bb_message = string_printf("$C6%s$C7 has found %s", p_name.c_str(), desc_ingame.c_str());
+        string message = phosg::string_printf("$C6%s$C7 found\n%s", p_name.c_str(), desc_ingame.c_str());
+        string bb_message = phosg::string_printf("$C6%s$C7 has found %s", p_name.c_str(), desc_ingame.c_str());
         if (should_send_global_notif) {
           for (auto& it : s->channel_to_client) {
             if (it.second->login &&
@@ -2177,7 +2177,7 @@ static void on_use_item(
   }
   player_use_item(c, index, l->opt_rand_crypt);
 
-  if (l->log.should_log(LogLevel::INFO)) {
+  if (l->log.should_log(phosg::LogLevel::INFO)) {
     l->log.info("Player %hhu used item %hu:%08" PRIX32 " (%s)",
         c->lobby_client_id, cmd.header.client_id.load(), cmd.item_id.load(), name.c_str());
     c->print_inventory(stderr);
@@ -2222,7 +2222,7 @@ static void on_feed_mag(
     p->remove_item(cmd.fed_item_id, 1, *s->item_stack_limits(c->version()));
   }
 
-  if (l->log.should_log(LogLevel::INFO)) {
+  if (l->log.should_log(phosg::LogLevel::INFO)) {
     l->log.info("Player %hhu fed item %hu:%08" PRIX32 " (%s) to mag %hu:%08" PRIX32 " (%s)",
         c->lobby_client_id, cmd.header.client_id.load(), cmd.fed_item_id.load(), fed_name.c_str(),
         cmd.header.client_id.load(), cmd.mag_item_id.load(), mag_name.c_str());
@@ -2372,7 +2372,7 @@ static void on_ep3_private_word_select_bb_bank_action(shared_ptr<Client> c, uint
         bank.add_item(item, limits);
         send_destroy_item_to_lobby(c, cmd.item_id, cmd.item_amount, true);
 
-        if (l->log.should_log(LogLevel::INFO)) {
+        if (l->log.should_log(phosg::LogLevel::INFO)) {
           string name = s->describe_item(Version::BB_V4, item, false);
           l->log.info("Player %hu deposited item %08" PRIX32 " (x%hhu) (%s) in the bank",
               c->lobby_client_id, cmd.item_id.load(), cmd.item_amount, name.c_str());
@@ -2402,7 +2402,7 @@ static void on_ep3_private_word_select_bb_bank_action(shared_ptr<Client> c, uint
         p->add_item(item, limits);
         send_create_inventory_item_to_lobby(c, c->lobby_client_id, item);
 
-        if (l->log.should_log(LogLevel::INFO)) {
+        if (l->log.should_log(phosg::LogLevel::INFO)) {
           string name = s->describe_item(Version::BB_V4, item, false);
           l->log.info("Player %hu withdrew item %08" PRIX32 " (x%hhu) (%s) from the bank",
               c->lobby_client_id, item.id.load(), cmd.item_amount, name.c_str());
@@ -2559,7 +2559,7 @@ G_SpecializableItemDropRequest_6xA2 normalize_drop_request(const void* data, siz
 }
 
 DropReconcileResult reconcile_drop_request_with_map(
-    PrefixedLogger& log,
+    phosg::PrefixedLogger& log,
     Channel& client_channel,
     G_SpecializableItemDropRequest_6xA2& cmd,
     Version version,
@@ -2605,7 +2605,7 @@ DropReconcileResult reconcile_drop_request_with_map(
   } else {
     if (map) {
       map_enemy = &map->enemies.at(cmd.entity_id);
-      log.info("Drop check for E-%hX %s", map_enemy->enemy_id, name_for_enum(map_enemy->type));
+      log.info("Drop check for E-%hX %s", map_enemy->enemy_id, phosg::name_for_enum(map_enemy->type));
       res.effective_rt_index = rare_table_index_for_enemy_type(map_enemy->type);
       // rt_indexes in Episode 4 don't match those sent in the command; we just
       // ignore what the client sends.
@@ -2630,7 +2630,7 @@ DropReconcileResult reconcile_drop_request_with_map(
             cmd.floor, map_enemy->floor);
       }
       if (config.check_flag(Client::Flag::DEBUG_ENABLED)) {
-        send_text_message_printf(client_channel, "$C5E-%hX %s", map_enemy->enemy_id, name_for_enum(map_enemy->type));
+        send_text_message_printf(client_channel, "$C5E-%hX %s", map_enemy->enemy_id, phosg::name_for_enum(map_enemy->type));
       }
     }
   }
@@ -2835,7 +2835,7 @@ static void on_set_quest_flag(shared_ptr<Client> c, uint8_t command, uint8_t fla
     }
 
     if (boss_enemy_type != EnemyType::NONE) {
-      l->log.info("Creating item from final boss (%s)", name_for_enum(boss_enemy_type));
+      l->log.info("Creating item from final boss (%s)", phosg::name_for_enum(boss_enemy_type));
       uint16_t enemy_id = 0xFFFF;
       if (l->map) {
         try {
@@ -2959,7 +2959,7 @@ static void on_set_entity_set_flag(shared_ptr<Client> c, uint8_t command, uint8_
             event->flags = (event->flags | 0x18) & (~4);
             l->log.info("Set flags on W-%02hhX-%" PRIX32 " to %04hX", event->floor, event->event_id, event->flags);
 
-            StringReader actions_r(l->map->event_action_stream);
+            phosg::StringReader actions_r(l->map->event_action_stream);
             actions_r.go(event->action_stream_offset);
             while (!actions_r.eof()) {
               uint8_t opcode = actions_r.get_u8();
@@ -3284,9 +3284,9 @@ static void send_max_level_notification_if_needed(shared_ptr<Client> c) {
   if (p->disp.stats.level == max_level) {
     string name = p->disp.name.decode(c->language());
     size_t level_for_str = max_level + 1;
-    string message = string_printf("$C6%s$C7\nGC: %" PRIu32 "\nhas reached Level $C6%zu",
+    string message = phosg::string_printf("$C6%s$C7\nGC: %" PRIu32 "\nhas reached Level $C6%zu",
         name.c_str(), c->login->account->account_id, level_for_str);
-    string bb_message = string_printf("$C6%s$C7 (GC: %" PRIu32 ") has reached Level $C6%zu",
+    string bb_message = phosg::string_printf("$C6%s$C7 (GC: %" PRIu32 ") has reached Level $C6%zu",
         name.c_str(), c->login->account->account_id, level_for_str);
     for (auto& it : s->channel_to_client) {
       if ((it.second != c) && it.second->login && !is_patch(it.second->version()) && it.second->lobby.lock()) {
@@ -3409,7 +3409,7 @@ static void on_steal_exp_bb(shared_ptr<Client> c, uint8_t, uint8_t, void* data, 
     c->log.info("Stolen EXP with bp_index=%" PRIX32 " enemy_exp=%" PRIu32 " percent=%g stolen_exp=%" PRIu32,
         bp_index, enemy_exp, percent, stolen_exp);
     send_text_message_printf(c, "$C5+%" PRIu32 " E-%hX %s",
-        stolen_exp, cmd.enemy_index.load(), name_for_enum(enemy.type));
+        stolen_exp, cmd.enemy_index.load(), phosg::name_for_enum(enemy.type));
   }
   add_player_exp(c, stolen_exp);
 }
@@ -3500,7 +3500,7 @@ static void on_enemy_exp_request_bb(shared_ptr<Client> c, uint8_t, uint8_t, void
               lc, "$C5+%" PRIu32 " E-%hX %s",
               player_exp,
               cmd.enemy_index.load(),
-              name_for_enum(e.type));
+              phosg::name_for_enum(e.type));
         }
         if (lc->character()->disp.stats.level < 199) {
           add_player_exp(lc, player_exp);
@@ -3570,7 +3570,7 @@ void on_item_reward_request_bb(shared_ptr<Client> c, uint8_t, uint8_t, void* dat
   try {
     c->character()->add_item(item, limits);
     send_create_inventory_item_to_lobby(c, c->lobby_client_id, item);
-    if (l->log.should_log(LogLevel::INFO)) {
+    if (l->log.should_log(phosg::LogLevel::INFO)) {
       auto name = s->describe_item(c->version(), item, false);
       l->log.info("Player %hu created inventory item %08" PRIX32 " (%s) via quest command",
           c->lobby_client_id, item.id.load(), name.c_str());
@@ -3578,7 +3578,7 @@ void on_item_reward_request_bb(shared_ptr<Client> c, uint8_t, uint8_t, void* dat
     }
 
   } catch (const out_of_range&) {
-    if (l->log.should_log(LogLevel::INFO)) {
+    if (l->log.should_log(phosg::LogLevel::INFO)) {
       auto name = s->describe_item(c->version(), item, false);
       l->log.info("Player %hu attempted to create inventory item %08" PRIX32 " (%s) via quest command, but it cannot be placed in their inventory",
           c->lobby_client_id, item.id.load(), name.c_str());
@@ -3610,7 +3610,7 @@ void on_transfer_item_via_mail_message_bb(shared_ptr<Client> c, uint8_t command,
   const auto& limits = *s->item_stack_limits(c->version());
   auto item = p->remove_item(cmd.item_id, cmd.amount, limits);
 
-  if (l->log.should_log(LogLevel::INFO)) {
+  if (l->log.should_log(phosg::LogLevel::INFO)) {
     auto name = s->describe_item(c->version(), item, false);
     l->log.info("Player %hhu sent inventory item %hu:%08" PRIX32 " (%s) x%" PRIu32 " to player %08" PRIX32,
         c->lobby_client_id, cmd.header.client_id.load(), cmd.item_id.load(), name.c_str(), cmd.amount.load(), cmd.target_guild_card_number.load());
@@ -3671,7 +3671,7 @@ void on_exchange_item_for_team_points_bb(shared_ptr<Client> c, uint8_t command, 
   size_t points = s->item_parameter_table(Version::BB_V4)->get_item_team_points(item);
   s->team_index->add_member_points(c->login->account->account_id, points);
 
-  if (l->log.should_log(LogLevel::INFO)) {
+  if (l->log.should_log(phosg::LogLevel::INFO)) {
     auto name = s->describe_item(c->version(), item, false);
     l->log.info("Player %hhu exchanged inventory item %hu:%08" PRIX32 " (%s) for %zu team points",
         c->lobby_client_id, cmd.header.client_id.load(), cmd.item_id.load(), name.c_str(), points);
@@ -3696,7 +3696,7 @@ static void on_destroy_inventory_item(shared_ptr<Client> c, uint8_t command, uin
   auto p = c->character();
   auto item = p->remove_item(cmd.item_id, cmd.amount, *s->item_stack_limits(c->version()));
 
-  if (l->log.should_log(LogLevel::INFO)) {
+  if (l->log.should_log(phosg::LogLevel::INFO)) {
     auto name = s->describe_item(c->version(), item, false);
     l->log.info("Player %hhu destroyed inventory item %hu:%08" PRIX32 " (%s)",
         c->lobby_client_id, cmd.header.client_id.load(), cmd.item_id.load(), name.c_str());
@@ -3843,7 +3843,7 @@ static void on_sell_item_at_shop_bb(shared_ptr<Client> c, uint8_t command, uint8
     size_t price = (s->item_parameter_table(c->version())->price_for_item(item) >> 3) * cmd.amount;
     p->add_meseta(price);
 
-    if (l->log.should_log(LogLevel::INFO)) {
+    if (l->log.should_log(phosg::LogLevel::INFO)) {
       auto name = s->describe_item(c->version(), item, false);
       l->log.info("Player %hhu sold inventory item %08" PRIX32 " (%s) for %zu Meseta",
           c->lobby_client_id, cmd.item_id.load(), name.c_str(), price);
@@ -3879,7 +3879,7 @@ static void on_buy_shop_item_bb(shared_ptr<Client> c, uint8_t, uint8_t, void* da
     p->add_item(item, limits);
     send_create_inventory_item_to_lobby(c, c->lobby_client_id, item, true);
 
-    if (l->log.should_log(LogLevel::INFO)) {
+    if (l->log.should_log(phosg::LogLevel::INFO)) {
       auto s = c->require_server_state();
       auto name = s->describe_item(c->version(), item, false);
       l->log.info("Player %hhu purchased item %08" PRIX32 " (%s) for %zu meseta",
@@ -4395,7 +4395,7 @@ static void on_quest_F960_result_bb(shared_ptr<Client> c, uint8_t, uint8_t, void
     auto s = c->require_server_state();
     auto p = c->character();
 
-    time_t t_secs = now() / 1000000;
+    time_t t_secs = phosg::now() / 1000000;
     struct tm t_parsed;
     gmtime_r(&t_secs, &t_parsed);
     size_t weekday = t_parsed.tm_wday;
@@ -4442,12 +4442,12 @@ static void on_quest_F960_result_bb(shared_ptr<Client> c, uint8_t, uint8_t, void
     try {
       p->add_item(item, *s->item_stack_limits(c->version()));
       send_create_inventory_item_to_lobby(c, c->lobby_client_id, item);
-      if (c->log.should_log(LogLevel::INFO)) {
+      if (c->log.should_log(phosg::LogLevel::INFO)) {
         string name = s->describe_item(c->version(), item, false);
         c->log.info("Awarded item %s", name.c_str());
       }
     } catch (const out_of_range&) {
-      if (c->log.should_log(LogLevel::INFO)) {
+      if (c->log.should_log(phosg::LogLevel::INFO)) {
         string name = s->describe_item(c->version(), item, false);
         c->log.info("Attempted to award item %s, but inventory was full", name.c_str());
       }

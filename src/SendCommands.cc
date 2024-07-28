@@ -171,8 +171,8 @@ prepare_server_init_contents_console(
 void send_server_init_dc_pc_v3(shared_ptr<Client> c, uint8_t flags) {
   bool initial_connection = (flags & SendServerInitFlag::IS_INITIAL_CONNECTION);
   uint8_t command = initial_connection ? 0x17 : 0x02;
-  uint32_t server_key = random_object<uint32_t>();
-  uint32_t client_key = random_object<uint32_t>();
+  uint32_t server_key = phosg::random_object<uint32_t>();
+  uint32_t client_key = phosg::random_object<uint32_t>();
 
   auto cmd = prepare_server_init_contents_console(server_key, client_key, initial_connection);
   send_command_t(c, command, 0x00, cmd);
@@ -224,8 +224,8 @@ void send_server_init_bb(shared_ptr<Client> c, uint8_t flags) {
   bool use_secondary_message = (flags & SendServerInitFlag::USE_SECONDARY_MESSAGE);
   parray<uint8_t, 0x30> server_key;
   parray<uint8_t, 0x30> client_key;
-  random_data(server_key.data(), server_key.bytes());
-  random_data(client_key.data(), client_key.bytes());
+  phosg::random_data(server_key.data(), server_key.bytes());
+  phosg::random_data(client_key.data(), client_key.bytes());
   auto cmd = prepare_server_init_contents_bb(server_key, client_key, flags);
   send_command_t(c, use_secondary_message ? 0x9B : 0x03, 0x00, cmd);
 
@@ -408,11 +408,11 @@ string prepare_send_function_call_data(
     data = code->generate_client_command(label_writes, suffix_data, suffix_size, override_relocations_offset);
 
     if (use_encrypted_format) {
-      uint32_t key = random_object<uint32_t>();
+      uint32_t key = phosg::random_object<uint32_t>();
 
       // This format was probably never used on any little-endian system, but we
       // implement the way it would probably work there if it was used.
-      StringWriter w;
+      phosg::StringWriter w;
       if (code->is_big_endian()) {
         w.put_u32b(data.size());
         w.put_u32b(key);
@@ -437,7 +437,7 @@ string prepare_send_function_call_data(
     }
   }
 
-  StringWriter w;
+  phosg::StringWriter w;
   w.put(S_ExecuteCode_B2{data.size(), checksum_addr, checksum_size});
   w.write(data);
   return std::move(w.str());
@@ -524,7 +524,7 @@ bool send_protected_command(std::shared_ptr<Client> c, const void* data, size_t 
         try {
           auto s = c->require_server_state();
           auto fn = s->function_code_index->get_patch("CallProtectedHandler", c->config.specific_version);
-          uint32_t size_label_value = is_big_endian(c->version()) ? data.size() : bswap32(data.size());
+          uint32_t size_label_value = is_big_endian(c->version()) ? data.size() : phosg::bswap32(data.size());
           send_function_call(c, fn, {{"size", size_label_value}}, data.data(), data.size());
           c->function_call_response_queue.emplace_back(empty_function_call_response_handler);
           if (echo_to_lobby) {
@@ -777,7 +777,7 @@ enum class ColorMode {
 
 static void send_text(
     Channel& ch,
-    StringWriter& w,
+    phosg::StringWriter& w,
     uint16_t command,
     uint32_t flag,
     const string& text,
@@ -800,7 +800,7 @@ static void send_text(
         break;
     }
   } catch (const runtime_error& e) {
-    log_warning("Failed to encode message for %02hX command: %s", command, e.what());
+    phosg::log_warning("Failed to encode message for %02hX command: %s", command, e.what());
     return;
   }
 
@@ -817,12 +817,12 @@ static void send_text(
 }
 
 static void send_text(Channel& ch, uint16_t command, uint32_t flag, const string& text, ColorMode color_mode) {
-  StringWriter w;
+  phosg::StringWriter w;
   send_text(ch, w, command, flag, text, color_mode);
 }
 
 static void send_header_text(Channel& ch, uint16_t command, uint32_t guild_card_number, const string& text, ColorMode color_mode) {
-  StringWriter w;
+  phosg::StringWriter w;
   w.put(SC_TextHeader_01_06_11_B0_EE({0, guild_card_number}));
   send_text(ch, w, command, 0x00, text, color_mode);
 }
@@ -861,10 +861,10 @@ void send_ep3_timed_message_box(Channel& ch, uint32_t frames, const string& mess
   try {
     encoded = tt_encode_marked(add_color(message), ch.language, false);
   } catch (const runtime_error& e) {
-    log_warning("Failed to encode message for EA command: %s", e.what());
+    phosg::log_warning("Failed to encode message for EA command: %s", e.what());
     return;
   }
-  StringWriter w;
+  phosg::StringWriter w;
   w.put<S_TimedMessageBoxHeader_Ep3_EA>({frames});
   w.write(encoded);
   w.put_u8(0);
@@ -926,7 +926,7 @@ void send_text_message(shared_ptr<ServerState> s, const string& text) {
 __attribute__((format(printf, 2, 3))) void send_ep3_text_message_printf(shared_ptr<ServerState> s, const char* format, ...) {
   va_list va;
   va_start(va, format);
-  string buf = string_vprintf(format, va);
+  string buf = phosg::string_vprintf(format, va);
   va_end(va);
   for (auto& it : s->id_to_lobby) {
     for (auto& c : it.second->clients) {
@@ -976,7 +976,7 @@ string prepare_chat_data(
   }
   data.append(from_name);
   if (version == Version::DC_NTE) {
-    data.append(string_printf(">%X", from_client_id));
+    data.append(phosg::string_printf(">%X", from_client_id));
   } else {
     data.append(1, '\t');
   }
@@ -1012,7 +1012,7 @@ void send_chat_message_from_client(Channel& ch, const string& text, char private
 }
 
 void send_prepared_chat_message(shared_ptr<Client> c, uint32_t from_guild_card_number, const string& prepared_data) {
-  StringWriter w;
+  phosg::StringWriter w;
   w.put(SC_TextHeader_01_06_11_B0_EE{0, from_guild_card_number});
   w.write(prepared_data);
   w.put_u8(0);
@@ -1066,7 +1066,7 @@ void send_simple_mail_bb(shared_ptr<Client> c, uint32_t from_guild_card_number, 
   cmd.from_guild_card_number = from_guild_card_number;
   cmd.from_name.encode(from_name, c->language());
   cmd.to_guild_card_number = c->login->account->account_id;
-  cmd.received_date.encode(format_time(now()), c->language());
+  cmd.received_date.encode(phosg::format_time(phosg::now()), c->language());
   cmd.text.encode(text, c->language());
   send_command_t(c, 0x81, 0x00, cmd);
 }
@@ -1191,11 +1191,11 @@ void send_card_search_result_t(
 
   string location_string;
   if (result_lobby->is_game()) {
-    location_string = string_printf("%s,,BLOCK01,%s", result_lobby->name.c_str(), s->name.c_str());
+    location_string = phosg::string_printf("%s,,BLOCK01,%s", result_lobby->name.c_str(), s->name.c_str());
   } else if (result_lobby->is_ep3()) {
-    location_string = string_printf("BLOCK01-C%02" PRIu32 ",,BLOCK01,%s", result_lobby->lobby_id - 15, s->name.c_str());
+    location_string = phosg::string_printf("BLOCK01-C%02" PRIu32 ",,BLOCK01,%s", result_lobby->lobby_id - 15, s->name.c_str());
   } else {
-    location_string = string_printf("BLOCK01-%02" PRIu32 ",,BLOCK01,%s", result_lobby->lobby_id, s->name.c_str());
+    location_string = phosg::string_printf("BLOCK01-%02" PRIu32 ",,BLOCK01,%s", result_lobby->lobby_id, s->name.c_str());
   }
   cmd.location_string.encode(location_string, c->language());
   cmd.extension.lobby_refs[0].menu_id = MenuID::LOBBY;
@@ -2610,7 +2610,7 @@ void send_game_join_sync_command_compressed(
     uint8_t dc_nte_sc,
     uint8_t dc_11_2000_sc,
     uint8_t sc) {
-  StringWriter w;
+  phosg::StringWriter w;
   if (is_pre_v1(c->version())) {
     G_SyncGameStateHeader_DCNTE_6x6B_6x6C_6x6D_6x6E compressed_header;
     compressed_header.header.basic_header.subcommand = (c->version() == Version::DC_NTE) ? dc_nte_sc : dc_11_2000_sc;
@@ -2648,7 +2648,7 @@ void send_game_join_sync_command_compressed(
 void send_game_item_state(shared_ptr<Client> c) {
   auto l = c->require_lobby();
   auto s = c->require_server_state();
-  StringWriter floor_items_w;
+  phosg::StringWriter floor_items_w;
 
   G_SyncItemState_6x6D_Decompressed decompressed_header;
   for (size_t z = 0; z < 12; z++) {
@@ -2689,7 +2689,7 @@ void send_game_item_state(shared_ptr<Client> c) {
     }
   }
 
-  StringWriter decompressed_w;
+  phosg::StringWriter decompressed_w;
   decompressed_w.put(decompressed_header);
   decompressed_w.write(floor_items_w.str());
   const auto& data = decompressed_w.str();
@@ -2756,7 +2756,7 @@ void send_game_set_state(shared_ptr<Client> c) {
   header.switch_flags_size = is_v1(c->version()) ? 0x200 : 0x240;
   header.total_size = header.entity_set_flags_size + header.event_set_flags_size + header.switch_flags_size;
 
-  StringWriter w;
+  phosg::StringWriter w;
   w.put(header);
   w.put(entity_set_flags_header);
   for (const auto& obj : l->map->objects) {
@@ -2783,7 +2783,7 @@ void send_game_flag_state_t(shared_ptr<Client> c) {
   auto l = c->require_lobby();
 
   if (l->quest_flags_known) { // Not all flags known; send multiple 6x75s
-    StringWriter w;
+    phosg::StringWriter w;
     bool use_v3_cmd = !is_v1_or_v2(c->version()) || (c->version() == Version::GC_NTE);
     for (uint8_t difficulty = 0; difficulty < 4; difficulty++) {
       if ((difficulty != l->difficulty) && !use_v3_cmd) {
@@ -3053,7 +3053,7 @@ void send_bank(shared_ptr<Client> c) {
 
   G_BankContentsHeader_BB_6xBC cmd = {
       {{0xBC, 0, 0}, sizeof(G_BankContentsHeader_BB_6xBC) + items.size() * sizeof(PlayerBankItem)},
-      random_object<uint32_t>(),
+      phosg::random_object<uint32_t>(),
       bank.num_items,
       bank.meseta};
 
@@ -3161,7 +3161,7 @@ void send_ep3_card_list_update(shared_ptr<Client> c) {
         ? s->ep3_card_index_trial->get_compressed_definitions()
         : s->ep3_card_index->get_compressed_definitions();
 
-    StringWriter w;
+    phosg::StringWriter w;
     w.put_u32l(data.size());
     w.write(data);
 
@@ -3174,7 +3174,7 @@ void send_ep3_media_update(
     uint32_t type,
     uint32_t which,
     const string& compressed_data) {
-  StringWriter w;
+  phosg::StringWriter w;
   w.put<S_UpdateMediaHeader_Ep3_B9>({type, which, compressed_data.size(), 0});
   w.write(compressed_data);
   while (w.size() & 3) {
@@ -3371,7 +3371,7 @@ string ep3_description_for_client(shared_ptr<Client> c) {
     throw runtime_error("client is not Episode 3");
   }
   auto p = c->character();
-  return string_printf(
+  return phosg::string_printf(
       "%s CLv%" PRIu32 " %c",
       name_for_char_class(p->disp.visual.char_class),
       p->disp.stats.level + 1,
@@ -3558,7 +3558,7 @@ void send_ep3_set_tournament_player_decks_t(shared_ptr<Client> c) {
 
   if ((c->version() != Version::GC_EP3_NTE) &&
       !(s->ep3_behavior_flags & Episode3::BehaviorFlag::DISABLE_MASKING)) {
-    uint8_t mask_key = (random_object<uint32_t>() % 0xFF) + 1;
+    uint8_t mask_key = (phosg::random_object<uint32_t>() % 0xFF) + 1;
     set_mask_for_ep3_game_command(&cmd, sizeof(cmd), mask_key);
   }
 
@@ -3604,8 +3604,8 @@ void send_ep3_tournament_match_result(shared_ptr<Lobby> l, uint32_t meseta_rewar
 
     G_TournamentMatchResult_Ep3_6xB4x51 cmd;
     cmd.match_description.encode((match == tourn->get_final_match())
-            ? string_printf("(%s) Final match", tourn->get_name().c_str())
-            : string_printf("(%s) Round %zu", tourn->get_name().c_str(), match->round_num),
+            ? phosg::string_printf("(%s) Final match", tourn->get_name().c_str())
+            : phosg::string_printf("(%s) Round %zu", tourn->get_name().c_str(), match->round_num),
         lc->language());
     cmd.names_entries[0].team_name.encode(match->preceding_a->winner_team->name, lc->language());
     write_player_names(cmd.names_entries[0], match->preceding_a->winner_team);
@@ -3620,7 +3620,7 @@ void send_ep3_tournament_match_result(shared_ptr<Lobby> l, uint32_t meseta_rewar
     cmd.meseta_reward_text.encode("You got %s meseta!", 1);
     if ((lc->version() != Version::GC_EP3_NTE) &&
         !(s->ep3_behavior_flags & Episode3::BehaviorFlag::DISABLE_MASKING)) {
-      uint8_t mask_key = (random_object<uint32_t>() % 0xFF) + 1;
+      uint8_t mask_key = (phosg::random_object<uint32_t>() % 0xFF) + 1;
       set_mask_for_ep3_game_command(&cmd, sizeof(cmd), mask_key);
     }
     send_command_t(lc, 0xC9, 0x00, cmd);
@@ -3656,7 +3656,7 @@ void send_ep3_update_game_metadata(shared_ptr<Lobby> l) {
     cmd.total_spectators = total_spectators;
     if ((l->base_version != Version::GC_EP3_NTE) &&
         !(s->ep3_behavior_flags & Episode3::BehaviorFlag::DISABLE_MASKING)) {
-      uint8_t mask_key = (random_object<uint32_t>() % 0xFF) + 1;
+      uint8_t mask_key = (phosg::random_object<uint32_t>() % 0xFF) + 1;
       set_mask_for_ep3_game_command(&cmd, sizeof(cmd), mask_key);
     }
     // Note: We can't use send_command_t(l, ...) here because that would send
@@ -3674,9 +3674,9 @@ void send_ep3_update_game_metadata(shared_ptr<Lobby> l) {
     auto tourn = l->tournament_match ? l->tournament_match->tournament.lock() : 0;
     if (l->tournament_match && tourn) {
       if (tourn->get_final_match() == l->tournament_match) {
-        text = string_printf("Viewing final match of tournament %s", tourn->get_name().c_str());
+        text = phosg::string_printf("Viewing final match of tournament %s", tourn->get_name().c_str());
       } else {
-        text = string_printf(
+        text = phosg::string_printf(
             "Viewing match in round %zu of tournament %s",
             l->tournament_match->round_num, tourn->get_name().c_str());
       }
@@ -3695,7 +3695,7 @@ void send_ep3_update_game_metadata(shared_ptr<Lobby> l) {
       cmd.text.encode(text, 1);
       if ((watcher_l->base_version != Version::GC_EP3_NTE) &&
           !(s->ep3_behavior_flags & Episode3::BehaviorFlag::DISABLE_MASKING)) {
-        uint8_t mask_key = (random_object<uint32_t>() % 0xFF) + 1;
+        uint8_t mask_key = (phosg::random_object<uint32_t>() % 0xFF) + 1;
         set_mask_for_ep3_game_command(&cmd, sizeof(cmd), mask_key);
       }
       send_command_t(watcher_l, 0xC9, 0x00, cmd);
@@ -3864,7 +3864,7 @@ void send_open_quest_file(
   // the client should apply backpressure to avoid bad situations, but we have
   // to deal with it here instead.
   size_t total_chunks = (contents->size() + 0x3FF) / 0x400;
-  size_t chunks_to_send = is_gc(c->version()) ? min<size_t>(GC_QUEST_LOAD_MAX_CHUNKS_IN_FLIGHT, total_chunks) : total_chunks;
+  size_t chunks_to_send = is_v1_or_v2(c->version()) ? total_chunks : min<size_t>(V3_V4_QUEST_LOAD_MAX_CHUNKS_IN_FLIGHT, total_chunks);
 
   for (size_t z = 0; z < chunks_to_send; z++) {
     size_t offset = z * 0x400;
@@ -3964,7 +3964,7 @@ void send_ep3_card_auction(shared_ptr<Lobby> l) {
     num_cards = s->ep3_card_auction_min_size;
   } else {
     num_cards = s->ep3_card_auction_min_size +
-        (random_object<uint16_t>() % (s->ep3_card_auction_max_size - s->ep3_card_auction_min_size + 1));
+        (phosg::random_object<uint16_t>() % (s->ep3_card_auction_max_size - s->ep3_card_auction_min_size + 1));
   }
   num_cards = min<uint16_t>(num_cards, 0x14);
 
@@ -3980,7 +3980,7 @@ void send_ep3_card_auction(shared_ptr<Lobby> l) {
   S_StartCardAuction_Ep3_EF cmd;
   cmd.points_available = s->ep3_card_auction_points;
   for (size_t z = 0; z < num_cards; z++) {
-    uint64_t v = random_object<uint64_t>() % distribution_size;
+    uint64_t v = phosg::random_object<uint64_t>() % distribution_size;
     for (const auto& e : s->ep3_card_auction_pool) {
       if (v >= e.probability) {
         v -= e.probability;
@@ -4005,7 +4005,7 @@ void send_ep3_disband_watcher_lobbies(shared_ptr<Lobby> primary_l) {
 }
 
 void send_server_time(shared_ptr<Client> c) {
-  uint64_t t = now();
+  uint64_t t = phosg::now();
 
   time_t t_secs = t / 1000000;
   struct tm t_parsed;
@@ -4015,7 +4015,7 @@ void send_server_time(shared_ptr<Client> c) {
   size_t len = strftime(time_str.data(), time_str.size(),
       "%Y:%m:%d: %H:%M:%S.000", &t_parsed);
   if (len == 0) {
-    throw runtime_error("format_time buffer too short");
+    throw runtime_error("phosg::format_time buffer too short");
   }
   time_str.resize(len);
 

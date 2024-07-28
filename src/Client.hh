@@ -147,7 +147,7 @@ public:
 
     template <size_t Bytes>
     void parse_from(const parray<uint8_t, Bytes>& data) {
-      StringReader r(data.data(), data.size());
+      phosg::StringReader r(data.data(), data.size());
       if (r.get_u32l() != CLIENT_CONFIG_MAGIC) {
         throw std::invalid_argument("config signature is incorrect");
       }
@@ -163,7 +163,7 @@ public:
 
     template <size_t Bytes>
     void serialize_into(parray<uint8_t, Bytes>& data) const {
-      StringWriter w;
+      phosg::StringWriter w;
       w.put_u32l(CLIENT_CONFIG_MAGIC);
       w.put_u32l(this->specific_version);
       w.put_u64l(this->enabled_flags & static_cast<uint64_t>(Flag::CLIENT_SIDE_MASK));
@@ -184,7 +184,7 @@ public:
 
   std::weak_ptr<Server> server;
   uint64_t id;
-  PrefixedLogger log;
+  phosg::PrefixedLogger log;
 
   std::shared_ptr<Login> login;
 

@@ -242,7 +242,7 @@ const char* name_for_section_id(uint8_t section_id) {
 }
 
 uint8_t section_id_for_name(const string& name) {
-  string lower_name = tolower(name);
+  string lower_name = phosg::tolower(name);
   try {
     return name_to_section_id.at(lower_name);
   } catch (const out_of_range&) {
@@ -690,7 +690,7 @@ uint8_t floor_for_name(const std::string& name) {
       {"saintmillion", 0x09},
       {"purgatory", 0x0A},
   });
-  return floors.at(tolower(name));
+  return floors.at(phosg::tolower(name));
 }
 
 static const array<const char*, 0x12> ep1_floor_names = {

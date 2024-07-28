@@ -23,7 +23,7 @@ FrameInfo::FrameInfo(LinkType link_type, const void* header_start, size_t size)
   this->total_size = size;
   this->payload_size = size;
 
-  StringReader r(header_start, size);
+  phosg::StringReader r(header_start, size);
 
   // Parse link-layer header
   Protocol proto = Protocol::NONE;
@@ -126,35 +126,35 @@ string FrameInfo::header_str() const {
 
   string ret;
   if (this->ether) {
-    ret = string_printf(
+    ret = phosg::string_printf(
         "ETHER:%02hhX%02hhX%02hhX%02hhX%02hhX%02hhX->%02hhX%02hhX%02hhX%02hhX%02hhX%02hhX",
         this->ether->src_mac[0], this->ether->src_mac[1], this->ether->src_mac[2],
         this->ether->src_mac[3], this->ether->src_mac[4], this->ether->src_mac[5],
         this->ether->dest_mac[0], this->ether->dest_mac[1], this->ether->dest_mac[2],
         this->ether->dest_mac[3], this->ether->dest_mac[4], this->ether->dest_mac[5]);
   } else if (this->hdlc) {
-    ret = string_printf("HDLC:%02hhX/%02hhX", this->hdlc->address, this->hdlc->control);
+    ret = phosg::string_printf("HDLC:%02hhX/%02hhX", this->hdlc->address, this->hdlc->control);
   } else {
     return "<invalid-frame-info>";
   }
 
   if (this->arp) {
-    ret += string_printf(
+    ret += phosg::string_printf(
         ",ARP,hw_type=%04hX,proto_type=%04hX,hw_addr_len=%02hhX,proto_addr_len=%02hhX,op=%04hX",
         this->arp->hardware_type.load(), this->arp->protocol_type.load(), this->arp->hwaddr_len, this->arp->paddr_len, this->arp->operation.load());
 
   } else if (this->ipv4) {
-    ret += string_printf(
+    ret += phosg::string_printf(
         ",IPv4,size=%04hX,src=%08" PRIX32 ",dest=%08" PRIX32,
         this->ipv4->size.load(), this->ipv4->src_addr.load(), this->ipv4->dest_addr.load());
 
     if (this->udp) {
-      ret += string_printf(
+      ret += phosg::string_printf(
           ",UDP,src_port=%04hX,dest_port=%04hX,size=%04hX",
           this->udp->src_port.load(), this->udp->dest_port.load(), this->udp->size.load());
 
     } else if (this->tcp) {
-      ret += string_printf(
+      ret += phosg::string_printf(
           ",TCP,src_port=%04hX,dest_port=%04hX,seq=%08" PRIX32 ",ack=%08" PRIX32 ",flags=%04hX(",
           this->tcp->src_port.load(), this->tcp->dest_port.load(), this->tcp->seq_num.load(), this->tcp->ack_num.load(), this->tcp->flags.load());
       if (this->tcp->flags & TCPHeader::Flag::FIN) {
@@ -175,14 +175,14 @@ string FrameInfo::header_str() const {
       ret += ')';
 
     } else {
-      ret += string_printf(",proto=%02hhX", this->ipv4->protocol);
+      ret += phosg::string_printf(",proto=%02hhX", this->ipv4->protocol);
     }
 
   } else {
     if (this->ether) {
-      ret += string_printf(",proto=%04hX", this->ether->protocol.load());
+      ret += phosg::string_printf(",proto=%04hX", this->ether->protocol.load());
     } else if (this->hdlc) {
-      ret += string_printf(",proto=%04hX", this->hdlc->protocol.load());
+      ret += phosg::string_printf(",proto=%04hX", this->hdlc->protocol.load());
     }
   }
 

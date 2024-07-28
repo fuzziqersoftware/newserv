@@ -110,7 +110,7 @@ unordered_multimap<string, string> HTTPServer::parse_url_params(const string& qu
   if (query.empty()) {
     return params;
   }
-  for (auto it : split(query, '&')) {
+  for (auto it : phosg::split(query, '&')) {
     size_t first_equals = it.find('=');
     if (first_equals != string::npos) {
       string value(it, first_equals + 1);
@@ -119,8 +119,8 @@ unordered_multimap<string, string> HTTPServer::parse_url_params(const string& qu
       for (; read_offset < value.size(); write_offset++) {
         if ((value[read_offset] == '%') && (read_offset < value.size() - 2)) {
           value[write_offset] =
-              static_cast<char>(value_for_hex_char(value[read_offset + 1]) << 4) |
-              static_cast<char>(value_for_hex_char(value[read_offset + 2]));
+              static_cast<char>(phosg::value_for_hex_char(value[read_offset + 1]) << 4) |
+              static_cast<char>(phosg::value_for_hex_char(value[read_offset + 2]));
           read_offset += 3;
         } else if (value[write_offset] == '+') {
           value[write_offset] = ' ';
@@ -171,7 +171,7 @@ HTTPServer::HTTPServer(shared_ptr<ServerState> state)
 }
 
 void HTTPServer::listen(const string& socket_path) {
-  int fd = ::listen(socket_path, 0, SOMAXCONN);
+  int fd = phosg::listen(socket_path, 0, SOMAXCONN);
   server_log.info("Listening on Unix socket %s on fd %d (HTTP)", socket_path.c_str(), fd);
   this->add_socket(fd);
 }
@@ -180,8 +180,8 @@ void HTTPServer::listen(const string& addr, int port) {
   if (port == 0) {
     this->listen(addr);
   } else {
-    int fd = ::listen(addr, port, SOMAXCONN);
-    string netloc_str = render_netloc(addr, port);
+    int fd = phosg::listen(addr, port, SOMAXCONN);
+    string netloc_str = phosg::render_netloc(addr, port);
     server_log.info("Listening on TCP interface %s on fd %d (HTTP)", netloc_str.c_str(), fd);
     this->add_socket(fd);
   }
@@ -207,7 +207,7 @@ HTTPServer::WebsocketClient::WebsocketClient(struct evhttp_connection* conn)
     : conn(conn),
       bev(evhttp_connection_get_bufferevent(this->conn)),
       pending_opcode(0xFF),
-      last_communication_time(now()) {}
+      last_communication_time(phosg::now()) {}
 
 HTTPServer::WebsocketClient::~WebsocketClient() {
   evhttp_connection_free(this->conn);
@@ -241,7 +241,7 @@ shared_ptr<HTTPServer::WebsocketClient> HTTPServer::enable_websockets(struct evh
   // we're about to free the original
   string sec_websocket_key = sec_websocket_key_header;
   string sec_websocket_accept_data = sec_websocket_key + "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
-  string sec_websocket_accept = base64_encode(sha1(sec_websocket_accept_data));
+  string sec_websocket_accept = phosg::base64_encode(phosg::sha1(sec_websocket_accept_data));
 
   // Hijack the bufferevent since it's no longer handling HTTP at all
   struct evhttp_connection* conn = evhttp_request_get_connection(req);
@@ -290,13 +290,13 @@ void HTTPServer::on_websocket_read(struct bufferevent* bev) {
       if (bytes_read < 10) {
         break; // Full 64-bit header not yet available
       }
-      payload_size = bswap64(*reinterpret_cast<const uint64_t*>(&header_data[2]));
+      payload_size = phosg::bswap64(*reinterpret_cast<const uint64_t*>(&header_data[2]));
       header_size = 10;
     } else if (payload_size == 0x7E) {
       if (bytes_read < 4) {
         break; // Full 16-bit size header not yet available
       }
-      payload_size = bswap16(*reinterpret_cast<const uint16_t*>(&header_data[2]));
+      payload_size = phosg::bswap16(*reinterpret_cast<const uint16_t*>(&header_data[2]));
       header_size = 4;
     }
     if (evbuffer_get_length(in_buf) < header_size + payload_size) {
@@ -312,7 +312,7 @@ void HTTPServer::on_websocket_read(struct bufferevent* bev) {
     }
 
     shared_ptr<WebsocketClient> c = this->bev_to_websocket_client.at(bev);
-    c->last_communication_time = now();
+    c->last_communication_time = phosg::now();
 
     // Read and unmask message data
     string payload(payload_size, '\0');
@@ -392,11 +392,11 @@ void HTTPServer::send_websocket_message(struct bufferevent* bev,
   if (message.size() > 65535) {
     header.push_back(0x7F);
     header.resize(10);
-    *reinterpret_cast<uint64_t*>(const_cast<char*>(header.data() + 2)) = bswap64(message.size());
+    *reinterpret_cast<uint64_t*>(const_cast<char*>(header.data() + 2)) = phosg::bswap64(message.size());
   } else if (message.size() > 0x7D) {
     header.push_back(0x7E);
     header.resize(4);
-    *reinterpret_cast<uint16_t*>(const_cast<char*>(header.data() + 2)) = bswap16(message.size());
+    *reinterpret_cast<uint16_t*>(const_cast<char*>(header.data() + 2)) = phosg::bswap16(message.size());
   } else {
     header.push_back(message.size());
   }
@@ -418,7 +418,7 @@ void HTTPServer::handle_websocket_disconnect(shared_ptr<WebsocketClient> c) {
   this->rare_drop_subscribers.erase(c);
 }
 
-void HTTPServer::send_rare_drop_notification(shared_ptr<const JSON> message) {
+void HTTPServer::send_rare_drop_notification(shared_ptr<const phosg::JSON> message) {
   forward_to_event_thread(this->base, [this, message]() -> void {
     if (this->rare_drop_subscribers.empty()) {
       return;
@@ -434,26 +434,26 @@ void HTTPServer::dispatch_handle_request(struct evhttp_request* req, void* ctx) 
   reinterpret_cast<HTTPServer*>(ctx)->handle_request(req);
 }
 
-JSON HTTPServer::generate_quest_json_st(shared_ptr<const Quest> q) {
+phosg::JSON HTTPServer::generate_quest_json_st(shared_ptr<const Quest> q) {
   if (!q) {
     return nullptr;
   }
   auto battle_rules_json = q->battle_rules ? q->battle_rules->json() : nullptr;
   auto challenge_template_index_json = (q->challenge_template_index >= 0)
       ? q->challenge_template_index
-      : JSON(nullptr);
-  return JSON::dict({
+      : phosg::JSON(nullptr);
+  return phosg::JSON::dict({
       {"Number", q->quest_number},
       {"Episode", name_for_episode(q->episode)},
       {"Joinable", q->joinable},
-      {"LockStatusRegister", (q->lock_status_register >= 0) ? q->lock_status_register : JSON(nullptr)},
+      {"LockStatusRegister", (q->lock_status_register >= 0) ? q->lock_status_register : phosg::JSON(nullptr)},
       {"Name", q->name},
       {"BattleRules", std::move(battle_rules_json)},
       {"ChallengeTemplateIndex", std::move(challenge_template_index_json)},
   });
 }
 
-JSON HTTPServer::generate_client_config_json_st(const Client::Config& config) {
+phosg::JSON HTTPServer::generate_client_config_json_st(const Client::Config& config) {
   const char* drop_notifications_mode = "unknown";
   switch (config.get_drop_notification_mode()) {
     case Client::ItemDropNotificationMode::NOTHING:
@@ -470,7 +470,7 @@ JSON HTTPServer::generate_client_config_json_st(const Client::Config& config) {
       break;
   }
 
-  auto ret = JSON::dict({
+  auto ret = phosg::JSON::dict({
       {"SpecificVersion", config.specific_version},
       {"SwitchAssistEnabled", (config.check_flag(Client::Flag::SWITCH_ASSIST_ENABLED) ? true : false)},
       {"InfiniteHPEnabled", (config.check_flag(Client::Flag::INFINITE_HP_ENABLED) ? true : false)},
@@ -486,46 +486,46 @@ JSON HTTPServer::generate_client_config_json_st(const Client::Config& config) {
       {"ProxyBlockFunctionCalls", (config.check_flag(Client::Flag::PROXY_BLOCK_FUNCTION_CALLS) ? true : false)},
       {"ProxyEp3UnmaskWhispers", (config.check_flag(Client::Flag::PROXY_EP3_UNMASK_WHISPERS) ? true : false)},
   });
-  ret.emplace("OverrideRandomSeed", config.check_flag(Client::Flag::USE_OVERRIDE_RANDOM_SEED) ? config.override_random_seed : JSON(nullptr));
-  ret.emplace("OverrideSectionID", (config.override_section_id != 0xFF) ? config.override_section_id : JSON(nullptr));
-  ret.emplace("OverrideLobbyEvent", (config.override_lobby_event != 0xFF) ? config.override_lobby_event : JSON(nullptr));
-  ret.emplace("OverrideLobbyNumber", (config.override_lobby_number != 0x80) ? config.override_lobby_number : JSON(nullptr));
+  ret.emplace("OverrideRandomSeed", config.check_flag(Client::Flag::USE_OVERRIDE_RANDOM_SEED) ? config.override_random_seed : phosg::JSON(nullptr));
+  ret.emplace("OverrideSectionID", (config.override_section_id != 0xFF) ? config.override_section_id : phosg::JSON(nullptr));
+  ret.emplace("OverrideLobbyEvent", (config.override_lobby_event != 0xFF) ? config.override_lobby_event : phosg::JSON(nullptr));
+  ret.emplace("OverrideLobbyNumber", (config.override_lobby_number != 0x80) ? config.override_lobby_number : phosg::JSON(nullptr));
   return ret;
 }
 
-JSON HTTPServer::generate_account_json_st(shared_ptr<const Account> a) {
-  auto dc_nte_licenses_json = JSON::list();
+phosg::JSON HTTPServer::generate_account_json_st(shared_ptr<const Account> a) {
+  auto dc_nte_licenses_json = phosg::JSON::list();
   for (const auto& it : a->dc_nte_licenses) {
     dc_nte_licenses_json.emplace_back(it.first);
   }
-  auto dc_licenses_json = JSON::list();
+  auto dc_licenses_json = phosg::JSON::list();
   for (const auto& it : a->dc_licenses) {
     dc_licenses_json.emplace_back(it.first);
   }
-  auto pc_licenses_json = JSON::list();
+  auto pc_licenses_json = phosg::JSON::list();
   for (const auto& it : a->pc_licenses) {
     pc_licenses_json.emplace_back(it.first);
   }
-  auto gc_licenses_json = JSON::list();
+  auto gc_licenses_json = phosg::JSON::list();
   for (const auto& it : a->gc_licenses) {
     gc_licenses_json.emplace_back(it.first);
   }
-  auto xb_licenses_json = JSON::list();
+  auto xb_licenses_json = phosg::JSON::list();
   for (const auto& it : a->xb_licenses) {
     xb_licenses_json.emplace_back(it.first);
   }
-  auto bb_licenses_json = JSON::list();
+  auto bb_licenses_json = phosg::JSON::list();
   for (const auto& it : a->bb_licenses) {
     bb_licenses_json.emplace_back(it.first);
   }
-  auto auto_patches_json = JSON::list();
+  auto auto_patches_json = phosg::JSON::list();
   for (const auto& it : a->auto_patches_enabled) {
     auto_patches_json.emplace_back(it);
   }
-  return JSON::dict({
+  return phosg::JSON::dict({
       {"AccountID", a->account_id},
       {"Flags", a->flags},
-      {"BanEndTime", a->ban_end_time ? a->ban_end_time : JSON(nullptr)},
+      {"BanEndTime", a->ban_end_time ? a->ban_end_time : phosg::JSON(nullptr)},
       {"Ep3CurrentMeseta", a->ep3_current_meseta},
       {"Ep3TotalMesetaEarned", a->ep3_total_meseta_earned},
       {"BBTeamID", a->bb_team_id},
@@ -542,11 +542,11 @@ JSON HTTPServer::generate_account_json_st(shared_ptr<const Account> a) {
   });
 };
 
-JSON HTTPServer::generate_game_client_json_st(shared_ptr<const Client> c, shared_ptr<const ItemNameIndex> item_name_index) {
-  auto ret = JSON::dict({
+phosg::JSON HTTPServer::generate_game_client_json_st(shared_ptr<const Client> c, shared_ptr<const ItemNameIndex> item_name_index) {
+  auto ret = phosg::JSON::dict({
       {"ID", c->id},
-      {"RemoteAddress", render_sockaddr_storage(c->channel.remote_addr)},
-      {"Version", name_for_enum(c->version())},
+      {"RemoteAddress", phosg::render_sockaddr_storage(c->channel.remote_addr)},
+      {"Version", phosg::name_for_enum(c->version())},
       {"SubVersion", c->sub_version},
       {"Config", HTTPServer::generate_client_config_json_st(c->config)},
       {"Language", name_for_language_code(c->language())},
@@ -555,7 +555,7 @@ JSON HTTPServer::generate_game_client_json_st(shared_ptr<const Client> c, shared
       {"LocationFloor", c->floor},
       {"CanChat", c->can_chat},
   });
-  ret.emplace("Account", c->login ? HTTPServer::generate_account_json_st(c->login->account) : JSON(nullptr));
+  ret.emplace("Account", c->login ? HTTPServer::generate_account_json_st(c->login->account) : phosg::JSON(nullptr));
   auto l = c->lobby.lock();
   if (l) {
     ret.emplace("LobbyID", l->lobby_id);
@@ -580,10 +580,10 @@ JSON HTTPServer::generate_game_client_json_st(shared_ptr<const Client> c, shared
           ret.emplace("NumLuckMaterialsUsed", p->get_material_usage(PSOBBCharacterFile::MaterialType::LUCK));
         }
       }
-      JSON items_json = JSON::list();
+      phosg::JSON items_json = phosg::JSON::list();
       for (size_t z = 0; z < p->inventory.num_items; z++) {
         const auto& item = p->inventory.items[z];
-        auto item_dict = JSON::dict({
+        auto item_dict = phosg::JSON::dict({
             {"Flags", item.flags.load()},
             {"Data", item.data.hex()},
             {"ItemID", item.data.id.load()},
@@ -602,17 +602,17 @@ JSON HTTPServer::generate_game_client_json_st(shared_ptr<const Client> c, shared
       ret.emplace("LCK", p->disp.stats.char_stats.lck.load());
       ret.emplace("EXP", p->disp.stats.experience.load());
       ret.emplace("Meseta", p->disp.stats.meseta.load());
-      auto tech_levels_json = JSON::dict();
+      auto tech_levels_json = phosg::JSON::dict();
       for (size_t z = 0; z < 0x13; z++) {
         auto level = p->get_technique_level(z);
-        tech_levels_json.emplace(name_for_technique(z), (level != 0xFF) ? level : JSON(nullptr));
+        tech_levels_json.emplace(name_for_technique(z), (level != 0xFF) ? level : phosg::JSON(nullptr));
       }
       ret.emplace("TechniqueLevels", std::move(tech_levels_json));
     }
     ret.emplace("Height", p->disp.stats.height.load());
     ret.emplace("Level", p->disp.stats.level.load());
     ret.emplace("NameColor", p->disp.visual.name_color.load());
-    ret.emplace("ExtraModel", (p->disp.visual.validation_flags & 2) ? p->disp.visual.extra_model : JSON(nullptr));
+    ret.emplace("ExtraModel", (p->disp.visual.validation_flags & 2) ? p->disp.visual.extra_model : phosg::JSON(nullptr));
     ret.emplace("SectionID", name_for_section_id(p->disp.visual.section_id));
     ret.emplace("CharClass", name_for_char_class(p->disp.visual.section_id));
     ret.emplace("Costume", p->disp.visual.costume.load());
@@ -631,7 +631,7 @@ JSON HTTPServer::generate_game_client_json_st(shared_ptr<const Client> c, shared
 
     ret.emplace("AutoReply", p->auto_reply.decode(c->language()));
     ret.emplace("InfoBoard", p->info_board.decode(c->language()));
-    auto battle_place_counts = JSON::list({
+    auto battle_place_counts = phosg::JSON::list({
         p->battle_records.place_counts[0].load(),
         p->battle_records.place_counts[1].load(),
         p->battle_records.place_counts[2].load(),
@@ -641,8 +641,8 @@ JSON HTTPServer::generate_game_client_json_st(shared_ptr<const Client> c, shared
     ret.emplace("BattleDisconnectCount", p->battle_records.disconnect_count.load());
 
     if (!is_ep3(c->version())) {
-      auto json_for_challenge_times = []<size_t Count>(const parray<ChallengeTime, Count>& times) -> JSON {
-        auto times_json = JSON::list();
+      auto json_for_challenge_times = []<size_t Count>(const parray<ChallengeTime, Count>& times) -> phosg::JSON {
+        auto times_json = phosg::JSON::list();
         for (size_t z = 0; z < times.size(); z++) {
           times_json.emplace_back(times[z].decode());
         }
@@ -662,7 +662,7 @@ JSON HTTPServer::generate_game_client_json_st(shared_ptr<const Client> c, shared
         uint8_t day = (p->challenge_records.grave_time >> 16) & 0xFF;
         uint8_t hour = (p->challenge_records.grave_time >> 8) & 0xFF;
         uint8_t minute = p->challenge_records.grave_time & 0xFF;
-        ret.emplace("ChallengeGraveTime", string_printf("%04hu-%02hhu-%02hhu %02hhu:%02hhu:00", year, month, day, hour, minute));
+        ret.emplace("ChallengeGraveTime", phosg::string_printf("%04hu-%02hhu-%02hhu %02hhu:%02hhu:00", year, month, day, hour, minute));
       }
       string grave_enemy_types;
       if (p->challenge_records.grave_defeated_by_enemy_rt_index) {
@@ -670,7 +670,7 @@ JSON HTTPServer::generate_game_client_json_st(shared_ptr<const Client> c, shared
           if (!grave_enemy_types.empty()) {
             grave_enemy_types += "/";
           }
-          grave_enemy_types += name_for_enum(type);
+          grave_enemy_types += phosg::name_for_enum(type);
         }
       }
       ret.emplace("ChallengeGraveDefeatedByEnemy", std::move(grave_enemy_types));
@@ -691,7 +691,7 @@ JSON HTTPServer::generate_game_client_json_st(shared_ptr<const Client> c, shared
   return ret;
 }
 
-JSON HTTPServer::generate_proxy_client_json_st(shared_ptr<const ProxyServer::LinkedSession> ses) {
+phosg::JSON HTTPServer::generate_proxy_client_json_st(shared_ptr<const ProxyServer::LinkedSession> ses) {
   struct LobbyPlayer {
     uint32_t guild_card_number = 0;
     uint64_t xb_user_id = 0;
@@ -702,35 +702,35 @@ JSON HTTPServer::generate_proxy_client_json_st(shared_ptr<const ProxyServer::Lin
   };
   std::vector<LobbyPlayer> lobby_players;
 
-  auto lobby_players_json = JSON::list();
+  auto lobby_players_json = phosg::JSON::list();
   for (size_t z = 0; z < ses->lobby_players.size(); z++) {
     const auto& p = ses->lobby_players[z];
     if (p.guild_card_number) {
-      lobby_players_json.emplace_back(JSON::dict({
+      lobby_players_json.emplace_back(phosg::JSON::dict({
           {"GuildCardNumber", p.guild_card_number},
           {"Name", p.name},
           {"Language", name_for_language_code(p.language)},
           {"SectionID", name_for_section_id(p.section_id)},
           {"CharClass", name_for_char_class(p.char_class)},
       }));
-      lobby_players_json.back().emplace("XBUserID", p.xb_user_id ? p.xb_user_id : JSON(nullptr));
+      lobby_players_json.back().emplace("XBUserID", p.xb_user_id ? p.xb_user_id : phosg::JSON(nullptr));
     } else {
       lobby_players_json.emplace_back(nullptr);
     }
   }
 
-  auto ret = JSON::dict({
+  auto ret = phosg::JSON::dict({
       {"ID", ses->id},
-      {"RemoteClientAddress", render_sockaddr_storage(ses->client_channel.remote_addr)},
-      {"RemoteServerAddress", render_sockaddr_storage(ses->server_channel.remote_addr)},
+      {"RemoteClientAddress", phosg::render_sockaddr_storage(ses->client_channel.remote_addr)},
+      {"RemoteServerAddress", phosg::render_sockaddr_storage(ses->server_channel.remote_addr)},
       {"LocalPort", ses->local_port},
-      {"NextDestination", render_sockaddr_storage(ses->next_destination)},
-      {"Version", name_for_enum(ses->version())},
+      {"NextDestination", phosg::render_sockaddr_storage(ses->next_destination)},
+      {"Version", phosg::name_for_enum(ses->version())},
       {"SubVersion", ses->sub_version},
       {"Name", ses->character_name},
       {"DCHardwareID", ses->hardware_id},
       {"RemoteGuildCardNumber", ses->remote_guild_card_number},
-      {"RemoteClientConfigData", format_data_string(&ses->remote_client_config_data[0], ses->remote_client_config_data.size())},
+      {"RemoteClientConfigData", phosg::format_data_string(&ses->remote_client_config_data[0], ses->remote_client_config_data.size())},
       {"Config", HTTPServer::generate_client_config_json_st(ses->config)},
       {"Language", name_for_language_code(ses->language())},
       {"LobbyClientID", ses->lobby_client_id},
@@ -759,19 +759,19 @@ JSON HTTPServer::generate_proxy_client_json_st(shared_ptr<const ProxyServer::Lin
       ret.emplace("DropMode", "proxy");
       break;
   }
-  ret.emplace("Account", ses->login ? HTTPServer::generate_account_json_st(ses->login->account) : JSON(nullptr));
+  ret.emplace("Account", ses->login ? HTTPServer::generate_account_json_st(ses->login->account) : phosg::JSON(nullptr));
   return ret;
 }
 
-JSON HTTPServer::generate_lobby_json_st(shared_ptr<const Lobby> l, shared_ptr<const ItemNameIndex> item_name_index) {
+phosg::JSON HTTPServer::generate_lobby_json_st(shared_ptr<const Lobby> l, shared_ptr<const ItemNameIndex> item_name_index) {
   std::array<std::shared_ptr<Client>, 12> clients;
 
-  auto client_ids_json = JSON::list();
+  auto client_ids_json = phosg::JSON::list();
   for (size_t z = 0; z < l->max_clients; z++) {
-    client_ids_json.emplace_back(l->clients[z] ? l->clients[z]->id : JSON(nullptr));
+    client_ids_json.emplace_back(l->clients[z] ? l->clients[z]->id : phosg::JSON(nullptr));
   }
 
-  auto ret = JSON::dict({
+  auto ret = phosg::JSON::dict({
       {"ID", l->lobby_id},
       {"AllowedVersions", l->allowed_versions},
       {"Event", l->event},
@@ -796,7 +796,7 @@ JSON HTTPServer::generate_lobby_json_st(shared_ptr<const Lobby> l, shared_ptr<co
       ret.emplace("QuestSelectionInProgress", l->check_flag(Lobby::Flag::QUEST_SELECTION_IN_PROGRESS));
       ret.emplace("QuestInProgress", l->check_flag(Lobby::Flag::QUEST_IN_PROGRESS));
       ret.emplace("JoinableQuestInProgress", l->check_flag(Lobby::Flag::JOINABLE_QUEST_IN_PROGRESS));
-      auto variations_json = JSON::list();
+      auto variations_json = phosg::JSON::list();
       for (size_t z = 0; z < l->variations.size(); z++) {
         variations_json.emplace_back(l->variations[z].load());
       }
@@ -839,11 +839,11 @@ JSON HTTPServer::generate_lobby_json_st(shared_ptr<const Lobby> l, shared_ptr<co
         }
       }
 
-      auto floor_items_json = JSON::list();
+      auto floor_items_json = phosg::JSON::list();
       for (size_t floor = 0; floor < l->floor_item_managers.size(); floor++) {
         for (const auto& it : l->floor_item_managers[floor].items) {
           const auto& item = it.second;
-          auto item_dict = JSON::dict({
+          auto item_dict = phosg::JSON::dict({
               {"LocationFloor", floor},
               {"LocationX", item->x},
               {"LocationZ", item->z},
@@ -868,7 +868,7 @@ JSON HTTPServer::generate_lobby_json_st(shared_ptr<const Lobby> l, shared_ptr<co
 
       auto ep3s = l->ep3_server;
       if (ep3s) {
-        auto players_json = JSON::list();
+        auto players_json = phosg::JSON::list();
         for (size_t z = 0; z < 4; z++) {
           if (!ep3s->name_entries[z].present) {
             players_json.emplace_back(nullptr);
@@ -876,9 +876,9 @@ JSON HTTPServer::generate_lobby_json_st(shared_ptr<const Lobby> l, shared_ptr<co
             auto lc = l->clients[z];
 
             auto deck_entry = ep3s->deck_entries[z];
-            JSON deck_json = nullptr;
+            phosg::JSON deck_json = nullptr;
             if (deck_entry) {
-              auto cards_json = JSON::list();
+              auto cards_json = phosg::JSON::list();
               for (size_t w = 0; w < deck_entry->card_ids.size(); w++) {
                 try {
                   const auto& ce = ep3s->options.card_index->definition_for_id(deck_entry->card_ids[w]);
@@ -897,7 +897,7 @@ JSON HTTPServer::generate_lobby_json_st(shared_ptr<const Lobby> l, shared_ptr<co
                   cards_json.emplace_back(deck_entry->card_ids[w].load());
                 }
               }
-              deck_json = JSON::dict({
+              deck_json = phosg::JSON::dict({
                   {"Name", deck_entry->name.decode(lc ? lc->language() : 1)},
                   {"TeamID", deck_entry->team_id.load()},
                   {"Cards", std::move(cards_json)},
@@ -906,7 +906,7 @@ JSON HTTPServer::generate_lobby_json_st(shared_ptr<const Lobby> l, shared_ptr<co
               });
             }
 
-            auto player_json = JSON::dict({
+            auto player_json = phosg::JSON::dict({
                 {"PlayerName", ep3s->name_entries[z].name.decode(lc ? lc->language() : 1)},
                 {"ClientID", ep3s->name_entries[z].client_id},
                 {"IsCOM", !!ep3s->name_entries[z].is_cpu_player},
@@ -915,13 +915,13 @@ JSON HTTPServer::generate_lobby_json_st(shared_ptr<const Lobby> l, shared_ptr<co
             players_json.emplace_back(std::move(player_json));
           }
         }
-        auto battle_state_json = JSON::dict({
+        auto battle_state_json = phosg::JSON::dict({
             {"BehaviorFlags", ep3s->options.behavior_flags},
-            {"RandomSeed", ep3s->options.opt_rand_crypt ? ep3s->options.opt_rand_crypt->seed() : JSON(nullptr)},
-            {"RandomOffset", ep3s->options.opt_rand_crypt ? ep3s->options.opt_rand_crypt->absolute_offset() : JSON(nullptr)},
+            {"RandomSeed", ep3s->options.opt_rand_crypt ? ep3s->options.opt_rand_crypt->seed() : phosg::JSON(nullptr)},
+            {"RandomOffset", ep3s->options.opt_rand_crypt ? ep3s->options.opt_rand_crypt->absolute_offset() : phosg::JSON(nullptr)},
             {"Tournament", ep3s->options.tournament ? ep3s->options.tournament->json() : nullptr},
-            {"MapNumber", ep3s->last_chosen_map ? ep3s->last_chosen_map->map_number : JSON(nullptr)},
-            {"EnvironmentNumber", ep3s->map_and_rules ? ep3s->map_and_rules->environment_number : JSON(nullptr)},
+            {"MapNumber", ep3s->last_chosen_map ? ep3s->last_chosen_map->map_number : phosg::JSON(nullptr)},
+            {"EnvironmentNumber", ep3s->map_and_rules ? ep3s->map_and_rules->environment_number : phosg::JSON(nullptr)},
             {"Rules", ep3s->map_and_rules ? ep3s->map_and_rules->rules.json() : nullptr},
             {"Players", std::move(players_json)},
             {"IsBattleFinished", ep3s->battle_finished},
@@ -929,13 +929,13 @@ JSON HTTPServer::generate_lobby_json_st(shared_ptr<const Lobby> l, shared_ptr<co
             {"RoundNumber", ep3s->round_num},
             {"FirstTeamTurn", ep3s->first_team_turn},
             {"CurrentTeamTurn", ep3s->current_team_turn1},
-            {"BattlePhase", name_for_enum(ep3s->battle_phase)},
+            {"BattlePhase", phosg::name_for_enum(ep3s->battle_phase)},
             {"SetupPhase", ep3s->setup_phase},
             {"RegistrationPhase", ep3s->registration_phase},
             {"ActionSubphase", ep3s->action_subphase},
             {"BattleStartTimeUsecs", ep3s->battle_start_usecs},
-            {"TeamEXP", JSON::list({ep3s->team_exp[0], ep3s->team_exp[1]})},
-            {"TeamDiceBonus", JSON::list({ep3s->team_dice_bonus[0], ep3s->team_dice_bonus[1]})},
+            {"TeamEXP", phosg::JSON::list({ep3s->team_exp[0], ep3s->team_exp[1]})},
+            {"TeamDiceBonus", phosg::JSON::list({ep3s->team_dice_bonus[0], ep3s->team_dice_bonus[1]})},
         });
         // std::shared_ptr<StateFlags> state_flags;
         // std::array<std::shared_ptr<PlayerState>, 4> player_states;
@@ -947,7 +947,7 @@ JSON HTTPServer::generate_lobby_json_st(shared_ptr<const Lobby> l, shared_ptr<co
       if (watched_lobby) {
         ret.emplace("WatchedLobbyID", watched_lobby->lobby_id);
       }
-      auto watcher_lobby_ids_json = JSON::list();
+      auto watcher_lobby_ids_json = phosg::JSON::list();
       for (const auto& watcher_lobby : l->watcher_lobbies) {
         watcher_lobby_ids_json.emplace_back(watcher_lobby->lobby_id);
       }
@@ -964,9 +964,9 @@ JSON HTTPServer::generate_lobby_json_st(shared_ptr<const Lobby> l, shared_ptr<co
   return ret;
 }
 
-JSON HTTPServer::generate_game_server_clients_json() const {
-  return call_on_event_thread<JSON>(this->state->base, [&]() {
-    auto res = JSON::list();
+phosg::JSON HTTPServer::generate_game_server_clients_json() const {
+  return call_on_event_thread<phosg::JSON>(this->state->base, [&]() {
+    auto res = phosg::JSON::list();
     for (const auto& it : this->state->channel_to_client) {
       res.emplace_back(this->generate_game_client_json_st(it.second, this->state->item_name_index_opt(it.second->version())));
     }
@@ -974,9 +974,9 @@ JSON HTTPServer::generate_game_server_clients_json() const {
   });
 }
 
-JSON HTTPServer::generate_proxy_server_clients_json() const {
-  return call_on_event_thread<JSON>(this->state->base, [&]() {
-    JSON res = JSON::list();
+phosg::JSON HTTPServer::generate_proxy_server_clients_json() const {
+  return call_on_event_thread<phosg::JSON>(this->state->base, [&]() {
+    phosg::JSON res = phosg::JSON::list();
     if (this->state->proxy_server) {
       for (const auto& it : this->state->proxy_server->all_sessions()) {
         res.emplace_back(this->generate_proxy_client_json_st(it.second));
@@ -986,8 +986,8 @@ JSON HTTPServer::generate_proxy_server_clients_json() const {
   });
 }
 
-JSON HTTPServer::generate_server_info_json() const {
-  return call_on_event_thread<JSON>(this->state->base, [&]() {
+phosg::JSON HTTPServer::generate_server_info_json() const {
+  return call_on_event_thread<phosg::JSON>(this->state->base, [&]() {
     size_t game_count = 0;
     size_t lobby_count = 0;
     for (const auto& it : this->state->id_to_lobby) {
@@ -997,12 +997,12 @@ JSON HTTPServer::generate_server_info_json() const {
         lobby_count++;
       }
     }
-    uint64_t uptime_usecs = now() - this->state->creation_time;
-    return JSON::dict({
+    uint64_t uptime_usecs = phosg::now() - this->state->creation_time;
+    return phosg::JSON::dict({
         {"StartTimeUsecs", this->state->creation_time},
-        {"StartTime", format_time(this->state->creation_time)},
+        {"StartTime", phosg::format_time(this->state->creation_time)},
         {"UptimeUsecs", uptime_usecs},
-        {"Uptime", format_duration(uptime_usecs)},
+        {"Uptime", phosg::format_duration(uptime_usecs)},
         {"LobbyCount", lobby_count},
         {"GameCount", game_count},
         {"ClientCount", this->state->channel_to_client.size()},
@@ -1012,9 +1012,9 @@ JSON HTTPServer::generate_server_info_json() const {
   });
 }
 
-JSON HTTPServer::generate_lobbies_json() const {
-  return call_on_event_thread<JSON>(this->state->base, [&]() {
-    JSON res = JSON::list();
+phosg::JSON HTTPServer::generate_lobbies_json() const {
+  return call_on_event_thread<phosg::JSON>(this->state->base, [&]() {
+    phosg::JSON res = phosg::JSON::list();
     for (const auto& it : this->state->id_to_lobby) {
       res.emplace_back(this->generate_lobby_json_st(it.second, this->state->item_name_index_opt(it.second->base_version)));
     }
@@ -1022,46 +1022,46 @@ JSON HTTPServer::generate_lobbies_json() const {
   });
 }
 
-JSON HTTPServer::generate_summary_json() const {
-  auto ret = call_on_event_thread<JSON>(this->state->base, [&]() {
-    auto clients_json = JSON::list();
+phosg::JSON HTTPServer::generate_summary_json() const {
+  auto ret = call_on_event_thread<phosg::JSON>(this->state->base, [&]() {
+    auto clients_json = phosg::JSON::list();
     for (const auto& it : this->state->channel_to_client) {
       auto c = it.second;
       auto p = c->character(false, false);
       auto l = c->lobby.lock();
-      clients_json.emplace_back(JSON::dict({
+      clients_json.emplace_back(phosg::JSON::dict({
           {"ID", c->id},
-          {"AccountID", c->login ? c->login->account->account_id : JSON(nullptr)},
-          {"Name", p ? p->disp.name.decode(it.second->language()) : JSON(nullptr)},
-          {"Version", name_for_enum(it.second->version())},
+          {"AccountID", c->login ? c->login->account->account_id : phosg::JSON(nullptr)},
+          {"Name", p ? p->disp.name.decode(it.second->language()) : phosg::JSON(nullptr)},
+          {"Version", phosg::name_for_enum(it.second->version())},
           {"Language", name_for_language_code(it.second->language())},
-          {"Level", p ? p->disp.stats.level + 1 : JSON(nullptr)},
-          {"Class", p ? name_for_char_class(p->disp.visual.char_class) : JSON(nullptr)},
-          {"SectionID", p ? name_for_section_id(p->disp.visual.section_id) : JSON(nullptr)},
-          {"LobbyID", l ? l->lobby_id : JSON(nullptr)},
+          {"Level", p ? p->disp.stats.level + 1 : phosg::JSON(nullptr)},
+          {"Class", p ? name_for_char_class(p->disp.visual.char_class) : phosg::JSON(nullptr)},
+          {"SectionID", p ? name_for_section_id(p->disp.visual.section_id) : phosg::JSON(nullptr)},
+          {"LobbyID", l ? l->lobby_id : phosg::JSON(nullptr)},
       }));
     }
 
-    auto proxy_clients_json = JSON::list();
+    auto proxy_clients_json = phosg::JSON::list();
     if (this->state->proxy_server) {
       for (const auto& it : this->state->proxy_server->all_sessions()) {
-        proxy_clients_json.emplace_back(JSON::dict({
-            {"AccountID", it.second->login ? it.second->login->account->account_id : JSON(nullptr)},
+        proxy_clients_json.emplace_back(phosg::JSON::dict({
+            {"AccountID", it.second->login ? it.second->login->account->account_id : phosg::JSON(nullptr)},
             {"Name", it.second->character_name},
-            {"Version", name_for_enum(it.second->version())},
+            {"Version", phosg::name_for_enum(it.second->version())},
             {"Language", name_for_language_code(it.second->language())},
         }));
       }
     }
 
-    auto games_json = JSON::list();
+    auto games_json = phosg::JSON::list();
     for (const auto& it : this->state->id_to_lobby) {
       auto l = it.second;
       if (l->is_game()) {
-        auto game_json = JSON::dict({
+        auto game_json = phosg::JSON::dict({
             {"ID", l->lobby_id},
             {"Name", l->name},
-            {"BaseVersion", name_for_enum(l->base_version)},
+            {"BaseVersion", phosg::name_for_enum(l->base_version)},
             {"Players", l->count_clients()},
             {"CheatsEnabled", l->check_flag(Lobby::Flag::CHEATS_ENABLED)},
             {"Episode", name_for_episode(l->episode)},
@@ -1071,7 +1071,7 @@ JSON HTTPServer::generate_summary_json() const {
           auto ep3s = l->ep3_server;
           game_json.emplace("BattleInProgress", l->check_flag(Lobby::Flag::BATTLE_IN_PROGRESS));
           game_json.emplace("IsSpectatorTeam", l->check_flag(Lobby::Flag::IS_SPECTATOR_TEAM));
-          game_json.emplace("MapNumber", (ep3s && ep3s->last_chosen_map) ? ep3s->last_chosen_map->map_number : JSON(nullptr));
+          game_json.emplace("MapNumber", (ep3s && ep3s->last_chosen_map) ? ep3s->last_chosen_map->map_number : phosg::JSON(nullptr));
           game_json.emplace("Rules", (ep3s && ep3s->map_and_rules) ? ep3s->map_and_rules->rules.json() : nullptr);
         } else {
           game_json.emplace("QuestSelectionInProgress", l->check_flag(Lobby::Flag::QUEST_SELECTION_IN_PROGRESS));
@@ -1086,7 +1086,7 @@ JSON HTTPServer::generate_summary_json() const {
       }
     }
 
-    return JSON::dict({
+    return phosg::JSON::dict({
         {"Clients", std::move(clients_json)},
         {"ProxyClients", std::move(proxy_clients_json)},
         {"Games", std::move(games_json)},
@@ -1096,8 +1096,8 @@ JSON HTTPServer::generate_summary_json() const {
   return ret;
 }
 
-JSON HTTPServer::generate_all_json() const {
-  return JSON::dict({
+phosg::JSON HTTPServer::generate_all_json() const {
+  return phosg::JSON::dict({
       {"Clients", this->generate_game_server_clients_json()},
       {"ProxyClients", this->generate_proxy_server_clients_json()},
       {"Lobbies", this->generate_lobbies_json()},
@@ -1105,43 +1105,43 @@ JSON HTTPServer::generate_all_json() const {
   });
 }
 
-JSON HTTPServer::generate_ep3_cards_json(bool trial) const {
+phosg::JSON HTTPServer::generate_ep3_cards_json(bool trial) const {
   auto index = call_on_event_thread<shared_ptr<const Episode3::CardIndex>>(this->state->base, [&]() {
     return trial ? this->state->ep3_card_index_trial : this->state->ep3_card_index;
   });
   return index->definitions_json();
 }
 
-JSON HTTPServer::generate_common_tables_json() const {
+phosg::JSON HTTPServer::generate_common_tables_json() const {
   auto [set_v2, set_v3_v4] = call_on_event_thread<pair<shared_ptr<const CommonItemSet>, shared_ptr<const CommonItemSet>>>(this->state->base, [&]() {
     return make_pair(this->state->common_item_set_v2, this->state->common_item_set_v3_v4);
   });
-  return JSON::dict({{"v1_v2", set_v2->json()}, {"v3_v4", set_v3_v4->json()}});
+  return phosg::JSON::dict({{"v1_v2", set_v2->json()}, {"v3_v4", set_v3_v4->json()}});
 }
 
-JSON HTTPServer::generate_rare_tables_json() const {
+phosg::JSON HTTPServer::generate_rare_tables_json() const {
   auto sets = call_on_event_thread<unordered_map<string, shared_ptr<const RareItemSet>>>(this->state->base, [&]() {
     return this->state->rare_item_sets;
   });
-  JSON ret = JSON::list();
+  phosg::JSON ret = phosg::JSON::list();
   for (const auto& it : sets) {
     ret.emplace_back(it.first);
   }
   return ret;
 }
 
-JSON HTTPServer::generate_rare_table_json(const std::string& table_name) const {
+phosg::JSON HTTPServer::generate_rare_table_json(const std::string& table_name) const {
   try {
     auto colls = call_on_event_thread<pair<shared_ptr<const RareItemSet>, shared_ptr<const ItemNameIndex>>>(this->state->base, [&]() {
       const auto& table = this->state->rare_item_sets.at(table_name);
       shared_ptr<const ItemNameIndex> name_index;
-      if (ends_with(table_name, "-v1")) {
+      if (phosg::ends_with(table_name, "-v1")) {
         name_index = this->state->item_name_index_opt(Version::DC_V1);
-      } else if (ends_with(table_name, "-v2")) {
+      } else if (phosg::ends_with(table_name, "-v2")) {
         name_index = this->state->item_name_index_opt(Version::PC_V2);
-      } else if (ends_with(table_name, "-v3")) {
+      } else if (phosg::ends_with(table_name, "-v3")) {
         name_index = this->state->item_name_index_opt(Version::GC_V3);
-      } else if (ends_with(table_name, "-v4")) {
+      } else if (phosg::ends_with(table_name, "-v4")) {
         name_index = this->state->item_name_index_opt(Version::BB_V4);
       }
       return make_pair(table, name_index);
@@ -1153,9 +1153,9 @@ JSON HTTPServer::generate_rare_table_json(const std::string& table_name) const {
 }
 
 void HTTPServer::handle_request(struct evhttp_request* req) {
-  shared_ptr<const JSON> ret;
+  shared_ptr<const phosg::JSON> ret;
   uint32_t serialize_options = 0;
-  uint64_t start_time = now();
+  uint64_t start_time = phosg::now();
   string uri = evhttp_request_get_uri(req);
 
   try {
@@ -1168,14 +1168,14 @@ void HTTPServer::handle_request(struct evhttp_request* req) {
 
     static const string default_format_option = "false";
     if (this->get_url_param(query, "format", &default_format_option) == "true") {
-      serialize_options |= JSON::SerializeOption::FORMAT | JSON::SerializeOption::SORT_DICT_KEYS;
+      serialize_options |= phosg::JSON::SerializeOption::FORMAT | phosg::JSON::SerializeOption::SORT_DICT_KEYS;
     }
     if (this->get_url_param(query, "hex", &default_format_option) == "true") {
-      serialize_options |= JSON::SerializeOption::HEX_INTEGERS;
+      serialize_options |= phosg::JSON::SerializeOption::HEX_INTEGERS;
     }
 
     if (uri == "/") {
-      auto endpoints_json = JSON::list({
+      auto endpoints_json = phosg::JSON::list({
           "/y/data/ep3-cards",
           "/y/data/ep3-cards-trial",
           "/y/data/common-tables",
@@ -1190,7 +1190,7 @@ void HTTPServer::handle_request(struct evhttp_request* req) {
           "/y/summary",
           "/y/all",
       });
-      ret = make_shared<JSON>(JSON::dict({{"endpoints", std::move(endpoints_json)}}));
+      ret = make_shared<phosg::JSON>(phosg::JSON::dict({{"endpoints", std::move(endpoints_json)}}));
 
     } else if (uri == "/y/rare-drops/stream") {
       auto c = this->enable_websockets(req);
@@ -1198,35 +1198,35 @@ void HTTPServer::handle_request(struct evhttp_request* req) {
         throw http_error(400, "this path requires a websocket connection");
       } else {
         this->rare_drop_subscribers.emplace(c);
-        auto version_message = JSON::dict({{"ServerType", "newserv"}});
+        auto version_message = phosg::JSON::dict({{"ServerType", "newserv"}});
         this->send_websocket_message(c, version_message.serialize());
         return;
       }
 
     } else if (uri == "/y/data/ep3-cards") {
-      ret = make_shared<JSON>(this->generate_ep3_cards_json(false));
+      ret = make_shared<phosg::JSON>(this->generate_ep3_cards_json(false));
     } else if (uri == "/y/data/ep3-cards-trial") {
-      ret = make_shared<JSON>(this->generate_ep3_cards_json(true));
+      ret = make_shared<phosg::JSON>(this->generate_ep3_cards_json(true));
     } else if (uri == "/y/data/common-tables") {
-      ret = make_shared<JSON>(this->generate_common_tables_json());
+      ret = make_shared<phosg::JSON>(this->generate_common_tables_json());
     } else if (uri == "/y/data/rare-tables") {
-      ret = make_shared<JSON>(this->generate_rare_tables_json());
+      ret = make_shared<phosg::JSON>(this->generate_rare_tables_json());
     } else if (!strncmp(uri.c_str(), "/y/data/rare-tables/", 20)) {
-      ret = make_shared<JSON>(this->generate_rare_table_json(uri.substr(20)));
+      ret = make_shared<phosg::JSON>(this->generate_rare_table_json(uri.substr(20)));
     } else if (uri == "/y/data/config") {
-      ret = call_on_event_thread<shared_ptr<const JSON>>(this->state->base, [this]() { return this->state->config_json; });
+      ret = call_on_event_thread<shared_ptr<const phosg::JSON>>(this->state->base, [this]() { return this->state->config_json; });
     } else if (uri == "/y/clients") {
-      ret = make_shared<JSON>(this->generate_game_server_clients_json());
+      ret = make_shared<phosg::JSON>(this->generate_game_server_clients_json());
     } else if (uri == "/y/proxy-clients") {
-      ret = make_shared<JSON>(this->generate_proxy_server_clients_json());
+      ret = make_shared<phosg::JSON>(this->generate_proxy_server_clients_json());
     } else if (uri == "/y/lobbies") {
-      ret = make_shared<JSON>(this->generate_lobbies_json());
+      ret = make_shared<phosg::JSON>(this->generate_lobbies_json());
     } else if (uri == "/y/server") {
-      ret = make_shared<JSON>(this->generate_server_info_json());
+      ret = make_shared<phosg::JSON>(this->generate_server_info_json());
     } else if (uri == "/y/summary") {
-      ret = make_shared<JSON>(this->generate_summary_json());
+      ret = make_shared<phosg::JSON>(this->generate_summary_json());
     } else if (uri == "/y/all") {
-      ret = make_shared<JSON>(this->generate_all_json());
+      ret = make_shared<phosg::JSON>(this->generate_all_json());
 
     } else {
       throw http_error(404, "unknown action");
@@ -1246,20 +1246,20 @@ void HTTPServer::handle_request(struct evhttp_request* req) {
     return;
   }
 
-  uint64_t handler_end = now();
+  uint64_t handler_end = phosg::now();
   unique_ptr<struct evbuffer, void (*)(struct evbuffer*)> out_buffer(evbuffer_new(), evbuffer_free);
-  string* serialized = new string(ret->serialize(JSON::SerializeOption::ESCAPE_CONTROLS_ONLY | serialize_options));
+  string* serialized = new string(ret->serialize(phosg::JSON::SerializeOption::ESCAPE_CONTROLS_ONLY | serialize_options));
   size_t size = serialized->size();
-  uint64_t serialize_end = now();
+  uint64_t serialize_end = phosg::now();
   auto cleanup = +[](const void*, size_t, void* s) -> void {
     delete reinterpret_cast<string*>(s);
   };
   evbuffer_add_reference(out_buffer.get(), serialized->data(), serialized->size(), cleanup, serialized);
   this->send_response(req, 200, "application/json", out_buffer.get());
 
-  string handler_time = format_duration(handler_end - start_time);
-  string serialize_time = format_duration(serialize_end - handler_end);
-  string size_str = format_size(size);
+  string handler_time = phosg::format_duration(handler_end - start_time);
+  string serialize_time = phosg::format_duration(serialize_end - handler_end);
+  string size_str = phosg::format_size(size);
   server_log.info("[HTTPServer] %s in [handler: %s, serialize: %s, size: %s]",
       uri.c_str(), handler_time.c_str(), serialize_time.c_str(), size_str.c_str());
 }

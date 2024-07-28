@@ -50,7 +50,7 @@ private:
   public:
     std::weak_ptr<PatchServer> server;
     uint64_t id;
-    PrefixedLogger log;
+    phosg::PrefixedLogger log;
 
     Channel channel;
     std::vector<PatchFileChecksumRequest> patch_file_checksum_requests;

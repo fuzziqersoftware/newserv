@@ -11,6 +11,8 @@
 #include <stdexcept>
 #include <string>
 
+#include "Types.hh"
+
 #define __packed__ __attribute__((packed))
 #define check_struct_size(StructT, Size)                                 \
   static_assert(sizeof(StructT) >= Size, "Structure size is too small"); \
@@ -104,7 +106,7 @@ struct parray {
     this->clear_after(init_items.size());
   }
   template <typename ArgT = ItemT>
-    requires(std::is_arithmetic_v<ArgT> || is_converted_endian_sc_v<ArgT>)
+    requires(std::is_arithmetic_v<ArgT> || phosg::is_converted_endian_sc_v<ArgT>)
   parray() {
     this->clear(0);
   }
@@ -114,7 +116,7 @@ struct parray {
     this->clear(nullptr);
   }
   template <typename ArgT = ItemT>
-    requires(!std::is_arithmetic_v<ArgT> && !std::is_pointer_v<ArgT> && !is_converted_endian_sc_v<ArgT>)
+    requires(!std::is_arithmetic_v<ArgT> && !std::is_pointer_v<ArgT> && !phosg::is_converted_endian_sc_v<ArgT>)
   parray() {}
 
   parray(const parray& other) {
@@ -313,7 +315,7 @@ struct bcarray {
     this->clear_after(init_items.size());
   }
   template <typename ArgT = ItemT>
-    requires(std::is_arithmetic_v<ArgT> || is_converted_endian_sc_v<ArgT>)
+    requires(std::is_arithmetic_v<ArgT> || phosg::is_converted_endian_sc_v<ArgT>)
   bcarray() {
     this->clear(0);
   }
@@ -323,7 +325,7 @@ struct bcarray {
     this->clear(nullptr);
   }
   template <typename ArgT = ItemT>
-    requires(!std::is_arithmetic_v<ArgT> && !std::is_pointer_v<ArgT> && !is_converted_endian_sc_v<ArgT>)
+    requires(!std::is_arithmetic_v<ArgT> && !std::is_pointer_v<ArgT> && !phosg::is_converted_endian_sc_v<ArgT>)
   bcarray() {}
 
   bcarray(const bcarray& other) {
@@ -546,7 +548,7 @@ struct pstring {
           throw std::logic_error("unknown text encoding");
       }
     } catch (const std::runtime_error& e) {
-      log_warning("Unencodable text: %s", e.what());
+      phosg::log_warning("Unencodable text: %s", e.what());
       if (BytesPerChar == 2) {
         if (Bytes >= 6) {
           this->data[0] = '<';
@@ -621,7 +623,7 @@ struct pstring {
           throw std::logic_error("unknown text encoding");
       }
     } catch (const std::runtime_error& e) {
-      log_warning("Undecodable text: %s", e.what());
+      phosg::log_warning("Undecodable text: %s", e.what());
       return "<?>";
     }
   }
@@ -708,7 +710,7 @@ struct pstring {
 
 void replace_char_inplace(char* a, char f, char r);
 
-void add_color(StringWriter& w, const char* src, size_t max_input_chars);
+void add_color(phosg::StringWriter& w, const char* src, size_t max_input_chars);
 std::string add_color(const std::string& s);
 
 size_t add_color_inplace(char* a, size_t max_chars);
@@ -716,7 +718,7 @@ void add_color_inplace(std::string& s);
 
 // remove_color does the opposite of add_color (it changes \t into $, for
 // example). strip_color is irreversible; it deletes color escape sequences.
-void remove_color(StringWriter& w, const char* src, size_t max_input_chars);
+void remove_color(phosg::StringWriter& w, const char* src, size_t max_input_chars);
 std::string remove_color(const std::string& s);
 
 std::string strip_color(const std::string& s);

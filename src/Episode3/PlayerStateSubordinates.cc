@@ -64,11 +64,11 @@ void Condition::clear_FF() {
 std::string Condition::str(shared_ptr<const Server> s) const {
   auto card_ref_str = s->debug_str_for_card_ref(this->card_ref);
   auto giver_ref_str = s->debug_str_for_card_ref(this->condition_giver_card_ref);
-  return string_printf(
+  return phosg::string_printf(
       "Condition[type=%s, turns=%hhu, a_arg=%hhd, dice=%hhu, flags=%02hhX, "
       "def_eff_index=%hhu, ref=%s, value=%hd, giver_ref=%s "
       "percent=%hhu value8=%hd order=%hu a8=%hu]",
-      name_for_enum(this->type),
+      phosg::name_for_enum(this->type),
       this->remaining_turns,
       this->a_arg_value,
       this->dice_roll_value,
@@ -103,7 +103,7 @@ void EffectResult::clear() {
 std::string EffectResult::str(shared_ptr<const Server> s) const {
   string attacker_ref_str = s->debug_str_for_card_ref(this->attacker_card_ref);
   string target_ref_str = s->debug_str_for_card_ref(this->target_card_ref);
-  return string_printf(
+  return phosg::string_printf(
       "EffectResult[att_ref=%s, target_ref=%s, value=%hhd, "
       "cur_hp=%hhd, ap=%hhd, tp=%hhd, flags=%02hhX, op=%hhd, "
       "cond_index=%hhu, dice=%hhu]",
@@ -139,7 +139,7 @@ bool CardShortStatus::operator!=(const CardShortStatus& other) const {
 std::string CardShortStatus::str(shared_ptr<const Server> s) const {
   string loc_s = this->loc.str();
   string ref_str = s->debug_str_for_card_ref(this->card_ref);
-  return string_printf(
+  return phosg::string_printf(
       "CardShortStatus[ref=%s, cur_hp=%hd, flags=%08" PRIX32 ", loc=%s, "
       "u1=%04hX, max_hp=%hhd, u2=%hhu]",
       ref_str.c_str(),
@@ -193,13 +193,13 @@ std::string ActionState::str(shared_ptr<const Server> s) const {
   string original_attacker_ref_s = s->debug_str_for_card_ref(this->original_attacker_card_ref);
   string target_refs_s = s->debug_str_for_card_refs(this->target_card_refs);
   string action_refs_s = s->debug_str_for_card_refs(this->action_card_refs);
-  return string_printf(
+  return phosg::string_printf(
       "ActionState[client=%hu, u=%hhu, facing=%s, attacker_ref=%s, "
       "def_ref=%s, target_refs=%s, action_refs=%s, "
       "orig_attacker_ref=%s]",
       this->client_id.load(),
       this->unused,
-      name_for_enum(this->facing_direction),
+      phosg::name_for_enum(this->facing_direction),
       attacker_ref_s.c_str(),
       defense_ref_s.c_str(),
       target_refs_s.c_str(),
@@ -243,7 +243,7 @@ std::string ActionChain::str(shared_ptr<const Server> s) const {
   string unknown_card_ref_a3_s = s->debug_str_for_card_ref(this->unknown_card_ref_a3);
   string attack_action_card_refs_s = s->debug_str_for_card_refs(this->attack_action_card_refs);
   string target_card_refs_s = s->debug_str_for_card_refs(this->target_card_refs);
-  return string_printf(
+  return phosg::string_printf(
       "ActionChain[eff_ap=%hhd, eff_tp=%hhd, ap_bonus=%hhd, damage=%hhd, "
       "acting_ref=%s, unknown_ref_a3=%s, attack_action_refs=%s, "
       "attack_action_ref_count=%hhu, medium=%s, target_ref_count=%hhu, "
@@ -258,9 +258,9 @@ std::string ActionChain::str(shared_ptr<const Server> s) const {
       unknown_card_ref_a3_s.c_str(),
       attack_action_card_refs_s.c_str(),
       this->attack_action_card_ref_count,
-      name_for_enum(this->attack_medium),
+      phosg::name_for_enum(this->attack_medium),
       this->target_card_ref_count,
-      name_for_enum(this->action_subphase),
+      phosg::name_for_enum(this->action_subphase),
       this->strike_count,
       this->damage_multiplier,
       this->attack_number,
@@ -341,7 +341,7 @@ std::string ActionChainWithConds::str(shared_ptr<const Server> s) const {
       if (ret.back() != '[') {
         ret += ", ";
       }
-      ret += string_printf("%zu:", z);
+      ret += phosg::string_printf("%zu:", z);
       ret += this->conditions[z].str(s);
     }
   }
@@ -580,7 +580,7 @@ std::string ActionMetadata::str(shared_ptr<const Server> s) const {
   string target_card_refs_s = s->debug_str_for_card_refs(this->target_card_refs);
   string defense_card_refs_s = s->debug_str_for_card_refs(this->defense_card_refs);
   string original_attacker_card_refs_s = s->debug_str_for_card_refs(this->original_attacker_card_refs);
-  return string_printf(
+  return phosg::string_printf(
       "ActionMetadata[ref=%s, target_ref_count=%hhu, def_ref_count=%hhu, "
       "subphase=%s, def_power=%hhd, def_bonus=%hhd, "
       "att_bonus=%hhd, flags=%08" PRIX32 ", target_refs=%s, "
@@ -588,7 +588,7 @@ std::string ActionMetadata::str(shared_ptr<const Server> s) const {
       card_ref_s.c_str(),
       this->target_card_ref_count,
       this->defense_card_ref_count,
-      name_for_enum(this->action_subphase),
+      phosg::name_for_enum(this->action_subphase),
       this->defense_power,
       this->defense_bonus,
       this->attack_bonus,
@@ -683,7 +683,7 @@ std::string HandAndEquipState::str(shared_ptr<const Server> s) const {
   string set_card_refs_s = s->debug_str_for_card_refs(this->set_card_refs);
   string hand_card_refs2_s = s->debug_str_for_card_refs(this->hand_card_refs2);
   string set_card_refs2_s = s->debug_str_for_card_refs(this->set_card_refs2);
-  return string_printf(
+  return phosg::string_printf(
       "HandAndEquipState[dice=[%hhu, %hhu], atk=%hhu, def=%hhu, atk2=%hhu, "
       "a1=%hhu, total_set_cost=%hhu, is_cpu=%hhu, assist_flags=%08" PRIX32 ", "
       "hand_refs=%s, assist_ref=%s, set_refs=%s, sc_ref=%s, hand_refs2=%s, "
@@ -858,7 +858,7 @@ static bool is_card_within_range(
     const parray<uint8_t, 9 * 9>& range,
     const Location& anchor_loc,
     const CardShortStatus& ss,
-    PrefixedLogger* log) {
+    phosg::PrefixedLogger* log) {
   if (ss.card_ref == 0xFFFF) {
     if (log) {
       log->debug("is_card_within_range: (false) ss.card_ref missing");
@@ -899,7 +899,7 @@ vector<uint16_t> get_card_refs_within_range(
     const parray<uint8_t, 9 * 9>& range,
     const Location& loc,
     const parray<CardShortStatus, 0x10>& short_statuses,
-    PrefixedLogger* log) {
+    phosg::PrefixedLogger* log) {
   vector<uint16_t> ret;
   if (is_card_within_range(range, loc, short_statuses[0], log)) {
     if (log) {

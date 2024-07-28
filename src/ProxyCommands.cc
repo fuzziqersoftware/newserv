@@ -95,8 +95,8 @@ static HandlerResult default_handler(shared_ptr<ProxyServer::LinkedSession>, uin
 static HandlerResult S_invalid(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t command, uint32_t flag, string&) {
   ses->log.error("Server sent invalid command");
   string error_str = is_v4(ses->version())
-      ? string_printf("Server sent invalid\ncommand: %04hX %08" PRIX32, command, flag)
-      : string_printf("Server sent invalid\ncommand: %02hX %02" PRIX32, command, flag);
+      ? phosg::string_printf("Server sent invalid\ncommand: %04hX %08" PRIX32, command, flag)
+      : phosg::string_printf("Server sent invalid\ncommand: %02hX %02" PRIX32, command, flag);
   ses->send_to_game_server(error_str.c_str());
   return HandlerResult::Type::SUPPRESS;
 }
@@ -110,7 +110,7 @@ static HandlerResult C_05(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t, 
 
 static HandlerResult C_1D(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t, uint32_t, string&) {
   if (ses->client_ping_start_time) {
-    uint64_t ping_usecs = now() - ses->client_ping_start_time;
+    uint64_t ping_usecs = phosg::now() - ses->client_ping_start_time;
     ses->client_ping_start_time = 0;
     double ping_ms = static_cast<double>(ping_usecs) / 1000.0;
     send_text_message_printf(ses->client_channel, "To proxy: %gms", ping_ms);
@@ -138,7 +138,7 @@ static HandlerResult S_97(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t, 
 
 static HandlerResult C_G_9E(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t, uint32_t, string&) {
   if (ses->config.check_flag(Client::Flag::PROXY_SUPPRESS_REMOTE_LOGIN) && ses->login) {
-    le_uint64_t checksum = random_object<uint64_t>() & 0x0000FFFFFFFFFFFF;
+    le_uint64_t checksum = phosg::random_object<uint64_t>() & 0x0000FFFFFFFFFFFF;
     ses->server_channel.send(0x96, 0x00, &checksum, sizeof(checksum));
 
     S_UpdateClientConfig_V3_04 cmd;
@@ -172,7 +172,7 @@ static HandlerResult S_G_9A(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t
   cmd.sub_version = ses->effective_sub_version();
   cmd.is_extended = (ses->remote_guild_card_number < 0) ? 1 : 0;
   cmd.language = ses->language();
-  cmd.serial_number.encode(string_printf("%08" PRIX32 "", ses->login->account->account_id));
+  cmd.serial_number.encode(phosg::string_printf("%08" PRIX32 "", ses->login->account->account_id));
   cmd.access_key.encode(ses->login->gc_license->access_key);
   cmd.serial_number2 = cmd.serial_number;
   cmd.access_key2 = cmd.access_key;
@@ -259,7 +259,7 @@ static HandlerResult S_V123P_02_17(
       }
       if (command == 0x17) {
         C_LoginV1_DC_PC_V3_90 cmd;
-        cmd.serial_number.encode(string_printf("%08" PRIX32 "", ses->login->account->account_id));
+        cmd.serial_number.encode(phosg::string_printf("%08" PRIX32 "", ses->login->account->account_id));
         cmd.access_key.encode(ses->login->dc_license->access_key);
         cmd.access_key.clear_after_bytes(8);
         ses->server_channel.send(0x90, 0x00, &cmd, sizeof(cmd));
@@ -278,7 +278,7 @@ static HandlerResult S_V123P_02_17(
         cmd.sub_version = ses->effective_sub_version();
         cmd.is_extended = 0;
         cmd.language = ses->language();
-        cmd.serial_number.encode(string_printf("%08" PRIX32 "", ses->login->account->account_id));
+        cmd.serial_number.encode(phosg::string_printf("%08" PRIX32 "", ses->login->account->account_id));
         cmd.access_key.encode(ses->login->dc_license->access_key);
         cmd.access_key.clear_after_bytes(8);
         cmd.hardware_id.encode(ses->hardware_id);
@@ -314,7 +314,7 @@ static HandlerResult S_V123P_02_17(
           cmd.guild_card_number = ses->remote_guild_card_number;
         }
         cmd.sub_version = ses->effective_sub_version();
-        cmd.serial_number.encode(string_printf("%08" PRIX32 "", ses->login->account->account_id));
+        cmd.serial_number.encode(phosg::string_printf("%08" PRIX32 "", ses->login->account->account_id));
         cmd.access_key.encode(*access_key);
         if (ses->version() != Version::GC_NTE) {
           cmd.access_key.clear_after_bytes(8);
@@ -340,7 +340,7 @@ static HandlerResult S_V123P_02_17(
         cmd.sub_version = ses->effective_sub_version();
         cmd.is_extended = 0;
         cmd.language = ses->language();
-        cmd.serial_number.encode(string_printf("%08" PRIX32 "", ses->login->account->account_id));
+        cmd.serial_number.encode(phosg::string_printf("%08" PRIX32 "", ses->login->account->account_id));
         cmd.access_key.encode(*access_key);
         if (ses->version() != Version::GC_NTE) {
           cmd.access_key.clear_after_bytes(8);
@@ -365,7 +365,7 @@ static HandlerResult S_V123P_02_17(
       }
       if (command == 0x17) {
         C_VerifyAccount_V3_DB cmd;
-        cmd.serial_number.encode(string_printf("%08" PRIX32 "", ses->login->account->account_id));
+        cmd.serial_number.encode(phosg::string_printf("%08" PRIX32 "", ses->login->account->account_id));
         cmd.access_key.encode(ses->login->gc_license->access_key);
         cmd.sub_version = ses->effective_sub_version();
         cmd.serial_number2 = cmd.serial_number;
@@ -378,15 +378,15 @@ static HandlerResult S_V123P_02_17(
         uint32_t guild_card_number;
         if (ses->remote_guild_card_number >= 0) {
           guild_card_number = ses->remote_guild_card_number;
-          log_info("Using Guild Card number %" PRIu32 " from session", guild_card_number);
+          ses->log.info("Using Guild Card number %" PRIu32 " from session", guild_card_number);
         } else {
-          guild_card_number = random_object<uint32_t>();
-          log_info("Using Guild Card number %" PRIu32 " from random generator", guild_card_number);
+          guild_card_number = phosg::random_object<uint32_t>();
+          ses->log.info("Using Guild Card number %" PRIu32 " from random generator", guild_card_number);
         }
 
-        uint32_t fake_serial_number = random_object<uint32_t>() & 0x7FFFFFFF;
-        uint64_t fake_access_key = random_object<uint64_t>();
-        string fake_access_key_str = string_printf("00000000000%" PRIu64, fake_access_key);
+        uint32_t fake_serial_number = phosg::random_object<uint32_t>() & 0x7FFFFFFF;
+        uint64_t fake_access_key = phosg::random_object<uint64_t>();
+        string fake_access_key_str = phosg::string_printf("00000000000%" PRIu64, fake_access_key);
         if (fake_access_key_str.size() > 12) {
           fake_access_key_str = fake_access_key_str.substr(fake_access_key_str.size() - 12);
         }
@@ -399,7 +399,7 @@ static HandlerResult S_V123P_02_17(
         cmd.sub_version = ses->effective_sub_version();
         cmd.is_extended = 0;
         cmd.language = ses->language();
-        cmd.serial_number.encode(string_printf("%08" PRIX32, fake_serial_number));
+        cmd.serial_number.encode(phosg::string_printf("%08" PRIX32, fake_serial_number));
         cmd.access_key.encode(fake_access_key_str);
         cmd.serial_number2 = cmd.serial_number;
         cmd.access_key2 = cmd.access_key;
@@ -436,7 +436,7 @@ static HandlerResult S_V123P_02_17(
       cmd.is_extended = (ses->remote_guild_card_number < 0) ? 1 : 0;
       cmd.language = ses->language();
       cmd.serial_number.encode(ses->login->xb_license->gamertag);
-      cmd.access_key.encode(string_printf("%016" PRIX64, ses->login->xb_license->user_id));
+      cmd.access_key.encode(phosg::string_printf("%016" PRIX64, ses->login->xb_license->user_id));
       cmd.serial_number2 = cmd.serial_number;
       cmd.access_key2 = cmd.access_key;
       if (ses->config.check_flag(Client::Flag::PROXY_BLANK_NAME_ENABLED)) {
@@ -519,7 +519,7 @@ static HandlerResult S_B_03(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t
 static HandlerResult S_V123_04(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t, uint32_t, string& data) {
   // Suppress extremely short commands from the server instead of disconnecting.
   if (data.size() < offsetof(S_UpdateClientConfig_V3_04, client_config)) {
-    le_uint64_t checksum = random_object<uint64_t>() & 0x0000FFFFFFFFFFFF;
+    le_uint64_t checksum = phosg::random_object<uint64_t>() & 0x0000FFFFFFFFFFFF;
     ses->server_channel.send(0x96, 0x00, &checksum, sizeof(checksum));
     return HandlerResult::Type::SUPPRESS;
   }
@@ -539,7 +539,7 @@ static HandlerResult S_V123_04(shared_ptr<ProxyServer::LinkedSession> ses, uint1
     ses->remote_guild_card_number = cmd.guild_card_number;
     ses->log.info("Remote guild card number set to %" PRId64,
         ses->remote_guild_card_number);
-    string message = string_printf(
+    string message = phosg::string_printf(
         "The remote server\nhas assigned your\nGuild Card number:\n$C6%" PRId64,
         ses->remote_guild_card_number);
     send_ship_info(ses->client_channel, message);
@@ -567,7 +567,7 @@ static HandlerResult S_V123_04(shared_ptr<ProxyServer::LinkedSession> ses, uint1
   // the first 04 command the client has received. The client responds with a 96
   // (checksum) in that case.
   if (!had_guild_card_number) {
-    le_uint64_t checksum = random_object<uint64_t>() & 0x0000FFFFFFFFFFFF;
+    le_uint64_t checksum = phosg::random_object<uint64_t>() & 0x0000FFFFFFFFFFFF;
     ses->server_channel.send(0x96, 0x00, &checksum, sizeof(checksum));
   }
 
@@ -606,7 +606,7 @@ static HandlerResult S_41(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t, 
     if ((cmd.searcher_guild_card_number == ses->remote_guild_card_number) &&
         (cmd.result_guild_card_number == ses->remote_guild_card_number) &&
         ses->server_ping_start_time) {
-      uint64_t ping_usecs = now() - ses->server_ping_start_time;
+      uint64_t ping_usecs = phosg::now() - ses->server_ping_start_time;
       ses->server_ping_start_time = 0;
       double ping_ms = static_cast<double>(ping_usecs) / 1000.0;
       send_text_message_printf(ses->client_channel, "To server: %gms", ping_ms);
@@ -677,16 +677,16 @@ static HandlerResult S_B1(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t, 
   return HandlerResult::Type::SUPPRESS;
 }
 
-template <bool IsBigEndian>
+template <bool BE>
 static HandlerResult S_B2(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t, uint32_t flag, string& data) {
   const auto& cmd = check_size_t<S_ExecuteCode_B2>(data, 0xFFFF);
 
   if (cmd.code_size && ses->config.check_flag(Client::Flag::PROXY_SAVE_FILES)) {
-    uint64_t filename_timestamp = now();
+    uint64_t filename_timestamp = phosg::now();
     string code = data.substr(sizeof(S_ExecuteCode_B2));
 
     if (ses->config.check_flag(Client::Flag::ENCRYPTED_SEND_FUNCTION_CALL)) {
-      StringReader r(code);
+      phosg::StringReader r(code);
       bool is_big_endian = ::is_big_endian(ses->version());
       uint32_t decompressed_size = is_big_endian ? r.get_u32b() : r.get_u32l();
       uint32_t key = is_big_endian ? r.get_u32b() : r.get_u32l();
@@ -694,7 +694,7 @@ static HandlerResult S_B2(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t, 
       PSOV2Encryption crypt(key);
       string decrypted_data;
       if (is_big_endian) {
-        StringWriter w;
+        phosg::StringWriter w;
         while (!r.eof()) {
           w.put_u32b(r.get_u32b() ^ crypt.next());
         }
@@ -718,14 +718,13 @@ static HandlerResult S_B2(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t, 
       }
     }
 
-    string output_filename = string_printf("code.%" PRId64 ".bin", filename_timestamp);
-    save_file(output_filename, data);
+    string output_filename = phosg::string_printf("code.%" PRId64 ".bin", filename_timestamp);
+    phosg::save_file(output_filename, data);
     ses->log.info("Wrote code from server to file %s", output_filename.c_str());
 
 #ifdef HAVE_RESOURCE_FILE
-    using FooterT = S_ExecuteCode_FooterT_B2<IsBigEndian>;
-    using U16T = typename std::conditional<IsBigEndian, be_uint16_t, le_uint16_t>::type;
-    using U32T = typename std::conditional<IsBigEndian, be_uint32_t, le_uint32_t>::type;
+    using FooterT = S_ExecuteCode_FooterT_B2<BE>;
+
     // TODO: Support SH-4 disassembly too
     bool is_ppc = ::is_ppc(ses->version());
     bool is_x86 = ::is_x86(ses->version());
@@ -738,19 +737,19 @@ static HandlerResult S_B2(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t, 
 
         size_t footer_offset = code.size() - sizeof(FooterT);
 
-        StringReader r(code.data(), code.size());
+        phosg::StringReader r(code.data(), code.size());
         const auto& footer = r.pget<FooterT>(footer_offset);
 
         multimap<uint32_t, string> labels;
         r.go(footer.relocations_offset);
         uint32_t reloc_offset = 0;
         for (size_t x = 0; x < footer.num_relocations; x++) {
-          reloc_offset += (r.get<U16T>() * 4);
-          labels.emplace(reloc_offset, string_printf("reloc%zu", x));
+          reloc_offset += (r.get<U16T<BE>>() * 4);
+          labels.emplace(reloc_offset, phosg::string_printf("reloc%zu", x));
         }
         labels.emplace(footer.entrypoint_addr_offset.load(), "entry_ptr");
         labels.emplace(footer_offset, "footer");
-        labels.emplace(r.pget<U32T>(footer.entrypoint_addr_offset), "start");
+        labels.emplace(r.pget<U32T<BE>>(footer.entrypoint_addr_offset), "start");
 
         string disassembly;
         if (is_ppc) {
@@ -776,13 +775,13 @@ static HandlerResult S_B2(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t, 
           throw logic_error("unsupported architecture");
         }
 
-        output_filename = string_printf("code.%" PRId64 ".txt", filename_timestamp);
+        output_filename = phosg::string_printf("code.%" PRId64 ".txt", filename_timestamp);
         {
-          auto f = fopen_unique(output_filename, "wt");
+          auto f = phosg::fopen_unique(output_filename, "wt");
           fprintf(f.get(), "// code_size = 0x%" PRIX32 "\n", cmd.code_size.load());
           fprintf(f.get(), "// checksum_addr = 0x%" PRIX32 "\n", cmd.checksum_start.load());
           fprintf(f.get(), "// checksum_size = 0x%" PRIX32 "\n", cmd.checksum_size.load());
-          fwritex(f.get(), disassembly);
+          phosg::fwritex(f.get(), disassembly);
         }
         ses->log.info("Wrote disassembly to file %s", output_filename.c_str());
 
@@ -825,8 +824,8 @@ static HandlerResult C_B3(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t, 
 
 static HandlerResult S_B_E7(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t, uint32_t, string& data) {
   if (ses->config.check_flag(Client::Flag::PROXY_SAVE_FILES)) {
-    string output_filename = string_printf("player.%" PRId64 ".bin", now());
-    save_file(output_filename, data);
+    string output_filename = phosg::string_printf("player.%" PRId64 ".bin", phosg::now());
+    phosg::save_file(output_filename, data);
     ses->log.info("Wrote player data to file %s", output_filename.c_str());
   }
   return HandlerResult::Type::FORWARD;
@@ -877,7 +876,7 @@ static HandlerResult S_B_22(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t
   // hence the hash here instead of a direct string comparison. I'd love to hear
   // the story behind why they put that string there.
   if ((data.size() == 0x2C) &&
-      (fnv1a64(data.data(), data.size()) == 0x8AF8314316A27994)) {
+      (phosg::fnv1a64(data.data(), data.size()) == 0x8AF8314316A27994)) {
     ses->log.info("Enabling remote IP CRC patch");
     ses->enable_remote_ip_crc_patch = true;
   }
@@ -902,7 +901,7 @@ static HandlerResult S_19_P_14(shared_ptr<ProxyServer::LinkedSession> ses, uint1
   }
 
   if (ses->enable_remote_ip_crc_patch) {
-    ses->remote_ip_crc = crc32(data.data(), 4);
+    ses->remote_ip_crc = phosg::crc32(data.data(), 4);
   }
 
   // Set the destination netloc appropriately
@@ -1052,11 +1051,11 @@ static HandlerResult S_6x(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t, 
         const auto& header = check_size_t<G_MapSubsubcommand_Ep3_6xB6>(data, 0xFFFF);
         if (header.subsubcommand == 0x00000041) {
           const auto& cmd = check_size_t<G_MapData_Ep3_6xB6x41>(data, 0xFFFF);
-          string filename = string_printf("map%08" PRIX32 ".%" PRIu64 ".mnmd",
-              cmd.map_number.load(), now());
+          string filename = phosg::string_printf("map%08" PRIX32 ".%" PRIu64 ".mnmd",
+              cmd.map_number.load(), phosg::now());
           string map_data = prs_decompress(
               data.data() + sizeof(cmd), data.size() - sizeof(cmd));
-          save_file(filename, map_data);
+          phosg::save_file(filename, map_data);
           if (map_data.size() != sizeof(Episode3::MapDefinition) && map_data.size() != sizeof(Episode3::MapDefinitionTrial)) {
             ses->log.warning("Wrote %zu bytes to %s (expected %zu or %zu bytes; the file may be invalid)",
                 map_data.size(), filename.c_str(), sizeof(Episode3::MapDefinitionTrial), sizeof(Episode3::MapDefinition));
@@ -1285,10 +1284,10 @@ static HandlerResult S_44_A6(shared_ptr<ProxyServer::LinkedSession> ses, uint16_
     } else {
       basename = filename;
     }
-    output_filename = string_printf("%s.%s.%" PRIu64 "%s",
+    output_filename = phosg::string_printf("%s.%s.%" PRIu64 "%s",
         basename.c_str(),
         is_download ? "download" : "online",
-        now(),
+        phosg::now(),
         extension.c_str());
 
     for (size_t x = 0; x < output_filename.size(); x++) {
@@ -1354,16 +1353,16 @@ static HandlerResult S_13_A7(shared_ptr<ProxyServer::LinkedSession> ses, uint16_
   if (sf->remaining_bytes == 0) {
     if (ses->config.check_flag(Client::Flag::PROXY_SAVE_FILES)) {
       ses->log.info("Writing file %s => %s", sf->basename.c_str(), sf->output_filename.c_str());
-      string data = join(sf->blocks);
-      if (sf->is_download && (ends_with(sf->basename, ".bin") || ends_with(sf->basename, ".dat") || ends_with(sf->basename, ".pvr"))) {
+      string data = phosg::join(sf->blocks);
+      if (sf->is_download && (phosg::ends_with(sf->basename, ".bin") || phosg::ends_with(sf->basename, ".dat") || phosg::ends_with(sf->basename, ".pvr"))) {
         data = decode_dlq_data(data);
       }
-      save_file(sf->output_filename, data);
-      if (ends_with(sf->basename, ".bin")) {
+      phosg::save_file(sf->output_filename, data);
+      if (phosg::ends_with(sf->basename, ".bin")) {
         try {
           string decompressed = prs_decompress(data);
           auto disassembly = disassemble_quest_script(decompressed.data(), decompressed.size(), ses->version(), ses->language(), false);
-          save_file(sf->output_filename + ".txt", disassembly);
+          phosg::save_file(sf->output_filename + ".txt", disassembly);
         } catch (const exception& e) {
           ses->log.warning("Failed to disassemble quest file: %s", e.what());
         }
@@ -1372,8 +1371,8 @@ static HandlerResult S_13_A7(shared_ptr<ProxyServer::LinkedSession> ses, uint16_
       ses->log.info("Download complete for file %s", sf->basename.c_str());
     }
 
-    if (!sf->is_download && ends_with(sf->basename, ".dat")) {
-      auto quest_dat_data = make_shared<std::string>(join(sf->blocks));
+    if (!sf->is_download && phosg::ends_with(sf->basename, ".dat")) {
+      auto quest_dat_data = make_shared<std::string>(phosg::join(sf->blocks));
       try {
         ses->map = Lobby::load_maps(
             ses->version(),
@@ -1419,15 +1418,15 @@ static HandlerResult S_G_B8(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t
       return HandlerResult::Type::FORWARD;
     }
 
-    StringReader r(data);
+    phosg::StringReader r(data);
     size_t size = r.get_u32l();
     if (r.remaining() < size) {
       ses->log.warning("Card list data size extends beyond end of command; not saving file");
       return HandlerResult::Type::FORWARD;
     }
 
-    string output_filename = string_printf("card-definitions.%" PRIu64 ".mnr", now());
-    save_file(output_filename, r.read(size));
+    string output_filename = phosg::string_printf("card-definitions.%" PRIu64 ".mnr", phosg::now());
+    phosg::save_file(output_filename, r.read(size));
     ses->log.info("Wrote %zu bytes to %s", size, output_filename.c_str());
   }
 
@@ -1450,7 +1449,7 @@ static HandlerResult S_G_B9(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t
       string decompressed_data = prs_decompress(
           data.data() + sizeof(header), data.size() - sizeof(header));
 
-      string output_filename = string_printf("media-update.%" PRIu64, now());
+      string output_filename = phosg::string_printf("media-update.%" PRIu64, phosg::now());
       if (header.type == 1) {
         output_filename += ".gvm";
       } else if (header.type == 2 || header.type == 3) {
@@ -1458,7 +1457,7 @@ static HandlerResult S_G_B9(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t
       } else {
         output_filename += ".bin";
       }
-      save_file(output_filename, decompressed_data);
+      phosg::save_file(output_filename, decompressed_data);
       ses->log.info("Wrote %zu bytes to %s",
           decompressed_data.size(), output_filename.c_str());
     } catch (const exception& e) {
@@ -1862,7 +1861,7 @@ static HandlerResult C_06(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t, 
     const auto& cmd = check_size_t<SC_TextHeader_01_06_11_B0_EE>(data, 0xFFFF);
 
     string text = data.substr(sizeof(cmd));
-    strip_trailing_zeroes(text);
+    phosg::strip_trailing_zeroes(text);
 
     uint8_t private_flags = 0;
     try {

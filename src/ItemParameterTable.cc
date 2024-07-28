@@ -206,8 +206,8 @@ ItemParameterTable::WeaponV4 ItemParameterTable::WeaponGCNTE::to_v4() const {
   return ret;
 }
 
-template <bool IsBigEndian>
-ItemParameterTable::WeaponV4 ItemParameterTable::WeaponV3T<IsBigEndian>::to_v4() const {
+template <bool BE>
+ItemParameterTable::WeaponV4 ItemParameterTable::WeaponV3T<BE>::to_v4() const {
   WeaponV4 ret;
   ret.base.id = this->base.id.load();
   ret.base.type = this->base.type.load();
@@ -281,8 +281,8 @@ ItemParameterTable::ArmorOrShieldV4 ItemParameterTable::ArmorOrShieldV1V2::to_v4
   return ret;
 }
 
-template <bool IsBigEndian>
-ItemParameterTable::ArmorOrShieldV4 ItemParameterTable::ArmorOrShieldV3T<IsBigEndian>::to_v4() const {
+template <bool BE>
+ItemParameterTable::ArmorOrShieldV4 ItemParameterTable::ArmorOrShieldV3T<BE>::to_v4() const {
   ArmorOrShieldV4 ret;
   ret.base.id = this->base.id.load();
   ret.base.type = this->base.type.load();
@@ -323,8 +323,8 @@ ItemParameterTable::UnitV4 ItemParameterTable::UnitV1V2::to_v4() const {
   return ret;
 }
 
-template <bool IsBigEndian>
-ItemParameterTable::UnitV4 ItemParameterTable::UnitV3T<IsBigEndian>::to_v4() const {
+template <bool BE>
+ItemParameterTable::UnitV4 ItemParameterTable::UnitV3T<BE>::to_v4() const {
   UnitV4 ret;
   ret.base.id = this->base.id.load();
   ret.base.type = this->base.type.load();
@@ -370,8 +370,8 @@ ItemParameterTable::MagV4 ItemParameterTable::MagV2::to_v4() const {
   return ret;
 }
 
-template <bool IsBigEndian>
-ItemParameterTable::MagV4 ItemParameterTable::MagV3T<IsBigEndian>::to_v4() const {
+template <bool BE>
+ItemParameterTable::MagV4 ItemParameterTable::MagV3T<BE>::to_v4() const {
   MagV4 ret;
   ret.base.id = this->base.id.load();
   ret.base.type = this->base.type.load();
@@ -401,8 +401,8 @@ ItemParameterTable::ToolV4 ItemParameterTable::ToolV1V2::to_v4() const {
   return ret;
 }
 
-template <bool IsBigEndian>
-ItemParameterTable::ToolV4 ItemParameterTable::ToolV3T<IsBigEndian>::to_v4() const {
+template <bool BE>
+ItemParameterTable::ToolV4 ItemParameterTable::ToolV3T<BE>::to_v4() const {
   ToolV4 ret;
   ret.base.id = this->base.id.load();
   ret.base.type = this->base.type.load();
@@ -414,15 +414,15 @@ ItemParameterTable::ToolV4 ItemParameterTable::ToolV3T<IsBigEndian>::to_v4() con
   return ret;
 }
 
-template <bool IsBigEndian>
-size_t indirect_lookup_2d_count(const StringReader& r, size_t root_offset, size_t co_index) {
-  using ArrayRefT = typename std::conditional_t<IsBigEndian, ItemParameterTable::ArrayRefBE, ItemParameterTable::ArrayRef>;
+template <bool BE>
+size_t indirect_lookup_2d_count(const phosg::StringReader& r, size_t root_offset, size_t co_index) {
+  using ArrayRefT = typename std::conditional_t<BE, ItemParameterTable::ArrayRefBE, ItemParameterTable::ArrayRef>;
   return r.pget<ArrayRefT>(root_offset + sizeof(ArrayRefT) * co_index).count;
 }
 
-template <typename T, bool IsBigEndian>
-const T& indirect_lookup_2d(const StringReader& r, size_t root_offset, size_t co_index, size_t item_index) {
-  using ArrayRefT = typename std::conditional_t<IsBigEndian, ItemParameterTable::ArrayRefBE, ItemParameterTable::ArrayRef>;
+template <typename T, bool BE>
+const T& indirect_lookup_2d(const phosg::StringReader& r, size_t root_offset, size_t co_index, size_t item_index) {
+  using ArrayRefT = typename std::conditional_t<BE, ItemParameterTable::ArrayRefBE, ItemParameterTable::ArrayRef>;
 
   const auto& co = r.pget<ArrayRefT>(root_offset + sizeof(ArrayRefT) * co_index);
   if (item_index >= co.count) {
@@ -706,10 +706,10 @@ const ItemParameterTable::ToolV4& ItemParameterTable::get_tool(uint8_t data1_1, 
   }
 }
 
-template <typename ToolDefT, bool IsBigEndian>
+template <typename ToolDefT, bool BE>
 pair<uint8_t, uint8_t> ItemParameterTable::find_tool_by_id_t(uint32_t tool_table_offset, uint32_t item_id) const {
-  const auto* cos = &this->r.pget<ArrayRefT<IsBigEndian>>(
-      tool_table_offset, this->num_tool_classes * sizeof(ArrayRefT<IsBigEndian>));
+  const auto* cos = &this->r.pget<ArrayRefT<BE>>(
+      tool_table_offset, this->num_tool_classes * sizeof(ArrayRefT<BE>));
   for (size_t z = 0; z < this->num_tool_classes; z++) {
     const auto& co = cos[z];
     const auto* defs = &this->r.pget<ToolDefT>(co.offset, sizeof(ToolDefT) * co.count);
@@ -719,7 +719,7 @@ pair<uint8_t, uint8_t> ItemParameterTable::find_tool_by_id_t(uint32_t tool_table
       }
     }
   }
-  throw out_of_range(string_printf("invalid tool class %08" PRIX32, item_id));
+  throw out_of_range(phosg::string_printf("invalid tool class %08" PRIX32, item_id));
 }
 
 pair<uint8_t, uint8_t> ItemParameterTable::find_tool_by_id(uint32_t item_id) const {
@@ -740,19 +740,17 @@ pair<uint8_t, uint8_t> ItemParameterTable::find_tool_by_id(uint32_t item_id) con
   }
 }
 
-template <bool IsBigEndian, typename OffsetsT>
+template <bool BE, typename OffsetsT>
 float ItemParameterTable::get_sale_divisor_t(const OffsetsT* offsets, uint8_t data1_0, uint8_t data1_1) const {
-  using FloatT = typename std::conditional<IsBigEndian, be_float, le_float>::type;
-
   switch (data1_0) {
     case 0:
       if (data1_1 >= this->num_weapon_classes) {
         return 0.0f;
       }
-      return this->r.pget<FloatT>(offsets->weapon_sale_divisor_table + data1_1 * sizeof(FloatT));
+      return this->r.pget<F32T<BE>>(offsets->weapon_sale_divisor_table + data1_1 * sizeof(F32T<BE>));
 
     case 1: {
-      const auto& divisors = this->r.pget<NonWeaponSaleDivisorsT<IsBigEndian>>(offsets->sale_divisor_table);
+      const auto& divisors = this->r.pget<NonWeaponSaleDivisorsT<BE>>(offsets->sale_divisor_table);
       switch (data1_1) {
         case 1:
           return divisors.armor_divisor;
@@ -765,7 +763,7 @@ float ItemParameterTable::get_sale_divisor_t(const OffsetsT* offsets, uint8_t da
     }
 
     case 2: {
-      const auto& divisors = this->r.pget<NonWeaponSaleDivisorsT<IsBigEndian>>(offsets->sale_divisor_table);
+      const auto& divisors = this->r.pget<NonWeaponSaleDivisorsT<BE>>(offsets->sale_divisor_table);
       return divisors.mag_divisor;
     }
 
@@ -1136,9 +1134,9 @@ const std::map<uint32_t, std::vector<ItemParameterTable::ItemCombination>>& Item
   return this->item_combination_index;
 }
 
-template <bool IsBigEndian>
+template <bool BE>
 size_t ItemParameterTable::num_events_t(uint32_t base_offset) const {
-  return this->r.pget<ArrayRefT<IsBigEndian>>(base_offset).count;
+  return this->r.pget<ArrayRefT<BE>>(base_offset).count;
 }
 
 size_t ItemParameterTable::num_events() const {
@@ -1155,14 +1153,14 @@ size_t ItemParameterTable::num_events() const {
   }
 }
 
-template <bool IsBigEndian>
+template <bool BE>
 std::pair<const ItemParameterTable::EventItem*, size_t> ItemParameterTable::get_event_items_t(
     uint32_t base_offset, uint8_t event_number) const {
-  const auto& co = this->r.pget<ArrayRefT<IsBigEndian>>(base_offset);
+  const auto& co = this->r.pget<ArrayRefT<BE>>(base_offset);
   if (event_number >= co.count) {
     throw out_of_range("invalid event number");
   }
-  const auto& event_co = this->r.pget<ArrayRefT<IsBigEndian>>(co.offset + sizeof(ArrayRefT<IsBigEndian>) * event_number);
+  const auto& event_co = this->r.pget<ArrayRefT<BE>>(co.offset + sizeof(ArrayRefT<BE>) * event_number);
   const auto* defs = &this->r.pget<EventItem>(event_co.offset, event_co.count * sizeof(EventItem));
   return make_pair(defs, event_co.count);
 }

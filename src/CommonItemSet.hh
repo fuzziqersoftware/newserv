@@ -8,14 +8,15 @@
 #include "PSOEncryption.hh"
 #include "StaticGameData.hh"
 #include "Text.hh"
+#include "Types.hh"
 
 class CommonItemSet {
 public:
   class Table {
   public:
     Table() = delete;
-    Table(const JSON& json, Episode episode);
-    Table(const StringReader& r, bool big_endian, bool is_v3, Episode episode);
+    Table(const phosg::JSON& json, Episode episode);
+    Table(const phosg::StringReader& r, bool big_endian, bool is_v3, Episode episode);
 
     template <typename IntT>
     struct Range {
@@ -47,18 +48,15 @@ public:
     parray<uint8_t, 0x0A> unit_max_stars_table;
     parray<parray<uint8_t, 10>, 7> box_item_class_prob_table;
 
-    JSON json() const;
+    phosg::JSON json() const;
     void print(FILE* stream) const;
 
   private:
-    template <bool IsBigEndian>
-    void parse_itempt_t(const StringReader& r, bool is_v3);
+    template <bool BE>
+    void parse_itempt_t(const phosg::StringReader& r, bool is_v3);
 
-    template <bool IsBigEndian>
+    template <bool BE>
     struct OffsetsT {
-      using U16T = typename std::conditional<IsBigEndian, be_uint16_t, le_uint16_t>::type;
-      using U32T = typename std::conditional<IsBigEndian, be_uint32_t, le_uint32_t>::type;
-
       // This data structure uses index probability tables in multiple places. An
       // index probability table is a table where each entry holds the probability
       // that that entry's index is used. For example, if the armor slot count
@@ -80,7 +78,7 @@ public:
       // The indexes in this table correspond to the non-rare weapon types 01
       // through 0C (Saber through Wand).
       // V2/V3: -> parray<uint8_t, 0x0C>
-      /* 00 */ U32T base_weapon_type_prob_table_offset;
+      /* 00 */ U32T<BE> base_weapon_type_prob_table_offset;
 
       // This table specifies the base subtype for each weapon type. Negative
       // values here mean that the weapon cannot be found in the first N areas (so
@@ -90,7 +88,7 @@ public:
       // of weapon that actually appears depends on this value and a value from
       // the following table.
       // V2/V3: -> parray<int8_t, 0x0C>
-      /* 04 */ U32T subtype_base_table_offset;
+      /* 04 */ U32T<BE> subtype_base_table_offset;
 
       // This table specifies how many areas each weapon subtype appears in. For
       // example, if Sword (subtype 02, which is index 1 in this table and the
@@ -99,7 +97,7 @@ public:
       // through Mine 1), and Gigush (the next sword subtype) can be found in Mine
       // 1 through Ruins 3.
       // V2/V3: -> parray<uint8_t, 0x0C>
-      /* 08 */ U32T subtype_area_length_table_offset;
+      /* 08 */ U32T<BE> subtype_area_length_table_offset;
 
       // This index probability table specifies how likely each possible grind
       // value is. The table is indexed as [grind][subtype_area_index], where the
@@ -114,28 +112,28 @@ public:
       //    ...
       //    C1 C2 C3 M1  // (Episode 1 area values from the example for reference)
       // V2/V3: -> parray<parray<uint8_t, 4>, 9>
-      /* 0C */ U32T grind_prob_table_offset;
+      /* 0C */ U32T<BE> grind_prob_table_offset;
 
       // TODO: Figure out exactly how this table is used. Anchor: 80106D34
       // V2/V3: -> parray<uint8_t, 0x05>
-      /* 10 */ U32T armor_shield_type_index_prob_table_offset;
+      /* 10 */ U32T<BE> armor_shield_type_index_prob_table_offset;
 
       // This index probability table specifies how common each possible slot
       // count is for armor drops.
       // V2/V3: -> parray<uint8_t, 0x05>
-      /* 14 */ U32T armor_slot_count_prob_table_offset;
+      /* 14 */ U32T<BE> armor_slot_count_prob_table_offset;
 
       // This array (indexed by enemy_type) specifies the range of meseta values
       // that each enemy can drop.
       // V2/V3: -> parray<Range<U16T>, 0x64>
-      /* 18 */ U32T enemy_meseta_ranges_offset;
+      /* 18 */ U32T<BE> enemy_meseta_ranges_offset;
 
       // Each byte in this table (indexed by enemy_type) represents the percent
       // chance that the enemy drops anything at all. (This check is done before
       // the rare drop check, so the chance of getting a rare item from an enemy
       // is essentially this probability multiplied by the rare drop rate.)
       // V2/V3: -> parray<uint8_t, 0x64>
-      /* 1C */ U32T enemy_type_drop_probs_offset;
+      /* 1C */ U32T<BE> enemy_type_drop_probs_offset;
 
       // Each byte in this table (indexed by enemy_type) represents the class of
       // item that the enemy can drop. The values are:
@@ -147,12 +145,12 @@ public:
       // 05 = meseta
       // Anything else = no item
       // V2/V3: -> parray<uint8_t, 0x64>
-      /* 20 */ U32T enemy_item_classes_offset;
+      /* 20 */ U32T<BE> enemy_item_classes_offset;
 
       // This table (indexed by area - 1) specifies the ranges of meseta values
       // that can drop from boxes.
       // V2/V3: -> parray<Range<U16T>, 0x0A>
-      /* 24 */ U32T box_meseta_ranges_offset;
+      /* 24 */ U32T<BE> box_meseta_ranges_offset;
 
       // This array specifies the chance that a rare weapon will have each
       // possible bonus value. This is indexed as [(bonus_value - 10 / 5)][spec],
@@ -162,7 +160,7 @@ public:
       // for rare items, spec is always 5.
       // V2: -> parray<parray<uint8_t, 5>, 0x17>
       // V3: -> parray<parray<U16T, 6>, 0x17>
-      /* 28 */ U32T bonus_value_prob_table_offset;
+      /* 28 */ U32T<BE> bonus_value_prob_table_offset;
 
       // This array specifies the value of spec to be used in the above lookup for
       // non-rare items. This is NOT an index probability table; this is a direct
@@ -178,7 +176,7 @@ public:
       // bonus; in all other areas except Ruins 3, they can have at most two
       // bonuses, and in Ruins 3, they can have up to three bonuses.
       // V2/V3: // -> parray<parray<uint8_t, 10>, 3>
-      /* 2C */ U32T nonrare_bonus_prob_spec_offset;
+      /* 2C */ U32T<BE> nonrare_bonus_prob_spec_offset;
 
       // This array specifies the chance that a weapon will have each bonus type.
       // The table is indexed as [bonus_type][area - 1] for non-rare items; for
@@ -193,37 +191,37 @@ public:
       //   [00 00 00 00 00 01 01 01 01 01] // Chance of getting Hit bonus
       //    F1 F2 C1 C2 C3 M1 M2 R1 R2 R3  // (Episode 1 areas, for reference)
       // V2/V3: -> parray<parray<uint8_t, 10>, 6>
-      /* 30 */ U32T bonus_type_prob_table_offset;
+      /* 30 */ U32T<BE> bonus_type_prob_table_offset;
 
       // This array (indexed by area - 1) specifies a multiplier of used in
       // special ability determination. It seems this uses the star values from
       // ItemPMT, but not yet clear exactly in what way.
       // TODO: Figure out exactly what this does. Anchor: 80106FEC
       // V2/V3: -> parray<uint8_t, 0x0A>
-      /* 34 */ U32T special_mult_offset;
+      /* 34 */ U32T<BE> special_mult_offset;
 
       // This array (indexed by area - 1) specifies the probability that any
       // non-rare weapon will have a special ability.
       // V2/V3: -> parray<uint8_t, 0x0A>
-      /* 38 */ U32T special_percent_offset;
+      /* 38 */ U32T<BE> special_percent_offset;
 
       // This index probability table is indexed by [tool_class][area - 1]. The
       // tool class refers to an entry in ItemPMT, which links it to the actual
       // item code.
       // V2/V3: -> parray<parray<U16T, 0x0A>, 0x1C>
-      /* 3C */ U32T tool_class_prob_table_offset;
+      /* 3C */ U32T<BE> tool_class_prob_table_offset;
 
       // This index probability table determines how likely each technique is to
       // appear. The table is indexed as [technique_num][area - 1].
       // V2/V3: -> parray<parray<uint8_t, 0x0A>, 0x13>
-      /* 40 */ U32T technique_index_prob_table_offset;
+      /* 40 */ U32T<BE> technique_index_prob_table_offset;
 
       // This table specifies the ranges for technique disk levels. The table is
       // indexed as [technique_num][area - 1]. If either min or max in the range
       // is 0xFF, or if max < min, technique disks are not dropped for that
       // technique and area pair.
       // V2/V3: -> parray<parray<Range<uint8_t>, 0x0A>, 0x13>
-      /* 44 */ U32T technique_level_ranges_offset;
+      /* 44 */ U32T<BE> technique_level_ranges_offset;
 
       /* 48 */ uint8_t armor_or_shield_type_bias;
       /* 49 */ parray<uint8_t, 3> unused1;
@@ -234,7 +232,7 @@ public:
       // game uniformly chooses a random number of stars in the acceptable
       // range, then uniformly chooses a random unit with that many stars.
       // V2/V3: -> parray<uint8_t, 0x0A>
-      /* 4C */ U32T unit_max_stars_offset;
+      /* 4C */ U32T<BE> unit_max_stars_offset;
 
       // This index probability table determines which type of items drop from
       // boxes. The table is indexed as [item_class][area - 1], with item_class
@@ -253,7 +251,7 @@ public:
       //   [16 16 11 11 11 11 11 0F 0C 0B] // Chances per area of an empty box
       //    F1 F2 C1 C2 C3 M1 M2 R1 R2 R3  // (Episode 1 areas, for reference)
       // V2/V3: -> parray<parray<uint8_t, 10>, 7>
-      /* 50 */ U32T box_item_class_prob_table_offset;
+      /* 50 */ U32T<BE> box_item_class_prob_table_offset;
 
       // There are several unused fields here.
     } __packed__;
@@ -264,7 +262,7 @@ public:
   };
 
   std::shared_ptr<const Table> get_table(Episode episode, GameMode mode, uint8_t difficulty, uint8_t secid) const;
-  JSON json() const;
+  phosg::JSON json() const;
   void print(FILE* stream) const;
 
 protected:
@@ -287,7 +285,7 @@ public:
 
 class JSONCommonItemSet : public CommonItemSet {
 public:
-  explicit JSONCommonItemSet(const JSON& json);
+  explicit JSONCommonItemSet(const phosg::JSON& json);
 };
 
 // Note: There are clearly better ways of doing this, but this implementation
@@ -348,7 +346,7 @@ public:
 
 protected:
   std::shared_ptr<const std::string> data;
-  StringReader r;
+  phosg::StringReader r;
 
   struct TableSpec {
     be_uint32_t offset;
@@ -463,7 +461,7 @@ private:
   int8_t get_luck(uint32_t start_offset, uint8_t delta_index) const;
 
   std::shared_ptr<const std::string> data;
-  StringReader r;
+  phosg::StringReader r;
 
   struct DeltaProbabilityEntry {
     uint8_t delta_index;

@@ -5,16 +5,15 @@
 #include <stdexcept>
 
 #include "Text.hh"
+#include "Types.hh"
 
 using namespace std;
 
-template <bool IsBigEndian>
+template <bool BE>
 struct GSLHeaderEntryT {
-  using U32T = typename std::conditional<IsBigEndian, be_uint32_t, le_uint32_t>::type;
-
   pstring<TextEncoding::ASCII, 0x20> filename;
-  U32T offset; // In pages, so actual offset is this * 0x800
-  U32T size;
+  U32T<BE> offset; // In pages, so actual offset is this * 0x800
+  U32T<BE> size;
   uint64_t unused;
 } __packed__;
 
@@ -23,12 +22,12 @@ using GSLHeaderEntryBE = GSLHeaderEntryT<true>;
 check_struct_size(GSLHeaderEntry, 0x30);
 check_struct_size(GSLHeaderEntryBE, 0x30);
 
-template <bool IsBigEndian>
+template <bool BE>
 void GSLArchive::load_t() {
-  StringReader r(*this->data);
+  phosg::StringReader r(*this->data);
   uint64_t min_data_offset = 0xFFFFFFFFFFFFFFFF;
   while (r.where() < min_data_offset) {
-    const auto& entry = r.get<GSLHeaderEntryT<IsBigEndian>>();
+    const auto& entry = r.get<GSLHeaderEntryT<BE>>();
     if (entry.filename.empty()) {
       break;
     }
@@ -71,10 +70,10 @@ string GSLArchive::get_copy(const string& name) const {
   }
 }
 
-StringReader GSLArchive::get_reader(const string& name) const {
+phosg::StringReader GSLArchive::get_reader(const string& name) const {
   try {
     const auto& entry = this->entries.at(name);
-    return StringReader(this->data->data() + entry.offset, entry.size);
+    return phosg::StringReader(this->data->data() + entry.offset, entry.size);
   } catch (const out_of_range&) {
     throw out_of_range("GSL does not contain file: " + name);
   }
@@ -84,16 +83,16 @@ string GSLArchive::generate(const unordered_map<string, string>& files, bool big
   return big_endian ? GSLArchive::generate_t<true>(files) : GSLArchive::generate_t<false>(files);
 }
 
-template <bool IsBigEndian>
+template <bool BE>
 string GSLArchive::generate_t(const unordered_map<string, string>& files) {
-  StringWriter w;
+  phosg::StringWriter w;
 
   // Make sure there's enough space for a blank header entry before any file's
   // data pages begin
-  uint32_t data_start_offset = ((sizeof(GSLHeaderEntryT<IsBigEndian>) * (files.size() + 1)) + 0x7FF) & (~0x7FF);
+  uint32_t data_start_offset = ((sizeof(GSLHeaderEntryT<BE>) * (files.size() + 1)) + 0x7FF) & (~0x7FF);
   uint32_t data_offset = data_start_offset;
   for (const auto& file : files) {
-    GSLHeaderEntryT<IsBigEndian> entry;
+    GSLHeaderEntryT<BE> entry;
     entry.filename.encode(file.first);
     entry.offset = data_offset >> 11;
     entry.size = file.second.size();

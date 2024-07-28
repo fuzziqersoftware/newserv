@@ -15,8 +15,8 @@ void compute_effective_range(
     uint16_t card_id,
     const Location& loc,
     shared_ptr<const MapAndRulesState> map_and_rules,
-    PrefixedLogger* log) {
-  if (log && log->should_log(LogLevel::DEBUG)) {
+    phosg::PrefixedLogger* log) {
+  if (log && log->should_log(phosg::LogLevel::DEBUG)) {
     string loc_str = loc.str();
     log->debug("compute_effective_range: card_id=#%04hX, loc=%s", card_id, loc_str.c_str());
     log->debug("compute_effective_range: map_and_rules->map:");
@@ -941,7 +941,7 @@ bool RulerServer::check_usability_or_condition_apply(
     AttackMedium attack_medium) const {
   auto s = this->server();
   bool is_nte = s->options.is_nte();
-  auto log = s->log_stack(string_printf("check_usability_or_condition_apply(%02hhX, #%04hX, %02hhX, #%04hX, #%04hX, %02hhX, %s, %s): ", client_id1, card_id1, client_id2, card_id2, card_id3, def_effect_index, is_item_usability_check ? "true" : "false", name_for_enum(attack_medium)));
+  auto log = s->log_stack(phosg::string_printf("check_usability_or_condition_apply(%02hhX, #%04hX, %02hhX, #%04hX, #%04hX, %02hhX, %s, %s): ", client_id1, card_id1, client_id2, card_id2, card_id3, def_effect_index, is_item_usability_check ? "true" : "false", phosg::name_for_enum(attack_medium)));
 
   if (static_cast<uint8_t>(attack_medium) & 0x80) {
     attack_medium = AttackMedium::UNKNOWN;
@@ -969,7 +969,7 @@ bool RulerServer::check_usability_or_condition_apply(
     }
     criterion_code = ce1->def.effects[def_effect_index].apply_criterion;
   }
-  log.debug("criterion_code=%s", name_for_enum(criterion_code));
+  log.debug("criterion_code=%s", phosg::name_for_enum(criterion_code));
 
   // For item usability checks, prevent criteria that depend on player
   // positioning/team setup
@@ -2059,7 +2059,7 @@ shared_ptr<const CardIndex::CardEntry> RulerServer::definition_for_card_id(uint3
 
 uint32_t RulerServer::get_card_id_with_effective_range(
     uint16_t card_ref, uint16_t card_id_override, TargetMode* out_target_mode) const {
-  auto log = this->server()->log_stack(string_printf("get_card_id_with_effective_range(@%04hX, #%04hX): ", card_ref, card_id_override));
+  auto log = this->server()->log_stack(phosg::string_printf("get_card_id_with_effective_range(@%04hX, #%04hX): ", card_ref, card_id_override));
 
   uint16_t card_id = (card_id_override == 0xFFFF)
       ? this->card_id_for_card_ref(card_ref)

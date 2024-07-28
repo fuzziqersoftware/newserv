@@ -17,8 +17,8 @@ const size_t TextTranscoder::FAILURE_RESULT = static_cast<size_t>(-1);
 TextTranscoder::TextTranscoder(const char* to, const char* from)
     : ic(iconv_open(to, from)) {
   if (ic == this->INVALID_IC) {
-    string error_str = string_for_error(errno);
-    throw runtime_error(string_printf("failed to initialize %s -> %s text converter: %s", from, to, error_str.c_str()));
+    string error_str = phosg::string_for_error(errno);
+    throw runtime_error(phosg::string_printf("failed to initialize %s -> %s text converter: %s", from, to, error_str.c_str()));
   }
 }
 
@@ -48,7 +48,7 @@ TextTranscoder::Result TextTranscoder::operator()(
         case EILSEQ: {
           string custom_result = this->on_untranslatable(&src, &src_bytes);
           if (custom_result.empty()) {
-            throw runtime_error(string_printf("untranslatable character at position 0x%zX", bytes_read));
+            throw runtime_error(phosg::string_printf("untranslatable character at position 0x%zX", bytes_read));
           } else if (custom_result.size() <= dest_bytes) {
             memcpy(dest, custom_result.data(), custom_result.size());
             dest = reinterpret_cast<char*>(dest) + custom_result.size();
@@ -59,7 +59,7 @@ TextTranscoder::Result TextTranscoder::operator()(
           break;
         }
         case EINVAL:
-          throw runtime_error(string_printf("incomplete multibyte sequence at position 0x%zX", bytes_read));
+          throw runtime_error(phosg::string_printf("incomplete multibyte sequence at position 0x%zX", bytes_read));
         case E2BIG:
           if (!truncate_oversize_result) {
             throw runtime_error("string does not fit in buffer");
@@ -68,7 +68,7 @@ TextTranscoder::Result TextTranscoder::operator()(
             break;
           }
         default:
-          throw runtime_error("transcoding failed: " + string_for_error(errno));
+          throw runtime_error("transcoding failed: " + phosg::string_for_error(errno));
       }
     } else if (src_bytes_before == src_bytes) {
       throw runtime_error("could not transcode any characters");
@@ -109,24 +109,24 @@ string TextTranscoder::operator()(const void* src, size_t src_bytes) {
         case EILSEQ: {
           string custom_result = this->on_untranslatable(&src, &src_bytes);
           if (custom_result.empty()) {
-            throw runtime_error(string_printf("untranslatable character at position %zu", bytes_read));
+            throw runtime_error(phosg::string_printf("untranslatable character at position %zu", bytes_read));
           }
           blocks.emplace_back(std::move(custom_result));
           break;
         }
         case EINVAL:
-          throw runtime_error(string_printf("incomplete multibyte sequence at position %zu", bytes_read));
+          throw runtime_error(phosg::string_printf("incomplete multibyte sequence at position %zu", bytes_read));
         case E2BIG:
           break;
         default:
-          throw runtime_error("transcoding failed: " + string_for_error(errno));
+          throw runtime_error("transcoding failed: " + phosg::string_for_error(errno));
       }
     } else if (src_bytes_before == src_bytes) {
       throw runtime_error("could not transcode any characters");
     }
   }
 
-  return join(blocks, "");
+  return phosg::join(blocks, "");
 }
 
 string TextTranscoder::operator()(const string& data) {
@@ -404,7 +404,7 @@ void add_color_inplace(string& s) {
   s.resize(add_color_inplace(s.data(), s.size()));
 }
 
-void add_color(StringWriter& w, const char* src, size_t max_input_chars) {
+void add_color(phosg::StringWriter& w, const char* src, size_t max_input_chars) {
   for (size_t x = 0; (x < max_input_chars) && *src; x++) {
     if (*src == '$') {
       w.put<char>('\t');
@@ -432,12 +432,12 @@ void add_color(StringWriter& w, const char* src, size_t max_input_chars) {
 }
 
 string add_color(const string& s) {
-  StringWriter w;
+  phosg::StringWriter w;
   add_color(w, s.data(), s.size());
   return std::move(w.str());
 }
 
-void remove_color(StringWriter& w, const char* src, size_t max_input_chars) {
+void remove_color(phosg::StringWriter& w, const char* src, size_t max_input_chars) {
   for (size_t x = 0; (x < max_input_chars) && *src; x++) {
     if (*src == '$') {
       w.put<char>('%');
@@ -461,7 +461,7 @@ void remove_color(StringWriter& w, const char* src, size_t max_input_chars) {
 }
 
 string remove_color(const string& s) {
-  StringWriter w;
+  phosg::StringWriter w;
   remove_color(w, s.data(), s.size());
   return std::move(w.str());
 }

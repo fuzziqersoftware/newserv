@@ -24,7 +24,7 @@ ItemNameIndex::ItemNameIndex(
       meta->primary_identifier = primary_identifier;
       meta->name = *name;
       this->primary_identifier_index.emplace(meta->primary_identifier, meta);
-      this->name_index.emplace(tolower(meta->name), meta);
+      this->name_index.emplace(phosg::tolower(meta->name), meta);
     }
   }
 }
@@ -99,7 +99,7 @@ const array<const char*, 0x11> name_for_s_rank_special = {
 
 std::string ItemNameIndex::describe_item(const ItemData& item, bool include_color_escapes) const {
   if (item.data1[0] == 0x04) {
-    return string_printf("%s%" PRIu32 " Meseta", include_color_escapes ? "$C7" : "", item.data2d.load());
+    return phosg::string_printf("%s%" PRIu32 " Meseta", include_color_escapes ? "$C7" : "", item.data2d.load());
   }
 
   vector<string> ret_tokens;
@@ -120,7 +120,7 @@ std::string ItemNameIndex::describe_item(const ItemData& item, bool include_colo
       try {
         ret_tokens.emplace_back(name_for_weapon_special.at(special_id));
       } catch (const out_of_range&) {
-        ret_tokens.emplace_back(string_printf("!SP:%02hhX", special_id));
+        ret_tokens.emplace_back(phosg::string_printf("!SP:%02hhX", special_id));
       }
     }
   }
@@ -128,7 +128,7 @@ std::string ItemNameIndex::describe_item(const ItemData& item, bool include_colo
     try {
       ret_tokens.emplace_back(name_for_s_rank_special.at(item.data1[2]));
     } catch (const out_of_range&) {
-      ret_tokens.emplace_back(string_printf("!SSP:%02hhX", item.data1[2]));
+      ret_tokens.emplace_back(phosg::string_printf("!SSP:%02hhX", item.data1[2]));
     }
   }
 
@@ -149,34 +149,34 @@ std::string ItemNameIndex::describe_item(const ItemData& item, bool include_colo
       technique_name = tech_id_to_name.at(item.data1[4]);
       technique_name[0] = toupper(technique_name[0]);
     } catch (const out_of_range&) {
-      technique_name = string_printf("!TD:%02hhX", item.data1[4]);
+      technique_name = phosg::string_printf("!TD:%02hhX", item.data1[4]);
     }
     // Hide the level for Reverser and Ryuker, unless the level isn't 1
     if ((item.data1[2] == 0) && ((item.data1[4] == 0x0E) || (item.data1[4] == 0x11))) {
-      ret_tokens.emplace_back(string_printf("Disk:%s", technique_name.c_str()));
+      ret_tokens.emplace_back(phosg::string_printf("Disk:%s", technique_name.c_str()));
     } else {
-      ret_tokens.emplace_back(string_printf("Disk:%s Lv.%d", technique_name.c_str(), item.data1[2] + 1));
+      ret_tokens.emplace_back(phosg::string_printf("Disk:%s Lv.%d", technique_name.c_str(), item.data1[2] + 1));
     }
   } else {
     try {
       auto meta = this->primary_identifier_index.at(primary_identifier);
       ret_tokens.emplace_back(meta->name);
     } catch (const out_of_range&) {
-      ret_tokens.emplace_back(string_printf("!ID:%08" PRIX32, primary_identifier));
+      ret_tokens.emplace_back(phosg::string_printf("!ID:%08" PRIX32, primary_identifier));
     }
   }
 
   // For weapons, add the grind and bonuses, or S-rank name if applicable
   if (item.data1[0] == 0x00) {
     if (item.data1[3] > 0) {
-      ret_tokens.emplace_back(string_printf("+%hhu", item.data1[3]));
+      ret_tokens.emplace_back(phosg::string_printf("+%hhu", item.data1[3]));
     }
 
     if (item.is_s_rank_weapon()) {
       // S-rank (has name instead of percent bonuses)
-      uint16_t be_data1w3 = bswap16(item.data1w[3]);
-      uint16_t be_data1w4 = bswap16(item.data1w[4]);
-      uint16_t be_data1w5 = bswap16(item.data1w[5]);
+      uint16_t be_data1w3 = phosg::bswap16(item.data1w[3]);
+      uint16_t be_data1w4 = phosg::bswap16(item.data1w[4]);
+      uint16_t be_data1w5 = phosg::bswap16(item.data1w[5]);
       uint8_t char_indexes[8] = {
           static_cast<uint8_t>((be_data1w3 >> 5) & 0x1F),
           static_cast<uint8_t>(be_data1w3 & 0x1F),
@@ -210,9 +210,9 @@ std::string ItemNameIndex::describe_item(const ItemData& item, bool include_colo
         }
         if (which & 0x80) {
           uint16_t kill_count = ((which << 8) & 0x7F00) | (value & 0xFF);
-          ret_tokens.emplace_back(string_printf("K:%hu", kill_count));
+          ret_tokens.emplace_back(phosg::string_printf("K:%hu", kill_count));
         } else if (which > 5) {
-          ret_tokens.emplace_back(string_printf("!PC:%02hhX%02hhX", which, value));
+          ret_tokens.emplace_back(phosg::string_printf("!PC:%02hhX%02hhX", which, value));
         } else {
           bonuses[which - 1] = value;
         }
@@ -222,11 +222,11 @@ std::string ItemNameIndex::describe_item(const ItemData& item, bool include_colo
         bool should_highlight_hit = include_color_escapes && (bonuses[4] > 0);
         const char* color_prefix = include_color_escapes ? "$C7" : "";
         if (should_include_hit) {
-          ret_tokens.emplace_back(string_printf("%s%hhd/%hhd/%hhd/%hhd/%s%hhd",
+          ret_tokens.emplace_back(phosg::string_printf("%s%hhd/%hhd/%hhd/%hhd/%s%hhd",
               color_prefix, bonuses[0], bonuses[1], bonuses[2], bonuses[3],
               (should_highlight_hit ? "$C6" : ""), bonuses[4]));
         } else {
-          ret_tokens.emplace_back(string_printf("%s%hhd/%hhd/%hhd/%hhd",
+          ret_tokens.emplace_back(phosg::string_printf("%s%hhd/%hhd/%hhd/%hhd",
               color_prefix, bonuses[0], bonuses[1], bonuses[2], bonuses[3]));
         }
       }
@@ -245,7 +245,7 @@ std::string ItemNameIndex::describe_item(const ItemData& item, bool include_colo
       } else if (modifier <= -3) {
         ret_tokens.back().append("--");
       } else if (modifier != 0) {
-        ret_tokens.emplace_back(string_printf("!MD:%04hX", modifier));
+        ret_tokens.emplace_back(phosg::string_printf("!MD:%04hX", modifier));
       }
 
     } else { // Armor/shields
@@ -253,22 +253,22 @@ std::string ItemNameIndex::describe_item(const ItemData& item, bool include_colo
         if (item.data1[5] == 1) {
           ret_tokens.emplace_back("(1 slot)");
         } else {
-          ret_tokens.emplace_back(string_printf("(%hhu slots)", item.data1[5]));
+          ret_tokens.emplace_back(phosg::string_printf("(%hhu slots)", item.data1[5]));
         }
       }
       if (item.data1w[3] != 0) {
-        ret_tokens.emplace_back(string_printf("+%hdDEF",
+        ret_tokens.emplace_back(phosg::string_printf("+%hdDEF",
             static_cast<int16_t>(item.data1w[3].load())));
       }
       if (item.data1w[4] != 0) {
-        ret_tokens.emplace_back(string_printf("+%hdEVP",
+        ret_tokens.emplace_back(phosg::string_printf("+%hdEVP",
             static_cast<int16_t>(item.data1w[4].load())));
       }
     }
 
     // For mags, add tons of info
   } else if (item.data1[0] == 0x02) {
-    ret_tokens.emplace_back(string_printf("LV%hhu", item.data1[2]));
+    ret_tokens.emplace_back(phosg::string_printf("LV%hhu", item.data1[2]));
 
     uint16_t def = item.data1w[2];
     uint16_t pow = item.data1w[3];
@@ -278,16 +278,16 @@ std::string ItemNameIndex::describe_item(const ItemData& item, bool include_colo
       uint16_t level = stat / 100;
       uint8_t partial = stat % 100;
       if (partial == 0) {
-        return string_printf("%hu", level);
+        return phosg::string_printf("%hu", level);
       } else if (partial % 10 == 0) {
-        return string_printf("%hu.%hhu", level, static_cast<uint8_t>(partial / 10));
+        return phosg::string_printf("%hu.%hhu", level, static_cast<uint8_t>(partial / 10));
       } else {
-        return string_printf("%hu.%02hhu", level, partial);
+        return phosg::string_printf("%hu.%02hhu", level, partial);
       }
     };
     ret_tokens.emplace_back(format_stat(def) + "/" + format_stat(pow) + "/" + format_stat(dex) + "/" + format_stat(mind));
-    ret_tokens.emplace_back(string_printf("%hhu%%", item.data2[0]));
-    ret_tokens.emplace_back(string_printf("%hhuIQ", item.data2[1]));
+    ret_tokens.emplace_back(phosg::string_printf("%hhu%%", item.data2[0]));
+    ret_tokens.emplace_back(phosg::string_printf("%hhuIQ", item.data2[1]));
 
     uint8_t flags = item.data2[2];
     if (flags & 7) {
@@ -322,19 +322,19 @@ std::string ItemNameIndex::describe_item(const ItemData& item, bool include_colo
     }
 
     try {
-      ret_tokens.emplace_back(string_printf("(%s)", name_for_mag_color.at(item.data2[3])));
+      ret_tokens.emplace_back(phosg::string_printf("(%s)", name_for_mag_color.at(item.data2[3])));
     } catch (const out_of_range&) {
-      ret_tokens.emplace_back(string_printf("(!CL:%02hhX)", item.data2[3]));
+      ret_tokens.emplace_back(phosg::string_printf("(!CL:%02hhX)", item.data2[3]));
     }
 
     // For tools, add the amount (if applicable)
   } else if (item.data1[0] == 0x03) {
     if (item.max_stack_size(*this->limits) > 1) {
-      ret_tokens.emplace_back(string_printf("x%hhu", item.data1[5]));
+      ret_tokens.emplace_back(phosg::string_printf("x%hhu", item.data1[5]));
     }
   }
 
-  string ret = join(ret_tokens, " ");
+  string ret = phosg::join(ret_tokens, " ");
   if (include_color_escapes) {
     if (is_unidentified) {
       return "$C3" + ret;
@@ -361,13 +361,13 @@ ItemData ItemNameIndex::parse_item_description(const std::string& desc) const {
       ret = this->parse_item_description_phase(desc, true);
     } catch (const exception& e2) {
       try {
-        ret = ItemData::from_data(parse_data_string(desc));
+        ret = ItemData::from_data(phosg::parse_data_string(desc));
       } catch (const exception& ed) {
         if (strcmp(e1.what(), e2.what())) {
-          throw runtime_error(string_printf("cannot parse item description \"%s\" (as text 1: %s) (as text 2: %s) (as data: %s)",
+          throw runtime_error(phosg::string_printf("cannot parse item description \"%s\" (as text 1: %s) (as text 2: %s) (as data: %s)",
               desc.c_str(), e1.what(), e2.what(), ed.what()));
         } else {
-          throw runtime_error(string_printf("cannot parse item description \"%s\" (as text: %s) (as data: %s)",
+          throw runtime_error(phosg::string_printf("cannot parse item description \"%s\" (as text: %s) (as data: %s)",
               desc.c_str(), e1.what(), ed.what()));
         }
       }
@@ -383,15 +383,15 @@ ItemData ItemNameIndex::parse_item_description_phase(const std::string& descript
   ret.id = 0xFFFFFFFF;
   ret.data2d = 0;
 
-  string desc = tolower(description);
-  if (ends_with(desc, " meseta")) {
+  string desc = phosg::tolower(description);
+  if (phosg::ends_with(desc, " meseta")) {
     ret.data1[0] = 0x04;
     ret.data2d = stol(desc, nullptr, 10);
     return ret;
   }
 
-  if (starts_with(desc, "disk:")) {
-    auto tokens = split(desc, ' ');
+  if (phosg::starts_with(desc, "disk:")) {
+    auto tokens = phosg::split(desc, ' ');
     tokens[0] = tokens[0].substr(5); // Trim off "disk:"
     if ((tokens[0] == "reverser") || (tokens[0] == "ryuker")) {
       uint8_t tech = technique_for_name(tokens[0]);
@@ -403,7 +403,7 @@ ItemData ItemNameIndex::parse_item_description_phase(const std::string& descript
       if (tokens.size() != 2) {
         throw runtime_error("invalid tech disk format");
       }
-      if (!starts_with(tokens[1], "lv.")) {
+      if (!phosg::starts_with(tokens[1], "lv.")) {
         throw runtime_error("invalid tech disk level");
       }
       uint8_t tech = technique_for_name(tokens[0]);
@@ -416,11 +416,11 @@ ItemData ItemNameIndex::parse_item_description_phase(const std::string& descript
     return ret;
   }
 
-  bool is_wrapped = starts_with(desc, "wrapped ");
+  bool is_wrapped = phosg::starts_with(desc, "wrapped ");
   if (is_wrapped) {
     desc = desc.substr(8);
   }
-  bool is_unidentified = starts_with(desc, "?");
+  bool is_unidentified = phosg::starts_with(desc, "?");
   if (is_unidentified) {
     size_t z;
     for (z = 1; z < desc.size(); z++) {
@@ -438,9 +438,9 @@ ItemData ItemNameIndex::parse_item_description_phase(const std::string& descript
       if (!name_for_weapon_special[z]) {
         continue;
       }
-      string prefix = tolower(name_for_weapon_special[z]);
+      string prefix = phosg::tolower(name_for_weapon_special[z]);
       prefix += ' ';
-      if (starts_with(desc, prefix)) {
+      if (phosg::starts_with(desc, prefix)) {
         weapon_special = z;
         desc = desc.substr(prefix.size());
         break;
@@ -454,7 +454,7 @@ ItemData ItemNameIndex::parse_item_description_phase(const std::string& descript
   // then we'll see Sange & Yasha first, which we should skip.
   size_t lookback = 0;
   while (lookback < 4) {
-    if (name_it != this->name_index.end() && desc.starts_with(name_it->first)) {
+    if (name_it != this->name_index.end() && phosg::starts_with(desc, name_it->first)) {
       break;
     } else if (name_it == this->name_index.begin()) {
       throw runtime_error("no such item");
@@ -468,7 +468,7 @@ ItemData ItemNameIndex::parse_item_description_phase(const std::string& descript
   }
 
   desc = desc.substr(name_it->first.size());
-  if (starts_with(desc, " ")) {
+  if (phosg::starts_with(desc, " ")) {
     desc = desc.substr(1);
   }
 
@@ -483,12 +483,12 @@ ItemData ItemNameIndex::parse_item_description_phase(const std::string& descript
     // Weapons: add special, grind and percentages (or name, if S-rank)
     ret.data1[4] = weapon_special | (is_wrapped ? 0x40 : 0x00) | (is_unidentified ? 0x80 : 0x00);
 
-    auto tokens = split(desc, ' ');
+    auto tokens = phosg::split(desc, ' ');
     for (auto& token : tokens) {
       if (token.empty()) {
         continue;
       }
-      if (starts_with(token, "+")) {
+      if (phosg::starts_with(token, "+")) {
         token = token.substr(1);
         ret.data1[3] = stoul(token, nullptr, 10);
 
@@ -502,17 +502,17 @@ ItemData ItemNameIndex::parse_item_description_phase(const std::string& descript
           char ch = toupper(token[z]);
           const char* pos = strchr(s_rank_name_characters, ch);
           if (!pos) {
-            throw runtime_error(string_printf("s-rank name contains invalid character %02hhX (%c)", ch, ch));
+            throw runtime_error(phosg::string_printf("s-rank name contains invalid character %02hhX (%c)", ch, ch));
           }
           char_indexes[z] = (pos - s_rank_name_characters);
         }
 
-        ret.data1w[3] = bswap16(0x8000 | (char_indexes[1] & 0x1F) | ((char_indexes[0] & 0x1F) << 5));
-        ret.data1w[4] = bswap16(0x8000 | (char_indexes[4] & 0x1F) | ((char_indexes[3] & 0x1F) << 5) | ((char_indexes[2] & 0x1F) << 10));
-        ret.data1w[5] = bswap16(0x8000 | (char_indexes[7] & 0x1F) | ((char_indexes[6] & 0x1F) << 5) | ((char_indexes[5] & 0x1F) << 10));
+        ret.data1w[3] = phosg::bswap16(0x8000 | (char_indexes[1] & 0x1F) | ((char_indexes[0] & 0x1F) << 5));
+        ret.data1w[4] = phosg::bswap16(0x8000 | (char_indexes[4] & 0x1F) | ((char_indexes[3] & 0x1F) << 5) | ((char_indexes[2] & 0x1F) << 10));
+        ret.data1w[5] = phosg::bswap16(0x8000 | (char_indexes[7] & 0x1F) | ((char_indexes[6] & 0x1F) << 5) | ((char_indexes[5] & 0x1F) << 10));
 
       } else {
-        auto p_tokens = split(token, '/');
+        auto p_tokens = phosg::split(token, '/');
         if (p_tokens.size() > 5) {
           throw runtime_error("invalid bonuses token");
         }
@@ -544,15 +544,15 @@ ItemData ItemNameIndex::parse_item_description_phase(const std::string& descript
       ret.data1w[3] = modifiers.at(desc);
 
     } else { // Armor/shield
-      for (const auto& token : split(desc, ' ')) {
+      for (const auto& token : phosg::split(desc, ' ')) {
         if (token.empty()) {
           continue;
-        } else if (!starts_with(token, "+")) {
+        } else if (!phosg::starts_with(token, "+")) {
           throw runtime_error("invalid armor/shield modifier");
         }
-        if (ends_with(token, "def")) {
+        if (phosg::ends_with(token, "def")) {
           ret.data1w[3] = static_cast<uint16_t>(stol(token.substr(1, token.size() - 4), nullptr, 10));
-        } else if (ends_with(token, "evp")) {
+        } else if (phosg::ends_with(token, "evp")) {
           ret.data1w[4] = static_cast<uint16_t>(stol(token.substr(1, token.size() - 4), nullptr, 10));
         } else {
           ret.data1[5] = stoul(token.substr(1), nullptr, 10);
@@ -565,11 +565,11 @@ ItemData ItemNameIndex::parse_item_description_phase(const std::string& descript
     }
 
   } else if (ret.data1[0] == 0x02) {
-    for (const auto& token : split(desc, ' ')) {
+    for (const auto& token : phosg::split(desc, ' ')) {
       if (token.empty()) {
         continue;
-      } else if (starts_with(token, "pb:")) { // Photon blasts
-        auto pb_tokens = split(token.substr(3), ',');
+      } else if (phosg::starts_with(token, "pb:")) { // Photon blasts
+        auto pb_tokens = phosg::split(token.substr(3), ',');
         if (pb_tokens.size() > 3) {
           throw runtime_error("too many photon blasts specified");
         }
@@ -586,17 +586,17 @@ ItemData ItemNameIndex::parse_item_description_phase(const std::string& descript
         for (const auto& pb_token : pb_tokens) {
           ret.add_mag_photon_blast(name_to_pb_num.at(pb_token));
         }
-      } else if (ends_with(token, "%")) { // Synchro
+      } else if (phosg::ends_with(token, "%")) { // Synchro
         ret.data2[0] = stoul(token.substr(0, token.size() - 1), nullptr, 10);
-      } else if (ends_with(token, "iq")) { // IQ
+      } else if (phosg::ends_with(token, "iq")) { // IQ
         ret.data2[1] = stoul(token.substr(0, token.size() - 2), nullptr, 10);
       } else if (!token.empty() && isdigit(token[0])) { // Stats
-        auto s_tokens = split(token, '/');
+        auto s_tokens = phosg::split(token, '/');
         if (s_tokens.size() != 4) {
           throw runtime_error("incorrect stat count");
         }
         for (size_t z = 0; z < 4; z++) {
-          auto n_tokens = split(s_tokens[z], '.');
+          auto n_tokens = phosg::split(s_tokens[z], '.');
           if (n_tokens.size() == 0 || n_tokens.size() > 2) {
             throw logic_error("incorrect stats argument format");
           } else if ((n_tokens.size() == 1) || (n_tokens[1].size() == 0)) {
@@ -620,7 +620,7 @@ ItemData ItemNameIndex::parse_item_description_phase(const std::string& descript
     }
   } else if (ret.data1[0] == 0x03) {
     if (ret.max_stack_size(*this->limits) > 1) {
-      if (starts_with(desc, "x")) {
+      if (phosg::starts_with(desc, "x")) {
         ret.data1[5] = stoul(desc.substr(1), nullptr, 10);
       } else {
         ret.data1[5] = 1;
@@ -650,7 +650,7 @@ void ItemNameIndex::print_table(FILE* stream) const {
   for (size_t data1_1 = 0; data1_1 < pmt->num_weapon_classes; data1_1++) {
     uint8_t v1_replacement = pmt->get_weapon_v1_replacement(data1_1);
     float sale_divisor = pmt->get_sale_divisor(0x00, data1_1);
-    string divisor_str = string_printf("%g", sale_divisor);
+    string divisor_str = phosg::string_printf("%g", sale_divisor);
     divisor_str.resize(13, ' ');
 
     size_t data1_2_limit = pmt->num_weapons_in_class(data1_1);
@@ -708,7 +708,7 @@ void ItemNameIndex::print_table(FILE* stream) const {
   fprintf(stream, "ARMOR  => ---ID--- TYPE SKIN POINTS -DFP- -EVP- BP BE FLAG LVL EFR ETH EIC EDK ELT DFR EVR SB TB -A2- ST* ---DIVISOR--- NAME\n");
   for (size_t data1_1 = 1; data1_1 < 3; data1_1++) {
     float sale_divisor = pmt->get_sale_divisor(0x01, data1_1);
-    string divisor_str = string_printf("%g", sale_divisor);
+    string divisor_str = phosg::string_printf("%g", sale_divisor);
     divisor_str.resize(13, ' ');
 
     size_t data1_2_limit = pmt->num_armors_or_shields_in_class(data1_1);
@@ -754,7 +754,7 @@ void ItemNameIndex::print_table(FILE* stream) const {
   fprintf(stream, "UNIT   => ---ID--- TYPE SKIN POINTS STAT COUNT ST-MOD ST* ---DIVISOR--- NAME\n");
   {
     float sale_divisor = pmt->get_sale_divisor(0x01, 0x03);
-    string divisor_str = string_printf("%g", sale_divisor);
+    string divisor_str = phosg::string_printf("%g", sale_divisor);
     divisor_str.resize(13, ' ');
 
     size_t data1_2_limit = pmt->num_units();
@@ -791,7 +791,7 @@ void ItemNameIndex::print_table(FILE* stream) const {
       uint8_t stars = pmt->get_item_stars(m.base.id);
 
       float sale_divisor = pmt->get_sale_divisor(0x02, data1_1);
-      string divisor_str = string_printf("%g", sale_divisor);
+      string divisor_str = phosg::string_printf("%g", sale_divisor);
       divisor_str.resize(13, ' ');
 
       ItemData item;
@@ -827,7 +827,7 @@ void ItemNameIndex::print_table(FILE* stream) const {
   fprintf(stream, "TOOL   => ---ID--- TYPE SKIN POINTS COUNT TECH -COST- ITEMFLAG ST* ---DIVISOR--- NAME\n");
   for (size_t data1_1 = 0; data1_1 < pmt->num_tool_classes; data1_1++) {
     float sale_divisor = pmt->get_sale_divisor(0x03, data1_1);
-    string divisor_str = string_printf("%g", sale_divisor);
+    string divisor_str = phosg::string_printf("%g", sale_divisor);
     divisor_str.resize(13, ' ');
 
     size_t data1_2_limit = pmt->num_tools_in_class(data1_1);

@@ -83,18 +83,18 @@ void ServerShell::thread_fn() {
     fprintf(stdout, "newserv> ");
     fflush(stdout);
     string command;
-    uint64_t read_start_usecs = now();
+    uint64_t read_start_usecs = phosg::now();
     try {
-      command = fgets(stdin);
-    } catch (const io_error& e) {
+      command = phosg::fgets(stdin);
+    } catch (const phosg::io_error& e) {
       // Cygwin sometimes causes fgets() to fail with errno -1 when the
       // terminal window is resized. We ignore these events unless the read
       // failed immediately (which probably means it would fail again if we
       // retried immediately).
-      if (now() - read_start_usecs < 1000000 || e.error != -1) {
+      if (phosg::now() - read_start_usecs < 1000000 || e.error != -1) {
         throw;
       }
-      log_warning("I/O error reading from terminal: %s (%d)", e.what(), e.error);
+      phosg::log_warning("I/O error reading from terminal: %s (%d)", e.what(), e.error);
       continue;
     }
 
@@ -105,12 +105,12 @@ void ServerShell::thread_fn() {
       return;
     }
 
-    strip_trailing_whitespace(command);
+    phosg::strip_trailing_whitespace(command);
 
     try {
       // Find the entry in the command table and run the command
-      size_t command_end = skip_non_whitespace(command, 0);
-      size_t args_begin = skip_whitespace(command, command_end);
+      size_t command_end = phosg::skip_non_whitespace(command, 0);
+      size_t args_begin = phosg::skip_whitespace(command, command_end);
       CommandArgs args;
       args.s = this->state;
       args.shell = this->shared_from_this();
@@ -154,9 +154,9 @@ static string get_quoted_string(string& s) {
     if (z >= s.size()) {
       throw runtime_error("unterminated quoted string");
     }
-    s = s.substr(skip_whitespace(s, z + 1));
+    s = s.substr(phosg::skip_whitespace(s, z + 1));
   } else {
-    s = s.substr(skip_whitespace(s, z));
+    s = s.substr(phosg::skip_whitespace(s, z));
   }
   return ret;
 }
@@ -198,10 +198,10 @@ CommandDefinition c_on(
     and appears after \"LinkedSession:\" in the log output.",
     false,
     +[](CommandArgs& args) {
-      size_t session_name_end = skip_non_whitespace(args.args, 0);
-      size_t command_begin = skip_whitespace(args.args, session_name_end);
-      size_t command_end = skip_non_whitespace(args.args, command_begin);
-      size_t args_begin = skip_whitespace(args.args, command_end);
+      size_t session_name_end = phosg::skip_non_whitespace(args.args, 0);
+      size_t command_begin = phosg::skip_whitespace(args.args, session_name_end);
+      size_t command_end = phosg::skip_non_whitespace(args.args, command_begin);
+      size_t args_begin = phosg::skip_whitespace(args.args, command_end);
       args.session_name = args.args.substr(0, session_name_end);
       args.command = args.args.substr(command_begin, command_end - command_begin);
       args.args = args.args.substr(args_begin);
@@ -238,7 +238,7 @@ CommandDefinition c_reload(
     actually received.",
     false,
     +[](CommandArgs& args) {
-      auto types = split(args.args, ' ');
+      auto types = phosg::split(args.args, ' ');
       for (const auto& type : types) {
         if (type == "bb-keys") {
           args.s->load_bb_private_keys(true);
@@ -318,9 +318,9 @@ uint32_t parse_account_flags(const string& flags_str) {
   }
 
   uint32_t ret = 0;
-  auto tokens = split(flags_str, ',');
+  auto tokens = phosg::split(flags_str, ',');
   for (const auto& token : tokens) {
-    string token_upper = toupper(token);
+    string token_upper = phosg::toupper(token);
     if (token_upper == "NONE") {
       // Nothing to do
     } else if (token_upper == "KICK_USER") {
@@ -390,16 +390,16 @@ CommandDefinition c_add_account(
     true,
     +[](CommandArgs& args) {
       auto account = make_shared<Account>();
-      for (const string& token : split(args.args, ' ')) {
-        if (starts_with(token, "id=")) {
+      for (const string& token : phosg::split(args.args, ' ')) {
+        if (phosg::starts_with(token, "id=")) {
           account->account_id = stoul(token.substr(3), nullptr, 16);
-        } else if (starts_with(token, "ep3-current-meseta=")) {
+        } else if (phosg::starts_with(token, "ep3-current-meseta=")) {
           account->ep3_current_meseta = stoul(token.substr(19), nullptr, 0);
-        } else if (starts_with(token, "ep3-total-meseta=")) {
+        } else if (phosg::starts_with(token, "ep3-total-meseta=")) {
           account->ep3_total_meseta_earned = stoul(token.substr(17), nullptr, 0);
         } else if (token == "temporary") {
           account->is_temporary = true;
-        } else if (starts_with(token, "flags=")) {
+        } else if (phosg::starts_with(token, "flags=")) {
           account->flags = parse_account_flags(token.substr(6));
         } else {
           throw invalid_argument("invalid account field: " + token);
@@ -425,7 +425,7 @@ CommandDefinition c_update_account(
       permanent: if the account was temporary, makes it non-temporary",
     true,
     +[](CommandArgs& args) {
-      auto tokens = split(args.args, ' ');
+      auto tokens = phosg::split(args.args, ' ');
       if (tokens.size() < 2) {
         throw runtime_error("not enough arguments");
       }
@@ -440,33 +440,33 @@ CommandDefinition c_update_account(
       uint8_t new_is_temporary = 0xFF;
       int64_t new_ban_duration = -1;
       for (const string& token : tokens) {
-        if (starts_with(token, "ep3-current-meseta=")) {
+        if (phosg::starts_with(token, "ep3-current-meseta=")) {
           new_ep3_current_meseta = stoul(token.substr(19), nullptr, 0);
-        } else if (starts_with(token, "ep3-total-meseta=")) {
+        } else if (phosg::starts_with(token, "ep3-total-meseta=")) {
           new_ep3_total_meseta = stoul(token.substr(17), nullptr, 0);
         } else if (token == "temporary") {
           new_is_temporary = 1;
         } else if (token == "permanent") {
           new_is_temporary = 0;
-        } else if (starts_with(token, "flags=")) {
+        } else if (phosg::starts_with(token, "flags=")) {
           new_flags = parse_account_flags(token.substr(6));
         } else if (token == "unban") {
           new_ban_duration = 0;
-        } else if (starts_with(token, "ban-duration=")) {
+        } else if (phosg::starts_with(token, "ban-duration=")) {
           auto duration_str = token.substr(13);
-          if (ends_with(duration_str, "s")) {
+          if (phosg::ends_with(duration_str, "s")) {
             new_ban_duration = stoull(duration_str.substr(0, duration_str.size() - 1)) * 1000000LL;
-          } else if (ends_with(duration_str, "m")) {
+          } else if (phosg::ends_with(duration_str, "m")) {
             new_ban_duration = stoull(duration_str.substr(0, duration_str.size() - 1)) * 60000000LL;
-          } else if (ends_with(duration_str, "h")) {
+          } else if (phosg::ends_with(duration_str, "h")) {
             new_ban_duration = stoull(duration_str.substr(0, duration_str.size() - 1)) * 3600000000LL;
-          } else if (ends_with(duration_str, "d")) {
+          } else if (phosg::ends_with(duration_str, "d")) {
             new_ban_duration = stoull(duration_str.substr(0, duration_str.size() - 1)) * 86400000000LL;
-          } else if (ends_with(duration_str, "w")) {
+          } else if (phosg::ends_with(duration_str, "w")) {
             new_ban_duration = stoull(duration_str.substr(0, duration_str.size() - 1)) * 604800000000LL;
-          } else if (ends_with(duration_str, "mo")) {
+          } else if (phosg::ends_with(duration_str, "mo")) {
             new_ban_duration = stoull(duration_str.substr(0, duration_str.size() - 2)) * 2952000000000LL;
-          } else if (ends_with(duration_str, "y")) {
+          } else if (phosg::ends_with(duration_str, "y")) {
             new_ban_duration = stoull(duration_str.substr(0, duration_str.size() - 1)) * 31536000000000LL;
           } else {
             throw runtime_error("invalid time unit");
@@ -477,7 +477,7 @@ CommandDefinition c_update_account(
       }
 
       if (new_ban_duration >= 0) {
-        account->ban_end_time = now() + new_ban_duration;
+        account->ban_end_time = phosg::now() + new_ban_duration;
       }
       if (new_ep3_current_meseta >= 0) {
         account->ep3_current_meseta = new_ep3_current_meseta;
@@ -530,14 +530,14 @@ CommandDefinition c_add_license(
       add-license 385A92C4 BB user1 trustno1",
     true,
     +[](CommandArgs& args) {
-      auto tokens = split(args.args, ' ');
+      auto tokens = phosg::split(args.args, ' ');
       if (tokens.size() < 3) {
         throw runtime_error("not enough arguments");
       }
 
       auto account = args.s->account_index->from_account_id(stoul(tokens[0], nullptr, 16));
 
-      string type_str = toupper(tokens[1]);
+      string type_str = phosg::toupper(tokens[1]);
       if (type_str == "DC-NTE") {
         if (tokens.size() != 4) {
           throw runtime_error("incorrect number of parameters");
@@ -618,14 +618,14 @@ CommandDefinition c_delete_license(
       delete-license 385A92C4 BB user1",
     true,
     +[](CommandArgs& args) {
-      auto tokens = split(args.args, ' ');
+      auto tokens = phosg::split(args.args, ' ');
       if (tokens.size() != 3) {
         throw runtime_error("incorrect argument count");
       }
 
       auto account = args.s->account_index->from_account_id(stoul(tokens[0], nullptr, 16));
 
-      string type_str = toupper(tokens[1]);
+      string type_str = phosg::toupper(tokens[1]);
       if (type_str == "DC-NTE") {
         args.s->account_index->remove_dc_nte_license(account, tokens[2]);
       } else if (type_str == "DC") {
@@ -699,9 +699,9 @@ CommandDefinition c_create_tournament(
       rules.set_defaults();
       uint8_t flags = Episode3::Tournament::Flag::HAS_COM_TEAMS;
       if (!args.args.empty()) {
-        auto tokens = split(args.args, ' ');
+        auto tokens = phosg::split(args.args, ' ');
         for (auto& token : tokens) {
-          token = tolower(token);
+          token = phosg::tolower(token);
           if (token == "2v2") {
             flags |= Episode3::Tournament::Flag::IS_2V2;
           } else if (token == "no-coms") {
@@ -710,23 +710,23 @@ CommandDefinition c_create_tournament(
             flags |= Episode3::Tournament::Flag::SHUFFLE_ENTRIES;
           } else if (token == "resize") {
             flags |= Episode3::Tournament::Flag::RESIZE_ON_START;
-          } else if (starts_with(token, "dice=")) {
+          } else if (phosg::starts_with(token, "dice=")) {
             auto parse_range_c = +[](const string& s) -> uint8_t {
-              auto tokens = split(s, '-');
+              auto tokens = phosg::split(s, '-');
               if (tokens.size() != 2) {
                 throw runtime_error("dice spec must be of the form MIN-MAX");
               }
               return (stoul(tokens[0]) << 4) | (stoul(tokens[1]) & 0x0F);
             };
             auto parse_range_p = +[](const string& s) -> pair<uint8_t, uint8_t> {
-              auto tokens = split(s, '-');
+              auto tokens = phosg::split(s, '-');
               if (tokens.size() != 2) {
                 throw runtime_error("dice spec must be of the form MIN-MAX");
               }
               return make_pair(stoul(tokens[0]), stoul(tokens[1]));
             };
 
-            auto subtokens = split(token.substr(5), ':');
+            auto subtokens = phosg::split(token.substr(5), ':');
             if (subtokens.size() < 1) {
               throw runtime_error("no dice ranges specified in dice= option");
             }
@@ -753,7 +753,7 @@ CommandDefinition c_create_tournament(
               rules.atk_dice_value_range_2v1 = 0;
               rules.def_dice_value_range_2v1 = 0;
             }
-          } else if (starts_with(token, "overall-time-limit=")) {
+          } else if (phosg::starts_with(token, "overall-time-limit=")) {
             uint32_t limit = stoul(token.substr(19));
             if (limit > 600) {
               throw runtime_error("overall-time-limit must be 600 or fewer minutes");
@@ -762,9 +762,9 @@ CommandDefinition c_create_tournament(
               throw runtime_error("overall-time-limit must be a multiple of 5 minutes");
             }
             rules.overall_time_limit = limit;
-          } else if (starts_with(token, "phase-time-limit=")) {
+          } else if (phosg::starts_with(token, "phase-time-limit=")) {
             rules.phase_time_limit = stoul(token.substr(17));
-          } else if (starts_with(token, "hp=")) {
+          } else if (phosg::starts_with(token, "hp=")) {
             rules.char_hp = stoul(token.substr(3));
           } else if (token == "allowed-cards=all") {
             rules.allowed_cards = Episode3::AllowedCards::ALL;
@@ -874,7 +874,7 @@ CommandDefinition c_describe_tournament(
     });
 
 void f_sc_ss(CommandArgs& args) {
-  string data = parse_data_string(args.args, nullptr, ParseDataFlags::ALLOW_FILES);
+  string data = phosg::parse_data_string(args.args, nullptr, phosg::ParseDataFlags::ALLOW_FILES);
   if (data.size() == 0) {
     throw invalid_argument("no data given");
   }
@@ -960,7 +960,7 @@ void fn_chat(CommandArgs& args) {
     data.push_back('\x09');
     data.push_back('E');
     if (is_dchat) {
-      data += parse_data_string(args.args, nullptr, ParseDataFlags::ALLOW_FILES);
+      data += phosg::parse_data_string(args.args, nullptr, phosg::ParseDataFlags::ALLOW_FILES);
     } else {
       data += args.args;
       data.push_back('\0');
@@ -1026,7 +1026,7 @@ void fn_info_board(CommandArgs& args) {
 
   string data;
   if (args.command == "info-board-data") {
-    data += parse_data_string(args.args, nullptr, ParseDataFlags::ALLOW_FILES);
+    data += phosg::parse_data_string(args.args, nullptr, phosg::ParseDataFlags::ALLOW_FILES);
   } else {
     data += args.args;
   }
@@ -1074,7 +1074,7 @@ void fn_create_item(CommandArgs& args) {
 
   auto s = ses->require_server_state();
   ItemData item = s->parse_item_description(ses->version(), args.args);
-  item.id = random_object<uint32_t>() | 0x80000000;
+  item.id = phosg::random_object<uint32_t>() | 0x80000000;
 
   if (args.command == "set-next-item") {
     ses->next_drop_item = item;

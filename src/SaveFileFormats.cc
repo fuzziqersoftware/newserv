@@ -144,13 +144,13 @@ bool PSOVMSFileHeader::checksum_correct() const {
 }
 
 bool PSOGCIFileHeader::checksum_correct() const {
-  uint32_t cs = crc32(&this->game_name, this->game_name.bytes());
-  cs = crc32(&this->embedded_seed, sizeof(this->embedded_seed), cs);
-  cs = crc32(&this->file_name, this->file_name.bytes(), cs);
-  cs = crc32(&this->banner, this->banner.bytes(), cs);
-  cs = crc32(&this->icon, this->icon.bytes(), cs);
-  cs = crc32(&this->data_size, sizeof(this->data_size), cs);
-  cs = crc32("\0\0\0\0", 4, cs); // this->checksum (treated as zero)
+  uint32_t cs = phosg::crc32(&this->game_name, this->game_name.bytes());
+  cs = phosg::crc32(&this->embedded_seed, sizeof(this->embedded_seed), cs);
+  cs = phosg::crc32(&this->file_name, this->file_name.bytes(), cs);
+  cs = phosg::crc32(&this->banner, this->banner.bytes(), cs);
+  cs = phosg::crc32(&this->icon, this->icon.bytes(), cs);
+  cs = phosg::crc32(&this->data_size, sizeof(this->data_size), cs);
+  cs = phosg::crc32("\0\0\0\0", 4, cs); // this->checksum (treated as zero)
   return (cs == this->checksum);
 }
 
@@ -217,8 +217,8 @@ string decrypt_gci_fixed_size_data_section_for_salvage(
 }
 
 bool PSOGCSnapshotFile::checksum_correct() const {
-  uint32_t crc = crc32("\0\0\0\0", 4);
-  crc = crc32(&this->width, sizeof(*this) - sizeof(this->checksum), crc);
+  uint32_t crc = phosg::crc32("\0\0\0\0", 4);
+  crc = phosg::crc32(&this->width, sizeof(*this) - sizeof(this->checksum), crc);
   return (crc == this->checksum);
 }
 
@@ -231,7 +231,7 @@ static uint32_t decode_rgb565(uint16_t c) {
       0x000000FF; // A
 }
 
-Image PSOGCSnapshotFile::decode_image() const {
+phosg::Image PSOGCSnapshotFile::decode_image() const {
   size_t width = this->width ? this->width.load() : 256;
   size_t height = this->height ? this->height.load() : 192;
   if (width != 256) {
@@ -242,7 +242,7 @@ Image PSOGCSnapshotFile::decode_image() const {
   }
 
   // 4x4 blocks of pixels
-  Image ret(width, height, false);
+  phosg::Image ret(width, height, false);
   size_t offset = 0;
   for (size_t y = 0; y < this->height; y += 4) {
     for (size_t x = 0; x < this->width; x += 4) {
@@ -322,12 +322,12 @@ void PSOBBGuildCardFile::Entry::clear() {
 }
 
 uint32_t PSOBBGuildCardFile::checksum() const {
-  return crc32(this, sizeof(*this));
+  return phosg::crc32(this, sizeof(*this));
 }
 
 PSOBBBaseSystemFile::PSOBBBaseSystemFile() {
   // This field is based on 1/1/2000, not 1/1/1970, so adjust appropriately
-  this->base.creation_timestamp = (now() - 946684800000000ULL) / 1000000;
+  this->base.creation_timestamp = (phosg::now() - 946684800000000ULL) / 1000000;
   for (size_t z = 0; z < DEFAULT_KEY_CONFIG.size(); z++) {
     this->key_config[z] = DEFAULT_KEY_CONFIG[z];
   }
@@ -1170,7 +1170,7 @@ static uint16_t crc16(const void* data, size_t size) {
   };
 
   uint16_t ret = 0xFFFF;
-  StringReader r(data, size);
+  phosg::StringReader r(data, size);
   while (!r.eof()) {
     ret = (ret >> 8) ^ table[r.get_u8() ^ (ret & 0xFF)];
   }
@@ -1184,7 +1184,7 @@ string encode_psobb_hangame_credentials(const string& user_id, const string& tok
   if (user_id.size() > 12) {
     throw runtime_error("user_id must be at most 12 characters");
   }
-  if (!ends_with(user_id, "@HG")) {
+  if (!phosg::ends_with(user_id, "@HG")) {
     throw runtime_error("user_id must end with \"@HG\"");
   }
   if (token.empty()) {

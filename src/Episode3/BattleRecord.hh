@@ -53,8 +53,8 @@ public:
     std::string data;
 
     Event() = default;
-    explicit Event(StringReader& r);
-    void serialize(StringWriter& w) const;
+    explicit Event(phosg::StringReader& r);
+    void serialize(phosg::StringWriter& w) const;
     void print(FILE* stream) const;
   };
 
@@ -126,7 +126,7 @@ private:
   std::shared_ptr<struct event_base> base;
   std::weak_ptr<Lobby> lobby;
   std::shared_ptr<struct event> next_command_ev;
-  StringReader random_r;
+  phosg::StringReader random_r;
 };
 
 } // namespace Episode3

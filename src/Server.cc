@@ -55,7 +55,7 @@ void Server::disconnect_client(shared_ptr<Client> c) {
 }
 
 void Server::enqueue_destroy_clients() {
-  auto tv = usecs_to_timeval(0);
+  auto tv = phosg::usecs_to_timeval(0);
   event_add(this->destroy_clients_ev.get(), &tv);
 }
 
@@ -94,7 +94,7 @@ void Server::dispatch_on_listen_error(struct evconnlistener* listener, void* ctx
 
 void Server::on_listen_accept(struct evconnlistener* listener, evutil_socket_t fd, struct sockaddr*, int) {
   struct sockaddr_storage remote_addr;
-  get_socket_addresses(fd, nullptr, &remote_addr);
+  phosg::get_socket_addresses(fd, nullptr, &remote_addr);
   if (this->state->banned_ipv4_ranges->check(remote_addr)) {
     close(fd);
     return;
@@ -148,8 +148,8 @@ void Server::connect_virtual_client(
       c->id,
       virtual_network_id,
       server_port,
-      name_for_enum(version),
-      name_for_enum(initial_state));
+      phosg::name_for_enum(version),
+      phosg::name_for_enum(initial_state));
 
   // Manually set the remote address, since the bufferevent has no fd and the
   // Channel constructor can't figure out the virtual remote address
@@ -167,7 +167,7 @@ void Server::connect_virtual_client(
 }
 
 void Server::connect_virtual_client(shared_ptr<Client> c, Channel&& ch) {
-  c->channel.replace_with(std::move(ch), Server::on_client_input, Server::on_client_error, this, string_printf("C-%" PRIX64, c->id));
+  c->channel.replace_with(std::move(ch), Server::on_client_input, Server::on_client_error, this, phosg::string_printf("C-%" PRIX64, c->id));
   this->state->channel_to_client.emplace(&c->channel, c);
   server_log.info("Client C-%" PRIX64 " added to game server", c->id);
 }
@@ -224,9 +224,8 @@ Server::Server(
       state(state) {}
 
 void Server::listen(const std::string& addr_str, const string& socket_path, Version version, ServerBehavior behavior) {
-  int fd = ::listen(socket_path, 0, SOMAXCONN);
-  server_log.info("Listening on Unix socket %s on fd %d as %s",
-      socket_path.c_str(), fd, addr_str.c_str());
+  int fd = phosg::listen(socket_path, 0, SOMAXCONN);
+  server_log.info("Listening on Unix socket %s on fd %d as %s", socket_path.c_str(), fd, addr_str.c_str());
   this->add_socket(addr_str, fd, version, behavior);
 }
 
@@ -239,10 +238,9 @@ void Server::listen(
   if (port == 0) {
     this->listen(addr_str, addr, version, behavior);
   } else {
-    int fd = ::listen(addr, port, SOMAXCONN);
-    string netloc_str = render_netloc(addr, port);
-    server_log.info("Listening on TCP interface %s on fd %d as %s",
-        netloc_str.c_str(), fd, addr_str.c_str());
+    int fd = phosg::listen(addr, port, SOMAXCONN);
+    string netloc_str = phosg::render_netloc(addr, port);
+    server_log.info("Listening on TCP interface %s on fd %d as %s", netloc_str.c_str(), fd, addr_str.c_str());
     this->add_socket(addr_str, fd, version, behavior);
   }
 }
@@ -331,7 +329,7 @@ vector<shared_ptr<Client>> Server::get_clients_by_identifier(const string& ident
       results.emplace_back(c);
       continue;
     }
-    if (starts_with(c->channel.name, ident + " ")) {
+    if (phosg::starts_with(c->channel.name, ident + " ")) {
       results.emplace_back(c);
       continue;
     }

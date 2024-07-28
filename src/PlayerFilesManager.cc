@@ -24,7 +24,7 @@ PlayerFilesManager::PlayerFilesManager(std::shared_ptr<struct event_base> base)
       clear_expired_files_event(
           event_new(this->base.get(), -1, EV_TIMEOUT | EV_PERSIST, &PlayerFilesManager::clear_expired_files, this),
           event_free) {
-  auto tv = usecs_to_timeval(30 * 1000 * 1000);
+  auto tv = phosg::usecs_to_timeval(30 * 1000 * 1000);
   event_add(this->clear_expired_files_event.get(), &tv);
 }
 

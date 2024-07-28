@@ -16,16 +16,16 @@ struct DCNTELicense {
   std::string serial_number;
   std::string access_key;
 
-  static std::shared_ptr<DCNTELicense> from_json(const JSON& json);
-  JSON json() const;
+  static std::shared_ptr<DCNTELicense> from_json(const phosg::JSON& json);
+  phosg::JSON json() const;
 };
 
 struct V1V2License {
   uint32_t serial_number = 0;
   std::string access_key;
 
-  static std::shared_ptr<V1V2License> from_json(const JSON& json);
-  JSON json() const;
+  static std::shared_ptr<V1V2License> from_json(const phosg::JSON& json);
+  phosg::JSON json() const;
 };
 
 struct GCLicense {
@@ -33,8 +33,8 @@ struct GCLicense {
   std::string access_key;
   std::string password;
 
-  static std::shared_ptr<GCLicense> from_json(const JSON& json);
-  JSON json() const;
+  static std::shared_ptr<GCLicense> from_json(const phosg::JSON& json);
+  phosg::JSON json() const;
 };
 
 struct XBLicense {
@@ -42,16 +42,16 @@ struct XBLicense {
   uint64_t user_id = 0;
   uint64_t account_id = 0;
 
-  static std::shared_ptr<XBLicense> from_json(const JSON& json);
-  JSON json() const;
+  static std::shared_ptr<XBLicense> from_json(const phosg::JSON& json);
+  phosg::JSON json() const;
 };
 
 struct BBLicense {
   std::string username;
   std::string password;
 
-  static std::shared_ptr<BBLicense> from_json(const JSON& json);
-  JSON json() const;
+  static std::shared_ptr<BBLicense> from_json(const phosg::JSON& json);
+  phosg::JSON json() const;
 };
 
 struct Account {
@@ -101,10 +101,10 @@ struct Account {
   std::unordered_map<std::string, std::shared_ptr<BBLicense>> bb_licenses;
 
   Account() = default;
-  explicit Account(const JSON& json);
+  explicit Account(const phosg::JSON& json);
   virtual ~Account() = default;
 
-  JSON json() const;
+  phosg::JSON json() const;
   virtual void save() const;
   virtual void delete_file() const;
 

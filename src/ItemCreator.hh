@@ -58,7 +58,7 @@ public:
   void set_section_id(uint8_t new_section_id);
 
 private:
-  PrefixedLogger log;
+  phosg::PrefixedLogger log;
   Version logic_version;
   std::shared_ptr<const ItemData::StackLimits> stack_limits;
   Episode episode;

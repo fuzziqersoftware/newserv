@@ -33,7 +33,7 @@ public:
   struct LinkedSession : std::enable_shared_from_this<LinkedSession> {
     std::weak_ptr<ProxyServer> server;
     uint64_t id;
-    PrefixedLogger log;
+    phosg::PrefixedLogger log;
 
     std::unique_ptr<struct event, void (*)(struct event*)> timeout_event;
 
@@ -221,9 +221,9 @@ private:
   struct ListeningSocket {
     ProxyServer* server;
 
-    PrefixedLogger log;
+    phosg::PrefixedLogger log;
     uint16_t port;
-    scoped_fd fd;
+    phosg::scoped_fd fd;
     std::unique_ptr<struct evconnlistener, void (*)(struct evconnlistener*)> listener;
     Version version;
     struct sockaddr_storage default_destination;
@@ -246,7 +246,7 @@ private:
     std::weak_ptr<ProxyServer> server;
     uint64_t id;
 
-    PrefixedLogger log;
+    phosg::PrefixedLogger log;
     Channel channel;
     uint16_t local_port;
     struct sockaddr_storage next_destination;

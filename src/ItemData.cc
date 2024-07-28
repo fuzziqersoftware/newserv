@@ -21,7 +21,7 @@ ItemData::StackLimits::StackLimits(
       max_tool_stack_sizes_by_data1_1(max_tool_stack_sizes_by_data1_1),
       max_meseta_stack_size(max_meseta_stack_size) {}
 
-ItemData::StackLimits::StackLimits(Version version, const JSON& json)
+ItemData::StackLimits::StackLimits(Version version, const phosg::JSON& json)
     : version(version) {
   this->max_tool_stack_sizes_by_data1_1.clear();
   for (const auto& limit_json : json.at("ToolLimits").as_list()) {
@@ -53,8 +53,8 @@ ItemData::ItemData(const ItemData& other) {
 
 ItemData::ItemData(uint64_t first, uint64_t second) {
   *reinterpret_cast<be_uint64_t*>(&this->data1[0]) = first;
-  this->data1d[2] = bswap32((second >> 32) & 0xFFFFFFFF);
-  this->data2d = bswap32(second & 0xFFFFFFFF);
+  this->data1d[2] = phosg::bswap32((second >> 32) & 0xFFFFFFFF);
+  this->data2d = phosg::bswap32(second & 0xFFFFFFFF);
 }
 
 ItemData& ItemData::operator=(const ItemData& other) {
@@ -400,7 +400,7 @@ void ItemData::decode_for_version(Version from_version) {
         // data2d field, since internally it's actually a uint32_t. We treat it
         // as individual bytes instead, so we correct for the client's
         // byteswapping here.
-        this->data2d = bswap32(this->data2d);
+        this->data2d = phosg::bswap32(this->data2d);
       }
       break;
 
@@ -482,7 +482,7 @@ void ItemData::encode_for_version(Version to_version, shared_ptr<const ItemParam
         this->data2w[1] = this->data2[0] | ((this->data2[2] << 15) & 0x8000);
         this->data2w[0] = this->data2[1];
       } else if (is_big_endian(to_version)) {
-        this->data2d = bswap32(this->data2d);
+        this->data2d = phosg::bswap32(this->data2d);
       }
       break;
 
@@ -743,12 +743,12 @@ ItemData ItemData::from_primary_identifier(const StackLimits& limits, uint32_t p
 }
 
 string ItemData::hex() const {
-  return string_printf("%08" PRIX32 " %08" PRIX32 " %08" PRIX32 " (%08" PRIX32 ") %08" PRIX32,
+  return phosg::string_printf("%08" PRIX32 " %08" PRIX32 " %08" PRIX32 " (%08" PRIX32 ") %08" PRIX32,
       this->data1db[0].load(), this->data1db[1].load(), this->data1db[2].load(), this->id.load(), this->data2db.load());
 }
 
 string ItemData::short_hex() const {
-  auto ret = string_printf("%08" PRIX32 "%08" PRIX32 "%08" PRIX32 "%08" PRIX32,
+  auto ret = phosg::string_printf("%08" PRIX32 "%08" PRIX32 "%08" PRIX32 "%08" PRIX32,
       this->data1db[0].load(), this->data1db[1].load(), this->data1db[2].load(), this->data2db.load());
   size_t offset = ret.find_last_not_of('0');
   if (offset != string::npos) {

@@ -91,7 +91,7 @@ const char* proxy_port_name_for_version(Version v) {
 }
 
 template <>
-const char* name_for_enum<Version>(Version v) {
+const char* phosg::name_for_enum<Version>(Version v) {
   switch (v) {
     case Version::PC_PATCH:
       return "PC_PATCH";
@@ -127,7 +127,7 @@ const char* name_for_enum<Version>(Version v) {
 }
 
 template <>
-Version enum_for_name<Version>(const char* name) {
+Version phosg::enum_for_name<Version>(const char* name) {
   if (!strcmp(name, "PC_PATCH") || !strcasecmp(name, "patch")) {
     return Version::PC_PATCH;
   } else if (!strcmp(name, "BB_PATCH")) {
@@ -162,7 +162,7 @@ Version enum_for_name<Version>(const char* name) {
 }
 
 template <>
-const char* name_for_enum<ServerBehavior>(ServerBehavior behavior) {
+const char* phosg::name_for_enum<ServerBehavior>(ServerBehavior behavior) {
   switch (behavior) {
     case ServerBehavior::PC_CONSOLE_DETECT:
       return "pc_console_detect";
@@ -181,7 +181,7 @@ const char* name_for_enum<ServerBehavior>(ServerBehavior behavior) {
 }
 
 template <>
-ServerBehavior enum_for_name<ServerBehavior>(const char* name) {
+ServerBehavior phosg::enum_for_name<ServerBehavior>(const char* name) {
   if (!strcasecmp(name, "pc_console_detect")) {
     return ServerBehavior::PC_CONSOLE_DETECT;
   } else if (!strcasecmp(name, "login_server") || !strcasecmp(name, "login") || !strcasecmp(name, "data_server_bb")) {

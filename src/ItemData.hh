@@ -62,7 +62,7 @@ struct ItemData {
     uint32_t max_meseta_stack_size;
 
     StackLimits(Version version, const std::vector<uint8_t>& max_tool_stack_sizes_by_data1_1, uint32_t max_meseta_stack_size);
-    StackLimits(Version version, const JSON& json);
+    StackLimits(Version version, const phosg::JSON& json);
     StackLimits(const StackLimits& other) = default;
     StackLimits(StackLimits&& other) = default;
     StackLimits& operator=(const StackLimits& other) = default;

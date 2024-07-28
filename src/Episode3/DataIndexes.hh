@@ -16,6 +16,7 @@
 #include "../PlayerSubordinates.hh"
 #include "../Text.hh"
 #include "../TextIndex.hh"
+#include "../Types.hh"
 
 namespace Episode3 {
 
@@ -506,7 +507,7 @@ struct CardDefinition {
 
     void decode_code();
     std::string str() const;
-    JSON json() const;
+    phosg::JSON json() const;
   } __packed_ws__(Stat, 4);
 
   struct Effect {
@@ -543,7 +544,7 @@ struct CardDefinition {
     bool is_empty() const;
     static std::string str_for_arg(const std::string& arg);
     std::string str(const char* separator = ", ", const TextSet* text_archive = nullptr) const;
-    JSON json() const;
+    phosg::JSON json() const;
   } __packed_ws__(Effect, 0x20);
 
   /* 0000 */ be_uint32_t card_id;
@@ -810,7 +811,7 @@ struct CardDefinition {
 
   void decode_range();
   std::string str(bool single_line = true, const TextSet* text_archive = nullptr) const;
-  JSON json() const;
+  phosg::JSON json() const;
 } __packed_ws__(CardDefinition, 0x128);
 
 struct CardDefinitionsFooter {
@@ -1029,8 +1030,8 @@ struct Rules {
   // likely be more work than it's worth.
 
   Rules() = default;
-  explicit Rules(const JSON& json);
-  JSON json() const;
+  explicit Rules(const phosg::JSON& json);
+  phosg::JSON json() const;
   bool operator==(const Rules& other) const = default;
   bool operator!=(const Rules& other) const = default;
   void clear();
@@ -1225,7 +1226,7 @@ struct MapDefinition { // .mnmd format; also the format of (decompressed) quests
     /* 48 */
 
     std::string str() const;
-    JSON json() const;
+    phosg::JSON json() const;
   } __packed_ws__(CameraSpec, 0x48);
 
   // This array specifies the camera zone maps. A camera zone map is a subset of
@@ -1283,7 +1284,7 @@ struct MapDefinition { // .mnmd format; also the format of (decompressed) quests
     /* 00 */ pstring<TextEncoding::MARKED, 0x18> deck_name;
     /* 18 */ parray<be_uint16_t, 0x20> card_ids; // Last one appears to always be FFFF
     /* 58 */
-    JSON json(uint8_t language) const;
+    phosg::JSON json(uint8_t language) const;
   } __packed_ws__(NPCDeck, 0x58);
   /* 1FE8 */ parray<NPCDeck, 3> npc_decks; // Unused if name[0] == 0
 
@@ -1299,7 +1300,7 @@ struct MapDefinition { // .mnmd format; also the format of (decompressed) quests
     // TODO: Figure out exactly how these are used and document here.
     /* 0018 */ parray<be_uint16_t, 0x7E> params;
     /* 0114 */
-    JSON json(uint8_t language) const;
+    phosg::JSON json(uint8_t language) const;
   } __packed_ws__(AIParams, 0x114);
   /* 20F0 */ parray<AIParams, 3> npc_ai_params; // Unused if name[0] == 0
 
@@ -1352,7 +1353,7 @@ struct MapDefinition { // .mnmd format; also the format of (decompressed) quests
     // strings, excluding any that are empty or begin with the character '^'.
     /* 0004 */ parray<pstring<TextEncoding::MARKED, 0x40>, 4> strings;
     /* 0104 */
-    JSON json(uint8_t language) const;
+    phosg::JSON json(uint8_t language) const;
   } __packed_ws__(DialogueSet, 0x104);
 
   // There are up to 0x10 of these per valid NPC, but only the first 13 of them
@@ -1435,7 +1436,7 @@ struct MapDefinition { // .mnmd format; also the format of (decompressed) quests
 
     bool operator==(const EntryState& other) const = default;
     bool operator!=(const EntryState& other) const = default;
-    JSON json() const;
+    phosg::JSON json() const;
   } __packed_ws__(EntryState, 2);
   /* 5A10 */ parray<EntryState, 4> entry_states;
   /* 5A18 */
@@ -1451,7 +1452,7 @@ struct MapDefinition { // .mnmd format; also the format of (decompressed) quests
   void assert_semantically_equivalent(const MapDefinition& other) const;
 
   std::string str(const CardIndex* card_index, uint8_t language) const;
-  JSON json(uint8_t language) const;
+  phosg::JSON json(uint8_t language) const;
 } __packed_ws__(MapDefinition, 0x5A18);
 
 struct MapDefinitionTrial {
@@ -1534,7 +1535,7 @@ public:
   std::shared_ptr<const CardEntry> definition_for_name_normalized(const std::string& name) const;
   std::set<uint32_t> all_ids() const;
   uint64_t definitions_mtime() const;
-  JSON definitions_json() const;
+  phosg::JSON definitions_json() const;
 
 private:
   static std::string normalize_card_name(const std::string& name);
@@ -1615,37 +1616,37 @@ private:
 
 // TODO: Figure out how to declare these inside the Episode3 namespace.
 template <>
-Episode3::HPType enum_for_name<Episode3::HPType>(const char* name);
+Episode3::HPType phosg::enum_for_name<Episode3::HPType>(const char* name);
 template <>
-const char* name_for_enum<Episode3::HPType>(Episode3::HPType hp_type);
+const char* phosg::name_for_enum<Episode3::HPType>(Episode3::HPType hp_type);
 template <>
-Episode3::DiceExchangeMode enum_for_name<Episode3::DiceExchangeMode>(const char* name);
+Episode3::DiceExchangeMode phosg::enum_for_name<Episode3::DiceExchangeMode>(const char* name);
 template <>
-const char* name_for_enum<Episode3::DiceExchangeMode>(Episode3::DiceExchangeMode dice_exchange_mode);
+const char* phosg::name_for_enum<Episode3::DiceExchangeMode>(Episode3::DiceExchangeMode dice_exchange_mode);
 template <>
-Episode3::AllowedCards enum_for_name<Episode3::AllowedCards>(const char* name);
+Episode3::AllowedCards phosg::enum_for_name<Episode3::AllowedCards>(const char* name);
 template <>
-const char* name_for_enum<Episode3::AllowedCards>(Episode3::AllowedCards allowed_cards);
+const char* phosg::name_for_enum<Episode3::AllowedCards>(Episode3::AllowedCards allowed_cards);
 
 template <>
-const char* name_for_enum<Episode3::BattlePhase>(Episode3::BattlePhase phase);
+const char* phosg::name_for_enum<Episode3::BattlePhase>(Episode3::BattlePhase phase);
 template <>
-const char* name_for_enum<Episode3::SetupPhase>(Episode3::SetupPhase phase);
+const char* phosg::name_for_enum<Episode3::SetupPhase>(Episode3::SetupPhase phase);
 template <>
-const char* name_for_enum<Episode3::RegistrationPhase>(Episode3::RegistrationPhase phase);
+const char* phosg::name_for_enum<Episode3::RegistrationPhase>(Episode3::RegistrationPhase phase);
 template <>
-const char* name_for_enum<Episode3::ActionSubphase>(Episode3::ActionSubphase phase);
+const char* phosg::name_for_enum<Episode3::ActionSubphase>(Episode3::ActionSubphase phase);
 template <>
-const char* name_for_enum<Episode3::AttackMedium>(Episode3::AttackMedium medium);
+const char* phosg::name_for_enum<Episode3::AttackMedium>(Episode3::AttackMedium medium);
 template <>
-const char* name_for_enum<Episode3::CriterionCode>(Episode3::CriterionCode code);
+const char* phosg::name_for_enum<Episode3::CriterionCode>(Episode3::CriterionCode code);
 template <>
-const char* name_for_enum<Episode3::CardType>(Episode3::CardType type);
+const char* phosg::name_for_enum<Episode3::CardType>(Episode3::CardType type);
 template <>
-const char* name_for_enum<Episode3::CardClass>(Episode3::CardClass cc);
+const char* phosg::name_for_enum<Episode3::CardClass>(Episode3::CardClass cc);
 template <>
-const char* name_for_enum<Episode3::ConditionType>(Episode3::ConditionType cond_type);
+const char* phosg::name_for_enum<Episode3::ConditionType>(Episode3::ConditionType cond_type);
 template <>
-const char* name_for_enum<Episode3::EffectWhen>(Episode3::EffectWhen when);
+const char* phosg::name_for_enum<Episode3::EffectWhen>(Episode3::EffectWhen when);
 template <>
-const char* name_for_enum<Episode3::Direction>(Episode3::Direction d);
+const char* phosg::name_for_enum<Episode3::Direction>(Episode3::Direction d);

@@ -25,15 +25,11 @@ class ItemParameterTable;
 
 struct PlayerDispDataBB;
 
-template <bool IsBigEndian>
+template <bool BE>
 struct PlayerVisualConfigT {
-  using U16T = typename std::conditional<IsBigEndian, be_uint16_t, le_uint16_t>::type;
-  using U32T = typename std::conditional<IsBigEndian, be_uint32_t, le_uint32_t>::type;
-  using F32T = typename std::conditional<IsBigEndian, be_float, le_float>::type;
-
   /* 00 */ pstring<TextEncoding::ASCII, 0x10> name;
   /* 10 */ parray<uint8_t, 8> unknown_a2;
-  /* 18 */ U32T name_color = 0xFFFFFFFF; // ARGB
+  /* 18 */ U32T<BE> name_color = 0xFFFFFFFF; // ARGB
   /* 1C */ uint8_t extra_model = 0;
   /* 1D */ parray<uint8_t, 0x0F> unused;
   // See compute_name_color_checksum for details on how this is computed. If the
@@ -41,7 +37,7 @@ struct PlayerVisualConfigT {
   // default color instead. This field is ignored on GC; on BB (and presumably
   // Xbox), if this has a nonzero value, the "Change Name" option appears in the
   // character selection menu.
-  /* 2C */ U32T name_color_checksum = 0;
+  /* 2C */ U32T<BE> name_color_checksum = 0;
   /* 30 */ uint8_t section_id = 0;
   /* 31 */ uint8_t char_class = 0;
   // validation_flags specifies that some parts of this structure are not valid
@@ -57,22 +53,22 @@ struct PlayerVisualConfigT {
   //   F = force, R = ranger, H = hunter
   //   A = android, N = newman, M = human
   //   f = female, m = male
-  /* 34 */ U32T class_flags = 0;
-  /* 38 */ U16T costume = 0;
-  /* 3A */ U16T skin = 0;
-  /* 3C */ U16T face = 0;
-  /* 3E */ U16T head = 0;
-  /* 40 */ U16T hair = 0;
-  /* 42 */ U16T hair_r = 0;
-  /* 44 */ U16T hair_g = 0;
-  /* 46 */ U16T hair_b = 0;
-  /* 48 */ F32T proportion_x = 0.0;
-  /* 4C */ F32T proportion_y = 0.0;
+  /* 34 */ U32T<BE> class_flags = 0;
+  /* 38 */ U16T<BE> costume = 0;
+  /* 3A */ U16T<BE> skin = 0;
+  /* 3C */ U16T<BE> face = 0;
+  /* 3E */ U16T<BE> head = 0;
+  /* 40 */ U16T<BE> hair = 0;
+  /* 42 */ U16T<BE> hair_r = 0;
+  /* 44 */ U16T<BE> hair_g = 0;
+  /* 46 */ U16T<BE> hair_b = 0;
+  /* 48 */ F32T<BE> proportion_x = 0.0;
+  /* 4C */ F32T<BE> proportion_y = 0.0;
   /* 50 */
 
   static uint32_t compute_name_color_checksum(uint32_t name_color) {
-    uint8_t x = (random_object<uint32_t>() % 0xFF) + 1;
-    uint8_t y = (random_object<uint32_t>() % 0xFF) + 1;
+    uint8_t x = (phosg::random_object<uint32_t>() % 0xFF) + 1;
+    uint8_t y = (phosg::random_object<uint32_t>() % 0xFF) + 1;
     // name_color (ARGB)   = ABCDEFGHabcdefghIJKLMNOPijklmnop
     // name_color_checksum = 000000000ijklmabcdeIJKLM00000000 ^ xxxxxxxxyyyyyyyyxxxxxxxxyyyyyyyy
     uint32_t xbrgx95558 = ((name_color << 15) & 0x007C0000) | ((name_color >> 6) & 0x0003E000) | ((name_color >> 3) & 0x00001F00);
@@ -208,8 +204,8 @@ struct PlayerVisualConfigT {
     this->name.clear_after_bytes(0x0C);
   }
 
-  operator PlayerVisualConfigT<!IsBigEndian>() const {
-    PlayerVisualConfigT<!IsBigEndian> ret;
+  operator PlayerVisualConfigT<!BE>() const {
+    PlayerVisualConfigT<!BE> ret;
     ret.name = this->name;
     ret.unknown_a2 = this->unknown_a2;
     ret.name_color = this->name_color.load();
@@ -239,10 +235,10 @@ using PlayerVisualConfigBE = PlayerVisualConfigT<true>;
 check_struct_size(PlayerVisualConfig, 0x50);
 check_struct_size(PlayerVisualConfigBE, 0x50);
 
-template <bool IsBigEndian>
+template <bool BE>
 struct PlayerDispDataDCPCV3T {
-  /* 00 */ PlayerStatsT<IsBigEndian> stats;
-  /* 24 */ PlayerVisualConfigT<IsBigEndian> visual;
+  /* 00 */ PlayerStatsT<BE> stats;
+  /* 24 */ PlayerVisualConfigT<BE> visual;
   /* 74 */ parray<uint8_t, 0x48> config;
   /* BC */ parray<uint8_t, 0x14> technique_levels_v1;
   /* D0 */
@@ -283,9 +279,9 @@ struct PlayerDispDataBB {
     this->name.clear_after_bytes(0x18); // 12 characters
   }
 
-  template <bool IsBigEndian>
-  PlayerDispDataDCPCV3T<IsBigEndian> to_dcpcv3(uint8_t to_language, uint8_t from_language) const {
-    PlayerDispDataDCPCV3T<IsBigEndian> ret;
+  template <bool BE>
+  PlayerDispDataDCPCV3T<BE> to_dcpcv3(uint8_t to_language, uint8_t from_language) const {
+    PlayerDispDataDCPCV3T<BE> ret;
     ret.stats = this->stats;
     ret.visual = this->visual;
     std::string decoded_name = this->name.decode(from_language);
@@ -299,8 +295,8 @@ struct PlayerDispDataBB {
   void apply_dressing_room(const PlayerDispDataBBPreview&);
 } __packed_ws__(PlayerDispDataBB, 0x190);
 
-template <bool IsBigEndian>
-PlayerDispDataBB PlayerDispDataDCPCV3T<IsBigEndian>::to_bb(uint8_t to_language, uint8_t from_language) const {
+template <bool BE>
+PlayerDispDataBB PlayerDispDataDCPCV3T<BE>::to_bb(uint8_t to_language, uint8_t from_language) const {
   PlayerDispDataBB bb;
   bb.stats = this->stats;
   bb.visual = this->visual;
@@ -371,13 +367,11 @@ struct GuildCardPC {
 // 0090 | 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 |
 // 00A0 | 00 00 00 00 00 00 00 00 01 00 06 00             |
 
-template <bool IsBigEndian, size_t DescriptionLength>
+template <bool BE, size_t DescriptionLength>
 struct GuildCardGCT {
-  using U32T = typename std::conditional<IsBigEndian, be_uint32_t, le_uint32_t>::type;
-
   /* NTE:Final */
-  /* 00:00 */ U32T player_tag = 0x00010000;
-  /* 04:04 */ U32T guild_card_number = 0;
+  /* 00:00 */ U32T<BE> player_tag = 0x00010000;
+  /* 04:04 */ U32T<BE> guild_card_number = 0;
   /* 08:08 */ pstring<TextEncoding::ASCII, 0x18> name;
   /* 20:20 */ pstring<TextEncoding::MARKED, DescriptionLength> description;
   /* 8C:8C */ uint8_t present = 0;
@@ -429,9 +423,9 @@ struct GuildCardBB {
   operator GuildCardDCNTE() const;
   operator GuildCardDC() const;
   operator GuildCardPC() const;
-  template <bool IsBigEndian, size_t DescriptionLength>
-  operator GuildCardGCT<IsBigEndian, DescriptionLength>() const {
-    GuildCardGCT<IsBigEndian, DescriptionLength> ret;
+  template <bool BE, size_t DescriptionLength>
+  operator GuildCardGCT<BE, DescriptionLength>() const {
+    GuildCardGCT<BE, DescriptionLength> ret;
     ret.player_tag = 0x00010000;
     ret.guild_card_number = this->guild_card_number.load();
     ret.name.encode(this->name.decode(this->language), this->language);
@@ -445,8 +439,8 @@ struct GuildCardBB {
   operator GuildCardXB() const;
 } __packed_ws__(GuildCardBB, 0x108);
 
-template <bool IsBigEndian, size_t DescriptionLength>
-GuildCardGCT<IsBigEndian, DescriptionLength>::operator GuildCardBB() const {
+template <bool BE, size_t DescriptionLength>
+GuildCardGCT<BE, DescriptionLength>::operator GuildCardBB() const {
   GuildCardBB ret;
   ret.guild_card_number = this->guild_card_number.load();
   ret.name.encode(this->name.decode(this->language), this->language);
@@ -524,14 +518,13 @@ struct PlayerLobbyDataBB {
   void clear();
 } __packed_ws__(PlayerLobbyDataBB, 0x44);
 
-template <bool IsBigEndian>
+template <bool BE>
 struct ChallengeAwardStateT {
-  using U32T = typename std::conditional<IsBigEndian, be_uint32_t, le_uint32_t>::type;
-  U32T rank_award_flags = 0;
-  ChallengeTimeT<IsBigEndian> maximum_rank;
+  U32T<BE> rank_award_flags = 0;
+  ChallengeTimeT<BE> maximum_rank;
 
-  operator ChallengeAwardStateT<!IsBigEndian>() const {
-    ChallengeAwardStateT<!IsBigEndian> ret;
+  operator ChallengeAwardStateT<!BE>() const {
+    ChallengeAwardStateT<!BE> ret;
     ret.rank_award_flags = this->rank_award_flags.load();
     ret.maximum_rank = this->maximum_rank;
     return ret;
@@ -575,38 +568,34 @@ using PlayerRecordsChallengePC = PlayerRecordsChallengeDCPCT<TextEncoding::UTF16
 check_struct_size(PlayerRecordsChallengeDC, 0xA0);
 check_struct_size(PlayerRecordsChallengePC, 0xD8);
 
-template <bool IsBigEndian>
+template <bool BE>
 struct PlayerRecordsChallengeV3T {
-  using U16T = typename std::conditional<IsBigEndian, be_uint16_t, le_uint16_t>::type;
-  using U32T = typename std::conditional<IsBigEndian, be_uint32_t, le_uint32_t>::type;
-  using F32T = typename std::conditional<IsBigEndian, be_float, le_float>::type;
-
   // Offsets are (1) relative to start of C5 entry, and (2) relative to start
   // of save file structure
   struct Stats {
-    /* 00:1C */ U16T title_color = 0x7FFF; // XRGB1555
+    /* 00:1C */ U16T<BE> title_color = 0x7FFF; // XRGB1555
     /* 02:1E */ parray<uint8_t, 2> unknown_u0;
-    /* 04:20 */ parray<ChallengeTimeT<IsBigEndian>, 9> times_ep1_online;
-    /* 28:44 */ parray<ChallengeTimeT<IsBigEndian>, 5> times_ep2_online;
-    /* 3C:58 */ parray<ChallengeTimeT<IsBigEndian>, 9> times_ep1_offline;
+    /* 04:20 */ parray<ChallengeTimeT<BE>, 9> times_ep1_online;
+    /* 28:44 */ parray<ChallengeTimeT<BE>, 5> times_ep2_online;
+    /* 3C:58 */ parray<ChallengeTimeT<BE>, 9> times_ep1_offline;
     /* 60:7C */ uint8_t grave_is_ep2 = 0;
     /* 61:7D */ uint8_t grave_stage_num = 0;
     /* 62:7E */ uint8_t grave_floor = 0;
     /* 63:7F */ uint8_t unknown_g0 = 0;
-    /* 64:80 */ U16T grave_deaths = 0;
+    /* 64:80 */ U16T<BE> grave_deaths = 0;
     /* 66:82 */ parray<uint8_t, 2> unknown_u4;
-    /* 68:84 */ U32T grave_time = 0; // Encoded as in PlayerRecordsChallengeDCPC
-    /* 6C:88 */ U32T grave_defeated_by_enemy_rt_index = 0;
-    /* 70:8C */ F32T grave_x = 0.0f;
-    /* 74:90 */ F32T grave_y = 0.0f;
-    /* 78:94 */ F32T grave_z = 0.0f;
+    /* 68:84 */ U32T<BE> grave_time = 0; // Encoded as in PlayerRecordsChallengeDCPC
+    /* 6C:88 */ U32T<BE> grave_defeated_by_enemy_rt_index = 0;
+    /* 70:8C */ F32T<BE> grave_x = 0.0f;
+    /* 74:90 */ F32T<BE> grave_y = 0.0f;
+    /* 78:94 */ F32T<BE> grave_z = 0.0f;
     /* 7C:98 */ pstring<TextEncoding::ASCII, 0x14> grave_team;
     /* 90:AC */ pstring<TextEncoding::ASCII, 0x20> grave_message;
     /* B0:CC */ parray<uint8_t, 4> unknown_m5;
-    /* B4:D0 */ parray<U32T, 3> unknown_t6;
-    /* C0:DC */ ChallengeAwardStateT<IsBigEndian> ep1_online_award_state;
-    /* C8:E4 */ ChallengeAwardStateT<IsBigEndian> ep2_online_award_state;
-    /* D0:EC */ ChallengeAwardStateT<IsBigEndian> ep1_offline_award_state;
+    /* B4:D0 */ parray<U32T<BE>, 3> unknown_t6;
+    /* C0:DC */ ChallengeAwardStateT<BE> ep1_online_award_state;
+    /* C8:E4 */ ChallengeAwardStateT<BE> ep2_online_award_state;
+    /* D0:EC */ ChallengeAwardStateT<BE> ep1_offline_award_state;
     /* D8:F4 */
   } __packed__;
   /* 0000:001C */ Stats stats;
@@ -661,8 +650,8 @@ struct PlayerRecordsChallengeBB {
   PlayerRecordsChallengeBB(const PlayerRecordsChallengeDC& rec);
   PlayerRecordsChallengeBB(const PlayerRecordsChallengePC& rec);
 
-  template <bool IsBigEndian>
-  PlayerRecordsChallengeBB(const PlayerRecordsChallengeV3T<IsBigEndian>& rec)
+  template <bool BE>
+  PlayerRecordsChallengeBB(const PlayerRecordsChallengeV3T<BE>& rec)
       : title_color(rec.stats.title_color.load()),
         unknown_u0(rec.stats.unknown_u0),
         times_ep1_online(rec.stats.times_ep1_online),
@@ -694,9 +683,9 @@ struct PlayerRecordsChallengeBB {
 
   operator PlayerRecordsChallengeDC() const;
   operator PlayerRecordsChallengePC() const;
-  template <bool IsBigEndian>
-  operator PlayerRecordsChallengeV3T<IsBigEndian>() const {
-    PlayerRecordsChallengeV3T<IsBigEndian> ret;
+  template <bool BE>
+  operator PlayerRecordsChallengeV3T<BE>() const {
+    PlayerRecordsChallengeV3T<BE> ret;
     ret.stats.title_color = this->title_color.load();
     ret.stats.unknown_u0 = this->unknown_u0;
     ret.stats.times_ep1_online = this->times_ep1_online;
@@ -728,20 +717,17 @@ struct PlayerRecordsChallengeBB {
   }
 } __packed_ws__(PlayerRecordsChallengeBB, 0x140);
 
-template <bool IsBigEndian>
+template <bool BE>
 struct PlayerRecordsBattleT {
-  using U16T = typename std::conditional<IsBigEndian, be_uint16_t, le_uint16_t>::type;
-  using U32T = typename std::conditional<IsBigEndian, be_uint32_t, le_uint32_t>::type;
-
   // On Episode 3, place_counts[0] is win count and [1] is loss count
-  /* 00 */ parray<U16T, 4> place_counts;
-  /* 08 */ U16T disconnect_count = 0;
-  /* 0A */ parray<U16T, 3> unknown_a1;
-  /* 10 */ parray<U32T, 2> unknown_a2;
+  /* 00 */ parray<U16T<BE>, 4> place_counts;
+  /* 08 */ U16T<BE> disconnect_count = 0;
+  /* 0A */ parray<U16T<BE>, 3> unknown_a1;
+  /* 10 */ parray<U32T<BE>, 2> unknown_a2;
   /* 18 */
 
-  operator PlayerRecordsBattleT<!IsBigEndian>() const {
-    PlayerRecordsBattleT<!IsBigEndian> ret;
+  operator PlayerRecordsBattleT<!BE>() const {
+    PlayerRecordsBattleT<!BE> ret;
     for (size_t z = 0; z < this->place_counts.size(); z++) {
       ret.place_counts[z] = this->place_counts[z].load();
     }
@@ -762,7 +748,7 @@ check_struct_size(PlayerRecordsBattleBE, 0x18);
 
 template <typename DestT, typename SrcT = DestT>
 DestT convert_player_disp_data(const SrcT&, uint8_t, uint8_t) {
-  static_assert(always_false<DestT, SrcT>::v,
+  static_assert(phosg::always_false<DestT, SrcT>::v,
       "unspecialized convert_player_disp_data should never be called");
 }
 
@@ -971,8 +957,8 @@ struct BattleRules {
   /* 30 */
 
   BattleRules() = default;
-  explicit BattleRules(const JSON& json);
-  JSON json() const;
+  explicit BattleRules(const phosg::JSON& json);
+  phosg::JSON json() const;
 
   bool operator==(const BattleRules& other) const = default;
   bool operator!=(const BattleRules& other) const = default;
@@ -998,20 +984,17 @@ struct SymbolChatFacePart {
   uint8_t flags = 0;
 } __packed_ws__(SymbolChatFacePart, 4);
 
-template <bool IsBigEndian>
+template <bool BE>
 struct SymbolChatT {
-  using U16T = typename std::conditional<IsBigEndian, be_uint16_t, le_uint16_t>::type;
-  using U32T = typename std::conditional<IsBigEndian, be_uint32_t, le_uint32_t>::type;
-
   // Bits: ----------------------DMSSSCCCFF
   //   S = sound, C = face color, F = face shape, D = capture, M = mute sound
-  /* 00 */ U32T spec = 0;
+  /* 00 */ U32T<BE> spec = 0;
 
   // Corner objects are specified in reading order ([0] is the top-left one).
   // Bits (each entry): ---VHCCCZZZZZZZZ
   //   V = reverse vertical, H = reverse horizontal, C = color, Z = object
   // If Z is all 1 bits (0xFF), no corner object is rendered.
-  /* 04 */ parray<U16T, 4> corner_objects;
+  /* 04 */ parray<U16T<BE>, 4> corner_objects;
   /* 0C */ parray<SymbolChatFacePart, 12> face_parts;
   /* 3C */
 
@@ -1020,8 +1003,8 @@ struct SymbolChatT {
         corner_objects(0x00FF),
         face_parts() {}
 
-  operator SymbolChatT<!IsBigEndian>() const {
-    SymbolChatT<!IsBigEndian> ret;
+  operator SymbolChatT<!BE>() const {
+    SymbolChatT<!BE> ret;
     ret.spec = this->spec.load();
     for (size_t z = 0; z < this->corner_objects.size(); z++) {
       ret.corner_objects[z] = this->corner_objects[z].load();

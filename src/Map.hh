@@ -200,9 +200,9 @@ struct Map {
     uint32_t kondrieu; // {SAINT_MILLION, SHAMBERTIN} -> KONDRIEU
 
     RareEnemyRates(uint32_t enemy_rate, uint32_t boss_rate);
-    explicit RareEnemyRates(const JSON& json);
+    explicit RareEnemyRates(const phosg::JSON& json);
 
-    JSON json() const;
+    phosg::JSON json() const;
   };
 
   static const std::shared_ptr<const RareEnemyRates> NO_RARE_ENEMIES;
@@ -295,7 +295,7 @@ struct Map {
     DATParserRandomState(uint32_t rare_seed);
     size_t rand_int_biased(size_t min_v, size_t max_v);
     uint32_t next_location_index();
-    void generate_shuffled_location_table(const Map::RandomEnemyLocationsHeader& header, StringReader r, uint16_t section);
+    void generate_shuffled_location_table(const Map::RandomEnemyLocationsHeader& header, phosg::StringReader r, uint16_t section);
   };
 
   Map(Version version, uint32_t lobby_id, uint32_t rare_seed, std::shared_ptr<PSOLFGEncryption> opt_rand_crypt);
@@ -327,9 +327,9 @@ struct Map {
       uint8_t difficulty,
       uint8_t event,
       uint8_t floor,
-      StringReader wave_events_r,
-      StringReader random_enemy_locations_r,
-      StringReader random_enemy_definitions_r,
+      phosg::StringReader wave_events_r,
+      phosg::StringReader random_enemy_locations_r,
+      phosg::StringReader random_enemy_definitions_r,
       std::shared_ptr<DATParserRandomState> random_state,
       std::shared_ptr<const RareEnemyRates> rare_rates = DEFAULT_RARE_ENEMIES);
 
@@ -373,7 +373,7 @@ struct Map {
   static std::string disassemble_wave_events_data(const void* data, size_t size, uint8_t floor = 0xFF);
   static std::string disassemble_quest_data(const void* data, size_t size);
 
-  PrefixedLogger log;
+  phosg::PrefixedLogger log;
   Version version;
   uint32_t rare_seed;
   std::shared_ptr<PSOLFGEncryption> opt_rand_crypt;
@@ -438,7 +438,7 @@ public:
   std::string str() const;
 
 private:
-  template <bool IsBigEndian>
+  template <bool BE>
   void load_table_t(const std::string& data);
 
   // Indexes are [floor][variation1][variation2]

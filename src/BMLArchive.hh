@@ -24,10 +24,10 @@ public:
   std::pair<const void*, size_t> get(const std::string& name) const;
   std::pair<const void*, size_t> get_gvm(const std::string& name) const;
   std::string get_copy(const std::string& name) const;
-  StringReader get_reader(const std::string& name) const;
+  phosg::StringReader get_reader(const std::string& name) const;
 
 private:
-  template <bool IsBigEndian>
+  template <bool BE>
   void load_t();
 
   std::shared_ptr<const std::string> data;

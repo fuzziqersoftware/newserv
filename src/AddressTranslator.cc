@@ -108,11 +108,11 @@ public:
       : log("[addr-trans] "),
         directory(directory),
         enable_ppc(false) {
-    while (ends_with(this->directory, "/")) {
+    while (phosg::ends_with(this->directory, "/")) {
       this->directory.pop_back();
     }
-    for (const auto& filename : list_directory(this->directory)) {
-      if (ends_with(filename, ".dol")) {
+    for (const auto& filename : phosg::list_directory(this->directory)) {
+      if (phosg::ends_with(filename, ".dol")) {
         string name = filename.substr(0, filename.size() - 4);
         string path = directory + "/" + filename;
         ResourceDASM::DOLFile dol(path.c_str());
@@ -121,7 +121,7 @@ public:
         this->mems.emplace(name, mem);
         this->enable_ppc = true;
         this->log.info("Loaded %s", name.c_str());
-      } else if (ends_with(filename, ".xbe")) {
+      } else if (phosg::ends_with(filename, ".xbe")) {
         string name = filename.substr(0, filename.size() - 4);
         string path = directory + "/" + filename;
         ResourceDASM::XBEFile xbe(path.c_str());
@@ -129,10 +129,10 @@ public:
         xbe.load_into(mem);
         this->mems.emplace(name, mem);
         this->log.info("Loaded %s", name.c_str());
-      } else if (ends_with(filename, ".bin")) {
+      } else if (phosg::ends_with(filename, ".bin")) {
         string name = filename.substr(0, filename.size() - 4);
         string path = directory + "/" + filename;
-        string data = load_file(path);
+        string data = phosg::load_file(path);
         auto mem = make_shared<ResourceDASM::MemoryContext>();
         mem->allocate_at(0x8C010000, data.size());
         mem->memcpy(0x8C010000, data.data(), data.size());
@@ -160,7 +160,7 @@ public:
       uint32_t r2 = 0;
       uint32_t r13 = 0;
       for (const auto& block : it.second->allocated_blocks()) {
-        StringReader r = it.second->reader(block.first, block.second);
+        phosg::StringReader r = it.second->reader(block.first, block.second);
         while (!r.eof() && r.where()) {
           uint32_t opcode = r.get_u32b();
           if ((opcode & 0xFFFF0000) == 0x3DA00000) {
@@ -243,13 +243,13 @@ public:
       size_t num_matches = 0;
       size_t last_match_address = 0;
       size_t match_length = match_bytes_before + match_bytes_after + 4;
-      StringReader src_r = this->src_mem->reader(src_section.first + src_offset - match_bytes_before, match_length);
+      phosg::StringReader src_r = this->src_mem->reader(src_section.first + src_offset - match_bytes_before, match_length);
       for (const auto& dest_section : dest_mem->allocated_blocks()) {
         for (size_t dest_match_offset = 0;
              dest_match_offset + match_length < dest_section.second;
              dest_match_offset += (is_ppc ? 4 : 1)) {
           src_r.go(0);
-          StringReader dest_r = dest_mem->reader(dest_section.first + dest_match_offset, match_length);
+          phosg::StringReader dest_r = dest_mem->reader(dest_section.first + dest_match_offset, match_length);
           size_t z;
           if (is_ppc) {
             for (z = 0; z < match_length; z += 4) {
@@ -429,11 +429,11 @@ public:
   }
 
   void handle_command(const string& command) {
-    auto tokens = split(command, ' ');
+    auto tokens = phosg::split(command, ' ');
     if (tokens.empty()) {
       throw runtime_error("no command given");
     }
-    strip_trailing_whitespace(tokens[tokens.size() - 1]);
+    phosg::strip_trailing_whitespace(tokens[tokens.size() - 1]);
 
     if (tokens[0] == "use") {
       this->set_source_file(tokens.at(1));
@@ -457,7 +457,7 @@ public:
       }
       fflush(stdout);
 
-      string command = fgets(stdin);
+      string command = phosg::fgets(stdin);
       try {
         this->handle_command(command);
       } catch (const exception& e) {
@@ -468,7 +468,7 @@ public:
   }
 
 private:
-  PrefixedLogger log;
+  phosg::PrefixedLogger log;
   string directory;
   unordered_map<string, shared_ptr<const ResourceDASM::MemoryContext>> mems;
   string src_filename;

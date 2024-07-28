@@ -31,9 +31,9 @@ constexpr size_t NUM_NON_PATCH_VERSIONS = NUM_VERSIONS - NUM_PATCH_VERSIONS;
 static_assert(NUM_NON_PATCH_VERSIONS == 12, "Don't forget to update VersionNameColors in config.json");
 
 template <>
-const char* name_for_enum<Version>(Version v);
+const char* phosg::name_for_enum<Version>(Version v);
 template <>
-Version enum_for_name<Version>(const char* name);
+Version phosg::enum_for_name<Version>(const char* name);
 
 inline bool is_any_nte(Version version) {
   return (version == Version::DC_NTE) ||
@@ -183,8 +183,8 @@ const char* lobby_port_name_for_version(Version v);
 const char* proxy_port_name_for_version(Version v);
 
 template <>
-const char* name_for_enum<ServerBehavior>(ServerBehavior behavior);
+const char* phosg::name_for_enum<ServerBehavior>(ServerBehavior behavior);
 template <>
-ServerBehavior enum_for_name<ServerBehavior>(const char* name);
+ServerBehavior phosg::enum_for_name<ServerBehavior>(const char* name);
 
 const char* file_path_token_for_version(Version version);

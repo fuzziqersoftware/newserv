@@ -29,10 +29,10 @@ public:
   virtual ~CatSession() = default;
 
 protected:
-  PrefixedLogger log;
+  phosg::PrefixedLogger log;
   std::shared_ptr<struct event_base> base;
   std::unique_ptr<struct event, void (*)(struct event*)> read_event;
-  Poll poll;
+  phosg::Poll poll;
 
   Channel channel;
   std::shared_ptr<const PSOBBEncryption::KeyFile> bb_key_file;

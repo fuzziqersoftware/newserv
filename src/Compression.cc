@@ -14,7 +14,7 @@
 using namespace std;
 
 template <>
-const char* name_for_enum<CompressPhase>(CompressPhase v) {
+const char* phosg::name_for_enum<CompressPhase>(CompressPhase v) {
   switch (v) {
     case CompressPhase::INDEX:
       return "INDEX";
@@ -118,7 +118,7 @@ struct WindowIndex {
 };
 
 struct LZSSInterleavedWriter {
-  StringWriter w;
+  phosg::StringWriter w;
   size_t buf_offset;
   uint8_t next_control_bit;
   uint8_t buf[0x19];
@@ -166,7 +166,7 @@ struct LZSSInterleavedWriter {
 
 class ControlStreamReader {
 public:
-  ControlStreamReader(StringReader& r)
+  ControlStreamReader(phosg::StringReader& r)
       : r(r),
         bits(0x0000) {}
 
@@ -188,7 +188,7 @@ public:
   }
 
 private:
-  StringReader& r;
+  phosg::StringReader& r;
   uint16_t bits;
 };
 
@@ -493,7 +493,7 @@ void PRSCompressor::add(const void* data, size_t size) {
     throw logic_error("compressor is closed");
   }
 
-  StringReader r(data, size);
+  phosg::StringReader r(data, size);
   while (!r.eof()) {
     this->add_byte(r.get_u8());
   }
@@ -874,8 +874,8 @@ PRSDecompressResult prs_decompress_with_meta(
   // is encountered partway through an opcode, we throw instead, because it's
   // likely the input has been truncated or is malformed in some way.
 
-  StringWriter w;
-  StringReader r(data, size);
+  phosg::StringWriter w;
+  phosg::StringReader r(data, size);
   ControlStreamReader cr(r);
 
   while (!r.eof()) {
@@ -959,7 +959,7 @@ string prs_decompress(const string& data, size_t max_output_size, bool allow_unt
 
 size_t prs_decompress_size(const void* data, size_t size, size_t max_output_size, bool allow_unterminated) {
   size_t ret = 0;
-  StringReader r(data, size);
+  phosg::StringReader r(data, size);
   ControlStreamReader cr(r);
 
   while (!r.eof()) {
@@ -1011,7 +1011,7 @@ size_t prs_decompress_size(const string& data, size_t max_output_size, bool allo
 
 void prs_disassemble(FILE* stream, const void* data, size_t size) {
   size_t output_bytes = 0;
-  StringReader r(data, size);
+  phosg::StringReader r(data, size);
   ControlStreamReader cr(r);
 
   while (!r.eof()) {
@@ -1249,8 +1249,8 @@ string bc0_decompress(const string& data) {
 }
 
 string bc0_decompress(const void* data, size_t size) {
-  StringReader r(data, size);
-  StringWriter w;
+  phosg::StringReader r(data, size);
+  phosg::StringWriter w;
 
   // Unlike PRS, BC0 uses a memo which "rolls over" every 0x1000 bytes. The
   // boundaries of these "memo pages" are offset by -0x12 bytes for some reason,
@@ -1322,7 +1322,7 @@ void bc0_disassemble(FILE* stream, const string& data) {
 }
 
 void bc0_disassemble(FILE* stream, const void* data, size_t size) {
-  StringReader r(data, size);
+  phosg::StringReader r(data, size);
   uint16_t control_stream_bits = 0x0000;
 
   size_t output_bytes = 0;

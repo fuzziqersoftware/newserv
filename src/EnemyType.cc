@@ -10,7 +10,7 @@
 using namespace std;
 
 template <>
-const char* name_for_enum<EnemyType>(EnemyType type) {
+const char* phosg::name_for_enum<EnemyType>(EnemyType type) {
   switch (type) {
     case EnemyType::UNKNOWN:
       return "UNKNOWN";
@@ -274,7 +274,7 @@ const char* name_for_enum<EnemyType>(EnemyType type) {
 }
 
 template <>
-EnemyType enum_for_name<EnemyType>(const char* name) {
+EnemyType phosg::enum_for_name<EnemyType>(const char* name) {
   static const unordered_map<string, EnemyType> names({
       {"UNKNOWN", EnemyType::UNKNOWN},
       {"NONE", EnemyType::NONE},
@@ -672,7 +672,7 @@ uint8_t battle_param_index_for_enemy_type(Episode episode, EnemyType enemy_type)
         case EnemyType::SO_DIMENIAN:
           return 0x55;
         default:
-          throw runtime_error(string_printf("%s does not have battle parameters in Episode 1", name_for_enum(enemy_type)));
+          throw runtime_error(phosg::string_printf("%s does not have battle parameters in Episode 1", phosg::name_for_enum(enemy_type)));
       }
       break;
     case Episode::EP2:
@@ -787,7 +787,7 @@ uint8_t battle_param_index_for_enemy_type(Episode episode, EnemyType enemy_type)
         case EnemyType::SO_DIMENIAN:
           return 0x55;
         default:
-          throw runtime_error(string_printf("%s does not have battle parameters in Episode 2", name_for_enum(enemy_type)));
+          throw runtime_error(phosg::string_printf("%s does not have battle parameters in Episode 2", phosg::name_for_enum(enemy_type)));
       }
       break;
     case Episode::EP4:
@@ -847,7 +847,7 @@ uint8_t battle_param_index_for_enemy_type(Episode episode, EnemyType enemy_type)
         case EnemyType::KONDRIEU:
           return 0x2A;
         default:
-          throw runtime_error(string_printf("%s does not have battle parameters in Episode 4", name_for_enum(enemy_type)));
+          throw runtime_error(phosg::string_printf("%s does not have battle parameters in Episode 4", phosg::name_for_enum(enemy_type)));
       }
       break;
     default:
@@ -1072,7 +1072,7 @@ uint8_t rare_table_index_for_enemy_type(EnemyType enemy_type) {
     case EnemyType::ZU_ALT:
       return 0x4A;
     default:
-      throw runtime_error(string_printf("%s does not have a rare table entry", name_for_enum(enemy_type)));
+      throw runtime_error(phosg::string_printf("%s does not have a rare table entry", phosg::name_for_enum(enemy_type)));
   }
 }
 

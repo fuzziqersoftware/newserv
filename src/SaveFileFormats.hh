@@ -98,14 +98,12 @@ struct ShuffleTables {
   void shuffle(void* vdest, const void* vsrc, size_t size, bool reverse) const;
 };
 
-template <bool IsBigEndian, TextEncoding Encoding, size_t NameLength>
+template <bool BE, TextEncoding Encoding, size_t NameLength>
 struct SaveFileSymbolChatEntryT {
-  using U32T = std::conditional_t<IsBigEndian, be_uint32_t, le_uint32_t>;
-
   /* PC:GC:XB:BB */
-  /* 00:00:00:00 */ U32T present;
+  /* 00:00:00:00 */ U32T<BE> present;
   /* 04:04:04:04 */ pstring<Encoding, NameLength> name;
-  /* 34:1C:1C:2C */ SymbolChatT<IsBigEndian> spec;
+  /* 34:1C:1C:2C */ SymbolChatT<BE> spec;
   /* 70:58:58:68 */
 } __packed__;
 using SaveFileSymbolChatEntryPC = SaveFileSymbolChatEntryT<false, TextEncoding::UTF16, 0x18>;
@@ -117,19 +115,16 @@ check_struct_size(SaveFileSymbolChatEntryGC, 0x58);
 check_struct_size(SaveFileSymbolChatEntryDCXB, 0x58);
 check_struct_size(SaveFileSymbolChatEntryBB, 0x68);
 
-template <bool IsBigEndian>
+template <bool BE>
 struct WordSelectMessageT {
-  using U16T = std::conditional_t<IsBigEndian, be_uint16_t, le_uint16_t>;
-  using U32T = std::conditional_t<IsBigEndian, be_uint32_t, le_uint32_t>;
+  U16T<BE> num_tokens = 0;
+  U16T<BE> target_type = 0;
+  parray<U16T<BE>, 8> tokens;
+  U32T<BE> numeric_parameter = 0;
+  U32T<BE> unknown_a4 = 0;
 
-  U16T num_tokens = 0;
-  U16T target_type = 0;
-  parray<U16T, 8> tokens;
-  U32T numeric_parameter = 0;
-  U32T unknown_a4 = 0;
-
-  operator WordSelectMessageT<!IsBigEndian>() const {
-    WordSelectMessageT<!IsBigEndian> ret;
+  operator WordSelectMessageT<!BE>() const {
+    WordSelectMessageT<!BE> ret;
     ret.num_tokens = this->num_tokens.load();
     ret.target_type = this->target_type.load();
     for (size_t z = 0; z < this->tokens.size(); z++) {
@@ -145,14 +140,12 @@ using WordSelectMessageBE = WordSelectMessageT<true>;
 check_struct_size(WordSelectMessage, 0x1C);
 check_struct_size(WordSelectMessageBE, 0x1C);
 
-template <bool IsBigEndian, TextEncoding Encoding, size_t MaxChars>
+template <bool BE, TextEncoding Encoding, size_t MaxChars>
 struct SaveFileChatShortcutEntryT {
-  using U32T = std::conditional_t<IsBigEndian, be_uint32_t, le_uint32_t>;
-
   union Definition {
     pstring<Encoding, MaxChars> text;
-    WordSelectMessageT<IsBigEndian> word_select;
-    SymbolChatT<IsBigEndian> symbol_chat;
+    WordSelectMessageT<BE> word_select;
+    SymbolChatT<BE> symbol_chat;
 
     Definition() : text() {}
     Definition(const Definition& other) : text(other.text) {}
@@ -163,13 +156,13 @@ struct SaveFileChatShortcutEntryT {
   } __packed__;
 
   /* DC:GC:BB */
-  /* 00:00:00 */ U32T type; // 1 = text, 2 = word select, 3 = symbol chat
+  /* 00:00:00 */ U32T<BE> type; // 1 = text, 2 = word select, 3 = symbol chat
   /* 04:04:04 */ Definition definition;
   /* 40:54:A4 */
 
-  template <bool RetIsBigEndian, TextEncoding RetEncoding, size_t RetMaxSize>
-  SaveFileChatShortcutEntryT<RetIsBigEndian, RetEncoding, RetMaxSize> convert(uint8_t language) const {
-    SaveFileChatShortcutEntryT<RetIsBigEndian, RetEncoding, RetMaxSize> ret;
+  template <bool RetBE, TextEncoding RetEncoding, size_t RetMaxSize>
+  SaveFileChatShortcutEntryT<RetBE, RetEncoding, RetMaxSize> convert(uint8_t language) const {
+    SaveFileChatShortcutEntryT<RetBE, RetEncoding, RetMaxSize> ret;
     ret.type = this->type.load();
     switch (ret.type) {
       case 1:
@@ -835,7 +828,7 @@ struct PSOGCSnapshotFile {
   /* 1818C */
 
   bool checksum_correct() const;
-  Image decode_image() const;
+  phosg::Image decode_image() const;
 } __packed_ws__(PSOGCSnapshotFile, 0x1818C);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -882,7 +875,7 @@ struct LegacySavedAccountDataBB { // .nsa file format
 ////////////////////////////////////////////////////////////////////////////////
 // Encoding/decoding functions
 
-template <bool IsBigEndian>
+template <bool BE>
 std::string decrypt_data_section(const void* data_section, size_t size, uint32_t round1_seed, size_t max_decrypt_bytes = 0) {
   if (max_decrypt_bytes == 0) {
     max_decrypt_bytes = size;
@@ -899,19 +892,19 @@ std::string decrypt_data_section(const void* data_section, size_t size, uint32_t
   decrypted.resize((decrypted.size() + 3) & (~3));
 
   PSOV2Encryption round1_crypt(round1_seed);
-  round1_crypt.encrypt_minus_t<IsBigEndian>(decrypted.data(), decrypted.size());
+  round1_crypt.encrypt_minus_t<BE>(decrypted.data(), decrypted.size());
 
   decrypted.resize(orig_size);
   return decrypted;
 }
 
-template <bool IsBigEndian>
+template <bool BE>
 std::string encrypt_data_section(const void* data_section, size_t size, uint32_t round1_seed) {
   std::string encrypted(reinterpret_cast<const char*>(data_section), size);
   encrypted.resize((encrypted.size() + 3) & (~3));
 
   PSOV2Encryption crypt(round1_seed);
-  crypt.encrypt_minus_t<IsBigEndian>(encrypted.data(), encrypted.size());
+  crypt.encrypt_minus_t<BE>(encrypted.data(), encrypted.size());
 
   std::string ret(size, '\0');
   PSOV2Encryption shuf_crypt(round1_seed);
@@ -921,38 +914,36 @@ std::string encrypt_data_section(const void* data_section, size_t size, uint32_t
   return ret;
 }
 
-template <bool IsBigEndian>
+template <bool BE>
 std::string decrypt_fixed_size_data_section_s(
     const void* data_section,
     size_t size,
     uint32_t round1_seed,
     bool skip_checksum = false,
     uint64_t override_round2_seed = 0xFFFFFFFFFFFFFFFF) {
-  using U32T = std::conditional_t<IsBigEndian, be_uint32_t, le_uint32_t>;
-
-  if (size < 2 * sizeof(U32T)) {
+  if (size < 2 * sizeof(U32T<BE>)) {
     throw std::runtime_error("data size is too small");
   }
-  std::string decrypted = decrypt_data_section<IsBigEndian>(data_section, size, round1_seed);
+  std::string decrypted = decrypt_data_section<BE>(data_section, size, round1_seed);
 
   uint32_t round2_seed = override_round2_seed < 0x100000000
       ? static_cast<uint32_t>(override_round2_seed)
-      : reinterpret_cast<const U32T*>(decrypted.data() + decrypted.size() - sizeof(U32T))->load();
+      : reinterpret_cast<const U32T<BE>*>(decrypted.data() + decrypted.size() - sizeof(U32T<BE>))->load();
   PSOV2Encryption round2_crypt(round2_seed);
-  if (IsBigEndian) {
-    round2_crypt.encrypt_big_endian(decrypted.data(), decrypted.size() - sizeof(U32T));
+  if (BE) {
+    round2_crypt.encrypt_big_endian(decrypted.data(), decrypted.size() - sizeof(U32T<BE>));
   } else {
-    round2_crypt.encrypt(decrypted.data(), decrypted.size() - sizeof(U32T));
+    round2_crypt.encrypt(decrypted.data(), decrypted.size() - sizeof(U32T<BE>));
   }
 
   if (!skip_checksum) {
-    U32T& checksum = *reinterpret_cast<U32T*>(decrypted.data());
+    U32T<BE>& checksum = *reinterpret_cast<U32T<BE>*>(decrypted.data());
     uint32_t expected_crc = checksum;
     checksum = 0;
-    uint32_t actual_crc = crc32(decrypted.data(), decrypted.size());
+    uint32_t actual_crc = phosg::crc32(decrypted.data(), decrypted.size());
     checksum = expected_crc;
     if (expected_crc != actual_crc) {
-      throw std::runtime_error(string_printf(
+      throw std::runtime_error(phosg::string_printf(
           "incorrect decrypted data section checksum: expected %08" PRIX32 "; received %08" PRIX32,
           expected_crc, actual_crc));
     }
@@ -961,7 +952,7 @@ std::string decrypt_fixed_size_data_section_s(
   return decrypted;
 }
 
-template <typename StructT, bool IsBigEndian>
+template <typename StructT, bool BE>
 StructT decrypt_fixed_size_data_section_t(
     const void* data_section,
     size_t size,
@@ -969,14 +960,14 @@ StructT decrypt_fixed_size_data_section_t(
     bool skip_checksum = false,
     uint64_t override_round2_seed = 0xFFFFFFFFFFFFFFFF) {
 
-  std::string decrypted = decrypt_data_section<IsBigEndian>(data_section, size, round1_seed);
+  std::string decrypted = decrypt_data_section<BE>(data_section, size, round1_seed);
   if (decrypted.size() < sizeof(StructT)) {
     throw std::runtime_error("file too small for structure");
   }
   StructT ret = *reinterpret_cast<const StructT*>(decrypted.data());
 
   PSOV2Encryption round2_crypt(override_round2_seed < 0x100000000 ? override_round2_seed : ret.round2_seed.load());
-  if (IsBigEndian) {
+  if (BE) {
     round2_crypt.encrypt_big_endian(&ret, offsetof(StructT, round2_seed));
   } else {
     round2_crypt.encrypt(&ret, offsetof(StructT, round2_seed));
@@ -985,10 +976,10 @@ StructT decrypt_fixed_size_data_section_t(
   if (!skip_checksum) {
     uint32_t expected_crc = ret.checksum;
     ret.checksum = 0;
-    uint32_t actual_crc = crc32(&ret, sizeof(ret));
+    uint32_t actual_crc = phosg::crc32(&ret, sizeof(ret));
     ret.checksum = expected_crc;
     if (expected_crc != actual_crc) {
-      throw std::runtime_error(string_printf(
+      throw std::runtime_error(phosg::string_printf(
           "incorrect decrypted data section checksum: expected %08" PRIX32 "; received %08" PRIX32,
           expected_crc, actual_crc));
     }
@@ -997,46 +988,44 @@ StructT decrypt_fixed_size_data_section_t(
   return ret;
 }
 
-template <bool IsBigEndian>
+template <bool BE>
 std::string encrypt_fixed_size_data_section_s(const void* data, size_t size, uint32_t round1_seed) {
-  using U32T = std::conditional_t<IsBigEndian, be_uint32_t, le_uint32_t>;
-
-  if (size < 2 * sizeof(U32T)) {
+  if (size < 2 * sizeof(U32T<BE>)) {
     throw std::runtime_error("data size is too small");
   }
 
-  uint32_t round2_seed = random_object<uint32_t>();
+  uint32_t round2_seed = phosg::random_object<uint32_t>();
 
   std::string encrypted(reinterpret_cast<const char*>(data), size);
-  *reinterpret_cast<U32T*>(encrypted.data()) = 0;
-  *reinterpret_cast<U32T*>(encrypted.data() + encrypted.size() - sizeof(U32T)) = round2_seed;
-  *reinterpret_cast<U32T*>(encrypted.data()) = crc32(encrypted.data(), encrypted.size());
+  *reinterpret_cast<U32T<BE>*>(encrypted.data()) = 0;
+  *reinterpret_cast<U32T<BE>*>(encrypted.data() + encrypted.size() - sizeof(U32T<BE>)) = round2_seed;
+  *reinterpret_cast<U32T<BE>*>(encrypted.data()) = phosg::crc32(encrypted.data(), encrypted.size());
 
   PSOV2Encryption round2_crypt(round2_seed);
-  if (IsBigEndian) {
+  if (BE) {
     round2_crypt.encrypt_big_endian(encrypted.data(), encrypted.size());
   } else {
     round2_crypt.encrypt(encrypted.data(), encrypted.size());
   }
 
-  return encrypt_data_section<IsBigEndian>(encrypted.data(), encrypted.size(), round1_seed);
+  return encrypt_data_section<BE>(encrypted.data(), encrypted.size(), round1_seed);
 }
 
-template <typename StructT, bool IsBigEndian>
+template <typename StructT, bool BE>
 std::string encrypt_fixed_size_data_section_t(const StructT& s, uint32_t round1_seed) {
   StructT encrypted = s;
   encrypted.checksum = 0;
-  encrypted.round2_seed = random_object<uint32_t>();
-  encrypted.checksum = crc32(&encrypted, sizeof(encrypted));
+  encrypted.round2_seed = phosg::random_object<uint32_t>();
+  encrypted.checksum = phosg::crc32(&encrypted, sizeof(encrypted));
 
   PSOV2Encryption round2_crypt(encrypted.round2_seed);
-  if (IsBigEndian) {
+  if (BE) {
     round2_crypt.encrypt_big_endian(&encrypted, offsetof(StructT, round2_seed));
   } else {
     round2_crypt.encrypt(&encrypted, offsetof(StructT, round2_seed));
   }
 
-  return encrypt_data_section<IsBigEndian>(&encrypted, sizeof(StructT), round1_seed);
+  return encrypt_data_section<BE>(&encrypted, sizeof(StructT), round1_seed);
 }
 
 std::string decrypt_gci_fixed_size_data_section_for_salvage(

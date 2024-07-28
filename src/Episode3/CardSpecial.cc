@@ -21,7 +21,7 @@ static string refs_str_for_cards_vector(const vector<shared_ptr<T>>& cards) {
     if (!ret.empty()) {
       ret += ", ";
     }
-    ret += string_printf("@%04hX", ref_for_card(card));
+    ret += phosg::string_printf("@%04hX", ref_for_card(card));
   }
   return ret;
 }
@@ -453,7 +453,7 @@ bool CardSpecial::apply_stat_deltas_to_all_cards_from_all_conditions_with_card_r
 
 bool CardSpecial::apply_stat_deltas_to_card_from_condition_and_clear_cond(Condition& cond, shared_ptr<Card> card) {
   auto s = this->server();
-  auto log = s->log_stack(string_printf("apply_stat_deltas_to_card_from_condition_and_clear_cond(@%04hX #%04hX): ", card->get_card_ref(), card->get_card_id()));
+  auto log = s->log_stack(phosg::string_printf("apply_stat_deltas_to_card_from_condition_and_clear_cond(@%04hX #%04hX): ", card->get_card_ref(), card->get_card_id()));
   bool is_nte = s->options.is_nte();
 
   string cond_str = cond.str(s);
@@ -585,7 +585,7 @@ bool CardSpecial::apply_stat_deltas_to_card_from_condition_and_clear_cond(Condit
       break;
     trial_unimplemented:
     default:
-      log.debug("%s: no adjustments for condition type", name_for_enum(cond_type));
+      log.debug("%s: no adjustments for condition type", phosg::name_for_enum(cond_type));
       break;
   }
 
@@ -1189,7 +1189,7 @@ shared_ptr<Card> CardSpecial::compute_replaced_target_based_on_conditions(
 
 StatSwapType CardSpecial::compute_stat_swap_type(shared_ptr<const Card> card) const {
   auto s = this->server();
-  auto log = s->log_stack(string_printf("compute_stat_swap_type(@%04hX #%04hX): ", card->get_card_ref(), card->get_card_id()));
+  auto log = s->log_stack(phosg::string_printf("compute_stat_swap_type(@%04hX #%04hX): ", card->get_card_ref(), card->get_card_id()));
   if (!card) {
     log.debug("card is missing");
     return StatSwapType::NONE;
@@ -1199,7 +1199,7 @@ StatSwapType CardSpecial::compute_stat_swap_type(shared_ptr<const Card> card) co
   for (size_t cond_index = 0; cond_index < 9; cond_index++) {
     auto& cond = card->action_chain.conditions[cond_index];
     if (cond.type != ConditionType::NONE) {
-      auto cond_log = log.sub(string_printf("(%zu) ", cond_index));
+      auto cond_log = log.sub(phosg::string_printf("(%zu) ", cond_index));
       string cond_str = cond.str(s);
       cond_log.debug("%s", cond_str.c_str());
       if (!this->card_ref_has_ability_trap(cond)) {
@@ -1675,7 +1675,7 @@ int32_t CardSpecial::evaluate_effect_expr(
     const char* expr,
     DiceRoll& dice_roll) const {
   auto log = this->server()->log_stack("evaluate_effect_expr: ");
-  if (log.min_level == LogLevel::DEBUG) {
+  if (log.min_level == phosg::LogLevel::DEBUG) {
     log.debug("ast, expr=\"%s\", dice_roll=(client_id=%02hhX, a2=%02hhX, value=%02hhX, value_used_in_expr=%s, a5=%04hX)", expr, dice_roll.client_id, dice_roll.unknown_a2, dice_roll.value, dice_roll.value_used_in_expr ? "true" : "false", dice_roll.unknown_a5);
     ast.print(stderr);
   }
@@ -1769,10 +1769,10 @@ bool CardSpecial::execute_effect(
     uint32_t unknown_p7,
     uint16_t attacker_card_ref) {
   auto s = this->server();
-  auto log = s->log_stack(string_printf("execute_effect(@%04hX #%04hX): ", card->get_card_ref(), card->get_card_id()));
+  auto log = s->log_stack(phosg::string_printf("execute_effect(@%04hX #%04hX): ", card->get_card_ref(), card->get_card_id()));
   {
     string cond_str = cond.str(s);
-    log.debug("cond=%s, card=@%04hX, expr_value=%hd, unknown_p5=%hd, cond_type=%s, unknown_p7=%" PRIu32 ", attacker_card_ref=@%04hX", cond_str.c_str(), ref_for_card(card), expr_value, unknown_p5, name_for_enum(cond_type), unknown_p7, attacker_card_ref);
+    log.debug("cond=%s, card=@%04hX, expr_value=%hd, unknown_p5=%hd, cond_type=%s, unknown_p7=%" PRIu32 ", attacker_card_ref=@%04hX", cond_str.c_str(), ref_for_card(card), expr_value, unknown_p5, phosg::name_for_enum(cond_type), unknown_p7, attacker_card_ref);
   }
   bool is_nte = s->options.is_nte();
 
@@ -2804,7 +2804,7 @@ vector<shared_ptr<const Card>> CardSpecial::get_targeted_cards_for_condition(
     int16_t p_target_type,
     bool apply_usability_filters) const {
   auto s = this->server();
-  auto log = s->log_stack(string_printf("get_targeted_cards_for_condition(@%04hX, %hhu, @%04hX): ", card_ref, def_effect_index, setter_card_ref));
+  auto log = s->log_stack(phosg::string_printf("get_targeted_cards_for_condition(@%04hX, %hhu, @%04hX): ", card_ref, def_effect_index, setter_card_ref));
   log.debug("card_ref=@%04hX, def_effect_index=%02hhX, setter_card_ref=@%04hX, as, p_target_type=%hd, apply_usability_filters=%s", card_ref, def_effect_index, setter_card_ref, p_target_type, apply_usability_filters ? "true" : "false");
 
   vector<shared_ptr<const Card>> ret;
@@ -2836,7 +2836,7 @@ vector<shared_ptr<const Card>> CardSpecial::get_targeted_cards_for_condition(
   AttackMedium attack_medium = card2
       ? card2->action_chain.chain.attack_medium
       : AttackMedium::UNKNOWN;
-  log.debug("attack_medium=%s", name_for_enum(attack_medium));
+  log.debug("attack_medium=%s", phosg::name_for_enum(attack_medium));
 
   auto add_card_refs = [&](const vector<uint16_t>& result_card_refs) -> void {
     for (uint16_t result_card_ref : result_card_refs) {
@@ -3944,13 +3944,13 @@ void CardSpecial::evaluate_and_apply_effects(
     bool apply_defense_condition_to_all_cards,
     uint16_t apply_defense_condition_to_card_ref) {
   auto s = this->server();
-  auto log = s->log_stack(string_printf("evaluate_and_apply_effects(%s, @%04hX, @%04hX): ", name_for_enum(when), set_card_ref, sc_card_ref));
+  auto log = s->log_stack(phosg::string_printf("evaluate_and_apply_effects(%s, @%04hX, @%04hX): ", phosg::name_for_enum(when), set_card_ref, sc_card_ref));
   bool is_nte = s->options.is_nte();
 
   {
     string as_str = as.str(s);
     log.debug("when=%s, set_card_ref=@%04hX, as=%s, sc_card_ref=@%04hX, apply_defense_condition_to_all_cards=%s, apply_defense_condition_to_card_ref=@%04hX",
-        name_for_enum(when), set_card_ref, as_str.c_str(), sc_card_ref, apply_defense_condition_to_all_cards ? "true" : "false", apply_defense_condition_to_card_ref);
+        phosg::name_for_enum(when), set_card_ref, as_str.c_str(), sc_card_ref, apply_defense_condition_to_all_cards ? "true" : "false", apply_defense_condition_to_card_ref);
   }
 
   if (!is_nte) {
@@ -4010,12 +4010,12 @@ void CardSpecial::evaluate_and_apply_effects(
   log.debug("inputs: dice_roll=%02hhX, random_percent=%hhu, unknown_v1=%s", dice_roll.value, random_percent, unknown_v1 ? "true" : "false");
 
   for (size_t def_effect_index = 0; (def_effect_index < 3) && !unknown_v1 && (ce->def.effects[def_effect_index].type != ConditionType::NONE); def_effect_index++) {
-    auto effect_log = log.sub(string_printf("(effect:%zu) ", def_effect_index));
+    auto effect_log = log.sub(phosg::string_printf("(effect:%zu) ", def_effect_index));
     const auto& card_effect = ce->def.effects[def_effect_index];
     string card_effect_str = card_effect.str();
     effect_log.debug("effect: %s", card_effect_str.c_str());
     if (card_effect.when != when) {
-      effect_log.debug("does not apply (effect.when=%s, when=%s)", name_for_enum(card_effect.when), name_for_enum(when));
+      effect_log.debug("does not apply (effect.when=%s, when=%s)", phosg::name_for_enum(card_effect.when), phosg::name_for_enum(when));
       continue;
     }
 
@@ -4067,7 +4067,7 @@ void CardSpecial::evaluate_and_apply_effects(
     }
 
     for (size_t z = 0; z < targeted_cards.size(); z++) {
-      auto target_log = effect_log.sub(string_printf("(target:@%04hX) ", targeted_cards[z]->get_card_ref()));
+      auto target_log = effect_log.sub(phosg::string_printf("(target:@%04hX) ", targeted_cards[z]->get_card_ref()));
       dice_roll.value_used_in_expr = false;
       string arg2_str = card_effect.arg2.decode();
       target_log.debug("arg2_str = %s", arg2_str.c_str());
@@ -4075,8 +4075,7 @@ void CardSpecial::evaluate_and_apply_effects(
           this->evaluate_effect_arg2_condition(
               as, targeted_cards[z], arg2_str.c_str(), dice_roll, set_card_ref, sc_card_ref, random_percent, when)) {
         target_log.debug("arg2 condition passed");
-        auto env_stats = this->compute_attack_env_stats(
-            as, targeted_cards[z], dice_roll, set_card_ref, sc_card_ref);
+        auto env_stats = this->compute_attack_env_stats(as, targeted_cards[z], dice_roll, set_card_ref, sc_card_ref);
         string expr_str = card_effect.expr.decode();
         int16_t value = this->evaluate_effect_expr(env_stats, expr_str.c_str(), dice_roll);
         target_log.debug("expr = %s, value = %hd", expr_str.c_str(), value);
@@ -4767,7 +4766,7 @@ void CardSpecial::dice_phase_before_for_card(shared_ptr<Card> card) {
 template <EffectWhen When1, EffectWhen When2>
 void CardSpecial::apply_effects_on_phase_change_t(shared_ptr<Card> unknown_p2, const ActionState* existing_as) {
   auto s = this->server();
-  auto log = s->log_stack(string_printf("apply_effects_on_phase_change_t<%s, %s>(@%04hX #%04hX): ", name_for_enum(When1), name_for_enum(When2), unknown_p2->get_card_ref(), unknown_p2->get_card_id()));
+  auto log = s->log_stack(phosg::string_printf("apply_effects_on_phase_change_t<%s, %s>(@%04hX #%04hX): ", phosg::name_for_enum(When1), phosg::name_for_enum(When2), unknown_p2->get_card_ref(), unknown_p2->get_card_id()));
   bool is_nte = s->options.is_nte();
 
   ActionState as;
@@ -4818,7 +4817,7 @@ void CardSpecial::unknown_8024945C(shared_ptr<Card> unknown_p2, const ActionStat
 }
 
 void CardSpecial::unknown_8024966C(shared_ptr<Card> unknown_p2, const ActionState* existing_as) {
-  auto log = this->server()->log_stack(string_printf("unknown_8024966C(@%04hX #%04hX): ", unknown_p2->get_card_ref(), unknown_p2->get_card_id()));
+  auto log = this->server()->log_stack(phosg::string_printf("unknown_8024966C(@%04hX #%04hX): ", unknown_p2->get_card_ref(), unknown_p2->get_card_id()));
 
   ActionState as;
   if (!existing_as) {
@@ -4969,8 +4968,8 @@ template <
     EffectWhen WhenTargetsAndActionCards>
 void CardSpecial::apply_effects_before_or_after_attack(shared_ptr<Card> unknown_p2) {
   auto s = this->server();
-  auto log = s->log_stack(string_printf("apply_effects_before_or_after_attack<%s, %s, %s, %s>(@%04hX #%04hX): ",
-      name_for_enum(WhenAllCards), name_for_enum(WhenAttackerAndActionCards), name_for_enum(WhenAttackerOrHunterSCCard), name_for_enum(WhenTargetsAndActionCards), unknown_p2->get_card_ref(), unknown_p2->get_card_id()));
+  auto log = s->log_stack(phosg::string_printf("apply_effects_before_or_after_attack<%s, %s, %s, %s>(@%04hX #%04hX): ",
+      phosg::name_for_enum(WhenAllCards), phosg::name_for_enum(WhenAttackerAndActionCards), phosg::name_for_enum(WhenAttackerOrHunterSCCard), phosg::name_for_enum(WhenTargetsAndActionCards), unknown_p2->get_card_ref(), unknown_p2->get_card_id()));
 
   ActionState as = this->create_attack_state_from_card_action_chain(unknown_p2);
 

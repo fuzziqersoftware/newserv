@@ -4,32 +4,32 @@
 
 using namespace std;
 
-PrefixedLogger ax_messages_log("[$ax message] ", LogLevel::USE_DEFAULT);
-PrefixedLogger channel_exceptions_log("[Channel] ", LogLevel::USE_DEFAULT);
-PrefixedLogger client_log("", LogLevel::USE_DEFAULT);
-PrefixedLogger command_data_log("[Commands] ", LogLevel::USE_DEFAULT);
-PrefixedLogger config_log("[Config] ", LogLevel::USE_DEFAULT);
-PrefixedLogger dns_server_log("[DNSServer] ", LogLevel::USE_DEFAULT);
-PrefixedLogger function_compiler_log("[FunctionCompiler] ", LogLevel::USE_DEFAULT);
-PrefixedLogger ip_stack_simulator_log("[IPStackSimulator] ", LogLevel::USE_DEFAULT);
-PrefixedLogger lobby_log("", LogLevel::USE_DEFAULT);
-PrefixedLogger patch_index_log("[PatchFileIndex] ", LogLevel::USE_DEFAULT);
-PrefixedLogger player_data_log("", LogLevel::USE_DEFAULT);
-PrefixedLogger proxy_server_log("[ProxyServer] ", LogLevel::USE_DEFAULT);
-PrefixedLogger replay_log("[ReplaySession] ", LogLevel::USE_DEFAULT);
-PrefixedLogger server_log("[Server] ", LogLevel::USE_DEFAULT);
-PrefixedLogger static_game_data_log("[StaticGameData] ", LogLevel::USE_DEFAULT);
+phosg::PrefixedLogger ax_messages_log("[$ax message] ", phosg::LogLevel::USE_DEFAULT);
+phosg::PrefixedLogger channel_exceptions_log("[Channel] ", phosg::LogLevel::USE_DEFAULT);
+phosg::PrefixedLogger client_log("", phosg::LogLevel::USE_DEFAULT);
+phosg::PrefixedLogger command_data_log("[Commands] ", phosg::LogLevel::USE_DEFAULT);
+phosg::PrefixedLogger config_log("[Config] ", phosg::LogLevel::USE_DEFAULT);
+phosg::PrefixedLogger dns_server_log("[DNSServer] ", phosg::LogLevel::USE_DEFAULT);
+phosg::PrefixedLogger function_compiler_log("[FunctionCompiler] ", phosg::LogLevel::USE_DEFAULT);
+phosg::PrefixedLogger ip_stack_simulator_log("[IPStackSimulator] ", phosg::LogLevel::USE_DEFAULT);
+phosg::PrefixedLogger lobby_log("", phosg::LogLevel::USE_DEFAULT);
+phosg::PrefixedLogger patch_index_log("[PatchFileIndex] ", phosg::LogLevel::USE_DEFAULT);
+phosg::PrefixedLogger player_data_log("", phosg::LogLevel::USE_DEFAULT);
+phosg::PrefixedLogger proxy_server_log("[ProxyServer] ", phosg::LogLevel::USE_DEFAULT);
+phosg::PrefixedLogger replay_log("[ReplaySession] ", phosg::LogLevel::USE_DEFAULT);
+phosg::PrefixedLogger server_log("[Server] ", phosg::LogLevel::USE_DEFAULT);
+phosg::PrefixedLogger static_game_data_log("[StaticGameData] ", phosg::LogLevel::USE_DEFAULT);
 
 static void set_log_level_from_json(
-    PrefixedLogger& log, const JSON& d, const char* json_key) {
+    phosg::PrefixedLogger& log, const phosg::JSON& d, const char* json_key) {
   try {
-    string name = toupper(d.at(json_key).as_string());
-    log.min_level = enum_for_name<LogLevel>(name.c_str());
+    string name = phosg::toupper(d.at(json_key).as_string());
+    log.min_level = phosg::enum_for_name<phosg::LogLevel>(name.c_str());
   } catch (const out_of_range&) {
   }
 }
 
-void set_log_levels_from_json(const JSON& json) {
+void set_log_levels_from_json(const phosg::JSON& json) {
   set_log_level_from_json(ax_messages_log, json, "AXMessages");
   set_log_level_from_json(channel_exceptions_log, json, "ChannelExceptions");
   set_log_level_from_json(client_log, json, "Clients");

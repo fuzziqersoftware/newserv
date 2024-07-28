@@ -70,7 +70,7 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   std::shared_ptr<struct event_base> base;
 
   std::string config_filename;
-  std::shared_ptr<const JSON> config_json;
+  std::shared_ptr<const phosg::JSON> config_json;
   bool is_replay = false;
   bool one_time_config_loaded = false;
   bool default_lobbies_created = false;
@@ -193,7 +193,7 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
     std::array<std::vector<ItemData>, 7> results;
 
     QuestF960Result() = default;
-    QuestF960Result(const JSON& json, std::shared_ptr<const ItemNameIndex> name_index);
+    QuestF960Result(const phosg::JSON& json, std::shared_ptr<const ItemNameIndex> name_index);
   };
 
   // Indexed as [type][difficulty][random_choice]
@@ -228,7 +228,7 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   std::shared_ptr<AccountIndex> account_index;
   std::shared_ptr<IPV4RangeSet> banned_ipv4_ranges;
   std::shared_ptr<TeamIndex> team_index;
-  JSON team_reward_defs_json;
+  phosg::JSON team_reward_defs_json;
 
   std::shared_ptr<const Menu> information_menu_v2;
   std::shared_ptr<const Menu> information_menu_v3;
@@ -350,8 +350,8 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   std::shared_ptr<const std::string> load_map_file(Version version, const std::string& filename) const;
   std::shared_ptr<const std::string> load_map_file_uncached(Version version, const std::string& filename) const;
 
-  std::pair<std::string, uint16_t> parse_port_spec(const JSON& json) const;
-  std::vector<PortConfiguration> parse_port_configuration(const JSON& json) const;
+  std::pair<std::string, uint16_t> parse_port_spec(const phosg::JSON& json) const;
+  std::vector<PortConfiguration> parse_port_configuration(const phosg::JSON& json) const;
 
   template <typename T>
   inline void call_on_event_thread(std::function<T()>&& fn) {

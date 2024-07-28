@@ -42,7 +42,7 @@ struct QuestCategoryIndex {
     std::string name;
     std::string description;
 
-    explicit Category(uint32_t category_id, const JSON& json);
+    explicit Category(uint32_t category_id, const phosg::JSON& json);
 
     [[nodiscard]] inline bool check_flag(QuestMenuType menu_type) const {
       return this->enabled_flags & (1 << static_cast<uint8_t>(menu_type));
@@ -57,7 +57,7 @@ struct QuestCategoryIndex {
 
   std::vector<std::shared_ptr<Category>> categories;
 
-  explicit QuestCategoryIndex(const JSON& json);
+  explicit QuestCategoryIndex(const phosg::JSON& json);
 
   std::shared_ptr<const Category> at(uint32_t category_id) const;
 };

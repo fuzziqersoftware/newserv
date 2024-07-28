@@ -11,7 +11,7 @@
 
 using namespace std;
 
-shared_ptr<DCNTELicense> DCNTELicense::from_json(const JSON& json) {
+shared_ptr<DCNTELicense> DCNTELicense::from_json(const phosg::JSON& json) {
   auto ret = make_shared<DCNTELicense>();
   ret->serial_number = json.get_string("SerialNumber");
   ret->access_key = json.get_string("AccessKey");
@@ -30,14 +30,14 @@ shared_ptr<DCNTELicense> DCNTELicense::from_json(const JSON& json) {
   return ret;
 }
 
-JSON DCNTELicense::json() const {
-  return JSON::dict({
+phosg::JSON DCNTELicense::json() const {
+  return phosg::JSON::dict({
       {"SerialNumber", this->serial_number},
       {"AccessKey", this->access_key},
   });
 }
 
-shared_ptr<V1V2License> V1V2License::from_json(const JSON& json) {
+shared_ptr<V1V2License> V1V2License::from_json(const phosg::JSON& json) {
   auto ret = make_shared<V1V2License>();
   ret->serial_number = json.get_int("SerialNumber");
   ret->access_key = json.get_string("AccessKey");
@@ -50,14 +50,14 @@ shared_ptr<V1V2License> V1V2License::from_json(const JSON& json) {
   return ret;
 }
 
-JSON V1V2License::json() const {
-  return JSON::dict({
+phosg::JSON V1V2License::json() const {
+  return phosg::JSON::dict({
       {"SerialNumber", this->serial_number},
       {"AccessKey", this->access_key},
   });
 }
 
-shared_ptr<GCLicense> GCLicense::from_json(const JSON& json) {
+shared_ptr<GCLicense> GCLicense::from_json(const phosg::JSON& json) {
   auto ret = make_shared<GCLicense>();
   ret->serial_number = json.get_int("SerialNumber");
   ret->access_key = json.get_string("AccessKey");
@@ -74,15 +74,15 @@ shared_ptr<GCLicense> GCLicense::from_json(const JSON& json) {
   return ret;
 }
 
-JSON GCLicense::json() const {
-  return JSON::dict({
+phosg::JSON GCLicense::json() const {
+  return phosg::JSON::dict({
       {"SerialNumber", this->serial_number},
       {"AccessKey", this->access_key},
       {"Password", this->password},
   });
 }
 
-shared_ptr<XBLicense> XBLicense::from_json(const JSON& json) {
+shared_ptr<XBLicense> XBLicense::from_json(const phosg::JSON& json) {
   auto ret = make_shared<XBLicense>();
   ret->gamertag = json.get_string("GamerTag");
   ret->user_id = json.get_int("UserID");
@@ -99,15 +99,15 @@ shared_ptr<XBLicense> XBLicense::from_json(const JSON& json) {
   return ret;
 }
 
-JSON XBLicense::json() const {
-  return JSON::dict({
+phosg::JSON XBLicense::json() const {
+  return phosg::JSON::dict({
       {"GamerTag", this->gamertag},
       {"UserID", this->user_id},
       {"AccountID", this->account_id},
   });
 }
 
-shared_ptr<BBLicense> BBLicense::from_json(const JSON& json) {
+shared_ptr<BBLicense> BBLicense::from_json(const phosg::JSON& json) {
   auto ret = make_shared<BBLicense>();
   ret->username = json.get_string("UserName");
   ret->password = json.get_string("Password");
@@ -126,14 +126,14 @@ shared_ptr<BBLicense> BBLicense::from_json(const JSON& json) {
   return ret;
 }
 
-JSON BBLicense::json() const {
-  return JSON::dict({
+phosg::JSON BBLicense::json() const {
+  return phosg::JSON::dict({
       {"UserName", this->username},
       {"Password", this->password},
   });
 }
 
-Account::Account(const JSON& json)
+Account::Account(const phosg::JSON& json)
     : account_id(0),
       flags(0),
       ban_end_time(0),
@@ -237,38 +237,38 @@ Account::Account(const JSON& json)
   }
 }
 
-JSON Account::json() const {
-  JSON dc_nte_json = JSON::list();
+phosg::JSON Account::json() const {
+  phosg::JSON dc_nte_json = phosg::JSON::list();
   for (const auto& it : this->dc_nte_licenses) {
     dc_nte_json.emplace_back(it.second->json());
   }
-  JSON dc_json = JSON::list();
+  phosg::JSON dc_json = phosg::JSON::list();
   for (const auto& it : this->dc_licenses) {
     dc_json.emplace_back(it.second->json());
   }
-  JSON pc_json = JSON::list();
+  phosg::JSON pc_json = phosg::JSON::list();
   for (const auto& it : this->pc_licenses) {
     pc_json.emplace_back(it.second->json());
   }
-  JSON gc_json = JSON::list();
+  phosg::JSON gc_json = phosg::JSON::list();
   for (const auto& it : this->gc_licenses) {
     gc_json.emplace_back(it.second->json());
   }
-  JSON xb_json = JSON::list();
+  phosg::JSON xb_json = phosg::JSON::list();
   for (const auto& it : this->xb_licenses) {
     xb_json.emplace_back(it.second->json());
   }
-  JSON bb_json = JSON::list();
+  phosg::JSON bb_json = phosg::JSON::list();
   for (const auto& it : this->bb_licenses) {
     bb_json.emplace_back(it.second->json());
   }
 
-  JSON auto_patches_json = JSON::list();
+  phosg::JSON auto_patches_json = phosg::JSON::list();
   for (const auto& it : this->auto_patches_enabled) {
     auto_patches_json.emplace_back(it);
   }
 
-  return JSON::dict({
+  return phosg::JSON::dict({
       {"FormatVersion", 1},
       {"AccountID", this->account_id},
       {"DCNTELicenses", std::move(dc_nte_json)},
@@ -333,14 +333,14 @@ void Account::print(FILE* stream) const {
     }
     if (flags_str.empty()) {
       flags_str = "none";
-    } else if (ends_with(flags_str, ",")) {
+    } else if (phosg::ends_with(flags_str, ",")) {
       flags_str.pop_back();
     }
     fprintf(stream, "  Flags: %08" PRIX32 " (%s)\n", this->flags, flags_str.c_str());
   }
 
   if (this->ban_end_time) {
-    string time_str = format_time(this->ban_end_time);
+    string time_str = phosg::format_time(this->ban_end_time);
     fprintf(stream, "  Banned until: %" PRIu64 " (%s)\n", this->ban_end_time, time_str.c_str());
   }
   if (this->ep3_current_meseta || this->ep3_total_meseta_earned) {
@@ -388,14 +388,14 @@ void Account::print(FILE* stream) const {
 void Account::save() const {
   if (!this->is_temporary) {
     auto json = this->json();
-    string json_data = json.serialize(JSON::SerializeOption::FORMAT | JSON::SerializeOption::HEX_INTEGERS);
-    string filename = string_printf("system/licenses/%010" PRIu32 ".json", this->account_id);
-    save_file(filename, json_data);
+    string json_data = json.serialize(phosg::JSON::SerializeOption::FORMAT | phosg::JSON::SerializeOption::HEX_INTEGERS);
+    string filename = phosg::string_printf("system/licenses/%010" PRIu32 ".json", this->account_id);
+    phosg::save_file(filename, json_data);
   }
 }
 
 void Account::delete_file() const {
-  string filename = string_printf("system/licenses/%010" PRIu32 ".json", this->account_id);
+  string filename = phosg::string_printf("system/licenses/%010" PRIu32 ".json", this->account_id);
   remove(filename.c_str());
 }
 
@@ -420,7 +420,7 @@ shared_ptr<Login> AccountIndex::from_dc_nte_credentials_locked(const string& ser
   if (login->dc_nte_license->access_key != access_key) {
     throw incorrect_access_key();
   }
-  if (login->account->ban_end_time && (login->account->ban_end_time >= now())) {
+  if (login->account->ban_end_time && (login->account->ban_end_time >= phosg::now())) {
     throw invalid_argument("user is banned");
   }
   return login;
@@ -448,7 +448,7 @@ shared_ptr<Login> AccountIndex::from_dc_nte_credentials(
     auto login = make_shared<Login>();
     login->account_was_created = true;
     login->account = make_shared<Account>();
-    login->account->account_id = fnv1a32(serial_number) & 0x7FFFFFFF;
+    login->account->account_id = phosg::fnv1a32(serial_number) & 0x7FFFFFFF;
     auto lic = make_shared<DCNTELicense>();
     lic->serial_number = serial_number;
     lic->access_key = access_key;
@@ -470,7 +470,7 @@ shared_ptr<Login> AccountIndex::from_dc_credentials_locked(
   if (!is_shared && (login->dc_license->access_key != access_key)) {
     throw incorrect_access_key();
   }
-  if (login->account->ban_end_time && (login->account->ban_end_time >= now())) {
+  if (login->account->ban_end_time && (login->account->ban_end_time >= phosg::now())) {
     throw invalid_argument("user is banned");
   }
   if (is_shared) {
@@ -519,7 +519,7 @@ shared_ptr<Login> AccountIndex::from_pc_nte_credentials(uint32_t guild_card_numb
     throw missing_account();
   }
   if (guild_card_number == 0xFFFFFFFF) {
-    guild_card_number = random_object<uint32_t>() & 0x7FFFFFFF;
+    guild_card_number = phosg::random_object<uint32_t>() & 0x7FFFFFFF;
   }
   auto login = make_shared<Login>();
   login->account_was_created = true;
@@ -543,7 +543,7 @@ shared_ptr<Login> AccountIndex::from_pc_credentials_locked(
   if (!is_shared && (login->pc_license->access_key != access_key)) {
     throw incorrect_access_key();
   }
-  if (login->account->ban_end_time && (login->account->ban_end_time >= now())) {
+  if (login->account->ban_end_time && (login->account->ban_end_time >= phosg::now())) {
     throw invalid_argument("user is banned");
   }
   if (is_shared) {
@@ -599,7 +599,7 @@ shared_ptr<Login> AccountIndex::from_gc_credentials_locked(
   if (password && (login->gc_license->password != *password)) {
     throw incorrect_password();
   }
-  if (login->account->ban_end_time && (login->account->ban_end_time >= now())) {
+  if (login->account->ban_end_time && (login->account->ban_end_time >= phosg::now())) {
     throw invalid_argument("user is banned");
   }
   if (is_shared) {
@@ -652,7 +652,7 @@ shared_ptr<Login> AccountIndex::from_xb_credentials_locked(const string& gamerta
       (login->xb_license->account_id && (login->xb_license->account_id != account_id))) {
     throw incorrect_access_key();
   }
-  if (login->account->ban_end_time && (login->account->ban_end_time >= now())) {
+  if (login->account->ban_end_time && (login->account->ban_end_time >= phosg::now())) {
     throw invalid_argument("user is banned");
   }
   return login;
@@ -680,7 +680,7 @@ shared_ptr<Login> AccountIndex::from_xb_credentials(
     auto login = make_shared<Login>();
     login->account_was_created = true;
     login->account = make_shared<Account>();
-    login->account->account_id = fnv1a32(gamertag) & 0x7FFFFFFF;
+    login->account->account_id = phosg::fnv1a32(gamertag) & 0x7FFFFFFF;
     auto lic = make_shared<XBLicense>();
     lic->gamertag = gamertag;
     lic->user_id = user_id;
@@ -701,7 +701,7 @@ shared_ptr<Login> AccountIndex::from_bb_credentials_locked(const string& usernam
   if (password && (login->bb_license->password != *password)) {
     throw incorrect_password();
   }
-  if (login->account->ban_end_time && (login->account->ban_end_time >= now())) {
+  if (login->account->ban_end_time && (login->account->ban_end_time >= phosg::now())) {
     throw invalid_argument("user is banned");
   }
   return login;
@@ -728,7 +728,7 @@ shared_ptr<Login> AccountIndex::from_bb_credentials(const string& username, cons
     auto login = make_shared<Login>();
     login->account_was_created = true;
     login->account = make_shared<Account>();
-    login->account->account_id = fnv1a32(username) & 0x7FFFFFFF;
+    login->account->account_id = phosg::fnv1a32(username) & 0x7FFFFFFF;
     auto lic = make_shared<BBLicense>();
     lic->username = username;
     lic->password = *password;
@@ -976,24 +976,24 @@ shared_ptr<Account> AccountIndex::create_temporary_account_for_shared_account(
     shared_ptr<const Account> src_a, const string& variation_data) const {
   auto ret = make_shared<Account>(*src_a);
   ret->is_temporary = true;
-  ret->account_id = fnv1a32(&src_a->account_id, sizeof(src_a->account_id));
-  ret->account_id = fnv1a32(variation_data, ret->account_id);
+  ret->account_id = phosg::fnv1a32(&src_a->account_id, sizeof(src_a->account_id));
+  ret->account_id = phosg::fnv1a32(variation_data, ret->account_id);
   return ret;
 }
 
 AccountIndex::AccountIndex(bool force_all_temporary)
     : force_all_temporary(force_all_temporary) {
   if (!this->force_all_temporary) {
-    if (!isdir("system/licenses")) {
+    if (!phosg::isdir("system/licenses")) {
       mkdir("system/licenses", 0755);
     } else {
-      for (const auto& item : list_directory("system/licenses")) {
-        if (ends_with(item, ".json")) {
+      for (const auto& item : phosg::list_directory("system/licenses")) {
+        if (phosg::ends_with(item, ".json")) {
           try {
-            JSON json = JSON::parse(load_file("system/licenses/" + item));
+            phosg::JSON json = phosg::JSON::parse(phosg::load_file("system/licenses/" + item));
             this->add(make_shared<Account>(json));
           } catch (const exception& e) {
-            log_error("Failed to index account %s", item.c_str());
+            phosg::log_error("Failed to index account %s", item.c_str());
             throw;
           }
         }

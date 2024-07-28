@@ -2228,10 +2228,9 @@ struct S_ExecuteCode_B2 {
   // The code immediately follows, ending with an S_ExecuteCode_Footer_B2
 } __packed_ws__(S_ExecuteCode_B2, 0x0C);
 
-template <bool IsBigEndian>
+template <bool BE>
 struct S_ExecuteCode_FooterT_B2 {
-  using U16T = typename std::conditional<IsBigEndian, be_uint16_t, le_uint16_t>::type;
-  using U32T = typename std::conditional<IsBigEndian, be_uint32_t, le_uint32_t>::type;
+  static constexpr bool IsBE = BE; // Needed by generate_client_command_t
 
   // Relocations is a list of words (le_uint16_t on DC/PC/XB/BB, be_uint16_t on
   // GC) containing the number of doublewords (uint32_t) to skip for each
@@ -2251,14 +2250,14 @@ struct S_ExecuteCode_FooterT_B2 {
   // relocations_offset points there, so those 12 bytes may also be omitted from
   // the command entirely (without changing code_size - so code_size would
   // technically extend beyond the end of the B2 command).
-  U32T relocations_offset = 0; // Relative to code base (after checksum_size)
-  U32T num_relocations = 0;
-  parray<U32T, 2> unused1;
+  U32T<BE> relocations_offset = 0; // Relative to code base (after checksum_size)
+  U32T<BE> num_relocations = 0;
+  parray<U32T<BE>, 2> unused1;
   // entrypoint_offset is doubly indirect - it points to a pointer to a 32-bit
   // value that itself is the actual entrypoint. This is presumably done so the
   // entrypoint can be optionally relocated.
-  U32T entrypoint_addr_offset = 0; // Relative to code base (after checksum_size).
-  parray<U32T, 3> unused2;
+  U32T<BE> entrypoint_addr_offset = 0; // Relative to code base (after checksum_size).
+  parray<U32T<BE>, 3> unused2;
 } __packed__;
 using S_ExecuteCode_Footer_GC_B2 = S_ExecuteCode_FooterT_B2<true>;
 using S_ExecuteCode_Footer_DC_PC_XB_BB_B2 = S_ExecuteCode_FooterT_B2<false>;
@@ -3951,7 +3950,7 @@ struct G_Unknown_6x09 {
 
 // 6x0A: Update enemy state
 
-template <bool IsBigEndian>
+template <bool BE>
 struct G_UpdateEnemyStateT_6x0A {
   G_EnemyIDHeader header;
   le_uint16_t enemy_index = 0; // [0, 0xB50)
@@ -3959,7 +3958,7 @@ struct G_UpdateEnemyStateT_6x0A {
   // Flags:
   // 00000400 - should play hit animation
   // 00000800 - is dead
-  typename std::conditional_t<IsBigEndian, be_uint32_t, le_uint32_t> flags = 0;
+  typename std::conditional_t<BE, be_uint32_t, le_uint32_t> flags = 0;
 } __packed__;
 using G_UpdateEnemyState_GC_6x0A = G_UpdateEnemyStateT_6x0A<true>;
 using G_UpdateEnemyState_DC_PC_XB_BB_6x0A = G_UpdateEnemyStateT_6x0A<false>;
@@ -4005,15 +4004,14 @@ struct G_Unknown_6x10_6x11_6x12_6x14 {
 
 // 6x12: Dragon boss actions (not valid on Episode 3)
 
-template <bool IsBigEndian>
+template <bool BE>
 struct G_DragonBossActionsT_6x12 {
-  using F32T = typename std::conditional<IsBigEndian, be_float, le_float>::type;
   G_EnemyIDHeader header;
   le_uint16_t unknown_a2 = 0;
   le_uint16_t unknown_a3 = 0;
   le_uint32_t unknown_a4 = 0;
-  F32T x = 0.0f;
-  F32T z = 0.0f;
+  F32T<BE> x = 0.0f;
+  F32T<BE> z = 0.0f;
 } __packed__;
 using G_DragonBossActions_DC_PC_XB_BB_6x12 = G_DragonBossActionsT_6x12<false>;
 using G_DragonBossActions_GC_6x12 = G_DragonBossActionsT_6x12<true>;
@@ -5043,12 +5041,11 @@ struct G_ExitQuest_6x73 {
 // There is a bug in PSO GC with regard to this command: the client does not
 // byteswap the header, which means the client_id field is big-endian.
 
-template <bool IsBigEndian>
+template <bool BE>
 struct G_WordSelectT_6x74 {
-  using U16T = typename std::conditional<IsBigEndian, be_uint16_t, le_uint16_t>::type;
   uint8_t subcommand = 0;
   uint8_t size = 0;
-  U16T client_id = 0;
+  U16T<BE> client_id = 0;
   WordSelectMessage message;
 } __packed__;
 using G_WordSelect_6x74 = G_WordSelectT_6x74<false>;
@@ -5170,14 +5167,12 @@ struct G_SetBattleModeData_6x7D {
 
 // 6x7F: Battle scores and places (not valid on Episode 3)
 
-template <bool IsBigEndian>
+template <bool BE>
 struct G_BattleScoresT_6x7F {
-  using U16T = typename std::conditional<IsBigEndian, be_uint16_t, le_uint16_t>::type;
-  using U32T = typename std::conditional<IsBigEndian, be_uint32_t, le_uint32_t>::type;
   struct Entry {
-    U16T client_id = 0;
-    U16T place = 0;
-    U32T score = 0;
+    U16T<BE> client_id = 0;
+    U16T<BE> place = 0;
+    U32T<BE> score = 0;
   } __packed_ws__(Entry, 8);
   G_UnusedHeader header;
   parray<Entry, 4> entries;
@@ -5513,15 +5508,14 @@ struct G_ModifyTradeProposal_6xA6 {
 
 // 6xA8: Gol Dragon boss actions (not valid on pre-V3 or Episode 3)
 
-template <bool IsBigEndian>
+template <bool BE>
 struct G_GolDragonBossActionsT_6xA8 {
-  using F32T = typename std::conditional<IsBigEndian, be_float, le_float>::type;
   G_EnemyIDHeader header;
   le_uint16_t unknown_a2 = 0;
   le_uint16_t unknown_a3 = 0;
   le_uint32_t unknown_a4 = 0;
-  F32T x = 0.0f;
-  F32T z = 0.0f;
+  F32T<BE> x = 0.0f;
+  F32T<BE> z = 0.0f;
   uint8_t unknown_a5 = 0;
   parray<uint8_t, 3> unused;
 } __packed__;

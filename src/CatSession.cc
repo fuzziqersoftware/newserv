@@ -38,7 +38,7 @@ CatSession::CatSession(
     const struct sockaddr_storage& remote,
     Version version,
     shared_ptr<const PSOBBEncryption::KeyFile> bb_key_file)
-    : log(string_printf("[CatSession:%s] ", name_for_enum(version)), proxy_server_log.min_level),
+    : log(phosg::string_printf("[CatSession:%s] ", phosg::name_for_enum(version)), proxy_server_log.min_level),
       base(base),
       read_event(event_new(this->base.get(), 0, EV_READ | EV_PERSIST, CatSession::dispatch_read_stdin, this), event_free),
       channel(version, 1, CatSession::dispatch_on_channel_input, CatSession::dispatch_on_channel_error, this, "CatSession"),
@@ -48,19 +48,19 @@ CatSession::CatSession(
     throw runtime_error("remote is not AF_INET");
   }
 
-  string netloc_str = render_sockaddr_storage(remote);
+  string netloc_str = phosg::render_sockaddr_storage(remote);
   this->log.info("Connecting to %s", netloc_str.c_str());
 
   struct bufferevent* bev = bufferevent_socket_new(
       this->base.get(), -1, BEV_OPT_CLOSE_ON_FREE | BEV_OPT_DEFER_CALLBACKS);
   if (!bev) {
-    throw runtime_error(string_printf("failed to open socket (%d)", EVUTIL_SOCKET_ERROR()));
+    throw runtime_error(phosg::string_printf("failed to open socket (%d)", EVUTIL_SOCKET_ERROR()));
   }
   this->channel.set_bufferevent(bev, 0);
 
   if (bufferevent_socket_connect(this->channel.bev.get(),
           reinterpret_cast<const sockaddr*>(&remote), sizeof(struct sockaddr_in)) != 0) {
-    throw runtime_error(string_printf("failed to connect (%d)", EVUTIL_SOCKET_ERROR()));
+    throw runtime_error(phosg::string_printf("failed to connect (%d)", EVUTIL_SOCKET_ERROR()));
   }
 
   event_add(this->read_event.get(), nullptr);
@@ -68,7 +68,7 @@ CatSession::CatSession(
 }
 
 void CatSession::execute_command(const std::string& command) {
-  string full_cmd = parse_data_string(command, nullptr, ParseDataFlags::ALLOW_FILES);
+  string full_cmd = phosg::parse_data_string(command, nullptr, phosg::ParseDataFlags::ALLOW_FILES);
   send_command_with_header(this->channel, full_cmd.data(), full_cmd.size());
 }
 
@@ -109,9 +109,8 @@ void CatSession::on_channel_input(
 
   // TODO: Use the iovec form of print_data here instead of
   // prepend_command_header (which copies the string)
-  string full_cmd = prepend_command_header(
-      this->channel.version, this->channel.crypt_in.get(), command, flag, data);
-  print_data(stdout, full_cmd, 0, nullptr, PrintDataFlags::PRINT_ASCII | PrintDataFlags::OFFSET_16_BITS);
+  string full_cmd = prepend_command_header(this->channel.version, this->channel.crypt_in.get(), command, flag, data);
+  phosg::print_data(stdout, full_cmd, 0, nullptr, phosg::PrintDataFlags::PRINT_ASCII | phosg::PrintDataFlags::OFFSET_16_BITS);
 }
 
 void CatSession::dispatch_on_channel_error(Channel& ch, short events) {

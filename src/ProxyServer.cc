@@ -58,9 +58,9 @@ ProxyServer::ListeningSocket::ListeningSocket(
     Version version,
     const struct sockaddr_storage* default_destination)
     : server(server),
-      log(string_printf("[ProxyServer:T-%hu] ", port), proxy_server_log.min_level),
+      log(phosg::string_printf("[ProxyServer:T-%hu] ", port), proxy_server_log.min_level),
       port(port),
-      fd(::listen(addr, port, SOMAXCONN)),
+      fd(phosg::listen(addr, port, SOMAXCONN)),
       listener(nullptr, evconnlistener_free),
       version(version) {
   if (!this->fd.is_open()) {
@@ -85,7 +85,7 @@ ProxyServer::ListeningSocket::ListeningSocket(
     this->default_destination.ss_family = 0;
   }
 
-  this->log.info("Listening on TCP port %hu (%s) on fd %d", this->port, name_for_enum(this->version), static_cast<int>(this->fd));
+  this->log.info("Listening on TCP port %hu (%s) on fd %d", this->port, phosg::name_for_enum(this->version), static_cast<int>(this->fd));
 }
 
 void ProxyServer::ListeningSocket::dispatch_on_listen_accept(
@@ -100,13 +100,13 @@ void ProxyServer::ListeningSocket::dispatch_on_listen_error(
 
 void ProxyServer::ListeningSocket::on_listen_accept(int fd) {
   struct sockaddr_storage remote_addr;
-  get_socket_addresses(fd, nullptr, &remote_addr);
+  phosg::get_socket_addresses(fd, nullptr, &remote_addr);
   if (this->server->state->banned_ipv4_ranges->check(remote_addr)) {
     close(fd);
     return;
   }
 
-  this->log.info("Client connected on fd %d (port %hu, version %s)", fd, this->port, name_for_enum(this->version));
+  this->log.info("Client connected on fd %d (port %hu, version %s)", fd, this->port, phosg::name_for_enum(this->version));
   auto* bev = bufferevent_socket_new(this->server->base.get(), fd, BEV_OPT_CLOSE_ON_FREE | BEV_OPT_DEFER_CALLBACKS);
   this->server->on_client_connect(bev, 0, this->port, this->version,
       (this->default_destination.ss_family == AF_INET) ? &this->default_destination : nullptr);
@@ -159,7 +159,7 @@ void ProxyServer::on_client_connect(
     auto ses = emplace_ret.first->second;
     ses->log.info("Opened linked session");
 
-    Channel ch(bev, virtual_network_id, version, 1, nullptr, nullptr, ses.get(), "", TerminalFormat::FG_YELLOW, TerminalFormat::FG_GREEN);
+    Channel ch(bev, virtual_network_id, version, 1, nullptr, nullptr, ses.get(), "", phosg::TerminalFormat::FG_YELLOW, phosg::TerminalFormat::FG_GREEN);
     ses->resume(std::move(ch));
 
   } else {
@@ -200,8 +200,8 @@ void ProxyServer::on_client_connect(
       case Version::GC_EP3_NTE:
       case Version::GC_EP3:
       case Version::XB_V3: {
-        uint32_t server_key = random_object<uint32_t>();
-        uint32_t client_key = random_object<uint32_t>();
+        uint32_t server_key = phosg::random_object<uint32_t>();
+        uint32_t client_key = phosg::random_object<uint32_t>();
         auto cmd = prepare_server_init_contents_console(server_key, client_key, 0);
         ses->channel.send(0x02, 0x00, &cmd, sizeof(cmd));
         if (uses_v2_encryption(version)) {
@@ -216,8 +216,8 @@ void ProxyServer::on_client_connect(
       case Version::BB_V4: {
         parray<uint8_t, 0x30> server_key;
         parray<uint8_t, 0x30> client_key;
-        random_data(server_key.data(), server_key.bytes());
-        random_data(client_key.data(), client_key.bytes());
+        phosg::random_data(server_key.data(), server_key.bytes());
+        phosg::random_data(client_key.data(), client_key.bytes());
         auto cmd = prepare_server_init_contents_bb(server_key, client_key, 0);
         ses->channel.send(0x03, 0x00, &cmd, sizeof(cmd));
         ses->detector_crypt = make_shared<PSOBBMultiKeyDetectorEncryption>(
@@ -248,7 +248,7 @@ ProxyServer::UnlinkedSession::UnlinkedSession(
     Version version)
     : server(server),
       id(id),
-      log(string_printf("[ProxyServer:US-%" PRIX64 "] ", this->id), proxy_server_log.min_level),
+      log(phosg::string_printf("[ProxyServer:US-%" PRIX64 "] ", this->id), proxy_server_log.min_level),
       channel(
           bev,
           virtual_network_id,
@@ -258,11 +258,11 @@ ProxyServer::UnlinkedSession::UnlinkedSession(
           ProxyServer::UnlinkedSession::on_error,
           this,
           "",
-          TerminalFormat::FG_YELLOW,
-          TerminalFormat::FG_GREEN),
+          phosg::TerminalFormat::FG_YELLOW,
+          phosg::TerminalFormat::FG_GREEN),
       local_port(local_port) {
   string ip_str = server->state->format_address_for_channel_name(this->channel.remote_addr, this->channel.virtual_network_id);
-  this->channel.name = string_printf("US-%" PRIX64 " @ %s", this->id, ip_str.c_str());
+  this->channel.name = phosg::string_printf("US-%" PRIX64 " @ %s", this->id, ip_str.c_str());
   memset(&this->next_destination, 0, sizeof(this->next_destination));
 }
 
@@ -506,7 +506,7 @@ ProxyServer::LinkedSession::LinkedSession(
     Version version)
     : server(server),
       id(id),
-      log(string_printf("[ProxyServer:LS-%" PRIX64 "] ", this->id), proxy_server_log.min_level),
+      log(phosg::string_printf("[ProxyServer:LS-%" PRIX64 "] ", this->id), proxy_server_log.min_level),
       timeout_event(event_new(server->base.get(), -1, EV_TIMEOUT, &LinkedSession::dispatch_on_timeout, this), event_free),
       login(nullptr),
       client_channel(
@@ -515,18 +515,18 @@ ProxyServer::LinkedSession::LinkedSession(
           nullptr,
           nullptr,
           this,
-          string_printf("LS-%" PRIX64 "-C", this->id),
-          TerminalFormat::FG_YELLOW,
-          TerminalFormat::FG_GREEN),
+          phosg::string_printf("LS-%" PRIX64 "-C", this->id),
+          phosg::TerminalFormat::FG_YELLOW,
+          phosg::TerminalFormat::FG_GREEN),
       server_channel(
           version,
           1,
           nullptr,
           nullptr,
           this,
-          string_printf("LS-%" PRIX64 "-S", this->id),
-          TerminalFormat::FG_YELLOW,
-          TerminalFormat::FG_RED),
+          phosg::string_printf("LS-%" PRIX64 "-S", this->id),
+          phosg::TerminalFormat::FG_YELLOW,
+          phosg::TerminalFormat::FG_RED),
       local_port(local_port),
       disconnect_action(DisconnectAction::LONG_TIMEOUT),
       remote_ip_crc(0),
@@ -676,14 +676,14 @@ void ProxyServer::LinkedSession::connect() {
     throw runtime_error("destination is not AF_INET");
   }
 
-  string netloc_str = render_sockaddr_storage(this->next_destination);
+  string netloc_str = phosg::render_sockaddr_storage(this->next_destination);
   this->log.info("Connecting to %s", netloc_str.c_str());
 
   this->server_channel.set_bufferevent(
       bufferevent_socket_new(this->require_server()->base.get(), -1, BEV_OPT_CLOSE_ON_FREE | BEV_OPT_DEFER_CALLBACKS), 0);
   if (bufferevent_socket_connect(this->server_channel.bev.get(),
           reinterpret_cast<const sockaddr*>(dest_sin), sizeof(*dest_sin)) != 0) {
-    throw runtime_error(string_printf("failed to connect (%d)", EVUTIL_SOCKET_ERROR()));
+    throw runtime_error(phosg::string_printf("failed to connect (%d)", EVUTIL_SOCKET_ERROR()));
   }
 
   this->server_channel.on_command_received = ProxyServer::LinkedSession::on_input;
@@ -701,8 +701,8 @@ void ProxyServer::LinkedSession::update_channel_names() {
   auto client_ip_str = s->format_address_for_channel_name(
       this->client_channel.remote_addr, this->client_channel.virtual_network_id);
   auto server_ip_str = s->format_address_for_channel_name(this->server_channel.remote_addr, 0);
-  this->client_channel.name = string_printf("LS-%08" PRIX64 "-C @ %s", this->id, client_ip_str.c_str());
-  this->server_channel.name = string_printf("LS-%08" PRIX64 "-S @ %s", this->id, server_ip_str.c_str());
+  this->client_channel.name = phosg::string_printf("LS-%08" PRIX64 "-C @ %s", this->id, client_ip_str.c_str());
+  this->server_channel.name = phosg::string_printf("LS-%08" PRIX64 "-S @ %s", this->id, server_ip_str.c_str());
 }
 
 ProxyServer::LinkedSession::SavingFile::SavingFile(
@@ -730,7 +730,7 @@ void ProxyServer::LinkedSession::on_error(Channel& ch, short events) {
   if (events & BEV_EVENT_CONNECTED) {
     ses->log.info("%s channel connected", is_server_stream ? "Server" : "Client");
     if (is_server_stream) {
-      get_socket_addresses(bufferevent_getfd(ch.bev.get()), &ch.local_addr, &ch.remote_addr);
+      phosg::get_socket_addresses(bufferevent_getfd(ch.bev.get()), &ch.local_addr, &ch.remote_addr);
       ses->update_channel_names();
     }
 
@@ -853,11 +853,11 @@ void ProxyServer::LinkedSession::send_to_game_server(const char* error_message) 
 
   auto s = this->require_server_state();
   if (this->is_in_game) {
-    send_ship_info(this->client_channel, string_printf("You cannot return\nto $C6%s$C7\nwhile in a game.\n\n%s", s->name.c_str(), error_message ? error_message : ""));
+    send_ship_info(this->client_channel, phosg::string_printf("You cannot return\nto $C6%s$C7\nwhile in a game.\n\n%s", s->name.c_str(), error_message ? error_message : ""));
     this->disconnect();
 
   } else {
-    send_ship_info(this->client_channel, string_printf("You\'ve returned to\n$C6%s$C7\n\n%s", s->name.c_str(), error_message ? error_message : ""));
+    send_ship_info(this->client_channel, phosg::string_printf("You\'ve returned to\n$C6%s$C7\n\n%s", s->name.c_str(), error_message ? error_message : ""));
 
     // Restore newserv_client_config, so the login server gets the client flags
     if (is_v3(this->version())) {
@@ -915,7 +915,7 @@ void ProxyServer::LinkedSession::disconnect() {
 
   // Set a timeout to delete the session entirely (in case the client doesn't
   // reconnect)
-  struct timeval tv = usecs_to_timeval(this->timeout_for_disconnect_action(this->disconnect_action));
+  struct timeval tv = phosg::usecs_to_timeval(this->timeout_for_disconnect_action(this->disconnect_action));
   event_add(this->timeout_event.get(), &tv);
 }
 
@@ -998,7 +998,7 @@ void ProxyServer::delete_session(uint64_t id) {
     this->unlinked_sessions_to_destroy.emplace(std::move(it->second));
     this->id_to_unlinked_session.erase(it);
 
-    auto tv = usecs_to_timeval(0);
+    auto tv = phosg::usecs_to_timeval(0);
     event_add(this->destroy_sessions_ev.get(), &tv);
   }
 }

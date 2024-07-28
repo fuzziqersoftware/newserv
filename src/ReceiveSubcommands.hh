@@ -28,7 +28,7 @@ struct DropReconcileResult {
 };
 
 DropReconcileResult reconcile_drop_request_with_map(
-    PrefixedLogger& log,
+    phosg::PrefixedLogger& log,
     Channel& client_channel,
     G_SpecializableItemDropRequest_6xA2& cmd,
     Version version,

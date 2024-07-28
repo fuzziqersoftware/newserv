@@ -34,15 +34,15 @@ DNSServer::~DNSServer() {
 }
 
 void DNSServer::listen(const std::string& socket_path) {
-  this->add_socket(::listen(socket_path, 0, 0));
+  this->add_socket(phosg::listen(socket_path, 0, 0));
 }
 
 void DNSServer::listen(const std::string& addr, int port) {
-  this->add_socket(::listen(addr, port, 0));
+  this->add_socket(phosg::listen(addr, port, 0));
 }
 
 void DNSServer::listen(int port) {
-  this->add_socket(::listen("", port, 0));
+  this->add_socket(phosg::listen("", port, 0));
 }
 
 void DNSServer::add_socket(int fd) {
@@ -66,7 +66,7 @@ string DNSServer::response_for_query(const void* vdata, size_t size, uint32_t re
   const char* data = reinterpret_cast<const char*>(vdata);
   size_t name_len = strlen(&data[12]) + 1;
 
-  be_uint32_t be_resolved_address = resolved_address;
+  phosg::be_uint32_t be_resolved_address = resolved_address;
 
   string response;
   response.append(data, 2);
@@ -104,7 +104,7 @@ void DNSServer::on_receive_message(int fd, short) {
 
     } else if (bytes < 0x0C) {
       dns_server_log.warning("input query too small");
-      print_data(stderr, input.data(), bytes);
+      phosg::print_data(stderr, input.data(), bytes);
 
     } else if (!this->banned_ipv4_ranges->check(remote)) {
       input.resize(bytes);

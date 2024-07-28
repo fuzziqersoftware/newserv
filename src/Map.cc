@@ -583,7 +583,7 @@ Map::RareEnemyRates::RareEnemyRates(uint32_t enemy_rate, uint32_t boss_rate)
       dorphon_eclair(enemy_rate),
       kondrieu(boss_rate) {}
 
-Map::RareEnemyRates::RareEnemyRates(const JSON& json)
+Map::RareEnemyRates::RareEnemyRates(const phosg::JSON& json)
     : hildeblue(json.get_int("Hildeblue")),
       rappy(json.get_int("Rappy")),
       nar_lily(json.get_int("NarLily")),
@@ -593,8 +593,8 @@ Map::RareEnemyRates::RareEnemyRates(const JSON& json)
       dorphon_eclair(json.get_int("DorphonEclair")),
       kondrieu(json.get_int("Kondrieu")) {}
 
-JSON Map::RareEnemyRates::json() const {
-  return JSON::dict({
+phosg::JSON Map::RareEnemyRates::json() const {
+  return phosg::JSON::dict({
       {"Hildeblue", this->hildeblue},
       {"Rappy", this->rappy},
       {"NarLily", this->nar_lily},
@@ -608,7 +608,7 @@ JSON Map::RareEnemyRates::json() const {
 
 string Map::ObjectEntry::str() const {
   string name_str = Map::name_for_object_type(this->base_type);
-  return string_printf("[ObjectEntry type=%04hX \"%s\" flags=%04hX index=%04hX a2=%04hX entity_id=%04hX group=%04hX section=%04hX a3=%04hX x=%g y=%g z=%g x_angle=%08" PRIX32 " y_angle=%08" PRIX32 " z_angle=%08" PRIX32 " params=[%g %g %g %08" PRIX32 " %08" PRIX32 " %08" PRIX32 "] unused=%08" PRIX32 "]",
+  return phosg::string_printf("[ObjectEntry type=%04hX \"%s\" flags=%04hX index=%04hX a2=%04hX entity_id=%04hX group=%04hX section=%04hX a3=%04hX x=%g y=%g z=%g x_angle=%08" PRIX32 " y_angle=%08" PRIX32 " z_angle=%08" PRIX32 " params=[%g %g %g %08" PRIX32 " %08" PRIX32 " %08" PRIX32 "] unused=%08" PRIX32 "]",
       this->base_type.load(),
       name_str.c_str(),
       this->flags.load(),
@@ -634,7 +634,7 @@ string Map::ObjectEntry::str() const {
 }
 
 string Map::EnemyEntry::str() const {
-  return string_printf("[EnemyEntry type=%04hX flags=%04hX index=%04hX num_children=%04hX floor=%04hX entity_id=%04hX section=%04hX wave_number=%04hX wave_number2=%04hX a1=%04hX x=%g y=%g z=%g x_angle=%08" PRIX32 " y_angle=%08" PRIX32 " z_angle=%08" PRIX32 " params=[%g %g %g %g %g %04hX %04hX] unused=%08" PRIX32 "]",
+  return phosg::string_printf("[EnemyEntry type=%04hX flags=%04hX index=%04hX num_children=%04hX floor=%04hX entity_id=%04hX section=%04hX wave_number=%04hX wave_number2=%04hX a1=%04hX x=%g y=%g z=%g x_angle=%08" PRIX32 " y_angle=%08" PRIX32 " z_angle=%08" PRIX32 " params=[%g %g %g %g %g %04hX %04hX] unused=%08" PRIX32 "]",
       this->base_type.load(),
       this->flags.load(),
       this->index.load(),
@@ -681,10 +681,10 @@ Map::Enemy::Enemy(
       server_flags(0) {}
 
 string Map::Enemy::str() const {
-  return string_printf("[Map::Enemy E-%hX source %zX %s%s floor=%02hhX section=%04hX wave_number=%04hX server_flags=%02hhX]",
+  return phosg::string_printf("[Map::Enemy E-%hX source %zX %s%s floor=%02hhX section=%04hX wave_number=%04hX server_flags=%02hhX]",
       this->enemy_id,
       this->source_index,
-      name_for_enum(this->type),
+      phosg::name_for_enum(this->type),
       enemy_type_is_rare(this->type) ? " RARE" : "",
       this->floor,
       this->section,
@@ -693,7 +693,7 @@ string Map::Enemy::str() const {
 }
 
 string Map::Event::str() const {
-  return string_printf("[Map::Event W-%02hhX-%" PRIX32 " flags=%04hX floor=%02hhX action_stream_offset=%" PRIX32 "]",
+  return phosg::string_printf("[Map::Event W-%02hhX-%" PRIX32 " flags=%04hX floor=%02hhX action_stream_offset=%" PRIX32 "]",
       this->floor,
       this->event_id,
       this->flags,
@@ -702,7 +702,7 @@ string Map::Event::str() const {
 }
 
 string Map::Object::str() const {
-  return string_printf("[Map::Object source %zX %04hX(%s) @%04hX p1=%g p456=[%08" PRIX32 " %08" PRIX32 " %08" PRIX32 "] floor=%02hhX item_drop_checked=%s]",
+  return phosg::string_printf("[Map::Object source %zX %04hX(%s) @%04hX p1=%g p456=[%08" PRIX32 " %08" PRIX32 " %08" PRIX32 "] floor=%02hhX item_drop_checked=%s]",
       this->source_index,
       this->base_type,
       Map::name_for_object_type(this->base_type),
@@ -716,7 +716,7 @@ string Map::Object::str() const {
 }
 
 Map::Map(Version version, uint32_t lobby_id, uint32_t rare_seed, std::shared_ptr<PSOLFGEncryption> opt_rand_crypt)
-    : log(string_printf("[Lobby:%08" PRIX32 ":map] ", lobby_id), lobby_log.min_level),
+    : log(phosg::string_printf("[Lobby:%08" PRIX32 ":map] ", lobby_id), lobby_log.min_level),
       version(version),
       rare_seed(rare_seed),
       opt_rand_crypt(opt_rand_crypt) {}
@@ -1254,7 +1254,7 @@ void Map::add_enemies_from_map_data(
     throw runtime_error("data size is not a multiple of entry size");
   }
 
-  StringReader r(data, size);
+  phosg::StringReader r(data, size);
   for (size_t y = 0; y < entry_count; y++) {
     this->add_enemy(episode, difficulty, event, floor, y, r.get<EnemyEntry>(), rare_rates);
   }
@@ -1284,12 +1284,12 @@ uint32_t Map::DATParserRandomState::next_location_index() {
 }
 
 void Map::DATParserRandomState::generate_shuffled_location_table(
-    const Map::RandomEnemyLocationsHeader& header, StringReader r, uint16_t section) {
+    const Map::RandomEnemyLocationsHeader& header, phosg::StringReader r, uint16_t section) {
   if (header.num_sections == 0) {
     throw runtime_error("no locations defined");
   }
 
-  StringReader sections_r = r.sub(header.section_table_offset, header.num_sections * sizeof(Map::RandomEnemyLocationSection));
+  phosg::StringReader sections_r = r.sub(header.section_table_offset, header.num_sections * sizeof(Map::RandomEnemyLocationSection));
 
   size_t bs_min = 0;
   size_t bs_max = header.num_sections - 1;
@@ -1330,9 +1330,9 @@ void Map::add_random_enemies_from_map_data(
     uint8_t difficulty,
     uint8_t event,
     uint8_t floor,
-    StringReader wave_events_segment_r,
-    StringReader locations_segment_r,
-    StringReader definitions_segment_r,
+    phosg::StringReader wave_events_segment_r,
+    phosg::StringReader locations_segment_r,
+    phosg::StringReader definitions_segment_r,
     std::shared_ptr<DATParserRandomState> random_state,
     std::shared_ptr<const RareEnemyRates> rare_rates) {
 
@@ -1362,7 +1362,7 @@ void Map::add_random_enemies_from_map_data(
       definitions_header.weight_entry_count * sizeof(RandomEnemyWeight));
 
   for (size_t wave_entry_index = 0; wave_entry_index < wave_events_header.entry_count; wave_entry_index++) {
-    auto entry_log = this->log.sub(string_printf("(Entry %zu/%" PRIu32 ") ", wave_entry_index, wave_events_header.entry_count.load()));
+    auto entry_log = this->log.sub(phosg::string_printf("(Entry %zu/%" PRIu32 ") ", wave_entry_index, wave_events_header.entry_count.load()));
     const auto& entry = wave_events_segment_r.get<Event2Entry>();
 
     size_t remaining_waves = random_state->rand_int_biased(1, entry.max_waves);
@@ -1372,7 +1372,7 @@ void Map::add_random_enemies_from_map_data(
     uint32_t wave_number = entry.wave_number;
     while (remaining_waves) {
       remaining_waves--;
-      auto wave_log = entry_log.sub(string_printf("(Wave %zu) ", remaining_waves));
+      auto wave_log = entry_log.sub(phosg::string_printf("(Wave %zu) ", remaining_waves));
 
       size_t remaining_enemies = random_state->rand_int_biased(entry.min_enemies, entry.max_enemies);
       // Trace: at 0080E208 EDI is enemy count
@@ -1382,7 +1382,7 @@ void Map::add_random_enemies_from_map_data(
 
       while (remaining_enemies) {
         remaining_enemies--;
-        auto enemy_log = wave_log.sub(string_printf("(Enemy %zu) ", remaining_enemies));
+        auto enemy_log = wave_log.sub(phosg::string_printf("(Enemy %zu) ", remaining_enemies));
 
         // TODO: Factor this sum out of the loops
         weights_r.go(0);
@@ -1506,7 +1506,7 @@ vector<const Map::Event*> Map::get_events(uint8_t floor, uint32_t event_id) cons
 }
 
 void Map::add_events_from_map_data(uint8_t floor, const void* data, size_t size) {
-  StringReader r(data, size);
+  phosg::StringReader r(data, size);
   const auto& header = r.get<EventsSectionHeader>();
   if (header.format != 0) {
     throw runtime_error("events section format is not zero");
@@ -1525,7 +1525,7 @@ void Map::add_events_from_map_data(uint8_t floor, const void* data, size_t size)
 
 vector<Map::DATSectionsForFloor> Map::collect_quest_map_data_sections(const void* data, size_t size) {
   vector<DATSectionsForFloor> ret;
-  StringReader r(data, size);
+  phosg::StringReader r(data, size);
   while (!r.eof()) {
     size_t header_offset = r.where();
     const auto& header = r.get<SectionHeader>();
@@ -1534,7 +1534,7 @@ vector<Map::DATSectionsForFloor> Map::collect_quest_map_data_sections(const void
       break;
     }
     if (header.section_size < sizeof(header)) {
-      throw runtime_error(string_printf("quest layout has invalid section header at offset 0x%zX", r.where() - sizeof(header)));
+      throw runtime_error(phosg::string_printf("quest layout has invalid section header at offset 0x%zX", r.where() - sizeof(header)));
     }
 
     if (header.floor > 0x100) {
@@ -1593,7 +1593,7 @@ void Map::add_entities_from_quest_data(
     std::shared_ptr<const RareEnemyRates> rare_rates) {
   auto all_floor_sections = this->collect_quest_map_data_sections(data, size);
 
-  StringReader r(data, size);
+  phosg::StringReader r(data, size);
   shared_ptr<DATParserRandomState> random_state;
   for (size_t floor = 0; floor < all_floor_sections.size(); floor++) {
     const auto& floor_sections = all_floor_sections[floor];
@@ -1713,7 +1713,7 @@ std::vector<Map::Event*> Map::get_events(uint8_t floor) {
 template <typename EntryT>
 static string disassemble_vector_file_t(const void* data, size_t size, size_t* entry_number, char type_ch) {
   deque<string> ret;
-  StringReader r(data, size);
+  phosg::StringReader r(data, size);
 
   size_t local_entry_number = 0;
   if (!entry_number) {
@@ -1722,14 +1722,14 @@ static string disassemble_vector_file_t(const void* data, size_t size, size_t* e
 
   while (r.remaining() >= sizeof(EntryT)) {
     string o_str = r.get<EntryT>().str();
-    ret.emplace_back(string_printf("/* %c-%zX */ %s", type_ch, (*entry_number)++, o_str.c_str()));
+    ret.emplace_back(phosg::string_printf("/* %c-%zX */ %s", type_ch, (*entry_number)++, o_str.c_str()));
   }
   if (r.remaining()) {
     ret.emplace_back("// Warning: section size is not a multiple of entry size");
     size_t size = r.remaining();
-    ret.emplace_back(format_data(r.getv(size), size));
+    ret.emplace_back(phosg::format_data(r.getv(size), size));
   }
-  return join(ret, "\n");
+  return phosg::join(ret, "\n");
 }
 
 string Map::disassemble_objects_data(const void* data, size_t size, size_t* object_number) {
@@ -1742,18 +1742,18 @@ string Map::disassemble_enemies_data(const void* data, size_t size, size_t* enem
 
 string Map::disassemble_wave_events_data(const void* data, size_t size, uint8_t floor) {
   deque<string> ret;
-  StringReader r(data, size);
+  phosg::StringReader r(data, size);
 
   const auto& evt_header = r.get<EventsSectionHeader>();
   if (evt_header.format == 0x65767432) { // 'evt2'
     ret.emplace_back(".evt2_format"); // TODO
     size_t size = r.remaining();
-    ret.emplace_back(format_data(r.getv(size), size));
+    ret.emplace_back(phosg::format_data(r.getv(size), size));
   } else {
     auto action_stream_r = r.sub(evt_header.action_stream_offset);
     for (size_t z = 0; z < evt_header.entry_count; z++) {
       const auto& entry = r.get<Event1Entry>();
-      ret.emplace_back(string_printf("/* W-%02hhX-%" PRIX32 " */ [Event1Entry flags=%04hX type=%04hX section=%04hX wave_number=%04hX delay=%" PRIu32 "]",
+      ret.emplace_back(phosg::string_printf("/* W-%02hhX-%" PRIX32 " */ [Event1Entry flags=%04hX type=%04hX section=%04hX wave_number=%04hX delay=%" PRIu32 "]",
           floor,
           entry.event_id.load(),
           entry.flags.load(),
@@ -1767,103 +1767,103 @@ string Map::disassemble_wave_events_data(const void* data, size_t size, uint8_t 
         uint8_t opcode = ev_actions_r.get_u8();
         switch (opcode) {
           case 0x00:
-            ret.emplace_back(string_printf("  00            nop"));
+            ret.emplace_back(phosg::string_printf("  00            nop"));
             break;
           case 0x01:
-            ret.emplace_back(string_printf("  01            stop"));
+            ret.emplace_back(phosg::string_printf("  01            stop"));
             should_continue = false;
             break;
           case 0x08: {
             uint16_t section = ev_actions_r.get_u16l();
             uint16_t group = ev_actions_r.get_u16l();
-            ret.emplace_back(string_printf("  08 %04hX %04hX  construct_objects       section=%04hX group=%04hX",
+            ret.emplace_back(phosg::string_printf("  08 %04hX %04hX  construct_objects       section=%04hX group=%04hX",
                 section, group, section, group));
             break;
           }
           case 0x09: {
             uint16_t section = ev_actions_r.get_u16l();
             uint16_t wave_number = ev_actions_r.get_u16l();
-            ret.emplace_back(string_printf("  09 %04hX %04hX  construct_enemies       section=%04hX wave_number=%04hX",
+            ret.emplace_back(phosg::string_printf("  09 %04hX %04hX  construct_enemies       section=%04hX wave_number=%04hX",
                 section, wave_number, section, wave_number));
             break;
           }
           case 0x0A: {
             uint16_t id = ev_actions_r.get_u16l();
-            ret.emplace_back(string_printf("  0A %04hX       enable_switch_flag      id=%04hX", id, id));
+            ret.emplace_back(phosg::string_printf("  0A %04hX       enable_switch_flag      id=%04hX", id, id));
             break;
           }
           case 0x0B: {
             uint16_t id = ev_actions_r.get_u16l();
-            ret.emplace_back(string_printf("  0B %04hX       disable_switch_flag     id=%04hX", id, id));
+            ret.emplace_back(phosg::string_printf("  0B %04hX       disable_switch_flag     id=%04hX", id, id));
             break;
           }
           case 0x0C: {
             uint32_t event_id = ev_actions_r.get_u32l();
-            ret.emplace_back(string_printf("  0C %08" PRIX32 "   trigger_event           event_id=%08" PRIX32, event_id, event_id));
+            ret.emplace_back(phosg::string_printf("  0C %08" PRIX32 "   trigger_event           event_id=%08" PRIX32, event_id, event_id));
             break;
           }
           case 0x0D: {
             uint16_t section = ev_actions_r.get_u16l();
             uint16_t wave_number = ev_actions_r.get_u16l();
-            ret.emplace_back(string_printf("  0D %04hX %04hX  construct_enemies_stop  section=%04hX wave_number=%04hX",
+            ret.emplace_back(phosg::string_printf("  0D %04hX %04hX  construct_enemies_stop  section=%04hX wave_number=%04hX",
                 section, wave_number, section, wave_number));
             break;
           }
           default:
-            ret.emplace_back(string_printf("  %02hhX            .invalid", opcode));
+            ret.emplace_back(phosg::string_printf("  %02hhX            .invalid", opcode));
         }
       }
     }
   }
 
-  return join(ret, "\n");
+  return phosg::join(ret, "\n");
 }
 
 string Map::disassemble_quest_data(const void* data, size_t size) {
   auto all_floor_sections = Map::collect_quest_map_data_sections(data, size);
 
   deque<string> ret;
-  StringReader r(data, size);
+  phosg::StringReader r(data, size);
   size_t object_number = 0;
   size_t enemy_number = 0;
   for (size_t floor = 0; floor < all_floor_sections.size(); floor++) {
     const auto& floor_sections = all_floor_sections[floor];
 
     if (floor_sections.objects != 0xFFFFFFFF) {
-      ret.emplace_back(string_printf(".objects %zu", floor));
+      ret.emplace_back(phosg::string_printf(".objects %zu", floor));
       const auto& header = r.pget<SectionHeader>(floor_sections.objects);
       size_t offset = floor_sections.objects + sizeof(SectionHeader);
       ret.emplace_back(Map::disassemble_objects_data(r.pgetv(offset, header.data_size), header.data_size, &object_number));
     }
     if (floor_sections.enemies != 0xFFFFFFFF) {
-      ret.emplace_back(string_printf(".enemies %zu", floor));
+      ret.emplace_back(phosg::string_printf(".enemies %zu", floor));
       const auto& header = r.pget<SectionHeader>(floor_sections.enemies);
       size_t offset = floor_sections.enemies + sizeof(SectionHeader);
       ret.emplace_back(Map::disassemble_enemies_data(r.pgetv(offset, header.data_size), header.data_size, &enemy_number));
     }
     if (floor_sections.wave_events != 0xFFFFFFFF) {
-      ret.emplace_back(string_printf(".wave_events %zu", floor));
+      ret.emplace_back(phosg::string_printf(".wave_events %zu", floor));
       const auto& header = r.pget<SectionHeader>(floor_sections.wave_events);
       size_t offset = floor_sections.wave_events + sizeof(SectionHeader);
       ret.emplace_back(Map::disassemble_wave_events_data(r.pgetv(offset, header.data_size), header.data_size, floor));
     }
     if (floor_sections.random_enemy_locations != 0xFFFFFFFF) {
-      ret.emplace_back(string_printf(".random_enemy_locations %zu", floor));
+      ret.emplace_back(phosg::string_printf(".random_enemy_locations %zu", floor));
       const auto& header = r.pget<SectionHeader>(floor_sections.random_enemy_locations);
       size_t offset = floor_sections.random_enemy_locations + sizeof(SectionHeader);
       auto sub_r = r.sub(offset, header.data_size);
-      ret.emplace_back(format_data(sub_r.getv(sub_r.remaining()), header.data_size, offset));
+      ret.emplace_back(phosg::format_data(sub_r.getv(sub_r.remaining()), header.data_size, offset));
     }
     if (floor_sections.random_enemy_definitions != 0xFFFFFFFF) {
-      ret.emplace_back(string_printf(".random_enemy_definitions %zu", floor));
+      ret.emplace_back(phosg::string_printf(".random_enemy_definitions %zu", floor));
       const auto& header = r.pget<SectionHeader>(floor_sections.random_enemy_definitions);
       size_t offset = floor_sections.random_enemy_definitions + sizeof(SectionHeader);
       auto sub_r = r.sub(offset, header.data_size);
-      ret.emplace_back(format_data(sub_r.getv(sub_r.remaining()), header.data_size, offset));
+      ret.emplace_back(phosg::format_data(sub_r.getv(sub_r.remaining()), header.data_size, offset));
     }
   }
 
-  return join(ret, "\n") + "\n";
+  return phosg::join(ret, "\n") + "\n";
 }
 
 SetDataTableBase::SetDataTableBase(Version version) : version(version) {}
@@ -1925,21 +1925,19 @@ SetDataTable::SetDataTable(Version version, const string& data) : SetDataTableBa
   }
 }
 
-template <bool IsBigEndian>
+template <bool BE>
 void SetDataTable::load_table_t(const string& data) {
-  using U32T = typename conditional<IsBigEndian, be_uint32_t, le_uint32_t>::type;
-
-  StringReader r(data);
+  phosg::StringReader r(data);
 
   struct Footer {
-    U32T table3_offset;
-    U32T table3_count; // In le_uint16_ts (so *2 for size in bytes)
-    U32T unknown_a3; // == 1
-    U32T unknown_a4; // == 0
-    U32T root_table_offset_offset;
-    U32T unknown_a6; // == 0
-    U32T unknown_a7; // == 0
-    U32T unknown_a8; // == 0
+    U32T<BE> table3_offset;
+    U32T<BE> table3_count; // In le_uint16_ts (so *2 for size in bytes)
+    U32T<BE> unknown_a3; // == 1
+    U32T<BE> unknown_a4; // == 0
+    U32T<BE> root_table_offset_offset;
+    U32T<BE> unknown_a6; // == 0
+    U32T<BE> unknown_a7; // == 0
+    U32T<BE> unknown_a8; // == 0
   } __packed_ws__(Footer, 0x20);
 
   if (r.size() < sizeof(Footer)) {
@@ -1947,23 +1945,23 @@ void SetDataTable::load_table_t(const string& data) {
   }
   auto& footer = r.pget<Footer>(r.size() - sizeof(Footer));
 
-  uint32_t root_table_offset = r.pget<U32T>(footer.root_table_offset_offset);
+  uint32_t root_table_offset = r.pget<U32T<BE>>(footer.root_table_offset_offset);
   auto root_r = r.sub(root_table_offset, footer.root_table_offset_offset - root_table_offset);
   while (!root_r.eof()) {
     auto& var1_v = this->entries.emplace_back();
-    uint32_t var1_table_offset = root_r.template get<U32T>();
-    uint32_t var1_table_count = root_r.template get<U32T>();
+    uint32_t var1_table_offset = root_r.template get<U32T<BE>>();
+    uint32_t var1_table_count = root_r.template get<U32T<BE>>();
     auto var1_r = r.sub(var1_table_offset, var1_table_count * 0x08);
     while (!var1_r.eof()) {
       auto& var2_v = var1_v.emplace_back();
-      uint32_t var2_table_offset = var1_r.get<U32T>();
-      uint32_t var2_table_count = var1_r.get<U32T>();
+      uint32_t var2_table_offset = var1_r.get<U32T<BE>>();
+      uint32_t var2_table_count = var1_r.get<U32T<BE>>();
       auto var2_r = r.sub(var2_table_offset, var2_table_count * 0x0C);
       while (!var2_r.eof()) {
         auto& entry = var2_v.emplace_back();
-        entry.object_list_basename = r.pget_cstr(var2_r.get<U32T>());
-        entry.enemy_and_event_list_basename = r.pget_cstr(var2_r.get<U32T>());
-        entry.area_setup_filename = r.pget_cstr(var2_r.get<U32T>());
+        entry.object_list_basename = r.pget_cstr(var2_r.get<U32T<BE>>());
+        entry.enemy_and_event_list_basename = r.pget_cstr(var2_r.get<U32T<BE>>());
+        entry.area_setup_filename = r.pget_cstr(var2_r.get<U32T<BE>>());
       }
     }
   }
@@ -2066,19 +2064,19 @@ string SetDataTable::map_filename_for_variation(
 
 string SetDataTable::str() const {
   vector<string> lines;
-  lines.emplace_back(string_printf("FL/V1/V2 => ----------------------OBJECT -----------------ENEMY+EVENT -----------------------SETUP\n"));
+  lines.emplace_back(phosg::string_printf("FL/V1/V2 => ----------------------OBJECT -----------------ENEMY+EVENT -----------------------SETUP\n"));
   for (size_t a = 0; a < this->entries.size(); a++) {
     const auto& v1_v = this->entries[a];
     for (size_t v1 = 0; v1 < v1_v.size(); v1++) {
       const auto& v2_v = v1_v[v1];
       for (size_t v2 = 0; v2 < v2_v.size(); v2++) {
         const auto& e = v2_v[v2];
-        lines.emplace_back(string_printf("%02zX/%02zX/%02zX => %28s %28s %28s\n",
+        lines.emplace_back(phosg::string_printf("%02zX/%02zX/%02zX => %28s %28s %28s\n",
             a, v1, v2, e.object_list_basename.c_str(), e.enemy_and_event_list_basename.c_str(), e.area_setup_filename.c_str()));
       }
     }
   }
-  return join(lines, "");
+  return phosg::join(lines, "");
 }
 
 struct AreaMapFileInfo {
@@ -2515,10 +2513,10 @@ vector<string> map_filenames_for_variation_deprecated(
   string filename = "map_";
   filename += a.name_token;
   if (!a.variation1_values.empty()) {
-    filename += string_printf("_%02" PRIX32, a.variation1_values.at(var1));
+    filename += phosg::string_printf("_%02" PRIX32, a.variation1_values.at(var1));
   }
   if (!a.variation2_values.empty()) {
-    filename += string_printf("_%02" PRIX32, a.variation2_values.at(var2));
+    filename += phosg::string_printf("_%02" PRIX32, a.variation2_values.at(var2));
   }
 
   vector<string> ret;

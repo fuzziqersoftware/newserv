@@ -5,15 +5,14 @@
 #include <stdexcept>
 
 #include "Text.hh"
+#include "Types.hh"
 
 using namespace std;
 
-template <bool IsBigEndian>
+template <bool BE>
 struct BMLHeaderT {
-  using U32T = typename std::conditional<IsBigEndian, be_uint32_t, le_uint32_t>::type;
-
   parray<uint8_t, 0x04> unknown_a1;
-  U32T num_entries;
+  U32T<BE> num_entries;
   parray<uint8_t, 0x38> unknown_a2;
 } __packed__;
 
@@ -22,16 +21,14 @@ using BMLHeaderBE = BMLHeaderT<true>;
 check_struct_size(BMLHeader, 0x40);
 check_struct_size(BMLHeaderBE, 0x40);
 
-template <bool IsBigEndian>
+template <bool BE>
 struct BMLHeaderEntryT {
-  using U32T = typename std::conditional<IsBigEndian, be_uint32_t, le_uint32_t>::type;
-
   pstring<TextEncoding::ASCII, 0x20> filename;
-  U32T compressed_size;
+  U32T<BE> compressed_size;
   parray<uint8_t, 0x04> unknown_a1;
-  U32T decompressed_size;
-  U32T compressed_gvm_size;
-  U32T decompressed_gvm_size;
+  U32T<BE> decompressed_size;
+  U32T<BE> compressed_gvm_size;
+  U32T<BE> decompressed_gvm_size;
   parray<uint8_t, 0x0C> unknown_a2;
 } __packed__;
 
@@ -40,15 +37,15 @@ using BMLHeaderEntryBE = BMLHeaderEntryT<true>;
 check_struct_size(BMLHeaderEntry, 0x40);
 check_struct_size(BMLHeaderEntryBE, 0x40);
 
-template <bool IsBigEndian>
+template <bool BE>
 void BMLArchive::load_t() {
-  StringReader r(*this->data);
+  phosg::StringReader r(*this->data);
 
-  const auto& header = r.get<BMLHeaderT<IsBigEndian>>();
+  const auto& header = r.get<BMLHeaderT<BE>>();
 
   size_t offset = 0x800;
   while (this->entries.size() < header.num_entries) {
-    const auto& entry = r.get<BMLHeaderEntryT<IsBigEndian>>();
+    const auto& entry = r.get<BMLHeaderEntryT<BE>>();
 
     if (offset + entry.compressed_size > this->data->size()) {
       throw runtime_error("BML data entry extends beyond end of data");
@@ -106,10 +103,10 @@ string BMLArchive::get_copy(const string& name) const {
   }
 }
 
-StringReader BMLArchive::get_reader(const string& name) const {
+phosg::StringReader BMLArchive::get_reader(const string& name) const {
   try {
     const auto& entry = this->entries.at(name);
-    return StringReader(this->data->data() + entry.offset, entry.size);
+    return phosg::StringReader(this->data->data() + entry.offset, entry.size);
   } catch (const out_of_range&) {
     throw out_of_range("BML does not contain file: " + name);
   }

@@ -29,7 +29,7 @@ public:
   RareItemSet(const AFSArchive& afs, bool is_v1);
   RareItemSet(const GSLArchive& gsl, bool is_big_endian);
   RareItemSet(const std::string& rel, bool is_big_endian);
-  RareItemSet(const JSON& json, std::shared_ptr<const ItemNameIndex> name_index = nullptr);
+  RareItemSet(const phosg::JSON& json, std::shared_ptr<const ItemNameIndex> name_index = nullptr);
   ~RareItemSet() = default;
 
   std::vector<ExpandedDrop> get_enemy_specs(GameMode mode, Episode episode, uint8_t difficulty, uint8_t secid, uint8_t rt_index) const;
@@ -37,7 +37,7 @@ public:
 
   std::string serialize_afs(bool is_v1) const;
   std::string serialize_gsl(bool big_endian) const;
-  JSON json(std::shared_ptr<const ItemNameIndex> name_index = nullptr) const;
+  phosg::JSON json(std::shared_ptr<const ItemNameIndex> name_index = nullptr) const;
 
   void multiply_all_rates(double factor);
 
@@ -66,13 +66,12 @@ protected:
       ExpandedDrop expand() const;
     } __packed_ws__(PackedDrop, 4);
 
-    template <bool IsBigEndian>
+    template <bool BE>
     struct OffsetsT {
-      using U32T = typename std::conditional<IsBigEndian, be_uint32_t, le_uint32_t>::type;
-      /* 00 */ U32T monster_rares_offset; // -> parray<PackedDrop, 0x65> (or 0x33 on v1)
-      /* 04 */ U32T box_count; // Usually 30 (0x1E)
-      /* 08 */ U32T box_areas_offset; // -> parray<uint8_t, 0x1E>
-      /* 0C */ U32T box_rares_offset; // -> parray<PackedDrop, 0x1E>
+      /* 00 */ U32T<BE> monster_rares_offset; // -> parray<PackedDrop, 0x65> (or 0x33 on v1)
+      /* 04 */ U32T<BE> box_count; // Usually 30 (0x1E)
+      /* 08 */ U32T<BE> box_areas_offset; // -> parray<uint8_t, 0x1E>
+      /* 0C */ U32T<BE> box_rares_offset; // -> parray<PackedDrop, 0x1E>
       /* 10 */
     } __packed__;
     using Offsets = OffsetsT<false>;
@@ -89,13 +88,13 @@ protected:
     std::vector<BoxRare> box_rares;
 
     ParsedRELData() = default;
-    ParsedRELData(StringReader r, bool big_endian, bool is_v1);
+    ParsedRELData(phosg::StringReader r, bool big_endian, bool is_v1);
     explicit ParsedRELData(const SpecCollection& collection);
     std::string serialize(bool big_endian, bool is_v1) const;
 
-    template <bool IsBigEndian>
-    void parse_t(StringReader r, bool is_v1);
-    template <bool IsBigEndian>
+    template <bool BE>
+    void parse_t(phosg::StringReader r, bool is_v1);
+    template <bool BE>
     std::string serialize_t(bool is_v1) const;
 
     SpecCollection as_collection() const;

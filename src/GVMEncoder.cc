@@ -34,7 +34,7 @@ struct GVRHeader {
   be_uint16_t height;
 } __packed_ws__(GVRHeader, 0x10);
 
-string encode_gvm(const Image& img, GVRDataFormat data_format, const std::string& internal_name, uint32_t global_index) {
+string encode_gvm(const phosg::Image& img, GVRDataFormat data_format, const std::string& internal_name, uint32_t global_index) {
   int8_t dimensions_field = -2;
   {
     size_t h = img.get_height();
@@ -66,7 +66,7 @@ string encode_gvm(const Image& img, GVRDataFormat data_format, const std::string
       throw invalid_argument("cannot encode pixel format");
   }
 
-  StringWriter w;
+  phosg::StringWriter w;
   w.put<GVMFileHeader>({.signature = 0x47564D48, .header_size = 0x48, .flags = 0x000F, .num_files = 1});
   GVMFileEntry file_entry;
   file_entry.file_num = 0;

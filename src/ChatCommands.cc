@@ -103,7 +103,7 @@ static void check_is_leader(shared_ptr<Lobby> l, shared_ptr<Client> c) {
 
 static void server_command_server_info(shared_ptr<Client> c, const std::string&) {
   auto s = c->require_server_state();
-  string uptime_str = format_duration(now() - s->creation_time);
+  string uptime_str = phosg::format_duration(phosg::now() - s->creation_time);
   send_text_message_printf(c,
       "Uptime: $C6%s$C7\nLobbies: $C6%zu$C7\nClients: $C6%zu$C7(g) $C6%zu$C7(p)",
       uptime_str.c_str(),
@@ -123,11 +123,11 @@ static void server_command_lobby_info(shared_ptr<Client> c, const std::string&) 
     if (l->is_game()) {
       if (!l->is_ep3()) {
         if (l->max_level == 0xFFFFFFFF) {
-          lines.emplace_back(string_printf("$C6%08X$C7 L$C6%d+$C7", l->lobby_id, l->min_level + 1));
+          lines.emplace_back(phosg::string_printf("$C6%08X$C7 L$C6%d+$C7", l->lobby_id, l->min_level + 1));
         } else {
-          lines.emplace_back(string_printf("$C6%08X$C7 L$C6%d-%d$C7", l->lobby_id, l->min_level + 1, l->max_level + 1));
+          lines.emplace_back(phosg::string_printf("$C6%08X$C7 L$C6%d-%d$C7", l->lobby_id, l->min_level + 1, l->max_level + 1));
         }
-        lines.emplace_back(string_printf("$C7Section ID: $C6%s$C7", name_for_section_id(l->effective_section_id())));
+        lines.emplace_back(phosg::string_printf("$C7Section ID: $C6%s$C7", name_for_section_id(l->effective_section_id())));
 
         switch (l->drop_mode) {
           case Lobby::DropMode::DISABLED:
@@ -153,45 +153,45 @@ static void server_command_lobby_info(shared_ptr<Client> c, const std::string&) 
         }
 
       } else {
-        lines.emplace_back(string_printf("$C7State seed: $C6%08X$C7", l->random_seed));
+        lines.emplace_back(phosg::string_printf("$C7State seed: $C6%08X$C7", l->random_seed));
       }
 
     } else {
-      lines.emplace_back(string_printf("$C7Lobby ID: $C6%08X$C7", l->lobby_id));
+      lines.emplace_back(phosg::string_printf("$C7Lobby ID: $C6%08X$C7", l->lobby_id));
     }
 
     string slots_str = "Slots: ";
     for (size_t z = 0; z < l->clients.size(); z++) {
       if (!l->clients[z]) {
-        slots_str += string_printf("$C0%zX$C7", z);
+        slots_str += phosg::string_printf("$C0%zX$C7", z);
       } else {
         bool is_self = l->clients[z] == c;
         bool is_leader = z == l->leader_id;
         if (is_self && is_leader) {
-          slots_str += string_printf("$C6%zX$C7", z);
+          slots_str += phosg::string_printf("$C6%zX$C7", z);
         } else if (is_self) {
-          slots_str += string_printf("$C2%zX$C7", z);
+          slots_str += phosg::string_printf("$C2%zX$C7", z);
         } else if (is_leader) {
-          slots_str += string_printf("$C4%zX$C7", z);
+          slots_str += phosg::string_printf("$C4%zX$C7", z);
         } else {
-          slots_str += string_printf("%zX", z);
+          slots_str += phosg::string_printf("%zX", z);
         }
       }
     }
     lines.emplace_back(std::move(slots_str));
   }
 
-  send_text_message(c, join(lines, "\n"));
+  send_text_message(c, phosg::join(lines, "\n"));
 }
 
 static void server_command_ping(shared_ptr<Client> c, const std::string&) {
-  c->ping_start_time = now();
+  c->ping_start_time = phosg::now();
   send_command(c, 0x1D, 0x00);
 }
 
 static void proxy_command_ping(shared_ptr<ProxyServer::LinkedSession> ses, const std::string&) {
-  ses->client_ping_start_time = now();
-  ses->server_ping_start_time = now();
+  ses->client_ping_start_time = phosg::now();
+  ses->server_ping_start_time = ses->client_ping_start_time;
 
   C_GuildCardSearch_40 cmd = {0x00010000, ses->remote_guild_card_number, ses->remote_guild_card_number};
   ses->client_channel.send(0x1D, 0x00);
@@ -204,7 +204,7 @@ static void proxy_command_lobby_info(shared_ptr<ProxyServer::LinkedSession> ses,
   // don't show it. (The user can see it in the pause menu, unlike in masked-GC
   // sessions like GC.)
   if (ses->remote_guild_card_number >= 0) {
-    msg = string_printf("$C7GC: $C6%" PRId64 "$C7\n", ses->remote_guild_card_number);
+    msg = phosg::string_printf("$C7GC: $C6%" PRId64 "$C7\n", ses->remote_guild_card_number);
   }
   msg += "Slots: ";
 
@@ -212,15 +212,15 @@ static void proxy_command_lobby_info(shared_ptr<ProxyServer::LinkedSession> ses,
     bool is_self = z == ses->lobby_client_id;
     bool is_leader = z == ses->leader_client_id;
     if (ses->lobby_players[z].guild_card_number == 0) {
-      msg += string_printf("$C0%zX$C7", z);
+      msg += phosg::string_printf("$C0%zX$C7", z);
     } else if (is_self && is_leader) {
-      msg += string_printf("$C6%zX$C7", z);
+      msg += phosg::string_printf("$C6%zX$C7", z);
     } else if (is_self) {
-      msg += string_printf("$C2%zX$C7", z);
+      msg += phosg::string_printf("$C2%zX$C7", z);
     } else if (is_leader) {
-      msg += string_printf("$C4%zX$C7", z);
+      msg += phosg::string_printf("$C4%zX$C7", z);
     } else {
-      msg += string_printf("%zX", z);
+      msg += phosg::string_printf("%zX", z);
     }
   }
 
@@ -233,7 +233,7 @@ static void proxy_command_lobby_info(shared_ptr<ProxyServer::LinkedSession> ses,
   }
   if (!cheats_tokens.empty()) {
     msg += "\n$C7Cheats: $C6";
-    msg += join(cheats_tokens, ",");
+    msg += phosg::join(cheats_tokens, ",");
   }
 
   vector<const char*> behaviors_tokens;
@@ -251,7 +251,7 @@ static void proxy_command_lobby_info(shared_ptr<ProxyServer::LinkedSession> ses,
   }
   if (!behaviors_tokens.empty()) {
     msg += "\n$C7Flags: $C6";
-    msg += join(behaviors_tokens, ",");
+    msg += phosg::join(behaviors_tokens, ",");
   }
 
   if (ses->config.override_section_id != 0xFF) {
@@ -353,7 +353,7 @@ static void server_command_swset_swclear(shared_ptr<Client> c, const std::string
     return;
   }
 
-  auto tokens = split(args, ' ');
+  auto tokens = phosg::split(args, ' ');
   uint8_t floor, flag_num;
   if (tokens.size() == 1) {
     floor = c->floor;
@@ -391,7 +391,7 @@ static void proxy_command_swset_swclear(shared_ptr<ProxyServer::LinkedSession> s
     return;
   }
 
-  auto tokens = split(args, ' ');
+  auto tokens = phosg::split(args, ' ');
   uint8_t floor, flag_num;
   if (tokens.size() == 1) {
     floor = ses->floor;
@@ -589,7 +589,7 @@ static void server_command_qgwrite(shared_ptr<Client> c, const std::string& args
     return;
   }
 
-  auto tokens = split(args, ' ');
+  auto tokens = phosg::split(args, ' ');
   if (tokens.size() != 2) {
     send_text_message(c, "$C6Incorrect number\nof arguments");
     return;
@@ -616,7 +616,7 @@ static void server_command_qsync_qsyncall(shared_ptr<Client> c, const std::strin
     return;
   }
 
-  auto tokens = split(args, ' ');
+  auto tokens = phosg::split(args, ' ');
   if (tokens.size() != 2) {
     send_text_message(c, "$C6Incorrect number of\narguments");
     return;
@@ -655,7 +655,7 @@ static void proxy_command_qsync_qsyncall(shared_ptr<ProxyServer::LinkedSession> 
     return;
   }
 
-  auto tokens = split(args, ' ');
+  auto tokens = phosg::split(args, ' ');
   if (tokens.size() != 2) {
     send_text_message(ses->client_channel, "$C6Incorrect number of\narguments");
     return;
@@ -896,26 +896,26 @@ static void proxy_command_get_player_card(shared_ptr<ProxyServer::LinkedSession>
 
 static void server_command_send_client(shared_ptr<Client> c, const std::string& args) {
   check_debug_enabled(c);
-  string data = parse_data_string(args);
+  string data = phosg::parse_data_string(args);
   data.resize((data.size() + 3) & (~3));
   c->channel.send(data);
 }
 
 static void server_command_send_server(shared_ptr<Client> c, const std::string& args) {
   check_debug_enabled(c);
-  string data = parse_data_string(args);
+  string data = phosg::parse_data_string(args);
   data.resize((data.size() + 3) & (~3));
   on_command_with_header(c, data);
 }
 
 static void proxy_command_send_client(shared_ptr<ProxyServer::LinkedSession> ses, const std::string& args) {
-  string data = parse_data_string(args);
+  string data = phosg::parse_data_string(args);
   data.resize((data.size() + 3) & (~3));
   ses->client_channel.send(data);
 }
 
 static void proxy_command_send_server(shared_ptr<ProxyServer::LinkedSession> ses, const std::string& args) {
-  string data = parse_data_string(args);
+  string data = phosg::parse_data_string(args);
   data.resize((data.size() + 3) & (~3));
   ses->server_channel.send(data);
 }
@@ -1044,7 +1044,7 @@ static string file_path_for_recording(const std::string& args, uint32_t account_
       throw runtime_error("invalid recording name");
     }
   }
-  return string_printf("system/ep3/battle-records/%010" PRIu32 "_%s.mzrd", account_id, args.c_str());
+  return phosg::string_printf("system/ep3/battle-records/%010" PRIu32 "_%s.mzrd", account_id, args.c_str());
 }
 
 static void server_command_saverec(shared_ptr<Client> c, const std::string& args) {
@@ -1054,7 +1054,7 @@ static void server_command_saverec(shared_ptr<Client> c, const std::string& args
   }
   string file_path = file_path_for_recording(args, c->login->account->account_id);
   string data = c->ep3_prev_battle_record->serialize();
-  save_file(file_path, data);
+  phosg::save_file(file_path, data);
   send_text_message(c, "$C7Recording saved");
   c->ep3_prev_battle_record.reset();
 }
@@ -1080,8 +1080,8 @@ static void server_command_playrec(shared_ptr<Client> c, const std::string& args
 
     string data;
     try {
-      data = load_file(file_path);
-    } catch (const cannot_open_file&) {
+      data = phosg::load_file(file_path);
+    } catch (const phosg::cannot_open_file&) {
       send_text_message(c, "$C4The recording does\nnot exist");
       return;
     }
@@ -1307,8 +1307,8 @@ static void server_command_edit(shared_ptr<Client> c, const std::string& args) {
   bool cheats_allowed = ((s->cheat_mode_behavior != ServerState::BehaviorSwitch::OFF) ||
       c->login->account->check_flag(Account::Flag::CHEAT_ANYWHERE));
 
-  string encoded_args = tolower(args);
-  vector<string> tokens = split(encoded_args, ' ');
+  string encoded_args = phosg::tolower(args);
+  vector<string> tokens = phosg::split(encoded_args, ' ');
 
   try {
     auto p = c->character();
@@ -1360,7 +1360,7 @@ static void server_command_edit(shared_ptr<Client> c, const std::string& args) {
         p->disp.visual.section_id = secid;
       }
     } else if (tokens.at(0) == "name") {
-      vector<string> orig_tokens = split(args, ' ');
+      vector<string> orig_tokens = phosg::split(args, ' ');
       p->disp.name.encode(orig_tokens.at(1), p->inventory.language);
     } else if (tokens.at(0) == "npc") {
       if (tokens.at(1) == "none") {
@@ -1457,7 +1457,7 @@ static void server_command_bbchar_savechar(shared_ptr<Client> c, const std::stri
   auto pending_export = make_unique<Client::PendingCharacterExport>();
 
   if (is_bb_conversion) {
-    vector<string> tokens = split(args, ' ');
+    vector<string> tokens = phosg::split(args, ' ');
     if (tokens.size() != 3) {
       send_text_message(c, "$C6Incorrect argument count");
       return;
@@ -1632,7 +1632,7 @@ static string name_for_client(shared_ptr<Client> c) {
   }
 
   if (c->login) {
-    return string_printf("SN:%" PRIu32, c->login->account->account_id);
+    return phosg::string_printf("SN:%" PRIu32, c->login->account->account_id);
   }
 
   return "Player";
@@ -1727,7 +1727,7 @@ static void server_command_ban(shared_ptr<Client> c, const std::string& args) {
     usecs *= 60 * 60 * 24 * 365;
   }
 
-  target->login->account->ban_end_time = now() + usecs;
+  target->login->account->ban_end_time = phosg::now() + usecs;
   target->login->account->save();
   send_message_box(target, "$C6You have been banned.");
   target->should_disconnect = true;
@@ -2135,7 +2135,7 @@ static void proxy_command_item(shared_ptr<ProxyServer::LinkedSession> ses, const
   bool set_drop = (!args.empty() && (args[0] == '!'));
 
   ItemData item = s->parse_item_description(ses->version(), (set_drop ? args.substr(1) : args));
-  item.id = random_object<uint32_t>() | 0x80000000;
+  item.id = phosg::random_object<uint32_t>() | 0x80000000;
 
   if (set_drop) {
     ses->next_drop_item = item;
@@ -2224,7 +2224,7 @@ static void server_command_ep3_set_dice_range(shared_ptr<Client> c, const std::s
   }
 
   auto parse_dice_range = +[](const string& spec) -> uint8_t {
-    auto tokens = split(spec, '-');
+    auto tokens = phosg::split(spec, '-');
     if (tokens.size() == 1) {
       uint8_t v = stoull(spec);
       return (v << 4) | (v & 0x0F);
@@ -2238,8 +2238,8 @@ static void server_command_ep3_set_dice_range(shared_ptr<Client> c, const std::s
   uint8_t def_dice_range = 0;
   uint8_t atk_dice_range_2v1 = 0;
   uint8_t def_dice_range_2v1 = 0;
-  for (const auto& spec : split(args, ' ')) {
-    auto tokens = split(spec, ':');
+  for (const auto& spec : phosg::split(args, ' ')) {
+    auto tokens = phosg::split(spec, ':');
     if (tokens.size() != 2) {
       send_text_message(c, "$C6Invalid dice spec\nformat");
       return;
@@ -2305,7 +2305,7 @@ static void server_command_ep3_replace_assist_card(shared_ptr<Client> c, const s
   size_t client_id;
   string card_name;
   if (isdigit(args[0])) {
-    auto tokens = split(args, ' ', 1);
+    auto tokens = phosg::split(args, ' ', 1);
     client_id = stoul(tokens.at(0), nullptr, 0) - 1;
     card_name = tokens.at(1);
   } else {
@@ -2408,7 +2408,7 @@ static void server_command_get_ep3_battle_stat(shared_ptr<Client> c, const std::
     const char* rank_name = ps->stats.name_for_rank(rank);
     send_text_message_printf(c, "$C7Score: %g\nRank: %hhu (%s)", score, rank, rank_name);
   } else if (args == "duration") {
-    string s = format_duration(now() - l->ep3_server->battle_start_usecs);
+    string s = phosg::format_duration(phosg::now() - l->ep3_server->battle_start_usecs);
     send_text_message_printf(c, "$C7Duration: %s", s.c_str());
   } else if (args == "fcs-destroyed") {
     send_text_message_printf(c, "$C7Team FCs destroyed:\n%" PRIu32, l->ep3_server->team_num_ally_fcs_destroyed[team_id]);

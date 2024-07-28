@@ -21,14 +21,14 @@ public:
 
   std::pair<const void*, size_t> get(const std::string& name) const;
   std::string get_copy(const std::string& name) const;
-  StringReader get_reader(const std::string& name) const;
+  phosg::StringReader get_reader(const std::string& name) const;
 
   static std::string generate(const std::unordered_map<std::string, std::string>& files, bool big_endian);
 
 private:
-  template <bool IsBigEndian>
+  template <bool BE>
   void load_t();
-  template <bool IsBigEndian>
+  template <bool BE>
   static std::string generate_t(const std::unordered_map<std::string, std::string>& files);
 
   std::shared_ptr<const std::string> data;

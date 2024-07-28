@@ -12,10 +12,10 @@ namespace Episode3 {
 void BattleRecord::PlayerEntry::print(FILE* stream) const {
   // TODO: Format this nicely somehow. Maybe factor out the functions in
   // QuestScript that format some of these structures
-  print_data(stream, this, sizeof(*this), 0, nullptr, PrintDataFlags::PRINT_ASCII | PrintDataFlags::DISABLE_COLOR | PrintDataFlags::OFFSET_16_BITS);
+  phosg::print_data(stream, this, sizeof(*this), 0, nullptr, phosg::PrintDataFlags::PRINT_ASCII | phosg::PrintDataFlags::DISABLE_COLOR | phosg::PrintDataFlags::OFFSET_16_BITS);
 }
 
-BattleRecord::Event::Event(StringReader& r) {
+BattleRecord::Event::Event(phosg::StringReader& r) {
   this->type = r.get<Event::Type>();
   this->timestamp = r.get_u64l();
   switch (this->type) {
@@ -46,7 +46,7 @@ BattleRecord::Event::Event(StringReader& r) {
   }
 }
 
-void BattleRecord::Event::serialize(StringWriter& w) const {
+void BattleRecord::Event::serialize(phosg::StringWriter& w) const {
   w.put(this->type);
   w.put_u64l(this->timestamp);
   switch (this->type) {
@@ -81,7 +81,7 @@ void BattleRecord::Event::serialize(StringWriter& w) const {
 }
 
 void BattleRecord::Event::print(FILE* stream) const {
-  string time_str = format_time(this->timestamp);
+  string time_str = phosg::format_time(this->timestamp);
   fprintf(stream, "Event @%016" PRIX64 " (%s) ", this->timestamp, time_str.c_str());
   switch (this->type) {
     case Type::PLAYER_JOIN:
@@ -103,23 +103,23 @@ void BattleRecord::Event::print(FILE* stream) const {
       break;
     case Type::BATTLE_COMMAND:
       fprintf(stream, "BATTLE_COMMAND\n");
-      print_data(stream, this->data, 0, nullptr, PrintDataFlags::PRINT_ASCII | PrintDataFlags::DISABLE_COLOR | PrintDataFlags::OFFSET_16_BITS);
+      phosg::print_data(stream, this->data, 0, nullptr, phosg::PrintDataFlags::PRINT_ASCII | phosg::PrintDataFlags::DISABLE_COLOR | phosg::PrintDataFlags::OFFSET_16_BITS);
       break;
     case Type::GAME_COMMAND:
       fprintf(stream, "GAME_COMMAND\n");
-      print_data(stream, this->data, 0, nullptr, PrintDataFlags::PRINT_ASCII | PrintDataFlags::DISABLE_COLOR | PrintDataFlags::OFFSET_16_BITS);
+      phosg::print_data(stream, this->data, 0, nullptr, phosg::PrintDataFlags::PRINT_ASCII | phosg::PrintDataFlags::DISABLE_COLOR | phosg::PrintDataFlags::OFFSET_16_BITS);
       break;
     case Type::EP3_GAME_COMMAND:
       fprintf(stream, "EP3_GAME_COMMAND\n");
-      print_data(stream, this->data, 0, nullptr, PrintDataFlags::PRINT_ASCII | PrintDataFlags::DISABLE_COLOR | PrintDataFlags::OFFSET_16_BITS);
+      phosg::print_data(stream, this->data, 0, nullptr, phosg::PrintDataFlags::PRINT_ASCII | phosg::PrintDataFlags::DISABLE_COLOR | phosg::PrintDataFlags::OFFSET_16_BITS);
       break;
     case Type::CHAT_MESSAGE:
       fprintf(stream, "CHAT_MESSAGE %08" PRIX32 "\n", this->guild_card_number);
-      print_data(stream, this->data, 0, nullptr, PrintDataFlags::PRINT_ASCII | PrintDataFlags::DISABLE_COLOR | PrintDataFlags::OFFSET_16_BITS);
+      phosg::print_data(stream, this->data, 0, nullptr, phosg::PrintDataFlags::PRINT_ASCII | phosg::PrintDataFlags::DISABLE_COLOR | phosg::PrintDataFlags::OFFSET_16_BITS);
       break;
     case Type::SERVER_DATA_COMMAND:
       fprintf(stream, "SERVER_DATA_COMMAND\n");
-      print_data(stream, this->data, 0, nullptr, PrintDataFlags::PRINT_ASCII | PrintDataFlags::DISABLE_COLOR | PrintDataFlags::OFFSET_16_BITS);
+      phosg::print_data(stream, this->data, 0, nullptr, phosg::PrintDataFlags::PRINT_ASCII | phosg::PrintDataFlags::DISABLE_COLOR | phosg::PrintDataFlags::OFFSET_16_BITS);
       break;
     default:
       throw runtime_error("unknown event type in battle record");
@@ -137,7 +137,7 @@ BattleRecord::BattleRecord(const string& data)
       behavior_flags(0),
       battle_start_timestamp(0),
       battle_end_timestamp(0) {
-  StringReader r(data);
+  phosg::StringReader r(data);
 
   uint64_t signature = r.get_u64l();
   bool has_random_stream;
@@ -161,7 +161,7 @@ BattleRecord::BattleRecord(const string& data)
 }
 
 string BattleRecord::serialize() const {
-  StringWriter w;
+  phosg::StringWriter w;
   w.put_u64l(this->SIGNATURE_V2);
   w.put_u64l(this->battle_start_timestamp);
   w.put_u64l(this->battle_end_timestamp);
@@ -202,7 +202,7 @@ void BattleRecord::add_player(
   }
   Event& ev = this->events.emplace_back();
   ev.type = Event::Type::PLAYER_JOIN;
-  ev.timestamp = now();
+  ev.timestamp = phosg::now();
   auto& player = ev.players.emplace_back();
   player.lobby_data = lobby_data;
   player.inventory = inventory;
@@ -216,7 +216,7 @@ void BattleRecord::delete_player(uint8_t client_id) {
   }
   Event& ev = this->events.emplace_back();
   ev.type = Event::Type::PLAYER_LEAVE;
-  ev.timestamp = now();
+  ev.timestamp = phosg::now();
   ev.leaving_client_id = client_id;
 }
 
@@ -226,7 +226,7 @@ void BattleRecord::add_command(Event::Type type, const void* data, size_t size) 
   }
   Event& ev = this->events.emplace_back();
   ev.type = type;
-  ev.timestamp = now();
+  ev.timestamp = phosg::now();
   ev.data.assign(reinterpret_cast<const char*>(data), size);
 }
 
@@ -236,7 +236,7 @@ void BattleRecord::add_command(Event::Type type, string&& data) {
   }
   Event& ev = this->events.emplace_back();
   ev.type = type;
-  ev.timestamp = now();
+  ev.timestamp = phosg::now();
   ev.data = std::move(data);
 }
 
@@ -247,7 +247,7 @@ void BattleRecord::add_chat_message(
   }
   Event& ev = this->events.emplace_back();
   ev.type = Event::Type::CHAT_MESSAGE;
-  ev.timestamp = now();
+  ev.timestamp = phosg::now();
   ev.guild_card_number = guild_card_number;
   ev.data = std::move(data);
 }
@@ -287,7 +287,7 @@ void BattleRecord::set_battle_start_timestamp() {
   if (this->battle_start_timestamp != 0) {
     throw logic_error("battle start timestamp is already set");
   }
-  this->battle_start_timestamp = now();
+  this->battle_start_timestamp = phosg::now();
 
   // First, find the correct map definition subcommand to keep, and execute
   // player join/leave events to get the present players
@@ -357,12 +357,12 @@ void BattleRecord::set_battle_start_timestamp() {
 }
 
 void BattleRecord::set_battle_end_timestamp() {
-  this->battle_end_timestamp = now();
+  this->battle_end_timestamp = phosg::now();
 }
 
 void BattleRecord::print(FILE* stream) const {
-  string start_str = format_time(this->battle_start_timestamp);
-  string end_str = format_time(this->battle_end_timestamp);
+  string start_str = phosg::format_time(this->battle_start_timestamp);
+  string end_str = phosg::format_time(this->battle_end_timestamp);
   fprintf(stream, "BattleRecord %s behavior_flags=%08" PRIX32 " start=%016" PRIX64 " (%s) end=%016" PRIX64 " (%s); %zu events\n",
       this->is_writable ? "writable" : "read-only",
       this->behavior_flags,
@@ -394,13 +394,12 @@ void BattleRecordPlayer::set_lobby(shared_ptr<Lobby> l) {
 
 void BattleRecordPlayer::start() {
   if (this->play_start_timestamp == 0) {
-    this->play_start_timestamp = now();
+    this->play_start_timestamp = phosg::now();
     this->schedule_events();
   }
 }
 
-void BattleRecordPlayer::dispatch_schedule_events(
-    evutil_socket_t, short, void* ctx) {
+void BattleRecordPlayer::dispatch_schedule_events(evutil_socket_t, short, void* ctx) {
   reinterpret_cast<BattleRecordPlayer*>(ctx)->schedule_events();
 }
 
@@ -413,7 +412,7 @@ void BattleRecordPlayer::schedule_events() {
   }
 
   for (;;) {
-    uint64_t relative_ts = now() - this->play_start_timestamp + this->record->battle_start_timestamp;
+    uint64_t relative_ts = phosg::now() - this->play_start_timestamp + this->record->battle_start_timestamp;
 
     if (this->event_it == this->record->events.end()) {
       if (relative_ts >= this->record->battle_end_timestamp) {
@@ -426,7 +425,7 @@ void BattleRecordPlayer::schedule_events() {
       } else {
         // There are no more events to play, but the battle has not officially
         // ended yet - reschedule the event for the end time
-        auto tv = usecs_to_timeval(this->record->battle_end_timestamp - relative_ts);
+        auto tv = phosg::usecs_to_timeval(this->record->battle_end_timestamp - relative_ts);
         event_add(this->next_command_ev.get(), &tv);
       }
       break;
@@ -467,7 +466,7 @@ void BattleRecordPlayer::schedule_events() {
       } else {
         // The next event should not occur yet, so reschedule for the time when
         // it should occur
-        auto tv = usecs_to_timeval(this->event_it->timestamp - relative_ts);
+        auto tv = phosg::usecs_to_timeval(this->event_it->timestamp - relative_ts);
         event_add(this->next_command_ev.get(), &tv);
         break;
       }

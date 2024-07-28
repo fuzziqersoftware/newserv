@@ -82,7 +82,7 @@ Server::Server(shared_ptr<Lobby> lobby, Options&& options)
 
 Server::~Server() noexcept(false) {
   if (this->logger_stack.size() != 1) {
-    throw logic_error(string_printf("incorrect logger stack size: expected 1, received %zu", this->logger_stack.size()));
+    throw logic_error(phosg::string_printf("incorrect logger stack size: expected 1, received %zu", this->logger_stack.size()));
   }
   delete this->logger_stack.back();
 }
@@ -125,7 +125,7 @@ Server::StackLogger::StackLogger(const Server* s, const std::string& prefix)
   s->logger_stack.push_back(this);
 }
 
-Server::StackLogger::StackLogger(const Server* s, const std::string& prefix, LogLevel min_level)
+Server::StackLogger::StackLogger(const Server* s, const std::string& prefix, phosg::LogLevel min_level)
     : PrefixedLogger(prefix, min_level),
       server(s) {
   s->logger_stack.push_back(this);
@@ -172,9 +172,9 @@ std::string Server::debug_str_for_card_ref(uint16_t card_ref) const {
   auto ce = this->definition_for_card_ref(card_ref);
   if (ce) {
     string name = ce->def.en_name.decode();
-    return string_printf("@%04hX (#%04" PRIX32 " %s)", card_ref, ce->def.card_id.load(), name.c_str());
+    return phosg::string_printf("@%04hX (#%04" PRIX32 " %s)", card_ref, ce->def.card_id.load(), name.c_str());
   } else {
-    return string_printf("@%04hX (missing)", card_ref);
+    return phosg::string_printf("@%04hX (missing)", card_ref);
   }
 }
 
@@ -185,9 +185,9 @@ std::string Server::debug_str_for_card_id(uint16_t card_id) const {
   auto ce = this->definition_for_card_id(card_id);
   if (ce) {
     string name = ce->def.en_name.decode();
-    return string_printf("#%04hX (%s)", card_id, name.c_str());
+    return phosg::string_printf("#%04hX (%s)", card_id, name.c_str());
   } else {
-    return string_printf("#%04hX (missing)", card_id);
+    return phosg::string_printf("#%04hX (missing)", card_id);
   }
 }
 
@@ -240,7 +240,7 @@ void Server::send(const void* data, size_t size, uint8_t command, bool enable_ma
         !(this->options.behavior_flags & BehaviorFlag::DISABLE_MASKING) &&
         (size >= 8)) {
       masked_data.assign(reinterpret_cast<const char*>(data), size);
-      uint8_t mask_key = (random_object<uint32_t>() % 0xFF) + 1;
+      uint8_t mask_key = (phosg::random_object<uint32_t>() % 0xFF) + 1;
       set_mask_for_ep3_game_command(masked_data.data(), masked_data.size(), mask_key);
       data = masked_data.data();
       size = masked_data.size();
@@ -260,7 +260,7 @@ void Server::send(const void* data, size_t size, uint8_t command, bool enable_ma
 
   } else if ((this->options.behavior_flags & BehaviorFlag::LOG_COMMANDS_IF_LOBBY_MISSING) &&
       this->log().info("Generated command")) {
-    print_data(stderr, data, size, 0, nullptr, PrintDataFlags::PRINT_ASCII | PrintDataFlags::DISABLE_COLOR | PrintDataFlags::OFFSET_16_BITS);
+    phosg::print_data(stderr, data, size, 0, nullptr, phosg::PrintDataFlags::PRINT_ASCII | phosg::PrintDataFlags::DISABLE_COLOR | phosg::PrintDataFlags::OFFSET_16_BITS);
   }
 }
 
@@ -272,9 +272,9 @@ void Server::send_6xB4x46() const {
   // debugging easier.
   G_ServerVersionStrings_Ep3_6xB4x46 cmd;
   cmd.version_signature.encode(this->options.is_nte() ? VERSION_SIGNATURE_NTE : VERSION_SIGNATURE, 1);
-  cmd.date_str1.encode(format_time(this->options.card_index->definitions_mtime() * 1000000), 1);
-  string build_date = format_time(BUILD_TIMESTAMP);
-  cmd.date_str2.encode(string_printf("newserv %s compiled at %s", GIT_REVISION_HASH, build_date.c_str()), 1);
+  cmd.date_str1.encode(phosg::format_time(this->options.card_index->definitions_mtime() * 1000000), 1);
+  string build_date = phosg::format_time(BUILD_TIMESTAMP);
+  cmd.date_str2.encode(phosg::string_printf("newserv %s compiled at %s", GIT_REVISION_HASH, build_date.c_str()), 1);
   this->send(cmd);
 }
 
@@ -283,7 +283,7 @@ string Server::prepare_6xB6x41_map_definition(shared_ptr<const MapIndex::Map> ma
 
   const auto& compressed = vm->compressed(is_nte);
 
-  StringWriter w;
+  phosg::StringWriter w;
   uint32_t subcommand_size = (compressed.size() + sizeof(G_MapData_Ep3_6xB6x41) + 3) & (~3);
   w.put<G_MapData_Ep3_6xB6x41>({{{{0xB6, 0, 0}, subcommand_size}, 0x41, {}}, vm->map->map_number.load(), compressed.size(), 0});
   w.write(compressed);
@@ -347,7 +347,7 @@ __attribute__((format(printf, 2, 3))) void Server::send_debug_message_printf(con
   if (l && (this->options.behavior_flags & Episode3::BehaviorFlag::ENABLE_STATUS_MESSAGES)) {
     va_list va;
     va_start(va, fmt);
-    std::string buf = string_vprintf(fmt, va);
+    std::string buf = phosg::string_vprintf(fmt, va);
     va_end(va);
     send_text_message(l, buf);
   }
@@ -358,7 +358,7 @@ __attribute__((format(printf, 2, 3))) void Server::send_info_message_printf(cons
   if (l) {
     va_list va;
     va_start(va, fmt);
-    std::string buf = string_vprintf(fmt, va);
+    std::string buf = phosg::string_vprintf(fmt, va);
     va_end(va);
     send_text_message(l, buf);
   }
@@ -862,7 +862,7 @@ void Server::draw_phase_after() {
       // facilities used are different.
       uint64_t limit_5mins = this->map_and_rules->rules.overall_time_limit;
       uint64_t end_usecs = this->battle_start_usecs + (limit_5mins * 300 * 1000 * 1000);
-      if (now() >= end_usecs) {
+      if (phosg::now() >= end_usecs) {
         this->overall_time_expired = true;
       }
     }
@@ -972,7 +972,7 @@ void Server::end_action_phase() {
 
 bool Server::enqueue_attack_or_defense(uint8_t client_id, ActionState* pa) {
   auto log = this->log_stack("enqueue_attack_or_defense: ");
-  if (log.should_log(LogLevel::DEBUG)) {
+  if (log.should_log(phosg::LogLevel::DEBUG)) {
     string s = pa->str(this->shared_from_this());
     log.debug("input: %s", s.c_str());
   }
@@ -1022,7 +1022,7 @@ bool Server::enqueue_attack_or_defense(uint8_t client_id, ActionState* pa) {
 
   size_t attack_index = this->num_pending_attacks++;
   this->pending_attacks[attack_index] = *pa;
-  if (log.should_log(LogLevel::DEBUG)) {
+  if (log.should_log(phosg::LogLevel::DEBUG)) {
     string pa_str = this->pending_attacks[attack_index].str(this->shared_from_this());
     log.debug("set pending attack %zu: %s", attack_index, pa_str.c_str());
   }
@@ -1711,7 +1711,7 @@ void Server::setup_and_start_battle() {
     cmd.start_battle = 1;
     this->send(cmd);
   }
-  this->battle_start_usecs = now();
+  this->battle_start_usecs = phosg::now();
 
   this->send_6xB4x46();
 
@@ -1831,8 +1831,8 @@ void Server::on_server_data_input(shared_ptr<Client> sender_c, const string& dat
   auto header = check_size_t<G_CardBattleCommandHeader>(data, 0xFFFF);
   size_t expected_size = header.size * 4;
   if (expected_size < data.size()) {
-    print_data(stderr, data);
-    throw runtime_error(string_printf("command is incomplete: expected %zX bytes, received %zX bytes", expected_size, data.size()));
+    phosg::print_data(stderr, data);
+    throw runtime_error(phosg::string_printf("command is incomplete: expected %zX bytes, received %zX bytes", expected_size, data.size()));
   }
   if (header.subcommand != 0xB3) {
     throw runtime_error("server data command is not 6xB3");
@@ -2259,7 +2259,7 @@ void Server::handle_CAx14_update_deck_during_setup(shared_ptr<Client>, const str
         }
       }
       if (verify_error) {
-        throw runtime_error(string_printf("invalid deck: -0x%" PRIX32, verify_error));
+        throw runtime_error(phosg::string_printf("invalid deck: -0x%" PRIX32, verify_error));
       }
       if (!this->options.is_nte() && !(this->options.behavior_flags & BehaviorFlag::SKIP_D1_D2_REPLACE)) {
         this->ruler_server->replace_D1_D2_rank_cards_with_Attack(entry.card_ids);
@@ -2579,7 +2579,7 @@ void Server::handle_CAx40_map_list_request(shared_ptr<Client> sender_c, const st
   uint8_t language = sender_c ? sender_c->language() : 1;
   const auto& list_data = this->options.map_index->get_compressed_list(num_players, language);
 
-  StringWriter w;
+  phosg::StringWriter w;
   uint32_t subcommand_size = (list_data.size() + sizeof(G_MapList_Ep3_6xB6x40) + 3) & (~3);
   w.put<G_MapList_Ep3_6xB6x40>(G_MapList_Ep3_6xB6x40{{{{0xB6, 0, 0}, subcommand_size}, 0x40, {}}, list_data.size(), 0});
   w.write(list_data);
@@ -2828,7 +2828,7 @@ void Server::unknown_8023EEF4() {
     auto card = this->attack_cards[this->unknown_a14];
     if (this->get_current_team_turn() == card->get_team_id()) {
       ActionState as = this->pending_attacks_with_cards[this->unknown_a14];
-      if (log.should_log(LogLevel::DEBUG)) {
+      if (log.should_log(phosg::LogLevel::DEBUG)) {
         log.debug("card @%04hX #%04hX can attack", card->get_card_ref(), card->get_card_id());
         string as_str = as.str(this->shared_from_this());
         log.debug("as: %s", as_str.c_str());
@@ -2838,7 +2838,7 @@ void Server::unknown_8023EEF4() {
       } else {
         this->replace_targets_due_to_destruction_or_conditions(&as);
       }
-      if (log.should_log(LogLevel::DEBUG)) {
+      if (log.should_log(phosg::LogLevel::DEBUG)) {
         string as_str = as.str(this->shared_from_this());
         log.debug("as after target replacement: %s", as_str.c_str());
       }

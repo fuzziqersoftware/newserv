@@ -21,7 +21,7 @@ extern const std::unordered_set<uint32_t> v2_crypt_initial_client_commands;
 extern const std::unordered_set<uint32_t> v3_crypt_initial_client_commands;
 extern const std::unordered_set<std::string> bb_crypt_initial_client_commands;
 
-constexpr size_t GC_QUEST_LOAD_MAX_CHUNKS_IN_FLIGHT = 4;
+constexpr size_t V3_V4_QUEST_LOAD_MAX_CHUNKS_IN_FLIGHT = 4;
 
 // TODO: Many of these functions should take a Channel& instead of a
 // shared_ptr<Client>. Refactor functions appropriately.
@@ -256,7 +256,7 @@ __attribute__((format(printf, 2, 3))) void send_text_message_printf(
     TargetT& t, const char* format, ...) {
   va_list va;
   va_start(va, format);
-  std::string buf = string_vprintf(format, va);
+  std::string buf = phosg::string_vprintf(format, va);
   va_end(va);
   return send_text_message(t, buf.c_str());
 }

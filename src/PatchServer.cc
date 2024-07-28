@@ -37,8 +37,8 @@ PatchServer::Client::Client(
     bool hide_data_from_logs)
     : server(server),
       id(next_id++),
-      log(string_printf("[C-%" PRIX64 "] ", this->id), client_log.min_level),
-      channel(bev, 0, version, 1, nullptr, nullptr, this, string_printf("C-%" PRIX64, this->id), TerminalFormat::FG_YELLOW, TerminalFormat::FG_GREEN),
+      log(phosg::string_printf("[C-%" PRIX64 "] ", this->id), client_log.min_level),
+      channel(bev, 0, version, 1, nullptr, nullptr, this, phosg::string_printf("C-%" PRIX64, this->id), phosg::TerminalFormat::FG_YELLOW, phosg::TerminalFormat::FG_GREEN),
       idle_timeout_usecs(idle_timeout_usecs),
       idle_timeout_event(
           event_new(bufferevent_get_base(bev), -1, EV_TIMEOUT, &PatchServer::Client::dispatch_idle_timeout, this),
@@ -49,15 +49,15 @@ PatchServer::Client::Client(
   // protocol is fully understood and data logs for patch clients are generally
   // more annoying than helpful at this point.
   if (hide_data_from_logs) {
-    this->channel.terminal_recv_color = TerminalFormat::END;
-    this->channel.terminal_send_color = TerminalFormat::END;
+    this->channel.terminal_recv_color = phosg::TerminalFormat::END;
+    this->channel.terminal_send_color = phosg::TerminalFormat::END;
   }
 
   this->log.info("Created");
 }
 
 void PatchServer::Client::reschedule_timeout_event() {
-  struct timeval idle_tv = usecs_to_timeval(this->idle_timeout_usecs);
+  struct timeval idle_tv = phosg::usecs_to_timeval(this->idle_timeout_usecs);
   event_add(this->idle_timeout_event.get(), &idle_tv);
 }
 
@@ -78,8 +78,8 @@ void PatchServer::Client::idle_timeout() {
 }
 
 void PatchServer::send_server_init(shared_ptr<Client> c) const {
-  uint32_t server_key = random_object<uint32_t>();
-  uint32_t client_key = random_object<uint32_t>();
+  uint32_t server_key = phosg::random_object<uint32_t>();
+  uint32_t client_key = phosg::random_object<uint32_t>();
 
   S_ServerInit_Patch_02 cmd;
   cmd.copyright.encode("Patch Server. Copyright SonicTeam, LTD. 2001");
@@ -92,7 +92,7 @@ void PatchServer::send_server_init(shared_ptr<Client> c) const {
 }
 
 void PatchServer::send_message_box(shared_ptr<Client> c, const string& text) const {
-  StringWriter w;
+  phosg::StringWriter w;
   try {
     if (c->version() == Version::PC_PATCH) {
       w.write(tt_encode_marked_optional(text, c->channel.language, true));
@@ -102,7 +102,7 @@ void PatchServer::send_message_box(shared_ptr<Client> c, const string& text) con
       throw logic_error("non-patch client on patch server");
     }
   } catch (const runtime_error& e) {
-    log_warning("Failed to encode message for patch message box command: %s", e.what());
+    phosg::log_warning("Failed to encode message for patch message box command: %s", e.what());
     return;
   }
   w.put_u16(0);
@@ -168,13 +168,13 @@ void PatchServer::on_04(shared_ptr<Client> c, string& data) {
       this->config->account_index->from_bb_credentials(username, &password, false);
 
     } catch (const AccountIndex::incorrect_password& e) {
-      this->send_message_box(c, string_printf("Login failed: %s", e.what()));
+      this->send_message_box(c, phosg::string_printf("Login failed: %s", e.what()));
       this->disconnect_client(c);
       return;
 
     } catch (const AccountIndex::missing_account& e) {
       if (!this->config->allow_unregistered_users) {
-        this->send_message_box(c, string_printf("Login failed: %s", e.what()));
+        this->send_message_box(c, phosg::string_printf("Login failed: %s", e.what()));
         this->disconnect_client(c);
         return;
       }
@@ -184,7 +184,7 @@ void PatchServer::on_04(shared_ptr<Client> c, string& data) {
     try {
       this->config->account_index->from_bb_credentials(username, nullptr, false);
     } catch (const AccountIndex::missing_account& e) {
-      this->send_message_box(c, string_printf("Login failed: %s", e.what()));
+      this->send_message_box(c, phosg::string_printf("Login failed: %s", e.what()));
       this->disconnect_client(c);
       return;
     }
@@ -300,7 +300,7 @@ void PatchServer::disconnect_client(shared_ptr<Client> c) {
 }
 
 void PatchServer::enqueue_destroy_clients() {
-  auto tv = usecs_to_timeval(0);
+  auto tv = phosg::usecs_to_timeval(0);
   event_add(this->destroy_clients_ev.get(), &tv);
 }
 
@@ -321,7 +321,7 @@ void PatchServer::dispatch_on_listen_error(
 
 void PatchServer::on_listen_accept(struct evconnlistener* listener, evutil_socket_t fd, struct sockaddr*, int) {
   struct sockaddr_storage remote_addr;
-  get_socket_addresses(fd, nullptr, &remote_addr);
+  phosg::get_socket_addresses(fd, nullptr, &remote_addr);
   if (this->config->banned_ipv4_ranges->check(remote_addr)) {
     close(fd);
     return;
@@ -430,7 +430,7 @@ void PatchServer::wait_for_stop() {
 }
 
 void PatchServer::listen(const std::string& addr_str, const string& socket_path, Version version) {
-  int fd = ::listen(socket_path, 0, SOMAXCONN);
+  int fd = phosg::listen(socket_path, 0, SOMAXCONN);
   server_log.info("Listening on Unix socket %s on fd %d as %s", socket_path.c_str(), fd, addr_str.c_str());
   this->add_socket(addr_str, fd, version);
 }
@@ -439,8 +439,8 @@ void PatchServer::listen(const std::string& addr_str, const string& addr, int po
   if (port == 0) {
     this->listen(addr_str, addr, version);
   } else {
-    int fd = ::listen(addr, port, SOMAXCONN);
-    string netloc_str = render_netloc(addr, port);
+    int fd = phosg::listen(addr, port, SOMAXCONN);
+    string netloc_str = phosg::render_netloc(addr, port);
     server_log.info("Listening on TCP interface %s on fd %d as %s", netloc_str.c_str(), fd, addr_str.c_str());
     this->add_socket(addr_str, fd, version);
   }

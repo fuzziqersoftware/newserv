@@ -21,8 +21,8 @@ struct Channel {
   std::shared_ptr<PSOEncryption> crypt_out;
 
   std::string name;
-  TerminalFormat terminal_send_color;
-  TerminalFormat terminal_recv_color;
+  phosg::TerminalFormat terminal_send_color;
+  phosg::TerminalFormat terminal_recv_color;
 
   struct Message {
     uint16_t command;
@@ -45,8 +45,8 @@ struct Channel {
       on_error_t on_error,
       void* context_obj,
       const std::string& name,
-      TerminalFormat terminal_send_color = TerminalFormat::END,
-      TerminalFormat terminal_recv_color = TerminalFormat::END);
+      phosg::TerminalFormat terminal_send_color = phosg::TerminalFormat::END,
+      phosg::TerminalFormat terminal_recv_color = phosg::TerminalFormat::END);
   // Creates a connected channel
   Channel(
       struct bufferevent* bev,
@@ -57,8 +57,8 @@ struct Channel {
       on_error_t on_error,
       void* context_obj,
       const std::string& name = "",
-      TerminalFormat terminal_send_color = TerminalFormat::END,
-      TerminalFormat terminal_recv_color = TerminalFormat::END);
+      phosg::TerminalFormat terminal_send_color = phosg::TerminalFormat::END,
+      phosg::TerminalFormat terminal_recv_color = phosg::TerminalFormat::END);
   Channel(const Channel& other) = delete;
   Channel(Channel&& other) = delete;
   Channel& operator=(const Channel& other) = delete;

@@ -11,6 +11,7 @@
 
 #include "ItemData.hh"
 #include "Text.hh"
+#include "Types.hh"
 
 class ItemParameterTable {
 public:
@@ -18,11 +19,10 @@ public:
   // functions instead of manually branching on various offset table pointers
   // being null or not in each public function. Rewrite this and make it better.
 
-  template <bool IsBigEndian>
+  template <bool BE>
   struct ArrayRefT {
-    using U32T = typename std::conditional<IsBigEndian, be_uint32_t, le_uint32_t>::type;
-    /* 00 */ U32T count;
-    /* 04 */ U32T offset;
+    /* 00 */ U32T<BE> count;
+    /* 04 */ U32T<BE> offset;
     /* 08 */
   } __packed__;
 
@@ -31,25 +31,22 @@ public:
   check_struct_size(ArrayRef, 8);
   check_struct_size(ArrayRefBE, 8);
 
-  template <bool IsBigEndian>
+  template <bool BE>
   struct ItemBaseV2T {
-    using U32T = typename std::conditional<IsBigEndian, be_uint32_t, le_uint32_t>::type;
     // id specifies several things; notably, it doubles as the index of the
     // item's name in the text archive (e.g. TextEnglish) collection 0.
-    /* 00 */ U32T id = 0xFFFFFFFF;
+    /* 00 */ U32T<BE> id = 0xFFFFFFFF;
     /* 04 */
   } __packed__;
-  template <bool IsBigEndian>
-  struct ItemBaseV3T : ItemBaseV2T<IsBigEndian> {
-    using U16T = typename std::conditional<IsBigEndian, be_uint16_t, le_uint16_t>::type;
-    /* 04 */ U16T type = 0;
-    /* 06 */ U16T skin = 0;
+  template <bool BE>
+  struct ItemBaseV3T : ItemBaseV2T<BE> {
+    /* 04 */ U16T<BE> type = 0;
+    /* 06 */ U16T<BE> skin = 0;
     /* 08 */
   } __packed__;
-  template <bool IsBigEndian>
-  struct ItemBaseV4T : ItemBaseV3T<IsBigEndian> {
-    using U32T = typename std::conditional<IsBigEndian, be_uint32_t, le_uint32_t>::type;
-    /* 08 */ U32T team_points = 0;
+  template <bool BE>
+  struct ItemBaseV4T : ItemBaseV3T<BE> {
+    /* 08 */ U32T<BE> team_points = 0;
     /* 0C */
   } __packed__;
 
@@ -118,17 +115,16 @@ public:
     WeaponV4 to_v4() const;
   } __packed_ws__(WeaponGCNTE, 0x24);
 
-  template <bool IsBigEndian>
+  template <bool BE>
   struct WeaponV3T {
-    using U16T = typename std::conditional<IsBigEndian, be_uint16_t, le_uint16_t>::type;
-    /* 00 */ ItemBaseV3T<IsBigEndian> base;
-    /* 08 */ U16T class_flags = 0;
-    /* 0A */ U16T atp_min = 0;
-    /* 0C */ U16T atp_max = 0;
-    /* 0E */ U16T atp_required = 0;
-    /* 10 */ U16T mst_required = 0;
-    /* 12 */ U16T ata_required = 0;
-    /* 14 */ U16T mst = 0;
+    /* 00 */ ItemBaseV3T<BE> base;
+    /* 08 */ U16T<BE> class_flags = 0;
+    /* 0A */ U16T<BE> atp_min = 0;
+    /* 0C */ U16T<BE> atp_max = 0;
+    /* 0E */ U16T<BE> atp_required = 0;
+    /* 10 */ U16T<BE> mst_required = 0;
+    /* 12 */ U16T<BE> ata_required = 0;
+    /* 14 */ U16T<BE> mst = 0;
     /* 16 */ uint8_t max_grind = 0;
     /* 17 */ uint8_t photon = 0;
     /* 18 */ uint8_t special = 0;
@@ -187,16 +183,15 @@ public:
     /* 2C */
   } __packed_ws__(WeaponV4, 0x2C);
 
-  template <typename BaseT, bool IsBigEndian>
+  template <typename BaseT, bool BE>
   struct ArmorOrShieldT {
-    using U16T = typename std::conditional<IsBigEndian, be_uint16_t, le_uint16_t>::type;
     /* V1/V2 offsets */
     /* 00 */ BaseT base;
-    /* 04 */ U16T dfp = 0;
-    /* 06 */ U16T evp = 0;
+    /* 04 */ U16T<BE> dfp = 0;
+    /* 06 */ U16T<BE> evp = 0;
     /* 08 */ uint8_t block_particle = 0;
     /* 09 */ uint8_t block_effect = 0;
-    /* 0A */ U16T class_flags = 0x00FF;
+    /* 0A */ U16T<BE> class_flags = 0x00FF;
     /* 0C */ uint8_t required_level = 0;
     /* 0D */ uint8_t efr = 0;
     /* 0E */ uint8_t eth = 0;
@@ -208,12 +203,11 @@ public:
     /* 14 */
   } __packed__;
 
-  template <typename BaseT, bool IsBigEndian>
-  struct ArmorOrShieldFinalT : ArmorOrShieldT<BaseT, IsBigEndian> {
-    using U16T = typename std::conditional<IsBigEndian, be_uint16_t, le_uint16_t>::type;
+  template <typename BaseT, bool BE>
+  struct ArmorOrShieldFinalT : ArmorOrShieldT<BaseT, BE> {
     /* 14 */ uint8_t stat_boost = 0;
     /* 15 */ uint8_t tech_boost = 0;
-    /* 16 */ U16T unknown_a2 = 0;
+    /* 16 */ U16T<BE> unknown_a2 = 0;
     /* 18 */
   } __packed__;
   using ArmorOrShieldV4 = ArmorOrShieldFinalT<ItemBaseV4T<false>, false>;
@@ -225,8 +219,8 @@ public:
   struct ArmorOrShieldV1V2 : ArmorOrShieldFinalT<ItemBaseV2T<false>, false> {
     ArmorOrShieldV4 to_v4() const;
   } __packed_ws__(ArmorOrShieldV1V2, 0x18);
-  template <bool IsBigEndian>
-  struct ArmorOrShieldV3T : ArmorOrShieldFinalT<ItemBaseV3T<IsBigEndian>, IsBigEndian> {
+  template <bool BE>
+  struct ArmorOrShieldV3T : ArmorOrShieldFinalT<ItemBaseV3T<BE>, BE> {
     ArmorOrShieldV4 to_v4() const;
   } __packed__;
   using ArmorOrShieldV3 = ArmorOrShieldV3T<false>;
@@ -234,21 +228,18 @@ public:
   check_struct_size(ArmorOrShieldV3, 0x1C);
   check_struct_size(ArmorOrShieldV3BE, 0x1C);
 
-  template <typename BaseT, bool IsBigEndian>
+  template <typename BaseT, bool BE>
   struct UnitT {
-    using U16T = typename std::conditional<IsBigEndian, be_uint16_t, le_uint16_t>::type;
-    using S16T = typename std::conditional<IsBigEndian, be_int16_t, le_int16_t>::type;
     /* V1/V2 offsets */
     /* 00 */ BaseT base;
-    /* 04 */ U16T stat = 0;
-    /* 06 */ U16T stat_amount = 0;
+    /* 04 */ U16T<BE> stat = 0;
+    /* 06 */ U16T<BE> stat_amount = 0;
     /* 08 */
   } __packed__;
 
-  template <typename BaseT, bool IsBigEndian>
-  struct UnitFinalT : UnitT<BaseT, IsBigEndian> {
-    using S16T = typename std::conditional<IsBigEndian, be_int16_t, le_int16_t>::type;
-    /* 08 */ S16T modifier_amount = 0;
+  template <typename BaseT, bool BE>
+  struct UnitFinalT : UnitT<BaseT, BE> {
+    /* 08 */ S16T<BE> modifier_amount = 0;
     /* 0A */ parray<uint8_t, 2> unused;
     /* 0C */
   } __packed__;
@@ -260,8 +251,8 @@ public:
   struct UnitV1V2 : UnitFinalT<ItemBaseV2T<false>, false> {
     UnitV4 to_v4() const;
   } __packed_ws__(UnitV1V2, 0x0C);
-  template <bool IsBigEndian>
-  struct UnitV3T : UnitFinalT<ItemBaseV3T<IsBigEndian>, IsBigEndian> {
+  template <bool BE>
+  struct UnitV3T : UnitFinalT<ItemBaseV3T<BE>, BE> {
     UnitV4 to_v4() const;
   } __packed__;
   using UnitV3 = UnitV3T<false>;
@@ -269,12 +260,11 @@ public:
   check_struct_size(UnitV3, 0x10);
   check_struct_size(UnitV3BE, 0x10);
 
-  template <typename BaseT, bool IsBigEndian>
+  template <typename BaseT, bool BE>
   struct MagT {
-    using U16T = typename std::conditional<IsBigEndian, be_uint16_t, le_uint16_t>::type;
     /* V1/V2 offsets */
     /* 00 */ BaseT base;
-    /* 04 */ U16T feed_table = 0;
+    /* 04 */ U16T<BE> feed_table = 0;
     /* 06 */ uint8_t photon_blast = 0;
     /* 07 */ uint8_t activation = 0;
     /* 08 */ uint8_t on_pb_full = 0;
@@ -317,10 +307,9 @@ public:
 
     MagV4 to_v4() const;
   } __packed_ws__(MagV2, 0x14);
-  template <bool IsBigEndian>
-  struct MagV3T : MagT<ItemBaseV3T<IsBigEndian>, IsBigEndian> {
-    using U16T = typename std::conditional<IsBigEndian, be_uint16_t, le_uint16_t>::type;
-    /* 10 */ U16T class_flags = 0x00FF;
+  template <bool BE>
+  struct MagV3T : MagT<ItemBaseV3T<BE>, BE> {
+    /* 10 */ U16T<BE> class_flags = 0x00FF;
     /* 12 */ parray<uint8_t, 2> unused;
     /* 14 */
 
@@ -331,16 +320,13 @@ public:
   check_struct_size(MagV3, 0x18);
   check_struct_size(MagV3BE, 0x18);
 
-  template <typename BaseT, bool IsBigEndian>
+  template <typename BaseT, bool BE>
   struct ToolT {
-    using U16T = typename std::conditional<IsBigEndian, be_uint16_t, le_uint16_t>::type;
-    using S32T = typename std::conditional<IsBigEndian, be_int32_t, le_int32_t>::type;
-    using U32T = typename std::conditional<IsBigEndian, be_uint32_t, le_uint32_t>::type;
     /* V1/V2 offsets */
     /* 00 */ BaseT base;
-    /* 04 */ U16T amount = 0;
-    /* 06 */ U16T tech = 0;
-    /* 08 */ S32T cost = 0;
+    /* 04 */ U16T<BE> amount = 0;
+    /* 06 */ U16T<BE> tech = 0;
+    /* 08 */ S32T<BE> cost = 0;
     // Bits in item_flags:
     //   00000001 - ever usable by player ("Use" appears in inventory menu)
     //   00000002 - unknown
@@ -350,7 +336,7 @@ public:
     //   00000020 - usable in boss arenas
     //   00000040 - usable in Challenge mode
     //   00000080 - is rare (renders as red box; V3+)
-    /* 0C */ U32T item_flags = 0;
+    /* 0C */ U32T<BE> item_flags = 0;
     /* 10 */
   } __packed__;
 
@@ -359,8 +345,8 @@ public:
   struct ToolV1V2 : ToolT<ItemBaseV2T<false>, false> {
     ToolV4 to_v4() const;
   } __packed_ws__(ToolV1V2, 0x10);
-  template <bool IsBigEndian>
-  struct ToolV3T : ToolT<ItemBaseV3T<IsBigEndian>, IsBigEndian> {
+  template <bool BE>
+  struct ToolV3T : ToolT<ItemBaseV3T<BE>, BE> {
     ToolV4 to_v4() const;
   } __packed__;
   using ToolV3 = ToolV3T<false>;
@@ -380,34 +366,31 @@ public:
 
   using MagFeedResultsList = parray<MagFeedResult, 11>;
 
-  template <bool IsBigEndian>
+  template <bool BE>
   struct MagFeedResultsListOffsetsT {
-    using U32T = typename std::conditional<IsBigEndian, be_uint32_t, le_uint32_t>::type;
-    parray<U32T, 8> offsets; // Offsets of MagFeedResultsList objects
+    parray<U32T<BE>, 8> offsets; // Offsets of MagFeedResultsList objects
   } __packed__;
   using MagFeedResultsListOffsets = MagFeedResultsListOffsetsT<false>;
   using MagFeedResultsListOffsetsBE = MagFeedResultsListOffsetsT<true>;
   check_struct_size(MagFeedResultsListOffsets, 0x20);
   check_struct_size(MagFeedResultsListOffsetsBE, 0x20);
 
-  template <bool IsBigEndian>
+  template <bool BE>
   struct SpecialT {
-    using U16T = typename std::conditional<IsBigEndian, be_uint16_t, le_uint16_t>::type;
-    U16T type = 0xFFFF;
-    U16T amount = 0;
+    U16T<BE> type = 0xFFFF;
+    U16T<BE> amount = 0;
   } __packed__;
   using Special = SpecialT<false>;
   using SpecialBE = SpecialT<true>;
   check_struct_size(Special, 4);
   check_struct_size(SpecialBE, 4);
 
-  template <bool IsBigEndian>
+  template <bool BE>
   struct StatBoostT {
-    using U16T = typename std::conditional<IsBigEndian, be_uint16_t, le_uint16_t>::type;
     uint8_t stat1 = 0;
     uint8_t stat2 = 0;
-    U16T amount1 = 0;
-    U16T amount2 = 0;
+    U16T<BE> amount1 = 0;
+    U16T<BE> amount2 = 0;
   } __packed__;
   using StatBoost = StatBoostT<false>;
   using StatBoostBE = StatBoostT<true>;
@@ -428,16 +411,14 @@ public:
     parray<uint8_t, 3> unused;
   } __packed_ws__(ItemCombination, 0x10);
 
-  template <bool IsBigEndian>
+  template <bool BE>
   struct TechniqueBoostT {
-    using U32T = typename std::conditional<IsBigEndian, be_uint32_t, le_uint32_t>::type;
-    using FloatT = typename std::conditional<IsBigEndian, be_float, le_float>::type;
-    U32T tech1 = 0;
-    FloatT boost1 = 0.0f;
-    U32T tech2 = 0;
-    FloatT boost2 = 0.0f;
-    U32T tech3 = 0;
-    FloatT boost3 = 0.0f;
+    U32T<BE> tech1 = 0;
+    F32T<BE> boost1 = 0.0f;
+    U32T<BE> tech2 = 0;
+    F32T<BE> boost2 = 0.0f;
+    U32T<BE> tech3 = 0;
+    F32T<BE> boost3 = 0.0f;
   } __packed__;
   using TechniqueBoost = TechniqueBoostT<false>;
   using TechniqueBoostBE = TechniqueBoostT<true>;
@@ -454,13 +435,12 @@ public:
     uint8_t unused = 0;
   } __packed_ws__(UnsealableItem, 4);
 
-  template <bool IsBigEndian>
+  template <bool BE>
   struct NonWeaponSaleDivisorsT {
-    using FloatT = typename std::conditional<IsBigEndian, be_float, le_float>::type;
-    FloatT armor_divisor = 0.0f;
-    FloatT shield_divisor = 0.0f;
-    FloatT unit_divisor = 0.0f;
-    FloatT mag_divisor = 0.0f;
+    F32T<BE> armor_divisor = 0.0f;
+    F32T<BE> shield_divisor = 0.0f;
+    F32T<BE> unit_divisor = 0.0f;
+    F32T<BE> mag_divisor = 0.0f;
   } __packed__;
   using NonWeaponSaleDivisors = NonWeaponSaleDivisorsT<false>;
   using NonWeaponSaleDivisorsBE = NonWeaponSaleDivisorsT<true>;
@@ -587,33 +567,32 @@ private:
     /* 4C / 6B1C */ be_uint32_t tech_boost_table; // -> [TechniqueBoost] (always 0x2C of them? from counts struct?)
   } __packed_ws__(TableOffsetsGCNTE, 0x50);
 
-  template <bool IsBigEndian>
+  template <bool BE>
   struct TableOffsetsV3V4T {
-    using U32T = typename std::conditional<IsBigEndian, be_uint32_t, le_uint32_t>::type;
     /* ## / GC   / BB */
-    /* 00 / F078 / 14884 */ U32T weapon_table; // -> [{count, offset -> [WeaponV3/WeaponV4]}](0xED)
-    /* 04 / EF90 / 1478C */ U32T armor_table; // -> [{count, offset -> [ArmorOrShieldV3/ArmorOrShieldV4]}](2; armors and shields)
-    /* 08 / EFA0 / 1479C */ U32T unit_table; // -> {count, offset -> [UnitV3/UnitV4]} (last if out of range)
-    /* 0C / EFB0 / 147AC */ U32T tool_table; // -> [{count, offset -> [ToolV3/ToolV4]}](0x1A) (last if out of range)
-    /* 10 / EFA8 / 147A4 */ U32T mag_table; // -> {count, offset -> [MagV3/MagV4]}
-    /* 14 / B88C / 0F4B8 */ U32T v1_replacement_table; // -> [uint8_t](0xED)
-    /* 18 / A7FC / 0DE7C */ U32T photon_color_table; // -> [0x24-byte structs](0x20)
-    /* 1C / AACC / 0E194 */ U32T weapon_range_table; // -> ???
-    /* 20 / B938 / 0F5A8 */ U32T weapon_sale_divisor_table; // -> [float](0xED)
-    /* 24 / BBCC / 0F83C */ U32T sale_divisor_table; // -> NonWeaponSaleDivisors
-    /* 28 / F608 / 1502C */ U32T mag_feed_table; // -> MagFeedResultsTable
-    /* 2C / BE9C / 0FB0C */ U32T star_value_table; // -> [uint8_t](0x330) (indexed by .id from weapon, armor, etc.)
-    /* 30 / C100 / 0FE3C */ U32T special_data_table; // -> [Special]
-    /* 34 / C1A4 / 0FEE0 */ U32T weapon_effect_table; // -> [16-byte structs]
-    /* 38 / DE50 / 1275C */ U32T stat_boost_table; // -> [StatBoost]
-    /* 3C / D6E4 / 11C80 */ U32T shield_effect_table; // -> [8-byte structs]
-    /* 40 / DF88 / 12894 */ U32T max_tech_level_table; // -> MaxTechniqueLevels
-    /* 44 / F5D0 / 14FF4 */ U32T combination_table; // -> {count, offset -> [ItemCombination]}
-    /* 48 / DE48 / 12754 */ U32T unknown_a1;
-    /* 4C / EB8C / 14278 */ U32T tech_boost_table; // -> [TechniqueBoost] (always 0x2C of them? from counts struct?)
-    /* 50 / F5F0 / 15014 */ U32T unwrap_table; // -> {count, offset -> [{count, offset -> [EventItem]}]}
-    /* 54 / F5F8 / 1501C */ U32T unsealable_table; // -> {count, offset -> [UnsealableItem]}
-    /* 58 / F600 / 15024 */ U32T ranged_special_table; // -> {count, offset -> [4-byte structs]}
+    /* 00 / F078 / 14884 */ U32T<BE> weapon_table; // -> [{count, offset -> [WeaponV3/WeaponV4]}](0xED)
+    /* 04 / EF90 / 1478C */ U32T<BE> armor_table; // -> [{count, offset -> [ArmorOrShieldV3/ArmorOrShieldV4]}](2; armors and shields)
+    /* 08 / EFA0 / 1479C */ U32T<BE> unit_table; // -> {count, offset -> [UnitV3/UnitV4]} (last if out of range)
+    /* 0C / EFB0 / 147AC */ U32T<BE> tool_table; // -> [{count, offset -> [ToolV3/ToolV4]}](0x1A) (last if out of range)
+    /* 10 / EFA8 / 147A4 */ U32T<BE> mag_table; // -> {count, offset -> [MagV3/MagV4]}
+    /* 14 / B88C / 0F4B8 */ U32T<BE> v1_replacement_table; // -> [uint8_t](0xED)
+    /* 18 / A7FC / 0DE7C */ U32T<BE> photon_color_table; // -> [0x24-byte structs](0x20)
+    /* 1C / AACC / 0E194 */ U32T<BE> weapon_range_table; // -> ???
+    /* 20 / B938 / 0F5A8 */ U32T<BE> weapon_sale_divisor_table; // -> [float](0xED)
+    /* 24 / BBCC / 0F83C */ U32T<BE> sale_divisor_table; // -> NonWeaponSaleDivisors
+    /* 28 / F608 / 1502C */ U32T<BE> mag_feed_table; // -> MagFeedResultsTable
+    /* 2C / BE9C / 0FB0C */ U32T<BE> star_value_table; // -> [uint8_t](0x330) (indexed by .id from weapon, armor, etc.)
+    /* 30 / C100 / 0FE3C */ U32T<BE> special_data_table; // -> [Special]
+    /* 34 / C1A4 / 0FEE0 */ U32T<BE> weapon_effect_table; // -> [16-byte structs]
+    /* 38 / DE50 / 1275C */ U32T<BE> stat_boost_table; // -> [StatBoost]
+    /* 3C / D6E4 / 11C80 */ U32T<BE> shield_effect_table; // -> [8-byte structs]
+    /* 40 / DF88 / 12894 */ U32T<BE> max_tech_level_table; // -> MaxTechniqueLevels
+    /* 44 / F5D0 / 14FF4 */ U32T<BE> combination_table; // -> {count, offset -> [ItemCombination]}
+    /* 48 / DE48 / 12754 */ U32T<BE> unknown_a1;
+    /* 4C / EB8C / 14278 */ U32T<BE> tech_boost_table; // -> [TechniqueBoost] (always 0x2C of them? from counts struct?)
+    /* 50 / F5F0 / 15014 */ U32T<BE> unwrap_table; // -> {count, offset -> [{count, offset -> [EventItem]}]}
+    /* 54 / F5F8 / 1501C */ U32T<BE> unsealable_table; // -> {count, offset -> [UnsealableItem]}
+    /* 58 / F600 / 15024 */ U32T<BE> ranged_special_table; // -> {count, offset -> [4-byte structs]}
   } __packed__;
   using TableOffsetsV3V4 = TableOffsetsV3V4T<false>;
   using TableOffsetsV3V4BE = TableOffsetsV3V4T<true>;
@@ -622,7 +601,7 @@ private:
 
   Version version;
   std::shared_ptr<const std::string> data;
-  StringReader r;
+  phosg::StringReader r;
   const TableOffsetsDCProtos* offsets_dc_protos;
   const TableOffsetsV1V2* offsets_v1_v2;
   const TableOffsetsGCNTE* offsets_gc_nte;
@@ -644,13 +623,13 @@ private:
   // equipped_item may contain wildcards, and the matching order matters.
   mutable std::map<uint32_t, std::vector<ItemCombination>> item_combination_index;
 
-  template <typename ToolDefT, bool IsBigEndian>
+  template <typename ToolDefT, bool BE>
   std::pair<uint8_t, uint8_t> find_tool_by_id_t(uint32_t tool_table_offset, uint32_t id) const;
-  template <bool IsBigEndian, typename OffsetsT>
+  template <bool BE, typename OffsetsT>
   float get_sale_divisor_t(const OffsetsT* offsets, uint8_t data1_0, uint8_t data1_1) const;
-  template <bool IsBigEndian>
+  template <bool BE>
   size_t num_events_t(uint32_t base_offset) const;
-  template <bool IsBigEndian>
+  template <bool BE>
   std::pair<const ItemParameterTable::EventItem*, size_t> get_event_items_t(uint32_t base_offset, uint8_t event_number) const;
 };
 
@@ -677,6 +656,6 @@ public:
 
 private:
   std::shared_ptr<const std::string> data;
-  StringReader r;
+  phosg::StringReader r;
   const TableOffsets* offsets;
 };

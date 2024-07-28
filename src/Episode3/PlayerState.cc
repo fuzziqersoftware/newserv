@@ -1780,7 +1780,7 @@ bool PlayerState::set_action_cards_for_action_state(const ActionState& pa) {
     auto card = s->card_for_set_card_ref(pa.attacker_card_ref);
     if (card) {
       card->loc.direction = pa.facing_direction;
-      log.debug("set facing direction to %s", name_for_enum(card->loc.direction));
+      log.debug("set facing direction to %s", phosg::name_for_enum(card->loc.direction));
 
       G_AddToSetCardlog_Ep3_6xB4x4A cmd;
       cmd.card_refs.clear(0xFFFF);
@@ -1789,7 +1789,7 @@ bool PlayerState::set_action_cards_for_action_state(const ActionState& pa) {
       cmd.entry_count = 0;
       size_t z = 0;
       do {
-        if (log.should_log(LogLevel::DEBUG)) {
+        if (log.should_log(phosg::LogLevel::DEBUG)) {
           string ref_str = s->debug_str_for_card_ref(pa.action_card_refs[z]);
           log.debug("on action card ref %s", ref_str.c_str());
         }
@@ -1826,7 +1826,7 @@ bool PlayerState::set_action_cards_for_action_state(const ActionState& pa) {
     for (size_t z = 0; (z < 4 * 9) && (pa.target_card_refs[z] != 0xFFFF); z++) {
       auto target_card = s->card_for_set_card_ref(pa.target_card_refs[z]);
       if (target_card) {
-        if (log.should_log(LogLevel::DEBUG)) {
+        if (log.should_log(phosg::LogLevel::DEBUG)) {
           string ref_str = s->debug_str_for_card_ref(pa.target_card_refs[z]);
           log.debug("on target card ref %s", ref_str.c_str());
         }
@@ -1856,7 +1856,7 @@ bool PlayerState::set_action_cards_for_action_state(const ActionState& pa) {
     this->subtract_or_check_atk_or_def_points_for_action(pa, 1);
   }
   for (size_t z = 0; (z < pa.action_card_refs.size()) && (pa.action_card_refs[z] != 0xFFFF); z++) {
-    if (log.should_log(LogLevel::DEBUG)) {
+    if (log.should_log(phosg::LogLevel::DEBUG)) {
       string ref_str = s->debug_str_for_card_ref(pa.action_card_refs[z]);
       log.debug("discarding %s from hand", ref_str.c_str());
     }

@@ -7,18 +7,16 @@
 #include <vector>
 
 #include "Text.hh"
+#include "Types.hh"
 
 class Client;
 
-template <bool IsBigEndian>
+template <bool BE>
 struct ChoiceSearchConfigT {
-  using U16T = typename std::conditional<IsBigEndian, be_uint16_t, le_uint16_t>::type;
-  using U32T = typename std::conditional<IsBigEndian, be_uint32_t, le_uint32_t>::type;
-
-  U32T disabled = 1; // 0 = enabled, 1 = disabled. Unused in command C3
+  U32T<BE> disabled = 1; // 0 = enabled, 1 = disabled. Unused in command C3
   struct Entry {
-    U16T parent_choice_id = 0;
-    U16T choice_id = 0;
+    U16T<BE> parent_choice_id = 0;
+    U16T<BE> choice_id = 0;
   } __packed_ws__(Entry, 4);
   parray<Entry, 5> entries;
 
@@ -31,8 +29,8 @@ struct ChoiceSearchConfigT {
     return -1;
   }
 
-  operator ChoiceSearchConfigT<!IsBigEndian>() const {
-    ChoiceSearchConfigT<!IsBigEndian> ret;
+  operator ChoiceSearchConfigT<!BE>() const {
+    ChoiceSearchConfigT<!BE> ret;
     ret.disabled = this->disabled.load();
     for (size_t z = 0; z < this->entries.size(); z++) {
       auto& ret_e = ret.entries[z];

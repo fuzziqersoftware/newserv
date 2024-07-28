@@ -37,44 +37,40 @@ uint32_t PSOLFGEncryption::next(bool advance) {
   return ret;
 }
 
-template <bool IsBigEndian>
+template <bool BE>
 void PSOLFGEncryption::encrypt_t(void* vdata, size_t size, bool advance) {
-  using U32T = typename std::conditional<IsBigEndian, be_uint32_t, le_uint32_t>::type;
-
   if (!advance && (size != 4)) {
     throw logic_error("cannot peek-encrypt/decrypt with size > 4");
   }
 
   size_t uint32_count = size >> 2;
   size_t extra_bytes = size & 3;
-  U32T* data = reinterpret_cast<U32T*>(vdata);
+  U32T<BE>* data = reinterpret_cast<U32T<BE>*>(vdata);
   for (size_t x = 0; x < uint32_count; x++) {
     data[x] ^= this->next(advance);
   }
   if (extra_bytes) {
-    U32T last = 0;
+    U32T<BE> last = 0;
     memcpy(&last, &data[uint32_count], extra_bytes);
     last ^= this->next(advance);
     memcpy(&data[uint32_count], &last, extra_bytes);
   }
 }
 
-template <bool IsBigEndian>
+template <bool BE>
 void PSOLFGEncryption::encrypt_minus_t(void* vdata, size_t size, bool advance) {
-  using U32T = typename std::conditional<IsBigEndian, be_uint32_t, le_uint32_t>::type;
-
   if (!advance && (size != 4)) {
     throw logic_error("cannot peek-encrypt/decrypt with size > 4");
   }
 
   size_t uint32_count = size >> 2;
   size_t extra_bytes = size & 3;
-  U32T* data = reinterpret_cast<U32T*>(vdata);
+  U32T<BE>* data = reinterpret_cast<U32T<BE>*>(vdata);
   for (size_t x = 0; x < uint32_count; x++) {
     data[x] = this->next(advance) - data[x];
   }
   if (extra_bytes) {
-    U32T last = 0;
+    U32T<BE> last = 0;
     memcpy(&last, &data[uint32_count], extra_bytes);
     last = this->next(advance) - last;
     memcpy(&data[uint32_count], &last, extra_bytes);
@@ -699,11 +695,11 @@ void PSOV2OrV3DetectorEncryption::encrypt(void* data, size_t size, bool advance)
     bool v2_match = this->v2_matches.count(decrypted_v2);
     bool v3_match = this->v3_matches.count(decrypted_v3);
     if (!v2_match && !v3_match) {
-      throw runtime_error(string_printf(
+      throw runtime_error(phosg::string_printf(
           "unable to determine crypt version (input=%08" PRIX32 ", v2=%08" PRIX32 ", v3=%08" PRIX32 ")",
           encrypted.load(), decrypted_v2.load(), decrypted_v3.load()));
     } else if (v2_match && v3_match) {
-      throw runtime_error(string_printf(
+      throw runtime_error(phosg::string_printf(
           "ambiguous crypt version (v2=%08" PRIX32 ", v3=%08" PRIX32 ")",
           decrypted_v2.load(), decrypted_v3.load()));
     } else if (v2_match) {
@@ -881,9 +877,9 @@ uint32_t encrypt_challenge_time(uint16_t value) {
   vector<uint8_t> available_bits({0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15});
 
   uint16_t mask = 0;
-  uint8_t num_one_bits = (random_object<uint8_t>() % 9) + 4; // Range [4, 12]
+  uint8_t num_one_bits = (phosg::random_object<uint8_t>() % 9) + 4; // Range [4, 12]
   for (; num_one_bits; num_one_bits--) {
-    uint8_t index = random_object<uint8_t>() % available_bits.size();
+    uint8_t index = phosg::random_object<uint8_t>() % available_bits.size();
     auto it = available_bits.begin() + index;
     mask |= (1 << *it);
     available_bits.erase(it);

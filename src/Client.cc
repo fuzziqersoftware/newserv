@@ -144,7 +144,7 @@ void Client::Config::set_flags_for_version(Version version, int64_t sub_version)
       this->set_flag(Flag::CAN_RECEIVE_ENABLE_B2_QUEST);
       break;
     default:
-      throw runtime_error(string_printf("unknown sub_version %" PRIX64, sub_version));
+      throw runtime_error(phosg::string_printf("unknown sub_version %" PRIX64, sub_version));
   }
 }
 
@@ -188,8 +188,8 @@ Client::Client(
     ServerBehavior server_behavior)
     : server(server),
       id(next_id++),
-      log(string_printf("[C-%" PRIX64 "] ", this->id), client_log.min_level),
-      channel(bev, virtual_network_id, version, 1, nullptr, nullptr, this, "", TerminalFormat::FG_YELLOW, TerminalFormat::FG_GREEN),
+      log(phosg::string_printf("[C-%" PRIX64 "] ", this->id), client_log.min_level),
+      channel(bev, virtual_network_id, version, 1, nullptr, nullptr, this, "", phosg::TerminalFormat::FG_YELLOW, phosg::TerminalFormat::FG_GREEN),
       server_behavior(server_behavior),
       should_disconnect(false),
       should_send_to_lobby_server(false),
@@ -248,8 +248,8 @@ Client::Client(
   // more annoying than helpful at this point.
   if ((s->hide_download_commands) &&
       ((this->channel.version == Version::PC_PATCH) || (this->channel.version == Version::BB_PATCH))) {
-    this->channel.terminal_recv_color = TerminalFormat::END;
-    this->channel.terminal_send_color = TerminalFormat::END;
+    this->channel.terminal_recv_color = phosg::TerminalFormat::END;
+    this->channel.terminal_send_color = phosg::TerminalFormat::END;
   }
 
   this->log.info("Created");
@@ -276,24 +276,24 @@ void Client::update_channel_name() {
   auto player = this->character(false, false);
   if (player) {
     string name_str = player->disp.name.decode(this->language());
-    this->channel.name = string_printf("C-%" PRIX64 " (%s) @ %s", this->id, name_str.c_str(), ip_str.c_str());
+    this->channel.name = phosg::string_printf("C-%" PRIX64 " (%s) @ %s", this->id, name_str.c_str(), ip_str.c_str());
   } else {
-    this->channel.name = string_printf("C-%" PRIX64 " @ %s", this->id, ip_str.c_str());
+    this->channel.name = phosg::string_printf("C-%" PRIX64 " @ %s", this->id, ip_str.c_str());
   }
 }
 
 void Client::reschedule_save_game_data_event() {
   if (this->version() == Version::BB_V4) {
-    struct timeval tv = usecs_to_timeval(60000000); // 1 minute
+    struct timeval tv = phosg::usecs_to_timeval(60000000); // 1 minute
     event_add(this->save_game_data_event.get(), &tv);
   }
 }
 
 void Client::reschedule_ping_and_timeout_events() {
   auto s = this->require_server_state();
-  struct timeval ping_tv = usecs_to_timeval(s->client_ping_interval_usecs);
+  struct timeval ping_tv = phosg::usecs_to_timeval(s->client_ping_interval_usecs);
   event_add(this->send_ping_event.get(), &ping_tv);
-  struct timeval idle_tv = usecs_to_timeval(s->client_idle_timeout_usecs);
+  struct timeval idle_tv = phosg::usecs_to_timeval(s->client_idle_timeout_usecs);
   event_add(this->idle_timeout_event.get(), &idle_tv);
 }
 
@@ -393,7 +393,7 @@ bool Client::evaluate_quest_availability_expression(
       .v1_present = v1_present,
   };
   int64_t ret = expr->evaluate(env);
-  if (this->log.should_log(LogLevel::INFO)) {
+  if (this->log.should_log(phosg::LogLevel::INFO)) {
     string expr_str = expr->str();
     this->log.info("Evaluated integral expression %s => %s", expr_str.c_str(), ret ? "TRUE" : "FALSE");
   }
@@ -451,7 +451,7 @@ void Client::send_ping() {
   if (!is_patch(this->version())) {
     this->log.info("Sending ping command");
     // The game doesn't use this timestamp; we only use it for debugging purposes
-    be_uint64_t timestamp = now();
+    be_uint64_t timestamp = phosg::now();
     try {
       this->channel.send(0x1D, 0x00, &timestamp, sizeof(be_uint64_t));
     } catch (const exception& e) {
@@ -643,7 +643,7 @@ string Client::system_filename() const {
   if (!this->login || !this->login->bb_license) {
     throw logic_error("client is not logged in");
   }
-  return string_printf("system/players/system_%s.psosys", this->login->bb_license->username.c_str());
+  return phosg::string_printf("system/players/system_%s.psosys", this->login->bb_license->username.c_str());
 }
 
 string Client::character_filename(const std::string& bb_username, int8_t index) {
@@ -653,11 +653,11 @@ string Client::character_filename(const std::string& bb_username, int8_t index) 
   if (index < 0) {
     throw logic_error("character index is not set");
   }
-  return string_printf("system/players/player_%s_%hhd.psochar", bb_username.c_str(), index);
+  return phosg::string_printf("system/players/player_%s_%hhd.psochar", bb_username.c_str(), index);
 }
 
 string Client::backup_character_filename(uint32_t account_id, size_t index, bool is_ep3) {
-  return string_printf("system/players/backup_player_%" PRIu32 "_%zu.%s",
+  return phosg::string_printf("system/players/backup_player_%" PRIu32 "_%zu.%s",
       account_id, index, is_ep3 ? "pso3char" : "psochar");
 }
 
@@ -678,7 +678,7 @@ string Client::guild_card_filename() const {
   if (!this->login || !this->login->bb_license) {
     throw logic_error("client is not logged in");
   }
-  return string_printf("system/players/guild_cards_%s.psocard", this->login->bb_license->username.c_str());
+  return phosg::string_printf("system/players/guild_cards_%s.psocard", this->login->bb_license->username.c_str());
 }
 
 string Client::shared_bank_filename() const {
@@ -688,7 +688,7 @@ string Client::shared_bank_filename() const {
   if (!this->login || !this->login->bb_license) {
     throw logic_error("client is not logged in");
   }
-  return string_printf("system/players/shared_bank_%s.psobank", this->login->bb_license->username.c_str());
+  return phosg::string_printf("system/players/shared_bank_%s.psobank", this->login->bb_license->username.c_str());
 }
 
 string Client::legacy_account_filename() const {
@@ -698,7 +698,7 @@ string Client::legacy_account_filename() const {
   if (!this->login || !this->login->bb_license) {
     throw logic_error("client is not logged in");
   }
-  return string_printf("system/players/account_%s.nsa", this->login->bb_license->username.c_str());
+  return phosg::string_printf("system/players/account_%s.nsa", this->login->bb_license->username.c_str());
 }
 
 string Client::legacy_player_filename() const {
@@ -711,7 +711,7 @@ string Client::legacy_player_filename() const {
   if (this->bb_character_index < 0) {
     throw logic_error("character index is not set");
   }
-  return string_printf(
+  return phosg::string_printf(
       "system/players/player_%s_%hhd.nsc",
       this->login->bb_license->username.c_str(),
       static_cast<int8_t>(this->bb_character_index + 1));
@@ -747,8 +747,8 @@ void Client::load_all_files() {
   this->system_data = files_manager->get_system(sys_filename);
   if (this->system_data) {
     player_data_log.info("Using loaded system file %s", sys_filename.c_str());
-  } else if (isfile(sys_filename)) {
-    this->system_data = make_shared<PSOBBBaseSystemFile>(load_object_file<PSOBBBaseSystemFile>(sys_filename, true));
+  } else if (phosg::isfile(sys_filename)) {
+    this->system_data = make_shared<PSOBBBaseSystemFile>(phosg::load_object_file<PSOBBBaseSystemFile>(sys_filename, true));
     files_manager->set_system(sys_filename, this->system_data);
     player_data_log.info("Loaded system data from %s", sys_filename.c_str());
   } else {
@@ -760,9 +760,9 @@ void Client::load_all_files() {
     this->character_data = files_manager->get_character(char_filename);
     if (this->character_data) {
       player_data_log.info("Using loaded character file %s", char_filename.c_str());
-    } else if (isfile(char_filename)) {
-      auto f = fopen_unique(char_filename, "rb");
-      auto header = freadx<PSOCommandHeaderBB>(f.get());
+    } else if (phosg::isfile(char_filename)) {
+      auto f = phosg::fopen_unique(char_filename, "rb");
+      auto header = phosg::freadx<PSOCommandHeaderBB>(f.get());
       if (header.size != 0x399C) {
         throw runtime_error("incorrect size in character file header");
       }
@@ -773,14 +773,14 @@ void Client::load_all_files() {
         throw runtime_error("incorrect flag in character file header");
       }
       static_assert(sizeof(PSOBBCharacterFile) + sizeof(PSOBBFullSystemFile) == 0x3994, ".psochar size is incorrect");
-      this->character_data = make_shared<PSOBBCharacterFile>(freadx<PSOBBCharacterFile>(f.get()));
+      this->character_data = make_shared<PSOBBCharacterFile>(phosg::freadx<PSOBBCharacterFile>(f.get()));
       files_manager->set_character(char_filename, this->character_data);
       player_data_log.info("Loaded character data from %s", char_filename.c_str());
 
       // If there was no .psosys file, load the system file from the .psochar
       // file instead
       if (!this->system_data) {
-        this->system_data = make_shared<PSOBBBaseSystemFile>(freadx<PSOBBBaseSystemFile>(f.get()));
+        this->system_data = make_shared<PSOBBBaseSystemFile>(phosg::freadx<PSOBBBaseSystemFile>(f.get()));
         files_manager->set_system(sys_filename, this->system_data);
         player_data_log.info("Loaded system data from %s", char_filename.c_str());
       }
@@ -797,8 +797,8 @@ void Client::load_all_files() {
   this->guild_card_data = files_manager->get_guild_card(card_filename);
   if (this->guild_card_data) {
     player_data_log.info("Using loaded Guild Card file %s", card_filename.c_str());
-  } else if (isfile(card_filename)) {
-    this->guild_card_data = make_shared<PSOBBGuildCardFile>(load_object_file<PSOBBGuildCardFile>(card_filename));
+  } else if (phosg::isfile(card_filename)) {
+    this->guild_card_data = make_shared<PSOBBGuildCardFile>(phosg::load_object_file<PSOBBGuildCardFile>(card_filename));
     files_manager->set_guild_card(card_filename, this->guild_card_data);
     player_data_log.info("Loaded Guild Card data from %s", card_filename.c_str());
   } else {
@@ -809,8 +809,8 @@ void Client::load_all_files() {
   if (!this->system_data || (!this->character_data && (this->bb_character_index >= 0)) || !this->guild_card_data) {
     string nsa_filename = this->legacy_account_filename();
     shared_ptr<LegacySavedAccountDataBB> nsa_data;
-    if (isfile(nsa_filename)) {
-      nsa_data = make_shared<LegacySavedAccountDataBB>(load_object_file<LegacySavedAccountDataBB>(nsa_filename));
+    if (phosg::isfile(nsa_filename)) {
+      nsa_data = make_shared<LegacySavedAccountDataBB>(phosg::load_object_file<LegacySavedAccountDataBB>(nsa_filename));
       if (!nsa_data->signature.eq(LegacySavedAccountDataBB::SIGNATURE)) {
         throw runtime_error("account data header is incorrect");
       }
@@ -839,7 +839,7 @@ void Client::load_all_files() {
 
     if (!this->character_data && (this->bb_character_index >= 0)) {
       string nsc_filename = this->legacy_player_filename();
-      auto nsc_data = load_object_file<LegacySavedPlayerDataBB>(nsc_filename);
+      auto nsc_data = phosg::load_object_file<LegacySavedPlayerDataBB>(nsc_filename);
       if (nsc_data.signature == LegacySavedPlayerDataBB::SIGNATURE_V0) {
         nsc_data.signature = LegacySavedPlayerDataBB::SIGNATURE_V0;
         nsc_data.unused.clear();
@@ -895,7 +895,7 @@ void Client::load_all_files() {
     this->character_data->disp.name.clear_after_bytes(0x18);
     this->login->account->auto_reply_message = this->character_data->auto_reply.decode();
     this->login->account->save();
-    this->last_play_time_update = now();
+    this->last_play_time_update = phosg::now();
   }
 }
 
@@ -920,7 +920,7 @@ void Client::save_all() {
   }
   if (this->external_bank) {
     string filename = this->shared_bank_filename();
-    save_object_file<PlayerBank200>(filename, *this->external_bank);
+    phosg::save_object_file<PlayerBank200>(filename, *this->external_bank);
     player_data_log.info("Saved shared bank file %s", filename.c_str());
   }
   if (this->external_bank_character) {
@@ -936,7 +936,7 @@ void Client::save_system_file() const {
     throw logic_error("no system file loaded");
   }
   string filename = this->system_filename();
-  save_object_file(filename, *this->system_data);
+  phosg::save_object_file(filename, *this->system_data);
   player_data_log.info("Saved system file %s", filename.c_str());
 }
 
@@ -944,11 +944,11 @@ void Client::save_character_file(
     const string& filename,
     shared_ptr<const PSOBBBaseSystemFile> system,
     shared_ptr<const PSOBBCharacterFile> character) {
-  auto f = fopen_unique(filename, "wb");
+  auto f = phosg::fopen_unique(filename, "wb");
   PSOCommandHeaderBB header = {sizeof(PSOCommandHeaderBB) + sizeof(PSOBBCharacterFile) + sizeof(PSOBBBaseSystemFile) + sizeof(PSOBBTeamMembership), 0x00E7, 0x00000000};
-  fwritex(f.get(), header);
-  fwritex(f.get(), *character);
-  fwritex(f.get(), *system);
+  phosg::fwritex(f.get(), header);
+  phosg::fwritex(f.get(), *character);
+  phosg::fwritex(f.get(), *system);
   // TODO: Technically, we should write the actual team membership struct to the
   // file here, but that would cause Client to depend on Account, which
   // it currently does not. This data doesn't matter at all for correctness
@@ -960,14 +960,14 @@ void Client::save_character_file(
   // of teams with a different set of team IDs anyway, so the membership struct
   // here would be useless either way.
   static const PSOBBTeamMembership empty_membership;
-  fwritex(f.get(), empty_membership);
+  phosg::fwritex(f.get(), empty_membership);
   player_data_log.info("Saved character file %s", filename.c_str());
 }
 
 void Client::save_ep3_character_file(
     const string& filename,
     const PSOGCEp3CharacterFile::Character& character) {
-  save_file(filename, &character, sizeof(character));
+  phosg::save_file(filename, &character, sizeof(character));
   player_data_log.info("Saved Episode 3 character file %s", filename.c_str());
 }
 
@@ -981,7 +981,7 @@ void Client::save_character_file() {
   if (this->should_update_play_time) {
     // This is slightly inaccurate, since fractions of a second are truncated
     // off each time we save. I'm lazy, so insert shrug emoji here.
-    uint64_t t = now();
+    uint64_t t = phosg::now();
     uint64_t seconds = (t - this->last_play_time_update) / 1000000;
     this->character_data->play_time_seconds += seconds;
     player_data_log.info("Added %" PRIu64 " seconds to play time", seconds);
@@ -996,14 +996,14 @@ void Client::save_guild_card_file() const {
     throw logic_error("no Guild Card file loaded");
   }
   string filename = this->guild_card_filename();
-  save_object_file(filename, *this->guild_card_data);
+  phosg::save_object_file(filename, *this->guild_card_data);
   player_data_log.info("Saved Guild Card file %s", filename.c_str());
 }
 
 void Client::load_backup_character(uint32_t account_id, size_t index) {
   string filename = this->backup_character_filename(account_id, index, false);
-  auto f = fopen_unique(filename, "rb");
-  auto header = freadx<PSOCommandHeaderBB>(f.get());
+  auto f = phosg::fopen_unique(filename, "rb");
+  auto header = phosg::freadx<PSOCommandHeaderBB>(f.get());
   if (header.size != 0x399C) {
     throw runtime_error("incorrect size in character file header");
   }
@@ -1013,14 +1013,14 @@ void Client::load_backup_character(uint32_t account_id, size_t index) {
   if (header.flag != 0x00000000) {
     throw runtime_error("incorrect flag in character file header");
   }
-  this->character_data = make_shared<PSOBBCharacterFile>(freadx<PSOBBCharacterFile>(f.get()));
+  this->character_data = make_shared<PSOBBCharacterFile>(phosg::freadx<PSOBBCharacterFile>(f.get()));
   this->update_character_data_after_load(this->character_data);
   this->v1_v2_last_reported_disp.reset();
 }
 
 shared_ptr<PSOGCEp3CharacterFile::Character> Client::load_ep3_backup_character(uint32_t account_id, size_t index) {
   string filename = this->backup_character_filename(account_id, index, true);
-  auto ch = make_shared<PSOGCEp3CharacterFile::Character>(load_object_file<PSOGCEp3CharacterFile::Character>(filename));
+  auto ch = make_shared<PSOGCEp3CharacterFile::Character>(phosg::load_object_file<PSOGCEp3CharacterFile::Character>(filename));
   this->character_data = PSOBBCharacterFile::create_from_ep3(*ch);
   this->ep3_config = make_shared<Episode3::PlayerConfig>(ch->ep3_config);
   this->update_character_data_after_load(this->character_data);
@@ -1052,7 +1052,7 @@ std::shared_ptr<PSOBBCharacterFile> Client::current_bank_character() {
 void Client::use_default_bank() {
   if (this->external_bank) {
     string filename = this->shared_bank_filename();
-    save_object_file<PlayerBank200>(filename, *this->external_bank);
+    phosg::save_object_file<PlayerBank200>(filename, *this->external_bank);
     this->external_bank.reset();
     player_data_log.info("Detached shared bank %s", filename.c_str());
   }
@@ -1073,8 +1073,8 @@ bool Client::use_shared_bank() {
   if (this->external_bank) {
     player_data_log.info("Using loaded shared bank %s", filename.c_str());
     return true;
-  } else if (isfile(filename)) {
-    this->external_bank = make_shared<PlayerBank200>(load_object_file<PlayerBank200>(filename));
+  } else if (phosg::isfile(filename)) {
+    this->external_bank = make_shared<PlayerBank200>(phosg::load_object_file<PlayerBank200>(filename));
     files_manager->set_bank(filename, this->external_bank);
     player_data_log.info("Loaded shared bank %s", filename.c_str());
     return true;
@@ -1096,9 +1096,9 @@ void Client::use_character_bank(int8_t index) {
     if (this->external_bank_character) {
       this->external_bank_character_index = index;
       player_data_log.info("Using loaded character file %s for external bank", filename.c_str());
-    } else if (isfile(filename)) {
-      auto f = fopen_unique(filename, "rb");
-      auto header = freadx<PSOCommandHeaderBB>(f.get());
+    } else if (phosg::isfile(filename)) {
+      auto f = phosg::fopen_unique(filename, "rb");
+      auto header = phosg::freadx<PSOCommandHeaderBB>(f.get());
       if (header.size != 0x399C) {
         throw runtime_error("incorrect size in character file header");
       }
@@ -1108,7 +1108,7 @@ void Client::use_character_bank(int8_t index) {
       if (header.flag != 0x00000000) {
         throw runtime_error("incorrect flag in character file header");
       }
-      this->external_bank_character = make_shared<PSOBBCharacterFile>(freadx<PSOBBCharacterFile>(f.get()));
+      this->external_bank_character = make_shared<PSOBBCharacterFile>(phosg::freadx<PSOBBCharacterFile>(f.get()));
       this->update_character_data_after_load(this->external_bank_character);
       this->external_bank_character_index = index;
       files_manager->set_character(filename, this->external_bank_character);

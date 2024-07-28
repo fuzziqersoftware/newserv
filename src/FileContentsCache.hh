@@ -78,7 +78,7 @@ public:
   }
   template <typename T, typename NameT>
   GetObjResult<T> get_obj(NameT name, std::function<T(const std::string&)> generate) {
-    uint64_t t = now();
+    uint64_t t = phosg::now();
     try {
       auto& f = this->name_to_file.at(name);
       if (f->data->size() != sizeof(T)) {

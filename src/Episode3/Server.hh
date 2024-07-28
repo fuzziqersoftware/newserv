@@ -72,7 +72,7 @@ public:
     std::shared_ptr<const CardIndex> card_index;
     std::shared_ptr<const MapIndex> map_index;
     uint32_t behavior_flags;
-    std::shared_ptr<StringReader> opt_rand_stream;
+    std::shared_ptr<phosg::StringReader> opt_rand_stream;
     std::shared_ptr<PSOLFGEncryption> opt_rand_crypt;
     std::shared_ptr<const Tournament> tournament;
     std::array<std::vector<uint16_t>, 5> trap_card_ids;
@@ -85,10 +85,10 @@ public:
   ~Server() noexcept(false);
   void init();
 
-  class StackLogger : public PrefixedLogger {
+  class StackLogger : public phosg::PrefixedLogger {
   public:
     StackLogger(const Server* s, const std::string& prefix);
-    StackLogger(const Server* s, const std::string& prefix, LogLevel min_level);
+    StackLogger(const Server* s, const std::string& prefix, phosg::LogLevel min_level);
     StackLogger(const StackLogger&) = delete;
     StackLogger(StackLogger&&);
     StackLogger& operator=(const StackLogger&) = delete;
@@ -109,7 +109,7 @@ public:
     for (size_t z = 0; z < count; z++) {
       if (refs[z] != 0xFFFF) {
         std::string ref_str = this->debug_str_for_card_ref(refs[z]);
-        ret += string_printf("%zu:%s ", z, ref_str.c_str());
+        ret += phosg::string_printf("%zu:%s ", z, ref_str.c_str());
       }
     }
     if (ret.size() > 1) {

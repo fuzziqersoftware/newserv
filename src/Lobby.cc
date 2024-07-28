@@ -16,7 +16,7 @@ bool Lobby::FloorItem::visible_to_client(uint8_t client_id) const {
 }
 
 Lobby::FloorItemManager::FloorItemManager(uint32_t lobby_id, uint8_t floor)
-    : log(string_printf("[Lobby:%08" PRIX32 ":FloorItems:%02hhX] ", lobby_id, floor), lobby_log.min_level),
+    : log(phosg::string_printf("[Lobby:%08" PRIX32 ":FloorItems:%02hhX] ", lobby_id, floor), lobby_log.min_level),
       next_drop_number(0) {}
 
 bool Lobby::FloorItemManager::exists(uint32_t item_id) const {
@@ -137,7 +137,7 @@ uint32_t Lobby::FloorItemManager::reassign_all_item_ids(uint32_t next_item_id) {
 
 Lobby::Lobby(shared_ptr<ServerState> s, uint32_t id, bool is_game)
     : server_state(s),
-      log(string_printf("[%s:%" PRIX32 "] ", is_game ? "Game" : "Lobby", id), lobby_log.min_level),
+      log(phosg::string_printf("[%s:%" PRIX32 "] ", is_game ? "Game" : "Lobby", id), lobby_log.min_level),
       lobby_id(id),
       min_level(0),
       max_level(0xFFFFFFFF),
@@ -151,7 +151,7 @@ Lobby::Lobby(shared_ptr<ServerState> s, uint32_t id, bool is_game)
       base_exp_multiplier(1),
       exp_share_multiplier(0.5),
       challenge_exp_multiplier(1.0f),
-      random_seed(random_object<uint32_t>()),
+      random_seed(phosg::random_object<uint32_t>()),
       drop_mode(DropMode::CLIENT),
       event(0),
       block(0),
@@ -325,7 +325,7 @@ shared_ptr<Map> Lobby::load_maps(
     uint32_t random_seed,
     shared_ptr<PSOLFGEncryption> opt_rand_crypt,
     const parray<le_uint32_t, 0x20>& variations,
-    const PrefixedLogger* log) {
+    const phosg::PrefixedLogger* log) {
   auto enemy_filenames = sdt->map_filenames_for_variations(variations, episode, mode, SetDataTable::FilenameType::ENEMIES);
   auto object_filenames = sdt->map_filenames_for_variations(variations, episode, mode, SetDataTable::FilenameType::OBJECTS);
   auto event_filenames = sdt->map_filenames_for_variations(variations, episode, mode, SetDataTable::FilenameType::EVENTS);
@@ -360,7 +360,7 @@ shared_ptr<Map> Lobby::load_maps(
     shared_ptr<const Map::RareEnemyRates> rare_rates,
     uint32_t rare_seed,
     shared_ptr<PSOLFGEncryption> opt_rand_crypt,
-    const PrefixedLogger* log) {
+    const phosg::PrefixedLogger* log) {
   auto map = make_shared<Map>(version, lobby_id, rare_seed, opt_rand_crypt);
 
   // Don't load free-roam maps in Challenge mode, since players can't go to
@@ -682,7 +682,7 @@ void Lobby::add_client(shared_ptr<Client> c, ssize_t required_client_id) {
 void Lobby::remove_client(shared_ptr<Client> c) {
   if (this->clients.at(c->lobby_client_id) != c) {
     auto other_c = this->clients[c->lobby_client_id].get();
-    throw logic_error(string_printf(
+    throw logic_error(phosg::string_printf(
         "client\'s lobby client id (%hhu) does not match client list (%u)",
         c->lobby_client_id,
         static_cast<uint8_t>(other_c ? other_c->lobby_client_id : 0xFF)));
@@ -743,7 +743,7 @@ void Lobby::remove_client(shared_ptr<Client> c) {
       (this->idle_timeout_usecs > 0)) {
     // If the lobby is persistent but has an idle timeout, make it expire after
     // the specified time
-    auto tv = usecs_to_timeval(this->idle_timeout_usecs);
+    auto tv = phosg::usecs_to_timeval(this->idle_timeout_usecs);
     event_add(this->idle_timeout_event.get(), &tv);
     this->log.info("Idle timeout scheduled");
   }
@@ -1031,7 +1031,7 @@ bool Lobby::compare_shared(const shared_ptr<const Lobby>& a, const shared_ptr<co
 }
 
 template <>
-Lobby::DropMode enum_for_name<Lobby::DropMode>(const char* name) {
+Lobby::DropMode phosg::enum_for_name<Lobby::DropMode>(const char* name) {
   if (!strcmp(name, "DISABLED")) {
     return Lobby::DropMode::DISABLED;
   } else if (!strcmp(name, "CLIENT")) {
@@ -1048,7 +1048,7 @@ Lobby::DropMode enum_for_name<Lobby::DropMode>(const char* name) {
 }
 
 template <>
-const char* name_for_enum<Lobby::DropMode>(Lobby::DropMode value) {
+const char* phosg::name_for_enum<Lobby::DropMode>(Lobby::DropMode value) {
   switch (value) {
     case Lobby::DropMode::DISABLED:
       return "DISABLED";

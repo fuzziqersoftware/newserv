@@ -10,7 +10,7 @@
 using namespace std;
 
 template <typename RetT, typename ReadT>
-static vector<RetT> read_direct_table(const StringReader& base_r, size_t offset, size_t count) {
+static vector<RetT> read_direct_table(const phosg::StringReader& base_r, size_t offset, size_t count) {
   vector<RetT> ret;
   auto entries_r = base_r.sub(offset, count * sizeof(ReadT));
   while (!entries_r.eof()) {
@@ -20,7 +20,7 @@ static vector<RetT> read_direct_table(const StringReader& base_r, size_t offset,
 }
 
 template <typename RetT, typename ReadT, typename OffsetT>
-static vector<vector<RetT>> read_indirect_table(const StringReader& base_r, size_t offset, size_t count) {
+static vector<vector<RetT>> read_indirect_table(const phosg::StringReader& base_r, size_t offset, size_t count) {
   vector<vector<RetT>> ret;
   auto pointers_r = base_r.sub(offset, sizeof(OffsetT) * 2 * count);
   while (!pointers_r.eof()) {
@@ -31,16 +31,15 @@ static vector<vector<RetT>> read_indirect_table(const StringReader& base_r, size
   return ret;
 }
 
-template <bool IsBigEndian>
+template <bool BE>
 struct NonWindowsRootT {
-  using U32T = typename std::conditional<IsBigEndian, be_uint32_t, le_uint32_t>::type;
-  U32T strings_table;
-  U32T table1;
-  U32T table2;
-  U32T token_id_to_string_id_table;
-  U32T table4;
-  U32T article_types_table;
-  U32T table6;
+  U32T<BE> strings_table;
+  U32T<BE> table1;
+  U32T<BE> table2;
+  U32T<BE> token_id_to_string_id_table;
+  U32T<BE> table4;
+  U32T<BE> article_types_table;
+  U32T<BE> table6;
 } __packed__;
 
 using NonWindowsRoot = NonWindowsRootT<false>;
@@ -68,29 +67,26 @@ struct BBRoot {
   le_uint32_t table6;
 } __packed_ws__(BBRoot, 0x18);
 
-template <bool IsBigEndian, size_t StringTableCount, size_t TokenCount>
+template <bool BE, size_t StringTableCount, size_t TokenCount>
 void WordSelectSet::parse_non_windows_t(const std::string& data, bool use_sjis) {
-  using U32T = typename std::conditional<IsBigEndian, be_uint32_t, le_uint32_t>::type;
-  using U16T = typename std::conditional<IsBigEndian, be_uint16_t, le_uint16_t>::type;
-
-  StringReader r(data);
-  uint32_t root_offset = r.pget<U32T>(r.size() - 0x10);
-  const auto& root = r.pget<NonWindowsRootT<IsBigEndian>>(root_offset);
+  phosg::StringReader r(data);
+  uint32_t root_offset = r.pget<U32T<BE>>(r.size() - 0x10);
+  const auto& root = r.pget<NonWindowsRootT<BE>>(root_offset);
 
   {
-    auto string_offset_r = r.sub(root.strings_table, sizeof(U32T) * StringTableCount);
+    auto string_offset_r = r.sub(root.strings_table, sizeof(U32T<BE>) * StringTableCount);
     while (!string_offset_r.eof()) {
-      string raw_s = r.pget_cstr(string_offset_r.template get<U32T>());
+      string raw_s = r.pget_cstr(string_offset_r.template get<U32T<BE>>());
       this->strings.emplace_back(use_sjis ? tt_sega_sjis_to_utf8(raw_s) : tt_8859_to_utf8(raw_s));
     }
   }
 
-  // this->table1 = read_indirect_table<uint16_t, U16T, U32T>(r, root.table1, Table1Count);
-  // this->table2 = read_indirect_table<uint16_t, U16T, U32T>(r, root.table2, Table2Count);
-  this->token_id_to_string_id = read_direct_table<size_t, U16T>(r, root.token_id_to_string_id_table, TokenCount);
-  // this->table4 = read_indirect_table<uint16_t, U16T, U32T>(r, root.table4, Table4Count);
+  // this->table1 = read_indirect_table<uint16_t, U16T<BE>, U32T<BE>>(r, root.table1, Table1Count);
+  // this->table2 = read_indirect_table<uint16_t, U16T<BE>, U32T<BE>>(r, root.table2, Table2Count);
+  this->token_id_to_string_id = read_direct_table<size_t, U16T<BE>>(r, root.token_id_to_string_id_table, TokenCount);
+  // this->table4 = read_indirect_table<uint16_t, U16T<BE>, U32T<BE>>(r, root.table4, Table4Count);
   // this->article_types = read_direct_table<uint8_t, uint8_t>(r, root.article_types_table, ArticleTypesCount);
-  // this->table6 = read_indirect_table<uint16_t, U16T, U32T>(r, root.table6, Table6Count);
+  // this->table6 = read_indirect_table<uint16_t, U16T<BE>, U32T<BE>>(r, root.table6, Table6Count);
 }
 
 template <typename RootT, size_t TokenCount>
@@ -99,7 +95,7 @@ void WordSelectSet::parse_windows_t(const std::string& data, const std::vector<s
     throw runtime_error("a unitxt collection is required");
   }
 
-  StringReader r(data);
+  phosg::StringReader r(data);
   uint32_t root_offset = r.pget<le_uint32_t>(r.size() - 0x10);
   const auto& root = r.pget<RootT>(root_offset);
   this->strings = *unitxt_collection;
@@ -202,7 +198,7 @@ WordSelectTable::WordSelectTable(
   {
     for (size_t z = 0; z < 12; z++) {
       auto& token = dynamic_tokens.emplace_back(make_shared<Token>());
-      token->canonical_name = string_printf("__PLAYER_%zu_NAME__", z);
+      token->canonical_name = phosg::string_printf("__PLAYER_%zu_NAME__", z);
       this->name_to_token.emplace(token->canonical_name, token);
     }
     auto& token = dynamic_tokens.emplace_back(make_shared<Token>());
@@ -261,7 +257,7 @@ void WordSelectTable::print(FILE* stream) const {
         fprintf(stream, "%04hX ", token->values_by_version[z]);
       }
     }
-    string serialized = JSON(token->canonical_name).serialize(JSON::SerializeOption::ESCAPE_CONTROLS_ONLY);
+    string serialized = phosg::JSON(token->canonical_name).serialize(phosg::JSON::SerializeOption::ESCAPE_CONTROLS_ONLY);
     fprintf(stream, "%s\n", serialized.c_str());
   }
 }
@@ -279,7 +275,7 @@ void WordSelectTable::print_index(FILE* stream, Version v) const {
         fprintf(stream, "%04hX ", token->values_by_version[z]);
       }
     }
-    string serialized = JSON(token->canonical_name).serialize(JSON::SerializeOption::ESCAPE_CONTROLS_ONLY);
+    string serialized = phosg::JSON(token->canonical_name).serialize(phosg::JSON::SerializeOption::ESCAPE_CONTROLS_ONLY);
     fprintf(stream, "%s\n", serialized.c_str());
   }
 }
@@ -297,11 +293,11 @@ WordSelectMessage WordSelectTable::translate(
     } else {
       const auto& token = index.at(msg.tokens[z]);
       if (!token) {
-        throw runtime_error(string_printf("token %04hX does not exist in the index", msg.tokens[z].load()));
+        throw runtime_error(phosg::string_printf("token %04hX does not exist in the index", msg.tokens[z].load()));
       }
       ret.tokens[z] = token->slot_for_version(to_version);
       if (ret.tokens[z] == 0xFFFF) {
-        throw runtime_error(string_printf("token %04hX has no translation", msg.tokens[z].load()));
+        throw runtime_error(phosg::string_printf("token %04hX has no translation", msg.tokens[z].load()));
       }
     }
   }

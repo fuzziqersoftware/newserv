@@ -11,21 +11,19 @@
 
 class LevelTable;
 
-template <bool IsBigEndian>
+template <bool BE>
 struct CharacterStatsT {
-  using U16T = typename std::conditional<IsBigEndian, be_uint16_t, le_uint16_t>::type;
-
-  /* 00 */ U16T atp = 0;
-  /* 02 */ U16T mst = 0;
-  /* 04 */ U16T evp = 0;
-  /* 06 */ U16T hp = 0;
-  /* 08 */ U16T dfp = 0;
-  /* 0A */ U16T ata = 0;
-  /* 0C */ U16T lck = 0;
+  /* 00 */ U16T<BE> atp = 0;
+  /* 02 */ U16T<BE> mst = 0;
+  /* 04 */ U16T<BE> evp = 0;
+  /* 06 */ U16T<BE> hp = 0;
+  /* 08 */ U16T<BE> dfp = 0;
+  /* 0A */ U16T<BE> ata = 0;
+  /* 0C */ U16T<BE> lck = 0;
   /* 0E */
 
-  operator CharacterStatsT<!IsBigEndian>() const {
-    CharacterStatsT<!IsBigEndian> ret;
+  operator CharacterStatsT<!BE>() const {
+    CharacterStatsT<!BE> ret;
     ret.atp = this->atp.load();
     ret.mst = this->mst.load();
     ret.evp = this->evp.load();
@@ -41,23 +39,19 @@ using CharacterStatsBE = CharacterStatsT<true>;
 check_struct_size(CharacterStats, 0x0E);
 check_struct_size(CharacterStatsBE, 0x0E);
 
-template <bool IsBigEndian>
+template <bool BE>
 struct PlayerStatsT {
-  using U16T = typename std::conditional<IsBigEndian, be_uint16_t, le_uint16_t>::type;
-  using U32T = typename std::conditional<IsBigEndian, be_uint32_t, le_uint32_t>::type;
-  using F32T = typename std::conditional<IsBigEndian, be_float, le_float>::type;
-
-  /* 00 */ CharacterStatsT<IsBigEndian> char_stats;
-  /* 0E */ U16T esp = 0;
-  /* 10 */ F32T height = 0.0;
-  /* 14 */ F32T unknown_a3 = 0.0;
-  /* 18 */ U32T level = 0;
-  /* 1C */ U32T experience = 0;
-  /* 20 */ U32T meseta = 0;
+  /* 00 */ CharacterStatsT<BE> char_stats;
+  /* 0E */ U16T<BE> esp = 0;
+  /* 10 */ F32T<BE> height = 0.0;
+  /* 14 */ F32T<BE> unknown_a3 = 0.0;
+  /* 18 */ U32T<BE> level = 0;
+  /* 1C */ U32T<BE> experience = 0;
+  /* 20 */ U32T<BE> meseta = 0;
   /* 24 */
 
-  operator PlayerStatsT<!IsBigEndian>() const {
-    PlayerStatsT<!IsBigEndian> ret;
+  operator PlayerStatsT<!BE>() const {
+    PlayerStatsT<!BE> ret;
     ret.char_stats = this->char_stats;
     ret.esp = this->esp.load();
     ret.height = this->height.load();
@@ -73,10 +67,8 @@ using PlayerStatsBE = PlayerStatsT<true>;
 check_struct_size(PlayerStats, 0x24);
 check_struct_size(PlayerStatsBE, 0x24);
 
-template <bool IsBigEndian>
+template <bool BE>
 struct LevelStatsDeltaT {
-  using U32T = typename std::conditional<IsBigEndian, be_uint32_t, le_uint32_t>::type;
-
   /* 00 */ uint8_t atp;
   /* 01 */ uint8_t mst;
   /* 02 */ uint8_t evp;
@@ -85,7 +77,7 @@ struct LevelStatsDeltaT {
   /* 05 */ uint8_t ata;
   /* 06 */ uint8_t lck;
   /* 07 */ uint8_t tp;
-  /* 08 */ U32T experience;
+  /* 08 */ U32T<BE> experience;
   /* 0C */
 
   void apply(CharacterStats& ps) const {

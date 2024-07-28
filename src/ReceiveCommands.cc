@@ -311,7 +311,7 @@ static void send_main_menu(shared_ptr<Client> c) {
             }
           }
         }
-        return string_printf(
+        return phosg::string_printf(
             "$C6%zu$C7 players online\n$C6%zu$C7 games\n$C6%zu$C7 compatible games",
             num_players, num_games, num_compatible_games);
       },
@@ -472,7 +472,7 @@ void on_disconnect(shared_ptr<Client> c) {
 
 static void on_1D(shared_ptr<Client> c, uint16_t, uint32_t, string&) {
   if (c->ping_start_time) {
-    uint64_t ping_usecs = now() - c->ping_start_time;
+    uint64_t ping_usecs = phosg::now() - c->ping_start_time;
     c->ping_start_time = 0;
     double ping_ms = static_cast<double>(ping_usecs) / 1000.0;
     send_text_message_printf(c, "To server: %gms", ping_ms);
@@ -1065,12 +1065,12 @@ static void on_93_BB(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
     c->config.parse_from(config_data);
   } else {
     string version_string = config_data.as_string();
-    strip_trailing_zeroes(version_string);
+    phosg::strip_trailing_zeroes(version_string);
     // If the version string starts with "Ver.", assume it's Sega and apply the
     // normal version encoding logic. Otherwise, assume it's a community mod,
     // almost all of which are based on TethVer12513, so assume that version
     // otherwise.
-    if (starts_with(version_string, "Ver.")) {
+    if (phosg::starts_with(version_string, "Ver.")) {
       // Basic algorithm: take all numeric characters from the version string
       // and ignore everything else. Treat that as a decimal integer, then
       // base36-encode it into the low 3 bytes of specific_version.
@@ -1112,7 +1112,7 @@ static void on_93_BB(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
       // files replaced with English text/graphics/etc. For this reason, it still
       // reports its language as Japanese, so we have to account for that
       // manually here.
-      if (starts_with(version_string, "TethVer")) {
+      if (phosg::starts_with(version_string, "TethVer")) {
         c->log.info("Client is TethVer subtype; forcing English language");
         c->config.set_flag(Client::Flag::FORCE_ENGLISH_LANGUAGE_BB);
       }
@@ -1142,8 +1142,8 @@ static void on_93_BB(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
     // The BB data server protocol is fairly well-understood and has some large
     // commands, so we omit data logging for clients on the data server.
     c->log.info("Client is in the BB data server phase; disabling command data logging for the rest of this client\'s session");
-    c->channel.terminal_recv_color = TerminalFormat::END;
-    c->channel.terminal_send_color = TerminalFormat::END;
+    c->channel.terminal_recv_color = phosg::TerminalFormat::END;
+    c->channel.terminal_send_color = phosg::TerminalFormat::END;
   }
 }
 
@@ -1273,7 +1273,7 @@ static bool add_next_game_client(shared_ptr<Lobby> l) {
     state_cmd.state.tournament_flag = 0x01;
     state_cmd.state.client_sc_card_types.clear(Episode3::CardType::INVALID_FF);
     if ((c->version() != Version::GC_EP3_NTE) && !(s->ep3_behavior_flags & Episode3::BehaviorFlag::DISABLE_MASKING)) {
-      uint8_t mask_key = (random_object<uint32_t>() % 0xFF) + 1;
+      uint8_t mask_key = (phosg::random_object<uint32_t>() % 0xFF) + 1;
       set_mask_for_ep3_game_command(&state_cmd, sizeof(state_cmd), mask_key);
     }
     send_command_t(c, 0xC9, 0x00, state_cmd);
@@ -1461,7 +1461,7 @@ static bool start_ep3_battle_table_game_if_ready(shared_ptr<Lobby> l, int16_t ta
       send_self_leave_notification(other_c);
       string message;
       if (tourn) {
-        message = string_printf(
+        message = phosg::string_printf(
             "$C7Waiting to begin match in tournament\n$C6%s$C7...\n\n(Hold B+X+START to abort)",
             tourn->get_name().c_str());
       } else {
@@ -1632,8 +1632,8 @@ static void on_CA_Ep3(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
     } catch (const exception& e) {
       c->log.error("Episode 3 engine returned an error: %s", e.what());
       if (l->battle_record) {
-        string filename = string_printf("system/ep3/battle-records/exc.%" PRIu64 ".mzrd", now());
-        save_file(filename, l->battle_record->serialize());
+        string filename = phosg::string_printf("system/ep3/battle-records/exc.%" PRIu64 ".mzrd", phosg::now());
+        phosg::save_file(filename, l->battle_record->serialize());
         c->log.error("Saved partial battle record as %s", filename.c_str());
       }
       throw;
@@ -1832,7 +1832,7 @@ static void on_09(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
             if (game_c.get()) {
               auto player = game_c->character();
               string name = escape_player_name(player->disp.name.decode(game_c->language()));
-              info += string_printf("%s\n  %s Lv%" PRIu32 " %c\n",
+              info += phosg::string_printf("%s\n  %s Lv%" PRIu32 " %c\n",
                   name.c_str(),
                   name_for_char_class(player->disp.visual.char_class),
                   player->disp.stats.level + 1,
@@ -1845,15 +1845,15 @@ static void on_09(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
         // time, send page 2 (extended info)
         if (info.empty()) {
           c->last_game_info_requested = 0;
-          info += string_printf("Section ID: %s\n", name_for_section_id(game->effective_section_id()));
+          info += phosg::string_printf("Section ID: %s\n", name_for_section_id(game->effective_section_id()));
           if (game->max_level != 0xFFFFFFFF) {
-            info += string_printf("Req. level: %" PRIu32 "-%" PRIu32 "\n", game->min_level + 1, game->max_level + 1);
+            info += phosg::string_printf("Req. level: %" PRIu32 "-%" PRIu32 "\n", game->min_level + 1, game->max_level + 1);
           } else if (game->min_level != 0) {
-            info += string_printf("Req. level: %" PRIu32 "+\n", game->min_level + 1);
+            info += phosg::string_printf("Req. level: %" PRIu32 "+\n", game->min_level + 1);
           }
 
           if (c->config.check_flag(Client::Flag::DEBUG_ENABLED)) {
-            info += string_printf("%s\n", name_for_enum(game->base_version));
+            info += phosg::string_printf("%s\n", phosg::name_for_enum(game->base_version));
           }
 
           if (game->check_flag(Lobby::Flag::CHEATS_ENABLED)) {
@@ -1893,7 +1893,7 @@ static void on_09(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
               break;
           }
         }
-        strip_trailing_whitespace(info);
+        phosg::strip_trailing_whitespace(info);
         send_ship_info(c, info);
       }
       break;
@@ -1928,13 +1928,13 @@ static void on_09(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
           if (team_name.empty()) {
             message = "(No registrant)";
           } else if (team->max_players == 1) {
-            message = string_printf("$C6%s$C7\n%zu %s (%s)\nPlayers:",
+            message = phosg::string_printf("$C6%s$C7\n%zu %s (%s)\nPlayers:",
                 team_name.c_str(),
                 team->num_rounds_cleared,
                 team->num_rounds_cleared == 1 ? "win" : "wins",
                 team->is_active ? "active" : "defeated");
           } else {
-            message = string_printf("$C6%s$C7\n%zu %s (%s)%s\nPlayers:",
+            message = phosg::string_printf("$C6%s$C7\n%zu %s (%s)%s\nPlayers:",
                 team_name.c_str(),
                 team->num_rounds_cleared,
                 team->num_rounds_cleared == 1 ? "win" : "wins",
@@ -1944,15 +1944,15 @@ static void on_09(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
           for (const auto& player : team->players) {
             if (player.is_human()) {
               if (player.player_name.empty()) {
-                message += string_printf("\n  $C6%08" PRIX32 "$C7", player.account_id);
+                message += phosg::string_printf("\n  $C6%08" PRIX32 "$C7", player.account_id);
               } else {
                 string player_name = escape_player_name(player.player_name);
-                message += string_printf("\n  $C6%s$C7 (%08" PRIX32 ")", player_name.c_str(), player.account_id);
+                message += phosg::string_printf("\n  $C6%s$C7 (%08" PRIX32 ")", player_name.c_str(), player.account_id);
               }
             } else {
               string player_name = escape_player_name(player.com_deck->player_name);
               string deck_name = escape_player_name(player.com_deck->deck_name);
-              message += string_printf("\n  $C3%s \"%s\"$C7", player_name.c_str(), deck_name.c_str());
+              message += phosg::string_printf("\n  $C3%s \"%s\"$C7", player_name.c_str(), deck_name.c_str());
             }
           }
           send_ship_info(c, message);
@@ -2427,7 +2427,7 @@ static void on_10(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
             send_ep3_confirm_tournament_entry(c, nullptr);
           }
 
-          c->config.proxy_destination_address = resolve_ipv4(dest->first);
+          c->config.proxy_destination_address = phosg::resolve_ipv4(dest->first);
           c->config.proxy_destination_port = dest->second;
           if (c->config.check_flag(Client::Flag::SHOULD_SEND_ENABLE_SAVE)) {
             c->should_send_to_proxy_server = true;
@@ -2496,13 +2496,13 @@ static void on_10(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
           send_lobby_message_box(c, "$C7Incorrect password.");
           break;
         case Lobby::JoinError::LEVEL_TOO_LOW: {
-          string msg = string_printf("$C7You must be level\n%zu or above to\njoin this game.",
+          string msg = phosg::string_printf("$C7You must be level\n%zu or above to\njoin this game.",
               static_cast<size_t>(game->min_level + 1));
           send_lobby_message_box(c, msg);
           break;
         }
         case Lobby::JoinError::LEVEL_TOO_HIGH: {
-          string msg = string_printf("$C7You must be level\n%zu or below to\njoin this game.",
+          string msg = phosg::string_printf("$C7You must be level\n%zu or below to\njoin this game.",
               static_cast<size_t>(game->max_level + 1));
           send_lobby_message_box(c, msg);
           break;
@@ -2684,7 +2684,7 @@ static void on_10(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
       }
       if (team_name.empty()) {
         team_name = c->character()->disp.name.decode(c->language());
-        team_name += string_printf("/%" PRIX32, c->login->account->account_id);
+        team_name += phosg::string_printf("/%" PRIX32, c->login->account->account_id);
       }
       auto s = c->require_server_state();
       uint16_t tourn_num = item_id >> 16;
@@ -2697,7 +2697,7 @@ static void on_10(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
             team->register_player(c, team_name, password);
             c->ep3_tournament_team = team;
             tourn->send_all_state_updates();
-            string message = string_printf("$C7You are registered in $C6%s$C7.\n\
+            string message = phosg::string_printf("$C7You are registered in $C6%s$C7.\n\
 \n\
 After the tournament begins, start your matches\n\
 by standing at any Battle Table along with your\n\
@@ -2708,7 +2708,7 @@ partner (if any) and opponent(s).",
             s->ep3_tournament_index->save();
 
           } catch (const exception& e) {
-            string message = string_printf("Cannot join team:\n%s", e.what());
+            string message = phosg::string_printf("Cannot join team:\n%s", e.what());
             send_lobby_message_box(c, message);
           }
         } else {
@@ -2845,7 +2845,7 @@ static void send_dol_file_chunk(shared_ptr<Client> c, uint32_t start_addr) {
   send_function_call(c, fn, label_writes, data_to_send.data(), data_to_send.size());
 
   size_t progress_percent = ((offset + bytes_to_send) * 100) / c->loading_dol_file->data.size();
-  send_ship_info(c, string_printf("%zu%%%%", progress_percent));
+  send_ship_info(c, phosg::string_printf("%zu%%%%", progress_percent));
 }
 
 static void on_B3(shared_ptr<Client> c, uint16_t, uint32_t flag, string& data) {
@@ -2995,7 +2995,7 @@ static void on_AA(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
 
 static void on_D7_GC(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
   string filename(data);
-  strip_trailing_zeroes(filename);
+  phosg::strip_trailing_zeroes(filename);
   if (filename.find('/') != string::npos) {
     send_command(c, 0xD7, 0x00);
   } else {
@@ -3005,19 +3005,17 @@ static void on_D7_GC(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
       send_open_quest_file(c, "", filename, "", 0, QuestFileType::GBA_DEMO, f->data);
     } catch (const out_of_range&) {
       send_command(c, 0xD7, 0x00);
-    } catch (const cannot_open_file&) {
+    } catch (const phosg::cannot_open_file&) {
       send_command(c, 0xD7, 0x00);
     }
   }
 }
 
-static void on_13_A7_GC(shared_ptr<Client> c, uint16_t command, uint32_t flag, string& data) {
-  // See comment in send_open_quest_file about why we only have logic here for
-  // GC clients, and ignore this command on all other versions
+static void on_13_A7_V3_V4(shared_ptr<Client> c, uint16_t command, uint32_t flag, string& data) {
   const auto& cmd = check_size_t<C_WriteFileConfirmation_V3_BB_13_A7>(data);
   bool is_download_quest = (command == 0xA7);
   string filename = cmd.filename.decode();
-  size_t chunk_to_send = flag + GC_QUEST_LOAD_MAX_CHUNKS_IN_FLIGHT;
+  size_t chunk_to_send = flag + V3_V4_QUEST_LOAD_MAX_CHUNKS_IN_FLIGHT;
 
   shared_ptr<const string> file_data;
   try {
@@ -3085,7 +3083,7 @@ static void on_61_98(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
       c->import_blocked_senders(cmd.blocked_senders);
       if (cmd.auto_reply_enabled) {
         string auto_reply = data.substr(sizeof(cmd));
-        strip_trailing_zeroes(auto_reply);
+        phosg::strip_trailing_zeroes(auto_reply);
         if (auto_reply.size() & 1) {
           auto_reply.push_back(0);
         }
@@ -3115,7 +3113,7 @@ static void on_61_98(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
       c->import_blocked_senders(cmd.blocked_senders);
       if (cmd.auto_reply_enabled) {
         string auto_reply = data.substr(sizeof(cmd), 0xAC);
-        strip_trailing_zeroes(auto_reply);
+        phosg::strip_trailing_zeroes(auto_reply);
         try {
           string encoded = tt_decode_marked(auto_reply, player->inventory.language, false);
           player->auto_reply.encode(encoded, player->inventory.language);
@@ -3191,7 +3189,7 @@ static void on_61_98(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
       c->import_blocked_senders(cmd->blocked_senders);
       if (cmd->auto_reply_enabled) {
         string auto_reply = data.substr(sizeof(cmd), 0xAC);
-        strip_trailing_zeroes(auto_reply);
+        phosg::strip_trailing_zeroes(auto_reply);
         try {
           string encoded = tt_decode_marked(auto_reply, player->inventory.language, false);
           player->auto_reply.encode(encoded, player->inventory.language);
@@ -3217,7 +3215,7 @@ static void on_61_98(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
       c->import_blocked_senders(cmd.blocked_senders);
       if (cmd.auto_reply_enabled) {
         string auto_reply = data.substr(sizeof(cmd), 0xAC);
-        strip_trailing_zeroes(auto_reply);
+        phosg::strip_trailing_zeroes(auto_reply);
         if (auto_reply.size() & 1) {
           auto_reply.push_back(0);
         }
@@ -3408,7 +3406,7 @@ static void on_6x_C9_CB(shared_ptr<Client> c, uint16_t command, uint32_t flag, s
 static void on_06(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
   const auto& cmd = check_size_t<SC_TextHeader_01_06_11_B0_EE>(data, 0xFFFF);
   string text = data.substr(sizeof(cmd));
-  strip_trailing_zeroes(text);
+  phosg::strip_trailing_zeroes(text);
   if (text.empty()) {
     return;
   }
@@ -3716,7 +3714,7 @@ static void on_E5_BB(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
     try {
       c->character()->disp.apply_dressing_room(cmd.preview);
     } catch (const exception& e) {
-      send_message_box(c, string_printf("$C6Character could not be modified:\n%s", e.what()));
+      send_message_box(c, phosg::string_printf("$C6Character could not be modified:\n%s", e.what()));
       return;
     }
   } else {
@@ -3724,7 +3722,7 @@ static void on_E5_BB(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
       auto s = c->require_server_state();
       c->create_character_file(c->login->account->account_id, c->language(), cmd.preview, s->level_table(c->version()));
     } catch (const exception& e) {
-      send_message_box(c, string_printf("$C6New character could not be created:\n%s", e.what()));
+      send_message_box(c, phosg::string_printf("$C6New character could not be created:\n%s", e.what()));
       return;
     }
   }
@@ -3881,7 +3879,7 @@ static void on_DF_BB(shared_ptr<Client> c, uint16_t command, uint32_t, string& d
       auto& threshold = cp->rank_thresholds[cmd.rank];
       threshold.bitmask = cmd.rank_bitmask;
       threshold.seconds = cmd.seconds;
-      string time_str = format_duration(static_cast<uint64_t>(threshold.seconds) * 1000000);
+      string time_str = phosg::format_duration(static_cast<uint64_t>(threshold.seconds) * 1000000);
       l->log.info("(Challenge mode) Rank %c threshold set to %s (bitmask %08" PRIX32 ")",
           char_for_challenge_rank(cmd.rank), time_str.c_str(), threshold.bitmask);
       break;
@@ -3968,18 +3966,18 @@ static void on_choice_search_t(shared_ptr<Client> c, const ChoiceSearchConfig& c
         auto& result = results.emplace_back();
         result.guild_card_number = lc->login->account->account_id;
         result.name.encode(lp->disp.name.decode(lc->language()), c->language());
-        string info_string = string_printf("%s Lv%zu\n%s\n",
+        string info_string = phosg::string_printf("%s Lv%zu\n%s\n",
             name_for_char_class(lp->disp.visual.char_class),
             static_cast<size_t>(lp->disp.stats.level + 1),
             name_for_section_id(lp->disp.visual.section_id));
         result.info_string.encode(info_string, c->language());
         string location_string;
         if (l->is_game()) {
-          location_string = string_printf("%s,,BLOCK01,%s", l->name.c_str(), s->name.c_str());
+          location_string = phosg::string_printf("%s,,BLOCK01,%s", l->name.c_str(), s->name.c_str());
         } else if (l->is_ep3()) {
-          location_string = string_printf("BLOCK01-C%02" PRIu32 ",,BLOCK01,%s", l->lobby_id - 15, s->name.c_str());
+          location_string = phosg::string_printf("BLOCK01-C%02" PRIu32 ",,BLOCK01,%s", l->lobby_id - 15, s->name.c_str());
         } else {
-          location_string = string_printf("BLOCK01-%02" PRIu32 ",,BLOCK01,%s", l->lobby_id, s->name.c_str());
+          location_string = phosg::string_printf("BLOCK01-%02" PRIu32 ",,BLOCK01,%s", l->lobby_id, s->name.c_str());
         }
         result.location_string.encode(location_string, c->language());
         result.reconnect_command_header.command = 0x19;
@@ -4133,7 +4131,7 @@ static void on_D8(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
 }
 
 void on_D9(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
-  strip_trailing_zeroes(data);
+  phosg::strip_trailing_zeroes(data);
   bool is_w = uses_utf16(c->version());
   if (is_w && (data.size() & 1)) {
     data.push_back(0);
@@ -4146,7 +4144,7 @@ void on_D9(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
 }
 
 void on_C7(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
-  strip_trailing_zeroes(data);
+  phosg::strip_trailing_zeroes(data);
   bool is_w = uses_utf16(c->version());
   if (is_w && (data.size() & 1)) {
     data.push_back(0);
@@ -4218,7 +4216,7 @@ shared_ptr<Lobby> create_game_generic(
   if (!c->login->account->check_flag(Account::Flag::FREE_JOIN_GAMES) && (min_level > p->disp.stats.level)) {
     // Note: We don't throw here because this is a situation players might
     // actually encounter while playing the game normally
-    string msg = string_printf("You must be level %zu\nor above to play\nthis difficulty.", static_cast<size_t>(min_level + 1));
+    string msg = phosg::string_printf("You must be level %zu\nor above to play\nthis difficulty.", static_cast<size_t>(min_level + 1));
     send_lobby_message_box(c, msg);
     return nullptr;
   }
@@ -4664,7 +4662,7 @@ static void on_6F(shared_ptr<Client> c, uint16_t command, uint32_t, string& data
   if (c->config.check_flag(Client::Flag::DEBUG_ENABLED)) {
     string variations_str;
     for (size_t z = 0; z < l->variations.size(); z++) {
-      variations_str += string_printf("%" PRIX32, l->variations[z].load());
+      variations_str += phosg::string_printf("%" PRIX32, l->variations[z].load());
     }
     send_text_message_printf(c, "Rare seed: %08" PRIX32 "\nRare enemies: %zu\nVariations: %s\n",
         l->random_seed, l->map->rare_enemy_indexes.size(), variations_str.c_str());
@@ -5147,7 +5145,7 @@ static void on_EA_BB(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
       if (team) {
         check_size_v(data.size(), sizeof(SC_TeamChat_BB_07EA) + 4, 0xFFFF);
         static const string required_end("\0\0", 2);
-        if (ends_with(data, required_end)) {
+        if (phosg::ends_with(data, required_end)) {
           for (const auto& it : team->members) {
             try {
               auto target_c = s->find_client(nullptr, it.second.account_id);
@@ -5383,7 +5381,7 @@ static on_command_t handlers[0x100][NUM_NON_PATCH_VERSIONS] = {
 /* 10 */ {on_10,         on_10,         on_10,         on_10,          on_10,       on_10,       on_10,          on_10,          on_10,          on_10,          on_10,          on_10},
 /* 11 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
 /* 12 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* 13 */ {on_ignored,    on_ignored,    on_ignored,    on_ignored,     on_ignored,  on_ignored,  on_13_A7_GC,    on_13_A7_GC,    on_13_A7_GC,    on_13_A7_GC,    on_ignored,     on_ignored},
+/* 13 */ {on_ignored,    on_ignored,    on_ignored,    on_ignored,     on_ignored,  on_ignored,  on_13_A7_V3_V4, on_13_A7_V3_V4, on_13_A7_V3_V4, on_13_A7_V3_V4, on_13_A7_V3_V4, on_13_A7_V3_V4},
 /* 14 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
 /* 15 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
 /* 16 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
@@ -5540,7 +5538,7 @@ static on_command_t handlers[0x100][NUM_NON_PATCH_VERSIONS] = {
 /* A4 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
 /* A5 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
 /* A6 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     on_ignored,     on_ignored,     on_ignored,     on_ignored,     on_ignored,     nullptr},
-/* A7 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     on_13_A7_GC,    on_13_A7_GC,    on_13_A7_GC,    on_13_A7_GC,    on_ignored,     nullptr},
+/* A7 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     on_13_A7_V3_V4, on_13_A7_V3_V4, on_13_A7_V3_V4, on_13_A7_V3_V4, on_13_A7_V3_V4, on_13_A7_V3_V4},
 /* A8 */ {nullptr,       nullptr,       nullptr,       nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
 /* A9 */ {on_A9,         on_A9,         on_A9,         on_A9,          on_A9,       on_A9,       on_A9,          on_A9,          on_A9,          on_A9,          on_A9,          on_A9},
 /* AA */ {nullptr,       nullptr,       nullptr,       nullptr,        on_AA,       on_AA,       on_AA,          on_AA,          on_AA,          on_AA,          on_AA,          on_AA},

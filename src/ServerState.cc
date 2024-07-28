@@ -19,7 +19,7 @@
 
 using namespace std;
 
-ServerState::QuestF960Result::QuestF960Result(const JSON& json, std::shared_ptr<const ItemNameIndex> name_index) {
+ServerState::QuestF960Result::QuestF960Result(const phosg::JSON& json, std::shared_ptr<const ItemNameIndex> name_index) {
   static const array<string, 7> day_names = {"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"};
   this->meseta_cost = json.get_int("MesetaCost", 0);
   this->base_probability = json.get_int("BaseProbability", 0);
@@ -36,11 +36,11 @@ ServerState::QuestF960Result::QuestF960Result(const JSON& json, std::shared_ptr<
 }
 
 ServerState::ServerState(const string& config_filename)
-    : creation_time(now()),
+    : creation_time(phosg::now()),
       config_filename(config_filename) {}
 
 ServerState::ServerState(shared_ptr<struct event_base> base, const string& config_filename, bool is_replay)
-    : creation_time(now()),
+    : creation_time(phosg::now()),
       base(base),
       config_filename(config_filename),
       is_replay(is_replay),
@@ -203,7 +203,7 @@ void ServerState::remove_lobby(shared_ptr<Lobby> l) {
   }
 
   this->lobbies_to_destroy.emplace(l);
-  auto tv = usecs_to_timeval(0);
+  auto tv = phosg::usecs_to_timeval(0);
   event_add(this->destroy_lobbies_event.get(), &tv);
 
   this->id_to_lobby.erase(lobby_it);
@@ -522,7 +522,7 @@ shared_ptr<const string> ServerState::load_bb_file(
     auto ret = cache.get_or_load("system/blueburst/" + effective_bb_directory_filename);
     return ret.file->data;
   } catch (const exception& e) {
-    throw cannot_open_file(patch_index_filename);
+    throw phosg::cannot_open_file(patch_index_filename);
   }
 }
 
@@ -540,21 +540,21 @@ shared_ptr<const string> ServerState::load_map_file_uncached(Version version, co
   } else if (version == Version::PC_V2) {
     try {
       string path = "system/patch-pc/Media/PSO/" + filename;
-      auto ret = make_shared<string>(load_file(path));
+      auto ret = make_shared<string>(phosg::load_file(path));
       return ret;
     } catch (const exception& e) {
     }
   }
   try {
-    string path = string_printf("system/maps/%s/%s", file_path_token_for_version(version), filename.c_str());
-    auto ret = make_shared<string>(load_file(path));
+    string path = phosg::string_printf("system/maps/%s/%s", file_path_token_for_version(version), filename.c_str());
+    auto ret = make_shared<string>(phosg::load_file(path));
     return ret;
   } catch (const exception& e) {
   }
   return nullptr;
 }
 
-pair<string, uint16_t> ServerState::parse_port_spec(const JSON& json) const {
+pair<string, uint16_t> ServerState::parse_port_spec(const phosg::JSON& json) const {
   if (json.is_list()) {
     string addr = json.at(0).as_string();
     try {
@@ -567,7 +567,7 @@ pair<string, uint16_t> ServerState::parse_port_spec(const JSON& json) const {
   }
 }
 
-vector<PortConfiguration> ServerState::parse_port_configuration(const JSON& json) const {
+vector<PortConfiguration> ServerState::parse_port_configuration(const phosg::JSON& json) const {
   vector<PortConfiguration> ret;
   for (const auto& item_json_it : json.as_dict()) {
     const auto& item_list = item_json_it.second;
@@ -576,8 +576,8 @@ vector<PortConfiguration> ServerState::parse_port_configuration(const JSON& json
     auto spec = this->parse_port_spec(item_list->at(0));
     pc.addr = std::move(spec.first);
     pc.port = spec.second;
-    pc.version = enum_for_name<Version>(item_list->at(1).as_string().c_str());
-    pc.behavior = enum_for_name<ServerBehavior>(item_list->at(2).as_string().c_str());
+    pc.version = phosg::enum_for_name<Version>(item_list->at(1).as_string().c_str());
+    pc.behavior = phosg::enum_for_name<ServerBehavior>(item_list->at(2).as_string().c_str());
   }
   return ret;
 }
@@ -597,7 +597,7 @@ void ServerState::load_config_early() {
   }
 
   config_log.info("Loading configuration");
-  this->config_json = make_shared<JSON>(JSON::parse(load_file(this->config_filename)));
+  this->config_json = make_shared<phosg::JSON>(phosg::JSON::parse(phosg::load_file(this->config_filename)));
 
   auto parse_behavior_switch = [&](const string& json_key, BehaviorSwitch default_value) -> ServerState::BehaviorSwitch {
     try {
@@ -643,7 +643,7 @@ void ServerState::load_config_early() {
     try {
       for (const auto& item : this->config_json->at("IPStackListen").as_list()) {
         if (item->is_int()) {
-          this->ip_stack_addresses.emplace_back(string_printf("0.0.0.0:%" PRId64, item->as_int()));
+          this->ip_stack_addresses.emplace_back(phosg::string_printf("0.0.0.0:%" PRId64, item->as_int()));
         } else {
           this->ip_stack_addresses.emplace_back(item->as_string());
         }
@@ -653,7 +653,7 @@ void ServerState::load_config_early() {
     try {
       for (const auto& item : this->config_json->at("PPPStackListen").as_list()) {
         if (item->is_int()) {
-          this->ppp_stack_addresses.emplace_back(string_printf("0.0.0.0:%" PRId64, item->as_int()));
+          this->ppp_stack_addresses.emplace_back(phosg::string_printf("0.0.0.0:%" PRId64, item->as_int()));
         } else {
           this->ppp_stack_addresses.emplace_back(item->as_string());
         }
@@ -663,7 +663,7 @@ void ServerState::load_config_early() {
     try {
       for (const auto& item : this->config_json->at("PPPRawListen").as_list()) {
         if (item->is_int()) {
-          this->ppp_raw_addresses.emplace_back(string_printf("0.0.0.0:%" PRId64, item->as_int()));
+          this->ppp_raw_addresses.emplace_back(phosg::string_printf("0.0.0.0:%" PRId64, item->as_int()));
         } else {
           this->ppp_raw_addresses.emplace_back(item->as_string());
         }
@@ -673,7 +673,7 @@ void ServerState::load_config_early() {
     try {
       for (const auto& item : this->config_json->at("HTTPListen").as_list()) {
         if (item->is_int()) {
-          this->http_addresses.emplace_back(string_printf("0.0.0.0:%" PRId64, item->as_int()));
+          this->http_addresses.emplace_back(phosg::string_printf("0.0.0.0:%" PRId64, item->as_int()));
         } else {
           this->http_addresses.emplace_back(item->as_string());
         }
@@ -758,7 +758,7 @@ void ServerState::load_config_early() {
     std::unordered_map<uint16_t, IntegralExpression> ret;
     try {
       for (const auto& it : json->get_dict(key)) {
-        if (!it.first.starts_with("F_")) {
+        if (!phosg::starts_with(it.first, "F_")) {
           throw runtime_error("invalid flag reference: " + it.first);
         }
         uint16_t flag = stoul(it.first.substr(2), nullptr, 16);
@@ -798,7 +798,7 @@ void ServerState::load_config_early() {
   this->enable_v3_v4_protected_subcommands = this->config_json->get_bool("EnableV3V4ProtectedSubcommands", false);
   this->catch_handler_exceptions = this->config_json->get_bool("CatchHandlerExceptions", true);
 
-  auto parse_int_list = +[](const JSON& json) -> vector<uint32_t> {
+  auto parse_int_list = +[](const phosg::JSON& json) -> vector<uint32_t> {
     vector<uint32_t> ret;
     for (const auto& item : json.as_list()) {
       ret.emplace_back(item->as_int());
@@ -813,7 +813,7 @@ void ServerState::load_config_early() {
     this->ep3_defeat_player_meseta_rewards = {300, 400, 500, 600, 700};
   }
   try {
-    this->ep3_defeat_com_meseta_rewards = parse_int_list(this->config_json->get("Episode3DefeatCOMMeseta", JSON::list()));
+    this->ep3_defeat_com_meseta_rewards = parse_int_list(this->config_json->get("Episode3DefeatCOMMeseta", phosg::JSON::list()));
   } catch (const out_of_range&) {
     this->ep3_defeat_com_meseta_rewards = {100, 200, 300, 400, 500};
   }
@@ -842,40 +842,40 @@ void ServerState::load_config_early() {
   if (!this->is_replay) {
     this->ep3_lobby_banners.clear();
     size_t banner_index = 0;
-    for (const auto& it : this->config_json->get("Episode3LobbyBanners", JSON::list()).as_list()) {
+    for (const auto& it : this->config_json->get("Episode3LobbyBanners", phosg::JSON::list()).as_list()) {
       string path = "system/ep3/banners/" + it->at(2).as_string();
 
       string compressed_gvm_data;
       string decompressed_gvm_data;
-      string lower_path = tolower(path);
-      if (ends_with(lower_path, ".gvm.prs")) {
-        compressed_gvm_data = load_file(path);
-      } else if (ends_with(lower_path, ".gvm")) {
-        decompressed_gvm_data = load_file(path);
-      } else if (ends_with(lower_path, ".bmp")) {
-        Image img(path);
+      string lower_path = phosg::tolower(path);
+      if (phosg::ends_with(lower_path, ".gvm.prs")) {
+        compressed_gvm_data = phosg::load_file(path);
+      } else if (phosg::ends_with(lower_path, ".gvm")) {
+        decompressed_gvm_data = phosg::load_file(path);
+      } else if (phosg::ends_with(lower_path, ".bmp")) {
+        phosg::Image img(path);
         decompressed_gvm_data = encode_gvm(
             img,
             img.get_has_alpha() ? GVRDataFormat::RGB5A3 : GVRDataFormat::RGB565,
-            string_printf("bnr%zu", banner_index),
+            phosg::string_printf("bnr%zu", banner_index),
             0x80 | banner_index);
         banner_index++;
       } else {
-        throw runtime_error(string_printf("banner %s is in an unknown format", path.c_str()));
+        throw runtime_error(phosg::string_printf("banner %s is in an unknown format", path.c_str()));
       }
 
       size_t decompressed_size = decompressed_gvm_data.empty()
           ? prs_decompress_size(compressed_gvm_data)
           : decompressed_gvm_data.size();
       if (decompressed_size > 0x37000) {
-        throw runtime_error(string_printf("banner %s is too large (0x%zX bytes; maximum size is 0x37000 bytes)", path.c_str(), decompressed_size));
+        throw runtime_error(phosg::string_printf("banner %s is too large (0x%zX bytes; maximum size is 0x37000 bytes)", path.c_str(), decompressed_size));
       }
 
       if (compressed_gvm_data.empty()) {
         compressed_gvm_data = prs_compress_optimal(decompressed_gvm_data);
       }
       if (compressed_gvm_data.size() > 0x3800) {
-        throw runtime_error(string_printf("banner %s cannot be compressed small enough (0x%zX bytes; maximum size is 0x3800 bytes compressed)", it->at(2).as_string().c_str(), compressed_gvm_data.size()));
+        throw runtime_error(phosg::string_printf("banner %s cannot be compressed small enough (0x%zX bytes; maximum size is 0x3800 bytes compressed)", it->at(2).as_string().c_str(), compressed_gvm_data.size()));
       }
       config_log.info("Loaded Episode 3 lobby banner %s (0x%zX -> 0x%zX bytes)", path.c_str(), decompressed_size, compressed_gvm_data.size());
       this->ep3_lobby_banners.emplace_back(
@@ -886,7 +886,7 @@ void ServerState::load_config_early() {
   }
 
   {
-    auto parse_ep3_ex_result_cmd = [&](const JSON& src) -> shared_ptr<G_SetEXResultValues_Ep3_6xB4x4B> {
+    auto parse_ep3_ex_result_cmd = [&](const phosg::JSON& src) -> shared_ptr<G_SetEXResultValues_Ep3_6xB4x4B> {
       auto ret = make_shared<G_SetEXResultValues_Ep3_6xB4x4B>();
       const auto& win_json = src.at("Win");
       for (size_t z = 0; z < min<size_t>(win_json.size(), 10); z++) {
@@ -947,7 +947,7 @@ void ServerState::load_config_early() {
   this->exp_share_multiplier = this->config_json->get_float("BBEXPShareMultiplier", 0.5);
   this->server_global_drop_rate_multiplier = this->config_json->get_float("ServerGlobalDropRateMultiplier", 1);
 
-  set_log_levels_from_json(this->config_json->get("LogLevels", JSON::dict()));
+  set_log_levels_from_json(this->config_json->get("LogLevels", phosg::JSON::dict()));
 
   try {
     this->run_shell_behavior = this->config_json->at("RunInteractiveShell").as_bool()
@@ -1015,7 +1015,7 @@ void ServerState::load_config_early() {
   try {
     this->quest_category_index = make_shared<QuestCategoryIndex>(this->config_json->at("QuestCategories"));
   } catch (const exception& e) {
-    throw runtime_error(string_printf(
+    throw runtime_error(phosg::string_printf(
         "QuestCategories is missing or invalid in config.json (%s) - see config.example.json for an example", e.what()));
   }
 
@@ -1031,10 +1031,10 @@ void ServerState::load_config_early() {
   information_menu_v3->items.emplace_back(InformationMenuItemID::GO_BACK, "Go back",
       "Return to the\nmain menu", MenuItem::Flag::INVISIBLE_IN_INFO_MENU);
   {
-    auto blank_json = JSON::list();
-    const JSON& default_json = this->config_json->get("InformationMenuContents", blank_json);
-    const JSON& v2_json = this->config_json->get("InformationMenuContentsV1V2", default_json);
-    const JSON& v3_json = this->config_json->get("InformationMenuContentsV3", default_json);
+    auto blank_json = phosg::JSON::list();
+    const phosg::JSON& default_json = this->config_json->get("InformationMenuContents", blank_json);
+    const phosg::JSON& v2_json = this->config_json->get("InformationMenuContentsV1V2", default_json);
+    const phosg::JSON& v3_json = this->config_json->get("InformationMenuContentsV3", default_json);
 
     uint32_t item_id = 0;
     for (const auto& item : v2_json.as_list()) {
@@ -1064,7 +1064,7 @@ void ServerState::load_config_early() {
     ret_pds.clear();
 
     try {
-      map<string, const JSON&> sorted_jsons;
+      map<string, const phosg::JSON&> sorted_jsons;
       for (const auto& it : this->config_json->at(key).as_dict()) {
         sorted_jsons.emplace(it.first, *it.second);
       }
@@ -1077,7 +1077,7 @@ void ServerState::load_config_early() {
         const string& netloc_str = item.second.as_string();
         const string& description = "$C7Remote server:\n$C6" + netloc_str;
         ret->items.emplace_back(item_id, item.first, description, 0);
-        ret_pds.emplace_back(parse_netloc(netloc_str));
+        ret_pds.emplace_back(phosg::parse_netloc(netloc_str));
         item_id++;
       }
     } catch (const out_of_range&) {
@@ -1092,7 +1092,7 @@ void ServerState::load_config_early() {
 
   try {
     const string& netloc_str = this->config_json->get_string("ProxyDestination-Patch");
-    this->proxy_destination_patch = parse_netloc(netloc_str);
+    this->proxy_destination_patch = phosg::parse_netloc(netloc_str);
     config_log.info("Patch server proxy is enabled with destination %s", netloc_str.c_str());
     for (auto& it : this->name_to_port_config) {
       if (is_patch(it.second->version)) {
@@ -1105,7 +1105,7 @@ void ServerState::load_config_early() {
   }
   try {
     const string& netloc_str = this->config_json->get_string("ProxyDestination-BB");
-    this->proxy_destination_bb = parse_netloc(netloc_str);
+    this->proxy_destination_bb = phosg::parse_netloc(netloc_str);
     config_log.info("BB proxy is enabled with destination %s", netloc_str.c_str());
     for (auto& it : this->name_to_port_config) {
       if (it.second->version == Version::BB_V4) {
@@ -1201,7 +1201,7 @@ void ServerState::load_config_late() {
       try {
         card_id = this->ep3_card_index->definition_for_name_normalized(it.first)->def.card_id;
       } catch (const out_of_range&) {
-        throw runtime_error(string_printf("Ep3 card \"%s\" in auction pool does not exist", it.first.c_str()));
+        throw runtime_error(phosg::string_printf("Ep3 card \"%s\" in auction pool does not exist", it.first.c_str()));
       }
       this->ep3_card_auction_pool.emplace_back(
           CardAuctionPoolEntry{
@@ -1229,11 +1229,11 @@ void ServerState::load_config_late() {
             try {
               const auto& card = this->ep3_card_index->definition_for_name_normalized(card_name);
               if (card->def.type != Episode3::CardType::ASSIST) {
-                throw runtime_error(string_printf("Ep3 card \"%s\" in trap card list is not an assist card", card_name.c_str()));
+                throw runtime_error(phosg::string_printf("Ep3 card \"%s\" in trap card list is not an assist card", card_name.c_str()));
               }
               trap_card_ids.emplace_back(card->def.card_id);
             } catch (const out_of_range&) {
-              throw runtime_error(string_printf("Ep3 card \"%s\" in trap card list does not exist", card_name.c_str()));
+              throw runtime_error(phosg::string_printf("Ep3 card \"%s\" in trap card list does not exist", card_name.c_str()));
             }
           }
         }
@@ -1335,12 +1335,12 @@ void ServerState::load_config_late() {
 
 void ServerState::load_bb_private_keys(bool from_non_event_thread) {
   std::vector<std::shared_ptr<const PSOBBEncryption::KeyFile>> new_keys;
-  for (const string& filename : list_directory("system/blueburst/keys")) {
-    if (!ends_with(filename, ".nsk")) {
+  for (const string& filename : phosg::list_directory("system/blueburst/keys")) {
+    if (!phosg::ends_with(filename, ".nsk")) {
       continue;
     }
     new_keys.emplace_back(make_shared<PSOBBEncryption::KeyFile>(
-        load_object_file<PSOBBEncryption::KeyFile>("system/blueburst/keys/" + filename)));
+        phosg::load_object_file<PSOBBEncryption::KeyFile>("system/blueburst/keys/" + filename)));
     config_log.info("Loaded Blue Burst key file: %s", filename.c_str());
   }
   config_log.info("%zu Blue Burst key file(s) loaded", this->bb_private_keys.size());
@@ -1377,13 +1377,13 @@ void ServerState::load_patch_indexes(bool from_non_event_thread) {
   shared_ptr<PatchFileIndex> pc_patch_file_index;
   shared_ptr<PatchFileIndex> bb_patch_file_index;
 
-  if (isdir("system/patch-pc")) {
+  if (phosg::isdir("system/patch-pc")) {
     config_log.info("Indexing PSO PC patch files");
     pc_patch_file_index = make_shared<PatchFileIndex>("system/patch-pc");
   } else {
     config_log.info("PSO PC patch files not present");
   }
-  if (isdir("system/patch-bb")) {
+  if (phosg::isdir("system/patch-bb")) {
     config_log.info("Indexing PSO BB patch files");
     bb_patch_file_index = make_shared<PatchFileIndex>("system/patch-bb");
     try {
@@ -1480,8 +1480,8 @@ void ServerState::load_battle_params(bool from_non_event_thread) {
 
 void ServerState::load_level_tables(bool from_non_event_thread) {
   config_log.info("Loading level tables");
-  auto new_table_v1_v2 = make_shared<LevelTableV2>(load_file("system/level-tables/PlayerTable-pc-v2.prs"), true);
-  auto new_table_v3 = make_shared<LevelTableV3BE>(load_file("system/level-tables/PlyLevelTbl-gc-v3.cpt"), true);
+  auto new_table_v1_v2 = make_shared<LevelTableV2>(phosg::load_file("system/level-tables/PlayerTable-pc-v2.prs"), true);
+  auto new_table_v3 = make_shared<LevelTableV3BE>(phosg::load_file("system/level-tables/PlyLevelTbl-gc-v3.cpt"), true);
   auto new_table_v4 = make_shared<LevelTableV4>(*this->load_bb_file("PlyLevelTbl.prs"), true);
 
   auto set = [s = this->shared_from_this(), new_table_v1_v2 = std::move(new_table_v1_v2), new_table_v3 = std::move(new_table_v3), new_table_v4 = std::move(new_table_v4)]() {
@@ -1502,7 +1502,7 @@ void ServerState::load_text_index(bool from_non_event_thread) {
       }
     } catch (const out_of_range&) {
       return nullptr;
-    } catch (const cannot_open_file&) {
+    } catch (const phosg::cannot_open_file&) {
       return nullptr;
     }
   });
@@ -1517,7 +1517,7 @@ void ServerState::load_word_select_table(bool from_non_event_thread) {
   config_log.info("Loading Word Select table");
 
   vector<vector<string>> name_alias_lists;
-  auto json = JSON::parse(load_file("system/text-sets/ws-name-alias-lists.json"));
+  auto json = phosg::JSON::parse(phosg::load_file("system/text-sets/ws-name-alias-lists.json"));
   for (const auto& coll_it : json.as_list()) {
     auto& coll = name_alias_lists.emplace_back();
     for (const auto& str_it : coll_it->as_list()) {
@@ -1533,37 +1533,37 @@ void ServerState::load_word_select_table(bool from_non_event_thread) {
     pc_unitxt_collection = &this->text_index->get(Version::PC_V2, 1, 35);
   } else {
     config_log.info("(Word select) Loading PC_V2 unitxt_e.prs");
-    pc_unitxt_data = make_unique<UnicodeTextSet>(load_file("system/text-sets/pc-v2/unitxt_e.prs"));
+    pc_unitxt_data = make_unique<UnicodeTextSet>(phosg::load_file("system/text-sets/pc-v2/unitxt_e.prs"));
     pc_unitxt_collection = &pc_unitxt_data->get(35);
   }
   config_log.info("(Word select) Loading BB_V4 unitxt_ws_e.prs");
-  auto bb_unitxt_data = make_unique<UnicodeTextSet>(load_file("system/text-sets/bb-v4/unitxt_ws_e.prs"));
+  auto bb_unitxt_data = make_unique<UnicodeTextSet>(phosg::load_file("system/text-sets/bb-v4/unitxt_ws_e.prs"));
   bb_unitxt_collection = &bb_unitxt_data->get(0);
 
   config_log.info("(Word select) Loading DC_NTE data");
-  WordSelectSet dc_nte_ws(load_file("system/text-sets/dc-nte/ws_data.bin"), Version::DC_NTE, nullptr, true);
+  WordSelectSet dc_nte_ws(phosg::load_file("system/text-sets/dc-nte/ws_data.bin"), Version::DC_NTE, nullptr, true);
   config_log.info("(Word select) Loading DC_V1_11_2000_PROTOTYPE data");
-  WordSelectSet dc_112000_ws(load_file("system/text-sets/dc-11-2000/ws_data.bin"), Version::DC_V1_11_2000_PROTOTYPE, nullptr, false);
+  WordSelectSet dc_112000_ws(phosg::load_file("system/text-sets/dc-11-2000/ws_data.bin"), Version::DC_V1_11_2000_PROTOTYPE, nullptr, false);
   config_log.info("(Word select) Loading DC_V1 data");
-  WordSelectSet dc_v1_ws(load_file("system/text-sets/dc-v1/ws_data.bin"), Version::DC_V1, nullptr, false);
+  WordSelectSet dc_v1_ws(phosg::load_file("system/text-sets/dc-v1/ws_data.bin"), Version::DC_V1, nullptr, false);
   config_log.info("(Word select) Loading DC_V2 data");
-  WordSelectSet dc_v2_ws(load_file("system/text-sets/dc-v2/ws_data.bin"), Version::DC_V2, nullptr, false);
+  WordSelectSet dc_v2_ws(phosg::load_file("system/text-sets/dc-v2/ws_data.bin"), Version::DC_V2, nullptr, false);
   config_log.info("(Word select) Loading PC_NTE data");
-  WordSelectSet pc_nte_ws(load_file("system/text-sets/pc-nte/ws_data.bin"), Version::PC_NTE, pc_unitxt_collection, false);
+  WordSelectSet pc_nte_ws(phosg::load_file("system/text-sets/pc-nte/ws_data.bin"), Version::PC_NTE, pc_unitxt_collection, false);
   config_log.info("(Word select) Loading PC_V2 data");
-  WordSelectSet pc_v2_ws(load_file("system/text-sets/pc-v2/ws_data.bin"), Version::PC_V2, pc_unitxt_collection, false);
+  WordSelectSet pc_v2_ws(phosg::load_file("system/text-sets/pc-v2/ws_data.bin"), Version::PC_V2, pc_unitxt_collection, false);
   config_log.info("(Word select) Loading GC_NTE data");
-  WordSelectSet gc_nte_ws(load_file("system/text-sets/gc-nte/ws_data.bin"), Version::GC_NTE, nullptr, false);
+  WordSelectSet gc_nte_ws(phosg::load_file("system/text-sets/gc-nte/ws_data.bin"), Version::GC_NTE, nullptr, false);
   config_log.info("(Word select) Loading GC_V3 data");
-  WordSelectSet gc_v3_ws(load_file("system/text-sets/gc-v3/ws_data.bin"), Version::GC_V3, nullptr, false);
+  WordSelectSet gc_v3_ws(phosg::load_file("system/text-sets/gc-v3/ws_data.bin"), Version::GC_V3, nullptr, false);
   config_log.info("(Word select) Loading GC_EP3_NTE data");
-  WordSelectSet gc_ep3_nte_ws(load_file("system/text-sets/gc-ep3-nte/ws_data.bin"), Version::GC_EP3_NTE, nullptr, false);
+  WordSelectSet gc_ep3_nte_ws(phosg::load_file("system/text-sets/gc-ep3-nte/ws_data.bin"), Version::GC_EP3_NTE, nullptr, false);
   config_log.info("(Word select) Loading GC_EP3 data");
-  WordSelectSet gc_ep3_ws(load_file("system/text-sets/gc-ep3/ws_data.bin"), Version::GC_EP3, nullptr, false);
+  WordSelectSet gc_ep3_ws(phosg::load_file("system/text-sets/gc-ep3/ws_data.bin"), Version::GC_EP3, nullptr, false);
   config_log.info("(Word select) Loading XB_V3 data");
-  WordSelectSet xb_v3_ws(load_file("system/text-sets/xb-v3/ws_data.bin"), Version::XB_V3, nullptr, false);
+  WordSelectSet xb_v3_ws(phosg::load_file("system/text-sets/xb-v3/ws_data.bin"), Version::XB_V3, nullptr, false);
   config_log.info("(Word select) Loading BB_V4 data");
-  WordSelectSet bb_v4_ws(load_file("system/text-sets/bb-v4/ws_data.bin"), Version::BB_V4, bb_unitxt_collection, false);
+  WordSelectSet bb_v4_ws(phosg::load_file("system/text-sets/bb-v4/ws_data.bin"), Version::BB_V4, bb_unitxt_collection, false);
 
   config_log.info("(Word select) Generating table");
   auto new_table = make_shared<WordSelectTable>(
@@ -1613,7 +1613,7 @@ void ServerState::load_item_name_indexes(bool from_non_event_thread) {
 
   for (size_t v_s = NUM_PATCH_VERSIONS; v_s < NUM_VERSIONS; v_s++) {
     Version v = static_cast<Version>(v_s);
-    config_log.info("Generating item name index for %s", name_for_enum(v));
+    config_log.info("Generating item name index for %s", phosg::name_for_enum(v));
     new_indexes[v_s] = this->create_item_name_index_for_version(
         this->item_parameter_table(v), this->item_stack_limits(v), this->text_index);
   }
@@ -1630,8 +1630,8 @@ void ServerState::load_drop_tables(bool from_non_event_thread) {
   config_log.info("Loading rare item sets");
 
   unordered_map<string, shared_ptr<RareItemSet>> new_rare_item_sets;
-  for (const auto& filename : list_directory_sorted("system/item-tables")) {
-    if (!starts_with(filename, "rare-table-")) {
+  for (const auto& filename : phosg::list_directory_sorted("system/item-tables")) {
+    if (!phosg::starts_with(filename, "rare-table-")) {
       continue;
     }
 
@@ -1639,54 +1639,54 @@ void ServerState::load_drop_tables(bool from_non_event_thread) {
     size_t ext_offset = filename.rfind('.');
     string basename = (ext_offset == string::npos) ? filename : filename.substr(0, ext_offset);
 
-    if (ends_with(filename, "-v1.json")) {
+    if (phosg::ends_with(filename, "-v1.json")) {
       config_log.info("Loading v1 JSON rare item table %s", filename.c_str());
-      new_rare_item_sets.emplace(basename, make_shared<RareItemSet>(JSON::parse(load_file(path)), this->item_name_index(Version::DC_V1)));
-    } else if (ends_with(filename, "-v2.json")) {
+      new_rare_item_sets.emplace(basename, make_shared<RareItemSet>(phosg::JSON::parse(phosg::load_file(path)), this->item_name_index(Version::DC_V1)));
+    } else if (phosg::ends_with(filename, "-v2.json")) {
       config_log.info("Loading v2 JSON rare item table %s", filename.c_str());
-      new_rare_item_sets.emplace(basename, make_shared<RareItemSet>(JSON::parse(load_file(path)), this->item_name_index(Version::PC_V2)));
-    } else if (ends_with(filename, "-v3.json")) {
+      new_rare_item_sets.emplace(basename, make_shared<RareItemSet>(phosg::JSON::parse(phosg::load_file(path)), this->item_name_index(Version::PC_V2)));
+    } else if (phosg::ends_with(filename, "-v3.json")) {
       config_log.info("Loading v3 JSON rare item table %s", filename.c_str());
-      new_rare_item_sets.emplace(basename, make_shared<RareItemSet>(JSON::parse(load_file(path)), this->item_name_index(Version::GC_V3)));
-    } else if (ends_with(filename, "-v4.json")) {
+      new_rare_item_sets.emplace(basename, make_shared<RareItemSet>(phosg::JSON::parse(phosg::load_file(path)), this->item_name_index(Version::GC_V3)));
+    } else if (phosg::ends_with(filename, "-v4.json")) {
       config_log.info("Loading v4 JSON rare item table %s", filename.c_str());
-      new_rare_item_sets.emplace(basename, make_shared<RareItemSet>(JSON::parse(load_file(path)), this->item_name_index(Version::BB_V4)));
+      new_rare_item_sets.emplace(basename, make_shared<RareItemSet>(phosg::JSON::parse(phosg::load_file(path)), this->item_name_index(Version::BB_V4)));
 
-    } else if (ends_with(filename, ".afs")) {
+    } else if (phosg::ends_with(filename, ".afs")) {
       config_log.info("Loading AFS rare item table %s", filename.c_str());
-      auto data = make_shared<string>(load_file(path));
+      auto data = make_shared<string>(phosg::load_file(path));
       new_rare_item_sets.emplace(basename, make_shared<RareItemSet>(AFSArchive(data), false));
 
-    } else if (ends_with(filename, ".gsl")) {
+    } else if (phosg::ends_with(filename, ".gsl")) {
       config_log.info("Loading GSL rare item table %s", filename.c_str());
-      auto data = make_shared<string>(load_file(path));
+      auto data = make_shared<string>(phosg::load_file(path));
       new_rare_item_sets.emplace(basename, make_shared<RareItemSet>(GSLArchive(data, false), false));
 
-    } else if (ends_with(filename, ".gslb")) {
+    } else if (phosg::ends_with(filename, ".gslb")) {
       config_log.info("Loading GSL rare item table %s", filename.c_str());
-      auto data = make_shared<string>(load_file(path));
+      auto data = make_shared<string>(phosg::load_file(path));
       new_rare_item_sets.emplace(basename, make_shared<RareItemSet>(GSLArchive(data, true), true));
 
-    } else if (ends_with(filename, ".rel")) {
+    } else if (phosg::ends_with(filename, ".rel")) {
       config_log.info("Loading REL rare item table %s", filename.c_str());
-      new_rare_item_sets.emplace(basename, make_shared<RareItemSet>(load_file(path), true));
+      new_rare_item_sets.emplace(basename, make_shared<RareItemSet>(phosg::load_file(path), true));
     }
   }
 
   config_log.info("Loading v2 common item table");
-  auto ct_data_v2 = make_shared<string>(load_file("system/item-tables/ItemCT-pc-v2.afs"));
-  auto pt_data_v2 = make_shared<string>(load_file("system/item-tables/ItemPT-pc-v2.afs"));
+  auto ct_data_v2 = make_shared<string>(phosg::load_file("system/item-tables/ItemCT-pc-v2.afs"));
+  auto pt_data_v2 = make_shared<string>(phosg::load_file("system/item-tables/ItemPT-pc-v2.afs"));
   auto new_common_item_set_v2 = make_shared<AFSV2CommonItemSet>(pt_data_v2, ct_data_v2);
   config_log.info("Loading v3+v4 common item table");
-  auto pt_data_v3_v4 = make_shared<string>(load_file("system/item-tables/ItemPT-gc-v3.gsl"));
+  auto pt_data_v3_v4 = make_shared<string>(phosg::load_file("system/item-tables/ItemPT-gc-v3.gsl"));
   auto new_common_item_set_v3_v4 = make_shared<GSLV3V4CommonItemSet>(pt_data_v3_v4, true);
 
   config_log.info("Loading armor table");
-  auto armor_data = make_shared<string>(load_file("system/item-tables/ArmorRandom-gc-v3.rel"));
+  auto armor_data = make_shared<string>(phosg::load_file("system/item-tables/ArmorRandom-gc-v3.rel"));
   auto new_armor_random_set = make_shared<ArmorRandomSet>(armor_data);
 
   config_log.info("Loading tool table");
-  auto tool_data = make_shared<string>(load_file("system/item-tables/ToolRandom-gc-v3.rel"));
+  auto tool_data = make_shared<string>(phosg::load_file("system/item-tables/ToolRandom-gc-v3.rel"));
   auto new_tool_random_set = make_shared<ToolRandomSet>(tool_data);
 
   config_log.info("Loading weapon tables");
@@ -1698,12 +1698,12 @@ void ServerState::load_drop_tables(bool from_non_event_thread) {
       "system/item-tables/WeaponRandomUltimate-gc-v3.rel",
   };
   for (size_t z = 0; z < 4; z++) {
-    auto weapon_data = make_shared<string>(load_file(filenames[z]));
+    auto weapon_data = make_shared<string>(phosg::load_file(filenames[z]));
     new_weapon_random_sets[z] = make_shared<WeaponRandomSet>(weapon_data);
   }
 
   config_log.info("Loading tekker adjustment table");
-  auto tekker_data = make_shared<string>(load_file("system/item-tables/JudgeItem-gc-v3.rel"));
+  auto tekker_data = make_shared<string>(phosg::load_file("system/item-tables/JudgeItem-gc-v3.rel"));
   auto new_tekker_adjustment_set = make_shared<TekkerAdjustmentSet>(tekker_data);
 
   auto set = [s = this->shared_from_this(),
@@ -1739,15 +1739,15 @@ void ServerState::load_item_definitions(bool from_non_event_thread) {
   std::array<std::shared_ptr<const ItemParameterTable>, NUM_VERSIONS> new_item_parameter_tables;
   for (size_t v_s = NUM_PATCH_VERSIONS; v_s < NUM_VERSIONS; v_s++) {
     Version v = static_cast<Version>(v_s);
-    string path = string_printf("system/item-tables/ItemPMT-%s.prs", file_path_token_for_version(v));
+    string path = phosg::string_printf("system/item-tables/ItemPMT-%s.prs", file_path_token_for_version(v));
     config_log.info("Loading item definition table %s", path.c_str());
-    auto data = make_shared<string>(prs_decompress(load_file(path)));
+    auto data = make_shared<string>(prs_decompress(phosg::load_file(path)));
     new_item_parameter_tables[v_s] = make_shared<ItemParameterTable>(data, v);
   }
 
   // TODO: We should probably load the tables for other versions too.
   config_log.info("Loading mag evolution table");
-  auto mag_data = make_shared<string>(prs_decompress(load_file("system/item-tables/ItemMagEdit-bb-v4.prs")));
+  auto mag_data = make_shared<string>(prs_decompress(phosg::load_file("system/item-tables/ItemMagEdit-bb-v4.prs")));
   auto new_mag_evolution_table = make_shared<MagEvolutionTable>(mag_data);
 
   auto set = [s = this->shared_from_this(),
@@ -1859,7 +1859,7 @@ void ServerState::create_default_lobbies() {
   vector<shared_ptr<Lobby>> ep3_only_lobbies;
 
   for (size_t x = 0; x < 20; x++) {
-    auto lobby_name = string_printf("LOBBY%zu", x + 1);
+    auto lobby_name = phosg::string_printf("LOBBY%zu", x + 1);
     bool allow_v1 = (x <= 9);
     bool allow_non_ep3 = (x <= 14);
 
@@ -1953,7 +1953,7 @@ void ServerState::update_dependent_server_configs() const {
 }
 
 void ServerState::disconnect_all_banned_clients() {
-  uint64_t now_usecs = now();
+  uint64_t now_usecs = phosg::now();
 
   if (this->game_server) {
     for (const auto& c : this->game_server->all_clients()) {
@@ -1989,7 +1989,7 @@ void ServerState::disconnect_all_banned_clients() {
         continue;
       }
       struct sockaddr_storage remote_ss;
-      get_socket_addresses(fd, nullptr, &remote_ss);
+      phosg::get_socket_addresses(fd, nullptr, &remote_ss);
       if (this->banned_ipv4_ranges->check(remote_ss)) {
         ids_to_disconnect.emplace_back(it.second->network_id);
       }
@@ -2006,19 +2006,19 @@ string ServerState::format_address_for_channel_name(
     if (remote_ss.ss_family == 0) {
       return "__invalid_address__";
     } else {
-      return "ipv4:" + render_sockaddr_storage(remote_ss);
+      return "ipv4:" + phosg::render_sockaddr_storage(remote_ss);
     }
   } else {
     if (this->ip_stack_simulator) {
       auto network = this->ip_stack_simulator->get_network(virtual_network_id);
       int fd = bufferevent_getfd(network->bev.get());
       if (fd < 0) {
-        return string_printf("ipss:N-%" PRIu64 ":__unknown_address__", network->network_id);
+        return phosg::string_printf("ipss:N-%" PRIu64 ":__unknown_address__", network->network_id);
       } else {
         struct sockaddr_storage remote_ss;
-        get_socket_addresses(fd, nullptr, &remote_ss);
-        string addr_str = render_sockaddr_storage(remote_ss);
-        return string_printf("ipss:N-%" PRIu64 ":%s", network->network_id, addr_str.c_str());
+        phosg::get_socket_addresses(fd, nullptr, &remote_ss);
+        string addr_str = phosg::render_sockaddr_storage(remote_ss);
+        return phosg::string_printf("ipss:N-%" PRIu64 ":%s", network->network_id, addr_str.c_str());
       }
     } else {
       return "__unknown_address__";

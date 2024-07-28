@@ -29,8 +29,8 @@ Channel::Channel(
     on_error_t on_error,
     void* context_obj,
     const string& name,
-    TerminalFormat terminal_send_color,
-    TerminalFormat terminal_recv_color)
+    phosg::TerminalFormat terminal_send_color,
+    phosg::TerminalFormat terminal_recv_color)
     : bev(nullptr, flush_and_free_bufferevent),
       virtual_network_id(0),
       version(version),
@@ -52,8 +52,8 @@ Channel::Channel(
     on_error_t on_error,
     void* context_obj,
     const string& name,
-    TerminalFormat terminal_send_color,
-    TerminalFormat terminal_recv_color)
+    phosg::TerminalFormat terminal_send_color,
+    phosg::TerminalFormat terminal_recv_color)
     : bev(nullptr, flush_and_free_bufferevent),
       version(version),
       language(language),
@@ -98,7 +98,7 @@ void Channel::set_bufferevent(struct bufferevent* bev, uint64_t virtual_network_
       memset(&this->local_addr, 0, sizeof(this->local_addr));
       memset(&this->remote_addr, 0, sizeof(this->remote_addr));
     } else {
-      get_socket_addresses(fd, &this->local_addr, &this->remote_addr);
+      phosg::get_socket_addresses(fd, &this->local_addr, &this->remote_addr);
     }
 
     bufferevent_setcb(this->bev.get(), &Channel::dispatch_on_input, nullptr, &Channel::dispatch_on_error, this);
@@ -206,9 +206,9 @@ Channel::Message Channel::recv() {
   }
   command_data.resize(command_logical_size - header_size);
 
-  if (command_data_log.should_log(LogLevel::INFO) && (this->terminal_recv_color != TerminalFormat::END)) {
-    if (use_terminal_colors && this->terminal_recv_color != TerminalFormat::NORMAL) {
-      print_color_escape(stderr, this->terminal_recv_color, TerminalFormat::BOLD, TerminalFormat::END);
+  if (command_data_log.should_log(phosg::LogLevel::INFO) && (this->terminal_recv_color != phosg::TerminalFormat::END)) {
+    if (use_terminal_colors && this->terminal_recv_color != phosg::TerminalFormat::NORMAL) {
+      print_color_escape(stderr, this->terminal_recv_color, phosg::TerminalFormat::BOLD, phosg::TerminalFormat::END);
     }
 
     if (version == Version::BB_V4) {
@@ -221,7 +221,7 @@ Channel::Message Channel::recv() {
       command_data_log.info(
           "Received from %s (version=%s command=%02hX flag=%02" PRIX32 ")",
           this->name.c_str(),
-          name_for_enum(this->version),
+          phosg::name_for_enum(this->version),
           header.command(this->version),
           header.flag(this->version));
     }
@@ -229,10 +229,10 @@ Channel::Message Channel::recv() {
     vector<struct iovec> iovs;
     iovs.emplace_back(iovec{.iov_base = header_data.data(), .iov_len = header_data.size()});
     iovs.emplace_back(iovec{.iov_base = command_data.data(), .iov_len = command_data.size()});
-    print_data(stderr, iovs, 0, nullptr, PrintDataFlags::PRINT_ASCII | PrintDataFlags::DISABLE_COLOR | PrintDataFlags::OFFSET_16_BITS);
+    phosg::print_data(stderr, iovs, 0, nullptr, phosg::PrintDataFlags::PRINT_ASCII | phosg::PrintDataFlags::DISABLE_COLOR | phosg::PrintDataFlags::OFFSET_16_BITS);
 
-    if (use_terminal_colors && this->terminal_recv_color != TerminalFormat::NORMAL) {
-      print_color_escape(stderr, TerminalFormat::NORMAL, TerminalFormat::END);
+    if (use_terminal_colors && this->terminal_recv_color != phosg::TerminalFormat::NORMAL) {
+      phosg::print_color_escape(stderr, phosg::TerminalFormat::NORMAL, phosg::TerminalFormat::END);
     }
   }
 
@@ -342,20 +342,20 @@ void Channel::send(uint16_t cmd, uint32_t flag, const std::vector<std::pair<cons
   }
   send_data.resize(send_data_size, '\0');
 
-  if (!silent && (command_data_log.should_log(LogLevel::INFO)) && (this->terminal_send_color != TerminalFormat::END)) {
-    if (use_terminal_colors && this->terminal_send_color != TerminalFormat::NORMAL) {
-      print_color_escape(stderr, TerminalFormat::FG_YELLOW, TerminalFormat::BOLD, TerminalFormat::END);
+  if (!silent && (command_data_log.should_log(phosg::LogLevel::INFO)) && (this->terminal_send_color != phosg::TerminalFormat::END)) {
+    if (use_terminal_colors && this->terminal_send_color != phosg::TerminalFormat::NORMAL) {
+      print_color_escape(stderr, phosg::TerminalFormat::FG_YELLOW, phosg::TerminalFormat::BOLD, phosg::TerminalFormat::END);
     }
     if (version == Version::BB_V4) {
       command_data_log.info("Sending to %s (version=BB command=%04hX flag=%08" PRIX32 ")",
           this->name.c_str(), cmd, flag);
     } else {
       command_data_log.info("Sending to %s (version=%s command=%02hX flag=%02" PRIX32 ")",
-          this->name.c_str(), name_for_enum(version), cmd, flag);
+          this->name.c_str(), phosg::name_for_enum(version), cmd, flag);
     }
-    print_data(stderr, send_data.data(), logical_size, 0, nullptr, PrintDataFlags::PRINT_ASCII | PrintDataFlags::DISABLE_COLOR | PrintDataFlags::OFFSET_16_BITS);
-    if (use_terminal_colors && this->terminal_send_color != TerminalFormat::NORMAL) {
-      print_color_escape(stderr, TerminalFormat::NORMAL, TerminalFormat::END);
+    phosg::print_data(stderr, send_data.data(), logical_size, 0, nullptr, phosg::PrintDataFlags::PRINT_ASCII | phosg::PrintDataFlags::DISABLE_COLOR | phosg::PrintDataFlags::OFFSET_16_BITS);
+    if (use_terminal_colors && this->terminal_send_color != phosg::TerminalFormat::NORMAL) {
+      print_color_escape(stderr, phosg::TerminalFormat::NORMAL, phosg::TerminalFormat::END);
     }
   }
 

@@ -74,10 +74,10 @@ static string escape_string(const string& data, TextEncoding encoding = TextEnco
         decoded = tt_ascii_to_utf8(data);
         break;
       default:
-        return format_data_string(data);
+        return phosg::format_data_string(data);
     }
   } catch (const runtime_error&) {
-    return format_data_string(data);
+    return phosg::format_data_string(data);
   }
 
   string ret = "\"";
@@ -89,7 +89,7 @@ static string escape_string(const string& data, TextEncoding encoding = TextEnco
     } else if (ch == '\t') {
       ret += "\\t";
     } else if (static_cast<uint8_t>(ch) < 0x20) {
-      ret += string_printf("\\x%02hhX", ch);
+      ret += phosg::string_printf("\\x%02hhX", ch);
     } else if (ch == '\'') {
       ret += "\\\'";
     } else if (ch == '\"') {
@@ -108,7 +108,7 @@ static string format_and_indent_data(const void* data, size_t size, uint64_t sta
   iov.iov_len = size;
 
   string ret = "  ";
-  format_data(
+  phosg::format_data(
       [&ret](const void* vdata, size_t size) -> void {
         const char* data = reinterpret_cast<const char*>(vdata);
         for (size_t z = 0; z < size; z++) {
@@ -119,9 +119,9 @@ static string format_and_indent_data(const void* data, size_t size, uint64_t sta
           }
         }
       },
-      &iov, 1, start_address, nullptr, 0, PrintDataFlags::PRINT_ASCII);
+      &iov, 1, start_address, nullptr, 0, phosg::PrintDataFlags::PRINT_ASCII);
 
-  strip_trailing_whitespace(ret);
+  phosg::strip_trailing_whitespace(ret);
   return ret;
 }
 
@@ -878,7 +878,7 @@ opcodes_for_version(Version v) {
         continue;
       }
       if (!index.emplace(def.opcode, &def).second) {
-        throw logic_error(string_printf("duplicate definition for opcode %04hX", def.opcode));
+        throw logic_error(phosg::string_printf("duplicate definition for opcode %04hX", def.opcode));
       }
     }
   }
@@ -904,7 +904,7 @@ opcodes_by_name_for_version(Version v) {
         continue;
       }
       if (!index.emplace(def.name, &def).second) {
-        throw logic_error(string_printf("duplicate definition for opcode %04hX", def.opcode));
+        throw logic_error(phosg::string_printf("duplicate definition for opcode %04hX", def.opcode));
       }
     }
   }
@@ -912,9 +912,9 @@ opcodes_by_name_for_version(Version v) {
 }
 
 std::string disassemble_quest_script(const void* data, size_t size, Version version, uint8_t override_language, bool reassembly_mode) {
-  StringReader r(data, size);
+  phosg::StringReader r(data, size);
   deque<string> lines;
-  lines.emplace_back(string_printf(".version %s", name_for_enum(version)));
+  lines.emplace_back(phosg::string_printf(".version %s", phosg::name_for_enum(version)));
 
   bool use_wstrs = false;
   size_t code_offset = 0;
@@ -942,8 +942,8 @@ std::string disassemble_quest_script(const void* data, size_t size, Version vers
       } else {
         language = 1;
       }
-      lines.emplace_back(string_printf(".quest_num %hu", header.quest_number.load()));
-      lines.emplace_back(string_printf(".language %hhu", header.language));
+      lines.emplace_back(phosg::string_printf(".quest_num %hu", header.quest_number.load()));
+      lines.emplace_back(phosg::string_printf(".language %hhu", header.language));
       lines.emplace_back(".name " + escape_string(header.name.decode(language)));
       lines.emplace_back(".short_desc " + escape_string(header.short_description.decode(language)));
       lines.emplace_back(".long_desc " + escape_string(header.long_description.decode(language)));
@@ -962,8 +962,8 @@ std::string disassemble_quest_script(const void* data, size_t size, Version vers
       } else {
         language = 1;
       }
-      lines.emplace_back(string_printf(".quest_num %hu", header.quest_number.load()));
-      lines.emplace_back(string_printf(".language %hhu", header.language));
+      lines.emplace_back(phosg::string_printf(".quest_num %hu", header.quest_number.load()));
+      lines.emplace_back(phosg::string_printf(".language %hhu", header.language));
       lines.emplace_back(".name " + escape_string(header.name.decode(language)));
       lines.emplace_back(".short_desc " + escape_string(header.short_description.decode(language)));
       lines.emplace_back(".long_desc " + escape_string(header.long_description.decode(language)));
@@ -984,9 +984,9 @@ std::string disassemble_quest_script(const void* data, size_t size, Version vers
       } else {
         language = 1;
       }
-      lines.emplace_back(string_printf(".quest_num %hhu", header.quest_number));
-      lines.emplace_back(string_printf(".language %hhu", header.language));
-      lines.emplace_back(string_printf(".episode %s", name_for_header_episode_number(header.episode)));
+      lines.emplace_back(phosg::string_printf(".quest_num %hhu", header.quest_number));
+      lines.emplace_back(phosg::string_printf(".language %hhu", header.language));
+      lines.emplace_back(phosg::string_printf(".episode %s", name_for_header_episode_number(header.episode)));
       lines.emplace_back(".name " + escape_string(header.name.decode(language)));
       lines.emplace_back(".short_desc " + escape_string(header.short_description.decode(language)));
       lines.emplace_back(".long_desc " + escape_string(header.long_description.decode(language)));
@@ -1002,9 +1002,9 @@ std::string disassemble_quest_script(const void* data, size_t size, Version vers
       } else {
         language = 1;
       }
-      lines.emplace_back(string_printf(".quest_num %hu", header.quest_number.load()));
-      lines.emplace_back(string_printf(".episode %s", name_for_header_episode_number(header.episode)));
-      lines.emplace_back(string_printf(".max_players %hhu", header.max_players ? header.max_players : 4));
+      lines.emplace_back(phosg::string_printf(".quest_num %hu", header.quest_number.load()));
+      lines.emplace_back(phosg::string_printf(".episode %s", name_for_header_episode_number(header.episode)));
+      lines.emplace_back(phosg::string_printf(".max_players %hhu", header.max_players ? header.max_players : 4));
       if (header.joinable) {
         lines.emplace_back(".joinable");
       }
@@ -1018,7 +1018,7 @@ std::string disassemble_quest_script(const void* data, size_t size, Version vers
   }
 
   const auto& opcodes = opcodes_for_version(version);
-  StringReader cmd_r = r.sub(code_offset, function_table_offset - code_offset);
+  phosg::StringReader cmd_r = r.sub(code_offset, function_table_offset - code_offset);
 
   struct Label {
     string name;
@@ -1042,11 +1042,11 @@ std::string disassemble_quest_script(const void* data, size_t size, Version vers
 
   vector<shared_ptr<Label>> function_table;
   multimap<size_t, shared_ptr<Label>> offset_to_label;
-  StringReader function_table_r = r.sub(function_table_offset);
+  phosg::StringReader function_table_r = r.sub(function_table_offset);
   while (!function_table_r.eof()) {
     try {
       uint32_t function_id = function_table.size();
-      string name = (function_id == 0) ? "start" : string_printf("label%04" PRIX32, function_id);
+      string name = (function_id == 0) ? "start" : phosg::string_printf("label%04" PRIX32, function_id);
       uint32_t offset = function_table_r.get_u32l();
       auto l = make_shared<Label>(name, offset, function_id);
       if (function_id == 0) {
@@ -1123,9 +1123,9 @@ std::string disassemble_quest_script(const void* data, size_t size, Version vers
         }
 
         if (def == nullptr) {
-          dasm_line = string_printf(".unknown %04hX", opcode);
+          dasm_line = phosg::string_printf(".unknown %04hX", opcode);
         } else {
-          dasm_line = def->name ? def->name : string_printf("[%04hX]", opcode);
+          dasm_line = def->name ? def->name : phosg::string_printf("[%04hX]", opcode);
           if (!version_has_args || !(def->flags & F_ARGS)) {
             dasm_line.resize(0x20, ' ');
             bool is_first_arg = true;
@@ -1140,13 +1140,13 @@ std::string disassemble_quest_script(const void* data, size_t size, Version vers
                     arg_stack_values.emplace_back(ArgStackValue::Type::LABEL, label_id);
                   }
                   if (label_id >= function_table.size()) {
-                    dasm_arg = string_printf("label%04" PRIX32, label_id);
+                    dasm_arg = phosg::string_printf("label%04" PRIX32, label_id);
                   } else {
                     auto& l = function_table.at(label_id);
                     if (reassembly_mode) {
-                      dasm_arg = string_printf("label%04" PRIX32, label_id);
+                      dasm_arg = phosg::string_printf("label%04" PRIX32, label_id);
                     } else {
-                      dasm_arg = string_printf("label%04" PRIX32 " /* %04" PRIX32 " */", label_id, l->offset);
+                      dasm_arg = phosg::string_printf("label%04" PRIX32 " /* %04" PRIX32 " */", label_id, l->offset);
                     }
                     l->references.emplace(opcode_start_offset);
                     l->add_data_type(arg.data_type);
@@ -1165,13 +1165,13 @@ std::string disassemble_quest_script(const void* data, size_t size, Version vers
                     dasm_arg += (dasm_arg.empty() ? "[" : ", ");
                     uint32_t label_id = cmd_r.get_u16l();
                     if (label_id >= function_table.size()) {
-                      dasm_arg += string_printf("label%04" PRIX32, label_id);
+                      dasm_arg += phosg::string_printf("label%04" PRIX32, label_id);
                     } else {
                       auto& l = function_table.at(label_id);
                       if (reassembly_mode) {
-                        dasm_arg += string_printf("label%04" PRIX32, label_id);
+                        dasm_arg += phosg::string_printf("label%04" PRIX32, label_id);
                       } else {
-                        dasm_arg += string_printf("label%04" PRIX32 " /* %04" PRIX32 " */", label_id, l->offset);
+                        dasm_arg += phosg::string_printf("label%04" PRIX32 " /* %04" PRIX32 " */", label_id, l->offset);
                       }
                       l->references.emplace(opcode_start_offset);
                       l->add_data_type(arg.data_type);
@@ -1192,7 +1192,7 @@ std::string disassemble_quest_script(const void* data, size_t size, Version vers
                   if (def->flags & F_PASS) {
                     arg_stack_values.emplace_back((def->opcode == 0x004C) ? ArgStackValue::Type::REG_PTR : ArgStackValue::Type::REG, reg);
                   }
-                  dasm_arg = string_printf("r%hhu", reg);
+                  dasm_arg = phosg::string_printf("r%hhu", reg);
                   break;
                 }
                 case Type::REG_SET: {
@@ -1201,7 +1201,7 @@ std::string disassemble_quest_script(const void* data, size_t size, Version vers
                   }
                   uint8_t num_regs = cmd_r.get_u8();
                   for (size_t z = 0; z < num_regs; z++) {
-                    dasm_arg += string_printf("%sr%hhu", (dasm_arg.empty() ? "[" : ", "), cmd_r.get_u8());
+                    dasm_arg += phosg::string_printf("%sr%hhu", (dasm_arg.empty() ? "[" : ", "), cmd_r.get_u8());
                   }
                   if (dasm_arg.empty()) {
                     dasm_arg = "[]";
@@ -1215,7 +1215,7 @@ std::string disassemble_quest_script(const void* data, size_t size, Version vers
                     throw logic_error("REG_SET_FIXED cannot be pushed to arg stack");
                   }
                   uint8_t first_reg = cmd_r.get_u8();
-                  dasm_arg = string_printf("r%hhu-r%hhu", first_reg, static_cast<uint8_t>(first_reg + arg.count - 1));
+                  dasm_arg = phosg::string_printf("r%hhu-r%hhu", first_reg, static_cast<uint8_t>(first_reg + arg.count - 1));
                   break;
                 }
                 case Type::REG32_SET_FIXED: {
@@ -1223,7 +1223,7 @@ std::string disassemble_quest_script(const void* data, size_t size, Version vers
                     throw logic_error("REG32_SET_FIXED cannot be pushed to arg stack");
                   }
                   uint32_t first_reg = cmd_r.get_u32l();
-                  dasm_arg = string_printf("r%" PRIu32 "-r%" PRIu32, first_reg, static_cast<uint32_t>(first_reg + arg.count - 1));
+                  dasm_arg = phosg::string_printf("r%" PRIu32 "-r%" PRIu32, first_reg, static_cast<uint32_t>(first_reg + arg.count - 1));
                   break;
                 }
                 case Type::INT8: {
@@ -1231,7 +1231,7 @@ std::string disassemble_quest_script(const void* data, size_t size, Version vers
                   if (def->flags & F_PASS) {
                     arg_stack_values.emplace_back(ArgStackValue::Type::INT, v);
                   }
-                  dasm_arg = string_printf("0x%02hhX", v);
+                  dasm_arg = phosg::string_printf("0x%02hhX", v);
                   break;
                 }
                 case Type::INT16: {
@@ -1239,7 +1239,7 @@ std::string disassemble_quest_script(const void* data, size_t size, Version vers
                   if (def->flags & F_PASS) {
                     arg_stack_values.emplace_back(ArgStackValue::Type::INT, v);
                   }
-                  dasm_arg = string_printf("0x%04hX", v);
+                  dasm_arg = phosg::string_printf("0x%04hX", v);
                   break;
                 }
                 case Type::INT32: {
@@ -1247,7 +1247,7 @@ std::string disassemble_quest_script(const void* data, size_t size, Version vers
                   if (def->flags & F_PASS) {
                     arg_stack_values.emplace_back(ArgStackValue::Type::INT, v);
                   }
-                  dasm_arg = string_printf("0x%08" PRIX32, v);
+                  dasm_arg = phosg::string_printf("0x%08" PRIX32, v);
                   break;
                 }
                 case Type::FLOAT32: {
@@ -1255,12 +1255,12 @@ std::string disassemble_quest_script(const void* data, size_t size, Version vers
                   if (def->flags & F_PASS) {
                     arg_stack_values.emplace_back(ArgStackValue::Type::INT, as_type<uint32_t>(v));
                   }
-                  dasm_arg = string_printf("%g", v);
+                  dasm_arg = phosg::string_printf("%g", v);
                   break;
                 }
                 case Type::CSTRING:
                   if (use_wstrs) {
-                    StringWriter w;
+                    phosg::StringWriter w;
                     for (uint16_t ch = cmd_r.get_u16l(); ch; ch = cmd_r.get_u16l()) {
                       w.put_u16l(ch);
                     }
@@ -1295,7 +1295,7 @@ std::string disassemble_quest_script(const void* data, size_t size, Version vers
               dasm_line += "... ";
 
               if (def->args.size() != arg_stack_values.size()) {
-                dasm_line += string_printf("/* matching error: expected %zu arguments, received %zu arguments */",
+                dasm_line += phosg::string_printf("/* matching error: expected %zu arguments, received %zu arguments */",
                     def->args.size(), arg_stack_values.size());
               } else {
                 bool is_first_arg = true;
@@ -1309,11 +1309,11 @@ std::string disassemble_quest_script(const void* data, size_t size, Version vers
                     case Arg::Type::LABEL32:
                       switch (arg_value.type) {
                         case ArgStackValue::Type::REG:
-                          dasm_arg = string_printf("r%" PRIu32 "/* warning: cannot determine label data type */", arg_value.as_int);
+                          dasm_arg = phosg::string_printf("r%" PRIu32 "/* warning: cannot determine label data type */", arg_value.as_int);
                           break;
                         case ArgStackValue::Type::LABEL:
                         case ArgStackValue::Type::INT:
-                          dasm_arg = string_printf("label%04" PRIX32, arg_value.as_int);
+                          dasm_arg = phosg::string_printf("label%04" PRIX32, arg_value.as_int);
                           try {
                             auto l = function_table.at(arg_value.as_int);
                             l->add_data_type(arg_def.data_type);
@@ -1329,10 +1329,10 @@ std::string disassemble_quest_script(const void* data, size_t size, Version vers
                     case Arg::Type::REG32:
                       switch (arg_value.type) {
                         case ArgStackValue::Type::REG:
-                          dasm_arg = string_printf("regs[r%" PRIu32 "]", arg_value.as_int);
+                          dasm_arg = phosg::string_printf("regs[r%" PRIu32 "]", arg_value.as_int);
                           break;
                         case ArgStackValue::Type::INT:
-                          dasm_arg = string_printf("r%" PRIu32, arg_value.as_int);
+                          dasm_arg = phosg::string_printf("r%" PRIu32, arg_value.as_int);
                           break;
                         default:
                           dasm_arg = "/* invalid-type */";
@@ -1342,10 +1342,10 @@ std::string disassemble_quest_script(const void* data, size_t size, Version vers
                     case Arg::Type::REG32_SET_FIXED:
                       switch (arg_value.type) {
                         case ArgStackValue::Type::REG:
-                          dasm_arg = string_printf("regs[r%" PRIu32 "]-regs[r%" PRIu32 "+%hhu]", arg_value.as_int, arg_value.as_int, static_cast<uint8_t>(arg_def.count - 1));
+                          dasm_arg = phosg::string_printf("regs[r%" PRIu32 "]-regs[r%" PRIu32 "+%hhu]", arg_value.as_int, arg_value.as_int, static_cast<uint8_t>(arg_def.count - 1));
                           break;
                         case ArgStackValue::Type::INT:
-                          dasm_arg = string_printf("r%" PRIu32 "-r%hhu", arg_value.as_int, static_cast<uint8_t>(arg_value.as_int + arg_def.count - 1));
+                          dasm_arg = phosg::string_printf("r%" PRIu32 "-r%hhu", arg_value.as_int, static_cast<uint8_t>(arg_value.as_int + arg_def.count - 1));
                           break;
                         default:
                           dasm_arg = "/* invalid-type */";
@@ -1356,13 +1356,13 @@ std::string disassemble_quest_script(const void* data, size_t size, Version vers
                     case Arg::Type::INT32:
                       switch (arg_value.type) {
                         case ArgStackValue::Type::REG:
-                          dasm_arg = string_printf("r%" PRIu32, arg_value.as_int);
+                          dasm_arg = phosg::string_printf("r%" PRIu32, arg_value.as_int);
                           break;
                         case ArgStackValue::Type::REG_PTR:
-                          dasm_arg = string_printf("&r%" PRIu32, arg_value.as_int);
+                          dasm_arg = phosg::string_printf("&r%" PRIu32, arg_value.as_int);
                           break;
                         case ArgStackValue::Type::INT:
-                          dasm_arg = string_printf("0x%" PRIX32 " /* %" PRIu32 " */", arg_value.as_int, arg_value.as_int);
+                          dasm_arg = phosg::string_printf("0x%" PRIX32 " /* %" PRIu32 " */", arg_value.as_int, arg_value.as_int);
                           break;
                         default:
                           dasm_arg = "/* invalid-type */";
@@ -1371,10 +1371,10 @@ std::string disassemble_quest_script(const void* data, size_t size, Version vers
                     case Arg::Type::FLOAT32:
                       switch (arg_value.type) {
                         case ArgStackValue::Type::REG:
-                          dasm_arg = string_printf("f%" PRIu32, arg_value.as_int);
+                          dasm_arg = phosg::string_printf("f%" PRIu32, arg_value.as_int);
                           break;
                         case ArgStackValue::Type::INT:
-                          dasm_arg = string_printf("%g", as_type<float>(arg_value.as_int));
+                          dasm_arg = phosg::string_printf("%g", as_type<float>(arg_value.as_int));
                           break;
                         default:
                           dasm_arg = "/* invalid-type */";
@@ -1409,21 +1409,21 @@ std::string disassemble_quest_script(const void* data, size_t size, Version vers
           }
         }
       } catch (const exception& e) {
-        dasm_line = string_printf(".failed (%s)", e.what());
+        dasm_line = phosg::string_printf(".failed (%s)", e.what());
       }
-      strip_trailing_whitespace(dasm_line);
+      phosg::strip_trailing_whitespace(dasm_line);
 
       string line_text;
       if (reassembly_mode) {
-        line_text = string_printf("  %s", dasm_line.c_str());
+        line_text = phosg::string_printf("  %s", dasm_line.c_str());
       } else {
-        string hex_data = format_data_string(cmd_r.preadx(opcode_start_offset, cmd_r.where() - opcode_start_offset), nullptr, FormatDataFlags::HEX_ONLY);
+        string hex_data = phosg::format_data_string(cmd_r.preadx(opcode_start_offset, cmd_r.where() - opcode_start_offset), nullptr, phosg::FormatDataFlags::HEX_ONLY);
         if (hex_data.size() > 14) {
           hex_data.resize(12);
           hex_data += "...";
         }
         hex_data.resize(16, ' ');
-        line_text = string_printf("  %04zX  %s  %s", opcode_start_offset, hex_data.c_str(), dasm_line.c_str());
+        line_text = phosg::string_printf("  %04zX  %s  %s", opcode_start_offset, hex_data.c_str(), dasm_line.c_str());
       }
       dasm_lines.emplace(opcode_start_offset, DisassemblyLine(std::move(line_text), cmd_r.where()));
     }
@@ -1438,23 +1438,23 @@ std::string disassemble_quest_script(const void* data, size_t size, Version vers
       lines.emplace_back();
     }
     if (reassembly_mode) {
-      lines.emplace_back(string_printf("%s@0x%04" PRIX32 ":", l->name.c_str(), l->function_id));
+      lines.emplace_back(phosg::string_printf("%s@0x%04" PRIX32 ":", l->name.c_str(), l->function_id));
     } else {
-      lines.emplace_back(string_printf("%s:", l->name.c_str()));
+      lines.emplace_back(phosg::string_printf("%s:", l->name.c_str()));
       if (l->references.size() == 1) {
-        lines.emplace_back(string_printf("  // Referenced by instruction at %04zX", *l->references.begin()));
+        lines.emplace_back(phosg::string_printf("  // Referenced by instruction at %04zX", *l->references.begin()));
       } else if (!l->references.empty()) {
         vector<string> tokens;
         tokens.reserve(l->references.size());
         for (size_t reference_offset : l->references) {
-          tokens.emplace_back(string_printf("%04zX", reference_offset));
+          tokens.emplace_back(phosg::string_printf("%04zX", reference_offset));
         }
-        lines.emplace_back("  // Referenced by instructions at " + join(tokens, ", "));
+        lines.emplace_back("  // Referenced by instructions at " + phosg::join(tokens, ", "));
       }
     }
 
     if (l->type_flags == 0) {
-      lines.emplace_back(string_printf("  // Could not determine data type; disassembling as code"));
+      lines.emplace_back(phosg::string_printf("  // Could not determine data type; disassembling as code"));
       l->add_data_type(Arg::DataType::SCRIPT);
     }
 
@@ -1474,7 +1474,7 @@ std::string disassemble_quest_script(const void* data, size_t size, Version vers
       if (l->has_data_type(Arg::DataType::SCRIPT)) {
         add_disassembly_lines(l->offset, size);
       } else {
-        lines.emplace_back(".data " + format_data_string(cmd_r.pgetv(l->offset, size), size));
+        lines.emplace_back(".data " + phosg::format_data_string(cmd_r.pgetv(l->offset, size), size));
       }
 
     } else {
@@ -1489,20 +1489,20 @@ std::string disassemble_quest_script(const void* data, size_t size, Version vers
               lines.emplace_back(format_and_indent_data(cmd_r.pgetv(struct_end_offset, remaining_size), remaining_size, struct_end_offset));
             }
           } else {
-            lines.emplace_back(string_printf("  // As raw data (0x%zX bytes; too small for referenced type)", size));
+            lines.emplace_back(phosg::string_printf("  // As raw data (0x%zX bytes; too small for referenced type)", size));
             lines.emplace_back(format_and_indent_data(cmd_r.pgetv(l->offset, size), size, l->offset));
           }
         }
       };
 
       if (l->has_data_type(Arg::DataType::DATA)) {
-        lines.emplace_back(string_printf("  // As raw data (0x%zX bytes)", size));
+        lines.emplace_back(phosg::string_printf("  // As raw data (0x%zX bytes)", size));
         lines.emplace_back(format_and_indent_data(cmd_r.pgetv(l->offset, size), size, l->offset));
       }
       if (l->has_data_type(Arg::DataType::CSTRING)) {
-        lines.emplace_back(string_printf("  // As C string (0x%zX bytes)", size));
+        lines.emplace_back(phosg::string_printf("  // As C string (0x%zX bytes)", size));
         string str_data = cmd_r.pread(l->offset, size);
-        strip_trailing_zeroes(str_data);
+        phosg::strip_trailing_zeroes(str_data);
         if (use_wstrs) {
           if (str_data.size() & 1) {
             str_data.push_back(0);
@@ -1510,100 +1510,100 @@ std::string disassemble_quest_script(const void* data, size_t size, Version vers
           str_data = tt_utf16_to_utf8(str_data);
         }
         string formatted = escape_string(str_data, use_wstrs ? TextEncoding::UTF16 : encoding_for_language(language));
-        lines.emplace_back(string_printf("  %04" PRIX32 "  %s", l->offset, formatted.c_str()));
+        lines.emplace_back(phosg::string_printf("  %04" PRIX32 "  %s", l->offset, formatted.c_str()));
       }
       print_as_struct.template operator()<Arg::DataType::PLAYER_VISUAL_CONFIG, PlayerVisualConfig>([&](const PlayerVisualConfig& visual) -> void {
         lines.emplace_back("  // As PlayerVisualConfig");
         string name = escape_string(visual.name.decode(language));
-        lines.emplace_back(string_printf("  %04zX  name                 %s", l->offset + offsetof(PlayerVisualConfig, name), name.c_str()));
-        lines.emplace_back(string_printf("  %04zX  name_color           %08" PRIX32, l->offset + offsetof(PlayerVisualConfig, name_color), visual.name_color.load()));
-        string a2_str = format_data_string(visual.unknown_a2.data(), sizeof(visual.unknown_a2));
-        lines.emplace_back(string_printf("  %04zX  a2                   %s", l->offset + offsetof(PlayerVisualConfig, unknown_a2), a2_str.c_str()));
-        lines.emplace_back(string_printf("  %04zX  extra_model          %02hhX", l->offset + offsetof(PlayerVisualConfig, extra_model), visual.extra_model));
-        string unused = format_data_string(visual.unused.data(), visual.unused.bytes());
-        lines.emplace_back(string_printf("  %04zX  unused               %s", l->offset + offsetof(PlayerVisualConfig, unused), unused.c_str()));
-        lines.emplace_back(string_printf("  %04zX  name_color_checksum  %08" PRIX32, l->offset + offsetof(PlayerVisualConfig, name_color_checksum), visual.name_color_checksum.load()));
-        lines.emplace_back(string_printf("  %04zX  section_id           %02hhX (%s)", l->offset + offsetof(PlayerVisualConfig, section_id), visual.section_id, name_for_section_id(visual.section_id)));
-        lines.emplace_back(string_printf("  %04zX  char_class           %02hhX (%s)", l->offset + offsetof(PlayerVisualConfig, char_class), visual.char_class, name_for_char_class(visual.char_class)));
-        lines.emplace_back(string_printf("  %04zX  validation_flags     %02hhX", l->offset + offsetof(PlayerVisualConfig, validation_flags), visual.validation_flags));
-        lines.emplace_back(string_printf("  %04zX  version              %02hhX", l->offset + offsetof(PlayerVisualConfig, version), visual.version));
-        lines.emplace_back(string_printf("  %04zX  class_flags          %08" PRIX32, l->offset + offsetof(PlayerVisualConfig, class_flags), visual.class_flags.load()));
-        lines.emplace_back(string_printf("  %04zX  costume              %04hX", l->offset + offsetof(PlayerVisualConfig, costume), visual.costume.load()));
-        lines.emplace_back(string_printf("  %04zX  skin                 %04hX", l->offset + offsetof(PlayerVisualConfig, skin), visual.skin.load()));
-        lines.emplace_back(string_printf("  %04zX  face                 %04hX", l->offset + offsetof(PlayerVisualConfig, face), visual.face.load()));
-        lines.emplace_back(string_printf("  %04zX  head                 %04hX", l->offset + offsetof(PlayerVisualConfig, head), visual.head.load()));
-        lines.emplace_back(string_printf("  %04zX  hair                 %04hX", l->offset + offsetof(PlayerVisualConfig, hair), visual.hair.load()));
-        lines.emplace_back(string_printf("  %04zX  hair_color           %04hX, %04hX, %04hX", l->offset + offsetof(PlayerVisualConfig, hair_r), visual.hair_r.load(), visual.hair_g.load(), visual.hair_b.load()));
-        lines.emplace_back(string_printf("  %04zX  proportion           %g, %g", l->offset + offsetof(PlayerVisualConfig, proportion_x), visual.proportion_x.load(), visual.proportion_y.load()));
+        lines.emplace_back(phosg::string_printf("  %04zX  name                 %s", l->offset + offsetof(PlayerVisualConfig, name), name.c_str()));
+        lines.emplace_back(phosg::string_printf("  %04zX  name_color           %08" PRIX32, l->offset + offsetof(PlayerVisualConfig, name_color), visual.name_color.load()));
+        string a2_str = phosg::format_data_string(visual.unknown_a2.data(), sizeof(visual.unknown_a2));
+        lines.emplace_back(phosg::string_printf("  %04zX  a2                   %s", l->offset + offsetof(PlayerVisualConfig, unknown_a2), a2_str.c_str()));
+        lines.emplace_back(phosg::string_printf("  %04zX  extra_model          %02hhX", l->offset + offsetof(PlayerVisualConfig, extra_model), visual.extra_model));
+        string unused = phosg::format_data_string(visual.unused.data(), visual.unused.bytes());
+        lines.emplace_back(phosg::string_printf("  %04zX  unused               %s", l->offset + offsetof(PlayerVisualConfig, unused), unused.c_str()));
+        lines.emplace_back(phosg::string_printf("  %04zX  name_color_checksum  %08" PRIX32, l->offset + offsetof(PlayerVisualConfig, name_color_checksum), visual.name_color_checksum.load()));
+        lines.emplace_back(phosg::string_printf("  %04zX  section_id           %02hhX (%s)", l->offset + offsetof(PlayerVisualConfig, section_id), visual.section_id, name_for_section_id(visual.section_id)));
+        lines.emplace_back(phosg::string_printf("  %04zX  char_class           %02hhX (%s)", l->offset + offsetof(PlayerVisualConfig, char_class), visual.char_class, name_for_char_class(visual.char_class)));
+        lines.emplace_back(phosg::string_printf("  %04zX  validation_flags     %02hhX", l->offset + offsetof(PlayerVisualConfig, validation_flags), visual.validation_flags));
+        lines.emplace_back(phosg::string_printf("  %04zX  version              %02hhX", l->offset + offsetof(PlayerVisualConfig, version), visual.version));
+        lines.emplace_back(phosg::string_printf("  %04zX  class_flags          %08" PRIX32, l->offset + offsetof(PlayerVisualConfig, class_flags), visual.class_flags.load()));
+        lines.emplace_back(phosg::string_printf("  %04zX  costume              %04hX", l->offset + offsetof(PlayerVisualConfig, costume), visual.costume.load()));
+        lines.emplace_back(phosg::string_printf("  %04zX  skin                 %04hX", l->offset + offsetof(PlayerVisualConfig, skin), visual.skin.load()));
+        lines.emplace_back(phosg::string_printf("  %04zX  face                 %04hX", l->offset + offsetof(PlayerVisualConfig, face), visual.face.load()));
+        lines.emplace_back(phosg::string_printf("  %04zX  head                 %04hX", l->offset + offsetof(PlayerVisualConfig, head), visual.head.load()));
+        lines.emplace_back(phosg::string_printf("  %04zX  hair                 %04hX", l->offset + offsetof(PlayerVisualConfig, hair), visual.hair.load()));
+        lines.emplace_back(phosg::string_printf("  %04zX  hair_color           %04hX, %04hX, %04hX", l->offset + offsetof(PlayerVisualConfig, hair_r), visual.hair_r.load(), visual.hair_g.load(), visual.hair_b.load()));
+        lines.emplace_back(phosg::string_printf("  %04zX  proportion           %g, %g", l->offset + offsetof(PlayerVisualConfig, proportion_x), visual.proportion_x.load(), visual.proportion_y.load()));
       });
       print_as_struct.template operator()<Arg::DataType::PLAYER_STATS, PlayerStats>([&](const PlayerStats& stats) -> void {
         lines.emplace_back("  // As PlayerStats");
-        lines.emplace_back(string_printf("  %04zX  atp                  %04hX /* %hu */", l->offset + offsetof(PlayerStats, char_stats.atp), stats.char_stats.atp.load(), stats.char_stats.atp.load()));
-        lines.emplace_back(string_printf("  %04zX  mst                  %04hX /* %hu */", l->offset + offsetof(PlayerStats, char_stats.mst), stats.char_stats.mst.load(), stats.char_stats.mst.load()));
-        lines.emplace_back(string_printf("  %04zX  evp                  %04hX /* %hu */", l->offset + offsetof(PlayerStats, char_stats.evp), stats.char_stats.evp.load(), stats.char_stats.evp.load()));
-        lines.emplace_back(string_printf("  %04zX  hp                   %04hX /* %hu */", l->offset + offsetof(PlayerStats, char_stats.hp), stats.char_stats.hp.load(), stats.char_stats.hp.load()));
-        lines.emplace_back(string_printf("  %04zX  dfp                  %04hX /* %hu */", l->offset + offsetof(PlayerStats, char_stats.dfp), stats.char_stats.dfp.load(), stats.char_stats.dfp.load()));
-        lines.emplace_back(string_printf("  %04zX  ata                  %04hX /* %hu */", l->offset + offsetof(PlayerStats, char_stats.ata), stats.char_stats.ata.load(), stats.char_stats.ata.load()));
-        lines.emplace_back(string_printf("  %04zX  lck                  %04hX /* %hu */", l->offset + offsetof(PlayerStats, char_stats.lck), stats.char_stats.lck.load(), stats.char_stats.lck.load()));
-        lines.emplace_back(string_printf("  %04zX  esp                  %04hX /* %hu */", l->offset + offsetof(PlayerStats, esp), stats.esp.load(), stats.esp.load()));
-        lines.emplace_back(string_printf("  %04zX  height               %08" PRIX32 " /* %g */", l->offset + offsetof(PlayerStats, height), stats.height.load_raw(), stats.height.load()));
-        lines.emplace_back(string_printf("  %04zX  a3                   %08" PRIX32 " /* %g */", l->offset + offsetof(PlayerStats, unknown_a3), stats.unknown_a3.load_raw(), stats.unknown_a3.load()));
-        lines.emplace_back(string_printf("  %04zX  level                %08" PRIX32 " /* level %" PRIu32 " */", l->offset + offsetof(PlayerStats, level), stats.level.load(), stats.level.load() + 1));
-        lines.emplace_back(string_printf("  %04zX  experience           %08" PRIX32 " /* %" PRIu32 " */", l->offset + offsetof(PlayerStats, experience), stats.experience.load(), stats.experience.load()));
-        lines.emplace_back(string_printf("  %04zX  meseta               %08" PRIX32 " /* %" PRIu32 " */", l->offset + offsetof(PlayerStats, meseta), stats.meseta.load(), stats.meseta.load()));
+        lines.emplace_back(phosg::string_printf("  %04zX  atp                  %04hX /* %hu */", l->offset + offsetof(PlayerStats, char_stats.atp), stats.char_stats.atp.load(), stats.char_stats.atp.load()));
+        lines.emplace_back(phosg::string_printf("  %04zX  mst                  %04hX /* %hu */", l->offset + offsetof(PlayerStats, char_stats.mst), stats.char_stats.mst.load(), stats.char_stats.mst.load()));
+        lines.emplace_back(phosg::string_printf("  %04zX  evp                  %04hX /* %hu */", l->offset + offsetof(PlayerStats, char_stats.evp), stats.char_stats.evp.load(), stats.char_stats.evp.load()));
+        lines.emplace_back(phosg::string_printf("  %04zX  hp                   %04hX /* %hu */", l->offset + offsetof(PlayerStats, char_stats.hp), stats.char_stats.hp.load(), stats.char_stats.hp.load()));
+        lines.emplace_back(phosg::string_printf("  %04zX  dfp                  %04hX /* %hu */", l->offset + offsetof(PlayerStats, char_stats.dfp), stats.char_stats.dfp.load(), stats.char_stats.dfp.load()));
+        lines.emplace_back(phosg::string_printf("  %04zX  ata                  %04hX /* %hu */", l->offset + offsetof(PlayerStats, char_stats.ata), stats.char_stats.ata.load(), stats.char_stats.ata.load()));
+        lines.emplace_back(phosg::string_printf("  %04zX  lck                  %04hX /* %hu */", l->offset + offsetof(PlayerStats, char_stats.lck), stats.char_stats.lck.load(), stats.char_stats.lck.load()));
+        lines.emplace_back(phosg::string_printf("  %04zX  esp                  %04hX /* %hu */", l->offset + offsetof(PlayerStats, esp), stats.esp.load(), stats.esp.load()));
+        lines.emplace_back(phosg::string_printf("  %04zX  height               %08" PRIX32 " /* %g */", l->offset + offsetof(PlayerStats, height), stats.height.load_raw(), stats.height.load()));
+        lines.emplace_back(phosg::string_printf("  %04zX  a3                   %08" PRIX32 " /* %g */", l->offset + offsetof(PlayerStats, unknown_a3), stats.unknown_a3.load_raw(), stats.unknown_a3.load()));
+        lines.emplace_back(phosg::string_printf("  %04zX  level                %08" PRIX32 " /* level %" PRIu32 " */", l->offset + offsetof(PlayerStats, level), stats.level.load(), stats.level.load() + 1));
+        lines.emplace_back(phosg::string_printf("  %04zX  experience           %08" PRIX32 " /* %" PRIu32 " */", l->offset + offsetof(PlayerStats, experience), stats.experience.load(), stats.experience.load()));
+        lines.emplace_back(phosg::string_printf("  %04zX  meseta               %08" PRIX32 " /* %" PRIu32 " */", l->offset + offsetof(PlayerStats, meseta), stats.meseta.load(), stats.meseta.load()));
       });
       print_as_struct.template operator()<Arg::DataType::RESIST_DATA, ResistData>([&](const ResistData& resist) -> void {
         lines.emplace_back("  // As ResistData");
-        lines.emplace_back(string_printf("  %04zX  evp_bonus            %04hX /* %hu */", l->offset + offsetof(ResistData, evp_bonus), resist.evp_bonus.load(), resist.evp_bonus.load()));
-        lines.emplace_back(string_printf("  %04zX  efr                  %04hX /* %hu */", l->offset + offsetof(ResistData, efr), resist.efr.load(), resist.efr.load()));
-        lines.emplace_back(string_printf("  %04zX  eic                  %04hX /* %hu */", l->offset + offsetof(ResistData, eic), resist.eic.load(), resist.eic.load()));
-        lines.emplace_back(string_printf("  %04zX  eth                  %04hX /* %hu */", l->offset + offsetof(ResistData, eth), resist.eth.load(), resist.eth.load()));
-        lines.emplace_back(string_printf("  %04zX  elt                  %04hX /* %hu */", l->offset + offsetof(ResistData, elt), resist.elt.load(), resist.elt.load()));
-        lines.emplace_back(string_printf("  %04zX  edk                  %04hX /* %hu */", l->offset + offsetof(ResistData, edk), resist.edk.load(), resist.edk.load()));
-        lines.emplace_back(string_printf("  %04zX  a6                   %08" PRIX32 " /* %" PRIu32 " */", l->offset + offsetof(ResistData, unknown_a6), resist.unknown_a6.load(), resist.unknown_a6.load()));
-        lines.emplace_back(string_printf("  %04zX  a7                   %08" PRIX32 " /* %" PRIu32 " */", l->offset + offsetof(ResistData, unknown_a7), resist.unknown_a7.load(), resist.unknown_a7.load()));
-        lines.emplace_back(string_printf("  %04zX  a8                   %08" PRIX32 " /* %" PRIu32 " */", l->offset + offsetof(ResistData, unknown_a8), resist.unknown_a8.load(), resist.unknown_a8.load()));
-        lines.emplace_back(string_printf("  %04zX  a9                   %08" PRIX32 " /* %" PRIu32 " */", l->offset + offsetof(ResistData, unknown_a9), resist.unknown_a9.load(), resist.unknown_a9.load()));
-        lines.emplace_back(string_printf("  %04zX  dfp_bonus            %08" PRIX32 " /* %" PRIu32 " */", l->offset + offsetof(ResistData, dfp_bonus), resist.dfp_bonus.load(), resist.dfp_bonus.load()));
+        lines.emplace_back(phosg::string_printf("  %04zX  evp_bonus            %04hX /* %hu */", l->offset + offsetof(ResistData, evp_bonus), resist.evp_bonus.load(), resist.evp_bonus.load()));
+        lines.emplace_back(phosg::string_printf("  %04zX  efr                  %04hX /* %hu */", l->offset + offsetof(ResistData, efr), resist.efr.load(), resist.efr.load()));
+        lines.emplace_back(phosg::string_printf("  %04zX  eic                  %04hX /* %hu */", l->offset + offsetof(ResistData, eic), resist.eic.load(), resist.eic.load()));
+        lines.emplace_back(phosg::string_printf("  %04zX  eth                  %04hX /* %hu */", l->offset + offsetof(ResistData, eth), resist.eth.load(), resist.eth.load()));
+        lines.emplace_back(phosg::string_printf("  %04zX  elt                  %04hX /* %hu */", l->offset + offsetof(ResistData, elt), resist.elt.load(), resist.elt.load()));
+        lines.emplace_back(phosg::string_printf("  %04zX  edk                  %04hX /* %hu */", l->offset + offsetof(ResistData, edk), resist.edk.load(), resist.edk.load()));
+        lines.emplace_back(phosg::string_printf("  %04zX  a6                   %08" PRIX32 " /* %" PRIu32 " */", l->offset + offsetof(ResistData, unknown_a6), resist.unknown_a6.load(), resist.unknown_a6.load()));
+        lines.emplace_back(phosg::string_printf("  %04zX  a7                   %08" PRIX32 " /* %" PRIu32 " */", l->offset + offsetof(ResistData, unknown_a7), resist.unknown_a7.load(), resist.unknown_a7.load()));
+        lines.emplace_back(phosg::string_printf("  %04zX  a8                   %08" PRIX32 " /* %" PRIu32 " */", l->offset + offsetof(ResistData, unknown_a8), resist.unknown_a8.load(), resist.unknown_a8.load()));
+        lines.emplace_back(phosg::string_printf("  %04zX  a9                   %08" PRIX32 " /* %" PRIu32 " */", l->offset + offsetof(ResistData, unknown_a9), resist.unknown_a9.load(), resist.unknown_a9.load()));
+        lines.emplace_back(phosg::string_printf("  %04zX  dfp_bonus            %08" PRIX32 " /* %" PRIu32 " */", l->offset + offsetof(ResistData, dfp_bonus), resist.dfp_bonus.load(), resist.dfp_bonus.load()));
       });
       print_as_struct.template operator()<Arg::DataType::ATTACK_DATA, AttackData>([&](const AttackData& attack) -> void {
         lines.emplace_back("  // As AttackData");
-        lines.emplace_back(string_printf("  %04zX  a1                   %04hX /* %hd */", l->offset + offsetof(AttackData, unknown_a1), attack.unknown_a1.load(), attack.unknown_a1.load()));
-        lines.emplace_back(string_printf("  %04zX  atp                  %04hX /* %hd */", l->offset + offsetof(AttackData, atp), attack.atp.load(), attack.atp.load()));
-        lines.emplace_back(string_printf("  %04zX  ata_bonus            %04hX /* %hd */", l->offset + offsetof(AttackData, ata_bonus), attack.ata_bonus.load(), attack.ata_bonus.load()));
-        lines.emplace_back(string_printf("  %04zX  a4                   %04hX /* %hu */", l->offset + offsetof(AttackData, unknown_a4), attack.unknown_a4.load(), attack.unknown_a4.load()));
-        lines.emplace_back(string_printf("  %04zX  distance_x           %08" PRIX32 " /* %g */", l->offset + offsetof(AttackData, distance_x), attack.distance_x.load_raw(), attack.distance_x.load()));
-        lines.emplace_back(string_printf("  %04zX  angle_x              %08" PRIX32 " /* %" PRIu32 "/65536 */", l->offset + offsetof(AttackData, angle_x), attack.angle_x.load_raw(), attack.angle_x.load()));
-        lines.emplace_back(string_printf("  %04zX  distance_y           %08" PRIX32 " /* %g */", l->offset + offsetof(AttackData, distance_y), attack.distance_y.load_raw(), attack.distance_y.load()));
-        lines.emplace_back(string_printf("  %04zX  a8                   %04hX /* %hu */", l->offset + offsetof(AttackData, unknown_a8), attack.unknown_a8.load(), attack.unknown_a8.load()));
-        lines.emplace_back(string_printf("  %04zX  a9                   %04hX /* %hu */", l->offset + offsetof(AttackData, unknown_a9), attack.unknown_a9.load(), attack.unknown_a9.load()));
-        lines.emplace_back(string_printf("  %04zX  a10                  %04hX /* %hu */", l->offset + offsetof(AttackData, unknown_a10), attack.unknown_a10.load(), attack.unknown_a10.load()));
-        lines.emplace_back(string_printf("  %04zX  a11                  %04hX /* %hu */", l->offset + offsetof(AttackData, unknown_a11), attack.unknown_a11.load(), attack.unknown_a11.load()));
-        lines.emplace_back(string_printf("  %04zX  a12                  %08" PRIX32 " /* %" PRIu32 " */", l->offset + offsetof(AttackData, unknown_a12), attack.unknown_a12.load(), attack.unknown_a12.load()));
-        lines.emplace_back(string_printf("  %04zX  a13                  %08" PRIX32 " /* %" PRIu32 " */", l->offset + offsetof(AttackData, unknown_a13), attack.unknown_a13.load(), attack.unknown_a13.load()));
-        lines.emplace_back(string_printf("  %04zX  a14                  %08" PRIX32 " /* %" PRIu32 " */", l->offset + offsetof(AttackData, unknown_a14), attack.unknown_a14.load(), attack.unknown_a14.load()));
-        lines.emplace_back(string_printf("  %04zX  a15                  %08" PRIX32 " /* %" PRIu32 " */", l->offset + offsetof(AttackData, unknown_a15), attack.unknown_a15.load(), attack.unknown_a15.load()));
-        lines.emplace_back(string_printf("  %04zX  a16                  %08" PRIX32 " /* %" PRIu32 " */", l->offset + offsetof(AttackData, unknown_a16), attack.unknown_a16.load(), attack.unknown_a16.load()));
+        lines.emplace_back(phosg::string_printf("  %04zX  a1                   %04hX /* %hd */", l->offset + offsetof(AttackData, unknown_a1), attack.unknown_a1.load(), attack.unknown_a1.load()));
+        lines.emplace_back(phosg::string_printf("  %04zX  atp                  %04hX /* %hd */", l->offset + offsetof(AttackData, atp), attack.atp.load(), attack.atp.load()));
+        lines.emplace_back(phosg::string_printf("  %04zX  ata_bonus            %04hX /* %hd */", l->offset + offsetof(AttackData, ata_bonus), attack.ata_bonus.load(), attack.ata_bonus.load()));
+        lines.emplace_back(phosg::string_printf("  %04zX  a4                   %04hX /* %hu */", l->offset + offsetof(AttackData, unknown_a4), attack.unknown_a4.load(), attack.unknown_a4.load()));
+        lines.emplace_back(phosg::string_printf("  %04zX  distance_x           %08" PRIX32 " /* %g */", l->offset + offsetof(AttackData, distance_x), attack.distance_x.load_raw(), attack.distance_x.load()));
+        lines.emplace_back(phosg::string_printf("  %04zX  angle_x              %08" PRIX32 " /* %" PRIu32 "/65536 */", l->offset + offsetof(AttackData, angle_x), attack.angle_x.load_raw(), attack.angle_x.load()));
+        lines.emplace_back(phosg::string_printf("  %04zX  distance_y           %08" PRIX32 " /* %g */", l->offset + offsetof(AttackData, distance_y), attack.distance_y.load_raw(), attack.distance_y.load()));
+        lines.emplace_back(phosg::string_printf("  %04zX  a8                   %04hX /* %hu */", l->offset + offsetof(AttackData, unknown_a8), attack.unknown_a8.load(), attack.unknown_a8.load()));
+        lines.emplace_back(phosg::string_printf("  %04zX  a9                   %04hX /* %hu */", l->offset + offsetof(AttackData, unknown_a9), attack.unknown_a9.load(), attack.unknown_a9.load()));
+        lines.emplace_back(phosg::string_printf("  %04zX  a10                  %04hX /* %hu */", l->offset + offsetof(AttackData, unknown_a10), attack.unknown_a10.load(), attack.unknown_a10.load()));
+        lines.emplace_back(phosg::string_printf("  %04zX  a11                  %04hX /* %hu */", l->offset + offsetof(AttackData, unknown_a11), attack.unknown_a11.load(), attack.unknown_a11.load()));
+        lines.emplace_back(phosg::string_printf("  %04zX  a12                  %08" PRIX32 " /* %" PRIu32 " */", l->offset + offsetof(AttackData, unknown_a12), attack.unknown_a12.load(), attack.unknown_a12.load()));
+        lines.emplace_back(phosg::string_printf("  %04zX  a13                  %08" PRIX32 " /* %" PRIu32 " */", l->offset + offsetof(AttackData, unknown_a13), attack.unknown_a13.load(), attack.unknown_a13.load()));
+        lines.emplace_back(phosg::string_printf("  %04zX  a14                  %08" PRIX32 " /* %" PRIu32 " */", l->offset + offsetof(AttackData, unknown_a14), attack.unknown_a14.load(), attack.unknown_a14.load()));
+        lines.emplace_back(phosg::string_printf("  %04zX  a15                  %08" PRIX32 " /* %" PRIu32 " */", l->offset + offsetof(AttackData, unknown_a15), attack.unknown_a15.load(), attack.unknown_a15.load()));
+        lines.emplace_back(phosg::string_printf("  %04zX  a16                  %08" PRIX32 " /* %" PRIu32 " */", l->offset + offsetof(AttackData, unknown_a16), attack.unknown_a16.load(), attack.unknown_a16.load()));
       });
       print_as_struct.template operator()<Arg::DataType::MOVEMENT_DATA, MovementData>([&](const MovementData& movement) -> void {
         lines.emplace_back("  // As MovementData");
-        lines.emplace_back(string_printf("  %04zX  idle_move_speed      %08" PRIX32 " /* %g */", l->offset + offsetof(MovementData, idle_move_speed), movement.idle_move_speed.load_raw(), movement.idle_move_speed.load()));
-        lines.emplace_back(string_printf("  %04zX  idle_animation_speed %08" PRIX32 " /* %g */", l->offset + offsetof(MovementData, idle_animation_speed), movement.idle_animation_speed.load_raw(), movement.idle_animation_speed.load()));
-        lines.emplace_back(string_printf("  %04zX  move_speed           %08" PRIX32 " /* %g */", l->offset + offsetof(MovementData, move_speed), movement.move_speed.load_raw(), movement.move_speed.load()));
-        lines.emplace_back(string_printf("  %04zX  animation_speed      %08" PRIX32 " /* %g */", l->offset + offsetof(MovementData, animation_speed), movement.animation_speed.load_raw(), movement.animation_speed.load()));
-        lines.emplace_back(string_printf("  %04zX  a1                   %08" PRIX32 " /* %g */", l->offset + offsetof(MovementData, unknown_a1), movement.unknown_a1.load_raw(), movement.unknown_a1.load()));
-        lines.emplace_back(string_printf("  %04zX  a2                   %08" PRIX32 " /* %g */", l->offset + offsetof(MovementData, unknown_a2), movement.unknown_a2.load_raw(), movement.unknown_a2.load()));
-        lines.emplace_back(string_printf("  %04zX  a3                   %08" PRIX32 " /* %" PRIu32 " */", l->offset + offsetof(MovementData, unknown_a3), movement.unknown_a3.load(), movement.unknown_a3.load()));
-        lines.emplace_back(string_printf("  %04zX  a4                   %08" PRIX32 " /* %" PRIu32 " */", l->offset + offsetof(MovementData, unknown_a4), movement.unknown_a4.load(), movement.unknown_a4.load()));
-        lines.emplace_back(string_printf("  %04zX  a5                   %08" PRIX32 " /* %" PRIu32 " */", l->offset + offsetof(MovementData, unknown_a5), movement.unknown_a5.load(), movement.unknown_a5.load()));
-        lines.emplace_back(string_printf("  %04zX  a6                   %08" PRIX32 " /* %" PRIu32 " */", l->offset + offsetof(MovementData, unknown_a6), movement.unknown_a6.load(), movement.unknown_a6.load()));
-        lines.emplace_back(string_printf("  %04zX  a7                   %08" PRIX32 " /* %" PRIu32 " */", l->offset + offsetof(MovementData, unknown_a7), movement.unknown_a7.load(), movement.unknown_a7.load()));
-        lines.emplace_back(string_printf("  %04zX  a8                   %08" PRIX32 " /* %" PRIu32 " */", l->offset + offsetof(MovementData, unknown_a8), movement.unknown_a8.load(), movement.unknown_a8.load()));
+        lines.emplace_back(phosg::string_printf("  %04zX  idle_move_speed      %08" PRIX32 " /* %g */", l->offset + offsetof(MovementData, idle_move_speed), movement.idle_move_speed.load_raw(), movement.idle_move_speed.load()));
+        lines.emplace_back(phosg::string_printf("  %04zX  idle_animation_speed %08" PRIX32 " /* %g */", l->offset + offsetof(MovementData, idle_animation_speed), movement.idle_animation_speed.load_raw(), movement.idle_animation_speed.load()));
+        lines.emplace_back(phosg::string_printf("  %04zX  move_speed           %08" PRIX32 " /* %g */", l->offset + offsetof(MovementData, move_speed), movement.move_speed.load_raw(), movement.move_speed.load()));
+        lines.emplace_back(phosg::string_printf("  %04zX  animation_speed      %08" PRIX32 " /* %g */", l->offset + offsetof(MovementData, animation_speed), movement.animation_speed.load_raw(), movement.animation_speed.load()));
+        lines.emplace_back(phosg::string_printf("  %04zX  a1                   %08" PRIX32 " /* %g */", l->offset + offsetof(MovementData, unknown_a1), movement.unknown_a1.load_raw(), movement.unknown_a1.load()));
+        lines.emplace_back(phosg::string_printf("  %04zX  a2                   %08" PRIX32 " /* %g */", l->offset + offsetof(MovementData, unknown_a2), movement.unknown_a2.load_raw(), movement.unknown_a2.load()));
+        lines.emplace_back(phosg::string_printf("  %04zX  a3                   %08" PRIX32 " /* %" PRIu32 " */", l->offset + offsetof(MovementData, unknown_a3), movement.unknown_a3.load(), movement.unknown_a3.load()));
+        lines.emplace_back(phosg::string_printf("  %04zX  a4                   %08" PRIX32 " /* %" PRIu32 " */", l->offset + offsetof(MovementData, unknown_a4), movement.unknown_a4.load(), movement.unknown_a4.load()));
+        lines.emplace_back(phosg::string_printf("  %04zX  a5                   %08" PRIX32 " /* %" PRIu32 " */", l->offset + offsetof(MovementData, unknown_a5), movement.unknown_a5.load(), movement.unknown_a5.load()));
+        lines.emplace_back(phosg::string_printf("  %04zX  a6                   %08" PRIX32 " /* %" PRIu32 " */", l->offset + offsetof(MovementData, unknown_a6), movement.unknown_a6.load(), movement.unknown_a6.load()));
+        lines.emplace_back(phosg::string_printf("  %04zX  a7                   %08" PRIX32 " /* %" PRIu32 " */", l->offset + offsetof(MovementData, unknown_a7), movement.unknown_a7.load(), movement.unknown_a7.load()));
+        lines.emplace_back(phosg::string_printf("  %04zX  a8                   %08" PRIX32 " /* %" PRIu32 " */", l->offset + offsetof(MovementData, unknown_a8), movement.unknown_a8.load(), movement.unknown_a8.load()));
       });
       if (l->has_data_type(Arg::DataType::IMAGE_DATA)) {
         const void* data = cmd_r.pgetv(l->offset, size);
         auto decompressed = prs_decompress_with_meta(data, size);
-        lines.emplace_back(string_printf("  // As decompressed image data (0x%zX bytes)", decompressed.data.size()));
+        lines.emplace_back(phosg::string_printf("  // As decompressed image data (0x%zX bytes)", decompressed.data.size()));
         lines.emplace_back(format_and_indent_data(decompressed.data.data(), decompressed.data.size(), 0));
         if (decompressed.input_bytes_used < size) {
           size_t compressed_end_offset = l->offset + decompressed.input_bytes_used;
@@ -1613,12 +1613,12 @@ std::string disassemble_quest_script(const void* data, size_t size, Version vers
         }
       }
       if (l->has_data_type(Arg::DataType::UNKNOWN_F8F2_DATA)) {
-        StringReader r = cmd_r.sub(l->offset, size);
+        phosg::StringReader r = cmd_r.sub(l->offset, size);
         lines.emplace_back("  // As F8F2 entries");
         while (r.remaining() >= sizeof(UnknownF8F2Entry)) {
           size_t offset = l->offset + cmd_r.where();
           const auto& e = r.get<UnknownF8F2Entry>();
-          lines.emplace_back(string_printf("  %04zX  entry        %g, %g, %g, %g", offset, e.unknown_a1[0].load(), e.unknown_a1[1].load(), e.unknown_a1[2].load(), e.unknown_a1[3].load()));
+          lines.emplace_back(phosg::string_printf("  %04zX  entry        %g, %g, %g, %g", offset, e.unknown_a1[0].load(), e.unknown_a1[1].load(), e.unknown_a1[2].load(), e.unknown_a1[3].load()));
         }
         if (r.remaining() > 0) {
           size_t struct_end_offset = l->offset + r.where();
@@ -1634,11 +1634,11 @@ std::string disassemble_quest_script(const void* data, size_t size, Version vers
   }
 
   lines.emplace_back(); // Add a \n on the end
-  return join(lines, "\n");
+  return phosg::join(lines, "\n");
 }
 
 Episode find_quest_episode_from_script(const void* data, size_t size, Version version) {
-  StringReader r(data, size);
+  phosg::StringReader r(data, size);
 
   bool use_wstrs = false;
   size_t code_offset = 0;
@@ -1680,7 +1680,7 @@ Episode find_quest_episode_from_script(const void* data, size_t size, Version ve
   try {
     const auto& opcodes = opcodes_for_version(version);
     // The set_episode opcode should always be in the first function (0)
-    StringReader cmd_r = r.sub(code_offset + r.pget_u32l(function_table_offset));
+    phosg::StringReader cmd_r = r.sub(code_offset + r.pget_u32l(function_table_offset));
 
     while (!cmd_r.eof()) {
       uint16_t opcode = cmd_r.get_u8();
@@ -1695,7 +1695,7 @@ Episode find_quest_episode_from_script(const void* data, size_t size, Version ve
       }
 
       if (def == nullptr) {
-        throw runtime_error(string_printf("unknown quest opcode %04hX", opcode));
+        throw runtime_error(phosg::string_printf("unknown quest opcode %04hX", opcode));
       }
 
       if (def->flags & F_RET) {
@@ -1772,7 +1772,7 @@ Episode find_quest_episode_from_script(const void* data, size_t size, Version ve
       }
     }
   } catch (const exception& e) {
-    log_warning("Cannot determine episode from quest script (%s)", e.what());
+    phosg::log_warning("Cannot determine episode from quest script (%s)", e.what());
   }
 
   if (found_episodes.size() > 1) {
@@ -1794,7 +1794,7 @@ Episode episode_for_quest_episode_number(uint8_t episode_number) {
     case 0x02:
       return Episode::EP4;
     default:
-      throw runtime_error(string_printf("invalid episode number %02hhX", episode_number));
+      throw runtime_error(phosg::string_printf("invalid episode number %02hhX", episode_number));
   }
 }
 
@@ -1807,7 +1807,7 @@ struct RegisterAssigner {
     unordered_set<size_t> offsets;
 
     std::string str() const {
-      return string_printf("Register(%p, name=\"%s\", number=%hd)", this, this->name.c_str(), this->number);
+      return phosg::string_printf("Register(%p, name=\"%s\", number=%hd)", this, this->name.c_str(), this->number);
     }
   };
 
@@ -1853,7 +1853,7 @@ struct RegisterAssigner {
         }
         this->numbered_regs.at(reg->number) = reg;
       } else if (reg->number != number) {
-        throw runtime_error(string_printf("register %s is assigned multiple numbers", reg->name.c_str()));
+        throw runtime_error(phosg::string_printf("register %s is assigned multiple numbers", reg->name.c_str()));
       }
     }
 
@@ -1861,10 +1861,10 @@ struct RegisterAssigner {
       if (reg->name.empty()) {
         reg->name = name;
         if (!this->named_regs.emplace(reg->name, reg).second) {
-          throw runtime_error(string_printf("name %s is already assigned to a different register", reg->name.c_str()));
+          throw runtime_error(phosg::string_printf("name %s is already assigned to a different register", reg->name.c_str()));
         }
       } else if (reg->name != name) {
-        throw runtime_error(string_printf("register %hd is assigned multiple names", reg->number));
+        throw runtime_error(phosg::string_printf("register %hd is assigned multiple names", reg->number));
       }
     }
 
@@ -1875,11 +1875,11 @@ struct RegisterAssigner {
     if (reg->number < 0) {
       reg->number = number;
       if (this->numbered_regs.at(reg->number)) {
-        throw logic_error(string_printf("register number %hd assigned multiple times", reg->number));
+        throw logic_error(phosg::string_printf("register number %hd assigned multiple times", reg->number));
       }
       this->numbered_regs.at(reg->number) = reg;
     } else if (reg->number != static_cast<int16_t>(number)) {
-      throw runtime_error(string_printf("assigning different register number %hhu over existing register number %hd", number, reg->number));
+      throw runtime_error(phosg::string_printf("assigning different register number %hhu over existing register number %hd", number, reg->number));
     }
   }
 
@@ -1887,15 +1887,15 @@ struct RegisterAssigner {
     if (!first_reg->next) {
       first_reg->next = second_reg;
     } else if (first_reg->next != second_reg) {
-      throw runtime_error(string_printf("register %s must come after %s, but is already constrained to another register", second_reg->name.c_str(), first_reg->name.c_str()));
+      throw runtime_error(phosg::string_printf("register %s must come after %s, but is already constrained to another register", second_reg->name.c_str(), first_reg->name.c_str()));
     }
     if (!second_reg->prev) {
       second_reg->prev = first_reg;
     } else if (second_reg->prev != first_reg) {
-      throw runtime_error(string_printf("register %s must come before %s, but is already constrained to another register", first_reg->name.c_str(), second_reg->name.c_str()));
+      throw runtime_error(phosg::string_printf("register %s must come before %s, but is already constrained to another register", first_reg->name.c_str(), second_reg->name.c_str()));
     }
     if ((first_reg->number >= 0) && (second_reg->number >= 0) && (first_reg->number != ((second_reg->number - 1) & 0xFF))) {
-      throw runtime_error(string_printf("register %s must come before %s, but both registers already have non-consecutive numbers", first_reg->name.c_str(), second_reg->name.c_str()));
+      throw runtime_error(phosg::string_printf("register %s must come before %s, but both registers already have non-consecutive numbers", first_reg->name.c_str(), second_reg->name.c_str()));
     }
   }
 
@@ -1952,13 +1952,13 @@ struct RegisterAssigner {
     // At this point, all registers should be assigned
     for (const auto& it : this->named_regs) {
       if (it.second->number < 0) {
-        throw logic_error(string_printf("register %s was not assigned", it.second->name.c_str()));
+        throw logic_error(phosg::string_printf("register %s was not assigned", it.second->name.c_str()));
       }
     }
     for (size_t z = 0; z < 0x100; z++) {
       auto reg = this->numbered_regs[z];
       if (reg && (reg->number != static_cast<int16_t>(z))) {
-        throw logic_error(string_printf("register %zu has incorrect number %hd", z, reg->number));
+        throw logic_error(phosg::string_printf("register %zu has incorrect number %hd", z, reg->number));
       }
     }
   }
@@ -1983,7 +1983,7 @@ struct RegisterAssigner {
 };
 
 std::string assemble_quest_script(const std::string& text, const std::string& include_directory) {
-  auto lines = split(text, '\n');
+  auto lines = phosg::split(text, '\n');
 
   // Strip comments and whitespace
   for (auto& line : lines) {
@@ -2000,8 +2000,8 @@ std::string assemble_quest_script(const std::string& text, const std::string& in
     if (comment_start != string::npos) {
       line.resize(comment_start);
     }
-    strip_trailing_whitespace(line);
-    strip_leading_whitespace(line);
+    phosg::strip_trailing_whitespace(line);
+    phosg::strip_leading_whitespace(line);
   }
 
   // Collect metadata directives
@@ -2019,24 +2019,24 @@ std::string assemble_quest_script(const std::string& text, const std::string& in
       continue;
     }
     if (line[0] == '.') {
-      if (starts_with(line, ".version ")) {
+      if (phosg::starts_with(line, ".version ")) {
         string name = line.substr(9);
-        quest_version = enum_for_name<Version>(name.c_str());
-      } else if (starts_with(line, ".name ")) {
-        quest_name = parse_data_string(line.substr(6));
-      } else if (starts_with(line, ".short_desc ")) {
-        quest_short_desc = parse_data_string(line.substr(12));
-      } else if (starts_with(line, ".long_desc ")) {
-        quest_long_desc = parse_data_string(line.substr(11));
-      } else if (starts_with(line, ".quest_num ")) {
+        quest_version = phosg::enum_for_name<Version>(name.c_str());
+      } else if (phosg::starts_with(line, ".name ")) {
+        quest_name = phosg::parse_data_string(line.substr(6));
+      } else if (phosg::starts_with(line, ".short_desc ")) {
+        quest_short_desc = phosg::parse_data_string(line.substr(12));
+      } else if (phosg::starts_with(line, ".long_desc ")) {
+        quest_long_desc = phosg::parse_data_string(line.substr(11));
+      } else if (phosg::starts_with(line, ".quest_num ")) {
         quest_num = stoul(line.substr(11), nullptr, 0);
-      } else if (starts_with(line, ".language ")) {
+      } else if (phosg::starts_with(line, ".language ")) {
         quest_language = stoul(line.substr(10), nullptr, 0);
-      } else if (starts_with(line, ".episode ")) {
+      } else if (phosg::starts_with(line, ".episode ")) {
         quest_episode = episode_for_token_name(line.substr(9));
-      } else if (starts_with(line, ".max_players ")) {
+      } else if (phosg::starts_with(line, ".max_players ")) {
         quest_max_players = stoul(line.substr(12), nullptr, 0);
-      } else if (starts_with(line, ".joinable ")) {
+      } else if (phosg::starts_with(line, ".joinable ")) {
         quest_joinable = true;
       }
     }
@@ -2061,7 +2061,7 @@ std::string assemble_quest_script(const std::string& text, const std::string& in
   map<ssize_t, shared_ptr<Label>> labels_by_index;
   for (size_t line_num = 1; line_num <= lines.size(); line_num++) {
     const auto& line = lines[line_num - 1];
-    if (ends_with(line, ":")) {
+    if (phosg::ends_with(line, ":")) {
       auto label = make_shared<Label>();
       label->name = line.substr(0, line.size() - 1);
       size_t at_offset = label->name.find('@');
@@ -2069,7 +2069,7 @@ std::string assemble_quest_script(const std::string& text, const std::string& in
         try {
           label->index = stoul(label->name.substr(at_offset + 1), nullptr, 0);
         } catch (const exception& e) {
-          throw runtime_error(string_printf("(line %zu) invalid index in label (%s)", line_num, e.what()));
+          throw runtime_error(phosg::string_printf("(line %zu) invalid index in label (%s)", line_num, e.what()));
         }
         label->name.resize(at_offset);
         if (label->name == "start" && label->index != 0) {
@@ -2079,12 +2079,12 @@ std::string assemble_quest_script(const std::string& text, const std::string& in
         label->index = 0;
       }
       if (!labels_by_name.emplace(label->name, label).second) {
-        throw runtime_error(string_printf("(line %zu) duplicate label name: %s", line_num, label->name.c_str()));
+        throw runtime_error(phosg::string_printf("(line %zu) duplicate label name: %s", line_num, label->name.c_str()));
       }
       if (label->index >= 0) {
         auto index_emplace_ret = labels_by_index.emplace(label->index, label);
         if (label->index >= 0 && !index_emplace_ret.second) {
-          throw runtime_error(string_printf("(line %zu) duplicate label index: %zd (0x%zX) from %s and %s", line_num, label->index, label->index, label->name.c_str(), index_emplace_ret.first->second->name.c_str()));
+          throw runtime_error(phosg::string_printf("(line %zu) duplicate label index: %zd (0x%zX) from %s and %s", line_num, label->index, label->index, label->name.c_str(), index_emplace_ret.first->second->name.c_str()));
         }
       }
     }
@@ -2120,7 +2120,7 @@ std::string assemble_quest_script(const std::string& text, const std::string& in
     string name;
     ssize_t number = -1;
     if (arg[1] == ':') {
-      auto tokens = split(arg.substr(2), '@');
+      auto tokens = phosg::split(arg.substr(2), '@');
       if (tokens.size() == 1) {
         name = std::move(tokens[0]);
       } else if (tokens.size() == 2) {
@@ -2149,20 +2149,20 @@ std::string assemble_quest_script(const std::string& text, const std::string& in
     }
     vector<shared_ptr<RegisterAssigner::Register>> regs;
     if ((name[0] == '(') && (name.back() == ')')) {
-      auto tokens = split(name.substr(1, name.size() - 2), ',');
+      auto tokens = phosg::split(name.substr(1, name.size() - 2), ',');
       if (tokens.size() != expected_count) {
         throw runtime_error("incorrect number of registers in REG_SET_FIXED");
       }
       for (auto& token : tokens) {
-        strip_trailing_whitespace(token);
-        strip_leading_whitespace(token);
+        phosg::strip_trailing_whitespace(token);
+        phosg::strip_leading_whitespace(token);
         regs.emplace_back(parse_reg(token));
         if (regs.size() > 1) {
           reg_assigner.constrain(regs.at(regs.size() - 2), regs.back());
         }
       }
     } else {
-      auto tokens = split(name, '-');
+      auto tokens = phosg::split(name, '-');
       if (tokens.size() == 1) {
         regs.emplace_back(parse_reg(tokens[0], false));
         while (regs.size() < expected_count) {
@@ -2193,7 +2193,7 @@ std::string assemble_quest_script(const std::string& text, const std::string& in
   // Assemble code segment
   bool version_has_args = F_HAS_ARGS & v_flag(quest_version);
   const auto& opcodes = opcodes_by_name_for_version(quest_version);
-  StringWriter code_w;
+  phosg::StringWriter code_w;
   for (size_t line_num = 1; line_num <= lines.size(); line_num++) {
     try {
       const auto& line = lines[line_num - 1];
@@ -2201,7 +2201,7 @@ std::string assemble_quest_script(const std::string& text, const std::string& in
         continue;
       }
 
-      if (ends_with(line, ":")) {
+      if (phosg::ends_with(line, ":")) {
         size_t at_offset = line.find('@');
         string label_name = line.substr(0, (at_offset == string::npos) ? (line.size() - 1) : at_offset);
         labels_by_name.at(label_name)->offset = code_w.size();
@@ -2209,20 +2209,20 @@ std::string assemble_quest_script(const std::string& text, const std::string& in
       }
 
       if (line[0] == '.') {
-        if (starts_with(line, ".data ")) {
-          code_w.write(parse_data_string(line.substr(6)));
-        } else if (starts_with(line, ".zero ")) {
+        if (phosg::starts_with(line, ".data ")) {
+          code_w.write(phosg::parse_data_string(line.substr(6)));
+        } else if (phosg::starts_with(line, ".zero ")) {
           size_t size = stoull(line.substr(6), nullptr, 0);
           code_w.extend_by(size, 0x00);
-        } else if (starts_with(line, ".include_bin ")) {
+        } else if (phosg::starts_with(line, ".include_bin ")) {
           string filename = line.substr(13);
-          strip_whitespace(filename);
-          code_w.write(load_file(include_directory + "/" + filename));
-        } else if (starts_with(line, ".include_native ")) {
+          phosg::strip_whitespace(filename);
+          code_w.write(phosg::load_file(include_directory + "/" + filename));
+        } else if (phosg::starts_with(line, ".include_native ")) {
 #ifdef HAVE_RESOURCE_FILE
           string filename = line.substr(16);
-          strip_whitespace(filename);
-          string native_text = load_file(include_directory + "/" + filename);
+          phosg::strip_whitespace(filename);
+          string native_text = phosg::load_file(include_directory + "/" + filename);
           string code;
           if (is_ppc(quest_version)) {
             code = std::move(ResourceDASM::PPC32Emulator::assemble(native_text).code);
@@ -2241,7 +2241,7 @@ std::string assemble_quest_script(const std::string& text, const std::string& in
         continue;
       }
 
-      auto line_tokens = split(line, ' ', 1);
+      auto line_tokens = phosg::split(line, ' ', 1);
       const auto& opcode_def = opcodes.at(line_tokens.at(0));
 
       bool use_args = version_has_args && (opcode_def->flags & F_ARGS);
@@ -2255,26 +2255,26 @@ std::string assemble_quest_script(const std::string& text, const std::string& in
 
       if (opcode_def->args.empty()) {
         if (line_tokens.size() > 1) {
-          throw runtime_error(string_printf("(line %zu) arguments not allowed for %s", line_num, opcode_def->name));
+          throw runtime_error(phosg::string_printf("(line %zu) arguments not allowed for %s", line_num, opcode_def->name));
         }
         continue;
       }
 
       if (line_tokens.size() < 2) {
-        throw runtime_error(string_printf("(line %zu) arguments required for %s", line_num, opcode_def->name));
+        throw runtime_error(phosg::string_printf("(line %zu) arguments required for %s", line_num, opcode_def->name));
       }
-      strip_trailing_whitespace(line_tokens[1]);
-      strip_leading_whitespace(line_tokens[1]);
+      phosg::strip_trailing_whitespace(line_tokens[1]);
+      phosg::strip_leading_whitespace(line_tokens[1]);
 
-      if (starts_with(line_tokens[1], "...")) {
+      if (phosg::starts_with(line_tokens[1], "...")) {
         if (!use_args) {
-          throw runtime_error(string_printf("(line %zu) \'...\' can only be used with F_ARGS opcodes", line_num));
+          throw runtime_error(phosg::string_printf("(line %zu) \'...\' can only be used with F_ARGS opcodes", line_num));
         }
 
       } else { // Not "..."
-        auto args = split_context(line_tokens[1], ',');
+        auto args = phosg::split_context(line_tokens[1], ',');
         if (args.size() != opcode_def->args.size()) {
-          throw runtime_error(string_printf("(line %zu) incorrect argument count for %s", line_num, opcode_def->name));
+          throw runtime_error(phosg::string_printf("(line %zu) incorrect argument count for %s", line_num, opcode_def->name));
         }
 
         for (size_t z = 0; z < args.size(); z++) {
@@ -2282,8 +2282,8 @@ std::string assemble_quest_script(const std::string& text, const std::string& in
 
           string& arg = args[z];
           const auto& arg_def = opcode_def->args[z];
-          strip_trailing_whitespace(arg);
-          strip_leading_whitespace(arg);
+          phosg::strip_trailing_whitespace(arg);
+          phosg::strip_leading_whitespace(arg);
 
           try {
             auto add_cstr = [&](const string& text) -> void {
@@ -2374,7 +2374,7 @@ std::string assemble_quest_script(const std::string& text, const std::string& in
                 if (write_as_str) {
                   if (arg[0] == '\"') {
                     code_w.put_u8(0x4E); // arg_pushs
-                    add_cstr(parse_data_string(arg));
+                    add_cstr(phosg::parse_data_string(arg));
                   } else {
                     throw runtime_error("invalid argument syntax");
                   }
@@ -2402,10 +2402,10 @@ std::string assemble_quest_script(const std::string& text, const std::string& in
               };
 
               auto split_set = [&](const string& text) -> vector<string> {
-                if (!starts_with(text, "[") || !ends_with(text, "]")) {
+                if (!phosg::starts_with(text, "[") || !phosg::ends_with(text, "]")) {
                   throw runtime_error("incorrect syntax for set-valued argument");
                 }
-                auto values = split(text.substr(1, text.size() - 2), ',');
+                auto values = phosg::split(text.substr(1, text.size() - 2), ',');
                 if (values.size() > 0xFF) {
                   throw runtime_error("too many labels in set-valued argument");
                 }
@@ -2421,8 +2421,8 @@ std::string assemble_quest_script(const std::string& text, const std::string& in
                   auto label_names = split_set(arg);
                   code_w.put_u8(label_names.size());
                   for (auto name : label_names) {
-                    strip_trailing_whitespace(name);
-                    strip_leading_whitespace(name);
+                    phosg::strip_trailing_whitespace(name);
+                    phosg::strip_leading_whitespace(name);
                     add_label(name, false);
                   }
                   break;
@@ -2441,8 +2441,8 @@ std::string assemble_quest_script(const std::string& text, const std::string& in
                   auto regs = split_set(arg);
                   code_w.put_u8(regs.size());
                   for (auto reg_arg : regs) {
-                    strip_trailing_whitespace(reg_arg);
-                    strip_leading_whitespace(reg_arg);
+                    phosg::strip_trailing_whitespace(reg_arg);
+                    phosg::strip_leading_whitespace(reg_arg);
                     add_reg(parse_reg(reg_arg), false);
                   }
                   break;
@@ -2460,14 +2460,14 @@ std::string assemble_quest_script(const std::string& text, const std::string& in
                   code_w.put_u32l(stof(arg, nullptr));
                   break;
                 case Type::CSTRING:
-                  add_cstr(parse_data_string(arg));
+                  add_cstr(phosg::parse_data_string(arg));
                   break;
                 default:
                   throw logic_error("unknown argument type");
               }
             }
           } catch (const exception& e) {
-            throw runtime_error(string_printf("(arg %zu) %s", z + 1, e.what()));
+            throw runtime_error(phosg::string_printf("(arg %zu) %s", z + 1, e.what()));
           }
         }
       }
@@ -2481,7 +2481,7 @@ std::string assemble_quest_script(const std::string& text, const std::string& in
       }
 
     } catch (const exception& e) {
-      throw runtime_error(string_printf("(line %zu) %s", line_num, e.what()));
+      throw runtime_error(phosg::string_printf("(line %zu) %s", line_num, e.what()));
     }
   }
   while (code_w.size() & 3) {
@@ -2524,7 +2524,7 @@ std::string assemble_quest_script(const std::string& text, const std::string& in
   }
 
   // Generate header
-  StringWriter w;
+  phosg::StringWriter w;
   switch (quest_version) {
     case Version::DC_NTE: {
       PSOQuestHeaderDCNTE header;

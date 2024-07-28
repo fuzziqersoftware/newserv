@@ -25,7 +25,7 @@ public:
   void print(FILE* stream) const;
 
 protected:
-  template <bool IsBigEndian, size_t StringTableCount, size_t TokenCount>
+  template <bool BE, size_t StringTableCount, size_t TokenCount>
   void parse_non_windows_t(const std::string& data, bool use_sjis);
   template <typename RootT, size_t TokenCount>
   void parse_windows_t(const std::string& data, const std::vector<std::string>* unitxt_collection);

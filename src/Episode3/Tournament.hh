@@ -49,7 +49,7 @@ public:
     bool is_com() const;
     bool is_human() const;
 
-    JSON json() const;
+    phosg::JSON json() const;
   };
 
   struct Team : public std::enable_shared_from_this<Team> {
@@ -115,11 +115,11 @@ public:
   Tournament(
       std::shared_ptr<const MapIndex> map_index,
       std::shared_ptr<const COMDeckIndex> com_deck_index,
-      const JSON& json);
+      const phosg::JSON& json);
   ~Tournament() = default;
   void init();
 
-  JSON json() const;
+  phosg::JSON json() const;
 
   inline const std::string& get_name() const {
     return this->name;
@@ -165,11 +165,11 @@ public:
 private:
   void create_bracket_matches();
 
-  PrefixedLogger log;
+  phosg::PrefixedLogger log;
 
   std::shared_ptr<const MapIndex> map_index;
   std::shared_ptr<const COMDeckIndex> com_deck_index;
-  JSON source_json;
+  phosg::JSON source_json;
   std::string name;
   std::shared_ptr<const MapIndex::Map> map;
   Rules rules;

@@ -37,6 +37,6 @@ struct PSOGCObjectGraph {
   std::unordered_map<uint32_t, std::shared_ptr<Object>> all_objects;
   std::unordered_map<uint32_t, std::shared_ptr<VTable>> all_vtables;
 
-  std::shared_ptr<Object> parse_object_memo(StringReader& r, uint32_t addr);
-  std::shared_ptr<VTable> parse_vtable_memo(StringReader& r, uint32_t addr);
+  std::shared_ptr<Object> parse_object_memo(phosg::StringReader& r, uint32_t addr);
+  std::shared_ptr<VTable> parse_vtable_memo(phosg::StringReader& r, uint32_t addr);
 };

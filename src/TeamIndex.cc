@@ -12,7 +12,7 @@
 
 using namespace std;
 
-TeamIndex::Team::Member::Member(const JSON& json)
+TeamIndex::Team::Member::Member(const phosg::JSON& json)
     : flags(json.get_int("Flags", 0)),
       points(json.get_int("Points", 0)),
       name(json.get_string("Name", "")) {
@@ -23,8 +23,8 @@ TeamIndex::Team::Member::Member(const JSON& json)
   }
 }
 
-JSON TeamIndex::Team::Member::json() const {
-  return JSON::dict({
+phosg::JSON TeamIndex::Team::Member::json() const {
+  return phosg::JSON::dict({
       {"AccountID", this->account_id},
       {"Flags", this->flags},
       {"Points", this->points},
@@ -47,15 +47,15 @@ TeamIndex::Team::Team(uint32_t team_id) : Team() {
 }
 
 string TeamIndex::Team::json_filename() const {
-  return string_printf("system/teams/%08" PRIX32 ".json", this->team_id);
+  return phosg::string_printf("system/teams/%08" PRIX32 ".json", this->team_id);
 }
 
 string TeamIndex::Team::flag_filename() const {
-  return string_printf("system/teams/%08" PRIX32 ".bmp", this->team_id);
+  return phosg::string_printf("system/teams/%08" PRIX32 ".bmp", this->team_id);
 }
 
 void TeamIndex::Team::load_config() {
-  auto json = JSON::parse(load_file(this->json_filename()));
+  auto json = phosg::JSON::parse(phosg::load_file(this->json_filename()));
   this->name = json.get_string("Name");
   this->spent_points = json.get_int("SpentPoints");
   this->points = 0;
@@ -78,26 +78,26 @@ void TeamIndex::Team::load_config() {
 }
 
 void TeamIndex::Team::save_config() const {
-  JSON members_json = JSON::list();
+  phosg::JSON members_json = phosg::JSON::list();
   for (const auto& it : this->members) {
     members_json.emplace_back(it.second.json());
   }
-  JSON reward_keys_json = JSON::list();
+  phosg::JSON reward_keys_json = phosg::JSON::list();
   for (const auto& it : this->reward_keys) {
     reward_keys_json.emplace_back(it);
   }
-  JSON root = JSON::dict({
+  phosg::JSON root = phosg::JSON::dict({
       {"Name", this->name},
       {"SpentPoints", this->spent_points},
       {"Members", std::move(members_json)},
       {"RewardKeys", std::move(reward_keys_json)},
       {"RewardFlags", this->reward_flags},
   });
-  save_file(this->json_filename(), root.serialize(JSON::SerializeOption::FORMAT | JSON::SerializeOption::HEX_INTEGERS | JSON::SerializeOption::ESCAPE_CONTROLS_ONLY));
+  phosg::save_file(this->json_filename(), root.serialize(phosg::JSON::SerializeOption::FORMAT | phosg::JSON::SerializeOption::HEX_INTEGERS | phosg::JSON::SerializeOption::ESCAPE_CONTROLS_ONLY));
 }
 
 void TeamIndex::Team::load_flag() {
-  Image img(this->flag_filename());
+  phosg::Image img(this->flag_filename());
   if (img.get_width() != 32 || img.get_height() != 32) {
     throw runtime_error("incorrect flag image dimensions");
   }
@@ -113,13 +113,13 @@ void TeamIndex::Team::save_flag() const {
   if (!this->flag_data) {
     return;
   }
-  Image img(32, 32, true);
+  phosg::Image img(32, 32, true);
   for (size_t y = 0; y < 32; y++) {
     for (size_t x = 0; x < 32; x++) {
       img.write_pixel(x, y, decode_argb1555_to_rgba8888(this->flag_data->at(y * 0x20 + x)));
     }
   }
-  img.save(this->flag_filename(), Image::Format::WINDOWS_BITMAP);
+  img.save(this->flag_filename(), phosg::Image::Format::WINDOWS_BITMAP);
 }
 
 void TeamIndex::Team::delete_files() const {
@@ -205,7 +205,7 @@ bool TeamIndex::Team::can_promote_leader() const {
   return this->num_leaders() < this->max_leaders();
 }
 
-TeamIndex::Reward::Reward(uint32_t menu_item_id, const JSON& def_json)
+TeamIndex::Reward::Reward(uint32_t menu_item_id, const phosg::JSON& def_json)
     : menu_item_id(menu_item_id),
       key(def_json.get_string("Key")),
       name(def_json.get_string("Name")),
@@ -223,12 +223,12 @@ TeamIndex::Reward::Reward(uint32_t menu_item_id, const JSON& def_json)
   } catch (const out_of_range&) {
   }
   try {
-    this->reward_item = ItemData::from_data(parse_data_string(def_json.get_string("RewardItem")));
+    this->reward_item = ItemData::from_data(phosg::parse_data_string(def_json.get_string("RewardItem")));
   } catch (const out_of_range&) {
   }
 }
 
-TeamIndex::TeamIndex(const string& directory, const JSON& reward_defs_json)
+TeamIndex::TeamIndex(const string& directory, const phosg::JSON& reward_defs_json)
     : directory(directory),
       next_team_id(1) {
   uint32_t reward_menu_item_id = 0;
@@ -236,16 +236,16 @@ TeamIndex::TeamIndex(const string& directory, const JSON& reward_defs_json)
     this->reward_defs.emplace_back(reward_menu_item_id++, *it);
   }
 
-  if (!isdir(this->directory)) {
+  if (!phosg::isdir(this->directory)) {
     mkdir(this->directory.c_str(), 0755);
     return;
   }
-  for (const auto& filename : list_directory(this->directory)) {
+  for (const auto& filename : phosg::list_directory(this->directory)) {
     string file_path = this->directory + "/" + filename;
     if (filename == "base.json") {
-      auto json = JSON::parse(load_file(file_path));
+      auto json = phosg::JSON::parse(phosg::load_file(file_path));
       this->next_team_id = json.get_int("NextTeamID");
-    } else if (ends_with(filename, ".json")) {
+    } else if (phosg::ends_with(filename, ".json")) {
       try {
         uint32_t team_id = stoul(filename.substr(0, filename.size() - 5), nullptr, 16);
         auto team = make_shared<Team>(team_id);
@@ -302,7 +302,7 @@ vector<shared_ptr<const TeamIndex::Team>> TeamIndex::all() const {
 
 shared_ptr<const TeamIndex::Team> TeamIndex::create(const string& name, uint32_t master_account_id, const string& master_name) {
   auto team = make_shared<Team>(this->next_team_id++);
-  save_file(this->directory + "/base.json", JSON::dict({{"NextTeamID", this->next_team_id}}).serialize());
+  phosg::save_file(this->directory + "/base.json", phosg::JSON::dict({{"NextTeamID", this->next_team_id}}).serialize());
 
   Team::Member m;
   m.account_id = master_account_id;

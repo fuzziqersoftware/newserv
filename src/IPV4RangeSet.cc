@@ -4,10 +4,10 @@
 
 using namespace std;
 
-IPV4RangeSet::IPV4RangeSet(const JSON& json) {
+IPV4RangeSet::IPV4RangeSet(const phosg::JSON& json) {
   for (const auto& it : json.as_list()) {
     // String should be of the form a.b.c.d or a.b.c.d/e
-    auto tokens = split(it->as_string(), '/');
+    auto tokens = phosg::split(it->as_string(), '/');
 
     size_t mask_bits;
     if (tokens.size() == 1) {
@@ -21,7 +21,7 @@ IPV4RangeSet::IPV4RangeSet(const JSON& json) {
       throw runtime_error("invalid IPv4 address range");
     }
 
-    auto addr_tokens = split(tokens[0], '.');
+    auto addr_tokens = phosg::split(tokens[0], '.');
     if (addr_tokens.size() != 4) {
       throw runtime_error("invalid IPv4 address");
     }
@@ -40,12 +40,12 @@ IPV4RangeSet::IPV4RangeSet(const JSON& json) {
   }
 }
 
-JSON IPV4RangeSet::json() const {
-  auto ret = JSON::list();
+phosg::JSON IPV4RangeSet::json() const {
+  auto ret = phosg::JSON::list();
   for (const auto& it : this->ranges) {
     uint32_t addr = it.first;
     uint8_t mask_bits = it.second;
-    ret.emplace_back(string_printf("%hhu.%hhu.%hhu.%hhu/%hhu",
+    ret.emplace_back(phosg::string_printf("%hhu.%hhu.%hhu.%hhu/%hhu",
         static_cast<uint8_t>((addr >> 24) & 0xFF),
         static_cast<uint8_t>((addr >> 16) & 0xFF),
         static_cast<uint8_t>((addr >> 8) & 0xFF),

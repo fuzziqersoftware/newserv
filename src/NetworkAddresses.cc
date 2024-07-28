@@ -19,8 +19,8 @@ using namespace std;
 uint32_t resolve_address(const char* address) {
   struct addrinfo* res0;
   if (getaddrinfo(address, nullptr, nullptr, &res0)) {
-    auto e = string_for_error(errno);
-    throw runtime_error(string_printf(
+    auto e = phosg::string_for_error(errno);
+    throw runtime_error(phosg::string_printf(
         "can\'t resolve hostname %s: %s", address, e.c_str()));
   }
 
@@ -32,7 +32,7 @@ uint32_t resolve_address(const char* address) {
     }
   }
   if (!res4) {
-    throw runtime_error(string_printf(
+    throw runtime_error(phosg::string_printf(
         "can\'t resolve hostname %s: no usable data", address));
   }
 
@@ -43,8 +43,8 @@ uint32_t resolve_address(const char* address) {
 map<string, uint32_t> get_local_addresses() {
   struct ifaddrs* ifa_raw;
   if (getifaddrs(&ifa_raw)) {
-    auto s = string_for_error(errno);
-    throw runtime_error(string_printf("failed to get interface addresses: %s", s.c_str()));
+    auto s = phosg::string_for_error(errno);
+    throw runtime_error(phosg::string_printf("failed to get interface addresses: %s", s.c_str()));
   }
 
   unique_ptr<struct ifaddrs, void (*)(struct ifaddrs*)> ifa(ifa_raw, freeifaddrs);
@@ -80,7 +80,7 @@ bool is_local_address(const sockaddr_storage& daddr) {
 }
 
 string string_for_address(uint32_t address) {
-  return string_printf("%hhu.%hhu.%hhu.%hhu",
+  return phosg::string_printf("%hhu.%hhu.%hhu.%hhu",
       static_cast<uint8_t>(address >> 24), static_cast<uint8_t>(address >> 16),
       static_cast<uint8_t>(address >> 8), static_cast<uint8_t>(address));
 }

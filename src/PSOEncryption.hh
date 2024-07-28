@@ -12,6 +12,7 @@
 
 #include "Compression.hh"
 #include "Text.hh"
+#include "Types.hh"
 
 class PSOEncryption {
 public:
@@ -48,9 +49,9 @@ public:
   void encrypt_big_endian_minus(void* data, size_t size, bool advance = true);
   void encrypt_both_endian(void* le_data, void* be_data, size_t size, bool advance = true);
 
-  template <bool IsBigEndian>
+  template <bool BE>
   void encrypt_t(void* data, size_t size, bool advance = true);
-  template <bool IsBigEndian>
+  template <bool BE>
   void encrypt_minus_t(void* data, size_t size, bool advance = true);
 
   uint32_t next(bool advance = true);
@@ -253,11 +254,10 @@ void decrypt_trivial_gci_data(void* data, size_t size, uint8_t basis);
 uint32_t encrypt_challenge_time(uint16_t value);
 uint16_t decrypt_challenge_time(uint32_t value);
 
-template <bool IsBigEndian>
+template <bool BE>
 class ChallengeTimeT {
 private:
-  using U32T = typename std::conditional<IsBigEndian, be_uint32_t, le_uint32_t>::type;
-  U32T value;
+  U32T<BE> value;
 
 public:
   ChallengeTimeT() = default;
@@ -287,8 +287,8 @@ public:
     this->value = ((v == 0) || (v == 0xFFFF)) ? 0 : encrypt_challenge_time(v);
   }
 
-  operator ChallengeTimeT<!IsBigEndian>() const {
-    ChallengeTimeT<!IsBigEndian> ret;
+  operator ChallengeTimeT<!BE>() const {
+    ChallengeTimeT<!BE> ret;
     ret.store_raw(this->value);
     return ret;
   }
@@ -305,19 +305,17 @@ struct DecryptedPR2 {
   size_t decompressed_size;
 };
 
-template <bool IsBigEndian>
+template <bool BE>
 DecryptedPR2 decrypt_pr2_data(const std::string& data) {
-  using U32T = std::conditional_t<IsBigEndian, be_uint32_t, le_uint32_t>;
-
   if (data.size() < 8) {
     throw std::runtime_error("not enough data for PR2 header");
   }
-  StringReader r(data);
+  phosg::StringReader r(data);
   DecryptedPR2 ret = {
       .compressed_data = data.substr(8),
-      .decompressed_size = r.get<U32T>()};
-  PSOV2Encryption crypt(r.get<U32T>());
-  if (IsBigEndian) {
+      .decompressed_size = r.get<U32T<BE>>()};
+  PSOV2Encryption crypt(r.get<U32T<BE>>());
+  if (BE) {
     crypt.encrypt_big_endian(ret.compressed_data.data(), ret.compressed_data.size());
   } else {
     crypt.decrypt(ret.compressed_data.data(), ret.compressed_data.size());
@@ -325,9 +323,9 @@ DecryptedPR2 decrypt_pr2_data(const std::string& data) {
   return ret;
 }
 
-template <bool IsBigEndian>
+template <bool BE>
 std::string decrypt_and_decompress_pr2_data(const std::string& data) {
-  auto decrypted = decrypt_pr2_data<IsBigEndian>(data);
+  auto decrypted = decrypt_pr2_data<BE>(data);
   std::string decompressed = prs_decompress(decrypted.compressed_data);
   if (decompressed.size() != decrypted.decompressed_size) {
     throw std::runtime_error("decompressed size does not match expected size");
@@ -335,18 +333,16 @@ std::string decrypt_and_decompress_pr2_data(const std::string& data) {
   return decompressed;
 }
 
-template <bool IsBigEndian>
+template <bool BE>
 std::string encrypt_pr2_data(const std::string& data, size_t decompressed_size, uint32_t seed) {
-  using U32T = std::conditional_t<IsBigEndian, be_uint32_t, le_uint32_t>;
-
-  StringWriter w;
-  w.put<U32T>(decompressed_size);
-  w.put<U32T>(seed);
+  phosg::StringWriter w;
+  w.put<U32T<BE>>(decompressed_size);
+  w.put<U32T<BE>>(seed);
   w.write(data);
 
   std::string ret = std::move(w.str());
   PSOV2Encryption crypt(seed);
-  if (IsBigEndian) {
+  if (BE) {
     crypt.encrypt_big_endian(ret.data() + 8, ret.size() - 8);
   } else {
     crypt.decrypt(ret.data() + 8, ret.size() - 8);
@@ -355,5 +351,5 @@ std::string encrypt_pr2_data(const std::string& data, size_t decompressed_size, 
 }
 
 inline uint32_t random_from_optional_crypt(std::shared_ptr<PSOLFGEncryption> random_crypt) {
-  return random_crypt ? random_crypt->next() : random_object<uint32_t>();
+  return random_crypt ? random_crypt->next() : phosg::random_object<uint32_t>();
 }

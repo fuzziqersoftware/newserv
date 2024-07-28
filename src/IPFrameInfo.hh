@@ -161,8 +161,8 @@ struct FrameInfo {
 
   std::string header_str() const;
 
-  inline StringReader read_payload() const {
-    return StringReader(this->payload, this->payload_size);
+  inline phosg::StringReader read_payload() const {
+    return phosg::StringReader(this->payload, this->payload_size);
   }
 
   void truncate(size_t new_total_size);

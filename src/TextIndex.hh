@@ -13,7 +13,7 @@
 class TextSet {
 public:
   virtual ~TextSet() = default;
-  virtual JSON json() const;
+  virtual phosg::JSON json() const;
 
   size_t count(size_t collection_index) const;
   size_t count() const;
@@ -33,8 +33,8 @@ protected:
   std::vector<std::vector<std::string>> collections;
 
   TextSet() = default;
-  TextSet(const JSON& json);
-  TextSet(JSON&& json);
+  TextSet(const phosg::JSON& json);
+  TextSet(phosg::JSON&& json);
 
   void ensure_slot_exists(size_t collection_index, size_t string_index);
   void ensure_collection_exists(size_t collection_index);
@@ -42,8 +42,8 @@ protected:
 
 class UnicodeTextSet : public TextSet {
 public:
-  explicit UnicodeTextSet(const JSON& json) : TextSet(json) {}
-  explicit UnicodeTextSet(JSON&& json) : TextSet(json) {}
+  explicit UnicodeTextSet(const phosg::JSON& json) : TextSet(json) {}
+  explicit UnicodeTextSet(phosg::JSON&& json) : TextSet(json) {}
   explicit UnicodeTextSet(const std::string& unitxt_prs_data);
   virtual ~UnicodeTextSet() = default;
   std::string serialize() const;
@@ -51,8 +51,8 @@ public:
 
 class BinaryTextSet : public TextSet {
 public:
-  explicit BinaryTextSet(const JSON& json) : TextSet(json) {}
-  explicit BinaryTextSet(JSON&& json) : TextSet(json) {}
+  explicit BinaryTextSet(const phosg::JSON& json) : TextSet(json) {}
+  explicit BinaryTextSet(phosg::JSON&& json) : TextSet(json) {}
   BinaryTextSet(const std::string& pr2_data, size_t collection_count, bool has_rel_footer, bool is_sjis);
   ~BinaryTextSet() = default;
   // TODO: Implement serialize functions
@@ -62,12 +62,12 @@ class BinaryTextAndKeyboardsSet : public TextSet {
 public:
   using Keyboard = parray<parray<uint16_t, 0x10>, 7>;
 
-  explicit BinaryTextAndKeyboardsSet(const JSON& json);
-  explicit BinaryTextAndKeyboardsSet(JSON&& json);
+  explicit BinaryTextAndKeyboardsSet(const phosg::JSON& json);
+  explicit BinaryTextAndKeyboardsSet(phosg::JSON&& json);
   BinaryTextAndKeyboardsSet(const std::string& pr2_data, bool big_endian, bool is_sjis);
   ~BinaryTextAndKeyboardsSet() = default;
 
-  virtual JSON json() const;
+  virtual phosg::JSON json() const;
 
   const Keyboard& get_keyboard(size_t kb_index) const;
   void set_keyboard(size_t kb_index, const Keyboard& kb);
@@ -80,9 +80,9 @@ public:
   std::pair<std::string, std::string> serialize(bool big_endian, bool is_sjis) const;
 
 protected:
-  template <bool IsBigEndian>
+  template <bool BE>
   void parse_t(const std::string& pr2_data, bool is_sjis);
-  template <bool IsBigEndian>
+  template <bool BE>
   std::pair<std::string, std::string> serialize_t(bool is_sjis) const;
 
   std::vector<std::unique_ptr<Keyboard>> keyboards;
@@ -106,6 +106,6 @@ public:
 protected:
   static uint32_t key_for_set(Version version, uint8_t language);
 
-  PrefixedLogger log;
+  phosg::PrefixedLogger log;
   std::unordered_map<uint32_t, std::shared_ptr<const TextSet>> sets;
 };

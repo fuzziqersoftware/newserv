@@ -123,7 +123,7 @@ ssize_t Card::apply_abnormal_condition(
     int8_t dice_roll_value,
     int8_t random_percent) {
   auto s = this->server();
-  auto log = s->log_stack(string_printf("apply_abnormal_condition(%02hhX, @%04X, @%04X, %hd, %hhd, %hhd): ", def_effect_index, target_card_ref, sc_card_ref, value, dice_roll_value, random_percent));
+  auto log = s->log_stack(phosg::string_printf("apply_abnormal_condition(%02hhX, @%04X, @%04X, %hd, %hhd, %hhd): ", def_effect_index, target_card_ref, sc_card_ref, value, dice_roll_value, random_percent));
   bool is_nte = s->options.is_nte();
 
   ssize_t existing_cond_index;
@@ -298,7 +298,7 @@ void Card::commit_attack(
     size_t strike_number,
     int16_t* out_effective_damage) {
   auto s = this->server();
-  auto log = s->log_stack(string_printf("commit_attack(@%04hX #%04hX, @%04hX #%04hX => %hd (str%zu)): ", this->get_card_ref(), this->get_card_id(), attacker_card->get_card_ref(), attacker_card->get_card_id(), damage, strike_number));
+  auto log = s->log_stack(phosg::string_printf("commit_attack(@%04hX #%04hX, @%04hX #%04hX => %hd (str%zu)): ", this->get_card_ref(), this->get_card_id(), attacker_card->get_card_ref(), attacker_card->get_card_id(), damage, strike_number));
   bool is_nte = s->options.is_nte();
 
   int16_t effective_damage = damage;
@@ -507,7 +507,7 @@ void Card::execute_attack(shared_ptr<Card> attacker_card) {
   }
 
   auto s = this->server();
-  auto log = s->log_stack(string_printf("execute_attack(@%04X #%04X, @%04X #%04X): ", this->get_card_ref(), this->get_card_id(), attacker_card->get_card_ref(), attacker_card->get_card_id()));
+  auto log = s->log_stack(phosg::string_printf("execute_attack(@%04X #%04X, @%04X #%04X): ", this->get_card_ref(), this->get_card_id(), attacker_card->get_card_ref(), attacker_card->get_card_id()));
   bool is_nte = s->options.is_nte();
 
   this->card_flags &= 0xFFFFFFF3;
@@ -905,7 +905,7 @@ void Card::clear_action_chain_and_metadata_and_most_flags() {
 
 void Card::compute_action_chain_results(bool apply_action_conditions, bool ignore_this_card_ap_tp) {
   auto s = this->server();
-  auto log = s->log_stack(string_printf("compute_action_chain_results(@%04hX #%04hX): ", this->get_card_ref(), this->get_card_id()));
+  auto log = s->log_stack(phosg::string_printf("compute_action_chain_results(@%04hX #%04hX): ", this->get_card_ref(), this->get_card_id()));
   bool is_nte = s->options.is_nte();
 
   this->action_chain.compute_attack_medium(s);
@@ -914,7 +914,7 @@ void Card::compute_action_chain_results(bool apply_action_conditions, bool ignor
   this->action_chain.chain.tp_effect_bonus = 0;
 
   log.debug("(initial) medium=%s, strike_count=%hhu, ap_effect_bonus=%hhd, tp_effect_bonus=%hhd",
-      name_for_enum(this->action_chain.chain.attack_medium),
+      phosg::name_for_enum(this->action_chain.chain.attack_medium),
       this->action_chain.chain.strike_count,
       this->action_chain.chain.ap_effect_bonus,
       this->action_chain.chain.tp_effect_bonus);
@@ -1220,7 +1220,7 @@ void Card::move_phase_before() {
 
 void Card::unknown_80236374(shared_ptr<Card> other_card, const ActionState* as) {
   auto s = this->server();
-  auto log = s->log_stack(string_printf("unknown_80236374(@%04hX #%04hX, @%04hX #%04hX): ", this->get_card_ref(), this->get_card_id(), other_card->get_card_ref(), other_card->get_card_id()));
+  auto log = s->log_stack(phosg::string_printf("unknown_80236374(@%04hX #%04hX, @%04hX #%04hX): ", this->get_card_ref(), this->get_card_id(), other_card->get_card_ref(), other_card->get_card_id()));
 
   auto check_card = [&](shared_ptr<Card> card) -> void {
     if (card) {
@@ -1361,8 +1361,8 @@ bool Card::is_guard_item() const {
 bool Card::unknown_80236554(shared_ptr<Card> other_card, const ActionState* as) {
   auto s = this->server();
   auto log = s->log_stack(other_card
-          ? string_printf("unknown_80236554(@%04hX #%04hX, @%04hX #%04hX): ", this->get_card_ref(), this->get_card_id(), other_card->get_card_ref(), other_card->get_card_id())
-          : string_printf("unknown_80236554(@%04hX #%04hX, null): ", this->get_card_ref(), this->get_card_id()));
+          ? phosg::string_printf("unknown_80236554(@%04hX #%04hX, @%04hX #%04hX): ", this->get_card_ref(), this->get_card_id(), other_card->get_card_ref(), other_card->get_card_id())
+          : phosg::string_printf("unknown_80236554(@%04hX #%04hX, null): ", this->get_card_ref(), this->get_card_id()));
   if (as) {
     string as_str = as->str(s);
     log.debug("as = %s", as_str.c_str());
@@ -1439,7 +1439,7 @@ void Card::apply_attack_result() {
   auto ps = this->player_state();
   bool is_nte = s->options.is_nte();
 
-  auto log = s->log_stack(string_printf("apply_attack_result(@%04hX #%04hX): ", this->get_card_ref(), this->get_card_id()));
+  auto log = s->log_stack(phosg::string_printf("apply_attack_result(@%04hX #%04hX): ", this->get_card_ref(), this->get_card_id()));
   if (!this->action_chain.can_apply_attack()) {
     return;
   }

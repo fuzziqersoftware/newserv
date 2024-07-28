@@ -4,12 +4,13 @@
 #include "EnemyType.hh"
 #include "GSLArchive.hh"
 #include "StaticGameData.hh"
+#include "Types.hh"
 
 using namespace std;
 
 template <typename IntT, size_t Count>
-JSON to_json(const parray<IntT, Count>& v) {
-  auto ret = JSON::list();
+phosg::JSON to_json(const parray<IntT, Count>& v) {
+  auto ret = phosg::JSON::list();
   for (size_t z = 0; z < Count; z++) {
     ret.emplace_back(v[z]);
   }
@@ -17,7 +18,7 @@ JSON to_json(const parray<IntT, Count>& v) {
 }
 
 template <typename IntT, size_t Count>
-void from_json_into(const JSON& json, parray<IntT, Count>& ret) {
+void from_json_into(const phosg::JSON& json, parray<IntT, Count>& ret) {
   if (json.size() != Count) {
     throw runtime_error("incorrect array length");
   }
@@ -27,8 +28,8 @@ void from_json_into(const JSON& json, parray<IntT, Count>& ret) {
 }
 
 template <typename IntT, size_t Count>
-JSON to_json(const parray<CommonItemSet::Table::Range<IntT>, Count>& v) {
-  auto ret = JSON::list();
+phosg::JSON to_json(const parray<CommonItemSet::Table::Range<IntT>, Count>& v) {
+  auto ret = phosg::JSON::list();
   for (size_t z = 0; z < Count; z++) {
     ret.emplace_back(to_json(v[z]));
   }
@@ -36,7 +37,7 @@ JSON to_json(const parray<CommonItemSet::Table::Range<IntT>, Count>& v) {
 }
 
 template <typename IntT, size_t Count>
-void from_json_into(const JSON& json, parray<CommonItemSet::Table::Range<IntT>, Count>& ret) {
+void from_json_into(const phosg::JSON& json, parray<CommonItemSet::Table::Range<IntT>, Count>& ret) {
   if (json.size() != Count) {
     throw runtime_error("incorrect array length");
   }
@@ -46,16 +47,16 @@ void from_json_into(const JSON& json, parray<CommonItemSet::Table::Range<IntT>, 
 }
 
 template <typename IntT>
-JSON to_json(const CommonItemSet::Table::Range<IntT>& v) {
+phosg::JSON to_json(const CommonItemSet::Table::Range<IntT>& v) {
   if (v.min == v.max) {
-    return JSON(v.min);
+    return phosg::JSON(v.min);
   } else {
-    return JSON::list({v.min, v.max});
+    return phosg::JSON::list({v.min, v.max});
   }
 }
 
 template <typename IntT>
-void from_json_into(const JSON& json, CommonItemSet::Table::Range<IntT>& ret) {
+void from_json_into(const phosg::JSON& json, CommonItemSet::Table::Range<IntT>& ret) {
   if (json.is_int()) {
     IntT v = json.as_int();
     ret.min = v;
@@ -71,8 +72,8 @@ void from_json_into(const JSON& json, CommonItemSet::Table::Range<IntT>& ret) {
 }
 
 template <typename IntT, size_t Count1, size_t Count2>
-JSON to_json(const parray<parray<IntT, Count2>, Count1>& v) {
-  auto ret = JSON::list();
+phosg::JSON to_json(const parray<parray<IntT, Count2>, Count1>& v) {
+  auto ret = phosg::JSON::list();
   for (size_t z = 0; z < Count1; z++) {
     ret.emplace_back(to_json(v[z]));
   }
@@ -80,7 +81,7 @@ JSON to_json(const parray<parray<IntT, Count2>, Count1>& v) {
 }
 
 template <typename IntT, size_t Count1, size_t Count2>
-void from_json_into(const JSON& json, parray<parray<IntT, Count2>, Count1>& ret) {
+void from_json_into(const phosg::JSON& json, parray<parray<IntT, Count2>, Count1>& ret) {
   if (json.size() != Count1) {
     throw runtime_error("incorrect array length");
   }
@@ -90,7 +91,7 @@ void from_json_into(const JSON& json, parray<parray<IntT, Count2>, Count1>& ret)
 }
 
 template <typename IntT, size_t Count1, size_t Count2>
-void from_json_into(const JSON& json, parray<parray<CommonItemSet::Table::Range<IntT>, Count2>, Count1>& ret) {
+void from_json_into(const phosg::JSON& json, parray<parray<CommonItemSet::Table::Range<IntT>, Count2>, Count1>& ret) {
   if (json.size() != Count1) {
     throw runtime_error("incorrect array length");
   }
@@ -99,7 +100,7 @@ void from_json_into(const JSON& json, parray<parray<CommonItemSet::Table::Range<
   }
 }
 
-CommonItemSet::Table::Table(const JSON& json, Episode episode)
+CommonItemSet::Table::Table(const phosg::JSON& json, Episode episode)
     : episode(episode) {
   from_json_into(json.at("BaseWeaponTypeProbTable"), this->base_weapon_type_prob_table);
   from_json_into(json.at("SubtypeBaseTable"), this->subtype_base_table);
@@ -128,7 +129,7 @@ CommonItemSet::Table::Table(const JSON& json, Episode episode)
     static const array<Episode, 3> episodes = {Episode::EP1, Episode::EP2, Episode::EP4};
     for (Episode episode : episodes) {
       for (auto type : enemy_types_for_rare_table_index(episode, z)) {
-        string name = string_printf("%s:%s", abbreviation_for_episode(episode), name_for_enum(type));
+        string name = phosg::string_printf("%s:%s", abbreviation_for_episode(episode), phosg::name_for_enum(type));
         from_json_into(*enemy_meseta_ranges_json.at(name), this->enemy_meseta_ranges[z]);
         this->enemy_type_drop_probs[z] = enemy_type_drop_probs_json.at(name)->as_int();
         this->enemy_item_classes[z] = enemy_item_classes_json.at(name)->as_int();
@@ -170,7 +171,7 @@ void CommonItemSet::Table::print(FILE* stream) const {
       if (!enemies_str.empty()) {
         enemies_str += ", ";
       }
-      enemies_str += name_for_enum(enemy_type);
+      enemies_str += phosg::name_for_enum(enemy_type);
     }
     if (drop_probs[z]) {
       fprintf(stream, "  %02zX  %5hu  %5hu  %3hhu%%  %02hX:%s  %s\n",
@@ -335,22 +336,22 @@ void CommonItemSet::Table::print(FILE* stream) const {
   }
 }
 
-JSON CommonItemSet::Table::json() const {
-  JSON enemy_meseta_ranges_json = JSON::dict();
-  JSON enemy_type_drop_probs_json = JSON::dict();
-  JSON enemy_item_classes_json = JSON::dict();
+phosg::JSON CommonItemSet::Table::json() const {
+  phosg::JSON enemy_meseta_ranges_json = phosg::JSON::dict();
+  phosg::JSON enemy_type_drop_probs_json = phosg::JSON::dict();
+  phosg::JSON enemy_item_classes_json = phosg::JSON::dict();
   for (size_t z = 0; z < 0x64; z++) {
     static const array<Episode, 3> episodes = {Episode::EP1, Episode::EP2, Episode::EP4};
     for (Episode episode : episodes) {
       for (auto type : enemy_types_for_rare_table_index(episode, z)) {
-        string name = string_printf("%s:%s", abbreviation_for_episode(episode), name_for_enum(type));
+        string name = phosg::string_printf("%s:%s", abbreviation_for_episode(episode), phosg::name_for_enum(type));
         enemy_meseta_ranges_json.emplace(name, to_json(this->enemy_meseta_ranges[z]));
         enemy_type_drop_probs_json.emplace(name, this->enemy_type_drop_probs[z]);
         enemy_item_classes_json.emplace(name, this->enemy_item_classes[z]);
       }
     }
   }
-  return JSON::dict({
+  return phosg::JSON::dict({
       {"BaseWeaponTypeProbTable", to_json(this->base_weapon_type_prob_table)},
       {"SubtypeBaseTable", to_json(this->subtype_base_table)},
       {"SubtypeAreaLengthTable", to_json(this->subtype_area_length_table)},
@@ -376,16 +377,16 @@ JSON CommonItemSet::Table::json() const {
   });
 }
 
-JSON CommonItemSet::json() const {
-  auto modes_dict = JSON::dict();
+phosg::JSON CommonItemSet::json() const {
+  auto modes_dict = phosg::JSON::dict();
   static const array<GameMode, 4> modes = {GameMode::NORMAL, GameMode::BATTLE, GameMode::CHALLENGE, GameMode::SOLO};
   for (const auto& mode : modes) {
-    auto episodes_dict = JSON::dict();
+    auto episodes_dict = phosg::JSON::dict();
     static const array<Episode, 3> episodes = {Episode::EP1, Episode::EP2, Episode::EP4};
     for (const auto& episode : episodes) {
-      auto difficulty_dict = JSON::dict();
+      auto difficulty_dict = phosg::JSON::dict();
       for (uint8_t difficulty = 0; difficulty < 4; difficulty++) {
-        auto section_id_dict = JSON::dict();
+        auto section_id_dict = phosg::JSON::dict();
         for (uint8_t section_id = 0; section_id < 10; section_id++) {
           try {
             auto table = this->get_table(episode, mode, difficulty, section_id);
@@ -423,7 +424,7 @@ void CommonItemSet::print(FILE* stream) const {
   }
 }
 
-CommonItemSet::Table::Table(const StringReader& r, bool is_big_endian, bool is_v3, Episode episode)
+CommonItemSet::Table::Table(const phosg::StringReader& r, bool is_big_endian, bool is_v3, Episode episode)
     : episode(episode) {
   if (is_big_endian) {
     this->parse_itempt_t<true>(r, is_v3);
@@ -432,12 +433,9 @@ CommonItemSet::Table::Table(const StringReader& r, bool is_big_endian, bool is_v
   }
 }
 
-template <bool IsBigEndian>
-void CommonItemSet::Table::parse_itempt_t(const StringReader& r, bool is_v3) {
-  using U16T = typename std::conditional<IsBigEndian, be_uint16_t, le_uint16_t>::type;
-  using U32T = typename std::conditional<IsBigEndian, be_uint32_t, le_uint32_t>::type;
-
-  const auto& offsets = r.pget<OffsetsT<IsBigEndian>>(r.pget<U32T>(r.size() - 0x10));
+template <bool BE>
+void CommonItemSet::Table::parse_itempt_t(const phosg::StringReader& r, bool is_v3) {
+  const auto& offsets = r.pget<OffsetsT<BE>>(r.pget<U32T<BE>>(r.size() - 0x10));
 
   this->base_weapon_type_prob_table = r.pget<parray<uint8_t, 0x0C>>(offsets.base_weapon_type_prob_table_offset);
   this->subtype_base_table = r.pget<parray<int8_t, 0x0C>>(offsets.subtype_base_table_offset);
@@ -445,14 +443,14 @@ void CommonItemSet::Table::parse_itempt_t(const StringReader& r, bool is_v3) {
   this->grind_prob_table = r.pget<parray<parray<uint8_t, 4>, 9>>(offsets.grind_prob_table_offset);
   this->armor_shield_type_index_prob_table = r.pget<parray<uint8_t, 0x05>>(offsets.armor_shield_type_index_prob_table_offset);
   this->armor_slot_count_prob_table = r.pget<parray<uint8_t, 0x05>>(offsets.armor_slot_count_prob_table_offset);
-  const auto& data = r.pget<parray<Range<U16T>, 0x64>>(offsets.enemy_meseta_ranges_offset);
+  const auto& data = r.pget<parray<Range<U16T<BE>>, 0x64>>(offsets.enemy_meseta_ranges_offset);
   for (size_t z = 0; z < data.size(); z++) {
     this->enemy_meseta_ranges[z] = Range<uint16_t>{data[z].min, data[z].max};
   }
   this->enemy_type_drop_probs = r.pget<parray<uint8_t, 0x64>>(offsets.enemy_type_drop_probs_offset);
   this->enemy_item_classes = r.pget<parray<uint8_t, 0x64>>(offsets.enemy_item_classes_offset);
   {
-    const auto& data = r.pget<parray<Range<U16T>, 0x0A>>(offsets.box_meseta_ranges_offset);
+    const auto& data = r.pget<parray<Range<U16T<BE>>, 0x0A>>(offsets.box_meseta_ranges_offset);
     for (size_t z = 0; z < data.size(); z++) {
       this->box_meseta_ranges[z] = Range<uint16_t>{data[z].min, data[z].max};
     }
@@ -466,7 +464,7 @@ void CommonItemSet::Table::parse_itempt_t(const StringReader& r, bool is_v3) {
       }
     }
   } else { // V3
-    const auto& data = r.pget<parray<parray<U16T, 6>, 0x17>>(offsets.bonus_value_prob_table_offset);
+    const auto& data = r.pget<parray<parray<U16T<BE>, 6>, 0x17>>(offsets.bonus_value_prob_table_offset);
     for (size_t z = 0; z < data.size(); z++) {
       for (size_t x = 0; x < data[z].size(); x++) {
         this->bonus_value_prob_table[z][x] = data[z][x];
@@ -478,7 +476,7 @@ void CommonItemSet::Table::parse_itempt_t(const StringReader& r, bool is_v3) {
   this->special_mult = r.pget<parray<uint8_t, 0x0A>>(offsets.special_mult_offset);
   this->special_percent = r.pget<parray<uint8_t, 0x0A>>(offsets.special_percent_offset);
   {
-    const auto& data = r.pget<parray<parray<U16T, 0x0A>, 0x1C>>(offsets.tool_class_prob_table_offset);
+    const auto& data = r.pget<parray<parray<U16T<BE>, 0x0A>, 0x1C>>(offsets.tool_class_prob_table_offset);
     for (size_t z = 0; z < data.size(); z++) {
       for (size_t x = 0; x < data[z].size(); x++) {
         this->tool_class_prob_table[z][x] = data[z][x];
@@ -505,7 +503,7 @@ shared_ptr<const CommonItemSet::Table> CommonItemSet::get_table(
   try {
     return this->tables.at(this->key_for_table(episode, mode, difficulty, secid));
   } catch (const out_of_range&) {
-    throw runtime_error(string_printf("common item table not available for episode=%s, mode=%s, difficulty=%hu, secid=%hu",
+    throw runtime_error(phosg::string_printf("common item table not available for episode=%s, mode=%s, difficulty=%hu, secid=%hu",
         name_for_episode(episode), name_for_mode(mode), difficulty, secid));
   }
 }
@@ -518,7 +516,7 @@ AFSV2CommonItemSet::AFSV2CommonItemSet(
   for (size_t difficulty = 0; difficulty < 4; difficulty++) {
     for (size_t section_id = 0; section_id < 10; section_id++) {
       auto entry = pt_afs.get(difficulty * 10 + section_id);
-      StringReader r(entry.first, entry.second);
+      phosg::StringReader r(entry.first, entry.second);
       auto table = make_shared<Table>(r, false, false, Episode::EP1);
       this->tables.emplace(this->key_for_table(Episode::EP1, GameMode::NORMAL, difficulty, section_id), table);
       this->tables.emplace(this->key_for_table(Episode::EP1, GameMode::BATTLE, difficulty, section_id), table);
@@ -556,7 +554,7 @@ GSLV3V4CommonItemSet::GSLV3V4CommonItemSet(std::shared_ptr<const std::string> gs
       default:
         throw runtime_error("invalid episode");
     }
-    return string_printf(
+    return phosg::string_printf(
         "ItemPT%s%s%c%1hhu.rel",
         is_challenge ? "c" : "",
         episode_token,
@@ -568,7 +566,7 @@ GSLV3V4CommonItemSet::GSLV3V4CommonItemSet(std::shared_ptr<const std::string> gs
   for (Episode episode : episodes) {
     for (size_t difficulty = 0; difficulty < 4; difficulty++) {
       for (size_t section_id = 0; section_id < 10; section_id++) {
-        StringReader r;
+        phosg::StringReader r;
         try {
           r = gsl.get_reader(filename_for_table(episode, difficulty, section_id, false));
         } catch (const exception&) {
@@ -602,7 +600,7 @@ GSLV3V4CommonItemSet::GSLV3V4CommonItemSet(std::shared_ptr<const std::string> gs
   }
 }
 
-JSONCommonItemSet::JSONCommonItemSet(const JSON& json) {
+JSONCommonItemSet::JSONCommonItemSet(const phosg::JSON& json) {
   for (const auto& mode_it : json.as_dict()) {
     static const unordered_map<string, GameMode> mode_keys(
         {{"Normal", GameMode::NORMAL}, {"Battle", GameMode::BATTLE}, {"Challenge", GameMode::CHALLENGE}, {"Solo", GameMode::SOLO}});
@@ -791,7 +789,7 @@ const ProbabilityTable<uint8_t, 100>& TekkerAdjustmentSet::get_bonus_delta_prob_
 }
 
 int8_t TekkerAdjustmentSet::get_luck(uint32_t start_offset, uint8_t delta_index) const {
-  StringReader sub_r = r.sub(start_offset);
+  phosg::StringReader sub_r = r.sub(start_offset);
   while (!sub_r.eof()) {
     const auto& entry = sub_r.get<LuckTableEntry>();
     if (entry.delta_index == 0xFF) {

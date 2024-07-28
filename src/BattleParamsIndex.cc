@@ -54,7 +54,7 @@ BattleParamsIndex::BattleParamsIndex(
     for (uint8_t episode = 0; episode < 3; episode++) {
       auto& file = this->files[is_solo][episode];
       if (file.data->size() < sizeof(Table)) {
-        throw runtime_error(string_printf(
+        throw runtime_error(phosg::string_printf(
             "battle params table size is incorrect (expected %zX bytes, have %zX bytes; is_solo=%hhu, episode=%hhu)",
             sizeof(Table), file.data->size(), is_solo, episode));
       }

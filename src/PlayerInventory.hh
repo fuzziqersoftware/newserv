@@ -45,16 +45,14 @@ class ItemParameterTable;
 //   items[13].extension_data2 through items[15].extension_data2:
 //       Unknown. These are not an array, but do appear to be related.
 
-template <bool IsBigEndian>
+template <bool BE>
 struct PlayerInventoryItemT {
-  using U32T = typename std::conditional<IsBigEndian, be_uint32_t, le_uint32_t>::type;
-
   /* 00 */ uint8_t present = 0;
   /* 01 */ uint8_t unknown_a1 = 0;
   // See note above about these fields
   /* 02 */ uint8_t extension_data1 = 0;
   /* 03 */ uint8_t extension_data2 = 0;
-  /* 04 */ U32T flags = 0; // 8 = equipped
+  /* 04 */ U32T<BE> flags = 0; // 8 = equipped
   /* 08 */ ItemData data;
   /* 1C */
 
@@ -68,15 +66,15 @@ struct PlayerInventoryItemT {
         flags(equipped ? 8 : 0),
         data(item) {}
 
-  operator PlayerInventoryItemT<!IsBigEndian>() const {
-    PlayerInventoryItemT<!IsBigEndian> ret;
+  operator PlayerInventoryItemT<!BE>() const {
+    PlayerInventoryItemT<!BE> ret;
     ret.present = this->present;
     ret.unknown_a1 = this->unknown_a1;
     ret.extension_data1 = this->extension_data1;
     ret.extension_data2 = this->extension_data2;
     ret.flags = this->flags.load();
     ret.data = this->data;
-    ret.data.id.store_raw(bswap32(ret.data.id.load_raw()));
+    ret.data.id.store_raw(phosg::bswap32(ret.data.id.load_raw()));
     return ret;
   }
 } __packed__;
@@ -85,21 +83,19 @@ using PlayerInventoryItemBE = PlayerInventoryItemT<true>;
 check_struct_size(PlayerInventoryItem, 0x1C);
 check_struct_size(PlayerInventoryItemBE, 0x1C);
 
-template <bool IsBigEndian>
+template <bool BE>
 struct PlayerBankItemT {
-  using U16T = typename std::conditional<IsBigEndian, be_uint16_t, le_uint16_t>::type;
-
   /* 00 */ ItemData data;
-  /* 14 */ U16T amount = 0;
-  /* 16 */ U16T present = 0;
+  /* 14 */ U16T<BE> amount = 0;
+  /* 16 */ U16T<BE> present = 0;
   /* 18 */
 
-  inline bool operator<(const PlayerBankItemT<IsBigEndian>& other) const {
+  inline bool operator<(const PlayerBankItemT<BE>& other) const {
     return this->data < other.data;
   }
 
-  operator PlayerBankItemT<!IsBigEndian>() const {
-    PlayerBankItemT<!IsBigEndian> ret;
+  operator PlayerBankItemT<!BE>() const {
+    PlayerBankItemT<!BE> ret;
     ret.data = this->data;
     ret.amount = this->amount.load();
     ret.present = this->present.load();
@@ -111,13 +107,13 @@ using PlayerBankItemBE = PlayerBankItemT<true>;
 check_struct_size(PlayerBankItem, 0x18);
 check_struct_size(PlayerBankItemBE, 0x18);
 
-template <bool IsBigEndian>
+template <bool BE>
 struct PlayerInventoryT {
   /* 0000 */ uint8_t num_items = 0;
   /* 0001 */ uint8_t hp_from_materials = 0;
   /* 0002 */ uint8_t tp_from_materials = 0;
   /* 0003 */ uint8_t language = 0;
-  /* 0004 */ parray<PlayerInventoryItemT<IsBigEndian>, 30> items;
+  /* 0004 */ parray<PlayerInventoryItemT<BE>, 30> items;
   /* 034C */
 
   size_t find_item(uint32_t item_id) const {
@@ -287,8 +283,8 @@ struct PlayerInventoryT {
     }
   }
 
-  operator PlayerInventoryT<!IsBigEndian>() const {
-    PlayerInventoryT<!IsBigEndian> ret;
+  operator PlayerInventoryT<!BE>() const {
+    PlayerInventoryT<!BE> ret;
     ret.num_items = this->num_items;
     ret.hp_from_materials = this->hp_from_materials;
     ret.tp_from_materials = this->tp_from_materials;
@@ -302,13 +298,11 @@ using PlayerInventoryBE = PlayerInventoryT<true>;
 check_struct_size(PlayerInventory, 0x34C);
 check_struct_size(PlayerInventoryBE, 0x34C);
 
-template <size_t SlotCount, bool IsBigEndian>
+template <size_t SlotCount, bool BE>
 struct PlayerBankT {
-  using U32T = typename std::conditional<IsBigEndian, be_uint32_t, le_uint32_t>::type;
-
-  /* 0000 */ U32T num_items = 0;
-  /* 0004 */ U32T meseta = 0;
-  /* 0008 */ parray<PlayerBankItemT<IsBigEndian>, SlotCount> items;
+  /* 0000 */ U32T<BE> num_items = 0;
+  /* 0004 */ U32T<BE> meseta = 0;
+  /* 0008 */ parray<PlayerBankItemT<BE>, SlotCount> items;
   /* 05A8 for 60 items (v1/v2), 12C8 for 200 items (v3/v4) */
 
   void add_item(const ItemData& item, const ItemData::StackLimits& limits) {
@@ -408,9 +402,9 @@ struct PlayerBankT {
     }
   }
 
-  template <size_t DestSlotCount, bool DestIsBigEndian>
-  operator PlayerBankT<DestSlotCount, DestIsBigEndian>() const {
-    PlayerBankT<DestSlotCount, DestIsBigEndian> ret;
+  template <size_t DestSlotCount, bool DestBE>
+  operator PlayerBankT<DestSlotCount, DestBE>() const {
+    PlayerBankT<DestSlotCount, DestBE> ret;
     ret.num_items = std::min<size_t>(ret.items.size(), this->num_items.load());
     ret.meseta = this->meseta.load();
     for (size_t z = 0; z < std::min<size_t>(ret.items.size(), this->items.size()); z++) {

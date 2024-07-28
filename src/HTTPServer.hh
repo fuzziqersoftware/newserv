@@ -28,7 +28,7 @@ public:
   void schedule_stop();
   void wait_for_stop();
 
-  void send_rare_drop_notification(std::shared_ptr<const JSON> message);
+  void send_rare_drop_notification(std::shared_ptr<const phosg::JSON> message);
 
 protected:
   class http_error : public std::runtime_error {
@@ -94,21 +94,21 @@ protected:
       const std::string& key,
       const std::string* _default = nullptr);
 
-  static JSON generate_quest_json_st(std::shared_ptr<const Quest> q);
-  static JSON generate_client_config_json_st(const Client::Config& config);
-  static JSON generate_account_json_st(std::shared_ptr<const Account> a);
-  static JSON generate_game_client_json_st(std::shared_ptr<const Client> c, std::shared_ptr<const ItemNameIndex> item_name_index);
-  static JSON generate_proxy_client_json_st(std::shared_ptr<const ProxyServer::LinkedSession> ses);
-  static JSON generate_lobby_json_st(std::shared_ptr<const Lobby> l, std::shared_ptr<const ItemNameIndex> item_name_index);
-  JSON generate_game_server_clients_json() const;
-  JSON generate_proxy_server_clients_json() const;
-  JSON generate_server_info_json() const;
-  JSON generate_lobbies_json() const;
-  JSON generate_summary_json() const;
-  JSON generate_all_json() const;
+  static phosg::JSON generate_quest_json_st(std::shared_ptr<const Quest> q);
+  static phosg::JSON generate_client_config_json_st(const Client::Config& config);
+  static phosg::JSON generate_account_json_st(std::shared_ptr<const Account> a);
+  static phosg::JSON generate_game_client_json_st(std::shared_ptr<const Client> c, std::shared_ptr<const ItemNameIndex> item_name_index);
+  static phosg::JSON generate_proxy_client_json_st(std::shared_ptr<const ProxyServer::LinkedSession> ses);
+  static phosg::JSON generate_lobby_json_st(std::shared_ptr<const Lobby> l, std::shared_ptr<const ItemNameIndex> item_name_index);
+  phosg::JSON generate_game_server_clients_json() const;
+  phosg::JSON generate_proxy_server_clients_json() const;
+  phosg::JSON generate_server_info_json() const;
+  phosg::JSON generate_lobbies_json() const;
+  phosg::JSON generate_summary_json() const;
+  phosg::JSON generate_all_json() const;
 
-  JSON generate_ep3_cards_json(bool trial) const;
-  JSON generate_common_tables_json() const;
-  JSON generate_rare_tables_json() const;
-  JSON generate_rare_table_json(const std::string& table_name) const;
+  phosg::JSON generate_ep3_cards_json(bool trial) const;
+  phosg::JSON generate_common_tables_json() const;
+  phosg::JSON generate_rare_tables_json() const;
+  phosg::JSON generate_rare_table_json(const std::string& table_name) const;
 };

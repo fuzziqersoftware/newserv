@@ -18,7 +18,7 @@ enum class CompressPhase {
 };
 
 template <>
-const char* name_for_enum<CompressPhase>(CompressPhase v);
+const char* phosg::name_for_enum<CompressPhase>(CompressPhase v);
 
 typedef std::function<void(CompressPhase phase, size_t input_progress, size_t input_size, size_t output_size)> ProgressCallback;
 
@@ -146,7 +146,7 @@ private:
   WrappedLog<0x101> forward_log;
   IndexedLog<0x2000> reverse_log;
 
-  StringWriter output;
+  phosg::StringWriter output;
 };
 
 // These functions use PRSCompressor to compress a buffer of data. This is

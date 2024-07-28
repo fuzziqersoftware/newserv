@@ -6,9 +6,9 @@
 class IPV4RangeSet {
 public:
   IPV4RangeSet() = default;
-  explicit IPV4RangeSet(const JSON& json);
+  explicit IPV4RangeSet(const phosg::JSON& json);
 
-  JSON json() const;
+  phosg::JSON json() const;
 
   bool check(uint32_t addr) const;
   bool check(const struct sockaddr_storage& ss) const;

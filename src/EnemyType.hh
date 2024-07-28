@@ -5,6 +5,7 @@
 #include <phosg/Tools.hh>
 
 #include "StaticGameData.hh"
+#include "Types.hh"
 
 enum class EnemyType {
   UNKNOWN = -1,
@@ -138,9 +139,9 @@ enum class EnemyType {
 };
 
 template <>
-const char* name_for_enum<EnemyType>(EnemyType type);
+const char* phosg::name_for_enum<EnemyType>(EnemyType type);
 template <>
-EnemyType enum_for_name<EnemyType>(const char* name);
+EnemyType phosg::enum_for_name<EnemyType>(const char* name);
 
 bool enemy_type_valid_for_episode(Episode episode, EnemyType enemy_type);
 uint8_t battle_param_index_for_enemy_type(Episode episode, EnemyType enemy_type);

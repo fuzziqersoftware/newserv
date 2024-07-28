@@ -54,13 +54,13 @@ LevelTableV2::LevelTableV2(const string& data, bool compressed) {
     le_uint32_t unknown_a12; // -> u32[3] -> (0x14-byte struct)[0x0F]
   } __packed_ws__(Offsets, 0x40);
 
-  StringReader r;
+  phosg::StringReader r;
   string decompressed_data;
   if (compressed) {
     decompressed_data = prs_decompress(data);
-    r = StringReader(decompressed_data);
+    r = phosg::StringReader(decompressed_data);
   } else {
-    r = StringReader(data);
+    r = phosg::StringReader(data);
   }
 
   const auto& offsets = r.pget<Offsets>(r.pget_u32l(r.size() - 0x10));
@@ -94,7 +94,7 @@ const LevelStatsDelta& LevelTableV2::stats_delta_for_level(uint8_t char_class, u
 }
 
 LevelTableV3BE::LevelTableV3BE(const string& data, bool encrypted) {
-  StringReader r;
+  phosg::StringReader r;
   string decompressed_data;
   if (encrypted) {
     auto decrypted = decrypt_pr2_data<true>(data);
@@ -102,9 +102,9 @@ LevelTableV3BE::LevelTableV3BE(const string& data, bool encrypted) {
     if (decompressed_data.size() != decrypted.decompressed_size) {
       throw runtime_error("decompressed data size does not match expected size");
     }
-    r = StringReader(decompressed_data);
+    r = phosg::StringReader(decompressed_data);
   } else {
-    r = StringReader(data);
+    r = phosg::StringReader(data);
   }
 
   // The GC format is very simple (but everything is big-endian):
@@ -160,13 +160,13 @@ LevelTableV4::LevelTableV4(const string& data, bool compressed) {
     le_uint32_t level_deltas; // -> u32[12] -> LevelStatsDelta[200]
   } __packed_ws__(Offsets, 8);
 
-  StringReader r;
+  phosg::StringReader r;
   string decompressed_data;
   if (compressed) {
     decompressed_data = prs_decompress(data);
-    r = StringReader(decompressed_data);
+    r = phosg::StringReader(decompressed_data);
   } else {
-    r = StringReader(data);
+    r = phosg::StringReader(data);
   }
 
   const auto& offsets = r.pget<Offsets>(r.pget_u32l(r.size() - 0x10));

@@ -36,7 +36,7 @@ ItemCreator::ItemCreator(
     uint8_t section_id,
     std::shared_ptr<PSOLFGEncryption> opt_rand_crypt,
     shared_ptr<const BattleRules> restrictions)
-    : log(string_printf("[ItemCreator:%s/%s/%s/%c/%hhu] ", name_for_enum(stack_limits->version), abbreviation_for_episode(episode), abbreviation_for_mode(mode), abbreviation_for_difficulty(difficulty), section_id), lobby_log.min_level),
+    : log(phosg::string_printf("[ItemCreator:%s/%s/%s/%c/%hhu] ", phosg::name_for_enum(stack_limits->version), abbreviation_for_episode(episode), abbreviation_for_mode(mode), abbreviation_for_difficulty(difficulty), section_id), lobby_log.min_level),
       logic_version(stack_limits->version),
       stack_limits(stack_limits),
       episode(episode),
@@ -63,8 +63,8 @@ void ItemCreator::set_random_crypt(shared_ptr<PSOLFGEncryption> new_random_crypt
 void ItemCreator::set_section_id(uint8_t new_section_id) {
   if (this->section_id != new_section_id) {
     this->section_id = new_section_id;
-    this->log.prefix = string_printf("[ItemCreator:%s/%s/%s/%c/%hhu] ",
-        name_for_enum(stack_limits->version),
+    this->log.prefix = phosg::string_printf("[ItemCreator:%s/%s/%s/%c/%hhu] ",
+        phosg::name_for_enum(stack_limits->version),
         abbreviation_for_episode(episode),
         abbreviation_for_mode(mode),
         abbreviation_for_difficulty(difficulty),
@@ -298,13 +298,13 @@ ItemData ItemCreator::check_rare_specs_and_create_rare_box_item(uint8_t area_nor
   for (const auto& spec : rare_specs) {
     item = this->check_rate_and_create_rare_item(spec, area_norm);
     if (!item.empty()) {
-      if (this->log.should_log(LogLevel::INFO)) {
+      if (this->log.should_log(phosg::LogLevel::INFO)) {
         auto hex = spec.data.hex();
         this->log.info("Box spec %08" PRIX32 " produced item %s", spec.probability, hex.c_str());
       }
       break;
     }
-    if (this->log.should_log(LogLevel::INFO)) {
+    if (this->log.should_log(phosg::LogLevel::INFO)) {
       auto hex = spec.data.hex();
       this->log.info("Box spec %08" PRIX32 " did not produce item %s", spec.probability, hex.c_str());
     }
@@ -359,13 +359,13 @@ ItemData ItemCreator::check_rare_spec_and_create_rare_enemy_item(uint32_t enemy_
     for (const auto& spec : rare_specs) {
       item = this->check_rate_and_create_rare_item(spec, area_norm);
       if (!item.empty()) {
-        if (this->log.should_log(LogLevel::INFO)) {
+        if (this->log.should_log(phosg::LogLevel::INFO)) {
           auto hex = spec.data.hex();
           this->log.info("Enemy spec %08" PRIX32 " produced item %s", spec.probability, hex.c_str());
         }
         break;
       }
-      if (this->log.should_log(LogLevel::INFO)) {
+      if (this->log.should_log(phosg::LogLevel::INFO)) {
         auto hex = spec.data.hex();
         this->log.info("Enemy spec %08" PRIX32 " did not produce item %s", spec.probability, hex.c_str());
       }
