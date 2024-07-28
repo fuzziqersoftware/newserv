@@ -609,9 +609,10 @@ Some subcommands are always available. They are:
 * `$edit mat reset evade`: Clear your usage of evade materials (BB only)
 * `$edit mat reset def`: Clear your usage of def materials (BB only)
 * `$edit mat reset luck`: Clear your usage of luck materials (BB only)
-* `$edit mat reset hp`: Clear your usage of hp materials (BB only)
-* `$edit mat reset tp`: Clear your usage of tp materials (BB only)
-* `$edit mat reset all`: Clear your usage of all materials (BB only)
+* `$edit mat reset hp`: Clear your usage of HP materials (BB only)
+* `$edit mat reset tp`: Clear your usage of TP materials (BB only)
+* `$edit mat reset all`: Clear your usage of all materials except HP and TP (BB only)
+* `$edit mat reset every`: Clear your usage of all materials including HP and TP (BB only)
 * `$edit namecolor AARRGGBB`: Set your name color (AARRGGBB specified in hex)
 * `$edit language L`: Set your language (Generally only useful on BB; values for L: J = Japanese, E = English, G = German, F = French, S = Spanish, B = Simplified Chinese, T = Traditional Chinese, K = Korean)
 * `$edit name NAME`: Set your character name

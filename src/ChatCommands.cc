@@ -1358,8 +1358,17 @@ static void server_command_edit(shared_ptr<Client> c, const std::string& args) {
           p->set_material_usage(MatType::EVADE, 0);
           p->set_material_usage(MatType::DEF, 0);
           p->set_material_usage(MatType::LUCK, 0);
+        } else if (which == "every") {
+          p->set_material_usage(MatType::POWER, 0);
+          p->set_material_usage(MatType::MIND, 0);
+          p->set_material_usage(MatType::EVADE, 0);
+          p->set_material_usage(MatType::DEF, 0);
+          p->set_material_usage(MatType::LUCK, 0);
           p->set_material_usage(MatType::HP, 0);
           p->set_material_usage(MatType::TP, 0);
+        } else {
+          send_text_message(c, "$C6Invalid subcommand");
+          return;
         }
       } else {
         send_text_message(c, "$C6Invalid subcommand");
