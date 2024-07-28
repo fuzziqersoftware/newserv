@@ -1310,6 +1310,8 @@ static void server_command_edit(shared_ptr<Client> c, const std::string& args) {
   string encoded_args = phosg::tolower(args);
   vector<string> tokens = phosg::split(encoded_args, ' ');
 
+  using MatType = PSOBBCharacterFile::MaterialType;
+
   try {
     auto p = c->character();
     if (tokens.at(0) == "atp" && cheats_allowed) {
@@ -1331,10 +1333,39 @@ static void server_command_edit(shared_ptr<Client> c, const std::string& args) {
     } else if (tokens.at(0) == "exp" && cheats_allowed) {
       p->disp.stats.experience = stoul(tokens.at(1));
     } else if (tokens.at(0) == "level" && cheats_allowed) {
-      uint32_t level = stoul(tokens.at(1)) - 1;
-      auto level_table = s->level_table(c->version());
-      level_table->reset_to_base(p->disp.stats, p->disp.visual.char_class);
-      level_table->advance_to_level(p->disp.stats, level, p->disp.visual.char_class);
+      p->disp.stats.level = stoul(tokens.at(1)) - 1;
+      p->recompute_stats(s->level_table(c->version()));
+    } else if (((tokens.at(0) == "material") || (tokens.at(0) == "mat")) && !is_v1_or_v2(c->version())) {
+      if (tokens.at(1) == "reset") {
+        const auto& which = tokens.at(2);
+        if (which == "power") {
+          p->set_material_usage(MatType::POWER, 0);
+        } else if (which == "mind") {
+          p->set_material_usage(MatType::MIND, 0);
+        } else if (which == "evade") {
+          p->set_material_usage(MatType::EVADE, 0);
+        } else if (which == "def") {
+          p->set_material_usage(MatType::DEF, 0);
+        } else if (which == "luck") {
+          p->set_material_usage(MatType::LUCK, 0);
+        } else if (which == "hp") {
+          p->set_material_usage(MatType::HP, 0);
+        } else if (which == "tp") {
+          p->set_material_usage(MatType::TP, 0);
+        } else if (which == "all") {
+          p->set_material_usage(MatType::POWER, 0);
+          p->set_material_usage(MatType::MIND, 0);
+          p->set_material_usage(MatType::EVADE, 0);
+          p->set_material_usage(MatType::DEF, 0);
+          p->set_material_usage(MatType::LUCK, 0);
+          p->set_material_usage(MatType::HP, 0);
+          p->set_material_usage(MatType::TP, 0);
+        }
+      } else {
+        send_text_message(c, "$C6Invalid subcommand");
+        return;
+      }
+      p->recompute_stats(s->level_table(c->version()));
     } else if (tokens.at(0) == "namecolor") {
       uint32_t new_color;
       sscanf(tokens.at(1).c_str(), "%8X", &new_color);

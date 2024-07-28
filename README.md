@@ -553,7 +553,7 @@ Some commands only work on the game server and not on the proxy server. The chat
     * `$savechar <slot>`: Save your current character data on the server in the specified slot. See the "Server-side saves" section for more details.
     * `$loadchar <slot>`: Save your current character data on the server in the specified slot. See the "Server-side saves" section for more details.
     * `$bbchar <username> <password> <slot>`: Save your current character data on the server in a different account's BB character slots. See the "Server-side saves" section for more details.
-    * `$edit <stat> <value>`: Modify your character data. If you are on V3 (GameCube/Xbox), this command does nothing. If you are on V1 or V2 (DC or PC, not BB), your changes will be undone if you join a game - to save your changes, disconnect from the lobby. If cheats are allowed on the server, `<stat>` can be any of `atp`, `mst`, `evp`, `hp`, `dfp`, `ata`, `lck`, `meseta`, `exp`, `level`, `namecolor`, `secid`, `name`, `language`, `npc`, or `tech`. If cheats are not allowed, only `namecolor`, `name`, `language`, and `npc` can be used. Changing your character's language is only useful on BB; to do so, use a single-character language code (e.g. to switch your character to English, use `$edit language E`; for Japanese, use `$edit language J`).
+    * `$edit <stat> <value>`: Modify your character data. See "Using $edit" below for details.
 
 * Blue Burst player commands (game server only)
     * `$bank [number]`: Switch your current bank, so you can access your other character's banks (if `number` is 1-4) or your shared account bank (if `number` is 0). If `number` is not given, switch back to your current character's bank.
@@ -598,6 +598,38 @@ Some commands only work on the game server and not on the proxy server. The chat
     * `$silence <identifier>`: Silence a player (remove their ability to chat) or unsilence a player. The identifier may be the player's name or Guild Card number.
     * `$kick <identifier>`: Disconnect a player. The identifier may be the player's name or Guild Card number.
     * `$ban <duration> <identifier>`: Ban a player. The duration should be of the form `10m` (minutes), `10h` (hours), `10d` (days), `10w` (weeks), `10M` (months), or `10y` (years). (Numbers other than 10 may be used, of course.) As with `$kick`, the identifier may be the player's name or Guild Card number.
+
+### Using $edit
+
+The $edit command modifies your character data. This command doesn't work on V3 (GameCube/Xbox). If you are on V1 or V2 (DC or PC, not BB), your changes will be undone if you join a game - to save your changes, disconnect from the lobby.
+
+Some subcommands are always available. They are:
+* `$edit mat reset power`: Clear your usage of power materials (BB only)
+* `$edit mat reset mind`: Clear your usage of mind materials (BB only)
+* `$edit mat reset evade`: Clear your usage of evade materials (BB only)
+* `$edit mat reset def`: Clear your usage of def materials (BB only)
+* `$edit mat reset luck`: Clear your usage of luck materials (BB only)
+* `$edit mat reset hp`: Clear your usage of hp materials (BB only)
+* `$edit mat reset tp`: Clear your usage of tp materials (BB only)
+* `$edit mat reset all`: Clear your usage of all materials (BB only)
+* `$edit namecolor AARRGGBB`: Set your name color (AARRGGBB specified in hex)
+* `$edit language L`: Set your language (Generally only useful on BB; values for L: J = Japanese, E = English, G = German, F = French, S = Spanish, B = Simplified Chinese, T = Traditional Chinese, K = Korean)
+* `$edit name NAME`: Set your character name
+* `$edit npc NPC-NAME`: Set or remove an NPC skin on your character (NPC-NAME can be ninja, rico, sonic, knuckles, tails, flowen, elly, or none)
+
+The remaining subcommands are only available if cheat mode is enabled on the server. They are:
+* `$edit atp N`: Set your ATP to N until stats are updated (e.g. by leveling up)
+* `$edit mst N`: Set your MST to N until stats are updated
+* `$edit evp N`: Set your EVP to N until stats are updated
+* `$edit dfp N`: Set your DFP to N until stats are updated
+* `$edit ata N`: Set your ATA to N until stats are updated
+* `$edit lck N`: Set your LCK to N until stats are updated
+* `$edit hp N`: Set your MST to N until stats are updated
+* `$edit meseta N`: Set the amount of Meseta in your inventory
+* `$edit exp N`: Set your total amount of EXP (does not affect level)
+* `$edit level N`: Set your current level (recomputes stats, but does not affect EXP)
+* `$edit secid SECID-NAME`: Set your section ID
+* `$edit tech TECH-NAME LEVEL`: Set the level of one of your techniques
 
 # Non-server features
 

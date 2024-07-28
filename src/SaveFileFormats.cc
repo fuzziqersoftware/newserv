@@ -1124,11 +1124,23 @@ void PSOBBCharacterFile::import_tethealla_material_usage(std::shared_ptr<const L
   // there are no limits, and we don't want to reject legitimate characters
   // that have used more than 250 materials.
 
-  this->set_material_usage(PSOBBCharacterFile::MaterialType::POWER, pow);
-  this->set_material_usage(PSOBBCharacterFile::MaterialType::MIND, mind);
-  this->set_material_usage(PSOBBCharacterFile::MaterialType::EVADE, evade);
-  this->set_material_usage(PSOBBCharacterFile::MaterialType::DEF, def);
-  this->set_material_usage(PSOBBCharacterFile::MaterialType::LUCK, luck);
+  this->set_material_usage(MaterialType::POWER, pow);
+  this->set_material_usage(MaterialType::MIND, mind);
+  this->set_material_usage(MaterialType::EVADE, evade);
+  this->set_material_usage(MaterialType::DEF, def);
+  this->set_material_usage(MaterialType::LUCK, luck);
+}
+
+void PSOBBCharacterFile::recompute_stats(std::shared_ptr<const LevelTable> level_table) {
+  uint32_t level = this->disp.stats.level;
+  level_table->reset_to_base(this->disp.stats, this->disp.visual.char_class);
+  level_table->advance_to_level(this->disp.stats, level, this->disp.visual.char_class);
+  this->disp.stats.char_stats.atp += (this->get_material_usage(MaterialType::POWER) * 2);
+  this->disp.stats.char_stats.mst += (this->get_material_usage(MaterialType::MIND) * 2);
+  this->disp.stats.char_stats.evp += (this->get_material_usage(MaterialType::EVADE) * 2);
+  this->disp.stats.char_stats.dfp += (this->get_material_usage(MaterialType::DEF) * 2);
+  this->disp.stats.char_stats.lck += (this->get_material_usage(MaterialType::LUCK) * 2);
+  this->disp.stats.char_stats.hp += (this->get_material_usage(MaterialType::HP) * 2);
 }
 
 static uint16_t crc16(const void* data, size_t size) {
