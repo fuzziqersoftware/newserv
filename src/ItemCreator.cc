@@ -85,27 +85,33 @@ bool ItemCreator::are_rare_drops_allowed() const {
 }
 
 uint8_t ItemCreator::normalize_area_number(uint8_t area) const {
-  if (!this->restrictions || (this->restrictions->box_drop_area == 0) || (area < 0x10) || (area > 0x11)) {
+  if (this->restrictions && (this->restrictions->box_drop_area != 0)) {
+    return this->restrictions->box_drop_area - 1;
+  } else {
     switch (this->episode) {
       case Episode::EP1:
-        if (area >= 0x0F) {
+        if (area >= 0x11) {
           throw runtime_error("invalid Episode 1 area number");
         }
         switch (area) {
-          case 11:
-            return 2; // Dragon -> Cave 1
-          case 12:
-            return 5; // De Rol Le -> Mine 1
-          case 13:
-            return 7; // Vol Opt -> Ruins 1
-          case 14:
-            return 9; // Dark Falz -> Ruins 3
+          case 0x0B: // Dragon -> Cave 1
+            return 2;
+          case 0x0C: // De Rol Le -> Mine 1
+            return 5;
+          case 0x0D: // Vol Opt -> Ruins 1
+            return 7;
+          case 0x0E: // Dark Falz -> Ruins 3
+          case 0x10: // Palace -> Ruins 3
+          case 0x11: // Spaceship -> Ruins 3
+            return 9;
+          case 0x0F: // Lobby
+            throw runtime_error("visual lobby does not have item drop tables");
           default:
             return area - 1;
         }
         throw logic_error("this should be impossible");
       case Episode::EP2: {
-        static const vector<uint8_t> area_subs = {
+        static const array<uint8_t, 0x11> area_subs = {
             0x00, // 13 (VR Temple Alpha)
             0x01, // 14 (VR Temple Beta)
             0x02, // 15 (VR Spaceship Alpha)
@@ -127,7 +133,7 @@ uint8_t ItemCreator::normalize_area_number(uint8_t area) const {
         if ((area >= 0x13) && (area < 0x24)) {
           return area_subs.at(area - 0x13);
         }
-        return area - 1;
+        throw runtime_error("invalid Episode 2 area number");
       }
       case Episode::EP4:
         if (area >= 0x24 && area < 0x2D) {
@@ -137,9 +143,6 @@ uint8_t ItemCreator::normalize_area_number(uint8_t area) const {
       default:
         throw logic_error("invalid episode number");
     }
-
-  } else {
-    return this->restrictions->box_drop_area - 1;
   }
 }
 
