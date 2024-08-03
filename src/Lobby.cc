@@ -918,8 +918,9 @@ void Lobby::assign_inventory_and_bank_item_ids(shared_ptr<Client> c, bool consum
 
   if (c->log.info("Assigned inventory item IDs%s", consume_ids ? "" : " but did not mark IDs as used")) {
     c->print_inventory(stderr);
+    auto& bank = c->current_bank();
     if (p->bank.num_items) {
-      p->bank.assign_ids(0x99000000 + (c->lobby_client_id << 20));
+      bank.assign_ids(0x99000000 + (c->lobby_client_id << 20));
       c->log.info("Assigned bank item IDs");
       c->print_bank(stderr);
     } else {

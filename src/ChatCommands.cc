@@ -1480,7 +1480,11 @@ static void server_command_change_bank(shared_ptr<Client> c, const std::string& 
     throw runtime_error("invalid bank number");
   }
 
-  const auto& bank = c->current_bank();
+  auto& bank = c->current_bank();
+  bank.assign_ids(0x99000000 + (c->lobby_client_id << 20));
+  c->log.info("Assigned bank item IDs");
+  c->print_bank(stderr);
+
   send_text_message_printf(c, "%" PRIu32 " items\n%" PRIu32 " Meseta", bank.num_items.load(), bank.meseta.load());
 }
 
