@@ -1045,6 +1045,10 @@ PlayerBank200& Client::current_bank() {
   return this->character()->bank;
 }
 
+const PlayerBank200& Client::current_bank() const {
+  return const_cast<Client*>(this)->current_bank();
+}
+
 std::shared_ptr<PSOBBCharacterFile> Client::current_bank_character() {
   return this->external_bank_character ? this->external_bank_character : this->character();
 }
@@ -1134,11 +1138,11 @@ void Client::print_inventory(FILE* stream) const {
 
 void Client::print_bank(FILE* stream) const {
   auto s = this->require_server_state();
-  auto p = this->character();
-  fprintf(stream, "[PlayerBank] Meseta: %" PRIu32 "\n", p->bank.meseta.load());
-  fprintf(stream, "[PlayerBank] %" PRIu32 " items\n", p->bank.num_items.load());
-  for (size_t x = 0; x < p->bank.num_items; x++) {
-    const auto& item = p->bank.items[x];
+  auto bank = this->current_bank();
+  fprintf(stream, "[PlayerBank] Meseta: %" PRIu32 "\n", bank.meseta.load());
+  fprintf(stream, "[PlayerBank] %" PRIu32 " items\n", bank.num_items.load());
+  for (size_t x = 0; x < bank.num_items; x++) {
+    const auto& item = bank.items[x];
     const char* present_token = item.present ? "" : " (missing present flag)";
     auto hex = item.data.hex();
     auto name = s->describe_item(this->version(), item.data, false);

@@ -390,6 +390,7 @@ public:
   void save_and_unload_character();
 
   PlayerBank200& current_bank();
+  const PlayerBank200& current_bank() const;
   std::shared_ptr<PSOBBCharacterFile> current_bank_character();
   bool use_shared_bank(); // Returns true if the bank exists; false if it was created
   void use_character_bank(int8_t bb_character_index);
