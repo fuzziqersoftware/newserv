@@ -249,6 +249,7 @@ struct Map {
     EnemyType type;
     uint8_t floor;
     uint8_t server_flags;
+    uint16_t alias_entity_id;
 
     Enemy(
         uint16_t enemy_id,
@@ -257,7 +258,8 @@ struct Map {
         uint8_t floor,
         uint16_t section,
         uint16_t wave_number,
-        EnemyType type);
+        EnemyType type,
+        uint16_t alias_entity_id);
 
     std::string str() const;
 
@@ -361,6 +363,8 @@ struct Map {
       size_t size,
       std::shared_ptr<const RareEnemyRates> rare_rates = Map::DEFAULT_RARE_ENEMIES);
 
+  const Enemy& find_enemy(uint16_t enemy_id) const;
+  Enemy& find_enemy(uint16_t enemy_id);
   const Enemy& find_enemy(uint8_t floor, EnemyType type) const;
   Enemy& find_enemy(uint8_t floor, EnemyType type);
   std::vector<Object*> get_objects(uint8_t floor, uint16_t section, uint16_t wave_number);

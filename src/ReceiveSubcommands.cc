@@ -2604,7 +2604,7 @@ DropReconcileResult reconcile_drop_request_with_map(
 
   } else {
     if (map) {
-      map_enemy = &map->enemies.at(cmd.entity_id);
+      map_enemy = &map->find_enemy(cmd.entity_id);
       log.info("Drop check for E-%hX %s", map_enemy->enemy_id, phosg::name_for_enum(map_enemy->type));
       res.effective_rt_index = rare_table_index_for_enemy_type(map_enemy->type);
       // rt_indexes in Episode 4 don't match those sent in the command; we just
@@ -2837,10 +2837,12 @@ static void on_set_quest_flag(shared_ptr<Client> c, uint8_t command, uint8_t fla
     if (boss_enemy_type != EnemyType::NONE) {
       l->log.info("Creating item from final boss (%s)", phosg::name_for_enum(boss_enemy_type));
       uint16_t enemy_id = 0xFFFF;
+      uint8_t enemy_floor = 0xFF;
       if (l->map) {
         try {
           const auto& enemy = l->map->find_enemy(c->floor, boss_enemy_type);
           enemy_id = enemy.enemy_id;
+          enemy_floor = enemy.floor;
           if (c->floor != enemy.floor) {
             l->log.warning("Floor %02" PRIX32 " from client does not match entity\'s expected floor %02hhX", c->floor, enemy.floor);
           }
@@ -2852,6 +2854,8 @@ static void on_set_quest_flag(shared_ptr<Client> c, uint8_t command, uint8_t fla
       }
 
       if (boss_enemy_type != EnemyType::NONE) {
+        auto s = c->require_server_state();
+        auto sdt = s->set_data_table(l->base_version, l->episode, l->mode, l->difficulty);
         G_StandardDropItemRequest_PC_V3_BB_6x60 drop_req = {
             {
                 {0x60, 0x06, 0x0000},
@@ -2863,7 +2867,7 @@ static void on_set_quest_flag(shared_ptr<Client> c, uint8_t command, uint8_t fla
                 2,
                 0,
             },
-            0x01,
+            sdt->default_area_for_floor(l->episode, enemy_floor),
             {}};
         on_entity_drop_item_request(c, 0x62, l->leader_id, &drop_req, sizeof(drop_req));
       }
@@ -2925,13 +2929,13 @@ static void on_set_entity_set_flag(shared_ptr<Client> c, uint8_t command, uint8_
       int32_t wave_number = -1;
       uint16_t enemy_index = cmd.header.enemy_id - 0x1000;
       try {
-        const auto& enemy = l->map->enemies.at(enemy_index);
+        const auto& enemy = l->map->find_enemy(enemy_index);
         uint16_t& set_flags = l->map->enemy_set_flags.at(enemy.set_index);
         set_flags |= cmd.flags;
         section = enemy.section;
         wave_number = enemy.wave_number;
         l->log.info("Client set set flags %04hX on E-%hX (flags are now %04hX)",
-            cmd.flags.load(), enemy_index, cmd.flags.load());
+            cmd.flags.load(), enemy.enemy_id, cmd.flags.load());
       } catch (const out_of_range&) {
         l->log.warning("Flag update refers to missing enemy");
       }
@@ -3207,11 +3211,11 @@ static void on_update_enemy_state(shared_ptr<Client> c, uint8_t command, uint8_t
     if (cmd.enemy_index >= l->map->enemies.size()) {
       return;
     }
-    auto& enemy = l->map->enemies[cmd.enemy_index];
+    auto& enemy = l->map->find_enemy(cmd.enemy_index);
     enemy.game_flags = is_big_endian(c->version()) ? bswap32(cmd.flags) : cmd.flags.load();
     enemy.total_damage = cmd.total_damage;
     enemy.set_last_hit_by_client_id(c->lobby_client_id);
-    l->log.info("E-%hX updated to damage=%hu game_flags=%08" PRIX32, cmd.enemy_index.load(), enemy.total_damage, enemy.game_flags);
+    l->log.info("E-%hX updated to damage=%hu game_flags=%08" PRIX32, enemy.enemy_id, enemy.total_damage, enemy.game_flags);
   }
 
   G_UpdateEnemyState_GC_6x0A sw_cmd = {{cmd.header.subcommand, cmd.header.size, cmd.header.enemy_id}, cmd.enemy_index, cmd.total_damage, cmd.flags.load()};
@@ -3376,7 +3380,7 @@ static void on_steal_exp_bb(shared_ptr<Client> c, uint8_t, uint8_t, void* data, 
     return;
   }
 
-  const auto& enemy = l->map->enemies.at(cmd.enemy_index);
+  const auto& enemy = l->map->find_enemy(cmd.enemy_index);
   const auto& inventory = p->inventory;
   const auto& weapon = inventory.items[inventory.find_equipped_item(EquipSlot::WEAPON)];
 
@@ -3406,10 +3410,9 @@ static void on_steal_exp_bb(shared_ptr<Client> c, uint8_t, uint8_t, void* data, 
   float ep2_factor = (l->episode == Episode::EP2) ? 1.3 : 1.0;
   uint32_t stolen_exp = max<uint32_t>(min<uint32_t>((enemy_exp * percent * ep2_factor) / 100.0f, (l->difficulty + 1) * 20), 1);
   if (c->config.check_flag(Client::Flag::DEBUG_ENABLED)) {
-    c->log.info("Stolen EXP with bp_index=%" PRIX32 " enemy_exp=%" PRIu32 " percent=%g stolen_exp=%" PRIu32,
-        bp_index, enemy_exp, percent, stolen_exp);
-    send_text_message_printf(c, "$C5+%" PRIu32 " E-%hX %s",
-        stolen_exp, cmd.enemy_index.load(), phosg::name_for_enum(enemy.type));
+    c->log.info("Stolen EXP from E-%hX with bp_index=%" PRIX32 " enemy_exp=%" PRIu32 " percent=%g stolen_exp=%" PRIu32,
+        enemy.enemy_id, bp_index, enemy_exp, percent, stolen_exp);
+    send_text_message_printf(c, "$C5+%" PRIu32 " E-%hX %s", stolen_exp, enemy.enemy_id, phosg::name_for_enum(enemy.type));
   }
   add_player_exp(c, stolen_exp);
 }
@@ -3434,9 +3437,9 @@ static void on_enemy_exp_request_bb(shared_ptr<Client> c, uint8_t, uint8_t, void
     throw runtime_error("client ID is too large");
   }
 
-  auto& e = l->map->enemies[cmd.enemy_index];
+  auto& e = l->map->find_enemy(cmd.enemy_index);
   string e_str = e.str();
-  c->log.info("EXP requested for E-%hX => %s", cmd.enemy_index.load(), e_str.c_str());
+  c->log.info("EXP requested for E-%hX => %s", e.enemy_id, e_str.c_str());
 
   // If the requesting player never hit this enemy, they are probably cheating;
   // ignore the command. Also, each player sends a 6xC8 if they ever hit the
@@ -3452,11 +3455,11 @@ static void on_enemy_exp_request_bb(shared_ptr<Client> c, uint8_t, uint8_t, void
     const auto& bp_table = s->battle_params->get_table(l->mode == GameMode::SOLO, l->episode);
     uint32_t bp_index = battle_param_index_for_enemy_type(l->episode, e.type);
     base_exp = bp_table.stats[l->difficulty][bp_index].experience;
-  } catch (const exception& e) {
+  } catch (const exception& exc) {
     if (c->config.check_flag(Client::Flag::DEBUG_ENABLED)) {
-      send_text_message_printf(c, "$C5E-%hX __MISSING__\n%s", cmd.enemy_index.load(), e.what());
+      send_text_message_printf(c, "$C5E-%hX __MISSING__\n%s", e.enemy_id, exc.what());
     } else {
-      send_text_message_printf(c, "$C4Unknown enemy killed:\n%s", e.what());
+      send_text_message_printf(c, "$C4Unknown enemy killed:\n%s", exc.what());
     }
   }
 
@@ -3499,7 +3502,7 @@ static void on_enemy_exp_request_bb(shared_ptr<Client> c, uint8_t, uint8_t, void
           send_text_message_printf(
               lc, "$C5+%" PRIu32 " E-%hX %s",
               player_exp,
-              cmd.enemy_index.load(),
+              e.enemy_id,
               phosg::name_for_enum(e.type));
         }
         if (lc->character()->disp.stats.level < 199) {

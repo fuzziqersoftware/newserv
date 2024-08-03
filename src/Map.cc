@@ -668,7 +668,8 @@ Map::Enemy::Enemy(
     uint8_t floor,
     uint16_t section,
     uint16_t wave_number,
-    EnemyType type)
+    EnemyType type,
+    uint16_t alias_entity_id)
     : source_index(source_index),
       set_index(set_index),
       enemy_id(enemy_id),
@@ -678,7 +679,8 @@ Map::Enemy::Enemy(
       wave_number(wave_number),
       type(type),
       floor(floor),
-      server_flags(0) {}
+      server_flags(0),
+      alias_entity_id(alias_entity_id) {}
 
 string Map::Enemy::str() const {
   return phosg::string_printf("[Map::Enemy E-%hX source %zX %s%s floor=%02hhX section=%04hX wave_number=%04hX server_flags=%02hhX]",
@@ -800,9 +802,9 @@ void Map::add_enemy(
   size_t set_index = this->enemy_set_flags.size();
   this->enemy_set_flags.emplace_back(0);
 
-  auto add = [&](EnemyType type) -> void {
+  auto add = [&](EnemyType type, uint16_t alias_enemy_id = 0xFFFF) -> void {
     uint16_t enemy_id = this->enemies.size();
-    this->enemies.emplace_back(enemy_id, source_index, set_index, floor, e.section, e.wave_number, type);
+    this->enemies.emplace_back(enemy_id, source_index, set_index, floor, e.section, e.wave_number, type, alias_enemy_id);
     uint64_t k = section_index_key(floor, e.section, e.wave_number);
     this->floor_section_and_wave_number_to_enemy_index.emplace(k, enemy_id);
   };
@@ -1075,27 +1077,34 @@ void Map::add_enemy(
     case 0x00C5: // Unnamed subclass of TObjEnemyCustom
       add(EnemyType::VOL_OPT_2);
       break;
-    case 0x00C8: // TBoss4DarkFalz
+    case 0x00C8: { // TBoss4DarkFalz
       if ((e.num_children != 0) && (e.num_children != 0x200)) {
         this->log.warning("DARK_FALZ has an unusual num_children (0x%hX)", e.num_children.load());
       }
-      default_num_children = -1; // Skip adding children (because we do it here)
+      uint16_t base_enemy_id = this->enemies.size();
       if (difficulty) {
         add(EnemyType::DARK_FALZ_3);
       } else {
         add(EnemyType::DARK_FALZ_2);
       }
+      default_num_children = -1; // Skip adding children (because we do it here)
       for (size_t x = 0; x < 0x1FD; x++) {
         add(difficulty == 3 ? EnemyType::DARVANT_ULTIMATE : EnemyType::DARVANT);
       }
-      add(EnemyType::DARK_FALZ_3);
-      add(EnemyType::DARK_FALZ_2);
-      add(EnemyType::DARK_FALZ_1);
+      add(EnemyType::DARK_FALZ_3, base_enemy_id);
+      add(EnemyType::DARK_FALZ_2, base_enemy_id);
+      add(EnemyType::DARK_FALZ_1, base_enemy_id);
       break;
-    case 0x00CA: // TBoss6PlotFalz
+    }
+    case 0x00CA: { // TBoss6PlotFalz
+      uint16_t base_enemy_id = this->enemies.size();
       add(EnemyType::OLGA_FLOW_2);
-      default_num_children = 0x200;
+      default_num_children = -1; // Skip adding children (because we do it here)
+      for (size_t x = 0; x < 0x200; x++) {
+        add(EnemyType::OLGA_FLOW_2, base_enemy_id);
+      }
       break;
+    }
     case 0x00CB: // TBoss7DeRolLeC
       add(EnemyType::BARBA_RAY);
       child_type = EnemyType::PIG_RAY;
@@ -1653,12 +1662,34 @@ void Map::add_entities_from_quest_data(
   }
 }
 
+const Map::Enemy& Map::find_enemy(uint16_t enemy_id) const {
+  return const_cast<Map*>(this)->find_enemy(enemy_id);
+}
+
+Map::Enemy& Map::find_enemy(uint16_t enemy_id) {
+  if (this->enemies.empty()) {
+    throw out_of_range("no enemies defined");
+  }
+  if (enemy_id >= this->enemies.size()) {
+    throw out_of_range("enemy ID out of range");
+  }
+  auto& enemy = this->enemies[enemy_id];
+  if (enemy.alias_entity_id != 0xFFFF) {
+    if (enemy.alias_entity_id >= this->enemies.size()) {
+      throw out_of_range("aliased enemy ID out of range");
+    }
+    return this->enemies[enemy.alias_entity_id];
+  } else {
+    return enemy;
+  }
+}
+
 const Map::Enemy& Map::find_enemy(uint8_t floor, EnemyType type) const {
   return const_cast<Map*>(this)->find_enemy(floor, type);
 }
 
 Map::Enemy& Map::find_enemy(uint8_t floor, EnemyType type) {
-  if (enemies.empty()) {
+  if (this->enemies.empty()) {
     throw out_of_range("no enemies defined");
   }
   // TODO: Linear search is bad here. Do something better, like binary search
