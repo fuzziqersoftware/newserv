@@ -737,7 +737,7 @@ QuestIndex::QuestIndex(
         } catch (const out_of_range&) {
         }
         try {
-          lock_status_register = metadata_json.get_bool("LockStatusRegister");
+          lock_status_register = metadata_json.get_int("LockStatusRegister");
         } catch (const out_of_range&) {
         }
       }
