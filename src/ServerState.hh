@@ -145,6 +145,8 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   std::unordered_set<uint32_t> notify_server_for_item_primary_identifiers_v4;
   bool notify_server_for_max_level_achieved = false;
   std::vector<std::shared_ptr<const PSOBBEncryption::KeyFile>> bb_private_keys;
+  std::shared_ptr<const parray<uint8_t, 0x16C>> bb_default_keyboard_config;
+  std::shared_ptr<const parray<uint8_t, 0x38>> bb_default_joystick_config;
   std::shared_ptr<const FunctionCodeIndex> function_code_index;
   std::shared_ptr<const PatchFileIndex> pc_patch_file_index;
   std::shared_ptr<const PatchFileIndex> bb_patch_file_index;
@@ -379,6 +381,7 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   void load_config_early();
   void load_config_late();
   void load_bb_private_keys(bool from_non_event_thread);
+  void load_bb_system_defaults(bool from_non_event_thread);
   void load_accounts(bool from_non_event_thread);
   void load_teams(bool from_non_event_thread);
   void load_patch_indexes(bool from_non_event_thread);

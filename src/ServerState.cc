@@ -19,7 +19,7 @@
 
 using namespace std;
 
-ServerState::QuestF960Result::QuestF960Result(const phosg::JSON& json, std::shared_ptr<const ItemNameIndex> name_index) {
+ServerState::QuestF960Result::QuestF960Result(const phosg::JSON& json, shared_ptr<const ItemNameIndex> name_index) {
   static const array<string, 7> day_names = {"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"};
   this->meseta_cost = json.get_int("MesetaCost", 0);
   this->base_probability = json.get_int("BaseProbability", 0);
@@ -754,8 +754,8 @@ void ServerState::load_config_early() {
     throw runtime_error("CLIENT drop mode cannot be allowed in V4");
   }
 
-  auto parse_quest_flag_rewrites = [&json = this->config_json](const char* key) -> std::unordered_map<uint16_t, IntegralExpression> {
-    std::unordered_map<uint16_t, IntegralExpression> ret;
+  auto parse_quest_flag_rewrites = [&json = this->config_json](const char* key) -> unordered_map<uint16_t, IntegralExpression> {
+    unordered_map<uint16_t, IntegralExpression> ret;
     try {
       for (const auto& it : json->get_dict(key)) {
         if (!phosg::starts_with(it.first, "F_")) {
@@ -967,7 +967,7 @@ void ServerState::load_config_early() {
     if (colors_json.size() != NUM_NON_PATCH_VERSIONS) {
       throw runtime_error("VersionNameColors list length is incorrect");
     }
-    auto new_colors = make_unique<std::array<uint32_t, NUM_NON_PATCH_VERSIONS>>();
+    auto new_colors = make_unique<array<uint32_t, NUM_NON_PATCH_VERSIONS>>();
     for (size_t z = 0; z < NUM_NON_PATCH_VERSIONS; z++) {
       new_colors->at(z) = colors_json.at(z)->as_int();
     }
@@ -1296,8 +1296,8 @@ void ServerState::load_config_late() {
     } catch (const out_of_range&) {
     }
 
-    auto parse_primary_identifier_list = [&](const char* key, Version base_version) -> std::unordered_set<uint32_t> {
-      std::unordered_set<uint32_t> ret;
+    auto parse_primary_identifier_list = [&](const char* key, Version base_version) -> unordered_set<uint32_t> {
+      unordered_set<uint32_t> ret;
       try {
         for (const auto& pi_json : this->config_json->get_list(key)) {
           if (pi_json->is_int()) {
@@ -1334,7 +1334,7 @@ void ServerState::load_config_late() {
 }
 
 void ServerState::load_bb_private_keys(bool from_non_event_thread) {
-  std::vector<std::shared_ptr<const PSOBBEncryption::KeyFile>> new_keys;
+  vector<shared_ptr<const PSOBBEncryption::KeyFile>> new_keys;
   for (const string& filename : phosg::list_directory("system/blueburst/keys")) {
     if (!phosg::ends_with(filename, ".nsk")) {
       continue;
@@ -1343,10 +1343,31 @@ void ServerState::load_bb_private_keys(bool from_non_event_thread) {
         phosg::load_object_file<PSOBBEncryption::KeyFile>("system/blueburst/keys/" + filename)));
     config_log.info("Loaded Blue Burst key file: %s", filename.c_str());
   }
-  config_log.info("%zu Blue Burst key file(s) loaded", this->bb_private_keys.size());
 
   auto set = [s = this->shared_from_this(), new_keys = std::move(new_keys)]() {
     s->bb_private_keys = std::move(new_keys);
+  };
+  this->forward_or_call(from_non_event_thread, std::move(set));
+}
+
+void ServerState::load_bb_system_defaults(bool from_non_event_thread) {
+  shared_ptr<const parray<uint8_t, 0x16C>> new_key_config;
+  shared_ptr<const parray<uint8_t, 0x38>> new_joystick_config;
+
+  try {
+    new_key_config = make_shared<parray<uint8_t, 0x16C>>(phosg::load_object_file<parray<uint8_t, 0x16C>>("system/blueburst/default-keyboard-config.bin"));
+    config_log.info("Default Blue Burst keyboard config is present");
+  } catch (const phosg::cannot_open_file&) {
+  }
+  try {
+    new_joystick_config = make_shared<parray<uint8_t, 0x38>>(phosg::load_object_file<parray<uint8_t, 0x38>>("system/blueburst/default-joystick-config.bin"));
+    config_log.info("Default Blue Burst joystick config is present");
+  } catch (const phosg::cannot_open_file&) {
+  }
+
+  auto set = [s = this->shared_from_this(), new_key_config = std::move(new_key_config), new_joystick_config = std::move(new_joystick_config)]() {
+    s->bb_default_keyboard_config = std::move(new_key_config);
+    s->bb_default_joystick_config = std::move(new_joystick_config);
   };
   this->forward_or_call(from_non_event_thread, std::move(set));
 }
@@ -1419,10 +1440,10 @@ void ServerState::clear_map_file_caches() {
 void ServerState::load_set_data_tables(bool from_non_event_thread) {
   config_log.info("Loading set data tables");
 
-  std::array<std::shared_ptr<const SetDataTableBase>, NUM_VERSIONS> new_tables;
-  std::array<std::shared_ptr<const SetDataTableBase>, NUM_VERSIONS> new_tables_ep1_ult;
-  std::shared_ptr<const SetDataTableBase> new_table_bb_solo;
-  std::shared_ptr<const SetDataTableBase> new_table_bb_solo_ep1_ult;
+  array<shared_ptr<const SetDataTableBase>, NUM_VERSIONS> new_tables;
+  array<shared_ptr<const SetDataTableBase>, NUM_VERSIONS> new_tables_ep1_ult;
+  shared_ptr<const SetDataTableBase> new_table_bb_solo;
+  shared_ptr<const SetDataTableBase> new_table_bb_solo_ep1_ult;
 
   auto load_table = [&](Version version) -> void {
     auto data = this->load_map_file(version, "SetDataTableOn.rel");
@@ -1609,7 +1630,7 @@ shared_ptr<ItemNameIndex> ServerState::create_item_name_index_for_version(
 }
 
 void ServerState::load_item_name_indexes(bool from_non_event_thread) {
-  std::array<std::shared_ptr<const ItemNameIndex>, NUM_VERSIONS> new_indexes;
+  array<shared_ptr<const ItemNameIndex>, NUM_VERSIONS> new_indexes;
 
   for (size_t v_s = NUM_PATCH_VERSIONS; v_s < NUM_VERSIONS; v_s++) {
     Version v = static_cast<Version>(v_s);
@@ -1690,7 +1711,7 @@ void ServerState::load_drop_tables(bool from_non_event_thread) {
   auto new_tool_random_set = make_shared<ToolRandomSet>(tool_data);
 
   config_log.info("Loading weapon tables");
-  std::array<std::shared_ptr<const WeaponRandomSet>, 4> new_weapon_random_sets;
+  array<shared_ptr<const WeaponRandomSet>, 4> new_weapon_random_sets;
   const char* filenames[4] = {
       "system/item-tables/WeaponRandomNormal-gc-v3.rel",
       "system/item-tables/WeaponRandomHard-gc-v3.rel",
@@ -1719,7 +1740,7 @@ void ServerState::load_drop_tables(bool from_non_event_thread) {
         it.second->multiply_all_rates(s->server_global_drop_rate_multiplier);
       }
     }
-    // We can't just move() new_rare_item_sets into place because its values are
+    // We can't just std::move() new_rare_item_sets into place because its values are
     // not const :(
     s->rare_item_sets.clear();
     for (auto& it : new_rare_item_sets) {
@@ -1736,7 +1757,7 @@ void ServerState::load_drop_tables(bool from_non_event_thread) {
 }
 
 void ServerState::load_item_definitions(bool from_non_event_thread) {
-  std::array<std::shared_ptr<const ItemParameterTable>, NUM_VERSIONS> new_item_parameter_tables;
+  array<shared_ptr<const ItemParameterTable>, NUM_VERSIONS> new_item_parameter_tables;
   for (size_t v_s = NUM_PATCH_VERSIONS; v_s < NUM_VERSIONS; v_s++) {
     Version v = static_cast<Version>(v_s);
     string path = phosg::string_printf("system/item-tables/ItemPMT-%s.prs", file_path_token_for_version(v));
@@ -1898,6 +1919,7 @@ void ServerState::load_all() {
   this->collect_network_addresses();
   this->load_config_early();
   this->load_bb_private_keys(false);
+  this->load_bb_system_defaults(false);
   this->load_accounts(false);
   this->clear_map_file_caches();
   this->load_patch_indexes(false);

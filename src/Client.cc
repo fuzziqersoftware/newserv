@@ -828,6 +828,13 @@ void Client::load_all_files() {
 
     if (!this->system_data) {
       this->system_data = make_shared<PSOBBBaseSystemFile>();
+      auto s = this->require_server_state();
+      if (s->bb_default_keyboard_config) {
+        this->system_data->key_config = *s->bb_default_keyboard_config;
+      }
+      if (s->bb_default_joystick_config) {
+        this->system_data->joystick_config = *s->bb_default_joystick_config;
+      }
       files_manager->set_system(sys_filename, this->system_data);
       player_data_log.info("Created new system data");
     }
