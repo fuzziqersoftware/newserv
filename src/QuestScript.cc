@@ -603,10 +603,10 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     {0xF864, "set_cmode_rank_result", {INT32, CSTRING}, F_V2_V4 | F_ARGS},
     {0xF865, "award_item_name", {}, F_V2_V4},
     {0xF866, "award_item_select", {}, F_V2_V4},
-    {0xF867, "award_item_give_to", {REG}, F_V2_V4},
+    {0xF867, "award_item_give_to", {REG}, F_V2_V4}, // Sends 07DF on BB
     {0xF868, "set_cmode_rank_threshold", {REG, REG}, F_V2_V4},
     {0xF869, "check_rank_time", {REG, REG}, F_V2_V4},
-    {0xF86A, "item_create_cmode", {{REG_SET_FIXED, 6}, REG}, F_V2_V4}, // regsA specifies item.data1[0-5]
+    {0xF86A, "item_create_cmode", {{REG_SET_FIXED, 6}, REG}, F_V2_V4}, // regsA specifies item.data1[0-5]; sends 07DF on BB
     {0xF86B, "ba_set_box_drop_area", {REG}, F_V2_V4}, // TODO: This sets override_area in TItemDropSub; use this in ItemCreator
     {0xF86C, "award_item_ok", {REG}, F_V2_V4},
     {0xF86D, "ba_set_trapself", {}, F_V2_V4},
