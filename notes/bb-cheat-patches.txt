@@ -1,9 +1,0 @@
-All patches are for the JP 1.25.13 version (Tethealla client).
-
-See also https://github.com/Solybum/Blue-Burst-Patch-Project
-
-
-
-Disable item equip restrictions ("God of equip")
-Memory: 005C9F31 E9A7000000
-File:   001C9331 E9A7000000

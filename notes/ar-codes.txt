@@ -1,3 +1,16 @@
+This file contains client patches I've made for various versions of PSO.
+
+All BB patches are for the JP 1.25.13 version (Tethealla client).
+See also https://github.com/Solybum/Blue-Burst-Patch-Project
+
+DCv2-US: Disable serial number validation (untested)
+8C1E743E 01E0
+8C2670B6 01E0
+
+(BB) Disable item equip restrictions ("God of equip")
+Memory: 005C9F31 E9A7000000
+File:   001C9331 E9A7000000
+
 Unlock all songs in BGM test
 (Note: sadly, there are no secret/unused ones)
 Ep12-JP12 => 04367A68 38600001
@@ -264,6 +277,7 @@ Ep3-EU  => 041A1C84 38600001
 Ep3-US  => 041A16FC 38600001
 
 (Ep3 USA) Full dressing room v1
+Original Ep1&2 code by Ralf @ GC-Forever
 Can't change your class, but you start with your existing appearance
 Go online with this code on after using the dressing room to fully save changes
 0418EB5C 60000000
@@ -271,6 +285,7 @@ Go online with this code on after using the dressing room to fully save changes
 042A0188 387E2120
 
 (Ep3 USA) Full dressing room v2
+Original Ep1&2 code by Ralf @ GC-Forever
 Can change your class, but you start with the default appearance
 Go online with this code on after using the dressing room to fully save changes
 04186ECC 4BFFFFD8
