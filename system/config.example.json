@@ -133,7 +133,6 @@
     //   (below).
     "console-login": [5100,  "gc",    "login_server"],
     "pc-login":      [5101,  "pc",    "login_server"],
-    "xb-login":      [5102,  "xb",    "login_server"],
     "xb-lobby":      [5105,  "xb",    "login_server"],
     "console-lobby": [5110,  "gc",    "lobby_server"],
     "pc-lobby":      [5111,  "pc",    "lobby_server"],
@@ -705,9 +704,13 @@
   // Item stack limits. Note that changing these does not affect the client's
   // behavior automatically - this only exists to allow the server to understand
   // the behavior of clients that are already patched with different stack
-  // limits. The ToolLimits list is indexed by data1[1] (that is, the second
-  // byte of the item data); for items beyond the end of the list, the last
-  // entry's value is used.
+  // limits. If you want to use an unpatched BB client but still have custom
+  // stack limits, you can use the StackLimits runtime patch by editing
+  // system/client-functions/StackLimits/StackLimits.59NL.patch.s to match the
+  // BB stack limits and adding "StackLimits" to the BBRequiredPatches list.
+  // The ToolLimits list is indexed by data1[1] (that is, the second byte of the
+  // item data); for items beyond the end of the list, the last entry's value is
+  // used.
   "ItemStackLimits": [
     {"MesetaLimit": 999999, "ToolLimits": [10]}, // DC NTE
     {"MesetaLimit": 999999, "ToolLimits": [10]}, // DC 11/2000
@@ -848,6 +851,12 @@
   // only some versions, use the --multiply option to the convert-rare-item-set
   // action instead.
   "ServerGlobalDropRateMultiplier": 1.0,
+
+  // Client functions listed here are always enabled as auto patches for BB
+  // clients. For example, you can set this to ["StackLimits"] if you've edited
+  // the StackLimits patch and the ItemStackLimits field in this file, and want
+  // the limits to take effect on BB clients.
+  "BBRequiredPatches": [],
 
   // Whether to retain server drop tables when game leaders change. The client
   // reloads its drop tables when the leader joins a game or returns to Pioneer

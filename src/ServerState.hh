@@ -187,6 +187,7 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   std::array<std::shared_ptr<const Map::RareEnemyRates>, 4> rare_enemy_rates_by_difficulty;
   std::shared_ptr<const Map::RareEnemyRates> rare_enemy_rates_challenge;
   std::array<std::array<size_t, 4>, 3> min_levels_v4; // Indexed as [episode][difficulty]
+  std::vector<std::string> bb_required_patches;
 
   struct QuestF960Result {
     uint32_t meseta_cost = 0;

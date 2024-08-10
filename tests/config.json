@@ -317,6 +317,7 @@
   "BBGlobalEXPMultiplier": 1,
   "BBEXPShareMultiplier": 0.5,
   "ServerGlobalDropRateMultiplier": 1.0,
+  "BBRequiredPatches": [],
   "UseGameCreatorSectionID": false,
 
   "TeamRewards": [

@@ -123,8 +123,10 @@ static shared_ptr<const Menu> proxy_options_menu_for_client(shared_ptr<const Cli
 void send_first_pre_lobby_commands(shared_ptr<Client> c, std::function<void()> on_complete) {
   // TODO: This function is bad. Ideally we would use coroutines and clean up
   // all these terrible callbacks.
+  auto s = c->require_server_state();
 
-  if (c->login->account->auto_patches_enabled.empty()) {
+  if (c->login->account->auto_patches_enabled.empty() &&
+      ((c->version() != Version::BB_V4) || s->bb_required_patches.empty())) {
     c->config.set_flag(Client::Flag::HAS_AUTO_PATCHES);
   }
 
@@ -138,7 +140,22 @@ void send_first_pre_lobby_commands(shared_ptr<Client> c, std::function<void()> o
       }
 
       auto s = c->require_server_state();
+
       size_t num_patches_sent = 0;
+      if (c->version() == Version::BB_V4) {
+        for (const auto& patch_name : s->bb_required_patches) {
+          try {
+            send_function_call(c, s->function_code_index->get_patch(patch_name, c->config.specific_version));
+            num_patches_sent++;
+          } catch (const out_of_range&) {
+            string message = phosg::string_printf(
+                "Your client is not compatible with a\nrequired patch on this server.\n\nClient version: %08" PRIX32 "\nPatch name: %s", c->config.specific_version, patch_name.c_str());
+            send_message_box(c, message);
+            c->should_disconnect = true;
+            return;
+          }
+        }
+      }
       for (const auto& patch_name : c->login->account->auto_patches_enabled) {
         try {
           send_function_call(c, s->function_code_index->get_patch(patch_name, c->config.specific_version));
