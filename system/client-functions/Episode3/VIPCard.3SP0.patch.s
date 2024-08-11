@@ -1,7 +1,3 @@
-# This patch can't be used currently because the EU version of Episode 3 doesn't
-# natively support B2, and there is no buffer-overflow exploit (yet) to address
-# this.
-
 .meta name="Get VIP card"
 .meta description="Gives you a VIP card"
 

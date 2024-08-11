@@ -11,7 +11,7 @@ reloc0:
 
 start:
   .include  AllCards
-  .data     0x802A1BAC  # get_player_data_segment
-  .data     0x802A15BC  # decrypt_ep3_player_data_segment
-  .data     0x802A17AC  # Ep3PlayerDataSegment_on_card_obtained
-  .data     0x802A160C  # encrypt_ep3_player_data_segment
+  .data     0x802A1154  # get_player_data_segment
+  .data     0x802A0B64  # decrypt_ep3_player_data_segment
+  .data     0x802A0D54  # Ep3PlayerDataSegment_on_card_obtained
+  .data     0x802A0BB4  # encrypt_ep3_player_data_segment
