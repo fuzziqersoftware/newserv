@@ -3,7 +3,7 @@ This file contains client patches I've made for various versions of PSO.
 All BB patches are for the JP 1.25.13 version (Tethealla client).
 See also https://github.com/Solybum/Blue-Burst-Patch-Project
 
-DCv2-US: Disable serial number validation (untested)
+(DCv2-US) Disable serial number validation (untested)
 8C1E743E 01E0
 8C2670B6 01E0
 
