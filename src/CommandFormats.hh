@@ -1460,26 +1460,33 @@ struct SC_SimpleMail_PC_81 {
   // replied to.
   le_uint32_t player_tag = 0x00010000;
   le_uint32_t from_guild_card_number = 0;
-  pstring<TextEncoding::UTF16, 0x10> from_name;
+  pstring<TextEncoding::UTF16, 0x0F> from_name;
+  le_uint16_t from_name_term = 0;
   le_uint32_t to_guild_card_number = 0;
-  pstring<TextEncoding::UTF16, 0x200> text;
+  pstring<TextEncoding::UTF16, 0x1FF> text;
+  le_uint16_t text_term = 0;
 } __packed_ws__(SC_SimpleMail_PC_81, 0x42C);
 
 struct SC_SimpleMail_DC_V3_81 {
   le_uint32_t player_tag = 0x00010000;
   le_uint32_t from_guild_card_number = 0;
-  pstring<TextEncoding::MARKED, 0x10> from_name;
+  pstring<TextEncoding::MARKED, 0x0F> from_name;
+  uint8_t from_name_term = 0;
   le_uint32_t to_guild_card_number = 0;
-  pstring<TextEncoding::MARKED, 0x200> text;
+  pstring<TextEncoding::MARKED, 0x1FF> text;
+  uint8_t text_term = 0;
 } __packed_ws__(SC_SimpleMail_DC_V3_81, 0x21C);
 
 struct SC_SimpleMail_BB_81 {
   le_uint32_t player_tag = 0x00010000;
   le_uint32_t from_guild_card_number = 0;
-  pstring<TextEncoding::UTF16_ALWAYS_MARKED, 0x10> from_name;
+  pstring<TextEncoding::UTF16_ALWAYS_MARKED, 0x0F> from_name;
+  le_uint16_t from_name_term = 0;
   le_uint32_t to_guild_card_number = 0;
-  pstring<TextEncoding::UTF16, 0x14> received_date;
-  pstring<TextEncoding::UTF16, 0x200> text;
+  pstring<TextEncoding::UTF16, 0x13> received_date;
+  le_uint16_t received_date_term = 0;
+  pstring<TextEncoding::UTF16, 0x1FF> text;
+  le_uint16_t text_term = 0;
 } __packed_ws__(SC_SimpleMail_BB_81, 0x454);
 
 // 82: Invalid command
