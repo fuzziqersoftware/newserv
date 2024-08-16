@@ -85,10 +85,8 @@ void Client::Config::set_flags_for_version(Version version, int64_t sub_version)
 
     case 0x20: // DCNTE, possibly also DCv1 JP
     case 0x21: // DCv1 US
-      this->set_flag(Flag::NO_D6);
-      break;
-    case 0x22: // DCv1 EU 50Hz (presumably)
-    case 0x23: // DCv1 EU 60Hz (presumably)
+    case 0x22: // DCv1 EU, 12/2000, and 01/2001, at 50Hz (presumably)
+    case 0x23: // DCv1 EU, 12/2000, and 01/2001, at 60Hz (presumably)
       this->set_flag(Flag::NO_D6);
       break;
     case 0x25: // DCv2 JP

@@ -794,7 +794,20 @@ void ServerState::load_config_early() {
   this->default_rare_notifs_enabled_v3_v4 = this->default_rare_notifs_enabled_v1_v2;
   this->default_rare_notifs_enabled_v1_v2 = this->config_json->get_bool("RareNotificationsEnabledByDefaultV1V2", this->default_rare_notifs_enabled_v1_v2);
   this->default_rare_notifs_enabled_v3_v4 = this->config_json->get_bool("RareNotificationsEnabledByDefaultV3V4", this->default_rare_notifs_enabled_v3_v4);
-  this->enable_send_function_call_quest_num = this->config_json->get_int("EnableSendFunctionCallQuestNumber", -1);
+  this->enable_send_function_call_quest_numbers.clear();
+  try {
+    for (const auto& it : this->config_json->get_dict("EnableSendFunctionCallQuestNumbers")) {
+      if (it.first.size() != 4) {
+        throw runtime_error(phosg::string_printf(
+            "specific_version %s in EnableSendFunctionCallQuestNumbers is not a 4-byte string",
+            it.first.c_str()));
+      }
+      uint32_t specific_version = phosg::StringReader(it.first).get_u32b();
+      int64_t quest_num = it.second->as_int();
+      this->enable_send_function_call_quest_numbers.emplace(specific_version, quest_num);
+    }
+  } catch (const out_of_range&) {
+  }
   this->enable_v3_v4_protected_subcommands = this->config_json->get_bool("EnableV3V4ProtectedSubcommands", false);
   this->catch_handler_exceptions = this->config_json->get_bool("CatchHandlerExceptions", true);
 

@@ -514,7 +514,7 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     {0x00EE, "pl_add_meseta2", {INT32}, F_V1_V4 | F_ARGS},
     {0x00EF, "sync_register2", {INT32, REG32}, F_V1_V2},
     {0x00EF, "sync_register2", {REG, INT32}, F_V3_V4 | F_ARGS},
-    {0x00F0, "send_regwork", {INT32, REG32}, F_V1_V2},
+    {0x00F0, "send_regwork", {REG32, REG32}, F_V1_V2},
     {0x00F1, "leti_fixed_camera", {{REG32_SET_FIXED, 6}}, F_V2},
     {0x00F1, "leti_fixed_camera", {{REG_SET_FIXED, 6}}, F_V3_V4},
     {0x00F2, "default_camera_pos1", {}, F_V2_V4},
@@ -2214,6 +2214,14 @@ std::string assemble_quest_script(const std::string& text, const std::string& in
         } else if (phosg::starts_with(line, ".zero ")) {
           size_t size = stoull(line.substr(6), nullptr, 0);
           code_w.extend_by(size, 0x00);
+        } else if (phosg::starts_with(line, ".zero_until ")) {
+          size_t size = stoull(line.substr(12), nullptr, 0);
+          code_w.extend_to(size, 0x00);
+        } else if (phosg::starts_with(line, ".align ")) {
+          size_t alignment = stoull(line.substr(7), nullptr, 0);
+          while (code_w.size() % alignment) {
+            code_w.put_u8(0);
+          }
         } else if (phosg::starts_with(line, ".include_bin ")) {
           string filename = line.substr(13);
           phosg::strip_whitespace(filename);
@@ -2286,10 +2294,10 @@ std::string assemble_quest_script(const std::string& text, const std::string& in
           phosg::strip_leading_whitespace(arg);
 
           try {
-            auto add_cstr = [&](const string& text) -> void {
+            auto add_cstr = [&](const string& text, bool bin) -> void {
               switch (quest_version) {
                 case Version::DC_NTE:
-                  code_w.write(tt_utf8_to_sega_sjis(text));
+                  code_w.write(bin ? text : tt_utf8_to_sega_sjis(text));
                   code_w.put_u8(0);
                   break;
                 case Version::DC_V1_11_2000_PROTOTYPE:
@@ -2300,13 +2308,13 @@ std::string assemble_quest_script(const std::string& text, const std::string& in
                 case Version::GC_EP3_NTE:
                 case Version::GC_EP3:
                 case Version::XB_V3:
-                  code_w.write(quest_language ? tt_utf8_to_8859(text) : tt_utf8_to_sega_sjis(text));
+                  code_w.write(bin ? text : (quest_language ? tt_utf8_to_8859(text) : tt_utf8_to_sega_sjis(text)));
                   code_w.put_u8(0);
                   break;
                 case Version::PC_NTE:
                 case Version::PC_V2:
                 case Version::BB_V4:
-                  code_w.write(tt_utf8_to_utf16(text));
+                  code_w.write(bin ? text : tt_utf8_to_utf16(text));
                   code_w.put_u16(0);
                   break;
                 default:
@@ -2374,7 +2382,11 @@ std::string assemble_quest_script(const std::string& text, const std::string& in
                 if (write_as_str) {
                   if (arg[0] == '\"') {
                     code_w.put_u8(0x4E); // arg_pushs
-                    add_cstr(phosg::parse_data_string(arg));
+                    if (phosg::starts_with(arg, "bin:")) {
+                      add_cstr(phosg::parse_data_string(arg.substr(4)), true);
+                    } else {
+                      add_cstr(phosg::parse_data_string(arg), false);
+                    }
                   } else {
                     throw runtime_error("invalid argument syntax");
                   }
@@ -2460,7 +2472,11 @@ std::string assemble_quest_script(const std::string& text, const std::string& in
                   code_w.put_u32l(stof(arg, nullptr));
                   break;
                 case Type::CSTRING:
-                  add_cstr(phosg::parse_data_string(arg));
+                  if (phosg::starts_with(arg, "bin:")) {
+                    add_cstr(phosg::parse_data_string(arg.substr(4)), true);
+                  } else {
+                    add_cstr(phosg::parse_data_string(arg), false);
+                  }
                   break;
                 default:
                   throw logic_error("unknown argument type");

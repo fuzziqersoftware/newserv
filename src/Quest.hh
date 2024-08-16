@@ -123,7 +123,7 @@ public:
   void add_version(std::shared_ptr<const VersionedQuest> vq);
   bool has_version(Version v, uint8_t language) const;
   bool has_version_any_language(Version v) const;
-  std::shared_ptr<const VersionedQuest> version(Version v, uint8_t language, bool allow_language_fallback = true) const;
+  std::shared_ptr<const VersionedQuest> version(Version v, uint8_t language) const;
 
   static uint32_t versions_key(Version v, uint8_t language);
 

@@ -1,5 +1,5 @@
 .version GC_V3
-.quest_num 88500
+.quest_num 88530
 .language 1
 .episode Episode1
 .name "GC v1.2 USA patch enabler"
@@ -55,5 +55,5 @@ copy_done:
   ret
 
 code:
-  .include_native    q88500-gc.s
+  .include_native    q8853x-gc.s
 code_end:

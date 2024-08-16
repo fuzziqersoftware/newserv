@@ -235,11 +235,21 @@ uint32_t default_specific_version_for_version(Version version, int64_t sub_versi
   // VersionDetectDC, VersionDetectGC, or VersionDetectXB call.
   switch (version) {
     case Version::DC_NTE:
-      return SPECIFIC_VERSION_DC_NTE; // 1OJ1
+      return SPECIFIC_VERSION_DC_NTE; // 1OJ1 (NTE)
     case Version::DC_V1_11_2000_PROTOTYPE:
-      return SPECIFIC_VERSION_DC_11_2000_PROTOTYPE; // 1OJ2
+      return SPECIFIC_VERSION_DC_11_2000_PROTOTYPE; // 1OJ2 (11/2000)
     case Version::DC_V1:
-      return SPECIFIC_VERSION_DC_V1_INDETERMINATE; // 1___; need to send VersionDetectDC (but can't on V1; rip)
+      switch (sub_version) {
+        case 0x20:
+          return SPECIFIC_VERSION_DC_V1_JP; // 1OJF (1OJ1 and 1OJ2 use 0x20 as well, but are detected without using sub_version)
+        case 0x21:
+          return SPECIFIC_VERSION_DC_V1_US; // 1OEF
+        case 0x22:
+        case 0x23:
+          return SPECIFIC_VERSION_DC_V1_EU_INDETERMINATE; // 1OPF, 10J3 (12/2000), or 1OJ4 (01/2001)
+        default:
+          return SPECIFIC_VERSION_DC_V1_INDETERMINATE;
+      }
     case Version::DC_V2:
       return SPECIFIC_VERSION_DC_V2_INDETERMINATE; // 2___; need to send VersionDetectDC
     case Version::PC_V2:

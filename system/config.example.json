@@ -1059,24 +1059,18 @@
   // (100 on v1, 200 on other versions, or 999 on Episode 3).
   "NotifyServerForMaxLevelAchieved": false,
 
-  // If this number is nonnegative, it specifies a quest which is automatically
-  // sent to clients using Episodes 1&2 Plus USA when they connect. This is
-  // intended to be used for enabling server-side patches at connection time.
-  // This is not enabled by default because it has not yet been tested on real
-  // hardware, and it also increases the loading time considerably - the player
-  // has to wait for the initial server connection, then wait for the quest to
-  // load, then wait for the client to leave the "game", before even getting to
-  // the welcome message.
-  // To enable this feature, set this value to 88500. This is the number of the
-  // quest in system/quests/hidden that implements the patch.
-  // This quest is not intended to be localized since it should not contain any
-  // user-visible text, so the server uses the language field to determine
-  // which quest to send based on the client's version:
-  // - US Plus v1.2 + customizations: English
-  // - JP Plus v1.5: Japanese
-  // - US Ep3: Spanish
-  // - EU Ep3: German
-  "EnableSendFunctionCallQuestNumber": -1,
+  // This setting allows the server to enable server patching for versions that
+  // don't natively support it. This is not enabled by default because it has
+  // not yet been tested on real hardware, and it also increases the loading
+  // time considerably - the player has to wait for the initial server
+  // connection, then wait for the quest to load, then wait for the client to
+  // leave the "game", before even getting to the welcome message.
+  "EnableSendFunctionCallQuestNumbers": {
+    // "3OE2": 88530, // US Plus (v1.2) + customizations
+    // "3OJ5": 88531, // JP Plus (v1.5)
+    // "3SE0": 88532, // US Ep3
+    // "3SP0": 88533, // EU Ep3
+  },
 
   // Whether to enable protected subcommands on GC and Xbox. This enables the
   // infinite HP cheat to also automatically revive players and clear conditions

@@ -1671,7 +1671,8 @@ struct C_LoginV1_DC_PC_V3_90 {
 // 92 (C->S): Register (DC)
 
 struct C_RegisterV1_DC_92 {
-  parray<uint8_t, 0x0C> unknown_a1;
+  parray<uint8_t, 0x08> unknown_a1;
+  le_uint32_t sub_version;
   uint8_t is_extended = 0; // TODO: This is a guess
   uint8_t language = 0; // TODO: This is a guess; verify it
   parray<uint8_t, 2> unknown_a3;

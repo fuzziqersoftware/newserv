@@ -1246,7 +1246,11 @@ Action a_assemble_quest_script(
       string result = assemble_quest_script(text, include_dir);
       bool compress = !args.get<bool>("decompressed");
       if (compress) {
-        result = prs_compress_optimal(result);
+        if (args.get<bool>("optimal")) {
+          result = prs_compress_optimal(result);
+        } else {
+          result = prs_compress(result);
+        }
       }
       write_output_data(args, result.data(), result.size(), compress ? "bin" : "bind");
     });

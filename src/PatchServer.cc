@@ -349,7 +349,7 @@ void PatchServer::on_listen_accept(struct evconnlistener* listener, evutil_socke
   c->channel.context_obj = this;
   this->channel_to_client.emplace(&c->channel, c);
 
-  server_log.info("Patch client connected: U-%" PRIX64 " on fd %d via %d (%s)",
+  server_log.info("Patch client connected: C-%" PRIX64 " on fd %d via %d (%s)",
       c->id, fd, listen_fd, listening_socket->addr_str.c_str());
 
   this->send_server_init(c);

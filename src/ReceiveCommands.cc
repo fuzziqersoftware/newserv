@@ -405,28 +405,15 @@ void on_login_complete(shared_ptr<Client> c) {
       auto s = c->require_server_state();
 
       if (c->config.check_flag(Client::Flag::CAN_RECEIVE_ENABLE_B2_QUEST) &&
-          !c->config.check_flag(Client::Flag::HAS_SEND_FUNCTION_CALL) &&
-          (s->enable_send_function_call_quest_num >= 0)) {
-        auto q = s->default_quest_index->get(s->enable_send_function_call_quest_num);
+          !c->config.check_flag(Client::Flag::HAS_SEND_FUNCTION_CALL)) {
+        shared_ptr<const Quest> q;
+        try {
+          int64_t quest_num = s->enable_send_function_call_quest_numbers.at(c->config.specific_version);
+          q = s->default_quest_index->get(quest_num);
+        } catch (const out_of_range&) {
+        }
         if (q) {
-          uint8_t q_language;
-          switch (c->sub_version) {
-            case 0x39:
-              q_language = 0; // Japanese (JP Plus v1.5)
-              break;
-            case 0x42:
-            case 0x43:
-              q_language = 2; // German (EU Ep3)
-              break;
-            case 0x41:
-              q_language = 4; // Spanish (US Ep3)
-              break;
-            case 0x36:
-            case 0x3A:
-            default:
-              q_language = 1; // English (US Plus v1.2 + customizations)
-          }
-          auto vq = q->version(is_ep3(c->version()) ? Version::GC_V3 : c->version(), q_language, false);
+          auto vq = q->version(is_ep3(c->version()) ? Version::GC_V3 : c->version(), 1);
           if (vq) {
             c->config.set_flag(Client::Flag::HAS_SEND_FUNCTION_CALL);
             c->config.set_flag(Client::Flag::SEND_FUNCTION_CALL_NO_CACHE_PATCH);
@@ -440,7 +427,9 @@ void on_login_complete(shared_ptr<Client> c) {
             send_open_quest_file(c, bin_filename, bin_filename, xb_filename, vq->quest_number, QuestFileType::ONLINE, vq->bin_contents);
             send_open_quest_file(c, dat_filename, dat_filename, xb_filename, vq->quest_number, QuestFileType::ONLINE, vq->dat_contents);
 
-            send_command(c, 0xAC, 0x00);
+            if (!is_v1_or_v2(c->version())) {
+              send_command(c, 0xAC, 0x00);
+            }
           }
         }
       }
@@ -555,7 +544,8 @@ static void set_console_client_flags(shared_ptr<Client> c, uint32_t sub_version)
     if (sub_version <= 0x24) {
       c->channel.version = Version::DC_V1;
       c->log.info("Game version changed to DC_V1");
-      if (specific_version_is_indeterminate(c->config.specific_version) || c->config.specific_version == SPECIFIC_VERSION_DC_11_2000_PROTOTYPE) {
+      if (specific_version_is_indeterminate(c->config.specific_version) ||
+          c->config.specific_version == SPECIFIC_VERSION_DC_11_2000_PROTOTYPE) {
         c->config.specific_version = SPECIFIC_VERSION_DC_V1_INDETERMINATE;
       }
     } else if (sub_version <= 0x28) {
@@ -709,14 +699,15 @@ static void on_90_DC(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
 static void on_92_DC(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
   const auto& cmd = check_size_t<C_RegisterV1_DC_92>(data);
   c->channel.language = cmd.language;
-  // It appears that in response to 90 01, the DCv1 prototype sends 93 rather
-  // than 92, so we use the presence of a 92 command to determine that the
-  // client is actually DCv1 and not the prototype.
+  // It appears that in response to 90 01, 11/2000 sends 93 rather than 92, so
+  // we use the presence of a 92 command to determine that the client is
+  // actually DCv1 and not the prototype.
   c->config.set_flag(Client::Flag::CHECKED_FOR_DC_V1_PROTOTYPE);
   c->channel.version = Version::DC_V1;
   if (specific_version_is_indeterminate(c->config.specific_version) || c->config.specific_version == SPECIFIC_VERSION_DC_11_2000_PROTOTYPE) {
     c->config.specific_version = SPECIFIC_VERSION_DC_V1_INDETERMINATE;
   }
+  set_console_client_flags(c, cmd.sub_version);
   c->log.info("Game version changed to DC_V1");
   send_command(c, 0x92, 0x01);
 }
