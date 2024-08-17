@@ -1060,11 +1060,10 @@
   "NotifyServerForMaxLevelAchieved": false,
 
   // This setting allows the server to enable server patching for versions that
-  // don't natively support it. This is not enabled by default because it has
-  // not yet been tested on real hardware, and it also increases the loading
-  // time considerably - the player has to wait for the initial server
-  // connection, then wait for the quest to load, then wait for the client to
-  // leave the "game", before even getting to the welcome message.
+  // don't natively support it. This is not enabled by default because it
+  // increases the loading time considerably - the player has to wait for the
+  // initial server connection, then wait for the quest to load, then wait for
+  // the client to leave the "game", before getting to the welcome message.
   "EnableSendFunctionCallQuestNumbers": {
     // "3OE2": 88530, // US Plus (v1.2) + customizations
     // "3OJ5": 88531, // JP Plus (v1.5)
