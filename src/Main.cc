@@ -2510,7 +2510,12 @@ Action a_run_server_replay_log(
     "", nullptr, +[](phosg::Arguments& args) {
       {
         string build_date = phosg::format_time(BUILD_TIMESTAMP);
-        config_log.info("newserv %s compiled at %s", GIT_REVISION_HASH, build_date.c_str());
+#ifdef HAVE_RESOURCE_FILE
+        const char* resource_file_str = " with client function support";
+#else
+        const char* resource_file_str = " without client function support";
+#endif
+        config_log.info("newserv %s compiled%s at %s", GIT_REVISION_HASH, resource_file_str, build_date.c_str());
       }
 
       if (evthread_use_pthreads()) {

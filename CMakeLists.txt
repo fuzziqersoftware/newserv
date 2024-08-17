@@ -14,12 +14,6 @@ else()
     add_compile_options(-Wall -Wextra -Werror -Wno-address-of-packed-member)
 endif()
 
-set(LOCAL_INCLUDE_DIR "/usr/local/include")
-set(LOCAL_LIB_DIR "/usr/local/lib")
-list(APPEND CMAKE_PREFIX_PATH ${LOCAL_LIB_DIR})
-include_directories(${LOCAL_INCLUDE_DIR})
-link_directories(${LOCAL_LIB_DIR})
-
 
 
 # Library search
@@ -141,19 +135,18 @@ endif()
 
 add_executable(newserv ${SOURCES})
 target_include_directories(newserv PUBLIC ${LIBEVENT_INCLUDE_DIR} ${Iconv_INCLUDE_DIRS})
-target_link_libraries(newserv phosg ${LIBEVENT_LIBRARIES} ${Iconv_LIBRARIES} pthread)
+target_link_libraries(newserv phosg::phosg ${LIBEVENT_LIBRARIES} ${Iconv_LIBRARIES} pthread)
+if(resource_file_FOUND)
+    target_compile_definitions(newserv PUBLIC HAVE_RESOURCE_FILE)
+    target_link_libraries(newserv resource_file::resource_file)
+    message(STATUS "resource_file found; enabling patch support")
+else()
+    message(WARNING "resource_file not found; disabling patch support")
+endif()
 add_dependencies(newserv newserv-Revision-cc)
 
 # target_compile_options(newserv PRIVATE -fsanitize=address)
 # target_link_options(newserv PRIVATE -fsanitize=address)
-
-if(resource_file_FOUND)
-    target_compile_definitions(newserv PUBLIC HAVE_RESOURCE_FILE)
-    target_link_libraries(newserv resource_file)
-    message(STATUS "libresource_file found; enabling patch support")
-else()
-    message(WARNING "libresource_file not found; disabling patch support")
-endif()
 
 
 
@@ -178,6 +171,8 @@ foreach(ScriptTestCase IN ITEMS ${ScriptTestCases})
         WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
         COMMAND ${ScriptTestCase} ${CMAKE_BINARY_DIR}/newserv)
 endforeach()
+
+
 
 # Installation configuration
 
