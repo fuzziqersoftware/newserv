@@ -480,7 +480,8 @@ ItemData ItemNameIndex::parse_item_description_phase(const std::string& descript
   ret.data1[2] = (primary_identifier >> 8) & 0xFF;
 
   if (ret.data1[0] == 0x00) {
-    // Weapons: add special, grind and percentages (or name, if S-rank)
+    // Weapons: add special, grind and percentages (or name, if S-rank) and
+    // kill count if unsealable
     ret.data1[4] = weapon_special | (is_wrapped ? 0x40 : 0x00) | (is_unidentified ? 0x80 : 0x00);
 
     auto tokens = phosg::split(desc, ' ');
@@ -516,13 +517,14 @@ ItemData ItemNameIndex::parse_item_description_phase(const std::string& descript
         if (p_tokens.size() > 5) {
           throw runtime_error("invalid bonuses token");
         }
+        uint8_t max_bonuses = this->item_parameter_table->is_unsealable_item(ret) ? 2 : 3;
         uint8_t bonus_index = 0;
         for (size_t z = 0; z < p_tokens.size(); z++) {
           int8_t bonus_value = stol(p_tokens[z], nullptr, 10);
           if (bonus_value == 0) {
             continue;
           }
-          if (bonus_index >= 3) {
+          if (bonus_index >= max_bonuses) {
             throw runtime_error("weapon has too many bonuses");
           }
           ret.data1[6 + (2 * bonus_index)] = z + 1;
@@ -530,6 +532,10 @@ ItemData ItemNameIndex::parse_item_description_phase(const std::string& descript
           bonus_index++;
         }
       }
+    }
+
+    if (this->item_parameter_table->is_unsealable_item(ret)) {
+      ret.set_kill_count(0);
     }
 
   } else if (ret.data1[0] == 0x01) {

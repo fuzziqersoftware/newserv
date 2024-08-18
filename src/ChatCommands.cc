@@ -724,6 +724,35 @@ static void server_command_show_material_counts(shared_ptr<Client> c, const std:
   }
 }
 
+static void server_command_show_kill_count(shared_ptr<Client> c, const std::string&) {
+  auto p = c->character();
+  size_t item_index;
+  try {
+    item_index = p->inventory.find_equipped_item(EquipSlot::WEAPON);
+  } catch (const out_of_range&) {
+    send_text_message(c, "No weapon equipped");
+    return;
+  }
+
+  const auto& item = p->inventory.items.at(item_index);
+  if (!item.data.has_kill_count()) {
+    send_text_message(c, "Weapon does not\nhave a kill count");
+    return;
+  }
+
+  // Kill counts are only accurate on the server side at all times on BB. On
+  // other versions, we update the server's view of the client's inventory
+  // during games, but we can't track kills because the client doesn't inform
+  // the server whether it counted a kill for any individual enemy. So, on
+  // non-BB versions, the kill count is accurate at all times in the lobby
+  // (since kills can't occur there), or at the beginning of a game.
+  if ((c->version() == Version::BB_V4) || !c->require_lobby()->is_game()) {
+    send_text_message_printf(c, "%hu kills", item.data.get_kill_count());
+  } else {
+    send_text_message_printf(c, "%hu kills as of\ngame join", item.data.get_kill_count());
+  }
+}
+
 static void server_command_auction(shared_ptr<Client> c, const std::string&) {
   check_account_flag(c, Account::Flag::DEBUG);
   auto l = c->require_lobby();
@@ -2536,6 +2565,7 @@ static const unordered_map<string, ChatCommandDefinition> chat_commands({
     {"$itemnotifs", {server_command_item_notifs, proxy_command_item_notifs}},
     {"$i", {server_command_item, proxy_command_item}},
     {"$kick", {server_command_kick, nullptr}},
+    {"$killcount", {server_command_show_kill_count, nullptr}},
     {"$li", {server_command_lobby_info, proxy_command_lobby_info}},
     {"$ln", {server_command_lobby_type, proxy_command_lobby_type}},
     {"$loadchar", {server_command_loadchar, nullptr}},

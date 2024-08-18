@@ -506,6 +506,7 @@ Some commands only work on the game server and not on the proxy server. The chat
     * `$si` (game server only): Show basic information about the server.
     * `$ping`: Show round-trip ping time from the server to you. On the proxy server, show the ping time from you to the proxy and from the proxy to the server.
     * `$matcount` (game server only): Show how many of each type of material you've used.
+    * `$killcount` (game server only): Show the kill count on your currently-equipped weapon. If you're in a game and not on BB, the value is only accurate at the time the item enters the game.
     * `$itemnotifs <mode>`: Enable item drop notification messages. If the game has private drops enabled, you will only see a notification if the dropped item is visible to you; you won't be notified of other players' drops. The modes are:
         * `off`: No notifications are shown.
         * `rare`: You are notified when a rare item drops.
