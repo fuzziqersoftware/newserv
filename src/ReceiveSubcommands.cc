@@ -2854,6 +2854,24 @@ static void on_set_quest_flag(shared_ptr<Client> c, uint8_t command, uint8_t fla
       }
 
       if (boss_enemy_type != EnemyType::NONE) {
+        float x, z;
+        switch (boss_enemy_type) {
+          case EnemyType::DARK_FALZ_2:
+            x = -58.0f;
+            z = 31.0f;
+            break;
+          case EnemyType::DARK_FALZ_3:
+            x = 10160.0f;
+            z = 0.0f;
+            break;
+          case EnemyType::OLGA_FLOW_2:
+            x = -9999.0f;
+            z = 0.0f;
+            break;
+          default:
+            throw logic_error("invalid boss enemy type");
+        }
+
         auto s = c->require_server_state();
         auto sdt = s->set_data_table(l->base_version, l->episode, l->mode, l->difficulty);
         G_StandardDropItemRequest_PC_V3_BB_6x60 drop_req = {
@@ -2862,8 +2880,8 @@ static void on_set_quest_flag(shared_ptr<Client> c, uint8_t command, uint8_t fla
                 static_cast<uint8_t>(c->floor),
                 rare_table_index_for_enemy_type(boss_enemy_type),
                 enemy_id == 0xFFFF ? 0x0B4F : enemy_id,
-                is_ep2 ? -9999.0f : 10160.58984375f,
-                0.0f,
+                x,
+                z,
                 2,
                 0,
             },
