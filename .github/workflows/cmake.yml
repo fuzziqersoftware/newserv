@@ -27,7 +27,16 @@ jobs:
 
       - name: Install libraries (macOS)
         if: ${{ matrix.os == 'macos-latest' }}
-        run: brew install libevent
+        run: |
+          brew install libevent
+
+          cat << EOF > nproc
+          #!/bin/sh
+          sysctl -n hw.logicalcpu
+          EOF
+          chmod a+x nproc
+          sudo cp nproc /usr/local/bin/nproc
+          rm -f nproc
 
       - name: Install phosg
         run: |
