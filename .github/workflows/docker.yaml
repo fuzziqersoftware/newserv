@@ -1,8 +1,14 @@
 name: Docker
 
 on:
+  # After build passes with tests
+  workflow_run:
+    workflows: [CMake]
+    types: [completed]
+    branches:
+      - master
+
   push:
-    branches: [master]
     tags:
       - 'v**'
 
