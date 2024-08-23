@@ -84,7 +84,6 @@ struct ItemData {
   //   Mag:    02ZZLLWW HHHHIIII JJJJKKKK YYQQPPVV
   //   Tool:   03ZZZZFF 00CC0000 00000000 00000000
   //   Meseta: 04000000 00000000 00000000 MMMMMMMM
-  // 01034D00 00000000 204E0000
   // A = attribute type (for S-ranks, custom name)
   // B = attribute amount (for S-ranks, custom name)
   // C = stack size (for tools)
