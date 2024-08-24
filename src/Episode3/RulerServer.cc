@@ -1865,7 +1865,7 @@ int32_t RulerServer::error_code_for_client_setting_card(
         return -0x7E;
       }
 
-      int32_t x_offset, y_offset;
+      int32_t x_offset = 0, y_offset = 0;
       this->offsets_for_direction(summon_area_loc, &x_offset, &y_offset);
       if (x_offset == 0) {
         if ((loc->x < 1) && (loc->x >= this->map_and_rules->map.width - 1)) {
