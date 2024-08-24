@@ -672,7 +672,8 @@ uint8_t battle_param_index_for_enemy_type(Episode episode, EnemyType enemy_type)
         case EnemyType::SO_DIMENIAN:
           return 0x55;
         default:
-          throw runtime_error(phosg::string_printf("%s does not have battle parameters in Episode 1", phosg::name_for_enum(enemy_type)));
+          throw out_of_range(phosg::string_printf(
+              "%s does not have battle parameters in Episode 1", phosg::name_for_enum(enemy_type)));
       }
       break;
     case Episode::EP2:
@@ -787,7 +788,8 @@ uint8_t battle_param_index_for_enemy_type(Episode episode, EnemyType enemy_type)
         case EnemyType::SO_DIMENIAN:
           return 0x55;
         default:
-          throw runtime_error(phosg::string_printf("%s does not have battle parameters in Episode 2", phosg::name_for_enum(enemy_type)));
+          throw out_of_range(phosg::string_printf(
+              "%s does not have battle parameters in Episode 2", phosg::name_for_enum(enemy_type)));
       }
       break;
     case Episode::EP4:
@@ -847,7 +849,8 @@ uint8_t battle_param_index_for_enemy_type(Episode episode, EnemyType enemy_type)
         case EnemyType::KONDRIEU:
           return 0x2A;
         default:
-          throw runtime_error(phosg::string_printf("%s does not have battle parameters in Episode 4", phosg::name_for_enum(enemy_type)));
+          throw out_of_range(phosg::string_printf(
+              "%s does not have battle parameters in Episode 4", phosg::name_for_enum(enemy_type)));
       }
       break;
     default:

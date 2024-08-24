@@ -3380,6 +3380,53 @@ static void add_player_exp(shared_ptr<Client> c, uint32_t exp) {
   }
 }
 
+static uint32_t base_exp_for_enemy_type(
+    shared_ptr<const BattleParamsIndex> bp_index,
+    EnemyType enemy_type,
+    Episode current_episode,
+    uint8_t difficulty,
+    uint8_t area,
+    bool is_solo) {
+  // Always try the current episode first. If the current episode is Ep4, try
+  // Ep1 next if in Crater and Ep2 next if in Desert (this mirrors the logic in
+  // BB Patch Project's omnispawn patch).
+  array<Episode, 3> episode_order;
+  episode_order[0] = current_episode;
+  if (current_episode == Episode::EP1) {
+    episode_order[1] = Episode::EP2;
+    episode_order[2] = Episode::EP4;
+  } else if (current_episode == Episode::EP2) {
+    episode_order[1] = Episode::EP1;
+    episode_order[2] = Episode::EP4;
+  } else if (current_episode == Episode::EP4) {
+    if (area <= 0x05) {
+      episode_order[1] = Episode::EP1;
+      episode_order[2] = Episode::EP2;
+    } else {
+      episode_order[1] = Episode::EP2;
+      episode_order[2] = Episode::EP1;
+    }
+  } else {
+    throw runtime_error("invalid episode");
+  }
+
+  for (const auto& episode : episode_order) {
+    try {
+      const auto& bp_table = bp_index->get_table(is_solo, episode);
+      uint32_t bp_index = battle_param_index_for_enemy_type(episode, enemy_type);
+      return bp_table.stats[difficulty][bp_index].experience;
+    } catch (const out_of_range&) {
+    }
+  }
+  throw runtime_error(phosg::string_printf(
+      "no base exp is available (type=%s, episode=%s, difficulty=%s, area=%02hhX, solo=%s)",
+      phosg::name_for_enum(enemy_type),
+      name_for_episode(current_episode),
+      name_for_difficulty(difficulty),
+      area,
+      is_solo ? "true" : "false"));
+}
+
 static void on_steal_exp_bb(shared_ptr<Client> c, uint8_t, uint8_t, void* data, size_t size) {
   auto s = c->require_server_state();
   auto l = c->require_lobby();
@@ -3417,9 +3464,8 @@ static void on_steal_exp_bb(shared_ptr<Client> c, uint8_t, uint8_t, void* data, 
     return;
   }
 
-  const auto& bp_table = s->battle_params->get_table(l->mode == GameMode::SOLO, l->episode);
-  uint32_t bp_index = battle_param_index_for_enemy_type(l->episode, enemy.type);
-  uint32_t enemy_exp = bp_table.stats[l->difficulty][bp_index].experience;
+  uint32_t enemy_exp = base_exp_for_enemy_type(
+      s->battle_params, enemy.type, l->episode, l->difficulty, enemy.floor, l->mode == GameMode::SOLO);
 
   // Note: The original code checks if special.type is 9, 10, or 11, and skips
   // applying the android bonus if so. We don't do anything for those special
@@ -3428,8 +3474,8 @@ static void on_steal_exp_bb(shared_ptr<Client> c, uint8_t, uint8_t, void* data, 
   float ep2_factor = (l->episode == Episode::EP2) ? 1.3 : 1.0;
   uint32_t stolen_exp = max<uint32_t>(min<uint32_t>((enemy_exp * percent * ep2_factor) / 100.0f, (l->difficulty + 1) * 20), 1);
   if (c->config.check_flag(Client::Flag::DEBUG_ENABLED)) {
-    c->log.info("Stolen EXP from E-%hX with bp_index=%" PRIX32 " enemy_exp=%" PRIu32 " percent=%g stolen_exp=%" PRIu32,
-        enemy.enemy_id, bp_index, enemy_exp, percent, stolen_exp);
+    c->log.info("Stolen EXP from E-%hX with enemy_exp=%" PRIu32 " percent=%g stolen_exp=%" PRIu32,
+        enemy.enemy_id, enemy_exp, percent, stolen_exp);
     send_text_message_printf(c, "$C5+%" PRIu32 " E-%hX %s", stolen_exp, enemy.enemy_id, phosg::name_for_enum(enemy.type));
   }
   add_player_exp(c, stolen_exp);
@@ -3470,9 +3516,9 @@ static void on_enemy_exp_request_bb(shared_ptr<Client> c, uint8_t, uint8_t, void
 
   double base_exp = 0.0;
   try {
-    const auto& bp_table = s->battle_params->get_table(l->mode == GameMode::SOLO, l->episode);
-    uint32_t bp_index = battle_param_index_for_enemy_type(l->episode, e.type);
-    base_exp = bp_table.stats[l->difficulty][bp_index].experience;
+    base_exp = base_exp_for_enemy_type(
+        s->battle_params, e.type, l->episode, l->difficulty, e.floor, l->mode == GameMode::SOLO);
+
   } catch (const exception& exc) {
     if (c->config.check_flag(Client::Flag::DEBUG_ENABLED)) {
       send_text_message_printf(c, "$C5E-%hX __MISSING__\n%s", e.enemy_id, exc.what());
