@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 
-ARG BASE_IMAGE=ubuntu:22.04
+ARG BASE_IMAGE=ubuntu:24.04
 FROM ${BASE_IMAGE} AS builder
 
 RUN apt update && apt install -y --no-install-recommends \
@@ -24,7 +24,6 @@ ARG BUILD_RESOURCE_DASM=true
 
 RUN git clone --depth 1 -b ${PHOSG_TARGET} https://github.com/fuzziqersoftware/phosg.git && \
     cd phosg && \
-    sed -i 's/VERSION 3\.[0-9]\+/VERSION 3.10/' CMakeLists.txt && \
     cmake . && \
     make -j$(nproc) && \
     sudo make install
@@ -33,7 +32,6 @@ RUN \
 if [ "$BUILD_RESOURCE_DASM" = "true" ] ; then \
     git clone --depth 1 -b ${RESOURCE_DASM_TARGET} https://github.com/fuzziqersoftware/resource_dasm.git && \
     cd resource_dasm && \
-    sed -i 's/VERSION 3\.[0-9]\+/VERSION 3.10/' CMakeLists.txt && \
     cmake . && \
     make -j$(nproc) && \
     sudo make install \
