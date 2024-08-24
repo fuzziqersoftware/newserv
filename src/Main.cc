@@ -2811,7 +2811,7 @@ int main(int argc, char** argv) {
   // see what the exception message was.
   try {
     a->run(args);
-  } catch (const cannot_open_file& e) {
+  } catch (const phosg::cannot_open_file& e) {
     phosg::log_error("Top-level exception (cannot_open_file): %s", e.what());
     throw;
   } catch (const invalid_argument& e) {
