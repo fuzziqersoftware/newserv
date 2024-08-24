@@ -12,8 +12,6 @@ on:
     tags:
       - 'v**'
 
-  pull_request:
-
 jobs:
   build:
     runs-on: ubuntu-latest
