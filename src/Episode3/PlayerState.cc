@@ -1415,7 +1415,7 @@ bool PlayerState::set_card_from_hand(
   s->send_6xB4x05();
 
   if (!is_nte) {
-    G_AddToSetCardlog_Ep3_6xB4x4A cmd;
+    G_AddToSetCardLog_Ep3_6xB4x4A cmd;
     cmd.card_refs.clear(0xFFFF);
     cmd.card_refs[0] = card_ref;
     cmd.client_id = this->client_id;
@@ -1782,7 +1782,7 @@ bool PlayerState::set_action_cards_for_action_state(const ActionState& pa) {
       card->loc.direction = pa.facing_direction;
       log.debug("set facing direction to %s", phosg::name_for_enum(card->loc.direction));
 
-      G_AddToSetCardlog_Ep3_6xB4x4A cmd;
+      G_AddToSetCardLog_Ep3_6xB4x4A cmd;
       cmd.card_refs.clear(0xFFFF);
       cmd.client_id = this->client_id;
       cmd.round_num = s->get_round_num();
@@ -1842,7 +1842,7 @@ bool PlayerState::set_action_cards_for_action_state(const ActionState& pa) {
       }
     }
     if (!is_nte) {
-      G_AddToSetCardlog_Ep3_6xB4x4A cmd;
+      G_AddToSetCardLog_Ep3_6xB4x4A cmd;
       cmd.card_refs.clear(0xFFFF);
       cmd.client_id = this->client_id;
       cmd.round_num = s->get_round_num();

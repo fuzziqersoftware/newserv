@@ -12,7 +12,8 @@ using namespace std;
 namespace Episode3 {
 
 // This is (obviously) not the original string. The original string is:
-// "[V1][FINAL2.0] 03/09/13 15:30 by K.Toya"
+// "03/05/29 18:00 by K.Toya" (NTE)
+// "[V1][FINAL2.0] 03/09/13 15:30 by K.Toya" (Final)
 static const char* VERSION_SIGNATURE =
     "newserv Ep3 based on [V1][FINAL2.0] 03/09/13 15:30 by K.Toya";
 static const char* VERSION_SIGNATURE_NTE =
