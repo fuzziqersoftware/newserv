@@ -49,7 +49,10 @@
   "HTTPListen": [],
   "BannedIPV4Ranges": [],
   "Episode3BehaviorFlags": 0xFA,
-  "EnableSendFunctionCallQuestNumbers": {},
+  "EnableSendFunctionCallQuestNumbers": {
+    "3SE0": 88532, // US Ep3
+    "3SP0": 88533, // EU Ep3
+  },
   "EnableV3V4ProtectedSubcommands": false,
 
   "Episode3InfiniteMeseta": false,
