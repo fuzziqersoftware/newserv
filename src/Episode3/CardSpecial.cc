@@ -244,15 +244,21 @@ void CardSpecial::apply_action_conditions(
     shared_ptr<Card> defender_card,
     uint32_t flags,
     const ActionState* as) {
+  auto s = this->server();
+  auto log = s->log_stack("apply_action_conditions: ");
 
   ActionState temp_as;
   if (attacker_card == defender_card) {
     temp_as = this->create_attack_state_from_card_action_chain(attacker_card);
     if (as) {
+      log.debug("using action state from override");
       temp_as = *as;
+    } else {
+      log.debug("using action state from attacker card");
     }
   } else {
     temp_as = this->create_defense_state_for_card_pair_action_chains(attacker_card, defender_card);
+    log.debug("using action state from card pair");
   }
 
   this->apply_defense_conditions(temp_as, when, defender_card, flags);
@@ -297,22 +303,47 @@ bool CardSpecial::apply_defense_condition(
     shared_ptr<Card> defender_card,
     uint32_t flags,
     bool unknown_p8) {
+  auto s = this->server();
+  bool is_nte = s->options.is_nte();
+  auto log = s->log_stack("apply_defense_condition: ");
+
+  if (log.should_log(phosg::LogLevel::DEBUG)) {
+    log.debug(
+        "when=%s, cond_index=%hhu, defender_card=(@%04hX #%04hX), flags=%08" PRIX32 ", p8=%s",
+        phosg::name_for_enum(when),
+        cond_index,
+        defender_card->get_card_ref(),
+        defender_card->get_card_id(),
+        flags,
+        unknown_p8 ? "true" : "false");
+    auto defender_cond_str = defender_cond->str(s);
+    auto defense_state_str = defense_state.str(s);
+    log.debug("defender_cond = %s", defender_cond_str.c_str());
+    log.debug("defense_state = %s", defense_state_str.c_str());
+  }
+
   if (defender_cond->type == ConditionType::NONE) {
+    log.debug("no condition");
     return false;
   }
 
   auto orig_eff = this->original_definition_for_condition(*defender_cond);
+  if (log.should_log(phosg::LogLevel::DEBUG)) {
+    auto orig_eff_str = orig_eff->str();
+    log.debug("orig_eff = %s", orig_eff_str.c_str());
+  }
 
   uint16_t attacker_card_ref = defense_state.attacker_card_ref;
   if (attacker_card_ref == 0xFFFF) {
     attacker_card_ref = defense_state.original_attacker_card_ref;
   }
+  log.debug("attacker_card_ref = @%04hX", attacker_card_ref);
 
-  auto s = this->server();
-  bool is_nte = s->options.is_nte();
   bool defender_has_ability_trap = !is_nte && this->card_ref_has_ability_trap(*defender_cond);
+  log.debug("defender_has_ability_trap = %s", defender_has_ability_trap ? "true" : "false");
 
   if ((is_nte || (flags & 4)) && !this->is_card_targeted_by_condition(*defender_cond, defense_state, defender_card)) {
+    log.debug("not targeted by condition");
     if (defender_cond->type != ConditionType::NONE) {
       G_ApplyConditionEffect_Ep3_6xB4x06 cmd;
       cmd.effect.flags = 0x04;
@@ -328,6 +359,7 @@ bool CardSpecial::apply_defense_condition(
   }
 
   if ((when == EffectWhen::AFTER_ANY_CARD_ATTACK) && (defender_cond->type == ConditionType::GUOM) && (flags & 4)) {
+    log.debug("deleting guom condition");
     CardShortStatus stat = defender_card->get_short_status();
     if (stat.card_flags & 4) {
       G_ApplyConditionEffect_Ep3_6xB4x06 cmd;
@@ -364,6 +396,7 @@ bool CardSpecial::apply_defense_condition(
   }
 
   if ((when == EffectWhen::BEFORE_DICE_PHASE_THIS_TEAM_TURN) && (flags & 4) && !defender_has_ability_trap && (defender_cond->type == ConditionType::ACID)) {
+    log.debug("applying acid");
     int16_t hp = defender_card->get_current_hp();
     if (hp > 0) {
       this->send_6xB4x06_for_stat_delta(defender_card, defender_cond->card_ref, 0x20, -1, 0, 1);
@@ -373,9 +406,11 @@ bool CardSpecial::apply_defense_condition(
   }
 
   if (!orig_eff || (orig_eff->when != when)) {
+    log.debug("unsetting flag 4");
     flags &= ~4;
   }
   if ((flags == 0) || defender_has_ability_trap) {
+    log.debug("no condition remains to apply");
     return false;
   }
 
@@ -392,8 +427,10 @@ bool CardSpecial::apply_defense_condition(
 
   string expr = orig_eff->expr.decode();
   int16_t expr_value = this->evaluate_effect_expr(astats, expr.c_str(), dice_roll);
+  log.debug("execute_effect ...");
   this->execute_effect(*defender_cond, defender_card, expr_value, defender_cond->value, orig_eff->type, flags, attacker_card_ref);
   if (flags & 4) {
+    log.debug("recomputing action chaing results");
     if (is_nte || !(defender_card->card_flags & 2)) {
       defender_card->compute_action_chain_results(true, false);
     }
@@ -403,6 +440,7 @@ bool CardSpecial::apply_defense_condition(
   }
 
   if (dice_roll.value_used_in_expr && !(original_cond_flags & 1) && !unknown_p8) {
+    log.debug("dice roll was used; setting dice display flag");
     defender_cond->flags |= 1;
     G_ApplyConditionEffect_Ep3_6xB4x06 cmd;
     cmd.effect.flags = 0x08;
@@ -3209,17 +3247,27 @@ vector<shared_ptr<const Card>> CardSpecial::get_targeted_cards_for_condition(
       }
       break;
     case 0x27: // p39
-      ret = this->find_all_set_cards_with_cost_in_range(4, 99);
+    case 0x28: { // p40
+      auto log3940 = log.sub("(p39/p40) ");
+      ret = this->find_all_set_cards_with_cost_in_range(
+          (p_target_type == 0x27) ? 4 : 0,
+          (p_target_type == 0x27) ? 99 : 3);
+      if (log3940.should_log(phosg::LogLevel::DEBUG)) {
+        for (const auto& card : ret) {
+          log3940.debug("found target @%04hX #%04hX", card->get_card_ref(), card->get_card_id());
+        }
+      }
       if (!s->options.is_nte()) {
+        log3940.debug("filtering targets");
         ret = this->filter_cards_by_range(ret, card1, card1_loc, card2);
+        if (log3940.should_log(phosg::LogLevel::DEBUG)) {
+          for (const auto& card : ret) {
+            log3940.debug("retained target @%04hX #%04hX", card->get_card_ref(), card->get_card_id());
+          }
+        }
       }
       break;
-    case 0x28: // p40
-      ret = this->find_all_set_cards_with_cost_in_range(0, 3);
-      if (!s->options.is_nte()) {
-        ret = this->filter_cards_by_range(ret, card1, card1_loc, card2);
-      }
-      break;
+    }
     case 0x29: { // p41
       auto ps = card1->player_state();
       if (card1 && ps) {
@@ -3476,41 +3524,62 @@ bool CardSpecial::is_card_targeted_by_condition(
     const ActionState& as,
     shared_ptr<const Card> card) const {
   auto s = this->server();
+  auto log = s->log_stack("is_card_targeted_by_condition: ");
+
+  if (log.should_log(phosg::LogLevel::DEBUG)) {
+    log.debug("card=(@%04hX #%04hX)", card->get_card_ref(), card->get_card_id());
+    auto cond_str = cond.str(s);
+    auto as_str = as.str(s);
+    log.debug("cond = %s", cond_str.c_str());
+    log.debug("as = %s", as_str.c_str());
+  }
+
+  if (cond.type == ConditionType::NONE) {
+    log.debug("condition is NONE (=> true)");
+    return true;
+  }
+
   auto ce = s->definition_for_card_ref(cond.card_ref);
   auto sc_card = s->card_for_set_card_ref(cond.card_ref);
-  if (cond.type != ConditionType::NONE) {
-    if ((!sc_card || ((sc_card != card) && (sc_card->card_flags & 2))) &&
-        ce &&
-        ((ce->def.type == CardType::ITEM) || ce->def.is_sc()) &&
-        (cond.remaining_turns != 100) &&
-        (s->options.is_nte() || (client_id_for_card_ref(card->get_card_ref()) == client_id_for_card_ref(cond.card_ref)))) {
-      return false;
-    }
-    if (cond.remaining_turns == 102) {
-      if (sc_card && ((sc_card == card) || !(sc_card->card_flags & 2))) {
-        string arg3_s = ce->def.effects[cond.card_definition_effect_index].arg3.decode();
-        if (arg3_s.size() < 1) {
-          throw runtime_error("card definition arg3 is missing");
-        }
-        auto target_cards = this->get_targeted_cards_for_condition(
-            cond.card_ref,
-            cond.card_definition_effect_index,
-            cond.condition_giver_card_ref,
-            as,
-            atoi(arg3_s.c_str() + 1),
-            0);
-        for (auto c : target_cards) {
-          if (c == card) {
-            return true;
-          }
-        }
-      }
-      return false;
-    } else {
-      return true;
-    }
+  if ((!sc_card || ((sc_card != card) && (sc_card->card_flags & 2))) &&
+      ce &&
+      ((ce->def.type == CardType::ITEM) || ce->def.is_sc()) &&
+      (cond.remaining_turns != 100) &&
+      (s->options.is_nte() || (client_id_for_card_ref(card->get_card_ref()) == client_id_for_card_ref(cond.card_ref)))) {
+    log.debug("failed item or SC check (=> false)");
+    return false;
   }
-  return true;
+
+  if (cond.remaining_turns != 102) {
+    log.debug("remaining_turns != 102 (=> true)");
+    return true;
+  }
+
+  if (sc_card && ((sc_card == card) || !(sc_card->card_flags & 2))) {
+    string arg3_s = ce->def.effects[cond.card_definition_effect_index].arg3.decode();
+    if (arg3_s.size() < 1) {
+      throw runtime_error("card definition arg3 is missing");
+    }
+    auto target_cards = this->get_targeted_cards_for_condition(
+        cond.card_ref,
+        cond.card_definition_effect_index,
+        cond.condition_giver_card_ref,
+        as,
+        atoi(arg3_s.c_str() + 1),
+        0);
+    for (auto c : target_cards) {
+      if (c == card) {
+        log.debug("targeted by p condition (=> true)");
+        return true;
+      }
+    }
+    log.debug("not targeted by p condition (=> false)");
+    return false;
+  } else {
+
+    log.debug("SC check does not apply");
+    return false;
+  }
 }
 
 void CardSpecial::on_card_set(shared_ptr<PlayerState> ps, uint16_t card_ref) {
@@ -4641,32 +4710,75 @@ vector<shared_ptr<const Card>> CardSpecial::filter_cards_by_range(
     shared_ptr<const Card> card1,
     const Location& card1_loc,
     shared_ptr<const Card> card2) const {
+  auto log = this->server()->log_stack("filter_cards_by_range: ");
+
+  if (log.should_log(phosg::LogLevel::DEBUG)) {
+    auto card1_str = card1 ? phosg::string_printf("@%04hX #%04hX", card1->get_card_ref(), card1->get_card_id()) : "null";
+    auto card2_str = card2 ? phosg::string_printf("@%04hX #%04hX", card2->get_card_ref(), card2->get_card_id()) : "null";
+    auto loc_str = card1_loc.str();
+    log.debug("card1=(%s), card2=(%s), loc=%s", card1_str.c_str(), card2_str.c_str(), loc_str.c_str());
+
+    for (const auto& card : cards) {
+      if (card) {
+        log.debug("input card: @%04hX #%04hX", card->get_card_ref(), card->get_card_id());
+      } else {
+        log.debug("input card: null");
+      }
+    }
+  }
+
   vector<shared_ptr<const Card>> ret;
   if (!card1 || cards.empty()) {
+    log.debug("card1 missing or input list is blank");
     return ret;
   }
 
   auto ps = card1->player_state();
   if (!ps) {
+    log.debug("ps is missing");
     return ret;
   }
 
   // TODO: Remove hardcoded card ID here (Earthquake)
   uint16_t card_id = this->get_card_id_with_effective_range(card1, 0x00ED, card2);
+  log.debug("card_id = #%04hX", card_id);
+
   parray<uint8_t, 9 * 9> range;
   compute_effective_range(range, this->server()->options.card_index, card_id, card1_loc, this->server()->map_and_rules);
+  if (log.should_log(phosg::LogLevel::DEBUG)) {
+    auto loc_str = card1_loc.str();
+    log.debug("compute_effective_range(range, ci, #%04hX, %s, map) =>", card_id, loc_str.c_str());
+    for (size_t y = 0; y < 9; y++) {
+      const uint8_t* row = &range[y * 9];
+      log.debug("  range[%zu] = %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX",
+          y, row[0], row[1], row[2], row[3], row[4], row[5], row[6], row[7], row[8]);
+    }
+  }
+
   auto card_refs_in_range = ps->get_card_refs_within_range_from_all_players(range, card1_loc, CardType::ITEM);
+  if (log.should_log(phosg::LogLevel::DEBUG)) {
+    for (uint16_t card_ref : card_refs_in_range) {
+      log.debug("ref in range: @%04hX", card_ref);
+    }
+  }
 
   for (auto card : cards) {
     if (!card || (card->get_card_ref() == 0xFFFF)) {
+      if (card) {
+        log.debug("(@%04hX #%04hX) out of range", card->get_card_ref(), card->get_card_id());
+      } else {
+        log.debug("(null) card missing");
+      }
       continue;
     }
     for (uint16_t card_ref_in_range : card_refs_in_range) {
       if (card_ref_in_range == card->get_card_ref()) {
+        log.debug("(@%04hX #%04hX) in range", card->get_card_ref(), card->get_card_id());
         ret.emplace_back(card);
         break;
       }
     }
+    log.debug("(@%04hX #%04hX) out of range", card->get_card_ref(), card->get_card_id());
   }
   return ret;
 }

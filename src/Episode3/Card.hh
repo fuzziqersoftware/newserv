@@ -85,7 +85,7 @@ public:
   void dice_phase_before();
   bool is_guard_item() const;
   bool unknown_80236554(std::shared_ptr<Card> other_card, const ActionState* as);
-  void unknown_802362D8(std::shared_ptr<Card> other_card);
+  void execute_attack_on_all_valid_targets(std::shared_ptr<Card> attacker_card);
   void apply_attack_result();
 
 private:

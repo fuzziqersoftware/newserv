@@ -2076,7 +2076,8 @@ uint32_t RulerServer::get_card_id_with_effective_range(
       if (this->card_ref_or_sc_has_fixed_range(card_ref)) {
         // Undo the override that may have been passed in
         log.debug("@%04hX has FIXED_RANGE", card_ref);
-        auto orig_ce = this->definition_for_card_id(this->card_id_for_card_ref(card_ref));
+        card_id = this->card_id_for_card_ref(card_ref);
+        auto orig_ce = this->definition_for_card_id(card_id);
         if (orig_ce && (static_cast<uint8_t>(effective_target_mode) < 6)) {
           log.debug("ce valid for #%04hX with effective target mode %s; overriding to %s", card_id, name_for_target_mode(effective_target_mode), name_for_target_mode(orig_ce->def.target_mode));
           effective_target_mode = orig_ce->def.target_mode;

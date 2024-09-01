@@ -1154,6 +1154,11 @@ void Card::compute_action_chain_results(bool apply_action_conditions, bool ignor
       }
     }
   }
+
+  if (log.should_log(phosg::LogLevel::DEBUG)) {
+    string chain_str = this->action_chain.str(s);
+    log.debug("result computed as %s", chain_str.c_str());
+  }
 }
 
 void Card::unknown_802380C0() {
@@ -1222,11 +1227,22 @@ void Card::unknown_80236374(shared_ptr<Card> other_card, const ActionState* as) 
   auto s = this->server();
   auto log = s->log_stack(phosg::string_printf("unknown_80236374(@%04hX #%04hX, @%04hX #%04hX): ", this->get_card_ref(), this->get_card_id(), other_card->get_card_ref(), other_card->get_card_id()));
 
+  if (log.should_log(phosg::LogLevel::DEBUG)) {
+    if (as) {
+      string as_str = as->str(s);
+      log.debug("as = %s", as_str.c_str());
+    } else {
+      log.debug("as = null");
+    }
+  }
+
   auto check_card = [&](shared_ptr<Card> card) -> void {
     if (card) {
       if (!card->unknown_80236554(other_card, as)) {
+        log.debug("check_card @%04hX #%04hX => false", card->get_card_ref(), card->get_card_id());
         card->action_metadata.clear_flags(0x20);
       } else {
+        log.debug("check_card @%04hX #%04hX => true", card->get_card_ref(), card->get_card_id());
         card->action_metadata.set_flags(0x20);
       }
     }
@@ -1363,11 +1379,13 @@ bool Card::unknown_80236554(shared_ptr<Card> other_card, const ActionState* as) 
   auto log = s->log_stack(other_card
           ? phosg::string_printf("unknown_80236554(@%04hX #%04hX, @%04hX #%04hX): ", this->get_card_ref(), this->get_card_id(), other_card->get_card_ref(), other_card->get_card_id())
           : phosg::string_printf("unknown_80236554(@%04hX #%04hX, null): ", this->get_card_ref(), this->get_card_id()));
-  if (as) {
-    string as_str = as->str(s);
-    log.debug("as = %s", as_str.c_str());
-  } else {
-    log.debug("as = null");
+  if (log.should_log(phosg::LogLevel::DEBUG)) {
+    if (as) {
+      string as_str = as->str(s);
+      log.debug("as = %s", as_str.c_str());
+    } else {
+      log.debug("as = null");
+    }
   }
 
   bool ret = false;
@@ -1402,32 +1420,38 @@ bool Card::unknown_80236554(shared_ptr<Card> other_card, const ActionState* as) 
   log.debug("last attack damage stats cleared");
 
   if (other_card) {
-    s->card_special->apply_action_conditions(EffectWhen::BEFORE_ANY_CARD_ATTACK, other_card, this->shared_from_this(), 0x20, as);
-    s->card_special->apply_action_conditions(EffectWhen::BEFORE_THIS_CARD_ATTACKED, other_card, this->shared_from_this(), 0x40, as);
+    log.debug("applying BEFORE_ANY_CARD_ATTACK conditions");
+    s->card_special->apply_action_conditions(
+        EffectWhen::BEFORE_ANY_CARD_ATTACK, other_card, this->shared_from_this(), 0x20, as);
+    log.debug("applying BEFORE_THIS_CARD_ATTACKED conditions");
+    s->card_special->apply_action_conditions(
+        EffectWhen::BEFORE_THIS_CARD_ATTACKED, other_card, this->shared_from_this(), 0x40, as);
     if (other_card->action_chain.check_flag(0x20000)) {
+      log.debug("attack_bonus cleared due to cancellation");
       this->action_metadata.attack_bonus = 0;
       return ret;
     }
   }
   if (this->card_flags & 2) {
+    log.debug("attack_bonus cleared due to destruction");
     this->action_metadata.attack_bonus = 0;
   }
   return ret;
 }
 
-void Card::unknown_802362D8(shared_ptr<Card> other_card) {
+void Card::execute_attack_on_all_valid_targets(shared_ptr<Card> attacker_card) {
   auto s = this->server();
   for (size_t client_id = 0; client_id < 4; client_id++) {
     auto ps = s->player_states[client_id];
     if (ps) {
       shared_ptr<Card> card = ps->get_sc_card();
       if (card) {
-        card->execute_attack(other_card);
+        card->execute_attack(attacker_card);
       }
       for (size_t set_index = 0; set_index < 8; set_index++) {
         shared_ptr<Card> card = ps->get_set_card(set_index);
         if (card) {
-          card->execute_attack(other_card);
+          card->execute_attack(attacker_card);
         }
       }
     }
@@ -1548,30 +1572,46 @@ void Card::apply_attack_result() {
       }
     }
 
+    if (log.should_log(phosg::LogLevel::DEBUG)) {
+      string as_str = as.str(s);
+      log.debug("as constructed as %s", as_str.c_str());
+    }
+
     for (size_t z = 0; z < this->action_chain.chain.target_card_ref_count; z++) {
       shared_ptr<Card> card = s->card_for_set_card_ref(this->action_chain.chain.target_card_refs[z]);
       if (card) {
         card->current_defense_power = card->action_metadata.attack_bonus;
         if (!this->action_chain.check_flag(0x40)) {
+          log.debug("unknown_8024A6DC(@%04hX #%04hX) ...", card->get_card_ref(), card->get_card_id());
           s->card_special->unknown_8024A6DC(this->shared_from_this(), card);
         }
       }
     }
 
+    log.debug("compute_action_chain_results 1 ...");
     this->compute_action_chain_results(true, false);
+
     if (!this->action_chain.check_flag(0x40)) {
+      log.debug("apply_effects_before_attack ...");
       s->card_special->apply_effects_before_attack(this->shared_from_this());
     }
     if (!(this->card_flags & 2)) {
+      log.debug("compute_action_chain_results 2 ...");
       this->compute_action_chain_results(true, false);
+      log.debug("check_for_attack_interference ...");
       s->card_special->check_for_attack_interference(this->shared_from_this());
     }
+    log.debug("compute_action_chain_results 3 ...");
     this->compute_action_chain_results(true, false);
+
+    log.debug("unknown_80236374 ...");
     this->unknown_80236374(this->shared_from_this(), nullptr);
-    this->unknown_802362D8(this->shared_from_this());
+    log.debug("execute_attack_on_all_valid_targets ...");
+    this->execute_attack_on_all_valid_targets(this->shared_from_this());
   }
 
   if (!this->action_chain.check_flag(0x40)) {
+    log.debug("apply_effects_after_attack ...");
     s->card_special->apply_effects_after_attack(this->shared_from_this());
   }
   ps->stats.num_attacks_given++;
@@ -1584,6 +1624,7 @@ void Card::apply_attack_result() {
     for (size_t client_id = 0; client_id < 4; client_id++) {
       auto ps = s->player_states[client_id];
       if (ps) {
+        log.debug("unknown_8023C110(%zu) ...", client_id);
         ps->unknown_8023C110();
       }
     }

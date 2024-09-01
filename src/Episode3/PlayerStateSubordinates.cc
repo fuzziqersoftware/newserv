@@ -194,7 +194,7 @@ std::string ActionState::str(shared_ptr<const Server> s) const {
   string target_refs_s = s->debug_str_for_card_refs(this->target_card_refs);
   string action_refs_s = s->debug_str_for_card_refs(this->action_card_refs);
   return phosg::string_printf(
-      "ActionState[client=%hu, u=%hhu, facing=%s, attacker_ref=%s, "
+      "ActionState[client=%hX, u=%hhu, facing=%s, attacker_ref=%s, "
       "def_ref=%s, target_refs=%s, action_refs=%s, "
       "orig_attacker_ref=%s]",
       this->client_id.load(),
