@@ -23,6 +23,7 @@ See TODO.md for a list of known issues and future work I've curated, or go to th
     * [Installing quests](#installing-quests)
     * [Item tables and drop modes](#item-tables-and-drop-modes)
     * [Cross-version play](#cross-version-play)
+    * [Server-side saves](#server-side-saves)
     * [Episode 3 features](#episode-3-features)
     * [Memory patches, client functions, and DOL files](#memory-patches-client-functions-and-dol-files)
     * [Using newserv as a proxy](#using-newserv-as-a-proxy)
