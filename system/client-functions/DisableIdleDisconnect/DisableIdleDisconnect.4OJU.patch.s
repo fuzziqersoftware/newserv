@@ -1,5 +1,5 @@
 .meta name="Disable idle DC"
-.meta description="Disable idle\ndisconnect timeout"
+.meta description="Disables the idle\ndisconnect timeout"
 
 entry_ptr:
 reloc0:

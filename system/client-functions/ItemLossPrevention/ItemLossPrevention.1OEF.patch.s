@@ -1,5 +1,5 @@
 .meta name="No item loss"
-.meta description="Don't lose items if\nyou don't log off\nnormally"
+.meta description="Disables logic that\ndeletes items if\nyou don't log off\nnormally"
 
 entry_ptr:
 reloc0:

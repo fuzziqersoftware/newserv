@@ -2,8 +2,8 @@
 # in-game, which means it must be used by running `$patch AllCards`.
 
 .meta hide_from_patches_menu
-.meta name="Get all cards"
-.meta description="This patch gives you\nthe maximum number\nof each card."
+.meta name="All cards"
+.meta description="Gives you the\nmaximum number of\neach card."
 
 entry_ptr:
 reloc0:

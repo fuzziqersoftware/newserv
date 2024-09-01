@@ -1,5 +1,5 @@
 .meta name="Enemy HP bars"
-.meta description="Show HP bars in\nenemy info windows"
+.meta description="Shows HP bars in\nenemy info windows"
 # Original code by Ralf @ GC-Forever and Aleron Ives
 # https://www.gc-forever.com/forums/viewtopic.php?t=2050
 # https://www.gc-forever.com/forums/viewtopic.php?t=2049

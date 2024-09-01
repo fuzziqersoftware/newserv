@@ -1,5 +1,5 @@
 .meta name="Ultimate map fix"
-.meta description="Add missing maps\nto Ultimate for\ncertain quests"
+.meta description="Adds missing maps\nto Ultimate for\ncertain quests"
 
 entry_ptr:
 reloc0:

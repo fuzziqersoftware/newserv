@@ -1,5 +1,5 @@
 .meta name="Draw Distance"
-.meta description="Extend the draw\ndistance of many\nobjects"
+.meta description="Extends the draw\ndistance of many\nobjects"
 # Original code by Ralf @ GC-Forever and Aleron Ives
 # https://www.gc-forever.com/forums/viewtopic.php?t=2050
 # https://www.gc-forever.com/forums/viewtopic.php?t=2049

@@ -1,5 +1,5 @@
 .meta name="Decoction"
-.meta description="Make the Decoction\nitem reset your\nmaterial usage"
+.meta description="Makes the Decoction\nitem reset your\nmaterial usage"
 # Original code by Ralf @ GC-Forever and Aleron Ives
 # https://www.gc-forever.com/forums/viewtopic.php?t=2050
 # https://www.gc-forever.com/forums/viewtopic.php?t=2049

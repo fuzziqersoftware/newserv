@@ -1,5 +1,5 @@
 .meta name="Xbox/BB targets"
-.meta description="Change the target\nreticle colors to\nthose used on the\nXbox and Blue Burst"
+.meta description="Changes the target\nreticle colors to\nthose used on the\nXbox and Blue Burst"
 # Original code by Ralf @ GC-Forever and Aleron Ives
 # https://www.gc-forever.com/forums/viewtopic.php?t=2050
 # https://www.gc-forever.com/forums/viewtopic.php?t=2049

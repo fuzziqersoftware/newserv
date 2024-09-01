@@ -1,5 +1,5 @@
 .meta name="No item loss"
-.meta description="Don't lose items if\nyou don't log off\nnormally"
+.meta description="Disables logic that\ndeletes items if\nyou don't log off\nnormally"
 # Original code by Ralf @ GC-Forever and Aleron Ives
 # https://www.gc-forever.com/forums/viewtopic.php?t=2050
 # https://www.gc-forever.com/forums/viewtopic.php?t=2049

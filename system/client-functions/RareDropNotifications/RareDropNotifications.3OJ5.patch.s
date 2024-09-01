@@ -1,5 +1,5 @@
 .meta name="Rare alerts"
-.meta description="Show rare items on\nthe map and play a\nsound when a rare\nitem drops"
+.meta description="Shows rare items on\nthe map and plays a\nsound when a rare\nitem drops"
 # Original code by Ralf @ GC-Forever and Aleron Ives
 # https://www.gc-forever.com/forums/viewtopic.php?t=2050
 # https://www.gc-forever.com/forums/viewtopic.php?t=2049

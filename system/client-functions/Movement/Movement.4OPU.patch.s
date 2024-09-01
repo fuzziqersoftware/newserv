@@ -1,5 +1,5 @@
 .meta name="Movement"
-.meta description="Fix movement dead\nzone thresholds"
+.meta description="Fixes movement dead\nzone thresholds"
 
 entry_ptr:
 reloc0:

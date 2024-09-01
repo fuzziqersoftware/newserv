@@ -1,4 +1,4 @@
-.meta name="Get VIP card"
+.meta name="VIP card"
 .meta description="Gives you a VIP card"
 
 entry_ptr:
