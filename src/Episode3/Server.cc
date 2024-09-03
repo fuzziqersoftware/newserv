@@ -2645,8 +2645,10 @@ void Server::send_6xB6x41_to_all_clients() const {
 void Server::handle_CAx41_map_request(shared_ptr<Client>, const string& data) {
   const auto& cmd = check_size_t<G_MapDataRequest_Ep3_CAx41>(data);
   this->send_debug_command_received_message(cmd.header.subsubcommand, "MAP DATA");
-  this->last_chosen_map = this->options.map_index->for_number(cmd.map_number);
-  this->send_6xB6x41_to_all_clients();
+  if (!this->options.tournament || (this->options.tournament->get_map()->map_number == cmd.map_number)) {
+    this->last_chosen_map = this->options.map_index->for_number(cmd.map_number);
+    this->send_6xB6x41_to_all_clients();
+  }
 }
 
 void Server::handle_CAx48_end_turn(shared_ptr<Client>, const string& data) {
