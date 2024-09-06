@@ -67,14 +67,4 @@ struct MapAndRulesStateTrial {
   operator MapAndRulesState() const;
 } __packed_ws__(MapAndRulesStateTrial, 0x130);
 
-struct OverlayState {
-  parray<parray<uint8_t, 0x10>, 0x10> tiles;
-  parray<le_uint32_t, 5> unused1;
-  parray<le_uint32_t, 0x10> unused2;
-  parray<le_uint16_t, 0x10> trap_card_ids_nte; // Unused on non-NTE
-
-  OverlayState();
-  void clear();
-} __packed_ws__(OverlayState, 0x174);
-
 } // namespace Episode3

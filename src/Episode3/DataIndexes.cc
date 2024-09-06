@@ -1584,6 +1584,19 @@ void StateFlags::clear_FF() {
   this->client_sc_card_types.clear(CardType::INVALID_FF);
 }
 
+OverlayState::OverlayState() {
+  this->clear();
+}
+
+void OverlayState::clear() {
+  for (size_t y = 0; y < this->tiles.size(); y++) {
+    this->tiles[y].clear(0);
+  }
+  this->unused1.clear(0);
+  this->trap_tile_colors_nte.clear(0);
+  this->trap_card_ids_nte.clear(0);
+}
+
 void MapDefinition::assert_semantically_equivalent(const MapDefinition& other) const {
   if (this->map_number != other.map_number) {
     throw runtime_error("map number not equal");
@@ -1603,11 +1616,8 @@ void MapDefinition::assert_semantically_equivalent(const MapDefinition& other) c
   if (this->start_tile_definitions != other.start_tile_definitions) {
     throw runtime_error("start tile definitions not equal");
   }
-  if (this->modification_tiles != other.modification_tiles) {
+  if (this->overlay_state.tiles != other.overlay_state.tiles) {
     throw runtime_error("modification tiles not equal");
-  }
-  if (this->unknown_a5 != other.unknown_a5) {
-    throw runtime_error("unknown_a5 not equal");
   }
   if (this->default_rules != other.default_rules) {
     throw runtime_error("default rules not equal");
@@ -1814,19 +1824,52 @@ string MapDefinition::str(const CardIndex* card_index, uint8_t language) const {
       lines.emplace_back(phosg::string_printf("  overview_specs[%zu][team %zu]: %s", w, z, spec_str.c_str()));
     }
   }
-  lines.emplace_back("  modification tiles:");
-  add_map(this->modification_tiles);
-  for (size_t z = 0; z < 0x70; z += 0x10) {
-    lines.emplace_back(phosg::string_printf(
-        "  a5[0x%02zX:0x%02zX]: %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX", z, z + 0x10,
-        this->unknown_a5[z + 0x00], this->unknown_a5[z + 0x01], this->unknown_a5[z + 0x02], this->unknown_a5[z + 0x03],
-        this->unknown_a5[z + 0x04], this->unknown_a5[z + 0x05], this->unknown_a5[z + 0x06], this->unknown_a5[z + 0x07],
-        this->unknown_a5[z + 0x08], this->unknown_a5[z + 0x09], this->unknown_a5[z + 0x0A], this->unknown_a5[z + 0x0B],
-        this->unknown_a5[z + 0x0C], this->unknown_a5[z + 0x0D], this->unknown_a5[z + 0x0E], this->unknown_a5[z + 0x0F]));
-  }
+  lines.emplace_back("  overlay tiles:");
+  add_map(this->overlay_state.tiles);
   lines.emplace_back(phosg::string_printf(
-      "  a5[0x70:0x74]: %02hhX %02hhX %02hhX %02hhX",
-      this->unknown_a5[0x70], this->unknown_a5[0x71], this->unknown_a5[0x72], this->unknown_a5[0x73]));
+      "  unused1: %08" PRIX32 " %08" PRIX32 " %08" PRIX32 " %08" PRIX32 " %08" PRIX32,
+      this->overlay_state.unused1[0].load(),
+      this->overlay_state.unused1[1].load(),
+      this->overlay_state.unused1[2].load(),
+      this->overlay_state.unused1[3].load(),
+      this->overlay_state.unused1[4].load()));
+  lines.emplace_back(phosg::string_printf(
+      "  trap_tile_colors_nte: %08" PRIX32 " %08" PRIX32 " %08" PRIX32 " %08" PRIX32 " %08" PRIX32 " %08" PRIX32 " %08" PRIX32 " %08" PRIX32 " %08" PRIX32 " %08" PRIX32 " %08" PRIX32 " %08" PRIX32 " %08" PRIX32 " %08" PRIX32 " %08" PRIX32 " %08" PRIX32,
+      this->overlay_state.trap_tile_colors_nte[0].load(),
+      this->overlay_state.trap_tile_colors_nte[1].load(),
+      this->overlay_state.trap_tile_colors_nte[2].load(),
+      this->overlay_state.trap_tile_colors_nte[3].load(),
+      this->overlay_state.trap_tile_colors_nte[4].load(),
+      this->overlay_state.trap_tile_colors_nte[5].load(),
+      this->overlay_state.trap_tile_colors_nte[6].load(),
+      this->overlay_state.trap_tile_colors_nte[7].load(),
+      this->overlay_state.trap_tile_colors_nte[8].load(),
+      this->overlay_state.trap_tile_colors_nte[9].load(),
+      this->overlay_state.trap_tile_colors_nte[10].load(),
+      this->overlay_state.trap_tile_colors_nte[11].load(),
+      this->overlay_state.trap_tile_colors_nte[12].load(),
+      this->overlay_state.trap_tile_colors_nte[13].load(),
+      this->overlay_state.trap_tile_colors_nte[14].load(),
+      this->overlay_state.trap_tile_colors_nte[15].load()));
+  lines.emplace_back(phosg::string_printf(
+      "  trap_card_ids_nte: #%04hX #%04hX #%04hX #%04hX #%04hX #%04hX #%04hX #%04hX #%04hX #%04hX #%04hX #%04hX #%04hX #%04hX #%04hX #%04hX",
+      this->overlay_state.trap_card_ids_nte[0].load(),
+      this->overlay_state.trap_card_ids_nte[1].load(),
+      this->overlay_state.trap_card_ids_nte[2].load(),
+      this->overlay_state.trap_card_ids_nte[3].load(),
+      this->overlay_state.trap_card_ids_nte[4].load(),
+      this->overlay_state.trap_card_ids_nte[5].load(),
+      this->overlay_state.trap_card_ids_nte[6].load(),
+      this->overlay_state.trap_card_ids_nte[7].load(),
+      this->overlay_state.trap_card_ids_nte[8].load(),
+      this->overlay_state.trap_card_ids_nte[9].load(),
+      this->overlay_state.trap_card_ids_nte[10].load(),
+      this->overlay_state.trap_card_ids_nte[11].load(),
+      this->overlay_state.trap_card_ids_nte[12].load(),
+      this->overlay_state.trap_card_ids_nte[13].load(),
+      this->overlay_state.trap_card_ids_nte[14].load(),
+      this->overlay_state.trap_card_ids_nte[15].load()));
+
   lines.emplace_back("  default_rules: " + this->default_rules.str());
   lines.emplace_back("  name: " + this->name.decode(language));
   lines.emplace_back("  location_name: " + this->location_name.decode(language));
@@ -1868,9 +1911,9 @@ string MapDefinition::str(const CardIndex* card_index, uint8_t language) const {
       }
       if (entry) {
         string name = entry->def.en_name.decode(language);
-        lines.emplace_back(phosg::string_printf("    cards[%02zu]: %04hX (%s)", w, card_id, name.c_str()));
+        lines.emplace_back(phosg::string_printf("    cards[%02zu]: #%04hX (%s)", w, card_id, name.c_str()));
       } else {
-        lines.emplace_back(phosg::string_printf("    cards[%02zu]: %04hX", w, card_id));
+        lines.emplace_back(phosg::string_printf("    cards[%02zu]: #%04hX", w, card_id));
       }
     }
     for (size_t x = 0; x < 0x10; x++) {
@@ -1911,9 +1954,9 @@ string MapDefinition::str(const CardIndex* card_index, uint8_t language) const {
     }
     if (entry) {
       string name = entry->def.en_name.decode(language);
-      lines.emplace_back(phosg::string_printf("  reward_cards[%02zu]: %04hX (%s)", z, card_id, name.c_str()));
+      lines.emplace_back(phosg::string_printf("  reward_cards[%02zu]: #%04hX (%s)", z, card_id, name.c_str()));
     } else {
-      lines.emplace_back(phosg::string_printf("  reward_cards[%02zu]: %04hX", z, card_id));
+      lines.emplace_back(phosg::string_printf("  reward_cards[%02zu]: #%04hX", z, card_id));
     }
   }
   lines.emplace_back(phosg::string_printf("  level_overrides: [win: %" PRId32 ", loss: %" PRId32 "]",
@@ -2022,8 +2065,7 @@ MapDefinitionTrial::MapDefinitionTrial(const MapDefinition& map)
       camera_zone_maps(map.camera_zone_maps),
       camera_zone_specs(map.camera_zone_specs),
       overview_specs(map.overview_specs),
-      modification_tiles(map.modification_tiles),
-      unknown_a5(map.unknown_a5),
+      overlay_state(map.overlay_state),
       default_rules(map.default_rules),
       name(map.name),
       location_name(map.location_name),
@@ -2077,9 +2119,7 @@ MapDefinitionTrial::operator MapDefinition() const {
   ret.camera_zone_maps = this->camera_zone_maps;
   ret.camera_zone_specs = this->camera_zone_specs;
   ret.overview_specs = this->overview_specs;
-  ret.modification_tiles = this->modification_tiles;
-  ret.unknown_a5.clear(0xFF);
-  ret.unknown_a5 = this->unknown_a5;
+  ret.overlay_state = this->overlay_state;
   ret.default_rules = this->default_rules;
   ret.name = this->name;
   ret.location_name = this->location_name;
@@ -2737,7 +2777,7 @@ const string& MapIndex::get_compressed_list(size_t num_players, uint8_t language
       e.width = vm->map->width;
       e.height = vm->map->height;
       e.map_tiles = vm->map->map_tiles;
-      e.modification_tiles = vm->map->modification_tiles;
+      e.modification_tiles = vm->map->overlay_state.tiles;
 
       e.name_offset = strings_w.size();
       strings_w.write(vm->map->name.data, vm->map->name.used_chars_8());

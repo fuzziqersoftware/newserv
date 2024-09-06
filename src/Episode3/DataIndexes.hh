@@ -1131,6 +1131,40 @@ struct CompressedMapHeader { // .mnm file format
   // Compressed data immediately follows (which decompresses to a MapDefinition)
 } __packed_ws__(CompressedMapHeader, 8);
 
+struct OverlayState {
+  // In the tiles array, the high 4 bits of each value are the tile type, and
+  // the low 4 bits are the subtype. The types are:
+  // 10: blocked by rock (as if the corresponding map_tiles value was 00)
+  // 20: blocked by fence (as if the corresponding map_tiles value was 00)
+  // 30-34: teleporters (2 of each value may be present)
+  // 40-4F: traps on NTE
+  // 40-44: traps on non-NTE (there may be up to 8 of each type, and one of
+  //   each is chosen to be a real trap at battle start); the trap types are:
+  //   40: Dice Fever, Heavy Fog, Muscular, Immortality, Snail Pace
+  //   41: Gold Rush, Charity, Requiem
+  //   42: Powerless Rain, Trash 1, Empty Hand, Skip Draw
+  //   43: Brave Wind, Homesick, Fly
+  //   44: Dice+1, Battle Royale, Reverse Card, Giant Garden, Fix
+  // 50: blocked by metal box (appears as an improperly-z-buffered teal cube in
+  //   preview; behaves like 10 and 20 in game)
+  // Any other value here will behave like 00 (no special tile behavior).
+  parray<parray<uint8_t, 0x10>, 0x10> tiles;
+
+  parray<le_uint32_t, 5> unused1;
+
+  // TODO: Figure out exactly where these colors are used
+  parray<le_uint32_t, 0x10> trap_tile_colors_nte; // Unused on non-NTE
+
+  // This specifies the assist card IDs that each trap value (40-4F) will set
+  // when triggered. This only has an effect on NTE; on non-NTE, this is unused
+  // and a fixed set of assist cards is used instead. (On newserv, the set of
+  // used assist cards can be overridden in the server configuration.)
+  parray<le_uint16_t, 0x10> trap_card_ids_nte;
+
+  OverlayState();
+  void clear();
+} __packed_ws__(OverlayState, 0x174);
+
 struct MapDefinition { // .mnmd format; also the format of (decompressed) quests
   // If tag is not 0x00000100, the game considers the map to be corrupt in
   // offline mode and will delete it (if it's a download quest). The tag field
@@ -1250,24 +1284,10 @@ struct MapDefinition { // .mnmd format; also the format of (decompressed) quests
   // (it is not yet known what the major index represents).
   /* 1AB8 */ parray<parray<CameraSpec, 2>, 3> overview_specs;
 
-  // In the modification_tiles array, the values are:
-  // 10 = blocked by rock (as if the corresponding map_tiles value was 00)
-  // 20 = blocked by fence (as if the corresponding map_tiles value was 00)
-  // 30-34 = teleporters (2 of each value may be present)
-  // 40-4F = traps on NTE
-  // 40-44 = traps on non-NTE (one of each type is chosen at random to be a real
-  //         trap at battle start time)
-  // 50 = blocked by metal box (appears as improperly-z-buffered teal cube in
-  //      preview; behaves like 10 and 20 in game)
-  // The assist cards that each trap type can contain are:
-  //   40: Dice Fever, Heavy Fog, Muscular, Immortality, Snail Pace
-  //   41: Gold Rush, Charity, Requiem
-  //   42: Powerless Rain, Trash 1, Empty Hand, Skip Draw
-  //   43: Brave Wind, Homesick, Fly
-  //   44: Dice+1, Battle Royale, Reverse Card, Giant Garden, Fix
-  /* 1C68 */ parray<parray<uint8_t, 0x10>, 0x10> modification_tiles;
+  // This specifies the locations of blocked tiles, teleporters, and traps. See
+  // the comments in OverlayState for details.
+  /* 1C68 */ OverlayState overlay_state;
 
-  /* 1D68 */ parray<uint8_t, 0x74> unknown_a5;
   /* 1DDC */ Rules default_rules;
 
   /* 1DF0 */ pstring<TextEncoding::MARKED, 0x14> name;
@@ -1470,9 +1490,8 @@ struct MapDefinitionTrial {
   /* 0118 */ parray<parray<parray<parray<uint8_t, 0x10>, 0x10>, 10>, 2> camera_zone_maps;
   /* 1518 */ parray<parray<MapDefinition::CameraSpec, 10>, 2> camera_zone_specs;
   /* 1AB8 */ parray<parray<MapDefinition::CameraSpec, 2>, 3> overview_specs;
-  /* 1C68 */ parray<parray<uint8_t, 0x10>, 0x10> modification_tiles;
-  /* 1D68 */ parray<uint8_t, 0x74> unknown_a5;
-  /* 1DD4 */ RulesTrial default_rules;
+  /* 1C68 */ OverlayState overlay_state;
+  /* 1DDC */ RulesTrial default_rules;
   /* 1DE8 */ pstring<TextEncoding::MARKED, 0x14> name;
   /* 1DFC */ pstring<TextEncoding::MARKED, 0x14> location_name;
   /* 1E10 */ pstring<TextEncoding::MARKED, 0x3C> quest_name;

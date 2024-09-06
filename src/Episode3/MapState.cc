@@ -99,17 +99,4 @@ MapAndRulesStateTrial::operator MapAndRulesState() const {
   return ret;
 }
 
-OverlayState::OverlayState() {
-  this->clear();
-}
-
-void OverlayState::clear() {
-  for (size_t y = 0; y < this->tiles.size(); y++) {
-    this->tiles[y].clear(0);
-  }
-  this->unused1.clear(0);
-  this->unused2.clear(0);
-  this->trap_card_ids_nte.clear(0);
-}
-
 } // namespace Episode3
