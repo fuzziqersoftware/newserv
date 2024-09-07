@@ -1846,14 +1846,15 @@ Action a_show_ep3_cards(
 
 Action a_generate_ep3_cards_html(
     "generate-ep3-cards-html", "\
-  generate-ep3-cards-html [--ep3-nte] [--threads=N]\n\
+  generate-ep3-cards-html [--ep3-nte] [--threads=N] [--no-images]\n\
     Generate an HTML file describing all Episode 3 card definitions from the\n\
     system/ep3 directory. If --ep3-nte is given, use the Trial Edition card\n\
-    definitions instead.\n",
+    definitions instead. If --no-images is given, omit the card images.\n",
     +[](phosg::Arguments& args) {
       size_t num_threads = args.get<size_t>("threads", 0);
 
       bool is_nte = (get_cli_version(args, Version::GC_EP3) == Version::GC_EP3_NTE);
+      bool no_images = args.get<bool>("no-images");
 
       auto s = make_shared<ServerState>(get_config_filename(args));
       s->load_patch_indexes(false);
@@ -1890,22 +1891,24 @@ Action a_generate_ep3_cards_html(
       bool show_large_column = false;
       bool show_medium_column = false;
       bool show_small_column = false;
-      for (const auto& filename : phosg::list_directory_sorted("system/ep3/cardtex")) {
-        if ((filename[0] == 'C' || filename[0] == 'M' || filename[0] == 'L') && (filename[1] == '_')) {
-          size_t card_id = stoull(filename.substr(2, 3), nullptr, 10);
-          if (infos.size() <= card_id) {
-            infos.resize(card_id + 1);
-          }
-          auto& info = infos[card_id];
-          if (filename[0] == 'C') {
-            info.large_filename = "system/ep3/cardtex/" + filename;
-            show_large_column = true;
-          } else if (filename[0] == 'L') {
-            info.medium_filename = "system/ep3/cardtex/" + filename;
-            show_medium_column = true;
-          } else if (filename[0] == 'M') {
-            info.small_filename = "system/ep3/cardtex/" + filename;
-            show_small_column = true;
+      if (!no_images) {
+        for (const auto& filename : phosg::list_directory_sorted("system/ep3/cardtex")) {
+          if ((filename[0] == 'C' || filename[0] == 'M' || filename[0] == 'L') && (filename[1] == '_')) {
+            size_t card_id = stoull(filename.substr(2, 3), nullptr, 10);
+            if (infos.size() <= card_id) {
+              infos.resize(card_id + 1);
+            }
+            auto& info = infos[card_id];
+            if (filename[0] == 'C') {
+              info.large_filename = "system/ep3/cardtex/" + filename;
+              show_large_column = true;
+            } else if (filename[0] == 'L') {
+              info.medium_filename = "system/ep3/cardtex/" + filename;
+              show_medium_column = true;
+            } else if (filename[0] == 'M') {
+              info.small_filename = "system/ep3/cardtex/" + filename;
+              show_small_column = true;
+            }
           }
         }
       }
