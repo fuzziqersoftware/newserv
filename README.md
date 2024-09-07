@@ -678,3 +678,61 @@ There are several actions that don't fit well into the table above, which let yo
 * Convert item data to a human-readable description, or vice versa (`describe-item`)
 * Connect to another PSO server and pretend to be a client (`cat-client`)
 * Generate or describe DC serial numbers (`generate-dc-serial-number`, `inspect-dc-serial-number`)
+
+# Docker
+Docker is new and mostly unsupported at this time. However, here are some best-effort steps to build and run in a docker container on Ubuntu Linux.
+Tested on Ubuntu 22.04.4 LTS, using Portainer for the Docker compose.
+Note: You cannot have anything running on port 53 (DNS).
+
+### Install prerequisites
+```
+sudo apt install -y git
+sudo apt install -y cmake. ## minimum version is 3.10. Check installed version with "cmake --version"
+```
+
+### Clone repository
+```
+cd ~
+git clone https://github.com/fuzziqersoftware/newserv/
+cd ~/newserv
+```
+
+### Build newserv. This will take a while. Don't forget the period at the end!
+```
+sudo docker build -t newserv .
+```
+
+### Create config directory
+```
+mkdir ~/newservConfig
+```
+
+### Copy config file to config dir
+```
+cp ~/newserv/system/config.example.json ~/newservConfig/config.json
+```
+
+### Edit config.json
+```
+nano ~/newservConfig/config.json
+```
+Pro tip: Set "LocalAddress" to the statis IP address of your server. If your server IP is "192.168.0.10":
+"LocalAddress": "192.168.0.10",
+
+For Dolphin > Settings. Set SP1 to "Broadband Adapter (HLE)" Click [...] next to this, and set the DNS to the IP address of your server. Then start the game. Changing this while the game is running will NOT work.
+
+
+### Docker compose. Remember to change /home/changeme to your user directory
+```
+version: '2'
+
+services:
+  psonewserv:
+    image: newserv:latest   ## Uses latest build
+    container_name: newserv ## Set to whatever you want.
+    volumes:
+      - /etc/localtime:/etc/localtime:ro  ## Keeps time sync'd with physical server.
+      - /home/changeme/newservConfig/config.json:/newserv/system/config.json  ## Use JSON file outside container.
+    network_mode: host  ## Newserv won't even see client connection attempt- even with port mapping.
+    restart: "no"       ## Set to whatever you want.
+```
