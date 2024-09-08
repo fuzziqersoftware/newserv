@@ -1,6 +1,6 @@
 # newserv <img align="right" src="static/s-newserv.png" />
 
-newserv is a game server, proxy, and reverse-engineering tool for Phantasy Star Online (PSO).
+newserv is a game server, proxy, and reverse-engineering tool for Phantasy Star Online (PSO). To get started using newserv as a PSO server or as a proxy, see the [Server setup](#server-setup) section.
 
 This project includes code that was reverse-engineered by the community in ages long past, and has been included in many projects since then. It also includes some game data from Phantasy Star Online itself, which was originally created by Sega.
 
@@ -111,14 +111,14 @@ Currently newserv works on macOS, Windows, and Ubuntu Linux. It will likely work
 ### Windows/macOS
 
 1. Download the latest release-windows-amd64.zip or release-macos-arm64.zip file from the [releases page](https://github.com/fuzziqersoftware/newserv/releases).
-2. Extract the contents of the release folder to a location on your computer.
-3. Edit the config.example.json file in the system folder as needed, then rename it to config.json.
+2. Extract the contents of the archive to some location on your computer.
+3. If you want to change any options, go into the system/ folder, open config.json in a text editor, and edit it to your liking.
 4. If you plan to play Blue Burst on newserv, set up the patch directory. See [client patch directories](#client-patch-directories) for more information.
 5. Run the newserv executable.
 
 ### Linux
 
-There are currently no precompiled releases for Linux. To run newserv on Linux, see the "Building from source" section below.
+There are currently no precompiled releases for Linux. To run newserv on Linux, you'll have to build it from source - see the "Building from source" section below.
 
 ### Building from source
 
@@ -130,7 +130,7 @@ There are currently no precompiled releases for Linux. To run newserv on Linux, 
 4. Optionally, install [resource_dasm](https://github.com/fuzziqersoftware/resource_dasm). This will enable newserv to send memory patches and load DOL files on PSO GC clients. PSO GC clients can play PSO normally on newserv without this.
 5. Run `cmake . && make` in the newserv directory.
 
-After building newserv, edit system/config.example.json as needed and rename it to system/config.json, set up [client patch directories](#client-patch-directories) if you're planning to play Blue Burst, then run `./newserv` in newserv's directory.
+After building newserv, edit system/config.example.json as needed **and rename it to system/config.json** (note that this step is not necessary for the precompiled releases!), set up [client patch directories](#client-patch-directories) if you're planning to play Blue Burst, then run `./newserv` in newserv's directory.
 
 To use newserv in other ways (e.g. for translating data), see the end of this document.
 
@@ -475,7 +475,7 @@ There are many options available when starting a proxy session. All options are 
 * **Chat commands**: enables chat commands in the proxy session (on by default).
 * **Chat filter**: enables escape sequences in chat messages and info board (on by default).
 * **Player notifications**: shows a message when any player joins or leaves the game or lobby you're in.
-* **Block pings**: blocks automatic pings sent by the client, and responds to ping commands from the server automatically. This works around a bug in Sylverant's login server.
+* **Block pings**: blocks automatic pings sent by the client, and responds to ping commands from the server automatically.
 * **Infinite HP**: automatically heals you whenever you get hit. An attack that kills you in one hit will still kill you, however.
 * **Infinite TP**: automatically restores your TP whenever you use any technique.
 * **Switch assist**: attempts to unlock doors that require two or four players in a one-player game.

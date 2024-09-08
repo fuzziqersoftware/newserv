@@ -257,15 +257,21 @@ uint32_t ServerState::connect_address_for_client(shared_ptr<Client> c) const {
     }
     const auto* sin = reinterpret_cast<const sockaddr_in*>(&c->channel.remote_addr);
     return IPStackSimulator::connect_address_for_remote_address(ntohl(sin->sin_addr.s_addr));
-  } else {
-    // TODO: we can do something smarter here, like use the sockname to find
-    // out which interface the client is connected to, and return that address
-    if (is_local_address(c->channel.remote_addr)) {
-      return this->local_address;
-    } else {
-      return this->external_address;
-    }
   }
+
+  uint32_t ret = is_local_address(c->channel.remote_addr) ? this->local_address : this->external_address;
+  if (ret != 0) {
+    return ret;
+  }
+
+  struct sockaddr_storage addr;
+  phosg::get_socket_addresses(bufferevent_getfd(c->channel.bev.get()), &addr, nullptr);
+  if (addr.ss_family == AF_INET) {
+    const sockaddr_in* sin = reinterpret_cast<const sockaddr_in*>(&addr);
+    return ntohl(sin->sin_addr.s_addr);
+  }
+
+  throw runtime_error("no connect address available");
 }
 
 shared_ptr<const Menu> ServerState::information_menu(Version version) const {
@@ -684,31 +690,39 @@ void ServerState::load_config_early() {
     this->one_time_config_loaded = true;
   }
 
-  auto local_address_str = this->config_json->at("LocalAddress").as_string();
   try {
-    this->local_address = this->all_addresses.at(local_address_str);
-    string addr_str = string_for_address(this->local_address);
-    config_log.info("Added local address: %s (%s)", addr_str.c_str(),
-        local_address_str.c_str());
+    auto local_address_str = this->config_json->at("LocalAddress").as_string();
+    try {
+      this->local_address = this->all_addresses.at(local_address_str);
+      string addr_str = string_for_address(this->local_address);
+      config_log.info("Added local address: %s (%s)", addr_str.c_str(),
+          local_address_str.c_str());
+    } catch (const out_of_range&) {
+      this->local_address = address_for_string(local_address_str.c_str());
+      config_log.info("Added local address: %s", local_address_str.c_str());
+    }
+    this->all_addresses.erase("<local>");
+    this->all_addresses.emplace("<local>", this->local_address);
   } catch (const out_of_range&) {
-    this->local_address = address_for_string(local_address_str.c_str());
-    config_log.info("Added local address: %s", local_address_str.c_str());
+    config_log.warning("Local address not specified; interface defaults will be used");
   }
-  this->all_addresses.erase("<local>");
-  this->all_addresses.emplace("<local>", this->local_address);
 
-  auto external_address_str = this->config_json->at("ExternalAddress").as_string();
   try {
-    this->external_address = this->all_addresses.at(external_address_str);
-    string addr_str = string_for_address(this->external_address);
-    config_log.info("Added external address: %s (%s)", addr_str.c_str(),
-        external_address_str.c_str());
+    auto external_address_str = this->config_json->at("ExternalAddress").as_string();
+    try {
+      this->external_address = this->all_addresses.at(external_address_str);
+      string addr_str = string_for_address(this->external_address);
+      config_log.info("Added external address: %s (%s)", addr_str.c_str(),
+          external_address_str.c_str());
+    } catch (const out_of_range&) {
+      this->external_address = address_for_string(external_address_str.c_str());
+      config_log.info("Added external address: %s", external_address_str.c_str());
+    }
+    this->all_addresses.erase("<external>");
+    this->all_addresses.emplace("<external>", this->external_address);
   } catch (const out_of_range&) {
-    this->external_address = address_for_string(external_address_str.c_str());
-    config_log.info("Added external address: %s", external_address_str.c_str());
+    config_log.warning("External address not specified; only local clients will be able to connect");
   }
-  this->all_addresses.erase("<external>");
-  this->all_addresses.emplace("<external>", this->external_address);
 
   try {
     this->banned_ipv4_ranges = make_shared<IPV4RangeSet>(this->config_json->at("BannedIPV4Ranges"));
