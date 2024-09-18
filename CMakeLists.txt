@@ -65,6 +65,7 @@ set(SOURCES
     src/Compression.cc
     src/DCSerialNumbers.cc
     src/DNSServer.cc
+    src/DownloadSession.cc
     src/EnemyType.cc
     src/Episode3/AssistServer.cc
     src/Episode3/BattleRecord.cc

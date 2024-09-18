@@ -26,6 +26,7 @@
 #include "Compression.hh"
 #include "DCSerialNumbers.hh"
 #include "DNSServer.hh"
+#include "DownloadSession.hh"
 #include "GSLArchive.hh"
 #include "GVMEncoder.hh"
 #include "HTTPServer.hh"
@@ -1645,6 +1646,66 @@ Action a_cat_client(
       shared_ptr<struct event_base> base(event_base_new(), event_base_free);
       auto cat_client_remote = phosg::make_sockaddr_storage(phosg::parse_netloc(args.get<string>(1))).first;
       CatSession session(base, cat_client_remote, get_cli_version(args), key);
+      event_base_dispatch(base.get());
+    });
+
+Action a_download_files(
+    "download-files", nullptr,
+    +[](phosg::Arguments& args) {
+      auto version = get_cli_version(args);
+      shared_ptr<PSOBBEncryption::KeyFile> key;
+      if (uses_v4_encryption(version)) {
+        string key_file_name = args.get<string>("key");
+        if (key_file_name.empty()) {
+          throw runtime_error("a key filename is required for BB client emulation");
+        }
+        key = make_shared<PSOBBEncryption::KeyFile>(
+            phosg::load_object_file<PSOBBEncryption::KeyFile>("system/blueburst/keys/" + key_file_name + ".nsk"));
+      }
+      shared_ptr<struct event_base> base(event_base_new(), event_base_free);
+      auto remote = phosg::make_sockaddr_storage(phosg::parse_netloc(args.get<string>(1))).first;
+      auto character = load_psochar(args.get<string>("character", true), false).character_file;
+      auto ship_menu_selections_str = args.get<string>("ship-menu-selections", false);
+
+      unordered_set<string> ship_menu_selections;
+      if (!ship_menu_selections_str.empty()) {
+        for (const string& s : phosg::split(ship_menu_selections_str, ',')) {
+          ship_menu_selections.emplace(s);
+        }
+      }
+
+      vector<string> on_request_complete_commands;
+      string on_request_complete_arg = args.get<string>("on-request-complete-command", false);
+      if (!on_request_complete_arg.empty()) {
+        for (const string& command : phosg::split(on_request_complete_arg, ',')) {
+          on_request_complete_commands.emplace_back(phosg::parse_data_string(command));
+        }
+      }
+
+      uint32_t serial_number = args.get<uint32_t>(
+          "serial-number",
+          0,
+          is_v1_or_v2(version) ? phosg::Arguments::IntFormat::HEX : phosg::Arguments::IntFormat::DEFAULT);
+      DownloadSession session(
+          base,
+          remote,
+          args.get<string>("output-dir", true),
+          version,
+          args.get<uint8_t>("language"),
+          key,
+          phosg::random_object<uint32_t>(),
+          serial_number,
+          args.get<string>("access-key", false),
+          args.get<string>("username", false),
+          args.get<string>("password", false),
+          args.get<string>("xb-gamertag", false),
+          args.get<uint64_t>("xb-user-id", 0, phosg::Arguments::IntFormat::HEX),
+          args.get<uint64_t>("xb-account-id", 0, phosg::Arguments::IntFormat::HEX),
+          character,
+          ship_menu_selections,
+          on_request_complete_commands,
+          args.get<bool>("interactive"),
+          args.get<bool>("show-command-data"));
       event_base_dispatch(base.get());
     });
 
