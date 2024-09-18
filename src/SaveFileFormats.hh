@@ -14,6 +14,7 @@
 #include "Episode3/DataIndexes.hh"
 #include "ItemNameIndex.hh"
 #include "PSOEncryption.hh"
+#include "PSOProtocol.hh"
 #include "PlayerSubordinates.hh"
 #include "Text.hh"
 

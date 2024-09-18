@@ -120,6 +120,12 @@ T& check_size_t(void* data, size_t size) {
   return check_size_generic<T, void*>(data, size, sizeof(T), sizeof(T));
 }
 
+template <typename T>
+T* check_size_vec_t(std::string& data, size_t count) {
+  size_t expected_size = count * sizeof(T);
+  return &check_size_generic<T, void*>(data.data(), data.size(), expected_size, expected_size);
+}
+
 void check_size_v(size_t size, size_t min_size, size_t max_size = 0);
 
 std::string prepend_command_header(
