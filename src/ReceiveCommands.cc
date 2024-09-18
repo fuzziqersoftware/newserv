@@ -3798,13 +3798,12 @@ static void on_E7_BB(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
   p->challenge_records = cmd.char_file.challenge_records;
   p->battle_records = cmd.char_file.battle_records;
   p->death_count = cmd.char_file.death_count;
-  *c->system_file() = cmd.system_file.base;
+  *c->system_file() = cmd.system_file;
 }
 
 static void on_E2_BB(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
-  auto& cmd = check_size_t<PSOBBFullSystemFile>(data);
-  auto sys = c->system_file();
-  *sys = cmd.base;
+  const auto& cmd = check_size_t<S_SyncSystemFile_BB_E2>(data);
+  *c->system_file() = cmd.system_file;
   c->save_system_file();
 
   S_SystemFileCreated_00E1_BB out_cmd = {1};

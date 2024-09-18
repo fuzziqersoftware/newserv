@@ -1418,7 +1418,7 @@ static void server_command_edit(shared_ptr<Client> c, const std::string& args) {
       p->guild_card.language = new_language;
       auto sys = c->system_file(false);
       if (sys) {
-        sys->base.language = new_language;
+        sys->language = new_language;
       }
     } else if (tokens.at(0) == "secid" && cheats_allowed) {
       uint8_t secid = section_id_for_name(tokens.at(1));

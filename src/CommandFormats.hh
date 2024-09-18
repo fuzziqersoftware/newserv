@@ -3017,7 +3017,11 @@ struct S_TournamentEntryList_Ep3_E2 {
 } __packed_ws__(S_TournamentEntryList_Ep3_E2, 0x584);
 
 // E2 (S->C): Set system file contents (BB)
-// See PSOBBFullSystemFile in SaveFileFormats.hh for format
+
+struct S_SyncSystemFile_BB_E2 {
+  PSOBBBaseSystemFile system_file;
+  PSOBBTeamMembership team_membership;
+} __packed_ws__(S_SyncSystemFile_BB_E2, 0xAF0);
 
 // E3 (S->C): Game or tournament info (Episode 3)
 // The header.flag argument determines which fields are valid (and which panes
@@ -3201,7 +3205,8 @@ struct C_CreateSpectatorTeam_Ep3_E7 {
 
 struct SC_SyncSaveFiles_BB_E7 {
   /* 0000 */ PSOBBCharacterFile char_file;
-  /* 2EA4 */ PSOBBFullSystemFile system_file;
+  /* 2EA4 */ PSOBBBaseSystemFile system_file;
+  /* 30DC */ PSOBBTeamMembership team_membership;
   /* 3994 */
 } __packed_ws__(SC_SyncSaveFiles_BB_E7, 0x3994);
 

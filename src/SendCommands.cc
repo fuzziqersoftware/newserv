@@ -619,8 +619,8 @@ void send_client_init_bb(shared_ptr<Client> c, uint32_t error_code) {
 void send_system_file_bb(shared_ptr<Client> c) {
   auto team = c->team();
 
-  PSOBBFullSystemFile cmd;
-  cmd.base = *c->system_file();
+  S_SyncSystemFile_BB_E2 cmd;
+  cmd.system_file = *c->system_file();
   if (team) {
     cmd.team_membership = team->membership_for_member(c->login->account->account_id);
   }
@@ -754,14 +754,14 @@ void send_complete_player_bb(shared_ptr<Client> c) {
   if (c->config.check_flag(Client::Flag::FORCE_ENGLISH_LANGUAGE_BB)) {
     p->inventory.language = 1;
     p->guild_card.language = 1;
-    sys->base.language = 1;
+    sys->language = 1;
   }
 
   SC_SyncSaveFiles_BB_E7 cmd;
   cmd.char_file = *p;
-  cmd.system_file.base = *sys;
+  cmd.system_file = *sys;
   if (team) {
-    cmd.system_file.team_membership = team->membership_for_member(c->login->account->account_id);
+    cmd.team_membership = team->membership_for_member(c->login->account->account_id);
   }
   send_command_t(c, 0x00E7, 0x00000000, cmd);
 }

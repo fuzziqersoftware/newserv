@@ -327,7 +327,7 @@ uint32_t PSOBBGuildCardFile::checksum() const {
 
 PSOBBBaseSystemFile::PSOBBBaseSystemFile() {
   // This field is based on 1/1/2000, not 1/1/1970, so adjust appropriately
-  this->base.creation_timestamp = (phosg::now() - 946684800000000ULL) / 1000000;
+  this->creation_timestamp = (phosg::now() - 946684800000000ULL) / 1000000;
   for (size_t z = 0; z < DEFAULT_KEY_CONFIG.size(); z++) {
     this->key_config[z] = DEFAULT_KEY_CONFIG[z];
   }
@@ -740,6 +740,51 @@ shared_ptr<PSOBBCharacterFile> PSOBBCharacterFile::create_from_xb(const PSOXBCha
   ret->offline_battle_records = xb.offline_battle_records;
   ret->unknown_a7 = xb.unknown_a7;
   return ret;
+}
+
+LoadedPSOCHARFile load_psochar(const string& filename, bool load_system) {
+  auto f = phosg::fopen_unique(filename, "rb");
+  auto header = phosg::freadx<PSOCommandHeaderBB>(f.get());
+  if (header.size != 0x399C) {
+    throw runtime_error("incorrect size in character file header");
+  }
+  if (header.command != 0x00E7) {
+    throw runtime_error("incorrect command in character file header");
+  }
+  if (header.flag != 0x00000000) {
+    throw runtime_error("incorrect flag in character file header");
+  }
+  static_assert(sizeof(PSOBBCharacterFile) + sizeof(PSOBBBaseSystemFile) + sizeof(PSOBBTeamMembership) == 0x3994, ".psochar size is incorrect");
+
+  LoadedPSOCHARFile ret;
+  ret.character_file = make_shared<PSOBBCharacterFile>(phosg::freadx<PSOBBCharacterFile>(f.get()));
+  if (load_system) {
+    ret.system_file = make_shared<PSOBBBaseSystemFile>(phosg::freadx<PSOBBBaseSystemFile>(f.get()));
+  }
+  return ret;
+}
+
+void save_psochar(
+    const std::string& filename,
+    std::shared_ptr<const PSOBBBaseSystemFile> system,
+    std::shared_ptr<const PSOBBCharacterFile> character) {
+  auto f = phosg::fopen_unique(filename, "wb");
+  PSOCommandHeaderBB header = {sizeof(PSOCommandHeaderBB) + sizeof(PSOBBCharacterFile) + sizeof(PSOBBBaseSystemFile) + sizeof(PSOBBTeamMembership), 0x00E7, 0x00000000};
+  phosg::fwritex(f.get(), header);
+  phosg::fwritex(f.get(), *character);
+  phosg::fwritex(f.get(), *system);
+  // TODO: Technically, we should write the actual team membership struct to
+  // the file here, but that would cause Client to depend on Account, which it
+  // currently does not. This data doesn't matter at all for correctness within
+  // newserv, since it ignores this data entirely and instead generates the
+  // membership struct from the team ID in the Account and the team's state.
+  // So, writing correct data here would mostly be for compatibility with other
+  // PSO servers. But if the other server is newserv, then this data wouldn't
+  // be used anyway, and if it's not, then it would presumably have a different
+  // set of teams with a different set of team IDs anyway, so the membership
+  // struct here would be useless either way.
+  static const PSOBBTeamMembership empty_membership;
+  phosg::fwritex(f.get(), empty_membership);
 }
 
 PSODCV2CharacterFile PSOBBCharacterFile::to_dc_v2() const {

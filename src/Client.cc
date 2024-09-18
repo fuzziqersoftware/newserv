@@ -759,32 +759,24 @@ void Client::load_all_files() {
     if (this->character_data) {
       player_data_log.info("Using loaded character file %s", char_filename.c_str());
     } else if (phosg::isfile(char_filename)) {
-      auto f = phosg::fopen_unique(char_filename, "rb");
-      auto header = phosg::freadx<PSOCommandHeaderBB>(f.get());
-      if (header.size != 0x399C) {
-        throw runtime_error("incorrect size in character file header");
-      }
-      if (header.command != 0x00E7) {
-        throw runtime_error("incorrect command in character file header");
-      }
-      if (header.flag != 0x00000000) {
-        throw runtime_error("incorrect flag in character file header");
-      }
-      static_assert(sizeof(PSOBBCharacterFile) + sizeof(PSOBBFullSystemFile) == 0x3994, ".psochar size is incorrect");
-      this->character_data = make_shared<PSOBBCharacterFile>(phosg::freadx<PSOBBCharacterFile>(f.get()));
+      auto psochar = load_psochar(char_filename, !this->system_data);
+      this->character_data = psochar.character_file;
       files_manager->set_character(char_filename, this->character_data);
       player_data_log.info("Loaded character data from %s", char_filename.c_str());
 
-      // If there was no .psosys file, load the system file from the .psochar
+      // If there was no .psosys file, use the system file from the .psochar
       // file instead
       if (!this->system_data) {
-        this->system_data = make_shared<PSOBBBaseSystemFile>(phosg::freadx<PSOBBBaseSystemFile>(f.get()));
+        if (!psochar.system_file) {
+          throw logic_error("account system data not present, and also not loaded from psochar file");
+        }
+        this->system_data = psochar.system_file;
         files_manager->set_system(sys_filename, this->system_data);
         player_data_log.info("Loaded system data from %s", char_filename.c_str());
       }
 
       this->update_character_data_after_load(this->character_data);
-      this->system_data->base.language = this->language();
+      this->system_data->language = this->language();
 
     } else {
       player_data_log.info("Character file is missing: %s", char_filename.c_str());
@@ -813,7 +805,7 @@ void Client::load_all_files() {
         throw runtime_error("account data header is incorrect");
       }
       if (!this->system_data) {
-        this->system_data = make_shared<PSOBBBaseSystemFile>(nsa_data->system_file.base);
+        this->system_data = make_shared<PSOBBBaseSystemFile>(nsa_data->system_file);
         files_manager->set_system(sys_filename, this->system_data);
         player_data_log.info("Loaded legacy system data from %s", nsa_filename.c_str());
       }
@@ -949,23 +941,7 @@ void Client::save_character_file(
     const string& filename,
     shared_ptr<const PSOBBBaseSystemFile> system,
     shared_ptr<const PSOBBCharacterFile> character) {
-  auto f = phosg::fopen_unique(filename, "wb");
-  PSOCommandHeaderBB header = {sizeof(PSOCommandHeaderBB) + sizeof(PSOBBCharacterFile) + sizeof(PSOBBBaseSystemFile) + sizeof(PSOBBTeamMembership), 0x00E7, 0x00000000};
-  phosg::fwritex(f.get(), header);
-  phosg::fwritex(f.get(), *character);
-  phosg::fwritex(f.get(), *system);
-  // TODO: Technically, we should write the actual team membership struct to the
-  // file here, but that would cause Client to depend on Account, which
-  // it currently does not. This data doesn't matter at all for correctness
-  // within newserv, since it ignores this data entirely and instead generates
-  // the membership struct from the team ID in the Account and the team's state.
-  // So, writing correct data here would mostly be for compatibility with other
-  // PSO servers. But if the other server is newserv, then this data would be
-  // used anyway, and if it's not, then it would presumably have a different set
-  // of teams with a different set of team IDs anyway, so the membership struct
-  // here would be useless either way.
-  static const PSOBBTeamMembership empty_membership;
-  phosg::fwritex(f.get(), empty_membership);
+  save_psochar(filename, system, character);
   player_data_log.info("Saved character file %s", filename.c_str());
 }
 
@@ -1007,18 +983,7 @@ void Client::save_guild_card_file() const {
 
 void Client::load_backup_character(uint32_t account_id, size_t index) {
   string filename = this->backup_character_filename(account_id, index, false);
-  auto f = phosg::fopen_unique(filename, "rb");
-  auto header = phosg::freadx<PSOCommandHeaderBB>(f.get());
-  if (header.size != 0x399C) {
-    throw runtime_error("incorrect size in character file header");
-  }
-  if (header.command != 0x00E7) {
-    throw runtime_error("incorrect command in character file header");
-  }
-  if (header.flag != 0x00000000) {
-    throw runtime_error("incorrect flag in character file header");
-  }
-  this->character_data = make_shared<PSOBBCharacterFile>(phosg::freadx<PSOBBCharacterFile>(f.get()));
+  this->character_data = load_psochar(filename, false).character_file;
   this->update_character_data_after_load(this->character_data);
   this->v1_v2_last_reported_disp.reset();
 }
@@ -1106,18 +1071,7 @@ void Client::use_character_bank(int8_t index) {
       this->external_bank_character_index = index;
       player_data_log.info("Using loaded character file %s for external bank", filename.c_str());
     } else if (phosg::isfile(filename)) {
-      auto f = phosg::fopen_unique(filename, "rb");
-      auto header = phosg::freadx<PSOCommandHeaderBB>(f.get());
-      if (header.size != 0x399C) {
-        throw runtime_error("incorrect size in character file header");
-      }
-      if (header.command != 0x00E7) {
-        throw runtime_error("incorrect command in character file header");
-      }
-      if (header.flag != 0x00000000) {
-        throw runtime_error("incorrect flag in character file header");
-      }
-      this->external_bank_character = make_shared<PSOBBCharacterFile>(phosg::freadx<PSOBBCharacterFile>(f.get()));
+      this->external_bank_character = load_psochar(filename, false).character_file;
       this->update_character_data_after_load(this->external_bank_character);
       this->external_bank_character_index = index;
       files_manager->set_character(filename, this->external_bank_character);

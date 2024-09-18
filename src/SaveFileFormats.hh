@@ -279,22 +279,13 @@ struct PSOBBMinimalSystemFile {
   /* 0114 */
 } __packed_ws__(PSOBBMinimalSystemFile, 0x114);
 
-struct PSOBBBaseSystemFile {
-  /* 0000 */ PSOBBMinimalSystemFile base;
+struct PSOBBBaseSystemFile : PSOBBMinimalSystemFile {
   /* 0114 */ parray<uint8_t, 0x016C> key_config;
   /* 0280 */ parray<uint8_t, 0x0038> joystick_config;
   /* 02B8 */
 
   PSOBBBaseSystemFile();
 } __packed_ws__(PSOBBBaseSystemFile, 0x2B8);
-
-struct PSOBBFullSystemFile {
-  /* 0000 */ PSOBBBaseSystemFile base;
-  /* 02B8 */ PSOBBTeamMembership team_membership;
-  /* 0AF0 */
-
-  PSOBBFullSystemFile() = default;
-} __packed_ws__(PSOBBFullSystemFile, 0xAF0);
 
 ////////////////////////////////////////////////////////////////////////////////
 // Character files
@@ -757,6 +748,18 @@ struct PSOBBCharacterFile {
   void recompute_stats(std::shared_ptr<const LevelTable> level_table);
 } __packed_ws__(PSOBBCharacterFile, 0x2EA4);
 
+struct LoadedPSOCHARFile {
+  std::shared_ptr<PSOBBBaseSystemFile> system_file; // Null if load_system is false
+  std::shared_ptr<PSOBBCharacterFile> character_file; // Never null
+  // Team membership is present in the file, but ignored by newserv
+};
+
+LoadedPSOCHARFile load_psochar(const std::string& filename, bool load_system);
+void save_psochar(
+    const std::string& filename,
+    std::shared_ptr<const PSOBBBaseSystemFile> system,
+    std::shared_ptr<const PSOBBCharacterFile> character);
+
 ////////////////////////////////////////////////////////////////////////////////
 // Guild Card files
 
@@ -864,7 +867,8 @@ struct LegacySavedAccountDataBB { // .nsa file format
   /* 0000 */ pstring<TextEncoding::ASCII, 0x40> signature;
   /* 0040 */ parray<le_uint32_t, 0x001E> blocked_senders;
   /* 00B8 */ PSOBBGuildCardFile guild_card_file;
-  /* D648 */ PSOBBFullSystemFile system_file;
+  /* D648 */ PSOBBBaseSystemFile system_file;
+  /* D880 */ PSOBBTeamMembership team_membership;
   /* E138 */ le_uint32_t unused = 0;
   /* E13C */ le_uint32_t option_flags = 0x00040058;
   /* E140 */ parray<SaveFileShortcutEntryBB, 0x10> shortcuts;
