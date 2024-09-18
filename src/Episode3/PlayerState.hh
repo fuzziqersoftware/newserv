@@ -47,6 +47,8 @@ public:
   std::shared_ptr<Server> server();
   std::shared_ptr<const Server> server() const;
 
+  bool is_alive() const;
+
   bool draw_cards_allowed() const;
   void apply_assist_card_effect_on_set(std::shared_ptr<PlayerState> setter_ps);
   void apply_dice_effects();

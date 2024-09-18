@@ -132,6 +132,11 @@ shared_ptr<const Server> PlayerState::server() const {
   return s;
 }
 
+bool PlayerState::is_alive() const {
+  auto sc_card = this->get_sc_card();
+  return (sc_card && !(sc_card->card_flags & 2));
+}
+
 bool PlayerState::draw_cards_allowed() const {
   if (this->assist_flags & AssistFlag::IS_SKIPPING_TURN) {
     return false;

@@ -2476,6 +2476,11 @@ static void server_command_surrender(shared_ptr<Client> c, const std::string&) {
     send_text_message(c, "$C6Battle has not\nyet started");
     return;
   }
+  auto ps = l->ep3_server->get_player_state(c->lobby_client_id);
+  if (!ps || !ps->is_alive()) {
+    send_text_message(c, "$C6Defeated players\ncannot surrender");
+    return;
+  }
   string name = remove_color(c->character()->disp.name.decode(c->language()));
   send_text_message_printf(l, "$C6%s has\nsurrendered", name.c_str());
   for (const auto& watcher_l : l->watcher_lobbies) {
