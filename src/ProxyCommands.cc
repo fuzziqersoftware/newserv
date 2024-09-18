@@ -1318,7 +1318,7 @@ constexpr on_command_t S_PG_44_A6 = &S_44_A6<S_OpenFile_PC_GC_44_A6>;
 constexpr on_command_t S_X_44_A6 = &S_44_A6<S_OpenFile_XB_44_A6>;
 constexpr on_command_t S_B_44_A6 = &S_44_A6<S_OpenFile_BB_44_A6>;
 
-static HandlerResult S_13_A7(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t, uint32_t, string& data) {
+static HandlerResult S_13_A7(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t, uint32_t flag, string& data) {
   auto& cmd = check_size_t<S_WriteFile_13_A7>(data);
   bool modified = false;
 
@@ -1331,36 +1331,41 @@ static HandlerResult S_13_A7(shared_ptr<ProxyServer::LinkedSession> ses, uint16_
     return HandlerResult::Type::FORWARD;
   }
 
-  if (cmd.data_size > sf->remaining_bytes) {
-    ses->log.warning("Chunk size extends beyond original file size; truncating file");
-    cmd.data_size = sf->remaining_bytes;
-    modified = true;
-  } else if (cmd.data_size > 0x400) {
-    ses->log.warning("Chunk data size is invalid; truncating to 0x400");
-    cmd.data_size = 0x400;
+  bool is_last_block = (cmd.data_size != 0x400);
+  size_t block_offset = flag * 0x400;
+  size_t allowed_block_size = (block_offset < sf->total_size)
+      ? min<size_t>(sf->total_size - block_offset, 0x400)
+      : 0;
+
+  if (cmd.data_size > allowed_block_size) {
+    ses->log.warning("Block size extends beyond allowed size; truncating block");
+    cmd.data_size = allowed_block_size;
     modified = true;
   }
 
   if (!sf->output_filename.empty()) {
-    ses->log.info("Adding %" PRIu32 " bytes to %s => %s",
-        cmd.data_size.load(), sf->basename.c_str(), sf->output_filename.c_str());
+    ses->log.info("Adding %" PRIu32 " bytes to %s:%02" PRIX32 " => %s:%zX",
+        cmd.data_size.load(), sf->basename.c_str(), flag, sf->output_filename.c_str(), block_offset);
     if (ses->config.check_flag(Client::Flag::PROXY_SAVE_FILES)) {
-      sf->blocks.emplace_back(reinterpret_cast<const char*>(cmd.data.data()), cmd.data_size);
+      size_t block_end_offset = block_offset + cmd.data_size;
+      if (sf->data.size() < block_end_offset) {
+        sf->data.resize(block_end_offset);
+      }
+      memcpy(sf->data.data() + block_offset, reinterpret_cast<const char*>(cmd.data.data()), cmd.data_size);
     }
   }
-  sf->remaining_bytes -= cmd.data_size;
 
-  if (sf->remaining_bytes == 0) {
+  if (is_last_block) {
     if (ses->config.check_flag(Client::Flag::PROXY_SAVE_FILES)) {
       ses->log.info("Writing file %s => %s", sf->basename.c_str(), sf->output_filename.c_str());
-      string data = phosg::join(sf->blocks);
+
       if (sf->is_download && (phosg::ends_with(sf->basename, ".bin") || phosg::ends_with(sf->basename, ".dat") || phosg::ends_with(sf->basename, ".pvr"))) {
-        data = decode_dlq_data(data);
+        sf->data = decode_dlq_data(sf->data);
       }
-      phosg::save_file(sf->output_filename, data);
+      phosg::save_file(sf->output_filename, sf->data);
       if (phosg::ends_with(sf->basename, ".bin")) {
         try {
-          string decompressed = prs_decompress(data);
+          string decompressed = prs_decompress(sf->data);
           auto disassembly = disassemble_quest_script(decompressed.data(), decompressed.size(), ses->version(), ses->language(), false);
           phosg::save_file(sf->output_filename + ".txt", disassembly);
         } catch (const exception& e) {
@@ -1372,7 +1377,7 @@ static HandlerResult S_13_A7(shared_ptr<ProxyServer::LinkedSession> ses, uint16_
     }
 
     if (!sf->is_download && phosg::ends_with(sf->basename, ".dat")) {
-      auto quest_dat_data = make_shared<std::string>(phosg::join(sf->blocks));
+      auto quest_dat_data = make_shared<std::string>(prs_decompress(sf->data));
       try {
         ses->map = Lobby::load_maps(
             ses->version(),

@@ -708,12 +708,12 @@ void ProxyServer::LinkedSession::update_channel_names() {
 ProxyServer::LinkedSession::SavingFile::SavingFile(
     const string& basename,
     const string& output_filename,
-    size_t remaining_bytes,
+    size_t total_size,
     bool is_download)
     : basename(basename),
       output_filename(output_filename),
       is_download(is_download),
-      remaining_bytes(remaining_bytes) {}
+      total_size(total_size) {}
 
 void ProxyServer::LinkedSession::dispatch_on_timeout(evutil_socket_t, short, void* ctx) {
   reinterpret_cast<LinkedSession*>(ctx)->on_timeout();

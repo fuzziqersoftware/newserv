@@ -115,13 +115,13 @@ public:
       std::string basename;
       std::string output_filename;
       bool is_download;
-      size_t remaining_bytes;
-      std::deque<std::string> blocks;
+      size_t total_size;
+      std::string data;
 
       SavingFile(
           const std::string& basename,
           const std::string& output_filename,
-          size_t remaining_bytes,
+          size_t total_size,
           bool is_download);
     };
     std::unordered_map<std::string, SavingFile> saving_files;
