@@ -121,9 +121,9 @@ T& check_size_t(void* data, size_t size) {
 }
 
 template <typename T>
-T* check_size_vec_t(std::string& data, size_t count) {
+T* check_size_vec_t(std::string& data, size_t count, bool allow_extra = false) {
   size_t expected_size = count * sizeof(T);
-  return &check_size_generic<T, void*>(data.data(), data.size(), expected_size, expected_size);
+  return &check_size_generic<T, void*>(data.data(), data.size(), expected_size, allow_extra ? 0xFFFF : expected_size);
 }
 
 void check_size_v(size_t size, size_t min_size, size_t max_size = 0);
