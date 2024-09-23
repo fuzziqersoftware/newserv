@@ -118,7 +118,7 @@ Version get_cli_version(phosg::Arguments& args, Version default_value = Version:
     return Version::GC_NTE;
   } else if (args.get<bool>("gc") || args.get<bool>("gc-v3")) {
     return Version::GC_V3;
-  } else if (args.get<bool>("xb") || args.get<bool>("xb=v3")) {
+  } else if (args.get<bool>("xb") || args.get<bool>("xb-v3")) {
     return Version::XB_V3;
   } else if (args.get<bool>("ep3-nte") || args.get<bool>("gc-ep3-nte")) {
     return Version::GC_EP3_NTE;
