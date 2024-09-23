@@ -64,10 +64,6 @@ const unordered_set<uint32_t> v3_crypt_initial_client_commands({
     0x00EC019E, // (02) GC login (UDP off)
     0x0150009E, // (02) GC extended login
     0x0150019E, // (02) GC extended login (UDP off)
-    0x0130009E, // (02) XB login
-    0x0130019E, // (02) XB login (UDP off)
-    0x0194009E, // (02) XB extended login
-    0x0194019E, // (02) XB extended login (UDP off)
 });
 
 const unordered_set<string> bb_crypt_initial_client_commands({
