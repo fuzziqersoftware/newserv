@@ -112,8 +112,8 @@ Currently newserv works on macOS, Windows, and Ubuntu Linux. It will likely work
 
 1. Download the latest release-windows-amd64.zip or release-macos-arm64.zip file from the [releases page](https://github.com/fuzziqersoftware/newserv/releases).
 2. Extract the contents of the archive to some location on your computer.
-3. If you want to change any options, go into the system/ folder, open config.json in a text editor, and edit it to your liking.
-4. If you plan to play Blue Burst on newserv, set up the patch directory. See [client patch directories](#client-patch-directories) for more information.
+3. (Optional) If you want to change any config options, go into the system/ folder, open config.json in a text editor, and edit it to your liking. There are comments in the file that describe what all the options do.
+4. (Optional) If you plan to play Blue Burst on newserv, set up the patch directory. See [client patch directories](#client-patch-directories) for details.
 5. Run the newserv executable.
 
 ### Linux
@@ -144,7 +144,7 @@ For Blue Burst set up, the below is mandatory for a smooth experience:
 2. Copy all the `map_*.dat` files, `unitxt_*` files and the `data.gsl` file and place them in `system/patch-bb/data`.
 3. If you're using game files from the Tethealla client, make a copy of `unitxt_j.prs` inside system/patch-bb/data and name it `unitxt_e.prs`. (If `unitxt_e.prs` already exists, replace it with the copied file.)
 
-If you do not have a BB client, or using a Tethealla client from another source, Tethealla clients that are compatible with newserv can be found here: [English](https://web.archive.org/web/20240402011115/https://ragol.org/files/bb/TethVer12513_English.zip) / [Japanese](https://web.archive.org/web/20240402013127/https://ragol.org/files/bb/TethVer12513_Japanese.zip). These clients connect to 127.0.0.1 (localhost) automatically.
+If you don't have a BB client, or if you're using a Tethealla client from another source, Tethealla clients that are compatible with newserv can be found here: [English](https://web.archive.org/web/20240402011115/https://ragol.org/files/bb/TethVer12513_English.zip) / [Japanese](https://web.archive.org/web/20240402013127/https://ragol.org/files/bb/TethVer12513_Japanese.zip). These clients connect to 127.0.0.1 (localhost) automatically.
 
 For BB clients, newserv reads some files out of the patch data to implement game logic, so it's important that certain game files are synchronized between the server and the client. newserv contains defaults for these files in the system/maps/bb-v4 directory, but if these don't match the client's copies of the files, odd behavior will occur in games.
 
