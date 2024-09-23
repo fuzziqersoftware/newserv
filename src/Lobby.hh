@@ -76,7 +76,8 @@ struct Lobby : public std::enable_shared_from_this<Lobby> {
     SPECTATORS_FORBIDDEN            = 0x00008000,
     START_BATTLE_PLAYER_IMMEDIATELY = 0x00010000,
     CANNOT_CHANGE_CHEAT_MODE        = 0x00020000,
-    USE_CREATOR_SECTION_ID          = 0x00040000,
+    CANNOT_CHANGE_DROP_MODE         = 0x00040000,
+    USE_CREATOR_SECTION_ID          = 0x00080000,
     // Flags used only for lobbies
     PUBLIC                          = 0x01000000,
     DEFAULT                         = 0x02000000,

@@ -4375,6 +4375,8 @@ static void on_photon_crystal_exchange_bb(shared_ptr<Client> c, uint8_t, uint8_t
     size_t index = p->inventory.find_item_by_primary_identifier(0x03100200);
     auto item = p->remove_item(p->inventory.items[index].data.id, 1, *s->item_stack_limits(c->version()));
     send_destroy_item_to_lobby(c, item.id, 1);
+    l->set_drop_mode(Lobby::DropMode::DISABLED);
+    l->allowed_drop_modes = (1 << static_cast<uint8_t>(l->drop_mode)); // DISABLED only
   }
 }
 
