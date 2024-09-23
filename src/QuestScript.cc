@@ -495,7 +495,7 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     {0x00DD, "load_midi", {}, F_V1_V4}, // Seems incomplete on V3 and BB - has some similar codepaths as load_pvr, but the function that actually process the data seems to do nothing
     {0x00DE, "item_detect_bank", {{REG_SET_FIXED, 6}, REG}, F_V1_V4}, // regsA specifies the first 6 bytes of an ItemData (data1[0-5])
     {0x00DF, "npc_param", {{REG32_SET_FIXED, 14}, INT32}, F_V1_V2},
-    {0x00DF, "npc_param", {{REG_SET_FIXED, 14}, INT32}, F_V3_V4},
+    {0x00DF, "npc_param", {{REG_SET_FIXED, 14}, INT32}, F_V3_V4 | F_ARGS},
     {0x00E0, "pad_dragon", {}, F_V1_V4},
     {0x00E1, "clear_mainwarp", {INT32}, F_V1_V4 | F_ARGS},
     {0x00E2, "pcam_param", {{REG32_SET_FIXED, 6}}, F_V1_V2},
