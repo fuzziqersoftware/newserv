@@ -3049,10 +3049,20 @@ static void on_61_98(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
   // 98 should only be sent when leaving a game, and we should leave the client
   // in no lobby (they will send an 84 soon afterward to choose a lobby).
   if (command == 0x98) {
-    // If the client had an overlay (for battle/challenge modes), delete it
+    // Clear all temporary state from the game
     c->delete_overlay();
     c->telepipe_lobby_id = 0;
     s->remove_client_from_lobby(c);
+    c->config.clear_flag(Client::Flag::LOADING);
+    c->config.clear_flag(Client::Flag::LOADING_QUEST);
+    c->config.clear_flag(Client::Flag::LOADING_RUNNING_JOINABLE_QUEST);
+    c->config.clear_flag(Client::Flag::LOADING_TOURNAMENT);
+    c->config.clear_flag(Client::Flag::AT_BANK_COUNTER);
+    c->config.clear_flag(Client::Flag::SHOULD_SEND_ARTIFICIAL_ITEM_STATE);
+    c->config.clear_flag(Client::Flag::SHOULD_SEND_ARTIFICIAL_ENEMY_AND_SET_STATE);
+    c->config.clear_flag(Client::Flag::SHOULD_SEND_ARTIFICIAL_OBJECT_STATE);
+    c->config.clear_flag(Client::Flag::SHOULD_SEND_ARTIFICIAL_FLAG_STATE);
+    c->config.clear_flag(Client::Flag::SHOULD_SEND_ARTIFICIAL_PLAYER_STATES);
   }
 
   auto player = c->character();
