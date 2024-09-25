@@ -610,7 +610,7 @@ struct pstring {
             if (this->data[1] == 'J') {
               client_language = 0;
               offset = 2;
-            } else {
+            } else if (this->data[1] != 'C') {
               client_language = 1;
               offset = 2;
             }
