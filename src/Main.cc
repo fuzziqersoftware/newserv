@@ -187,7 +187,7 @@ string read_input_data(phosg::Arguments& args) {
 }
 
 bool is_text_extension(const char* extension) {
-  return (!strcmp(extension, "txt") || !strcmp(extension, "json"));
+  return (!strcmp(extension, "txt") || !strcmp(extension, "json") || !strcmp(extension, "reg"));
 }
 
 void write_output_data(phosg::Arguments& args, const void* data, size_t size, const char* extension) {
@@ -556,6 +556,103 @@ Action a_decrypt_registry_value(
       string data = read_input_data(args);
       string out_data = decrypt_v2_registry_value(data.data(), data.size());
       write_output_data(args, out_data.data(), out_data.size(), "dec");
+    });
+
+Action a_parse_pc_v2_registry(
+    "parse-pc-v2-registry", "\
+  parse-pc-v2-registry [INPUT-FILENAME]\n\
+    Decrypt and show the encrypted serial number, access key, and email fields\n\
+    from the given registry export. The input file should be a .reg file\n\
+    exported from the HKEY_CURRENT_USER\\Software\\SonicTeam\\PSOV2 key.\n",
+    +[](phosg::Arguments& args) {
+      string data = read_input_data(args);
+      if (phosg::starts_with(data, "\xFF\xFE")) {
+        data = tt_utf16_to_utf8(data.substr(2));
+      }
+      data = phosg::str_replace_all(data, "\r", "");
+      data = phosg::str_replace_all(data, "\\\n", "");
+
+      bool in_psov2_section = false;
+      string serial_data, access_data, email_data;
+      for (string line : phosg::split(data, '\n')) {
+        if (phosg::starts_with(line, "[")) {
+          in_psov2_section = (line == "[HKEY_CURRENT_USER\\Software\\SonicTeam\\PSOV2]");
+        } else if (!in_psov2_section) {
+          // Wrong section; skip the line
+        } else if (phosg::starts_with(line, "\"SERIAL\"=hex:")) {
+          serial_data = phosg::parse_data_string(line.substr(13));
+        } else if (phosg::starts_with(line, "\"ACCESS\"=hex:")) {
+          access_data = phosg::parse_data_string(line.substr(13));
+        } else if (phosg::starts_with(line, "\"E-MAIL\"=hex:")) {
+          email_data = phosg::parse_data_string(line.substr(13));
+        }
+      }
+
+      if (serial_data.size() != 8) {
+        throw std::runtime_error("serial number data is missing or incorrect size");
+      }
+      if (access_data.size() != 8) {
+        throw std::runtime_error("access key data is missing or incorrect size");
+      }
+      if (email_data.size() != 0x40) {
+        throw std::runtime_error("email data is missing or incorrect size");
+      }
+
+      serial_data = decrypt_v2_registry_value(serial_data);
+      access_data = decrypt_v2_registry_value(access_data);
+      email_data = decrypt_v2_registry_value(email_data);
+      uint32_t serial_number = stoul(serial_data, nullptr, 16);
+      phosg::strip_trailing_zeroes(access_data);
+      phosg::strip_trailing_zeroes(email_data);
+      fprintf(stderr, "Serial number (decimal): %" PRIu32 "\nSerial number (hex): %08" PRIX32 "\nAccess key: %s\nEmail address: %s\n",
+          serial_number, serial_number, access_data.c_str(), email_data.c_str());
+    });
+
+// ./newserv generate-pc-v2-registry --serial-number=386248990 --access-key=14575600 --email=mjem@wildblue.net
+
+Action a_generate_pc_v2_registry(
+    "generate-pc-v2-registry", "\
+  generate-pc-v2-registry <OPTIONS> [OUTPUT-FILENAME]\n\
+    Generate a .reg file containing PSO PC v2 credentials suitable for\n\
+    importing into the Windows registry. The following options are required:\n\
+      --serial-number=SERIAL-NUMBER (decimal serial number)\n\
+      --access-key=ACCESS-KEY (access key, 8 characters)\n\
+      --email=EMAIL (email address)\n",
+    +[](phosg::Arguments& args) {
+      auto hex_str_for_data = +[](const string& data) -> string {
+        if (data.size() == 0) {
+          return string();
+        }
+        string ret = phosg::string_printf("%02hx", data[0]);
+        for (size_t z = 1; z < data.size(); z++) {
+          ret += phosg::string_printf(",%02hx", data[z]);
+        }
+        return ret;
+      };
+
+      uint32_t serial_number = args.get<uint32_t>("serial-number", 0);
+      string access_key = args.get<string>("access-key", true);
+      string email = args.get<string>("email", true);
+      if (access_key.size() != 8) {
+        throw std::runtime_error("access key is not exactly 8 characters");
+      }
+      if (email.size() > 0x40) {
+        throw std::runtime_error("email address is too long");
+      }
+      email.resize(0x40, '\0');
+
+      string serial_data = decrypt_v2_registry_value(phosg::string_printf("%08" PRIX32, serial_number));
+      string access_data = decrypt_v2_registry_value(access_key);
+      string email_data = decrypt_v2_registry_value(email);
+
+      string serial_hex = hex_str_for_data(serial_data);
+      string access_hex = hex_str_for_data(access_data);
+      string email_hex = hex_str_for_data(email_data);
+
+      string output_data = phosg::string_printf("Windows Registry Editor Version 5.00\r\n\r\n[HKEY_CURRENT_USER\\Software\\SonicTeam\\PSOV2]\r\n\r\n\"SERIAL\"=hex:%s\r\n\"ACCESS\"=hex:%s\r\n\"E-MAIL\"=hex:%s\r\n",
+          serial_hex.c_str(), access_hex.c_str(), email_hex.c_str());
+
+      write_output_data(args, output_data.data(), output_data.size(), "reg");
     });
 
 Action a_encrypt_challenge_data(

@@ -300,6 +300,10 @@ check_struct_size(ChallengeTimeBE, 4);
 
 std::string decrypt_v2_registry_value(const void* data, size_t size);
 
+inline std::string decrypt_v2_registry_value(const std::string& s) {
+  return decrypt_v2_registry_value(s.data(), s.size());
+}
+
 struct DecryptedPR2 {
   std::string compressed_data;
   size_t decompressed_size;
