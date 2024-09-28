@@ -1245,15 +1245,22 @@ Action a_encode_qst(
       write_output_data(args, qst_data.data(), qst_data.size(), "qst");
     });
 
+Action a_check_quest_opcodes(
+    "check-quest-opcodes", nullptr,
+    +[](phosg::Arguments&) {
+      check_opcode_definitions();
+    });
 Action a_disassemble_quest_script(
     "disassemble-quest-script", "\
   disassemble-quest-script [INPUT-FILENAME [OUTPUT-FILENAME]]\n\
     Disassemble the input quest script (.bin file) into a text representation\n\
     of the commands and metadata it contains. Specify the quest\'s game version\n\
     with one of the --dc-nte, --dc-v1, --dc-v2, --pc, --gc-nte, --gc, --gc-ep3,\n\
-    --xb, or --bb options. If you intend to edit and reassemble the script, use\n\
-    the --reassembly option to add explicit label numbers and remove offsets\n\
-    and data in code sections.\n",
+    --xb, or --bb options. newserv uses more descriptive opcode mnemonics by\n\
+    default; the --qedit option will result in names matching those used by\n\
+    QEdit. If you intend to reassemble the script, after editing it, use the\n\
+    --reassembly option to add explicit label numbers and remove offsets and\n\
+    data in code sections.\n",
     +[](phosg::Arguments& args) {
       string data = read_input_data(args);
       auto version = get_cli_version(args);
@@ -1262,7 +1269,8 @@ Action a_disassemble_quest_script(
       }
       uint8_t override_language = args.get<uint8_t>("language", 0xFF);
       bool reassembly_mode = args.get<bool>("reassembly");
-      string result = disassemble_quest_script(data.data(), data.size(), version, override_language, reassembly_mode);
+      bool use_qedit_names = args.get<bool>("qedit");
+      string result = disassemble_quest_script(data.data(), data.size(), version, override_language, reassembly_mode, use_qedit_names);
       write_output_data(args, result.data(), result.size(), "txt");
     });
 Action a_disassemble_quest_map(
