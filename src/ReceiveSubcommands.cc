@@ -2999,8 +2999,8 @@ static void on_set_entity_set_flag(shared_ptr<Client> c, uint8_t command, uint8_
                   l->log.info("(W-%02hhX-%" PRIX32 " script) construct_objects %04hX %04hX", event->floor, event->event_id, section, group);
                   for (auto* obj : l->map->get_objects(event->floor, section, group)) {
                     if (!(obj->set_flags & 0x0A)) {
-                      l->log.info("(W-%02hhX-%" PRIX32 " script)   Setting flags 0012 on object K-%hX", event->floor, event->event_id, obj->object_id);
-                      obj->set_flags |= 0x12;
+                      l->log.info("(W-%02hhX-%" PRIX32 " script)   Setting flags 0010 on object K-%hX", event->floor, event->event_id, obj->object_id);
+                      obj->set_flags |= 0x10;
                     }
                   }
                   break;
