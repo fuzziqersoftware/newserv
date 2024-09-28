@@ -75,7 +75,8 @@ If you want to use parts of newserv in your project, there are two easy ways to 
 
 # Compatibility
 
-newserv supports all known versions of PSO, including development prototypes. Specifically:
+newserv supports all known versions of PSO, including development prototypes. This table lists all versions that newserv supports. (NTE stands for Network Trial Edition; the GameCube beta versions were called Trial Edition instead, but we use the NTE abbreviation anyway for consistency.)
+
 | Version         | Lobbies  | Games    | Proxy    |
 |-----------------|----------|----------|----------|
 | DC NTE          | Yes      | Yes      | No       |
@@ -98,7 +99,7 @@ newserv supports all known versions of PSO, including development prototypes. Sp
 | BB (Tethealla)  | Yes      | Yes (2)  | Yes      |
 
 *Notes:*
-1. *Ep3 NTE battles are not well-tested; some things may not work. See notes/ep3-nte-differences.txt for a list of known differences between NTE and the final version. NTE and non-NTE players cannot battle each other.*
+1. *Episode 3 NTE battles are not well-tested; some things may not work. See notes/ep3-nte-differences.txt for a list of known differences between NTE and the final version. NTE and non-NTE players cannot battle each other.*
 2. *Some BB-specific features are not well-tested (for example, some quests that use rare commands may not work properly). Please submit a GitHub issue if you find something that doesn't work.*
 3. *This is the only version of PSO that doesn't have any way to identify the player's account - there is no serial number or username. For this reason, AllowUnregisteredUsers must be enabled in config.json to support PC NTE, and PC NTE players receive a random Guild Card number every time they connect. To prevent abuse, PC NTE support can be disabled in config.json.*
 
@@ -412,7 +413,9 @@ Like quests, Episode 3 card definitions, maps, and quests are cached in memory. 
 
 You can put assembly files in the system/client-functions directory with filenames like PatchName.VERS.patch.s and they will appear in the Patches menu for clients that support client functions. Client functions are written in SH-4, PowerPC, or x86 assembly and are compiled when newserv is started. The assembly system's features are documented in the comments in system/client-functions/System/WriteMemory.ppc.s.
 
-The VERS token in client function filenames refers to the specific version of the game that the client function applies to. Some versions do not support receiving client functions at all. The specific versions are:
+The VERS token in client function filenames refers to the specific version of the game that the client function applies to. Some versions do not support receiving client functions at all. *Note: newserv uses the shorter GameCube versioning convention, where discs labeled DOL-XXXX-0-0Y are version 1.Y. The PSO community seems to use the convention 1.0Y in some places instead, but these are the same version. For example, the version that newserv calls v1.4 is the same as v1.04, and is labeled DOL-GPOJ-0-04 on the underside of the disc.*
+
+The specific versions are:
 
 | Game              | VERS | Architecture  |
 |-------------------|------|---------------|
@@ -432,15 +435,15 @@ The VERS token in client function filenames refers to the specific version of th
 | PSO GC v1.2 JP    | 3OJ2 | PowerPC       |
 | PSO GC v1.3 JP    | 3OJ3 | PowerPC       |
 | PSO GC v1.4 JP    | 3OJ4 | PowerPC       |
-| PSO GC v1.5 JP    | 3OJ5 | Not supported |
+| PSO GC v1.5 JP    | 3OJ5 | PowerPC (1)   |
 | PSO GC v1.0 US    | 3OE0 | PowerPC       |
 | PSO GC v1.1 US    | 3OE1 | PowerPC       |
-| PSO GC v1.2 US    | 3OE2 | Not supported |
+| PSO GC v1.2 US    | 3OE2 | PowerPC (1)   |
 | PSO GC v1.0 EU    | 3OP0 | PowerPC       |
 | PSO GC Ep3 NTE    | 3SJT | PowerPC       |
 | PSO GC Ep3 JP     | 3SJ0 | PowerPC       |
-| PSO GC Ep3 US     | 3SE0 | Not supported |
-| PSO GC Ep3 EU     | 3SP0 | Not supported |
+| PSO GC Ep3 US     | 3SE0 | PowerPC (1)   |
+| PSO GC Ep3 EU     | 3SP0 | PowerPC (1)   |
 | PSO Xbox Beta     | 4OJB | x86           |
 | PSO Xbox JP Disc  | 4OJD | x86           |
 | PSO Xbox JP TU    | 4OJU | x86           |
@@ -448,12 +451,13 @@ The VERS token in client function filenames refers to the specific version of th
 | PSO Xbox US TU    | 4OEU | x86           |
 | PSO Xbox EU Disc  | 4OPD | x86           |
 | PSO Xbox EU TU    | 4OPU | x86           |
-| PSO BB JP 1.25.13 | 51OC | x86           |
-| PSO BB Tethealla  | 51OC | x86           |
+| PSO BB JP 1.25.13 | 59NL | x86           |
+| PSO BB Tethealla  | 59NL | x86           |
 
-*Note: newserv uses the shorter GameCube versioning convention, where discs labeled DOL-XXXX-0-0Y are version 1.Y. The PSO community seems to use the convention 1.0Y in some places instead, but these are the same version. For example, the version that newserv calls v1.4 is the same as v1.04, and is labeled DOL-GPOJ-0-04 on the underside of the disc.*
+*Notes:*
+1. *Client functions are only supported on these versions if EnableSendFunctionCallQuestNumbers is set in config.json. See the comments there for more information.*
 
-newserv comes with a set of patches for some of the above versions, based on AR codes originally made by Ralf at GC-Forever and Aleron Ives. Many of them were originally posted in [this thread](https://www.gc-forever.com/forums/viewtopic.php?f=38&t=2050).
+newserv comes with a set of patches for many of the above versions, based on AR codes originally made by Ralf at GC-Forever and Aleron Ives. Many of them were originally posted in [this thread](https://www.gc-forever.com/forums/viewtopic.php?f=38&t=2050).
 
 You can also put DOL files in the system/dol directory, and they will appear in the Programs menu for GC clients. Selecting a DOL file there will load the file into the GameCube's memory and run it, just like the old homebrew loaders (PSUL and PSOload) did. For this to work, ReadMemoryWord.ppc.s, WriteMemory.ppc.s, and RunDOL.ppc.s must be present in the system/client-functions/System directory. This has been tested on Dolphin but not on a real GameCube, so results may vary.
 
