@@ -706,11 +706,11 @@
   // the behavior of clients that are already patched with different stack
   // limits. If you want to use an unpatched BB client but still have custom
   // stack limits, you can use the StackLimits runtime patch by editing
-  // system/client-functions/StackLimits/StackLimits.59NL.patch.s to match the
-  // BB stack limits and adding "StackLimits" to the BBRequiredPatches list.
-  // The ToolLimits list is indexed by data1[1] (that is, the second byte of the
-  // item data); for items beyond the end of the list, the last entry's value is
-  // used.
+  // system/client-functions/BlueBurstExclusive/StackLimits.59NL.patch.s to
+  // match the BB stack limits and adding "StackLimits" to the BBRequiredPatches
+  // list. The ToolLimits list is indexed by data1[1] (that is, the second byte
+  // of the item data); for items beyond the end of the list, the last entry's
+  // value is used.
   "ItemStackLimits": [
     {"MesetaLimit": 999999, "ToolLimits": [10]}, // DC NTE
     {"MesetaLimit": 999999, "ToolLimits": [10]}, // DC 11/2000
@@ -853,10 +853,14 @@
   "ServerGlobalDropRateMultiplier": 1.0,
 
   // Client functions listed here are always enabled as auto patches for BB
-  // clients. For example, you can set this to ["StackLimits"] if you've edited
-  // the StackLimits patch and the ItemStackLimits field in this file, and want
-  // the limits to take effect on BB clients.
-  "BBRequiredPatches": [],
+  // clients. For example, you can add "StackLimits" here if you've edited the
+  // StackLimits patch and the ItemStackLimits field in this file, and want the
+  // limits to take effect on BB clients.
+  "BBRequiredPatches": [
+    // You will probably want to uncomment the following line if you want to
+    // use items that were unreleased on the original Sega servers.
+    // "ClearUnreleasedItemList",
+  ],
 
   // Whether to retain server drop tables when game leaders change. The client
   // reloads its drop tables when the leader joins a game or returns to Pioneer
