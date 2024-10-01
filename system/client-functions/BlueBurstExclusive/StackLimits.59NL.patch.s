@@ -66,13 +66,13 @@ max_stack_size_for_tool_start:
   # e.g. tech disks this would be 02). For classes beyond 15, the value for 15
   # is used.
   # Index:  00 01 02 03 04 05 06 07 08 09 0A 0B 0C 0D 0E 0F 10 11 12 13 14 15
-  .binary   0A 0A 01 0A 0A 0A 0A 0A 0A 01 63 63 01 01 01 01 63 01 01 01 01 01
+  .binary   0A 0A 01 0A 0A 0A 0A 0A 0A 01 01 01 01 01 01 01 63 01 01 01 01 01
 data_end:
 
-  # eax = min<uint8_t>(data1[1], 0x11)
+  # eax = min<uint8_t>(data1[1], 0x15)
   mov       al, [ecx + 1]
   xor       edx, edx
-  mov       dl, 0x11
+  mov       dl, 0x15
   cmp       eax, edx
   cmovg     eax, edx
 
