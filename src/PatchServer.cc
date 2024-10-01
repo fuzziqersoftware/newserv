@@ -168,13 +168,13 @@ void PatchServer::on_04(shared_ptr<Client> c, string& data) {
       this->config->account_index->from_bb_credentials(username, &password, false);
 
     } catch (const AccountIndex::incorrect_password& e) {
-      this->send_message_box(c, phosg::string_printf("Login failed: %s", e.what()));
+      c->channel.send(0x15, 0x03);
       this->disconnect_client(c);
       return;
 
     } catch (const AccountIndex::missing_account& e) {
       if (!this->config->allow_unregistered_users) {
-        this->send_message_box(c, phosg::string_printf("Login failed: %s", e.what()));
+        c->channel.send(0x15, 0x08);
         this->disconnect_client(c);
         return;
       }
@@ -184,7 +184,7 @@ void PatchServer::on_04(shared_ptr<Client> c, string& data) {
     try {
       this->config->account_index->from_bb_credentials(username, nullptr, false);
     } catch (const AccountIndex::missing_account& e) {
-      this->send_message_box(c, phosg::string_printf("Login failed: %s", e.what()));
+      c->channel.send(0x15, 0x08);
       this->disconnect_client(c);
       return;
     }

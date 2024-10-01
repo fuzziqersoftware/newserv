@@ -3172,6 +3172,22 @@ struct C_JoinSpectatorTeam_Ep3_E6_Flag01 {
 // ignored during the game server phase).
 
 struct S_ClientInit_BB_00E6 {
+  // The error codes are (error_code => internal_error_code => string)
+  // 00    => (no error; client proceeds normally)
+  //       => 01 => "(No901)\nUnable to obtain server address.\nPlease confirm your DNS settings.",
+  //       => 02 => "(No902)\nNetwork initialization failed.\nPlease check your Internet connection settings.",
+  // 01    => 03 => "(No903)\nServer connection failed.\nThe server may be under maintenance.\nPlease check the current news updates on the Official Site.",
+  // 02    => 04 => "(No904)\nIncorrect Game ID or Game Password.",
+  // 03    => 05 => "(No905)\nIncorrect Game ID or Game Password.",
+  // 04    => 06 => "(No906)\nThis server is under maintenance.\nPlease see the Official Site for details.",
+  // (any) => 07 => "(No907)\nForced server disconnect.\nPlease check your Game ID and individual settings.",
+  // 06/07 => 08 => "(No910)\nThis Game ID has been suspended.",
+  // 05    => 09 => "(No911)\nThis Game ID is in use by another user.",
+  // 08    => 0A => "(No912)\nNo record for this Game ID.\nPlease register your user information at the Official Site.",
+  // 09    => 0B => "(No913)\nYour paid time has expired.\nPlease renew your account at the Official Site.",
+  // 0A    => 0C => "(No914)\nDue to the program not being shut down properly, data is locked. Please try connecting again in 10 minutes.",
+  // 0B    => 0D => "(No915)\nThis program has not been updated.  The patch may not have run properly.  Please try shutting down and restarting the program.\nThe most recent news updates can be found on the Official Site.",
+  //       => 0E => "(No916)\nThis server is full.\nPlease try connecting again later."
   le_uint32_t error_code = 0;
   le_uint32_t player_tag = 0x00010000;
   le_uint32_t guild_card_number = 0;

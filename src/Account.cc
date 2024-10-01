@@ -421,7 +421,7 @@ shared_ptr<Login> AccountIndex::from_dc_nte_credentials_locked(const string& ser
     throw incorrect_access_key();
   }
   if (login->account->ban_end_time && (login->account->ban_end_time >= phosg::now())) {
-    throw invalid_argument("user is banned");
+    throw account_banned();
   }
   return login;
 }
@@ -471,7 +471,7 @@ shared_ptr<Login> AccountIndex::from_dc_credentials_locked(
     throw incorrect_access_key();
   }
   if (login->account->ban_end_time && (login->account->ban_end_time >= phosg::now())) {
-    throw invalid_argument("user is banned");
+    throw account_banned();
   }
   if (is_shared) {
     login->account = this->create_temporary_account_for_shared_account(login->account, access_key + ":" + character_name);
@@ -544,7 +544,7 @@ shared_ptr<Login> AccountIndex::from_pc_credentials_locked(
     throw incorrect_access_key();
   }
   if (login->account->ban_end_time && (login->account->ban_end_time >= phosg::now())) {
-    throw invalid_argument("user is banned");
+    throw account_banned();
   }
   if (is_shared) {
     login->account = this->create_temporary_account_for_shared_account(login->account, access_key + ":" + character_name);
@@ -600,7 +600,7 @@ shared_ptr<Login> AccountIndex::from_gc_credentials_locked(
     throw incorrect_password();
   }
   if (login->account->ban_end_time && (login->account->ban_end_time >= phosg::now())) {
-    throw invalid_argument("user is banned");
+    throw account_banned();
   }
   if (is_shared) {
     login->account = this->create_temporary_account_for_shared_account(login->account, access_key + ":" + character_name);
@@ -653,7 +653,7 @@ shared_ptr<Login> AccountIndex::from_xb_credentials_locked(const string& gamerta
     throw incorrect_access_key();
   }
   if (login->account->ban_end_time && (login->account->ban_end_time >= phosg::now())) {
-    throw invalid_argument("user is banned");
+    throw account_banned();
   }
   return login;
 }
@@ -702,7 +702,7 @@ shared_ptr<Login> AccountIndex::from_bb_credentials_locked(const string& usernam
     throw incorrect_password();
   }
   if (login->account->ban_end_time && (login->account->ban_end_time >= phosg::now())) {
-    throw invalid_argument("user is banned");
+    throw account_banned();
   }
   return login;
 }

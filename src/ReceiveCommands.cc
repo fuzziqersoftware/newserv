@@ -599,6 +599,8 @@ static void on_DB_V3(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
     send_command(c, 0x9A, 0x01);
   } catch (const AccountIndex::missing_account& e) {
     send_command(c, 0x9A, 0x04);
+  } catch (const AccountIndex::account_banned& e) {
+    send_command(c, 0x9A, 0x0F);
   }
 
   c->should_disconnect = !c->login;
@@ -624,6 +626,8 @@ static void on_88_DCNTE(shared_ptr<Client> c, uint16_t, uint32_t, string& data) 
     send_message_box(c, "Incorrect access key");
   } catch (const AccountIndex::missing_account& e) {
     send_message_box(c, "Incorrect serial number");
+  } catch (const AccountIndex::account_banned& e) {
+    send_message_box(c, "Account is banned");
   }
 
   c->should_disconnect = !c->login;
@@ -647,6 +651,8 @@ static void on_8B_DCNTE(shared_ptr<Client> c, uint16_t, uint32_t, string& data) 
     send_message_box(c, "Incorrect access key");
   } catch (const AccountIndex::missing_account& e) {
     send_message_box(c, "Incorrect serial number");
+  } catch (const AccountIndex::account_banned& e) {
+    send_message_box(c, "Account is banned");
   }
 
   if (!c->login) {
@@ -692,6 +698,8 @@ static void on_90_DC(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
     send_command(c, 0x90, 0x03);
   } catch (const AccountIndex::missing_account& e) {
     send_command(c, 0x90, 0x03);
+  } catch (const AccountIndex::account_banned& e) {
+    send_command(c, 0x90, 0x0F);
   }
   c->should_disconnect = !c->login;
 }
@@ -739,6 +747,8 @@ static void on_93_DC(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
     send_message_box(c, "Incorrect access key");
   } catch (const AccountIndex::missing_account& e) {
     send_message_box(c, "Incorrect serial number");
+  } catch (const AccountIndex::account_banned& e) {
+    send_message_box(c, "Account is banned");
   }
   if (!c->login) {
     c->should_disconnect = true;
@@ -833,6 +843,8 @@ static void on_9A(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
     send_command(c, 0x9A, 0x01);
   } catch (const AccountIndex::missing_account& e) {
     send_command(c, 0x9A, 0x03);
+  } catch (const AccountIndex::account_banned& e) {
+    send_command(c, 0x9A, 0x0F);
   }
 
   c->should_disconnect = !c->login;
@@ -875,6 +887,8 @@ static void on_9C(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
     send_command(c, 0x9C, 0x00);
   } catch (const AccountIndex::missing_account& e) {
     send_command(c, 0x9C, 0x00);
+  } catch (const AccountIndex::account_banned& e) {
+    send_message_box(c, "Account is banned");
   }
   c->should_disconnect = !c->login;
 }
@@ -974,6 +988,8 @@ static void on_9D_9E(shared_ptr<Client> c, uint16_t command, uint32_t, string& d
     send_command(c, 0x04, 0x06);
   } catch (const AccountIndex::missing_account& e) {
     send_command(c, 0x04, 0x04);
+  } catch (const AccountIndex::account_banned& e) {
+    send_command(c, 0x04, 0x04);
   }
 
   if (!c->login) {
@@ -1028,6 +1044,8 @@ static void on_9E_XB(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
     send_command(c, 0x04, 0x03);
   } catch (const AccountIndex::missing_account& e) {
     send_command(c, 0x04, 0x03);
+  } catch (const AccountIndex::account_banned& e) {
+    send_command(c, 0x04, 0x04);
   }
 
   if (!c->login) {
@@ -1056,13 +1074,14 @@ static void on_93_BB(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
 
   try {
     c->login = s->account_index->from_bb_credentials(username, &password, s->allow_unregistered_users);
-
   } catch (const AccountIndex::no_username& e) {
-    send_message_box(c, "Username is missing");
+    send_client_init_bb(c, 0x08);
   } catch (const AccountIndex::incorrect_password& e) {
-    send_message_box(c, "Incorrect login password");
+    send_client_init_bb(c, 0x03);
   } catch (const AccountIndex::missing_account& e) {
-    send_message_box(c, "You are not registered on this server");
+    send_client_init_bb(c, 0x08);
+  } catch (const AccountIndex::account_banned& e) {
+    send_client_init_bb(c, 0x06);
   }
   if (!c->login) {
     c->should_disconnect = true;

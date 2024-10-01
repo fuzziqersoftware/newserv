@@ -159,6 +159,10 @@ public:
   public:
     missing_account() : invalid_argument("missing account") {}
   };
+  class account_banned : public std::invalid_argument {
+  public:
+    account_banned() : invalid_argument("account is banned") {}
+  };
 
   explicit AccountIndex(bool force_all_temporary);
   virtual ~AccountIndex() = default;
