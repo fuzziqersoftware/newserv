@@ -530,9 +530,6 @@ struct PSOGCEp3NTECharacter {
   /* 0430:0014 */ be_uint32_t save_count = 1;
   /* 0434:0018 */ pstring<TextEncoding::ASCII, 0x1C> ppp_username;
   /* 0450:0034 */ pstring<TextEncoding::ASCII, 0x10> ppp_password;
-  // seq_vars is an array of 8192 bits, which contain all the Episode 3 quest
-  // progress flags. This includes things like which maps are unlocked, which
-  // NPC decks are unlocked, and whether the player has a VIP card or not.
   /* 0460:0044 */ parray<uint8_t, 0x400> seq_vars;
   /* 0860:0444 */ be_uint32_t death_count = 0;
   /* 0864:0448 */ PlayerBank200BE bank;
@@ -541,7 +538,6 @@ struct PSOGCEp3NTECharacter {
   /* 1FDC:1BC0 */ parray<SaveFileShortcutEntryGC, 20> chat_shortcuts;
   /* 266C:2250 */ pstring<TextEncoding::MARKED, 0xAC> auto_reply;
   /* 2718:22FC */ pstring<TextEncoding::MARKED, 0xAC> info_board;
-  // // In this struct, place_counts[0] is win_count and [1] is loss_count
   /* 27C4:23A8 */ PlayerRecordsBattleBE battle_records;
   /* 27DC:23C0 */ parray<uint8_t, 4> unknown_a10;
   /* 27E0:23C4 */ PlayerRecordsChallengeV3BE::Stats challenge_record_stats;
@@ -573,11 +569,13 @@ struct PSOGCEp3CharacterFile {
     // seq_vars is an array of 8192 bits, which contain all the Episode 3 quest
     // progress flags. This includes things like which maps are unlocked, which
     // NPC decks are unlocked, and whether the player has a VIP card or not.
+    // Logically, this structure maps to quest_flags in other versions, but is
+    // a different size.
     /* 0460:0044 */ parray<uint8_t, 0x400> seq_vars;
     /* 0860:0444 */ be_uint32_t death_count = 0;
     // Curiously, Episode 3 characters do have item banks, but there are only 4
-    // item slots. Sega presumably didn't completely remove the bank in Ep3
-    // because they would have to change too much code.
+    // item slots. Presumably Sega didn't completely remove the bank in Ep3
+    // because they would have had to change too much code.
     /* 0864:0448 */ PlayerBankT<4, true> bank;
     /* 08CC:04B0 */ GuildCardGCBE guild_card;
     /* 095C:0540 */ parray<SaveFileSymbolChatEntryGC, 12> symbol_chats;
