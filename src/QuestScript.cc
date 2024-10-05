@@ -125,9 +125,12 @@ static string format_and_indent_data(const void* data, size_t size, uint64_t sta
   return ret;
 }
 
-struct UnknownF8F2Entry {
-  parray<le_float, 4> unknown_a1;
-} __packed_ws__(UnknownF8F2Entry, 0x10);
+struct BezierCurveControlPoint {
+  le_float x;
+  le_float y;
+  le_float z;
+  le_float t;
+} __packed_ws__(BezierCurveControlPoint, 0x10);
 
 struct QuestScriptOpcodeDefinition {
   struct Argument {
@@ -158,7 +161,7 @@ struct QuestScriptOpcodeDefinition {
       ATTACK_DATA,
       MOVEMENT_DATA,
       IMAGE_DATA,
-      UNKNOWN_F8F2_DATA,
+      BEZIER_CONTROL_POINT_DATA,
     };
 
     Type type;
@@ -761,16 +764,21 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     {0xF8E6, "move_coords_object", "unknownF8E6", {REG, {REG_SET_FIXED, 3}}, F_V3_V4},
     {0xF8E7, "at_coords_call_ex", "unknownF8E7", {{REG_SET_FIXED, 5}, REG}, F_V3_V4},
     {0xF8E8, "at_coords_talk_ex", "unknownF8E8", {{REG_SET_FIXED, 5}, REG}, F_V3_V4},
-    {0xF8E9, "walk_to_coord_call_ex", "unknownF8E9", {{REG_SET_FIXED, 5}, REG}, F_V3_V4},
-    {0xF8EA, "col_npcinr_ex", "unknownF8EA", {{REG_SET_FIXED, 6}, REG}, F_V3_V4},
+    {0xF8E9, "npc_coords_call_ex", "unknownF8E9", {{REG_SET_FIXED, 5}, REG}, F_V3_V4},
+    {0xF8EA, "party_coords_call_ex", "unknownF8EA", {{REG_SET_FIXED, 6}, REG}, F_V3_V4},
     {0xF8EB, "set_obj_param_ex", "unknownF8EB", {{REG_SET_FIXED, 6}, REG}, F_V3_V4},
-    {0xF8EC, "col_plinaw_ex", "unknownF8EC", {{REG_SET_FIXED, 9}, REG}, F_V3_V4},
+    {0xF8EC, "npc_check_straggle_ex", "unknownF8EC", {{REG_SET_FIXED, 9}, REG}, F_V3_V4},
     {0xF8ED, "animation_check", nullptr, {REG, REG}, F_V3_V4},
     {0xF8EE, "call_image_data", nullptr, {INT32, {LABEL16, Arg::DataType::IMAGE_DATA}}, F_V3_V4 | F_ARGS},
     {0xF8EF, "nop_F8EF", "unknownF8EF", {}, F_V3_V4},
     {0xF8F0, "turn_off_bgm_p2", nullptr, {}, F_V3_V4},
     {0xF8F1, "turn_on_bgm_p2", nullptr, {}, F_V3_V4},
-    {0xF8F2, "unknown_F8F2", "load_unk_data", {INT32, FLOAT32, FLOAT32, INT32, {REG_SET_FIXED, 4}, {LABEL16, Arg::DataType::UNKNOWN_F8F2_DATA}}, F_V3_V4 | F_ARGS}, // TODO (DX)
+    // argsA[0] is control point count
+    // argsA[1] and argsA[2] scale the control value sum
+    // argsA[3] determines whether the last point is included or not (0=excluded, 1=included)
+    // argsA[4] is the register set to return the result into (4 consecutive registers; x, y, z, success (0 or 1))
+    // argsA[5] points to the control point entries
+    {0xF8F2, "compute_bezier_curve_point", "load_unk_data", {INT32, FLOAT32, FLOAT32, INT32, {REG_SET_FIXED, 4}, {LABEL16, Arg::DataType::BEZIER_CONTROL_POINT_DATA}}, F_V3_V4 | F_ARGS},
     {0xF8F3, "particle2", nullptr, {{REG_SET_FIXED, 3}, INT32, FLOAT32}, F_V3_V4 | F_ARGS},
     {0xF901, "dec2float", nullptr, {REG, REG}, F_V3_V4},
     {0xF902, "float2dec", nullptr, {REG, REG}, F_V3_V4},
@@ -1657,13 +1665,13 @@ std::string disassemble_quest_script(
           lines.emplace_back(format_and_indent_data(cmd_r.pgetv(compressed_end_offset, remaining_size), remaining_size, compressed_end_offset));
         }
       }
-      if (l->has_data_type(Arg::DataType::UNKNOWN_F8F2_DATA)) {
+      if (l->has_data_type(Arg::DataType::BEZIER_CONTROL_POINT_DATA)) {
         phosg::StringReader r = cmd_r.sub(l->offset, size);
-        lines.emplace_back("  // As F8F2 entries");
-        while (r.remaining() >= sizeof(UnknownF8F2Entry)) {
+        lines.emplace_back("  // As Bezier curve control points");
+        while (r.remaining() >= sizeof(BezierCurveControlPoint)) {
           size_t offset = l->offset + cmd_r.where();
-          const auto& e = r.get<UnknownF8F2Entry>();
-          lines.emplace_back(phosg::string_printf("  %04zX  entry        %g, %g, %g, %g", offset, e.unknown_a1[0].load(), e.unknown_a1[1].load(), e.unknown_a1[2].load(), e.unknown_a1[3].load()));
+          const auto& e = r.get<BezierCurveControlPoint>();
+          lines.emplace_back(phosg::string_printf("  %04zX  point        x=%g, y=%g, z=%g, t=%g", offset, e.x.load(), e.y.load(), e.z.load(), e.t.load()));
         }
         if (r.remaining() > 0) {
           size_t struct_end_offset = l->offset + r.where();
