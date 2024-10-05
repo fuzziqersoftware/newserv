@@ -710,7 +710,7 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     {0xF8B5, "write4", nullptr, {REG, REG}, F_V2},
     {0xF8B5, "write4", nullptr, {INT32, INT32}, F_V3_V4 | F_ARGS},
     {0xF8B6, "check_for_hacking", nullptr, {REG}, F_V2_V4}, // Returns a bitmask of 5 different types of detectable hacking. But it only works on DCv2 - it crashes on all other versions.
-    {0xF8B7, "unknown_F8B7", nullptr, {REG}, F_V2_V4}, // TODO (DX) - Challenge mode. Appears to be timing-related; regA is expected to be in [60, 3600]. Encodes the value with encrypt_challenge_time even though it's never sent over the network and is only decrypted locally.
+    {0xF8B7, "chl_set_min_time_online", nullptr, {REG}, F_V2_V4}, // Challenge mode cannot be completed unless this many seconds have passed since the stage began. If not set or if offline, 5 minutes is used as the threshold.
     {0xF8B8, "disable_retry_menu", "unknownF8B8", {}, F_V2_V4},
     {0xF8B9, "chl_recovery", "chl_recovery?", {}, F_V2_V4},
     {0xF8BA, "load_guild_card_file_creation_time_to_flag_buf", nullptr, {}, F_V2_V4},
