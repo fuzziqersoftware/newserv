@@ -670,22 +670,15 @@ static const vector<string> stream_file_entries = {
     "BattleParamEntry_ep4_on.dat",
     "PlyLevelTbl.prs",
 };
-static FileContentsCache bb_stream_files_cache(3600000000ULL);
 
 void send_stream_file_index_bb(shared_ptr<Client> c) {
-
-  struct S_StreamFileIndexEntry_BB_01EB {
-    le_uint32_t size;
-    le_uint32_t checksum; // crc32 of file data
-    le_uint32_t offset; // offset in stream (== sum of all previous files' sizes)
-    pstring<TextEncoding::ASCII, 0x40> filename;
-  };
+  auto s = c->require_server_state();
 
   vector<S_StreamFileIndexEntry_BB_01EB> entries;
   size_t offset = 0;
   for (const string& filename : stream_file_entries) {
     string key = "system/blueburst/" + filename;
-    auto cache_res = bb_stream_files_cache.get_or_load(key);
+    auto cache_res = s->bb_stream_files_cache->get_or_load(key);
     auto& e = entries.emplace_back();
     e.size = cache_res.file->data->size();
     // Computing the checksum can be slow, so we cache it along with the file
@@ -693,12 +686,12 @@ void send_stream_file_index_bb(shared_ptr<Client> c) {
     // so we always recompute the checksum in that case.
     if (cache_res.generate_called) {
       e.checksum = crc32(cache_res.file->data->data(), e.size);
-      bb_stream_files_cache.replace_obj<uint32_t>(key + ".crc32", e.checksum);
+      s->bb_stream_files_cache->replace_obj<uint32_t>(key + ".crc32", e.checksum);
     } else {
       auto compute_checksum = [&](const string&) -> uint32_t {
         return crc32(cache_res.file->data->data(), e.size);
       };
-      e.checksum = bb_stream_files_cache.get_obj<uint32_t>(key + ".crc32", compute_checksum).obj;
+      e.checksum = s->bb_stream_files_cache->get_obj<uint32_t>(key + ".crc32", compute_checksum).obj;
     }
     e.offset = offset;
     e.filename.encode(filename);
@@ -708,17 +701,19 @@ void send_stream_file_index_bb(shared_ptr<Client> c) {
 }
 
 void send_stream_file_chunk_bb(shared_ptr<Client> c, uint32_t chunk_index) {
-  auto cache_result = bb_stream_files_cache.get(
-      "<BB stream file>", +[](const string&) -> string {
+  auto s = c->require_server_state();
+
+  auto cache_result = s->bb_stream_files_cache->get(
+      "<BB stream file>", [&](const string&) -> string {
         size_t bytes = 0;
         for (const auto& name : stream_file_entries) {
-          bytes += bb_stream_files_cache.get_or_load("system/blueburst/" + name).file->data->size();
+          bytes += s->bb_stream_files_cache->get_or_load("system/blueburst/" + name).file->data->size();
         }
 
         string ret;
         ret.reserve(bytes);
         for (const auto& name : stream_file_entries) {
-          ret += *bb_stream_files_cache.get_or_load("system/blueburst/" + name).file->data;
+          ret += *s->bb_stream_files_cache->get_or_load("system/blueburst/" + name).file->data;
         }
         return ret;
       });

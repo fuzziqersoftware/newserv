@@ -151,6 +151,9 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   std::shared_ptr<const PatchFileIndex> pc_patch_file_index;
   std::shared_ptr<const PatchFileIndex> bb_patch_file_index;
   std::array<std::shared_ptr<ThreadSafeFileCache>, NUM_VERSIONS> map_file_caches;
+  std::shared_ptr<FileContentsCache> bb_stream_files_cache;
+  std::shared_ptr<FileContentsCache> bb_system_cache;
+  std::shared_ptr<FileContentsCache> gba_files_cache;
   std::shared_ptr<const DOLFileIndex> dol_file_index;
   std::shared_ptr<const Episode3::CardIndex> ep3_card_index;
   std::shared_ptr<const Episode3::CardIndex> ep3_card_index_trial;
@@ -386,7 +389,7 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   void load_accounts(bool from_non_event_thread);
   void load_teams(bool from_non_event_thread);
   void load_patch_indexes(bool from_non_event_thread);
-  void clear_map_file_caches();
+  void clear_file_caches(bool from_non_event_thread);
   void load_battle_params(bool from_non_event_thread);
   void load_level_tables(bool from_non_event_thread);
   void load_text_index(bool from_non_event_thread);

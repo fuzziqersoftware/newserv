@@ -2212,7 +2212,7 @@ Action a_find_rare_enemy_seeds(
       } else if (version == Version::PC_V2) {
         s->load_patch_indexes(false);
       } else {
-        s->clear_map_file_caches();
+        s->clear_file_caches(false);
       }
 
       shared_ptr<const Map::RareEnemyRates> rare_rates;
@@ -2281,7 +2281,7 @@ Action a_load_maps_test(
       using SDT = SetDataTable;
       auto s = make_shared<ServerState>(get_config_filename(args));
       s->load_config_early();
-      s->clear_map_file_caches();
+      s->clear_file_caches(false);
       s->load_patch_indexes(false);
       s->load_set_data_tables(false);
       s->load_quest_index(false);

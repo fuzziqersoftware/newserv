@@ -214,6 +214,7 @@ CommandDefinition c_reload(
       accounts - reindex user accounts\n\
       battle-params - reload the BB enemy stats files\n\
       bb-keys - reload BB private keys\n\
+      caches - clear all cached files\n\
       config - reload most fields from config.json\n\
       dol-files - reindex all DOL files\n\
       drop-tables - reload drop tables\n\
@@ -244,6 +245,8 @@ CommandDefinition c_reload(
           args.s->load_bb_private_keys(true);
         } else if (type == "accounts") {
           args.s->load_accounts(true);
+        } else if (type == "caches") {
+          args.s->clear_file_caches(true);
         } else if (type == "patch-files") {
           args.s->load_patch_indexes(true);
         } else if (type == "ep3-cards") {

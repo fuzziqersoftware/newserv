@@ -44,6 +44,9 @@ ServerState::ServerState(shared_ptr<struct event_base> base, const string& confi
       base(base),
       config_filename(config_filename),
       is_replay(is_replay),
+      bb_stream_files_cache(new FileContentsCache(3600000000ULL)),
+      bb_system_cache(new FileContentsCache(3600000000ULL)),
+      gba_files_cache(new FileContentsCache(3600000000ULL)),
       player_files_manager(this->base ? make_shared<PlayerFilesManager>(base) : nullptr),
       destroy_lobbies_event(this->base ? event_new(base.get(), -1, EV_TIMEOUT, &ServerState::dispatch_destroy_lobbies, this) : nullptr, event_free) {}
 
@@ -523,9 +526,8 @@ shared_ptr<const string> ServerState::load_bb_file(
 
   // Finally, look in system/blueburst
   const string& effective_bb_directory_filename = bb_directory_filename.empty() ? patch_index_filename : bb_directory_filename;
-  static FileContentsCache cache(10 * 60 * 1000 * 1000); // 10 minutes
   try {
-    auto ret = cache.get_or_load("system/blueburst/" + effective_bb_directory_filename);
+    auto ret = this->bb_system_cache->get_or_load("system/blueburst/" + effective_bb_directory_filename);
     return ret.file->data;
   } catch (const exception& e) {
     throw phosg::cannot_open_file(patch_index_filename);
@@ -1465,11 +1467,20 @@ void ServerState::load_patch_indexes(bool from_non_event_thread) {
   this->forward_or_call(from_non_event_thread, std::move(set));
 }
 
-void ServerState::clear_map_file_caches() {
-  config_log.info("Clearing map file caches");
-  for (auto& cache : this->map_file_caches) {
-    cache = make_shared<ThreadSafeFileCache>();
-  }
+void ServerState::clear_file_caches(bool from_non_event_thread) {
+  auto set = [s = this->shared_from_this()]() {
+    config_log.info("Clearing map file caches");
+    for (auto& cache : s->map_file_caches) {
+      cache = make_shared<ThreadSafeFileCache>();
+    }
+    config_log.info("Clearing BB stream file cache");
+    s->bb_stream_files_cache.reset(new FileContentsCache(3600000000ULL));
+    config_log.info("Clearing BB system cache");
+    s->bb_system_cache.reset(new FileContentsCache(3600000000ULL));
+    config_log.info("Clearing GBA file cache");
+    s->gba_files_cache.reset(new FileContentsCache(300 * 1000 * 1000));
+  };
+  this->forward_or_call(from_non_event_thread, std::move(set));
 }
 
 void ServerState::load_set_data_tables(bool from_non_event_thread) {
@@ -1956,7 +1967,7 @@ void ServerState::load_all() {
   this->load_bb_private_keys(false);
   this->load_bb_system_defaults(false);
   this->load_accounts(false);
-  this->clear_map_file_caches();
+  this->clear_file_caches(false);
   this->load_patch_indexes(false);
   this->load_ep3_cards(false);
   this->load_ep3_maps(false);
