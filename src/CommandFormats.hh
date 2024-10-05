@@ -1921,7 +1921,7 @@ struct C_Login_DC_PC_GC_9D {
   /* 28 */ pstring<TextEncoding::ASCII, 0x10> v1_access_key;
   /* 38 */ pstring<TextEncoding::ASCII, 0x10> serial_number; // On XB, this is the XBL gamertag
   /* 48 */ pstring<TextEncoding::ASCII, 0x10> access_key; // On XB, this is the XBL user ID
-  /* 58 */ pstring<TextEncoding::ASCII, 0x30> serial_number2; // On XB, this is the XBL gamertag
+  /* 58 */ pstring<TextEncoding::ASCII, 0x30> serial_number2; // On DCv2, this is the hardware ID; on XB, this is the XBL gamertag
   /* 88 */ pstring<TextEncoding::ASCII, 0x30> access_key2; // On XB, this is the XBL user ID
   /* B8 */ pstring<TextEncoding::ASCII, 0x10> name;
   /* C8 */

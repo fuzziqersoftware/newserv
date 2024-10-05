@@ -2806,6 +2806,7 @@ Action a_run_server_replay_log(
       }
 
       event_base_dispatch(base.get());
+
       if (replay_session) {
         // If in a replay session, run the event loop for a bit longer to make
         // sure the server doesn't send anything unexpected after the end of

@@ -172,7 +172,11 @@ static HandlerResult S_G_9A(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t
   cmd.sub_version = ses->effective_sub_version();
   cmd.is_extended = (ses->remote_guild_card_number < 0) ? 1 : 0;
   cmd.language = ses->language();
-  cmd.serial_number.encode(phosg::string_printf("%08" PRIX32 "", ses->login->account->account_id));
+  if (ses->login->gc_license) {
+    cmd.serial_number.encode(phosg::string_printf("%08" PRIX32 "", ses->login->gc_license->serial_number));
+  } else {
+    cmd.serial_number.encode(phosg::string_printf("%08" PRIX32 "", ses->login->account->account_id));
+  }
   cmd.access_key.encode(ses->login->gc_license->access_key);
   cmd.serial_number2 = cmd.serial_number;
   cmd.access_key2 = cmd.access_key;
@@ -259,7 +263,7 @@ static HandlerResult S_V123P_02_17(
       }
       if (command == 0x17) {
         C_LoginV1_DC_PC_V3_90 cmd;
-        cmd.serial_number.encode(phosg::string_printf("%08" PRIX32 "", ses->login->account->account_id));
+        cmd.serial_number.encode(phosg::string_printf("%08" PRIX32 "", ses->login->dc_license->serial_number));
         cmd.access_key.encode(ses->login->dc_license->access_key);
         cmd.access_key.clear_after_bytes(8);
         ses->server_channel.send(0x90, 0x00, &cmd, sizeof(cmd));
@@ -278,7 +282,7 @@ static HandlerResult S_V123P_02_17(
         cmd.sub_version = ses->effective_sub_version();
         cmd.is_extended = 0;
         cmd.language = ses->language();
-        cmd.serial_number.encode(phosg::string_printf("%08" PRIX32 "", ses->login->account->account_id));
+        cmd.serial_number.encode(phosg::string_printf("%08" PRIX32 "", ses->login->dc_license->serial_number));
         cmd.access_key.encode(ses->login->dc_license->access_key);
         cmd.access_key.clear_after_bytes(8);
         cmd.hardware_id.encode(ses->hardware_id);
@@ -291,17 +295,27 @@ static HandlerResult S_V123P_02_17(
     case Version::DC_V2:
     case Version::PC_NTE:
     case Version::PC_V2:
-    case Version::GC_NTE:
+    case Version::GC_NTE: {
+      uint32_t serial_number;
       const string* access_key;
       if (ses->version() == Version::DC_V2) {
-        access_key = ses->login->dc_license ? &ses->login->dc_license->access_key : nullptr;
+        if (!ses->login->dc_license) {
+          throw runtime_error("incorrect login type");
+        }
+        serial_number = ses->login->dc_license->serial_number;
+        access_key = &ses->login->dc_license->access_key;
       } else if (ses->version() != Version::GC_NTE) {
-        access_key = ses->login->pc_license ? &ses->login->pc_license->access_key : nullptr;
+        if (!ses->login->pc_license) {
+          throw runtime_error("incorrect login type");
+        }
+        serial_number = ses->login->pc_license->serial_number;
+        access_key = &ses->login->pc_license->access_key;
       } else {
-        access_key = ses->login->gc_license ? &ses->login->gc_license->access_key : nullptr;
-      }
-      if (!access_key) {
-        throw runtime_error("incorrect login type");
+        if (!ses->login->gc_license) {
+          throw runtime_error("incorrect login type");
+        }
+        serial_number = ses->login->gc_license->serial_number;
+        access_key = &ses->login->gc_license->access_key;
       }
 
       if (command == 0x17) {
@@ -314,12 +328,16 @@ static HandlerResult S_V123P_02_17(
           cmd.guild_card_number = ses->remote_guild_card_number;
         }
         cmd.sub_version = ses->effective_sub_version();
-        cmd.serial_number.encode(phosg::string_printf("%08" PRIX32 "", ses->login->account->account_id));
+        cmd.serial_number.encode(phosg::string_printf("%08" PRIX32 "", serial_number));
         cmd.access_key.encode(*access_key);
         if (ses->version() != Version::GC_NTE) {
           cmd.access_key.clear_after_bytes(8);
         }
-        cmd.serial_number2 = cmd.serial_number;
+        if (is_dc(ses->version())) {
+          cmd.serial_number2.encode(ses->hardware_id);
+        } else {
+          cmd.serial_number2 = cmd.serial_number;
+        }
         cmd.access_key2 = cmd.access_key;
         // TODO: We probably should set email_address, but we currently don't
         // keep that value anywhere in the session object, nor is it saved in
@@ -340,12 +358,16 @@ static HandlerResult S_V123P_02_17(
         cmd.sub_version = ses->effective_sub_version();
         cmd.is_extended = 0;
         cmd.language = ses->language();
-        cmd.serial_number.encode(phosg::string_printf("%08" PRIX32 "", ses->login->account->account_id));
+        cmd.serial_number.encode(phosg::string_printf("%08" PRIX32 "", serial_number));
         cmd.access_key.encode(*access_key);
         if (ses->version() != Version::GC_NTE) {
           cmd.access_key.clear_after_bytes(8);
         }
-        cmd.serial_number2 = cmd.serial_number;
+        if (is_dc(ses->version())) {
+          cmd.serial_number2.encode(ses->hardware_id);
+        } else {
+          cmd.serial_number2 = cmd.serial_number;
+        }
         cmd.access_key2 = cmd.access_key;
         if (ses->config.check_flag(Client::Flag::PROXY_BLANK_NAME_ENABLED)) {
           cmd.name.encode(" ", ses->language());
@@ -356,6 +378,7 @@ static HandlerResult S_V123P_02_17(
         return HandlerResult::Type::SUPPRESS;
       }
       break;
+    }
 
     case Version::GC_V3:
     case Version::GC_EP3_NTE:
@@ -365,7 +388,7 @@ static HandlerResult S_V123P_02_17(
       }
       if (command == 0x17) {
         C_VerifyAccount_V3_DB cmd;
-        cmd.serial_number.encode(phosg::string_printf("%08" PRIX32 "", ses->login->account->account_id));
+        cmd.serial_number.encode(phosg::string_printf("%08" PRIX32 "", ses->login->gc_license->serial_number));
         cmd.access_key.encode(ses->login->gc_license->access_key);
         cmd.sub_version = ses->effective_sub_version();
         cmd.serial_number2 = cmd.serial_number;
