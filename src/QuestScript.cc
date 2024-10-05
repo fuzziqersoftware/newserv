@@ -345,7 +345,7 @@ static const Arg AREA(INT32, 0, "area");
 
 static const QuestScriptOpcodeDefinition opcode_defs[] = {
     // The quest opcodes are defined below. Two-byte opcodes begin with F8 or
-    // F9; all other opcodes are on byte. Unlike network commands and
+    // F9; all other opcodes are one byte. Unlike network commands and
     // subcommands, all versions use the same values for almost all opcodes
     // (there is one exception), but not all opcodes are supported on all
     // versions. The flags denote which versions support each opcode; opcodes
@@ -1050,12 +1050,13 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     {0xF8BB, "write_flag_buf_to_event_flags2", nullptr, {REG}, F_V2_V4},
     {0xF8BC, "set_episode", nullptr, {INT32}, F_V3_V4 | F_SET_EPISODE},
 
-    // Sends D7
+    // Requests a file from the server by sending a D7 command
     {0xF8C0, "file_dl_req", nullptr, {INT32, CSTRING}, F_V3 | F_ARGS},
 
     {0xF8C0, "nop_F8C0", nullptr, {INT32, CSTRING}, F_V4 | F_ARGS},
     {0xF8C1, "get_dl_status", nullptr, {REG}, F_V3},
     {0xF8C1, "nop_F8C1", nullptr, {REG}, F_V4},
+
     // Prepares to load a GBA ROM from a previous file_dl_req opcode
     {0xF8C2, "prepare_gba_rom_from_download", "gba_unknown4?", {}, F_GC_V3 | F_GC_EP3TE | F_GC_EP3},
 
