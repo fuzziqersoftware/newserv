@@ -141,12 +141,14 @@ void send_first_pre_lobby_commands(shared_ptr<Client> c, std::function<void()> o
 
       auto s = c->require_server_state();
 
-      size_t num_patches_sent = 0;
+      c->config.set_flag(Client::Flag::HAS_AUTO_PATCHES);
+      send_update_client_config(c, false);
+
+      vector<shared_ptr<const CompiledFunctionCode>> functions_to_send;
       if (c->version() == Version::BB_V4) {
         for (const auto& patch_name : s->bb_required_patches) {
           try {
-            send_function_call(c, s->function_code_index->get_patch(patch_name, c->config.specific_version));
-            num_patches_sent++;
+            functions_to_send.emplace_back(s->function_code_index->get_patch(patch_name, c->config.specific_version));
           } catch (const out_of_range&) {
             string message = phosg::string_printf(
                 "Your client is not compatible with a\nrequired patch on this server.\n\nClient version: %08" PRIX32 "\nPatch name: %s", c->config.specific_version, patch_name.c_str());
@@ -158,39 +160,52 @@ void send_first_pre_lobby_commands(shared_ptr<Client> c, std::function<void()> o
       }
       for (const auto& patch_name : c->login->account->auto_patches_enabled) {
         try {
-          send_function_call(c, s->function_code_index->get_patch(patch_name, c->config.specific_version));
-          num_patches_sent++;
+          functions_to_send.emplace_back(s->function_code_index->get_patch(patch_name, c->config.specific_version));
         } catch (const out_of_range&) {
           c->log.warning("Client has auto patch %s enabled, but it is not available for specific_version %08" PRIX32,
               patch_name.c_str(), c->config.specific_version);
         }
       }
 
-      // We can't just blast all the commands at the client, since the sequence
-      // ends with a reconnect command, which changes the encryption state! We
-      // have to wait until all the patch responses have been received before
-      // sending any command that the client will respond to. It's OK to send
-      // the 04 immediately before the 19 (since the client does not respond to
-      // 04), but it is not OK to send the B2s without waiting.
-
-      if (num_patches_sent == 0) {
-        c->config.set_flag(Client::Flag::HAS_AUTO_PATCHES);
-        send_update_client_config(c, false);
+      if (functions_to_send.empty()) {
         on_complete();
-
       } else {
-        while (c->function_call_response_queue.size() < num_patches_sent - 1) {
-          c->function_call_response_queue.emplace_back(empty_function_call_response_handler);
-        }
-        c->function_call_response_queue.emplace_back([wc, on_complete = std::move(on_complete)](uint32_t, uint32_t) {
+        auto last_handler = [wc, on_complete = std::move(on_complete)](uint32_t, uint32_t) {
           auto c = wc.lock();
-          if (!c) {
-            return;
+          if (c) {
+            on_complete();
           }
-          c->config.set_flag(Client::Flag::HAS_AUTO_PATCHES);
-          send_update_client_config(c, false);
-          on_complete();
-        });
+        };
+
+        // On most platforms, we can just blast all the commands to the client
+        // at once, and just delay the 19 (reconnect) command until all the
+        // responses come in. But in Xbox we can't do this, since apparently it
+        // messes up connection state somehow. So, for Xbox clients, we send
+        // the patches one at a time.
+
+        if (c->version() != Version::XB_V3) {
+          for (const auto& fn : functions_to_send) {
+            send_function_call(c, fn);
+          }
+          for (size_t z = 0; z < functions_to_send.size() - 1; z++) {
+            c->function_call_response_queue.emplace_back(empty_function_call_response_handler);
+          }
+          c->function_call_response_queue.emplace_back(last_handler);
+
+        } else {
+          auto send_patch = [wc](shared_ptr<const CompiledFunctionCode> fn, uint32_t, uint32_t) {
+            auto c = wc.lock();
+            if (c) {
+              send_function_call(c, fn);
+            }
+          };
+          send_function_call(c, functions_to_send[0]);
+          for (size_t z = 1; z < functions_to_send.size(); z++) {
+            std::function<void(uint32_t, uint32_t)> bound = std::bind(send_patch, functions_to_send[z], placeholders::_1, placeholders::_2);
+            c->function_call_response_queue.emplace_back(std::move(bound));
+          }
+          c->function_call_response_queue.emplace_back(last_handler);
+        }
       }
     });
   } else {
