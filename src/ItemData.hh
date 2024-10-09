@@ -77,19 +77,19 @@ struct ItemData {
 
   // QUICK ITEM FORMAT REFERENCE
   //           data1/0  data1/4  data1/8  data2
-  //   Weapon: 00ZZZZGG SS00AABB AABBAABB 00000000
+  //   Weapon: 00ZZZZGG SSNNAABB AABBAABB 00000000
   //   Armor:  0101ZZ00 FFTTDDDD EEEE0000 00000000
   //   Shield: 0102ZZ00 FFTTDDDD EEEE0000 00000000
   //   Unit:   0103ZZ00 FF00RRRR 00000000 00000000
   //   Mag:    02ZZLLWW HHHHIIII JJJJKKKK YYQQPPVV
-  //   Tool:   03ZZZZFF 00CC0000 00000000 00000000
+  //   Tool:   03ZZZZUU 00CC0000 00000000 00000000
   //   Meseta: 04000000 00000000 00000000 MMMMMMMM
   // A = attribute type (for S-ranks, custom name)
   // B = attribute amount (for S-ranks, custom name)
   // C = stack size (for tools)
   // D = DEF bonus
   // E = EVP bonus
-  // F = flags (40=present; for tools, unused if item is stackable)
+  // F = armor/shield/unit flags (40=present; low 16 bits are present color)
   // G = weapon grind
   // H = mag DEF
   // I = mag POW
@@ -97,11 +97,13 @@ struct ItemData {
   // K = mag MIND
   // L = mag level
   // M = meseta amount
+  // N = present color (weapon only; for other types this is in the flags field)
   // P = mag flags (40=present, 04=has left pb, 02=has right pb, 01=has center pb)
   // Q = mag IQ
   // R = unit modifier (little-endian)
   // S = weapon flags (80=unidentified, 40=present) and special (low 6 bits)
   // T = slot count
+  // U = tool flags (40=present; unused if item is stackable)
   // V = mag color
   // W = photon blasts
   // Y = mag synchro
@@ -150,7 +152,7 @@ struct ItemData {
   uint32_t primary_identifier() const;
 
   bool is_wrapped(const StackLimits& limits) const;
-  void wrap(const StackLimits& limits);
+  void wrap(const StackLimits& limits, uint8_t present_color);
   void unwrap(const StackLimits& limits);
 
   bool is_stackable(const StackLimits& limits) const;

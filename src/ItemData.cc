@@ -142,18 +142,22 @@ bool ItemData::is_wrapped(const StackLimits& limits) const {
   }
 }
 
-void ItemData::wrap(const StackLimits& limits) {
+void ItemData::wrap(const StackLimits& limits, uint8_t present_color) {
   switch (this->data1[0]) {
     case 0:
-    case 1:
       this->data1[4] |= 0x40;
+      this->data1[5] = (this->data1[5] & 0xF0) | (present_color & 0x0F);
+      break;
+    case 1:
+      this->data1[4] = (this->data1[4] & 0xF0) | 0x40 | (present_color & 0x0F);
       break;
     case 2:
+      // Mags cannot have custom present colors
       this->data2[2] |= 0x40;
       break;
     case 3:
       if (!this->is_stackable(limits)) {
-        this->data1[3] |= 0x40;
+        this->data1[3] = (this->data1[3] & 0xF0) | 0x40 | (present_color & 0x0F);
       }
       break;
     case 4:
@@ -167,14 +171,14 @@ void ItemData::unwrap(const StackLimits& limits) {
   switch (this->data1[0]) {
     case 0:
     case 1:
-      this->data1[4] &= 0xBF;
+      this->data1[4] &= 0xB0;
       break;
     case 2:
-      this->data2[2] &= 0xBF;
+      this->data2[2] &= 0xB0;
       break;
     case 3:
       if (!this->is_stackable(limits)) {
-        this->data1[3] &= 0xBF;
+        this->data1[3] &= 0xB0;
       }
       break;
     case 4:

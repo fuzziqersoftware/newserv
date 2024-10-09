@@ -135,7 +135,7 @@ std::string ItemNameIndex::describe_item(const ItemData& item, bool include_colo
   // Armors, shields, and units (0x01) can be wrapped, as can mags (0x02) and
   // non-stackable tools (0x03). However, each of these item classes has its
   // flags in a different location.
-  if (((item.data1[1] == 0x01) && (item.data1[4] & 0x40)) ||
+  if (((item.data1[0] == 0x01) && (item.data1[4] & 0x40)) ||
       ((item.data1[0] == 0x02) && (item.data2[2] & 0x40)) ||
       ((item.data1[0] == 0x03) && !item.is_stackable(*this->limits) && (item.data1[3] & 0x40))) {
     ret_tokens.emplace_back("Wrapped");

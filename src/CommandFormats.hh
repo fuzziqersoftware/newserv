@@ -882,7 +882,7 @@ struct SC_GameGuardCheck_BB_0022 {
 struct S_ExchangeSecretLotteryTicketResult_BB_24 {
   // These fields map to unknown_a1 and unknown_a2 in the 6xDE command (but
   // their order is swapped here).
-  le_uint16_t function_id = 0;
+  le_uint16_t label = 0;
   uint8_t start_index = 0;
   uint8_t unused = 0;
   parray<le_uint32_t, 8> unknown_a3;
@@ -892,7 +892,7 @@ struct S_ExchangeSecretLotteryTicketResult_BB_24 {
 // Sent in response to a 6xE1 command from the client.
 
 struct S_GallonPlanResult_BB_25 {
-  le_uint16_t function_id = 0;
+  le_uint16_t label = 0;
   uint8_t offset1 = 0;
   uint8_t offset2 = 0;
   uint8_t value1 = 0;
@@ -1227,20 +1227,21 @@ struct S_JoinGameT_DC_PC {
   // field when sending this command to start an Episode 3 tournament game. This
   // can be misleading when reading old logs from those days, but the Episode 3
   // client really does ignore it.
-  parray<le_uint32_t, 0x20> variations;
+  /* 0004 */ parray<le_uint32_t, 0x20> variations;
   // Unlike lobby join commands, these are filled in in their slot positions.
   // That is, if there's only one player in a game with ID 2, then the first two
   // of these are blank and the player's data is in the third entry here.
-  parray<LobbyDataT, 4> lobby_data;
-  uint8_t client_id = 0;
-  uint8_t leader_id = 0;
-  uint8_t disable_udp = 1;
-  uint8_t difficulty = 0;
-  uint8_t battle_mode = 0;
-  uint8_t event = 0;
-  uint8_t section_id = 0;
-  uint8_t challenge_mode = 0;
-  le_uint32_t rare_seed = 0;
+  /* 0084 */ parray<LobbyDataT, 4> lobby_data;
+  /* 0104 */ uint8_t client_id = 0;
+  /* 0105 */ uint8_t leader_id = 0;
+  /* 0106 */ uint8_t disable_udp = 1;
+  /* 0107 */ uint8_t difficulty = 0;
+  /* 0108 */ uint8_t battle_mode = 0;
+  /* 0109 */ uint8_t event = 0;
+  /* 010A */ uint8_t section_id = 0;
+  /* 010B */ uint8_t challenge_mode = 0;
+  /* 010C */ le_uint32_t rare_seed = 0;
+  /* 0110 */
 } __packed__;
 
 struct S_JoinGame_DCNTE_64 {
@@ -1454,6 +1455,8 @@ struct S_GenerateID_DC_PC_V3_80 {
 // On GC (and probably other versions too) the unused space after the text
 // contains uninitialized memory when the client sends this command. newserv
 // clears the uninitialized data for security reasons before forwarding.
+// The maximum length of the message is 170 characters, despite the field being
+// able to hold triple that amount.
 
 struct SC_SimpleMail_PC_81 {
   // If player_tag and from_guild_card_number are zero, the message cannot be
@@ -2131,10 +2134,10 @@ struct S_QuestMenuEntry_BB_A2_A4 {
 // because the following command (AB) is definitely not valid on that version.
 
 struct C_SendQuestStatistic_V3_BB_AA {
-  le_uint16_t stat_id1 = 0;
+  le_uint16_t stat_id = 0;
   le_uint16_t unused = 0;
-  le_uint16_t function_id1 = 0;
-  le_uint16_t function_id2 = 0;
+  le_uint16_t label1 = 0;
+  le_uint16_t label2 = 0;
   parray<le_uint32_t, 8> params;
 } __packed_ws__(C_SendQuestStatistic_V3_BB_AA, 0x28);
 
@@ -2146,7 +2149,7 @@ struct C_SendQuestStatistic_V3_BB_AA {
 // presumably use this command to call any function at any time during a quest.
 
 struct S_CallQuestFunction_V3_BB_AB {
-  le_uint16_t function_id = 0;
+  le_uint16_t label = 0;
   parray<uint8_t, 2> unused;
 } __packed_ws__(S_CallQuestFunction_V3_BB_AB, 4);
 
@@ -4105,17 +4108,17 @@ struct G_DarkFalzActions_6x19 {
 
 // 6x1A: Invalid subcommand
 
-// 6x1B: Unknown (not valid on Episode 3) (protected on V3/V4)
+// 6x1B: Enable PK mode for player (not valid on Episode 3) (protected on V3/V4)
 
-struct G_Unknown_6x1B {
+struct G_EnablePKModeForPlayer_6x1B {
   G_ClientIDHeader header;
-} __packed_ws__(G_Unknown_6x1B, 4);
+} __packed_ws__(G_EnablePKModeForPlayer_6x1B, 4);
 
-// 6x1C: Destroy NPC (protected on V3/V4)
+// 6x1C: Disable PK mode for player (protected on V3/V4)
 
-struct G_DestroyNPC_6x1C {
+struct G_DisablePKModeForPlayer_6x1C {
   G_ClientIDHeader header;
-} __packed_ws__(G_DestroyNPC_6x1C, 4);
+} __packed_ws__(G_DisablePKModeForPlayer_6x1C, 4);
 
 // 6x1D: Invalid subcommand
 // 6x1E: Invalid subcommand
@@ -4753,6 +4756,24 @@ struct G_SetTelepipeState_6x68 {
 // 6x69: NPC control
 // Note: NPCs cannot be destroyed with 6x69; 6x1C is used instead for that.
 
+// For commands 0 and 3, the template indexes are:
+//    0: NOL        1: CICIL      2: CICIL      3: MARACA     4: ELLY
+//    5: SHINO      6: DONOPH     7: MOME       8: ALICIA     9: ASH
+//   10: ASH       11: SUE       12: KIREEK    13: BERNIE    14: GILLIAM
+//   15: ELENOR    16: ALICIA    17: MONTAGUE  18: RUPIKA    19: MATHA
+//   20: ANNA      21: TONZLAR   22: TOBOKKE   23: GEKIGASKY 24: TYPE:O
+//   25: TYPE:W    26: GIZEL     27: DACCI     28: HOPKINS   29: DORONBO
+//   30: KROE      31: MUJO      32: RACTON    33: LIONEL    34: ZOKE
+//   35: SUE       36: NADJA     37: ELENOR    38: KIREEK    39: BERNIE
+//   40: CHRIS     41: RENEE     42: KAREN     43: BEIRON    44: NAKA
+//   45: LEO       46: HOUND     47: MADELEINE 48: VALLETTA  49: BOGARDE
+//   50: ULT       51: TYPE:I    52: TYPE:V    53: TACHIBANA 54: OSMAN
+//   55: VIVIENNE  56: BP        57: SHINTARO  58: KEN       59: TAKUYA
+//   60: SOKON     61: UKON      62: CANTONA   63: HASE
+// Created NPCs have a base level according to their template index. On Hard,
+// 25 is added to their base level; on Very Hard, 50 is added; on Ultimate, 150
+// is added. In all cases the NPC's level is clamped to [1, 199].
+
 struct G_NPCControl_6x69 {
   G_UnusedHeader header;
   le_uint16_t param1; // Commands 0/3: state; command 1: npc_entity_id; command 2: unknown
@@ -5219,17 +5240,17 @@ struct G_TriggerTrap_6x80 {
   le_uint16_t unknown_a2 = 0;
 } __packed_ws__(G_TriggerTrap_6x80, 8);
 
-// 6x81: Set drop weapon on death flag (protected on V3/V4)
+// 6x81: Disable drop weapon on death (protected on V3/V4)
 
-struct G_SetDropWeaponOnDeathFlag_6x81 {
+struct G_DisableDropWeaponOnDeath_6x81 {
   G_ClientIDHeader header;
-} __packed_ws__(G_SetDropWeaponOnDeathFlag_6x81, 4);
+} __packed_ws__(G_DisableDropWeaponOnDeath_6x81, 4);
 
-// 6x82: Clear drop weapon on death flag (protected on V3/V4)
+// 6x82: Enable drop weapon on death (protected on V3/V4)
 
-struct G_ClearDropWeaponOnDeathFlag_6x82 {
+struct G_EnableDropWeaponOnDeath_6x82 {
   G_ClientIDHeader header;
-} __packed_ws__(G_ClearDropWeaponOnDeathFlag_6x82, 4);
+} __packed_ws__(G_EnableDropWeaponOnDeath_6x82, 4);
 
 // 6x83: Place trap (protected on V3/V4)
 
@@ -5445,7 +5466,7 @@ struct G_Unknown_6x9C {
 
 struct G_Unknown_6x9D {
   G_UnusedHeader header;
-  le_uint32_t client_id2 = 0;
+  le_uint32_t client_id = 0;
 } __packed_ws__(G_Unknown_6x9D, 8);
 
 // 6x9E: Play camera shutter sound
@@ -6084,8 +6105,8 @@ struct G_ExchangeItemInQuest_BB_6xD5 {
   G_ClientIDHeader header;
   ItemData find_item; // Only data1[0]-[2] are used
   ItemData replace_item; // Only data1[0]-[2] are used
-  le_uint16_t success_function_id = 0;
-  le_uint16_t failure_function_id = 0;
+  le_uint16_t success_label = 0;
+  le_uint16_t failure_label = 0;
 } __packed_ws__(G_ExchangeItemInQuest_BB_6xD5, 0x30);
 
 // 6xD6: Wrap item (BB; handled by server)
@@ -6093,7 +6114,7 @@ struct G_ExchangeItemInQuest_BB_6xD5 {
 struct G_WrapItem_BB_6xD6 {
   G_ClientIDHeader header;
   ItemData item;
-  uint8_t unknown_a1 = 0;
+  uint8_t present_color = 0; // 00-0F
   parray<uint8_t, 3> unused;
 } __packed_ws__(G_WrapItem_BB_6xD6, 0x1C);
 
@@ -6103,8 +6124,8 @@ struct G_WrapItem_BB_6xD6 {
 struct G_PaganiniPhotonDropExchange_BB_6xD7 {
   G_ClientIDHeader header;
   ItemData new_item; // Only data1[0]-[2] are used
-  le_uint16_t success_function_id = 0;
-  le_uint16_t failure_function_id = 0;
+  le_uint16_t success_label = 0;
+  le_uint16_t failure_label = 0;
 } __packed_ws__(G_PaganiniPhotonDropExchange_BB_6xD7, 0x1C);
 
 // 6xD8: Add S-rank weapon special (BB; handled by server)
@@ -6115,8 +6136,8 @@ struct G_AddSRankWeaponSpecial_BB_6xD8 {
   ItemData unknown_a1; // Only data1[0]-[2] are used
   le_uint32_t item_id = 0;
   le_uint32_t special_type = 0;
-  le_uint16_t success_function_id = 0;
-  le_uint16_t failure_function_id = 0;
+  le_uint16_t success_label = 0;
+  le_uint16_t failure_label = 0;
 } __packed_ws__(G_AddSRankWeaponSpecial_BB_6xD8, 0x24);
 
 // 6xD9: Momoka item exchange (BB; handled by server)
@@ -6128,8 +6149,8 @@ struct G_MomokaItemExchange_BB_6xD9 {
   ItemData replace_item; // Only data1[0]-[2] are used
   le_uint32_t unknown_a3 = 0;
   le_uint32_t unknown_a4 = 0;
-  le_uint16_t unknown_a5 = 0;
-  le_uint16_t unknown_a6 = 0;
+  le_uint16_t success_label = 0;
+  le_uint16_t failure_label = 0;
 } __packed_ws__(G_MomokaItemExchange_BB_6xD9, 0x38);
 
 // 6xDA: Upgrade weapon attribute (BB; handled by server)
@@ -6137,13 +6158,13 @@ struct G_MomokaItemExchange_BB_6xD9 {
 
 struct G_UpgradeWeaponAttribute_BB_6xDA {
   G_ClientIDHeader header;
-  ItemData item; // Only data1[0-2] are used (argsA[1-3])
-  le_uint32_t item_id = 0; // argsA[0]
-  le_uint32_t attribute = 0; // argsA[4]
-  le_uint32_t payment_count = 0; // Number of PD or PS (argsA[5])
+  ItemData item; // Only data1[0-2] are used (valueB-valueD)
+  le_uint32_t item_id = 0; // valueA
+  le_uint32_t attribute = 0; // valueE
+  le_uint32_t payment_count = 0; // Number of PD or PS (valueF)
   le_uint32_t payment_type = 0; // 0 = Photon Drops, 1 = Photon Spheres
-  le_uint16_t success_function_id = 0; // argsA[6]
-  le_uint16_t failure_function_id = 0; // argsA[7]
+  le_uint16_t success_label = 0; // labelG
+  le_uint16_t failure_label = 0; // labelH
 } __packed_ws__(G_UpgradeWeaponAttribute_BB_6xDA, 0x2C);
 
 // 6xDB: Exchange item in quest (BB)
@@ -6173,12 +6194,17 @@ struct G_SetEXPMultiplier_BB_6xDD {
 
 // 6xDE: Exchange Secret Lottery Ticket (BB; handled by server)
 // The client sends this when it executes an F95C quest opcode.
+// There appears to be a bug in the client here: it sets the subcommand size to
+// 2 instead of 3, so the last relevant field (failure_label) is not sent to
+// the server.
 
 struct G_ExchangeSecretLotteryTicket_BB_6xDE {
   G_ClientIDHeader header;
   uint8_t index = 0;
-  uint8_t function_id1 = 0;
-  le_uint16_t function_id2 = 0;
+  uint8_t unknown_a1 = 0;
+  le_uint16_t success_label = 0;
+  // le_uint16_t failure_label = 0;
+  // parray<uint8_t, 2> unused;
 } __packed_ws__(G_ExchangeSecretLotteryTicket_BB_6xDE, 8);
 
 // 6xDF: Exchange Photon Crystals (BB; handled by server)
@@ -6194,11 +6220,11 @@ struct G_ExchangePhotonCrystals_BB_6xDF {
 struct G_RequestItemDropFromQuest_BB_6xE0 {
   G_ClientIDHeader header;
   uint8_t floor = 0;
-  uint8_t type = 0; // argsA[0]
+  uint8_t type = 0; // valueA
   uint8_t unknown_a3 = 0;
   uint8_t unused = 0;
-  le_float x = 0.0f; // argsA[1]
-  le_float z = 0.0f; // argsA[2]
+  le_float x = 0.0f; // valueB
+  le_float z = 0.0f; // valueC
 } __packed_ws__(G_RequestItemDropFromQuest_BB_6xE0, 0x10);
 
 // 6xE1: Exchange Photon Tickets (BB; handled by server)
@@ -6206,12 +6232,12 @@ struct G_RequestItemDropFromQuest_BB_6xE0 {
 
 struct G_ExchangePhotonTickets_BB_6xE1 {
   G_ClientIDHeader header;
-  uint8_t unknown_a1 = 0; // argsA[0]
-  uint8_t unknown_a2 = 0; // argsA[1]
-  uint8_t result_index = 0; // argsA[2]
+  uint8_t unknown_a1 = 0; // valueA
+  uint8_t unknown_a2 = 0; // valueB
+  uint8_t result_index = 0; // valueC
   uint8_t unused = 0;
-  le_uint16_t function_id1 = 0; // argsA[3]
-  le_uint16_t unknown_a5 = 0; // argsA[4]
+  le_uint16_t success_label = 0; // valueD
+  le_uint16_t failure_label = 0; // valueE
 } __packed_ws__(G_ExchangePhotonTickets_BB_6xE1, 0x0C);
 
 // 6xE2: Get Meseta slot prize (BB)

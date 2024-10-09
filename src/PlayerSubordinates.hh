@@ -881,78 +881,54 @@ struct BattleRules {
     LIMIT_LIVES = 2,
   };
 
-  // Set by quest opcode F812, but values are remapped.
-  //   F812 00 => FORBID_ALL
-  //   F812 01 => ALLOW
-  //   F812 02 => LIMIT_LEVEL
+  // Set by quest opcode F812, but values are remapped
   /* 00 */ TechDiskMode tech_disk_mode = TechDiskMode::ALLOW;
-  // Set by quest opcode F813, but values are remapped.
-  //   F813 00 => FORBID_ALL
-  //   F813 01 => ALLOW
-  //   F813 02 => CLEAR_AND_ALLOW
-  //   F813 03 => FORBID_RARES
+  // Set by quest opcode F813, but values are remapped
   /* 01 */ WeaponAndArmorMode weapon_and_armor_mode = WeaponAndArmorMode::ALLOW;
-  // Set by quest opcode F814, but values are remapped.
-  //   F814 00 => FORBID_ALL
-  //   F814 01 => ALLOW
+  // Set by quest opcode F814, but values are remapped
   /* 02 */ MagMode mag_mode = MagMode::ALLOW;
-  // Set by quest opcode F815, but values are remapped.
-  //   F815 00 => FORBID_ALL
-  //   F815 01 => ALLOW
-  //   F815 02 => CLEAR_AND_ALLOW
+  // Set by quest opcode F815, but values are remapped
   /* 03 */ ToolMode tool_mode = ToolMode::ALLOW;
-  // Set by quest opcode F816. Values are not remapped.
-  //   F816 00 => DEFAULT
-  //   F816 01 => ALL_PLAYERS
+  // Set by quest opcode F816. Values are not remapped
   /* 04 */ TrapMode trap_mode = TrapMode::DEFAULT;
   // Set by quest opcode F817. Value appears to be unused in all PSO versions.
   /* 05 */ uint8_t unused_F817 = 0;
-  // Set by quest opcode F818, but values are remapped.
-  //   F818 00 => 01
-  //   F818 01 => 00
-  //   F818 02 => 02
+  // Set by quest opcode F818, but values are remapped
   /* 06 */ RespawnMode respawn_mode = RespawnMode::ALLOW;
-  // Set by quest opcode F819.
+  // Set by quest opcode F819
   /* 07 */ uint8_t replace_char = 0;
-  // Set by quest opcode F81A, but value is inverted.
+  // Set by quest opcode F81A, but value is inverted
   /* 08 */ uint8_t drop_weapon = 0;
-  // Set by quest opcode F81B.
+  // Set by quest opcode F81B
   /* 09 */ uint8_t is_teams = 0;
-  // Set by quest opcode F852.
+  // Set by quest opcode F852
   /* 0A */ uint8_t hide_target_reticle = 0;
-  // Set by quest opcode F81E. Values are not remapped.
-  //   F81E 00 => ALLOW
-  //   F81E 01 => FORBID_ALL
-  //   F81E 02 => CLEAR_AND_ALLOW
+  // Set by quest opcode F81E. Values are not remapped
   /* 0B */ MesetaMode meseta_mode = MesetaMode::ALLOW;
-  // Set by quest opcode F81D.
+  // Set by quest opcode F81D
   /* 0C */ uint8_t death_level_up = 0;
-  // Set by quest opcode F851. The trap type is remapped:
-  //   F851 00 XX => set count to XX for trap type 00
-  //   F851 01 XX => set count to XX for trap type 02
-  //   F851 02 XX => set count to XX for trap type 03
-  //   F851 03 XX => set count to XX for trap type 01
+  // Set by quest opcode F851. The trap type is remapped
   /* 0D */ parray<uint8_t, 4> trap_counts;
-  // Set by quest opcode F85E.
+  // Set by quest opcode F85E
   /* 11 */ uint8_t enable_sonar = 0;
-  // Set by quest opcode F85F.
+  // Set by quest opcode F85F
   /* 12 */ uint8_t sonar_count = 0;
-  // Set by quest opcode F89E.
+  // Set by quest opcode F89E
   /* 13 */ uint8_t forbid_scape_dolls = 0;
-  // This value does not appear to be set by any quest opcode.
+  // This value does not appear to be set by any quest opcode
   /* 14 */ le_uint32_t unknown_a1 = 0;
-  // Set by quest opcode F86F.
+  // Set by quest opcode F86F
   /* 18 */ le_uint32_t lives = 0;
-  // Set by quest opcode F870.
+  // Set by quest opcode F870
   /* 1C */ le_uint32_t max_tech_level = 0;
-  // Set by quest opcode F871.
+  // Set by quest opcode F871
   /* 20 */ le_uint32_t char_level = 0;
-  // Set by quest opcode F872.
+  // Set by quest opcode F872
   /* 24 */ le_uint32_t time_limit = 0;
-  // Set by quest opcode F8A8.
+  // Set by quest opcode F8A8
   /* 28 */ le_uint16_t death_tech_level_up = 0;
   /* 2A */ parray<uint8_t, 2> unused;
-  // Set by quest opcode F86B.
+  // Set by quest opcode F86B
   /* 2C */ le_uint32_t box_drop_area = 0;
   /* 30 */
 

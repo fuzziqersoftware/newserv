@@ -13,6 +13,7 @@ See TODO.md for a list of known issues and future work I've curated, or go to th
     * [History](#history)
     * [Other server projects](#other-server-projects)
     * [Using newserv in other projects](#using-newserv-in-other-projects)
+    * [Developer information](#developer-information)
 * [Compatibility](#compatibility)
 * Setup
     * [Server setup](#server-setup)
@@ -64,6 +65,20 @@ Independently of this project, there are many other PSO servers out there. Those
 * (2019) **[Mechonis](https://gitlab.com/sora3087/mechonis)**: A PSOBB server with a microservice architecture written in TypeScript by TrueVision.
 * (2021) **[Phantasmal World](https://github.com/DaanVandenBosch/phantasmal-world)**: A set of PSO tools, including a web-based model viewer and quest builder, and a PSO server, written by Daan Vanden Bosch.
 * (2021) **[Elseware](http://git.sharnoth.com/jake/elseware)**: A PSOBB server written in Rust by Jake.
+
+## Developer information
+
+There is a lot of code in this project that could be useful as a reference. Some of the more notable files are:
+* **src/CommandFormats.hh**: Complete listing of all network commands used in all known versions of the game, and their formats
+* **src/DCSerialNumbers.hh/cc**: PSO DC serial number validation algorithm and serial number generator
+* **src/ItemData.hh**: Item format reference
+* **src/ItemCreator.hh/cc**: Reverse-engineered item generator from Episodes 1&2 (used for all versions)
+* **src/ItemParameterTable.hh**: Format of many structures in ItemPMT.prs
+* **src/Map.hh/cc**: Map file (.dat) structure and reverse-engineered Challenge Mode random enemy generation algorithm
+* **src/QuestScript.cc**: Complete listing of all quest opcodes on all versions, along with their arguments and behavior
+* **src/SaveFileFormats.hh**: Definitions of save file structures for all versions
+* **src/Episode3/DataIndexes.hh**: Episode 3 file structures, including card definition format and map/quest format
+* **system/item-tables/names-v4.json**: Names of all items, indexed by the first 3 bytes of data1
 
 ## Using newserv in other projects
 

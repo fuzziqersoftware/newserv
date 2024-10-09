@@ -373,8 +373,8 @@ void send_give_experience(std::shared_ptr<Client> c, uint32_t amount);
 void send_set_exp_multiplier(std::shared_ptr<Lobby> l);
 void send_rare_enemy_index_list(std::shared_ptr<Client> c, const std::vector<size_t>& indexes);
 
-void send_quest_function_call(Channel& ch, uint16_t function_id);
-void send_quest_function_call(std::shared_ptr<Client> c, uint16_t function_id);
+void send_quest_function_call(Channel& ch, uint16_t label);
+void send_quest_function_call(std::shared_ptr<Client> c, uint16_t label);
 
 void send_ep3_card_list_update(std::shared_ptr<Client> c);
 void send_ep3_media_update(

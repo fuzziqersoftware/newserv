@@ -3031,8 +3031,8 @@ static void on_AA(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
     return;
   }
 
-  // TODO: Send the right value here. (When should we send function_id2?)
-  send_quest_function_call(c, cmd.function_id1);
+  // TODO: Send the right value here. (When should we send label2?)
+  send_quest_function_call(c, cmd.label1);
 }
 
 static void on_D7_GC(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {

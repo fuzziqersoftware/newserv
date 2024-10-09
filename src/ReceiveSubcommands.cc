@@ -4214,11 +4214,11 @@ static void on_quest_exchange_item_bb(shared_ptr<Client> c, uint8_t, uint8_t, vo
       p->add_item(new_item, limits);
       send_create_inventory_item_to_lobby(c, c->lobby_client_id, new_item);
 
-      send_quest_function_call(c, cmd.success_function_id);
+      send_quest_function_call(c, cmd.success_label);
 
     } catch (const exception& e) {
       c->log.warning("Quest item exchange failed: %s", e.what());
-      send_quest_function_call(c, cmd.failure_function_id);
+      send_quest_function_call(c, cmd.failure_label);
     }
   }
 }
@@ -4232,7 +4232,7 @@ static void on_wrap_item_bb(shared_ptr<Client> c, uint8_t, uint8_t, void* data, 
     auto p = c->character();
     auto item = p->remove_item(cmd.item.id, 1, *s->item_stack_limits(c->version()));
     send_destroy_item_to_lobby(c, item.id, 1);
-    item.wrap(*s->item_stack_limits(c->version()));
+    item.wrap(*s->item_stack_limits(c->version()), cmd.present_color);
     p->add_item(item, *s->item_stack_limits(c->version()));
     send_create_inventory_item_to_lobby(c, c->lobby_client_id, item);
   }
@@ -4260,11 +4260,11 @@ static void on_photon_drop_exchange_for_item_bb(shared_ptr<Client> c, uint8_t, u
       p->add_item(new_item, limits);
       send_create_inventory_item_to_lobby(c, c->lobby_client_id, new_item);
 
-      send_quest_function_call(c, cmd.success_function_id);
+      send_quest_function_call(c, cmd.success_label);
 
     } catch (const exception& e) {
       c->log.warning("Quest Photon Drop exchange for item failed: %s", e.what());
-      send_quest_function_call(c, cmd.failure_function_id);
+      send_quest_function_call(c, cmd.failure_label);
     }
   }
 }
@@ -4296,11 +4296,11 @@ static void on_photon_drop_exchange_for_s_rank_special_bb(shared_ptr<Client> c, 
       p->add_item(item, limits);
       send_create_inventory_item_to_lobby(c, c->lobby_client_id, item);
 
-      send_quest_function_call(c, cmd.success_function_id);
+      send_quest_function_call(c, cmd.success_label);
 
     } catch (const exception& e) {
       c->log.warning("Quest Photon Drop exchange for S-rank special failed: %s", e.what());
-      send_quest_function_call(c, cmd.failure_function_id);
+      send_quest_function_call(c, cmd.failure_label);
     }
   }
 }
@@ -4350,7 +4350,7 @@ static void on_secret_lottery_ticket_exchange_bb(shared_ptr<Client> c, uint8_t, 
 
     S_ExchangeSecretLotteryTicketResult_BB_24 out_cmd;
     out_cmd.start_index = cmd.index;
-    out_cmd.function_id = cmd.function_id1;
+    out_cmd.label = cmd.success_label;
     if (s->secret_lottery_results.empty()) {
       out_cmd.unknown_a3.clear(0);
     } else if (s->secret_lottery_results.size() == 1) {
@@ -4448,7 +4448,7 @@ static void on_quest_F95F_result_bb(shared_ptr<Client> c, uint8_t, uint8_t, void
     send_create_inventory_item_to_lobby(c, c->lobby_client_id, new_item);
 
     S_GallonPlanResult_BB_25 out_cmd;
-    out_cmd.function_id = cmd.function_id1;
+    out_cmd.label = cmd.success_label;
     out_cmd.offset1 = 0x3C;
     out_cmd.offset2 = 0x08;
     out_cmd.value1 = 0x00;
@@ -4605,11 +4605,11 @@ static void on_upgrade_weapon_attribute_bb(shared_ptr<Client> c, uint8_t, uint8_
 
       send_destroy_item_to_lobby(c, item.id, 1);
       send_create_inventory_item_to_lobby(c, c->lobby_client_id, item);
-      send_quest_function_call(c, cmd.success_function_id);
+      send_quest_function_call(c, cmd.success_label);
 
     } catch (const exception& e) {
       c->log.warning("Weapon attribute upgrade failed: %s", e.what());
-      send_quest_function_call(c, cmd.failure_function_id);
+      send_quest_function_call(c, cmd.failure_label);
     }
   }
 }
