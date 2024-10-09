@@ -1219,6 +1219,7 @@
     "F_0046": false, // Ep2 CCA door lock fix
     "F_0047": false, // Ep2 CCA door lock fix
     "F_0048": false, // Ep2 CCA door lock fix
+    "F_004F": "F_0225", // Ep2 Elly appears in town = 6-5 cleared
     "F_002C": "F_01F7", // Ep1 Forest monument state = 1-2 cleared
     "F_002D": "F_01FD", // Ep1 Cave monument state = 2-2 cleared
     "F_002E": "F_0209", // Ep1 Mine monument state = 4-1 cleared
