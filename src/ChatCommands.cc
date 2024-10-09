@@ -1420,7 +1420,11 @@ static void server_command_edit(shared_ptr<Client> c, const std::string& args) {
       if (sys) {
         sys->language = new_language;
       }
-    } else if (tokens.at(0) == "secid" && cheats_allowed) {
+    } else if (tokens.at(0) == "secid") {
+      if (!cheats_allowed && (p->disp.stats.level > 0)) {
+        send_text_message(c, "$C6You cannot change\nyour Section ID\nafter level 1");
+        return;
+      }
       uint8_t secid = section_id_for_name(tokens.at(1));
       if (secid == 0xFF) {
         send_text_message(c, "$C6No such section ID");

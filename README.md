@@ -638,6 +638,7 @@ Some subcommands are always available. They are:
 * `$edit language L`: Set your language (Generally only useful on BB; values for L: J = Japanese, E = English, G = German, F = French, S = Spanish, B = Simplified Chinese, T = Traditional Chinese, K = Korean)
 * `$edit name NAME`: Set your character name
 * `$edit npc NPC-NAME`: Set or remove an NPC skin on your character (NPC-NAME can be ninja, rico, sonic, knuckles, tails, flowen, elly, or none)
+* `$edit secid SECID-NAME`: Set your section ID (cheat mode is required for this unless your character is Level 1)
 
 The remaining subcommands are only available if cheat mode is enabled on the server. They are:
 * `$edit atp N`: Set your ATP to N until stats are updated (e.g. by leveling up)
@@ -650,7 +651,6 @@ The remaining subcommands are only available if cheat mode is enabled on the ser
 * `$edit meseta N`: Set the amount of Meseta in your inventory
 * `$edit exp N`: Set your total amount of EXP (does not affect level)
 * `$edit level N`: Set your current level (recomputes stats, but does not affect EXP)
-* `$edit secid SECID-NAME`: Set your section ID
 * `$edit tech TECH-NAME LEVEL`: Set the level of one of your techniques
 
 # Non-server features
