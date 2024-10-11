@@ -681,8 +681,8 @@ There are several actions that don't fit well into the table above, which let yo
 
 # Docker
 Docker is new and mostly unsupported at this time. However, here are some best-effort steps to build and run in a docker container on Ubuntu Linux.
-Tested on Ubuntu 22.04.4 LTS, using Portainer for the Docker compose.
-Note: You cannot have anything running on port 53 (DNS).
+Tested on Ubuntu 22.04.4 LTS.
+Note: You cannot have anything except this docker container using port 53 (DNS) on your server.
 
 ### Install prerequisites
 ```
@@ -702,37 +702,84 @@ cd ~/newserv
 sudo docker build -t newserv .
 ```
 
-### Create config directory
+### Create persistent directories. Assuming you want to store the persistent data in your home directory
 ```
-mkdir ~/newservConfig
+mkdir ~/newservPersist
+mkdir ~/newservPersist/players
+mkdir ~/newservPersist/teams
+mkdir ~/newservPersist/licenses
 ```
 
 ### Copy config file to config dir
 ```
-cp ~/newserv/system/config.example.json ~/newservConfig/config.json
+cp ~/newserv/system/config.example.json ~/newservPersist/config.json
 ```
 
 ### Edit config.json
 ```
-nano ~/newservConfig/config.json
+nano ~/newservPersist/config.json
 ```
-Pro tip: Set "LocalAddress" to the statis IP address of your server. If your server IP is "192.168.0.10":
+Pro tip: 
+Set "LocalAddress" to the static, LAN IP address of your server. If your server LAN IP is "192.168.0.10":
 "LocalAddress": "192.168.0.10",
 
-For Dolphin > Settings. Set SP1 to "Broadband Adapter (HLE)" Click [...] next to this, and set the DNS to the IP address of your server. Then start the game. Changing this while the game is running will NOT work.
+Set "ExternalAddress" to the WAN IP address of your network. If your WAN IP is "8.8.8.8":
+"ExternalAddress": "8.8.8.8",
 
+For Dolphin > Settings. Set SP1 to "Broadband Adapter (HLE)" Click [...] next to this, and set the DNS to the IP address of your server. Then start the game. Changes will not take affect if the game is running.
 
-### Docker compose. Remember to change /home/changeme to your user directory
+### Docker run. Remember to change /home/changeme/newservPersist to your persistent directory. Do not use aliases such as '~'
 ```
-version: '2'
+docker run --name newserv -p 53:53 -p 5100:5100 -p 5110:5110 -p 5111:5111 -p 5112:5112 -p 9064:9064 -p 9100:9100 -p 9103:9103 -p 9300:9300 -p 11000:11000 -p 12000:12000 -p 12004:12004 -p 12005:12005 -v /etc/localtime:/etc/localtime:ro -v /home/changeme/newservPersist/config.json:/newserv/system/config.json -v /home/changeme/newservPersist/players:/newserv/system/players -v /home/changeme/newservPersist/teams:/newserv/system/teams -v /home/changeme/newservPersist/licenses:/newserv/system/licenses --restart no newserv:latest
+```
 
+### Docker run host network mode. Remember to change /home/changeme/newservPersist to your persistent directory. Do not use aliases such as '~'
+```
+docker run --net host --name newserv -v /etc/localtime:/etc/localtime:ro -v /home/changeme/newservPersist/config.json:/newserv/system/config.json -v /home/changeme/newservPersist/players:/newserv/system/players -v /home/changeme/newservPersist/teams:/newserv/system/teams -v /home/changeme/newservPersist/licenses:/newserv/system/licenses --restart no newserv:latest
+```
+
+### Docker compose. Remember to change /home/changeme/newservPersist to your persistent directory. Do not use aliases such as '~'
+```
+name: psonewserv
 services:
-  psonewserv:
-    image: newserv:latest   ## Uses latest build
-    container_name: newserv ## Set to whatever you want.
-    volumes:
-      - /etc/localtime:/etc/localtime:ro  ## Keeps time sync'd with physical server.
-      - /home/changeme/newservConfig/config.json:/newserv/system/config.json  ## Use JSON file outside container.
-    network_mode: host  ## Newserv won't even see client connection attempt- even with port mapping.
-    restart: "no"       ## Set to whatever you want.
+    newserv:
+        container_name: newserv
+        ports:
+            - 53:53
+            - 5100:5100
+            - 5110:5110
+            - 5111:5111
+            - 5112:5112
+            - 9064:9064
+            - 9100:9100
+            - 9103:9103
+            - 9300:9300
+            - 11000:11000
+            - 12000:12000
+            - 12004:12004
+            - 12005:12005
+        volumes:
+            - /etc/localtime:/etc/localtime:ro
+            - /home/changeme/newservPersist/config.json:/newserv/system/config.json
+            - /home/changeme/newservPersist/players:/newserv/system/players
+            - /home/changeme/newservPersist/teams:/newserv/system/teams
+            - /home/changeme/newservPersist/licenses:/newserv/system/licenses
+        restart: no ## Set to whatever you want.
+        image: newserv:latest
+```
+### Docker compose host network mode. Remember to change /home/changeme/newservPersist to your persistent directory. Do not use aliases such as '~'
+```
+name: psonewserv
+services:
+    newserv:
+        container_name: newserv
+        volumes:
+            - /etc/localtime:/etc/localtime:ro
+            - /home/changeme/newservPersist/config.json:/newserv/system/config.json
+            - /home/changeme/newservPersist/players:/newserv/system/players
+            - /home/changeme/newservPersist/teams:/newserv/system/teams
+            - /home/changeme/newservPersist/licenses:/newserv/system/licenses
+        restart: no ## Set to whatever you want.
+        network_mode: host
+        image: newserv:latest
 ```
