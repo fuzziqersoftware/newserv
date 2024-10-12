@@ -2548,9 +2548,8 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     {0xF94C, "player_effect_nc", "particle3f_id", {{REG_SET_FIXED, 4}}, F_V3_V4},
 
     // Returns 1 in regA if a file named PSO3_CHARACTER is present on either
-    // memory card. This opcode is only available on PSO Plus on GC.
-    // TODO: This is verified to exist on US v1.2 and not on US v1.1. What
-    // about the JP versions? And EU?
+    // memory card. This opcode is only available on PSO Plus on GC; that is,
+    // it only exists on JP v1.4 and v1.5, and US v1.2.
     {0xF94D, "has_ep3_save_file", nullptr, {REG}, F_GC_V3 | F_ARGS},
 
     // Gives the player one copy of a card. regA is the card ID.
