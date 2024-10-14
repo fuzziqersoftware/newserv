@@ -1177,6 +1177,7 @@ PlayerConfigNTE::PlayerConfigNTE(const PlayerConfig& config)
       offline_clv_exp(config.offline_clv_exp),
       online_clv_exp(config.online_clv_exp),
       recent_human_opponents(config.recent_human_opponents),
+      recent_battle_start_timestamps(config.recent_battle_start_timestamps),
       unknown_a10(config.unknown_a10),
       init_timestamp(config.init_timestamp),
       last_online_battle_start_timestamp(config.last_online_battle_start_timestamp),
@@ -1206,6 +1207,7 @@ PlayerConfigNTE::operator PlayerConfig() const {
   ret.offline_clv_exp = this->offline_clv_exp;
   ret.online_clv_exp = this->online_clv_exp;
   ret.recent_human_opponents = this->recent_human_opponents;
+  ret.recent_battle_start_timestamps = this->recent_battle_start_timestamps;
   ret.unknown_a10 = this->unknown_a10;
   ret.init_timestamp = this->init_timestamp;
   ret.last_online_battle_start_timestamp = this->last_online_battle_start_timestamp;
@@ -1964,7 +1966,7 @@ string MapDefinition::str(const CardIndex* card_index, uint8_t language) const {
   lines.emplace_back(phosg::string_printf("  field_offset: (x: %hd units, y:%hd units) (x: %lg tiles, y: %lg tiles)", this->field_offset_x.load(), this->field_offset_y.load(), static_cast<double>(this->field_offset_x) / 25.0, static_cast<double>(this->field_offset_y) / 25.0));
   lines.emplace_back(phosg::string_printf("  map_category: %02hhX", this->map_category));
   lines.emplace_back(phosg::string_printf("  cyber_block_type: %02hhX", this->cyber_block_type));
-  lines.emplace_back(phosg::string_printf("  a11: %02hhX%02hhX", this->unknown_a11[0], this->unknown_a11[1]));
+  lines.emplace_back(phosg::string_printf("  a11: %04hX", this->unknown_a11.load()));
   static const array<const char*, 0x18> sc_card_entry_names = {
       "00 (Guykild; 0005)",
       "01 (Kylria; 0006)",

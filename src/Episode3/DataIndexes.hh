@@ -523,7 +523,6 @@ struct CardDefinition {
     // rules; for example, the expression "4+4//2" results in 4, not 6.
     /* 02 */ pstring<TextEncoding::ASCII, 0x0F> expr;
     // when specifies in which phase the effect should activate.
-    // TODO: There are many values that can be used here; document them.
     /* 11 */ EffectWhen when;
     // arg1 generally specifies how long the effect activates for.
     /* 12 */ pstring<TextEncoding::ASCII, 4> arg1;
@@ -918,13 +917,15 @@ struct PlayerConfig {
     /* 00 */ be_uint32_t guild_card_number;
     /* 04 */ pstring<TextEncoding::MARKED, 0x18> name;
   } __packed_ws__(PlayerReference, 0x1C);
-  // This array is updated when a battle is started (via a 6xB4x05 command). The
-  // client adds the opposing players' info to ths first two entries here if the
-  // opponents are human. (The existing entries are always moved back by two
-  // slots, but if one or both opponents are not humans, one or both of the
-  // newly-vacated slots is not filled in.)
+  // These two arrays are updated when a battle is started (via a 6xB4x05
+  // command). The client adds the opposing players' info to ths first two
+  // entries in recent_human_opponents if the opponents are human. (The
+  // existing entries are always moved back by two slots, but if one or both
+  // opponents are not humans, one or both of the newly-vacated slots is not
+  // filled in.) Both arrays have the most recent entries at the beginning.
   /* 2128:1FD4 */ parray<PlayerReference, 10> recent_human_opponents;
-  /* 2240:20EC */ parray<uint8_t, 0x28> unknown_a10;
+  /* 2240:20EC */ parray<be_uint32_t, 5> recent_battle_start_timestamps;
+  /* 2254:2100 */ parray<uint8_t, 0x14> unknown_a10;
   /* 2268:2114 */ be_uint32_t init_timestamp;
   /* 226C:2118 */ be_uint32_t last_online_battle_start_timestamp;
   // In a certain situation, unknown_t3 is set to init_timestamp plus a multiple
@@ -961,7 +962,8 @@ struct PlayerConfigNTE {
   /* 1B70 */ be_uint32_t offline_clv_exp;
   /* 1B74 */ be_uint32_t online_clv_exp;
   /* 1B78 */ parray<PlayerConfig::PlayerReference, 10> recent_human_opponents;
-  /* 1C90 */ parray<uint8_t, 0x28> unknown_a10;
+  /* 1C90 */ parray<be_uint32_t, 5> recent_battle_start_timestamps;
+  /* 1CA4 */ parray<uint8_t, 0x14> unknown_a10;
   /* 1CB8 */ be_uint32_t init_timestamp;
   /* 1CBC */ be_uint32_t last_online_battle_start_timestamp;
   /* 1CC0 */ be_uint32_t unknown_t3;
@@ -1150,6 +1152,8 @@ struct OverlayState {
   // Any other value here will behave like 00 (no special tile behavior).
   parray<parray<uint8_t, 0x10>, 0x10> tiles;
 
+  // This field appears to be unused in both NTE and the final version. Perhaps
+  // it had some meaning in a pre-NTE version.
   parray<le_uint32_t, 5> unused1;
 
   // TODO: Figure out exactly where these colors are used
@@ -1382,7 +1386,13 @@ struct MapDefinition { // .mnmd format; also the format of (decompressed) quests
   /* 28F0 */ parray<parray<DialogueSet, 0x10>, 3> dialogue_sets;
 
   // These card IDs are always given to the player when they win a battle on
-  // this map. Unused entries should be set to FFFF.
+  // this map. Unused entries should be set to FFFF. Cards in this array are
+  // ignored if they have any of these features (in the card definition):
+  // - type is HUNTERS_SC or ARKZ_SC
+  // - card_class is BOSS_ATTACK_ACTION or BOSS_TECH
+  // - rank is D1, D2, or D3
+  // - cannot_drop is 1 (specifically 1; other values don't prevent cards from
+  //   appearing)
   /* 59B0 */ parray<be_uint16_t, 0x10> reward_card_ids;
 
   // These fields are used when determining which cards to drop after the battle
@@ -1406,7 +1416,7 @@ struct MapDefinition { // .mnmd format; also the format of (decompressed) quests
   // There are 10 block types (0-9); if this value is > 9, type 0 is used.
   /* 59DD */ uint8_t cyber_block_type;
 
-  /* 59DE */ parray<uint8_t, 2> unknown_a11;
+  /* 59DE */ be_uint16_t unknown_a11;
 
   // This array specifies which SC characters can't participate in the quest
   // (that is, the player is not allowed to choose decks with these SC cards).
@@ -1513,7 +1523,7 @@ struct MapDefinitionTrial {
   /* 4172 */ be_int16_t field_offset_y;
   /* 4174 */ uint8_t map_category;
   /* 4175 */ uint8_t cyber_block_type;
-  /* 4176 */ parray<uint8_t, 2> unknown_a11;
+  /* 4176 */ be_uint16_t unknown_a11;
   // TODO: This field may contain some version of unavailable_sc_cards and/or
   // entry_states from MapDefinition, but the format isn't the same
   /* 4178 */ parray<uint8_t, 0x28> unknown_t12;

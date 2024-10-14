@@ -7066,13 +7066,13 @@ struct G_ServerVersionStrings_Ep3NTE_6xB4x46 {
   pstring<TextEncoding::MARKED, 0x40> date_str1;
 } __packed_ws__(G_ServerVersionStrings_Ep3NTE_6xB4x46, 0x88);
 
-// 6xB5x47: Set spectator's CARD level
-// header.sender_client_id is the spectator's client ID.
+// 6xB5x47: Set online player's CARD level
+// header.sender_client_id is the player's client ID.
 
-struct G_SetSpectatorCARDLevel_Ep3_6xB5x47 {
-  G_CardBattleCommandHeader header = {0xB5, sizeof(G_SetSpectatorCARDLevel_Ep3_6xB5x47) / 4, 0, 0x47, 0, 0, 0};
+struct G_SetPlayerCARDLevel_Ep3_6xB5x47 {
+  G_CardBattleCommandHeader header = {0xB5, sizeof(G_SetPlayerCARDLevel_Ep3_6xB5x47) / 4, 0, 0x47, 0, 0, 0};
   le_uint32_t clv = 0;
-} __packed_ws__(G_SetSpectatorCARDLevel_Ep3_6xB5x47, 0x0C);
+} __packed_ws__(G_SetPlayerCARDLevel_Ep3_6xB5x47, 0x0C);
 
 // 6xB3x48 / CAx48: End turn
 
