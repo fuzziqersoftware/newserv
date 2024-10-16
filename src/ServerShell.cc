@@ -7,6 +7,7 @@
 #include <phosg/Random.hh>
 #include <phosg/Strings.hh>
 
+#include "ChatCommands.hh"
 #include "ReceiveCommands.hh"
 #include "SendCommands.hh"
 #include "ServerState.hh"
@@ -874,6 +875,47 @@ CommandDefinition c_describe_tournament(
       } else {
         fprintf(stderr, "No such tournament exists\n");
       }
+    });
+
+CommandDefinition c_cc(
+    "cc", "cc COMMAND\n\
+    Execute a chat command as if a client had sent it in-game. The command\n\
+    should be specified exactly as it would be typed in-game; for example:\n\
+      cc $itemnotifs on\n\
+    This command cannot send chat messages to other players or to the server\n\
+    (in proxy sessions); it can only execute chat commands.",
+    true,
+    +[](CommandArgs& args) {
+      shared_ptr<ProxyServer::LinkedSession> ses;
+      try {
+        ses = args.shell->get_proxy_session(args.session_name);
+      } catch (const exception&) {
+      }
+
+      if (ses.get()) {
+        on_chat_command(ses, args.args);
+      } else {
+        shared_ptr<Client> c;
+        if (args.session_name.empty()) {
+          c = args.s->game_server->get_client();
+        } else {
+          auto clients = args.s->game_server->get_clients_by_identifier(args.session_name);
+          if (clients.empty()) {
+            throw runtime_error("no such client");
+          }
+          if (clients.size() > 1) {
+            throw runtime_error("multiple clients found");
+          }
+          c = std::move(clients[0]);
+        }
+
+        if (c) {
+          on_chat_command(c, args.args);
+        } else {
+          throw runtime_error("no client available");
+        }
+      }
+      return;
     });
 
 void f_sc_ss(CommandArgs& args) {
