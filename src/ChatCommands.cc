@@ -1462,6 +1462,7 @@ static void server_command_edit(shared_ptr<Client> c, const std::string& args) {
             replacement_class = 0x01;
             break;
           case 0: // Ninja (replace with HUmar)
+          case 2: // Sonic (replace with HUmar)
           case 5: // Flowen (replace with HUmar)
             replacement_class = 0x00;
             break;
