@@ -2401,7 +2401,7 @@ Action a_load_maps_test(
                       fprintf(stderr, " [%s => ", objects_filename.c_str());
                       auto map_data = s->load_map_file(v, objects_filename);
                       if (map_data) {
-                        map->add_objects_from_map_data(floor, map_data->data(), map_data->size());
+                        map->add_objects_from_map_data(floor, map_data);
                         fprintf(stderr, "%zu objects]", map->objects.size());
                       } else {
                         fprintf(stderr, "__MISSING__]");

@@ -51,9 +51,9 @@ struct Map {
     /* 1C */ le_uint32_t x_angle;
     /* 20 */ le_uint32_t y_angle;
     /* 24 */ le_uint32_t z_angle;
-    /* 28 */ le_float param1; // If <= 0, this is a specialized box, and the specialization is in param4/5/6
+    /* 28 */ le_float param1; // Boxes: if <= 0, this is a specialized box, and the specialization is in param4/5/6
     /* 2C */ le_float param2;
-    /* 30 */ le_float param3;
+    /* 30 */ le_float param3; // Boxes: if == 0, the item should be varied by difficulty and area
     /* 34 */ le_uint32_t param4;
     /* 38 */ le_uint32_t param5;
     /* 3C */ le_uint32_t param6;
@@ -211,17 +211,10 @@ struct Map {
   struct Object {
     // TODO: Add more fields in here if we ever care about them. Currently we
     // only care about boxes with fixed item drops.
+    const ObjectEntry* args;
     size_t source_index;
     uint8_t floor;
     uint16_t object_id;
-    uint16_t base_type;
-    uint16_t section;
-    uint16_t group;
-    float param1; // If <= 0, this is a specialized box, and the specialization is in param4/5/6
-    float param3; // If == 0, the item should be varied by difficulty and area
-    uint32_t param4;
-    uint32_t param5;
-    uint32_t param6;
     uint16_t game_flags;
     // Technically set_flags shouldn't be part of the Object struct, but all
     // object entries always generate exactly one object, so we store it here.
@@ -305,7 +298,12 @@ struct Map {
 
   void clear();
 
-  void add_objects_from_map_data(uint8_t floor, const void* data, size_t size);
+  inline void link_owned_data(std::shared_ptr<const std::string> data) {
+    this->linked_data.emplace(data);
+  }
+
+  void add_objects_from_owned_map_data(uint8_t floor, const void* data, size_t size);
+  void add_objects_from_map_data(uint8_t floor, std::shared_ptr<const std::string> data);
 
   bool check_and_log_rare_enemy(bool default_is_rare, uint32_t rare_rate);
   void add_enemy(
@@ -359,8 +357,7 @@ struct Map {
       Episode episode,
       uint8_t difficulty,
       uint8_t event,
-      const void* data,
-      size_t size,
+      std::shared_ptr<const std::string> data,
       std::shared_ptr<const RareEnemyRates> rare_rates = Map::DEFAULT_RARE_ENEMIES);
 
   const Enemy& find_enemy(uint16_t enemy_id) const;
@@ -380,6 +377,7 @@ struct Map {
   phosg::PrefixedLogger log;
   Version version;
   uint32_t rare_seed;
+  std::unordered_set<std::shared_ptr<const std::string>> linked_data;
   std::shared_ptr<PSOLFGEncryption> opt_rand_crypt;
   std::vector<Object> objects;
   std::vector<Enemy> enemies;

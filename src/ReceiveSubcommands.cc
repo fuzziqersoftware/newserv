@@ -2579,26 +2579,26 @@ DropReconcileResult reconcile_drop_request_with_map(
     if (map) {
       map_object = &map->objects.at(cmd.entity_id);
       log.info("Drop check for K-%hX %c %s",
-          map_object->object_id, res.ignore_def ? 'G' : 'S', Map::name_for_object_type(map_object->base_type));
+          map_object->object_id, res.ignore_def ? 'G' : 'S', Map::name_for_object_type(map_object->args->base_type));
       if (cmd.floor != map_object->floor) {
         log.warning("Floor %02hhX from command does not match object\'s expected floor %02hhX", cmd.floor, map_object->floor);
       }
       if (is_v1_or_v2(version) && (version != Version::GC_NTE)) {
         // V1 and V2 don't have 6xA2, so we can't get ignore_def or the object
         // parameters from the client on those versions
-        cmd.param3 = map_object->param3;
-        cmd.param4 = map_object->param4;
-        cmd.param5 = map_object->param5;
-        cmd.param6 = map_object->param6;
+        cmd.param3 = map_object->args->param3;
+        cmd.param4 = map_object->args->param4;
+        cmd.param5 = map_object->args->param5;
+        cmd.param6 = map_object->args->param6;
       }
-      bool object_ignore_def = (map_object->param1 > 0.0);
+      bool object_ignore_def = (map_object->args->param1 > 0.0);
       if (res.ignore_def != object_ignore_def) {
         log.warning("ignore_def value %s from command does not match object\'s expected ignore_def %s (from p1=%g)",
-            res.ignore_def ? "true" : "false", object_ignore_def ? "true" : "false", map_object->param1);
+            res.ignore_def ? "true" : "false", object_ignore_def ? "true" : "false", map_object->args->param1.load());
       }
       if (config.check_flag(Client::Flag::DEBUG_ENABLED)) {
         send_text_message_printf(client_channel, "$C5K-%hX %c %s",
-            map_object->object_id, res.ignore_def ? 'G' : 'S', Map::name_for_object_type(map_object->base_type));
+            map_object->object_id, res.ignore_def ? 'G' : 'S', Map::name_for_object_type(map_object->args->base_type));
       }
     }
 

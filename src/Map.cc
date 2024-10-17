@@ -704,17 +704,25 @@ string Map::Event::str() const {
 }
 
 string Map::Object::str() const {
-  return phosg::string_printf("[Map::Object source %zX %04hX(%s) @%04hX p1=%g p456=[%08" PRIX32 " %08" PRIX32 " %08" PRIX32 "] floor=%02hhX item_drop_checked=%s]",
-      this->source_index,
-      this->base_type,
-      Map::name_for_object_type(this->base_type),
-      this->section,
-      this->param1,
-      this->param4,
-      this->param5,
-      this->param6,
+  return phosg::string_printf("[Map::Object floor %02hhX source %zX %04hX(%s) @%04hX:(%g %g %g)/(%04" PRIX32 " %04" PRIX32 " %04" PRIX32 ") +%04hX params [%g %g %g %08" PRIX32 " %08" PRIX32 " %08" PRIX32 "]]",
       this->floor,
-      this->item_drop_checked ? "true" : "false");
+      this->source_index,
+      this->args->base_type.load(),
+      Map::name_for_object_type(this->args->base_type),
+      this->args->section.load(),
+      this->args->x.load(),
+      this->args->y.load(),
+      this->args->z.load(),
+      this->args->x_angle.load(),
+      this->args->y_angle.load(),
+      this->args->z_angle.load(),
+      this->args->group.load(),
+      this->args->param1.load(),
+      this->args->param2.load(),
+      this->args->param3.load(),
+      this->args->param4.load(),
+      this->args->param5.load(),
+      this->args->param6.load());
 }
 
 Map::Map(Version version, uint32_t lobby_id, uint32_t rare_seed, std::shared_ptr<PSOLFGEncryption> opt_rand_crypt)
@@ -729,7 +737,7 @@ void Map::clear() {
   this->rare_enemy_indexes.clear();
 }
 
-void Map::add_objects_from_map_data(uint8_t floor, const void* data, size_t size) {
+void Map::add_objects_from_owned_map_data(uint8_t floor, const void* data, size_t size) {
   size_t entry_count = size / sizeof(ObjectEntry);
   if (size != entry_count * sizeof(ObjectEntry)) {
     throw runtime_error("data size is not a multiple of entry size");
@@ -739,17 +747,10 @@ void Map::add_objects_from_map_data(uint8_t floor, const void* data, size_t size
   for (size_t z = 0; z < entry_count; z++) {
     uint16_t object_id = this->objects.size();
     this->objects.emplace_back(Object{
+        .args = &objects[z],
         .source_index = z,
         .floor = floor,
         .object_id = object_id,
-        .base_type = objects[z].base_type,
-        .section = objects[z].section,
-        .group = objects[z].group,
-        .param1 = objects[z].param1,
-        .param3 = objects[z].param3,
-        .param4 = objects[z].param4,
-        .param5 = objects[z].param5,
-        .param6 = objects[z].param6,
         .game_flags = 0,
         .set_flags = 0,
         .item_drop_checked = false,
@@ -757,6 +758,11 @@ void Map::add_objects_from_map_data(uint8_t floor, const void* data, size_t size
     uint64_t k = section_index_key(floor, objects[z].section, objects[z].group);
     this->floor_section_and_group_to_object_index.emplace(k, object_id);
   }
+}
+
+void Map::add_objects_from_map_data(uint8_t floor, std::shared_ptr<const string> data) {
+  this->link_owned_data(data);
+  this->add_objects_from_owned_map_data(floor, data->data(), data->size());
 }
 
 bool Map::check_and_log_rare_enemy(bool default_is_rare, uint32_t rare_rate) {
@@ -1597,12 +1603,13 @@ void Map::add_entities_from_quest_data(
     Episode episode,
     uint8_t difficulty,
     uint8_t event,
-    const void* data,
-    size_t size,
+    std::shared_ptr<const string> data,
     std::shared_ptr<const RareEnemyRates> rare_rates) {
-  auto all_floor_sections = this->collect_quest_map_data_sections(data, size);
+  this->link_owned_data(data);
 
-  phosg::StringReader r(data, size);
+  auto all_floor_sections = this->collect_quest_map_data_sections(data->data(), data->size());
+
+  phosg::StringReader r(*data);
   shared_ptr<DATParserRandomState> random_state;
   for (size_t floor = 0; floor < all_floor_sections.size(); floor++) {
     const auto& floor_sections = all_floor_sections[floor];
@@ -1612,7 +1619,7 @@ void Map::add_entities_from_quest_data(
       if (header.data_size % sizeof(ObjectEntry)) {
         throw runtime_error("quest layout object section size is not a multiple of object entry size");
       }
-      this->add_objects_from_map_data(floor, r.pgetv(floor_sections.objects + sizeof(header), header.data_size), header.data_size);
+      this->add_objects_from_owned_map_data(floor, r.pgetv(floor_sections.objects + sizeof(header), header.data_size), header.data_size);
     }
 
     if ((floor_sections.wave_events != 0xFFFFFFFF) &&

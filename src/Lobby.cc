@@ -302,13 +302,7 @@ shared_ptr<Map> Lobby::load_maps(
     shared_ptr<PSOLFGEncryption> opt_rand_crypt,
     shared_ptr<const string> quest_dat_contents_decompressed) {
   auto map = make_shared<Map>(version, lobby_id, random_seed, opt_rand_crypt);
-  map->add_entities_from_quest_data(
-      episode,
-      difficulty,
-      event,
-      quest_dat_contents_decompressed->data(),
-      quest_dat_contents_decompressed->size(),
-      rare_rates);
+  map->add_entities_from_quest_data(episode, difficulty, event, quest_dat_contents_decompressed, rare_rates);
   return map;
 }
 
@@ -396,7 +390,7 @@ shared_ptr<Map> Lobby::load_maps(
     if (!floor_object_filename.empty()) {
       auto map_data = get_file_data(version, floor_object_filename);
       if (map_data) {
-        map->add_objects_from_map_data(floor, map_data->data(), map_data->size());
+        map->add_objects_from_map_data(floor, map_data);
         if (log) {
           log->info("Loaded objects map %s for floor %02zX", floor_object_filename.c_str(), floor);
         }
