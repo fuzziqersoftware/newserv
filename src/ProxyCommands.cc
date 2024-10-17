@@ -2006,12 +2006,21 @@ HandlerResult C_6x<void>(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t, u
   if (!data.empty()) {
     if ((data[0] == 0x05) && ses->config.check_flag(Client::Flag::SWITCH_ASSIST_ENABLED)) {
       auto& cmd = check_size_t<G_SwitchStateChanged_6x05>(data);
-      if ((cmd.flags & 1) && (cmd.header.object_id != 0xFFFF)) {
-        ses->recent_switch_flags.add(cmd.switch_flag_num);
-        string commands = ses->recent_switch_flags.enable_commands(ses->floor);
-        if (!commands.empty()) {
-          ses->server_channel.send(0x60, 0x00, commands);
-          ses->client_channel.send(0x60, 0x00, commands);
+      if (ses->map && (cmd.flags & 1) && (cmd.header.object_id != 0xFFFF)) {
+        for (auto* door : ses->map->doors_for_switch_flag(cmd.switch_flag_floor, cmd.switch_flag_num)) {
+          if (door->game_flags & 0x0001) {
+            continue;
+          }
+          door->game_flags |= 1;
+
+          G_UpdateObjectState_6x0B cmd0B;
+          cmd0B.header.subcommand = 0x0B;
+          cmd0B.header.size = sizeof(cmd0B) / 4;
+          cmd0B.header.client_id = door->object_id | 0x4000;
+          cmd0B.flags = door->game_flags;
+          cmd0B.object_index = door->object_id;
+          ses->client_channel.send(0x60, 0x00, &cmd0B, sizeof(cmd0B));
+          ses->server_channel.send(0x60, 0x00, &cmd0B, sizeof(cmd0B));
         }
       }
 

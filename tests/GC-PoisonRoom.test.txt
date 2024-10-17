@@ -6245,7 +6245,7 @@ I 56327 2024-03-03 23:40:27 - [Commands] Received from C-2 (Jess) (version=GC_V3
 I 56327 2024-03-03 23:40:27 - [Commands] Received from C-2 (Jess) (version=GC_V3 command=60 flag=00)
 0000 | 60 00 10 00 05 03 5A 42 00 00 00 00 65 00 03 01 | `     ZB    e
 I 56327 2024-03-03 23:40:27 - [Commands] Sending to C-2 (Jess) (version=GC_V3 command=60 flag=00)
-0000 | 60 00 10 00 05 03 FF FF 00 00 00 00 65 00 03 01 | `           e
+0000 | 60 00 10 00 0B 03 58 42 01 00 00 00 58 02 00 00 |
 I 56327 2024-03-03 23:40:27 - [Commands] Received from C-2 (Jess) (version=GC_V3 command=60 flag=00)
 0000 | 60 00 10 00 42 03 00 00 89 8E 65 C4 32 06 7B 43 | `   B     e 2 {C
 I 56327 2024-03-03 23:40:27 - [Commands] Received from C-2 (Jess) (version=GC_V3 command=60 flag=00)
@@ -6260,10 +6260,6 @@ I 56327 2024-03-03 23:40:27 - [Commands] Received from C-2 (Jess) (version=GC_V3
 0000 | 60 00 10 00 42 03 00 00 24 F5 64 C4 92 44 5E 43 | `   B   $ d  D^C
 I 56327 2024-03-03 23:40:27 - [Commands] Received from C-2 (Jess) (version=GC_V3 command=60 flag=00)
 0000 | 60 00 10 00 05 03 59 42 00 00 00 00 64 00 03 01 | `     YB    d
-I 56327 2024-03-03 23:40:27 - [C-2] [Switch assist] Replaying previous enable command
-I 56327 2024-03-03 23:40:27 - [Commands] Sending to C-2 (Jess) (version=GC_V3 command=60 flag=00)
-0000 | 60 00 1C 00 05 03 FF FF 00 00 00 00 64 00 03 01 | `           d
-0010 | 05 03 FF FF 00 00 00 00 65 00 03 01             |         e
 I 56327 2024-03-03 23:40:28 - [Commands] Received from C-2 (Jess) (version=GC_V3 command=60 flag=00)
 0000 | 60 00 10 00 0B 03 58 42 01 00 00 00 58 02 00 00 | `     XB    X
 I 56327 2024-03-03 23:40:28 - [Commands] Received from C-2 (Jess) (version=GC_V3 command=60 flag=00)
@@ -11672,11 +11668,6 @@ I 56327 2024-03-03 23:45:37 - [Commands] Received from C-2 (Jess) (version=GC_V3
 0000 | 60 00 0C 00 50 02 00 00 76 7E 00 00             | `   P   v~
 I 56327 2024-03-03 23:45:37 - [Commands] Received from C-2 (Jess) (version=GC_V3 command=60 flag=00)
 0000 | 60 00 10 00 05 03 08 42 00 00 00 00 6C 00 03 01 | `      B    l
-I 56327 2024-03-03 23:45:37 - [C-2] [Switch assist] Replaying previous enable command
-I 56327 2024-03-03 23:45:37 - [Commands] Sending to C-2 (Jess) (version=GC_V3 command=60 flag=00)
-0000 | 60 00 28 00 05 03 FF FF 00 00 00 00 6C 00 03 01 | ` (         l
-0010 | 05 03 FF FF 00 00 00 00 64 00 03 01 05 03 FF FF |         d
-0020 | 00 00 00 00 65 00 03 01                         |     e
 I 56327 2024-03-03 23:45:37 - [Commands] Received from C-2 (Jess) (version=GC_V3 command=60 flag=00)
 0000 | 60 00 10 00 05 03 59 42 00 00 00 00 64 00 03 00 | `     YB    d
 I 56327 2024-03-03 23:45:38 - [Commands] Received from C-2 (Jess) (version=GC_V3 command=60 flag=00)
@@ -15245,9 +15236,8 @@ I 56327 2024-03-03 23:49:06 - [Commands] Received from C-2 (Jess) (version=GC_V3
 0000 | 60 00 10 00 42 03 00 00 56 37 98 C3 1D DD 10 44 | `   B   V7     D
 I 56327 2024-03-03 23:49:06 - [Commands] Received from C-2 (Jess) (version=GC_V3 command=60 flag=00)
 0000 | 60 00 10 00 05 03 66 43 00 00 00 00 68 00 04 01 | `     fC    h
-I 56327 2024-03-03 23:49:06 - [C-2] [Switch assist] Replaying previous enable command
 I 56327 2024-03-03 23:49:06 - [Commands] Sending to C-2 (Jess) (version=GC_V3 command=60 flag=00)
-0000 | 60 00 10 00 05 03 FF FF 00 00 00 00 68 00 04 01 | `           h
+0000 | 60 00 10 00 0B 03 3B 43 01 00 00 00 3B 03 00 00 |
 I 56327 2024-03-03 23:49:06 - [Commands] Received from C-2 (Jess) (version=GC_V3 command=60 flag=00)
 0000 | 60 00 10 00 42 03 00 00 AB 88 9B C3 D3 0F 10 44 | `   B          D
 I 56327 2024-03-03 23:49:06 - [Commands] Received from C-2 (Jess) (version=GC_V3 command=60 flag=00)
@@ -15270,10 +15260,6 @@ I 56327 2024-03-03 23:49:08 - [Commands] Received from C-2 (Jess) (version=GC_V3
 0010 | 00 00 00 00                                     |
 I 56327 2024-03-03 23:49:08 - [Commands] Received from C-2 (Jess) (version=GC_V3 command=60 flag=00)
 0000 | 60 00 10 00 05 03 65 43 00 00 00 00 67 00 04 01 | `     eC    g
-I 56327 2024-03-03 23:49:08 - [C-2] [Switch assist] Replaying previous enable command
-I 56327 2024-03-03 23:49:08 - [Commands] Sending to C-2 (Jess) (version=GC_V3 command=60 flag=00)
-0000 | 60 00 1C 00 05 03 FF FF 00 00 00 00 67 00 04 01 | `           g
-0010 | 05 03 FF FF 00 00 00 00 68 00 04 01             |         h
 I 56327 2024-03-03 23:49:08 - [Commands] Received from C-2 (Jess) (version=GC_V3 command=60 flag=00)
 0000 | 60 00 10 00 0B 03 3B 43 01 00 00 00 3B 03 00 00 | `     ;C    ;
 I 56327 2024-03-03 23:49:08 - [Commands] Received from C-2 (Jess) (version=GC_V3 command=60 flag=00)
@@ -16097,11 +16083,6 @@ I 56327 2024-03-03 23:50:03 - [Commands] Received from C-2 (Jess) (version=GC_V3
 0000 | 60 00 0C 00 50 02 00 00 7B C0 00 00             | `   P   {
 I 56327 2024-03-03 23:50:04 - [Commands] Received from C-2 (Jess) (version=GC_V3 command=60 flag=00)
 0000 | 60 00 10 00 05 03 41 43 00 00 00 00 66 00 04 01 | `     AC    f
-I 56327 2024-03-03 23:50:04 - [C-2] [Switch assist] Replaying previous enable command
-I 56327 2024-03-03 23:50:04 - [Commands] Sending to C-2 (Jess) (version=GC_V3 command=60 flag=00)
-0000 | 60 00 28 00 05 03 FF FF 00 00 00 00 66 00 04 01 | ` (         f
-0010 | 05 03 FF FF 00 00 00 00 67 00 04 01 05 03 FF FF |         g
-0020 | 00 00 00 00 68 00 04 01                         |     h
 I 56327 2024-03-03 23:50:04 - [Commands] Received from C-2 (Jess) (version=GC_V3 command=60 flag=00)
 0000 | 60 00 10 00 05 03 65 43 00 00 00 00 67 00 04 00 | `     eC    g
 I 56327 2024-03-03 23:50:04 - [Commands] Received from C-2 (Jess) (version=GC_V3 command=60 flag=00)

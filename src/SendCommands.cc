@@ -2567,7 +2567,6 @@ void send_warp(Channel& ch, uint8_t client_id, uint32_t floor, bool is_private) 
 void send_warp(shared_ptr<Client> c, uint32_t floor, bool is_private) {
   send_warp(c->channel, c->lobby_client_id, floor, is_private);
   c->floor = floor;
-  c->recent_switch_flags.clear();
 }
 
 void send_warp(shared_ptr<Lobby> l, uint32_t floor, bool is_private) {

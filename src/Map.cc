@@ -746,7 +746,7 @@ void Map::add_objects_from_owned_map_data(uint8_t floor, const void* data, size_
   const auto* objects = reinterpret_cast<const ObjectEntry*>(data);
   for (size_t z = 0; z < entry_count; z++) {
     uint16_t object_id = this->objects.size();
-    this->objects.emplace_back(Object{
+    const auto& object = this->objects.emplace_back(Object{
         .args = &objects[z],
         .source_index = z,
         .floor = floor,
@@ -755,8 +755,37 @@ void Map::add_objects_from_owned_map_data(uint8_t floor, const void* data, size_
         .set_flags = 0,
         .item_drop_checked = false,
     });
+
     uint64_t k = section_index_key(floor, objects[z].section, objects[z].group);
     this->floor_section_and_group_to_object_index.emplace(k, object_id);
+
+    uint32_t base_switch_flag = 0;
+    uint32_t num_switch_flags = 0;
+    switch (object.args->base_type) {
+      case 0x00C1: // TODoorCave01
+        base_switch_flag = object.args->param4;
+        num_switch_flags = (4 - clamp<size_t>(object.args->param5, 0, 4));
+        break;
+
+      case 0x14A: // TODoorAncient08
+      case 0x14B: // TODoorAncient09
+        base_switch_flag = object.args->param4;
+        num_switch_flags = (object.args->base_type == 0x14A) ? 4 : 2;
+        break;
+
+      case 0x1AB: // TODoorFourLightRuins
+      case 0x1C0: // TODoorFourLightSpace
+      case 0x221: // TODoorFourLightSeabed
+      case 0x222: // TODoorFourLightSeabedU
+        base_switch_flag = object.args->param4;
+        num_switch_flags = object.args->param5;
+        break;
+    }
+    if ((num_switch_flags > 1) && !(base_switch_flag & 0xFFFFFF00)) {
+      for (size_t z = 0; z < num_switch_flags; z++) {
+        this->floor_and_switch_flag_to_door_index.emplace((floor << 8) | (base_switch_flag + z), object_id);
+      }
+    }
   }
 }
 
@@ -1744,6 +1773,16 @@ std::vector<Map::Event*> Map::get_events(uint8_t floor) {
        (it != this->floor_and_event_id_to_index.end()) && (it->first < k_end);
        it++) {
     ret.emplace_back(&this->events.at(it->second));
+  }
+  return ret;
+}
+
+vector<Map::Object*> Map::doors_for_switch_flag(uint8_t floor, uint8_t switch_flag) {
+  vector<Map::Object*> ret;
+  for (auto its = this->floor_and_switch_flag_to_door_index.equal_range((floor << 8) | switch_flag);
+       its.first != its.second;
+       its.first++) {
+    ret.emplace_back(&this->objects[its.first->second]);
   }
   return ret;
 }

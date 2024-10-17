@@ -994,16 +994,4 @@ using SymbolChatBE = SymbolChatT<true>;
 check_struct_size(SymbolChat, 0x3C);
 check_struct_size(SymbolChatBE, 0x3C);
 
-struct RecentSwitchFlags {
-  uint64_t flag_nums = 0xFFFFFFFFFFFFFFFF;
-
-  inline void clear() {
-    this->flag_nums = 0xFFFFFFFFFFFFFFFF;
-  }
-
-  void add(uint16_t flag_num);
-
-  std::string enable_commands(uint8_t floor) const;
-};
-
 extern const QuestFlagsForDifficulty bb_quest_flag_apply_mask;

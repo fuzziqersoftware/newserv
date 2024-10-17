@@ -1410,7 +1410,6 @@ static void on_change_floor_6x1F(shared_ptr<Client> c, uint8_t command, uint8_t 
     const auto& cmd = check_size_t<G_SetPlayerFloor_6x1F>(data, size);
     if (cmd.floor >= 0 && c->floor != static_cast<uint32_t>(cmd.floor)) {
       c->floor = cmd.floor;
-      c->recent_switch_flags.clear();
     }
   }
   forward_subcommand(c, command, flag, data, size);
@@ -1420,7 +1419,6 @@ static void on_change_floor_6x21(shared_ptr<Client> c, uint8_t command, uint8_t 
   const auto& cmd = check_size_t<G_InterLevelWarp_6x21>(data, size);
   if (cmd.floor >= 0 && c->floor != static_cast<uint32_t>(cmd.floor)) {
     c->floor = cmd.floor;
-    c->recent_switch_flags.clear();
   }
   forward_subcommand(c, command, flag, data, size);
 }
@@ -1581,7 +1579,30 @@ static void on_switch_state_changed(shared_ptr<Client> c, uint8_t command, uint8
     return;
   }
 
-  forward_subcommand(c, command, flag, data, size);
+  if (!l->quest &&
+      (cmd.flags & 1) &&
+      (cmd.header.object_id != 0xFFFF) &&
+      (cmd.switch_flag_num < 0x100) &&
+      c->config.check_flag(Client::Flag::SWITCH_ASSIST_ENABLED)) {
+    for (auto* door : l->map->doors_for_switch_flag(cmd.switch_flag_floor, cmd.switch_flag_num)) {
+      if (door->game_flags & 0x0001) {
+        continue;
+      }
+      if (c->config.check_flag(Client::Flag::DEBUG_ENABLED)) {
+        send_text_message_printf(c, "$C5SWA K-%hX %02hhX %02hX",
+            door->object_id, cmd.switch_flag_floor, cmd.switch_flag_num.load());
+      }
+      door->game_flags |= 1;
+
+      G_UpdateObjectState_6x0B cmd0B;
+      cmd0B.header.subcommand = 0x0B;
+      cmd0B.header.size = sizeof(cmd0B) / 4;
+      cmd0B.header.client_id = door->object_id | 0x4000;
+      cmd0B.flags = door->game_flags;
+      cmd0B.object_index = door->object_id;
+      send_command_t(l, 0x60, 0x00, cmd0B);
+    }
+  }
 
   if (l->switch_flags) {
     if (cmd.flags & 1) {
@@ -1597,15 +1618,7 @@ static void on_switch_state_changed(shared_ptr<Client> c, uint8_t command, uint8
     }
   }
 
-  if ((cmd.flags & 1) && cmd.header.object_id != 0xFFFF) {
-    c->recent_switch_flags.add(cmd.switch_flag_num);
-    if (!l->quest && c->config.check_flag(Client::Flag::SWITCH_ASSIST_ENABLED)) {
-      string commands = c->recent_switch_flags.enable_commands(c->floor);
-      if (!commands.empty()) {
-        send_command(c, 0x60, 0x00, commands);
-      }
-    }
-  }
+  forward_subcommand(c, command, flag, data, size);
 }
 
 static void on_play_sound_from_player(shared_ptr<Client> c, uint8_t command, uint8_t flag, void* data, size_t size) {
@@ -1640,7 +1653,6 @@ void on_movement_with_floor(shared_ptr<Client> c, uint8_t command, uint8_t flag,
   c->z = cmd.z;
   if (cmd.floor >= 0 && c->floor != static_cast<uint32_t>(cmd.floor)) {
     c->floor = cmd.floor;
-    c->recent_switch_flags.clear();
   }
   forward_subcommand(c, command, flag, data, size);
 }

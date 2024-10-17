@@ -699,29 +699,6 @@ const ChallengeTemplateDefinition& get_challenge_template_definition(Version ver
   }
 }
 
-void RecentSwitchFlags::add(uint16_t flag_num) {
-  if ((flag_num != ((this->flag_nums >> 48) & 0xFFFF)) &&
-      (flag_num != ((this->flag_nums >> 32) & 0xFFFF)) &&
-      (flag_num != ((this->flag_nums >> 16) & 0xFFFF)) &&
-      (flag_num != (this->flag_nums & 0xFFFF))) {
-    this->flag_nums = this->flag_nums << 16 | flag_num;
-  }
-}
-
-string RecentSwitchFlags::enable_commands(uint8_t floor) const {
-  phosg::StringWriter w;
-  uint64_t flag_nums = this->flag_nums;
-  for (size_t z = 0; z < 4; z++) {
-    uint16_t flag_num = flag_nums;
-    if (flag_num == 0xFFFF) {
-      continue;
-    }
-    w.put(G_SwitchStateChanged_6x05{{0x05, 0x03, 0xFFFF}, 0, 0, flag_num, static_cast<uint8_t>(floor), 0x01});
-    flag_nums >>= 16;
-  }
-  return std::move(w.str());
-}
-
 const QuestFlagsForDifficulty bb_quest_flag_apply_mask{{
     // clang-format off
     /* 0000 */ 0x00, 0x3F, 0xFF, 0xE3, 0xE0, 0xFF, 0xFF, 0x00,

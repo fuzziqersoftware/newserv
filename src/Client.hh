@@ -258,7 +258,6 @@ public:
 
   // Miscellaneous (used by chat commands)
   uint32_t next_exp_value; // next EXP value to give
-  RecentSwitchFlags recent_switch_flags; // used for switch assist
   bool can_chat;
   struct PendingCharacterExport {
     std::shared_ptr<const Account> dest_account;

@@ -369,6 +369,8 @@ struct Map {
   std::vector<Event*> get_events(uint8_t floor, uint16_t section, uint16_t wave_number);
   std::vector<Event*> get_events(uint8_t floor);
 
+  std::vector<Object*> doors_for_switch_flag(uint8_t floor, uint8_t switch_flag);
+
   static std::string disassemble_objects_data(const void* data, size_t size, size_t* object_number = nullptr);
   static std::string disassemble_enemies_data(const void* data, size_t size, size_t* enemy_number = nullptr);
   static std::string disassemble_wave_events_data(const void* data, size_t size, uint8_t floor = 0xFF);
@@ -389,6 +391,7 @@ struct Map {
   std::unordered_multimap<uint64_t, size_t> floor_section_and_group_to_object_index;
   std::unordered_multimap<uint64_t, size_t> floor_section_and_wave_number_to_enemy_index;
   std::unordered_multimap<uint64_t, size_t> floor_section_and_wave_number_to_event_index;
+  std::unordered_multimap<uint16_t, size_t> floor_and_switch_flag_to_door_index;
 };
 
 class SetDataTableBase {
