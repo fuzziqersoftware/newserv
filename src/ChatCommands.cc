@@ -972,7 +972,7 @@ static void server_command_cheat(shared_ptr<Client> c, const std::string&) {
     l->toggle_flag(Lobby::Flag::CHEATS_ENABLED);
     send_text_message_printf(l, "Cheat mode %s", l->check_flag(Lobby::Flag::CHEATS_ENABLED) ? "enabled" : "disabled");
 
-    if (!c->login->account->check_flag(Account::Flag::CHEAT_ANYWHERE)) {
+    if (!l->check_flag(Lobby::Flag::CHEATS_ENABLED) && !c->login->account->check_flag(Account::Flag::CHEAT_ANYWHERE)) {
       size_t default_min_level = s->default_min_level_for_game(l->base_version, l->episode, l->difficulty);
       if (l->min_level < default_min_level) {
         l->min_level = default_min_level;
