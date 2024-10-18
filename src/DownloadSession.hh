@@ -86,7 +86,6 @@ protected:
   struct GameConfig {
     GameMode mode;
     Episode episode;
-    bool gov;
     bool v1;
     bool v2;
     bool v3;
