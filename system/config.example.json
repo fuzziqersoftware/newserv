@@ -1009,6 +1009,25 @@
   //       available on the proxy server.
   "CheatModeBehavior": "OnByDefault",
 
+  // Cheat mode behaviors. The keys present in this list determine what the
+  // server considers to be cheating. If you delete or comment out an item
+  // here, the server will allow that action even when cheat mode is off.
+  "CheatingBehaviors": [
+    "CreateItems", // Use of the $item command
+    "EditSectionID", // Use of $edit secid
+    "EditStats", // Use of $edit atp, etc.
+    "Ep3ReplaceAssist", // Use of $setassist
+    "Ep3UnsetFieldCharacter", // Use of $unset
+    "InfiniteHPTP", // Use of $infhp and $inftp
+    "InsufficientMinimumLevel", // Setting a $minlevel below the default
+    "OverrideRandomSeed", // Use of $rand
+    "OverrideSectionID", // Use of $secid
+    "OverrideVariations", // Use of $variations
+    "ProxyOverrideDrops", // Use of $dropmode on proxy server
+    // "ResetMaterials", // Use of $edit mat reset (by default, not cheating)
+    "Warp", // Use of $warp
+  ],
+
   // Default switch assist behavior. Players can always toggle switch assist
   // with the $swa command; this only controls whether it's enabled by default
   // for all players or not.

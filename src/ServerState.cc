@@ -19,6 +19,27 @@
 
 using namespace std;
 
+CheatFlags::CheatFlags(const phosg::JSON& json) : CheatFlags() {
+  unordered_set<std::string> enabled_keys;
+  for (const auto& it : json.as_list()) {
+    enabled_keys.emplace(it->as_string());
+  }
+
+  this->create_items = enabled_keys.count("CreateItems");
+  this->edit_section_id = enabled_keys.count("EditSectionID");
+  this->edit_stats = enabled_keys.count("EditStats");
+  this->ep3_replace_assist = enabled_keys.count("Ep3ReplaceAssist");
+  this->ep3_unset_field_character = enabled_keys.count("Ep3UnsetFieldCharacter");
+  this->infinite_hp_tp = enabled_keys.count("InfiniteHPTP");
+  this->insufficient_minimum_level = enabled_keys.count("InsufficientMinimumLevel");
+  this->override_random_seed = enabled_keys.count("OverrideRandomSeed");
+  this->override_section_id = enabled_keys.count("OverrideSectionID");
+  this->override_variations = enabled_keys.count("OverrideVariations");
+  this->proxy_override_drops = enabled_keys.count("ProxyOverrideDrops");
+  this->reset_materials = enabled_keys.count("ResetMaterials");
+  this->warp = enabled_keys.count("Warp");
+}
+
 ServerState::QuestF960Result::QuestF960Result(const phosg::JSON& json, shared_ptr<const ItemNameIndex> name_index) {
   static const array<string, 7> day_names = {"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"};
   this->meseta_cost = json.get_int("MesetaCost", 0);
@@ -1205,6 +1226,12 @@ void ServerState::load_config_early() {
       this->bb_required_patches.emplace_back(it->as_string());
     }
   } catch (const out_of_range&) {
+  }
+
+  try {
+    this->cheat_flags = CheatFlags(this->config_json->at("CheatingBehaviors"));
+  } catch (const out_of_range&) {
+    this->cheat_flags = CheatFlags();
   }
 
   this->update_dependent_server_configs();

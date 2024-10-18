@@ -46,6 +46,29 @@ struct PortConfiguration {
   ServerBehavior behavior;
 };
 
+struct CheatFlags {
+  // This structure describes which behaviors are considered cheating (that is,
+  // require cheat mode to be enabled or the user to have the CHEAT_ANYWHERE
+  // account flag). A false value here means that that particular behavior is
+  // NOT cheating, so cheat mode is NOT required.
+  bool create_items = true;
+  bool edit_section_id = true;
+  bool edit_stats = true;
+  bool ep3_replace_assist = true;
+  bool ep3_unset_field_character = true;
+  bool infinite_hp_tp = true;
+  bool insufficient_minimum_level = true;
+  bool override_random_seed = true;
+  bool override_section_id = true;
+  bool override_variations = true;
+  bool proxy_override_drops = true;
+  bool reset_materials = false;
+  bool warp = true;
+
+  CheatFlags() = default;
+  explicit CheatFlags(const phosg::JSON& json);
+};
+
 struct ServerState : public std::enable_shared_from_this<ServerState> {
   enum class RunShellBehavior {
     DEFAULT = 0,
@@ -191,6 +214,7 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   std::shared_ptr<const Map::RareEnemyRates> rare_enemy_rates_challenge;
   std::array<std::array<size_t, 4>, 3> min_levels_v4; // Indexed as [episode][difficulty]
   std::vector<std::string> bb_required_patches;
+  CheatFlags cheat_flags;
 
   struct QuestF960Result {
     uint32_t meseta_cost = 0;
