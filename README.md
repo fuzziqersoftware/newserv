@@ -139,7 +139,7 @@ There are currently no precompiled releases for Linux. To run newserv on Linux, 
 ### Building from source
 
 1. Install the packages newserv depends on.
-    * If you're on Windows, install [Cygwin](https://www.cygwin.com/). While doing so, install the `cmake`, `gcc-core`, `gcc-g++`, `git`, `libevent2.1_7`, `make`, `libiconv-devel`, and `zlib` packages. Do the rest of these steps inside a Cygwin shell (not a Windows cmd shell or PowerShell).
+    * If you're on Windows, install [Cygwin](https://www.cygwin.com/). While doing so, install the `cmake`, `gcc-core`, `gcc-g++`, `git`, `libevent2.1_7`, `libevent-devel`, `make`, `libiconv-devel`, and `zlib` packages. Do the rest of these steps inside a Cygwin shell (not a Windows cmd shell or PowerShell).
     * If you're on macOS, run `brew install cmake libevent libiconv`.
     * If you're on Linux, run `sudo apt-get install cmake libevent-dev` (or use your Linux distribution's package manager).
 3. Build and install [phosg](https://github.com/fuzziqersoftware/phosg).
