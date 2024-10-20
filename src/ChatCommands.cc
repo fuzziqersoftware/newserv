@@ -2088,6 +2088,13 @@ static void proxy_command_switch_assist(shared_ptr<ProxyServer::LinkedSession> s
       ses->config.check_flag(Client::Flag::SWITCH_ASSIST_ENABLED) ? "enabled" : "disabled");
 }
 
+static void server_command_toggle_rare_announce(shared_ptr<Client> c, const std::string&) {
+  c->login->account->toggle_user_flag(Account::UserFlag::DISABLE_DROP_NOTIFICATION_BROADCAST);
+  c->login->account->save();
+  send_text_message_printf(c, "$C6Rare announcements\n%s for your\nitems",
+      c->login->account->check_user_flag(Account::UserFlag::DISABLE_DROP_NOTIFICATION_BROADCAST) ? "disabled" : "enabled");
+}
+
 static void server_command_dropmode(shared_ptr<Client> c, const std::string& args) {
   auto l = c->require_lobby();
   check_is_game(l, true);
@@ -2580,6 +2587,7 @@ static const unordered_map<string, ChatCommandDefinition> chat_commands({
     {"$allevent", {server_command_lobby_event_all, nullptr}},
     {"$ann", {server_command_announce, nullptr}},
     {"$ann!", {server_command_announce_mail, nullptr}},
+    {"$announcerares", {server_command_toggle_rare_announce, nullptr}},
     {"$arrow", {server_command_arrow, proxy_command_arrow}},
     {"$auction", {server_command_auction, proxy_command_auction}},
     {"$ax", {server_command_ax, nullptr}},

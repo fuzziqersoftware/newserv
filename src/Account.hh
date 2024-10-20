@@ -76,11 +76,15 @@ struct Account {
     UNUSED_BITS                 = 0x70FFFF00,
     // clang-format on
   };
+  enum class UserFlag : uint32_t {
+    DISABLE_DROP_NOTIFICATION_BROADCAST = 0x00000001,
+  };
 
   // account_id is also the account's guild card number
   uint32_t account_id = 0;
 
   uint32_t flags = 0;
+  uint32_t user_flags = 0;
   uint64_t ban_end_time = 0; // 0 = not banned
   std::string last_player_name;
   std::string auto_reply_message;
@@ -122,6 +126,19 @@ struct Account {
   }
   inline void replace_all_flags(Flag mask) {
     this->flags = static_cast<uint32_t>(mask);
+  }
+
+  [[nodiscard]] inline bool check_user_flag(UserFlag flag) const {
+    return !!(this->user_flags & static_cast<uint32_t>(flag));
+  }
+  inline void set_user_flag(UserFlag flag) {
+    this->user_flags |= static_cast<uint32_t>(flag);
+  }
+  inline void clear_user_flag(UserFlag flag) {
+    this->user_flags &= (~static_cast<uint32_t>(flag));
+  }
+  inline void toggle_user_flag(UserFlag flag) {
+    this->user_flags ^= static_cast<uint32_t>(flag);
   }
 
   void print(FILE* stream) const;

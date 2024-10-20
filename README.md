@@ -532,6 +532,7 @@ Some commands only work on the game server and not on the proxy server. The chat
         * `rare`: You are notified when a rare item drops.
         * `on`: You are notified when any item drops, except Meseta.
         * `every`: You are notified when any item drops, including Meseta.
+    * `$announcerares`: Enable or disable announcements for your rare item finds. This determines whether rare items you find will be announced to the game and server, not whether you will see announcements for others finding rare items.
     * `$what` (game server only): Show the type, name, and stats of the nearest item on the ground.
     * `$where` (game server only): Show your current floor number and coordinates. Mainly useful for debugging.
     * `$qfread <field-name>` (game server only): Show the value of a quest counter in your player data. The field names are defined in config.json.

@@ -136,6 +136,7 @@ phosg::JSON BBLicense::json() const {
 Account::Account(const phosg::JSON& json)
     : account_id(0),
       flags(0),
+      user_flags(0),
       ban_end_time(0),
       ep3_current_meseta(0),
       ep3_total_meseta_earned(0),
@@ -222,6 +223,7 @@ Account::Account(const phosg::JSON& json)
   }
 
   this->flags = json.get_int("Flags", 0);
+  this->user_flags = json.get_int("UserFlags", 0);
   this->ban_end_time = json.get_int("BanEndTime", 0);
   this->last_player_name = json.get_string("LastPlayerName", "");
   this->auto_reply_message = json.get_string("AutoReplyMessage", "");
@@ -278,6 +280,7 @@ phosg::JSON Account::json() const {
       {"XBLicenses", std::move(xb_json)},
       {"BBLicenses", std::move(bb_json)},
       {"Flags", this->flags},
+      {"UserFlags", this->user_flags},
       {"BanEndTime", this->ban_end_time},
       {"LastPlayerName", this->last_player_name},
       {"AutoReplyMessage", this->auto_reply_message},
@@ -300,34 +303,34 @@ void Account::print(FILE* stream) const {
     } else if (this->flags == static_cast<uint32_t>(Flag::MODERATOR)) {
       flags_str = "MODERATOR";
     } else {
-      if (this->flags & static_cast<uint32_t>(Flag::KICK_USER)) {
+      if (this->check_flag(Flag::KICK_USER)) {
         flags_str += "KICK_USER,";
       }
-      if (this->flags & static_cast<uint32_t>(Flag::BAN_USER)) {
+      if (this->check_flag(Flag::BAN_USER)) {
         flags_str += "BAN_USER,";
       }
-      if (this->flags & static_cast<uint32_t>(Flag::SILENCE_USER)) {
+      if (this->check_flag(Flag::SILENCE_USER)) {
         flags_str += "SILENCE_USER,";
       }
-      if (this->flags & static_cast<uint32_t>(Flag::CHANGE_EVENT)) {
+      if (this->check_flag(Flag::CHANGE_EVENT)) {
         flags_str += "CHANGE_EVENT,";
       }
-      if (this->flags & static_cast<uint32_t>(Flag::ANNOUNCE)) {
+      if (this->check_flag(Flag::ANNOUNCE)) {
         flags_str += "ANNOUNCE,";
       }
-      if (this->flags & static_cast<uint32_t>(Flag::FREE_JOIN_GAMES)) {
+      if (this->check_flag(Flag::FREE_JOIN_GAMES)) {
         flags_str += "FREE_JOIN_GAMES,";
       }
-      if (this->flags & static_cast<uint32_t>(Flag::DEBUG)) {
+      if (this->check_flag(Flag::DEBUG)) {
         flags_str += "DEBUG,";
       }
-      if (this->flags & static_cast<uint32_t>(Flag::CHEAT_ANYWHERE)) {
+      if (this->check_flag(Flag::CHEAT_ANYWHERE)) {
         flags_str += "CHEAT_ANYWHERE,";
       }
-      if (this->flags & static_cast<uint32_t>(Flag::DISABLE_QUEST_REQUIREMENTS)) {
+      if (this->check_flag(Flag::DISABLE_QUEST_REQUIREMENTS)) {
         flags_str += "ALWAYS_ENABLE_CHAT_COMMANDS,";
       }
-      if (this->flags & static_cast<uint32_t>(Flag::IS_SHARED_ACCOUNT)) {
+      if (this->check_flag(Flag::IS_SHARED_ACCOUNT)) {
         flags_str += "IS_SHARED_ACCOUNT,";
       }
     }
@@ -337,6 +340,19 @@ void Account::print(FILE* stream) const {
       flags_str.pop_back();
     }
     fprintf(stream, "  Flags: %08" PRIX32 " (%s)\n", this->flags, flags_str.c_str());
+  }
+
+  if (this->user_flags) {
+    string user_flags_str = "";
+    if (this->check_user_flag(UserFlag::DISABLE_DROP_NOTIFICATION_BROADCAST)) {
+      user_flags_str += "DISABLE_DROP_NOTIFICATION_BROADCAST,";
+    }
+    if (user_flags_str.empty()) {
+      user_flags_str = "none";
+    } else if (phosg::ends_with(user_flags_str, ",")) {
+      user_flags_str.pop_back();
+    }
+    fprintf(stream, "  User flags: %08" PRIX32 " (%s)\n", this->user_flags, user_flags_str.c_str());
   }
 
   if (this->ban_end_time) {

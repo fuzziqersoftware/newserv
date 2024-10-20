@@ -362,11 +362,37 @@ uint32_t parse_account_flags(const string& flags_str) {
   return ret;
 }
 
+uint32_t parse_account_user_flags(const string& user_flags_str) {
+  try {
+    size_t end_pos = 0;
+    uint32_t ret = stoul(user_flags_str, &end_pos, 16);
+    if (end_pos == user_flags_str.size()) {
+      return ret;
+    }
+  } catch (const exception&) {
+  }
+
+  uint32_t ret = 0;
+  auto tokens = phosg::split(user_flags_str, ',');
+  for (const auto& token : tokens) {
+    string token_upper = phosg::toupper(token);
+    if (token_upper == "NONE") {
+      // Nothing to do
+    } else if (token_upper == "DISABLE_DROP_NOTIFICATION_BROADCAST") {
+      ret |= static_cast<uint32_t>(Account::UserFlag::DISABLE_DROP_NOTIFICATION_BROADCAST);
+    } else {
+      throw runtime_error("invalid user flag name: " + token_upper);
+    }
+  }
+  return ret;
+}
+
 CommandDefinition c_add_account(
     "add-account", "add-account [PARAMETERS...]\n\
     Add an account to the server. <parameters> is some subset of:\n\
       id=ACCOUNT-ID: preferred account ID in hex (optional)\n\
       flags=FLAGS: behaviors and permissions for the account (see below)\n\
+      user-flags=FLAGS: user-set behaviors for the account\n\
       ep3-current-meseta=MESETA: Episode 3 Meseta value\n\
       ep3-total-meseta=MESETA: Episode 3 total Meseta ever earned\n\
       temporary: marks the account as temporary; it is not saved to disk and\n\
@@ -405,6 +431,8 @@ CommandDefinition c_add_account(
           account->is_temporary = true;
         } else if (phosg::starts_with(token, "flags=")) {
           account->flags = parse_account_flags(token.substr(6));
+        } else if (phosg::starts_with(token, "user-flags=")) {
+          account->user_flags = parse_account_user_flags(token.substr(11));
         } else {
           throw invalid_argument("invalid account field: " + token);
         }
@@ -418,7 +446,8 @@ CommandDefinition c_update_account(
     Update an existing license. ACCOUNT-ID (8 hex digits) specifies which\n\
     account to update. The options are similar to the add-account command:\n\
       flags=FLAGS: sets behaviors and permissions for the account (same as\n\
-          with add-account)\n\
+          add-account)\n\
+      user-flags=FLAGS: sets behaviors for the account (same as add-account)\n\
       ban-duration=DURATION: bans this account for the specified duration; the\n\
           duration should be of the form 3d, 2w, 1mo, or 1y\n\
       unban: clears any existing ban from this account\n\
@@ -441,6 +470,7 @@ CommandDefinition c_update_account(
       int64_t new_ep3_current_meseta = -1;
       int64_t new_ep3_total_meseta = -1;
       int64_t new_flags = -1;
+      int64_t new_user_flags = -1;
       uint8_t new_is_temporary = 0xFF;
       int64_t new_ban_duration = -1;
       for (const string& token : tokens) {
@@ -454,6 +484,8 @@ CommandDefinition c_update_account(
           new_is_temporary = 0;
         } else if (phosg::starts_with(token, "flags=")) {
           new_flags = parse_account_flags(token.substr(6));
+        } else if (phosg::starts_with(token, "user-flags=")) {
+          new_user_flags = parse_account_user_flags(token.substr(11));
         } else if (token == "unban") {
           new_ban_duration = 0;
         } else if (phosg::starts_with(token, "ban-duration=")) {
@@ -491,6 +523,9 @@ CommandDefinition c_update_account(
       }
       if (new_flags >= 0) {
         account->flags = new_flags;
+      }
+      if (new_user_flags >= 0) {
+        account->user_flags = new_user_flags;
       }
       if (new_is_temporary != 0xFF) {
         account->is_temporary = new_is_temporary;

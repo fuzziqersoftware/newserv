@@ -2071,7 +2071,8 @@ static void on_pick_up_item_generic(
       }
     }
 
-    if (fi->flags & 0x1000) {
+    if (!c->login->account->check_user_flag(Account::UserFlag::DISABLE_DROP_NOTIFICATION_BROADCAST) &&
+        (fi->flags & 0x1000)) {
       uint32_t pi = fi->data.primary_identifier();
       bool should_send_game_notif, should_send_global_notif;
       if (is_v1_or_v2(c->version()) && (c->version() != Version::GC_NTE)) {
