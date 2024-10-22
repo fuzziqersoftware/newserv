@@ -232,6 +232,7 @@ CommandDefinition c_reload(
       teams - reindex all BB teams\n\
       text-index - reload in-game text\n\
       word-select - regenerate the Word Select translation table\n\
+      all - do all of the above\n\
     Reloading will not affect items that are in use; for example, if an Episode\n\
     3 battle is in progress, it will continue to use the previous map and card\n\
     definitions. Similarly, BB clients are not forced to disconnect or reload\n\
@@ -242,7 +243,16 @@ CommandDefinition c_reload(
     +[](CommandArgs& args) {
       auto types = phosg::split(args.args, ' ');
       for (const auto& type : types) {
-        if (type == "bb-keys") {
+        if (type == "all") {
+          args.s->forward_to_event_thread([s = args.s]() {
+            try {
+              s->load_all();
+            } catch (const exception& e) {
+              fprintf(stderr, "FAILED: %s\n", e.what());
+              fprintf(stderr, "Some configuration may have been reloaded. Fix the underlying issue and try again.\n");
+            }
+          });
+        } else if (type == "bb-keys") {
           args.s->load_bb_private_keys(true);
         } else if (type == "accounts") {
           args.s->load_accounts(true);

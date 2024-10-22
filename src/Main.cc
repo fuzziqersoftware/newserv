@@ -46,6 +46,7 @@
 #include "Server.hh"
 #include "ServerShell.hh"
 #include "ServerState.hh"
+#include "SignalWatcher.hh"
 #include "StaticGameData.hh"
 #include "Text.hh"
 #include "TextIndex.hh"
@@ -2727,6 +2728,7 @@ Action a_run_server_replay_log(
 
       shared_ptr<ServerShell> shell;
       shared_ptr<ReplaySession> replay_session;
+      shared_ptr<SignalWatcher> signal_watcher;
       if (is_replay) {
         config_log.info("Starting proxy server");
         state->proxy_server = make_shared<ProxyServer>(base, state);
@@ -2842,6 +2844,11 @@ Action a_run_server_replay_log(
             state->http_server->listen(netloc.first, netloc.second);
           }
         }
+
+#ifndef PHOSG_WINDOWS
+        config_log.info("Enabling signal watcher");
+        signal_watcher = make_shared<SignalWatcher>(state);
+#endif
       }
 
       if (!state->username.empty()) {

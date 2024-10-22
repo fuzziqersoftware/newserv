@@ -148,6 +148,10 @@ There are currently no precompiled releases for Linux. To run newserv on Linux, 
 
 After building newserv, edit system/config.example.json as needed **and rename it to system/config.json** (note that this step is not necessary for the precompiled releases!), set up [client patch directories](#client-patch-directories) if you're planning to play Blue Burst, then run `./newserv` in newserv's directory.
 
+The server has an interactive shell which can be used to make changes, such as managing user accounts, updating the server's configuration, managing Episode 3 tournaments, and more. Type `help` and press Enter to see all the commands.
+
+On Linux and macOS, the server also responds to SIGUSR1 and SIGUSR2. SIGUSR1 does the equivalent of the shell's `reload config` command, which reloads config.json but not any dependent files (so quests, Episode 3 maps, etc. will not be reloaded). SIGUSR2 does the equivalent of the shell's `reload all` command, which reloads everything.
+
 To use newserv in other ways (e.g. for translating data), see the end of this document.
 
 ## Client patch directories
