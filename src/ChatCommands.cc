@@ -270,16 +270,37 @@ static void server_command_ax(shared_ptr<Client> c, const std::string& args) {
   ax_messages_log.info("%s", args.c_str());
 }
 
-static void server_command_announce(shared_ptr<Client> c, const std::string& args) {
+static void server_command_announce_inner(shared_ptr<Client> c, const std::string& args, bool mail, bool anonymous) {
   auto s = c->require_server_state();
   check_account_flag(c, Account::Flag::ANNOUNCE);
-  send_text_message(s, args);
+  if (anonymous) {
+    if (mail) {
+      send_simple_mail(s, 0, s->name, args);
+    } else {
+      send_text_or_scrolling_message(s, args, args);
+    }
+  } else {
+    auto from_name = c->character()->disp.name.decode(c->language());
+    if (mail) {
+      send_simple_mail(s, 0, from_name, args);
+    } else {
+      auto message = from_name + ": " + args;
+      send_text_or_scrolling_message(s, message, message);
+    }
+  }
 }
 
-static void server_command_announce_mail(shared_ptr<Client> c, const std::string& args) {
-  auto s = c->require_server_state();
-  check_account_flag(c, Account::Flag::ANNOUNCE);
-  send_simple_mail(s, 0, s->name, args);
+static void server_command_announce_named(shared_ptr<Client> c, const std::string& args) {
+  server_command_announce_inner(c, args, false, false);
+}
+static void server_command_announce_anonymous(shared_ptr<Client> c, const std::string& args) {
+  server_command_announce_inner(c, args, false, true);
+}
+static void server_command_announce_mail_named(shared_ptr<Client> c, const std::string& args) {
+  server_command_announce_inner(c, args, true, false);
+}
+static void server_command_announce_mail_anonymous(shared_ptr<Client> c, const std::string& args) {
+  server_command_announce_inner(c, args, true, true);
 }
 
 static void server_command_arrow(shared_ptr<Client> c, const std::string& args) {
@@ -2585,8 +2606,11 @@ struct ChatCommandDefinition {
 
 static const unordered_map<string, ChatCommandDefinition> chat_commands({
     {"$allevent", {server_command_lobby_event_all, nullptr}},
-    {"$ann", {server_command_announce, nullptr}},
-    {"$ann!", {server_command_announce_mail, nullptr}},
+    {"$ann", {server_command_announce_named, nullptr}},
+    {"$ann?", {server_command_announce_anonymous, nullptr}},
+    {"$ann!", {server_command_announce_mail_named, nullptr}},
+    {"$ann?!", {server_command_announce_mail_anonymous, nullptr}},
+    {"$ann!?", {server_command_announce_mail_anonymous, nullptr}},
     {"$announcerares", {server_command_toggle_rare_announce, nullptr}},
     {"$arrow", {server_command_arrow, proxy_command_arrow}},
     {"$auction", {server_command_auction, proxy_command_auction}},

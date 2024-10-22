@@ -214,6 +214,7 @@ void send_scrolling_message_bb(std::shared_ptr<Client> c, const std::string& tex
 void send_text_or_scrolling_message(std::shared_ptr<Client> c, const std::string& text, const std::string& scrolling);
 void send_text_or_scrolling_message(
     std::shared_ptr<Lobby> l, std::shared_ptr<Client> exclude_c, const std::string& text, const std::string& scrolling);
+void send_text_or_scrolling_message(std::shared_ptr<ServerState> s, const std::string& text, const std::string& scrolling);
 
 std::string prepare_chat_data(
     Version version,

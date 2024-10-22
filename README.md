@@ -618,8 +618,8 @@ Some commands only work on the game server and not on the proxy server. The chat
     * `$song <song-id>` (Episode 3 only): Play a specific song in the current lobby.
 
 * Administration commands (game server only)
-    * `$ann <message>`: Send an announcement message. The message is sent as temporary on-screen text to all players in all games and lobbies.
-    * `$ann! <message>`: Send an announcement message. The message is sent as a Simple Mail message to all players in all games and lobbies.
+    * `$ann <message>`: Send an announcement message. The message is sent as temporary on-screen text to all players in all games and lobbies. On BB, the message appears in the scrolling top bar.
+    * `$ann!`, `$ann?`, `$ann?!`: Same as `$ann`, but with `?`, omits the sender's name, and with `!`, sends the message as a Simple Mail message instead of on-screen text.
     * `$ax <message>`: Send a message to the server's terminal. This cannot be used to run server shell commands; it only prints text to stderr.
     * `$silence <identifier>`: Silence a player (remove their ability to chat) or unsilence a player. The identifier may be the player's name or Guild Card number.
     * `$kick <identifier>`: Disconnect a player. The identifier may be the player's name or Guild Card number.

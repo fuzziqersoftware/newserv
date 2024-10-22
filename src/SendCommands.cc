@@ -953,6 +953,14 @@ void send_text_or_scrolling_message(
   }
 }
 
+void send_text_or_scrolling_message(shared_ptr<ServerState> s, const std::string& text, const std::string& scrolling) {
+  for (const auto& it : s->channel_to_client) {
+    if (it.second->login && !is_patch(it.second->version())) {
+      send_text_or_scrolling_message(it.second, text, scrolling);
+    }
+  }
+}
+
 string prepare_chat_data(
     Version version,
     uint8_t language,
