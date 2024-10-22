@@ -1,6 +1,7 @@
 #include "SignalWatcher.hh"
 
 #include <event2/event.h>
+#include <signal.h>
 #include <stdio.h>
 #include <string.h>
 
