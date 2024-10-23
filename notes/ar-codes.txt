@@ -11,6 +11,12 @@ See also https://github.com/Solybum/Blue-Burst-Patch-Project
 Memory: 005C9F31 E9A7000000
 File:   001C9331 E9A7000000
 
+All rareable enemies are rare (GC US v1.1)
+040AC944 60000000 // Hildeblue
+040C1B70 60000000 // Rappies
+040C3FC8 60000000 // Nar Lily
+040EB050 48000010 // Pouilly Slime
+
 Unlock all songs in BGM test
 (Note: sadly, there are no secret/unused ones)
 Ep12-JP12 => 04367A68 38600001
