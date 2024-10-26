@@ -295,7 +295,7 @@ struct PSODC112000CharacterFile {
   // See PSOGCCharacterFile::Character for descriptions of fields' meanings.
   /* 0000:---- */ PlayerInventory inventory;
   /* 034C:---- */ PlayerDispDataDCPCV3 disp;
-  /* 041C:0000 */ le_uint32_t flags = 0;
+  /* 041C:0000 */ le_uint32_t validation_flags = 0;
   /* 0420:0004 */ le_uint32_t creation_timestamp = 0;
   /* 0424:0008 */ le_uint32_t signature = 0xA205B064;
   /* 0428:000C */ le_uint32_t play_time_seconds = 0;
@@ -311,7 +311,7 @@ struct PSODCV1CharacterFile {
   // See PSOGCCharacterFile::Character for descriptions of fields' meanings.
   /* 0000:---- */ PlayerInventory inventory;
   /* 034C:---- */ PlayerDispDataDCPCV3 disp;
-  /* 041C:0000 */ le_uint32_t flags = 0;
+  /* 041C:0000 */ le_uint32_t validation_flags = 0;
   /* 0420:0004 */ le_uint32_t creation_timestamp = 0;
   /* 0424:0008 */ le_uint32_t signature = 0xA205B064;
   /* 0428:000C */ le_uint32_t play_time_seconds = 0;
@@ -334,7 +334,7 @@ struct PSODCV2CharacterFile {
   // See PSOGCCharacterFile::Character for descriptions of fields' meanings.
   /* 0000:---- */ PlayerInventory inventory;
   /* 034C:---- */ PlayerDispDataDCPCV3 disp;
-  /* 041C:0000 */ le_uint32_t flags = 0;
+  /* 041C:0000 */ le_uint32_t validation_flags = 0;
   /* 0420:0004 */ le_uint32_t creation_timestamp = 0;
   /* 0424:0008 */ le_uint32_t signature = 0xA205B064;
   /* 0428:000C */ le_uint32_t play_time_seconds = 0;
@@ -379,7 +379,7 @@ struct PSOPCCharacterFile { // PSO______SYS and PSO______SYD
       struct Character {
         /* 0000 */ PlayerInventory inventory;
         /* 034C */ PlayerDispDataDCPCV3 disp;
-        /* 041C */ be_uint32_t flags = 0;
+        /* 041C */ be_uint32_t validation_flags = 0;
         /* 0420 */ be_uint32_t creation_timestamp = 0;
         /* 0424 */ be_uint32_t signature = 0x6C5D889E;
         /* 0428 */ be_uint32_t play_time_seconds = 0;
@@ -416,7 +416,7 @@ struct PSOPCCharacterFile { // PSO______SYS and PSO______SYD
 struct PSOGCNTECharacterFileCharacter {
   /* 0000:---- */ PlayerInventoryBE inventory;
   /* 034C:---- */ PlayerDispDataDCPCV3BE disp;
-  /* 041C:0000 */ be_uint32_t flags = 0;
+  /* 041C:0000 */ be_uint32_t validation_flags = 0;
   /* 0420:0004 */ be_uint32_t creation_timestamp = 0;
   /* 0424:0008 */ be_uint32_t signature = 0xA205B064;
   /* 0428:000C */ be_uint32_t play_time_seconds = 0;
@@ -448,19 +448,28 @@ struct PSOGCCharacterFile {
     // to the start of the second internal structure (second column).
     /* 0000:---- */ PlayerInventoryBE inventory;
     /* 034C:---- */ PlayerDispDataDCPCV3BE disp;
-    // Known bits in the flags field:
+    // Known bits in the validation_flags field:
     //   00000001: Character was not saved after disconnecting (and the message
     //     about items being deleted is shown in the select menu)
-    //   00000002: Used, but purpose is unknown
-    //   00000008: Used, but purpose is unknown
+    //   00000002: Character has level out of range (< 0 or > max)
+    //   00000004: Character has EXP out of range for their current level
+    //   00000008: Character has one or more stats out of range (< 0 or > max)
     //   00000010: Character has ever possessed a hacked item, according to the
     //     check_for_hacked_item function in DCv2 (TODO: Does this exist in V3+
     //     also? If so, is the logic the same?)
-    //   00000040: Used, but purpose is unknown
-    /* 041C:0000 */ be_uint32_t flags = 0;
+    //   00000020: Character has meseta out of range (< 0 or > 999999)
+    //   00000040: Character was loaded on a client that has "important" files
+    //     modified (on GC, these files are ending_normal.sfd, psogc_j.sfd,
+    //     psogc_j2.sfd, ult01.sfd, ult02.sfd, ult03.sfd, ult04.sfd,
+    //     ItemPMT.prs, itemrt.gsl, itempt.gsl, and PlyLevelTbl.cpt). For files
+    //     larger than 1000000 bytes (decimal), the game only checks the file's
+    //     size and skips checksumming its contents.
+    /* 041C:0000 */ be_uint32_t validation_flags = 0;
     /* 0420:0004 */ be_uint32_t creation_timestamp = 0;
     // The signature field holds the value 0xA205B064, which is 2718281828 in
-    // decimal - approximately e * 10^9. It's unknown why Sega chose this value.
+    // decimal - approximately e * 10^9. It's unknown why Sega chose this
+    // value. On some other versions, this field has a different value; see the
+    // defaults in the other versions' structures.
     /* 0424:0008 */ be_uint32_t signature = 0xA205B064;
     /* 0428:000C */ be_uint32_t play_time_seconds = 0;
     // This field is a collection of several flags and small values. The known
@@ -522,7 +531,7 @@ struct PSOGCEp3NTECharacter {
   // to the start of the second internal structure (second column).
   /* 0000:---- */ PlayerInventoryBE inventory;
   /* 034C:---- */ PlayerDispDataDCPCV3BE disp;
-  /* 041C:0000 */ be_uint32_t flags = 0;
+  /* 041C:0000 */ be_uint32_t validation_flags = 0;
   /* 0420:0004 */ be_uint32_t creation_timestamp = 0;
   /* 0424:0008 */ be_uint32_t signature = 0xA205B064;
   /* 0428:000C */ be_uint32_t play_time_seconds = 0;
@@ -558,7 +567,7 @@ struct PSOGCEp3CharacterFile {
     // to the start of the second internal structure (second column).
     /* 0000:---- */ PlayerInventoryBE inventory;
     /* 034C:---- */ PlayerDispDataDCPCV3BE disp;
-    /* 041C:0000 */ be_uint32_t flags = 0;
+    /* 041C:0000 */ be_uint32_t validation_flags = 0;
     /* 0420:0004 */ be_uint32_t creation_timestamp = 0;
     /* 0424:0008 */ be_uint32_t signature = 0xA205B064;
     /* 0428:000C */ be_uint32_t play_time_seconds = 0;
@@ -627,7 +636,7 @@ struct PSOXBCharacterFileCharacter {
   // Most fields have the same meanings as in PSOGCCharacterFile::Character.
   /* 0000:---- */ PlayerInventory inventory;
   /* 034C:---- */ PlayerDispDataDCPCV3 disp;
-  /* 041C:0000 */ le_uint32_t flags = 0;
+  /* 041C:0000 */ le_uint32_t validation_flags = 0;
   /* 0420:0004 */ le_uint32_t creation_timestamp = 0;
   /* 0424:0008 */ le_uint32_t signature = 0xC87ED5B1;
   /* 0428:000C */ le_uint32_t play_time_seconds = 0;
@@ -670,7 +679,7 @@ struct PSOBBCharacterFile {
 
   /* 0000 */ PlayerInventory inventory;
   /* 034C */ PlayerDispDataBB disp;
-  /* 04DC */ le_uint32_t flags = 0;
+  /* 04DC */ le_uint32_t validation_flags = 0;
   /* 04E0 */ le_uint32_t creation_timestamp = 0;
   /* 04E4 */ le_uint32_t signature = 0xC87ED5B1;
   /* 04E8 */ le_uint32_t play_time_seconds = 0;

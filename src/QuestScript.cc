@@ -1948,7 +1948,8 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     //   0x04 = unknown (TODO) (always zero on v3+)
     //   0x08 = hacked item flag has been set (see implementation of
     //     are_rare_drops_allowed in ItemCreator.cc)
-    //   0x10 = any bits in PSOGCCharacterFile::Character::flags are set
+    //   0x10 = any bits in validation_flags in the character file are set (see
+    //     PSOGCCharacterFile::Character in SaveFileFormats.hh)
     {0xF8B6, "check_for_hacking", "is_mag_hacked", {REG}, F_V2_V4},
 
     // Challenge mode cannot be completed unless this many seconds have passed

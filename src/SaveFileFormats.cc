@@ -260,7 +260,7 @@ phosg::Image PSOGCSnapshotFile::decode_image() const {
 PSOGCEp3CharacterFile::Character::Character(const PSOGCEp3NTECharacter& nte)
     : inventory(nte.inventory),
       disp(nte.disp),
-      flags(nte.flags),
+      validation_flags(nte.validation_flags),
       creation_timestamp(nte.creation_timestamp),
       signature(nte.signature),
       play_time_seconds(nte.play_time_seconds),
@@ -290,7 +290,7 @@ PSOGCEp3CharacterFile::Character::operator PSOGCEp3NTECharacter() const {
   PSOGCEp3NTECharacter ret;
   ret.inventory = this->inventory;
   ret.disp = this->disp;
-  ret.flags = this->flags;
+  ret.validation_flags = this->validation_flags;
   ret.creation_timestamp = this->creation_timestamp;
   ret.signature = this->signature;
   ret.play_time_seconds = this->play_time_seconds;
@@ -549,6 +549,7 @@ shared_ptr<PSOBBCharacterFile> PSOBBCharacterFile::create_from_dc_v2(const PSODC
   ret->inventory.decode_from_client(Version::DC_V2);
   uint8_t language = ret->inventory.language;
   ret->disp = dc.disp.to_bb(language, language);
+  ret->validation_flags = dc.validation_flags;
   ret->creation_timestamp = dc.creation_timestamp;
   ret->play_time_seconds = dc.play_time_seconds;
   ret->option_flags = dc.option_flags;
@@ -586,6 +587,7 @@ shared_ptr<PSOBBCharacterFile> PSOBBCharacterFile::create_from_gc_nte(const PSOG
   // not do this, so the data2 fields are already in the correct order here.
   uint8_t language = ret->inventory.language;
   ret->disp = gc_nte.disp.to_bb(language, language);
+  ret->validation_flags = gc_nte.validation_flags.load();
   ret->creation_timestamp = gc_nte.creation_timestamp.load();
   ret->play_time_seconds = gc_nte.play_time_seconds.load();
   ret->option_flags = gc_nte.option_flags.load();
@@ -621,6 +623,7 @@ shared_ptr<PSOBBCharacterFile> PSOBBCharacterFile::create_from_gc(const PSOGCCha
   // not do this, so the data2 fields are already in the correct order here.
   uint8_t language = ret->inventory.language;
   ret->disp = gc.disp.to_bb(language, language);
+  ret->validation_flags = gc.validation_flags.load();
   ret->creation_timestamp = gc.creation_timestamp.load();
   ret->play_time_seconds = gc.play_time_seconds.load();
   ret->option_flags = gc.option_flags.load();
@@ -662,6 +665,7 @@ shared_ptr<PSOBBCharacterFile> PSOBBCharacterFile::create_from_ep3(const PSOGCEp
   ret->inventory = ep3.inventory;
   uint8_t language = ret->inventory.language;
   ret->disp = ep3.disp.to_bb(language, language);
+  ret->validation_flags = ep3.validation_flags.load();
   ret->creation_timestamp = ep3.creation_timestamp.load();
   ret->play_time_seconds = ep3.play_time_seconds.load();
   ret->option_flags = ep3.option_flags.load();
@@ -705,6 +709,7 @@ shared_ptr<PSOBBCharacterFile> PSOBBCharacterFile::create_from_xb(const PSOXBCha
   ret->inventory.decode_from_client(Version::XB_V3);
   uint8_t language = ret->inventory.language;
   ret->disp = xb.disp.to_bb(language, language);
+  ret->validation_flags = xb.validation_flags;
   ret->creation_timestamp = xb.creation_timestamp.load();
   ret->play_time_seconds = xb.play_time_seconds.load();
   ret->option_flags = xb.option_flags.load();
@@ -797,6 +802,7 @@ PSODCV2CharacterFile PSOBBCharacterFile::to_dc_v2() const {
   ret.inventory.encode_for_client(Version::DC_V2, nullptr);
   ret.disp = this->disp.to_dcpcv3<false>(language, language);
   ret.disp.visual.enforce_lobby_join_limits_for_version(Version::DC_V2);
+  ret.validation_flags = this->validation_flags.load();
   ret.creation_timestamp = this->creation_timestamp.load();
   ret.play_time_seconds = this->play_time_seconds.load();
   ret.option_flags = this->option_flags.load();
@@ -838,6 +844,7 @@ PSOGCNTECharacterFileCharacter PSOBBCharacterFile::to_gc_nte() const {
   // not do this, so the data2 fields are already in the correct order here.
   ret.disp = this->disp.to_dcpcv3<true>(language, language);
   ret.disp.visual.enforce_lobby_join_limits_for_version(Version::GC_V3);
+  ret.validation_flags = this->validation_flags.load();
   ret.creation_timestamp = this->creation_timestamp.load();
   ret.play_time_seconds = this->play_time_seconds.load();
   ret.option_flags = this->option_flags.load();
@@ -875,6 +882,7 @@ PSOGCCharacterFile::Character PSOBBCharacterFile::to_gc() const {
   // not do this, so the data2 fields are already in the correct order here.
   ret.disp = this->disp.to_dcpcv3<true>(language, language);
   ret.disp.visual.enforce_lobby_join_limits_for_version(Version::GC_V3);
+  ret.validation_flags = this->validation_flags.load();
   ret.creation_timestamp = this->creation_timestamp.load();
   ret.play_time_seconds = this->play_time_seconds.load();
   ret.option_flags = this->option_flags.load();
@@ -919,6 +927,7 @@ PSOXBCharacterFileCharacter PSOBBCharacterFile::to_xb(uint64_t xb_user_id) const
   ret.inventory.encode_for_client(Version::XB_V3, nullptr);
   ret.disp = this->disp.to_dcpcv3<false>(language, language);
   ret.disp.visual.enforce_lobby_join_limits_for_version(Version::XB_V3);
+  ret.validation_flags = this->validation_flags.load();
   ret.creation_timestamp = this->creation_timestamp.load();
   ret.play_time_seconds = this->play_time_seconds.load();
   ret.option_flags = this->option_flags.load();
