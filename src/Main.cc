@@ -1905,7 +1905,7 @@ Action a_name_all_items(
       s->load_text_index(false);
       s->load_item_definitions(false);
       s->load_item_name_indexes(false);
-      s->load_config_early();
+      s->load_config_late();
 
       set<uint32_t> all_primary_identifiers;
       for (const auto& index : s->item_name_indexes) {
@@ -1945,6 +1945,93 @@ Action a_name_all_items(
         }
         fputc('\n', stderr);
       }
+    });
+
+Action a_print_level_stats(
+    "print-level-stats", nullptr, +[](phosg::Arguments& args) {
+      auto s = make_shared<ServerState>(get_config_filename(args));
+      s->load_config_early();
+      s->clear_file_caches(false);
+      s->load_patch_indexes(false);
+      s->load_level_tables(false);
+
+      vector<PlayerStats> level_1_v1_v2;
+      vector<PlayerStats> level_100_v1_v2;
+      vector<PlayerStats> level_100_limit_v1_v2;
+      vector<PlayerStats> level_200_v1_v2;
+      vector<PlayerStats> level_200_limit_v1_v2;
+      vector<PlayerStats> level_1_v3;
+      vector<PlayerStats> level_200_v3;
+      vector<PlayerStats> level_200_limit_v3;
+      vector<PlayerStats> level_1_v4;
+      vector<PlayerStats> level_200_v4;
+      vector<PlayerStats> level_200_limit_v4;
+      for (size_t z = 0; z < 12; z++) {
+        if (z < 9) {
+          level_1_v1_v2.emplace_back().char_stats = s->level_table_v1_v2->base_stats_for_class(z);
+          level_100_limit_v1_v2.emplace_back(s->level_table_v1_v2->level_100_stats_for_class(z));
+          level_200_limit_v1_v2.emplace_back(s->level_table_v1_v2->max_stats_for_class(z));
+          s->level_table_v1_v2->advance_to_level(level_100_v1_v2.emplace_back(level_1_v1_v2.back()), 99, z);
+          s->level_table_v1_v2->advance_to_level(level_200_v1_v2.emplace_back(level_1_v1_v2.back()), 199, z);
+        }
+
+        level_1_v3.emplace_back().char_stats = s->level_table_v3->base_stats_for_class(z);
+        s->level_table_v3->advance_to_level(level_200_v3.emplace_back(level_1_v3.back()), 199, z);
+        level_200_limit_v3.emplace_back(s->level_table_v3->max_stats_for_class(z));
+
+        level_1_v4.emplace_back().char_stats = s->level_table_v4->base_stats_for_class(z);
+        s->level_table_v4->advance_to_level(level_200_v4.emplace_back(level_1_v3.back()), 199, z);
+        level_200_limit_v4.emplace_back(s->level_table_v4->max_stats_for_class(z));
+      }
+
+      auto print_stats_set = [](const vector<PlayerStats>& stats_vec, const char* name) -> void {
+        fprintf(stdout, "%s      ", name);
+        for (size_t z = 0; z < stats_vec.size(); z++) {
+          fprintf(stdout, "  %s", abbreviation_for_char_class(z));
+        }
+
+        fprintf(stdout, "\n%s   ATP", name);
+        for (const auto& stats : stats_vec) {
+          fprintf(stdout, "  %4hu", stats.char_stats.atp.load());
+        }
+        fprintf(stdout, "\n%s   DFP", name);
+        for (const auto& stats : stats_vec) {
+          fprintf(stdout, "  %4hu", stats.char_stats.dfp.load());
+        }
+        fprintf(stdout, "\n%s   MST", name);
+        for (const auto& stats : stats_vec) {
+          fprintf(stdout, "  %4hu", stats.char_stats.mst.load());
+        }
+        fprintf(stdout, "\n%s   ATA", name);
+        for (const auto& stats : stats_vec) {
+          fprintf(stdout, "  %4hu", stats.char_stats.ata.load());
+        }
+        fprintf(stdout, "\n%s   EVP", name);
+        for (const auto& stats : stats_vec) {
+          fprintf(stdout, "  %4hu", stats.char_stats.evp.load());
+        }
+        fprintf(stdout, "\n%s   LCK", name);
+        for (const auto& stats : stats_vec) {
+          fprintf(stdout, "  %4hu", stats.char_stats.lck.load());
+        }
+        fprintf(stdout, "\n%s    HP", name);
+        for (const auto& stats : stats_vec) {
+          fprintf(stdout, "  %4hu", stats.char_stats.hp.load());
+        }
+        fputc('\n', stdout);
+      };
+
+      print_stats_set(level_1_v1_v2, "v1/v2 Lv.1  ");
+      print_stats_set(level_100_v1_v2, "v1/v2 Lv.100");
+      print_stats_set(level_100_limit_v1_v2, "v1 limit    ");
+      print_stats_set(level_200_v1_v2, "v2 Lv.200   ");
+      print_stats_set(level_200_limit_v1_v2, "v2 limit    ");
+      print_stats_set(level_1_v3, "v3 Lv.1     ");
+      print_stats_set(level_200_v3, "v3 Lv.200   ");
+      print_stats_set(level_200_limit_v3, "v3 limit    ");
+      print_stats_set(level_1_v4, "v4 Lv.1     ");
+      print_stats_set(level_200_v4, "v4 Lv.200   ");
+      print_stats_set(level_200_limit_v4, "v4 limit    ");
     });
 
 Action a_print_item_parameter_tables(

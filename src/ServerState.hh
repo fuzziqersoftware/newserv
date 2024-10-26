@@ -188,7 +188,7 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   std::shared_ptr<const QuestCategoryIndex> quest_category_index;
   std::shared_ptr<const QuestIndex> default_quest_index;
   std::shared_ptr<const QuestIndex> ep3_download_quest_index;
-  std::shared_ptr<const LevelTable> level_table_v1_v2;
+  std::shared_ptr<const LevelTableV2> level_table_v1_v2;
   std::shared_ptr<const LevelTable> level_table_v3;
   std::shared_ptr<const LevelTable> level_table_v4;
   std::shared_ptr<const BattleParamsIndex> battle_params;

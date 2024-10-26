@@ -104,6 +104,7 @@ class LevelTable {
 public:
   virtual ~LevelTable() = default;
   virtual const CharacterStats& base_stats_for_class(uint8_t char_class) const = 0;
+  virtual const PlayerStats& max_stats_for_class(uint8_t char_class) const = 0;
   virtual const LevelStatsDelta& stats_delta_for_level(uint8_t char_class, uint8_t level) const = 0;
 
   void reset_to_base(PlayerStats& stats, uint8_t char_class) const;
@@ -115,26 +116,17 @@ protected:
 
 class LevelTableV2 : public LevelTable { // from PlayerTable.prs (PC)
 public:
-  struct Level100Entry {
-    /* 00 */ CharacterStats char_stats;
-    /* 0E */ le_uint16_t unknown_a1 = 0;
-    /* 10 */ le_float height = 0.0;
-    /* 14 */ le_float unknown_a3 = 0.0;
-    /* 18 */ le_uint32_t level = 0;
-    /* 1C */
-  } __packed_ws__(Level100Entry, 0x1C);
-
   LevelTableV2(const std::string& data, bool compressed);
   virtual ~LevelTableV2() = default;
 
   virtual const CharacterStats& base_stats_for_class(uint8_t char_class) const;
-  const Level100Entry& level_100_stats_for_class(uint8_t char_class) const;
-  const PlayerStats& max_stats_for_class(uint8_t char_class) const;
+  const PlayerStats& level_100_stats_for_class(uint8_t char_class) const;
+  virtual const PlayerStats& max_stats_for_class(uint8_t char_class) const;
   virtual const LevelStatsDelta& stats_delta_for_level(uint8_t char_class, uint8_t level) const;
 
 private:
   std::array<CharacterStats, 9> base_stats;
-  std::array<Level100Entry, 9> level_100_stats;
+  std::array<PlayerStats, 9> level_100_stats;
   std::array<PlayerStats, 9> max_stats;
   std::array<std::array<LevelStatsDelta, 200>, 9> level_deltas;
 };
@@ -145,6 +137,7 @@ public:
   virtual ~LevelTableV3BE() = default;
 
   virtual const CharacterStats& base_stats_for_class(uint8_t char_class) const;
+  virtual const PlayerStats& max_stats_for_class(uint8_t char_class) const;
   virtual const LevelStatsDelta& stats_delta_for_level(uint8_t char_class, uint8_t level) const;
 
 private:
@@ -157,6 +150,7 @@ public:
   virtual ~LevelTableV4() = default;
 
   virtual const CharacterStats& base_stats_for_class(uint8_t char_class) const;
+  virtual const PlayerStats& max_stats_for_class(uint8_t char_class) const;
   virtual const LevelStatsDelta& stats_delta_for_level(uint8_t char_class, uint8_t level) const;
 
 private:

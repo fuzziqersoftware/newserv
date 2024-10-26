@@ -36,22 +36,22 @@ LevelTableV2::LevelTableV2(const string& data, bool compressed) {
   struct Offsets {
     // TODO: The overall format of this file on V2 has much more data than we
     // actually use. What's known of the structure so far:
-    le_uint32_t level_deltas; // -> u32[9] -> LevelStatsDelta[200]
-    le_uint32_t unknown_a1; // -> float[6]
-    le_uint32_t max_stats; // -> PlayerStats[9]
-    le_uint32_t level_100_stats; // -> Level100Entry[9]
-    le_uint32_t base_stats; // -> u32[9] -> CharacterStats
-    le_uint32_t unknown_a2; // -> (0x120 zero bytes)
-    le_uint32_t attack_data; // -> AttackData[9]
-    le_uint32_t unknown_a4; // -> (0x14-byte struct)[9]
-    le_uint32_t unknown_a5; // -> float[9]
-    le_uint32_t unknown_a6; // -> (0x30 bytes)
-    le_uint32_t unknown_a7; // -> (0x2D bytes)
-    le_uint32_t unknown_a8; // -> u32[3] -> float[0x2D]
-    le_uint32_t unknown_a9; // -> (0x90 bytes)
-    le_uint32_t unknown_a10; // -> u32[3] -> (0x10-byte struct)[0x0C]
-    le_uint32_t unknown_a11; // -> u32[3] -> (0x30-bytes)
-    le_uint32_t unknown_a12; // -> u32[3] -> (0x14-byte struct)[0x0F]
+    le_uint32_t level_deltas; // (5468) -> u32[9] -> LevelStatsDelta[200]
+    le_uint32_t unknown_a1; // (548C) -> float[6]
+    le_uint32_t max_stats; // (54A4) -> PlayerStats[9]
+    le_uint32_t level_100_stats; // (55E8) -> PlayerStats[9]
+    le_uint32_t base_stats; // (57AC) -> u32[9] -> CharacterStats
+    le_uint32_t unknown_a2; // (57D0) -> (0x120 zero bytes)
+    le_uint32_t attack_data; // (58F0) -> AttackData[9]
+    le_uint32_t unknown_a4; // (5AA0) -> parray<parray<float, 5>, 9>
+    le_uint32_t unknown_a5; // (5B54) -> float[9]
+    le_uint32_t unknown_a6; // (5B78) -> (0x30 bytes)
+    le_uint32_t unknown_a7; // (5BA8) -> (0x2D bytes)
+    le_uint32_t unknown_a8; // (5E00) -> u32[3] -> float[0x2D]
+    le_uint32_t unknown_a9; // (5DF4) -> (0x90 bytes)
+    le_uint32_t unknown_a10; // (60D0) -> u32[3] -> (0x10-byte struct)[0x0C]
+    le_uint32_t unknown_a11; // (616C) -> u32[3] -> (0x30-bytes)
+    le_uint32_t unknown_a12; // (64FC) -> u32[3] -> (0x14-byte struct)[0x0F]
   } __packed_ws__(Offsets, 0x40);
 
   phosg::StringReader r;
@@ -72,7 +72,7 @@ LevelTableV2::LevelTableV2(const string& data, bool compressed) {
       this->level_deltas[char_class][level] = src_level_deltas[level];
     }
     this->max_stats[char_class] = r.pget<PlayerStats>(offsets.max_stats + char_class * sizeof(PlayerStats));
-    this->level_100_stats[char_class] = r.pget<Level100Entry>(offsets.level_100_stats + char_class * sizeof(Level100Entry));
+    this->level_100_stats[char_class] = r.pget<PlayerStats>(offsets.level_100_stats + char_class * sizeof(PlayerStats));
     this->base_stats[char_class] = r.pget<CharacterStats>(base_stats_offsets[char_class]);
   }
 }
@@ -81,7 +81,7 @@ const CharacterStats& LevelTableV2::base_stats_for_class(uint8_t char_class) con
   return this->base_stats.at(char_class);
 }
 
-const LevelTableV2::Level100Entry& LevelTableV2::level_100_stats_for_class(uint8_t char_class) const {
+const PlayerStats& LevelTableV2::level_100_stats_for_class(uint8_t char_class) const {
   return this->level_100_stats.at(char_class);
 }
 
@@ -150,6 +150,26 @@ const CharacterStats& LevelTableV3BE::base_stats_for_class(uint8_t char_class) c
   return data.at(char_class);
 }
 
+static const array<PlayerStats, 12> max_stats_v3_v4 = {
+    //              ATP     MST     EVP      HP     DFP     ATA     LCK      ESP   PRX   PRY  L  E  M
+    PlayerStats{{0x056B, 0x02DC, 0x02F4, 0x0265, 0x0243, 0x054B, 0x0064}, 0x0064, 0.0f, 0.0f, 0, 0, 0},
+    PlayerStats{{0x04CB, 0x0499, 0x032B, 0x0254, 0x024D, 0x056C, 0x0064}, 0x0064, 0.0f, 0.0f, 0, 0, 0},
+    PlayerStats{{0x065D, 0x0000, 0x0294, 0x0379, 0x0259, 0x0514, 0x0064}, 0x0064, 0.0f, 0.0f, 0, 0, 0},
+    PlayerStats{{0x04E7, 0x0299, 0x02CB, 0x02D5, 0x0203, 0x06CB, 0x0064}, 0x0064, 0.0f, 0.0f, 0, 0, 0},
+    PlayerStats{{0x0541, 0x0000, 0x02BB, 0x0430, 0x025E, 0x05FA, 0x0064}, 0x0064, 0.0f, 0.0f, 0, 0, 0},
+    PlayerStats{{0x0492, 0x0000, 0x0313, 0x0439, 0x02B0, 0x062C, 0x0064}, 0x0064, 0.0f, 0.0f, 0, 0, 0},
+    PlayerStats{{0x0365, 0x0504, 0x024C, 0x0302, 0x01F2, 0x0440, 0x0064}, 0x0064, 0.0f, 0.0f, 0, 0, 0},
+    PlayerStats{{0x032B, 0x05DC, 0x02A7, 0x02E3, 0x01CF, 0x04B0, 0x0064}, 0x0064, 0.0f, 0.0f, 0, 0, 0},
+    PlayerStats{{0x0244, 0x06D6, 0x0373, 0x02BE, 0x0186, 0x04EC, 0x0064}, 0x0064, 0.0f, 0.0f, 0, 0, 0},
+    PlayerStats{{0x050B, 0x0000, 0x036D, 0x02EE, 0x020D, 0x05DC, 0x0064}, 0x0064, 0.0f, 0.0f, 0, 0, 0},
+    PlayerStats{{0x03E7, 0x053C, 0x028B, 0x02CC, 0x01D6, 0x03F2, 0x0064}, 0x0064, 0.0f, 0.0f, 0, 0, 0},
+    PlayerStats{{0x0474, 0x0407, 0x0384, 0x02CF, 0x0241, 0x06C2, 0x0064}, 0x0064, 0.0f, 0.0f, 0, 0, 0},
+};
+
+const PlayerStats& LevelTableV3BE::max_stats_for_class(uint8_t char_class) const {
+  return max_stats_v3_v4.at(char_class);
+}
+
 const LevelStatsDelta& LevelTableV3BE::stats_delta_for_level(uint8_t char_class, uint8_t level) const {
   return this->level_deltas.at(char_class).at(level);
 }
@@ -183,6 +203,10 @@ LevelTableV4::LevelTableV4(const string& data, bool compressed) {
 
 const CharacterStats& LevelTableV4::base_stats_for_class(uint8_t char_class) const {
   return this->base_stats.at(char_class);
+}
+
+const PlayerStats& LevelTableV4::max_stats_for_class(uint8_t char_class) const {
+  return max_stats_v3_v4.at(char_class);
 }
 
 const LevelStatsDelta& LevelTableV4::stats_delta_for_level(uint8_t char_class, uint8_t level) const {
