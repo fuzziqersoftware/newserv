@@ -2013,17 +2013,22 @@ Action a_show_ep3_cards(
 
 Action a_generate_ep3_cards_html(
     "generate-ep3-cards-html", "\
-  generate-ep3-cards-html [--ep3-nte] [--threads=N] [--no-images]\n\
+  generate-ep3-cards-html [--ep3-nte] [--compare] [--threads=N] [--no-images]\n\
+      [--no-disassembly]\n\
     Generate an HTML file describing all Episode 3 card definitions from the\n\
     system/ep3 directory. If --ep3-nte is given, use the Trial Edition card\n\
     definitions instead. If --no-images is given, omit the card images.\n",
     +[](phosg::Arguments& args) {
       size_t num_threads = args.get<size_t>("threads", 0);
 
-      bool is_nte = (get_cli_version(args, Version::GC_EP3) == Version::GC_EP3_NTE);
+      bool include_nte = (get_cli_version(args, Version::GC_EP3) == Version::GC_EP3_NTE) || args.get<bool>("compare");
+      bool include_final = (get_cli_version(args, Version::GC_EP3) == Version::GC_EP3) || args.get<bool>("compare");
       bool no_images = args.get<bool>("no-images");
+      bool no_large_images = args.get<bool>("no-large-images");
+      bool no_disassembly = args.get<bool>("no-disassembly");
 
       auto s = make_shared<ServerState>(get_config_filename(args));
+      s->clear_file_caches(false);
       s->load_patch_indexes(false);
       s->load_text_index(false);
       s->load_ep3_cards(false);
@@ -2034,148 +2039,221 @@ Action a_generate_ep3_cards_html(
       } catch (const out_of_range&) {
       }
 
-      struct CardInfo {
-        shared_ptr<const Episode3::CardIndex::CardEntry> ce;
-        string small_filename;
-        string medium_filename;
-        string large_filename;
-        string small_data_url;
-        string medium_data_url;
-        string large_data_url;
+      struct VersionInfo {
+        struct CardInfo {
+          shared_ptr<const Episode3::CardIndex::CardEntry> ce;
+          string small_filename;
+          string medium_filename;
+          string large_filename;
+          string small_data_url;
+          string medium_data_url;
+          string large_data_url;
 
-        bool is_empty() const {
-          return (this->ce == nullptr) && this->small_data_url.empty() && this->medium_data_url.empty() && this->large_data_url.empty();
+          bool is_empty() const {
+            return (this->ce == nullptr) && this->small_data_url.empty() && this->medium_data_url.empty() && this->large_data_url.empty();
+          }
+        };
+
+        const char* name;
+        vector<CardInfo> card_infos;
+        bool show_large_column = false;
+        bool show_medium_column = false;
+        bool show_small_column = false;
+        size_t num_output_columns = 2;
+
+        VersionInfo(
+            const char* name,
+            shared_ptr<const Episode3::CardIndex> card_index,
+            const char* cardtex_directory,
+            bool no_large_images,
+            size_t num_threads,
+            bool no_disassembly)
+            : name(name) {
+          for (uint32_t card_id : card_index->all_ids()) {
+            if (this->card_infos.size() <= card_id) {
+              this->card_infos.resize(card_id + 1);
+            }
+            this->card_infos[card_id].ce = card_index->definition_for_id(card_id);
+          }
+
+          if (cardtex_directory) {
+            for (const auto& filename : phosg::list_directory_sorted(cardtex_directory)) {
+              if ((filename[0] == 'C' || filename[0] == 'M' || filename[0] == 'L') && (filename[1] == '_')) {
+                size_t card_id = stoull(filename.substr(2, 3), nullptr, 10);
+                if (this->card_infos.size() <= card_id) {
+                  this->card_infos.resize(card_id + 1);
+                }
+                auto& info = this->card_infos[card_id];
+                if (filename[0] == 'C' && !no_large_images) {
+                  info.large_filename = string(cardtex_directory) + "/" + filename;
+                  this->show_large_column = true;
+                } else if (filename[0] == 'L') {
+                  info.medium_filename = string(cardtex_directory) + "/" + filename;
+                  this->show_medium_column = true;
+                } else if (filename[0] == 'M') {
+                  info.small_filename = string(cardtex_directory) + "/" + filename;
+                  this->show_small_column = true;
+                }
+              }
+            }
+
+            phosg::parallel_range<uint32_t>([&](uint32_t index, size_t) -> bool {
+              auto& info = this->card_infos[index];
+              if (!info.large_filename.empty()) {
+                phosg::Image img(info.large_filename);
+                phosg::Image cropped(512, 399);
+                cropped.blit(img, 0, 0, 512, 399, 0, 0);
+                info.large_data_url = cropped.png_data_url();
+              }
+              if (!info.medium_filename.empty()) {
+                phosg::Image img(info.medium_filename);
+                phosg::Image cropped(184, 144);
+                cropped.blit(img, 0, 0, 184, 144, 0, 0);
+                info.medium_data_url = cropped.png_data_url();
+              }
+              if (!info.small_filename.empty()) {
+                phosg::Image img(info.small_filename);
+                phosg::Image cropped(58, 43);
+                cropped.blit(img, 0, 0, 58, 43, 0, 0);
+                info.small_data_url = cropped.png_data_url();
+              }
+              return false;
+            },
+                0, this->card_infos.size(), num_threads);
+          }
+
+          this->num_output_columns = 1 + (!no_disassembly) + this->show_small_column + this->show_medium_column + this->show_large_column;
+        }
+
+        const CardInfo* get_entry(size_t card_id) const {
+          if (card_id >= this->card_infos.size()) {
+            return nullptr;
+          }
+          const auto* entry = &this->card_infos[card_id];
+          return entry->is_empty() ? nullptr : entry;
         }
       };
-      auto card_index = is_nte ? s->ep3_card_index_trial : s->ep3_card_index;
-      vector<CardInfo> infos;
-      for (uint32_t card_id : card_index->all_ids()) {
-        if (infos.size() <= card_id) {
-          infos.resize(card_id + 1);
-        }
-        infos[card_id].ce = card_index->definition_for_id(card_id);
-      }
-      bool show_large_column = false;
-      bool show_medium_column = false;
-      bool show_small_column = false;
-      if (!no_images) {
-        for (const auto& filename : phosg::list_directory_sorted("system/ep3/cardtex")) {
-          if ((filename[0] == 'C' || filename[0] == 'M' || filename[0] == 'L') && (filename[1] == '_')) {
-            size_t card_id = stoull(filename.substr(2, 3), nullptr, 10);
-            if (infos.size() <= card_id) {
-              infos.resize(card_id + 1);
-            }
-            auto& info = infos[card_id];
-            if (filename[0] == 'C') {
-              info.large_filename = "system/ep3/cardtex/" + filename;
-              show_large_column = true;
-            } else if (filename[0] == 'L') {
-              info.medium_filename = "system/ep3/cardtex/" + filename;
-              show_medium_column = true;
-            } else if (filename[0] == 'M') {
-              info.small_filename = "system/ep3/cardtex/" + filename;
-              show_small_column = true;
-            }
-          }
-        }
-      }
 
-      phosg::parallel_range<uint32_t>([&](uint32_t index, size_t) -> bool {
-        auto& info = infos[index];
-        if (!info.large_filename.empty()) {
-          phosg::Image img(info.large_filename);
-          phosg::Image cropped(512, 399);
-          cropped.blit(img, 0, 0, 512, 399, 0, 0);
-          info.large_data_url = cropped.png_data_url();
-        }
-        if (!info.medium_filename.empty()) {
-          phosg::Image img(info.medium_filename);
-          phosg::Image cropped(184, 144);
-          cropped.blit(img, 0, 0, 184, 144, 0, 0);
-          info.medium_data_url = cropped.png_data_url();
-        }
-        if (!info.small_filename.empty()) {
-          phosg::Image img(info.small_filename);
-          phosg::Image cropped(58, 43);
-          cropped.blit(img, 0, 0, 58, 43, 0, 0);
-          info.small_data_url = cropped.png_data_url();
-        }
-        return false;
-      },
-          0, infos.size(), num_threads);
+      vector<VersionInfo> version_infos;
+      if (include_nte) {
+        version_infos.emplace_back("NTE", s->ep3_card_index_trial, no_images ? nullptr : "system/ep3/cardtex-trial", no_large_images, num_threads, no_disassembly);
+      }
+      if (include_final) {
+        version_infos.emplace_back("Final", s->ep3_card_index, no_images ? nullptr : "system/ep3/cardtex", no_large_images, num_threads, no_disassembly);
+      }
 
       deque<string> blocks;
       blocks.emplace_back("<html><head><title>Phantasy Star Online Episode III cards</title></head><body style=\"background-color:#222222; color: #EEEEEE\">");
       blocks.emplace_back("<table><tr><th style=\"text-align: left\">Legend:</th></tr><tr style=\"background-color: #663333\"><td>Card has no definition and is obviously incomplete</td></tr><tr style=\"background-color: #336633\"><td>Card is unobtainable in random draws but may be a quest or event reward</td></tr><tr style=\"background-color: #333333\"><td>Card is obtainable in random draws</td></tr></table><br /><br />");
-      blocks.emplace_back("<table><tr><th style=\"text-align: left; padding: 4px\">ID</th>");
-      if (show_small_column) {
-        blocks.emplace_back("<th style=\"text-align: left; padding: 4px\">Small</th>");
+      blocks.emplace_back("<table><tr><th rowspan=\"2\" style=\"text-align: left; padding: 4px\">ID</th>");
+
+      for (const auto& vi : version_infos) {
+        blocks.emplace_back(phosg::string_printf("<th colspan=\"%zu\" style=\"text-align: left; padding: 4px\">%s</th>",
+            vi.num_output_columns, vi.name));
       }
-      if (show_medium_column) {
-        blocks.emplace_back("<th style=\"text-align: left; padding: 4px\">Medium</th>");
+      blocks.emplace_back("</tr><tr>");
+      for (const auto& vi : version_infos) {
+        if (vi.show_small_column) {
+          blocks.emplace_back("<th style=\"text-align: left; padding: 4px\">Small</th>");
+        }
+        if (vi.show_medium_column) {
+          blocks.emplace_back("<th style=\"text-align: left; padding: 4px\">Medium</th>");
+        }
+        if (vi.show_large_column) {
+          blocks.emplace_back("<th style=\"text-align: left; padding: 4px\">Large</th>");
+        }
+        blocks.emplace_back("<th style=\"text-align: left; padding: 4px\">Text</th><th style=\"text-align: left; padding: 4px\">Disassembly</th>");
       }
-      if (show_large_column) {
-        blocks.emplace_back("<th style=\"text-align: left; padding: 4px\">Large</th>");
+      blocks.emplace_back("</tr>");
+
+      size_t num_infos = 0;
+      for (const auto& vi : version_infos) {
+        num_infos = std::max<size_t>(num_infos, vi.card_infos.size());
       }
-      blocks.emplace_back("<th style=\"text-align: left; padding: 4px\">Text</th><th style=\"text-align: left; padding: 4px\">Disassembly</th></tr>");
-      for (size_t card_id = 0; card_id < infos.size(); card_id++) {
-        const auto& entry = infos[card_id];
-        if (entry.is_empty()) {
+
+      for (size_t card_id = 0; card_id < num_infos; card_id++) {
+        bool any_vi_has_entry = false;
+        for (const auto& vi : version_infos) {
+          if (vi.get_entry(card_id)) {
+            any_vi_has_entry = true;
+            break;
+          }
+        }
+        if (!any_vi_has_entry) {
           continue;
         }
 
-        const char* background_color;
-        if (!entry.ce) {
-          background_color = "#663333";
-        } else if (entry.ce->def.cannot_drop ||
-            ((entry.ce->def.rank == Episode3::CardRank::D1) || (entry.ce->def.rank == Episode3::CardRank::D2) || (entry.ce->def.rank == Episode3::CardRank::D3)) ||
-            ((entry.ce->def.card_class() == Episode3::CardClass::BOSS_ATTACK_ACTION) || (entry.ce->def.card_class() == Episode3::CardClass::BOSS_TECH)) ||
-            ((entry.ce->def.drop_rates[0] == 6) && (entry.ce->def.drop_rates[1] == 6))) {
-          background_color = "#336633";
-        } else {
-          background_color = "#333333";
-        }
+        blocks.emplace_back(phosg::string_printf("<tr><td style=\"padding: 4px; vertical-align: top\"><pre>%04zX</pre></td>", card_id));
 
-        blocks.emplace_back(phosg::string_printf("<tr style=\"background-color: %s\">", background_color));
-        blocks.emplace_back(phosg::string_printf("<td style=\"padding: 4px; vertical-align: top\"><pre>%04zX</pre></td>", card_id));
-        if (show_small_column) {
-          blocks.emplace_back("<td style=\"padding: 4px; vertical-align: top\">");
-          if (!entry.small_data_url.empty()) {
-            blocks.emplace_back("<img src=\"");
-            blocks.emplace_back(std::move(entry.small_data_url));
-            blocks.emplace_back("\" />");
+        for (const auto& vi : version_infos) {
+          const VersionInfo::CardInfo* entry = vi.get_entry(card_id);
+          if (!entry) {
+            blocks.emplace_back(phosg::string_printf("<td colspan=\"%zu\" style=\"padding: 4px; vertical-align: top\"><pre>No entry</pre></td>",
+                vi.num_output_columns));
+            continue;
           }
-          blocks.emplace_back("</td>");
-        }
-        if (show_medium_column) {
-          blocks.emplace_back("<td style=\"padding: 4px; vertical-align: top\">");
-          if (!entry.medium_data_url.empty()) {
-            blocks.emplace_back("<img src=\"");
-            blocks.emplace_back(std::move(entry.medium_data_url));
-            blocks.emplace_back("\" />");
+
+          const char* background_color;
+          if (!entry->ce) {
+            background_color = "#663333";
+          } else if (entry->ce->def.cannot_drop ||
+              ((entry->ce->def.rank == Episode3::CardRank::D1) || (entry->ce->def.rank == Episode3::CardRank::D2) || (entry->ce->def.rank == Episode3::CardRank::D3)) ||
+              ((entry->ce->def.card_class() == Episode3::CardClass::BOSS_ATTACK_ACTION) || (entry->ce->def.card_class() == Episode3::CardClass::BOSS_TECH)) ||
+              ((entry->ce->def.drop_rates[0] == 6) && (entry->ce->def.drop_rates[1] == 6))) {
+            background_color = "#336633";
+          } else {
+            background_color = "#333333";
           }
-          blocks.emplace_back("</td>");
-        }
-        if (show_large_column) {
-          blocks.emplace_back("<td style=\"padding: 4px; vertical-align: top\">");
-          if (!entry.large_data_url.empty()) {
-            blocks.emplace_back("<img src=\"");
-            blocks.emplace_back(std::move(entry.large_data_url));
-            blocks.emplace_back("\" />");
+
+          string td_tag = phosg::string_printf("<td style=\"padding: 4px; vertical-align: top; background-color: %s\">", background_color);
+          if (vi.show_small_column) {
+            blocks.emplace_back(td_tag);
+            if (!entry->small_data_url.empty()) {
+              blocks.emplace_back("<img src=\"");
+              blocks.emplace_back(std::move(entry->small_data_url));
+              blocks.emplace_back("\" />");
+            }
+            blocks.emplace_back("</td>");
           }
-          blocks.emplace_back("</td>");
+          if (vi.show_medium_column) {
+            blocks.emplace_back(td_tag);
+            if (!entry->medium_data_url.empty()) {
+              blocks.emplace_back("<img src=\"");
+              blocks.emplace_back(std::move(entry->medium_data_url));
+              blocks.emplace_back("\" />");
+            }
+            blocks.emplace_back("</td>");
+          }
+          if (vi.show_large_column) {
+            blocks.emplace_back(td_tag);
+            if (!entry->large_data_url.empty()) {
+              blocks.emplace_back("<img src=\"");
+              blocks.emplace_back(std::move(entry->large_data_url));
+              blocks.emplace_back("\" />");
+            }
+            blocks.emplace_back("</td>");
+          }
+          blocks.emplace_back(td_tag);
+          if (entry->ce) {
+            blocks.emplace_back("<pre>");
+            blocks.emplace_back(entry->ce->text);
+            blocks.emplace_back("</pre></td>");
+            if (!no_disassembly) {
+              blocks.emplace_back(td_tag);
+              blocks.emplace_back("<pre>");
+              blocks.emplace_back(entry->ce->def.str(false, text_english.get()));
+              blocks.emplace_back("</pre></td>");
+            }
+          } else {
+            blocks.emplace_back("</td>");
+            if (!no_disassembly) {
+              blocks.emplace_back(td_tag);
+              blocks.emplace_back("<pre>Definition is missing</pre>");
+              blocks.emplace_back("</td>");
+            }
+          }
         }
-        blocks.emplace_back("<td style=\"padding: 4px; vertical-align: top\">");
-        if (entry.ce) {
-          blocks.emplace_back("<pre>");
-          blocks.emplace_back(entry.ce->text);
-          blocks.emplace_back("</pre></td><td style=\"padding: 4px; vertical-align: top\"><pre>");
-          blocks.emplace_back(entry.ce->def.str(false, text_english.get()));
-          blocks.emplace_back("</pre>");
-        } else {
-          blocks.emplace_back("</td><td style=\"padding: 4px; vertical-align: top\"><pre>Definition is missing</pre>");
-        }
-        blocks.emplace_back("</td></tr>");
+        blocks.emplace_back("</tr>");
       }
       blocks.emplace_back("</table></body></html>");
 

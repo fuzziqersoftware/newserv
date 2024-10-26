@@ -1413,7 +1413,9 @@ struct MapDefinition { // .mnmd format; also the format of (decompressed) quests
   /* 59DC */ uint8_t map_category;
 
   // This field determines block graphics to be used in the Cyber environment.
-  // There are 10 block types (0-9); if this value is > 9, type 0 is used.
+  // There are 10 block types (0-9); if this value is > 9, type 0 is used. This
+  // field has no effect in Ep3 NTE, even though there are 6 different block
+  // texture files on the NTE disc.
   /* 59DD */ uint8_t cyber_block_type;
 
   /* 59DE */ be_uint16_t unknown_a11;

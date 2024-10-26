@@ -975,9 +975,25 @@ string CardDefinition::str(bool single_line, const TextSet* text_archive) const 
         }
       }
     }
+    string jp_name_s = this->jp_name.decode();
+    string en_name_short_s = this->en_short_name.decode();
+    string jp_name_short_s = this->jp_short_name.decode();
+    string names_str;
+    if (!en_name_s.empty()) {
+      names_str += phosg::string_printf(" EN: \"%s\"", en_name_s.c_str());
+      if (!en_name_short_s.empty() && en_name_short_s != en_name_s) {
+        names_str += phosg::string_printf(" (Abr. \"%s\")", en_name_short_s.c_str());
+      }
+    }
+    if (!jp_name_s.empty()) {
+      names_str += phosg::string_printf(" JP: \"%s\"", jp_name_s.c_str());
+      if (!jp_name_short_s.empty() && jp_name_short_s != jp_name_s) {
+        names_str += phosg::string_printf(" (Abr. \"%s\")", jp_name_short_s.c_str());
+      }
+    }
     return phosg::string_printf(
         "\
-Card: %04" PRIX32 " \"%s\"\n\
+Card: %04" PRIX32 "%s\n\
   Type: %s, class: %s\n\
   Usability condition: %s\n\
   Rank: %s\n\
@@ -998,7 +1014,7 @@ Card: %04" PRIX32 " \"%s\"\n\
     %s\n\
   Effects:%s",
         this->card_id.load(),
-        en_name_s.c_str(),
+        names_str.c_str(),
         type_str.c_str(),
         card_class_str.c_str(),
         criterion_str.c_str(),
@@ -2590,12 +2606,15 @@ MapIndex::VersionedMap::VersionedMap(std::string&& compressed_data, uint8_t lang
     : language(language),
       compressed_data(std::move(compressed_data)) {
   string decompressed = prs_decompress(this->compressed_data);
-  if (decompressed.size() != sizeof(MapDefinition)) {
+  if (decompressed.size() == sizeof(MapDefinitionTrial)) {
+    this->map = make_shared<MapDefinition>(*reinterpret_cast<const MapDefinitionTrial*>(decompressed.data()));
+  } else if (decompressed.size() == sizeof(MapDefinition)) {
+    this->map = make_shared<MapDefinition>(*reinterpret_cast<const MapDefinition*>(decompressed.data()));
+  } else {
     throw runtime_error(phosg::string_printf(
         "decompressed data size is incorrect (expected %zu bytes, read %zu bytes)",
         sizeof(MapDefinition), decompressed.size()));
   }
-  this->map = make_shared<MapDefinition>(*reinterpret_cast<const MapDefinition*>(decompressed.data()));
 }
 
 shared_ptr<const MapDefinitionTrial> MapIndex::VersionedMap::trial() const {
