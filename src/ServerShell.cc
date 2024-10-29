@@ -1191,6 +1191,10 @@ CommandDefinition c_close_idle_sessions(
     "close-idle-sessions", "close-idle-sessions\n\
     Close all proxy sessions that don\'t have a client and server connected.",
     true, +[](CommandArgs& args) {
-      size_t count = args.s->proxy_server->delete_disconnected_sessions();
-      fprintf(stderr, "%zu sessions closed\n", count);
+      if (args.s->proxy_server) {
+        size_t count = args.s->proxy_server->delete_disconnected_sessions();
+        fprintf(stderr, "%zu sessions closed\n", count);
+      } else {
+        throw runtime_error("the proxy server is disabled");
+      }
     });

@@ -107,12 +107,20 @@ static void check_is_leader(shared_ptr<Lobby> l, shared_ptr<Client> c) {
 static void server_command_server_info(shared_ptr<Client> c, const std::string&) {
   auto s = c->require_server_state();
   string uptime_str = phosg::format_duration(phosg::now() - s->creation_time);
-  send_text_message_printf(c,
-      "Uptime: $C6%s$C7\nLobbies: $C6%zu$C7\nClients: $C6%zu$C7(g) $C6%zu$C7(p)",
-      uptime_str.c_str(),
-      s->id_to_lobby.size(),
-      s->channel_to_client.size(),
-      s->proxy_server->num_sessions());
+  if (s->proxy_server) {
+    send_text_message_printf(c,
+        "Uptime: $C6%s$C7\nLobbies: $C6%zu$C7\nClients: $C6%zu$C7(g) $C6%zu$C7(p)",
+        uptime_str.c_str(),
+        s->id_to_lobby.size(),
+        s->channel_to_client.size(),
+        s->proxy_server->num_sessions());
+  } else {
+    send_text_message_printf(c,
+        "Uptime: $C6%s$C7\nLobbies: $C6%zu$C7\nClients: $C6%zu",
+        uptime_str.c_str(),
+        s->id_to_lobby.size(),
+        s->channel_to_client.size());
+  }
 }
 
 static void server_command_lobby_info(shared_ptr<Client> c, const std::string&) {

@@ -234,6 +234,11 @@ void send_client_to_lobby_server(shared_ptr<Client> c) {
 }
 
 void send_client_to_proxy_server(shared_ptr<Client> c) {
+  auto s = c->require_server_state();
+  if (!s->proxy_server) {
+    throw logic_error("send_client_to_proxy_server called without proxy server present");
+  }
+
   send_first_pre_lobby_commands(c, [wc = weak_ptr(c)]() {
     auto c = wc.lock();
     if (!c) {

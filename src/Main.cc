@@ -2918,25 +2918,24 @@ Action a_run_server_replay_log(
               config_log.info("Starting proxy server");
               state->proxy_server = make_shared<ProxyServer>(base, state);
             }
-            if (state->proxy_server.get()) {
-              // For PC and GC, proxy sessions are dynamically created when a client
-              // picks a destination from the menu. For patch and BB clients, there's
-              // no way to ask the client which destination they want, so only one
-              // destination is supported, and we have to manually specify the
-              // destination netloc here.
-              if (is_patch(pc->version)) {
-                auto [ss, size] = phosg::make_sockaddr_storage(
-                    state->proxy_destination_patch.first,
-                    state->proxy_destination_patch.second);
-                state->proxy_server->listen(pc->addr, pc->port, pc->version, &ss);
-              } else if (is_v4(pc->version)) {
-                auto [ss, size] = phosg::make_sockaddr_storage(
-                    state->proxy_destination_bb.first,
-                    state->proxy_destination_bb.second);
-                state->proxy_server->listen(pc->addr, pc->port, pc->version, &ss);
-              } else {
-                state->proxy_server->listen(pc->addr, pc->port, pc->version);
-              }
+
+            // For PC and GC, proxy sessions are dynamically created when a client
+            // picks a destination from the menu. For patch and BB clients, there's
+            // no way to ask the client which destination they want, so only one
+            // destination is supported, and we have to manually specify the
+            // destination netloc here.
+            if (is_patch(pc->version)) {
+              auto [ss, size] = phosg::make_sockaddr_storage(
+                  state->proxy_destination_patch.first,
+                  state->proxy_destination_patch.second);
+              state->proxy_server->listen(pc->addr, pc->port, pc->version, &ss);
+            } else if (is_v4(pc->version)) {
+              auto [ss, size] = phosg::make_sockaddr_storage(
+                  state->proxy_destination_bb.first,
+                  state->proxy_destination_bb.second);
+              state->proxy_server->listen(pc->addr, pc->port, pc->version, &ss);
+            } else {
+              state->proxy_server->listen(pc->addr, pc->port, pc->version);
             }
 
           } else if (pc->behavior == ServerBehavior::PATCH_SERVER_PC) {
