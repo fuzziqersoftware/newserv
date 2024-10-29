@@ -212,7 +212,9 @@ ItemCreator::DropResult ItemCreator::on_box_item_drop_with_area_norm(uint8_t are
 }
 
 ItemCreator::DropResult ItemCreator::on_monster_item_drop_with_area_norm(uint32_t enemy_type, uint8_t area_norm) {
-  if (enemy_type > 0x58) {
+  // Note: THe original GC implementation uses (enemy_type > 0x58) here; we
+  // extend it to the full array size for BB
+  if (enemy_type >= 0x64) {
     this->log.warning("Invalid enemy type: %" PRIX32, enemy_type);
     return DropResult();
   }
