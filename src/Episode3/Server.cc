@@ -376,8 +376,7 @@ void Server::send_debug_command_received_message(uint8_t subsubcommand, const ch
   this->send_debug_message_printf("$C5*/CAx%02hhX %s", subsubcommand, description);
 }
 
-void Server::send_debug_message_if_error_code_nonzero(
-    uint8_t client_id, int32_t error_code) const {
+void Server::send_debug_message_if_error_code_nonzero(uint8_t client_id, int32_t error_code) const {
   if (error_code < 0) {
     this->send_debug_message_printf("$C4%hhu/ERROR -0x%zX", client_id, static_cast<ssize_t>(-error_code));
   } else if (error_code > 0) {
@@ -393,8 +392,7 @@ void Server::add_team_exp(uint8_t team_id, int32_t exp) {
     }
   }
 
-  this->team_exp[team_id] = clamp<int16_t>(
-      this->team_exp[team_id] + exp, 0, this->team_client_count[team_id] * 96);
+  this->team_exp[team_id] = clamp<int16_t>(this->team_exp[team_id] + exp, 0, this->team_client_count[team_id] * 96);
 
   uint8_t dice_boost = this->team_exp[team_id] / (this->team_client_count[team_id] * 12);
   this->card_special->adjust_dice_boost_if_team_has_condition_52(team_id, &dice_boost, 0);
@@ -476,29 +474,7 @@ shared_ptr<Card> Server::card_for_set_card_ref(uint16_t card_ref) {
 }
 
 shared_ptr<const Card> Server::card_for_set_card_ref(uint16_t card_ref) const {
-  // TODO: It'd be nice to deduplicate this function with the non-const version.
-  if (card_ref == 0xFFFF) {
-    return nullptr;
-  }
-  uint8_t client_id = client_id_for_card_ref(card_ref);
-  if (client_id == 0xFF) {
-    return nullptr;
-  }
-  auto ps = this->player_states.at(client_id);
-  if (!ps) {
-    return nullptr;
-  }
-  auto card = ps->get_sc_card();
-  if (card && (card->get_card_ref() == card_ref)) {
-    return card;
-  }
-  for (size_t set_index = 0; set_index < 8; set_index++) {
-    card = ps->get_set_card(set_index);
-    if (card && (card->get_card_ref() == card_ref)) {
-      return card;
-    }
-  }
-  return nullptr;
+  return const_cast<Server*>(this)->card_for_set_card_ref(card_ref);
 }
 
 uint16_t Server::card_id_for_card_ref(uint16_t card_ref) const {
@@ -1861,8 +1837,7 @@ void Server::on_server_data_input(shared_ptr<Client> sender_c, const string& dat
 
 void Server::handle_CAx0B_mulligan_hand(shared_ptr<Client>, const string& data) {
   const auto& in_cmd = check_size_t<G_RedrawInitialHand_Ep3_CAx0B>(data);
-  this->send_debug_command_received_message(
-      in_cmd.client_id, in_cmd.header.subsubcommand, "REDRAW");
+  this->send_debug_command_received_message(in_cmd.client_id, in_cmd.header.subsubcommand, "REDRAW");
   if (in_cmd.client_id >= 4) {
     throw runtime_error("invalid client ID");
   }
@@ -1894,8 +1869,7 @@ void Server::handle_CAx0B_mulligan_hand(shared_ptr<Client>, const string& data) 
 
 void Server::handle_CAx0C_end_mulligan_phase(shared_ptr<Client>, const string& data) {
   const auto& in_cmd = check_size_t<G_EndInitialRedrawPhase_Ep3_CAx0C>(data);
-  this->send_debug_command_received_message(
-      in_cmd.client_id, in_cmd.header.subsubcommand, "SETUP ADV 2");
+  this->send_debug_command_received_message(in_cmd.client_id, in_cmd.header.subsubcommand, "SETUP ADV 2");
   if (in_cmd.client_id >= 4) {
     throw runtime_error("invalid client ID");
   }
@@ -1976,8 +1950,7 @@ void Server::handle_CAx0D_end_non_action_phase(shared_ptr<Client>, const string&
 
 void Server::handle_CAx0E_discard_card_from_hand(shared_ptr<Client>, const string& data) {
   const auto& in_cmd = check_size_t<G_DiscardCardFromHand_Ep3_CAx0E>(data);
-  this->send_debug_command_received_message(
-      in_cmd.client_id, in_cmd.header.subsubcommand, "DISCARD");
+  this->send_debug_command_received_message(in_cmd.client_id, in_cmd.header.subsubcommand, "DISCARD");
   if (in_cmd.client_id >= 4) {
     throw runtime_error("invalid client ID");
   }
@@ -2062,8 +2035,7 @@ void Server::handle_CAx0F_set_card_from_hand(shared_ptr<Client>, const string& d
 
 void Server::handle_CAx10_move_fc_to_location(shared_ptr<Client>, const string& data) {
   const auto& in_cmd = check_size_t<G_MoveFieldCharacter_Ep3_CAx10>(data);
-  this->send_debug_command_received_message(
-      in_cmd.client_id, in_cmd.header.subsubcommand, "MOVE");
+  this->send_debug_command_received_message(in_cmd.client_id, in_cmd.header.subsubcommand, "MOVE");
   if (in_cmd.client_id >= 4) {
     throw runtime_error("invalid client ID");
   }
@@ -2103,8 +2075,7 @@ void Server::handle_CAx10_move_fc_to_location(shared_ptr<Client>, const string& 
 
 void Server::handle_CAx11_enqueue_attack_or_defense(shared_ptr<Client>, const string& data) {
   const auto& in_cmd = check_size_t<G_EnqueueAttackOrDefense_Ep3_CAx11>(data);
-  this->send_debug_command_received_message(
-      in_cmd.client_id, in_cmd.header.subsubcommand, "ENQUEUE ACT");
+  this->send_debug_command_received_message(in_cmd.client_id, in_cmd.header.subsubcommand, "ENQUEUE ACT");
   if (in_cmd.client_id >= 4) {
     throw runtime_error("invalid client ID");
   }
@@ -2142,8 +2113,7 @@ void Server::handle_CAx11_enqueue_attack_or_defense(shared_ptr<Client>, const st
 
 void Server::handle_CAx12_end_attack_list(shared_ptr<Client>, const string& data) {
   const auto& in_cmd = check_size_t<G_EndAttackList_Ep3_CAx12>(data);
-  this->send_debug_command_received_message(
-      in_cmd.client_id, in_cmd.header.subsubcommand, "END ATK LIST");
+  this->send_debug_command_received_message(in_cmd.client_id, in_cmd.header.subsubcommand, "END ATK LIST");
   if (in_cmd.client_id >= 4) {
     throw runtime_error("invalid client ID");
   }
@@ -2238,8 +2208,7 @@ void Server::handle_CAx13_update_map_during_setup(shared_ptr<Client> c, const st
 
 void Server::handle_CAx14_update_deck_during_setup(shared_ptr<Client>, const string& data) {
   const auto& in_cmd = check_size_t<G_SetPlayerDeck_Ep3_CAx14>(data);
-  this->send_debug_command_received_message(
-      in_cmd.client_id, in_cmd.header.subsubcommand, "UPDATE DECK");
+  this->send_debug_command_received_message(in_cmd.client_id, in_cmd.header.subsubcommand, "UPDATE DECK");
 
   if (!this->battle_in_progress) {
     if ((this->setup_phase == SetupPhase::REGISTRATION) &&
@@ -2285,8 +2254,7 @@ void Server::handle_CAx14_update_deck_during_setup(shared_ptr<Client>, const str
 
 void Server::handle_CAx15_unused_hard_reset_server_state(shared_ptr<Client>, const string& data) {
   const auto& in_cmd = check_size_t<G_HardResetServerState_Ep3_CAx15>(data);
-  this->send_debug_command_received_message(
-      in_cmd.header.subsubcommand, "HARD RESET");
+  this->send_debug_command_received_message(in_cmd.header.subsubcommand, "HARD RESET");
 
   // In the original implementation, this command recreates the server object.
   // This is possible because the dispatch function is not part of the server
@@ -2303,8 +2271,7 @@ void Server::handle_CAx15_unused_hard_reset_server_state(shared_ptr<Client>, con
 
 void Server::handle_CAx1B_update_player_name(shared_ptr<Client>, const string& data) {
   const auto& in_cmd = check_size_t<G_SetPlayerName_Ep3_CAx1B>(data);
-  this->send_debug_command_received_message(
-      in_cmd.entry.client_id, in_cmd.header.subsubcommand, "UPDATE NAME");
+  this->send_debug_command_received_message(in_cmd.entry.client_id, in_cmd.header.subsubcommand, "UPDATE NAME");
 
   if (in_cmd.entry.client_id < 4) {
     if (!this->is_registration_complete()) {
@@ -2335,8 +2302,7 @@ void Server::handle_CAx1B_update_player_name(shared_ptr<Client>, const string& d
 
 void Server::handle_CAx1D_start_battle(shared_ptr<Client>, const string& data) {
   const auto& in_cmd = check_size_t<G_StartBattle_Ep3_CAx1D>(data);
-  this->send_debug_command_received_message(
-      in_cmd.header.subsubcommand, "START BATTLE");
+  this->send_debug_command_received_message(in_cmd.header.subsubcommand, "START BATTLE");
 
   if (!this->battle_in_progress) {
     bool is_nte = this->options.is_nte();
@@ -2382,8 +2348,7 @@ void Server::handle_CAx1D_start_battle(shared_ptr<Client>, const string& data) {
 
 void Server::handle_CAx21_end_battle(shared_ptr<Client>, const string& data) {
   const auto& in_cmd = check_size_t<G_EndBattle_Ep3_CAx21>(data);
-  this->send_debug_command_received_message(
-      in_cmd.header.subsubcommand, "END BATTLE");
+  this->send_debug_command_received_message(in_cmd.header.subsubcommand, "END BATTLE");
   if (this->setup_phase == SetupPhase::BATTLE_ENDED) {
     this->battle_finished = true;
 
@@ -2397,8 +2362,7 @@ void Server::handle_CAx21_end_battle(shared_ptr<Client>, const string& data) {
 
 void Server::handle_CAx28_end_defense_list(shared_ptr<Client>, const string& data) {
   const auto& in_cmd = check_size_t<G_EndDefenseList_Ep3_CAx28>(data);
-  this->send_debug_command_received_message(
-      in_cmd.client_id, in_cmd.header.subsubcommand, "END DEF LIST");
+  this->send_debug_command_received_message(in_cmd.client_id, in_cmd.header.subsubcommand, "END DEF LIST");
   if (in_cmd.client_id >= 4) {
     throw runtime_error("invalid client ID");
   }
@@ -2458,8 +2422,7 @@ void Server::handle_CAx34_subtract_ally_atk_points(shared_ptr<Client>, const str
   const auto& in_cmd = check_size_t<G_PhotonBlastRequest_Ep3_CAx34>(data);
 
   uint8_t card_ref_client_id = client_id_for_card_ref(in_cmd.card_ref);
-  this->send_debug_command_received_message(
-      card_ref_client_id, in_cmd.header.subsubcommand, "SUB ALLY ATK");
+  this->send_debug_command_received_message(card_ref_client_id, in_cmd.header.subsubcommand, "SUB ALLY ATK");
 
   if (card_ref_client_id >= 4) {
     return;
@@ -2532,8 +2495,7 @@ void Server::handle_CAx34_subtract_ally_atk_points(shared_ptr<Client>, const str
 
 void Server::handle_CAx37_client_ready_to_advance_from_starter_roll_phase(shared_ptr<Client>, const string& data) {
   const auto& in_cmd = check_size_t<G_AdvanceFromStartingRollsPhase_Ep3_CAx37>(data);
-  this->send_debug_command_received_message(
-      in_cmd.client_id, in_cmd.header.subsubcommand, "SETUP ADV 1");
+  this->send_debug_command_received_message(in_cmd.client_id, in_cmd.header.subsubcommand, "SETUP ADV 1");
   if (in_cmd.client_id >= 4) {
     throw runtime_error("invalid client ID");
   }
@@ -2653,8 +2615,7 @@ void Server::handle_CAx41_map_request(shared_ptr<Client>, const string& data) {
 
 void Server::handle_CAx48_end_turn(shared_ptr<Client>, const string& data) {
   const auto& in_cmd = check_size_t<G_EndTurn_Ep3_CAx48>(data);
-  this->send_debug_command_received_message(
-      in_cmd.client_id, in_cmd.header.subsubcommand, "END TURN");
+  this->send_debug_command_received_message(in_cmd.client_id, in_cmd.header.subsubcommand, "END TURN");
   if (in_cmd.client_id >= 4) {
     throw runtime_error("invalid client ID");
   }
@@ -2671,8 +2632,7 @@ void Server::handle_CAx48_end_turn(shared_ptr<Client>, const string& data) {
 
 void Server::handle_CAx49_card_counts(shared_ptr<Client>, const string& data) {
   const auto& in_cmd = check_size_t<G_CardCounts_Ep3_CAx49>(data);
-  this->send_debug_command_received_message(
-      in_cmd.header.sender_client_id, in_cmd.header.subsubcommand, "CARD COUNTS");
+  this->send_debug_command_received_message(in_cmd.header.sender_client_id, in_cmd.header.subsubcommand, "CARD COUNTS");
 
   // Note: Sega's implmentation completely ignores this command. This
   // implementation is not based on the original code.

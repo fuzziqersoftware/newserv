@@ -558,7 +558,7 @@ void ItemCreator::clear_item_if_restricted(ItemData& item) const {
             break;
           case BattleRules::WeaponAndArmorMode::FORBID_RARES:
             if (this->item_parameter_table->is_item_rare(item)) {
-              this->log.info("Restricted: rare items not allowed");
+              this->log.info("Restricted: rare weapons and armors not allowed");
               item.clear();
             }
             break;
