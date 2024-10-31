@@ -1197,7 +1197,7 @@ void PSOBBCharacterFile::recompute_stats(std::shared_ptr<const LevelTable> level
   this->disp.stats.char_stats.evp += (this->get_material_usage(MaterialType::EVADE) * 2);
   this->disp.stats.char_stats.dfp += (this->get_material_usage(MaterialType::DEF) * 2);
   this->disp.stats.char_stats.lck += (this->get_material_usage(MaterialType::LUCK) * 2);
-  this->disp.stats.char_stats.hp += (this->get_material_usage(MaterialType::HP) * 2);
+  // Note: HP in this structure is unaffected by material usage
 }
 
 static uint16_t crc16(const void* data, size_t size) {
