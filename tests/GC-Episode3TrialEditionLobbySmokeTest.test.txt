@@ -12,7 +12,7 @@ I 25793 2023-11-24 23:03:38 - [Commands] Sending to C-4 (version=GC_V3 command=1
 0060 | 20 77 61 79 20 61 66 66 69 6C 69 61 74 65 64 2C |  way affiliated,
 0070 | 20 73 70 6F 6E 73 6F 72 65 64 2C 20 6F 72 20 73 |  sponsored, or s
 0080 | 75 70 70 6F 72 74 65 64 20 62 79 20 53 45 47 41 | upported by SEGA
-0090 | 20 45 6E 74 65 72 70 72 69 73 65 73 20 6F 72 20 |  Enterprises orx
+0090 | 20 45 6E 74 65 72 70 72 69 73 65 73 20 6F 72 20 |  Enterprises or
 00A0 | 53 4F 4E 49 43 54 45 41 4D 2E 20 54 68 65 20 70 | SONICTEAM. The p
 00B0 | 72 65 63 65 64 69 6E 67 20 6D 65 73 73 61 67 65 | receding message
 00C0 | 20 65 78 69 73 74 73 20 6F 6E 6C 79 20 74 6F 20 |  exists only to

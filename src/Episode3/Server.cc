@@ -2821,8 +2821,8 @@ void Server::unknown_8023EEF4() {
     log.debug("a14 (%" PRIu32 ") < num_pending_attacks_with_cards (%" PRIu32 ")", this->unknown_a14, this->num_pending_attacks_with_cards);
     this->defense_list_ended_for_client.clear(false);
 
-    G_SetActionState_Ep3_6xB4x29 cmd;
-    cmd.unknown_a1 = this->unknown_a14;
+    G_UpdateAttackTargets_Ep3_6xB4x29 cmd;
+    cmd.attack_number = this->unknown_a14;
     cmd.state = this->pending_attacks_with_cards[this->unknown_a14];
     if (is_nte) {
       this->replace_targets_due_to_destruction_nte(&cmd.state);

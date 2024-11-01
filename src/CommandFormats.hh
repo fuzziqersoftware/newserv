@@ -5724,6 +5724,10 @@ struct G_CardServerDataCommandHeader {
   /* 05 */ uint8_t sender_client_id = 0x00;
   /* 06 */ uint8_t mask_key = 0x00; // Same meaning as in G_CardBattleCommandHeader
   /* 07 */ uint8_t unused2 = 0x00;
+  // The sequence number space is split into 30-bit subspaces by the last 2
+  // bits, which are the sender's client ID. That is, player 0 will send
+  // sequence number 0, then 4, then 8, etc; player 1 will send 1, then 5, then
+  // 9, etc. and so on for players 2 and 3.
   /* 08 */ be_uint32_t sequence_num = 0;
   /* 0C */ be_uint32_t context_token = 0;
   /* 10 */
@@ -5867,10 +5871,14 @@ struct G_SyncCardTradeState_Ep3_6xBB {
 // command is smaller than 0x400 bytes, but uses the extended subcommand format
 // anyway (and uses the 6D command rather than 62).
 
+struct G_CardCounts_Ep3NTE_6xBC {
+  G_ExtendedHeaderT<G_UnusedHeader> header;
+  parray<uint8_t, 0x3E8> card_counts;
+} __packed_ws__(G_CardCounts_Ep3NTE_6xBC, 0x3F0);
+
 struct G_CardCounts_Ep3_6xBC {
-  G_UnusedHeader header;
-  le_uint32_t size = 0;
-  parray<uint8_t, 0x2F1> unknown_a1;
+  G_ExtendedHeaderT<G_UnusedHeader> header;
+  parray<uint8_t, 0x2F1> card_counts;
   // The client sends uninitialized data in this field
   parray<uint8_t, 3> unused;
 } __packed_ws__(G_CardCounts_Ep3_6xBC, 0x2FC);
@@ -6419,6 +6427,7 @@ struct G_UpdateActionChainAndMetadata_Ep3_6xB4x0A {
 } __packed_ws__(G_UpdateActionChainAndMetadata_Ep3_6xB4x0A, 0x180);
 
 // 6xB3x0B / CAx0B: Redraw initial hand (immediately before battle)
+// Internal name: ReInitCard
 
 struct G_RedrawInitialHand_Ep3_CAx0B {
   G_CardServerDataCommandHeader header = {0xB3, sizeof(G_RedrawInitialHand_Ep3_CAx0B) / 4, 0, 0x0B, 0, 0, 0, 0, 0};
@@ -6427,6 +6436,7 @@ struct G_RedrawInitialHand_Ep3_CAx0B {
 } __packed_ws__(G_RedrawInitialHand_Ep3_CAx0B, 0x14);
 
 // 6xB3x0C / CAx0C: End initial redraw phase
+// Internal name: StartGame
 
 struct G_EndInitialRedrawPhase_Ep3_CAx0C {
   G_CardServerDataCommandHeader header = {0xB3, sizeof(G_EndInitialRedrawPhase_Ep3_CAx0C) / 4, 0, 0x0C, 0, 0, 0, 0, 0};
@@ -6435,6 +6445,7 @@ struct G_EndInitialRedrawPhase_Ep3_CAx0C {
 } __packed_ws__(G_EndInitialRedrawPhase_Ep3_CAx0C, 0x14);
 
 // 6xB3x0D / CAx0D: End non-action phase
+// Internal names: EndPhaseDice, EndPhaseSet, EndPhaseMove, EndPhaseDraw
 // This command is sent when the client has no more actions to take during the
 // current phase. This command isn't used for ending the attack or defense
 // phases; for those phases, CAx12 and CAx28 are used instead.
@@ -6442,11 +6453,13 @@ struct G_EndInitialRedrawPhase_Ep3_CAx0C {
 struct G_EndNonAttackPhase_Ep3_CAx0D {
   G_CardServerDataCommandHeader header = {0xB3, sizeof(G_EndNonAttackPhase_Ep3_CAx0D) / 4, 0, 0x0D, 0, 0, 0, 0, 0};
   le_uint16_t client_id = 0;
-  le_uint16_t battle_phase = 0; // Only used on NTE
-  parray<le_uint16_t, 4> unused2;
+  le_uint16_t battle_phase = 0; // Episode3::BattlePhase enum
+  le_uint16_t param1; // If battle_phase == DICE, this is 1 if the ATK value is larger than the DEF value
+  parray<le_uint16_t, 3> unused2;
 } __packed_ws__(G_EndNonAttackPhase_Ep3_CAx0D, 0x1C);
 
 // 6xB3x0E / CAx0E: Discard card from hand
+// Internal name: ThrowCard
 
 struct G_DiscardCardFromHand_Ep3_CAx0E {
   G_CardServerDataCommandHeader header = {0xB3, sizeof(G_DiscardCardFromHand_Ep3_CAx0E) / 4, 0, 0x0E, 0, 0, 0, 0, 0};
@@ -6455,6 +6468,7 @@ struct G_DiscardCardFromHand_Ep3_CAx0E {
 } __packed_ws__(G_DiscardCardFromHand_Ep3_CAx0E, 0x14);
 
 // 6xB3x0F / CAx0F: Set card from hand
+// Internal names: SetCardItem, SetCardEnemy, SetCardCreature
 
 struct G_SetCardFromHand_Ep3_CAx0F {
   G_CardServerDataCommandHeader header = {0xB3, sizeof(G_SetCardFromHand_Ep3_CAx0F) / 4, 0, 0x0F, 0, 0, 0, 0, 0};
@@ -6466,6 +6480,7 @@ struct G_SetCardFromHand_Ep3_CAx0F {
 } __packed_ws__(G_SetCardFromHand_Ep3_CAx0F, 0x1C);
 
 // 6xB3x10 / CAx10: Move field character
+// Internal name: MoveCard
 
 struct G_MoveFieldCharacter_Ep3_CAx10 {
   G_CardServerDataCommandHeader header = {0xB3, sizeof(G_MoveFieldCharacter_Ep3_CAx10) / 4, 0, 0x10, 0, 0, 0, 0, 0};
@@ -6475,6 +6490,7 @@ struct G_MoveFieldCharacter_Ep3_CAx10 {
 } __packed_ws__(G_MoveFieldCharacter_Ep3_CAx10, 0x18);
 
 // 6xB3x11 / CAx11: Enqueue action (play card(s) during action phase)
+// Internal name: ExecActionReq
 // This command is used for playing both attacks (and the associated action
 // cards), and for playing defense cards. In the attack case, this command is
 // sent once for each attack (even if it includes multiple cards); in the
@@ -6488,6 +6504,7 @@ struct G_EnqueueAttackOrDefense_Ep3_CAx11 {
 } __packed_ws__(G_EnqueueAttackOrDefense_Ep3_CAx11, 0x78);
 
 // 6xB3x12 / CAx12: End attack list (done playing cards during action phase)
+// Internal name: ExecActionCalc
 // This command informs the server that the client is done playing attacks in
 // the current round. (In the defense phase, CAx28 is used instead.)
 
@@ -6651,29 +6668,33 @@ struct G_Unknown_Ep3_6xB5x27 {
 
 // 6xB3x28 / CAx28: End defense list
 // This command informs the server that the client is done playing defense
-// cards. (In the attack phase, CAx12 is used instead.)
+// cards. (In the attack phase, CAx12 is used instead.) attack_number matches
+// the attack_number sent in the previous 6xB4x29 command.
 
 struct G_EndDefenseList_Ep3_CAx28 {
   G_CardServerDataCommandHeader header = {0xB3, sizeof(G_EndDefenseList_Ep3_CAx28) / 4, 0, 0x28, 0, 0, 0, 0, 0};
-  uint8_t unused1 = 0;
+  uint8_t attack_number = 0;
   uint8_t client_id = 0;
-  parray<uint8_t, 2> unused2;
+  parray<uint8_t, 2> unused;
 } __packed_ws__(G_EndDefenseList_Ep3_CAx28, 0x14);
 
-// 6xB4x29: Set action state
-// TODO: How is this different from 6xB4x09? It looks like the server never
-// sends this.
+// 6xB4x29: Update attack targets
+// This is sent when the server begins computing the results of an attack. It
+// updates the targets used in the attack (e.g. if targeted items were
+// destroyed by a previous attack).
 
-struct G_SetActionState_Ep3_6xB4x29 {
-  /* 00 */ G_CardBattleCommandHeader header = {0xB4, sizeof(G_SetActionState_Ep3_6xB4x29) / 4, 0, 0x29, 0, 0, 0};
-  /* 08 */ uint8_t unknown_a1 = 0;
-  /* 09 */ parray<uint8_t, 3> unknown_a2;
+struct G_UpdateAttackTargets_Ep3_6xB4x29 {
+  /* 00 */ G_CardBattleCommandHeader header = {0xB4, sizeof(G_UpdateAttackTargets_Ep3_6xB4x29) / 4, 0, 0x29, 0, 0, 0};
+  /* 08 */ uint8_t attack_number = 0;
+  /* 09 */ parray<uint8_t, 3> unused;
   /* 0C */ Episode3::ActionState state;
   /* 70 */
-} __packed_ws__(G_SetActionState_Ep3_6xB4x29, 0x70);
+} __packed_ws__(G_UpdateAttackTargets_Ep3_6xB4x29, 0x70);
 
 // 6xB4x2A: Unknown
-// TODO: Document this from Episode 3 client/server disassembly
+// This appears to be unused, even on DC NTE. It writes an entry into an array
+// of four 6-byte structures (doing nothing if there are already 4 present),
+// but nothing reads from this array.
 
 struct G_Unknown_Ep3_6xB4x2A {
   G_CardBattleCommandHeader header = {0xB4, sizeof(G_Unknown_Ep3_6xB4x2A) / 4, 0, 0x2A, 0, 0, 0};
@@ -6693,6 +6714,9 @@ struct G_ExecLegacyCard_Ep3_CAx2B {
 } __packed_ws__(G_ExecLegacyCard_Ep3_CAx2B, 0x14);
 
 // 6xB4x2C: Unknown
+// This is used for playing the trap and teleport animations (with change_type
+// = 1). It's also used for playing the discard entire hand animation (with
+// change_type = 3).
 
 struct G_Unknown_Ep3_6xB4x2C {
   /* 00 */ G_CardBattleCommandHeader header = {0xB4, sizeof(G_Unknown_Ep3_6xB4x2C) / 4, 0, 0x2C, 0, 0, 0};
@@ -6709,9 +6733,10 @@ struct G_Unknown_Ep3_6xB4x2C {
 
 struct G_Unknown_Ep3_6xB5x2D {
   G_CardBattleCommandHeader header = {0xB5, sizeof(G_Unknown_Ep3_6xB5x2D) / 4, 0, 0x2D, 0, 0, 0};
-  // This array is indexed by client ID. When a client receives this command, it
-  // sends a 6x70 command to itself. It's not clear what the function of this is
-  // intended to be.
+  // This array is indexed by client ID. When a client receives this command
+  // and its corresponding entry in this array is not zero, it sends a 6x70
+  // command to itself containing its own player data. It's not clear what the
+  // function of this is intended to be.
   // TODO: Figure out if tournament fast loading can be implemented using this
   // to fix the stuck-in-wall glitch.
   parray<uint8_t, 4> unknown_a1;
@@ -6742,7 +6767,7 @@ struct G_SetDeckInBattleSetupMenu_Ep3_6xB5x2F {
 } __packed_ws__(G_SetDeckInBattleSetupMenu_Ep3_6xB5x2F, 0x8C);
 
 // 6xB5x30: Unknown
-// The client never sends this command, and when the client received this
+// The client never sends this command, and when the client receives this
 // command, it does nothing.
 
 struct G_Unknown_Ep3_6xB5x30 {
@@ -6864,7 +6889,7 @@ struct G_OverallTimeLimitExpired_Ep3_CAx3A {
 
 // 6xB4x3B: Load current environment
 // This command is used to send spectators in a spectator team to the main
-// battle. A 6xB4x05 and 6xB6x41 command shouldhave been sent before this, to
+// battle. A 6xB4x05 and 6xB6x41 command should have been sent before this, to
 // set the map state that should appear for the new spectator.
 
 struct G_LoadCurrentEnvironment_Ep3_6xB4x3B {
@@ -6891,42 +6916,36 @@ struct G_SetPlayerSubstatus_Ep3_6xB5x3C {
 // This is sent before the counter sequence in a tournament game, to reserve the
 // player and COM slots and set the map number.
 
-struct G_SetTournamentPlayerDecks_Ep3_6xB4x3D_Entry {
-  /* 00 */ uint8_t type = 0; // 0 = no player, 1 = human, 2 = COM
-  /* 01 */ pstring<TextEncoding::MARKED, 0x10> player_name;
-  /* 11 */ pstring<TextEncoding::MARKED, 0x10> deck_name; // Only used for COM players
-  /* 21 */ parray<uint8_t, 5> unknown_a1;
-  /* 26 */ parray<le_uint16_t, 0x1F> card_ids; // Can be blank for human players
-  /* 64 */ uint8_t client_id = 0; // Unused for COMs
-  /* 65 */ uint8_t unknown_a4 = 0;
-  /* 66 */ le_uint16_t unknown_a2 = 0;
-  /* 68 */ le_uint16_t unknown_a3 = 0;
-  /* 6A */
-} __packed_ws__(G_SetTournamentPlayerDecks_Ep3_6xB4x3D_Entry, 0x6A);
+template <typename RulesT>
+struct G_SetTournamentPlayerDecksT_Ep3_6xB4x3D {
+  /* NTE :Final */
+  /* 0000:0000 */ G_CardBattleCommandHeader header = {0xB4, sizeof(G_SetTournamentPlayerDecksT_Ep3_6xB4x3D<RulesT>) / 4, 0, 0x3D, 0, 0, 0};
+  /* 0008:0008 */ RulesT rules;
+  struct Entry {
+    /* 00 */ uint8_t type = 0; // 0 = no player, 1 = human, 2 = COM
+    /* 01 */ pstring<TextEncoding::MARKED, 0x10> player_name;
+    /* 11 */ pstring<TextEncoding::MARKED, 0x10> deck_name; // Only used for COM players
+    /* 21 */ parray<uint8_t, 5> unknown_a1;
+    /* 26 */ parray<le_uint16_t, 0x1F> card_ids; // Can be blank for human players
+    /* 64 */ uint8_t client_id = 0; // Unused for COMs
+    /* 65 */ uint8_t unknown_a4 = 0;
+    /* 66 */ le_uint16_t unknown_a2 = 0;
+    /* 68 */ le_uint16_t unknown_a3 = 0;
+    /* 6A */
+  } __packed_ws__(Entry, 0x6A);
+  /* 0014:001C */ parray<Entry, 4> entries;
+  /* 01BC:01C4 */ le_uint32_t map_number = 0;
+  /* 01C0:01C8 */ uint8_t player_slot = 0; // Which deck slot is editable by the client
+  /* 01C1:01C9 */ uint8_t unknown_a3 = 0;
+  /* 01C2:01CA */ uint8_t unknown_a4 = 0;
+  /* 01C3:01CB */ uint8_t unknown_a5 = 0;
+  /* 01C4:01CC */
+} __packed__;
 
-struct G_SetTournamentPlayerDecks_Ep3NTE_6xB4x3D {
-  /* 0000 */ G_CardBattleCommandHeader header = {0xB4, sizeof(G_SetTournamentPlayerDecks_Ep3NTE_6xB4x3D) / 4, 0, 0x3D, 0, 0, 0};
-  /* 0008 */ Episode3::RulesTrial rules;
-  /* 0014 */ parray<G_SetTournamentPlayerDecks_Ep3_6xB4x3D_Entry, 4> entries;
-  /* 01BC */ le_uint32_t map_number = 0;
-  /* 01C0 */ uint8_t player_slot = 0; // Which deck slot is editable by the client
-  /* 01C1 */ uint8_t unknown_a3 = 0;
-  /* 01C2 */ uint8_t unknown_a4 = 0;
-  /* 01C3 */ uint8_t unknown_a5 = 0;
-  /* 01C4 */
-} __packed_ws__(G_SetTournamentPlayerDecks_Ep3NTE_6xB4x3D, 0x1C4);
-
-struct G_SetTournamentPlayerDecks_Ep3_6xB4x3D {
-  /* 0000 */ G_CardBattleCommandHeader header = {0xB4, sizeof(G_SetTournamentPlayerDecks_Ep3_6xB4x3D) / 4, 0, 0x3D, 0, 0, 0};
-  /* 0008 */ Episode3::Rules rules;
-  /* 001C */ parray<G_SetTournamentPlayerDecks_Ep3_6xB4x3D_Entry, 4> entries;
-  /* 01C4 */ le_uint32_t map_number = 0;
-  /* 01C8 */ uint8_t player_slot = 0; // Which deck slot is editable by the client
-  /* 01C9 */ uint8_t unknown_a3 = 0;
-  /* 01CA */ uint8_t unknown_a4 = 0;
-  /* 01CB */ uint8_t unknown_a5 = 0;
-  /* 01CC */
-} __packed_ws__(G_SetTournamentPlayerDecks_Ep3_6xB4x3D, 0x1CC);
+using G_SetTournamentPlayerDecks_Ep3NTE_6xB4x3D = G_SetTournamentPlayerDecksT_Ep3_6xB4x3D<Episode3::RulesTrial>;
+check_struct_size(G_SetTournamentPlayerDecks_Ep3NTE_6xB4x3D, 0x1C4);
+using G_SetTournamentPlayerDecks_Ep3_6xB4x3D = G_SetTournamentPlayerDecksT_Ep3_6xB4x3D<Episode3::Rules>;
+check_struct_size(G_SetTournamentPlayerDecks_Ep3_6xB4x3D, 0x1CC);
 
 // 6xB5x3E: Make card auction bid
 
@@ -7075,6 +7094,7 @@ struct G_SetPlayerCARDLevel_Ep3_6xB5x47 {
 } __packed_ws__(G_SetPlayerCARDLevel_Ep3_6xB5x47, 0x0C);
 
 // 6xB3x48 / CAx48: End turn
+// Internal name: DrawCardReq
 
 struct G_EndTurn_Ep3_CAx48 {
   G_CardServerDataCommandHeader header = {0xB3, sizeof(G_EndTurn_Ep3_CAx48) / 4, 0, 0x48, 0, 0, 0, 0, 0};
@@ -7105,7 +7125,6 @@ struct G_CardCounts_Ep3_CAx49 {
 
 // 6xB4x4A: Add to set card log
 // This command is not valid on Episode 3 Trial Edition.
-// TODO: Document this from Episode 3 client/server disassembly
 
 struct G_AddToSetCardLog_Ep3_6xB4x4A {
   G_CardBattleCommandHeader header = {0xB4, sizeof(G_AddToSetCardLog_Ep3_6xB4x4A) / 4, 0, 0x4A, 0, 0, 0};
