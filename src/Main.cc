@@ -610,8 +610,6 @@ Action a_parse_pc_v2_registry(
           serial_number, serial_number, access_data.c_str(), email_data.c_str());
     });
 
-// ./newserv generate-pc-v2-registry --serial-number=386248990 --access-key=14575600 --email=mjem@wildblue.net
-
 Action a_generate_pc_v2_registry(
     "generate-pc-v2-registry", "\
   generate-pc-v2-registry <OPTIONS> [OUTPUT-FILENAME]\n\
@@ -673,6 +671,172 @@ Action a_decrypt_challenge_data(
       decrypt_challenge_rank_text_t<uint8_t>(data.data(), data.size());
       write_output_data(args, data.data(), data.size(), "dec");
     });
+
+static void a_encrypt_decrypt_vms_save_fn(phosg::Arguments& args) {
+  bool is_decrypt = (args.get<string>(0) == "decrypt-vms-save");
+  bool skip_checksum = args.get<bool>("skip-checksum");
+  string serial_number_str = args.get<string>("serial-number");
+  int64_t override_round2_seed = args.get<int64_t>("round2-seed", -1, phosg::Arguments::IntFormat::HEX);
+
+  int64_t round1_seed = serial_number_str.empty() ? -1 : stoul(serial_number_str, nullptr, 16);
+
+  auto data = read_input_data(args);
+  phosg::StringReader r(data);
+  const auto& header = r.get<PSOVMSFileHeader>();
+  header.check();
+  r.skip(header.icon_data_size());
+
+  size_t data_start_offset = r.where();
+
+  auto process_file = [&]<typename StructT, bool UseIterator, size_t ChecksumLength = sizeof(StructT)>() {
+    if (is_decrypt) {
+      const void* data_section = r.getv(header.data_size);
+      if (round1_seed < 0) {
+        size_t num_threads = args.get<size_t>("threads", 0);
+        if (num_threads == 0) {
+          num_threads = thread::hardware_concurrency();
+        }
+
+        mutex output_lock;
+        if (UseIterator) {
+          DCSerialNumberIterator iter;
+          mutex iter_lock;
+          atomic<bool> seed_found = false;
+          auto thread_fn = [&]() -> void {
+            for (;;) {
+              uint32_t serial_number;
+              {
+                lock_guard g(iter_lock);
+                serial_number = iter.next();
+              }
+              if (serial_number == 0) {
+                return;
+              }
+              try {
+                auto decrypted = decrypt_fixed_size_data_section_t<StructT, false, ChecksumLength>(
+                    data_section, sizeof(StructT), serial_number, skip_checksum, override_round2_seed);
+
+                seed_found = true;
+                {
+                  lock_guard g(iter_lock);
+                  iter.complete = true;
+                }
+                lock_guard g(output_lock);
+                fprintf(stderr, "\nFound serial number: %08" PRIX32 "\n", serial_number);
+                *reinterpret_cast<StructT*>(data.data() + data_start_offset) = decrypted;
+
+              } catch (const runtime_error&) {
+              }
+            }
+          };
+
+          vector<thread> threads;
+          while (threads.size() < num_threads) {
+            threads.emplace_back(thread_fn);
+          }
+          for (;;) {
+            usleep(1000000);
+            lock_guard g(iter_lock);
+            size_t progress = iter.progress();
+            size_t total_count = iter.total_count();
+            float progress_percent = static_cast<float>(progress * 100) / total_count;
+            fprintf(stderr, "... %zu/%zu (%g%%, domain %02hhX, subdomain %02hhX, index2 %04hX, index3 %04hX)\r",
+                progress, total_count, progress_percent, iter.domain, iter.subdomain, iter.index2, iter.index3);
+            if (iter.complete) {
+              break;
+            }
+          }
+          for (auto& th : threads) {
+            th.join();
+          }
+          if (!seed_found) {
+            throw runtime_error("no seed found");
+          }
+
+        } else {
+          uint64_t seed = phosg::parallel_range_blocks<uint64_t>([&](uint64_t serial_number, size_t) -> bool {
+            try {
+              auto decrypted = decrypt_fixed_size_data_section_t<StructT, false, ChecksumLength>(
+                  data_section, sizeof(StructT), serial_number, skip_checksum, override_round2_seed);
+
+              lock_guard g(output_lock);
+              fprintf(stderr, "\nFound serial number: %08" PRIX64 "\n", serial_number);
+              *reinterpret_cast<StructT*>(data.data() + data_start_offset) = decrypted;
+              return true;
+
+            } catch (const runtime_error&) {
+              return false;
+            }
+          },
+              0, 0x100000000, 0x1000, num_threads);
+          if (seed >= 0x100000000) {
+            throw runtime_error("no seed found");
+          }
+        }
+
+      } else {
+        auto decrypted = decrypt_fixed_size_data_section_t<StructT, false, ChecksumLength>(
+            data_section, sizeof(StructT), round1_seed, skip_checksum, override_round2_seed);
+        *reinterpret_cast<StructT*>(data.data() + data_start_offset) = decrypted;
+      }
+
+    } else {
+      const auto& s = r.get<StructT>();
+      auto encrypted = encrypt_fixed_size_data_section_t<StructT, false, ChecksumLength>(s, round1_seed);
+      if (data_start_offset + encrypted.size() > data.size()) {
+        throw runtime_error("encrypted result exceeds file size");
+      }
+      memcpy(data.data() + data_start_offset, encrypted.data(), encrypted.size());
+    }
+  };
+
+  bool is_v2 = header.is_v2();
+  if (!is_v2 && (header.data_size == sizeof(PSODCNTECharacterFile))) {
+    fprintf(stderr, "File type: DC NTE character\n");
+    process_file.template operator()<PSODCNTECharacterFile, false>();
+  } else if (!is_v2 && (header.data_size == sizeof(PSODCNTEGuildCardFile))) {
+    fprintf(stderr, "File type: DC NTE Guild Card list\n");
+    throw runtime_error("DC NTE Guild Card files are not encrypted");
+  } else if (!is_v2 && (header.data_size == sizeof(PSODC112000CharacterFile))) {
+    fprintf(stderr, "File type: DC 11/2000 character\n");
+    process_file.template operator()<PSODC112000CharacterFile, false>();
+  } else if (!is_v2 && (header.data_size == sizeof(PSODC112000GuildCardFile))) {
+    fprintf(stderr, "File type: DC 11/2000 Guild Card list\n");
+    throw runtime_error("DC 11/2000 Guild Card files are not encrypted");
+  } else if (!is_v2 && (header.data_size == sizeof(PSODCV1CharacterFile))) {
+    fprintf(stderr, "File type: DC v1 character\n");
+    process_file.template operator()<PSODCV1CharacterFile, true>();
+  } else if (is_v2 && (header.data_size == sizeof(PSODCV2CharacterFile))) {
+    fprintf(stderr, "File type: DC v2 character\n");
+    process_file.template operator()<PSODCV2CharacterFile, true>();
+  } else if (header.data_size == sizeof(PSODCV1V2GuildCardFile)) {
+    // There appears to be a copy/paste error here: the game uses the character
+    // file size when checksumming the Guild Card file, so we must do the same
+    if (!is_v2) {
+      fprintf(stderr, "File type: DC v1 Guild Card list\n");
+      static_assert(sizeof(PSODCV1CharacterFile) <= sizeof(PSODCV1V2GuildCardFile::EncryptedSection));
+      process_file.template operator()<PSODCV1V2GuildCardFile::EncryptedSection, true, sizeof(PSODCV1CharacterFile)>();
+    } else {
+      fprintf(stderr, "File type: DC v2 Guild Card list\n");
+      static_assert(sizeof(PSODCV2CharacterFile) <= sizeof(PSODCV1V2GuildCardFile::EncryptedSection));
+      process_file.template operator()<PSODCV1V2GuildCardFile::EncryptedSection, true, sizeof(PSODCV2CharacterFile)>();
+    }
+  } else {
+    throw runtime_error("unrecognized save type");
+  }
+
+  write_output_data(args, data.data(), data.size(), is_decrypt ? "vmsd" : "vms");
+}
+
+Action a_decrypt_vms_save("decrypt-vms-save", nullptr, a_encrypt_decrypt_vms_save_fn);
+Action a_encrypt_vms_save("encrypt-vms-save", "\
+  encrypt-gci-save --seed=SEED INPUT-FILENAME [OUTPUT-FILENAME]\n\
+  decrypt-gci-save [--seed=SEED] INPUT-FILENAME [OUTPUT-FILENAME]\n\
+    Encrypt or decrypt a character or Guild Card file in VMS format. If\n\
+    encrypting, the checksum is also recomputed and stored in the encrypted\n\
+    file. --seed is the encryption seed (serial number) specified as a 32-bit\n\
+    hexadecimal value.\n",
+    a_encrypt_decrypt_vms_save_fn);
 
 static void a_encrypt_decrypt_gci_save_fn(phosg::Arguments& args) {
   bool is_decrypt = (args.get<string>(0) == "decrypt-gci-save");
@@ -996,7 +1160,7 @@ Action a_salvage_gci(
       auto process_file = [&]<typename StructT>() {
         vector<multimap<size_t, uint32_t>> top_seeds_by_thread(
             num_threads ? num_threads : thread::hardware_concurrency());
-        phosg::parallel_range<uint64_t>(
+        phosg::parallel_range_blocks<uint64_t>(
             [&](uint64_t seed, size_t thread_num) -> bool {
               size_t zero_count;
               if (round2) {
@@ -1026,9 +1190,7 @@ Action a_salvage_gci(
               }
               return false;
             },
-            0,
-            0x100000000,
-            num_threads);
+            0, 0x100000000, 0x1000, num_threads);
 
         multimap<size_t, uint32_t> top_seeds;
         for (const auto& thread_top_seeds : top_seeds_by_thread) {
@@ -1108,7 +1270,7 @@ Action a_find_decryption_seed(
         return true;
       };
 
-      uint64_t seed = phosg::parallel_range<uint64_t>([&](uint64_t seed, size_t) -> bool {
+      uint64_t seed = phosg::parallel_range_blocks<uint64_t>([&](uint64_t seed, size_t) -> bool {
         string be_decrypt_buf = ciphertext.substr(0, max_plaintext_size);
         string le_decrypt_buf = ciphertext.substr(0, max_plaintext_size);
         if (uses_v3_encryption(version)) {
@@ -1137,7 +1299,7 @@ Action a_find_decryption_seed(
         }
         return false;
       },
-          0, 0x100000000, num_threads);
+          0, 0x100000000, 0x1000, num_threads);
 
       if (seed < 0x100000000) {
         phosg::log_info("Found seed %08" PRIX64, seed);
@@ -2500,7 +2662,7 @@ Action a_find_rare_enemy_seeds(
         return false;
       };
 
-      phosg::parallel_range<uint64_t>(thread_fn, 0, 0x100000000, num_threads, nullptr);
+      phosg::parallel_range_blocks<uint64_t>(thread_fn, 0, 0x100000000, 0x1000, num_threads, nullptr);
     });
 
 Action a_load_maps_test(
@@ -2639,45 +2801,65 @@ Action a_generate_dc_serial_number(
       fprintf(stdout, "%s\n", serial_number.c_str());
     });
 Action a_generate_all_dc_serial_numbers(
-    "generate-all-dc-serial-numbers", "\
-  generate-all-dc-serial-numbers\n\
-    Generate all possible PSO DC serial numbers.\n",
+    "dc-serial-number-generator-test", nullptr,
     +[](phosg::Arguments& args) {
       size_t num_threads = args.get<size_t>("threads", 0);
 
-      auto serial_numbers = generate_all_dc_serial_numbers();
-      fprintf(stdout, "%zu (0x%zX) serial numbers found\n", serial_numbers.size(), serial_numbers.size());
-      for (const auto& it : serial_numbers) {
-        fprintf(stdout, "Valid serial number: %08" PRIX32, it.first);
-        for (uint8_t where : it.second) {
-          fprintf(stdout, " (domain=%hhu, subdomain=%hhu)",
-              static_cast<uint8_t>((where >> 2) & 3),
-              static_cast<uint8_t>(where & 3));
+      vector<unordered_set<uint32_t>> serial_numbers;
+      serial_numbers.resize(9);
+
+      DCSerialNumberIterator iter;
+      uint32_t serial_number;
+      size_t num_serial_numbers = 0;
+      while ((serial_number = iter.next()) != 0) {
+        serial_numbers[iter.domain * 3 + iter.subdomain].emplace(serial_number);
+        if (((++num_serial_numbers) % 0x10000) == 0) {
+          fprintf(stderr, "... %08zX (domain=%02hhX, subdomain=%02hhX, index2=%04hX, index3=%04hX) counts=[%zu, %zu, %zu, %zu, %zu, %zu, %zu, %zu, %zu]\n",
+              num_serial_numbers, iter.domain, iter.subdomain, iter.index2, iter.index3,
+              serial_numbers[0].size(), serial_numbers[1].size(), serial_numbers[2].size(),
+              serial_numbers[3].size(), serial_numbers[4].size(), serial_numbers[5].size(),
+              serial_numbers[6].size(), serial_numbers[7].size(), serial_numbers[8].size());
         }
-        fputc('\n', stdout);
       }
 
-      atomic<uint64_t> num_valid_serial_numbers = 0;
+      array<atomic<size_t>, 9> found_counts = {0, 0, 0, 0, 0, 0, 0, 0, 0};
+      atomic<uint64_t> num_mismatches = 0;
       mutex output_lock;
       auto thread_fn = [&](uint64_t serial_number, size_t) -> bool {
         for (uint8_t domain = 0; domain < 3; domain++) {
           for (uint8_t subdomain = 0; subdomain < 3; subdomain++) {
-            if (dc_serial_number_is_valid_fast(serial_number, domain, subdomain)) {
-              num_valid_serial_numbers++;
+            bool is_valid = dc_serial_number_is_valid_fast(serial_number, domain, subdomain);
+            bool was_iterated = serial_numbers[domain * 3 + subdomain].count(serial_number);
+            if (is_valid != was_iterated) {
               lock_guard g(output_lock);
-              fprintf(stdout, "Valid serial number: %08" PRIX64 " (domain=%hhu, subdomain=%hhu)\n", serial_number, domain, subdomain);
+              fprintf(stdout, "Mismatch at %08" PRIX64 " (domain=%hhu, subdomain=%hhu): is_valid=%s, was_iterated=%s\n",
+                  serial_number, domain, subdomain, is_valid ? "true" : "false", was_iterated ? "true" : "false");
+            } else if (is_valid && was_iterated) {
+              found_counts[domain * 3 + subdomain]++;
             }
           }
         }
         return false;
       };
       auto progress_fn = [&](uint64_t, uint64_t, uint64_t current_value, uint64_t) -> void {
-        uint64_t num_found = num_valid_serial_numbers.load();
-        fprintf(stderr, "... %08" PRIX64 " %" PRId64 " (0x%" PRIX64 ") found\r",
-            current_value, num_found, num_found);
+        fprintf(stderr, "... %08" PRIX64 " %" PRId64 " mismatches; counts: [%zu/%zu, %zu/%zu, %zu/%zu, %zu/%zu, %zu/%zu, %zu/%zu, %zu/%zu, %zu/%zu, %zu/%zu]\r", current_value, num_mismatches.load(),
+            found_counts[0].load(), serial_numbers[0].size(),
+            found_counts[1].load(), serial_numbers[1].size(),
+            found_counts[2].load(), serial_numbers[2].size(),
+            found_counts[3].load(), serial_numbers[3].size(),
+            found_counts[4].load(), serial_numbers[4].size(),
+            found_counts[5].load(), serial_numbers[5].size(),
+            found_counts[6].load(), serial_numbers[6].size(),
+            found_counts[7].load(), serial_numbers[7].size(),
+            found_counts[8].load(), serial_numbers[8].size());
       };
-      phosg::parallel_range<uint64_t>(thread_fn, 0, 0x100000000, num_threads, progress_fn);
+      phosg::parallel_range_blocks<uint64_t>(thread_fn, 0, 0x100000000, 0x1000, num_threads, progress_fn);
+
+      if (num_mismatches > 0) {
+        throw logic_error("mismatches occurred during test");
+      }
     });
+
 Action a_inspect_dc_serial_number(
     "inspect-dc-serial-number", "\
   inspect-dc-serial-number SERIAL-NUMBER\n\
@@ -2797,7 +2979,7 @@ Action a_replay_ep3_battle_commands(
         run_replay(base_seed, 0);
       } else {
         size_t num_threads = args.get<size_t>("threads", 0);
-        phosg::parallel_range<int64_t>(run_replay, 0, 0x100000000, num_threads);
+        phosg::parallel_range_blocks<int64_t>(run_replay, 0, 0x100000000, 0x1000, num_threads);
       }
     });
 

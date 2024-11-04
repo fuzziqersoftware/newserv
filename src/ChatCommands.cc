@@ -1728,8 +1728,8 @@ static void server_command_loadchar(shared_ptr<Client> c, const std::string& arg
     };
 
     if (c->version() == Version::DC_V2) {
-      auto dc_char = make_shared<PSODCV2CharacterFile>(c->character()->to_dc_v2());
-      send_set_extended_player_info.operator()<PSODCV2CharacterFile>(c, dc_char);
+      auto dc_char = make_shared<PSODCV2CharacterFile::Character>(c->character()->to_dc_v2());
+      send_set_extended_player_info.operator()<PSODCV2CharacterFile::Character>(c, dc_char);
     } else if (c->version() == Version::GC_NTE) {
       auto gc_char = make_shared<PSOGCNTECharacterFileCharacter>(c->character()->to_gc_nte());
       send_set_extended_player_info.operator()<PSOGCNTECharacterFileCharacter>(c, gc_char);

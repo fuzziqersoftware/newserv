@@ -143,6 +143,16 @@ bool PSOVMSFileHeader::checksum_correct() const {
   return (crc == this->crc);
 }
 
+void PSOVMSFileHeader::check() const {
+  if (!this->checksum_correct()) {
+    throw runtime_error("VMS file unencrypted header checksum is incorrect");
+  }
+}
+
+bool PSOVMSFileHeader::is_v2() const {
+  return !memcmp(this->short_desc.data, "PSOV2", 5);
+}
+
 bool PSOGCIFileHeader::checksum_correct() const {
   uint32_t cs = phosg::crc32(&this->game_name, this->game_name.bytes());
   cs = phosg::crc32(&this->embedded_seed, sizeof(this->embedded_seed), cs);
@@ -543,7 +553,7 @@ shared_ptr<PSOBBCharacterFile> PSOBBCharacterFile::create_from_preview(
       guild_card_number, language, preview.visual, preview.name.decode(language), level_table);
 }
 
-shared_ptr<PSOBBCharacterFile> PSOBBCharacterFile::create_from_dc_v2(const PSODCV2CharacterFile& dc) {
+shared_ptr<PSOBBCharacterFile> PSOBBCharacterFile::create_from_dc_v2(const PSODCV2CharacterFile::Character& dc) {
   auto ret = make_shared<PSOBBCharacterFile>();
   ret->inventory = dc.inventory;
   ret->inventory.decode_from_client(Version::DC_V2);
@@ -792,10 +802,10 @@ void save_psochar(
   phosg::fwritex(f.get(), empty_membership);
 }
 
-PSODCV2CharacterFile PSOBBCharacterFile::to_dc_v2() const {
+PSODCV2CharacterFile::Character PSOBBCharacterFile::to_dc_v2() const {
   uint8_t language = this->inventory.language;
 
-  PSODCV2CharacterFile ret;
+  PSODCV2CharacterFile::Character ret;
   ret.inventory = this->inventory;
   // We don't need to do the v1-compatible encoding (hence it is OK to pass
   // nullptr here) but we do need to encode mag stats in the v2 format

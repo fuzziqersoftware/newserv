@@ -36,6 +36,12 @@ struct PSOVMSFileHeader {
   /* 0080 */ // parray<parray<uint8_t, 0x200>, num_icons> icon;
 
   bool checksum_correct() const;
+  void check() const;
+  inline size_t icon_data_size() const {
+    return this->num_icons * 0x200;
+  }
+
+  bool is_v2() const;
 } __packed_ws__(PSOVMSFileHeader, 0x80);
 
 struct PSOGCIFileHeader {
@@ -292,118 +298,139 @@ struct PSOBBBaseSystemFile : PSOBBMinimalSystemFile {
 // Character files
 
 struct PSODCNTECharacterFile {
-  // See PSOGCCharacterFile::Character for descriptions of fields' meanings.
-  /* 0000:---- */ PlayerInventory inventory;
-  /* 034C:---- */ PlayerDispDataDCPCV3 disp;
-  /* 041C:0000 */ le_uint32_t validation_flags = 0;
-  /* 0420:0004 */ le_uint32_t creation_timestamp = 0;
-  /* 0424:0008 */ le_uint32_t signature = 0xBB40711D;
-  /* 0428:000C */ le_uint32_t play_time_seconds = 0;
-  /* 042C:0010 */ le_uint32_t option_flags = 0x00040058;
-  /* 0430:0014 */ le_uint16_t save_count_since_last_inventory_erasure = 1;
-  /* 0432:0016 */ le_uint16_t inventory_erasure_count = 0;
-  /* 0434:0018 */ pstring<TextEncoding::ASCII, 0x1C> ppp_username;
-  /* 0450:0034 */ pstring<TextEncoding::ASCII, 0x10> ppp_password;
-  // TODO: Figure out how quest flags work; it's obviously different from 0x80
-  // bytes per difficulty like in v1. Is it just 2048 flags shared across all
-  // difficulties, instead of 1024 in each difficulty?
-  /* 0460:0044 */ parray<uint8_t, 0x100> quest_flags;
-  /* 0560:0144 */ le_uint16_t bank_meseta;
-  /* 0562:0146 */ le_uint16_t num_bank_items;
-  /* 0564:0148 */ parray<ItemData, 60> bank_items;
-  /* 0A14:05F8 */ GuildCardDCNTE guild_card;
-  /* 0A8F:0673 */ uint8_t unknown_s1; // Probably actually unused
-  /* 0A90:0674 */ pstring<TextEncoding::ASCII, 0x10> v1_serial_number;
-  /* 0AA0:0684 */ pstring<TextEncoding::ASCII, 0x10> v1_access_key;
-  /* 0AB0:0694 */
-} __packed_ws__(PSODCNTECharacterFile, 0xAB0);
+  /* 0000 */ le_uint32_t checksum = 0;
+  struct Character {
+    // See PSOGCCharacterFile::Character for descriptions of fields' meanings.
+    /* 0000:---- */ PlayerInventory inventory;
+    /* 034C:---- */ PlayerDispDataDCPCV3 disp;
+    /* 041C:0000 */ le_uint32_t validation_flags = 0;
+    /* 0420:0004 */ le_uint32_t creation_timestamp = 0;
+    /* 0424:0008 */ le_uint32_t signature = 0xBB40711D;
+    /* 0428:000C */ le_uint32_t play_time_seconds = 0;
+    /* 042C:0010 */ le_uint32_t option_flags = 0x00040058;
+    /* 0430:0014 */ le_uint16_t save_count_since_last_inventory_erasure = 1;
+    /* 0432:0016 */ le_uint16_t inventory_erasure_count = 0;
+    /* 0434:0018 */ pstring<TextEncoding::ASCII, 0x1C> ppp_username;
+    /* 0450:0034 */ pstring<TextEncoding::ASCII, 0x10> ppp_password;
+    // TODO: Figure out how quest flags work; it's obviously different from 0x80
+    // bytes per difficulty like in v1. Is it just 2048 flags shared across all
+    // difficulties, instead of 1024 in each difficulty?
+    /* 0460:0044 */ parray<uint8_t, 0x100> quest_flags;
+    /* 0560:0144 */ le_uint16_t bank_meseta;
+    /* 0562:0146 */ le_uint16_t num_bank_items;
+    /* 0564:0148 */ parray<ItemData, 60> bank_items;
+    /* 0A14:05F8 */ GuildCardDCNTE guild_card;
+    /* 0A8F:0673 */ uint8_t unknown_s1; // Probably actually unused
+    /* 0A90:0674 */ pstring<TextEncoding::ASCII, 0x10> v1_serial_number;
+    /* 0AA0:0684 */ pstring<TextEncoding::ASCII, 0x10> v1_access_key;
+    /* 0AB0:0694 */
+  } __packed_ws__(Character, 0xAB0);
+  /* 0004 */ Character character;
+  /* 0AB4 */ le_uint32_t round2_seed = 0;
+  /* 0AB8 */
+} __packed_ws__(PSODCNTECharacterFile, 0xAB8);
 
 struct PSODC112000CharacterFile {
-  // See PSOGCCharacterFile::Character for descriptions of fields' meanings.
-  /* 0000:---- */ PlayerInventory inventory;
-  /* 034C:---- */ PlayerDispDataDCPCV3 disp;
-  /* 041C:0000 */ le_uint32_t validation_flags = 0;
-  /* 0420:0004 */ le_uint32_t creation_timestamp = 0;
-  /* 0424:0008 */ le_uint32_t signature = 0xBB40711D;
-  /* 0428:000C */ le_uint32_t play_time_seconds = 0;
-  /* 042C:0010 */ le_uint32_t option_flags = 0x00040058;
-  /* 0430:0014 */ le_uint16_t save_count_since_last_inventory_erasure = 1;
-  /* 0432:0016 */ le_uint16_t inventory_erasure_count = 0;
-  /* 0434:0018 */ pstring<TextEncoding::ASCII, 0x1C> ppp_username;
-  /* 0450:0034 */ pstring<TextEncoding::ASCII, 0x10> ppp_password;
-  // TODO: Figure out how quest flags work; it's obviously different from 0x80
-  // bytes per difficulty like in v1. Is it just 2048 flags shared across all
-  // difficulties, instead of 1024 in each difficulty?
-  /* 0460:0044 */ parray<uint8_t, 0x100> quest_flags;
-  /* 0560:0144 */ le_uint16_t bank_meseta;
-  /* 0562:0146 */ le_uint16_t num_bank_items;
-  /* 0564:0148 */ parray<ItemData, 60> bank_items;
-  /* 0A14:05F8 */ GuildCardDC guild_card;
-  /* 0A91:0675 */ parray<uint8_t, 3> unknown_s1; // Probably actually unused
-  /* 0A94:0678 */ parray<SaveFileSymbolChatEntryDCXB, 12> symbol_chats;
-  /* 0EB4:0A98 */ parray<SaveFileShortcutEntryDC, 20> shortcuts;
-  /* 13B4:0F98 */ pstring<TextEncoding::ASCII, 0x10> v1_serial_number;
-  /* 13C4:0FA8 */ pstring<TextEncoding::ASCII, 0x10> v1_access_key;
-  /* 13D4:0FB8 */
-} __packed_ws__(PSODC112000CharacterFile, 0x13D4);
+  /* 0000 */ le_uint32_t checksum = 0;
+  struct Character {
+    // See PSOGCCharacterFile::Character for descriptions of fields' meanings.
+    /* 0000:---- */ PlayerInventory inventory;
+    /* 034C:---- */ PlayerDispDataDCPCV3 disp;
+    /* 041C:0000 */ le_uint32_t validation_flags = 0;
+    /* 0420:0004 */ le_uint32_t creation_timestamp = 0;
+    /* 0424:0008 */ le_uint32_t signature = 0xBB40711D;
+    /* 0428:000C */ le_uint32_t play_time_seconds = 0;
+    /* 042C:0010 */ le_uint32_t option_flags = 0x00040058;
+    /* 0430:0014 */ le_uint16_t save_count_since_last_inventory_erasure = 1;
+    /* 0432:0016 */ le_uint16_t inventory_erasure_count = 0;
+    /* 0434:0018 */ pstring<TextEncoding::ASCII, 0x1C> ppp_username;
+    /* 0450:0034 */ pstring<TextEncoding::ASCII, 0x10> ppp_password;
+    // TODO: Figure out how quest flags work; it's obviously different from 0x80
+    // bytes per difficulty like in v1. Is it just 2048 flags shared across all
+    // difficulties, instead of 1024 in each difficulty?
+    /* 0460:0044 */ parray<uint8_t, 0x100> quest_flags;
+    /* 0560:0144 */ le_uint16_t bank_meseta;
+    /* 0562:0146 */ le_uint16_t num_bank_items;
+    /* 0564:0148 */ parray<ItemData, 60> bank_items;
+    /* 0A14:05F8 */ GuildCardDC guild_card;
+    /* 0A91:0675 */ parray<uint8_t, 3> unknown_s1; // Probably actually unused
+    /* 0A94:0678 */ parray<SaveFileSymbolChatEntryDCXB, 12> symbol_chats;
+    /* 0EB4:0A98 */ parray<SaveFileShortcutEntryDC, 20> shortcuts;
+    /* 13B4:0F98 */ pstring<TextEncoding::ASCII, 0x10> v1_serial_number;
+    /* 13C4:0FA8 */ pstring<TextEncoding::ASCII, 0x10> v1_access_key;
+    /* 13D4:0FB8 */
+  } __packed_ws__(Character, 0x13D4);
+  /* 0004 */ Character character;
+  /* 13D8 */ le_uint32_t round2_seed = 0;
+} __packed_ws__(PSODC112000CharacterFile, 0x13DC);
 
 struct PSODCV1CharacterFile {
-  // See PSOGCCharacterFile::Character for descriptions of fields' meanings.
-  /* 0000:---- */ PlayerInventory inventory;
-  /* 034C:---- */ PlayerDispDataDCPCV3 disp;
-  /* 041C:0000 */ le_uint32_t validation_flags = 0;
-  /* 0420:0004 */ le_uint32_t creation_timestamp = 0;
-  /* 0424:0008 */ le_uint32_t signature = 0xA205B064;
-  /* 0428:000C */ le_uint32_t play_time_seconds = 0;
-  /* 042C:0010 */ le_uint32_t option_flags = 0x00040058;
-  /* 0430:0014 */ le_uint32_t save_count = 1;
-  /* 0434:0018 */ pstring<TextEncoding::ASCII, 0x1C> ppp_username;
-  /* 0450:0034 */ pstring<TextEncoding::ASCII, 0x10> ppp_password;
-  /* 0460:0044 */ QuestFlagsV1 quest_flags;
-  /* 05E0:01C4 */ PlayerBank60 bank;
-  /* 0B88:076C */ GuildCardDC guild_card;
-  /* 0C05:07E9 */ parray<uint8_t, 3> unknown_s1; // Probably actually unused
-  /* 0C08:07EC */ parray<SaveFileSymbolChatEntryDCXB, 12> symbol_chats;
-  /* 1028:0C0C */ parray<SaveFileShortcutEntryDC, 20> shortcuts;
-  /* 1528:110C */ pstring<TextEncoding::ASCII, 0x10> v1_serial_number;
-  /* 1538:111C */ pstring<TextEncoding::ASCII, 0x10> v1_access_key;
-  /* 1548:112C */
-} __packed_ws__(PSODCV1CharacterFile, 0x1548);
+  /* 0000 */ le_uint32_t checksum = 0;
+  struct Character {
+    // See PSOGCCharacterFile::Character for descriptions of fields' meanings.
+    /* 0000:---- */ PlayerInventory inventory;
+    /* 034C:---- */ PlayerDispDataDCPCV3 disp;
+    /* 041C:0000 */ le_uint32_t validation_flags = 0;
+    /* 0420:0004 */ le_uint32_t creation_timestamp = 0;
+    /* 0424:0008 */ le_uint32_t signature = 0xA205B064;
+    /* 0428:000C */ le_uint32_t play_time_seconds = 0;
+    /* 042C:0010 */ le_uint32_t option_flags = 0x00040058;
+    /* 0430:0014 */ le_uint32_t save_count = 1;
+    /* 0434:0018 */ pstring<TextEncoding::ASCII, 0x1C> ppp_username;
+    /* 0450:0034 */ pstring<TextEncoding::ASCII, 0x10> ppp_password;
+    /* 0460:0044 */ QuestFlagsV1 quest_flags;
+    /* 05E0:01C4 */ PlayerBank60 bank;
+    /* 0B88:076C */ GuildCardDC guild_card;
+    /* 0C05:07E9 */ parray<uint8_t, 3> unknown_s1; // Probably actually unused
+    /* 0C08:07EC */ parray<SaveFileSymbolChatEntryDCXB, 12> symbol_chats;
+    /* 1028:0C0C */ parray<SaveFileShortcutEntryDC, 20> shortcuts;
+    /* 1528:110C */ pstring<TextEncoding::ASCII, 0x10> v1_serial_number;
+    /* 1538:111C */ pstring<TextEncoding::ASCII, 0x10> v1_access_key;
+    /* 1548:112C */
+  } __packed_ws__(Character, 0x1548);
+  /* 0004 */ Character character;
+  /* 154C */ le_uint32_t round2_seed = 0;
+} __packed_ws__(PSODCV1CharacterFile, 0x1550);
 
 struct PSODCV2CharacterFile {
-  // See PSOGCCharacterFile::Character for descriptions of fields' meanings.
-  /* 0000:---- */ PlayerInventory inventory;
-  /* 034C:---- */ PlayerDispDataDCPCV3 disp;
-  /* 041C:0000 */ le_uint32_t validation_flags = 0;
-  /* 0420:0004 */ le_uint32_t creation_timestamp = 0;
-  /* 0424:0008 */ le_uint32_t signature = 0xA205B064;
-  /* 0428:000C */ le_uint32_t play_time_seconds = 0;
-  /* 042C:0010 */ le_uint32_t option_flags = 0x00040058;
-  /* 0430:0014 */ le_uint32_t save_count = 1;
-  /* 0434:0018 */ pstring<TextEncoding::ASCII, 0x1C> ppp_username;
-  /* 0450:0034 */ pstring<TextEncoding::ASCII, 0x10> ppp_password;
-  /* 0460:0044 */ QuestFlags quest_flags;
-  /* 0660:0244 */ PlayerBank60 bank;
-  /* 0C08:07EC */ GuildCardDC guild_card;
-  /* 0C85:0869 */ parray<uint8_t, 3> unknown_s1; // Probably actually unused
-  /* 0C88:086C */ parray<SaveFileSymbolChatEntryDCXB, 12> symbol_chats;
-  /* 10A8:0C8C */ parray<SaveFileShortcutEntryDC, 20> shortcuts;
-  /* 15A8:118C */ pstring<TextEncoding::ASCII, 0x10> v1_serial_number;
-  /* 15B8:119C */ pstring<TextEncoding::ASCII, 0x10> v1_access_key;
-  /* 15C8:11AC */ PlayerRecordsBattle battle_records;
-  /* 15E0:11C4 */ PlayerRecordsChallengeDC challenge_records;
-  /* 1680:1264 */ parray<le_uint16_t, 20> tech_menu_shortcut_entries;
-  // The Choice Search config is stored here as 32-bit integers, even though
-  // it's represented with 16-bit integers in the various commands that send it
-  // to and from the server. The order of the entries here is the same (that
-  // is, the first two of these ints are entries[0], the second two are
-  // entries[1], etc.).
-  /* 16A8:128C */ parray<le_uint32_t, 10> choice_search_config;
-  /* 16D0:12B4 */ parray<uint8_t, 4> unknown_a2;
-  /* 16D4:12B8 */ pstring<TextEncoding::ASCII, 0x10> v2_serial_number;
-  /* 16E4:12C8 */ pstring<TextEncoding::ASCII, 0x10> v2_access_key;
-  /* 16F4:12D8 */
-} __packed_ws__(PSODCV2CharacterFile, 0x16F4);
+  /* 0000 */ le_uint32_t checksum = 0;
+  struct Character {
+    // See PSOGCCharacterFile::Character for descriptions of fields' meanings.
+    /* 0000:---- */ PlayerInventory inventory;
+    /* 034C:---- */ PlayerDispDataDCPCV3 disp;
+    /* 041C:0000 */ le_uint32_t validation_flags = 0;
+    /* 0420:0004 */ le_uint32_t creation_timestamp = 0;
+    /* 0424:0008 */ le_uint32_t signature = 0xA205B064;
+    /* 0428:000C */ le_uint32_t play_time_seconds = 0;
+    /* 042C:0010 */ le_uint32_t option_flags = 0x00040058;
+    /* 0430:0014 */ le_uint32_t save_count = 1;
+    /* 0434:0018 */ pstring<TextEncoding::ASCII, 0x1C> ppp_username;
+    /* 0450:0034 */ pstring<TextEncoding::ASCII, 0x10> ppp_password;
+    /* 0460:0044 */ QuestFlags quest_flags;
+    /* 0660:0244 */ PlayerBank60 bank;
+    /* 0C08:07EC */ GuildCardDC guild_card;
+    /* 0C85:0869 */ parray<uint8_t, 3> unknown_s1; // Probably actually unused
+    /* 0C88:086C */ parray<SaveFileSymbolChatEntryDCXB, 12> symbol_chats;
+    /* 10A8:0C8C */ parray<SaveFileShortcutEntryDC, 20> shortcuts;
+    /* 15A8:118C */ pstring<TextEncoding::ASCII, 0x10> v1_serial_number;
+    /* 15B8:119C */ pstring<TextEncoding::ASCII, 0x10> v1_access_key;
+    /* 15C8:11AC */ PlayerRecordsBattle battle_records;
+    /* 15E0:11C4 */ PlayerRecordsChallengeDC challenge_records;
+    /* 1680:1264 */ parray<le_uint16_t, 20> tech_menu_shortcut_entries;
+    // The Choice Search config is stored here as 32-bit integers, even though
+    // it's represented with 16-bit integers in the various commands that send it
+    // to and from the server. The order of the entries here is the same (that
+    // is, the first two of these ints are entries[0], the second two are
+    // entries[1], etc.).
+    /* 16A8:128C */ parray<le_uint32_t, 10> choice_search_config;
+    /* 16D0:12B4 */ parray<uint8_t, 4> unknown_a2;
+    /* 16D4:12B8 */ pstring<TextEncoding::ASCII, 0x10> v2_serial_number;
+    /* 16E4:12C8 */ pstring<TextEncoding::ASCII, 0x10> v2_access_key;
+    /* 16F4:12D8 */
+  } __packed_ws__(Character, 0x16F4);
+  /* 0004 */ Character character;
+  /* 16F0 */ le_uint32_t round2_seed = 0;
+} __packed_ws__(PSODCV2CharacterFile, 0x16FC);
 
 struct PSOPCCharacterFile { // PSO______SYS and PSO______SYD
   // See PSOGCCharacterFile::Character for descriptions of fields' meanings.
@@ -517,7 +544,7 @@ struct PSOGCCharacterFile {
     //   ------zA BCDEFG-- HHHIIIJJ KLMNOPQR
     //   z = Function key setting (BB; 0 = menu shortcuts; 1 = chat shortcuts).
     //       This bit is unused by PSO GC.
-    //   A = Keyboard controls (BB; 0 = on; 1 = off). Note that A is also used
+    //   A = Keyboard controls (BB; 0 = on; 1 = off). This field is also used
     //       by PSO GC, but its function is currently unknown.
     //   G = Choice search setting (0 = enabled; 1 = disabled)
     //   H = Player lobby labels (0 = name; 1 = name, language, and level;
@@ -555,7 +582,7 @@ struct PSOGCCharacterFile {
     /* 2794:2378 */ be_uint32_t unknown_f8 = 0;
     /* 2798:237C */
   } __packed_ws__(Character, 0x2798);
-  /* 00004 */ parray<Character, 7> characters;
+  /* 00004 */ parray<Character, 7> characters; // 0-3: main chars, 4-6: temps
   /* 1152C */ pstring<TextEncoding::ASCII, 0x10> serial_number; // As %08X (not decimal)
   /* 1153C */ pstring<TextEncoding::ASCII, 0x10> access_key;
   /* 1154C */ pstring<TextEncoding::ASCII, 0x10> password;
@@ -760,13 +787,13 @@ struct PSOBBCharacterFile {
       uint8_t language,
       const PlayerDispDataBBPreview& preview,
       std::shared_ptr<const LevelTable> level_table);
-  static std::shared_ptr<PSOBBCharacterFile> create_from_dc_v2(const PSODCV2CharacterFile& dc);
+  static std::shared_ptr<PSOBBCharacterFile> create_from_dc_v2(const PSODCV2CharacterFile::Character& dc);
   static std::shared_ptr<PSOBBCharacterFile> create_from_gc_nte(const PSOGCNTECharacterFileCharacter& gc_nte);
   static std::shared_ptr<PSOBBCharacterFile> create_from_gc(const PSOGCCharacterFile::Character& gc);
   static std::shared_ptr<PSOBBCharacterFile> create_from_ep3(const PSOGCEp3CharacterFile::Character& ep3);
   static std::shared_ptr<PSOBBCharacterFile> create_from_xb(const PSOXBCharacterFileCharacter& xb);
 
-  PSODCV2CharacterFile to_dc_v2() const;
+  PSODCV2CharacterFile::Character to_dc_v2() const;
   PSOGCNTECharacterFileCharacter to_gc_nte() const;
   PSOGCCharacterFile::Character to_gc() const;
   PSOXBCharacterFileCharacter to_xb(uint64_t xb_user_id) const;
@@ -811,11 +838,45 @@ void save_psochar(
 ////////////////////////////////////////////////////////////////////////////////
 // Guild Card files
 
-struct PSODCV2GuildCardFile {
-  // TODO: Fill this out.
-  /* 0000 */ parray<uint8_t, 0x330C> unknown_a1;
-  /* 330C */
-} __packed_ws__(PSODCV2GuildCardFile, 0x330C);
+struct PSODCNTEGuildCardFile {
+  // Note: DC NTE does not encrypt the Guild Card file
+  struct Entry {
+    /* 0000 */ GuildCardDCNTE guild_card;
+    /* 007B */ uint8_t unknown_a1 = 0; // Probably actually unused
+    /* 007C */
+  } __packed_ws__(Entry, 0x7C);
+  /* 0000 */ parray<Entry, 100> entries;
+  /* 3070 */
+} __packed_ws__(PSODCNTEGuildCardFile, 0x3070);
+
+struct PSODCGuildCardFileEntry {
+  /* 0000 */ GuildCardDC guild_card;
+  /* 007D */ parray<uint8_t, 3> unknown_a1 = 0; // Probably actually unused
+  /* 0080 */
+} __packed_ws__(PSODCGuildCardFileEntry, 0x80);
+
+struct PSODC112000GuildCardFile {
+  // Note: 11/2000 does not encrypt the Guild Card file
+  /* 0000 */ parray<PSODCGuildCardFileEntry, 100> entries;
+  /* 3200 */
+} __packed_ws__(PSODC112000GuildCardFile, 0x3200);
+
+struct PSODCV1V2GuildCardFile {
+  struct EncryptedSection {
+    /* 0000 */ le_uint32_t checksum = 0;
+    /* 0004 */ parray<PSODCGuildCardFileEntry, 100> entries;
+    /* 3204 */ le_int16_t music_volume = 0;
+    /* 3206 */ int8_t sound_volume = 0;
+    /* 3207 */ uint8_t language = 1;
+    /* 3208 */ le_uint32_t server_time_delta_frames = 540000; // 648000 on DCv1
+    /* 320C */ le_uint32_t creation_timestamp = 0;
+    /* 3210 */ le_uint32_t round2_seed = 0;
+    /* 3214 */
+  } __packed_ws__(EncryptedSection, 0x3214);
+  /* 0000 */ EncryptedSection encrypted_section;
+  /* 3214 */ parray<uint8_t, 0x100> event_flags;
+  /* 3314 */
+} __packed_ws__(PSODCV1V2GuildCardFile, 0x3314);
 
 struct PSOPCGuildCardFile { // PSO______GUD
   /* 0000 */ le_uint32_t checksum = 0;
@@ -979,14 +1040,14 @@ std::string decrypt_fixed_size_data_section_s(
     size_t size,
     uint32_t round1_seed,
     bool skip_checksum = false,
-    uint64_t override_round2_seed = 0xFFFFFFFFFFFFFFFF) {
+    int64_t override_round2_seed = -1) {
   if (size < 2 * sizeof(U32T<BE>)) {
     throw std::runtime_error("data size is too small");
   }
   std::string decrypted = decrypt_data_section<BE>(data_section, size, round1_seed);
 
-  uint32_t round2_seed = override_round2_seed < 0x100000000
-      ? static_cast<uint32_t>(override_round2_seed)
+  uint32_t round2_seed = (override_round2_seed >= 0)
+      ? override_round2_seed
       : reinterpret_cast<const U32T<BE>*>(decrypted.data() + decrypted.size() - sizeof(U32T<BE>))->load();
   PSOV2Encryption round2_crypt(round2_seed);
   if (BE) {
@@ -1011,13 +1072,13 @@ std::string decrypt_fixed_size_data_section_s(
   return decrypted;
 }
 
-template <typename StructT, bool BE>
+template <typename StructT, bool BE, size_t ChecksumLength = sizeof(StructT)>
 StructT decrypt_fixed_size_data_section_t(
     const void* data_section,
     size_t size,
     uint32_t round1_seed,
     bool skip_checksum = false,
-    uint64_t override_round2_seed = 0xFFFFFFFFFFFFFFFF) {
+    int64_t override_round2_seed = -1) {
 
   std::string decrypted = decrypt_data_section<BE>(data_section, size, round1_seed);
   if (decrypted.size() < sizeof(StructT)) {
@@ -1025,7 +1086,7 @@ StructT decrypt_fixed_size_data_section_t(
   }
   StructT ret = *reinterpret_cast<const StructT*>(decrypted.data());
 
-  PSOV2Encryption round2_crypt(override_round2_seed < 0x100000000 ? override_round2_seed : ret.round2_seed.load());
+  PSOV2Encryption round2_crypt((override_round2_seed >= 0) ? override_round2_seed : ret.round2_seed.load());
   if (BE) {
     round2_crypt.encrypt_big_endian(&ret, offsetof(StructT, round2_seed));
   } else {
@@ -1035,7 +1096,7 @@ StructT decrypt_fixed_size_data_section_t(
   if (!skip_checksum) {
     uint32_t expected_crc = ret.checksum;
     ret.checksum = 0;
-    uint32_t actual_crc = phosg::crc32(&ret, sizeof(ret));
+    uint32_t actual_crc = phosg::crc32(&ret, ChecksumLength);
     ret.checksum = expected_crc;
     if (expected_crc != actual_crc) {
       throw std::runtime_error(phosg::string_printf(
@@ -1070,12 +1131,12 @@ std::string encrypt_fixed_size_data_section_s(const void* data, size_t size, uin
   return encrypt_data_section<BE>(encrypted.data(), encrypted.size(), round1_seed);
 }
 
-template <typename StructT, bool BE>
+template <typename StructT, bool BE, size_t ChecksumLength = sizeof(StructT)>
 std::string encrypt_fixed_size_data_section_t(const StructT& s, uint32_t round1_seed) {
   StructT encrypted = s;
   encrypted.checksum = 0;
   encrypted.round2_seed = phosg::random_object<uint32_t>();
-  encrypted.checksum = phosg::crc32(&encrypted, sizeof(encrypted));
+  encrypted.checksum = phosg::crc32(&encrypted, ChecksumLength);
 
   PSOV2Encryption round2_crypt(encrypted.round2_seed);
   if (BE) {
