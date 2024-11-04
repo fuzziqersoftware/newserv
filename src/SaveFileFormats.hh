@@ -868,7 +868,7 @@ struct PSODCV1V2GuildCardFile {
     /* 3204 */ le_int16_t music_volume = 0;
     /* 3206 */ int8_t sound_volume = 0;
     /* 3207 */ uint8_t language = 1;
-    /* 3208 */ le_uint32_t server_time_delta_frames = 540000; // 648000 on DCv1
+    /* 3208 */ le_int32_t server_time_delta_frames = 540000; // 648000 on DCv1
     /* 320C */ le_uint32_t creation_timestamp = 0;
     /* 3210 */ le_uint32_t round2_seed = 0;
     /* 3214 */

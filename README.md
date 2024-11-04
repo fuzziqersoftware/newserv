@@ -676,6 +676,7 @@ The data formats that newserv can convert to/from are:
 | PSO GC quest file (.gci)       | None                      | `decode-gci`                 |
 | Download quest file (.dlq)     | None                      | `decode-dlq`                 |
 | Server quest file (.qst)       | `encode-qst`              | `decode-qst`                 |
+| PSO DC save file (.vms)        | `encrypt-vms-save`        | `decrypt-vms-save`           |
 | PSO PC save file               | `encrypt-pc-save`         | `decrypt-pc-save`            |
 | PSO GC save file (.gci)        | `encrypt-gci-save`        | `decrypt-gci-save`           |
 | PSO GC snapshot file           | None                      | `decode-gci-snapshot`        |
@@ -743,7 +744,7 @@ Edit config.json
 ```
 nano ~/newservPersist/config.json
 ```
-Pro tip: 
+Pro tip:
 Set "LocalAddress" to the static, LAN IP address of your server. If your server LAN IP is "192.168.0.10":
 "LocalAddress": "192.168.0.10",
 
