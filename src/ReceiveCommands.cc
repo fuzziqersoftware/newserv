@@ -4570,8 +4570,9 @@ static void on_0C_C1_E7_EC(shared_ptr<Client> c, uint16_t command, uint32_t, str
 
     GameMode mode = GameMode::NORMAL;
     bool spectators_forbidden = false;
-    if (cmd.battle_mode) {
+    if (cmd.battle_mode || c->config.check_flag(Client::Flag::FORCE_BATTLE_MODE_GAME)) {
       mode = GameMode::BATTLE;
+      c->config.clear_flag(Client::Flag::FORCE_BATTLE_MODE_GAME);
     }
     if (cmd.challenge_mode) {
       if (client_is_ep3) {

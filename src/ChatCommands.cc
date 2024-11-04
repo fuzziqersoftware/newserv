@@ -2293,6 +2293,21 @@ static void proxy_command_item(shared_ptr<ProxyServer::LinkedSession> ses, const
   }
 }
 
+static void server_command_enable_battle_mode_v1(shared_ptr<Client> c, const std::string&) {
+  check_is_game(c->require_lobby(), false);
+  if (!is_v1(c->version())) {
+    send_text_message(c, "$C6This command can\nonly be used on\nDC v1 and earlier");
+    return;
+  }
+
+  c->config.toggle_flag(Client::Flag::FORCE_BATTLE_MODE_GAME);
+  if (c->config.check_flag(Client::Flag::FORCE_BATTLE_MODE_GAME)) {
+    send_text_message(c, "$C6Battle mode enabled\nfor next game");
+  } else {
+    send_text_message(c, "$C6Battle mode disabled\nfor next game");
+  }
+}
+
 static void server_command_enable_ep3_battle_debug_menu(shared_ptr<Client> c, const std::string& args) {
   check_debug_enabled(c);
 
@@ -2625,6 +2640,7 @@ static const unordered_map<string, ChatCommandDefinition> chat_commands({
     {"$ax", {server_command_ax, nullptr}},
     {"$ban", {server_command_ban, nullptr}},
     {"$bank", {server_command_change_bank, nullptr}},
+    {"$battle", {server_command_enable_battle_mode_v1, nullptr}},
     {"$bbchar", {server_command_bbchar, nullptr}},
     {"$cheat", {server_command_cheat, nullptr}},
     {"$debug", {server_command_debug, nullptr}},

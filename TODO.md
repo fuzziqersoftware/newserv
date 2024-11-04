@@ -8,7 +8,6 @@
 ## PSO DC
 
 - Investigate if https://crates.io/crates/blaze-ssl-async can be used to implement the HL check server
-- Does DCv1 support battle mode? The flag exists on the client; try this out
 
 ## Episode 3
 
