@@ -5831,14 +5831,25 @@ struct G_IdentifyResult_BB_6xB9 {
 } __packed_ws__(G_IdentifyResult_BB_6xB9, 0x18);
 
 // 6xBA: Sync card trade state (Episode 3)
-// This command calls various member functions in TCardTradeServer.
+// This command calls various member functions in TCardTrade. This is used
+// after both players are standing at the respective kiosks and are ready to
+// trade cards.
 
 struct G_SyncCardTradeState_Ep3_6xBA {
   G_ClientIDHeader header;
-  le_uint16_t what = 0; // Low byte must be < 9; this indexes into a handler table
-  le_uint16_t unknown_a2 = 0;
-  le_uint32_t unknown_a3 = 0;
-  le_uint32_t unknown_a4 = 0;
+  // Values for what:
+  // 1 = add card to trade (card_id and count used)
+  // 2 = remove card from trade (card_id and count used)
+  // 3 = first confirmation
+  // 4 = cancel first confirmation
+  // 5 = second confirmation
+  // 6 = cancel second confirmation
+  // 7 = leave trade window
+  // Anything else = does nothing
+  le_uint16_t what = 0;
+  le_uint16_t unused = 0;
+  le_uint32_t card_id = 0; // Only used when what = 1 or 2
+  le_uint32_t count = 0; // Only used when what = 1 or 2
 } __packed_ws__(G_SyncCardTradeState_Ep3_6xBA, 0x10);
 
 // 6xBA: BB accept tekker result (handled by the server)
@@ -5848,28 +5859,35 @@ struct G_AcceptItemIdentification_BB_6xBA {
   le_uint32_t item_id = 0;
 } __packed_ws__(G_AcceptItemIdentification_BB_6xBA, 8);
 
-// 6xBB: Sync card trade state (Episode 3)
-// This command calls various member functions in TCardTradeServer.
-// TODO: Certain invalid values for slot/args in this command can crash the
-// client (what is properly bounds-checked). Find out the actual limits for
-// slot/args and make newserv enforce them.
+// 6xBB: Sync card trade server state (Episode 3)
+// This command calls various member functions in TCardTradeServer. This is
+// used before both players have entered the card trade sequence (as opposed to
+// 6xBA, which is used during that sequence).
 
-struct G_SyncCardTradeState_Ep3_6xBB {
+struct G_SyncCardTradeServerState_Ep3_6xBB {
   G_ClientIDHeader header;
-  le_uint16_t what = 0; // Must be < 5; this indexes into a jump table
-  le_uint16_t slot = 0;
+  // Values for what:
+  // 0 = request slot (leader sends accept message with what=1)
+  // 1 = accept slot (args[0] is the accepted client ID)
+  // 2 = cancel all slot requests
+  // 3 = replace all slots (args[0, 1] are the two client IDs to accept into
+  //     the two slots)
+  // 4 = relinquish all slots
+  // Anything else = does nothing
+  le_uint16_t what = 0;
+  le_uint16_t slot = 0; // Must be 0 or 1 (not bounds checked!)
   parray<le_uint32_t, 4> args;
-} __packed_ws__(G_SyncCardTradeState_Ep3_6xBB, 0x18);
+} __packed_ws__(G_SyncCardTradeServerState_Ep3_6xBB, 0x18);
 
 // 6xBB: BB bank request (handled by the server)
 
 // 6xBC: Card counts (Episode 3)
-// This is sent by the client in response to a 6xB5x38 command.
-// It's possible that this is an early, now-unused implementation of the CAx49
-// command. When the client receives this command, it copies the data into a
-// globally-allocated array, but nothing reads from this array. Curiously, this
-// command is smaller than 0x400 bytes, but uses the extended subcommand format
-// anyway (and uses the 6D command rather than 62).
+// This is sent by the client in response to a 6xB5x38 command. This is used
+// along with 6xB5x38 so clients can see each other's card counts. Curiously,
+// this command is smaller than 0x400 bytes (even on NTE) but uses the extended
+// subcommand format anyway.
+// An Episode 3 client will crash if it receives this command when the card
+// trade window is not active.
 
 struct G_CardCounts_Ep3NTE_6xBC {
   G_ExtendedHeaderT<G_UnusedHeader> header;
@@ -6855,8 +6873,8 @@ struct G_AdvanceFromStartingRollsPhase_Ep3_CAx37 {
 // 6xB5x38: Card counts request
 // This command causes the client identified by requested_client_id to send a
 // 6xBC command to the client identified by reply_to_client_id (privately, via
-// the 6D command). This appears to be unused; it is likely superseded by the
-// CAx49 command.
+// the 6D command). This is sent at the beginning of the card trade window
+// sequence.
 
 struct G_CardCountsRequest_Ep3_6xB5x38 {
   G_CardBattleCommandHeader header = {0xB5, sizeof(G_CardCountsRequest_Ep3_6xB5x38) / 4, 0, 0x38, 0, 0, 0};

@@ -122,3 +122,5 @@ protected:
       bool from_client_customization);
   G_SyncPlayerDispAndInventory_BaseV1 base_v1() const;
 };
+
+bool validate_6xBB(G_SyncCardTradeServerState_Ep3_6xBB& cmd);

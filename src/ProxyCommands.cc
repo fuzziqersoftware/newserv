@@ -1185,6 +1185,15 @@ static HandlerResult S_6x(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t, 
         }
       }
 
+    } else if ((static_cast<uint8_t>(data[0]) == 0xBB) && is_ep3(ses->version())) {
+      if (!validate_6xBB(check_size_t<G_SyncCardTradeServerState_Ep3_6xBB>(data))) {
+        return HandlerResult::Type::SUPPRESS;
+      }
+      return HandlerResult::Type::MODIFIED;
+
+    } else if ((static_cast<uint8_t>(data[0]) == 0xBC) && !ses->config.check_flag(Client::Flag::EP3_ALLOW_6xBC)) {
+      return HandlerResult::Type::SUPPRESS;
+
     } else if ((static_cast<uint8_t>(data[0]) == 0xBD) &&
         ses->config.check_flag(Client::Flag::PROXY_EP3_UNMASK_WHISPERS) &&
         is_ep3(ses->version())) {
@@ -1228,15 +1237,15 @@ static HandlerResult C_GXB_61(shared_ptr<ProxyServer::LinkedSession> ses, uint16
     C_CharacterData_V3_61_98* pd;
     if (flag == 4) { // Episode 3
       auto& ep3_pd = check_size_t<C_CharacterData_Ep3_61_98>(data);
-      if (ep3_pd.ep3_config.is_encrypted) {
-        decrypt_trivial_gci_data(
-            &ep3_pd.ep3_config.card_counts,
-            offsetof(Episode3::PlayerConfig, decks) - offsetof(Episode3::PlayerConfig, card_counts),
-            ep3_pd.ep3_config.basis);
-        ep3_pd.ep3_config.is_encrypted = 0;
-        ep3_pd.ep3_config.basis = 0;
-        modified = true;
-      }
+      // if (ep3_pd.ep3_config.is_encrypted) {
+      //   decrypt_trivial_gci_data(
+      //       &ep3_pd.ep3_config.card_counts,
+      //       offsetof(Episode3::PlayerConfig, decks) - offsetof(Episode3::PlayerConfig, card_counts),
+      //       ep3_pd.ep3_config.basis);
+      //   ep3_pd.ep3_config.is_encrypted = 0;
+      //   ep3_pd.ep3_config.basis = 0;
+      //   modified = true;
+      // }
       pd = reinterpret_cast<C_CharacterData_V3_61_98*>(&ep3_pd);
     } else {
       if (is_ep3(ses->version()) && (ses->version() != Version::GC_EP3_NTE)) {
@@ -2056,10 +2065,8 @@ HandlerResult C_6x<void>(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t, u
 
     } else if (data[0] == 0x48) {
       if (ses->config.check_flag(Client::Flag::INFINITE_TP_ENABLED)) {
-        send_player_stats_change(ses->client_channel,
-            ses->lobby_client_id, PlayerStatsChange::ADD_TP, 255);
-        send_player_stats_change(ses->server_channel,
-            ses->lobby_client_id, PlayerStatsChange::ADD_TP, 255);
+        send_player_stats_change(ses->client_channel, ses->lobby_client_id, PlayerStatsChange::ADD_TP, 255);
+        send_player_stats_change(ses->server_channel, ses->lobby_client_id, PlayerStatsChange::ADD_TP, 255);
       }
 
     } else if (data[0] == 0x5F) {
@@ -2068,6 +2075,13 @@ HandlerResult C_6x<void>(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t, u
 
     } else if (data[0] == 0x60 || static_cast<uint8_t>(data[0]) == 0xA2) {
       return SC_6x60_6xA2(ses, data);
+
+    } else if (is_ep3(ses->version()) && (data.size() > 4) && (static_cast<uint8_t>(data[0]) == 0xB5)) {
+      if (data[4] == 0x38) {
+        ses->config.set_flag(Client::Flag::EP3_ALLOW_6xBC);
+      } else if (data[4] == 0x3C) {
+        ses->config.clear_flag(Client::Flag::EP3_ALLOW_6xBC);
+      }
     }
   }
 

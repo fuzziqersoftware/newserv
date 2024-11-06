@@ -1164,14 +1164,6 @@ static void on_forward_check_ep3_lobby(shared_ptr<Client> c, uint8_t command, ui
   }
 }
 
-static void on_forward_check_ep3_game(shared_ptr<Client> c, uint8_t command, uint8_t flag, void* data, size_t size) {
-  check_size_t<G_UnusedHeader>(data, size, 0xFFFF);
-  auto l = c->require_lobby();
-  if (l->is_game() && l->is_ep3()) {
-    forward_subcommand(c, command, flag, data, size);
-  }
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 // Ep3 subcommands
 
@@ -1199,6 +1191,10 @@ static void on_ep3_battle_subs(shared_ptr<Client> c, uint8_t command, uint8_t fl
     if (l->is_game() && (cmd.client_id >= 4)) {
       return;
     }
+  } else if (header.subsubcommand == 0x38) {
+    c->config.set_flag(Client::Flag::EP3_ALLOW_6xBC);
+  } else if (header.subsubcommand == 0x3C) {
+    c->config.clear_flag(Client::Flag::EP3_ALLOW_6xBC);
   }
 
   if (!(s->ep3_behavior_flags & Episode3::BehaviorFlag::DISABLE_MASKING) && (c->version() != Version::GC_EP3_NTE)) {
@@ -1206,6 +1202,28 @@ static void on_ep3_battle_subs(shared_ptr<Client> c, uint8_t command, uint8_t fl
   }
 
   forward_subcommand(c, command, flag, data.data(), data.size());
+}
+
+static void on_ep3_trade_card_counts(shared_ptr<Client> c, uint8_t command, uint8_t flag, void* data, size_t size) {
+  if (c->version() == Version::GC_EP3_NTE) {
+    check_size_t<G_CardCounts_Ep3NTE_6xBC>(data, size, 0xFFFF);
+  } else {
+    check_size_t<G_CardCounts_Ep3_6xBC>(data, size, 0xFFFF);
+  }
+
+  if (!command_is_private(command)) {
+    return;
+  }
+  auto l = c->require_lobby();
+  if (!l->is_game() || !l->is_ep3()) {
+    return;
+  }
+  auto target = l->clients.at(flag);
+  if (!target || !target->config.check_flag(Client::Flag::EP3_ALLOW_6xBC)) {
+    return;
+  }
+
+  forward_subcommand(c, command, flag, data, size);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2335,12 +2353,46 @@ static void on_open_shop_bb_or_ep3_battle_subs(shared_ptr<Client> c, uint8_t com
   }
 }
 
+bool validate_6xBB(G_SyncCardTradeServerState_Ep3_6xBB& cmd) {
+  if ((cmd.header.client_id >= 4) || (cmd.slot > 1)) {
+    return false;
+  }
+
+  // TTradeCardServer uses 4 to indicate the slot is empty, so we allow 4 in
+  // the client ID checks below
+  switch (cmd.what) {
+    case 1:
+      if (cmd.args[0] >= 5) {
+        return false;
+      }
+      cmd.args[1] = 0;
+      cmd.args[2] = 0;
+      cmd.args[3] = 0;
+      break;
+    case 0:
+    case 2:
+    case 4:
+      cmd.args.clear(0);
+      break;
+    case 3:
+      if (cmd.args[0] >= 5 || cmd.args[1] >= 5) {
+        return false;
+      }
+      cmd.args[2] = 0;
+      cmd.args[3] = 0;
+      break;
+    default:
+      return false;
+  }
+  return true;
+}
+
 static void on_open_bank_bb_or_card_trade_counter_ep3(shared_ptr<Client> c, uint8_t command, uint8_t flag, void* data, size_t size) {
   auto l = c->require_lobby();
   if ((l->base_version == Version::BB_V4) && l->is_game()) {
     c->config.set_flag(Client::Flag::AT_BANK_COUNTER);
     send_bank(c);
-  } else if (l->is_ep3()) {
+  } else if (l->is_ep3() && validate_6xBB(check_size_t<G_SyncCardTradeServerState_Ep3_6xBB>(data, size))) {
     forward_subcommand(c, command, flag, data, size);
   }
 }
@@ -4827,7 +4879,7 @@ const SubcommandDefinition subcommand_definitions[0x100] = {
     /* 6xB9 */ {NONE, NONE, 0xB9, on_invalid},
     /* 6xBA */ {NONE, NONE, 0xBA, on_accept_identify_item_bb},
     /* 6xBB */ {NONE, NONE, 0xBB, on_open_bank_bb_or_card_trade_counter_ep3},
-    /* 6xBC */ {NONE, NONE, 0xBC, on_forward_check_ep3_game},
+    /* 6xBC */ {NONE, NONE, 0xBC, on_ep3_trade_card_counts},
     /* 6xBD */ {NONE, NONE, 0xBD, on_ep3_private_word_select_bb_bank_action, SDF::ALWAYS_FORWARD_TO_WATCHERS},
     /* 6xBE */ {NONE, NONE, 0xBE, forward_subcommand_m, SDF::ALWAYS_FORWARD_TO_WATCHERS | SDF::ALLOW_FORWARD_TO_WATCHED_LOBBY},
     /* 6xBF */ {NONE, NONE, 0xBF, on_forward_check_ep3_lobby},

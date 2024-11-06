@@ -35,7 +35,7 @@ public:
     // TODO: It'd be nice to use a pattern here (e.g. all server-side flags are
     // in the high bits) but that would require re-recording or manually
     // rewriting all the tests
-    CLIENT_SIDE_MASK                           = 0xF73CFFFF7C0BFFFB,
+    CLIENT_SIDE_MASK                           = 0xE73CFFFF7C0BFFFB,
 
     // Version-related flags
     CHECKED_FOR_DC_V1_PROTOTYPE                = 0x0000000000000002,
@@ -73,6 +73,7 @@ public:
     SHOULD_SEND_ENABLE_SAVE                    = 0x0004000000000000,
     SWITCH_ASSIST_ENABLED                      = 0x0000000100000000,
     IS_CLIENT_CUSTOMIZATION                    = 0x0100000000000000,
+    EP3_ALLOW_6xBC                             = 0x1000000000000000, // Server-side only
 
     // Cheat mode and option flags
     INFINITE_HP_ENABLED                        = 0x0000000200000000,
@@ -80,7 +81,7 @@ public:
     DEBUG_ENABLED                              = 0x0000000800000000,
     ITEM_DROP_NOTIFICATIONS_1                  = 0x0010000000000000,
     ITEM_DROP_NOTIFICATIONS_2                  = 0x0020000000000000,
-    FORCE_BATTLE_MODE_GAME                     = 0x0800000000000000,
+    FORCE_BATTLE_MODE_GAME                     = 0x0800000000000000, // Server-side only
 
     // Proxy option flags
     PROXY_SAVE_FILES                           = 0x0000001000000000,
