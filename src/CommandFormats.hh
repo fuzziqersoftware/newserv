@@ -3652,7 +3652,6 @@ struct C_LeaveCharacterSelect_BB_00EC {
 // ED (C->S): Update save file data (BB)
 // There are several subcommands (noted in the structs below) that each update a
 // specific kind of data.
-// TODO: Actually define these structures and don't just treat them as raw data
 
 struct C_UpdateOptionFlags_BB_01ED {
   le_uint32_t option_flags = 0;
@@ -3667,10 +3666,12 @@ struct C_UpdateChatShortcuts_BB_03ED {
 } __packed_ws__(C_UpdateChatShortcuts_BB_03ED, 0xA40);
 
 struct C_UpdateKeyConfig_BB_04ED {
+  // TODO: Define this structure instead of treating it as raw data
   parray<uint8_t, 0x16C> key_config;
 } __packed_ws__(C_UpdateKeyConfig_BB_04ED, 0x16C);
 
 struct C_UpdatePadConfig_BB_05ED {
+  // TODO: Define this structure instead of treating it as raw data
   parray<uint8_t, 0x38> pad_config;
 } __packed_ws__(C_UpdatePadConfig_BB_05ED, 0x38);
 
@@ -3679,6 +3680,7 @@ struct C_UpdateTechMenu_BB_06ED {
 } __packed_ws__(C_UpdateTechMenu_BB_06ED, 0x28);
 
 struct C_UpdateCustomizeMenu_BB_07ED {
+  // TODO: Define this structure instead of treating it as raw data
   parray<uint8_t, 0xE8> customize;
 } __packed_ws__(C_UpdateCustomizeMenu_BB_07ED, 0xE8);
 

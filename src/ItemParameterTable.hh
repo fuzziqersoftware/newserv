@@ -40,8 +40,8 @@ public:
   } __packed__;
   template <bool BE>
   struct ItemBaseV3T : ItemBaseV2T<BE> {
-    /* 04 */ U16T<BE> type = 0;
-    /* 06 */ U16T<BE> skin = 0;
+    /* 04 */ U16T<BE> type = 0; // "Model" in Soly's ItemPMT editor
+    /* 06 */ U16T<BE> skin = 0; // "Texture" in Soly's ItemPMT editor
     /* 08 */
   } __packed__;
   template <bool BE>
