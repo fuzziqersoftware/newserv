@@ -4909,8 +4909,11 @@ static void on_D2_V3_BB(shared_ptr<Client> c, uint16_t, uint32_t, string& data) 
   }
 
   auto s = c->require_server_state();
-  auto complete_trade_for_side = [&](shared_ptr<Client> to_c, shared_ptr<Client> from_c) {
-    if (c->version() == Version::BB_V4) {
+  auto complete_trade_for_side = +[](shared_ptr<Client> to_c, shared_ptr<Client> from_c) {
+    auto l = to_c->require_lobby();
+    auto s = to_c->require_server_state();
+
+    if (to_c->version() == Version::BB_V4) {
       // On BB, the server is expected to generate the delete item and create
       // item commands
       auto to_p = to_c->character();
@@ -4938,7 +4941,7 @@ static void on_D2_V3_BB(shared_ptr<Client> c, uint16_t, uint32_t, string& data) 
     } else {
       // On V3, the clients will handle it; we just send their final trade lists
       // to each other
-      send_execute_item_trade(to_c, target_c->pending_item_trade->items);
+      send_execute_item_trade(to_c, from_c->pending_item_trade->items);
     }
 
     send_command(to_c, 0xD4, 0x01);
