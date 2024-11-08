@@ -81,10 +81,8 @@ public:
   void print(FILE* stream) const;
   void print_index(FILE* stream, Version v) const;
 
-  WordSelectMessage translate(
-      const WordSelectMessage& msg,
-      Version from_version,
-      Version to_version) const;
+  WordSelectMessage validate(const WordSelectMessage& msg, Version version) const;
+  WordSelectMessage translate(const WordSelectMessage& msg, Version from_version, Version to_version) const;
 
 private:
   struct Token {

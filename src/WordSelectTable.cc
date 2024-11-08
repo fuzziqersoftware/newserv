@@ -280,6 +280,20 @@ void WordSelectTable::print_index(FILE* stream, Version v) const {
   }
 }
 
+WordSelectMessage WordSelectTable::validate(const WordSelectMessage& msg, Version version) const {
+  const auto& index = this->tokens_for_version(version);
+
+  for (size_t z = 0; z < msg.tokens.size(); z++) {
+    if (msg.tokens[z] == 0xFFFF) {
+      continue;
+    }
+    const auto& token = index.at(msg.tokens[z]);
+    if (!token) {
+      throw runtime_error(phosg::string_printf("token %04hX does not exist in the index", msg.tokens[z].load()));
+    }
+  }
+}
+
 WordSelectMessage WordSelectTable::translate(
     const WordSelectMessage& msg,
     Version from_version,
