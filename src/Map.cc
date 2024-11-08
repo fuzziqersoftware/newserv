@@ -519,29 +519,29 @@ const char* Map::name_for_object_type(uint16_t type) {
     case 0x02BD:
       return "TObjLaboMapWarp";
     case 0x0300:
-      return "__UNKNOWN_0300__";
+      return "__EP4_LIGHT__";
     case 0x0301:
-      return "__UNKNOWN_0301__";
+      return "__WILDS_CRATER_CACTUS__";
     case 0x0302:
-      return "__UNKNOWN_0302__";
+      return "__WILDS_CRATER_BROWN_ROCK__";
     case 0x0303:
-      return "__UNKNOWN_0303__";
+      return "__WILDS_CRATER_BROWN_ROCK_DESTRUCTIBLE__";
     case 0x0340:
       return "__UNKNOWN_0340__";
     case 0x0341:
       return "__UNKNOWN_0341__";
     case 0x0380:
-      return "__UNKNOWN_0380__";
+      return "__POISON_PLANT__";
     case 0x0381:
       return "__UNKNOWN_0381__";
     case 0x0382:
       return "__UNKNOWN_0382__";
     case 0x0383:
-      return "__UNKNOWN_0383__";
+      return "__DESERT_OOZE_PLANT__";
     case 0x0385:
       return "__UNKNOWN_0385__";
     case 0x0386:
-      return "__UNKNOWN_0386__";
+      return "__WILDS_CRATER_BLACK_ROCKS__";
     case 0x0387:
       return "__UNKNOWN_0387__";
     case 0x0388:
@@ -551,21 +551,21 @@ const char* Map::name_for_object_type(uint16_t type) {
     case 0x038A:
       return "__UNKNOWN_038A__";
     case 0x038B:
-      return "__UNKNOWN_038B__";
+      return "__FALLING_ROCK__";
     case 0x038C:
-      return "__UNKNOWN_038C__";
+      return "__DESERT_PLANT_SOLID__";
     case 0x038D:
-      return "__UNKNOWN_038D__";
+      return "__DESERT_CRYSTALS_BOX__";
     case 0x038E:
       return "__UNKNOWN_038E__";
     case 0x038F:
-      return "__UNKNOWN_038F__";
+      return "__BEE_HIVE__";
     case 0x0390:
       return "__UNKNOWN_0390__";
     case 0x0391:
-      return "__UNKNOWN_0391__";
+      return "__HEAT__";
     case 0x03C0:
-      return "__UNKNOWN_03C0__";
+      return "__EP4_BOSS_EGG__";
     case 0x03C1:
       return "__UNKNOWN_03C1__";
     default:
