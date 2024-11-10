@@ -1,0 +1,165 @@
+$qfread
+
+00 000003FF Garon points
+00 0003FC00 Garon button-mashing game score
+00 03FC0000 Garon timing game score
+00 04000000 Garon Tier 1 (10 cards) of Guild Card counter
+00 08000000 Garon Tier 2 (30 cards) of Guild Card counter
+00 10000000 Garon Tier 3 (50 cards) of Guild Card counter
+00 20000000 Garon Tier 4 (100 cards) of Guild Card counter
+00 C0000000 __UNUSED__
+
+01 00000001 Dream Messenger: NiGHTS
+01 00000002 Pioneer Warehouse: ???
+01 00000004 Garon's Shop: Puyo Pop
+01 00000008 Pioneer Warehouse: Chu Chu Challenge
+01 00000010 Reach for the Dream: Chu Chu Puzzle
+01 00000020 Seat of the Heart: Checkpoint (Normal)
+01 00000040 Seat of the Heart: Checkpoint (Sue path)
+01 00000080 Seat of the Heart: Checkpoint (Elly is mad)
+01 00000100 Seat of the Heart: Quest complete (no Sue path)
+01 00000200 Seat of the Heart: Quest complete (Sue path)
+01 00000400 Seat of the Heart: Got Ragol Ring (Normal)
+01 00000800 Seat of the Heart: Checkpoint (Hard)
+01 00000800 White Day: ???
+01 00001000 Blue Star Memories: Future Forecast
+01 00001000 Seat of the Heart: Checkpoint (Sue path)
+01 00002000 Blue Star Memories: Future Bullet
+01 00002000 Seat of the Heart: Checkpoint (Elly is mad)
+01 00004000 Seat of the Heart: Quest complete (no Sue path)
+01 00008000 Seat of the Heart: Quest complete (Sue path)
+01 00010000 Seat of the Heart: Got Ragol Ring (Hard)
+01 00020000 Seat of the Heart: Checkpoint (Very Hard)
+01 00040000 Seat of the Heart: Checkpoint (Sue path)
+01 00080000 Seat of the Heart: Checkpoint (Elly is mad)
+01 00100000 Seat of the Heart: Quest complete (no Sue path)
+01 00200000 Seat of the Heart: Quest complete (Sue path)
+01 003F8000 Beta Lucky Coins
+01 00400000 Seat of the Heart: Got Ragol Ring (Very Hard)
+01 00800000 Seat of the Heart: Checkpoint (Ultimate)
+01 01000000 Seat of the Heart: Checkpoint (Sue path)
+01 02000000 Seat of the Heart: Checkpoint (Elly is mad)
+01 04000000 Seat of the Heart: Quest complete (no Sue path)
+01 08000000 Seat of the Heart: Quest complete (Sue path)
+01 10000000 Seat of the Heart: Got Ragol Ring (Ultimate)
+01 E0000000 __UNUSED__
+
+02 00000001 Pioneer Halloween: Got Jack-O'-Lantern
+02 00000002 Pioneer Halloween: Got cake
+02 00000020 East Tower
+02 00000020 The East Tower: Paganini side quest
+02 00000040 The West Tower: Paganini side quest
+02 00000040 West Tower
+02 00000080 Labyrinthine Trial: White Ring
+02 00000100 Garon's Treachery: Rakonia Stone
+02 00000200 Garon's Treachery: Fragment of Friendship
+02 00000400 Towards the Future: Purple Ring
+02 00000800 Towards the Future: Flower Bouquet
+02 00002000 Heart Of Poumn
+02 00002000 Rappy's Holiday: Heart of Poumn
+02 003FC000 Rappy's Holiday points
+02 07000000 Respective Tomorrow: WIS
+02 08000000 Respective Tomorrow: S/SS Rank
+02 10000000 Towards the Future: Black Ring
+02 20000000 Green Ring
+02 C0C0101C __UNUSED__
+
+03 000000FF Lucky Tickets
+03 003FFF00 Kill count
+03 07C00000 Song count
+03 08000000 Couple flag
+03 7FFFFFFF MA4 kills (Central Dome)
+03 80000000 __UNUSED__
+
+04 7FFFFFFF MA4 kills (Gal Da Val)
+04 80000000 __UNUSED__
+
+05 00007FFF Principal's Gift: Random Candy ID
+05 00008000 Candy ID init flag
+05 00200000 Racket
+05 00400000 Tree Clippers
+05 00800000 Synthesizer
+05 01000000 Shichishito
+05 02000000 Dirty Life Jacket
+05 04000000 Lost Hell Pallasch: Gush Raygun
+05 F81F0000 __UNUSED__
+
+06 0FF00000 Lucky Tickets
+06 F00FFFFF __UNUSED__
+
+07 00000001 Government 4-5: Normal cleared
+07 00000002 Government 4-5: Hard cleared
+07 00000004 Government 4-5: Very Hard cleared
+07 00000008 Government 4-5: Ultimate cleared
+07 00000010 Government 8-3: Normal cleared
+07 00000020 Government 8-3: Hard cleared
+07 00000040 Government 8-3: Very Hard cleared
+07 00000080 Government 8-3: Ultimate cleared
+07 FFFFFF00 __UNUSED__
+
+08 7FFFFFFF MA4 kills (Crater)
+08 80000000 __UNUSED__
+
+09 00003FFF MA1v2 points
+09 00003FFF Maximum Attack 1 Ver.2: points
+09 0FFFC000 MA2v2 points
+09 0FFFC000 Maximum Attack 2 Ver.2: points
+09 10000000 AOL CUP -Sunset Base- (Mag Cell)
+09 10000000 Maximum Attack 1 Ver.2: Class Master flag
+09 20000000 AOL CUP -Sunset Base- (Ruins)
+09 20000000 Maximum Attack 2 Ver.2: ID Master flag
+09 40000000 Beach Laughter: Got 5 Photon Spheres & Black Ring
+09 40000000 Blue Ring
+09 80000000 __UNUSED__
+
+0A 00000001 Heart of HUmar
+0A 00000002 Heart of HUnewearl
+0A 00000004 Heart of HUcast
+0A 00000008 Heart of HUcaseal
+0A 00000010 Heart of RAmar
+0A 00000020 Heart of RAmarl
+0A 00000040 Heart of RAcast
+0A 00000080 Heart of RAcaseal
+0A 00000100 Heart of FOmar
+0A 00000200 Heart of FOmarl
+0A 00000400 Heart of FOnewm
+0A 00000800 Heart of FOnewearl
+0A 00001000 Heart of Viridia
+0A 00002000 Heart of Greenill
+0A 00004000 Heart of Skyly
+0A 00008000 Heart of Bluefull
+0A 00010000 Heart of Purplenum
+0A 00020000 Heart of Pinkal
+0A 00040000 Heart of Redria
+0A 00080000 Heart of Oran
+0A 00100000 Heart of Yellowboze
+0A 00200000 Heart of Whitill
+0A 7FC00000 Lucky Tickets
+0A 80000000 __UNUSED__
+
+0B 00000001 Garon's Shop: Black Gear
+0B 00000001 Roulette (SEIRYU)
+0B 00000002 Beta -> Final Lucky Coins init flag
+0B 00000002 Roulette (GENBU)
+0B 000001FC Lucky Coins
+0B 0007FC00 Pioneer Christmas ???
+0B 00080000 Cleared 4th Pioneer Christmas tier?
+0B 1FF00000 Wrapping Papers
+0B 20000000 Pioneer Christmas Present
+0B 40000000 Wall
+0B 40000000 White Day: Flower Bouquet or Heart Key
+0B 80000200 __UNUSED__
+
+0C FFFFFFFF __UNUSED__
+
+0D FFFFFFFF __UNUSED__
+
+0E 7FFFFFFF MA4 kills (Total)
+0E 80000000 __UNUSED__
+
+0F 000000FF MA4 Tickets
+0F 00000100 MA4 PHOTON CRYSTAL
+0F 00000200 MA4 FRIEND RING
+0F 00000400 MA4 GIRASOLE
+0F 00000800 MA4 SAMURAI ARMOR
+0F FFFFF000 __UNUSED__

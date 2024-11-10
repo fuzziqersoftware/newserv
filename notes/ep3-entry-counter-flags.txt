@@ -1,0 +1,9 @@
+entry counter flags
+
+01 = rules have any non-default values
+02 = map number is set
+04 = UNKNOWN (something to do with deck selection/verification)
+08 = tournament mode (set by 6xB4x3D; shows timer in battle select menu and skips map select and rule select)
+10 = UNKNOWN (used by 6xB5x43)
+20 = command DC received
+40 = tournament result available (6xB4x51 received)

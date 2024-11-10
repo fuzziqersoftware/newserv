@@ -1,0 +1,18 @@
+    Ep1                Ep2
+1   Forest 1           Temple
+2   Forest 2           Temple
+3   Cave 1             Spaceship
+4   Cave 2             Spaceship
+5   Cave 3             CCA
+6   Mine 1             Jungle
+7   Mine 2             Jungle
+8   Ruins 1 (broken)   Mountain
+9   Ruins 2 (broken)   Seaside
+10  Ruins 3 (broken)   Void (Seabed doors + Mine music)
+11  Dragon             Void (doors + Dolmolm + Mine music)
+12  De Rol Le          Gal Gryphon
+13  Vol Opt            Olga Flow (unfinished, Flow does no damage)
+14  void (Falz music)  Barba Ray (unfinished)
+15  Lobby              Gol Dragon (unfinished)
+16  Versus1            crash
+17  Versus2            crash

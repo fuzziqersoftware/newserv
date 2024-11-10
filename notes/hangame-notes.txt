@@ -1,0 +1,19 @@
+patch required in TethVer12513 to get this to work: 0048210D EB
+
+is_hangame callsites:
+0040457C - ??? (something in TDataProtocol?)
+004820F4 - client version check (use patch above to bypass)
+00708318 - patch server domain name
+00708348 - patch server port
+0070852C - ep4 unlocked setting (always true for hangame)
+007085F4 - data server domain name
+00708670 - data server port
+007618E3 - whether to save user/pass to registry
+00761C4C - create title screen menu (only shows Start Game and Exit Game in Hangame mode)
+007623B0 - input password length limit?? (does nothing, since both branches of if statement lead to same result)
+00762530 - registry account data access
+00762708 - input password length limit?? (does nothing, since both branches of if statement lead to same result)
+0076296F - input username length limit?? (limits to 12 instead of 16)
+00762C30 - input username length limit?? (limits to 12 instead of 16)
+00762D00 - password length limit again??
+00762D2C - username length limit again??
