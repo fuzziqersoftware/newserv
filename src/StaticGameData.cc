@@ -220,10 +220,56 @@ const unordered_map<string, uint8_t> name_to_lobby_type({
     {"morgue", 0xFF},
 });
 
-const vector<string> npc_id_to_name({"ninja", "rico", "sonic", "knuckles", "tails", "flowen", "elly"});
+const vector<string> npc_id_to_name({
+    "ninja",
+    "rico",
+    "sonic",
+    "knuckles",
+    "tails",
+    "flowen",
+    "elly",
+    "momoka",
+    "irene",
+    "guild",
+    "nurse",
+});
 
 const unordered_map<string, uint8_t> name_to_npc_id = {
-    {"ninja", 0}, {"rico", 1}, {"sonic", 2}, {"knuckles", 3}, {"tails", 4}, {"flowen", 5}, {"elly", 6}};
+    {"ninja", 0},
+    {"rico", 1},
+    {"sonic", 2},
+    {"knuckles", 3},
+    {"tails", 4},
+    {"flowen", 5},
+    {"elly", 6},
+    {"momoka", 7},
+    {"irene", 8},
+    {"guild", 9},
+    {"nurse", 10},
+};
+
+bool npc_valid_for_version(uint8_t npc, Version version) {
+  switch (version) {
+    case Version::DC_NTE:
+    case Version::DC_V1_11_2000_PROTOTYPE:
+    case Version::DC_V1:
+      return false;
+    case Version::DC_V2:
+    case Version::PC_NTE:
+    case Version::PC_V2:
+      return (npc < 5);
+    case Version::GC_NTE:
+    case Version::GC_V3:
+    case Version::GC_EP3_NTE:
+    case Version::GC_EP3:
+    case Version::XB_V3:
+      return (npc < 7);
+    case Version::BB_V4:
+      return (npc < 11);
+    default:
+      return false;
+  }
+}
 
 const char* abbreviation_for_section_id(uint8_t section_id) {
   if (section_id < section_id_to_abbreviation.size()) {
@@ -317,20 +363,20 @@ const string& name_for_npc(uint8_t npc) {
   }
 }
 
-uint8_t npc_for_name(const string& name) {
+uint8_t npc_for_name(const string& name, Version version) {
+  uint8_t npc_id = 0xFF;
   try {
-    return name_to_npc_id.at(name);
+    npc_id = name_to_npc_id.at(name);
   } catch (const out_of_range&) {
   }
-  try {
-    uint64_t x = stoul(name);
-    if (x < npc_id_to_name.size()) {
-      return x;
+  if (npc_id == 0xFF) {
+    try {
+      npc_id = stoul(name);
+    } catch (const invalid_argument&) {
+    } catch (const out_of_range&) {
     }
-  } catch (const invalid_argument&) {
-  } catch (const out_of_range&) {
   }
-  return 0xFF;
+  return npc_valid_for_version(npc_id, version) ? npc_id : 0xFF;
 }
 
 const char* name_for_char_class(uint8_t cls) {

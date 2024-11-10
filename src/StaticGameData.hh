@@ -50,7 +50,8 @@ const std::string& name_for_lobby_type(uint8_t type);
 uint8_t lobby_type_for_name(const std::string& name);
 
 const std::string& name_for_npc(uint8_t npc);
-uint8_t npc_for_name(const std::string& name);
+uint8_t npc_for_name(const std::string& name, Version version);
+bool npc_valid_for_version(uint8_t npc, Version version);
 
 const char* name_for_char_class(uint8_t cls);
 const char* abbreviation_for_char_class(uint8_t cls);

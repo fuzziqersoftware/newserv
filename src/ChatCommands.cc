@@ -1484,7 +1484,7 @@ static void server_command_edit(shared_ptr<Client> c, const std::string& args) {
           p->disp.visual.unused.clear(0);
         }
       } else {
-        uint8_t npc = npc_for_name(tokens.at(1));
+        uint8_t npc = npc_for_name(tokens.at(1), c->version());
         if (npc == 0xFF) {
           send_text_message(c, "$C6No such NPC");
           return;

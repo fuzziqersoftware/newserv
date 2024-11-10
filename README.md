@@ -643,7 +643,10 @@ Some subcommands are always available. They are:
 * `$edit namecolor AARRGGBB`: Set your name color (AARRGGBB specified in hex)
 * `$edit language L`: Set your language (Generally only useful on BB; values for L: J = Japanese, E = English, G = German, F = French, S = Spanish, B = Simplified Chinese, T = Traditional Chinese, K = Korean)
 * `$edit name NAME`: Set your character name
-* `$edit npc NPC-NAME`: Set or remove an NPC skin on your character (NPC-NAME can be ninja, rico, sonic, knuckles, tails, flowen, elly, or none)
+* `$edit npc NPC-NAME`: Set or remove an NPC skin on your character (use `none` to remove a skin). The NPC names are:
+    * On all versions except DCv1 and early prototypes: `ninja`, `rico`, `sonic`, `knuckles`, `tails`
+    * On GC, Xbox, and BB: `flowen`, `elly`
+    * On BB only: `momoka`, `irene`, `guild`, `nurse`
 * `$edit secid SECID-NAME`: Set your section ID (cheat mode is required for this unless your character is Level 1)
 
 The remaining subcommands are only available if cheat mode is enabled on the server. They are:
