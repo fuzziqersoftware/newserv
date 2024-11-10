@@ -613,7 +613,7 @@ void PlayerState::discard_and_redraw_hand() {
   }
 
   if (!s->options.is_nte()) {
-    G_Unknown_Ep3_6xB4x2C cmd;
+    G_EnqueueAnimation_Ep3_6xB4x2C cmd;
     cmd.change_type = 3;
     cmd.client_id = this->client_id;
     cmd.card_refs.clear(0xFFFF);
@@ -717,7 +717,7 @@ bool PlayerState::do_mulligan() {
   }
 
   if (!s->options.is_nte()) {
-    G_Unknown_Ep3_6xB4x2C cmd;
+    G_EnqueueAnimation_Ep3_6xB4x2C cmd;
     cmd.change_type = 3;
     cmd.client_id = this->client_id;
     cmd.card_refs.clear(0xFFFF);

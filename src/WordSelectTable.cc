@@ -280,7 +280,7 @@ void WordSelectTable::print_index(FILE* stream, Version v) const {
   }
 }
 
-WordSelectMessage WordSelectTable::validate(const WordSelectMessage& msg, Version version) const {
+void WordSelectTable::validate(const WordSelectMessage& msg, Version version) const {
   const auto& index = this->tokens_for_version(version);
 
   for (size_t z = 0; z < msg.tokens.size(); z++) {

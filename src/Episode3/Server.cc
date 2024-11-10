@@ -1157,7 +1157,7 @@ void Server::move_phase_after() {
                 (abs(sc_card->loc.x - trap_x) < 2) &&
                 (abs(sc_card->loc.y - trap_y) < 2) &&
                 ps->replace_assist_card_by_id(trap_card_id)) {
-              G_Unknown_Ep3_6xB4x2C cmd;
+              G_EnqueueAnimation_Ep3_6xB4x2C cmd;
               cmd.change_type = 0x01;
               cmd.client_id = client_id;
               cmd.card_refs.clear(0xFFFF);

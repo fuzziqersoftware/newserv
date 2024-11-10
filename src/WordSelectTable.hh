@@ -81,7 +81,7 @@ public:
   void print(FILE* stream) const;
   void print_index(FILE* stream, Version v) const;
 
-  WordSelectMessage validate(const WordSelectMessage& msg, Version version) const;
+  void validate(const WordSelectMessage& msg, Version version) const; // Throws runtime_error if invalid
   WordSelectMessage translate(const WordSelectMessage& msg, Version from_version, Version to_version) const;
 
 private:

@@ -326,8 +326,8 @@ enum PlayerStatsChange {
 
 void send_player_stats_change(std::shared_ptr<Client> c, PlayerStatsChange stat, uint32_t amount);
 void send_player_stats_change(Channel& ch, uint16_t client_id, PlayerStatsChange stat, uint32_t amount);
-void send_remove_conditions(std::shared_ptr<Client> c);
-void send_remove_conditions(Channel& ch, uint16_t client_id);
+void send_remove_negative_conditions(std::shared_ptr<Client> c);
+void send_remove_negative_conditions(Channel& ch, uint16_t client_id);
 void send_warp(Channel& ch, uint8_t client_id, uint32_t floor, bool is_private);
 void send_warp(std::shared_ptr<Client> c, uint32_t floor, bool is_private);
 void send_warp(std::shared_ptr<Lobby> l, uint32_t floor, bool is_private);

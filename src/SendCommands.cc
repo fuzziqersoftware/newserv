@@ -2545,26 +2545,20 @@ void send_player_stats_change(Channel& ch, uint16_t client_id, PlayerStatsChange
   send_command_vt(ch, (subs.size() > 0x400 / sizeof(G_UpdatePlayerStat_6x9A)) ? 0x6C : 0x60, 0x00, subs);
 }
 
-void send_remove_conditions(shared_ptr<Client> c) {
-  parray<G_AddOrRemoveCondition_6x0C_6x0D, 4> cmds;
-  for (size_t z = 0; z < 4; z++) {
-    auto& cmd = cmds[z];
-    cmd.header = {0x0D, sizeof(G_AddOrRemoveCondition_6x0C_6x0D) >> 2, c->lobby_client_id};
-    cmd.unknown_a1 = z;
-    cmd.unknown_a2 = 0;
-  }
-  send_protected_command(c, &cmds, sizeof(cmds), true);
+void send_remove_negative_conditions(shared_ptr<Client> c) {
+  G_AddStatusEffect_6x0C cmd;
+  cmd.header = {0x0C, sizeof(G_AddStatusEffect_6x0C) >> 2, c->lobby_client_id};
+  cmd.effect_type = 7; // Healing ring
+  cmd.level = 0;
+  send_protected_command(c, &cmd, sizeof(cmd), true);
 }
 
-void send_remove_conditions(Channel& ch, uint16_t client_id) {
-  parray<G_AddOrRemoveCondition_6x0C_6x0D, 4> cmds;
-  for (size_t z = 0; z < 4; z++) {
-    auto& cmd = cmds[z];
-    cmd.header = {0x0D, sizeof(G_AddOrRemoveCondition_6x0C_6x0D) >> 2, client_id};
-    cmd.unknown_a1 = z;
-    cmd.unknown_a2 = 0;
-  }
-  ch.send(0x60, 0x00, &cmds, sizeof(cmds));
+void send_remove_negative_conditions(Channel& ch, uint16_t client_id) {
+  G_AddStatusEffect_6x0C cmd;
+  cmd.header = {0x0C, sizeof(G_AddStatusEffect_6x0C) >> 2, client_id};
+  cmd.effect_type = 7; // Healing ring
+  cmd.level = 0;
+  ch.send(0x60, 0x00, &cmd, sizeof(cmd));
 }
 
 void send_warp(Channel& ch, uint8_t client_id, uint32_t floor, bool is_private) {
@@ -3091,8 +3085,8 @@ void send_level_up(shared_ptr<Client> c) {
   }
 
   uint8_t subcommand = get_pre_v1_subcommand(c->version(), 0x2C, 0x2E, 0x30);
-  G_LevelUp_6x30 cmd = {
-      {subcommand, sizeof(G_LevelUp_6x30) / 4, c->lobby_client_id},
+  G_ChangePlayerLevel_6x30 cmd = {
+      {subcommand, sizeof(G_ChangePlayerLevel_6x30) / 4, c->lobby_client_id},
       stats.atp + (mag ? ((mag->data1w[3] / 100) * 2) : 0),
       stats.mst + (mag ? ((mag->data1w[5] / 100) * 2) : 0),
       stats.evp,

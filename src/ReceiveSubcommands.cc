@@ -994,7 +994,7 @@ void Parsed6x70Data::clear_dc_protos_unused_item_fields() {
 }
 
 Parsed6x70Data::Parsed6x70Data(
-    const G_SyncPlayerDispAndInventory_BaseV1& base,
+    const G_6x70_Base_V1& base,
     uint32_t guild_card_number,
     Version from_version,
     bool from_client_customization)
@@ -1004,7 +1004,11 @@ Parsed6x70Data::Parsed6x70Data(
       base(base.base),
       bonus_hp_from_materials(base.bonus_hp_from_materials),
       bonus_tp_from_materials(base.bonus_tp_from_materials),
-      unknown_a4_final(base.unknown_a4),
+      permanent_status_effect(base.permanent_status_effect),
+      temporary_status_effect(base.temporary_status_effect),
+      attack_status_effect(base.attack_status_effect),
+      defense_status_effect(base.defense_status_effect),
+      unused_status_effect(base.unused_status_effect),
       language(base.language),
       player_tag(base.player_tag),
       guild_card_number(guild_card_number), // Ignore the client's GC#
@@ -1018,12 +1022,16 @@ Parsed6x70Data::Parsed6x70Data(
       technique_levels_v1(base.technique_levels_v1),
       visual(base.visual) {}
 
-G_SyncPlayerDispAndInventory_BaseV1 Parsed6x70Data::base_v1() const {
-  G_SyncPlayerDispAndInventory_BaseV1 ret;
+G_6x70_Base_V1 Parsed6x70Data::base_v1() const {
+  G_6x70_Base_V1 ret;
   ret.base = this->base;
   ret.bonus_hp_from_materials = this->bonus_hp_from_materials;
   ret.bonus_tp_from_materials = this->bonus_tp_from_materials;
-  ret.unknown_a4 = this->unknown_a4_final;
+  ret.permanent_status_effect = this->permanent_status_effect;
+  ret.temporary_status_effect = this->temporary_status_effect;
+  ret.attack_status_effect = this->attack_status_effect;
+  ret.defense_status_effect = this->defense_status_effect;
+  ret.unused_status_effect = this->unused_status_effect;
   ret.language = this->language;
   ret.player_tag = this->player_tag;
   ret.guild_card_number = this->guild_card_number;
@@ -1186,6 +1194,21 @@ static void on_ep3_battle_subs(shared_ptr<Client> c, uint8_t command, uint8_t fl
 
   if (header.subsubcommand == 0x1A) {
     return;
+  } else if (header.subsubcommand == 0x20) {
+    const auto& cmd = check_size_t<G_Unknown_Ep3_6xB5x20>(data, size);
+    if (cmd.client_id >= 12) {
+      return;
+    }
+  } else if (header.subsubcommand == 0x31) {
+    const auto& cmd = check_size_t<G_ConfirmDeckSelection_Ep3_6xB5x31>(data, size);
+    if (cmd.menu_type >= 0x15) {
+      return;
+    }
+  } else if (header.subsubcommand == 0x32) {
+    const auto& cmd = check_size_t<G_MoveSharedMenuCursor_Ep3_6xB5x32>(data, size);
+    if (cmd.menu_type >= 0x15) {
+      return;
+    }
   } else if (header.subsubcommand == 0x36) {
     const auto& cmd = check_size_t<G_RecreatePlayer_Ep3_6xB5x36>(data, size);
     if (l->is_game() && (cmd.client_id >= 4)) {
@@ -1512,7 +1535,7 @@ static void on_received_condition(shared_ptr<Client> c, uint8_t command, uint8_t
     if (cmd.client_id == c->lobby_client_id) {
       bool player_cheats_enabled = l->check_flag(Lobby::Flag::CHEATS_ENABLED) || (c->login->account->check_flag(Account::Flag::CHEAT_ANYWHERE));
       if (player_cheats_enabled && c->config.check_flag(Client::Flag::INFINITE_HP_ENABLED)) {
-        send_remove_conditions(c);
+        send_remove_negative_conditions(c);
       }
     }
   }
@@ -2480,16 +2503,13 @@ static void on_ep3_private_word_select_bb_bank_action(shared_ptr<Client> c, uint
     }
 
   } else if (is_ep3(c->version())) {
+    const auto& cmd = check_size_t<G_PrivateWordSelect_Ep3_6xBD>(data, size);
+    s->word_select_table->validate(cmd.message, c->version());
 
-    const auto& cmd = check_size_t<G_WordSelectDuringBattle_Ep3_6xBD>(data, size);
-    G_WordSelectDuringBattle_Ep3_6xBD masked_cmd = {
-        {0xBD, sizeof(G_WordSelectDuringBattle_Ep3_6xBD) >> 2, cmd.header.client_id},
-        0x0001,
-        0x0001,
+    G_PrivateWordSelect_Ep3_6xBD masked_cmd = {
+        {0xBD, sizeof(G_PrivateWordSelect_Ep3_6xBD) >> 2, cmd.header.client_id},
         // "Please use the Whispers function."
-        {0x00C1, 0x02C7, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF},
-        0x0000,
-        0x0000,
+        {0x0001, 0x0001, {0x00C1, 0x02C7, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF}, 0x0000, 0x0000},
         cmd.private_flags,
         {0, 0, 0}};
 
@@ -3393,7 +3413,7 @@ static void on_level_up(shared_ptr<Client> c, uint8_t command, uint8_t flag, voi
   // increments the player's level by 1.
   auto p = c->character();
   if (is_pre_v1(c->version())) {
-    check_size_t<G_LevelUp_DCNTE_6x30>(data, size);
+    check_size_t<G_ChangePlayerLevel_DCNTE_6x30>(data, size);
     auto s = c->require_server_state();
     auto level_table = s->level_table(c->version());
     const auto& level_incrs = level_table->stats_delta_for_level(p->disp.visual.char_class, p->disp.stats.level + 1);
@@ -3406,7 +3426,7 @@ static void on_level_up(shared_ptr<Client> c, uint8_t command, uint8_t flag, voi
     p->disp.stats.char_stats.lck += level_incrs.lck;
     p->disp.stats.level++;
   } else {
-    const auto& cmd = check_size_t<G_LevelUp_6x30>(data, size);
+    const auto& cmd = check_size_t<G_ChangePlayerLevel_6x30>(data, size);
     p->disp.stats.char_stats.atp = cmd.atp;
     p->disp.stats.char_stats.mst = cmd.mst;
     p->disp.stats.char_stats.evp = cmd.evp;
@@ -4186,7 +4206,6 @@ static void on_challenge_update_records(shared_ptr<Client> c, uint8_t command, u
         dc_cmd.header = cmd.header;
         dc_cmd.header.size = sizeof(G_SetChallengeRecords_DC_6x7C) >> 2;
         dc_cmd.client_id = cmd.client_id;
-        dc_cmd.unknown_a1 = cmd.unknown_a1;
         dc_cmd.records = p->challenge_records;
       }
       data_to_send = dc_data.data();
@@ -4198,7 +4217,6 @@ static void on_challenge_update_records(shared_ptr<Client> c, uint8_t command, u
         pc_cmd.header = cmd.header;
         pc_cmd.header.size = sizeof(G_SetChallengeRecords_PC_6x7C) >> 2;
         pc_cmd.client_id = cmd.client_id;
-        pc_cmd.unknown_a1 = cmd.unknown_a1;
         pc_cmd.records = p->challenge_records;
       }
       data_to_send = pc_data.data();
@@ -4210,7 +4228,6 @@ static void on_challenge_update_records(shared_ptr<Client> c, uint8_t command, u
         v3_cmd.header = cmd.header;
         v3_cmd.header.size = sizeof(G_SetChallengeRecords_V3_6x7C) >> 2;
         v3_cmd.client_id = cmd.client_id;
-        v3_cmd.unknown_a1 = cmd.unknown_a1;
         v3_cmd.records = p->challenge_records;
       }
       data_to_send = v3_data.data();
@@ -4222,7 +4239,6 @@ static void on_challenge_update_records(shared_ptr<Client> c, uint8_t command, u
         bb_cmd.header = cmd.header;
         bb_cmd.header.size = sizeof(G_SetChallengeRecords_BB_6x7C) >> 2;
         bb_cmd.client_id = cmd.client_id;
-        bb_cmd.unknown_a1 = cmd.unknown_a1;
         bb_cmd.records = p->challenge_records;
       }
       data_to_send = bb_data.data();

@@ -182,7 +182,7 @@ struct C_Login_Patch_04 {
 // 06 (S->C): Open file for writing
 
 struct S_OpenFile_Patch_06 {
-  le_uint32_t unknown_a1 = 0;
+  le_uint32_t unused = 0;
   le_uint32_t size = 0;
   pstring<TextEncoding::ASCII, 0x30> filename;
 } __packed_ws__(S_OpenFile_Patch_06, 0x38);
@@ -343,6 +343,7 @@ struct S_ServerInitWithAfterMessageT_DC_PC_V3_02_17_91_9B {
 
 // 03 (C->S): Legacy register (non-BB)
 // Internal name: SndRegist
+// TODO: Are the DCv1 and DCv2 formats the same as this structure?
 
 struct C_LegacyLogin_PC_V3_03 {
   /* 00 */ le_uint64_t unused = 0; // Same as unused field in 9D/9E
@@ -395,9 +396,10 @@ struct S_ServerInitWithAfterMessageT_BB_03_9B {
 // Internal name: SndLogin2
 // Curiously, there is a SndLogin3 function, but it does not send anything.
 // See comments on non-BB 03 (S->C). This is likely a relic of an older,
-// now-unused sequence. Like 03, this command isn't used by any PSO version that
-// newserv supports.
+// now-unused sequence. Like 03, this command isn't used by any known PSO
+// version.
 // header.flag is nonzero, but it's not clear what it's used for.
+// TODO: Are the DCv1 and DCv2 formats the same as this structure?
 
 struct C_LegacyLogin_PC_V3_04 {
   /* 00 */ le_uint64_t unused1 = 0; // Same as unused field in 9D/9E
@@ -3889,19 +3891,27 @@ struct G_ExtendedHeaderT {
 // 6x01: Invalid subcommand
 
 // 6x02: Unknown
-// This subcommand is completely ignored on V3.
-// TODO: It is not ignored on V1 and V2. Figure out what it does and document it.
-
 // 6x03: Unknown
-// This subcommand is completely ignored on V3.
-// TODO: It is not ignored on V1 and V2. Figure out what it does and document it.
+// These subcommands are completely ignored on V3 and later.
+// On all known DC versions (NTE through V2), these commands writes their
+// contents to a global array, but nothing reads from this array.
+
+struct G_Unknown_6x02_6x03 {
+  G_ClientIDHeader header;
+  le_uint16_t unknown_a1;
+  le_uint16_t unknown_a2;
+  le_uint32_t unknown_a3;
+  le_float unknown_a4;
+  le_float unknown_a5;
+} __packed_ws__(G_Unknown_6x02_6x03, 0x14);
 
 // 6x04: Unknown
+// TODO: This does something with TObjDoorKey objects
 
 struct G_Unknown_6x04 {
   G_ClientIDHeader header;
-  le_uint16_t unknown_a1 = 0;
-  le_uint16_t unknown_a2 = 0;
+  le_uint16_t door_key_token = 0;
+  le_uint16_t unused = 0;
 } __packed_ws__(G_Unknown_6x04, 8);
 
 // 6x05: Switch state changed
@@ -4007,14 +4017,40 @@ struct G_UpdateObjectState_6x0B {
   le_uint32_t object_index = 0;
 } __packed_ws__(G_UpdateObjectState_6x0B, 0x0C);
 
-// 6x0C: Add condition (poison/slow/etc.) (protected on V3/V4)
-// 6x0D: Remove condition (poison/slow/etc.) (protected on V3/V4)
+// 6x0C: Add status effect (poison/slow/etc.) (protected on V3/V4)
 
-struct G_AddOrRemoveCondition_6x0C_6x0D {
+struct G_AddStatusEffect_6x0C {
   G_ClientIDHeader header;
-  le_uint32_t unknown_a1 = 0; // Probably condition type
-  le_uint32_t unknown_a2 = 0;
-} __packed_ws__(G_AddOrRemoveCondition_6x0C_6x0D, 0x0C);
+  // Each status effect has an assigned slot; there are 5 slots and each slot
+  // may only hold one effect at a time. (The last slot, slot 4, is unused.)
+  // If a new status effect is added to a slot that already contains one, the
+  // existing status effect is replaced. Non-technique status effects have
+  // fixed or indefinite durations; technique-based effects have durations
+  // based on the technique's level.
+  // Values for effect_type:
+  // 02 = Freeze (slot 1; 5 seconds)
+  // 03 = Shock (slot 1; 10 seconds)
+  // 07 = Clears negative status effects (healing ring?)
+  // 09 = Shifta (slot 2; ((level * 10) + 30) seconds; ATP (8.3 + 1.3 * level)%)
+  // 0A = Deband (slot 3; ((level * 10) + 30) seconds; DFP (8.3 + 1.3 * level)%)
+  // 0B = Jellen (slot 2; ((level * 10) + 30) seconds; ATP (8.3 + 1.3 * level)%)
+  // 0C = Zalure (slot 3; ((level * 10) + 30) seconds; DFP (8.3 + 1.3 * level)%)
+  // 0F = Poison (slot 0)
+  // 10 = Paralysis (slot 0; 7 seconds for enemies, indefinite for players)
+  // 11 = Slow (slot 1; 7 seconds)
+  // 12 = Confuse (slot 1; 10 seconds)
+  // Anything else = command is ignored
+  le_uint32_t effect_type = 0;
+  le_uint32_t level = 0; // Only used for Shifta/Deband/Jellen/Zalure
+} __packed_ws__(G_AddStatusEffect_6x0C, 0x0C);
+
+// 6x0D: Clear status effect slot (protected on V3/V4)
+
+struct G_RemoveStatusEffect_6x0D {
+  G_ClientIDHeader header;
+  le_uint32_t slot = 0; // See 6x0C description for slot values
+  le_uint32_t unused = 0;
+} __packed_ws__(G_RemoveStatusEffect_6x0D, 0x0C);
 
 // 6x0E: Unknown (protected on V3/V4)
 
@@ -4220,7 +4256,7 @@ struct G_DeleteInventoryItem_6x29 {
 
 struct G_DropItem_6x2A {
   G_ClientIDHeader header;
-  le_uint16_t unknown_a1 = 0; // Should be 1... maybe amount?
+  le_uint16_t amount = 0;
   le_uint16_t floor = 0;
   le_uint32_t item_id = 0;
   le_float x = 0.0f;
@@ -4238,7 +4274,7 @@ struct G_CreateInventoryItem_DC_6x2B {
 
 struct G_CreateInventoryItem_PC_V3_BB_6x2B : G_CreateInventoryItem_DC_6x2B {
   uint8_t unused1 = 0;
-  uint8_t unknown_a2 = 0;
+  uint8_t unknown_a2 = 0; // Does something with equipped items, but logic isn't the same as 6x25
   parray<uint8_t, 2> unused2 = 0;
 } __packed_ws__(G_CreateInventoryItem_PC_V3_BB_6x2B, 0x1C);
 
@@ -4276,13 +4312,15 @@ struct G_ChangePlayerHP_6x2F {
   le_uint16_t client_id = 0;
 } __packed_ws__(G_ChangePlayerHP_6x2F, 0x0C);
 
-// 6x30: Level up
+// 6x30: Change player level
+// On DC NTE, the updated stats aren't sent, and the client may only gain a
+// single level at once. On other versions, this is not the case.
 
-struct G_LevelUp_DCNTE_6x30 {
+struct G_ChangePlayerLevel_DCNTE_6x30 {
   G_ClientIDHeader header;
-} __packed_ws__(G_LevelUp_DCNTE_6x30, 4);
+} __packed_ws__(G_ChangePlayerLevel_DCNTE_6x30, 4);
 
-struct G_LevelUp_6x30 {
+struct G_ChangePlayerLevel_6x30 {
   G_ClientIDHeader header;
   le_uint16_t atp = 0;
   le_uint16_t mst = 0;
@@ -4291,22 +4329,22 @@ struct G_LevelUp_6x30 {
   le_uint16_t dfp = 0;
   le_uint16_t ata = 0;
   le_uint16_t level = 0;
-  le_uint16_t unknown_a1 = 0; // Must be 0 or 1
-} __packed_ws__(G_LevelUp_6x30, 0x14);
+  le_uint16_t is_level_down = 0; // If == 1, the text "Level Down" appears instead of "Level Up"
+} __packed_ws__(G_ChangePlayerLevel_6x30, 0x14);
 
-// 6x31: Resurrect player (protected on V3/V4)
+// 6x31: Use medical center (protected on V3/V4)
 
 struct G_UseMedicalCenter_6x31 {
   G_ClientIDHeader header;
 } __packed_ws__(G_UseMedicalCenter_6x31, 4);
 
-// 6x32: Resurrect player (Medical Center)
+// 6x32: Revive player (Medical Center)
 
-struct G_Unknown_6x32 {
+struct G_MedicalCenterRevivePlayer_6x32 {
   G_UnusedHeader header;
-} __packed_ws__(G_Unknown_6x32, 4);
+} __packed_ws__(G_MedicalCenterRevivePlayer_6x32, 4);
 
-// 6x33: Resurrect player (with Moon Atomizer) (protected on V3/V4)
+// 6x33: Revive player (with Moon Atomizer) (protected on V3/V4)
 
 struct G_RevivePlayer_6x33 {
   G_ClientIDHeader header;
@@ -4620,7 +4658,7 @@ struct G_PickUpItemRequest_6x5A {
   le_uint16_t unused = 0;
 } __packed_ws__(G_PickUpItemRequest_6x5A, 0x0C);
 
-// 6x5B: Unknown (DCv1 and earlier)
+// 6x5B: Unused (DCv1 and earlier)
 // This command has a handler, but it does nothing, even on DC NTE.
 
 // 6x5C: Destroy floor item
@@ -4705,7 +4743,7 @@ struct G_ActivateMagEffect_6x61 {
   le_uint32_t effect_number = 0;
 } __packed_ws__(G_ActivateMagEffect_6x61, 0x0C);
 
-// 6x62: Unknown
+// 6x62: Unused
 // This command has a handler, but it does nothing even on DC NTE.
 
 // 6x63: Destroy floor item
@@ -4718,10 +4756,10 @@ struct G_DestroyFloorItem_6x5C_6x63 {
   le_uint32_t floor = 0;
 } __packed_ws__(G_DestroyFloorItem_6x5C_6x63, 0x0C);
 
-// 6x64: Unknown (not valid on Episode 3)
+// 6x64: Unused (not valid on Episode 3)
 // This command has a handler, but it does nothing even on DC NTE.
 
-// 6x65: Unknown (not valid on Episode 3)
+// 6x65: Unused (not valid on Episode 3)
 // This command has a handler, but it does nothing even on DC NTE.
 
 // 6x66: Use star atomizer
@@ -4918,7 +4956,7 @@ struct G_SetQuestFlags_BB_6x6F {
 // and instead rearranged a bunch of things. This is presumably because this
 // structure also includes transient state (e.g. current HP).
 
-struct Telepipe6x70 {
+struct G_6x70_Sub_Telepipe {
   /* 00 */ le_uint16_t owner_client_id = 0xFFFF;
   /* 02 */ le_uint16_t floor = 0;
   /* 04 */ le_uint32_t unknown_a1 = 0;
@@ -4927,9 +4965,10 @@ struct Telepipe6x70 {
   /* 10 */ le_float z = 0.0f;
   /* 14 */ le_uint32_t unknown_a3 = 0;
   /* 18 */ le_uint32_t unknown_a4 = 0x0000FFFF;
-} __packed_ws__(Telepipe6x70, 0x1C);
+  /* 1C */
+} __packed_ws__(G_6x70_Sub_Telepipe, 0x1C);
 
-struct G_Unknown_6x70_SubA1 {
+struct G_6x70_Sub_UnknownA1 {
   // This is used in all versions of this command except DCNTE and 11/2000.
   /* 00 */ le_uint16_t unknown_a1 = 0;
   /* 02 */ le_uint16_t unknown_a2 = 0;
@@ -4937,18 +4976,19 @@ struct G_Unknown_6x70_SubA1 {
   /* 08 */ le_float unknown_a4 = 0.0f;
   /* 0C */ le_uint32_t unknown_a5 = 0;
   /* 10 */ le_uint32_t unknown_a6 = 0;
-} __packed_ws__(G_Unknown_6x70_SubA1, 0x14);
+  /* 14 */
+} __packed_ws__(G_6x70_Sub_UnknownA1, 0x14);
 
-struct G_Unknown_6x70_SubA2 {
-  // This is used in all versions of this command except DCNTE and 11/2000.
-  /* 00 */ le_uint32_t unknown_a1 = 0;
-  /* 04 */ le_float unknown_a2 = 0.0f;
-  /* 08 */ le_uint32_t unknown_a3 = 0;
-} __packed_ws__(G_Unknown_6x70_SubA2, 0x0C);
+struct G_6x70_StatusEffectState {
+  /* 00 */ le_uint32_t effect_type = 0;
+  /* 04 */ le_float multiplier = 0.0f;
+  /* 08 */ le_uint32_t remaining_frames = 0;
+  /* 0C */
+} __packed_ws__(G_6x70_StatusEffectState, 0x0C);
 
-struct G_SyncPlayerDispAndInventory_BaseDCNTE {
+struct G_6x70_Base_DCNTE {
   /* 0000 */ le_uint16_t client_id = 0;
-  /* 0002 */ le_uint16_t unknown_a1 = 0;
+  /* 0002 */ le_uint16_t room_id = 0;
   /* 0004 */ le_uint32_t flags1 = 0;
   /* 0008 */ le_float x = 0.0f;
   /* 000C */ le_float y = 0.0f;
@@ -4958,16 +4998,16 @@ struct G_SyncPlayerDispAndInventory_BaseDCNTE {
   /* 001C */ le_uint32_t angle_z = 0;
   /* 0020 */ le_uint16_t unknown_a3a = 0;
   /* 0022 */ le_uint16_t current_hp = 0;
-} __packed_ws__(G_SyncPlayerDispAndInventory_BaseDCNTE, 0x24);
+} __packed_ws__(G_6x70_Base_DCNTE, 0x24);
 
 struct G_SyncPlayerDispAndInventory_DCNTE_6x70 {
   // Offsets in this struct are relative to the overall command header
   /* 0004 */ G_ExtendedHeaderT<G_ClientIDHeader> header = {{0x60, 0x00, 0x0000}, sizeof(G_SyncPlayerDispAndInventory_DCNTE_6x70)};
-  /* 000C */ G_SyncPlayerDispAndInventory_BaseDCNTE base;
+  /* 000C */ G_6x70_Base_DCNTE base;
   // The following two fields appear to contain uninitialized data
   /* 0030 */ le_uint32_t unknown_a5 = 0;
   /* 0034 */ le_uint32_t unknown_a6 = 0;
-  /* 0038 */ Telepipe6x70 telepipe;
+  /* 0038 */ G_6x70_Sub_Telepipe telepipe;
   /* 0054 */ le_uint32_t unknown_a8 = 0;
   /* 0058 */ parray<uint8_t, 0x10> unknown_a9;
   /* 0068 */ le_uint32_t area = 0;
@@ -4982,11 +5022,11 @@ struct G_SyncPlayerDispAndInventory_DCNTE_6x70 {
 struct G_SyncPlayerDispAndInventory_DC112000_6x70 {
   // Offsets in this struct are relative to the overall command header
   /* 0004 */ G_ExtendedHeaderT<G_ClientIDHeader> header = {{0x67, 0x00, 0x0000}, sizeof(G_SyncPlayerDispAndInventory_DC112000_6x70)};
-  /* 000C */ G_SyncPlayerDispAndInventory_BaseDCNTE base;
+  /* 000C */ G_6x70_Base_DCNTE base;
   /* 0030 */ le_uint16_t bonus_hp_from_materials = 0;
   /* 0032 */ le_uint16_t bonus_tp_from_materials = 0;
   /* 0034 */ parray<uint8_t, 0x10> unknown_a5;
-  /* 0044 */ Telepipe6x70 telepipe;
+  /* 0044 */ G_6x70_Sub_Telepipe telepipe;
   /* 0060 */ le_uint32_t unknown_a8 = 0;
   /* 0064 */ parray<uint8_t, 0x10> unknown_a9;
   /* 0074 */ le_uint32_t area = 0;
@@ -4998,30 +5038,34 @@ struct G_SyncPlayerDispAndInventory_DC112000_6x70 {
   /* 043C */
 } __packed_ws__(G_SyncPlayerDispAndInventory_DC112000_6x70, 0x438);
 
-struct G_SyncPlayerDispAndInventory_BaseV1 {
-  /* 0000 */ G_SyncPlayerDispAndInventory_BaseDCNTE base;
+struct G_6x70_Base_V1 {
+  /* 0000 */ G_6x70_Base_DCNTE base;
   /* 0024 */ le_uint16_t bonus_hp_from_materials = 0;
   /* 0026 */ le_uint16_t bonus_tp_from_materials = 0;
-  /* 0028 */ parray<G_Unknown_6x70_SubA2, 5> unknown_a4;
+  /* 0028 */ G_6x70_StatusEffectState permanent_status_effect;
+  /* 0034 */ G_6x70_StatusEffectState temporary_status_effect;
+  /* 0040 */ G_6x70_StatusEffectState attack_status_effect;
+  /* 004C */ G_6x70_StatusEffectState defense_status_effect;
+  /* 0058 */ G_6x70_StatusEffectState unused_status_effect;
   /* 0064 */ le_uint32_t language = 0;
   /* 0068 */ le_uint32_t player_tag = 0;
   /* 006C */ le_uint32_t guild_card_number = 0;
-  /* 0070 */ le_uint32_t unknown_a6 = 0;
+  /* 0070 */ le_uint32_t unknown_a6 = 0; // Probably battle-related (assigned together with battle_team_number)
   /* 0074 */ le_uint32_t battle_team_number = 0;
-  /* 0078 */ Telepipe6x70 telepipe;
+  /* 0078 */ G_6x70_Sub_Telepipe telepipe;
   /* 0094 */ le_uint32_t unknown_a8 = 0;
-  /* 0098 */ G_Unknown_6x70_SubA1 unknown_a9;
+  /* 0098 */ G_6x70_Sub_UnknownA1 unknown_a9;
   /* 00AC */ le_uint32_t area = 0;
   /* 00B0 */ le_uint32_t flags2 = 0;
   /* 00B4 */ parray<uint8_t, 0x14> technique_levels_v1 = 0xFF; // Last byte is uninitialized
   /* 00C8 */ PlayerVisualConfig visual;
   /* 0118 */
-} __packed_ws__(G_SyncPlayerDispAndInventory_BaseV1, 0x118);
+} __packed_ws__(G_6x70_Base_V1, 0x118);
 
 struct G_SyncPlayerDispAndInventory_DC_PC_6x70 {
   // Offsets in this struct are relative to the overall command header
   /* 0004 */ G_ExtendedHeaderT<G_ClientIDHeader> header = {{0x70, 0x00, 0x0000}, sizeof(G_SyncPlayerDispAndInventory_DC_PC_6x70)};
-  /* 000C */ G_SyncPlayerDispAndInventory_BaseV1 base;
+  /* 000C */ G_6x70_Base_V1 base;
   /* 0124 */ PlayerStats stats;
   /* 0148 */ le_uint32_t num_items = 0;
   /* 014C */ parray<PlayerInventoryItem, 0x1E> items;
@@ -5032,7 +5076,7 @@ struct G_SyncPlayerDispAndInventory_DC_PC_6x70 {
 struct G_SyncPlayerDispAndInventory_GC_6x70 {
   // Offsets in this struct are relative to the overall command header
   /* 0004 */ G_ExtendedHeaderT<G_ClientIDHeader> header = {{0x70, 0x00, 0x0000}, sizeof(G_SyncPlayerDispAndInventory_GC_6x70)};
-  /* 000C */ G_SyncPlayerDispAndInventory_BaseV1 base;
+  /* 000C */ G_6x70_Base_V1 base;
   /* 0124 */ PlayerStats stats;
   /* 0148 */ le_uint32_t num_items = 0;
   /* 014C */ parray<PlayerInventoryItem, 0x1E> items;
@@ -5043,7 +5087,7 @@ struct G_SyncPlayerDispAndInventory_GC_6x70 {
 struct G_SyncPlayerDispAndInventory_XB_6x70 {
   // Offsets in this struct are relative to the overall command header
   /* 0004 */ G_ExtendedHeaderT<G_ClientIDHeader> header = {{0x70, 0x00, 0x0000}, sizeof(G_SyncPlayerDispAndInventory_XB_6x70)};
-  /* 000C */ G_SyncPlayerDispAndInventory_BaseV1 base;
+  /* 000C */ G_6x70_Base_V1 base;
   /* 0124 */ PlayerStats stats;
   /* 0148 */ le_uint32_t num_items = 0;
   /* 014C */ parray<PlayerInventoryItem, 0x1E> items;
@@ -5057,7 +5101,7 @@ struct G_SyncPlayerDispAndInventory_XB_6x70 {
 struct G_SyncPlayerDispAndInventory_BB_6x70 {
   // Offsets in this struct are relative to the overall command header
   /* 0008 */ G_ExtendedHeaderT<G_ClientIDHeader> header = {{0x70, 0x00, 0x0000}, sizeof(G_SyncPlayerDispAndInventory_BB_6x70)};
-  /* 0010 */ G_SyncPlayerDispAndInventory_BaseV1 base;
+  /* 0010 */ G_6x70_Base_V1 base;
   /* 0128 */ pstring<TextEncoding::UTF16_ALWAYS_MARKED, 0x10> name;
   /* 0148 */ PlayerStats stats;
   /* 016C */ le_uint32_t num_items = 0;
@@ -5179,7 +5223,7 @@ struct G_Unknown_6x7B {
 struct G_SetChallengeRecordsBase_6x7C {
   G_UnusedHeader header;
   le_uint16_t client_id = 0;
-  parray<uint8_t, 2> unknown_a1;
+  parray<uint8_t, 2> unused;
 } __packed_ws__(G_SetChallengeRecordsBase_6x7C, 8);
 
 struct G_SetChallengeRecords_DC_6x7C : G_SetChallengeRecordsBase_6x7C {
@@ -5201,12 +5245,12 @@ struct G_SetBattleModeData_6x7D {
   G_UnusedHeader header;
   // Values for what (0-6; values 7 and above are not valid):
   // 0 = Unknown (params[0] and [1] are used)
-  // 1 = Does nothing
   // 2 = Unknown (no params are used)
   // 3 = Set player score (params[0] = client ID, [1] = score)
   // 4 = Unknown (params[0] = client ID)
   // 5 = Unknown (no params are used)
   // 6 = Unknown (all params are used)
+  // Anything else = command is ignored
   uint8_t what = 0;
   uint8_t unknown_a1 = 0; // Only used when what == 0
   uint8_t unused = 0;
@@ -5365,11 +5409,12 @@ struct G_Unknown_6x90 {
 } __packed_ws__(G_Unknown_6x90, 8);
 
 // 6x91: Unknown (supported; game only)
+// TODO: Deals with TOAttackableCol objects. Figoure out exactly what it does.
 
 struct G_Unknown_6x91 {
   G_ObjectIDHeader header;
-  le_uint32_t unknown_a1 = 0;
-  le_uint32_t unknown_a2 = 0;
+  le_uint32_t object_flags = 0;
+  le_uint32_t object_index = 0; // < 0xBA0
   le_uint16_t unknown_a3 = 0;
   le_uint16_t unknown_a4 = 0;
   le_uint16_t switch_flag_num = 0;
@@ -5378,6 +5423,8 @@ struct G_Unknown_6x91 {
 } __packed_ws__(G_Unknown_6x91, 0x14);
 
 // 6x92: Unknown (not valid on Episode 3)
+// This does something with the TObjOnlineEndingHexMove object. TODO: Figure
+// out exactly what.
 
 struct G_Unknown_6x92 {
   G_UnusedHeader header;
@@ -5403,15 +5450,16 @@ struct G_InterLevelWarp_6x94 {
   parray<uint8_t, 2> unused;
 } __packed_ws__(G_InterLevelWarp_6x94, 8);
 
-// 6x95: Unknown (not valid on Episode 3)
+// 6x95: Set challenge time (not valid on Episode 3)
+// This command sets the time returned by the F88E quest opcode.
 
-struct G_Unknown_6x95 {
+struct G_SetChallengeTime_6x95 {
   G_UnusedHeader header;
   le_uint32_t client_id = 0;
   ChallengeTime challenge_time;
   le_uint32_t unused1 = 0;
   le_uint32_t unused2 = 0;
-} __packed_ws__(G_Unknown_6x95, 0x14);
+} __packed_ws__(G_SetChallengeTime_6x95, 0x14);
 
 // 6x96: Unknown (not valid on Episode 3)
 // This command has a handler, but it does nothing.
@@ -5427,10 +5475,10 @@ struct G_SelectChallengeModeFailureOption_6x97 {
 } __packed_ws__(G_SelectChallengeModeFailureOption_6x97, 0x14);
 
 // 6x98: Unknown
-// This subcommand is completely ignored (at least, by PSO GC).
+// This subcommand is completely ignored.
 
 // 6x99: Unknown
-// This subcommand is completely ignored (at least, by PSO GC).
+// This subcommand is completely ignored.
 
 // 6x9A: Update player stat (not valid on Episode 3)
 
@@ -5458,18 +5506,22 @@ struct G_LevelUpAllTechniques_6x9B {
 } __packed_ws__(G_LevelUpAllTechniques_6x9B, 8);
 
 // 6x9C: Unknown (supported; game only; not valid on Episode 3)
+// This command only has an effect in Ultimate mode.
+// TODO: Figure out what this does.
 
 struct G_Unknown_6x9C {
   G_EnemyIDHeader header;
   le_uint32_t unknown_a1 = 0;
 } __packed_ws__(G_Unknown_6x9C, 8);
 
-// 6x9D: Unknown (not valid on Episode 3)
+// 6x9D: Set dead flag (Challenge mode; not valid on Episode 3)
+// This command causes the specified client to appear in the dead players list
+// when the Challenge mode retry menu appears.
 
-struct G_Unknown_6x9D {
+struct G_SetChallengeDeadFlag_6x9D {
   G_UnusedHeader header;
   le_uint32_t client_id = 0;
-} __packed_ws__(G_Unknown_6x9D, 8);
+} __packed_ws__(G_SetChallengeDeadFlag_6x9D, 8);
 
 // 6x9E: Play camera shutter sound
 // This subcommand is only used on PSO PC and PC NTE. It is not implemented (and
@@ -5548,11 +5600,22 @@ struct G_OlgaFlowPhase2BossActions_6xA5 {
 
 struct G_ModifyTradeProposal_6xA6 {
   G_ClientIDHeader header;
-  uint8_t unknown_a1 = 0; // Must be < 8
-  uint8_t unknown_a2 = 0;
-  parray<uint8_t, 2> unknown_a3;
-  le_uint32_t unknown_a4 = 0;
-  le_uint32_t unknown_a5 = 0;
+  // Values for what:
+  // 0 = Propose (result = 0), accept (result = 2), or reject (result = 3)
+  //     TODO: amount is used when what=0; what is it used for?
+  // 1 = Add item
+  // 2 = Remove item
+  // 3 = First confirm (result = 0) or cancel first confirm (result = 4)
+  // 4 = Second confirm (result = 0) or cancel second confirm (result = 4)
+  // 5 = Cancel trade proposal (result = 4)
+  // 6 = Reject proposal (currently trading with another player)
+  // 7 = ??? (TODO)
+  // Anything else = command is ignored
+  uint8_t what = 0;
+  uint8_t result = 0;
+  be_uint16_t unknown_a1; // Only used if what = 7
+  le_uint32_t item_id = 0; // Only used if what = 1 or 2
+  le_uint32_t amount = 0; // Only used if what = 1 or 2
 } __packed_ws__(G_ModifyTradeProposal_6xA6, 0x10);
 
 // 6xA7: Unknown (not valid on pre-V3)
@@ -5594,8 +5657,8 @@ struct G_BarbaRayBossActions_6xAA {
 } __packed_ws__(G_BarbaRayBossActions_6xAA, 0x0C);
 
 // 6xAB: Create lobby chair (not valid on pre-V3) (protected on V3/V4)
-// This command's appears to be different on GC NTE than on any other version.
-// It's not known what it does.
+// This command appears to be different on GC NTE than on any other version.
+// It's not known what it does on GC NTE.
 
 struct G_Unknown_GCNTE_6xAB {
   G_EnemyIDHeader header;
@@ -5642,9 +5705,11 @@ struct G_OlgaFlowSubordinateBossActions_6xAD {
 struct G_SetLobbyChairState_6xAE {
   G_ClientIDHeader header;
   le_uint16_t unknown_a1 = 0;
-  le_uint16_t unknown_a2 = 0;
-  le_uint32_t unknown_a3 = 0;
-  le_uint32_t unknown_a4 = 0;
+  le_uint16_t unused = 0;
+  // This field contains the flags field on the sender's TObjPlayer object.
+  // Only the bits 5C000000 are used by the receiver.
+  le_uint32_t flags = 0;
+  le_float unknown_a4 = 0;
 } __packed_ws__(G_SetLobbyChairState_6xAE, 0x10);
 
 // 6xAF: Turn lobby chair (not valid on pre-V3 or GC Trial Edition) (protected on V3/V4)
@@ -5807,7 +5872,7 @@ struct G_BuyShopItem_BB_6xB7 {
   uint8_t shop_type = 0;
   uint8_t item_index = 0;
   uint8_t amount = 0;
-  uint8_t unknown_a1 = 0; // TODO: Probably actually unused; verify this
+  uint8_t unused = 0;
 } __packed_ws__(G_BuyShopItem_BB_6xB7, 0x0C);
 
 // 6xB8: Alias for 6xB4 (Episode 3 Trial Edition)
@@ -5917,18 +5982,14 @@ struct G_BankContentsHeader_BB_6xBC {
 
 // Note: This structure does not have a normal header - the client ID field is
 // big-endian!
-struct G_WordSelectDuringBattle_Ep3_6xBD {
+struct G_PrivateWordSelect_Ep3_6xBD {
   G_ClientIDHeader header;
-  le_uint16_t unknown_a1 = 0;
-  le_uint16_t unknown_a2 = 0;
-  parray<le_uint16_t, 8> entries;
-  le_uint32_t unknown_a4 = 0;
-  le_uint32_t unknown_a5 = 0;
+  WordSelectMessage message;
   // This field has the same meaning as the first byte in an 06 command's
   // message when sent during an Episode 3 battle.
   uint8_t private_flags = 0;
   parray<uint8_t, 3> unused;
-} __packed_ws__(G_WordSelectDuringBattle_Ep3_6xBD, 0x24);
+} __packed_ws__(G_PrivateWordSelect_Ep3_6xBD, 0x24);
 
 // 6xBD: BB bank action (take/deposit meseta/item) (handled by the server)
 
@@ -5987,7 +6048,7 @@ struct G_TeamInvitationAction_BB_6xC1_6xC2_6xCD_6xCE {
   G_ClientIDHeader header;
   le_uint32_t guild_card_number = 0;
   le_uint32_t action = 0; // 0 or 1 for 6xC1, 2 (or not 2) for 6xC2
-  parray<uint8_t, 0x54> unknown_a1;
+  parray<uint8_t, 0x54> unknown_a1; // TODO
 } __packed_ws__(G_TeamInvitationAction_BB_6xC1_6xC2_6xCD_6xCE, 0x60);
 
 // 6xC3: Split stacked item (BB; handled by the server)
@@ -6118,6 +6179,7 @@ struct G_SetQuestCounter_BB_6xD2 {
 // 6xD3: Invalid subcommand
 
 // 6xD4: Unknown (BB)
+// Related to object type 0340.
 
 struct G_Unknown_BB_6xD4 {
   G_UnusedHeader header;
@@ -6373,8 +6435,6 @@ struct G_UpdateShortStatuses_Ep3_6xB4x04 {
 } __packed_ws__(G_UpdateShortStatuses_Ep3_6xB4x04, 0x10C);
 
 // 6xB4x05: Update map state
-// TODO: This structure is different on Ep3 NTE because the Rules structure is
-// shorter. Define an appropriate structure for this.
 
 struct G_UpdateMap_Ep3NTE_6xB4x05 {
   /* 0000 */ G_CardBattleCommandHeader header = {0xB4, sizeof(G_UpdateMap_Ep3NTE_6xB4x05) / 4, 0, 0x05, 0, 0, 0};
@@ -6414,7 +6474,7 @@ struct G_UpdateDecks_Ep3_6xB4x07 {
 struct G_SetActionState_Ep3_6xB4x09 {
   /* 00 */ G_CardBattleCommandHeader header = {0xB4, sizeof(G_SetActionState_Ep3_6xB4x09) / 4, 0, 0x09, 0, 0, 0};
   /* 08 */ le_uint16_t client_id = 0;
-  /* 0A */ parray<uint8_t, 2> unknown_a1;
+  /* 0A */ parray<uint8_t, 2> unused;
   /* 0C */ Episode3::ActionState state;
   /* 70 */
 } __packed_ws__(G_SetActionState_Ep3_6xB4x09, 0x70);
@@ -6641,7 +6701,7 @@ struct G_Unknown_Ep3_6xB5x20 {
   G_CardBattleCommandHeader header = {0xB5, sizeof(G_Unknown_Ep3_6xB5x20) / 4, 0, 0x20, 0, 0, 0};
   le_uint32_t player_tag = 0x00010000;
   le_uint32_t guild_card_number = 0;
-  uint8_t client_id = 0;
+  uint8_t client_id = 0; // Not bounds checked! Should be < 0x0C
   parray<uint8_t, 3> unused;
 } __packed_ws__(G_Unknown_Ep3_6xB5x20, 0x14);
 
@@ -6654,8 +6714,8 @@ struct G_EndBattle_Ep3_CAx21 {
 
 // 6xB4x22: Unknown
 // This command appears to be completely unused. The client's handler for this
-// command sets a flag on some data structure if it exists, but it appears that
-// that data structure is never allocated.
+// command sets a variable on some data structure if it exists, but it appears
+// that that data structure is never allocated.
 
 struct G_Unknown_Ep3_6xB4x22 {
   G_CardBattleCommandHeader header = {0xB4, sizeof(G_Unknown_Ep3_6xB4x22) / 4, 0, 0x22, 0, 0, 0};
@@ -6678,8 +6738,6 @@ struct G_Unknown_Ep3_6xB4x23 {
 
 struct G_Unknown_Ep3_6xB5x27 {
   G_CardBattleCommandHeader header = {0xB5, sizeof(G_Unknown_Ep3_6xB5x27) / 4, 0, 0x27, 0, 0, 0};
-  // Note: This command uses header_b1 as well, which looks like another client
-  // ID (it must be < 4, though it does not always match unknown_a1 below).
   le_uint32_t unknown_a1 = 0; // Probably client ID (must be < 4)
   le_uint32_t unknown_a2 = 0; // Must be < 0x10
   le_uint32_t unknown_a3 = 0;
@@ -6712,9 +6770,9 @@ struct G_UpdateAttackTargets_Ep3_6xB4x29 {
 } __packed_ws__(G_UpdateAttackTargets_Ep3_6xB4x29, 0x70);
 
 // 6xB4x2A: Unknown
-// This appears to be unused, even on DC NTE. It writes an entry into an array
-// of four 6-byte structures (doing nothing if there are already 4 present),
-// but nothing reads from this array.
+// This appears to be unused, even on NTE. It writes an entry into an array of
+// four 6-byte structures (doing nothing if there are already 4 present), but
+// nothing reads from this array.
 
 struct G_Unknown_Ep3_6xB4x2A {
   G_CardBattleCommandHeader header = {0xB4, sizeof(G_Unknown_Ep3_6xB4x2A) / 4, 0, 0x2A, 0, 0, 0};
@@ -6733,93 +6791,111 @@ struct G_ExecLegacyCard_Ep3_CAx2B {
   parray<uint8_t, 2> unused3;
 } __packed_ws__(G_ExecLegacyCard_Ep3_CAx2B, 0x14);
 
-// 6xB4x2C: Unknown
+// 6xB4x2C: Enqueue animation
 // This is used for playing the trap and teleport animations (with change_type
 // = 1). It's also used for playing the discard entire hand animation (with
 // change_type = 3).
 
-struct G_Unknown_Ep3_6xB4x2C {
-  /* 00 */ G_CardBattleCommandHeader header = {0xB4, sizeof(G_Unknown_Ep3_6xB4x2C) / 4, 0, 0x2C, 0, 0, 0};
+struct G_EnqueueAnimation_Ep3_6xB4x2C {
+  /* 00 */ G_CardBattleCommandHeader header = {0xB4, sizeof(G_EnqueueAnimation_Ep3_6xB4x2C) / 4, 0, 0x2C, 0, 0, 0};
   /* 08 */ uint8_t change_type = 0;
   /* 09 */ uint8_t client_id = 0;
   /* 0A */ parray<le_uint16_t, 3> card_refs;
   /* 10 */ Episode3::Location loc;
   /* 14 */ parray<le_uint32_t, 2> unknown_a2;
   /* 1C */
-} __packed_ws__(G_Unknown_Ep3_6xB4x2C, 0x1C);
+} __packed_ws__(G_EnqueueAnimation_Ep3_6xB4x2C, 0x1C);
 
-// 6xB5x2D: Unknown
-// TODO: Document this from Episode 3 client/server disassembly
+// 6xB5x2D: Recreate multiple players
 
-struct G_Unknown_Ep3_6xB5x2D {
-  G_CardBattleCommandHeader header = {0xB5, sizeof(G_Unknown_Ep3_6xB5x2D) / 4, 0, 0x2D, 0, 0, 0};
+struct G_RecreateMultiplePlayers_Ep3_6xB5x2D {
+  G_CardBattleCommandHeader header = {0xB5, sizeof(G_RecreateMultiplePlayers_Ep3_6xB5x2D) / 4, 0, 0x2D, 0, 0, 0};
   // This array is indexed by client ID. When a client receives this command
   // and its corresponding entry in this array is not zero, it sends a 6x70
   // command to itself containing its own player data. It's not clear what the
   // function of this is intended to be.
   // TODO: Figure out if tournament fast loading can be implemented using this
   // to fix the stuck-in-wall glitch.
-  parray<uint8_t, 4> unknown_a1;
-} __packed_ws__(G_Unknown_Ep3_6xB5x2D, 0x0C);
+  parray<uint8_t, 4> client_ids_to_recreate;
+} __packed_ws__(G_RecreateMultiplePlayers_Ep3_6xB5x2D, 0x0C);
 
 // 6xB5x2E: Notify other players that battle is about to end
 
 struct G_BattleEndNotification_Ep3_6xB5x2E {
   G_CardBattleCommandHeader header = {0xB5, sizeof(G_BattleEndNotification_Ep3_6xB5x2E) / 4, 0, 0x2E, 0, 0, 0};
-  uint8_t unknown_a1 = 0; // Command ignored unless this is 0 or 1
+  // Values for end_type:
+  // 0 = Battle results screen
+  // 1 = Go directly to Morgue? (TODO: test this)
+  // Anything else = command is ignored
+  uint8_t end_type = 0;
   parray<uint8_t, 3> unused;
 } __packed_ws__(G_BattleEndNotification_Ep3_6xB5x2E, 0x0C);
 
 // 6xB5x2F: Set deck in battle setup menu
 
+struct Ep3CounterPlayerEntry {
+  /* 00 */ uint8_t is_valid;
+  /* 01 */ uint8_t entry_type;
+  /* 02 */ uint8_t client_id;
+  /* 03 */ uint8_t client_id2;
+  /* 04 */ pstring<TextEncoding::MARKED, 20> player_name;
+  /* 18 */ pstring<TextEncoding::MARKED, 25> deck_name;
+  /* 31 */ uint8_t deck_type;
+  /* 32 */ uint8_t unknown_a1a;
+  /* 33 */ uint8_t unknown_a1b;
+  /* 34 */ be_uint16_t unknown_a3;
+  /* 36 */ le_uint16_t unknown_a2;
+  /* 38 */ parray<le_uint16_t, 0x1F> card_ids;
+  /* 76 */ parray<uint8_t, 2> unused;
+  /* 78 */ le_uint32_t unknown_a5;
+  /* 7C */ be_uint16_t unknown_a6;
+  /* 7E */ be_uint16_t unknown_a7;
+  /* 80 */
+} __packed_ws__(Ep3CounterPlayerEntry, 0x80);
+
 struct G_SetDeckInBattleSetupMenu_Ep3_6xB5x2F {
   G_CardBattleCommandHeader header = {0xB5, sizeof(G_SetDeckInBattleSetupMenu_Ep3_6xB5x2F) / 4, 0, 0x2F, 0, 0, 0};
   parray<uint8_t, 4> unknown_a1;
-  parray<uint8_t, 0x18> unknown_a2;
-  pstring<TextEncoding::MARKED, 0x10> deck_name;
-  parray<uint8_t, 0x0E> unknown_a3;
-  le_uint16_t unknown_a4 = 0;
-  parray<le_uint16_t, 0x1F> card_ids;
-  parray<uint8_t, 2> unused;
-  le_uint32_t unknown_a5 = 0;
-  le_uint16_t unknown_a6 = 0;
-  le_uint16_t unknown_a7 = 0;
+  Ep3CounterPlayerEntry entry;
 } __packed_ws__(G_SetDeckInBattleSetupMenu_Ep3_6xB5x2F, 0x8C);
 
-// 6xB5x30: Unknown
+// 6xB5x30: Unused
 // The client never sends this command, and when the client receives this
-// command, it does nothing.
+// command, it does nothing. It's likely that there was some commented-out code
+// in the original source, since the handler byteswaps the command and calls
+// is_online() and local_client_is_leader(), then ignores the results and
+// returns immediately.
 
-struct G_Unknown_Ep3_6xB5x30 {
-  G_CardBattleCommandHeader header = {0xB5, sizeof(G_Unknown_Ep3_6xB5x30) / 4, 0, 0x30, 0, 0, 0};
+struct G_Unused_Ep3_6xB5x30 {
+  G_CardBattleCommandHeader header = {0xB5, sizeof(G_Unused_Ep3_6xB5x30) / 4, 0, 0x30, 0, 0, 0};
   // No arguments
-} __packed_ws__(G_Unknown_Ep3_6xB5x30, 8);
+} __packed_ws__(G_Unused_Ep3_6xB5x30, 8);
 
 // 6xB5x31: Confirm deck selection
 
 struct G_ConfirmDeckSelection_Ep3_6xB5x31 {
   G_CardBattleCommandHeader header = {0xB5, sizeof(G_ConfirmDeckSelection_Ep3_6xB5x31) / 4, 0, 0x31, 0, 0, 0};
-  // Note: This command uses header_b1 for... something.
   uint8_t unknown_a1 = 0; // Must be 0 or 1
   uint8_t unknown_a2 = 0; // Must be < 4
-  uint8_t unknown_a3 = 0; // Must be < 4
+  uint8_t unknown_a3 = 0; // Must be 0xFF or < 4
   uint8_t unknown_a4 = 0; // Must be < 0x14
-  uint8_t unknown_a5 = 0; // Used as an array index
+  uint8_t menu_type = 0; // Not bounds-checked; should be < 0x15
   parray<uint8_t, 3> unused;
 } __packed_ws__(G_ConfirmDeckSelection_Ep3_6xB5x31, 0x10);
 
 // 6xB5x32: Move shared menu cursor
 
 struct G_MoveSharedMenuCursor_Ep3_6xB5x32 {
-  G_CardBattleCommandHeader header = {0xB5, sizeof(G_MoveSharedMenuCursor_Ep3_6xB5x32) / 4, 0, 0x32, 0, 0, 0};
-  le_uint16_t selected_item_index = 0xFFFF;
-  le_uint16_t chosen_item_index = 0xFFFF;
-  uint8_t unknown_a1 = 0;
-  uint8_t unknown_a2 = 0;
-  uint8_t unknown_a3 = 0;
-  uint8_t unknown_a4 = 0;
-  uint8_t unknown_a5 = 0;
-  parray<uint8_t, 3> unused;
+  /* 00 */ G_CardBattleCommandHeader header = {0xB5, sizeof(G_MoveSharedMenuCursor_Ep3_6xB5x32) / 4, 0, 0x32, 0, 0, 0};
+  /* 08 */ le_int16_t selected_item_index = -1; // Must not be < -1
+  /* 0A */ le_int16_t chosen_item_index = -1; // Must not be < -1
+  /* 0C */ uint8_t unknown_a1 = 0; // Must be 0, 1, or 2
+  /* 0D */ uint8_t unknown_a2 = 0; // Must be less than 0x14
+  /* 0E */ uint8_t unknown_a3 = 0; // Must be less than 0x14
+  /* 0F */ uint8_t unknown_a4 = 0; // Must be 0 or 1
+  /* 10 */ uint8_t menu_type = 0; // Not bounds-checked; should be < 0x15
+  /* 11 */ parray<uint8_t, 3> unused;
+  /* 14 */
 } __packed_ws__(G_MoveSharedMenuCursor_Ep3_6xB5x32, 0x14);
 
 // 6xB4x33: Subtract ally ATK points (e.g. for photon blast)
@@ -6971,7 +7047,6 @@ check_struct_size(G_SetTournamentPlayerDecks_Ep3_6xB4x3D, 0x1CC);
 
 struct G_MakeCardAuctionBid_Ep3_6xB5x3E {
   G_CardBattleCommandHeader header = {0xB5, sizeof(G_MakeCardAuctionBid_Ep3_6xB5x3E) / 4, 0, 0x3E, 0, 0, 0};
-  // Note: This command uses header.unknown_a1 for the bidder's client ID.
   uint8_t card_index = 0; // Index of card in EF command
   uint8_t bid_value = 0; // 1-99
   parray<uint8_t, 2> unused;
@@ -6985,10 +7060,10 @@ struct G_MakeCardAuctionBid_Ep3_6xB5x3E {
 struct G_OpenBlockingMenu_Ep3_6xB5x3F {
   G_CardBattleCommandHeader header = {0xB5, sizeof(G_OpenBlockingMenu_Ep3_6xB5x3F) / 4, 0, 0x3F, 0, 0, 0};
   // Menu type should be one of these values:
+  // 0xFF = close all menus? (TODO: verify this)
   // 0x01/0x02 = battle prep menu
   // 0x11 = card auction counter menu (join or cancel)
   // 0x12 = go directly to card auction state (client sends EF command)
-  // Other values will likely crash the client.
   int8_t menu_type = 0; // Must be in the range [-1, 0x14]
   uint8_t client_id = 0;
   parray<uint8_t, 2> unused1;
@@ -7024,7 +7099,6 @@ struct G_MapDataRequest_Ep3_CAx41 {
 
 struct G_InitiateCardAuction_Ep3_6xB5x42 {
   G_CardBattleCommandHeader header = {0xB5, sizeof(G_InitiateCardAuction_Ep3_6xB5x42) / 4, 0, 0x42, 0, 0, 0};
-  // This command uses header.unknown_a1 (probably for the client's ID).
 } __packed_ws__(G_InitiateCardAuction_Ep3_6xB5x42, 8);
 
 // 6xB5x43: Unknown
@@ -7048,7 +7122,6 @@ struct G_Unknown_Ep3_6xB5x43 {
 
 struct G_CardAuctionBidSummary_Ep3_6xB5x44 {
   G_CardBattleCommandHeader header = {0xB5, sizeof(G_CardAuctionBidSummary_Ep3_6xB5x44) / 4, 0, 0x44, 0, 0, 0};
-  // Note: This command uses header.unknown_a1 for the bidder's client ID.
   parray<le_uint16_t, 8> bids; // In same order as cards in the EF command
 } __packed_ws__(G_CardAuctionBidSummary_Ep3_6xB5x44, 0x18);
 
@@ -7056,7 +7129,6 @@ struct G_CardAuctionBidSummary_Ep3_6xB5x44 {
 
 struct G_CardAuctionResults_Ep3_6xB5x45 {
   G_CardBattleCommandHeader header = {0xB5, sizeof(G_CardAuctionResults_Ep3_6xB5x45) / 4, 0, 0x45, 0, 0, 0};
-  // Note: This command uses header.unknown_a1 for the sender's client ID.
   // This array is indexed by [card_index][client_id], and contains the final
   // bid for each player on each card (or 0 if they did not bid on that card).
   parray<parray<le_uint16_t, 4>, 8> bids_by_player;
@@ -7332,8 +7404,8 @@ struct G_RejectBattleStartRequest_Ep3_6xB4x53 {
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 
-// These commands are not part of the official protocol; newserv uses these to
-// implement extended functionality.
+// These commands are not part of the official protocol; newserv uses these
+// along with client functions to implement extended functionality.
 
 // 30 (C->S): Extended player info
 // Requested with the GetExtendedPlayerInfo patch. Format depends on version:

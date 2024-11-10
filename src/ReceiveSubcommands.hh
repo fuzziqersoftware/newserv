@@ -43,22 +43,26 @@ public:
   bool from_client_customization;
   Version item_version;
 
-  G_SyncPlayerDispAndInventory_BaseDCNTE base;
+  G_6x70_Base_DCNTE base;
   uint32_t unknown_a5_nte = 0;
   uint32_t unknown_a6_nte = 0;
   uint16_t bonus_hp_from_materials = 0;
   uint16_t bonus_tp_from_materials = 0;
   parray<uint8_t, 0x10> unknown_a5_112000;
-  parray<G_Unknown_6x70_SubA2, 5> unknown_a4_final;
+  G_6x70_StatusEffectState permanent_status_effect;
+  G_6x70_StatusEffectState temporary_status_effect;
+  G_6x70_StatusEffectState attack_status_effect;
+  G_6x70_StatusEffectState defense_status_effect;
+  G_6x70_StatusEffectState unused_status_effect;
   uint32_t language = 0;
   uint32_t player_tag = 0;
   uint32_t guild_card_number = 0;
   uint32_t unknown_a6 = 0;
   uint32_t battle_team_number = 0;
-  Telepipe6x70 telepipe;
+  G_6x70_Sub_Telepipe telepipe;
   uint32_t unknown_a8 = 0;
   parray<uint8_t, 0x10> unknown_a9_nte_112000;
-  G_Unknown_6x70_SubA1 unknown_a9_final;
+  G_6x70_Sub_UnknownA1 unknown_a9_final;
   uint32_t area = 0;
   uint32_t flags2 = 0;
   parray<uint8_t, 0x14> technique_levels_v1 = 0xFF;
@@ -116,11 +120,11 @@ public:
 
 protected:
   Parsed6x70Data(
-      const G_SyncPlayerDispAndInventory_BaseV1& base,
+      const G_6x70_Base_V1& base,
       uint32_t guild_card_number,
       Version from_version,
       bool from_client_customization);
-  G_SyncPlayerDispAndInventory_BaseV1 base_v1() const;
+  G_6x70_Base_V1 base_v1() const;
 };
 
 bool validate_6xBB(G_SyncCardTradeServerState_Ep3_6xBB& cmd);

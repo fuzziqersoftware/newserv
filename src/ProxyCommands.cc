@@ -1174,12 +1174,27 @@ static HandlerResult S_6x(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t, 
     } else if ((data[0] == 0x60) || (static_cast<uint8_t>(data[0]) == 0xA2)) {
       return SC_6x60_6xA2(ses, data);
 
-    } else if ((static_cast<uint8_t>(data[0]) == 0xB5) && is_ep3(ses->version()) && (data.size() > 4)) {
+    } else if ((static_cast<uint8_t>(data[0]) == 0xB5) && is_ep3(ses->version()) && (data.size() >= 8)) {
+      set_mask_for_ep3_game_command(data.data(), data.size(), 0);
       if (data[4] == 0x1A) {
         return HandlerResult::Type::SUPPRESS;
+      } else if (data[4] == 0x20) {
+        auto& cmd = check_size_t<G_Unknown_Ep3_6xB5x20>(data);
+        if (cmd.client_id >= 12) {
+          return HandlerResult::Type::SUPPRESS;
+        }
+      } else if (data[4] == 0x31) {
+        auto& cmd = check_size_t<G_ConfirmDeckSelection_Ep3_6xB5x31>(data);
+        if (cmd.menu_type >= 0x15) {
+          return HandlerResult::Type::SUPPRESS;
+        }
+      } else if (data[4] == 0x32) {
+        auto& cmd = check_size_t<G_MoveSharedMenuCursor_Ep3_6xB5x32>(data);
+        if (cmd.menu_type >= 0x15) {
+          return HandlerResult::Type::SUPPRESS;
+        }
       } else if (data[4] == 0x36) {
         auto& cmd = check_size_t<G_RecreatePlayer_Ep3_6xB5x36>(data);
-        set_mask_for_ep3_game_command(&cmd, sizeof(cmd), 0);
         if (ses->is_in_game && (cmd.client_id >= 4)) {
           return HandlerResult::Type::SUPPRESS;
         }
@@ -1197,7 +1212,7 @@ static HandlerResult S_6x(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t, 
     } else if ((static_cast<uint8_t>(data[0]) == 0xBD) &&
         ses->config.check_flag(Client::Flag::PROXY_EP3_UNMASK_WHISPERS) &&
         is_ep3(ses->version())) {
-      auto& cmd = check_size_t<G_WordSelectDuringBattle_Ep3_6xBD>(data);
+      auto& cmd = check_size_t<G_PrivateWordSelect_Ep3_6xBD>(data);
       if (cmd.private_flags & (1 << ses->lobby_client_id)) {
         cmd.private_flags &= ~(1 << ses->lobby_client_id);
         modified = true;
@@ -2039,8 +2054,8 @@ HandlerResult C_6x<void>(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t, u
 
     } else if (data[0] == 0x0C) {
       if (ses->config.check_flag(Client::Flag::INFINITE_HP_ENABLED)) {
-        send_remove_conditions(ses->client_channel, ses->lobby_client_id);
-        send_remove_conditions(ses->server_channel, ses->lobby_client_id);
+        send_remove_negative_conditions(ses->client_channel, ses->lobby_client_id);
+        send_remove_negative_conditions(ses->server_channel, ses->lobby_client_id);
       }
 
     } else if (data[0] == 0x2F || data[0] == 0x4B || data[0] == 0x4C) {
