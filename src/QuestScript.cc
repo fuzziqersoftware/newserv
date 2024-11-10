@@ -493,61 +493,61 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     // If regA == regB, jumps to labelC
     {0x2C, "jmp_eq", "jmp_=", {REG, REG, SCRIPT16}, F_V0_V4},
 
-    // If regA == regB, jumps to labelC
+    // If regA == valueB, jumps to labelC
     {0x2D, "jmpi_eq", "jmpi_=", {REG, INT32, SCRIPT16}, F_V0_V4},
 
     // If regA != regB, jumps to labelC
     {0x2E, "jmp_ne", "jmp_!=", {REG, REG, SCRIPT16}, F_V0_V4},
 
-    // If regA != regB, jumps to labelC
+    // If regA != valueB, jumps to labelC
     {0x2F, "jmpi_ne", "jmpi_!=", {REG, INT32, SCRIPT16}, F_V0_V4},
 
     // If regA > regB (unsigned), jumps to labelC
     {0x30, "ujmp_gt", "ujmp_>", {REG, REG, SCRIPT16}, F_V0_V4},
 
-    // If regA > regB (unsigned), jumps to labelC
+    // If regA > valueB (unsigned), jumps to labelC
     {0x31, "ujmpi_gt", "ujmpi_>", {REG, INT32, SCRIPT16}, F_V0_V4},
 
     // If regA > regB (signed), jumps to labelC
     {0x32, "jmp_gt", "jmp_>", {REG, REG, SCRIPT16}, F_V0_V4},
 
-    // If regA > regB (signed), jumps to labelC
+    // If regA > valueB (signed), jumps to labelC
     {0x33, "jmpi_gt", "jmpi_>", {REG, INT32, SCRIPT16}, F_V0_V4},
 
     // If regA < regB (unsigned), jumps to labelC
     {0x34, "ujmp_lt", "ujmp_<", {REG, REG, SCRIPT16}, F_V0_V4},
 
-    // If regA < regB (unsigned), jumps to labelC
+    // If regA < valueB (unsigned), jumps to labelC
     {0x35, "ujmpi_lt", "ujmpi_<", {REG, INT32, SCRIPT16}, F_V0_V4},
 
     // If regA < regB (signed), jumps to labelC
     {0x36, "jmp_lt", "jmp_<", {REG, REG, SCRIPT16}, F_V0_V4},
 
-    // If regA < regB (signed), jumps to labelC
+    // If regA < valueB (signed), jumps to labelC
     {0x37, "jmpi_lt", "jmpi_<", {REG, INT32, SCRIPT16}, F_V0_V4},
 
     // If regA >= regB (unsigned), jumps to labelC
     {0x38, "ujmp_ge", "ujmp_>=", {REG, REG, SCRIPT16}, F_V0_V4},
 
-    // If regA >= regB (unsigned), jumps to labelC
+    // If regA >= valueB (unsigned), jumps to labelC
     {0x39, "ujmpi_ge", "ujmpi_>=", {REG, INT32, SCRIPT16}, F_V0_V4},
 
     // If regA >= regB (signed), jumps to labelC
     {0x3A, "jmp_ge", "jmp_>=", {REG, REG, SCRIPT16}, F_V0_V4},
 
-    // If regA >= regB (signed), jumps to labelC
+    // If regA >= valueB (signed), jumps to labelC
     {0x3B, "jmpi_ge", "jmpi_>=", {REG, INT32, SCRIPT16}, F_V0_V4},
 
     // If regA <= regB (unsigned), jumps to labelC
     {0x3C, "ujmp_le", "ujmp_<=", {REG, REG, SCRIPT16}, F_V0_V4},
 
-    // If regA <= regB (unsigned), jumps to labelC
+    // If regA <= valueB (unsigned), jumps to labelC
     {0x3D, "ujmpi_le", "ujmpi_<=", {REG, INT32, SCRIPT16}, F_V0_V4},
 
     // If regA <= regB (signed), jumps to labelC
     {0x3E, "jmp_le", "jmp_<=", {REG, REG, SCRIPT16}, F_V0_V4},
 
-    // If regA <= regB (signed), jumps to labelC
+    // If regA <= valueB (signed), jumps to labelC
     {0x3F, "jmpi_le", "jmpi_<=", {REG, INT32, SCRIPT16}, F_V0_V4},
 
     // Jumps to labelsB[regA]
@@ -576,11 +576,7 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
 
     // Appends valueA to the args list
     {0x49, "arg_pushl", nullptr, {INT32}, F_V3_V4 | F_PASS},
-
-    // Appends valueA to the args list
     {0x4A, "arg_pushb", nullptr, {INT8}, F_V3_V4 | F_PASS},
-
-    // Appends valueA to the args list
     {0x4B, "arg_pushw", nullptr, {INT16}, F_V3_V4 | F_PASS},
 
     // Appends the memory address of regA to the args list
@@ -589,14 +585,14 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     // Appends the script offset of labelA to the args list
     {0x4D, "arg_pusho", nullptr, {LABEL16}, F_V3_V4 | F_PASS},
 
-    // Appends the memory address of strA to the args list
+    // Appends strA to the args list
     {0x4E, "arg_pushs", nullptr, {CSTRING}, F_V3_V4 | F_PASS},
 
-    // Creates a dialogue with object/NPC (valueA) starting with message strB
+    // Creates dialogue with an object/NPC (valueA) starting with message strB
     {0x50, "message", nullptr, {INT32, CSTRING}, F_V0_V4 | F_ARGS},
 
-    // Prompts the player with a list of choices, returning the index of their
-    // choice in regA
+    // Prompts the player with a list of choices (strB; items separated by
+    // newlines) and returns the index of their choice in regA
     {0x51, "list", nullptr, {REG, CSTRING}, F_V0_V4 | F_ARGS},
 
     // Fades from black
@@ -615,22 +611,16 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
 
     // Does nothing
     {0x56, "nop_56", nullptr, {}, F_V0_V2},
-
-    // Does nothing
     {0x57, "nop_57", nullptr, {}, F_V0_V2},
-
-    // Does nothing
     {0x58, "nop_58", "enable", {INT32}, F_V0_V2},
-
-    // Does nothing
     {0x59, "nop_59", "disable", {INT32}, F_V0_V2},
 
     // Displays a message. Special tokens are interpolated within the string.
     // These special tokens are:
     // <rXX> => value of rXX as %d (signed integer)
     // <fXX> => value of rXX as %f (floating-point) (v3 and later)
-    // <color X> => changes text color like $CX would; X must be numeric, so
-    //   <color G> does not work (supported on 11/2000 and later)
+    // <color X> => changes text color like $CX would (supported on 11/2000 and
+    //   later); X must be numeric, so <color G> does not work
     // <cr> => newline
     // <hero name> or <name hero> => character's name
     // <hero job> or <name job> => character's class
@@ -855,7 +845,9 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     // regsA[5] = label index where thread should start
     {0x8F, "party_coords_call", "col_npcinr", {{REG_SET_FIXED, 6}}, F_V0_V4},
 
-    // Enables/disables a switch flag (valueA). Does NOT Send 6x05.
+    // Enables/disables a switch flag (valueA). Does NOT send 6x05, so other
+    // players will not know about this change! Use sw_send instead to keep
+    // switch flag state synced.
     {0x90, "switch_on", nullptr, {INT32}, F_V0_V4 | F_ARGS},
     {0x91, "switch_off", nullptr, {INT32}, F_V0_V4 | F_ARGS},
 
@@ -909,7 +901,7 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     {0x9B, "cine_disable", nullptr, {}, F_V0_V4},
 
     // Unused opcode. It's not clear what this was supposed to do. The behavior
-    // appears to be the same on all verison of PSO, from DC NTE through BB.
+    // appears to be the same on all versions of PSO, from DC NTE through BB.
     // argA is ignored. The game constructs a message list object from strB;
     // the game will softlock unless this string contains exactly 2 messages
     // (separated by \n). After doing this, it destroys the message list and
@@ -923,7 +915,7 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     {0xA1, "set_qt_failure", nullptr, {SCRIPT32}, F_V0_V2},
     {0xA1, "set_qt_failure", nullptr, {SCRIPT16}, F_V3_V4},
 
-    // Like set_qt_failure, but uses r255 instead. If both r255 and r253 have
+    // Like set_qt_failure, but uses r255 instead. If r255 and r253 both have
     // the value 1 when the player talks to the Hunter's Guild counter, the
     // success label is called and the failure label is not called.
     {0xA2, "set_qt_success", nullptr, {SCRIPT32}, F_V0_V2},
@@ -961,20 +953,20 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     // valueA is the object's token (returned by set_obj_param in regB).
     {0xB2, "del_obj_param", nullptr, {REG}, F_V0_V4},
 
-    // Creates an item in the player's inventory.
-    // If the item is created, this opcode sends 6x2B on all versions except
-    // BB, or sends 6xCA on BB.
+    // Creates an item in the player's inventory. If the item is successfully
+    // created, this opcode sends 6x2B on all versions except BB. On BB, this
+    // opcode sends 6xCA, and the server sends 6xBE to create the item.
     // regsA[0-2] = item.data1[0-2]
     // regB = returned item ID, or FFFFFFFF if item can't be created
     {0xB3, "item_create", nullptr, {{REG_SET_FIXED, 3}, REG}, F_V0_V4},
 
-    // Like item_create, but input regs specify all of item.data1 instead of
-    // only the first 3 bytes.
+    // Like item_create, but regsA specify all of item.data1 instead of only
+    // the first 3 bytes.
     {0xB4, "item_create2", nullptr, {{REG_SET_FIXED, 12}, REG}, F_V0_V4},
 
     // Deletes an item from the player's inventory. Sends 6x29 if ths item is
-    // found and deleted. If the item is stackable, only one of it is deleted
-    // (the rest of the stack is not deleted).
+    // found and deleted. If the item is stackable, only one of it is deleted;
+    // the rest of the stack is not deleted.
     // regA = item ID
     // regsB[0-11] = item.data1[0-11] for deleted item
     // regsB must not wrap around (that is, the first register in regsB cannot
@@ -1041,7 +1033,7 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     // regsA[3] = ignored
     {0xC4, "map_designate", nullptr, {{REG_SET_FIXED, 4}}, F_V05_V4},
 
-    // TODO: Document these
+    // Locks (masterkey_on) or unlocks (masterkey_off) all doors
     {0xC5, "masterkey_on", nullptr, {}, F_V05_V4},
     {0xC6, "masterkey_off", nullptr, {}, F_V05_V4},
 
@@ -1185,7 +1177,7 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     // this. The values for valueA are the same as for playbgm_epi.
     {0xEB, "set_bgm", "enable_bgmctrl", {INT32}, F_V1_V4 | F_ARGS},
 
-    // Change the state of a switch flag and send the update to all players
+    // Changes the state of a switch flag and sends the update to all players
     // (unlike switch_on/switch_off).
     // regsA[0] = switch flag number
     // regsA[1] = floor number
@@ -1357,7 +1349,7 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     {0xF821, "nop_F821", nullptr, {{REG_SET_FIXED, 9}}, F_V2_V4},
 
     // This opcode does nothing. It has two branches (one for online, one for
-    // offline), but both pranches do nothing.
+    // offline), but both branches do nothing.
     {0xF822, "nop_F822", nullptr, {REG}, F_V2_V4},
 
     // Sets the challenge template index. See Client::create_challenge_overlay
@@ -1368,7 +1360,7 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     // other than challenge.
     {0xF824, "set_cmode_difficulty", "set_cmode_diff", {INT32}, F_V2_V4 | F_ARGS},
 
-    // Sets the factor by which all EXP is multipled in challenge mode.
+    // Sets the factor by which all EXP is multiplied in challenge mode.
     // The multiplier value is regsA[0] + (regsA[1] / regsA[2]).
     {0xF825, "exp_multiplication", nullptr, {{REG_SET_FIXED, 3}}, F_V2_V4},
 
@@ -1562,7 +1554,7 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     // Shows the item choice window and suspends the calling thread
     {0xF866, "award_item_select", "award_item_select?", {}, F_V2_V4},
 
-    // Creates an intem in the player's inventory, chosen via the previous
+    // Creates an item in the player's inventory, chosen via the previous
     // award_item_name and award_item_select opcodes, and updates the player's
     // challenge rank text and color according to the rank they achieved.
     // Sends 07DF on BB; on other versions, sends nothing.
@@ -1633,8 +1625,8 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     // strB = check string and override string (separated by \t or \n)
     {0xF874, "set_cmode_rank_override", "unknownF874", {INT32, CSTRING}, F_V2_V4 | F_ARGS},
 
-    // Enables the transparency effect, similar to the Stealth Suit. regA is
-    // the client ID.
+    // Enables or disables the transparency effect, similar to the Stealth
+    // Suit. regA is the client ID.
     {0xF875, "enable_stealth_suit_effect", nullptr, {REG}, F_V2_V4},
     {0xF876, "disable_stealth_suit_effect", nullptr, {REG}, F_V2_V4},
 
@@ -1684,7 +1676,7 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     // regB = returned event flag value (1 byte)
     {0xF87F, "get_eventflag", "read_guildcard_flag", {REG, REG}, F_V2_V4},
 
-    // Normally, trap damage is computed by the following formula:
+    // Normally, trap damage is computed with the following formula:
     //   (700.0 * area_factor[area] * 2.0 * (0.01 * level + 0.1))
     // This opcode overrides that computation. The value is specified with the
     // integer and fractional parts split up: the actual value used by the game
@@ -1701,7 +1693,7 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     // "<pl_job>" in message strings.
     {0xF882, "get_pl_job", nullptr, {REG}, F_V2_V4},
 
-    // Counts the number of players near the speficied player.
+    // Counts the number of players near the specified player.
     // regsA[0] = client ID
     // regsA[1] = radius (as integer)
     // regB = count
@@ -1761,8 +1753,13 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     {0xF88D, "chl_set_timerecord", "chl_set_timerecord?", {REG}, F_V2 | F_V3},
     {0xF88D, "chl_set_timerecord", "chl_set_timerecord?", {REG, REG}, F_V4},
 
-    // TODO: Document these.
+    // Gets the current player's completion time for the current challenge
+    // stage in seconds. If the player's time is invalid or faster than the
+    // time set by chl_set_min_time_online (or 5 minutes, if offline), returns
+    // -2. If used in non-challenge mode, returns -1.
     {0xF88E, "chl_get_timerecord", "chl_get_timerecord?", {REG}, F_V2_V4},
+
+    // TODO: Document this
     {0xF88F, "set_cmode_grave_rates", nullptr, {{REG_SET_FIXED, 20}}, F_V2_V4},
 
     // Clears all levels from the main warp.
@@ -1797,7 +1794,8 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     // value is not uniform! The algorithm generates a uniform random number,
     // scales it to the range [0, max], then clamps it to [min, max]. So, if
     // the minimum value is not 0, the minimum value is more likely than all
-    // other possible results.
+    // other possible results. To get an unbiased result with a minimum not
+    // equal to zero, use this with a minimum of zero, then use add or addi.
     // regsA[0] = minimum value
     // regsA[1] = maximum value
     // regB = generated random value
@@ -1917,7 +1915,7 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     {0xF8AE, "party_has_name", nullptr, {REG}, F_V2_V4},
 
     // Returns 1 (in regA) if there is a chat message available (that is, if
-    // anyone has sent a chat message in the current game).)
+    // anyone has sent a chat message in the current game).
     {0xF8AF, "someone_has_spoken", nullptr, {REG}, F_V2_V4},
 
     // Reads a 1-byte, 2-byte, or 4-byte value from the address (regB/valueB)
@@ -2013,7 +2011,7 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
 
     // Shows the challenge mode result window in split-screen mode. Does
     // nothing on BB.
-    // regA = unknown (TODO)
+    // regA = completion time in seconds, as returned by chl_get_timerecord
     {0xF8C4, "congrats_msg_multi_cm", "unknownF8C4", {REG}, F_V3},
     {0xF8C4, "nop_F8C4", nullptr, {REG}, F_V4},
 
@@ -2049,7 +2047,8 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     // regA = client ID
     {0xF8CB, "clear_slot_invincible", "set_slot_targetable?", {REG}, F_V3_V4},
 
-    // These opcodes inflict various status conditions on a player.
+    // These opcodes inflict various status conditions on a player. In the case
+    // of Shifta/Deband/Jellen/Zalure, the effective technicuqe level is 21.
     // regA = client ID
     {0xF8CC, "set_slot_poison", nullptr, {REG}, F_V3_V4},
     {0xF8CD, "set_slot_paralyze", nullptr, {REG}, F_V3_V4},
@@ -2168,7 +2167,7 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     // Disables or enables the background music on Pioneer 2. If the BGM has
     // not been overridden with create_bgmctrl and set_bgm, the music will
     // resume at the points where it would normally change (e.g. entering or
-    // leaving the shop area). turn_off_bgm_p2 and be repeated every frame to
+    // leaving the shop area). turn_off_bgm_p2 may be repeated every frame to
     // avoid this consequence.
     {0xF8F0, "turn_off_bgm_p2", nullptr, {}, F_V3_V4},
     {0xF8F1, "turn_on_bgm_p2", nullptr, {}, F_V3_V4},
@@ -2230,6 +2229,7 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     // regsA[0] = client ID
     // regsA[1-3] = item.data1[0-2]
     // regB = returned amount of item present in player's inventory
+    // If the item is not present, returns 0.
     {0xF911, "get_item_count", "get_stackable_item_count", {{REG_SET_FIXED, 4}, REG}, F_V3_V4},
 
     // Freezes a character and hides their equips, or does the opposite.
@@ -2340,7 +2340,7 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     // Checks if an item exists in the local player's bank.
     // regsA[0-2] = item.data1[0-2]
     // regsA[3] = item.data1[4]
-    // regB = 1 if item was found 0 if not
+    // regB = 1 if item was found, 0 if not
     {0xF927, "item_detect_bank2", "item_check_bank", {{REG_SET_FIXED, 4}, REG}, F_V3_V4},
 
     // Returns whether each player is present.
@@ -2407,8 +2407,8 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     // TODO: Does this let the quest change episodes during the quest? Try this
     {0xF932, "set_episode2", nullptr, {REG}, F_V3_V4},
 
-    // Creates an item in offline challenge mode. Does nothing on BB.
-    // regsA[0] = TODO (0, 1, or 2; any other value does nothing)
+    // Sets the rank prizes in offline challenge mode.
+    // regsA[0] = rank (unusual value order: 0 = S, 1 = B, 2 = A)
     // regsA[1-6] = item.data1[0-5]
     {0xF933, "item_create_multi_cm", "unknownF933", {{REG_SET_FIXED, 7}}, F_V3},
     {0xF933, "nop_F933", nullptr, {{REG_SET_FIXED, 7}}, F_V4},
@@ -2456,7 +2456,7 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     // valueA = item ID
     {0xF93B, "wrap_item", "item_packing1", {ITEM_ID}, F_V3_V4 | F_ARGS},
 
-    // Like wrap_item, but also sets the weapon's special. Sends 6xD6 on BB.
+    // Like wrap_item, but also sets the present color. Sends 6xD6 on BB.
     // valueA = item ID
     // valueB = present color (0-15; high 4 bits are masked out)
     {0xF93C, "wrap_item_with_color", "item_packing2", {ITEM_ID, INT32}, F_V3_V4 | F_ARGS},
@@ -2471,7 +2471,7 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     // labelC = label2 (used in send_statistic)
     {0xF93E, "prepare_statistic", "prepare_statistic?", {INT32, LABEL32, LABEL32}, F_V3_V4 | F_ARGS},
 
-    // Enables use of the keyword opcode.
+    // Enables use of the check_for_keyword opcode.
     {0xF93F, "enable_keyword_detect", "keyword_detect", {}, F_V3_V4},
 
     // Checks if a word was said by a specific player. All of the same
@@ -2550,7 +2550,7 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
 
     // Returns 1 in regA if a file named PSO3_CHARACTER is present on either
     // memory card. This opcode is only available on PSO Plus on GC; that is,
-    // it only exists on JP v1.4 and v1.5, and US v1.2.
+    // it only exists on JP v1.4, JP v1.5, and US v1.2.
     {0xF94D, "has_ep3_save_file", nullptr, {REG}, F_GC_V3 | F_ARGS},
 
     // Gives the player one copy of a card. regA is the card ID.
