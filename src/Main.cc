@@ -10,6 +10,7 @@
 #include <phosg/JSON.hh>
 #include <phosg/Math.hh>
 #include <phosg/Network.hh>
+#include <phosg/Platform.hh>
 #include <phosg/Strings.hh>
 #include <phosg/Tools.hh>
 #include <set>
@@ -52,6 +53,12 @@
 #include "TextIndex.hh"
 
 using namespace std;
+
+#ifdef PHOSG_WINDOWS
+static constexpr bool IS_WINDOWS = true;
+#else
+static constexpr bool IS_WINDOWS = false;
+#endif
 
 bool use_terminal_colors = false;
 
@@ -3167,9 +3174,21 @@ Action a_run_server_replay_log(
             state->ip_stack_simulator->listen(
                 spec, netloc.first, netloc.second, IPStackSimulator::Protocol::HDLC_RAW);
             if (netloc.second) {
-              if (state->local_address == state->external_address) {
+              if (state->local_address == 0 && state->external_address == 0) {
                 config_log.info(
-                    "Note: The Devolution phone number for %s is %" PRIu64,
+                    "Cannot generate Devolution phone numbers for %s because LocalAddress and ExternalAddress are not specified in the configuration",
+                    spec.c_str());
+              } else if (state->local_address == 0) {
+                config_log.info(
+                    "Note: The Devolution phone number for %s is %" PRIu64 " (external)",
+                    spec.c_str(), devolution_phone_number_for_netloc(state->external_address, netloc.second));
+              } else if (state->external_address == 0) {
+                config_log.info(
+                    "Note: The Devolution phone number for %s is %" PRIu64 " (local)",
+                    spec.c_str(), devolution_phone_number_for_netloc(state->local_address, netloc.second));
+              } else if (state->local_address == state->external_address) {
+                config_log.info(
+                    "Note: The Devolution phone number for %s is %" PRIu64 " (local+external)",
                     spec.c_str(), devolution_phone_number_for_netloc(state->local_address, netloc.second));
               } else {
                 config_log.info(
@@ -3328,30 +3347,30 @@ int main(int argc, char** argv) {
     phosg::log_error("Unknown or invalid action; try --help");
     return 1;
   }
-#ifdef PHOSG_WINDOWS
-  // Cygwin just gives a stackdump when an exception falls out of main(), so
-  // unlike Linux and macOS, we have to manually catch exceptions here just to
-  // see what the exception message was.
-  try {
+  if (IS_WINDOWS) {
+    // Cygwin just gives a stackdump when an exception falls out of main(), so
+    // unlike Linux and macOS, we have to manually catch exceptions here just to
+    // see what the exception message was.
+    try {
+      a->run(args);
+    } catch (const phosg::cannot_open_file& e) {
+      phosg::log_error("Top-level exception (cannot_open_file): %s", e.what());
+      throw;
+    } catch (const invalid_argument& e) {
+      phosg::log_error("Top-level exception (invalid_argument): %s", e.what());
+      throw;
+    } catch (const out_of_range& e) {
+      phosg::log_error("Top-level exception (out_of_range): %s", e.what());
+      throw;
+    } catch (const runtime_error& e) {
+      phosg::log_error("Top-level exception (runtime_error): %s", e.what());
+      throw;
+    } catch (const exception& e) {
+      phosg::log_error("Top-level exception: %s", e.what());
+      throw;
+    }
+  } else {
     a->run(args);
-  } catch (const phosg::cannot_open_file& e) {
-    phosg::log_error("Top-level exception (cannot_open_file): %s", e.what());
-    throw;
-  } catch (const invalid_argument& e) {
-    phosg::log_error("Top-level exception (invalid_argument): %s", e.what());
-    throw;
-  } catch (const out_of_range& e) {
-    phosg::log_error("Top-level exception (out_of_range): %s", e.what());
-    throw;
-  } catch (const runtime_error& e) {
-    phosg::log_error("Top-level exception (runtime_error): %s", e.what());
-    throw;
-  } catch (const exception& e) {
-    phosg::log_error("Top-level exception: %s", e.what());
-    throw;
   }
-#else
-  a->run(args);
-#endif
   return 0;
 }

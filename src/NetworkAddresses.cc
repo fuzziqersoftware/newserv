@@ -66,9 +66,16 @@ map<string, uint32_t> get_local_addresses() {
   return ret;
 }
 
+bool is_loopback_address(uint32_t addr) {
+  return ((addr & 0xFF000000) == 0x7F000000); // 127.0.0.0/8
+}
+
 bool is_local_address(uint32_t addr) {
-  uint8_t net = (addr >> 24) & 0xFF;
-  return ((net == 127) || (net == 172) || (net == 10) || (net == 192));
+  return is_loopback_address(addr) || // 127.0.0.0/8
+      ((addr & 0xFF000000) == 0x0A000000) || // 10.0.0.0/8
+      ((addr & 0xFFF00000) == 0xAC100000) || // 172.16.0.0/12
+      ((addr & 0xFFFF0000) == 0xC0A80000) || // 192.168.0.0/16
+      ((addr & 0xFFFF0000) == 0xA9FE0000); // 169.254.0.0/16
 }
 
 bool is_local_address(const sockaddr_storage& daddr) {

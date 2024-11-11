@@ -159,14 +159,15 @@
   // set this to ["127.0.0.1:5059"] (which listens on port 5059 but only accepts
   // connections from the local machine), and configure Dolphin's tapserver BBA
   // to connect to 127.0.0.1:5059.
-  "IPStackListen": [],
-  "PPPStackListen": [],
+  "IPStackListen": ["/tmp/dolphin-tap", 5059],
+  "PPPStackListen": ["/tmp/dolphin-modem-tap", 5058],
 
   // Where to listen for PPP clients. This exists to interface with PSO GC
   // clients running on a Wii with Devolution, which emulates the modem adapter.
   // The PPP stream can be forwarded directly to newserv on any port specified
-  // here without using pppd or another PPP server.
-  "PPPRawListen": [],
+  // here without using pppd or another PPP server. When you start newserv, it
+  // will tell you the Devolution phone number you can use to connect.
+  "PPPRawListen": [5057],
 
   // Where to listen for HTTP connections. The HTTP server is intended as a
   // private interface to interact with newserv from e.g. an in-house Web portal
@@ -193,10 +194,26 @@
   // Note that PSO GameCube Episodes 1&2 Trial Edition uses the DC's
   // ProxyDestinations dictionary here. This is because other servers that
   // support that version treat it as PSO DC v2.
-  "ProxyDestinations-DC": {},
-  "ProxyDestinations-PC": {},
-  "ProxyDestinations-GC": {},
-  "ProxyDestinations-XB": {},
+  "ProxyDestinations-DC": {
+    "Schtserv": "psobb.dyndns.org:9200",
+    "Sylverant": "sylverant.net:9200",
+    "EU/Ragol": "ragol.org:9200",
+  },
+  "ProxyDestinations-PC": {
+    "Schtserv": "psobb.dyndns.org:9100",
+    "Sylverant": "sylverant.net:9100",
+    "EU/Ragol": "ragol.org:9100",
+  },
+  "ProxyDestinations-GC": {
+    "Schtserv": "psobb.dyndns.org:9103",
+    "Sylverant": "sylverant.net:9103",
+    "EU/Ragol": "ragol.org:9103",
+  },
+  "ProxyDestinations-XB": {
+    "Schtserv": "psobb.dyndns.org:9500",
+    "Sylverant": "sylverant.net:9500",
+    "EU/Ragol": "ragol.org:9500",
+  },
   // Proxy destination for patch server clients. If this is given, the internal
   // patch server (for PC and BB) is bypassed, and any client that connects to
   // the patch server is instead proxied to this destination.
@@ -414,9 +431,7 @@
     "none", // Lobby C4 (Episode 3 only)
     "none", // Lobby C5 (Episode 3 only)
   ],
-
-  // Menu event. This is the holiday event during the lobby overview while at
-  // the main menu.
+  // Menu event. This is the holiday event the player sees at the main menu.
   "MenuEvent": "none",
 
   // Episode 3 menu song. If set, Episode 3 clients will hear this song when
@@ -494,7 +509,8 @@
   // any Meseta when a song is played. The check for 100 or more meseta happens
   // client-side, however, so even if this option is enabled, the client must
   // either have 100 or more Meseta or use the "Jukebox is free" Action Replay
-  // code to be able to play songs.
+  // code to be able to play songs. (In the Git repository, the code is in
+  // notes/ar-codes.txt.)
   "Episode3JukeboxIsFree": false,
 
   // Episode 3 battle behavior flags. When set to zero, battles behave as they
@@ -514,7 +530,7 @@
   // 0x0100 => Disable interference (COMs randomly coming to each other's
   //           rescue)
   // 0x0200 => Allow interference even when neither player is a COM
-  "Episode3BehaviorFlags": 0x0002,
+  "Episode3BehaviorFlags": 0x0042,
 
   // Trap assist cards for each trap type in Episode 3 battles. These are the
   // default values used offline, but you can change the trap types online here.

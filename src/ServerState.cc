@@ -5,6 +5,7 @@
 #include <memory>
 #include <phosg/Image.hh>
 #include <phosg/Network.hh>
+#include <phosg/Platform.hh>
 
 #include "Compression.hh"
 #include "EventUtils.hh"
@@ -18,6 +19,12 @@
 #include "TextIndex.hh"
 
 using namespace std;
+
+#ifdef PHOSG_WINDOWS
+static constexpr bool IS_WINDOWS = true;
+#else
+static constexpr bool IS_WINDOWS = false;
+#endif
 
 CheatFlags::CheatFlags(const phosg::JSON& json) : CheatFlags() {
   unordered_set<std::string> enabled_keys;
@@ -673,8 +680,10 @@ void ServerState::load_config_early() {
       for (const auto& item : this->config_json->at("IPStackListen").as_list()) {
         if (item->is_int()) {
           this->ip_stack_addresses.emplace_back(phosg::string_printf("0.0.0.0:%" PRId64, item->as_int()));
-        } else {
+        } else if (!IS_WINDOWS) {
           this->ip_stack_addresses.emplace_back(item->as_string());
+        } else {
+          config_log.warning("Unix sockets are not supported on Windows; skipping address %s", item->as_string().c_str());
         }
       }
     } catch (const out_of_range&) {
@@ -683,8 +692,10 @@ void ServerState::load_config_early() {
       for (const auto& item : this->config_json->at("PPPStackListen").as_list()) {
         if (item->is_int()) {
           this->ppp_stack_addresses.emplace_back(phosg::string_printf("0.0.0.0:%" PRId64, item->as_int()));
-        } else {
+        } else if (!IS_WINDOWS) {
           this->ppp_stack_addresses.emplace_back(item->as_string());
+        } else {
+          config_log.warning("Unix sockets are not supported on Windows; skipping address %s", item->as_string().c_str());
         }
       }
     } catch (const out_of_range&) {
@@ -693,8 +704,10 @@ void ServerState::load_config_early() {
       for (const auto& item : this->config_json->at("PPPRawListen").as_list()) {
         if (item->is_int()) {
           this->ppp_raw_addresses.emplace_back(phosg::string_printf("0.0.0.0:%" PRId64, item->as_int()));
-        } else {
+        } else if (!IS_WINDOWS) {
           this->ppp_raw_addresses.emplace_back(item->as_string());
+        } else {
+          config_log.warning("Unix sockets are not supported on Windows; skipping address %s", item->as_string().c_str());
         }
       }
     } catch (const out_of_range&) {
@@ -703,8 +716,10 @@ void ServerState::load_config_early() {
       for (const auto& item : this->config_json->at("HTTPListen").as_list()) {
         if (item->is_int()) {
           this->http_addresses.emplace_back(phosg::string_printf("0.0.0.0:%" PRId64, item->as_int()));
-        } else {
+        } else if (!IS_WINDOWS) {
           this->http_addresses.emplace_back(item->as_string());
+        } else {
+          config_log.warning("Unix sockets are not supported on Windows; skipping address %s", item->as_string().c_str());
         }
       }
     } catch (const out_of_range&) {
@@ -727,7 +742,18 @@ void ServerState::load_config_early() {
     this->all_addresses.erase("<local>");
     this->all_addresses.emplace("<local>", this->local_address);
   } catch (const out_of_range&) {
-    config_log.warning("Local address not specified; interface defaults will be used");
+    for (const auto& it : this->all_addresses) {
+      // Choose any local interface except the loopback interface
+      if (!is_loopback_address(it.second) && is_local_address(it.second)) {
+        this->local_address = it.second;
+      }
+    }
+    if (this->local_address) {
+      string addr_str = string_for_address(this->local_address);
+      config_log.warning("Local address not specified; using %s as default", addr_str.c_str());
+    } else {
+      config_log.warning("Local address not specified and no default is available");
+    }
   }
 
   try {
@@ -744,7 +770,19 @@ void ServerState::load_config_early() {
     this->all_addresses.erase("<external>");
     this->all_addresses.emplace("<external>", this->external_address);
   } catch (const out_of_range&) {
-    config_log.warning("External address not specified; only local clients will be able to connect");
+    for (const auto& it : this->all_addresses) {
+      // Choose any non-local address, if any exist
+      if (!is_local_address(it.second)) {
+        this->external_address = it.second;
+        break;
+      }
+    }
+    if (this->external_address) {
+      string addr_str = string_for_address(this->external_address);
+      config_log.warning("External address not specified; using %s as default", addr_str.c_str());
+    } else {
+      config_log.warning("External address not specified and no default is available; only local clients will be able to connect");
+    }
   }
 
   try {
