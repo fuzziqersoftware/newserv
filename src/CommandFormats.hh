@@ -398,7 +398,7 @@ struct S_ServerInitWithAfterMessageT_BB_03_9B {
 // See comments on non-BB 03 (S->C). This is likely a relic of an older,
 // now-unused sequence. Like 03, this command isn't used by any known PSO
 // version.
-// header.flag is nonzero, but it's not clear what it's used for.
+// header.flag is 1 if the client has UDP disabled.
 // TODO: Are the DCv1 and DCv2 formats the same as this structure?
 
 struct C_LegacyLogin_PC_V3_04 {
@@ -413,10 +413,14 @@ struct C_LegacyLogin_PC_V3_04 {
 } __packed_ws__(C_LegacyLogin_PC_V3_04, 0x30);
 
 struct C_LegacyLogin_BB_04 {
-  parray<le_uint32_t, 3> unknown_a1;
-  pstring<TextEncoding::ASCII, 0x10> username;
-  pstring<TextEncoding::ASCII, 0x10> password;
-} __packed_ws__(C_LegacyLogin_BB_04, 0x2C);
+  /* 00 */ le_uint32_t sub_version = 0;
+  /* 04 */ uint8_t is_extended = 0;
+  /* 05 */ uint8_t language = 0;
+  /* 06 */ le_uint16_t unused = 0;
+  /* 08 */ pstring<TextEncoding::ASCII, 0x10> username;
+  /* 18 */ pstring<TextEncoding::ASCII, 0x10> password;
+  /* 28 */
+} __packed_ws__(C_LegacyLogin_BB_04, 0x28);
 
 // 04 (S->C): Set guild card number and update client config ("security data")
 // Internal name: RcvLogin
@@ -614,7 +618,6 @@ struct SC_MeetUserExtensionT {
     le_uint32_t menu_id = 0;
     le_uint32_t item_id = 0;
   } __packed_ws__(LobbyReference, 8);
-
   /* 00 */ parray<LobbyReference, 8> lobby_refs;
   /* 40 */ le_uint32_t unknown_a2 = 0;
   /* 44 */ pstring<Encoding, 0x20> player_name;
@@ -1974,16 +1977,16 @@ struct C_LoginExtended_BB_9E {
   /* 0000 */ le_uint32_t player_tag = 0x00010000;
   /* 0004 */ le_uint32_t guild_card_number = 0; // == account_id when on newserv
   /* 0008 */ le_uint32_t sub_version = 0;
-  /* 000C */ le_uint32_t unknown_a1 = 0;
+  /* 000C */ le_uint32_t language = 0;
   /* 0010 */ le_uint32_t unknown_a2 = 0;
-  /* 0014 */ pstring<TextEncoding::ASCII, 0x10> unknown_a3; // Always blank?
-  /* 0024 */ pstring<TextEncoding::ASCII, 0x10> unknown_a4; // == "?"
-  /* 0034 */ pstring<TextEncoding::ASCII, 0x10> unknown_a5; // Always blank?
-  /* 0044 */ pstring<TextEncoding::ASCII, 0x10> unknown_a6; // Always blank?
+  /* 0014 */ pstring<TextEncoding::ASCII, 0x10> v1_serial_number; // Always blank?
+  /* 0024 */ pstring<TextEncoding::ASCII, 0x10> v1_access_key; // == "?"
+  /* 0034 */ pstring<TextEncoding::ASCII, 0x10> serial_number; // Always blank?
+  /* 0044 */ pstring<TextEncoding::ASCII, 0x10> access_key; // Always blank?
   /* 0054 */ pstring<TextEncoding::ASCII, 0x30> username;
   /* 0084 */ pstring<TextEncoding::ASCII, 0x30> password;
   /* 00B4 */ pstring<TextEncoding::ASCII, 0x10> guild_card_number_str;
-  /* 00C4 */ parray<le_uint32_t, 10> unknown_a7;
+  /* 00C4 */ parray<uint8_t, 0x28> client_config;
   /* 00EC */ SC_MeetUserExtension_PC_BB extension;
   /* 0170 */
 } __packed_ws__(C_LoginExtended_BB_9E, 0x170);
@@ -2297,11 +2300,12 @@ struct C_ExecuteCodeResult_B3 {
 // B7 (S->C): Rank update (Episode 3)
 
 struct S_RankUpdate_Ep3_B7 {
-  // If rank is not zero, the client sets its rank text to "<rank>:<rank_text>",
-  // truncated to 11 characters. If rank is zero, the client uses rank_text
-  // without modifying it.
+  // On non-NTE versions, if rank is not zero, the client sets its rank text to
+  // "<rank>:<rank_text>", truncated to 11 characters. If rank is zero or the
+  // client is NTE, the client uses rank_text without modifying it.
   le_uint32_t rank = 0;
   pstring<TextEncoding::CHALLENGE8, 0x0C> rank_text;
+  // The remaining fields are ignored by NTE:
   le_uint32_t current_meseta = 0;
   le_uint32_t total_meseta_earned = 0;
   le_uint32_t unlocked_jukebox_songs = 0xFFFFFFFF;
@@ -2772,7 +2776,8 @@ check_struct_size(S_InfoBoardEntry_BB_D8, 0x178);
 // Server should respond with a 9A command.
 
 struct C_VerifyAccount_V3_DB {
-  pstring<TextEncoding::ASCII, 0x20> unused;
+  pstring<TextEncoding::ASCII, 0x10> v1_serial_number; // Unused
+  pstring<TextEncoding::ASCII, 0x10> v1_access_key; // Unused
   pstring<TextEncoding::ASCII, 0x10> serial_number; // On XB, this is the XBL gamertag
   pstring<TextEncoding::ASCII, 0x10> access_key; // On XB, this is the XBL user ID
   pstring<TextEncoding::ASCII, 0x08> unused2;
