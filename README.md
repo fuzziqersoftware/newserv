@@ -233,28 +233,28 @@ Devolution includes modem emulation and is compatible with all PSO GameCube vers
 
 ### PSO GC on Dolphin
 
-If you're using the HLE BBA type, set the BBA's DNS server address to newserv's IP address and it should work. (If newserv is on the same machine as Dolphin, you will need to use an action replay code directed at 127.0.0.1 to connect, as PSO rejects DNS queries from the same IP address.) Set PSO's network settings the same as listed below.
+If you're using the HLE BBA type, set the BBA's DNS server address to newserv's IP address and it should work. (If newserv is on the same machine as Dolphin, you will need to use an Action Replay code directed at 127.0.0.1 to connect, as PSO rejects DNS queries from the same IP address.) Set PSO's network settings the same as listed below.
 
-If you're using the TAP BBA type, you'll have to set PSO's network settings appropriately for your tap interface. Set the DNS server address in PSO's network settings to newserv's IP address.
+If you're using the TAP (not tapserver) BBA type, you'll have to set PSO's network settings appropriately for your tap interface. Set the DNS server address in PSO's network settings to newserv's IP address.
 
 If you're using the tapserver BBA or modem type, you can make it connect to a newserv instance running on the same machine via the tapserver interface. To do this:
 1. In the GameCube pane of the Config window, set the SP1 device to Broadband Adapter (tapserver) or Modem Adapter (tapserver).
-2. Set IPStackListen (for BBA) or PPPStackListen (for modem) according to the comments in config.json and start newserv.
+2. Click the "..." button next to the SP1 menu. If you're using the tapserver BBA, enter `127.0.0.1:5059` in the box. If you're using the tapserver modem, enter `127.0.0.1:5058` in the box. (If newserv isn't running on the same machine as Dolphin, replace 127.0.0.1 with newserv's IP address.)
 3. In PSO's network settings, enable DHCP ("Automatically obtain an IP address"), set DNS server address to "Automatic", and leave DHCP Hostname as "Not set". Leave the proxy server settings blank.
 4. Start an online game.
 
 ### PSO BB
 
-The PSO BB client has been modified and distributed in many different forms. newserv supports most, but not all, of the common distributions. Unlike other versions, it's important that the client and server have the same map files, so make sure to set up the patch directory based on the client you'll be using with newserv. (See the "Client patch directories" section for instructions on setting this up.)
+The PSO BB client has been modified and distributed in many different forms. newserv supports most, but not all, of the common distributions. Unlike other versions, it's common for various BB clients to have different map files. It's important that the client and server have the same map files, so make sure to set up the patch directory based on the client you'll be using with newserv. (See the [client patch directories](#client-patch-directories) section for instructions on setting this up.)
 
 The original Japanese and US versions of PSO BB work with newserv (the last Japanese release can be found [here](https://archive.org/details/psobb_jp_setup_12511_20240109/)). To get them to connect to your server, do one of the following:
 * Use a drop-in patcher like [AzureFlare](https://github.com/Repflez/AzureFlare).
-* Modify your hosts file to redirect the client's destination address to localhost or your server's address.
+* Edit your hosts file to redirect the client's destination address to localhost or your server's address.
 * Edit psobb.exe to point to your newserv instance. The original clients are packed with various versions of ASProtect, so this is a more involved process than simply opening the executable in a hex editor and finding/replacing some strings.
 
-Alternatively, you can use the Tethealla client ([English](https://web.archive.org/web/20240402011115/https://ragol.org/files/bb/TethVer12513_English.zip) or [Japanese](https://web.archive.org/web/20240402013127/https://ragol.org/files/bb/TethVer12513_Japanese.zip)). If the server is on the same PC as the client and you don't plan to have any external players, these Tethealla clients will automatically connect to the server without any modifications. This version of the client is not packed, and you can find the connection addresses starting at 0x56D724 in psobb.exe. Overwrite these addresses with your server's hostname or IP address, and you should be able to connect.
+Alternatively, you can use the Tethealla client ([English](https://web.archive.org/web/20240402011115/https://ragol.org/files/bb/TethVer12513_English.zip) or [Japanese](https://web.archive.org/web/20240402013127/https://ragol.org/files/bb/TethVer12513_Japanese.zip)). If the server is on the same PC as the client and you don't plan to have any external players, these Tethealla clients will automatically connect to the server without any modifications. This version of the client is not packed, and you can find the connection addresses starting at offset 0x56D724 in psobb.exe. Overwrite these addresses with your server's hostname or IP address, and you should be able to connect.
 
-### Connecting external clients
+### Allowing external players to connect
 
 If you want to accept connections from outside your local network, you'll need to set ExternalAddress to your public IP address in the configuration file, and you'll likely need to open some ports in your router's NAT configuration - specifically, all the TCP ports listed in PortConfiguration in config.json.
 
@@ -324,7 +324,7 @@ There are multiple PSO quest formats out there; newserv supports all of them. It
 1. *This is the default format. You can convert these to uncompressed format by running `newserv decompress-prs FILENAME.bin FILENAME.bind` (and similarly for .dat -> .datd)*
 2. *Similar to (1), to compress an uncompressed quest file: `newserv compress-prs FILENAME.bind FILENAME.bin` (and likewise for .datd -> .dat)*
 3. *Use the decode action to convert these quests to .bin/.dat format before putting them into the server's quests directory. If you know the encryption seed (serial number), pass it in as a hex string with the `--seed=` option. If you don't know the encryption seed, newserv will find it for you, which will likely take a long time.*
-4. *Episode 3 quests don't go in the system/quests directory. See the Episode 3 section below.*
+4. *Episode 3 quests don't go in the system/quests directory. See the [Episode 3 section](#episode-3-features) section below.*
 5. *Quest source can be assembled into a .bin or .bind file with `newserv assemble-quest-script FILENAME.txt`. See system/quests/retrieval/q058-gc-e.bin.txt for an annotated example; this is the English GameCube version of Lost HEAT SWORD.*
 
 Episode 3 download quests consist only of a .bin file - there is no corresponding .dat file. Episode 3 download quest files may be named with the .mnm extension instead of .bin, since the format is the same as the standard map files (in system/ep3/). These files can be encoded in any of the formats described above, except .qst.
@@ -577,10 +577,10 @@ Some commands only work on the game server and not on the proxy server. The chat
     * `$patch <name>`: Run a patch on your client. `<name>` must exactly match the name of a patch on the server.
 
 * Character data commands (game server only)
-    * `$savechar <slot>`: Save your current character data on the server in the specified slot. See the "Server-side saves" section for more details.
-    * `$loadchar <slot>`: Save your current character data on the server in the specified slot. See the "Server-side saves" section for more details.
-    * `$bbchar <username> <password> <slot>`: Save your current character data on the server in a different account's BB character slots. See the "Server-side saves" section for more details.
-    * `$edit <stat> <value>`: Modify your character data. See "Using $edit" below for details.
+    * `$savechar <slot>`: Save your current character data on the server in the specified slot. See the [server-side saves section](#server-side-saves) for more details.
+    * `$loadchar <slot>`: Save your current character data on the server in the specified slot. See the [server-side saves section](#server-side-saves) for more details.
+    * `$bbchar <username> <password> <slot>`: Save your current character data on the server in a different account's BB character slots. See the [server-side saves section](#server-side-saves) for more details.
+    * `$edit <stat> <value>`: Modify your character data. See the [using $edit](#using-edit) section for details.
 
 * Blue Burst player commands (game server only)
     * `$bank [number]`: Switch your current bank, so you can access your other character's banks (if `number` is 1-4) or your shared account bank (if `number` is 0). If `number` is not given, switch back to your current character's bank.
@@ -590,7 +590,7 @@ Some commands only work on the game server and not on the proxy server. The chat
     * `$maxlevel <level>`: Set the maximum level for players to join the current game. (This only applies when joining; if a player joins and then levels up past this level during the game, they are not kicked out, but won't be able to rejoin if they leave.)
     * `$minlevel <level>`: Set the minimum level for players to join the current game.
     * `$password <password>`: Set the game's join password. To unlock the game, run `$password` with nothing after it.
-    * `$dropmode [mode]`: Change the way item drops behave in the current game. `mode` can be `none`, `client`, `shared`, `private`, or `duplicate`. If `mode` is not given, tells you the current drop mode without changing it. See the "Item tables and drop modes" section for more information.
+    * `$dropmode [mode]`: Change the way item drops behave in the current game. `mode` can be `none`, `client`, `shared`, `private`, or `duplicate`. If `mode` is not given, tells you the current drop mode without changing it. See the [item tables and drop modes section](#item-tables-and-drop-modes) for more information.
     * `$persist`: Enable or disable persistence for the current game. When persistence is on, the game will not be deleted when the last player leaves. The states of enemies, objects, and switches will be saved, and items left on the floor will not be deleted. (But if you're in the private or duplicate drop mode, items dropped by enemies are deleted - to make sure a certain item won't be deleted, you can pick it up and drop it again.) If the game is empty for too long (15 minutes by default), it is then deleted.
 
 * Episode 3 commands (game server only)
@@ -647,7 +647,7 @@ Some subcommands are always available. They are:
     * On all versions except DCv1 and early prototypes: `ninja`, `rico`, `sonic`, `knuckles`, `tails`
     * On GC, Xbox, and BB: `flowen`, `elly`
     * On BB only: `momoka`, `irene`, `guild`, `nurse`
-* `$edit secid SECID-NAME`: Set your section ID (cheat mode is required for this unless your character is Level 1)
+* `$edit secid SECID-NAME`: Set your section ID (cheat mode is required unless your character is Level 1)
 
 The remaining subcommands are only available if cheat mode is enabled on the server. They are:
 * `$edit atp N`: Set your ATP to N until stats are updated (e.g. by leveling up)
@@ -656,7 +656,7 @@ The remaining subcommands are only available if cheat mode is enabled on the ser
 * `$edit dfp N`: Set your DFP to N until stats are updated
 * `$edit ata N`: Set your ATA to N until stats are updated
 * `$edit lck N`: Set your LCK to N until stats are updated
-* `$edit hp N`: Set your MST to N until stats are updated
+* `$edit hp N`: Set your HP to N until stats are updated
 * `$edit meseta N`: Set the amount of Meseta in your inventory
 * `$edit exp N`: Set your total amount of EXP (does not affect level)
 * `$edit level N`: Set your current level (recomputes stats, but does not affect EXP)
