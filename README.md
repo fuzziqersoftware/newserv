@@ -12,8 +12,8 @@ See TODO.md for a list of known issues and future work I've curated, or go to th
 * Background
     * [History](#history)
     * [Other server projects](#other-server-projects)
-    * [Using newserv in other projects](#using-newserv-in-other-projects)
     * [Developer information](#developer-information)
+    * [Using newserv in other projects](#using-newserv-in-other-projects)
 * [Compatibility](#compatibility)
 * Setup
     * [Server setup](#server-setup)

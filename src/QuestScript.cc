@@ -664,7 +664,7 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     // Destroys an NPC (by client ID)
     {0x63, "npc_kill", nullptr, {INT32}, F_V0_V4 | F_ARGS},
 
-    // TODO: Document these
+    // Disables or enables the ability to talk to NPCs
     {0x64, "npc_talk_off", "npc_nont", {}, F_V0_V4},
     {0x65, "npc_talk_on", "npc_talk", {}, F_V0_V4},
 
@@ -703,7 +703,11 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     {0x6D, "p_move", "p_move_v1", {{REG_SET_FIXED, 5}, INT32}, F_V0_V2},
     {0x6D, "p_move", "p_move_V3", {{REG_SET_FIXED, 5}}, F_V3_V4},
 
-    // TODO: Document this
+    // Causes the player with client ID valueA to look at an unspecified other
+    // player. The specified player looks at the player with the lowest client
+    // ID (except for the specified player).
+    // TODO: TObjPlayer::state is involved in determining which player to look
+    // at; figure out exactly what this does
     {0x6E, "p_look", nullptr, {CLIENT_ID}, F_V0_V4 | F_ARGS},
 
     // Disables/enables attacks for all players
@@ -729,7 +733,8 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     // Returns players to the Hunter's Guild counter.
     {0x77, "p_return_guild", nullptr, {}, F_V0_V4},
 
-    // TODO: Document this
+    // Opens the Hunter's Guild counter menu. valueA should be the player's
+    // client ID.
     {0x78, "p_talk_guild", nullptr, {CLIENT_ID}, F_V0_V4 | F_ARGS},
 
     // Creates an NPC which only appears near a given location
@@ -743,7 +748,9 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     {0x79, "npc_talk_pl", "npc_talk_pl_V1", {{REG32_SET_FIXED, 8}}, F_V0_V2},
     {0x79, "npc_talk_pl", "npc_talk_pl_V3", {{REG_SET_FIXED, 8}}, F_V3_V4},
 
-    // TODO: Document this
+    // Destroys an NPC created with npc_talk_pl. This opcode cannot be executed
+    // multiple times on the same frame; if it is, only the last one will take
+    // effect.
     {0x7A, "npc_talk_kill", nullptr, {INT32}, F_V0_V4 | F_ARGS},
 
     // Creates attacker NPC
@@ -754,11 +761,17 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     {0x7C, "npc_crppk", "npc_crppk_V1", {{REG32_SET_FIXED, 7}, INT32}, F_V0_V2},
     {0x7C, "npc_crppk", "npc_crppk_V3", {{REG_SET_FIXED, 7}}, F_V3_V4},
 
-    // TODO: Document this
+    // Creates an NPC with client ID 1. It is not recommended to use this
+    // opcode if a player can be in that slot - use npc_crptalk_id instead.
+    // regsA[0-2] = position (x, y, z as integers)
+    // regsA[3] = angle
+    // regsA[4] = initial state (0 = alive, 1 = dead, 2 = invisible text box,
+    //   according to qedit.info)
+    // regsA[5] = template index (see 6x69 in CommandFormats.hh)
     {0x7D, "npc_crptalk", "npc_crptalk_v1", {{REG32_SET_FIXED, 6}, INT32}, F_V0_V2},
     {0x7D, "npc_crptalk", "npc_crptalk_V3", {{REG_SET_FIXED, 6}}, F_V3_V4},
 
-    // Causes client with ID valueA to look at client with ID valueB.
+    // Causes client ID valueA to look at client ID valueB. Sends 6x3E.
     {0x7E, "p_look_at", nullptr, {CLIENT_ID, CLIENT_ID}, F_V0_V4 | F_ARGS},
 
     // Creates an NPC.
@@ -1012,9 +1025,36 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     {0xC0, "particle", "particle_V1", {{REG32_SET_FIXED, 5}, INT32}, F_V05_V2},
     {0xC0, "particle", "particle_V3", {{REG_SET_FIXED, 5}}, F_V3_V4},
 
-    // Specifies what NPCs should say in various situations.
-    // valueA = situation number (TODO (DX): document these)
-    // strB = string for NPC to say
+    // Specifies what NPCs should say in various situations. This opcode sets
+    // strings for all NPCs; to set strings for only specific NPCs, use
+    // npc_text_id (on v3 and later).
+    // valueA = situation number:
+    //   00: NPC engaging in combat
+    //   01: NPC in danger
+    //   02: NPC casting any technique except those in cases 16 and 17 below
+    //   03: NPC has 20% or less TP
+    //   04: NPC died
+    //   05: NPC has been dead for a while
+    //   06: Unknown (possibly unused)
+    //   07: NPC lost sight of player
+    //   08: NPC locked on to an enemy
+    //   09: Player received a status effect
+    //   0A: Unknown (possibly unused)
+    //   0B: NPC standing still for 3 minutes
+    //   0C: NPC received a status effect (TODO: verify this)
+    //   0D: NPC completed 3-hit combo
+    //   0E: NPC knocked down
+    //   0F: NPC was hit
+    //   10: NPC is walking
+    //   11: NPC was healed
+    //   12: Room cleared (set event cleared which did not trigger another set)
+    //   13: NPC used an item
+    //   14: NPC cannot heal / recover
+    //   15: Wave but not room cleared (set event triggered by another set)
+    //   16: NPC casting Resta or Anti
+    //   17: NPC casting Foie, Zonde, or Barta
+    //   18: NPC regained sight of player
+    // strB = string for NPC to say (up to 52 characters)
     {0xC1, "npc_text", nullptr, {INT32, CSTRING}, F_V05_V4 | F_ARGS},
 
     // Warps an NPC to a predetermined location. See npc_check_straggle for
@@ -2091,8 +2131,11 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     // labelF = control point entries (array of valueA Vector4F structures)
     {0xF8DB, "get_vector_from_path", "unknownF8DB", {INT32, FLOAT32, FLOAT32, INT32, {REG_SET_FIXED, 4}, SCRIPT16}, F_V3_V4 | F_ARGS},
 
-    // TODO: Document this
-    {0xF8DC, "npc_action_string", "NPC_action_string", {REG, REG, CSTRING_LABEL16}, F_V3_V4},
+    // Same as npc_text, but only applies to a specific player slot.
+    // valueA = client ID
+    // valueB = situation number (same as for npc_text)
+    // strC = string for NPC to say (up to 52 characters)
+    {0xF8DC, "npc_text_id", "NPC_action_string", {REG, REG, CSTRING_LABEL16}, F_V3_V4},
 
     // Returns a bitmask of the buttons which are currently pressed or held on
     // this frame.
@@ -3373,13 +3416,15 @@ std::string disassemble_quest_script(
         lines.emplace_back(phosg::string_printf("  // As C string (0x%zX bytes)", size));
         string str_data = cmd_r.pread(l->offset, size);
         phosg::strip_trailing_zeroes(str_data);
+        string formatted;
         if (use_wstrs) {
           if (str_data.size() & 1) {
             str_data.push_back(0);
           }
-          str_data = tt_utf16_to_utf8(str_data);
+          formatted = escape_string(str_data, TextEncoding::UTF16);
+        } else {
+          formatted = escape_string(str_data, encoding_for_language(language));
         }
-        string formatted = escape_string(str_data, use_wstrs ? TextEncoding::UTF16 : encoding_for_language(language));
         lines.emplace_back(phosg::string_printf("  %04" PRIX32 "  %s", l->offset, formatted.c_str()));
       }
       print_as_struct.template operator()<Arg::DataType::PLAYER_VISUAL_CONFIG, PlayerVisualConfig>([&](const PlayerVisualConfig& visual) -> void {
