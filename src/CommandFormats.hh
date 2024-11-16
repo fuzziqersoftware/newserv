@@ -5462,8 +5462,13 @@ struct G_SetChallengeTime_6x95 {
   G_UnusedHeader header;
   le_uint32_t client_id = 0;
   ChallengeTime challenge_time;
-  le_uint32_t unused1 = 0;
-  le_uint32_t unused2 = 0;
+  // On BB, the token_v4 field is set to (local_client_id + 1) ^ regB (from the
+  // chl_set_timerecord opcode). This appears to be a basic anti-cheating
+  // measure. The field is unused on other versions, and even on BB, the client
+  // doesn't check token_v4 upon receipt, so it's likely just for server-side
+  // verification.
+  le_uint32_t token_v4 = 0;
+  le_uint32_t unused = 0;
 } __packed_ws__(G_SetChallengeTime_6x95, 0x14);
 
 // 6x96: Unknown (not valid on Episode 3)
@@ -6242,8 +6247,8 @@ struct G_MomokaItemExchange_BB_6xD9 {
   G_ClientIDHeader header;
   ItemData find_item; // Only data1[0]-[2] are used
   ItemData replace_item; // Only data1[0]-[2] are used
-  le_uint32_t unknown_a3 = 0;
-  le_uint32_t unknown_a4 = 0;
+  le_uint32_t token1 = 0; // valueC (from F95B opcode) ^ sender client ID
+  le_uint32_t token2 = 0; // valueD (from F95B opcode) ^ sender client ID
   le_uint16_t success_label = 0;
   le_uint16_t failure_label = 0;
 } __packed_ws__(G_MomokaItemExchange_BB_6xD9, 0x38);

@@ -1156,7 +1156,7 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     {0xD9, "sync_register", "sync_leti", {REG32, INT32}, F_V1_V2 | F_ARGS},
     {0xD9, "sync_register", "sync_leti", {REG, INT32}, F_V3_V4 | F_ARGS},
 
-    // TODO: document these
+    // TODO: Document these
     {0xDA, "set_returnhunter", nullptr, {}, F_V1_V4},
     {0xDB, "set_returncity", nullptr, {}, F_V1_V4},
     {0xDC, "load_pvr", nullptr, {}, F_V1_V4},
@@ -1235,10 +1235,9 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     // sync_register.
     {0xEF, "sync_register2", "sync_let", {INT32, REG32}, F_V1_V2},
     {0xEF, "sync_register2", nullptr, {REG, INT32}, F_V3_V4 | F_ARGS},
-
-    // TODO(DX): This appears to be the same as sync_register2, but was removed
-    // in v3 and later. What, if anything, makes this opcode unique?
-    {0xF0, "send_regwork", nullptr, {REG32, REG32}, F_V1_V2},
+    // Same as sync_register2, but sends the value via UDP if UDP is enabled.
+    // This opcode was removed after GC NTE and is missing from v3 and v4.
+    {0xF0, "sync_register2_udp", "send_regwork", {REG32, REG32}, F_V1_V2},
 
     // Sets the camera's location and angle.
     // regsA[0-2] = camera location (x, y, z as integers)
@@ -1451,13 +1450,15 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     {0xF838, "shrink", nullptr, {REG}, F_V2_V4},
     {0xF839, "unshrink", nullptr, {REG}, F_V2_V4},
 
-    // TODO: Document these. They are identical except they set different
-    // fields within TObjPlayer.
-    // regsA[0-2] = a Vector3F (x, y, z as integers)
+    // These set some camera parameters for the specified player. These
+    // parameters appear to be unused, so these opcodes essentially do nothing.
+    // regsA[0] = client ID
+    // regsA[1-3] = a Vector3F (x, y, z as integers)
     {0xF83A, "set_shrink_cam1", nullptr, {{REG_SET_FIXED, 4}}, F_V2_V4},
     {0xF83B, "set_shrink_cam2", nullptr, {{REG_SET_FIXED, 4}}, F_V2_V4},
 
-    // TODO: Document this
+    // Shows the timer window in challenge mode. regA is the time value to
+    // display, in seconds.
     {0xF83C, "disp_time_cmode", nullptr, {REG}, F_V2_V4},
 
     // Sets the total number of areas across all challenge quests for the
@@ -1513,7 +1514,7 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     // Sets the area title in challenge mode
     {0xF857, "set_area_title", nullptr, {CSTRING}, F_V2_V4 | F_ARGS},
 
-    // TODO: Document these
+    // Enables or disables the ability to see your own traps.
     {0xF858, "ba_show_self_traps", "BA_Show_Self_Traps", {}, F_V2_V4},
     {0xF859, "ba_hide_self_traps", "BA_Hide_Self_Traps", {}, F_V2_V4},
 
@@ -1535,8 +1536,9 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     {0xF85B, "unequip_item", "unequip_item_V2", {CLIENT_ID, INT32}, F_V2 | F_ARGS},
     {0xF85B, "unequip_item", "unequip_item_V3", {CLIENT_ID, INT32}, F_V3_V4 | F_ARGS},
 
-    // TODO: Document this
-    {0xF85C, "qexit2", "QEXIT2", {INT32}, F_V2_V4},
+    // Same as p_talk_guild except it always refers to the local player. valueA
+    // is ignored.
+    {0xF85C, "p_talk_guild_local", "QEXIT2", {INT32}, F_V2_V4},
 
     // Sets flags that forbid types of items from being used. To forbid
     // multiple types of items, use this opcode multiple times. valueA:
@@ -1789,7 +1791,10 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     // Returns the game's major version (2 on DCv2/PC, 3 on GC, 4 on XB and BB)
     {0xF88C, "get_game_version", nullptr, {REG}, F_V2_V4},
 
-    // TODO: Document this. Sends 6x95.
+    // Sets the local player's stage completion time in challenge mode.
+    // regA = time in seconds
+    // regB = value to be used in computation of token_v4 (BB only; see 6x95 in
+    //   CommandFormats.hh for details)
     {0xF88D, "chl_set_timerecord", "chl_set_timerecord?", {REG}, F_V2 | F_V3},
     {0xF88D, "chl_set_timerecord", "chl_set_timerecord?", {REG, REG}, F_V4},
 
@@ -1799,7 +1804,24 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     // -2. If used in non-challenge mode, returns -1.
     {0xF88E, "chl_get_timerecord", "chl_get_timerecord?", {REG}, F_V2_V4},
 
-    // TODO: Document this
+    // Sets the probabilities of getting recovery items from challenge mode
+    // graves. There are 10 floating-point values, specified as fractions in an
+    // array of 20 registers (pairs of numerator and denominator). The number
+    // of items generated is capped by the number of players present; for
+    // example, if the game chooses to generate 4 items but only 2 players are
+    // present, 2 items are generated.
+    // Counts array (these 4 values should sum to 1.0 or less):
+    //   regsA[0] / regsA[1]: Chance of getting 1 recovery item
+    //   regsA[2] / regsA[3]: Chance of getting 2 recovery items
+    //   regsA[4] / regsA[5]: Chance of getting 3 recovery items
+    //   regsA[6] / regsA[7]: Chance of getting 4 recovery items
+    // Types array (these 6 value should sum to 1.0 or less):
+    //   regsA[8] / regsA[9]: Chance of getting Monomate x1
+    //   regsA[10] / regsA[11]: Chance of getting Dimate x1
+    //   regsA[12] / regsA[13]: Chance of getting Trimate x1
+    //   regsA[14] / regsA[15]: Chance of getting Monofluid x1
+    //   regsA[16] / regsA[17]: Chance of getting Difluid x1
+    //   regsA[18] / regsA[19]: Chance of getting Trifluid x1
     {0xF88F, "set_cmode_grave_rates", nullptr, {{REG_SET_FIXED, 20}}, F_V2_V4},
 
     // Clears all levels from the main warp.
@@ -1928,7 +1950,7 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     // Returns the local player's battle mode records. The values returned are
     // the first 7 fields of the PlayerRecordsBattle structure (see
     // PlayerSubordinates.hh). These are:
-    // regsA[0-3] = number if times places 1st, 2nd, 3rd, 4th respectively
+    // regsA[0-3] = number of times places 1st, 2nd, 3rd, 4th respectively
     // regsA[4] = number of disconnects
     // regsA[5-6] = unknown (TODO)
     {0xF8AB, "get_ba_record", nullptr, {{REG_SET_FIXED, 7}}, F_V2_V4},
@@ -1981,9 +2003,11 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     // tries to access memory at 8C007220, which is only a valid address on DC.
     // The bits are:
     //   0x01 = any byte in [8C007220, 8C0072E0) is nonzero (crashes on non-DC)
-    //   0x02 = has cheat device save files on VMU (always zero on v3+); looks
-    //     for names: CDX_CODES_00, CDX_SETTINGS, XT-CHEATS, FCDCHEATS
-    //   0x04 = unknown (TODO) (always zero on v3+)
+    //   0x02 = has cheat device save files on VMU (always zero on non-DC);
+    //     looks for names: CDX_CODES_00, CDX_SETTINGS, XT-CHEATS, FCDCHEATS
+    //   0x04 = any of the first 3 VMU-like devices (with function_code & 0x0E
+    //     not equal to zero) on any of the 4 Maple buses reports power usage
+    //     (standby or max) above 4 amps; always zero on non-DC systems
     //   0x08 = hacked item flag has been set (see implementation of
     //     are_rare_drops_allowed in ItemCreator.cc)
     //   0x10 = any bits in validation_flags in the character file are set (see
@@ -2055,8 +2079,9 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     {0xF8C4, "congrats_msg_multi_cm", "unknownF8C4", {REG}, F_V3},
     {0xF8C4, "nop_F8C4", nullptr, {REG}, F_V4},
 
-    // TODO: Document this. Does nothing on BB.
-    {0xF8C5, "stage_end_multi_cm", "unknownF8C5", {REG}, F_V3},
+    // Checks if the stage is done in offline challenge mode. Returns 1 if the
+    // stage is still in progress, or 0 if it's completed or failed.
+    {0xF8C5, "stage_in_progress_multi_cm", "stage_end_multi_cm", {REG}, F_V3},
     {0xF8C5, "nop_F8C5", nullptr, {REG}, F_V4},
 
     // Causes a fade to black, then exits the game. This is the same result as
@@ -2107,7 +2132,7 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     {0xF8D6, "fleti_fixed_camera", nullptr, {{REG_SET_FIXED, 6}}, F_V3_V4 | F_ARGS},
 
     // Sets the camera location, and another parameter. (TODO: What's valueA?
-    // Angle maybe?)
+    // Angle maybe? It appears to be unused in PSO GC)
     // regsB[0-2] = camera location (x, y, z as floats)
     {0xF8D7, "fleti_locked_camera", nullptr, {INT32, {REG_SET_FIXED, 3}}, F_V3_V4 | F_ARGS},
 
@@ -2680,25 +2705,25 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     // labelH = label to call on failure
     {0xF957, "bb_exchange_pd_percent", "BB_exchange_PD_special", {INT32, INT32, INT32, INT32, INT32, INT32, LABEL16, LABEL16}, F_V4 | F_ARGS},
 
-    // Requests a weapon attribute upgrade in exchange for Photon Drops. Sends
-    // 6xDA. Same arguments as bb_exchange_pd_percent, except Photon Spheres
-    // are used instead.
-    {0xF958, "bb_exchange_ps_percent", "BB_exchange_PD_percent", {INT32, INT32, INT32, INT32, INT32, INT32, LABEL16, LABEL16}, F_V4 | F_ARGS},
+    // Requests a weapon attribute upgrade in exchange for Photon Spheres.
+    // Sends 6xDA. Same arguments as bb_exchange_pd_percent, except Photon
+    // Spheres are used instead.
+    {0xF958, "bb_exchange_ps_percent", "BB_exchange_PS_percent", {INT32, INT32, INT32, INT32, INT32, INT32, LABEL16, LABEL16}, F_V4 | F_ARGS},
 
     // Determines whether the Episode 4 boss can escape if undefeated after 20
     // minutes.
     // valueA = boss can escape (0 = no, 1 = yes (default))
     {0xF959, "bb_set_ep4_boss_can_escape", "BB_set_ep4boss_can_escape", {INT32}, F_V4 | F_ARGS},
 
-    // Returns w if the Episode 4 boss death cutscene is playing, or 0 if not
+    // Returns 1 if the Episode 4 boss death cutscene is playing, or 0 if not
     // (even if the boss has already been defeated).
     {0xF95A, "bb_is_ep4_boss_dying", nullptr, {REG}, F_V4},
 
     // Requests an item exchange. Sends 6xD9.
     // valueA = find_item.data1[0-2] (low 3 bytes; high byte unused)
     // valueB = replace_item.data1[0-2] (low 3 bytes; high byte unused)
-    // valueC = unknown_a3 (TODO; xor'd with local_client_id before it's sent)
-    // valueD = unknown_a4 (TODO; xor'd with local_client_id before it's sent)
+    // valueC = token1 (see 6xD9 in CommandFormats.hh)
+    // valueD = token2 (see 6xD9 in CommandFormats.hh)
     // labelE = label to call on success
     // labelF = label to call on failure
     {0xF95B, "bb_send_6xD9", nullptr, {INT32, INT32, INT32, INT32, LABEL16, LABEL16}, F_V4 | F_ARGS},
@@ -2787,8 +2812,11 @@ opcodes_by_name_for_version(Version v) {
       if (def.name && !index.emplace(def.name, &def).second) {
         throw logic_error(phosg::string_printf("duplicate definition for opcode %04hX", def.opcode));
       }
-      if (def.qedit_name && !index.emplace(def.qedit_name, &def).second) {
-        throw logic_error(phosg::string_printf("duplicate definition for opcode %04hX", def.opcode));
+      if (def.qedit_name) {
+        string lower_qedit_name = phosg::tolower(def.qedit_name);
+        if ((lower_qedit_name != def.name) && !index.emplace(lower_qedit_name, &def).second) {
+          throw logic_error(phosg::string_printf("duplicate definition for opcode %04hX", def.opcode));
+        }
       }
     }
   }
@@ -4165,7 +4193,7 @@ std::string assemble_quest_script(const std::string& text, const std::string& in
       }
 
       auto line_tokens = phosg::split(line, ' ', 1);
-      const auto& opcode_def = opcodes.at(line_tokens.at(0));
+      const auto& opcode_def = opcodes.at(phosg::tolower(line_tokens.at(0)));
 
       bool use_args = version_has_args && (opcode_def->flags & F_ARGS);
       if (!use_args) {
