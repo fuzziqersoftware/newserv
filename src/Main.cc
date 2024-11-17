@@ -2069,11 +2069,13 @@ Action a_describe_item(
 Action a_name_all_items(
     "name-all-items", nullptr, +[](phosg::Arguments& args) {
       auto s = make_shared<ServerState>(get_config_filename(args));
+      s->clear_file_caches(false);
       s->load_config_early();
       s->load_patch_indexes(false);
       s->load_text_index(false);
       s->load_item_definitions(false);
       s->load_item_name_indexes(false);
+      s->load_ep3_cards(false);
       s->load_config_late();
 
       set<uint32_t> all_primary_identifiers;

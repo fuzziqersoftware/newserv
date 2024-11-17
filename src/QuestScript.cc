@@ -1030,7 +1030,7 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     // npc_text_id (on v3 and later).
     // valueA = situation number:
     //   00: NPC engaging in combat
-    //   01: NPC in danger
+    //   01: NPC in danger (HP <= 75% if near player, <= 25% if far away?)
     //   02: NPC casting any technique except those in cases 16 and 17 below
     //   03: NPC has 20% or less TP
     //   04: NPC died
@@ -1041,14 +1041,14 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     //   09: Player received a status effect
     //   0A: Unknown (possibly unused)
     //   0B: NPC standing still for 3 minutes
-    //   0C: NPC received a status effect (TODO: verify this)
+    //   0C: Player in danger? (Like 01 but players reversed?)
     //   0D: NPC completed 3-hit combo
-    //   0E: NPC knocked down
-    //   0F: NPC was hit
-    //   10: NPC is walking
-    //   11: NPC was healed
+    //   0E: NPC hit for > 30% of max HP
+    //   0F: NPC hit for > 20% of max HP (and <= 30%)
+    //   10: NPC hit for > 1% of max HP (and <= 20%)
+    //   11: NPC healed by another player
     //   12: Room cleared (set event cleared which did not trigger another set)
-    //   13: NPC used an item
+    //   13: NPC used a recovery item
     //   14: NPC cannot heal / recover
     //   15: Wave but not room cleared (set event triggered by another set)
     //   16: NPC casting Resta or Anti
@@ -1137,7 +1137,11 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     {0xD2, "enable_mainmenu", nullptr, {}, F_V1_V4},
     {0xD3, "disable_mainmenu", nullptr, {}, F_V1_V4},
 
-    // TODO: Document these
+    // Enables or disables battle music override. When enabled, the battle
+    // segments of the BGM will play regardless of whether there are enemies
+    // nearby. Changing this value only takes effect after any currently-queued
+    // music segments are done playing. The override is cleared upon changing
+    // areas.
     {0xD4, "start_battlebgm", nullptr, {}, F_V1_V4},
     {0xD5, "end_battlebgm", nullptr, {}, F_V1_V4},
 
@@ -1159,9 +1163,11 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     // TODO: Document these
     {0xDA, "set_returnhunter", nullptr, {}, F_V1_V4},
     {0xDB, "set_returncity", nullptr, {}, F_V1_V4},
+
+    // TODO: Document this
     {0xDC, "load_pvr", nullptr, {}, F_V1_V4},
-    // Seems incomplete on V3 and BB - has some similar codepaths as load_pvr,
-    // but the function that actually process the data seems to do nothing
+    // TODO: Document this
+    // Does nothing on all non-DC versions.
     {0xDD, "load_midi", nullptr, {}, F_V1_V4},
 
     // Finds an item in the player's bank, and clears its entry in the bank.
@@ -1170,7 +1176,30 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     {0xDE, "item_detect_bank", "unknownDE", {{REG_SET_FIXED, 6}, REG}, F_V1_V4},
 
     // Sets NPC AI behaviors.
-    // TODO(DX): Describe what goes in regsA and regB.
+    // regsA[0] = unknown (TODO)
+    // regsA[1] = base level. NPC's actual level depends on difficulty:
+    //   Normal: min(base level + 1, 199)
+    //   Hard: min(base level + 26, 199)
+    //   Very Hard: min(base level + 51, 199)
+    //   Ultimate: min(base level + 151, 199)
+    // regsA[2] = technique flags; bit field:
+    //   04 = has Foie and Gifoie (overrides 08 and 10)
+    //   08 = has Barta and Gibarta (overrides 10)
+    //   10 = has Zonde and Razonde
+    //   40 = unknown (TODO)
+    //   80 = unknown (TODO)
+    // regsA[3] = enemy lock-on range
+    // regsA[4] = unknown (TODO)
+    // regsA[5] = max distance from player
+    // regsA[6] = enemy unlock range
+    // regsA[7] = block range
+    // regsA[8] = attack range (not necessarily equal to weapon range)
+    // regsA[9] = attack technique level (specified by technique flags)
+    // regsA[10] = support technique level (Resta/Anti)
+    // regsA[11] = attack probability (in range [0, 100])
+    // regsA[12] = attack technique probability (in range [0, 100])
+    // regsA[13] = unknown (TODO); appears to be a distance range
+    // valueB = NPC template to modify (00-3F)
     {0xDF, "npc_param", "npc_param_V1", {{REG32_SET_FIXED, 14}, INT32}, F_V1_V2},
     {0xDF, "npc_param", "npc_param_V3", {{REG_SET_FIXED, 14}, INT32}, F_V3_V4 | F_ARGS},
 
