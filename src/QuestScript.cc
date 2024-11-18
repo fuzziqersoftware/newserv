@@ -1204,8 +1204,11 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     {0xDF, "npc_param", "npc_param_V3", {{REG_SET_FIXED, 14}, INT32}, F_V3_V4 | F_ARGS},
 
     // TODO(DX): Document this. It enables a flag that affects some logic in
-    // TBoss1Dragon::update. The flag cannot be disabled (even by leaving the
-    // game or ending the session!)
+    // TBoss1Dragon::update. The flag is disabled when the Dragon's boss arena
+    // unloads, but not when it loads, so it can be set when the player is in
+    // a different area. It appears the flag is not cleared if the player never
+    // enters the Dragon arena, so it seems the only advisable place to use
+    // this would be immediately after the player enters the Dragon arena.
     {0xE0, "pad_dragon", nullptr, {}, F_V1_V4},
 
     // Disables access to a floor (valueA) via the Pioneer 2 Ragol warp. This
@@ -1508,17 +1511,40 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     {0xF840, "enable_npc_visual", "load_npc_data", {}, F_V2_V4},
     {0xF841, "prepare_npc_visual", "get_npc_data", {{LABEL16, Arg::DataType::PLAYER_VISUAL_CONFIG, "visual_config"}}, F_V2_V4},
 
-    // TODO: Document these.
-    // The value used in each of these are regsA[0] + (regsA[1] / regsA[2]).
-    {0xF848, "give_damage_score", nullptr, {{REG_SET_FIXED, 3}}, F_V2_V4},
-    {0xF849, "take_damage_score", nullptr, {{REG_SET_FIXED, 3}}, F_V2_V4},
-    {0xF84A, "enemy_give_score", "unk_score_F84A", {{REG_SET_FIXED, 3}}, F_V2_V4},
-    {0xF84B, "enemy_take_score", "unk_score_F84B", {{REG_SET_FIXED, 3}}, F_V2_V4},
-    {0xF84C, "kill_score", nullptr, {{REG_SET_FIXED, 3}}, F_V2_V4},
-    {0xF84D, "death_score", nullptr, {{REG_SET_FIXED, 3}}, F_V2_V4},
-    {0xF84E, "enemy_kill_score", "unk_score_F84E", {{REG_SET_FIXED, 3}}, F_V2_V4},
-    {0xF84F, "enemy_death_score", nullptr, {{REG_SET_FIXED, 3}}, F_V2_V4},
-    {0xF850, "meseta_score", nullptr, {{REG_SET_FIXED, 3}}, F_V2_V4},
+    // These are used to set the scores for each type of action in battle mode.
+    // The value used in each of these are regsA[0] + (regsA[1] / regsA[2]),
+    // treated as a floating-point value. For example, one way to specify the
+    // value 3.4 would be to set regsA to {3, 2, 5}.
+    // These values are not reset between battle quests or upon joining/leaving
+    // games, so battle quests should always explicitly set these!
+    // The scores which can be set are:
+    //   ba_player_give_damage_score: Sets the score earned per point of damage
+    //     given to other players. (Default 0.05)
+    //   ba_player_take_damage_score: Sets the score lost per point of damage
+    //     taken from other players. (Default 0.02)
+    //   ba_enemy_give_damage_score: Sets the score earned per point of damage
+    //     given to non-player enemies. (Default 0.01)
+    //   ba_enemy_take_damage_score: Sets the score lost per point of damage
+    //     taken from non-player enemies. (Default 0)
+    //   ba_player_kill_score: Sets the score earned by killing another player.
+    //     (Default 10)
+    //   ba_player_death_score: Sets the score lost by dying to another player.
+    //     (Default 7)
+    //   ba_enemy_kill_score: Sets the score earned by killing a non-player
+    //     enemy. (Default 3)
+    //   ba_enemy_death_score: Sets the score lost by dying to a non-player
+    //     enemy. (Default 7)
+    //   ba_meseta_score: Sets the score earned per Meseta in the player's
+    //     inventory. (Default 0)
+    {0xF848, "ba_player_give_damage_score", "give_damage_score", {{REG_SET_FIXED, 3}}, F_V2_V4},
+    {0xF849, "ba_player_take_damage_score", "take_damage_score", {{REG_SET_FIXED, 3}}, F_V2_V4},
+    {0xF84A, "ba_enemy_give_damage_score", "enemy_give_score", {{REG_SET_FIXED, 3}}, F_V2_V4},
+    {0xF84B, "ba_enemy_take_damage_score", "enemy_take_score", {{REG_SET_FIXED, 3}}, F_V2_V4},
+    {0xF84C, "ba_player_kill_score", "kill_score", {{REG_SET_FIXED, 3}}, F_V2_V4},
+    {0xF84D, "ba_player_death_score", "death_score", {{REG_SET_FIXED, 3}}, F_V2_V4},
+    {0xF84E, "ba_enemy_kill_score", "enemy_kill_score", {{REG_SET_FIXED, 3}}, F_V2_V4},
+    {0xF84F, "ba_enemy_death_score", "enemy_death_score", {{REG_SET_FIXED, 3}}, F_V2_V4},
+    {0xF850, "ba_meseta_score", "meseta_score", {{REG_SET_FIXED, 3}}, F_V2_V4},
 
     // Sets the number of traps players can use in battle mode. regsA[1] is the
     // amount; regsA[0] is the trap type, remapped as follows (valueA => actual
@@ -1735,7 +1761,7 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     // 1 January 2000.
     {0xF87C, "get_guild_card_file_creation_time", "get_encryption_key", {REG}, F_V2_V4},
 
-    // TODO: Document this
+    // Kills the player whose client ID is regA.
     {0xF87D, "kill_player", nullptr, {REG}, F_V2_V4},
 
     // Returns (in regA) the player's serial number. On BB, returns 0.
@@ -1979,7 +2005,7 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     // Returns the local player's battle mode records. The values returned are
     // the first 7 fields of the PlayerRecordsBattle structure (see
     // PlayerSubordinates.hh). These are:
-    // regsA[0-3] = number of times places 1st, 2nd, 3rd, 4th respectively
+    // regsA[0-3] = number of times placed 1st, 2nd, 3rd, 4th respectively
     // regsA[4] = number of disconnects
     // regsA[5-6] = unknown (TODO)
     {0xF8AB, "get_ba_record", nullptr, {{REG_SET_FIXED, 7}}, F_V2_V4},
@@ -2160,9 +2186,9 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     // regsA[3-5] = camera focus location (x, y, z as floats)
     {0xF8D6, "fleti_fixed_camera", nullptr, {{REG_SET_FIXED, 6}}, F_V3_V4 | F_ARGS},
 
-    // Sets the camera location, and another parameter. (TODO: What's valueA?
-    // Angle maybe? It appears to be unused in PSO GC)
-    // regsB[0-2] = camera location (x, y, z as floats)
+    // Sets the camera to follow the player at a fixed angle.
+    // valueA = client ID
+    // regsB[0-2] = camera angle (x, y, z as floats)
     {0xF8D7, "fleti_locked_camera", nullptr, {INT32, {REG_SET_FIXED, 3}}, F_V3_V4 | F_ARGS},
 
     // This opcode appears to be exactly the same as default_camera_pos.
@@ -2462,11 +2488,16 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     // FFFFFFFF if they canceled it.
     {0xF92C, "get_item_id", nullptr, {REG}, F_V3_V4},
 
-    // TODO: Document this.
+    // Adds a color overlay on the player's screen. The overlay fades in
+    // linearly over the given number of frames. The overlay is not deleted
+    // until the player changes areas or leaves the game, but it can be
+    // overwritten with another overlay with this same opcode. The overlay is
+    // under 2-dimensional objects like the HUD, pause menu, minimap, and text
+    // messages from the server, but is above everything else.
     // regA, regB, regC, regD = red, green, blue, alpha components of color
     //   (00-FF each)
     // regE = fade speed (number of frames; 30 frames/sec)
-    {0xF92D, "color_change", nullptr, {INT32, INT32, INT32, INT32, INT32}, F_V3_V4 | F_ARGS},
+    {0xF92D, "add_color_overlay", "color_change", {INT32, INT32, INT32, INT32, INT32}, F_V3_V4 | F_ARGS},
 
     // Sends a statistic to the server via the AA command. The server is
     // expected to respond with an AB command containing one of the label
@@ -2501,7 +2532,6 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
 
     // Sets the episode to be loaded the next time an area is loaded. ValueA is
     // the same as for set_episode.
-    // TODO: Does this let the quest change episodes during the quest? Try this
     {0xF932, "set_episode2", nullptr, {REG}, F_V3_V4},
 
     // Sets the rank prizes in offline challenge mode.

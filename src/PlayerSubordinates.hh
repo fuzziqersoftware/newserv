@@ -722,7 +722,8 @@ struct PlayerRecordsBattleT {
   // On Episode 3, place_counts[0] is win count and [1] is loss count
   /* 00 */ parray<U16T<BE>, 4> place_counts;
   /* 08 */ U16T<BE> disconnect_count = 0;
-  /* 0A */ parray<U16T<BE>, 3> unknown_a1;
+  /* 0A */ parray<U16T<BE>, 2> unknown_a1;
+  /* 0E */ parray<uint8_t, 2> unused;
   /* 10 */ parray<U32T<BE>, 2> unknown_a2;
   /* 18 */
 
