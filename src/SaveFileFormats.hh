@@ -345,9 +345,7 @@ struct PSODC112000CharacterFile {
     /* 0432:0016 */ le_uint16_t inventory_erasure_count = 0;
     /* 0434:0018 */ pstring<TextEncoding::ASCII, 0x1C> ppp_username;
     /* 0450:0034 */ pstring<TextEncoding::ASCII, 0x10> ppp_password;
-    // TODO: Figure out how quest flags work; it's obviously different from 0x80
-    // bytes per difficulty like in v1. Is it just 2048 flags shared across all
-    // difficulties, instead of 1024 in each difficulty?
+    // 11/2000 just has 0x800 quest flags, and they're not split by difficulty
     /* 0460:0044 */ parray<uint8_t, 0x100> quest_flags;
     /* 0560:0144 */ le_uint16_t bank_meseta;
     /* 0562:0146 */ le_uint16_t num_bank_items;
@@ -787,16 +785,23 @@ struct PSOBBCharacterFile {
       uint8_t language,
       const PlayerDispDataBBPreview& preview,
       std::shared_ptr<const LevelTable> level_table);
-  static std::shared_ptr<PSOBBCharacterFile> create_from_dc_v2(const PSODCV2CharacterFile::Character& dc);
-  static std::shared_ptr<PSOBBCharacterFile> create_from_gc_nte(const PSOGCNTECharacterFileCharacter& gc_nte);
-  static std::shared_ptr<PSOBBCharacterFile> create_from_gc(const PSOGCCharacterFile::Character& gc);
-  static std::shared_ptr<PSOBBCharacterFile> create_from_ep3(const PSOGCEp3CharacterFile::Character& ep3);
-  static std::shared_ptr<PSOBBCharacterFile> create_from_xb(const PSOXBCharacterFileCharacter& xb);
+  static std::shared_ptr<PSOBBCharacterFile> create_from_file(const PSODCNTECharacterFile::Character& src);
+  static std::shared_ptr<PSOBBCharacterFile> create_from_file(const PSODC112000CharacterFile::Character& src);
+  static std::shared_ptr<PSOBBCharacterFile> create_from_file(const PSODCV1CharacterFile::Character& src);
+  static std::shared_ptr<PSOBBCharacterFile> create_from_file(const PSODCV2CharacterFile::Character& src);
+  static std::shared_ptr<PSOBBCharacterFile> create_from_file(const PSOGCNTECharacterFileCharacter& src);
+  static std::shared_ptr<PSOBBCharacterFile> create_from_file(const PSOGCCharacterFile::Character& src);
+  static std::shared_ptr<PSOBBCharacterFile> create_from_file(const PSOGCEp3CharacterFile::Character& src);
+  static std::shared_ptr<PSOBBCharacterFile> create_from_file(const PSOXBCharacterFileCharacter& src);
 
-  PSODCV2CharacterFile::Character to_dc_v2() const;
-  PSOGCNTECharacterFileCharacter to_gc_nte() const;
-  PSOGCCharacterFile::Character to_gc() const;
-  PSOXBCharacterFileCharacter to_xb(uint64_t xb_user_id) const;
+  operator PSODCNTECharacterFile::Character() const;
+  operator PSODC112000CharacterFile::Character() const;
+  operator PSODCV1CharacterFile::Character() const;
+  operator PSODCV2CharacterFile::Character() const;
+  operator PSOGCNTECharacterFileCharacter() const;
+  operator PSOGCCharacterFile::Character() const;
+  operator PSOGCEp3CharacterFile::Character() const;
+  operator PSOXBCharacterFileCharacter() const;
 
   void add_item(const ItemData& item, const ItemData::StackLimits& limits);
   ItemData remove_item(uint32_t item_id, uint32_t amount, const ItemData::StackLimits& limits);

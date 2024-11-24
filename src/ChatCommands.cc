@@ -802,8 +802,26 @@ static void proxy_command_auction(shared_ptr<ProxyServer::LinkedSession> ses, co
   ses->server_channel.send(0xC9, 0x00, &cmd, sizeof(cmd));
 }
 
+struct PatchCommandArgs {
+  string patch_name;
+  unordered_map<string, uint32_t> label_writes;
+
+  PatchCommandArgs(const string& args) {
+    auto tokens = phosg::split(args, ' ');
+    if (tokens.empty()) {
+      throw runtime_error("not enough arguments");
+    }
+    this->patch_name = std::move(tokens[0]);
+    for (size_t z = 0; z < tokens.size() - 1; z++) {
+      this->label_writes.emplace(phosg::string_printf("arg%zu", z), stoul(tokens[z + 1], nullptr, 0));
+    }
+  }
+};
+
 static void server_command_patch(shared_ptr<Client> c, const std::string& args) {
-  prepare_client_for_patches(c, [wc = weak_ptr<Client>(c), args]() {
+  PatchCommandArgs pca(args);
+
+  prepare_client_for_patches(c, [wc = weak_ptr<Client>(c), pca]() {
     auto c = wc.lock();
     if (!c) {
       return;
@@ -812,8 +830,8 @@ static void server_command_patch(shared_ptr<Client> c, const std::string& args) 
       auto s = c->require_server_state();
       // Note: We can't look this up outside of the closure because
       // c->specific_version can change during prepare_client_for_patches
-      auto fn = s->function_code_index->get_patch(args, c->config.specific_version);
-      send_function_call(c, fn);
+      auto fn = s->function_code_index->get_patch(pca.patch_name, c->config.specific_version);
+      send_function_call(c, fn, pca.label_writes);
       c->function_call_response_queue.emplace_back(empty_function_call_response_handler);
     } catch (const out_of_range&) {
       send_text_message(c, "Invalid patch name");
@@ -821,26 +839,26 @@ static void server_command_patch(shared_ptr<Client> c, const std::string& args) 
   });
 }
 
-static void empty_patch_return_handler(uint32_t, uint32_t) {}
-
 static void proxy_command_patch(shared_ptr<ProxyServer::LinkedSession> ses, const std::string& args) {
-  auto send_call = [args, ses](uint32_t specific_version, uint32_t) {
+  PatchCommandArgs pca(args);
+
+  auto send_call = [ses, pca](uint32_t specific_version, uint32_t) {
     try {
       if (ses->config.specific_version != specific_version) {
         ses->config.specific_version = specific_version;
         ses->log.info("Version detected as %08" PRIX32, ses->config.specific_version);
       }
       auto s = ses->require_server_state();
-      auto fn = s->function_code_index->get_patch(args, ses->config.specific_version);
-      send_function_call(ses->client_channel, ses->config, fn);
+      auto fn = s->function_code_index->get_patch(pca.patch_name, ses->config.specific_version);
+      send_function_call(ses->client_channel, ses->config, fn, pca.label_writes);
       // Don't forward the patch response to the server
-      ses->function_call_return_handler_queue.emplace_back(empty_patch_return_handler);
+      ses->function_call_return_handler_queue.emplace_back(empty_function_call_response_handler);
     } catch (const out_of_range&) {
       send_text_message(ses->client_channel, "Invalid patch name");
     }
   };
 
-  auto send_version_detect_or_send_call = [args, ses, send_call]() {
+  auto send_version_detect_or_send_call = [ses, send_call]() {
     bool is_gc = ::is_gc(ses->version());
     bool is_xb = (ses->version() == Version::XB_V3);
     if ((is_gc || is_xb) && specific_version_is_indeterminate(ses->config.specific_version)) {
@@ -1698,7 +1716,7 @@ static void server_command_loadchar(shared_ptr<Client> c, const std::string& arg
       return;
     }
 
-    auto send_set_extended_player_info = []<typename CharT>(shared_ptr<Client> c, shared_ptr<const CharT> char_file) -> void {
+    auto send_set_extended_player_info = []<typename CharT>(shared_ptr<Client> c, const CharT& char_file) -> void {
       prepare_client_for_patches(c, [wc = weak_ptr<Client>(c), char_file]() {
         auto c = wc.lock();
         if (!c) {
@@ -1707,7 +1725,7 @@ static void server_command_loadchar(shared_ptr<Client> c, const std::string& arg
         try {
           auto s = c->require_server_state();
           auto fn = s->function_code_index->get_patch("SetExtendedPlayerInfo", c->config.specific_version);
-          send_function_call(c, fn, {}, char_file.get(), sizeof(CharT));
+          send_function_call(c, fn, {}, &char_file, sizeof(CharT));
           c->function_call_response_queue.emplace_back([wc = weak_ptr<Client>(c)](uint32_t, uint32_t) -> void {
             auto c = wc.lock();
             if (!c) {
@@ -1728,25 +1746,27 @@ static void server_command_loadchar(shared_ptr<Client> c, const std::string& arg
     };
 
     if (c->version() == Version::DC_V2) {
-      auto dc_char = make_shared<PSODCV2CharacterFile::Character>(c->character()->to_dc_v2());
-      send_set_extended_player_info.operator()<PSODCV2CharacterFile::Character>(c, dc_char);
+      PSODCV2CharacterFile::Character dc_char = *c->character();
+      send_set_extended_player_info(c, dc_char);
     } else if (c->version() == Version::GC_NTE) {
-      auto gc_char = make_shared<PSOGCNTECharacterFileCharacter>(c->character()->to_gc_nte());
-      send_set_extended_player_info.operator()<PSOGCNTECharacterFileCharacter>(c, gc_char);
+      PSOGCNTECharacterFileCharacter gc_char = *c->character();
+      send_set_extended_player_info(c, gc_char);
     } else if (c->version() == Version::GC_V3) {
-      auto gc_char = make_shared<PSOGCCharacterFile::Character>(c->character()->to_gc());
-      send_set_extended_player_info.operator()<PSOGCCharacterFile::Character>(c, gc_char);
+      PSOGCCharacterFile::Character gc_char = *c->character();
+      send_set_extended_player_info(c, gc_char);
     } else if (c->version() == Version::GC_EP3_NTE) {
-      auto nte_char = make_shared<PSOGCEp3NTECharacter>(*ep3_char);
-      send_set_extended_player_info.operator()<PSOGCEp3NTECharacter>(c, nte_char);
+      PSOGCEp3NTECharacter nte_char = *ep3_char;
+      send_set_extended_player_info(c, nte_char);
     } else if (c->version() == Version::GC_EP3) {
-      send_set_extended_player_info.operator()<PSOGCEp3CharacterFile::Character>(c, ep3_char);
+      send_set_extended_player_info(c, *ep3_char);
     } else if (c->version() == Version::XB_V3) {
       if (!c->login || !c->login->xb_license) {
         throw runtime_error("XB client is not logged in");
       }
-      auto xb_char = make_shared<PSOXBCharacterFileCharacter>(c->character()->to_xb(c->login->xb_license->user_id));
-      send_set_extended_player_info.operator()<PSOXBCharacterFileCharacter>(c, xb_char);
+      PSOXBCharacterFileCharacter xb_char = *c->character();
+      xb_char.guild_card.xb_user_id_high = (c->login->xb_license->user_id >> 32) & 0xFFFFFFFF;
+      xb_char.guild_card.xb_user_id_low = c->login->xb_license->user_id & 0xFFFFFFFF;
+      send_set_extended_player_info(c, xb_char);
     } else {
       throw logic_error("unimplemented extended player info version");
     }

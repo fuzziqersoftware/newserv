@@ -991,7 +991,7 @@ void Client::load_backup_character(uint32_t account_id, size_t index) {
 shared_ptr<PSOGCEp3CharacterFile::Character> Client::load_ep3_backup_character(uint32_t account_id, size_t index) {
   string filename = this->backup_character_filename(account_id, index, true);
   auto ch = make_shared<PSOGCEp3CharacterFile::Character>(phosg::load_object_file<PSOGCEp3CharacterFile::Character>(filename));
-  this->character_data = PSOBBCharacterFile::create_from_ep3(*ch);
+  this->character_data = PSOBBCharacterFile::create_from_file(*ch);
   this->ep3_config = make_shared<Episode3::PlayerConfig>(ch->ep3_config);
   this->update_character_data_after_load(this->character_data);
   this->v1_v2_last_reported_disp.reset();

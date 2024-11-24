@@ -70,9 +70,13 @@ struct ItemData {
 
     uint8_t get(uint8_t data1_0, uint8_t data1_1) const;
 
-    static const std::vector<uint8_t> DEFAULT_TOOL_LIMITS_DC_11_2000;
+    static const std::vector<uint8_t> DEFAULT_TOOL_LIMITS_DC_NTE; // Also for 11/2000
     static const std::vector<uint8_t> DEFAULT_TOOL_LIMITS_V1_V2;
     static const std::vector<uint8_t> DEFAULT_TOOL_LIMITS_V3_V4;
+
+    static const StackLimits DEFAULT_STACK_LIMITS_DC_NTE;
+    static const StackLimits DEFAULT_STACK_LIMITS_V1_V2;
+    static const StackLimits DEFAULT_STACK_LIMITS_V3_V4;
   };
 
   // QUICK ITEM FORMAT REFERENCE

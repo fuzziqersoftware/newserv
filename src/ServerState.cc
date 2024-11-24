@@ -1018,9 +1018,9 @@ void ServerState::load_config_early() {
   for (size_t v_s = NUM_PATCH_VERSIONS; v_s < NUM_VERSIONS; v_s++) {
     if (!this->item_stack_limits_tables[v_s]) {
       Version v = static_cast<Version>(v_s);
-      if (v == Version::DC_V1_11_2000_PROTOTYPE) {
+      if ((v == Version::DC_NTE) || (v == Version::DC_V1_11_2000_PROTOTYPE)) {
         this->item_stack_limits_tables[v_s] = make_shared<ItemData::StackLimits>(
-            Version::DC_V1_11_2000_PROTOTYPE, ItemData::StackLimits::DEFAULT_TOOL_LIMITS_DC_11_2000, 999999);
+            v, ItemData::StackLimits::DEFAULT_TOOL_LIMITS_DC_NTE, 999999);
       } else if (v_s < static_cast<size_t>(Version::GC_NTE)) {
         this->item_stack_limits_tables[v_s] = make_shared<ItemData::StackLimits>(
             v, ItemData::StackLimits::DEFAULT_TOOL_LIMITS_V1_V2, 999999);

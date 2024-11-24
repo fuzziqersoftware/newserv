@@ -8,12 +8,19 @@
 
 using namespace std;
 
-const vector<uint8_t> ItemData::StackLimits::DEFAULT_TOOL_LIMITS_DC_11_2000(
+const vector<uint8_t> ItemData::StackLimits::DEFAULT_TOOL_LIMITS_DC_NTE(
     {10});
 const vector<uint8_t> ItemData::StackLimits::DEFAULT_TOOL_LIMITS_V1_V2(
     {10, 10, 1, 10, 10, 10, 10, 10, 10, 1});
 const vector<uint8_t> ItemData::StackLimits::DEFAULT_TOOL_LIMITS_V3_V4(
     {10, 10, 1, 10, 10, 10, 10, 10, 10, 1, 1, 1, 1, 1, 1, 1, 99, 1});
+
+const ItemData::StackLimits ItemData::StackLimits::DEFAULT_STACK_LIMITS_DC_NTE(
+    Version::DC_NTE, ItemData::StackLimits::DEFAULT_TOOL_LIMITS_DC_NTE, 999999);
+const ItemData::StackLimits ItemData::StackLimits::DEFAULT_STACK_LIMITS_V1_V2(
+    Version::DC_V1, ItemData::StackLimits::DEFAULT_TOOL_LIMITS_V1_V2, 999999);
+const ItemData::StackLimits ItemData::StackLimits::DEFAULT_STACK_LIMITS_V3_V4(
+    Version::GC_V3, ItemData::StackLimits::DEFAULT_TOOL_LIMITS_V3_V4, 999999);
 
 ItemData::StackLimits::StackLimits(
     Version version, const vector<uint8_t>& max_tool_stack_sizes_by_data1_1, uint32_t max_meseta_stack_size)

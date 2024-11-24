@@ -3416,16 +3416,16 @@ static void on_30(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
   shared_ptr<PSOBBCharacterFile> bb_char;
   switch (c->version()) {
     case Version::DC_V2:
-      bb_char = PSOBBCharacterFile::create_from_dc_v2(check_size_t<PSODCV2CharacterFile::Character>(data));
+      bb_char = PSOBBCharacterFile::create_from_file(check_size_t<PSODCV2CharacterFile::Character>(data));
       break;
     case Version::GC_NTE:
-      bb_char = PSOBBCharacterFile::create_from_gc_nte(check_size_t<PSOGCNTECharacterFileCharacter>(data));
+      bb_char = PSOBBCharacterFile::create_from_file(check_size_t<PSOGCNTECharacterFileCharacter>(data));
       break;
     case Version::GC_V3:
-      bb_char = PSOBBCharacterFile::create_from_gc(check_size_t<PSOGCCharacterFile::Character>(data));
+      bb_char = PSOBBCharacterFile::create_from_file(check_size_t<PSOGCCharacterFile::Character>(data));
       break;
     case Version::XB_V3:
-      bb_char = PSOBBCharacterFile::create_from_xb(check_size_t<PSOXBCharacterFileCharacter>(data));
+      bb_char = PSOBBCharacterFile::create_from_file(check_size_t<PSOXBCharacterFileCharacter>(data));
       break;
     case Version::GC_EP3_NTE:
     case Version::GC_EP3:
