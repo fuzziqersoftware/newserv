@@ -2506,16 +2506,15 @@ static void on_ep3_private_word_select_bb_bank_action(shared_ptr<Client> c, uint
     const auto& cmd = check_size_t<G_PrivateWordSelect_Ep3_6xBD>(data, size);
     s->word_select_table->validate(cmd.message, c->version());
 
-    G_PrivateWordSelect_Ep3_6xBD masked_cmd = {
-        {0xBD, sizeof(G_PrivateWordSelect_Ep3_6xBD) >> 2, cmd.header.client_id},
-        // "Please use the Whispers function."
-        {0x0001, 0x0001, {0x00C1, 0x02C7, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF}, 0x0000, 0x0000},
-        cmd.private_flags,
-        {0, 0, 0}};
-
+    string from_name = c->character()->disp.name.decode(c->language());
+    static const string whisper_text = "(whisper)";
     auto send_to_client = [&](shared_ptr<Client> lc) -> void {
       if (cmd.private_flags & (1 << lc->lobby_client_id)) {
-        send_command_t(lc, command, flag, masked_cmd);
+        try {
+          send_chat_message(lc, c->login->account->account_id, from_name, whisper_text, cmd.private_flags);
+        } catch (const runtime_error& e) {
+          lc->log.warning("Failed to encode chat message: %s", e.what());
+        }
       } else {
         send_command_t(lc, command, flag, cmd);
       }

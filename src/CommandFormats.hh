@@ -502,7 +502,8 @@ struct S_UpdateClientConfig_BB_04 {
 // used, but are often nonzero and set to the value 4. (This is probably done so
 // that the field is always a valid ASCII character and also never terminates
 // the chat string accidentally.) We call this byte private_flags in the places
-// where newserv uses it.
+// where newserv uses it; there is a similar byte in the 6xBD (private word
+// select) command.
 
 // 07 (S->C): Ship or block select menu
 // Internal name: RcvDirList
