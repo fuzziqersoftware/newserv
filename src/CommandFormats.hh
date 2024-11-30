@@ -4542,7 +4542,7 @@ struct G_ShieldAttack_6x4A {
 struct G_HitByEnemy_6x4B_6x4C {
   G_ClientIDHeader header;
   le_uint16_t angle = 0;
-  le_uint16_t damage = 0;
+  le_uint16_t current_hp = 0;
   le_float x_velocity = 0.0f;
   le_float z_velocity = 0.0f;
 } __packed_ws__(G_HitByEnemy_6x4B_6x4C, 0x10);

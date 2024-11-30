@@ -1547,9 +1547,11 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     {0xF850, "ba_meseta_score", "meseta_score", {{REG_SET_FIXED, 3}}, F_V2_V4},
 
     // Sets the number of traps players can use in battle mode. regsA[1] is the
-    // amount; regsA[0] is the trap type, remapped as follows (valueA => actual
-    // trap type):
-    //   0 => 0    1 => 2    2 => 3    3 => 1
+    // amount; regsA[0] is the trap type:
+    //   0 = Damage trap (internal type 0)
+    //   1 = Slow trap (internal type 2)
+    //   2 = Confuse trap (internal type 3)
+    //   3 = Freeze trap (internal type 1)
     {0xF851, "ba_set_trap_count", "ba_set_trap", {{REG_SET_FIXED, 2}}, F_V2_V4},
 
     // Enables (0) or disables (1) the targeting reticle in battle
@@ -1574,7 +1576,9 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     {0xF859, "ba_hide_self_traps", "BA_Hide_Self_Traps", {}, F_V2_V4},
 
     // Creates an item in a player's inventory and equips it. Sends 6x2B
-    // followed by 6x25.
+    // followed by 6x25. It appears Sega did not intend for this to be used on
+    // BB, since the behavior wasn't changed - normally, item-related functions
+    // should be done by the server on BB.
     // regsA[0] = client ID
     // regsA[1-3] = item.data1[0-2]
     {0xF85A, "equip_item", "equip_item_v2", {{REG32_SET_FIXED, 4}}, F_V2},
@@ -2342,8 +2346,8 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     {0xF90E, "fdiv", nullptr, {REG, REG}, F_V3_V4},
     {0xF90F, "fdivi", nullptr, {REG, FLOAT32}, F_V3_V4},
 
-    // Returns the number of times a player has ever died.
-    // TODO: Do scape doll revivals count toward this?
+    // Returns the number of times a player has ever died - not just in the
+    // current quest/game/session!
     // regA = client ID
     // regB = returned death count
     {0xF910, "get_total_deaths", "get_unknown_count?", {CLIENT_ID, REG}, F_V3_V4 | F_ARGS},
@@ -2521,7 +2525,8 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     // valueB = Y position on screen
     // valueC = window width
     // valueD = window height
-    // valueE = window style (TODO)
+    // valueE = window style (0 = white window, 1 = chat box, anything else =
+    //   no window, just text)
     // strF = initial message
     {0xF930, "chat_box", nullptr, {INT32, INT32, INT32, INT32, INT32, CSTRING}, F_V3_V4 | F_ARGS},
 
@@ -2579,11 +2584,15 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     // and a new one is created with the wrapped flag set. The new item has a
     // different item ID, which is not returned. Sends 6x29, then 6x26 if
     // deleting the item causes the player's equipped weapon to no longer be
-    // usable, then 6x2B.
+    // usable, then 6x2B. It appears Sega did not intend for this to be used on
+    // BB, since the behavior wasn't changed - normally, item-related functions
+    // should be done by the server on BB, as the following opcode does.
     // valueA = item ID
     {0xF93B, "wrap_item", "item_packing1", {ITEM_ID}, F_V3_V4 | F_ARGS},
 
-    // Like wrap_item, but also sets the present color. Sends 6xD6 on BB.
+    // Like wrap_item, but also sets the present color. On BB, sends 6xD6, and
+    // the server should respond with the sequence of 6x29, maybe 6x26, then
+    // 6xBE.
     // valueA = item ID
     // valueB = present color (0-15; high 4 bits are masked out)
     {0xF93C, "wrap_item_with_color", "item_packing2", {ITEM_ID, INT32}, F_V3_V4 | F_ARGS},
@@ -2648,11 +2657,11 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     {0xF947, "cos", nullptr, {REG, INT32}, F_V3_V4 | F_ARGS},
     {0xF948, "tan", nullptr, {REG, INT32}, F_V3_V4 | F_ARGS},
 
-    // Computes the arctangent of the input ratio.
-    // TODO: Verify the order of valueB/valueC
+    // Computes the arctangent of the input ratio. Equivalent C:
+    //   regA = (int)((atan2(valueB, valueC) * 65536.0) / (2 * M_PI))
     // regA = result (integer angle, 0-65535)
-    // valueB = numerator
-    // valueC = denominator
+    // valueB = numerator as float
+    // valueC = denominator as float
     {0xF949, "atan2_int", "atan", {REG, FLOAT32, FLOAT32}, F_V3_V4 | F_ARGS},
 
     // Sets regA to 1 if Olga Flow has been defeated, or 0 otherwise.
