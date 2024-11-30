@@ -93,7 +93,7 @@ struct ItemData {
   // C = stack size (for tools)
   // D = DEF bonus
   // E = EVP bonus
-  // F = armor/shield/unit flags (40=present; low 16 bits are present color)
+  // F = armor/shield/unit flags (40=present; low 4 bits are present color)
   // G = weapon grind
   // H = mag DEF
   // I = mag POW
