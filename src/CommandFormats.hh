@@ -5959,6 +5959,11 @@ struct G_SyncCardTradeServerState_Ep3_6xBB {
 
 // 6xBB: BB bank request (handled by the server)
 
+struct G_RequestBankContents_BB_6xBB {
+  G_UnusedHeader header;
+  le_uint32_t checksum; // crc32 of the bank contents in memory
+} __packed_ws__(G_RequestBankContents_BB_6xBB, 0x08);
+
 // 6xBC: Card counts (Episode 3)
 // This is sent by the client in response to a 6xB5x38 command. This is used
 // along with 6xB5x38 so clients can see each other's card counts. Curiously,
@@ -5980,6 +5985,9 @@ struct G_CardCounts_Ep3_6xBC {
 } __packed_ws__(G_CardCounts_Ep3_6xBC, 0x2FC);
 
 // 6xBC: BB bank contents (server->client only)
+// This is sent in response to a 6xBB command. If the checksum in this command
+// doesn't match the checksum the client sent in its 6xBB command, the client
+// overwrites its bank data with the data sent in this command.
 
 struct G_BankContentsHeader_BB_6xBC {
   G_ExtendedHeaderT<G_UnusedHeader> header;

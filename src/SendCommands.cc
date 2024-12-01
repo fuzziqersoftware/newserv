@@ -3045,9 +3045,7 @@ void send_bank(shared_ptr<Client> c) {
 
   G_BankContentsHeader_BB_6xBC cmd = {
       {{0xBC, 0, 0}, sizeof(G_BankContentsHeader_BB_6xBC) + items.size() * sizeof(PlayerBankItem)},
-      phosg::random_object<uint32_t>(),
-      bank.num_items,
-      bank.meseta};
+      bank.checksum(), bank.num_items, bank.meseta};
 
   send_command_t_vt(c, 0x6C, 0x00, cmd, items);
 }

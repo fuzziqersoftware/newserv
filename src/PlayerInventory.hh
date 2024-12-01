@@ -305,6 +305,10 @@ struct PlayerBankT {
   /* 0008 */ parray<PlayerBankItemT<BE>, SlotCount> items;
   /* 05A8 for 60 items (v1/v2), 12C8 for 200 items (v3/v4) */
 
+  uint32_t checksum() const {
+    return phosg::crc32(this, 2 * sizeof(U32T<BE>) + sizeof(PlayerBankItemT<BE>) * min<size_t>(SlotCount, this->num_items));
+  }
+
   void add_item(const ItemData& item, const ItemData::StackLimits& limits) {
     uint32_t primary_identifier = item.primary_identifier();
 
