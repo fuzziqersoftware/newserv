@@ -1053,7 +1053,7 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     //   15: Wave but not room cleared (set event triggered by another set)
     //   16: NPC casting Resta or Anti
     //   17: NPC casting Foie, Zonde, or Barta
-    //   18: NPC regained sight of player
+    //   18: NPC regained sight of player (not valid on 11/2000)
     // strB = string for NPC to say (up to 52 characters)
     {0xC1, "npc_text", nullptr, {INT32, CSTRING}, F_V05_V4 | F_ARGS},
 
@@ -1064,8 +1064,9 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     // Disables PK mode (battle mode) for a specific player. Sends 6x1C.
     {0xC3, "pl_pkoff", nullptr, {}, F_V05_V4},
 
-    // Specifies which area should be used for a specific floor, and how
-    // objects and enemies should be populated on that floor.
+    // Specifies how objects and enemies should be populated for a floor. On
+    // v2, the ability to reassign areas was added, which can be done with
+    // map_designate_ex (F80D).
     // regsA[0] = floor number
     // regsA[1] = type (0: use layout, 1: use offline template, 2: use online
     //   template, 3: nothing)

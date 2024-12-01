@@ -529,6 +529,7 @@ struct PSOGCCharacterFile {
     //     ItemPMT.prs, itemrt.gsl, itempt.gsl, and PlyLevelTbl.cpt). For files
     //     larger than 1000000 bytes (decimal), the game only checks the file's
     //     size and skips checksumming its contents.
+    // It seems that v3 and BB only use flag 00000001 and ignore the rest.
     /* 041C:0000 */ be_uint32_t validation_flags = 0;
     /* 0420:0004 */ be_uint32_t creation_timestamp = 0;
     // The signature field holds the value 0xA205B064, which is 2718281828 in
@@ -539,21 +540,25 @@ struct PSOGCCharacterFile {
     /* 0428:000C */ be_uint32_t play_time_seconds = 0;
     // This field is a collection of several flags and small values. The known
     // fields are:
-    //   ------zA BCDEFG-- HHHIIIJJ KLMNOPQR
-    //   z = Function key setting (BB; 0 = menu shortcuts; 1 = chat shortcuts).
+    //   ------AB -----CDD EEEFFFGG HIJKLMNO
+    //   A = Function key setting (BB; 0 = menu shortcuts; 1 = chat shortcuts).
     //       This bit is unused by PSO GC.
-    //   A = Keyboard controls (BB; 0 = on; 1 = off). This field is also used
+    //   B = Keyboard controls (BB; 0 = on; 1 = off). This field is also used
     //       by PSO GC, but its function is currently unknown.
-    //   G = Choice search setting (0 = enabled; 1 = disabled)
-    //   H = Player lobby labels (0 = name; 1 = name, language, and level;
+    //   C = Choice search setting (0 = enabled; 1 = disabled)
+    //   D = Which pane of the shortcut menu was last used
+    //   E = Player lobby labels (0 = name; 1 = name, language, and level;
     //       2 = W/D counts; 3 = challenge rank; 4 = nothing)
-    //   I = Idle disconnect time (0 = 15 mins; 1 = 30 mins; 2 = 45 mins;
+    //   F = Idle disconnect time (0 = 15 mins; 1 = 30 mins; 2 = 45 mins;
     //       3 = 60 mins; 4: never; 5-7: undefined behavior due to a missing
     //       bounds check).
-    //   J = Message speed (0 = slow; 1 = normal; 2 = fast; 3 = very fast)
-    //   P = Cursor position (0 = saved; 1 = non-saved)
-    //   Q = Button config (0 = normal; 1 = L/R reversed)
-    //   R = Map direction (0 = non-fixed; 1 = fixed)
+    //   G = Message speed (0 = slow; 1 = normal; 2 = fast; 3 = very fast)
+    //   H, I, J, K = unknown; these appear to be used only during Japanese
+    //       text input. See TWindowKeyBoardBase_read_option_flags
+    //   L = Rumble enabled
+    //   M = Cursor position (0 = saved; 1 = non-saved)
+    //   N = Button config (0 = normal; 1 = L/R reversed)
+    //   O = Map direction (0 = non-fixed; 1 = fixed)
     /* 042C:0010 */ be_uint32_t option_flags = 0x00040058;
     /* 0430:0014 */ be_uint32_t save_count = 1;
     /* 0434:0018 */ pstring<TextEncoding::ASCII, 0x1C> ppp_username;

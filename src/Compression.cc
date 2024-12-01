@@ -1281,15 +1281,15 @@ string bc0_decompress(const void* data, size_t size) {
       }
     }
 
-    // Control bit 0 means to perform a backreference copy. The offset and
-    // size are stored in two bytes in the input stream, laid out as follows:
-    // a1 = 0bBBBBBBBB
-    // a2 = 0bAAAACCCC
-    // The offset is the concatenation of bits AAAABBBBBBBB, which refers to a
-    // position in the memo; the number of bytes to copy is (CCCC + 3). The
-    // decompressor copies that many bytes from that offset in the memo, and
-    // writes them to the output and to the current position in the memo.
     if ((control_stream_bits & 1) == 0) {
+      // Control bit 0 means to perform a backreference copy. The offset and
+      // size are stored in two bytes in the input stream, laid out as follows:
+      // a1 = 0bBBBBBBBB
+      // a2 = 0bAAAACCCC
+      // The offset is the concatenation of bits AAAABBBBBBBB, which refers to
+      // a position in the memo; the number of bytes to copy is (CCCC + 3). The
+      // decompressor copies that many bytes from that offset in the memo, and
+      // writes them to the output and to the current position in the memo.
       uint8_t a1 = r.get_u8();
       if (r.eof()) {
         break;
@@ -1304,9 +1304,9 @@ string bc0_decompress(const void* data, size_t size) {
         memo_offset = (memo_offset + 1) & 0x0FFF;
       }
 
+    } else {
       // Control bit 1 means to write a byte directly from the input to the
       // output. As above, the byte is also written to the memo.
-    } else {
       uint8_t v = r.get_u8();
       w.put_u8(v);
       memo[memo_offset] = v;
