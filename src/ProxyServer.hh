@@ -280,6 +280,8 @@ private:
       return this->channel.version;
     }
 
+    void set_login(std::shared_ptr<Login> login);
+
     void receive_and_process_commands();
 
     static void on_input(Channel& ch, uint16_t command, uint32_t flag, std::string& msg);

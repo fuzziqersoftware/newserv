@@ -274,10 +274,12 @@ void Client::update_channel_name() {
   auto player = this->character(false, false);
   if (player) {
     string name_str = player->disp.name.decode(this->language());
-    this->channel.name = phosg::string_printf("C-%" PRIX64 " (%s) @ %s", this->id, name_str.c_str(), ip_str.c_str());
+    size_t level = player->disp.stats.level + 1;
+    this->channel.name = phosg::string_printf("C-%" PRIX64 " (%s Lv.%zu) @ %s", this->id, name_str.c_str(), level, ip_str.c_str());
   } else {
     this->channel.name = phosg::string_printf("C-%" PRIX64 " @ %s", this->id, ip_str.c_str());
   }
+  this->log.info("Channel name updated from player data: %s", this->channel.name.c_str());
 }
 
 void Client::reschedule_save_game_data_event() {
@@ -477,6 +479,14 @@ void Client::suspend_timeouts() {
   event_del(this->send_ping_event.get());
   event_del(this->idle_timeout_event.get());
   this->log.info("Timeouts suspended");
+}
+
+void Client::set_login(shared_ptr<Login> login) {
+  this->login = login;
+  if (this->log.should_log(phosg::LogLevel::INFO)) {
+    string login_str = this->login->str();
+    this->log.info("Login: %s", login_str.c_str());
+  }
 }
 
 void Client::create_battle_overlay(shared_ptr<const BattleRules> rules, shared_ptr<const LevelTable> level_table) {

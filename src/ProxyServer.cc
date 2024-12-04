@@ -278,6 +278,14 @@ std::shared_ptr<ServerState> ProxyServer::UnlinkedSession::require_server_state(
   return this->require_server()->state;
 }
 
+void ProxyServer::UnlinkedSession::set_login(std::shared_ptr<Login> login) {
+  this->login = login;
+  if (this->log.should_log(phosg::LogLevel::INFO)) {
+    string login_str = this->login->str();
+    this->log.info("Login: %s", login_str.c_str());
+  }
+}
+
 void ProxyServer::UnlinkedSession::on_input(Channel& ch, uint16_t command, uint32_t, std::string& data) {
   auto* ses = reinterpret_cast<UnlinkedSession*>(ch.context_obj);
   auto server = ses->require_server();
@@ -298,7 +306,7 @@ void ProxyServer::UnlinkedSession::on_input(Channel& ch, uint16_t command, uint3
           ses->log.info("Version changed to DC_NTE");
           ses->config.specific_version = SPECIFIC_VERSION_DC_NTE;
           const auto& cmd = check_size_t<C_Login_DCNTE_8B>(data, sizeof(C_LoginExtended_DCNTE_8B));
-          ses->login = s->account_index->from_dc_nte_credentials(cmd.serial_number.decode(), cmd.access_key.decode(), false);
+          ses->set_login(s->account_index->from_dc_nte_credentials(cmd.serial_number.decode(), cmd.access_key.decode(), false));
           ses->sub_version = cmd.sub_version;
           ses->channel.language = cmd.language;
           ses->character_name = cmd.name.decode(ses->channel.language);
@@ -310,8 +318,8 @@ void ProxyServer::UnlinkedSession::on_input(Channel& ch, uint16_t command, uint3
             ses->config.specific_version = SPECIFIC_VERSION_DC_V1_INDETERMINATE;
           }
           const auto& cmd = check_size_t<C_LoginV1_DC_93>(data);
-          ses->login = s->account_index->from_dc_credentials(
-              stoul(cmd.serial_number.decode(), nullptr, 16), cmd.access_key.decode(), cmd.name.decode(), false);
+          ses->set_login(s->account_index->from_dc_credentials(
+              stoul(cmd.serial_number.decode(), nullptr, 16), cmd.access_key.decode(), cmd.name.decode(), false));
           ses->sub_version = cmd.sub_version;
           ses->channel.language = cmd.language;
           ses->character_name = cmd.name.decode(ses->channel.language);
@@ -322,16 +330,16 @@ void ProxyServer::UnlinkedSession::on_input(Channel& ch, uint16_t command, uint3
             ses->log.info("Version changed to GC_NTE");
             ses->channel.version = Version::GC_NTE;
             ses->config.specific_version = SPECIFIC_VERSION_GC_NTE;
-            ses->login = s->account_index->from_gc_credentials(
-                stoul(cmd.serial_number.decode(), nullptr, 16), cmd.access_key.decode(), nullptr, cmd.name.decode(), false);
+            ses->set_login(s->account_index->from_gc_credentials(
+                stoul(cmd.serial_number.decode(), nullptr, 16), cmd.access_key.decode(), nullptr, cmd.name.decode(), false));
           } else { // DC V2
             ses->log.info("Version changed to DC_V2");
             ses->channel.version = Version::DC_V2;
             if (specific_version_is_indeterminate(ses->config.specific_version)) {
               ses->config.specific_version = SPECIFIC_VERSION_DC_V2_INDETERMINATE;
             }
-            ses->login = s->account_index->from_dc_credentials(
-                stoul(cmd.serial_number.decode(), nullptr, 16), cmd.access_key.decode(), cmd.name.decode(), false);
+            ses->set_login(s->account_index->from_dc_credentials(
+                stoul(cmd.serial_number.decode(), nullptr, 16), cmd.access_key.decode(), cmd.name.decode(), false));
           }
           ses->sub_version = cmd.sub_version;
           ses->channel.language = cmd.language;
@@ -349,8 +357,8 @@ void ProxyServer::UnlinkedSession::on_input(Channel& ch, uint16_t command, uint3
           throw runtime_error("command is not 9D");
         }
         const auto& cmd = check_size_t<C_Login_DC_PC_GC_9D>(data, sizeof(C_LoginExtended_PC_9D));
-        ses->login = s->account_index->from_pc_credentials(
-            stoul(cmd.serial_number.decode(), nullptr, 16), cmd.access_key.decode(), cmd.name.decode(), false);
+        ses->set_login(s->account_index->from_pc_credentials(
+            stoul(cmd.serial_number.decode(), nullptr, 16), cmd.access_key.decode(), cmd.name.decode(), false));
         ses->sub_version = cmd.sub_version;
         ses->channel.language = cmd.language;
         ses->character_name = cmd.name.decode(ses->channel.language);
@@ -363,8 +371,8 @@ void ProxyServer::UnlinkedSession::on_input(Channel& ch, uint16_t command, uint3
         // We should only get a 9E while the session is unlinked
         if (command == 0x9E) {
           const auto& cmd = check_size_t<C_Login_GC_9E>(data, sizeof(C_LoginExtended_GC_9E));
-          ses->login = s->account_index->from_gc_credentials(
-              stoul(cmd.serial_number.decode(), nullptr, 16), cmd.access_key.decode(), nullptr, cmd.name.decode(), false);
+          ses->set_login(s->account_index->from_gc_credentials(
+              stoul(cmd.serial_number.decode(), nullptr, 16), cmd.access_key.decode(), nullptr, cmd.name.decode(), false));
           ses->sub_version = cmd.sub_version;
           ses->channel.language = cmd.language;
           ses->character_name = cmd.name.decode(ses->channel.language);
@@ -388,7 +396,7 @@ void ProxyServer::UnlinkedSession::on_input(Channel& ch, uint16_t command, uint3
           string xb_gamertag = cmd.serial_number.decode();
           uint64_t xb_user_id = stoull(cmd.access_key.decode(), nullptr, 16);
           uint64_t xb_account_id = cmd.netloc.account_id;
-          ses->login = s->account_index->from_xb_credentials(xb_gamertag, xb_user_id, xb_account_id, false);
+          ses->set_login(s->account_index->from_xb_credentials(xb_gamertag, xb_user_id, xb_account_id, false));
           ses->sub_version = cmd.sub_version;
           ses->channel.language = cmd.language;
           ses->character_name = cmd.name.decode(ses->channel.language);
@@ -412,7 +420,7 @@ void ProxyServer::UnlinkedSession::on_input(Channel& ch, uint16_t command, uint3
         }
         const auto& cmd = check_size_t<C_LoginBase_BB_93>(data, 0xFFFF);
         string password = cmd.password.decode();
-        ses->login = s->account_index->from_bb_credentials(cmd.username.decode(), &password, s->allow_unregistered_users);
+        ses->set_login(s->account_index->from_bb_credentials(cmd.username.decode(), &password, s->allow_unregistered_users));
         ses->login_command_bb = std::move(data);
         break;
       }

@@ -74,9 +74,6 @@ private:
 
     static void dispatch_idle_timeout(evutil_socket_t, short, void* ctx);
     void idle_timeout();
-
-    const std::string& get_bb_username() const;
-    void set_bb_username(const std::string& bb_username);
   };
 
   struct ListeningSocket {

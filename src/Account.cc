@@ -415,6 +415,29 @@ void Account::delete_file() const {
   remove(filename.c_str());
 }
 
+string Login::str() const {
+  string ret = phosg::string_printf("Account:%08" PRIX32, this->account->account_id);
+  if (this->account_was_created) {
+    ret += " (new)";
+  }
+  if (this->dc_nte_license) {
+    ret += phosg::string_printf(" via DC NTE serial number %s", this->dc_nte_license->serial_number.c_str());
+  } else if (this->dc_license) {
+    ret += phosg::string_printf(" via DC serial number %08" PRIX32, this->dc_license->serial_number);
+  } else if (this->pc_license) {
+    ret += phosg::string_printf(" via PC serial number %08" PRIX32, this->pc_license->serial_number);
+  } else if (this->gc_license) {
+    ret += phosg::string_printf(" via GC serial number %010" PRIu32, this->gc_license->serial_number);
+  } else if (this->xb_license) {
+    ret += phosg::string_printf(" via XB user ID %016" PRIX64, this->xb_license->user_id);
+  } else if (this->bb_license) {
+    ret += phosg::string_printf(" via BB username %s", this->bb_license->username.c_str());
+  } else {
+    ret += phosg::string_printf(" artificially");
+  }
+  return ret;
+}
+
 size_t AccountIndex::count() const {
   shared_lock g(this->lock);
   return this->by_account_id.size();

@@ -336,8 +336,7 @@ public:
 
   void suspend_timeouts();
 
-  const std::string& get_bb_username() const;
-  void set_bb_username(const std::string& bb_username);
+  void set_login(std::shared_ptr<Login> login);
 
   void create_battle_overlay(std::shared_ptr<const BattleRules> rules, std::shared_ptr<const LevelTable> level_table);
   void create_challenge_overlay(Version version, size_t template_index, std::shared_ptr<const LevelTable> level_table);

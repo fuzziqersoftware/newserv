@@ -607,19 +607,24 @@ static void on_DB_V3(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
   uint32_t serial_number = stoul(cmd.serial_number.decode(), nullptr, 16);
   try {
     auto password = cmd.password.decode();
-    c->login = s->account_index->from_gc_credentials(
-        serial_number, cmd.access_key.decode(), &password, "", s->allow_unregistered_users);
+    c->set_login(s->account_index->from_gc_credentials(
+        serial_number, cmd.access_key.decode(), &password, "", s->allow_unregistered_users));
     send_command(c, 0x9A, 0x02);
 
   } catch (const AccountIndex::no_username& e) {
+    c->log.info("Login failed (no username)");
     send_command(c, 0x9A, 0x03);
   } catch (const AccountIndex::incorrect_access_key& e) {
+    c->log.info("Login failed (incorrect access key)");
     send_command(c, 0x9A, 0x03);
   } catch (const AccountIndex::incorrect_password& e) {
+    c->log.info("Login failed (incorrect password)");
     send_command(c, 0x9A, 0x01);
   } catch (const AccountIndex::missing_account& e) {
+    c->log.info("Login failed (missing account)");
     send_command(c, 0x9A, 0x04);
   } catch (const AccountIndex::account_banned& e) {
+    c->log.info("Login failed (account banned)");
     send_command(c, 0x9A, 0x0F);
   }
 
@@ -636,17 +641,21 @@ static void on_88_DCNTE(shared_ptr<Client> c, uint16_t, uint32_t, string& data) 
   c->log.info("Game version changed to DC_NTE");
 
   try {
-    c->login = s->account_index->from_dc_nte_credentials(
-        cmd.serial_number.decode(), cmd.access_key.decode(), s->allow_unregistered_users);
+    c->set_login(s->account_index->from_dc_nte_credentials(
+        cmd.serial_number.decode(), cmd.access_key.decode(), s->allow_unregistered_users));
     send_command(c, 0x88, 0x00);
 
   } catch (const AccountIndex::no_username& e) {
+    c->log.info("Login failed (no username)");
     send_message_box(c, "Incorrect serial number");
   } catch (const AccountIndex::incorrect_access_key& e) {
+    c->log.info("Login failed (incorrect access key)");
     send_message_box(c, "Incorrect access key");
   } catch (const AccountIndex::missing_account& e) {
+    c->log.info("Login failed (missing account)");
     send_message_box(c, "Incorrect serial number");
   } catch (const AccountIndex::account_banned& e) {
+    c->log.info("Login failed (account banned)");
     send_message_box(c, "Account is banned");
   }
 
@@ -664,14 +673,18 @@ static void on_8B_DCNTE(shared_ptr<Client> c, uint16_t, uint32_t, string& data) 
   c->log.info("Game version changed to DC_NTE");
 
   try {
-    c->login = s->account_index->from_dc_nte_credentials(cmd.serial_number.decode(), cmd.access_key.decode(), s->allow_unregistered_users);
+    c->set_login(s->account_index->from_dc_nte_credentials(cmd.serial_number.decode(), cmd.access_key.decode(), s->allow_unregistered_users));
   } catch (const AccountIndex::no_username& e) {
+    c->log.info("Login failed (no username)");
     send_message_box(c, "Incorrect serial number");
   } catch (const AccountIndex::incorrect_access_key& e) {
+    c->log.info("Login failed (incorrect access key)");
     send_message_box(c, "Incorrect access key");
   } catch (const AccountIndex::missing_account& e) {
+    c->log.info("Login failed (missing account)");
     send_message_box(c, "Incorrect serial number");
   } catch (const AccountIndex::account_banned& e) {
+    c->log.info("Login failed (account banned)");
     send_message_box(c, "Account is banned");
   }
 
@@ -705,20 +718,28 @@ static void on_90_DC(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
   uint32_t serial_number = 0;
   try {
     if (serial_number_str.size() > 8 || access_key_str.size() > 8) {
-      c->login = s->account_index->from_dc_nte_credentials(serial_number_str, access_key_str, s->allow_unregistered_users);
+      c->set_login(s->account_index->from_dc_nte_credentials(serial_number_str, access_key_str, s->allow_unregistered_users));
     } else {
       serial_number = stoull(serial_number_str, nullptr, 16);
-      c->login = s->account_index->from_dc_credentials(serial_number, access_key_str, "", s->allow_unregistered_users);
+      c->set_login(s->account_index->from_dc_credentials(serial_number, access_key_str, "", s->allow_unregistered_users));
+    }
+    if (c->log.should_log(phosg::LogLevel::INFO)) {
+      string login_str = c->login->str();
+      c->log.info("Received login: %s", login_str.c_str());
     }
     send_command(c, 0x90, 0x01);
 
   } catch (const AccountIndex::no_username& e) {
+    c->log.info("Login failed (no username)");
     send_command(c, 0x90, 0x03);
   } catch (const AccountIndex::incorrect_access_key& e) {
+    c->log.info("Login failed (incorrect access key)");
     send_command(c, 0x90, 0x03);
   } catch (const AccountIndex::missing_account& e) {
+    c->log.info("Login failed (no account)");
     send_command(c, 0x90, 0x03);
   } catch (const AccountIndex::account_banned& e) {
+    c->log.info("Login failed (account banned)");
     send_command(c, 0x90, 0x0F);
   }
   c->should_disconnect = !c->login;
@@ -754,20 +775,28 @@ static void on_93_DC(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
   uint32_t serial_number = 0;
   try {
     if (serial_number_str.size() > 8 || access_key_str.size() > 8) {
-      c->login = s->account_index->from_dc_nte_credentials(serial_number_str, access_key_str, s->allow_unregistered_users);
+      c->set_login(s->account_index->from_dc_nte_credentials(serial_number_str, access_key_str, s->allow_unregistered_users));
     } else {
       serial_number = stoull(serial_number_str, nullptr, 16);
-      c->login = s->account_index->from_dc_credentials(
-          serial_number, access_key_str, cmd.name.decode(), s->allow_unregistered_users);
+      c->set_login(s->account_index->from_dc_credentials(
+          serial_number, access_key_str, cmd.name.decode(), s->allow_unregistered_users));
+    }
+    if (c->log.should_log(phosg::LogLevel::INFO)) {
+      string login_str = c->login->str();
+      c->log.info("Login: %s", login_str.c_str());
     }
 
   } catch (const AccountIndex::no_username& e) {
+    c->log.info("Login failed (no username)");
     send_message_box(c, "Incorrect serial number");
   } catch (const AccountIndex::incorrect_access_key& e) {
+    c->log.info("Login failed (incorrect access key)");
     send_message_box(c, "Incorrect access key");
   } catch (const AccountIndex::missing_account& e) {
+    c->log.info("Login failed (no account)");
     send_message_box(c, "Incorrect serial number");
   } catch (const AccountIndex::account_banned& e) {
+    c->log.info("Login failed (account banned)");
     send_message_box(c, "Account is banned");
   }
   if (!c->login) {
@@ -813,8 +842,12 @@ static void on_9A(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
     switch (c->version()) {
       case Version::DC_V2: {
         uint32_t serial_number = stoul(cmd.serial_number.decode(), nullptr, 16);
-        c->login = s->account_index->from_dc_credentials(
-            serial_number, cmd.access_key.decode(), "", s->allow_unregistered_users);
+        c->set_login(s->account_index->from_dc_credentials(
+            serial_number, cmd.access_key.decode(), "", s->allow_unregistered_users));
+        if (c->log.should_log(phosg::LogLevel::INFO)) {
+          string login_str = c->login->str();
+          c->log.info("Login: %s", login_str.c_str());
+        }
         break;
       }
       case Version::PC_NTE:
@@ -829,12 +862,13 @@ static void on_9A(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
             cmd.email_address.empty()) {
           c->channel.version = Version::PC_NTE;
           c->log.info("Changed client version to PC_NTE");
-          c->login = s->account_index->from_pc_nte_credentials(
-              cmd.guild_card_number, s->allow_unregistered_users && s->allow_pc_nte);
+          c->set_login(s->account_index->from_pc_nte_credentials(
+              cmd.guild_card_number, s->allow_unregistered_users && s->allow_pc_nte));
+
         } else {
           uint32_t serial_number = stoul(cmd.serial_number.decode(), nullptr, 16);
-          c->login = s->account_index->from_pc_credentials(
-              serial_number, cmd.access_key.decode(), "", s->allow_unregistered_users);
+          c->set_login(s->account_index->from_pc_credentials(
+              serial_number, cmd.access_key.decode(), "", s->allow_unregistered_users));
         }
         break;
       }
@@ -847,7 +881,7 @@ static void on_9A(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
         // password already, which should have created an account if needed. So
         // if no account exists at this point, disconnect the client even if
         // unregistered users are allowed.
-        c->login = s->account_index->from_gc_credentials(serial_number, cmd.access_key.decode(), nullptr, "", false);
+        c->set_login(s->account_index->from_gc_credentials(serial_number, cmd.access_key.decode(), nullptr, "", false));
         break;
       }
       default:
@@ -856,14 +890,19 @@ static void on_9A(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
     send_command(c, 0x9A, 0x02);
 
   } catch (const AccountIndex::no_username& e) {
+    c->log.info("Login failed (no username)");
     send_command(c, 0x9A, 0x03);
   } catch (const AccountIndex::incorrect_access_key& e) {
+    c->log.info("Login failed (incorrect access key)");
     send_command(c, 0x9A, 0x03);
   } catch (const AccountIndex::incorrect_password& e) {
+    c->log.info("Login failed (incorrect password)");
     send_command(c, 0x9A, 0x01);
   } catch (const AccountIndex::missing_account& e) {
+    c->log.info("Login failed (missing account)");
     send_command(c, 0x9A, 0x03);
   } catch (const AccountIndex::account_banned& e) {
+    c->log.info("Login failed (account banned)");
     send_command(c, 0x9A, 0x0F);
   }
 
@@ -881,17 +920,17 @@ static void on_9C(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
   try {
     switch (c->version()) {
       case Version::DC_V2:
-        c->login = s->account_index->from_dc_credentials(serial_number, cmd.access_key.decode(), "", false);
+        c->set_login(s->account_index->from_dc_credentials(serial_number, cmd.access_key.decode(), "", false));
         break;
       case Version::PC_V2:
-        c->login = s->account_index->from_pc_credentials(serial_number, cmd.access_key.decode(), "", false);
+        c->set_login(s->account_index->from_pc_credentials(serial_number, cmd.access_key.decode(), "", false));
         break;
       case Version::GC_NTE:
       case Version::GC_V3:
       case Version::GC_EP3_NTE:
       case Version::GC_EP3: {
         string password = cmd.password.decode();
-        c->login = s->account_index->from_gc_credentials(serial_number, cmd.access_key.decode(), &password, "", false);
+        c->set_login(s->account_index->from_gc_credentials(serial_number, cmd.access_key.decode(), &password, "", false));
         break;
       }
       default:
@@ -902,12 +941,16 @@ static void on_9C(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
     send_command(c, 0x9C, 0x01);
 
   } catch (const AccountIndex::no_username& e) {
+    c->log.info("Login failed (no username)");
     send_message_box(c, "Incorrect serial number");
   } catch (const AccountIndex::incorrect_password& e) {
+    c->log.info("Login failed (incorrect password)");
     send_command(c, 0x9C, 0x00);
   } catch (const AccountIndex::missing_account& e) {
+    c->log.info("Login failed (missing account)");
     send_command(c, 0x9C, 0x00);
   } catch (const AccountIndex::account_banned& e) {
+    c->log.info("Login failed (account banned)");
     send_message_box(c, "Account is banned");
   }
   c->should_disconnect = !c->login;
@@ -962,8 +1005,8 @@ static void on_9D_9E(shared_ptr<Client> c, uint16_t command, uint32_t, string& d
     switch (c->version()) {
       case Version::DC_V2: {
         uint32_t serial_number = stoul(base_cmd->serial_number.decode(), nullptr, 16);
-        c->login = s->account_index->from_dc_credentials(
-            serial_number, base_cmd->access_key.decode(), base_cmd->name.decode(), s->allow_unregistered_users);
+        c->set_login(s->account_index->from_dc_credentials(
+            serial_number, base_cmd->access_key.decode(), base_cmd->name.decode(), s->allow_unregistered_users));
         break;
       }
       case Version::PC_NTE:
@@ -977,12 +1020,12 @@ static void on_9D_9E(shared_ptr<Client> c, uint16_t command, uint32_t, string& d
             base_cmd->access_key2.empty()) {
           c->channel.version = Version::PC_NTE;
           c->log.info("Changed client version to PC_NTE");
-          c->login = s->account_index->from_pc_nte_credentials(
-              base_cmd->guild_card_number, s->allow_unregistered_users && s->allow_pc_nte);
+          c->set_login(s->account_index->from_pc_nte_credentials(
+              base_cmd->guild_card_number, s->allow_unregistered_users && s->allow_pc_nte));
         } else {
           uint32_t serial_number = stoul(base_cmd->serial_number.decode(), nullptr, 16);
-          c->login = s->account_index->from_pc_credentials(
-              serial_number, base_cmd->access_key.decode(), base_cmd->name.decode(), s->allow_unregistered_users);
+          c->set_login(s->account_index->from_pc_credentials(
+              serial_number, base_cmd->access_key.decode(), base_cmd->name.decode(), s->allow_unregistered_users));
         }
         break;
       case Version::GC_NTE:
@@ -992,8 +1035,8 @@ static void on_9D_9E(shared_ptr<Client> c, uint16_t command, uint32_t, string& d
         uint32_t serial_number = stoul(base_cmd->serial_number.decode(), nullptr, 16);
         // GC clients should have sent a DB command first which would have
         // created the account if needed
-        c->login = s->account_index->from_gc_credentials(
-            serial_number, base_cmd->access_key.decode(), nullptr, base_cmd->name.decode(), false);
+        c->set_login(s->account_index->from_gc_credentials(
+            serial_number, base_cmd->access_key.decode(), nullptr, base_cmd->name.decode(), false));
         break;
       }
       default:
@@ -1001,14 +1044,19 @@ static void on_9D_9E(shared_ptr<Client> c, uint16_t command, uint32_t, string& d
     }
 
   } catch (const AccountIndex::no_username& e) {
+    c->log.info("Login failed (no username)");
     send_command(c, 0x04, 0x03);
   } catch (const AccountIndex::incorrect_access_key& e) {
+    c->log.info("Login failed (incorrect access key)");
     send_command(c, 0x04, 0x03);
   } catch (const AccountIndex::incorrect_password& e) {
+    c->log.info("Login failed (incorrect password)");
     send_command(c, 0x04, 0x06);
   } catch (const AccountIndex::missing_account& e) {
+    c->log.info("Login failed (missing account)");
     send_command(c, 0x04, 0x04);
   } catch (const AccountIndex::account_banned& e) {
+    c->log.info("Login failed (account banned)");
     send_command(c, 0x04, 0x04);
   }
 
@@ -1042,29 +1090,18 @@ static void on_9E_XB(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
   uint64_t xb_user_id = stoull(cmd.access_key.decode(), nullptr, 16);
   uint64_t xb_account_id = cmd.netloc.account_id;
   try {
-    c->login = s->account_index->from_xb_credentials(xb_gamertag, xb_user_id, xb_account_id, s->allow_unregistered_users);
-    bool should_save = false;
-    if (c->login->xb_license->user_id == 0) {
-      c->login->xb_license->user_id = xb_user_id;
-      c->log.info("Set license XB user ID to %016" PRIX64, c->login->xb_license->user_id);
-      should_save = true;
-    }
-    if (c->login->xb_license->account_id == 0) {
-      c->login->xb_license->account_id = xb_account_id;
-      c->log.info("Set license XB account ID to %016" PRIX64, c->login->xb_license->account_id);
-      should_save = true;
-    }
-    if (should_save && !s->is_replay) {
-      c->login->account->save();
-    }
-
+    c->set_login(s->account_index->from_xb_credentials(xb_gamertag, xb_user_id, xb_account_id, s->allow_unregistered_users));
   } catch (const AccountIndex::no_username& e) {
+    c->log.info("Login failed (no username)");
     send_command(c, 0x04, 0x03);
   } catch (const AccountIndex::incorrect_access_key& e) {
+    c->log.info("Login failed (incorrect access key)");
     send_command(c, 0x04, 0x03);
   } catch (const AccountIndex::missing_account& e) {
+    c->log.info("Login failed (missing account)");
     send_command(c, 0x04, 0x03);
   } catch (const AccountIndex::account_banned& e) {
+    c->log.info("Login failed (account banned)");
     send_command(c, 0x04, 0x04);
   }
 
@@ -1093,14 +1130,18 @@ static void on_93_BB(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
   string password = base_cmd.password.decode();
 
   try {
-    c->login = s->account_index->from_bb_credentials(username, &password, s->allow_unregistered_users);
+    c->set_login(s->account_index->from_bb_credentials(username, &password, s->allow_unregistered_users));
   } catch (const AccountIndex::no_username& e) {
+    c->log.info("Login failed (no username)");
     send_client_init_bb(c, 0x08);
   } catch (const AccountIndex::incorrect_password& e) {
+    c->log.info("Login failed (incorrect password)");
     send_client_init_bb(c, 0x03);
   } catch (const AccountIndex::missing_account& e) {
+    c->log.info("Login failed (missing account)");
     send_client_init_bb(c, 0x08);
   } catch (const AccountIndex::account_banned& e) {
+    c->log.info("Login failed (account banned)");
     send_client_init_bb(c, 0x06);
   }
   if (!c->login) {

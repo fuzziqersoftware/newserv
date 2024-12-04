@@ -156,6 +156,8 @@ struct Login {
   std::shared_ptr<GCLicense> gc_license;
   std::shared_ptr<XBLicense> xb_license;
   std::shared_ptr<BBLicense> bb_license;
+
+  std::string str() const;
 };
 
 class AccountIndex {
