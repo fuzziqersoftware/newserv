@@ -185,7 +185,7 @@ Account::Account(const phosg::JSON& json)
       lic->gamertag = xb_gamertag;
       lic->user_id = xb_user_id;
       lic->account_id = xb_account_id;
-      this->xb_licenses.emplace(lic->gamertag, lic);
+      this->xb_licenses.emplace(lic->user_id, lic);
     }
     if (!bb_username.empty() && !bb_password.empty()) {
       auto lic = make_shared<BBLicense>();
@@ -214,7 +214,7 @@ Account::Account(const phosg::JSON& json)
     }
     for (const auto& it : json.get_list("XBLicenses")) {
       auto lic = XBLicense::from_json(*it);
-      this->xb_licenses.emplace(lic->gamertag, lic);
+      this->xb_licenses.emplace(lic->user_id, lic);
     }
     for (const auto& it : json.get_list("BBLicenses")) {
       auto lic = BBLicense::from_json(*it);
@@ -660,14 +660,10 @@ shared_ptr<Login> AccountIndex::from_gc_credentials(
   }
 }
 
-shared_ptr<Login> AccountIndex::from_xb_credentials_locked(const string& gamertag, uint64_t user_id, uint64_t account_id) {
+shared_ptr<Login> AccountIndex::from_xb_credentials_locked(uint64_t user_id) {
   auto login = make_shared<Login>();
-  login->account = this->by_xb_gamertag.at(gamertag);
-  login->xb_license = login->account->xb_licenses.at(gamertag);
-  if ((login->xb_license->user_id && (login->xb_license->user_id != user_id)) ||
-      (login->xb_license->account_id && (login->xb_license->account_id != account_id))) {
-    throw incorrect_access_key();
-  }
+  login->account = this->by_xb_user_id.at(user_id);
+  login->xb_license = login->account->xb_licenses.at(user_id);
   if (login->account->ban_end_time && (login->account->ban_end_time >= phosg::now())) {
     throw account_banned();
   }
@@ -682,13 +678,13 @@ shared_ptr<Login> AccountIndex::from_xb_credentials(
 
   try {
     shared_lock g(this->lock);
-    return this->from_xb_credentials_locked(gamertag, user_id, account_id);
+    return this->from_xb_credentials_locked(user_id);
   } catch (const out_of_range&) {
   }
 
   unique_lock g(this->lock);
   try {
-    return this->from_xb_credentials_locked(gamertag, user_id, account_id);
+    return this->from_xb_credentials_locked(user_id);
   } catch (const out_of_range&) {
   }
 
@@ -701,7 +697,7 @@ shared_ptr<Login> AccountIndex::from_xb_credentials(
     lic->gamertag = gamertag;
     lic->user_id = user_id;
     lic->account_id = account_id;
-    login->account->xb_licenses.emplace(lic->gamertag, lic);
+    login->account->xb_licenses.emplace(lic->user_id, lic);
     login->xb_license = lic;
     this->add_locked(login->account);
     return login;
@@ -798,8 +794,8 @@ void AccountIndex::add_locked(shared_ptr<Account> a) {
     }
   }
   for (const auto& it : a->xb_licenses) {
-    if (this->by_xb_gamertag.count(it.second->gamertag)) {
-      throw runtime_error("account already exists with this XB gamertag");
+    if (this->by_xb_user_id.count(it.second->user_id)) {
+      throw runtime_error("account already exists with this XB user ID");
     }
   }
   for (const auto& it : a->bb_licenses) {
@@ -826,7 +822,7 @@ void AccountIndex::add_locked(shared_ptr<Account> a) {
     this->by_gc_serial_number[it.second->serial_number] = a;
   }
   for (const auto& it : a->xb_licenses) {
-    this->by_xb_gamertag[it.second->gamertag] = a;
+    this->by_xb_user_id[it.second->user_id] = a;
   }
   for (const auto& it : a->bb_licenses) {
     this->by_bb_username[it.second->username] = a;
@@ -855,7 +851,7 @@ void AccountIndex::remove(uint32_t account_id) {
     this->by_gc_serial_number.erase(it.second->serial_number);
   }
   for (const auto& it : a->xb_licenses) {
-    this->by_xb_gamertag.erase(it.second->gamertag);
+    this->by_xb_user_id.erase(it.second->user_id);
   }
   for (const auto& it : a->bb_licenses) {
     this->by_bb_username.erase(it.second->username);
@@ -903,12 +899,12 @@ void AccountIndex::add_gc_license(shared_ptr<Account> account, shared_ptr<GCLice
 }
 
 void AccountIndex::add_xb_license(shared_ptr<Account> account, shared_ptr<XBLicense> license) {
-  if (!this->by_xb_gamertag.emplace(license->gamertag, account).second) {
-    throw runtime_error("gamertag already registered");
+  if (!this->by_xb_user_id.emplace(license->user_id, account).second) {
+    throw runtime_error("user ID already registered");
   }
-  if (!account->xb_licenses.emplace(license->gamertag, license).second) {
-    this->by_xb_gamertag.erase(license->gamertag);
-    throw logic_error("gamertag registered in account but not in account index");
+  if (!account->xb_licenses.emplace(license->user_id, license).second) {
+    this->by_xb_user_id.erase(license->user_id);
+    throw logic_error("user ID registered in account but not in account index");
   }
 }
 
@@ -966,12 +962,12 @@ void AccountIndex::remove_gc_license(shared_ptr<Account> account, uint32_t seria
   account->gc_licenses.erase(it);
 }
 
-void AccountIndex::remove_xb_license(shared_ptr<Account> account, const string& gamertag) {
-  auto it = account->xb_licenses.find(gamertag);
+void AccountIndex::remove_xb_license(shared_ptr<Account> account, uint64_t user_id) {
+  auto it = account->xb_licenses.find(user_id);
   if (it == account->xb_licenses.end()) {
     throw runtime_error("license not registered to account");
   }
-  if (!this->by_xb_gamertag.erase(it->second->gamertag)) {
+  if (!this->by_xb_user_id.erase(it->second->user_id)) {
     throw runtime_error("license registered in account but not in account index");
   }
   account->xb_licenses.erase(it);

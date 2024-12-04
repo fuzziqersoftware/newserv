@@ -656,14 +656,16 @@ CommandDefinition c_delete_license(
     meanings as for add-license. PRIMARY-CREDENTIAL is the first credential\n\
     for the license type; specifically:\n\
       DC-NTE: PRIMARY-CREDENTIAL is the serial number\n\
-      DC: PRIMARY-CREDENTIAL is the serial number (hex)\n\
-      PC: PRIMARY-CREDENTIAL is the serial number (hex)\n\
+      DC: PRIMARY-CREDENTIAL is the serial number (8 hex digits)\n\
+      PC: PRIMARY-CREDENTIAL is the serial number (8 hex digits)\n\
       GC: PRIMARY-CREDENTIAL is the serial number (decimal)\n\
-      XB: PRIMARY-CREDENTIAL is the gamertag\n\
+      XB: PRIMARY-CREDENTIAL is the user ID (16 hex digits)\n\
       BB: PRIMARY-CREDENTIAL is the username\n\
     Examples (deleting licenses from account 385A92C4):\n\
       delete-license 385A92C4 DC 107862F9\n\
+      delete-license 385A92C4 PC 2F94C303\n\
       delete-license 385A92C4 GC 0418572923\n\
+      delete-license 385A92C4 XB 7E29A2950019EB20\n\
       delete-license 385A92C4 BB user1",
     true,
     +[](CommandArgs& args) {
@@ -684,7 +686,7 @@ CommandDefinition c_delete_license(
       } else if (type_str == "GC") {
         args.s->account_index->remove_gc_license(account, stoul(tokens[2], nullptr, 0));
       } else if (type_str == "XB") {
-        args.s->account_index->remove_xb_license(account, tokens[2]);
+        args.s->account_index->remove_xb_license(account, stoull(tokens[2], nullptr, 16));
       } else if (type_str == "BB") {
         args.s->account_index->remove_bb_license(account, tokens[2]);
       } else {

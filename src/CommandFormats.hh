@@ -1962,12 +1962,13 @@ struct C_LoginExtended_GC_9E : C_Login_GC_9E {
 } __packed_ws__(C_LoginExtended_GC_9E, 0x14C);
 
 struct C_Login_XB_9E : C_Login_DC_PC_GC_9D {
-  parray<uint8_t, 0x20> unused;
-  XBNetworkLocation netloc;
-  parray<le_uint32_t, 3> unknown_a1a;
-  le_uint32_t xb_user_id_high = 0;
-  le_uint32_t xb_user_id_low = 0;
-  le_uint32_t unknown_a1b = 0;
+  /* 00C8 */ parray<uint8_t, 0x20> unused;
+  /* 00E8 */ XBNetworkLocation netloc;
+  /* 0118 */ parray<le_uint32_t, 3> unknown_a1a;
+  /* 0124 */ le_uint32_t xb_user_id_high = 0;
+  /* 0128 */ le_uint32_t xb_user_id_low = 0;
+  /* 012C */ le_uint32_t unknown_a1b = 0;
+  /* 0130 */
 } __packed_ws__(C_Login_XB_9E, 0x130);
 
 struct C_LoginExtended_XB_9E : C_Login_XB_9E {

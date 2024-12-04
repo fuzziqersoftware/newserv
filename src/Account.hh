@@ -101,7 +101,7 @@ struct Account {
   std::unordered_map<uint32_t, std::shared_ptr<V1V2License>> dc_licenses;
   std::unordered_map<uint32_t, std::shared_ptr<V1V2License>> pc_licenses;
   std::unordered_map<uint32_t, std::shared_ptr<GCLicense>> gc_licenses;
-  std::unordered_map<std::string, std::shared_ptr<XBLicense>> xb_licenses;
+  std::unordered_map<uint64_t, std::shared_ptr<XBLicense>> xb_licenses;
   std::unordered_map<std::string, std::shared_ptr<BBLicense>> bb_licenses;
 
   Account() = default;
@@ -202,7 +202,7 @@ public:
   void remove_dc_license(std::shared_ptr<Account> account, uint32_t serial_number);
   void remove_pc_license(std::shared_ptr<Account> account, uint32_t serial_number);
   void remove_gc_license(std::shared_ptr<Account> account, uint32_t serial_number);
-  void remove_xb_license(std::shared_ptr<Account> account, const std::string& gamertag);
+  void remove_xb_license(std::shared_ptr<Account> account, uint64_t user_id);
   void remove_bb_license(std::shared_ptr<Account> account, const std::string& username);
 
   std::shared_ptr<Account> from_account_id(uint32_t account_id) const;
@@ -253,7 +253,7 @@ protected:
   std::unordered_map<uint32_t, std::shared_ptr<Account>> by_dc_serial_number;
   std::unordered_map<uint32_t, std::shared_ptr<Account>> by_pc_serial_number;
   std::unordered_map<uint32_t, std::shared_ptr<Account>> by_gc_serial_number;
-  std::unordered_map<std::string, std::shared_ptr<Account>> by_xb_gamertag;
+  std::unordered_map<uint64_t, std::shared_ptr<Account>> by_xb_user_id;
   std::unordered_map<std::string, std::shared_ptr<Account>> by_bb_username;
 
   void add_locked(std::shared_ptr<Account> a);
@@ -274,10 +274,7 @@ protected:
       const std::string& access_key,
       const std::string* password,
       const std::string& character_name);
-  std::shared_ptr<Login> from_xb_credentials_locked(
-      const std::string& gamertag,
-      uint64_t user_id,
-      uint64_t account_id);
+  std::shared_ptr<Login> from_xb_credentials_locked(uint64_t user_id);
   std::shared_ptr<Login> from_bb_credentials_locked(
       const std::string& username,
       const std::string* password);
