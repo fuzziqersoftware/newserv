@@ -135,9 +135,9 @@ WordSelectSet::WordSelectSet(const string& data, Version version, const vector<s
       this->parse_non_windows_t<true, 0x63F, 0x693>(decrypt_and_decompress_pr2_data<true>(data), use_sjis);
       break;
     case Version::GC_EP3_NTE:
+    case Version::GC_V3:
       this->parse_non_windows_t<true, 0x67C, 0x68C>(decrypt_and_decompress_pr2_data<true>(data), use_sjis);
       break;
-    case Version::GC_V3:
     case Version::GC_EP3:
       this->parse_non_windows_t<true, 0x804, 0x68C>(decrypt_and_decompress_pr2_data<true>(data), use_sjis);
       break;
@@ -159,11 +159,13 @@ const string& WordSelectSet::string_for_token(uint16_t token_id) const {
 void WordSelectSet::print(FILE* stream) const {
   fprintf(stream, "strings:\n");
   for (size_t z = 0; z < this->strings.size(); z++) {
-    fprintf(stream, "  [%04zX] \"%s\"\n", z, this->strings[z].c_str());
+    auto escaped = phosg::escape_controls_utf8(this->strings[z]);
+    fprintf(stream, "  [%04zX] \"%s\"\n", z, escaped.c_str());
   }
   fprintf(stream, "token_id_to_string_id:\n");
   for (size_t z = 0; z < this->token_id_to_string_id.size(); z++) {
-    fprintf(stream, "  [%04zX] %04zX \"%s\"\n", z, this->token_id_to_string_id[z], this->string_for_token(z).c_str());
+    auto escaped = phosg::escape_controls_utf8(this->string_for_token(z));
+    fprintf(stream, "  [%04zX] %04zX \"%s\"\n", z, this->token_id_to_string_id[z], escaped.c_str());
   }
 }
 

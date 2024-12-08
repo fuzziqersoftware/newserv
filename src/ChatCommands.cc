@@ -891,6 +891,98 @@ static void proxy_command_patch(shared_ptr<ProxyServer::LinkedSession> ses, cons
   }
 }
 
+static bool console_address_in_range(Version version, uint32_t addr) {
+  if (is_dc(version)) {
+    return ((addr > 0x8C000000) && (addr <= 0x8CFFFFFC));
+  } else if (is_gc(version)) {
+    return ((addr > 0x80000000) && (addr <= 0x817FFFFC));
+  } else {
+    return true;
+  }
+}
+
+static void server_command_readmem(shared_ptr<Client> c, const std::string& args) {
+  check_debug_enabled(c);
+
+  uint32_t addr = stoul(args, nullptr, 16);
+  if (!console_address_in_range(c->version(), addr)) {
+    send_text_message(c, "$C4Address out of\nrange");
+    return;
+  }
+
+  prepare_client_for_patches(c, [wc = weak_ptr<Client>(c), addr]() {
+    auto c = wc.lock();
+    if (!c) {
+      return;
+    }
+    try {
+      auto s = c->require_server_state();
+      const char* function_name = is_dc(c->version())
+          ? "ReadMemoryWordDC"
+          : is_gc(c->version())
+          ? "ReadMemoryWordGC"
+          : "ReadMemoryWordX86";
+      auto fn = s->function_code_index->name_to_function.at(function_name);
+      send_function_call(c, fn, {{"address", addr}});
+      c->function_call_response_queue.emplace_back([wc = weak_ptr<Client>(c), addr](uint32_t ret, uint32_t) {
+        auto c = wc.lock();
+        if (c) {
+          string data_str;
+          if (is_big_endian(c->version())) {
+            be_uint32_t v = ret;
+            data_str = phosg::format_data_string(&v, sizeof(v));
+          } else {
+            le_uint32_t v = ret;
+            data_str = phosg::format_data_string(&v, sizeof(v));
+          }
+          send_text_message_printf(c, "Bytes at %08" PRIX32 ":\n$C6%s", addr, data_str.c_str());
+        }
+      });
+    } catch (const out_of_range&) {
+      send_text_message(c, "Invalid patch name");
+    }
+  });
+}
+
+static void server_command_writemem(shared_ptr<Client> c, const std::string& args) {
+  check_debug_enabled(c);
+
+  auto tokens = phosg::split(args, ' ');
+  if (tokens.size() < 2) {
+    send_text_message(c, "Incorrect arguments");
+    return;
+  }
+
+  uint32_t addr = stoul(tokens[0], nullptr, 16);
+  if (!console_address_in_range(c->version(), addr)) {
+    send_text_message(c, "$C4Address out of\nrange");
+    return;
+  }
+
+  tokens.erase(tokens.begin());
+  std::string data = phosg::parse_data_string(phosg::join(tokens, " "));
+
+  prepare_client_for_patches(c, [wc = weak_ptr<Client>(c), addr, data]() {
+    auto c = wc.lock();
+    if (!c) {
+      return;
+    }
+    try {
+      auto s = c->require_server_state();
+      const char* function_name = is_dc(c->version())
+          ? "WriteMemoryDC"
+          : is_gc(c->version())
+          ? "WriteMemoryGC"
+          : "WriteMemoryX86";
+      auto fn = s->function_code_index->name_to_function.at(function_name);
+      send_function_call(c, fn, {{"dest_addr", addr}, {"size", data.size()}}, data.data(), data.size());
+      c->function_call_response_queue.emplace_back(empty_function_call_response_handler);
+    } catch (const out_of_range&) {
+      send_text_message(c, "Invalid patch name");
+    }
+  });
+}
+
 static void server_command_persist(shared_ptr<Client> c, const std::string&) {
   auto l = c->require_lobby();
   if (l->check_flag(Lobby::Flag::DEFAULT)) {
@@ -2703,6 +2795,7 @@ static const unordered_map<string, ChatCommandDefinition> chat_commands({
     {"$qsyncall", {server_command_qsyncall, proxy_command_qsyncall}},
     {"$quest", {server_command_quest, nullptr}},
     {"$rand", {server_command_rand, proxy_command_rand}},
+    {"$readmem", {server_command_readmem, nullptr}},
     {"$save", {server_command_save, nullptr}},
     {"$savechar", {server_command_savechar, nullptr}},
     {"$saverec", {server_command_saverec, nullptr}},
@@ -2728,6 +2821,7 @@ static const unordered_map<string, ChatCommandDefinition> chat_commands({
     {"$warpall", {server_command_warpall, proxy_command_warpall}},
     {"$what", {server_command_what, nullptr}},
     {"$where", {server_command_where, nullptr}},
+    {"$writemem", {server_command_writemem, nullptr}},
 });
 
 struct SplitCommand {

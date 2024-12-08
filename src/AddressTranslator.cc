@@ -5,6 +5,7 @@
 #include <phosg/Filesystem.hh>
 #include <phosg/Strings.hh>
 #include <resource_file/ExecutableFormats/DOLFile.hh>
+#include <resource_file/ExecutableFormats/PEFile.hh>
 #include <resource_file/ExecutableFormats/XBEFile.hh>
 
 using namespace std;
@@ -112,9 +113,13 @@ public:
       this->directory.pop_back();
     }
     for (const auto& filename : phosg::list_directory(this->directory)) {
+      if (filename.size() < 4) {
+        continue;
+      }
+      string name = filename.substr(0, filename.size() - 4);
+      string path = directory + "/" + filename;
+
       if (phosg::ends_with(filename, ".dol")) {
-        string name = filename.substr(0, filename.size() - 4);
-        string path = directory + "/" + filename;
         ResourceDASM::DOLFile dol(path.c_str());
         auto mem = make_shared<ResourceDASM::MemoryContext>();
         dol.load_into(mem);
@@ -122,16 +127,18 @@ public:
         this->enable_ppc = true;
         this->log.info("Loaded %s", name.c_str());
       } else if (phosg::ends_with(filename, ".xbe")) {
-        string name = filename.substr(0, filename.size() - 4);
-        string path = directory + "/" + filename;
         ResourceDASM::XBEFile xbe(path.c_str());
         auto mem = make_shared<ResourceDASM::MemoryContext>();
         xbe.load_into(mem);
         this->mems.emplace(name, mem);
         this->log.info("Loaded %s", name.c_str());
+      } else if (phosg::ends_with(filename, ".exe")) {
+        ResourceDASM::PEFile pe(path.c_str());
+        auto mem = make_shared<ResourceDASM::MemoryContext>();
+        pe.load_into(mem);
+        this->mems.emplace(name, mem);
+        this->log.info("Loaded %s", name.c_str());
       } else if (phosg::ends_with(filename, ".bin")) {
-        string name = filename.substr(0, filename.size() - 4);
-        string path = directory + "/" + filename;
         string data = phosg::load_file(path);
         auto mem = make_shared<ResourceDASM::MemoryContext>();
         mem->allocate_at(0x8C010000, data.size());

@@ -3,7 +3,7 @@
 
 # This is also the file I've chosen to document how to write code for newserv's
 # functions subsystem. There are three kinds of functions: includes, patches,
-# and general functions. This file, WriteMemory, is a general function. It
+# and general functions. This file, WriteMemoryGC, is a general function. It
 # writes a variable-length block of data to a specified address in the client's
 # memory.
 
@@ -28,7 +28,7 @@
 
 # For example, to use this function to write the bytes 38 00 00 05 to the
 # address 8010521C, send_function_call could be called like this:
-#   auto fn = s->function_code_index->name_to_function.at("WriteMemory");
+#   auto fn = s->function_code_index->name_to_function.at("WriteMemoryGC");
 #   unordered_map<string, uint32_t> label_writes(
 #       {{"dest_addr", 0x8010521C}, {"size", 4}});
 #   string suffix("\x38\x00\x00\x05", 4);
@@ -52,8 +52,8 @@
 # when sending the B2 command. This is needed if the server needs to do
 # something when the B3 response is received. If specified, the index must be in
 # the range 01-FF. The DOL loading functionality, which this function is a part
-# of, uses indexes E0, E1, and E2, but the WriteMemory function can also be used
-# for other purposes.
+# of, uses indexes E0, E1, and E2, but the WriteMemoryGC function can also be
+# used for other purposes.
 .meta index=E1
 
 # To hide a patch from the Patches menu (so it can only be used with the $patch

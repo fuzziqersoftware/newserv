@@ -67,7 +67,7 @@ string CompiledFunctionCode::generate_client_command_t(
       if (offset > modified_code.size() - 4) {
         throw runtime_error("label out of range");
       }
-      *reinterpret_cast<be_uint32_t*>(modified_code.data() + offset) = it.second;
+      *reinterpret_cast<U32T<FooterT::IsBE>*>(modified_code.data() + offset) = it.second;
     }
     w.write(modified_code);
   } else {
