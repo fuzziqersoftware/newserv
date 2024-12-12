@@ -29,6 +29,7 @@ See TODO.md for a list of known issues and future work I've curated, or go to th
     * [Memory patches, client functions, and DOL files](#memory-patches-client-functions-and-dol-files)
     * [Using newserv as a proxy](#using-newserv-as-a-proxy)
     * [Chat commands](#chat-commands)
+    * [REST API](#rest-api)
 * [Non-server features](#non-server-features)
 
 # History
@@ -663,6 +664,29 @@ The remaining subcommands are only available if cheat mode is enabled on the ser
 * `$edit exp N`: Set your total amount of EXP (does not affect level)
 * `$edit level N`: Set your current level (recomputes stats, but does not affect EXP)
 * `$edit tech TECH-NAME LEVEL`: Set the level of one of your techniques
+
+## REST API
+
+newserv has an optional HTTP server that provides a way to programmatically get data from the server in realtime. This is intended for use with external integrations; for example, a web site could query this API to get the current player count to display on the home page.
+
+The HTTP server is disabled by default, and you have to explicitly enable it in config.json if you want this functionality. If you enable it, make sure that the HTTP port can't be accessed from the public Internet! The API provides a lot of internal data about players and games, and it should only be accessed by programs that you've written or that you trust.
+
+To enable the HTTP server, add a port number in the HTTPListen list in config.json. The HTTP server will listen on that port.
+
+Currently, all endpoints only provide data (and hence are GET requests); there are no methods to make changes to the server state or take actions. All returned data is JSON-encoded. The HTTP server has the following endpoints:
+* `/y/data/ep3-cards`: Returns the Episode 3 card definitions.
+* `/y/data/ep3-cards-trial`: Returns the Episode 3 Trial Edition card definitions.
+* `/y/data/common-tables`: Returns the parameters for generating common items (ItemPT files). This endpoint returns a lot of data and can be slow!
+* `/y/data/rare-tables`: Returns a list of rare table names.
+* `/y/data/rare-tables/<TABLE-NAME>` (for example, `/y/data/rare-tables/rare-table-v4`): Returns the contents of a rare item table.
+* `/y/data/config`: Returns the server's configuration file.
+* `/y/clients`: Returns information about all connected clients on the game server.
+* `/y/proxy-clients`: Returns information about all connected clients on the proxy server.
+* `/y/lobbies`: Returns information about all lobbies and games.
+* `/y/server`: Returns information about the server.
+* `/y/rare-drops/stream`: WebSocket endpoint that sends messages whenever an announceable rare item is dropped in any game. Announceable rare items are items for which an in-game or server-wide text message is sent announcing the find.
+* `/y/summary`: Returns a summary of the server's state, connected clients, active games, and proxy sessions.
+* `/y/all`: Returns everything. This endpoint can be slow!
 
 # Non-server features
 

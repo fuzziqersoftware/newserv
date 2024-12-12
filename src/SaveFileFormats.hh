@@ -722,7 +722,7 @@ struct PSOXBCharacterFileCharacter {
   /* 1F78:1B5C */ parray<SaveFileShortcutEntryXB, 16> shortcuts;
   /* 24B8:209C */ pstring<TextEncoding::MARKED, 0xAC> auto_reply;
   /* 2518:20FC */ pstring<TextEncoding::MARKED, 0xAC> info_board;
-  // // TODO: The following fields are guesses and have not been verified.
+  // TODO: The following fields are guesses and have not been verified.
   /* 2610:21F4 */ PlayerRecordsBattle battle_records;
   /* 2628:220C */ parray<uint8_t, 4> unknown_a4;
   /* 262C:2210 */ PlayerRecordsChallengeV3 challenge_records;
