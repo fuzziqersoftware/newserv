@@ -1869,7 +1869,7 @@ void Server::handle_CAx0B_mulligan_hand(shared_ptr<Client>, const string& data) 
 
 void Server::handle_CAx0C_end_mulligan_phase(shared_ptr<Client>, const string& data) {
   const auto& in_cmd = check_size_t<G_EndInitialRedrawPhase_Ep3_CAx0C>(data);
-  this->send_debug_command_received_message(in_cmd.client_id, in_cmd.header.subsubcommand, "SETUP ADV 2");
+  this->send_debug_command_received_message(in_cmd.client_id, in_cmd.header.subsubcommand, "HAND READY");
   if (in_cmd.client_id >= 4) {
     throw runtime_error("invalid client ID");
   }
@@ -2495,7 +2495,7 @@ void Server::handle_CAx34_subtract_ally_atk_points(shared_ptr<Client>, const str
 
 void Server::handle_CAx37_client_ready_to_advance_from_starter_roll_phase(shared_ptr<Client>, const string& data) {
   const auto& in_cmd = check_size_t<G_AdvanceFromStartingRollsPhase_Ep3_CAx37>(data);
-  this->send_debug_command_received_message(in_cmd.client_id, in_cmd.header.subsubcommand, "SETUP ADV 1");
+  this->send_debug_command_received_message(in_cmd.client_id, in_cmd.header.subsubcommand, "CHOOSE ORDER");
   if (in_cmd.client_id >= 4) {
     throw runtime_error("invalid client ID");
   }
