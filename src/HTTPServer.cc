@@ -614,7 +614,7 @@ phosg::JSON HTTPServer::generate_game_client_json_st(shared_ptr<const Client> c,
     ret.emplace("NameColor", p->disp.visual.name_color.load());
     ret.emplace("ExtraModel", (p->disp.visual.validation_flags & 2) ? p->disp.visual.extra_model : phosg::JSON(nullptr));
     ret.emplace("SectionID", name_for_section_id(p->disp.visual.section_id));
-    ret.emplace("CharClass", name_for_char_class(p->disp.visual.section_id));
+    ret.emplace("CharClass", name_for_char_class(p->disp.visual.char_class));
     ret.emplace("Costume", p->disp.visual.costume.load());
     ret.emplace("Skin", p->disp.visual.skin.load());
     ret.emplace("Face", p->disp.visual.face.load());
