@@ -381,3 +381,25 @@ Note: Without a TextEnglish.pr2/pr3 patch, the menu items for these sounds will 
 042256E4 3F40XXXX
 042256E8 635AYYYY
 042256EC 4800000C
+
+Enable seasonal rappies offline (Ep2 only)
+US v1.0 => 040C1658 60000000
+        => 040C165C 3800000X
+US v1.1 => 040C1658 60000000
+        => 040C165C 3800000X
+US v1.2 => 040C17F0 60000000
+        => 040C17F4 3800000X
+JP v1.2 => 040C13B4 60000000
+        => 040C13B8 3800000X
+JP v1.3 => 040C16B8 60000000
+        => 040C16BC 3800000X
+JP v1.4 => 040C18EC 60000000
+        => 040C18F0 3800000X
+JP v1.5 => 040C17E0 60000000
+        => 040C17E4 3800000X
+EU      => 040C17B8 60000000
+        => 040C17BC 3800000X
+X = 1: Saint Rappy
+X = 4: Egg Rappy
+X = 5: Hallo Rappy
+X = anything else: Love Rappy
