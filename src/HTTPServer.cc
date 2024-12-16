@@ -567,7 +567,6 @@ phosg::JSON HTTPServer::generate_game_client_json_st(shared_ptr<const Client> c,
   auto p = c->character(false, false);
   if (p) {
     if (!is_ep3(c->version())) {
-      ret.emplace("InventoryItems", p->inventory.num_items);
       if (c->version() != Version::DC_NTE) {
         ret.emplace("InventoryLanguage", p->inventory.language);
         ret.emplace("NumHPMaterialsUsed", p->get_material_usage(PSOBBCharacterFile::MaterialType::HP));
@@ -593,6 +592,7 @@ phosg::JSON HTTPServer::generate_game_client_json_st(shared_ptr<const Client> c,
         }
         items_json.emplace_back(std::move(item_dict));
       }
+      ret.emplace("InventoryItems", std::move(items_json));
       ret.emplace("ATP", p->disp.stats.char_stats.atp.load());
       ret.emplace("MST", p->disp.stats.char_stats.mst.load());
       ret.emplace("EVP", p->disp.stats.char_stats.evp.load());
