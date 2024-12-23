@@ -1228,7 +1228,7 @@ unordered_map<string, string> decode_qst_data(const string& data) {
     // the filename was shifted over by one byte. To detect this, we check if
     // the V3 type field has a reasonable value, and if not, we assume the file
     // is for PSO DC.
-    if (r.pget_u32l(sizeof(PSOCommandHeaderDCV3) + offsetof(S_OpenFile_PC_GC_44_A6, type)) > 3) {
+    if (r.pget_u16l(sizeof(PSOCommandHeaderDCV3) + offsetof(S_OpenFile_PC_GC_44_A6, type)) > 3) {
       return decode_qst_data_t<PSOCommandHeaderDCV3, S_OpenFile_DC_44_A6>(data);
     } else {
       return decode_qst_data_t<PSOCommandHeaderDCV3, S_OpenFile_PC_GC_44_A6>(data);
