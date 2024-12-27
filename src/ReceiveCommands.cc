@@ -399,6 +399,8 @@ void on_login_server_login_complete(shared_ptr<Client> c) {
     send_change_event(c, s->pre_lobby_event);
   }
 
+  send_server_time(c);
+
   if (is_ep3(c->version())) {
     send_ep3_rank_update(c);
     send_get_player_info(c);
