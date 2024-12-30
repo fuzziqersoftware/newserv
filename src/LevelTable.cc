@@ -4,6 +4,7 @@
 
 #include <phosg/Filesystem.hh>
 
+#include "CommonFileFormats.hh"
 #include "Compression.hh"
 #include "PSOEncryption.hh"
 
@@ -63,7 +64,8 @@ LevelTableV2::LevelTableV2(const string& data, bool compressed) {
     r = phosg::StringReader(data);
   }
 
-  const auto& offsets = r.pget<Offsets>(r.pget_u32l(r.size() - 0x10));
+  const auto& footer = r.pget<RELFileFooter>(r.size() - sizeof(RELFileFooter));
+  const auto& offsets = r.pget<Offsets>(footer.root_offset);
   const auto& level_deltas_offsets = r.pget<parray<le_uint32_t, 9>>(offsets.level_deltas);
   const auto& base_stats_offsets = r.pget<parray<le_uint32_t, 9>>(offsets.base_stats);
   for (size_t char_class = 0; char_class < 9; char_class++) {
@@ -112,7 +114,8 @@ LevelTableV3BE::LevelTableV3BE(const string& data, bool encrypted) {
   //     u32 offset:
   //       u32[12] offsets:
   //         LevelStatsDeltaBE[200] level_deltas
-  const auto& offsets = r.pget<parray<be_uint32_t, 12>>(r.pget_u32b(r.pget_u32b(r.size() - 0x10)));
+  const auto& footer = r.pget<RELFileFooterBE>(r.size() - sizeof(RELFileFooterBE));
+  const auto& offsets = r.pget<parray<be_uint32_t, 12>>(r.pget_u32b(footer.root_offset));
   for (size_t char_class = 0; char_class < 12; char_class++) {
     const auto& src_deltas = r.pget<parray<LevelStatsDeltaBE, 200>>(offsets[char_class]);
     for (size_t level = 0; level < 200; level++) {
@@ -189,7 +192,8 @@ LevelTableV4::LevelTableV4(const string& data, bool compressed) {
     r = phosg::StringReader(data);
   }
 
-  const auto& offsets = r.pget<Offsets>(r.pget_u32l(r.size() - 0x10));
+  const auto& footer = r.pget<RELFileFooter>(r.size() - sizeof(RELFileFooter));
+  const auto& offsets = r.pget<Offsets>(footer.root_offset);
   const auto& level_deltas_offsets = r.pget<parray<le_uint32_t, 12>>(offsets.level_deltas);
   const auto& base_stats_offsets = r.pget<parray<le_uint32_t, 12>>(offsets.base_stats);
   for (size_t char_class = 0; char_class < 12; char_class++) {

@@ -256,6 +256,8 @@ CommandDefinition c_reload(
           args.s->load_bb_private_keys(true);
         } else if (type == "accounts") {
           args.s->load_accounts(true);
+        } else if (type == "maps") {
+          args.s->load_maps(true);
         } else if (type == "caches") {
           args.s->clear_file_caches(true);
         } else if (type == "patch-files") {
@@ -1175,8 +1177,8 @@ void fn_create_item(CommandArgs& args) {
     send_text_message(ses->client_channel, "$C7Next drop:\n" + name);
 
   } else {
-    send_drop_stacked_item_to_channel(s, ses->client_channel, item, ses->floor, ses->x, ses->z);
-    send_drop_stacked_item_to_channel(s, ses->server_channel, item, ses->floor, ses->x, ses->z);
+    send_drop_stacked_item_to_channel(s, ses->client_channel, item, ses->floor, ses->pos);
+    send_drop_stacked_item_to_channel(s, ses->server_channel, item, ses->floor, ses->pos);
 
     string name = s->describe_item(ses->version(), ses->next_drop_item, true);
     send_text_message(ses->client_channel, "$C7Item created:\n" + name);

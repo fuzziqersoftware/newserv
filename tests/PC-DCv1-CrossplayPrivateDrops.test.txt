@@ -59,6 +59,9 @@ I 97037 2023-12-29 15:55:52 - [Commands] Received from C-2 (version=PC_V2 comman
 I 97037 2023-12-29 15:55:52 - [Commands] Sending to C-2 (version=PC_V2 command=04 flag=00)
 0000 | 0C 00 04 00 00 00 01 00 1E B1 05 17             |
 I 97037 2023-12-29 15:55:52 - [Commands] Sending to C-2 (version=PC_V2 command=07 flag=05)
+0000 | 20 00 B1 00 32 30 32 34 3A 31 32 3A 32 39 3A 20 |     2024:12:29:
+0010 | 32 33 3A 34 33 3A 30 39 2E 30 30 30 00 01 00 00 | 23:43:09.000
+I 97037 2023-12-29 15:55:52 - [Commands] Sending to C-2 (version=PC_V2 command=07 flag=05)
 0000 | 0C 01 07 05 11 00 00 11 FF FF FF FF 04 00 41 00 |               A
 0010 | 6C 00 65 00 78 00 61 00 6E 00 64 00 72 00 69 00 | l e x a n d r i
 0020 | 61 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 | a
@@ -546,6 +549,9 @@ I 97037 2023-12-29 15:56:51 - [Commands] Received from C-4 (version=DC_V1 comman
 0100 | 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 |
 0110 | 00 00 00 00                                     |
 I 97037 2023-12-29 15:56:51 - [Commands] Sending to C-4 (version=DC_V1 command=07 flag=05)
+0000 | B1 00 20 00 32 30 32 34 3A 31 32 3A 32 39 3A 20 |     2024:12:29:
+0010 | 32 33 3A 34 34 3A 32 33 2E 30 30 30 00 01 00 00 | 23:44:23.000
+I 97037 2023-12-29 15:56:51 - [Commands] Sending to C-4 (version=DC_V1 command=07 flag=05)
 0000 | 07 04 90 00 11 00 00 11 FF FF FF FF 04 00 41 6C |               Al
 0010 | 65 78 61 6E 64 72 69 61 00 00 00 00 00 00 00 00 | exandria
 0020 | 11 00 00 11 11 22 22 11 04 0F 47 6F 20 74 6F 20 |      ""   Go to
@@ -839,9 +845,9 @@ I 97037 2023-12-29 15:57:03 - [Commands] Sending to C-5 (88888888) (version=DC_V
 I 97037 2023-12-29 15:57:05 - [Commands] Received from C-5 (88888888) (version=DC_V1 command=09 flag=00)
 0000 | 09 00 0C 00 44 00 00 44 15 00 00 00             |     D  D
 I 97037 2023-12-29 15:57:05 - [Commands] Sending to C-5 (88888888) (version=DC_V1 command=11 flag=00)
-0000 | 11 00 24 00 00 00 00 00 00 00 00 00 54 61 6C 69 |   $         Tali
-0010 | 0A 20 20 52 41 63 61 73 65 61 6C 20 4C 76 31 38 |    RAcaseal Lv18
-0020 | 35 20 45 00                                     | 5 E
+0000 | 11 00 30 00 00 00 00 00 00 00 00 00 54 61 6C 69 |   0         Tali
+0010 | 20 09 43 32 50 43 09 43 37 0A 20 20 52 41 63 61 |   C2PC C7   RAca
+0020 | 73 65 61 6C 20 4C 76 31 38 35 20 45 00 00 00 00 | seal Lv185 E
 I 97037 2023-12-29 15:57:06 - [Commands] Received from C-5 (88888888) (version=DC_V1 command=10 flag=00)
 0000 | 10 00 0C 00 44 00 00 44 15 00 00 00             |     D  D
 I 97037 2023-12-29 15:57:06 - [C-5] Assigned inventory item IDs
@@ -3522,7 +3528,7 @@ I 97037 2023-12-29 15:57:51 - [Game:15] Creating item CC000000 at 01:479.973,568
 I 97037 2023-12-29 15:57:51 - [Lobby:00000015:FloorItems:01] Added floor item CC000000 at 479.973, 568.098 with drop number 0 visible to 001
 I 97037 2023-12-29 15:57:51 - [Lobby:00000015:FloorItems:01] Evicted 0 items
 I 97037 2023-12-29 15:57:51 - [Commands] Sending to C-3 (Tali) (version=PC_V2 command=60 flag=00)
-0000 | 30 00 60 00 5F 0B 00 00 01 00 7B 00 9B FC EF 43 | 0 ` _     {    C
+0000 | 30 00 60 00 5F 0B 00 00 01 02 7B 00 9B FC EF 43 | 0 ` _     {    C
 0010 | 42 06 0E 44 00 00 00 00 04 00 00 00 00 00 00 00 | B  D
 0020 | 00 00 00 00 00 00 00 CC 16 00 00 00 00 00 00 00 |
 I 97037 2023-12-29 15:57:51 - [Game:15] Creating item from box 007B (area 01)
@@ -3620,7 +3626,7 @@ I 97037 2023-12-29 15:57:54 - [Game:15] Creating item CC000001 at 01:485.634,586
 I 97037 2023-12-29 15:57:54 - [Lobby:00000015:FloorItems:01] Added floor item CC000001 at 485.634, 586.012 with drop number 1 visible to 001
 I 97037 2023-12-29 15:57:54 - [Lobby:00000015:FloorItems:01] Evicted 0 items
 I 97037 2023-12-29 15:57:54 - [Commands] Sending to C-3 (Tali) (version=PC_V2 command=60 flag=00)
-0000 | 30 00 60 00 5F 0B 00 00 01 00 7A 00 1C D1 F2 43 | 0 ` _     z    C
+0000 | 30 00 60 00 5F 0B 00 00 01 02 7A 00 1C D1 F2 43 | 0 ` _     z    C
 0010 | C2 80 12 44 00 00 00 00 01 01 00 00 00 00 01 00 |    D
 0020 | 00 00 00 00 01 00 00 CC 00 00 00 00 00 00 00 00 |
 I 97037 2023-12-29 15:57:54 - [Game:15] Creating item from box 007A (area 01)
@@ -3632,7 +3638,7 @@ I 97037 2023-12-29 15:57:54 - [Game:15] Creating item CC000002 at 01:485.634,586
 I 97037 2023-12-29 15:57:54 - [Lobby:00000015:FloorItems:01] Added floor item CC000002 at 485.634, 586.012 with drop number 2 visible to 002
 I 97037 2023-12-29 15:57:54 - [Lobby:00000015:FloorItems:01] Evicted 0 items
 I 97037 2023-12-29 15:57:54 - [Commands] Sending to C-5 (88888888) (version=DC_V1 command=60 flag=00)
-0000 | 60 00 30 00 5F 0B 00 00 01 00 7A 00 1C D1 F2 43 | ` 0 _     z    C
+0000 | 60 00 30 00 5F 0B 00 00 01 02 7A 00 1C D1 F2 43 | ` 0 _     z    C
 0010 | C2 80 12 44 00 00 00 00 03 00 00 00 00 01 00 00 |    D
 0020 | 00 00 00 00 02 00 00 CC 00 00 00 00 00 00 00 00 |
 I 97037 2023-12-29 15:57:54 - [Commands] Received from C-5 (88888888) (version=DC_V1 command=60 flag=00)
@@ -4250,7 +4256,7 @@ I 97037 2023-12-29 15:58:41 - [Game:15] Creating item CC000003 at 01:538.379,394
 I 97037 2023-12-29 15:58:41 - [Lobby:00000015:FloorItems:01] Added floor item CC000003 at 538.379, 394.393 with drop number 4 visible to 001
 I 97037 2023-12-29 15:58:41 - [Lobby:00000015:FloorItems:01] Evicted 0 items
 I 97037 2023-12-29 15:58:41 - [Commands] Sending to C-3 (Tali) (version=PC_V2 command=60 flag=00)
-0000 | 30 00 60 00 5F 0B 00 00 01 00 7D 00 3E 98 06 44 | 0 ` _     } >  D
+0000 | 30 00 60 00 5F 0B 00 00 01 02 7D 00 3E 98 06 44 | 0 ` _     } >  D
 0010 | 5E 32 C5 43 00 00 00 00 03 00 00 00 00 01 00 00 | ^2 C
 0020 | 00 00 00 00 03 00 00 CC 00 00 00 00 00 00 00 00 |
 I 97037 2023-12-29 15:58:41 - [Game:15] Creating item from box 007D (area 01)
@@ -4262,7 +4268,7 @@ I 97037 2023-12-29 15:58:41 - [Game:15] Creating item CC000004 at 01:538.379,394
 I 97037 2023-12-29 15:58:41 - [Lobby:00000015:FloorItems:01] Added floor item CC000004 at 538.379, 394.393 with drop number 5 visible to 002
 I 97037 2023-12-29 15:58:41 - [Lobby:00000015:FloorItems:01] Evicted 0 items
 I 97037 2023-12-29 15:58:41 - [Commands] Sending to C-5 (88888888) (version=DC_V1 command=60 flag=00)
-0000 | 60 00 30 00 5F 0B 00 00 01 00 7D 00 3E 98 06 44 | ` 0 _     } >  D
+0000 | 60 00 30 00 5F 0B 00 00 01 02 7D 00 3E 98 06 44 | ` 0 _     } >  D
 0010 | 5E 32 C5 43 00 00 00 00 01 02 00 00 00 00 01 00 | ^2 C
 0020 | 04 00 00 00 04 00 00 CC 00 00 00 00 00 00 00 00 |
 I 97037 2023-12-29 15:58:41 - [Commands] Received from C-5 (88888888) (version=DC_V1 command=60 flag=00)
@@ -4330,7 +4336,7 @@ I 97037 2023-12-29 15:58:43 - [Game:15] Creating item CC000005 at 01:556.451,393
 I 97037 2023-12-29 15:58:43 - [Lobby:00000015:FloorItems:01] Added floor item CC000005 at 556.451, 393.417 with drop number 6 visible to 002
 I 97037 2023-12-29 15:58:43 - [Lobby:00000015:FloorItems:01] Evicted 0 items
 I 97037 2023-12-29 15:58:43 - [Commands] Sending to C-5 (88888888) (version=DC_V1 command=60 flag=00)
-0000 | 60 00 30 00 5F 0B 00 00 01 00 7C 00 D5 1C 0B 44 | ` 0 _     |    D
+0000 | 60 00 30 00 5F 0B 00 00 01 02 7C 00 D5 1C 0B 44 | ` 0 _     |    D
 0010 | 69 B5 C4 43 00 00 00 00 04 00 00 00 00 00 00 00 | i  C
 0020 | 00 00 00 00 05 00 00 CC 0F 00 00 00 00 00 00 00 |
 I 97037 2023-12-29 15:58:43 - [Commands] Received from C-5 (88888888) (version=DC_V1 command=60 flag=00)

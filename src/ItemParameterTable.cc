@@ -1,5 +1,7 @@
 #include "ItemParameterTable.hh"
 
+#include "CommonFileFormats.hh"
+
 using namespace std;
 
 ItemParameterTable::ItemParameterTable(shared_ptr<const string> data, Version version)
@@ -416,15 +418,12 @@ ItemParameterTable::ToolV4 ItemParameterTable::ToolV3T<BE>::to_v4() const {
 
 template <bool BE>
 size_t indirect_lookup_2d_count(const phosg::StringReader& r, size_t root_offset, size_t co_index) {
-  using ArrayRefT = typename std::conditional_t<BE, ItemParameterTable::ArrayRefBE, ItemParameterTable::ArrayRef>;
-  return r.pget<ArrayRefT>(root_offset + sizeof(ArrayRefT) * co_index).count;
+  return r.pget<ArrayRefT<BE>>(root_offset + sizeof(ArrayRefT<BE>) * co_index).count;
 }
 
 template <typename T, bool BE>
 const T& indirect_lookup_2d(const phosg::StringReader& r, size_t root_offset, size_t co_index, size_t item_index) {
-  using ArrayRefT = typename std::conditional_t<BE, ItemParameterTable::ArrayRefBE, ItemParameterTable::ArrayRef>;
-
-  const auto& co = r.pget<ArrayRefT>(root_offset + sizeof(ArrayRefT) * co_index);
+  const auto& co = r.pget<ArrayRefT<BE>>(root_offset + sizeof(ArrayRefT<BE>) * co_index);
   if (item_index >= co.count) {
     throw out_of_range("item ID out of range");
   }

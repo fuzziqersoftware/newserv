@@ -27,12 +27,18 @@ shared_ptr<Lobby::FloorItem> Lobby::FloorItemManager::find(uint32_t item_id) con
   return this->items.at(item_id);
 }
 
-void Lobby::FloorItemManager::add(const ItemData& item, float x, float z, uint16_t flags) {
+void Lobby::FloorItemManager::add(
+    const ItemData& item,
+    const VectorXZF& pos,
+    shared_ptr<const MapState::ObjectState> from_obj,
+    shared_ptr<const MapState::EnemyState> from_ene,
+    uint16_t flags) {
   auto fi = make_shared<FloorItem>();
   fi->data = item;
-  fi->x = x;
-  fi->z = z;
+  fi->pos = pos;
   fi->drop_number = this->next_drop_number++;
+  fi->from_obj = from_obj;
+  fi->from_ene = from_ene;
   fi->flags = flags;
   this->add(fi);
 }
@@ -52,7 +58,7 @@ void Lobby::FloorItemManager::add(shared_ptr<Lobby::FloorItem> fi) {
     }
   }
   this->log.info("Added floor item %08" PRIX32 " at %g, %g with drop number %" PRIu64 " with flags %03hX",
-      fi->data.id.load(), fi->x, fi->z, fi->drop_number, fi->flags);
+      fi->data.id.load(), fi->pos.x.load(), fi->pos.z.load(), fi->drop_number, fi->flags);
 }
 
 std::shared_ptr<Lobby::FloorItem> Lobby::FloorItemManager::remove(uint32_t item_id, uint8_t client_id) {
@@ -71,7 +77,7 @@ std::shared_ptr<Lobby::FloorItem> Lobby::FloorItemManager::remove(uint32_t item_
   }
   this->items.erase(item_it);
   this->log.info("Removed floor item %08" PRIX32 " at %g, %g with drop number %" PRIu64 " with flags %03hX",
-      fi->data.id.load(), fi->x, fi->z, fi->drop_number, fi->flags);
+      fi->data.id.load(), fi->pos.x.load(), fi->pos.z.load(), fi->drop_number, fi->flags);
   return fi;
 }
 
@@ -142,7 +148,6 @@ Lobby::Lobby(shared_ptr<ServerState> s, uint32_t id, bool is_game)
       min_level(0),
       max_level(0xFFFFFFFF),
       next_game_item_id(0xCC000000),
-      base_version(Version::GC_V3),
       allowed_versions(0x0000),
       override_section_id(0xFF),
       episode(Episode::NONE),
@@ -196,24 +201,22 @@ shared_ptr<Lobby::ChallengeParameters> Lobby::require_challenge_params() const {
   return this->challenge_params;
 }
 
-void Lobby::set_drop_mode(DropMode new_mode) {
-  this->drop_mode = new_mode;
-
-  bool should_have_item_creator = (this->base_version == Version::BB_V4) ||
-      ((new_mode != DropMode::DISABLED) && (new_mode != DropMode::CLIENT));
-  if (should_have_item_creator && !this->item_creator) {
-    this->create_item_creator();
-  } else if (!should_have_item_creator && this->item_creator) {
+void Lobby::create_item_creator(Version logic_version) {
+  if (!this->is_game() || this->episode == Episode::EP3) {
     this->item_creator.reset();
+    return;
   }
-}
 
-void Lobby::create_item_creator() {
   auto s = this->require_server_state();
+
+  if (logic_version == Version::UNKNOWN) {
+    auto leader_c = this->clients[this->leader_id];
+    logic_version = leader_c ? leader_c->version() : Version::BB_V4;
+  }
 
   shared_ptr<const RareItemSet> rare_item_set;
   shared_ptr<const CommonItemSet> common_item_set;
-  switch (this->base_version) {
+  switch (logic_version) {
     case Version::PC_PATCH:
     case Version::BB_PATCH:
     case Version::GC_EP3_NTE:
@@ -245,6 +248,7 @@ void Lobby::create_item_creator() {
     default:
       throw logic_error("invalid lobby base version");
   }
+
   this->item_creator = make_shared<ItemCreator>(
       common_item_set,
       rare_item_set,
@@ -252,29 +256,14 @@ void Lobby::create_item_creator() {
       s->tool_random_set,
       s->weapon_random_sets.at(this->difficulty),
       s->tekker_adjustment_set,
-      s->item_parameter_table(this->base_version),
-      s->item_stack_limits(this->base_version),
+      s->item_parameter_table(logic_version),
+      s->item_stack_limits(logic_version),
       this->episode,
       (this->mode == GameMode::SOLO) ? GameMode::NORMAL : this->mode,
       this->difficulty,
       this->effective_section_id(),
       this->opt_rand_crypt,
       this->quest ? this->quest->battle_rules : nullptr);
-}
-
-void Lobby::change_section_id() {
-  if (this->item_creator) {
-    uint8_t new_section_id = this->effective_section_id();
-    if (this->item_creator->get_section_id() != new_section_id) {
-      this->log.info("Changing section ID to %s", name_for_section_id(new_section_id));
-      this->item_creator->set_section_id(new_section_id);
-      for (const auto& c : this->clients) {
-        if (c && c->config.check_flag(Client::Flag::DEBUG_ENABLED)) {
-          send_text_message_printf(c, "$C5Section ID changed\nto %s (%hhu)", name_for_section_id(new_section_id), new_section_id);
-        }
-      }
-    }
-  }
 }
 
 uint8_t Lobby::effective_section_id() const {
@@ -291,199 +280,55 @@ uint8_t Lobby::effective_section_id() const {
   return 0;
 }
 
-shared_ptr<Map> Lobby::load_maps(
-    Version version,
-    Episode episode,
-    uint8_t difficulty,
-    uint8_t event,
-    uint32_t lobby_id,
-    shared_ptr<const Map::RareEnemyRates> rare_rates,
-    uint32_t random_seed,
-    shared_ptr<PSOLFGEncryption> opt_rand_crypt,
-    shared_ptr<const string> quest_dat_contents_decompressed) {
-  auto map = make_shared<Map>(version, lobby_id, random_seed, opt_rand_crypt);
-  map->add_entities_from_quest_data(episode, difficulty, event, quest_dat_contents_decompressed, rare_rates);
-  return map;
-}
-
-shared_ptr<Map> Lobby::load_maps(
-    Version version,
-    Episode episode,
-    GameMode mode,
-    uint8_t difficulty,
-    uint8_t event,
-    uint32_t lobby_id,
-    shared_ptr<const SetDataTableBase> sdt,
-    function<shared_ptr<const string>(Version, const string&)> get_file_data,
-    shared_ptr<const Map::RareEnemyRates> rare_rates,
-    uint32_t random_seed,
-    shared_ptr<PSOLFGEncryption> opt_rand_crypt,
-    const parray<le_uint32_t, 0x20>& variations,
-    const phosg::PrefixedLogger* log) {
-  auto enemy_filenames = sdt->map_filenames_for_variations(variations, episode, mode, SetDataTable::FilenameType::ENEMIES);
-  auto object_filenames = sdt->map_filenames_for_variations(variations, episode, mode, SetDataTable::FilenameType::OBJECTS);
-  auto event_filenames = sdt->map_filenames_for_variations(variations, episode, mode, SetDataTable::FilenameType::EVENTS);
-  return Lobby::load_maps(
-      enemy_filenames,
-      object_filenames,
-      event_filenames,
-      version,
-      episode,
-      mode,
-      difficulty,
-      event,
-      lobby_id,
-      get_file_data,
-      rare_rates,
-      random_seed,
-      opt_rand_crypt,
-      log);
-}
-
-shared_ptr<Map> Lobby::load_maps(
-    const vector<string>& enemy_filenames,
-    const vector<string>& object_filenames,
-    const vector<string>& event_filenames,
-    Version version,
-    Episode episode,
-    GameMode mode,
-    uint8_t difficulty,
-    uint8_t event,
-    uint32_t lobby_id,
-    function<shared_ptr<const string>(Version, const string&)> get_file_data,
-    shared_ptr<const Map::RareEnemyRates> rare_rates,
-    uint32_t rare_seed,
-    shared_ptr<PSOLFGEncryption> opt_rand_crypt,
-    const phosg::PrefixedLogger* log) {
-  auto map = make_shared<Map>(version, lobby_id, rare_seed, opt_rand_crypt);
-
-  // Don't load free-roam maps in Challenge mode, since players can't go to
-  // Ragol without a quest loaded
-  if (mode == GameMode::CHALLENGE) {
-    return map;
-  }
-
-  for (size_t floor = 0; floor < 0x12; floor++) {
-    const auto& floor_enemy_filename = enemy_filenames.at(floor);
-    if (!floor_enemy_filename.empty()) {
-      auto map_data = get_file_data(version, floor_enemy_filename);
-      if (map_data) {
-        map->add_enemies_from_map_data(
-            episode,
-            difficulty,
-            event,
-            floor,
-            map_data->data(),
-            map_data->size(),
-            rare_rates);
-        if (log) {
-          log->info("Loaded enemies map %s for floor %02zX", floor_enemy_filename.c_str(), floor);
-        }
-      } else if (log) {
-        log->info("Enemies map %s for floor %02zX cannot be used; skipping", floor_enemy_filename.c_str(), floor);
-      }
-    } else if (log) {
-      log->info("No enemies to load for floor %02zX", floor);
-    }
-
-    const auto& floor_object_filename = object_filenames.at(floor);
-    if (!floor_object_filename.empty()) {
-      auto map_data = get_file_data(version, floor_object_filename);
-      if (map_data) {
-        map->add_objects_from_map_data(floor, map_data);
-        if (log) {
-          log->info("Loaded objects map %s for floor %02zX", floor_object_filename.c_str(), floor);
-        }
-      } else if (log) {
-        log->info("Objects map %s for floor %02zX cannot be used; skipping", floor_object_filename.c_str(), floor);
-      }
-    } else if (log) {
-      log->info("No objects to load for floor %02zX", floor);
-    }
-
-    const auto& floor_event_filename = event_filenames.at(floor);
-    if (!floor_event_filename.empty()) {
-      auto map_data = get_file_data(version, floor_event_filename);
-      if (map_data) {
-        map->add_events_from_map_data(floor, map_data->data(), map_data->size());
-        if (log) {
-          log->info("Loaded events map %s for floor %02zX", floor_event_filename.c_str(), floor);
-        }
-      } else if (log) {
-        log->info("Events map %s for floor %02zX cannot be used; skipping", floor_event_filename.c_str(), floor);
-      }
-    } else if (log) {
-      log->info("No events to load for floor %02zX", floor);
+uint16_t Lobby::quest_version_flags() const {
+  uint16_t ret = 0;
+  for (auto lc : this->clients) {
+    if (lc) {
+      ret |= (1 << static_cast<size_t>(lc->version()));
     }
   }
-
-  return map;
+  return ret;
 }
 
 void Lobby::load_maps() {
-  auto rare_rates = ((this->base_version == Version::BB_V4) && this->rare_enemy_rates)
-      ? this->rare_enemy_rates
-      : Map::DEFAULT_RARE_ENEMIES;
+  auto rare_rates = this->rare_enemy_rates ? this->rare_enemy_rates : MapState::DEFAULT_RARE_ENEMIES;
 
-  if (this->quest) {
-    auto leader_c = this->clients.at(this->leader_id);
-    if (!leader_c) {
-      throw logic_error("lobby leader is missing");
-    }
-
-    auto vq = this->quest->version(this->base_version, leader_c->language());
-    if (!vq->dat_contents_decompressed) {
-      throw runtime_error("quest does not have DAT data");
-    }
-    this->map = this->load_maps(
-        this->base_version,
-        this->episode,
+  if (this->episode == Episode::EP3) {
+    this->map_state = make_shared<MapState>();
+  } else if (this->quest) {
+    this->map_state = make_shared<MapState>(
+        this->lobby_id,
         this->difficulty,
         this->event,
-        this->lobby_id,
-        rare_rates,
         this->random_seed,
+        this->rare_enemy_rates,
         this->opt_rand_crypt,
-        vq->dat_contents_decompressed);
-
-  } else if (this->mode != GameMode::CHALLENGE) {
-    auto s = this->require_server_state();
-    this->map = this->load_maps(
-        this->base_version,
-        this->episode,
-        this->mode,
-        this->difficulty,
-        this->event,
-        this->lobby_id,
-        s->set_data_table(this->base_version, this->episode, this->mode, this->difficulty),
-        bind(&ServerState::load_map_file, s.get(), placeholders::_1, placeholders::_2),
-        rare_rates,
-        this->random_seed,
-        this->opt_rand_crypt,
-        this->variations,
-        &this->log);
-
+        this->quest->get_supermap(this->random_seed));
   } else {
-    this->map = make_shared<Map>(this->base_version, this->lobby_id, this->random_seed, this->opt_rand_crypt);
+    auto s = this->require_server_state();
+    this->map_state = make_shared<MapState>(
+        this->lobby_id,
+        this->difficulty,
+        this->event,
+        this->random_seed,
+        this->rare_enemy_rates,
+        this->opt_rand_crypt,
+        s->supermaps_for_variations(this->episode, this->mode, this->difficulty, this->variations));
   }
 
-  this->log.info("Generated objects list (%zu entries):", this->map->objects.size());
-  for (size_t z = 0; z < this->map->objects.size(); z++) {
-    string o_str = this->map->objects[z].str();
-    this->log.info("(K-%zX) %s", z, o_str.c_str());
+  if (this->check_flag(Lobby::Flag::DEBUG)) {
+    this->log.info("Generated map state:");
+    this->map_state->print(stderr);
   }
-  this->log.info("Generated enemies list (%zu entries):", this->map->enemies.size());
-  for (size_t z = 0; z < this->map->enemies.size(); z++) {
-    string e_str = this->map->enemies[z].str();
-    this->log.info("(E-%zX) %s", z, e_str.c_str());
+}
+
+[[nodiscard]] bool Lobby::is_ep3_nte() const {
+  for (const auto& lc : this->clients) {
+    if (lc && (lc->version() != Version::GC_EP3_NTE)) {
+      return false;
+    }
   }
-  this->log.info("Generated events list (%zu entries):", this->map->events.size());
-  for (size_t z = 0; z < this->map->events.size(); z++) {
-    string e_str = this->map->events[z].str();
-    this->log.info("%s", e_str.c_str());
-  }
-  this->log.info("Loaded maps contain %zu object entries and %zu enemy entries overall (%zu as rares)",
-      this->map->objects.size(), this->map->enemies.size(), this->map->rare_enemy_indexes.size());
+  return true;
 }
 
 void Lobby::create_ep3_server() {
@@ -494,7 +339,8 @@ void Lobby::create_ep3_server() {
     this->log.info("Recreating Episode 3 server state");
   }
   auto tourn = this->tournament_match ? this->tournament_match->tournament.lock() : nullptr;
-  bool is_nte = this->base_version == Version::GC_EP3_NTE;
+
+  bool is_nte = this->is_ep3_nte();
   Episode3::Server::Options options = {
       .card_index = is_nte ? s->ep3_card_index_trial : s->ep3_card_index,
       .map_index = s->ep3_map_index,
@@ -504,7 +350,7 @@ void Lobby::create_ep3_server() {
       .tournament = tourn,
       .trap_card_ids = s->ep3_trap_card_ids,
   };
-  if (this->base_version == Version::GC_EP3_NTE) {
+  if (is_nte) {
     options.behavior_flags |= Episode3::BehaviorFlag::IS_TRIAL_EDITION;
   } else {
     options.behavior_flags &= (~Episode3::BehaviorFlag::IS_TRIAL_EDITION);
@@ -520,7 +366,7 @@ void Lobby::reassign_leader_on_client_departure(size_t leaving_client_index) {
     }
     if (this->clients[x]) {
       this->leader_id = x;
-      this->change_section_id();
+      this->create_item_creator();
       return;
     }
   }
@@ -611,7 +457,7 @@ void Lobby::add_client(shared_ptr<Client> c, ssize_t required_client_id) {
   }
   if (leader_index >= this->max_clients) {
     this->leader_id = c->lobby_client_id;
-    this->change_section_id();
+    this->create_item_creator();
   }
 
   // If this is a lobby or no one was here before this, reassign all the floor
@@ -850,9 +696,15 @@ shared_ptr<Lobby::FloorItem> Lobby::find_item(uint8_t floor, uint32_t item_id) c
   return this->floor_item_managers.at(floor).find(item_id);
 }
 
-void Lobby::add_item(uint8_t floor, const ItemData& data, float x, float z, uint16_t flags) {
+void Lobby::add_item(
+    uint8_t floor,
+    const ItemData& data,
+    const VectorXZF& pos,
+    std::shared_ptr<const MapState::ObjectState> from_obj,
+    std::shared_ptr<const MapState::EnemyState> from_ene,
+    uint16_t flags) {
   auto& m = this->floor_item_managers.at(floor);
-  m.add(data, x, z, flags);
+  m.add(data, pos, from_obj, from_ene, flags);
   this->evict_items_from_floor(floor);
 }
 

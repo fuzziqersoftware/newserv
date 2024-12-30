@@ -547,8 +547,6 @@ ProxyServer::LinkedSession::LinkedSession(
       lobby_client_id(0),
       leader_client_id(0),
       floor(0),
-      x(0.0),
-      z(0.0),
       is_in_game(false),
       is_in_quest(false),
       lobby_event(0),

@@ -1407,7 +1407,8 @@ Action a_encode_qst(
         pvr_data = make_shared<string>(phosg::load_file(pvr_filename));
       } catch (const phosg::cannot_open_file&) {
       }
-      auto vq = make_shared<VersionedQuest>(0, 0, version, 0, bin_data, dat_data, pvr_data);
+
+      auto vq = make_shared<VersionedQuest>(0, 0, version, 0, bin_data, dat_data, nullptr, pvr_data);
       if (download) {
         vq = vq->create_download_quest();
       }
@@ -1446,21 +1447,22 @@ Action a_disassemble_quest_script(
     });
 Action a_disassemble_quest_map(
     "disassemble-quest-map", "\
-  disassemble-quest-map [INPUT-FILENAME [OUTPUT-FILENAME]]\n\
+  disassemble-quest-map [OPTIONS] [INPUT-FILENAME [OUTPUT-FILENAME]]\n\
     Disassemble the input quest map (.dat file) into a text representation of\n\
-    the data it contains.\n",
+    the data it contains. If --decompressed is given, don\'t decompress before\n\
+    disassembling.\n",
     +[](phosg::Arguments& args) {
-      string data = read_input_data(args);
+      auto data = make_shared<string>(read_input_data(args));
       if (!args.get<bool>("decompressed")) {
-        data = prs_decompress(data);
+        *data = prs_decompress(*data);
       }
-      string result = Map::disassemble_quest_data(data.data(), data.size());
+      string result = MapFile(data).disassemble();
       write_output_data(args, result.data(), result.size(), "txt");
     });
 Action a_disassemble_free_map(
     "disassemble-free-map", "\
   disassemble-free-map INPUT-FILENAME [OUTPUT-FILENAME]\n\
-    Disassemble the input free-roam map (.dat or .evt file) into a text\n\
+    Disassemble the input free-play map (.dat or .evt file) into a text\n\
     representation of the data it contains. Unlike othe disassembly actions,\n\
     this action expects its input to be already decompressed. If the input is\n\
     compressed, use the --compressed option. Also unlike other options, the\n\
@@ -1475,18 +1477,19 @@ Action a_disassemble_free_map(
         throw runtime_error("cannot determine input file type");
       }
 
-      string data = read_input_data(args);
+      auto data = make_shared<string>(read_input_data(args));
       if (args.get<bool>("compressed")) {
-        data = prs_decompress(data);
+        *data = prs_decompress(*data);
       }
 
+      uint8_t floor = args.get<uint8_t>("floor", 0);
       string result;
       if (is_objects) {
-        result = Map::disassemble_objects_data(data.data(), data.size());
+        result = MapFile(floor, data, nullptr, nullptr).disassemble();
       } else if (is_enemies) {
-        result = Map::disassemble_enemies_data(data.data(), data.size());
+        result = MapFile(floor, nullptr, data, nullptr).disassemble();
       } else if (is_events) {
-        result = Map::disassemble_wave_events_data(data.data(), data.size());
+        result = MapFile(floor, nullptr, nullptr, data).disassemble();
       } else {
         throw logic_error("unhandled input type");
       }
@@ -1912,7 +1915,7 @@ Action a_convert_rare_item_set(
       auto data = make_shared<string>(read_input_data(args));
       shared_ptr<RareItemSet> rs;
       if (phosg::ends_with(input_filename, ".json")) {
-        rs = make_shared<RareItemSet>(phosg::JSON::parse(*data), s->item_name_index(version));
+        rs = make_shared<RareItemSet>(phosg::JSON::parse(*data), s->item_name_index_opt(version));
       } else if (phosg::ends_with(input_filename, ".gsl")) {
         rs = make_shared<RareItemSet>(GSLArchive(data, false), false);
       } else if (phosg::ends_with(input_filename, ".gslb")) {
@@ -1931,9 +1934,9 @@ Action a_convert_rare_item_set(
 
       string output_filename = args.get<string>(2, false);
       if (output_filename.empty() || (output_filename == "-")) {
-        rs->print_all_collections(stdout, s->item_name_index(version));
+        rs->print_all_collections(stdout, s->item_name_index_opt(version));
       } else if (phosg::ends_with(output_filename, ".json")) {
-        auto json = rs->json(s->item_name_index(version));
+        auto json = rs->json(s->item_name_index_opt(version));
         string data = json.serialize(phosg::JSON::SerializeOption::FORMAT | phosg::JSON::SerializeOption::HEX_INTEGERS | phosg::JSON::SerializeOption::SORT_DICT_KEYS);
         write_output_data(args, data.data(), data.size(), nullptr);
       } else if (phosg::ends_with(output_filename, ".gsl")) {
@@ -2088,23 +2091,21 @@ Action a_name_all_items(
       }
 
       fprintf(stderr, "IDENT   :");
-      for (size_t v_s = 0; v_s < NUM_VERSIONS; v_s++) {
-        Version version = static_cast<Version>(v_s);
-        const auto& index = s->item_name_indexes.at(v_s);
+      for (Version v : ALL_VERSIONS) {
+        const auto& index = s->item_name_index_opt(v);
         if (index) {
-          fprintf(stderr, " %30s    ", phosg::name_for_enum(version));
+          fprintf(stderr, " %30s    ", phosg::name_for_enum(v));
         }
       }
       fputc('\n', stderr);
 
       for (uint32_t primary_identifier : all_primary_identifiers) {
         fprintf(stderr, "%08" PRIX32 ":", primary_identifier);
-        for (size_t v_s = 0; v_s < NUM_VERSIONS; v_s++) {
-          const auto& index = s->item_name_indexes.at(v_s);
+        for (Version v : ALL_VERSIONS) {
+          const auto& index = s->item_name_index_opt(v);
           if (index) {
-            Version version = static_cast<Version>(v_s);
-            auto pmt = s->item_parameter_table(version);
-            ItemData item = ItemData::from_primary_identifier(*s->item_stack_limits(version), primary_identifier);
+            auto pmt = s->item_parameter_table(v);
+            ItemData item = ItemData::from_primary_identifier(*s->item_stack_limits(v), primary_identifier);
             string name = index->describe_item(item);
             try {
               bool is_rare = pmt->is_item_rare(item);
@@ -2212,10 +2213,9 @@ Action a_print_item_parameter_tables(
       s->load_text_index(false);
       s->load_item_definitions(false);
       s->load_item_name_indexes(false);
-      for (size_t v_s = 0; v_s < NUM_VERSIONS; v_s++) {
-        const auto& index = s->item_name_indexes.at(v_s);
+      for (Version v : ALL_VERSIONS) {
+        const auto& index = s->item_name_index_opt(v);
         if (index) {
-          Version v = static_cast<Version>(v_s);
           fprintf(stdout, "======== %s\n", phosg::name_for_enum(v));
           index->print_table(stdout);
         }
@@ -2569,224 +2569,104 @@ Action a_show_battle_params(
       s->battle_params->get_table(true, Episode::EP4).print(stdout);
     });
 
-Action a_find_rare_enemy_seeds(
-    "find-rare-enemy-seeds", "\
-  find-rare-enemy-seeds OPTIONS...\n\
-    Search all possible rare seeds to find those that produce one or more rare\n\
-    enemies in any set of variations. A version option (e.g. --gc) is required;\n\
-    an episode option (--ep1, --ep2, or --ep4) is also required. A difficulty\n\
-    option (--normal, --hard, --very-hard, or --ultimate) may be given; this\n\
-    affects which rare rates from config.json are used if --bb was given.\n\
-    Similarly, --battle, --challenge, or --solo may also be given; this affects\n\
-    which variations are used on all versions and which rare rates to use for\n\
-    BB. --threads=COUNT controls the number of threads to use for the search\n\
-    by default, one thread per CPU core is used. --min-count specifies how many\n\
-    rare enemies must be found to output the seed. Finally, --quest=NAME may be\n\
-    given to use that quest\'s map instead of the free-roam maps.\n",
-    +[](phosg::Arguments& args) {
-      auto version = get_cli_version(args);
-      auto episode = get_cli_episode(args);
-      auto difficulty = get_cli_difficulty(args);
-      auto mode = get_cli_game_mode(args);
-      size_t num_threads = args.get<size_t>("threads", 0);
-      size_t min_count = args.get<size_t>("min-count", 1);
-      string quest_name = args.get<string>("quest", false);
-
-      auto s = make_shared<ServerState>(get_config_filename(args));
-      shared_ptr<const VersionedQuest> vq;
-      if (!quest_name.empty()) {
-        s->load_config_early();
-        s->load_quest_index(false);
-        auto q = s->quest_index(version)->get(quest_name);
-        if (!q) {
-          throw runtime_error("quest does not exist");
-        }
-        vq = q->version(version, 1);
-        if (!vq) {
-          throw runtime_error("quest version does not exist");
-        }
-      } else if (version == Version::BB_V4) {
-        s->load_config_early();
-      } else if (version == Version::PC_V2) {
-        s->load_patch_indexes(false);
-      } else {
-        s->clear_file_caches(false);
-      }
-
-      shared_ptr<const Map::RareEnemyRates> rare_rates;
-      if (version != Version::BB_V4) {
-        rare_rates = Map::DEFAULT_RARE_ENEMIES;
-      } else if (mode == GameMode::CHALLENGE) {
-        rare_rates = s->rare_enemy_rates_challenge;
-      } else {
-        rare_rates = s->rare_enemy_rates_by_difficulty[difficulty];
-      }
-
-      mutex output_lock;
-      auto thread_fn = [&](uint64_t seed, size_t) -> bool {
-        auto random_crypt = make_shared<PSOV2Encryption>(seed);
-        parray<le_uint32_t, 0x20> variations;
-
-        shared_ptr<Map> map;
-        if (vq) {
-          if (!vq->dat_contents_decompressed) {
-            throw runtime_error("quest does not have DAT data");
-          }
-          map = Lobby::load_maps(
-              version, episode, difficulty, 0, 0, rare_rates, seed, random_crypt, vq->dat_contents_decompressed);
-
-        } else {
-          generate_variations_deprecated(variations, random_crypt, version, episode, (mode == GameMode::SOLO));
-          map = Lobby::load_maps(
-              version,
-              episode,
-              mode,
-              difficulty,
-              0,
-              0,
-              s->set_data_table(version, episode, mode, difficulty),
-              bind(&ServerState::load_map_file, s.get(), placeholders::_1, placeholders::_2),
-              rare_rates,
-              seed,
-              random_crypt,
-              variations);
-        }
-
-        vector<size_t> rare_indexes;
-        for (size_t z = 0; z < map->enemies.size(); z++) {
-          if (enemy_type_is_rare(map->enemies[z].type)) {
-            rare_indexes.emplace_back(z);
-          }
-        }
-
-        if (rare_indexes.size() >= min_count) {
-          lock_guard g(output_lock);
-          fprintf(stdout, "%08" PRIX64 ":", seed);
-          for (size_t index : rare_indexes) {
-            fprintf(stdout, " E-%zX:%s", index, phosg::name_for_enum(map->enemies[index].type));
-          }
-          fprintf(stdout, "\n");
-        }
-
-        return false;
-      };
-
-      phosg::parallel_range_blocks<uint64_t>(thread_fn, 0, 0x100000000, 0x1000, num_threads, nullptr);
-    });
-
 Action a_load_maps_test(
     "load-maps-test", nullptr, +[](phosg::Arguments& args) {
-      using SDT = SetDataTable;
+      bool save_disassembly = args.get<bool>("disassemble");
+
       auto s = make_shared<ServerState>(get_config_filename(args));
       s->load_config_early();
       s->clear_file_caches(false);
       s->load_patch_indexes(false);
       s->load_set_data_tables(false);
-      s->load_quest_index(false);
-      for (size_t v_s = NUM_PATCH_VERSIONS; v_s < NUM_VERSIONS; v_s++) {
-        Version v = static_cast<Version>(v_s);
-        if (is_ep3(v)) {
-          continue;
-        }
-        const array<Episode, 3> episodes = {Episode::EP1, Episode::EP2, Episode::EP4};
-        for (Episode episode : episodes) {
-          if (episode == Episode::EP4 && !is_v4(v)) {
-            continue;
-          }
-          if (episode == Episode::EP2 && is_v1_or_v2(v) && (v != Version::GC_NTE)) {
-            continue;
-          }
-          const array<GameMode, 4> modes = {GameMode::NORMAL, GameMode::BATTLE, GameMode::CHALLENGE, GameMode::SOLO};
-          for (GameMode mode : modes) {
-            if ((mode == GameMode::BATTLE || mode == GameMode::CHALLENGE) && is_v1(v)) {
-              continue;
-            }
-            if (mode == GameMode::SOLO && !is_v4(v)) {
-              continue;
-            }
-            for (uint8_t difficulty = 0; difficulty < 4; difficulty++) {
-              if (difficulty == 3 && is_v1(v)) {
-                continue;
-              }
-              auto sdt = s->set_data_table(v, episode, mode, difficulty);
-              for (uint8_t floor = 0; floor < 0x12; floor++) {
-                auto variation_maxes = sdt->num_free_roam_variations_for_floor(episode, mode == GameMode::SOLO, floor);
-                for (size_t var1 = 0; var1 < variation_maxes.first; var1++) {
-                  for (size_t var2 = 0; var2 < variation_maxes.second; var2++) {
-                    auto enemies_filename = sdt->map_filename_for_variation(
-                        floor, var1, var2, episode, mode, SDT::FilenameType::ENEMIES);
-                    auto objects_filename = sdt->map_filename_for_variation(
-                        floor, var1, var2, episode, mode, SDT::FilenameType::OBJECTS);
-                    auto events_filename = sdt->map_filename_for_variation(
-                        floor, var1, var2, episode, mode, SDT::FilenameType::EVENTS);
+      s->load_maps(false);
 
-                    fprintf(stderr, "... %s %s %s %s %02hhX %zX %zX",
-                        phosg::name_for_enum(v), name_for_episode(episode), name_for_mode(mode), name_for_difficulty(difficulty), floor, var1, var2);
-                    auto map = make_shared<Map>(v, 0, 0, nullptr);
-                    if (!enemies_filename.empty()) {
-                      fprintf(stderr, " [%s => ", enemies_filename.c_str());
-                      auto map_data = s->load_map_file(v, enemies_filename);
-                      if (map_data) {
-                        map->add_enemies_from_map_data(
-                            episode, difficulty, 0, 0, map_data->data(), map_data->size(), Map::DEFAULT_RARE_ENEMIES);
-                        fprintf(stderr, "%zu enemies, %zu sets]", map->enemies.size(), map->enemy_set_flags.size());
-                      } else {
-                        fprintf(stderr, "__MISSING__]");
-                      }
-                    }
-                    if (!objects_filename.empty()) {
-                      fprintf(stderr, " [%s => ", objects_filename.c_str());
-                      auto map_data = s->load_map_file(v, objects_filename);
-                      if (map_data) {
-                        map->add_objects_from_map_data(floor, map_data);
-                        fprintf(stderr, "%zu objects]", map->objects.size());
-                      } else {
-                        fprintf(stderr, "__MISSING__]");
-                      }
-                    }
-                    if (!events_filename.empty()) {
-                      fprintf(stderr, " [%s => ", events_filename.c_str());
-                      auto map_data = s->load_map_file(v, events_filename);
-                      if (map_data) {
-                        map->add_events_from_map_data(floor, map_data->data(), map_data->size());
-                        fprintf(stderr, "%zu events, %zu action bytes]", map->events.size(), map->event_action_stream.size());
-                      } else {
-                        fprintf(stderr, "__MISSING__]");
-                      }
-                    }
-                    fputc('\n', stderr);
-                  }
-                }
-              }
-            }
-          }
+      for (const auto& it : s->supermaps) {
+        auto episode = static_cast<Episode>((it.first >> 28) & 7);
+        auto mode = static_cast<GameMode>((it.first >> 26) & 3);
+        uint8_t difficulty = (it.first >> 24) & 3;
+        uint8_t floor = (it.first >> 16) & 0xFF;
+        uint8_t layout = (it.first >> 8) & 0xFF;
+        uint8_t entities = (it.first >> 0) & 0xFF;
+
+        fprintf(stderr, "FREE MAP: %08" PRIX32 " => %s %s %c floor=%02hhX layout=%02hhX entities=%02hhX\n",
+            it.first,
+            abbreviation_for_episode(episode),
+            abbreviation_for_mode(mode),
+            abbreviation_for_difficulty(difficulty),
+            floor, layout, entities);
+        if (save_disassembly) {
+          string filename = phosg::string_printf(
+              "supermap_%s_%s_%c_%02hhX_%02hhx_%02hhX.txt",
+              abbreviation_for_episode(episode),
+              abbreviation_for_mode(mode),
+              abbreviation_for_difficulty(difficulty),
+              floor, layout, entities);
+          auto f = phosg::fopen_unique(filename, "wt");
+          it.second->print(f.get());
         }
       }
 
-      for (const auto& q_it : s->default_quest_index->quests_by_number) {
-        for (const auto& vq_it : q_it.second->versions) {
-          auto vq = vq_it.second;
-          shared_ptr<const Map> map = Lobby::load_maps(
-              vq->version,
-              vq->episode,
-              0,
-              0,
-              0,
-              Map::DEFAULT_RARE_ENEMIES,
-              0,
-              nullptr,
-              vq->dat_contents_decompressed);
-          fprintf(stderr, "... %" PRIu32 " (%s) %s %s %s => %zu enemies (%zu sets), %zu objects, %zu events\n",
-              vq->quest_number,
-              vq->name.c_str(),
-              name_for_episode(vq->episode),
-              phosg::name_for_enum(vq->version),
-              name_for_language_code(vq->language),
-              map->enemies.size(),
-              map->enemy_set_flags.size(),
-              map->objects.size(),
-              map->events.size());
+      // Generate MapStates for a few random variations
+      for (size_t z = 0; z < 0x20; z++) {
+        static const array<Episode, 3> episodes = {Episode::EP1, Episode::EP2, Episode::EP4};
+        static const array<GameMode, 4> modes = {GameMode::NORMAL, GameMode::BATTLE, GameMode::CHALLENGE, GameMode::SOLO};
+
+        Episode episode = episodes[phosg::random_object<uint32_t>() % episodes.size()];
+        GameMode mode = modes[phosg::random_object<uint32_t>() % modes.size()];
+        uint8_t difficulty = phosg::random_object<uint32_t>() % 4;
+        uint8_t event = phosg::random_object<uint32_t>() % 8;
+        uint32_t random_seed = phosg::random_object<uint32_t>();
+        fprintf(stderr, "FREE MAP STATE TEST: %s %s %c\n",
+            abbreviation_for_episode(episode),
+            abbreviation_for_mode(mode),
+            abbreviation_for_difficulty(difficulty));
+
+        auto sdt = s->set_data_table(Version::BB_V4, episode, mode, difficulty);
+        auto variations = sdt->generate_variations(episode, (mode == GameMode::SOLO), nullptr);
+        auto supermaps = s->supermaps_for_variations(episode, mode, difficulty, variations);
+        auto map_state = make_shared<MapState>(
+            0, difficulty, event, random_seed, MapState::DEFAULT_RARE_ENEMIES, nullptr, supermaps);
+        map_state->verify();
+
+        fprintf(stderr, "  map state ok: 0x%zX objects, 0x%zX enemies, 0x%zX enemy sets, 0x%zX events\n",
+            map_state->object_states.size(),
+            map_state->enemy_states.size(),
+            map_state->enemy_set_states.size(),
+            map_state->event_states.size());
+      }
+
+      s->load_quest_index(false);
+
+      uint32_t random_seed = args.get<uint32_t>("random-seed", 0, phosg::Arguments::IntFormat::HEX);
+      for (const auto& it : s->default_quest_index->quests_by_number) {
+        auto supermap = it.second->get_supermap(random_seed);
+        if (!supermap) {
+          fprintf(stderr, "QUEST MAP: %08" PRIX32 " => (no supermap)\n", it.first);
+        } else {
+          string filename = phosg::string_printf("supermap_quest_%" PRIu32 "_%08" PRIX32 ".txt", it.first, random_seed);
+          fprintf(stderr, "QUEST MAP: %08" PRIX32 " => %s\n", it.first, filename.c_str());
+          if (save_disassembly) {
+            auto f = phosg::fopen_unique(filename, "wt");
+            fprintf(f.get(), "QUEST %" PRIu32 " (%s)\n", it.first, it.second->name.c_str());
+            supermap->print(f.get());
+          }
         }
+
+        auto map_state = make_shared<MapState>(
+            0,
+            phosg::random_object<uint8_t>() & 3,
+            0,
+            phosg::random_object<uint32_t>(),
+            MapState::DEFAULT_RARE_ENEMIES,
+            nullptr,
+            supermap);
+        map_state->verify();
+
+        fprintf(stderr, "  map state ok: 0x%zX objects, 0x%zX enemies, 0x%zX enemy sets, 0x%zX events\n",
+            map_state->object_states.size(),
+            map_state->enemy_states.size(),
+            map_state->enemy_set_states.size(),
+            map_state->event_states.size());
       }
     });
 

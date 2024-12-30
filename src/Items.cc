@@ -189,9 +189,14 @@ void player_use_item(shared_ptr<Client> c, size_t item_index, shared_ptr<PSOLFGE
         item.data.data1.clear_after(3);
         should_delete_item = false;
 
+        // TODO: It seems that on non-BB, clients don't synchronize this at all
+        // so they could end up thinking the unwrapped item is something
+        // completely different. How does this actually work on console PSO?
         auto l = c->require_lobby();
-        if (l->base_version == Version::BB_V4) {
-          send_create_inventory_item_to_lobby(c, c->lobby_client_id, item.data);
+        for (const auto& lc : l->clients) {
+          if (lc && (lc->version() == Version::BB_V4)) {
+            send_create_inventory_item_to_client(c, c->lobby_client_id, item.data);
+          }
         }
         break;
       }

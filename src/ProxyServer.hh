@@ -81,7 +81,7 @@ public:
     DropMode drop_mode;
     std::shared_ptr<std::string> quest_dat_data;
     std::shared_ptr<ItemCreator> item_creator;
-    std::shared_ptr<Map> map;
+    std::shared_ptr<MapState> map_state;
 
     struct LobbyPlayer {
       uint32_t guild_card_number = 0;
@@ -95,8 +95,7 @@ public:
     size_t lobby_client_id;
     size_t leader_client_id;
     uint16_t floor;
-    float x;
-    float z;
+    VectorXZF pos;
     bool is_in_game;
     bool is_in_quest;
     uint8_t lobby_event;

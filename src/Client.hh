@@ -206,10 +206,9 @@ public:
   // Lobby/positioning
   Config config;
   Config synced_config;
-  std::unique_ptr<parray<le_uint32_t, 0x20>> override_variations;
+  std::unique_ptr<Variations> override_variations;
   int32_t sub_version;
-  float x;
-  float z;
+  VectorXZF pos;
   uint32_t floor;
   std::weak_ptr<Lobby> lobby;
   uint8_t lobby_client_id;

@@ -2796,6 +2796,9 @@ I 64538 2024-09-01 15:24:02 - [Commands] Received from C-7 (Tali) @ ipss:N-4: (v
 I 64538 2024-09-01 15:24:02 - [Commands] Received from C-7 (Tali) @ ipss:N-4: (version=GC_EP3 command=84 flag=00)
 0000 | 84 00 0C 00 00 00 00 00 00 00 00 00             |
 I 64538 2024-09-01 15:24:02 - [Commands] Sending to C-7 (Tali) @ ipss:N-4: (version=GC_EP3 command=B7 flag=00)
+0000 | B1 00 20 00 32 30 32 34 3A 31 32 3A 32 39 3A 20 |     2024:12:29:
+0010 | 32 33 3A 31 30 3A 32 36 2E 30 30 30 00 01 00 00 | 23:10:26.000
+I 64538 2024-09-01 15:24:02 - [Commands] Sending to C-7 (Tali) @ ipss:N-4: (version=GC_EP3 command=B7 flag=00)
 0000 | B7 00 20 00 00 00 00 00 00 00 00 00 00 00 00 00 |
 0010 | 00 00 00 00 00 00 00 00 00 00 00 00 FF FF FF FF |
 I 64538 2024-09-01 15:24:02 - [Commands] Sending to C-7 (Tali) @ ipss:N-4: (version=GC_EP3 command=95 flag=00)
@@ -7377,6 +7380,9 @@ I 64538 2024-09-01 15:24:44 - [Commands] Received from C-9 (Dono) @ ipss:N-6:127
 I 64538 2024-09-01 15:24:44 - [Commands] Received from C-9 (Dono) @ ipss:N-6:127.0.0.1:59366 (version=GC_EP3 command=84 flag=00)
 0000 | 84 00 0C 00 00 00 00 00 00 00 00 00             |
 I 64538 2024-09-01 15:24:44 - [Commands] Sending to C-9 (Dono) @ ipss:N-6:127.0.0.1:59366 (version=GC_EP3 command=B7 flag=00)
+0000 | B1 00 20 00 32 30 32 34 3A 31 32 3A 32 39 3A 20 |     2024:12:29:
+0010 | 32 33 3A 31 30 3A 32 36 2E 30 30 30 00 01 00 00 | 23:10:26.000
+I 64538 2024-09-01 15:24:44 - [Commands] Sending to C-9 (Dono) @ ipss:N-6:127.0.0.1:59366 (version=GC_EP3 command=B7 flag=00)
 0000 | B7 00 20 00 00 00 00 00 00 00 00 00 00 00 00 00 |
 0010 | 00 00 00 00 00 00 00 00 00 00 00 00 FF FF FF FF |
 I 64538 2024-09-01 15:24:44 - [Commands] Sending to C-9 (Dono) @ ipss:N-6:127.0.0.1:59366 (version=GC_EP3 command=95 flag=00)
@@ -9389,6 +9395,9 @@ I 64538 2024-09-01 15:24:47 - [Commands] Sending to C-B @ ipss:N-5:127.0.0.1:593
 0000 | 04 00 2C 00 00 00 01 00 F1 CF AF 20 32 AC 99 83 |   ,         2
 0010 | 00 4A 53 33 00 B1 00 40 20 00 00 00 00 00 00 00 |  JS3   @
 0020 | 00 00 00 00 00 00 FF FF 80 FF FF FF             |
+I 64538 2024-09-01 15:24:47 - [Commands] Sending to C-B @ ipss:N-5:127.0.0.1:59362 (version=GC_EP3 command=B7 flag=00)
+0000 | B1 00 20 00 32 30 32 34 3A 31 32 3A 32 39 3A 20 |     2024:12:29:
+0010 | 32 33 3A 31 30 3A 32 36 2E 30 30 30 00 01 00 00 | 23:10:26.000
 I 64538 2024-09-01 15:24:47 - [Commands] Sending to C-B @ ipss:N-5:127.0.0.1:59362 (version=GC_EP3 command=B7 flag=00)
 0000 | B7 00 20 00 00 00 00 00 00 00 00 00 00 00 00 00 |
 0010 | 00 00 00 00 00 00 00 00 00 00 00 00 FF FF FF FF |

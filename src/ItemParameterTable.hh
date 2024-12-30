@@ -20,18 +20,6 @@ public:
   // being null or not in each public function. Rewrite this and make it better.
 
   template <bool BE>
-  struct ArrayRefT {
-    /* 00 */ U32T<BE> count;
-    /* 04 */ U32T<BE> offset;
-    /* 08 */
-  } __packed__;
-
-  using ArrayRef = ArrayRefT<false>;
-  using ArrayRefBE = ArrayRefT<true>;
-  check_struct_size(ArrayRef, 8);
-  check_struct_size(ArrayRefBE, 8);
-
-  template <bool BE>
   struct ItemBaseV2T {
     // id specifies several things; notably, it doubles as the index of the
     // item's name in the text archive (e.g. TextEnglish) collection 0.

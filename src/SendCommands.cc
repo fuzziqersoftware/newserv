@@ -520,8 +520,7 @@ bool send_protected_command(std::shared_ptr<Client> c, const void* data, size_t 
         try {
           auto s = c->require_server_state();
           auto fn = s->function_code_index->get_patch("CallProtectedHandler", c->config.specific_version);
-          uint32_t size_label_value = is_big_endian(c->version()) ? data.size() : phosg::bswap32(data.size());
-          send_function_call(c, fn, {{"size", size_label_value}}, data.data(), data.size());
+          send_function_call(c, fn, {{"size", data.size()}}, data.data(), data.size());
           c->function_call_response_queue.emplace_back(empty_function_call_response_handler);
           if (echo_to_lobby) {
             auto l = c->lobby.lock();
@@ -1627,8 +1626,14 @@ void send_quest_categories_menu_t(
     include_condition = l ? l->quest_include_condition() : nullptr;
   }
 
+  uint16_t version_flags = (1 << static_cast<size_t>(c->version()));
+  auto l = c->lobby.lock();
+  if (l) {
+    version_flags |= l->quest_version_flags();
+  }
+
   vector<EntryT> entries;
-  for (const auto& cat : quest_index->categories(menu_type, episode, c->version(), include_condition)) {
+  for (const auto& cat : quest_index->categories(menu_type, episode, version_flags, include_condition)) {
     auto& e = entries.emplace_back();
     e.menu_id = cat->use_ep2_icon() ? MenuID::QUEST_CATEGORIES_EP2 : MenuID::QUEST_CATEGORIES_EP1;
     e.item_id = cat->category_id;
@@ -1806,11 +1811,11 @@ static void send_join_spectator_team(shared_ptr<Client> c, shared_ptr<Lobby> l) 
 
   S_JoinSpectatorTeam_Ep3_E8 cmd;
 
-  cmd.variations.clear(0);
+  cmd.variations = Variations();
   cmd.client_id = c->lobby_client_id;
   cmd.event = l->event;
   cmd.section_id = l->effective_section_id();
-  cmd.rare_seed = l->random_seed;
+  cmd.random_seed = l->random_seed;
   cmd.episode = 0xFF;
 
   uint8_t player_count = 0;
@@ -1953,7 +1958,7 @@ void send_join_game(shared_ptr<Client> c, shared_ptr<Lobby> l) {
     cmd.event = l->event;
     cmd.section_id = l->effective_section_id();
     cmd.challenge_mode = (l->mode == GameMode::CHALLENGE) ? 1 : 0;
-    cmd.rare_seed = l->random_seed;
+    cmd.random_seed = l->random_seed;
     return populate_lobby_data(cmd);
   };
   auto populate_v3_cmd = [&](auto& cmd) -> size_t {
@@ -2568,7 +2573,6 @@ void send_warp(Channel& ch, uint8_t client_id, uint32_t floor, bool is_private) 
 
 void send_warp(shared_ptr<Client> c, uint32_t floor, bool is_private) {
   send_warp(c->channel, c->lobby_client_id, floor, is_private);
-  c->floor = floor;
 }
 
 void send_warp(shared_ptr<Lobby> l, uint32_t floor, bool is_private) {
@@ -2587,6 +2591,10 @@ void send_ep3_change_music(Channel& ch, uint32_t song) {
 void send_game_join_sync_command(
     shared_ptr<Client> c, const void* data, size_t size, uint8_t dc_nte_sc, uint8_t dc_11_2000_sc, uint8_t sc) {
   string compressed_data = bc0_compress(data, size);
+  if (c->config.check_flag(Client::Flag::DEBUG_ENABLED)) {
+    c->log.info("Compressed sync data from (%zX -> %zX bytes):", size, compressed_data.size());
+    phosg::print_data(stderr, data, size);
+  }
   send_game_join_sync_command_compressed(c, compressed_data.data(), compressed_data.size(), size, dc_nte_sc, dc_11_2000_sc, sc);
 }
 
@@ -2639,6 +2647,9 @@ void send_game_join_sync_command_compressed(
 
 void send_game_item_state(shared_ptr<Client> c) {
   auto l = c->require_lobby();
+  if (!l->is_game()) {
+    throw logic_error("cannot send item state in non-game lobby");
+  }
   auto s = c->require_server_state();
   phosg::StringWriter floor_items_w;
 
@@ -2652,7 +2663,7 @@ void send_game_item_state(shared_ptr<Client> c) {
       decompressed_header.next_item_id_per_player[2].load(),
       decompressed_header.next_item_id_per_player[3].load());
 
-  for (size_t floor = 0; floor < 0x10; floor++) {
+  for (size_t floor = 0; floor < 0x0F; floor++) {
     const auto& m = l->floor_item_managers.at(floor);
     // It's important that these are added in increasing order of item_id (hence
     // why items is a map and not an unordered_map), since the game uses binary
@@ -2667,10 +2678,9 @@ void send_game_item_state(shared_ptr<Client> c) {
 
       FloorItem fi;
       fi.floor = floor;
-      fi.from_enemy = 0;
-      fi.entity_id = 0xFFFF;
-      fi.x = item->x;
-      fi.z = item->z;
+      fi.source_type = 0;
+      fi.entity_index = 0xFFFF;
+      fi.pos = item->pos;
       fi.unknown_a2 = 0;
       fi.drop_number = (floor == 0) ? 0xFFFF : (decompressed_header.next_drop_number_per_floor.at(floor - 1)++);
       fi.item = item->data;
@@ -2686,55 +2696,84 @@ void send_game_item_state(shared_ptr<Client> c) {
   decompressed_w.write(floor_items_w.str());
   const auto& data = decompressed_w.str();
   send_game_join_sync_command(c, data.data(), data.size(), 0x5E, 0x65, 0x6D);
-}
 
-void send_game_enemy_state(shared_ptr<Client> c) {
-  auto l = c->require_lobby();
-  if (!l->map) {
-    return;
+  // Items on floors 0x0F and above can't be sent in the 6x6D command, so we
+  // manually send 6x5D commands to create them if needed
+  phosg::StringWriter w;
+  for (size_t floor = 0x0F; floor < l->floor_item_managers.size(); floor++) {
+    const auto& m = l->floor_item_managers[floor];
+    for (const auto& it : m.items) {
+      const auto& item = it.second;
+      if (!item->visible_to_client(c->lobby_client_id)) {
+        continue;
+      }
+      uint8_t subcommand = get_pre_v1_subcommand(c->version(), 0x4F, 0x56, 0x5D);
+      G_DropStackedItem_PC_V3_BB_6x5D cmd = {{{subcommand, 0x0A, 0x0000}, floor, 0, item->pos, item->data}, 0};
+      cmd.item_data.encode_for_version(c->version(), s->item_parameter_table_for_encode(c->version()));
+      w.put(cmd);
+    }
   }
-  auto s = c->require_server_state();
-
-  vector<G_SyncEnemyState_6x6B_Entry_Decompressed> entries;
-  entries.reserve(l->map->enemies.size());
-  for (size_t z = 0; z < l->map->enemies.size(); z++) {
-    const auto& enemy = l->map->enemies[z];
-    auto& entry = entries.emplace_back();
-    entry.flags = enemy.game_flags;
-    entry.item_drop_id = (enemy.server_flags & Map::Enemy::Flag::ITEM_DROPPED) ? 0xFFFF : (0xCA0 + z);
-    entry.total_damage = enemy.total_damage;
+  if (!w.str().empty()) {
+    send_command(c, 0x6D, c->lobby_client_id, w.str());
   }
-
-  send_game_join_sync_command(c, entries.data(), entries.size() * sizeof(entries[0]), 0x5C, 0x63, 0x6B);
 }
 
 void send_game_object_state(shared_ptr<Client> c) {
   auto l = c->require_lobby();
-  if (!l->map) {
-    return;
+  if (!l->is_game()) {
+    throw logic_error("cannot send object state in non-game lobby");
   }
   auto s = c->require_server_state();
 
-  vector<G_SyncObjectState_6x6C_Entry_Decompressed> entries;
-  entries.reserve(l->map->objects.size());
-  for (size_t z = 0; z < l->map->objects.size(); z++) {
-    const auto& obj = l->map->objects[z];
+  vector<SyncObjectStateEntry> entries;
+  for (auto obj_st : l->map_state->iter_object_states(c->version())) {
     auto& entry = entries.emplace_back();
-    entry.flags = obj.game_flags;
-    entry.item_drop_id = (obj.item_drop_checked) ? 0xFFFF : (0x100 + z);
+    entry.flags = obj_st->game_flags;
+    entry.item_drop_id = (obj_st->item_drop_checked)
+        ? 0xFFFF
+        : (0x100 + l->map_state->index_for_object_state(c->version(), obj_st));
   }
 
   send_game_join_sync_command(c, entries.data(), entries.size() * sizeof(entries[0]), 0x5D, 0x64, 0x6C);
 }
 
-void send_game_set_state(shared_ptr<Client> c) {
+void send_game_enemy_state(shared_ptr<Client> c) {
   auto l = c->require_lobby();
-  if (!l->map) {
-    return;
+  if (!l->is_game()) {
+    throw logic_error("cannot send enemy state in non-game lobby");
+  }
+  auto s = c->require_server_state();
+
+  vector<SyncEnemyStateEntry> entries;
+  for (auto ene_st : l->map_state->iter_enemy_states(c->version())) {
+    auto& entry = entries.emplace_back();
+    entry.flags = ene_st->game_flags;
+    entry.item_drop_id = (ene_st->server_flags & MapState::EnemyState::Flag::ITEM_DROPPED)
+        ? 0xFFFF
+        : (0xCA0 + l->map_state->index_for_enemy_state(c->version(), ene_st));
+    entry.total_damage = ene_st->total_damage;
   }
 
-  size_t num_object_sets = l->map->objects.size();
-  size_t num_enemy_sets = l->map->enemy_set_flags.size();
+  send_game_join_sync_command(c, entries.data(), entries.size() * sizeof(entries[0]), 0x5C, 0x63, 0x6B);
+}
+
+void send_game_set_state(shared_ptr<Client> c) {
+  auto l = c->require_lobby();
+  if (!l->is_game()) {
+    throw logic_error("cannot send set state in non-game lobby");
+  }
+
+  size_t num_object_sets = 0;
+  size_t num_enemy_sets = 0;
+  size_t num_events = 0;
+  for (const auto& fc : l->map_state->floor_config_entries) {
+    if (fc.super_map) {
+      const auto& entities = fc.super_map->version(c->version());
+      num_object_sets += entities.objects.size();
+      num_enemy_sets += entities.enemy_sets.size();
+      num_events += entities.events.size();
+    }
+  }
 
   G_SyncSetFlagState_6x6E_Decompressed::EntitySetFlags entity_set_flags_header;
   entity_set_flags_header.object_set_flags_offset = sizeof(entity_set_flags_header);
@@ -2744,22 +2783,47 @@ void send_game_set_state(shared_ptr<Client> c) {
 
   G_SyncSetFlagState_6x6E_Decompressed header;
   header.entity_set_flags_size = sizeof(entity_set_flags_header) + (num_object_sets + num_enemy_sets) * sizeof(le_uint16_t);
-  header.event_set_flags_size = sizeof(le_uint16_t) * l->map->events.size();
+  header.event_set_flags_size = sizeof(le_uint16_t) * num_events;
   header.switch_flags_size = is_v1(c->version()) ? 0x200 : 0x240;
   header.total_size = header.entity_set_flags_size + header.event_set_flags_size + header.switch_flags_size;
 
   phosg::StringWriter w;
   w.put(header);
   w.put(entity_set_flags_header);
-  for (const auto& obj : l->map->objects) {
-    w.put_u16l(obj.set_flags);
+
+  {
+    size_t size_before = w.size();
+    for (const auto& obj_st : l->map_state->iter_object_states(c->version())) {
+      w.put_u16l(obj_st->set_flags);
+    }
+    size_t bytes_added = w.size() - size_before;
+    if (bytes_added != num_object_sets * sizeof(le_uint16_t)) {
+      throw logic_error("incorrect number of object set flags added");
+    }
   }
-  for (uint16_t enemy_set_flags : l->map->enemy_set_flags) {
-    w.put_u16l(enemy_set_flags);
+
+  {
+    size_t size_before = w.size();
+    for (const auto& ene_st : l->map_state->iter_enemy_set_states(c->version())) {
+      w.put_u16l(ene_st->set_flags);
+    }
+    size_t bytes_added = w.size() - size_before;
+    if (bytes_added != num_enemy_sets * sizeof(le_uint16_t)) {
+      throw logic_error("incorrect number of enemy set flags added");
+    }
   }
-  for (const auto& event : l->map->events) {
-    w.put_u16l(event.flags);
+
+  {
+    size_t size_before = w.size();
+    for (const auto& ev_st : l->map_state->iter_event_states(c->version())) {
+      w.put_u16l(ev_st->flags);
+    }
+    size_t bytes_added = w.size() - size_before;
+    if (bytes_added != num_events * sizeof(le_uint16_t)) {
+      throw logic_error("incorrect number of event flags added");
+    }
   }
+
   if (l->switch_flags) {
     static_assert(sizeof(SwitchFlags) == 0x240, "switch_flags size is incorrect");
     w.write(l->switch_flags->data.data(), header.switch_flags_size);
@@ -2869,16 +2933,15 @@ void send_game_player_state(shared_ptr<Client> to_c, shared_ptr<Client> from_c, 
     to_send.telepipe.owner_client_id = from_c->telepipe_state.client_id2;
     to_send.telepipe.floor = from_c->telepipe_state.floor;
     to_send.telepipe.unknown_a1 = from_c->telepipe_state.unknown_b3;
-    to_send.telepipe.x = from_c->telepipe_state.x;
-    to_send.telepipe.y = from_c->telepipe_state.y;
-    to_send.telepipe.z = from_c->telepipe_state.z;
+    to_send.telepipe.pos = from_c->telepipe_state.pos;
     to_send.telepipe.unknown_a3 = from_c->telepipe_state.unknown_a3;
   }
 
   if (apply_overrides) {
     auto from_p = from_c->character();
-    to_send.base.x = from_c->x;
-    to_send.base.z = from_c->z;
+    to_send.base.pos.x = from_c->pos.x;
+    to_send.base.pos.y = 0.0;
+    to_send.base.pos.z = from_c->pos.z;
     to_send.bonus_hp_from_materials = from_p->inventory.hp_from_materials;
     to_send.bonus_tp_from_materials = from_p->inventory.tp_from_materials;
     to_send.language = from_c->language();
@@ -2928,41 +2991,44 @@ void send_game_player_state(shared_ptr<Client> to_c, shared_ptr<Client> from_c, 
   }
 }
 
-void send_drop_item_to_channel(shared_ptr<ServerState> s, Channel& ch, const ItemData& item,
-    bool from_enemy, uint8_t floor, float x, float z, uint16_t entity_id) {
-  uint8_t subcommand = get_pre_v1_subcommand(ch.version, 0x51, 0x58, 0x5F);
-  G_DropItem_PC_V3_BB_6x5F cmd = {
-      {{subcommand, 0x0B, 0x0000}, {floor, from_enemy, entity_id, x, z, 0, 0, item}}, 0};
-  cmd.item.item.encode_for_version(ch.version, s->item_parameter_table_for_encode(ch.version));
-  ch.send(0x60, 0x00, &cmd, sizeof(cmd));
-}
-
-void send_drop_item_to_lobby(shared_ptr<Lobby> l, const ItemData& item,
-    bool from_enemy, uint8_t floor, float x, float z, uint16_t entity_id) {
-  auto s = l->require_server_state();
-  for (auto& c : l->clients) {
-    if (!c) {
-      continue;
-    }
-    send_drop_item_to_channel(s, c->channel, item, from_enemy, floor, x, z, entity_id);
+void send_drop_item_to_channel(
+    shared_ptr<ServerState> s,
+    Channel& ch,
+    const ItemData& item,
+    uint8_t source_type,
+    uint8_t floor,
+    const VectorXZF& pos,
+    uint16_t entity_index) {
+  if (entity_index == 0xFFFF) {
+    send_drop_stacked_item_to_channel(s, ch, item, floor, pos);
+  } else {
+    uint8_t subcommand = get_pre_v1_subcommand(ch.version, 0x51, 0x58, 0x5F);
+    G_DropItem_PC_V3_BB_6x5F cmd = {
+        {{subcommand, 0x0B, 0x0000}, {floor, source_type, entity_index, pos, 0, 0, item}}, 0};
+    cmd.item.item.encode_for_version(ch.version, s->item_parameter_table_for_encode(ch.version));
+    ch.send(0x60, 0x00, &cmd, sizeof(cmd));
   }
 }
 
 void send_drop_stacked_item_to_channel(
-    shared_ptr<ServerState> s, Channel& ch, const ItemData& item, uint8_t floor, float x, float z) {
+    shared_ptr<ServerState> s,
+    Channel& ch,
+    const ItemData& item,
+    uint8_t floor,
+    const VectorXZF& pos) {
   uint8_t subcommand = get_pre_v1_subcommand(ch.version, 0x4F, 0x56, 0x5D);
-  G_DropStackedItem_PC_V3_BB_6x5D cmd = {{{subcommand, 0x0A, 0x0000}, floor, 0, x, z, item}, 0};
+  G_DropStackedItem_PC_V3_BB_6x5D cmd = {{{subcommand, 0x0A, 0x0000}, floor, 0, pos, item}, 0};
   cmd.item_data.encode_for_version(ch.version, s->item_parameter_table_for_encode(ch.version));
   ch.send(0x60, 0x00, &cmd, sizeof(cmd));
 }
 
-void send_drop_stacked_item_to_lobby(shared_ptr<Lobby> l, const ItemData& item, uint8_t floor, float x, float z) {
+void send_drop_stacked_item_to_lobby(shared_ptr<Lobby> l, const ItemData& item, uint8_t floor, const VectorXZF& pos) {
   auto s = l->require_server_state();
   for (auto& c : l->clients) {
     if (!c) {
       continue;
     }
-    send_drop_stacked_item_to_channel(s, c->channel, item, floor, x, z);
+    send_drop_stacked_item_to_channel(s, c->channel, item, floor, pos);
   }
 }
 
@@ -3644,18 +3710,17 @@ void send_ep3_update_game_metadata(shared_ptr<Lobby> l) {
   {
     G_SetGameMetadata_Ep3_6xB4x52 cmd;
     cmd.total_spectators = total_spectators;
-    if ((l->base_version != Version::GC_EP3_NTE) &&
-        !(s->ep3_behavior_flags & Episode3::BehaviorFlag::DISABLE_MASKING)) {
-      uint8_t mask_key = (phosg::random_object<uint32_t>() % 0xFF) + 1;
-      set_mask_for_ep3_game_command(&cmd, sizeof(cmd), mask_key);
-    }
-    // Note: We can't use send_command_t(l, ...) here because that would send
-    // the same command to l and to all watcher lobbies. The commands should
-    // have different values depending on who's in each watcher lobby, so we
-    // have to manually send to each client here.
     for (auto c : l->clients) {
       if (c) {
-        send_command_t(c, 0xC9, 0x00, cmd);
+        if ((c->version() == Version::GC_EP3) &&
+            !(s->ep3_behavior_flags & Episode3::BehaviorFlag::DISABLE_MASKING)) {
+          G_SetGameMetadata_Ep3_6xB4x52 masked_cmd = cmd;
+          uint8_t mask_key = (phosg::random_object<uint32_t>() % 0xFF) + 1;
+          set_mask_for_ep3_game_command(&masked_cmd, sizeof(masked_cmd), mask_key);
+          send_command_t(c, 0xC9, 0x00, masked_cmd);
+        } else {
+          send_command_t(c, 0xC9, 0x00, cmd);
+        }
       }
     }
   }
@@ -3683,12 +3748,19 @@ void send_ep3_update_game_metadata(shared_ptr<Lobby> l) {
       cmd.total_spectators = total_spectators;
       cmd.text_size = text.size();
       cmd.text.encode(text, 1);
-      if ((watcher_l->base_version != Version::GC_EP3_NTE) &&
-          !(s->ep3_behavior_flags & Episode3::BehaviorFlag::DISABLE_MASKING)) {
-        uint8_t mask_key = (phosg::random_object<uint32_t>() % 0xFF) + 1;
-        set_mask_for_ep3_game_command(&cmd, sizeof(cmd), mask_key);
+      for (auto c : watcher_l->clients) {
+        if (c) {
+          if ((c->version() == Version::GC_EP3) &&
+              !(s->ep3_behavior_flags & Episode3::BehaviorFlag::DISABLE_MASKING)) {
+            G_SetGameMetadata_Ep3_6xB4x52 masked_cmd = cmd;
+            uint8_t mask_key = (phosg::random_object<uint32_t>() % 0xFF) + 1;
+            set_mask_for_ep3_game_command(&masked_cmd, sizeof(masked_cmd), mask_key);
+            send_command_t(c, 0xC9, 0x00, masked_cmd);
+          } else {
+            send_command_t(c, 0xC9, 0x00, cmd);
+          }
+        }
       }
-      send_command_t(watcher_l, 0xC9, 0x00, cmd);
     }
   }
 }
@@ -3958,14 +4030,12 @@ void send_ep3_card_auction(shared_ptr<Lobby> l) {
   }
   num_cards = min<uint16_t>(num_cards, 0x14);
 
+  auto card_index = l->is_ep3_nte() ? s->ep3_card_index_trial : s->ep3_card_index;
+
   uint64_t distribution_size = 0;
   for (const auto& e : s->ep3_card_auction_pool) {
     distribution_size += e.probability;
   }
-
-  auto card_index = (l->base_version == Version::GC_EP3_NTE)
-      ? s->ep3_card_index_trial
-      : s->ep3_card_index;
 
   S_StartCardAuction_Ep3_EF cmd;
   cmd.points_available = s->ep3_card_auction_points;
@@ -4002,10 +4072,9 @@ void send_server_time(shared_ptr<Client> c) {
   gmtime_r(&t_secs, &t_parsed);
 
   string time_str(128, 0);
-  size_t len = strftime(time_str.data(), time_str.size(),
-      "%Y:%m:%d: %H:%M:%S.000", &t_parsed);
+  size_t len = strftime(time_str.data(), time_str.size(), "%Y:%m:%d: %H:%M:%S.000", &t_parsed);
   if (len == 0) {
-    throw runtime_error("phosg::format_time buffer too short");
+    throw logic_error("strftime buffer too short");
   }
   time_str.resize(len);
 

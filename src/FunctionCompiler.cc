@@ -15,6 +15,7 @@
 #endif
 
 #include "CommandFormats.hh"
+#include "CommonFileFormats.hh"
 #include "Compression.hh"
 #include "Loggers.hh"
 
@@ -47,16 +48,18 @@ const char* name_for_architecture(CompiledFunctionCode::Architecture arch) {
   }
 }
 
-template <typename FooterT>
+template <bool BE>
 string CompiledFunctionCode::generate_client_command_t(
     const unordered_map<string, uint32_t>& label_writes,
     const void* suffix_data,
     size_t suffix_size,
     uint32_t override_relocations_offset) const {
+  using FooterT = RELFileFooterT<BE>;
+
   FooterT footer;
   footer.num_relocations = this->relocation_deltas.size();
   footer.unused1.clear(0);
-  footer.entrypoint_addr_offset = this->entrypoint_offset_offset;
+  footer.root_offset = this->entrypoint_offset_offset;
   footer.unused2.clear(0);
 
   phosg::StringWriter w;
@@ -108,10 +111,10 @@ string CompiledFunctionCode::generate_client_command(
     size_t suffix_size,
     uint32_t override_relocations_offset) const {
   if (this->arch == Architecture::POWERPC) {
-    return this->generate_client_command_t<S_ExecuteCode_Footer_GC_B2>(
+    return this->generate_client_command_t<true>(
         label_writes, suffix_data, suffix_size, override_relocations_offset);
   } else if ((this->arch == Architecture::X86) || (this->arch == Architecture::SH4)) {
-    return this->generate_client_command_t<S_ExecuteCode_Footer_DC_PC_XB_BB_B2>(
+    return this->generate_client_command_t<false>(
         label_writes, suffix_data, suffix_size, override_relocations_offset);
   } else {
     throw logic_error("invalid architecture");

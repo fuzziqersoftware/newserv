@@ -1116,15 +1116,37 @@
   // in infinite HP mode.)
   "EnableV3V4ProtectedSubcommands": false,
 
-  // Whether to allow cross-play for various game versions. DCv1 and DCv2 are
-  // always allowed to join each other's games (though DCv2 can deny permission
-  // for DCv1 players to join when creating a game); if AllowDCPCGames is
-  // enabled, then PC players are allowed in DC games and vice versa. Similarly,
-  // if AllowGCXBGames is enabled, then GameCube and Xbox players are allowed to
-  // join each other's games. Note that this behavior is experimental; you are
-  // likely to encounter bugs in cross-play games, especially in the DC/PC case.
-  "AllowDCPCGames": false,
-  "AllowGCXBGames": true,
+  // These flags specify which versions to allow to join games, depending on
+  // the version that created the game. Each entry here is a bit field
+  // specifying which versions can join. The bits are in the same order as
+  // specified here in the comments, starting from the right (so DC_NTE is the
+  // third bit from the right). By default, all non-prototype v1 and v2
+  // versions can play with each other, and GC and Xbox can play with each
+  // other also.
+  // Note that there are some built-in restrictions. If a game is in the
+  // Ultimate difficulty level, for example, it will not be accessible to v1
+  // players regardless of what's specified below. There are similar
+  // restrictions based on the game mode and episode number.
+  // I don't plan to implement the ability for NTE or prototype versions to
+  // play with each other or with non-NTE versions. If you allow any NTE or
+  // prototype versions to play with other versions and you encounter a bug in
+  // that scenario, don't submit a ticket about it.
+  "CompatibilityGroups": [
+    0x0000, // PC_PATCH
+    0x0000, // BB_PATCH
+    0x0004, // DC_NTE compatible only with itself
+    0x0008, // DC_V1_11_2000_PROTOTYPE compatible only with itself
+    0x00B0, // DC_V1 compatible with DC_V1, DC_V2, and PC_V2
+    0x00B0, // DC_V2 compatible with DC_V1, DC_V2, and PC_V2
+    0x0040, // PC_NTE compatible only with itself
+    0x00B0, // PC_V2 compatible with DC_V1, DC_V2, and PC_V2
+    0x0100, // GC_NTE compatible only with itself
+    0x1200, // GC_V3 compatible with GC_V3 and XB_V3
+    0x0400, // GC_EP3_NTE compatible only with itself
+    0x0800, // GC_EP3 compatible only with itself
+    0x1200, // XB_V3 compatible with GC_V3 and XB_V3
+    0x2000, // BB_V4 compatible only with itself
+  ],
 
   // This option causes the server to override name colors for all players based
   // on which version of the game they're using. If this option is missing or

@@ -746,7 +746,7 @@ static HandlerResult S_B2(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t, 
     ses->log.info("Wrote code from server to file %s", output_filename.c_str());
 
 #ifdef HAVE_RESOURCE_FILE
-    using FooterT = S_ExecuteCode_FooterT_B2<BE>;
+    using FooterT = RELFileFooterT<BE>;
 
     // TODO: Support SH-4 disassembly too
     bool is_ppc = ::is_ppc(ses->version());
@@ -770,9 +770,9 @@ static HandlerResult S_B2(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t, 
           reloc_offset += (r.get<U16T<BE>>() * 4);
           labels.emplace(reloc_offset, phosg::string_printf("reloc%zu", x));
         }
-        labels.emplace(footer.entrypoint_addr_offset.load(), "entry_ptr");
+        labels.emplace(footer.root_offset.load(), "entry_ptr");
         labels.emplace(footer_offset, "footer");
-        labels.emplace(r.pget<U32T<BE>>(footer.entrypoint_addr_offset), "start");
+        labels.emplace(r.pget<U32T<BE>>(footer.root_offset), "start");
 
         string disassembly;
         if (is_ppc) {
@@ -1002,9 +1002,9 @@ static HandlerResult SC_6x60_6xA2(shared_ptr<ProxyServer::LinkedSession> ses, co
     G_SpecializableItemDropRequest_6xA2 cmd = normalize_drop_request(data.data(), data.size());
     auto s = ses->require_server_state();
     ses->next_drop_item.id = ses->next_item_id++;
-    bool is_box = (cmd.rt_index == 0x30);
-    send_drop_item_to_channel(s, ses->server_channel, ses->next_drop_item, !is_box, cmd.floor, cmd.x, cmd.z, cmd.entity_id);
-    send_drop_item_to_channel(s, ses->client_channel, ses->next_drop_item, !is_box, cmd.floor, cmd.x, cmd.z, cmd.entity_id);
+    uint8_t source_type = (cmd.rt_index == 0x30) ? 2 : 1;
+    send_drop_item_to_channel(s, ses->server_channel, ses->next_drop_item, source_type, cmd.floor, cmd.pos, cmd.entity_index);
+    send_drop_item_to_channel(s, ses->client_channel, ses->next_drop_item, source_type, cmd.floor, cmd.pos, cmd.entity_index);
     ses->next_drop_item.clear();
     return HandlerResult::Type::SUPPRESS;
   }
@@ -1025,27 +1025,34 @@ static HandlerResult SC_6x60_6xA2(shared_ptr<ProxyServer::LinkedSession> ses, co
     ses->log.warning("Session is in INTERCEPT drop mode, but item creator is missing");
     return HandlerResult::Type::FORWARD;
   }
-  if (!ses->map) {
-    ses->log.warning("Session is in INTERCEPT drop mode, but map is missing");
+  if (!ses->map_state) {
+    ses->log.warning("Session is in INTERCEPT drop mode, but map state is missing");
     return HandlerResult::Type::FORWARD;
   }
 
   G_SpecializableItemDropRequest_6xA2 cmd = normalize_drop_request(data.data(), data.size());
   auto rec = reconcile_drop_request_with_map(
-      ses->log, ses->client_channel, cmd, ses->version(), ses->lobby_episode, ses->config, ses->map, false);
+      ses->log,
+      ses->client_channel,
+      cmd,
+      ses->lobby_episode,
+      ses->lobby_event,
+      ses->config,
+      ses->map_state,
+      false);
 
   ItemCreator::DropResult res;
-  if (rec.is_box) {
+  if (rec.obj_st) {
     if (rec.ignore_def) {
-      ses->log.info("Creating item from box %04hX (area %02hX)", cmd.entity_id.load(), cmd.effective_area);
+      ses->log.info("Creating item from box %04hX (area %02hX)", cmd.entity_index.load(), cmd.effective_area);
       res = ses->item_creator->on_box_item_drop(cmd.effective_area);
     } else {
       ses->log.info("Creating item from box %04hX (area %02hX; specialized with %g %08" PRIX32 " %08" PRIX32 " %08" PRIX32 ")",
-          cmd.entity_id.load(), cmd.effective_area, cmd.param3.load(), cmd.param4.load(), cmd.param5.load(), cmd.param6.load());
+          cmd.entity_index.load(), cmd.effective_area, cmd.param3.load(), cmd.param4.load(), cmd.param5.load(), cmd.param6.load());
       res = ses->item_creator->on_specialized_box_item_drop(cmd.effective_area, cmd.param3, cmd.param4, cmd.param5, cmd.param6);
     }
   } else {
-    ses->log.info("Creating item from enemy %04hX (area %02hX)", cmd.entity_id.load(), cmd.effective_area);
+    ses->log.info("Creating item from enemy %04hX (area %02hX)", cmd.entity_index.load(), cmd.effective_area);
     res = ses->item_creator->on_monster_item_drop(rec.effective_rt_index, cmd.effective_area);
   }
 
@@ -1054,12 +1061,12 @@ static HandlerResult SC_6x60_6xA2(shared_ptr<ProxyServer::LinkedSession> ses, co
   } else {
     auto s = ses->require_server_state();
     string name = s->describe_item(ses->version(), res.item, false);
-    ses->log.info("Entity %04hX (area %02hX) created item %s", cmd.entity_id.load(), cmd.effective_area, name.c_str());
+    ses->log.info("Entity %04hX (area %02hX) created item %s", cmd.entity_index.load(), cmd.effective_area, name.c_str());
     res.item.id = ses->next_item_id++;
     ses->log.info("Creating item %08" PRIX32 " at %02hhX:%g,%g for all clients",
-        res.item.id.load(), cmd.floor, cmd.x.load(), cmd.z.load());
-    send_drop_item_to_channel(s, ses->client_channel, res.item, !rec.is_box, cmd.floor, cmd.x, cmd.z, cmd.entity_id);
-    send_drop_item_to_channel(s, ses->server_channel, res.item, !rec.is_box, cmd.floor, cmd.x, cmd.z, cmd.entity_id);
+        res.item.id.load(), cmd.floor, cmd.pos.x.load(), cmd.pos.z.load());
+    send_drop_item_to_channel(s, ses->client_channel, res.item, rec.obj_st ? 2 : 1, cmd.floor, cmd.pos, cmd.entity_index);
+    send_drop_item_to_channel(s, ses->server_channel, res.item, rec.obj_st ? 2 : 1, cmd.floor, cmd.pos, cmd.entity_index);
     send_item_notification_if_needed(s, ses->client_channel, ses->config, res.item, res.is_from_rare_table);
   }
   return HandlerResult::Type::SUPPRESS;
@@ -1144,7 +1151,7 @@ static HandlerResult S_6x(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t, 
       const auto& cmd = check_size_t<G_AttackFinished_6x46>(data,
           offsetof(G_AttackFinished_6x46, targets),
           sizeof(G_AttackFinished_6x46));
-      if (cmd.count > min<size_t>(cmd.header.size - 2, cmd.targets.size())) {
+      if (cmd.target_count > min<size_t>(cmd.header.size - 2, cmd.targets.size())) {
         ses->log.warning("Blocking subcommand 6x46 with invalid count");
         return HandlerResult::Type::SUPPRESS;
       }
@@ -1426,18 +1433,25 @@ static HandlerResult S_13_A7(shared_ptr<ProxyServer::LinkedSession> ses, uint16_
     if (!sf->is_download && phosg::ends_with(sf->basename, ".dat")) {
       auto quest_dat_data = make_shared<std::string>(prs_decompress(sf->data));
       try {
-        ses->map = Lobby::load_maps(
-            ses->version(),
-            ses->lobby_episode,
+        auto map_file = make_shared<MapFile>(quest_dat_data);
+        auto materialized_map_file = map_file->materialize_random_sections(ses->lobby_random_seed);
+
+        array<shared_ptr<const MapFile>, NUM_VERSIONS> map_files;
+        map_files.at(static_cast<size_t>(ses->version())) = materialized_map_file;
+        auto supermap = make_shared<SuperMap>(ses->lobby_episode, map_files);
+
+        ses->map_state = make_shared<MapState>(
+            ses->id,
             ses->lobby_difficulty,
             ses->lobby_event,
-            ses->id,
-            Map::DEFAULT_RARE_ENEMIES,
             ses->lobby_random_seed,
+            MapState::DEFAULT_RARE_ENEMIES,
             make_shared<PSOV2Encryption>(ses->lobby_random_seed),
-            quest_dat_data);
+            supermap);
+
       } catch (const exception& e) {
         ses->log.warning("Failed to load quest map: %s", e.what());
+        ses->map_state.reset();
       }
     }
 
@@ -1578,7 +1592,7 @@ static HandlerResult S_65_67_68_EB(shared_ptr<ProxyServer::LinkedSession> ses, u
     ses->lobby_episode = Episode::EP1;
     ses->lobby_random_seed = 0;
     ses->item_creator.reset();
-    ses->map.reset();
+    ses->map_state.reset();
 
     // This command can cause the client to no longer send D6 responses when
     // 1A/D5 large message boxes are closed. newserv keeps track of this
@@ -1720,7 +1734,7 @@ static HandlerResult S_64(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t, 
   } else {
     ses->lobby_mode = GameMode::NORMAL;
   }
-  ses->lobby_random_seed = cmd->rare_seed;
+  ses->lobby_random_seed = cmd->random_seed;
   if (cmd_ep3) {
     ses->lobby_episode = Episode::EP3;
   } else {
@@ -1730,27 +1744,24 @@ static HandlerResult S_64(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t, 
   if (ses->version() == Version::GC_NTE) {
     // GC NTE ignores the variations field entirely, so clear the array to
     // ensure we'll load the correct maps
-    cmd->variations.clear(0);
+    cmd->variations = Variations();
   }
 
   // Recreate the item creator if needed, and load maps
   auto s = ses->require_server_state();
   ses->set_drop_mode(ses->drop_mode);
-  if (!is_ep3(ses->version())) {
-    ses->map = Lobby::load_maps(
-        ses->version(),
-        ses->lobby_episode,
-        ses->lobby_mode,
+  if (!is_ep3(ses->version()) && (ses->lobby_mode != GameMode::CHALLENGE)) {
+    auto s = ses->require_server_state();
+    ses->map_state = make_shared<MapState>(
+        ses->id,
         ses->lobby_difficulty,
         ses->lobby_event,
-        ses->id,
-        s->set_data_table(ses->version(), ses->lobby_episode, ses->lobby_mode, ses->lobby_difficulty),
-        bind(&ServerState::load_map_file, s.get(), placeholders::_1, placeholders::_2),
-        Map::DEFAULT_RARE_ENEMIES,
         ses->lobby_random_seed,
+        MapState::DEFAULT_RARE_ENEMIES,
         make_shared<PSOV2Encryption>(ses->lobby_random_seed),
-        cmd->variations,
-        &ses->log);
+        s->supermaps_for_variations(ses->lobby_episode, ses->lobby_mode, ses->lobby_difficulty, cmd->variations));
+  } else {
+    ses->map_state.reset();
   }
 
   bool modified = false;
@@ -1785,7 +1796,7 @@ static HandlerResult S_64(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t, 
     modified = true;
   }
   if (ses->config.check_flag(Client::Flag::USE_OVERRIDE_RANDOM_SEED)) {
-    cmd->rare_seed = ses->config.override_random_seed;
+    cmd->random_seed = ses->config.override_random_seed;
     modified = true;
   }
 
@@ -1812,7 +1823,7 @@ static HandlerResult S_E8(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t, 
   ses->lobby_random_seed = 0;
   ses->lobby_episode = Episode::EP3;
   ses->item_creator.reset();
-  ses->map.reset();
+  ses->map_state.reset();
 
   bool modified = false;
 
@@ -1850,7 +1861,7 @@ static HandlerResult S_E8(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t, 
     modified = true;
   }
   if (ses->config.check_flag(Client::Flag::USE_OVERRIDE_RANDOM_SEED)) {
-    cmd.rare_seed = ses->config.override_random_seed;
+    cmd.random_seed = ses->config.override_random_seed;
     modified = true;
   }
 
@@ -1899,7 +1910,7 @@ static HandlerResult C_98(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t c
   ses->lobby_mode = GameMode::NORMAL;
   ses->lobby_random_seed = 0;
   ses->item_creator.reset();
-  ses->map.reset();
+  ses->map_state.reset();
 
   if (is_v3(ses->version()) || is_v4(ses->version())) {
     return C_GXB_61(ses, command, flag, data);
@@ -1999,9 +2010,7 @@ constexpr on_command_t C_B_81 = &C_81<SC_SimpleMail_BB_81>;
 
 template <typename CmdT>
 void C_6x_movement(shared_ptr<ProxyServer::LinkedSession> ses, const string& data) {
-  const auto& cmd = check_size_t<CmdT>(data);
-  ses->x = cmd.x;
-  ses->z = cmd.z;
+  ses->pos = check_size_t<CmdT>(data).pos;
 }
 
 template <typename SendGuildCardCmdT>
@@ -2030,19 +2039,22 @@ HandlerResult C_6x<void>(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t, u
   if (!data.empty()) {
     if ((data[0] == 0x05) && ses->config.check_flag(Client::Flag::SWITCH_ASSIST_ENABLED)) {
       auto& cmd = check_size_t<G_SwitchStateChanged_6x05>(data);
-      if (ses->map && (cmd.flags & 1) && (cmd.header.object_id != 0xFFFF)) {
-        for (auto* door : ses->map->doors_for_switch_flag(cmd.switch_flag_floor, cmd.switch_flag_num)) {
-          if (door->game_flags & 0x0001) {
+      if (ses->map_state && (cmd.flags & 1) && (cmd.header.entity_id != 0xFFFF)) {
+        auto door_states = ses->map_state->door_states_for_switch_flag(
+            ses->version(), cmd.switch_flag_floor, cmd.switch_flag_num);
+        for (auto& door_state : door_states) {
+          if (door_state->game_flags & 0x0001) {
             continue;
           }
-          door->game_flags |= 1;
+          door_state->game_flags |= 1;
 
+          uint16_t object_index = ses->map_state->index_for_object_state(ses->version(), door_state);
           G_UpdateObjectState_6x0B cmd0B;
           cmd0B.header.subcommand = 0x0B;
           cmd0B.header.size = sizeof(cmd0B) / 4;
-          cmd0B.header.client_id = door->object_id | 0x4000;
-          cmd0B.flags = door->game_flags;
-          cmd0B.object_index = door->object_id;
+          cmd0B.header.entity_id = object_index | 0x4000;
+          cmd0B.flags = door_state->game_flags;
+          cmd0B.object_index = object_index;
           ses->client_channel.send(0x60, 0x00, &cmd0B, sizeof(cmd0B));
           ses->server_channel.send(0x60, 0x00, &cmd0B, sizeof(cmd0B));
         }
@@ -2075,8 +2087,8 @@ HandlerResult C_6x<void>(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t, u
     } else if (data[0] == 0x40) {
       C_6x_movement<G_WalkToPosition_6x40>(ses, data);
 
-    } else if (data[0] == 0x42) {
-      C_6x_movement<G_RunToPosition_6x42>(ses, data);
+    } else if ((data[0] == 0x41) || (data[0] == 0x42)) {
+      C_6x_movement<G_MoveToPosition_6x41_6x42>(ses, data);
 
     } else if (data[0] == 0x48) {
       if (ses->config.check_flag(Client::Flag::INFINITE_TP_ENABLED)) {

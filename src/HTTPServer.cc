@@ -550,8 +550,8 @@ phosg::JSON HTTPServer::generate_game_client_json_st(shared_ptr<const Client> c,
       {"SubVersion", c->sub_version},
       {"Config", HTTPServer::generate_client_config_json_st(c->config)},
       {"Language", name_for_language_code(c->language())},
-      {"LocationX", c->x},
-      {"LocationZ", c->z},
+      {"LocationX", c->pos.x.load()},
+      {"LocationZ", c->pos.z.load()},
       {"LocationFloor", c->floor},
       {"CanChat", c->can_chat},
   });
@@ -735,8 +735,8 @@ phosg::JSON HTTPServer::generate_proxy_client_json_st(shared_ptr<const ProxyServ
       {"Language", name_for_language_code(ses->language())},
       {"LobbyClientID", ses->lobby_client_id},
       {"LeaderClientID", ses->leader_client_id},
-      {"LocationX", ses->x},
-      {"LocationZ", ses->z},
+      {"LocationX", ses->pos.x.load()},
+      {"LocationZ", ses->pos.z.load()},
       {"LocationFloor", ses->floor},
       {"IsInGame", ses->is_in_game},
       {"IsInQuest", ses->is_in_quest},
@@ -787,7 +787,6 @@ phosg::JSON HTTPServer::generate_lobby_json_st(shared_ptr<const Lobby> l, shared
     ret.emplace("CheatsEnabled", l->check_flag(Lobby::Flag::CHEATS_ENABLED));
     ret.emplace("MinLevel", l->min_level + 1);
     ret.emplace("MaxLevel", l->max_level + 1);
-    ret.emplace("BaseVersion", l->base_version);
     ret.emplace("Episode", name_for_episode(l->episode));
     ret.emplace("HasPassword", !l->password.empty());
     ret.emplace("Name", l->name);
@@ -796,11 +795,7 @@ phosg::JSON HTTPServer::generate_lobby_json_st(shared_ptr<const Lobby> l, shared
       ret.emplace("QuestSelectionInProgress", l->check_flag(Lobby::Flag::QUEST_SELECTION_IN_PROGRESS));
       ret.emplace("QuestInProgress", l->check_flag(Lobby::Flag::QUEST_IN_PROGRESS));
       ret.emplace("JoinableQuestInProgress", l->check_flag(Lobby::Flag::JOINABLE_QUEST_IN_PROGRESS));
-      auto variations_json = phosg::JSON::list();
-      for (size_t z = 0; z < l->variations.size(); z++) {
-        variations_json.emplace_back(l->variations[z].load());
-      }
-      ret.emplace("Variations", std::move(variations_json));
+      ret.emplace("Variations", l->variations.json());
       ret.emplace("SectionID", name_for_section_id(l->effective_section_id()));
       ret.emplace("Mode", name_for_mode(l->mode));
       ret.emplace("Difficulty", name_for_difficulty(l->difficulty));
@@ -845,8 +840,8 @@ phosg::JSON HTTPServer::generate_lobby_json_st(shared_ptr<const Lobby> l, shared
           const auto& item = it.second;
           auto item_dict = phosg::JSON::dict({
               {"LocationFloor", floor},
-              {"LocationX", item->x},
-              {"LocationZ", item->z},
+              {"LocationX", item->pos.x.load()},
+              {"LocationZ", item->pos.z.load()},
               {"DropNumber", item->drop_number},
               {"Flags", item->flags},
               {"Data", item->data.hex()},
@@ -1016,7 +1011,9 @@ phosg::JSON HTTPServer::generate_lobbies_json() const {
   return call_on_event_thread<phosg::JSON>(this->state->base, [&]() {
     phosg::JSON res = phosg::JSON::list();
     for (const auto& it : this->state->id_to_lobby) {
-      res.emplace_back(this->generate_lobby_json_st(it.second, this->state->item_name_index_opt(it.second->base_version)));
+      auto leader = it.second->clients[it.second->leader_id];
+      Version v = leader ? leader->version() : Version::BB_V4;
+      res.emplace_back(this->generate_lobby_json_st(it.second, this->state->item_name_index_opt(v)));
     }
     return res;
   });
@@ -1061,7 +1058,6 @@ phosg::JSON HTTPServer::generate_summary_json() const {
         auto game_json = phosg::JSON::dict({
             {"ID", l->lobby_id},
             {"Name", l->name},
-            {"BaseVersion", phosg::name_for_enum(l->base_version)},
             {"Players", l->count_clients()},
             {"CheatsEnabled", l->check_flag(Lobby::Flag::CHEATS_ENABLED)},
             {"Episode", name_for_episode(l->episode)},

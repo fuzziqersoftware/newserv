@@ -64,6 +64,9 @@ I 91446 2023-12-31 21:04:44 - [Commands] Sending to C-1 (version=DC_NTE command=
 0000 | 04 00 0C 00 00 00 01 00 F5 5D C2 1A             |         UUUU
 I 91446 2023-12-31 21:04:44 - [C-1] Client is a prototype version and the license was created during this session; converting permanent license to temporary license
 I 91446 2023-12-31 21:04:44 - [Commands] Sending to C-1 (version=DC_NTE command=07 flag=02)
+0000 | B1 00 20 00 32 30 32 34 3A 31 32 3A 32 39 3A 20 |     2024:12:29:
+0010 | 32 32 3A 35 36 3A 33 36 2E 30 30 30 00 01 00 00 | 22:56:36.000
+I 91446 2023-12-31 21:04:44 - [Commands] Sending to C-1 (version=DC_NTE command=07 flag=02)
 0000 | 07 02 58 00 11 00 00 11 FF FF FF FF 04 00 41 6C |   X           Al
 0010 | 65 78 61 6E 64 72 69 61 00 00 00 00 00 00 00 00 | exandria
 0020 | 11 00 00 11 11 22 22 11 04 0F 47 6F 20 74 6F 20 |      ""   Go to
@@ -587,6 +590,9 @@ I 91446 2023-12-31 21:05:43 - [C-3] Game version changed to DC_NTE
 I 91446 2023-12-31 21:05:43 - [Commands] Sending to C-3 (version=DC_NTE command=04 flag=00)
 0000 | 04 00 0C 00 00 00 01 00 F5 79 DE 25             |
 I 91446 2023-12-31 21:05:43 - [C-3] Client is a prototype version and the license was created during this session; converting permanent license to temporary license
+I 91446 2023-12-31 21:05:43 - [Commands] Sending to C-3 (version=DC_NTE command=07 flag=02)
+0000 | B1 00 20 00 32 30 32 34 3A 31 32 3A 32 39 3A 20 |     2024:12:29:
+0010 | 32 32 3A 35 36 3A 33 36 2E 30 30 30 00 01 00 00 | 22:56:36.000
 I 91446 2023-12-31 21:05:43 - [Commands] Sending to C-3 (version=DC_NTE command=07 flag=02)
 0000 | 07 02 58 00 11 00 00 11 FF FF FF FF 04 00 41 6C |   X           Al
 0010 | 65 78 61 6E 64 72 69 61 00 00 00 00 00 00 00 00 | exandria
@@ -1175,6 +1181,10 @@ I 91446 2023-12-31 21:06:09 - [Commands] Received from C-2 (ABCDEFGHIJKL) (versi
 0000 | 60 00 10 00 46 03 01 00 0A 00 00 00 00 40 00 00 | `   F        @
 I 91446 2023-12-31 21:06:09 - [Commands] Sending to C-4 (BBBBBBBBBBBB) (version=DC_NTE command=60 flag=00)
 0000 | 60 00 10 00 46 03 01 00 0A 00 00 00 00 40 00 00 | `   F        @
+I 91446 2023-12-31 21:06:24 - [Commands] Received from C-2 (ABCDEFGHIJKL) (version=DC_NTE command=0C flag=03)
+0000 | 06 00 30 00 00 00 00 00 00 00 00 00 24 76 61 72 |             $var
+0010 | 69 61 74 69 6F 6E 73 20 30 30 30 30 30 31 30 31 | iations 00000101
+0020 | 30 31 30 31 30 30 30 30 31 31 30 31 31 30 00 00 | 01010000110110
 I 91446 2023-12-31 21:06:24 - [Commands] Received from C-2 (ABCDEFGHIJKL) (version=DC_NTE command=0C flag=03)
 0000 | 0C 03 2C 00 00 00 00 00 00 00 00 00 82 A0 82 A0 |   ,
 0010 | 82 A0 82 A0 82 A0 81 90 00 00 00 00 00 00 00 00 |
@@ -4383,9 +4393,9 @@ I 91446 2023-12-31 21:07:49 - [Lobby:00000015:FloorItems:01] Added floor item 00
 I 91446 2023-12-31 21:07:49 - [Lobby:00000015:FloorItems:01] Evicted 0 items
 I 91446 2023-12-31 21:07:49 - [Game:15] Player 0 (leader) created floor item 00000170 (5 Meseta) at 1:(485.634, 586.012)
 I 91446 2023-12-31 21:07:49 - [Commands] Sending to C-4 (BBBBBBBBBBBB) (version=DC_NTE command=60 flag=00)
-0000 | 60 00 2C 00 51 0A 60 40 01 02 70 00 1C D1 F2 43 | ` , Q `@  p    C
-0010 | C2 80 12 44 10 00 00 00 04 00 00 00 00 00 00 00 |    D
-0020 | 00 00 00 00 70 01 00 00 05 00 00 00             |     p
+0000 | 60 00 30 00 51 0B 00 00 01 02 70 00 1C D1 F2 43 | ` 0 Q     p    C
+0010 | C2 80 12 44 00 00 00 00 04 00 00 00 00 00 00 00 |    D
+0020 | 00 00 00 00 70 01 00 00 05 00 00 00 00 00 00 00 |     p
 I 91446 2023-12-31 21:07:49 - [Commands] Received from C-2 (ABCDEFGHIJKL) (version=DC_NTE command=60 flag=00)
 0000 | 60 00 2C 00 51 0A 60 40 01 02 6F 00 65 1F E8 43 | ` , Q `@  o e  C
 0010 | 5E 83 10 44 10 00 00 00 00 0A 00 00 00 00 02 FB | ^  D
@@ -4394,9 +4404,9 @@ I 91446 2023-12-31 21:07:49 - [Lobby:00000015:FloorItems:01] Added floor item 00
 I 91446 2023-12-31 21:07:49 - [Lobby:00000015:FloorItems:01] Evicted 0 items
 I 91446 2023-12-31 21:07:49 - [Game:15] Player 0 (leader) created floor item 0000016F (Cane 0/-5/0/0/0) at 1:(464.245, 578.053)
 I 91446 2023-12-31 21:07:49 - [Commands] Sending to C-4 (BBBBBBBBBBBB) (version=DC_NTE command=60 flag=00)
-0000 | 60 00 2C 00 51 0A 60 40 01 02 6F 00 65 1F E8 43 | ` , Q `@  o e  C
-0010 | 5E 83 10 44 10 00 00 00 00 0A 00 00 00 00 02 FB | ^  D
-0020 | 00 00 00 00 6F 01 00 00 00 00 00 00             |     o
+0000 | 60 00 30 00 51 0B 00 00 01 02 6F 00 65 1F E8 43 | ` 0 Q     o e  C
+0010 | 5E 83 10 44 00 00 00 00 00 0A 00 00 00 00 02 FB | ^  D
+0020 | 00 00 00 00 6F 01 00 00 00 00 00 00 00 00 00 00 |     o
 I 91446 2023-12-31 21:07:50 - [Commands] Received from C-4 (BBBBBBBBBBBB) (version=DC_NTE command=60 flag=00)
 0000 | 60 00 1C 00 36 06 01 00 00 00 56 CE 01 00 10 00 | `   6     V
 0010 | AB 3F F6 43 E8 8E EA 40 2A 35 0D 44             |  ? C   @*5 D
@@ -4750,9 +4760,9 @@ I 91446 2023-12-31 21:08:38 - [Lobby:00000015:FloorItems:01] Added floor item 00
 I 91446 2023-12-31 21:08:38 - [Lobby:00000015:FloorItems:01] Evicted 0 items
 I 91446 2023-12-31 21:08:38 - [Game:15] Player 0 (leader) created floor item 00000173 (7 Meseta) at 1:(538.379, 394.393)
 I 91446 2023-12-31 21:08:38 - [Commands] Sending to C-4 (BBBBBBBBBBBB) (version=DC_NTE command=60 flag=00)
-0000 | 60 00 2C 00 51 0A 60 40 01 02 73 00 3E 98 06 44 | ` , Q `@  s >  D
-0010 | 5E 32 C5 43 10 00 00 00 04 00 00 00 00 00 00 00 | ^2 C
-0020 | 00 00 00 00 73 01 00 00 07 00 00 00             |     s
+0000 | 60 00 30 00 51 0B 00 00 01 02 73 00 3E 98 06 44 | ` 0 Q     s >  D
+0010 | 5E 32 C5 43 00 00 00 00 04 00 00 00 00 00 00 00 | ^2 C
+0020 | 00 00 00 00 73 01 00 00 07 00 00 00 00 00 00 00 |     s
 I 91446 2023-12-31 21:08:39 - [Commands] Received from C-2 (ABCDEFGHIJKL) (version=DC_NTE command=60 flag=00)
 0000 | 60 00 1C 00 36 06 00 00 00 00 3D 5C 01 00 10 00 | `   6     =\
 0010 | C4 11 03 44 DE 24 3E 41 9E D2 CC 43             |    D $>A   C
@@ -4897,9 +4907,9 @@ I 91446 2023-12-31 21:08:46 - [Lobby:00000015:FloorItems:01] Added floor item 00
 I 91446 2023-12-31 21:08:46 - [Lobby:00000015:FloorItems:01] Evicted 0 items
 I 91446 2023-12-31 21:08:46 - [Game:15] Player 0 (leader) created floor item 00000172 (3 Meseta) at 1:(556.451, 393.417)
 I 91446 2023-12-31 21:08:46 - [Commands] Sending to C-4 (BBBBBBBBBBBB) (version=DC_NTE command=60 flag=00)
-0000 | 60 00 2C 00 51 0A 60 40 01 02 72 00 D5 1C 0B 44 | ` , Q `@  r    D
-0010 | 69 B5 C4 43 10 00 00 00 04 00 00 00 00 00 00 00 | i  C
-0020 | 00 00 00 00 72 01 00 00 03 00 00 00             |     r
+0000 | 60 00 30 00 51 0B 00 00 01 02 72 00 D5 1C 0B 44 | ` 0 Q     r    D
+0010 | 69 B5 C4 43 00 00 00 00 04 00 00 00 00 00 00 00 | i  C
+0020 | 00 00 00 00 72 01 00 00 03 00 00 00 00 00 00 00 |     r
 I 91446 2023-12-31 21:08:47 - [Commands] Received from C-4 (BBBBBBBBBBBB) (version=DC_NTE command=60 flag=00)
 0000 | 60 00 1C 00 36 06 01 00 00 00 C1 7B 01 00 10 00 | `   6      {
 0010 | 91 17 0B 44 BC CD 24 41 98 1D CB 43             |    D  $A   C

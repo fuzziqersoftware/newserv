@@ -3,6 +3,7 @@
 #include <string.h>
 
 #include <memory>
+#include <phosg/Filesystem.hh>
 #include <phosg/Image.hh>
 #include <phosg/Network.hh>
 #include <phosg/Platform.hh>
@@ -563,11 +564,6 @@ shared_ptr<const string> ServerState::load_bb_file(
 }
 
 shared_ptr<const string> ServerState::load_map_file(Version version, const string& filename) const {
-  auto& cache = this->map_file_caches.at(static_cast<size_t>(version));
-  return cache->get(filename, bind(&ServerState::load_map_file_uncached, this, version, placeholders::_1));
-}
-
-shared_ptr<const string> ServerState::load_map_file_uncached(Version version, const string& filename) const {
   if (version == Version::BB_V4) {
     try {
       return this->load_bb_file(filename);
@@ -1044,8 +1040,32 @@ void ServerState::load_config_early() {
   } catch (const out_of_range&) {
   }
 
-  this->allow_dc_pc_games = this->config_json->get_bool("AllowDCPCGames", true);
-  this->allow_gc_xb_games = this->config_json->get_bool("AllowGCXBGames", true);
+  try {
+    const auto& groups = this->config_json->get_list("CompatibilityGroups");
+    this->compatibility_groups.fill(0);
+    for (size_t v_s = 0; v_s < groups.size(); v_s++) {
+      this->compatibility_groups[v_s] = groups[v_s]->as_int();
+    }
+  } catch (const out_of_range&) {
+    static_assert(NUM_VERSIONS == 14, "Don't forget to update the default compatibility groups");
+    this->compatibility_groups = {
+        0x0000, // PC_PATCH
+        0x0000, // BB_PATCH
+        0x0004, // DC_NTE compatible only with itself
+        0x0008, // DC_V1_11_2000_PROTOTYPE compatible only with itself
+        0x00B0, // DC_V1 compatible with DC_V1, DC_V2, and PC_V2
+        0x00B0, // DC_V2 compatible with DC_V1, DC_V2, and PC_V2
+        0x0040, // PC_NTE compatible only with itself
+        0x00B0, // PC_V2 compatible with DC_V1, DC_V2, and PC_V2
+        0x0100, // GC_NTE compatible only with itself
+        0x1200, // GC_V3 compatible with GC_V3 and XB_V3
+        0x0400, // GC_EP3_NTE compatible only with itself
+        0x0800, // GC_EP3 compatible only with itself
+        0x1200, // XB_V3 compatible with GC_V3 and XB_V3
+        0x2000, // BB_V4 compatible only with itself
+    };
+  }
+
   this->enable_chat_commands = this->config_json->get_bool("EnableChatCommands", true);
 
   this->version_name_colors.reset();
@@ -1216,20 +1236,20 @@ void ServerState::load_config_early() {
   }
 
   for (size_t z = 0; z < 4; z++) {
-    shared_ptr<const Map::RareEnemyRates> prev = Map::DEFAULT_RARE_ENEMIES;
+    shared_ptr<const MapState::RareEnemyRates> prev = MapState::DEFAULT_RARE_ENEMIES;
     try {
       string key = "RareEnemyRates-";
       key += token_name_for_difficulty(z);
-      this->rare_enemy_rates_by_difficulty[z] = make_shared<Map::RareEnemyRates>(this->config_json->at(key));
+      this->rare_enemy_rates_by_difficulty[z] = make_shared<MapState::RareEnemyRates>(this->config_json->at(key));
       prev = this->rare_enemy_rates_by_difficulty[z];
     } catch (const out_of_range&) {
       this->rare_enemy_rates_by_difficulty[z] = prev;
     }
   }
   try {
-    this->rare_enemy_rates_challenge = make_shared<Map::RareEnemyRates>(this->config_json->at("RareEnemyRates-Challenge"));
+    this->rare_enemy_rates_challenge = make_shared<MapState::RareEnemyRates>(this->config_json->at("RareEnemyRates-Challenge"));
   } catch (const out_of_range&) {
-    this->rare_enemy_rates_challenge = Map::DEFAULT_RARE_ENEMIES;
+    this->rare_enemy_rates_challenge = MapState::DEFAULT_RARE_ENEMIES;
   }
 
   this->min_levels_v4[0] = DEFAULT_MIN_LEVELS_V4_EP1;
@@ -1398,7 +1418,7 @@ void ServerState::load_config_late() {
     } catch (const out_of_range&) {
     }
 
-    auto parse_primary_identifier_list = [&](const char* key, Version base_version) -> unordered_set<uint32_t> {
+    auto parse_primary_identifier_list = [&](const char* key, Version v) -> unordered_set<uint32_t> {
       unordered_set<uint32_t> ret;
       try {
         for (const auto& pi_json : this->config_json->get_list(key)) {
@@ -1406,7 +1426,7 @@ void ServerState::load_config_late() {
             ret.emplace(pi_json->as_int());
           } else {
             try {
-              auto item = this->parse_item_description(base_version, pi_json->as_string());
+              auto item = this->parse_item_description(v, pi_json->as_string());
               ret.emplace(item.primary_identifier());
             } catch (const exception& e) {
               config_log.warning("Cannot parse item description \"%s\": %s (skipping entry)", pi_json->as_string().c_str(), e.what());
@@ -1532,12 +1552,174 @@ void ServerState::load_patch_indexes(bool from_non_event_thread) {
   this->forward_or_call(from_non_event_thread, std::move(set));
 }
 
+void ServerState::load_maps(bool from_non_event_thread) {
+  using SDT = SetDataTable;
+
+  config_log.info("Loading free play map files");
+
+  unordered_map<uint64_t, shared_ptr<const MapFile>> map_file_for_source_hash;
+  map<uint32_t, array<shared_ptr<const MapFile>, NUM_VERSIONS>> map_files;
+  for (Version v : ALL_ARPG_SEMANTIC_VERSIONS) {
+    const array<Episode, 3> episodes = {Episode::EP1, Episode::EP2, Episode::EP4};
+    for (Episode episode : episodes) {
+      if ((episode == Episode::EP2 && is_v1_or_v2(v) && (v != Version::GC_NTE)) ||
+          (episode == Episode::EP4 && !is_v4(v))) {
+        continue;
+      }
+
+      const array<GameMode, 4> modes = {GameMode::NORMAL, GameMode::BATTLE, GameMode::CHALLENGE, GameMode::SOLO};
+      for (GameMode mode : modes) {
+        if (((mode == GameMode::BATTLE || mode == GameMode::CHALLENGE) && is_v1(v)) ||
+            (mode == GameMode::SOLO && !is_v4(v))) {
+          continue;
+        }
+        for (uint8_t difficulty = 0; difficulty < 4; difficulty++) {
+          if ((difficulty == 3) && is_v1(v)) {
+            continue;
+          }
+          auto sdt = this->set_data_table(v, episode, mode, difficulty);
+          for (uint8_t floor = 0; floor < 0x12; floor++) {
+            auto variation_maxes = sdt->num_free_play_variations_for_floor(episode, mode == GameMode::SOLO, floor);
+            for (size_t var_layout = 0; var_layout < variation_maxes.layout; var_layout++) {
+              for (size_t var_entities = 0; var_entities < variation_maxes.entities; var_entities++) {
+                uint32_t supermap_key = this->supermap_key(episode, mode, difficulty, floor, var_layout, var_entities);
+
+                auto objects_filename = sdt->map_filename_for_variation(
+                    episode, mode, floor, var_layout, var_entities, SDT::FilenameType::OBJECT_SETS);
+                auto enemies_filename = sdt->map_filename_for_variation(
+                    episode, mode, floor, var_layout, var_entities, SDT::FilenameType::ENEMY_SETS);
+                auto events_filename = sdt->map_filename_for_variation(
+                    episode, mode, floor, var_layout, var_entities, SDT::FilenameType::EVENTS);
+                auto objects_data = objects_filename.empty() ? nullptr : this->load_map_file(v, objects_filename);
+                auto enemies_data = enemies_filename.empty() ? nullptr : this->load_map_file(v, enemies_filename);
+                auto events_data = enemies_filename.empty() ? nullptr : this->load_map_file(v, events_filename);
+
+                if (objects_data || enemies_data || events_data) {
+                  // TODO: This is ugly; the hash computation probably should be factored into MapFile
+                  uint64_t source_hash = ((objects_data ? phosg::fnv1a64(*objects_data) : 0) ^
+                      (enemies_data ? phosg::fnv1a64(*enemies_data) : 0) ^
+                      (events_data ? phosg::fnv1a64(*events_data) : 0));
+                  shared_ptr<const MapFile> map_file;
+                  try {
+                    map_file = map_file_for_source_hash.at(source_hash);
+                  } catch (const out_of_range&) {
+                    map_file = make_shared<MapFile>(floor, objects_data, enemies_data, events_data);
+                    if (map_file->source_hash() != source_hash) {
+                      throw logic_error("incorrect source hash");
+                    }
+                    map_file_for_source_hash.emplace(map_file->source_hash(), map_file);
+                  }
+
+                  // Uncomment for debugging
+                  // config_log.info("Maps for %s %s %s %s %02hhX %02zu %02zu (%08" PRIX32 " => %016" PRIX64 "): objects=%s(%s)+0x%zX enemies=%s(%s)+0x%zX events=%s(%s)+0x%zX",
+                  //     phosg::name_for_enum(v),
+                  //     name_for_episode(episode),
+                  //     name_for_mode(mode),
+                  //     name_for_difficulty(difficulty),
+                  //     floor,
+                  //     var_layout,
+                  //     var_entities,
+                  //     supermap_key,
+                  //     map_file->source_hash(),
+                  //     objects_filename.empty() ? "(none)" : objects_filename.c_str(),
+                  //     objects_data ? "present" : "missing",
+                  //     map_file->count_object_sets(),
+                  //     enemies_filename.empty() ? "(none)" : enemies_filename.c_str(),
+                  //     enemies_data ? "present" : "missing",
+                  //     map_file->count_enemy_sets(),
+                  //     events_filename.empty() ? "(none)" : events_filename.c_str(),
+                  //     events_data ? "present" : "missing",
+                  //     map_file->count_events());
+
+                  map_files[supermap_key].at(static_cast<size_t>(v)) = map_file;
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  config_log.info("Constructing free play supermaps");
+
+  unordered_map<uint64_t, shared_ptr<const SuperMap>> supermap_for_source_hash_sum;
+  unordered_map<uint32_t, shared_ptr<const SuperMap>> new_supermaps;
+  for (const auto& it : map_files) {
+    uint64_t source_hash_sum = 0;
+    for (auto map_file : it.second) {
+      source_hash_sum += map_file ? map_file->source_hash() : 0;
+    }
+
+    Episode episode = static_cast<Episode>((it.first >> 28) & 7);
+    // Uncomment for debugging
+    // auto mode = static_cast<GameMode>((it.first >> 26) & 3);
+    // uint8_t difficulty = (it.first >> 24) & 3;
+    // uint8_t floor = (it.first >> 16) & 0xFF;
+    // uint8_t layout = (it.first >> 8) & 0xFF;
+    // uint8_t entities = (it.first >> 0) & 0xFF;
+    // fprintf(stderr, "SuperMap for %s %s %s %02hhX %02hhX %02hhX (%08" PRIX32 "): %016" PRIX64 " from",
+    //     name_for_episode(episode),
+    //     name_for_mode(mode),
+    //     name_for_difficulty(difficulty),
+    //     floor,
+    //     layout,
+    //     entities,
+    //     it.first,
+    //     source_hash_sum);
+    // for (const auto& map_file : it.second) {
+    //   if (map_file) {
+    //     fprintf(stderr, " %016" PRIX64, map_file->source_hash());
+    //   } else {
+    //     fprintf(stderr, " ----------------");
+    //   }
+    // }
+    // fputc('\n', stderr);
+
+    shared_ptr<const SuperMap> supermap;
+    try {
+      supermap = supermap_for_source_hash_sum.at(source_hash_sum);
+      static_game_data_log.info("Linking existing free play supermap %016" PRIX64 " for key %08" PRIX32, source_hash_sum, it.first);
+    } catch (const out_of_range&) {
+      supermap = make_shared<SuperMap>(episode, it.second);
+      supermap_for_source_hash_sum.emplace(source_hash_sum, supermap);
+      static_game_data_log.info("Constructed free play supermap %016" PRIX64 " for key %08" PRIX32, source_hash_sum, it.first);
+    }
+    new_supermaps.emplace(it.first, supermap);
+  }
+
+  auto set = [s = this->shared_from_this(), new_supermaps = std::move(new_supermaps)]() {
+    s->supermaps = std::move(new_supermaps);
+  };
+  this->forward_or_call(from_non_event_thread, std::move(set));
+}
+
+vector<shared_ptr<const SuperMap>> ServerState::supermaps_for_variations(
+    Episode episode,
+    GameMode mode,
+    uint8_t difficulty,
+    const Variations& variations) const {
+  vector<shared_ptr<const SuperMap>> ret;
+  for (size_t floor = 0; floor < 0x12; floor++) {
+    Variations::Entry e;
+    if (floor < variations.entries.size()) {
+      e = variations.entries[floor];
+    }
+    ret.push_back(this->get_supermap(episode, mode, difficulty, floor, e.layout, e.entities));
+    if (ret.back()) {
+      static_game_data_log.info("Using supermap %08" PRIX32 " for floor %02zX layout %" PRIX32 " entities %" PRIX32,
+          this->supermap_key(episode, mode, difficulty, floor, e.layout, e.entities),
+          floor, e.layout.load(), e.entities.load());
+    } else {
+      static_game_data_log.info("No supermap available for floor %02zX layout %" PRIX32 " entities %" PRIX32,
+          floor, e.layout.load(), e.entities.load());
+    }
+  }
+  return ret;
+}
+
 void ServerState::clear_file_caches(bool from_non_event_thread) {
   auto set = [s = this->shared_from_this()]() {
-    config_log.info("Clearing map file caches");
-    for (auto& cache : s->map_file_caches) {
-      cache = make_shared<ThreadSafeFileCache>();
-    }
     config_log.info("Clearing BB stream file cache");
     s->bb_stream_files_cache.reset(new FileContentsCache(3600000000ULL));
     config_log.info("Clearing BB system cache");
@@ -2041,6 +2223,7 @@ void ServerState::load_all() {
   this->load_dol_files(false);
   this->create_default_lobbies();
   this->load_set_data_tables(false);
+  this->load_maps(false);
   this->load_battle_params(false);
   this->load_level_tables(false);
   this->load_text_index(false);

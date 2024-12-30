@@ -63,6 +63,9 @@ I 94381 2023-12-29 15:36:14 - [Commands] Sending to C-1 (version=GC_V3 command=0
 0000 | 04 00 2C 00 00 00 01 00 1E B1 05 17 32 AC 99 83 |   ,         2
 0010 | 30 50 4F 33 00 11 00 40 20 00 00 00 00 00 00 00 | 0PO3   B
 0020 | 00 00 00 00 00 00 FF FF 80 FF FF FF             |
+I 94381 2023-12-29 15:36:14 - [Commands] Sending to C-1 (version=GC_V3 command=04 flag=00)
+0000 | B1 00 20 00 32 30 32 34 3A 31 32 3A 32 39 3A 20 |     2024:12:29:
+0010 | 32 32 3A 33 38 3A 34 35 2E 30 30 30 00 01 00 00 | 22:38:45.000
 I 94381 2023-12-29 15:36:14 - [Commands] Sending to C-1 (version=GC_V3 command=D5 flag=00)
 0000 | D5 00 2C 00 59 6F 75 20 61 72 65 20 63 6F 6E 6E |   , You are conn
 0010 | 65 63 74 65 64 20 74 6F 20 09 43 36 41 6C 65 78 | ected to  C6Alex
@@ -469,6 +472,9 @@ I 94381 2023-12-29 15:36:19 - [Commands] Sending to C-4 (version=GC_V3 command=0
 0000 | 04 00 2C 00 00 00 01 00 1E B1 05 17 32 AC 99 83 |   ,         2
 0010 | 00 00 4F 33 00 10 00 40 20 00 00 00 00 00 00 00 |    3   B
 0020 | 00 00 00 00 00 00 FF FF 80 FF FF FF             |
+I 94381 2023-12-29 15:36:19 - [Commands] Sending to C-4 (version=GC_V3 command=D5 flag=00)
+0000 | B1 00 20 00 32 30 32 34 3A 31 32 3A 32 39 3A 20 |     2024:12:29:
+0010 | 32 32 3A 33 39 3A 35 32 2E 30 30 30 00 01 00 00 | 22:39:52.000
 I 94381 2023-12-29 15:36:19 - [Commands] Sending to C-4 (version=GC_V3 command=D5 flag=00)
 0000 | D5 00 2C 00 59 6F 75 20 61 72 65 20 63 6F 6E 6E |   , You are conn
 0010 | 65 63 74 65 64 20 74 6F 20 09 43 36 41 6C 65 78 | ected to  C6Alex
@@ -4182,7 +4188,7 @@ I 94381 2023-12-29 15:37:47 - [Game:15] Creating item CC000000 at 02:1100,685 fo
 I 94381 2023-12-29 15:37:47 - [Lobby:00000015:FloorItems:02] Added floor item CC000000 at 1100, 685 with drop number 0 visible to 001
 I 94381 2023-12-29 15:37:47 - [Lobby:00000015:FloorItems:02] Evicted 0 items
 I 94381 2023-12-29 15:37:47 - [Commands] Sending to C-2 (Jess) (version=GC_V3 command=60 flag=00)
-0000 | 60 00 30 00 5F 0B 00 00 02 00 C3 01 00 80 89 44 | ` 0 _          D
+0000 | 60 00 30 00 5F 0B 00 00 02 02 C3 01 00 80 89 44 | ` 0 _          D
 0010 | 00 40 2B 44 00 00 00 00 04 00 00 00 00 00 00 00 |  @+D
 0020 | 00 00 00 00 00 00 00 CC 09 00 00 00 00 00 00 00 |
 I 94381 2023-12-29 15:37:47 - [Game:15] Creating item from box 01C3 (area 14)
@@ -4195,7 +4201,7 @@ I 94381 2023-12-29 15:37:47 - [Game:15] Creating item CC000001 at 02:1100,685 fo
 I 94381 2023-12-29 15:37:47 - [Lobby:00000015:FloorItems:02] Added floor item CC000001 at 1100, 685 with drop number 1 visible to 002
 I 94381 2023-12-29 15:37:47 - [Lobby:00000015:FloorItems:02] Evicted 0 items
 I 94381 2023-12-29 15:37:47 - [Commands] Sending to C-5 (Jonah) (version=GC_V3 command=60 flag=00)
-0000 | 60 00 30 00 5F 0B 00 00 02 00 C3 01 00 80 89 44 | ` 0 _          D
+0000 | 60 00 30 00 5F 0B 00 00 02 02 C3 01 00 80 89 44 | ` 0 _          D
 0010 | 00 40 2B 44 00 00 00 00 04 00 00 00 00 00 00 00 |  @+D
 0020 | 00 00 00 00 01 00 00 CC 0A 00 00 00 00 00 00 00 |
 I 94381 2023-12-29 15:37:47 - [Commands] Received from C-5 (Jonah) (version=GC_V3 command=60 flag=00)
@@ -4228,7 +4234,7 @@ I 94381 2023-12-29 15:37:47 - [Game:15] Creating item CC000002 at 02:1100,705 fo
 I 94381 2023-12-29 15:37:47 - [Lobby:00000015:FloorItems:02] Added floor item CC000002 at 1100, 705 with drop number 2 visible to 001
 I 94381 2023-12-29 15:37:47 - [Lobby:00000015:FloorItems:02] Evicted 0 items
 I 94381 2023-12-29 15:37:47 - [Commands] Sending to C-2 (Jess) (version=GC_V3 command=60 flag=00)
-0000 | 60 00 30 00 5F 0B 00 00 02 00 C2 01 00 80 89 44 | ` 0 _          D
+0000 | 60 00 30 00 5F 0B 00 00 02 02 C2 01 00 80 89 44 | ` 0 _          D
 0010 | 00 40 30 44 00 00 00 00 04 00 00 00 00 00 00 00 |  @0D
 0020 | 00 00 00 00 02 00 00 CC 16 00 00 00 00 00 00 00 |
 I 94381 2023-12-29 15:37:47 - [Game:15] Creating item from box 01C2 (area 14)
@@ -4241,7 +4247,7 @@ I 94381 2023-12-29 15:37:47 - [Game:15] Creating item CC000003 at 02:1100,705 fo
 I 94381 2023-12-29 15:37:47 - [Lobby:00000015:FloorItems:02] Added floor item CC000003 at 1100, 705 with drop number 3 visible to 002
 I 94381 2023-12-29 15:37:47 - [Lobby:00000015:FloorItems:02] Evicted 0 items
 I 94381 2023-12-29 15:37:47 - [Commands] Sending to C-5 (Jonah) (version=GC_V3 command=60 flag=00)
-0000 | 60 00 30 00 5F 0B 00 00 02 00 C2 01 00 80 89 44 | ` 0 _          D
+0000 | 60 00 30 00 5F 0B 00 00 02 02 C2 01 00 80 89 44 | ` 0 _          D
 0010 | 00 40 30 44 00 00 00 00 04 00 00 00 00 00 00 00 |  @0D
 0020 | 00 00 00 00 03 00 00 CC 19 00 00 00 00 00 00 00 |
 I 94381 2023-12-29 15:37:48 - [Commands] Received from C-5 (Jonah) (version=GC_V3 command=60 flag=00)
@@ -4274,7 +4280,7 @@ I 94381 2023-12-29 15:37:48 - [Game:15] Creating item CC000004 at 02:1100,725 fo
 I 94381 2023-12-29 15:37:48 - [Lobby:00000015:FloorItems:02] Added floor item CC000004 at 1100, 725 with drop number 4 visible to 001
 I 94381 2023-12-29 15:37:48 - [Lobby:00000015:FloorItems:02] Evicted 0 items
 I 94381 2023-12-29 15:37:48 - [Commands] Sending to C-2 (Jess) (version=GC_V3 command=60 flag=00)
-0000 | 60 00 30 00 5F 0B 00 00 02 00 C1 01 00 80 89 44 | ` 0 _          D
+0000 | 60 00 30 00 5F 0B 00 00 02 02 C1 01 00 80 89 44 | ` 0 _          D
 0010 | 00 40 35 44 00 00 00 00 04 00 00 00 00 00 00 00 |  @5D
 0020 | 00 00 00 00 04 00 00 CC 0E 00 00 00 00 00 00 00 |
 I 94381 2023-12-29 15:37:48 - [Game:15] Creating item from box 01C1 (area 14)
@@ -4483,7 +4489,7 @@ I 94381 2023-12-29 15:38:10 - [Game:15] Creating item CC000005 at 02:1070,745 fo
 I 94381 2023-12-29 15:38:10 - [Lobby:00000015:FloorItems:02] Added floor item CC000005 at 1070, 745 with drop number 5 visible to 001
 I 94381 2023-12-29 15:38:10 - [Lobby:00000015:FloorItems:02] Evicted 0 items
 I 94381 2023-12-29 15:38:10 - [Commands] Sending to C-2 (Jess) (version=GC_V3 command=60 flag=00)
-0000 | 60 00 30 00 5F 0B 00 00 02 00 BF 01 00 C0 85 44 | ` 0 _          D
+0000 | 60 00 30 00 5F 0B 00 00 02 02 BF 01 00 C0 85 44 | ` 0 _          D
 0010 | 00 40 3A 44 00 00 00 00 04 00 00 00 00 00 00 00 |  @:D
 0020 | 00 00 00 00 05 00 00 CC 15 00 00 00 00 00 00 00 |
 I 94381 2023-12-29 15:38:10 - [Game:15] Creating item from box 01BF (area 14)
@@ -4698,7 +4704,7 @@ I 94381 2023-12-29 15:39:09 - [Game:15] Creating item CC000006 at 02:1050,745 fo
 I 94381 2023-12-29 15:39:09 - [Lobby:00000015:FloorItems:02] Added floor item CC000006 at 1050, 745 with drop number 6 visible to 001
 I 94381 2023-12-29 15:39:09 - [Lobby:00000015:FloorItems:02] Evicted 0 items
 I 94381 2023-12-29 15:39:09 - [Commands] Sending to C-2 (Jess) (version=GC_V3 command=60 flag=00)
-0000 | 60 00 30 00 5F 0B 00 00 02 00 BE 01 00 40 83 44 | ` 0 _        @ D
+0000 | 60 00 30 00 5F 0B 00 00 02 02 BE 01 00 40 83 44 | ` 0 _        @ D
 0010 | 00 40 3A 44 00 00 00 00 04 00 00 00 00 00 00 00 |  @:D
 0020 | 00 00 00 00 06 00 00 CC 10 00 00 00 00 00 00 00 |
 I 94381 2023-12-29 15:39:09 - [Game:15] Creating item from box 01BE (area 14)
@@ -4711,7 +4717,7 @@ I 94381 2023-12-29 15:39:09 - [Game:15] Creating item CC000007 at 02:1050,745 fo
 I 94381 2023-12-29 15:39:09 - [Lobby:00000015:FloorItems:02] Added floor item CC000007 at 1050, 745 with drop number 7 visible to 002
 I 94381 2023-12-29 15:39:09 - [Lobby:00000015:FloorItems:02] Evicted 0 items
 I 94381 2023-12-29 15:39:09 - [Commands] Sending to C-5 (Jonah) (version=GC_V3 command=60 flag=00)
-0000 | 60 00 30 00 5F 0B 00 00 02 00 BE 01 00 40 83 44 | ` 0 _        @ D
+0000 | 60 00 30 00 5F 0B 00 00 02 02 BE 01 00 40 83 44 | ` 0 _        @ D
 0010 | 00 40 3A 44 00 00 00 00 03 02 00 00 00 00 00 00 |  @:D
 0020 | 00 00 00 00 07 00 00 CC 00 00 00 00 00 00 00 00 |
 I 94381 2023-12-29 15:39:10 - [Commands] Received from C-5 (Jonah) (version=GC_V3 command=60 flag=00)
@@ -4744,7 +4750,7 @@ I 94381 2023-12-29 15:39:10 - [Game:15] Creating item CC000008 at 02:1030,745 fo
 I 94381 2023-12-29 15:39:10 - [Lobby:00000015:FloorItems:02] Added floor item CC000008 at 1030, 745 with drop number 8 visible to 001
 I 94381 2023-12-29 15:39:10 - [Lobby:00000015:FloorItems:02] Evicted 0 items
 I 94381 2023-12-29 15:39:10 - [Commands] Sending to C-2 (Jess) (version=GC_V3 command=60 flag=00)
-0000 | 60 00 30 00 5F 0B 00 00 02 00 C0 01 00 C0 80 44 | ` 0 _          D
+0000 | 60 00 30 00 5F 0B 00 00 02 02 C0 01 00 C0 80 44 | ` 0 _          D
 0010 | 00 40 3A 44 00 00 00 00 04 00 00 00 00 00 00 00 |  @:D
 0020 | 00 00 00 00 08 00 00 CC 0E 00 00 00 00 00 00 00 |
 I 94381 2023-12-29 15:39:10 - [Game:15] Creating item from box 01C0 (area 14)
@@ -4757,7 +4763,7 @@ I 94381 2023-12-29 15:39:10 - [Game:15] Creating item CC000009 at 02:1030,745 fo
 I 94381 2023-12-29 15:39:10 - [Lobby:00000015:FloorItems:02] Added floor item CC000009 at 1030, 745 with drop number 9 visible to 002
 I 94381 2023-12-29 15:39:10 - [Lobby:00000015:FloorItems:02] Evicted 0 items
 I 94381 2023-12-29 15:39:10 - [Commands] Sending to C-5 (Jonah) (version=GC_V3 command=60 flag=00)
-0000 | 60 00 30 00 5F 0B 00 00 02 00 C0 01 00 C0 80 44 | ` 0 _          D
+0000 | 60 00 30 00 5F 0B 00 00 02 02 C0 01 00 C0 80 44 | ` 0 _          D
 0010 | 00 40 3A 44 00 00 00 00 04 00 00 00 00 00 00 00 |  @:D
 0020 | 00 00 00 00 09 00 00 CC 17 00 00 00 00 00 00 00 |
 I 94381 2023-12-29 15:39:11 - [Commands] Received from C-5 (Jonah) (version=GC_V3 command=60 flag=00)
@@ -5188,7 +5194,7 @@ I 94381 2023-12-29 15:39:46 - [Game:15] Creating item CC00000A at 02:620,455 for
 I 94381 2023-12-29 15:39:46 - [Lobby:00000015:FloorItems:02] Added floor item CC00000A at 620, 455 with drop number 10 visible to 001
 I 94381 2023-12-29 15:39:46 - [Lobby:00000015:FloorItems:02] Evicted 0 items
 I 94381 2023-12-29 15:39:46 - [Commands] Sending to C-2 (Jess) (version=GC_V3 command=60 flag=00)
-0000 | 60 00 30 00 5F 0B 00 00 02 00 66 01 00 00 1B 44 | ` 0 _     f    D
+0000 | 60 00 30 00 5F 0B 00 00 02 02 66 01 00 00 1B 44 | ` 0 _     f    D
 0010 | 00 80 E3 43 00 00 00 00 04 00 00 00 00 00 00 00 |    C
 0020 | 00 00 00 00 0A 00 00 CC 0D 00 00 00 00 00 00 00 |
 I 94381 2023-12-29 15:39:46 - [Game:15] Creating item from box 0166 (area 14)
@@ -6798,7 +6804,7 @@ I 94381 2023-12-29 15:41:06 - [Game:15] Creating item CC000012 at 02:580,455 for
 I 94381 2023-12-29 15:41:06 - [Lobby:00000015:FloorItems:02] Added floor item CC000012 at 580, 455 with drop number 18 visible to 001
 I 94381 2023-12-29 15:41:06 - [Lobby:00000015:FloorItems:02] Evicted 0 items
 I 94381 2023-12-29 15:41:06 - [Commands] Sending to C-2 (Jess) (version=GC_V3 command=60 flag=00)
-0000 | 60 00 30 00 5F 0B 00 00 02 00 64 01 00 00 11 44 | ` 0 _     d    D
+0000 | 60 00 30 00 5F 0B 00 00 02 02 64 01 00 00 11 44 | ` 0 _     d    D
 0010 | 00 80 E3 43 00 00 00 00 03 00 00 00 00 01 00 00 |    C
 0020 | 00 00 00 00 12 00 00 CC 00 00 00 00 00 00 00 00 |
 I 94381 2023-12-29 15:41:06 - [Game:15] Creating item from box 0164 (area 14)
@@ -6811,7 +6817,7 @@ I 94381 2023-12-29 15:41:06 - [Game:15] Creating item CC000013 at 02:580,455 for
 I 94381 2023-12-29 15:41:06 - [Lobby:00000015:FloorItems:02] Added floor item CC000013 at 580, 455 with drop number 19 visible to 002
 I 94381 2023-12-29 15:41:06 - [Lobby:00000015:FloorItems:02] Evicted 0 items
 I 94381 2023-12-29 15:41:06 - [Commands] Sending to C-5 (Jonah) (version=GC_V3 command=60 flag=00)
-0000 | 60 00 30 00 5F 0B 00 00 02 00 64 01 00 00 11 44 | ` 0 _     d    D
+0000 | 60 00 30 00 5F 0B 00 00 02 02 64 01 00 00 11 44 | ` 0 _     d    D
 0010 | 00 80 E3 43 00 00 00 00 03 00 00 00 00 01 00 00 |    C
 0020 | 00 00 00 00 13 00 00 CC 00 00 00 00 00 00 00 00 |
 I 94381 2023-12-29 15:41:07 - [Commands] Received from C-5 (Jonah) (version=GC_V3 command=60 flag=00)
@@ -6904,7 +6910,7 @@ I 94381 2023-12-29 15:41:09 - [Game:15] Creating item CC000014 at 02:540,455 for
 I 94381 2023-12-29 15:41:09 - [Lobby:00000015:FloorItems:02] Added floor item CC000014 at 540, 455 with drop number 20 visible to 001
 I 94381 2023-12-29 15:41:09 - [Lobby:00000015:FloorItems:02] Evicted 0 items
 I 94381 2023-12-29 15:41:09 - [Commands] Sending to C-2 (Jess) (version=GC_V3 command=60 flag=00)
-0000 | 60 00 30 00 5F 0B 00 00 02 00 65 01 00 00 07 44 | ` 0 _     e    D
+0000 | 60 00 30 00 5F 0B 00 00 02 02 65 01 00 00 07 44 | ` 0 _     e    D
 0010 | 02 80 E3 43 00 00 00 00 04 00 00 00 00 00 00 00 |    C
 0020 | 00 00 00 00 14 00 00 CC 17 00 00 00 00 00 00 00 |
 I 94381 2023-12-29 15:41:09 - [Game:15] Creating item from box 0165 (area 14)
@@ -13245,9 +13251,9 @@ I 94381 2023-12-29 15:43:04 - [Game:15] Creating item CC000015 at 02:660,455 for
 I 94381 2023-12-29 15:43:04 - [Lobby:00000015:FloorItems:02] Added floor item CC000015 at 660, 455 with drop number 21 visible to 001
 I 94381 2023-12-29 15:43:04 - [Lobby:00000015:FloorItems:02] Evicted 0 items
 I 94381 2023-12-29 15:43:04 - [Commands] Sending to C-2 (Jess) (version=GC_V3 command=60 flag=00)
-0000 | 60 00 30 00 5F 0B 00 00 02 00 67 01 00 00 25 44 | ` 0 _     g   %D
-0010 | FE 7F E3 43 00 00 00 00 03 00 00 00 00 01 00 00 |    C
-0020 | 00 00 00 00 15 00 00 CC 00 00 00 00 00 00 00 00 |
+0000 | 60 00 30 00 5F 0B 00 00 02 02 67 01 00 00 25 44 | ` 0 _     g   %D
+0010 | FE 7F E3 43 00 00 00 00 04 00 00 00 00 00 00 00 |    C
+0020 | 00 00 00 00 15 00 00 CC 09 00 00 00 00 00 00 00 |
 I 94381 2023-12-29 15:43:04 - [Game:15] Creating item from box 0167 (area 14)
 I 94381 2023-12-29 15:43:04 - [ItemCreator:GC_V3/Ep2/Nml/N/5] Box drop checks for area_norm 01; random state: 991824DA 0000005F
 I 94381 2023-12-29 15:43:04 - [ItemCreator:GC_V3/Ep2/Nml/N/5] Box spec 00380000 did not produce item 030E1D
@@ -13258,9 +13264,9 @@ I 94381 2023-12-29 15:43:04 - [Game:15] Creating item CC000016 at 02:660,455 for
 I 94381 2023-12-29 15:43:04 - [Lobby:00000015:FloorItems:02] Added floor item CC000016 at 660, 455 with drop number 22 visible to 002
 I 94381 2023-12-29 15:43:04 - [Lobby:00000015:FloorItems:02] Evicted 0 items
 I 94381 2023-12-29 15:43:04 - [Commands] Sending to C-5 (Jonah) (version=GC_V3 command=60 flag=00)
-0000 | 60 00 30 00 5F 0B 00 00 02 00 67 01 00 00 25 44 | ` 0 _     g   %D
-0010 | FE 7F E3 43 00 00 00 00 03 00 00 00 00 01 00 00 |    C
-0020 | 00 00 00 00 16 00 00 CC 00 00 00 00 00 00 00 00 |
+0000 | 60 00 30 00 5F 0B 00 00 02 02 67 01 00 00 25 44 | ` 0 _     g   %D
+0010 | FE 7F E3 43 00 00 00 00 04 00 00 00 00 00 00 00 |    C
+0020 | 00 00 00 00 16 00 00 CC 0A 00 00 00 00 00 00 00 |
 I 94381 2023-12-29 15:43:04 - [Commands] Received from C-5 (Jonah) (version=GC_V3 command=60 flag=00)
 0000 | 60 00 10 00 0B 03 67 41 01 00 00 00 67 01 00 00 | `     gA    g
 I 94381 2023-12-29 15:43:04 - [Commands] Sending to C-2 (Jess) (version=GC_V3 command=60 flag=00)
@@ -13313,8 +13319,8 @@ I 94381 2023-12-29 15:43:06 - [Game:15] Player 0 picked up CC000015 (Monomate x1
 I 94381 2023-12-29 15:43:06 - [Commands] Sending to C-2 (Jess) (version=GC_V3 command=60 flag=00)
 0000 | 60 00 10 00 59 03 00 00 00 00 02 00 15 00 00 CC | `   Y
 I 94381 2023-12-29 15:43:06 - [Commands] Sending to C-5 (Jonah) (version=GC_V3 command=60 flag=00)
-0000 | 60 00 20 00 2B 07 00 00 03 00 00 00 00 01 00 00 | `   +
-0010 | 00 00 00 00 15 00 00 CC 00 00 00 00 00 00 00 00 |
+0000 | 60 00 20 00 2B 07 00 00 04 00 00 00 00 00 00 00 | `   +
+0010 | 00 00 00 00 15 00 00 CC 09 00 00 00 00 00 00 00 |
 I 94381 2023-12-29 15:43:07 - [Commands] Received from C-2 (Jess) (version=GC_V3 command=60 flag=00)
 0000 | 60 00 14 00 40 04 00 00 8A 57 22 44 A4 B8 E8 43 | `   @    W"D   C
 0010 | 00 00 00 00                                     |
@@ -13505,8 +13511,8 @@ I 94381 2023-12-29 15:43:14 - [Game:15] Player 1 picked up CC000016 (Monomate x1
 [PlayerInventory]    5: [+00000050] 03080000 00010000 00000000 (00210007) 00000000 (Trap Vision x1)
 [PlayerInventory]    6: [+00000050] 03000000 00020000 00000000 (00210008) 00000000 (Monomate x2)
 I 94381 2023-12-29 15:43:14 - [Commands] Sending to C-2 (Jess) (version=GC_V3 command=60 flag=00)
-0000 | 60 00 20 00 2B 07 01 00 03 00 00 00 00 01 00 00 | `   +
-0010 | 00 00 00 00 16 00 00 CC 00 00 00 00 00 00 00 00 |
+0000 | 60 00 20 00 2B 07 01 00 04 00 00 00 00 00 00 00 | `   +
+0010 | 00 00 00 00 16 00 00 CC 0A 00 00 00 00 00 00 00 |
 I 94381 2023-12-29 15:43:14 - [Commands] Sending to C-5 (Jonah) (version=GC_V3 command=60 flag=00)
 0000 | 60 00 10 00 59 03 01 00 01 00 02 00 16 00 00 CC | `   Y
 I 94381 2023-12-29 15:43:14 - [Commands] Received from C-5 (Jonah) (version=GC_V3 command=60 flag=00)

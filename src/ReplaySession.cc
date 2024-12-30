@@ -286,19 +286,19 @@ void ReplaySession::apply_default_mask(shared_ptr<Event> ev) {
         case 0x64:
           if ((version == Version::PC_NTE) || (version == Version::PC_V2)) {
             auto& mask = check_size_t<S_JoinGame_PC_64>(mask_data, mask_size);
-            mask.variations.clear(0);
-            mask.rare_seed = 0;
+            mask.variations = Variations();
+            mask.random_seed = 0;
           } else if (version == Version::XB_V3) {
             auto& mask = check_size_t<S_JoinGame_XB_64>(mask_data, mask_size);
-            mask.variations.clear(0);
-            mask.rare_seed = 0;
+            mask.variations = Variations();
+            mask.random_seed = 0;
           } else if (version == Version::DC_NTE || version == Version::DC_V1_11_2000_PROTOTYPE) {
             auto& mask = check_size_t<S_JoinGame_DCNTE_64>(mask_data, mask_size);
-            mask.variations.clear(0);
+            mask.variations = Variations();
           } else {
             auto& mask = check_size_t<S_JoinGame_DC_64>(mask_data, mask_size, sizeof(S_JoinGame_Ep3_64));
-            mask.variations.clear(0);
-            mask.rare_seed = 0;
+            mask.variations = Variations();
+            mask.random_seed = 0;
             for (size_t offset = sizeof(S_JoinGame_GC_64) +
                      offsetof(S_JoinGame_Ep3_64::Ep3PlayerEntry, disp.visual.name_color_checksum);
                  offset + 4 <= mask_size;
@@ -348,7 +348,7 @@ void ReplaySession::apply_default_mask(shared_ptr<Event> ev) {
         case 0xE8:
           if (is_gc(version)) {
             auto& mask = check_size_t<S_JoinSpectatorTeam_Ep3_E8>(mask_data, mask_size);
-            mask.rare_seed = 0;
+            mask.random_seed = 0;
             for (size_t z = 0; z < 4; z++) {
               mask.players[z].disp.visual.name_color_checksum = 0;
             }
@@ -430,8 +430,8 @@ void ReplaySession::apply_default_mask(shared_ptr<Event> ev) {
         }
         case 0x0064: {
           auto& mask = check_size_t<S_JoinGame_BB_64>(mask_data, mask_size);
-          mask.variations.clear(0);
-          mask.rare_seed = 0;
+          mask.variations = Variations();
+          mask.random_seed = 0;
           break;
         }
         case 0x00B1: {

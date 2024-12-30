@@ -9,6 +9,7 @@
 #include <vector>
 
 #include "IntegralExpression.hh"
+#include "Map.hh"
 #include "PlayerSubordinates.hh"
 #include "QuestScript.hh"
 #include "StaticGameData.hh"
@@ -63,25 +64,25 @@ struct QuestCategoryIndex {
 };
 
 struct VersionedQuest {
-  uint32_t quest_number;
-  uint32_t category_id;
-  Episode episode;
-  bool allow_start_from_chat_command;
-  bool joinable;
-  int16_t lock_status_register;
+  uint32_t quest_number = 0;
+  uint32_t category_id = 0;
+  Episode episode = Episode::NONE;
+  bool allow_start_from_chat_command = false;
+  bool joinable = false;
+  int16_t lock_status_register = -1;
   std::string name;
-  Version version;
-  uint8_t language;
-  bool is_dlq_encoded;
+  Version version = Version::UNKNOWN;
+  uint8_t language = 1;
+  bool is_dlq_encoded = false;
   std::string short_description;
   std::string long_description;
   std::shared_ptr<const std::string> bin_contents;
   std::shared_ptr<const std::string> dat_contents;
-  std::shared_ptr<const std::string> dat_contents_decompressed;
+  std::shared_ptr<const MapFile> map_file;
   std::shared_ptr<const std::string> pvr_contents;
   std::shared_ptr<const BattleRules> battle_rules;
-  ssize_t challenge_template_index;
-  uint8_t description_flag;
+  ssize_t challenge_template_index = -1;
+  uint8_t description_flag = 0;
   std::shared_ptr<const IntegralExpression> available_expression;
   std::shared_ptr<const IntegralExpression> enabled_expression;
 
@@ -92,6 +93,7 @@ struct VersionedQuest {
       uint8_t language,
       std::shared_ptr<const std::string> bin_contents,
       std::shared_ptr<const std::string> dat_contents,
+      std::shared_ptr<const MapFile> map_file,
       std::shared_ptr<const std::string> pvr_contents,
       std::shared_ptr<const BattleRules> battle_rules = nullptr,
       ssize_t challenge_template_index = -1,
@@ -120,6 +122,8 @@ public:
   Quest& operator=(const Quest&) = default;
   Quest& operator=(Quest&&) = default;
 
+  std::shared_ptr<const SuperMap> get_supermap(int64_t random_seed) const;
+
   void add_version(std::shared_ptr<const VersionedQuest> vq);
   bool has_version(Version v, uint8_t language) const;
   bool has_version_any_language(Version v) const;
@@ -134,6 +138,7 @@ public:
   bool joinable;
   int16_t lock_status_register;
   std::string name;
+  mutable std::shared_ptr<const SuperMap> supermap;
   std::shared_ptr<const BattleRules> battle_rules;
   ssize_t challenge_template_index;
   uint8_t description_flag;
@@ -165,11 +170,11 @@ struct QuestIndex {
   std::vector<std::shared_ptr<const QuestCategoryIndex::Category>> categories(
       QuestMenuType menu_type,
       Episode episode,
-      Version version,
+      uint16_t version_flags,
       IncludeCondition include_condition = nullptr) const;
   std::vector<std::pair<QuestIndex::IncludeState, std::shared_ptr<const Quest>>> filter(
       Episode episode,
-      Version version,
+      uint16_t version_flags,
       uint32_t category_id,
       IncludeCondition include_condition = nullptr,
       size_t limit = 0) const;

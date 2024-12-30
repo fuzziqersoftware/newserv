@@ -59,6 +59,9 @@ I 49484 2023-05-26 16:35:10 - [Commands] Received from C-2 (version=PC command=9
 I 49484 2023-05-26 16:35:10 - [Commands] Sending to C-2 (version=PC command=04 flag=00)
 0000 | 0C 00 04 00 00 00 01 00 11 11 11 11             |
 I 49484 2023-05-26 16:35:10 - [Commands] Sending to C-2 (version=PC command=07 flag=05)
+0000 | 20 00 B1 00 32 30 32 34 3A 31 32 3A 32 39 3A 20 |     2024:12:29:
+0010 | 32 33 3A 34 33 3A 30 39 2E 30 30 30 00 01 00 00 | 23:43:09.000
+I 49484 2023-05-26 16:35:10 - [Commands] Sending to C-2 (version=PC command=07 flag=05)
 0000 | 0C 01 07 05 11 00 00 11 FF FF FF FF 04 00 41 00 |               A
 0010 | 6C 00 65 00 78 00 61 00 6E 00 64 00 72 00 69 00 | l e x a n d r i
 0020 | 61 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 | a
@@ -1142,6 +1145,9 @@ I 49484 2023-05-26 16:37:03 - [Commands] Received from C-4 (version=PC command=9
 0140 | 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 |
 I 49484 2023-05-26 16:37:03 - [Commands] Sending to C-4 (version=PC command=04 flag=00)
 0000 | 0C 00 04 00 00 00 01 00 11 11 11 11             |
+I 49484 2023-05-26 16:37:03 - [Commands] Sending to C-4 (version=PC command=07 flag=05)
+0000 | 20 00 B1 00 32 30 32 34 3A 31 32 3A 32 39 3A 20 |     2024:12:29:
+0010 | 32 33 3A 34 33 3A 30 39 2E 30 30 30 00 01 00 00 | 23:43:09.000
 I 49484 2023-05-26 16:37:03 - [Commands] Sending to C-4 (version=PC command=07 flag=05)
 0000 | 0C 01 07 05 11 00 00 11 FF FF FF FF 04 00 41 00 |               A
 0010 | 6C 00 65 00 78 00 61 00 6E 00 64 00 72 00 69 00 | l e x a n d r i

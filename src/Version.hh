@@ -24,7 +24,50 @@ enum class Version {
   UNKNOWN = 15,
 };
 
-constexpr size_t NUM_VERSIONS = static_cast<size_t>(Version::BB_V4) + 1;
+constexpr std::array<Version, 14> ALL_VERSIONS = {
+    Version::PC_PATCH,
+    Version::BB_PATCH,
+    Version::DC_NTE,
+    Version::DC_V1_11_2000_PROTOTYPE,
+    Version::DC_V1,
+    Version::DC_V2,
+    Version::PC_NTE,
+    Version::PC_V2,
+    Version::GC_NTE,
+    Version::GC_V3,
+    Version::GC_EP3_NTE,
+    Version::GC_EP3,
+    Version::XB_V3,
+    Version::BB_V4,
+};
+constexpr std::array<Version, 12> ALL_NON_PATCH_VERSIONS = {
+    Version::DC_NTE,
+    Version::DC_V1_11_2000_PROTOTYPE,
+    Version::DC_V1,
+    Version::DC_V2,
+    Version::PC_NTE,
+    Version::PC_V2,
+    Version::GC_NTE,
+    Version::GC_V3,
+    Version::GC_EP3_NTE,
+    Version::GC_EP3,
+    Version::XB_V3,
+    Version::BB_V4,
+};
+constexpr std::array<Version, 10> ALL_ARPG_SEMANTIC_VERSIONS = {
+    Version::DC_NTE,
+    Version::DC_V1_11_2000_PROTOTYPE,
+    Version::DC_V1,
+    Version::DC_V2,
+    Version::PC_NTE,
+    Version::PC_V2,
+    Version::GC_NTE,
+    Version::GC_V3,
+    Version::XB_V3,
+    Version::BB_V4,
+};
+
+constexpr size_t NUM_VERSIONS = ALL_VERSIONS.size();
 constexpr size_t NUM_PATCH_VERSIONS = static_cast<size_t>(Version::BB_PATCH) + 1;
 constexpr size_t NUM_NON_PATCH_VERSIONS = NUM_VERSIONS - NUM_PATCH_VERSIONS;
 
@@ -35,7 +78,7 @@ const char* phosg::name_for_enum<Version>(Version v);
 template <>
 Version phosg::enum_for_name<Version>(const char* name);
 
-inline bool is_any_nte(Version version) {
+constexpr bool is_any_nte(Version version) {
   return (version == Version::DC_NTE) ||
       (version == Version::DC_V1_11_2000_PROTOTYPE) ||
       (version == Version::PC_NTE) ||
@@ -43,55 +86,55 @@ inline bool is_any_nte(Version version) {
       (version == Version::GC_EP3_NTE);
 }
 
-inline bool is_patch(Version version) {
+constexpr bool is_patch(Version version) {
   return (version == Version::PC_PATCH) || (version == Version::BB_PATCH);
 }
-inline bool is_pre_v1(Version version) {
+constexpr bool is_pre_v1(Version version) {
   return (version == Version::DC_NTE) || (version == Version::DC_V1_11_2000_PROTOTYPE);
 }
-inline bool is_v1(Version version) {
+constexpr bool is_v1(Version version) {
   return (version == Version::DC_NTE) || (version == Version::DC_V1_11_2000_PROTOTYPE) || (version == Version::DC_V1);
 }
-inline bool is_v2(Version version) {
+constexpr bool is_v2(Version version) {
   return (version == Version::DC_V2) || (version == Version::PC_NTE) || (version == Version::PC_V2) || (version == Version::GC_NTE);
 }
-inline bool is_v1_or_v2(Version version) {
+constexpr bool is_v1_or_v2(Version version) {
   return is_v1(version) || is_v2(version);
 }
-inline bool is_v3(Version version) {
+constexpr bool is_v3(Version version) {
   return (version == Version::GC_V3) ||
       (version == Version::GC_EP3_NTE) ||
       (version == Version::GC_EP3) ||
       (version == Version::XB_V3);
 }
-inline bool is_v4(Version version) {
+constexpr bool is_v4(Version version) {
   return (version == Version::BB_V4);
 }
 
-inline bool is_ep3(Version version) {
+constexpr bool is_ep3(Version version) {
   return (version == Version::GC_EP3_NTE) || (version == Version::GC_EP3);
 }
 
-inline bool is_dc(Version version) {
+constexpr bool is_dc(Version version) {
   return (version == Version::DC_NTE) ||
       (version == Version::DC_V1_11_2000_PROTOTYPE) ||
       (version == Version::DC_V1) ||
       (version == Version::DC_V2);
 }
-inline bool is_gc(Version version) {
+constexpr bool is_gc(Version version) {
   return (version == Version::GC_NTE) ||
       (version == Version::GC_V3) ||
       (version == Version::GC_EP3_NTE) ||
       (version == Version::GC_EP3);
 }
 
-inline bool is_sh4(Version version) {
+constexpr bool is_sh4(Version version) {
   return (version == Version::DC_NTE) ||
       (version == Version::DC_V1_11_2000_PROTOTYPE) ||
       (version == Version::DC_V1) ||
       (version == Version::DC_V2);
 }
-inline bool is_x86(Version version) {
+constexpr bool is_x86(Version version) {
   return (version == Version::PC_PATCH) ||
       (version == Version::BB_PATCH) ||
       (version == Version::PC_NTE) ||
@@ -99,20 +142,20 @@ inline bool is_x86(Version version) {
       (version == Version::XB_V3) ||
       (version == Version::BB_V4);
 }
-inline bool is_ppc(Version version) {
+constexpr bool is_ppc(Version version) {
   return (version == Version::GC_NTE) ||
       (version == Version::GC_V3) ||
       (version == Version::GC_EP3_NTE) ||
       (version == Version::GC_EP3);
 }
 
-inline bool is_big_endian(Version version) {
+constexpr bool is_big_endian(Version version) {
   return (version == Version::GC_NTE) ||
       (version == Version::GC_V3) ||
       (version == Version::GC_EP3_NTE) ||
       (version == Version::GC_EP3);
 }
-inline bool uses_v2_encryption(Version version) {
+constexpr bool uses_v2_encryption(Version version) {
   return (version == Version::PC_PATCH) ||
       (version == Version::BB_PATCH) ||
       (version == Version::DC_NTE) ||
@@ -122,17 +165,17 @@ inline bool uses_v2_encryption(Version version) {
       (version == Version::PC_V2) ||
       (version == Version::GC_NTE);
 }
-inline bool uses_v3_encryption(Version version) {
+constexpr bool uses_v3_encryption(Version version) {
   return (version == Version::GC_V3) ||
       (version == Version::GC_EP3_NTE) ||
       (version == Version::GC_EP3) ||
       (version == Version::XB_V3);
 }
-inline bool uses_v4_encryption(Version version) {
+constexpr bool uses_v4_encryption(Version version) {
   return (version == Version::BB_V4);
 }
 
-inline bool uses_utf16(Version version) {
+constexpr bool uses_utf16(Version version) {
   return (version == Version::PC_PATCH) ||
       (version == Version::BB_PATCH) ||
       (version == Version::PC_NTE) ||

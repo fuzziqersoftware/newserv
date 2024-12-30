@@ -8,6 +8,7 @@
 #include <phosg/Random.hh>
 #include <phosg/Time.hh>
 
+#include "../CommonFileFormats.hh"
 #include "../Compression.hh"
 #include "../Loggers.hh"
 #include "../PSOEncryption.hh"
@@ -2452,28 +2453,34 @@ CardIndex::CardIndex(
       this->compressed_card_definitions = phosg::load_file(filename);
       decompressed_data = prs_decompress(this->compressed_card_definitions);
     }
+
+    // The client can't handle files larger than this
     if (decompressed_data.size() > 0x36EC0) {
       throw runtime_error("decompressed card list data is too long");
     }
 
-    // There's a footer after the card definitions (it's a standard-format REL
-    // file), but we ignore it
-    if (decompressed_data.size() % sizeof(CardDefinition) != sizeof(CardDefinitionsFooter)) {
-      throw runtime_error(phosg::string_printf(
-          "decompressed card update file size %zX is not aligned with card definition size %zX (%zX extra bytes)",
-          decompressed_data.size(), sizeof(CardDefinition), decompressed_data.size() % sizeof(CardDefinition)));
+    // The card definitions file is a standard REL file; the root offset points
+    // to an ArrayRef which specifies an array of CardDefinition structs
+    phosg::StringReader r(decompressed_data);
+    const auto& footer = r.pget<RELFileFooterBE>(r.size() - sizeof(RELFileFooterBE));
+    uint32_t offset = r.pget_u32b(footer.root_offset);
+    uint32_t count = r.pget_u32b(footer.root_offset + 4);
+    if (offset > decompressed_data.size() ||
+        ((offset + count * sizeof(CardDefinition)) > decompressed_data.size())) {
+      throw runtime_error("definitions array reference out of bounds");
     }
-    auto* defs = reinterpret_cast<CardDefinition*>(decompressed_data.data());
-    size_t max_cards = decompressed_data.size() / sizeof(CardDefinition);
-    for (size_t x = 0; x < max_cards; x++) {
+    CardDefinition* defs = reinterpret_cast<CardDefinition*>(decompressed_data.data() + offset);
+    for (size_t x = 0; x < count; x++) {
+      auto& def = defs[x];
+
       // The last card entry has the build date and some other metadata (and
       // isn't a real card, obviously), so skip it. The game detects this by
       // checking for a negative value in type, which we also do here.
-      if (static_cast<int8_t>(defs[x].type) < 0) {
+      if (static_cast<int8_t>(def.type) < 0) {
         continue;
       }
 
-      auto entry = make_shared<CardEntry>(CardEntry{defs[x], "", "", "", {}});
+      auto entry = make_shared<CardEntry>(CardEntry{def, "", "", "", {}});
       if (!this->card_definitions.emplace(entry->def.card_id, entry).second) {
         throw runtime_error(phosg::string_printf(
             "duplicate card id: %08" PRIX32, entry->def.card_id.load()));
@@ -2493,17 +2500,17 @@ CardIndex::CardIndex(
 
       if (!text_filename.empty() || !decompressed_text_filename.empty()) {
         try {
-          entry->text = std::move(card_text.at(defs[x].card_id));
+          entry->text = std::move(card_text.at(def.card_id));
         } catch (const out_of_range&) {
         }
         try {
-          entry->debug_tags = std::move(card_tags.at(defs[x].card_id));
+          entry->debug_tags = std::move(card_tags.at(def.card_id));
         } catch (const out_of_range&) {
         }
       }
       if (!dice_text_filename.empty() || !decompressed_dice_text_filename.empty()) {
         try {
-          auto& dice_text_it = card_dice_text.at(defs[x].card_id);
+          auto& dice_text_it = card_dice_text.at(def.card_id);
           entry->dice_caption = std::move(dice_text_it.first);
           entry->dice_text = std::move(dice_text_it.second);
         } catch (const out_of_range&) {
@@ -2523,7 +2530,7 @@ CardIndex::CardIndex(
     if (this->compressed_card_definitions.size() > 0x7BF8) {
       // Try to reduce the compressed size by clearing out text
       static_game_data_log.info("Compressed card list data is too long (0x%zX bytes); removing text", this->compressed_card_definitions.size());
-      for (size_t x = 0; x < max_cards; x++) {
+      for (size_t x = 0; x < count; x++) {
         if (static_cast<int8_t>(defs[x].type) < 0) {
           continue;
         }

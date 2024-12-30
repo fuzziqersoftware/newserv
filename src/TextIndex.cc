@@ -6,6 +6,7 @@
 #include <set>
 #include <stdexcept>
 
+#include "CommonFileFormats.hh"
 #include "Compression.hh"
 #include "Loggers.hh"
 #include "PSOEncryption.hh"
@@ -178,7 +179,7 @@ BinaryTextSet::BinaryTextSet(const std::string& pr2_data, size_t collection_coun
   // offsets in the file instead.
   ::set<uint32_t> used_offsets;
   size_t root_offset = has_rel_footer
-      ? r.pget_u32l(r.size() - 0x10)
+      ? r.pget<RELFileFooter>(r.size() - 0x20).root_offset.load()
       : (r.size() - collection_count * sizeof(le_uint32_t));
 
   phosg::StringReader collection_offsets_r = r.sub(root_offset, collection_count * sizeof(le_uint32_t));

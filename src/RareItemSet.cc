@@ -5,6 +5,7 @@
 #include <phosg/Random.hh>
 
 #include "BattleParamsIndex.hh"
+#include "CommonFileFormats.hh"
 #include "ItemData.hh"
 #include "StaticGameData.hh"
 
@@ -94,8 +95,8 @@ RareItemSet::ExpandedDrop RareItemSet::ParsedRELData::PackedDrop::expand() const
 
 template <bool BE>
 void RareItemSet::ParsedRELData::parse_t(phosg::StringReader r, bool is_v1) {
-  uint32_t root_offset = r.pget<U32T<BE>>(r.size() - 0x10);
-  const auto& root = r.pget<OffsetsT<BE>>(root_offset);
+  const auto& footer = r.pget<RELFileFooterT<BE>>(r.size() - sizeof(RELFileFooterT<BE>));
+  const auto& root = r.pget<OffsetsT<BE>>(footer.root_offset);
 
   phosg::StringReader monsters_r = r.sub(root.monster_rares_offset);
   for (size_t z = 0; z < (is_v1 ? 0x33 : 0x65); z++) {
@@ -160,14 +161,13 @@ std::string RareItemSet::ParsedRELData::serialize_t(bool is_v1) const {
   while (w.size() & 0x1F) {
     w.put_u8(0);
   }
-  w.put<U32T<BE>>(relocations_offset);
-  w.put<U32T<BE>>(3); // num_relocations
-  w.put<U32T<BE>>(1); // TODO: What is this used for?
-  w.put<U32T<BE>>(0);
-  w.put<U32T<BE>>(root_offset);
-  w.put<U32T<BE>>(0);
-  w.put<U32T<BE>>(0);
-  w.put<U32T<BE>>(0);
+
+  RELFileFooterT<BE> footer;
+  footer.relocations_offset = relocations_offset;
+  footer.num_relocations = 3;
+  footer.unused1[0] = 1; // TODO: What is this used for?
+  footer.root_offset = root_offset;
+  w.put<RELFileFooterT<BE>>(footer);
   return std::move(w.str());
 }
 

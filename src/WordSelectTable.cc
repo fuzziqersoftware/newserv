@@ -70,8 +70,8 @@ struct BBRoot {
 template <bool BE, size_t StringTableCount, size_t TokenCount>
 void WordSelectSet::parse_non_windows_t(const std::string& data, bool use_sjis) {
   phosg::StringReader r(data);
-  uint32_t root_offset = r.pget<U32T<BE>>(r.size() - 0x10);
-  const auto& root = r.pget<NonWindowsRootT<BE>>(root_offset);
+  const auto& footer = r.pget<RELFileFooterT<BE>>(r.size() - sizeof(RELFileFooterT<BE>));
+  const auto& root = r.pget<NonWindowsRootT<BE>>(footer.root_offset);
 
   {
     auto string_offset_r = r.sub(root.strings_table, sizeof(U32T<BE>) * StringTableCount);
@@ -96,8 +96,8 @@ void WordSelectSet::parse_windows_t(const std::string& data, const std::vector<s
   }
 
   phosg::StringReader r(data);
-  uint32_t root_offset = r.pget<le_uint32_t>(r.size() - 0x10);
-  const auto& root = r.pget<RootT>(root_offset);
+  const auto& footer = r.pget<RELFileFooter>(r.size() - sizeof(RELFileFooter));
+  const auto& root = r.pget<RootT>(footer.root_offset);
   this->strings = *unitxt_collection;
   // this->table1 = read_indirect_table<uint16_t, le_uint16_t, le_uint32_t>(r, root.table1, Table1Count);
   // this->table2 = read_indirect_table<uint16_t, le_uint16_t, le_uint32_t>(r, root.table2, Table2Count);
@@ -325,7 +325,5 @@ WordSelectMessage WordSelectTable::translate(
 }
 
 WordSelectTable::Token::Token() {
-  for (size_t z = 0; z < this->values_by_version.size(); z++) {
-    this->values_by_version[z] = 0xFFFF;
-  }
+  this->values_by_version.fill(0xFFFF);
 }

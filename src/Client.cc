@@ -195,8 +195,6 @@ Client::Client(
       bb_connection_phase(0xFF),
       ping_start_time(0),
       sub_version(-1),
-      x(0.0f),
-      z(0.0f),
       floor(0),
       lobby_client_id(0),
       lobby_arrow_color(0),
@@ -407,6 +405,9 @@ bool Client::can_see_quest(
     uint8_t difficulty,
     size_t num_players,
     bool v1_present) const {
+  if (!q->has_version_any_language(this->version())) {
+    return false;
+  }
   return this->evaluate_quest_availability_expression(q->available_expression, game, event, difficulty, num_players, v1_present);
 }
 
@@ -417,6 +418,9 @@ bool Client::can_play_quest(
     uint8_t difficulty,
     size_t num_players,
     bool v1_present) const {
+  if (!q->has_version_any_language(this->version())) {
+    return false;
+  }
   return this->evaluate_quest_availability_expression(q->enabled_expression, game, event, difficulty, num_players, v1_present);
 }
 

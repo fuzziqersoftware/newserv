@@ -92,7 +92,7 @@ public:
 private:
   struct File {
     std::shared_ptr<const std::string> data;
-    const Table* table;
+    const Table* table = nullptr;
   };
 
   // Indexed as [online/offline][episode]

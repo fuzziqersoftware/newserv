@@ -5,11 +5,11 @@
 #include "Client.hh"
 #include "CommandFormats.hh"
 #include "Lobby.hh"
+#include "Map.hh"
 #include "PSOProtocol.hh"
 #include "ServerState.hh"
 
 void on_subcommand_multi(std::shared_ptr<Client> c, uint8_t command, uint8_t flag, std::string& data);
-bool subcommand_is_implemented(uint8_t which);
 
 void send_item_notification_if_needed(
     std::shared_ptr<ServerState> s,
@@ -21,8 +21,9 @@ void send_item_notification_if_needed(
 G_SpecializableItemDropRequest_6xA2 normalize_drop_request(const void* data, size_t size);
 
 struct DropReconcileResult {
+  std::shared_ptr<MapState::ObjectState> obj_st;
+  std::shared_ptr<MapState::EnemyState> ene_st;
   uint8_t effective_rt_index;
-  bool is_box;
   bool should_drop;
   bool ignore_def;
 };
@@ -31,10 +32,10 @@ DropReconcileResult reconcile_drop_request_with_map(
     phosg::PrefixedLogger& log,
     Channel& client_channel,
     G_SpecializableItemDropRequest_6xA2& cmd,
-    Version version,
     Episode episode,
+    uint8_t event,
     const Client::Config& config,
-    std::shared_ptr<Map> map,
+    std::shared_ptr<MapState> map,
     bool mark_drop);
 
 class Parsed6x70Data {

@@ -115,8 +115,7 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   bool allow_unregistered_users = false;
   bool allow_pc_nte = false;
   bool use_temp_accounts_for_prototypes = true;
-  bool allow_dc_pc_games = true;
-  bool allow_gc_xb_games = true;
+  std::array<uint16_t, NUM_VERSIONS> compatibility_groups = {};
   bool enable_chat_commands = true;
   std::unique_ptr<std::array<uint32_t, NUM_NON_PATCH_VERSIONS>> version_name_colors;
   uint32_t client_customization_name_color = 0x00000000;
@@ -173,7 +172,7 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   std::shared_ptr<const FunctionCodeIndex> function_code_index;
   std::shared_ptr<const PatchFileIndex> pc_patch_file_index;
   std::shared_ptr<const PatchFileIndex> bb_patch_file_index;
-  std::array<std::shared_ptr<ThreadSafeFileCache>, NUM_VERSIONS> map_file_caches;
+  std::unordered_map<uint32_t, std::shared_ptr<const SuperMap>> supermaps; // Keyed by supermap_key
   std::shared_ptr<FileContentsCache> bb_stream_files_cache;
   std::shared_ptr<FileContentsCache> bb_system_cache;
   std::shared_ptr<FileContentsCache> gba_files_cache;
@@ -210,8 +209,8 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   std::array<std::shared_ptr<const SetDataTableBase>, NUM_VERSIONS> set_data_tables_ep1_ult;
   std::shared_ptr<const SetDataTableBase> bb_solo_set_data_table;
   std::shared_ptr<const SetDataTableBase> bb_solo_set_data_table_ep1_ult;
-  std::array<std::shared_ptr<const Map::RareEnemyRates>, 4> rare_enemy_rates_by_difficulty;
-  std::shared_ptr<const Map::RareEnemyRates> rare_enemy_rates_challenge;
+  std::array<std::shared_ptr<const MapState::RareEnemyRates>, 4> rare_enemy_rates_by_difficulty;
+  std::shared_ptr<const MapState::RareEnemyRates> rare_enemy_rates_challenge;
   std::array<std::array<size_t, 4>, 3> min_levels_v4; // Indexed as [episode][difficulty]
   std::vector<std::string> bb_required_patches;
   CheatFlags cheat_flags;
@@ -401,6 +400,29 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   std::shared_ptr<PatchServer::Config> generate_patch_server_config(bool is_bb) const;
   void update_dependent_server_configs() const;
 
+  static constexpr uint32_t supermap_key(
+      Episode episode, GameMode mode, uint8_t difficulty, uint8_t floor, uint32_t layout, uint32_t entities) {
+    return (static_cast<uint32_t>(episode) << 28) |
+        (static_cast<uint32_t>(mode) << 26) |
+        (static_cast<uint32_t>(difficulty) << 24) |
+        (static_cast<uint32_t>(floor) << 16) |
+        (static_cast<uint32_t>(layout) << 8) |
+        (static_cast<uint32_t>(entities) << 0);
+  }
+  inline std::shared_ptr<const SuperMap> get_supermap(
+      Episode episode, GameMode mode, uint8_t difficulty, uint8_t floor, uint32_t layout, uint32_t entities) const {
+    try {
+      return this->supermaps.at(this->supermap_key(episode, mode, difficulty, floor, layout, entities));
+    } catch (const std::out_of_range&) {
+      return nullptr;
+    }
+  }
+  std::vector<std::shared_ptr<const SuperMap>> supermaps_for_variations(
+      Episode episode,
+      GameMode mode,
+      uint8_t difficulty,
+      const Variations& variations) const;
+
   // The following functions may only be called from a non-event thread if they
   // take a from_non_event_thread argument; any function that does not have this
   // argument must be called only from the event thread.
@@ -413,6 +435,7 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   void load_accounts(bool from_non_event_thread);
   void load_teams(bool from_non_event_thread);
   void load_patch_indexes(bool from_non_event_thread);
+  void load_maps(bool from_non_event_thread);
   void clear_file_caches(bool from_non_event_thread);
   void load_battle_params(bool from_non_event_thread);
   void load_level_tables(bool from_non_event_thread);

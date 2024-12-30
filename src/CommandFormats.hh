@@ -9,6 +9,7 @@
 #include "Episode3/DeckState.hh"
 #include "Episode3/MapState.hh"
 #include "Episode3/PlayerStateSubordinates.hh"
+#include "Map.hh"
 #include "PSOProtocol.hh"
 #include "PlayerSubordinates.hh"
 #include "SaveFileFormats.hh"
@@ -1233,7 +1234,7 @@ struct S_JoinGameT_DC_PC {
   // field when sending this command to start an Episode 3 tournament game. This
   // can be misleading when reading old logs from those days, but the Episode 3
   // client really does ignore it.
-  /* 0004 */ parray<le_uint32_t, 0x20> variations;
+  /* 0004 */ Variations variations;
   // Unlike lobby join commands, these are filled in in their slot positions.
   // That is, if there's only one player in a game with ID 2, then the first two
   // of these are blank and the player's data is in the third entry here.
@@ -1246,7 +1247,7 @@ struct S_JoinGameT_DC_PC {
   /* 0109 */ uint8_t event = 0;
   /* 010A */ uint8_t section_id = 0;
   /* 010B */ uint8_t challenge_mode = 0;
-  /* 010C */ le_uint32_t rare_seed = 0;
+  /* 010C */ le_uint32_t random_seed = 0;
   /* 0110 */
 } __packed__;
 
@@ -1255,7 +1256,7 @@ struct S_JoinGame_DCNTE_64 {
   uint8_t leader_id = 0;
   uint8_t disable_udp = 1;
   uint8_t unused = 0;
-  parray<le_uint32_t, 0x20> variations;
+  Variations variations;
   parray<PlayerLobbyDataDCGC, 4> lobby_data;
 } __packed_ws__(S_JoinGame_DCNTE_64, 0x104);
 using S_JoinGame_DC_64 = S_JoinGameT_DC_PC<PlayerLobbyDataDCGC>;
@@ -2238,49 +2239,18 @@ struct S_ServerTime_B1 {
 
 struct S_ExecuteCode_B2 {
   // If code_size == 0, no code is executed, but checksumming may still occur.
-  // In that case, this structure is the entire body of the command (no footer
-  // is sent).
+  // In that case, this structure is the entire body of the command (no code
+  // or footer is sent).
   le_uint32_t code_size = 0; // Size of code (following this struct) and footer
   le_uint32_t checksum_start = 0; // May be null if size is zero
   le_uint32_t checksum_size = 0; // If zero, no checksum is computed
-  // The code immediately follows, ending with an S_ExecuteCode_Footer_B2
+  // The code immediately follows, ending with a RELFileFooter. The REL's root
+  // offset is relative to the start of the code object here, so an offset of 0
+  // refers to the byte after checksum_size. The root offset points to the
+  // offset ot the entrypoint (that is, the entrypoint offset is doubly
+  // indirect). This is presumably done so the entrypoint can be optionally
+  // relocated.
 } __packed_ws__(S_ExecuteCode_B2, 0x0C);
-
-template <bool BE>
-struct S_ExecuteCode_FooterT_B2 {
-  static constexpr bool IsBE = BE; // Needed by generate_client_command_t
-
-  // Relocations is a list of words (le_uint16_t on DC/PC/XB/BB, be_uint16_t on
-  // GC) containing the number of doublewords (uint32_t) to skip for each
-  // relocation. The relocation pointer starts immediately after the
-  // checksum_size field in the header, and advances by the value of one
-  // relocation word (times 4) before each relocation. At each relocated
-  // doubleword, the address of the first byte of the code (after checksum_size)
-  // is added to the existing value.
-  // For example, if the code segment contains the following data (where R
-  // specifies doublewords to relocate):
-  //   RR RR RR RR ?? ?? ?? ?? ?? ?? ?? ?? RR RR RR RR
-  //   RR RR RR RR ?? ?? ?? ?? RR RR RR RR
-  // then the relocation words should be 0000, 0003, 0001, and 0002.
-  // If there is a small number of relocations, they may be placed in the unused
-  // fields of this structure to save space and/or confuse reverse engineers.
-  // The game never accesses the last 12 bytes of this structure unless
-  // relocations_offset points there, so those 12 bytes may also be omitted from
-  // the command entirely (without changing code_size - so code_size would
-  // technically extend beyond the end of the B2 command).
-  U32T<BE> relocations_offset = 0; // Relative to code base (after checksum_size)
-  U32T<BE> num_relocations = 0;
-  parray<U32T<BE>, 2> unused1;
-  // entrypoint_offset is doubly indirect - it points to a pointer to a 32-bit
-  // value that itself is the actual entrypoint. This is presumably done so the
-  // entrypoint can be optionally relocated.
-  U32T<BE> entrypoint_addr_offset = 0; // Relative to code base (after checksum_size).
-  parray<U32T<BE>, 3> unused2;
-} __packed__;
-using S_ExecuteCode_Footer_GC_B2 = S_ExecuteCode_FooterT_B2<true>;
-using S_ExecuteCode_Footer_DC_PC_XB_BB_B2 = S_ExecuteCode_FooterT_B2<false>;
-check_struct_size(S_ExecuteCode_Footer_GC_B2, 0x20);
-check_struct_size(S_ExecuteCode_Footer_DC_PC_XB_BB_B2, 0x20);
 
 // B3 (C->S): Execute code and/or checksum memory result
 // Not used on versions that don't support the B2 command (see above).
@@ -3244,7 +3214,7 @@ struct SC_SyncSaveFiles_BB_E7 {
 // primary game's players should be the leader (this is what newserv does).
 
 struct S_JoinSpectatorTeam_Ep3_E8 {
-  /* 0000 */ parray<le_uint32_t, 0x20> variations; // unused
+  /* 0000 */ Variations variations; // unused
   struct PlayerEntry {
     /* 0000 */ PlayerLobbyDataDCGC lobby_data;
     /* 0020 */ PlayerInventory inventory;
@@ -3260,7 +3230,7 @@ struct S_JoinSpectatorTeam_Ep3_E8 {
   /* 1175 */ uint8_t event = 0;
   /* 1176 */ uint8_t section_id = 0;
   /* 1177 */ uint8_t challenge_mode = 0;
-  /* 1178 */ le_uint32_t rare_seed = 0;
+  /* 1178 */ le_uint32_t random_seed = 0;
   /* 117C */ uint8_t episode = 0;
   /* 117D */ parray<uint8_t, 3> unused;
   struct SpectatorEntry {
@@ -3867,16 +3837,11 @@ struct G_ClientIDHeader {
   uint8_t size = 0;
   le_uint16_t client_id = 0; // <= 12
 } __packed_ws__(G_ClientIDHeader, 4);
-struct G_EnemyIDHeader {
+struct G_EntityIDHeader {
   uint8_t subcommand = 0;
   uint8_t size = 0;
-  le_uint16_t enemy_id = 0; // In [0x1000, 0x4000); not the same as enemy_index!
-} __packed_ws__(G_EnemyIDHeader, 4);
-struct G_ObjectIDHeader {
-  uint8_t subcommand = 0;
-  uint8_t size = 0;
-  le_uint16_t object_id = 0; // >= 0x4000, != 0xFFFF
-} __packed_ws__(G_ObjectIDHeader, 4);
+  le_uint16_t entity_id = 0; // 0-B=client, 1000-3FFF=enemy, 4000-FFFF=object
+} __packed_ws__(G_EntityIDHeader, 4);
 struct G_ParameterHeader {
   uint8_t subcommand = 0;
   uint8_t size = 0;
@@ -3916,9 +3881,9 @@ struct G_Unknown_6x02_6x03 {
 // TODO: This does something with TObjDoorKey objects
 
 struct G_Unknown_6x04 {
-  G_ClientIDHeader header;
-  le_uint16_t door_key_token = 0;
-  le_uint16_t unused = 0;
+  G_ParameterHeader header; // param = door token (NOT entity ID or index)
+  le_uint16_t unused1 = 0;
+  le_uint16_t unused2 = 0;
 } __packed_ws__(G_Unknown_6x04, 8);
 
 // 6x05: Switch state changed
@@ -3930,7 +3895,7 @@ struct G_Unknown_6x04 {
 
 struct G_SwitchStateChanged_6x05 {
   // Note: header.object_id is 0xFFFF for room clear when all enemies defeated
-  G_ObjectIDHeader header;
+  G_EntityIDHeader header;
   // TODO: Some of these might be big-endian on GC; it only byteswaps
   // switch_flag_num. Are the others actually uint16, or are they uint8[2]?
   le_uint16_t client_id = 0;
@@ -3996,14 +3961,14 @@ struct G_SymbolChat_6x07 {
 // 6x09: Unknown
 
 struct G_Unknown_6x09 {
-  G_EnemyIDHeader header;
+  G_EntityIDHeader header;
 } __packed_ws__(G_Unknown_6x09, 4);
 
 // 6x0A: Update enemy state
 
 template <bool BE>
 struct G_UpdateEnemyStateT_6x0A {
-  G_EnemyIDHeader header;
+  G_EntityIDHeader header;
   le_uint16_t enemy_index = 0; // [0, 0xB50)
   le_uint16_t total_damage = 0;
   // Flags:
@@ -4019,7 +3984,7 @@ check_struct_size(G_UpdateEnemyState_DC_PC_XB_BB_6x0A, 0x0C);
 // 6x0B: Update object state
 
 struct G_UpdateObjectState_6x0B {
-  G_ClientIDHeader header;
+  G_EntityIDHeader header;
   le_uint32_t flags = 0;
   le_uint32_t object_index = 0;
 } __packed_ws__(G_UpdateObjectState_6x0B, 0x0C);
@@ -4069,12 +4034,12 @@ struct G_Unknown_6x0E {
 
 // 6x10: Unknown (not valid on Episode 3)
 
-struct G_Unknown_6x10_6x11_6x12_6x14 {
-  G_EnemyIDHeader header;
+struct G_Unknown_6x10_6x11_6x14 {
+  G_EntityIDHeader header;
   le_uint16_t unknown_a2 = 0;
   le_uint16_t unknown_a3 = 0;
   le_uint32_t unknown_a4 = 0;
-} __packed_ws__(G_Unknown_6x10_6x11_6x12_6x14, 0x0C);
+} __packed_ws__(G_Unknown_6x10_6x11_6x14, 0x0C);
 
 // 6x11: Unknown (not valid on Episode 3)
 // Same format as 6x10
@@ -4083,7 +4048,7 @@ struct G_Unknown_6x10_6x11_6x12_6x14 {
 
 template <bool BE>
 struct G_DragonBossActionsT_6x12 {
-  G_EnemyIDHeader header;
+  G_EntityIDHeader header;
   le_uint16_t unknown_a2 = 0;
   le_uint16_t unknown_a3 = 0;
   le_uint32_t unknown_a4 = 0;
@@ -4098,7 +4063,7 @@ check_struct_size(G_DragonBossActions_GC_6x12, 0x14);
 // 6x13: De Rol Le boss actions (not valid on Episode 3)
 
 struct G_DeRolLeBossActions_6x13 {
-  G_EnemyIDHeader header;
+  G_EntityIDHeader header;
   le_uint16_t unknown_a2 = 0;
   le_uint16_t unknown_a3 = 0;
 } __packed_ws__(G_DeRolLeBossActions_6x13, 8);
@@ -4109,7 +4074,7 @@ struct G_DeRolLeBossActions_6x13 {
 // 6x15: Vol Opt boss actions (not valid on Episode 3)
 
 struct G_VolOptBossActions_6x15 {
-  G_EnemyIDHeader header;
+  G_EntityIDHeader header;
   le_uint16_t unknown_a2 = 0;
   le_uint16_t unknown_a3 = 0;
   le_uint16_t unknown_a4 = 0;
@@ -4119,7 +4084,7 @@ struct G_VolOptBossActions_6x15 {
 // 6x16: Vol Opt boss actions (not valid on Episode 3)
 
 struct G_VolOptBossActions_6x16 {
-  G_UnusedHeader header;
+  G_EntityIDHeader header;
   parray<uint8_t, 6> unknown_a2;
   le_uint16_t unknown_a3 = 0;
 } __packed_ws__(G_VolOptBossActions_6x16, 0x0C);
@@ -4127,7 +4092,7 @@ struct G_VolOptBossActions_6x16 {
 // 6x17: Vol Opt phase 2 boss actions (not valid on Episode 3)
 
 struct G_VolOpt2BossActions_6x17 {
-  G_ClientIDHeader header;
+  G_EntityIDHeader header;
   le_float unknown_a2 = 0.0f;
   le_float unknown_a3 = 0.0f;
   le_float unknown_a4 = 0.0f;
@@ -4137,14 +4102,14 @@ struct G_VolOpt2BossActions_6x17 {
 // 6x18: Vol Opt phase 2 boss actions (not valid on Episode 3)
 
 struct G_VolOpt2BossActions_6x18 {
-  G_ClientIDHeader header;
+  G_EntityIDHeader header;
   parray<le_uint16_t, 4> unknown_a2;
 } __packed_ws__(G_VolOpt2BossActions_6x18, 0x0C);
 
 // 6x19: Dark Falz boss actions (not valid on Episode 3)
 
 struct G_DarkFalzActions_6x19 {
-  G_EnemyIDHeader header;
+  G_EntityIDHeader header;
   le_uint16_t unknown_a2 = 0;
   le_uint16_t unknown_a3 = 0;
   le_uint32_t unknown_a4 = 0;
@@ -4186,9 +4151,7 @@ struct G_SetPlayerFloor_6x1F {
 struct G_SetPosition_6x20 {
   G_ClientIDHeader header;
   le_int32_t floor = 0;
-  le_float x = 0.0f;
-  le_float y = 0.0f;
-  le_float z = 0.0f;
+  VectorXYZF pos;
   le_uint32_t unknown_a1 = 0;
 } __packed_ws__(G_SetPosition_6x20, 0x18);
 
@@ -4212,9 +4175,7 @@ struct G_SetPlayerVisibility_6x22_6x23 {
 struct G_TeleportPlayer_6x24 {
   G_ClientIDHeader header;
   le_uint32_t unknown_a1 = 0;
-  le_float x = 0.0f;
-  le_float y = 0.0f;
-  le_float z = 0.0f;
+  VectorXYZF pos;
 } __packed_ws__(G_TeleportPlayer_6x24, 0x14);
 
 // 6x25: Equip item (protected on V3/V4)
@@ -4266,9 +4227,7 @@ struct G_DropItem_6x2A {
   le_uint16_t amount = 0;
   le_uint16_t floor = 0;
   le_uint32_t item_id = 0;
-  le_float x = 0.0f;
-  le_float y = 0.0f;
-  le_float z = 0.0f;
+  VectorXYZF pos;
 } __packed_ws__(G_DropItem_6x2A, 0x18);
 
 // 6x2B: Create item in inventory (e.g. via tekker or bank withdraw) (protected on V3/V4)
@@ -4377,11 +4336,11 @@ struct G_PhotonBlast_6x37 {
 
 // 6x38: Donate to photon blast (protected on V3/V4)
 
-struct G_Unknown_6x38 {
+struct G_DonateToPhotonBlast_6x38 {
   G_ClientIDHeader header;
   le_uint16_t unknown_a1 = 0;
   le_uint16_t unused = 0;
-} __packed_ws__(G_Unknown_6x38, 8);
+} __packed_ws__(G_DonateToPhotonBlast_6x38, 8);
 
 // 6x39: Photon blast ready (protected on V3/V4)
 
@@ -4414,9 +4373,7 @@ struct G_StopAtPosition_6x3E {
   le_uint16_t angle = 0;
   le_int16_t floor = 0;
   le_int16_t room = 0;
-  le_float x = 0.0f;
-  le_float y = 0.0f;
-  le_float z = 0.0f;
+  VectorXYZF pos;
 } __packed_ws__(G_StopAtPosition_6x3E, 0x18);
 
 // 6x3F: Set position (protected on V3/V4)
@@ -4427,9 +4384,7 @@ struct G_SetPosition_6x3F {
   le_uint16_t angle = 0;
   le_int16_t floor = 0;
   le_int16_t room = 0;
-  le_float x = 0.0f;
-  le_float y = 0.0f;
-  le_float z = 0.0f;
+  VectorXYZF pos;
 } __packed_ws__(G_SetPosition_6x3F, 0x18);
 
 // 6x40: Walk (protected on V3/V4)
@@ -4437,28 +4392,19 @@ struct G_SetPosition_6x3F {
 
 struct G_WalkToPosition_6x40 {
   G_ClientIDHeader header;
-  le_float x = 0.0f;
-  le_float z = 0.0f;
+  VectorXZF pos;
   le_uint32_t action = 0;
 } __packed_ws__(G_WalkToPosition_6x40, 0x10);
 
-// 6x41: Unknown
-// This subcommand is completely ignored by v2 and later.
-
-struct G_Unknown_6x41 {
-  G_ClientIDHeader header;
-  le_float x = 0.0f;
-  le_float z = 0.0f;
-} __packed_ws__(G_Unknown_6x41, 0x0C);
-
+// 6x41: Move to position (v1)
 // 6x42: Run (protected on V3/V4)
+// This subcommand is completely ignored by v2 and later.
 // If UDP mode is enabled, this command is sent via UDP.
 
-struct G_RunToPosition_6x42 {
+struct G_MoveToPosition_6x41_6x42 {
   G_ClientIDHeader header;
-  le_float x = 0.0f;
-  le_float z = 0.0f;
-} __packed_ws__(G_RunToPosition_6x42, 0x0C);
+  VectorXZF pos;
+} __packed_ws__(G_MoveToPosition_6x41_6x42, 0x0C);
 
 // 6x43: First attack (protected on V3/V4)
 // 6x44: Second attack (protected on V3/V4)
@@ -4484,7 +4430,7 @@ struct TargetEntry {
 
 struct G_AttackFinished_6x46 {
   G_ClientIDHeader header;
-  le_uint32_t count = 0;
+  le_uint32_t target_count = 0;
   // The client may send a shorter command if not all of these are used.
   parray<TargetEntry, 10> targets;
 } __packed_ws__(G_AttackFinished_6x46, 0x30);
@@ -4544,8 +4490,7 @@ struct G_HitByEnemy_6x4B_6x4C {
   G_ClientIDHeader header;
   le_uint16_t angle = 0;
   le_uint16_t current_hp = 0;
-  le_float x_velocity = 0.0f;
-  le_float z_velocity = 0.0f;
+  VectorXZF velocity;
 } __packed_ws__(G_HitByEnemy_6x4B_6x4C, 0x10);
 
 // 6x4D: Player died (protected on V3/V4)
@@ -4603,7 +4548,9 @@ struct G_Unknown_6x53 {
 } __packed_ws__(G_Unknown_6x53, 4);
 
 // 6x54: Unknown
-// This subcommand is completely ignored (at least, by PSO GC).
+// This subcommand is completely ignored by DCv2 and later. On DC NTE, 11/2000,
+// and DCv1, the handler has some logic in it and it calls a virtual function
+// on TObjPlayer, but that codepath ends up doing nothing.
 
 struct G_Unknown_6x54 {
   G_ClientIDHeader header;
@@ -4614,23 +4561,17 @@ struct G_Unknown_6x54 {
 struct G_IntraMapWarp_6x55 {
   G_ClientIDHeader header;
   le_uint32_t unknown_a1 = 0;
-  le_float x1 = 0.0f;
-  le_float y1 = 0.0f;
-  le_float z1 = 0.0f;
-  le_float x2 = 0.0f;
-  le_float y2 = 0.0f;
-  le_float z2 = 0.0f;
+  VectorXYZF pos1;
+  VectorXYZF pos2;
 } __packed_ws__(G_IntraMapWarp_6x55, 0x20);
 
-// 6x56: Unknown (supported; game) (protected on V3/V4)
+// 6x56: Set player position and angle (protected on V3/V4)
 
-struct G_Unknown_6x56 {
+struct G_SetPlayerPositionAndAngle_6x56 {
   G_ClientIDHeader header;
-  le_uint32_t unknown_a1 = 0;
-  le_float x = 0.0f;
-  le_float y = 0.0f;
-  le_float z = 0.0f;
-} __packed_ws__(G_Unknown_6x56, 0x14);
+  le_uint32_t angle_y = 0;
+  VectorXYZF pos;
+} __packed_ws__(G_SetPlayerPositionAndAngle_6x56, 0x14);
 
 // 6x57: Unknown (supported; lobby & game) (protected on V3/V4)
 
@@ -4680,8 +4621,7 @@ struct G_DropStackedItem_DC_6x5D {
   G_ClientIDHeader header;
   le_uint16_t floor = 0;
   le_uint16_t unknown_a2 = 0; // Corresponds to FloorItem::unknown_a2
-  le_float x = 0.0f;
-  le_float z = 0.0f;
+  VectorXZF pos;
   ItemData item_data;
 } __packed_ws__(G_DropStackedItem_DC_6x5D, 0x24);
 
@@ -4700,10 +4640,9 @@ struct G_BuyShopItem_6x5E {
 
 struct FloorItem {
   /* 00 */ uint8_t floor = 0;
-  /* 01 */ uint8_t from_enemy = 0;
-  /* 02 */ le_uint16_t entity_id = 0; // < 0x0B50 if from_enemy != 0; otherwise < 0x0BA0
-  /* 04 */ le_float x = 0.0f;
-  /* 08 */ le_float z = 0.0f;
+  /* 01 */ uint8_t source_type = 0; // 1 = enemy, 2 = box
+  /* 02 */ le_uint16_t entity_index = 0; // < 0x0B50 if source_type == 1; otherwise < 0x0BA0
+  /* 04 */ VectorXZF pos;
   /* 0C */ le_uint16_t unknown_a2 = 0;
   // The drop number is scoped to the floor and increments by 1 each time an
   // item is dropped. The last item dropped in each floor has drop_number equal
@@ -4728,9 +4667,8 @@ struct G_StandardDropItemRequest_DC_6x60 {
   /* 00 */ G_UnusedHeader header;
   /* 04 */ uint8_t floor = 0;
   /* 05 */ uint8_t rt_index = 0;
-  /* 06 */ le_uint16_t entity_id = 0;
-  /* 08 */ le_float x = 0.0f;
-  /* 0C */ le_float z = 0.0f;
+  /* 06 */ le_uint16_t entity_index = 0;
+  /* 08 */ VectorXZF pos;
   /* 10 */ le_uint16_t section = 0;
   /* 12 */ le_uint16_t ignore_def = 0;
   /* 14 */
@@ -4794,9 +4732,7 @@ struct G_SetTelepipeState_6x68 {
   le_uint16_t unknown_b1 = 0;
   uint8_t unknown_b2 = 0;
   uint8_t unknown_b3 = 0;
-  le_float x = 0.0f;
-  le_float y = 0.0f;
-  le_float z = 0.0f;
+  VectorXYZF pos;
   le_uint32_t unknown_a3 = 0;
 } __packed_ws__(G_SetTelepipeState_6x68, 0x1C);
 
@@ -4829,15 +4765,20 @@ struct G_NPCControl_6x69 {
   le_uint16_t param3; // Commands 0/3: npc_template_index; commands 1/2: unused
 } __packed_ws__(G_NPCControl_6x69, 0x0C);
 
-// 6x6A: Use boss warp (not valid on Episode 3)
+// 6x6A: Set boss warp flags (not valid on Episode 3)
 
-struct G_UseBossWarp_6x6A {
-  G_ClientIDHeader header;
-  le_uint16_t unknown_a1 = 0;
-  le_uint16_t unused = 0;
-} __packed_ws__(G_UseBossWarp_6x6A, 8);
+struct G_SetBossWarpFlags_6x6A {
+  G_EntityIDHeader header; // entity_id = boss warp object ID
+  le_uint16_t flags;
+  le_uint16_t unused;
+} __packed_ws__(G_SetBossWarpFlags_6x6A, 8);
 
 // 6x6B: Sync enemy state (used while loading into game)
+
+// Note that DC NTE doesn't send the decompressed size in the header here. This
+// is a bug that can cause the client to write more entries than it should when
+// it receives one of these commands. All later versions, including 11/2000,
+// use the second header structure here, which prevents this issue.
 
 struct G_SyncGameStateHeader_DCNTE_6x6B_6x6C_6x6D_6x6E {
   G_ExtendedHeaderT<G_UnusedHeader> header;
@@ -4852,25 +4793,11 @@ struct G_SyncGameStateHeader_6x6B_6x6C_6x6D_6x6E {
   // BC0-compressed data follows here (see bc0_decompress)
 } __packed_ws__(G_SyncGameStateHeader_6x6B_6x6C_6x6D_6x6E, 0x10);
 
-// Decompressed format is a list of these
-struct G_SyncEnemyState_6x6B_Entry_Decompressed {
-  le_uint32_t flags = 0; // Same as flags in 6x0A
-  le_uint16_t item_drop_id = 0;
-  le_uint16_t total_damage = 0; // Same as in 6x0A
-  uint8_t red_buff_type = 0;
-  uint8_t red_buff_level = 0;
-  uint8_t blue_buff_type = 0;
-  uint8_t blue_buff_level = 0;
-} __packed_ws__(G_SyncEnemyState_6x6B_Entry_Decompressed, 0x0C);
+// Decompressed format is a list of SyncEnemyStateEntry (from Map.hh).
 
 // 6x6C: Sync object state (used while loading into game)
 // Compressed format is the same as 6x6B.
-
-// Decompressed format is a list of these
-struct G_SyncObjectState_6x6C_Entry_Decompressed {
-  le_uint16_t flags = 0;
-  le_uint16_t item_drop_id = 0;
-} __packed_ws__(G_SyncObjectState_6x6C_Entry_Decompressed, 4);
+// Decompressed format is a list of SyncObjectStateEntry (from Map.hh).
 
 // 6x6D: Sync item state (used while loading into game)
 // Internal name: RcvItemCondition
@@ -4967,9 +4894,7 @@ struct G_6x70_Sub_Telepipe {
   /* 00 */ le_uint16_t owner_client_id = 0xFFFF;
   /* 02 */ le_uint16_t floor = 0;
   /* 04 */ le_uint32_t unknown_a1 = 0;
-  /* 08 */ le_float x = 0.0f;
-  /* 0C */ le_float y = 0.0f;
-  /* 10 */ le_float z = 0.0f;
+  /* 08 */ VectorXYZF pos;
   /* 14 */ le_uint32_t unknown_a3 = 0;
   /* 18 */ le_uint32_t unknown_a4 = 0x0000FFFF;
   /* 1C */
@@ -4997,9 +4922,7 @@ struct G_6x70_Base_DCNTE {
   /* 0000 */ le_uint16_t client_id = 0;
   /* 0002 */ le_uint16_t room_id = 0;
   /* 0004 */ le_uint32_t flags1 = 0;
-  /* 0008 */ le_float x = 0.0f;
-  /* 000C */ le_float y = 0.0f;
-  /* 0010 */ le_float z = 0.0f;
+  /* 0008 */ VectorXYZF pos;
   /* 0014 */ le_uint32_t angle_x = 0;
   /* 0018 */ le_uint32_t angle_y = 0;
   /* 001C */ le_uint32_t angle_z = 0;
@@ -5174,7 +5097,7 @@ struct G_UpdateQuestFlag_V3_BB_6x75 : G_UpdateQuestFlag_DC_PC_6x75 {
 // bitwise OR operation instead of a simple assignment.
 
 struct G_SetEntitySetFlags_6x76 {
-  G_EnemyIDHeader header; // 1000-3FFF = enemy, 4000-FFFF = object
+  G_EntityIDHeader header; // 1000-3FFF = enemy, 4000-FFFF = object
   le_uint16_t floor = 0;
   le_uint16_t flags = 0;
 } __packed_ws__(G_SetEntitySetFlags_6x76, 8);
@@ -5289,8 +5212,10 @@ check_struct_size(G_BattleScoresBE_6x7F, 0x24);
 
 struct G_TriggerTrap_6x80 {
   G_ClientIDHeader header;
-  le_uint16_t unknown_a1 = 0;
-  le_uint16_t unknown_a2 = 0;
+  // Traps set by players are numbered according to their type and who set
+  // them. The trap number is computed as (client_id * 80) + (trap_type * 20).
+  le_uint16_t trap_number = 0;
+  le_uint16_t what = 0; // Must be 0, 1, or 2
 } __packed_ws__(G_TriggerTrap_6x80, 8);
 
 // 6x81: Disable drop weapon on death (protected on V3/V4)
@@ -5334,10 +5259,7 @@ struct G_Unknown_6x85 {
 
 // 6x86: Hit destructible object (not valid on Episode 3)
 
-struct G_HitDestructibleObject_6x86 {
-  G_ObjectIDHeader header;
-  le_uint32_t unknown_a1 = 0;
-  le_uint32_t unknown_a2 = 0;
+struct G_HitDestructibleObject_6x86 : G_UpdateObjectState_6x0B {
   le_uint16_t unknown_a3 = 0;
   le_uint16_t unknown_a4 = 0;
 } __packed_ws__(G_HitDestructibleObject_6x86, 0x10);
@@ -5355,13 +5277,14 @@ struct G_RestoreShrunkenPlayer_6x88 {
   G_ClientIDHeader header;
 } __packed_ws__(G_RestoreShrunkenPlayer_6x88, 4);
 
-// 6x89: Player killed by monster (protected on V3/V4)
+// 6x89: Set killer entity ID (protected on V3/V4)
+// This is used to specify which enemy killed a player.
 
-struct G_PlayerKilledByMonster_6x89 {
+struct G_SetKillerEntityID_6x89 {
   G_ClientIDHeader header;
-  le_uint16_t unknown_a1 = 0;
+  le_uint16_t killer_entity_id = 0;
   le_uint16_t unused = 0;
-} __packed_ws__(G_PlayerKilledByMonster_6x89, 8);
+} __packed_ws__(G_SetKillerEntityID_6x89, 8);
 
 // 6x8A: Show Challenge time records window (not valid on Episode 3)
 // The leader sends this command to tell other clients to show, hide, or update
@@ -5400,34 +5323,31 @@ struct G_SetTechniqueLevelOverride_6x8D {
 // 6x8E: Unknown (not valid on Episode 3)
 // This command has a handler, but it does nothing.
 
-// 6x8F: Unknown (not valid on Episode 3)
+// 6x8F: Add battle damage scores (not valid on Episode 3)
 
-struct G_Unknown_6x8F {
+struct G_AddBattleDamageScores_6x8F {
+  G_ClientIDHeader header; // client_id is the attacking player
+  le_uint16_t target_entity_id = 0;
+  le_uint16_t amount = 0;
+} __packed_ws__(G_AddBattleDamageScores_6x8F, 8);
+
+// 6x90: Set player battle team (not valid on Episode 3) (protected on V3/V4)
+
+struct G_SetPlayerBattleTeam_6x90 {
   G_ClientIDHeader header;
-  le_uint16_t client_id2 = 0;
-  le_uint16_t unknown_a1 = 0;
-} __packed_ws__(G_Unknown_6x8F, 8);
-
-// 6x90: Unknown (not valid on Episode 3) (protected on V3/V4)
-
-struct G_Unknown_6x90 {
-  G_ClientIDHeader header;
-  le_uint32_t unknown_a1 = 0;
-} __packed_ws__(G_Unknown_6x90, 8);
+  le_uint32_t team_number = 0; // 0 or 1
+} __packed_ws__(G_SetPlayerBattleTeam_6x90, 8);
 
 // 6x91: Unknown (supported; game only)
-// TODO: Deals with TOAttackableCol objects. Figoure out exactly what it does.
+// TODO: Deals with TOAttackableCol objects. Figure out exactly what it does.
 
-struct G_Unknown_6x91 {
-  G_ObjectIDHeader header;
-  le_uint32_t object_flags = 0;
-  le_uint32_t object_index = 0; // < 0xBA0
+struct G_UpdateAttackableColState_6x91 : G_UpdateObjectState_6x0B {
   le_uint16_t unknown_a3 = 0;
   le_uint16_t unknown_a4 = 0;
   le_uint16_t switch_flag_num = 0;
   uint8_t should_set = 0; // The switch flag is only set if this is equal to 1; otherwise it's cleared
-  uint8_t switch_flag_floor = 0;
-} __packed_ws__(G_Unknown_6x91, 0x14);
+  uint8_t floor = 0;
+} __packed_ws__(G_UpdateAttackableColState_6x91, 0x14);
 
 // 6x92: Unknown (not valid on Episode 3)
 // This does something with the TObjOnlineEndingHexMove object. TODO: Figure
@@ -5522,7 +5442,7 @@ struct G_LevelUpAllTechniques_6x9B {
 // TODO: Figure out what this does.
 
 struct G_Unknown_6x9C {
-  G_EnemyIDHeader header;
+  G_EntityIDHeader header;
   le_uint32_t unknown_a1 = 0;
 } __packed_ws__(G_Unknown_6x9C, 8);
 
@@ -5547,7 +5467,7 @@ struct G_PlayerCameraShutterSound_6x9E {
 // 6x9F: Gal Gryphon boss actions (not valid on pre-V3 or Episode 3)
 
 struct G_GalGryphonBossActions_6x9F {
-  G_EnemyIDHeader header;
+  G_EntityIDHeader header;
   le_uint32_t unknown_a1 = 0;
   le_float unknown_a2 = 0.0f;
   le_float unknown_a3 = 0.0f;
@@ -5556,10 +5476,8 @@ struct G_GalGryphonBossActions_6x9F {
 // 6xA0: Gal Gryphon boss actions (not valid on pre-V3 or Episode 3)
 
 struct G_GalGryphonBossActions_6xA0 {
-  G_EnemyIDHeader header;
-  le_float x = 0.0f;
-  le_float y = 0.0f;
-  le_float z = 0.0f;
+  G_EntityIDHeader header;
+  VectorXYZF pos;
   le_uint32_t unknown_a1 = 0;
   le_uint16_t unknown_a2 = 0;
   le_uint16_t unknown_a3 = 0;
@@ -5586,7 +5504,7 @@ struct G_SpecializableItemDropRequest_6xA2 : G_StandardDropItemRequest_PC_V3_BB_
 // 6xA3: Olga Flow boss actions (not valid on pre-V3 or Episode 3)
 
 struct G_OlgaFlowBossActions_6xA3 {
-  G_EnemyIDHeader header;
+  G_EntityIDHeader header;
   uint8_t unknown_a1 = 0;
   uint8_t unknown_a2 = 0;
   parray<uint8_t, 2> unknown_a3;
@@ -5595,7 +5513,7 @@ struct G_OlgaFlowBossActions_6xA3 {
 // 6xA4: Olga Flow phase 1 boss actions (not valid on pre-V3 or Episode 3)
 
 struct G_OlgaFlowPhase1BossActions_6xA4 {
-  G_EnemyIDHeader header;
+  G_EntityIDHeader header;
   uint8_t what = 0;
   parray<uint8_t, 3> unknown_a3;
 } __packed_ws__(G_OlgaFlowPhase1BossActions_6xA4, 8);
@@ -5603,7 +5521,7 @@ struct G_OlgaFlowPhase1BossActions_6xA4 {
 // 6xA5: Olga Flow phase 2 boss actions (not valid on pre-V3 or Episode 3)
 
 struct G_OlgaFlowPhase2BossActions_6xA5 {
-  G_EnemyIDHeader header;
+  G_EntityIDHeader header;
   uint8_t what = 0;
   parray<uint8_t, 3> unknown_a3;
 } __packed_ws__(G_OlgaFlowPhase2BossActions_6xA5, 8);
@@ -5637,7 +5555,7 @@ struct G_ModifyTradeProposal_6xA6 {
 
 template <bool BE>
 struct G_GolDragonBossActionsT_6xA8 {
-  G_EnemyIDHeader header;
+  G_EntityIDHeader header;
   le_uint16_t unknown_a2 = 0;
   le_uint16_t unknown_a3 = 0;
   le_uint32_t unknown_a4 = 0;
@@ -5654,7 +5572,7 @@ check_struct_size(G_GolDragonBossActions_GC_6xA8, 0x18);
 // 6xA9: Barba Ray boss actions (not valid on pre-V3 or Episode 3)
 
 struct G_BarbaRayBossActions_6xA9 {
-  G_EnemyIDHeader header;
+  G_EntityIDHeader header;
   le_uint16_t unknown_a1 = 0;
   le_uint16_t unknown_a2 = 0;
 } __packed_ws__(G_BarbaRayBossActions_6xA9, 8);
@@ -5662,7 +5580,7 @@ struct G_BarbaRayBossActions_6xA9 {
 // 6xAA: Barba Ray boss actions (not valid on pre-V3 or Episode 3)
 
 struct G_BarbaRayBossActions_6xAA {
-  G_EnemyIDHeader header;
+  G_EntityIDHeader header;
   le_uint16_t unknown_a1 = 0;
   le_uint16_t unknown_a2 = 0;
   le_uint32_t unknown_a3 = 0;
@@ -5673,7 +5591,7 @@ struct G_BarbaRayBossActions_6xAA {
 // It's not known what it does on GC NTE.
 
 struct G_Unknown_GCNTE_6xAB {
-  G_EnemyIDHeader header;
+  G_EntityIDHeader header;
   le_uint16_t unknown_a1 = 0;
   le_uint16_t unknown_a2 = 0;
 } __packed_ws__(G_Unknown_GCNTE_6xAB, 8);
@@ -5685,12 +5603,11 @@ struct G_CreateLobbyChair_6xAB {
 } __packed_ws__(G_CreateLobbyChair_6xAB, 8);
 
 // 6xAC: Unknown (not valid on pre-V3) (protected on V3/V4)
-// This command's appears to be different on GC NTE than on any other version.
-// It also seems that no version (other than perhaps GC NTE) ever sends this
-// command.
+// This command appears to be different on GC NTE than on any other version. It
+// also seems that no version (except perhaps GC NTE) ever sends this command.
 
 struct G_Unknown_GCNTE_6xAC {
-  G_EnemyIDHeader header;
+  G_EntityIDHeader header;
   le_uint16_t unknown_a1 = 0;
   le_uint16_t unknown_a2 = 0;
   le_uint32_t unknown_a3 = 0;
@@ -6079,8 +5996,7 @@ struct G_SplitStackedItem_BB_6xC3 {
   G_ClientIDHeader header;
   le_uint16_t floor = 0;
   le_uint16_t unused2 = 0;
-  le_float x = 0.0f;
-  le_float z = 0.0f;
+  VectorXZF pos;
   le_uint32_t item_id = 0;
   le_uint32_t amount = 0;
 } __packed_ws__(G_SplitStackedItem_BB_6xC3, 0x18);
@@ -6098,7 +6014,7 @@ struct G_MedicalCenterUsed_BB_6xC5 {
   G_ClientIDHeader header;
 } __packed_ws__(G_MedicalCenterUsed_BB_6xC5, 4);
 
-// 6xC6: Steal experience (BB)
+// 6xC6: Steal experience (BB; handled by the server)
 
 struct G_StealEXP_BB_6xC6 {
   G_ClientIDHeader header;
@@ -6118,7 +6034,7 @@ struct G_ChargeAttack_BB_6xC7 {
 // 6xC8: Enemy EXP request (BB; handled by the server)
 
 struct G_EnemyEXPRequest_BB_6xC8 {
-  G_EnemyIDHeader header;
+  G_EntityIDHeader header;
   le_uint16_t enemy_index = 0;
   le_uint16_t requesting_client_id = 0;
   uint8_t is_killer = 0;
@@ -6182,8 +6098,7 @@ struct G_ChallengeModeGraveRecoveryItemRequest_BB_6xD1 {
   G_ClientIDHeader header;
   le_uint16_t floor = 0;
   le_uint16_t unknown_a1 = 0;
-  le_float x = 0;
-  le_float z = 0;
+  VectorXZF pos;
   le_uint32_t item_type = 0; // Should be < 6
 } __packed_ws__(G_ChallengeModeGraveRecoveryItemRequest_BB_6xD1, 0x14);
 
@@ -6281,6 +6196,9 @@ struct G_UpgradeWeaponAttribute_BB_6xDA {
 
 struct G_ExchangeItemInQuest_BB_6xDB {
   G_ClientIDHeader header;
+  // If this is 0, the command is identical to 6x29. If this is 1, a function
+  // similar to find_item_by_id is called instead of find_item_by_id, but I
+  // don't yet know what exactly the logic differences are.
   le_uint32_t unknown_a1 = 0;
   le_uint32_t item_id = 0;
   le_uint32_t amount = 0;
@@ -6333,8 +6251,7 @@ struct G_RequestItemDropFromQuest_BB_6xE0 {
   uint8_t type = 0; // valueA
   uint8_t unknown_a3 = 0;
   uint8_t unused = 0;
-  le_float x = 0.0f; // valueB
-  le_float z = 0.0f; // valueC
+  VectorXZF pos; // x = valueB, z = valueC
 } __packed_ws__(G_RequestItemDropFromQuest_BB_6xE0, 0x10);
 
 // 6xE1: Exchange Photon Tickets (BB; handled by server)
@@ -6359,8 +6276,7 @@ struct G_GetMesetaSlotPrize_BB_6xE2 {
   uint8_t floor;
   uint8_t unknown_a2;
   uint8_t unused;
-  le_float x; // TODO: Verify this guess
-  le_float z; // TODO: Verify this guess
+  VectorXZF pos; // TODO: Verify this guess
 } __packed_ws__(G_GetMesetaSlotPrize_BB_6xE2, 0x10);
 
 // 6xE3: Set Meseta slot prize result (BB)

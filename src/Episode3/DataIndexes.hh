@@ -13,6 +13,7 @@
 #include <string>
 #include <unordered_map>
 
+#include "../CommonFileFormats.hh"
 #include "../PlayerSubordinates.hh"
 #include "../Text.hh"
 #include "../TextIndex.hh"
@@ -814,18 +815,12 @@ struct CardDefinition {
 } __packed_ws__(CardDefinition, 0x128);
 
 struct CardDefinitionsFooter {
-  // Technically the card definitions file is a REL file, so the last 0x20 bytes
-  // here should be a separate structure.
   /* 00 */ be_uint32_t num_cards1;
   /* 04 */ be_uint32_t cards_offset; // == 0
   /* 08 */ be_uint32_t num_cards2;
   /* 0C */ parray<be_uint32_t, 3> unknown_a2;
   /* 18 */ parray<be_uint16_t, 0x10> relocations;
-  /* 38 */ be_uint32_t relocations_offset;
-  /* 3C */ be_uint32_t num_relocations;
-  /* 40 */ parray<be_uint32_t, 2> unused1;
-  /* 48 */ be_uint32_t footer_offset;
-  /* 4C */ parray<be_uint32_t, 3> unused2;
+  /* 38 */ RELFileFooterBE rel_footer;
   /* 58 */
 } __packed_ws__(CardDefinitionsFooter, 0x58);
 

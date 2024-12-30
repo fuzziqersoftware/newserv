@@ -59,13 +59,6 @@ using AttackData = BattleParamsIndex::AttackData;
 using ResistData = BattleParamsIndex::ResistData;
 using MovementData = BattleParamsIndex::MovementData;
 
-struct Vector4F {
-  le_float x;
-  le_float y;
-  le_float z;
-  le_float t;
-} __packed_ws__(Vector4F, 0x10);
-
 // bit_cast isn't in the standard place on macOS (it is apparently implicitly
 // included by resource_dasm, but newserv can be built without resource_dasm)
 // and I'm too lazy to go find the right header to include
@@ -2213,7 +2206,7 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     // valueD = loop flag (0 = no, 1 = yes)
     // regsE[0-2] = result point (x, y, z as floats)
     // regsE[3] = the result code (0 = failed, 1 = success)
-    // labelF = control point entries (array of valueA Vector4F structures)
+    // labelF = control point entries (array of valueA VectorXYZTF structures)
     {0xF8DB, "get_vector_from_path", "unknownF8DB", {INT32, FLOAT32, FLOAT32, INT32, {REG_SET_FIXED, 4}, SCRIPT16}, F_V3_V4 | F_ARGS},
 
     // Same as npc_text, but only applies to a specific player slot.
@@ -2309,7 +2302,7 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     // valueD = loop flag (0 = no, 1 = yes)
     // regsE[0-2] = result point (x, y, z as floats)
     // regsE[3] = the result code (0 = failed, 1 = success)
-    // labelF = control point entries (array of valueA Vector4F structures)
+    // labelF = control point entries (array of valueA VectorXYZTF structures)
     {0xF8F2, "compute_bezier_curve_point", "load_unk_data", {INT32, FLOAT32, FLOAT32, INT32, {REG_SET_FIXED, 4}, {LABEL16, Arg::DataType::BEZIER_CONTROL_POINT_DATA}}, F_V3_V4 | F_ARGS},
 
     // Creates a timed particle effect. Like the particle opcode, but the
@@ -3626,11 +3619,11 @@ std::string disassemble_quest_script(
       }
       if (l->has_data_type(Arg::DataType::BEZIER_CONTROL_POINT_DATA)) {
         phosg::StringReader r = cmd_r.sub(l->offset, size);
-        lines.emplace_back("  // As Vector4F");
-        while (r.remaining() >= sizeof(Vector4F)) {
+        lines.emplace_back("  // As VectorXYZTF");
+        while (r.remaining() >= sizeof(VectorXYZTF)) {
           size_t offset = l->offset + cmd_r.where();
-          const auto& e = r.get<Vector4F>();
-          lines.emplace_back(phosg::string_printf("  %04zX  vector4f     x=%g, y=%g, z=%g, t=%g", offset, e.x.load(), e.y.load(), e.z.load(), e.t.load()));
+          const auto& e = r.get<VectorXYZTF>();
+          lines.emplace_back(phosg::string_printf("  %04zX  vector       x=%g, y=%g, z=%g, t=%g", offset, e.x.load(), e.y.load(), e.z.load(), e.t.load()));
         }
         if (r.remaining() > 0) {
           size_t struct_end_offset = l->offset + r.where();

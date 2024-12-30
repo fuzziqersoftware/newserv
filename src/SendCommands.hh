@@ -354,13 +354,11 @@ void send_game_set_state(std::shared_ptr<Client> c);
 void send_game_flag_state(std::shared_ptr<Client> c);
 void send_game_player_state(std::shared_ptr<Client> to_c, std::shared_ptr<Client> from_c, bool apply_overrides);
 void send_drop_item_to_channel(std::shared_ptr<ServerState> s, Channel& ch, const ItemData& item,
-    bool from_enemy, uint8_t floor, float x, float z, uint16_t request_id);
-void send_drop_item_to_lobby(std::shared_ptr<Lobby> l, const ItemData& item,
-    bool from_enemy, uint8_t floor, float x, float z, uint16_t request_id);
+    uint8_t source_type, uint8_t floor, const VectorXZF& pos, uint16_t entity_index);
 void send_drop_stacked_item_to_channel(
-    std::shared_ptr<ServerState> s, Channel& ch, const ItemData& item, uint8_t floor, float x, float z);
+    std::shared_ptr<ServerState> s, Channel& ch, const ItemData& item, uint8_t floor, const VectorXZF& pos);
 void send_drop_stacked_item_to_lobby(
-    std::shared_ptr<Lobby> l, const ItemData& item, uint8_t floor, float x, float z);
+    std::shared_ptr<Lobby> l, const ItemData& item, uint8_t floor, const VectorXZF& pos);
 void send_pick_up_item_to_client(std::shared_ptr<Client> c, uint8_t client_id, uint32_t id, uint8_t floor);
 void send_create_inventory_item_to_client(std::shared_ptr<Client> c, uint8_t client_id, const ItemData& item);
 void send_create_inventory_item_to_lobby(std::shared_ptr<Client> c, uint8_t client_id, const ItemData& item, bool exclude_c = false);

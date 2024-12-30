@@ -1393,7 +1393,7 @@ static bool start_ep3_battle_table_game_if_ready(shared_ptr<Lobby> l, int16_t ta
   // Figure out which clients are at this table. If any client has declined, we
   // never start a match, but we may start a match even if all clients have not
   // yet accepted (in case of a tournament match).
-  Version base_version = Version::UNKNOWN;
+  Version game_version = Version::UNKNOWN;
   unordered_map<size_t, shared_ptr<Client>> table_clients;
   bool all_clients_accepted = true;
   for (const auto& c : l->clients) {
@@ -1401,9 +1401,9 @@ static bool start_ep3_battle_table_game_if_ready(shared_ptr<Lobby> l, int16_t ta
       continue;
     }
     // Prevent match from starting unless all players are on the same version
-    if (base_version == Version::UNKNOWN) {
-      base_version = c->version();
-    } else if (base_version != c->version()) {
+    if (game_version == Version::UNKNOWN) {
+      game_version = c->version();
+    } else if (game_version != c->version()) {
       return false;
     }
     if (c->card_battle_table_seat_number >= 4) {
@@ -1920,10 +1920,31 @@ static void on_09(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
           for (size_t x = 0; x < game->max_clients; x++) {
             const auto& game_c = game->clients[x];
             if (game_c.get()) {
+              static_assert(NUM_VERSIONS == 14, "Don\'t forget to update the game player listing version tokens");
+              static const array<const char*, NUM_VERSIONS> version_tokens = {
+                  " $C4P2$C7",
+                  " $C4P4$C7",
+                  " $C5DCN$C7",
+                  " $C5DCP$C7",
+                  " $C2DC1$C7",
+                  " $C2DC2$C7",
+                  " $C5PCN$C7",
+                  " $C2PC$C7",
+                  " $C5GCN$C7",
+                  " $C2GC$C7",
+                  " $C5Ep3N$C7",
+                  " $C2Ep3$C7",
+                  " $C2XB$C7",
+                  " $C2BB$C7",
+              };
+              const char* version_token = (game_c->version() != c->version())
+                  ? version_tokens.at(static_cast<size_t>(game_c->version()))
+                  : "";
               auto player = game_c->character();
               string name = escape_player_name(player->disp.name.decode(game_c->language()));
-              info += phosg::string_printf("%s\n  %s Lv%" PRIu32 " %c\n",
+              info += phosg::string_printf("%s%s\n  %s Lv%" PRIu32 " %c\n",
                   name.c_str(),
+                  version_token,
                   name_for_char_class(player->disp.visual.char_class),
                   player->disp.stats.level + 1,
                   char_for_language_code(game_c->language()));
@@ -1940,10 +1961,6 @@ static void on_09(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
             info += phosg::string_printf("Req. level: %" PRIu32 "-%" PRIu32 "\n", game->min_level + 1, game->max_level + 1);
           } else if (game->min_level != 0) {
             info += phosg::string_printf("Req. level: %" PRIu32 "+\n", game->min_level + 1);
-          }
-
-          if (c->config.check_flag(Client::Flag::DEBUG_ENABLED)) {
-            info += phosg::string_printf("%s\n", phosg::name_for_enum(game->base_version));
           }
 
           if (game->check_flag(Lobby::Flag::CHEATS_ENABLED)) {
@@ -2080,15 +2097,10 @@ static void on_quest_loaded(shared_ptr<Lobby> l) {
     throw logic_error("on_quest_loaded called without a quest loaded");
   }
 
-  auto s = l->require_server_state();
+  // Replace the free-play map with the quest's map
+  l->load_maps();
 
-  // For BB Challenge quests, don't replace the map now - the leader will send
-  // an 02DF command to create overlays, which also replaces the map. (We do
-  // this because 02DF is also sent when a challenge is failed and retried,
-  // which reloads the map and recreates character overlays anyway.)
-  if ((l->base_version != Version::BB_V4) || (l->quest->challenge_template_index < 0)) {
-    l->load_maps();
-  }
+  auto s = l->require_server_state();
 
   // Delete all floor items
   for (auto& m : l->floor_item_managers) {
@@ -2100,26 +2112,20 @@ static void on_quest_loaded(shared_ptr<Lobby> l) {
       continue;
     }
 
-    if ((lc->version() == Version::BB_V4) && l->map) {
-      send_rare_enemy_index_list(lc, l->map->rare_enemy_indexes);
+    if (lc->version() == Version::BB_V4) {
+      send_rare_enemy_index_list(lc, l->map_state->bb_rare_enemy_indexes);
     }
 
-    // On non-BB versions, overlays are created when the quest starts because
-    // the server is not informed when the clients have replaced their player
-    // data. On BB, this is instead done in the 6xCF handler (for battle) or
-    // the 02DF handler (for challenge).
-    if (l->base_version != Version::BB_V4) {
-      lc->delete_overlay();
-      if (l->quest->battle_rules) {
-        lc->use_default_bank();
-        lc->create_battle_overlay(l->quest->battle_rules, s->level_table(lc->version()));
-        lc->log.info("Created battle overlay");
-      } else if (l->quest->challenge_template_index >= 0) {
-        lc->use_default_bank();
-        lc->create_challenge_overlay(lc->version(), l->quest->challenge_template_index, s->level_table(lc->version()));
-        lc->log.info("Created challenge overlay");
-        l->assign_inventory_and_bank_item_ids(lc, true);
-      }
+    lc->delete_overlay();
+    if (l->quest->battle_rules) {
+      lc->use_default_bank();
+      lc->create_battle_overlay(l->quest->battle_rules, s->level_table(lc->version()));
+      lc->log.info("Created battle overlay");
+    } else if (l->quest->challenge_template_index >= 0) {
+      lc->use_default_bank();
+      lc->create_challenge_overlay(lc->version(), l->quest->challenge_template_index, s->level_table(lc->version()));
+      lc->log.info("Created challenge overlay");
+      l->assign_inventory_and_bank_item_ids(lc, true);
     }
   }
 }
@@ -2151,12 +2157,10 @@ void set_lobby_quest(shared_ptr<Lobby> l, shared_ptr<const Quest> q, bool substi
   l->clear_flag(Lobby::Flag::PERSISTENT);
 
   l->quest = q;
-  if (!is_ep3(l->base_version)) {
+  if (l->episode != Episode::EP3) {
     l->episode = q->episode;
   }
-  if (l->item_creator) {
-    l->create_item_creator();
-  }
+  l->create_item_creator();
 
   // There is no such thing as command AC on PSO V1 and V2 - quests just start
   // immediately when they're done downloading. (This is also the case on V3
@@ -2296,9 +2300,10 @@ static void on_10(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
             // online quests, but they're served via a server data request
             // instead of the file download paradigm that other versions use.)
             auto quest_index = s->quest_index(c->version());
-            const auto& categories = quest_index->categories(menu_type, Episode::EP3, c->version());
+            uint16_t version_flags = (1 << static_cast<size_t>(c->version()));
+            const auto& categories = quest_index->categories(menu_type, Episode::EP3, version_flags);
             if (categories.size() == 1) {
-              auto quests = quest_index->filter(Episode::EP3, c->version(), categories[0]->category_id);
+              auto quests = quest_index->filter(Episode::EP3, version_flags, categories[0]->category_id);
               send_quest_menu(c, quests, true);
               break;
             }
@@ -2618,12 +2623,13 @@ static void on_10(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
 
       shared_ptr<Lobby> l = c->lobby.lock();
       Episode episode = l ? l->episode : Episode::NONE;
+      uint16_t version_flags = (1 << static_cast<size_t>(c->version())) | (l ? l->quest_version_flags() : 0);
       QuestIndex::IncludeCondition include_condition = nullptr;
       if (l && !c->login->account->check_flag(Account::Flag::DISABLE_QUEST_REQUIREMENTS)) {
         include_condition = l->quest_include_condition();
       }
 
-      const auto& quests = quest_index->filter(episode, c->version(), item_id, include_condition);
+      const auto& quests = quest_index->filter(episode, version_flags, item_id, include_condition);
       send_quest_menu(c, quests, !l);
       break;
     }
@@ -3944,7 +3950,7 @@ static void on_DF_BB(shared_ptr<Client> c, uint16_t command, uint32_t, string& d
         }
       }
 
-      l->load_maps();
+      l->map_state->reset();
       break;
     }
 
@@ -4286,7 +4292,7 @@ static void on_C9_XB(shared_ptr<Client> c, uint16_t, uint32_t flag, string& data
 
 shared_ptr<Lobby> create_game_generic(
     shared_ptr<ServerState> s,
-    shared_ptr<Client> c,
+    shared_ptr<Client> creator_c,
     const std::string& name,
     const std::string& password,
     Episode episode,
@@ -4307,86 +4313,68 @@ shared_ptr<Lobby> create_game_generic(
     throw invalid_argument("incorrect difficulty level");
   }
 
-  auto current_lobby = c->require_lobby();
+  auto current_lobby = creator_c->require_lobby();
 
-  size_t min_level = s->default_min_level_for_game(c->version(), episode, difficulty);
+  size_t min_level = s->default_min_level_for_game(creator_c->version(), episode, difficulty);
 
-  auto p = c->character();
-  if (!c->login->account->check_flag(Account::Flag::FREE_JOIN_GAMES) && (min_level > p->disp.stats.level)) {
+  auto p = creator_c->character();
+  if (!creator_c->login->account->check_flag(Account::Flag::FREE_JOIN_GAMES) && (min_level > p->disp.stats.level)) {
     // Note: We don't throw here because this is a situation players might
     // actually encounter while playing the game normally
     string msg = phosg::string_printf("You must be level %zu\nor above to play\nthis difficulty.", static_cast<size_t>(min_level + 1));
-    send_lobby_message_box(c, msg);
+    send_lobby_message_box(creator_c, msg);
     return nullptr;
   }
 
   shared_ptr<Lobby> game = s->create_lobby(true);
   game->name = name;
-  game->base_version = c->version();
-  game->allowed_versions = 0;
-  switch (game->base_version) {
-    case Version::DC_NTE:
-      game->allow_version(Version::DC_NTE);
-      break;
-    case Version::DC_V1_11_2000_PROTOTYPE:
-      game->allow_version(Version::DC_V1_11_2000_PROTOTYPE);
-      break;
-    case Version::DC_V1:
-      game->allow_version(Version::DC_V1);
-      game->allow_version(Version::DC_V2);
-      if (s->allow_dc_pc_games) {
-        game->allow_version(Version::PC_V2);
-      }
-      break;
-    case Version::DC_V2:
-      if (allow_v1 && (difficulty <= 2) && (mode == GameMode::NORMAL)) {
-        game->allow_version(Version::DC_V1);
-      }
-      game->allow_version(Version::DC_V2);
-      if (s->allow_dc_pc_games) {
-        game->allow_version(Version::PC_V2);
-      }
-      break;
-    case Version::PC_NTE:
-      game->allow_version(Version::PC_NTE);
-      break;
-    case Version::PC_V2:
-      game->allow_version(Version::PC_V2);
-      if (s->allow_dc_pc_games) {
-        game->allow_version(Version::DC_V2);
-        if (allow_v1 && (difficulty <= 2) && (mode == GameMode::NORMAL)) {
-          game->allow_version(Version::DC_V1);
+  game->episode = episode;
+  game->mode = mode;
+  game->difficulty = difficulty;
+  game->allowed_versions = s->compatibility_groups.at(static_cast<size_t>(creator_c->version()));
+  static_assert(NUM_VERSIONS == 14, "Don't forget to update the group compatibility restrictions");
+  if (!allow_v1 || (difficulty > 2) || (mode != GameMode::NORMAL)) {
+    game->forbid_version(Version::DC_NTE);
+    game->forbid_version(Version::DC_V1_11_2000_PROTOTYPE);
+    game->forbid_version(Version::DC_V1);
+  }
+  switch (game->episode) {
+    case Episode::NONE:
+      throw logic_error("game episode not set at creation time");
+    case Episode::EP1:
+      for (Version v : ALL_VERSIONS) {
+        if (is_ep3(v)) {
+          game->forbid_version(v);
         }
       }
       break;
-    case Version::GC_NTE:
-      game->allow_version(Version::GC_NTE);
-      break;
-    case Version::GC_V3:
-      game->allow_version(Version::GC_V3);
-      if (s->allow_gc_xb_games) {
-        game->allow_version(Version::XB_V3);
+    case Episode::EP2:
+      for (Version v : ALL_VERSIONS) {
+        if (!is_v3(v) || is_ep3(v)) {
+          game->forbid_version(v);
+        }
       }
       break;
-    case Version::GC_EP3_NTE:
-      game->allow_version(Version::GC_EP3_NTE);
-      break;
-    case Version::GC_EP3:
-      game->allow_version(Version::GC_EP3);
-      break;
-    case Version::XB_V3:
-      game->allow_version(Version::XB_V3);
-      if (s->allow_gc_xb_games) {
-        game->allow_version(Version::GC_V3);
+    case Episode::EP3:
+      for (Version v : ALL_VERSIONS) {
+        if (!is_ep3(v)) {
+          game->forbid_version(v);
+        }
       }
       break;
-    case Version::BB_V4:
-      game->allow_version(Version::BB_V4);
+    case Episode::EP4:
+      for (Version v : ALL_VERSIONS) {
+        if (!is_v4(v)) {
+          game->forbid_version(v);
+        }
+      }
       break;
-    default:
-      throw logic_error("invalid quest script version");
   }
-  if (c->config.check_flag(Client::Flag::IS_CLIENT_CUSTOMIZATION)) {
+
+  if (creator_c->login->account->check_flag(Account::Flag::DEBUG)) {
+    game->set_flag(Lobby::Flag::DEBUG);
+  }
+  if (creator_c->config.check_flag(Client::Flag::IS_CLIENT_CUSTOMIZATION)) {
     game->set_flag(Lobby::Flag::IS_CLIENT_CUSTOMIZATION);
   }
 
@@ -4409,15 +4397,12 @@ shared_ptr<Lobby> create_game_generic(
   game->password = password;
 
   game->creator_section_id = p->disp.visual.section_id;
-  game->override_section_id = c->config.override_section_id;
-  game->episode = episode;
-  game->mode = mode;
+  game->override_section_id = creator_c->config.override_section_id;
   if (game->mode == GameMode::CHALLENGE) {
     game->challenge_params = make_shared<Lobby::ChallengeParameters>();
   }
-  game->difficulty = difficulty;
-  if (c->config.check_flag(Client::Flag::USE_OVERRIDE_RANDOM_SEED)) {
-    game->random_seed = c->config.override_random_seed;
+  if (creator_c->config.check_flag(Client::Flag::USE_OVERRIDE_RANDOM_SEED)) {
+    game->random_seed = creator_c->config.override_random_seed;
     game->opt_rand_crypt = make_shared<PSOV2Encryption>(game->random_seed);
   }
   if (battle_player) {
@@ -4428,7 +4413,7 @@ shared_ptr<Lobby> create_game_generic(
   game->exp_share_multiplier = s->exp_share_multiplier;
 
   const unordered_map<uint16_t, IntegralExpression>* quest_flag_rewrites;
-  switch (game->base_version) {
+  switch (creator_c->version()) {
     case Version::DC_NTE:
     case Version::DC_V1_11_2000_PROTOTYPE:
     case Version::DC_V1:
@@ -4437,13 +4422,13 @@ shared_ptr<Lobby> create_game_generic(
     case Version::PC_V2:
       quest_flag_rewrites = &s->quest_flag_rewrites_v1_v2;
       if (game->mode == GameMode::BATTLE) {
-        game->set_drop_mode(s->default_drop_mode_v1_v2_battle);
+        game->drop_mode = s->default_drop_mode_v1_v2_battle;
         game->allowed_drop_modes = s->allowed_drop_modes_v1_v2_battle;
       } else if (game->mode == GameMode::CHALLENGE) {
-        game->set_drop_mode(s->default_drop_mode_v1_v2_challenge);
+        game->drop_mode = s->default_drop_mode_v1_v2_challenge;
         game->allowed_drop_modes = s->allowed_drop_modes_v1_v2_challenge;
       } else {
-        game->set_drop_mode(s->default_drop_mode_v1_v2_normal);
+        game->drop_mode = s->default_drop_mode_v1_v2_normal;
         game->allowed_drop_modes = s->allowed_drop_modes_v1_v2_normal;
       }
       break;
@@ -4452,32 +4437,32 @@ shared_ptr<Lobby> create_game_generic(
     case Version::XB_V3:
       quest_flag_rewrites = &s->quest_flag_rewrites_v3;
       if (game->mode == GameMode::BATTLE) {
-        game->set_drop_mode(s->default_drop_mode_v3_battle);
+        game->drop_mode = s->default_drop_mode_v3_battle;
         game->allowed_drop_modes = s->allowed_drop_modes_v3_battle;
       } else if (game->mode == GameMode::CHALLENGE) {
-        game->set_drop_mode(s->default_drop_mode_v3_challenge);
+        game->drop_mode = s->default_drop_mode_v3_challenge;
         game->allowed_drop_modes = s->allowed_drop_modes_v3_challenge;
       } else {
-        game->set_drop_mode(s->default_drop_mode_v3_normal);
+        game->drop_mode = s->default_drop_mode_v3_normal;
         game->allowed_drop_modes = s->allowed_drop_modes_v3_normal;
       }
       break;
     case Version::GC_EP3_NTE:
     case Version::GC_EP3:
       quest_flag_rewrites = nullptr;
-      game->set_drop_mode(Lobby::DropMode::DISABLED);
+      game->drop_mode = Lobby::DropMode::DISABLED;
       game->allowed_drop_modes = (1 << static_cast<size_t>(game->drop_mode));
       break;
     case Version::BB_V4:
       quest_flag_rewrites = &s->quest_flag_rewrites_v4;
       if (game->mode == GameMode::BATTLE) {
-        game->set_drop_mode(s->default_drop_mode_v4_battle);
+        game->drop_mode = s->default_drop_mode_v4_battle;
         game->allowed_drop_modes = s->allowed_drop_modes_v4_battle;
       } else if (game->mode == GameMode::CHALLENGE) {
-        game->set_drop_mode(s->default_drop_mode_v4_challenge);
+        game->drop_mode = s->default_drop_mode_v4_challenge;
         game->allowed_drop_modes = s->allowed_drop_modes_v4_challenge;
       } else {
-        game->set_drop_mode(s->default_drop_mode_v4_normal);
+        game->drop_mode = s->default_drop_mode_v4_normal;
         game->allowed_drop_modes = s->allowed_drop_modes_v4_normal;
       }
       // Disallow CLIENT mode on BB
@@ -4491,6 +4476,7 @@ shared_ptr<Lobby> create_game_generic(
     default:
       throw logic_error("invalid quest script version");
   }
+  game->create_item_creator(creator_c->version());
 
   game->event = current_lobby->event;
   game->block = 0xFF;
@@ -4512,23 +4498,27 @@ shared_ptr<Lobby> create_game_generic(
 
   if (game->episode != Episode::EP3) {
     // GC NTE ignores the passed-in variations and always uses all zeroes
-    if (game->base_version == Version::GC_NTE) {
-      game->variations.clear(0);
-    } else if (c->override_variations) {
-      game->variations = *c->override_variations;
-      c->override_variations.reset();
+    if (creator_c->version() == Version::GC_NTE) {
+      game->variations = Variations();
+      game->log.info("Base version is GC_NTE; using blank variations");
+    } else if (creator_c->override_variations) {
+      game->variations = *creator_c->override_variations;
+      creator_c->override_variations.reset();
+      auto vars_str = game->variations.str();
+      game->log.info("Using variations from client override: %s", vars_str.c_str());
     } else {
-      auto sdt = s->set_data_table(game->base_version, game->episode, game->mode, game->difficulty);
+      auto sdt = s->set_data_table(creator_c->version(), game->episode, game->mode, game->difficulty);
       game->variations = sdt->generate_variations(game->episode, is_solo, game->opt_rand_crypt);
+      auto vars_str = game->variations.str();
+      game->log.info("Using random variations: %s", vars_str.c_str());
     }
-    game->load_maps();
   } else {
-    game->variations.clear(0);
-    game->map = make_shared<Map>(game->base_version, game->lobby_id, game->random_seed, game->opt_rand_crypt);
+    game->variations = Variations();
   }
+  game->load_maps(); // Load free-play maps
 
   // The game's quest flags are inherited from the creator, if known
-  if (c->version() == Version::BB_V4) {
+  if (creator_c->version() == Version::BB_V4) {
     game->quest_flag_values = make_unique<QuestFlags>(p->quest_flags);
     game->quest_flags_known = nullptr;
   } else {
@@ -4540,10 +4530,10 @@ shared_ptr<Lobby> create_game_generic(
     IntegralExpression::Env env = {
         .flags = &p->quest_flags.data.at(difficulty),
         .challenge_records = &p->challenge_records,
-        .team = c->team(),
+        .team = creator_c->team(),
         .num_players = 1,
         .event = game->event,
-        .v1_present = is_v1(game->base_version),
+        .v1_present = is_v1(creator_c->version()),
     };
     for (const auto& it : *quest_flag_rewrites) {
       bool should_set = it.second.evaluate(env);
@@ -4557,7 +4547,7 @@ shared_ptr<Lobby> create_game_generic(
         game->quest_flags_known->set(game->difficulty, it.first);
       }
     }
-    c->config.set_flag(Client::Flag::SHOULD_SEND_ARTIFICIAL_FLAG_STATE);
+    creator_c->config.set_flag(Client::Flag::SHOULD_SEND_ARTIFICIAL_FLAG_STATE);
   }
 
   game->switch_flags = make_unique<SwitchFlags>();
@@ -4761,11 +4751,11 @@ static void on_6F(shared_ptr<Client> c, uint16_t command, uint32_t, string& data
   send_server_time(c);
   if (c->config.check_flag(Client::Flag::DEBUG_ENABLED)) {
     string variations_str;
-    for (size_t z = 0; z < l->variations.size(); z++) {
-      variations_str += phosg::string_printf("%" PRIX32, l->variations[z].load());
+    for (size_t z = 0; z < l->variations.entries.size(); z++) {
+      const auto& e = l->variations.entries[z];
+      variations_str += phosg::string_printf(" %" PRIX32 "%" PRIX32, e.layout.load(), e.entities.load());
     }
-    send_text_message_printf(c, "Rare seed: %08" PRIX32 "\nRare enemies: %zu\nVariations: %s\n",
-        l->random_seed, l->map->rare_enemy_indexes.size(), variations_str.c_str());
+    send_text_message_printf(c, "Rare seed: %08" PRIX32 "\nVariations:%s\n", l->random_seed, variations_str.c_str());
   }
 
   bool should_resume_game = true;
@@ -4800,9 +4790,7 @@ static void on_6F(shared_ptr<Client> c, uint16_t command, uint32_t, string& data
       c->config.clear_flag(Client::Flag::LOADING_RUNNING_JOINABLE_QUEST);
       c->log.info("LOADING_RUNNING_JOINABLE_QUEST flag cleared");
     }
-    if (l->map) {
-      send_rare_enemy_index_list(c, l->map->rare_enemy_indexes);
-    }
+    send_rare_enemy_index_list(c, l->map_state->bb_rare_enemy_indexes);
   }
 
   // We should resume the game if:

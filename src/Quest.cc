@@ -199,6 +199,7 @@ VersionedQuest::VersionedQuest(
     uint8_t language,
     std::shared_ptr<const std::string> bin_contents,
     std::shared_ptr<const std::string> dat_contents,
+    std::shared_ptr<const MapFile> map_file,
     std::shared_ptr<const std::string> pvr_contents,
     std::shared_ptr<const BattleRules> battle_rules,
     ssize_t challenge_template_index,
@@ -219,16 +220,13 @@ VersionedQuest::VersionedQuest(
       is_dlq_encoded(false),
       bin_contents(bin_contents),
       dat_contents(dat_contents),
+      map_file(map_file),
       pvr_contents(pvr_contents),
       battle_rules(battle_rules),
       challenge_template_index(challenge_template_index),
       description_flag(description_flag),
       available_expression(available_expression),
       enabled_expression(enabled_expression) {
-
-  if (this->dat_contents) {
-    this->dat_contents_decompressed = make_shared<string>(prs_decompress(*this->dat_contents));
-  }
 
   auto bin_decompressed = prs_decompress(*this->bin_contents);
 
@@ -390,12 +388,13 @@ Quest::Quest(shared_ptr<const VersionedQuest> initial_version)
       joinable(initial_version->joinable),
       lock_status_register(initial_version->lock_status_register),
       name(initial_version->name),
+      supermap(nullptr),
       battle_rules(initial_version->battle_rules),
       challenge_template_index(initial_version->challenge_template_index),
       description_flag(initial_version->description_flag),
       available_expression(initial_version->available_expression),
       enabled_expression(initial_version->enabled_expression) {
-  this->versions.emplace(this->versions_key(initial_version->version, initial_version->language), initial_version);
+  this->add_version(initial_version);
 }
 
 uint32_t Quest::versions_key(Version v, uint8_t language) {
@@ -449,6 +448,44 @@ void Quest::add_version(shared_ptr<const VersionedQuest> vq) {
   this->versions.emplace(this->versions_key(vq->version, vq->language), vq);
 }
 
+std::shared_ptr<const SuperMap> Quest::get_supermap(int64_t random_seed) const {
+  if (this->supermap) {
+    return this->supermap;
+  }
+
+  bool save_to_cache = true;
+  bool any_map_file_present = false;
+  array<shared_ptr<const MapFile>, NUM_VERSIONS> map_files;
+  for (Version v : ALL_ARPG_SEMANTIC_VERSIONS) {
+    auto vq = this->version(v, 1);
+    if (vq && vq->map_file) {
+      auto map_file = vq->map_file;
+      if (map_file->has_random_sections()) {
+        if (random_seed < 0) {
+          return nullptr;
+        }
+        save_to_cache = false;
+        map_file = map_file->materialize_random_sections(random_seed);
+      }
+      map_files.at(static_cast<size_t>(v)) = map_file;
+      any_map_file_present = true;
+    }
+  }
+
+  if (!any_map_file_present) {
+    return nullptr;
+  }
+
+  auto supermap = make_shared<SuperMap>(this->episode, map_files);
+  if (save_to_cache) {
+    this->supermap = supermap;
+  }
+  static_game_data_log.info("Constructed %s supermap for quest %" PRIu32 " (%s)",
+      save_to_cache ? "cacheable" : "temporary", this->quest_number, this->name.c_str());
+
+  return supermap;
+}
+
 bool Quest::has_version(Version v, uint8_t language) const {
   return this->versions.count(this->versions_key(v, language));
 }
@@ -482,17 +519,22 @@ shared_ptr<const VersionedQuest> Quest::version(Version v, uint8_t language) con
 
 QuestIndex::QuestIndex(
     const string& directory,
-    std::shared_ptr<const QuestCategoryIndex> category_index,
+    shared_ptr<const QuestCategoryIndex> category_index,
     bool is_ep3)
     : directory(directory),
       category_index(category_index) {
 
   struct FileData {
-    std::string filename;
+    string filename;
     shared_ptr<const string> data;
   };
+  struct DATFileData {
+    string filename;
+    shared_ptr<const string> data;
+    shared_ptr<const MapFile> map_file;
+  };
   map<string, FileData> bin_files;
-  map<string, FileData> dat_files;
+  map<string, DATFileData> dat_files;
   map<string, FileData> pvr_files;
   map<string, FileData> json_files;
   map<string, uint32_t> categories;
@@ -515,6 +557,23 @@ QuestIndex::QuestIndex(
       // if any file's size is a multiple of 0x400. See the comments on the 13
       // command in CommandFormats.hh for more details.
       if (check_chunk_size && !(data_ptr->size() & 0x3FF)) {
+        data_ptr->push_back(0x00);
+      }
+    };
+
+    auto add_dat_file = [&](const string& basename, const string& filename, string&& value) {
+      if (categories.emplace(basename, cat->category_id).first->second != cat->category_id) {
+        throw runtime_error("file " + basename + " exists in multiple categories");
+      }
+      auto data_ptr = make_shared<string>(std::move(value));
+      auto map_file = make_shared<MapFile>(make_shared<string>(prs_decompress(*data_ptr)));
+      if (!dat_files.emplace(basename, DATFileData{filename, data_ptr, map_file}).second) {
+        throw runtime_error("file " + basename + " already exists");
+      }
+      // There is a bug in the client that prevents quests from loading properly
+      // if any file's size is a multiple of 0x400. See the comments on the 13
+      // command in CommandFormats.hh for more details.
+      if (!(data_ptr->size() & 0x3FF)) {
         data_ptr->push_back(0x00);
       }
     };
@@ -570,9 +629,9 @@ QuestIndex::QuestIndex(
         } else if (extension == "bind" || extension == "mnmd") {
           add_file(bin_files, file_basename, orig_filename, prs_compress_optimal(file_data), true);
         } else if (extension == "dat") {
-          add_file(dat_files, file_basename, orig_filename, std::move(file_data), true);
+          add_dat_file(file_basename, orig_filename, std::move(file_data));
         } else if (extension == "datd") {
-          add_file(dat_files, file_basename, orig_filename, prs_compress_optimal(file_data), true);
+          add_dat_file(file_basename, orig_filename, prs_compress_optimal(file_data));
         } else if (extension == "pvr") {
           add_file(pvr_files, file_basename, orig_filename, std::move(file_data), true);
         } else if (extension == "qst") {
@@ -581,7 +640,7 @@ QuestIndex::QuestIndex(
             if (phosg::ends_with(it.first, ".bin")) {
               add_file(bin_files, file_basename, orig_filename, std::move(it.second), true);
             } else if (phosg::ends_with(it.first, ".dat")) {
-              add_file(dat_files, file_basename, orig_filename, std::move(it.second), true);
+              add_dat_file(file_basename, orig_filename, std::move(it.second));
             } else if (phosg::ends_with(it.first, ".pvr")) {
               add_file(pvr_files, file_basename, orig_filename, std::move(it.second), true);
             } else {
@@ -655,7 +714,7 @@ QuestIndex::QuestIndex(
       uint8_t language = language_code_for_char(language_token[0]);
 
       // Find the corresponding dat and pvr files
-      const FileData* dat_filedata = nullptr;
+      const DATFileData* dat_filedata = nullptr;
       const FileData* pvr_filedata = nullptr;
       if (!::is_ep3(version)) {
         // Look for dat and pvr files with the same basename as the bin file; if
@@ -746,6 +805,7 @@ QuestIndex::QuestIndex(
           language,
           bin_filedata->data,
           dat_filedata ? dat_filedata->data : nullptr,
+          dat_filedata ? dat_filedata->map_file : nullptr,
           pvr_filedata ? pvr_filedata->data : nullptr,
           battle_rules,
           challenge_template_index,
@@ -796,6 +856,11 @@ QuestIndex::QuestIndex(
       static_game_data_log.warning("(%s) Failed to index quest file: (%s)", basename.c_str(), e.what());
     }
   }
+
+  // Create supermaps for all quests that need them (all non-Ep3 quests)
+  for (const auto& it : this->quests_by_number) {
+    it.second->get_supermap(-1);
+  }
 }
 
 shared_ptr<const Quest> QuestIndex::get(uint32_t quest_number) const {
@@ -817,11 +882,11 @@ shared_ptr<const Quest> QuestIndex::get(const std::string& name) const {
 vector<shared_ptr<const QuestCategoryIndex::Category>> QuestIndex::categories(
     QuestMenuType menu_type,
     Episode episode,
-    Version version,
+    uint16_t version_flags,
     IncludeCondition include_condition) const {
   vector<shared_ptr<const QuestCategoryIndex::Category>> ret;
   for (const auto& cat : this->category_index->categories) {
-    if (cat->check_flag(menu_type) && !this->filter(episode, version, cat->category_id, include_condition, 1).empty()) {
+    if (cat->check_flag(menu_type) && !this->filter(episode, version_flags, cat->category_id, include_condition, 1).empty()) {
       ret.emplace_back(cat);
     }
   }
@@ -830,7 +895,7 @@ vector<shared_ptr<const QuestCategoryIndex::Category>> QuestIndex::categories(
 
 vector<pair<QuestIndex::IncludeState, shared_ptr<const Quest>>> QuestIndex::filter(
     Episode episode,
-    Version version,
+    uint16_t version_flags,
     uint32_t category_id,
     IncludeCondition include_condition,
     size_t limit) const {
@@ -843,16 +908,26 @@ vector<pair<QuestIndex::IncludeState, shared_ptr<const Quest>>> QuestIndex::filt
     return ret;
   }
   for (auto it : category_it->second) {
-    if (((effective_episode == Episode::NONE) || (it.second->episode == effective_episode)) &&
-        it.second->has_version_any_language(version)) {
-      IncludeState state = include_condition ? include_condition(it.second) : IncludeState::AVAILABLE;
-      if (state == IncludeState::HIDDEN) {
-        continue;
-      }
-      ret.emplace_back(make_pair(state, it.second));
-      if (limit && (ret.size() >= limit)) {
+    if ((effective_episode != Episode::NONE) && (it.second->episode != effective_episode)) {
+      continue;
+    }
+    bool all_required_versions_present = true;
+    for (size_t v_s = 0; v_s < NUM_VERSIONS; v_s++) {
+      if ((version_flags & (1 << v_s)) && !it.second->has_version_any_language(static_cast<Version>(v_s))) {
+        all_required_versions_present = false;
         break;
       }
+    }
+    if (!all_required_versions_present) {
+      continue;
+    }
+    IncludeState state = include_condition ? include_condition(it.second) : IncludeState::AVAILABLE;
+    if (state == IncludeState::HIDDEN) {
+      continue;
+    }
+    ret.emplace_back(make_pair(state, it.second));
+    if (limit && (ret.size() >= limit)) {
+      break;
     }
   }
   return ret;

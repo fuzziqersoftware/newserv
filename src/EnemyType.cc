@@ -1121,3 +1121,51 @@ bool enemy_type_is_rare(EnemyType type) {
       (type == EnemyType::DORPHON_ECLAIR) ||
       (type == EnemyType::KONDRIEU));
 }
+
+EnemyType rare_type_for_enemy_type(EnemyType base_type, Episode episode, uint8_t event, uint8_t floor) {
+  switch (base_type) {
+    case EnemyType::HILDEBEAR:
+      return EnemyType::HILDEBLUE;
+    case EnemyType::RAG_RAPPY:
+      switch (episode) {
+        case Episode::EP1:
+          return EnemyType::AL_RAPPY;
+        case Episode::EP2:
+          switch (event) {
+            case 0x01: // rappy_type 1
+              return EnemyType::SAINT_RAPPY;
+            case 0x04: // rappy_type 2
+              return EnemyType::EGG_RAPPY;
+            case 0x05: // rappy_type 3
+              return EnemyType::HALLO_RAPPY;
+            default:
+              return EnemyType::LOVE_RAPPY;
+          }
+        case Episode::EP4:
+          return (floor > 0x05) ? EnemyType::DEL_RAPPY_ALT : EnemyType::DEL_RAPPY;
+        default:
+          throw logic_error("invalid episode");
+      }
+    case EnemyType::POISON_LILY:
+      return EnemyType::NAR_LILY;
+    case EnemyType::POFUILLY_SLIME:
+      return EnemyType::POUILLY_SLIME;
+    case EnemyType::SAND_RAPPY:
+      return EnemyType::DEL_RAPPY;
+    case EnemyType::SAND_RAPPY_ALT:
+      return EnemyType::DEL_RAPPY_ALT;
+    case EnemyType::MERISSA_A:
+      return EnemyType::MERISSA_AA;
+    case EnemyType::ZU:
+      return EnemyType::PAZUZU;
+    case EnemyType::ZU_ALT:
+      return EnemyType::PAZUZU_ALT;
+    case EnemyType::DORPHON:
+      return EnemyType::DORPHON_ECLAIR;
+    case EnemyType::SAINT_MILLION:
+    case EnemyType::SHAMBERTIN:
+      return EnemyType::KONDRIEU;
+    default:
+      return base_type;
+  }
+}

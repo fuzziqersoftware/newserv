@@ -91,7 +91,7 @@ If you want to use parts of newserv in your project, there are two easy ways to 
 
 # Compatibility
 
-newserv supports all known versions of PSO, including development prototypes. This table lists all versions that newserv supports. (NTE stands for Network Trial Edition; the GameCube beta versions were called Trial Edition instead, but we use the NTE abbreviation anyway for consistency.)
+newserv supports all known versions of PSO, including various development prototypes. This table lists all versions that newserv supports. (NTE stands for Network Trial Edition; the GameCube beta versions were called Trial Edition instead, but we use the NTE abbreviation anyway for consistency.)
 
 | Version         | Lobbies  | Games    | Proxy    |
 |-----------------|----------|----------|----------|
@@ -339,13 +339,13 @@ Quest contents are cached in memory, but if you've changed the contents of the q
 newserv supports server-side item generation on all game versions, except for the earliest DC prototypes (NTE and 11/2000). By default, the game behaves as it did on the original servers - on all versions except BB, item drops are controlled by the leader client in each game, and on BB, item drops are controlled by the server.
 
 There are five different available behaviors for item drops:
-* `DISABLED` (or `NONE`): No items will drop from boxes or enemies.
-* `CLIENT`: The game leader generates items, all items are visible to all players, and any player may pick up any item. This is the default mode for all game versions, except this mode cannot be used on BB.
-* `SERVER_SHARED`: The server generates items, all items are visible to all players, and any player may pick up any item. This is the default mode for BB.
-* `SERVER_PRIVATE`: The server generates items, but each player may get a different item from any box or enemy. If a player isn't in the same area as an enemy at the time it's defeated, they won't get any item from it. Items dropped by players are visible to everyone.
-* `SERVER_DUPLICATE`: The server generates items, and each player will get the same item from any box or enemy, but there is one copy of each item for each player (and each player only sees their own copy of the item). If a player isn't in the same area as an enemy at the time it's defeated, they won't get any item from it. Items dropped by players are not duplicated and are visible to everyone.
+* `disabled` (or `none`): No items will drop from boxes or enemies.
+* `client`: The game leader generates items, all items are visible to all players, and any player may pick up any item. This is the default mode for all game versions, except this mode cannot be used if the game leader is on BB.
+* `shared`: The server generates items, all items are visible to all players, and any player may pick up any item. This is the default mode if the game leader is on BB.
+* `private`: The server generates items, but each player may get a different item from any box or enemy. If a player isn't in the same area as an enemy at the time it's defeated, they won't get any item from it. Items dropped by players are visible to everyone.
+* `duplicate`: The server generates items, and each player will get the same item from any box or enemy, but there is one copy of each item for each player (and each player only sees their own copy of the item). If a player isn't in the same area as an enemy at the time it's defeated, they won't get any item from it. Items dropped by players are not duplicated and are visible to everyone.
 
-In the `SERVER_PRIVATE` and `SERVER_DUPLICATE` modes, there is no incentive to pick up items before another player, since other players cannot pick up the items you see dropped from boxes and enemies. However, if you pick up an item and drop it later, it can then be seen and picked up by any player.
+In the `private` and `duplicate` modes, there is no incentive to pick up items before another player, since other players cannot pick up the items you see dropped from boxes and enemies. However, if you pick up an item and drop it later, it can then be seen and picked up by any player.
 
 The drop mode can be changed at any time during a game with the `$dropmode` chat command. If the mode is changed after some items have already been dropped, the existing items retain their visibility (that is, items dropped in private mode still can't be picked up by other players since they were dropped before the mode was changed). You can configure which drop modes are used by default, and which modes players are allowed to choose, in config.json. See the comments above the AllowedDropModes and DefaultDropMode keys.
 
@@ -353,13 +353,18 @@ In the server drop modes, the item tables used to generate common items are in t
 
 ## Cross-version play
 
-All versions of PSO can see and interact with each other in the lobby. newserv also allows some versions to play in-game with each other:
-* DC V1 players can join DC V2 games if the difficulty level isn't set to Ultimate and the creator chose to allow V1 players.
-* DC V2 players can join DC V1 games.
-* If AllowDCPCGames is enabled in config.json, PC and DC players can join each other's games. DC V1 players cannot join PC games with the Ultimate difficulty level.
-* If AllowGCXBGames is enabled in config.json, GC and Xbox players can join each other's games.
+All versions of PSO can see and interact with each other in the lobby. By default, newserv allows V1 and V2 players to play together, and allows GC and Xbox players to play together. You can change these rules with the CompatibilityGroups setting in config.json.
 
-In V1/V2 cross-version play, when any of the server drop modes are used, the server uses the drop table corresponding to the version the game was created with. (For example, if a DC V1 player created the game, rare-table-v1.json will be used, even after V2 players join.)
+There are several cross-version restrictions that always apply regardless of the compatibility groups setting:
+* DC V1 players cannot join DC V2 games if the game creator didn't choose to allow them.
+* DC V1 players cannot join games if the difficulty level is set to Ultimate or the game mode is Battle or Challenge.
+* Only GC, Xbox, and BB players can join games in Episode 2.
+* Only BB players can join games in Episode 4.
+* Episode 3 players cannot join non-Episode 3 games, and vice versa.
+
+V1/V2 compatibility and GC/Xbox compatibility are well-tested, but other situations are not. Not much attention has been given to how items should be handled across major versions; if you enable v2/GC compatibility, for example, there will likely be bugs. Please report such bugs as GitHub issues.
+
+In cross-version play, when any of the server drop modes are used, the server uses the drop tables corresponding to the leader's version and section ID. (For example, if a DC V1 player is the game leader, rare-table-v1.json will be used, even after V2 players join.) If a BB player is the leader and the `client` drop mode is used, the server generates items as if it were in `shared` mode.
 
 ## Server-side saves
 
@@ -371,7 +376,7 @@ There is a third command, `$bbchar <username> <password> <slot>`, which behaves 
 
 Exactly which data is saved and loaded depends on the game version:
 
-| Game                 | Inventory | Character | Options/chats | Quest flags | Bank | Battle/challenge |
+| Game                 | Inventory | Character | Options/chats | Quest flags | Bank | Battle/Challenge |
 |----------------------|-----------|-----------|---------------|-------------|------|------------------|
 | PSO DC v1 prototypes | Yes       | Yes       | No            | No          | No   | N/A              |
 | PSO DC v1            | Yes       | Yes       | No            | No          | No   | N/A              |
@@ -547,7 +552,7 @@ Some commands only work on the game server and not on the proxy server. The chat
         * You'll see in-game messages from the server when you take certain actions, like killing an enemy in BB.
         * You'll see the rare seed value and floor variations when you join a game.
         * You'll be placed into the last available slot in lobbies and games instead of the first, unless you're joining a BB solo-mode game.
-        * You'll be able to join games with any PSO version, not only those for which crossplay is normally supported. Be prepared for client crashes and other client-side brokenness if you do this. Do not submit any issues for broken behaviors in crossplay, unless the situation is explicitly supported (see the "Cross-version play" section above).
+        * You'll be able to join games with any PSO version, not only those for which crossplay is normally enabled. See the "Cross-version play" section above for details on this.
         * The rest of the commands in this section are enabled on the game server. (They are always enabled on the proxy server.)
     * `$readmem <address>` (game server only): Reads 4 bytes from the given address and shows you the values.
     * `$writemem <address> <data>` (game server only): Writes data to the given address. Data is not required to be any specific size.
@@ -729,7 +734,6 @@ There are several actions that don't fit well into the table above, which let yo
 * Run a brute-force search for a decryption seed (`find-decryption-seed`)
 * Format Episode 3 game data in a human-readable manner (`show-ep3-maps`, `show-ep3-cards`, `generate-ep3-cards-html`)
 * Format Blue Burst battle parameter files in a human-readable manner (`show-battle-params`)
-* Search for rare enemy seeds that result in rare enemies on console versions (`find-rare-enemy-seeds`)
 * Convert item data to a human-readable description, or vice versa (`describe-item`)
 * Connect to another PSO server and pretend to be a client (`cat-client`)
 * Generate or describe DC serial numbers (`generate-dc-serial-number`, `inspect-dc-serial-number`)

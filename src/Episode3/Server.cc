@@ -2335,7 +2335,7 @@ void Server::handle_CAx1D_start_battle(shared_ptr<Client>, const string& data) {
       if (l) {
         // Note: Sega's implementation doesn't set EX results values here; they
         // did it at game join time instead. We do it here for code simplicity.
-        if ((l->base_version != Version::GC_EP3_NTE) && l->ep3_ex_result_values) {
+        if (!this->options.is_nte() && l->ep3_ex_result_values) {
           this->send(*l->ep3_ex_result_values);
         }
       }

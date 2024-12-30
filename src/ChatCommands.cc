@@ -465,7 +465,7 @@ static void server_command_swsetall(shared_ptr<Client> c, const std::string&) {
     auto& cmd = cmds[z];
     cmd.header.subcommand = 0x05;
     cmd.header.size = 0x03;
-    cmd.header.object_id = 0xFFFF;
+    cmd.header.entity_id = 0xFFFF;
     cmd.switch_flag_floor = c->floor;
     cmd.switch_flag_num = z;
     cmd.flags = 0x01;
@@ -485,7 +485,7 @@ static void proxy_command_swsetall(shared_ptr<ProxyServer::LinkedSession> ses, c
     auto& cmd = cmds[z];
     cmd.header.subcommand = 0x05;
     cmd.header.size = 0x03;
-    cmd.header.object_id = 0xFFFF;
+    cmd.header.entity_id = 0xFFFF;
     cmd.switch_flag_floor = ses->floor;
     cmd.switch_flag_num = z;
     cmd.flags = 0x01;
@@ -1117,7 +1117,7 @@ static void server_command_cheat(shared_ptr<Client> c, const std::string&) {
     if (!l->check_flag(Lobby::Flag::CHEATS_ENABLED) &&
         !c->login->account->check_flag(Account::Flag::CHEAT_ANYWHERE) &&
         s->cheat_flags.insufficient_minimum_level) {
-      size_t default_min_level = s->default_min_level_for_game(l->base_version, l->episode, l->difficulty);
+      size_t default_min_level = s->default_min_level_for_game(c->version(), l->episode, l->difficulty);
       if (l->min_level < default_min_level) {
         l->min_level = default_min_level;
         send_text_message_printf(l, "$C6Minimum level set\nto %" PRIu32, l->min_level + 1);
@@ -1312,7 +1312,7 @@ static void server_command_secid(shared_ptr<Client> c, const std::string& args) 
   c->config.override_section_id = new_override_section_id;
   if (l->is_game() && (l->leader_id == c->lobby_client_id)) {
     l->override_section_id = new_override_section_id;
-    l->change_section_id();
+    l->create_item_creator();
   }
 }
 
@@ -1343,11 +1343,17 @@ static void server_command_variations(shared_ptr<Client> c, const std::string& a
   check_is_game(l, false);
   check_cheats_allowed(s, c, s->cheat_flags.override_variations);
 
-  c->override_variations = make_unique<parray<le_uint32_t, 0x20>>();
-  c->override_variations->clear(0);
-  for (size_t z = 0; z < min<size_t>(c->override_variations->size(), args.size()); z++) {
-    c->override_variations->at(z) = args[z] - '0';
+  c->override_variations = make_unique<Variations>();
+  for (size_t z = 0; z < min<size_t>(c->override_variations->entries.size() * 2, args.size()); z++) {
+    auto& entry = c->override_variations->entries.at(z / 2);
+    if (z & 1) {
+      entry.entities = args[z] - '0';
+    } else {
+      entry.layout = args[z] - '0';
+    }
   }
+  auto vars_str = c->override_variations->str();
+  c->log.info("Override variations set to %s", vars_str.c_str());
 }
 
 static void server_command_rand(shared_ptr<Client> c, const std::string& args) {
@@ -1441,7 +1447,7 @@ static void server_command_min_level(shared_ptr<Client> c, const std::string& ar
   bool cheats_allowed = (l->check_flag(Lobby::Flag::CHEATS_ENABLED) ||
       c->login->account->check_flag(Account::Flag::CHEAT_ANYWHERE));
   if (!cheats_allowed && s->cheat_flags.insufficient_minimum_level) {
-    size_t default_min_level = s->default_min_level_for_game(l->base_version, l->episode, l->difficulty);
+    size_t default_min_level = s->default_min_level_for_game(c->version(), l->episode, l->difficulty);
     if (new_min_level < default_min_level) {
       send_text_message_printf(c, "$C6Cannot set minimum\nlevel below %zu", default_min_level + 1);
       return;
@@ -2084,7 +2090,10 @@ static void proxy_command_next(shared_ptr<ProxyServer::LinkedSession> ses, const
 static void server_command_where(shared_ptr<Client> c, const std::string&) {
   auto l = c->require_lobby();
   send_text_message_printf(c, "$C7%01" PRIX32 ":%s X:%" PRId32 " Z:%" PRId32,
-      c->floor, short_name_for_floor(l->episode, c->floor), static_cast<int32_t>(c->x), static_cast<int32_t>(c->z));
+      c->floor,
+      short_name_for_floor(l->episode, c->floor),
+      static_cast<int32_t>(c->pos.x.load()),
+      static_cast<int32_t>(c->pos.z.load()));
   for (auto lc : l->clients) {
     if (lc && (lc != c)) {
       string name = lc->character()->disp.name.decode(lc->language());
@@ -2108,9 +2117,7 @@ static void server_command_what(shared_ptr<Client> c, const std::string&) {
     if (!it.second->visible_to_client(c->lobby_client_id)) {
       continue;
     }
-    float dx = it.second->x - c->x;
-    float dz = it.second->z - c->z;
-    float dist2 = (dx * dx) + (dz * dz);
+    float dist2 = (it.second->pos - c->pos).norm2();
     if (!nearest_fi || (dist2 < min_dist2)) {
       nearest_fi = it.second;
       min_dist2 = dist2;
@@ -2281,7 +2288,7 @@ static void server_command_dropmode(shared_ptr<Client> c, const std::string& arg
       return;
     }
 
-    l->set_drop_mode(new_mode);
+    l->drop_mode = new_mode;
     switch (l->drop_mode) {
       case Lobby::DropMode::DISABLED:
         send_text_message(l, "Item drops disabled");
@@ -2358,11 +2365,11 @@ static void server_command_item(shared_ptr<Client> c, const std::string& args) {
   item.id = l->generate_item_id(c->lobby_client_id);
 
   if ((l->drop_mode == Lobby::DropMode::SERVER_PRIVATE) || (l->drop_mode == Lobby::DropMode::SERVER_DUPLICATE)) {
-    l->add_item(c->floor, item, c->x, c->z, (1 << c->lobby_client_id));
-    send_drop_stacked_item_to_channel(s, c->channel, item, c->floor, c->x, c->z);
+    l->add_item(c->floor, item, c->pos, nullptr, nullptr, (1 << c->lobby_client_id));
+    send_drop_stacked_item_to_channel(s, c->channel, item, c->floor, c->pos);
   } else {
-    l->add_item(c->floor, item, c->x, c->z, 0x00F);
-    send_drop_stacked_item_to_lobby(l, item, c->floor, c->x, c->z);
+    l->add_item(c->floor, item, c->pos, nullptr, nullptr, 0x00F);
+    send_drop_stacked_item_to_lobby(l, item, c->floor, c->pos);
   }
 
   string name = s->describe_item(c->version(), item, true);
@@ -2397,8 +2404,8 @@ static void proxy_command_item(shared_ptr<ProxyServer::LinkedSession> ses, const
     send_text_message(ses->client_channel, "$C7Next drop:\n" + name);
 
   } else {
-    send_drop_stacked_item_to_channel(s, ses->client_channel, item, ses->floor, ses->x, ses->z);
-    send_drop_stacked_item_to_channel(s, ses->server_channel, item, ses->floor, ses->x, ses->z);
+    send_drop_stacked_item_to_channel(s, ses->client_channel, item, ses->floor, ses->pos);
+    send_drop_stacked_item_to_channel(s, ses->server_channel, item, ses->floor, ses->pos);
 
     string name = s->describe_item(ses->version(), item, true);
     send_text_message(ses->client_channel, "$C7Item created:\n" + name);

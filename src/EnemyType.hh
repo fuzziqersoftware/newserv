@@ -148,3 +148,4 @@ uint8_t battle_param_index_for_enemy_type(Episode episode, EnemyType enemy_type)
 uint8_t rare_table_index_for_enemy_type(EnemyType enemy_type);
 const std::vector<EnemyType>& enemy_types_for_rare_table_index(Episode episode, uint8_t rt_index);
 bool enemy_type_is_rare(EnemyType type);
+EnemyType rare_type_for_enemy_type(EnemyType base_type, Episode episode, uint8_t event, uint8_t floor);
