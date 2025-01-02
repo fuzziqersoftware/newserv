@@ -30,7 +30,7 @@ extern const char* QUEST_BARRIER_DISCONNECT_HOOK_NAME;
 inline uint8_t get_pre_v1_subcommand(Version v, uint8_t nte_subcommand, uint8_t proto_subcommand, uint8_t final_subcommand) {
   if (v == Version::DC_NTE) {
     return nte_subcommand;
-  } else if (v == Version::DC_V1_11_2000_PROTOTYPE) {
+  } else if (v == Version::DC_11_2000) {
     return proto_subcommand;
   } else {
     return final_subcommand;
@@ -128,7 +128,7 @@ void send_command_with_header(Channel& ch, const void* data, size_t size) {
       send_command_with_header_t<PSOCommandHeaderPC>(ch, data, size);
       break;
     case Version::DC_NTE:
-    case Version::DC_V1_11_2000_PROTOTYPE:
+    case Version::DC_11_2000:
     case Version::DC_V1:
     case Version::DC_V2:
     case Version::GC_NTE:
@@ -180,7 +180,7 @@ void send_server_init_dc_pc_v3(shared_ptr<Client> c, uint8_t flags) {
       c->channel.crypt_out = make_shared<PSOV2Encryption>(server_key);
       break;
     case Version::DC_NTE:
-    case Version::DC_V1_11_2000_PROTOTYPE:
+    case Version::DC_11_2000:
     case Version::DC_V1:
     case Version::DC_V2:
     case Version::GC_NTE:
@@ -241,7 +241,7 @@ void send_server_init_bb(shared_ptr<Client> c, uint8_t flags) {
 void send_server_init(shared_ptr<Client> c, uint8_t flags) {
   switch (c->version()) {
     case Version::DC_NTE:
-    case Version::DC_V1_11_2000_PROTOTYPE:
+    case Version::DC_11_2000:
     case Version::DC_V1:
     case Version::DC_V2:
     case Version::PC_NTE:
@@ -265,7 +265,7 @@ void send_update_client_config(shared_ptr<Client> c, bool always_send) {
   if (always_send || (is_v3(c->version()) && (c->config.should_update_vs(c->synced_config)))) {
     switch (c->version()) {
       case Version::DC_NTE:
-      case Version::DC_V1_11_2000_PROTOTYPE:
+      case Version::DC_11_2000:
       case Version::DC_V1:
       case Version::DC_V2:
       case Version::PC_NTE:
@@ -487,7 +487,7 @@ void send_function_call(
 bool send_protected_command(std::shared_ptr<Client> c, const void* data, size_t size, bool echo_to_lobby) {
   switch (c->version()) {
     case Version::DC_NTE:
-    case Version::DC_V1_11_2000_PROTOTYPE:
+    case Version::DC_11_2000:
     case Version::DC_V1:
     case Version::DC_V2:
     case Version::PC_NTE:
@@ -825,7 +825,7 @@ void send_message_box(shared_ptr<Client> c, const string& text) {
       command = 0x13;
       break;
     case Version::DC_NTE:
-    case Version::DC_V1_11_2000_PROTOTYPE:
+    case Version::DC_11_2000:
     case Version::DC_V1:
     case Version::DC_V2:
     case Version::PC_NTE:
@@ -886,13 +886,13 @@ void send_ship_info(Channel& ch, const string& text) {
 }
 
 void send_text_message(Channel& ch, const string& text) {
-  if ((ch.version != Version::DC_NTE) && (ch.version != Version::DC_V1_11_2000_PROTOTYPE)) {
+  if ((ch.version != Version::DC_NTE) && (ch.version != Version::DC_11_2000)) {
     send_header_text(ch, 0xB0, 0, text, ColorMode::ADD);
   }
 }
 
 void send_text_message(shared_ptr<Client> c, const string& text) {
-  if ((c->version() != Version::DC_NTE) && (c->version() != Version::DC_V1_11_2000_PROTOTYPE)) {
+  if ((c->version() != Version::DC_NTE) && (c->version() != Version::DC_11_2000)) {
     send_header_text(c->channel, 0xB0, 0, text, ColorMode::ADD);
   }
 }
@@ -1072,7 +1072,7 @@ void send_simple_mail_bb(shared_ptr<Client> c, uint32_t from_guild_card_number, 
 void send_simple_mail(shared_ptr<Client> c, uint32_t from_guild_card_number, const string& from_name, const string& text) {
   switch (c->version()) {
     case Version::DC_NTE:
-    case Version::DC_V1_11_2000_PROTOTYPE:
+    case Version::DC_11_2000:
     case Version::DC_V1:
     case Version::DC_V2:
     case Version::GC_NTE:
@@ -1210,7 +1210,7 @@ void send_card_search_result(
     shared_ptr<Lobby> result_lobby) {
   switch (c->version()) {
     case Version::DC_NTE:
-    case Version::DC_V1_11_2000_PROTOTYPE:
+    case Version::DC_11_2000:
     case Version::DC_V1:
     case Version::DC_V2:
     case Version::GC_NTE:
@@ -1321,7 +1321,7 @@ void send_guild_card(
       send_guild_card_dc_pc_gc_t<G_SendGuildCard_DCNTE_6x06>(
           ch, guild_card_number, name, description, language, section_id, char_class);
       break;
-    case Version::DC_V1_11_2000_PROTOTYPE:
+    case Version::DC_11_2000:
     case Version::DC_V1:
     case Version::DC_V2:
       send_guild_card_dc_pc_gc_t<G_SendGuildCard_DC_6x06>(
@@ -1393,7 +1393,7 @@ void send_menu_t(shared_ptr<Client> c, shared_ptr<const Menu> menu, bool is_info
     bool is_visible = true;
     switch (c->version()) {
       case Version::DC_NTE:
-      case Version::DC_V1_11_2000_PROTOTYPE:
+      case Version::DC_11_2000:
         is_visible &= !(item.flags & MenuItem::Flag::INVISIBLE_ON_DC_PROTOS);
         [[fallthrough]];
       case Version::DC_V1:
@@ -1655,7 +1655,7 @@ void send_quest_menu(
       send_quest_menu_t<S_QuestMenuEntry_PC_A2_A4>(c, quests, is_download_menu);
       break;
     case Version::DC_NTE:
-    case Version::DC_V1_11_2000_PROTOTYPE:
+    case Version::DC_11_2000:
     case Version::DC_V1:
     case Version::DC_V2:
     case Version::GC_NTE:
@@ -1686,7 +1686,7 @@ void send_quest_categories_menu(
       send_quest_categories_menu_t<S_QuestMenuEntry_PC_A2_A4>(c, quest_index, menu_type, episode);
       break;
     case Version::DC_NTE:
-    case Version::DC_V1_11_2000_PROTOTYPE:
+    case Version::DC_11_2000:
     case Version::DC_V1:
     case Version::DC_V2:
     case Version::GC_NTE:
@@ -1983,7 +1983,7 @@ void send_join_game(shared_ptr<Client> c, shared_ptr<Lobby> l) {
 
   switch (c->version()) {
     case Version::DC_NTE:
-    case Version::DC_V1_11_2000_PROTOTYPE: {
+    case Version::DC_11_2000: {
       S_JoinGame_DCNTE_64 cmd;
       cmd.client_id = c->lobby_client_id;
       cmd.leader_id = l->leader_id;
@@ -2290,7 +2290,7 @@ void send_join_lobby(shared_ptr<Client> c, shared_ptr<Lobby> l) {
   } else {
     switch (c->version()) {
       case Version::DC_NTE:
-      case Version::DC_V1_11_2000_PROTOTYPE:
+      case Version::DC_11_2000:
         send_join_lobby_dc_nte(c, l);
         break;
       case Version::DC_V1:
@@ -2330,7 +2330,7 @@ void send_player_join_notification(shared_ptr<Client> c,
     shared_ptr<Lobby> l, shared_ptr<Client> joining_client) {
   switch (c->version()) {
     case Version::DC_NTE:
-    case Version::DC_V1_11_2000_PROTOTYPE:
+    case Version::DC_11_2000:
       send_join_lobby_dc_nte(c, l, joining_client);
       break;
     case Version::DC_V1:
@@ -2391,7 +2391,7 @@ void send_self_leave_notification(shared_ptr<Client> c) {
 void send_get_player_info(shared_ptr<Client> c, bool request_extended) {
   switch (c->version()) {
     case Version::DC_NTE:
-    case Version::DC_V1_11_2000_PROTOTYPE:
+    case Version::DC_11_2000:
     case Version::DC_V1:
     case Version::PC_NTE:
     case Version::PC_V2:
@@ -2965,7 +2965,7 @@ void send_game_player_state(shared_ptr<Client> to_c, shared_ptr<Client> from_c, 
     case Version::DC_NTE:
       send_or_enqueue_command(to_c, 0x6D, to_c->lobby_client_id, to_send.as_dc_nte(s));
       break;
-    case Version::DC_V1_11_2000_PROTOTYPE:
+    case Version::DC_11_2000:
       send_or_enqueue_command(to_c, 0x6D, to_c->lobby_client_id, to_send.as_dc_112000(s));
       break;
     case Version::DC_V1:
@@ -3897,7 +3897,7 @@ void send_open_quest_file(
     shared_ptr<const string> contents) {
 
   switch (c->version()) {
-    case Version::DC_V1_11_2000_PROTOTYPE:
+    case Version::DC_11_2000:
     case Version::DC_V1:
     case Version::DC_V2:
     case Version::GC_NTE:

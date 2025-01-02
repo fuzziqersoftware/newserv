@@ -243,7 +243,7 @@ static constexpr uint16_t F_PASS = 0x0001; // Version::PC_PATCH (unused for ques
 static constexpr uint16_t F_ARGS = 0x0002; // Version::BB_PATCH (unused for quests)
 // The following flags are used to specify which versions support each opcode.
 static constexpr uint16_t F_DC_NTE = 0x0004; // Version::DC_NTE
-static constexpr uint16_t F_DC_112000 = 0x0008; // Version::DC_V1_11_2000_PROTOTYPE
+static constexpr uint16_t F_DC_112000 = 0x0008; // Version::DC_11_2000
 static constexpr uint16_t F_DC_V1 = 0x0010; // Version::DC_V1
 static constexpr uint16_t F_DC_V2 = 0x0020; // Version::DC_V2
 static constexpr uint16_t F_PC_NTE = 0x0040; // Version::PC_NTE
@@ -261,7 +261,7 @@ static constexpr uint16_t F_RET = 0x4000;
 static constexpr uint16_t F_SET_EPISODE = 0x8000;
 
 static_assert(F_DC_NTE == v_flag(Version::DC_NTE));
-static_assert(F_DC_112000 == v_flag(Version::DC_V1_11_2000_PROTOTYPE));
+static_assert(F_DC_112000 == v_flag(Version::DC_11_2000));
 static_assert(F_DC_V1 == v_flag(Version::DC_V1));
 static_assert(F_DC_V2 == v_flag(Version::DC_V2));
 static_assert(F_PC_NTE == v_flag(Version::PC_NTE));
@@ -2888,7 +2888,7 @@ opcodes_by_name_for_version(Version v) {
 void check_opcode_definitions() {
   static const array<Version, 12> versions = {
       Version::DC_NTE,
-      Version::DC_V1_11_2000_PROTOTYPE,
+      Version::DC_11_2000,
       Version::DC_V1,
       Version::DC_V2,
       Version::PC_NTE,
@@ -2931,7 +2931,7 @@ std::string disassemble_quest_script(
       lines.emplace_back(".name " + escape_string(header.name.decode(0)));
       break;
     }
-    case Version::DC_V1_11_2000_PROTOTYPE:
+    case Version::DC_11_2000:
     case Version::DC_V1:
     case Version::DC_V2: {
       const auto& header = r.get<PSOQuestHeaderDC>();
@@ -3651,7 +3651,7 @@ Episode find_quest_episode_from_script(const void* data, size_t size, Version ve
   Episode header_episode = Episode::NONE;
   switch (version) {
     case Version::DC_NTE:
-    case Version::DC_V1_11_2000_PROTOTYPE:
+    case Version::DC_11_2000:
     case Version::DC_V1:
     case Version::DC_V2:
     case Version::PC_NTE:
@@ -4305,7 +4305,7 @@ std::string assemble_quest_script(const std::string& text, const std::string& in
                   code_w.write(bin ? text : tt_utf8_to_sega_sjis(text));
                   code_w.put_u8(0);
                   break;
-                case Version::DC_V1_11_2000_PROTOTYPE:
+                case Version::DC_11_2000:
                 case Version::DC_V1:
                 case Version::DC_V2:
                 case Version::GC_NTE:
@@ -4557,7 +4557,7 @@ std::string assemble_quest_script(const std::string& text, const std::string& in
       w.put(header);
       break;
     }
-    case Version::DC_V1_11_2000_PROTOTYPE:
+    case Version::DC_11_2000:
     case Version::DC_V1:
     case Version::DC_V2: {
       PSOQuestHeaderDC header;

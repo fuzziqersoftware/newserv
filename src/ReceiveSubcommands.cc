@@ -82,7 +82,7 @@ static const SubcommandDefinition* def_for_proto_subcommand(uint8_t subcommand) 
 const SubcommandDefinition* def_for_subcommand(Version version, uint8_t subcommand) {
   if (version == Version::DC_NTE) {
     return def_for_nte_subcommand(subcommand);
-  } else if (version == Version::DC_V1_11_2000_PROTOTYPE) {
+  } else if (version == Version::DC_11_2000) {
     return def_for_proto_subcommand(subcommand);
   } else {
     return &subcommand_definitions[subcommand];
@@ -95,7 +95,7 @@ uint8_t translate_subcommand_number(Version to_version, Version from_version, ui
     return 0x00;
   } else if (to_version == Version::DC_NTE) {
     return def->nte_subcommand;
-  } else if (to_version == Version::DC_V1_11_2000_PROTOTYPE) {
+  } else if (to_version == Version::DC_11_2000) {
     return def->proto_subcommand;
   } else {
     return def->final_subcommand;
@@ -159,7 +159,7 @@ static void forward_subcommand(shared_ptr<Client> c, uint8_t command, uint8_t fl
         data_to_send = nte_data.data();
         size_to_send = nte_data.size();
       }
-    } else if (lc->version() == Version::DC_V1_11_2000_PROTOTYPE) {
+    } else if (lc->version() == Version::DC_11_2000) {
       if (def && def->proto_subcommand) {
         if (proto_data.empty()) {
           proto_data.assign(reinterpret_cast<const char*>(data), size);
@@ -272,7 +272,7 @@ static void forward_subcommand_t(shared_ptr<Client> c, uint8_t command, uint8_t 
 
 static void on_invalid(shared_ptr<Client> c, uint8_t command, uint8_t flag, void* data, size_t size) {
   const auto& cmd = check_size_t<G_UnusedHeader>(data, size, 0xFFFF);
-  if ((c->version() == Version::DC_NTE) || c->version() == Version::DC_V1_11_2000_PROTOTYPE) {
+  if ((c->version() == Version::DC_NTE) || c->version() == Version::DC_11_2000) {
     c->log.error("Unrecognized DC NTE/prototype subcommand: %02hhX", cmd.subcommand);
     forward_subcommand(c, command, flag, data, size);
   } else if (command_is_private(command)) {
@@ -284,7 +284,7 @@ static void on_invalid(shared_ptr<Client> c, uint8_t command, uint8_t flag, void
 
 static void on_unimplemented(shared_ptr<Client> c, uint8_t command, uint8_t flag, void* data, size_t size) {
   const auto& cmd = check_size_t<G_UnusedHeader>(data, size, 0xFFFF);
-  if ((c->version() == Version::DC_NTE) || c->version() == Version::DC_V1_11_2000_PROTOTYPE) {
+  if ((c->version() == Version::DC_NTE) || c->version() == Version::DC_11_2000) {
     c->log.error("Unimplemented DC NTE/prototype subcommand: %02hhX", cmd.subcommand);
     forward_subcommand(c, command, flag, data, size);
   } else {
@@ -943,8 +943,8 @@ G_SyncPlayerDispAndInventory_DC112000_6x70 Parsed6x70Data::as_dc_112000(shared_p
   ret.items = this->items;
 
   transcode_inventory_items(
-      ret.items, ret.num_items, this->item_version, Version::DC_V1_11_2000_PROTOTYPE, s->item_parameter_table_for_encode(Version::DC_V1_11_2000_PROTOTYPE));
-  ret.visual.enforce_lobby_join_limits_for_version(Version::DC_V1_11_2000_PROTOTYPE);
+      ret.items, ret.num_items, this->item_version, Version::DC_11_2000, s->item_parameter_table_for_encode(Version::DC_11_2000));
+  ret.visual.enforce_lobby_join_limits_for_version(Version::DC_11_2000);
 
   uint32_t name_color = s->name_color_for_client(this->from_version, this->from_client_customization);
   if (name_color) {
@@ -1157,7 +1157,7 @@ static void on_sync_joining_player_disp_and_inventory(
           c->login->account->account_id, c_v, is_client_customisation));
       c->last_reported_6x70->clear_dc_protos_unused_item_fields();
       break;
-    case Version::DC_V1_11_2000_PROTOTYPE:
+    case Version::DC_11_2000:
       c->last_reported_6x70.reset(new Parsed6x70Data(
           check_size_t<G_SyncPlayerDispAndInventory_DC112000_6x70>(data, size),
           c->login->account->account_id, c->language(), c_v, is_client_customisation));
@@ -1344,7 +1344,7 @@ static void on_send_guild_card(shared_ptr<Client> c, uint8_t command, uint8_t fl
       c->character(true, false)->guild_card.description.encode(cmd.guild_card.description.decode(c->language()), c->language());
       break;
     }
-    case Version::DC_V1_11_2000_PROTOTYPE:
+    case Version::DC_11_2000:
     case Version::DC_V1:
     case Version::DC_V2: {
       const auto& cmd = check_size_t<G_SendGuildCard_DC_6x06>(data, size);
@@ -1434,7 +1434,7 @@ static void on_word_select_t(shared_ptr<Client> c, uint8_t command, uint8_t, voi
         uint8_t subcommand;
         if (lc->version() == Version::DC_NTE) {
           subcommand = 0x62;
-        } else if (lc->version() == Version::DC_V1_11_2000_PROTOTYPE) {
+        } else if (lc->version() == Version::DC_11_2000) {
           subcommand = 0x69;
         } else {
           subcommand = 0x74;
@@ -4056,7 +4056,7 @@ static void on_destroy_floor_item(shared_ptr<Client> c, uint8_t command, uint8_t
     case Version::DC_NTE:
       is_6x5C = (cmd.header.subcommand == 0x4E);
       break;
-    case Version::DC_V1_11_2000_PROTOTYPE:
+    case Version::DC_11_2000:
       is_6x5C = (cmd.header.subcommand == 0x55);
       break;
     default:
@@ -4105,7 +4105,7 @@ static void on_destroy_floor_item(shared_ptr<Client> c, uint8_t command, uint8_t
             case Version::DC_NTE:
               out_cmd.header.subcommand = is_6x5C ? 0x4E : 0x55;
               break;
-            case Version::DC_V1_11_2000_PROTOTYPE:
+            case Version::DC_11_2000:
               out_cmd.header.subcommand = is_6x5C ? 0x55 : 0x5C;
               break;
             default:

@@ -114,7 +114,7 @@ Version get_cli_version(phosg::Arguments& args, Version default_value = Version:
   } else if (args.get<bool>("dc-nte")) {
     return Version::DC_NTE;
   } else if (args.get<bool>("dc-proto") || args.get<bool>("dc-11-2000")) {
-    return Version::DC_V1_11_2000_PROTOTYPE;
+    return Version::DC_11_2000;
   } else if (args.get<bool>("dc-v1")) {
     return Version::DC_V1;
   } else if (args.get<bool>("dc-v2") || args.get<bool>("dc")) {
@@ -439,7 +439,7 @@ static void a_encrypt_decrypt_fn(phosg::Arguments& args) {
   shared_ptr<PSOEncryption> crypt;
   switch (version) {
     case Version::DC_NTE:
-    case Version::DC_V1_11_2000_PROTOTYPE:
+    case Version::DC_11_2000:
     case Version::DC_V1:
     case Version::DC_V2:
     case Version::PC_NTE:
@@ -2090,32 +2090,53 @@ Action a_name_all_items(
         }
       }
 
-      fprintf(stderr, "IDENT   :");
-      for (Version v : ALL_VERSIONS) {
-        const auto& index = s->item_name_index_opt(v);
-        if (index) {
-          fprintf(stderr, " %30s    ", phosg::name_for_enum(v));
+      if (args.get<bool>("list")) {
+        for (uint32_t primary_identifier : all_primary_identifiers) {
+          fprintf(stderr, "%08" PRIX32 "\n", primary_identifier);
+          for (Version v : ALL_VERSIONS) {
+            const auto& index = s->item_name_index_opt(v);
+            if (index) {
+              auto pmt = s->item_parameter_table(v);
+              ItemData item = ItemData::from_primary_identifier(*s->item_stack_limits(v), primary_identifier);
+              string name = index->describe_item(item);
+              try {
+                bool is_rare = pmt->is_item_rare(item);
+                fprintf(stderr, "  %10s: %s %s\n", phosg::name_for_enum(v), is_rare ? "+++" : "---", name.c_str());
+              } catch (const out_of_range&) {
+                fprintf(stderr, "  %10s:     (missing)\n", phosg::name_for_enum(v));
+              }
+            }
+          }
+          fputc('\n', stderr);
         }
-      }
-      fputc('\n', stderr);
-
-      for (uint32_t primary_identifier : all_primary_identifiers) {
-        fprintf(stderr, "%08" PRIX32 ":", primary_identifier);
+      } else {
+        fprintf(stderr, "IDENT   :");
         for (Version v : ALL_VERSIONS) {
           const auto& index = s->item_name_index_opt(v);
           if (index) {
-            auto pmt = s->item_parameter_table(v);
-            ItemData item = ItemData::from_primary_identifier(*s->item_stack_limits(v), primary_identifier);
-            string name = index->describe_item(item);
-            try {
-              bool is_rare = pmt->is_item_rare(item);
-              fprintf(stderr, " %30s%s", name.c_str(), is_rare ? " (*)" : "    ");
-            } catch (const out_of_range&) {
-              fprintf(stderr, "                                   ");
-            }
+            fprintf(stderr, " %30s    ", phosg::name_for_enum(v));
           }
         }
         fputc('\n', stderr);
+
+        for (uint32_t primary_identifier : all_primary_identifiers) {
+          fprintf(stderr, "%08" PRIX32 ":", primary_identifier);
+          for (Version v : ALL_VERSIONS) {
+            const auto& index = s->item_name_index_opt(v);
+            if (index) {
+              auto pmt = s->item_parameter_table(v);
+              ItemData item = ItemData::from_primary_identifier(*s->item_stack_limits(v), primary_identifier);
+              string name = index->describe_item(item);
+              try {
+                bool is_rare = pmt->is_item_rare(item);
+                fprintf(stderr, " %30s%s", name.c_str(), is_rare ? " (*)" : "    ");
+              } catch (const out_of_range&) {
+                fprintf(stderr, "                                   ");
+              }
+            }
+          }
+          fputc('\n', stderr);
+        }
       }
     });
 

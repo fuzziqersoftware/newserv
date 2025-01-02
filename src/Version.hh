@@ -11,7 +11,7 @@ enum class Version {
   PC_PATCH = 0,
   BB_PATCH = 1,
   DC_NTE = 2,
-  DC_V1_11_2000_PROTOTYPE = 3,
+  DC_11_2000 = 3,
   DC_V1 = 4,
   DC_V2 = 5,
   PC_NTE = 6,
@@ -29,7 +29,7 @@ constexpr std::array<Version, 14> ALL_VERSIONS = {
     Version::PC_PATCH,
     Version::BB_PATCH,
     Version::DC_NTE,
-    Version::DC_V1_11_2000_PROTOTYPE,
+    Version::DC_11_2000,
     Version::DC_V1,
     Version::DC_V2,
     Version::PC_NTE,
@@ -43,7 +43,7 @@ constexpr std::array<Version, 14> ALL_VERSIONS = {
 };
 constexpr std::array<Version, 12> ALL_NON_PATCH_VERSIONS = {
     Version::DC_NTE,
-    Version::DC_V1_11_2000_PROTOTYPE,
+    Version::DC_11_2000,
     Version::DC_V1,
     Version::DC_V2,
     Version::PC_NTE,
@@ -57,7 +57,7 @@ constexpr std::array<Version, 12> ALL_NON_PATCH_VERSIONS = {
 };
 constexpr std::array<Version, 10> ALL_ARPG_SEMANTIC_VERSIONS = {
     Version::DC_NTE,
-    Version::DC_V1_11_2000_PROTOTYPE,
+    Version::DC_11_2000,
     Version::DC_V1,
     Version::DC_V2,
     Version::PC_NTE,
@@ -81,7 +81,7 @@ Version phosg::enum_for_name<Version>(const char* name);
 
 constexpr bool is_any_nte(Version version) {
   return (version == Version::DC_NTE) ||
-      (version == Version::DC_V1_11_2000_PROTOTYPE) ||
+      (version == Version::DC_11_2000) ||
       (version == Version::PC_NTE) ||
       (version == Version::GC_NTE) ||
       (version == Version::GC_EP3_NTE);
@@ -91,10 +91,10 @@ constexpr bool is_patch(Version version) {
   return (version == Version::PC_PATCH) || (version == Version::BB_PATCH);
 }
 constexpr bool is_pre_v1(Version version) {
-  return (version == Version::DC_NTE) || (version == Version::DC_V1_11_2000_PROTOTYPE);
+  return (version == Version::DC_NTE) || (version == Version::DC_11_2000);
 }
 constexpr bool is_v1(Version version) {
-  return (version == Version::DC_NTE) || (version == Version::DC_V1_11_2000_PROTOTYPE) || (version == Version::DC_V1);
+  return (version == Version::DC_NTE) || (version == Version::DC_11_2000) || (version == Version::DC_V1);
 }
 constexpr bool is_v2(Version version) {
   return (version == Version::DC_V2) || (version == Version::PC_NTE) || (version == Version::PC_V2) || (version == Version::GC_NTE);
@@ -118,7 +118,7 @@ constexpr bool is_ep3(Version version) {
 
 constexpr bool is_dc(Version version) {
   return (version == Version::DC_NTE) ||
-      (version == Version::DC_V1_11_2000_PROTOTYPE) ||
+      (version == Version::DC_11_2000) ||
       (version == Version::DC_V1) ||
       (version == Version::DC_V2);
 }
@@ -131,7 +131,7 @@ constexpr bool is_gc(Version version) {
 
 constexpr bool is_sh4(Version version) {
   return (version == Version::DC_NTE) ||
-      (version == Version::DC_V1_11_2000_PROTOTYPE) ||
+      (version == Version::DC_11_2000) ||
       (version == Version::DC_V1) ||
       (version == Version::DC_V2);
 }

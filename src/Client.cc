@@ -44,7 +44,7 @@ void Client::Config::set_flags_for_version(Version version, int64_t sub_version)
           this->set_flag(Flag::NO_D6);
           break;
         case Version::DC_NTE:
-        case Version::DC_V1_11_2000_PROTOTYPE:
+        case Version::DC_11_2000:
         case Version::DC_V1:
           this->set_flag(Flag::NO_D6);
           break;

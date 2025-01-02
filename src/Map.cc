@@ -344,7 +344,7 @@ const array<vector<vector<string>>, 0x12> SetDataTableDC112000::NAMES = {{
     /* 11 */ {},
 }};
 
-SetDataTableDC112000::SetDataTableDC112000() : SetDataTableBase(Version::DC_V1_11_2000_PROTOTYPE) {}
+SetDataTableDC112000::SetDataTableDC112000() : SetDataTableBase(Version::DC_11_2000) {}
 
 Variations::Entry SetDataTableDC112000::num_available_variations_for_floor(Episode, uint8_t floor) const {
   const auto& floor_names = this->NAMES.at(floor);

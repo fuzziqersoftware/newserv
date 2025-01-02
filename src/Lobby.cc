@@ -223,7 +223,7 @@ void Lobby::create_item_creator(Version logic_version) {
     case Version::GC_EP3:
       throw runtime_error("cannot create item creator for this base version");
     case Version::DC_NTE:
-    case Version::DC_V1_11_2000_PROTOTYPE:
+    case Version::DC_11_2000:
     case Version::DC_V1:
       // TODO: We should probably have a v1 common item set at some point too
       common_item_set = s->common_item_set_v2;

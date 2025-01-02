@@ -120,7 +120,7 @@ WordSelectSet::WordSelectSet(const string& data, Version version, const vector<s
       this->parse_non_windows_t<false, 0x469, 0x466>(decrypted, use_sjis);
       break;
     }
-    case Version::DC_V1_11_2000_PROTOTYPE:
+    case Version::DC_11_2000:
       this->parse_non_windows_t<false, 0x45E, 0x44B>(decrypt_and_decompress_pr2_data<false>(data), use_sjis);
       break;
     case Version::DC_V1:

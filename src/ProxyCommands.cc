@@ -256,7 +256,7 @@ static HandlerResult S_V123P_02_17(
       // TODO
       throw runtime_error("DC NTE proxy is not implemented");
 
-    case Version::DC_V1_11_2000_PROTOTYPE:
+    case Version::DC_11_2000:
     case Version::DC_V1:
       if (!ses->login->dc_license) {
         throw runtime_error("DC license missing from login");
@@ -1948,7 +1948,7 @@ static HandlerResult C_06(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t, 
       return HandlerResult::Type::SUPPRESS;
     }
 
-    char command_sentinel = (ses->version() == Version::DC_V1_11_2000_PROTOTYPE) ? '@' : '$';
+    char command_sentinel = (ses->version() == Version::DC_11_2000) ? '@' : '$';
     bool is_command = (text[0] == command_sentinel) ||
         (text[0] == '\t' && text[1] != 'C' && text[2] == command_sentinel);
     if (is_command && ses->config.check_flag(Client::Flag::PROXY_CHAT_COMMANDS_ENABLED)) {

@@ -318,7 +318,7 @@ shared_ptr<const Menu> ServerState::information_menu(Version version) const {
 shared_ptr<const Menu> ServerState::proxy_destinations_menu(Version version) const {
   switch (version) {
     case Version::DC_NTE:
-    case Version::DC_V1_11_2000_PROTOTYPE:
+    case Version::DC_11_2000:
     case Version::DC_V1:
     case Version::DC_V2:
       return this->proxy_destinations_menu_dc;
@@ -340,7 +340,7 @@ shared_ptr<const Menu> ServerState::proxy_destinations_menu(Version version) con
 const vector<pair<string, uint16_t>>& ServerState::proxy_destinations(Version version) const {
   switch (version) {
     case Version::DC_NTE:
-    case Version::DC_V1_11_2000_PROTOTYPE:
+    case Version::DC_11_2000:
     case Version::DC_V1:
     case Version::DC_V2:
     case Version::GC_NTE:
@@ -420,7 +420,7 @@ shared_ptr<const SetDataTableBase> ServerState::set_data_table(
 shared_ptr<const LevelTable> ServerState::level_table(Version version) const {
   switch (version) {
     case Version::DC_NTE:
-    case Version::DC_V1_11_2000_PROTOTYPE:
+    case Version::DC_11_2000:
     case Version::DC_V1:
     case Version::DC_V2:
     case Version::PC_NTE:
@@ -1014,7 +1014,7 @@ void ServerState::load_config_early() {
   for (size_t v_s = NUM_PATCH_VERSIONS; v_s < NUM_VERSIONS; v_s++) {
     if (!this->item_stack_limits_tables[v_s]) {
       Version v = static_cast<Version>(v_s);
-      if ((v == Version::DC_NTE) || (v == Version::DC_V1_11_2000_PROTOTYPE)) {
+      if ((v == Version::DC_NTE) || (v == Version::DC_11_2000)) {
         this->item_stack_limits_tables[v_s] = make_shared<ItemData::StackLimits>(
             v, ItemData::StackLimits::DEFAULT_TOOL_LIMITS_DC_NTE, 999999);
       } else if (v_s < static_cast<size_t>(Version::GC_NTE)) {
@@ -1052,7 +1052,7 @@ void ServerState::load_config_early() {
         0x0000, // PC_PATCH
         0x0000, // BB_PATCH
         0x0004, // DC_NTE compatible only with itself
-        0x0008, // DC_V1_11_2000_PROTOTYPE compatible only with itself
+        0x0008, // DC_11_2000 compatible only with itself
         0x00B0, // DC_V1 compatible with DC_V1, DC_V2, and PC_V2
         0x00B0, // DC_V2 compatible with DC_V1, DC_V2, and PC_V2
         0x0040, // PC_NTE compatible only with itself
@@ -1748,7 +1748,7 @@ void ServerState::load_set_data_tables(bool from_non_event_thread) {
   };
 
   new_tables[static_cast<size_t>(Version::DC_NTE)] = make_shared<SetDataTableDCNTE>();
-  new_tables[static_cast<size_t>(Version::DC_V1_11_2000_PROTOTYPE)] = make_shared<SetDataTableDC112000>();
+  new_tables[static_cast<size_t>(Version::DC_11_2000)] = make_shared<SetDataTableDC112000>();
   load_table(Version::DC_V1);
   load_table(Version::DC_V2);
   load_table(Version::PC_NTE);
@@ -1856,8 +1856,8 @@ void ServerState::load_word_select_table(bool from_non_event_thread) {
 
   config_log.info("(Word select) Loading DC_NTE data");
   WordSelectSet dc_nte_ws(phosg::load_file("system/text-sets/dc-nte/ws_data.bin"), Version::DC_NTE, nullptr, true);
-  config_log.info("(Word select) Loading DC_V1_11_2000_PROTOTYPE data");
-  WordSelectSet dc_112000_ws(phosg::load_file("system/text-sets/dc-11-2000/ws_data.bin"), Version::DC_V1_11_2000_PROTOTYPE, nullptr, false);
+  config_log.info("(Word select) Loading DC_11_2000 data");
+  WordSelectSet dc_112000_ws(phosg::load_file("system/text-sets/dc-11-2000/ws_data.bin"), Version::DC_11_2000, nullptr, false);
   config_log.info("(Word select) Loading DC_V1 data");
   WordSelectSet dc_v1_ws(phosg::load_file("system/text-sets/dc-v1/ws_data.bin"), Version::DC_V1, nullptr, false);
   config_log.info("(Word select) Loading DC_V2 data");
@@ -1899,8 +1899,8 @@ shared_ptr<ItemNameIndex> ServerState::create_item_name_index_for_version(
   switch (limits->version) {
     case Version::DC_NTE:
       return make_shared<ItemNameIndex>(pmt, limits, text_index->get(Version::DC_NTE, 0, 2));
-    case Version::DC_V1_11_2000_PROTOTYPE:
-      return make_shared<ItemNameIndex>(pmt, limits, text_index->get(Version::DC_V1_11_2000_PROTOTYPE, 1, 2));
+    case Version::DC_11_2000:
+      return make_shared<ItemNameIndex>(pmt, limits, text_index->get(Version::DC_11_2000, 1, 2));
     case Version::DC_V1:
       return make_shared<ItemNameIndex>(pmt, limits, text_index->get(Version::DC_V1, 1, 2));
     case Version::DC_V2:
@@ -2185,7 +2185,7 @@ void ServerState::create_default_lobbies() {
     if (allow_non_ep3) {
       if (allow_v1) {
         l->allow_version(Version::DC_NTE);
-        l->allow_version(Version::DC_V1_11_2000_PROTOTYPE);
+        l->allow_version(Version::DC_11_2000);
         l->allow_version(Version::DC_V1);
       }
       l->allow_version(Version::DC_V2);

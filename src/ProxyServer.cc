@@ -190,7 +190,7 @@ void ProxyServer::on_client_connect(
       case Version::BB_PATCH:
         throw logic_error("cannot create unlinked patch session");
       case Version::DC_NTE:
-      case Version::DC_V1_11_2000_PROTOTYPE:
+      case Version::DC_11_2000:
       case Version::DC_V1:
       case Version::DC_V2:
       case Version::PC_NTE:
@@ -296,7 +296,7 @@ void ProxyServer::UnlinkedSession::on_input(Channel& ch, uint16_t command, uint3
   try {
     switch (ses->version()) {
       case Version::DC_NTE:
-      case Version::DC_V1_11_2000_PROTOTYPE:
+      case Version::DC_11_2000:
       case Version::DC_V1:
       case Version::DC_V2:
       case Version::GC_NTE:
@@ -783,7 +783,7 @@ void ProxyServer::LinkedSession::set_drop_mode(DropMode new_mode) {
       case Version::GC_EP3:
         throw runtime_error("cannot create item creator for this base version");
       case Version::DC_NTE:
-      case Version::DC_V1_11_2000_PROTOTYPE:
+      case Version::DC_11_2000:
       case Version::DC_V1:
         // TODO: We should probably have a v1 common item set at some point too
         common_item_set = s->common_item_set_v2;

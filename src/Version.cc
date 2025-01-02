@@ -15,7 +15,7 @@ const char* login_port_name_for_version(Version v) {
     case Version::BB_PATCH:
       return "bb-patch";
     case Version::DC_NTE:
-    case Version::DC_V1_11_2000_PROTOTYPE:
+    case Version::DC_11_2000:
     case Version::DC_V1:
     case Version::DC_V2:
     case Version::GC_NTE:
@@ -42,7 +42,7 @@ const char* lobby_port_name_for_version(Version v) {
     case Version::BB_PATCH:
       return "bb-patch";
     case Version::DC_NTE:
-    case Version::DC_V1_11_2000_PROTOTYPE:
+    case Version::DC_11_2000:
     case Version::DC_V1:
     case Version::DC_V2:
     case Version::GC_NTE:
@@ -69,7 +69,7 @@ const char* proxy_port_name_for_version(Version v) {
     case Version::BB_PATCH:
       return "bb-patch";
     case Version::DC_NTE:
-    case Version::DC_V1_11_2000_PROTOTYPE:
+    case Version::DC_11_2000:
     case Version::DC_V1:
     case Version::DC_V2:
     case Version::GC_NTE:
@@ -99,8 +99,8 @@ const char* phosg::name_for_enum<Version>(Version v) {
       return "BB_PATCH";
     case Version::DC_NTE:
       return "DC_NTE";
-    case Version::DC_V1_11_2000_PROTOTYPE:
-      return "DC_V1_11_2000_PROTOTYPE";
+    case Version::DC_11_2000:
+      return "DC_11_2000";
     case Version::DC_V1:
       return "DC_V1";
     case Version::DC_V2:
@@ -134,8 +134,8 @@ Version phosg::enum_for_name<Version>(const char* name) {
     return Version::BB_PATCH;
   } else if (!strcmp(name, "DC_NTE")) {
     return Version::DC_NTE;
-  } else if (!strcmp(name, "DC_V1_11_2000_PROTOTYPE")) {
-    return Version::DC_V1_11_2000_PROTOTYPE;
+  } else if (!strcmp(name, "DC_11_2000")) {
+    return Version::DC_11_2000;
   } else if (!strcmp(name, "DC_V1")) {
     return Version::DC_V1;
   } else if (!strcmp(name, "DC_V2") || !strcasecmp(name, "dc")) {
@@ -203,7 +203,7 @@ uint32_t default_sub_version_for_version(Version version) {
   switch (version) {
     case Version::DC_NTE:
       return 0x20;
-    case Version::DC_V1_11_2000_PROTOTYPE:
+    case Version::DC_11_2000:
       return 0x21;
     case Version::DC_V1:
       return 0x21;
@@ -236,7 +236,7 @@ uint32_t default_specific_version_for_version(Version version, int64_t sub_versi
   switch (version) {
     case Version::DC_NTE:
       return SPECIFIC_VERSION_DC_NTE; // 1OJ1 (NTE)
-    case Version::DC_V1_11_2000_PROTOTYPE:
+    case Version::DC_11_2000:
       return SPECIFIC_VERSION_DC_11_2000_PROTOTYPE; // 1OJ2 (11/2000)
     case Version::DC_V1:
       switch (sub_version) {
@@ -356,7 +356,7 @@ const char* file_path_token_for_version(Version version) {
       return "bb-patch";
     case Version::DC_NTE:
       return "dc-nte";
-    case Version::DC_V1_11_2000_PROTOTYPE:
+    case Version::DC_11_2000:
       return "dc-11-2000";
     case Version::DC_V1:
       return "dc-v1";

@@ -79,7 +79,7 @@ static shared_ptr<const Menu> proxy_options_menu_for_client(shared_ptr<const Cli
       "Block patches", "Disable patches sent\nby the remote server");
   if (!is_ep3(c->version())) {
     add_flag_option(ProxyOptionsMenuItemID::SWITCH_ASSIST, Client::Flag::SWITCH_ASSIST_ENABLED,
-        "Switch assist", "Automatically try\nto unlock 2-player\ndoors when you step\non both switches\nsequentially");
+        "Switch assist", "Automatically unlock\nmulti-player doors\nwhen you step on\nany of the door\'s\nswitches");
   }
   if ((s->cheat_mode_behavior != ServerState::BehaviorSwitch::OFF) ||
       c->login->account->check_flag(Account::Flag::CHEAT_ANYWHERE)) {
@@ -824,11 +824,11 @@ static void on_93_DC(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
   if (!c->config.check_flag(Client::Flag::CHECKED_FOR_DC_V1_PROTOTYPE)) {
     send_command(c, 0x90, 0x01);
     c->config.set_flag(Client::Flag::CHECKED_FOR_DC_V1_PROTOTYPE);
-    c->channel.version = Version::DC_V1_11_2000_PROTOTYPE;
+    c->channel.version = Version::DC_11_2000;
     if (specific_version_is_indeterminate(c->config.specific_version)) {
       c->config.specific_version = SPECIFIC_VERSION_DC_11_2000_PROTOTYPE;
     }
-    c->log.info("Game version changed to DC_V1_11_2000_PROTOTYPE (will be changed to V1 if 92 is received)");
+    c->log.info("Game version changed to DC_11_2000 (will be changed to V1 if 92 is received)");
   } else {
     on_login_complete(c);
   }
@@ -2264,7 +2264,7 @@ static void on_10(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
             c->config.clear_flag(Client::Flag::SHOULD_SEND_ENABLE_SAVE);
             // DC NTE and the v1 prototype crash if they receive a 97 command,
             // so we instead do the redirect immediately
-            if ((c->version() == Version::DC_NTE) || (c->version() == Version::DC_V1_11_2000_PROTOTYPE)) {
+            if ((c->version() == Version::DC_NTE) || (c->version() == Version::DC_11_2000)) {
               send_client_to_lobby_server(c);
             } else {
               send_command(c, 0x97, 0x01);
@@ -3157,7 +3157,7 @@ static void on_61_98(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
 
   switch (c->version()) {
     case Version::DC_NTE:
-    case Version::DC_V1_11_2000_PROTOTYPE:
+    case Version::DC_11_2000:
     case Version::DC_V1: {
       const auto& cmd = check_size_t<C_CharacterData_DCv1_61_98>(data);
       c->v1_v2_last_reported_disp = make_unique<PlayerDispDataDCPCV3>(cmd.disp);
@@ -3480,7 +3480,7 @@ static void on_30(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
     case Version::GC_EP3:
       throw logic_error("Episode 3 case not handled correctly");
     case Version::DC_NTE:
-    case Version::DC_V1_11_2000_PROTOTYPE:
+    case Version::DC_11_2000:
     case Version::DC_V1:
     case Version::PC_NTE:
     case Version::PC_V2:
@@ -3539,7 +3539,7 @@ static void on_06(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
     return;
   }
 
-  char command_sentinel = (c->version() == Version::DC_V1_11_2000_PROTOTYPE) ? '@' : '$';
+  char command_sentinel = (c->version() == Version::DC_11_2000) ? '@' : '$';
   if ((text[0] == command_sentinel) && c->can_use_chat_commands()) {
     if (text[1] == command_sentinel) {
       text = text.substr(1);
@@ -4147,7 +4147,7 @@ static void on_81(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
   uint32_t to_guild_card_number;
   switch (c->version()) {
     case Version::DC_NTE:
-    case Version::DC_V1_11_2000_PROTOTYPE:
+    case Version::DC_11_2000:
     case Version::DC_V1:
     case Version::DC_V2:
     case Version::GC_NTE:
@@ -4335,7 +4335,7 @@ shared_ptr<Lobby> create_game_generic(
   static_assert(NUM_VERSIONS == 14, "Don't forget to update the group compatibility restrictions");
   if (!allow_v1 || (difficulty > 2) || (mode != GameMode::NORMAL)) {
     game->forbid_version(Version::DC_NTE);
-    game->forbid_version(Version::DC_V1_11_2000_PROTOTYPE);
+    game->forbid_version(Version::DC_11_2000);
     game->forbid_version(Version::DC_V1);
   }
   switch (game->episode) {
@@ -4415,7 +4415,7 @@ shared_ptr<Lobby> create_game_generic(
   const unordered_map<uint16_t, IntegralExpression>* quest_flag_rewrites;
   switch (creator_c->version()) {
     case Version::DC_NTE:
-    case Version::DC_V1_11_2000_PROTOTYPE:
+    case Version::DC_11_2000:
     case Version::DC_V1:
     case Version::DC_V2:
     case Version::PC_NTE:
@@ -4577,7 +4577,7 @@ static void on_0C_C1_E7_EC(shared_ptr<Client> c, uint16_t command, uint32_t, str
   auto s = c->require_server_state();
 
   shared_ptr<Lobby> game;
-  if ((c->version() == Version::DC_NTE) || (c->version() == Version::DC_V1_11_2000_PROTOTYPE)) {
+  if ((c->version() == Version::DC_NTE) || (c->version() == Version::DC_11_2000)) {
     const auto& cmd = check_size_t<C_CreateGame_DCNTE>(data);
     game = create_game_generic(s, c, cmd.name.decode(c->language()), cmd.password.decode(c->language()), Episode::EP1, GameMode::NORMAL, 0, true);
 
@@ -5730,7 +5730,7 @@ static on_command_t handlers[0x100][NUM_NON_PATCH_VERSIONS] = {
 static void check_logged_out_command(Version version, uint8_t command) {
   switch (version) {
     case Version::DC_NTE:
-    case Version::DC_V1_11_2000_PROTOTYPE:
+    case Version::DC_11_2000:
     case Version::DC_V1:
     case Version::DC_V2:
       // newserv doesn't actually know that DC clients are DC until it receives
@@ -5797,7 +5797,7 @@ void on_command(shared_ptr<Client> c, uint16_t command, uint32_t flag, string& d
 void on_command_with_header(shared_ptr<Client> c, const string& data) {
   switch (c->version()) {
     case Version::DC_NTE:
-    case Version::DC_V1_11_2000_PROTOTYPE:
+    case Version::DC_11_2000:
     case Version::DC_V1:
     case Version::DC_V2:
     case Version::GC_NTE:

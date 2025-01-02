@@ -251,7 +251,7 @@ const unordered_map<string, uint8_t> name_to_npc_id = {
 bool npc_valid_for_version(uint8_t npc, Version version) {
   switch (version) {
     case Version::DC_NTE:
-    case Version::DC_V1_11_2000_PROTOTYPE:
+    case Version::DC_11_2000:
     case Version::DC_V1:
       return false;
     case Version::DC_V2:

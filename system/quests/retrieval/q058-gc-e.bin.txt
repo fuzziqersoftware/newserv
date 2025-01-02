@@ -6,12 +6,12 @@
 // These specify the quest's name, description, and other information.
 
 // The .version directive specifies which version of the game the quest is for.
-// The values are DC_NTE, DC_V1_11_2000_PROTOTYPE, DC_V1, DC_V2, PC_V2, GC_NTE,
-// GC_V3, GC_EP3_NTE, GC_EP3, XB_V3, and BB_V4. This determines which set of
-// opcodes to use during compilation, and also specifies the header format and
-// string encoding. This does not affect where the quest appears in menus, so
-// for versions that use the same opcodes, headers, and string encodings, it is
-// OK to use a symbolic link (hence q058-xb-e.bin.txt is a link to this file).
+// The values are DC_NTE, DC_11_2000, DC_V1, DC_V2, PC_V2, GC_NTE, GC_V3,
+// GC_EP3_NTE, GC_EP3, XB_V3, and BB_V4. This determines which set of opcodes
+// to use during compilation, and also specifies the header format and string
+// encoding. This does not affect where the quest appears in menus, so for
+// versions that use the same opcodes, headers, and string encodings, it is OK
+// to use a symbolic link (hence q058-xb-e.bin.txt is a link to this file).
 .version GC_V3
 
 // The .quest_num directive specifies the internal number of the quest. This

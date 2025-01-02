@@ -108,7 +108,7 @@ const vector<ChoiceSearchCategory> CHOICE_SEARCH_CATEGORIES({
           }
           switch (target_c->version()) {
             case Version::DC_NTE:
-            case Version::DC_V1_11_2000_PROTOTYPE:
+            case Version::DC_11_2000:
               return (choice_id == 0x0001);
             case Version::DC_V1:
               return (choice_id == 0x0002);

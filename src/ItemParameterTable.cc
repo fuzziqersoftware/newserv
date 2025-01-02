@@ -30,7 +30,7 @@ ItemParameterTable::ItemParameterTable(shared_ptr<const string> data, Version ve
       // TODO: Check if first_rare_mag_index is the same on this version
       break;
     }
-    case Version::DC_V1_11_2000_PROTOTYPE: {
+    case Version::DC_11_2000: {
       this->offsets_dc_protos = &this->r.pget<TableOffsetsDCProtos>(offset_table_offset);
       this->num_weapon_classes = 0x27;
       this->num_tool_classes = 0x0E;

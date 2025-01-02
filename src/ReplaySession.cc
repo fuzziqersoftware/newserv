@@ -145,7 +145,7 @@ void ReplaySession::check_for_password(shared_ptr<const Event> ev) const {
     }
 
     case Version::DC_NTE:
-    case Version::DC_V1_11_2000_PROTOTYPE:
+    case Version::DC_11_2000:
     case Version::DC_V1:
     case Version::DC_V2:
     case Version::GC_NTE:
@@ -237,7 +237,7 @@ void ReplaySession::apply_default_mask(shared_ptr<Event> ev) {
       break;
     }
     case Version::DC_NTE:
-    case Version::DC_V1_11_2000_PROTOTYPE:
+    case Version::DC_11_2000:
     case Version::DC_V1:
     case Version::DC_V2:
     case Version::PC_NTE:
@@ -292,7 +292,7 @@ void ReplaySession::apply_default_mask(shared_ptr<Event> ev) {
             auto& mask = check_size_t<S_JoinGame_XB_64>(mask_data, mask_size);
             mask.variations = Variations();
             mask.random_seed = 0;
-          } else if (version == Version::DC_NTE || version == Version::DC_V1_11_2000_PROTOTYPE) {
+          } else if (version == Version::DC_NTE || version == Version::DC_11_2000) {
             auto& mask = check_size_t<S_JoinGame_DCNTE_64>(mask_data, mask_size);
             mask.variations = Variations();
           } else {
@@ -397,7 +397,7 @@ void ReplaySession::apply_default_mask(shared_ptr<Event> ev) {
               auto& mask = check_size_t<G_SyncPlayerDispAndInventory_DCNTE_6x70>(mask_data, mask_size, 0xFFFF);
               mask.visual.name_color_checksum = 0;
             }
-          } else if (version == Version::DC_V1_11_2000_PROTOTYPE) {
+          } else if (version == Version::DC_11_2000) {
             const auto& header = check_size_t<G_UnusedHeader>(cmd_data, cmd_size, 0xFFFF);
             if (header.subcommand == 0x67) {
               auto& mask = check_size_t<G_SyncPlayerDispAndInventory_DC112000_6x70>(mask_data, mask_size, 0xFFFF);
@@ -748,7 +748,7 @@ void ReplaySession::on_command_received(
       }
       break;
     case Version::DC_NTE:
-    case Version::DC_V1_11_2000_PROTOTYPE:
+    case Version::DC_11_2000:
     case Version::DC_V1:
     case Version::DC_V2:
     case Version::PC_NTE:

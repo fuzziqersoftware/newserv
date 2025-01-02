@@ -1135,7 +1135,7 @@
     0x0000, // PC_PATCH
     0x0000, // BB_PATCH
     0x0004, // DC_NTE compatible only with itself
-    0x0008, // DC_V1_11_2000_PROTOTYPE compatible only with itself
+    0x0008, // DC_11_2000 compatible only with itself
     0x00B0, // DC_V1 compatible with DC_V1, DC_V2, and PC_V2
     0x00B0, // DC_V2 compatible with DC_V1, DC_V2, and PC_V2
     0x0040, // PC_NTE compatible only with itself

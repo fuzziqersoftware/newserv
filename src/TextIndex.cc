@@ -516,7 +516,7 @@ TextIndex::TextIndex(
     auto make_unitxt = +[](const string& data, bool) { return make_shared<UnicodeTextSet>(data); };
 
     add_version(Version::DC_NTE, "dc-nte", make_binary_dcnte_dcv1);
-    add_version(Version::DC_V1_11_2000_PROTOTYPE, "dc-11-2000", make_binary_dc112000);
+    add_version(Version::DC_11_2000, "dc-11-2000", make_binary_dc112000);
     add_version(Version::DC_V1, "dc-v1", make_binary_dcnte_dcv1);
     add_version(Version::DC_V2, "dc-v2", make_binary_dcv2);
     add_version(Version::PC_NTE, "pc-nte", make_unitxt);

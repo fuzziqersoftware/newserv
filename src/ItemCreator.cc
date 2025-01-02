@@ -869,7 +869,7 @@ void ItemCreator::generate_unit_stars_tables() {
       star_base_index = 0x124;
       num_units = 0x43;
       break;
-    case Version::DC_V1_11_2000_PROTOTYPE:
+    case Version::DC_11_2000:
     case Version::DC_V1:
       star_base_index = 0x128;
       num_units = 0x44;
