@@ -2,6 +2,7 @@
 
 #include <inttypes.h>
 
+#include <array>
 #include <phosg/Types.hh>
 #include <string>
 #include <vector>
