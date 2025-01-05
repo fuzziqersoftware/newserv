@@ -162,12 +162,9 @@ static string get_quoted_string(string& s) {
   return ret;
 }
 
-CommandDefinition c_nop1(
-    "", nullptr, false, +[](CommandArgs&) {});
-CommandDefinition c_nop2(
-    "//", nullptr, false, +[](CommandArgs&) {});
-CommandDefinition c_nop3(
-    "#", nullptr, false, +[](CommandArgs&) {});
+CommandDefinition c_nop1("", nullptr, false, +[](CommandArgs&) {});
+CommandDefinition c_nop2("//", nullptr, false, +[](CommandArgs&) {});
+CommandDefinition c_nop3("#", nullptr, false, +[](CommandArgs&) {});
 
 CommandDefinition c_help(
     "help", "help\n\

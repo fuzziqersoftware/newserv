@@ -2162,28 +2162,7 @@ void set_lobby_quest(shared_ptr<Lobby> l, shared_ptr<const Quest> q, bool substi
   }
   l->create_item_creator();
 
-  // There is no such thing as command AC on PSO V1 and V2 - quests just start
-  // immediately when they're done downloading. (This is also the case on V3
-  // Trial Edition.) There are also no chunk acknowledgements (C->S 13 commands)
-  // like there are on GC. So, for pre-V3 clients, we can just not set the
-  // loading flag, since we never need to check/clear it later.
-  size_t num_clients_need_loading_flag = 0;
-  size_t num_clients_skip_loading_flag = 0;
-  for (auto lc : l->clients) {
-    if (!lc) {
-      continue;
-    }
-    if (is_v3(lc->version()) || is_v4(lc->version())) {
-      num_clients_need_loading_flag++;
-    } else {
-      num_clients_skip_loading_flag++;
-    }
-  }
-  if ((num_clients_need_loading_flag == 0) == (num_clients_skip_loading_flag == 0)) {
-    throw runtime_error("not all clients in the lobby have the same loading flag behavior");
-  }
-  bool use_loading_flag = (num_clients_need_loading_flag != 0);
-
+  size_t num_clients_with_loading_flag = 0;
   for (size_t client_id = 0; client_id < l->max_clients; client_id++) {
     auto lc = l->clients[client_id];
     if (!lc) {
@@ -2206,16 +2185,30 @@ void set_lobby_quest(shared_ptr<Lobby> l, shared_ptr<const Quest> q, bool substi
     send_open_quest_file(lc, bin_filename, bin_filename, xb_filename, vq->quest_number, QuestFileType::ONLINE, vq->bin_contents);
     send_open_quest_file(lc, dat_filename, dat_filename, xb_filename, vq->quest_number, QuestFileType::ONLINE, vq->dat_contents);
 
-    if (use_loading_flag) {
+    // There is no such thing as command AC (quest barrier) on PSO V1 and V2;
+    // quests just start immediately when they're done downloading. (This is
+    // also the case on GC Trial Edition.) There are also no chunk
+    // acknowledgements (C->S 13 commands) like there are on v3 and later. So,
+    // for pre-V3 clients, we can just not set the loading flag, since we
+    // won't be told when to clear it later.
+    // TODO: For V3 and V4 clients, the quest doesn't finish loading here, so
+    // technically we should queue up commands sent by pre-V3 clients, since
+    // they might start the quest before V3/V4 clients do. We can probably use
+    // a method similar to game_join_command_queue.
+    if (!is_v1_or_v2(lc->version())) {
+      num_clients_with_loading_flag++;
       lc->config.set_flag(Client::Flag::LOADING_QUEST);
       lc->log.info("LOADING_QUEST flag set");
       lc->disconnect_hooks.emplace(QUEST_BARRIER_DISCONNECT_HOOK_NAME, [l]() -> void {
         send_quest_barrier_if_all_clients_ready(l);
       });
+    } else {
+      lc->log.info("LOADING_QUEST flag skipped");
     }
   }
 
-  if (!use_loading_flag) {
+  if (num_clients_with_loading_flag == 0) {
+    l->log.info("No clients require the LOADING_QUEST flag; starting quest now");
     on_quest_loaded(l);
   }
 }
