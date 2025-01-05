@@ -65,7 +65,8 @@ public:
   parray<uint8_t, 0x10> unknown_a9_nte_112000;
   G_6x70_Sub_UnknownA1 unknown_a9_final;
   uint32_t area = 0;
-  uint32_t flags2 = 0;
+  uint32_t flags2_value = 0;
+  bool flags2_is_v3 = false;
   parray<uint8_t, 0x14> technique_levels_v1 = 0xFF;
   PlayerVisualConfig visual;
   std::string name;
@@ -125,7 +126,8 @@ protected:
       uint32_t guild_card_number,
       Version from_version,
       bool from_client_customization);
-  G_6x70_Base_V1 base_v1() const;
+  G_6x70_Base_V1 base_v1(bool is_v3) const;
+  uint32_t get_flags2(bool is_v3) const;
 };
 
 bool validate_6xBB(G_SyncCardTradeServerState_Ep3_6xBB& cmd);

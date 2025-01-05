@@ -5643,7 +5643,8 @@ struct G_SetLobbyChairState_6xAE {
   le_uint16_t unknown_a1 = 0;
   le_uint16_t unused = 0;
   // This field contains the flags field on the sender's TObjPlayer object.
-  // Only the bits 5C000000 are used by the receiver.
+  // If the bit 04000000 is set in this field, then (flags & 1C000000) is or'ed
+  // into the TObjPlayer's flags field. All other bits are ignored.
   le_uint32_t flags = 0;
   le_float unknown_a4 = 0;
 } __packed_ws__(G_SetLobbyChairState_6xAE, 0x10);

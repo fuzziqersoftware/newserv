@@ -792,7 +792,8 @@ Parsed6x70Data::Parsed6x70Data(
       unknown_a8(cmd.unknown_a8),
       unknown_a9_nte_112000(cmd.unknown_a9),
       area(cmd.area),
-      flags2(cmd.flags2),
+      flags2_value(cmd.flags2),
+      flags2_is_v3(false),
       visual(cmd.visual),
       stats(cmd.stats),
       num_items(cmd.num_items),
@@ -827,7 +828,8 @@ Parsed6x70Data::Parsed6x70Data(
       unknown_a8(cmd.unknown_a8),
       unknown_a9_nte_112000(cmd.unknown_a9),
       area(cmd.area),
-      flags2(cmd.flags2),
+      flags2_value(cmd.flags2),
+      flags2_is_v3(false),
       visual(cmd.visual),
       stats(cmd.stats),
       num_items(cmd.num_items),
@@ -859,6 +861,7 @@ Parsed6x70Data::Parsed6x70Data(
     Version from_version,
     bool from_client_customization)
     : Parsed6x70Data(cmd.base, guild_card_number, from_version, from_client_customization) {
+  this->flags2_is_v3 = true;
   this->stats = cmd.stats;
   this->num_items = cmd.num_items;
   this->items = cmd.items;
@@ -874,6 +877,7 @@ Parsed6x70Data::Parsed6x70Data(
     Version from_version,
     bool from_client_customization)
     : Parsed6x70Data(cmd.base, guild_card_number, from_version, from_client_customization) {
+  this->flags2_is_v3 = true;
   this->stats = cmd.stats;
   this->num_items = cmd.num_items;
   this->items = cmd.items;
@@ -889,6 +893,7 @@ Parsed6x70Data::Parsed6x70Data(
     Version from_version,
     bool from_client_customization)
     : Parsed6x70Data(cmd.base, guild_card_number, from_version, from_client_customization) {
+  this->flags2_is_v3 = true;
   this->stats = cmd.stats;
   this->num_items = cmd.num_items;
   this->items = cmd.items;
@@ -908,7 +913,7 @@ G_SyncPlayerDispAndInventory_DCNTE_6x70 Parsed6x70Data::as_dc_nte(shared_ptr<Ser
   ret.unknown_a8 = this->unknown_a8;
   ret.unknown_a9 = this->unknown_a9_nte_112000;
   ret.area = this->area;
-  ret.flags2 = this->flags2;
+  ret.flags2 = this->get_flags2(false);
   ret.visual = this->visual;
   ret.stats = this->stats;
   ret.num_items = this->num_items;
@@ -936,7 +941,7 @@ G_SyncPlayerDispAndInventory_DC112000_6x70 Parsed6x70Data::as_dc_112000(shared_p
   ret.unknown_a8 = this->unknown_a8;
   ret.unknown_a9 = this->unknown_a9_nte_112000;
   ret.area = this->area;
-  ret.flags2 = this->flags2;
+  ret.flags2 = this->get_flags2(false);
   ret.visual = this->visual;
   ret.stats = this->stats;
   ret.num_items = this->num_items;
@@ -957,7 +962,7 @@ G_SyncPlayerDispAndInventory_DC112000_6x70 Parsed6x70Data::as_dc_112000(shared_p
 
 G_SyncPlayerDispAndInventory_DC_PC_6x70 Parsed6x70Data::as_dc_pc(shared_ptr<ServerState> s, Version to_version) const {
   G_SyncPlayerDispAndInventory_DC_PC_6x70 ret;
-  ret.base = this->base_v1();
+  ret.base = this->base_v1(false);
   ret.stats = this->stats;
   ret.num_items = this->num_items;
   ret.items = this->items;
@@ -977,7 +982,7 @@ G_SyncPlayerDispAndInventory_DC_PC_6x70 Parsed6x70Data::as_dc_pc(shared_ptr<Serv
 
 G_SyncPlayerDispAndInventory_GC_6x70 Parsed6x70Data::as_gc_gcnte(shared_ptr<ServerState> s, Version to_version) const {
   G_SyncPlayerDispAndInventory_GC_6x70 ret;
-  ret.base = this->base_v1();
+  ret.base = this->base_v1(!is_v1_or_v2(to_version));
   ret.stats = this->stats;
   ret.num_items = this->num_items;
   ret.items = this->items;
@@ -1002,7 +1007,7 @@ G_SyncPlayerDispAndInventory_GC_6x70 Parsed6x70Data::as_gc_gcnte(shared_ptr<Serv
 
 G_SyncPlayerDispAndInventory_XB_6x70 Parsed6x70Data::as_xb(shared_ptr<ServerState> s) const {
   G_SyncPlayerDispAndInventory_XB_6x70 ret;
-  ret.base = this->base_v1();
+  ret.base = this->base_v1(true);
   ret.stats = this->stats;
   ret.num_items = this->num_items;
   ret.items = this->items;
@@ -1026,7 +1031,7 @@ G_SyncPlayerDispAndInventory_XB_6x70 Parsed6x70Data::as_xb(shared_ptr<ServerStat
 
 G_SyncPlayerDispAndInventory_BB_6x70 Parsed6x70Data::as_bb(shared_ptr<ServerState> s, uint8_t language) const {
   G_SyncPlayerDispAndInventory_BB_6x70 ret;
-  ret.base = this->base_v1();
+  ret.base = this->base_v1(true);
   ret.name.encode(this->name, language);
   ret.base.visual.name.encode(phosg::string_printf("%10" PRId32, this->guild_card_number), language);
   ret.stats = this->stats;
@@ -1098,11 +1103,12 @@ Parsed6x70Data::Parsed6x70Data(
       unknown_a8(base.unknown_a8),
       unknown_a9_final(base.unknown_a9),
       area(base.area),
-      flags2(base.flags2),
+      flags2_value(base.flags2),
+      flags2_is_v3(!is_v1_or_v2(from_version)),
       technique_levels_v1(base.technique_levels_v1),
       visual(base.visual) {}
 
-G_6x70_Base_V1 Parsed6x70Data::base_v1() const {
+G_6x70_Base_V1 Parsed6x70Data::base_v1(bool is_v3) const {
   G_6x70_Base_V1 ret;
   ret.base = this->base;
   ret.bonus_hp_from_materials = this->bonus_hp_from_materials;
@@ -1121,10 +1127,39 @@ G_6x70_Base_V1 Parsed6x70Data::base_v1() const {
   ret.unknown_a8 = this->unknown_a8;
   ret.unknown_a9 = this->unknown_a9_final;
   ret.area = this->area;
-  ret.flags2 = this->flags2;
+  ret.flags2 = this->get_flags2(is_v3);
   ret.technique_levels_v1 = this->technique_levels_v1;
   ret.visual = this->visual;
   return ret;
+}
+
+uint32_t Parsed6x70Data::get_flags2(bool is_v3) const {
+  // The format of flags2 was changed significantly between v2 and v3, and not
+  // accounting for this means that sometimes other characters won't appear
+  // when joining a game. Unfortunately, some bits were deleted on v3 and other
+  // bits were added, so it doesn't suffice to simply store the most complete
+  // format of this field - we have to be able to convert between the two.
+
+  // Bits on v2: ---CBAzy xwvutsrq ponmlkji hgfedcba
+  // Bits on v3: ---GFEDC BAzyxwvu srqponkj hgfedcba
+  // The bits ilmt were removed in v3 and the bits to their left were shifted
+  // right. The bits DEFG were added in v3 and do not exist on v2.
+
+  if (is_v3 == this->flags2_is_v3) {
+    return this->flags2_value;
+  } else if (!this->flags2_is_v3) { // Convert v2 -> v3
+    return (
+        (this->flags2_value & 0x000000FF) |
+        ((this->flags2_value & 0x00000600) >> 1) |
+        ((this->flags2_value & 0x0007E000) >> 3) |
+        ((this->flags2_value & 0x1FF00000) >> 4));
+  } else { // Convert v3 -> v2
+    return (
+        (this->flags2_value & 0x000000FF) |
+        ((this->flags2_value << 1) & 0x00000600) |
+        ((this->flags2_value << 3) & 0x0007E000) |
+        ((this->flags2_value << 4) & 0x1FF00000));
+  }
 }
 
 static void on_sync_joining_player_disp_and_inventory(

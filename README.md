@@ -514,7 +514,7 @@ There are many options available when starting a proxy session. All options are 
 * **Save files**: saves copies of several kinds of files when they're sent by the remote server. The files are written to the current directory (which is usually the directory containing the system/ directory). These kinds of files can be saved:
     * Online quests and download quests (saved as .bin/.dat files)
     * GBA games (saved as .gba files)
-    * Patches (saved as .bin files, and disassembled into PowerPC assembly if newserv is built with patch support)
+    * Patches (saved as .bin files, and disassembled to text files if newserv is built with patch support)
     * Player data from BB sessions (saved as .bin files, which are not the same format as .nsc files)
     * Episode 3 online quests and maps (saved as .mnmd files)
     * Episode 3 download quests (saved as .mnm files)
